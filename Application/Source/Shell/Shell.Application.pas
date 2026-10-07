@@ -19,14 +19,22 @@ implementation
 uses
   System.SysUtils,
   BDLsp.Common.Product.Version,
-  BDLsp.Windows.Diagnostics.DebugOutput;
+  BDLsp.Windows.Diagnostics.DebugOutput,
+  Shell.Composition;
 
 class function TApplicationShell.Run: Integer;
+var
+  Composition: TServerComposition;
 begin
   try
     TDebugOutput.Write(Format('%s %s gestartet', [TProductVersion.Name, TProductVersion.Version]));
-    // Die Protokollschicht (#2) wird hier komponiert und gestartet.
-    Result := 0;
+    Composition := TServerComposition.CreateForStdio;
+    try
+      Result := Composition.Run;
+    finally
+      Composition.Free;
+    end;
+    TDebugOutput.Write(Format('Beendet mit Exit-Code %d', [Result]));
   except
     on E: Exception do
     begin

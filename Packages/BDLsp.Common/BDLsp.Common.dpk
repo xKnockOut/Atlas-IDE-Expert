@@ -36,6 +36,13 @@ requires
   rtl;
 
 contains
-  BDLsp.Common.Product.Version in 'Source\Product\BDLsp.Common.Product.Version.pas';
+  BDLsp.Common.Product.Version in 'Source\Product\BDLsp.Common.Product.Version.pas',
+  BDLsp.Common.JsonRpc.Contract in 'Source\JsonRpc\BDLsp.Common.JsonRpc.Contract.pas',
+  BDLsp.Common.JsonRpc.Messages in 'Source\JsonRpc\BDLsp.Common.JsonRpc.Messages.pas',
+  BDLsp.Common.JsonRpc.StreamTransport in 'Source\JsonRpc\BDLsp.Common.JsonRpc.StreamTransport.pas',
+  BDLsp.Common.JsonRpc.Dispatcher in 'Source\JsonRpc\BDLsp.Common.JsonRpc.Dispatcher.pas',
+  BDLsp.Common.JsonRpc.Connection in 'Source\JsonRpc\BDLsp.Common.JsonRpc.Connection.pas',
+  BDLsp.Common.Lsp.Contract in 'Source\Lsp\BDLsp.Common.Lsp.Contract.pas',
+  BDLsp.Common.Lsp.Lifecycle in 'Source\Lsp\BDLsp.Common.Lsp.Lifecycle.pas';
 
 end.

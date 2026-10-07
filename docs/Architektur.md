@@ -73,14 +73,31 @@ Für die Anwendung gelten die Host-Matrix (8.1) und die Hosted-Feature-Matrix (8
 
 Komposition von Hand (keine Container-Bibliothek). Composition-Units tragen deshalb kein Strategie-Suffix. Wird später eine zweite Strategie (z. B. Spring4D) eingeführt, erhalten die Units ein Suffix nach Konzept 7.6.
 
+## Umgesetzte Features
+
+| Feature | Units | Inhalt |
+|---|---|---|
+| `BDLsp.Common.JsonRpc` (Platform) | `Contract`, `Messages`, `StreamTransport`, `Dispatcher`, `Connection` | JSON-RPC 2.0 mit LSP-Rahmung (`Content-Length`) über beliebige Streams, Verteilung auf Handler, Nachrichtenschleife |
+| `BDLsp.Common.Lsp` (Platform) | `Contract`, `Lifecycle` | LSP-Fehlercodes und Konstanten, Lebenszyklus `initialize` → `initialized` → `shutdown` → `exit` |
+| `BDLsp.Windows.Console` (Platform) | `StdStreams` | stdin/stdout als Streams, `Write`/`Writeln` auf stderr umgeleitet |
+| `Shell` (Host) | `Shell.Application`, `Shell.Composition` | Einstiegspunkt, Komposition von Hand, Capabilities |
+
+Ablauf einer Anfrage:
+
+```text
+stdin ─► TJsonRpcStreamTransport ─► TJsonRpcConnection ─► TJsonRpcDispatcher ─► Handler
+                                                              │ Guard: TLspLifecycle
+stdout ◄─ TJsonRpcStreamTransport ◄──────── Antwort ◄─────────┘
+```
+
+Neue LSP-Methoden registrieren ihre Handler in `Shell.Composition` am Dispatcher und tragen ihre Capability in `BuildCapabilities` ein.
+
 ## Geplante Zuordnung der Bausteine
 
 Vorschlag, wird mit den jeweiligen Issues verfeinert:
 
 | Baustein | Ort | Begründung |
 |---|---|---|
-| JSON-RPC-Nachrichten, Lesen/Schreiben über Streams (#2) | `BDLsp.Common` | arbeitet auf `TStream`, plattformunabhängig |
-| stdin/stdout-Handles (#2) | `BDLsp.Windows` | `GetStdHandle` |
 | Logging-Abstraktion (#3) | `BDLsp.Common` (Contract) | von allen genutzt |
 | Logging über `OutputDebugString`, Logdatei (#3) | `BDLsp.Windows` | Windows-API |
 | Dokumentverwaltung, Lexer, Parser, Präprozessor, Symbolindex, Namensauflösung, Prüfregeln, DFM-Parser | `BDLsp.Common` | reine Textverarbeitung |
