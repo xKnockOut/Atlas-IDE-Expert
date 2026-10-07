@@ -32,7 +32,7 @@ var
   Part: string;
 begin
   Version := TProductVersion.Version;
-  Assert.AreEqual(3, Length(Version.Split(['.'])), 'Version muss aus Major.Minor.Patch bestehen');
+  Assert.AreEqual<NativeInt>(3, Length(Version.Split(['.'])), 'Version muss aus Major.Minor.Patch bestehen');
   for Part in Version.Split(['.']) do
     Assert.IsTrue(StrToIntDef(Part, -1) >= 0, Format('"%s" ist keine Zahl', [Part]));
 end;
