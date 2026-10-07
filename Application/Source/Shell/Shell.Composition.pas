@@ -17,6 +17,7 @@ uses
   BDLsp.Common.Lsp.TextDocumentSync,
   BDLsp.Common.Lsp.SyntaxDiagnostics,
   BDLsp.Common.Lsp.DocumentSymbols,
+  BDLsp.Common.Lsp.FoldingRanges,
   BDLsp.Common.Documents.Contract,
   Shell.CommandLine;
 
@@ -31,6 +32,7 @@ type
     FTextDocumentSync: TLspTextDocumentSync;
     FSyntaxDiagnostics: TLspSyntaxDiagnostics;
     FDocumentSymbols: TLspDocumentSymbols;
+    FFoldingRanges: TLspFoldingRanges;
     FConnection: TJsonRpcConnection;
     class function BuildCapabilities: TJSONObject; static;
   public
@@ -96,6 +98,8 @@ begin
   FSyntaxDiagnostics.Attach;
   FDocumentSymbols := TLspDocumentSymbols.Create(FDocuments);
   FDocumentSymbols.Attach(FDispatcher);
+  FFoldingRanges := TLspFoldingRanges.Create(FDocuments);
+  FFoldingRanges.Attach(FDispatcher);
   FConnection := TJsonRpcConnection.Create(FTransport, FDispatcher);
   FConnection.OnError :=
     procedure(const AError: Exception)
@@ -114,6 +118,7 @@ begin
   FConnection.Free;
   FSyntaxDiagnostics.Free;
   FDocumentSymbols.Free;
+  FFoldingRanges.Free;
   FTextDocumentSync.Free;
   FDocuments := nil;
   FLifecycle.Free;
@@ -167,6 +172,7 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('textDocumentSync', TLspTextDocumentSync.Capability);
   Result.AddPair('documentSymbolProvider', TJSONBool.Create(True));
+  Result.AddPair('foldingRangeProvider', TJSONBool.Create(True));
 end;
 
 function TServerComposition.Run: Integer;

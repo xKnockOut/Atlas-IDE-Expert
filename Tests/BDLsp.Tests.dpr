@@ -31,6 +31,7 @@ uses
   BDLsp.Common.Pascal.Lexer.Tests in 'Common\Pascal\BDLsp.Common.Pascal.Lexer.Tests.pas',
   BDLsp.Common.Lsp.Internals.Debouncer.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Internals.Debouncer.Tests.pas',
   BDLsp.Common.Lsp.DocumentSymbols.Tests in 'Common\Lsp\BDLsp.Common.Lsp.DocumentSymbols.Tests.pas',
+  BDLsp.Common.Lsp.FoldingRanges.Tests in 'Common\Lsp\BDLsp.Common.Lsp.FoldingRanges.Tests.pas',
   BDLsp.Common.Lsp.SyntaxDiagnostics.Tests in 'Common\Lsp\BDLsp.Common.Lsp.SyntaxDiagnostics.Tests.pas',
   BDLsp.Common.Pascal.Parser.Tests in 'Common\Pascal\BDLsp.Common.Pascal.Parser.Tests.pas',
   Shell.CommandLine in '..\Application\Source\Shell\Shell.CommandLine.pas',
