@@ -70,6 +70,7 @@
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.SyntaxDiagnostics.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.DocumentSymbols.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.FoldingRanges.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.SelectionRanges.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.CommandLine.pas"/>
         <DCCReference Include="Application\Shell\Shell.CommandLine.Tests.pas"/>
         <BuildConfiguration Include="Base">
