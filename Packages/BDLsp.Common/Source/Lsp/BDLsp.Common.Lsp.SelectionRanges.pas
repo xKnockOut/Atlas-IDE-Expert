@@ -33,6 +33,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   BDLsp.Common.JsonRpc.Contract,
   BDLsp.Common.Lsp.Positions,
   BDLsp.Common.Pascal.Contract,
@@ -76,7 +77,7 @@ var
   Token: TPascalToken;
   Best: TPascalToken;
   Found: Boolean;
-  Path: TArray<TSyntaxNode>;
+  Path: TList<TSyntaxNode>;
   Node: TSyntaxNode;
   Index: Integer;
   InnerStart: Integer;
@@ -114,22 +115,26 @@ begin
   end;
 
   // Pfad von der Wurzel zum innersten Knoten, der das Token umschließt.
-  Path := nil;
-  Node := ATree.Root;
-  while Node <> nil do
-  begin
-    Path := Path + [Node];
-    Node := ChildAround(Node, InnerStart, InnerEnd);
-  end;
-  for Index := High(Path) downto 0 do
-  begin
-    Node := Path[Index];
-    // Jeder Bereich muss den inneren umschließen (z. B. nicht bei Cursor vor dem ersten Token).
-    if (Node.StartOffset > InnerStart) or (Node.EndOffset < InnerEnd) then
-      Continue;
-    AddRange(Result, TTextRange.Create(Node.StartPos, Node.EndPos));
-    InnerStart := Node.StartOffset;
-    InnerEnd := Node.EndOffset;
+  Path := TList<TSyntaxNode>.Create;
+  try
+    Node := ATree.Root;
+    while Node <> nil do
+    begin
+      Path.Add(Node);
+      Node := ChildAround(Node, InnerStart, InnerEnd);
+    end;
+    for Index := Path.Count - 1 downto 0 do
+    begin
+      Node := Path[Index];
+      // Jeder Bereich muss den inneren umschließen (z. B. nicht bei Cursor vor dem ersten Token).
+      if (Node.StartOffset > InnerStart) or (Node.EndOffset < InnerEnd) then
+        Continue;
+      AddRange(Result, TTextRange.Create(Node.StartPos, Node.EndPos));
+      InnerStart := Node.StartOffset;
+      InnerEnd := Node.EndOffset;
+    end;
+  finally
+    Path.Free;
   end;
 end;
 

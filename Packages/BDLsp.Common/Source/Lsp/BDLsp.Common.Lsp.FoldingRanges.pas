@@ -59,28 +59,41 @@ begin
     AList.Add(TFoldingRange.Create(AStartLine, AEndLine, AKind));
 end;
 
-procedure CollectNodes(ANode: TSyntaxNode; AList: TList<TFoldingRange>);
+procedure CollectNodes(ARoot: TSyntaxNode; AList: TList<TFoldingRange>);
 var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
   Index: Integer;
 begin
-  case ANode.Kind of
-    TSyntaxKind.UsesClause:
-      AddRange(AList, ANode.StartPos.Line, ANode.EndPos.Line, KindImports);
-    TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
-    TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection,
-    TSyntaxKind.TypeSection, TSyntaxKind.ConstSection, TSyntaxKind.VarSection,
-    TSyntaxKind.TypeDecl, TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType,
-    TSyntaxKind.InterfaceType, TSyntaxKind.HelperType,
-    TSyntaxKind.RoutineDecl, TSyntaxKind.Block, TSyntaxKind.AsmBlock,
-    TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement, TSyntaxKind.CaseItem, TSyntaxKind.CaseElse,
-    TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
-    TSyntaxKind.RepeatStatement, TSyntaxKind.WithStatement, TSyntaxKind.TryStatement,
-    TSyntaxKind.ExceptBlock, TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptionHandler,
-    TSyntaxKind.AnonymousMethod, TSyntaxKind.SetConstructor, TSyntaxKind.Call:
-      AddRange(AList, ANode.StartPos.Line, ANode.EndPos.Line, '');
+  // Iterativ, damit auch sehr tiefe Bäume (lange Ausdrucksketten) den Stapel nicht sprengen.
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ARoot);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      case Node.Kind of
+        TSyntaxKind.UsesClause:
+          AddRange(AList, Node.StartPos.Line, Node.EndPos.Line, KindImports);
+        TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
+        TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection,
+        TSyntaxKind.TypeSection, TSyntaxKind.ConstSection, TSyntaxKind.VarSection,
+        TSyntaxKind.TypeDecl, TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType,
+        TSyntaxKind.InterfaceType, TSyntaxKind.HelperType,
+        TSyntaxKind.RoutineDecl, TSyntaxKind.Block, TSyntaxKind.AsmBlock,
+        TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement, TSyntaxKind.CaseItem, TSyntaxKind.CaseElse,
+        TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
+        TSyntaxKind.RepeatStatement, TSyntaxKind.WithStatement, TSyntaxKind.TryStatement,
+        TSyntaxKind.ExceptBlock, TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptionHandler,
+        TSyntaxKind.AnonymousMethod, TSyntaxKind.SetConstructor, TSyntaxKind.Call:
+          AddRange(AList, Node.StartPos.Line, Node.EndPos.Line, '');
+      end;
+      for Index := 0 to Node.ChildCount - 1 do
+        Pending.Push(Node[Index]);
+    end;
+  finally
+    Pending.Free;
   end;
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectNodes(ANode[Index], AList);
 end;
 
 function IsDirective(const AToken: TPascalToken; const AName: string): Boolean;

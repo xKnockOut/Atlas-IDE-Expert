@@ -35,6 +35,9 @@ uses
   BDLsp.Common.Lsp.SelectionRanges.Tests in 'Common\Lsp\BDLsp.Common.Lsp.SelectionRanges.Tests.pas',
   BDLsp.Common.Lsp.SyntaxDiagnostics.Tests in 'Common\Lsp\BDLsp.Common.Lsp.SyntaxDiagnostics.Tests.pas',
   BDLsp.Common.Pascal.Parser.Tests in 'Common\Pascal\BDLsp.Common.Pascal.Parser.Tests.pas',
+  BDLsp.Common.Pascal.Parser.Robustness.Tests in 'Common\Pascal\BDLsp.Common.Pascal.Parser.Robustness.Tests.pas',
+  BDLsp.Common.Lsp.ProtocolReplay in 'Common\Lsp\BDLsp.Common.Lsp.ProtocolReplay.pas',
+  BDLsp.Common.Lsp.Protocol.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Protocol.Tests.pas',
   Shell.CommandLine in '..\Application\Source\Shell\Shell.CommandLine.pas',
   Shell.CommandLine.Tests in 'Application\Shell\Shell.CommandLine.Tests.pas';
 
