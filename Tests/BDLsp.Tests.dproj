@@ -67,6 +67,7 @@
         <DCCReference Include="Common\JsonRpc\BDLsp.Common.JsonRpc.TestSupport.pas"/>
         <DCCReference Include="Common\JsonRpc\BDLsp.Common.JsonRpc.StreamTransport.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\BDLsp.Common.JsonRpc.TracingTransport.Tests.pas"/>
+        <DCCReference Include="Common\JsonRpc\BDLsp.Common.JsonRpc.PendingRequests.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\BDLsp.Common.JsonRpc.Dispatcher.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\BDLsp.Common.JsonRpc.Connection.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Lifecycle.Tests.pas"/>
