@@ -1,0 +1,18 @@
+name: Package-Abhängigkeiten
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package-Abhängigkeiten prüfen
+        shell: pwsh
+        run: ./Tools/Check-PackageDependencies.ps1
+      - name: Keine Ausgaben auf stdout
+        shell: pwsh
+        run: ./Tools/Check-ConsoleOutput.ps1

@@ -1,0 +1,53 @@
+﻿package BDLsp.Common;
+
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'BetterDelphiLSP Common (frei von Windows und VCL)'}
+{$RUNONLY}
+{$IMPLICITBUILD ON}
+
+// Platform-Package ohne Abhängigkeit zu Windows und VCL.
+// Erlaubt ist ausschließlich die plattformunabhängige RTL (System.*).
+// Geprüft durch Tools\Check-PackageDependencies.ps1.
+
+requires
+  rtl;
+
+contains
+  BDLsp.Common.Product.Version in 'Source\Product\BDLsp.Common.Product.Version.pas',
+  BDLsp.Common.Logging.Contract in 'Source\Logging\BDLsp.Common.Logging.Contract.pas',
+  BDLsp.Common.Logging.Providers.Logger in 'Source\Logging\Providers\BDLsp.Common.Logging.Providers.Logger.pas',
+  BDLsp.Common.Logging.Providers.StreamSink in 'Source\Logging\Providers\BDLsp.Common.Logging.Providers.StreamSink.pas',
+  BDLsp.Common.JsonRpc.Contract in 'Source\JsonRpc\BDLsp.Common.JsonRpc.Contract.pas',
+  BDLsp.Common.JsonRpc.Messages in 'Source\JsonRpc\BDLsp.Common.JsonRpc.Messages.pas',
+  BDLsp.Common.JsonRpc.StreamTransport in 'Source\JsonRpc\BDLsp.Common.JsonRpc.StreamTransport.pas',
+  BDLsp.Common.JsonRpc.TracingTransport in 'Source\JsonRpc\BDLsp.Common.JsonRpc.TracingTransport.pas',
+  BDLsp.Common.JsonRpc.Dispatcher in 'Source\JsonRpc\BDLsp.Common.JsonRpc.Dispatcher.pas',
+  BDLsp.Common.JsonRpc.Connection in 'Source\JsonRpc\BDLsp.Common.JsonRpc.Connection.pas',
+  BDLsp.Common.Lsp.Contract in 'Source\Lsp\BDLsp.Common.Lsp.Contract.pas',
+  BDLsp.Common.Lsp.Lifecycle in 'Source\Lsp\BDLsp.Common.Lsp.Lifecycle.pas',
+  BDLsp.Common.Lsp.Adapters.LogMessageSink in 'Source\Lsp\BDLsp.Common.Lsp.Adapters.LogMessageSink.pas';
+
+end.
