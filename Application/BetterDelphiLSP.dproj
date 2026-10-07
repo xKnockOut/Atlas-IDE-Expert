@@ -62,6 +62,7 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="Source\Shell\Shell.Application.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

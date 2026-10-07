@@ -37,6 +37,7 @@ requires
   BDLsp.Common;
 
 contains
-  BDLsp.Windows.Diagnostics.DebugOutput in 'Source\Diagnostics\BDLsp.Windows.Diagnostics.DebugOutput.pas';
+  BDLsp.Windows.Diagnostics.DebugOutput in 'Source\Diagnostics\BDLsp.Windows.Diagnostics.DebugOutput.pas',
+  BDLsp.Windows.Console.StdStreams in 'Source\Console\BDLsp.Windows.Console.StdStreams.pas';
 
 end.

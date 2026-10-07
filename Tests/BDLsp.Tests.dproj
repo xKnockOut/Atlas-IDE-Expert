@@ -62,6 +62,11 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="Common\BDLsp.Common.Product.Version.Tests.pas"/>
+        <DCCReference Include="Common\JsonRpc\BDLsp.Common.JsonRpc.TestSupport.pas"/>
+        <DCCReference Include="Common\JsonRpc\BDLsp.Common.JsonRpc.StreamTransport.Tests.pas"/>
+        <DCCReference Include="Common\JsonRpc\BDLsp.Common.JsonRpc.Dispatcher.Tests.pas"/>
+        <DCCReference Include="Common\JsonRpc\BDLsp.Common.JsonRpc.Connection.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Lifecycle.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
