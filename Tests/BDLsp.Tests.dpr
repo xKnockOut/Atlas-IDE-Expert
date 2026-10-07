@@ -28,6 +28,7 @@ uses
   BDLsp.Common.Lsp.TextDocumentSync.Tests in 'Common\Lsp\BDLsp.Common.Lsp.TextDocumentSync.Tests.pas',
   BDLsp.Common.Documents.TextDocument.Tests in 'Common\Documents\BDLsp.Common.Documents.TextDocument.Tests.pas',
   BDLsp.Common.Documents.Providers.DocumentStore.Tests in 'Common\Documents\BDLsp.Common.Documents.Providers.DocumentStore.Tests.pas',
+  BDLsp.Common.Pascal.Lexer.Tests in 'Common\Pascal\BDLsp.Common.Pascal.Lexer.Tests.pas',
   Shell.CommandLine in '..\Application\Source\Shell\Shell.CommandLine.pas',
   Shell.CommandLine.Tests in 'Application\Shell\Shell.CommandLine.Tests.pas';
 
