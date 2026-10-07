@@ -18,6 +18,7 @@ uses
   BDLsp.Common.Lsp.SyntaxDiagnostics,
   BDLsp.Common.Lsp.DocumentSymbols,
   BDLsp.Common.Lsp.FoldingRanges,
+  BDLsp.Common.Lsp.SelectionRanges,
   BDLsp.Common.Documents.Contract,
   Shell.CommandLine;
 
@@ -33,6 +34,7 @@ type
     FSyntaxDiagnostics: TLspSyntaxDiagnostics;
     FDocumentSymbols: TLspDocumentSymbols;
     FFoldingRanges: TLspFoldingRanges;
+    FSelectionRanges: TLspSelectionRanges;
     FConnection: TJsonRpcConnection;
     class function BuildCapabilities: TJSONObject; static;
   public
@@ -100,6 +102,8 @@ begin
   FDocumentSymbols.Attach(FDispatcher);
   FFoldingRanges := TLspFoldingRanges.Create(FDocuments);
   FFoldingRanges.Attach(FDispatcher);
+  FSelectionRanges := TLspSelectionRanges.Create(FDocuments);
+  FSelectionRanges.Attach(FDispatcher);
   FConnection := TJsonRpcConnection.Create(FTransport, FDispatcher);
   FConnection.OnError :=
     procedure(const AError: Exception)
@@ -119,6 +123,7 @@ begin
   FSyntaxDiagnostics.Free;
   FDocumentSymbols.Free;
   FFoldingRanges.Free;
+  FSelectionRanges.Free;
   FTextDocumentSync.Free;
   FDocuments := nil;
   FLifecycle.Free;
@@ -173,6 +178,7 @@ begin
   Result.AddPair('textDocumentSync', TLspTextDocumentSync.Capability);
   Result.AddPair('documentSymbolProvider', TJSONBool.Create(True));
   Result.AddPair('foldingRangeProvider', TJSONBool.Create(True));
+  Result.AddPair('selectionRangeProvider', TJSONBool.Create(True));
 end;
 
 function TServerComposition.Run: Integer;
