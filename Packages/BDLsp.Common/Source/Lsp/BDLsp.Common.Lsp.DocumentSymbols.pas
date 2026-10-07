@@ -10,6 +10,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
+  BDLsp.Common.JsonRpc.Contract,
   BDLsp.Common.JsonRpc.Dispatcher,
   BDLsp.Common.Documents.Contract,
   BDLsp.Common.Pascal.SyntaxTree;
@@ -40,7 +41,7 @@ type
     Method = 'textDocument/documentSymbol';
   private
     FStore: IDocumentStore;
-    function HandleDocumentSymbol(const AParams: TJSONValue): TJSONValue;
+    function HandleDocumentSymbol(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore);
     /// <summary>Registriert die Anfrage am Dispatcher.</summary>
@@ -52,10 +53,10 @@ type
 implementation
 
 uses
-  BDLsp.Common.JsonRpc.Contract,
   BDLsp.Common.Lsp.Positions,
   BDLsp.Common.Pascal.Contract,
-  BDLsp.Common.Pascal.Parser;
+  BDLsp.Common.Pascal.Parser,
+  BDLsp.Common.Lsp.Internals.Cancellation;
 
 type
   /// <summary>Baut die Symbole; kennt die Token für Namensbereiche und Routinenarten.</summary>
@@ -357,7 +358,8 @@ end;
 
 procedure TLspDocumentSymbols.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterRequest(Method, HandleDocumentSymbol);
+  // Nebenläufig: Parsen großer Dateien blockiert die Nachrichtenschleife nicht.
+  ADispatcher.RegisterConcurrentRequest(Method, HandleDocumentSymbol);
 end;
 
 class function TLspDocumentSymbols.BuildSymbols(ATree: TSyntaxTree): TJSONArray;
@@ -372,8 +374,10 @@ begin
   end;
 end;
 
-function TLspDocumentSymbols.HandleDocumentSymbol(const AParams: TJSONValue): TJSONValue;
+function TLspDocumentSymbols.HandleDocumentSymbol(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
+  Cancellation: IPascalCancellation;
   Uri: string;
   Document: ITextDocument;
   Tree: TSyntaxTree;
@@ -383,8 +387,11 @@ begin
   // Nicht geöffnete Dokumente haben keine Gliederung.
   if not FStore.TryGet(Uri, Document) then
     Exit(TJSONNull.Create);
-  Tree := TPascalParser.Parse(Document.Text);
+  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
+  Cancellation := TRequestCancellation.Create(ACancellation);
+  Tree := TPascalParser.Parse(Document.Text, Cancellation);
   try
+    ACancellation.ThrowIfCancellationRequested;
     Result := BuildSymbols(Tree);
   finally
     Tree.Free;

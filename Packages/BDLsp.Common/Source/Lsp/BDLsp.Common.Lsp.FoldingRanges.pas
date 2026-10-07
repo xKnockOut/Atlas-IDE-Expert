@@ -10,6 +10,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
+  BDLsp.Common.JsonRpc.Contract,
   System.Generics.Collections,
   BDLsp.Common.JsonRpc.Dispatcher,
   BDLsp.Common.Documents.Contract,
@@ -29,7 +30,7 @@ type
     Method = 'textDocument/foldingRange';
   private
     FStore: IDocumentStore;
-    function HandleFoldingRange(const AParams: TJSONValue): TJSONValue;
+    function HandleFoldingRange(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore);
     /// <summary>Registriert die Anfrage am Dispatcher.</summary>
@@ -44,9 +45,9 @@ implementation
 
 uses
   System.Generics.Defaults,
-  BDLsp.Common.JsonRpc.Contract,
   BDLsp.Common.Pascal.Contract,
-  BDLsp.Common.Pascal.Parser;
+  BDLsp.Common.Pascal.Parser,
+  BDLsp.Common.Lsp.Internals.Cancellation;
 
 const
   KindComment = 'comment';
@@ -179,7 +180,8 @@ end;
 
 procedure TLspFoldingRanges.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterRequest(Method, HandleFoldingRange);
+  // Nebenläufig: Parsen großer Dateien blockiert die Nachrichtenschleife nicht.
+  ADispatcher.RegisterConcurrentRequest(Method, HandleFoldingRange);
 end;
 
 class function TLspFoldingRanges.Collect(ATree: TSyntaxTree): TArray<TFoldingRange>;
@@ -228,8 +230,10 @@ begin
   end;
 end;
 
-function TLspFoldingRanges.HandleFoldingRange(const AParams: TJSONValue): TJSONValue;
+function TLspFoldingRanges.HandleFoldingRange(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
+  Cancellation: IPascalCancellation;
   Uri: string;
   Document: ITextDocument;
   Tree: TSyntaxTree;
@@ -239,8 +243,11 @@ begin
   // Nicht geöffnete Dokumente haben keine Faltbereiche.
   if not FStore.TryGet(Uri, Document) then
     Exit(TJSONNull.Create);
-  Tree := TPascalParser.Parse(Document.Text);
+  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
+  Cancellation := TRequestCancellation.Create(ACancellation);
+  Tree := TPascalParser.Parse(Document.Text, Cancellation);
   try
+    ACancellation.ThrowIfCancellationRequested;
     Result := ToJson(Collect(Tree));
   finally
     Tree.Free;

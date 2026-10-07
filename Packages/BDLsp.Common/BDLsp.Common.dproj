@@ -77,6 +77,7 @@
         <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.StreamTransport.pas"/>
         <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.TracingTransport.pas"/>
         <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.PendingRequests.pas"/>
+        <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.Watchdog.pas"/>
         <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.Dispatcher.pas"/>
         <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.Connection.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Contract.pas"/>
@@ -87,6 +88,7 @@
         <DCCReference Include="Source\Documents\Providers\BDLsp.Common.Documents.Providers.DocumentStore.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Positions.pas"/>
         <DCCReference Include="Source\Lsp\Internals\BDLsp.Common.Lsp.Internals.Debouncer.pas"/>
+        <DCCReference Include="Source\Lsp\Internals\BDLsp.Common.Lsp.Internals.Cancellation.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.SyntaxDiagnostics.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.DocumentSymbols.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.FoldingRanges.pas"/>

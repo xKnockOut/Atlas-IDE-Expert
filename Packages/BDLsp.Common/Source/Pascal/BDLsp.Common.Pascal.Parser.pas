@@ -19,13 +19,18 @@
 interface
 
 uses
+  BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.SyntaxTree;
 
 type
   TPascalParser = record
   public
-    /// <summary>Parst den Text. Der Aufrufer gibt den Baum frei.</summary>
-    class function Parse(const AText: string): TSyntaxTree; static;
+    /// <summary>
+    /// Parst den Text. Der Aufrufer gibt den Baum frei. Meldet ACancellation
+    /// einen Abbruch, endet der Parser vorzeitig mit einem unvollständigen Baum;
+    /// der Aufrufer prüft das Signal danach selbst.
+    /// </summary>
+    class function Parse(const AText: string; const ACancellation: IPascalCancellation = nil): TSyntaxTree; static;
   end;
 
 implementation
@@ -34,7 +39,6 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   BDLsp.Common.Documents.Contract,
-  BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.Lexer;
 
 type
@@ -49,6 +53,8 @@ type
     FIndex: Integer;
     /// <summary>Aktuelle Verschachtelungstiefe von Anweisungen, Typen und Ausdrücken.</summary>
     FDepth: Integer;
+    FCancellation: IPascalCancellation;
+    FAdvances: Integer;
     FDiagnostics: TList<TSyntaxDiagnostic>;
     FEndPos: TTextPosition;
     FEndOffset: Integer;
@@ -164,7 +170,7 @@ type
     procedure ParseArguments(AParent: TSyntaxNode; const ACloser: string);
     function Binary(const AOperator: string; ALeft, ARight: TSyntaxNode; AStartIndex: Integer): TSyntaxNode;
   public
-    constructor Create(const AText: string);
+    constructor Create(const AText: string; const ACancellation: IPascalCancellation);
     destructor Destroy; override;
     function Run: TSyntaxTree;
   end;
@@ -203,12 +209,13 @@ end;
 
 { TParser }
 
-constructor TParser.Create(const AText: string);
+constructor TParser.Create(const AText: string; const ACancellation: IPascalCancellation);
 var
   Token: TPascalToken;
   Significant: TList<TPascalToken>;
 begin
   inherited Create;
+  FCancellation := ACancellation;
   FDiagnostics := TList<TSyntaxDiagnostic>.Create;
   FAllTokens := TPascalLexer.Tokenize(AText);
   Significant := TList<TPascalToken>.Create;
@@ -305,8 +312,13 @@ end;
 
 procedure TParser.Advance;
 begin
-  if not AtEnd then
-    Inc(FIndex);
+  if AtEnd then
+    Exit;
+  Inc(FIndex);
+  // Abbruch nur gelegentlich abfragen; danach gilt der Rest als gelesen.
+  Inc(FAdvances);
+  if ((FAdvances and 4095) = 0) and (FCancellation <> nil) and FCancellation.IsCancelled then
+    FIndex := Length(FTokens);
 end;
 
 function TParser.AcceptKw(const AWord: string): Boolean;
@@ -2306,11 +2318,11 @@ end;
 
 { TPascalParser }
 
-class function TPascalParser.Parse(const AText: string): TSyntaxTree;
+class function TPascalParser.Parse(const AText: string; const ACancellation: IPascalCancellation): TSyntaxTree;
 var
   Parser: TParser;
 begin
-  Parser := TParser.Create(AText);
+  Parser := TParser.Create(AText, ACancellation);
   try
     Result := Parser.Run;
   finally

@@ -2,7 +2,8 @@
 
 // Host-Rolle Shell: Komposition des Servers von Hand (DI-Strategie ohne Container).
 // Verbindet stdin/stdout, Transport, Dispatcher, Lebenszyklus, Dokumentverwaltung,
-// Syntaxdiagnosen, Nachrichtenschleife und Logging.
+// Syntaxdiagnosen, Nachrichtenschleife, Logging, Zeitlimit für Anfragen und
+// Absturzprotokoll mit Stacktrace.
 
 interface
 
@@ -13,6 +14,7 @@ uses
   BDLsp.Common.JsonRpc.Contract,
   BDLsp.Common.JsonRpc.Dispatcher,
   BDLsp.Common.JsonRpc.Connection,
+  BDLsp.Common.JsonRpc.Watchdog,
   BDLsp.Common.Lsp.Lifecycle,
   BDLsp.Common.Lsp.TextDocumentSync,
   BDLsp.Common.Lsp.SyntaxDiagnostics,
@@ -37,6 +39,11 @@ type
     FSelectionRanges: TLspSelectionRanges;
     FConnection: TJsonRpcConnection;
     class function BuildCapabilities: TJSONObject; static;
+    /// <summary>Fehlerbeschreibung mit letzter Nachricht und Stacktrace für das Log.</summary>
+    function DescribeFailure(const AError: Exception): string;
+  public const
+    /// <summary>Anfragen, die länger laufen, werden abgebrochen und gemeldet.</summary>
+    RequestTimeoutMs = 10000;
   public
     constructor Create(const ATransport: IJsonRpcTransport; const ALogger: ILogger);
     destructor Destroy; override;
@@ -62,7 +69,8 @@ uses
   BDLsp.Common.Lsp.Adapters.LogMessageSink,
   BDLsp.Common.Documents.Providers.DocumentStore,
   BDLsp.Windows.Console.StdStreams,
-  BDLsp.Windows.Diagnostics.Adapters.DebugOutputSink;
+  BDLsp.Windows.Diagnostics.Adapters.DebugOutputSink,
+  BDLsp.Windows.Diagnostics.StackTrace;
 
 function CreateTraceStream(const AFileName: string): TStream;
 var
@@ -82,6 +90,24 @@ begin
   FTransport := ATransport;
   FLogger := ALogger;
   FDispatcher := TJsonRpcDispatcher.Create;
+  FDispatcher.Watchdog := TJsonRpcWatchdog.Create(FDispatcher.PendingRequests, RequestTimeoutMs,
+    procedure(const AMethod: string; ATimeoutMs: Cardinal)
+    begin
+      FLogger.Warning(Format('Anfrage %s nach %d ms abgebrochen (Zeitlimit)', [AMethod, ATimeoutMs]));
+    end);
+  FDispatcher.OnRequestFailed :=
+    procedure(const AMethod: string; const AParams: TJSONValue; const AError: Exception)
+    var
+      Params: string;
+    begin
+      Params := '';
+      if AParams <> nil then
+        Params := AParams.ToJSON;
+      if Length(Params) > 500 then
+        Params := Copy(Params, 1, 500) + '…';
+      FLogger.Error(Format('Anfrage %s fehlgeschlagen: %s: %s%sParameter: %s%s%s',
+        [AMethod, AError.ClassName, AError.Message, sLineBreak, Params, sLineBreak, AError.StackTrace]));
+    end;
   FLifecycle := TLspLifecycle.Create(TProductVersion.Name, TProductVersion.Version,
     function: TJSONObject
     begin
@@ -108,7 +134,7 @@ begin
   FConnection.OnError :=
     procedure(const AError: Exception)
     begin
-      FLogger.Error(Format('Fehler bei der Verarbeitung: %s: %s', [AError.ClassName, AError.Message]));
+      FLogger.Error('Fehler bei der Verarbeitung: ' + DescribeFailure(AError));
     end;
   FLifecycle.OnExit :=
     procedure
@@ -127,6 +153,7 @@ begin
   FTextDocumentSync.Free;
   FDocuments := nil;
   FLifecycle.Free;
+  FDispatcher.Watchdog := nil;
   FDispatcher.Free;
   FTransport := nil;
   FLogger := nil;
@@ -140,6 +167,8 @@ var
   Transport: IJsonRpcTransport;
   Warning: string;
 begin
+  // Stacktraces für das Absturzprotokoll (Exception.StackTrace).
+  TStackTrace.Install;
   LoggerImpl := TLogger.Create;
   Logger := LoggerImpl;
   LoggerImpl.AddSink(TDebugOutputLogSink.Create, TLogLevel.Debug);
@@ -171,6 +200,14 @@ begin
   Result := TServerComposition.Create(Transport, Logger);
 end;
 
+function TServerComposition.DescribeFailure(const AError: Exception): string;
+begin
+  Result := Format('%s: %s%sLetzte Nachricht: %s', [AError.ClassName, AError.Message, sLineBreak,
+    FDispatcher.LastMessage]);
+  if AError.StackTrace <> '' then
+    Result := Result + sLineBreak + AError.StackTrace;
+end;
+
 class function TServerComposition.BuildCapabilities: TJSONObject;
 begin
   // Die Features tragen ihre Capabilities hier ein, sobald sie umgesetzt sind.
@@ -190,7 +227,7 @@ begin
   except
     on E: Exception do
     begin
-      FLogger.Error(Format('Server abgebrochen: %s: %s', [E.ClassName, E.Message]));
+      FLogger.Error('Server abgebrochen: ' + DescribeFailure(E));
       Result := 1;
     end;
   end;

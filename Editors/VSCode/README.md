@@ -21,3 +21,5 @@ Ohne Einstellung sucht die Erweiterung den Server unter `Output\Win64\Debug\Bin`
 | `betterDelphiLsp.trace.server` | Nachrichtenaustausch im Ausgabefenster „BetterDelphiLSP Trace“ |
 
 Meldungen des Servers (`window/logMessage` und stderr) erscheinen im Ausgabefenster „BetterDelphiLSP“. Der Befehl „BetterDelphiLSP: Server neu starten“ startet den Server neu, etwa nach einem neuen Build.
+
+Stürzt der Server ab, startet die Erweiterung ihn neu. Nach fünf Abstürzen innerhalb von drei Minuten gibt sie auf und meldet das; dann hilft der Befehl „Server neu starten“.
