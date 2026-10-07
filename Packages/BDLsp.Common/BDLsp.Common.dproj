@@ -89,6 +89,8 @@
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.TextDocumentSync.pas"/>
         <DCCReference Include="Source\Pascal\BDLsp.Common.Pascal.Contract.pas"/>
         <DCCReference Include="Source\Pascal\BDLsp.Common.Pascal.Lexer.pas"/>
+        <DCCReference Include="Source\Pascal\BDLsp.Common.Pascal.SyntaxTree.pas"/>
+        <DCCReference Include="Source\Pascal\BDLsp.Common.Pascal.Parser.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
