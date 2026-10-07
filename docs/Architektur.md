@@ -79,7 +79,8 @@ Komposition von Hand (keine Container-Bibliothek). Composition-Units tragen desh
 |---|---|---|
 | `BDLsp.Common.Logging` (Platform) | `Contract`, `Providers.Logger`, `Providers.StreamSink` | `ILogger` (API) und `ILogSink` (SPI), Logger mit Mindeststufe je Senke, Senke für Datei und stderr |
 | `BDLsp.Common.JsonRpc` (Platform) | `Contract`, `Messages`, `StreamTransport`, `TracingTransport`, `PendingRequests`, `Dispatcher`, `Connection` | JSON-RPC 2.0 mit LSP-Rahmung (`Content-Length`) über beliebige Streams, Mitschnitt, Verteilung auf Handler, Nachrichtenschleife mit Lese-Thread, nebenläufige Anfragen im Thread-Pool, `$/cancelRequest` |
-| `BDLsp.Common.Lsp` (Platform) | `Contract`, `Lifecycle`, `Adapters.LogMessageSink` | LSP-Fehlercodes und Konstanten, Lebenszyklus `initialize` → `initialized` → `shutdown` → `exit`, Log-Senke `window/logMessage` |
+| `BDLsp.Common.Documents` (Platform) | `Contract`, `TextDocument`, `Providers.DocumentStore` | Geöffnete Dokumente als unveränderliche Momentaufnahmen mit Zeilenindex, Positionen in UTF-16-Codeeinheiten, inkrementelle Änderungen, Speicher je URI mit Ereignissen (Opened, Changed, Saved, Closed) |
+| `BDLsp.Common.Lsp` (Platform) | `Contract`, `Lifecycle`, `Positions`, `TextDocumentSync`, `Adapters.LogMessageSink` | LSP-Fehlercodes und Konstanten, Lebenszyklus `initialize` → `initialized` → `shutdown` → `exit`, Position/Range, `didOpen`/`didChange`/`didSave`/`didClose`, Log-Senke `window/logMessage` |
 | `BDLsp.Windows.Console` (Platform) | `StdStreams` | stdin/stdout/stderr als Streams; nach `ReserveOutputForProtocol` landen `Writeln` und `GetStdHandle(STD_OUTPUT_HANDLE)` auf stderr |
 | `BDLsp.Windows.Diagnostics` (Platform) | `DebugOutput`, `Adapters.DebugOutputSink` | `OutputDebugString`, Log-Senke dafür |
 | `Shell` (Host) | `Shell.Application`, `Shell.Composition`, `Shell.CommandLine` | Einstiegspunkt, Kommandozeile, Komposition von Hand, Capabilities |
@@ -100,6 +101,8 @@ Threads und Reihenfolge:
 - Nebenläufige Anfragen (`RegisterConcurrentRequest`) laufen im Thread-Pool und erhalten ein `IJsonRpcCancellationToken`. Sie dürfen nur threadsicheren Zustand lesen, etwa eine Momentaufnahme des Dokuments, und sollen das Token regelmäßig prüfen. Ein Abbruch wird zur Fehlerantwort `RequestCancelled` (-32800).
 - `$/cancelRequest` führt der Lese-Thread sofort aus, also auch, während `Run` beschäftigt ist. Eine normale Anfrage, die vor ihrer Verarbeitung abgebrochen wurde, wird ebenfalls mit `RequestCancelled` beantwortet.
 - Endet die Verbindung (`exit`, Eingabe geschlossen), bricht `Run` offene Anfragen ab und wartet höchstens `WorkTimeout` auf laufende.
+
+Features, die Dateien auswerten, lesen Momentaufnahmen aus `IDocumentStore` (`TServerComposition.Documents`) und abonnieren dessen Ereignisse, um nur die geänderte Datei neu zu verarbeiten. Eine Momentaufnahme ändert sich nie und darf auch in nebenläufigen Anfragen gelesen werden.
 
 Neue LSP-Methoden registrieren ihre Handler in `Shell.Composition` am Dispatcher und tragen ihre Capability in `BuildCapabilities` ein.
 

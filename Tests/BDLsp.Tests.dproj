@@ -61,6 +61,9 @@
         <DCCReference Include="Common\JsonRpc\BDLsp.Common.JsonRpc.Connection.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Lifecycle.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Adapters.LogMessageSink.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.TextDocumentSync.Tests.pas"/>
+        <DCCReference Include="Common\Documents\BDLsp.Common.Documents.TextDocument.Tests.pas"/>
+        <DCCReference Include="Common\Documents\BDLsp.Common.Documents.Providers.DocumentStore.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.CommandLine.pas"/>
         <DCCReference Include="Application\Shell\Shell.CommandLine.Tests.pas"/>
         <BuildConfiguration Include="Base">

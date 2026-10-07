@@ -25,6 +25,9 @@ uses
   BDLsp.Common.JsonRpc.Connection.Tests in 'Common\JsonRpc\BDLsp.Common.JsonRpc.Connection.Tests.pas',
   BDLsp.Common.Lsp.Lifecycle.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Lifecycle.Tests.pas',
   BDLsp.Common.Lsp.Adapters.LogMessageSink.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Adapters.LogMessageSink.Tests.pas',
+  BDLsp.Common.Lsp.TextDocumentSync.Tests in 'Common\Lsp\BDLsp.Common.Lsp.TextDocumentSync.Tests.pas',
+  BDLsp.Common.Documents.TextDocument.Tests in 'Common\Documents\BDLsp.Common.Documents.TextDocument.Tests.pas',
+  BDLsp.Common.Documents.Providers.DocumentStore.Tests in 'Common\Documents\BDLsp.Common.Documents.Providers.DocumentStore.Tests.pas',
   Shell.CommandLine in '..\Application\Source\Shell\Shell.CommandLine.pas',
   Shell.CommandLine.Tests in 'Application\Shell\Shell.CommandLine.Tests.pas';
 
