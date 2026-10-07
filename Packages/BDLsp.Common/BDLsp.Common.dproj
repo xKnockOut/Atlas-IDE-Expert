@@ -67,13 +67,18 @@
         </DelphiCompile>
         <DCCReference Include="rtl.dcp"/>
         <DCCReference Include="Source\Product\BDLsp.Common.Product.Version.pas"/>
+        <DCCReference Include="Source\Logging\BDLsp.Common.Logging.Contract.pas"/>
+        <DCCReference Include="Source\Logging\Providers\BDLsp.Common.Logging.Providers.Logger.pas"/>
+        <DCCReference Include="Source\Logging\Providers\BDLsp.Common.Logging.Providers.StreamSink.pas"/>
         <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.Contract.pas"/>
         <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.Messages.pas"/>
         <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.StreamTransport.pas"/>
+        <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.TracingTransport.pas"/>
         <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.Dispatcher.pas"/>
         <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.Connection.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Contract.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Lifecycle.pas"/>
+        <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Adapters.LogMessageSink.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

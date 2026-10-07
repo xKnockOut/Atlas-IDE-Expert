@@ -1,8 +1,7 @@
 ﻿unit Shell.Application;
 
-// Host-Rolle Shell: Einstiegspunkt der Anwendung und Komposition der Features.
-// stdout gehört ausschließlich dem LSP-Protokoll; Diagnosemeldungen laufen
-// über TDebugOutput.
+// Host-Rolle Shell: Einstiegspunkt der Anwendung. stdout gehört ausschließlich
+// dem LSP-Protokoll; Diagnosemeldungen laufen über das Logging der Komposition.
 
 interface
 
@@ -18,24 +17,25 @@ implementation
 
 uses
   System.SysUtils,
-  BDLsp.Common.Product.Version,
   BDLsp.Windows.Diagnostics.DebugOutput,
+  Shell.CommandLine,
   Shell.Composition;
 
 class function TApplicationShell.Run: Integer;
 var
   Composition: TServerComposition;
 begin
+  // Laufzeitfehler-Meldungen der RTL (Runtime error ...) nicht auf die Konsole schreiben.
+  NoErrMsg := True;
   try
-    TDebugOutput.Write(Format('%s %s gestartet', [TProductVersion.Name, TProductVersion.Version]));
-    Composition := TServerComposition.CreateForStdio;
+    Composition := TServerComposition.CreateForStdio(TCommandLineOptions.FromProcess);
     try
       Result := Composition.Run;
     finally
       Composition.Free;
     end;
-    TDebugOutput.Write(Format('Beendet mit Exit-Code %d', [Result]));
   except
+    // Letzte Auffangstelle, falls schon der Aufbau scheitert und kein Logger existiert.
     on E: Exception do
     begin
       TDebugOutput.Write(Format('Unbehandelte Exception %s: %s', [E.ClassName, E.Message]));

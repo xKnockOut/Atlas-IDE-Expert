@@ -37,12 +37,17 @@ requires
 
 contains
   BDLsp.Common.Product.Version in 'Source\Product\BDLsp.Common.Product.Version.pas',
+  BDLsp.Common.Logging.Contract in 'Source\Logging\BDLsp.Common.Logging.Contract.pas',
+  BDLsp.Common.Logging.Providers.Logger in 'Source\Logging\Providers\BDLsp.Common.Logging.Providers.Logger.pas',
+  BDLsp.Common.Logging.Providers.StreamSink in 'Source\Logging\Providers\BDLsp.Common.Logging.Providers.StreamSink.pas',
   BDLsp.Common.JsonRpc.Contract in 'Source\JsonRpc\BDLsp.Common.JsonRpc.Contract.pas',
   BDLsp.Common.JsonRpc.Messages in 'Source\JsonRpc\BDLsp.Common.JsonRpc.Messages.pas',
   BDLsp.Common.JsonRpc.StreamTransport in 'Source\JsonRpc\BDLsp.Common.JsonRpc.StreamTransport.pas',
+  BDLsp.Common.JsonRpc.TracingTransport in 'Source\JsonRpc\BDLsp.Common.JsonRpc.TracingTransport.pas',
   BDLsp.Common.JsonRpc.Dispatcher in 'Source\JsonRpc\BDLsp.Common.JsonRpc.Dispatcher.pas',
   BDLsp.Common.JsonRpc.Connection in 'Source\JsonRpc\BDLsp.Common.JsonRpc.Connection.pas',
   BDLsp.Common.Lsp.Contract in 'Source\Lsp\BDLsp.Common.Lsp.Contract.pas',
-  BDLsp.Common.Lsp.Lifecycle in 'Source\Lsp\BDLsp.Common.Lsp.Lifecycle.pas';
+  BDLsp.Common.Lsp.Lifecycle in 'Source\Lsp\BDLsp.Common.Lsp.Lifecycle.pas',
+  BDLsp.Common.Lsp.Adapters.LogMessageSink in 'Source\Lsp\BDLsp.Common.Lsp.Adapters.LogMessageSink.pas';
 
 end.
