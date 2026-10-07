@@ -25,8 +25,6 @@ class function TApplicationShell.Run: Integer;
 var
   Composition: TServerComposition;
 begin
-  // Laufzeitfehler-Meldungen der RTL (Runtime error ...) nicht auf die Konsole schreiben.
-  NoErrMsg := True;
   try
     Composition := TServerComposition.CreateForStdio(TCommandLineOptions.FromProcess);
     try

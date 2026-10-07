@@ -15,7 +15,8 @@ Details zu Rollen, Benennung und Importregeln: [docs/Architektur.md](docs/Archit
 
 ## Voraussetzungen
 
-- Delphi 12 Athens (Win32 und Win64)
+- Delphi 12 Athens oder neuer, gebaut wird derzeit mit RAD Studio 13 (Win32 und Win64)
+- Das Testprojekt baut nur für Win64, solange DUnitX nur als Win64-Bibliothek vorliegt (z. B. in der Starter-Edition)
 - DUnitX (in RAD Studio enthalten, Umgebungsvariable `$(DUnitX)` der IDE)
 - PowerShell für die Prüfskripte
 
