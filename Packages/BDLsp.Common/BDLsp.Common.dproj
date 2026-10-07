@@ -87,6 +87,8 @@
         <DCCReference Include="Source\Documents\Providers\BDLsp.Common.Documents.Providers.DocumentStore.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Positions.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.TextDocumentSync.pas"/>
+        <DCCReference Include="Source\Pascal\BDLsp.Common.Pascal.Contract.pas"/>
+        <DCCReference Include="Source\Pascal\BDLsp.Common.Pascal.Lexer.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

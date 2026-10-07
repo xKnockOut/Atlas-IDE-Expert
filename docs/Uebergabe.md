@@ -23,11 +23,11 @@
 - Ändert die IDE beim Bauen die `.dproj`, werden diese Änderungen mitcommittet (Wunsch des Users).
 
 ## Stand nach diesem Vorgang
-- Remote war umgeschrieben: #4 inklusive meiner Fixes (E2010 und H2077 in `BDLsp.Common.JsonRpc.Connection.pas`, `.dproj` im RAD-Studio-13-Format) ist jetzt als `acfd031 (#160)` enthalten, inhaltlich identisch mit dem lokalen `03753ec`. Lokal wurde auf den Remote-Stand zurückgesetzt. Die alten Commits liegen im Backup-Branch `backup/vor-reset-03753ec`.
-- Update bis `0753d2d Dokumentverwaltung: didOpen, didChange (inkrementell), didSave, didClose (#5)` eingespielt.
-- Build Win64: alle 4 Projekte ✅, 0 Fehler, 0 Warnungen, 0 Hinweise. Win32: 3 von 4 ✅, nur die Tests scheitern wie erwartet an DUnitX. **103 von 103 Tests bestehen.**
-- Kein Code-Fix nötig. Die IDE hat diesmal keine `.dproj` geändert.
+- Remote war erneut umgeschrieben: #5 ist jetzt als `f17253e (#161)` enthalten, inhaltlich identisch mit dem lokalen Stand. Lokal wurde auf den Remote-Stand zurückgesetzt. Der vorherige Stand liegt im Backup-Branch `backup/vor-reset-1685582` (nur lokal).
+- Update bis `1987033 Lexer für Object Pascal (#6)` eingespielt.
+- Build Win64: alle 4 Projekte ✅, 0 Fehler, 0 Warnungen, 0 Hinweise. Win32: 3 von 4 ✅, nur die Tests scheitern wie erwartet an DUnitX. **118 von 118 Tests bestehen.**
+- Kein Code-Fix nötig. Die IDE hat keine `.dproj` geändert.
 
 ## Offen
-- Backup-Branch `backup/vor-reset-03753ec` (nur lokal) kann gelöscht werden.
+- Backup-Branch `backup/vor-reset-1685582` (nur lokal) kann gelöscht werden.
 - Diese Übergabe-Datei ist committet, aber noch nicht gepusht.
