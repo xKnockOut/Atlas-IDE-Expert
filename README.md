@@ -16,7 +16,7 @@ Details zu Rollen, Benennung und Importregeln: [docs/Architektur.md](docs/Archit
 ## Voraussetzungen
 
 - Delphi 12 Athens oder neuer, gebaut wird derzeit mit RAD Studio 13 (Win32 und Win64)
-- Das Testprojekt baut nur für Win64, solange DUnitX nur als Win64-Bibliothek vorliegt (z. B. in der Starter-Edition)
+- Das Testprojekt ist nur für Win64 eingerichtet, weil DUnitX in der Starter-Edition nur als Win64-Bibliothek vorliegt
 - DUnitX (in RAD Studio enthalten, Umgebungsvariable `$(DUnitX)` der IDE)
 - PowerShell für die Prüfskripte
 
@@ -35,7 +35,7 @@ Die Ausgabe landet in `Output\<Plattform>\<Konfiguration>\` (`Bin`, `Bpl`, `Dcp`
 ## Testen
 
 ```bat
-Output\Win32\Debug\Bin\BDLsp.Tests.exe --exit:Continue
+Output\Win64\Debug\Bin\BDLsp.Tests.exe --exit:Continue
 ```
 
 Prüfskripte (laufen auch als GitHub Action):
