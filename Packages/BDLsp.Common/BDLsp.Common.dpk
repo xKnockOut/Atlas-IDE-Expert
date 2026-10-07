@@ -1,0 +1,41 @@
+﻿package BDLsp.Common;
+
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'BetterDelphiLSP Common (frei von Windows und VCL)'}
+{$RUNONLY}
+{$IMPLICITBUILD ON}
+
+// Platform-Package ohne Abhängigkeit zu Windows und VCL.
+// Erlaubt ist ausschließlich die plattformunabhängige RTL (System.*).
+// Geprüft durch Tools\Check-PackageDependencies.ps1.
+
+requires
+  rtl;
+
+contains
+  BDLsp.Common.Product.Version in 'Source\Product\BDLsp.Common.Product.Version.pas';
+
+end.
