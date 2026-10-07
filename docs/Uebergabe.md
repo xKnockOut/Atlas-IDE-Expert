@@ -18,17 +18,16 @@
 ## Achtung
 - In der IDE des Users ist **Beryl-Components** offen, und dort arbeitet parallel ein anderer Client. **Immer `-Instance <eigene pid>` angeben.** Ohne `-Instance` landet der Auftrag in dieser IDE. Das ist einmal passiert.
 - DUnitX gibt es nur für Win64. Ein Win32-Gruppen-Build scheitert deshalb erwartungsgemäß an `BDLsp.Tests` (F2613). Die übrigen 3 Projekte bauen unter Win32.
-- Die IDE schreibt beim Bauen die `.dproj` um. Vor jedem `git pull` diese Änderungen stashen.
+- Der Remote-Branch wird von außen umgeschrieben (Force-Push, Squash-Merges). Ein `git pull --ff-only` kann deshalb scheitern. Dann mit `git diff --stat HEAD origin/...` prüfen, ob der lokale Stand im Remote enthalten ist, und erst danach `git reset --hard origin/claude/project-thread-mhrxdt` ausführen. Vorher sicherheitshalber einen Backup-Branch anlegen.
+- **Regel:** Hinweise und Warnungen werden sofort behoben. Ein Build gilt erst bei 0 Fehlern, 0 Warnungen und 0 Hinweisen als fertig. Dafür zusätzlich das `logFile` auf `[dcc… Hinweis|Warnung]` prüfen.
+- Ändert die IDE beim Bauen die `.dproj`, werden diese Änderungen mitcommittet (Wunsch des Users).
 
 ## Stand nach diesem Vorgang
-- Update bis `ca9d6b7 Nebenläufigkeit: Lese-Thread, Worker-Threads und $/cancelRequest (#4)` eingespielt.
-- **Compilerfehler in #4 behoben** (`BDLsp.Common.JsonRpc.Connection.pas`, `Run`): `ThreadPoolScheduler` und `CreateResponder` liefern Methodenreferenzen. Ohne `()` versuchte Delphi, die Funktion selbst zuzuweisen (E2010). Jetzt stehen dort `ThreadPoolScheduler()` und `CreateResponder()`.
-- Hinweis H2077 in `TJsonRpcConnection.Process` behoben: Die überflüssige Zuweisung `Response := nil` ist entfernt.
-- **Regel:** Hinweise und Warnungen werden sofort behoben. Ein Build gilt erst bei 0 Fehlern, 0 Warnungen und 0 Hinweisen als fertig. Dafür zusätzlich das `logFile` auf `[dcc… Hinweis|Warnung]` prüfen.
-- Build Win64: alle 4 Projekte ✅, 0 Fehler, 0 Warnungen, 0 Hinweise. Win32: 3 von 4 ✅, nur die Tests scheitern wie erwartet. **75 von 75 Tests bestehen.**
-- Erledigt aus früheren Vorgängen: W1002 (`NoErrMsg`) beseitigt, `*.res` steht in der `.gitignore`, das Testprojekt ist auf Win64 beschränkt (#159).
+- Remote war umgeschrieben: #4 inklusive meiner Fixes (E2010 und H2077 in `BDLsp.Common.JsonRpc.Connection.pas`, `.dproj` im RAD-Studio-13-Format) ist jetzt als `acfd031 (#160)` enthalten, inhaltlich identisch mit dem lokalen `03753ec`. Lokal wurde auf den Remote-Stand zurückgesetzt. Die alten Commits liegen im Backup-Branch `backup/vor-reset-03753ec`.
+- Update bis `0753d2d Dokumentverwaltung: didOpen, didChange (inkrementell), didSave, didClose (#5)` eingespielt.
+- Build Win64: alle 4 Projekte ✅, 0 Fehler, 0 Warnungen, 0 Hinweise. Win32: 3 von 4 ✅, nur die Tests scheitern wie erwartet an DUnitX. **103 von 103 Tests bestehen.**
+- Kein Code-Fix nötig. Die IDE hat diesmal keine `.dproj` geändert.
 
 ## Offen
-- Die IDE-Änderungen an den `.dproj` sind auf Wunsch des Users committet (`1929e90`): RAD-Studio-13-Format mit Win64x-Vorgaben. Künftige Änderungen der IDE an den `.dproj` mitcommitten.
-- Drei alte Stashes mit IDE-Änderungen an den `.dproj` sind inzwischen überholt. Sie können gelöscht werden, wenn der User zustimmt.
-- Commits `cf5693c`, `02997d8` und `1929e90` (und dieser) sind noch nicht gepusht.
+- Backup-Branch `backup/vor-reset-03753ec` (nur lokal) kann gelöscht werden.
+- Diese Übergabe-Datei ist committet, aber noch nicht gepusht.

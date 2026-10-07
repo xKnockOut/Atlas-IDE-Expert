@@ -1,0 +1,142 @@
+﻿unit BDLsp.Common.Documents.Providers.DocumentStore.Tests;
+
+interface
+
+uses
+  DUnitX.TestFramework,
+  BDLsp.Common.Documents.Contract;
+
+type
+  [TestFixture]
+  TDocumentStoreTests = class
+  private
+    FStore: IDocumentStore;
+    FEvents: TArray<string>;
+  public
+    [Setup]
+    procedure Setup;
+    [TearDown]
+    procedure TearDown;
+    [Test]
+    procedure OpensAndFindsDocument;
+    [Test]
+    procedure ChangeAppliesChangesAndVersion;
+    [Test]
+    procedure ChangeOfUnknownDocumentRaises;
+    [Test]
+    procedure CloseRemovesDocument;
+    [Test]
+    procedure IgnoresSaveAndCloseOfUnknownDocument;
+    [Test]
+    procedure ReportsEventsPerDocument;
+    [Test]
+    procedure ListsOpenDocuments;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  BDLsp.Common.Documents.Providers.DocumentStore;
+
+const
+  UriA = 'file:///c%3A/a.pas';
+  UriB = 'file:///c%3A/b.pas';
+
+const
+  EventNames: array[TDocumentEventKind] of string = ('Opened', 'Changed', 'Saved', 'Closed');
+
+{ TDocumentStoreTests }
+
+procedure TDocumentStoreTests.Setup;
+begin
+  FStore := TDocumentStore.Create;
+  FEvents := nil;
+  FStore.Subscribe(
+    procedure(AKind: TDocumentEventKind; const ADocument: ITextDocument)
+    begin
+      FEvents := FEvents + [Format('%s %s %d', [EventNames[AKind], ADocument.Uri, ADocument.Version])];
+    end);
+end;
+
+procedure TDocumentStoreTests.TearDown;
+begin
+  FStore := nil;
+end;
+
+procedure TDocumentStoreTests.OpensAndFindsDocument;
+var
+  Document: ITextDocument;
+begin
+  FStore.Open(UriA, 'pascal', 1, 'unit A;');
+  Assert.IsTrue(FStore.TryGet(UriA, Document));
+  Assert.AreEqual('unit A;', Document.Text);
+  Assert.AreEqual('pascal', Document.LanguageId);
+  Assert.IsFalse(FStore.TryGet(UriB, Document));
+end;
+
+procedure TDocumentStoreTests.ChangeAppliesChangesAndVersion;
+var
+  Document: ITextDocument;
+begin
+  FStore.Open(UriA, 'pascal', 1, 'unit A;');
+  FStore.Change(UriA, 2, [TTextChange.Ranged(TTextRange.Create(0, 5, 0, 6), 'B')]);
+  Assert.IsTrue(FStore.TryGet(UriA, Document));
+  Assert.AreEqual('unit B;', Document.Text);
+  Assert.AreEqual(2, Document.Version);
+end;
+
+procedure TDocumentStoreTests.ChangeOfUnknownDocumentRaises;
+begin
+  Assert.WillRaise(
+    procedure
+    begin
+      FStore.Change(UriA, 2, [TTextChange.Full('x')]);
+    end,
+    EDocumentError);
+end;
+
+procedure TDocumentStoreTests.CloseRemovesDocument;
+var
+  Document: ITextDocument;
+begin
+  FStore.Open(UriA, 'pascal', 1, 'unit A;');
+  FStore.Close(UriA);
+  Assert.IsFalse(FStore.TryGet(UriA, Document));
+end;
+
+procedure TDocumentStoreTests.IgnoresSaveAndCloseOfUnknownDocument;
+begin
+  FStore.Save(UriA);
+  FStore.Close(UriA);
+  Assert.AreEqual<NativeInt>(0, Length(FEvents));
+end;
+
+procedure TDocumentStoreTests.ReportsEventsPerDocument;
+begin
+  FStore.Open(UriA, 'pascal', 1, 'a');
+  FStore.Open(UriB, 'pascal', 1, 'b');
+  FStore.Change(UriA, 2, [TTextChange.Full('aa')]);
+  FStore.Save(UriA);
+  FStore.Close(UriB);
+  Assert.AreEqual<NativeInt>(5, Length(FEvents));
+  Assert.AreEqual('Opened ' + UriA + ' 1', FEvents[0]);
+  Assert.AreEqual('Opened ' + UriB + ' 1', FEvents[1]);
+  Assert.AreEqual('Changed ' + UriA + ' 2', FEvents[2]);
+  Assert.AreEqual('Saved ' + UriA + ' 2', FEvents[3]);
+  Assert.AreEqual('Closed ' + UriB + ' 1', FEvents[4]);
+end;
+
+procedure TDocumentStoreTests.ListsOpenDocuments;
+begin
+  FStore.Open(UriA, 'pascal', 1, 'a');
+  FStore.Open(UriB, 'pascal', 1, 'b');
+  FStore.Close(UriA);
+  Assert.AreEqual<NativeInt>(1, Length(FStore.Documents));
+  Assert.AreEqual(UriB, FStore.Documents[0].Uri);
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TDocumentStoreTests);
+
+end.

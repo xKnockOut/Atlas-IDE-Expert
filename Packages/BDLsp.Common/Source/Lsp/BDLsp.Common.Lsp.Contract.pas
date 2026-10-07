@@ -39,6 +39,15 @@ type
     ExitNotification = 'exit';
   end;
 
+  /// <summary>Methodennamen der Dokumentsynchronisation.</summary>
+  TLspTextDocumentMethod = record
+  public const
+    DidOpen = 'textDocument/didOpen';
+    DidChange = 'textDocument/didChange';
+    DidSave = 'textDocument/didSave';
+    DidClose = 'textDocument/didClose';
+  end;
+
   /// <summary>Zustand des Servers im Lebenszyklus.</summary>
   TLspServerState = (
     /// <summary>Wartet auf initialize.</summary>
