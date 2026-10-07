@@ -1,8 +1,8 @@
 ﻿unit Shell.Composition;
 
 // Host-Rolle Shell: Komposition des Servers von Hand (DI-Strategie ohne Container).
-// Verbindet stdin/stdout, Transport, Dispatcher, Lebenszyklus, Nachrichtenschleife
-// und Logging.
+// Verbindet stdin/stdout, Transport, Dispatcher, Lebenszyklus, Dokumentverwaltung,
+// Nachrichtenschleife und Logging.
 
 interface
 
@@ -14,6 +14,8 @@ uses
   BDLsp.Common.JsonRpc.Dispatcher,
   BDLsp.Common.JsonRpc.Connection,
   BDLsp.Common.Lsp.Lifecycle,
+  BDLsp.Common.Lsp.TextDocumentSync,
+  BDLsp.Common.Documents.Contract,
   Shell.CommandLine;
 
 type
@@ -23,6 +25,8 @@ type
     FLogger: ILogger;
     FDispatcher: TJsonRpcDispatcher;
     FLifecycle: TLspLifecycle;
+    FDocuments: IDocumentStore;
+    FTextDocumentSync: TLspTextDocumentSync;
     FConnection: TJsonRpcConnection;
     class function BuildCapabilities: TJSONObject; static;
   public
@@ -33,6 +37,8 @@ type
     /// <summary>Verarbeitet Nachrichten bis exit oder Ende der Eingabe und liefert den Exit-Code.</summary>
     function Run: Integer;
     property Logger: ILogger read FLogger;
+    /// <summary>Geöffnete Dokumente, für Features, die Dateien auswerten.</summary>
+    property Documents: IDocumentStore read FDocuments;
   end;
 
 implementation
@@ -45,8 +51,8 @@ uses
   BDLsp.Common.Logging.Providers.StreamSink,
   BDLsp.Common.JsonRpc.StreamTransport,
   BDLsp.Common.JsonRpc.TracingTransport,
-  BDLsp.Common.Lsp.Contract,
   BDLsp.Common.Lsp.Adapters.LogMessageSink,
+  BDLsp.Common.Documents.Providers.DocumentStore,
   BDLsp.Windows.Console.StdStreams,
   BDLsp.Windows.Diagnostics.Adapters.DebugOutputSink;
 
@@ -74,6 +80,9 @@ begin
       Result := BuildCapabilities;
     end);
   FLifecycle.Attach(FDispatcher);
+  FDocuments := TDocumentStore.Create;
+  FTextDocumentSync := TLspTextDocumentSync.Create(FDocuments);
+  FTextDocumentSync.Attach(FDispatcher);
   FConnection := TJsonRpcConnection.Create(FTransport, FDispatcher);
   FConnection.OnError :=
     procedure(const AError: Exception)
@@ -90,6 +99,8 @@ end;
 destructor TServerComposition.Destroy;
 begin
   FConnection.Free;
+  FTextDocumentSync.Free;
+  FDocuments := nil;
   FLifecycle.Free;
   FDispatcher.Free;
   FTransport := nil;
@@ -139,7 +150,7 @@ class function TServerComposition.BuildCapabilities: TJSONObject;
 begin
   // Die Features tragen ihre Capabilities hier ein, sobald sie umgesetzt sind.
   Result := TJSONObject.Create;
-  Result.AddPair('textDocumentSync', TJSONNumber.Create(TLspTextDocumentSyncKind.Incremental));
+  Result.AddPair('textDocumentSync', TLspTextDocumentSync.Capability);
 end;
 
 function TServerComposition.Run: Integer;
