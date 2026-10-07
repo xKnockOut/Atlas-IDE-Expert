@@ -77,10 +77,12 @@ Komposition von Hand (keine Container-Bibliothek). Composition-Units tragen desh
 
 | Feature | Units | Inhalt |
 |---|---|---|
-| `BDLsp.Common.JsonRpc` (Platform) | `Contract`, `Messages`, `StreamTransport`, `Dispatcher`, `Connection` | JSON-RPC 2.0 mit LSP-Rahmung (`Content-Length`) über beliebige Streams, Verteilung auf Handler, Nachrichtenschleife |
-| `BDLsp.Common.Lsp` (Platform) | `Contract`, `Lifecycle` | LSP-Fehlercodes und Konstanten, Lebenszyklus `initialize` → `initialized` → `shutdown` → `exit` |
-| `BDLsp.Windows.Console` (Platform) | `StdStreams` | stdin/stdout als Streams, `Write`/`Writeln` auf stderr umgeleitet |
-| `Shell` (Host) | `Shell.Application`, `Shell.Composition` | Einstiegspunkt, Komposition von Hand, Capabilities |
+| `BDLsp.Common.Logging` (Platform) | `Contract`, `Providers.Logger`, `Providers.StreamSink` | `ILogger` (API) und `ILogSink` (SPI), Logger mit Mindeststufe je Senke, Senke für Datei und stderr |
+| `BDLsp.Common.JsonRpc` (Platform) | `Contract`, `Messages`, `StreamTransport`, `TracingTransport`, `Dispatcher`, `Connection` | JSON-RPC 2.0 mit LSP-Rahmung (`Content-Length`) über beliebige Streams, Mitschnitt, Verteilung auf Handler, Nachrichtenschleife |
+| `BDLsp.Common.Lsp` (Platform) | `Contract`, `Lifecycle`, `Adapters.LogMessageSink` | LSP-Fehlercodes und Konstanten, Lebenszyklus `initialize` → `initialized` → `shutdown` → `exit`, Log-Senke `window/logMessage` |
+| `BDLsp.Windows.Console` (Platform) | `StdStreams` | stdin/stdout/stderr als Streams; nach `ReserveOutputForProtocol` landen `Writeln` und `GetStdHandle(STD_OUTPUT_HANDLE)` auf stderr |
+| `BDLsp.Windows.Diagnostics` (Platform) | `DebugOutput`, `Adapters.DebugOutputSink` | `OutputDebugString`, Log-Senke dafür |
+| `Shell` (Host) | `Shell.Application`, `Shell.Composition`, `Shell.CommandLine` | Einstiegspunkt, Kommandozeile, Komposition von Hand, Capabilities |
 
 Ablauf einer Anfrage:
 
@@ -98,8 +100,6 @@ Vorschlag, wird mit den jeweiligen Issues verfeinert:
 
 | Baustein | Ort | Begründung |
 |---|---|---|
-| Logging-Abstraktion (#3) | `BDLsp.Common` (Contract) | von allen genutzt |
-| Logging über `OutputDebugString`, Logdatei (#3) | `BDLsp.Windows` | Windows-API |
 | Dokumentverwaltung, Lexer, Parser, Präprozessor, Symbolindex, Namensauflösung, Prüfregeln, DFM-Parser | `BDLsp.Common` | reine Textverarbeitung |
 | Delphi-Installationen und Bibliothekspfade aus der Registry (#14, #47) | `BDLsp.Windows` | Registry |
 | Compiler- und MSBuild-Aufruf (#40) | `BDLsp.Windows` | Prozesse, `rsvars.bat` |

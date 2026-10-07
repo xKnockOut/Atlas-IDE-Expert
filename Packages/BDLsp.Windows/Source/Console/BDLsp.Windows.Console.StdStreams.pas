@@ -16,11 +16,20 @@ type
     class function CreateInput: TStream; static;
     /// <summary>Stream auf stdout. Der Aufrufer gibt ihn frei; das Handle bleibt offen.</summary>
     class function CreateOutput: TStream; static;
+    /// <summary>Stream auf stderr. Der Aufrufer gibt ihn frei; das Handle bleibt offen.</summary>
+    class function CreateError: TStream; static;
     /// <summary>
     /// Leitet die Textdatei Output (Write/Writeln ohne Dateiangabe) auf stderr um,
     /// damit versehentliche Ausgaben das Protokoll auf stdout nicht zerstören.
     /// </summary>
     class procedure RedirectTextOutputToStdErr; static;
+    /// <summary>
+    /// Liefert einen Stream auf das echte stdout und biegt danach alle anderen
+    /// Wege dorthin auf stderr um: das Standard-Handle des Prozesses (für
+    /// Bibliotheken, die GetStdHandle verwenden) und die Textdatei Output.
+    /// Danach erreicht nur noch der zurückgegebene Stream stdout.
+    /// </summary>
+    class function ReserveOutputForProtocol: TStream; static;
   end;
 
 implementation
@@ -51,6 +60,11 @@ begin
   Result := CreateHandleStream(STD_OUTPUT_HANDLE, 'stdout');
 end;
 
+class function TStdStreams.CreateError: TStream;
+begin
+  Result := CreateHandleStream(STD_ERROR_HANDLE, 'stderr');
+end;
+
 class procedure TStdStreams.RedirectTextOutputToStdErr;
 var
   ErrorHandle: THandle;
@@ -61,6 +75,17 @@ begin
   if TTextRec(Output).Mode = fmOutput then
     Flush(Output);
   TTextRec(Output).Handle := ErrorHandle;
+end;
+
+class function TStdStreams.ReserveOutputForProtocol: TStream;
+var
+  ErrorHandle: THandle;
+begin
+  Result := CreateOutput;
+  ErrorHandle := GetStdHandle(STD_ERROR_HANDLE);
+  if (ErrorHandle <> 0) and (ErrorHandle <> INVALID_HANDLE_VALUE) then
+    SetStdHandle(STD_OUTPUT_HANDLE, ErrorHandle);
+  RedirectTextOutputToStdErr;
 end;
 
 end.

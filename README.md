@@ -37,12 +37,23 @@ Die Ausgabe landet in `Output\<Plattform>\<Konfiguration>\` (`Bin`, `Bpl`, `Dcp`
 Output\Win32\Debug\Bin\BDLsp.Tests.exe --exit:Continue
 ```
 
-Package-Abhängigkeiten prüfen:
+Prüfskripte (laufen auch als GitHub Action):
 
 ```powershell
-pwsh Tools/Check-PackageDependencies.ps1
+pwsh Tools/Check-PackageDependencies.ps1   # Packages halten ihre Abhängigkeiten ein
+pwsh Tools/Check-ConsoleOutput.ps1         # kein Write/Writeln auf stdout
 ```
+
+## Kommandozeile
+
+| Parameter | Bedeutung |
+|---|---|
+| `--log <Datei>` | Logdatei, wird fortgeschrieben |
+| `--log-level <Stufe>` | `debug`, `info` (Standard), `warning`, `error`; gilt für Logdatei und `window/logMessage` |
+| `--trace <Datei>` | Mitschnitt aller JSON-Nachrichten (`-->` empfangen, `<--` gesendet) |
+
+Werte gehen auch mit `=` (`--log=server.log`). `--stdio` und `--clientProcessId`, die Editoren anhängen, werden ignoriert.
 
 ## Wichtig: stdout gehört dem Protokoll
 
-Der Server spricht LSP über stdin/stdout. Jede zusätzliche Ausgabe auf stdout (`Writeln`, unbehandelte Exceptions) zerstört die Kommunikation mit dem Editor. Diagnosemeldungen laufen über `TDebugOutput` (`OutputDebugString`), später über das zentrale Logging (#3).
+Der Server spricht LSP über stdin/stdout. Jede zusätzliche Ausgabe auf stdout (`Writeln`, unbehandelte Exceptions) zerstört die Kommunikation mit dem Editor. Alle Diagnosemeldungen laufen über `ILogger` (`BDLsp.Common.Logging`) an `OutputDebugString`, die Logdatei, `window/logMessage` und bei Fehlern stderr. Nach dem Start biegt der Server das stdout-Handle und `Output` auf stderr um, sodass auch Bibliotheken das Protokoll nicht stören können.

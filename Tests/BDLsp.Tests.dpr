@@ -15,11 +15,17 @@ uses
   {$ENDIF}
   DUnitX.TestFramework,
   BDLsp.Common.Product.Version.Tests in 'Common\BDLsp.Common.Product.Version.Tests.pas',
+  BDLsp.Common.Logging.Providers.Logger.Tests in 'Common\Logging\BDLsp.Common.Logging.Providers.Logger.Tests.pas',
+  BDLsp.Common.Logging.Providers.StreamSink.Tests in 'Common\Logging\BDLsp.Common.Logging.Providers.StreamSink.Tests.pas',
   BDLsp.Common.JsonRpc.TestSupport in 'Common\JsonRpc\BDLsp.Common.JsonRpc.TestSupport.pas',
   BDLsp.Common.JsonRpc.StreamTransport.Tests in 'Common\JsonRpc\BDLsp.Common.JsonRpc.StreamTransport.Tests.pas',
+  BDLsp.Common.JsonRpc.TracingTransport.Tests in 'Common\JsonRpc\BDLsp.Common.JsonRpc.TracingTransport.Tests.pas',
   BDLsp.Common.JsonRpc.Dispatcher.Tests in 'Common\JsonRpc\BDLsp.Common.JsonRpc.Dispatcher.Tests.pas',
   BDLsp.Common.JsonRpc.Connection.Tests in 'Common\JsonRpc\BDLsp.Common.JsonRpc.Connection.Tests.pas',
-  BDLsp.Common.Lsp.Lifecycle.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Lifecycle.Tests.pas';
+  BDLsp.Common.Lsp.Lifecycle.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Lifecycle.Tests.pas',
+  BDLsp.Common.Lsp.Adapters.LogMessageSink.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Adapters.LogMessageSink.Tests.pas',
+  Shell.CommandLine in '..\Application\Source\Shell\Shell.CommandLine.pas',
+  Shell.CommandLine.Tests in 'Application\Shell\Shell.CommandLine.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

@@ -13,3 +13,6 @@ jobs:
       - name: Package-Abhängigkeiten prüfen
         shell: pwsh
         run: ./Tools/Check-PackageDependencies.ps1
+      - name: Keine Ausgaben auf stdout
+        shell: pwsh
+        run: ./Tools/Check-ConsoleOutput.ps1
