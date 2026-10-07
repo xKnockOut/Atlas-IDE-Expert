@@ -2,7 +2,7 @@
 
 // Host-Rolle Shell: Komposition des Servers von Hand (DI-Strategie ohne Container).
 // Verbindet stdin/stdout, Transport, Dispatcher, Lebenszyklus, Dokumentverwaltung,
-// Nachrichtenschleife und Logging.
+// Syntaxdiagnosen, Nachrichtenschleife und Logging.
 
 interface
 
@@ -15,6 +15,7 @@ uses
   BDLsp.Common.JsonRpc.Connection,
   BDLsp.Common.Lsp.Lifecycle,
   BDLsp.Common.Lsp.TextDocumentSync,
+  BDLsp.Common.Lsp.SyntaxDiagnostics,
   BDLsp.Common.Documents.Contract,
   Shell.CommandLine;
 
@@ -27,6 +28,7 @@ type
     FLifecycle: TLspLifecycle;
     FDocuments: IDocumentStore;
     FTextDocumentSync: TLspTextDocumentSync;
+    FSyntaxDiagnostics: TLspSyntaxDiagnostics;
     FConnection: TJsonRpcConnection;
     class function BuildCapabilities: TJSONObject; static;
   public
@@ -83,6 +85,13 @@ begin
   FDocuments := TDocumentStore.Create;
   FTextDocumentSync := TLspTextDocumentSync.Create(FDocuments);
   FTextDocumentSync.Attach(FDispatcher);
+  FSyntaxDiagnostics := TLspSyntaxDiagnostics.Create(FDocuments, FTransport);
+  FSyntaxDiagnostics.OnError :=
+    procedure(AError: Exception)
+    begin
+      FLogger.Error(Format('Fehler beim Prüfen der Syntax: %s: %s', [AError.ClassName, AError.Message]));
+    end;
+  FSyntaxDiagnostics.Attach;
   FConnection := TJsonRpcConnection.Create(FTransport, FDispatcher);
   FConnection.OnError :=
     procedure(const AError: Exception)
@@ -99,6 +108,7 @@ end;
 destructor TServerComposition.Destroy;
 begin
   FConnection.Free;
+  FSyntaxDiagnostics.Free;
   FTextDocumentSync.Free;
   FDocuments := nil;
   FLifecycle.Free;

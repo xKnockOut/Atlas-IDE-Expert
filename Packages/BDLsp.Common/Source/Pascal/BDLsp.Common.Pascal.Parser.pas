@@ -74,6 +74,8 @@ type
 
     // Knoten und Diagnosen
     procedure Diagnose(const AMessage: string);
+    procedure DiagnoseMissingSemicolon;
+    procedure DiagnoseAt(const AMessage: string; const AStartPos, AEndPos: TTextPosition);
     procedure DiagnoseUnexpected(const AExpected: string);
     function StartNode(AKind: TSyntaxKind): TSyntaxNode;
     procedure FinishNode(ANode: TSyntaxNode; AStartIndex: Integer);
@@ -318,8 +320,27 @@ end;
 
 procedure TParser.ExpectSym(const ASymbol: string);
 begin
-  if not AcceptSym(ASymbol) then
+  if AcceptSym(ASymbol) then
+    Exit;
+  if ASymbol = ';' then
+    DiagnoseMissingSemicolon
+  else
     DiagnoseUnexpected('"' + ASymbol + '"');
+end;
+
+procedure TParser.DiagnoseMissingSemicolon;
+var
+  Previous: TPascalToken;
+begin
+  // Folgefehler: An dieser Stelle wurde schon etwas gemeldet.
+  if (FDiagnostics.Count > 0) and (FDiagnostics.Last.StartPos = Current.StartPos) then
+    Exit;
+  Previous := PeekToken(-1);
+  // Am Zeilenende dort melden, wo es fehlt, nicht erst in der nächsten Zeile.
+  if (FIndex > 0) and (AtEnd or (Current.StartPos.Line > Previous.EndPos.Line)) then
+    DiagnoseAt('";" fehlt', Previous.EndPos, Previous.EndPos)
+  else
+    DiagnoseUnexpected('";"');
 end;
 
 function TParser.ExpectIdent: string;
@@ -339,14 +360,17 @@ end;
 { Knoten und Diagnosen }
 
 procedure TParser.Diagnose(const AMessage: string);
+begin
+  DiagnoseAt(AMessage, Current.StartPos, Current.EndPos);
+end;
+
+procedure TParser.DiagnoseAt(const AMessage: string; const AStartPos, AEndPos: TTextPosition);
 var
   Diagnostic: TSyntaxDiagnostic;
-  Token: TPascalToken;
 begin
-  Token := Current;
   Diagnostic.Message := AMessage;
-  Diagnostic.StartPos := Token.StartPos;
-  Diagnostic.EndPos := Token.EndPos;
+  Diagnostic.StartPos := AStartPos;
+  Diagnostic.EndPos := AEndPos;
   // Mehrere Folgefehler an derselben Stelle melden wir nur einmal.
   if (FDiagnostics.Count > 0) and (FDiagnostics.Last.StartPos = Diagnostic.StartPos) then
     Exit;
@@ -914,7 +938,7 @@ begin
     ExpectIdent;
   end;
   if not IsSym(';') and not IsSym(')') and not IsSym(']') then
-    DiagnoseUnexpected('";"')
+    DiagnoseMissingSemicolon
   else
     AcceptSym(';');
   ParseDirectives(Result);
@@ -1537,7 +1561,7 @@ begin
       // Fehlendes end: Der Rest gehört nicht mehr zu diesem Block.
       Break
     else
-      DiagnoseUnexpected('";"');
+      DiagnoseMissingSemicolon;
   end;
 end;
 
@@ -1666,7 +1690,7 @@ begin
     FinishNode(Item, ItemStart);
     if not AcceptSym(';') and not IsKw(['end', 'else']) then
     begin
-      DiagnoseUnexpected('";"');
+      DiagnoseMissingSemicolon;
       if FIndex = Before then
         Advance;
       if IsKw(['implementation', 'initialization', 'finalization']) or IsRoutineStart then

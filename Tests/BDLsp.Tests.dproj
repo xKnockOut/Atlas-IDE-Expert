@@ -66,6 +66,8 @@
         <DCCReference Include="Common\Documents\BDLsp.Common.Documents.Providers.DocumentStore.Tests.pas"/>
         <DCCReference Include="Common\Pascal\BDLsp.Common.Pascal.Lexer.Tests.pas"/>
         <DCCReference Include="Common\Pascal\BDLsp.Common.Pascal.Parser.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Internals.Debouncer.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.SyntaxDiagnostics.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.CommandLine.pas"/>
         <DCCReference Include="Application\Shell\Shell.CommandLine.Tests.pas"/>
         <BuildConfiguration Include="Base">

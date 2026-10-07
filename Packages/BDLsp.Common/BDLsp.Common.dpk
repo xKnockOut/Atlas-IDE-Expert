@@ -54,6 +54,8 @@ contains
   BDLsp.Common.Documents.TextDocument in 'Source\Documents\BDLsp.Common.Documents.TextDocument.pas',
   BDLsp.Common.Documents.Providers.DocumentStore in 'Source\Documents\Providers\BDLsp.Common.Documents.Providers.DocumentStore.pas',
   BDLsp.Common.Lsp.Positions in 'Source\Lsp\BDLsp.Common.Lsp.Positions.pas',
+  BDLsp.Common.Lsp.Internals.Debouncer in 'Source\Lsp\Internals\BDLsp.Common.Lsp.Internals.Debouncer.pas',
+  BDLsp.Common.Lsp.SyntaxDiagnostics in 'Source\Lsp\BDLsp.Common.Lsp.SyntaxDiagnostics.pas',
   BDLsp.Common.Lsp.TextDocumentSync in 'Source\Lsp\BDLsp.Common.Lsp.TextDocumentSync.pas',
   BDLsp.Common.Pascal.Contract in 'Source\Pascal\BDLsp.Common.Pascal.Contract.pas',
   BDLsp.Common.Pascal.Lexer in 'Source\Pascal\BDLsp.Common.Pascal.Lexer.pas',
