@@ -23,7 +23,9 @@
 ## Stand nach diesem Vorgang
 - Update bis `ca9d6b7 Nebenläufigkeit: Lese-Thread, Worker-Threads und $/cancelRequest (#4)` eingespielt.
 - **Compilerfehler in #4 behoben** (`BDLsp.Common.JsonRpc.Connection.pas`, `Run`): `ThreadPoolScheduler` und `CreateResponder` liefern Methodenreferenzen. Ohne `()` versuchte Delphi, die Funktion selbst zuzuweisen (E2010). Jetzt stehen dort `ThreadPoolScheduler()` und `CreateResponder()`.
-- Build Win64: alle 4 Projekte ✅, 0 Fehler, 0 Warnungen. Win32: 3 von 4 ✅, nur die Tests scheitern wie erwartet. **75 von 75 Tests bestehen.**
+- Hinweis H2077 in `TJsonRpcConnection.Process` behoben: Die überflüssige Zuweisung `Response := nil` ist entfernt.
+- **Regel:** Hinweise und Warnungen werden sofort behoben. Ein Build gilt erst bei 0 Fehlern, 0 Warnungen und 0 Hinweisen als fertig. Dafür zusätzlich das `logFile` auf `[dcc… Hinweis|Warnung]` prüfen.
+- Build Win64: alle 4 Projekte ✅, 0 Fehler, 0 Warnungen, 0 Hinweise. Win32: 3 von 4 ✅, nur die Tests scheitern wie erwartet. **75 von 75 Tests bestehen.**
 - Erledigt aus früheren Vorgängen: W1002 (`NoErrMsg`) beseitigt, `*.res` steht in der `.gitignore`, das Testprojekt ist auf Win64 beschränkt (#159).
 
 ## Offen

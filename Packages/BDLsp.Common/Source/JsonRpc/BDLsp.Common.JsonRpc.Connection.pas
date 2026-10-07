@@ -374,7 +374,6 @@ procedure TJsonRpcConnection.Process(const AMessage: TJSONObject);
 var
   Response: TJSONObject;
 begin
-  Response := nil;
   try
     Response := FDispatcher.DispatchMessage(AMessage);
   except
