@@ -404,10 +404,10 @@ begin
 
   OwnScheduler := not Assigned(FDispatcher.Scheduler);
   if OwnScheduler then
-    FDispatcher.Scheduler := ThreadPoolScheduler;
+    FDispatcher.Scheduler := ThreadPoolScheduler();
   OwnResponder := not Assigned(FDispatcher.Responder);
   if OwnResponder then
-    FDispatcher.Responder := CreateResponder;
+    FDispatcher.Responder := CreateResponder();
 
   Failure := nil;
   try
