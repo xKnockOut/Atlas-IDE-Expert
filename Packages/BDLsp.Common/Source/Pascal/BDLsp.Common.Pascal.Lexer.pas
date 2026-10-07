@@ -397,7 +397,7 @@ end;
 
 class function TPascalLexer.IsReservedWord(const AWord: string): Boolean;
 begin
-  Result := ReservedWordSet.ContainsKey(AWord.ToLower);
+  Result := ReservedWordSet.ContainsKey(LowerCase(AWord));
 end;
 
 class function TPascalLexer.Tokenize(const AText: string): TArray<TPascalToken>;
