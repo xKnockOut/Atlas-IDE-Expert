@@ -29,4 +29,6 @@
 - Erledigt aus früheren Vorgängen: W1002 (`NoErrMsg`) beseitigt, `*.res` steht in der `.gitignore`, das Testprojekt ist auf Win64 beschränkt (#159).
 
 ## Offen
-- Drei Stashes mit IDE-Änderungen an den `.dproj` („IDE-Änderungen an dproj vor Update“, „… 2“, „… 3“). Dazu kommen die aktuellen, nicht committeten IDE-Änderungen an den vier `.dproj`. Nicht geprüft, vermutlich wegwerfbar. Darüber sollte der User entscheiden.
+- Die IDE-Änderungen an den `.dproj` sind auf Wunsch des Users committet (`1929e90`): RAD-Studio-13-Format mit Win64x-Vorgaben. Künftige Änderungen der IDE an den `.dproj` mitcommitten.
+- Drei alte Stashes mit IDE-Änderungen an den `.dproj` sind inzwischen überholt. Sie können gelöscht werden, wenn der User zustimmt.
+- Commits `cf5693c`, `02997d8` und `1929e90` (und dieser) sind noch nicht gepusht.
