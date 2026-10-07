@@ -1,0 +1,33 @@
+{
+  "description": "Gliederung, Faltbereiche und intelligente Auswahl für eine kleine Unit",
+  "steps": [
+    { "send": { "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": { "processId": null, "rootUri": null, "capabilities": {} } } },
+    { "expect": { "id": 1 } },
+    { "send": { "jsonrpc": "2.0", "method": "initialized", "params": {} } },
+    { "send": { "jsonrpc": "2.0", "method": "textDocument/didOpen", "params": { "textDocument": {
+        "uri": "file:///c%3A/Projekt/U.pas", "languageId": "objectpascal", "version": 1,
+        "text": "unit U;\r\ninterface\r\ntype\r\n  TFoo = class\r\n    procedure Run;\r\n  end;\r\nimplementation\r\nprocedure TFoo.Run;\r\nbegin\r\n  Writeln('x');\r\nend;\r\nend." } } } },
+    { "expect": { "method": "textDocument/publishDiagnostics", "params": { "version": 1, "diagnostics": [] } } },
+    { "send": { "jsonrpc": "2.0", "id": 2, "method": "textDocument/documentSymbol", "params": { "textDocument": { "uri": "file:///c%3A/Projekt/U.pas" } } } },
+    { "expect": { "id": 2, "result": [
+        { "name": "U", "kind": 2, "children": [
+          { "name": "interface", "kind": 3, "children": [
+            { "name": "TFoo", "kind": 5, "detail": "class", "children": [ { "name": "Run", "kind": 6 } ] } ] },
+          { "name": "implementation", "kind": 3, "children": [
+            { "name": "TFoo.Run", "kind": 6,
+              "range": { "start": { "line": 7, "character": 0 }, "end": { "line": 10, "character": 4 } },
+              "selectionRange": { "start": { "line": 7, "character": 15 }, "end": { "line": 7, "character": 18 } } } ] } ] } ] } },
+    { "send": { "jsonrpc": "2.0", "id": 3, "method": "textDocument/foldingRange", "params": { "textDocument": { "uri": "file:///c%3A/Projekt/U.pas" } } } },
+    { "expect": { "id": 3, "result": [
+        { "startLine": 1, "endLine": 5 }, { "startLine": 2, "endLine": 5 }, { "startLine": 3, "endLine": 5 },
+        { "startLine": 6, "endLine": 10 }, { "startLine": 7, "endLine": 10 }, { "startLine": 8, "endLine": 10 } ] } },
+    { "send": { "jsonrpc": "2.0", "id": 4, "method": "textDocument/selectionRange", "params": {
+        "textDocument": { "uri": "file:///c%3A/Projekt/U.pas" }, "positions": [ { "line": 9, "character": 3 } ] } } },
+    { "expect": { "id": 4, "result": [ {
+        "range": { "start": { "line": 9, "character": 2 }, "end": { "line": 9, "character": 9 } },
+        "parent": { "range": { "start": { "line": 9, "character": 2 }, "end": { "line": 9, "character": 14 } },
+          "parent": { "range": { "start": { "line": 8, "character": 0 }, "end": { "line": 10, "character": 3 } } } } } ] } },
+    { "send": { "jsonrpc": "2.0", "id": 5, "method": "shutdown" } },
+    { "expect": { "id": 5, "result": null } }
+  ]
+}

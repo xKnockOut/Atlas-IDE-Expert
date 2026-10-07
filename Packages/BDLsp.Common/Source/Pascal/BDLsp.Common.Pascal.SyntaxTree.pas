@@ -122,7 +122,36 @@ begin
 end;
 
 destructor TSyntaxNode.Destroy;
+var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
+  Index: Integer;
 begin
+  // Iterativ statt rekursiv: Lange Ketten wie 1+1+...+1 ergeben sehr tiefe
+  // Bäume, die rekursiv den Stapel sprengen würden.
+  if (FChildren <> nil) and (FChildren.Count > 0) then
+  begin
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      FChildren.OwnsObjects := False;
+      for Index := 0 to FChildren.Count - 1 do
+        Pending.Push(FChildren[Index]);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.FChildren <> nil then
+        begin
+          Node.FChildren.OwnsObjects := False;
+          for Index := 0 to Node.FChildren.Count - 1 do
+            Pending.Push(Node.FChildren[Index]);
+          Node.FChildren.Clear;
+        end;
+        Node.Free;
+      end;
+    finally
+      Pending.Free;
+    end;
+  end;
   FChildren.Free;
   inherited;
 end;

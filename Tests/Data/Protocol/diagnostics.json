@@ -1,0 +1,26 @@
+{
+  "description": "Lebenszyklus und Syntaxfehler: fehlendes Semikolon melden, nach der Korrektur und beim Schließen leeren",
+  "steps": [
+    { "send": { "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": { "processId": null, "rootUri": null, "capabilities": {} } } },
+    { "expect": { "id": 1, "result": {
+        "capabilities": { "textDocumentSync": { "openClose": true, "change": 2 }, "documentSymbolProvider": true, "foldingRangeProvider": true, "selectionRangeProvider": true },
+        "serverInfo": { "name": "BetterDelphiLSP" } } } },
+    { "send": { "jsonrpc": "2.0", "method": "initialized", "params": {} } },
+    { "send": { "jsonrpc": "2.0", "method": "textDocument/didOpen", "params": { "textDocument": {
+        "uri": "file:///c%3A/Projekt/P.dpr", "languageId": "objectpascal", "version": 1,
+        "text": "program P;\r\nbegin\r\n  A := 1\r\n  B := 2;\r\nend." } } } },
+    { "expect": { "method": "textDocument/publishDiagnostics", "params": {
+        "uri": "file:///c%3A/Projekt/P.dpr", "version": 1,
+        "diagnostics": [ { "range": { "start": { "line": 2, "character": 8 }, "end": { "line": 2, "character": 8 } },
+                           "severity": 1, "source": "BetterDelphiLSP", "message": "\";\" fehlt" } ] } } },
+    { "send": { "jsonrpc": "2.0", "method": "textDocument/didChange", "params": {
+        "textDocument": { "uri": "file:///c%3A/Projekt/P.dpr", "version": 2 },
+        "contentChanges": [ { "range": { "start": { "line": 2, "character": 8 }, "end": { "line": 2, "character": 8 } }, "text": ";" } ] } } },
+    { "expect": { "method": "textDocument/publishDiagnostics", "params": { "version": 2, "diagnostics": [] } } },
+    { "send": { "jsonrpc": "2.0", "method": "textDocument/didClose", "params": { "textDocument": { "uri": "file:///c%3A/Projekt/P.dpr" } } } },
+    { "expect": { "method": "textDocument/publishDiagnostics", "params": { "uri": "file:///c%3A/Projekt/P.dpr", "diagnostics": [] } } },
+    { "send": { "jsonrpc": "2.0", "id": 2, "method": "shutdown" } },
+    { "expect": { "id": 2, "result": null } },
+    { "send": { "jsonrpc": "2.0", "method": "exit" } }
+  ]
+}
