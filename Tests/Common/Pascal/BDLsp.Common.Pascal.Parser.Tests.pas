@@ -43,6 +43,8 @@ type
     procedure RecoversFromMissingClassEnd;
     [Test]
     procedure KeepsTokensIncludingComments;
+    [Test]
+    procedure StopsEarlyWhenCancelled;
   end;
 
 implementation
@@ -111,6 +113,20 @@ begin
   if Length(ATree.Diagnostics) > 0 then
     Assert.Fail(Format('Unerwartete Diagnose in %d:%d: %s', [ATree.Diagnostics[0].StartPos.Line,
       ATree.Diagnostics[0].StartPos.Character, ATree.Diagnostics[0].Message]));
+end;
+
+type
+  TCountingCancellation = class(TInterfacedObject, IPascalCancellation)
+  private
+    FCalls: Integer;
+  public
+    function IsCancelled: Boolean;
+  end;
+
+function TCountingCancellation.IsCancelled: Boolean;
+begin
+  Inc(FCalls);
+  Result := True;
 end;
 
 { TPascalParserTests }
@@ -431,6 +447,35 @@ begin
     Assert.AreEqual(TPascalTokenKind.Comment, Tree.Tokens[3].Kind);
   finally
     Tree.Free;
+  end;
+end;
+
+procedure TPascalParserTests.StopsEarlyWhenCancelled;
+var
+  Text: TStringBuilder;
+  Index: Integer;
+  Cancellation: TCountingCancellation;
+  Token: IPascalCancellation;
+  Tree: TSyntaxTree;
+begin
+  Text := TStringBuilder.Create;
+  try
+    Text.Append('unit U;'#13#10'interface'#13#10'implementation'#13#10'procedure P;'#13#10'begin'#13#10);
+    for Index := 1 to 5000 do
+      Text.Append('  X := X + 1;'#13#10);
+    Text.Append('end;'#13#10'end.');
+    Cancellation := TCountingCancellation.Create;
+    Token := Cancellation;
+    Tree := TPascalParser.Parse(Text.ToString, Token);
+    try
+      // Nach der ersten Prüfung springt der Parser ans Ende und endet ohne Ausnahme.
+      Assert.AreEqual(1, Cancellation.FCalls);
+      Assert.IsNotNull(Tree.Root);
+    finally
+      Tree.Free;
+    end;
+  finally
+    Text.Free;
   end;
 end;
 

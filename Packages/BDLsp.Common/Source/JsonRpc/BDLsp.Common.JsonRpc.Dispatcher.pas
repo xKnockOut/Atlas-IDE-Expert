@@ -16,7 +16,8 @@ uses
   System.Generics.Collections,
   System.JSON,
   BDLsp.Common.JsonRpc.Contract,
-  BDLsp.Common.JsonRpc.PendingRequests;
+  BDLsp.Common.JsonRpc.PendingRequests,
+  BDLsp.Common.JsonRpc.Watchdog;
 
 type
   TJsonRpcDispatcher = class
@@ -28,6 +29,9 @@ type
     FScheduler: TJsonRpcScheduler;
     FResponder: TJsonRpcResponder;
     FPending: IJsonRpcPendingRequests;
+    FWatchdog: IJsonRpcWatchdog;
+    FOnRequestFailed: TJsonRpcRequestFailedEvent;
+    FLastMessage: string;
     function DispatchRequest(const AId: TJSONValue; const AMethod: string; const AParams: TJSONValue): TJSONObject;
     procedure DispatchNotification(const AMethod: string; const AParams: TJSONValue);
   public
@@ -58,6 +62,15 @@ type
     property Responder: TJsonRpcResponder read FResponder write FResponder;
     /// <summary>Offene Anfragen und $/cancelRequest, gemeinsam mit dem Lese-Thread genutzt.</summary>
     property PendingRequests: IJsonRpcPendingRequests read FPending;
+    /// <summary>Optionales Zeitlimit für Anfragen (siehe TJsonRpcWatchdog).</summary>
+    property Watchdog: IJsonRpcWatchdog read FWatchdog write FWatchdog;
+    /// <summary>
+    /// Wird bei unerwarteten Fehlern eines Anfrage-Handlers aufgerufen (nicht bei
+    /// EJsonRpcError), auch aus Worker-Threads; z. B. für ein Absturzprotokoll.
+    /// </summary>
+    property OnRequestFailed: TJsonRpcRequestFailedEvent read FOnRequestFailed write FOnRequestFailed;
+    /// <summary>Methode und id der zuletzt verteilten Nachricht, für Absturzprotokolle.</summary>
+    property LastMessage: string read FLastMessage;
   end;
 
 implementation
@@ -73,15 +86,31 @@ begin
     Result := TJsonRpcMessages.Error(AId, TJsonRpcErrorCode.InternalError, AError.ClassName + ': ' + AError.Message);
 end;
 
-function RunConcurrent(const AId, AParams: TJSONValue; const AHandler: TJsonRpcConcurrentRequestHandler;
-  const AToken: IJsonRpcCancellationToken): TJSONObject;
+// Meldet unerwartete Fehler; Fehler beim Melden selbst werden verschluckt.
+procedure NotifyFailed(const AOnFailed: TJsonRpcRequestFailedEvent; const AMethod: string;
+  const AParams: TJSONValue; const AError: Exception);
+begin
+  if Assigned(AOnFailed) and not (AError is EJsonRpcError) then
+    try
+      AOnFailed(AMethod, AParams, AError);
+    except
+      // Das Protokollieren darf die Antwort nicht verhindern.
+    end;
+end;
+
+function RunConcurrent(const AId, AParams: TJSONValue; const AMethod: string;
+  const AHandler: TJsonRpcConcurrentRequestHandler; const AToken: IJsonRpcCancellationToken;
+  const AOnFailed: TJsonRpcRequestFailedEvent): TJSONObject;
 begin
   try
     AToken.ThrowIfCancellationRequested;
     Result := TJsonRpcMessages.Response(AId, AHandler(AParams, AToken));
   except
     on E: Exception do
+    begin
+      NotifyFailed(AOnFailed, AMethod, AParams, E);
       Result := ErrorResponse(AId, E);
+    end;
   end;
 end;
 
@@ -90,8 +119,12 @@ end;
 // nicht auf den Dispatcher.
 procedure ScheduleConcurrent(const AScheduler: TJsonRpcScheduler; const AResponder: TJsonRpcResponder;
   const APending: IJsonRpcPendingRequests; const AHandler: TJsonRpcConcurrentRequestHandler;
-  const AId, AParams: TJSONValue; const AToken: IJsonRpcCancellationToken);
+  const AId, AParams: TJSONValue; const AToken: IJsonRpcCancellationToken; const AMethod: string;
+  const AWatchdog: IJsonRpcWatchdog; const AOnFailed: TJsonRpcRequestFailedEvent);
 var
+  Method: string;
+  Watchdog: IJsonRpcWatchdog;
+  OnFailed: TJsonRpcRequestFailedEvent;
   Id: TJSONValue;
   Params: TJSONValue;
   Responder: TJsonRpcResponder;
@@ -103,6 +136,9 @@ begin
   Pending := APending;
   Handler := AHandler;
   Token := AToken;
+  Method := AMethod;
+  Watchdog := AWatchdog;
+  OnFailed := AOnFailed;
   Id := TJSONValue(AId.Clone);
   Params := nil;
   if AParams <> nil then
@@ -114,11 +150,17 @@ begin
       procedure
       var
         Response: TJSONObject;
+        Ticket: Int64;
       begin
         try
+          Ticket := 0;
+          if Watchdog <> nil then
+            Ticket := Watchdog.Watch(Id, Method);
           try
-            Response := RunConcurrent(Id, Params, Handler, Token);
+            Response := RunConcurrent(Id, Params, Method, Handler, Token, OnFailed);
           finally
+            if Watchdog <> nil then
+              Watchdog.Unwatch(Ticket);
             Pending.Release(Id, Token);
             Params.Free;
             Id.Free;
@@ -199,6 +241,11 @@ begin
   end;
 
   if Id = nil then
+    FLastMessage := MethodValue.Value
+  else
+    FLastMessage := MethodValue.Value + ' (id ' + Id.ToJSON + ')';
+
+  if Id = nil then
   begin
     // $/cancelRequest ist Teil des Protokolls und gilt in jedem Zustand. Über
     // die Verbindung erledigt das schon der Lese-Thread (IJsonRpcPendingRequests.Observe).
@@ -221,9 +268,11 @@ var
   ConcurrentHandler: TJsonRpcConcurrentRequestHandler;
   Token: IJsonRpcCancellationToken;
   Scheduled: Boolean;
+  Ticket: Int64;
 begin
   Token := FPending.Acquire(AId);
   Scheduled := False;
+  Ticket := 0;
   try
     try
       if Assigned(FGuard) then
@@ -232,22 +281,30 @@ begin
       begin
         if Assigned(FScheduler) and Assigned(FResponder) then
         begin
-          ScheduleConcurrent(FScheduler, FResponder, FPending, ConcurrentHandler, AId, AParams, Token);
+          ScheduleConcurrent(FScheduler, FResponder, FPending, ConcurrentHandler, AId, AParams, Token, AMethod,
+            FWatchdog, FOnRequestFailed);
           Scheduled := True;
           Exit(nil);
         end;
-        Exit(RunConcurrent(AId, AParams, ConcurrentHandler, Token));
+        Exit(RunConcurrent(AId, AParams, AMethod, ConcurrentHandler, Token, FOnRequestFailed));
       end;
       if not FRequestHandlers.TryGetValue(AMethod, Handler) then
         raise EJsonRpcError.Create(TJsonRpcErrorCode.MethodNotFound, 'Methode nicht unterstützt: ' + AMethod);
       // Abgebrochen, während die Anfrage noch in der Warteschlange stand.
       Token.ThrowIfCancellationRequested;
+      if FWatchdog <> nil then
+        Ticket := FWatchdog.Watch(AId, AMethod);
       Result := TJsonRpcMessages.Response(AId, Handler(AParams));
     except
       on E: Exception do
+      begin
+        NotifyFailed(FOnRequestFailed, AMethod, AParams, E);
         Result := ErrorResponse(AId, E);
+      end;
     end;
   finally
+    if FWatchdog <> nil then
+      FWatchdog.Unwatch(Ticket);
     if not Scheduled then
       FPending.Release(AId, Token);
   end;

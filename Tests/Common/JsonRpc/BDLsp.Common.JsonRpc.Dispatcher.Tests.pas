@@ -52,6 +52,14 @@ type
     procedure AnswersRequestCancelledWhileQueued;
     [Test]
     procedure WaitForWorkCoversScheduledRequests;
+    [Test]
+    procedure ReportsUnexpectedErrorsToOnRequestFailed;
+    [Test]
+    procedure DoesNotReportJsonRpcErrors;
+    [Test]
+    procedure RemembersLastMessage;
+    [Test]
+    procedure WatchdogCancelsLongRunningRequest;
   end;
 
 implementation
@@ -62,6 +70,7 @@ uses
   System.JSON,
   BDLsp.Common.JsonRpc.Contract,
   BDLsp.Common.JsonRpc.PendingRequests,
+  BDLsp.Common.JsonRpc.Watchdog,
   BDLsp.Common.JsonRpc.TestSupport;
 
 type
@@ -446,6 +455,96 @@ begin
     Assert.IsTrue(FDispatcher.PendingRequests.WaitForWork(0));
   finally
     Scheduling.Free;
+  end;
+end;
+
+procedure TJsonRpcDispatcherTests.ReportsUnexpectedErrorsToOnRequestFailed;
+var
+  Reported: string;
+  Response: TJSONObject;
+begin
+  Reported := '';
+  FDispatcher.OnRequestFailed :=
+    procedure(const AMethod: string; const AParams: TJSONValue; const AError: Exception)
+    begin
+      Reported := AMethod + '|' + AParams.ToJSON + '|' + AError.Message;
+    end;
+  FDispatcher.RegisterRequest('broken',
+    function(const AParams: TJSONValue): TJSONValue
+    begin
+      raise ETestFailure.Create('kaputt');
+    end);
+  Response := DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":5,"method":"broken","params":{"a":1}}');
+  Response.Free;
+  Assert.AreEqual('broken|{"a":1}|kaputt', Reported);
+end;
+
+procedure TJsonRpcDispatcherTests.DoesNotReportJsonRpcErrors;
+var
+  Reported: Boolean;
+  Response: TJSONObject;
+begin
+  Reported := False;
+  FDispatcher.OnRequestFailed :=
+    procedure(const AMethod: string; const AParams: TJSONValue; const AError: Exception)
+    begin
+      Reported := True;
+    end;
+  FDispatcher.RegisterRequest('invalid',
+    function(const AParams: TJSONValue): TJSONValue
+    begin
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'falsch');
+    end);
+  Response := DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":6,"method":"invalid"}');
+  Response.Free;
+  Assert.IsFalse(Reported);
+end;
+
+procedure TJsonRpcDispatcherTests.RemembersLastMessage;
+var
+  Response: TJSONObject;
+begin
+  Response := DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":7,"method":"unbekannt"}');
+  Response.Free;
+  Assert.AreEqual('unbekannt (id 7)', FDispatcher.LastMessage);
+  DispatchJson(FDispatcher, '{"jsonrpc":"2.0","method":"hinweis"}').Free;
+  Assert.AreEqual('hinweis', FDispatcher.LastMessage);
+end;
+
+procedure TJsonRpcDispatcherTests.WatchdogCancelsLongRunningRequest;
+var
+  TimedOut: string;
+  Response: TJSONObject;
+begin
+  TimedOut := '';
+  FDispatcher.Watchdog := TJsonRpcWatchdog.Create(FDispatcher.PendingRequests, 50,
+    procedure(const AMethod: string; ATimeoutMs: Cardinal)
+    begin
+      TimedOut := AMethod;
+    end);
+  try
+    // Läuft, bis das Abbruchsignal kommt (höchstens 5 s).
+    FDispatcher.RegisterConcurrentRequest('slow',
+      function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
+      var
+        Index: Integer;
+      begin
+        for Index := 1 to 500 do
+        begin
+          ACancellation.ThrowIfCancellationRequested;
+          Sleep(10);
+        end;
+        Result := TJSONString.Create('fertig');
+      end);
+    Response := DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":8,"method":"slow"}');
+    try
+      Assert.AreEqual(TJsonRpcErrorCode.RequestCancelled, Response.GetValue<Integer>('error.code'));
+      Assert.AreEqual('slow', TimedOut);
+    finally
+      Response.Free;
+    end;
+  finally
+    FDispatcher.Watchdog := nil;
   end;
 end;
 

@@ -110,6 +110,10 @@ type
   /// </summary>
   TJsonRpcGuard = reference to procedure(const AMethod: string; AIsRequest: Boolean);
 
+  /// <summary>Unerwarteter Fehler eines Anfrage-Handlers, mit Methode und Parametern der Anfrage.</summary>
+  TJsonRpcRequestFailedEvent = reference to procedure(const AMethod: string; const AParams: TJSONValue;
+    const AError: Exception);
+
 implementation
 
 { EJsonRpcError }
