@@ -22,9 +22,11 @@
 
 ## Erledigt
 - Commit `9099651`: `Assert.AreEqual<NativeInt>` in `Tests/Common/BDLsp.Common.Product.Version.Tests.pas`, weil der Win64-Build sonst mit E2532 abbricht. Ist gepusht.
-- Update auf `f0e4d45 Protokollschicht: JSON-RPC 2.0 über stdio (#2)` per Fast-Forward eingespielt.
-- Build-Ergebnis: alle 4 Projekte unter Win64 ✅. Unter Win32 sind 3 von 4 ✅, nur die Tests scheitern an DUnitX. **41 von 41 Tests bestehen.**
+- Commit `4fe5cc0`: diese Übergabe-Datei, **noch nicht gepusht**.
+- Updates eingespielt: `f0e4d45 Protokollschicht: JSON-RPC 2.0 über stdio (#2)` und `85468f1 Zentrales Logging und Schutz von stdout (#3)`.
+- Build-Ergebnis: alle 4 Projekte unter Win64 ✅. Unter Win32 sind 3 von 4 ✅, nur die Tests scheitern an DUnitX. **58 von 58 Tests bestehen** (Stand nach #3).
+- Neue Warnung W1002 in `Application/Source/Shell/Shell.Application.pas:29`: `NoErrMsg` ist plattformspezifisch.
 
 ## Offen
-- Lokal nicht committet: Die IDE hat beim Bauen alle vier `.dproj` umgeschrieben und `.res`-Dateien erzeugt. Diese Änderungen sind noch nicht geprüft. Ältere IDE-Änderungen an den `.dproj` liegen im Stash (`git stash list`: „IDE-Änderungen an dproj vor Update“). Zu klären ist, ob sie committet oder verworfen werden und ob `*.res` in die `.gitignore` gehört.
+- Lokal nicht committet: Die IDE hat beim Bauen alle vier `.dproj` umgeschrieben und `.res`-Dateien erzeugt. Diese Änderungen sind noch nicht geprüft. Ältere IDE-Änderungen an den `.dproj` liegen im Stash (`git stash list`: „IDE-Änderungen an dproj vor Update“ und „… vor Update 2“). Zu klären ist, ob sie committet oder verworfen werden und ob `*.res` in die `.gitignore` gehört.
 - Entscheidung zu DUnitX für Win32 steht aus.
