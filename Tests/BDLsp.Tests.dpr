@@ -20,6 +20,7 @@ uses
   BDLsp.Common.JsonRpc.TestSupport in 'Common\JsonRpc\BDLsp.Common.JsonRpc.TestSupport.pas',
   BDLsp.Common.JsonRpc.StreamTransport.Tests in 'Common\JsonRpc\BDLsp.Common.JsonRpc.StreamTransport.Tests.pas',
   BDLsp.Common.JsonRpc.TracingTransport.Tests in 'Common\JsonRpc\BDLsp.Common.JsonRpc.TracingTransport.Tests.pas',
+  BDLsp.Common.JsonRpc.PendingRequests.Tests in 'Common\JsonRpc\BDLsp.Common.JsonRpc.PendingRequests.Tests.pas',
   BDLsp.Common.JsonRpc.Dispatcher.Tests in 'Common\JsonRpc\BDLsp.Common.JsonRpc.Dispatcher.Tests.pas',
   BDLsp.Common.JsonRpc.Connection.Tests in 'Common\JsonRpc\BDLsp.Common.JsonRpc.Connection.Tests.pas',
   BDLsp.Common.Lsp.Lifecycle.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Lifecycle.Tests.pas',

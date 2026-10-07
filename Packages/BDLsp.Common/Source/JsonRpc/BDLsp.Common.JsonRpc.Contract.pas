@@ -18,7 +18,15 @@ type
     MethodNotFound = -32601;
     InvalidParams = -32602;
     InternalError = -32603;
+    /// <summary>Anfrage wurde per $/cancelRequest abgebrochen (LSP-Basisprotokoll).</summary>
+    RequestCancelled = -32800;
   end;
+
+const
+  /// <summary>Benachrichtigung, mit der die Gegenseite eine offene Anfrage abbricht.</summary>
+  JsonRpcCancelRequestMethod = '$/cancelRequest';
+
+type
 
   /// <summary>
   /// Fehler, der als JSON-RPC-Fehlerantwort an die Gegenseite geht. Handler
@@ -30,6 +38,12 @@ type
   public
     constructor Create(ACode: Integer; const AMessage: string);
     property Code: Integer read FCode;
+  end;
+
+  /// <summary>Die Anfrage wurde abgebrochen; wird zur Fehlerantwort RequestCancelled.</summary>
+  EJsonRpcRequestCancelled = class(EJsonRpcError)
+  public
+    constructor Create;
   end;
 
   /// <summary>Basisklasse für Fehler beim Lesen oder Schreiben des Nachrichtenstroms.</summary>
@@ -62,6 +76,35 @@ type
   TJsonRpcNotificationHandler = reference to procedure(const AParams: TJSONValue);
 
   /// <summary>
+  /// Abbruchsignal einer Anfrage. Threadsicher; lang laufende Handler fragen
+  /// es regelmäßig ab.
+  /// </summary>
+  IJsonRpcCancellationToken = interface
+    ['{3F8A1C62-7D4B-4E95-B0C3-9A2E5D6F1B87}']
+    function IsCancellationRequested: Boolean;
+    /// <summary>Löst EJsonRpcRequestCancelled aus, wenn die Anfrage abgebrochen wurde.</summary>
+    procedure ThrowIfCancellationRequested;
+  end;
+
+  /// <summary>
+  /// Bearbeitet eine Anfrage in einem Worker-Thread, nebenläufig zu weiteren
+  /// Nachrichten. Der Handler darf nur threadsicheren Zustand lesen (z. B. eine
+  /// Momentaufnahme) und soll ACancellation regelmäßig prüfen. Besitzverhältnisse
+  /// wie bei TJsonRpcRequestHandler.
+  /// </summary>
+  TJsonRpcConcurrentRequestHandler = reference to function(const AParams: TJSONValue;
+    const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+
+  /// <summary>Führt eine Arbeit in einem anderen Thread aus, z. B. über einen Thread-Pool.</summary>
+  TJsonRpcScheduler = reference to procedure(const AWork: TProc);
+
+  /// <summary>
+  /// Sendet eine Antwort, die außerhalb der Nachrichtenschleife entstanden ist.
+  /// Übernimmt das Objekt, wird aus Worker-Threads aufgerufen und löst keine Exceptions aus.
+  /// </summary>
+  TJsonRpcResponder = reference to procedure(const AResponse: TJSONObject);
+
+  /// <summary>
   /// Wird vor jeder Verteilung aufgerufen. Löst die Prüfung EJsonRpcError aus,
   /// wird eine Anfrage mit diesem Fehler beantwortet und eine Benachrichtigung verworfen.
   /// </summary>
@@ -75,6 +118,13 @@ constructor EJsonRpcError.Create(ACode: Integer; const AMessage: string);
 begin
   inherited Create(AMessage);
   FCode := ACode;
+end;
+
+{ EJsonRpcRequestCancelled }
+
+constructor EJsonRpcRequestCancelled.Create;
+begin
+  inherited Create(TJsonRpcErrorCode.RequestCancelled, 'Anfrage abgebrochen');
 end;
 
 end.
