@@ -14,6 +14,8 @@ __recovery/
 *.rsm
 *.tds
 *.drc
+# Ressourcen, die die IDE beim Bauen erzeugt
+*.res
 
 # IDE- und Benutzerdateien
 *.local

@@ -27,6 +27,7 @@ type
     /// Liefert einen Stream auf das echte stdout und biegt danach alle anderen
     /// Wege dorthin auf stderr um: das Standard-Handle des Prozesses (für
     /// Bibliotheken, die GetStdHandle verwenden) und die Textdatei Output.
+    /// Meldungen der RTL zu Laufzeitfehlern werden unterdrückt.
     /// Danach erreicht nur noch der zurückgegebene Stream stdout.
     /// </summary>
     class function ReserveOutputForProtocol: TStream; static;
@@ -86,6 +87,11 @@ begin
   if (ErrorHandle <> 0) and (ErrorHandle <> INVALID_HANDLE_VALUE) then
     SetStdHandle(STD_OUTPUT_HANDLE, ErrorHandle);
   RedirectTextOutputToStdErr;
+  // "Runtime error ..." nicht auf die Konsole schreiben. NoErrMsg ist als
+  // plattformspezifisch markiert; dieses Package ist ohnehin nur für Windows.
+  {$WARN SYMBOL_PLATFORM OFF}
+  NoErrMsg := True;
+  {$WARN SYMBOL_PLATFORM DEFAULT}
 end;
 
 end.
