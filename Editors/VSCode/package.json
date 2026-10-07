@@ -1,0 +1,99 @@
+{
+  "name": "betterdelphilsp",
+  "displayName": "BetterDelphiLSP",
+  "description": "Minimale Hülle, die den Language Server BetterDelphiLSP für Delphi-Quelltexte startet.",
+  "version": "0.1.0",
+  "publisher": "xknockout",
+  "license": "SEE LICENSE IN ../../LICENSE",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xKnockOut/BetterDelphiLSP.git"
+  },
+  "engines": {
+    "vscode": "^1.82.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "languages": [
+      {
+        "id": "objectpascal",
+        "aliases": [
+          "Object Pascal (Delphi)",
+          "delphi"
+        ],
+        "extensions": [
+          ".pas",
+          ".dpr",
+          ".dpk"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "configuration": {
+      "title": "BetterDelphiLSP",
+      "properties": {
+        "betterDelphiLsp.serverPath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Pfad zu `BetterDelphiLSP.exe`. Leer: `Output\\Win64\\Debug\\Bin\\BetterDelphiLSP.exe` im ersten Arbeitsbereichsordner."
+        },
+        "betterDelphiLsp.logLevel": {
+          "type": "string",
+          "enum": [
+            "debug",
+            "info",
+            "warning",
+            "error"
+          ],
+          "default": "info",
+          "description": "Mindeststufe der Meldungen im Ausgabefenster und in der Logdatei."
+        },
+        "betterDelphiLsp.logFile": {
+          "type": "string",
+          "default": "",
+          "description": "Optionale Logdatei des Servers."
+        },
+        "betterDelphiLsp.traceFile": {
+          "type": "string",
+          "default": "",
+          "description": "Optionaler Mitschnitt aller JSON-Nachrichten (zur Fehlersuche)."
+        },
+        "betterDelphiLsp.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Protokolliert den Nachrichtenaustausch im Ausgabefenster „BetterDelphiLSP Trace“."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "betterDelphiLsp.restartServer",
+        "title": "Server neu starten",
+        "category": "BetterDelphiLSP"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "@types/vscode": "~1.82.0",
+    "typescript": "^5.6.3"
+  }
+}
