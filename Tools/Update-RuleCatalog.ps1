@@ -142,7 +142,8 @@ $DocText = $Doc.ToString()
 
 function Sync-File([string] $Path, [string] $Content) {
     $Current = if (Test-Path $Path) { Read-Text $Path } else { $null }
-    if ($Current -ceq $Content) { return }
+    # Zeilenenden hängen vom Checkout ab (.gitattributes, autocrlf) und zählen nicht.
+    if ($null -ne $Current -and ($Current -replace "`r", '') -ceq ($Content -replace "`r", '')) { return }
     if ($Check) {
         $Problems.Add("$Path ist veraltet; pwsh Tools/Update-RuleCatalog.ps1 ausführen")
     }
