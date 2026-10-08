@@ -217,13 +217,9 @@ begin
   Targets := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
   if Length(Targets) = 0 then
     Exit;
-  if SameText(Targets[0].FileName, AFileName) then
-    Text := ATreeText
-  else if not (Assigned(AReadText) and AReadText(Targets[0].FileName, Text)) then
-    Exit;
-  Lines := SplitLines(Text);
   Start := Targets[0].Range.StartPos;
-  // Unit-Namen: Ziel ist der Dateianfang.
+  // Unit-Namen: Ziel ist der Dateianfang. Vor dem Lesen der Datei prüfen,
+  // denn dafür wird ihr Text nicht gebraucht.
   if (Start.Line = 0) and (Start.Character = 0) and (Targets[0].Range.EndPos = Start) and
     not SameText(Targets[0].FileName, AFileName) then
   begin
@@ -235,6 +231,11 @@ begin
     Result.Documentation := '`' + Targets[0].FileName + '`';
     Exit;
   end;
+  if SameText(Targets[0].FileName, AFileName) then
+    Text := ATreeText
+  else if not (Assigned(AReadText) and AReadText(Targets[0].FileName, Text)) then
+    Exit;
+  Lines := SplitLines(Text);
   if (Start.Line < 0) or (Start.Line > High(Lines)) then
     Exit;
   Result.Declaration := TrimRight(Copy(Lines[Start.Line], Start.Character + 1, MaxInt));
