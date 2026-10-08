@@ -101,7 +101,8 @@ end;
 
 procedure TDocumentUrisTests.KeepsCaseOfUnixPaths;
 begin
-  Assert.AreNotEqual(TDocumentUris.Key('file:///home/a/A.pas'), TDocumentUris.Key('file:///home/a/a.pas'));
+  // AreNotEqual für Strings ignoriert sonst die Groß-/Kleinschreibung.
+  Assert.AreNotEqual(TDocumentUris.Key('file:///home/a/A.pas'), TDocumentUris.Key('file:///home/a/a.pas'), False);
 end;
 
 initialization
