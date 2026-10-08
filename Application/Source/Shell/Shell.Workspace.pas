@@ -38,6 +38,7 @@ type
     FDefines: TArray<string>;
     FHasDefines: Boolean;
     FNamespaces: TArray<string>;
+    FSearchPaths: TArray<string>;
     FProjectFiles: TArray<string>;
     FOnProjectLoaded: TProc;
     FBaseline: IRuleBaseline;
@@ -52,6 +53,7 @@ type
     procedure StartIndex(const ASettings: TServerSettings);
     function FindProjectFile(const ASettings: TServerSettings): string;
     function GetNamespaces: TArray<string>;
+    function GetSearchPaths: TArray<string>;
   public
     constructor Create(const ARoot, AName: string; const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
       const ALogger: ILogger; const AIndex: ISymbolIndex; const AProgressToken: string);
@@ -76,6 +78,8 @@ type
     property Configuration: TLspConfiguration read FConfiguration;
     /// <summary>Unit-Namespaces des Projekts. Threadsicher.</summary>
     property Namespaces: TArray<string> read GetNamespaces;
+    /// <summary>Suchpfade des Projekts, z. B. für Include-Dateien. Threadsicher.</summary>
+    property SearchPaths: TArray<string> read GetSearchPaths;
     /// <summary>Nach dem Laden eines Projekts (Defines und Namespaces neu).</summary>
     property OnProjectLoaded: TProc read FOnProjectLoaded write FOnProjectLoaded;
   end;
@@ -253,6 +257,16 @@ begin
   end;
 end;
 
+function TShellWorkspace.GetSearchPaths: TArray<string>;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FSearchPaths;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
 function TShellWorkspace.GetNamespaces: TArray<string>;
 begin
   TMonitor.Enter(FLock);
@@ -392,6 +406,7 @@ begin
     FDefines := Request.Defines;
     FHasDefines := True;
     FNamespaces := Project.Namespaces;
+    FSearchPaths := Project.SearchPaths;
     FProjectFiles := Request.Files;
   finally
     TMonitor.Exit(FLock);

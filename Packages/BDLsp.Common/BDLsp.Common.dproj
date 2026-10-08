@@ -114,6 +114,8 @@
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.pas"/>
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Unicode.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.CodeActions.pas"/>
+        <DCCReference Include="Source\Editing\BDLsp.Common.Editing.DocumentLinks.pas"/>
+        <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.DocumentLinks.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.CodeActions.pas"/>
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.ControlFlow.pas"/>
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.NameResolver.pas"/>
