@@ -780,7 +780,12 @@ begin
     if Workspace = nil then
       Result := ''
     else
-      Result := Workspace.Configuration.Settings.DelphiVersion;
+    begin
+      // Tatsächlich gewählte Installation (#47), sonst die konfigurierte Version.
+      Result := Workspace.DelphiVersion;
+      if Result = '' then
+        Result := Workspace.Configuration.Settings.DelphiVersion;
+    end;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;

@@ -82,7 +82,7 @@ type
   end;
 
   TServerSettings = record
-    /// <summary>Delphi-Version wie in der Registry, z. B. "37.0"; '' = neueste installierte.</summary>
+    /// <summary>Delphi-Version wie in der Registry, z. B. "37.0"; '' = passend zur ProjectVersion der .dproj, sonst neueste installierte (#47).</summary>
     DelphiVersion: string;
     /// <summary>Sprache der Meldungen, "de" oder "en".</summary>
     Language: string;

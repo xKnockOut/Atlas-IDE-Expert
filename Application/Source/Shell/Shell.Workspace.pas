@@ -47,6 +47,7 @@ type
     FProject: TProjectInfo;
     FHasProject: Boolean;
     FBdsRoot: string;
+    FDelphiVersion: string;
     FCompilerLibraryPaths: TArray<string>;
     // Per Befehl gewählte Konfiguration und Plattform (#46), unter FLock; '' = Einstellung.
     FBuildConfig: string;
@@ -95,6 +96,8 @@ type
     function SelectBuild(const AConfig, APlatform: string; out AError: string): Boolean;
     /// <summary>Geladenes Projekt; False ohne Projekt. Threadsicher.</summary>
     function Project(out AProject: TProjectInfo): Boolean;
+    /// <summary>Für das Projekt gewählte Delphi-Version (z. B. "23.0", #47); '' ohne Installation. Threadsicher.</summary>
+    function DelphiVersion: string;
     /// <summary>Letzter Indexlauf für den Status-Befehl (#28). Threadsicher.</summary>
     function IndexStatus: TWorkspaceStatus;
     property Root: string read FRoot;
@@ -119,6 +122,7 @@ uses
   BDLsp.Common.Compiler.CommandLine,
   BDLsp.Common.Projects.Paths,
   BDLsp.Common.Projects.DprojReader,
+  BDLsp.Common.Projects.DelphiVersions,
   BDLsp.Common.Index.Builder,
   BDLsp.Common.Index.ProjectFiles,
   BDLsp.Common.Index.Adapters.DiskFileSystem,
@@ -281,6 +285,16 @@ begin
   begin
     FLogger.Info(Format('%s: Konfiguration %s, Plattform %s gewählt', [FName, AConfig, APlatform]));
     Reload;
+  end;
+end;
+
+function TShellWorkspace.DelphiVersion: string;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FDelphiVersion;
+  finally
+    TMonitor.Exit(FLock);
   end;
 end;
 
@@ -490,20 +504,34 @@ var
   Request: TIndexRequest;
   Resolver: TUnitResolver;
   FileExistsFunc: TFunc<string, Boolean>;
+  ProjectVersion, Version: string;
 begin
   ProjectFile := FindProjectFile(ASettings);
   if ProjectFile = '' then
     Exit;
+  // Konfiguration vor ProjectVersion der .dproj vor neuester Installation (#47).
   try
-    if ASettings.DelphiVersion <> '' then
-      Installation := TDelphiInstallation.Create(ASettings.DelphiVersion)
+    ProjectVersion := TDelphiVersions.ProjectVersionOf(TFile.ReadAllText(ProjectFile));
+  except
+    on Exception do
+      ProjectVersion := '';
+  end;
+  try
+    Version := TDelphiVersions.Choose(ASettings.DelphiVersion, ProjectVersion, TDelphiInstallation.Versions);
+    if Version <> '' then
+    begin
+      Installation := TDelphiInstallation.Create(Version);
+      FLogger.Info(Format('%s: %s (BDS %s, ProjectVersion %s)',
+        [FName, TDelphiVersions.ProductName(Version), Version, ProjectVersion]));
+    end
     else
-      Installation := TDelphiInstallation.Latest;
+      Installation := nil;
   except
     on E: EProjectError do
     begin
       FLogger.Warning('Delphi-Installation nicht gefunden: ' + E.Message);
       Installation := nil;
+      Version := '';
     end;
   end;
   FileExistsFunc :=
@@ -541,18 +569,20 @@ begin
     FHasProject := True;
     if Installation <> nil then
     begin
+      FDelphiVersion := Version;
       FBdsRoot := TCompilerCommandLine.BdsRoot(Installation.Variables);
       FCompilerLibraryPaths := Installation.LibraryPaths(Project.Platform);
     end
     else
     begin
+      FDelphiVersion := '';
       FBdsRoot := '';
       FCompilerLibraryPaths := nil;
     end;
   finally
     TMonitor.Exit(FLock);
   end;
-  Signature := TIndexProjectFiles.Signature(Project, ASettings.DelphiVersion);
+  Signature := TIndexProjectFiles.Signature(Project, Version);
   if Signature = FSignature then
     Exit;
   FSignature := Signature;
@@ -565,7 +595,7 @@ begin
   FUnitResolver.Free;
   FUnitResolver := Resolver;
   Request.Files := TIndexProjectFiles.Files(Project);
-  Request.Defines := TIndexProjectFiles.Defines(Project, ASettings.DelphiVersion);
+  Request.Defines := TIndexProjectFiles.Defines(Project, Version);
   Request.ResolveUnit :=
     function(const AUnitName: string): string
     begin

@@ -88,6 +88,7 @@
         <DCCReference Include="Source\Documents\BDLsp.Common.Documents.FileEncoding.pas"/>
         <DCCReference Include="Source\Projects\BDLsp.Common.Projects.Contract.pas"/>
         <DCCReference Include="Source\Projects\BDLsp.Common.Projects.Paths.pas"/>
+        <DCCReference Include="Source\Projects\BDLsp.Common.Projects.DelphiVersions.pas"/>
         <DCCReference Include="Source\Projects\Internals\BDLsp.Common.Projects.Internals.Xml.pas"/>
         <DCCReference Include="Source\Projects\Internals\BDLsp.Common.Projects.Internals.MSBuild.pas"/>
         <DCCReference Include="Source\Projects\BDLsp.Common.Projects.DprojReader.pas"/>
