@@ -344,6 +344,21 @@
       "id": "exception-freed",
       "name": "Exception-Objekt manuell freigegeben",
       "description": "Die RTL gibt ein Exception-Objekt nach seinem Handler bzw. nach raise selbst frei. Manuelles Freigeben führt zur doppelten Freigabe."
+    },
+    {
+      "id": "string-concat-in-loop",
+      "name": "String-Verkettung in einer Schleife",
+      "description": "Eine String-Variable wird in einer Schleife schrittweise verlängert. Delphi vergrößert Strings meist an Ort und Stelle, deshalb nur mit niedriger Konfidenz und standardmäßig aus; bei vielen Durchläufen ist TStringBuilder schneller."
+    },
+    {
+      "id": "loop-invariant-call",
+      "name": "Teurer Aufruf in der Schleifenbedingung",
+      "description": "Die Bedingung von while und until wird bei jedem Durchlauf ausgewertet. Aufrufe wie Trim, Format oder FileExists und Eigenschaften wie Lines.Text werden dort jedes Mal neu berechnet; besser einmal vor der Schleife. Die Grenzen von for werden nur einmal ausgewertet und nicht gemeldet. Standardmäßig aus."
+    },
+    {
+      "id": "missing-begin-update",
+      "name": "Hinzufügen in einer Schleife ohne BeginUpdate",
+      "description": "Items.Add, Lines.Add und ähnliche Aufrufe in einer Schleife zeichnen das Steuerelement bei jedem Aufruf neu. Die Schleife mit BeginUpdate und try … finally EndUpdate umschließen. Standardmäßig aus."
     }
   ]
 }

@@ -620,6 +620,33 @@
       "description": "The RTL frees an exception object after its handler or after raise. Freeing it manually causes a double free.",
       "bad": "on E: Exception do\n  E.Free;",
       "good": "on E: Exception do\n  Log(E.Message);"
+    },
+    {
+      "id": "string-concat-in-loop",
+      "name": "String concatenation in a loop",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "A string variable is extended step by step inside a loop. Delphi usually grows strings in place, so this is reported only with low confidence and is off by default; for many iterations TStringBuilder is faster.",
+      "bad": "for I := 1 to 10000 do\n  S := S + IntToStr(I);",
+      "good": "Builder := TStringBuilder.Create;\ntry\n  for I := 1 to 10000 do\n    Builder.Append(I);\n  S := Builder.ToString;\nfinally\n  Builder.Free;\nend;"
+    },
+    {
+      "id": "loop-invariant-call",
+      "name": "Expensive call in a loop condition",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "The condition of while and until is evaluated on every iteration. Calls like Trim, Format or FileExists and properties like Lines.Text there are recomputed each time; compute them once before the loop. Bounds of for loops are evaluated only once and are not reported. Off by default.",
+      "bad": "while I < Length(Trim(Memo.Lines.Text)) do\n  Inc(I);",
+      "good": "Text := Trim(Memo.Lines.Text);\nwhile I < Length(Text) do\n  Inc(I);"
+    },
+    {
+      "id": "missing-begin-update",
+      "name": "Adding items in a loop without BeginUpdate",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Off by default.",
+      "bad": "for I := 1 to 1000 do\n  ListBox1.Items.Add(IntToStr(I));",
+      "good": "ListBox1.Items.BeginUpdate;\ntry\n  for I := 1 to 1000 do\n    ListBox1.Items.Add(IntToStr(I));\nfinally\n  ListBox1.Items.EndUpdate;\nend;"
     }
   ]
 }

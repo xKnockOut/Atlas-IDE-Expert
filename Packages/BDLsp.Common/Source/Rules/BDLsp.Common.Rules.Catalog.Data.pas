@@ -640,6 +640,33 @@ begin
     '      "description": "The RTL frees an exception object after its handler or after raise. Freeing it manually causes a double free.",' + #10 +
     '      "bad": "on E: Exception do\n  E.Free;",' + #10 +
     '      "good": "on E: Exception do\n  Log(E.Message);"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "string-concat-in-loop",' + #10 +
+    '      "name": "String concatenation in a loop",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "A string variable is extended step by step inside a loop. Delphi usually grows strings in place, so this is reported only with low confidence and is off by default; for many iter' + 'ations TStringBuilder is faster.",' + #10 +
+    '      "bad": "for I := 1 to 10000 do\n  S := S + IntToStr(I);",' + #10 +
+    '      "good": "Builder := TStringBuilder.Create;\ntry\n  for I := 1 to 10000 do\n    Builder.Append(I);\n  S := Builder.ToString;\nfinally\n  Builder.Free;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "loop-invariant-call",' + #10 +
+    '      "name": "Expensive call in a loop condition",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "The condition of while and until is evaluated on every iteration. Calls like Trim, Format or FileExists and properties like Lines.Text there are recomputed each time; compute the' + 'm once before the loop. Bounds of for loops are evaluated only once and are not reported. Off by default.",' + #10 +
+    '      "bad": "while I < Length(Trim(Memo.Lines.Text)) do\n  Inc(I);",' + #10 +
+    '      "good": "Text := Trim(Memo.Lines.Text);\nwhile I < Length(Text) do\n  Inc(I);"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "missing-begin-update",' + #10 +
+    '      "name": "Adding items in a loop without BeginUpdate",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Off by default.",' + #10 +
+    '      "bad": "for I := 1 to 1000 do\n  ListBox1.Items.Add(IntToStr(I));",' + #10 +
+    '      "good": "ListBox1.Items.BeginUpdate;\ntry\n  for I := 1 to 1000 do\n    ListBox1.Items.Add(IntToStr(I));\nfinally\n  ListBox1.Items.EndUpdate;\nend;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -996,6 +1023,21 @@ begin
     '      "id": "exception-freed",' + #10 +
     '      "name": "Exception-Objekt manuell freigegeben",' + #10 +
     '      "description": "Die RTL gibt ein Exception-Objekt nach seinem Handler bzw. nach raise selbst frei. Manuelles Freigeben führt zur doppelten Freigabe."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "string-concat-in-loop",' + #10 +
+    '      "name": "String-Verkettung in einer Schleife",' + #10 +
+    '      "description": "Eine String-Variable wird in einer Schleife schrittweise verlängert. Delphi vergrößert Strings meist an Ort und Stelle, deshalb nur mit niedriger Konfidenz und standardmäßig aus;' + ' bei vielen Durchläufen ist TStringBuilder schneller."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "loop-invariant-call",' + #10 +
+    '      "name": "Teurer Aufruf in der Schleifenbedingung",' + #10 +
+    '      "description": "Die Bedingung von while und until wird bei jedem Durchlauf ausgewertet. Aufrufe wie Trim, Format oder FileExists und Eigenschaften wie Lines.Text werden dort jedes Mal neu berech' + 'net; besser einmal vor der Schleife. Die Grenzen von for werden nur einmal ausgewertet und nicht gemeldet. Standardmäßig aus."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "missing-begin-update",' + #10 +
+    '      "name": "Hinzufügen in einer Schleife ohne BeginUpdate",' + #10 +
+    '      "description": "Items.Add, Lines.Add und ähnliche Aufrufe in einer Schleife zeichnen das Steuerelement bei jedem Aufruf neu. Die Schleife mit BeginUpdate und try … finally EndUpdate umschließen.' + ' Standardmäßig aus."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
