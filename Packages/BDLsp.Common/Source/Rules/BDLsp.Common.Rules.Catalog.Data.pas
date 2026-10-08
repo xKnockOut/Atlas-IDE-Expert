@@ -442,6 +442,15 @@ begin
     '      "description": "Code accesses a field of a form or frame from another unit through its global variable (Form2.Edit1.Text). This couples the units tightly; use a method or property of the form.",' + #10 +
     '      "bad": "Form2.Edit1.Text := ''x'';",' + #10 +
     '      "good": "Form2.Kundenname := ''x'';"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "security-sql-injection",' + #10 +
+    '      "name": "SQL text built from values (SQL injection)",' + #10 +
+    '      "category": "vulnerability",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "SQL.Text, SQL.Add, CommandText, ExecSQL or Open receives text built with + or Format from non-constant values. User input could inject SQL. Use parameters (:Name, ParamByName). C' + 'onstants, resourcestrings, IntToStr and QuotedStr are not reported; user input (TEdit.Text, TMemo.Lines) raises the confidence to high.",' + #10 +
+    '      "bad": "Q.SQL.Text := ''select * from K where N = '''''' + Edit1.Text + '''''''';",' + #10 +
+    '      "good": "Q.SQL.Text := ''select * from K where N = :N'';\nQ.ParamByName(''N'').AsString := Edit1.Text;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -688,6 +697,11 @@ begin
     '      "id": "foreign-form-control-access",' + #10 +
     '      "name": "Zugriff auf Controls eines anderen Formulars",' + #10 +
     '      "description": "Code greift über die globale Variable auf ein Feld eines Formulars oder Frames aus einer anderen Unit zu (Form2.Edit1.Text). Das koppelt die Units eng; besser eine Methode oder P' + 'roperty des Formulars nutzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "security-sql-injection",' + #10 +
+    '      "name": "SQL-Text aus zusammengesetzten Werten (SQL-Injection)",' + #10 +
+    '      "description": "SQL.Text, SQL.Add, CommandText, ExecSQL oder Open erhalten Text, der per + oder Format aus Nicht-Konstanten zusammengesetzt ist. Benutzereingaben könnten SQL einschleusen. Parame' + 'ter verwenden (:Name, ParamByName). Konstanten, resourcestrings, IntToStr und QuotedStr zählen nicht; Benutzereingaben (TEdit.Text, TMemo.Lines) heben die Konfidenz auf hoch."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

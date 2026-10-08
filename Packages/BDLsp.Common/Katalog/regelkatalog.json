@@ -422,6 +422,15 @@
       "description": "Code accesses a field of a form or frame from another unit through its global variable (Form2.Edit1.Text). This couples the units tightly; use a method or property of the form.",
       "bad": "Form2.Edit1.Text := 'x';",
       "good": "Form2.Kundenname := 'x';"
+    },
+    {
+      "id": "security-sql-injection",
+      "name": "SQL text built from values (SQL injection)",
+      "category": "vulnerability",
+      "severity": "warning",
+      "description": "SQL.Text, SQL.Add, CommandText, ExecSQL or Open receives text built with + or Format from non-constant values. User input could inject SQL. Use parameters (:Name, ParamByName). Constants, resourcestrings, IntToStr and QuotedStr are not reported; user input (TEdit.Text, TMemo.Lines) raises the confidence to high.",
+      "bad": "Q.SQL.Text := 'select * from K where N = ''' + Edit1.Text + '''';",
+      "good": "Q.SQL.Text := 'select * from K where N = :N';\nQ.ParamByName('N').AsString := Edit1.Text;"
     }
   ]
 }
