@@ -43,6 +43,7 @@ uses
   BDLsp.Common.Lsp.Configuration.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Configuration.Tests.pas',
   BDLsp.Common.Pascal.Parser.Tests in 'Common\Pascal\BDLsp.Common.Pascal.Parser.Tests.pas',
   BDLsp.Common.Pascal.Parser.Robustness.Tests in 'Common\Pascal\BDLsp.Common.Pascal.Parser.Robustness.Tests.pas',
+  BDLsp.Common.Pascal.Preprocessor.Tests in 'Common\Pascal\BDLsp.Common.Pascal.Preprocessor.Tests.pas',
   BDLsp.Common.Lsp.ProtocolReplay in 'Common\Lsp\BDLsp.Common.Lsp.ProtocolReplay.pas',
   BDLsp.Common.Lsp.Protocol.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Protocol.Tests.pas',
   Shell.CommandLine in '..\Application\Source\Shell\Shell.CommandLine.pas',

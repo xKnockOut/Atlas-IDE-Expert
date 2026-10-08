@@ -110,6 +110,7 @@
         <DCCReference Include="Source\Pascal\BDLsp.Common.Pascal.Lexer.pas"/>
         <DCCReference Include="Source\Pascal\BDLsp.Common.Pascal.SyntaxTree.pas"/>
         <DCCReference Include="Source\Pascal\BDLsp.Common.Pascal.Parser.pas"/>
+        <DCCReference Include="Source\Pascal\BDLsp.Common.Pascal.Preprocessor.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
