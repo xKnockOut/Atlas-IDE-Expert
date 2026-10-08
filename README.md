@@ -2,6 +2,13 @@
 
 Eigener Language Server (LSP) für Delphi/Object Pascal, mit zusätzlicher MCP-Schnittstelle für Claude Code. Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnockOut/BetterDelphiLSP/issues); die Epics #130 bis #139 bilden die Ausbaustufen ab.
 
+## Benutzerdokumentation
+
+- [Installation](docs/Installation.md) für VS Code, Claude Code, Neovim und andere Editoren
+- [Konfiguration](docs/Konfiguration.md) von `delphi-lsp.json` (erzeugt aus dem JSON-Schema mit `pwsh Tools/Update-ConfigDoc.ps1`)
+- [Prüfregeln](docs/Regeln.md)
+- [MCP-Werkzeuge](docs/MCP.md)
+
 ## Aufbau
 
 | Projekt | Inhalt |
