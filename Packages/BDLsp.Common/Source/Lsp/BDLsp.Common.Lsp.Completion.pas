@@ -4,7 +4,10 @@
 //   - nach "A.B." die Mitglieder des Typs von A.B samt geerbter, bei Units deren interface-Symbole,
 //   - in uses die bekannten Units,
 //   - sonst alle sichtbaren Namen (lokal, eigene Klasse, eigene Unit, Units aus uses).
-// Gefiltert wird nach dem schon getippten Anfang; der Editor filtert unscharf nach.
+// Ausgewählt wird unscharf (#229, TFuzzyMatch: Teilfolgen, Kürzel, Wortanfänge) oder mit
+// completion.matching = prefix nur nach dem Anfang. Unscharf sortiert die Punktzahl,
+// bei Gleichstand der nächste Gültigkeitsbereich; isIncomplete lässt den Editor bei
+// jedem Tastendruck neu fragen, filterText verhindert, dass er Treffer verwirft.
 // Noch nicht: Sichtbarkeit (private/protected), Generics, Class Helper, Typinferenz bei var X := ….
 
 interface
@@ -19,6 +22,7 @@ uses
   BDLsp.Common.Documents.Contract,
   BDLsp.Common.Pascal.SyntaxTree,
   BDLsp.Common.Index.Contract,
+  BDLsp.Common.Configuration.Contract,
   BDLsp.Common.Semantics.NameResolver;
 
 type
@@ -39,6 +43,8 @@ type
     Detail: string;
     /// <summary>CompletionItemKind des LSP.</summary>
     Kind: Integer;
+    /// <summary>Text für den Filter des Editors; '' = Name.</summary>
+    FilterText: string;
   end;
 
   TCompletionItems = record
@@ -46,6 +52,8 @@ type
     /// <summary>Liste wurde gekürzt; der Editor fragt beim Weitertippen neu.</summary>
     Incomplete: Boolean;
   end;
+
+  TCompletionMatchingFunc = reference to function(const AUri: string): TCompletionMatching;
 
   TLspCompletion = class
   public const
@@ -56,6 +64,7 @@ type
     FIndex: ISymbolIndex;
     FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
+    FMatchingFor: TCompletionMatchingFunc;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
@@ -66,21 +75,26 @@ type
     /// <summary>Was an APosition vervollständigt wird.</summary>
     class function Analyze(ATree: TSyntaxTree; const APosition: TTextPosition): TCompletionContext; static;
     class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const AFileName: string; const APosition: TTextPosition): TCompletionItems; static;
+      const AFileName: string; const APosition: TTextPosition;
+      AMatching: TCompletionMatching = TCompletionMatching.Fuzzy): TCompletionItems; static;
     class function KindOf(AKind: TIndexSymbolKind): Integer; static;
     /// <summary>CompletionList des LSP. Der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const AItems: TCompletionItems): TJSONObject; static;
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
+    /// <summary>Auswahl je Dokument; ohne Zuweisung unscharf.</summary>
+    property MatchingFor: TCompletionMatchingFunc read FMatchingFor write FMatchingFor;
   end;
 
 implementation
 
 uses
   System.Generics.Collections,
+  System.Generics.Defaults,
   BDLsp.Common.Documents.Uris,
   BDLsp.Common.Lsp.Positions,
   BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.Parser,
+  BDLsp.Common.Lsp.FuzzyMatch,
   BDLsp.Common.Lsp.Internals.Cancellation;
 
 const
@@ -290,33 +304,82 @@ begin
   end;
 end;
 
+type
+  TScoredItem = record
+    Item: TCompletionItem;
+    Score: Integer;
+    Order: Integer;
+  end;
+
+  TScoredItemComparer = class(TInterfacedObject, IComparer<TScoredItem>)
+  public
+    function Compare(const Left, Right: TScoredItem): Integer;
+  end;
+
+function TScoredItemComparer.Compare(const Left, Right: TScoredItem): Integer;
+begin
+  // Höhere Punktzahl zuerst, sonst Reihenfolge der Gültigkeitsbereiche.
+  if Left.Score <> Right.Score then
+    Result := Right.Score - Left.Score
+  else
+    Result := Left.Order - Right.Order;
+end;
+
+/// <summary>Punktzahl von AName; TFuzzyMatch.NoMatch, wenn er nicht passt.</summary>
+function MatchScore(const AName, APrefix: string; AMatching: TCompletionMatching): Integer;
+begin
+  if APrefix = '' then
+    Exit(0);
+  if AMatching = TCompletionMatching.Prefix then
+  begin
+    if AName.StartsWith(APrefix, True) then
+      Exit(0);
+    Exit(TFuzzyMatch.NoMatch);
+  end;
+  Result := TFuzzyMatch.Score(AName, APrefix);
+end;
+
 class function TLspCompletion.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AFileName: string; const APosition: TTextPosition): TCompletionItems;
+  const AFileName: string; const APosition: TTextPosition; AMatching: TCompletionMatching): TCompletionItems;
 var
   Context: TCompletionContext;
   Candidates: TArray<TResolvedSymbol>;
   Candidate: TResolvedSymbol;
   Units: TArray<TUnitIndex>;
   UnitInfo: TUnitIndex;
-  List: TList<TCompletionItem>;
-  Item: TCompletionItem;
+  List: TList<TScoredItem>;
+  Scored: TScoredItem;
+  Index: Integer;
+
+  procedure Add(const AName, ADetail: string; AKind: Integer);
+  begin
+    Scored.Score := MatchScore(AName, Context.Prefix, AMatching);
+    if Scored.Score = TFuzzyMatch.NoMatch then
+      Exit;
+    Scored.Item.Name := AName;
+    Scored.Item.Detail := ADetail;
+    Scored.Item.Kind := AKind;
+    // Der Editor filtert selbst nach dem getippten Wort; unscharfe Treffer bekommen es
+    // als filterText, damit er sie nicht verwirft.
+    if (AMatching = TCompletionMatching.Fuzzy) and not AName.StartsWith(Context.Prefix, True) then
+      Scored.Item.FilterText := Context.Prefix
+    else
+      Scored.Item.FilterText := '';
+    Scored.Order := List.Count;
+    List.Add(Scored);
+  end;
+
 begin
   Result := Default(TCompletionItems);
   Context := Analyze(ATree, APosition);
-  List := TList<TCompletionItem>.Create;
+  List := TList<TScoredItem>.Create(TScoredItemComparer.Create);
   try
     case Context.Kind of
       TCompletionContextKind.UsesClause:
         begin
           Units := AIndex.Units;
           for UnitInfo in Units do
-            if UnitInfo.UnitName.StartsWith(Context.Prefix, True) then
-            begin
-              Item.Name := UnitInfo.UnitName;
-              Item.Detail := UnitInfo.FileName;
-              Item.Kind := KindModule;
-              List.Add(Item);
-            end;
+            Add(UnitInfo.UnitName, UnitInfo.FileName, KindModule);
         end;
       TCompletionContextKind.Member, TCompletionContextKind.Scope:
         begin
@@ -325,24 +388,23 @@ begin
           else
             Candidates := AResolver.ScopeCandidates(ATree, AFileName, Context.Offset);
           for Candidate in Candidates do
-            if Candidate.Name.StartsWith(Context.Prefix, True) then
-            begin
-              Item.Name := Candidate.Name;
-              if Candidate.TypeName <> '' then
-                Item.Detail := Candidate.TypeName
-              else if Candidate.Container <> '' then
-                Item.Detail := Candidate.Container
-              else
-                Item.Detail := Candidate.UnitName;
-              Item.Kind := KindOf(Candidate.SymbolKind);
-              List.Add(Item);
-            end;
+            if Candidate.TypeName <> '' then
+              Add(Candidate.Name, Candidate.TypeName, KindOf(Candidate.SymbolKind))
+            else if Candidate.Container <> '' then
+              Add(Candidate.Name, Candidate.Container, KindOf(Candidate.SymbolKind))
+            else
+              Add(Candidate.Name, Candidate.UnitName, KindOf(Candidate.SymbolKind));
         end;
     end;
-    Result.Incomplete := List.Count > MaxItems;
-    if Result.Incomplete then
+    List.Sort;
+    // Unscharf fragt der Editor bei jedem Tastendruck neu, weil sich die Reihenfolge ändert.
+    Result.Incomplete := (List.Count > MaxItems) or
+      ((AMatching = TCompletionMatching.Fuzzy) and (Context.Kind <> TCompletionContextKind.None));
+    if List.Count > MaxItems then
       List.Count := MaxItems;
-    Result.Items := List.ToArray;
+    SetLength(Result.Items, List.Count);
+    for Index := 0 to List.Count - 1 do
+      Result.Items[Index] := List[Index].Item;
   finally
     List.Free;
   end;
@@ -366,7 +428,9 @@ begin
     Entry.AddPair('kind', TJSONNumber.Create(AItems.Items[Index].Kind));
     if AItems.Items[Index].Detail <> '' then
       Entry.AddPair('detail', AItems.Items[Index].Detail);
-    // Reihenfolge der Gültigkeitsbereiche erhalten: nächster zuerst.
+    if AItems.Items[Index].FilterText <> '' then
+      Entry.AddPair('filterText', AItems.Items[Index].FilterText);
+    // Reihenfolge wie geliefert: beste Punktzahl, dann nächster Gültigkeitsbereich.
     Entry.AddPair('sortText', Format('%.5d', [Index]));
   end;
 end;
@@ -379,6 +443,7 @@ var
   Document: ITextDocument;
   Tree: TSyntaxTree;
   Resolver: TNameResolver;
+  Matching: TCompletionMatching;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
@@ -393,8 +458,12 @@ begin
     Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
     try
       Resolver.Namespaces := FNamespaces;
+      if Assigned(FMatchingFor) then
+        Matching := FMatchingFor(Uri)
+      else
+        Matching := TCompletionMatching.Fuzzy;
       Result := ToJson(Collect(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri),
-        TLspPositions.ReadPosition(PositionValue)));
+        TLspPositions.ReadPosition(PositionValue), Matching));
     finally
       Resolver.Free;
     end;

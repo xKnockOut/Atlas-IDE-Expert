@@ -81,6 +81,14 @@ type
     class function Default: TCompilerSettings; static;
   end;
 
+  /// <summary>Auswahl der Vervollständigung (#229): unscharf oder nur nach Präfix.</summary>
+  TCompletionMatching = (Fuzzy, Prefix);
+
+  TCompletionSettings = record
+    Matching: TCompletionMatching;
+    class function Default: TCompletionSettings; static;
+  end;
+
   TServerSettings = record
     /// <summary>Delphi-Version wie in der Registry, z. B. "37.0"; '' = passend zur ProjectVersion der .dproj, sonst neueste installierte (#47).</summary>
     DelphiVersion: string;
@@ -101,6 +109,7 @@ type
     Formatting: TFormatStyle;
     InlayHints: TInlayHintSettings;
     Compiler: TCompilerSettings;
+    Completion: TCompletionSettings;
     /// <summary>Obergrenze für den Symbolindex in MB; 0 = unbegrenzt (#185).</summary>
     MemoryBudgetMb: Integer;
     /// <summary>Vorgaben, wenn keine Konfigurationsdatei existiert.</summary>
@@ -233,6 +242,13 @@ begin
   Result.OnSave := True;
 end;
 
+{ TCompletionSettings }
+
+class function TCompletionSettings.Default: TCompletionSettings;
+begin
+  Result.Matching := TCompletionMatching.Fuzzy;
+end;
+
 { TServerSettings }
 
 class function TServerSettings.Default: TServerSettings;
@@ -249,6 +265,7 @@ begin
   Result.Formatting := TFormatStyle.Default;
   Result.InlayHints := TInlayHintSettings.Default;
   Result.Compiler := TCompilerSettings.Default;
+  Result.Completion := TCompletionSettings.Default;
   Result.MemoryBudgetMb := 0;
 end;
 

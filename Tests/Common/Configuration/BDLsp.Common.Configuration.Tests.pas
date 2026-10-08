@@ -244,6 +244,12 @@ begin
   Assert.AreEqual(2, Integer(Length(Issues)));
   Settings := TConfigurationParser.ParseLayered('{"compiler": {"onSave": false}}', '{}', Issues);
   Assert.IsFalse(Settings.Compiler.OnSave);
+  // Vervollständigung (#229)
+  Assert.IsTrue(Parse('{}', Issues).Completion.Matching = TCompletionMatching.Fuzzy);
+  Assert.IsTrue(Parse('{"completion": {"matching": "prefix"}}', Issues).Completion.Matching = TCompletionMatching.Prefix);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsTrue(Parse('{"completion": {"matching": "egal", "x": 1}}', Issues).Completion.Matching = TCompletionMatching.Fuzzy);
+  Assert.AreEqual(2, Integer(Length(Issues)));
   // Speicherbudget (#185)
   Assert.AreEqual(0, Parse('{}', Issues).MemoryBudgetMb);
   Assert.AreEqual(512, Parse('{"memoryBudgetMb": 512}', Issues).MemoryBudgetMb);
