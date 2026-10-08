@@ -99,6 +99,10 @@
         <DCCReference Include="Source\Index\BDLsp.Common.Index.Builder.pas"/>
         <DCCReference Include="Source\Index\BDLsp.Common.Index.ProjectFiles.pas"/>
         <DCCReference Include="Source\Index\BDLsp.Common.Index.Service.pas"/>
+        <DCCReference Include="Source\Rules\BDLsp.Common.Rules.Contract.pas"/>
+        <DCCReference Include="Source\Rules\BDLsp.Common.Rules.Registry.pas"/>
+        <DCCReference Include="Source\Rules\BDLsp.Common.Rules.Suppressions.pas"/>
+        <DCCReference Include="Source\Rules\BDLsp.Common.Rules.Engine.pas"/>
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.ControlFlow.pas"/>
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.NameResolver.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Definition.pas"/>

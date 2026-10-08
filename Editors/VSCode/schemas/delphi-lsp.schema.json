@@ -74,6 +74,13 @@
                   "warning",
                   "error"
                 ]
+              },
+              "exclude": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Ausnahmen dieser Regel: Glob-Muster für Pfade (relativ zur Konfiguration) oder Unit-Namen."
               }
             }
           }
