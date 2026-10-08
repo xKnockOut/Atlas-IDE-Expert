@@ -36,6 +36,12 @@ type
     procedure WritesMarkdown;
     [Test]
     procedure LinksLibrarySymbolsToDocWiki;
+    [Test]
+    procedure ShowsNumberNotations;
+    [Test]
+    procedure ShowsConstantAndEnumValues;
+    [Test]
+    procedure ShowsDeprecation;
   end;
 
 implementation
@@ -61,7 +67,14 @@ const
     '    /// <param name="A">Erster Wert</param>'#10 +
     '    function Summe(A, B: Integer): Integer;'#10 +
     '  end;'#10 +
+    '  TFarbe = (Rot, Gruen, Blau);'#10 +
+    'const'#10 +
+    '  Grenze = $10;'#10 +
+    'procedure Alt; deprecated ''Neu verwenden'';'#10 +
     'implementation'#10 +
+    'procedure Alt;'#10 +
+    'begin'#10 +
+    'end;'#10 +
     'function TRechner.Summe(A, B: Integer): Integer;'#10 +
     'begin'#10 +
     '  Result := A + B;'#10 +
@@ -80,6 +93,8 @@ const
     '  R: TRechner;'#10 +
     'begin'#10 +
     '  Zaehler := R.Summe(1, 2);'#10 +
+    '  Zaehler := Grenze + Ord(Blau) + 255;'#10 +
+    '  Alt;'#10 +
     '  Unbekannt;'#10 +
     'end;'#10 +
     'end.';
@@ -233,6 +248,31 @@ begin
     Tree.Free;
     Resolver.Free;
   end;
+end;
+
+procedure TLspHoverTests.ShowsNumberNotations;
+var
+  Info: THoverInfo;
+begin
+  Info := InfoAt('255');
+  Assert.AreEqual('255', Info.Declaration);
+  Assert.AreEqual('255 · $FF · %11111111', Info.Value);
+  Assert.Contains(Info.ToMarkdown, 'Wert: `255 · $FF · %11111111`');
+end;
+
+procedure TLspHoverTests.ShowsConstantAndEnumValues;
+begin
+  Assert.AreEqual('16 · $10 · %10000', InfoAt('Grenze +').Value);
+  Assert.AreEqual('Ord = 2', InfoAt('Blau)').Value);
+end;
+
+procedure TLspHoverTests.ShowsDeprecation;
+var
+  Info: THoverInfo;
+begin
+  Info := InfoAt('Alt;');
+  Assert.AreEqual('**Veraltet**: Neu verwenden', Info.Deprecation);
+  Assert.Contains(Info.ToMarkdown, '**Veraltet**: Neu verwenden');
 end;
 
 initialization

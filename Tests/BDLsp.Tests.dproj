@@ -75,6 +75,7 @@
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Definition.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.PublishedMembers.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Hover.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.HoverValues.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.DocWiki.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Status.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.References.Tests.pas"/>

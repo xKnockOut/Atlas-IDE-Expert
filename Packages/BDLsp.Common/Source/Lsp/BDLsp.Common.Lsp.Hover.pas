@@ -39,6 +39,10 @@ type
     DocWikiUrl: string;
     /// <summary>Message-Handler der Klasse als Markdown (#36); sonst ''.</summary>
     Messages: string;
+    /// <summary>Wert bei Zahlen, Konstanten und Aufzählungswerten (#38); sonst ''.</summary>
+    Value: string;
+    /// <summary>Hinweis bei deprecated, platform, experimental (#38); sonst ''.</summary>
+    Deprecation: string;
     function Found: Boolean;
     function ToMarkdown: string;
   end;
@@ -79,6 +83,7 @@ uses
   BDLsp.Common.Lsp.PublishedMembers,
   BDLsp.Common.Lsp.DocWiki,
   BDLsp.Common.Lsp.MessageHandlers,
+  BDLsp.Common.Lsp.HoverValues,
   BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.Parser,
   BDLsp.Common.Lsp.Internals.Cancellation;
@@ -139,6 +144,46 @@ begin
   end;
 end;
 
+function ComparePositions(const A, B: TTextPosition): Integer;
+begin
+  if A.Line <> B.Line then
+    Result := A.Line - B.Line
+  else
+    Result := A.Character - B.Character;
+end;
+
+/// <summary>Deklaration von ARange bis zum Ende der letzten Zeile (dort stehen Direktiven wie deprecated).</summary>
+function DeclarationText(const ALines: TArray<string>; const ARange: TTextRange): string;
+var
+  Line: Integer;
+begin
+  Result := '';
+  for Line := ARange.StartPos.Line to ARange.EndPos.Line do
+  begin
+    if (Line < 0) or (Line > High(ALines)) then
+      Break;
+    if Line = ARange.StartPos.Line then
+      Result := Copy(ALines[Line], ARange.StartPos.Character + 1, MaxInt)
+    else
+      Result := Result + ' ' + Trim(ALines[Line]);
+  end;
+end;
+
+/// <summary>Ordinalzahl eines Aufzählungswerts: Position im Typ, ohne explizite Werte.</summary>
+function EnumOrdinal(const AUnit: TUnitIndex; const AMember: TIndexSymbol): Integer;
+var
+  Symbol: TIndexSymbol;
+begin
+  Result := 0;
+  for Symbol in AUnit.Symbols do
+    if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, AMember.Container) then
+    begin
+      if Symbol.SelectionRange.StartPos = AMember.SelectionRange.StartPos then
+        Exit;
+      Inc(Result);
+    end;
+end;
+
 { THoverInfo }
 
 function THoverInfo.Found: Boolean;
@@ -149,6 +194,10 @@ end;
 function THoverInfo.ToMarkdown: string;
 begin
   Result := '```pascal' + #10 + Declaration + #10 + '```';
+  if Deprecation <> '' then
+    Result := Result + #10#10 + Deprecation;
+  if Value <> '' then
+    Result := Result + #10#10 + 'Wert: `' + Value + '`';
   if Documentation <> '' then
     Result := Result + #10#10 + Documentation;
   if UnitName <> '' then
@@ -218,8 +267,22 @@ var
   Symbol: TIndexSymbol;
   ReadText: TMemberReadText;
   ClassTree: TSyntaxTree;
+  Token: TPascalToken;
+  Number: Int64;
 begin
   Result := Default(THoverInfo);
+  // Zahlenliteral unter dem Cursor: Schreibweisen statt Deklaration.
+  for Token in ATree.Tokens do
+    if (Token.Kind = TPascalTokenKind.Number) and (ComparePositions(Token.StartPos, APosition) <= 0) and
+      (ComparePositions(APosition, Token.EndPos) < 0) then
+    begin
+      if THoverValues.TryParseNumber(Token.Text, Number) then
+      begin
+        Result.Declaration := Token.Text;
+        Result.Value := THoverValues.FormatNumber(Number);
+      end;
+      Exit;
+    end;
   Targets := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
   if Length(Targets) = 0 then
     Exit;
@@ -245,6 +308,7 @@ begin
     Exit;
   Result.Declaration := TrimRight(Copy(Lines[Start.Line], Start.Character + 1, MaxInt));
   Result.Documentation := DocumentationAbove(Lines, Start.Line);
+  Result.Deprecation := THoverValues.Deprecation(DeclarationText(Lines, Targets[0].Range));
   if not AIndex.FindFile(Targets[0].FileName, OwnerUnit) then
     Exit;
   if not SameText(Targets[0].FileName, AFileName) then
@@ -253,6 +317,10 @@ begin
     if Symbol.SelectionRange.StartPos = Targets[0].SelectionRange.StartPos then
     begin
       Result.DocWikiUrl := TDocWiki.Url(ADelphiVersion, OwnerUnit.UnitName, Symbol.Container, Symbol.Name);
+      if Symbol.Kind = TIndexSymbolKind.Constant then
+        Result.Value := THoverValues.ConstantValue(Result.Declaration)
+      else if Symbol.Kind = TIndexSymbolKind.EnumMember then
+        Result.Value := 'Ord = ' + IntToStr(EnumOrdinal(OwnerUnit, Symbol));
       Break;
     end;
   for Symbol in OwnerUnit.Symbols do
