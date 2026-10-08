@@ -20,7 +20,8 @@ uses
   BDLsp.Common.Rules.Builtin.Concurrency,
   BDLsp.Common.Rules.Builtin.Flow,
   BDLsp.Common.Rules.Builtin.Unused,
-  BDLsp.Common.Rules.Builtin.Declarations;
+  BDLsp.Common.Rules.Builtin.Declarations,
+  BDLsp.Common.Rules.Builtin.Inheritance;
 
 function BuiltinRules: TArray<IRule>;
 var
@@ -35,6 +36,7 @@ begin
     RegisterFlowRules(Registry);
     RegisterUnusedRules(Registry);
     RegisterDeclarationRules(Registry);
+    RegisterInheritanceRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

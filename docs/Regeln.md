@@ -25,6 +25,10 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`unused-assignment`](#unused-assignment) | Zugewiesener Wert ungenutzt | Code Smell | Hinweis |
 | [`declared-not-implemented`](#declared-not-implemented) | Deklariert, aber nicht implementiert | Bug | Fehler |
 | [`implemented-not-declared`](#implemented-not-declared) | Implementiert, aber nicht deklariert | Bug | Fehler |
+| [`destroy-without-override`](#destroy-without-override) | Destroy ohne override | Bug | Warnung |
+| [`component-create-without-override`](#component-create-without-override) | Komponentenkonstruktor ohne override | Bug | Warnung |
+| [`hides-virtual`](#hides-virtual) | Methode verdeckt virtuelle Methode | Bug | Warnung |
+| [`virtual-instead-of-override`](#virtual-instead-of-override) | virtual statt override | Bug | Warnung |
 
 <a id="syntax"></a>
 ## syntax
@@ -551,4 +555,110 @@ implementation
 procedure TFoo.Run;
 begin
 end;
+```
+
+<a id="destroy-without-override"></a>
+## destroy-without-override
+
+**Destroy ohne override** · Bug · Warnung
+
+Ein destructor Destroy ist ohne override deklariert. Free ruft TObject.Destroy auf, dieser Destruktor läuft also nie.
+
+Mit Treffer:
+
+```pascal
+type
+  TFoo = class
+    destructor Destroy;
+  end;
+```
+
+Richtig:
+
+```pascal
+type
+  TFoo = class
+    destructor Destroy; override;
+  end;
+```
+
+<a id="component-create-without-override"></a>
+## component-create-without-override
+
+**Komponentenkonstruktor ohne override** · Bug · Warnung
+
+Ein TComponent-Nachfahre deklariert constructor Create(AOwner: TComponent) ohne override. Beim Laden aus der Formulardatei wird der virtuelle Konstruktor benutzt und dieser übergangen.
+
+Mit Treffer:
+
+```pascal
+type
+  TMyPanel = class(TCustomPanel)
+    constructor Create(AOwner: TComponent);
+  end;
+```
+
+Richtig:
+
+```pascal
+type
+  TMyPanel = class(TCustomPanel)
+    constructor Create(AOwner: TComponent); override;
+  end;
+```
+
+<a id="hides-virtual"></a>
+## hides-virtual
+
+**Methode verdeckt virtuelle Methode** · Bug · Warnung
+
+Eine Methode heißt wie eine virtuelle Methode eines Vorfahren, überschreibt sie aber weder noch führt sie sie neu ein (Compilerwarnung W1010).
+
+Mit Treffer:
+
+```pascal
+type
+  TBase = class
+    procedure Run; virtual;
+  end;
+  TFoo = class(TBase)
+    procedure Run;
+  end;
+```
+
+Richtig:
+
+```pascal
+type
+  TBase = class
+    procedure Run; virtual;
+  end;
+  TFoo = class(TBase)
+    procedure Run; override;
+  end;
+```
+
+<a id="virtual-instead-of-override"></a>
+## virtual-instead-of-override
+
+**virtual statt override** · Bug · Warnung
+
+Ein Nachfahre deklariert eine Methode als virtual, obwohl der Vorfahr schon eine virtuelle Methode mit derselben Signatur hat; das beginnt eine neue Kette statt zu überschreiben.
+
+Mit Treffer:
+
+```pascal
+type
+  TFoo = class(TBase)
+    procedure Run; virtual;
+  end;
+```
+
+Richtig:
+
+```pascal
+type
+  TFoo = class(TBase)
+    procedure Run; override;
+  end;
 ```

@@ -208,6 +208,42 @@ begin
     '      "description": "A method body TFoo.Bar has no matching declaration in the type.",' + #10 +
     '      "bad": "type\n  TFoo = class\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;",' + #10 +
     '      "good": "type\n  TFoo = class\n  private\n    procedure Run;\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "destroy-without-override",' + #10 +
+    '      "name": "Destroy without override",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "A destructor Destroy is declared without override. Free calls TObject.Destroy, so this destructor never runs.",' + #10 +
+    '      "bad": "type\n  TFoo = class\n    destructor Destroy;\n  end;",' + #10 +
+    '      "good": "type\n  TFoo = class\n    destructor Destroy; override;\n  end;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "component-create-without-override",' + #10 +
+    '      "name": "Component constructor without override",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "A TComponent descendant declares constructor Create(AOwner: TComponent) without override. Components created from a form file are built through the virtual constructor and skip t' + 'his one.",' + #10 +
+    '      "bad": "type\n  TMyPanel = class(TCustomPanel)\n    constructor Create(AOwner: TComponent);\n  end;",' + #10 +
+    '      "good": "type\n  TMyPanel = class(TCustomPanel)\n    constructor Create(AOwner: TComponent); override;\n  end;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "hides-virtual",' + #10 +
+    '      "name": "Method hides virtual method",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "A method has the same name as a virtual method of an ancestor but neither overrides nor reintroduces it (compiler warning W1010).",' + #10 +
+    '      "bad": "type\n  TBase = class\n    procedure Run; virtual;\n  end;\n  TFoo = class(TBase)\n    procedure Run;\n  end;",' + #10 +
+    '      "good": "type\n  TBase = class\n    procedure Run; virtual;\n  end;\n  TFoo = class(TBase)\n    procedure Run; override;\n  end;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "virtual-instead-of-override",' + #10 +
+    '      "name": "virtual instead of override",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "A descendant declares a method virtual although the ancestor already has a virtual method with the same signature; this starts a new chain instead of overriding.",' + #10 +
+    '      "bad": "type\n  TFoo = class(TBase)\n    procedure Run; virtual;\n  end;",' + #10 +
+    '      "good": "type\n  TFoo = class(TBase)\n    procedure Run; override;\n  end;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -324,6 +360,26 @@ begin
     '      "id": "implemented-not-declared",' + #10 +
     '      "name": "Implementiert, aber nicht deklariert",' + #10 +
     '      "description": "Ein Methodenrumpf TFoo.Bar hat keine passende Deklaration im Typ."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "destroy-without-override",' + #10 +
+    '      "name": "Destroy ohne override",' + #10 +
+    '      "description": "Ein destructor Destroy ist ohne override deklariert. Free ruft TObject.Destroy auf, dieser Destruktor läuft also nie."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "component-create-without-override",' + #10 +
+    '      "name": "Komponentenkonstruktor ohne override",' + #10 +
+    '      "description": "Ein TComponent-Nachfahre deklariert constructor Create(AOwner: TComponent) ohne override. Beim Laden aus der Formulardatei wird der virtuelle Konstruktor benutzt und dieser überg' + 'angen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "hides-virtual",' + #10 +
+    '      "name": "Methode verdeckt virtuelle Methode",' + #10 +
+    '      "description": "Eine Methode heißt wie eine virtuelle Methode eines Vorfahren, überschreibt sie aber weder noch führt sie sie neu ein (Compilerwarnung W1010)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "virtual-instead-of-override",' + #10 +
+    '      "name": "virtual statt override",' + #10 +
+    '      "description": "Ein Nachfahre deklariert eine Methode als virtual, obwohl der Vorfahr schon eine virtuelle Methode mit derselben Signatur hat; das beginnt eine neue Kette statt zu überschreiben.' + '"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

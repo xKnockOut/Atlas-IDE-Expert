@@ -29,6 +29,8 @@ type
     // Typargumente des Vorfahren für den nächsten Add aus AddType.
     FAncestorArgs: string;
     function IsDefaultProperty(ANode: TSyntaxNode): Boolean;
+    /// <summary>Methodenkopf mit virtual, dynamic, abstract oder override?</summary>
+    class function IsVirtualHeader(ANode: TSyntaxNode): Boolean; static;
     function TokenIndexAt(AOffset: Integer): Integer;
     function NameRange(ANode: TSyntaxNode; const AName: string): TTextRange;
     function IsConstructor(ANode: TSyntaxNode): Boolean;
@@ -210,6 +212,7 @@ begin
     ParamInfo(ANode, Symbol.MinArgs, Symbol.MaxArgs, Symbol.ParamTypes);
   if AKind = TIndexSymbolKind.Property_ then
     Symbol.IsDefault := IsDefaultProperty(ANode);
+  Symbol.IsVirtual := (AKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and IsVirtualHeader(ANode);
   FSymbols.Add(Symbol);
 end;
 
@@ -336,6 +339,20 @@ begin
       ATypes := ATypes + [ParamType];
     end;
   end;
+end;
+
+class function TIndexExtractor.IsVirtualHeader(ANode: TSyntaxNode): Boolean;
+var
+  Index: Integer;
+begin
+  Result := False;
+  if ANode.Kind <> TSyntaxKind.RoutineHeader then
+    Exit;
+  for Index := 0 to ANode.ChildCount - 1 do
+    if (ANode[Index].Kind = TSyntaxKind.Directive) and (SameText(ANode[Index].Name, 'virtual') or
+      SameText(ANode[Index].Name, 'dynamic') or SameText(ANode[Index].Name, 'abstract') or
+      SameText(ANode[Index].Name, 'override')) then
+      Exit(True);
 end;
 
 function TIndexExtractor.IsDefaultProperty(ANode: TSyntaxNode): Boolean;
