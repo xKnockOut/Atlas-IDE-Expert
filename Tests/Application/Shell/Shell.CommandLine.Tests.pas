@@ -23,6 +23,10 @@ type
     procedure WarnsAboutInvalidLogLevel;
     [Test]
     procedure WarnsAboutMissingValue;
+    [Test]
+    procedure ReadsLinterArguments;
+    [Test]
+    procedure WarnsAboutInvalidLinterValues;
   end;
 
 implementation
@@ -30,6 +34,8 @@ implementation
 uses
   System.SysUtils,
   BDLsp.Common.Logging.Contract,
+  BDLsp.Common.Configuration.Contract,
+  BDLsp.Common.Rules.Output,
   Shell.CommandLine;
 
 { TCommandLineOptionsTests }
@@ -101,6 +107,33 @@ begin
   Options := TCommandLineOptions.Parse(['--log']);
   Assert.AreEqual('', Options.LogFile);
   Assert.AreEqual<NativeInt>(1, Length(Options.Warnings));
+end;
+
+procedure TCommandLineOptionsTests.ReadsLinterArguments;
+var
+  Options: TCommandLineOptions;
+begin
+  Options := TCommandLineOptions.Parse(['--check', 'App.dproj', '--format=sarif', '--output', 'out.sarif',
+    '--rules', 'syntax, empty-except', '--units=Main,Legacy/**', '--min-severity', 'warning']);
+  Assert.AreEqual(0, Integer(Length(Options.Warnings)));
+  Assert.AreEqual('App.dproj', Options.CheckTarget);
+  Assert.AreEqual(Ord(TFindingsFormat.Sarif), Ord(Options.CheckFormat));
+  Assert.AreEqual('out.sarif', Options.OutputFile);
+  Assert.AreEqual(2, Integer(Length(Options.RuleFilter)));
+  Assert.AreEqual('empty-except', Options.RuleFilter[1]);
+  Assert.AreEqual('Legacy/**', Options.UnitFilter[1]);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Options.MinSeverity));
+end;
+
+procedure TCommandLineOptionsTests.WarnsAboutInvalidLinterValues;
+var
+  Options: TCommandLineOptions;
+begin
+  Options := TCommandLineOptions.Parse(['--format', 'xml', '--min-severity', 'off']);
+  Assert.AreEqual(2, Integer(Length(Options.Warnings)));
+  Assert.AreEqual(Ord(TFindingsFormat.Text), Ord(Options.CheckFormat));
+  Assert.AreEqual(Ord(TRuleSeverity.Default), Ord(Options.MinSeverity));
+  Assert.AreEqual('', Options.CheckTarget);
 end;
 
 initialization

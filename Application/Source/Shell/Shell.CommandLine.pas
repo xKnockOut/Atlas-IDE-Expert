@@ -6,13 +6,23 @@
 //   --log-level <Stufe>   debug, info, warning, error (Standard: info)
 //   --trace <Datei>       Mitschnitt aller JSON-Nachrichten
 //
+// Linter-Modus ohne Editor (#95):
+//   --check <Ziel>        .dproj, Ordner oder einzelne Datei prüfen
+//   --format <Art>        text (Standard), json, sarif
+//   --output <Datei>      Ergebnis in Datei statt auf stdout
+//   --rules <a,b>         nur diese Regeln
+//   --units <a,b>         nur diese Units (Name oder Glob-Muster für Pfade)
+//   --min-severity <S>    hint, info, warning, error
+//
 // Werte können auch mit "=" angegeben werden (--log=server.log). Parameter,
 // die Editoren selbst anhängen (--stdio, --clientProcessId), werden ignoriert.
 
 interface
 
 uses
-  BDLsp.Common.Logging.Contract;
+  BDLsp.Common.Logging.Contract,
+  BDLsp.Common.Configuration.Contract,
+  BDLsp.Common.Rules.Output;
 
 type
   TCommandLineOptions = record
@@ -22,6 +32,13 @@ type
     LogFile: string;
     LogLevel: TLogLevel;
     TraceFile: string;
+    /// <summary>Ziel des Linter-Modus; '' = Server-Modus.</summary>
+    CheckTarget: string;
+    CheckFormat: TFindingsFormat;
+    OutputFile: string;
+    RuleFilter: TArray<string>;
+    UnitFilter: TArray<string>;
+    MinSeverity: TRuleSeverity;
     /// <summary>Hinweise zu ungültigen oder unbekannten Parametern, für das Log.</summary>
     Warnings: TArray<string>;
     class function Parse(const AArgs: TArray<string>): TCommandLineOptions; static;
@@ -33,7 +50,9 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  BDLsp.Common.Configuration.Parser,
+  BDLsp.Common.Rules.Filter;
 
 { TCommandLineOptions }
 
@@ -85,6 +104,8 @@ var
 
 var
   Level: TLogLevel;
+  CheckFormat: TFindingsFormat;
+  Severity: TRuleSeverity;
 begin
   Result := Default(TCommandLineOptions);
   Result.LogLevel := DefaultLogLevel;
@@ -123,6 +144,42 @@ begin
     begin
       if TakeValue then
         Result.TraceFile := Value;
+    end
+    else if Name = '--check' then
+    begin
+      if TakeValue then
+        Result.CheckTarget := Value;
+    end
+    else if Name = '--format' then
+    begin
+      if TakeValue then
+        if TFindingsOutput.TryParseFormat(Value, CheckFormat) then
+          Result.CheckFormat := CheckFormat
+        else
+          AddWarning(Format('Unbekanntes Format "%s", verwendet wird text', [Value]));
+    end
+    else if Name = '--output' then
+    begin
+      if TakeValue then
+        Result.OutputFile := Value;
+    end
+    else if Name = '--rules' then
+    begin
+      if TakeValue then
+        Result.RuleFilter := TFindingFilter.SplitList(Value);
+    end
+    else if Name = '--units' then
+    begin
+      if TakeValue then
+        Result.UnitFilter := TFindingFilter.SplitList(Value);
+    end
+    else if Name = '--min-severity' then
+    begin
+      if TakeValue then
+        if TConfigurationParser.TryParseSeverity(Value, Severity) and (Severity <> TRuleSeverity.Off) then
+          Result.MinSeverity := Severity
+        else
+          AddWarning(Format('Unbekannter Schweregrad "%s", gemeldet wird alles', [Value]));
     end
     else if (Name = '--stdio') or (Name = '--clientprocessid') then
       // von Editoren angehängt, ohne Bedeutung für den Server
