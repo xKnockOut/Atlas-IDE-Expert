@@ -34,6 +34,13 @@
         "configuration": "./language-configuration.json"
       }
     ],
+    "semanticTokenTypes": [
+      {
+        "id": "field",
+        "superType": "property",
+        "description": "Feld einer Klasse oder eines Records."
+      }
+    ],
     "configuration": {
       "title": "BetterDelphiLSP",
       "properties": {

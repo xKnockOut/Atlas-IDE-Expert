@@ -69,6 +69,10 @@ type
     FCurrent: TUnitIndex;
     FOffset: Integer;
     FInImplementation: Boolean;
+    // Mit PinTree vorab ausgewertete Unit eines Baums, für viele Aufrufe auf demselben Baum.
+    FPinnedTree: TSyntaxTree;
+    FPinnedFile: string;
+    FPinnedUnit: TUnitIndex;
     function FindUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
     function UnitOf(const AResolved: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
     function ScopeUnits(const AUnit: TUnitIndex; AWithImplementation: Boolean): TArray<string>;
@@ -118,6 +122,10 @@ type
     /// <summary>Mitglieder hinter A.B. (samt geerbter) bzw. interface-Symbole, wenn die Kette eine Unit ist.</summary>
     function MemberCandidates(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
       AOffset: Integer): TArray<TResolvedSymbol>;
+    /// <summary>Wertet ATree einmal aus und nutzt das für alle folgenden Aufrufe mit demselben Baum,
+    /// bis UnpinTree. Der Aufrufer gibt den Baum erst nach UnpinTree frei.</summary>
+    procedure PinTree(ATree: TSyntaxTree; const AFileName: string);
+    procedure UnpinTree;
     /// <summary>Löst ATypeName so auf, wie er in AFromUnit stünde (z. B. Vorfahren aus dem Index).</summary>
     function ResolveTypeFrom(const AFromUnit: TUnitIndex; const ATypeName: string; out AResult: TResolvedSymbol): Boolean;
     /// <summary>Unit-Namespaces des Projekts (DCC_Namespace) für uses ohne Präfix.</summary>
@@ -674,7 +682,10 @@ var
 begin
   FTree := ATree;
   FOffset := AOffset;
-  FCurrent := TIndexExtractor.Extract(ATree, AFileName);
+  if (ATree = FPinnedTree) and SameText(AFileName, FPinnedFile) then
+    FCurrent := FPinnedUnit
+  else
+    FCurrent := TIndexExtractor.Extract(ATree, AFileName);
   Section := ATree.Root.FindChild(TSyntaxKind.InterfaceSection);
   // Programme haben keinen interface-Teil: alles ist "implementation".
   FInImplementation := (Section = nil) or not Contains(Section, AOffset);
@@ -877,6 +888,20 @@ begin
     Seen.Free;
     List.Free;
   end;
+end;
+
+procedure TNameResolver.PinTree(ATree: TSyntaxTree; const AFileName: string);
+begin
+  FPinnedTree := ATree;
+  FPinnedFile := AFileName;
+  FPinnedUnit := TIndexExtractor.Extract(ATree, AFileName);
+end;
+
+procedure TNameResolver.UnpinTree;
+begin
+  FPinnedTree := nil;
+  FPinnedFile := '';
+  FPinnedUnit := Default(TUnitIndex);
 end;
 
 function TNameResolver.ResolveTypeFrom(const AFromUnit: TUnitIndex; const ATypeName: string;

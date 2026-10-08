@@ -46,6 +46,7 @@ uses
   BDLsp.Common.Lsp.Implementations.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Implementations.Tests.pas',
   BDLsp.Common.Lsp.InlayHints.Tests in 'Common\Lsp\BDLsp.Common.Lsp.InlayHints.Tests.pas',
   BDLsp.Common.Lsp.CodeLens.Tests in 'Common\Lsp\BDLsp.Common.Lsp.CodeLens.Tests.pas',
+  BDLsp.Common.Lsp.SemanticTokens.Tests in 'Common\Lsp\BDLsp.Common.Lsp.SemanticTokens.Tests.pas',
   BDLsp.Common.Lsp.Status.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Status.Tests.pas',
   BDLsp.Common.Lsp.DocWiki.Tests in 'Common\Lsp\BDLsp.Common.Lsp.DocWiki.Tests.pas',
   BDLsp.Common.Lsp.Hover.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Hover.Tests.pas',
