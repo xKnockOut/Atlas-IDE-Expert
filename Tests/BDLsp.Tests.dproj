@@ -100,6 +100,7 @@
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.WorkspaceSymbols.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.DocumentHighlights.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.KeywordHighlights.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.FormEvents.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.WatchedFiles.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.WorkspaceFolders.Tests.pas"/>
         <DCCReference Include="Windows\Documents\BDLsp.Windows.Documents.PathCanonicalizer.Tests.pas"/>

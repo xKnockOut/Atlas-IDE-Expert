@@ -50,6 +50,12 @@ type
     FilterText: string;
     /// <summary>Weitere Änderungen beim Annehmen, z. B. der uses-Eintrag.</summary>
     AdditionalEdits: TArray<TRuleEdit>;
+    /// <summary>Eingefügter Text; '' = Name.</summary>
+    InsertText: string;
+    /// <summary>Befehl nach dem Annehmen, z. B. für Änderungen in anderen Dateien; '' ohne.</summary>
+    Command: string;
+    CommandTitle: string;
+    CommandArguments: TArray<string>;
   end;
 
   TCompletionItems = record
@@ -57,6 +63,10 @@ type
     /// <summary>Liste wurde gekürzt; der Editor fragt beim Weitertippen neu.</summary>
     Incomplete: Boolean;
   end;
+
+  /// <summary>Vervollständigung für Formulardateien (#111); False, wenn nichts anzubieten ist.</summary>
+  TFormCompletionFunc = reference to function(const AUri, AText: string; const APosition: TTextPosition;
+    out AItems: TCompletionItems): Boolean;
 
   TCompletionMatchingFunc = reference to function(const AUri: string): TCompletionMatching;
 
@@ -74,6 +84,7 @@ type
     FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
     FMatchingFor: TCompletionMatchingFunc;
+    FFormItems: TFormCompletionFunc;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
@@ -92,6 +103,8 @@ type
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
     /// <summary>Auswahl je Dokument; ohne Zuweisung unscharf.</summary>
     property MatchingFor: TCompletionMatchingFunc read FMatchingFor write FMatchingFor;
+    /// <summary>Vorschläge in .dfm/.fmx; ohne Zuweisung keine.</summary>
+    property FormItems: TFormCompletionFunc read FFormItems write FFormItems;
   end;
 
 implementation
@@ -108,6 +121,7 @@ uses
   BDLsp.Common.Lsp.FuzzyMatch,
   BDLsp.Common.Editing.UsesClause,
   BDLsp.Common.Lsp.CompilerDirectives,
+  BDLsp.Common.Dfm.Parser,
   BDLsp.Common.Lsp.Internals.Cancellation;
 
 const
@@ -526,9 +540,10 @@ end;
 
 class function TLspCompletion.ToJson(const AItems: TCompletionItems): TJSONObject;
 var
-  Items, Edits: TJSONArray;
-  Entry, EditJson: TJSONObject;
+  Items, Edits, Arguments: TJSONArray;
+  Entry, EditJson, CommandJson: TJSONObject;
   Edit: TRuleEdit;
+  Argument: string;
   Index: Integer;
 begin
   Result := TJSONObject.Create;
@@ -545,6 +560,19 @@ begin
       Entry.AddPair('detail', AItems.Items[Index].Detail);
     if AItems.Items[Index].FilterText <> '' then
       Entry.AddPair('filterText', AItems.Items[Index].FilterText);
+    if AItems.Items[Index].InsertText <> '' then
+      Entry.AddPair('insertText', AItems.Items[Index].InsertText);
+    if AItems.Items[Index].Command <> '' then
+    begin
+      CommandJson := TJSONObject.Create;
+      Entry.AddPair('command', CommandJson);
+      CommandJson.AddPair('title', AItems.Items[Index].CommandTitle);
+      CommandJson.AddPair('command', AItems.Items[Index].Command);
+      Arguments := TJSONArray.Create;
+      CommandJson.AddPair('arguments', Arguments);
+      for Argument in AItems.Items[Index].CommandArguments do
+        Arguments.Add(Argument);
+    end;
     if Length(AItems.Items[Index].AdditionalEdits) > 0 then
     begin
       Edits := TJSONArray.Create;
@@ -581,6 +609,12 @@ begin
   if not FStore.TryGet(Uri, Document) then
     Exit(TJSONNull.Create);
   Cancellation := TRequestCancellation.Create(ACancellation);
+  if TDfmParser.IsFormFile(TDocumentUris.ToPath(Uri)) then
+  begin
+    if Assigned(FFormItems) and FFormItems(Uri, Document.Text, TLspPositions.ReadPosition(PositionValue), Directives) then
+      Exit(ToJson(Directives));
+    Exit(TJSONNull.Create);
+  end;
   if DirectiveItems(Document.Text, TLspPositions.ReadPosition(PositionValue), Directives) then
     Exit(ToJson(Directives));
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);

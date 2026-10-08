@@ -196,6 +196,8 @@ uses
   BDLsp.Common.Documents.Providers.DocumentStore,
   BDLsp.Common.Documents.FileEncoding,
   BDLsp.Common.Documents.Uris,
+  BDLsp.Common.JsonRpc.Messages,
+  BDLsp.Common.Lsp.FormEvents,
   BDLsp.Common.Index.SymbolIndex,
   BDLsp.Common.Editing.UsesActions,
   BDLsp.Common.Rules.Builtin,
@@ -489,6 +491,21 @@ begin
     begin
       Result := CompletionSettingsFor(AUri).Matching;
     end;
+  // Ereignis-Handler in .dfm/.fmx (#111); die Unit liegt neben der Formulardatei.
+  FCompletion.FormItems :=
+    function(const AUri, AText: string; const APosition: TTextPosition; out AItems: TCompletionItems): Boolean
+    var
+      FormFile, UnitText: string;
+    begin
+      FormFile := TDocumentUris.ToPath(AUri);
+      if not ReadSourceText(ChangeFileExt(FormFile, '.pas'), UnitText) then
+        UnitText := '';
+      Result := TFormEvents.Items(FormFile, AText, UnitText, APosition, FIndex,
+        function(const AFileName: string; out AFileText: string): Boolean
+        begin
+          Result := ReadSourceText(AFileName, AFileText);
+        end, AItems);
+    end;
   FCompletion.Attach(FDispatcher);
   FSignatureHelp := TLspSignatureHelp.Create(FDocuments, FIndex,
     function(const AFileName: string; out AText: string): Boolean
@@ -644,6 +661,29 @@ begin
   FColors := TLspColors.Create(FDocuments, WindowsSystemColor);
   FColors.Attach(FDispatcher);
   FCommands := TLspCommands.Create;
+  FCommands.Register(TFormEvents.CreateCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    var
+      Params, Request: TJSONObject;
+    begin
+      Params := TFormEvents.ApplyEditParams(AArguments,
+        function(const AFileName: string; out AText: string): Boolean
+        begin
+          Result := ReadSourceText(AFileName, AText);
+        end);
+      if Params <> nil then
+      begin
+        // Die Antwort des Clients wertet der Dispatcher nicht aus; die id muss nur eindeutig sein.
+        Request := TJsonRpcMessages.Notification(TLspFileOperations.ApplyEditMethod, Params);
+        Request.AddPair('id', 'bdlsp-event-' + IntToStr(TThread.GetTickCount64));
+        try
+          FTransport.WriteMessage(Request);
+        finally
+          Request.Free;
+        end;
+      end;
+      Result := TJSONNull.Create;
+    end);
   FCommands.Register(StatusCommand,
     function(const AArguments: TJSONArray): TJSONValue
     var

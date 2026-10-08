@@ -64,6 +64,7 @@ uses
   BDLsp.Common.Lsp.WorkspaceSymbols.Tests in 'Common\Lsp\BDLsp.Common.Lsp.WorkspaceSymbols.Tests.pas',
   BDLsp.Common.Lsp.DocumentHighlights.Tests in 'Common\Lsp\BDLsp.Common.Lsp.DocumentHighlights.Tests.pas',
   BDLsp.Common.Lsp.KeywordHighlights.Tests in 'Common\Lsp\BDLsp.Common.Lsp.KeywordHighlights.Tests.pas',
+  BDLsp.Common.Lsp.FormEvents.Tests in 'Common\Lsp\BDLsp.Common.Lsp.FormEvents.Tests.pas',
   BDLsp.Common.Lsp.WatchedFiles.Tests in 'Common\Lsp\BDLsp.Common.Lsp.WatchedFiles.Tests.pas',
   BDLsp.Common.Lsp.WorkspaceFolders.Tests in 'Common\Lsp\BDLsp.Common.Lsp.WorkspaceFolders.Tests.pas',
   BDLsp.Windows.Documents.PathCanonicalizer.Tests in 'Windows\Documents\BDLsp.Windows.Documents.PathCanonicalizer.Tests.pas',

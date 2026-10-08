@@ -151,6 +151,7 @@ contains
   BDLsp.Common.Lsp.WorkspaceSymbols in 'Source\Lsp\BDLsp.Common.Lsp.WorkspaceSymbols.pas',
   BDLsp.Common.Lsp.DocumentHighlights in 'Source\Lsp\BDLsp.Common.Lsp.DocumentHighlights.pas',
   BDLsp.Common.Lsp.KeywordHighlights in 'Source\Lsp\BDLsp.Common.Lsp.KeywordHighlights.pas',
+  BDLsp.Common.Lsp.FormEvents in 'Source\Lsp\BDLsp.Common.Lsp.FormEvents.pas',
   BDLsp.Common.Lsp.WatchedFiles in 'Source\Lsp\BDLsp.Common.Lsp.WatchedFiles.pas',
   BDLsp.Common.Lsp.InactiveRegions in 'Source\Lsp\BDLsp.Common.Lsp.InactiveRegions.pas',
   BDLsp.Common.Lsp.WorkspaceFolders in 'Source\Lsp\BDLsp.Common.Lsp.WorkspaceFolders.pas',
