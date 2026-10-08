@@ -121,6 +121,7 @@
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.DocWiki.pas"/>
         <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.Statistics.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Commands.pas"/>
+        <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.References.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Status.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.CodeActions.pas"/>
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.ControlFlow.pas"/>
