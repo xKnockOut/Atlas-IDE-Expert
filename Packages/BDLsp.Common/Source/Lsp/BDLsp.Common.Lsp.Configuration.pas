@@ -64,7 +64,7 @@ uses
   BDLsp.Common.JsonRpc.Messages,
   BDLsp.Common.Lsp.Contract,
   BDLsp.Common.Lsp.Positions,
-  BDLsp.Common.Lsp.Uris,
+  BDLsp.Common.Documents.Uris,
   BDLsp.Common.Configuration.Parser;
 
 const
@@ -74,7 +74,7 @@ function IsConfigurationUri(const AUri: string): Boolean;
 var
   Path: string;
 begin
-  Path := StringReplace(TLspUris.ToPath(AUri), '\', '/', [rfReplaceAll]);
+  Path := StringReplace(TDocumentUris.ToPath(AUri), '\', '/', [rfReplaceAll]);
   Result := SameText(Copy(Path, LastDelimiter('/', Path) + 1, MaxInt), ConfigurationFileName);
 end;
 
@@ -126,7 +126,7 @@ end;
 
 function TLspConfiguration.IsWorkspaceFile(const AUri: string): Boolean;
 begin
-  Result := (FFileName <> '') and SameText(TLspUris.ToPath(AUri), FFileName);
+  Result := (FFileName <> '') and SameText(TDocumentUris.ToPath(AUri), FFileName);
 end;
 
 class function TLspConfiguration.BuildParams(const AUri: string; AVersion: Integer;
@@ -178,7 +178,7 @@ begin
   if (FFileName <> '') and FReadFile(FFileName, Text) then
   begin
     Settings := TConfigurationParser.Parse(Text, Issues);
-    Publish(TLspUris.FromPath(FFileName), -1, Issues);
+    Publish(TDocumentUris.FromPath(FFileName), -1, Issues);
   end
   else
     Settings := TServerSettings.Default;
@@ -239,7 +239,7 @@ begin
     Exit;
   Value := AParams.GetValue('rootUri');
   if (Value is TJSONString) and (Value.Value <> '') then
-    Exit(TLspUris.ToPath(Value.Value));
+    Exit(TDocumentUris.ToPath(Value.Value));
   Value := AParams.GetValue('workspaceFolders');
   if Value is TJSONArray then
   begin
@@ -248,7 +248,7 @@ begin
     begin
       Value := TJSONObject(Folders.Items[0]).GetValue('uri');
       if Value is TJSONString then
-        Exit(TLspUris.ToPath(Value.Value));
+        Exit(TDocumentUris.ToPath(Value.Value));
     end;
   end;
   Value := AParams.GetValue('rootPath');

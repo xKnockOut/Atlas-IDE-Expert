@@ -11,19 +11,6 @@ uses
 
 type
   [TestFixture]
-  TLspUrisTests = class
-  public
-    [Test]
-    procedure ConvertsWindowsPaths;
-    [Test]
-    procedure ConvertsUncAndUnixPaths;
-    [Test]
-    procedure DecodesUtf8;
-    [Test]
-    procedure IgnoresOtherSchemes;
-  end;
-
-  [TestFixture]
   TLspConfigurationTests = class
   private
     FStore: IDocumentStore;
@@ -55,40 +42,11 @@ uses
   System.SysUtils,
   System.JSON,
   BDLsp.Common.Documents.Providers.DocumentStore,
-  BDLsp.Common.Configuration.Contract,
-  BDLsp.Common.Lsp.Uris;
+  BDLsp.Common.Configuration.Contract;
 
 const
   Root = 'c:\Projekt';
   ConfigUri = 'file:///c%3A/Projekt/delphi-lsp.json';
-
-{ TLspUrisTests }
-
-procedure TLspUrisTests.ConvertsWindowsPaths;
-begin
-  Assert.AreEqual('c:\Projekt\A B.pas', TLspUris.ToPath('file:///c%3A/Projekt/A%20B.pas'));
-  Assert.AreEqual('C:\Projekt\A.pas', TLspUris.ToPath('file:///C:/Projekt/A.pas'));
-  Assert.AreEqual('file:///c%3A/Projekt/A%20B.pas', TLspUris.FromPath('C:\Projekt\A B.pas'));
-  Assert.IsTrue(TLspUris.SameFile('file:///c%3A/Projekt/A.pas', 'file:///C:/projekt/a.pas'));
-end;
-
-procedure TLspUrisTests.ConvertsUncAndUnixPaths;
-begin
-  Assert.AreEqual('\\server\share\A.pas', TLspUris.ToPath('file://server/share/A.pas'));
-  Assert.AreEqual('file://server/share/A.pas', TLspUris.FromPath('\\server\share\A.pas'));
-  Assert.AreEqual('/home/a/A.pas', TLspUris.ToPath('file:///home/a/A.pas'));
-end;
-
-procedure TLspUrisTests.DecodesUtf8;
-begin
-  Assert.AreEqual('c:\Gr' + #$00FC + 'n.pas', TLspUris.ToPath('file:///c%3A/Gr%C3%BCn.pas'));
-  Assert.AreEqual('file:///c%3A/Gr%C3%BCn.pas', TLspUris.FromPath('c:\Gr' + #$00FC + 'n.pas'));
-end;
-
-procedure TLspUrisTests.IgnoresOtherSchemes;
-begin
-  Assert.AreEqual('', TLspUris.ToPath('untitled:Untitled-1'));
-end;
 
 { TLspConfigurationTests }
 
@@ -195,7 +153,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspUrisTests);
   TDUnitX.RegisterTestFixture(TLspConfigurationTests);
 
 end.

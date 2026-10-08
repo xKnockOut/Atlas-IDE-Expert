@@ -67,6 +67,8 @@
         <DCCReference Include="Common\Projects\BDLsp.Common.Projects.Tests.pas"/>
         <DCCReference Include="Windows\Projects\BDLsp.Windows.Projects.DelphiInstallation.Tests.pas"/>
         <DCCReference Include="Common\Documents\BDLsp.Common.Documents.Providers.DocumentStore.Tests.pas"/>
+        <DCCReference Include="Common\Documents\BDLsp.Common.Documents.Uris.Tests.pas"/>
+        <DCCReference Include="Windows\Documents\BDLsp.Windows.Documents.PathCanonicalizer.Tests.pas"/>
         <DCCReference Include="Common\Pascal\BDLsp.Common.Pascal.Lexer.Tests.pas"/>
         <DCCReference Include="Common\Pascal\BDLsp.Common.Pascal.Parser.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Internals.Debouncer.Tests.pas"/>
