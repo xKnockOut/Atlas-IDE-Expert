@@ -41,6 +41,8 @@ type
     FText: string;
     FIssues: TList<TConfigurationIssue>;
     FSettings: TServerSettings;
+    /// <summary>"testProfile" mit einem Namen, der erst nach "profiles" geprüft werden kann.</summary>
+    FTestProfileNode: TJsonNode;
     function PositionAt(AOffset: Integer): TTextPosition;
     procedure Report(AStart, AStop: Integer; const AMessage: string; AIsError: Boolean);
     procedure ReportNode(ANode: TJsonNode; const AMessage: string);
@@ -649,12 +651,22 @@ begin
         ReadOverrides(Value)
       else if Key = 'excludeTests' then
         ExpectBoolean(Value, Key, FSettings.ExcludeTests)
+      else if Key = 'testProfile' then
+      begin
+        if ExpectString(Value, Key, Text) then
+          if FSettings.IsKnownProfile(Text) or (Text = '') then
+            FSettings.TestProfile := Text
+          else
+            FTestProfileNode := Value;
+      end
       else if Key = 'exclude' then
         ReadExclude(Value)
       else if Key = 'minConfidence' then
       begin
         if ExpectString(Value, Key, Text) then
-          if not TConfigurationParser.TryParseConfidence(Text, FSettings.MinConfidence) then
+          if TConfigurationParser.TryParseConfidence(Text, FSettings.MinConfidence) then
+            FSettings.MinConfidenceGiven := True
+          else
             ReportNode(Value, 'Erlaubt sind "low", "medium" und "high"');
       end
       else if Key = 'inlayHints' then
@@ -696,6 +708,11 @@ begin
       if (ProfileNode <> nil) and not FSettings.IsKnownProfile(Text) then
         ReportNode(ProfileNode, Format('Unbekanntes Profil "%s"; eingebaut: %s, sonst unter "profiles" anlegen',
           [Text, string.Join(', ', BuiltinProfileNames)]));
+    if FTestProfileNode <> nil then
+      if FSettings.IsKnownProfile(FTestProfileNode.Value) then
+        FSettings.TestProfile := FTestProfileNode.Value
+      else
+        ReportNode(FTestProfileNode, Format('Unbekanntes Profil "%s"', [FTestProfileNode.Value]));
     for Profile in FSettings.Profiles do
       if not FSettings.IsKnownProfile(Profile.Extends) then
         ReportNode(Root, Format('Profil "%s" erweitert das unbekannte Profil "%s"', [Profile.Name, Profile.Extends]));
@@ -831,10 +848,15 @@ begin
       Result.Overrides := FileSettings.Overrides
     else if Key = 'excludeTests' then
       Result.ExcludeTests := FileSettings.ExcludeTests
+    else if Key = 'testProfile' then
+      Result.TestProfile := FileSettings.TestProfile
     else if Key = 'exclude' then
       Result.Exclude := FileSettings.Exclude
     else if Key = 'minConfidence' then
-      Result.MinConfidence := FileSettings.MinConfidence
+    begin
+      Result.MinConfidence := FileSettings.MinConfidence;
+      Result.MinConfidenceGiven := FileSettings.MinConfidenceGiven;
+    end
     else if Key = 'format' then
     begin
       Result.Format := FileSettings.Format;

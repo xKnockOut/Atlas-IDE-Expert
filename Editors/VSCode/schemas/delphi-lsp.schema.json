@@ -101,7 +101,7 @@
       }
     },
     "profile": {
-      "description": "Regelprofil: standard, fast (nur Bugs und Schwachstellen), strict (experimentelle Regeln an, Hinweise als Warnungen), security, style oder ein eigenes aus \"profiles\". Als Objekt getrennt für Editor und Kommandozeile.",
+      "description": "Regelprofil: standard, fast (nur Bugs und Schwachstellen), strict (experimentelle Regeln an, minConfidence low), security, style oder ein eigenes aus \"profiles\". Als Objekt getrennt für Editor und Kommandozeile.",
       "default": "standard",
       "oneOf": [
         { "type": "string" },
@@ -145,7 +145,12 @@
     "excludeTests": {
       "type": "boolean",
       "default": false,
-      "description": "Test-Units (uses DUnitX.TestFramework, TestFramework oder TestInsight.*) nicht prüfen."
+      "description": "Test-Units und Testprojekte (uses DUnitX.TestFramework, TestFramework oder TestInsight.*) nicht prüfen."
+    },
+    "testProfile": {
+      "type": "string",
+      "description": "Regelprofil für Test-Units und Testprojekte; leer: wie \"profile\".",
+      "examples": ["fast"]
     },
     "compiler": {
       "type": "object",

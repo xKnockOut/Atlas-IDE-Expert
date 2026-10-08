@@ -134,10 +134,14 @@ type
     Profiles: TArray<TRuleProfile>;
     /// <summary>Pfadregeln aus "overrides"; spätere Einträge haben Vorrang.</summary>
     Overrides: TArray<TPathOverride>;
-    /// <summary>Test-Units (DUnit, DUnitX) nicht prüfen.</summary>
+    /// <summary>Test-Units und Testprojekte (DUnit, DUnitX) nicht prüfen.</summary>
     ExcludeTests: Boolean;
+    /// <summary>Regelprofil für Test-Units und Testprojekte, '' = wie Profile.</summary>
+    TestProfile: string;
     /// <summary>Treffer unter dieser Konfidenz werden ausgeblendet; Vorgabe Medium.</summary>
     MinConfidence: TRuleConfidence;
+    /// <summary>"minConfidence" steht ausdrücklich in der Konfiguration und geht dem Profil vor (#146).</summary>
+    MinConfidenceGiven: Boolean;
     /// <summary>Glob-Muster relativ zum Ordner der Konfiguration (*, **, ?).</summary>
     Exclude: TArray<string>;
     /// <summary>Formatierungsstil als JSON-Objekt (Text), sonst ''.</summary>
@@ -347,6 +351,8 @@ begin
   Result.Profiles := nil;
   Result.Overrides := nil;
   Result.ExcludeTests := False;
+  Result.TestProfile := '';
+  Result.MinConfidenceGiven := False;
   Result.MinConfidence := TRuleConfidence.Medium;
   Result.Exclude := nil;
   Result.Format := '';
