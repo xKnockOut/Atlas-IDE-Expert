@@ -391,6 +391,8 @@ begin
   FUnitResolver := Resolver;
   Request.Files := TIndexProjectFiles.Files(Project);
   Request.Defines := TIndexProjectFiles.Defines(Project, ASettings.DelphiVersion);
+  // Dieselben Symbole bestimmen, welche {$IFDEF}-Zweige der Editor abblendet.
+  FSyntaxDiagnostics.SetDefines(Request.Defines);
   Request.ResolveUnit :=
     function(const AUnitName: string): string
     begin

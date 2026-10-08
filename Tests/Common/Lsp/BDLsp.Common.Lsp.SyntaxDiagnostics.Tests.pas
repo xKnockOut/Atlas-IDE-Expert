@@ -52,11 +52,16 @@ type
     procedure PublishesWithin200MsAfterLastChange;
     [Test]
     procedure BuildsParamsForSnapshot;
+    [Test]
+    procedure AddsInactiveRangesAsUnnecessaryHints;
+    [Test]
+    procedure FindsInactiveRanges;
   end;
 
 implementation
 
 uses
+  BDLsp.Common.Lsp.InactiveRegions,
   System.Classes,
   System.Diagnostics,
   BDLsp.Common.Documents.Providers.DocumentStore,
@@ -296,6 +301,51 @@ begin
   finally
     Params.Free;
   end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.AddsInactiveRangesAsUnnecessaryHints;
+var
+  Params: TJSONObject;
+  Document: ITextDocument;
+  Item: TJSONValue;
+begin
+  Document := FStore.Open(Uri, 'objectpascal', 1, ValidCode);
+  Params := TLspSyntaxDiagnostics.BuildParams(Document,
+    [TTextRange.Create(TTextPosition.Create(1, 0), TTextPosition.Create(2, 0))]);
+  try
+    Assert.AreEqual(1, Params.GetValue<TJSONArray>('diagnostics').Count);
+    Item := Params.GetValue<TJSONArray>('diagnostics').Items[0];
+    Assert.AreEqual(4, Item.GetValue<Integer>('severity'));
+    Assert.AreEqual(1, Item.GetValue<Integer>('tags[0]'));
+    Assert.AreEqual(1, Item.GetValue<Integer>('range.start.line'));
+  finally
+    Params.Free;
+  end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.FindsInactiveRanges;
+const
+  Code =
+    'unit U;'#10 +
+    'interface'#10 +
+    '{$IFDEF WIN64}'#10 +
+    'const A = 1;'#10 +
+    '{$ELSE}'#10 +
+    'const A = 2;'#10 +
+    '{$ENDIF}'#10 +
+    '{$IFDEF DEBUG}{$ENDIF}'#10 +
+    'implementation'#10 +
+    'end.';
+var
+  Ranges: TArray<TTextRange>;
+begin
+  Ranges := TLspInactiveRegions.Ranges(Code, ['WIN64']);
+  Assert.AreEqual(1, Integer(Length(Ranges)));
+  Assert.AreEqual(4, Ranges[0].StartPos.Line);
+  Assert.AreEqual(6, Ranges[0].EndPos.Line);
+  Ranges := TLspInactiveRegions.Ranges(Code, nil);
+  Assert.AreEqual(1, Integer(Length(Ranges)));
+  Assert.AreEqual(2, Ranges[0].StartPos.Line);
 end;
 
 initialization
