@@ -30,6 +30,8 @@ uses
   BDLsp.Common.Documents.Providers.DocumentStore.Tests in 'Common\Documents\BDLsp.Common.Documents.Providers.DocumentStore.Tests.pas',
   BDLsp.Common.Pascal.Lexer.Tests in 'Common\Pascal\BDLsp.Common.Pascal.Lexer.Tests.pas',
   BDLsp.Common.Lsp.Internals.Debouncer.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Internals.Debouncer.Tests.pas',
+  BDLsp.Common.JsonRpc.Watchdog.Tests in 'Common\JsonRpc\BDLsp.Common.JsonRpc.Watchdog.Tests.pas',
+  BDLsp.Windows.Diagnostics.StackTrace.Tests in 'Windows\Diagnostics\BDLsp.Windows.Diagnostics.StackTrace.Tests.pas',
   BDLsp.Common.Lsp.DocumentSymbols.Tests in 'Common\Lsp\BDLsp.Common.Lsp.DocumentSymbols.Tests.pas',
   BDLsp.Common.Lsp.FoldingRanges.Tests in 'Common\Lsp\BDLsp.Common.Lsp.FoldingRanges.Tests.pas',
   BDLsp.Common.Lsp.SelectionRanges.Tests in 'Common\Lsp\BDLsp.Common.Lsp.SelectionRanges.Tests.pas',
