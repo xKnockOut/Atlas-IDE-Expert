@@ -13,6 +13,9 @@
 //
 // Windows-1252 wird über eine eigene Tabelle umgesetzt, damit das Ergebnis
 // nicht von der Codepage des Systems abhängt.
+//
+// TEncodingSurvey zählt die Kodierungen mehrerer Dateien, damit der Server
+// auf ein Projekt mit gemischten Kodierungen hinweisen kann.
 
 interface
 
@@ -30,6 +33,19 @@ type
     /// <summary>Die Datei enthält verschiedene Zeilenumbrüche; LineBreak ist der häufigste.</summary>
     MixedLineBreaks: Boolean;
     class function Create(AEncoding: TFileEncodingKind; ALineBreak: TLineBreakStyle): TFileFormat; static;
+  end;
+
+  /// <summary>Zählt Kodierungen; reines ASCII passt zu jeder und zählt getrennt.</summary>
+  TEncodingSurvey = record
+    Ascii: Integer;
+    Utf8: Integer;
+    Ansi: Integer;
+    Utf16: Integer;
+    procedure Add(const ABytes: TBytes);
+    /// <summary>Windows-1252 neben UTF-8 oder UTF-16.</summary>
+    function IsMixed: Boolean;
+    /// <summary>Zum Beispiel "3 Dateien in Windows-1252, 12 in UTF-8".</summary>
+    function Describe: string;
   end;
 
   TFileEncoding = class
@@ -140,6 +156,54 @@ begin
     if ABytes[Index] <> APrefix[Index] then
       Exit(False);
   Result := True;
+end;
+
+{ TEncodingSurvey }
+
+procedure TEncodingSurvey.Add(const ABytes: TBytes);
+var
+  HasNonAscii: Boolean;
+begin
+  if HasPrefix(ABytes, [$EF, $BB, $BF]) then
+    Inc(Utf8)
+  else if HasPrefix(ABytes, [$FF, $FE]) or HasPrefix(ABytes, [$FE, $FF]) then
+    Inc(Utf16)
+  else if not CheckUtf8(ABytes, 0, HasNonAscii) then
+    Inc(Ansi)
+  else if HasNonAscii then
+    Inc(Utf8)
+  else
+    Inc(Ascii);
+end;
+
+function TEncodingSurvey.IsMixed: Boolean;
+begin
+  Result := (Ansi > 0) and (Utf8 + Utf16 > 0);
+end;
+
+function TEncodingSurvey.Describe: string;
+
+  procedure Append(ACount: Integer; const AName: string);
+  begin
+    if ACount = 0 then
+      Exit;
+    if Result = '' then
+    begin
+      if ACount = 1 then
+        Result := '1 Datei in ' + AName
+      else
+        Result := Format('%d Dateien in %s', [ACount, AName]);
+    end
+    else
+      Result := Result + Format(', %d in %s', [ACount, AName]);
+  end;
+
+begin
+  Result := '';
+  Append(Ansi, 'Windows-1252');
+  Append(Utf8, 'UTF-8');
+  Append(Utf16, 'UTF-16');
+  Append(Ascii, 'reinem ASCII');
 end;
 
 function DecodeCp1252(const ABytes: TBytes): string;

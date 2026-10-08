@@ -36,7 +36,10 @@ type
     FDefines: TArray<string>;
     FHasDefines: Boolean;
     FNamespaces: TArray<string>;
+    FProjectFiles: TArray<string>;
     FOnProjectLoaded: TProc;
+    /// <summary>Weist auf gemischte Kodierungen der Projektdateien hin (Index-Thread).</summary>
+    procedure ReportEncodings;
     procedure StartIndex(const ASettings: TServerSettings);
     function FindProjectFile(const ASettings: TServerSettings): string;
     function GetNamespaces: TArray<string>;
@@ -116,6 +119,8 @@ begin
       FLogger.Info(Format('Symbolindex für %s fertig in %d ms: %d Units, %d Symbole (%d neu eingelesen, %d aus dem Cache, %d fehlen)%s',
         [FName, AElapsedMs, FIndex.UnitCount, FIndex.SymbolCount, AResult.Parsed, AResult.FromCache, AResult.Missing,
          IfThen(AResult.Cancelled, ', abgebrochen', '')]));
+      if not AResult.Cancelled then
+        ReportEncodings;
     end;
   FIndexService.OnError :=
     procedure(const AError: Exception)
@@ -181,6 +186,29 @@ begin
   finally
     TMonitor.Exit(FLock);
   end;
+end;
+
+procedure TShellWorkspace.ReportEncodings;
+var
+  Files: TArray<string>;
+  FileName: string;
+  Survey: TEncodingSurvey;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Files := FProjectFiles;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  Survey := Default(TEncodingSurvey);
+  for FileName in Files do
+    if FileExists(FileName) then
+      Survey.Add(TFile.ReadAllBytes(FileName));
+  if Survey.IsMixed then
+    FLogger.Warning(Format('Gemischte Kodierungen im Projekt %s: %s. Beim Schreiben behält jede Datei ihre Kodierung.',
+      [FName, Survey.Describe]))
+  else
+    FLogger.Debug(Format('Kodierungen im Projekt %s: %s', [FName, Survey.Describe]));
 end;
 
 function TShellWorkspace.FindProjectFile(const ASettings: TServerSettings): string;
@@ -286,6 +314,7 @@ begin
     FDefines := Request.Defines;
     FHasDefines := True;
     FNamespaces := Project.Namespaces;
+    FProjectFiles := Request.Files;
   finally
     TMonitor.Exit(FLock);
   end;
