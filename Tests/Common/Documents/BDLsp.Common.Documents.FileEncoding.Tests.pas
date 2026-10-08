@@ -33,6 +33,10 @@ type
     procedure EncodeNormalizesInsertedLineBreaks;
     [Test]
     procedure UnmappableAnsiCharacterBecomesQuestionMark;
+    [Test]
+    procedure SurveyCountsEncodings;
+    [Test]
+    procedure SurveyDetectsMixedProjects;
   end;
 
 implementation
@@ -172,6 +176,36 @@ var
 begin
   Format := TFileFormat.Create(TFileEncodingKind.Ansi1252, TLineBreakStyle.CRLF);
   Assert.IsTrue(SameBytes(Bytes([$3F, $80]), TFileEncoding.Encode(#$0416#$20AC, Format)));
+end;
+
+procedure TFileEncodingTests.SurveyCountsEncodings;
+var
+  Survey: TEncodingSurvey;
+begin
+  Survey := Default(TEncodingSurvey);
+  Survey.Add(Bytes([$41, $42]));
+  Survey.Add(Bytes([$61, $C3, $A4]));
+  Survey.Add(Bytes([$EF, $BB, $BF, $41]));
+  Survey.Add(Bytes([$61, $E4]));
+  Survey.Add(Bytes([$FF, $FE, $41, $00]));
+  Assert.AreEqual(1, Survey.Ascii);
+  Assert.AreEqual(2, Survey.Utf8);
+  Assert.AreEqual(1, Survey.Ansi);
+  Assert.AreEqual(1, Survey.Utf16);
+  Assert.AreEqual('1 Datei in Windows-1252, 2 in UTF-8, 1 in UTF-16, 1 in reinem ASCII', Survey.Describe);
+end;
+
+procedure TFileEncodingTests.SurveyDetectsMixedProjects;
+var
+  Survey: TEncodingSurvey;
+begin
+  Survey := Default(TEncodingSurvey);
+  // ASCII passt zu allem und mischt nichts.
+  Survey.Add(Bytes([$41]));
+  Survey.Add(Bytes([$61, $E4]));
+  Assert.IsFalse(Survey.IsMixed);
+  Survey.Add(Bytes([$61, $C3, $A4]));
+  Assert.IsTrue(Survey.IsMixed);
 end;
 
 initialization
