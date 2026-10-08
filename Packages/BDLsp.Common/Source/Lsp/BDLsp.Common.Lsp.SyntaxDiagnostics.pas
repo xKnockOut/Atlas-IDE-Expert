@@ -4,7 +4,7 @@
 // Nach didOpen und didChange wird das Dokument nach einer kurzen Verzögerung
 // geparst (Debouncing beim Tippen); bei didClose werden die Meldungen gelöscht.
 // Jede Meldung trägt Zeile, Spalte und Endposition in UTF-16.
-// Sind die Symbole des Projekts bekannt (SetDefines), kommen inaktive
+// Sind die Symbole des Projekts bekannt (DefinesProvider), kommen inaktive
 // {$IFDEF}-Bereiche als Hinweise mit dem Tag Unnecessary dazu; der Editor
 // blendet sie ab. Ohne Projekt wird nichts abgeblendet, weil die aktiven
 // Symbole dann nicht bekannt sind.
@@ -19,6 +19,10 @@ uses
   BDLsp.Common.Lsp.Internals.Debouncer;
 
 type
+  /// <summary>Symbole für das Dokument AUri; False, wenn kein Projekt sie festlegt.
+  /// Wird im Hintergrund-Thread aufgerufen.</summary>
+  TDefinesProvider = reference to function(const AUri: string; out ADefines: TArray<string>): Boolean;
+
   TLspSyntaxDiagnostics = class
   public const
     /// <summary>Verzögerung nach dem letzten Tastendruck; mit Parsen bleibt es unter 200 ms.</summary>
@@ -32,15 +36,15 @@ type
     /// <summary>Hält Prüfen und Senden zusammen, damit nach dem Schließen nichts Veraltetes mehr kommt.</summary>
     FSendLock: TObject;
     FDefinesLock: TObject;
-    FDefines: TArray<string>;
-    FHasDefines: Boolean;
+    FDefinesProvider: TDefinesProvider;
     procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
     procedure ScheduleParse(const ADocument: ITextDocument);
     procedure Publish(const ADocument: ITextDocument);
     function IsCurrent(const ADocument: ITextDocument): Boolean;
     function GetOnError: TProc<Exception>;
     procedure SetOnError(const AValue: TProc<Exception>);
-    function CurrentDefines(out ADefines: TArray<string>): Boolean;
+    function CurrentDefines(const AUri: string; out ADefines: TArray<string>): Boolean;
+    procedure SetDefinesProvider(const AValue: TDefinesProvider);
   public
     /// <summary>Bei ADelayMs = 0 wird sofort im Thread der Nachrichtenschleife geparst.</summary>
     constructor Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
@@ -53,12 +57,14 @@ type
     /// <summary>Wie oben, zusätzlich mit inaktiven Bereichen als Hinweise (Tag Unnecessary).</summary>
     class function BuildParams(const ADocument: ITextDocument;
       const AInactive: TArray<TTextRange>): TJSONObject; overload; static;
-    /// <summary>Symbole für das Abblenden; prüft geöffnete Dokumente neu.</summary>
-    procedure SetDefines(const ADefines: TArray<string>);
+    /// <summary>Prüft alle geöffneten Dokumente neu, z. B. nach geänderten Symbolen.</summary>
+    procedure Refresh;
     /// <summary>Parameter mit leerer Liste, z. B. nach dem Schließen. Der Aufrufer übernimmt das Objekt.</summary>
     class function BuildEmptyParams(const AUri: string): TJSONObject; static;
     /// <summary>Wird bei Ausnahmen beim Parsen im Hintergrund aufgerufen.</summary>
     property OnError: TProc<Exception> read GetOnError write SetOnError;
+    /// <summary>Liefert die Symbole für das Abblenden inaktiver Bereiche.</summary>
+    property DefinesProvider: TDefinesProvider write SetDefinesProvider;
   end;
 
 implementation
@@ -120,28 +126,34 @@ begin
   FDebouncer.OnError := AValue;
 end;
 
-function TLspSyntaxDiagnostics.CurrentDefines(out ADefines: TArray<string>): Boolean;
+function TLspSyntaxDiagnostics.CurrentDefines(const AUri: string; out ADefines: TArray<string>): Boolean;
+var
+  Provider: TDefinesProvider;
 begin
   TMonitor.Enter(FDefinesLock);
   try
-    ADefines := FDefines;
-    Result := FHasDefines;
+    Provider := FDefinesProvider;
+  finally
+    TMonitor.Exit(FDefinesLock);
+  end;
+  ADefines := nil;
+  Result := Assigned(Provider) and Provider(AUri, ADefines);
+end;
+
+procedure TLspSyntaxDiagnostics.SetDefinesProvider(const AValue: TDefinesProvider);
+begin
+  TMonitor.Enter(FDefinesLock);
+  try
+    FDefinesProvider := AValue;
   finally
     TMonitor.Exit(FDefinesLock);
   end;
 end;
 
-procedure TLspSyntaxDiagnostics.SetDefines(const ADefines: TArray<string>);
+procedure TLspSyntaxDiagnostics.Refresh;
 var
   Document: ITextDocument;
 begin
-  TMonitor.Enter(FDefinesLock);
-  try
-    FDefines := ADefines;
-    FHasDefines := True;
-  finally
-    TMonitor.Exit(FDefinesLock);
-  end;
   for Document in FStore.Documents do
     if not SameText(ExtractFileExt(Document.Uri), '.json') then
       ScheduleParse(Document);
@@ -190,7 +202,7 @@ var
   Params: TJSONObject;
   Defines: TArray<string>;
 begin
-  if CurrentDefines(Defines) then
+  if CurrentDefines(ADocument.Uri, Defines) then
     Params := BuildParams(ADocument, TLspInactiveRegions.Ranges(ADocument.Text, Defines))
   else
     Params := BuildParams(ADocument);

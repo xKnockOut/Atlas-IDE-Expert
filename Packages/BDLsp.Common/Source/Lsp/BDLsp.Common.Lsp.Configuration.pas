@@ -55,8 +55,14 @@ type
     constructor Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
       const AReadFile: TConfigurationFileReader);
     destructor Destroy; override;
-    /// <summary>Meldet sich am Dokumentspeicher und, falls angegeben, für Editor-Einstellungen am Dispatcher an.</summary>
+    /// <summary>Meldet sich am Dokumentspeicher und, falls angegeben, für Editor-Einstellungen am Dispatcher an.
+    /// Bei mehreren Arbeitsbereichsordnern verteilt die Komposition die Ereignisse selbst
+    /// (DocumentEvent, SetEditorSettings) und ruft Attach nicht auf.</summary>
     procedure Attach(ADispatcher: TJsonRpcDispatcher = nil);
+    /// <summary>Verarbeitet ein Dokumentereignis wie nach Attach.</summary>
+    procedure DocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
+    /// <summary>Übernimmt Editor-Einstellungen (JSON des Abschnitts, '' = keine).</summary>
+    procedure SetEditorSettings(const AText: string);
     /// <summary>Liest delphi-lsp.json aus ARootPath; ohne Datei gelten die Vorgaben.</summary>
     procedure LoadWorkspace(const ARootPath: string);
     /// <summary>Wurzelordner aus den initialize-Parametern (rootUri, workspaceFolders, rootPath); sonst ''.</summary>
@@ -128,14 +134,21 @@ begin
 end;
 
 procedure TLspConfiguration.HandleDidChangeConfiguration(const AParams: TJSONValue);
-var
-  Text: string;
 begin
-  Text := EditorSettingsFromParams(AParams);
-  if Text = FEditorText then
+  SetEditorSettings(EditorSettingsFromParams(AParams));
+end;
+
+procedure TLspConfiguration.SetEditorSettings(const AText: string);
+begin
+  if AText = FEditorText then
     Exit;
-  FEditorText := Text;
+  FEditorText := AText;
   Recompute;
+end;
+
+procedure TLspConfiguration.DocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
+begin
+  HandleDocumentEvent(AKind, ADocument);
 end;
 
 class function TLspConfiguration.EditorSettingsFromParams(const AParams: TJSONValue): string;
