@@ -66,7 +66,8 @@ uses
   BDLsp.Tests.RuleAssert in 'Support\BDLsp.Tests.RuleAssert.pas',
   BDLsp.Common.Rules.Engine.Tests in 'Common\Rules\BDLsp.Common.Rules.Engine.Tests.pas',
   BDLsp.Common.Rules.Confidence.Tests in 'Common\Rules\BDLsp.Common.Rules.Confidence.Tests.pas',
-  BDLsp.Common.Rules.Output.Tests in 'Common\Rules\BDLsp.Common.Rules.Output.Tests.pas';
+  BDLsp.Common.Rules.Output.Tests in 'Common\Rules\BDLsp.Common.Rules.Output.Tests.pas',
+  BDLsp.Common.Rules.Builtin.Unicode.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Unicode.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var
