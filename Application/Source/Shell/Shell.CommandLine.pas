@@ -51,6 +51,8 @@ type
     UpdateBaseline: Boolean;
     /// <summary>Index-Caches löschen und beenden (#184).</summary>
     ClearCache: Boolean;
+    /// <summary>Nicht vertrauenswürdiger Arbeitsbereich (#186): nichts ausführen, was Code aus dem Projekt startet.</summary>
+    Restricted: Boolean;
     /// <summary>MCP-Modus statt LSP (#48).</summary>
     Mcp: Boolean;
     /// <summary>Projektordner im MCP-Modus; '' = aktuelles Verzeichnis.</summary>
@@ -209,6 +211,8 @@ begin
     end
     else if Name = '--mcp' then
       Result.Mcp := True
+    else if Name = '--restricted' then
+      Result.Restricted := True
     else if Name = '--clear-cache' then
       Result.ClearCache := True
     else if Name = '--update-baseline' then

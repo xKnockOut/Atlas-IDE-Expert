@@ -64,7 +64,8 @@ function resolveServerPath(): string | undefined {
   if (extensionPath !== '') {
     candidates.push(path.join(extensionPath, 'server', ServerExe));
   }
-  for (const folder of vscode.workspace.workspaceFolders ?? []) {
+  // In nicht vertrauenswürdigen Ordnern keine Programme aus dem Arbeitsbereich starten (#186).
+  for (const folder of vscode.workspace.isTrusted ? vscode.workspace.workspaceFolders ?? [] : []) {
     for (const relative of WorkspaceServerPaths) {
       candidates.push(path.join(folder.uri.fsPath, relative));
     }
@@ -83,6 +84,10 @@ function serverArgs(): string[] {
   const traceFile = config.get<string>('traceFile', '').trim();
   if (traceFile !== '') {
     args.push('--trace', traceFile);
+  }
+  // Workspace Trust (#186): der Server führt dann nichts aus dem Projekt aus (kein Compiler-Lauf).
+  if (!vscode.workspace.isTrusted) {
+    args.push('--restricted');
   }
   return args;
 }
@@ -186,6 +191,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(output, traceOutput);
   context.subscriptions.push(
     vscode.commands.registerCommand(`${Section}.restartServer`, async () => {
+      await stopClient();
+      await startClient();
+    }),
+    // Sobald der Ordner vertraut wird, ohne --restricted neu starten.
+    vscode.workspace.onDidGrantWorkspaceTrust(async () => {
       await stopClient();
       await startClient();
     }),

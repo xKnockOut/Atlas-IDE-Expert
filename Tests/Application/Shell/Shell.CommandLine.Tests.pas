@@ -28,6 +28,8 @@ type
     [Test]
     procedure ReadsMcpArguments;
     [Test]
+    procedure ReadsRestricted;
+    [Test]
     procedure WarnsAboutInvalidLinterValues;
   end;
 
@@ -141,6 +143,16 @@ begin
   Assert.IsTrue(Options.Mcp);
   Assert.AreEqual('C:\Projekte\App', Options.McpRoot);
   Assert.IsFalse(TCommandLineOptions.Parse([]).Mcp);
+end;
+
+procedure TCommandLineOptionsTests.ReadsRestricted;
+var
+  Options: TCommandLineOptions;
+begin
+  Options := TCommandLineOptions.Parse(['--stdio', '--restricted']);
+  Assert.AreEqual(0, Integer(Length(Options.Warnings)));
+  Assert.IsTrue(Options.Restricted);
+  Assert.IsFalse(TCommandLineOptions.Parse([]).Restricted);
 end;
 
 procedure TCommandLineOptionsTests.WarnsAboutInvalidLinterValues;

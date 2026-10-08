@@ -18,6 +18,15 @@ Server neu starten, Status anzeigen, Projekt kompilieren, Index neu aufbauen, Ko
 2. In diesem Ordner `npm install` und `npm run compile` ausführen.
 3. Den Ordner `Editors/VSCode` in VS Code öffnen und mit F5 einen Erweiterungs-Host starten. Darin den Repo-Ordner oder ein Delphi-Projekt öffnen.
 
+## Nicht vertrauenswürdige Ordner
+
+In einem Ordner, dem VS Code nicht vertraut (Workspace Trust), läuft der Server mit `--restricted`:
+- Navigation, Hover, Prüfregeln und Formatierung bleiben aktiv.
+- Der Compiler (`compiler.onSave`, „Projekt kompilieren“) startet nicht, weil Build-Events Code aus dem Projekt ausführen können.
+- `betterDelphiLsp.serverPath` aus den Arbeitsbereichseinstellungen und Server-Programme im Ordner selbst werden ignoriert.
+
+Sobald der Ordner vertraut wird, startet der Server ohne Einschränkung neu.
+
 ## Einstellungen
 
 | Einstellung | Bedeutung |
