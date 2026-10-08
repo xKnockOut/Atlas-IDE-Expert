@@ -1,4 +1,4 @@
-﻿﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{9B47206F-D86A-4DB3-B051-00A4CA336E9F}</ProjectGuid>
         <MainSource>BDLsp.Common.dpk</MainSource>
