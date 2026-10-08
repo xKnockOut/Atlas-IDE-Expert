@@ -100,6 +100,53 @@
         ]
       }
     },
+    "profile": {
+      "description": "Regelprofil: standard, fast (nur Bugs und Schwachstellen), strict (experimentelle Regeln an, Hinweise als Warnungen), security, style oder ein eigenes aus \"profiles\". Als Objekt getrennt für Editor und Kommandozeile.",
+      "default": "standard",
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "editor": { "type": "string", "description": "Profil im Editor." },
+            "cli": { "type": "string", "description": "Profil der Kommandozeile (--check), z. B. strict im CI." }
+          }
+        }
+      ],
+      "examples": ["fast", "strict"]
+    },
+    "profiles": {
+      "type": "object",
+      "description": "Eigene Regelprofile: Name → { \"extends\": eingebautes oder eigenes Profil, \"categories\": nur diese Kategorien, \"rules\": Regel-ID → Schweregrad }.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "extends": { "type": "string" },
+          "categories": { "type": "array", "items": { "type": "string", "enum": ["bug", "vulnerability", "code-smell", "security-hotspot"] } },
+          "rules": { "type": "object", "additionalProperties": { "type": "string", "enum": ["off", "hint", "info", "information", "warning", "error"] } }
+        }
+      }
+    },
+    "overrides": {
+      "type": "array",
+      "description": "Pfadregeln: Schweregrade für Dateien, die eines der Glob-Muster treffen, z. B. Tests oder generierten Code herabstufen. Regel-ID \"*\" steht für alle Regeln; spätere Einträge haben Vorrang.",
+      "items": {
+        "type": "object",
+        "required": ["files"],
+        "additionalProperties": false,
+        "properties": {
+          "files": { "type": "array", "items": { "type": "string" } },
+          "rules": { "type": "object", "additionalProperties": { "type": "string", "enum": ["off", "hint", "info", "information", "warning", "error"] } }
+        }
+      }
+    },
+    "excludeTests": {
+      "type": "boolean",
+      "default": false,
+      "description": "Test-Units (uses DUnitX.TestFramework, TestFramework oder TestInsight.*) nicht prüfen."
+    },
     "compiler": {
       "type": "object",
       "description": "Compiler-Anbindung (dcc32/dcc64).",

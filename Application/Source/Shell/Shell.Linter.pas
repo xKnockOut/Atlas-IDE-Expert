@@ -193,6 +193,9 @@ begin
     else
       ConfigRoot := ExtractFileDir(TPath.GetFullPath(AOptions.CheckTarget));
     Settings := LoadSettings(ConfigRoot);
+    // Eigenes Regelprofil für die Kommandozeile (#146), z. B. "strict" im CI.
+    if Settings.CliProfile <> '' then
+      Settings.Profile := Settings.CliProfile;
 
     Filter := Default(TFindingFilter);
     Filter.Rules := AOptions.RuleFilter;

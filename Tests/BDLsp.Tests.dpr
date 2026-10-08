@@ -85,6 +85,7 @@ uses
   BDLsp.Tests.LeakMonitor.Tests in 'Support\BDLsp.Tests.LeakMonitor.Tests.pas',
   BDLsp.Tests.RuleAssert in 'Support\BDLsp.Tests.RuleAssert.pas',
   BDLsp.Common.Rules.Engine.Tests in 'Common\Rules\BDLsp.Common.Rules.Engine.Tests.pas',
+  BDLsp.Common.Rules.Profiles.Tests in 'Common\Rules\BDLsp.Common.Rules.Profiles.Tests.pas',
   BDLsp.Common.Rules.Confidence.Tests in 'Common\Rules\BDLsp.Common.Rules.Confidence.Tests.pas',
   BDLsp.Common.Rules.Output.Tests in 'Common\Rules\BDLsp.Common.Rules.Output.Tests.pas',
   BDLsp.Common.Rules.Baseline.Tests in 'Common\Rules\BDLsp.Common.Rules.Baseline.Tests.pas',

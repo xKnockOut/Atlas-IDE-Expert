@@ -16,6 +16,10 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 | `config` | string | – | z. B. `"Debug"`, `"Release"` | Build-Konfiguration, z. B. Debug oder Release. |
 | `platform` | string | – | z. B. `"Win32"`, `"Win64"` | Zielplattform. |
 | `rules` | object | – |  | Prüfregeln einzeln einstellen: Regel-ID → Schweregrad oder Objekt mit "severity" und Optionen. |
+| `profile` |  | `"standard"` | z. B. `"fast"`, `"strict"` | Regelprofil: standard, fast (nur Bugs und Schwachstellen), strict (experimentelle Regeln an, Hinweise als Warnungen), security, style oder ein eigenes aus "profiles". Als Objekt getrennt für Editor und Kommandozeile. |
+| `profiles` | object | – |  | Eigene Regelprofile: Name → { "extends": eingebautes oder eigenes Profil, "categories": nur diese Kategorien, "rules": Regel-ID → Schweregrad }. |
+| `overrides` | array<object> | – |  | Pfadregeln: Schweregrade für Dateien, die eines der Glob-Muster treffen, z. B. Tests oder generierten Code herabstufen. Regel-ID "*" steht für alle Regeln; spätere Einträge haben Vorrang. |
+| `excludeTests` | boolean | `false` |  | Test-Units (uses DUnitX.TestFramework, TestFramework oder TestInsight.*) nicht prüfen. |
 | `compiler` | object | – |  | Compiler-Anbindung (dcc32/dcc64). |
 | `completion` | object | – |  | Code-Vervollständigung. |
 | `completeBlocks` | object | – |  | Blockabschluss beim Tippen: nach Enter hinter dem Schlüsselwort den passenden Abschluss ergänzen, wenn der Block noch offen ist. |

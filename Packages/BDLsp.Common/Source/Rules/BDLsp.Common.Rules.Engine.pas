@@ -16,6 +16,9 @@
 // Hinweis "unused-suppression" mit Korrektur zum Entfernen (#147); nur wenn
 // alle genannten Regeln gelaufen sind, damit Kommentare für abgeschaltete
 // oder unbekannte Regeln nicht stören.
+//
+// Regelprofile, Pfadregeln und das Ausnehmen von Test-Units (#146) wertet
+// TRuleProfiles aus; maßgeblich ist das Profil in ASettings.Profile.
 
 interface
 
@@ -33,7 +36,9 @@ type
   public
     /// <summary>Wirksamer Schweregrad einer Regel; Off = nicht ausführen.</summary>
     class function EffectiveSeverity(const ARule: TRuleDescriptor;
-      const ASettings: TServerSettings): TRuleSeverity; static;
+      const ASettings: TServerSettings; const ARelativePath: string = ''): TRuleSeverity; overload; static;
+    class function EffectiveSeverity(const ARule: TRuleDescriptor; const ASettings: TServerSettings;
+      const ARelativePath: string; out AEnabled: Boolean): TRuleSeverity; overload; static;
     /// <summary>Optionen der Regel als JSON-Text, sonst ''.</summary>
     class function RuleOptions(const ARuleId: string; const ASettings: TServerSettings): string; static;
     /// <summary>True, wenn "exclude" in AOptions den Pfad oder die Unit trifft.</summary>
@@ -51,6 +56,7 @@ uses
   System.JSON,
   System.Generics.Defaults,
   BDLsp.Common.Documents.Contract,
+  BDLsp.Common.Rules.Profiles,
   BDLsp.Common.Rules.Suppressions;
 
 type
@@ -119,9 +125,18 @@ end;
 { TRuleEngine }
 
 class function TRuleEngine.EffectiveSeverity(const ARule: TRuleDescriptor;
-  const ASettings: TServerSettings): TRuleSeverity;
+  const ASettings: TServerSettings; const ARelativePath: string): TRuleSeverity;
+var
+  Enabled: Boolean;
 begin
-  Result := ASettings.RuleSeverity(ARule.Id, ARule.DefaultSeverity);
+  Result := EffectiveSeverity(ARule, ASettings, ARelativePath, Enabled);
+end;
+
+class function TRuleEngine.EffectiveSeverity(const ARule: TRuleDescriptor; const ASettings: TServerSettings;
+  const ARelativePath: string; out AEnabled: Boolean): TRuleSeverity;
+begin
+  Result := TRuleProfiles.Severity(ASettings, ASettings.Profile, ARule, TRuleProfiles.CategoryOf(ARule.Id),
+    ARelativePath, AEnabled);
   if Result = TRuleSeverity.Default then
     Result := TRuleSeverity.Warning;
 end;
@@ -201,8 +216,11 @@ var
   Id: string;
   AllRan: Boolean;
   Removal: TTextRange;
+  Enabled: Boolean;
 begin
   if (AContext.RelativePath <> '') and ASettings.IsExcluded(AContext.RelativePath) then
+    Exit(nil);
+  if ASettings.ExcludeTests and (AContext.Tree <> nil) and TRuleProfiles.IsTestUnit(AContext.Tree.Tokens) then
     Exit(nil);
   Findings := TList<TRuleFinding>.Create;
   Kept := TList<TRuleFinding>.Create;
@@ -212,10 +230,10 @@ begin
     for Rule in ARules do
     begin
       Descriptor := Rule.Descriptor;
-      Severity := EffectiveSeverity(Descriptor, ASettings);
+      Severity := EffectiveSeverity(Descriptor, ASettings, AContext.RelativePath, Enabled);
       if Severity = TRuleSeverity.Off then
         Continue;
-      if Descriptor.Experimental and not ASettings.IsRuleEnabledExplicitly(Descriptor.Id) then
+      if Descriptor.Experimental and not Enabled then
         Continue;
       Context := AContext;
       Context.Options := RuleOptions(Descriptor.Id, ASettings);
