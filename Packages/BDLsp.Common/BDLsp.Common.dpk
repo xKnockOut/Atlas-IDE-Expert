@@ -56,6 +56,8 @@ contains
   BDLsp.Common.Lsp.Positions in 'Source\Lsp\BDLsp.Common.Lsp.Positions.pas',
   BDLsp.Common.Lsp.TextDocumentSync in 'Source\Lsp\BDLsp.Common.Lsp.TextDocumentSync.pas',
   BDLsp.Common.Pascal.Contract in 'Source\Pascal\BDLsp.Common.Pascal.Contract.pas',
-  BDLsp.Common.Pascal.Lexer in 'Source\Pascal\BDLsp.Common.Pascal.Lexer.pas';
+  BDLsp.Common.Pascal.Lexer in 'Source\Pascal\BDLsp.Common.Pascal.Lexer.pas',
+  BDLsp.Common.Pascal.SyntaxTree in 'Source\Pascal\BDLsp.Common.Pascal.SyntaxTree.pas',
+  BDLsp.Common.Pascal.Parser in 'Source\Pascal\BDLsp.Common.Pascal.Parser.pas';
 
 end.
