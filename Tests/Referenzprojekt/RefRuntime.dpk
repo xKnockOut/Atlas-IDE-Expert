@@ -1,0 +1,15 @@
+﻿package RefRuntime;
+
+{$R *.res}
+{$DESCRIPTION 'BetterDelphiLSP Referenz: Runtime'}
+{$RUNONLY}
+{$IMPLICITBUILD ON}
+
+requires
+  rtl,
+  vcl;
+
+contains
+  Ref.Komponenten.Anzeige in 'Source\Ref.Komponenten.Anzeige.pas';
+
+end.

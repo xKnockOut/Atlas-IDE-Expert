@@ -1,0 +1,21 @@
+﻿program RefApp;
+
+uses
+  Vcl.Forms,
+  Ref.Komponenten.Anzeige in 'Source\Ref.Komponenten.Anzeige.pas',
+  Ref.Formulare.Basis in 'Source\Ref.Formulare.Basis.pas' {BasisFormular},
+  Ref.Formulare.Detail in 'Source\Ref.Formulare.Detail.pas' {DetailFormular},
+  Ref.Formulare.Suchrahmen in 'Source\Ref.Formulare.Suchrahmen.pas' {Suchrahmen: TFrame},
+  Ref.Formulare.Haupt in 'Source\Ref.Formulare.Haupt.pas' {HauptFormular},
+  Ref.Sprache.Merkmale in 'Source\Ref.Sprache.Merkmale.pas',
+  Ref.Daten.Kunden in 'Source\Ref.Daten.Kunden.pas',
+  Ref.Pruefung.Verstoesse in 'Source\Ref.Pruefung.Verstoesse.pas';
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.MainFormOnTaskbar := True;
+  Application.CreateForm(THauptFormular, HauptFormular);
+  Application.Run;
+end.

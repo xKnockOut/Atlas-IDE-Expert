@@ -1,0 +1,19 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{4A8819FB-680D-5974-93D3-C4D8C14EDC22}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="RefRuntime.dproj"/>
+        <Projects Include="RefDesign.dproj">
+            <Dependencies>RefRuntime.dproj</Dependencies>
+        </Projects>
+        <Projects Include="RefApp.dproj"/>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+</Project>
