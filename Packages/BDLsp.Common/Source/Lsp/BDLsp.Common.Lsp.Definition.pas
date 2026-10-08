@@ -115,8 +115,12 @@ begin
   Resolved := AResolver.Resolve(ATree, AFileName, APosition);
   // Namen in Deklarationen (z. B. Methoden in der Klasse) sind keine Verwendungen:
   // dann gilt die Deklaration unter dem Cursor selbst.
+  // Das Extrakt erst in einer Variablen halten und unten Result zuweisen statt
+  // Exit([...]): In der früheren Form brach dcc64 (Delphi 13) ohne Meldung ab.
   if Resolved.Kind = TResolvedKind.None then
-    for Symbol in TIndexExtractor.Extract(ATree, AFileName).Symbols do
+  begin
+    OwnerUnit := TIndexExtractor.Extract(ATree, AFileName);
+    for Symbol in OwnerUnit.Symbols do
       if Within(APosition, Symbol.SelectionRange) then
       begin
         Resolved.Kind := TResolvedKind.Symbol;
@@ -128,16 +132,21 @@ begin
         Resolved.SelectionRange := Symbol.SelectionRange;
         Break;
       end;
+  end;
   case Resolved.Kind of
     TResolvedKind.None:
       Exit;
     TResolvedKind.UnitName:
       begin
         Empty := TTextRange.Create(TTextPosition.Create(0, 0), TTextPosition.Create(0, 0));
-        Exit([Target(Resolved.FileName, Empty, Empty)]);
+        Result := [Target(Resolved.FileName, Empty, Empty)];
+        Exit;
       end;
     TResolvedKind.Local:
-      Exit([Target(AFileName, Resolved.Range, Resolved.SelectionRange)]);
+      begin
+        Result := [Target(AFileName, Resolved.Range, Resolved.SelectionRange)];
+        Exit;
+      end;
   end;
 
   Result := [Target(Resolved.FileName, Resolved.Range, Resolved.SelectionRange)];
