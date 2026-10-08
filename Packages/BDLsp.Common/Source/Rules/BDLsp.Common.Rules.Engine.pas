@@ -11,6 +11,11 @@
 // Warnung, niedrige höchstens Hinweis. Treffer unter "minConfidence" (Vorgabe
 // medium) entfallen. Experimentelle Regeln laufen nur, wenn sie in "rules"
 // stehen.
+//
+// Unterdrückungskommentare, die nichts unterdrücken, meldet die Engine als
+// Hinweis "unused-suppression" mit Korrektur zum Entfernen (#147); nur wenn
+// alle genannten Regeln gelaufen sind, damit Kommentare für abgeschaltete
+// oder unbekannte Regeln nicht stören.
 
 interface
 
@@ -19,6 +24,9 @@ uses
   System.Generics.Collections,
   BDLsp.Common.Configuration.Contract,
   BDLsp.Common.Rules.Contract;
+
+const
+  UnusedSuppressionRuleId = 'unused-suppression';
 
 type
   TRuleEngine = class
@@ -188,12 +196,18 @@ var
   Severity: TRuleSeverity;
   Context: TRuleContext;
   Finding: TRuleFinding;
+  RanIds: TList<string>;
+  Entry: TSuppressionEntry;
+  Id: string;
+  AllRan: Boolean;
+  Removal: TTextRange;
 begin
   if (AContext.RelativePath <> '') and ASettings.IsExcluded(AContext.RelativePath) then
     Exit(nil);
   Findings := TList<TRuleFinding>.Create;
   Kept := TList<TRuleFinding>.Create;
   Suppressions := nil;
+  RanIds := TList<string>.Create;
   try
     for Rule in ARules do
     begin
@@ -208,18 +222,45 @@ begin
       if IsExceptedByOptions(Context.Options, Context.RelativePath, Context.UnitName) then
         Continue;
       Rule.Check(Context, TRuleReport.Create(Descriptor.Id, Severity, Findings));
+      RanIds.Add(LowerCase(Descriptor.Id));
     end;
 
-    if (Findings.Count > 0) and (AContext.Tree <> nil) then
+    if AContext.Tree <> nil then
       Suppressions := TSuppressions.Create(AContext.Tree.Tokens);
+    // Erst unterdrücken, dann filtern: Auch ausgeblendete Treffer machen einen Kommentar wirksam.
     for Finding in Findings do
-      if (Ord(Finding.Confidence) >= Ord(ASettings.MinConfidence)) and
-        ((Suppressions = nil) or not Suppressions.IsSuppressed(Finding.RuleId, Finding.Range.StartPos.Line)) then
+      if ((Suppressions = nil) or not Suppressions.IsSuppressed(Finding.RuleId, Finding.Range.StartPos.Line)) and
+        (Ord(Finding.Confidence) >= Ord(ASettings.MinConfidence)) then
         Kept.Add(Finding);
+
+    if (Suppressions <> nil) and
+      (ASettings.RuleSeverity(UnusedSuppressionRuleId, TRuleSeverity.Hint) <> TRuleSeverity.Off) then
+      for Entry in Suppressions.UnusedEntries do
+      begin
+        AllRan := Length(Entry.Ids) > 0;
+        for Id in Entry.Ids do
+          if (Id <> '*') and not RanIds.Contains(Id) then
+            AllRan := False;
+        if not AllRan then
+          Continue;
+        if Entry.OwnLine then
+          Removal := TTextRange.Create(Entry.Range.StartPos.Line, 0, Entry.Range.EndPos.Line + 1, 0)
+        else
+          Removal := Entry.Range;
+        Finding := Default(TRuleFinding);
+        Finding.RuleId := UnusedSuppressionRuleId;
+        Finding.Range := Entry.Range;
+        Finding.Message := 'Unterdrückung ohne Wirkung: hier meldet keine der genannten Regeln etwas';
+        Finding.Severity := ASettings.RuleSeverity(UnusedSuppressionRuleId, TRuleSeverity.Hint);
+        Finding.Confidence := TRuleConfidence.High;
+        Finding.Fixes := [TRuleFix.Create('Unterdrückung entfernen', [TRuleEdit.Create(Removal, '')])];
+        Kept.Add(Finding);
+      end;
 
     Kept.Sort(TComparer<TRuleFinding>.Construct(CompareFindings));
     Result := Kept.ToArray;
   finally
+    RanIds.Free;
     Suppressions.Free;
     Kept.Free;
     Findings.Free;
