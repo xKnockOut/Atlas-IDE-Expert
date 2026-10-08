@@ -291,6 +291,11 @@ begin
     begin
       Result := EnsureUnit(AUnitName);
     end);
+  FDefinition.ReadText :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end;
   FDefinition.Attach(FDispatcher);
   FHover := TLspHover.Create(FDocuments, FIndex,
     function(const AFileName: string; out AText: string): Boolean

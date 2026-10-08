@@ -22,7 +22,8 @@ uses
   BDLsp.Common.Documents.Contract,
   BDLsp.Common.Pascal.SyntaxTree,
   BDLsp.Common.Index.Contract,
-  BDLsp.Common.Semantics.NameResolver;
+  BDLsp.Common.Semantics.NameResolver,
+  BDLsp.Common.Dfm.Navigation;
 
 type
   TDefinitionTarget = record
@@ -43,6 +44,8 @@ type
     FIndex: ISymbolIndex;
     FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
+    FReadText: TDfmReadText;
+    function FormTargets(const AText, AUri: string; const APosition: TTextPosition): TJSONValue;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken;
       AKind: TDefinitionRequestKind): TJSONValue;
     function HandleDefinition(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -63,6 +66,8 @@ type
     class function ToJson(const ATargets: TArray<TDefinitionTarget>): TJSONArray; static;
     /// <summary>Unit-Namespaces des Projekts (DCC_Namespace).</summary>
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
+    /// <summary>Liest die Unit neben einer Formulardatei (#44); ohne sie gibt es dort keine Sprünge.</summary>
+    property ReadText: TDfmReadText read FReadText write FReadText;
   end;
 
 implementation
@@ -73,7 +78,8 @@ uses
   BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.Parser,
   BDLsp.Common.Index.Extractor,
-  BDLsp.Common.Lsp.Internals.Cancellation;
+  BDLsp.Common.Lsp.Internals.Cancellation,
+  BDLsp.Common.Dfm.Parser;
 
 const
   RoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
@@ -219,6 +225,8 @@ begin
       'Felder "textDocument.uri" und "position" fehlen');
   if not FStore.TryGet(Uri, Document) then
     Exit(TJSONNull.Create);
+  if TDfmParser.IsFormFile(Uri) then
+    Exit(FormTargets(Document.Text, Uri, TLspPositions.ReadPosition(PositionValue)));
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
   Tree := TPascalParser.Parse(Document.Text, Cancellation);
@@ -240,6 +248,21 @@ begin
   finally
     Tree.Free;
   end;
+end;
+
+function TLspDefinition.FormTargets(const AText, AUri: string; const APosition: TTextPosition): TJSONValue;
+var
+  Found: TArray<TDfmTarget>;
+  Targets: TArray<TDefinitionTarget>;
+  Index: Integer;
+begin
+  if not Assigned(FReadText) then
+    Exit(TJSONNull.Create);
+  Found := TDfmNavigation.Targets(AText, TDocumentUris.ToPath(AUri), APosition, FReadText);
+  SetLength(Targets, Length(Found));
+  for Index := 0 to High(Found) do
+    Targets[Index] := Target(Found[Index].FileName, Found[Index].Range, Found[Index].SelectionRange);
+  Result := ToJson(Targets);
 end;
 
 function TLspDefinition.HandleDefinition(const AParams: TJSONValue;
