@@ -39,6 +39,7 @@ uses
   BDLsp.Common.Lsp.Definition.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Definition.Tests.pas',
   BDLsp.Common.Lsp.PublishedMembers.Tests in 'Common\Lsp\BDLsp.Common.Lsp.PublishedMembers.Tests.pas',
   BDLsp.Common.Lsp.References.Tests in 'Common\Lsp\BDLsp.Common.Lsp.References.Tests.pas',
+  BDLsp.Common.Lsp.Rename.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Rename.Tests.pas',
   BDLsp.Common.Lsp.Status.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Status.Tests.pas',
   BDLsp.Common.Lsp.DocWiki.Tests in 'Common\Lsp\BDLsp.Common.Lsp.DocWiki.Tests.pas',
   BDLsp.Common.Lsp.Hover.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Hover.Tests.pas',

@@ -33,6 +33,7 @@ uses
   BDLsp.Common.Lsp.Colors,
   BDLsp.Common.Lsp.Commands,
   BDLsp.Common.Lsp.References,
+  BDLsp.Common.Lsp.Rename,
   BDLsp.Common.Lsp.Status,
   BDLsp.Common.JsonRpc.Statistics,
   BDLsp.Common.Lsp.WatchedFiles,
@@ -62,6 +63,7 @@ type
     FWorkspaceSymbols: TLspWorkspaceSymbols;
     FDocumentHighlights: TLspDocumentHighlights;
     FReferences: TLspReferences;
+    FRename: TLspRename;
     FCodeActions: TLspCodeActions;
     FDocumentLinks: TLspDocumentLinks;
     FColors: TLspColors;
@@ -86,6 +88,8 @@ type
     function EnsureUnit(const AUnitName: string): Boolean;
     /// <summary>Text einer Quelldatei; geöffnete Dokumente haben Vorrang vor der Platte.</summary>
     function ReadSourceText(const AFileName: string; out AText: string): Boolean;
+    /// <summary>Projektdateien aller Ordner und geöffnete Dokumente, für Referenzen und Umbenennen.</summary>
+    function ProjectSourceFiles: TArray<string>;
     /// <summary>Inhalt des Status-Befehls (#28).</summary>
     function CollectStatus: TServerStatus;
     function DefinesFor(const AUri: string; out ADefines: TArray<string>): Boolean;
@@ -247,30 +251,23 @@ begin
     begin
       Result := ReadSourceText(AFileName, AText);
     end,
-    function: TArray<string>
-    var
-      Workspace: TShellWorkspace;
-      Document: ITextDocument;
-      FileName: string;
-    begin
-      Result := nil;
-      TMonitor.Enter(FWorkspacesLock);
-      try
-        for Workspace in FWorkspaces do
-          for FileName in Workspace.ProjectFiles do
-            Result := Result + [FileName];
-      finally
-        TMonitor.Exit(FWorkspacesLock);
-      end;
-      // Geöffnete Dateien außerhalb des Projekts zählen mit.
-      for Document in FDocuments.Documents do
-        Result := Result + [TDocumentUris.ToPath(Document.Uri)];
-    end,
+    ProjectSourceFiles,
     function(const AUnitName: string): Boolean
     begin
       Result := EnsureUnit(AUnitName);
     end);
   FReferences.Attach(FDispatcher);
+  FRename := TLspRename.Create(FDocuments, FIndex,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    ProjectSourceFiles,
+    function(const AUnitName: string): Boolean
+    begin
+      Result := EnsureUnit(AUnitName);
+    end);
+  FRename.Attach(FDispatcher);
   FCodeActions := TLspCodeActions.Create(FDocuments, RuleContextFor);
   FCodeActions.Attach(FDispatcher);
   FDocumentLinks := TLspDocumentLinks.Create(FDocuments,
@@ -358,6 +355,7 @@ begin
   FWorkspaceSymbols.Free;
   FDocumentHighlights.Free;
   FReferences.Free;
+  FRename.Free;
   FCodeActions.Free;
   FDocumentLinks.Free;
   FColors.Free;
@@ -500,6 +498,26 @@ begin
     AText := '';
 end;
 
+function TServerComposition.ProjectSourceFiles: TArray<string>;
+var
+  Workspace: TShellWorkspace;
+  Document: ITextDocument;
+  FileName: string;
+begin
+  Result := nil;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    for Workspace in FWorkspaces do
+      for FileName in Workspace.ProjectFiles do
+        Result := Result + [FileName];
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  // Geöffnete Dateien außerhalb des Projekts zählen mit.
+  for Document in FDocuments.Documents do
+    Result := Result + [TDocumentUris.ToPath(Document.Uri)];
+end;
+
 function TServerComposition.CollectStatus: TServerStatus;
 var
   Workspace: TShellWorkspace;
@@ -583,6 +601,7 @@ begin
   FHover.Namespaces := Namespaces;
   FDocumentHighlights.Namespaces := Namespaces;
   FReferences.Namespaces := Namespaces;
+  FRename.Namespaces := Namespaces;
   FSyntaxDiagnostics.Refresh;
 end;
 
@@ -722,6 +741,7 @@ begin
   Result.AddPair('workspaceSymbolProvider', TJSONBool.Create(True));
   Result.AddPair('documentHighlightProvider', TJSONBool.Create(True));
   Result.AddPair('referencesProvider', TJSONBool.Create(True));
+  Result.AddPair('renameProvider', TLspRename.Capability);
   Result.AddPair('codeActionProvider', TLspCodeActions.Capability);
   Result.AddPair('documentLinkProvider', TLspDocumentLinks.Capability);
   Result.AddPair('colorProvider', TJSONBool.Create(True));
