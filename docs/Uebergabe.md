@@ -14,6 +14,7 @@
   3. Tests: `Output\Win64\Debug\Bin\BDLsp.Tests.exe --exitbehavior:Continue`. **Vorher prüfen, ob die exe neu geschrieben wurde.** Sonst testet man einen alten Build.
   4. `cc.ps1 quit -Instance <pid>`. Solange die IDE noch beschäftigt ist, lehnt sie das ab, dann einfach wiederholen.
 - Auf `outputWritten` achten, nicht nur auf `ok`.
+- Den ganzen Ablauf samt 0/0/0-Prüfung und Tests erledigt `pwsh Tools/Build-Test.ps1` (Optionen: `-Win32`, `-SkipTests`, `-CcScript`). Exit-Code 0 = grün, 1 = Build-Fehler/Hinweis/Warnung, 2 = Tests rot, 3 = Umgebungsfehler. Der CI-Job in `.github/workflows/server.yml` ruft dasselbe Skript auf.
 
 ## Achtung
 - In der IDE des Users ist **Beryl-Components** offen, und dort arbeitet parallel ein anderer Client. **Immer `-Instance <eigene pid>` angeben.** Ohne `-Instance` landet der Auftrag in dieser IDE. Das ist einmal passiert.

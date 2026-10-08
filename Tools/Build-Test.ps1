@@ -1,0 +1,171 @@
+﻿<#
+.SYNOPSIS
+    Baut die Projektgruppe über das IDE-Plugin cc.ps1 und führt die DUnitX-Tests aus (#260).
+
+.DESCRIPTION
+    Ersatz-CI für RAD Studio Starter (kein dcc/MSBuild auf der Kommandozeile),
+    nach dem Ablauf in docs/Uebergabe.md:
+
+    1. cc.ps1 start mit eigener Scratch-IDE; die pid wird aus der Ausgabe
+       gelesen und muss zu einem neuen Prozess gehören. Jeder weitere Aufruf
+       nutzt -Instance <pid>, eine schon laufende IDE bleibt unberührt.
+    2. cc.ps1 group-build -Platform Win64 -Json: ok und outputWritten müssen
+       gesetzt sein, die Test-exe muss neu geschrieben sein und das logFile
+       darf keine Hinweise oder Warnungen enthalten (0/0/0-Regel).
+    3. Mit -Win32 zusätzlich Win32; dort darf nur BDLsp.Tests scheitern
+       (DUnitX gibt es nur für Win64).
+    4. BDLsp.Tests.exe --exitbehavior:Continue mit NUnit-XML als Ergebnis.
+    5. cc.ps1 quit, wiederholt, solange die IDE beschäftigt ist.
+
+    Exit-Code 0: alles grün. 1: Build-Fehler, Hinweis oder Warnung.
+    2: Tests fehlgeschlagen. 3: Aufruf- oder Umgebungsfehler.
+
+.EXAMPLE
+    pwsh Tools/Build-Test.ps1
+    pwsh Tools/Build-Test.ps1 -Win32 -ResultFile Output\dunitx.xml
+#>
+[CmdletBinding()]
+param(
+    [string] $Root = (Split-Path -Parent $PSScriptRoot),
+    [string] $CcScript = $(if ($env:CC_SCRIPT) { $env:CC_SCRIPT } else { 'C:\Projekte\IDE-Plugins\Claude-Compile\cc.ps1' }),
+    [string] $Config = 'Debug',
+    [switch] $Win32,
+    [string] $ResultFile = 'dunitx-ergebnisse.xml',
+    [switch] $SkipTests,
+    [int] $QuitAttempts = 10,
+    [int] $QuitDelaySeconds = 5
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+$GroupProject = Join-Path $Root 'BetterDelphiLSP.groupproj'
+$TestExe = Join-Path $Root (Join-Path "Output/Win64/$Config/Bin" 'BDLsp.Tests.exe')
+# Zeilen des Build-Logs, die die 0/0/0-Regel verletzen, z. B. "[dcc64 Hinweis] X.pas(10): H2164 …".
+$HintPattern = '\[dcc\w*\s+(Hinweis|Warnung|Hint|Warning)\]'
+$ErrorPattern = '\[dcc\w*\s+(Fehler|Schwerwiegend|Error|Fatal)\]'
+
+function Write-Step([string] $Text) {
+    Write-Host "== $Text"
+}
+
+function Get-IdeProcessIds {
+    @(Get-Process -Name 'bds' -ErrorAction SilentlyContinue | ForEach-Object { $_.Id })
+}
+
+function Invoke-Cc([string[]] $Arguments) {
+    $output = & $CcScript @Arguments 2>&1 | Out-String
+    [pscustomobject]@{ Output = $output; ExitCode = $LASTEXITCODE }
+}
+
+# Liest die JSON-Antwort von group-build; cc.ps1 kann davor Text ausgeben.
+function ConvertFrom-BuildOutput([string] $Output) {
+    $start = $Output.IndexOf('{')
+    if ($start -lt 0) { throw "group-build lieferte kein JSON:`n$Output" }
+    $Output.Substring($start) | ConvertFrom-Json
+}
+
+function Get-Property($Object, [string] $Name) {
+    if ($null -ne $Object -and $Object.PSObject.Properties[$Name]) { $Object.$Name } else { $null }
+}
+
+# Prüft einen Gruppen-Build; liefert die Liste der Verstöße (leer = in Ordnung).
+function Test-Build($Result, [string] $Platform, [datetime] $Started, [bool] $TestsMayFail) {
+    $problems = @()
+    $logFile = Get-Property $Result 'logFile'
+    $logLines = @()
+    if ($logFile -and (Test-Path $logFile)) { $logLines = @(Get-Content -Path $logFile) }
+    foreach ($line in $logLines) {
+        if ($line -match $HintPattern) { $problems += "$Platform`: $line" }
+    }
+    $errors = @($logLines | Where-Object { $_ -match $ErrorPattern })
+    if ($TestsMayFail) {
+        # Win32: nur Fehler im Testprojekt sind erwartet (DUnitX fehlt dort).
+        foreach ($line in $errors) {
+            if ($line -notmatch 'BDLsp\.Tests|[\\/]Tests[\\/]') { $problems += "$Platform`: $line" }
+        }
+    } else {
+        foreach ($line in $errors) { $problems += "$Platform`: $line" }
+        if (-not (Get-Property $Result 'ok')) { $problems += "$Platform`: group-build meldet ok = false" }
+        if (-not (Get-Property $Result 'outputWritten')) { $problems += "$Platform`: keine Ausgabe geschrieben (outputWritten)" }
+    }
+    $problems
+}
+
+if (-not (Test-Path $CcScript)) {
+    Write-Error "cc.ps1 nicht gefunden: $CcScript (Parameter -CcScript oder Umgebungsvariable CC_SCRIPT)" -ErrorAction Continue
+    exit 3
+}
+if (-not (Test-Path $GroupProject)) {
+    Write-Error "Projektgruppe nicht gefunden: $GroupProject" -ErrorAction Continue
+    exit 3
+}
+
+$exitCode = 0
+$ideId = $null
+$before = Get-IdeProcessIds
+try {
+    Write-Step 'Scratch-IDE starten'
+    $start = Invoke-Cc @('start', '-Project', $GroupProject)
+    Write-Host $start.Output
+    if ($start.Output -notmatch 'pid\D*(\d+)') {
+        Write-Error 'pid der Scratch-IDE nicht in der Ausgabe von cc.ps1 start gefunden' -ErrorAction Continue
+        exit 3
+    }
+    $ideId = [int] $Matches[1]
+    # Nie in eine schon laufende IDE bauen, etwa die des Benutzers.
+    if ($before -contains $ideId) {
+        Write-Error "pid $ideId gehört zu einer schon laufenden IDE; Abbruch, um sie nicht zu benutzen" -ErrorAction Continue
+        $ideId = $null
+        exit 3
+    }
+
+    $problems = @()
+    Write-Step 'Projektgruppe bauen (Win64)'
+    $started = Get-Date
+    $build = Invoke-Cc @('group-build', '-Instance', "$ideId", '-Platform', 'Win64', '-Json')
+    Write-Host $build.Output
+    $result = ConvertFrom-BuildOutput $build.Output
+    $problems += Test-Build $result 'Win64' $started $false
+    if (-not (Test-Path $TestExe)) {
+        $problems += "Win64: Test-exe fehlt: $TestExe"
+    } elseif ((Get-Item $TestExe).LastWriteTime -lt $started) {
+        $problems += "Win64: Test-exe wurde nicht neu geschrieben: $TestExe"
+    }
+
+    if ($Win32) {
+        Write-Step 'Projektgruppe bauen (Win32, ohne Testprojekt)'
+        $build32 = Invoke-Cc @('group-build', '-Instance', "$ideId", '-Platform', 'Win32', '-Json')
+        Write-Host $build32.Output
+        $problems += Test-Build (ConvertFrom-BuildOutput $build32.Output) 'Win32' (Get-Date) $true
+    }
+
+    if ($problems.Count -gt 0) {
+        Write-Step 'Build verletzt die 0/0/0-Regel'
+        $problems | ForEach-Object { Write-Host "  $_" }
+        $exitCode = 1
+    } elseif (-not $SkipTests) {
+        Write-Step 'DUnitX-Tests ausführen'
+        & $TestExe '--exitbehavior:Continue' "--xmlfile:$ResultFile"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Step "Tests fehlgeschlagen (Exit-Code $LASTEXITCODE)"
+            $exitCode = 2
+        } else {
+            Write-Step 'Build und Tests grün'
+        }
+    }
+} catch {
+    Write-Error $_ -ErrorAction Continue
+    $exitCode = 3
+} finally {
+    if ($null -ne $ideId) {
+        Write-Step 'Scratch-IDE beenden'
+        for ($attempt = 1; $attempt -le $QuitAttempts; $attempt++) {
+            $quit = Invoke-Cc @('quit', '-Instance', "$ideId")
+            if ($quit.ExitCode -eq 0) { break }
+            Write-Host "IDE noch beschäftigt, Versuch $attempt von $QuitAttempts"
+            Start-Sleep -Seconds $QuitDelaySeconds
+        }
+    }
+}
+exit $exitCode
