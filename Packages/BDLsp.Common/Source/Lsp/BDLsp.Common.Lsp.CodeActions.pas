@@ -251,6 +251,7 @@ begin
     Context.Tree := Tree;
     Context.Index := Rules.Index;
     Context.FormText := Rules.FormText;
+    Context.ReadFile := Rules.ReadFile;
     Findings := TRuleEngine.Run(Rules.Rules, Rules.Settings, Context);
   end;
   HasCompletion := WantsEditing and TClassCompletion.MissingBodies(Tree, Document.Text, Range.StartPos, Completion);

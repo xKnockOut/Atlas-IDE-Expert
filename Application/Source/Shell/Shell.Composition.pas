@@ -1430,7 +1430,7 @@ end;
 function TServerComposition.RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
 var
   Workspace: TShellWorkspace;
-  FileName: string;
+  FileName, Folder: string;
 begin
   AContext := Default(TRuleCheckContext);
   FileName := TDocumentUris.ToPath(AUri);
@@ -1456,6 +1456,22 @@ begin
     not ReadSourceText(ChangeFileExt(FileName, '.dfm'), AContext.FormText) and
     not ReadSourceText(ChangeFileExt(FileName, '.fmx'), AContext.FormText) then
     AContext.FormText := '';
+  // Ressourcen neben der Unit, z. B. die .dcr mit den Palettensymbolen (#114).
+  Folder := ExtractFilePath(FileName);
+  AContext.ReadFile :=
+    function(const AName: string; out AData: TBytes): Boolean
+    begin
+      Result := TFile.Exists(TPath.Combine(Folder, AName));
+      if Result then
+      try
+        AData := TFile.ReadAllBytes(TPath.Combine(Folder, AName));
+      except
+        on EInOutError do
+          Result := False;
+        on EFileStreamError do
+          Result := False;
+      end;
+    end;
   Result := True;
 end;
 

@@ -50,6 +50,8 @@ type
     Index: ISymbolIndex;
     /// <summary>Formulardatei neben der Unit (#123); '' ohne.</summary>
     FormText: string;
+    /// <summary>Dateien neben der Unit, z. B. .dcr (#114); nil = keine.</summary>
+    ReadFile: TRuleFileReader;
   end;
 
   /// <summary>Regeln und Einstellungen für AUri; False = keine Regeln prüfen. Hintergrund-Thread.</summary>
@@ -649,6 +651,7 @@ begin
     Context.Tree := Tree;
     Context.Index := ARules.Index;
     Context.FormText := ARules.FormText;
+    Context.ReadFile := ARules.ReadFile;
     RuleFindings := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
     if ARules.Baseline <> nil then
       RuleFindings := ARules.Baseline.Filter(ARules.RelativePath, ADocument.Text, RuleFindings);

@@ -31,6 +31,7 @@ uses
   BDLsp.Common.Rules.Builtin.RtlTypePatterns,
   BDLsp.Common.Rules.Builtin.Exceptions,
   BDLsp.Common.Rules.Builtin.Style,
+  BDLsp.Common.Rules.Builtin.PaletteIcons,
   BDLsp.Common.Rules.Builtin.Performance,
   BDLsp.Common.Rules.Builtin.DataBinding,
   BDLsp.Common.Rules.Builtin.SlashCommands;
@@ -58,6 +59,7 @@ begin
     RegisterRtlTypePatternRules(Registry);
     RegisterExceptionRules(Registry);
     RegisterStyleRules(Registry);
+    RegisterPaletteIconRules(Registry);
     RegisterPerformanceRules(Registry);
     RegisterDataBindingRules(Registry);
     RegisterSlashCommandRules(Registry);

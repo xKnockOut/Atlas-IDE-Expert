@@ -81,6 +81,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`raise-in-finally`](#raise-in-finally) | raise in einem finally-Block | Bug | Warnung |
 | [`redundant-parens`](#redundant-parens) | Überflüssige Klammern | Code Smell | Hinweis |
 | [`redundant-begin-end`](#redundant-begin-end) | begin … end um eine einzelne Anweisung | Code Smell | Hinweis |
+| [`component-palette-icon`](#component-palette-icon) | Registrierte Komponente ohne Palettensymbol | Code Smell | Hinweis |
 
 <a id="syntax"></a>
 ## syntax
@@ -1816,4 +1817,25 @@ Richtig:
 ```pascal
 if Done then
   Exit;
+```
+
+<a id="component-palette-icon"></a>
+## component-palette-icon
+
+**Registrierte Komponente ohne Palettensymbol** · Code Smell · Hinweis
+
+Jede an RegisterComponents übergebene Klasse braucht in einer per {$R} eingebundenen .dcr oder .res eine Bitmap mit dem Klassennamen in Großbuchstaben. Ab Delphi 11 werden zusätzlich die Größen 16, 24 und 32 px (NAME16, NAME24, NAME32) erwartet. Ohne lesbare eingebundene Ressourcendatei schweigt die Regel.
+
+Mit Treffer:
+
+```pascal
+{$R *.dcr} // without TMYBUTTON
+RegisterComponents('Samples', [TMyButton]);
+```
+
+Richtig:
+
+```pascal
+{$R *.dcr} // with TMYBUTTON16, TMYBUTTON24, TMYBUTTON32
+RegisterComponents('Samples', [TMyButton]);
 ```
