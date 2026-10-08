@@ -18,6 +18,7 @@ type
     FResolver: TNameResolver;
     function CheckAt(const AMarker: string; const AFiles: TArray<string>): TRenameCheck;
     function EditsAt(const AMarker, ANewName: string): TArray<TRenameEdit>;
+    function FormEdits(const AMarker, ANewName: string; AHandlers: Boolean): TArray<TRenameEdit>;
   public
     [Setup]
     procedure Setup;
@@ -35,6 +36,10 @@ type
     procedure RenamesAcrossUnitsAndForm;
     [Test]
     procedure RejectsInvalidNewName;
+    [Test]
+    procedure RenamesComponentWithHandlers;
+    [Test]
+    procedure KeepsHandlersWhenDisabled;
   end;
 
 implementation
@@ -89,6 +94,36 @@ const
     '  R.Summe(R.Summe(3, 4), 5);'#10 +              // 9
     'end;'#10 +                                      // 10
     'end.';
+
+  MaskeFile = 'C:\P\Maske.pas';
+  MaskeDfm = 'C:\P\Maske.dfm';
+
+  UnitMaske =
+    'unit Maske;'#10 +                               // 0
+    'interface'#10 +                                 // 1
+    'type'#10 +                                      // 2
+    '  TMaske = class(TObject)'#10 +                 // 3
+    '    Button1: TObject;'#10 +                     // 4
+    '    procedure Button1Click(Sender: TObject);'#10 + // 5
+    '    procedure Eigen(Sender: TObject);'#10 +     // 6
+    '  end;'#10 +                                    // 7
+    'implementation'#10 +                            // 8
+    'procedure TMaske.Button1Click(Sender: TObject);'#10 + // 9
+    'begin'#10 +                                     // 10
+    '  Eigen(Button1);'#10 +                         // 11
+    'end;'#10 +                                      // 12
+    'procedure TMaske.Eigen(Sender: TObject);'#10 +  // 13
+    'begin'#10 +                                     // 14
+    'end;'#10 +                                      // 15
+    'end.';
+
+  FormMaske =
+    'object Maske: TMaske'#10 +
+    '  object Button1: TButton'#10 +
+    '    OnClick = Button1Click'#10 +
+    '    OnEnter = Eigen'#10 +
+    '  end'#10 +
+    'end';
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
 var
@@ -155,6 +190,35 @@ begin
       end);
   finally
     Tree.Free;
+  end;
+end;
+
+function TLspRenameTests.FormEdits(const AMarker, ANewName: string; AHandlers: Boolean): TArray<TRenameEdit>;
+var
+  Index: ISymbolIndex;
+  Resolver: TNameResolver;
+  Tree: TSyntaxTree;
+begin
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText(UnitMaske, MaskeFile, nil));
+  Resolver := TNameResolver.Create(Index);
+  Tree := TPascalParser.Parse(UnitMaske);
+  try
+    Result := TLspRename.Edits(Resolver, Index, Tree, MaskeFile, PositionOf(UnitMaske, AMarker), ANewName,
+      [MaskeFile],
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        Result := True;
+        if SameText(AFileName, MaskeFile) then
+          AText := UnitMaske
+        else if SameText(AFileName, MaskeDfm) then
+          AText := FormMaske
+        else
+          Result := False;
+      end, nil, AHandlers);
+  finally
+    Tree.Free;
+    Resolver.Free;
   end;
 end;
 
@@ -227,6 +291,38 @@ begin
       Raised := True;
   end;
   Assert.IsTrue(Raised);
+end;
+
+procedure TLspRenameTests.RenamesComponentWithHandlers;
+var
+  Found: TArray<TRenameEdit>;
+  Edit: TRenameEdit;
+  Field, Handler, Other: Integer;
+begin
+  Found := FormEdits('Button1: TObject', 'btnSpeichern', True);
+  Field := 0;
+  Handler := 0;
+  Other := 0;
+  for Edit in Found do
+    if Edit.NewText = 'btnSpeichern' then
+      Inc(Field)
+    else if Edit.NewText = 'btnSpeichernClick' then
+      Inc(Handler)
+    else
+      Inc(Other);
+  // Feld, Verwendung im Code und Objektname in der DFM.
+  Assert.AreEqual(3, Field);
+  // Deklaration, Implementierung und Zuordnung in der DFM; Eigen bleibt.
+  Assert.AreEqual(3, Handler);
+  Assert.AreEqual(0, Other);
+end;
+
+procedure TLspRenameTests.KeepsHandlersWhenDisabled;
+var
+  Edit: TRenameEdit;
+begin
+  for Edit in FormEdits('Button1: TObject', 'btnSpeichern', False) do
+    Assert.AreEqual('btnSpeichern', Edit.NewText);
 end;
 
 initialization

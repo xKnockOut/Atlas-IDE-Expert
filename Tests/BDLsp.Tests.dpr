@@ -93,6 +93,7 @@ uses
   BDLsp.Common.Editing.DocumentLinks.Tests in 'Common\Editing\BDLsp.Common.Editing.DocumentLinks.Tests.pas',
   BDLsp.Common.Editing.ClassCompletion.Tests in 'Common\Editing\BDLsp.Common.Editing.ClassCompletion.Tests.pas',
   BDLsp.Common.Dfm.Tests in 'Common\Dfm\BDLsp.Common.Dfm.Tests.pas',
+  BDLsp.Common.Dfm.ComponentRename.Tests in 'Common\Dfm\BDLsp.Common.Dfm.ComponentRename.Tests.pas',
   BDLsp.Common.Editing.Formatter.Tests in 'Common\Editing\BDLsp.Common.Editing.Formatter.Tests.pas',
   BDLsp.Common.Editing.CodeActions.Tests in 'Common\Editing\BDLsp.Common.Editing.CodeActions.Tests.pas';
 
