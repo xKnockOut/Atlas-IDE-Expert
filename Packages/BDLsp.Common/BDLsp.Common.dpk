@@ -84,6 +84,7 @@ contains
   BDLsp.Common.Editing.DocumentLinks in 'Source\Editing\BDLsp.Common.Editing.DocumentLinks.pas',
   BDLsp.Common.Editing.Colors in 'Source\Editing\BDLsp.Common.Editing.Colors.pas',
   BDLsp.Common.JsonRpc.Statistics in 'Source\JsonRpc\BDLsp.Common.JsonRpc.Statistics.pas',
+  BDLsp.Common.Lsp.References in 'Source\Lsp\BDLsp.Common.Lsp.References.pas',
   BDLsp.Common.Lsp.Commands in 'Source\Lsp\BDLsp.Common.Lsp.Commands.pas',
   BDLsp.Common.Lsp.Status in 'Source\Lsp\BDLsp.Common.Lsp.Status.pas',
   BDLsp.Common.Lsp.DocWiki in 'Source\Lsp\BDLsp.Common.Lsp.DocWiki.pas',

@@ -57,6 +57,7 @@ type
     function FindProjectFile(const ASettings: TServerSettings): string;
     function GetNamespaces: TArray<string>;
     function GetSearchPaths: TArray<string>;
+    function GetProjectFiles: TArray<string>;
   public
     constructor Create(const ARoot, AName: string; const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
       const ALogger: ILogger; const AIndex: ISymbolIndex; const AProgressToken: string);
@@ -85,6 +86,8 @@ type
     property Namespaces: TArray<string> read GetNamespaces;
     /// <summary>Suchpfade des Projekts, z. B. für Include-Dateien. Threadsicher.</summary>
     property SearchPaths: TArray<string> read GetSearchPaths;
+    /// <summary>Quelltexte des Projekts (Hauptdatei, Units). Threadsicher.</summary>
+    property ProjectFiles: TArray<string> read GetProjectFiles;
     /// <summary>Nach dem Laden eines Projekts (Defines und Namespaces neu).</summary>
     property OnProjectLoaded: TProc read FOnProjectLoaded write FOnProjectLoaded;
   end;
@@ -282,6 +285,16 @@ begin
       end;
     end;
     Result := FBaseline;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+function TShellWorkspace.GetProjectFiles: TArray<string>;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FProjectFiles;
   finally
     TMonitor.Exit(FLock);
   end;

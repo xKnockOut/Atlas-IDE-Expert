@@ -32,6 +32,7 @@ uses
   BDLsp.Common.Lsp.DocumentLinks,
   BDLsp.Common.Lsp.Colors,
   BDLsp.Common.Lsp.Commands,
+  BDLsp.Common.Lsp.References,
   BDLsp.Common.Lsp.Status,
   BDLsp.Common.JsonRpc.Statistics,
   BDLsp.Common.Lsp.WatchedFiles,
@@ -60,6 +61,7 @@ type
     FHover: TLspHover;
     FWorkspaceSymbols: TLspWorkspaceSymbols;
     FDocumentHighlights: TLspDocumentHighlights;
+    FReferences: TLspReferences;
     FCodeActions: TLspCodeActions;
     FDocumentLinks: TLspDocumentLinks;
     FColors: TLspColors;
@@ -82,6 +84,8 @@ type
     /// <summary>Innerster Ordner zur Datei oder nil. Aufrufer hält FWorkspacesLock.</summary>
     function WorkspaceOf(const AFileName: string): TShellWorkspace;
     function EnsureUnit(const AUnitName: string): Boolean;
+    /// <summary>Text einer Quelldatei; geöffnete Dokumente haben Vorrang vor der Platte.</summary>
+    function ReadSourceText(const AFileName: string; out AText: string): Boolean;
     /// <summary>Inhalt des Status-Befehls (#28).</summary>
     function CollectStatus: TServerStatus;
     function DefinesFor(const AUri: string; out ADefines: TArray<string>): Boolean;
@@ -221,21 +225,8 @@ begin
   FDefinition.Attach(FDispatcher);
   FHover := TLspHover.Create(FDocuments, FIndex,
     function(const AFileName: string; out AText: string): Boolean
-    var
-      Document: ITextDocument;
-      FileFormat: TFileFormat;
     begin
-      // Geöffnete Dokumente haben Vorrang vor dem Stand auf der Festplatte.
-      if FDocuments.TryGet(TDocumentUris.FromPath(AFileName), Document) then
-      begin
-        AText := Document.Text;
-        Exit(True);
-      end;
-      Result := FileExists(AFileName);
-      if Result then
-        AText := TFileEncoding.LoadFromFile(AFileName, FileFormat)
-      else
-        AText := '';
+      Result := ReadSourceText(AFileName, AText);
     end,
     function(const AUnitName: string): Boolean
     begin
@@ -251,6 +242,35 @@ begin
       Result := EnsureUnit(AUnitName);
     end);
   FDocumentHighlights.Attach(FDispatcher);
+  FReferences := TLspReferences.Create(FDocuments, FIndex,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    function: TArray<string>
+    var
+      Workspace: TShellWorkspace;
+      Document: ITextDocument;
+      FileName: string;
+    begin
+      Result := nil;
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        for Workspace in FWorkspaces do
+          for FileName in Workspace.ProjectFiles do
+            Result := Result + [FileName];
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+      // Geöffnete Dateien außerhalb des Projekts zählen mit.
+      for Document in FDocuments.Documents do
+        Result := Result + [TDocumentUris.ToPath(Document.Uri)];
+    end,
+    function(const AUnitName: string): Boolean
+    begin
+      Result := EnsureUnit(AUnitName);
+    end);
+  FReferences.Attach(FDispatcher);
   FCodeActions := TLspCodeActions.Create(FDocuments, RuleContextFor);
   FCodeActions.Attach(FDispatcher);
   FDocumentLinks := TLspDocumentLinks.Create(FDocuments,
@@ -337,6 +357,7 @@ begin
   FHover.Free;
   FWorkspaceSymbols.Free;
   FDocumentHighlights.Free;
+  FReferences.Free;
   FCodeActions.Free;
   FDocumentLinks.Free;
   FColors.Free;
@@ -462,6 +483,23 @@ begin
       State.SmallBlockTypeStates[I].UseableBlockSize);
 end;
 
+function TServerComposition.ReadSourceText(const AFileName: string; out AText: string): Boolean;
+var
+  Document: ITextDocument;
+  FileFormat: TFileFormat;
+begin
+  if FDocuments.TryGet(TDocumentUris.FromPath(AFileName), Document) then
+  begin
+    AText := Document.Text;
+    Exit(True);
+  end;
+  Result := FileExists(AFileName);
+  if Result then
+    AText := TFileEncoding.LoadFromFile(AFileName, FileFormat)
+  else
+    AText := '';
+end;
+
 function TServerComposition.CollectStatus: TServerStatus;
 var
   Workspace: TShellWorkspace;
@@ -544,6 +582,7 @@ begin
   FDefinition.Namespaces := Namespaces;
   FHover.Namespaces := Namespaces;
   FDocumentHighlights.Namespaces := Namespaces;
+  FReferences.Namespaces := Namespaces;
   FSyntaxDiagnostics.Refresh;
 end;
 
@@ -682,6 +721,7 @@ begin
   Result.AddPair('hoverProvider', TJSONBool.Create(True));
   Result.AddPair('workspaceSymbolProvider', TJSONBool.Create(True));
   Result.AddPair('documentHighlightProvider', TJSONBool.Create(True));
+  Result.AddPair('referencesProvider', TJSONBool.Create(True));
   Result.AddPair('codeActionProvider', TLspCodeActions.Capability);
   Result.AddPair('documentLinkProvider', TLspDocumentLinks.Capability);
   Result.AddPair('colorProvider', TJSONBool.Create(True));
