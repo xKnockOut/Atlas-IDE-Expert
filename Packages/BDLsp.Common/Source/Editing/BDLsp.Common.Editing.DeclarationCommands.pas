@@ -33,26 +33,6 @@ uses
 
 { /var und /const }
 
-/// <summary>Lokale Deklaration in den Abschnitt AKind der Routine; legt ihn vor begin an.</summary>
-function AddLocal(ASource: TCommandSource; ARoutine: TSyntaxNode; AKind: TSyntaxKind; const AKeyword,
-  ADeclaration: string): TRuleEdit;
-var
-  Index: Integer;
-  Section: TSyntaxNode;
-  Indent: string;
-begin
-  Indent := ASource.Indent(ARoutine.StartPos.Line);
-  Section := nil;
-  for Index := 0 to ARoutine.ChildCount - 1 do
-    if ARoutine[Index].Kind = AKind then
-      Section := ARoutine[Index];
-  if Section <> nil then
-    Result := ASource.AfterLine(Section.EndPos.Line, Indent + '  ' + ADeclaration)
-  else
-    Result := ASource.BeforeLine(ARoutine.FindChild(TSyntaxKind.Block).StartPos.Line,
-      Indent + AKeyword + ASource.LineBreak + Indent + '  ' + ADeclaration);
-end;
-
 function ExecuteVar(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;

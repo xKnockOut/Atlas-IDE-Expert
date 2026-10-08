@@ -123,6 +123,7 @@ contains
   BDLsp.Common.Editing.WrapCommands in 'Source\Editing\BDLsp.Common.Editing.WrapCommands.pas',
   BDLsp.Common.Editing.MaintenanceCommands in 'Source\Editing\BDLsp.Common.Editing.MaintenanceCommands.pas',
   BDLsp.Common.Editing.TypeCommands in 'Source\Editing\BDLsp.Common.Editing.TypeCommands.pas',
+  BDLsp.Common.Editing.CollectionCommands in 'Source\Editing\BDLsp.Common.Editing.CollectionCommands.pas',
   BDLsp.Common.Editing.UnitTemplates in 'Source\Editing\BDLsp.Common.Editing.UnitTemplates.pas',
   BDLsp.Common.Editing.ErrorCommands in 'Source\Editing\BDLsp.Common.Editing.ErrorCommands.pas',
   BDLsp.Common.Editing.UnitFiles in 'Source\Editing\BDLsp.Common.Editing.UnitFiles.pas',

@@ -101,6 +101,7 @@ uses
   BDLsp.Common.Editing.WrapCommands,
   BDLsp.Common.Editing.MaintenanceCommands,
   BDLsp.Common.Editing.TypeCommands,
+  BDLsp.Common.Editing.CollectionCommands,
   BDLsp.Common.Editing.ErrorCommands;
 
 function IsDisabled(const AName: string; const ADisabled: TArray<string>): Boolean;
@@ -172,6 +173,7 @@ begin
     RegisterWrapCommands(Created);
     RegisterMaintenanceCommands(Created);
     RegisterTypeCommands(Created);
+    RegisterCollectionCommands(Created);
     RegisterErrorCommands(Created);
     if AtomicCmpExchange(Pointer(FShared), Pointer(Created), nil) <> nil then
       Created.Free;
