@@ -18,6 +18,8 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`thread-free-with-free-on-terminate`](#thread-free-with-free-on-terminate) | Free auf einem Thread mit FreeOnTerminate | Bug | Fehler |
 | [`synchronize-in-destructor`](#synchronize-in-destructor) | Synchronize im Destruktor eines Threads | Bug | Warnung |
 | [`thread-resume-suspend`](#thread-resume-suspend) | Veraltetes TThread.Resume/Suspend | Code Smell | Warnung |
+| [`result-not-set`](#result-not-set) | Funktionsergebnis eventuell nicht gesetzt | Bug | Warnung |
+| [`possibly-uninitialized`](#possibly-uninitialized) | Variable eventuell nicht initialisiert | Bug | Warnung |
 
 <a id="syntax"></a>
 ## syntax
@@ -324,4 +326,62 @@ Richtig:
 
 ```pascal
 FWorker.Start;
+```
+
+<a id="result-not-set"></a>
+## result-not-set
+
+**Funktionsergebnis eventuell nicht gesetzt** · Bug · Warnung
+
+Ein Pfad durch die Funktion endet, ohne Result zuzuweisen. Der Aufrufer liest dann einen undefinierten Wert.
+
+Mit Treffer:
+
+```pascal
+function Find: Integer;
+begin
+  if Ok then
+    Result := 1;
+end;
+```
+
+Richtig:
+
+```pascal
+function Find: Integer;
+begin
+  Result := 0;
+  if Ok then
+    Result := 1;
+end;
+```
+
+<a id="possibly-uninitialized"></a>
+## possibly-uninitialized
+
+**Variable eventuell nicht initialisiert** · Bug · Warnung
+
+Eine lokale Variable wird auf einem Pfad gelesen, auf dem ihr nie ein Wert zugewiesen wurde.
+
+Mit Treffer:
+
+```pascal
+var I: Integer;
+begin
+  if Ok then
+    I := 1;
+  Writeln(I);
+end;
+```
+
+Richtig:
+
+```pascal
+var I: Integer;
+begin
+  I := 0;
+  if Ok then
+    I := 1;
+  Writeln(I);
+end;
 ```

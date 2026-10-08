@@ -116,6 +116,7 @@ contains
   BDLsp.Common.Rules.Builtin.UnitFiles in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.UnitFiles.pas',
   BDLsp.Common.Rules.Builtin.Architecture in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Architecture.pas',
   BDLsp.Common.Rules.Builtin.Concurrency in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Concurrency.pas',
+  BDLsp.Common.Rules.Builtin.Flow in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Flow.pas',
   BDLsp.Common.Lsp.FileOperations in 'Source\Lsp\BDLsp.Common.Lsp.FileOperations.pas',
   BDLsp.Common.Editing.ClassCompletion in 'Source\Editing\BDLsp.Common.Editing.ClassCompletion.pas',
   BDLsp.Common.Dfm.Contract in 'Source\Dfm\BDLsp.Common.Dfm.Contract.pas',
