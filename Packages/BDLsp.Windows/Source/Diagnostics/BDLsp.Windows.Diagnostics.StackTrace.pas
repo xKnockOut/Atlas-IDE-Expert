@@ -3,9 +3,9 @@
 // Platform-Feature "Diagnostics", Root: Stacktraces für Exceptions.
 // Install hängt sich in Exception.GetExceptionStackInfoProc ein; danach
 // liefert Exception.StackTrace die Aufrufkette zum Zeitpunkt des raise als
-// "Modul+$Offset" je Zeile. Den Offset löst die .map-Datei des Builds auf
-// (Linker-Option "Map-Datei: detailliert"; Adresse = Offset - $1000 im
-// Codeabschnitt).
+// "Modul+$Offset" je Zeile. Liegt die .map-Datei des Builds neben der EXE
+// (Linker-Option "Map-Datei: detailliert", #282), steht dahinter Unit, Routine
+// und Zeile; die Map wird beim ersten Stacktrace gelesen.
 
 interface
 
@@ -29,7 +29,9 @@ implementation
 // Exception.GetExceptionStackInfoProc erwartet den aus System.SysUtils.
 uses
   Winapi.Windows,
-  System.SysUtils;
+  System.SysUtils,
+  System.IOUtils,
+  BDLsp.Common.Diagnostics.MapFile;
 
 const
   MaxFrames = 48;
@@ -55,6 +57,36 @@ var
   PreviousGetString: function(Info: Pointer): string;
   PreviousCleanUp: procedure(Info: Pointer);
   IsInstalled: Boolean;
+  MapLock: TObject;
+  MapLoaded: Boolean;
+  Map: TMapFile;
+  MapModule: string;
+
+/// <summary>Map der EXE, beim ersten Aufruf gelesen; nil ohne .map-Datei.</summary>
+function LoadedMap: TMapFile;
+var
+  MapName: string;
+begin
+  TMonitor.Enter(MapLock);
+  try
+    if not MapLoaded then
+    begin
+      MapLoaded := True;
+      MapName := ChangeFileExt(ParamStr(0), '.map');
+      MapModule := ExtractFileName(ParamStr(0));
+      try
+        if TFile.Exists(MapName) then
+          Map := TMapFile.Create(TFile.ReadAllText(MapName));
+      except
+        // Eine unlesbare Map darf das Absturzprotokoll nicht verhindern.
+        FreeAndNil(Map);
+      end;
+    end;
+    Result := Map;
+  finally
+    TMonitor.Exit(MapLock);
+  end;
+end;
 
 function Capture(ASkip: Integer): PStackInfo;
 begin
@@ -69,6 +101,8 @@ begin
   Result := '';
   for Index := 0 to AInfo.Count - 1 do
     Result := Result + TStackTrace.DescribeAddress(AInfo.Frames[Index]) + sLineBreak;
+  if LoadedMap <> nil then
+    Result := LoadedMap.Symbolize(Result, MapModule);
 end;
 
 function GetExceptionStackInfo(P: PExceptionRecord): Pointer;
@@ -145,5 +179,12 @@ begin
   else
     Result := Format('$%p', [AAddress]);
 end;
+
+initialization
+  MapLock := TObject.Create;
+
+finalization
+  Map.Free;
+  MapLock.Free;
 
 end.

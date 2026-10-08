@@ -87,7 +87,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: server
-          path: Output/Win64/Release/Bin/BetterDelphiLSP.exe
+          path: |
+            Output/Win64/Release/Bin/BetterDelphiLSP.exe
+            Output/Win64/Release/Bin/BetterDelphiLSP.map
 
   release:
     needs: [version, server]
@@ -128,6 +130,7 @@ jobs:
           files: |
             Editors/VSCode/betterdelphilsp-${{ env.VERSION }}.vsix
             Editors/VSCode/server/BetterDelphiLSP.exe
+            Editors/VSCode/server/BetterDelphiLSP.map
           fail_on_unmatched_files: false
       - name: VS Code Marketplace (optional)
         if: env.HAS_VSCE == 'true'

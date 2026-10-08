@@ -30,6 +30,7 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
+        <DCC_MapFile>3</DCC_MapFile>
         <SanitizedProjectName>BDLsp_Common</SanitizedProjectName>
         <GenPackage>true</GenPackage>
         <GenDll>true</GenDll>
@@ -60,7 +61,8 @@
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
         <DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
-        <DCC_DebugInformation>0</DCC_DebugInformation>
+        <!-- Begrenzte Debug-Informationen: Zeilennummern in der .map des Servers (#282). -->
+        <DCC_DebugInformation>1</DCC_DebugInformation>
         <DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
     </PropertyGroup>
     <ItemGroup>
@@ -100,6 +102,7 @@
         <DCCReference Include="Source\Compiler\BDLsp.Common.Compiler.CommandLine.pas"/>
         <DCCReference Include="Source\Compiler\BDLsp.Common.Compiler.Results.pas"/>
         <DCCReference Include="Source\Compiler\BDLsp.Common.Compiler.Backends.pas"/>
+        <DCCReference Include="Source\Diagnostics\BDLsp.Common.Diagnostics.MapFile.pas"/>
         <DCCReference Include="Source\Index\BDLsp.Common.Index.Contract.pas"/>
         <DCCReference Include="Source\Index\BDLsp.Common.Index.Extractor.pas"/>
         <DCCReference Include="Source\Index\BDLsp.Common.Index.SymbolIndex.pas"/>

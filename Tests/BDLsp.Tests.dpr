@@ -34,6 +34,7 @@ uses
   BDLsp.Windows.Projects.DelphiInstallation.Tests in 'Windows\Projects\BDLsp.Windows.Projects.DelphiInstallation.Tests.pas',
   BDLsp.Common.Compiler.Tests in 'Common\Compiler\BDLsp.Common.Compiler.Tests.pas',
   BDLsp.Common.Compiler.Backends.Tests in 'Common\Compiler\BDLsp.Common.Compiler.Backends.Tests.pas',
+  BDLsp.Common.Diagnostics.MapFile.Tests in 'Common\Diagnostics\BDLsp.Common.Diagnostics.MapFile.Tests.pas',
   BDLsp.Windows.Compiler.Adapters.ProcessRunner.Tests in 'Windows\Compiler\BDLsp.Windows.Compiler.Adapters.ProcessRunner.Tests.pas',
   BDLsp.Common.Documents.Providers.DocumentStore.Tests in 'Common\Documents\BDLsp.Common.Documents.Providers.DocumentStore.Tests.pas',
   BDLsp.Common.Documents.Uris.Tests in 'Common\Documents\BDLsp.Common.Documents.Uris.Tests.pas',

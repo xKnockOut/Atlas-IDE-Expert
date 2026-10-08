@@ -25,6 +25,7 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
+        <DCC_MapFile>3</DCC_MapFile>
         <SanitizedProjectName>BDLsp_Tests</SanitizedProjectName>
         <DCC_Namespace>System;Winapi;System.Win;$(DCC_Namespace)</DCC_Namespace>
         <DCC_UnitSearchPath>$(DUnitX);..\Output\$(Platform)\$(Config)\Dcu\BDLsp.Common;..\Output\$(Platform)\$(Config)\Dcu\BDLsp.Windows;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
@@ -70,6 +71,7 @@
         <DCCReference Include="Windows\Projects\BDLsp.Windows.Projects.DelphiInstallation.Tests.pas"/>
         <DCCReference Include="Common\Compiler\BDLsp.Common.Compiler.Tests.pas"/>
         <DCCReference Include="Common\Compiler\BDLsp.Common.Compiler.Backends.Tests.pas"/>
+        <DCCReference Include="Common\Diagnostics\BDLsp.Common.Diagnostics.MapFile.Tests.pas"/>
         <DCCReference Include="Windows\Compiler\BDLsp.Windows.Compiler.Adapters.ProcessRunner.Tests.pas"/>
         <DCCReference Include="Common\Documents\BDLsp.Common.Documents.Providers.DocumentStore.Tests.pas"/>
         <DCCReference Include="Common\Documents\BDLsp.Common.Documents.Uris.Tests.pas"/>
