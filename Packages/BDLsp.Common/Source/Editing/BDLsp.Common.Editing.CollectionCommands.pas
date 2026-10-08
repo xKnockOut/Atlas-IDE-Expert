@@ -30,7 +30,6 @@ uses
   BDLsp.Common.Rules.Contract,
   BDLsp.Common.Pascal.SyntaxTree,
   BDLsp.Common.Index.Contract,
-  BDLsp.Common.Editing.UsesClause,
   BDLsp.Common.Editing.CommandSource,
   BDLsp.Common.Editing.TypeCommands;
 
@@ -59,36 +58,6 @@ begin
   else
     // Boolean und Aufzählungen über die Ordinalzahl.
     Result := 'Ord(%s) - Ord(%s)';
-end;
-
-/// <summary>Trägt die fehlenden AUnits in das uses des Abschnitts an Zeile ALine ein.</summary>
-procedure AddUses(ASource: TCommandSource; const AContext: TSlashContext; ALine: Integer;
-  const AUnits: array of string; var AEdits: TArray<TRuleEdit>);
-var
-  Used: TArray<string>;
-  Index: Integer;
-  Combined, Edit: TRuleEdit;
-  Found: Boolean;
-begin
-  Used := TUsesClauses.UsedUnits(ASource.Tree.Tokens);
-  Combined := Default(TRuleEdit);
-  Found := False;
-  for Index := 0 to High(AUnits) do
-    if (AUnits[Index] <> '') and not TUsesClauses.IsUsed(Used, AUnits[Index], AContext.Namespaces) and
-      TUsesClauses.AddUnit(ASource.Tree.Tokens, ASource.Offset(ALine), AUnits[Index], ASource.LineBreak, Edit) then
-    begin
-      // Alle Units landen an derselben Stelle: Texte zu einem Edit zusammenfassen.
-      if not Found then
-        Combined := Edit
-      else if StartsStr(',', Edit.NewText) then
-        Combined.NewText := Combined.NewText + Edit.NewText
-      else
-        // Neue uses-Klausel: "uses X;" wird "uses X, Y;".
-        Combined.NewText := Copy(Combined.NewText, 1, Length(Combined.NewText) - 1) + ', ' + AUnits[Index] + ';';
-      Found := True;
-    end;
-  if Found then
-    AEdits := AEdits + [Combined];
 end;
 
 /// <summary>Implementierung von AClassName.AMethod in der Datei; nil ohne.</summary>

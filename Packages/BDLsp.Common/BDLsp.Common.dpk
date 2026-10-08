@@ -129,6 +129,7 @@ contains
   BDLsp.Common.Editing.CommandSource in 'Source\Editing\BDLsp.Common.Editing.CommandSource.pas',
   BDLsp.Common.Editing.ClassCommands in 'Source\Editing\BDLsp.Common.Editing.ClassCommands.pas',
   BDLsp.Common.Editing.WrapCommands in 'Source\Editing\BDLsp.Common.Editing.WrapCommands.pas',
+  BDLsp.Common.Editing.RefactoringCommands in 'Source\Editing\BDLsp.Common.Editing.RefactoringCommands.pas',
   BDLsp.Common.Editing.MaintenanceCommands in 'Source\Editing\BDLsp.Common.Editing.MaintenanceCommands.pas',
   BDLsp.Common.Editing.TypeCommands in 'Source\Editing\BDLsp.Common.Editing.TypeCommands.pas',
   BDLsp.Common.Editing.CollectionCommands in 'Source\Editing\BDLsp.Common.Editing.CollectionCommands.pas',

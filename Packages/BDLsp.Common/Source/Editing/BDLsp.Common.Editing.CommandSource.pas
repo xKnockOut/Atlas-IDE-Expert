@@ -76,6 +76,10 @@ function Wrap(ASource: TCommandSource; const AName: string; const AHead, ATail: 
 function AddLocal(ASource: TCommandSource; ARoutine: TSyntaxNode; AKind: TSyntaxKind; const AKeyword,
   ADeclaration: string): TRuleEdit;
 
+/// <summary>Trägt die fehlenden AUnits in das uses des Abschnitts an Zeile ALine ein.</summary>
+procedure AddUses(ASource: TCommandSource; const AContext: TSlashContext; ALine: Integer;
+  const AUnits: array of string; var AEdits: TArray<TRuleEdit>);
+
 implementation
 
 uses
@@ -83,7 +87,8 @@ uses
   System.StrUtils,
   BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.Parser,
-  BDLsp.Common.Index.Extractor;
+  BDLsp.Common.Index.Extractor,
+  BDLsp.Common.Editing.UsesClause;
 
 constructor TCommandSource.Create(const AContext: TSlashContext);
 var
@@ -391,6 +396,36 @@ begin
   else
     Result := ASource.BeforeLine(ARoutine.FindChild(TSyntaxKind.Block).StartPos.Line,
       Indent + AKeyword + ASource.LineBreak + Indent + '  ' + ADeclaration);
+end;
+
+/// <summary>Trägt die fehlenden AUnits in das uses des Abschnitts an Zeile ALine ein.</summary>
+procedure AddUses(ASource: TCommandSource; const AContext: TSlashContext; ALine: Integer;
+  const AUnits: array of string; var AEdits: TArray<TRuleEdit>);
+var
+  Used: TArray<string>;
+  Index: Integer;
+  Combined, Edit: TRuleEdit;
+  Found: Boolean;
+begin
+  Used := TUsesClauses.UsedUnits(ASource.Tree.Tokens);
+  Combined := Default(TRuleEdit);
+  Found := False;
+  for Index := 0 to High(AUnits) do
+    if (AUnits[Index] <> '') and not TUsesClauses.IsUsed(Used, AUnits[Index], AContext.Namespaces) and
+      TUsesClauses.AddUnit(ASource.Tree.Tokens, ASource.Offset(ALine), AUnits[Index], ASource.LineBreak, Edit) then
+    begin
+      // Alle Units landen an derselben Stelle: Texte zu einem Edit zusammenfassen.
+      if not Found then
+        Combined := Edit
+      else if StartsStr(',', Edit.NewText) then
+        Combined.NewText := Combined.NewText + Edit.NewText
+      else
+        // Neue uses-Klausel: "uses X;" wird "uses X, Y;".
+        Combined.NewText := Copy(Combined.NewText, 1, Length(Combined.NewText) - 1) + ', ' + AUnits[Index] + ';';
+      Found := True;
+    end;
+  if Found then
+    AEdits := AEdits + [Combined];
 end;
 
 end.

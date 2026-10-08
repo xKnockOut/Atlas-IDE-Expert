@@ -160,6 +160,7 @@ uses
   BDLsp.Common.Rules.ChangedFiles.Tests in 'Common\Rules\BDLsp.Common.Rules.ChangedFiles.Tests.pas',
   BDLsp.Common.Editing.PostfixTemplates.Tests in 'Common\Editing\BDLsp.Common.Editing.PostfixTemplates.Tests.pas',
   BDLsp.Common.Lsp.Completion.Postfix.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Completion.Postfix.Tests.pas',
+  BDLsp.Common.Editing.RefactoringCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.RefactoringCommands.Tests.pas',
   BDLsp.Common.Rules.Builtin.DataBinding.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.DataBinding.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
