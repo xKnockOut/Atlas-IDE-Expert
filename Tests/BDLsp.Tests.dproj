@@ -133,6 +133,7 @@
         <DCCReference Include="Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Unicode.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.CodeActions.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.UsesClause.Tests.pas"/>
+        <DCCReference Include="Common\Editing\BDLsp.Common.Editing.UsesActions.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.BlockCompletion.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.UsesCommand.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.UnitFiles.Tests.pas"/>

@@ -8,13 +8,17 @@
 //   - "try/finally ergänzen" nach "X := T.Create(...);" mit passendem X.Free;
 //     bei "Result := T.Create(...)" stattdessen try/except, das Result nur im
 //     Fehlerfall freigibt (das Objekt wird ja zurückgegeben)
+//   - uses-Aktionen (#284): fehlende Unit ergänzen, ungenutzte entfernen,
+//     ins implementation verschieben (Logik in Editing.UsesActions)
 
 interface
 
 uses
   System.SysUtils,
   BDLsp.Common.Documents.Contract,
-  BDLsp.Common.Rules.Contract;
+  BDLsp.Common.Pascal.SyntaxTree,
+  BDLsp.Common.Rules.Contract,
+  BDLsp.Common.Editing.UsesActions;
 
 const
   QuickFixKind = 'quickfix';
@@ -22,6 +26,8 @@ const
   // Für editor.codeActionsOnSave (#182).
   OrganizeImportsKind = 'source.organizeImports';
   FixAllKind = 'source.fixAll';
+  /// <summary>Ungenutzte uses entfernen (#284).</summary>
+  RemoveUnusedKind = 'source.removeUnusedImports';
 
 type
   TCodeAction = record
@@ -51,7 +57,13 @@ type
     /// Edits werden ausgelassen. False ohne sichere Korrektur.</summary>
     class function FixAll(const AFindings: TArray<TRuleFinding>; out AAction: TCodeAction): Boolean; static;
     /// <summary>uses aufräumen (doppelte entfernen, mit ASort sortieren); False ohne Änderung.</summary>
-    class function OrganizeImports(const AText: string; ASort: Boolean; out AAction: TCodeAction): Boolean; static;
+    class function OrganizeImports(const AText: string; ASort: Boolean; out AAction: TCodeAction;
+      AByNamespace: Boolean = False): Boolean; static;
+    /// <summary>uses-Aktionen (#284): fehlende Unit zum Bezeichner an ARange.StartPos (Quick-Fix),
+    /// interface-Units ins implementation verschieben (Rewrite). Mit ARemoveUnused zusätzlich
+    /// "ungenutzte uses entfernen" (source.removeUnusedImports).</summary>
+    class function UsesActions(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange;
+      const AContext: TUsesContext; AEditing, ARemoveUnused: Boolean): TArray<TCodeAction>; static;
     /// <summary>True, wenn AKind unter einer der angefragten Arten liegt (LSP "only"); leeres AOnly = alle.</summary>
     class function KindRequested(const AKind: string; const AOnly: TArray<string>): Boolean; static;
   end;
@@ -60,8 +72,24 @@ implementation
 
 uses
   System.StrUtils,
+  BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.Lexer,
   BDLsp.Common.Editing.UsesClause;
+
+/// <summary>Offset des ersten Tokens ab APosition (für die Wahl des uses-Abschnitts).</summary>
+function OffsetNear(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
+var
+  Token: TPascalToken;
+begin
+  Result := 0;
+  for Token in ATokens do
+  begin
+    Result := Token.Offset;
+    if (Token.EndPos.Line > APosition.Line) or
+      ((Token.EndPos.Line = APosition.Line) and (Token.EndPos.Character >= APosition.Character)) then
+      Exit;
+  end;
+end;
 
 function SplitLines(const AText: string): TArray<string>;
 var
@@ -268,17 +296,71 @@ begin
   Result := AAction.Edits <> nil;
 end;
 
-class function TCodeActions.OrganizeImports(const AText: string; ASort: Boolean; out AAction: TCodeAction): Boolean;
+class function TCodeActions.OrganizeImports(const AText: string; ASort: Boolean; out AAction: TCodeAction;
+  AByNamespace: Boolean): Boolean;
 var
   Edits: TArray<TRuleEdit>;
 begin
   AAction := Default(TCodeAction);
-  Result := TUsesClauses.Organize(TPascalLexer.Tokenize(AText), AText, ASort, LineBreakOf(AText), Edits);
+  Result := TUsesClauses.Organize(TPascalLexer.Tokenize(AText), AText, ASort, LineBreakOf(AText), Edits,
+    AByNamespace);
   if not Result then
     Exit;
   AAction.Title := 'uses aufräumen';
   AAction.Kind := OrganizeImportsKind;
   AAction.Edits := Edits;
+end;
+
+class function TCodeActions.UsesActions(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange;
+  const AContext: TUsesContext; AEditing, ARemoveUnused: Boolean): TArray<TCodeAction>;
+var
+  Tokens: TArray<TPascalToken>;
+  Units: TArray<string>;
+  UnitName: string;
+  Action: TCodeAction;
+  Edit: TRuleEdit;
+  Edits: TArray<TRuleEdit>;
+begin
+  Result := nil;
+  if not Assigned(AContext.Info) then
+    Exit;
+  Tokens := TPascalLexer.Tokenize(AText);
+  if AEditing and Assigned(AContext.Declaring) then
+    for UnitName in TUsesActions.MissingUnits(Tokens, ATree, ARange.StartPos, AContext.Declaring,
+      AContext.Namespaces) do
+      if TUsesClauses.AddUnit(Tokens, OffsetNear(Tokens, ARange.StartPos), UnitName, LineBreakOf(AText),
+        Edit) then
+      begin
+        Action := Default(TCodeAction);
+        Action.Title := Format('uses %s ergänzen', [UnitName]);
+        Action.Kind := QuickFixKind;
+        Action.Edits := [Edit];
+        Result := Result + [Action];
+      end;
+  if AEditing then
+  begin
+    Units := TUsesActions.MovableUnits(Tokens, AContext.Info);
+    if TUsesActions.MoveUnits(Tokens, AText, Units, LineBreakOf(AText), Edits) then
+    begin
+      Action := Default(TCodeAction);
+      Action.Title := Format('%s ins implementation-uses verschieben', [string.Join(', ', Units)]);
+      Action.Kind := RewriteKind;
+      Action.Edits := Edits;
+      Result := Result + [Action];
+    end;
+  end;
+  if ARemoveUnused then
+  begin
+    Units := TUsesActions.UnusedUnits(Tokens, AContext.Info, AContext.Keep);
+    if TUsesActions.RemoveUnits(Tokens, AText, Units, LineBreakOf(AText), Edits) then
+    begin
+      Action := Default(TCodeAction);
+      Action.Title := Format('Ungenutzte uses entfernen (%s)', [string.Join(', ', Units)]);
+      Action.Kind := RemoveUnusedKind;
+      Action.Edits := Edits;
+      Result := Result + [Action];
+    end;
+  end;
 end;
 
 class function TCodeActions.KindRequested(const AKind: string; const AOnly: TArray<string>): Boolean;

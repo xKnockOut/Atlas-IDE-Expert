@@ -54,6 +54,8 @@ type
     procedure ReadProfiles(ANode: TJsonNode);
     procedure ReadOverrides(ANode: TJsonNode);
     procedure ReadExclude(ANode: TJsonNode);
+    procedure ReadUsesKeep(ANode: TJsonNode);
+    procedure ReadSortUses(ANode: TJsonNode);
     procedure ReadInlayHints(ANode: TJsonNode);
     procedure ReadCompiler(ANode: TJsonNode);
     procedure ReadCompletion(ANode: TJsonNode);
@@ -340,6 +342,40 @@ begin
     else
       FSettings.Overrides := FSettings.Overrides + [Item];
   end;
+end;
+
+procedure TValidator.ReadUsesKeep(ANode: TJsonNode);
+var
+  Index: Integer;
+  Value: string;
+begin
+  if ANode.Kind <> TJsonKind.Array_ then
+  begin
+    ReportNode(ANode, '"usesKeep" muss eine Liste von Unit-Namen sein');
+    Exit;
+  end;
+  FSettings.UsesKeep := nil;
+  for Index := 0 to ANode.Count - 1 do
+    if ExpectString(ANode[Index], 'usesKeep', Value) then
+      FSettings.UsesKeep := FSettings.UsesKeep + [Value];
+end;
+
+procedure TValidator.ReadSortUses(ANode: TJsonNode);
+begin
+  // true/false wie bisher, "namespace" sortiert gruppiert nach Namespace (#284).
+  if ANode.Kind = TJsonKind.Boolean_ then
+  begin
+    FSettings.SortUses := SameText(ANode.Value, 'true');
+    FSettings.SortUsesByNamespace := False;
+  end
+  else if (ANode.Kind = TJsonKind.String_) and (SameText(ANode.Value, 'alphabetic') or
+    SameText(ANode.Value, 'namespace')) then
+  begin
+    FSettings.SortUses := True;
+    FSettings.SortUsesByNamespace := SameText(ANode.Value, 'namespace');
+  end
+  else
+    ReportNode(ANode, 'Erlaubt sind true, false, "alphabetic" und "namespace"');
 end;
 
 procedure TValidator.ReadExclude(ANode: TJsonNode);
@@ -680,7 +716,9 @@ begin
       else if Key = 'usesCommand' then
         ExpectBoolean(Value, Key, FSettings.UsesCommand)
       else if Key = 'sortUses' then
-        ExpectBoolean(Value, Key, FSettings.SortUses)
+        ReadSortUses(Value)
+      else if Key = 'usesKeep' then
+        ReadUsesKeep(Value)
       else if Key = 'memoryBudgetMb' then
       begin
         if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Budget) and (Budget >= 0) then
@@ -873,7 +911,12 @@ begin
     else if Key = 'usesCommand' then
       Result.UsesCommand := FileSettings.UsesCommand
     else if Key = 'sortUses' then
-      Result.SortUses := FileSettings.SortUses
+    begin
+      Result.SortUses := FileSettings.SortUses;
+      Result.SortUsesByNamespace := FileSettings.SortUsesByNamespace;
+    end
+    else if Key = 'usesKeep' then
+      Result.UsesKeep := FileSettings.UsesKeep
     else if Key = 'memoryBudgetMb' then
       Result.MemoryBudgetMb := FileSettings.MemoryBudgetMb;
 end;

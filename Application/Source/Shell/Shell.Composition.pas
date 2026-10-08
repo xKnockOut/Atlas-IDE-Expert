@@ -191,6 +191,7 @@ uses
   BDLsp.Common.Documents.FileEncoding,
   BDLsp.Common.Documents.Uris,
   BDLsp.Common.Index.SymbolIndex,
+  BDLsp.Common.Editing.UsesActions,
   BDLsp.Common.Rules.Builtin,
   BDLsp.Common.Compiler.OutputParser,
   BDLsp.Windows.Compiler.Adapters.ProcessRunner,
@@ -531,6 +532,69 @@ begin
       finally
         TMonitor.Exit(FWorkspacesLock);
       end;
+    end;
+  FCodeActions.SortUsesByNamespaceFor :=
+    function(const AUri: string): Boolean
+    var
+      Workspace: TShellWorkspace;
+    begin
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+        if (Workspace = nil) and (FWorkspaces.Count = 1) then
+          Workspace := FWorkspaces[0];
+        Result := (Workspace <> nil) and Workspace.Configuration.Settings.SortUsesByNamespace;
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+    end;
+  FCodeActions.UsesContextFor :=
+    function(const AUri: string; out AContext: TUsesContext): Boolean
+    var
+      Workspace: TShellWorkspace;
+    begin
+      AContext := Default(TUsesContext);
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+        if (Workspace = nil) and (FWorkspaces.Count = 1) then
+          Workspace := FWorkspaces[0];
+        if Workspace <> nil then
+        begin
+          AContext.Keep := Workspace.Configuration.Settings.UsesKeep;
+          AContext.Namespaces := Workspace.Namespaces;
+        end;
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+      AContext.Info :=
+        function(const AUnitName: string): TUsesUnitInfo
+        var
+          UnitIndex: TUnitIndex;
+          Symbol: TIndexSymbol;
+        begin
+          Result := Default(TUsesUnitInfo);
+          EnsureUnit(AUnitName);
+          if not FIndex.FindUnit(AUnitName, UnitIndex) then
+            Exit;
+          Result.Known := True;
+          Result.HasInitialization := UnitIndex.HasInitialization;
+          for Symbol in UnitIndex.Symbols do
+            if Symbol.InInterface then
+              Result.Names := Result.Names + [Symbol.Name];
+        end;
+      AContext.Declaring :=
+        function(const AName: string): TArray<string>
+        var
+          Location: TSymbolLocation;
+        begin
+          Result := nil;
+          for Location in FIndex.FindSymbols(AName) do
+            if Location.Symbol.InInterface and (Location.Symbol.Container = '') and
+              (IndexText(Location.UnitName, Result) < 0) then
+              Result := Result + [Location.UnitName];
+        end;
+      Result := True;
     end;
   FCodeActions.Attach(FDispatcher);
   FDocumentLinks := TLspDocumentLinks.Create(FDocuments,

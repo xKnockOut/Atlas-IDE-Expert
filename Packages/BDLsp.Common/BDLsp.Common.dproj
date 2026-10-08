@@ -123,6 +123,7 @@
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Unicode.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.CodeActions.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.UsesClause.pas"/>
+        <DCCReference Include="Source\Editing\BDLsp.Common.Editing.UsesActions.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.BlockCompletion.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.UsesCommand.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.UnitFiles.pas"/>

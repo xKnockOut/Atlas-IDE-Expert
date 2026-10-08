@@ -108,6 +108,7 @@ uses
   BDLsp.Common.Editing.Formatter.Tests in 'Common\Editing\BDLsp.Common.Editing.Formatter.Tests.pas',
   BDLsp.Common.Editing.CodeActions.Tests in 'Common\Editing\BDLsp.Common.Editing.CodeActions.Tests.pas',
   BDLsp.Common.Editing.UsesClause.Tests in 'Common\Editing\BDLsp.Common.Editing.UsesClause.Tests.pas',
+  BDLsp.Common.Editing.UsesActions.Tests in 'Common\Editing\BDLsp.Common.Editing.UsesActions.Tests.pas',
   BDLsp.Common.Editing.BlockCompletion.Tests in 'Common\Editing\BDLsp.Common.Editing.BlockCompletion.Tests.pas',
   BDLsp.Common.Editing.UsesCommand.Tests in 'Common\Editing\BDLsp.Common.Editing.UsesCommand.Tests.pas',
   BDLsp.Common.Editing.UnitFiles.Tests in 'Common\Editing\BDLsp.Common.Editing.UnitFiles.Tests.pas',

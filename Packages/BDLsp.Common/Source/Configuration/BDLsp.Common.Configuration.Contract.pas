@@ -158,6 +158,10 @@ type
     /// <summary>"uses aufräumen" (source.organizeImports) sortiert alphabetisch; Vorgabe aus,
     /// weil die Reihenfolge die Initialisierung bestimmt (#182).</summary>
     SortUses: Boolean;
+    /// <summary>Mit SortUses: nach Namespace gruppiert statt rein alphabetisch (#284).</summary>
+    SortUsesByNamespace: Boolean;
+    /// <summary>Units, die "ungenutzte uses entfernen" nie entfernt (#284).</summary>
+    UsesKeep: TArray<string>;
     /// <summary>Obergrenze für den Symbolindex in MB; 0 = unbegrenzt (#185).</summary>
     MemoryBudgetMb: Integer;
     /// <summary>Vorgaben, wenn keine Konfigurationsdatei existiert.</summary>
@@ -363,6 +367,8 @@ begin
   Result.CompleteBlocks := [Low(TBlockKind)..High(TBlockKind)];
   Result.UsesCommand := True;
   Result.SortUses := False;
+  Result.SortUsesByNamespace := False;
+  Result.UsesKeep := nil;
   Result.MemoryBudgetMb := 0;
 end;
 
