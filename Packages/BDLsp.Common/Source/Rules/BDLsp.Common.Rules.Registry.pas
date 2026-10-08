@@ -19,7 +19,9 @@ type
     constructor Create;
     destructor Destroy; override;
     /// <summary>Nimmt ARule auf; ERuleRegistry bei leerer oder doppelter Kennung.</summary>
-    procedure Register(const ARule: IRule);
+    /// <remarks>ARule ohne const: Aufrufer übergeben TXyzRule.Create direkt;
+    /// so gibt die Referenzzählung die Regel auch bei einer Ausnahme frei.</remarks>
+    procedure Register(ARule: IRule);
     function Find(const AId: string; out ARule: IRule): Boolean;
     /// <summary>Alle Regeln in Reihenfolge der Registrierung.</summary>
     function Rules: TArray<IRule>;
@@ -41,7 +43,7 @@ begin
   inherited;
 end;
 
-procedure TRuleRegistry.Register(const ARule: IRule);
+procedure TRuleRegistry.Register(ARule: IRule);
 var
   Id: string;
   Existing: IRule;
