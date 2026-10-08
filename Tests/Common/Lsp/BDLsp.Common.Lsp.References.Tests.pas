@@ -43,7 +43,8 @@ uses
   BDLsp.Common.Pascal.SyntaxTree,
   BDLsp.Common.Pascal.Parser,
   BDLsp.Common.Index.SymbolIndex,
-  BDLsp.Common.Index.Extractor;
+  BDLsp.Common.Index.Extractor,
+  BDLsp.Common.Dfm.FormModel;
 
 const
   WerkzeugFile = 'C:\P\Werkzeug.pas';
@@ -175,8 +176,14 @@ end;
 procedure TLspReferencesTests.ReadsDfmEventsAndObjects;
 var
   Ranges: TArray<TTextRange>;
+  Model: TFormModel;
 begin
-  Ranges := TLspReferences.InDfm(FormWerkzeug, 'summe');
+  Model := TFormModel.Create(FormWerkzeug);
+  try
+    Ranges := Model.Occurrences('summe');
+  finally
+    Model.Free;
+  end;
   Assert.AreEqual<NativeInt>(2, Length(Ranges));
   Assert.AreEqual(1, Ranges[0].StartPos.Line);
   Assert.AreEqual(12, Ranges[0].StartPos.Character);
@@ -184,7 +191,12 @@ begin
   Assert.AreEqual(2, Ranges[1].StartPos.Line);
   Assert.AreEqual(9, Ranges[1].StartPos.Character);
   // Strings und Eigenschaften ohne "On" zählen nicht.
-  Assert.AreEqual<NativeInt>(0, Length(TLspReferences.InDfm('  Caption = Summe'#10'  Tag = Summe', 'Summe')));
+  Model := TFormModel.Create('object F: TF'#10'  Caption = Summe'#10'  Tag = Summe'#10'end');
+  try
+    Assert.AreEqual<NativeInt>(0, Length(Model.Occurrences('Summe')));
+  finally
+    Model.Free;
+  end;
 end;
 
 procedure TLspReferencesTests.NothingOutsideIdentifiers;

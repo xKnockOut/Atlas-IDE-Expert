@@ -52,8 +52,6 @@ type
     class function InTree(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName, AName: string; const AWanted: TDefinitionTarget;
       const ACancellation: IJsonRpcCancellationToken = nil): TArray<TTextRange>; static;
-    /// <summary>Ereignis-Handler und Komponentennamen AName in einer Formulardatei (Textformat).</summary>
-    class function InDfm(const ADfmText, AName: string): TArray<TTextRange>; static;
     /// <summary>Alle Verweise auf das Symbol an APosition; mit ADeclaration auch die Deklaration selbst.</summary>
     class function Find(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const APosition: TTextPosition; ADeclaration: Boolean;
@@ -70,6 +68,7 @@ uses
   BDLsp.Common.Lsp.Positions,
   BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.TreeCache,
+  BDLsp.Common.Dfm.FormModel,
   BDLsp.Common.Lsp.Internals.Cancellation;
 
 function CleanName(const AText: string): string;
@@ -105,23 +104,18 @@ begin
   Result := SameText(A.FileName, B.FileName) and (A.SelectionRange.StartPos = B.SelectionRange.StartPos);
 end;
 
-function SplitLines(const AText: string): TArray<string>;
+/// <summary>Ereignis-Handler und Komponentennamen AName in einer Formulardatei, über das
+/// Formularmodell (#267).</summary>
+function InForm(const AFormText, AName: string): TArray<TTextRange>;
 var
-  I, Start: Integer;
+  Model: TFormModel;
 begin
-  Result := nil;
-  Start := 1;
-  for I := 1 to Length(AText) + 1 do
-    if (I > Length(AText)) or (AText[I] = #10) then
-    begin
-      Result := Result + [Copy(AText, Start, I - Start)];
-      Start := I + 1;
-    end;
-end;
-
-function IsIdentChar(C: Char): Boolean;
-begin
-  Result := CharInSet(C, ['A'..'Z', 'a'..'z', '0'..'9', '_']);
+  Model := TFormModel.Create(AFormText);
+  try
+    Result := Model.Occurrences(AName);
+  finally
+    Model.Free;
+  end;
 end;
 
 { TLspReferences }
@@ -159,54 +153,6 @@ begin
     Candidate := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, Token.StartPos, True);
     if (Length(Candidate) > 0) and SameTarget(Candidate[0], AWanted) then
       Result := Result + [TTextRange.Create(Token.StartPos, Token.EndPos)];
-  end;
-end;
-
-class function TLspReferences.InDfm(const ADfmText, AName: string): TArray<TTextRange>;
-
-  // Position und Länge des ersten Bezeichners ab AFrom (1-basiert).
-  function NextIdent(const ALine: string; AFrom: Integer; out AStart, ALength: Integer): string;
-  begin
-    AStart := AFrom;
-    while (AStart <= Length(ALine)) and not IsIdentChar(ALine[AStart]) do
-      Inc(AStart);
-    ALength := 0;
-    while (AStart + ALength <= Length(ALine)) and IsIdentChar(ALine[AStart + ALength]) do
-      Inc(ALength);
-    Result := Copy(ALine, AStart, ALength);
-  end;
-
-var
-  Lines: TArray<string>;
-  LineIndex, Start, Len, Eq: Integer;
-  Line, Word: string;
-begin
-  Result := nil;
-  Lines := SplitLines(StringReplace(ADfmText, #13, '', [rfReplaceAll]));
-  for LineIndex := 0 to High(Lines) do
-  begin
-    Line := Lines[LineIndex];
-    Word := NextIdent(Line, 1, Start, Len);
-    if SameText(Word, 'object') or SameText(Word, 'inherited') or SameText(Word, 'inline') then
-    begin
-      // object Button1: TButton
-      Word := NextIdent(Line, Start + Len, Start, Len);
-      if SameText(Word, AName) and (Pos(':', Copy(Line, Start + Len, MaxInt)) > 0) then
-        Result := Result + [TTextRange.Create(TTextPosition.Create(LineIndex, Start - 1),
-          TTextPosition.Create(LineIndex, Start - 1 + Len))];
-    end
-    else if StartsText('On', Word) then
-    begin
-      // OnClick = Button1Click
-      Eq := Pos('=', Line);
-      if (Eq > Start + Len - 1) and (Trim(Copy(Line, Start + Len, Eq - Start - Len)) = '') then
-      begin
-        Word := NextIdent(Line, Eq + 1, Start, Len);
-        if SameText(Word, AName) and (Trim(Copy(Line, Start + Len, MaxInt)) = '') then
-          Result := Result + [TTextRange.Create(TTextPosition.Create(LineIndex, Start - 1),
-            TTextPosition.Create(LineIndex, Start - 1 + Len))];
-      end;
-    end;
   end;
 end;
 
@@ -264,7 +210,7 @@ begin
   // Formular zur Unit der Deklaration.
   DfmName := ChangeFileExt(Wanted[0].FileName, '.dfm');
   if Assigned(AReadText) and AReadText(DfmName, Text) then
-    Add(DfmName, InDfm(Text, Name));
+    Add(DfmName, InForm(Text, Name));
   if ADeclaration then
     Exit;
   Filtered := nil;
