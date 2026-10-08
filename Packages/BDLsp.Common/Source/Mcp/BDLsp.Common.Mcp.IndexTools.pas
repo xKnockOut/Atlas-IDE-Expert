@@ -14,6 +14,14 @@ uses
 
 type
   TMcpReadText = reference to function(const AFileName: string; out AText: string): Boolean;
+  /// <summary>Package (.dpk), das die Unit in contains führt; '' ohne.</summary>
+  TMcpPackageOf = reference to function(const AUnitName: string): string;
+
+  /// <summary>Eintrag aus RegisterComponents('Seite', [TKlasse, …]).</summary>
+  TComponentRegistration = record
+    Page: string;
+    ClassName: string;
+  end;
 
   TMcpIndexTools = class
   public const
@@ -23,6 +31,7 @@ type
   private
     FIndex: ISymbolIndex;
     FReadText: TMcpReadText;
+    FPackageOf: TMcpPackageOf;
     function TypeMatches(const AName: string): TArray<TSymbolLocation>;
     procedure AddDescendants(ALines: TStrings; const ATypeName: string; ADepth: Integer;
       AVisited: TDictionary<string, Boolean>);
@@ -39,6 +48,15 @@ type
     function TypeHierarchy(const ATypeName: string): string;
     /// <summary>uses-Listen und Symbole einer Unit (Name oder Dateipfad).</summary>
     function UnitOutline(const AUnitOrFile: string): string;
+    /// <summary>published-Properties mit Typ und Default, Ereignisse mit Signatur, Vorfahren,
+    /// Palettenseite und Package einer Komponentenklasse (#113).</summary>
+    function ComponentInfo(const AClassName: string): string;
+    /// <summary>Alle RegisterComponents-Aufrufe in AText.</summary>
+    class function Registrations(const AText: string): TArray<TComponentRegistration>; static;
+    /// <summary>Führt die contains-Klausel von ADpkText die Unit AUnitName?</summary>
+    class function PackageContains(const ADpkText, AUnitName: string): Boolean; static;
+    /// <summary>Für ComponentInfo; ohne Zuweisung ist das Package unbekannt.</summary>
+    property PackageOf: TMcpPackageOf read FPackageOf write FPackageOf;
     /// <summary>Komponentenbaum mit Typen, Ereignissen und Eigenschaften eines Formulars.</summary>
     class function DfmInfo(const AText: string): string; static;
     class function KindName(AKind: TIndexSymbolKind): string; static;
@@ -49,6 +67,8 @@ implementation
 
 uses
   System.StrUtils,
+  BDLsp.Common.Lsp.PublishedMembers,
+  BDLsp.Common.Lsp.FormEvents,
   BDLsp.Common.Dfm.Contract,
   BDLsp.Common.Dfm.Parser;
 
@@ -262,6 +282,164 @@ begin
     AVisited.Add(Key, True);
     ALines.Add(StringOfChar(' ', ADepth * 2) + '- ' + Describe(Location));
     AddDescendants(ALines, Location.Symbol.Name, ADepth + 1, AVisited);
+  end;
+end;
+
+class function TMcpIndexTools.Registrations(const AText: string): TArray<TComponentRegistration>;
+const
+  Call = 'registercomponents';
+var
+  Lower, Page, Name: string;
+  Start, Index, Close: Integer;
+  Entry: TComponentRegistration;
+begin
+  Result := nil;
+  Lower := LowerCase(AText);
+  Start := Pos(Call, Lower);
+  while Start > 0 do
+  begin
+    // RegisterComponents('Seite', [TA, TB]);
+    Index := PosEx('''', AText, Start + Length(Call));
+    Close := PosEx('''', AText, Index + 1);
+    if (Index = 0) or (Close = 0) then
+      Break;
+    Page := Copy(AText, Index + 1, Close - Index - 1);
+    Index := PosEx('[', AText, Close);
+    Close := PosEx(']', AText, Index + 1);
+    if (Index = 0) or (Close = 0) then
+      Break;
+    for Name in Copy(AText, Index + 1, Close - Index - 1).Split([',']) do
+      if Trim(Name) <> '' then
+      begin
+        Entry.Page := Page;
+        Entry.ClassName := Trim(Name);
+        Result := Result + [Entry];
+      end;
+    Start := PosEx(Call, Lower, Close);
+  end;
+end;
+
+class function TMcpIndexTools.PackageContains(const ADpkText, AUnitName: string): Boolean;
+var
+  Lower, Name: string;
+  Start, Stop: Integer;
+  Entry: string;
+begin
+  Result := False;
+  Lower := LowerCase(ADpkText);
+  Start := Pos('contains', Lower);
+  while (Start > 0) and (((Start > 1) and CharInSet(Lower[Start - 1], ['a'..'z', '0'..'9', '_', '.'])) or
+    ((Start + 8 <= Length(Lower)) and CharInSet(Lower[Start + 8], ['a'..'z', '0'..'9', '_']))) do
+    Start := PosEx('contains', Lower, Start + 1);
+  if Start = 0 then
+    Exit;
+  Stop := PosEx(';', Lower, Start);
+  if Stop = 0 then
+    Stop := Length(Lower) + 1;
+  Name := LowerCase(AUnitName);
+  // Einträge: "Unit" oder "Unit in 'Pfad'", durch Kommas getrennt.
+  for Entry in Copy(Lower, Start + 8, Stop - Start - 8).Split([',']) do
+    if SameText(Trim(Copy(Trim(Entry), 1, Pos(' ', Trim(Entry) + ' ') - 1)), Name) then
+      Exit(True);
+end;
+
+function TMcpIndexTools.ComponentInfo(const AClassName: string): string;
+var
+  Lines: TStringList;
+  Found, Parents, Routines: TArray<TSymbolLocation>;
+  Current, Routine: TSymbolLocation;
+  Members: TArray<TPublishedMember>;
+  Member: TPublishedMember;
+  Registration: TComponentRegistration;
+  Chain: TList<string>;
+  Text, Tail, Pages, Package, Line: string;
+  ReadText: TMemberReadText;
+  Files: TList<string>;
+begin
+  Found := TypeMatches(AClassName);
+  if Length(Found) = 0 then
+    Exit(Format('Keine Quellen zu "%s" im Index; nur der Name ist bekannt (z. B. nur als .dcu vorhanden).',
+      [AClassName]));
+  Lines := TStringList.Create;
+  Chain := TList<string>.Create;
+  Files := TList<string>.Create;
+  try
+    Current := Found[0];
+    Lines.Add(Describe(Current));
+    // Vorfahrenkette über die jeweils erste Basisklasse.
+    Line := Current.Symbol.Name;
+    while (Length(Current.Symbol.Ancestors) > 0) and (Chain.Count < MaxDepth) and
+      not Chain.Contains(LowerCase(Current.Symbol.Ancestors[0])) do
+    begin
+      Chain.Add(LowerCase(Current.Symbol.Ancestors[0]));
+      Line := Line + ' → ' + Current.Symbol.Ancestors[0];
+      Parents := TypeMatches(Current.Symbol.Ancestors[0]);
+      if Length(Parents) = 0 then
+        Break;
+      Current := Parents[0];
+    end;
+    Lines.Add('Vorfahren: ' + Line);
+    // Palettenseite: RegisterComponents in der Unit der Klasse und in allen Register-Routinen.
+    Files.Add(Found[0].FileName);
+    Routines := FIndex.FindSymbols('Register');
+    for Routine in Routines do
+      if (Routine.Symbol.Container = '') and not Files.Contains(Routine.FileName) then
+        Files.Add(Routine.FileName);
+    Pages := '';
+    if Assigned(FReadText) then
+      for Line in Files do
+        if FReadText(Line, Text) then
+          for Registration in Registrations(Text) do
+            if SameText(Registration.ClassName, Found[0].Symbol.Name) and (Pos(Registration.Page, Pages) = 0) then
+            begin
+              if Pages <> '' then
+                Pages := Pages + ', ';
+              Pages := Pages + Registration.Page;
+            end;
+    if Pages = '' then
+      Pages := 'keine';
+    Lines.Add('Registrierung (Palettenseite): ' + Pages);
+    Package := '';
+    if Assigned(FPackageOf) then
+      Package := FPackageOf(Found[0].UnitName);
+    if Package = '' then
+      Package := 'unbekannt';
+    Lines.Add('Package: ' + Package);
+    if not Assigned(FReadText) then
+      Exit(JoinLines(Lines));
+    ReadText :=
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        Result := FReadText(AFileName, AText);
+      end;
+    Members := TPublishedMembers.Collect(FIndex, Found[0].Symbol.Name, ReadText);
+    Lines.Add('Properties:');
+    for Member in Members do
+      if not Member.IsEvent then
+      begin
+        Line := Format('  %s: %s', [Member.Name, Member.TypeName]);
+        if Member.DefaultValue <> '' then
+          Line := Line + ' default ' + Member.DefaultValue;
+        if not SameText(Member.DeclaringClass, Found[0].Symbol.Name) then
+          Line := Line + ' (aus ' + Member.DeclaringClass + ')';
+        Lines.Add(Line);
+      end;
+    Lines.Add('Ereignisse:');
+    for Member in Members do
+      if Member.IsEvent then
+      begin
+        Line := Format('  %s: %s', [Member.Name, Member.TypeName]);
+        if TFormEvents.EventTail(FIndex, ReadText, Found[0].Symbol.Name, Member.Name, Tail) then
+          Line := Line + ' – Signatur ' + Tail;
+        if not SameText(Member.DeclaringClass, Found[0].Symbol.Name) then
+          Line := Line + ' (aus ' + Member.DeclaringClass + ')';
+        Lines.Add(Line);
+      end;
+    Result := JoinLines(Lines);
+  finally
+    Files.Free;
+    Chain.Free;
+    Lines.Free;
   end;
 end;
 

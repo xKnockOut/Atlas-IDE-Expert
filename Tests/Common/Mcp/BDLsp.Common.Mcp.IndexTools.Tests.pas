@@ -23,6 +23,14 @@ type
     procedure OutlinesUnit;
     [Test]
     procedure DescribesForm;
+    [Test]
+    procedure DescribesComponent;
+    [Test]
+    procedure ReportsComponentWithoutSources;
+    [Test]
+    procedure ReadsRegistrations;
+    [Test]
+    procedure FindsUnitInPackage;
   end;
 
 implementation
@@ -60,6 +68,30 @@ const
     '  MaxHunde = 3;'#10 +
     'implementation'#10 +
     'procedure THund.Laut; begin end;'#10 +
+    'end.';
+
+const
+  KnopfFile = 'C:\P\Knopf.pas';
+  KnopfUnit =
+    'unit Knopf;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TNotifyEvent = procedure(Sender: TObject) of object;'#10 +
+    '  TBasisKnopf = class(TObject)'#10 +
+    '  published'#10 +
+    '    property Tag: Integer read FTag write FTag default 0;'#10 +
+    '  end;'#10 +
+    '  TKnopf = class(TBasisKnopf)'#10 +
+    '  published'#10 +
+    '    property Caption: string read FCaption write FCaption;'#10 +
+    '    property OnClick: TNotifyEvent read FOnClick write FOnClick;'#10 +
+    '  end;'#10 +
+    'procedure Register;'#10 +
+    'implementation'#10 +
+    'procedure Register;'#10 +
+    'begin'#10 +
+    '  RegisterComponents(''Beispiele'', [TKnopf]);'#10 +
+    'end;'#10 +
     'end.';
 
 function NewTools: TMcpIndexTools;
@@ -187,6 +219,76 @@ begin
   Assert.Contains(Text, 'Ereignisse: OnCreate → FormCreate');
   Assert.Contains(Text, '  - Button1: TButton');
   Assert.Contains(Text, 'OnClick → Button1Click');
+end;
+
+procedure TMcpIndexToolsTests.DescribesComponent;
+var
+  Index: ISymbolIndex;
+  Tools: TMcpIndexTools;
+  Text: string;
+begin
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText(KnopfUnit, KnopfFile, nil));
+  Tools := TMcpIndexTools.Create(Index,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := SameText(AFileName, KnopfFile);
+      if Result then
+        AText := KnopfUnit;
+    end);
+  try
+    Tools.PackageOf :=
+      function(const AUnitName: string): string
+      begin
+        if SameText(AUnitName, 'Knopf') then
+          Result := 'BeispielPaket'
+        else
+          Result := '';
+      end;
+    Text := Tools.ComponentInfo('TKnopf');
+    Assert.Contains(Text, 'Vorfahren: TKnopf → TBasisKnopf → TObject');
+    Assert.Contains(Text, 'Registrierung (Palettenseite): Beispiele');
+    Assert.Contains(Text, 'Package: BeispielPaket');
+    Assert.Contains(Text, '  Caption: string');
+    Assert.Contains(Text, '  Tag: Integer default 0 (aus TBasisKnopf)');
+    Assert.Contains(Text, '  OnClick: TNotifyEvent – Signatur (Sender: TObject)');
+  finally
+    Tools.Free;
+  end;
+end;
+
+procedure TMcpIndexToolsTests.ReportsComponentWithoutSources;
+var
+  Tools: TMcpIndexTools;
+begin
+  Tools := NewTools;
+  try
+    Assert.Contains(Tools.ComponentInfo('TButton'), 'Keine Quellen');
+  finally
+    Tools.Free;
+  end;
+end;
+
+procedure TMcpIndexToolsTests.ReadsRegistrations;
+var
+  Items: TArray<TComponentRegistration>;
+begin
+  Items := TMcpIndexTools.Registrations(
+    'RegisterComponents(''Standard'', [TA, TB]);'#10'registercomponents(''Extra'', [TC]);');
+  Assert.AreEqual(3, Length(Items));
+  Assert.AreEqual('Standard', Items[1].Page);
+  Assert.AreEqual('TB', Items[1].ClassName);
+  Assert.AreEqual('Extra', Items[2].Page);
+end;
+
+procedure TMcpIndexToolsTests.FindsUnitInPackage;
+const
+  Dpk = 'package Paket;'#10'requires rtl;'#10'contains'#10 +
+    '  Knopf in ''Source\Knopf.pas'','#10'  Leiste;'#10'end.';
+begin
+  Assert.IsTrue(TMcpIndexTools.PackageContains(Dpk, 'Knopf'));
+  Assert.IsTrue(TMcpIndexTools.PackageContains(Dpk, 'leiste'));
+  Assert.IsFalse(TMcpIndexTools.PackageContains(Dpk, 'Paket'));
 end;
 
 initialization
