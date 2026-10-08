@@ -130,6 +130,20 @@ async function stopClient(): Promise<void> {
   }
 }
 
+interface LspPosition {
+  line: number;
+  character: number;
+}
+
+interface LspLocation {
+  uri: string;
+  range: { start: LspPosition; end: LspPosition };
+}
+
+function toPosition(position: LspPosition): vscode.Position {
+  return new vscode.Position(position.line, position.character);
+}
+
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   output = vscode.window.createOutputChannel('BetterDelphiLSP');
   traceOutput = vscode.window.createOutputChannel('BetterDelphiLSP Trace');
@@ -154,6 +168,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       });
       await vscode.commands.executeCommand('markdown.showPreview', document.uri);
     }),
+    // Code Lens des Servers (#36): Referenzen, Nachfahren, Überschreibungen und Message-Handler anzeigen.
+    vscode.commands.registerCommand(
+      `${Section}.showLocations`,
+      async (uri: string, position: LspPosition, locations: LspLocation[]) => {
+        await vscode.commands.executeCommand(
+          'editor.action.showReferences',
+          vscode.Uri.parse(uri),
+          toPosition(position),
+          (locations ?? []).map(
+            (item) =>
+              new vscode.Location(
+                vscode.Uri.parse(item.uri),
+                new vscode.Range(toPosition(item.range.start), toPosition(item.range.end)),
+              ),
+          ),
+        );
+      },
+    ),
   );
   await startClient();
 }

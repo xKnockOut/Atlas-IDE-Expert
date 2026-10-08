@@ -128,6 +128,8 @@
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Hierarchies.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Implementations.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.InlayHints.pas"/>
+        <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.MessageHandlers.pas"/>
+        <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.CodeLens.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Status.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.CodeActions.pas"/>
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.ControlFlow.pas"/>

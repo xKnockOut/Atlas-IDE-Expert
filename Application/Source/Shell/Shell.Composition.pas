@@ -39,6 +39,7 @@ uses
   BDLsp.Common.Lsp.Hierarchies,
   BDLsp.Common.Lsp.Implementations,
   BDLsp.Common.Lsp.InlayHints,
+  BDLsp.Common.Lsp.CodeLens,
   BDLsp.Common.Lsp.Status,
   BDLsp.Common.JsonRpc.Statistics,
   BDLsp.Common.Lsp.WatchedFiles,
@@ -74,6 +75,7 @@ type
     FHierarchies: TLspHierarchies;
     FImplementations: TLspImplementations;
     FInlayHints: TLspInlayHints;
+    FCodeLens: TLspCodeLens;
     FCodeActions: TLspCodeActions;
     FDocumentLinks: TLspDocumentLinks;
     FColors: TLspColors;
@@ -323,6 +325,17 @@ begin
       Result := EnsureUnit(AUnitName);
     end);
   FInlayHints.Attach(FDispatcher);
+  FCodeLens := TLspCodeLens.Create(FDocuments, FIndex,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    ProjectSourceFiles,
+    function(const AUnitName: string): Boolean
+    begin
+      Result := EnsureUnit(AUnitName);
+    end);
+  FCodeLens.Attach(FDispatcher);
   FCodeActions := TLspCodeActions.Create(FDocuments, RuleContextFor);
   FCodeActions.Attach(FDispatcher);
   FDocumentLinks := TLspDocumentLinks.Create(FDocuments,
@@ -410,6 +423,7 @@ begin
   FWorkspaceSymbols.Free;
   FDocumentHighlights.Free;
   FReferences.Free;
+  FCodeLens.Free;
   FInlayHints.Free;
   FImplementations.Free;
   FHierarchies.Free;
@@ -685,6 +699,7 @@ begin
   FHierarchies.Namespaces := Namespaces;
   FImplementations.Namespaces := Namespaces;
   FInlayHints.Namespaces := Namespaces;
+  FCodeLens.Namespaces := Namespaces;
   FSyntaxDiagnostics.Refresh;
 end;
 
@@ -831,6 +846,7 @@ begin
   Result.AddPair('callHierarchyProvider', TJSONBool.Create(True));
   Result.AddPair('implementationProvider', TJSONBool.Create(True));
   Result.AddPair('inlayHintProvider', TJSONBool.Create(True));
+  Result.AddPair('codeLensProvider', TLspCodeLens.Capability);
   Result.AddPair('codeActionProvider', TLspCodeActions.Capability);
   Result.AddPair('documentLinkProvider', TLspDocumentLinks.Capability);
   Result.AddPair('colorProvider', TJSONBool.Create(True));
