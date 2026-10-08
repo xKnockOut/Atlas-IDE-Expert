@@ -61,6 +61,20 @@ pwsh Tools/Check-ConsoleOutput.ps1         # kein Write/Writeln auf stdout
 
 Werte gehen auch mit `=` (`--log=server.log`). `--stdio` und `--clientProcessId`, die Editoren anhängen, werden ignoriert.
 
+### Linter-Modus
+
+`BetterDelphiLSP.exe --check <Ziel>` prüft ohne Editor. Das Ziel kann eine `.dproj` (Hauptdatei und Units), ein Ordner (alle `.pas`, `.dpr` und `.dpk` darunter) oder eine Datei sein. `delphi-lsp.json` im Ordner des Ziels gilt wie im Editor.
+
+| Parameter | Bedeutung |
+|---|---|
+| `--format <Art>` | `text` (Standard, wie Compilermeldungen), `json`, `sarif` (SARIF 2.1.0 für GitHub Code Scanning) |
+| `--output <Datei>` | Ergebnis in eine Datei statt auf stdout |
+| `--rules <a,b>` | nur diese Regeln, z. B. `syntax` |
+| `--units <a,b>` | nur diese Units: Name oder Glob-Muster für Pfade |
+| `--min-severity <S>` | `hint`, `info`, `warning`, `error` |
+
+Exit-Code: 0 ohne Warnungen und Fehler, 1 bei Warnungen, 2 bei Fehlern, 3 bei Aufruf- oder Lesefehlern.
+
 ## Wichtig: stdout gehört dem Protokoll
 
 Der Server spricht LSP über stdin/stdout. Jede zusätzliche Ausgabe auf stdout (`Writeln`, unbehandelte Exceptions) zerstört die Kommunikation mit dem Editor. Alle Diagnosemeldungen laufen über `ILogger` (`BDLsp.Common.Logging`) an `OutputDebugString`, die Logdatei, `window/logMessage` und bei Fehlern stderr. Nach dem Start biegt der Server das stdout-Handle und `Output` auf stderr um, sodass auch Bibliotheken das Protokoll nicht stören können.

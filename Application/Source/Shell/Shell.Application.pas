@@ -19,14 +19,19 @@ uses
   System.SysUtils,
   BDLsp.Windows.Diagnostics.DebugOutput,
   Shell.CommandLine,
-  Shell.Composition;
+  Shell.Composition,
+  Shell.Linter;
 
 class function TApplicationShell.Run: Integer;
 var
+  Options: TCommandLineOptions;
   Composition: TServerComposition;
 begin
   try
-    Composition := TServerComposition.CreateForStdio(TCommandLineOptions.FromProcess);
+    Options := TCommandLineOptions.FromProcess;
+    if Options.CheckTarget <> '' then
+      Exit(TLinterShell.Run(Options));
+    Composition := TServerComposition.CreateForStdio(Options);
     try
       Result := Composition.Run;
     finally
