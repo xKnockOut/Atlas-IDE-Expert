@@ -4,6 +4,10 @@
 // Nach didOpen und didChange wird das Dokument nach einer kurzen Verzögerung
 // geparst (Debouncing beim Tippen); bei didClose werden die Meldungen gelöscht.
 // Jede Meldung trägt Zeile, Spalte und Endposition in UTF-16.
+// Sind die Symbole des Projekts bekannt (SetDefines), kommen inaktive
+// {$IFDEF}-Bereiche als Hinweise mit dem Tag Unnecessary dazu; der Editor
+// blendet sie ab. Ohne Projekt wird nichts abgeblendet, weil die aktiven
+// Symbole dann nicht bekannt sind.
 
 interface
 
@@ -20,18 +24,23 @@ type
     /// <summary>Verzögerung nach dem letzten Tastendruck; mit Parsen bleibt es unter 200 ms.</summary>
     DefaultDelayMs = 100;
     Source = 'BetterDelphiLSP';
+    InactiveMessage = 'Inaktiver Bereich (bedingte Kompilierung)';
   private
     FStore: IDocumentStore;
     FTransport: IJsonRpcTransport;
     FDebouncer: TDebouncer;
     /// <summary>Hält Prüfen und Senden zusammen, damit nach dem Schließen nichts Veraltetes mehr kommt.</summary>
     FSendLock: TObject;
+    FDefinesLock: TObject;
+    FDefines: TArray<string>;
+    FHasDefines: Boolean;
     procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
     procedure ScheduleParse(const ADocument: ITextDocument);
     procedure Publish(const ADocument: ITextDocument);
     function IsCurrent(const ADocument: ITextDocument): Boolean;
     function GetOnError: TProc<Exception>;
     procedure SetOnError(const AValue: TProc<Exception>);
+    function CurrentDefines(out ADefines: TArray<string>): Boolean;
   public
     /// <summary>Bei ADelayMs = 0 wird sofort im Thread der Nachrichtenschleife geparst.</summary>
     constructor Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
@@ -40,7 +49,12 @@ type
     /// <summary>Meldet sich am Dokumentspeicher an.</summary>
     procedure Attach;
     /// <summary>Parameter für publishDiagnostics. Der Aufrufer übernimmt das Objekt.</summary>
-    class function BuildParams(const ADocument: ITextDocument): TJSONObject; static;
+    class function BuildParams(const ADocument: ITextDocument): TJSONObject; overload; static;
+    /// <summary>Wie oben, zusätzlich mit inaktiven Bereichen als Hinweise (Tag Unnecessary).</summary>
+    class function BuildParams(const ADocument: ITextDocument;
+      const AInactive: TArray<TTextRange>): TJSONObject; overload; static;
+    /// <summary>Symbole für das Abblenden; prüft geöffnete Dokumente neu.</summary>
+    procedure SetDefines(const ADefines: TArray<string>);
     /// <summary>Parameter mit leerer Liste, z. B. nach dem Schließen. Der Aufrufer übernimmt das Objekt.</summary>
     class function BuildEmptyParams(const AUri: string): TJSONObject; static;
     /// <summary>Wird bei Ausnahmen beim Parsen im Hintergrund aufgerufen.</summary>
@@ -54,7 +68,8 @@ uses
   BDLsp.Common.Lsp.Contract,
   BDLsp.Common.Lsp.Positions,
   BDLsp.Common.Pascal.SyntaxTree,
-  BDLsp.Common.Pascal.Parser;
+  BDLsp.Common.Pascal.Parser,
+  BDLsp.Common.Lsp.InactiveRegions;
 
 // Übernimmt AParams.
 procedure Send(const ATransport: IJsonRpcTransport; AParams: TJSONObject);
@@ -78,6 +93,7 @@ begin
   FStore := AStore;
   FTransport := ATransport;
   FSendLock := TObject.Create;
+  FDefinesLock := TObject.Create;
   FDebouncer := TDebouncer.Create(ADelayMs);
 end;
 
@@ -85,6 +101,7 @@ destructor TLspSyntaxDiagnostics.Destroy;
 begin
   FDebouncer.Free;
   FSendLock.Free;
+  FDefinesLock.Free;
   inherited;
 end;
 
@@ -101,6 +118,33 @@ end;
 procedure TLspSyntaxDiagnostics.SetOnError(const AValue: TProc<Exception>);
 begin
   FDebouncer.OnError := AValue;
+end;
+
+function TLspSyntaxDiagnostics.CurrentDefines(out ADefines: TArray<string>): Boolean;
+begin
+  TMonitor.Enter(FDefinesLock);
+  try
+    ADefines := FDefines;
+    Result := FHasDefines;
+  finally
+    TMonitor.Exit(FDefinesLock);
+  end;
+end;
+
+procedure TLspSyntaxDiagnostics.SetDefines(const ADefines: TArray<string>);
+var
+  Document: ITextDocument;
+begin
+  TMonitor.Enter(FDefinesLock);
+  try
+    FDefines := ADefines;
+    FHasDefines := True;
+  finally
+    TMonitor.Exit(FDefinesLock);
+  end;
+  for Document in FStore.Documents do
+    if not SameText(ExtractFileExt(Document.Uri), '.json') then
+      ScheduleParse(Document);
 end;
 
 procedure TLspSyntaxDiagnostics.HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
@@ -144,8 +188,12 @@ end;
 procedure TLspSyntaxDiagnostics.Publish(const ADocument: ITextDocument);
 var
   Params: TJSONObject;
+  Defines: TArray<string>;
 begin
-  Params := BuildParams(ADocument);
+  if CurrentDefines(Defines) then
+    Params := BuildParams(ADocument, TLspInactiveRegions.Ranges(ADocument.Text, Defines))
+  else
+    Params := BuildParams(ADocument);
   TMonitor.Enter(FSendLock);
   try
     // Inzwischen geändert oder geschlossen: Der neuere Stand meldet selbst.
@@ -159,7 +207,15 @@ begin
 end;
 
 class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument): TJSONObject;
+begin
+  Result := BuildParams(ADocument, nil);
+end;
+
+class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
+  const AInactive: TArray<TTextRange>): TJSONObject;
 var
+  Range: TTextRange;
+  Tags: TJSONArray;
   Tree: TSyntaxTree;
   Diagnostic: TSyntaxDiagnostic;
   Items: TJSONArray;
@@ -179,6 +235,19 @@ begin
     end;
   finally
     Tree.Free;
+  end;
+  for Range in AInactive do
+  begin
+    Item := TJSONObject.Create;
+    Item.AddPair('range', TLspPositions.RangeToJson(Range));
+    Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Hint));
+    Item.AddPair('source', Source);
+    Item.AddPair('message', InactiveMessage);
+    Tags := TJSONArray.Create;
+    // DiagnosticTag.Unnecessary
+    Tags.Add(1);
+    Item.AddPair('tags', Tags);
+    Items.AddElement(Item);
   end;
   Result := TJSONObject.Create;
   Result.AddPair('uri', ADocument.Uri);
