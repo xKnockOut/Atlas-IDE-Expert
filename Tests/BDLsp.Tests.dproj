@@ -89,6 +89,7 @@
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.FoldingRanges.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.SelectionRanges.Tests.pas"/>
         <DCCReference Include="Common\Pascal\BDLsp.Common.Pascal.Preprocessor.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\BDLsp.Common.Pascal.LanguageFeatures.Tests.pas"/>
         <DCCReference Include="Common\Pascal\BDLsp.Common.Pascal.Parser.Robustness.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.ProtocolReplay.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Protocol.Tests.pas"/>

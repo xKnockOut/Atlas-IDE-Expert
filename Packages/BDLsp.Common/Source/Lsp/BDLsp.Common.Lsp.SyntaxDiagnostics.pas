@@ -8,6 +8,8 @@
 // {$IFDEF}-Bereiche als Hinweise mit dem Tag Unnecessary dazu; der Editor
 // blendet sie ab. Ohne Projekt wird nichts abgeblendet, weil die aktiven
 // Symbole dann nicht bekannt sind.
+// Ist die Delphi-Version bekannt (VersionProvider), werden Sprachmerkmale,
+// die diese Version noch nicht kennt, als Warnung gemeldet.
 
 interface
 
@@ -22,6 +24,8 @@ type
   /// <summary>Symbole für das Dokument AUri; False, wenn kein Projekt sie festlegt.
   /// Wird im Hintergrund-Thread aufgerufen.</summary>
   TDefinesProvider = reference to function(const AUri: string; out ADefines: TArray<string>): Boolean;
+  /// <summary>Eingestellte Delphi-Version für AUri; '' = unbekannt. Hintergrund-Thread.</summary>
+  TDelphiVersionProvider = reference to function(const AUri: string): string;
 
   TLspSyntaxDiagnostics = class
   public const
@@ -37,6 +41,7 @@ type
     FSendLock: TObject;
     FDefinesLock: TObject;
     FDefinesProvider: TDefinesProvider;
+    FVersionProvider: TDelphiVersionProvider;
     procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
     procedure ScheduleParse(const ADocument: ITextDocument);
     procedure Publish(const ADocument: ITextDocument);
@@ -45,6 +50,8 @@ type
     procedure SetOnError(const AValue: TProc<Exception>);
     function CurrentDefines(const AUri: string; out ADefines: TArray<string>): Boolean;
     procedure SetDefinesProvider(const AValue: TDefinesProvider);
+    function CurrentVersion(const AUri: string): string;
+    procedure SetVersionProvider(const AValue: TDelphiVersionProvider);
   public
     /// <summary>Bei ADelayMs = 0 wird sofort im Thread der Nachrichtenschleife geparst.</summary>
     constructor Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
@@ -57,6 +64,9 @@ type
     /// <summary>Wie oben, zusätzlich mit inaktiven Bereichen als Hinweise (Tag Unnecessary).</summary>
     class function BuildParams(const ADocument: ITextDocument;
       const AInactive: TArray<TTextRange>): TJSONObject; overload; static;
+    /// <summary>Wie oben, zusätzlich mit Sprachmerkmalen, die ADelphiVersion nicht kennt.</summary>
+    class function BuildParams(const ADocument: ITextDocument; const AInactive: TArray<TTextRange>;
+      const ADelphiVersion: string): TJSONObject; overload; static;
     /// <summary>Prüft alle geöffneten Dokumente neu, z. B. nach geänderten Symbolen.</summary>
     procedure Refresh;
     /// <summary>Parameter mit leerer Liste, z. B. nach dem Schließen. Der Aufrufer übernimmt das Objekt.</summary>
@@ -65,6 +75,7 @@ type
     property OnError: TProc<Exception> read GetOnError write SetOnError;
     /// <summary>Liefert die Symbole für das Abblenden inaktiver Bereiche.</summary>
     property DefinesProvider: TDefinesProvider write SetDefinesProvider;
+    property VersionProvider: TDelphiVersionProvider write SetVersionProvider;
   end;
 
 implementation
@@ -75,6 +86,7 @@ uses
   BDLsp.Common.Lsp.Positions,
   BDLsp.Common.Pascal.SyntaxTree,
   BDLsp.Common.Pascal.Parser,
+  BDLsp.Common.Pascal.LanguageFeatures,
   BDLsp.Common.Lsp.InactiveRegions;
 
 // Übernimmt AParams.
@@ -150,6 +162,32 @@ begin
   end;
 end;
 
+function TLspSyntaxDiagnostics.CurrentVersion(const AUri: string): string;
+var
+  Provider: TDelphiVersionProvider;
+begin
+  TMonitor.Enter(FDefinesLock);
+  try
+    Provider := FVersionProvider;
+  finally
+    TMonitor.Exit(FDefinesLock);
+  end;
+  if Assigned(Provider) then
+    Result := Provider(AUri)
+  else
+    Result := '';
+end;
+
+procedure TLspSyntaxDiagnostics.SetVersionProvider(const AValue: TDelphiVersionProvider);
+begin
+  TMonitor.Enter(FDefinesLock);
+  try
+    FVersionProvider := AValue;
+  finally
+    TMonitor.Exit(FDefinesLock);
+  end;
+end;
+
 procedure TLspSyntaxDiagnostics.Refresh;
 var
   Document: ITextDocument;
@@ -201,11 +239,12 @@ procedure TLspSyntaxDiagnostics.Publish(const ADocument: ITextDocument);
 var
   Params: TJSONObject;
   Defines: TArray<string>;
+  Inactive: TArray<TTextRange>;
 begin
+  Inactive := nil;
   if CurrentDefines(ADocument.Uri, Defines) then
-    Params := BuildParams(ADocument, TLspInactiveRegions.Ranges(ADocument.Text, Defines))
-  else
-    Params := BuildParams(ADocument);
+    Inactive := TLspInactiveRegions.Ranges(ADocument.Text, Defines);
+  Params := BuildParams(ADocument, Inactive, CurrentVersion(ADocument.Uri));
   TMonitor.Enter(FSendLock);
   try
     // Inzwischen geändert oder geschlossen: Der neuere Stand meldet selbst.
@@ -225,7 +264,14 @@ end;
 
 class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
   const AInactive: TArray<TTextRange>): TJSONObject;
+begin
+  Result := BuildParams(ADocument, AInactive, '');
+end;
+
+class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
+  const AInactive: TArray<TTextRange>; const ADelphiVersion: string): TJSONObject;
 var
+  Finding: TLanguageFeatureFinding;
   Range: TTextRange;
   Tags: TJSONArray;
   Tree: TSyntaxTree;
@@ -243,6 +289,15 @@ begin
       Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Error));
       Item.AddPair('source', Source);
       Item.AddPair('message', Diagnostic.Message);
+      Items.AddElement(Item);
+    end;
+    for Finding in TLanguageFeatures.Check(Tree, ADelphiVersion) do
+    begin
+      Item := TJSONObject.Create;
+      Item.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(Finding.StartPos, Finding.EndPos)));
+      Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Warning));
+      Item.AddPair('source', Source);
+      Item.AddPair('message', Finding.Message);
       Items.AddElement(Item);
     end;
   finally

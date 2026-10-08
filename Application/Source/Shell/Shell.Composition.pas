@@ -72,6 +72,7 @@ type
     function WorkspaceOf(const AFileName: string): TShellWorkspace;
     function EnsureUnit(const AUnitName: string): Boolean;
     function DefinesFor(const AUri: string; out ADefines: TArray<string>): Boolean;
+    function DelphiVersionFor(const AUri: string): string;
     /// <summary>Namespaces aller Projekte an die Features weitergeben, Diagnosen neu prüfen.</summary>
     procedure ProjectLoaded;
     procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
@@ -191,6 +192,7 @@ begin
   FDocuments.Subscribe(HandleDocumentEvent);
   FDispatcher.RegisterNotification(TLspConfiguration.DidChangeConfigurationMethod, HandleDidChangeConfiguration);
   FSyntaxDiagnostics.DefinesProvider := DefinesFor;
+  FSyntaxDiagnostics.VersionProvider := DelphiVersionFor;
   FIndex := TSymbolIndex.Create;
   FDefinition := TLspDefinition.Create(FDocuments, FIndex,
     function(const AUnitName: string): Boolean
@@ -388,6 +390,24 @@ begin
     if (Workspace = nil) and (FWorkspaces.Count = 1) then
       Workspace := FWorkspaces[0];
     Result := (Workspace <> nil) and Workspace.Defines(ADefines);
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+function TServerComposition.DelphiVersionFor(const AUri: string): string;
+var
+  Workspace: TShellWorkspace;
+begin
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+    if (Workspace = nil) and (FWorkspaces.Count = 1) then
+      Workspace := FWorkspaces[0];
+    if Workspace = nil then
+      Result := ''
+    else
+      Result := Workspace.Configuration.Settings.DelphiVersion;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
