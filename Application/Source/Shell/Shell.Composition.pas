@@ -34,6 +34,7 @@ uses
   BDLsp.Common.Lsp.Commands,
   BDLsp.Common.Lsp.References,
   BDLsp.Common.Lsp.Rename,
+  BDLsp.Common.Lsp.Completion,
   BDLsp.Common.Lsp.Status,
   BDLsp.Common.JsonRpc.Statistics,
   BDLsp.Common.Lsp.WatchedFiles,
@@ -64,6 +65,7 @@ type
     FDocumentHighlights: TLspDocumentHighlights;
     FReferences: TLspReferences;
     FRename: TLspRename;
+    FCompletion: TLspCompletion;
     FCodeActions: TLspCodeActions;
     FDocumentLinks: TLspDocumentLinks;
     FColors: TLspColors;
@@ -268,6 +270,12 @@ begin
       Result := EnsureUnit(AUnitName);
     end);
   FRename.Attach(FDispatcher);
+  FCompletion := TLspCompletion.Create(FDocuments, FIndex,
+    function(const AUnitName: string): Boolean
+    begin
+      Result := EnsureUnit(AUnitName);
+    end);
+  FCompletion.Attach(FDispatcher);
   FCodeActions := TLspCodeActions.Create(FDocuments, RuleContextFor);
   FCodeActions.Attach(FDispatcher);
   FDocumentLinks := TLspDocumentLinks.Create(FDocuments,
@@ -355,6 +363,7 @@ begin
   FWorkspaceSymbols.Free;
   FDocumentHighlights.Free;
   FReferences.Free;
+  FCompletion.Free;
   FRename.Free;
   FCodeActions.Free;
   FDocumentLinks.Free;
@@ -602,6 +611,7 @@ begin
   FDocumentHighlights.Namespaces := Namespaces;
   FReferences.Namespaces := Namespaces;
   FRename.Namespaces := Namespaces;
+  FCompletion.Namespaces := Namespaces;
   FSyntaxDiagnostics.Refresh;
 end;
 
@@ -742,6 +752,7 @@ begin
   Result.AddPair('documentHighlightProvider', TJSONBool.Create(True));
   Result.AddPair('referencesProvider', TJSONBool.Create(True));
   Result.AddPair('renameProvider', TLspRename.Capability);
+  Result.AddPair('completionProvider', TLspCompletion.Capability);
   Result.AddPair('codeActionProvider', TLspCodeActions.Capability);
   Result.AddPair('documentLinkProvider', TLspDocumentLinks.Capability);
   Result.AddPair('colorProvider', TJSONBool.Create(True));

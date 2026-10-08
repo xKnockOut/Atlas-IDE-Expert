@@ -86,6 +86,7 @@ contains
   BDLsp.Common.JsonRpc.Statistics in 'Source\JsonRpc\BDLsp.Common.JsonRpc.Statistics.pas',
   BDLsp.Common.Lsp.References in 'Source\Lsp\BDLsp.Common.Lsp.References.pas',
   BDLsp.Common.Lsp.Rename in 'Source\Lsp\BDLsp.Common.Lsp.Rename.pas',
+  BDLsp.Common.Lsp.Completion in 'Source\Lsp\BDLsp.Common.Lsp.Completion.pas',
   BDLsp.Common.Lsp.Commands in 'Source\Lsp\BDLsp.Common.Lsp.Commands.pas',
   BDLsp.Common.Lsp.Status in 'Source\Lsp\BDLsp.Common.Lsp.Status.pas',
   BDLsp.Common.Lsp.DocWiki in 'Source\Lsp\BDLsp.Common.Lsp.DocWiki.pas',

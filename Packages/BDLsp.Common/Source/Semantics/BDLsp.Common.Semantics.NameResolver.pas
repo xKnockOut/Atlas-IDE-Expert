@@ -92,6 +92,17 @@ type
     function MethodClass(out AType: TResolvedSymbol): Boolean;
     function ResolveFirst(const ANames: TArray<string>; out AConsumed: Integer; out AResult: TResolvedSymbol): Boolean;
     function TokenIndexAt(const APosition: TTextPosition): Integer;
+    procedure Prepare(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer);
+    procedure AddCandidate(AList: TList<TResolvedSymbol>; ASeen: TDictionary<string, Boolean>;
+      const ASymbol: TResolvedSymbol);
+    procedure CollectMembers(const AType: TResolvedSymbol; AList: TList<TResolvedSymbol>;
+      ASeen: TDictionary<string, Boolean>);
+    procedure CollectUnit(const AUnit: TUnitIndex; AOnlyInterface: Boolean; AList: TList<TResolvedSymbol>;
+      ASeen: TDictionary<string, Boolean>);
+    procedure CollectDeclarations(ANode: TSyntaxNode; AList: TList<TResolvedSymbol>;
+      ASeen: TDictionary<string, Boolean>);
+    procedure CollectInlineVars(ANode: TSyntaxNode; AList: TList<TResolvedSymbol>;
+      ASeen: TDictionary<string, Boolean>);
   public
     constructor Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc = nil);
     /// <summary>Löst den Bezeichner an APosition auf.</summary>
@@ -101,6 +112,12 @@ type
       AOffset: Integer; AInherited: Boolean = False): TResolvedSymbol;
     /// <summary>Typ des Bezeichners an APosition (Aliase verfolgt); Typen liefern sich selbst.</summary>
     function ResolveType(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition): TResolvedSymbol;
+    /// <summary>Alle an AOffset ohne Qualifizierung sichtbaren Namen, nächster Gültigkeitsbereich zuerst:
+    /// lokale Namen, Mitglieder der eigenen Klasse, eigene Unit, Units aus uses, System.</summary>
+    function ScopeCandidates(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer): TArray<TResolvedSymbol>;
+    /// <summary>Mitglieder hinter A.B. (samt geerbter) bzw. interface-Symbole, wenn die Kette eine Unit ist.</summary>
+    function MemberCandidates(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
+      AOffset: Integer): TArray<TResolvedSymbol>;
     /// <summary>Unit-Namespaces des Projekts (DCC_Namespace) für uses ohne Präfix.</summary>
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
   end;
@@ -614,7 +631,6 @@ end;
 function TNameResolver.ResolveChain(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
   AOffset: Integer; AInherited: Boolean): TResolvedSymbol;
 var
-  Section: TSyntaxNode;
   Consumed, Index: Integer;
   Current, TypeInfo, Ancestor: TResolvedSymbol;
   Owner: TUnitIndex;
@@ -622,12 +638,7 @@ begin
   Result := NoResult;
   if (ATree = nil) or (Length(ANames) = 0) then
     Exit;
-  FTree := ATree;
-  FOffset := AOffset;
-  FCurrent := TIndexExtractor.Extract(ATree, AFileName);
-  Section := ATree.Root.FindChild(TSyntaxKind.InterfaceSection);
-  // Programme haben keinen interface-Teil: alles ist "implementation".
-  FInImplementation := (Section = nil) or not Contains(Section, AOffset);
+  Prepare(ATree, AFileName, AOffset);
 
   if AInherited then
   begin
@@ -653,6 +664,217 @@ begin
       Exit;
   end;
   Result := Current;
+end;
+
+procedure TNameResolver.Prepare(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer);
+var
+  Section: TSyntaxNode;
+begin
+  FTree := ATree;
+  FOffset := AOffset;
+  FCurrent := TIndexExtractor.Extract(ATree, AFileName);
+  Section := ATree.Root.FindChild(TSyntaxKind.InterfaceSection);
+  // Programme haben keinen interface-Teil: alles ist "implementation".
+  FInImplementation := (Section = nil) or not Contains(Section, AOffset);
+end;
+
+procedure TNameResolver.AddCandidate(AList: TList<TResolvedSymbol>; ASeen: TDictionary<string, Boolean>;
+  const ASymbol: TResolvedSymbol);
+var
+  Key: string;
+begin
+  // Der nächste Gültigkeitsbereich verdeckt gleichnamige weiter außen; Überladungen erscheinen einmal.
+  Key := UpperCase(ASymbol.Name);
+  if (Key = '') or ASeen.ContainsKey(Key) then
+    Exit;
+  ASeen.Add(Key, True);
+  AList.Add(ASymbol);
+end;
+
+procedure TNameResolver.CollectMembers(const AType: TResolvedSymbol; AList: TList<TResolvedSymbol>;
+  ASeen: TDictionary<string, Boolean>);
+var
+  Current, Ancestor: TResolvedSymbol;
+  OwnerUnit: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Depth: Integer;
+  TypeName: string;
+begin
+  Current := AType;
+  for Depth := 0 to MaxDepth do
+  begin
+    if not UnitOf(Current, OwnerUnit) then
+      Exit;
+    TypeName := Current.QualifiedName;
+    for Symbol in OwnerUnit.Symbols do
+      if SameText(Symbol.Container, TypeName) then
+        AddCandidate(AList, ASeen, FromSymbol(OwnerUnit, Symbol));
+    if not AncestorOf(Current, Ancestor) then
+      Exit;
+    Current := Ancestor;
+  end;
+end;
+
+procedure TNameResolver.CollectUnit(const AUnit: TUnitIndex; AOnlyInterface: Boolean;
+  AList: TList<TResolvedSymbol>; ASeen: TDictionary<string, Boolean>);
+var
+  Symbol: TIndexSymbol;
+begin
+  for Symbol in AUnit.Symbols do
+  begin
+    if AOnlyInterface and not Symbol.InInterface then
+      Continue;
+    if (Symbol.Container <> '') and (Symbol.Kind <> TIndexSymbolKind.EnumMember) then
+      Continue;
+    AddCandidate(AList, ASeen, FromSymbol(AUnit, Symbol));
+  end;
+end;
+
+procedure TNameResolver.CollectDeclarations(ANode: TSyntaxNode; AList: TList<TResolvedSymbol>;
+  ASeen: TDictionary<string, Boolean>);
+var
+  Index: Integer;
+  Child: TSyntaxNode;
+  Name: string;
+  Kind: TIndexSymbolKind;
+begin
+  for Index := 0 to ANode.ChildCount - 1 do
+  begin
+    Child := ANode[Index];
+    case Child.Kind of
+      TSyntaxKind.VarSection, TSyntaxKind.ConstSection, TSyntaxKind.TypeSection:
+        CollectDeclarations(Child, AList, ASeen);
+      TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl:
+        begin
+          if Child.Kind = TSyntaxKind.VarDecl then
+            Kind := TIndexSymbolKind.Variable
+          else
+            Kind := TIndexSymbolKind.Constant;
+          for Name in Child.Name.Split([',']) do
+            AddCandidate(AList, ASeen, FromNode(Child, Name.Trim, Kind, False));
+        end;
+      TSyntaxKind.TypeDecl:
+        AddCandidate(AList, ASeen, FromNode(Child, Child.Name, TIndexSymbolKind.TypeAlias, False));
+      TSyntaxKind.RoutineDecl:
+        AddCandidate(AList, ASeen, FromNode(Child, Child.Name, TIndexSymbolKind.Routine, False));
+    end;
+  end;
+end;
+
+procedure TNameResolver.CollectInlineVars(ANode: TSyntaxNode; AList: TList<TResolvedSymbol>;
+  ASeen: TDictionary<string, Boolean>);
+var
+  Index: Integer;
+  Child: TSyntaxNode;
+  Name: string;
+begin
+  // Wie LookupInlineVars: nur bis zum Cursor, nicht in verschachtelte Routinen.
+  for Index := 0 to ANode.ChildCount - 1 do
+  begin
+    Child := ANode[Index];
+    if Child.StartOffset > FOffset then
+      Break;
+    if Child.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst] then
+    begin
+      if Child.EndOffset <= FOffset then
+        for Name in Child.Name.Split([',']) do
+          AddCandidate(AList, ASeen, FromNode(Child, Name.Trim, TIndexSymbolKind.Variable, False));
+    end
+    else if (Child.Kind <> TSyntaxKind.RoutineDecl) and Contains(Child, FOffset) then
+      CollectInlineVars(Child, AList, ASeen);
+  end;
+end;
+
+function TNameResolver.ScopeCandidates(ATree: TSyntaxTree; const AFileName: string;
+  AOffset: Integer): TArray<TResolvedSymbol>;
+var
+  List: TList<TResolvedSymbol>;
+  Seen: TDictionary<string, Boolean>;
+  Routine, Header, Params, Param: TSyntaxNode;
+  Index: Integer;
+  Name, UnitName: string;
+  ClassType, ResultSymbol: TResolvedSymbol;
+  Used: TUnitIndex;
+begin
+  Result := nil;
+  if ATree = nil then
+    Exit;
+  Prepare(ATree, AFileName, AOffset);
+  List := TList<TResolvedSymbol>.Create;
+  Seen := TDictionary<string, Boolean>.Create;
+  try
+    for Routine in EnclosingRoutines do
+    begin
+      CollectInlineVars(Routine, List, Seen);
+      Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
+      if Header <> nil then
+      begin
+        Params := Header.FindChild(TSyntaxKind.Parameters);
+        if Params <> nil then
+          for Index := 0 to Params.ChildCount - 1 do
+          begin
+            Param := Params[Index];
+            if Param.Kind = TSyntaxKind.Parameter then
+              for Name in Param.Name.Split([',']) do
+                AddCandidate(List, Seen, FromNode(Param, Name.Trim, TIndexSymbolKind.Variable, True));
+          end;
+        if Header.FindChild(TSyntaxKind.TypeReference) <> nil then
+        begin
+          ResultSymbol := FromNode(Header, 'Result', TIndexSymbolKind.Variable, False);
+          AddCandidate(List, Seen, ResultSymbol);
+        end;
+      end;
+      CollectDeclarations(Routine, List, Seen);
+    end;
+    if MethodClass(ClassType) then
+    begin
+      ResultSymbol := ClassType;
+      ResultSymbol.Name := 'Self';
+      ResultSymbol.Kind := TResolvedKind.Local;
+      ResultSymbol.SymbolKind := TIndexSymbolKind.Variable;
+      ResultSymbol.TypeName := ClassType.QualifiedName;
+      AddCandidate(List, Seen, ResultSymbol);
+      CollectMembers(ClassType, List, Seen);
+    end;
+    CollectUnit(FCurrent, not FInImplementation, List, Seen);
+    for UnitName in ScopeUnits(FCurrent, FInImplementation) do
+      if FindUnit(UnitName, Used) then
+        CollectUnit(Used, True, List, Seen);
+    Result := List.ToArray;
+  finally
+    Seen.Free;
+    List.Free;
+  end;
+end;
+
+function TNameResolver.MemberCandidates(ATree: TSyntaxTree; const AFileName: string;
+  const ANames: TArray<string>; AOffset: Integer): TArray<TResolvedSymbol>;
+var
+  Owner, TypeInfo: TResolvedSymbol;
+  OwnerUnit: TUnitIndex;
+  List: TList<TResolvedSymbol>;
+  Seen: TDictionary<string, Boolean>;
+begin
+  Result := nil;
+  // ResolveChain bereitet den Zustand (aktuelle Unit, Abschnitt) vor.
+  Owner := ResolveChain(ATree, AFileName, ANames, AOffset);
+  if not Owner.Found then
+    Exit;
+  List := TList<TResolvedSymbol>.Create;
+  Seen := TDictionary<string, Boolean>.Create;
+  try
+    if Owner.Kind = TResolvedKind.UnitName then
+    begin
+      if FindUnit(Owner.UnitName, OwnerUnit) then
+        CollectUnit(OwnerUnit, not SameText(OwnerUnit.FileName, FCurrent.FileName), List, Seen);
+    end
+    else if TypeOf(Owner, TypeInfo) then
+      CollectMembers(TypeInfo, List, Seen);
+    Result := List.ToArray;
+  finally
+    Seen.Free;
+    List.Free;
+  end;
 end;
 
 function TNameResolver.ResolveType(ATree: TSyntaxTree; const AFileName: string;
