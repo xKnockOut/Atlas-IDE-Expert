@@ -161,6 +161,7 @@
         <DCCReference Include="Common\Dfm\BDLsp.Common.Dfm.ComponentRename.Tests.pas"/>
         <DCCReference Include="Common\Dfm\BDLsp.Common.Dfm.FormModel.Tests.pas"/>
         <DCCReference Include="Common\Dfm\BDLsp.Common.Dfm.FormInfo.Tests.pas"/>
+        <DCCReference Include="Common\Dfm\BDLsp.Common.Dfm.ImagePreview.Tests.pas"/>
         <DCCReference Include="Common\Dfm\BDLsp.Common.Dfm.BinaryForm.Tests.pas"/>
         <DCCReference Include="Common\Dfm\BDLsp.Common.Dfm.FormInheritance.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\BDLsp.Common.JsonRpc.LineTransport.Tests.pas"/>

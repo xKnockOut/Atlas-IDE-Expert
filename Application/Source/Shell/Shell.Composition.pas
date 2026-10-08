@@ -204,6 +204,7 @@ uses
   BDLsp.Common.Lsp.FormFiles,
   BDLsp.Common.Dfm.FormModel,
   BDLsp.Common.Dfm.BinaryForm,
+  BDLsp.Common.Dfm.ImagePreview,
   BDLsp.Common.Editing.CodeActions,
   BDLsp.Common.Rules.Contract,
   BDLsp.Common.Index.SymbolIndex,
@@ -425,12 +426,15 @@ begin
       Result := EnsureUnit(AUnitName);
     end);
   FHover.VersionProvider := DelphiVersionFor;
-  // Geerbte Formulare (#115): Wert im Vorfahr-Formular.
+  // Bilder in Binärdaten (#271), sonst geerbte Formulare (#115): Wert im Vorfahr-Formular.
   FHover.FormHover :=
     function(const AUri, AText: string; const APosition: TTextPosition): string
     var
       Chain: TFormInheritance;
     begin
+      Result := TDfmImagePreview.HoverAt(AText, APosition);
+      if Result <> '' then
+        Exit;
       Chain := NewFormInheritance(AUri, AText);
       try
         Result := Chain.HoverAt(APosition);

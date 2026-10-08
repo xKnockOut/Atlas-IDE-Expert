@@ -136,6 +136,7 @@ contains
   BDLsp.Common.Dfm.Navigation in 'Source\Dfm\BDLsp.Common.Dfm.Navigation.pas',
   BDLsp.Common.Dfm.FormModel in 'Source\Dfm\BDLsp.Common.Dfm.FormModel.pas',
   BDLsp.Common.Dfm.FormInfo in 'Source\Dfm\BDLsp.Common.Dfm.FormInfo.pas',
+  BDLsp.Common.Dfm.ImagePreview in 'Source\Dfm\BDLsp.Common.Dfm.ImagePreview.pas',
   BDLsp.Common.Dfm.BinaryForm in 'Source\Dfm\BDLsp.Common.Dfm.BinaryForm.pas',
   BDLsp.Common.Dfm.FormInheritance in 'Source\Dfm\BDLsp.Common.Dfm.FormInheritance.pas',
   BDLsp.Common.Dfm.ComponentRename in 'Source\Dfm\BDLsp.Common.Dfm.ComponentRename.pas',
