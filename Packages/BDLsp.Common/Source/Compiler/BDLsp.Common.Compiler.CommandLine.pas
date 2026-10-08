@@ -83,6 +83,10 @@ begin
     Arguments.AddRange(['-Q', '-M', '-H+', '-W+']);
     Arguments.Add('-NU' + AOutputDir);
     Arguments.Add('-E' + AOutputDir);
+    // Packages: BPL und DCP ebenfalls in den eigenen Ordner, sonst landen sie im
+    // gemeinsamen Bpl-Ordner und überschreiben die installierten Packages.
+    Arguments.Add('-LE' + AOutputDir);
+    Arguments.Add('-LN' + AOutputDir);
     if Paths <> '' then
     begin
       Arguments.Add('-U' + Paths);

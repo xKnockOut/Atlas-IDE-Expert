@@ -178,6 +178,8 @@ begin
   Assert.AreEqual('C:\P', Request.WorkingDir);
   Joined := string.Join(' ', Request.Arguments);
   Assert.Contains(Joined, '-NUC:\Temp\Out -EC:\Temp\Out');
+  // BPL und DCP eines Packages dürfen nicht in den gemeinsamen Bpl-Ordner.
+  Assert.Contains(Joined, '-LEC:\Temp\Out -LNC:\Temp\Out');
   Assert.Contains(Joined, '-UC:\P\Lib;C:\Delphi\lib\win64\release');
   Assert.Contains(Joined, '-DDEBUG;FOO');
   Assert.Contains(Joined, '-NSSystem;Vcl');
