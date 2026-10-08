@@ -7,6 +7,8 @@
 // Dokumentationskommentar sind die ///-Zeilen direkt darüber; XML-Tags wie
 // <summary> entfallen, <param name="X"> wird zu "X:". Bei Methoden mit
 // getrennter Implementierung gilt die Deklaration (TLspDefinition).
+// Bei Klassen folgen die published-Properties und Ereignisse samt geerbter
+// (TPublishedMembers).
 
 interface
 
@@ -29,6 +31,8 @@ type
     Documentation: string;
     /// <summary>Unit der Deklaration, wenn sie nicht die aktuelle ist.</summary>
     UnitName: string;
+    /// <summary>Markdown mit published-Properties und Ereignissen bei Klassen; sonst ''.</summary>
+    Members: string;
     function Found: Boolean;
     function ToMarkdown: string;
   end;
@@ -63,6 +67,7 @@ uses
   BDLsp.Common.Documents.Uris,
   BDLsp.Common.Lsp.Positions,
   BDLsp.Common.Lsp.Definition,
+  BDLsp.Common.Lsp.PublishedMembers,
   BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.Parser,
   BDLsp.Common.Lsp.Internals.Cancellation;
@@ -137,6 +142,8 @@ begin
     Result := Result + #10#10 + Documentation;
   if UnitName <> '' then
     Result := Result + #10#10 + 'Unit `' + UnitName + '`';
+  if Members <> '' then
+    Result := Result + #10#10 + '---' + #10#10 + Members;
 end;
 
 { TLspHover }
@@ -193,6 +200,8 @@ var
   Lines: TArray<string>;
   Start: TTextPosition;
   OwnerUnit: TUnitIndex;
+  Symbol: TIndexSymbol;
+  ReadText: TMemberReadText;
 begin
   Result := Default(THoverInfo);
   Targets := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
@@ -217,8 +226,28 @@ begin
     Exit;
   Result.Declaration := TrimRight(Copy(Lines[Start.Line], Start.Character + 1, MaxInt));
   Result.Documentation := DocumentationAbove(Lines, Start.Line);
-  if not SameText(Targets[0].FileName, AFileName) and AIndex.FindFile(Targets[0].FileName, OwnerUnit) then
+  if not AIndex.FindFile(Targets[0].FileName, OwnerUnit) then
+    Exit;
+  if not SameText(Targets[0].FileName, AFileName) then
     Result.UnitName := OwnerUnit.UnitName;
+  for Symbol in OwnerUnit.Symbols do
+    if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') and
+      ((Symbol.Range.StartPos = Start) or (Symbol.SelectionRange.StartPos = Start)) then
+    begin
+      // Die eigene Datei kommt aus dem Editor, nicht von der Platte.
+      ReadText :=
+        function(const AName: string; out AText: string): Boolean
+        begin
+          if SameText(AName, AFileName) then
+          begin
+            AText := ATreeText;
+            Exit(True);
+          end;
+          Result := Assigned(AReadText) and AReadText(AName, AText);
+        end;
+      Result.Members := TPublishedMembers.ToMarkdown(TPublishedMembers.Collect(AIndex, Symbol.Name, ReadText));
+      Break;
+    end;
 end;
 
 function TLspHover.HandleHover(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;

@@ -72,6 +72,7 @@
         <DCCReference Include="Common\Semantics\BDLsp.Common.Semantics.ControlFlow.Tests.pas"/>
         <DCCReference Include="Common\Semantics\BDLsp.Common.Semantics.NameResolver.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Definition.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.PublishedMembers.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Hover.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.WorkspaceSymbols.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.DocumentHighlights.Tests.pas"/>
