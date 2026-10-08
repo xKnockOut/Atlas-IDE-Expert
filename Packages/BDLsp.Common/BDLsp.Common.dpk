@@ -71,6 +71,7 @@ contains
   BDLsp.Common.Index.SymbolIndex in 'Source\Index\BDLsp.Common.Index.SymbolIndex.pas',
   BDLsp.Common.Index.Cache in 'Source\Index\BDLsp.Common.Index.Cache.pas',
   BDLsp.Common.Index.CacheHousekeeping in 'Source\Index\BDLsp.Common.Index.CacheHousekeeping.pas',
+  BDLsp.Common.Index.Memory in 'Source\Index\BDLsp.Common.Index.Memory.pas',
   BDLsp.Common.Index.Builder in 'Source\Index\BDLsp.Common.Index.Builder.pas',
   BDLsp.Common.Index.ProjectFiles in 'Source\Index\BDLsp.Common.Index.ProjectFiles.pas',
   BDLsp.Common.Index.Service in 'Source\Index\BDLsp.Common.Index.Service.pas',

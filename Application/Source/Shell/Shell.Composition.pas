@@ -803,11 +803,17 @@ end;
 function TServerComposition.CollectStatus: TServerStatus;
 var
   Workspace: TShellWorkspace;
+  Document: ITextDocument;
 begin
   Result := Default(TServerStatus);
   Result.Units := FIndex.UnitCount;
   Result.Symbols := FIndex.SymbolCount;
   Result.MemoryBytes := AllocatedBytes;
+  Result.IndexBytes := FIndex.MemoryBytes;
+  Result.CompactUnits := FIndex.CompactCount;
+  Result.BudgetBytes := FIndex.Budget;
+  for Document in FDocuments.Documents do
+    Result.DocumentBytes := Result.DocumentBytes + Length(Document.Text) * SizeOf(Char);
   TMonitor.Enter(FWorkspacesLock);
   try
     for Workspace in FWorkspaces do

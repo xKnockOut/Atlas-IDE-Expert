@@ -37,6 +37,7 @@ uses
   BDLsp.Common.Documents.Uris.Tests in 'Common\Documents\BDLsp.Common.Documents.Uris.Tests.pas',
   BDLsp.Common.Index.Tests in 'Common\Index\BDLsp.Common.Index.Tests.pas',
   BDLsp.Common.Index.CacheHousekeeping.Tests in 'Common\Index\BDLsp.Common.Index.CacheHousekeeping.Tests.pas',
+  BDLsp.Common.Index.Memory.Tests in 'Common\Index\BDLsp.Common.Index.Memory.Tests.pas',
   BDLsp.Common.Semantics.ControlFlow.Tests in 'Common\Semantics\BDLsp.Common.Semantics.ControlFlow.Tests.pas',
   BDLsp.Common.Semantics.NameResolver.Tests in 'Common\Semantics\BDLsp.Common.Semantics.NameResolver.Tests.pas',
   BDLsp.Common.Lsp.Definition.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Definition.Tests.pas',

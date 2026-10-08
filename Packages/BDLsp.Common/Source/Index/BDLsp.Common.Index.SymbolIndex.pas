@@ -3,6 +3,10 @@
 // Threadsicherer Symbolindex im Speicher. Schlüssel sind Unit-Namen und
 // Dateinamen ohne Groß-/Kleinschreibung; Symbolnamen und Vorfahren werden
 // beim Hinzufügen einer Unit in Nachschlagetabellen eingetragen.
+//
+// Speicherbudget (#185): Zeichenketten kommen in einen Pool. Übersteigt der
+// geschätzte Bedarf das Budget, werden zuerst Bibliotheks-Units, danach
+// Projekt-Units kompakt gehalten (nur interface-Symbole).
 
 interface
 
@@ -10,7 +14,8 @@ uses
   System.SysUtils,
   System.SyncObjs,
   System.Generics.Collections,
-  BDLsp.Common.Index.Contract;
+  BDLsp.Common.Index.Contract,
+  BDLsp.Common.Index.Memory;
 
 type
   TSymbolIndex = class(TInterfacedObject, ISymbolIndex)
@@ -21,6 +26,12 @@ type
     // Unit-Name (groß) → Dateiname (groß)
     FUnitFiles: TDictionary<string, string>;
     FSymbolCount: Integer;
+    FPool: TStringPool;
+    FBytes: Int64;
+    FBudget: Int64;
+    FCompactCount: Integer;
+    procedure AddLocked(const AKey: string; const AUnit: TUnitIndex);
+    procedure ShrinkLocked;
     function Locations(const AFilter: TFunc<TIndexSymbol, Boolean>): TArray<TSymbolLocation>;
     procedure RemoveFileLocked(const AFileKey: string);
   public
@@ -36,6 +47,10 @@ type
     function Units: TArray<TUnitIndex>;
     function UnitCount: Integer;
     function SymbolCount: Integer;
+    function MemoryBytes: Int64;
+    function CompactCount: Integer;
+    procedure SetBudget(ABytes: Int64);
+    function Budget: Int64;
   end;
 
 implementation
@@ -62,10 +77,12 @@ begin
   FLock := TCriticalSection.Create;
   FFiles := TDictionary<string, TUnitIndex>.Create;
   FUnitFiles := TDictionary<string, string>.Create;
+  FPool := TStringPool.Create;
 end;
 
 destructor TSymbolIndex.Destroy;
 begin
+  FPool.Free;
   FUnitFiles.Free;
   FFiles.Free;
   FLock.Free;
@@ -80,22 +97,65 @@ begin
   if not FFiles.TryGetValue(AFileKey, Existing) then
     Exit;
   Dec(FSymbolCount, Length(Existing.Symbols));
+  Dec(FBytes, TIndexMemory.UnitBytes(Existing));
+  if Existing.Compact then
+    Dec(FCompactCount);
   FFiles.Remove(AFileKey);
   if FUnitFiles.TryGetValue(UpperCase(Existing.UnitName), UnitFile) and (UnitFile = AFileKey) then
     FUnitFiles.Remove(UpperCase(Existing.UnitName));
 end;
 
+procedure TSymbolIndex.AddLocked(const AKey: string; const AUnit: TUnitIndex);
+begin
+  FFiles.Add(AKey, AUnit);
+  FUnitFiles.AddOrSetValue(UpperCase(AUnit.UnitName), AKey);
+  Inc(FSymbolCount, Length(AUnit.Symbols));
+  Inc(FBytes, TIndexMemory.UnitBytes(AUnit));
+  if AUnit.Compact then
+    Inc(FCompactCount);
+end;
+
+procedure TSymbolIndex.ShrinkLocked;
+var
+  Pass: Integer;
+  Keys: TArray<string>;
+  Key: string;
+  Existing: TUnitIndex;
+begin
+  // Erst Bibliotheken, dann Projekt-Units; jeweils nur bis das Budget wieder reicht.
+  for Pass := 0 to 1 do
+  begin
+    Keys := FFiles.Keys.ToArray;
+    for Key in Keys do
+    begin
+      if (FBudget <= 0) or (FBytes <= FBudget) then
+        Exit;
+      Existing := FFiles[Key];
+      if Existing.Compact or ((Pass = 0) and not Existing.Library_) then
+        Continue;
+      RemoveFileLocked(Key);
+      AddLocked(Key, TIndexMemory.Compacted(Existing));
+    end;
+  end;
+end;
+
 procedure TSymbolIndex.AddUnit(const AUnit: TUnitIndex);
 var
   Key: string;
+  Pooled: TUnitIndex;
 begin
   Key := AnsiUpperCase(AUnit.FileName);
+  Pooled := AUnit;
   FLock.Enter;
   try
+    // Eigene Kopie der Arrays, damit der Pool die Einträge des Aufrufers nicht ändert.
+    Pooled.InterfaceUses := Copy(AUnit.InterfaceUses);
+    Pooled.ImplementationUses := Copy(AUnit.ImplementationUses);
+    Pooled.Symbols := Copy(AUnit.Symbols);
+    FPool.InternUnit(Pooled);
     RemoveFileLocked(Key);
-    FFiles.Add(Key, AUnit);
-    FUnitFiles.AddOrSetValue(UpperCase(AUnit.UnitName), Key);
-    Inc(FSymbolCount, Length(AUnit.Symbols));
+    AddLocked(Key, Pooled);
+    ShrinkLocked;
   finally
     FLock.Leave;
   end;
@@ -206,6 +266,47 @@ begin
   FLock.Enter;
   try
     Result := FFiles.Count;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TSymbolIndex.MemoryBytes: Int64;
+begin
+  FLock.Enter;
+  try
+    Result := FBytes;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TSymbolIndex.CompactCount: Integer;
+begin
+  FLock.Enter;
+  try
+    Result := FCompactCount;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TSymbolIndex.SetBudget(ABytes: Int64);
+begin
+  FLock.Enter;
+  try
+    FBudget := ABytes;
+    ShrinkLocked;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TSymbolIndex.Budget: Int64;
+begin
+  FLock.Enter;
+  try
+    Result := FBudget;
   finally
     FLock.Leave;
   end;

@@ -26,6 +26,14 @@ type
     Symbols: Integer;
     /// <summary>Belegter Speicher in Byte; -1 = unbekannt.</summary>
     MemoryBytes: Int64;
+    /// <summary>Geschätzter Bedarf des Symbolindex in Byte (#185).</summary>
+    IndexBytes: Int64;
+    /// <summary>Kompakt gehaltene Units.</summary>
+    CompactUnits: Integer;
+    /// <summary>Budget des Index in Byte; 0 = unbegrenzt.</summary>
+    BudgetBytes: Int64;
+    /// <summary>Text der geöffneten Dokumente in Byte.</summary>
+    DocumentBytes: Int64;
     Workspaces: TArray<TWorkspaceStatus>;
     Requests: TArray<TMethodStatistics>;
     /// <summary>Der Aufrufer übernimmt das Objekt; enthält zusätzlich "markdown".</summary>
@@ -55,6 +63,13 @@ begin
     Builder.Append(Format('- Index: %d Units, %d Symbole', [Units, Symbols])).Append(#10);
     if MemoryBytes >= 0 then
       Builder.Append('- Speicher: ').Append(MegaBytes(MemoryBytes)).Append(#10);
+    Builder.Append('- davon Symbolindex: ').Append(MegaBytes(IndexBytes));
+    if BudgetBytes > 0 then
+      Builder.Append(' von ').Append(MegaBytes(BudgetBytes));
+    if CompactUnits > 0 then
+      Builder.Append(Format(', %d Units kompakt', [CompactUnits]));
+    Builder.Append(#10);
+    Builder.Append('- davon geöffnete Dokumente: ').Append(MegaBytes(DocumentBytes)).Append(#10);
     for Workspace in Workspaces do
       if Workspace.LastIndexMs < 0 then
         Builder.Append(Format('- %s: Index wird aufgebaut', [Workspace.Name])).Append(#10)
@@ -86,6 +101,10 @@ begin
   Result.AddPair('units', TJSONNumber.Create(Units));
   Result.AddPair('symbols', TJSONNumber.Create(Symbols));
   Result.AddPair('memoryBytes', TJSONNumber.Create(MemoryBytes));
+  Result.AddPair('indexBytes', TJSONNumber.Create(IndexBytes));
+  Result.AddPair('compactUnits', TJSONNumber.Create(CompactUnits));
+  Result.AddPair('budgetBytes', TJSONNumber.Create(BudgetBytes));
+  Result.AddPair('documentBytes', TJSONNumber.Create(DocumentBytes));
   Items := TJSONArray.Create;
   for Workspace in Workspaces do
   begin

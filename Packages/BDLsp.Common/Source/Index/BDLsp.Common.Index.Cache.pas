@@ -6,7 +6,7 @@
 //
 // Kurze Schlüssel halten die Datei klein:
 //   {"version":1,"units":[{"u":"Name","f":"Datei","t":Stamp,"h":"Hash",
-//     "iu":[...],"mu":[...],"s":[[Name,Container,Art,
+//     "iu":[...],"mu":[...],"l":Bibliothek,"c":Kompakt,"s":[[Name,Container,Art,
 //     L1,C1,L2,C2, SL1,SC1,SL2,SC2, InInterface, [Vorfahren], Typ], ...]}]}
 
 interface
@@ -132,6 +132,10 @@ begin
       Item.AddPair('h', UnitIndex.Hash);
       Item.AddPair('iu', StringsToJson(UnitIndex.InterfaceUses));
       Item.AddPair('mu', StringsToJson(UnitIndex.ImplementationUses));
+      if UnitIndex.Library_ then
+        Item.AddPair('l', TJSONBool.Create(True));
+      if UnitIndex.Compact then
+        Item.AddPair('c', TJSONBool.Create(True));
       Symbols := TJSONArray.Create;
       Item.AddPair('s', Symbols);
       for Symbol in UnitIndex.Symbols do
@@ -185,6 +189,8 @@ begin
       UnitIndex.Hash := Item.GetValue<string>('h', '');
       UnitIndex.InterfaceUses := JsonToStrings(Item.GetValue('iu'));
       UnitIndex.ImplementationUses := JsonToStrings(Item.GetValue('mu'));
+      UnitIndex.Library_ := Item.GetValue<Boolean>('l', False);
+      UnitIndex.Compact := Item.GetValue<Boolean>('c', False);
       SymbolList.Clear;
       Value := Item.GetValue('s');
       if Value is TJSONArray then
