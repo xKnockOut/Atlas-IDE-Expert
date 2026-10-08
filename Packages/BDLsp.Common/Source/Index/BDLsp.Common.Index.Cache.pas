@@ -7,7 +7,7 @@
 // Kurze Schlüssel halten die Datei klein:
 //   {"version":1,"units":[{"u":"Name","f":"Datei","t":Stamp,"h":"Hash",
 //     "iu":[...],"mu":[...],"s":[[Name,Container,Art,
-//     L1,C1,L2,C2, SL1,SC1,SL2,SC2, InInterface, [Vorfahren]], ...]}]}
+//     L1,C1,L2,C2, SL1,SC1,SL2,SC2, InInterface, [Vorfahren], Typ], ...]}]}
 
 interface
 
@@ -18,7 +18,7 @@ uses
 type
   TIndexCache = class
   public
-    const FormatVersion = 1;
+    const FormatVersion = 2;
     class function Serialize(const AUnits: TArray<TUnitIndex>): string; static;
     /// <summary>Liest den Cache; bei falscher Version oder kaputtem JSON leer.</summary>
     class function Deserialize(const AText: string): TArray<TUnitIndex>; static;
@@ -78,13 +78,14 @@ begin
   Result.Add(ASymbol.SelectionRange.EndPos.Character);
   Result.Add(ASymbol.InInterface);
   Result.AddElement(StringsToJson(ASymbol.Ancestors));
+  Result.Add(ASymbol.TypeName);
 end;
 
 function JsonToSymbol(AItems: TJSONArray; out ASymbol: TIndexSymbol): Boolean;
 var
   Kind: Integer;
 begin
-  Result := AItems.Count >= 13;
+  Result := AItems.Count >= 14;
   if not Result then
     Exit;
   Kind := IntAt(AItems, 2);
@@ -99,6 +100,7 @@ begin
     TTextPosition.Create(IntAt(AItems, 9), IntAt(AItems, 10)));
   ASymbol.InInterface := (AItems.Items[11] is TJSONBool) and TJSONBool(AItems.Items[11]).AsBoolean;
   ASymbol.Ancestors := JsonToStrings(AItems.Items[12]);
+  ASymbol.TypeName := AItems.Items[13].Value;
 end;
 
 { TIndexCache }

@@ -35,6 +35,8 @@ type
     InInterface: Boolean;
     /// <summary>Vorfahr und Interfaces bei Klassen und Interfaces, Zieltyp bei Helfern.</summary>
     Ancestors: TArray<string>;
+    /// <summary>Deklarierter Typ bei Variablen, Feldern, Properties, Konstanten und Funktionen (Ergebnis); sonst ''.</summary>
+    TypeName: string;
     function QualifiedName: string;
   end;
 

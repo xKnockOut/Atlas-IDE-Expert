@@ -1,4 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{7737E737-7F8E-4B01-9B7C-42DA754393D2}</ProjectGuid>
         <MainSource>BDLsp.Tests.dpr</MainSource>
@@ -69,6 +69,7 @@
         <DCCReference Include="Common\Documents\BDLsp.Common.Documents.Providers.DocumentStore.Tests.pas"/>
         <DCCReference Include="Common\Documents\BDLsp.Common.Documents.Uris.Tests.pas"/>
         <DCCReference Include="Common\Index\BDLsp.Common.Index.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\BDLsp.Common.Semantics.NameResolver.Tests.pas"/>
         <DCCReference Include="Windows\Documents\BDLsp.Windows.Documents.PathCanonicalizer.Tests.pas"/>
         <DCCReference Include="Common\Pascal\BDLsp.Common.Pascal.Lexer.Tests.pas"/>
         <DCCReference Include="Common\Pascal\BDLsp.Common.Pascal.Parser.Tests.pas"/>
