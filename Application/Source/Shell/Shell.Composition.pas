@@ -24,6 +24,7 @@ uses
   BDLsp.Common.Lsp.Definition,
   BDLsp.Common.Lsp.Hover,
   BDLsp.Common.Lsp.WorkspaceSymbols,
+  BDLsp.Common.Lsp.DocumentHighlights,
   BDLsp.Common.Lsp.Configuration,
   BDLsp.Common.Lsp.WorkDoneProgress,
   BDLsp.Common.Documents.Contract,
@@ -49,6 +50,7 @@ type
     FDefinition: TLspDefinition;
     FHover: TLspHover;
     FWorkspaceSymbols: TLspWorkspaceSymbols;
+    FDocumentHighlights: TLspDocumentHighlights;
     FConfiguration: TLspConfiguration;
     FConnection: TJsonRpcConnection;
     FIndex: ISymbolIndex;
@@ -222,6 +224,12 @@ begin
   FHover.Attach(FDispatcher);
   FWorkspaceSymbols := TLspWorkspaceSymbols.Create(FIndex);
   FWorkspaceSymbols.Attach(FDispatcher);
+  FDocumentHighlights := TLspDocumentHighlights.Create(FDocuments, FIndex,
+    function(const AUnitName: string): Boolean
+    begin
+      Result := FIndexService.EnsureUnit(AUnitName);
+    end);
+  FDocumentHighlights.Attach(FDispatcher);
   FIndexProgress := TLspWorkDoneProgress.Create(FTransport, 'bdlsp-index');
   FIndexService.OnProgress := FIndexProgress.AsIndexProgress;
   FIndexService.OnFinished :=
@@ -268,6 +276,7 @@ begin
   FDefinition.Free;
   FHover.Free;
   FWorkspaceSymbols.Free;
+  FDocumentHighlights.Free;
   FConfiguration.Free;
   FTextDocumentSync.Free;
   FDocuments := nil;
@@ -362,6 +371,7 @@ begin
   FIndexSignature := Signature;
   FDefinition.Namespaces := Project.Namespaces;
   FHover.Namespaces := Project.Namespaces;
+  FDocumentHighlights.Namespaces := Project.Namespaces;
   FIndexService.Stop;
   if Installation <> nil then
     LibraryPaths := Installation.LibraryPaths(Project.Platform) + Installation.BrowsingPaths(Project.Platform)
@@ -445,6 +455,7 @@ begin
   Result.AddPair('declarationProvider', TJSONBool.Create(True));
   Result.AddPair('hoverProvider', TJSONBool.Create(True));
   Result.AddPair('workspaceSymbolProvider', TJSONBool.Create(True));
+  Result.AddPair('documentHighlightProvider', TJSONBool.Create(True));
 end;
 
 function TServerComposition.Run: Integer;

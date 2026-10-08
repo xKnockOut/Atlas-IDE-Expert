@@ -71,6 +71,7 @@ contains
   BDLsp.Common.Lsp.Definition in 'Source\Lsp\BDLsp.Common.Lsp.Definition.pas',
   BDLsp.Common.Lsp.Hover in 'Source\Lsp\BDLsp.Common.Lsp.Hover.pas',
   BDLsp.Common.Lsp.WorkspaceSymbols in 'Source\Lsp\BDLsp.Common.Lsp.WorkspaceSymbols.pas',
+  BDLsp.Common.Lsp.DocumentHighlights in 'Source\Lsp\BDLsp.Common.Lsp.DocumentHighlights.pas',
   BDLsp.Common.Index.Adapters.DiskFileSystem in 'Source\Index\Adapters\BDLsp.Common.Index.Adapters.DiskFileSystem.pas',
   BDLsp.Common.Lsp.WorkDoneProgress in 'Source\Lsp\BDLsp.Common.Lsp.WorkDoneProgress.pas',
   BDLsp.Common.Configuration.Contract in 'Source\Configuration\BDLsp.Common.Configuration.Contract.pas',
