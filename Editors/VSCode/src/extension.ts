@@ -1,4 +1,4 @@
-// Minimale VS-Code-Erweiterung: startet BetterDelphiLSP.exe über stdio und
+// VS-Code-Erweiterung (#12, #49): startet BetterDelphiLSP.exe über stdio und
 // bindet sie mit vscode-languageclient an. Meldungen des Servers
 // (window/logMessage und stderr) erscheinen im Ausgabefenster „BetterDelphiLSP“.
 
@@ -19,7 +19,14 @@ import {
 } from 'vscode-languageclient/node';
 
 const Section = 'betterDelphiLsp';
-const DefaultServerPath = path.join('Output', 'Win64', 'Debug', 'Bin', 'BetterDelphiLSP.exe');
+const ServerExe = 'BetterDelphiLSP.exe';
+/** Build-Ausgaben im Arbeitsbereich, in dieser Reihenfolge gesucht. */
+const WorkspaceServerPaths = [
+  path.join('Output', 'Win64', 'Release', 'Bin', ServerExe),
+  path.join('Output', 'Win64', 'Debug', 'Bin', ServerExe),
+  path.join('Output', 'Win32', 'Release', 'Bin', ServerExe),
+  path.join('Output', 'Win32', 'Debug', 'Bin', ServerExe),
+];
 
 /** Höchstens so viele Neustarts nach Absturz innerhalb des Zeitfensters. */
 const MaxRestarts = 5;
@@ -28,15 +35,41 @@ const RestartWindowMs = 3 * 60 * 1000;
 let client: LanguageClient | undefined;
 let output: vscode.OutputChannel | undefined;
 let traceOutput: vscode.OutputChannel | undefined;
+let extensionPath = '';
 
-/** Pfad zur Server-EXE aus der Einstellung oder dem Standardort im Arbeitsbereich. */
+/** Erster Treffer für ServerExe in den Ordnern von PATH. */
+function findOnPath(): string | undefined {
+  for (const dir of (process.env.PATH ?? '').split(path.delimiter)) {
+    if (dir !== '') {
+      const candidate = path.join(dir, ServerExe);
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Pfad zur Server-EXE: Einstellung, dann die in der .vsix mitgelieferte EXE
+ * (server/), dann Build-Ausgaben im Arbeitsbereich, zuletzt PATH.
+ * Ohne Treffer der erwartete Pfad für die Fehlermeldung.
+ */
 function resolveServerPath(): string | undefined {
   const configured = vscode.workspace.getConfiguration(Section).get<string>('serverPath', '').trim();
   if (configured !== '') {
     return configured;
   }
-  const folder = vscode.workspace.workspaceFolders?.[0];
-  return folder ? path.join(folder.uri.fsPath, DefaultServerPath) : undefined;
+  const candidates: string[] = [];
+  if (extensionPath !== '') {
+    candidates.push(path.join(extensionPath, 'server', ServerExe));
+  }
+  for (const folder of vscode.workspace.workspaceFolders ?? []) {
+    for (const relative of WorkspaceServerPaths) {
+      candidates.push(path.join(folder.uri.fsPath, relative));
+    }
+  }
+  return candidates.find((candidate) => fs.existsSync(candidate)) ?? findOnPath() ?? candidates[0];
 }
 
 /** Kommandozeile des Servers aus den Einstellungen. */
@@ -147,6 +180,7 @@ function toPosition(position: LspPosition): vscode.Position {
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  extensionPath = context.extensionPath;
   output = vscode.window.createOutputChannel('BetterDelphiLSP');
   traceOutput = vscode.window.createOutputChannel('BetterDelphiLSP Trace');
   context.subscriptions.push(output, traceOutput);

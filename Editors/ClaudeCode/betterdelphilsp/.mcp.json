@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "delphi": {
+      "type": "stdio",
+      "command": "BetterDelphiLSP.exe",
+      "args": ["--mcp"]
+    }
+  }
+}

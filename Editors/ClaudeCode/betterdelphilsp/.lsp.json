@@ -1,0 +1,11 @@
+{
+  "delphi": {
+    "command": "BetterDelphiLSP.exe",
+    "args": [],
+    "extensionToLanguage": {
+      ".pas": "objectpascal",
+      ".dpr": "objectpascal",
+      ".dpk": "objectpascal"
+    }
+  }
+}
