@@ -196,6 +196,7 @@
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Status.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.QualifiedNames.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.WinApiDocs.pas"/>
+        <DCCReference Include="Source\Editing\BDLsp.Common.Editing.AssignmentSwap.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.CodeActions.pas"/>
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.ControlFlow.pas"/>
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.NameResolver.pas"/>

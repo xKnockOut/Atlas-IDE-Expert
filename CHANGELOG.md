@@ -7,6 +7,8 @@ Server und Erweiterung tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Code-Aktion „Zuweisungen umkehren“ für markierte Zeilen (#313).
+- Hover verlinkt bei Windows-API-Funktionen die Microsoft-Dokumentation (#120).
 - Qualifizierten Namen des Symbols unter dem Cursor kopieren: Befehl `betterdelphilsp.qualifiedName`, VS-Code-Befehl und MCP-Werkzeug `qualified_name` (#128).
 - Release-Prozess mit GitHub Releases, optionaler Code-Signierung und Marketplace/Open VSX (#83).
 - Pull-Diagnosen und projektweite Diagnosen (#82).
