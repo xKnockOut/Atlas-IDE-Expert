@@ -110,6 +110,7 @@
         <DCCReference Include="Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Unicode.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.CodeActions.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.DocumentLinks.Tests.pas"/>
+        <DCCReference Include="Common\Editing\BDLsp.Common.Editing.Colors.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

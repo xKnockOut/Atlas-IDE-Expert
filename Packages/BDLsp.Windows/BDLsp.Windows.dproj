@@ -76,6 +76,7 @@
         <DCCReference Include="Source\Projects\BDLsp.Windows.Projects.DelphiInstallation.pas"/>
         <DCCReference Include="Source\Documents\BDLsp.Windows.Documents.PathCanonicalizer.pas"/>
         <DCCReference Include="Source\Console\BDLsp.Windows.Console.StdStreams.pas"/>
+        <DCCReference Include="Source\Editing\BDLsp.Windows.Editing.SystemColors.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

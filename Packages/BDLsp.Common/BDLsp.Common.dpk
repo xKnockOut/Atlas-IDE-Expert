@@ -82,6 +82,8 @@ contains
   BDLsp.Common.Rules.Builtin in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.pas',
   BDLsp.Common.Rules.Builtin.Unicode in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Unicode.pas',
   BDLsp.Common.Editing.DocumentLinks in 'Source\Editing\BDLsp.Common.Editing.DocumentLinks.pas',
+  BDLsp.Common.Editing.Colors in 'Source\Editing\BDLsp.Common.Editing.Colors.pas',
+  BDLsp.Common.Lsp.Colors in 'Source\Lsp\BDLsp.Common.Lsp.Colors.pas',
   BDLsp.Common.Lsp.DocumentLinks in 'Source\Lsp\BDLsp.Common.Lsp.DocumentLinks.pas',
   BDLsp.Common.Editing.CodeActions in 'Source\Editing\BDLsp.Common.Editing.CodeActions.pas',
   BDLsp.Common.Lsp.CodeActions in 'Source\Lsp\BDLsp.Common.Lsp.CodeActions.pas',
