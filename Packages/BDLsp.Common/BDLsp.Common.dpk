@@ -104,6 +104,7 @@ contains
   BDLsp.Common.Lsp.Colors in 'Source\Lsp\BDLsp.Common.Lsp.Colors.pas',
   BDLsp.Common.Lsp.DocumentLinks in 'Source\Lsp\BDLsp.Common.Lsp.DocumentLinks.pas',
   BDLsp.Common.Editing.CodeActions in 'Source\Editing\BDLsp.Common.Editing.CodeActions.pas',
+  BDLsp.Common.Editing.ClassCompletion in 'Source\Editing\BDLsp.Common.Editing.ClassCompletion.pas',
   BDLsp.Common.Lsp.CodeActions in 'Source\Lsp\BDLsp.Common.Lsp.CodeActions.pas',
   BDLsp.Common.Semantics.ControlFlow in 'Source\Semantics\BDLsp.Common.Semantics.ControlFlow.pas',
   BDLsp.Common.Semantics.NameResolver in 'Source\Semantics\BDLsp.Common.Semantics.NameResolver.pas',
