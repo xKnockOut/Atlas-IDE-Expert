@@ -275,6 +275,17 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Assert.AreEqual(10000, Parse('{"requestTimeoutMs": 10}', Issues).RequestTimeoutMs);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Schlüsselworthervorhebung (#307)
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Highlight.BlockPairs and Settings.Highlight.Directives and Settings.Highlight.ExitPoints);
+  Assert.AreEqual(4, Integer(Length(Settings.Highlight.ExitKeywords)));
+  Settings := Parse('{"highlight": {"exitPoints": false, "exitKeywords": ["Exit", "Fail"]}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.Highlight.ExitPoints);
+  Assert.IsTrue(Settings.Highlight.BlockPairs);
+  Assert.AreEqual('Fail', Settings.Highlight.ExitKeywords[1]);
+  Parse('{"highlight": {"blockPairs": 1, "foo": true}}', Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)));
 end;
 
 procedure TConfigurationParserTests.ReadsInlayHints;

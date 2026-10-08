@@ -57,6 +57,7 @@ type
     procedure ReadUsesKeep(ANode: TJsonNode);
     procedure ReadSortUses(ANode: TJsonNode);
     procedure ReadInlayHints(ANode: TJsonNode);
+    procedure ReadHighlight(ANode: TJsonNode);
     procedure ReadCompiler(ANode: TJsonNode);
     procedure ReadCompletion(ANode: TJsonNode);
     procedure ReadCompleteBlocks(ANode: TJsonNode);
@@ -443,6 +444,45 @@ begin
   end;
 end;
 
+procedure TValidator.ReadHighlight(ANode: TJsonNode);
+var
+  Index, Item: Integer;
+  Key, Value: string;
+  Node: TJsonNode;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"highlight" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    Node := ANode[Index];
+    if Key = 'blockPairs' then
+      ExpectBoolean(Node, Key, FSettings.Highlight.BlockPairs)
+    else if Key = 'directives' then
+      ExpectBoolean(Node, Key, FSettings.Highlight.Directives)
+    else if Key = 'exitPoints' then
+      ExpectBoolean(Node, Key, FSettings.Highlight.ExitPoints)
+    else if Key = 'exitKeywords' then
+    begin
+      if Node.Kind <> TJsonKind.Array_ then
+      begin
+        ReportNode(Node, '"exitKeywords" muss eine Liste von Namen sein');
+        Continue;
+      end;
+      FSettings.Highlight.ExitKeywords := nil;
+      for Item := 0 to Node.Count - 1 do
+        if ExpectString(Node[Item], 'exitKeywords', Value) then
+          FSettings.Highlight.ExitKeywords := FSettings.Highlight.ExitKeywords + [Value];
+    end
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "highlight.%s"', [Key]), False);
+  end;
+end;
+
 procedure TValidator.ReadCompiler(ANode: TJsonNode);
 var
   Index: Integer;
@@ -707,6 +747,8 @@ begin
       end
       else if Key = 'inlayHints' then
         ReadInlayHints(Value)
+      else if Key = 'highlight' then
+        ReadHighlight(Value)
       else if Key = 'compiler' then
         ReadCompiler(Value)
       else if Key = 'completion' then
@@ -909,6 +951,8 @@ begin
     end
     else if Key = 'inlayHints' then
       Result.InlayHints := FileSettings.InlayHints
+    else if Key = 'highlight' then
+      Result.Highlight := FileSettings.Highlight
     else if Key = 'compiler' then
       Result.Compiler := FileSettings.Compiler
     else if Key = 'completion' then

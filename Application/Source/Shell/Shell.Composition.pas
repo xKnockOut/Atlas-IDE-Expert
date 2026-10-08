@@ -423,6 +423,24 @@ begin
     begin
       Result := EnsureUnit(AUnitName);
     end);
+  FDocumentHighlights.SettingsFor :=
+    function(const AUri: string): THighlightSettings
+    var
+      Workspace: TShellWorkspace;
+    begin
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+        if (Workspace = nil) and (FWorkspaces.Count = 1) then
+          Workspace := FWorkspaces[0];
+        if Workspace <> nil then
+          Result := Workspace.Configuration.Settings.Highlight
+        else
+          Result := THighlightSettings.Default;
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+    end;
   FDocumentHighlights.Attach(FDispatcher);
   FReferences := TLspReferences.Create(FDocuments, FIndex,
     function(const AFileName: string; out AText: string): Boolean

@@ -19,6 +19,7 @@ uses
   BDLsp.Common.Documents.Contract,
   BDLsp.Common.Pascal.SyntaxTree,
   BDLsp.Common.Index.Contract,
+  BDLsp.Common.Configuration.Contract,
   BDLsp.Common.Semantics.NameResolver;
 
 type
@@ -32,6 +33,9 @@ type
     Kind: THighlightKind;
   end;
 
+  /// <summary>Einstellungen zur Schlüsselworthervorhebung (#307) für eine Datei-URI.</summary>
+  THighlightSettingsProvider = reference to function(const AUri: string): THighlightSettings;
+
   TLspDocumentHighlights = class
   public const
     Method = 'textDocument/documentHighlight';
@@ -40,6 +44,7 @@ type
     FIndex: ISymbolIndex;
     FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
+    FSettingsFor: THighlightSettingsProvider;
     function HandleHighlight(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
@@ -50,6 +55,8 @@ type
       const AFileName: string; const APosition: TTextPosition;
       const ACancellation: IJsonRpcCancellationToken = nil): TArray<TDocumentHighlight>; static;
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
+    /// <summary>Ohne Zuweisung gelten die Vorgaben.</summary>
+    property SettingsFor: THighlightSettingsProvider read FSettingsFor write FSettingsFor;
   end;
 
 implementation
@@ -60,7 +67,8 @@ uses
   BDLsp.Common.Lsp.Definition,
   BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.TreeCache,
-  BDLsp.Common.Lsp.Internals.Cancellation;
+  BDLsp.Common.Lsp.Internals.Cancellation,
+  BDLsp.Common.Lsp.KeywordHighlights;
 
 function CleanName(const AText: string): string;
 begin
@@ -168,6 +176,9 @@ var
   Found: TArray<TDocumentHighlight>;
   Highlight: TDocumentHighlight;
   Item: TJSONObject;
+  Settings: THighlightSettings;
+  Ranges: TArray<TTextRange>;
+  Range: TTextRange;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
@@ -180,13 +191,31 @@ begin
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
   Tree := Shared.Tree;
   ACancellation.ThrowIfCancellationRequested;
-  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
-  try
-    Resolver.Namespaces := FNamespaces;
-    Found := Highlights(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri),
-      TLspPositions.ReadPosition(PositionValue), ACancellation);
-  finally
-    Resolver.Free;
+  // Zuerst zusammengehörige Schlüsselwörter (#307), sonst Bezeichner.
+  if Assigned(FSettingsFor) then
+    Settings := FSettingsFor(Uri)
+  else
+    Settings := THighlightSettings.Default;
+  if TKeywordHighlights.Find(Tree, TLspPositions.ReadPosition(PositionValue), Settings, Ranges) then
+  begin
+    Found := nil;
+    for Range in Ranges do
+    begin
+      Highlight.Range := Range;
+      Highlight.Kind := THighlightKind.Text;
+      Found := Found + [Highlight];
+    end;
+  end
+  else
+  begin
+    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
+    try
+      Resolver.Namespaces := FNamespaces;
+      Found := Highlights(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri),
+        TLspPositions.ReadPosition(PositionValue), ACancellation);
+    finally
+      Resolver.Free;
+    end;
   end;
   Result := TJSONArray.Create;
   for Highlight in Found do
