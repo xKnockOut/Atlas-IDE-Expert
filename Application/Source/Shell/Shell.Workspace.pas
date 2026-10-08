@@ -333,6 +333,12 @@ begin
     [Cardinal(LowerCase(Project.FileName).GetHashCode), Project.Platform, Project.Config]));
   try
     ARequest := TCompilerCommandLine.Build(Project, LibraryPaths, BdsRoot, OutputDir);
+    // Die Starter Edition liefert keinen Kommandozeilen-Compiler mit.
+    if not FileExists(ARequest.Executable) then
+    begin
+      AError := Format('Kein Kommandozeilen-Compiler gefunden (%s), z. B. in der Starter Edition', [ARequest.Executable]);
+      Exit(False);
+    end;
     ForceDirectories(OutputDir);
     Result := True;
   except
