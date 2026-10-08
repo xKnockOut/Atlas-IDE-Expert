@@ -21,7 +21,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Vervollständigung | `completion`: `matching` | – | delphi-lsp.json, Editor (`betterDelphiLsp.completion`) | nein | Auswahl | #229 |
 | Eingabehilfen | `completeBlocks`: `begin`, `try`, `case`, `record`, `class`, `repeat` | – | delphi-lsp.json, Editor (`betterDelphiLsp.completeBlocks`) | nein | Kontrollkästchen je Block | #179 |
 | Eingabehilfen | `usesCommand` | `true` | delphi-lsp.json, Editor (`betterDelphiLsp.usesCommand`) | nein | Kontrollkästchen | #254 |
-| Eingabehilfen | `slashCommands`: `enabled`, `disabled` | – | delphi-lsp.json, Editor (`betterDelphiLsp.slashCommands`) | nein | Kontrollkästchen, Liste | #293 |
+| Eingabehilfen | `slashCommands`: `enabled`, `disabled`, `headerTemplate` | – | delphi-lsp.json, Editor (`betterDelphiLsp.slashCommands`) | nein | Kontrollkästchen, Liste | #293 |
 | Eingabehilfen | `sortUses` | `false` | delphi-lsp.json, Editor (`betterDelphiLsp.sortUses`) | nein | Auswahl | #182, #284 |
 | Eingabehilfen | `usesKeep` | `` | delphi-lsp.json, Editor (`betterDelphiLsp.usesKeep`) | nein | Liste | #284 |
 | Prüfregeln | `dfmPropertyRules` | `` | delphi-lsp.json, Editor (`betterDelphiLsp.dfmPropertyRules`) | nein | Eigener Editor (Klasse und Property aus dem Index) | #309 |

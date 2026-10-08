@@ -59,6 +59,7 @@ type
     procedure WriteProject(const AUri, AText: string);
     procedure SelectBuild(const AUri, AConfig, APlatform: string);
     procedure ShowDocument(const AFileName: string; const ASelection: TTextRange);
+    function HeaderTemplate(const AUri: string): string;
   end;
 
 const
@@ -171,6 +172,11 @@ procedure TFakeHost.ShowDocument(const AFileName: string; const ASelection: TTex
 begin
   Shown := AFileName;
   Selection := ASelection;
+end;
+
+function TFakeHost.HeaderTemplate(const AUri: string): string;
+begin
+  Result := '';
 end;
 
 function Run(const ACommand: string; const AHost: ISlashHost; out AEdits: TArray<TRuleEdit>): Boolean;

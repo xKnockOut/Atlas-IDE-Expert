@@ -72,6 +72,7 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 |---|---|---|---|---|
 | `slashCommands.enabled` | boolean | `true` |  | Schnellbefehle auswerten. |
 | `slashCommands.disabled` | array<string> | `` |  | Abgeschaltete Befehle ohne /, z. B. ["uses"]. usesCommand: false wirkt wie "uses" in dieser Liste. |
+| `slashCommands.headerTemplate` | string | `""` |  | Vorlage für /header mit den Platzhaltern {unit}, {jahr} und {autor}. Leer: die Vorlage der Regel file-header, sonst ein einfacher Kopf. |
 
 ## highlight
 

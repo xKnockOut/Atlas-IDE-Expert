@@ -166,6 +166,8 @@ uses
   BDLsp.Common.Editing.ProjectCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.ProjectCommands.Tests.pas',
   BDLsp.Common.Editing.SqlText.Tests in 'Common\Editing\BDLsp.Common.Editing.SqlText.Tests.pas',
   BDLsp.Common.Editing.DatabaseCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.DatabaseCommands.Tests.pas',
+  BDLsp.Common.Editing.Bookmarks.Tests in 'Common\Editing\BDLsp.Common.Editing.Bookmarks.Tests.pas',
+  BDLsp.Common.Editing.DocumentationCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.DocumentationCommands.Tests.pas',
   BDLsp.Common.Rules.Builtin.DataBinding.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.DataBinding.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}

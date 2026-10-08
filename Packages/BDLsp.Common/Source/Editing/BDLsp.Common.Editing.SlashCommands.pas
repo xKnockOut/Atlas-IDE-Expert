@@ -37,6 +37,9 @@ type
     procedure SelectBuild(const AUri, AConfig, APlatform: string);
     /// <summary>Öffnet AFileName im Editor und markiert ASelection (window/showDocument).</summary>
     procedure ShowDocument(const AFileName: string; const ASelection: TTextRange);
+    /// <summary>Vorlage für /header (#306): slashCommands.headerTemplate, sonst die der Regel file-header;
+    /// '' ohne.</summary>
+    function HeaderTemplate(const AUri: string): string;
   end;
 
   /// <summary>Aktionen, die erst nach erfolgreichem Befehl laufen; bei Hinweisen werden sie verworfen.</summary>
@@ -144,6 +147,7 @@ uses
   BDLsp.Common.Editing.RefactoringCommands,
   BDLsp.Common.Editing.ProjectCommands,
   BDLsp.Common.Editing.DatabaseCommands,
+  BDLsp.Common.Editing.DocumentationCommands,
   BDLsp.Common.Editing.ErrorCommands;
 
 function IsDisabled(const AName: string; const ADisabled: TArray<string>): Boolean;
@@ -256,6 +260,7 @@ begin
     RegisterExpressionCommands(Created);
     RegisterProjectCommands(Created);
     RegisterDatabaseCommands(Created);
+    RegisterDocumentationCommands(Created);
     if AtomicCmpExchange(Pointer(FShared), Pointer(Created), nil) <> nil then
       Created.Free;
   end;
@@ -321,7 +326,7 @@ begin
   if (Length(Text) < 2) or (Text[1] <> '/') or not CharInSet(Text[2], ['A'..'Z', 'a'..'z']) then
     Exit(False);
   Index := 2;
-  while (Index <= Length(Text)) and CharInSet(Text[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_', '!']) do
+  while (Index <= Length(Text)) and CharInSet(Text[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_', '!', '-']) do
     Inc(Index);
   if (Index <= Length(Text)) and (Text[Index] <> ' ') then
     Exit(False);

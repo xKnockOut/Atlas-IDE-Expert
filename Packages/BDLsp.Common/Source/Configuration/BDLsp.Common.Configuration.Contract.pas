@@ -217,6 +217,8 @@ type
     SlashCommands: Boolean;
     /// <summary>Abgeschaltete Schnellbefehle ohne "/", z. B. uses.</summary>
     SlashCommandsDisabled: TArray<string>;
+    /// <summary>Vorlage für /header mit {unit}, {jahr}, {autor} (#306); '' = Vorlage der Regel file-header.</summary>
+    SlashHeaderTemplate: string;
     /// <summary>"uses aufräumen" (source.organizeImports) sortiert alphabetisch; Vorgabe aus,
     /// weil die Reihenfolge die Initialisierung bestimmt (#182).</summary>
     SortUses: Boolean;
@@ -464,6 +466,7 @@ begin
   Result.UsesCommand := True;
   Result.SlashCommands := True;
   Result.SlashCommandsDisabled := nil;
+  Result.SlashHeaderTemplate := '';
   Result.SortUses := False;
   Result.SortUsesByNamespace := False;
   Result.UsesKeep := nil;

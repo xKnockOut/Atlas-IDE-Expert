@@ -377,6 +377,11 @@
           },
           "default": [],
           "description": "Abgeschaltete Befehle ohne /, z. B. [\"uses\"]. usesCommand: false wirkt wie \"uses\" in dieser Liste."
+        },
+        "headerTemplate": {
+          "type": "string",
+          "default": "",
+          "description": "Vorlage für /header mit den Platzhaltern {unit}, {jahr} und {autor}. Leer: die Vorlage der Regel file-header, sonst ein einfacher Kopf."
         }
       },
       "x-page": "Eingabehilfen",
