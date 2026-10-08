@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BetterDelphiLSP-Konfiguration",
+  "description": "Einstellungen für BetterDelphiLSP im Projektordner.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "delphiVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "description": "Delphi-Version wie in der Registry, z. B. \"37.0\" für Delphi 13 oder \"23.0\" für Delphi 12. Leer: neueste installierte Version.",
+      "examples": [
+        "37.0",
+        "23.0"
+      ]
+    },
+    "language": {
+      "type": "string",
+      "enum": [
+        "de",
+        "en"
+      ],
+      "default": "de",
+      "description": "Sprache der Meldungen."
+    },
+    "project": {
+      "type": "string",
+      "description": "Projektdatei (.dproj) relativ zu diesem Ordner. Leer: automatisch suchen."
+    },
+    "config": {
+      "type": "string",
+      "description": "Build-Konfiguration, z. B. Debug oder Release.",
+      "examples": [
+        "Debug",
+        "Release"
+      ]
+    },
+    "platform": {
+      "type": "string",
+      "description": "Zielplattform.",
+      "examples": [
+        "Win32",
+        "Win64"
+      ]
+    },
+    "rules": {
+      "type": "object",
+      "description": "Prüfregeln einzeln einstellen: Regel-ID → Schweregrad oder Objekt mit \"severity\" und Optionen.",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "off",
+              "hint",
+              "info",
+              "information",
+              "warning",
+              "error"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "off",
+                  "hint",
+                  "info",
+                  "information",
+                  "warning",
+                  "error"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "exclude": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Ordner und Dateien, die nicht geprüft werden (Glob-Muster relativ zu diesem Ordner: *, **, ?).",
+      "examples": [
+        [
+          "ThirdParty/**",
+          "Generated/*.pas"
+        ]
+      ]
+    },
+    "format": {
+      "type": "object",
+      "description": "Formatierungsstil (folgt mit der Formatierung)."
+    }
+  },
+  "additionalProperties": false
+}

@@ -81,6 +81,12 @@
         "title": "Server neu starten",
         "category": "BetterDelphiLSP"
       }
+    ],
+    "jsonValidation": [
+      {
+        "fileMatch": "delphi-lsp.json",
+        "url": "./schemas/delphi-lsp.schema.json"
+      }
     ]
   },
   "scripts": {

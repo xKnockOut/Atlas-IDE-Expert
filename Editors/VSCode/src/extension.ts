@@ -105,7 +105,11 @@ async function startClient(): Promise<void> {
     transport: TransportKind.stdio,
   };
   const clientOptions: LanguageClientOptions = {
-    documentSelector: [{ scheme: 'file', language: 'objectpascal' }],
+    documentSelector: [
+      { scheme: 'file', language: 'objectpascal' },
+      // Fehler in der Konfigurationsdatei meldet der Server.
+      { scheme: 'file', pattern: '**/delphi-lsp.json' },
+    ],
     outputChannel: output,
     traceOutputChannel: traceOutput,
     errorHandler: new RestartingErrorHandler(),

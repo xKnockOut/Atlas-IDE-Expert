@@ -23,6 +23,7 @@ type
     FShutdownReceived: Boolean;
     FInitializeParams: TJSONObject;
     FOnExit: TProc;
+    FOnInitialized: TProc;
     function HandleInitialize(const AParams: TJSONValue): TJSONValue;
     procedure HandleInitialized(const AParams: TJSONValue);
     function HandleShutdown(const AParams: TJSONValue): TJSONValue;
@@ -42,6 +43,8 @@ type
     property ExitCode: Integer read GetExitCode;
     /// <summary>Wird bei exit aufgerufen, z. B. um die Nachrichtenschleife zu beenden.</summary>
     property OnExit: TProc read FOnExit write FOnExit;
+    /// <summary>Wird nach initialized aufgerufen, z. B. um den Arbeitsbereich zu laden.</summary>
+    property OnInitialized: TProc read FOnInitialized write FOnInitialized;
   end;
 
 implementation
@@ -123,7 +126,9 @@ end;
 
 procedure TLspLifecycle.HandleInitialized(const AParams: TJSONValue);
 begin
-  // Der Client bestätigt die Initialisierung; hier gibt es vorerst nichts zu tun.
+  // Der Client bestätigt die Initialisierung; jetzt dürfen Features den Arbeitsbereich laden.
+  if Assigned(FOnInitialized) then
+    FOnInitialized();
 end;
 
 function TLspLifecycle.HandleShutdown(const AParams: TJSONValue): TJSONValue;
