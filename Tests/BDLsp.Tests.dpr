@@ -40,6 +40,7 @@ uses
   BDLsp.Common.Index.Memory.Tests in 'Common\Index\BDLsp.Common.Index.Memory.Tests.pas',
   BDLsp.Common.Semantics.ControlFlow.Tests in 'Common\Semantics\BDLsp.Common.Semantics.ControlFlow.Tests.pas',
   BDLsp.Common.Semantics.NameResolver.Tests in 'Common\Semantics\BDLsp.Common.Semantics.NameResolver.Tests.pas',
+  BDLsp.Common.Semantics.NameResolverStage2.Tests in 'Common\Semantics\BDLsp.Common.Semantics.NameResolverStage2.Tests.pas',
   BDLsp.Common.Lsp.Definition.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Definition.Tests.pas',
   BDLsp.Common.Lsp.PublishedMembers.Tests in 'Common\Lsp\BDLsp.Common.Lsp.PublishedMembers.Tests.pas',
   BDLsp.Common.Lsp.References.Tests in 'Common\Lsp\BDLsp.Common.Lsp.References.Tests.pas',

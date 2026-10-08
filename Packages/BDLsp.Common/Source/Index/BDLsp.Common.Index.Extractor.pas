@@ -25,6 +25,10 @@ type
     FTokens: TArray<TPascalToken>;
     FSymbols: TList<TIndexSymbol>;
     FInInterface: Boolean;
+    FVisibility: TIndexVisibility;
+    // Typargumente des Vorfahren für den nächsten Add aus AddType.
+    FAncestorArgs: string;
+    function IsDefaultProperty(ANode: TSyntaxNode): Boolean;
     function TokenIndexAt(AOffset: Integer): Integer;
     function NameRange(ANode: TSyntaxNode; const AName: string): TTextRange;
     function IsConstructor(ANode: TSyntaxNode): Boolean;
@@ -40,6 +44,16 @@ type
   public
     /// <summary>Erster direkter Typverweis eines Knotens (A: TFoo, function F: TFoo); sonst ''.</summary>
     class function DeclaredType(ANode: TSyntaxNode): string; static;
+    /// <summary>Knoten des ersten direkten Typverweises; sonst nil.</summary>
+    class function DeclaredTypeNode(ANode: TSyntaxNode): TSyntaxNode; static;
+    /// <summary>Typ als Text samt Typargumenten: TDictionary&lt;string, TList&lt;TKunde&gt;&gt; (#263).</summary>
+    class function TypeText(ANode: TSyntaxNode): string; static;
+    /// <summary>Typargumente eines Typverweises kommagetrennt ('' ohne).</summary>
+    class function GenericArgsText(ATypeRef: TSyntaxNode): string; static;
+    /// <summary>Typparameter aus GenericParams eines Knotens kommagetrennt ('' ohne).</summary>
+    class function TypeParamsOf(ANode: TSyntaxNode): string; static;
+    /// <summary>Parameterzahlen und -typen eines Routinenkopfs oder einer indizierten Property.</summary>
+    class procedure ParamInfo(ANode: TSyntaxNode; out AMin, AMax: Integer; out ATypes: TArray<string>); static;
     constructor Create(const ATokens: TArray<TPascalToken>);
     destructor Destroy; override;
     /// <summary>Index-Eintrag aus einem fertigen Syntaxbaum (ohne Stamp und Hash).</summary>
@@ -60,6 +74,25 @@ implementation
 uses
   System.StrUtils,
   BDLsp.Common.Pascal.TreeCache;
+
+function VisibilityOf(const AText: string): TIndexVisibility;
+var
+  Text: string;
+begin
+  Text := LowerCase(Trim(AText));
+  if Text = 'strict private' then
+    Result := TIndexVisibility.StrictPrivate
+  else if Text = 'private' then
+    Result := TIndexVisibility.Private
+  else if Text = 'strict protected' then
+    Result := TIndexVisibility.StrictProtected
+  else if Text = 'protected' then
+    Result := TIndexVisibility.Protected
+  else if Text = 'published' then
+    Result := TIndexVisibility.Published
+  else
+    Result := TIndexVisibility.Public;
+end;
 
 function NodeRange(ANode: TSyntaxNode): TTextRange;
 begin
@@ -151,15 +184,36 @@ begin
   Symbol.SelectionRange := NameRange(ANode, AName);
   Symbol.InInterface := FInInterface;
   Symbol.Ancestors := AAncestors;
+  Symbol.TypeArgs := '';
   if AKind in [TIndexSymbolKind.TypeAlias, TIndexSymbolKind.Constant, TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
     TIndexSymbolKind.Property_, TIndexSymbolKind.Method, TIndexSymbolKind.Routine] then
-    Symbol.TypeName := DeclaredType(ANode)
+  begin
+    Symbol.TypeName := DeclaredType(ANode);
+    if Symbol.TypeName <> '' then
+      Symbol.TypeArgs := GenericArgsText(DeclaredTypeNode(ANode));
+  end
   else
     Symbol.TypeName := '';
+  // Erweiterungen für die Namensauflösung, Stufe 2 (#263).
+  Symbol.AncestorArgs := FAncestorArgs;
+  Symbol.TypeParams := TypeParamsOf(ANode);
+  if (AContainer <> '') and (AKind <> TIndexSymbolKind.EnumMember) then
+    Symbol.Visibility := FVisibility
+  else
+    Symbol.Visibility := TIndexVisibility.Public;
+  Symbol.MinArgs := 0;
+  Symbol.MaxArgs := 0;
+  Symbol.ParamTypes := nil;
+  Symbol.IsDefault := False;
+  if AKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine,
+    TIndexSymbolKind.Property_] then
+    ParamInfo(ANode, Symbol.MinArgs, Symbol.MaxArgs, Symbol.ParamTypes);
+  if AKind = TIndexSymbolKind.Property_ then
+    Symbol.IsDefault := IsDefaultProperty(ANode);
   FSymbols.Add(Symbol);
 end;
 
-class function TIndexExtractor.DeclaredType(ANode: TSyntaxNode): string;
+class function TIndexExtractor.DeclaredTypeNode(ANode: TSyntaxNode): TSyntaxNode;
 var
   Index: Integer;
 begin
@@ -169,8 +223,135 @@ begin
     ANode := ANode.FindChild(TSyntaxKind.RoutineHeader);
   for Index := 0 to ANode.ChildCount - 1 do
     if ANode[Index].Kind = TSyntaxKind.TypeReference then
-      Exit(ANode[Index].Name);
+      Exit(ANode[Index]);
+  Result := nil;
+end;
+
+class function TIndexExtractor.DeclaredType(ANode: TSyntaxNode): string;
+var
+  Node: TSyntaxNode;
+begin
+  Node := DeclaredTypeNode(ANode);
+  if Node <> nil then
+    Result := Node.Name
+  else
+    Result := '';
+end;
+
+class function TIndexExtractor.GenericArgsText(ATypeRef: TSyntaxNode): string;
+var
+  Args: TSyntaxNode;
+  Index: Integer;
+begin
   Result := '';
+  if ATypeRef = nil then
+    Exit;
+  Args := ATypeRef.FindChild(TSyntaxKind.GenericArgs);
+  if Args = nil then
+    Exit;
+  for Index := 0 to Args.ChildCount - 1 do
+  begin
+    if Result <> '' then
+      Result := Result + ',';
+    Result := Result + TypeText(Args[Index]);
+  end;
+end;
+
+class function TIndexExtractor.TypeText(ANode: TSyntaxNode): string;
+var
+  Args: string;
+begin
+  Result := '';
+  if ANode = nil then
+    Exit;
+  case ANode.Kind of
+    TSyntaxKind.TypeReference:
+      begin
+        Result := ANode.Name;
+        Args := GenericArgsText(ANode);
+        if Args <> '' then
+          Result := Result + '<' + Args + '>';
+      end;
+    TSyntaxKind.ArrayType:
+      if ANode.FindChild(TSyntaxKind.TypeReference) <> nil then
+        Result := 'array of ' + TypeText(ANode[ANode.ChildCount - 1]);
+  end;
+end;
+
+class function TIndexExtractor.TypeParamsOf(ANode: TSyntaxNode): string;
+var
+  Params: TSyntaxNode;
+  Index: Integer;
+begin
+  Result := '';
+  if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.FindChild(TSyntaxKind.RoutineHeader) <> nil) then
+    ANode := ANode.FindChild(TSyntaxKind.RoutineHeader);
+  Params := ANode.FindChild(TSyntaxKind.GenericParams);
+  if Params = nil then
+    Exit;
+  for Index := 0 to Params.ChildCount - 1 do
+    if Params[Index].Name <> '' then
+    begin
+      if Result <> '' then
+        Result := Result + ',';
+      Result := Result + Params[Index].Name;
+    end;
+end;
+
+class procedure TIndexExtractor.ParamInfo(ANode: TSyntaxNode; out AMin, AMax: Integer; out ATypes: TArray<string>);
+var
+  Params, Param, TypeNode: TSyntaxNode;
+  Index, Child, Count: Integer;
+  ParamType: string;
+  HasDefault: Boolean;
+begin
+  AMin := 0;
+  AMax := 0;
+  ATypes := nil;
+  if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.FindChild(TSyntaxKind.RoutineHeader) <> nil) then
+    ANode := ANode.FindChild(TSyntaxKind.RoutineHeader);
+  Params := ANode.FindChild(TSyntaxKind.Parameters);
+  if Params = nil then
+    Exit;
+  for Index := 0 to Params.ChildCount - 1 do
+  begin
+    Param := Params[Index];
+    if Param.Kind <> TSyntaxKind.Parameter then
+      Continue;
+    // Kinder: Typ (fehlt bei untypisierten Parametern), danach ggf. der Standardwert.
+    TypeNode := nil;
+    HasDefault := False;
+    for Child := 0 to Param.ChildCount - 1 do
+      if (TypeNode = nil) and (Param[Child].Kind in [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType]) then
+        TypeNode := Param[Child]
+      else
+        HasDefault := True;
+    ParamType := TypeText(TypeNode);
+    // A, B: Integer zählt zweimal.
+    for Count := 1 to Length(Param.Name.Split([','])) do
+    begin
+      Inc(AMax);
+      if not HasDefault then
+        Inc(AMin);
+      ATypes := ATypes + [ParamType];
+    end;
+  end;
+end;
+
+function TIndexExtractor.IsDefaultProperty(ANode: TSyntaxNode): Boolean;
+var
+  Index: Integer;
+begin
+  // property Items[I: Integer]: T read Get; default;  Anders als "default 0" (gespeicherter
+  // Standardwert) folgt "default" hier auf ein Semikolon.
+  Result := False;
+  Index := TokenIndexAt(ANode.StartOffset);
+  while (Index + 1 < Length(FTokens)) and (FTokens[Index].Offset <= ANode.EndOffset) do
+  begin
+    if FTokens[Index].IsSymbol(';') and SameText(FTokens[Index + 1].Text, 'default') then
+      Exit(True);
+    Inc(Index);
+  end;
 end;
 
 procedure TIndexExtractor.AddNames(ANode: TSyntaxNode; const AContainer: string; AKind: TIndexSymbolKind);
@@ -192,7 +373,12 @@ begin
   begin
     Child := ABody[Index];
     case Child.Kind of
-      TSyntaxKind.Visibility, TSyntaxKind.TypeSection, TSyntaxKind.ConstSection, TSyntaxKind.VarSection,
+      TSyntaxKind.Visibility:
+        begin
+          FVisibility := VisibilityOf(Child.Name);
+          AddMembers(Child, AContainer);
+        end;
+      TSyntaxKind.TypeSection, TSyntaxKind.ConstSection, TSyntaxKind.VarSection,
       TSyntaxKind.VariantPart:
         AddMembers(Child, AContainer);
       TSyntaxKind.TypeDecl:
@@ -221,9 +407,11 @@ var
   Index: Integer;
   Kind: TIndexSymbolKind;
   Ancestors: TList<string>;
-  Qualified: string;
+  Qualified, AncestorArgs: string;
+  Visibility: TIndexVisibility;
 begin
   Body := nil;
+  AncestorArgs := '';
   for Index := 0 to ADecl.ChildCount - 1 do
     if not (ADecl[Index].Kind in [TSyntaxKind.GenericParams, TSyntaxKind.Attribute]) then
     begin
@@ -254,9 +442,18 @@ begin
         TSyntaxKind.HelperType] then
         for Index := 0 to Body.ChildCount - 1 do
           if (Body[Index].Kind = TSyntaxKind.TypeReference) and (Body[Index].Name <> '') then
+          begin
+            if Ancestors.Count = 0 then
+              AncestorArgs := GenericArgsText(Body[Index]);
             Ancestors.Add(Body[Index].Name);
+          end;
     end;
-    Add(ADecl, ADecl.Name, AContainer, Kind, Ancestors.ToArray);
+    FAncestorArgs := AncestorArgs;
+    try
+      Add(ADecl, ADecl.Name, AContainer, Kind, Ancestors.ToArray);
+    finally
+      FAncestorArgs := '';
+    end;
   finally
     Ancestors.Free;
   end;
@@ -276,7 +473,16 @@ begin
   end
   else if Body.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.HelperType,
     TSyntaxKind.RecordType, TSyntaxKind.InterfaceType] then
-    AddMembers(Body, Qualified);
+  begin
+    // Verschachtelte Typen haben ihre eigene Sichtbarkeit; danach gilt wieder die äußere.
+    Visibility := FVisibility;
+    FVisibility := TIndexVisibility.Public;
+    try
+      AddMembers(Body, Qualified);
+    finally
+      FVisibility := Visibility;
+    end;
+  end;
 end;
 
 procedure TIndexExtractor.AddRoutine(ANode: TSyntaxNode);
