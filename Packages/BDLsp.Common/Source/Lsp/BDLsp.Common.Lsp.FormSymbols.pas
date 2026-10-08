@@ -74,6 +74,7 @@ implementation
 
 uses
   System.StrUtils,
+  BDLsp.Common.Dfm.FormFiles,
   BDLsp.Common.Dfm.Parser,
   BDLsp.Common.Dfm.Navigation,
   BDLsp.Common.Index.Extractor;
@@ -316,7 +317,7 @@ begin
   Result := '';
   if (AFormFile = '') or not Assigned(AReadText) then
     Exit;
-  UnitFile := ChangeFileExt(AFormFile, '.pas');
+  UnitFile := TFormFiles.UnitFile(AFormFile);
   if not AReadText(UnitFile, Text) then
     Exit;
   UnitIndex := TIndexExtractor.ExtractText(Text, UnitFile, nil);

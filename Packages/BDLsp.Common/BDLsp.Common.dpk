@@ -184,6 +184,7 @@ contains
   BDLsp.Common.Dfm.ImagePreview in 'Source\Dfm\BDLsp.Common.Dfm.ImagePreview.pas',
   BDLsp.Common.Dfm.BinaryForm in 'Source\Dfm\BDLsp.Common.Dfm.BinaryForm.pas',
   BDLsp.Common.Dfm.FormInheritance in 'Source\Dfm\BDLsp.Common.Dfm.FormInheritance.pas',
+  BDLsp.Common.Dfm.FormFiles in 'Source\Dfm\BDLsp.Common.Dfm.FormFiles.pas',
   BDLsp.Common.Dfm.ComponentRename in 'Source\Dfm\BDLsp.Common.Dfm.ComponentRename.pas',
   BDLsp.Common.Mcp.Server in 'Source\Mcp\BDLsp.Common.Mcp.Server.pas',
   BDLsp.Common.Mcp.IndexTools in 'Source\Mcp\BDLsp.Common.Mcp.IndexTools.pas',

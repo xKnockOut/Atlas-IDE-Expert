@@ -72,6 +72,7 @@ implementation
 
 uses
   System.StrUtils,
+  BDLsp.Common.Dfm.FormFiles,
   BDLsp.Common.Dfm.Parser,
   BDLsp.Common.Dfm.FormModel;
 
@@ -274,10 +275,10 @@ begin
       Model: TFormModel;
     begin
       Result := '';
-      UnitText := AReadText(ChangeFileExt(AFormFile, '.pas'));
+      UnitText := AReadText(TFormFiles.UnitFile(AFormFile));
       if UnitText = '' then
         Exit;
-      Model := TFormModel.Create(AReadText(AFormFile), UnitText, ChangeFileExt(AFormFile, '.pas'));
+      Model := TFormModel.Create(AReadText(AFormFile), UnitText, TFormFiles.UnitFile(AFormFile));
       try
         Result := Model.Ancestor;
       finally

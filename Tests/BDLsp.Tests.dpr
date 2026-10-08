@@ -121,6 +121,7 @@ uses
   BDLsp.Common.Dfm.ImagePreview.Tests in 'Common\Dfm\BDLsp.Common.Dfm.ImagePreview.Tests.pas',
   BDLsp.Common.Dfm.BinaryForm.Tests in 'Common\Dfm\BDLsp.Common.Dfm.BinaryForm.Tests.pas',
   BDLsp.Common.Dfm.FormInheritance.Tests in 'Common\Dfm\BDLsp.Common.Dfm.FormInheritance.Tests.pas',
+  BDLsp.Common.Dfm.FormFiles.Tests in 'Common\Dfm\BDLsp.Common.Dfm.FormFiles.Tests.pas',
   BDLsp.Common.JsonRpc.LineTransport.Tests in 'Common\JsonRpc\BDLsp.Common.JsonRpc.LineTransport.Tests.pas',
   BDLsp.Common.Mcp.Server.Tests in 'Common\Mcp\BDLsp.Common.Mcp.Server.Tests.pas',
   BDLsp.Common.Mcp.IndexTools.Tests in 'Common\Mcp\BDLsp.Common.Mcp.IndexTools.Tests.pas',

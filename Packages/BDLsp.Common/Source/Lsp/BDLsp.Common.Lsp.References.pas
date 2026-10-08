@@ -64,6 +64,7 @@ implementation
 
 uses
   System.StrUtils,
+  BDLsp.Common.Dfm.FormFiles,
   BDLsp.Common.Documents.Uris,
   BDLsp.Common.Lsp.Positions,
   BDLsp.Common.Pascal.Contract,
@@ -220,10 +221,15 @@ begin
       Tree.Free;
     end;
   end;
-  // Formular zur Unit der Deklaration.
-  DfmName := ChangeFileExt(Wanted[0].FileName, '.dfm');
-  if Assigned(AReadText) and AReadText(DfmName, Text) then
-    Add(DfmName, InForm(Text, Name));
+  // Formulare zur Unit der Deklaration, bei FMX samt Plattformansichten (#87).
+  if Assigned(AReadText) then
+  begin
+    if not AReadText(Wanted[0].FileName, Text) then
+      Text := '';
+    for DfmName in TFormFiles.FormFiles(Wanted[0].FileName, Text) do
+      if AReadText(DfmName, Text) then
+        Add(DfmName, InForm(Text, Name));
+  end;
   if ADeclaration then
     Exit;
   Filtered := nil;

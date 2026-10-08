@@ -219,6 +219,7 @@ uses
   BDLsp.Common.Lsp.FormFiles,
   BDLsp.Common.Dfm.FormModel,
   BDLsp.Common.Dfm.BinaryForm,
+  BDLsp.Common.Dfm.FormFiles,
   BDLsp.Common.Dfm.ImagePreview,
   BDLsp.Common.Lsp.FormSymbols,
   BDLsp.Common.Editing.CodeActions,
@@ -581,7 +582,7 @@ begin
       FormFile, UnitText: string;
     begin
       FormFile := TDocumentUris.ToPath(AUri);
-      if not ReadSourceText(ChangeFileExt(FormFile, '.pas'), UnitText) then
+      if not ReadSourceText(TFormFiles.UnitFile(FormFile), UnitText) then
         UnitText := '';
       Result := TFormEvents.Items(FormFile, AText, UnitText, APosition, FIndex,
         function(const AFileName: string; out AFileText: string): Boolean

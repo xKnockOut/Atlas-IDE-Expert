@@ -67,6 +67,7 @@ implementation
 
 uses
   System.StrUtils,
+  BDLsp.Common.Dfm.FormFiles,
   BDLsp.Common.Documents.Uris,
   BDLsp.Common.Index.Extractor,
   BDLsp.Common.Pascal.SyntaxTree,
@@ -506,7 +507,7 @@ begin
   Item.Kind := KindEvent;
   Item.Command := CreateCommand;
   Item.CommandTitle := 'Ereignis-Handler anlegen';
-  Item.CommandArguments := [TDocumentUris.FromPath(ChangeFileExt(AFormFile, '.pas')), Context.FormClass, Name, Tail];
+  Item.CommandArguments := [TDocumentUris.FromPath(TFormFiles.UnitFile(AFormFile)), Context.FormClass, Name, Tail];
   AItems.Items := AItems.Items + [Item];
 end;
 

@@ -192,6 +192,7 @@
         <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.ImagePreview.pas"/>
         <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.BinaryForm.pas"/>
         <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.FormInheritance.pas"/>
+        <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.FormFiles.pas"/>
         <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.ComponentRename.pas"/>
         <DCCReference Include="Source\Mcp\BDLsp.Common.Mcp.Server.pas"/>
         <DCCReference Include="Source\Mcp\BDLsp.Common.Mcp.IndexTools.pas"/>
