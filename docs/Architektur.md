@@ -39,6 +39,7 @@ Application/
 Tests/
   BDLsp.Tests.dpr/.dproj
   Common/  Windows/  Application/  (Tests je Ausgabeartefakt)
+Editors/VSCode/                    minimale VS-Code-Erweiterung (TypeScript), startet den Server
 Tools/                             Hilfsskripte
 Output/<Plattform>/<Konfiguration>/ Build-Ausgabe (nicht versioniert): Dcu, Dcp, Bpl, Bin
 ```
