@@ -118,6 +118,8 @@ type
     /// <summary>Mitglieder hinter A.B. (samt geerbter) bzw. interface-Symbole, wenn die Kette eine Unit ist.</summary>
     function MemberCandidates(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
       AOffset: Integer): TArray<TResolvedSymbol>;
+    /// <summary>Löst ATypeName so auf, wie er in AFromUnit stünde (z. B. Vorfahren aus dem Index).</summary>
+    function ResolveTypeFrom(const AFromUnit: TUnitIndex; const ATypeName: string; out AResult: TResolvedSymbol): Boolean;
     /// <summary>Unit-Namespaces des Projekts (DCC_Namespace) für uses ohne Präfix.</summary>
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
   end;
@@ -875,6 +877,16 @@ begin
     Seen.Free;
     List.Free;
   end;
+end;
+
+function TNameResolver.ResolveTypeFrom(const AFromUnit: TUnitIndex; const ATypeName: string;
+  out AResult: TResolvedSymbol): Boolean;
+begin
+  FTree := nil;
+  FOffset := 0;
+  FCurrent := AFromUnit;
+  FInImplementation := True;
+  Result := ResolveTypeName(ATypeName, AFromUnit, True, AResult);
 end;
 
 function TNameResolver.ResolveType(ATree: TSyntaxTree; const AFileName: string;
