@@ -39,6 +39,8 @@ type
     [Test]
     procedure SuppressesWholeFile;
     [Test]
+    procedure SuppressionReasonIsNoId;
+    [Test]
     procedure PassesFixesThrough;
     [Test]
     procedure SortsByPosition;
@@ -235,6 +237,14 @@ procedure TRuleEngineTests.SuppressesWholeFile;
 begin
   TRuleAssert.Silent(TMarkerRule.Create, '// lsp-ignore-file: marker'#13#10 +
     SourceWith('  Marker := 1;'#13#10'  Marker := 2;'#13#10));
+end;
+
+procedure TRuleEngineTests.SuppressionReasonIsNoId;
+begin
+  // Nach "--" steht eine Begründung; das "*" darin gilt nicht als Kennung (#297).
+  TRuleAssert.Reports(TMarkerRule.Create,
+    SourceWith('  Marker := 1; // lsp-ignore: other -- gilt nicht für *'#13#10), 1);
+  TRuleAssert.Silent(TMarkerRule.Create, SourceWith('  Marker := 1; // lsp-ignore: marker -- Absicht'#13#10));
 end;
 
 procedure TRuleEngineTests.PassesFixesThrough;

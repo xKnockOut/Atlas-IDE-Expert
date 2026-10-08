@@ -126,6 +126,7 @@ uses
   BDLsp.Common.Editing.DeclarationCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.DeclarationCommands.Tests.pas',
   BDLsp.Common.Editing.ClassCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.ClassCommands.Tests.pas',
   BDLsp.Common.Editing.WrapCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.WrapCommands.Tests.pas',
+  BDLsp.Common.Editing.MaintenanceCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.MaintenanceCommands.Tests.pas',
   BDLsp.Common.Editing.UnitFiles.Tests in 'Common\Editing\BDLsp.Common.Editing.UnitFiles.Tests.pas',
   BDLsp.Common.Rules.Builtin.UnitFiles.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.UnitFiles.Tests.pas',
   BDLsp.Common.Lsp.FileOperations.Tests in 'Common\Lsp\BDLsp.Common.Lsp.FileOperations.Tests.pas',
