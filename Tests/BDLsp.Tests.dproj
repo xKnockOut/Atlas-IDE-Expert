@@ -145,6 +145,7 @@
         <DCCReference Include="Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Concurrency.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Flow.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Unused.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Declarations.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.ClassCompletion.Tests.pas"/>
         <DCCReference Include="Common\Dfm\BDLsp.Common.Dfm.Tests.pas"/>
         <DCCReference Include="Common\Dfm\BDLsp.Common.Dfm.ComponentRename.Tests.pas"/>

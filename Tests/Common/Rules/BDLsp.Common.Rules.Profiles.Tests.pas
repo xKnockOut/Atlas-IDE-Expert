@@ -155,10 +155,14 @@ end;
 
 procedure TRuleProfilesTests.BuiltinProfilesActivateExpectedRules;
 const
-  Bugs = 'lock-without-finally,possibly-uninitialized,result-not-set,synchronize-in-destructor,thread-free-with-free-on-terminate,' +
-    'thread-use-after-free-on-terminate,thread-vcl-access';
-  All = 'bidi-control,confusable-identifier,control-char,forbidden-uses,invisible-char,' + Bugs +
-    ',thread-resume-suspend,unit-name-mismatch,unused-assignment,unused-local,unused-parameter';
+  Threads = 'thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,thread-vcl-access';
+  Bugs = 'declared-not-implemented,implemented-not-declared,lock-without-finally,possibly-uninitialized,' +
+    'result-not-set,synchronize-in-destructor,' + Threads;
+  All = 'bidi-control,confusable-identifier,control-char,declared-not-implemented,forbidden-uses,' +
+    'implemented-not-declared,invisible-char,lock-without-finally,possibly-uninitialized,result-not-set,' +
+    'synchronize-in-destructor,thread-free-with-free-on-terminate,thread-resume-suspend,' +
+    'thread-use-after-free-on-terminate,thread-vcl-access,unit-name-mismatch,unused-assignment,unused-local,' +
+    'unused-parameter';
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
   Assert.AreEqual(All, ActiveRules('strict'));

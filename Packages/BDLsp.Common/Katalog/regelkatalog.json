@@ -170,6 +170,24 @@
       "description": "A value assigned to a local variable is overwritten or the routine ends before it is read. Like compiler hint H2077.",
       "bad": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := 0;\n  I := Calc;\n  Bar(I);\nend;",
       "good": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := Calc;\n  Bar(I);\nend;"
+    },
+    {
+      "id": "declared-not-implemented",
+      "name": "Declared but not implemented",
+      "category": "bug",
+      "severity": "error",
+      "description": "A method is declared in a class, record or object but has no body in the implementation section. The compiler reports this only when compiling (E2065).",
+      "bad": "type\n  TFoo = class\n    procedure Run;\n  end;\n\nimplementation\n\nend.",
+      "good": "type\n  TFoo = class\n    procedure Run;\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;\n\nend."
+    },
+    {
+      "id": "implemented-not-declared",
+      "name": "Implemented but not declared",
+      "category": "bug",
+      "severity": "error",
+      "description": "A method body TFoo.Bar has no matching declaration in the type.",
+      "bad": "type\n  TFoo = class\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;",
+      "good": "type\n  TFoo = class\n  private\n    procedure Run;\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;"
     }
   ]
 }

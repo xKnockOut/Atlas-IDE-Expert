@@ -19,7 +19,8 @@ uses
   BDLsp.Common.Rules.Builtin.Architecture,
   BDLsp.Common.Rules.Builtin.Concurrency,
   BDLsp.Common.Rules.Builtin.Flow,
-  BDLsp.Common.Rules.Builtin.Unused;
+  BDLsp.Common.Rules.Builtin.Unused,
+  BDLsp.Common.Rules.Builtin.Declarations;
 
 function BuiltinRules: TArray<IRule>;
 var
@@ -33,6 +34,7 @@ begin
     RegisterConcurrencyRules(Registry);
     RegisterFlowRules(Registry);
     RegisterUnusedRules(Registry);
+    RegisterDeclarationRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

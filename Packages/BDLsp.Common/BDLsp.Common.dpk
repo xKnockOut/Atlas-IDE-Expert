@@ -120,6 +120,7 @@ contains
   BDLsp.Common.Rules.Builtin.Concurrency in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Concurrency.pas',
   BDLsp.Common.Rules.Builtin.Flow in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Flow.pas',
   BDLsp.Common.Rules.Builtin.Unused in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Unused.pas',
+  BDLsp.Common.Rules.Builtin.Declarations in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Declarations.pas',
   BDLsp.Common.Lsp.FileOperations in 'Source\Lsp\BDLsp.Common.Lsp.FileOperations.pas',
   BDLsp.Common.Editing.ClassCompletion in 'Source\Editing\BDLsp.Common.Editing.ClassCompletion.pas',
   BDLsp.Common.Dfm.Contract in 'Source\Dfm\BDLsp.Common.Dfm.Contract.pas',

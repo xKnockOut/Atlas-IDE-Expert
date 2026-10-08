@@ -119,7 +119,8 @@ uses
   BDLsp.Common.Rules.Builtin.Architecture.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Architecture.Tests.pas',
   BDLsp.Common.Rules.Builtin.Concurrency.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Concurrency.Tests.pas';
   BDLsp.Common.Rules.Builtin.Flow.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Flow.Tests.pas',
-  BDLsp.Common.Rules.Builtin.Unused.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Unused.Tests.pas';
+  BDLsp.Common.Rules.Builtin.Unused.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Unused.Tests.pas',
+  BDLsp.Common.Rules.Builtin.Declarations.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Declarations.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var
