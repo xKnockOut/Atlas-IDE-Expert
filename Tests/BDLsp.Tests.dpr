@@ -105,7 +105,10 @@ uses
   BDLsp.Common.Editing.CodeActions.Tests in 'Common\Editing\BDLsp.Common.Editing.CodeActions.Tests.pas',
   BDLsp.Common.Editing.UsesClause.Tests in 'Common\Editing\BDLsp.Common.Editing.UsesClause.Tests.pas',
   BDLsp.Common.Editing.BlockCompletion.Tests in 'Common\Editing\BDLsp.Common.Editing.BlockCompletion.Tests.pas',
-  BDLsp.Common.Editing.UsesCommand.Tests in 'Common\Editing\BDLsp.Common.Editing.UsesCommand.Tests.pas';
+  BDLsp.Common.Editing.UsesCommand.Tests in 'Common\Editing\BDLsp.Common.Editing.UsesCommand.Tests.pas',
+  BDLsp.Common.Editing.UnitFiles.Tests in 'Common\Editing\BDLsp.Common.Editing.UnitFiles.Tests.pas',
+  BDLsp.Common.Rules.Builtin.UnitFiles.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.UnitFiles.Tests.pas',
+  BDLsp.Common.Lsp.FileOperations.Tests in 'Common\Lsp\BDLsp.Common.Lsp.FileOperations.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

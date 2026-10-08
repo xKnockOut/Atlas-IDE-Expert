@@ -10,6 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`invisible-char`](#invisible-char) | Unsichtbares Zeichen | Sicherheits-Hotspot | Warnung |
 | [`control-char`](#control-char) | Steuerzeichen | Bug | Fehler |
 | [`confusable-identifier`](#confusable-identifier) | Verwechselbarer Bezeichner | Sicherheits-Hotspot | Warnung |
+| [`unit-name-mismatch`](#unit-name-mismatch) | Unit-Name passt nicht zum Dateinamen | Bug | Warnung |
 
 <a id="syntax"></a>
 ## syntax
@@ -131,4 +132,25 @@ Richtig:
 
 ```pascal
 var Password: string;
+```
+
+<a id="unit-name-mismatch"></a>
+## unit-name-mismatch
+
+**Unit-Name passt nicht zum Dateinamen** · Bug · Warnung
+
+Der Name in der unit-Zeile weicht vom Dateinamen ab; der Compiler findet die Unit dann über uses nicht.
+
+Mit Treffer:
+
+```pascal
+{ Helpers.pas }
+unit Tools;
+```
+
+Richtig:
+
+```pascal
+{ Helpers.pas }
+unit Helpers;
 ```

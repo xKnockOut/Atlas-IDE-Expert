@@ -1,4 +1,4 @@
-{
+﻿{
   "rules": [
     {
       "id": "syntax",
@@ -29,6 +29,11 @@
       "id": "confusable-identifier",
       "name": "Verwechselbarer Bezeichner",
       "description": "Bezeichner mit Zeichen aus mehreren Schriften oder Nicht-ASCII-Zeichen sind mit anderen verwechselbar."
+    },
+    {
+      "id": "unit-name-mismatch",
+      "name": "Unit-Name passt nicht zum Dateinamen",
+      "description": "Der Name in der unit-Zeile weicht vom Dateinamen ab; der Compiler findet die Unit dann über uses nicht."
     }
   ]
 }

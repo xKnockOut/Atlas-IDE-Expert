@@ -73,6 +73,15 @@ begin
     '      "description": "Identifiers that mix scripts or contain non-ASCII characters can be confused with others.",' + #10 +
     '      "bad": "var Pаssword: string; { Cyrillic ''а'' }",' + #10 +
     '      "good": "var Password: string;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unit-name-mismatch",' + #10 +
+    '      "name": "Unit name does not match file name",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "The name in the unit line differs from the file name, so the compiler cannot find the unit through uses.",' + #10 +
+    '      "bad": "{ Helpers.pas }\nunit Tools;",' + #10 +
+    '      "good": "{ Helpers.pas }\nunit Helpers;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -114,6 +123,11 @@ begin
     '      "id": "confusable-identifier",' + #10 +
     '      "name": "Verwechselbarer Bezeichner",' + #10 +
     '      "description": "Bezeichner mit Zeichen aus mehreren Schriften oder Nicht-ASCII-Zeichen sind mit anderen verwechselbar."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unit-name-mismatch",' + #10 +
+    '      "name": "Unit-Name passt nicht zum Dateinamen",' + #10 +
+    '      "description": "Der Name in der unit-Zeile weicht vom Dateinamen ab; der Compiler findet die Unit dann über uses nicht."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

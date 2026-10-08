@@ -1,4 +1,4 @@
-{
+﻿{
   "rules": [
     {
       "id": "syntax",
@@ -53,6 +53,15 @@
       "description": "Identifiers that mix scripts or contain non-ASCII characters can be confused with others.",
       "bad": "var Pаssword: string; { Cyrillic 'а' }",
       "good": "var Password: string;"
+    },
+    {
+      "id": "unit-name-mismatch",
+      "name": "Unit name does not match file name",
+      "category": "bug",
+      "severity": "warning",
+      "description": "The name in the unit line differs from the file name, so the compiler cannot find the unit through uses.",
+      "bad": "{ Helpers.pas }\nunit Tools;",
+      "good": "{ Helpers.pas }\nunit Helpers;"
     }
   ]
 }

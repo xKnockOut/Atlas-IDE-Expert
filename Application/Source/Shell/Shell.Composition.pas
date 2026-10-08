@@ -38,6 +38,7 @@ uses
   BDLsp.Common.Lsp.Commands,
   BDLsp.Common.Lsp.References,
   BDLsp.Common.Lsp.Rename,
+  BDLsp.Common.Lsp.FileOperations,
   BDLsp.Common.Lsp.Completion,
   BDLsp.Common.Lsp.SignatureHelp,
   BDLsp.Common.Lsp.Hierarchies,
@@ -81,6 +82,7 @@ type
     FDocumentHighlights: TLspDocumentHighlights;
     FReferences: TLspReferences;
     FRename: TLspRename;
+    FFileOperations: TLspFileOperations;
     FCompletion: TLspCompletion;
     FSignatureHelp: TLspSignatureHelp;
     FHierarchies: TLspHierarchies;
@@ -126,6 +128,8 @@ type
     function ReadSourceText(const AFileName: string; out AText: string): Boolean;
     /// <summary>Projektdateien aller Ordner und geöffnete Dokumente, für Referenzen und Umbenennen.</summary>
     function ProjectSourceFiles: TArray<string>;
+    /// <summary>.dproj und Hauptdateien (.dpr, .dpk) aller geladenen Projekte (#181).</summary>
+    function ProjectDefinitionFiles: TArray<string>;
     /// <summary>Inhalt des Status-Befehls (#28).</summary>
     function CollectStatus: TServerStatus;
     function DefinesFor(const AUri: string; out ADefines: TArray<string>): Boolean;
@@ -414,6 +418,21 @@ begin
       Result := EnsureUnit(AUnitName);
     end);
   FRename.Attach(FDispatcher);
+  FFileOperations := TLspFileOperations.Create(
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    ProjectSourceFiles, ProjectDefinitionFiles,
+    procedure(AMessage: TJSONObject)
+    begin
+      try
+        FTransport.WriteMessage(AMessage);
+      finally
+        AMessage.Free;
+      end;
+    end);
+  FFileOperations.Attach(FDispatcher);
   FCompletion := TLspCompletion.Create(FDocuments, FIndex,
     function(const AUnitName: string): Boolean
     begin
@@ -673,6 +692,7 @@ begin
   FSignatureHelp.Free;
   FCompletion.Free;
   FRename.Free;
+  FFileOperations.Free;
   FCodeActions.Free;
   FDocumentLinks.Free;
   FColors.Free;
@@ -837,6 +857,26 @@ begin
   // Geöffnete Dateien außerhalb des Projekts zählen mit.
   for Document in FDocuments.Documents do
     Result := Result + [TDocumentUris.ToPath(Document.Uri)];
+end;
+
+function TServerComposition.ProjectDefinitionFiles: TArray<string>;
+var
+  Workspace: TShellWorkspace;
+  Info: TProjectInfo;
+begin
+  Result := nil;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    for Workspace in FWorkspaces do
+      if Workspace.Project(Info) then
+      begin
+        Result := Result + [Info.FileName];
+        if Info.MainSource <> '' then
+          Result := Result + [Info.MainSource];
+      end;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
 end;
 
 function TServerComposition.CollectStatus: TServerStatus;
@@ -1305,6 +1345,7 @@ end;
 class function TServerComposition.BuildCapabilities: TJSONObject;
 var
   Commands: TJSONArray;
+  Workspace: TJSONObject;
 begin
   // Die Features tragen ihre Capabilities hier ein, sobald sie umgesetzt sind.
   Result := TJSONObject.Create;
@@ -1341,7 +1382,9 @@ begin
   Commands.Add(SelectBuildCommand);
   Commands.Add(RebuildIndexCommand);
   Result.AddPair('executeCommandProvider', TJSONObject.Create(TJSONPair.Create('commands', Commands)));
-  Result.AddPair('workspace', TLspWorkspaceFolders.Capability);
+  Workspace := TLspWorkspaceFolders.Capability;
+  Workspace.AddPair('fileOperations', TLspFileOperations.Capability);
+  Result.AddPair('workspace', Workspace);
 end;
 
 function TServerComposition.Run: Integer;

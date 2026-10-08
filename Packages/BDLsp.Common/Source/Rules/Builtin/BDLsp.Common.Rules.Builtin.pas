@@ -14,7 +14,8 @@ implementation
 
 uses
   BDLsp.Common.Rules.Registry,
-  BDLsp.Common.Rules.Builtin.Unicode;
+  BDLsp.Common.Rules.Builtin.Unicode,
+  BDLsp.Common.Rules.Builtin.UnitFiles;
 
 function BuiltinRules: TArray<IRule>;
 var
@@ -23,6 +24,7 @@ begin
   Registry := TRuleRegistry.Create;
   try
     RegisterUnicodeRules(Registry);
+    RegisterUnitFileRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;
