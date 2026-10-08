@@ -238,7 +238,7 @@ begin
   FWatchedFiles.OnChanged := HandleWatchedFiles;
   FWatchedFiles.Attach(FDispatcher);
   FIndexProgress := TLspWorkDoneProgress.Create(FTransport, 'bdlsp-index');
-  FIndexService.OnProgress := FIndexProgress.AsIndexProgress;
+  FIndexService.OnProgress := FIndexProgress.AsIndexProgress();
   FIndexService.OnFinished :=
     procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
     begin
