@@ -99,6 +99,7 @@
         <DCCReference Include="Source\Index\BDLsp.Common.Index.Builder.pas"/>
         <DCCReference Include="Source\Index\BDLsp.Common.Index.ProjectFiles.pas"/>
         <DCCReference Include="Source\Index\BDLsp.Common.Index.Service.pas"/>
+        <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.ControlFlow.pas"/>
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.NameResolver.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Definition.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Hover.pas"/>
