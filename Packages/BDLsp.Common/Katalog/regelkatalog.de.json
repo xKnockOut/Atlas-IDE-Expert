@@ -269,6 +269,36 @@
       "id": "hardcoded-string",
       "name": "Text im Code statt resourcestring",
       "description": "In einer Anweisung steht ein String mit Wörtern für Menschen. In einen resourcestring auslagern, damit er übersetzt werden kann. Standardmäßig aus, niedrige Konfidenz."
+    },
+    {
+      "id": "self-assignment",
+      "name": "Zuweisung an sich selbst",
+      "description": "Einer Variablen, einem Feld oder einer Property wird der eigene Wert zugewiesen. Gemeint ist meist ein anderer Wert, etwa ein Parameter oder ein anderes Feld."
+    },
+    {
+      "id": "for-high-to-low",
+      "name": "for-Schleife zählt mit to abwärts",
+      "description": "Die Schleife beginnt beim oberen Wert (High, Count - 1) und endet beim unteren, verwendet aber to. Sie läuft nie; gemeint war downto."
+    },
+    {
+      "id": "exception-not-raised",
+      "name": "Exception erzeugt, aber nicht ausgelöst",
+      "description": "Ein Exception-Objekt wird als eigene Anweisung erzeugt. Ohne raise passiert nichts, und das Objekt bleibt als Speicherleck zurück."
+    },
+    {
+      "id": "assert-side-effect",
+      "name": "Assert mit Seiteneffekt",
+      "description": "Das Argument von Assert verändert Daten (Inc, Dec, eine Try…-Funktion mit out-Parameter oder eine Methode aus der Option mutatingMethods). Mit {$C-} entfernt der Compiler den ganzen Aufruf samt Seiteneffekt."
+    },
+    {
+      "id": "ifthen-side-effect",
+      "name": "IfThen wertet beide Zweige aus",
+      "description": "IfThen ist eine Funktion: Beide Zweige werden vor dem Aufruf ausgewertet. Ein Nil-Zugriff oder Funktionsaufruf im nicht gewählten Zweig passiert trotzdem. Hohe Konfidenz, wenn ein Zweig einen in der Bedingung geprüften Namen dereferenziert, mittlere bei einem Funktionsaufruf."
+    },
+    {
+      "id": "random-without-randomize",
+      "name": "Random ohne Randomize",
+      "description": "Random wird verwendet, aber die Unit ruft nie Randomize auf; jeder Start liefert dieselbe Folge. Randomize steht oft in der .dpr, deshalb ist die Regel standardmäßig aus und hat niedrige Konfidenz."
     }
   ]
 }

@@ -27,6 +27,7 @@ uses
   BDLsp.Common.Rules.Builtin.FormFields,
   BDLsp.Common.Rules.Builtin.Security,
   BDLsp.Common.Rules.Builtin.General,
+  BDLsp.Common.Rules.Builtin.RtlPatterns,
   BDLsp.Common.Rules.Builtin.DataBinding,
   BDLsp.Common.Rules.Builtin.SlashCommands;
 
@@ -49,6 +50,7 @@ begin
     RegisterFormFieldRules(Registry);
     RegisterSecurityRules(Registry);
     RegisterGeneralRules(Registry);
+    RegisterRtlPatternRules(Registry);
     RegisterDataBindingRules(Registry);
     RegisterSlashCommandRules(Registry);
     Result := Registry.Rules;
