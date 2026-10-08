@@ -164,7 +164,7 @@ const
     'form-field-without-object,form-object-without-field,hides-virtual,implemented-not-declared,' +
     'invisible-char,lock-without-finally,possibly-uninitialized,result-not-set,security-command-injection,' +
     'security-insecure-http,security-insecure-random,security-sql-injection,security-tls-verification-disabled,' +
-    'security-weak-crypto,synchronize-in-destructor,' +
+    'security-weak-crypto,slash-command,synchronize-in-destructor,' +
     'thread-free-with-free-on-terminate,thread-resume-suspend,thread-use-after-free-on-terminate,' +
     'thread-vcl-access,unit-name-mismatch,unused-assignment,unused-local,unused-parameter,' +
     'virtual-instead-of-override';
@@ -185,7 +185,8 @@ begin
     'security-weak-crypto',
     ActiveRules('security'));
   Assert.AreEqual('component-fixed-pixels,component-hardcoded-color,component-setter-without-invalidate,' +
-    'forbidden-uses,foreign-form-control-access,thread-resume-suspend,unused-assignment,unused-local,unused-parameter',
+    'forbidden-uses,foreign-form-control-access,slash-command,thread-resume-suspend,unused-assignment,unused-local,' +
+    'unused-parameter',
     ActiveRules('style'));
 end;
 

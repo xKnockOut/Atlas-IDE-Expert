@@ -131,6 +131,7 @@
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.UsesActions.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.BlockCompletion.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.UsesCommand.pas"/>
+        <DCCReference Include="Source\Editing\BDLsp.Common.Editing.SlashCommands.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.UnitFiles.pas"/>
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.UnresolvedNames.pas"/>
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.UnitFiles.pas"/>
@@ -145,6 +146,7 @@
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.FormFields.pas"/>
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Security.pas"/>
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.DataBinding.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.SlashCommands.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.FileOperations.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.ClassCompletion.pas"/>
         <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.Contract.pas"/>

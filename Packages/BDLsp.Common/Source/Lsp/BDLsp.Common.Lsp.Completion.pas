@@ -26,6 +26,7 @@ uses
   BDLsp.Common.Index.Contract,
   BDLsp.Common.Configuration.Contract,
   BDLsp.Common.Rules.Contract,
+  BDLsp.Common.Editing.SlashCommands,
   BDLsp.Common.Semantics.NameResolver;
 
 type
@@ -85,6 +86,7 @@ type
     FNamespaces: TArray<string>;
     FMatchingFor: TCompletionMatchingFunc;
     FFormItems: TFormCompletionFunc;
+    FSlashCommandsFor: TSlashCommandsProvider;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
@@ -105,6 +107,8 @@ type
     property MatchingFor: TCompletionMatchingFunc read FMatchingFor write FMatchingFor;
     /// <summary>Vorschläge in .dfm/.fmx; ohne Zuweisung keine.</summary>
     property FormItems: TFormCompletionFunc read FFormItems write FFormItems;
+    /// <summary>Schnellbefehle nach "/" am Zeilenanfang (#293); ohne Zuweisung alle eingeschaltet.</summary>
+    property SlashCommandsFor: TSlashCommandsProvider read FSlashCommandsFor write FSlashCommandsFor;
   end;
 
 implementation
@@ -118,6 +122,7 @@ uses
   BDLsp.Common.Lsp.Positions,
   BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.TreeCache,
+  BDLsp.Common.Pascal.Lexer,
   BDLsp.Common.Lsp.FuzzyMatch,
   BDLsp.Common.Editing.UsesClause,
   BDLsp.Common.Lsp.CompilerDirectives,
@@ -183,6 +188,35 @@ begin
       Item.Detail := Info.Text;
     AItems.Items := AItems.Items + [Item];
   end;
+end;
+
+function SlashItems(const AText: string; const APosition: TTextPosition; const ADisabled: TArray<string>;
+  out AItems: TCompletionItems): Boolean;
+var
+  Before, Name, Arguments: string;
+  Command: TSlashCommand;
+  Item: TCompletionItem;
+begin
+  AItems := Default(TCompletionItems);
+  // Nur "/name" ohne Argumente vor dem Cursor; danach vervollständigen die Befehle selbst (#294 ff.).
+  Before := LineBefore(AText, APosition);
+  if Trim(Before) = '/' then
+    Name := ''
+  else if not TSlashCommandRegistry.Split(Before, Name, Arguments) or (Arguments <> '') or
+    (Before[Length(Before)] = ' ') then
+    Exit(False);
+  if not TSlashCommandRegistry.IsCodeLine(TPascalLexer.Tokenize(AText), APosition.Line) then
+    Exit(False);
+  for Command in TSlashCommandRegistry.Shared.Matching(Name, ADisabled) do
+  begin
+    Item := Default(TCompletionItem);
+    Item.Name := Command.Name;
+    Item.Kind := KindKeyword;
+    Item.Detail := Command.Summary + ' – ' + Command.Example;
+    Item.InsertText := Command.Name + ' ';
+    AItems.Items := AItems.Items + [Item];
+  end;
+  Result := True;
 end;
 
 function ComparePositions(const A, B: TTextPosition): Integer;
@@ -255,6 +289,8 @@ begin
   Triggers.Add('.');
   // {$ startet die Vervollständigung von Direktiven (#102).
   Triggers.Add('$');
+  // "/" am Zeilenanfang listet die Schnellbefehle (#293).
+  Triggers.Add('/');
   Result := TJSONObject.Create;
   Result.AddPair('triggerCharacters', Triggers);
   Result.AddPair('resolveProvider', TJSONBool.Create(False));
@@ -601,6 +637,7 @@ var
   Resolver: TNameResolver;
   Matching: TCompletionMatching;
   Directives: TCompletionItems;
+  Disabled: TArray<string>;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
@@ -615,6 +652,10 @@ begin
       Exit(ToJson(Directives));
     Exit(TJSONNull.Create);
   end;
+  Disabled := nil;
+  if (not Assigned(FSlashCommandsFor) or FSlashCommandsFor(Uri, Disabled)) and
+    SlashItems(Document.Text, TLspPositions.ReadPosition(PositionValue), Disabled, Directives) then
+    Exit(ToJson(Directives));
   if DirectiveItems(Document.Text, TLspPositions.ReadPosition(PositionValue), Directives) then
     Exit(ToJson(Directives));
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);

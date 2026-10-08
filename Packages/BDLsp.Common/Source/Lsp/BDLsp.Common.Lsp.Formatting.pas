@@ -7,7 +7,7 @@
 //
 // textDocument/onTypeFormatting (#179) ergänzt nach Enter den Blockabschluss
 // (BDLsp.Common.Editing.BlockCompletion), schaltbar über "completeBlocks",
-// und wertet den Schnellbefehl "/uses Unit" aus (#254, "usesCommand").
+// und führt Schnellbefehle wie "/uses Unit" über das Register aus (#293, "slashCommands").
 
 interface
 
@@ -18,7 +18,8 @@ uses
   BDLsp.Common.JsonRpc.Dispatcher,
   BDLsp.Common.Documents.Contract,
   BDLsp.Common.Configuration.Contract,
-  BDLsp.Common.Editing.EditorConfig;
+  BDLsp.Common.Editing.EditorConfig,
+  BDLsp.Common.Editing.SlashCommands;
 
 type
   /// <summary>Block "format" aus delphi-lsp.json bzw. dem Editor für AUri.</summary>
@@ -37,7 +38,7 @@ type
     FSettingsProvider: TFormatStyleProvider;
     FReadFile: TEditorConfigReadFile;
     FBlockKindsFor: TBlockKindsProvider;
-    FUsesCommandFor: TBooleanProvider;
+    FSlashCommandsFor: TSlashCommandsProvider;
     function HandleOnType(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function Handle(const AParams: TJSONValue; AWithRange: Boolean): TJSONValue;
     function HandleFormatting(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -54,8 +55,8 @@ type
       const AReadFile: TEditorConfigReadFile): TFormatStyle; static;
     /// <summary>Ohne Zuweisung werden alle Blöcke ergänzt.</summary>
     property BlockKindsFor: TBlockKindsProvider read FBlockKindsFor write FBlockKindsFor;
-    /// <summary>Ohne Zuweisung ist /uses eingeschaltet.</summary>
-    property UsesCommandFor: TBooleanProvider read FUsesCommandFor write FUsesCommandFor;
+    /// <summary>Ohne Zuweisung sind alle Schnellbefehle eingeschaltet.</summary>
+    property SlashCommandsFor: TSlashCommandsProvider read FSlashCommandsFor write FSlashCommandsFor;
   end;
 
 implementation
@@ -66,8 +67,7 @@ uses
   BDLsp.Common.Rules.Contract,
   BDLsp.Common.Pascal.Lexer,
   BDLsp.Common.Editing.Formatter,
-  BDLsp.Common.Editing.BlockCompletion,
-  BDLsp.Common.Editing.UsesCommand;
+  BDLsp.Common.Editing.BlockCompletion;
 
 { TLspFormatting }
 
@@ -102,6 +102,7 @@ var
   Kinds: TBlockKinds;
   Edit: TRuleEdit;
   Edits: TArray<TRuleEdit>;
+  Disabled: TArray<string>;
   Item: TJSONObject;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
@@ -112,8 +113,10 @@ begin
     Exit;
   if not FStore.TryGet(Uri, Document) then
     Exit;
-  if (not Assigned(FUsesCommandFor) or FUsesCommandFor(Uri)) and
-    TUsesCommand.AfterEnter(Document.Text, TLspPositions.ReadPosition(PositionValue), nil, Edits) then
+  Disabled := nil;
+  if (not Assigned(FSlashCommandsFor) or FSlashCommandsFor(Uri, Disabled)) and
+    TSlashCommandRegistry.Shared.AfterEnter(Document.Text, TLspPositions.ReadPosition(PositionValue), nil, Disabled,
+    Edits) then
   begin
     for Edit in Edits do
     begin

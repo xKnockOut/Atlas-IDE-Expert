@@ -145,6 +145,8 @@ type
     function CollectStatus: TServerStatus;
     function DefinesFor(const AUri: string; out ADefines: TArray<string>): Boolean;
     function DelphiVersionFor(const AUri: string): string;
+    /// <summary>Schnellbefehle (#293): False = aus; ADisabled samt "uses" bei usesCommand = false.</summary>
+    function SlashCommandsFor(const AUri: string; out ADisabled: TArray<string>): Boolean;
     function InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
     function CompletionSettingsFor(const AUri: string): TCompletionSettings;
     function FormatStyleFor(const AUri: string): TFormatStyle;
@@ -358,21 +360,7 @@ begin
         TMonitor.Exit(FWorkspacesLock);
       end;
     end;
-  FFormatting.UsesCommandFor :=
-    function(const AUri: string): Boolean
-    var
-      Workspace: TShellWorkspace;
-    begin
-      TMonitor.Enter(FWorkspacesLock);
-      try
-        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-        if (Workspace = nil) and (FWorkspaces.Count = 1) then
-          Workspace := FWorkspaces[0];
-        Result := (Workspace = nil) or Workspace.Configuration.Settings.UsesCommand;
-      finally
-        TMonitor.Exit(FWorkspacesLock);
-      end;
-    end;
+  FFormatting.SlashCommandsFor := SlashCommandsFor;
   FFormatting.Attach(FDispatcher);
   FSelectionRanges := TLspSelectionRanges.Create(FDocuments);
   FSelectionRanges.Attach(FDispatcher);
@@ -516,6 +504,7 @@ begin
     begin
       Result := CompletionSettingsFor(AUri).Matching;
     end;
+  FCompletion.SlashCommandsFor := SlashCommandsFor;
   // Ereignis-Handler in .dfm/.fmx (#111); die Unit liegt neben der Formulardatei.
   FCompletion.FormItems :=
     function(const AUri, AText: string; const APosition: TTextPosition; out AItems: TCompletionItems): Boolean
@@ -1180,6 +1169,28 @@ begin
     TMonitor.Exit(FWorkspacesLock);
   end;
   Result.Requests := FStatistics.Snapshot;
+end;
+
+function TServerComposition.SlashCommandsFor(const AUri: string; out ADisabled: TArray<string>): Boolean;
+var
+  Workspace: TShellWorkspace;
+begin
+  ADisabled := nil;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+    if (Workspace = nil) and (FWorkspaces.Count = 1) then
+      Workspace := FWorkspaces[0];
+    if Workspace = nil then
+      Exit(True);
+    Result := Workspace.Configuration.Settings.SlashCommands;
+    ADisabled := Workspace.Configuration.Settings.SlashCommandsDisabled;
+    // usesCommand bleibt als Alias erhalten (#254).
+    if not Workspace.Configuration.Settings.UsesCommand then
+      ADisabled := ADisabled + ['uses'];
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
 end;
 
 function TServerComposition.DelphiVersionFor(const AUri: string): string;

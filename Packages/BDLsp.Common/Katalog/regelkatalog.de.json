@@ -239,6 +239,11 @@
       "id": "security-sql-injection",
       "name": "SQL-Text aus zusammengesetzten Werten (SQL-Injection)",
       "description": "SQL.Text, SQL.Add, CommandText, ExecSQL oder Open erhalten Text, der per + oder Format aus Nicht-Konstanten zusammengesetzt ist. Benutzereingaben könnten SQL einschleusen. Parameter verwenden (:Name, ParamByName). Konstanten, resourcestrings, IntToStr und QuotedStr zählen nicht; Benutzereingaben (TEdit.Text, TMemo.Lines) heben die Konfidenz auf hoch."
+    },
+    {
+      "id": "slash-command",
+      "name": "Schnellbefehl nicht ausgeführt",
+      "description": "Eine Zeile, die mit /name beginnt, wurde nicht ausgeführt und steht noch im Code: Der Befehl ist unbekannt, abgeschaltet (slashCommands.disabled) oder passt an dieser Stelle nicht. Die Meldung nennt den Grund."
     }
   ]
 }

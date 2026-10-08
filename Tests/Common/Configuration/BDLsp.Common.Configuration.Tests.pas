@@ -256,6 +256,18 @@ begin
   Assert.AreEqual('C:\\cc.ps1', Settings.Compiler.IdeCommand);
   Assert.IsTrue(Parse('{"compiler": {"backend": "msbuild"}}', Issues).Compiler.Backend = TCompilerBackend.Auto);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Schnellbefehle (#293)
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.SlashCommands);
+  Assert.AreEqual(0, Integer(Length(Settings.SlashCommandsDisabled)));
+  Settings := Parse('{"slashCommands": {"enabled": false, "disabled": ["uses", "var"]}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.SlashCommands);
+  Assert.AreEqual('var', Settings.SlashCommandsDisabled[1]);
+  Parse('{"slashCommands": {"disabled": "uses", "x": 1}}', Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{"slashCommands": {"disabled": ["uses"]}}', '{}', Issues);
+  Assert.AreEqual(1, Integer(Length(Settings.SlashCommandsDisabled)));
   // Vervollständigung (#229)
   Assert.IsTrue(Parse('{}', Issues).Completion.Matching = TCompletionMatching.Fuzzy);
   Assert.IsTrue(Parse('{"completion": {"matching": "prefix"}}', Issues).Completion.Matching = TCompletionMatching.Prefix);

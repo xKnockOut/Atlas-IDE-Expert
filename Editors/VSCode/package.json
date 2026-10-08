@@ -172,6 +172,11 @@
           "default": true,
           "markdownDescription": "Eine Zeile \"/uses Unit1, Unit2\" wird nach Enter gelöscht und die Units kommen ins passende uses. delphi-lsp.json im Projekt hat Vorrang."
         },
+        "betterDelphiLsp.slashCommands": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Schnellbefehle: Eine Zeile, die mit /name beginnt, wird nach Enter ausgeführt und verschwindet. Nach / schlägt die Vervollständigung alle Befehle vor. delphi-lsp.json im Projekt hat Vorrang."
+        },
         "betterDelphiLsp.sortUses": {
           "type": [
             "boolean",

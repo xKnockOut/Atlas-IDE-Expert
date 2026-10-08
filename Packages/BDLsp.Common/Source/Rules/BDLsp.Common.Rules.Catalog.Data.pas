@@ -451,6 +451,15 @@ begin
     '      "description": "SQL.Text, SQL.Add, CommandText, ExecSQL or Open receives text built with + or Format from non-constant values. User input could inject SQL. Use parameters (:Name, ParamByName). C' + 'onstants, resourcestrings, IntToStr and QuotedStr are not reported; user input (TEdit.Text, TMemo.Lines) raises the confidence to high.",' + #10 +
     '      "bad": "Q.SQL.Text := ''select * from K where N = '''''' + Edit1.Text + '''''''';",' + #10 +
     '      "good": "Q.SQL.Text := ''select * from K where N = :N'';\nQ.ParamByName(''N'').AsString := Edit1.Text;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "slash-command",' + #10 +
+    '      "name": "Quick command not executed",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "A line starting with /name was not executed and stays in the code: the command is unknown, switched off (slashCommands.disabled) or does not fit at this place. The message names ' + 'the reason.",' + #10 +
+    '      "bad": "/gibtsnicht X",' + #10 +
+    '      "good": "/uses System.Classes"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -702,6 +711,11 @@ begin
     '      "id": "security-sql-injection",' + #10 +
     '      "name": "SQL-Text aus zusammengesetzten Werten (SQL-Injection)",' + #10 +
     '      "description": "SQL.Text, SQL.Add, CommandText, ExecSQL oder Open erhalten Text, der per + oder Format aus Nicht-Konstanten zusammengesetzt ist. Benutzereingaben könnten SQL einschleusen. Parame' + 'ter verwenden (:Name, ParamByName). Konstanten, resourcestrings, IntToStr und QuotedStr zählen nicht; Benutzereingaben (TEdit.Text, TMemo.Lines) heben die Konfidenz auf hoch."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "slash-command",' + #10 +
+    '      "name": "Schnellbefehl nicht ausgeführt",' + #10 +
+    '      "description": "Eine Zeile, die mit /name beginnt, wurde nicht ausgeführt und steht noch im Code: Der Befehl ist unbekannt, abgeschaltet (slashCommands.disabled) oder passt an dieser Stelle nich' + 't. Die Meldung nennt den Grund."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
