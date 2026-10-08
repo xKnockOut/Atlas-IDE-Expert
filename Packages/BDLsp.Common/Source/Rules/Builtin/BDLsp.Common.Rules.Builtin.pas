@@ -29,6 +29,7 @@ uses
   BDLsp.Common.Rules.Builtin.General,
   BDLsp.Common.Rules.Builtin.RtlPatterns,
   BDLsp.Common.Rules.Builtin.RtlTypePatterns,
+  BDLsp.Common.Rules.Builtin.Exceptions,
   BDLsp.Common.Rules.Builtin.DataBinding,
   BDLsp.Common.Rules.Builtin.SlashCommands;
 
@@ -53,6 +54,7 @@ begin
     RegisterGeneralRules(Registry);
     RegisterRtlPatternRules(Registry);
     RegisterRtlTypePatternRules(Registry);
+    RegisterExceptionRules(Registry);
     RegisterDataBindingRules(Registry);
     RegisterSlashCommandRules(Registry);
     Result := Registry.Rules;

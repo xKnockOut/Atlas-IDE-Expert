@@ -613,6 +613,33 @@ begin
     '      "description": "Format with %f, %n, %m, %g or %e and functions like FloatToStr, StrToFloat or DateToStr without a TFormatSettings parameter use the user''s locale (decimal separator, date format)' + '. For files, protocols and logs pass fixed TFormatSettings. Format(''%d'', …) is not reported.",' + #10 +
     '      "bad": "Line := Format(''%.2f'', [Amount]);",' + #10 +
     '      "good": "Line := Format(''%.2f'', [Amount], TFormatSettings.Invariant);"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "generic-exception-raised",' + #10 +
+    '      "name": "Generic exception raised",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "Raising the base class Exception prevents callers from handling the error specifically. Declare a dedicated exception class.",' + #10 +
+    '      "bad": "raise Exception.Create(''Customer missing'');",' + #10 +
+    '      "good": "raise ECustomerMissing.Create(''Customer missing'');"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "catch-all-without-raise",' + #10 +
+    '      "name": "Catch-all handler without re-raise",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "A handler for Exception that neither re-raises nor ends the program swallows every error, including programming errors. Off by default; intended for library code.",' + #10 +
+    '      "bad": "except\n  on E: Exception do\n    Log(E.Message);\nend;",' + #10 +
+    '      "good": "except\n  on E: Exception do\n  begin\n    Log(E.Message);\n    raise;\n  end;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "exception-freed",' + #10 +
+    '      "name": "Exception object freed manually",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "description": "The RTL frees an exception object after its handler or after raise. Freeing it manually causes a double free.",' + #10 +
+    '      "bad": "on E: Exception do\n  E.Free;",' + #10 +
+    '      "good": "on E: Exception do\n  Log(E.Message);"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -954,6 +981,21 @@ begin
     '      "id": "format-without-settings",' + #10 +
     '      "name": "Formatierung abhängig vom Gebietsschema",' + #10 +
     '      "description": "Format mit %f, %n, %m, %g oder %e und Funktionen wie FloatToStr, StrToFloat oder DateToStr ohne TFormatSettings-Parameter verwenden das Gebietsschema des Benutzers (Dezimaltrenne' + 'r, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format(''%d'', …) wird nicht gemeldet."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "generic-exception-raised",' + #10 +
+    '      "name": "Allgemeine Exception ausgelöst",' + #10 +
+    '      "description": "Wer die Basisklasse Exception auslöst, nimmt Aufrufern die Möglichkeit, den Fehler gezielt zu behandeln. Besser eine eigene Exception-Klasse deklarieren."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "catch-all-without-raise",' + #10 +
+    '      "name": "Exception-Handler ohne erneutes raise",' + #10 +
+    '      "description": "Ein Handler für Exception, der weder erneut auslöst noch das Programm beendet, verschluckt jeden Fehler, auch Programmierfehler. Standardmäßig aus; gedacht für Bibliothekscode."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "exception-freed",' + #10 +
+    '      "name": "Exception-Objekt manuell freigegeben",' + #10 +
+    '      "description": "Die RTL gibt ein Exception-Objekt nach seinem Handler bzw. nach raise selbst frei. Manuelles Freigeben führt zur doppelten Freigabe."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
