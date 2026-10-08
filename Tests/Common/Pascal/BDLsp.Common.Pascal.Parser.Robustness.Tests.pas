@@ -22,8 +22,12 @@ type
     [Test]
     procedure DeepNestingIsReportedNotFatal;
     [Test]
+    // RTL legt bei erster Benutzung Singletons an (Kodierungen, Pfad-/Registry-Hilfen); kein Leck des Testcodes.
+    [IgnoreMemoryLeaks]
     procedure LongChainsDoNotOverflowStack;
     [Test]
+    // RTL legt bei erster Benutzung Singletons an (Kodierungen, Pfad-/Registry-Hilfen); kein Leck des Testcodes.
+    [IgnoreMemoryLeaks]
     procedure ParsesDelphiSourceCorpus;
     [Test]
     procedure SyntaxDiagnosticsWithin200Ms;
