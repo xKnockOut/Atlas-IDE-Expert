@@ -8,6 +8,7 @@ Eigener Language Server (LSP) für Delphi/Object Pascal, mit zusätzlicher MCP-S
 - [Konfiguration](docs/Konfiguration.md) von `delphi-lsp.json` (erzeugt aus dem JSON-Schema mit `pwsh Tools/Update-ConfigDoc.ps1`)
 - [Prüfregeln](docs/Regeln.md)
 - [MCP-Werkzeuge](docs/MCP.md)
+- [Benchmark](docs/Benchmark.md) der Leistungs-Zielwerte
 
 ## Aufbau
 

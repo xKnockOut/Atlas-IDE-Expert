@@ -22,6 +22,8 @@ jobs:
       - name: Konfigurationsdoku aktuell
         shell: pwsh
         run: ./Tools/Update-ConfigDoc.ps1 -Check
+      - name: Benchmark-Hilfsfunktionen testen
+        run: node --test Tools/Benchmark/
       - name: Versionen von Server und Erweiterung gleich
         shell: pwsh
         run: ./Tools/Check-Version.ps1
