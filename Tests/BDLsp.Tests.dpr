@@ -169,6 +169,7 @@ uses
   BDLsp.Common.Editing.Bookmarks.Tests in 'Common\Editing\BDLsp.Common.Editing.Bookmarks.Tests.pas',
   BDLsp.Common.Editing.DocumentationCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.DocumentationCommands.Tests.pas',
   BDLsp.Common.Editing.ComponentCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.ComponentCommands.Tests.pas',
+  BDLsp.Common.Editing.WinApiCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.WinApiCommands.Tests.pas',
   BDLsp.Common.Rules.Builtin.DataBinding.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.DataBinding.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
