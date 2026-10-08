@@ -180,7 +180,10 @@ begin
   Output := TFindingsOutput.Render([MakeFile('Src\U.pas', [MakeFinding('syntax', TRuleSeverity.Hint, 0)])],
     TFindingsFormat.Sarif, [TFileChecker.SyntaxDescriptor]);
   Assert.IsTrue(Pos('"version":"2.1.0"', Output) > 0, Output);
-  Assert.IsTrue(Pos('"rules":[{"id":"syntax"', Output) > 0, Output);
+  Assert.IsTrue(Pos('"rules":[{"id":"syntax","name":"Syntax error"', Output) > 0, Output);
+  Assert.IsTrue(Pos('"fullDescription":{"text":"The parser could not read the source code."}', Output) > 0, Output);
+  Assert.IsTrue(Pos('"helpUri":"https://github.com/xKnockOut/BetterDelphiLSP/blob/main/docs/Regeln.md#syntax"',
+    Output) > 0, Output);
   Assert.IsTrue(Pos('"ruleId":"syntax","level":"note"', Output) > 0, Output);
   Assert.IsTrue(Pos('"artifactLocation":{"uri":"Src/U.pas"}', Output) > 0, Output);
   Assert.IsTrue(Pos('"region":{"startLine":1,"startColumn":3,"endLine":1,"endColumn":6}', Output) > 0, Output);

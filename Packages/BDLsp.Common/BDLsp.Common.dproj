@@ -1,4 +1,4 @@
-﻿﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{9B47206F-D86A-4DB3-B051-00A4CA336E9F}</ProjectGuid>
         <MainSource>BDLsp.Common.dpk</MainSource>
@@ -106,6 +106,8 @@
         <DCCReference Include="Source\Rules\BDLsp.Common.Rules.Checker.pas"/>
         <DCCReference Include="Source\Rules\BDLsp.Common.Rules.Filter.pas"/>
         <DCCReference Include="Source\Rules\BDLsp.Common.Rules.Output.pas"/>
+        <DCCReference Include="Source\Rules\BDLsp.Common.Rules.Catalog.pas"/>
+        <DCCReference Include="Source\Rules\BDLsp.Common.Rules.Catalog.Data.pas"/>
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.pas"/>
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Unicode.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.CodeActions.pas"/>

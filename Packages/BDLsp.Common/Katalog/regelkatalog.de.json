@@ -1,0 +1,34 @@
+{
+  "rules": [
+    {
+      "id": "syntax",
+      "name": "Syntaxfehler",
+      "description": "Der Parser konnte den Quelltext nicht lesen."
+    },
+    {
+      "id": "unused-suppression",
+      "name": "Ungenutzte Unterdrückung",
+      "description": "Ein lsp-ignore-Kommentar unterdrückt keinen Treffer und kann entfernt werden."
+    },
+    {
+      "id": "bidi-control",
+      "name": "Bidirektionales Steuerzeichen",
+      "description": "Bidirektionale Steuerzeichen können Code anders anzeigen, als er kompiliert wird (Trojan Source)."
+    },
+    {
+      "id": "invisible-char",
+      "name": "Unsichtbares Zeichen",
+      "description": "Unsichtbare oder Nullbreiten-Zeichen im Quelltext."
+    },
+    {
+      "id": "control-char",
+      "name": "Steuerzeichen",
+      "description": "NUL- und Steuerzeichen oder ungültige Bytes (U+FFFD) im Quelltext."
+    },
+    {
+      "id": "confusable-identifier",
+      "name": "Verwechselbarer Bezeichner",
+      "description": "Bezeichner mit Zeichen aus mehreren Schriften oder Nicht-ASCII-Zeichen sind mit anderen verwechselbar."
+    }
+  ]
+}
