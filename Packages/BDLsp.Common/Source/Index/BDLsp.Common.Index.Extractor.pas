@@ -37,6 +37,8 @@ type
     procedure Walk(ARoot: TSyntaxNode; var AUnit: TUnitIndex);
     class function UsesOf(ASection: TSyntaxNode): TArray<string>; static;
   public
+    /// <summary>Erster direkter Typverweis eines Knotens (A: TFoo, function F: TFoo); sonst ''.</summary>
+    class function DeclaredType(ANode: TSyntaxNode): string; static;
     constructor Create(const ATokens: TArray<TPascalToken>);
     destructor Destroy; override;
     /// <summary>Index-Eintrag aus einem fertigen Syntaxbaum (ohne Stamp und Hash).</summary>
@@ -143,7 +145,26 @@ begin
   Symbol.SelectionRange := NameRange(ANode, AName);
   Symbol.InInterface := FInInterface;
   Symbol.Ancestors := AAncestors;
+  if AKind in [TIndexSymbolKind.TypeAlias, TIndexSymbolKind.Constant, TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
+    TIndexSymbolKind.Property_, TIndexSymbolKind.Method, TIndexSymbolKind.Routine] then
+    Symbol.TypeName := DeclaredType(ANode)
+  else
+    Symbol.TypeName := '';
   FSymbols.Add(Symbol);
+end;
+
+class function TIndexExtractor.DeclaredType(ANode: TSyntaxNode): string;
+var
+  Index: Integer;
+begin
+  // Erster direkter Typverweis: A: TFoo, property P: TFoo, function F: TFoo.
+  // Bei RoutineDecl steht der Typ im Kopf.
+  if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.FindChild(TSyntaxKind.RoutineHeader) <> nil) then
+    ANode := ANode.FindChild(TSyntaxKind.RoutineHeader);
+  for Index := 0 to ANode.ChildCount - 1 do
+    if ANode[Index].Kind = TSyntaxKind.TypeReference then
+      Exit(ANode[Index].Name);
+  Result := '';
 end;
 
 procedure TIndexExtractor.AddNames(ANode: TSyntaxNode; const AContainer: string; AKind: TIndexSymbolKind);
