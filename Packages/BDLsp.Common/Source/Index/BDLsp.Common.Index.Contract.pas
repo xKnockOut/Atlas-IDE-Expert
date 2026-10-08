@@ -84,6 +84,15 @@ type
 
   TIndexProgressKind = (Started, Report, Finished);
 
+  TFileChangeKind = (Created, Changed, Deleted);
+
+  /// <summary>Änderung einer Datei außerhalb des Editors.</summary>
+  TFileChange = record
+    FileName: string;
+    Kind: TFileChangeKind;
+    constructor Create(const AFileName: string; AKind: TFileChangeKind);
+  end;
+
   /// <summary>Fortschritt des Aufbaus; APercent 0..100.</summary>
   TIndexProgressEvent = reference to procedure(AKind: TIndexProgressKind; const AMessage: string;
     APercent: Integer);
@@ -104,6 +113,14 @@ begin
     Result := Name
   else
     Result := Container + '.' + Name;
+end;
+
+{ TFileChange }
+
+constructor TFileChange.Create(const AFileName: string; AKind: TFileChangeKind);
+begin
+  FileName := AFileName;
+  Kind := AKind;
 end;
 
 end.
