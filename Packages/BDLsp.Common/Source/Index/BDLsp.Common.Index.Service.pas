@@ -21,6 +21,8 @@ type
     ResolveUnit: TUnitFileResolver;
     /// <summary>Cache-Datei; '' = ohne Cache.</summary>
     CacheFile: string;
+    /// <summary>Cache nur lesen, z. B. weil eine andere Instanz ihn schreibt (#184).</summary>
+    ReadOnlyCache: Boolean;
   end;
 
   TIndexFinishedEvent = reference to procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64);
@@ -135,7 +137,7 @@ begin
       begin
         Result := FCancelled;
       end);
-    if not BuildResult.Cancelled and (ARequest.CacheFile <> '') and
+    if not BuildResult.Cancelled and (ARequest.CacheFile <> '') and not ARequest.ReadOnlyCache and
       ((BuildResult.Parsed > 0) or (Length(Cached) <> FIndex.UnitCount)) then
       FFileSystem.WriteText(ARequest.CacheFile, TIndexCache.Serialize(FIndex.Units));
     if Assigned(FOnFinished) then

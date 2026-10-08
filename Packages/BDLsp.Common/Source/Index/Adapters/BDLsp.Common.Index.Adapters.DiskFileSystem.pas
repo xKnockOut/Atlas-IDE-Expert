@@ -2,7 +2,8 @@
 
 // IIndexFileSystem auf der echten Platte. Lesen erkennt die Kodierung wie
 // beim Öffnen im Editor; Schreiben (Cache) geht über eine temporäre Datei,
-// damit ein Abbruch keinen halben Cache hinterlässt.
+// die die alte in einem Schritt ersetzt (TFile.Replace). So sieht ein Leser
+// nie einen halben Cache, auch nicht nach einem Abbruch (#184).
 
 interface
 
@@ -59,19 +60,26 @@ function TDiskIndexFileSystem.WriteText(const AFileName, AText: string): Boolean
 var
   Temp: string;
 begin
-  Temp := AFileName + '.tmp';
+  // Eindeutiger Name: zwei Schreiber kommen sich nicht in die Quere.
+  Temp := Format('%s.%d.tmp', [AFileName, TThread.CurrentThread.ThreadID]);
   try
     ForceDirectories(ExtractFileDir(AFileName));
     TFile.WriteAllText(Temp, AText, TEncoding.UTF8);
     if FileExists(AFileName) then
-      System.SysUtils.DeleteFile(AFileName);
-    Result := RenameFile(Temp, AFileName);
+    begin
+      TFile.Replace(Temp, AFileName, '');
+      Result := True;
+    end
+    else
+      Result := RenameFile(Temp, AFileName);
   except
     on EInOutError do
       Result := False;
     on EFCreateError do
       Result := False;
   end;
+  if not Result and FileExists(Temp) then
+    System.SysUtils.DeleteFile(Temp);
 end;
 
 end.

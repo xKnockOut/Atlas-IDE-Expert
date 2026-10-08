@@ -96,6 +96,7 @@
         <DCCReference Include="Source\Index\BDLsp.Common.Index.Extractor.pas"/>
         <DCCReference Include="Source\Index\BDLsp.Common.Index.SymbolIndex.pas"/>
         <DCCReference Include="Source\Index\BDLsp.Common.Index.Cache.pas"/>
+        <DCCReference Include="Source\Index\BDLsp.Common.Index.CacheHousekeeping.pas"/>
         <DCCReference Include="Source\Index\BDLsp.Common.Index.Builder.pas"/>
         <DCCReference Include="Source\Index\BDLsp.Common.Index.ProjectFiles.pas"/>
         <DCCReference Include="Source\Index\BDLsp.Common.Index.Service.pas"/>
@@ -125,6 +126,7 @@
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.InactiveRegions.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.WorkspaceFolders.pas"/>
         <DCCReference Include="Source\Index\Adapters\BDLsp.Common.Index.Adapters.DiskFileSystem.pas"/>
+        <DCCReference Include="Source\Index\Adapters\BDLsp.Common.Index.Adapters.CacheDirectory.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.WorkDoneProgress.pas"/>
         <DCCReference Include="Source\Configuration\BDLsp.Common.Configuration.Contract.pas"/>
         <DCCReference Include="Source\Configuration\Internals\BDLsp.Common.Configuration.Internals.JsonTree.pas"/>

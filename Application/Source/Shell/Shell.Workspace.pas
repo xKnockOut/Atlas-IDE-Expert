@@ -9,6 +9,7 @@ interface
 
 uses
   System.SysUtils,
+  System.Classes,
   BDLsp.Common.Logging.Contract,
   BDLsp.Common.JsonRpc.Contract,
   BDLsp.Common.Documents.Contract,
@@ -40,6 +41,11 @@ type
     FProjectFiles: TArray<string>;
     FOnProjectLoaded: TProc;
     FBaseline: IRuleBaseline;
+    /// <summary>Sperre des eigenen Index-Caches (#184); nil, wenn eine andere Instanz ihn hält.</summary>
+    FCacheLock: TStream;
+    FCacheLockFile: string;
+    /// <summary>Sperrt ACacheFile, gibt eine alte Sperre frei; False = nur lesen.</summary>
+    function LockCache(const ACacheFile: string): Boolean;
     FBaselineTime: TDateTime;
     /// <summary>Weist auf gemischte Kodierungen der Projektdateien hin (Index-Thread).</summary>
     procedure ReportEncodings;
@@ -86,6 +92,8 @@ uses
   BDLsp.Common.Index.Builder,
   BDLsp.Common.Index.ProjectFiles,
   BDLsp.Common.Index.Adapters.DiskFileSystem,
+  BDLsp.Common.Index.Adapters.CacheDirectory,
+  BDLsp.Common.Index.CacheHousekeeping,
   BDLsp.Windows.Projects.DelphiInstallation;
 
 { TShellWorkspace }
@@ -140,6 +148,7 @@ end;
 destructor TShellWorkspace.Destroy;
 begin
   FIndexService.Free;
+  FCacheLock.Free;
   FProgress.Free;
   FUnitResolver.Free;
   FConfiguration.Free;
@@ -183,6 +192,28 @@ begin
     Result := FHasDefines;
   finally
     TMonitor.Exit(FLock);
+  end;
+end;
+
+function TShellWorkspace.LockCache(const ACacheFile: string): Boolean;
+var
+  Removed: Integer;
+begin
+  if SameText(ACacheFile, FCacheLockFile) and (FCacheLock <> nil) then
+    Exit(True);
+  FreeAndNil(FCacheLock);
+  FCacheLockFile := ACacheFile;
+  FCacheLock := TIndexCacheDirectory.TryLock(ACacheFile);
+  Result := FCacheLock <> nil;
+  try
+    Removed := TIndexCacheDirectory.Cleanup(TIndexCacheDirectory.DefaultRoot,
+      TIndexCacheHousekeeping.DefaultMaxBytes, ACacheFile);
+    if Removed > 0 then
+      FLogger.Info(Format('%d alte Index-Caches gelöscht (Höchstgröße %d MB)',
+        [Removed, TIndexCacheHousekeeping.DefaultMaxBytes div (1024 * 1024)]));
+  except
+    on E: Exception do
+      FLogger.Warning(Format('Aufräumen des Cache-Ordners fehlgeschlagen: %s', [E.Message]));
   end;
 end;
 
@@ -349,9 +380,12 @@ begin
     begin
       Result := Resolver.Resolve(AUnitName);
     end;
-  CacheFile := TPath.Combine(TPath.Combine(TPath.GetCachePath, 'BetterDelphiLSP'),
+  CacheFile := TPath.Combine(TIndexCacheDirectory.DefaultRoot,
     Format('index-%.8x.json', [Cardinal(Signature.GetHashCode)]));
   Request.CacheFile := CacheFile;
+  Request.ReadOnlyCache := not LockCache(CacheFile);
+  if Request.ReadOnlyCache then
+    FLogger.Info(Format('Cache %s wird von einer anderen Instanz geschrieben und hier nur gelesen', [CacheFile]));
   TMonitor.Enter(FLock);
   try
     // Dieselben Symbole bestimmen, welche {$IFDEF}-Zweige der Editor abblendet.

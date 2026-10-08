@@ -25,6 +25,8 @@ type
   TLinterShell = class
   public
     class function Run(const AOptions: TCommandLineOptions): Integer; static;
+    /// <summary>--clear-cache: löscht alle Index-Caches, die keine laufende Instanz nutzt (#184).</summary>
+    class function ClearCache: Integer; static;
   end;
 
 implementation
@@ -46,6 +48,7 @@ uses
   BDLsp.Common.Rules.Builtin,
   BDLsp.Common.Rules.SuppressionStats,
   BDLsp.Common.Rules.Baseline,
+  BDLsp.Common.Index.Adapters.CacheDirectory,
   BDLsp.Windows.Console.StdStreams;
 
 procedure WriteText(const AStream: TStream; const AText: string);
@@ -137,6 +140,21 @@ begin
     Result := Files.ToArray;
   finally
     Files.Free;
+  end;
+end;
+
+class function TLinterShell.ClearCache: Integer;
+begin
+  try
+    WriteError(Format('%d Index-Caches gelöscht in %s',
+      [TIndexCacheDirectory.Clear(TIndexCacheDirectory.DefaultRoot), TIndexCacheDirectory.DefaultRoot]));
+    Result := TFindingsOutput.ExitClean;
+  except
+    on E: Exception do
+    begin
+      WriteError(Format('%s: %s', [E.ClassName, E.Message]));
+      Result := TFindingsOutput.ExitFailure;
+    end;
   end;
 end;
 

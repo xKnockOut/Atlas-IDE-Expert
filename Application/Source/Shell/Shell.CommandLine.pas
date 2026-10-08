@@ -45,6 +45,8 @@ type
     BaselineFile: string;
     /// <summary>Baseline aus den aktuellen Treffern neu schreiben statt zu prüfen.</summary>
     UpdateBaseline: Boolean;
+    /// <summary>Index-Caches löschen und beenden (#184).</summary>
+    ClearCache: Boolean;
     /// <summary>Hinweise zu ungültigen oder unbekannten Parametern, für das Log.</summary>
     Warnings: TArray<string>;
     class function Parse(const AArgs: TArray<string>): TCommandLineOptions; static;
@@ -192,6 +194,8 @@ begin
       if TakeValue then
         Result.BaselineFile := Value;
     end
+    else if Name = '--clear-cache' then
+      Result.ClearCache := True
     else if Name = '--update-baseline' then
       Result.UpdateBaseline := True
     else if Name = '--suppression-stats' then
