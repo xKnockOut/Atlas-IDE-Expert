@@ -97,7 +97,8 @@ uses
   BDLsp.Common.Pascal.Lexer,
   BDLsp.Common.Editing.UsesCommand,
   BDLsp.Common.Editing.DeclarationCommands,
-  BDLsp.Common.Editing.ClassCommands;
+  BDLsp.Common.Editing.ClassCommands,
+  BDLsp.Common.Editing.WrapCommands;
 
 function IsDisabled(const AName: string; const ADisabled: TArray<string>): Boolean;
 var
@@ -165,6 +166,7 @@ begin
     Created.Register(UsesCommand);
     RegisterDeclarationCommands(Created);
     RegisterClassCommands(Created);
+    RegisterWrapCommands(Created);
     if AtomicCmpExchange(Pointer(FShared), Pointer(Created), nil) <> nil then
       Created.Free;
   end;

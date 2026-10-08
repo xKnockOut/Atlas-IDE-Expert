@@ -24,11 +24,13 @@ type
     FTree: TSyntaxTree;
     FUnitIndex: TUnitIndex;
     FIndexed: Boolean;
+    FCommandIndent: string;
     function GetUnitIndex: TUnitIndex;
   public
     Line: Integer;
     constructor Create(const AContext: TSlashContext);
     destructor Destroy; override;
+    /// <summary>Einrückung der Zeile; bei der Befehlszeile die des Befehls.</summary>
     function Indent(ALine: Integer): string;
     /// <summary>Löscht die Befehlszeile samt Zeilenende.</summary>
     function RemoveCommand: TRuleEdit;
@@ -83,6 +85,7 @@ begin
   else
     FLineBreak := #10;
   FLines := AContext.Text.Split([FLineBreak]);
+  FCommandIndent := Indent(Line);
   FLines[Line] := StringOfChar(' ', Length(FLines[Line]));
   Blanked := string.Join(FLineBreak, FLines);
   FTree := TPascalParser.Parse(Blanked);
@@ -108,6 +111,8 @@ function TCommandSource.Indent(ALine: Integer): string;
 var
   Index: Integer;
 begin
+  if (ALine = Line) and (FTree <> nil) then
+    Exit(FCommandIndent);
   Index := 1;
   while (Index <= Length(FLines[ALine])) and CharInSet(FLines[ALine][Index], [' ', #9]) do
     Inc(Index);

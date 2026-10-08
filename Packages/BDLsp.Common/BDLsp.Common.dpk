@@ -120,6 +120,7 @@ contains
   BDLsp.Common.Editing.DeclarationCommands in 'Source\Editing\BDLsp.Common.Editing.DeclarationCommands.pas',
   BDLsp.Common.Editing.CommandSource in 'Source\Editing\BDLsp.Common.Editing.CommandSource.pas',
   BDLsp.Common.Editing.ClassCommands in 'Source\Editing\BDLsp.Common.Editing.ClassCommands.pas',
+  BDLsp.Common.Editing.WrapCommands in 'Source\Editing\BDLsp.Common.Editing.WrapCommands.pas',
   BDLsp.Common.Editing.UnitFiles in 'Source\Editing\BDLsp.Common.Editing.UnitFiles.pas',
   BDLsp.Common.Semantics.UnresolvedNames in 'Source\Semantics\BDLsp.Common.Semantics.UnresolvedNames.pas',
   BDLsp.Common.Rules.Builtin.UnitFiles in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.UnitFiles.pas',
