@@ -40,6 +40,8 @@ type
     // Ausdrücke
     Identifier, Literal, MemberAccess, Call, IndexAccess, Dereference, AddressOf, GenericArgs,
     SetConstructor, BinaryExpr, UnaryExpr, ParenExpr, InheritedExpr, AnonymousMethod, RangeExpr,
+    /// <summary>Bedingter Ausdruck if A then B else C (ab Delphi 13).</summary>
+    IfExpr,
     // Fehlerbehandlung
     Error);
 

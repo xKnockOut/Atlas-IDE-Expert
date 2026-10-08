@@ -2090,6 +2090,18 @@ begin
     Result.Add(ParseFactor);
     FinishNode(Result, Start);
   end
+  else if IsKw('if') then
+  begin
+    // Bedingter Ausdruck: if Bedingung then A else B
+    Result := StartNode(TSyntaxKind.IfExpr);
+    Advance;
+    ParseExpression(Result);
+    ExpectKw('then');
+    ParseExpression(Result);
+    ExpectKw('else');
+    ParseExpression(Result);
+    FinishNode(Result, Start);
+  end
   else
     Result := ParsePrimary;
 end;
