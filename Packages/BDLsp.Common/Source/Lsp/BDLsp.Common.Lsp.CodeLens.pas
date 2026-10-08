@@ -78,7 +78,7 @@ uses
   BDLsp.Common.Documents.Uris,
   BDLsp.Common.Lsp.Positions,
   BDLsp.Common.Pascal.Contract,
-  BDLsp.Common.Pascal.Parser,
+  BDLsp.Common.Pascal.TreeCache,
   BDLsp.Common.Index.Extractor,
   BDLsp.Common.Lsp.MessageHandlers,
   BDLsp.Common.Lsp.Internals.Cancellation;
@@ -369,6 +369,7 @@ var
   Uri, FileName: string;
   Document: ITextDocument;
   Tree: TSyntaxTree;
+  Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Entry: TCodeLensEntry;
 begin
@@ -378,19 +379,16 @@ begin
     Exit(TJSONNull.Create);
   FileName := TDocumentUris.ToPath(Uri);
   Cancellation := TRequestCancellation.Create(ACancellation);
-  Tree := TPascalParser.Parse(Document.Text, Cancellation);
+  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+  Tree := Shared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  Resolver := NewResolver;
   try
-    ACancellation.ThrowIfCancellationRequested;
-    Resolver := NewResolver;
-    try
-      Result := TJSONArray.Create;
-      for Entry in Lenses(Resolver, FIndex, Tree, FileName, FReadText) do
-        TJSONArray(Result).AddElement(ToJson(Entry, FileName));
-    finally
-      Resolver.Free;
-    end;
+    Result := TJSONArray.Create;
+    for Entry in Lenses(Resolver, FIndex, Tree, FileName, FReadText) do
+      TJSONArray(Result).AddElement(ToJson(Entry, FileName));
   finally
-    Tree.Free;
+    Resolver.Free;
   end;
 end;
 
@@ -401,6 +399,7 @@ var
   Line, Character, EndLine, EndCharacter: Integer;
   Document: ITextDocument;
   Tree: TSyntaxTree;
+  Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Entry: TCodeLensEntry;
   Files: TArray<string>;
@@ -422,16 +421,13 @@ begin
   if FStore.TryGet(Uri, Document) then
   begin
     Cancellation := TRequestCancellation.Create(ACancellation);
-    Tree := TPascalParser.Parse(Document.Text, Cancellation);
+    Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+    Tree := Shared.Tree;
+    Resolver := NewResolver;
     try
-      Resolver := NewResolver;
-      try
-        Entry := ResolveReferences(Resolver, FIndex, Tree, FileName, Entry, Files, FReadText, ACancellation);
-      finally
-        Resolver.Free;
-      end;
+      Entry := ResolveReferences(Resolver, FIndex, Tree, FileName, Entry, Files, FReadText, ACancellation);
     finally
-      Tree.Free;
+      Resolver.Free;
     end;
   end
   else

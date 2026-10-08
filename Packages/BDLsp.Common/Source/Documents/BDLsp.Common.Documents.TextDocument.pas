@@ -8,6 +8,7 @@ interface
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   BDLsp.Common.Documents.Contract;
 
 type
@@ -19,11 +20,14 @@ type
     FText: string;
     /// <summary>Offset ab 0, an dem jede Zeile beginnt; immer mindestens ein Eintrag.</summary>
     FLineStarts: TArray<Integer>;
+    /// <summary>Abgeleitete Daten (Derived), erst beim ersten Zugriff angelegt; geschützt über TMonitor(Self).</summary>
+    FDerived: TDictionary<string, IInterface>;
     procedure BuildLineStarts;
     /// <summary>Offset hinter dem letzten Zeichen der Zeile, ohne Zeilenumbruch.</summary>
     function LineContentEnd(ALine: Integer): Integer;
   public
     constructor Create(const AUri, ALanguageId: string; AVersion: Integer; const AText: string);
+    destructor Destroy; override;
     { ITextDocument }
     function GetUri: string;
     function GetLanguageId: string;
@@ -34,6 +38,7 @@ type
     function OffsetAt(const APosition: TTextPosition): Integer;
     function PositionAt(AOffset: Integer): TTextPosition;
     function ApplyChanges(const AChanges: TArray<TTextChange>; AVersion: Integer): ITextDocument;
+    function Derived(const AKey: string; const AFactory: TFunc<IInterface>): IInterface;
   end;
 
 implementation
@@ -172,6 +177,31 @@ begin
       Last := Middle - 1;
   end;
   Result := TTextPosition.Create(First, Min(AOffset, LineContentEnd(First)) - FLineStarts[First]);
+end;
+
+destructor TTextDocument.Destroy;
+begin
+  FDerived.Free;
+  inherited;
+end;
+
+function TTextDocument.Derived(const AKey: string; const AFactory: TFunc<IInterface>): IInterface;
+begin
+  // Die Sperre gilt auch während AFactory: weitere Aufrufer warten, statt selbst zu erzeugen.
+  TMonitor.Enter(Self);
+  try
+    if (FDerived <> nil) and FDerived.TryGetValue(AKey, Result) then
+      Exit;
+    Result := AFactory();
+    if Result <> nil then
+    begin
+      if FDerived = nil then
+        FDerived := TDictionary<string, IInterface>.Create;
+      FDerived.Add(AKey, Result);
+    end;
+  finally
+    TMonitor.Exit(Self);
+  end;
 end;
 
 function TTextDocument.ApplyChanges(const AChanges: TArray<TTextChange>; AVersion: Integer): ITextDocument;

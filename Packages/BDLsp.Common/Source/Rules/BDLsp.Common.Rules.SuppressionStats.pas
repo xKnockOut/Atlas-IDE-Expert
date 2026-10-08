@@ -52,7 +52,7 @@ implementation
 uses
   System.Generics.Defaults,
   BDLsp.Common.Pascal.SyntaxTree,
-  BDLsp.Common.Pascal.Parser,
+  BDLsp.Common.Pascal.TreeCache,
   BDLsp.Common.Rules.Suppressions,
   BDLsp.Common.Rules.Engine;
 
@@ -96,7 +96,7 @@ var
   Seen: TList<string>;
 begin
   Inc(FFiles);
-  Tree := TPascalParser.Parse(AText);
+  Tree := TSyntaxTreeCache.Parse(AText);
   Seen := TList<string>.Create;
   try
     Suppressions := TSuppressions.Create(Tree.Tokens);

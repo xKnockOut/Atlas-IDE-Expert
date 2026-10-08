@@ -102,7 +102,7 @@ uses
   BDLsp.Common.Documents.Uris,
   BDLsp.Common.Lsp.Positions,
   BDLsp.Common.Pascal.Contract,
-  BDLsp.Common.Pascal.Parser,
+  BDLsp.Common.Pascal.TreeCache,
   BDLsp.Common.Lsp.FuzzyMatch,
   BDLsp.Common.Editing.UsesClause,
   BDLsp.Common.Lsp.Internals.Cancellation;
@@ -519,6 +519,7 @@ var
   PositionValue: TJSONValue;
   Document: ITextDocument;
   Tree: TSyntaxTree;
+  Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Matching: TCompletionMatching;
 begin
@@ -529,23 +530,20 @@ begin
   if not FStore.TryGet(Uri, Document) then
     Exit(TJSONNull.Create);
   Cancellation := TRequestCancellation.Create(ACancellation);
-  Tree := TPascalParser.Parse(Document.Text, Cancellation);
+  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+  Tree := Shared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
-    ACancellation.ThrowIfCancellationRequested;
-    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
-    try
-      Resolver.Namespaces := FNamespaces;
-      if Assigned(FMatchingFor) then
-        Matching := FMatchingFor(Uri)
-      else
-        Matching := TCompletionMatching.Fuzzy;
-      Result := ToJson(Collect(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri),
-        TLspPositions.ReadPosition(PositionValue), Matching));
-    finally
-      Resolver.Free;
-    end;
+    Resolver.Namespaces := FNamespaces;
+    if Assigned(FMatchingFor) then
+      Matching := FMatchingFor(Uri)
+    else
+      Matching := TCompletionMatching.Fuzzy;
+    Result := ToJson(Collect(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri),
+      TLspPositions.ReadPosition(PositionValue), Matching));
   finally
-    Tree.Free;
+    Resolver.Free;
   end;
 end;
 

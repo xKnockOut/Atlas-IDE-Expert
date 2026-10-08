@@ -47,7 +47,7 @@ implementation
 uses
   System.Generics.Collections,
   BDLsp.Common.Pascal.SyntaxTree,
-  BDLsp.Common.Pascal.Parser;
+  BDLsp.Common.Pascal.TreeCache;
 
 function FindClass(const AIndex: ISymbolIndex; const AName: string; out ALocation: TSymbolLocation): Boolean;
 var
@@ -177,7 +177,7 @@ begin
     begin
       Inc(Depth);
       ClassName := Location.Symbol.Name;
-      Tree := TPascalParser.Parse(Text);
+      Tree := TSyntaxTreeCache.Parse(Text);
       try
         Decl := FindTypeDecl(Tree.Root, ClassName);
         if Decl = nil then

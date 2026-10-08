@@ -82,7 +82,7 @@ uses
   BDLsp.Common.Lsp.Definition,
   BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.Lexer,
-  BDLsp.Common.Pascal.Parser,
+  BDLsp.Common.Pascal.TreeCache,
   BDLsp.Common.Lsp.Internals.Cancellation,
   BDLsp.Common.Index.Extractor,
   BDLsp.Common.Dfm.ComponentRename;
@@ -202,7 +202,7 @@ begin
   begin
     if not AReadText(AChecked.DeclarationFile, UnitText) then
       Exit;
-    Tree := TPascalParser.Parse(UnitText);
+    Tree := TSyntaxTreeCache.Parse(UnitText);
   end;
   try
     Symbols := TIndexExtractor.Extract(Tree, AChecked.DeclarationFile).Symbols;
@@ -282,6 +282,7 @@ var
   PositionValue: TJSONValue;
   Document: ITextDocument;
   Tree: TSyntaxTree;
+  Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Checked: TRenameCheck;
   Files: TArray<string>;
@@ -294,18 +295,15 @@ begin
     Exit(TJSONNull.Create);
   Files := ProjectFiles;
   Cancellation := TRequestCancellation.Create(ACancellation);
-  Tree := TPascalParser.Parse(Document.Text, Cancellation);
+  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+  Tree := Shared.Tree;
+  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
-    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
-    try
-      Resolver.Namespaces := FNamespaces;
-      Checked := Check(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
-        Files);
-    finally
-      Resolver.Free;
-    end;
+    Resolver.Namespaces := FNamespaces;
+    Checked := Check(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
+      Files);
   finally
-    Tree.Free;
+    Resolver.Free;
   end;
   // Der Editor zeigt die Fehlermeldung an.
   if Checked.Error <> '' then
@@ -323,6 +321,7 @@ var
   PositionValue: TJSONValue;
   Document: ITextDocument;
   Tree: TSyntaxTree;
+  Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Found: TArray<TRenameEdit>;
   Edit: TRenameEdit;
@@ -338,18 +337,15 @@ begin
   if not FStore.TryGet(Uri, Document) then
     Exit(TJSONNull.Create);
   Cancellation := TRequestCancellation.Create(ACancellation);
-  Tree := TPascalParser.Parse(Document.Text, Cancellation);
+  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+  Tree := Shared.Tree;
+  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
-    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
-    try
-      Resolver.Namespaces := FNamespaces;
-      Found := Edits(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
-        Trim(NewName), ProjectFiles, FReadText, ACancellation, FRenameHandlers);
-    finally
-      Resolver.Free;
-    end;
+    Resolver.Namespaces := FNamespaces;
+    Found := Edits(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
+      Trim(NewName), ProjectFiles, FReadText, ACancellation, FRenameHandlers);
   finally
-    Tree.Free;
+    Resolver.Free;
   end;
   Changes := TJSONObject.Create;
   try

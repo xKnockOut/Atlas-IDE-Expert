@@ -69,7 +69,7 @@ uses
   BDLsp.Common.Documents.Uris,
   BDLsp.Common.Lsp.Positions,
   BDLsp.Common.Pascal.Contract,
-  BDLsp.Common.Pascal.Parser,
+  BDLsp.Common.Pascal.TreeCache,
   BDLsp.Common.Lsp.Internals.Cancellation;
 
 function CleanName(const AText: string): string;
@@ -254,7 +254,7 @@ begin
     Searched := Searched + [FileName];
     if not (Assigned(AReadText) and AReadText(FileName, Text)) or not ContainsText(Text, Name) then
       Continue;
-    Tree := TPascalParser.Parse(Text);
+    Tree := TSyntaxTreeCache.Parse(Text);
     try
       Add(FileName, InTree(AResolver, AIndex, Tree, FileName, Name, Wanted[0], ACancellation));
     finally
@@ -284,6 +284,7 @@ var
   IncludeDeclaration: Boolean;
   Document: ITextDocument;
   Tree: TSyntaxTree;
+  Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Files: TArray<string>;
   Found: TArray<TReferenceLocation>;
@@ -303,19 +304,16 @@ begin
     Files := FFiles();
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
-  Tree := TPascalParser.Parse(Document.Text, Cancellation);
+  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+  Tree := Shared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
-    ACancellation.ThrowIfCancellationRequested;
-    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
-    try
-      Resolver.Namespaces := FNamespaces;
-      Found := Find(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
-        IncludeDeclaration, Files, FReadText, ACancellation);
-    finally
-      Resolver.Free;
-    end;
+    Resolver.Namespaces := FNamespaces;
+    Found := Find(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
+      IncludeDeclaration, Files, FReadText, ACancellation);
   finally
-    Tree.Free;
+    Resolver.Free;
   end;
   Result := TJSONArray.Create;
   for Location in Found do

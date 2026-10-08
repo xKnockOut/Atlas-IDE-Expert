@@ -64,6 +64,13 @@ type
     function PositionAt(AOffset: Integer): TTextPosition;
     /// <summary>Neue Momentaufnahme mit den Änderungen, nacheinander angewendet.</summary>
     function ApplyChanges(const AChanges: TArray<TTextChange>; AVersion: Integer): ITextDocument;
+    /// <summary>
+    /// Aus dieser Momentaufnahme abgeleitete Daten unter AKey, z. B. der Syntaxbaum (#262).
+    /// Der erste Aufruf erzeugt sie mit AFactory, gleichzeitige Aufrufer warten auf dasselbe
+    /// Ergebnis. Liefert AFactory nil, wird nichts abgelegt. Die Daten leben so lange wie die
+    /// Momentaufnahme.
+    /// </summary>
+    function Derived(const AKey: string; const AFactory: TFunc<IInterface>): IInterface;
     property Uri: string read GetUri;
     property LanguageId: string read GetLanguageId;
     property Version: Integer read GetVersion;

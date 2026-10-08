@@ -51,7 +51,7 @@ uses
   BDLsp.Common.Rules.Contract,
   BDLsp.Common.Rules.Engine,
   BDLsp.Common.Pascal.SyntaxTree,
-  BDLsp.Common.Pascal.Parser,
+  BDLsp.Common.Pascal.TreeCache,
   BDLsp.Common.Editing.ClassCompletion;
 
 { TLspCodeActions }
@@ -127,6 +127,7 @@ var
   Range: TTextRange;
   Document: ITextDocument;
   Tree: TSyntaxTree;
+  Shared: ISharedSyntaxTree;
   Rules: TRuleCheckContext;
   Context: TRuleContext;
   Findings: TArray<TRuleFinding>;
@@ -153,22 +154,19 @@ begin
   WantsFixAll := (Only <> nil) and TCodeActions.KindRequested(FixAllKind, Only);
   Findings := nil;
   HasCompletion := False;
-  Tree := TPascalParser.Parse(Document.Text);
-  try
-    ACancellation.ThrowIfCancellationRequested;
-    if Assigned(FRuleProvider) and FRuleProvider(Uri, Rules) and (Length(Rules.Rules) > 0) then
-    begin
-      Context := Default(TRuleContext);
-      Context.RelativePath := Rules.RelativePath;
-      Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(Rules.RelativePath, '/', '\', [rfReplaceAll])), '');
-      Context.Text := Document.Text;
-      Context.Tree := Tree;
-      Findings := TRuleEngine.Run(Rules.Rules, Rules.Settings, Context);
-    end;
-    HasCompletion := WantsEditing and TClassCompletion.MissingBodies(Tree, Document.Text, Range.StartPos, Completion);
-  finally
-    Tree.Free;
+  Shared := TSyntaxTreeCache.Get(Document);
+  Tree := Shared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  if Assigned(FRuleProvider) and FRuleProvider(Uri, Rules) and (Length(Rules.Rules) > 0) then
+  begin
+    Context := Default(TRuleContext);
+    Context.RelativePath := Rules.RelativePath;
+    Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(Rules.RelativePath, '/', '\', [rfReplaceAll])), '');
+    Context.Text := Document.Text;
+    Context.Tree := Tree;
+    Findings := TRuleEngine.Run(Rules.Rules, Rules.Settings, Context);
   end;
+  HasCompletion := WantsEditing and TClassCompletion.MissingBodies(Tree, Document.Text, Range.StartPos, Completion);
   // Erst jetzt anlegen: Ein Abbruch oben soll kein Objekt zurücklassen.
   Result := TJSONArray.Create;
   if WantsEditing then

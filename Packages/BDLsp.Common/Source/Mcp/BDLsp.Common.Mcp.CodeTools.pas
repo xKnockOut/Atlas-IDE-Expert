@@ -63,7 +63,7 @@ uses
   System.StrUtils,
   BDLsp.Common.Documents.Contract,
   BDLsp.Common.Pascal.SyntaxTree,
-  BDLsp.Common.Pascal.Parser,
+  BDLsp.Common.Pascal.TreeCache,
   BDLsp.Common.Lsp.Hierarchies,
   BDLsp.Common.Rules.Checker,
   BDLsp.Common.Rules.Output,
@@ -142,7 +142,7 @@ begin
   Files := nil;
   if Assigned(FFiles) then
     Files := FFiles();
-  Tree := TPascalParser.Parse(Text);
+  Tree := TSyntaxTreeCache.Parse(Text);
   try
     Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
     try
@@ -218,7 +218,7 @@ begin
     Files := FFiles();
   Lines := TStringList.Create;
   try
-    Tree := TPascalParser.Parse(Text);
+    Tree := TSyntaxTreeCache.Parse(Text);
     try
       Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
       try
@@ -372,7 +372,7 @@ begin
     CheckNames := TUnresolvedNames.Available(FIndex);
     if CheckNames then
     begin
-      Tree := TPascalParser.Parse(NewText);
+      Tree := TSyntaxTreeCache.Parse(NewText);
       try
         Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
         try

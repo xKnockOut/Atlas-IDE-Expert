@@ -73,7 +73,7 @@ uses
   BDLsp.Common.Documents.Uris,
   BDLsp.Common.Lsp.Positions,
   BDLsp.Common.Pascal.Contract,
-  BDLsp.Common.Pascal.Parser,
+  BDLsp.Common.Pascal.TreeCache,
   BDLsp.Common.Lsp.SignatureHelp,
   BDLsp.Common.Lsp.Internals.Cancellation;
 
@@ -567,6 +567,7 @@ var
   RangeValue: TJSONValue;
   Document: ITextDocument;
   Tree: TSyntaxTree;
+  Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Settings: TInlayHintSettings;
 begin
@@ -580,19 +581,16 @@ begin
   else
     Settings := TInlayHintSettings.Default;
   Cancellation := TRequestCancellation.Create(ACancellation);
-  Tree := TPascalParser.Parse(Document.Text, Cancellation);
+  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+  Tree := Shared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
-    ACancellation.ThrowIfCancellationRequested;
-    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
-    try
-      Resolver.Namespaces := FNamespaces;
-      Result := ToJson(Collect(Resolver, FIndex, Tree, Document.Text, TDocumentUris.ToPath(Uri),
-        TLspPositions.ReadRange(RangeValue), Settings, FReadText));
-    finally
-      Resolver.Free;
-    end;
+    Resolver.Namespaces := FNamespaces;
+    Result := ToJson(Collect(Resolver, FIndex, Tree, Document.Text, TDocumentUris.ToPath(Uri),
+      TLspPositions.ReadRange(RangeValue), Settings, FReadText));
   finally
-    Tree.Free;
+    Resolver.Free;
   end;
 end;
 

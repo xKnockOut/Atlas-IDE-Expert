@@ -140,7 +140,7 @@ uses
   BDLsp.Common.Lsp.Positions,
   BDLsp.Common.Documents.Uris,
   BDLsp.Common.Pascal.SyntaxTree,
-  BDLsp.Common.Pascal.Parser,
+  BDLsp.Common.Pascal.TreeCache,
   BDLsp.Common.Pascal.LanguageFeatures,
   BDLsp.Common.Lsp.InactiveRegions,
   BDLsp.Common.Rules.Engine,
@@ -551,46 +551,44 @@ var
   Range: TTextRange;
   Tags: TJSONArray;
   Tree: TSyntaxTree;
+  Shared: ISharedSyntaxTree;
   Diagnostic: TSyntaxDiagnostic;
   Items: TJSONArray;
   Item: TJSONObject;
 begin
   Items := TJSONArray.Create;
-  Tree := TPascalParser.Parse(ADocument.Text);
-  try
-    for Diagnostic in Tree.Diagnostics do
-    begin
-      Item := TJSONObject.Create;
-      Item.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(Diagnostic.StartPos, Diagnostic.EndPos)));
-      Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Error));
-      Item.AddPair('source', Source);
-      Item.AddPair('message', Diagnostic.Message);
-      Items.AddElement(Item);
-    end;
-    for Finding in TLanguageFeatures.Check(Tree, ADelphiVersion) do
-    begin
-      Item := TJSONObject.Create;
-      Item.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(Finding.StartPos, Finding.EndPos)));
-      Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Warning));
-      Item.AddPair('source', Source);
-      Item.AddPair('message', Finding.Message);
-      Items.AddElement(Item);
-    end;
-    if Length(ARules.Rules) > 0 then
-    begin
-      Context := Default(TRuleContext);
-      Context.RelativePath := ARules.RelativePath;
-      Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARules.RelativePath, '/', '\', [rfReplaceAll])), '');
-      Context.Text := ADocument.Text;
-      Context.Tree := Tree;
-      RuleFindings := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
-      if ARules.Baseline <> nil then
-        RuleFindings := ARules.Baseline.Filter(ARules.RelativePath, ADocument.Text, RuleFindings);
-      for RuleFinding in RuleFindings do
-        Items.AddElement(FindingToJson(RuleFinding));
-    end;
-  finally
-    Tree.Free;
+  Shared := TSyntaxTreeCache.Get(ADocument);
+  Tree := Shared.Tree;
+  for Diagnostic in Tree.Diagnostics do
+  begin
+    Item := TJSONObject.Create;
+    Item.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(Diagnostic.StartPos, Diagnostic.EndPos)));
+    Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Error));
+    Item.AddPair('source', Source);
+    Item.AddPair('message', Diagnostic.Message);
+    Items.AddElement(Item);
+  end;
+  for Finding in TLanguageFeatures.Check(Tree, ADelphiVersion) do
+  begin
+    Item := TJSONObject.Create;
+    Item.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(Finding.StartPos, Finding.EndPos)));
+    Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Warning));
+    Item.AddPair('source', Source);
+    Item.AddPair('message', Finding.Message);
+    Items.AddElement(Item);
+  end;
+  if Length(ARules.Rules) > 0 then
+  begin
+    Context := Default(TRuleContext);
+    Context.RelativePath := ARules.RelativePath;
+    Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARules.RelativePath, '/', '\', [rfReplaceAll])), '');
+    Context.Text := ADocument.Text;
+    Context.Tree := Tree;
+    RuleFindings := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
+    if ARules.Baseline <> nil then
+      RuleFindings := ARules.Baseline.Filter(ARules.RelativePath, ADocument.Text, RuleFindings);
+    for RuleFinding in RuleFindings do
+      Items.AddElement(FindingToJson(RuleFinding));
   end;
   for Range in AInactive do
   begin

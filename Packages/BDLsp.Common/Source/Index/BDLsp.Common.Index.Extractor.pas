@@ -52,7 +52,7 @@ type
 implementation
 
 uses
-  BDLsp.Common.Pascal.Parser,
+  BDLsp.Common.Pascal.TreeCache,
   BDLsp.Common.Pascal.Preprocessor;
 
 function NodeRange(ANode: TSyntaxNode): TTextRange;
@@ -462,7 +462,7 @@ class function TIndexExtractor.ExtractText(const AText, AFileName: string;
 var
   Tree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(BlankInactive(AText, ADefines));
+  Tree := TSyntaxTreeCache.Parse(BlankInactive(AText, ADefines));
   try
     Result := Extract(Tree, AFileName);
   finally
