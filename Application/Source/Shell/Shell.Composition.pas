@@ -21,6 +21,7 @@ uses
   BDLsp.Common.Lsp.DocumentSymbols,
   BDLsp.Common.Lsp.FoldingRanges,
   BDLsp.Common.Lsp.SelectionRanges,
+  BDLsp.Common.Lsp.Configuration,
   BDLsp.Common.Documents.Contract,
   Shell.CommandLine;
 
@@ -37,6 +38,7 @@ type
     FDocumentSymbols: TLspDocumentSymbols;
     FFoldingRanges: TLspFoldingRanges;
     FSelectionRanges: TLspSelectionRanges;
+    FConfiguration: TLspConfiguration;
     FConnection: TJsonRpcConnection;
     class function BuildCapabilities: TJSONObject; static;
     /// <summary>Fehlerbeschreibung mit letzter Nachricht und Stacktrace für das Log.</summary>
@@ -54,6 +56,8 @@ type
     property Logger: ILogger read FLogger;
     /// <summary>Geöffnete Dokumente, für Features, die Dateien auswerten.</summary>
     property Documents: IDocumentStore read FDocuments;
+    /// <summary>Einstellungen aus delphi-lsp.json.</summary>
+    property Configuration: TLspConfiguration read FConfiguration;
   end;
 
 implementation
@@ -68,6 +72,8 @@ uses
   BDLsp.Common.JsonRpc.TracingTransport,
   BDLsp.Common.Lsp.Adapters.LogMessageSink,
   BDLsp.Common.Documents.Providers.DocumentStore,
+  BDLsp.Common.Documents.FileEncoding,
+  BDLsp.Common.Configuration.Contract,
   BDLsp.Windows.Console.StdStreams,
   BDLsp.Windows.Diagnostics.Adapters.DebugOutputSink,
   BDLsp.Windows.Diagnostics.StackTrace;
@@ -130,6 +136,29 @@ begin
   FFoldingRanges.Attach(FDispatcher);
   FSelectionRanges := TLspSelectionRanges.Create(FDocuments);
   FSelectionRanges.Attach(FDispatcher);
+  FConfiguration := TLspConfiguration.Create(FDocuments, FTransport,
+    function(const AFileName: string; out AText: string): Boolean
+    var
+      FileFormat: TFileFormat;
+    begin
+      Result := FileExists(AFileName);
+      if Result then
+        AText := TFileEncoding.LoadFromFile(AFileName, FileFormat)
+      else
+        AText := '';
+    end);
+  FConfiguration.OnChanged :=
+    procedure(const ASettings: TServerSettings)
+    begin
+      FLogger.Info(Format('Einstellungen geladen: Delphi %s, Projekt %s, %d Regeleinstellungen, %d Ausschlüsse',
+        [ASettings.DelphiVersion, ASettings.Project, Length(ASettings.Rules), Length(ASettings.Exclude)]));
+    end;
+  FConfiguration.Attach;
+  FLifecycle.OnInitialized :=
+    procedure
+    begin
+      FConfiguration.LoadWorkspace(TLspConfiguration.RootPathFromInitialize(FLifecycle.InitializeParams));
+    end;
   FConnection := TJsonRpcConnection.Create(FTransport, FDispatcher);
   FConnection.OnError :=
     procedure(const AError: Exception)
@@ -150,6 +179,7 @@ begin
   FDocumentSymbols.Free;
   FFoldingRanges.Free;
   FSelectionRanges.Free;
+  FConfiguration.Free;
   FTextDocumentSync.Free;
   FDocuments := nil;
   FLifecycle.Free;

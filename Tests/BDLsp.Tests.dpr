@@ -39,6 +39,8 @@ uses
   BDLsp.Common.Lsp.FoldingRanges.Tests in 'Common\Lsp\BDLsp.Common.Lsp.FoldingRanges.Tests.pas',
   BDLsp.Common.Lsp.SelectionRanges.Tests in 'Common\Lsp\BDLsp.Common.Lsp.SelectionRanges.Tests.pas',
   BDLsp.Common.Lsp.SyntaxDiagnostics.Tests in 'Common\Lsp\BDLsp.Common.Lsp.SyntaxDiagnostics.Tests.pas',
+  BDLsp.Common.Configuration.Tests in 'Common\Configuration\BDLsp.Common.Configuration.Tests.pas',
+  BDLsp.Common.Lsp.Configuration.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Configuration.Tests.pas',
   BDLsp.Common.Pascal.Parser.Tests in 'Common\Pascal\BDLsp.Common.Pascal.Parser.Tests.pas',
   BDLsp.Common.Pascal.Parser.Robustness.Tests in 'Common\Pascal\BDLsp.Common.Pascal.Parser.Robustness.Tests.pas',
   BDLsp.Common.Lsp.ProtocolReplay in 'Common\Lsp\BDLsp.Common.Lsp.ProtocolReplay.pas',

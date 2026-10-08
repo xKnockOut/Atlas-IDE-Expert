@@ -105,6 +105,9 @@ end;
 
 procedure TLspSyntaxDiagnostics.HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
 begin
+  // JSON-Dateien wie delphi-lsp.json prüft TLspConfiguration.
+  if SameText(ExtractFileExt(ADocument.Uri), '.json') then
+    Exit;
   case AKind of
     TDocumentEventKind.Opened, TDocumentEventKind.Changed:
       ScheduleParse(ADocument);
