@@ -268,6 +268,7 @@ procedure TSymbolBuilder.AddDeclaration(ANode: TSyntaxNode; ATarget: TJSONArray;
 var
   Symbol: TJSONObject;
   Nested: TJSONArray;
+  Index: Integer;
 begin
   case ANode.Kind of
     TSyntaxKind.TypeSection, TSyntaxKind.ConstSection, TSyntaxKind.VarSection, TSyntaxKind.VariantPart:
@@ -291,10 +292,13 @@ begin
       begin
         Symbol := NewSymbol(ANode, ANode.Name, RoutineKind(ANode, AInType));
         ATarget.AddElement(Symbol);
-        // Lokale Routinen, Typen und Konstanten unter der Routine.
+        // Lokale Routinen, Typen und Konstanten unter der Routine. Der eigene
+        // Kopf ist ebenfalls ein Kind und darf nicht noch einmal erscheinen.
         Nested := TJSONArray.Create;
         try
-          AddDeclarations(ANode, Nested, False);
+          for Index := 0 to ANode.ChildCount - 1 do
+            if ANode[Index].Kind <> TSyntaxKind.RoutineHeader then
+              AddDeclaration(ANode[Index], Nested, False);
           MoveChildren(Nested, Symbol);
         finally
           Nested.Free;
