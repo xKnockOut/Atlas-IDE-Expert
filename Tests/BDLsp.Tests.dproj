@@ -97,6 +97,8 @@
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Protocol.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.CommandLine.pas"/>
         <DCCReference Include="Application\Shell\Shell.CommandLine.Tests.pas"/>
+        <DCCReference Include="Support\BDLsp.Tests.LeakMonitor.pas"/>
+        <DCCReference Include="Support\BDLsp.Tests.LeakMonitor.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
