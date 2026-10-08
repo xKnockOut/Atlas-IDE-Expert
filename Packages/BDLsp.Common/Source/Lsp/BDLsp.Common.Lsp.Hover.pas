@@ -37,6 +37,8 @@ type
     Members: string;
     /// <summary>Link zur DocWiki bei RTL- und VCL-Symbolen (#27); sonst ''.</summary>
     DocWikiUrl: string;
+    /// <summary>Message-Handler der Klasse als Markdown (#36); sonst ''.</summary>
+    Messages: string;
     function Found: Boolean;
     function ToMarkdown: string;
   end;
@@ -76,6 +78,7 @@ uses
   BDLsp.Common.Lsp.Definition,
   BDLsp.Common.Lsp.PublishedMembers,
   BDLsp.Common.Lsp.DocWiki,
+  BDLsp.Common.Lsp.MessageHandlers,
   BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.Parser,
   BDLsp.Common.Lsp.Internals.Cancellation;
@@ -154,6 +157,8 @@ begin
     Result := Result + #10#10 + '[DocWiki](' + DocWikiUrl + ')';
   if Members <> '' then
     Result := Result + #10#10 + '---' + #10#10 + Members;
+  if Messages <> '' then
+    Result := Result + #10#10 + '---' + #10#10 + Messages;
 end;
 
 { TLspHover }
@@ -212,6 +217,7 @@ var
   OwnerUnit: TUnitIndex;
   Symbol: TIndexSymbol;
   ReadText: TMemberReadText;
+  ClassTree: TSyntaxTree;
 begin
   Result := Default(THoverInfo);
   Targets := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
@@ -265,6 +271,25 @@ begin
           Result := Assigned(AReadText) and AReadText(AName, AText);
         end;
       Result.Members := TPublishedMembers.ToMarkdown(TPublishedMembers.Collect(AIndex, Symbol.Name, ReadText));
+      if SameText(Targets[0].FileName, AFileName) then
+        Result.Messages := TMessageHandlers.Overview(AResolver, AIndex, ATree, AFileName, Symbol.Name,
+          function(const AName: string; out AText: string): Boolean
+          begin
+            Result := ReadText(AName, AText);
+          end).ToMarkdown
+      else
+      begin
+        ClassTree := TPascalParser.Parse(Text);
+        try
+          Result.Messages := TMessageHandlers.Overview(AResolver, AIndex, ClassTree, Targets[0].FileName, Symbol.Name,
+            function(const AName: string; out AText: string): Boolean
+            begin
+              Result := ReadText(AName, AText);
+            end).ToMarkdown;
+        finally
+          ClassTree.Free;
+        end;
+      end;
       Break;
     end;
 end;

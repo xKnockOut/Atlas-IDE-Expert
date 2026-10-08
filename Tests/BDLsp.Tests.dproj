@@ -84,6 +84,7 @@
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Hierarchies.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Implementations.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.InlayHints.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.CodeLens.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.WorkspaceSymbols.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.DocumentHighlights.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.WatchedFiles.Tests.pas"/>
