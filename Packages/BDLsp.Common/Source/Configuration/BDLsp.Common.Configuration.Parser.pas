@@ -24,6 +24,8 @@ type
       out AIssues: TArray<TConfigurationIssue>): TServerSettings; static;
     /// <summary>Schweregrad aus dem Text ("off", "hint", "info", "information", "warning", "error").</summary>
     class function TryParseSeverity(const AValue: string; out ASeverity: TRuleSeverity): Boolean; static;
+    /// <summary>Konfidenz aus dem Text ("low", "medium", "high").</summary>
+    class function TryParseConfidence(const AValue: string; out AConfidence: TRuleConfidence): Boolean; static;
   end;
 
 implementation
@@ -280,6 +282,12 @@ begin
         ReadRules(Value)
       else if Key = 'exclude' then
         ReadExclude(Value)
+      else if Key = 'minConfidence' then
+      begin
+        if ExpectString(Value, Key, Text) then
+          if not TConfigurationParser.TryParseConfidence(Text, FSettings.MinConfidence) then
+            ReportNode(Value, 'Erlaubt sind "low", "medium" und "high"');
+      end
       else if Key = 'format' then
       begin
         if Value.Kind = TJsonKind.Object_ then
@@ -297,6 +305,26 @@ begin
 end;
 
 { TConfigurationParser }
+
+class function TConfigurationParser.TryParseConfidence(const AValue: string;
+  out AConfidence: TRuleConfidence): Boolean;
+var
+  Value: string;
+begin
+  Value := LowerCase(Trim(AValue));
+  Result := True;
+  if Value = 'low' then
+    AConfidence := TRuleConfidence.Low
+  else if Value = 'medium' then
+    AConfidence := TRuleConfidence.Medium
+  else if Value = 'high' then
+    AConfidence := TRuleConfidence.High
+  else
+  begin
+    AConfidence := TRuleConfidence.Medium;
+    Result := False;
+  end;
+end;
 
 class function TConfigurationParser.TryParseSeverity(const AValue: string; out ASeverity: TRuleSeverity): Boolean;
 var
@@ -394,6 +422,8 @@ begin
       Result.Rules := MergeRules(Result.Rules, FileSettings.Rules)
     else if Key = 'exclude' then
       Result.Exclude := FileSettings.Exclude
+    else if Key = 'minConfidence' then
+      Result.MinConfidence := FileSettings.MinConfidence
     else if Key = 'format' then
       Result.Format := FileSettings.Format;
 end;

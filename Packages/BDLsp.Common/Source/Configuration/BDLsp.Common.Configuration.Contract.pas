@@ -25,6 +25,9 @@ type
   /// <summary>Schweregrad einer Prüfregel; Default = Vorgabe der Regel.</summary>
   TRuleSeverity = (Default, Off, Hint, Information, Warning, Error);
 
+  /// <summary>Beweislage eines Regeltreffers; begrenzt den Schweregrad.</summary>
+  TRuleConfidence = (Low, Medium, High);
+
   TRuleSetting = record
     Id: string;
     Severity: TRuleSeverity;
@@ -42,6 +45,8 @@ type
     Config: string;
     Platform: string;
     Rules: TArray<TRuleSetting>;
+    /// <summary>Treffer unter dieser Konfidenz werden ausgeblendet; Vorgabe Medium.</summary>
+    MinConfidence: TRuleConfidence;
     /// <summary>Glob-Muster relativ zum Ordner der Konfiguration (*, **, ?).</summary>
     Exclude: TArray<string>;
     /// <summary>Formatierungsstil als JSON-Objekt (Text), sonst ''.</summary>
@@ -52,6 +57,8 @@ type
     function RuleSeverity(const ARuleId: string; ADefault: TRuleSeverity): TRuleSeverity;
     /// <summary>True, wenn der Pfad (relativ zum Ordner der Konfiguration, "/" oder "\") ausgeschlossen ist.</summary>
     function IsExcluded(const ARelativePath: string): Boolean;
+    /// <summary>True, wenn die Regel in "rules" steht und nicht abgeschaltet ist.</summary>
+    function IsRuleEnabledExplicitly(const ARuleId: string): Boolean;
   end;
 
   /// <summary>Fehler oder Warnung beim Lesen der Konfiguration, mit Position in der Datei.</summary>
@@ -152,8 +159,19 @@ begin
   Result.Config := '';
   Result.Platform := '';
   Result.Rules := nil;
+  Result.MinConfidence := TRuleConfidence.Medium;
   Result.Exclude := nil;
   Result.Format := '';
+end;
+
+function TServerSettings.IsRuleEnabledExplicitly(const ARuleId: string): Boolean;
+var
+  Rule: TRuleSetting;
+begin
+  for Rule in Rules do
+    if SameText(Rule.Id, ARuleId) then
+      Exit(Rule.Severity <> TRuleSeverity.Off);
+  Result := False;
 end;
 
 function TServerSettings.RuleSeverity(const ARuleId: string; ADefault: TRuleSeverity): TRuleSeverity;
