@@ -73,6 +73,7 @@
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Definition.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Hover.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.WorkspaceSymbols.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.DocumentHighlights.Tests.pas"/>
         <DCCReference Include="Windows\Documents\BDLsp.Windows.Documents.PathCanonicalizer.Tests.pas"/>
         <DCCReference Include="Common\Pascal\BDLsp.Common.Pascal.Lexer.Tests.pas"/>
         <DCCReference Include="Common\Pascal\BDLsp.Common.Pascal.Parser.Tests.pas"/>
