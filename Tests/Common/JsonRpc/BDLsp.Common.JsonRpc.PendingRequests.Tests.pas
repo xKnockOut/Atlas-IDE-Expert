@@ -25,6 +25,12 @@ type
     procedure ThrowIfCancellationRequestedRaisesRequestCancelled;
     [Test]
     procedure WaitForWorkWaitsUntilWorkEnds;
+    [Test]
+    procedure ChangeOfDocumentRaisesContentModified;
+    [Test]
+    procedure ChangeOfOtherDocumentKeepsRequest;
+    [Test]
+    procedure ChangeWithoutRegisteredMethodKeepsRequest;
   end;
 
 implementation
@@ -194,6 +200,54 @@ begin
   Assert.IsFalse(Pending.WaitForWork(0));
   Pending.EndWork;
   Assert.IsTrue(Pending.WaitForWork(0));
+end;
+
+procedure TJsonRpcPendingRequestsTests.ChangeOfDocumentRaisesContentModified;
+var
+  Pending: IJsonRpcPendingRequests;
+  Token: IJsonRpcCancellationToken;
+  Code: Integer;
+begin
+  Pending := TJsonRpcPendingRequests.Create;
+  Pending.AddContentChangeMethod('textDocument/didChange');
+  Observe(Pending, '{"jsonrpc":"2.0","id":4,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///a.pas"}}}');
+  Token := AcquireJson(Pending, '4');
+  Assert.IsFalse(Observe(Pending,
+    '{"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"uri":"file:///a.pas"}}}'));
+  Assert.IsTrue(Token.IsCancellationRequested);
+  Code := 0;
+  try
+    Token.ThrowIfCancellationRequested;
+  except
+    on E: EJsonRpcError do
+      Code := E.Code;
+  end;
+  Assert.AreEqual(TJsonRpcErrorCode.ContentModified, Code);
+end;
+
+procedure TJsonRpcPendingRequestsTests.ChangeOfOtherDocumentKeepsRequest;
+var
+  Pending: IJsonRpcPendingRequests;
+  Token: IJsonRpcCancellationToken;
+begin
+  Pending := TJsonRpcPendingRequests.Create;
+  Pending.AddContentChangeMethod('textDocument/didChange');
+  Observe(Pending, '{"jsonrpc":"2.0","id":4,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///a.pas"}}}');
+  Token := AcquireJson(Pending, '4');
+  Observe(Pending, '{"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"uri":"file:///b.pas"}}}');
+  Assert.IsFalse(Token.IsCancellationRequested);
+end;
+
+procedure TJsonRpcPendingRequestsTests.ChangeWithoutRegisteredMethodKeepsRequest;
+var
+  Pending: IJsonRpcPendingRequests;
+  Token: IJsonRpcCancellationToken;
+begin
+  Pending := TJsonRpcPendingRequests.Create;
+  Observe(Pending, '{"jsonrpc":"2.0","id":4,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///a.pas"}}}');
+  Token := AcquireJson(Pending, '4');
+  Observe(Pending, '{"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"uri":"file:///a.pas"}}}');
+  Assert.IsFalse(Token.IsCancellationRequested);
 end;
 
 initialization

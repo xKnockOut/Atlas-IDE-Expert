@@ -39,6 +39,7 @@ contains
   BDLsp.Common.Product.Version in 'Source\Product\BDLsp.Common.Product.Version.pas',
   BDLsp.Common.Logging.Contract in 'Source\Logging\BDLsp.Common.Logging.Contract.pas',
   BDLsp.Common.Logging.Providers.Logger in 'Source\Logging\Providers\BDLsp.Common.Logging.Providers.Logger.pas',
+  BDLsp.Common.Logging.Providers.RotatingFileStream in 'Source\Logging\Providers\BDLsp.Common.Logging.Providers.RotatingFileStream.pas',
   BDLsp.Common.Logging.Providers.StreamSink in 'Source\Logging\Providers\BDLsp.Common.Logging.Providers.StreamSink.pas',
   BDLsp.Common.JsonRpc.Contract in 'Source\JsonRpc\BDLsp.Common.JsonRpc.Contract.pas',
   BDLsp.Common.JsonRpc.Messages in 'Source\JsonRpc\BDLsp.Common.JsonRpc.Messages.pas',

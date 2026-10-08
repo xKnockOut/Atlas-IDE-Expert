@@ -73,6 +73,7 @@
         <DCCReference Include="Source\Diagnostics\BDLsp.Windows.Diagnostics.DebugOutput.pas"/>
         <DCCReference Include="Source\Diagnostics\BDLsp.Windows.Diagnostics.Adapters.DebugOutputSink.pas"/>
         <DCCReference Include="Source\Diagnostics\BDLsp.Windows.Diagnostics.StackTrace.pas"/>
+        <DCCReference Include="Source\Process\BDLsp.Windows.Process.ParentWatcher.pas"/>
         <DCCReference Include="Source\Projects\BDLsp.Windows.Projects.DelphiInstallation.pas"/>
         <DCCReference Include="Source\Compiler\BDLsp.Windows.Compiler.Adapters.ProcessRunner.pas"/>
         <DCCReference Include="Source\Documents\BDLsp.Windows.Documents.PathCanonicalizer.pas"/>

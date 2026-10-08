@@ -40,6 +40,7 @@ contains
   BDLsp.Windows.Diagnostics.DebugOutput in 'Source\Diagnostics\BDLsp.Windows.Diagnostics.DebugOutput.pas',
   BDLsp.Windows.Diagnostics.Adapters.DebugOutputSink in 'Source\Diagnostics\BDLsp.Windows.Diagnostics.Adapters.DebugOutputSink.pas',
   BDLsp.Windows.Diagnostics.StackTrace in 'Source\Diagnostics\BDLsp.Windows.Diagnostics.StackTrace.pas',
+  BDLsp.Windows.Process.ParentWatcher in 'Source\Process\BDLsp.Windows.Process.ParentWatcher.pas',
   BDLsp.Windows.Projects.DelphiInstallation in 'Source\Projects\BDLsp.Windows.Projects.DelphiInstallation.pas',
   BDLsp.Windows.Compiler.Adapters.ProcessRunner in 'Source\Compiler\BDLsp.Windows.Compiler.Adapters.ProcessRunner.pas',
   BDLsp.Windows.Documents.PathCanonicalizer in 'Source\Documents\BDLsp.Windows.Documents.PathCanonicalizer.pas',

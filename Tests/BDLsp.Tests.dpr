@@ -17,6 +17,7 @@ uses
   BDLsp.Common.Product.Version.Tests in 'Common\BDLsp.Common.Product.Version.Tests.pas',
   BDLsp.Common.Logging.Providers.Logger.Tests in 'Common\Logging\BDLsp.Common.Logging.Providers.Logger.Tests.pas',
   BDLsp.Common.Logging.Providers.StreamSink.Tests in 'Common\Logging\BDLsp.Common.Logging.Providers.StreamSink.Tests.pas',
+  BDLsp.Common.Logging.Providers.RotatingFileStream.Tests in 'Common\Logging\BDLsp.Common.Logging.Providers.RotatingFileStream.Tests.pas',
   BDLsp.Common.JsonRpc.TestSupport in 'Common\JsonRpc\BDLsp.Common.JsonRpc.TestSupport.pas',
   BDLsp.Common.JsonRpc.StreamTransport.Tests in 'Common\JsonRpc\BDLsp.Common.JsonRpc.StreamTransport.Tests.pas',
   BDLsp.Common.JsonRpc.TracingTransport.Tests in 'Common\JsonRpc\BDLsp.Common.JsonRpc.TracingTransport.Tests.pas',

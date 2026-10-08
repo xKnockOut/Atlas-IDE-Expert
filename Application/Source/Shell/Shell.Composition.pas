@@ -58,6 +58,7 @@ uses
   BDLsp.Common.Compiler.Results,
   BDLsp.Common.Lsp.WorkDoneProgress,
   Shell.CommandLine,
+  BDLsp.Windows.Process.ParentWatcher,
   Shell.Workspace;
 
 type
@@ -85,6 +86,11 @@ type
     FFileOperations: TLspFileOperations;
     /// <summary>Nicht vertrauenswürdiger Arbeitsbereich (#186): kein Compiler-Lauf.</summary>
     FRestricted: Boolean;
+    /// <summary>Prozessnummer des Editors aus der Befehlszeile (#283); 0 = keine.</summary>
+    FClientProcessId: Cardinal;
+    FParentWatcher: TParentWatcher;
+    /// <summary>Überwacht den Editor-Prozess aus initialize oder der Befehlszeile.</summary>
+    procedure WatchParent(const AInitializeParams: TJSONObject);
     FCompletion: TLspCompletion;
     FSignatureHelp: TLspSignatureHelp;
     FHierarchies: TLspHierarchies;
@@ -199,6 +205,7 @@ uses
   BDLsp.Windows.Documents.PathCanonicalizer,
   BDLsp.Windows.Diagnostics.Adapters.DebugOutputSink,
   BDLsp.Windows.Diagnostics.StackTrace,
+  BDLsp.Common.Logging.Providers.RotatingFileStream,
   BDLsp.Windows.Editing.SystemColors,
   BDLsp.Common.Projects.Contract;
 
@@ -211,14 +218,15 @@ begin
     Result.Add(Value);
 end;
 
-function CreateTraceStream(const AFileName: string): TStream;
+function CreateTraceStream(const AFileName, AFallbackTag: string): TStream;
 var
   Directory: string;
 begin
   Directory := TPath.GetDirectoryName(TPath.GetFullPath(AFileName));
   if Directory <> '' then
     ForceDirectories(Directory);
-  Result := TFileStream.Create(AFileName, fmCreate or fmShareDenyWrite);
+  // Rotiert bei Überlänge; ist die Datei gesperrt, wird eine eigene mit Prozessnummer angelegt (#283).
+  Result := TRotatingFileStream.Create(AFileName, False, AFallbackTag);
 end;
 
 { TServerComposition }
@@ -262,6 +270,8 @@ begin
       end;
     end);
   FLifecycle.Attach(FDispatcher);
+  // Ändert der Client ein Dokument, sind laufende Anfragen dazu überholt (#283).
+  FDispatcher.PendingRequests.AddContentChangeMethod('textDocument/didChange');
   FDocuments := TDocumentStore.Create(
     function(const APath: string): string
     begin
@@ -735,6 +745,7 @@ begin
     var
       Folder: TWorkspaceFolder;
     begin
+      WatchParent(FLifecycle.InitializeParams);
       for Folder in TLspWorkspaceFolders.FromInitialize(FLifecycle.InitializeParams) do
         AddWorkspace(Folder);
       FWatchedFiles.RegisterWatchers(FLifecycle.InitializeParams);
@@ -754,6 +765,8 @@ end;
 
 destructor TServerComposition.Destroy;
 begin
+  // Vor der Verbindung: der Wächter ruft FConnection.Stop.
+  FParentWatcher.Free;
   FConnection.Free;
   // Laufenden Compilerlauf abwarten: Er meldet über die Syntaxprüfung.
   if FCompileThread <> nil then
@@ -816,6 +829,12 @@ begin
   Workspace := TShellWorkspace.Create(AFolder.Path, AFolder.Name, FDocuments, FTransport, FLogger, FIndex,
     Format('bdlsp-index-%d', [FWorkspaceCounter]));
   Workspace.OnProjectLoaded := ProjectLoaded;
+  // Das Zeitlimit gilt serverweit; bei mehreren Ordnern das zuletzt gelesene.
+  Workspace.OnSettingsChanged :=
+    procedure(ASettings: TServerSettings)
+    begin
+      FDispatcher.Watchdog.SetTimeout(ASettings.RequestTimeoutMs);
+    end;
   Workspace.Configuration.SetEditorSettings(FEditorSettings);
   TMonitor.Enter(FWorkspacesLock);
   try
@@ -1415,7 +1434,8 @@ begin
   LoggerImpl.AddSink(TStreamLogSink.Create(TStdStreams.CreateError, True), TLogLevel.Error);
   if AOptions.LogFile <> '' then
     try
-      LoggerImpl.AddSink(TStreamLogSink.CreateForFile(AOptions.LogFile), AOptions.LogLevel);
+      LoggerImpl.AddSink(TStreamLogSink.CreateForFile(AOptions.LogFile, IntToStr(TParentWatcher.CurrentProcessId)),
+        AOptions.LogLevel);
     except
       on E: Exception do
         Logger.Error(Format('Logdatei "%s" kann nicht geöffnet werden: %s', [AOptions.LogFile, E.Message]));
@@ -1425,7 +1445,7 @@ begin
   Transport := TJsonRpcStreamTransport.Create(TStdStreams.CreateInput, TStdStreams.ReserveOutputForProtocol, True);
   if AOptions.TraceFile <> '' then
     try
-      Transport := TJsonRpcTracingTransport.Create(Transport, CreateTraceStream(AOptions.TraceFile), True);
+      Transport := TJsonRpcTracingTransport.Create(Transport, CreateTraceStream(AOptions.TraceFile, IntToStr(TParentWatcher.CurrentProcessId)), True);
     except
       on E: Exception do
         Logger.Error(Format('Mitschnitt "%s" kann nicht angelegt werden: %s', [AOptions.TraceFile, E.Message]));
@@ -1437,8 +1457,31 @@ begin
 
   Result := TServerComposition.Create(Transport, Logger);
   Result.FRestricted := AOptions.Restricted;
+  Result.FClientProcessId := AOptions.ClientProcessId;
   if AOptions.Restricted then
     Logger.Info('Eingeschränkter Modus (Arbeitsbereich nicht vertrauenswürdig): der Compiler wird nicht gestartet');
+end;
+
+procedure TServerComposition.WatchParent(const AInitializeParams: TJSONObject);
+var
+  ProcessId: Cardinal;
+  Value: TJSONValue;
+begin
+  ProcessId := FClientProcessId;
+  if AInitializeParams <> nil then
+  begin
+    Value := AInitializeParams.GetValue('processId');
+    if Value is TJSONNumber then
+      ProcessId := Cardinal(TJSONNumber(Value).AsInt64);
+  end;
+  if (ProcessId = 0) or (FParentWatcher <> nil) then
+    Exit;
+  FParentWatcher := TParentWatcher.Create(ProcessId,
+    procedure
+    begin
+      FLogger.Warning(Format('Editor-Prozess %d ist beendet; der Server beendet sich', [ProcessId]));
+      FConnection.Stop;
+    end);
 end;
 
 function TServerComposition.DescribeFailure(const AError: Exception): string;

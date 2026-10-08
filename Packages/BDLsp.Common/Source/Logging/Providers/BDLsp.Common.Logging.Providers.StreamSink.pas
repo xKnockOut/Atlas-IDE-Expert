@@ -8,7 +8,8 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  BDLsp.Common.Logging.Contract;
+  BDLsp.Common.Logging.Contract,
+  BDLsp.Common.Logging.Providers.RotatingFileStream;
 
 type
   TStreamLogSink = class(TInterfacedObject, ILogSink)
@@ -18,16 +19,16 @@ type
   public
     constructor Create(AStream: TStream; AOwnsStream: Boolean);
     destructor Destroy; override;
-    /// <summary>Senke auf eine Logdatei; eine vorhandene Datei wird fortgeschrieben.</summary>
-    class function CreateForFile(const AFileName: string): TStreamLogSink; static;
+    /// <summary>Senke auf eine Logdatei; eine vorhandene Datei wird fortgeschrieben. Mit
+    /// AFallbackTag weicht sie auf "Name.Tag.log" aus, wenn die Datei belegt ist; ab
+    /// AMaxBytes wird rotiert (#283).</summary>
+    class function CreateForFile(const AFileName: string; const AFallbackTag: string = '';
+      AMaxBytes: Int64 = TRotatingFileStream.DefaultMaxBytes): TStreamLogSink; static;
     { ILogSink }
     procedure Write(const AEntry: TLogEntry);
   end;
 
 implementation
-
-uses
-  System.IOUtils;
 
 { TStreamLogSink }
 
@@ -45,22 +46,10 @@ begin
   inherited;
 end;
 
-class function TStreamLogSink.CreateForFile(const AFileName: string): TStreamLogSink;
-var
-  Directory: string;
-  Stream: TFileStream;
+class function TStreamLogSink.CreateForFile(const AFileName, AFallbackTag: string;
+  AMaxBytes: Int64): TStreamLogSink;
 begin
-  Directory := TPath.GetDirectoryName(TPath.GetFullPath(AFileName));
-  if Directory <> '' then
-    ForceDirectories(Directory);
-  if FileExists(AFileName) then
-  begin
-    Stream := TFileStream.Create(AFileName, fmOpenWrite or fmShareDenyWrite);
-    Stream.Seek(0, soEnd);
-  end
-  else
-    Stream := TFileStream.Create(AFileName, fmCreate or fmShareDenyWrite);
-  Result := TStreamLogSink.Create(Stream, True);
+  Result := TStreamLogSink.Create(TRotatingFileStream.Create(AFileName, True, AFallbackTag, AMaxBytes), True);
 end;
 
 procedure TStreamLogSink.Write(const AEntry: TLogEntry);

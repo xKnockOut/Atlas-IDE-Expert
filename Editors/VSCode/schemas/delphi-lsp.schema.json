@@ -213,6 +213,12 @@
       "default": 0,
       "description": "Obergrenze für den Symbolindex in MB. Darüber werden zuerst Bibliotheks-Units (RTL, VCL), dann Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt."
     },
+    "requestTimeoutMs": {
+      "type": "integer",
+      "minimum": 1000,
+      "default": 10000,
+      "description": "Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet."
+    },
     "inlayHints": {
       "type": "object",
       "description": "Inlay Hints im Editor.",

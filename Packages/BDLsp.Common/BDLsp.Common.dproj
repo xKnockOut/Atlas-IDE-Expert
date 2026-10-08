@@ -71,6 +71,7 @@
         <DCCReference Include="Source\Product\BDLsp.Common.Product.Version.pas"/>
         <DCCReference Include="Source\Logging\BDLsp.Common.Logging.Contract.pas"/>
         <DCCReference Include="Source\Logging\Providers\BDLsp.Common.Logging.Providers.Logger.pas"/>
+        <DCCReference Include="Source\Logging\Providers\BDLsp.Common.Logging.Providers.RotatingFileStream.pas"/>
         <DCCReference Include="Source\Logging\Providers\BDLsp.Common.Logging.Providers.StreamSink.pas"/>
         <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.Contract.pas"/>
         <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.Messages.pas"/>

@@ -45,6 +45,7 @@ uses
   BDLsp.Common.Mcp.CodeTools,
   BDLsp.Common.Rules.Builtin,
   BDLsp.Windows.Console.StdStreams,
+  BDLsp.Windows.Process.ParentWatcher,
   BDLsp.Windows.Documents.PathCanonicalizer,
   Shell.Workspace;
 
@@ -219,7 +220,7 @@ begin
   LoggerImpl.AddSink(TStreamLogSink.Create(TStdStreams.CreateError, True), TLogLevel.Warning);
   if AOptions.LogFile <> '' then
     try
-      LoggerImpl.AddSink(TStreamLogSink.CreateForFile(AOptions.LogFile), AOptions.LogLevel);
+      LoggerImpl.AddSink(TStreamLogSink.CreateForFile(AOptions.LogFile, IntToStr(TParentWatcher.CurrentProcessId)), AOptions.LogLevel);
     except
       on E: Exception do
         Logger.Error(Format('Logdatei "%s" kann nicht geöffnet werden: %s', [AOptions.LogFile, E.Message]));
