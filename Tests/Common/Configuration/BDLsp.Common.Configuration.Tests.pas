@@ -48,6 +48,8 @@ type
     procedure ExcludesFolders;
     [Test]
     procedure ReadsDelphiProductNumbers;
+    [Test]
+    procedure ReadsSortUses;
   end;
 
 implementation
@@ -340,6 +342,15 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Assert.AreEqual('', Parse('{"delphiVersion": "7"}', Issues).DelphiVersion);
   Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
+procedure TServerSettingsTests.ReadsSortUses;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Assert.IsFalse(Parse('{}', Issues).SortUses);
+  Assert.IsTrue(Parse('{"sortUses": true}', Issues).SortUses);
+  Assert.AreEqual(0, Integer(Length(Issues)));
 end;
 
 initialization

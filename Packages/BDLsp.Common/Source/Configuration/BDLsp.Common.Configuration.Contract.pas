@@ -119,6 +119,9 @@ type
     CompleteBlocks: TBlockKinds;
     /// <summary>Schnellbefehl "/uses Unit" nach Enter auswerten (#254).</summary>
     UsesCommand: Boolean;
+    /// <summary>"uses aufräumen" (source.organizeImports) sortiert alphabetisch; Vorgabe aus,
+    /// weil die Reihenfolge die Initialisierung bestimmt (#182).</summary>
+    SortUses: Boolean;
     /// <summary>Obergrenze für den Symbolindex in MB; 0 = unbegrenzt (#185).</summary>
     MemoryBudgetMb: Integer;
     /// <summary>Vorgaben, wenn keine Konfigurationsdatei existiert.</summary>
@@ -312,6 +315,7 @@ begin
   Result.Completion := TCompletionSettings.Default;
   Result.CompleteBlocks := [Low(TBlockKind)..High(TBlockKind)];
   Result.UsesCommand := True;
+  Result.SortUses := False;
   Result.MemoryBudgetMb := 0;
 end;
 

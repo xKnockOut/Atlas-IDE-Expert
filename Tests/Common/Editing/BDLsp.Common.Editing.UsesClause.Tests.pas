@@ -29,6 +29,16 @@ type
     procedure AddsToProgramUses;
     [Test]
     procedure FailsWithoutSection;
+    [Test]
+    procedure OrganizeRemovesDuplicates;
+    [Test]
+    procedure OrganizeSortsMultilineList;
+    [Test]
+    procedure OrganizeDropsEmptiedClause;
+    [Test]
+    procedure OrganizeKeepsListsWithDirectives;
+    [Test]
+    procedure OrganizeWithoutChangeGivesNothing;
   end;
 
 implementation
@@ -148,6 +158,80 @@ var
 begin
   Assert.IsFalse(TUsesClauses.AddUnit(TPascalLexer.Tokenize(''), 0, 'B', #10, Edit));
   Assert.IsFalse(TUsesClauses.AddUnit(TPascalLexer.Tokenize('unit A;'#10'type'), 0, 'B', #10, Edit));
+end;
+
+/// <summary>Offset ab 0 zu einer Position; Zeilenwechsel #10.</summary>
+function TextOffset(const AText: string; const APosition: TTextPosition): Integer;
+var
+  Line: Integer;
+begin
+  Result := 0;
+  Line := 0;
+  while Line < APosition.Line do
+  begin
+    Inc(Result);
+    if AText[Result] = #10 then
+      Inc(Line);
+  end;
+  Result := Result + APosition.Character;
+end;
+
+/// <summary>Edits (auch Ersetzungen) von hinten nach vorn anwenden, damit die Positionen gültig bleiben.</summary>
+function ApplyAll(const AText: string; const AEdits: TArray<TRuleEdit>): string;
+var
+  Index, StartOffset, EndOffset: Integer;
+begin
+  Result := AText;
+  for Index := High(AEdits) downto 0 do
+  begin
+    StartOffset := TextOffset(Result, AEdits[Index].Range.StartPos);
+    EndOffset := TextOffset(Result, AEdits[Index].Range.EndPos);
+    Result := Copy(Result, 1, StartOffset) + AEdits[Index].NewText + Copy(Result, EndOffset + 1, MaxInt);
+  end;
+end;
+
+function Organized(const AText: string; ASort: Boolean): string;
+var
+  Edits: TArray<TRuleEdit>;
+begin
+  if TUsesClauses.Organize(TPascalLexer.Tokenize(AText), AText, ASort, #10, Edits) then
+    Result := ApplyAll(AText, Edits)
+  else
+    Result := AText;
+end;
+
+procedure TUsesClauseTests.OrganizeRemovesDuplicates;
+begin
+  Assert.AreEqual('unit A;'#10'interface'#10'uses B, C;'#10'implementation'#10'uses D;'#10'end.',
+    Organized('unit A;'#10'interface'#10'uses B, C, b;'#10'implementation'#10'uses C, D;'#10'end.', False));
+end;
+
+procedure TUsesClauseTests.OrganizeSortsMultilineList;
+begin
+  Assert.AreEqual('program P;'#10'uses'#10'  Alpha,'#10'  Main in ''Main.pas'' {Form1},'#10'  Zeta;'#10'begin end.',
+    Organized('program P;'#10'uses'#10'  Zeta,'#10'  Main in ''Main.pas'' {Form1},'#10'  Alpha;'#10'begin end.', True));
+end;
+
+procedure TUsesClauseTests.OrganizeDropsEmptiedClause;
+begin
+  Assert.AreEqual('unit A;'#10'interface'#10'uses B;'#10'implementation'#10#10'end.',
+    Organized('unit A;'#10'interface'#10'uses B;'#10'implementation'#10'uses B;'#10'end.', False));
+end;
+
+procedure TUsesClauseTests.OrganizeKeepsListsWithDirectives;
+const
+  Text = 'unit A;'#10'interface'#10'uses Z, {$IFDEF X} Y, {$ENDIF} A;'#10'implementation'#10'end.';
+begin
+  Assert.AreEqual(Text, Organized(Text, True));
+end;
+
+procedure TUsesClauseTests.OrganizeWithoutChangeGivesNothing;
+var
+  Edits: TArray<TRuleEdit>;
+const
+  Text = 'unit A;'#10'interface'#10'uses A1, B2;'#10'implementation'#10'end.';
+begin
+  Assert.IsFalse(TUsesClauses.Organize(TPascalLexer.Tokenize(Text), Text, True, #10, Edits));
 end;
 
 initialization

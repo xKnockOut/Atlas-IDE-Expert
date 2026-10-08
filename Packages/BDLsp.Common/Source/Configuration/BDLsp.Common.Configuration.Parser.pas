@@ -509,6 +509,8 @@ begin
         ReadCompleteBlocks(Value)
       else if Key = 'usesCommand' then
         ExpectBoolean(Value, Key, FSettings.UsesCommand)
+      else if Key = 'sortUses' then
+        ExpectBoolean(Value, Key, FSettings.SortUses)
       else if Key = 'memoryBudgetMb' then
       begin
         if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Budget) and (Budget >= 0) then
@@ -670,6 +672,8 @@ begin
       Result.CompleteBlocks := FileSettings.CompleteBlocks
     else if Key = 'usesCommand' then
       Result.UsesCommand := FileSettings.UsesCommand
+    else if Key = 'sortUses' then
+      Result.SortUses := FileSettings.SortUses
     else if Key = 'memoryBudgetMb' then
       Result.MemoryBudgetMb := FileSettings.MemoryBudgetMb;
 end;

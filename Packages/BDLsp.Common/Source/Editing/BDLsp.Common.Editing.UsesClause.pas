@@ -33,6 +33,11 @@ type
     /// False, wenn kein passender Abschnitt gefunden wird.</summary>
     class function AddUnit(const ATokens: TArray<TPascalToken>; AOffset: Integer; const AUnitName: string;
       const ALineBreak: string; out AEdit: TRuleEdit): Boolean; static;
+    /// <summary>Räumt die uses-Listen auf (#182): doppelte Einträge entfernen, auch solche im
+    /// implementation-uses, die schon im interface stehen; mit ASort alphabetisch sortieren.
+    /// Listen mit Direktiven oder //-Kommentaren bleiben unangetastet. False ohne Änderung.</summary>
+    class function Organize(const ATokens: TArray<TPascalToken>; const AText: string; ASort: Boolean;
+      const ALineBreak: string; out AEdits: TArray<TRuleEdit>): Boolean; static;
   end;
 
 implementation
@@ -184,6 +189,171 @@ begin
         Exit(True);
   end;
   Result := False;
+end;
+
+type
+  TUsesItem = record
+    Name: string;
+    Text: string;
+    Order: Integer;
+  end;
+
+function TokenEnd(const AToken: TPascalToken): Integer;
+begin
+  Result := AToken.Offset + Length(AToken.Text);
+end;
+
+function ItemLess(const A, B: TUsesItem): Boolean;
+var
+  Compared: Integer;
+begin
+  Compared := CompareText(A.Name, B.Name);
+  Result := (Compared < 0) or ((Compared = 0) and (A.Order < B.Order));
+end;
+
+/// <summary>Stabiles Sortieren durch Einfügen; uses-Listen sind kurz.</summary>
+procedure SortItems(var AItems: TArray<TUsesItem>);
+var
+  I, J: Integer;
+  Item: TUsesItem;
+begin
+  for I := 1 to High(AItems) do
+  begin
+    Item := AItems[I];
+    J := I - 1;
+    while (J >= 0) and ItemLess(Item, AItems[J]) do
+    begin
+      AItems[J + 1] := AItems[J];
+      Dec(J);
+    end;
+    AItems[J + 1] := Item;
+  end;
+end;
+
+function ContainsName(const ANames: TArray<string>; const AName: string): Boolean;
+var
+  Name: string;
+begin
+  for Name in ANames do
+    if SameText(Name, AName) then
+      Exit(True);
+  Result := False;
+end;
+
+/// <summary>True, wenn die Liste zwischen AFirst und ALast keine Direktive und keinen //-Kommentar enthält.</summary>
+function IsPlainList(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): Boolean;
+var
+  Index: Integer;
+begin
+  for Index := AFirst to ALast do
+    if (ATokens[Index].Kind = TPascalTokenKind.Directive) or
+      ((ATokens[Index].Kind = TPascalTokenKind.Comment) and (Copy(ATokens[Index].Text, 1, 2) = '//')) then
+      Exit(False);
+  Result := True;
+end;
+
+class function TUsesClauses.Organize(const ATokens: TArray<TPascalToken>; const AText: string; ASort: Boolean;
+  const ALineBreak: string; out AEdits: TArray<TRuleEdit>): Boolean;
+var
+  Index, Semicolon, Cursor, First, Last, ItemIndex: Integer;
+  Seen: TArray<string>;
+  Items, Kept: TArray<TUsesItem>;
+  Item: TUsesItem;
+  Changed, AfterIn: Boolean;
+  Separator, NewText: string;
+  Names: TArray<string>;
+begin
+  AEdits := nil;
+  Seen := nil;
+  Index := 0;
+  while Index <= High(ATokens) do
+  begin
+    if not ATokens[Index].IsKeyword('uses') then
+    begin
+      Inc(Index);
+      Continue;
+    end;
+    Names := nil;
+    Semicolon := ReadNames(ATokens, Index, Names);
+    if Semicolon < 0 then
+      Break;
+    if not IsPlainList(ATokens, Index + 1, Semicolon - 1) then
+    begin
+      // Unangetastet, aber die Namen zählen für spätere Listen.
+      Seen := Seen + Names;
+      Index := Semicolon + 1;
+      Continue;
+    end;
+    // Einträge mit ihrem Quelltext, Trennzeichen sind die Kommas.
+    Items := nil;
+    Cursor := NextIndex(ATokens, Index);
+    while Cursor < Semicolon do
+    begin
+      First := Cursor;
+      Last := Cursor;
+      Item.Name := '';
+      AfterIn := False;
+      while (Cursor < Semicolon) and not ATokens[Cursor].IsSymbol(',') do
+      begin
+        if ATokens[Cursor].IsKeyword('in') then
+          AfterIn := True
+        else if not AfterIn and ((ATokens[Cursor].Kind = TPascalTokenKind.Identifier) or
+          ATokens[Cursor].IsSymbol('.')) then
+          Item.Name := Item.Name + ATokens[Cursor].Text;
+        Last := Cursor;
+        Inc(Cursor);
+      end;
+      Item.Text := Copy(AText, ATokens[First].Offset + 1, TokenEnd(ATokens[Last]) - ATokens[First].Offset);
+      Item.Order := Length(Items);
+      Items := Items + [Item];
+      if Cursor < Semicolon then
+        Cursor := NextIndex(ATokens, Cursor);
+    end;
+    if Items = nil then
+    begin
+      Index := Semicolon + 1;
+      Continue;
+    end;
+    Kept := nil;
+    for Item in Items do
+      if not ContainsName(Seen, Item.Name) then
+      begin
+        Kept := Kept + [Item];
+        Seen := Seen + [Item.Name];
+      end;
+    if ASort then
+      SortItems(Kept);
+    Changed := Length(Kept) <> Length(Items);
+    for ItemIndex := 0 to High(Kept) do
+      if Kept[ItemIndex].Order <> ItemIndex then
+        Changed := True;
+    if Changed then
+    begin
+      First := NextIndex(ATokens, Index);
+      // Bis zum Semikolon, damit ein Kommentar am letzten Eintrag nicht doppelt erscheint.
+      Last := Semicolon - 1;
+      if Kept = nil then
+        AEdits := AEdits + [TRuleEdit.Create(TTextRange.Create(ATokens[Index].StartPos, ATokens[Semicolon].EndPos), '')]
+      else
+      begin
+        if ATokens[Last].StartPos.Line > ATokens[Index].StartPos.Line then
+          Separator := ',' + ALineBreak + StringOfChar(' ', ATokens[First].StartPos.Character)
+        else
+          Separator := ', ';
+        NewText := '';
+        for ItemIndex := 0 to High(Kept) do
+        begin
+          if ItemIndex > 0 then
+            NewText := NewText + Separator;
+          NewText := NewText + Kept[ItemIndex].Text;
+        end;
+        AEdits := AEdits + [TRuleEdit.Create(TTextRange.Create(ATokens[First].StartPos, ATokens[Last].EndPos),
+          NewText)];
+      end;
+    end;
+    Index := Semicolon + 1;
+  end;
+  Result := AEdits <> nil;
 end;
 
 class function TUsesClauses.AddUnit(const ATokens: TArray<TPascalToken>; AOffset: Integer;

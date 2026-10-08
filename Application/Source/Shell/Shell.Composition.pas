@@ -500,6 +500,21 @@ begin
     end);
   FSemanticTokens.Attach(FDispatcher);
   FCodeActions := TLspCodeActions.Create(FDocuments, RuleContextFor);
+  FCodeActions.SortUsesFor :=
+    function(const AUri: string): Boolean
+    var
+      Workspace: TShellWorkspace;
+    begin
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+        if (Workspace = nil) and (FWorkspaces.Count = 1) then
+          Workspace := FWorkspaces[0];
+        Result := (Workspace <> nil) and Workspace.Configuration.Settings.SortUses;
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+    end;
   FCodeActions.Attach(FDispatcher);
   FDocumentLinks := TLspDocumentLinks.Create(FDocuments,
     function(const AUri: string): TArray<string>

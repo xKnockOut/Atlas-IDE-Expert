@@ -130,6 +130,11 @@
       "default": true,
       "description": "Eine Zeile \"/uses Unit1, Unit2\" wird nach Enter gelöscht und die Units kommen ins passende uses."
     },
+    "sortUses": {
+      "type": "boolean",
+      "default": false,
+      "description": "\"uses aufräumen\" (source.organizeImports, z. B. beim Speichern) sortiert die uses alphabetisch. Achtung: Die Reihenfolge bestimmt die Initialisierung der Units."
+    },
     "memoryBudgetMb": {
       "type": "integer",
       "minimum": 0,

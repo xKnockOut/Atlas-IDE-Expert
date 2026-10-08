@@ -4,6 +4,11 @@
 // Regeltreffern, try/finally um Create-Zuweisungen und fehlende
 // Methodenrümpfe. Die Logik liegt in BDLsp.Common.Editing.CodeActions und
 // BDLsp.Common.Editing.ClassCompletion; hier nur Protokoll und Regelaufruf.
+//
+// Für editor.codeActionsOnSave (#182) gibt es source.organizeImports (uses
+// aufräumen, sortieren über "sortUses") und source.fixAll (alle als sicher
+// markierten Korrekturen). Beide kommen nur, wenn der Client sie über
+// context.only ausdrücklich anfragt.
 
 interface
 
@@ -17,12 +22,16 @@ uses
   BDLsp.Common.Lsp.SyntaxDiagnostics;
 
 type
+  /// <summary>Einstellung "sortUses" für AUri.</summary>
+  TSortUsesProvider = reference to function(const AUri: string): Boolean;
+
   TLspCodeActions = class
   public const
     Method = 'textDocument/codeAction';
   private
     FStore: IDocumentStore;
     FRuleProvider: TRuleContextProvider;
+    FSortUsesFor: TSortUsesProvider;
     function HandleCodeAction(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore; const ARuleProvider: TRuleContextProvider);
@@ -31,6 +40,8 @@ type
     class function Capability: TJSONObject; static;
     /// <summary>Eine Aktion als LSP-CodeAction. Der Aufrufer übernimmt das Objekt.</summary>
     class function ActionToJson(const AUri: string; const AAction: TCodeAction): TJSONObject; static;
+    /// <summary>Ohne Zuweisung werden uses nicht sortiert.</summary>
+    property SortUsesFor: TSortUsesProvider read FSortUsesFor write FSortUsesFor;
   end;
 
 implementation
@@ -64,6 +75,8 @@ begin
   Kinds := TJSONArray.Create;
   Kinds.Add(QuickFixKind);
   Kinds.Add(RewriteKind);
+  Kinds.Add(OrganizeImportsKind);
+  Kinds.Add(FixAllKind);
   Result := TJSONObject.Create;
   Result.AddPair('codeActionKinds', Kinds);
 end;
@@ -118,7 +131,10 @@ var
   Context: TRuleContext;
   Findings: TArray<TRuleFinding>;
   Action, Completion: TCodeAction;
-  HasCompletion: Boolean;
+  HasCompletion, WantsEditing, WantsOrganize, WantsFixAll: Boolean;
+  Only: TArray<string>;
+  OnlyValue: TJSONArray;
+  Item: TJSONValue;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue)) then
@@ -127,6 +143,14 @@ begin
   if not FStore.TryGet(Uri, Document) then
     Exit(TJSONArray.Create);
   Range := TLspPositions.ReadRange(RangeValue);
+  Only := nil;
+  if TJSONObject(AParams).TryGetValue<TJSONArray>('context.only', OnlyValue) then
+    for Item in OnlyValue do
+      Only := Only + [Item.Value];
+  WantsEditing := TCodeActions.KindRequested(QuickFixKind, Only) or TCodeActions.KindRequested(RewriteKind, Only);
+  // source.* nur auf ausdrückliche Anfrage, nicht bei jeder Cursorbewegung.
+  WantsOrganize := (Only <> nil) and TCodeActions.KindRequested(OrganizeImportsKind, Only);
+  WantsFixAll := (Only <> nil) and TCodeActions.KindRequested(FixAllKind, Only);
   Findings := nil;
   HasCompletion := False;
   Tree := TPascalParser.Parse(Document.Text);
@@ -141,16 +165,22 @@ begin
       Context.Tree := Tree;
       Findings := TRuleEngine.Run(Rules.Rules, Rules.Settings, Context);
     end;
-    HasCompletion := TClassCompletion.MissingBodies(Tree, Document.Text, Range.StartPos, Completion);
+    HasCompletion := WantsEditing and TClassCompletion.MissingBodies(Tree, Document.Text, Range.StartPos, Completion);
   finally
     Tree.Free;
   end;
   // Erst jetzt anlegen: Ein Abbruch oben soll kein Objekt zurücklassen.
   Result := TJSONArray.Create;
-  for Action in TCodeActions.ForRange(Findings, Document.Text, Range) do
-    TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+  if WantsEditing then
+    for Action in TCodeActions.ForRange(Findings, Document.Text, Range) do
+      TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
   if HasCompletion then
     TJSONArray(Result).AddElement(ActionToJson(Uri, Completion));
+  if WantsOrganize and TCodeActions.OrganizeImports(Document.Text, Assigned(FSortUsesFor) and FSortUsesFor(Uri),
+    Action) then
+    TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+  if WantsFixAll and TCodeActions.FixAll(Findings, Action) then
+    TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
 end;
 
 end.
