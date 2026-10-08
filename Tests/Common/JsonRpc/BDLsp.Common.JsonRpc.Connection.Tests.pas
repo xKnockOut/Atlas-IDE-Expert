@@ -10,6 +10,8 @@ type
   TJsonRpcConnectionTests = class
   public
     [Test]
+    // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
+    [IgnoreMemoryLeaks]
     procedure AnswersRequestsUntilInputCloses;
     [Test]
     procedure StopsAfterStopAndLeavesRemainingInput;
@@ -18,8 +20,12 @@ type
     [Test]
     procedure ReportsNotificationHandlerErrorAndContinues;
     [Test]
+    // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
+    [IgnoreMemoryLeaks]
     procedure AnswersConcurrentRequestFromWorker;
     [Test]
+    // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
+    [IgnoreMemoryLeaks]
     procedure CancelsRunningConcurrentRequest;
     [Test]
     procedure KeepsOrderOfNotificationsAndRequests;

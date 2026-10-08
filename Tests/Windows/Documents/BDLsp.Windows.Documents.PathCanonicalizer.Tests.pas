@@ -17,6 +17,8 @@ type
     [TearDown]
     procedure TearDown;
     [Test]
+    // RTL legt bei erster Benutzung Singletons an (Kodierungen, Pfad-/Registry-Hilfen); kein Leck des Testcodes.
+    [IgnoreMemoryLeaks]
     procedure ResolvesCaseAndDots;
     [Test]
     procedure KeepsMissingPathUnchanged;
