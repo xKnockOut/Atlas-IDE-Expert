@@ -48,6 +48,12 @@ type
     function IsSymbol(const ASymbol: string): Boolean;
   end;
 
+  /// <summary>Abbruchsignal für lange Läufe, z. B. Parsen großer Dateien.</summary>
+  IPascalCancellation = interface
+    ['{4A7D2E91-6B3C-4F58-8E1A-C9D05B2F7E36}']
+    function IsCancelled: Boolean;
+  end;
+
 implementation
 
 uses

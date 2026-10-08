@@ -6,8 +6,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
+  CloseAction,
+  CloseHandlerResult,
+  ErrorAction,
+  ErrorHandler,
+  ErrorHandlerResult,
   LanguageClient,
   LanguageClientOptions,
+  Message,
   ServerOptions,
   TransportKind,
 } from 'vscode-languageclient/node';
@@ -15,8 +21,13 @@ import {
 const Section = 'betterDelphiLsp';
 const DefaultServerPath = path.join('Output', 'Win64', 'Debug', 'Bin', 'BetterDelphiLSP.exe');
 
+/** Höchstens so viele Neustarts nach Absturz innerhalb des Zeitfensters. */
+const MaxRestarts = 5;
+const RestartWindowMs = 3 * 60 * 1000;
+
 let client: LanguageClient | undefined;
 let output: vscode.OutputChannel | undefined;
+let traceOutput: vscode.OutputChannel | undefined;
 
 /** Pfad zur Server-EXE aus der Einstellung oder dem Standardort im Arbeitsbereich. */
 function resolveServerPath(): string | undefined {
@@ -43,6 +54,37 @@ function serverArgs(): string[] {
   return args;
 }
 
+/**
+ * Startet den Server nach einem Absturz neu, höchstens MaxRestarts-mal in
+ * RestartWindowMs. Danach bleibt er aus, bis der Befehl „Server neu starten“
+ * kommt. Einzelne Lese- oder Schreibfehler beenden die Verbindung nicht.
+ */
+class RestartingErrorHandler implements ErrorHandler {
+  private readonly restarts: number[] = [];
+
+  error(_error: Error, _message: Message | undefined, count: number | undefined): ErrorHandlerResult {
+    return { action: count !== undefined && count <= 3 ? ErrorAction.Continue : ErrorAction.Shutdown };
+  }
+
+  closed(): CloseHandlerResult {
+    const now = Date.now();
+    while (this.restarts.length > 0 && now - this.restarts[0] > RestartWindowMs) {
+      this.restarts.shift();
+    }
+    if (this.restarts.length >= MaxRestarts) {
+      return {
+        action: CloseAction.DoNotRestart,
+        message:
+          `BetterDelphiLSP ist ${MaxRestarts}-mal in kurzer Zeit abgestürzt und bleibt aus. ` +
+          'Details im Ausgabefenster „BetterDelphiLSP“; Neustart über „BetterDelphiLSP: Server neu starten“.',
+      };
+    }
+    this.restarts.push(now);
+    output?.appendLine(`Server beendet, Neustart ${this.restarts.length} von ${MaxRestarts}.`);
+    return { action: CloseAction.Restart, handled: true };
+  }
+}
+
 async function startClient(): Promise<void> {
   const serverPath = resolveServerPath();
   if (!serverPath || !fs.existsSync(serverPath)) {
@@ -65,7 +107,8 @@ async function startClient(): Promise<void> {
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ scheme: 'file', language: 'objectpascal' }],
     outputChannel: output,
-    traceOutputChannel: vscode.window.createOutputChannel('BetterDelphiLSP Trace'),
+    traceOutputChannel: traceOutput,
+    errorHandler: new RestartingErrorHandler(),
   };
 
   client = new LanguageClient(Section, 'BetterDelphiLSP', serverOptions, clientOptions);
@@ -82,7 +125,8 @@ async function stopClient(): Promise<void> {
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   output = vscode.window.createOutputChannel('BetterDelphiLSP');
-  context.subscriptions.push(output);
+  traceOutput = vscode.window.createOutputChannel('BetterDelphiLSP Trace');
+  context.subscriptions.push(output, traceOutput);
   context.subscriptions.push(
     vscode.commands.registerCommand(`${Section}.restartServer`, async () => {
       await stopClient();

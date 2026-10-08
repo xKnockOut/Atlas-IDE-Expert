@@ -9,6 +9,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
+  BDLsp.Common.JsonRpc.Contract,
   BDLsp.Common.JsonRpc.Dispatcher,
   BDLsp.Common.Documents.Contract,
   BDLsp.Common.Pascal.SyntaxTree;
@@ -19,7 +20,7 @@ type
     Method = 'textDocument/selectionRange';
   private
     FStore: IDocumentStore;
-    function HandleSelectionRange(const AParams: TJSONValue): TJSONValue;
+    function HandleSelectionRange(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore);
     /// <summary>Registriert die Anfrage am Dispatcher.</summary>
@@ -34,10 +35,10 @@ implementation
 
 uses
   System.Generics.Collections,
-  BDLsp.Common.JsonRpc.Contract,
   BDLsp.Common.Lsp.Positions,
   BDLsp.Common.Pascal.Contract,
-  BDLsp.Common.Pascal.Parser;
+  BDLsp.Common.Pascal.Parser,
+  BDLsp.Common.Lsp.Internals.Cancellation;
 
 // Erstes Kind, das den Bereich AStart..AEnd umschließt, sonst nil.
 function ChildAround(ANode: TSyntaxNode; AStart, AEnd: Integer): TSyntaxNode;
@@ -69,7 +70,8 @@ end;
 
 procedure TLspSelectionRanges.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterRequest(Method, HandleSelectionRange);
+  // Nebenläufig: Parsen großer Dateien blockiert die Nachrichtenschleife nicht.
+  ADispatcher.RegisterConcurrentRequest(Method, HandleSelectionRange);
 end;
 
 class function TLspSelectionRanges.RangesAt(ATree: TSyntaxTree; AOffset: Integer): TArray<TTextRange>;
@@ -154,8 +156,10 @@ begin
   end;
 end;
 
-function TLspSelectionRanges.HandleSelectionRange(const AParams: TJSONValue): TJSONValue;
+function TLspSelectionRanges.HandleSelectionRange(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
+  Cancellation: IPascalCancellation;
   Uri: string;
   Positions: TJSONArray;
   Position: TJSONValue;
@@ -170,8 +174,11 @@ begin
       'Felder "textDocument.uri" und "positions" fehlen in ' + Method);
   if not FStore.TryGet(Uri, Document) then
     Exit(TJSONNull.Create);
-  Tree := TPascalParser.Parse(Document.Text);
+  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
+  Cancellation := TRequestCancellation.Create(ACancellation);
+  Tree := TPascalParser.Parse(Document.Text, Cancellation);
   try
+    ACancellation.ThrowIfCancellationRequested;
     Result := TJSONArray.Create;
     try
       for Position in Positions do
