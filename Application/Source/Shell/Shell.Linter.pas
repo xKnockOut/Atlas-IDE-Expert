@@ -35,11 +35,10 @@ uses
   BDLsp.Common.Projects.Contract,
   BDLsp.Common.Projects.DprojReader,
   BDLsp.Common.Rules.Contract,
-  BDLsp.Common.Rules.Registry,
   BDLsp.Common.Rules.Checker,
   BDLsp.Common.Rules.Filter,
   BDLsp.Common.Rules.Output,
-  BDLsp.Common.Rules.Builtin.Unicode,
+  BDLsp.Common.Rules.Builtin,
   BDLsp.Windows.Console.StdStreams;
 
 procedure WriteText(const AStream: TStream; const AText: string);
@@ -131,20 +130,6 @@ begin
     Result := Files.ToArray;
   finally
     Files.Free;
-  end;
-end;
-
-/// <summary>Eingebaute Prüfregeln.</summary>
-function BuiltinRules: TArray<IRule>;
-var
-  Registry: TRuleRegistry;
-begin
-  Registry := TRuleRegistry.Create;
-  try
-    RegisterUnicodeRules(Registry);
-    Result := Registry.Rules;
-  finally
-    Registry.Free;
   end;
 end;
 

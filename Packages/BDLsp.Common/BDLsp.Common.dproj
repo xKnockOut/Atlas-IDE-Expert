@@ -106,6 +106,7 @@
         <DCCReference Include="Source\Rules\BDLsp.Common.Rules.Checker.pas"/>
         <DCCReference Include="Source\Rules\BDLsp.Common.Rules.Filter.pas"/>
         <DCCReference Include="Source\Rules\BDLsp.Common.Rules.Output.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.pas"/>
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Unicode.pas"/>
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.ControlFlow.pas"/>
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.NameResolver.pas"/>

@@ -73,6 +73,7 @@ type
     function EnsureUnit(const AUnitName: string): Boolean;
     function DefinesFor(const AUri: string; out ADefines: TArray<string>): Boolean;
     function DelphiVersionFor(const AUri: string): string;
+    function RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
     /// <summary>Namespaces aller Projekte an die Features weitergeben, Diagnosen neu prüfen.</summary>
     procedure ProjectLoaded;
     procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
@@ -114,6 +115,7 @@ uses
   BDLsp.Common.Documents.FileEncoding,
   BDLsp.Common.Documents.Uris,
   BDLsp.Common.Index.SymbolIndex,
+  BDLsp.Common.Rules.Builtin,
   BDLsp.Windows.Console.StdStreams,
   BDLsp.Windows.Documents.PathCanonicalizer,
   BDLsp.Windows.Diagnostics.Adapters.DebugOutputSink,
@@ -193,6 +195,7 @@ begin
   FDispatcher.RegisterNotification(TLspConfiguration.DidChangeConfigurationMethod, HandleDidChangeConfiguration);
   FSyntaxDiagnostics.DefinesProvider := DefinesFor;
   FSyntaxDiagnostics.VersionProvider := DelphiVersionFor;
+  FSyntaxDiagnostics.RuleProvider := RuleContextFor;
   FIndex := TSymbolIndex.Create;
   FDefinition := TLspDefinition.Create(FDocuments, FIndex,
     function(const AUnitName: string): Boolean
@@ -411,6 +414,31 @@ begin
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
+end;
+
+function TServerComposition.RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
+var
+  Workspace: TShellWorkspace;
+  FileName: string;
+begin
+  AContext := Default(TRuleCheckContext);
+  FileName := TDocumentUris.ToPath(AUri);
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := WorkspaceOf(FileName);
+    if Workspace = nil then
+      AContext.Settings := TServerSettings.Default
+    else
+    begin
+      AContext.Settings := Workspace.Configuration.Settings;
+      AContext.RelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(Workspace.Root), FileName);
+    end;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  // Neue Instanzen je Prüfung: Regeln dürfen so Zustand halten, ohne Threads zu teilen.
+  AContext.Rules := BuiltinRules;
+  Result := True;
 end;
 
 procedure TServerComposition.ProjectLoaded;
