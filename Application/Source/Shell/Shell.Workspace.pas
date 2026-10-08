@@ -19,7 +19,8 @@ uses
   BDLsp.Common.Projects.UnitResolver,
   BDLsp.Common.Index.Contract,
   BDLsp.Common.Index.Service,
-  BDLsp.Common.Rules.Baseline;
+  BDLsp.Common.Rules.Baseline,
+  BDLsp.Common.Lsp.Status;
 
 type
   TShellWorkspace = class
@@ -42,6 +43,8 @@ type
     FProjectFiles: TArray<string>;
     FOnProjectLoaded: TProc;
     FBaseline: IRuleBaseline;
+    FLastIndexMs: Int64;
+    FLastIndex: TIndexBuildResult;
     /// <summary>Sperre des eigenen Index-Caches (#184); nil, wenn eine andere Instanz ihn hält.</summary>
     FCacheLock: TStream;
     FCacheLockFile: string;
@@ -73,6 +76,8 @@ type
     /// Datei ändert; nil ohne oder bei ungültiger Datei. Threadsicher.
     /// </summary>
     function Baseline: IRuleBaseline;
+    /// <summary>Letzter Indexlauf für den Status-Befehl (#28). Threadsicher.</summary>
+    function IndexStatus: TWorkspaceStatus;
     property Root: string read FRoot;
     property Name: string read FName;
     property Configuration: TLspConfiguration read FConfiguration;
@@ -112,6 +117,7 @@ begin
   FLogger := ALogger;
   FIndex := AIndex;
   FLock := TObject.Create;
+  FLastIndexMs := -1;
   FConfiguration := TLspConfiguration.Create(AStore, ATransport,
     function(const AFileName: string; out AText: string): Boolean
     var
@@ -136,6 +142,16 @@ begin
   FIndexService.OnFinished :=
     procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
     begin
+      if not AResult.Cancelled then
+      begin
+        TMonitor.Enter(FLock);
+        try
+          FLastIndexMs := AElapsedMs;
+          FLastIndex := AResult;
+        finally
+          TMonitor.Exit(FLock);
+        end;
+      end;
       FLogger.Info(Format('Symbolindex für %s fertig in %d ms: %d Units, %d Symbole (%d neu eingelesen, %d aus dem Cache, %d fehlen)%s',
         [FName, AElapsedMs, FIndex.UnitCount, FIndex.SymbolCount, AResult.Parsed, AResult.FromCache, AResult.Missing,
          IfThen(AResult.Cancelled, ', abgebrochen', '')]));
@@ -218,6 +234,20 @@ begin
   except
     on E: Exception do
       FLogger.Warning(Format('Aufräumen des Cache-Ordners fehlgeschlagen: %s', [E.Message]));
+  end;
+end;
+
+function TShellWorkspace.IndexStatus: TWorkspaceStatus;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result.Name := FName;
+    Result.LastIndexMs := FLastIndexMs;
+    Result.Parsed := FLastIndex.Parsed;
+    Result.FromCache := FLastIndex.FromCache;
+    Result.Missing := FLastIndex.Missing;
+  finally
+    TMonitor.Exit(FLock);
   end;
 end;
 

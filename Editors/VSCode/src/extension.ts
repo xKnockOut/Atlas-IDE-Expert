@@ -139,6 +139,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await stopClient();
       await startClient();
     }),
+    vscode.commands.registerCommand(`${Section}.showStatus`, async () => {
+      if (!client) {
+        void vscode.window.showWarningMessage('BetterDelphiLSP läuft nicht.');
+        return;
+      }
+      // Der Server liefert den Status als JSON mit einer Markdown-Fassung zum Anzeigen.
+      const status = await client.sendRequest<{ markdown?: string }>('workspace/executeCommand', {
+        command: 'betterdelphilsp.status',
+      });
+      const document = await vscode.workspace.openTextDocument({
+        language: 'markdown',
+        content: status?.markdown ?? JSON.stringify(status, undefined, 2),
+      });
+      await vscode.commands.executeCommand('markdown.showPreview', document.uri);
+    }),
   );
   await startClient();
 }

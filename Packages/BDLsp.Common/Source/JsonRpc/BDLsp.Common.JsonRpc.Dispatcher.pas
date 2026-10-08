@@ -17,7 +17,8 @@ uses
   System.JSON,
   BDLsp.Common.JsonRpc.Contract,
   BDLsp.Common.JsonRpc.PendingRequests,
-  BDLsp.Common.JsonRpc.Watchdog;
+  BDLsp.Common.JsonRpc.Watchdog,
+  BDLsp.Common.JsonRpc.Statistics;
 
 type
   TJsonRpcDispatcher = class
@@ -31,6 +32,7 @@ type
     FPending: IJsonRpcPendingRequests;
     FWatchdog: IJsonRpcWatchdog;
     FOnRequestFailed: TJsonRpcRequestFailedEvent;
+    FStatistics: IJsonRpcStatistics;
     FLastMessage: string;
     function DispatchRequest(const AId: TJSONValue; const AMethod: string; const AParams: TJSONValue): TJSONObject;
     procedure DispatchNotification(const AMethod: string; const AParams: TJSONValue);
@@ -71,11 +73,14 @@ type
     property OnRequestFailed: TJsonRpcRequestFailedEvent read FOnRequestFailed write FOnRequestFailed;
     /// <summary>Methode und id der zuletzt verteilten Nachricht, für Absturzprotokolle.</summary>
     property LastMessage: string read FLastMessage;
+    /// <summary>Optional: misst die Antwortzeit jeder Anfrage (#28).</summary>
+    property Statistics: IJsonRpcStatistics read FStatistics write FStatistics;
   end;
 
 implementation
 
 uses
+  System.Diagnostics,
   BDLsp.Common.JsonRpc.Messages;
 
 function ErrorResponse(const AId: TJSONValue; const AError: Exception): TJSONObject;
@@ -100,18 +105,26 @@ end;
 
 function RunConcurrent(const AId, AParams: TJSONValue; const AMethod: string;
   const AHandler: TJsonRpcConcurrentRequestHandler; const AToken: IJsonRpcCancellationToken;
-  const AOnFailed: TJsonRpcRequestFailedEvent): TJSONObject;
+  const AOnFailed: TJsonRpcRequestFailedEvent; const AStatistics: IJsonRpcStatistics): TJSONObject;
+var
+  Watch: TStopwatch;
+  Failed: Boolean;
 begin
+  Watch := TStopwatch.StartNew;
+  Failed := False;
   try
     AToken.ThrowIfCancellationRequested;
     Result := TJsonRpcMessages.Response(AId, AHandler(AParams, AToken));
   except
     on E: Exception do
     begin
+      Failed := True;
       NotifyFailed(AOnFailed, AMethod, AParams, E);
       Result := ErrorResponse(AId, E);
     end;
   end;
+  if AStatistics <> nil then
+    AStatistics.Add(AMethod, Watch.ElapsedMilliseconds, Failed);
 end;
 
 // Übergibt eine nebenläufige Anfrage dem Scheduler. Die Arbeit hält nur
@@ -120,9 +133,11 @@ end;
 procedure ScheduleConcurrent(const AScheduler: TJsonRpcScheduler; const AResponder: TJsonRpcResponder;
   const APending: IJsonRpcPendingRequests; const AHandler: TJsonRpcConcurrentRequestHandler;
   const AId, AParams: TJSONValue; const AToken: IJsonRpcCancellationToken; const AMethod: string;
-  const AWatchdog: IJsonRpcWatchdog; const AOnFailed: TJsonRpcRequestFailedEvent);
+  const AWatchdog: IJsonRpcWatchdog; const AOnFailed: TJsonRpcRequestFailedEvent;
+  const AStatistics: IJsonRpcStatistics);
 var
   Method: string;
+  Statistics: IJsonRpcStatistics;
   Watchdog: IJsonRpcWatchdog;
   OnFailed: TJsonRpcRequestFailedEvent;
   Id: TJSONValue;
@@ -139,6 +154,7 @@ begin
   Method := AMethod;
   Watchdog := AWatchdog;
   OnFailed := AOnFailed;
+  Statistics := AStatistics;
   Id := TJSONValue(AId.Clone);
   Params := nil;
   if AParams <> nil then
@@ -157,7 +173,7 @@ begin
           if Watchdog <> nil then
             Ticket := Watchdog.Watch(Id, Method);
           try
-            Response := RunConcurrent(Id, Params, Method, Handler, Token, OnFailed);
+            Response := RunConcurrent(Id, Params, Method, Handler, Token, OnFailed, Statistics);
           finally
             if Watchdog <> nil then
               Watchdog.Unwatch(Ticket);
@@ -269,9 +285,13 @@ var
   Token: IJsonRpcCancellationToken;
   Scheduled: Boolean;
   Ticket: Int64;
+  Watch: TStopwatch;
+  Measured: Boolean;
 begin
   Token := FPending.Acquire(AId);
   Scheduled := False;
+  Measured := False;
+  Watch := TStopwatch.StartNew;
   Ticket := 0;
   try
     try
@@ -282,14 +302,14 @@ begin
         if Assigned(FScheduler) and Assigned(FResponder) then
         begin
           ScheduleConcurrent(FScheduler, FResponder, FPending, ConcurrentHandler, AId, AParams, Token, AMethod,
-            FWatchdog, FOnRequestFailed);
+            FWatchdog, FOnRequestFailed, FStatistics);
           Scheduled := True;
           Exit(nil);
         end;
         // Ohne Scheduler läuft die Anfrage hier; auch dann gilt das Zeitlimit.
         if FWatchdog <> nil then
           Ticket := FWatchdog.Watch(AId, AMethod);
-        Exit(RunConcurrent(AId, AParams, AMethod, ConcurrentHandler, Token, FOnRequestFailed));
+        Exit(RunConcurrent(AId, AParams, AMethod, ConcurrentHandler, Token, FOnRequestFailed, FStatistics));
       end;
       if not FRequestHandlers.TryGetValue(AMethod, Handler) then
         raise EJsonRpcError.Create(TJsonRpcErrorCode.MethodNotFound, 'Methode nicht unterstützt: ' + AMethod);
@@ -297,10 +317,15 @@ begin
       Token.ThrowIfCancellationRequested;
       if FWatchdog <> nil then
         Ticket := FWatchdog.Watch(AId, AMethod);
+      Measured := True;
       Result := TJsonRpcMessages.Response(AId, Handler(AParams));
+      if FStatistics <> nil then
+        FStatistics.Add(AMethod, Watch.ElapsedMilliseconds, False);
     except
       on E: Exception do
       begin
+        if Measured and (FStatistics <> nil) then
+          FStatistics.Add(AMethod, Watch.ElapsedMilliseconds, True);
         NotifyFailed(FOnRequestFailed, AMethod, AParams, E);
         Result := ErrorResponse(AId, E);
       end;

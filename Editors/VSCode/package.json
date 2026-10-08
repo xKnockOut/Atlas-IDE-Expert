@@ -122,6 +122,11 @@
         "command": "betterDelphiLsp.restartServer",
         "title": "Server neu starten",
         "category": "BetterDelphiLSP"
+      },
+      {
+        "command": "betterDelphiLsp.showStatus",
+        "title": "Status anzeigen",
+        "category": "BetterDelphiLSP"
       }
     ],
     "jsonValidation": [
