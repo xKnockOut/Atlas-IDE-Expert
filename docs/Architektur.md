@@ -110,7 +110,7 @@ Komposition von Hand (keine Container-Bibliothek). Composition-Units tragen desh
 | `BDLsp.Windows.Documents` (Platform) | `PathCanonicalizer` | Kanonische Pfade über `GetFinalPathNameByHandle` (Junctions, Symlinks, subst, 8.3-Namen, lange Pfade) für die Dokumentschlüssel |
 | `BDLsp.Windows.Editing` (Platform) | `SystemColors` | Aktuelle Systemfarben (`GetSysColor`) für die Farbvorschau |
 | `BDLsp.Windows.Diagnostics` (Platform) | `DebugOutput`, `Adapters.DebugOutputSink`, `StackTrace` | `OutputDebugString`, Log-Senke dafür, Stacktraces für Ausnahmen (`Modul+$Offset`) |
-| `Shell` (Host) | `Shell.Application`, `Shell.Composition`, `Shell.CommandLine`, `Shell.Workspace`, `Shell.Linter`, `Shell.GitChanges` | Einstiegspunkt, Kommandozeile, Komposition von Hand, Capabilities; je Arbeitsbereichsordner eigene Konfiguration, eigenes Projekt und eigener Indexaufbau in einen gemeinsamen Symbolindex |
+| `Shell` (Host) | `Shell.Application`, `Shell.Composition`, `Shell.CommandLine`, `Shell.Workspace`, `Shell.Linter`, `Shell.VcsChanges` | Einstiegspunkt, Kommandozeile, Komposition von Hand, Capabilities; je Arbeitsbereichsordner eigene Konfiguration, eigenes Projekt und eigener Indexaufbau in einen gemeinsamen Symbolindex |
 
 Ablauf einer Anfrage:
 

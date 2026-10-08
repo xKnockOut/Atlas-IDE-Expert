@@ -1,13 +1,15 @@
 ﻿unit BDLsp.Common.Rules.ChangedFiles;
 
 // Auswahl der zu prüfenden Dateien für --changed und --diff (#157). Die Unit
-// wertet nur Text aus; Git selbst startet die Shell.
+// wertet nur Text aus; Git bzw. SVN (#276) startet die Shell.
 //   ParseNameStatus  Ausgabe von "git diff --name-status": umbenannte Dateien
 //                    unter neuem Namen, gelöschte werden ignoriert.
 //   ParseHunks       Ausgabe von "git diff -U0": geänderte Zeilen je Datei.
 //   Select           geänderte Units, Units zu geänderten DFMs/FMXs und zu
 //                    geänderten Include-Dateien; Projekt- und Konfigurations-
 //                    dateien wählen alles.
+//   ParseSvnStatus, ParseSvnSummarize, ParseSvnDiff  dasselbe für SVN: "svn status",
+//                    "svn diff --summarize" und "svn diff" mit Kontextzeilen.
 // Pfade aus Git sind relativ zur Wurzel des Repositorys und mit "/" getrennt.
 // Pfade mit Sonderzeichen gibt Git in Anführungszeichen mit Oktalfolgen für
 // die UTF-8-Bytes aus (core.quotepath); UnquotePath macht daraus wieder Text,
@@ -41,6 +43,12 @@ type
     class function ParseNameStatus(const ALines: TArray<string>): TArray<string>; static;
     /// <summary>Geänderte Zeilen je Datei aus "git diff -U0".</summary>
     class function ParseHunks(const ALines: TArray<string>): TArray<TChangedLines>; static;
+    /// <summary>Pfade aus "svn status": A, M, R; mit AUnversioned auch "?" (neue Dateien).</summary>
+    class function ParseSvnStatus(const ALines: TArray<string>; AUnversioned: Boolean): TArray<string>; static;
+    /// <summary>Pfade aus "svn diff --summarize": A, M, R; D und reine Eigenschaftsänderungen nicht.</summary>
+    class function ParseSvnSummarize(const ALines: TArray<string>): TArray<string>; static;
+    /// <summary>Geänderte Zeilen aus "svn diff"; nur hinzugefügte Zeilen zählen, Kontextzeilen nicht.</summary>
+    class function ParseSvnDiff(const ALines: TArray<string>): TArray<TChangedLines>; static;
     /// <summary>Include-Namen aus {$I name} und {$INCLUDE name}; {$I+} und {$I-} sind Schalter.</summary>
     class function IncludeNames(const AText: string): TArray<string>; static;
     /// <summary>Teilmenge von ACandidates (vollständige Pfade), die nach den geänderten Dateien
@@ -78,6 +86,8 @@ end;
 class function TChangedFiles.FullPath(const ARepoRoot, AGitPath: string): string;
 begin
   Result := IncludeTrailingPathDelimiter(ARepoRoot) + StringReplace(AGitPath, '/', PathDelim, [rfReplaceAll]);
+  if PathDelim = '/' then
+    Result := StringReplace(Result, '\', '/', [rfReplaceAll]);
 end;
 
 class function TChangedFiles.UnquotePath(const APath: string): string;
@@ -207,6 +217,108 @@ begin
       Span.Last := Start + Count - 2;
       Result[Current].Spans := Result[Current].Spans + [Span];
     end;
+  end;
+end;
+
+/// <summary>Pfad ab Spalte 9 bei Status in Spalte 1 aus AStates; '' sonst.</summary>
+function SvnPath(const ALine: string; const AStates: string): string;
+begin
+  Result := '';
+  if (Length(ALine) < 9) or (Pos(ALine[1], AStates) = 0) then
+    Exit;
+  Result := Trim(Copy(ALine, 9, MaxInt));
+end;
+
+class function TChangedFiles.ParseSvnStatus(const ALines: TArray<string>; AUnversioned: Boolean): TArray<string>;
+var
+  Line, States, Path: string;
+begin
+  Result := nil;
+  States := 'AMR';
+  if AUnversioned then
+    States := States + '?';
+  for Line in ALines do
+  begin
+    Path := SvnPath(Line, States);
+    if Path <> '' then
+      Result := Result + [Path];
+  end;
+end;
+
+class function TChangedFiles.ParseSvnSummarize(const ALines: TArray<string>): TArray<string>;
+var
+  Line, Path: string;
+begin
+  Result := nil;
+  for Line in ALines do
+  begin
+    Path := SvnPath(Line, 'AMR');
+    if Path <> '' then
+      Result := Result + [Path];
+  end;
+end;
+
+class function TChangedFiles.ParseSvnDiff(const ALines: TArray<string>): TArray<TChangedLines>;
+var
+  Line, Header: string;
+  Current, NewLine, Plus, Space, Comma: Integer;
+  Span: TLineSpan;
+  Item: TChangedLines;
+begin
+  Result := nil;
+  Current := -1;
+  NewLine := -1;
+  for Line in ALines do
+  begin
+    if StartsStr('+++ ', Line) then
+    begin
+      // "+++ Src/Kunde.pas	(working copy)"
+      Header := Copy(Line, Length('+++ ') + 1, MaxInt);
+      if Pos(#9, Header) > 0 then
+        Header := Copy(Header, 1, Pos(#9, Header) - 1);
+      Item := Default(TChangedLines);
+      Item.Path := Trim(Header);
+      Result := Result + [Item];
+      Current := High(Result);
+      NewLine := -1;
+    end
+    else if StartsStr('@@ ', Line) and (Current >= 0) then
+    begin
+      Plus := Pos(' +', Line);
+      Space := PosEx(' ', Line, Plus + 2);
+      NewLine := -1;
+      if (Plus > 0) and (Space > 0) then
+      begin
+        Header := Copy(Line, Plus + 2, Space - Plus - 2);
+        Comma := Pos(',', Header);
+        if Comma > 0 then
+          Header := Copy(Header, 1, Comma - 1);
+        NewLine := StrToIntDef(Header, 0) - 1;
+      end;
+    end
+    else if (Current >= 0) and (NewLine >= 0) and (Line <> '') then
+      case Line[1] of
+        ' ':
+          Inc(NewLine);
+        '+':
+          begin
+            // Benachbarte Zeilen zu einem Bereich zusammenfassen.
+            if (Length(Result[Current].Spans) > 0) and
+              (Result[Current].Spans[High(Result[Current].Spans)].Last = NewLine - 1) then
+              Result[Current].Spans[High(Result[Current].Spans)].Last := NewLine
+            else
+            begin
+              Span.First := NewLine;
+              Span.Last := NewLine;
+              Result[Current].Spans := Result[Current].Spans + [Span];
+            end;
+            Inc(NewLine);
+          end;
+        '-', '\':
+          ;
+      else
+        NewLine := -1;
+      end;
   end;
 end;
 

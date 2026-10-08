@@ -13,8 +13,8 @@
 // Bekannte Treffer aus der Baseline (--baseline, sonst delphi-lsp-baseline.json
 // neben delphi-lsp.json) werden ausgeblendet; --update-baseline schreibt sie aus
 // den aktuellen Treffern neu (#97), Exit-Code dann 0.
-// Mit --changed bzw. --diff werden nur die geänderten Dateien laut Git geprüft
-// (#157), mit --changed-lines nur Treffer in geänderten Zeilen ausgegeben;
+// Mit --changed bzw. --diff werden nur die geänderten Dateien laut Git (#157)
+// bzw. SVN (#276) geprüft, mit --changed-lines nur Treffer in geänderten Zeilen ausgegeben;
 // zusammen mit der Baseline zählt ein Treffer nur, wenn er in einer geänderten
 // Zeile liegt und nicht in der Baseline steht. Die Regeln prüfen jede Datei für
 // sich, deshalb ergibt die Teilmenge dieselben Treffer wie ein voller Lauf.
@@ -54,10 +54,11 @@ uses
   BDLsp.Common.Rules.SuppressionStats,
   BDLsp.Common.Rules.Baseline,
   BDLsp.Common.Rules.ChangedFiles,
+  BDLsp.Common.Compiler.Contract,
   BDLsp.Common.Index.Adapters.CacheDirectory,
   BDLsp.Windows.Console.StdStreams,
   BDLsp.Windows.Compiler.Adapters.ProcessRunner,
-  Shell.GitChanges;
+  Shell.VcsChanges;
 
 procedure WriteText(const AStream: TStream; const AText: string);
 var
@@ -153,9 +154,11 @@ end;
 
 /// <summary>Teilmenge von AFiles nach den Änderungen laut Git; AGit bleibt für --changed-lines geladen.</summary>
 function SelectChanged(const AOptions: TCommandLineOptions;
-  const AFiles: TArray<string>; AGit: TGitChanges): TArray<string>;
+  const AFiles: TArray<string>; AGit: TVcsChanges): TArray<string>;
 begin
-  AGit.Load(AOptions.ChangedRef, AOptions.ChangedMergeBase, AOptions.IncludeUncommitted, AOptions.ChangedLines);
+  AGit.Load(AOptions.ChangedRef, AOptions.ChangedMergeBase,
+    AOptions.ChangedMergeBase and (AOptions.ChangedRef = TCommandLineOptions.DefaultChangedBase),
+    AOptions.IncludeUncommitted, AOptions.ChangedLines);
   Result := TChangedFiles.Select(AGit.Files, AFiles,
     function(const AFileName: string): TArray<string>
     var
@@ -168,12 +171,12 @@ begin
           Result := nil;
       end;
     end);
-  WriteError(Format('%d von %d Dateien geändert gegenüber %s', [Length(Result), Length(AFiles),
+  WriteError(Format('%s: %d von %d Dateien geändert gegenüber %s', [AGit.Name, Length(Result), Length(AFiles),
     AOptions.ChangedRef]));
 end;
 
 /// <summary>Nur Treffer in geänderten Zeilen von AFileName.</summary>
-function InChangedLines(const AFindings: TArray<TRuleFinding>; AGit: TGitChanges;
+function InChangedLines(const AFindings: TArray<TRuleFinding>; AGit: TVcsChanges;
   const AFileName: string): TArray<TRuleFinding>;
 var
   Lines: TChangedLines;
@@ -224,7 +227,8 @@ var
   Sources: TArray<TBaselineSource>;
   Source: TBaselineSource;
   Candidates: TArray<string>;
-  Git: TGitChanges;
+  Git: TVcsChanges;
+  Process: ICompilerProcess;
 begin
   for Warning in AOptions.Warnings do
     WriteError(Warning);
@@ -277,7 +281,9 @@ begin
         WriteError('--update-baseline schreibt die Baseline immer für alle Dateien; --changed/--diff wird ignoriert')
       else if AOptions.ChangedRef <> '' then
       begin
-        Git := TGitChanges.Create(TProcessRunner.Create, ConfigRoot);
+        // Über eine Variable halten: Detect gibt einen Probelauf frei, bevor es den nächsten startet.
+        Process := TProcessRunner.Create;
+        Git := TVcsChanges.Detect(Process, ConfigRoot);
         Candidates := SelectChanged(AOptions, Candidates, Git);
       end;
       for FileName in Candidates do
