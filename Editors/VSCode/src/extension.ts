@@ -113,6 +113,9 @@ async function startClient(): Promise<void> {
     outputChannel: output,
     traceOutputChannel: traceOutput,
     errorHandler: new RestartingErrorHandler(),
+    // Schickt die Einstellungen betterDelphiLsp.* per workspace/didChangeConfiguration;
+    // delphi-lsp.json im Projekt hat Vorrang.
+    synchronize: { configurationSection: Section },
   };
 
   client = new LanguageClient(Section, 'BetterDelphiLSP', serverOptions, clientOptions);

@@ -19,6 +19,7 @@ Ohne Einstellung sucht die Erweiterung den Server unter `Output\Win64\Debug\Bin`
 | `betterDelphiLsp.logFile` | Optionale Logdatei (`--log`) |
 | `betterDelphiLsp.traceFile` | Optionaler Mitschnitt aller JSON-Nachrichten (`--trace`) |
 | `betterDelphiLsp.trace.server` | Nachrichtenaustausch im Ausgabefenster „BetterDelphiLSP Trace“ |
+| `betterDelphiLsp.delphiVersion`, `language`, `project`, `config`, `platform`, `rules`, `exclude` | Wie die gleichnamigen Schlüssel in `delphi-lsp.json`; die Datei im Projekt hat je Schlüssel Vorrang, bei `rules` je Regel |
 
 Meldungen des Servers (`window/logMessage` und stderr) erscheinen im Ausgabefenster „BetterDelphiLSP“. Der Befehl „BetterDelphiLSP: Server neu starten“ startet den Server neu, etwa nach einem neuen Build.
 

@@ -194,7 +194,7 @@ begin
         [ASettings.DelphiVersion, ASettings.Project, Length(ASettings.Rules), Length(ASettings.Exclude)]));
       StartIndex(ASettings);
     end;
-  FConfiguration.Attach;
+  FConfiguration.Attach(FDispatcher);
   FIndex := TSymbolIndex.Create;
   FIndexService := TIndexService.Create(FIndex, TDiskIndexFileSystem.Create);
   FDefinition := TLspDefinition.Create(FDocuments, FIndex,
