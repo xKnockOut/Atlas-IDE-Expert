@@ -109,7 +109,7 @@ begin
     end;
   FIndexService := TIndexService.Create(FIndex, TDiskIndexFileSystem.Create);
   FProgress := TLspWorkDoneProgress.Create(ATransport, AProgressToken);
-  FIndexService.OnProgress := FProgress.AsIndexProgress;
+  FIndexService.OnProgress := FProgress.AsIndexProgress();
   FIndexService.OnFinished :=
     procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
     begin
