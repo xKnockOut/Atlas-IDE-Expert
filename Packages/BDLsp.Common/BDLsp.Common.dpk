@@ -111,6 +111,7 @@ contains
   BDLsp.Common.Editing.BlockCompletion in 'Source\Editing\BDLsp.Common.Editing.BlockCompletion.pas',
   BDLsp.Common.Editing.UsesCommand in 'Source\Editing\BDLsp.Common.Editing.UsesCommand.pas',
   BDLsp.Common.Editing.UnitFiles in 'Source\Editing\BDLsp.Common.Editing.UnitFiles.pas',
+  BDLsp.Common.Semantics.UnresolvedNames in 'Source\Semantics\BDLsp.Common.Semantics.UnresolvedNames.pas',
   BDLsp.Common.Rules.Builtin.UnitFiles in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.UnitFiles.pas',
   BDLsp.Common.Lsp.FileOperations in 'Source\Lsp\BDLsp.Common.Lsp.FileOperations.pas',
   BDLsp.Common.Editing.ClassCompletion in 'Source\Editing\BDLsp.Common.Editing.ClassCompletion.pas',

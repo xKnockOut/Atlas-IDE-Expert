@@ -125,6 +125,7 @@
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.BlockCompletion.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.UsesCommand.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.UnitFiles.pas"/>
+        <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.UnresolvedNames.pas"/>
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.UnitFiles.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.FileOperations.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.ClassCompletion.pas"/>
