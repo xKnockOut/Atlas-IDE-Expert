@@ -98,6 +98,11 @@
           },
           "markdownDescription": "Compiler-Anbindung: `onSave` kompiliert das Projekt nach dem Speichern im Hintergrund und zeigt Fehler, Warnungen und Hinweise von dcc32/dcc64 an. delphi-lsp.json im Projekt hat Vorrang."
         },
+        "betterDelphiLsp.format": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Formatierung: `indentSize`, `useTabs`, `keywordCase` (`preserve`/`lower`/`upper`), `trimTrailingWhitespace`, `insertFinalNewline`, `spaceAroundAssignment`, `spaceAfterComma`, `endOfLine` (`lf`/`crlf`). Gesetzte Werte haben Vorrang vor `.editorconfig`; delphi-lsp.json im Projekt hat Vorrang."
+        },
         "betterDelphiLsp.inlayHints": {
           "type": "object",
           "default": {

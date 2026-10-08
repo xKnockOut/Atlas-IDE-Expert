@@ -28,6 +28,8 @@ type
     [Test]
     procedure ReadsCompilerSettings;
     [Test]
+    procedure ReadsFormatSettings;
+    [Test]
     procedure FileOverridesEditorPerKey;
     [Test]
     procedure MergesRulesPerId;
@@ -112,7 +114,7 @@ begin
     '  "project": "App.dproj", "config": "Release", "platform": "Win64",'#13#10 +
     '  "rules": { "unused-variable": "warning", "with-statement": "off" },'#13#10 +
     '  "exclude": ["ThirdParty/**"],'#13#10 +
-    '  "format": { "indent": 2 }'#13#10 +
+    '  "format": { "indentSize": 4 }'#13#10 +
     '}', Issues);
   Assert.AreEqual<NativeInt>(0, Length(Issues));
   Assert.AreEqual('37.0', Settings.DelphiVersion);
@@ -124,7 +126,8 @@ begin
   Assert.IsTrue(Settings.RuleSeverity('UNUSED-VARIABLE', TRuleSeverity.Hint) = TRuleSeverity.Warning);
   Assert.IsTrue(Settings.RuleSeverity('with-statement', TRuleSeverity.Hint) = TRuleSeverity.Off);
   Assert.AreEqual('ThirdParty/**', Settings.Exclude[0]);
-  Assert.AreEqual('{ "indent": 2 }', Settings.Format);
+  Assert.AreEqual('{ "indentSize": 4 }', Settings.Format);
+  Assert.AreEqual(4, Settings.Formatting.IndentSize);
 end;
 
 procedure TConfigurationParserTests.EmptyObjectGivesDefaults;
@@ -203,6 +206,28 @@ begin
 end;
 
 { TServerSettingsTests }
+
+procedure TConfigurationParserTests.ReadsFormatSettings;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.AreEqual(2, Settings.Formatting.IndentSize);
+  Assert.IsTrue(Settings.Formatting.Given = []);
+  Settings := Parse('{"format": {"useTabs": true, "keywordCase": "lower", "endOfLine": "crlf", ' +
+    '"spaceAfterComma": false}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsTrue(Settings.Formatting.UseTabs);
+  Assert.IsTrue(Settings.Formatting.KeywordCase = TKeywordCase.Lower);
+  Assert.AreEqual(#13#10, Settings.Formatting.EndOfLine);
+  Assert.IsFalse(Settings.Formatting.SpaceAfterComma);
+  Assert.IsTrue(Settings.Formatting.Given = [TFormatKey.UseTabs, TFormatKey.KeywordCase, TFormatKey.EndOfLine,
+    TFormatKey.SpaceAfterComma]);
+  Settings := Parse('{"format": {"indentSize": 0, "keywordCase": "camel", "x": 1}}', Issues);
+  Assert.AreEqual(3, Integer(Length(Issues)));
+  Assert.IsTrue(Settings.Formatting.Given = []);
+end;
 
 procedure TConfigurationParserTests.ReadsCompilerSettings;
 var

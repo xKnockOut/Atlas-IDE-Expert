@@ -25,6 +25,7 @@ uses
   BDLsp.Common.Lsp.DocumentSymbols,
   BDLsp.Common.Lsp.FoldingRanges,
   BDLsp.Common.Lsp.LinkedEditing,
+  BDLsp.Common.Lsp.Formatting,
   BDLsp.Common.Lsp.SelectionRanges,
   BDLsp.Common.Lsp.Definition,
   BDLsp.Common.Lsp.Hover,
@@ -70,6 +71,7 @@ type
     FDocumentSymbols: TLspDocumentSymbols;
     FFoldingRanges: TLspFoldingRanges;
     FLinkedEditing: TLspLinkedEditing;
+    FFormatting: TLspFormatting;
     FSelectionRanges: TLspSelectionRanges;
     FDefinition: TLspDefinition;
     FHover: TLspHover;
@@ -127,6 +129,7 @@ type
     function DefinesFor(const AUri: string; out ADefines: TArray<string>): Boolean;
     function DelphiVersionFor(const AUri: string): string;
     function InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
+    function FormatStyleFor(const AUri: string): TFormatStyle;
     function RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
     /// <summary>Namespaces aller Projekte an die Features weitergeben, Diagnosen neu prüfen.</summary>
     procedure ProjectLoaded;
@@ -259,6 +262,14 @@ begin
   FFoldingRanges.Attach(FDispatcher);
   FLinkedEditing := TLspLinkedEditing.Create(FDocuments);
   FLinkedEditing.Attach(FDispatcher);
+  FFormatting := TLspFormatting.Create(FDocuments, FormatStyleFor,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := FileExists(AFileName);
+      if Result then
+        AText := TFile.ReadAllText(AFileName);
+    end);
+  FFormatting.Attach(FDispatcher);
   FSelectionRanges := TLspSelectionRanges.Create(FDocuments);
   FSelectionRanges.Attach(FDispatcher);
   FWorkspaces := TObjectList<TShellWorkspace>.Create(True);
@@ -486,6 +497,7 @@ begin
   FDocumentSymbols.Free;
   FFoldingRanges.Free;
   FLinkedEditing.Free;
+  FFormatting.Free;
   FSelectionRanges.Free;
   FDefinition.Free;
   FHover.Free;
@@ -715,6 +727,24 @@ begin
       Result := TInlayHintSettings.Default
     else
       Result := Workspace.Configuration.Settings.InlayHints;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+function TServerComposition.FormatStyleFor(const AUri: string): TFormatStyle;
+var
+  Workspace: TShellWorkspace;
+begin
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+    if (Workspace = nil) and (FWorkspaces.Count = 1) then
+      Workspace := FWorkspaces[0];
+    if Workspace = nil then
+      Result := TFormatStyle.Default
+    else
+      Result := Workspace.Configuration.Settings.Formatting;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
@@ -1092,6 +1122,8 @@ begin
   Result.AddPair('documentSymbolProvider', TJSONBool.Create(True));
   Result.AddPair('foldingRangeProvider', TJSONBool.Create(True));
   Result.AddPair('linkedEditingRangeProvider', TJSONBool.Create(True));
+  Result.AddPair('documentFormattingProvider', TJSONBool.Create(True));
+  Result.AddPair('documentRangeFormattingProvider', TJSONBool.Create(True));
   Result.AddPair('selectionRangeProvider', TJSONBool.Create(True));
   Result.AddPair('definitionProvider', TJSONBool.Create(True));
   Result.AddPair('declarationProvider', TJSONBool.Create(True));

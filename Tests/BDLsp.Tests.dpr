@@ -54,6 +54,7 @@ uses
   BDLsp.Common.Lsp.Hover.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Hover.Tests.pas',
   BDLsp.Common.Lsp.HoverValues.Tests in 'Common\Lsp\BDLsp.Common.Lsp.HoverValues.Tests.pas',
   BDLsp.Common.Lsp.LinkedEditing.Tests in 'Common\Lsp\BDLsp.Common.Lsp.LinkedEditing.Tests.pas',
+  BDLsp.Common.Lsp.Formatting.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Formatting.Tests.pas',
   BDLsp.Common.Lsp.FuzzyMatch.Tests in 'Common\Lsp\BDLsp.Common.Lsp.FuzzyMatch.Tests.pas',
   BDLsp.Common.Lsp.WorkspaceSymbols.Tests in 'Common\Lsp\BDLsp.Common.Lsp.WorkspaceSymbols.Tests.pas',
   BDLsp.Common.Lsp.DocumentHighlights.Tests in 'Common\Lsp\BDLsp.Common.Lsp.DocumentHighlights.Tests.pas',
@@ -91,6 +92,7 @@ uses
   BDLsp.Common.Editing.Colors.Tests in 'Common\Editing\BDLsp.Common.Editing.Colors.Tests.pas',
   BDLsp.Common.Editing.DocumentLinks.Tests in 'Common\Editing\BDLsp.Common.Editing.DocumentLinks.Tests.pas',
   BDLsp.Common.Editing.ClassCompletion.Tests in 'Common\Editing\BDLsp.Common.Editing.ClassCompletion.Tests.pas',
+  BDLsp.Common.Editing.Formatter.Tests in 'Common\Editing\BDLsp.Common.Editing.Formatter.Tests.pas',
   BDLsp.Common.Editing.CodeActions.Tests in 'Common\Editing\BDLsp.Common.Editing.CodeActions.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}

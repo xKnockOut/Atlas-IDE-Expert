@@ -49,6 +49,7 @@ type
     procedure ReadExclude(ANode: TJsonNode);
     procedure ReadInlayHints(ANode: TJsonNode);
     procedure ReadCompiler(ANode: TJsonNode);
+    procedure ReadFormat(ANode: TJsonNode);
     function ExpectBoolean(ANode: TJsonNode; const AName: string; var AValue: Boolean): Boolean;
     /// <summary>Wurzel oder nil nach gemeldetem Syntaxfehler.</summary>
     function ParseRoot: TJsonNode;
@@ -280,6 +281,80 @@ begin
   end;
 end;
 
+procedure TValidator.ReadFormat(ANode: TJsonNode);
+var
+  Index, Size: Integer;
+  Key: string;
+  Value: TJsonNode;
+  Settings: TFormatStyle;
+
+  procedure ReadBoolean(var ATarget: Boolean; AKey: TFormatKey);
+  begin
+    if ExpectBoolean(Value, Key, ATarget) then
+      Include(Settings.Given, AKey);
+  end;
+
+begin
+  Settings := TFormatStyle.Default;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    Value := ANode[Index];
+    if Key = 'indentSize' then
+    begin
+      if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Size) and (Size >= 1) and (Size <= 16) then
+      begin
+        Settings.IndentSize := Size;
+        Include(Settings.Given, TFormatKey.IndentSize);
+      end
+      else
+        ReportNode(Value, '"indentSize" muss eine ganze Zahl von 1 bis 16 sein');
+    end
+    else if Key = 'useTabs' then
+      ReadBoolean(Settings.UseTabs, TFormatKey.UseTabs)
+    else if Key = 'trimTrailingWhitespace' then
+      ReadBoolean(Settings.TrimTrailingWhitespace, TFormatKey.TrimTrailingWhitespace)
+    else if Key = 'insertFinalNewline' then
+      ReadBoolean(Settings.InsertFinalNewline, TFormatKey.InsertFinalNewline)
+    else if Key = 'spaceAroundAssignment' then
+      ReadBoolean(Settings.SpaceAroundAssignment, TFormatKey.SpaceAroundAssignment)
+    else if Key = 'spaceAfterComma' then
+      ReadBoolean(Settings.SpaceAfterComma, TFormatKey.SpaceAfterComma)
+    else if Key = 'keywordCase' then
+    begin
+      if (Value.Kind = TJsonKind.String_) and (Value.Value = 'preserve') then
+        Settings.KeywordCase := TKeywordCase.Preserve
+      else if (Value.Kind = TJsonKind.String_) and (Value.Value = 'lower') then
+        Settings.KeywordCase := TKeywordCase.Lower
+      else if (Value.Kind = TJsonKind.String_) and (Value.Value = 'upper') then
+        Settings.KeywordCase := TKeywordCase.Upper
+      else
+      begin
+        ReportNode(Value, 'Erlaubt sind "preserve", "lower" und "upper"');
+        Continue;
+      end;
+      Include(Settings.Given, TFormatKey.KeywordCase);
+    end
+    else if Key = 'endOfLine' then
+    begin
+      if (Value.Kind = TJsonKind.String_) and (Value.Value = 'lf') then
+        Settings.EndOfLine := #10
+      else if (Value.Kind = TJsonKind.String_) and (Value.Value = 'crlf') then
+        Settings.EndOfLine := #13#10
+      else
+      begin
+        ReportNode(Value, 'Erlaubt sind "lf" und "crlf"');
+        Continue;
+      end;
+      Include(Settings.Given, TFormatKey.EndOfLine);
+    end
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "format.%s"', [Key]), False);
+  end;
+  FSettings.Formatting := Settings;
+end;
+
 function TValidator.ParseRoot: TJsonNode;
 begin
   try
@@ -362,7 +437,10 @@ begin
       else if Key = 'format' then
       begin
         if Value.Kind = TJsonKind.Object_ then
-          FSettings.Format := Copy(FText, Value.Start + 1, Value.Stop - Value.Start)
+        begin
+          FSettings.Format := Copy(FText, Value.Start + 1, Value.Stop - Value.Start);
+          ReadFormat(Value);
+        end
         else
           ReportNode(Value, '"format" muss ein Objekt sein');
       end
@@ -496,7 +574,10 @@ begin
     else if Key = 'minConfidence' then
       Result.MinConfidence := FileSettings.MinConfidence
     else if Key = 'format' then
-      Result.Format := FileSettings.Format
+    begin
+      Result.Format := FileSettings.Format;
+      Result.Formatting := FileSettings.Formatting;
+    end
     else if Key = 'inlayHints' then
       Result.InlayHints := FileSettings.InlayHints
     else if Key = 'compiler' then
