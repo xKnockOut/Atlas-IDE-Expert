@@ -36,6 +36,7 @@ uses
   BDLsp.Common.Semantics.NameResolver.Tests in 'Common\Semantics\BDLsp.Common.Semantics.NameResolver.Tests.pas',
   BDLsp.Common.Lsp.Definition.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Definition.Tests.pas',
   BDLsp.Common.Lsp.Hover.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Hover.Tests.pas',
+  BDLsp.Common.Lsp.WorkspaceSymbols.Tests in 'Common\Lsp\BDLsp.Common.Lsp.WorkspaceSymbols.Tests.pas',
   BDLsp.Windows.Documents.PathCanonicalizer.Tests in 'Windows\Documents\BDLsp.Windows.Documents.PathCanonicalizer.Tests.pas',
   BDLsp.Common.Pascal.Lexer.Tests in 'Common\Pascal\BDLsp.Common.Pascal.Lexer.Tests.pas',
   BDLsp.Common.Lsp.Internals.Debouncer.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Internals.Debouncer.Tests.pas',
