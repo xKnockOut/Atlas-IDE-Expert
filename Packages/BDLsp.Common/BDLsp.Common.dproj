@@ -125,6 +125,7 @@
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Rename.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Completion.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.SignatureHelp.pas"/>
+        <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Hierarchies.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Status.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.CodeActions.pas"/>
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.ControlFlow.pas"/>

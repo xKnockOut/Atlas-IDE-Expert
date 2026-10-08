@@ -36,6 +36,7 @@ uses
   BDLsp.Common.Lsp.Rename,
   BDLsp.Common.Lsp.Completion,
   BDLsp.Common.Lsp.SignatureHelp,
+  BDLsp.Common.Lsp.Hierarchies,
   BDLsp.Common.Lsp.Status,
   BDLsp.Common.JsonRpc.Statistics,
   BDLsp.Common.Lsp.WatchedFiles,
@@ -68,6 +69,7 @@ type
     FRename: TLspRename;
     FCompletion: TLspCompletion;
     FSignatureHelp: TLspSignatureHelp;
+    FHierarchies: TLspHierarchies;
     FCodeActions: TLspCodeActions;
     FDocumentLinks: TLspDocumentLinks;
     FColors: TLspColors;
@@ -288,6 +290,17 @@ begin
       Result := EnsureUnit(AUnitName);
     end);
   FSignatureHelp.Attach(FDispatcher);
+  FHierarchies := TLspHierarchies.Create(FDocuments, FIndex,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    ProjectSourceFiles,
+    function(const AUnitName: string): Boolean
+    begin
+      Result := EnsureUnit(AUnitName);
+    end);
+  FHierarchies.Attach(FDispatcher);
   FCodeActions := TLspCodeActions.Create(FDocuments, RuleContextFor);
   FCodeActions.Attach(FDispatcher);
   FDocumentLinks := TLspDocumentLinks.Create(FDocuments,
@@ -375,6 +388,7 @@ begin
   FWorkspaceSymbols.Free;
   FDocumentHighlights.Free;
   FReferences.Free;
+  FHierarchies.Free;
   FSignatureHelp.Free;
   FCompletion.Free;
   FRename.Free;
@@ -626,6 +640,7 @@ begin
   FRename.Namespaces := Namespaces;
   FCompletion.Namespaces := Namespaces;
   FSignatureHelp.Namespaces := Namespaces;
+  FHierarchies.Namespaces := Namespaces;
   FSyntaxDiagnostics.Refresh;
 end;
 
@@ -768,6 +783,8 @@ begin
   Result.AddPair('renameProvider', TLspRename.Capability);
   Result.AddPair('completionProvider', TLspCompletion.Capability);
   Result.AddPair('signatureHelpProvider', TLspSignatureHelp.Capability);
+  Result.AddPair('typeHierarchyProvider', TJSONBool.Create(True));
+  Result.AddPair('callHierarchyProvider', TJSONBool.Create(True));
   Result.AddPair('codeActionProvider', TLspCodeActions.Capability);
   Result.AddPair('documentLinkProvider', TLspDocumentLinks.Capability);
   Result.AddPair('colorProvider', TJSONBool.Create(True));
