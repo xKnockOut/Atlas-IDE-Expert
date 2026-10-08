@@ -29,6 +29,7 @@ uses
   BDLsp.Common.Lsp.WorkspaceSymbols,
   BDLsp.Common.Lsp.DocumentHighlights,
   BDLsp.Common.Lsp.CodeActions,
+  BDLsp.Common.Lsp.DocumentLinks,
   BDLsp.Common.Lsp.WatchedFiles,
   BDLsp.Common.Lsp.WorkspaceFolders,
   BDLsp.Common.Lsp.Configuration,
@@ -56,6 +57,7 @@ type
     FWorkspaceSymbols: TLspWorkspaceSymbols;
     FDocumentHighlights: TLspDocumentHighlights;
     FCodeActions: TLspCodeActions;
+    FDocumentLinks: TLspDocumentLinks;
     FWatchedFiles: TLspWatchedFiles;
     FWorkspaceFolders: TLspWorkspaceFolders;
     /// <summary>Für delphi-lsp.json außerhalb aller Ordner: nur Fehlermeldungen.</summary>
@@ -238,6 +240,22 @@ begin
   FDocumentHighlights.Attach(FDispatcher);
   FCodeActions := TLspCodeActions.Create(FDocuments, RuleContextFor);
   FCodeActions.Attach(FDispatcher);
+  FDocumentLinks := TLspDocumentLinks.Create(FDocuments,
+    function(const AUri: string): TArray<string>
+    var
+      Workspace: TShellWorkspace;
+    begin
+      Result := nil;
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+        if Workspace <> nil then
+          Result := Workspace.SearchPaths;
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+    end);
+  FDocumentLinks.Attach(FDispatcher);
   FWatchedFiles := TLspWatchedFiles.Create(FTransport);
   FWatchedFiles.OnChanged := HandleWatchedFiles;
   FWatchedFiles.Attach(FDispatcher);
@@ -294,6 +312,7 @@ begin
   FWorkspaceSymbols.Free;
   FDocumentHighlights.Free;
   FCodeActions.Free;
+  FDocumentLinks.Free;
   FWatchedFiles.Free;
   FTextDocumentSync.Free;
   FDocuments := nil;
@@ -604,6 +623,7 @@ begin
   Result.AddPair('workspaceSymbolProvider', TJSONBool.Create(True));
   Result.AddPair('documentHighlightProvider', TJSONBool.Create(True));
   Result.AddPair('codeActionProvider', TLspCodeActions.Capability);
+  Result.AddPair('documentLinkProvider', TLspDocumentLinks.Capability);
   Result.AddPair('workspace', TLspWorkspaceFolders.Capability);
 end;
 
