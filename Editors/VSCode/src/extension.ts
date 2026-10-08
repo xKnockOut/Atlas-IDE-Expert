@@ -170,6 +170,45 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       });
       await vscode.commands.executeCommand('markdown.showPreview', document.uri);
     }),
+    // Konfiguration und Plattform des Projekts umschalten (#46).
+    vscode.commands.registerCommand(`${Section}.selectBuild`, async () => {
+      if (!client) {
+        void vscode.window.showWarningMessage('BetterDelphiLSP läuft nicht.');
+        return;
+      }
+      interface BuildProject {
+        project: string;
+        config: string;
+        platform: string;
+        configs: string[];
+        platforms: string[];
+      }
+      const current = await client.sendRequest<{ projects: BuildProject[] }>('workspace/executeCommand', {
+        command: 'betterdelphilsp.selectBuild',
+      });
+      const project = current?.projects?.[0];
+      if (!project) {
+        void vscode.window.showWarningMessage('BetterDelphiLSP: Kein Projekt geladen.');
+        return;
+      }
+      const config = await vscode.window.showQuickPick(project.configs.length > 0 ? project.configs : [project.config], {
+        placeHolder: `Konfiguration (aktuell ${project.config})`,
+      });
+      if (config === undefined) {
+        return;
+      }
+      const platform = await vscode.window.showQuickPick(
+        project.platforms.length > 0 ? project.platforms : [project.platform],
+        { placeHolder: `Plattform (aktuell ${project.platform})` },
+      );
+      if (platform === undefined) {
+        return;
+      }
+      await client.sendRequest('workspace/executeCommand', {
+        command: 'betterdelphilsp.selectBuild',
+        arguments: [{ config, platform }],
+      });
+    }),
     // Code Lens des Servers (#36): Referenzen, Nachfahren, Überschreibungen und Message-Handler anzeigen.
     vscode.commands.registerCommand(
       `${Section}.showLocations`,

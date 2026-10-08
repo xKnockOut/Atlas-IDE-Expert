@@ -39,6 +39,10 @@ type
     Units: TArray<TProjectUnit>;
     /// <summary>Alle ausgewerteten Eigenschaften als Name=Wert, für Diagnose und spätere Auswertungen.</summary>
     Properties: TArray<TPair<string, string>>;
+    /// <summary>Konfigurationen der Datei (BuildConfiguration ohne Base), z. B. Debug, Release (#46).</summary>
+    Configs: TArray<string>;
+    /// <summary>Aktivierte Plattformen (Platforms/Platform value="True"), z. B. Win32, Win64 (#46).</summary>
+    Platforms: TArray<string>;
   end;
 
   /// <summary>Bibliothekspfade einer Delphi-Installation je Plattform.</summary>

@@ -33,11 +33,14 @@ type
     class function Read(const AFileName, AText: string; const AOptions: TDprojOptions): TProjectInfo; static;
     /// <summary>Liest die Datei von der Platte (Kodierung wird erkannt) und wertet sie aus.</summary>
     class function Load(const AFileName: string; const AOptions: TDprojOptions): TProjectInfo; static;
+    /// <summary>'' wenn AConfig und APlatform ('' = unverändert) im Projekt vorkommen, sonst der Grund (#46).</summary>
+    class function CheckTarget(const AProject: TProjectInfo; const AConfig, APlatform: string): string; static;
   end;
 
 implementation
 
 uses
+  System.StrUtils,
   BDLsp.Common.Documents.FileEncoding,
   BDLsp.Common.Projects.Paths,
   BDLsp.Common.Projects.Internals.Xml,
@@ -83,6 +86,28 @@ begin
     Known.Free;
     Items.Free;
   end;
+end;
+
+/// <summary>Sammelt Konfigurationen und aktivierte Plattformen aus dem ganzen Baum.</summary>
+procedure CollectTargets(AElement: TXmlElement; var AConfigs, APlatforms: TArray<string>);
+var
+  Index: Integer;
+  Value: string;
+begin
+  if AElement.Name = 'BuildConfiguration' then
+  begin
+    Value := Trim(AElement.Attribute('Include'));
+    if (Value <> '') and not SameText(Value, 'Base') and (IndexText(Value, AConfigs) < 0) then
+      AConfigs := AConfigs + [Value];
+  end
+  else if (AElement.Name = 'Platform') and AElement.HasAttribute('value') then
+  begin
+    Value := Trim(AElement.Attribute('value'));
+    if SameText(Trim(AElement.Text), 'True') and (Value <> '') and (IndexText(Value, APlatforms) < 0) then
+      APlatforms := APlatforms + [Value];
+  end;
+  for Index := 0 to AElement.ChildCount - 1 do
+    CollectTargets(AElement[Index], AConfigs, APlatforms);
 end;
 
 { TDprojReader }
@@ -169,6 +194,9 @@ begin
     Result.Namespaces := TProjectPaths.SplitList(Properties.Get('DCC_Namespace'));
     Result.Units := Units.ToArray;
     Result.Properties := Properties.ToArray;
+    Result.Configs := nil;
+    Result.Platforms := nil;
+    CollectTargets(Root, Result.Configs, Result.Platforms);
   finally
     Units.Free;
     Properties.Free;
@@ -181,6 +209,18 @@ var
   FileFormat: TFileFormat;
 begin
   Result := Read(AFileName, TFileEncoding.LoadFromFile(AFileName, FileFormat), AOptions);
+end;
+
+class function TDprojReader.CheckTarget(const AProject: TProjectInfo; const AConfig, APlatform: string): string;
+begin
+  Result := '';
+  // Ohne Angaben in der Datei (ältere Projekte) wird nichts abgelehnt.
+  if (AConfig <> '') and (Length(AProject.Configs) > 0) and (IndexText(AConfig, AProject.Configs) < 0) then
+    Exit(Format('Konfiguration "%s" gibt es im Projekt nicht (vorhanden: %s).',
+      [AConfig, string.Join(', ', AProject.Configs)]));
+  if (APlatform <> '') and (Length(AProject.Platforms) > 0) and (IndexText(APlatform, AProject.Platforms) < 0) then
+    Exit(Format('Plattform "%s" ist im Projekt nicht aktiviert (vorhanden: %s).',
+      [APlatform, string.Join(', ', AProject.Platforms)]));
 end;
 
 end.

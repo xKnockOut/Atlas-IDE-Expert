@@ -149,6 +149,7 @@ type
     function DescribeFailure(const AError: Exception): string;
   public const
     CompileCommand = 'betterdelphilsp.compile';
+    SelectBuildCommand = 'betterdelphilsp.selectBuild';
     /// <summary>Anfragen, die länger laufen, werden abgebrochen und gemeldet.</summary>
     RequestTimeoutMs = 10000;
   public
@@ -187,7 +188,17 @@ uses
   BDLsp.Windows.Documents.PathCanonicalizer,
   BDLsp.Windows.Diagnostics.Adapters.DebugOutputSink,
   BDLsp.Windows.Diagnostics.StackTrace,
-  BDLsp.Windows.Editing.SystemColors;
+  BDLsp.Windows.Editing.SystemColors,
+  BDLsp.Common.Projects.Contract;
+
+function StringsToJson(const AValues: TArray<string>): TJSONArray;
+var
+  Value: string;
+begin
+  Result := TJSONArray.Create;
+  for Value in AValues do
+    Result.Add(Value);
+end;
 
 function CreateTraceStream(const AFileName: string): TStream;
 var
@@ -443,6 +454,62 @@ begin
       else
         StartCompile('', True);
       Result := TJSONNull.Create;
+    end);
+  FCommands.Register(SelectBuildCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    var
+      Options: TJSONObject;
+      Config, Platform, Uri, Error: string;
+      Workspace: TShellWorkspace;
+      Targets: TArray<TShellWorkspace>;
+      Project: TProjectInfo;
+      Items: TJSONArray;
+      Item: TJSONObject;
+    begin
+      // Argument: {"config": "Release", "platform": "Win64", "uri": "…"}; alle Felder optional.
+      // Ohne Konfiguration und Plattform nur die aktuelle Auswahl je Projekt (#46).
+      Config := '';
+      Platform := '';
+      Uri := '';
+      if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONObject) then
+      begin
+        Options := TJSONObject(AArguments.Items[0]);
+        Options.TryGetValue<string>('config', Config);
+        Options.TryGetValue<string>('platform', Platform);
+        Options.TryGetValue<string>('uri', Uri);
+      end;
+      Targets := nil;
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        if Uri <> '' then
+        begin
+          Workspace := WorkspaceOf(TDocumentUris.ToPath(Uri));
+          if Workspace <> nil then
+            Targets := [Workspace];
+        end
+        else
+          Targets := FWorkspaces.ToArray;
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+      if (Config <> '') or (Platform <> '') then
+        for Workspace in Targets do
+          if Workspace.Project(Project) and not Workspace.SelectBuild(Config, Platform, Error) then
+            raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Error);
+      Items := TJSONArray.Create;
+      for Workspace in Targets do
+        if Workspace.Project(Project) then
+        begin
+          Item := TJSONObject.Create;
+          Item.AddPair('folder', Workspace.Name);
+          Item.AddPair('project', Project.FileName);
+          Item.AddPair('config', IfThen(Config <> '', Config, Project.Config));
+          Item.AddPair('platform', IfThen(Platform <> '', Platform, Project.Platform));
+          Item.AddPair('configs', StringsToJson(Project.Configs));
+          Item.AddPair('platforms', StringsToJson(Project.Platforms));
+          Items.AddElement(Item);
+        end;
+      Result := TJSONObject.Create(TJSONPair.Create('projects', Items));
     end);
   FCommands.Attach(FDispatcher);
   FWatchedFiles := TLspWatchedFiles.Create(FTransport);
@@ -1152,6 +1219,7 @@ begin
   Commands := TJSONArray.Create;
   Commands.Add(StatusCommand);
   Commands.Add(CompileCommand);
+  Commands.Add(SelectBuildCommand);
   Result.AddPair('executeCommandProvider', TJSONObject.Create(TJSONPair.Create('commands', Commands)));
   Result.AddPair('workspace', TLspWorkspaceFolders.Capability);
 end;

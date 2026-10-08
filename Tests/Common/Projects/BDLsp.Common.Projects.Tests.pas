@@ -58,6 +58,10 @@ type
     procedure ListsProjectUnits;
     [Test]
     procedure RejectsInvalidXml;
+    [Test]
+    procedure ListsConfigsAndPlatforms;
+    [Test]
+    procedure ChecksSelectedTarget;
   end;
 
   [TestFixture]
@@ -127,8 +131,16 @@ const
     '    <DCCReference Include="Source\Main.pas"/>'#13#10 +
     '    <DCCReference Include="..\Shared\Source\Shared.Tools.pas"/>'#13#10 +
     '    <DCCReference Include="vcl.dcp"/>'#13#10 +
+    '    <BuildConfiguration Include="Base"><Key>Base</Key></BuildConfiguration>'#13#10 +
+    '    <BuildConfiguration Include="Debug"><Key>Cfg_1</Key></BuildConfiguration>'#13#10 +
+    '    <BuildConfiguration Include="Release"><Key>Cfg_2</Key></BuildConfiguration>'#13#10 +
     '  </ItemGroup>'#13#10 +
     '  <Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists(''$(BDS)\Bin\CodeGear.Delphi.Targets'')"/>'#13#10 +
+    '  <ProjectExtensions><BorlandProject><Platforms>'#13#10 +
+    '    <Platform value="Win32">True</Platform>'#13#10 +
+    '    <Platform value="Win64">True</Platform>'#13#10 +
+    '    <Platform value="Linux64">False</Platform>'#13#10 +
+    '  </Platforms></BorlandProject></ProjectExtensions>'#13#10 +
     '</Project>';
 
   ProjectFile = 'C:\Work\App\App.dproj';
@@ -442,6 +454,28 @@ begin
   finally
     Resolver.Free;
   end;
+end;
+
+procedure TDprojReaderTests.ListsConfigsAndPlatforms;
+var
+  Project: TProjectInfo;
+begin
+  Project := ReadSample('', '');
+  Assert.AreEqual('Debug;Release', Joined(Project.Configs));
+  Assert.AreEqual('Win32;Win64', Joined(Project.Platforms));
+end;
+
+procedure TDprojReaderTests.ChecksSelectedTarget;
+var
+  Project: TProjectInfo;
+begin
+  Project := ReadSample('', '');
+  Assert.AreEqual('', TDprojReader.CheckTarget(Project, 'release', 'Win64'));
+  Assert.AreEqual('', TDprojReader.CheckTarget(Project, '', ''));
+  Assert.IsTrue(Pos('Profil', TDprojReader.CheckTarget(Project, 'Profil', '')) > 0);
+  Assert.IsTrue(Pos('Linux64', TDprojReader.CheckTarget(Project, '', 'Linux64')) > 0);
+  Project.Configs := nil;
+  Assert.AreEqual('', TDprojReader.CheckTarget(Project, 'Profil', ''));
 end;
 
 initialization
