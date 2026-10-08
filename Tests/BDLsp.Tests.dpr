@@ -59,6 +59,7 @@ uses
   BDLsp.Common.Lsp.Status.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Status.Tests.pas',
   BDLsp.Common.Lsp.QualifiedNames.Tests in 'Common\Lsp\BDLsp.Common.Lsp.QualifiedNames.Tests.pas',
   BDLsp.Common.Lsp.WinApiDocs.Tests in 'Common\Lsp\BDLsp.Common.Lsp.WinApiDocs.Tests.pas',
+  BDLsp.Common.Lsp.KeywordReference.Tests in 'Common\Lsp\BDLsp.Common.Lsp.KeywordReference.Tests.pas',
   BDLsp.Common.Editing.AssignmentSwap.Tests in 'Common\Editing\BDLsp.Common.Editing.AssignmentSwap.Tests.pas',
   BDLsp.Common.Editing.StringLiterals.Tests in 'Common\Editing\BDLsp.Common.Editing.StringLiterals.Tests.pas',
   BDLsp.Common.Lsp.DocWiki.Tests in 'Common\Lsp\BDLsp.Common.Lsp.DocWiki.Tests.pas',

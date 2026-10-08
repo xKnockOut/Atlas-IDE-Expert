@@ -110,6 +110,7 @@ contains
   BDLsp.Common.Lsp.Status in 'Source\Lsp\BDLsp.Common.Lsp.Status.pas',
   BDLsp.Common.Lsp.QualifiedNames in 'Source\Lsp\BDLsp.Common.Lsp.QualifiedNames.pas',
   BDLsp.Common.Lsp.WinApiDocs in 'Source\Lsp\BDLsp.Common.Lsp.WinApiDocs.pas',
+  BDLsp.Common.Lsp.KeywordReference in 'Source\Lsp\BDLsp.Common.Lsp.KeywordReference.pas',
   BDLsp.Common.Editing.AssignmentSwap in 'Source\Editing\BDLsp.Common.Editing.AssignmentSwap.pas',
   BDLsp.Common.Editing.StringLiterals in 'Source\Editing\BDLsp.Common.Editing.StringLiterals.pas',
   BDLsp.Common.Lsp.StringLiteralCommands in 'Source\Lsp\BDLsp.Common.Lsp.StringLiteralCommands.pas',

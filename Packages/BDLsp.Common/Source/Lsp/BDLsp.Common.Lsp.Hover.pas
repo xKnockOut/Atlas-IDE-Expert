@@ -99,6 +99,7 @@ uses
   BDLsp.Common.Lsp.MessageHandlers,
   BDLsp.Common.Lsp.HoverValues,
   BDLsp.Common.Lsp.CompilerDirectives,
+  BDLsp.Common.Lsp.KeywordReference,
   BDLsp.Common.Dfm.Parser,
   BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.TreeCache,
@@ -487,7 +488,18 @@ begin
     Resolver.Free;
   end;
   if not Info.Found then
-    Exit(TJSONNull.Create);
+  begin
+    // Seltene Schlüsselwörter und Direktiven (#187), wenn kein Symbol so heißt.
+    if not TKeywordReference.HoverAt(Document.Text, TLspPositions.ReadPosition(PositionValue), DelphiVersion,
+      Markdown) then
+      Exit(TJSONNull.Create);
+    Contents := TJSONObject.Create;
+    Contents.AddPair('kind', 'markdown');
+    Contents.AddPair('value', Markdown);
+    Result := TJSONObject.Create;
+    TJSONObject(Result).AddPair('contents', Contents);
+    Exit;
+  end;
   Contents := TJSONObject.Create;
   Contents.AddPair('kind', 'markdown');
   Contents.AddPair('value', Info.ToMarkdown);

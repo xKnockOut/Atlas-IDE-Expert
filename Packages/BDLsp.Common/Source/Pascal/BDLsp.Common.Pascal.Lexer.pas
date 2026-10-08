@@ -19,6 +19,8 @@ type
     class function Tokenize(const AText: string): TArray<TPascalToken>; static;
     /// <summary>True für reservierte Wörter (ohne Groß-/Kleinschreibung).</summary>
     class function IsReservedWord(const AWord: string): Boolean; static;
+    /// <summary>Alle reservierten Wörter in Kleinbuchstaben (#187).</summary>
+    class function ReservedWordList: TArray<string>; static;
   end;
 
 implementation
@@ -398,6 +400,15 @@ end;
 class function TPascalLexer.IsReservedWord(const AWord: string): Boolean;
 begin
   Result := ReservedWordSet.ContainsKey(LowerCase(AWord));
+end;
+
+class function TPascalLexer.ReservedWordList: TArray<string>;
+var
+  Index: Integer;
+begin
+  SetLength(Result, Length(ReservedWords));
+  for Index := 0 to High(ReservedWords) do
+    Result[Index] := ReservedWords[Index];
 end;
 
 class function TPascalLexer.Tokenize(const AText: string): TArray<TPascalToken>;
