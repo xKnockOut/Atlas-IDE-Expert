@@ -23,6 +23,7 @@ uses
   BDLsp.Common.Lsp.SelectionRanges,
   BDLsp.Common.Lsp.Definition,
   BDLsp.Common.Lsp.Hover,
+  BDLsp.Common.Lsp.WorkspaceSymbols,
   BDLsp.Common.Lsp.Configuration,
   BDLsp.Common.Lsp.WorkDoneProgress,
   BDLsp.Common.Documents.Contract,
@@ -47,6 +48,7 @@ type
     FSelectionRanges: TLspSelectionRanges;
     FDefinition: TLspDefinition;
     FHover: TLspHover;
+    FWorkspaceSymbols: TLspWorkspaceSymbols;
     FConfiguration: TLspConfiguration;
     FConnection: TJsonRpcConnection;
     FIndex: ISymbolIndex;
@@ -218,6 +220,8 @@ begin
       Result := FIndexService.EnsureUnit(AUnitName);
     end);
   FHover.Attach(FDispatcher);
+  FWorkspaceSymbols := TLspWorkspaceSymbols.Create(FIndex);
+  FWorkspaceSymbols.Attach(FDispatcher);
   FIndexProgress := TLspWorkDoneProgress.Create(FTransport, 'bdlsp-index');
   FIndexService.OnProgress := FIndexProgress.AsIndexProgress;
   FIndexService.OnFinished :=
@@ -263,6 +267,7 @@ begin
   FSelectionRanges.Free;
   FDefinition.Free;
   FHover.Free;
+  FWorkspaceSymbols.Free;
   FConfiguration.Free;
   FTextDocumentSync.Free;
   FDocuments := nil;
@@ -439,6 +444,7 @@ begin
   Result.AddPair('definitionProvider', TJSONBool.Create(True));
   Result.AddPair('declarationProvider', TJSONBool.Create(True));
   Result.AddPair('hoverProvider', TJSONBool.Create(True));
+  Result.AddPair('workspaceSymbolProvider', TJSONBool.Create(True));
 end;
 
 function TServerComposition.Run: Integer;
