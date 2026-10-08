@@ -9,5 +9,9 @@ uses
   Shell.Workspace in 'Source\Shell\Shell.Workspace.pas';
 
 begin
+  // Lecks beim Beenden melden; der Bericht geht nicht auf stdout.
+  {$IFDEF DEBUG}
+  ReportMemoryLeaksOnShutdown := True;
+  {$ENDIF}
   ExitCode := TApplicationShell.Run;
 end.

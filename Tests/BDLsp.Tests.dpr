@@ -60,7 +60,9 @@ uses
   BDLsp.Common.Lsp.ProtocolReplay in 'Common\Lsp\BDLsp.Common.Lsp.ProtocolReplay.pas',
   BDLsp.Common.Lsp.Protocol.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Protocol.Tests.pas',
   Shell.CommandLine in '..\Application\Source\Shell\Shell.CommandLine.pas',
-  Shell.CommandLine.Tests in 'Application\Shell\Shell.CommandLine.Tests.pas';
+  Shell.CommandLine.Tests in 'Application\Shell\Shell.CommandLine.Tests.pas',
+  BDLsp.Tests.LeakMonitor in 'Support\BDLsp.Tests.LeakMonitor.pas',
+  BDLsp.Tests.LeakMonitor.Tests in 'Support\BDLsp.Tests.LeakMonitor.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var
@@ -70,6 +72,10 @@ var
   NUnitLogger: ITestLogger;
 {$ENDIF}
 begin
+  {$IFDEF DEBUG}
+  ReportMemoryLeaksOnShutdown := True;
+  {$ENDIF}
+  RegisterLeakMonitor;
 {$IFDEF TESTINSIGHT}
   TestInsight.DUnitX.RunRegisteredTests;
 {$ELSE}
@@ -88,7 +94,8 @@ begin
     Runner.AddLogger(NUnitLogger);
 
     Results := Runner.Execute;
-    if not Results.AllPassed then
+    // Ein Speicherleck zählt als Fehlschlag.
+    if (not Results.AllPassed) or (Results.MemoryLeakCount > 0) then
       System.ExitCode := EXIT_ERRORS;
 
     {$IFNDEF CI}
