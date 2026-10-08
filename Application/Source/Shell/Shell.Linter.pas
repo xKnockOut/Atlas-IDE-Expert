@@ -39,6 +39,7 @@ uses
   BDLsp.Common.Rules.Checker,
   BDLsp.Common.Rules.Filter,
   BDLsp.Common.Rules.Output,
+  BDLsp.Common.Rules.Builtin.Unicode,
   BDLsp.Windows.Console.StdStreams;
 
 procedure WriteText(const AStream: TStream; const AText: string);
@@ -133,13 +134,14 @@ begin
   end;
 end;
 
-/// <summary>Eingebaute Prüfregeln; sie kommen mit den Regel-Issues (#55, #56 ...) hinzu.</summary>
+/// <summary>Eingebaute Prüfregeln.</summary>
 function BuiltinRules: TArray<IRule>;
 var
   Registry: TRuleRegistry;
 begin
   Registry := TRuleRegistry.Create;
   try
+    RegisterUnicodeRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;
