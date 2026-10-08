@@ -10,7 +10,7 @@
 // nie stillschweigend etwas gelöscht. Zeilen in Kommentaren, Strings und
 // asm-Blöcken sind keine Befehle.
 //
-// Der erste eingetragene Befehl ist /uses (#254).
+// Eingetragen sind /uses (#254) und die Deklarationsbefehle (#294).
 
 interface
 
@@ -91,7 +91,8 @@ uses
   System.StrUtils,
   System.Generics.Defaults,
   BDLsp.Common.Pascal.Lexer,
-  BDLsp.Common.Editing.UsesCommand;
+  BDLsp.Common.Editing.UsesCommand,
+  BDLsp.Common.Editing.DeclarationCommands;
 
 function IsDisabled(const AName: string; const ADisabled: TArray<string>): Boolean;
 var
@@ -157,6 +158,7 @@ begin
   begin
     Created := TSlashCommandRegistry.Create;
     Created.Register(UsesCommand);
+    RegisterDeclarationCommands(Created);
     if AtomicCmpExchange(Pointer(FShared), Pointer(Created), nil) <> nil then
       Created.Free;
   end;
