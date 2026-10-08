@@ -35,4 +35,4 @@ node Tools/Benchmark/bench.mjs --server Output\Win64\Release\Bin\BetterDelphiLSP
 
 Im Ergebnisordner liegen `benchmark-<Zeit>.json`, `letzte.json` und `bericht.md`. Exit-Code 1, wenn ein p95 den Zielwert überschreitet oder gegenüber `--baseline` um mehr als 20 % und mehr als 5 ms langsamer ist; Exit-Code 2 bei einem Fehler im Ablauf.
 
-Die reinen Funktionen (Statistik, Vergleich, Positionswahl) sind mit `node --test Tools/Benchmark/` getestet.
+Die reinen Funktionen (Statistik, Vergleich, Positionswahl) sind mit `node --test Tools/Benchmark/lib.test.mjs` getestet.
