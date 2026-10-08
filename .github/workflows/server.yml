@@ -1,0 +1,47 @@
+name: Server und Tests
+
+# Delphi darf aus Lizenzgründen nicht auf gehosteten Runnern laufen. Der Job
+# braucht einen selbst gehosteten Windows-Runner mit den Labels
+# [self-hosted, windows, delphi] und einer RAD-Studio-Installation. Er läuft
+# nur, wenn die Repository-Variable DELPHI_RUNNER auf 'true' steht; ohne
+# Runner bleibt die Pipeline so grün statt endlos zu warten.
+# Weitere Variablen: RADSTUDIO_BIN (Pfad zu rsvars.bat, Standard unten).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  build-test:
+    if: vars.DELPHI_RUNNER == 'true'
+    runs-on: [self-hosted, windows, delphi]
+    env:
+      RADSTUDIO_BIN: ${{ vars.RADSTUDIO_BIN || 'C:\Program Files (x86)\Embarcadero\Studio\37.0\bin' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Projektgruppe samt Tests bauen (Win64 Debug)
+        shell: cmd
+        run: |
+          call "%RADSTUDIO_BIN%\rsvars.bat"
+          msbuild BetterDelphiLSP.groupproj /t:Build /p:Config=Debug /p:Platform=Win64 /nologo /v:minimal
+      - name: DUnitX-Tests ausführen
+        shell: cmd
+        run: Output\Win64\Debug\Bin\BDLsp.Tests.exe --exitbehavior:Continue --xmlfile:dunitx-ergebnisse.xml
+      - name: Testergebnisse als Report
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action/windows@v2
+        with:
+          nunit_files: dunitx-ergebnisse.xml
+          check_name: DUnitX-Ergebnisse
+      - name: Ergebnisdatei ablegen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dunitx-ergebnisse
+          path: dunitx-ergebnisse.xml

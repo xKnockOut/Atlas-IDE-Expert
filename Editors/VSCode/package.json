@@ -134,7 +134,8 @@
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "package": "vsce package"
+    "package": "vsce package --no-dependencies",
+    "lint": "tsc --noEmit -p ./"
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"
