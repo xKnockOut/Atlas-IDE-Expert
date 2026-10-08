@@ -1,8 +1,9 @@
 ﻿unit BDLsp.Common.Lsp.CodeActions;
 
 // textDocument/codeAction (#42): Korrekturen und Unterdrückungen zu
-// Regeltreffern sowie try/finally um Create-Zuweisungen. Die Logik liegt in
-// BDLsp.Common.Editing.CodeActions; hier nur Protokoll und Regelaufruf.
+// Regeltreffern, try/finally um Create-Zuweisungen und fehlende
+// Methodenrümpfe. Die Logik liegt in BDLsp.Common.Editing.CodeActions und
+// BDLsp.Common.Editing.ClassCompletion; hier nur Protokoll und Regelaufruf.
 
 interface
 
@@ -39,7 +40,8 @@ uses
   BDLsp.Common.Rules.Contract,
   BDLsp.Common.Rules.Engine,
   BDLsp.Common.Pascal.SyntaxTree,
-  BDLsp.Common.Pascal.Parser;
+  BDLsp.Common.Pascal.Parser,
+  BDLsp.Common.Editing.ClassCompletion;
 
 { TLspCodeActions }
 
@@ -115,7 +117,8 @@ var
   Rules: TRuleCheckContext;
   Context: TRuleContext;
   Findings: TArray<TRuleFinding>;
-  Action: TCodeAction;
+  Action, Completion: TCodeAction;
+  HasCompletion: Boolean;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue)) then
@@ -125,25 +128,29 @@ begin
     Exit(TJSONArray.Create);
   Range := TLspPositions.ReadRange(RangeValue);
   Findings := nil;
-  if Assigned(FRuleProvider) and FRuleProvider(Uri, Rules) and (Length(Rules.Rules) > 0) then
-  begin
-    Tree := TPascalParser.Parse(Document.Text);
-    try
-      ACancellation.ThrowIfCancellationRequested;
+  HasCompletion := False;
+  Tree := TPascalParser.Parse(Document.Text);
+  try
+    ACancellation.ThrowIfCancellationRequested;
+    if Assigned(FRuleProvider) and FRuleProvider(Uri, Rules) and (Length(Rules.Rules) > 0) then
+    begin
       Context := Default(TRuleContext);
       Context.RelativePath := Rules.RelativePath;
       Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(Rules.RelativePath, '/', '\', [rfReplaceAll])), '');
       Context.Text := Document.Text;
       Context.Tree := Tree;
       Findings := TRuleEngine.Run(Rules.Rules, Rules.Settings, Context);
-    finally
-      Tree.Free;
     end;
+    HasCompletion := TClassCompletion.MissingBodies(Tree, Document.Text, Range.StartPos, Completion);
+  finally
+    Tree.Free;
   end;
   // Erst jetzt anlegen: Ein Abbruch oben soll kein Objekt zurücklassen.
   Result := TJSONArray.Create;
   for Action in TCodeActions.ForRange(Findings, Document.Text, Range) do
     TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+  if HasCompletion then
+    TJSONArray(Result).AddElement(ActionToJson(Uri, Completion));
 end;
 
 end.

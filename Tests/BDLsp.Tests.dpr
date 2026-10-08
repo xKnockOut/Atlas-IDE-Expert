@@ -90,6 +90,7 @@ uses
   BDLsp.Common.Rules.Builtin.Unicode.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Unicode.Tests.pas',
   BDLsp.Common.Editing.Colors.Tests in 'Common\Editing\BDLsp.Common.Editing.Colors.Tests.pas',
   BDLsp.Common.Editing.DocumentLinks.Tests in 'Common\Editing\BDLsp.Common.Editing.DocumentLinks.Tests.pas',
+  BDLsp.Common.Editing.ClassCompletion.Tests in 'Common\Editing\BDLsp.Common.Editing.ClassCompletion.Tests.pas',
   BDLsp.Common.Editing.CodeActions.Tests in 'Common\Editing\BDLsp.Common.Editing.CodeActions.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
