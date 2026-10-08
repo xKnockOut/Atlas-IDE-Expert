@@ -11,6 +11,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`control-char`](#control-char) | Steuerzeichen | Bug | Fehler |
 | [`confusable-identifier`](#confusable-identifier) | Verwechselbarer Bezeichner | Sicherheits-Hotspot | Warnung |
 | [`unit-name-mismatch`](#unit-name-mismatch) | Unit-Name passt nicht zum Dateinamen | Bug | Warnung |
+| [`forbidden-uses`](#forbidden-uses) | Verbotene uses-Beziehung | Code Smell | Fehler |
 
 <a id="syntax"></a>
 ## syntax
@@ -153,4 +154,27 @@ Richtig:
 ```pascal
 { Helpers.pas }
 unit Helpers;
+```
+
+<a id="forbidden-uses"></a>
+## forbidden-uses
+
+**Verbotene uses-Beziehung** · Code Smell · Fehler
+
+Ein uses-Eintrag verletzt eine Schichtregel unter "layers" in delphi-lsp.json, z. B. darf *.Common.* nicht Vcl.* verwenden.
+
+Mit Treffer:
+
+```pascal
+unit App.Common.Model;
+interface
+uses Vcl.Forms;
+```
+
+Richtig:
+
+```pascal
+unit App.Common.Model;
+interface
+uses System.Classes;
 ```

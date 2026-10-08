@@ -20,8 +20,16 @@ uses
   BDLsp.Common.Rules.Contract;
 
 type
+  /// <summary>Eintrag einer uses-, contains- oder requires-Liste.</summary>
+  TUsesReference = record
+    Name: string;
+    Range: TTextRange;
+  end;
+
   TUnitFiles = class
   public
+    /// <summary>Alle Einträge aus uses, contains und requires in Quelltextreihenfolge.</summary>
+    class function UsedUnits(const ATokens: TArray<TPascalToken>): TArray<TUsesReference>; static;
     /// <summary>Unit-Name aus einem Pfad: Dateiname ohne letzte Erweiterung, z. B.
     /// C:\App\Data.Model.pas -> Data.Model.</summary>
     class function UnitNameOf(const AFileName: string): string; static;
@@ -254,6 +262,20 @@ begin
   Result := First >= 0;
   if Result then
     ARange := TokenRange(ATokens, First, Last);
+end;
+
+class function TUnitFiles.UsedUnits(const ATokens: TArray<TPascalToken>): TArray<TUsesReference>;
+var
+  Entry: TUsesEntry;
+  Reference: TUsesReference;
+begin
+  Result := nil;
+  for Entry in UsesEntries(ATokens) do
+  begin
+    Reference.Name := Entry.Name;
+    Reference.Range := TokenRange(ATokens, Entry.First, Entry.Last);
+    Result := Result + [Reference];
+  end;
 end;
 
 class function TUnitFiles.References(const ATokens: TArray<TPascalToken>;

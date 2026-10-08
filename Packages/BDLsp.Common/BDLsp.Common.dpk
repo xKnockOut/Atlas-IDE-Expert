@@ -113,6 +113,7 @@ contains
   BDLsp.Common.Editing.UnitFiles in 'Source\Editing\BDLsp.Common.Editing.UnitFiles.pas',
   BDLsp.Common.Semantics.UnresolvedNames in 'Source\Semantics\BDLsp.Common.Semantics.UnresolvedNames.pas',
   BDLsp.Common.Rules.Builtin.UnitFiles in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.UnitFiles.pas',
+  BDLsp.Common.Rules.Builtin.Architecture in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Architecture.pas',
   BDLsp.Common.Lsp.FileOperations in 'Source\Lsp\BDLsp.Common.Lsp.FileOperations.pas',
   BDLsp.Common.Editing.ClassCompletion in 'Source\Editing\BDLsp.Common.Editing.ClassCompletion.pas',
   BDLsp.Common.Dfm.Contract in 'Source\Dfm\BDLsp.Common.Dfm.Contract.pas',

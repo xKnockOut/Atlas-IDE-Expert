@@ -82,6 +82,15 @@ begin
     '      "description": "The name in the unit line differs from the file name, so the compiler cannot find the unit through uses.",' + #10 +
     '      "bad": "{ Helpers.pas }\nunit Tools;",' + #10 +
     '      "good": "{ Helpers.pas }\nunit Helpers;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "forbidden-uses",' + #10 +
+    '      "name": "Forbidden uses",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "description": "A uses entry violates a layer rule configured under \"layers\" in delphi-lsp.json, e.g. *.Common.* must not use Vcl.*.",' + #10 +
+    '      "bad": "unit App.Common.Model;\ninterface\nuses Vcl.Forms;",' + #10 +
+    '      "good": "unit App.Common.Model;\ninterface\nuses System.Classes;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -128,6 +137,11 @@ begin
     '      "id": "unit-name-mismatch",' + #10 +
     '      "name": "Unit-Name passt nicht zum Dateinamen",' + #10 +
     '      "description": "Der Name in der unit-Zeile weicht vom Dateinamen ab; der Compiler findet die Unit dann über uses nicht."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "forbidden-uses",' + #10 +
+    '      "name": "Verbotene uses-Beziehung",' + #10 +
+    '      "description": "Ein uses-Eintrag verletzt eine Schichtregel unter \"layers\" in delphi-lsp.json, z. B. darf *.Common.* nicht Vcl.* verwenden."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

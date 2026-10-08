@@ -34,6 +34,11 @@
       "id": "unit-name-mismatch",
       "name": "Unit-Name passt nicht zum Dateinamen",
       "description": "Der Name in der unit-Zeile weicht vom Dateinamen ab; der Compiler findet die Unit dann über uses nicht."
+    },
+    {
+      "id": "forbidden-uses",
+      "name": "Verbotene uses-Beziehung",
+      "description": "Ein uses-Eintrag verletzt eine Schichtregel unter \"layers\" in delphi-lsp.json, z. B. darf *.Common.* nicht Vcl.* verwenden."
     }
   ]
 }

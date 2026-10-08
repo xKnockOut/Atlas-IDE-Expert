@@ -15,7 +15,8 @@ implementation
 uses
   BDLsp.Common.Rules.Registry,
   BDLsp.Common.Rules.Builtin.Unicode,
-  BDLsp.Common.Rules.Builtin.UnitFiles;
+  BDLsp.Common.Rules.Builtin.UnitFiles,
+  BDLsp.Common.Rules.Builtin.Architecture;
 
 function BuiltinRules: TArray<IRule>;
 var
@@ -25,6 +26,7 @@ begin
   try
     RegisterUnicodeRules(Registry);
     RegisterUnitFileRules(Registry);
+    RegisterArchitectureRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;
