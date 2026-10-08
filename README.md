@@ -45,6 +45,12 @@ pwsh Tools/Check-PackageDependencies.ps1   # Packages halten ihre Abhängigkeite
 pwsh Tools/Check-ConsoleOutput.ps1         # kein Write/Writeln auf stdout
 ```
 
+## CI
+
+- `vscode-erweiterung.yml`: Typprüfung, Build und `.vsix` als Artefakt auf einem gehosteten Ubuntu-Runner.
+- `server.yml`: Build der Projektgruppe und DUnitX-Tests auf einem selbst gehosteten Windows-Runner mit Delphi (Labels `self-hosted`, `windows`, `delphi`). Der Job läuft nur, wenn die Repository-Variable `DELPHI_RUNNER` auf `true` steht. `RADSTUDIO_BIN` überschreibt den Pfad zu `rsvars.bat`. Die Ergebnisse erscheinen als Check „DUnitX-Ergebnisse“ im Pull Request.
+- `package-dependencies.yml`: Package-Abhängigkeiten und stdout-Regel.
+
 ## Kommandozeile
 
 | Parameter | Bedeutung |
