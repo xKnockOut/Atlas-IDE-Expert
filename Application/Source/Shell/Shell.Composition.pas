@@ -37,6 +37,7 @@ uses
   BDLsp.Common.Lsp.Completion,
   BDLsp.Common.Lsp.SignatureHelp,
   BDLsp.Common.Lsp.Hierarchies,
+  BDLsp.Common.Lsp.Implementations,
   BDLsp.Common.Lsp.Status,
   BDLsp.Common.JsonRpc.Statistics,
   BDLsp.Common.Lsp.WatchedFiles,
@@ -70,6 +71,7 @@ type
     FCompletion: TLspCompletion;
     FSignatureHelp: TLspSignatureHelp;
     FHierarchies: TLspHierarchies;
+    FImplementations: TLspImplementations;
     FCodeActions: TLspCodeActions;
     FDocumentLinks: TLspDocumentLinks;
     FColors: TLspColors;
@@ -301,6 +303,12 @@ begin
       Result := EnsureUnit(AUnitName);
     end);
   FHierarchies.Attach(FDispatcher);
+  FImplementations := TLspImplementations.Create(FDocuments, FIndex,
+    function(const AUnitName: string): Boolean
+    begin
+      Result := EnsureUnit(AUnitName);
+    end);
+  FImplementations.Attach(FDispatcher);
   FCodeActions := TLspCodeActions.Create(FDocuments, RuleContextFor);
   FCodeActions.Attach(FDispatcher);
   FDocumentLinks := TLspDocumentLinks.Create(FDocuments,
@@ -388,6 +396,7 @@ begin
   FWorkspaceSymbols.Free;
   FDocumentHighlights.Free;
   FReferences.Free;
+  FImplementations.Free;
   FHierarchies.Free;
   FSignatureHelp.Free;
   FCompletion.Free;
@@ -641,6 +650,7 @@ begin
   FCompletion.Namespaces := Namespaces;
   FSignatureHelp.Namespaces := Namespaces;
   FHierarchies.Namespaces := Namespaces;
+  FImplementations.Namespaces := Namespaces;
   FSyntaxDiagnostics.Refresh;
 end;
 
@@ -785,6 +795,7 @@ begin
   Result.AddPair('signatureHelpProvider', TLspSignatureHelp.Capability);
   Result.AddPair('typeHierarchyProvider', TJSONBool.Create(True));
   Result.AddPair('callHierarchyProvider', TJSONBool.Create(True));
+  Result.AddPair('implementationProvider', TJSONBool.Create(True));
   Result.AddPair('codeActionProvider', TLspCodeActions.Capability);
   Result.AddPair('documentLinkProvider', TLspDocumentLinks.Capability);
   Result.AddPair('colorProvider', TJSONBool.Create(True));
