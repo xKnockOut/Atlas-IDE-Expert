@@ -5,7 +5,9 @@
 //   - "Regel für diese Zeile unterdrücken": eigene Kommentarzeile darüber,
 //     bestehende "// lsp-ignore:"-Zeile darüber wird ergänzt
 //   - "Regel für diese Datei unterdrücken": "// lsp-ignore-file:" in Zeile 1
-//   - "try/finally ergänzen" nach "X := T.Create(...);" mit passendem X.Free
+//   - "try/finally ergänzen" nach "X := T.Create(...);" mit passendem X.Free;
+//     bei "Result := T.Create(...)" stattdessen try/except, das Result nur im
+//     Fehlerfall freigibt (das Objekt wird ja zurückgegeben)
 
 interface
 
@@ -197,10 +199,20 @@ begin
   end;
   Indent := IndentOf(Line);
   LB := LineBreakOf(AText);
-  AAction.Title := Format('try/finally mit %s.Free ergänzen', [Target]);
   AAction.Kind := RewriteKind;
-  AAction.Edits := [TRuleEdit.Create(TTextRange.Create(ALine, Length(Line), ALine, Length(Line)),
-    LB + Indent + 'try' + LB + LB + Indent + 'finally' + LB + Indent + '  ' + Target + '.Free;' + LB + Indent + 'end;')];
+  if SameText(Target, 'Result') then
+  begin
+    AAction.Title := 'try/except ergänzen (Result bei Fehler freigeben)';
+    AAction.Edits := [TRuleEdit.Create(TTextRange.Create(ALine, Length(Line), ALine, Length(Line)),
+      LB + Indent + 'try' + LB + LB + Indent + 'except' + LB + Indent + '  ' + Target + '.Free;' + LB +
+      Indent + '  raise;' + LB + Indent + 'end;')];
+  end
+  else
+  begin
+    AAction.Title := Format('try/finally mit %s.Free ergänzen', [Target]);
+    AAction.Edits := [TRuleEdit.Create(TTextRange.Create(ALine, Length(Line), ALine, Length(Line)),
+      LB + Indent + 'try' + LB + LB + Indent + 'finally' + LB + Indent + '  ' + Target + '.Free;' + LB + Indent + 'end;')];
+  end;
   Result := True;
 end;
 
