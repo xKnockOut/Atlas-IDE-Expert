@@ -223,7 +223,7 @@ begin
   FWorkspaceSymbols := TLspWorkspaceSymbols.Create(FIndex);
   FWorkspaceSymbols.Attach(FDispatcher);
   FIndexProgress := TLspWorkDoneProgress.Create(FTransport, 'bdlsp-index');
-  FIndexService.OnProgress := FIndexProgress.AsIndexProgress;
+  FIndexService.OnProgress := FIndexProgress.AsIndexProgress();
   FIndexService.OnFinished :=
     procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
     begin

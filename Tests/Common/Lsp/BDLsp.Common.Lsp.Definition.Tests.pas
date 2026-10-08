@@ -40,6 +40,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.JSON,
   BDLsp.Common.Documents.Contract,
   BDLsp.Common.Documents.Uris,
@@ -207,6 +208,9 @@ procedure TLspDefinitionTests.WritesLocations;
 var
   Target: TDefinitionTarget;
   Json: TJSONArray;
+  Location: TJSONValue;
+  Uri: string;
+  Line, Character: Integer;
 begin
   Target.FileName := 'C:\P\Werkzeug.pas';
   Target.Range := TTextRange.Create(TTextPosition.Create(4, 0), TTextPosition.Create(6, 4));
@@ -214,9 +218,15 @@ begin
   Json := TLspDefinition.ToJson([Target]);
   try
     Assert.AreEqual(1, Integer(Json.Count));
-    Assert.AreEqual(TDocumentUris.FromPath('C:\P\Werkzeug.pas'), Json.Items[0].GetValue<string>('uri'));
-    Assert.AreEqual(4, Json.Items[0].GetValue<Integer>('range.start.line'));
-    Assert.AreEqual(10, Json.Items[0].GetValue<Integer>('range.start.character'));
+    // Werte erst in typisierte Variablen lesen: GetValue<T> direkt als
+    // Argument von Assert.AreEqual übersetzt dcc64 (Delphi 13) nicht.
+    Location := Json.Items[0];
+    Uri := Location.GetValue<string>('uri');
+    Line := Location.GetValue<Integer>('range.start.line');
+    Character := Location.GetValue<Integer>('range.start.character');
+    Assert.AreEqual(TDocumentUris.FromPath('C:\P\Werkzeug.pas'), Uri);
+    Assert.AreEqual(4, Line);
+    Assert.AreEqual(10, Character);
   finally
     Json.Free;
   end;
