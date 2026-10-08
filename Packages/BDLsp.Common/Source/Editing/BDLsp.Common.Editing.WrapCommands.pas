@@ -6,6 +6,7 @@
 //   /sync, /sync!  TThread.Queue bzw. TThread.Synchronize
 //   /ifdef SYMBOL  {$IFDEF SYMBOL} … {$ENDIF}
 //   /region Name   {$REGION 'Name'} … {$ENDREGION}
+//   /except        try … except on E: Exception do protokollieren und weiterwerfen (#304)
 //
 // Umschlossen werden die Zeilen nach der Befehlszeile bis zum Ende des
 // umgebenden Blocks (end, finally, except bzw. until).
@@ -230,6 +231,23 @@ begin
   end;
 end;
 
+{ /except }
+
+function ExecuteExcept(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+var
+  Source: TCommandSource;
+begin
+  Source := TCommandSource.Create(AContext);
+  try
+    // Nie ein leeres except: protokollieren und weiterwerfen.
+    Result := Wrap(Source, 'except', ['try'], ['except', '  on E: Exception do', '  begin',
+      '    OutputDebugString(PChar(E.ClassName + '': '' + E.Message));', '    raise;', '  end;', 'end;'], '  ',
+      AEdits, AReason);
+  finally
+    Source.Free;
+  end;
+end;
+
 function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
 begin
   Result.Name := AName;
@@ -253,6 +271,8 @@ begin
       Result := ExecuteSync(AContext, 'Synchronize', AEdits, AReason);
     end));
   ARegistry.Register(Command('ifdef', 'Folgende Anweisungen in {$IFDEF}', '/ifdef DEBUG', ExecuteIfdef));
+  ARegistry.Register(Command('except', 'Folgende Anweisungen mit Protokoll und raise absichern', '/except',
+    ExecuteExcept));
   ARegistry.Register(Command('region', 'Folgende Anweisungen in {$REGION}', '/region Laden', ExecuteRegion));
 end;
 

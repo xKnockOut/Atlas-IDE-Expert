@@ -150,6 +150,7 @@
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.MaintenanceCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.TypeCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.UnitTemplates.Tests.pas"/>
+        <DCCReference Include="Common\Editing\BDLsp.Common.Editing.ErrorCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.UnitFiles.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.UnitFiles.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.FileOperations.Tests.pas"/>

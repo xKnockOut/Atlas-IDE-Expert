@@ -139,6 +139,7 @@
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.MaintenanceCommands.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.TypeCommands.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.UnitTemplates.pas"/>
+        <DCCReference Include="Source\Editing\BDLsp.Common.Editing.ErrorCommands.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.UnitFiles.pas"/>
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.UnresolvedNames.pas"/>
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.UnitFiles.pas"/>
