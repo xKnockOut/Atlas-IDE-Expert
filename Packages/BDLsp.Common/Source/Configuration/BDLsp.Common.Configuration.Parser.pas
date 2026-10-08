@@ -47,6 +47,8 @@ type
     function ExpectString(ANode: TJsonNode; const AName: string; out AValue: string): Boolean;
     procedure ReadRules(ANode: TJsonNode);
     procedure ReadExclude(ANode: TJsonNode);
+    procedure ReadInlayHints(ANode: TJsonNode);
+    function ExpectBoolean(ANode: TJsonNode; const AName: string; var AValue: Boolean): Boolean;
     /// <summary>Wurzel oder nil nach gemeldetem Syntaxfehler.</summary>
     function ParseRoot: TJsonNode;
   public
@@ -213,6 +215,49 @@ begin
   end;
 end;
 
+function TValidator.ExpectBoolean(ANode: TJsonNode; const AName: string; var AValue: Boolean): Boolean;
+begin
+  Result := ANode.Kind = TJsonKind.Boolean_;
+  if Result then
+    AValue := ANode.Value = 'true'
+  else
+    ReportNode(ANode, Format('"%s" muss true oder false sein', [AName]));
+end;
+
+procedure TValidator.ReadInlayHints(ANode: TJsonNode);
+var
+  Index, Lines: Integer;
+  Key: string;
+  Value: TJsonNode;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"inlayHints" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    Value := ANode[Index];
+    if Key = 'parameterNames' then
+      ExpectBoolean(Value, Key, FSettings.InlayHints.ParameterNames)
+    else if Key = 'inferredTypes' then
+      ExpectBoolean(Value, Key, FSettings.InlayHints.InferredTypes)
+    else if Key = 'endMarkers' then
+      ExpectBoolean(Value, Key, FSettings.InlayHints.EndMarkers)
+    else if Key = 'endMarkerMinLines' then
+    begin
+      if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Lines) and (Lines >= 1) then
+        FSettings.InlayHints.EndMarkerMinLines := Lines
+      else
+        ReportNode(Value, '"endMarkerMinLines" muss eine ganze Zahl ab 1 sein');
+    end
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "inlayHints.%s"', [Key]), False);
+  end;
+end;
+
 function TValidator.ParseRoot: TJsonNode;
 begin
   try
@@ -288,6 +333,8 @@ begin
           if not TConfigurationParser.TryParseConfidence(Text, FSettings.MinConfidence) then
             ReportNode(Value, 'Erlaubt sind "low", "medium" und "high"');
       end
+      else if Key = 'inlayHints' then
+        ReadInlayHints(Value)
       else if Key = 'format' then
       begin
         if Value.Kind = TJsonKind.Object_ then
@@ -425,7 +472,9 @@ begin
     else if Key = 'minConfidence' then
       Result.MinConfidence := FileSettings.MinConfidence
     else if Key = 'format' then
-      Result.Format := FileSettings.Format;
+      Result.Format := FileSettings.Format
+    else if Key = 'inlayHints' then
+      Result.InlayHints := FileSettings.InlayHints;
 end;
 
 class function TConfigurationParser.Parse(const AText: string; out AIssues: TArray<TConfigurationIssue>): TServerSettings;

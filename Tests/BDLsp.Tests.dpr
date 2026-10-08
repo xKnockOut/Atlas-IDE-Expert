@@ -44,6 +44,7 @@ uses
   BDLsp.Common.Lsp.SignatureHelp.Tests in 'Common\Lsp\BDLsp.Common.Lsp.SignatureHelp.Tests.pas',
   BDLsp.Common.Lsp.Hierarchies.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Hierarchies.Tests.pas',
   BDLsp.Common.Lsp.Implementations.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Implementations.Tests.pas',
+  BDLsp.Common.Lsp.InlayHints.Tests in 'Common\Lsp\BDLsp.Common.Lsp.InlayHints.Tests.pas',
   BDLsp.Common.Lsp.Status.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Status.Tests.pas',
   BDLsp.Common.Lsp.DocWiki.Tests in 'Common\Lsp\BDLsp.Common.Lsp.DocWiki.Tests.pas',
   BDLsp.Common.Lsp.Hover.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Hover.Tests.pas',

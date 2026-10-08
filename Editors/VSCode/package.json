@@ -84,6 +84,16 @@
           "default": [],
           "markdownDescription": "Ausgeschlossene Ordner und Dateien als Glob-Muster, z. B. `ThirdParty/**`. delphi-lsp.json im Projekt hat Vorrang."
         },
+        "betterDelphiLsp.inlayHints": {
+          "type": "object",
+          "default": {
+            "parameterNames": true,
+            "inferredTypes": true,
+            "endMarkers": true,
+            "endMarkerMinLines": 20
+          },
+          "markdownDescription": "Inlay Hints: `parameterNames`, `inferredTypes`, `endMarkers` (an/aus) und `endMarkerMinLines` (Mindestlänge eines Blocks in Zeilen für eine Endmarkierung). delphi-lsp.json im Projekt hat Vorrang."
+        },
         "betterDelphiLsp.logLevel": {
           "type": "string",
           "enum": [

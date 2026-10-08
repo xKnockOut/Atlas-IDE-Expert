@@ -24,6 +24,8 @@ type
     [Test]
     procedure ReadsRuleObjectsWithOptions;
     [Test]
+    procedure ReadsInlayHints;
+    [Test]
     procedure FileOverridesEditorPerKey;
     [Test]
     procedure MergesRulesPerId;
@@ -199,6 +201,31 @@ begin
 end;
 
 { TServerSettingsTests }
+
+procedure TConfigurationParserTests.ReadsInlayHints;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.InlayHints.ParameterNames);
+  Assert.AreEqual(20, Settings.InlayHints.EndMarkerMinLines);
+  Settings := Parse('{"inlayHints": {"parameterNames": false, "endMarkerMinLines": 8, "inferredTypes": 1, "x": true}}',
+    Issues);
+  Assert.IsFalse(Settings.InlayHints.ParameterNames);
+  Assert.IsTrue(Settings.InlayHints.InferredTypes);
+  Assert.IsTrue(Settings.InlayHints.EndMarkers);
+  Assert.AreEqual(8, Settings.InlayHints.EndMarkerMinLines);
+  // inferredTypes falsch getypt (Fehler), "x" unbekannt (Warnung).
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Assert.IsTrue(Issues[0].IsError);
+  Assert.IsFalse(Issues[1].IsError);
+  // Die Datei ersetzt den ganzen Block aus dem Editor.
+  Settings := TConfigurationParser.ParseLayered('{"inlayHints": {"endMarkers": false}}',
+    '{"inlayHints": {"endMarkerMinLines": 5}}', Issues);
+  Assert.IsTrue(Settings.InlayHints.EndMarkers);
+  Assert.AreEqual(5, Settings.InlayHints.EndMarkerMinLines);
+end;
 
 procedure TServerSettingsTests.RuleSeverityFallsBackToDefault;
 var
