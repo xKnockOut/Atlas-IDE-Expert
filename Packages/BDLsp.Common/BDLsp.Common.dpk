@@ -70,6 +70,7 @@ contains
   BDLsp.Common.Semantics.ControlFlow in 'Source\Semantics\BDLsp.Common.Semantics.ControlFlow.pas',
   BDLsp.Common.Semantics.NameResolver in 'Source\Semantics\BDLsp.Common.Semantics.NameResolver.pas',
   BDLsp.Common.Lsp.Definition in 'Source\Lsp\BDLsp.Common.Lsp.Definition.pas',
+  BDLsp.Common.Lsp.PublishedMembers in 'Source\Lsp\BDLsp.Common.Lsp.PublishedMembers.pas',
   BDLsp.Common.Lsp.Hover in 'Source\Lsp\BDLsp.Common.Lsp.Hover.pas',
   BDLsp.Common.Lsp.WorkspaceSymbols in 'Source\Lsp\BDLsp.Common.Lsp.WorkspaceSymbols.pas',
   BDLsp.Common.Lsp.DocumentHighlights in 'Source\Lsp\BDLsp.Common.Lsp.DocumentHighlights.pas',

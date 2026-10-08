@@ -102,6 +102,7 @@
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.ControlFlow.pas"/>
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.NameResolver.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Definition.pas"/>
+        <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.PublishedMembers.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Hover.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.WorkspaceSymbols.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.DocumentHighlights.pas"/>
