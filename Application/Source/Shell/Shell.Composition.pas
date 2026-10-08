@@ -30,6 +30,7 @@ uses
   BDLsp.Common.Lsp.DocumentHighlights,
   BDLsp.Common.Lsp.CodeActions,
   BDLsp.Common.Lsp.DocumentLinks,
+  BDLsp.Common.Lsp.Colors,
   BDLsp.Common.Lsp.WatchedFiles,
   BDLsp.Common.Lsp.WorkspaceFolders,
   BDLsp.Common.Lsp.Configuration,
@@ -58,6 +59,7 @@ type
     FDocumentHighlights: TLspDocumentHighlights;
     FCodeActions: TLspCodeActions;
     FDocumentLinks: TLspDocumentLinks;
+    FColors: TLspColors;
     FWatchedFiles: TLspWatchedFiles;
     FWorkspaceFolders: TLspWorkspaceFolders;
     /// <summary>Für delphi-lsp.json außerhalb aller Ordner: nur Fehlermeldungen.</summary>
@@ -123,7 +125,8 @@ uses
   BDLsp.Windows.Console.StdStreams,
   BDLsp.Windows.Documents.PathCanonicalizer,
   BDLsp.Windows.Diagnostics.Adapters.DebugOutputSink,
-  BDLsp.Windows.Diagnostics.StackTrace;
+  BDLsp.Windows.Diagnostics.StackTrace,
+  BDLsp.Windows.Editing.SystemColors;
 
 function CreateTraceStream(const AFileName: string): TStream;
 var
@@ -256,6 +259,8 @@ begin
       end;
     end);
   FDocumentLinks.Attach(FDispatcher);
+  FColors := TLspColors.Create(FDocuments, WindowsSystemColor);
+  FColors.Attach(FDispatcher);
   FWatchedFiles := TLspWatchedFiles.Create(FTransport);
   FWatchedFiles.OnChanged := HandleWatchedFiles;
   FWatchedFiles.Attach(FDispatcher);
@@ -313,6 +318,7 @@ begin
   FDocumentHighlights.Free;
   FCodeActions.Free;
   FDocumentLinks.Free;
+  FColors.Free;
   FWatchedFiles.Free;
   FTextDocumentSync.Free;
   FDocuments := nil;
@@ -624,6 +630,7 @@ begin
   Result.AddPair('documentHighlightProvider', TJSONBool.Create(True));
   Result.AddPair('codeActionProvider', TLspCodeActions.Capability);
   Result.AddPair('documentLinkProvider', TLspDocumentLinks.Capability);
+  Result.AddPair('colorProvider', TJSONBool.Create(True));
   Result.AddPair('workspace', TLspWorkspaceFolders.Capability);
 end;
 

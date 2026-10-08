@@ -72,6 +72,7 @@ uses
   BDLsp.Common.Rules.SuppressionStats.Tests in 'Common\Rules\BDLsp.Common.Rules.SuppressionStats.Tests.pas',
   BDLsp.Common.Rules.Catalog.Tests in 'Common\Rules\BDLsp.Common.Rules.Catalog.Tests.pas',
   BDLsp.Common.Rules.Builtin.Unicode.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Unicode.Tests.pas',
+  BDLsp.Common.Editing.Colors.Tests in 'Common\Editing\BDLsp.Common.Editing.Colors.Tests.pas',
   BDLsp.Common.Editing.DocumentLinks.Tests in 'Common\Editing\BDLsp.Common.Editing.DocumentLinks.Tests.pas',
   BDLsp.Common.Editing.CodeActions.Tests in 'Common\Editing\BDLsp.Common.Editing.CodeActions.Tests.pas';
 
