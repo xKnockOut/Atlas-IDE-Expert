@@ -460,6 +460,51 @@ begin
     '      "description": "A line starting with /name was not executed and stays in the code: the command is unknown, switched off (slashCommands.disabled) or does not fit at this place. The message names ' + 'the reason.",' + #10 +
     '      "bad": "/gibtsnicht X",' + #10 +
     '      "good": "/uses System.Classes"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "empty-except",' + #10 +
+    '      "name": "Empty except block",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "An except block without statements swallows every exception. A block that contains only a comment counts as deliberate and is not reported.",' + #10 +
+    '      "bad": "try\n  Save;\nexcept\nend;",' + #10 +
+    '      "good": "try\n  Save;\nexcept\n  on E: EInOutError do\n    Log(E.Message);\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "interface-guid",' + #10 +
+    '      "name": "Interface without GUID",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "An interface declares no GUID. Supports, as and QueryInterface need one. The confidence is high when the interface is used with them in the same file, otherwise low. The quick fi' + 'x inserts a new GUID.",' + #10 +
+    '      "bad": "type\n  ISaver = interface\n    procedure Save;\n  end;",' + #10 +
+    '      "good": "type\n  ISaver = interface\n    [''{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}'']\n    procedure Save;\n  end;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "duplicate-interface-guid",' + #10 +
+    '      "name": "Two interfaces with the same GUID",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "description": "Two interfaces in the file declare the same GUID, usually after copying a declaration. Supports and as then mix them up. The quick fix generates a new GUID.",' + #10 +
+    '      "bad": "ILoader = interface\n  [''{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}'']\nend;\nISaver = interface\n  [''{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}'']\nend;",' + #10 +
+    '      "good": "ILoader = interface\n  [''{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}'']\nend;\nISaver = interface\n  [''{0B9E4F21-7C6D-4A3E-8F15-2D9C7B6A4E31}'']\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "file-header",' + #10 +
+    '      "name": "File header missing or different",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "The file does not start with the header from the rule option \"template\". Off by default; switch it on in delphi-lsp.json with a template. The quick fix inserts the header.",' + #10 +
+    '      "bad": "unit Tools;",' + #10 +
+    '      "good": "// Copyright (c) Example GmbH\nunit Tools;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "hardcoded-string",' + #10 +
+    '      "name": "Text in code instead of resourcestring",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "A string literal with words for people stands in a statement. Move it to a resourcestring so it can be translated. Off by default, low confidence.",' + #10 +
+    '      "bad": "ShowMessage(''File not found'');",' + #10 +
+    '      "good": "resourcestring\n  SFileNotFound = ''File not found'';\n...\nShowMessage(SFileNotFound);"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -716,6 +761,31 @@ begin
     '      "id": "slash-command",' + #10 +
     '      "name": "Schnellbefehl nicht ausgeführt",' + #10 +
     '      "description": "Eine Zeile, die mit /name beginnt, wurde nicht ausgeführt und steht noch im Code: Der Befehl ist unbekannt, abgeschaltet (slashCommands.disabled) oder passt an dieser Stelle nich' + 't. Die Meldung nennt den Grund."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "empty-except",' + #10 +
+    '      "name": "Leerer except-Block",' + #10 +
+    '      "description": "Ein except-Block ohne Anweisung verschluckt jede Ausnahme. Ein Block, der nur einen Kommentar enthält, gilt als begründet und wird nicht gemeldet."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "interface-guid",' + #10 +
+    '      "name": "Interface ohne GUID",' + #10 +
+    '      "description": "Ein Interface deklariert keine GUID. Supports, as und QueryInterface brauchen eine. Die Konfidenz ist hoch, wenn das Interface in derselben Datei damit verwendet wird, sonst nied' + 'rig. Die Schnellkorrektur fügt eine neue GUID ein."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "duplicate-interface-guid",' + #10 +
+    '      "name": "Zwei Interfaces mit derselben GUID",' + #10 +
+    '      "description": "Zwei Interfaces der Datei deklarieren dieselbe GUID, meist nach dem Kopieren einer Deklaration. Supports und as verwechseln sie dann. Die Schnellkorrektur erzeugt eine neue GUID.' + '"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "file-header",' + #10 +
+    '      "name": "Dateikopf fehlt oder weicht ab",' + #10 +
+    '      "description": "Die Datei beginnt nicht mit dem Kopf aus der Regeloption \"template\". Standardmäßig aus; in delphi-lsp.json mit einer Vorlage einschalten. Die Schnellkorrektur fügt den Kopf ein' + '."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "hardcoded-string",' + #10 +
+    '      "name": "Text im Code statt resourcestring",' + #10 +
+    '      "description": "In einer Anweisung steht ein String mit Wörtern für Menschen. In einen resourcestring auslagern, damit er übersetzt werden kann. Standardmäßig aus, niedrige Konfidenz."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

@@ -75,8 +75,7 @@ procedure LeererExceptBlock;
 begin
   try
     Abort;
-  except // ERWARTET: empty-except
-  end;
+  except end; // ERWARTET: empty-except
 end;
 
 procedure Unerreichbar;

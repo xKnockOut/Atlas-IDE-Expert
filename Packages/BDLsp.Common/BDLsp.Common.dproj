@@ -155,6 +155,7 @@
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Components.pas"/>
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.FormFields.pas"/>
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Security.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.General.pas"/>
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.DataBinding.pas"/>
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.SlashCommands.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.FileOperations.pas"/>

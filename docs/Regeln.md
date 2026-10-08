@@ -53,6 +53,11 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`foreign-form-control-access`](#foreign-form-control-access) | Zugriff auf Controls eines anderen Formulars | Code Smell | Warnung |
 | [`security-sql-injection`](#security-sql-injection) | SQL-Text aus zusammengesetzten Werten (SQL-Injection) | Schwachstelle | Warnung |
 | [`slash-command`](#slash-command) | Schnellbefehl nicht ausgeführt | Code Smell | Hinweis |
+| [`empty-except`](#empty-except) | Leerer except-Block | Code Smell | Warnung |
+| [`interface-guid`](#interface-guid) | Interface ohne GUID | Bug | Warnung |
+| [`duplicate-interface-guid`](#duplicate-interface-guid) | Zwei Interfaces mit derselben GUID | Bug | Fehler |
+| [`file-header`](#file-header) | Dateikopf fehlt oder weicht ab | Code Smell | Hinweis |
+| [`hardcoded-string`](#hardcoded-string) | Text im Code statt resourcestring | Code Smell | Hinweis |
 
 <a id="syntax"></a>
 ## syntax
@@ -1174,4 +1179,128 @@ Richtig:
 
 ```pascal
 /uses System.Classes
+```
+
+<a id="empty-except"></a>
+## empty-except
+
+**Leerer except-Block** · Code Smell · Warnung
+
+Ein except-Block ohne Anweisung verschluckt jede Ausnahme. Ein Block, der nur einen Kommentar enthält, gilt als begründet und wird nicht gemeldet.
+
+Mit Treffer:
+
+```pascal
+try
+  Save;
+except
+end;
+```
+
+Richtig:
+
+```pascal
+try
+  Save;
+except
+  on E: EInOutError do
+    Log(E.Message);
+end;
+```
+
+<a id="interface-guid"></a>
+## interface-guid
+
+**Interface ohne GUID** · Bug · Warnung
+
+Ein Interface deklariert keine GUID. Supports, as und QueryInterface brauchen eine. Die Konfidenz ist hoch, wenn das Interface in derselben Datei damit verwendet wird, sonst niedrig. Die Schnellkorrektur fügt eine neue GUID ein.
+
+Mit Treffer:
+
+```pascal
+type
+  ISaver = interface
+    procedure Save;
+  end;
+```
+
+Richtig:
+
+```pascal
+type
+  ISaver = interface
+    ['{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}']
+    procedure Save;
+  end;
+```
+
+<a id="duplicate-interface-guid"></a>
+## duplicate-interface-guid
+
+**Zwei Interfaces mit derselben GUID** · Bug · Fehler
+
+Zwei Interfaces der Datei deklarieren dieselbe GUID, meist nach dem Kopieren einer Deklaration. Supports und as verwechseln sie dann. Die Schnellkorrektur erzeugt eine neue GUID.
+
+Mit Treffer:
+
+```pascal
+ILoader = interface
+  ['{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}']
+end;
+ISaver = interface
+  ['{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}']
+end;
+```
+
+Richtig:
+
+```pascal
+ILoader = interface
+  ['{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}']
+end;
+ISaver = interface
+  ['{0B9E4F21-7C6D-4A3E-8F15-2D9C7B6A4E31}']
+end;
+```
+
+<a id="file-header"></a>
+## file-header
+
+**Dateikopf fehlt oder weicht ab** · Code Smell · Hinweis
+
+Die Datei beginnt nicht mit dem Kopf aus der Regeloption "template". Standardmäßig aus; in delphi-lsp.json mit einer Vorlage einschalten. Die Schnellkorrektur fügt den Kopf ein.
+
+Mit Treffer:
+
+```pascal
+unit Tools;
+```
+
+Richtig:
+
+```pascal
+// Copyright (c) Example GmbH
+unit Tools;
+```
+
+<a id="hardcoded-string"></a>
+## hardcoded-string
+
+**Text im Code statt resourcestring** · Code Smell · Hinweis
+
+In einer Anweisung steht ein String mit Wörtern für Menschen. In einen resourcestring auslagern, damit er übersetzt werden kann. Standardmäßig aus, niedrige Konfidenz.
+
+Mit Treffer:
+
+```pascal
+ShowMessage('File not found');
+```
+
+Richtig:
+
+```pascal
+resourcestring
+  SFileNotFound = 'File not found';
+...
+ShowMessage(SFileNotFound);
 ```

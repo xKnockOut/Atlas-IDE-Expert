@@ -1,7 +1,6 @@
 # Regel-IDs aus den Markierungen, die noch keine Regel haben (#152).
 # Der Golden-Korpus-Test überspringt sie mit Warnung. Eine ID, die weder hier
 # noch im Regelkatalog steht, lässt den Test fehlschlagen.
-empty-except      # #56
 possible-leak     # #56
 with-statement    # noch kein Issue
 unreachable-code  # noch kein Issue
