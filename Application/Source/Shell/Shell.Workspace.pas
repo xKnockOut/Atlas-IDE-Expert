@@ -48,6 +48,9 @@ type
     FHasProject: Boolean;
     FBdsRoot: string;
     FCompilerLibraryPaths: TArray<string>;
+    // Per Befehl gewählte Konfiguration und Plattform (#46), unter FLock; '' = Einstellung.
+    FBuildConfig: string;
+    FBuildPlatform: string;
     FOnProjectLoaded: TProc;
     FBaseline: IRuleBaseline;
     FLastIndexMs: Int64;
@@ -87,6 +90,11 @@ type
     /// <summary>Aufruf des Compilers für das Projekt (#40); False mit Grund in AError
     /// ohne Projekt, Installation oder unterstützte Plattform. Threadsicher.</summary>
     function CompilerRequest(out ARequest: TCompilerRequest; out AError: string): Boolean;
+    /// <summary>Wechselt Konfiguration und/oder Plattform ('' = unverändert) und lädt das Projekt neu (#46).
+    /// False mit Grund in AError ohne Projekt oder bei unbekannten Werten. Threadsicher.</summary>
+    function SelectBuild(const AConfig, APlatform: string; out AError: string): Boolean;
+    /// <summary>Geladenes Projekt; False ohne Projekt. Threadsicher.</summary>
+    function Project(out AProject: TProjectInfo): Boolean;
     /// <summary>Letzter Indexlauf für den Status-Befehl (#28). Threadsicher.</summary>
     function IndexStatus: TWorkspaceStatus;
     property Root: string read FRoot;
@@ -247,6 +255,46 @@ begin
   except
     on E: Exception do
       FLogger.Warning(Format('Aufräumen des Cache-Ordners fehlgeschlagen: %s', [E.Message]));
+  end;
+end;
+
+function TShellWorkspace.SelectBuild(const AConfig, APlatform: string; out AError: string): Boolean;
+begin
+  TMonitor.Enter(FLock);
+  try
+    if not FHasProject then
+      AError := Format('Für %s ist kein Projekt geladen.', [FName])
+    else
+      AError := TDprojReader.CheckTarget(FProject, AConfig, APlatform);
+    Result := AError = '';
+    if Result then
+    begin
+      if AConfig <> '' then
+        FBuildConfig := AConfig;
+      if APlatform <> '' then
+        FBuildPlatform := APlatform;
+    end;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  if Result then
+  begin
+    FLogger.Info(Format('%s: Konfiguration %s, Plattform %s gewählt', [FName, AConfig, APlatform]));
+    Reload;
+  end;
+end;
+
+function TShellWorkspace.Project(out AProject: TProjectInfo): Boolean;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FHasProject;
+    if Result then
+      AProject := FProject
+    else
+      AProject := Default(TProjectInfo);
+  finally
+    TMonitor.Exit(FLock);
   end;
 end;
 
@@ -466,6 +514,15 @@ begin
   Options := Default(TDprojOptions);
   Options.Config := ASettings.Config;
   Options.Platform := ASettings.Platform;
+  TMonitor.Enter(FLock);
+  try
+    if FBuildConfig <> '' then
+      Options.Config := FBuildConfig;
+    if FBuildPlatform <> '' then
+      Options.Platform := FBuildPlatform;
+  finally
+    TMonitor.Exit(FLock);
+  end;
   Options.FileExists := FileExistsFunc;
   if Installation <> nil then
     Options.Variables := Installation.Variables;

@@ -161,6 +161,11 @@
         "command": "betterdelphilsp.compile",
         "title": "Projekt kompilieren",
         "category": "BetterDelphiLSP"
+      },
+      {
+        "command": "betterDelphiLsp.selectBuild",
+        "title": "Konfiguration und Plattform wählen",
+        "category": "BetterDelphiLSP"
       }
     ],
     "jsonValidation": [
