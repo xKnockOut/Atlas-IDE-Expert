@@ -93,49 +93,58 @@ begin
     '      "good": "unit App.Common.Model;\ninterface\nuses System.Classes;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "thread-vcl-access",' + #10 +
+    '      "name": "VCL access from a thread",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "TThread.Execute, TThread.CreateAnonymousThread or TTask accesses the VCL (Application, Screen, ShowMessage, MessageDlg …) outside Synchronize or Queue. The VCL is not thread-safe' + '.",' + #10 +
+    '      "bad": "procedure TWorker.Execute;\nbegin\n  Application.Title := ''Done'';\nend;",' + #10 +
+    '      "good": "procedure TWorker.Execute;\nbegin\n  TThread.Queue(nil, procedure begin Application.Title := ''Done'' end);\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "lock-without-finally",' + #10 +
     '      "name": "Lock without try/finally",' + #10 +
     '      "category": "bug",' + #10 +
     '      "severity": "warning",' + #10 +
-    '      "description": "A lock (Enter, Acquire, BeginWrite, BeginRead, LockList, Lock, TMonitor.Enter) is not directly followed by try/finally releasing it. An exception leaves the lock held.",' + #10 +
-    '      "bad": "FLock.Enter;\nDoWork;\nFLock.Leave;",' + #10 +
-    '      "good": "FLock.Enter;\ntry\n  DoWork;\nfinally\n  FLock.Leave;\nend;"' + #10 +
+    '      "description": "A lock (TCriticalSection.Enter/Acquire, TMonitor.Enter, BeginRead/BeginWrite, TSpinLock.Enter, TMutex.Acquire, EnterCriticalSection or a pair from the lockPairs option) is not di' + 'rectly followed by try/finally releasing it. An exception leaves the lock held.",' + #10 +
+    '      "bad": "CS.Enter;\nDoWork;\nCS.Leave;",' + #10 +
+    '      "good": "CS.Enter;\ntry\n  DoWork;\nfinally\n  CS.Leave;\nend;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
-    '      "id": "thread-used-after-start",' + #10 +
+    '      "id": "thread-use-after-free-on-terminate",' + #10 +
     '      "name": "Thread used after start with FreeOnTerminate",' + #10 +
     '      "category": "bug",' + #10 +
     '      "severity": "warning",' + #10 +
     '      "description": "A thread with FreeOnTerminate := True may free itself as soon as it is started; using the variable afterwards can access a freed object.",' + #10 +
-    '      "bad": "T.FreeOnTerminate := True;\nT.Start;\nT.WaitFor;",' + #10 +
-    '      "good": "T.FreeOnTerminate := True;\nT.Start;\nT := nil;"' + #10 +
+    '      "bad": "T.FreeOnTerminate := True;\nT.Start;\nLog(T.ThreadID);",' + #10 +
+    '      "good": "Log(T.ThreadID);\nT.FreeOnTerminate := True;\nT.Start;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "thread-free-with-free-on-terminate",' + #10 +
+    '      "name": "Free on a thread with FreeOnTerminate",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "description": "Free on a thread with FreeOnTerminate := True frees it twice.",' + #10 +
+    '      "bad": "T.FreeOnTerminate := True;\nT.Start;\nT.Free;",' + #10 +
+    '      "good": "T.FreeOnTerminate := True;\nT.Start;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "synchronize-in-destructor",' + #10 +
-    '      "name": "Synchronize in destructor",' + #10 +
+    '      "name": "Synchronize in thread destructor",' + #10 +
     '      "category": "bug",' + #10 +
     '      "severity": "warning",' + #10 +
-    '      "description": "Synchronize in a destructor deadlocks when the main thread is waiting for the object to be freed.",' + #10 +
+    '      "description": "Synchronize in the destructor of a TThread descendant (or a method it calls) deadlocks: the main thread waits in WaitFor while the thread waits for Synchronize.",' + #10 +
     '      "bad": "destructor TWorker.Destroy;\nbegin\n  Synchronize(Notify);\n  inherited;\nend;",' + #10 +
     '      "good": "destructor TWorker.Destroy;\nbegin\n  inherited;\nend;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
-    '      "id": "deprecated-suspend-resume",' + #10 +
-    '      "name": "Deprecated TThread.Suspend/Resume",' + #10 +
+    '      "id": "thread-resume-suspend",' + #10 +
+    '      "name": "Deprecated TThread.Resume/Suspend",' + #10 +
     '      "category": "code-smell",' + #10 +
-    '      "severity": "hint",' + #10 +
-    '      "description": "TThread.Resume and Suspend are deprecated. Start a created thread with Start; wait with an event instead of Suspend.",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "TThread.Resume and Suspend are deprecated. Start a created thread with Start; Suspend has no safe replacement, wait with an event instead.",' + #10 +
     '      "bad": "FWorker.Resume;",' + #10 +
     '      "good": "FWorker.Start;"' + #10 +
-    '    },' + #10 +
-    '    {' + #10 +
-    '      "id": "thread-free-without-waitfor",' + #10 +
-    '      "name": "Thread freed without WaitFor",' + #10 +
-    '      "category": "bug",' + #10 +
-    '      "severity": "hint",' + #10 +
-    '      "description": "A thread variable is freed without a prior WaitFor in the same routine. TThread.Destroy waits itself, but errors and the end of the thread go unnoticed. Experimental.",' + #10 +
-    '      "bad": "FWorkerThread.Free;",' + #10 +
-    '      "good": "FWorkerThread.Terminate;\nFWorkerThread.WaitFor;\nFWorkerThread.Free;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -189,29 +198,34 @@ begin
     '      "description": "Ein uses-Eintrag verletzt eine Schichtregel unter \"layers\" in delphi-lsp.json, z. B. darf *.Common.* nicht Vcl.* verwenden."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
-    '      "id": "lock-without-finally",' + #10 +
-    '      "name": "Sperre ohne try/finally",' + #10 +
-    '      "description": "Auf eine Sperre (Enter, Acquire, BeginWrite, BeginRead, LockList, Lock, TMonitor.Enter) folgt kein try/finally mit der Freigabe. Eine Ausnahme lässt die Sperre gesetzt."' + #10 +
+    '      "id": "thread-vcl-access",' + #10 +
+    '      "name": "VCL-Zugriff aus einem Thread",' + #10 +
+    '      "description": "TThread.Execute, TThread.CreateAnonymousThread oder TTask greift außerhalb von Synchronize oder Queue auf die VCL zu (Application, Screen, ShowMessage, MessageDlg …). Die VCL ist' + ' nicht threadsicher."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
-    '      "id": "thread-used-after-start",' + #10 +
+    '      "id": "lock-without-finally",' + #10 +
+    '      "name": "Sperre ohne try/finally",' + #10 +
+    '      "description": "Auf eine Sperre (TCriticalSection.Enter/Acquire, TMonitor.Enter, BeginRead/BeginWrite, TSpinLock.Enter, TMutex.Acquire, EnterCriticalSection oder ein Paar aus der Option lockPair' + 's) folgt kein try/finally mit der Freigabe. Eine Ausnahme lässt die Sperre gesetzt."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "thread-use-after-free-on-terminate",' + #10 +
     '      "name": "Thread nach dem Start mit FreeOnTerminate benutzt",' + #10 +
     '      "description": "Ein Thread mit FreeOnTerminate := True kann sich gleich nach dem Start selbst freigeben; danach greift die Variable womöglich auf ein freigegebenes Objekt zu."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "thread-free-with-free-on-terminate",' + #10 +
+    '      "name": "Free auf einem Thread mit FreeOnTerminate",' + #10 +
+    '      "description": "Free auf einem Thread mit FreeOnTerminate := True gibt ihn doppelt frei."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "synchronize-in-destructor",' + #10 +
-    '      "name": "Synchronize im Destruktor",' + #10 +
-    '      "description": "Synchronize im Destruktor verklemmt sich, wenn der Hauptthread auf die Freigabe wartet."' + #10 +
+    '      "name": "Synchronize im Destruktor eines Threads",' + #10 +
+    '      "description": "Synchronize im Destruktor eines TThread-Nachfahren (oder in einer Methode, die er aufruft) verklemmt sich: Der Hauptthread wartet in WaitFor, der Thread auf Synchronize."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
-    '      "id": "deprecated-suspend-resume",' + #10 +
-    '      "name": "Veraltetes TThread.Suspend/Resume",' + #10 +
-    '      "description": "TThread.Resume und Suspend sind veraltet. Einen erzeugten Thread mit Start starten, statt Suspend mit einem Ereignis warten."' + #10 +
-    '    },' + #10 +
-    '    {' + #10 +
-    '      "id": "thread-free-without-waitfor",' + #10 +
-    '      "name": "Thread ohne WaitFor freigegeben",' + #10 +
-    '      "description": "Eine Thread-Variable wird ohne vorheriges WaitFor in derselben Routine freigegeben. TThread.Destroy wartet zwar selbst, Fehler und Ende des Threads bleiben aber unbemerkt. Experi' + 'mentell."' + #10 +
+    '      "id": "thread-resume-suspend",' + #10 +
+    '      "name": "Veraltetes TThread.Resume/Suspend",' + #10 +
+    '      "description": "TThread.Resume und Suspend sind veraltet. Einen erzeugten Thread mit Start starten; Suspend hat keinen sicheren Ersatz, stattdessen mit einem Ereignis warten."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

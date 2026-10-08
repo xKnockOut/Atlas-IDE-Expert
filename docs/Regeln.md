@@ -12,11 +12,12 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`confusable-identifier`](#confusable-identifier) | Verwechselbarer Bezeichner | Sicherheits-Hotspot | Warnung |
 | [`unit-name-mismatch`](#unit-name-mismatch) | Unit-Name passt nicht zum Dateinamen | Bug | Warnung |
 | [`forbidden-uses`](#forbidden-uses) | Verbotene uses-Beziehung | Code Smell | Fehler |
+| [`thread-vcl-access`](#thread-vcl-access) | VCL-Zugriff aus einem Thread | Bug | Warnung |
 | [`lock-without-finally`](#lock-without-finally) | Sperre ohne try/finally | Bug | Warnung |
-| [`thread-used-after-start`](#thread-used-after-start) | Thread nach dem Start mit FreeOnTerminate benutzt | Bug | Warnung |
-| [`synchronize-in-destructor`](#synchronize-in-destructor) | Synchronize im Destruktor | Bug | Warnung |
-| [`deprecated-suspend-resume`](#deprecated-suspend-resume) | Veraltetes TThread.Suspend/Resume | Code Smell | Hinweis |
-| [`thread-free-without-waitfor`](#thread-free-without-waitfor) | Thread ohne WaitFor freigegeben | Bug | Hinweis |
+| [`thread-use-after-free-on-terminate`](#thread-use-after-free-on-terminate) | Thread nach dem Start mit FreeOnTerminate benutzt | Bug | Warnung |
+| [`thread-free-with-free-on-terminate`](#thread-free-with-free-on-terminate) | Free auf einem Thread mit FreeOnTerminate | Bug | Fehler |
+| [`synchronize-in-destructor`](#synchronize-in-destructor) | Synchronize im Destruktor eines Threads | Bug | Warnung |
+| [`thread-resume-suspend`](#thread-resume-suspend) | Veraltetes TThread.Resume/Suspend | Code Smell | Warnung |
 
 <a id="syntax"></a>
 ## syntax
@@ -184,34 +185,59 @@ interface
 uses System.Classes;
 ```
 
-<a id="lock-without-finally"></a>
-## lock-without-finally
+<a id="thread-vcl-access"></a>
+## thread-vcl-access
 
-**Sperre ohne try/finally** · Bug · Warnung
+**VCL-Zugriff aus einem Thread** · Bug · Warnung
 
-Auf eine Sperre (Enter, Acquire, BeginWrite, BeginRead, LockList, Lock, TMonitor.Enter) folgt kein try/finally mit der Freigabe. Eine Ausnahme lässt die Sperre gesetzt.
+TThread.Execute, TThread.CreateAnonymousThread oder TTask greift außerhalb von Synchronize oder Queue auf die VCL zu (Application, Screen, ShowMessage, MessageDlg …). Die VCL ist nicht threadsicher.
 
 Mit Treffer:
 
 ```pascal
-FLock.Enter;
-DoWork;
-FLock.Leave;
+procedure TWorker.Execute;
+begin
+  Application.Title := 'Done';
+end;
 ```
 
 Richtig:
 
 ```pascal
-FLock.Enter;
-try
-  DoWork;
-finally
-  FLock.Leave;
+procedure TWorker.Execute;
+begin
+  TThread.Queue(nil, procedure begin Application.Title := 'Done' end);
 end;
 ```
 
-<a id="thread-used-after-start"></a>
-## thread-used-after-start
+<a id="lock-without-finally"></a>
+## lock-without-finally
+
+**Sperre ohne try/finally** · Bug · Warnung
+
+Auf eine Sperre (TCriticalSection.Enter/Acquire, TMonitor.Enter, BeginRead/BeginWrite, TSpinLock.Enter, TMutex.Acquire, EnterCriticalSection oder ein Paar aus der Option lockPairs) folgt kein try/finally mit der Freigabe. Eine Ausnahme lässt die Sperre gesetzt.
+
+Mit Treffer:
+
+```pascal
+CS.Enter;
+DoWork;
+CS.Leave;
+```
+
+Richtig:
+
+```pascal
+CS.Enter;
+try
+  DoWork;
+finally
+  CS.Leave;
+end;
+```
+
+<a id="thread-use-after-free-on-terminate"></a>
+## thread-use-after-free-on-terminate
 
 **Thread nach dem Start mit FreeOnTerminate benutzt** · Bug · Warnung
 
@@ -222,7 +248,30 @@ Mit Treffer:
 ```pascal
 T.FreeOnTerminate := True;
 T.Start;
-T.WaitFor;
+Log(T.ThreadID);
+```
+
+Richtig:
+
+```pascal
+Log(T.ThreadID);
+T.FreeOnTerminate := True;
+T.Start;
+```
+
+<a id="thread-free-with-free-on-terminate"></a>
+## thread-free-with-free-on-terminate
+
+**Free auf einem Thread mit FreeOnTerminate** · Bug · Fehler
+
+Free auf einem Thread mit FreeOnTerminate := True gibt ihn doppelt frei.
+
+Mit Treffer:
+
+```pascal
+T.FreeOnTerminate := True;
+T.Start;
+T.Free;
 ```
 
 Richtig:
@@ -230,15 +279,14 @@ Richtig:
 ```pascal
 T.FreeOnTerminate := True;
 T.Start;
-T := nil;
 ```
 
 <a id="synchronize-in-destructor"></a>
 ## synchronize-in-destructor
 
-**Synchronize im Destruktor** · Bug · Warnung
+**Synchronize im Destruktor eines Threads** · Bug · Warnung
 
-Synchronize im Destruktor verklemmt sich, wenn der Hauptthread auf die Freigabe wartet.
+Synchronize im Destruktor eines TThread-Nachfahren (oder in einer Methode, die er aufruft) verklemmt sich: Der Hauptthread wartet in WaitFor, der Thread auf Synchronize.
 
 Mit Treffer:
 
@@ -259,12 +307,12 @@ begin
 end;
 ```
 
-<a id="deprecated-suspend-resume"></a>
-## deprecated-suspend-resume
+<a id="thread-resume-suspend"></a>
+## thread-resume-suspend
 
-**Veraltetes TThread.Suspend/Resume** · Code Smell · Hinweis
+**Veraltetes TThread.Resume/Suspend** · Code Smell · Warnung
 
-TThread.Resume und Suspend sind veraltet. Einen erzeugten Thread mit Start starten, statt Suspend mit einem Ereignis warten.
+TThread.Resume und Suspend sind veraltet. Einen erzeugten Thread mit Start starten; Suspend hat keinen sicheren Ersatz, stattdessen mit einem Ereignis warten.
 
 Mit Treffer:
 
@@ -276,25 +324,4 @@ Richtig:
 
 ```pascal
 FWorker.Start;
-```
-
-<a id="thread-free-without-waitfor"></a>
-## thread-free-without-waitfor
-
-**Thread ohne WaitFor freigegeben** · Bug · Hinweis
-
-Eine Thread-Variable wird ohne vorheriges WaitFor in derselben Routine freigegeben. TThread.Destroy wartet zwar selbst, Fehler und Ende des Threads bleiben aber unbemerkt. Experimentell.
-
-Mit Treffer:
-
-```pascal
-FWorkerThread.Free;
-```
-
-Richtig:
-
-```pascal
-FWorkerThread.Terminate;
-FWorkerThread.WaitFor;
-FWorkerThread.Free;
 ```

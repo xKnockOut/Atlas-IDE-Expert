@@ -155,13 +155,16 @@ end;
 
 procedure TRuleProfilesTests.BuiltinProfilesActivateExpectedRules;
 const
-  All = 'bidi-control,confusable-identifier,control-char,forbidden-uses,invisible-char,unit-name-mismatch';
+  Bugs = 'lock-without-finally,synchronize-in-destructor,thread-free-with-free-on-terminate,' +
+    'thread-use-after-free-on-terminate,thread-vcl-access';
+  All = 'bidi-control,confusable-identifier,control-char,forbidden-uses,invisible-char,' + Bugs +
+    ',thread-resume-suspend,unit-name-mismatch';
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
   Assert.AreEqual(All, ActiveRules('strict'));
-  Assert.AreEqual('bidi-control,control-char,unit-name-mismatch', ActiveRules('fast'));
+  Assert.AreEqual('bidi-control,control-char,' + Bugs + ',unit-name-mismatch', ActiveRules('fast'));
   Assert.AreEqual('bidi-control,confusable-identifier,invisible-char', ActiveRules('security'));
-  Assert.AreEqual('forbidden-uses', ActiveRules('style'));
+  Assert.AreEqual('forbidden-uses,thread-resume-suspend', ActiveRules('style'));
 end;
 
 procedure TRuleProfilesTests.TestProfileAppliesToTestUnits;
