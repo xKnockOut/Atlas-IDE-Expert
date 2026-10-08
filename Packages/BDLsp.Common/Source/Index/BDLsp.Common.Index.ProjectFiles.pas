@@ -14,8 +14,8 @@ type
   TIndexProjectFiles = class
   public
     class function Files(const AProject: TProjectInfo): TArray<string>; static;
-    /// <summary>ACompilerVersion z. B. '37.0'; '' = ohne VERxxx.</summary>
-    class function Defines(const AProject: TProjectInfo; const ACompilerVersion: string): TArray<string>; static;
+    /// <summary>ABdsVersion wie in der Registry, z. B. '23.0' für Delphi 12 (ergibt VER360); '' = ohne VERxxx.</summary>
+    class function Defines(const AProject: TProjectInfo; const ABdsVersion: string): TArray<string>; static;
     /// <summary>Schlüssel für Projekt, Konfiguration, Plattform und Version; gleicher Schlüssel, gleicher Index.</summary>
     class function Signature(const AProject: TProjectInfo; const ACompilerVersion: string): string; static;
   end;
@@ -57,13 +57,14 @@ begin
   end;
 end;
 
-class function TIndexProjectFiles.Defines(const AProject: TProjectInfo; const ACompilerVersion: string): TArray<string>;
+class function TIndexProjectFiles.Defines(const AProject: TProjectInfo; const ABdsVersion: string): TArray<string>;
 var
   Version: Double;
 begin
-  if not TryStrToFloat(ACompilerVersion, Version, TFormatSettings.Invariant) then
+  if not TryStrToFloat(ABdsVersion, Version, TFormatSettings.Invariant) then
     Version := 0;
-  Result := AProject.Defines + TPascalPreprocessor.PredefinedSymbols(AProject.Platform, Version);
+  Result := AProject.Defines + TPascalPreprocessor.PredefinedSymbols(AProject.Platform,
+    TPascalPreprocessor.CompilerVersionOfBds(Version));
 end;
 
 class function TIndexProjectFiles.Signature(const AProject: TProjectInfo; const ACompilerVersion: string): string;

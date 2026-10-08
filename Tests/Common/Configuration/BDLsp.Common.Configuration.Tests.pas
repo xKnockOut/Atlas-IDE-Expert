@@ -46,6 +46,8 @@ type
     procedure MatchesGlobPatterns;
     [Test]
     procedure ExcludesFolders;
+    [Test]
+    procedure ReadsDelphiProductNumbers;
   end;
 
 implementation
@@ -320,6 +322,24 @@ begin
   Assert.IsTrue(Settings.IsExcluded('Vendor\A.pas'));
   Assert.IsTrue(Settings.IsExcluded('./Tools/B.pas'));
   Assert.IsFalse(Settings.IsExcluded('Source\Vendor.pas'));
+end;
+
+procedure TServerSettingsTests.ReadsDelphiProductNumbers;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // "12" ist Delphi 12 (BDS 23.0), nicht BDS 12.0 (Delphi 2009).
+  Assert.AreEqual('23.0', BdsVersionOf('12'));
+  Assert.AreEqual('37.0', BdsVersionOf('13'));
+  Assert.AreEqual('20.0', BdsVersionOf('10.3'));
+  Assert.AreEqual('17.0', BdsVersionOf('10'));
+  Assert.AreEqual('23.0', BdsVersionOf('23.0'));
+  Assert.AreEqual('', BdsVersionOf('9'));
+  Assert.AreEqual('', BdsVersionOf('neu'));
+  Assert.AreEqual('23.0', Parse('{"delphiVersion": "12"}', Issues).DelphiVersion);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('', Parse('{"delphiVersion": "7"}', Issues).DelphiVersion);
+  Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
 initialization

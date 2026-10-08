@@ -710,6 +710,14 @@ begin
   Assert.IsTrue(HasWin64);
   Assert.IsTrue(HasVer);
   Assert.AreNotEqual(TIndexProjectFiles.Signature(Project, '37.0'), TIndexProjectFiles.Signature(Project, '36.0'));
+  // Delphi 12: BDS 23.0 ergibt VER360, nicht VER230.
+  HasVer := False;
+  for Define in TIndexProjectFiles.Defines(Project, '23.0') do
+  begin
+    Assert.AreNotEqual('VER230', Define);
+    HasVer := HasVer or (Define = 'VER360');
+  end;
+  Assert.IsTrue(HasVer);
 end;
 
 initialization

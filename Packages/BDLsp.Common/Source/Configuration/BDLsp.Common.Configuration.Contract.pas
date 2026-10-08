@@ -94,7 +94,8 @@ type
   end;
 
   TServerSettings = record
-    /// <summary>Delphi-Version wie in der Registry, z. B. "37.0"; '' = passend zur ProjectVersion der .dproj, sonst neueste installierte (#47).</summary>
+    /// <summary>Delphi-Version als BDS-Version der Registry, z. B. "37.0" (Produktnummern wie "12" werden
+    /// beim Lesen umgerechnet, siehe BdsVersionOf); '' = passend zur ProjectVersion der .dproj, sonst neueste installierte (#47).</summary>
     DelphiVersion: string;
     /// <summary>Sprache der Meldungen, "de" oder "en".</summary>
     Language: string;
@@ -145,7 +146,42 @@ const
 /// <summary>Glob-Vergleich: * ohne Trenner, ** über Ordner, ? ein Zeichen; ohne Groß-/Kleinschreibung.</summary>
 function MatchesGlob(const APattern, APath: string): Boolean;
 
+/// <summary>
+/// "delphiVersion" als BDS-Version der Registry: Produktnummern ("10.3", "11", "12", "13")
+/// werden umgerechnet ("12" -> "23.0"), BDS-Versionen ab 14 bleiben. '' für ungültige Angaben.
+/// </summary>
+function BdsVersionOf(const AText: string): string;
+
 implementation
+
+function BdsVersionOf(const AText: string): string;
+const
+  // Produktnummer -> BDS-Version; 10.x über die Nachkommastelle.
+  Products: array[0..7] of array[0..1] of string = (
+    ('10', '17.0'), ('10.1', '18.0'), ('10.2', '19.0'), ('10.3', '20.0'), ('10.4', '21.0'),
+    ('11', '22.0'), ('12', '23.0'), ('13', '37.0'));
+var
+  Text: string;
+  Value: Double;
+  Index: Integer;
+begin
+  Result := '';
+  Text := Trim(AText);
+  if not TryStrToFloat(Text, Value, TFormatSettings.Invariant) or (Value <= 0) then
+    Exit;
+  if Value >= 14 then
+    Exit(Text);
+  // "12.0", "12.3" usw. meinen Delphi 12; nur bei 10 zählt die Nachkommastelle.
+  if Trunc(Value) <> 10 then
+    Text := IntToStr(Trunc(Value))
+  else if Pos('.', Text) > 0 then
+    Text := '10.' + Copy(Text, Pos('.', Text) + 1, 1);
+  if Text = '10.0' then
+    Text := '10';
+  for Index := Low(Products) to High(Products) do
+    if Products[Index][0] = Text then
+      Exit(Products[Index][1]);
+end;
 
 function NormalizeSlashes(const APath: string): string;
 begin
