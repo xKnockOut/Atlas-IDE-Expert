@@ -88,6 +88,8 @@ type
     [Test]
     procedure AppliesExternalChanges;
     [Test]
+    // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
+    [IgnoreMemoryLeaks]
     procedure ServiceBuildsInBackgroundAndWritesCache;
   end;
 
