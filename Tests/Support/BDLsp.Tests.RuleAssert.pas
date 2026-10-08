@@ -11,15 +11,18 @@ uses
   BDLsp.Common.Rules.Contract;
 
 type
+  // ARule ohne const: Tests übergeben TXyzRule.Create direkt. Bei const zählt
+  // niemand die Referenz, und das temporäre Array in TRuleEngine.Run gibt die
+  // Regel frei, bevor sie hier weiter benutzt wird (Zugriffsverletzung).
   TRuleAssert = class
   public
     /// <summary>Treffer von ARule auf ASource mit Einstellungen aus AConfigJson ('' = Vorgaben).</summary>
-    class function Findings(const ARule: IRule; const ASource: string;
+    class function Findings(ARule: IRule; const ASource: string;
       const AConfigJson: string = ''; const ARelativePath: string = ''): TArray<TRuleFinding>; static;
     /// <summary>Positiver Testfall: genau ACount Treffer.</summary>
-    class procedure Reports(const ARule: IRule; const ASource: string; ACount: Integer = 1); static;
+    class procedure Reports(ARule: IRule; const ASource: string; ACount: Integer = 1); static;
     /// <summary>Negativer Testfall: kein Treffer.</summary>
-    class procedure Silent(const ARule: IRule; const ASource: string); static;
+    class procedure Silent(ARule: IRule; const ASource: string); static;
   end;
 
 implementation
@@ -32,7 +35,7 @@ uses
   BDLsp.Common.Pascal.Parser,
   BDLsp.Common.Rules.Engine;
 
-class function TRuleAssert.Findings(const ARule: IRule; const ASource, AConfigJson,
+class function TRuleAssert.Findings(ARule: IRule; const ASource, AConfigJson,
   ARelativePath: string): TArray<TRuleFinding>;
 var
   Settings: TServerSettings;
@@ -57,13 +60,13 @@ begin
   end;
 end;
 
-class procedure TRuleAssert.Reports(const ARule: IRule; const ASource: string; ACount: Integer);
+class procedure TRuleAssert.Reports(ARule: IRule; const ASource: string; ACount: Integer);
 begin
   Assert.AreEqual(ACount, Integer(Length(Findings(ARule, ASource))),
     'Treffer von ' + ARule.Descriptor.Id);
 end;
 
-class procedure TRuleAssert.Silent(const ARule: IRule; const ASource: string);
+class procedure TRuleAssert.Silent(ARule: IRule; const ASource: string);
 begin
   Reports(ARule, ASource, 0);
 end;
