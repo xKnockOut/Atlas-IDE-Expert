@@ -145,6 +145,7 @@
         <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.Parser.pas"/>
         <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.Navigation.pas"/>
         <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.FormModel.pas"/>
+        <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.FormInfo.pas"/>
         <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.BinaryForm.pas"/>
         <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.FormInheritance.pas"/>
         <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.ComponentRename.pas"/>

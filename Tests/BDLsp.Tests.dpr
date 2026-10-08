@@ -105,6 +105,7 @@ uses
   BDLsp.Common.Dfm.Tests in 'Common\Dfm\BDLsp.Common.Dfm.Tests.pas',
   BDLsp.Common.Dfm.ComponentRename.Tests in 'Common\Dfm\BDLsp.Common.Dfm.ComponentRename.Tests.pas',
   BDLsp.Common.Dfm.FormModel.Tests in 'Common\Dfm\BDLsp.Common.Dfm.FormModel.Tests.pas',
+  BDLsp.Common.Dfm.FormInfo.Tests in 'Common\Dfm\BDLsp.Common.Dfm.FormInfo.Tests.pas',
   BDLsp.Common.Dfm.BinaryForm.Tests in 'Common\Dfm\BDLsp.Common.Dfm.BinaryForm.Tests.pas',
   BDLsp.Common.Dfm.FormInheritance.Tests in 'Common\Dfm\BDLsp.Common.Dfm.FormInheritance.Tests.pas',
   BDLsp.Common.JsonRpc.LineTransport.Tests in 'Common\JsonRpc\BDLsp.Common.JsonRpc.LineTransport.Tests.pas',

@@ -43,6 +43,8 @@ type
     Value: string;
     /// <summary>Hinweis bei deprecated, platform, experimental (#38); sonst ''.</summary>
     Deprecation: string;
+    /// <summary>In der Formulardatei gesetzte Werte eines Komponentenfelds (#126); sonst ''.</summary>
+    FormValues: string;
     function Found: Boolean;
     function ToMarkdown: string;
   end;
@@ -87,6 +89,9 @@ uses
   BDLsp.Common.Lsp.Positions,
   BDLsp.Common.Lsp.Definition,
   BDLsp.Common.Lsp.PublishedMembers,
+  BDLsp.Common.Dfm.Contract,
+  BDLsp.Common.Dfm.FormInfo,
+  BDLsp.Common.Dfm.FormInheritance,
   BDLsp.Common.Lsp.DocWiki,
   BDLsp.Common.Lsp.MessageHandlers,
   BDLsp.Common.Lsp.HoverValues,
@@ -216,6 +221,8 @@ begin
     Result := Result + #10#10 + '---' + #10#10 + Members;
   if Messages <> '' then
     Result := Result + #10#10 + '---' + #10#10 + Messages;
+  if FormValues <> '' then
+    Result := Result + #10#10 + '---' + #10#10 + FormValues;
 end;
 
 { TLspHover }
@@ -260,6 +267,45 @@ begin
       else
         Result := Result + ' ';
     Result := Result + Line;
+  end;
+end;
+
+/// <summary>Werte des Komponentenfelds AFieldName aus der Formulardatei neben AUnitFile (#126).</summary>
+function FormFieldValues(const AIndex: ISymbolIndex; const AUnitFile, AFormClass, AFieldName,
+  AOpenFile, AOpenText: string; const AReadText: THoverReadText): string;
+var
+  ReadText: TFunc<string, string>;
+  FormFile, FormText, Extension: string;
+  Chain: TFormInheritance;
+  Obj: TDfmObject;
+begin
+  Result := '';
+  ReadText :=
+    function(AName: string): string
+    begin
+      if SameText(AName, AOpenFile) then
+        Result := AOpenText
+      else if not (Assigned(AReadText) and AReadText(AName, Result)) then
+        Result := '';
+    end;
+  FormText := '';
+  for Extension in TArray<string>.Create('.dfm', '.fmx') do
+  begin
+    FormFile := ChangeFileExt(AUnitFile, Extension);
+    FormText := ReadText(FormFile);
+    if FormText <> '' then
+      Break;
+  end;
+  if FormText = '' then
+    Exit;
+  Chain := TFormInheritance.Create(FormFile, FormText, TFormInheritance.UnitAncestorOf(ReadText),
+    TFormInheritance.IndexResolver(AIndex, ReadText));
+  try
+    Obj := TFormInfo.FindComponent(Chain.Levels[0].Document, AFormClass, AFieldName);
+    if Obj <> nil then
+      Result := TFormInfo.ComponentMarkdown(Obj, FormFile, Chain);
+  finally
+    Chain.Free;
   end;
 end;
 
@@ -328,7 +374,10 @@ begin
       if Symbol.Kind = TIndexSymbolKind.Constant then
         Result.Value := THoverValues.ConstantValue(Result.Declaration)
       else if Symbol.Kind = TIndexSymbolKind.EnumMember then
-        Result.Value := 'Ord = ' + IntToStr(EnumOrdinal(OwnerUnit, Symbol));
+        Result.Value := 'Ord = ' + IntToStr(EnumOrdinal(OwnerUnit, Symbol))
+      else if (Symbol.Kind = TIndexSymbolKind.Field) and (Symbol.Container <> '') then
+        Result.FormValues := FormFieldValues(AIndex, Targets[0].FileName, Symbol.Container, Symbol.Name,
+          AFileName, ATreeText, AReadText);
       Break;
     end;
   for Symbol in OwnerUnit.Symbols do
