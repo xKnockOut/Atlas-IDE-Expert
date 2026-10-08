@@ -47,6 +47,9 @@ type
     function ToMarkdown: string;
   end;
 
+  /// <summary>Hover in Formulardateien (#115): Markdown oder ''.</summary>
+  TFormHoverFunc = reference to function(const AUri, AText: string; const APosition: TTextPosition): string;
+
   TLspHover = class
   public const
     Method = 'textDocument/hover';
@@ -57,6 +60,7 @@ type
     FReadText: THoverReadText;
     FNamespaces: TArray<string>;
     FVersionProvider: THoverVersionProvider;
+    FFormHover: TFormHoverFunc;
     function HandleHover(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AReadText: THoverReadText;
@@ -71,6 +75,8 @@ type
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
     /// <summary>Für den Release-Namen der DocWiki-Links; ohne Provider gilt die neueste Version.</summary>
     property VersionProvider: THoverVersionProvider read FVersionProvider write FVersionProvider;
+    /// <summary>Hover in .dfm/.fmx; ohne Zuweisung keiner.</summary>
+    property FormHover: TFormHoverFunc read FFormHover write FFormHover;
   end;
 
 implementation
@@ -85,6 +91,7 @@ uses
   BDLsp.Common.Lsp.MessageHandlers,
   BDLsp.Common.Lsp.HoverValues,
   BDLsp.Common.Lsp.CompilerDirectives,
+  BDLsp.Common.Dfm.Parser,
   BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.TreeCache,
   BDLsp.Common.Lsp.Internals.Cancellation;
@@ -382,6 +389,20 @@ begin
       'Felder "textDocument.uri" und "position" fehlen in ' + Method);
   if not FStore.TryGet(Uri, Document) then
     Exit(TJSONNull.Create);
+  if TDfmParser.IsFormFile(TDocumentUris.ToPath(Uri)) then
+  begin
+    Markdown := '';
+    if Assigned(FFormHover) then
+      Markdown := FFormHover(Uri, Document.Text, TLspPositions.ReadPosition(PositionValue));
+    if Markdown = '' then
+      Exit(TJSONNull.Create);
+    Contents := TJSONObject.Create;
+    Contents.AddPair('kind', 'markdown');
+    Contents.AddPair('value', Markdown);
+    Result := TJSONObject.Create;
+    TJSONObject(Result).AddPair('contents', Contents);
+    Exit;
+  end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
   if Assigned(FVersionProvider) then

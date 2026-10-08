@@ -14,6 +14,7 @@ uses
   System.Classes,
   System.JSON,
   System.Generics.Collections,
+  BDLsp.Common.Dfm.FormInheritance,
   BDLsp.Common.Logging.Contract,
   BDLsp.Common.JsonRpc.Contract,
   BDLsp.Common.JsonRpc.Dispatcher,
@@ -134,6 +135,8 @@ type
     function EnsureUnit(const AUnitName: string): Boolean;
     /// <summary>Text einer Quelldatei; geöffnete Dokumente haben Vorrang vor der Platte.</summary>
     function ReadSourceText(const AFileName: string; out AText: string): Boolean;
+    /// <summary>Formulardatei mit der Kette ihrer Vorfahr-Formulare (#115). Der Aufrufer gibt sie frei.</summary>
+    function NewFormInheritance(const AUri, AText: string): TFormInheritance;
     /// <summary>Projektdateien aller Ordner und geöffnete Dokumente, für Referenzen und Umbenennen.</summary>
     function ProjectSourceFiles: TArray<string>;
     /// <summary>.dproj und Hauptdateien (.dpr, .dpk) aller geladenen Projekte (#181).</summary>
@@ -198,6 +201,8 @@ uses
   BDLsp.Common.Documents.Uris,
   BDLsp.Common.JsonRpc.Messages,
   BDLsp.Common.Lsp.FormEvents,
+  BDLsp.Common.Editing.CodeActions,
+  BDLsp.Common.Rules.Contract,
   BDLsp.Common.Index.SymbolIndex,
   BDLsp.Common.Editing.UsesActions,
   BDLsp.Common.Rules.Builtin,
@@ -417,6 +422,19 @@ begin
       Result := EnsureUnit(AUnitName);
     end);
   FHover.VersionProvider := DelphiVersionFor;
+  // Geerbte Formulare (#115): Wert im Vorfahr-Formular.
+  FHover.FormHover :=
+    function(const AUri, AText: string; const APosition: TTextPosition): string
+    var
+      Chain: TFormInheritance;
+    begin
+      Chain := NewFormInheritance(AUri, AText);
+      try
+        Result := Chain.HoverAt(APosition);
+      finally
+        Chain.Free;
+      end;
+    end;
   FHover.Attach(FDispatcher);
   FWorkspaceSymbols := TLspWorkspaceSymbols.Create(FIndex);
   FWorkspaceSymbols.Attach(FDispatcher);
@@ -563,6 +581,27 @@ begin
     end);
   FSemanticTokens.Attach(FDispatcher);
   FCodeActions := TLspCodeActions.Create(FDocuments, RuleContextFor);
+  FCodeActions.FormActions :=
+    function(const AUri, AText: string; const ARange: TTextRange): TArray<TCodeAction>
+    var
+      Chain: TFormInheritance;
+      Action: TCodeAction;
+      Edit: TRuleEdit;
+    begin
+      Result := nil;
+      Chain := NewFormInheritance(AUri, AText);
+      try
+        Action := Default(TCodeAction);
+        if Chain.ResetAt(ARange.StartPos, Edit, Action.Title) then
+        begin
+          Action.Kind := QuickFixKind;
+          Action.Edits := [Edit];
+          Result := [Action];
+        end;
+      finally
+        Chain.Free;
+      end;
+    end;
   FCodeActions.SortUsesFor :=
     function(const AUri: string): Boolean
     var
@@ -993,6 +1032,20 @@ begin
   for I := Low(State.SmallBlockTypeStates) to High(State.SmallBlockTypeStates) do
     Inc(Result, Int64(State.SmallBlockTypeStates[I].AllocatedBlockCount) *
       State.SmallBlockTypeStates[I].UseableBlockSize);
+end;
+
+function TServerComposition.NewFormInheritance(const AUri, AText: string): TFormInheritance;
+var
+  ReadText: TFunc<string, string>;
+begin
+  ReadText :=
+    function(AFileName: string): string
+    begin
+      if not ReadSourceText(AFileName, Result) then
+        Result := '';
+    end;
+  Result := TFormInheritance.Create(TDocumentUris.ToPath(AUri), AText, TFormInheritance.UnitAncestorOf(ReadText),
+    TFormInheritance.IndexResolver(FIndex, ReadText));
 end;
 
 function TServerComposition.ReadSourceText(const AFileName: string; out AText: string): Boolean;

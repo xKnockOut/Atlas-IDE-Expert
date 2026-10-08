@@ -28,6 +28,9 @@ type
   /// <summary>Einstellung "sortUses" für AUri.</summary>
   TSortUsesProvider = reference to function(const AUri: string): Boolean;
   /// <summary>Index und Einstellungen für die uses-Aktionen; False ohne Index.</summary>
+  /// <summary>Aktionen in Formulardateien (#115).</summary>
+  TFormActionsFunc = reference to function(const AUri, AText: string; const ARange: TTextRange): TArray<TCodeAction>;
+
   TUsesContextProvider = reference to function(const AUri: string; out AContext: TUsesContext): Boolean;
 
   TLspCodeActions = class
@@ -39,6 +42,7 @@ type
     FSortUsesFor: TSortUsesProvider;
     FSortUsesByNamespaceFor: TSortUsesProvider;
     FUsesContextFor: TUsesContextProvider;
+    FFormActions: TFormActionsFunc;
     function HandleCodeAction(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore; const ARuleProvider: TRuleContextProvider);
@@ -53,6 +57,8 @@ type
     property SortUsesByNamespaceFor: TSortUsesProvider read FSortUsesByNamespaceFor write FSortUsesByNamespaceFor;
     /// <summary>Ohne Zuweisung keine uses-Aktionen (#284).</summary>
     property UsesContextFor: TUsesContextProvider read FUsesContextFor write FUsesContextFor;
+    /// <summary>Aktionen in .dfm/.fmx; ohne Zuweisung keine.</summary>
+    property FormActions: TFormActionsFunc read FFormActions write FFormActions;
   end;
 
 implementation
@@ -63,7 +69,9 @@ uses
   BDLsp.Common.Rules.Engine,
   BDLsp.Common.Pascal.SyntaxTree,
   BDLsp.Common.Pascal.TreeCache,
-  BDLsp.Common.Editing.ClassCompletion;
+  BDLsp.Common.Editing.ClassCompletion,
+  BDLsp.Common.Documents.Uris,
+  BDLsp.Common.Dfm.Parser;
 
 { TLspCodeActions }
 
@@ -158,6 +166,14 @@ begin
   if not FStore.TryGet(Uri, Document) then
     Exit(TJSONArray.Create);
   Range := TLspPositions.ReadRange(RangeValue);
+  if TDfmParser.IsFormFile(TDocumentUris.ToPath(Uri)) then
+  begin
+    Result := TJSONArray.Create;
+    if Assigned(FFormActions) then
+      for Action in FFormActions(Uri, Document.Text, Range) do
+        TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+    Exit;
+  end;
   Only := nil;
   if TJSONObject(AParams).TryGetValue<TJSONArray>('context.only', OnlyValue) then
     for Item in OnlyValue do
