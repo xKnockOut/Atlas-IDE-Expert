@@ -61,6 +61,8 @@ type
     [Test]
     procedure RuleOffInSettingsAddsNothing;
     [Test]
+    procedure BaselineHidesKnownRuleFindings;
+    [Test]
     procedure MapsRuleSeverityAndConfidence;
   end;
 
@@ -68,6 +70,8 @@ implementation
 
 uses
   BDLsp.Common.Rules.Catalog,
+  BDLsp.Common.Rules.Baseline,
+  BDLsp.Common.Rules.Checker,
   BDLsp.Common.Lsp.InactiveRegions,
   System.Classes,
   System.Diagnostics,
@@ -352,6 +356,27 @@ var
 begin
   Document := FStore.Open(Uri, 'objectpascal', 1, ValidCode + ' // ' + Char($202E));
   Params := TLspSyntaxDiagnostics.BuildParams(Document, nil, '', RulesWith('{ "rules": { "bidi-control": "off" } }'));
+  try
+    Assert.AreEqual(0, Params.GetValue<TJSONArray>('diagnostics').Count);
+  finally
+    Params.Free;
+  end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.BaselineHidesKnownRuleFindings;
+var
+  Params: TJSONObject;
+  Document: ITextDocument;
+  Rules: TRuleCheckContext;
+  Source: TBaselineSource;
+begin
+  Document := FStore.Open(Uri, 'objectpascal', 1, ValidCode + ' // ' + Char($202E));
+  Rules := RulesWith('');
+  Source.Path := Rules.RelativePath;
+  Source.Text := Document.Text;
+  Source.Findings := TFileChecker.CheckText(Rules.Rules, Rules.Settings, Rules.RelativePath, Document.Text);
+  Rules.Baseline := TRuleBaseline.FromJson(TRuleBaseline.Build([Source]));
+  Params := TLspSyntaxDiagnostics.BuildParams(Document, nil, '', Rules);
   try
     Assert.AreEqual(0, Params.GetValue<TJSONArray>('diagnostics').Count);
   finally

@@ -41,6 +41,10 @@ type
     MinSeverity: TRuleSeverity;
     /// <summary>Statt der Treffer die Unterdrückungen je Regel ausgeben (#147).</summary>
     SuppressionStats: Boolean;
+    /// <summary>Baseline-Datei (#97); '' = delphi-lsp-baseline.json neben delphi-lsp.json, falls vorhanden.</summary>
+    BaselineFile: string;
+    /// <summary>Baseline aus den aktuellen Treffern neu schreiben statt zu prüfen.</summary>
+    UpdateBaseline: Boolean;
     /// <summary>Hinweise zu ungültigen oder unbekannten Parametern, für das Log.</summary>
     Warnings: TArray<string>;
     class function Parse(const AArgs: TArray<string>): TCommandLineOptions; static;
@@ -183,6 +187,13 @@ begin
         else
           AddWarning(Format('Unbekannter Schweregrad "%s", gemeldet wird alles', [Value]));
     end
+    else if Name = '--baseline' then
+    begin
+      if TakeValue then
+        Result.BaselineFile := Value;
+    end
+    else if Name = '--update-baseline' then
+      Result.UpdateBaseline := True
     else if Name = '--suppression-stats' then
       Result.SuppressionStats := True
     else if (Name = '--stdio') or (Name = '--clientprocessid') then

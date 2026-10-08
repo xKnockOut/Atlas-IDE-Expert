@@ -20,6 +20,7 @@ uses
   BDLsp.Common.Documents.Contract,
   BDLsp.Common.Configuration.Contract,
   BDLsp.Common.Rules.Contract,
+  BDLsp.Common.Rules.Baseline,
   BDLsp.Common.Lsp.Internals.Debouncer;
 
 type
@@ -35,6 +36,8 @@ type
     Settings: TServerSettings;
     /// <summary>Pfad relativ zum Ordner der Konfiguration, '' wenn unbekannt.</summary>
     RelativePath: string;
+    /// <summary>Bekannte Treffer, die ausgeblendet werden (#97); nil = keine Baseline.</summary>
+    Baseline: IRuleBaseline;
   end;
 
   /// <summary>Regeln und Einstellungen für AUri; False = keine Regeln prüfen. Hintergrund-Thread.</summary>
@@ -354,6 +357,7 @@ class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
   const AInactive: TArray<TTextRange>; const ADelphiVersion: string; const ARules: TRuleCheckContext): TJSONObject;
 var
   RuleFinding: TRuleFinding;
+  RuleFindings: TArray<TRuleFinding>;
   Context: TRuleContext;
 var
   Finding: TLanguageFeatureFinding;
@@ -392,7 +396,10 @@ begin
       Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARules.RelativePath, '/', '\', [rfReplaceAll])), '');
       Context.Text := ADocument.Text;
       Context.Tree := Tree;
-      for RuleFinding in TRuleEngine.Run(ARules.Rules, ARules.Settings, Context) do
+      RuleFindings := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
+      if ARules.Baseline <> nil then
+        RuleFindings := ARules.Baseline.Filter(ARules.RelativePath, ADocument.Text, RuleFindings);
+      for RuleFinding in RuleFindings do
         Items.AddElement(FindingToJson(RuleFinding));
     end;
   finally

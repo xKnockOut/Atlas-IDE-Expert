@@ -10,6 +10,9 @@
 // die Datei aus --output, Meldungen zum Ablauf auf stderr.
 // Mit --suppression-stats erscheint statt der Treffer die Auswertung der
 // Unterdrückungskommentare je Regel; Exit-Code dann 0.
+// Bekannte Treffer aus der Baseline (--baseline, sonst delphi-lsp-baseline.json
+// neben delphi-lsp.json) werden ausgeblendet; --update-baseline schreibt sie aus
+// den aktuellen Treffern neu (#97), Exit-Code dann 0.
 // Exit-Code: 0 ohne Warnungen und Fehler, 1 Warnungen, 2 Fehler,
 // 3 Aufruf- oder Lesefehler.
 
@@ -42,6 +45,7 @@ uses
   BDLsp.Common.Rules.Output,
   BDLsp.Common.Rules.Builtin,
   BDLsp.Common.Rules.SuppressionStats,
+  BDLsp.Common.Rules.Baseline,
   BDLsp.Windows.Console.StdStreams;
 
 procedure WriteText(const AStream: TStream; const AText: string);
@@ -153,6 +157,10 @@ var
   Warning: string;
   Stats: TSuppressionStats;
   Findings: TArray<TRuleFinding>;
+  BaselinePath: string;
+  Baseline: IRuleBaseline;
+  Sources: TArray<TBaselineSource>;
+  Source: TBaselineSource;
 begin
   for Warning in AOptions.Warnings do
     WriteError(Warning);
@@ -178,7 +186,20 @@ begin
     for Rule in Rules do
       Descriptors := Descriptors + [Rule.Descriptor];
 
+    BaselinePath := AOptions.BaselineFile;
+    if BaselinePath = '' then
+      BaselinePath := TPath.Combine(ConfigRoot, BaselineFileName);
+    if not AOptions.UpdateBaseline then
+      if TFile.Exists(BaselinePath) then
+        Baseline := TRuleBaseline.FromJson(TFileEncoding.LoadFromFile(BaselinePath, FileFormat))
+      else if AOptions.BaselineFile <> '' then
+      begin
+        WriteError(Format('Baseline "%s" nicht gefunden', [BaselinePath]));
+        Exit(TFindingsOutput.ExitFailure);
+      end;
+
     Files := nil;
+    Sources := nil;
     Stats := TSuppressionStats.Create;
     try
       for FileName in CollectFiles(AOptions.CheckTarget, Settings, Root) do
@@ -198,11 +219,32 @@ begin
         Findings := TFileChecker.CheckText(Rules, Settings, RelativePath, Text);
         if AOptions.SuppressionStats then
           Stats.Add(Text, Findings);
+        if AOptions.UpdateBaseline then
+        begin
+          Source.Path := RelativePath;
+          Source.Text := Text;
+          Source.Findings := Findings;
+          Sources := Sources + [Source];
+        end;
+        if Baseline <> nil then
+          Findings := Baseline.Filter(RelativePath, Text, Findings);
         Checked.Path := RelativePath;
         Checked.Findings := Filter.Apply(Findings);
         Files := Files + [Checked];
       end;
 
+      if AOptions.UpdateBaseline then
+      begin
+        Output := TRuleBaseline.Build(Sources);
+        Encoding := TUTF8Encoding.Create(False);
+        try
+          TFile.WriteAllText(BaselinePath, Output, Encoding);
+        finally
+          Encoding.Free;
+        end;
+        WriteError(Format('Baseline geschrieben: %s', [BaselinePath]));
+        Exit(TFindingsOutput.ExitClean);
+      end;
       if AOptions.SuppressionStats then
         Output := Stats.Render(AOptions.CheckFormat)
       else

@@ -17,7 +17,8 @@ uses
   BDLsp.Common.Lsp.WorkDoneProgress,
   BDLsp.Common.Projects.UnitResolver,
   BDLsp.Common.Index.Contract,
-  BDLsp.Common.Index.Service;
+  BDLsp.Common.Index.Service,
+  BDLsp.Common.Rules.Baseline;
 
 type
   TShellWorkspace = class
@@ -38,6 +39,8 @@ type
     FNamespaces: TArray<string>;
     FProjectFiles: TArray<string>;
     FOnProjectLoaded: TProc;
+    FBaseline: IRuleBaseline;
+    FBaselineTime: TDateTime;
     /// <summary>Weist auf gemischte Kodierungen der Projektdateien hin (Index-Thread).</summary>
     procedure ReportEncodings;
     procedure StartIndex(const ASettings: TServerSettings);
@@ -57,6 +60,11 @@ type
     function ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
     /// <summary>Symbole des Projekts für das Abblenden; False ohne Projekt. Threadsicher.</summary>
     function Defines(out ADefines: TArray<string>): Boolean;
+    /// <summary>
+    /// delphi-lsp-baseline.json des Ordners (#97), neu gelesen, sobald sich die
+    /// Datei ändert; nil ohne oder bei ungültiger Datei. Threadsicher.
+    /// </summary>
+    function Baseline: IRuleBaseline;
     property Root: string read FRoot;
     property Name: string read FName;
     property Configuration: TLspConfiguration read FConfiguration;
@@ -173,6 +181,42 @@ begin
   try
     ADefines := FDefines;
     Result := FHasDefines;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+function TShellWorkspace.Baseline: IRuleBaseline;
+var
+  FileName: string;
+  FileTime: TDateTime;
+  FileFormat: TFileFormat;
+begin
+  FileName := TPath.Combine(FRoot, BaselineFileName);
+  TMonitor.Enter(FLock);
+  try
+    if not TFile.Exists(FileName) then
+    begin
+      FBaseline := nil;
+      FBaselineTime := 0;
+      Exit(nil);
+    end;
+    FileTime := TFile.GetLastWriteTime(FileName);
+    if FileTime <> FBaselineTime then
+    begin
+      FBaselineTime := FileTime;
+      try
+        FBaseline := TRuleBaseline.FromJson(TFileEncoding.LoadFromFile(FileName, FileFormat));
+        FLogger.Info(Format('Baseline für %s geladen: %d bekannte Treffer', [FName, FBaseline.Count]));
+      except
+        on E: Exception do
+        begin
+          FBaseline := nil;
+          FLogger.Error(Format('Baseline %s nicht lesbar: %s', [FileName, E.Message]));
+        end;
+      end;
+    end;
+    Result := FBaseline;
   finally
     TMonitor.Exit(FLock);
   end;
