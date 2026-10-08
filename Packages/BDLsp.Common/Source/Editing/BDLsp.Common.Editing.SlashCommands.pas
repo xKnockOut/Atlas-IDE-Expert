@@ -143,6 +143,7 @@ uses
   BDLsp.Common.Editing.ExpressionCommands,
   BDLsp.Common.Editing.RefactoringCommands,
   BDLsp.Common.Editing.ProjectCommands,
+  BDLsp.Common.Editing.DatabaseCommands,
   BDLsp.Common.Editing.ErrorCommands;
 
 function IsDisabled(const AName: string; const ADisabled: TArray<string>): Boolean;
@@ -254,6 +255,7 @@ begin
     RegisterRefactoringCommands(Created);
     RegisterExpressionCommands(Created);
     RegisterProjectCommands(Created);
+    RegisterDatabaseCommands(Created);
     if AtomicCmpExchange(Pointer(FShared), Pointer(Created), nil) <> nil then
       Created.Free;
   end;

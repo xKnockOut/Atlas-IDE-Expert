@@ -164,6 +164,8 @@ uses
   BDLsp.Common.Editing.RefactoringCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.RefactoringCommands.Tests.pas',
   BDLsp.Common.Editing.ExpressionCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.ExpressionCommands.Tests.pas',
   BDLsp.Common.Editing.ProjectCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.ProjectCommands.Tests.pas',
+  BDLsp.Common.Editing.SqlText.Tests in 'Common\Editing\BDLsp.Common.Editing.SqlText.Tests.pas',
+  BDLsp.Common.Editing.DatabaseCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.DatabaseCommands.Tests.pas',
   BDLsp.Common.Rules.Builtin.DataBinding.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.DataBinding.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
