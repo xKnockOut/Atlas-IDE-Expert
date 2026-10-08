@@ -87,6 +87,16 @@
         ]
       }
     },
+    "minConfidence": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default": "medium",
+      "description": "Regeltreffer unter dieser Konfidenz ausblenden."
+    },
     "exclude": {
       "type": "array",
       "items": {

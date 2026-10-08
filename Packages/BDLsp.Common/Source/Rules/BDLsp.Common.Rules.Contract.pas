@@ -3,6 +3,7 @@
 // Gemeinsame Grundlage aller Prüfregeln: Beschreibung, Kontext einer Prüfung,
 // Treffer mit optionalen Korrekturen und die Schnittstelle einer Regel.
 // Regeln melden lieber zu wenig als zu viel (Spezifikation, Abschnitt 11).
+// Jeder Treffer trägt eine Konfidenz; sie begrenzt den Schweregrad (#144).
 
 interface
 
@@ -20,7 +21,13 @@ type
     /// <summary>Schweregrad ohne Konfiguration; nie Default.</summary>
     DefaultSeverity: TRuleSeverity;
     Description: string;
-    constructor Create(const AId: string; ADefaultSeverity: TRuleSeverity; const ADescription: string);
+    /// <summary>
+    /// Ohne gemessene Fehlalarmquote: läuft nur, wenn die Regel in
+    /// delphi-lsp.json unter "rules" eingeschaltet ist.
+    /// </summary>
+    Experimental: Boolean;
+    constructor Create(const AId: string; ADefaultSeverity: TRuleSeverity; const ADescription: string;
+      AExperimental: Boolean = False);
   end;
 
   /// <summary>Eine Textersetzung einer Korrektur.</summary>
@@ -43,7 +50,10 @@ type
     Range: TTextRange;
     Message: string;
     Severity: TRuleSeverity;
+    Confidence: TRuleConfidence;
     Fixes: TArray<TRuleFix>;
+    /// <summary>Meldung mit Konfidenz-Zusatz unterhalb von High, für Hover und Kommandozeile.</summary>
+    function DisplayMessage: string;
   end;
 
   /// <summary>Alles, was eine Regel über die geprüfte Datei wissen darf.</summary>
@@ -59,10 +69,14 @@ type
   end;
 
   /// <summary>Sammelt die Treffer einer Regel.</summary>
+  /// <summary>Sammelt die Treffer einer Regel. Ohne Angabe gilt Konfidenz High.</summary>
   IRuleReport = interface
     ['{6E0D7E61-0B7B-4C4A-9C7F-3B0E5B6E2A11}']
     procedure Add(const ARange: TTextRange; const AMessage: string); overload;
     procedure Add(const ARange: TTextRange; const AMessage: string; const AFixes: TArray<TRuleFix>); overload;
+    procedure Add(const ARange: TTextRange; const AMessage: string; AConfidence: TRuleConfidence); overload;
+    procedure Add(const ARange: TTextRange; const AMessage: string; AConfidence: TRuleConfidence;
+      const AFixes: TArray<TRuleFix>); overload;
   end;
 
   IRule = interface
@@ -71,15 +85,42 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+/// <summary>Kennwort der Konfidenz: "hoch", "mittel", "niedrig".</summary>
+function ConfidenceText(AConfidence: TRuleConfidence): string;
+
 implementation
+
+function ConfidenceText(AConfidence: TRuleConfidence): string;
+begin
+  case AConfidence of
+    TRuleConfidence.Low:
+      Result := 'niedrig';
+    TRuleConfidence.Medium:
+      Result := 'mittel';
+  else
+    Result := 'hoch';
+  end;
+end;
 
 { TRuleDescriptor }
 
-constructor TRuleDescriptor.Create(const AId: string; ADefaultSeverity: TRuleSeverity; const ADescription: string);
+constructor TRuleDescriptor.Create(const AId: string; ADefaultSeverity: TRuleSeverity; const ADescription: string;
+  AExperimental: Boolean);
 begin
   Id := AId;
   DefaultSeverity := ADefaultSeverity;
   Description := ADescription;
+  Experimental := AExperimental;
+end;
+
+{ TRuleFinding }
+
+function TRuleFinding.DisplayMessage: string;
+begin
+  if Confidence = TRuleConfidence.High then
+    Result := Message
+  else
+    Result := Message + ' (Konfidenz: ' + ConfidenceText(Confidence) + ')';
 end;
 
 { TRuleEdit }

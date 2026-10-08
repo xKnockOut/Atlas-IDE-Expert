@@ -64,7 +64,8 @@ uses
   BDLsp.Tests.LeakMonitor in 'Support\BDLsp.Tests.LeakMonitor.pas',
   BDLsp.Tests.LeakMonitor.Tests in 'Support\BDLsp.Tests.LeakMonitor.Tests.pas',
   BDLsp.Tests.RuleAssert in 'Support\BDLsp.Tests.RuleAssert.pas',
-  BDLsp.Common.Rules.Engine.Tests in 'Common\Rules\BDLsp.Common.Rules.Engine.Tests.pas';
+  BDLsp.Common.Rules.Engine.Tests in 'Common\Rules\BDLsp.Common.Rules.Engine.Tests.pas',
+  BDLsp.Common.Rules.Confidence.Tests in 'Common\Rules\BDLsp.Common.Rules.Confidence.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

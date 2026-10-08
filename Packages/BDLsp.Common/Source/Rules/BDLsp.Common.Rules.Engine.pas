@@ -6,6 +6,11 @@
 //   "rules": { "empty-except": { "severity": "hint", "exclude": ["Legacy/**", "Alt.Unit"] } }
 // Muster in "exclude" gelten für den relativen Pfad (Glob) oder den Unit-Namen.
 // Danach filtert sie Treffer, die per Kommentar unterdrückt sind.
+//
+// Konfidenzpolitik (#144): Fehler nur bei hoher Konfidenz, mittlere höchstens
+// Warnung, niedrige höchstens Hinweis. Treffer unter "minConfidence" (Vorgabe
+// medium) entfallen. Experimentelle Regeln laufen nur, wenn sie in "rules"
+// stehen.
 
 interface
 
@@ -24,6 +29,8 @@ type
     /// <summary>Optionen der Regel als JSON-Text, sonst ''.</summary>
     class function RuleOptions(const ARuleId: string; const ASettings: TServerSettings): string; static;
     /// <summary>True, wenn "exclude" in AOptions den Pfad oder die Unit trifft.</summary>
+    /// <summary>ASeverity begrenzt nach Konfidenz.</summary>
+    class function CapSeverity(ASeverity: TRuleSeverity; AConfidence: TRuleConfidence): TRuleSeverity; static;
     class function IsExceptedByOptions(const AOptions, ARelativePath, AUnitName: string): Boolean; static;
     /// <summary>Alle Treffer der Regeln auf AContext, nach Zeile sortiert.</summary>
     class function Run(const ARules: TArray<IRule>; const ASettings: TServerSettings;
@@ -48,6 +55,9 @@ type
     constructor Create(const ARuleId: string; ASeverity: TRuleSeverity; AFindings: TList<TRuleFinding>);
     procedure Add(const ARange: TTextRange; const AMessage: string); overload;
     procedure Add(const ARange: TTextRange; const AMessage: string; const AFixes: TArray<TRuleFix>); overload;
+    procedure Add(const ARange: TTextRange; const AMessage: string; AConfidence: TRuleConfidence); overload;
+    procedure Add(const ARange: TTextRange; const AMessage: string; AConfidence: TRuleConfidence;
+      const AFixes: TArray<TRuleFix>); overload;
   end;
 
 function CompareFindings(const A, B: TRuleFinding): Integer;
@@ -75,13 +85,25 @@ begin
 end;
 
 procedure TRuleReport.Add(const ARange: TTextRange; const AMessage: string; const AFixes: TArray<TRuleFix>);
+begin
+  Add(ARange, AMessage, TRuleConfidence.High, AFixes);
+end;
+
+procedure TRuleReport.Add(const ARange: TTextRange; const AMessage: string; AConfidence: TRuleConfidence);
+begin
+  Add(ARange, AMessage, AConfidence, nil);
+end;
+
+procedure TRuleReport.Add(const ARange: TTextRange; const AMessage: string; AConfidence: TRuleConfidence;
+  const AFixes: TArray<TRuleFix>);
 var
   Finding: TRuleFinding;
 begin
   Finding.RuleId := FRuleId;
   Finding.Range := ARange;
   Finding.Message := AMessage;
-  Finding.Severity := FSeverity;
+  Finding.Severity := TRuleEngine.CapSeverity(FSeverity, AConfidence);
+  Finding.Confidence := AConfidence;
   Finding.Fixes := AFixes;
   FFindings.Add(Finding);
 end;
@@ -94,6 +116,24 @@ begin
   Result := ASettings.RuleSeverity(ARule.Id, ARule.DefaultSeverity);
   if Result = TRuleSeverity.Default then
     Result := TRuleSeverity.Warning;
+end;
+
+class function TRuleEngine.CapSeverity(ASeverity: TRuleSeverity; AConfidence: TRuleConfidence): TRuleSeverity;
+var
+  Limit: TRuleSeverity;
+begin
+  case AConfidence of
+    TRuleConfidence.Low:
+      Limit := TRuleSeverity.Hint;
+    TRuleConfidence.Medium:
+      Limit := TRuleSeverity.Warning;
+  else
+    Limit := TRuleSeverity.Error;
+  end;
+  if Ord(ASeverity) > Ord(Limit) then
+    Result := Limit
+  else
+    Result := ASeverity;
 end;
 
 class function TRuleEngine.RuleOptions(const ARuleId: string; const ASettings: TServerSettings): string;
@@ -161,6 +201,8 @@ begin
       Severity := EffectiveSeverity(Descriptor, ASettings);
       if Severity = TRuleSeverity.Off then
         Continue;
+      if Descriptor.Experimental and not ASettings.IsRuleEnabledExplicitly(Descriptor.Id) then
+        Continue;
       Context := AContext;
       Context.Options := RuleOptions(Descriptor.Id, ASettings);
       if IsExceptedByOptions(Context.Options, Context.RelativePath, Context.UnitName) then
@@ -171,7 +213,8 @@ begin
     if (Findings.Count > 0) and (AContext.Tree <> nil) then
       Suppressions := TSuppressions.Create(AContext.Tree.Tokens);
     for Finding in Findings do
-      if (Suppressions = nil) or not Suppressions.IsSuppressed(Finding.RuleId, Finding.Range.StartPos.Line) then
+      if (Ord(Finding.Confidence) >= Ord(ASettings.MinConfidence)) and
+        ((Suppressions = nil) or not Suppressions.IsSuppressed(Finding.RuleId, Finding.Range.StartPos.Line)) then
         Kept.Add(Finding);
 
     Kept.Sort(TComparer<TRuleFinding>.Construct(CompareFindings));
