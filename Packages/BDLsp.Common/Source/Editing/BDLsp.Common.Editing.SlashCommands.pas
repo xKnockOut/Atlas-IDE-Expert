@@ -150,6 +150,7 @@ uses
   BDLsp.Common.Editing.DocumentationCommands,
   BDLsp.Common.Editing.ComponentCommands,
   BDLsp.Common.Editing.WinApiCommands,
+  BDLsp.Common.Editing.TaskCommands,
   BDLsp.Common.Editing.ErrorCommands;
 
 function IsDisabled(const AName: string; const ADisabled: TArray<string>): Boolean;
@@ -265,6 +266,7 @@ begin
     RegisterDocumentationCommands(Created);
     RegisterComponentCommands(Created);
     RegisterWinApiCommands(Created);
+    RegisterTaskCommands(Created);
     if AtomicCmpExchange(Pointer(FShared), Pointer(Created), nil) <> nil then
       Created.Free;
   end;
