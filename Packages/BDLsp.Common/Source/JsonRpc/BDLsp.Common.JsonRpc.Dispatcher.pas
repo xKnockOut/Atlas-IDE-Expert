@@ -286,6 +286,9 @@ begin
           Scheduled := True;
           Exit(nil);
         end;
+        // Ohne Scheduler läuft die Anfrage hier; auch dann gilt das Zeitlimit.
+        if FWatchdog <> nil then
+          Ticket := FWatchdog.Watch(AId, AMethod);
         Exit(RunConcurrent(AId, AParams, AMethod, ConcurrentHandler, Token, FOnRequestFailed));
       end;
       if not FRequestHandlers.TryGetValue(AMethod, Handler) then

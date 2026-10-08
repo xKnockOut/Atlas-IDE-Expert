@@ -25,14 +25,20 @@ type
 
 implementation
 
+// Winapi.Windows vor System.SysUtils: Beide deklarieren PExceptionRecord,
+// Exception.GetExceptionStackInfoProc erwartet den aus System.SysUtils.
 uses
-  System.SysUtils,
-  Winapi.Windows;
+  Winapi.Windows,
+  System.SysUtils;
 
 const
   MaxFrames = 48;
   ModuleFromAddress = $00000004; // GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
   ModuleUnchangedRefCount = $00000002; // GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT
+
+// Winapi.Windows deklariert GetModuleHandleEx nicht.
+function GetModuleHandleEx(dwFlags: DWORD; lpModuleName: LPCWSTR; var phModule: HMODULE): BOOL; stdcall;
+  external kernel32 name 'GetModuleHandleExW';
 
 type
   PStackInfo = ^TStackInfo;
