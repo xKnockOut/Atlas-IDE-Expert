@@ -38,6 +38,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.JSON,
   BDLsp.Common.Documents.Uris,
   BDLsp.Common.Index.SymbolIndex,
@@ -136,15 +137,26 @@ end;
 procedure TLspWorkspaceSymbolsTests.WritesSymbolInformation;
 var
   Json: TJSONArray;
+  Symbol: TJSONValue;
+  Name, Container, Uri: string;
+  Kind, Line: Integer;
 begin
   Json := TLspWorkspaceSymbols.ToJson(TLspWorkspaceSymbols.Search(FIndex, 'Speichere', 10));
   try
     Assert.AreEqual(1, Integer(Json.Count));
-    Assert.AreEqual('Speichere', Json.Items[0].GetValue<string>('name'));
-    Assert.AreEqual(6, Json.Items[0].GetValue<Integer>('kind'));
-    Assert.AreEqual('Kunden.TKunde', Json.Items[0].GetValue<string>('containerName'));
-    Assert.AreEqual(TDocumentUris.FromPath('C:\P\Kunden.pas'), Json.Items[0].GetValue<string>('location.uri'));
-    Assert.AreEqual(5, Json.Items[0].GetValue<Integer>('location.range.start.line'));
+    // Werte erst in typisierte Variablen lesen: Json.Items[0].GetValue<T>
+    // direkt als Argument von Assert.AreEqual übersetzt dcc64 (Delphi 13) nicht.
+    Symbol := Json.Items[0];
+    Name := Symbol.GetValue<string>('name');
+    Kind := Symbol.GetValue<Integer>('kind');
+    Container := Symbol.GetValue<string>('containerName');
+    Uri := Symbol.GetValue<string>('location.uri');
+    Line := Symbol.GetValue<Integer>('location.range.start.line');
+    Assert.AreEqual('Speichere', Name);
+    Assert.AreEqual(6, Kind);
+    Assert.AreEqual('Kunden.TKunde', Container);
+    Assert.AreEqual(TDocumentUris.FromPath('C:\P\Kunden.pas'), Uri);
+    Assert.AreEqual(5, Line);
   finally
     Json.Free;
   end;
