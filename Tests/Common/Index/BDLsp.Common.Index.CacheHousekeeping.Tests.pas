@@ -32,6 +32,8 @@ type
     [TearDown]
     procedure TearDown;
     [Test]
+    // Die RTL legt bei der ersten fehlgeschlagenen Dateisperre (EFCreateError) Daten an, die bis Programmende bleiben; kein Leck des Testcodes.
+    [IgnoreMemoryLeaks]
     procedure SecondLockFails;
     [Test]
     procedure ClearSkipsLockedCaches;
@@ -103,6 +105,8 @@ end;
 procedure TIndexCacheDirectoryTests.TearDown;
 begin
   TDirectory.Delete(FRoot, True);
+  // Sonst gibt erst das nächste Setup den Pfad frei (Leck-Monitor).
+  FRoot := '';
 end;
 
 function TIndexCacheDirectoryTests.CreateCache(const AName: string): string;

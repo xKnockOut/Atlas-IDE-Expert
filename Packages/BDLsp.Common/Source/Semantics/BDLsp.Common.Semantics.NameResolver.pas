@@ -582,8 +582,9 @@ begin
     if FindMember(ClassType, ANames[0], 0, AResult) then
       Exit(True);
   end;
-  // Unit-Namen mit Punkten: längstes Präfix zuerst (System.SysUtils.Foo).
-  for Count := Length(ANames) - 1 downto 2 do
+  // Unit-Namen mit Punkten: längstes Präfix zuerst (System.SysUtils.Foo). Der
+  // ganze Ausdruck zählt mit, sonst bleibt "Vcl.Werkzeug" in uses unaufgelöst.
+  for Count := Length(ANames) downto 2 do
   begin
     UnitName := string.Join('.', Copy(ANames, 0, Count));
     if FindUnit(UnitName, Found) then
@@ -689,9 +690,12 @@ function TNameResolver.Resolve(ATree: TSyntaxTree; const AFileName: string;
   const APosition: TTextPosition): TResolvedSymbol;
 var
   Tokens: TArray<TPascalToken>;
-  Index, First: Integer;
+  Index, First, Last: Integer;
   Names: TList<string>;
   IsInherited: Boolean;
+  UnitName: string;
+  UnitIndex: TUnitIndex;
+  Found: Boolean;
 
   function Clean(const AText: string): string;
   begin
@@ -723,6 +727,28 @@ begin
     end;
     // Foo(1).Bar, A[0].B: Ergebnis eines Ausdrucks, in dieser Stufe nicht auflösbar.
     if (First >= 2) and Tokens[First - 1].IsSymbol('.') then
+      Exit;
+    // Cursor auf einem vorderen Teil eines Unit-Namens (Vcl in Vcl.Werkzeug):
+    // die folgenden Teile ergänzen und den längsten passenden Unit-Namen nehmen.
+    Last := Index;
+    UnitName := string.Join('.', Names.ToArray);
+    Found := False;
+    while (Last + 2 < Length(Tokens)) and Tokens[Last + 1].IsSymbol('.') and
+      (Tokens[Last + 2].Kind = TPascalTokenKind.Identifier) do
+    begin
+      Inc(Last, 2);
+      UnitName := UnitName + '.' + Clean(Tokens[Last].Text);
+      if FindUnit(UnitName, UnitIndex) then
+      begin
+        Found := True;
+        Result := NoResult;
+        Result.Kind := TResolvedKind.UnitName;
+        Result.Name := UnitIndex.UnitName;
+        Result.UnitName := UnitIndex.UnitName;
+        Result.FileName := UnitIndex.FileName;
+      end;
+    end;
+    if Found then
       Exit;
     IsInherited := (First >= 1) and Tokens[First - 1].IsKeyword('inherited');
     Result := ResolveChain(ATree, AFileName, Names.ToArray, Tokens[Index].Offset, IsInherited);
