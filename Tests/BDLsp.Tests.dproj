@@ -69,6 +69,7 @@
         <DCCReference Include="Common\Projects\BDLsp.Common.Projects.DelphiVersions.Tests.pas"/>
         <DCCReference Include="Windows\Projects\BDLsp.Windows.Projects.DelphiInstallation.Tests.pas"/>
         <DCCReference Include="Common\Compiler\BDLsp.Common.Compiler.Tests.pas"/>
+        <DCCReference Include="Common\Compiler\BDLsp.Common.Compiler.Backends.Tests.pas"/>
         <DCCReference Include="Windows\Compiler\BDLsp.Windows.Compiler.Adapters.ProcessRunner.Tests.pas"/>
         <DCCReference Include="Common\Documents\BDLsp.Common.Documents.Providers.DocumentStore.Tests.pas"/>
         <DCCReference Include="Common\Documents\BDLsp.Common.Documents.Uris.Tests.pas"/>

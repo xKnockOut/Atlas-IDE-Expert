@@ -99,6 +99,7 @@
         <DCCReference Include="Source\Compiler\BDLsp.Common.Compiler.OutputParser.pas"/>
         <DCCReference Include="Source\Compiler\BDLsp.Common.Compiler.CommandLine.pas"/>
         <DCCReference Include="Source\Compiler\BDLsp.Common.Compiler.Results.pas"/>
+        <DCCReference Include="Source\Compiler\BDLsp.Common.Compiler.Backends.pas"/>
         <DCCReference Include="Source\Index\BDLsp.Common.Index.Contract.pas"/>
         <DCCReference Include="Source\Index\BDLsp.Common.Index.Extractor.pas"/>
         <DCCReference Include="Source\Index\BDLsp.Common.Index.SymbolIndex.pas"/>

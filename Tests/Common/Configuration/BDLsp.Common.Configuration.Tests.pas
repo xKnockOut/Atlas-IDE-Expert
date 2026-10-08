@@ -248,6 +248,14 @@ begin
   Assert.AreEqual(2, Integer(Length(Issues)));
   Settings := TConfigurationParser.ParseLayered('{"compiler": {"onSave": false}}', '{}', Issues);
   Assert.IsFalse(Settings.Compiler.OnSave);
+  // Backend (#261)
+  Assert.IsTrue(Parse('{}', Issues).Compiler.Backend = TCompilerBackend.Auto);
+  Settings := Parse('{"compiler": {"backend": "ide", "ideCommand": "C:\\\\cc.ps1"}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsTrue(Settings.Compiler.Backend = TCompilerBackend.Ide);
+  Assert.AreEqual('C:\\cc.ps1', Settings.Compiler.IdeCommand);
+  Assert.IsTrue(Parse('{"compiler": {"backend": "msbuild"}}', Issues).Compiler.Backend = TCompilerBackend.Auto);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Vervollständigung (#229)
   Assert.IsTrue(Parse('{}', Issues).Completion.Matching = TCompletionMatching.Fuzzy);
   Assert.IsTrue(Parse('{"completion": {"matching": "prefix"}}', Issues).Completion.Matching = TCompletionMatching.Prefix);

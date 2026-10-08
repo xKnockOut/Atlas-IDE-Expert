@@ -109,10 +109,16 @@ type
     class function Default: TFormatStyle; static;
   end;
 
+  /// <summary>Weg zum Compiler (#261): Auto wählt nach der erkannten Edition.</summary>
+  TCompilerBackend = (Auto, Dcc, Ide, Off);
+
   /// <summary>Compiler-Anbindung (#40).</summary>
   TCompilerSettings = record
     /// <summary>Nach dem Speichern einer Quelldatei im Hintergrund kompilieren.</summary>
     OnSave: Boolean;
+    Backend: TCompilerBackend;
+    /// <summary>Pfad zu cc.ps1 für das Backend ide; '' ohne.</summary>
+    IdeCommand: string;
     class function Default: TCompilerSettings; static;
   end;
 
@@ -363,6 +369,8 @@ end;
 class function TCompilerSettings.Default: TCompilerSettings;
 begin
   Result.OnSave := True;
+  Result.Backend := TCompilerBackend.Auto;
+  Result.IdeCommand := '';
 end;
 
 { TCompletionSettings }

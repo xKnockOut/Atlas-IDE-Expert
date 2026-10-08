@@ -487,7 +487,7 @@ end;
 procedure TValidator.ReadCompiler(ANode: TJsonNode);
 var
   Index: Integer;
-  Key: string;
+  Key, Text: string;
 begin
   if ANode.Kind <> TJsonKind.Object_ then
   begin
@@ -499,6 +499,25 @@ begin
     Key := ANode.Keys[Index];
     if Key = 'onSave' then
       ExpectBoolean(ANode[Index], Key, FSettings.Compiler.OnSave)
+    else if Key = 'backend' then
+    begin
+      if ExpectString(ANode[Index], Key, Text) then
+        if Text = 'auto' then
+          FSettings.Compiler.Backend := TCompilerBackend.Auto
+        else if Text = 'dcc' then
+          FSettings.Compiler.Backend := TCompilerBackend.Dcc
+        else if Text = 'ide' then
+          FSettings.Compiler.Backend := TCompilerBackend.Ide
+        else if Text = 'off' then
+          FSettings.Compiler.Backend := TCompilerBackend.Off
+        else
+          ReportNode(ANode[Index], 'Erlaubt sind "auto", "dcc", "ide" und "off"');
+    end
+    else if Key = 'ideCommand' then
+    begin
+      if ExpectString(ANode[Index], Key, Text) then
+        FSettings.Compiler.IdeCommand := Text;
+    end
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "compiler.%s"', [Key]), False);

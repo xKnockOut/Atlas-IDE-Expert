@@ -17,7 +17,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Prüfregeln | `overrides` | – | delphi-lsp.json, Editor (`betterDelphiLsp.overrides`) | nein | Liste mit Mustern | #146 |
 | Prüfregeln | `excludeTests` | `false` | delphi-lsp.json, Editor (`betterDelphiLsp.excludeTests`) | nein | Kontrollkästchen | #146 |
 | Prüfregeln | `testProfile` | – | delphi-lsp.json, Editor (`betterDelphiLsp.testProfile`) | nein | Auswahl | #146 |
-| Compiler | `compiler`: `onSave` | – | delphi-lsp.json, Editor (`betterDelphiLsp.compiler`) | nein | Kontrollkästchen | #40 |
+| Compiler | `compiler`: `onSave`, `backend`, `ideCommand` | – | delphi-lsp.json, Editor (`betterDelphiLsp.compiler`) | nein | Kontrollkästchen | #40 |
 | Vervollständigung | `completion`: `matching` | – | delphi-lsp.json, Editor (`betterDelphiLsp.completion`) | nein | Auswahl | #229 |
 | Eingabehilfen | `completeBlocks`: `begin`, `try`, `case`, `record`, `class`, `repeat` | – | delphi-lsp.json, Editor (`betterDelphiLsp.completeBlocks`) | nein | Kontrollkästchen je Block | #179 |
 | Eingabehilfen | `usesCommand` | `true` | delphi-lsp.json, Editor (`betterDelphiLsp.usesCommand`) | nein | Kontrollkästchen | #254 |

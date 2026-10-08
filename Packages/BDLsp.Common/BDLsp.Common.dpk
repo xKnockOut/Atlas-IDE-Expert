@@ -67,6 +67,7 @@ contains
   BDLsp.Common.Compiler.OutputParser in 'Source\Compiler\BDLsp.Common.Compiler.OutputParser.pas',
   BDLsp.Common.Compiler.CommandLine in 'Source\Compiler\BDLsp.Common.Compiler.CommandLine.pas',
   BDLsp.Common.Compiler.Results in 'Source\Compiler\BDLsp.Common.Compiler.Results.pas',
+  BDLsp.Common.Compiler.Backends in 'Source\Compiler\BDLsp.Common.Compiler.Backends.pas',
   BDLsp.Common.Index.Contract in 'Source\Index\BDLsp.Common.Index.Contract.pas',
   BDLsp.Common.Index.Extractor in 'Source\Index\BDLsp.Common.Index.Extractor.pas',
   BDLsp.Common.Index.SymbolIndex in 'Source\Index\BDLsp.Common.Index.SymbolIndex.pas',

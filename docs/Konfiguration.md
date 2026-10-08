@@ -43,6 +43,8 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 | Schlüssel | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|
 | `compiler.onSave` | boolean | `true` |  | Nach dem Speichern einer Quelldatei das Projekt im Hintergrund kompilieren und die Meldungen anzeigen. |
+| `compiler.backend` | string | `"auto"` | `"auto"`, `"dcc"`, `"ide"`, `"off"` | Weg zum Compiler: auto wählt nach der erkannten Edition (dcc mit Kommandozeilen-Compiler, sonst ide über cc.ps1, sonst off), dcc ruft dcc32/dcc64 auf, ide übersetzt in einer eigenen Scratch-IDE (nur per Befehl, nicht beim Speichern), off schaltet ab. |
+| `compiler.ideCommand` | string | `""` |  | Pfad zu cc.ps1 für das Backend ide (RAD Studio Starter ohne Kommandozeilen-Compiler). |
 
 ## completion
 
