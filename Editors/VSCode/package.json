@@ -2,7 +2,7 @@
   "name": "betterdelphilsp",
   "displayName": "BetterDelphiLSP",
   "description": "Delphi/Object Pascal in VS Code mit dem Language Server BetterDelphiLSP: Navigation, Prüfregeln, Formatierung, Umbenennen und mehr.",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "publisher": "xknockout",
   "license": "SEE LICENSE IN ../../LICENSE",
   "private": true,

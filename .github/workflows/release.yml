@@ -1,0 +1,119 @@
+name: Release
+
+# Veröffentlicht eine Version (#83), ausgelöst durch ein Tag v<SemVer>, z. B. v0.2.0.
+#
+# 1. Prüft, dass Tag, TProductVersion und package.json dieselbe Version tragen.
+# 2. Baut den Server (Win64 Release) auf dem selbst gehosteten Delphi-Runner,
+#    sofern DELPHI_RUNNER = 'true'; signiert ihn, wenn SIGN_CERT_BASE64 und
+#    SIGN_CERT_PASSWORD gesetzt sind.
+# 3. Packt die .vsix mit der EXE unter server/.
+# 4. Legt ein GitHub Release mit EXE, .vsix und dem Abschnitt aus CHANGELOG.md an.
+# 5. Veröffentlicht optional im VS Code Marketplace (VSCE_PAT) und auf Open VSX (OVSX_PAT).
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Versionen vergleichen
+        id: check
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}'.TrimStart('v')
+          ./Tools/Check-Version.ps1 -Expected $version
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+  server:
+    needs: version
+    if: vars.DELPHI_RUNNER == 'true'
+    runs-on: [self-hosted, windows, delphi]
+    env:
+      RADSTUDIO_BIN: ${{ vars.RADSTUDIO_BIN || 'C:\Program Files (x86)\Embarcadero\Studio\37.0\bin' }}
+      HAS_SIGNING: ${{ secrets.SIGN_CERT_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Server bauen (Win64 Release)
+        shell: cmd
+        run: |
+          call "%RADSTUDIO_BIN%\rsvars.bat"
+          msbuild Application\BetterDelphiLSP.dproj /t:Build /p:Config=Release /p:Platform=Win64 /nologo /v:minimal
+      - name: Signieren (optional)
+        if: env.HAS_SIGNING == 'true'
+        shell: pwsh
+        env:
+          SIGN_CERT_BASE64: ${{ secrets.SIGN_CERT_BASE64 }}
+          SIGN_CERT_PASSWORD: ${{ secrets.SIGN_CERT_PASSWORD }}
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP 'sign.pfx'
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGN_CERT_BASE64))
+          try {
+            signtool sign /f $pfx /p $env:SIGN_CERT_PASSWORD /fd sha256 /tr http://timestamp.digicert.com /td sha256 Output\Win64\Release\Bin\BetterDelphiLSP.exe
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            Remove-Item $pfx -Force
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server
+          path: Output/Win64/Release/Bin/BetterDelphiLSP.exe
+
+  release:
+    needs: [version, server]
+    # Auch ohne Delphi-Runner: dann enthält das Release nur die .vsix ohne EXE.
+    if: always() && needs.version.result == 'success' && needs.server.result != 'failure'
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      HAS_VSCE: ${{ secrets.VSCE_PAT != '' }}
+      HAS_OVSX: ${{ secrets.OVSX_PAT != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        if: needs.server.result == 'success'
+        with:
+          name: server
+          path: Editors/VSCode/server
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Editors/VSCode/package-lock.json
+      - name: .vsix packen
+        working-directory: Editors/VSCode
+        run: |
+          npm ci
+          npx vsce package -o "betterdelphilsp-$VERSION.vsix"
+      - name: Changelog-Abschnitt
+        shell: pwsh
+        run: ./Tools/Get-ChangelogSection.ps1 -Version $env:VERSION | Set-Content -Encoding utf8 release-notes.md
+      - name: Release anlegen
+        uses: softprops/action-gh-release@v2
+        with:
+          name: BetterDelphiLSP ${{ env.VERSION }}
+          body_path: release-notes.md
+          prerelease: ${{ startsWith(env.VERSION, '0.') || contains(env.VERSION, '-') }}
+          files: |
+            Editors/VSCode/betterdelphilsp-${{ env.VERSION }}.vsix
+            Editors/VSCode/server/BetterDelphiLSP.exe
+          fail_on_unmatched_files: false
+      - name: VS Code Marketplace (optional)
+        if: env.HAS_VSCE == 'true'
+        working-directory: Editors/VSCode
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx vsce publish --packagePath "betterdelphilsp-$VERSION.vsix"
+      - name: Open VSX (optional)
+        if: env.HAS_OVSX == 'true'
+        working-directory: Editors/VSCode
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: npx --yes ovsx@0.10.1 publish "betterdelphilsp-$VERSION.vsix" -p "$OVSX_PAT"

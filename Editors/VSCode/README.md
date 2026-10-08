@@ -4,7 +4,7 @@ Startet den Server `BetterDelphiLSP.exe` automatisch, sobald ein Ordner mit `.dp
 
 ## Installieren
 
-`pwsh Tools/Package-VSCode.ps1` baut `betterdelphilsp-<Version>.vsix` mit mitgelieferter EXE; installieren mit `code --install-extension betterdelphilsp-0.2.0.vsix`.
+`pwsh Tools/Package-VSCode.ps1` baut `betterdelphilsp-<Version>.vsix` mit mitgelieferter EXE; installieren mit `code --install-extension betterdelphilsp-0.1.0.vsix`.
 
 Gesucht wird der Server in dieser Reihenfolge: Einstellung `betterDelphiLsp.serverPath`, mitgelieferte EXE, `Output\Win64\Release|Debug\Bin` im Arbeitsbereich, `PATH`.
 
