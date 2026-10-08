@@ -393,6 +393,7 @@ begin
   FSyntaxDiagnostics.VersionProvider := DelphiVersionFor;
   FSyntaxDiagnostics.RuleProvider := RuleContextFor;
   FIndex := TSymbolIndex.Create;
+  FFormatting.Index := FIndex;
   FDefinition := TLspDefinition.Create(FDocuments, FIndex,
     function(const AUnitName: string): Boolean
     begin

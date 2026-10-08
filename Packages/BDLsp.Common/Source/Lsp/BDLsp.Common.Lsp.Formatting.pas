@@ -18,6 +18,7 @@ uses
   BDLsp.Common.JsonRpc.Dispatcher,
   BDLsp.Common.Documents.Contract,
   BDLsp.Common.Configuration.Contract,
+  BDLsp.Common.Index.Contract,
   BDLsp.Common.Editing.EditorConfig,
   BDLsp.Common.Editing.SlashCommands;
 
@@ -39,6 +40,7 @@ type
     FReadFile: TEditorConfigReadFile;
     FBlockKindsFor: TBlockKindsProvider;
     FSlashCommandsFor: TSlashCommandsProvider;
+    FIndex: ISymbolIndex;
     function HandleOnType(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function Handle(const AParams: TJSONValue; AWithRange: Boolean): TJSONValue;
     function HandleFormatting(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -57,6 +59,8 @@ type
     property BlockKindsFor: TBlockKindsProvider read FBlockKindsFor write FBlockKindsFor;
     /// <summary>Ohne Zuweisung sind alle Schnellbefehle eingeschaltet.</summary>
     property SlashCommandsFor: TSlashCommandsProvider read FSlashCommandsFor write FSlashCommandsFor;
+    /// <summary>Index für Schnellbefehle, die Vorfahren und Interfaces brauchen (#295); nil ohne.</summary>
+    property Index: ISymbolIndex read FIndex write FIndex;
   end;
 
 implementation
@@ -116,7 +120,7 @@ begin
   Disabled := nil;
   if (not Assigned(FSlashCommandsFor) or FSlashCommandsFor(Uri, Disabled)) and
     TSlashCommandRegistry.Shared.AfterEnter(Document.Text, TLspPositions.ReadPosition(PositionValue), nil, Disabled,
-    Edits) then
+    Edits, FIndex) then
   begin
     for Edit in Edits do
     begin
