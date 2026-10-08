@@ -64,7 +64,7 @@
         "betterDelphiLsp.delphiVersion": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Delphi-Version wie in der Registry, z. B. `37.0`; leer: passend zur `ProjectVersion` der .dproj, sonst neueste installierte. delphi-lsp.json im Projekt hat Vorrang."
+          "markdownDescription": "Delphi-Version als Produktnummer (\"13\", \"12\", \"10.4\") oder wie in der Registry (\"37.0\" für Delphi 13, \"23.0\" für Delphi 12). Leer: neueste installierte Version. delphi-lsp.json im Projekt hat Vorrang."
         },
         "betterDelphiLsp.language": {
           "type": "string",
@@ -73,27 +73,158 @@
             "en"
           ],
           "default": "de",
-          "description": "Sprache der Meldungen. delphi-lsp.json im Projekt hat Vorrang."
+          "markdownDescription": "Sprache der Meldungen. delphi-lsp.json im Projekt hat Vorrang."
         },
         "betterDelphiLsp.project": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Projektdatei (`.dproj`) relativ zum Arbeitsbereich; leer: die einzige `.dproj` im Wurzelordner. delphi-lsp.json im Projekt hat Vorrang."
+          "markdownDescription": "Projektdatei (.dproj) relativ zu diesem Ordner. Leer: automatisch suchen. delphi-lsp.json im Projekt hat Vorrang."
         },
         "betterDelphiLsp.config": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Build-Konfiguration, z. B. `Debug`; leer: die im Projekt eingestellte. delphi-lsp.json im Projekt hat Vorrang."
+          "markdownDescription": "Build-Konfiguration, z. B. Debug oder Release. delphi-lsp.json im Projekt hat Vorrang."
         },
         "betterDelphiLsp.platform": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Zielplattform, z. B. `Win64`; leer: die im Projekt eingestellte. delphi-lsp.json im Projekt hat Vorrang."
+          "markdownDescription": "Zielplattform. delphi-lsp.json im Projekt hat Vorrang."
         },
         "betterDelphiLsp.rules": {
           "type": "object",
           "default": {},
-          "markdownDescription": "Prüfregeln: Regel-Id auf `off`, `hint`, `info`, `warning` oder `error`. Einträge in delphi-lsp.json haben je Regel Vorrang."
+          "markdownDescription": "Prüfregeln einzeln einstellen: Regel-ID → Schweregrad oder Objekt mit \"severity\" und Optionen. delphi-lsp.json im Projekt hat Vorrang."
+        },
+        "betterDelphiLsp.profile": {
+          "type": [
+            "string",
+            "object"
+          ],
+          "default": "standard",
+          "markdownDescription": "Regelprofil: standard, fast (nur Bugs und Schwachstellen), strict (experimentelle Regeln an, minConfidence low), security, style oder ein eigenes aus \"profiles\". Als Objekt getrennt für Editor und Kommandozeile. delphi-lsp.json im Projekt hat Vorrang."
+        },
+        "betterDelphiLsp.profiles": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Eigene Regelprofile: Name → { \"extends\": eingebautes oder eigenes Profil, \"categories\": nur diese Kategorien, \"rules\": Regel-ID → Schweregrad }. delphi-lsp.json im Projekt hat Vorrang."
+        },
+        "betterDelphiLsp.overrides": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "files"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "rules": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string",
+                  "enum": [
+                    "off",
+                    "hint",
+                    "info",
+                    "information",
+                    "warning",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "default": [],
+          "markdownDescription": "Pfadregeln: Schweregrade für Dateien, die eines der Glob-Muster treffen, z. B. Tests oder generierten Code herabstufen. Regel-ID \"*\" steht für alle Regeln; spätere Einträge haben Vorrang. delphi-lsp.json im Projekt hat Vorrang."
+        },
+        "betterDelphiLsp.excludeTests": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Test-Units und Testprojekte (uses DUnitX.TestFramework, TestFramework oder TestInsight.*) nicht prüfen. delphi-lsp.json im Projekt hat Vorrang."
+        },
+        "betterDelphiLsp.testProfile": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Regelprofil für Test-Units und Testprojekte; leer: wie \"profile\". delphi-lsp.json im Projekt hat Vorrang."
+        },
+        "betterDelphiLsp.compiler": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Compiler-Anbindung (dcc32/dcc64). delphi-lsp.json im Projekt hat Vorrang."
+        },
+        "betterDelphiLsp.completion": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Code-Vervollständigung. delphi-lsp.json im Projekt hat Vorrang."
+        },
+        "betterDelphiLsp.completeBlocks": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Blockabschluss beim Tippen: nach Enter hinter dem Schlüsselwort den passenden Abschluss ergänzen, wenn der Block noch offen ist. delphi-lsp.json im Projekt hat Vorrang."
+        },
+        "betterDelphiLsp.usesCommand": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Eine Zeile \"/uses Unit1, Unit2\" wird nach Enter gelöscht und die Units kommen ins passende uses. delphi-lsp.json im Projekt hat Vorrang."
+        },
+        "betterDelphiLsp.sortUses": {
+          "type": [
+            "boolean",
+            "string"
+          ],
+          "enum": [
+            true,
+            false,
+            "alphabetic",
+            "namespace"
+          ],
+          "default": false,
+          "markdownDescription": "\"uses aufräumen\" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder \"alphabetic\" alphabetisch, \"namespace\" nach Namespace gruppiert (System, Vcl, ... und Units ohne Namespace zuletzt). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units. delphi-lsp.json im Projekt hat Vorrang."
+        },
+        "betterDelphiLsp.usesKeep": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": null,
+          "markdownDescription": "Units, die \"ungenutzte uses entfernen\" nie entfernt, zusätzlich zu allen Units mit initialization-Abschnitt. delphi-lsp.json im Projekt hat Vorrang."
+        },
+        "betterDelphiLsp.memoryBudgetMb": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "markdownDescription": "Obergrenze für den Symbolindex in MB. Darüber werden zuerst Bibliotheks-Units (RTL, VCL), dann Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. delphi-lsp.json im Projekt hat Vorrang."
+        },
+        "betterDelphiLsp.requestTimeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "default": 10000,
+          "markdownDescription": "Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet. delphi-lsp.json im Projekt hat Vorrang."
+        },
+        "betterDelphiLsp.highlight": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Zusammengehörige Schlüsselwörter hervorheben, wenn der Cursor auf einem steht. delphi-lsp.json im Projekt hat Vorrang."
+        },
+        "betterDelphiLsp.inlayHints": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Inlay Hints im Editor. delphi-lsp.json im Projekt hat Vorrang."
+        },
+        "betterDelphiLsp.minConfidence": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "default": "medium",
+          "markdownDescription": "Regeltreffer unter dieser Konfidenz ausblenden. delphi-lsp.json im Projekt hat Vorrang."
         },
         "betterDelphiLsp.exclude": {
           "type": "array",
@@ -101,29 +232,12 @@
             "type": "string"
           },
           "default": [],
-          "markdownDescription": "Ausgeschlossene Ordner und Dateien als Glob-Muster, z. B. `ThirdParty/**`. delphi-lsp.json im Projekt hat Vorrang."
-        },
-        "betterDelphiLsp.compiler": {
-          "type": "object",
-          "default": {
-            "onSave": true
-          },
-          "markdownDescription": "Compiler-Anbindung: `onSave` kompiliert das Projekt nach dem Speichern im Hintergrund und zeigt Fehler, Warnungen und Hinweise von dcc32/dcc64 an. delphi-lsp.json im Projekt hat Vorrang."
+          "markdownDescription": "Ordner und Dateien, die nicht geprüft werden (Glob-Muster relativ zu diesem Ordner: *, **, ?). delphi-lsp.json im Projekt hat Vorrang."
         },
         "betterDelphiLsp.format": {
           "type": "object",
           "default": {},
-          "markdownDescription": "Formatierung: `indentSize`, `useTabs`, `keywordCase` (`preserve`/`lower`/`upper`), `trimTrailingWhitespace`, `insertFinalNewline`, `spaceAroundAssignment`, `spaceAfterComma`, `endOfLine` (`lf`/`crlf`). Gesetzte Werte haben Vorrang vor `.editorconfig`; delphi-lsp.json im Projekt hat Vorrang."
-        },
-        "betterDelphiLsp.inlayHints": {
-          "type": "object",
-          "default": {
-            "parameterNames": true,
-            "inferredTypes": true,
-            "endMarkers": true,
-            "endMarkerMinLines": 20
-          },
-          "markdownDescription": "Inlay Hints: `parameterNames`, `inferredTypes`, `endMarkers` (an/aus) und `endMarkerMinLines` (Mindestlänge eines Blocks in Zeilen für eine Endmarkierung). delphi-lsp.json im Projekt hat Vorrang."
+          "markdownDescription": "Formatierung (Dokument und Auswahl formatieren). Gesetzte Werte haben Vorrang vor .editorconfig. delphi-lsp.json im Projekt hat Vorrang."
         },
         "betterDelphiLsp.logLevel": {
           "type": "string",
@@ -134,17 +248,17 @@
             "error"
           ],
           "default": "info",
-          "description": "Mindeststufe der Meldungen im Ausgabefenster und in der Logdatei."
+          "markdownDescription": "Mindeststufe der Meldungen im Ausgabefenster und in der Logdatei. Gilt ab dem nächsten Start; die Kommandozeilenoption --log-level hat Vorrang."
         },
         "betterDelphiLsp.logFile": {
           "type": "string",
           "default": "",
-          "description": "Optionale Logdatei des Servers."
+          "markdownDescription": "Optionale Logdatei des Servers (Rotation bei 10 MB). Gilt ab dem nächsten Start; --log hat Vorrang."
         },
         "betterDelphiLsp.traceFile": {
           "type": "string",
           "default": "",
-          "description": "Optionaler Mitschnitt aller JSON-Nachrichten (zur Fehlersuche)."
+          "markdownDescription": "Optionaler Mitschnitt aller JSON-Nachrichten zur Fehlersuche. Gilt ab dem nächsten Start; --trace hat Vorrang."
         },
         "betterDelphiLsp.trace.server": {
           "type": "string",

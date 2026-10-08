@@ -14,7 +14,10 @@
       "examples": [
         "37.0",
         "23.0"
-      ]
+      ],
+      "x-page": "Allgemein",
+      "x-control": "Auswahl aus den installierten Versionen",
+      "x-issue": "#47, #258"
     },
     "language": {
       "type": "string",
@@ -23,11 +26,17 @@
         "en"
       ],
       "default": "de",
-      "description": "Sprache der Meldungen."
+      "description": "Sprache der Meldungen.",
+      "x-page": "Allgemein",
+      "x-control": "Auswahl",
+      "x-issue": "#24"
     },
     "project": {
       "type": "string",
-      "description": "Projektdatei (.dproj) relativ zu diesem Ordner. Leer: automatisch suchen."
+      "description": "Projektdatei (.dproj) relativ zu diesem Ordner. Leer: automatisch suchen.",
+      "x-page": "Projekt",
+      "x-control": "Vorgabe: aktives IDE-Projekt",
+      "x-issue": "#14, #24"
     },
     "config": {
       "type": "string",
@@ -35,7 +44,10 @@
       "examples": [
         "Debug",
         "Release"
-      ]
+      ],
+      "x-page": "Projekt",
+      "x-control": "Auswahl aus der .dproj",
+      "x-issue": "#14, #46"
     },
     "platform": {
       "type": "string",
@@ -43,7 +55,10 @@
       "examples": [
         "Win32",
         "Win64"
-      ]
+      ],
+      "x-page": "Projekt",
+      "x-control": "Auswahl aus der .dproj",
+      "x-issue": "#14, #46"
     },
     "rules": {
       "type": "object",
@@ -87,34 +102,69 @@
                 "description": "Nur forbidden-uses: Schichtregeln für uses-Beziehungen.",
                 "items": {
                   "type": "object",
-                  "required": ["from", "deny"],
+                  "required": [
+                    "from",
+                    "deny"
+                  ],
                   "properties": {
-                    "from": { "type": "string", "description": "Glob auf den Unit-Namen (z. B. \"*.Common.*\") oder mit \"/\" auf den Pfad (z. B. \"Source/Common/**\")." },
-                    "deny": { "type": "array", "items": { "type": "string" }, "description": "Verbotene Units als Globs, z. B. \"Vcl.*\"." },
-                    "allow": { "type": "array", "items": { "type": "string" }, "description": "Ausnahmen von deny." }
+                    "from": {
+                      "type": "string",
+                      "description": "Glob auf den Unit-Namen (z. B. \"*.Common.*\") oder mit \"/\" auf den Pfad (z. B. \"Source/Common/**\")."
+                    },
+                    "deny": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Verbotene Units als Globs, z. B. \"Vcl.*\"."
+                    },
+                    "allow": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Ausnahmen von deny."
+                    }
                   }
                 }
               }
             }
           }
         ]
-      }
+      },
+      "x-page": "Prüfregeln",
+      "x-control": "Tabelle aus dem Regelkatalog",
+      "x-issue": "#41"
     },
     "profile": {
       "description": "Regelprofil: standard, fast (nur Bugs und Schwachstellen), strict (experimentelle Regeln an, minConfidence low), security, style oder ein eigenes aus \"profiles\". Als Objekt getrennt für Editor und Kommandozeile.",
       "default": "standard",
       "oneOf": [
-        { "type": "string" },
+        {
+          "type": "string"
+        },
         {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "editor": { "type": "string", "description": "Profil im Editor." },
-            "cli": { "type": "string", "description": "Profil der Kommandozeile (--check), z. B. strict im CI." }
+            "editor": {
+              "type": "string",
+              "description": "Profil im Editor."
+            },
+            "cli": {
+              "type": "string",
+              "description": "Profil der Kommandozeile (--check), z. B. strict im CI."
+            }
           }
         }
       ],
-      "examples": ["fast", "strict"]
+      "examples": [
+        "fast",
+        "strict"
+      ],
+      "x-page": "Prüfregeln",
+      "x-control": "Auswahl",
+      "x-issue": "#146"
     },
     "profiles": {
       "type": "object",
@@ -123,34 +173,94 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "extends": { "type": "string" },
-          "categories": { "type": "array", "items": { "type": "string", "enum": ["bug", "vulnerability", "code-smell", "security-hotspot"] } },
-          "rules": { "type": "object", "additionalProperties": { "type": "string", "enum": ["off", "hint", "info", "information", "warning", "error"] } }
+          "extends": {
+            "type": "string"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "bug",
+                "vulnerability",
+                "code-smell",
+                "security-hotspot"
+              ]
+            }
+          },
+          "rules": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "off",
+                "hint",
+                "info",
+                "information",
+                "warning",
+                "error"
+              ]
+            }
+          }
         }
-      }
+      },
+      "x-page": "Prüfregeln",
+      "x-control": "Profil-Editor",
+      "x-issue": "#146"
     },
     "overrides": {
       "type": "array",
       "description": "Pfadregeln: Schweregrade für Dateien, die eines der Glob-Muster treffen, z. B. Tests oder generierten Code herabstufen. Regel-ID \"*\" steht für alle Regeln; spätere Einträge haben Vorrang.",
       "items": {
         "type": "object",
-        "required": ["files"],
+        "required": [
+          "files"
+        ],
         "additionalProperties": false,
         "properties": {
-          "files": { "type": "array", "items": { "type": "string" } },
-          "rules": { "type": "object", "additionalProperties": { "type": "string", "enum": ["off", "hint", "info", "information", "warning", "error"] } }
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rules": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "off",
+                "hint",
+                "info",
+                "information",
+                "warning",
+                "error"
+              ]
+            }
+          }
         }
-      }
+      },
+      "x-page": "Prüfregeln",
+      "x-control": "Liste mit Mustern",
+      "x-issue": "#146"
     },
     "excludeTests": {
       "type": "boolean",
       "default": false,
-      "description": "Test-Units und Testprojekte (uses DUnitX.TestFramework, TestFramework oder TestInsight.*) nicht prüfen."
+      "description": "Test-Units und Testprojekte (uses DUnitX.TestFramework, TestFramework oder TestInsight.*) nicht prüfen.",
+      "x-page": "Prüfregeln",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#146"
     },
     "testProfile": {
       "type": "string",
       "description": "Regelprofil für Test-Units und Testprojekte; leer: wie \"profile\".",
-      "examples": ["fast"]
+      "examples": [
+        "fast"
+      ],
+      "x-page": "Prüfregeln",
+      "x-control": "Auswahl",
+      "x-issue": "#146"
     },
     "compiler": {
       "type": "object",
@@ -162,7 +272,10 @@
           "default": true,
           "description": "Nach dem Speichern einer Quelldatei das Projekt im Hintergrund kompilieren und die Meldungen anzeigen."
         }
-      }
+      },
+      "x-page": "Compiler",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#40"
     },
     "completion": {
       "type": "object",
@@ -171,53 +284,111 @@
       "properties": {
         "matching": {
           "type": "string",
-          "enum": ["fuzzy", "prefix"],
+          "enum": [
+            "fuzzy",
+            "prefix"
+          ],
           "default": "fuzzy",
           "description": "Auswahl der Vorschläge: unscharf (Teilfolgen, Kürzel wie TSL für TStringList) oder nur nach Präfix, falls ein Editor nachträglich strikt filtert."
         }
-      }
+      },
+      "x-page": "Vervollständigung",
+      "x-control": "Auswahl",
+      "x-issue": "#229"
     },
     "completeBlocks": {
       "type": "object",
       "description": "Blockabschluss beim Tippen: nach Enter hinter dem Schlüsselwort den passenden Abschluss ergänzen, wenn der Block noch offen ist.",
       "additionalProperties": false,
       "properties": {
-        "begin": { "type": "boolean", "default": true, "description": "begin → end;" },
-        "try": { "type": "boolean", "default": true, "description": "try → finally und end;" },
-        "case": { "type": "boolean", "default": true, "description": "case … of → end;" },
-        "record": { "type": "boolean", "default": true, "description": "record → end;" },
-        "class": { "type": "boolean", "default": true, "description": "class, interface und object → end;" },
-        "repeat": { "type": "boolean", "default": true, "description": "repeat → until ;" }
-      }
+        "begin": {
+          "type": "boolean",
+          "default": true,
+          "description": "begin → end;"
+        },
+        "try": {
+          "type": "boolean",
+          "default": true,
+          "description": "try → finally und end;"
+        },
+        "case": {
+          "type": "boolean",
+          "default": true,
+          "description": "case … of → end;"
+        },
+        "record": {
+          "type": "boolean",
+          "default": true,
+          "description": "record → end;"
+        },
+        "class": {
+          "type": "boolean",
+          "default": true,
+          "description": "class, interface und object → end;"
+        },
+        "repeat": {
+          "type": "boolean",
+          "default": true,
+          "description": "repeat → until ;"
+        }
+      },
+      "x-page": "Eingabehilfen",
+      "x-control": "Kontrollkästchen je Block",
+      "x-issue": "#179"
     },
     "usesCommand": {
       "type": "boolean",
       "default": true,
-      "description": "Eine Zeile \"/uses Unit1, Unit2\" wird nach Enter gelöscht und die Units kommen ins passende uses."
+      "description": "Eine Zeile \"/uses Unit1, Unit2\" wird nach Enter gelöscht und die Units kommen ins passende uses.",
+      "x-page": "Eingabehilfen",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#254"
     },
     "sortUses": {
-      "type": ["boolean", "string"],
-      "enum": [true, false, "alphabetic", "namespace"],
+      "type": [
+        "boolean",
+        "string"
+      ],
+      "enum": [
+        true,
+        false,
+        "alphabetic",
+        "namespace"
+      ],
       "default": false,
-      "description": "\"uses aufräumen\" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder \"alphabetic\" alphabetisch, \"namespace\" nach Namespace gruppiert (System, Vcl, ... und Units ohne Namespace zuletzt). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units."
+      "description": "\"uses aufräumen\" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder \"alphabetic\" alphabetisch, \"namespace\" nach Namespace gruppiert (System, Vcl, ... und Units ohne Namespace zuletzt). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units.",
+      "x-page": "Eingabehilfen",
+      "x-control": "Auswahl",
+      "x-issue": "#182, #284"
     },
     "usesKeep": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "default": [],
-      "description": "Units, die \"ungenutzte uses entfernen\" nie entfernt, zusätzlich zu allen Units mit initialization-Abschnitt."
+      "description": "Units, die \"ungenutzte uses entfernen\" nie entfernt, zusätzlich zu allen Units mit initialization-Abschnitt.",
+      "x-page": "Eingabehilfen",
+      "x-control": "Liste",
+      "x-issue": "#284"
     },
     "memoryBudgetMb": {
       "type": "integer",
       "minimum": 0,
       "default": 0,
-      "description": "Obergrenze für den Symbolindex in MB. Darüber werden zuerst Bibliotheks-Units (RTL, VCL), dann Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt."
+      "description": "Obergrenze für den Symbolindex in MB. Darüber werden zuerst Bibliotheks-Units (RTL, VCL), dann Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt.",
+      "x-page": "Speicher",
+      "x-control": "Zahlenfeld (MB)",
+      "x-issue": "#185"
     },
     "requestTimeoutMs": {
       "type": "integer",
       "minimum": 1000,
       "default": 10000,
-      "description": "Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet."
+      "description": "Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet.",
+      "x-page": "Robustheit",
+      "x-control": "Zahlenfeld (ms)",
+      "x-issue": "#283"
     },
     "highlight": {
       "type": "object",
@@ -241,11 +412,21 @@
         },
         "exitKeywords": {
           "type": "array",
-          "items": { "type": "string" },
-          "default": ["Exit", "raise", "Abort", "Halt"],
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "Exit",
+            "raise",
+            "Abort",
+            "Halt"
+          ],
           "description": "Was als Ausstiegspunkt gilt; eigene Routinen, die immer eine Exception auslösen, lassen sich ergänzen."
         }
-      }
+      },
+      "x-page": "Editor",
+      "x-control": "Kontrollkästchen, Liste",
+      "x-issue": "#307"
     },
     "inlayHints": {
       "type": "object",
@@ -273,7 +454,10 @@
           "default": 20,
           "description": "Mindestlänge eines Blocks in Zeilen für eine Endmarkierung."
         }
-      }
+      },
+      "x-page": "Editor",
+      "x-control": "Kontrollkästchen, Zahlenfeld",
+      "x-issue": "#35"
     },
     "minConfidence": {
       "type": "string",
@@ -283,7 +467,10 @@
         "high"
       ],
       "default": "medium",
-      "description": "Regeltreffer unter dieser Konfidenz ausblenden."
+      "description": "Regeltreffer unter dieser Konfidenz ausblenden.",
+      "x-page": "Prüfregeln",
+      "x-control": "Auswahl",
+      "x-issue": "#144"
     },
     "exclude": {
       "type": "array",
@@ -296,7 +483,10 @@
           "ThirdParty/**",
           "Generated/*.pas"
         ]
-      ]
+      ],
+      "x-page": "Projekt",
+      "x-control": "Liste mit Hinzufügen/Entfernen",
+      "x-issue": "#24"
     },
     "format": {
       "type": "object",
@@ -317,7 +507,11 @@
         },
         "keywordCase": {
           "type": "string",
-          "enum": ["preserve", "lower", "upper"],
+          "enum": [
+            "preserve",
+            "lower",
+            "upper"
+          ],
           "default": "preserve",
           "description": "Schreibweise reservierter Wörter."
         },
@@ -343,10 +537,52 @@
         },
         "endOfLine": {
           "type": "string",
-          "enum": ["lf", "crlf"],
+          "enum": [
+            "lf",
+            "crlf"
+          ],
           "description": "Zeilenenden vereinheitlichen; ohne Angabe bleiben sie."
         }
-      }
+      },
+      "x-page": "Formatierung",
+      "x-control": "Zahlenfeld, Kontrollkästchen, Auswahl",
+      "x-issue": "#43"
+    },
+    "logLevel": {
+      "type": "string",
+      "enum": [
+        "debug",
+        "info",
+        "warning",
+        "error"
+      ],
+      "default": "info",
+      "description": "Mindeststufe der Meldungen im Ausgabefenster und in der Logdatei. Gilt ab dem nächsten Start; die Kommandozeilenoption --log-level hat Vorrang.",
+      "x-page": "Protokoll",
+      "x-control": "Auswahl",
+      "x-issue": "#76, #96",
+      "x-commandLine": "--log-level",
+      "x-restart": true
+    },
+    "logFile": {
+      "type": "string",
+      "default": "",
+      "description": "Optionale Logdatei des Servers (Rotation bei 10 MB). Gilt ab dem nächsten Start; --log hat Vorrang.",
+      "x-page": "Protokoll",
+      "x-control": "Datei wählen",
+      "x-issue": "#76, #96",
+      "x-commandLine": "--log",
+      "x-restart": true
+    },
+    "traceFile": {
+      "type": "string",
+      "default": "",
+      "description": "Optionaler Mitschnitt aller JSON-Nachrichten zur Fehlersuche. Gilt ab dem nächsten Start; --trace hat Vorrang.",
+      "x-page": "Protokoll",
+      "x-control": "Datei wählen",
+      "x-issue": "#76, #96",
+      "x-commandLine": "--trace",
+      "x-restart": true
     }
   },
   "additionalProperties": false

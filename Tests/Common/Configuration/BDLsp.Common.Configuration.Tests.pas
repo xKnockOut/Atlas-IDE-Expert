@@ -286,6 +286,17 @@ begin
   Assert.AreEqual('Fail', Settings.Highlight.ExitKeywords[1]);
   Parse('{"highlight": {"blockPairs": 1, "foo": true}}', Issues);
   Assert.AreEqual(2, Integer(Length(Issues)));
+  // Protokoll (#265)
+  Assert.AreEqual('info', Parse('{}', Issues).LogLevel);
+  Settings := Parse('{"logLevel": "debug", "logFile": "C:\\Log\\lsp.log", "traceFile": "t.json"}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('debug', Settings.LogLevel);
+  Assert.AreEqual('C:\Log\lsp.log', Settings.LogFile);
+  Assert.AreEqual('t.json', Settings.TraceFile);
+  Assert.AreEqual('info', Parse('{"logLevel": "laut"}', Issues).LogLevel);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{"logLevel": "error"}', '{"logLevel": "warning"}', Issues);
+  Assert.AreEqual('warning', Settings.LogLevel);
 end;
 
 procedure TConfigurationParserTests.ReadsInlayHints;

@@ -31,6 +31,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   System.Generics.Collections,
   BDLsp.Common.Documents.Contract,
   BDLsp.Common.Configuration.Internals.JsonTree;
@@ -775,6 +776,24 @@ begin
         else
           ReportNode(Value, '"requestTimeoutMs" muss eine ganze Zahl ab 1000 sein');
       end
+      else if Key = 'logLevel' then
+      begin
+        if ExpectString(Value, Key, Text) then
+          if MatchStr(Text, ['debug', 'info', 'warning', 'error']) then
+            FSettings.LogLevel := Text
+          else
+            ReportNode(Value, 'Erlaubt sind "debug", "info", "warning" und "error"');
+      end
+      else if Key = 'logFile' then
+      begin
+        if ExpectString(Value, Key, Text) then
+          FSettings.LogFile := Text;
+      end
+      else if Key = 'traceFile' then
+      begin
+        if ExpectString(Value, Key, Text) then
+          FSettings.TraceFile := Text;
+      end
       else if Key = 'format' then
       begin
         if Value.Kind = TJsonKind.Object_ then
@@ -971,7 +990,13 @@ begin
     else if Key = 'memoryBudgetMb' then
       Result.MemoryBudgetMb := FileSettings.MemoryBudgetMb
     else if Key = 'requestTimeoutMs' then
-      Result.RequestTimeoutMs := FileSettings.RequestTimeoutMs;
+      Result.RequestTimeoutMs := FileSettings.RequestTimeoutMs
+    else if Key = 'logLevel' then
+      Result.LogLevel := FileSettings.LogLevel
+    else if Key = 'logFile' then
+      Result.LogFile := FileSettings.LogFile
+    else if Key = 'traceFile' then
+      Result.TraceFile := FileSettings.TraceFile;
 end;
 
 class function TConfigurationParser.Parse(const AText: string; out AIssues: TArray<TConfigurationIssue>): TServerSettings;

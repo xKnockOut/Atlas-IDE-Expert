@@ -180,6 +180,12 @@ type
     MemoryBudgetMb: Integer;
     /// <summary>Zeitlimit für Anfragen in ms (#283); länger laufende werden abgebrochen.</summary>
     RequestTimeoutMs: Integer;
+    /// <summary>Protokoll (#265): Stufe (debug/info/warning/error), Logdatei und Mitschnitt.
+    /// Der Server übernimmt sie nicht zur Laufzeit; der Client übergibt sie beim Start als
+    /// --log-level, --log und --trace.</summary>
+    LogLevel: string;
+    LogFile: string;
+    TraceFile: string;
     /// <summary>Vorgaben, wenn keine Konfigurationsdatei existiert.</summary>
     class function Default: TServerSettings; static;
     /// <summary>Schweregrad aus der Konfiguration oder ADefault.</summary>
@@ -398,6 +404,9 @@ begin
   Result.UsesKeep := nil;
   Result.MemoryBudgetMb := 0;
   Result.RequestTimeoutMs := 10000;
+  Result.LogLevel := 'info';
+  Result.LogFile := '';
+  Result.TraceFile := '';
 end;
 
 function TServerSettings.IsRuleEnabledExplicitly(const ARuleId: string): Boolean;

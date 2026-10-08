@@ -1,13 +1,25 @@
 <#
 .SYNOPSIS
-    Erzeugt docs/Konfiguration.md aus dem JSON-Schema von delphi-lsp.json.
+    Erzeugt aus dem JSON-Schema von delphi-lsp.json die Doku, die VS-Code-Settings
+    und die Einstellungstabelle und prüft den Parser dagegen.
 
 .DESCRIPTION
-    Einzige Quelle ist Editors/VSCode/schemas/delphi-lsp.schema.json. Jeder
-    Schlüssel bekommt eine Zeile mit Typ, Standardwert, erlaubten Werten und
-    Beschreibung; verschachtelte Objekte erscheinen als eigener Abschnitt.
+    Einzige Quelle ist Editors/VSCode/schemas/delphi-lsp.schema.json (#265):
+    - docs/Konfiguration.md: jeder Schlüssel mit Typ, Standardwert, erlaubten
+      Werten und Beschreibung; verschachtelte Objekte als eigener Abschnitt.
+    - Editors/VSCode/package.json: contributes.configuration, je Schlüssel
+      betterDelphiLsp.<Schlüssel>. Reine Client-Einstellungen (serverPath,
+      trace.server) bleiben, wie sie sind.
+    - docs/Einstellungen.md: Tabelle für das Einstellungs-Plugin (#227) aus den
+      Angaben x-page, x-control, x-issue, x-commandLine und x-restart.
+    - Wächter: Die Schlüssel in BDLsp.Common.Configuration.Parser müssen genau
+      denen im Schema entsprechen (Validierung und Schichtung).
 
-    Mit -Check wird nichts geschrieben; Exit-Code 1, wenn die Datei veraltet ist.
+    Mit -Check wird nichts geschrieben; Exit-Code 1, wenn eine Datei veraltet ist
+    oder der Parser abweicht.
+
+    Pflegeregel: Neue Einstellung -> Schema (mit x-page, x-control, x-issue),
+    Parser, Test; dann dieses Skript ausführen.
 
 .EXAMPLE
     pwsh Tools/Update-ConfigDoc.ps1
@@ -24,6 +36,9 @@ $ErrorActionPreference = 'Stop'
 
 $SchemaPath = Join-Path $Root 'Editors/VSCode/schemas/delphi-lsp.schema.json'
 $DocPath = Join-Path $Root 'docs/Konfiguration.md'
+$PackagePath = Join-Path $Root 'Editors/VSCode/package.json'
+$TablePath = Join-Path $Root 'docs/Einstellungen.md'
+$ParserPath = Join-Path $Root 'Packages/BDLsp.Common/Source/Configuration/BDLsp.Common.Configuration.Parser.pas'
 $Utf8 = New-Object System.Text.UTF8Encoding($false)
 
 $Schema = Get-Content -Raw -Encoding utf8 $SchemaPath | ConvertFrom-Json -AsHashtable
@@ -92,14 +107,117 @@ foreach ($Name in $Schema['properties'].Keys) {
 [void]$Out.AppendLine('```')
 $Text = $Out.ToString().Replace("`r`n", "`n")
 
-$Current = if (Test-Path $DocPath) { [IO.File]::ReadAllText($DocPath, $Utf8).Replace("`r`n", "`n") } else { '' }
-if ($Check) {
-    if ($Current -ne $Text) {
-        Write-Error 'docs/Konfiguration.md ist veraltet: pwsh Tools/Update-ConfigDoc.ps1 ausführen.' -ErrorAction Continue
-        exit 1
-    }
-    Write-Host 'docs/Konfiguration.md ist aktuell.'
-    exit 0
+# --- VS-Code-Settings (package.json) ---
+$Section = 'betterDelphiLsp'
+$ClientOnly = @('serverPath', 'trace.server')
+$Package = Get-Content -Raw -Encoding utf8 $PackagePath | ConvertFrom-Json -AsHashtable
+$OldSettings = $Package['contributes']['configuration']['properties']
+$NewSettings = [ordered]@{}
+function Add-ClientSetting([string] $Name) {
+    $Key = "$Section.$Name"
+    if ($OldSettings.Contains($Key)) { $NewSettings[$Key] = $OldSettings[$Key] }
 }
-[IO.File]::WriteAllText($DocPath, $Text, $Utf8)
-Write-Host "Geschrieben: $DocPath"
+Add-ClientSetting 'serverPath'
+foreach ($Name in $Schema['properties'].Keys) {
+    if ($Name -eq '$schema') { continue }
+    $P = $Schema['properties'][$Name]
+    $Entry = [ordered]@{}
+    # Ohne type (etwa oneOf aus Text und Objekt) die Typen der Varianten.
+    $Type = if (Has $P 'type') { $P['type'] }
+            elseif (Has $P 'oneOf') { @($P['oneOf'] | ForEach-Object { $_['type'] }) }
+            else { 'object' }
+    $Entry['type'] = $Type
+    if (Has $P 'enum') { $Entry['enum'] = $P['enum'] }
+    if (Has $P 'items') { $Entry['items'] = $P['items'] }
+    foreach ($Limit in 'minimum', 'maximum') { if (Has $P $Limit) { $Entry[$Limit] = $P[$Limit] } }
+    $Entry['default'] = if ($P.ContainsKey('default')) { $P['default'] }
+                        elseif ($Type -eq 'string') { '' }
+                        elseif ($Type -eq 'array') { ,@() }
+                        else { [ordered]@{} }
+    $Description = if (Has $P 'description') { $P['description'] } else { '' }
+    if (-not (Has $P 'x-commandLine')) { $Description = ($Description + ' delphi-lsp.json im Projekt hat Vorrang.').Trim() }
+    $Entry['markdownDescription'] = $Description
+    $NewSettings["$Section.$Name"] = $Entry
+}
+foreach ($Name in $ClientOnly) { if ($Name -ne 'serverPath') { Add-ClientSetting $Name } }
+$Package['contributes']['configuration']['properties'] = $NewSettings
+$PackageText = ($Package | ConvertTo-Json -Depth 32).Replace("`r`n", "`n") + "`n"
+
+# --- Einstellungstabelle für das Plugin (#227) ---
+$Table = New-Object System.Text.StringBuilder
+[void]$Table.AppendLine('# Einstellungen')
+[void]$Table.AppendLine()
+[void]$Table.AppendLine('<!-- Erzeugt von Tools/Update-ConfigDoc.ps1 aus Editors/VSCode/schemas/delphi-lsp.schema.json. Nicht von Hand bearbeiten. -->')
+[void]$Table.AppendLine()
+[void]$Table.AppendLine('Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Einzelheiten zu Werten und Bedeutung stehen in [Konfiguration.md](Konfiguration.md).')
+[void]$Table.AppendLine()
+[void]$Table.AppendLine('| Seite | Einstellung | Standard | Quelle | Neustart | Bedienelement | Herkunft |')
+[void]$Table.AppendLine('|---|---|---|---|---|---|---|')
+foreach ($Name in $Schema['properties'].Keys) {
+    if ($Name -eq '$schema') { continue }
+    $P = $Schema['properties'][$Name]
+    $Setting = '`' + $Name + '`'
+    if (Has $P 'properties') { $Setting += ': ' + (($P['properties'].Keys | ForEach-Object { '`' + $_ + '`' }) -join ', ') }
+    $Default = if ($P.ContainsKey('default')) { Format-Value $P['default'] } else { '–' }
+    $Source = "delphi-lsp.json, Editor (``$Section.$Name``)"
+    if (Has $P 'x-commandLine') { $Source += ', ``' + $P['x-commandLine'] + '``' }
+    $Restart = if ((Has $P 'x-restart') -and $P['x-restart']) { 'ja' } else { 'nein' }
+    $Page = if (Has $P 'x-page') { $P['x-page'] } else { '' }
+    $Control = if (Has $P 'x-control') { $P['x-control'] } else { '' }
+    $Issue = if (Has $P 'x-issue') { $P['x-issue'] } else { '' }
+    [void]$Table.AppendLine("| $Page | $Setting | $Default | $Source | $Restart | $(Escape $Control) | $Issue |")
+}
+# Was kein Schlüssel in delphi-lsp.json ist, aber im Plugin erscheint.
+[void]$Table.AppendLine('| Allgemein | Pfad zu `BetterDelphiLSP.exe` | – | VS Code (`betterDelphiLsp.serverPath`) | ja | Datei wählen, Version anzeigen | #12, #49 |')
+[void]$Table.AppendLine('| Baseline | `delphi-lsp-baseline.json` | – | Datei, `--baseline`, `--update-baseline` | nein | Anzahl Einträge, „Baseline neu erzeugen“, „Baseline löschen“ | #97 |')
+[void]$Table.AppendLine('| Baseline | Unterdrückungen `lsp-ignore` | – | `--suppression-stats` | nein | Übersicht je Regel (nur Anzeige) | #147 |')
+[void]$Table.AppendLine('| Speicher | Index-Cache löschen | – | `--clear-cache`, Befehl `betterdelphilsp.rebuildIndex` | nein | Knopf „Index-Cache löschen“ | #184 |')
+$TableText = $Table.ToString().Replace("`r`n", "`n")
+
+# --- Wächter: Schlüssel im Parser ---
+$Problems = New-Object System.Collections.Generic.List[string]
+$SchemaKeys = @($Schema['properties'].Keys | Where-Object { $_ -ne '$schema' } | Sort-Object)
+$ParserText = [IO.File]::ReadAllText($ParserPath, $Utf8).Replace("`r`n", "`n")
+$Starts = [regex]::Matches($ParserText, "Key = 'delphiVersion'")
+if ($Starts.Count -lt 2) { $Problems.Add('Parser: Validierung und Schichtung nicht gefunden') }
+foreach ($Start in $Starts) {
+    $Stop = $ParserText.IndexOf("`nend;", $Start.Index)
+    $Chain = $ParserText.Substring($Start.Index, $Stop - $Start.Index)
+    $Keys = @([regex]::Matches($Chain, "Key = '([A-Za-z]+)'") | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+    $Line = $ParserText.Substring(0, $Start.Index).Split("`n").Count
+    foreach ($Key in $SchemaKeys) { if ($Keys -cnotcontains $Key) { $Problems.Add("Parser Zeile ${Line}: Schlüssel ""$Key"" aus dem Schema fehlt") } }
+    foreach ($Key in $Keys) { if ($SchemaKeys -cnotcontains $Key) { $Problems.Add("Parser Zeile ${Line}: Schlüssel ""$Key"" fehlt im Schema") } }
+}
+foreach ($Name in $SchemaKeys) {
+    $P = $Schema['properties'][$Name]
+    if (Has $P 'properties') {
+        foreach ($Sub in $P['properties'].Keys) {
+            if (-not $ParserText.Contains("'$Sub'")) { $Problems.Add("Parser: ""$Name.$Sub"" aus dem Schema wird nicht gelesen") }
+        }
+    }
+    foreach ($Meta in 'x-page', 'x-control', 'x-issue') {
+        if (-not (Has $P $Meta)) { $Problems.Add("Schema: ""$Name"" ohne $Meta") }
+    }
+}
+
+# --- Schreiben oder prüfen ---
+$Targets = @(
+    @{ Path = $DocPath; Text = $Text; Name = 'docs/Konfiguration.md' },
+    @{ Path = $PackagePath; Text = $PackageText; Name = 'Editors/VSCode/package.json' },
+    @{ Path = $TablePath; Text = $TableText; Name = 'docs/Einstellungen.md' }
+)
+foreach ($Target in $Targets) {
+    $Current = if (Test-Path $Target.Path) { [IO.File]::ReadAllText($Target.Path, $Utf8).Replace("`r`n", "`n") } else { '' }
+    if ($Current -eq $Target.Text) { continue }
+    if ($Check) { $Problems.Add("$($Target.Name) ist veraltet: pwsh Tools/Update-ConfigDoc.ps1 ausführen") }
+    else {
+        [IO.File]::WriteAllText($Target.Path, $Target.Text, $Utf8)
+        Write-Host "Geschrieben: $($Target.Path)"
+    }
+}
+if ($Problems.Count -gt 0) {
+    foreach ($Problem in $Problems) { Write-Error $Problem -ErrorAction Continue }
+    exit 1
+}
+Write-Host 'Schema, Parser, package.json und Doku stimmen überein.'
+exit 0
