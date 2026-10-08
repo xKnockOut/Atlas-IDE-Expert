@@ -201,6 +201,9 @@ uses
   BDLsp.Common.Documents.Uris,
   BDLsp.Common.JsonRpc.Messages,
   BDLsp.Common.Lsp.FormEvents,
+  BDLsp.Common.Lsp.FormFiles,
+  BDLsp.Common.Dfm.FormModel,
+  BDLsp.Common.Dfm.BinaryForm,
   BDLsp.Common.Editing.CodeActions,
   BDLsp.Common.Rules.Contract,
   BDLsp.Common.Index.SymbolIndex,
@@ -589,6 +592,18 @@ begin
       Edit: TRuleEdit;
     begin
       Result := nil;
+      // Binär gespeichert (#122): Umwandeln in Text.
+      if TFormModel.IsBinary(AText) then
+      begin
+        Action := Default(TCodeAction);
+        Action.Title := 'Formular in Text umwandeln';
+        Action.Kind := QuickFixKind;
+        Action.IsPreferred := True;
+        Action.Command := TLspFormFiles.ConvertCommand;
+        Action.CommandArguments := [AUri];
+        Result := [Action];
+        Exit;
+      end;
       Chain := NewFormInheritance(AUri, AText);
       try
         Action := Default(TCodeAction);
@@ -700,6 +715,40 @@ begin
   FColors := TLspColors.Create(FDocuments, WindowsSystemColor);
   FColors.Attach(FDispatcher);
   FCommands := TLspCommands.Create;
+  FCommands.Register(TLspFormFiles.ConvertCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    var
+      Files: TArray<string>;
+      FileName, Form, Backup, Extension: string;
+      Converted, Backups: Integer;
+    begin
+      // Mit URI eine Datei, sonst alle Formulare neben den Projekt-Units.
+      Files := nil;
+      if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+        Files := [TDocumentUris.ToPath(AArguments.Items[0].Value)]
+      else
+        for FileName in ProjectSourceFiles do
+          for Extension in TArray<string>.Create('.dfm', '.fmx') do
+            if FileExists(ChangeFileExt(FileName, Extension)) then
+              Files := Files + [ChangeFileExt(FileName, Extension)];
+      Converted := 0;
+      Backups := 0;
+      for Form in Files do
+        try
+          if TDfmBinary.ConvertFile(Form, Backup) then
+          begin
+            Inc(Converted);
+            if Backup <> '' then
+              Inc(Backups);
+          end;
+        except
+          on E: Exception do
+            FLogger.Warning(Format('%s nicht umgewandelt: %s', [Form, E.Message]));
+        end;
+      FLogger.Info(Format('%d binäre Formulare in Text umgewandelt, %d Sicherungskopien (.bak)',
+        [Converted, Backups]));
+      Result := TJSONString.Create(Format('%d Formulare umgewandelt', [Converted]));
+    end);
   FCommands.Register(TFormEvents.CreateCommand,
     function(const AArguments: TJSONArray): TJSONValue
     var

@@ -160,6 +160,7 @@ uses
   BDLsp.Common.Rules.Catalog,
   BDLsp.Common.Dfm.Contract,
   BDLsp.Common.Dfm.Parser,
+  BDLsp.Common.Dfm.FormModel,
   BDLsp.Common.Lsp.FormFiles;
 
 // Übernimmt AParams.
@@ -506,7 +507,11 @@ begin
     try
       Result := TJSONObject.Create;
       Result.AddPair('uri', ADocument.Uri);
-      Result.AddPair('diagnostics', TLspFormFiles.BuildDiagnostics(Form));
+      // Binär gespeichert (#122): ein Hinweis statt Lesefehlern.
+      if TFormModel.IsBinary(ADocument.Text) then
+        Result.AddPair('diagnostics', TLspFormFiles.BinaryDiagnostics)
+      else
+        Result.AddPair('diagnostics', TLspFormFiles.BuildDiagnostics(Form));
     finally
       Form.Free;
     end;

@@ -170,10 +170,11 @@ procedure TFormModelTests.BinaryFormIsReported;
 var
   Model: TFormModel;
 begin
-  Model := TFormModel.Create('TPF0'#6'TForm1'#5'Form1'#0);
+  Model := TFormModel.Create('TPF0'#6'TForm1'#5'Form1'#0#0);
   try
     Assert.IsTrue(Model.Binary);
-    Assert.IsTrue(Model.Document = nil);
+    // Gelesen über die Umwandlung in Text (#122); Fundstellen für Umbenennen gibt es nicht.
+    Assert.AreEqual('TForm1', Model.FormClass);
     Assert.AreEqual(0, Integer(Length(Model.Occurrences('Form1'))));
   finally
     Model.Free;

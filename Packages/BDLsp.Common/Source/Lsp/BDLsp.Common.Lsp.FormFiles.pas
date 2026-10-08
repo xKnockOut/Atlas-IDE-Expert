@@ -13,6 +13,11 @@ uses
 
 type
   TLspFormFiles = class
+  public const
+    /// <summary>Code der Hinweis-Diagnose für binäre Formulare (#122).</summary>
+    BinaryCode = 'binary-form';
+    /// <summary>Befehl: binäre Formulare in Text umwandeln; Argument die URI, ohne Argument alle im Projekt.</summary>
+    ConvertCommand = 'betterdelphilsp.convertBinaryForms';
   public
     /// <summary>DocumentSymbol[] der Formulardatei. Der Aufrufer übernimmt das Objekt.</summary>
     class function BuildSymbols(ADocument: TDfmDocument): TJSONArray; static;
@@ -20,6 +25,8 @@ type
     class function BuildFoldingRanges(ADocument: TDfmDocument): TJSONArray; static;
     /// <summary>Diagnostic[] aus den Lesefehlern. Der Aufrufer übernimmt das Objekt.</summary>
     class function BuildDiagnostics(ADocument: TDfmDocument): TJSONArray; static;
+    /// <summary>Genau ein Hinweis "binär gespeichert" statt Lesefehlern. Der Aufrufer übernimmt das Objekt.</summary>
+    class function BinaryDiagnostics: TJSONArray; static;
   end;
 
 implementation
@@ -110,6 +117,20 @@ begin
   Result := TJSONArray.Create;
   if ADocument.Root <> nil then
     AddFolding(ADocument.Root, Result);
+end;
+
+class function TLspFormFiles.BinaryDiagnostics: TJSONArray;
+var
+  Item: TJSONObject;
+begin
+  Result := TJSONArray.Create;
+  Item := TJSONObject.Create;
+  Item.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(0, 0, 0, 4)));
+  Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Hint));
+  Item.AddPair('source', 'BetterDelphiLSP');
+  Item.AddPair('code', BinaryCode);
+  Item.AddPair('message', 'Formular ist binär gespeichert; in Text umwandeln?');
+  Result.AddElement(Item);
 end;
 
 class function TLspFormFiles.BuildDiagnostics(ADocument: TDfmDocument): TJSONArray;

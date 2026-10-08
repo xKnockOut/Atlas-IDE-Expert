@@ -105,8 +105,9 @@ class function TLspCodeActions.ActionToJson(const AUri: string; const AAction: T
 var
   Edits: TJSONArray;
   Edit: TRuleEdit;
-  Item, Changes, WorkspaceEdit, Diagnostic: TJSONObject;
-  Diagnostics: TJSONArray;
+  Item, Changes, WorkspaceEdit, Diagnostic, Command: TJSONObject;
+  Diagnostics, Arguments: TJSONArray;
+  Argument: string;
 begin
   Edits := TJSONArray.Create;
   for Edit in AAction.Edits do
@@ -123,6 +124,17 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('title', AAction.Title);
   Result.AddPair('kind', AAction.Kind);
+  if AAction.Command <> '' then
+  begin
+    Command := TJSONObject.Create;
+    Command.AddPair('title', AAction.Title);
+    Command.AddPair('command', AAction.Command);
+    Arguments := TJSONArray.Create;
+    for Argument in AAction.CommandArguments do
+      Arguments.Add(Argument);
+    Command.AddPair('arguments', Arguments);
+    Result.AddPair('command', Command);
+  end;
   if AAction.IsPreferred then
     Result.AddPair('isPreferred', TJSONBool.Create(True));
   if AAction.RuleId <> '' then

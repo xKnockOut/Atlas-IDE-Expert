@@ -5,6 +5,8 @@
 // Werte aller Arten: Zahlen, Bezeichner, Strings mit #-Zeichen und "+" über
 // Zeilen, Mengen [..], Listen (..), Binärdaten {..} und Collections <item .. end>.
 // Fehlertolerant: Unerwartetes wird gemeldet und bis zum Zeilenende übersprungen.
+// Binäre Formulare (TPF0) werden vorher im Speicher in Text umgewandelt (#122);
+// die Bereiche beziehen sich dann auf den umgewandelten Text.
 
 interface
 
@@ -24,8 +26,10 @@ type
 implementation
 
 uses
+  System.StrUtils,
   System.Generics.Collections,
-  BDLsp.Common.Documents.Contract;
+  BDLsp.Common.Documents.Contract,
+  BDLsp.Common.Dfm.BinaryForm;
 
 const
   /// <summary>Schutz vor Stapelüberlauf bei kaputten Dateien.</summary>
@@ -417,10 +421,14 @@ end;
 class function TDfmParser.Parse(const AText: string): TDfmDocument;
 var
   Scanner: TScanner;
-  Word: string;
+  Word, Text: string;
 begin
   Result := TDfmDocument.Create;
-  Scanner := TScanner.Create(AText);
+  Text := AText;
+  if (StartsStr('TPF0', AText) or StartsStr(#$FF#$0A#$00, AText)) and
+    not TDfmBinary.FromDecodedText(AText, Text) then
+    Text := AText;
+  Scanner := TScanner.Create(Text);
   try
     Scanner.SkipBlanks;
     Word := Scanner.PeekWord;

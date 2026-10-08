@@ -39,6 +39,9 @@ type
     RuleId: string;
     /// <summary>Bereich des behobenen Treffers, wenn RuleId gesetzt ist.</summary>
     DiagnosticRange: TTextRange;
+    /// <summary>Befehl statt oder nach den Edits, z. B. für Dateiumwandlungen; '' ohne.</summary>
+    Command: string;
+    CommandArguments: TArray<string>;
   end;
 
   TCodeActions = class
