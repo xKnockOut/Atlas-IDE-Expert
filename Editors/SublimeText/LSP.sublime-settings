@@ -1,0 +1,13 @@
+// BetterDelphiLSP für Sublime Text: über „Preferences > Package Settings > LSP > Settings“
+// in die Benutzereinstellungen übernehmen.
+{
+  "clients": {
+    "betterdelphilsp": {
+      "enabled": true,
+      "command": ["BetterDelphiLSP.exe"],
+      // "command": ["C:\\Tools\\BetterDelphiLSP.exe", "--log", "C:\\Temp\\bdlsp.log"],
+      "selector": "source.pascal | source.dfm",
+      "schemes": ["file"]
+    }
+  }
+}

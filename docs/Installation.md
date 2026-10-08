@@ -43,19 +43,11 @@ Jeder LSP-Client funktioniert mit diesen Angaben:
 | Sprach-ID | beliebig, üblich `delphi` oder `objectpascal` |
 | Wurzel | Ordner mit `.dproj`, `delphi-lsp.json` oder `.git` |
 
-Beispiel für Helix (`languages.toml`):
+Fertige Beispiele mit Dateizuordnung für `.pas`, `.dpr`, `.dpk` und `.dfm`:
 
-```toml
-[language-server.betterdelphilsp]
-command = "BetterDelphiLSP.exe"
-
-[[language]]
-name = "delphi"
-scope = "source.pascal"
-file-types = ["pas", "dpr", "dpk", "inc"]
-roots = [".dproj", "delphi-lsp.json"]
-language-servers = ["betterdelphilsp"]
-```
+- Helix: [Editors/Helix](../Editors/Helix/README.md)
+- Sublime Text (Paket LSP): [Editors/SublimeText](../Editors/SublimeText/README.md)
+- Zed (Dev-Erweiterung): [Editors/Zed](../Editors/Zed/README.md)
 
 ## Ohne Editor (CI)
 

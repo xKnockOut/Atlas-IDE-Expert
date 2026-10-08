@@ -1,0 +1,15 @@
+id = "betterdelphilsp"
+name = "BetterDelphiLSP"
+version = "0.1.0"
+schema_version = 1
+authors = ["xKnockOut"]
+description = "Delphi/Object Pascal mit BetterDelphiLSP"
+repository = "https://github.com/xKnockOut/BetterDelphiLSP"
+
+[grammars.pascal]
+repository = "https://github.com/Isopod/tree-sitter-pascal"
+commit = "042119eca2e18a60e56317fb06ee3ba5c32cb447"
+
+[language_servers.betterdelphilsp]
+name = "BetterDelphiLSP"
+languages = ["Delphi"]

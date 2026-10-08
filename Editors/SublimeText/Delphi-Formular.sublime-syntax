@@ -1,0 +1,16 @@
+%YAML 1.2
+---
+# Minimale Syntax, damit .dfm-Dateien einen eigenen Scope bekommen und der
+# LSP-Client den Server auch für Formulare startet.
+name: Delphi-Formular
+file_extensions: [dfm]
+scope: source.dfm
+contexts:
+  main:
+    - match: \b(object|inherited|inline|end|item)\b
+      scope: keyword.control.dfm
+    - match: "'"
+      push:
+        - meta_scope: string.quoted.single.dfm
+        - match: "'"
+          pop: true

@@ -1,0 +1,21 @@
+# BetterDelphiLSP für Helix: in ~/.config/helix/languages.toml
+# (Windows: %AppData%\helix\languages.toml) übernehmen.
+
+[language-server.betterdelphilsp]
+command = "BetterDelphiLSP.exe"
+# args = ["--log", "C:\\Temp\\bdlsp.log", "--log-level", "debug"]
+
+[[language]]
+name = "delphi"
+scope = "source.pascal"
+file-types = ["pas", "dpr", "dpk", "inc", "dfm"]
+roots = [".dproj", "delphi-lsp.json", ".git"]
+comment-tokens = ["//"]
+block-comment-tokens = [{ start = "{", end = "}" }, { start = "(*", end = "*)" }]
+indent = { tab-width = 2, unit = "  " }
+language-servers = ["betterdelphilsp"]
+grammar = "pascal"
+
+[[grammar]]
+name = "pascal"
+source = { git = "https://github.com/Isopod/tree-sitter-pascal", rev = "042119eca2e18a60e56317fb06ee3ba5c32cb447" }
