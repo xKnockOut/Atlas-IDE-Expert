@@ -246,6 +246,8 @@ begin
       if Descriptor.Experimental and not Enabled then
         Continue;
       Context := AContext;
+      if Context.DelphiVersion = '' then
+        Context.DelphiVersion := Settings.DelphiVersion;
       Context.Options := RuleOptions(Descriptor.Id, Settings);
       if IsExceptedByOptions(Context.Options, Context.RelativePath, Context.UnitName) then
         Continue;

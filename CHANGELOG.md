@@ -7,6 +7,7 @@ Server und Erweiterung tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Schnellbefehle `/format`, `/multiline`, `/multiline!`, `/iif` und `/inc` für Ausdrücke; Vorschläge richten sich nach `delphiVersion` (#303).
 - Schnellbefehle `/fmt` (umgebende Routine formatieren) und `/measure` (Laufzeit mit TStopwatch messen) (#300).
 - Linter: `--changed` und `--diff` auch in SVN-Arbeitskopien (#276).
 - Postfix-Vorlagen in der Vervollständigung: `Liste.for`, `Obj.tryf`, `X.ifa`, `S.fmt`, nur bei passendem Typ; ohne Inline-Variablen mit Eintrag im `var`-Abschnitt (#188).

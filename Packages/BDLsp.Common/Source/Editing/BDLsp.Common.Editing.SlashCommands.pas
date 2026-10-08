@@ -37,6 +37,8 @@ type
     Namespaces: TArray<string>;
     /// <summary>Symbolindex für Vorfahren und Interfaces aus anderen Units (#295); nil ohne.</summary>
     Index: ISymbolIndex;
+    /// <summary>Eingestellte Delphi-Version (BDS-Nummer, #109); '' = unbekannt, alles erlaubt.</summary>
+    DelphiVersion: string;
   end;
 
   /// <summary>Führt den Befehl aus. False mit AReason, wenn er hier nicht passt.</summary>
@@ -81,10 +83,11 @@ type
     /// <summary>Edits nach Enter in APosition.Line für die Befehlszeile darüber. False, wenn dort kein
     /// ausführbarer Befehl steht (dann bleibt die Zeile stehen).</summary>
     function AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
-      ADisabled: TArray<string>; out AEdits: TArray<TRuleEdit>; const AIndex: ISymbolIndex = nil): Boolean;
+      ADisabled: TArray<string>; out AEdits: TArray<TRuleEdit>; const AIndex: ISymbolIndex = nil;
+      const ADelphiVersion: string = ''): Boolean;
     /// <summary>Hinweise für Befehlszeilen, die stehen geblieben sind (unbekannt, abgeschaltet, falscher Ort).</summary>
     function Problems(const AText: string; const ADisabled: TArray<string>;
-      const AIndex: ISymbolIndex = nil): TArray<TSlashProblem>;
+      const AIndex: ISymbolIndex = nil; const ADelphiVersion: string = ''): TArray<TSlashProblem>;
     /// <summary>Befehle, deren Name mit APrefix beginnt (ohne "/"), ohne abgeschaltete.</summary>
     function Matching(const APrefix: string; const ADisabled: TArray<string>): TArray<TSlashCommand>;
   end;
@@ -102,6 +105,7 @@ uses
   BDLsp.Common.Editing.MaintenanceCommands,
   BDLsp.Common.Editing.TypeCommands,
   BDLsp.Common.Editing.CollectionCommands,
+  BDLsp.Common.Editing.ExpressionCommands,
   BDLsp.Common.Editing.RefactoringCommands,
   BDLsp.Common.Editing.ErrorCommands;
 
@@ -177,6 +181,7 @@ begin
     RegisterCollectionCommands(Created);
     RegisterErrorCommands(Created);
     RegisterRefactoringCommands(Created);
+    RegisterExpressionCommands(Created);
     if AtomicCmpExchange(Pointer(FShared), Pointer(Created), nil) <> nil then
       Created.Free;
   end;
@@ -277,7 +282,8 @@ begin
 end;
 
 function TSlashCommandRegistry.AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
-  ADisabled: TArray<string>; out AEdits: TArray<TRuleEdit>; const AIndex: ISymbolIndex): Boolean;
+  ADisabled: TArray<string>; out AEdits: TArray<TRuleEdit>; const AIndex: ISymbolIndex;
+  const ADelphiVersion: string): Boolean;
 var
   Lines: TArray<string>;
   LineBreak, Reason: string;
@@ -297,13 +303,14 @@ begin
   Context.Text := AText;
   Context.Namespaces := ANamespaces;
   Context.Index := AIndex;
+  Context.DelphiVersion := ADelphiVersion;
   Result := Command.Execute(Context, AEdits, Reason);
   if not Result then
     AEdits := nil;
 end;
 
 function TSlashCommandRegistry.Problems(const AText: string; const ADisabled: TArray<string>;
-  const AIndex: ISymbolIndex): TArray<TSlashProblem>;
+  const AIndex: ISymbolIndex; const ADelphiVersion: string): TArray<TSlashProblem>;
 var
   Lines: TArray<string>;
   LineBreak, Name, Arguments, Reason: string;
@@ -339,6 +346,7 @@ begin
       Context.Name := Name;
       Context.Arguments := Arguments;
       Context.Index := AIndex;
+      Context.DelphiVersion := ADelphiVersion;
       if not Command.Execute(Context, Edits, Reason) and (Reason = '') then
         Reason := Format('Schnellbefehl /%s passt hier nicht', [Name]);
     end;

@@ -23,6 +23,9 @@ uses
   BDLsp.Common.Editing.SlashCommands;
 
 type
+  /// <summary>Delphi-Version (BDS-Nummer) je Dokument; '' = unbekannt.</summary>
+  TFormattingVersionFunc = reference to function(const AUri: string): string;
+
   /// <summary>Block "format" aus delphi-lsp.json bzw. dem Editor für AUri.</summary>
   TFormatStyleProvider = reference to function(const AUri: string): TFormatStyle;
   /// <summary>Block "completeBlocks" für AUri.</summary>
@@ -40,6 +43,7 @@ type
     FReadFile: TEditorConfigReadFile;
     FBlockKindsFor: TBlockKindsProvider;
     FSlashCommandsFor: TSlashCommandsProvider;
+    FDelphiVersionFor: TFormattingVersionFunc;
     FIndex: ISymbolIndex;
     function HandleOnType(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function Handle(const AParams: TJSONValue; AWithRange: Boolean): TJSONValue;
@@ -59,6 +63,8 @@ type
     property BlockKindsFor: TBlockKindsProvider read FBlockKindsFor write FBlockKindsFor;
     /// <summary>Ohne Zuweisung sind alle Schnellbefehle eingeschaltet.</summary>
     property SlashCommandsFor: TSlashCommandsProvider read FSlashCommandsFor write FSlashCommandsFor;
+    /// <summary>Delphi-Version je Dokument für versionsabhängige Schnellbefehle (#303); ohne Zuweisung ''.</summary>
+    property DelphiVersionFor: TFormattingVersionFunc read FDelphiVersionFor write FDelphiVersionFor;
     /// <summary>Index für Schnellbefehle, die Vorfahren und Interfaces brauchen (#295); nil ohne.</summary>
     property Index: ISymbolIndex read FIndex write FIndex;
   end;
@@ -108,6 +114,7 @@ var
   Edits: TArray<TRuleEdit>;
   Disabled: TArray<string>;
   Item: TJSONObject;
+  Version: string;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
@@ -118,9 +125,12 @@ begin
   if not FStore.TryGet(Uri, Document) then
     Exit;
   Disabled := nil;
+  Version := '';
+  if Assigned(FDelphiVersionFor) then
+    Version := FDelphiVersionFor(Uri);
   if (not Assigned(FSlashCommandsFor) or FSlashCommandsFor(Uri, Disabled)) and
     TSlashCommandRegistry.Shared.AfterEnter(Document.Text, TLspPositions.ReadPosition(PositionValue), nil, Disabled,
-    Edits, FIndex) then
+    Edits, FIndex, Version) then
   begin
     for Edit in Edits do
     begin
