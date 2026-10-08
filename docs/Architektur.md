@@ -1,4 +1,4 @@
-﻿# Architektur von BetterDelphiLSP
+# Architektur von BetterDelphiLSP
 
 Entscheidungen mit Begründung stehen im Entscheidungsprotokoll unter [`docs/adr/`](adr/README.md).
 
