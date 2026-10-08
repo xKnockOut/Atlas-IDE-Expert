@@ -1,11 +1,13 @@
 name: Server und Tests
 
-# Delphi darf aus Lizenzgründen nicht auf gehosteten Runnern laufen. Der Job
-# braucht einen selbst gehosteten Windows-Runner mit den Labels
-# [self-hosted, windows, delphi] und einer RAD-Studio-Installation. Er läuft
-# nur, wenn die Repository-Variable DELPHI_RUNNER auf 'true' steht; ohne
-# Runner bleibt die Pipeline so grün statt endlos zu warten.
-# Weitere Variablen: RADSTUDIO_BIN (Pfad zu rsvars.bat, Standard unten).
+# Delphi darf aus Lizenzgründen nicht auf gehosteten Runnern laufen. RAD Studio
+# Starter hat zudem kein msbuild/dcc auf der Kommandozeile; gebaut wird über das
+# IDE-Plugin cc.ps1 (siehe docs/Uebergabe.md). Der Job braucht deshalb einen
+# selbst gehosteten Windows-Runner mit den Labels [self-hosted, windows, delphi]
+# auf einem Rechner mit RAD Studio und cc.ps1, im angemeldeten Benutzerkontext
+# (nicht als Dienst), weil cc.ps1 eine IDE startet.
+# Der Job läuft nur, wenn die Repository-Variable DELPHI_RUNNER auf 'true'
+# steht. CC_SCRIPT überschreibt den Pfad zu cc.ps1.
 
 on:
   push:
@@ -22,17 +24,39 @@ jobs:
     if: vars.DELPHI_RUNNER == 'true'
     runs-on: [self-hosted, windows, delphi]
     env:
-      RADSTUDIO_BIN: ${{ vars.RADSTUDIO_BIN || 'C:\Program Files (x86)\Embarcadero\Studio\37.0\bin' }}
+      CC_SCRIPT: ${{ vars.CC_SCRIPT || 'C:\Projekte\IDE-Plugins\Claude-Compile\cc.ps1' }}
     steps:
       - uses: actions/checkout@v4
-      - name: Projektgruppe samt Tests bauen (Win64 Debug)
-        shell: cmd
+      - name: Eigene Scratch-IDE starten
+        id: ide
+        shell: pwsh
         run: |
-          call "%RADSTUDIO_BIN%\rsvars.bat"
-          msbuild BetterDelphiLSP.groupproj /t:Build /p:Config=Debug /p:Platform=Win64 /nologo /v:minimal
+          $out = & $env:CC_SCRIPT start -Project "$env:GITHUB_WORKSPACE\BetterDelphiLSP.groupproj" | Out-String
+          Write-Host $out
+          if ($out -notmatch 'pid\D*(\d+)') { throw 'pid der Scratch-IDE nicht gefunden' }
+          "pid=$($Matches[1])" >> $env:GITHUB_OUTPUT
+      - name: Projektgruppe bauen (Win64), 0 Fehler/Warnungen/Hinweise
+        shell: pwsh
+        run: |
+          $start = Get-Date
+          $r = & $env:CC_SCRIPT group-build -Instance ${{ steps.ide.outputs.pid }} -Platform Win64 -Json | Out-String | ConvertFrom-Json
+          $r | ConvertTo-Json -Depth 5 | Write-Host
+          if (-not $r.ok -or -not $r.outputWritten) { throw 'Build fehlgeschlagen oder keine Ausgabe geschrieben' }
+          if ($r.logFile -and (Select-String -Path $r.logFile -Pattern '\[dcc.*(Hinweis|Warnung)')) { throw 'Build hat Hinweise oder Warnungen' }
+          $exe = 'Output\Win64\Debug\Bin\BDLsp.Tests.exe'
+          if ((Get-Item $exe).LastWriteTime -lt $start) { throw 'Test-exe wurde nicht neu geschrieben' }
       - name: DUnitX-Tests ausführen
         shell: cmd
         run: Output\Win64\Debug\Bin\BDLsp.Tests.exe --exitbehavior:Continue --xmlfile:dunitx-ergebnisse.xml
+      - name: Scratch-IDE beenden
+        if: always() && steps.ide.outputs.pid != ''
+        shell: pwsh
+        run: |
+          for ($i = 0; $i -lt 10; $i++) {
+            & $env:CC_SCRIPT quit -Instance ${{ steps.ide.outputs.pid }}
+            if ($LASTEXITCODE -eq 0) { break }
+            Start-Sleep -Seconds 5
+          }
       - name: Testergebnisse als Report
         if: always()
         uses: EnricoMi/publish-unit-test-result-action/windows@v2
