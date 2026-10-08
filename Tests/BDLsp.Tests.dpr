@@ -102,7 +102,8 @@ uses
   BDLsp.Common.Mcp.CodeTools.Tests in 'Common\Mcp\BDLsp.Common.Mcp.CodeTools.Tests.pas',
   BDLsp.Common.Lsp.PullDiagnostics.Tests in 'Common\Lsp\BDLsp.Common.Lsp.PullDiagnostics.Tests.pas',
   BDLsp.Common.Editing.Formatter.Tests in 'Common\Editing\BDLsp.Common.Editing.Formatter.Tests.pas',
-  BDLsp.Common.Editing.CodeActions.Tests in 'Common\Editing\BDLsp.Common.Editing.CodeActions.Tests.pas';
+  BDLsp.Common.Editing.CodeActions.Tests in 'Common\Editing\BDLsp.Common.Editing.CodeActions.Tests.pas',
+  BDLsp.Common.Editing.UsesClause.Tests in 'Common\Editing\BDLsp.Common.Editing.UsesClause.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var
