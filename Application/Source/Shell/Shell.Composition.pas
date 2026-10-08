@@ -16,6 +16,7 @@ uses
   BDLsp.Common.Lsp.Lifecycle,
   BDLsp.Common.Lsp.TextDocumentSync,
   BDLsp.Common.Lsp.SyntaxDiagnostics,
+  BDLsp.Common.Lsp.DocumentSymbols,
   BDLsp.Common.Documents.Contract,
   Shell.CommandLine;
 
@@ -29,6 +30,7 @@ type
     FDocuments: IDocumentStore;
     FTextDocumentSync: TLspTextDocumentSync;
     FSyntaxDiagnostics: TLspSyntaxDiagnostics;
+    FDocumentSymbols: TLspDocumentSymbols;
     FConnection: TJsonRpcConnection;
     class function BuildCapabilities: TJSONObject; static;
   public
@@ -92,6 +94,8 @@ begin
       FLogger.Error(Format('Fehler beim Prüfen der Syntax: %s: %s', [AError.ClassName, AError.Message]));
     end;
   FSyntaxDiagnostics.Attach;
+  FDocumentSymbols := TLspDocumentSymbols.Create(FDocuments);
+  FDocumentSymbols.Attach(FDispatcher);
   FConnection := TJsonRpcConnection.Create(FTransport, FDispatcher);
   FConnection.OnError :=
     procedure(const AError: Exception)
@@ -109,6 +113,7 @@ destructor TServerComposition.Destroy;
 begin
   FConnection.Free;
   FSyntaxDiagnostics.Free;
+  FDocumentSymbols.Free;
   FTextDocumentSync.Free;
   FDocuments := nil;
   FLifecycle.Free;
@@ -161,6 +166,7 @@ begin
   // Die Features tragen ihre Capabilities hier ein, sobald sie umgesetzt sind.
   Result := TJSONObject.Create;
   Result.AddPair('textDocumentSync', TLspTextDocumentSync.Capability);
+  Result.AddPair('documentSymbolProvider', TJSONBool.Create(True));
 end;
 
 function TServerComposition.Run: Integer;
