@@ -155,6 +155,7 @@
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.Colors.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Colors.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.DocWiki.pas"/>
+        <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.CompilerDirectives.pas"/>
         <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.Statistics.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Commands.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.References.pas"/>

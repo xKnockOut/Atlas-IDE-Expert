@@ -86,6 +86,7 @@
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Formatting.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.FuzzyMatch.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.DocWiki.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.CompilerDirectives.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Status.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.References.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Rename.Tests.pas"/>

@@ -106,6 +106,7 @@ contains
   BDLsp.Common.Lsp.Commands in 'Source\Lsp\BDLsp.Common.Lsp.Commands.pas',
   BDLsp.Common.Lsp.Status in 'Source\Lsp\BDLsp.Common.Lsp.Status.pas',
   BDLsp.Common.Lsp.DocWiki in 'Source\Lsp\BDLsp.Common.Lsp.DocWiki.pas',
+  BDLsp.Common.Lsp.CompilerDirectives in 'Source\Lsp\BDLsp.Common.Lsp.CompilerDirectives.pas',
   BDLsp.Common.Lsp.Colors in 'Source\Lsp\BDLsp.Common.Lsp.Colors.pas',
   BDLsp.Common.Lsp.DocumentLinks in 'Source\Lsp\BDLsp.Common.Lsp.DocumentLinks.pas',
   BDLsp.Common.Editing.CodeActions in 'Source\Editing\BDLsp.Common.Editing.CodeActions.pas',

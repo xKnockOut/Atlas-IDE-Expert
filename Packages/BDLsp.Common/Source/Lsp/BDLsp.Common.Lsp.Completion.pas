@@ -97,6 +97,8 @@ type
 implementation
 
 uses
+  System.Math,
+  System.StrUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
   BDLsp.Common.Documents.Uris,
@@ -105,6 +107,7 @@ uses
   BDLsp.Common.Pascal.TreeCache,
   BDLsp.Common.Lsp.FuzzyMatch,
   BDLsp.Common.Editing.UsesClause,
+  BDLsp.Common.Lsp.CompilerDirectives,
   BDLsp.Common.Lsp.Internals.Cancellation;
 
 const
@@ -122,6 +125,51 @@ const
   KindEnumMember = 20;
   KindConstant = 21;
   KindStruct = 22;
+  KindKeyword = 14;
+
+/// <summary>Text der Zeile von APosition bis zum Cursor.</summary>
+function LineBefore(const AText: string; const APosition: TTextPosition): string;
+var
+  Line, Start, Stop: Integer;
+begin
+  Start := 1;
+  for Line := 1 to APosition.Line do
+  begin
+    Start := PosEx(#10, AText, Start) + 1;
+    if Start = 1 then
+      Exit('');
+  end;
+  Stop := Start;
+  while (Stop <= Length(AText)) and (AText[Stop] <> #10) and (AText[Stop] <> #13) do
+    Inc(Stop);
+  Result := Copy(AText, Start, Min(APosition.Character, Stop - Start));
+end;
+
+/// <summary>Vorschläge in einer offenen Direktive (#102); False außerhalb.</summary>
+function DirectiveItems(const AText: string; const APosition: TTextPosition; out AItems: TCompletionItems): Boolean;
+var
+  Names: TArray<string>;
+  IsWarning: Boolean;
+  Name: string;
+  Item: TCompletionItem;
+  Info: TDirectiveInfo;
+begin
+  AItems := Default(TCompletionItems);
+  Result := TCompilerDirectives.CompletionAt(LineBefore(AText, APosition), Names, IsWarning);
+  if not Result then
+    Exit;
+  for Name in Names do
+  begin
+    Item := Default(TCompletionItem);
+    Item.Name := Name;
+    Item.Kind := KindKeyword;
+    if IsWarning then
+      Item.Detail := 'Compiler-Warnung'
+    else if TCompilerDirectives.Find(Name, Info) then
+      Item.Detail := Info.Text;
+    AItems.Items := AItems.Items + [Item];
+  end;
+end;
 
 function ComparePositions(const A, B: TTextPosition): Integer;
 begin
@@ -191,6 +239,8 @@ var
 begin
   Triggers := TJSONArray.Create;
   Triggers.Add('.');
+  // {$ startet die Vervollständigung von Direktiven (#102).
+  Triggers.Add('$');
   Result := TJSONObject.Create;
   Result.AddPair('triggerCharacters', Triggers);
   Result.AddPair('resolveProvider', TJSONBool.Create(False));
@@ -522,6 +572,7 @@ var
   Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Matching: TCompletionMatching;
+  Directives: TCompletionItems;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
@@ -530,6 +581,8 @@ begin
   if not FStore.TryGet(Uri, Document) then
     Exit(TJSONNull.Create);
   Cancellation := TRequestCancellation.Create(ACancellation);
+  if DirectiveItems(Document.Text, TLspPositions.ReadPosition(PositionValue), Directives) then
+    Exit(ToJson(Directives));
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
   Tree := Shared.Tree;
   ACancellation.ThrowIfCancellationRequested;

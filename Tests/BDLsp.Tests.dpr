@@ -55,6 +55,7 @@ uses
   BDLsp.Common.Lsp.SemanticTokens.Tests in 'Common\Lsp\BDLsp.Common.Lsp.SemanticTokens.Tests.pas',
   BDLsp.Common.Lsp.Status.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Status.Tests.pas',
   BDLsp.Common.Lsp.DocWiki.Tests in 'Common\Lsp\BDLsp.Common.Lsp.DocWiki.Tests.pas',
+  BDLsp.Common.Lsp.CompilerDirectives.Tests in 'Common\Lsp\BDLsp.Common.Lsp.CompilerDirectives.Tests.pas',
   BDLsp.Common.Lsp.Hover.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Hover.Tests.pas',
   BDLsp.Common.Lsp.HoverValues.Tests in 'Common\Lsp\BDLsp.Common.Lsp.HoverValues.Tests.pas',
   BDLsp.Common.Lsp.LinkedEditing.Tests in 'Common\Lsp\BDLsp.Common.Lsp.LinkedEditing.Tests.pas',
