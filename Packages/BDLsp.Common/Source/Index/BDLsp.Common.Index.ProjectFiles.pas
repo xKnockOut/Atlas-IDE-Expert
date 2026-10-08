@@ -16,7 +16,8 @@ type
     class function Files(const AProject: TProjectInfo): TArray<string>; static;
     /// <summary>ABdsVersion wie in der Registry, z. B. '23.0' für Delphi 12 (ergibt VER360); '' = ohne VERxxx.</summary>
     class function Defines(const AProject: TProjectInfo; const ABdsVersion: string): TArray<string>; static;
-    /// <summary>Schlüssel für Projekt, Konfiguration, Plattform und Version; gleicher Schlüssel, gleicher Index.</summary>
+    /// <summary>Schlüssel für Projekt, Konfiguration, Plattform, Version, Symbole, Suchpfade und Namespaces;
+    /// gleicher Schlüssel, gleicher Index. Ändert sich einer davon, gilt der Cache nicht mehr.</summary>
     class function Signature(const AProject: TProjectInfo; const ACompilerVersion: string): string; static;
   end;
 
@@ -25,6 +26,19 @@ implementation
 uses
   System.Generics.Collections,
   BDLsp.Common.Pascal.Preprocessor;
+
+/// <summary>Symbole in Großschreibung, sortiert: Reihenfolge und Schreibweise ändern den Index nicht.</summary>
+function SortedKey(const AItems: TArray<string>): string;
+var
+  Items: TArray<string>;
+  Index: Integer;
+begin
+  SetLength(Items, Length(AItems));
+  for Index := 0 to High(AItems) do
+    Items[Index] := UpperCase(Trim(AItems[Index]));
+  TArray.Sort<string>(Items);
+  Result := String.Join(';', Items);
+end;
 
 { TIndexProjectFiles }
 
@@ -70,7 +84,8 @@ end;
 class function TIndexProjectFiles.Signature(const AProject: TProjectInfo; const ACompilerVersion: string): string;
 begin
   Result := AnsiUpperCase(AProject.FileName) + '|' + UpperCase(AProject.Config) + '|' +
-    UpperCase(AProject.Platform) + '|' + ACompilerVersion;
+    UpperCase(AProject.Platform) + '|' + ACompilerVersion + '|' + SortedKey(AProject.Defines) + '|' +
+    AnsiUpperCase(String.Join(';', AProject.SearchPaths)) + '|' + UpperCase(String.Join(';', AProject.Namespaces));
 end;
 
 end.
