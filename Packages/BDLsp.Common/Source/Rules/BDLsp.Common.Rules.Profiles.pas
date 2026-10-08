@@ -5,13 +5,15 @@
 //   1. Vorgabe der Regel;
 //   2. eingebautes Profil: fast (nur Bugs und Schwachstellen), security
 //      (Schwachstellen und Security-Hotspots), style (nur Code-Smells),
-//      strict (experimentelle Regeln an, Hinweise werden Warnungen),
-//      standard (unverändert);
+//      strict (experimentelle Regeln an), standard (unverändert);
 //   3. eigene Profile aus "profiles", vom Grundprofil nach außen;
 //   4. "rules" der Konfiguration;
 //   5. "overrides", deren Muster den Pfad treffen ("*" = alle Regeln).
-// Test-Units (uses DUnitX.TestFramework, TestFramework oder TestInsight.*)
-// erkennt IsTestUnit; mit "excludeTests" prüft die Engine sie nicht.
+// Die Mindestkonfidenz ist low bei strict, sonst medium; ein ausdrückliches
+// "minConfidence" geht vor.
+// Test-Units und Testprojekte (.dpr mit uses DUnitX.TestFramework,
+// TestFramework oder TestInsight.*) erkennt IsTestUnit; mit "excludeTests"
+// prüft die Engine sie nicht, mit "testProfile" unter eigenem Profil.
 
 interface
 
@@ -33,6 +35,10 @@ type
     class function Severity(const ASettings: TServerSettings; const AProfile: string;
       const ADescriptor: TRuleDescriptor; const ACategory, ARelativePath: string;
       out AEnabled: Boolean): TRuleSeverity; static;
+    /// <summary>Eingebautes Profil am Ende der Kette eigener Profile, '' = standard.</summary>
+    class function BaseProfile(const ASettings: TServerSettings; const AProfile: string): string; static;
+    /// <summary>Mindestkonfidenz unter AProfile.</summary>
+    class function MinConfidence(const ASettings: TServerSettings; const AProfile: string): TRuleConfidence; static;
     /// <summary>Kategorie aus dem Regelkatalog, '' wenn die Regel dort fehlt.</summary>
     class function CategoryOf(const ARuleId: string): string; static;
     /// <summary>True, wenn die Unit ein Test-Framework einbindet.</summary>
@@ -91,11 +97,7 @@ begin
   else if SameText(AName, 'style') then
     ApplyCategories(['code-smell'], ACategory, ASeverity)
   else if SameText(AName, 'strict') then
-  begin
     AEnabled := True;
-    if ASeverity in [TRuleSeverity.Hint, TRuleSeverity.Information] then
-      ASeverity := TRuleSeverity.Warning;
-  end;
 end;
 
 { TRuleProfiles }
@@ -135,6 +137,28 @@ begin
           ApplyRules(Item.Rules, ADescriptor.Id, Result, AEnabled, True);
           Break;
         end;
+end;
+
+class function TRuleProfiles.BaseProfile(const ASettings: TServerSettings; const AProfile: string): string;
+var
+  Profile: TRuleProfile;
+  Depth: Integer;
+begin
+  Result := AProfile;
+  Depth := 0;
+  while (Result <> '') and (Depth < MaxDepth) and ASettings.TryFindProfile(Result, Profile) do
+  begin
+    Result := Profile.Extends;
+    Inc(Depth);
+  end;
+end;
+
+class function TRuleProfiles.MinConfidence(const ASettings: TServerSettings; const AProfile: string): TRuleConfidence;
+begin
+  if not ASettings.MinConfidenceGiven and SameText(BaseProfile(ASettings, AProfile), 'strict') then
+    Result := TRuleConfidence.Low
+  else
+    Result := ASettings.MinConfidence;
 end;
 
 class function TRuleProfiles.CategoryOf(const ARuleId: string): string;

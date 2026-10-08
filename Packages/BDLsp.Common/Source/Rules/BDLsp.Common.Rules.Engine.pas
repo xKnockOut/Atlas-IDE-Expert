@@ -18,7 +18,8 @@
 // oder unbekannte Regeln nicht stören.
 //
 // Regelprofile, Pfadregeln und das Ausnehmen von Test-Units (#146) wertet
-// TRuleProfiles aus; maßgeblich ist das Profil in ASettings.Profile.
+// TRuleProfiles aus; maßgeblich ist das Profil in ASettings.Profile, für
+// Test-Units und Testprojekte ASettings.TestProfile, falls gesetzt.
 
 interface
 
@@ -217,11 +218,20 @@ var
   AllRan: Boolean;
   Removal: TTextRange;
   Enabled: Boolean;
+  Settings: TServerSettings;
+  MinConfidence: TRuleConfidence;
 begin
   if (AContext.RelativePath <> '') and ASettings.IsExcluded(AContext.RelativePath) then
     Exit(nil);
-  if ASettings.ExcludeTests and (AContext.Tree <> nil) and TRuleProfiles.IsTestUnit(AContext.Tree.Tokens) then
-    Exit(nil);
+  Settings := ASettings;
+  if (ASettings.ExcludeTests or (ASettings.TestProfile <> '')) and (AContext.Tree <> nil) and
+    TRuleProfiles.IsTestUnit(AContext.Tree.Tokens) then
+  begin
+    if ASettings.ExcludeTests then
+      Exit(nil);
+    Settings.Profile := ASettings.TestProfile;
+  end;
+  MinConfidence := TRuleProfiles.MinConfidence(Settings, Settings.Profile);
   Findings := TList<TRuleFinding>.Create;
   Kept := TList<TRuleFinding>.Create;
   Suppressions := nil;
@@ -230,13 +240,13 @@ begin
     for Rule in ARules do
     begin
       Descriptor := Rule.Descriptor;
-      Severity := EffectiveSeverity(Descriptor, ASettings, AContext.RelativePath, Enabled);
+      Severity := EffectiveSeverity(Descriptor, Settings, AContext.RelativePath, Enabled);
       if Severity = TRuleSeverity.Off then
         Continue;
       if Descriptor.Experimental and not Enabled then
         Continue;
       Context := AContext;
-      Context.Options := RuleOptions(Descriptor.Id, ASettings);
+      Context.Options := RuleOptions(Descriptor.Id, Settings);
       if IsExceptedByOptions(Context.Options, Context.RelativePath, Context.UnitName) then
         Continue;
       Rule.Check(Context, TRuleReport.Create(Descriptor.Id, Severity, Findings));
@@ -248,7 +258,7 @@ begin
     // Erst unterdrücken, dann filtern: Auch ausgeblendete Treffer machen einen Kommentar wirksam.
     for Finding in Findings do
       if ((Suppressions = nil) or not Suppressions.IsSuppressed(Finding.RuleId, Finding.Range.StartPos.Line)) and
-        (Ord(Finding.Confidence) >= Ord(ASettings.MinConfidence)) then
+        (Ord(Finding.Confidence) >= Ord(MinConfidence)) then
         Kept.Add(Finding);
 
     if (Suppressions <> nil) and

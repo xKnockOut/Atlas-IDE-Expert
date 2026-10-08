@@ -18,13 +18,21 @@ type
     [Test]
     procedure SecurityAndStyleFilterCategories;
     [Test]
-    procedure StrictRaisesHintsAndEnablesExperimental;
+    procedure StrictEnablesExperimentalAndLowConfidence;
+    [Test]
+    procedure ExplicitMinConfidenceWinsOverProfile;
+    [Test]
+    procedure BuiltinProfilesActivateExpectedRules;
+    [Test]
+    procedure TestProfileAppliesToTestUnits;
     [Test]
     procedure OwnProfileExtendsBuiltin;
     [Test]
     procedure ConfigRulesWinOverProfile;
     [Test]
     procedure OverrideMatchesPathOnly;
+    [Test]
+    procedure OverrideDowngradesWarningInTests;
     [Test]
     procedure OverrideWildcardHitsAllRules;
     [Test]
@@ -36,6 +44,8 @@ type
     [Test]
     procedure DetectsTestUnits;
     [Test]
+    procedure DetectsTestProjects;
+    [Test]
     procedure CatalogKnowsCategories;
   end;
 
@@ -43,10 +53,13 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   BDLsp.Common.Configuration.Contract,
   BDLsp.Common.Configuration.Parser,
   BDLsp.Common.Pascal.Lexer,
   BDLsp.Common.Rules.Contract,
+  BDLsp.Common.Rules.Engine,
+  BDLsp.Common.Rules.Builtin,
   BDLsp.Common.Rules.Profiles;
 
 function Settings(const AJson: string): TServerSettings;
@@ -94,20 +107,72 @@ begin
   Assert.AreEqual(Ord(TRuleSeverity.Off), Ord(SeverityOf(Settings('{"profile":"style"}'), 'vulnerability')));
 end;
 
-procedure TRuleProfilesTests.StrictRaisesHintsAndEnablesExperimental;
+procedure TRuleProfilesTests.StrictEnablesExperimentalAndLowConfidence;
 var
   Streng: TServerSettings;
   Enabled: Boolean;
 begin
   Streng := Settings('{"profile":"strict"}');
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(SeverityOf(Streng, 'code-smell', TRuleSeverity.Hint)));
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(SeverityOf(Streng, 'bug', TRuleSeverity.Error)));
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(SeverityOf(Streng, 'code-smell', TRuleSeverity.Hint)));
+  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(TRuleProfiles.MinConfidence(Streng, Streng.Profile)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(TRuleProfiles.MinConfidence(Streng, 'fast')));
+  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(TRuleProfiles.MinConfidence(
+    Settings('{"profile":"ci","profiles":{"ci":{"extends":"strict"}}}'), 'ci')));
   TRuleProfiles.Severity(Streng, Streng.Profile, TRuleDescriptor.Create('probe', TRuleSeverity.Hint, 'Probe', True),
     'bug', '', Enabled);
   Assert.IsTrue(Enabled);
   TRuleProfiles.Severity(TServerSettings.Default, '', TRuleDescriptor.Create('probe', TRuleSeverity.Hint, 'Probe', True),
     'bug', '', Enabled);
   Assert.IsFalse(Enabled);
+end;
+
+procedure TRuleProfilesTests.ExplicitMinConfidenceWinsOverProfile;
+var
+  Given: TServerSettings;
+begin
+  Given := Settings('{"profile":"strict","minConfidence":"high"}');
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(TRuleProfiles.MinConfidence(Given, Given.Profile)));
+end;
+
+/// <summary>Aktive eingebaute Regeln unter AProfile, sortiert und mit Komma getrennt.</summary>
+function ActiveRules(const AProfile: string): string;
+var
+  Rule: IRule;
+  Config: TServerSettings;
+  Enabled: Boolean;
+  Ids: TArray<string>;
+begin
+  Config := TServerSettings.Default;
+  Config.Profile := AProfile;
+  Ids := nil;
+  for Rule in BuiltinRules do
+    if (TRuleEngine.EffectiveSeverity(Rule.Descriptor, Config, '', Enabled) <> TRuleSeverity.Off) and
+      (Enabled or not Rule.Descriptor.Experimental) then
+      Ids := Ids + [Rule.Descriptor.Id];
+  TArray.Sort<string>(Ids);
+  Result := string.Join(',', Ids);
+end;
+
+procedure TRuleProfilesTests.BuiltinProfilesActivateExpectedRules;
+const
+  All = 'bidi-control,confusable-identifier,control-char,forbidden-uses,invisible-char,unit-name-mismatch';
+begin
+  Assert.AreEqual(All, ActiveRules('standard'));
+  Assert.AreEqual(All, ActiveRules('strict'));
+  Assert.AreEqual('bidi-control,control-char,unit-name-mismatch', ActiveRules('fast'));
+  Assert.AreEqual('bidi-control,confusable-identifier,invisible-char', ActiveRules('security'));
+  Assert.AreEqual('forbidden-uses', ActiveRules('style'));
+end;
+
+procedure TRuleProfilesTests.TestProfileAppliesToTestUnits;
+var
+  Config: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Config := Settings('{"testProfile":"lasch","profiles":{"lasch":{"categories":["bug"]}}}');
+  Assert.AreEqual('lasch', Config.TestProfile);
+  TConfigurationParser.Parse('{"testProfile":"fehlt"}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
 procedure TRuleProfilesTests.OwnProfileExtendsBuiltin;
@@ -134,6 +199,15 @@ begin
   Paths := Settings('{"overrides":[{"files":["Tests/**"],"rules":{"probe":"off"}}]}');
   Assert.AreEqual(Ord(TRuleSeverity.Off), Ord(SeverityOf(Paths, 'bug', TRuleSeverity.Warning, 'Tests/Unit1.Tests.pas')));
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(SeverityOf(Paths, 'bug', TRuleSeverity.Warning, 'Source/Unit1.pas')));
+end;
+
+procedure TRuleProfilesTests.OverrideDowngradesWarningInTests;
+var
+  Paths: TServerSettings;
+begin
+  Paths := Settings('{"overrides":[{"files":["Tests/**"],"rules":{"*":"hint"}}]}');
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(SeverityOf(Paths, 'bug', TRuleSeverity.Warning, 'Tests/Sub/A.Tests.pas')));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(SeverityOf(Paths, 'bug', TRuleSeverity.Warning, 'Source/A.pas')));
 end;
 
 procedure TRuleProfilesTests.OverrideWildcardHitsAllRules;
@@ -185,6 +259,21 @@ begin
     'unit B;'#10'interface'#10'implementation'#10'uses TestFramework, SysUtils;'#10'end.')));
   Assert.IsFalse(TRuleProfiles.IsTestUnit(TPascalLexer.Tokenize(
     'unit C;'#10'interface'#10'uses System.SysUtils;'#10'implementation'#10'end.')));
+end;
+
+procedure TRuleProfilesTests.DetectsTestProjects;
+begin
+  // DUnitX-Konsolenprojekt
+  Assert.IsTrue(TRuleProfiles.IsTestUnit(TPascalLexer.Tokenize(
+    'program AppTests;'#10'{$APPTYPE CONSOLE}'#10'uses'#10'  System.SysUtils,'#10'  DUnitX.Loggers.Console,'#10 +
+    '  DUnitX.TestFramework,'#10'  App.Tests in ''App.Tests.pas'';'#10'begin'#10'end.')));
+  // DUnit-GUI-Projekt
+  Assert.IsTrue(TRuleProfiles.IsTestUnit(TPascalLexer.Tokenize(
+    'program LegacyTests;'#10'uses'#10'  Forms,'#10'  TestFramework,'#10'  GUITestRunner;'#10'begin'#10 +
+    '  GUITestRunner.RunRegisteredTests;'#10'end.')));
+  // Normales Projekt
+  Assert.IsFalse(TRuleProfiles.IsTestUnit(TPascalLexer.Tokenize(
+    'program App;'#10'uses'#10'  Vcl.Forms,'#10'  Main in ''Main.pas'';'#10'begin'#10'end.')));
 end;
 
 procedure TRuleProfilesTests.CatalogKnowsCategories;
