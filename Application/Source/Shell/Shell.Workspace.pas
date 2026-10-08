@@ -19,6 +19,7 @@ uses
   BDLsp.Common.Projects.UnitResolver,
   BDLsp.Common.Index.Contract,
   BDLsp.Common.Index.Service,
+  BDLsp.Common.Index.Builder,
   BDLsp.Common.Rules.Baseline,
   BDLsp.Common.Lsp.Status;
 
@@ -98,7 +99,6 @@ uses
   BDLsp.Common.Projects.Contract,
   BDLsp.Common.Projects.Paths,
   BDLsp.Common.Projects.DprojReader,
-  BDLsp.Common.Index.Builder,
   BDLsp.Common.Index.ProjectFiles,
   BDLsp.Common.Index.Adapters.DiskFileSystem,
   BDLsp.Common.Index.Adapters.CacheDirectory,
