@@ -205,6 +205,7 @@
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.KeywordReference.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.AssignmentSwap.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.StringLiterals.pas"/>
+        <DCCReference Include="Source\Editing\BDLsp.Common.Editing.PostfixTemplates.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.StringLiteralCommands.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.CodeActions.pas"/>
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.ControlFlow.pas"/>

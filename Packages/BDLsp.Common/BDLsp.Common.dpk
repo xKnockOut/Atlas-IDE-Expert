@@ -113,6 +113,7 @@ contains
   BDLsp.Common.Lsp.KeywordReference in 'Source\Lsp\BDLsp.Common.Lsp.KeywordReference.pas',
   BDLsp.Common.Editing.AssignmentSwap in 'Source\Editing\BDLsp.Common.Editing.AssignmentSwap.pas',
   BDLsp.Common.Editing.StringLiterals in 'Source\Editing\BDLsp.Common.Editing.StringLiterals.pas',
+  BDLsp.Common.Editing.PostfixTemplates in 'Source\Editing\BDLsp.Common.Editing.PostfixTemplates.pas',
   BDLsp.Common.Lsp.StringLiteralCommands in 'Source\Lsp\BDLsp.Common.Lsp.StringLiteralCommands.pas',
   BDLsp.Common.Lsp.DocWiki in 'Source\Lsp\BDLsp.Common.Lsp.DocWiki.pas',
   BDLsp.Common.Lsp.CompilerDirectives in 'Source\Lsp\BDLsp.Common.Lsp.CompilerDirectives.pas',

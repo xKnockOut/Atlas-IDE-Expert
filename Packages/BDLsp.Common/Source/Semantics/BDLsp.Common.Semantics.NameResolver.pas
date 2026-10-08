@@ -185,6 +185,10 @@ type
     /// <summary>Mitglieder hinter A.B. (samt geerbter) bzw. interface-Symbole, wenn die Kette eine Unit ist.</summary>
     function MemberCandidates(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
       AOffset: Integer): TArray<TResolvedSymbol>;
+    /// <summary>Kette A.B als Wert und ihr Typ (Aliase verfolgt), z. B. für Postfix-Vorlagen (#188).
+    /// False, wenn die Kette nicht auflösbar ist; ATypeFound sagt, ob der Typ bekannt ist.</summary>
+    function ChainType(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
+      AOffset: Integer; out AOwner, AType: TResolvedSymbol; out ATypeFound: Boolean): Boolean;
     /// <summary>Wertet ATree einmal aus und nutzt das für alle folgenden Aufrufe mit demselben Baum,
     /// bis UnpinTree. Der Aufrufer gibt den Baum erst nach UnpinTree frei.</summary>
     procedure PinTree(ATree: TSyntaxTree; const AFileName: string);
@@ -1898,6 +1902,17 @@ begin
     Seen.Free;
     List.Free;
   end;
+end;
+
+function TNameResolver.ChainType(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
+  AOffset: Integer; out AOwner, AType: TResolvedSymbol; out ATypeFound: Boolean): Boolean;
+begin
+  AType := Default(TResolvedSymbol);
+  ATypeFound := False;
+  AOwner := ResolveChain(ATree, AFileName, ANames, AOffset);
+  Result := AOwner.Found;
+  if Result and (AOwner.Kind <> TResolvedKind.UnitName) then
+    ATypeFound := TypeOf(AOwner, AType);
 end;
 
 procedure TNameResolver.PinTree(ATree: TSyntaxTree; const AFileName: string);

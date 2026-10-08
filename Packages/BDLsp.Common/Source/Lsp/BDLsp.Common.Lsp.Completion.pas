@@ -10,6 +10,9 @@
 // jedem Tastendruck neu fragen, filterText verhindert, dass er Treffer verwirft.
 // Ab zwei getippten Zeichen kommen Symbole aus noch nicht eingebundenen Units dazu (#180),
 // Projekt-Units vor Bibliotheken; additionalTextEdits trägt die Unit beim Annehmen ins uses ein.
+// Postfix-Vorlagen (#188): Hinter "Ausdruck." kommen nach den Mitgliedern Kürzel wie for, tryf,
+// ifa und fmt, die den Ausdruck ersetzen (textEdit ab Ausdrucksbeginn, filterText "Ausdruck.Kürzel"),
+// sofern der Typ bekannt ist und passt.
 // Noch nicht: Sichtbarkeit (private/protected), Generics, Class Helper, Typinferenz bei var X := ….
 
 interface
@@ -40,6 +43,9 @@ type
     Names: TArray<string>;
     /// <summary>Offset, an dem die Namen gelten.</summary>
     Offset: Integer;
+    /// <summary>Bei Member: Anfang der Kette und Position des Punkts.</summary>
+    ChainStart: TTextPosition;
+    DotPos: TTextPosition;
   end;
 
   TCompletionItem = record
@@ -57,7 +63,20 @@ type
     Command: string;
     CommandTitle: string;
     CommandArguments: TArray<string>;
+    /// <summary>Ersetzt TextEdit.Range statt nur den getippten Namen (Postfix-Vorlagen).</summary>
+    HasTextEdit: Boolean;
+    TextEdit: TRuleEdit;
   end;
+
+  /// <summary>Postfix-Vorlagen (#188) je Dokument.</summary>
+  TPostfixOptions = record
+    Enabled: Boolean;
+    /// <summary>for var Item in … (ab Delphi 10.3); sonst Eintrag im var-Abschnitt.</summary>
+    InlineVar: Boolean;
+    class function Default: TPostfixOptions; static;
+  end;
+
+  TPostfixOptionsFunc = reference to function(const AUri: string): TPostfixOptions;
 
   TCompletionItems = record
     Items: TArray<TCompletionItem>;
@@ -87,6 +106,7 @@ type
     FMatchingFor: TCompletionMatchingFunc;
     FFormItems: TFormCompletionFunc;
     FSlashCommandsFor: TSlashCommandsProvider;
+    FPostfixFor: TPostfixOptionsFunc;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
@@ -98,7 +118,11 @@ type
     class function Analyze(ATree: TSyntaxTree; const APosition: TTextPosition): TCompletionContext; static;
     class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const APosition: TTextPosition;
-      AMatching: TCompletionMatching = TCompletionMatching.Fuzzy): TCompletionItems; static;
+      AMatching: TCompletionMatching = TCompletionMatching.Fuzzy): TCompletionItems; overload; static;
+    /// <summary>Wie oben, mit Dokumenttext für Postfix-Vorlagen.</summary>
+    class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AFileName, AText: string; const APosition: TTextPosition; AMatching: TCompletionMatching;
+      const APostfix: TPostfixOptions): TCompletionItems; overload; static;
     class function KindOf(AKind: TIndexSymbolKind): Integer; static;
     /// <summary>CompletionList des LSP. Der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const AItems: TCompletionItems): TJSONObject; static;
@@ -109,6 +133,8 @@ type
     property FormItems: TFormCompletionFunc read FFormItems write FFormItems;
     /// <summary>Schnellbefehle nach "/" am Zeilenanfang (#293); ohne Zuweisung alle eingeschaltet.</summary>
     property SlashCommandsFor: TSlashCommandsProvider read FSlashCommandsFor write FSlashCommandsFor;
+    /// <summary>Postfix-Vorlagen je Dokument (#188); ohne Zuweisung an und mit Inline-Variable.</summary>
+    property PostfixFor: TPostfixOptionsFunc read FPostfixFor write FPostfixFor;
   end;
 
 implementation
@@ -127,7 +153,9 @@ uses
   BDLsp.Common.Editing.UsesClause,
   BDLsp.Common.Lsp.CompilerDirectives,
   BDLsp.Common.Dfm.Parser,
-  BDLsp.Common.Lsp.Internals.Cancellation;
+  BDLsp.Common.Lsp.Internals.Cancellation,
+  BDLsp.Common.Editing.CommandSource,
+  BDLsp.Common.Editing.PostfixTemplates;
 
 const
   // CompletionItemKind
@@ -138,6 +166,7 @@ const
   KindVariable = 6;
   KindClass = 7;
   KindInterface = 8;
+  KindSnippet = 15;
   KindModule = 9;
   KindProperty = 10;
   KindEnum = 13;
@@ -354,6 +383,7 @@ begin
       while (Index >= 0) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) do
       begin
         Names.Insert(0, CleanName(Tokens[Index].Text));
+        Result.ChainStart := Tokens[Index].StartPos;
         Index := PreviousIndex(Tokens, Index);
         if (Index >= 0) and Tokens[Index].IsSymbol('.') then
           Index := PreviousIndex(Tokens, Index)
@@ -373,6 +403,7 @@ begin
       Result.Kind := TCompletionContextKind.Member;
       Result.Names := Names.ToArray;
       Result.Offset := Tokens[Last].Offset;
+      Result.DotPos := Tokens[Last].StartPos;
     finally
       Names.Free;
     end;
@@ -449,8 +480,83 @@ begin
   Result := TFuzzyMatch.Score(AName, APrefix);
 end;
 
+{ TPostfixOptions }
+
+class function TPostfixOptions.Default: TPostfixOptions;
+begin
+  Result.Enabled := True;
+  Result.InlineVar := True;
+end;
+
 class function TLspCompletion.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const AFileName: string; const APosition: TTextPosition; AMatching: TCompletionMatching): TCompletionItems;
+var
+  Postfix: TPostfixOptions;
+begin
+  Postfix := TPostfixOptions.Default;
+  Postfix.Enabled := False;
+  Result := Collect(AResolver, AIndex, ATree, AFileName, '', APosition, AMatching, Postfix);
+end;
+
+/// <summary>Zeile ALine von AText ohne Zeilenende.</summary>
+function LineOf(const AText: string; ALine: Integer): string;
+var
+  Lines: TArray<string>;
+begin
+  Lines := AText.Split([#10]);
+  if (ALine < 0) or (ALine > High(Lines)) then
+    Exit('');
+  Result := Lines[ALine];
+  if Result.EndsWith(#13) then
+    SetLength(Result, Length(Result) - 1);
+end;
+
+/// <summary>Was über den Typ der Kette bekannt ist; False, wenn er unbekannt ist oder kein Wert vorliegt.</summary>
+function PostfixTraits(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+  const AContext: TCompletionContext; const AMembers: TArray<TResolvedSymbol>; out ATraits: TPostfixTraits): Boolean;
+var
+  Owner, TypeInfo, Member, Enumerator: TResolvedSymbol;
+  TypeFound: Boolean;
+  OwnerType: string;
+begin
+  ATraits := Default(TPostfixTraits);
+  if not AResolver.ChainType(ATree, AFileName, AContext.Names, AContext.Offset, Owner, TypeInfo, TypeFound) or
+    (Owner.Kind = TResolvedKind.UnitName) or Owner.IsType then
+    Exit(False);
+  // Typargumente stehen getrennt: TArray mit TypeArgs Integer.
+  OwnerType := Owner.TypeName;
+  if Owner.TypeArgs <> '' then
+    OwnerType := OwnerType + '<' + Owner.TypeArgs + '>';
+  ATraits.ElementType := TPostfixTemplates.ElementOf(OwnerType);
+  if (ATraits.ElementType = '') and TypeFound then
+    ATraits.ElementType := TPostfixTemplates.ElementOf(TypeInfo.TypeName);
+  ATraits.Enumerable := ATraits.ElementType <> '';
+  if TypeFound and not TypeInfo.Builtin and (TypeInfo.SymbolKind in [TIndexSymbolKind.ClassType,
+    TIndexSymbolKind.RecordType, TIndexSymbolKind.InterfaceType]) then
+    for Member in AMembers do
+      if SameText(Member.Name, 'GetEnumerator') then
+      begin
+        ATraits.Enumerable := True;
+        // Elementtyp für die klassische Schleife: Current des Enumerators.
+        for Enumerator in AResolver.MemberCandidates(ATree, AFileName, AContext.Names + ['GetEnumerator'],
+          AContext.Offset) do
+          if SameText(Enumerator.Name, 'Current') then
+            ATraits.ElementType := Enumerator.TypeName;
+        Break;
+      end;
+  ATraits.IsString := TPostfixTemplates.IsStringType(Owner.TypeName) or
+    (TypeFound and TypeInfo.Builtin and TPostfixTemplates.IsStringType(TypeInfo.Name));
+  ATraits.IsClass := TypeFound and not TypeInfo.Builtin and (TypeInfo.SymbolKind = TIndexSymbolKind.ClassType);
+  ATraits.IsReference := ATraits.IsClass or
+    (TypeFound and not TypeInfo.Builtin and (TypeInfo.SymbolKind = TIndexSymbolKind.InterfaceType)) or
+    TPostfixTemplates.IsPointerType(Owner.TypeName) or
+    (TypeFound and TPostfixTemplates.IsPointerType(TypeInfo.TypeName));
+  Result := TypeFound or ATraits.Enumerable or ATraits.IsString or ATraits.IsReference;
+end;
+
+class function TLspCompletion.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName, AText: string; const APosition: TTextPosition; AMatching: TCompletionMatching;
+  const APostfix: TPostfixOptions): TCompletionItems;
 var
   Context: TCompletionContext;
   Candidates: TArray<TResolvedSymbol>;
@@ -460,6 +566,7 @@ var
   List: TList<TScoredItem>;
   Scored: TScoredItem;
   Index: Integer;
+  Postfix: TArray<TCompletionItem>;
 
   procedure Add(const AName, ADetail: string; AKind: Integer; APenalty: Integer = 0;
     const AEdits: TArray<TRuleEdit> = nil);
@@ -480,6 +587,63 @@ var
       Scored.Item.FilterText := '';
     Scored.Order := List.Count;
     List.Add(Scored);
+  end;
+
+  procedure AddPostfix;
+  var
+    Traits: TPostfixTraits;
+    Template: TPostfixTemplate;
+    Item: TCompletionItem;
+    LineText, Before, Expr, LineBreak: string;
+    Slash: TSlashContext;
+    Source: TCommandSource;
+    Routine: TSyntaxNode;
+  begin
+    // Nur einzeilige Ausdrücke; der Typ muss bekannt sein.
+    if (Context.ChainStart.Line <> APosition.Line) or (Context.DotPos.Line <> APosition.Line) or
+      not PostfixTraits(AResolver, ATree, AFileName, Context, Candidates, Traits) then
+      Exit;
+    LineText := LineOf(AText, APosition.Line);
+    Before := Copy(LineText, 1, Context.ChainStart.Character);
+    Expr := Copy(LineText, Context.ChainStart.Character + 1, Context.DotPos.Character - Context.ChainStart.Character);
+    if Pos(#13#10, AText) > 0 then
+      LineBreak := #13#10
+    else
+      LineBreak := #10;
+    for Template in TPostfixTemplates.Templates do
+    begin
+      if not TPostfixTemplates.Applies(Template.Key, Traits, APostfix.InlineVar) or
+        (Template.Statement and (Trim(Before) <> '')) or
+        (MatchScore(Template.Key, Context.Prefix, AMatching) = TFuzzyMatch.NoMatch) then
+        Continue;
+      Item := Default(TCompletionItem);
+      Item.Name := Template.Key;
+      Item.Detail := Template.Description;
+      Item.Kind := KindSnippet;
+      Item.FilterText := Expr + '.' + Template.Key;
+      Item.HasTextEdit := True;
+      Item.TextEdit := TRuleEdit.Create(TTextRange.Create(Context.ChainStart, APosition),
+        TPostfixTemplates.Expand(Template.Key, Expr, Before, LineBreak, APostfix.InlineVar));
+      if SameText(Template.Key, 'for') and not APostfix.InlineVar then
+      begin
+        // Klassische Schleife: Item in den var-Abschnitt der Routine.
+        Slash := Default(TSlashContext);
+        Slash.Text := AText;
+        Slash.Line := APosition.Line;
+        Slash.LineText := LineText;
+        Source := TCommandSource.Create(Slash);
+        try
+          Routine := Source.RoutineAt;
+          if Routine = nil then
+            Continue;
+          Item.AdditionalEdits := [AddLocal(Source, Routine, TSyntaxKind.VarSection, 'var',
+            TPostfixTemplates.ClassicDeclaration(Traits))];
+        finally
+          Source.Free;
+        end;
+      end;
+      Postfix := Postfix + [Item];
+    end;
   end;
 
   procedure AddFromOtherUnits;
@@ -533,6 +697,7 @@ var
 
 begin
   Result := Default(TCompletionItems);
+  Postfix := nil;
   Context := Analyze(ATree, APosition);
   List := TList<TScoredItem>.Create(TScoredItemComparer.Create);
   try
@@ -558,6 +723,9 @@ begin
               Add(Candidate.Name, Candidate.UnitName, KindOf(Candidate.SymbolKind));
           if (Context.Kind = TCompletionContextKind.Scope) and (Length(Context.Prefix) >= MinImportPrefix) then
             AddFromOtherUnits;
+          // Postfix-Vorlagen stehen immer hinter den echten Mitgliedern.
+          if (Context.Kind = TCompletionContextKind.Member) and APostfix.Enabled and (AText <> '') then
+            AddPostfix;
         end;
     end;
     List.Sort;
@@ -569,6 +737,7 @@ begin
     SetLength(Result.Items, List.Count);
     for Index := 0 to List.Count - 1 do
       Result.Items[Index] := List[Index].Item;
+    Result.Items := Result.Items + Postfix;
   finally
     List.Free;
   end;
@@ -596,7 +765,14 @@ begin
       Entry.AddPair('detail', AItems.Items[Index].Detail);
     if AItems.Items[Index].FilterText <> '' then
       Entry.AddPair('filterText', AItems.Items[Index].FilterText);
-    if AItems.Items[Index].InsertText <> '' then
+    if AItems.Items[Index].HasTextEdit then
+    begin
+      EditJson := TJSONObject.Create;
+      Entry.AddPair('textEdit', EditJson);
+      EditJson.AddPair('range', TLspPositions.RangeToJson(AItems.Items[Index].TextEdit.Range));
+      EditJson.AddPair('newText', AItems.Items[Index].TextEdit.NewText);
+    end
+    else if AItems.Items[Index].InsertText <> '' then
       Entry.AddPair('insertText', AItems.Items[Index].InsertText);
     if AItems.Items[Index].Command <> '' then
     begin
@@ -636,6 +812,7 @@ var
   Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Matching: TCompletionMatching;
+  Postfix: TPostfixOptions;
   Directives: TCompletionItems;
   Disabled: TArray<string>;
 begin
@@ -668,8 +845,12 @@ begin
       Matching := FMatchingFor(Uri)
     else
       Matching := TCompletionMatching.Fuzzy;
-    Result := ToJson(Collect(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri),
-      TLspPositions.ReadPosition(PositionValue), Matching));
+    if Assigned(FPostfixFor) then
+      Postfix := FPostfixFor(Uri)
+    else
+      Postfix := TPostfixOptions.Default;
+    Result := ToJson(Collect(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), Document.Text,
+      TLspPositions.ReadPosition(PositionValue), Matching, Postfix));
   finally
     Resolver.Free;
   end;

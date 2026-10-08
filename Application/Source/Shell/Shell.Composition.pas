@@ -41,6 +41,7 @@ uses
   BDLsp.Common.Lsp.Rename,
   BDLsp.Common.Lsp.FileOperations,
   BDLsp.Common.Lsp.Completion,
+  BDLsp.Common.Pascal.LanguageFeatures,
   BDLsp.Common.Lsp.SignatureHelp,
   BDLsp.Common.Lsp.Hierarchies,
   BDLsp.Common.Lsp.Implementations,
@@ -519,6 +520,13 @@ begin
       Result := CompletionSettingsFor(AUri).Matching;
     end;
   FCompletion.SlashCommandsFor := SlashCommandsFor;
+  // Postfix-Vorlagen (#188): for var nur, wenn die Sprachversion Inline-Variablen kennt.
+  FCompletion.PostfixFor :=
+    function(const AUri: string): TPostfixOptions
+    begin
+      Result := TPostfixOptions.Default;
+      Result.InlineVar := TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, DelphiVersionFor(AUri));
+    end;
   // Ereignis-Handler in .dfm/.fmx (#111); die Unit liegt neben der Formulardatei.
   FCompletion.FormItems :=
     function(const AUri, AText: string; const APosition: TTextPosition; out AItems: TCompletionItems): Boolean
