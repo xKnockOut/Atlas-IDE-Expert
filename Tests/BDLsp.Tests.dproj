@@ -130,6 +130,9 @@
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.ClassCompletion.Tests.pas"/>
         <DCCReference Include="Common\Dfm\BDLsp.Common.Dfm.Tests.pas"/>
         <DCCReference Include="Common\Dfm\BDLsp.Common.Dfm.ComponentRename.Tests.pas"/>
+        <DCCReference Include="Common\JsonRpc\BDLsp.Common.JsonRpc.LineTransport.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\BDLsp.Common.Mcp.Server.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\BDLsp.Common.Mcp.IndexTools.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.Formatter.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.DocumentLinks.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.Colors.Tests.pas"/>

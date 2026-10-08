@@ -75,6 +75,7 @@
         <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.Contract.pas"/>
         <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.Messages.pas"/>
         <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.StreamTransport.pas"/>
+        <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.LineTransport.pas"/>
         <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.TracingTransport.pas"/>
         <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.PendingRequests.pas"/>
         <DCCReference Include="Source\JsonRpc\BDLsp.Common.JsonRpc.Watchdog.pas"/>
@@ -124,6 +125,8 @@
         <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.Parser.pas"/>
         <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.Navigation.pas"/>
         <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.ComponentRename.pas"/>
+        <DCCReference Include="Source\Mcp\BDLsp.Common.Mcp.Server.pas"/>
+        <DCCReference Include="Source\Mcp\BDLsp.Common.Mcp.IndexTools.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.FormFiles.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.EditorConfig.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.Formatter.pas"/>

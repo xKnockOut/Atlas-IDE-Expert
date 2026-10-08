@@ -95,6 +95,9 @@ uses
   BDLsp.Common.Editing.ClassCompletion.Tests in 'Common\Editing\BDLsp.Common.Editing.ClassCompletion.Tests.pas',
   BDLsp.Common.Dfm.Tests in 'Common\Dfm\BDLsp.Common.Dfm.Tests.pas',
   BDLsp.Common.Dfm.ComponentRename.Tests in 'Common\Dfm\BDLsp.Common.Dfm.ComponentRename.Tests.pas',
+  BDLsp.Common.JsonRpc.LineTransport.Tests in 'Common\JsonRpc\BDLsp.Common.JsonRpc.LineTransport.Tests.pas',
+  BDLsp.Common.Mcp.Server.Tests in 'Common\Mcp\BDLsp.Common.Mcp.Server.Tests.pas',
+  BDLsp.Common.Mcp.IndexTools.Tests in 'Common\Mcp\BDLsp.Common.Mcp.IndexTools.Tests.pas',
   BDLsp.Common.Editing.Formatter.Tests in 'Common\Editing\BDLsp.Common.Editing.Formatter.Tests.pas',
   BDLsp.Common.Editing.CodeActions.Tests in 'Common\Editing\BDLsp.Common.Editing.CodeActions.Tests.pas';
 
