@@ -79,6 +79,7 @@ uses
   BDLsp.Common.Pascal.TreeCache,
   BDLsp.Common.Index.Extractor,
   BDLsp.Common.Lsp.Internals.Cancellation,
+  BDLsp.Common.Lsp.FormSymbols,
   BDLsp.Common.Dfm.Parser;
 
 const
@@ -253,6 +254,8 @@ var
   Found: TArray<TDfmTarget>;
   Targets: TArray<TDefinitionTarget>;
   Index: Integer;
+  Location: TSymbolLocation;
+  ReadText: TDfmReadText;
 begin
   if not Assigned(FReadText) then
     Exit(TJSONNull.Create);
@@ -260,6 +263,17 @@ begin
   SetLength(Targets, Length(Found));
   for Index := 0 to High(Found) do
     Targets[Index] := Target(Found[Index].FileName, Found[Index].Range, Found[Index].SelectionRange);
+  // Sonst Property, Klasse oder Aufzählungswert über den Index (#308).
+  if Length(Targets) = 0 then
+  begin
+    ReadText := FReadText;
+    for Location in TFormSymbols.Targets(AText, APosition, FIndex,
+      function(const AFileName: string; out AContent: string): Boolean
+      begin
+        Result := ReadText(AFileName, AContent);
+      end) do
+      Targets := Targets + [Target(Location.FileName, Location.Symbol.Range, Location.Symbol.SelectionRange)];
+  end;
   Result := ToJson(Targets);
 end;
 

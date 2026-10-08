@@ -46,6 +46,7 @@ uses
   BDLsp.Common.Semantics.NameResolverStage2.Tests in 'Common\Semantics\BDLsp.Common.Semantics.NameResolverStage2.Tests.pas',
   BDLsp.Common.Lsp.Definition.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Definition.Tests.pas',
   BDLsp.Common.Lsp.PublishedMembers.Tests in 'Common\Lsp\BDLsp.Common.Lsp.PublishedMembers.Tests.pas',
+  BDLsp.Common.Lsp.FormSymbols.Tests in 'Common\Lsp\BDLsp.Common.Lsp.FormSymbols.Tests.pas',
   BDLsp.Common.Lsp.References.Tests in 'Common\Lsp\BDLsp.Common.Lsp.References.Tests.pas',
   BDLsp.Common.Lsp.Rename.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Rename.Tests.pas',
   BDLsp.Common.Lsp.Completion.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Completion.Tests.pas',

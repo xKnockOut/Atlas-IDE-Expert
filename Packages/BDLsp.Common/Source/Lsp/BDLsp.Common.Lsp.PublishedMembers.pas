@@ -27,6 +27,8 @@ type
     DefaultValue: string;
     /// <summary>Klasse, in der die Property published wird.</summary>
     DeclaringClass: string;
+    /// <summary>Klasse mit der vollständigen Deklaration samt Typ (#308), z. B. TControl für Align.</summary>
+    TypeClass: string;
     IsEvent: Boolean;
   end;
 
@@ -197,8 +199,11 @@ begin
         begin
           // Schon aus einer abgeleiteten Klasse bekannt: fehlende Angaben ergänzen.
           Member := Members[Index];
-          if Member.TypeName = '' then
+          if (Member.TypeName = '') and (Info.TypeName <> '') then
+          begin
             Member.TypeName := Info.TypeName;
+            Member.TypeClass := ClassName;
+          end;
           if Member.DefaultValue = '' then
             Member.DefaultValue := Info.DefaultValue;
           Member.IsEvent := IsEventProperty(Member.Name, Member.TypeName);
@@ -210,6 +215,9 @@ begin
         Member.TypeName := Info.TypeName;
         Member.DefaultValue := Info.DefaultValue;
         Member.DeclaringClass := ClassName;
+        Member.TypeClass := '';
+        if Info.TypeName <> '' then
+          Member.TypeClass := ClassName;
         Member.IsEvent := IsEventProperty(Name, Info.TypeName);
         if Info.IsPublished then
         begin

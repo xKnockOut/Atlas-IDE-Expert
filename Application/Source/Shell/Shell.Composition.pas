@@ -207,6 +207,7 @@ uses
   BDLsp.Common.Dfm.FormModel,
   BDLsp.Common.Dfm.BinaryForm,
   BDLsp.Common.Dfm.ImagePreview,
+  BDLsp.Common.Lsp.FormSymbols,
   BDLsp.Common.Editing.CodeActions,
   BDLsp.Common.Rules.Contract,
   BDLsp.Common.Index.SymbolIndex,
@@ -430,6 +431,13 @@ begin
       finally
         Chain.Free;
       end;
+      // Sonst Property, Klasse, Wert oder Ereignis über den Index (#308).
+      if Result = '' then
+        Result := TFormSymbols.Hover(AText, TDocumentUris.ToPath(AUri), APosition, FIndex,
+          function(const AFileName: string; out AContent: string): Boolean
+          begin
+            Result := ReadSourceText(AFileName, AContent);
+          end);
     end;
   FHover.Attach(FDispatcher);
   FWorkspaceSymbols := TLspWorkspaceSymbols.Create(FIndex);

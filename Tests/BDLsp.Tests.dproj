@@ -83,6 +83,7 @@
         <DCCReference Include="Common\Semantics\BDLsp.Common.Semantics.NameResolverStage2.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Definition.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.PublishedMembers.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.FormSymbols.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Hover.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.HoverValues.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.LinkedEditing.Tests.pas"/>

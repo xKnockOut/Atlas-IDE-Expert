@@ -145,6 +145,10 @@ var
 begin
   Members := TPublishedMembers.Collect(FIndex, 'TKnopf', ReadSource);
   Assert.AreEqual('string', Members[Find(Members, 'Caption')].TypeName);
+  // Deklariert mit Typ in TBasis, published erst in TKnopf (#308).
+  Assert.AreEqual('TBasis', Members[Find(Members, 'Caption')].TypeClass);
+  Assert.AreEqual('TKnopf', Members[Find(Members, 'Caption')].DeclaringClass);
+  Assert.AreEqual('TKnopf', Members[Find(Members, 'Enabled')].TypeClass);
 end;
 
 procedure TPublishedMembersTests.SeparatesEvents;
