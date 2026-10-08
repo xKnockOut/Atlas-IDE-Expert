@@ -31,6 +31,9 @@ uses
   BDLsp.Common.Lsp.CodeActions,
   BDLsp.Common.Lsp.DocumentLinks,
   BDLsp.Common.Lsp.Colors,
+  BDLsp.Common.Lsp.Commands,
+  BDLsp.Common.Lsp.Status,
+  BDLsp.Common.JsonRpc.Statistics,
   BDLsp.Common.Lsp.WatchedFiles,
   BDLsp.Common.Lsp.WorkspaceFolders,
   BDLsp.Common.Lsp.Configuration,
@@ -60,6 +63,8 @@ type
     FCodeActions: TLspCodeActions;
     FDocumentLinks: TLspDocumentLinks;
     FColors: TLspColors;
+    FCommands: TLspCommands;
+    FStatistics: IJsonRpcStatistics;
     FWatchedFiles: TLspWatchedFiles;
     FWorkspaceFolders: TLspWorkspaceFolders;
     /// <summary>Für delphi-lsp.json außerhalb aller Ordner: nur Fehlermeldungen.</summary>
@@ -77,6 +82,8 @@ type
     /// <summary>Innerster Ordner zur Datei oder nil. Aufrufer hält FWorkspacesLock.</summary>
     function WorkspaceOf(const AFileName: string): TShellWorkspace;
     function EnsureUnit(const AUnitName: string): Boolean;
+    /// <summary>Inhalt des Status-Befehls (#28).</summary>
+    function CollectStatus: TServerStatus;
     function DefinesFor(const AUri: string; out ADefines: TArray<string>): Boolean;
     function DelphiVersionFor(const AUri: string): string;
     function RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
@@ -146,6 +153,8 @@ begin
   FTransport := ATransport;
   FLogger := ALogger;
   FDispatcher := TJsonRpcDispatcher.Create;
+  FStatistics := TJsonRpcStatistics.Create;
+  FDispatcher.Statistics := FStatistics;
   FDispatcher.Watchdog := TJsonRpcWatchdog.Create(FDispatcher.PendingRequests, RequestTimeoutMs,
     procedure(const AMethod: string; ATimeoutMs: Cardinal)
     begin
@@ -262,6 +271,17 @@ begin
   FDocumentLinks.Attach(FDispatcher);
   FColors := TLspColors.Create(FDocuments, WindowsSystemColor);
   FColors.Attach(FDispatcher);
+  FCommands := TLspCommands.Create;
+  FCommands.Register(StatusCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    var
+      Status: TServerStatus;
+    begin
+      Status := CollectStatus;
+      FLogger.Info('Status:' + sLineBreak + Status.ToMarkdown);
+      Result := Status.ToJson;
+    end);
+  FCommands.Attach(FDispatcher);
   FWatchedFiles := TLspWatchedFiles.Create(FTransport);
   FWatchedFiles.OnChanged := HandleWatchedFiles;
   FWatchedFiles.Attach(FDispatcher);
@@ -320,6 +340,7 @@ begin
   FCodeActions.Free;
   FDocumentLinks.Free;
   FColors.Free;
+  FCommands.Free;
   FWatchedFiles.Free;
   FTextDocumentSync.Free;
   FDocuments := nil;
@@ -427,6 +448,36 @@ begin
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
+end;
+
+function AllocatedBytes: Int64;
+var
+  State: TMemoryManagerState;
+  I: Integer;
+begin
+  GetMemoryManagerState(State);
+  Result := Int64(State.TotalAllocatedMediumBlockSize) + Int64(State.TotalAllocatedLargeBlockSize);
+  for I := Low(State.SmallBlockTypeStates) to High(State.SmallBlockTypeStates) do
+    Inc(Result, Int64(State.SmallBlockTypeStates[I].AllocatedBlockCount) *
+      State.SmallBlockTypeStates[I].UseableBlockSize);
+end;
+
+function TServerComposition.CollectStatus: TServerStatus;
+var
+  Workspace: TShellWorkspace;
+begin
+  Result := Default(TServerStatus);
+  Result.Units := FIndex.UnitCount;
+  Result.Symbols := FIndex.SymbolCount;
+  Result.MemoryBytes := AllocatedBytes;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    for Workspace in FWorkspaces do
+      Result.Workspaces := Result.Workspaces + [Workspace.IndexStatus];
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  Result.Requests := FStatistics.Snapshot;
 end;
 
 function TServerComposition.DelphiVersionFor(const AUri: string): string;
@@ -616,6 +667,8 @@ begin
 end;
 
 class function TServerComposition.BuildCapabilities: TJSONObject;
+var
+  Commands: TJSONArray;
 begin
   // Die Features tragen ihre Capabilities hier ein, sobald sie umgesetzt sind.
   Result := TJSONObject.Create;
@@ -632,6 +685,9 @@ begin
   Result.AddPair('codeActionProvider', TLspCodeActions.Capability);
   Result.AddPair('documentLinkProvider', TLspDocumentLinks.Capability);
   Result.AddPair('colorProvider', TJSONBool.Create(True));
+  Commands := TJSONArray.Create;
+  Commands.Add(StatusCommand);
+  Result.AddPair('executeCommandProvider', TJSONObject.Create(TJSONPair.Create('commands', Commands)));
   Result.AddPair('workspace', TLspWorkspaceFolders.Capability);
 end;
 
