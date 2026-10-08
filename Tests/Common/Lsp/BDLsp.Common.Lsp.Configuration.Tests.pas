@@ -34,6 +34,8 @@ type
     procedure AppliesEditsAndRevertsOnClose;
     [Test]
     procedure ReadsRootFromInitializeParams;
+    [Test]
+    procedure AppliesEditorSettingsBelowFile;
   end;
 
 implementation
@@ -41,6 +43,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  BDLsp.Common.JsonRpc.Dispatcher,
   BDLsp.Common.Documents.Providers.DocumentStore,
   BDLsp.Common.Configuration.Contract;
 
@@ -150,6 +153,32 @@ begin
     Params.Free;
   end;
   Assert.AreEqual('', TLspConfiguration.RootPathFromInitialize(nil));
+end;
+
+procedure TLspConfigurationTests.AppliesEditorSettingsBelowFile;
+var
+  Dispatcher: TJsonRpcDispatcher;
+  Message, Response: TJSONObject;
+begin
+  FDiskText := '{"platform": "Win64"}';
+  FConfiguration.LoadWorkspace(Root);
+  Dispatcher := TJsonRpcDispatcher.Create;
+  try
+    FConfiguration.Attach(Dispatcher);
+    Message := TJSONObject.ParseJSONValue('{"jsonrpc": "2.0", "method": "workspace/didChangeConfiguration", ' +
+      '"params": {"settings": {"betterDelphiLsp": {"platform": "Win32", "config": "Release"}}}}') as TJSONObject;
+    try
+      Response := Dispatcher.DispatchMessage(Message);
+      Assert.IsNull(Response);
+    finally
+      Message.Free;
+    end;
+  finally
+    Dispatcher.Free;
+  end;
+  Assert.AreEqual('Win64', FConfiguration.Settings.Platform);
+  Assert.AreEqual('Release', FConfiguration.Settings.Config);
+  Assert.AreEqual('', TLspConfiguration.EditorSettingsFromParams(nil));
 end;
 
 initialization

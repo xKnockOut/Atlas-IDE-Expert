@@ -3,6 +3,10 @@
 // Liest delphi-lsp.json und prüft sie. Fehlerhafte Einträge werden mit
 // Position gemeldet und ignoriert; der Rest gilt trotzdem. Bei einem
 // Syntaxfehler gelten die Vorgaben.
+//
+// ParseLayered führt Einstellungen aus dem Editor (z. B. VS-Code-Settings)
+// mit delphi-lsp.json zusammen: Jeder Schlüssel, den die Datei setzt, hat
+// Vorrang; Regeln werden je Regel-Id zusammengeführt.
 
 interface
 
@@ -14,6 +18,10 @@ type
   TConfigurationParser = class
   public
     class function Parse(const AText: string; out AIssues: TArray<TConfigurationIssue>): TServerSettings; static;
+    /// <summary>Editor-Einstellungen (JSON, '' = keine) unter delphi-lsp.json (Text, '' = keine Datei).
+    /// AIssues betreffen nur die Datei.</summary>
+    class function ParseLayered(const AEditorText, AFileText: string;
+      out AIssues: TArray<TConfigurationIssue>): TServerSettings; static;
     /// <summary>Schweregrad aus dem Text ("off", "hint", "info", "information", "warning", "error").</summary>
     class function TryParseSeverity(const AValue: string; out ASeverity: TRuleSeverity): Boolean; static;
   end;
@@ -311,6 +319,83 @@ begin
     ASeverity := TRuleSeverity.Default;
     Result := False;
   end;
+end;
+
+// Schlüssel der obersten Ebene; leer bei Syntaxfehler.
+function RootKeys(const AText: string): TArray<string>;
+var
+  Root: TJsonNode;
+  Index: Integer;
+begin
+  Result := nil;
+  try
+    Root := TJsonTree.Parse(AText);
+  except
+    on EJsonTreeError do
+      Exit;
+  end;
+  try
+    if Root.Kind = TJsonKind.Object_ then
+      for Index := 0 to Root.Count - 1 do
+        Result := Result + [Root.Keys[Index]];
+  finally
+    Root.Free;
+  end;
+end;
+
+function MergeRules(const AEditor, AFile: TArray<TRuleSetting>): TArray<TRuleSetting>;
+var
+  EditorRule, FileRule: TRuleSetting;
+  Overridden: Boolean;
+begin
+  Result := nil;
+  for EditorRule in AEditor do
+  begin
+    Overridden := False;
+    for FileRule in AFile do
+      if SameText(FileRule.Id, EditorRule.Id) then
+        Overridden := True;
+    if not Overridden then
+      Result := Result + [EditorRule];
+  end;
+  Result := Result + AFile;
+end;
+
+class function TConfigurationParser.ParseLayered(const AEditorText, AFileText: string;
+  out AIssues: TArray<TConfigurationIssue>): TServerSettings;
+var
+  FileSettings: TServerSettings;
+  Ignored: TArray<TConfigurationIssue>;
+  Key: string;
+begin
+  AIssues := nil;
+  if AFileText <> '' then
+    FileSettings := Parse(AFileText, AIssues)
+  else
+    FileSettings := TServerSettings.Default;
+  if Trim(AEditorText) = '' then
+    Exit(FileSettings);
+  // Unbekannte Schlüssel wie serverPath gehören dem Editor; ihre Meldungen entfallen.
+  Result := Parse(AEditorText, Ignored);
+  if AFileText = '' then
+    Exit;
+  for Key in RootKeys(AFileText) do
+    if Key = 'delphiVersion' then
+      Result.DelphiVersion := FileSettings.DelphiVersion
+    else if Key = 'language' then
+      Result.Language := FileSettings.Language
+    else if Key = 'project' then
+      Result.Project := FileSettings.Project
+    else if Key = 'config' then
+      Result.Config := FileSettings.Config
+    else if Key = 'platform' then
+      Result.Platform := FileSettings.Platform
+    else if Key = 'rules' then
+      Result.Rules := MergeRules(Result.Rules, FileSettings.Rules)
+    else if Key = 'exclude' then
+      Result.Exclude := FileSettings.Exclude
+    else if Key = 'format' then
+      Result.Format := FileSettings.Format;
 end;
 
 class function TConfigurationParser.Parse(const AText: string; out AIssues: TArray<TConfigurationIssue>): TServerSettings;

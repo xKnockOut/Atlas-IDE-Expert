@@ -23,6 +23,12 @@ type
     procedure WarnsAboutUnknownKeys;
     [Test]
     procedure ReadsRuleObjectsWithOptions;
+    [Test]
+    procedure FileOverridesEditorPerKey;
+    [Test]
+    procedure MergesRulesPerId;
+    [Test]
+    procedure EditorOrFileAlone;
   end;
 
   [TestFixture]
@@ -49,6 +55,45 @@ begin
 end;
 
 { TConfigurationParserTests }
+
+procedure TConfigurationParserTests.FileOverridesEditorPerKey;
+var
+  Issues: TArray<TConfigurationIssue>;
+  Settings: TServerSettings;
+begin
+  Settings := TConfigurationParser.ParseLayered(
+    '{"serverPath": "C:\\Bin\\BetterDelphiLSP.exe", "platform": "Win32", "config": "Release", "language": "en"}',
+    '{ // Datei gewinnt'#10' "platform": "Win64", "language": "de" }', Issues);
+  Assert.AreEqual('Win64', Settings.Platform);
+  Assert.AreEqual('de', Settings.Language);
+  Assert.AreEqual('Release', Settings.Config);
+  // Unbekannte Editor-Schlüssel wie serverPath erzeugen keine Meldung.
+  Assert.AreEqual(0, Integer(Length(Issues)));
+end;
+
+procedure TConfigurationParserTests.MergesRulesPerId;
+var
+  Issues: TArray<TConfigurationIssue>;
+  Settings: TServerSettings;
+begin
+  Settings := TConfigurationParser.ParseLayered(
+    '{"rules": {"with-statement": "error", "unused-variable": "hint"}}',
+    '{"rules": {"with-statement": "off"}}', Issues);
+  Assert.IsTrue(Settings.RuleSeverity('with-statement', TRuleSeverity.Warning) = TRuleSeverity.Off);
+  Assert.IsTrue(Settings.RuleSeverity('unused-variable', TRuleSeverity.Warning) = TRuleSeverity.Hint);
+end;
+
+procedure TConfigurationParserTests.EditorOrFileAlone;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Assert.AreEqual('Win32', TConfigurationParser.ParseLayered('{"platform": "Win32"}', '', Issues).Platform);
+  Assert.AreEqual('Win64', TConfigurationParser.ParseLayered('', '{"platform": "Win64"}', Issues).Platform);
+  Assert.AreEqual('de', TConfigurationParser.ParseLayered('', '', Issues).Language);
+  // Meldungen gelten nur der Datei.
+  TConfigurationParser.ParseLayered('{"language": "fr"}', '{"language": "xx"}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+end;
 
 procedure TConfigurationParserTests.ReadsAllSettings;
 var

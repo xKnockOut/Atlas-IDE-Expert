@@ -42,6 +42,48 @@
           "default": "",
           "markdownDescription": "Pfad zu `BetterDelphiLSP.exe`. Leer: `Output\\Win64\\Debug\\Bin\\BetterDelphiLSP.exe` im ersten Arbeitsbereichsordner."
         },
+        "betterDelphiLsp.delphiVersion": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Delphi-Version wie in der Registry, z. B. `37.0`; leer: neueste installierte. delphi-lsp.json im Projekt hat Vorrang."
+        },
+        "betterDelphiLsp.language": {
+          "type": "string",
+          "enum": [
+            "de",
+            "en"
+          ],
+          "default": "de",
+          "description": "Sprache der Meldungen. delphi-lsp.json im Projekt hat Vorrang."
+        },
+        "betterDelphiLsp.project": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Projektdatei (`.dproj`) relativ zum Arbeitsbereich; leer: die einzige `.dproj` im Wurzelordner. delphi-lsp.json im Projekt hat Vorrang."
+        },
+        "betterDelphiLsp.config": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Build-Konfiguration, z. B. `Debug`; leer: die im Projekt eingestellte. delphi-lsp.json im Projekt hat Vorrang."
+        },
+        "betterDelphiLsp.platform": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Zielplattform, z. B. `Win64`; leer: die im Projekt eingestellte. delphi-lsp.json im Projekt hat Vorrang."
+        },
+        "betterDelphiLsp.rules": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Prüfregeln: Regel-Id auf `off`, `hint`, `info`, `warning` oder `error`. Einträge in delphi-lsp.json haben je Regel Vorrang."
+        },
+        "betterDelphiLsp.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Ausgeschlossene Ordner und Dateien als Glob-Muster, z. B. `ThirdParty/**`. delphi-lsp.json im Projekt hat Vorrang."
+        },
         "betterDelphiLsp.logLevel": {
           "type": "string",
           "enum": [

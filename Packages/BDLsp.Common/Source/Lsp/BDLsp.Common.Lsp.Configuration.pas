@@ -8,6 +8,9 @@
 // - Ändert sich die Datei des Arbeitsbereichs im Editor, gelten die neuen
 //   Einstellungen sofort; nach dem Schließen gilt wieder der Stand auf der
 //   Platte. Änderungen außerhalb des Editors folgen mit #22.
+// - Einstellungen aus dem Editor kommen über workspace/didChangeConfiguration
+//   (Abschnitt "betterDelphiLsp"). delphi-lsp.json hat je Schlüssel Vorrang
+//   (TConfigurationParser.ParseLayered).
 
 interface
 
@@ -15,6 +18,7 @@ uses
   System.SysUtils,
   System.JSON,
   BDLsp.Common.JsonRpc.Contract,
+  BDLsp.Common.JsonRpc.Dispatcher,
   BDLsp.Common.Documents.Contract,
   BDLsp.Common.Configuration.Contract;
 
@@ -23,6 +27,10 @@ type
   TConfigurationFileReader = reference to function(const AFileName: string; out AText: string): Boolean;
 
   TLspConfiguration = class
+  public const
+    DidChangeConfigurationMethod = 'workspace/didChangeConfiguration';
+    /// <summary>Abschnitt der Editor-Einstellungen, z. B. betterDelphiLsp.project in VS Code.</summary>
+    EditorSection = 'betterDelphiLsp';
   private
     FStore: IDocumentStore;
     FTransport: IJsonRpcTransport;
@@ -32,6 +40,11 @@ type
     FRootPath: string;
     FFileName: string;
     FOnChanged: TConfigurationChangedEvent;
+    // Nur im Thread der Nachrichtenschleife benutzt.
+    FFileText: string;
+    FEditorText: string;
+    procedure Recompute;
+    procedure HandleDidChangeConfiguration(const AParams: TJSONValue);
     procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
     procedure Apply(const ASettings: TServerSettings);
     procedure Publish(const AUri: string; AVersion: Integer; const AIssues: TArray<TConfigurationIssue>);
@@ -42,12 +55,14 @@ type
     constructor Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
       const AReadFile: TConfigurationFileReader);
     destructor Destroy; override;
-    /// <summary>Meldet sich am Dokumentspeicher an.</summary>
-    procedure Attach;
+    /// <summary>Meldet sich am Dokumentspeicher und, falls angegeben, für Editor-Einstellungen am Dispatcher an.</summary>
+    procedure Attach(ADispatcher: TJsonRpcDispatcher = nil);
     /// <summary>Liest delphi-lsp.json aus ARootPath; ohne Datei gelten die Vorgaben.</summary>
     procedure LoadWorkspace(const ARootPath: string);
     /// <summary>Wurzelordner aus den initialize-Parametern (rootUri, workspaceFolders, rootPath); sonst ''.</summary>
     class function RootPathFromInitialize(const AParams: TJSONObject): string; static;
+    /// <summary>Abschnitt betterDelphiLsp aus den Parametern von didChangeConfiguration als JSON; sonst ''.</summary>
+    class function EditorSettingsFromParams(const AParams: TJSONValue): string; static;
     /// <summary>Diagnostics zu den Fehlern; der Aufrufer übernimmt das Objekt.</summary>
     class function BuildParams(const AUri: string; AVersion: Integer;
       const AIssues: TArray<TConfigurationIssue>): TJSONObject; static;
@@ -97,9 +112,42 @@ begin
   inherited;
 end;
 
-procedure TLspConfiguration.Attach;
+procedure TLspConfiguration.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   FStore.Subscribe(HandleDocumentEvent);
+  if ADispatcher <> nil then
+    ADispatcher.RegisterNotification(DidChangeConfigurationMethod, HandleDidChangeConfiguration);
+end;
+
+procedure TLspConfiguration.Recompute;
+var
+  Ignored: TArray<TConfigurationIssue>;
+begin
+  // Die Meldungen zur Datei sind schon veröffentlicht.
+  Apply(TConfigurationParser.ParseLayered(FEditorText, FFileText, Ignored));
+end;
+
+procedure TLspConfiguration.HandleDidChangeConfiguration(const AParams: TJSONValue);
+var
+  Text: string;
+begin
+  Text := EditorSettingsFromParams(AParams);
+  if Text = FEditorText then
+    Exit;
+  FEditorText := Text;
+  Recompute;
+end;
+
+class function TLspConfiguration.EditorSettingsFromParams(const AParams: TJSONValue): string;
+var
+  Section: TJSONValue;
+begin
+  Result := '';
+  if not (AParams is TJSONObject) then
+    Exit;
+  Section := TJSONObject(AParams).FindValue('settings.' + EditorSection);
+  if Section is TJSONObject then
+    Result := Section.ToJSON;
 end;
 
 function TLspConfiguration.GetSettings: TServerSettings;
@@ -173,16 +221,16 @@ procedure TLspConfiguration.LoadFromDisk;
 var
   Text: string;
   Issues: TArray<TConfigurationIssue>;
-  Settings: TServerSettings;
 begin
   if (FFileName <> '') and FReadFile(FFileName, Text) then
   begin
-    Settings := TConfigurationParser.Parse(Text, Issues);
+    TConfigurationParser.Parse(Text, Issues);
     Publish(TDocumentUris.FromPath(FFileName), -1, Issues);
+    FFileText := Text;
   end
   else
-    Settings := TServerSettings.Default;
-  Apply(Settings);
+    FFileText := '';
+  Recompute;
 end;
 
 procedure TLspConfiguration.LoadWorkspace(const ARootPath: string);
@@ -209,17 +257,19 @@ end;
 procedure TLspConfiguration.HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
 var
   Issues: TArray<TConfigurationIssue>;
-  Settings: TServerSettings;
 begin
   if not IsConfigurationUri(ADocument.Uri) then
     Exit;
   case AKind of
     TDocumentEventKind.Opened, TDocumentEventKind.Changed:
       begin
-        Settings := TConfigurationParser.Parse(ADocument.Text, Issues);
+        TConfigurationParser.Parse(ADocument.Text, Issues);
         Publish(ADocument.Uri, ADocument.Version, Issues);
         if IsWorkspaceFile(ADocument.Uri) then
-          Apply(Settings);
+        begin
+          FFileText := ADocument.Text;
+          Recompute;
+        end;
       end;
     TDocumentEventKind.Closed:
       if IsWorkspaceFile(ADocument.Uri) then
