@@ -24,7 +24,8 @@ uses
   BDLsp.Common.Rules.Builtin.Inheritance,
   BDLsp.Common.Rules.Builtin.Capture,
   BDLsp.Common.Rules.Builtin.Components,
-  BDLsp.Common.Rules.Builtin.FormFields;
+  BDLsp.Common.Rules.Builtin.FormFields,
+  BDLsp.Common.Rules.Builtin.Security;
 
 function BuiltinRules: TArray<IRule>;
 var
@@ -43,6 +44,7 @@ begin
     RegisterCaptureRules(Registry);
     RegisterComponentRules(Registry);
     RegisterFormFieldRules(Registry);
+    RegisterSecurityRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

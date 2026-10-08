@@ -161,7 +161,9 @@ const
     'component-missing-inherited,component-setter-without-invalidate,confusable-identifier,control-char,' +
     'declared-not-implemented,destroy-without-override,forbidden-uses,form-field-type-mismatch,' +
     'form-field-without-object,form-object-without-field,hides-virtual,implemented-not-declared,' +
-    'invisible-char,lock-without-finally,possibly-uninitialized,result-not-set,synchronize-in-destructor,' +
+    'invisible-char,lock-without-finally,possibly-uninitialized,result-not-set,security-command-injection,' +
+    'security-insecure-http,security-insecure-random,security-tls-verification-disabled,security-weak-crypto,' +
+    'synchronize-in-destructor,' +
     'thread-free-with-free-on-terminate,thread-resume-suspend,thread-use-after-free-on-terminate,' +
     'thread-vcl-access,unit-name-mismatch,unused-assignment,unused-local,unused-parameter,' +
     'virtual-instead-of-override';
@@ -172,9 +174,12 @@ begin
     'component-missing-free-notification,component-missing-inherited,control-char,declared-not-implemented,' +
     'destroy-without-override,form-field-type-mismatch,form-field-without-object,form-object-without-field,' +
     'hides-virtual,implemented-not-declared,lock-without-finally,possibly-uninitialized,' +
-    'result-not-set,synchronize-in-destructor,' + Threads + ',unit-name-mismatch,virtual-instead-of-override',
+    'result-not-set,security-command-injection,security-tls-verification-disabled,synchronize-in-destructor,' +
+    Threads + ',unit-name-mismatch,virtual-instead-of-override',
     ActiveRules('fast'));
-  Assert.AreEqual('bidi-control,confusable-identifier,invisible-char', ActiveRules('security'));
+  Assert.AreEqual('bidi-control,confusable-identifier,invisible-char,security-command-injection,' +
+    'security-insecure-http,security-insecure-random,security-tls-verification-disabled,security-weak-crypto',
+    ActiveRules('security'));
   Assert.AreEqual('component-fixed-pixels,component-hardcoded-color,component-setter-without-invalidate,' +
     'forbidden-uses,thread-resume-suspend,unused-assignment,unused-local,unused-parameter',
     ActiveRules('style'));

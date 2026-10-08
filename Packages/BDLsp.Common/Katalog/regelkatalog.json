@@ -314,6 +314,60 @@
       "description": "The field type differs from the class of the object in the form file. Without source for the class in the form file, nothing is compared. The fix changes the field type.",
       "bad": "Edit1: TEdit;  // object Edit1: TMaskEdit",
       "good": "Edit1: TMaskEdit;"
+    },
+    {
+      "id": "security-command-injection",
+      "name": "Command injection",
+      "category": "vulnerability",
+      "severity": "warning",
+      "description": "ShellExecute, ShellExecuteEx, CreateProcess or WinExec receives an argument built with +, Format or Concat from non-constant values. Input could inject further commands. Without data flow analysis only this simple pattern is found (medium confidence).",
+      "bad": "ShellExecute(0, 'open', PChar('cmd /c ' + Edit1.Text), nil, nil, SW_SHOW);",
+      "good": "ShellExecute(0, 'open', 'tool.exe', PChar(QuotedArgument), nil, SW_SHOW);  // validated"
+    },
+    {
+      "id": "security-path-traversal",
+      "name": "Path traversal",
+      "category": "vulnerability",
+      "severity": "warning",
+      "description": "A file access (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) uses a path from input data (Text, ParamStr, Request) without TPath.GetFullPath check. Experimental until data flow analysis is available.",
+      "bad": "List.LoadFromFile('C:\\Data\\' + Edit1.Text);",
+      "good": "Path := TPath.GetFullPath(TPath.Combine(Root, Edit1.Text));  // then check it starts with Root"
+    },
+    {
+      "id": "security-weak-crypto",
+      "name": "Weak cryptography",
+      "category": "security-hotspot",
+      "severity": "hint",
+      "description": "MD5, SHA-1, DES or RC4 is used. For checksums this is fine; for passwords and signatures it is not. Low confidence, medium when the statement mentions a password, secret or signature.",
+      "bad": "Stored := THashSHA1.GetHashString(PasswordText);",
+      "good": "Stored := THashSHA2.GetHashString(Salt + PasswordText);"
+    },
+    {
+      "id": "security-tls-verification-disabled",
+      "name": "TLS certificate check disabled",
+      "category": "vulnerability",
+      "severity": "warning",
+      "description": "Indy SSLOptions.VerifyMode := [], an OnVerifyPeer handler that always returns True, or a ValidateServerCertificate handler that sets Accepted := True without a check.",
+      "bad": "IdSSL.SSLOptions.VerifyMode := [];",
+      "good": "IdSSL.SSLOptions.VerifyMode := [sslvrfPeer];"
+    },
+    {
+      "id": "security-insecure-http",
+      "name": "Unencrypted http:// URL",
+      "category": "security-hotspot",
+      "severity": "hint",
+      "description": "A string contains an http:// URL. XML namespaces and schema URIs, comments and localhost, 127.0.0.1 and [::1] are skipped. The fix replaces http:// with https://.",
+      "bad": "Client.Get('http://api.example.com/data');",
+      "good": "Client.Get('https://api.example.com/data');"
+    },
+    {
+      "id": "security-insecure-random",
+      "name": "Random for security values",
+      "category": "security-hotspot",
+      "severity": "warning",
+      "description": "Random is assigned to a token, password, salt, nonce or key. Random is predictable; use a cryptographic random generator. Missing Randomize is a separate topic (#153).",
+      "bad": "Token := IntToStr(Random(MaxInt));",
+      "good": "Token := TNetEncoding.Base64URL.EncodeBytesToString(CryptoRandomBytes(32));"
     }
   ]
 }

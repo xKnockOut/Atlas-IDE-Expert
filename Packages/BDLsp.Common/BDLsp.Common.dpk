@@ -126,6 +126,7 @@ contains
   BDLsp.Common.Rules.Builtin.Capture in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Capture.pas',
   BDLsp.Common.Rules.Builtin.Components in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Components.pas',
   BDLsp.Common.Rules.Builtin.FormFields in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.FormFields.pas',
+  BDLsp.Common.Rules.Builtin.Security in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Security.pas',
   BDLsp.Common.Lsp.FileOperations in 'Source\Lsp\BDLsp.Common.Lsp.FileOperations.pas',
   BDLsp.Common.Editing.ClassCompletion in 'Source\Editing\BDLsp.Common.Editing.ClassCompletion.pas',
   BDLsp.Common.Dfm.Contract in 'Source\Dfm\BDLsp.Common.Dfm.Contract.pas',

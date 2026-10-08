@@ -334,6 +334,60 @@ begin
     '      "description": "The field type differs from the class of the object in the form file. Without source for the class in the form file, nothing is compared. The fix changes the field type.",' + #10 +
     '      "bad": "Edit1: TEdit;  // object Edit1: TMaskEdit",' + #10 +
     '      "good": "Edit1: TMaskEdit;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "security-command-injection",' + #10 +
+    '      "name": "Command injection",' + #10 +
+    '      "category": "vulnerability",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "ShellExecute, ShellExecuteEx, CreateProcess or WinExec receives an argument built with +, Format or Concat from non-constant values. Input could inject further commands. Without ' + 'data flow analysis only this simple pattern is found (medium confidence).",' + #10 +
+    '      "bad": "ShellExecute(0, ''open'', PChar(''cmd /c '' + Edit1.Text), nil, nil, SW_SHOW);",' + #10 +
+    '      "good": "ShellExecute(0, ''open'', ''tool.exe'', PChar(QuotedArgument), nil, SW_SHOW);  // validated"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "security-path-traversal",' + #10 +
+    '      "name": "Path traversal",' + #10 +
+    '      "category": "vulnerability",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "A file access (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) uses a path from input data (Text, ParamStr, Request) without TPath.GetFullPath check. Experimental until da' + 'ta flow analysis is available.",' + #10 +
+    '      "bad": "List.LoadFromFile(''C:\\Data\\'' + Edit1.Text);",' + #10 +
+    '      "good": "Path := TPath.GetFullPath(TPath.Combine(Root, Edit1.Text));  // then check it starts with Root"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "security-weak-crypto",' + #10 +
+    '      "name": "Weak cryptography",' + #10 +
+    '      "category": "security-hotspot",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "MD5, SHA-1, DES or RC4 is used. For checksums this is fine; for passwords and signatures it is not. Low confidence, medium when the statement mentions a password, secret or signa' + 'ture.",' + #10 +
+    '      "bad": "Stored := THashSHA1.GetHashString(PasswordText);",' + #10 +
+    '      "good": "Stored := THashSHA2.GetHashString(Salt + PasswordText);"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "security-tls-verification-disabled",' + #10 +
+    '      "name": "TLS certificate check disabled",' + #10 +
+    '      "category": "vulnerability",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "Indy SSLOptions.VerifyMode := [], an OnVerifyPeer handler that always returns True, or a ValidateServerCertificate handler that sets Accepted := True without a check.",' + #10 +
+    '      "bad": "IdSSL.SSLOptions.VerifyMode := [];",' + #10 +
+    '      "good": "IdSSL.SSLOptions.VerifyMode := [sslvrfPeer];"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "security-insecure-http",' + #10 +
+    '      "name": "Unencrypted http:// URL",' + #10 +
+    '      "category": "security-hotspot",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "A string contains an http:// URL. XML namespaces and schema URIs, comments and localhost, 127.0.0.1 and [::1] are skipped. The fix replaces http:// with https://.",' + #10 +
+    '      "bad": "Client.Get(''http://api.example.com/data'');",' + #10 +
+    '      "good": "Client.Get(''https://api.example.com/data'');"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "security-insecure-random",' + #10 +
+    '      "name": "Random for security values",' + #10 +
+    '      "category": "security-hotspot",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "Random is assigned to a token, password, salt, nonce or key. Random is predictable; use a cryptographic random generator. Missing Randomize is a separate topic (#153).",' + #10 +
+    '      "bad": "Token := IntToStr(Random(MaxInt));",' + #10 +
+    '      "good": "Token := TNetEncoding.Base64URL.EncodeBytesToString(CryptoRandomBytes(32));"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -520,6 +574,36 @@ begin
     '      "id": "form-field-type-mismatch",' + #10 +
     '      "name": "Feldtyp weicht vom Formularobjekt ab",' + #10 +
     '      "description": "Der Typ des Felds weicht von der Klasse des Objekts in der Formulardatei ab. Ohne Quelltext der Klasse aus der Formulardatei wird nicht verglichen. Die Korrektur ändert den Feldt' + 'yp."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "security-command-injection",' + #10 +
+    '      "name": "Befehlsinjektion",' + #10 +
+    '      "description": "ShellExecute, ShellExecuteEx, CreateProcess oder WinExec erhält ein Argument, das mit +, Format oder Concat aus nicht konstanten Werten zusammengesetzt ist. Eingaben könnten weit' + 'ere Befehle einschleusen. Ohne Datenflussanalyse wird nur dieses einfache Muster erkannt (mittlere Konfidenz)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "security-path-traversal",' + #10 +
+    '      "name": "Pfad-Traversal",' + #10 +
+    '      "description": "Ein Dateizugriff (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) verwendet einen Pfad aus Eingabedaten (Text, ParamStr, Request) ohne Prüfung über TPath.GetFullPath. Expe' + 'rimentell, bis die Datenflussanalyse verfügbar ist."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "security-weak-crypto",' + #10 +
+    '      "name": "Schwache Kryptografie",' + #10 +
+    '      "description": "MD5, SHA-1, DES oder RC4 wird verwendet. Für Prüfsummen ist das in Ordnung, für Kennwörter und Signaturen nicht. Niedrige Konfidenz, mittlere, wenn die Anweisung ein Kennwort, Ge' + 'heimnis oder eine Signatur nennt."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "security-tls-verification-disabled",' + #10 +
+    '      "name": "TLS-Zertifikatsprüfung abgeschaltet",' + #10 +
+    '      "description": "Indy SSLOptions.VerifyMode := [], ein OnVerifyPeer-Handler, der immer True liefert, oder ein ValidateServerCertificate-Handler, der Accepted := True ohne Prüfung setzt."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "security-insecure-http",' + #10 +
+    '      "name": "Unverschlüsselte http://-URL",' + #10 +
+    '      "description": "Ein String enthält eine http://-URL. XML-Namensräume und Schema-URIs, Kommentare sowie localhost, 127.0.0.1 und [::1] sind ausgenommen. Die Korrektur ersetzt http:// durch https:' + '//."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "security-insecure-random",' + #10 +
+    '      "name": "Random für sicherheitsrelevante Werte",' + #10 +
+    '      "description": "Random wird einem Token, Kennwort, Salt, Nonce oder Schlüssel zugewiesen. Random ist vorhersagbar; einen kryptografischen Zufallsgenerator verwenden. Fehlendes Randomize behandel' + 't #153."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
