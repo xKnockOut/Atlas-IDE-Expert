@@ -116,6 +116,8 @@ type
     Completion: TCompletionSettings;
     /// <summary>Blockabschluss beim Tippen; Vorgabe alle (#179).</summary>
     CompleteBlocks: TBlockKinds;
+    /// <summary>Schnellbefehl "/uses Unit" nach Enter auswerten (#254).</summary>
+    UsesCommand: Boolean;
     /// <summary>Obergrenze für den Symbolindex in MB; 0 = unbegrenzt (#185).</summary>
     MemoryBudgetMb: Integer;
     /// <summary>Vorgaben, wenn keine Konfigurationsdatei existiert.</summary>
@@ -273,6 +275,7 @@ begin
   Result.Compiler := TCompilerSettings.Default;
   Result.Completion := TCompletionSettings.Default;
   Result.CompleteBlocks := [Low(TBlockKind)..High(TBlockKind)];
+  Result.UsesCommand := True;
   Result.MemoryBudgetMb := 0;
 end;
 

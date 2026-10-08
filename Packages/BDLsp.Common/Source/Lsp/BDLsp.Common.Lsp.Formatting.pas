@@ -6,7 +6,8 @@
 // "format" in delphi-lsp.json. Die Logik liegt in BDLsp.Common.Editing.Formatter.
 //
 // textDocument/onTypeFormatting (#179) ergänzt nach Enter den Blockabschluss
-// (BDLsp.Common.Editing.BlockCompletion), schaltbar über "completeBlocks".
+// (BDLsp.Common.Editing.BlockCompletion), schaltbar über "completeBlocks",
+// und wertet den Schnellbefehl "/uses Unit" aus (#254, "usesCommand").
 
 interface
 
@@ -24,6 +25,7 @@ type
   TFormatStyleProvider = reference to function(const AUri: string): TFormatStyle;
   /// <summary>Block "completeBlocks" für AUri.</summary>
   TBlockKindsProvider = reference to function(const AUri: string): TBlockKinds;
+  TBooleanProvider = reference to function(const AUri: string): Boolean;
 
   TLspFormatting = class
   public const
@@ -35,6 +37,7 @@ type
     FSettingsProvider: TFormatStyleProvider;
     FReadFile: TEditorConfigReadFile;
     FBlockKindsFor: TBlockKindsProvider;
+    FUsesCommandFor: TBooleanProvider;
     function HandleOnType(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function Handle(const AParams: TJSONValue; AWithRange: Boolean): TJSONValue;
     function HandleFormatting(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -51,6 +54,8 @@ type
       const AReadFile: TEditorConfigReadFile): TFormatStyle; static;
     /// <summary>Ohne Zuweisung werden alle Blöcke ergänzt.</summary>
     property BlockKindsFor: TBlockKindsProvider read FBlockKindsFor write FBlockKindsFor;
+    /// <summary>Ohne Zuweisung ist /uses eingeschaltet.</summary>
+    property UsesCommandFor: TBooleanProvider read FUsesCommandFor write FUsesCommandFor;
   end;
 
 implementation
@@ -61,7 +66,8 @@ uses
   BDLsp.Common.Rules.Contract,
   BDLsp.Common.Pascal.Lexer,
   BDLsp.Common.Editing.Formatter,
-  BDLsp.Common.Editing.BlockCompletion;
+  BDLsp.Common.Editing.BlockCompletion,
+  BDLsp.Common.Editing.UsesCommand;
 
 { TLspFormatting }
 
@@ -95,6 +101,7 @@ var
   PositionValue: TJSONValue;
   Kinds: TBlockKinds;
   Edit: TRuleEdit;
+  Edits: TArray<TRuleEdit>;
   Item: TJSONObject;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
@@ -105,6 +112,18 @@ begin
     Exit;
   if not FStore.TryGet(Uri, Document) then
     Exit;
+  if (not Assigned(FUsesCommandFor) or FUsesCommandFor(Uri)) and
+    TUsesCommand.AfterEnter(Document.Text, TLspPositions.ReadPosition(PositionValue), nil, Edits) then
+  begin
+    for Edit in Edits do
+    begin
+      Item := TJSONObject.Create;
+      Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
+      Item.AddPair('newText', Edit.NewText);
+      TJSONArray(Result).AddElement(Item);
+    end;
+    Exit;
+  end;
   if Assigned(FBlockKindsFor) then
     Kinds := FBlockKindsFor(Uri)
   else

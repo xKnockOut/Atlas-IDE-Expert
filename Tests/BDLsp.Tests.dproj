@@ -130,6 +130,7 @@
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.CodeActions.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.UsesClause.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.BlockCompletion.Tests.pas"/>
+        <DCCReference Include="Common\Editing\BDLsp.Common.Editing.UsesCommand.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.ClassCompletion.Tests.pas"/>
         <DCCReference Include="Common\Dfm\BDLsp.Common.Dfm.Tests.pas"/>
         <DCCReference Include="Common\Dfm\BDLsp.Common.Dfm.ComponentRename.Tests.pas"/>

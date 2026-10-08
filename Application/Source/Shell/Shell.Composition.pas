@@ -330,6 +330,21 @@ begin
         TMonitor.Exit(FWorkspacesLock);
       end;
     end;
+  FFormatting.UsesCommandFor :=
+    function(const AUri: string): Boolean
+    var
+      Workspace: TShellWorkspace;
+    begin
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+        if (Workspace = nil) and (FWorkspaces.Count = 1) then
+          Workspace := FWorkspaces[0];
+        Result := (Workspace = nil) or Workspace.Configuration.Settings.UsesCommand;
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+    end;
   FFormatting.Attach(FDispatcher);
   FSelectionRanges := TLspSelectionRanges.Create(FDocuments);
   FSelectionRanges.Attach(FDispatcher);
