@@ -30,6 +30,20 @@ jobs:
       - name: Bauen und testen über cc.ps1 (Tools/Build-Test.ps1, 0/0/0-Regel)
         shell: pwsh
         run: ./Tools/Build-Test.ps1 -CcScript $env:CC_SCRIPT -Win32 -ResultFile dunitx-ergebnisse.xml
+      - name: Selbstprüfung des Servers (#152)
+        if: always()
+        shell: pwsh
+        # Bericht, kein Abbruch: Treffer im eigenen Quelltext sollen sichtbar
+        # werden, ohne den Lauf rot zu färben.
+        continue-on-error: true
+        run: ./Output/Win64/Debug/Bin/BetterDelphiLSP.exe --root . --check Packages --format sarif --output selbstpruefung.sarif
+      - name: Selbstprüfung ablegen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selbstpruefung
+          path: selbstpruefung.sarif
+          if-no-files-found: ignore
       - name: Testergebnisse als Report
         if: always()
         uses: EnricoMi/publish-unit-test-result-action/windows@v2

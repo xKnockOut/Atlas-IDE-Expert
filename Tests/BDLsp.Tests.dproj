@@ -132,6 +132,7 @@
         <DCCReference Include="Support\BDLsp.Tests.LeakMonitor.Tests.pas"/>
         <DCCReference Include="Support\BDLsp.Tests.RuleAssert.pas"/>
         <DCCReference Include="Common\Rules\BDLsp.Common.Rules.Engine.Tests.pas"/>
+        <DCCReference Include="Common\Rules\BDLsp.Common.Rules.GoldenCorpus.Tests.pas"/>
         <DCCReference Include="Common\Rules\BDLsp.Common.Rules.Profiles.Tests.pas"/>
         <DCCReference Include="Common\Rules\BDLsp.Common.Rules.Confidence.Tests.pas"/>
         <DCCReference Include="Common\Rules\BDLsp.Common.Rules.Output.Tests.pas"/>

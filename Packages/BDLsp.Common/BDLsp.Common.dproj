@@ -118,6 +118,7 @@
         <DCCReference Include="Source\Rules\BDLsp.Common.Rules.Engine.pas"/>
         <DCCReference Include="Source\Rules\BDLsp.Common.Rules.Profiles.pas"/>
         <DCCReference Include="Source\Rules\BDLsp.Common.Rules.Checker.pas"/>
+        <DCCReference Include="Source\Rules\BDLsp.Common.Rules.GoldenCorpus.pas"/>
         <DCCReference Include="Source\Rules\BDLsp.Common.Rules.Filter.pas"/>
         <DCCReference Include="Source\Rules\BDLsp.Common.Rules.Output.pas"/>
         <DCCReference Include="Source\Rules\BDLsp.Common.Rules.Baseline.pas"/>
