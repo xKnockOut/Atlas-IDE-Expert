@@ -24,8 +24,16 @@ jobs:
         run: npm run lint
       - name: Übersetzen
         run: npm run compile
+      - name: Drittanbieter-Hinweise aktuell (#77)
+        shell: pwsh
+        run: ../../Tools/Update-ThirdPartyNotices.ps1 -Check
       - name: .vsix packen
-        run: npx vsce package -o betterdelphilsp.vsix
+        run: |
+          cp ../../THIRD-PARTY-NOTICES.md .
+          npx vsce package -o betterdelphilsp.vsix
+      - name: Keine Embarcadero-Quellen in Tests und .vsix (#77)
+        shell: pwsh
+        run: ../../Tools/Check-NoEmbarcaderoSources.ps1 -Vsix betterdelphilsp.vsix
       - name: .vsix als Artefakt ablegen
         uses: actions/upload-artifact@v4
         with:
