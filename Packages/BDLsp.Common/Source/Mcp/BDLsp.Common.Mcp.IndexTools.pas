@@ -23,13 +23,14 @@ type
   private
     FIndex: ISymbolIndex;
     FReadText: TMcpReadText;
-    function Matches(const AName: string): TArray<TSymbolLocation>;
     function TypeMatches(const AName: string): TArray<TSymbolLocation>;
     procedure AddDescendants(ALines: TStrings; const ATypeName: string; ADepth: Integer;
       AVisited: TDictionary<string, Boolean>);
   public
     /// <summary>AReadText darf nil sein; dann liefert Declaration nur Fundstellen.</summary>
     constructor Create(const AIndex: ISymbolIndex; const AReadText: TMcpReadText);
+    /// <summary>Symbole zu "Bar", "TFoo.Bar" oder "Unit.TFoo.Bar".</summary>
+    function Matches(const AName: string): TArray<TSymbolLocation>;
     /// <summary>Symbole nach Name ("Bar" oder "TFoo.Bar"); ohne exakten Treffer Teilstring-Suche.</summary>
     function FindSymbol(const AQuery: string): string;
     /// <summary>Quelltext der Deklaration(en) mit Fundstelle.</summary>

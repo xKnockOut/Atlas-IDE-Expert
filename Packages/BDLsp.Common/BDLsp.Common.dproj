@@ -127,6 +127,7 @@
         <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.ComponentRename.pas"/>
         <DCCReference Include="Source\Mcp\BDLsp.Common.Mcp.Server.pas"/>
         <DCCReference Include="Source\Mcp\BDLsp.Common.Mcp.IndexTools.pas"/>
+        <DCCReference Include="Source\Mcp\BDLsp.Common.Mcp.CodeTools.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.FormFiles.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.EditorConfig.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.Formatter.pas"/>

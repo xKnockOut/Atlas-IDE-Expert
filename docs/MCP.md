@@ -18,6 +18,7 @@ dem Protokoll.
 | `get_declaration` | `name` | Quelltext der Deklaration, auch aus RTL/VCL |
 | `get_type_hierarchy` | `name` | Vorfahren bis zur Wurzel, Nachfahren rekursiv |
 | `get_unit_outline` | `unit` | uses-Listen und Symbole einer Unit mit Zeilennummern |
+| `find_references` | `name` | Verwendungen im Projekt mit Datei:Zeile und Quelltextzeile |
+| `get_call_hierarchy` | `name`, `direction` | Aufrufer (`incoming`) und Aufgerufene (`outgoing`), Standard beides |
+| `get_diagnostics` | `file` (optional) | Syntaxfehler und Regelbefunde einer Datei oder aller Projektdateien |
 | `get_dfm_info` | `file` | Komponentenbaum eines Text-Formulars mit Eigenschaften und Ereignissen |
-
-Noch offen (#48): `find_references`, `get_call_hierarchy`, `get_diagnostics`.

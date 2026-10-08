@@ -42,6 +42,8 @@ uses
   BDLsp.Common.Dfm.Parser,
   BDLsp.Common.Mcp.Server,
   BDLsp.Common.Mcp.IndexTools,
+  BDLsp.Common.Mcp.CodeTools,
+  BDLsp.Common.Rules.Builtin,
   BDLsp.Windows.Console.StdStreams,
   BDLsp.Windows.Documents.PathCanonicalizer,
   Shell.Workspace;
@@ -75,7 +77,8 @@ begin
     AText := '';
 end;
 
-procedure RegisterTools(AServer: TMcpServer; ATools: TMcpIndexTools; const ARoot: string);
+procedure RegisterTools(AServer: TMcpServer; ATools: TMcpIndexTools; ACode: TMcpCodeTools;
+  AWorkspace: TShellWorkspace; const ARoot: string);
 begin
   AServer.AddTool('find_symbol',
     'Sucht Delphi-Symbole (Typen, Methoden, Felder, Konstanten …) im Projekt und in RTL/VCL. ' +
@@ -106,6 +109,46 @@ begin
     function(const AArguments: TJSONObject): string
     begin
       Result := ATools.UnitOutline(TMcpServer.RequiredString(AArguments, 'unit'));
+    end);
+  AServer.AddTool('find_references',
+    'Alle Verwendungen eines Symbols im Projekt mit Datei:Zeile und der Quelltextzeile.',
+    TMcpServer.StringSchema(['name'], ['Symbolname, am besten qualifiziert (TFoo.Bar)']),
+    function(const AArguments: TJSONObject): string
+    begin
+      ACode.Namespaces := AWorkspace.Namespaces;
+      Result := ACode.References(TMcpServer.RequiredString(AArguments, 'name'));
+    end);
+  AServer.AddTool('get_call_hierarchy',
+    'Aufrufer (incoming) und aufgerufene Routinen (outgoing) einer Methode oder Routine.',
+    TMcpServer.StringSchema(['name', 'direction'],
+      ['Methode oder Routine, z. B. TFoo.Bar', 'incoming, outgoing oder both (Standard)'], 1),
+    function(const AArguments: TJSONObject): string
+    begin
+      ACode.Namespaces := AWorkspace.Namespaces;
+      Result := ACode.CallHierarchy(TMcpServer.RequiredString(AArguments, 'name'),
+        TMcpCodeTools.ParseDirection(TMcpServer.OptionalString(AArguments, 'direction')));
+    end);
+  AServer.AddTool('get_diagnostics',
+    'Syntaxfehler und Befunde der Prüfregeln (wie --check) für eine Datei oder das ganze Projekt.',
+    TMcpServer.StringSchema(['file'], ['Pfad einer .pas-Datei; leer = alle Projektdateien'], 0),
+    function(const AArguments: TJSONObject): string
+    var
+      FileName: string;
+      Files: TArray<string>;
+    begin
+      FileName := TMcpServer.OptionalString(AArguments, 'file');
+      if FileName <> '' then
+      begin
+        if TPath.IsRelativePath(FileName) then
+          FileName := TPath.Combine(ARoot, FileName);
+        Files := [FileName];
+      end
+      else
+        Files := AWorkspace.ProjectFiles;
+      if Length(Files) = 0 then
+        raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
+      Result := TMcpCodeTools.Diagnostics(BuiltinRules, AWorkspace.Configuration.Settings, ARoot, Files,
+        ReadSourceText);
     end);
   AServer.AddTool('get_dfm_info',
     'Komponenten eines Formulars (.dfm/.fmx in Textform) mit Typen, Eigenschaften und Ereignisbehandlern.',
@@ -139,6 +182,7 @@ var
   Connection: TJsonRpcConnection;
   Server: TMcpServer;
   Tools: TMcpIndexTools;
+  Code: TMcpCodeTools;
   Index: ISymbolIndex;
   Store: IDocumentStore;
   Workspace: TShellWorkspace;
@@ -174,13 +218,22 @@ begin
   Workspace := TShellWorkspace.Create(Root, ExtractFileName(Root), Store, Silent, Logger, Index,
     'bdlsp-mcp-index');
   Tools := TMcpIndexTools.Create(Index, ReadSourceText);
+  Code := TMcpCodeTools.Create(Index, ReadSourceText,
+    function: TArray<string>
+    begin
+      Result := Workspace.ProjectFiles;
+    end,
+    function(const AUnitName: string): Boolean
+    begin
+      Result := Workspace.EnsureUnit(AUnitName);
+    end);
   Server := TMcpServer.Create(TProductVersion.Name, TProductVersion.Version);
   Dispatcher := TJsonRpcDispatcher.Create;
   Connection := TJsonRpcConnection.Create(Transport, Dispatcher);
   try
     Server.Instructions := 'Delphi-Projekt in ' + Root + '. Für Fragen zu Typen, Units und Formularen ' +
       'zuerst diese Werkzeuge nutzen statt Quelldateien vollständig zu lesen.';
-    RegisterTools(Server, Tools, Root);
+    RegisterTools(Server, Tools, Code, Workspace, Root);
     Server.Attach(Dispatcher);
     Connection.OnError :=
       procedure(const AError: Exception)
@@ -204,6 +257,7 @@ begin
     Connection.Free;
     Dispatcher.Free;
     Server.Free;
+    Code.Free;
     Tools.Free;
     Workspace.Free;
   end;

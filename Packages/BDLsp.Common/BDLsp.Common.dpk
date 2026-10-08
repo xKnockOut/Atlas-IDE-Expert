@@ -113,6 +113,7 @@ contains
   BDLsp.Common.Dfm.ComponentRename in 'Source\Dfm\BDLsp.Common.Dfm.ComponentRename.pas',
   BDLsp.Common.Mcp.Server in 'Source\Mcp\BDLsp.Common.Mcp.Server.pas',
   BDLsp.Common.Mcp.IndexTools in 'Source\Mcp\BDLsp.Common.Mcp.IndexTools.pas',
+  BDLsp.Common.Mcp.CodeTools in 'Source\Mcp\BDLsp.Common.Mcp.CodeTools.pas',
   BDLsp.Common.Lsp.FormFiles in 'Source\Lsp\BDLsp.Common.Lsp.FormFiles.pas',
   BDLsp.Common.Editing.EditorConfig in 'Source\Editing\BDLsp.Common.Editing.EditorConfig.pas',
   BDLsp.Common.Editing.Formatter in 'Source\Editing\BDLsp.Common.Editing.Formatter.pas',
