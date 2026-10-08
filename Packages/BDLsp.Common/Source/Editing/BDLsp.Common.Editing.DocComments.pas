@@ -34,7 +34,7 @@ type
     /// <summary>Gerüst nach dem dritten "/" an APosition; False, wenn die Zeile nicht passt.</summary>
     class function AfterSlash(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
       out AEdit: TRuleEdit): Boolean; static;
-    /// <summary>Code-Aktionen zur Deklaration in Zeile ALine: Kommentar erzeugen, Code-Aktionen auf der Deklaration in Zeile ALine: Kommentar erzeugen bzw. &lt;param&gt; anpassen.lt;paramCode-Aktionen auf der Deklaration in Zeile ALine: Kommentar erzeugen bzw. &lt;param&gt; anpassen.gt; anpassen.</summary>
+    /// <summary>Code-Aktionen zur Deklaration in Zeile ALine: Kommentar erzeugen, &lt;param&gt; anpassen.</summary>
     class function Actions(const AText: string; ATree: TSyntaxTree; ALine: Integer): TArray<TCodeAction>; static;
   end;
 
