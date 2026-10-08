@@ -48,6 +48,13 @@ type
     class function Default: TInlayHintSettings; static;
   end;
 
+  /// <summary>Compiler-Anbindung (#40).</summary>
+  TCompilerSettings = record
+    /// <summary>Nach dem Speichern einer Quelldatei im Hintergrund kompilieren.</summary>
+    OnSave: Boolean;
+    class function Default: TCompilerSettings; static;
+  end;
+
   TServerSettings = record
     /// <summary>Delphi-Version wie in der Registry, z. B. "37.0"; '' = neueste installierte.</summary>
     DelphiVersion: string;
@@ -65,6 +72,7 @@ type
     /// <summary>Formatierungsstil als JSON-Objekt (Text), sonst ''.</summary>
     Format: string;
     InlayHints: TInlayHintSettings;
+    Compiler: TCompilerSettings;
     /// <summary>Vorgaben, wenn keine Konfigurationsdatei existiert.</summary>
     class function Default: TServerSettings; static;
     /// <summary>Schweregrad aus der Konfiguration oder ADefault.</summary>
@@ -173,6 +181,13 @@ begin
   Result.EndMarkerMinLines := 20;
 end;
 
+{ TCompilerSettings }
+
+class function TCompilerSettings.Default: TCompilerSettings;
+begin
+  Result.OnSave := True;
+end;
+
 { TServerSettings }
 
 class function TServerSettings.Default: TServerSettings;
@@ -187,6 +202,7 @@ begin
   Result.Exclude := nil;
   Result.Format := '';
   Result.InlayHints := TInlayHintSettings.Default;
+  Result.Compiler := TCompilerSettings.Default;
 end;
 
 function TServerSettings.IsRuleEnabledExplicitly(const ARuleId: string): Boolean;

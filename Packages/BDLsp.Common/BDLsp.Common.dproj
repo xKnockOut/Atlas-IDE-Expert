@@ -92,6 +92,10 @@
         <DCCReference Include="Source\Projects\Internals\BDLsp.Common.Projects.Internals.MSBuild.pas"/>
         <DCCReference Include="Source\Projects\BDLsp.Common.Projects.DprojReader.pas"/>
         <DCCReference Include="Source\Projects\BDLsp.Common.Projects.UnitResolver.pas"/>
+        <DCCReference Include="Source\Compiler\BDLsp.Common.Compiler.Contract.pas"/>
+        <DCCReference Include="Source\Compiler\BDLsp.Common.Compiler.OutputParser.pas"/>
+        <DCCReference Include="Source\Compiler\BDLsp.Common.Compiler.CommandLine.pas"/>
+        <DCCReference Include="Source\Compiler\BDLsp.Common.Compiler.Results.pas"/>
         <DCCReference Include="Source\Index\BDLsp.Common.Index.Contract.pas"/>
         <DCCReference Include="Source\Index\BDLsp.Common.Index.Extractor.pas"/>
         <DCCReference Include="Source\Index\BDLsp.Common.Index.SymbolIndex.pas"/>

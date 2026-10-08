@@ -16,7 +16,9 @@ uses
   BDLsp.Common.Configuration.Contract,
   BDLsp.Common.Lsp.Configuration,
   BDLsp.Common.Lsp.WorkDoneProgress,
+  BDLsp.Common.Projects.Contract,
   BDLsp.Common.Projects.UnitResolver,
+  BDLsp.Common.Compiler.Contract,
   BDLsp.Common.Index.Contract,
   BDLsp.Common.Index.Service,
   BDLsp.Common.Rules.Baseline,
@@ -41,6 +43,11 @@ type
     FNamespaces: TArray<string>;
     FSearchPaths: TArray<string>;
     FProjectFiles: TArray<string>;
+    // Für den Compileraufruf (#40), unter FLock.
+    FProject: TProjectInfo;
+    FHasProject: Boolean;
+    FBdsRoot: string;
+    FCompilerLibraryPaths: TArray<string>;
     FOnProjectLoaded: TProc;
     FBaseline: IRuleBaseline;
     FLastIndexMs: Int64;
@@ -77,6 +84,9 @@ type
     /// Datei ändert; nil ohne oder bei ungültiger Datei. Threadsicher.
     /// </summary>
     function Baseline: IRuleBaseline;
+    /// <summary>Aufruf des Compilers für das Projekt (#40); False mit Grund in AError
+    /// ohne Projekt, Installation oder unterstützte Plattform. Threadsicher.</summary>
+    function CompilerRequest(out ARequest: TCompilerRequest; out AError: string): Boolean;
     /// <summary>Letzter Indexlauf für den Status-Befehl (#28). Threadsicher.</summary>
     function IndexStatus: TWorkspaceStatus;
     property Root: string read FRoot;
@@ -98,7 +108,7 @@ uses
   System.IOUtils,
   System.StrUtils,
   BDLsp.Common.Documents.FileEncoding,
-  BDLsp.Common.Projects.Contract,
+  BDLsp.Common.Compiler.CommandLine,
   BDLsp.Common.Projects.Paths,
   BDLsp.Common.Projects.DprojReader,
   BDLsp.Common.Index.Builder,
@@ -290,6 +300,50 @@ begin
   end;
 end;
 
+function TShellWorkspace.CompilerRequest(out ARequest: TCompilerRequest; out AError: string): Boolean;
+var
+  Project: TProjectInfo;
+  HasProject: Boolean;
+  BdsRoot, OutputDir: string;
+  LibraryPaths: TArray<string>;
+begin
+  ARequest := Default(TCompilerRequest);
+  AError := '';
+  TMonitor.Enter(FLock);
+  try
+    Project := FProject;
+    HasProject := FHasProject;
+    BdsRoot := FBdsRoot;
+    LibraryPaths := FCompilerLibraryPaths;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  if not HasProject then
+  begin
+    AError := 'Kein Projekt geladen';
+    Exit(False);
+  end;
+  if BdsRoot = '' then
+  begin
+    AError := 'Delphi-Installation nicht gefunden';
+    Exit(False);
+  end;
+  // Eigener Ausgabeordner je Projekt, Plattform und Konfiguration; der Build des Entwicklers bleibt unberührt.
+  OutputDir := TPath.Combine(TPath.GetTempPath, Format('BetterDelphiLSP\dcc-%.8x\%s-%s',
+    [Cardinal(LowerCase(Project.FileName).GetHashCode), Project.Platform, Project.Config]));
+  try
+    ARequest := TCompilerCommandLine.Build(Project, LibraryPaths, BdsRoot, OutputDir);
+    ForceDirectories(OutputDir);
+    Result := True;
+  except
+    on E: ECompilerError do
+    begin
+      AError := E.Message;
+      Result := False;
+    end;
+  end;
+end;
+
 function TShellWorkspace.GetProjectFiles: TArray<string>;
 begin
   TMonitor.Enter(FLock);
@@ -417,6 +471,23 @@ begin
       FLogger.Error(Format('Projekt %s nicht lesbar: %s', [ProjectFile, E.Message]));
       Exit;
     end;
+  end;
+  TMonitor.Enter(FLock);
+  try
+    FProject := Project;
+    FHasProject := True;
+    if Installation <> nil then
+    begin
+      FBdsRoot := TCompilerCommandLine.BdsRoot(Installation.Variables);
+      FCompilerLibraryPaths := Installation.LibraryPaths(Project.Platform);
+    end
+    else
+    begin
+      FBdsRoot := '';
+      FCompilerLibraryPaths := nil;
+    end;
+  finally
+    TMonitor.Exit(FLock);
   end;
   Signature := TIndexProjectFiles.Signature(Project, ASettings.DelphiVersion);
   if Signature = FSignature then

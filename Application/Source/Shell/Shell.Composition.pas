@@ -11,6 +11,7 @@ interface
 
 uses
   System.SysUtils,
+  System.Classes,
   System.JSON,
   System.Generics.Collections,
   BDLsp.Common.Logging.Contract,
@@ -50,6 +51,9 @@ uses
   BDLsp.Common.Documents.Contract,
   BDLsp.Common.Configuration.Contract,
   BDLsp.Common.Index.Contract,
+  BDLsp.Common.Compiler.Contract,
+  BDLsp.Common.Compiler.Results,
+  BDLsp.Common.Lsp.WorkDoneProgress,
   Shell.CommandLine,
   Shell.Workspace;
 
@@ -97,6 +101,15 @@ type
     FWorkspacesLock: TObject;
     FWorkspaceCounter: Integer;
     FEditorSettings: string;
+    // Compiler-Anbindung (#40): höchstens ein Lauf zugleich, ein weiterer wird vorgemerkt.
+    FCompilerResults: TCompilerResults;
+    FCompilerProcess: ICompilerProcess;
+    FCompileProgress: TLspWorkDoneProgress;
+    FCompileLock: TObject;
+    FCompileThread: TThread;
+    FCompiling: Boolean;
+    FHasPendingCompile: Boolean;
+    FPendingCompile: TCompilerRequest;
     procedure AddWorkspace(const AFolder: TWorkspaceFolder);
     procedure RemoveWorkspace(const AFolder: TWorkspaceFolder);
     /// <summary>Innerster Ordner zur Datei oder nil. Aufrufer hält FWorkspacesLock.</summary>
@@ -115,6 +128,10 @@ type
     /// <summary>Namespaces aller Projekte an die Features weitergeben, Diagnosen neu prüfen.</summary>
     procedure ProjectLoaded;
     procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
+    /// <summary>Kompiliert das Projekt zu AFileName ('' = einziger Ordner) im Hintergrund.</summary>
+    procedure StartCompile(const AFileName: string);
+    /// <summary>Hintergrund-Thread: führt ARequest und vorgemerkte Läufe aus.</summary>
+    procedure CompileLoop(const ARequest: TCompilerRequest);
     procedure HandleDidChangeConfiguration(const AParams: TJSONValue);
     /// <summary>Dateiänderungen von außen: Projektdateien laden das Projekt neu, Quelltexte aktualisieren den Index.</summary>
     procedure HandleWatchedFiles(const AChanges: TArray<TFileChange>);
@@ -122,6 +139,7 @@ type
     /// <summary>Fehlerbeschreibung mit letzter Nachricht und Stacktrace für das Log.</summary>
     function DescribeFailure(const AError: Exception): string;
   public const
+    CompileCommand = 'betterdelphilsp.compile';
     /// <summary>Anfragen, die länger laufen, werden abgebrochen und gemeldet.</summary>
     RequestTimeoutMs = 10000;
   public
@@ -140,7 +158,6 @@ type
 implementation
 
 uses
-  System.Classes,
   System.IOUtils,
   System.StrUtils,
   BDLsp.Common.Product.Version,
@@ -154,6 +171,8 @@ uses
   BDLsp.Common.Documents.Uris,
   BDLsp.Common.Index.SymbolIndex,
   BDLsp.Common.Rules.Builtin,
+  BDLsp.Common.Compiler.OutputParser,
+  BDLsp.Windows.Compiler.Adapters.ProcessRunner,
   BDLsp.Windows.Console.StdStreams,
   BDLsp.Windows.Documents.PathCanonicalizer,
   BDLsp.Windows.Diagnostics.Adapters.DebugOutputSink,
@@ -216,6 +235,15 @@ begin
     procedure(AError: Exception)
     begin
       FLogger.Error(Format('Fehler beim Prüfen der Syntax: %s: %s', [AError.ClassName, AError.Message]));
+    end;
+  FCompilerResults := TCompilerResults.Create;
+  FCompilerProcess := TProcessRunner.Create;
+  FCompileProgress := TLspWorkDoneProgress.Create(FTransport, 'bdlsp-compile');
+  FCompileLock := TObject.Create;
+  FSyntaxDiagnostics.CompilerMessagesProvider :=
+    function(const AFileName: string): TArray<TCompilerMessage>
+    begin
+      Result := FCompilerResults.MessagesFor(AFileName);
     end;
   FSyntaxDiagnostics.Attach;
   FDocumentSymbols := TLspDocumentSymbols.Create(FDocuments);
@@ -378,6 +406,21 @@ begin
       FLogger.Info('Status:' + sLineBreak + Status.ToMarkdown);
       Result := Status.ToJson;
     end);
+  FCommands.Register(CompileCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    var
+      Uri: string;
+    begin
+      // Optional die URI einer Datei, deren Projekt kompiliert wird.
+      Uri := '';
+      if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+        Uri := AArguments.Items[0].Value;
+      if Uri <> '' then
+        StartCompile(TDocumentUris.ToPath(Uri))
+      else
+        StartCompile('');
+      Result := TJSONNull.Create;
+    end);
   FCommands.Attach(FDispatcher);
   FWatchedFiles := TLspWatchedFiles.Create(FTransport);
   FWatchedFiles.OnChanged := HandleWatchedFiles;
@@ -419,6 +462,12 @@ end;
 destructor TServerComposition.Destroy;
 begin
   FConnection.Free;
+  // Laufenden Compilerlauf abwarten: Er meldet über die Syntaxprüfung.
+  if FCompileThread <> nil then
+  begin
+    FCompileThread.WaitFor;
+    FreeAndNil(FCompileThread);
+  end;
   // Vor den Ordnern: der Hintergrund-Thread der Syntaxprüfung fragt ihre Symbole ab.
   FSyntaxDiagnostics.Free;
   // Ordner vor dem Index: ihre Index-Threads laufen noch.
@@ -448,6 +497,10 @@ begin
   FDocumentLinks.Free;
   FColors.Free;
   FCommands.Free;
+  FCompileProgress.Free;
+  FCompileLock.Free;
+  FCompilerResults.Free;
+  FCompilerProcess := nil;
   FWatchedFiles.Free;
   FTextDocumentSync.Free;
   FDocuments := nil;
@@ -721,7 +774,23 @@ end;
 procedure TServerComposition.HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
 var
   Workspace: TShellWorkspace;
+  OnSave: Boolean;
 begin
+  // Nach dem Speichern einer Quelldatei kompilieren (#40), abschaltbar über compiler.onSave.
+  if (AKind = TDocumentEventKind.Saved) and MatchText(ExtractFileExt(TDocumentUris.ToPath(ADocument.Uri)),
+    ['.pas', '.dpr', '.dpk', '.inc']) then
+  begin
+    TMonitor.Enter(FWorkspacesLock);
+    try
+      Workspace := WorkspaceOf(TDocumentUris.ToPath(ADocument.Uri));
+      OnSave := (Workspace <> nil) and Workspace.Configuration.Settings.Compiler.OnSave;
+    finally
+      TMonitor.Exit(FWorkspacesLock);
+    end;
+    if OnSave then
+      StartCompile(TDocumentUris.ToPath(ADocument.Uri));
+    Exit;
+  end;
   if not SameText(ExtractFileName(TDocumentUris.ToPath(ADocument.Uri)), ConfigurationFileName) then
     Exit;
   TMonitor.Enter(FWorkspacesLock);
@@ -735,6 +804,118 @@ begin
     Workspace.Configuration.DocumentEvent(AKind, ADocument)
   else
     FLooseConfiguration.DocumentEvent(AKind, ADocument);
+end;
+
+procedure TServerComposition.StartCompile(const AFileName: string);
+var
+  Workspace: TShellWorkspace;
+  Request: TCompilerRequest;
+  Error: string;
+begin
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := nil;
+    if AFileName <> '' then
+      Workspace := WorkspaceOf(AFileName);
+    if (Workspace = nil) and (FWorkspaces.Count = 1) then
+      Workspace := FWorkspaces[0];
+    if Workspace = nil then
+      Error := 'Kein Ordner mit Projekt geöffnet'
+    else if Workspace.CompilerRequest(Request, Error) then
+      Error := '';
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  if Error <> '' then
+  begin
+    FLogger.Warning('Kompilieren nicht möglich: ' + Error);
+    Exit;
+  end;
+  TMonitor.Enter(FCompileLock);
+  try
+    if FCompiling then
+    begin
+      // Der laufende Lauf startet danach den neuesten Stand.
+      FPendingCompile := Request;
+      FHasPendingCompile := True;
+      Exit;
+    end;
+    FCompiling := True;
+  finally
+    TMonitor.Exit(FCompileLock);
+  end;
+  if FCompileThread <> nil then
+  begin
+    FCompileThread.WaitFor;
+    FreeAndNil(FCompileThread);
+  end;
+  FCompileThread := TThread.CreateAnonymousThread(
+    procedure
+    begin
+      CompileLoop(Request);
+    end);
+  FCompileThread.FreeOnTerminate := False;
+  FCompileThread.Start;
+end;
+
+procedure TServerComposition.CompileLoop(const ARequest: TCompilerRequest);
+var
+  Request: TCompilerRequest;
+  Lines: TList<string>;
+  Messages: TArray<TCompilerMessage>;
+  Item: TCompilerMessage;
+  Counts: array[TCompilerSeverity] of Integer;
+  Code: Integer;
+  Summary: string;
+begin
+  Request := ARequest;
+  repeat
+    Lines := TList<string>.Create;
+    try
+      FCompileProgress.Start('Projekt kompilieren');
+      try
+        Code := FCompilerProcess.Run(Request,
+          procedure(const ALine: string)
+          begin
+            Lines.Add(ALine);
+          end);
+        Messages := TCompilerOutputParser.Parse(Lines.ToArray, Request.WorkingDir);
+        FillChar(Counts, SizeOf(Counts), 0);
+        for Item in Messages do
+        begin
+          Inc(Counts[Item.Severity]);
+          if Item.FileName = '' then
+            FLogger.Warning(Format('Compiler: %s %s', [Item.Code, Item.Text]));
+        end;
+        FSyntaxDiagnostics.RefreshFiles(FCompilerResults.Replace(Messages));
+        Summary := Format('%d Fehler, %d Warnungen, %d Hinweise',
+          [Counts[TCompilerSeverity.Error] + Counts[TCompilerSeverity.Fatal], Counts[TCompilerSeverity.Warning],
+          Counts[TCompilerSeverity.Hint]]);
+        FLogger.Info(Format('Kompiliert mit %s (Exit-Code %d): %s', [Request.Executable, Code, Summary]));
+        FCompileProgress.Finish(Summary);
+      except
+        on E: Exception do
+        begin
+          FLogger.Error('Kompilieren fehlgeschlagen: ' + E.Message);
+          FCompileProgress.Finish('Fehlgeschlagen');
+        end;
+      end;
+    finally
+      Lines.Free;
+    end;
+    TMonitor.Enter(FCompileLock);
+    try
+      if not FHasPendingCompile then
+      begin
+        FCompiling := False;
+        Break;
+      end;
+      Request := FPendingCompile;
+      FHasPendingCompile := False;
+    finally
+      TMonitor.Exit(FCompileLock);
+    end;
+  until False;
 end;
 
 procedure TServerComposition.HandleDidChangeConfiguration(const AParams: TJSONValue);
@@ -869,6 +1050,7 @@ begin
   Result.AddPair('colorProvider', TJSONBool.Create(True));
   Commands := TJSONArray.Create;
   Commands.Add(StatusCommand);
+  Commands.Add(CompileCommand);
   Result.AddPair('executeCommandProvider', TJSONObject.Create(TJSONPair.Create('commands', Commands)));
   Result.AddPair('workspace', TLspWorkspaceFolders.Capability);
 end;

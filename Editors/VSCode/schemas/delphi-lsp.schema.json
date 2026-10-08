@@ -87,6 +87,18 @@
         ]
       }
     },
+    "compiler": {
+      "type": "object",
+      "description": "Compiler-Anbindung (dcc32/dcc64).",
+      "additionalProperties": false,
+      "properties": {
+        "onSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Nach dem Speichern einer Quelldatei das Projekt im Hintergrund kompilieren und die Meldungen anzeigen."
+        }
+      }
+    },
     "inlayHints": {
       "type": "object",
       "description": "Inlay Hints im Editor.",

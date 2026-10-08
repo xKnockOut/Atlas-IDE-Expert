@@ -48,6 +48,7 @@ type
     procedure ReadRules(ANode: TJsonNode);
     procedure ReadExclude(ANode: TJsonNode);
     procedure ReadInlayHints(ANode: TJsonNode);
+    procedure ReadCompiler(ANode: TJsonNode);
     function ExpectBoolean(ANode: TJsonNode; const AName: string; var AValue: Boolean): Boolean;
     /// <summary>Wurzel oder nil nach gemeldetem Syntaxfehler.</summary>
     function ParseRoot: TJsonNode;
@@ -258,6 +259,27 @@ begin
   end;
 end;
 
+procedure TValidator.ReadCompiler(ANode: TJsonNode);
+var
+  Index: Integer;
+  Key: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"compiler" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if Key = 'onSave' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Compiler.OnSave)
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "compiler.%s"', [Key]), False);
+  end;
+end;
+
 function TValidator.ParseRoot: TJsonNode;
 begin
   try
@@ -335,6 +357,8 @@ begin
       end
       else if Key = 'inlayHints' then
         ReadInlayHints(Value)
+      else if Key = 'compiler' then
+        ReadCompiler(Value)
       else if Key = 'format' then
       begin
         if Value.Kind = TJsonKind.Object_ then
@@ -474,7 +498,9 @@ begin
     else if Key = 'format' then
       Result.Format := FileSettings.Format
     else if Key = 'inlayHints' then
-      Result.InlayHints := FileSettings.InlayHints;
+      Result.InlayHints := FileSettings.InlayHints
+    else if Key = 'compiler' then
+      Result.Compiler := FileSettings.Compiler;
 end;
 
 class function TConfigurationParser.Parse(const AText: string; out AIssues: TArray<TConfigurationIssue>): TServerSettings;
