@@ -13,6 +13,11 @@
 // Unmatched liefert für die Prüfregeln aus #124 beide Richtungen: deklarierte
 // Methoden ohne Rumpf und Rümpfe ohne Deklaration. AddDeclaration ergänzt eine
 // fehlende Deklaration im private-Abschnitt des Typs.
+//
+// SignatureFixes (#100) gleicht Deklaration und Rumpf an, deren Parameter,
+// Modifizierer oder Rückgabetyp voneinander abweichen. Zugeordnet wird über
+// Name und Parameteranzahl; ist das nicht eindeutig, gibt es keine Aktion.
+// Standardwerte bleiben nur in der Deklaration.
 
 interface
 
@@ -48,6 +53,11 @@ type
     /// <summary>Aktion für fehlende Rümpfe an APosition; False, wenn nichts fehlt.</summary>
     class function MissingBodies(ATree: TSyntaxTree; const AText: string; const APosition: TTextPosition;
       out AAction: TCodeAction): Boolean; static;
+    /// <summary>Zu einer Methode ohne Gegenstück mit eindeutigem Partner gleichen Namens und gleicher
+    /// Parameteranzahl auf der anderen Seite: "Implementierung an Deklaration angleichen" und
+    /// "Deklaration an Implementierung angleichen" (#100). False ohne eindeutigen Partner.</summary>
+    class function SignatureFixes(ATree: TSyntaxTree; const AText: string; const AMethod: TUnmatchedMethod;
+      out AFixes: TArray<TRuleFix>): Boolean; static;
   end;
 
 implementation
@@ -208,7 +218,259 @@ begin
   Result := Copy(ALine, 1, Length(ALine) - Length(TrimLeft(ALine)));
 end;
 
+/// <summary>Bereich und Text hinter dem Methodennamen bis vor das erste ";" außerhalb von Klammern,
+/// z. B. "(const A: Integer): Boolean".</summary>
+function SignatureTail(ATree: TSyntaxTree; const AText: string; const ASymbol: TIndexSymbol;
+  out ARange: TTextRange; out ATail: string): Boolean;
+var
+  Tokens: TArray<TPascalToken>;
+  Index, Name, Last, Depth, StartOffset: Integer;
+begin
+  Result := False;
+  Tokens := ATree.Tokens;
+  Name := -1;
+  for Index := 0 to High(Tokens) do
+    if Tokens[Index].EndPos = ASymbol.SelectionRange.EndPos then
+    begin
+      Name := Index;
+      Break;
+    end;
+  if Name < 0 then
+    Exit;
+  Depth := 0;
+  Last := -1;
+  for Index := Name + 1 to High(Tokens) do
+  begin
+    if Tokens[Index].Kind = TPascalTokenKind.Comment then
+      Continue;
+    if Tokens[Index].IsSymbol('(') or Tokens[Index].IsSymbol('[') then
+      Inc(Depth)
+    else if Tokens[Index].IsSymbol(')') or Tokens[Index].IsSymbol(']') then
+      Dec(Depth)
+    else if (Depth = 0) and Tokens[Index].IsSymbol(';') then
+      Break;
+    Last := Index;
+  end;
+  if Last < 0 then
+    Exit;
+  StartOffset := Tokens[Name].Offset + Length(Tokens[Name].Text);
+  ARange := TTextRange.Create(Tokens[Name].EndPos, Tokens[Last].EndPos);
+  ATail := Copy(AText, StartOffset + 1, Tokens[Last].Offset + Length(Tokens[Last].Text) - StartOffset);
+  Result := True;
+end;
+
+/// <summary>Zerlegt "(A: Integer = 1; const B: string): Boolean" in Parametergruppen und den Rest.</summary>
+function SplitParameters(const ATail: string; out AGroups: TArray<string>; out AAfter: string): Boolean;
+var
+  Index, Depth, Start: Integer;
+  Quoted: Boolean;
+  Tail: string;
+begin
+  AGroups := nil;
+  Tail := Trim(ATail);
+  AAfter := Tail;
+  Result := (Tail <> '') and (Tail[1] = '(');
+  if not Result then
+    Exit;
+  Depth := 0;
+  Quoted := False;
+  Start := 2;
+  for Index := 1 to Length(Tail) do
+  begin
+    if Tail[Index] = '''' then
+      Quoted := not Quoted;
+    if Quoted then
+      Continue;
+    case Tail[Index] of
+      '(', '[':
+        Inc(Depth);
+      ')', ']':
+        begin
+          Dec(Depth);
+          if Depth = 0 then
+          begin
+            if Trim(Copy(Tail, Start, Index - Start)) <> '' then
+              AGroups := AGroups + [Trim(Copy(Tail, Start, Index - Start))];
+            AAfter := Copy(Tail, Index + 1, MaxInt);
+            Exit;
+          end;
+        end;
+      ';':
+        if Depth = 1 then
+        begin
+          AGroups := AGroups + [Trim(Copy(Tail, Start, Index - Start))];
+          Start := Index + 1;
+        end;
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Position des "=" eines Standardwerts in AGroup, 0 ohne.</summary>
+function DefaultPos(const AGroup: string): Integer;
+var
+  Index, Depth: Integer;
+  Quoted: Boolean;
+begin
+  Depth := 0;
+  Quoted := False;
+  for Index := 1 to Length(AGroup) do
+  begin
+    if AGroup[Index] = '''' then
+      Quoted := not Quoted;
+    if Quoted then
+      Continue;
+    case AGroup[Index] of
+      '(', '[', '<':
+        Inc(Depth);
+      ')', ']', '>':
+        Dec(Depth);
+      '=':
+        if Depth = 0 then
+          Exit(Index);
+    end;
+  end;
+  Result := 0;
+end;
+
+/// <summary>Namen einer Parametergruppe in Kleinbuchstaben ohne const/var/out, z. B. "a,b".</summary>
+function GroupNames(const AGroup: string): string;
+const
+  Modifiers: array[0..3] of string = ('constref', 'const', 'var', 'out');
+var
+  Colon, Index: Integer;
+  Names: string;
+begin
+  Colon := Pos(':', AGroup);
+  if Colon = 0 then
+    Names := AGroup
+  else
+    Names := Copy(AGroup, 1, Colon - 1);
+  Names := LowerCase(Trim(Names));
+  // Attribute wie [ref] stehen vor den Namen.
+  if Pos(']', Names) > 0 then
+    Names := Trim(Copy(Names, LastDelimiter(']', Names) + 1, MaxInt));
+  for Index := 0 to High(Modifiers) do
+    if Pos(Modifiers[Index] + ' ', Names) = 1 then
+    begin
+      Names := Trim(Copy(Names, Length(Modifiers[Index]) + 1, MaxInt));
+      Break;
+    end;
+  Result := StringReplace(StringReplace(Names, ' ', '', [rfReplaceAll]), #9, '', [rfReplaceAll]);
+end;
+
+function JoinGroups(const AGroups: TArray<string>; const AAfter: string): string;
+var
+  Index: Integer;
+begin
+  Result := '(';
+  for Index := 0 to High(AGroups) do
+  begin
+    if Index > 0 then
+      Result := Result + '; ';
+    Result := Result + AGroups[Index];
+  end;
+  Result := Result + ')' + AAfter;
+end;
+
+/// <summary>Kopf der Deklaration für den Rumpf: Standardwerte entfallen.</summary>
+function WithoutDefaults(const ATail: string): string;
+var
+  Groups: TArray<string>;
+  After: string;
+  Index, Equals: Integer;
+begin
+  if not SplitParameters(ATail, Groups, After) then
+    Exit(TrimLeft(ATail));
+  for Index := 0 to High(Groups) do
+  begin
+    Equals := DefaultPos(Groups[Index]);
+    if Equals > 0 then
+      Groups[Index] := TrimRight(Copy(Groups[Index], 1, Equals - 1));
+  end;
+  Result := JoinGroups(Groups, After);
+end;
+
+/// <summary>Kopf des Rumpfs für die Deklaration; Standardwerte der alten Deklaration bleiben
+/// bei gleichnamigen Parametern erhalten.</summary>
+function WithDefaultsOf(const ABodyTail, ADeclTail: string): string;
+var
+  Groups, Old: TArray<string>;
+  After, OldAfter: string;
+  Index, Inner, Equals: Integer;
+begin
+  if not SplitParameters(ABodyTail, Groups, After) then
+    Exit(TrimLeft(ABodyTail));
+  if SplitParameters(ADeclTail, Old, OldAfter) then
+    for Index := 0 to High(Groups) do
+      for Inner := 0 to High(Old) do
+      begin
+        Equals := DefaultPos(Old[Inner]);
+        if (Equals > 0) and (DefaultPos(Groups[Index]) = 0) and
+          (GroupNames(Groups[Index]) = GroupNames(Copy(Old[Inner], 1, Equals - 1))) then
+          Groups[Index] := Groups[Index] + ' ' + Trim(Copy(Old[Inner], Equals, MaxInt));
+      end;
+  Result := JoinGroups(Groups, After);
+end;
+
 { TClassCompletion }
+
+class function TClassCompletion.SignatureFixes(ATree: TSyntaxTree; const AText: string;
+  const AMethod: TUnmatchedMethod; out AFixes: TArray<TRuleFix>): Boolean;
+var
+  Items: TArray<TUnmatchedMethod>;
+  Item, Partner, Decl, Body: TUnmatchedMethod;
+  Partners, Same: Integer;
+  DeclRange, BodyRange: TTextRange;
+  DeclTail, BodyTail: string;
+  Fix: TRuleFix;
+begin
+  AFixes := nil;
+  Result := False;
+  Items := Unmatched(ATree, AText);
+  Partners := 0;
+  Same := 0;
+  Partner := Default(TUnmatchedMethod);
+  for Item in Items do
+  begin
+    if not SameText(Item.TypeName, AMethod.TypeName) or not SameText(Item.Symbol.Name, AMethod.Symbol.Name) or
+      (Item.Symbol.MaxArgs <> AMethod.Symbol.MaxArgs) then
+      Continue;
+    if Item.Declared = AMethod.Declared then
+      Inc(Same)
+    else
+    begin
+      Inc(Partners);
+      Partner := Item;
+    end;
+  end;
+  // Mehrdeutig (Überladungen gleicher Länge) oder ohne Gegenstück: nichts anbieten.
+  if (Partners <> 1) or (Same <> 1) then
+    Exit;
+  if AMethod.Declared then
+  begin
+    Decl := AMethod;
+    Body := Partner;
+  end
+  else
+  begin
+    Decl := Partner;
+    Body := AMethod;
+  end;
+  if not SignatureTail(ATree, AText, Decl.Symbol, DeclRange, DeclTail) or
+    not SignatureTail(ATree, AText, Body.Symbol, BodyRange, BodyTail) then
+    Exit;
+  Fix := TRuleFix.Create(Format('Implementierung von %s an die Deklaration angleichen', [AMethod.Symbol.Name]),
+    [TRuleEdit.Create(BodyRange, WithoutDefaults(DeclTail))]);
+  Fix.Alternative := True;
+  AFixes := AFixes + [Fix];
+  Fix := TRuleFix.Create(Format('Deklaration von %s an die Implementierung angleichen', [AMethod.Symbol.Name]),
+    [TRuleEdit.Create(DeclRange, WithDefaultsOf(BodyTail, DeclTail))]);
+  Fix.Alternative := True;
+  AFixes := AFixes + [Fix];
+  Result := True;
+end;
+
 
 class function TClassCompletion.Unmatched(ATree: TSyntaxTree; const AText: string): TArray<TUnmatchedMethod>;
 var

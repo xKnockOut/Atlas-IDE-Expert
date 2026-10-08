@@ -1,6 +1,7 @@
 ﻿unit BDLsp.Common.Rules.Builtin.Declarations.Tests;
 
-// Tests für declared-not-implemented und implemented-not-declared (#124).
+// Tests für declared-not-implemented und implemented-not-declared (#124) sowie
+// das Angleichen abweichender Signaturen (#100).
 
 interface
 
@@ -33,6 +34,12 @@ type
     procedure FixCreatesPrivateSection;
     [Test]
     procedure GlobalRoutineIsSilent;
+    [Test]
+    procedure ModifierMismatchAlignsBothWays;
+    [Test]
+    procedure DefaultsStayInDeclaration;
+    [Test]
+    procedure AmbiguousOverloadOffersNoAlignment;
   end;
 
 implementation
@@ -180,6 +187,70 @@ procedure TDeclarationRulesTests.GlobalRoutineIsSilent;
 begin
   TRuleAssert.Silent(TImplementedNotDeclaredRule.Create,
     'unit U;'#10'interface'#10'implementation'#10'procedure Hilfe;'#10'begin'#10'end;'#10'end.');
+end;
+
+/// <summary>Wendet eine einzeilige Korrektur an (Zeilen mit #10).</summary>
+function ApplyFix(const AText: string; const AFix: TRuleFix): string;
+var
+  Lines: TArray<string>;
+  Edit: TRuleEdit;
+  Line: string;
+begin
+  Edit := AFix.Edits[0];
+  Lines := AText.Split([#10]);
+  Line := Lines[Edit.Range.StartPos.Line];
+  Lines[Edit.Range.StartPos.Line] := Copy(Line, 1, Edit.Range.StartPos.Character) + Edit.NewText +
+    Copy(Line, Edit.Range.EndPos.Character + 1, MaxInt);
+  Result := string.Join(#10, Lines);
+end;
+
+procedure TDeclarationRulesTests.ModifierMismatchAlignsBothWays;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Foo(const A: Integer);'#10'begin'#10'end;');
+  Findings := TRuleAssert.Findings(TDeclaredNotImplementedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.Contains(Findings[0].Message, 'andere Signatur');
+  // Zwei Angleich-Aktionen vor "Rumpf erzeugen", alle gleichrangig.
+  Assert.AreEqual(3, Integer(Length(Findings[0].Fixes)));
+  Assert.IsTrue(Findings[0].Fixes[0].Alternative and Findings[0].Fixes[1].Alternative and
+    Findings[0].Fixes[2].Alternative);
+  Assert.AreEqual(ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Foo(A: Integer);'#10'begin'#10'end;'),
+    ApplyFix(Source, Findings[0].Fixes[0]));
+  Assert.AreEqual(ClassUnit('    procedure Foo(const A: Integer);',
+    'procedure TFoo.Foo(const A: Integer);'#10'begin'#10'end;'), ApplyFix(Source, Findings[0].Fixes[1]));
+  TRuleAssert.Silent(TDeclaredNotImplementedRule.Create, ApplyFix(Source, Findings[0].Fixes[0]));
+  TRuleAssert.Silent(TImplementedNotDeclaredRule.Create, ApplyFix(Source, Findings[0].Fixes[1]));
+  Assert.IsTrue(ParsesCleanly(ApplyFix(Source, Findings[0].Fixes[1])));
+  // Die Gegenseite bietet dieselben Aktionen.
+  Findings := TRuleAssert.Findings(TImplementedNotDeclaredRule.Create, Source);
+  Assert.AreEqual(3, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TDeclarationRulesTests.DefaultsStayInDeclaration;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := ClassUnit('    function Bar(A: Integer = 5; B: string = ''x;y''): Boolean;',
+    'function TFoo.Bar(const A: Integer; B: string): Boolean;'#10'begin'#10'end;');
+  Findings := TRuleAssert.Findings(TDeclaredNotImplementedRule.Create, Source);
+  Assert.AreEqual('(A: Integer; B: string): Boolean', Findings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual('(const A: Integer = 5; B: string = ''x;y''): Boolean', Findings[0].Fixes[1].Edits[0].NewText);
+end;
+
+procedure TDeclarationRulesTests.AmbiguousOverloadOffersNoAlignment;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TImplementedNotDeclaredRule.Create, ClassUnit(
+    '    procedure Foo(A: Integer); overload;'#10'    procedure Foo(A: string); overload;',
+    'procedure TFoo.Foo(A: Double);'#10'begin'#10'end;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  // Nur "Deklaration ergänzen".
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
 end;
 
 initialization
