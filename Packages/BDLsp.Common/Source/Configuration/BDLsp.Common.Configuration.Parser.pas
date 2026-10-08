@@ -56,6 +56,8 @@ type
     procedure ReadOverrides(ANode: TJsonNode);
     procedure ReadExclude(ANode: TJsonNode);
     procedure ReadUsesKeep(ANode: TJsonNode);
+    procedure ReadDfmPropertyRules(ANode: TJsonNode);
+    function ReadDfmPropertyRule(ANode: TJsonNode; out ARule: TDfmPropertyRule): Boolean;
     procedure ReadSlashCommands(ANode: TJsonNode);
     procedure ReadSortUses(ANode: TJsonNode);
     procedure ReadInlayHints(ANode: TJsonNode);
@@ -361,6 +363,109 @@ begin
   for Index := 0 to ANode.Count - 1 do
     if ExpectString(ANode[Index], 'usesKeep', Value) then
       FSettings.UsesKeep := FSettings.UsesKeep + [Value];
+end;
+
+procedure TValidator.ReadDfmPropertyRules(ANode: TJsonNode);
+var
+  Index: Integer;
+  Rule: TDfmPropertyRule;
+begin
+  if ANode.Kind <> TJsonKind.Array_ then
+  begin
+    ReportNode(ANode, '"dfmPropertyRules" muss eine Liste von Regeln sein');
+    Exit;
+  end;
+  FSettings.DfmPropertyRules := nil;
+  for Index := 0 to ANode.Count - 1 do
+    if ReadDfmPropertyRule(ANode[Index], Rule) then
+      FSettings.DfmPropertyRules := FSettings.DfmPropertyRules + [Rule];
+end;
+
+function TValidator.ReadDfmPropertyRule(ANode: TJsonNode; out ARule: TDfmPropertyRule): Boolean;
+var
+  Index, Item: Integer;
+  Key, Text: string;
+  Value: TJsonNode;
+begin
+  ARule := Default(TDfmPropertyRule);
+  ARule.Severity := TRuleSeverity.Warning;
+  ARule.IncludeDescendants := True;
+  ARule.Fix := TDfmFixMode.Prompt;
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, 'Eine Eigenschaftsregel muss ein Objekt sein: { "class": …, "property": …, "condition": … }');
+    Exit(False);
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    Value := ANode[Index];
+    if Key = 'class' then
+      ExpectString(Value, Key, ARule.ClassName)
+    else if Key = 'property' then
+      ExpectString(Value, Key, ARule.PropertyPath)
+    else if Key = 'value' then
+      ExpectString(Value, Key, ARule.Value)
+    else if Key = 'message' then
+      ExpectString(Value, Key, ARule.Message)
+    else if Key = 'condition' then
+    begin
+      if not ExpectString(Value, Key, Text) then
+        Continue;
+      case IndexStr(Text, ['=', '<>', 'contains', 'notContains', 'empty', 'notEmpty']) of
+        0: ARule.Condition := TDfmCondition.Equal;
+        1: ARule.Condition := TDfmCondition.NotEqual;
+        2: ARule.Condition := TDfmCondition.Contains;
+        3: ARule.Condition := TDfmCondition.NotContains;
+        4: ARule.Condition := TDfmCondition.Empty;
+        5: ARule.Condition := TDfmCondition.NotEmpty;
+      else
+        ReportNode(Value, 'Erlaubt sind "=", "<>", "contains", "notContains", "empty" und "notEmpty"');
+      end;
+    end
+    else if Key = 'severity' then
+    begin
+      if ExpectString(Value, Key, Text) and not TConfigurationParser.TryParseSeverity(Text, ARule.Severity) then
+        ReportNode(Value, Format('Unbekannter Schweregrad "%s"; erlaubt: off, hint, info, warning, error', [Text]));
+    end
+    else if Key = 'includeDescendants' then
+      ExpectBoolean(Value, Key, ARule.IncludeDescendants)
+    else if Key = 'fix' then
+    begin
+      if not ExpectString(Value, Key, Text) then
+        Continue;
+      case IndexStr(Text, ['prompt', 'auto', 'none']) of
+        0: ARule.Fix := TDfmFixMode.Prompt;
+        1: ARule.Fix := TDfmFixMode.Auto;
+        2: ARule.Fix := TDfmFixMode.None;
+      else
+        ReportNode(Value, 'Erlaubt sind "auto", "prompt" und "none"');
+      end;
+    end
+    else if Key = 'exclude' then
+    begin
+      if Value.Kind <> TJsonKind.Array_ then
+      begin
+        ReportNode(Value, '"exclude" muss eine Liste von Glob-Mustern sein');
+        Continue;
+      end;
+      for Item := 0 to Value.Count - 1 do
+        if ExpectString(Value[Item], 'exclude', Text) then
+          ARule.Exclude := ARule.Exclude + [Text];
+    end
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Angabe "%s" in einer Eigenschaftsregel', [Key]), False);
+  end;
+  Result := (ARule.ClassName <> '') and (ARule.PropertyPath <> '');
+  if not Result then
+    ReportNode(ANode, 'Eine Eigenschaftsregel braucht "class" und "property"')
+  else if (ARule.Condition in [TDfmCondition.Equal, TDfmCondition.NotEqual, TDfmCondition.Contains,
+    TDfmCondition.NotContains]) and (ARule.Value = '') then
+  begin
+    ReportNode(ANode, 'Diese Bedingung braucht einen "value"');
+    Result := False;
+  end;
 end;
 
 procedure TValidator.ReadSlashCommands(ANode: TJsonNode);
@@ -817,6 +922,8 @@ begin
         ReadSortUses(Value)
       else if Key = 'usesKeep' then
         ReadUsesKeep(Value)
+      else if Key = 'dfmPropertyRules' then
+        ReadDfmPropertyRules(Value)
       else if Key = 'memoryBudgetMb' then
       begin
         if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Budget) and (Budget >= 0) then
@@ -1047,6 +1154,8 @@ begin
     end
     else if Key = 'usesKeep' then
       Result.UsesKeep := FileSettings.UsesKeep
+    else if Key = 'dfmPropertyRules' then
+      Result.DfmPropertyRules := FileSettings.DfmPropertyRules
     else if Key = 'memoryBudgetMb' then
       Result.MemoryBudgetMb := FileSettings.MemoryBudgetMb
     else if Key = 'requestTimeoutMs' then

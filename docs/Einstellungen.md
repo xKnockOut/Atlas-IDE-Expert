@@ -24,6 +24,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Eingabehilfen | `slashCommands`: `enabled`, `disabled` | – | delphi-lsp.json, Editor (`betterDelphiLsp.slashCommands`) | nein | Kontrollkästchen, Liste | #293 |
 | Eingabehilfen | `sortUses` | `false` | delphi-lsp.json, Editor (`betterDelphiLsp.sortUses`) | nein | Auswahl | #182, #284 |
 | Eingabehilfen | `usesKeep` | `` | delphi-lsp.json, Editor (`betterDelphiLsp.usesKeep`) | nein | Liste | #284 |
+| Prüfregeln | `dfmPropertyRules` | `` | delphi-lsp.json, Editor (`betterDelphiLsp.dfmPropertyRules`) | nein | Eigener Editor (Klasse und Property aus dem Index) | #309 |
 | Speicher | `memoryBudgetMb` | `0` | delphi-lsp.json, Editor (`betterDelphiLsp.memoryBudgetMb`) | nein | Zahlenfeld (MB) | #185 |
 | Robustheit | `requestTimeoutMs` | `10000` | delphi-lsp.json, Editor (`betterDelphiLsp.requestTimeoutMs`) | nein | Zahlenfeld (ms) | #283 |
 | Editor | `highlight`: `blockPairs`, `directives`, `exitPoints`, `exitKeywords` | – | delphi-lsp.json, Editor (`betterDelphiLsp.highlight`) | nein | Kontrollkästchen, Liste | #307 |

@@ -28,6 +28,7 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 | `slashCommands` | object | – |  | Schnellbefehle: Eine Zeile, die mit /name beginnt, wird nach Enter ausgeführt und verschwindet. Nach / schlägt die Vervollständigung alle Befehle vor. |
 | `sortUses` | boolean string | `false` | `true`, `false`, `"alphabetic"`, `"namespace"` | "uses aufräumen" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder "alphabetic" alphabetisch, "namespace" nach Namespace gruppiert (System, Vcl, ... und Units ohne Namespace zuletzt). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units. |
 | `usesKeep` | array<string> | `` |  | Units, die "ungenutzte uses entfernen" nie entfernt, zusätzlich zu allen Units mit initialization-Abschnitt. |
+| `dfmPropertyRules` | array<object> | `` |  | Eigenschaftsregeln für Formulardateien: Vorgaben für Komponenten-Properties, gemeldet als dfm-property in der DFM. Nicht gespeicherte Properties gelten mit ihrem default-Wert. |
 | `memoryBudgetMb` | integer | `0` | 0… | Obergrenze für den Symbolindex in MB. Darüber werden zuerst Bibliotheks-Units (RTL, VCL), dann Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. |
 | `requestTimeoutMs` | integer | `10000` | 1000… | Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet. |
 | `highlight` | object | – |  | Zusammengehörige Schlüsselwörter hervorheben, wenn der Cursor auf einem steht. |

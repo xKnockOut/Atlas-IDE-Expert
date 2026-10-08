@@ -134,6 +134,28 @@ type
     class function Default: TCompletionSettings; static;
   end;
 
+  /// <summary>Bedingung einer Eigenschaftsregel für DFMs (#309).</summary>
+  TDfmCondition = (Equal, NotEqual, Contains, NotContains, Empty, NotEmpty);
+
+  /// <summary>Korrektur: auto gilt als sicher (source.fixAll), prompt nur als Code-Aktion, none gar nicht.</summary>
+  TDfmFixMode = (Prompt, Auto, None);
+
+  /// <summary>Eigenschaftsregel aus dfmPropertyRules (#309).</summary>
+  TDfmPropertyRule = record
+    ClassName: string;
+    /// <summary>Property-Pfad, auch Font.Name.</summary>
+    PropertyPath: string;
+    Condition: TDfmCondition;
+    Value: string;
+    /// <summary>Meldung; '' = aus Klasse, Property, Bedingung und Wert gebildet.</summary>
+    Message: string;
+    Severity: TRuleSeverity;
+    IncludeDescendants: Boolean;
+    Fix: TDfmFixMode;
+    /// <summary>Glob-Muster für Dateien, die die Regel nicht prüft.</summary>
+    Exclude: TArray<string>;
+  end;
+
   TServerSettings = record
     /// <summary>Delphi-Version als BDS-Version der Registry, z. B. "37.0" (Produktnummern wie "12" werden
     /// beim Lesen umgerechnet, siehe BdsVersionOf); '' = passend zur ProjectVersion der .dproj, sonst neueste installierte (#47).</summary>
@@ -187,6 +209,8 @@ type
     SortUsesByNamespace: Boolean;
     /// <summary>Units, die "ungenutzte uses entfernen" nie entfernt (#284).</summary>
     UsesKeep: TArray<string>;
+    /// <summary>Eigenschaftsregeln für Formulardateien (#309).</summary>
+    DfmPropertyRules: TArray<TDfmPropertyRule>;
     /// <summary>Obergrenze für den Symbolindex in MB; 0 = unbegrenzt (#185).</summary>
     MemoryBudgetMb: Integer;
     /// <summary>Zeitlimit für Anfragen in ms (#283); länger laufende werden abgebrochen.</summary>
@@ -417,6 +441,7 @@ begin
   Result.SortUses := False;
   Result.SortUsesByNamespace := False;
   Result.UsesKeep := nil;
+  Result.DfmPropertyRules := nil;
   Result.MemoryBudgetMb := 0;
   Result.RequestTimeoutMs := 10000;
   Result.LogLevel := 'info';

@@ -7,8 +7,9 @@
 //   - Aufzählungs- und Mengenwerte (alClient, [fsBold]): Typ und alle Werte; Sprung zum Wert
 //   - Ereignis-Handler (OnClick = btnOkClick): Signatur der Methode aus der Unit
 // Dazu die Suche nach gespeicherten Werten, die dem default entsprechen
-// (Grundlage der Regel dfm-redundant-default). Was sich nicht auflösen lässt
-// (Klassen ohne Quellen), ergibt keinen Hover und kein Ziel.
+// (Grundlage der Regel dfm-redundant-default) und die Eigenschaftsregeln aus
+// dfmPropertyRules (#309, Regel dfm-property). Was sich nicht auflösen lässt
+// (Klassen ohne Quellen), ergibt keinen Hover, kein Ziel und keine Meldung.
 
 interface
 
@@ -16,6 +17,8 @@ uses
   System.SysUtils,
   BDLsp.Common.Documents.Contract,
   BDLsp.Common.Index.Contract,
+  BDLsp.Common.Rules.Contract,
+  BDLsp.Common.Configuration.Contract,
   BDLsp.Common.Dfm.Contract,
   BDLsp.Common.Lsp.PublishedMembers;
 
@@ -26,6 +29,26 @@ type
     Range: TTextRange;
     PropertyName: string;
     Value: string;
+  end;
+
+  /// <summary>Verstoß gegen eine Eigenschaftsregel (#309).</summary>
+  TFormPropertyViolation = record
+    /// <summary>Gespeicherte Property-Zeile, sonst der Kopf des Objekts.</summary>
+    Range: TTextRange;
+    Message: string;
+    /// <summary>Position der Regel in dfmPropertyRules.</summary>
+    RuleIndex: Integer;
+    Severity: TRuleSeverity;
+    HasFix: Boolean;
+    /// <summary>Korrektur gilt als sicher (fix: auto) und läuft mit source.fixAll.</summary>
+    Safe: Boolean;
+    Fix: TRuleEdit;
+  end;
+
+  /// <summary>Regel, deren Klasse oder Property sich nicht auflösen lässt.</summary>
+  TFormPropertyRuleProblem = record
+    RuleIndex: Integer;
+    Message: string;
   end;
 
   TFormSymbols = class
@@ -39,6 +62,12 @@ type
     /// <summary>Gespeicherte Werte, die dem default der Property entsprechen.</summary>
     class function RedundantDefaults(const AText: string; const AIndex: ISymbolIndex;
       const AReadText: TMemberReadText): TArray<TRedundantDefault>; static;
+    /// <summary>Verstöße gegen ARules in der Formulardatei AFileName (für exclude).</summary>
+    class function PropertyViolations(const AText, AFileName: string; const ARules: TArray<TDfmPropertyRule>;
+      const AIndex: ISymbolIndex; const AReadText: TMemberReadText): TArray<TFormPropertyViolation>; static;
+    /// <summary>Regeln mit unbekannter Klasse oder Property.</summary>
+    class function RuleProblems(const ARules: TArray<TDfmPropertyRule>; const AIndex: ISymbolIndex;
+      const AReadText: TMemberReadText): TArray<TFormPropertyRuleProblem>; static;
   end;
 
 implementation
@@ -137,6 +166,7 @@ type
   private
     FDocument: TDfmDocument;
     FLines: TArray<string>;
+    FLineBreak: string;
     function ParentOf(AParent, AObject: TDfmObject): TDfmObject;
   public
     constructor Create(const AText: string);
@@ -146,6 +176,8 @@ type
     /// <summary>Wort (Bezeichner) an APosition und sein Bereich.</summary>
     function WordAt(const APosition: TTextPosition; out ARange: TTextRange): string;
     property Document: TDfmDocument read FDocument;
+    property Lines: TArray<string> read FLines;
+    property LineBreak: string read FLineBreak;
   end;
 
 constructor TFormView.Create(const AText: string);
@@ -153,6 +185,10 @@ begin
   inherited Create;
   FDocument := TDfmParser.Parse(AText);
   FLines := StringReplace(AText, #13#10, #10, [rfReplaceAll]).Split([#10]);
+  if Pos(#13#10, AText) > 0 then
+    FLineBreak := #13#10
+  else
+    FLineBreak := #10;
 end;
 
 destructor TFormView.Destroy;
@@ -456,6 +492,298 @@ begin
     View.Free;
   end;
   Result := Found;
+end;
+
+
+{ Eigenschaftsregeln (#309) }
+
+/// <summary>Ist AClassName gleich AAncestor oder (mit ADescendants) ein Nachfahr davon?</summary>
+function IsClassOrDescendant(const AIndex: ISymbolIndex; const AClassName, AAncestor: string;
+  ADescendants: Boolean): Boolean;
+var
+  ClassName: string;
+  Location: TSymbolLocation;
+  Depth: Integer;
+begin
+  if SameText(AClassName, AAncestor) then
+    Exit(True);
+  Result := False;
+  if not ADescendants then
+    Exit;
+  ClassName := AClassName;
+  for Depth := 1 to MaxDepth do
+  begin
+    if not FindClassSymbol(AIndex, ClassName, Location) or (Length(Location.Symbol.Ancestors) = 0) then
+      Exit;
+    ClassName := Location.Symbol.Ancestors[0];
+    if SameText(ClassName, AAncestor) then
+      Exit(True);
+  end;
+end;
+
+/// <summary>Wert ohne Anführungszeichen ('Segoe UI' wird Segoe UI).</summary>
+function Unquote(const AValue: string): string;
+begin
+  Result := Trim(AValue);
+  if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
+    Result := StringReplace(Copy(Result, 2, Length(Result) - 2), '''''', '''', [rfReplaceAll]);
+end;
+
+function IsSet(const AValue: string): Boolean;
+begin
+  Result := StartsStr('[', Trim(AValue)) and EndsStr(']', Trim(AValue));
+end;
+
+function SetElements(const AValue: string): TArray<string>;
+var
+  Inner, Element: string;
+begin
+  Result := nil;
+  Inner := Trim(AValue);
+  Inner := Copy(Inner, 2, Length(Inner) - 2);
+  for Element in Inner.Split([',']) do
+    if Trim(Element) <> '' then
+      Result := Result + [Trim(Element)];
+end;
+
+function JoinSet(const AElements: TArray<string>): string;
+begin
+  Result := '[' + string.Join(', ', AElements) + ']';
+end;
+
+/// <summary>Erfüllt AActual die Regel?</summary>
+function Satisfies(const ARule: TDfmPropertyRule; const AActual: string): Boolean;
+var
+  Actual: string;
+begin
+  Actual := Unquote(AActual);
+  case ARule.Condition of
+    TDfmCondition.Equal:
+      Result := SameText(Actual, Unquote(ARule.Value));
+    TDfmCondition.NotEqual:
+      Result := not SameText(Actual, Unquote(ARule.Value));
+    TDfmCondition.Contains, TDfmCondition.NotContains:
+      begin
+        if IsSet(AActual) then
+          Result := MatchText(Trim(ARule.Value), SetElements(AActual))
+        else
+          Result := ContainsText(Actual, Unquote(ARule.Value));
+        if ARule.Condition = TDfmCondition.NotContains then
+          Result := not Result;
+      end;
+    TDfmCondition.Empty:
+      Result := (Actual = '') or (Actual = '[]');
+  else
+    Result := (Actual <> '') and (Actual <> '[]');
+  end;
+end;
+
+function ConditionText(ACondition: TDfmCondition): string;
+begin
+  case ACondition of
+    TDfmCondition.Equal: Result := '=';
+    TDfmCondition.NotEqual: Result := '<>';
+    TDfmCondition.Contains: Result := 'enthält';
+    TDfmCondition.NotContains: Result := 'enthält nicht';
+    TDfmCondition.Empty: Result := 'ist leer';
+  else
+    Result := 'ist nicht leer';
+  end;
+end;
+
+/// <summary>Neuer Wert nach der Korrektur; False, wenn die Bedingung keinen eindeutigen Sollwert hat.</summary>
+function FixedValue(const ARule: TDfmPropertyRule; const AActual: string; AWasQuoted: Boolean;
+  out AValue: string): Boolean;
+var
+  Elements, Kept: TArray<string>;
+  Element: string;
+begin
+  Result := True;
+  case ARule.Condition of
+    TDfmCondition.Equal:
+      begin
+        AValue := ARule.Value;
+        if AWasQuoted and not StartsStr('''', AValue) then
+          AValue := QuotedStr(AValue);
+      end;
+    TDfmCondition.Contains:
+      begin
+        if (AActual <> '') and not IsSet(AActual) then
+          Exit(False);
+        Elements := nil;
+        if AActual <> '' then
+          Elements := SetElements(AActual);
+        AValue := JoinSet(Elements + [Trim(ARule.Value)]);
+      end;
+    TDfmCondition.NotContains:
+      begin
+        if not IsSet(AActual) then
+          Exit(False);
+        Kept := nil;
+        for Element in SetElements(AActual) do
+          if not SameText(Element, Trim(ARule.Value)) then
+            Kept := Kept + [Element];
+        AValue := JoinSet(Kept);
+      end;
+  else
+    Result := False;
+  end;
+end;
+
+/// <summary>Gespeicherte Property APath des Objekts.</summary>
+function StoredProperty(AObject: TDfmObject; const APath: string; out AProperty: TDfmProperty): Boolean;
+var
+  Item: TDfmProperty;
+begin
+  for Item in AObject.Properties do
+    if SameText(Item.Name, APath) then
+    begin
+      AProperty := Item;
+      Exit(True);
+    end;
+  Result := False;
+end;
+
+function IndentOf(const ALine: string): string;
+var
+  Index: Integer;
+begin
+  Index := 1;
+  while (Index <= Length(ALine)) and CharInSet(ALine[Index], [' ', #9]) do
+    Inc(Index);
+  Result := Copy(ALine, 1, Index - 1);
+end;
+
+class function TFormSymbols.PropertyViolations(const AText, AFileName: string;
+  const ARules: TArray<TDfmPropertyRule>; const AIndex: ISymbolIndex;
+  const AReadText: TMemberReadText): TArray<TFormPropertyViolation>;
+var
+  View: TFormView;
+  Found: TArray<TFormPropertyViolation>;
+  Active: TArray<Integer>;
+
+  procedure Check(AObject: TDfmObject; ARuleIndex: Integer; const AClassName: string);
+  var
+    Rule: TDfmPropertyRule;
+    Stored: TDfmProperty;
+    Member: TPublishedMember;
+    HasStored: Boolean;
+    Actual, NewValue, HeaderLine: string;
+    Violation: TFormPropertyViolation;
+  begin
+    Rule := ARules[ARuleIndex];
+    HasStored := StoredProperty(AObject, Rule.PropertyPath, Stored);
+    if HasStored then
+      Actual := Trim(Stored.Value)
+    else
+    begin
+      // Geerbte Objekte haben den Wert aus dem Vorfahren; gemeldet wird dort.
+      if AObject.Kind = TDfmObjectKind.Inherited_ then
+        Exit;
+      if not ResolveProperty(AIndex, AReadText, AClassName, Rule.PropertyPath, Member) then
+        Exit;
+      Actual := Member.DefaultValue;
+    end;
+    if Satisfies(Rule, Actual) then
+      Exit;
+    Violation := Default(TFormPropertyViolation);
+    Violation.RuleIndex := ARuleIndex;
+    Violation.Severity := Rule.Severity;
+    Violation.Message := Rule.Message;
+    if Violation.Message = '' then
+      Violation.Message := Format('%s.%s %s %s (ist: %s)', [Rule.ClassName, Rule.PropertyPath,
+        ConditionText(Rule.Condition), Rule.Value, IfThen(Actual = '', 'leer', Actual)]);
+    if HasStored then
+      Violation.Range := TTextRange.Create(Stored.NameRange.StartPos, Stored.ValueRange.EndPos)
+    else
+      Violation.Range := TTextRange.Create(AObject.Range.StartPos, AObject.TypeRange.EndPos);
+    if (Rule.Fix <> TDfmFixMode.None) and FixedValue(Rule, Actual, StartsStr('''', Actual), NewValue) then
+    begin
+      Violation.HasFix := True;
+      Violation.Safe := Rule.Fix = TDfmFixMode.Auto;
+      if HasStored then
+        Violation.Fix := TRuleEdit.Create(Stored.ValueRange, NewValue)
+      else
+      begin
+        // Neue Zeile direkt unter dem Kopf des Objekts.
+        HeaderLine := View.Lines[AObject.Range.StartPos.Line];
+        Violation.Fix := TRuleEdit.Create(TTextRange.Create(AObject.Range.StartPos.Line, Length(HeaderLine),
+          AObject.Range.StartPos.Line, Length(HeaderLine)), View.LineBreak + IndentOf(HeaderLine) + '  ' +
+          Rule.PropertyPath + ' = ' + NewValue);
+      end;
+    end;
+    Found := Found + [Violation];
+  end;
+
+  procedure Visit(AObject: TDfmObject);
+  var
+    ClassName: string;
+    RuleIndex: Integer;
+    Child: TDfmObject;
+  begin
+    ClassName := View.ClassOf(AObject, AIndex, AReadText);
+    if ClassName <> '' then
+      for RuleIndex in Active do
+        if IsClassOrDescendant(AIndex, ClassName, ARules[RuleIndex].ClassName,
+          ARules[RuleIndex].IncludeDescendants) then
+          Check(AObject, RuleIndex, ClassName);
+    for Child in AObject.Children do
+      Visit(Child);
+  end;
+
+var
+  RuleIndex: Integer;
+  Pattern: string;
+  Excluded: Boolean;
+begin
+  Found := nil;
+  Active := nil;
+  for RuleIndex := 0 to High(ARules) do
+  begin
+    if ARules[RuleIndex].Severity = TRuleSeverity.Off then
+      Continue;
+    Excluded := False;
+    for Pattern in ARules[RuleIndex].Exclude do
+      if MatchesGlob(Pattern, AFileName) then
+        Excluded := True;
+    if not Excluded then
+      Active := Active + [RuleIndex];
+  end;
+  if Length(Active) = 0 then
+    Exit(nil);
+  View := TFormView.Create(AText);
+  try
+    if View.Document.Root <> nil then
+      Visit(View.Document.Root);
+  finally
+    View.Free;
+  end;
+  Result := Found;
+end;
+
+class function TFormSymbols.RuleProblems(const ARules: TArray<TDfmPropertyRule>; const AIndex: ISymbolIndex;
+  const AReadText: TMemberReadText): TArray<TFormPropertyRuleProblem>;
+var
+  Index: Integer;
+  Location: TSymbolLocation;
+  Member: TPublishedMember;
+  Problem: TFormPropertyRuleProblem;
+begin
+  Result := nil;
+  if AIndex = nil then
+    Exit;
+  for Index := 0 to High(ARules) do
+  begin
+    Problem.RuleIndex := Index;
+    Problem.Message := '';
+    if not FindClassSymbol(AIndex, ARules[Index].ClassName, Location) then
+      Problem.Message := Format('Unbekannte Klasse "%s"', [ARules[Index].ClassName])
+    else if not ResolveProperty(AIndex, AReadText, ARules[Index].ClassName, ARules[Index].PropertyPath, Member) then
+      Problem.Message := Format('%s hat keine published-Property "%s"', [ARules[Index].ClassName,
+        ARules[Index].PropertyPath]);
+    if Problem.Message <> '' then
+      Result := Result + [Problem];
+  end;
 end;
 
 end.

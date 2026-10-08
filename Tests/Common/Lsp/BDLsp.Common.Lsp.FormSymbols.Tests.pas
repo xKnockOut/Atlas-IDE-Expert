@@ -36,6 +36,18 @@ type
     procedure TargetsClassPropertyAndValue;
     [Test]
     procedure RedundantDefaultsFound;
+    [Test]
+    procedure RuleEqualUsesDefaultAndDescendants;
+    [Test]
+    procedure RuleContainsAddsSetElement;
+    [Test]
+    procedure RuleNotContainsRemovesElement;
+    [Test]
+    procedure RuleNotEqualAndEmptyHaveNoFix;
+    [Test]
+    procedure RuleExcludeSeverityAndFixMode;
+    [Test]
+    procedure RuleProblemsForUnknownNames;
   end;
 
 implementation
@@ -43,6 +55,7 @@ implementation
 uses
   System.SysUtils,
   BDLsp.Common.Documents.Contract,
+  BDLsp.Common.Configuration.Contract,
   BDLsp.Common.Index.SymbolIndex,
   BDLsp.Common.Index.Extractor,
   BDLsp.Common.Lsp.FormSymbols;
@@ -86,6 +99,19 @@ const
     '    property TabStop default True;'#10 +
     '    property Columns: TListColumns read FColumns write FColumns;'#10 +
     '    property OnClick: TNotifyEvent read FOnClick write FOnClick;'#10 +
+    '  end;'#10 +
+    '  TGridOption = (dgEditing, dgRowSelect, dgTitles);'#10 +
+    '  TGridOptions = set of TGridOption;'#10 +
+    '  TLabel = class(TControl)'#10 +
+    '  published'#10 +
+    '    property Transparent: Boolean read FTransparent write FTransparent default False;'#10 +
+    '    property Caption: string read FCaption write FCaption;'#10 +
+    '  end;'#10 +
+    '  TMyLabel = class(TLabel)'#10 +
+    '  end;'#10 +
+    '  TGrid = class(TWinControl)'#10 +
+    '  published'#10 +
+    '    property Options: TGridOptions read FOptions write FOptions default [dgEditing, dgTitles];'#10 +
     '  end;'#10 +
     'implementation'#10 +
     'end.';
@@ -231,6 +257,137 @@ begin
   Assert.AreEqual(1, Integer(Length(Found)));
   Assert.AreEqual('TControl', Found[0].Symbol.Container);
   Assert.AreEqual(12, Found[0].Symbol.Range.StartPos.Line);
+end;
+
+const
+  RuleForm =
+    'object F: TMainForm'#10 +                   // 0
+    '  object L1: TLabel'#10 +                   // 1
+    '  end'#10 +                                 // 2
+    '  object L2: TLabel'#10 +                   // 3
+    '    Transparent = True'#10 +                // 4
+    '  end'#10 +                                 // 5
+    '  object L3: TMyLabel'#10 +                 // 6
+    '  end'#10 +                                 // 7
+    '  object G: TGrid'#10 +                     // 8
+    '    Options = [dgEditing]'#10 +             // 9
+    '  end'#10 +                                 // 10
+    '  object G2: TGrid'#10 +                    // 11
+    '  end'#10 +                                 // 12
+    'end';                                       // 13
+
+function Rule(const AClass, AProperty: string; ACondition: TDfmCondition; const AValue: string): TDfmPropertyRule;
+begin
+  Result := Default(TDfmPropertyRule);
+  Result.ClassName := AClass;
+  Result.PropertyPath := AProperty;
+  Result.Condition := ACondition;
+  Result.Value := AValue;
+  Result.Severity := TRuleSeverity.Warning;
+  Result.IncludeDescendants := True;
+  Result.Fix := TDfmFixMode.Prompt;
+end;
+
+procedure TFormSymbolsTests.RuleEqualUsesDefaultAndDescendants;
+var
+  Rules: TArray<TDfmPropertyRule>;
+  Found: TArray<TFormPropertyViolation>;
+begin
+  Rules := [Rule('TLabel', 'Transparent', TDfmCondition.Equal, 'True')];
+  Found := TFormSymbols.PropertyViolations(RuleForm, 'Haupt.dfm', Rules, FIndex, ReadSource);
+  // L1 ohne gespeicherten Wert (default False) und der Nachfahr L3; L2 hat True.
+  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual(1, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(6, Found[1].Range.StartPos.Line);
+  Assert.AreEqual('TLabel.Transparent = True (ist: False)', Found[0].Message);
+  Assert.IsTrue(Found[0].HasFix);
+  Assert.IsFalse(Found[0].Safe);
+  Assert.AreEqual(#10'    Transparent = True', Found[0].Fix.NewText);
+  Assert.AreEqual(1, Found[0].Fix.Range.StartPos.Line);
+  Assert.AreEqual(Length('  object L1: TLabel'), Found[0].Fix.Range.StartPos.Character);
+  Rules[0].IncludeDescendants := False;
+  Found := TFormSymbols.PropertyViolations(RuleForm, 'Haupt.dfm', Rules, FIndex, ReadSource);
+  Assert.AreEqual(1, Integer(Length(Found)));
+end;
+
+procedure TFormSymbolsTests.RuleContainsAddsSetElement;
+var
+  Found: TArray<TFormPropertyViolation>;
+begin
+  Found := TFormSymbols.PropertyViolations(RuleForm, 'Haupt.dfm',
+    [Rule('TGrid', 'Options', TDfmCondition.Contains, 'dgRowSelect')], FIndex, ReadSource);
+  Assert.AreEqual(2, Integer(Length(Found)));
+  // Gespeichert: Element ergänzen.
+  Assert.AreEqual(9, Found[0].Range.StartPos.Line);
+  Assert.AreEqual('[dgEditing, dgRowSelect]', Found[0].Fix.NewText);
+  Assert.AreEqual(9, Found[0].Fix.Range.StartPos.Line);
+  // Nicht gespeichert: default plus Element als neue Zeile.
+  Assert.AreEqual(#10'    Options = [dgEditing, dgTitles, dgRowSelect]', Found[1].Fix.NewText);
+end;
+
+procedure TFormSymbolsTests.RuleNotContainsRemovesElement;
+var
+  Found: TArray<TFormPropertyViolation>;
+begin
+  Found := TFormSymbols.PropertyViolations(RuleForm, 'Haupt.dfm',
+    [Rule('TGrid', 'Options', TDfmCondition.NotContains, 'dgEditing')], FIndex, ReadSource);
+  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual('[]', Found[0].Fix.NewText);
+  Assert.AreEqual(#10'    Options = [dgTitles]', Found[1].Fix.NewText);
+end;
+
+procedure TFormSymbolsTests.RuleNotEqualAndEmptyHaveNoFix;
+var
+  Found: TArray<TFormPropertyViolation>;
+begin
+  Found := TFormSymbols.PropertyViolations(RuleForm, 'Haupt.dfm',
+    [Rule('TLabel', 'Transparent', TDfmCondition.NotEqual, 'True')], FIndex, ReadSource);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(4, Found[0].Range.StartPos.Line);
+  Assert.IsFalse(Found[0].HasFix);
+  Found := TFormSymbols.PropertyViolations(RuleForm, 'Haupt.dfm',
+    [Rule('TLabel', 'Caption', TDfmCondition.NotEmpty, '')], FIndex, ReadSource);
+  Assert.AreEqual(3, Integer(Length(Found)));
+  Assert.IsFalse(Found[0].HasFix);
+  Found := TFormSymbols.PropertyViolations(RuleForm, 'Haupt.dfm',
+    [Rule('TLabel', 'Caption', TDfmCondition.Empty, '')], FIndex, ReadSource);
+  Assert.AreEqual(0, Integer(Length(Found)));
+end;
+
+procedure TFormSymbolsTests.RuleExcludeSeverityAndFixMode;
+var
+  Rules: TArray<TDfmPropertyRule>;
+  Found: TArray<TFormPropertyViolation>;
+begin
+  Rules := [Rule('TLabel', 'Transparent', TDfmCondition.Equal, 'True')];
+  Rules[0].Fix := TDfmFixMode.Auto;
+  Rules[0].Message := 'Labels transparent';
+  Found := TFormSymbols.PropertyViolations(RuleForm, 'Haupt.dfm', Rules, FIndex, ReadSource);
+  Assert.IsTrue(Found[0].Safe);
+  Assert.AreEqual('Labels transparent', Found[0].Message);
+  Rules[0].Fix := TDfmFixMode.None;
+  Found := TFormSymbols.PropertyViolations(RuleForm, 'Haupt.dfm', Rules, FIndex, ReadSource);
+  Assert.IsFalse(Found[0].HasFix);
+  Rules[0].Exclude := ['*.dfm'];
+  Assert.AreEqual(0, Integer(Length(TFormSymbols.PropertyViolations(RuleForm, 'Haupt.dfm', Rules, FIndex,
+    ReadSource))));
+  Rules[0].Exclude := nil;
+  Rules[0].Severity := TRuleSeverity.Off;
+  Assert.AreEqual(0, Integer(Length(TFormSymbols.PropertyViolations(RuleForm, 'Haupt.dfm', Rules, FIndex,
+    ReadSource))));
+end;
+
+procedure TFormSymbolsTests.RuleProblemsForUnknownNames;
+var
+  Problems: TArray<TFormPropertyRuleProblem>;
+begin
+  Problems := TFormSymbols.RuleProblems([Rule('TLabel', 'Transparent', TDfmCondition.Equal, 'True'),
+    Rule('TUnbekannt', 'X', TDfmCondition.Equal, '1'), Rule('TLabel', 'Farbe', TDfmCondition.Equal, '1')], FIndex,
+    ReadSource);
+  Assert.AreEqual(2, Integer(Length(Problems)));
+  Assert.AreEqual(1, Problems[0].RuleIndex);
+  Assert.AreEqual('Unbekannte Klasse "TUnbekannt"', Problems[0].Message);
+  Assert.AreEqual('TLabel hat keine published-Property "Farbe"', Problems[1].Message);
 end;
 
 procedure TFormSymbolsTests.RedundantDefaultsFound;
