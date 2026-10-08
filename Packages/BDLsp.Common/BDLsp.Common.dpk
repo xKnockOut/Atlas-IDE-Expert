@@ -189,6 +189,7 @@ contains
   BDLsp.Common.Lsp.CodeActions in 'Source\Lsp\BDLsp.Common.Lsp.CodeActions.pas',
   BDLsp.Common.Semantics.ControlFlow in 'Source\Semantics\BDLsp.Common.Semantics.ControlFlow.pas',
   BDLsp.Common.Semantics.NameResolver in 'Source\Semantics\BDLsp.Common.Semantics.NameResolver.pas',
+  BDLsp.Common.Semantics.Attributes in 'Source\Semantics\BDLsp.Common.Semantics.Attributes.pas',
   BDLsp.Common.Lsp.Definition in 'Source\Lsp\BDLsp.Common.Lsp.Definition.pas',
   BDLsp.Common.Lsp.PublishedMembers in 'Source\Lsp\BDLsp.Common.Lsp.PublishedMembers.pas',
   BDLsp.Common.Lsp.FormSymbols in 'Source\Lsp\BDLsp.Common.Lsp.FormSymbols.pas',

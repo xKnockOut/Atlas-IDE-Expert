@@ -8,7 +8,8 @@
 // <summary> entfallen, <param name="X"> wird zu "X:". Bei Methoden mit
 // getrennter Implementierung gilt die Deklaration (TLspDefinition).
 // Bei Klassen folgen die published-Properties und Ereignisse samt geerbter
-// (TPublishedMembers).
+// (TPublishedMembers). Auf einem Attribut (#119) zusätzlich die Konstruktoren
+// der Attributklasse, bei Argumenten die mit passender Parameterzahl.
 
 interface
 
@@ -47,6 +48,8 @@ type
     Deprecation: string;
     /// <summary>In der Formulardatei gesetzte Werte eines Komponentenfelds (#126); sonst ''.</summary>
     FormValues: string;
+    /// <summary>Konstruktoren der Attributklasse auf einem Attribut (#119); sonst ''.</summary>
+    Constructors: string;
     function Found: Boolean;
     function ToMarkdown: string;
   end;
@@ -103,6 +106,7 @@ uses
   BDLsp.Common.Dfm.Parser,
   BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.TreeCache,
+  BDLsp.Common.Semantics.Attributes,
   BDLsp.Common.Lsp.Internals.Cancellation;
 
 function SplitLines(const AText: string): TArray<string>;
@@ -229,6 +233,8 @@ begin
     Result := Result + #10#10 + '---' + #10#10 + Messages;
   if FormValues <> '' then
     Result := Result + #10#10 + '---' + #10#10 + FormValues;
+  if Constructors <> '' then
+    Result := Result + #10#10 + '```pascal' + #10 + Constructors + #10 + '```';
 end;
 
 { TLspHover }
@@ -315,6 +321,29 @@ begin
   end;
 end;
 
+/// <summary>Konstruktoren von AClass in AUnit, die AArgCount Argumente annehmen; passt keiner, alle.</summary>
+function AttributeConstructors(const AUnit: TUnitIndex; const AClass: TIndexSymbol; const ALines: TArray<string>;
+  AArgCount: Integer): string;
+var
+  Symbol: TIndexSymbol;
+  All, Matching: string;
+  Line: string;
+begin
+  All := '';
+  Matching := '';
+  for Symbol in AUnit.Symbols do
+    if (Symbol.Kind = TIndexSymbolKind.Constructor_) and SameText(Symbol.Container, AClass.Name) and
+      (Symbol.Range.StartPos.Line > AClass.Range.StartPos.Line) and
+      (Symbol.Range.StartPos.Line < AClass.Range.EndPos.Line) and (Symbol.Range.StartPos.Line <= High(ALines)) then
+    begin
+      Line := Trim(ALines[Symbol.Range.StartPos.Line]);
+      All := All + IfThen(All <> '', #10) + Line;
+      if (AArgCount >= Symbol.MinArgs) and (AArgCount <= Symbol.MaxArgs) then
+        Matching := Matching + IfThen(Matching <> '', #10) + Line;
+    end;
+  Result := IfThen(Matching <> '', Matching, All);
+end;
+
 class function TLspHover.InfoAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const ATreeText, AFileName: string; const APosition: TTextPosition;
   const AReadText: THoverReadText; const ADelphiVersion: string): THoverInfo;
@@ -329,6 +358,7 @@ var
   ClassTree: TSyntaxTree;
   Token: TPascalToken;
   Number: Int64;
+  Use: TAttributeUse;
 begin
   Result := Default(THoverInfo);
   // Zahlenliteral unter dem Cursor: Schreibweisen statt Deklaration.
@@ -392,6 +422,8 @@ begin
     if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') and
       ((Symbol.Range.StartPos = Start) or (Symbol.SelectionRange.StartPos = Start)) then
     begin
+      if TAttributes.At(ATree, APosition, Use) then
+        Result.Constructors := AttributeConstructors(OwnerUnit, Symbol, Lines, Use.ArgCount);
       // Die eigene Datei kommt aus dem Editor, nicht von der Platte.
       ReadText :=
         function(const AName: string; out AText: string): Boolean

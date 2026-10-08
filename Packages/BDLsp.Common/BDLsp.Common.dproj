@@ -223,6 +223,7 @@
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.CodeActions.pas"/>
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.ControlFlow.pas"/>
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.NameResolver.pas"/>
+        <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.Attributes.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Definition.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.PublishedMembers.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.FormSymbols.pas"/>
