@@ -64,6 +64,10 @@ type
     procedure BaselineHidesKnownRuleFindings;
     [Test]
     procedure MapsRuleSeverityAndConfidence;
+    [Test]
+    procedure AddsCompilerMessagesToOpenDocuments;
+    [Test]
+    procedure PublishesCompilerMessagesForClosedFiles;
   end;
 
 implementation
@@ -80,7 +84,20 @@ uses
   BDLsp.Common.Configuration.Parser,
   BDLsp.Common.Rules.Contract,
   BDLsp.Common.Rules.Builtin,
+  BDLsp.Common.Documents.Uris,
+  BDLsp.Common.Compiler.Contract,
   BDLsp.Common.Lsp.SyntaxDiagnostics;
+
+function CompilerMessage(ALine, AColumn: Integer; ASeverity: TCompilerSeverity): TCompilerMessage;
+begin
+  Result := Default(TCompilerMessage);
+  Result.FileName := 'C:\Projekt\A.pas';
+  Result.Line := ALine;
+  Result.Column := AColumn;
+  Result.Severity := ASeverity;
+  Result.Code := 'E2003';
+  Result.Text := 'Undeklarierter Bezeichner: ''A''';
+end;
 
 const
   Uri = 'file:///c%3A/Projekt/A.pas';
@@ -447,6 +464,77 @@ begin
   Ranges := TLspInactiveRegions.Ranges(Code, nil);
   Assert.AreEqual(1, Integer(Length(Ranges)));
   Assert.AreEqual(2, Ranges[0].StartPos.Line);
+end;
+
+procedure TLspSyntaxDiagnosticsTests.AddsCompilerMessagesToOpenDocuments;
+var
+  Diagnostics: TLspSyntaxDiagnostics;
+  Message: TJSONObject;
+  Items: TJSONArray;
+begin
+  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, 0);
+  try
+    Diagnostics.CompilerMessagesProvider :=
+      function(const AFileName: string): TArray<TCompilerMessage>
+      begin
+        Result := [CompilerMessage(2, 2, TCompilerSeverity.Error), CompilerMessage(1, -1, TCompilerSeverity.Hint)];
+      end;
+    Diagnostics.Attach;
+    FStore.Open(Uri, 'objectpascal', 1, ValidCode);
+    Message := FCapture.MessageAt(0);
+    try
+      Items := Message.GetValue<TJSONArray>('params.diagnostics');
+      Assert.AreEqual(2, Items.Count);
+      // Spalte 2 in "  A := 1;": der Bezeichner A.
+      Assert.AreEqual(2, Items.Items[0].GetValue<Integer>('range.start.line'));
+      Assert.AreEqual(2, Items.Items[0].GetValue<Integer>('range.start.character'));
+      Assert.AreEqual(3, Items.Items[0].GetValue<Integer>('range.end.character'));
+      Assert.AreEqual('E2003', Items.Items[0].GetValue<string>('code'));
+      Assert.AreEqual('dcc', Items.Items[0].GetValue<string>('source'));
+      Assert.AreEqual(1, Items.Items[0].GetValue<Integer>('severity'));
+      // Ohne Spalte die ganze Zeile "begin".
+      Assert.AreEqual(0, Items.Items[1].GetValue<Integer>('range.start.character'));
+      Assert.AreEqual(5, Items.Items[1].GetValue<Integer>('range.end.character'));
+      Assert.AreEqual(4, Items.Items[1].GetValue<Integer>('severity'));
+    finally
+      Message.Free;
+    end;
+  finally
+    Diagnostics.Free;
+  end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.PublishesCompilerMessagesForClosedFiles;
+var
+  Diagnostics: TLspSyntaxDiagnostics;
+  Message: TJSONObject;
+  Items: TJSONArray;
+begin
+  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, 0);
+  try
+    Diagnostics.CompilerMessagesProvider :=
+      function(const AFileName: string): TArray<TCompilerMessage>
+      begin
+        Result := [CompilerMessage(4, -1, TCompilerSeverity.Warning)];
+      end;
+    Diagnostics.Attach;
+    Diagnostics.RefreshFiles(['C:\Projekt\B.pas']);
+    Assert.AreEqual(1, FCapture.Count);
+    Message := FCapture.MessageAt(0);
+    try
+      Assert.IsTrue(SameText('C:\Projekt\B.pas', TDocumentUris.ToPath(Message.GetValue<string>('params.uri'))));
+      Items := Message.GetValue<TJSONArray>('params.diagnostics');
+      Assert.AreEqual(1, Items.Count);
+      // Ohne Zeilentext: die ganze Zeile bis zum Anfang der nächsten.
+      Assert.AreEqual(4, Items.Items[0].GetValue<Integer>('range.start.line'));
+      Assert.AreEqual(5, Items.Items[0].GetValue<Integer>('range.end.line'));
+      Assert.AreEqual(2, Items.Items[0].GetValue<Integer>('severity'));
+    finally
+      Message.Free;
+    end;
+  finally
+    Diagnostics.Free;
+  end;
 end;
 
 initialization

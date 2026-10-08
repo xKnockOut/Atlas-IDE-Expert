@@ -10,6 +10,8 @@
 // Symbole dann nicht bekannt sind.
 // Ist die Delphi-Version bekannt (VersionProvider), werden Sprachmerkmale,
 // die diese Version noch nicht kennt, als Warnung gemeldet.
+// Meldungen des letzten Compilerlaufs (CompilerMessagesProvider, #40) kommen
+// mit der Quelle "dcc" dazu, auch für Dateien, die nicht geöffnet sind.
 
 interface
 
@@ -21,6 +23,7 @@ uses
   BDLsp.Common.Configuration.Contract,
   BDLsp.Common.Rules.Contract,
   BDLsp.Common.Rules.Baseline,
+  BDLsp.Common.Compiler.Contract,
   BDLsp.Common.Lsp.Internals.Debouncer;
 
 type
@@ -42,12 +45,15 @@ type
 
   /// <summary>Regeln und Einstellungen für AUri; False = keine Regeln prüfen. Hintergrund-Thread.</summary>
   TRuleContextProvider = reference to function(const AUri: string; out AContext: TRuleCheckContext): Boolean;
+  /// <summary>Meldungen des letzten Compilerlaufs zur Datei AFileName. Hintergrund-Thread.</summary>
+  TCompilerMessagesProvider = reference to function(const AFileName: string): TArray<TCompilerMessage>;
 
   TLspSyntaxDiagnostics = class
   public const
     /// <summary>Verzögerung nach dem letzten Tastendruck; mit Parsen bleibt es unter 200 ms.</summary>
     DefaultDelayMs = 100;
     Source = 'BetterDelphiLSP';
+    CompilerSource = 'dcc';
     InactiveMessage = 'Inaktiver Bereich (bedingte Kompilierung)';
   private
     FStore: IDocumentStore;
@@ -59,6 +65,7 @@ type
     FDefinesProvider: TDefinesProvider;
     FVersionProvider: TDelphiVersionProvider;
     FRuleProvider: TRuleContextProvider;
+    FCompilerProvider: TCompilerMessagesProvider;
     procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
     procedure ScheduleParse(const ADocument: ITextDocument);
     procedure Publish(const ADocument: ITextDocument);
@@ -71,6 +78,8 @@ type
     procedure SetVersionProvider(const AValue: TDelphiVersionProvider);
     function CurrentRules(const AUri: string; out AContext: TRuleCheckContext): Boolean;
     procedure SetRuleProvider(const AValue: TRuleContextProvider);
+    function CurrentCompilerMessages(const AFileName: string): TArray<TCompilerMessage>;
+    procedure SetCompilerProvider(const AValue: TCompilerMessagesProvider);
   public
     /// <summary>Bei ADelayMs = 0 wird sofort im Thread der Nachrichtenschleife geparst.</summary>
     constructor Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
@@ -91,8 +100,15 @@ type
       const ADelphiVersion: string; const ARules: TRuleCheckContext): TJSONObject; overload; static;
     /// <summary>Ein Regeltreffer als LSP-Diagnostic (code = Regelkennung). Der Aufrufer übernimmt das Objekt.</summary>
     class function FindingToJson(const AFinding: TRuleFinding): TJSONObject; static;
+    /// <summary>Compilermeldung als LSP-Diagnostic; ALineText (falls bekannt) begrenzt den Bereich.
+    /// Der Aufrufer übernimmt das Objekt.</summary>
+    class function CompilerMessageToJson(const AMessage: TCompilerMessage; const ALineText: string;
+      AHasLineText: Boolean): TJSONObject; static;
     /// <summary>Prüft alle geöffneten Dokumente neu, z. B. nach geänderten Symbolen.</summary>
     procedure Refresh;
+    /// <summary>Meldet die Compilermeldungen zu AFileNames neu: geöffnete Dokumente
+    /// werden neu geprüft, für andere gehen nur die Compilermeldungen hinaus.</summary>
+    procedure RefreshFiles(const AFileNames: TArray<string>);
     /// <summary>Parameter mit leerer Liste, z. B. nach dem Schließen. Der Aufrufer übernimmt das Objekt.</summary>
     class function BuildEmptyParams(const AUri: string): TJSONObject; static;
     /// <summary>Wird bei Ausnahmen beim Parsen im Hintergrund aufgerufen.</summary>
@@ -102,14 +118,18 @@ type
     property VersionProvider: TDelphiVersionProvider write SetVersionProvider;
     /// <summary>Liefert Regeln und Einstellungen; ohne Provider laufen keine Prüfregeln.</summary>
     property RuleProvider: TRuleContextProvider write SetRuleProvider;
+    /// <summary>Liefert die Meldungen des letzten Compilerlaufs; ohne Provider keine.</summary>
+    property CompilerMessagesProvider: TCompilerMessagesProvider write SetCompilerProvider;
   end;
 
 implementation
 
 uses
+  System.Math,
   BDLsp.Common.JsonRpc.Messages,
   BDLsp.Common.Lsp.Contract,
   BDLsp.Common.Lsp.Positions,
+  BDLsp.Common.Documents.Uris,
   BDLsp.Common.Pascal.SyntaxTree,
   BDLsp.Common.Pascal.Parser,
   BDLsp.Common.Pascal.LanguageFeatures,
@@ -240,6 +260,122 @@ begin
   end;
 end;
 
+function TLspSyntaxDiagnostics.CurrentCompilerMessages(const AFileName: string): TArray<TCompilerMessage>;
+var
+  Provider: TCompilerMessagesProvider;
+begin
+  TMonitor.Enter(FDefinesLock);
+  try
+    Provider := FCompilerProvider;
+  finally
+    TMonitor.Exit(FDefinesLock);
+  end;
+  if Assigned(Provider) then
+    Result := Provider(AFileName)
+  else
+    Result := nil;
+end;
+
+procedure TLspSyntaxDiagnostics.SetCompilerProvider(const AValue: TCompilerMessagesProvider);
+begin
+  TMonitor.Enter(FDefinesLock);
+  try
+    FCompilerProvider := AValue;
+  finally
+    TMonitor.Exit(FDefinesLock);
+  end;
+end;
+
+class function TLspSyntaxDiagnostics.CompilerMessageToJson(const AMessage: TCompilerMessage;
+  const ALineText: string; AHasLineText: Boolean): TJSONObject;
+var
+  Range: TTextRange;
+  First, Last: Integer;
+  Severity: Integer;
+begin
+  Range.StartPos := TTextPosition.Create(Max(AMessage.Line, 0), 0);
+  Range.EndPos := TTextPosition.Create(Max(AMessage.Line, 0) + 1, 0);
+  if AHasLineText then
+  begin
+    if AMessage.Column >= 0 then
+    begin
+      // Ab der Spalte bis zum Ende des Bezeichners, mindestens ein Zeichen.
+      First := Min(AMessage.Column, Length(ALineText));
+      Last := First + 1;
+      while (Last < Length(ALineText)) and CharInSet(ALineText[Last + 1], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+        Inc(Last);
+    end
+    else
+    begin
+      // Ganze Zeile ohne Einrückung.
+      First := 0;
+      while (First < Length(ALineText)) and CharInSet(ALineText[First + 1], [' ', #9]) do
+        Inc(First);
+      Last := Length(ALineText);
+    end;
+    Range.StartPos := TTextPosition.Create(Range.StartPos.Line, First);
+    Range.EndPos := TTextPosition.Create(Range.StartPos.Line, Max(Last, First));
+  end
+  else if AMessage.Column >= 0 then
+  begin
+    Range.StartPos := TTextPosition.Create(Range.StartPos.Line, AMessage.Column);
+    Range.EndPos := TTextPosition.Create(Range.StartPos.Line, AMessage.Column + 1);
+  end;
+  case AMessage.Severity of
+    TCompilerSeverity.Hint:
+      Severity := TLspDiagnosticSeverity.Hint;
+    TCompilerSeverity.Warning:
+      Severity := TLspDiagnosticSeverity.Warning;
+  else
+    Severity := TLspDiagnosticSeverity.Error;
+  end;
+  Result := TJSONObject.Create;
+  Result.AddPair('range', TLspPositions.RangeToJson(Range));
+  Result.AddPair('severity', TJSONNumber.Create(Severity));
+  if AMessage.Code <> '' then
+    Result.AddPair('code', AMessage.Code);
+  Result.AddPair('source', CompilerSource);
+  Result.AddPair('message', AMessage.Text);
+end;
+
+procedure TLspSyntaxDiagnostics.RefreshFiles(const AFileNames: TArray<string>);
+var
+  FileName, Uri: string;
+  Document: ITextDocument;
+  Item: TCompilerMessage;
+  Items: TJSONArray;
+  Params: TJSONObject;
+begin
+  for FileName in AFileNames do
+  begin
+    Uri := TDocumentUris.FromPath(FileName);
+    if FStore.TryGet(Uri, Document) then
+    begin
+      ScheduleParse(Document);
+      Continue;
+    end;
+    Items := TJSONArray.Create;
+    for Item in CurrentCompilerMessages(FileName) do
+      Items.AddElement(CompilerMessageToJson(Item, '', False));
+    Params := TJSONObject.Create;
+    Params.AddPair('uri', Uri);
+    Params.AddPair('diagnostics', Items);
+    TMonitor.Enter(FSendLock);
+    try
+      // Inzwischen geöffnet: Das Dokument meldet selbst, mit Zeilentext.
+      if FStore.TryGet(Uri, Document) then
+      begin
+        Params.Free;
+        ScheduleParse(Document);
+      end
+      else
+        Send(FTransport, Params);
+    finally
+      TMonitor.Exit(FSendLock);
+    end;
+  end;
+end;
+
 procedure TLspSyntaxDiagnostics.Refresh;
 var
   Document: ITextDocument;
@@ -293,6 +429,8 @@ var
   Defines: TArray<string>;
   Inactive: TArray<TTextRange>;
   Rules: TRuleCheckContext;
+  Items: TJSONArray;
+  Compiled: TCompilerMessage;
 begin
   Inactive := nil;
   if CurrentDefines(ADocument.Uri, Defines) then
@@ -300,6 +438,10 @@ begin
   if not CurrentRules(ADocument.Uri, Rules) then
     Rules := Default(TRuleCheckContext);
   Params := BuildParams(ADocument, Inactive, CurrentVersion(ADocument.Uri), Rules);
+  Items := Params.GetValue('diagnostics') as TJSONArray;
+  for Compiled in CurrentCompilerMessages(TDocumentUris.ToPath(ADocument.Uri)) do
+    if Compiled.Line < ADocument.LineCount then
+      Items.AddElement(CompilerMessageToJson(Compiled, ADocument.LineText(Max(Compiled.Line, 0)), True));
   TMonitor.Enter(FSendLock);
   try
     // Inzwischen geändert oder geschlossen: Der neuere Stand meldet selbst.

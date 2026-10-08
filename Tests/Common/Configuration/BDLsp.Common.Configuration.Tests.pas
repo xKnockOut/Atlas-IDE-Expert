@@ -26,6 +26,8 @@ type
     [Test]
     procedure ReadsInlayHints;
     [Test]
+    procedure ReadsCompilerSettings;
+    [Test]
     procedure FileOverridesEditorPerKey;
     [Test]
     procedure MergesRulesPerId;
@@ -201,6 +203,23 @@ begin
 end;
 
 { TServerSettingsTests }
+
+procedure TConfigurationParserTests.ReadsCompilerSettings;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Compiler.OnSave);
+  Settings := Parse('{"compiler": {"onSave": false}}', Issues);
+  Assert.IsFalse(Settings.Compiler.OnSave);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Settings := Parse('{"compiler": {"onSave": "nein", "x": 1}}', Issues);
+  Assert.IsTrue(Settings.Compiler.OnSave);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{"compiler": {"onSave": false}}', '{}', Issues);
+  Assert.IsFalse(Settings.Compiler.OnSave);
+end;
 
 procedure TConfigurationParserTests.ReadsInlayHints;
 var

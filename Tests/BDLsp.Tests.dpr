@@ -30,6 +30,8 @@ uses
   BDLsp.Common.Documents.FileEncoding.Tests in 'Common\Documents\BDLsp.Common.Documents.FileEncoding.Tests.pas',
   BDLsp.Common.Projects.Tests in 'Common\Projects\BDLsp.Common.Projects.Tests.pas',
   BDLsp.Windows.Projects.DelphiInstallation.Tests in 'Windows\Projects\BDLsp.Windows.Projects.DelphiInstallation.Tests.pas',
+  BDLsp.Common.Compiler.Tests in 'Common\Compiler\BDLsp.Common.Compiler.Tests.pas',
+  BDLsp.Windows.Compiler.Adapters.ProcessRunner.Tests in 'Windows\Compiler\BDLsp.Windows.Compiler.Adapters.ProcessRunner.Tests.pas',
   BDLsp.Common.Documents.Providers.DocumentStore.Tests in 'Common\Documents\BDLsp.Common.Documents.Providers.DocumentStore.Tests.pas',
   BDLsp.Common.Documents.Uris.Tests in 'Common\Documents\BDLsp.Common.Documents.Uris.Tests.pas',
   BDLsp.Common.Index.Tests in 'Common\Index\BDLsp.Common.Index.Tests.pas',

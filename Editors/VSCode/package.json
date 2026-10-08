@@ -91,6 +91,13 @@
           "default": [],
           "markdownDescription": "Ausgeschlossene Ordner und Dateien als Glob-Muster, z. B. `ThirdParty/**`. delphi-lsp.json im Projekt hat Vorrang."
         },
+        "betterDelphiLsp.compiler": {
+          "type": "object",
+          "default": {
+            "onSave": true
+          },
+          "markdownDescription": "Compiler-Anbindung: `onSave` kompiliert das Projekt nach dem Speichern im Hintergrund und zeigt Fehler, Warnungen und Hinweise von dcc32/dcc64 an. delphi-lsp.json im Projekt hat Vorrang."
+        },
         "betterDelphiLsp.inlayHints": {
           "type": "object",
           "default": {
@@ -143,6 +150,11 @@
       {
         "command": "betterDelphiLsp.showStatus",
         "title": "Status anzeigen",
+        "category": "BetterDelphiLSP"
+      },
+      {
+        "command": "betterdelphilsp.compile",
+        "title": "Projekt kompilieren",
         "category": "BetterDelphiLSP"
       }
     ],
