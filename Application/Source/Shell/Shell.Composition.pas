@@ -22,6 +22,7 @@ uses
   BDLsp.Common.Lsp.FoldingRanges,
   BDLsp.Common.Lsp.SelectionRanges,
   BDLsp.Common.Lsp.Definition,
+  BDLsp.Common.Lsp.Hover,
   BDLsp.Common.Lsp.Configuration,
   BDLsp.Common.Lsp.WorkDoneProgress,
   BDLsp.Common.Documents.Contract,
@@ -45,6 +46,7 @@ type
     FFoldingRanges: TLspFoldingRanges;
     FSelectionRanges: TLspSelectionRanges;
     FDefinition: TLspDefinition;
+    FHover: TLspHover;
     FConfiguration: TLspConfiguration;
     FConnection: TJsonRpcConnection;
     FIndex: ISymbolIndex;
@@ -90,6 +92,7 @@ uses
   BDLsp.Common.Lsp.Adapters.LogMessageSink,
   BDLsp.Common.Documents.Providers.DocumentStore,
   BDLsp.Common.Documents.FileEncoding,
+  BDLsp.Common.Documents.Uris,
   BDLsp.Common.Projects.Contract,
   BDLsp.Common.Projects.Paths,
   BDLsp.Common.Projects.DprojReader,
@@ -192,6 +195,29 @@ begin
       Result := FIndexService.EnsureUnit(AUnitName);
     end);
   FDefinition.Attach(FDispatcher);
+  FHover := TLspHover.Create(FDocuments, FIndex,
+    function(const AFileName: string; out AText: string): Boolean
+    var
+      Document: ITextDocument;
+      FileFormat: TFileFormat;
+    begin
+      // Geöffnete Dokumente haben Vorrang vor dem Stand auf der Festplatte.
+      if FDocuments.TryGet(TDocumentUris.FromPath(AFileName), Document) then
+      begin
+        AText := Document.Text;
+        Exit(True);
+      end;
+      Result := FileExists(AFileName);
+      if Result then
+        AText := TFileEncoding.LoadFromFile(AFileName, FileFormat)
+      else
+        AText := '';
+    end,
+    function(const AUnitName: string): Boolean
+    begin
+      Result := FIndexService.EnsureUnit(AUnitName);
+    end);
+  FHover.Attach(FDispatcher);
   FIndexProgress := TLspWorkDoneProgress.Create(FTransport, 'bdlsp-index');
   FIndexService.OnProgress := FIndexProgress.AsIndexProgress;
   FIndexService.OnFinished :=
@@ -236,6 +262,7 @@ begin
   FFoldingRanges.Free;
   FSelectionRanges.Free;
   FDefinition.Free;
+  FHover.Free;
   FConfiguration.Free;
   FTextDocumentSync.Free;
   FDocuments := nil;
@@ -329,6 +356,7 @@ begin
     Exit;
   FIndexSignature := Signature;
   FDefinition.Namespaces := Project.Namespaces;
+  FHover.Namespaces := Project.Namespaces;
   FIndexService.Stop;
   if Installation <> nil then
     LibraryPaths := Installation.LibraryPaths(Project.Platform) + Installation.BrowsingPaths(Project.Platform)
@@ -410,6 +438,7 @@ begin
   Result.AddPair('selectionRangeProvider', TJSONBool.Create(True));
   Result.AddPair('definitionProvider', TJSONBool.Create(True));
   Result.AddPair('declarationProvider', TJSONBool.Create(True));
+  Result.AddPair('hoverProvider', TJSONBool.Create(True));
 end;
 
 function TServerComposition.Run: Integer;
