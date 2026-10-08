@@ -437,6 +437,7 @@ begin
     begin
       AContext.Settings := Workspace.Configuration.Settings;
       AContext.RelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(Workspace.Root), FileName);
+      AContext.Baseline := Workspace.Baseline;
     end;
   finally
     TMonitor.Exit(FWorkspacesLock);
