@@ -224,6 +224,15 @@
       "description": "A descendant declares a method virtual although the ancestor already has a virtual method with the same signature; this starts a new chain instead of overriding.",
       "bad": "type\n  TFoo = class(TBase)\n    procedure Run; virtual;\n  end;",
       "good": "type\n  TFoo = class(TBase)\n    procedure Run; override;\n  end;"
+    },
+    {
+      "id": "captured-loop-variable",
+      "name": "Captured loop variable",
+      "category": "bug",
+      "severity": "warning",
+      "description": "An anonymous method passed to a deferred API (TThread.Queue, TTask.Run, ...) captures a variable that changes before it runs, such as a for-in loop variable. Delphi captures the variable, not its value.",
+      "bad": "for S in List do\n  TThread.Queue(nil, procedure begin Memo1.Lines.Add(S); end);",
+      "good": "function CaptureS(const AValue: string): TProc;\nbegin\n  Result := procedure begin Memo1.Lines.Add(AValue); end;\nend;\n...\nfor S in List do\n  TThread.Queue(nil, CaptureS(S));"
     }
   ]
 }

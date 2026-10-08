@@ -156,7 +156,7 @@ end;
 procedure TRuleProfilesTests.BuiltinProfilesActivateExpectedRules;
 const
   Threads = 'thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,thread-vcl-access';
-  All = 'bidi-control,component-create-without-override,confusable-identifier,control-char,' +
+  All = 'bidi-control,captured-loop-variable,component-create-without-override,confusable-identifier,control-char,' +
     'declared-not-implemented,destroy-without-override,forbidden-uses,hides-virtual,implemented-not-declared,' +
     'invisible-char,lock-without-finally,possibly-uninitialized,result-not-set,synchronize-in-destructor,' +
     'thread-free-with-free-on-terminate,thread-resume-suspend,thread-use-after-free-on-terminate,' +
@@ -165,7 +165,7 @@ const
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
   Assert.AreEqual(All, ActiveRules('strict'));
-  Assert.AreEqual('bidi-control,component-create-without-override,control-char,declared-not-implemented,' +
+  Assert.AreEqual('bidi-control,captured-loop-variable,component-create-without-override,control-char,declared-not-implemented,' +
     'destroy-without-override,hides-virtual,implemented-not-declared,lock-without-finally,possibly-uninitialized,' +
     'result-not-set,synchronize-in-destructor,' + Threads + ',unit-name-mismatch,virtual-instead-of-override',
     ActiveRules('fast'));

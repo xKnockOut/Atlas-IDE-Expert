@@ -29,6 +29,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`component-create-without-override`](#component-create-without-override) | Komponentenkonstruktor ohne override | Bug | Warnung |
 | [`hides-virtual`](#hides-virtual) | Methode verdeckt virtuelle Methode | Bug | Warnung |
 | [`virtual-instead-of-override`](#virtual-instead-of-override) | virtual statt override | Bug | Warnung |
+| [`captured-loop-variable`](#captured-loop-variable) | Erfasste Schleifenvariable | Bug | Warnung |
 
 <a id="syntax"></a>
 ## syntax
@@ -661,4 +662,30 @@ type
   TFoo = class(TBase)
     procedure Run; override;
   end;
+```
+
+<a id="captured-loop-variable"></a>
+## captured-loop-variable
+
+**Erfasste Schleifenvariable** · Bug · Warnung
+
+Eine anonyme Methode, die an eine verzögert ausführende API (TThread.Queue, TTask.Run …) geht, erfasst eine Variable, die sich vor dem Aufruf noch ändert, etwa die Variable einer for-in-Schleife. Delphi erfasst die Variable, nicht ihren Wert.
+
+Mit Treffer:
+
+```pascal
+for S in List do
+  TThread.Queue(nil, procedure begin Memo1.Lines.Add(S); end);
+```
+
+Richtig:
+
+```pascal
+function CaptureS(const AValue: string): TProc;
+begin
+  Result := procedure begin Memo1.Lines.Add(AValue); end;
+end;
+...
+for S in List do
+  TThread.Queue(nil, CaptureS(S));
 ```

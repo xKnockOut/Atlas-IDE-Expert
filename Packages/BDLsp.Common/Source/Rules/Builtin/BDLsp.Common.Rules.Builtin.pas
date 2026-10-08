@@ -21,7 +21,8 @@ uses
   BDLsp.Common.Rules.Builtin.Flow,
   BDLsp.Common.Rules.Builtin.Unused,
   BDLsp.Common.Rules.Builtin.Declarations,
-  BDLsp.Common.Rules.Builtin.Inheritance;
+  BDLsp.Common.Rules.Builtin.Inheritance,
+  BDLsp.Common.Rules.Builtin.Capture;
 
 function BuiltinRules: TArray<IRule>;
 var
@@ -37,6 +38,7 @@ begin
     RegisterUnusedRules(Registry);
     RegisterDeclarationRules(Registry);
     RegisterInheritanceRules(Registry);
+    RegisterCaptureRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;
