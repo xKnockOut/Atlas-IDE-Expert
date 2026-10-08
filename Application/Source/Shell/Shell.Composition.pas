@@ -35,6 +35,7 @@ uses
   BDLsp.Common.Lsp.References,
   BDLsp.Common.Lsp.Rename,
   BDLsp.Common.Lsp.Completion,
+  BDLsp.Common.Lsp.SignatureHelp,
   BDLsp.Common.Lsp.Status,
   BDLsp.Common.JsonRpc.Statistics,
   BDLsp.Common.Lsp.WatchedFiles,
@@ -66,6 +67,7 @@ type
     FReferences: TLspReferences;
     FRename: TLspRename;
     FCompletion: TLspCompletion;
+    FSignatureHelp: TLspSignatureHelp;
     FCodeActions: TLspCodeActions;
     FDocumentLinks: TLspDocumentLinks;
     FColors: TLspColors;
@@ -276,6 +278,16 @@ begin
       Result := EnsureUnit(AUnitName);
     end);
   FCompletion.Attach(FDispatcher);
+  FSignatureHelp := TLspSignatureHelp.Create(FDocuments, FIndex,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    function(const AUnitName: string): Boolean
+    begin
+      Result := EnsureUnit(AUnitName);
+    end);
+  FSignatureHelp.Attach(FDispatcher);
   FCodeActions := TLspCodeActions.Create(FDocuments, RuleContextFor);
   FCodeActions.Attach(FDispatcher);
   FDocumentLinks := TLspDocumentLinks.Create(FDocuments,
@@ -363,6 +375,7 @@ begin
   FWorkspaceSymbols.Free;
   FDocumentHighlights.Free;
   FReferences.Free;
+  FSignatureHelp.Free;
   FCompletion.Free;
   FRename.Free;
   FCodeActions.Free;
@@ -612,6 +625,7 @@ begin
   FReferences.Namespaces := Namespaces;
   FRename.Namespaces := Namespaces;
   FCompletion.Namespaces := Namespaces;
+  FSignatureHelp.Namespaces := Namespaces;
   FSyntaxDiagnostics.Refresh;
 end;
 
@@ -753,6 +767,7 @@ begin
   Result.AddPair('referencesProvider', TJSONBool.Create(True));
   Result.AddPair('renameProvider', TLspRename.Capability);
   Result.AddPair('completionProvider', TLspCompletion.Capability);
+  Result.AddPair('signatureHelpProvider', TLspSignatureHelp.Capability);
   Result.AddPair('codeActionProvider', TLspCodeActions.Capability);
   Result.AddPair('documentLinkProvider', TLspDocumentLinks.Capability);
   Result.AddPair('colorProvider', TJSONBool.Create(True));
