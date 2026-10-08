@@ -18,7 +18,8 @@ uses
   BDLsp.Common.Rules.Builtin.UnitFiles,
   BDLsp.Common.Rules.Builtin.Architecture,
   BDLsp.Common.Rules.Builtin.Concurrency,
-  BDLsp.Common.Rules.Builtin.Flow;
+  BDLsp.Common.Rules.Builtin.Flow,
+  BDLsp.Common.Rules.Builtin.Unused;
 
 function BuiltinRules: TArray<IRule>;
 var
@@ -31,6 +32,7 @@ begin
     RegisterArchitectureRules(Registry);
     RegisterConcurrencyRules(Registry);
     RegisterFlowRules(Registry);
+    RegisterUnusedRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

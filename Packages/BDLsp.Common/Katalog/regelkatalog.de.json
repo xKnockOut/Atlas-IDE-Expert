@@ -79,6 +79,21 @@
       "id": "possibly-uninitialized",
       "name": "Variable eventuell nicht initialisiert",
       "description": "Eine lokale Variable wird auf einem Pfad gelesen, auf dem ihr nie ein Wert zugewiesen wurde."
+    },
+    {
+      "id": "unused-local",
+      "name": "Ungenutzte lokale Variable",
+      "description": "Eine lokale Variable ist deklariert, wird aber nie verwendet. Wie Compilerhinweis H2164, aber schon beim Tippen."
+    },
+    {
+      "id": "unused-parameter",
+      "name": "Ungenutzter Parameter",
+      "description": "Ein Parameter wird im Rumpf der Routine nicht verwendet. Ausgenommen sind überschriebene und virtuelle Methoden, Ereignis-Handler, published-Methoden, Interface-Implementierungen und Callbacks."
+    },
+    {
+      "id": "unused-assignment",
+      "name": "Zugewiesener Wert ungenutzt",
+      "description": "Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077."
     }
   ]
 }

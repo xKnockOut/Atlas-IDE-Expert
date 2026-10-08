@@ -143,6 +143,33 @@
       "description": "A local variable is read on a path where it was never assigned.",
       "bad": "var I: Integer;\nbegin\n  if Ok then\n    I := 1;\n  Writeln(I);\nend;",
       "good": "var I: Integer;\nbegin\n  I := 0;\n  if Ok then\n    I := 1;\n  Writeln(I);\nend;"
+    },
+    {
+      "id": "unused-local",
+      "name": "Unused local variable",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "A local variable is declared but never used. Like compiler hint H2164, but while typing.",
+      "bad": "procedure Foo;\nvar\n  I, Count: Integer;\nbegin\n  I := 1;\n  Bar(I);\nend;",
+      "good": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := 1;\n  Bar(I);\nend;"
+    },
+    {
+      "id": "unused-parameter",
+      "name": "Unused parameter",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "A parameter is never used in the routine body. Overridden and virtual methods, event handlers, published methods, interface implementations and callbacks are exempt.",
+      "bad": "function Twice(A, B: Integer): Integer;\nbegin\n  Result := 2 * A;\nend;",
+      "good": "function Twice(A: Integer): Integer;\nbegin\n  Result := 2 * A;\nend;"
+    },
+    {
+      "id": "unused-assignment",
+      "name": "Value assigned is never used",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "A value assigned to a local variable is overwritten or the routine ends before it is read. Like compiler hint H2077.",
+      "bad": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := 0;\n  I := Calc;\n  Bar(I);\nend;",
+      "good": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := Calc;\n  Bar(I);\nend;"
     }
   ]
 }
