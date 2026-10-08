@@ -1,0 +1,135 @@
+﻿unit Ref.Sprache.Merkmale;
+
+// Sprachmerkmale für Navigation, Hover und Prüfregeln.
+
+interface
+
+uses
+  System.SysUtils,
+  System.Generics.Collections;
+
+type
+  IFormatierer = interface
+    ['{6F1C2B9E-4A37-4D2B-9E61-3C5A7B8D9E01}']
+    function Formatieren(const AWert: Integer): string;
+  end;
+
+  TDezimalFormatierer = class(TInterfacedObject, IFormatierer)
+  public
+    function Formatieren(const AWert: Integer): string;
+  end;
+
+  TStapel<T> = class
+  private
+    FElemente: TList<T>;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Ablegen(const AElement: T);
+    function Entnehmen: T;
+    function Anzahl: Integer;
+  end;
+
+  TPaar<TSchluessel, TWert> = record
+    Schluessel: TSchluessel;
+    Wert: TWert;
+    constructor Create(const ASchluessel: TSchluessel; const AWert: TWert);
+  end;
+
+  TStringHelfer = record helper for string
+    function IstLeer: Boolean;
+  end;
+
+  TZaehlerFunktion = reference to function(const AText: string): Integer;
+
+function Plattform: string;
+function SummeQuadrate(const AWerte: TArray<Integer>): Integer;
+function Zaehler: TZaehlerFunktion;
+
+implementation
+
+{ TDezimalFormatierer }
+
+function TDezimalFormatierer.Formatieren(const AWert: Integer): string;
+begin
+  Result := IntToStr(AWert);
+end;
+
+{ TStapel<T> }
+
+constructor TStapel<T>.Create;
+begin
+  inherited Create;
+  FElemente := TList<T>.Create;
+end;
+
+destructor TStapel<T>.Destroy;
+begin
+  FElemente.Free;
+  inherited;
+end;
+
+procedure TStapel<T>.Ablegen(const AElement: T);
+begin
+  FElemente.Add(AElement);
+end;
+
+function TStapel<T>.Entnehmen: T;
+begin
+  Result := FElemente.Last;
+  FElemente.Delete(FElemente.Count - 1);
+end;
+
+function TStapel<T>.Anzahl: Integer;
+begin
+  Result := FElemente.Count;
+end;
+
+{ TPaar<TSchluessel, TWert> }
+
+constructor TPaar<TSchluessel, TWert>.Create(const ASchluessel: TSchluessel; const AWert: TWert);
+begin
+  Schluessel := ASchluessel;
+  Wert := AWert;
+end;
+
+{ TStringHelfer }
+
+function TStringHelfer.IstLeer: Boolean;
+begin
+  Result := Self = '';
+end;
+
+function Plattform: string;
+begin
+{$IFDEF WIN64}
+  Result := 'Win64';
+{$ELSE}
+  {$IFDEF WIN32}
+  Result := 'Win32';
+  {$ELSE}
+  Result := 'Andere';
+  {$ENDIF}
+{$ENDIF}
+end;
+
+function SummeQuadrate(const AWerte: TArray<Integer>): Integer;
+begin
+  Result := 0;
+  for var Wert in AWerte do
+  begin
+    const Quadrat = Wert * Wert;
+    Inc(Result, Quadrat);
+  end;
+end;
+
+function Zaehler: TZaehlerFunktion;
+begin
+  Result :=
+    function(const AText: string): Integer
+    begin
+      Result := Length(AText);
+    end;
+end;
+
+end.

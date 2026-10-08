@@ -1,0 +1,17 @@
+﻿package RefDesign;
+
+{$R *.res}
+{$DESCRIPTION 'BetterDelphiLSP Referenz: Design-Time'}
+{$DESIGNONLY}
+{$IMPLICITBUILD ON}
+
+requires
+  rtl,
+  vcl,
+  designide,
+  RefRuntime;
+
+contains
+  Ref.Komponenten.Registrierung in 'Source\Ref.Komponenten.Registrierung.pas';
+
+end.
