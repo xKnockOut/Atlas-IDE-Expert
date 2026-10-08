@@ -28,6 +28,7 @@ uses
   BDLsp.Common.Rules.Builtin.Security,
   BDLsp.Common.Rules.Builtin.General,
   BDLsp.Common.Rules.Builtin.RtlPatterns,
+  BDLsp.Common.Rules.Builtin.RtlTypePatterns,
   BDLsp.Common.Rules.Builtin.DataBinding,
   BDLsp.Common.Rules.Builtin.SlashCommands;
 
@@ -51,6 +52,7 @@ begin
     RegisterSecurityRules(Registry);
     RegisterGeneralRules(Registry);
     RegisterRtlPatternRules(Registry);
+    RegisterRtlTypePatternRules(Registry);
     RegisterDataBindingRules(Registry);
     RegisterSlashCommandRules(Registry);
     Result := Registry.Rules;

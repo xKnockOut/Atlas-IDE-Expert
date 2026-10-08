@@ -154,6 +154,7 @@ uses
   BDLsp.Common.Rules.Builtin.Security.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Security.Tests.pas',
   BDLsp.Common.Rules.Builtin.General.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.General.Tests.pas',
   BDLsp.Common.Rules.Builtin.RtlPatterns.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.RtlPatterns.Tests.pas',
+  BDLsp.Common.Rules.Builtin.RtlTypePatterns.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.RtlTypePatterns.Tests.pas',
   BDLsp.Common.Rules.Builtin.DataBinding.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.DataBinding.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}

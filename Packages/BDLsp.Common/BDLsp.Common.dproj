@@ -157,6 +157,8 @@
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Security.pas"/>
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.General.pas"/>
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.RtlPatterns.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.RtlTypePatterns.pas"/>
+        <DCCReference Include="Source\Rules\BDLsp.Common.Rules.DeclaredTypes.pas"/>
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.DataBinding.pas"/>
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.SlashCommands.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.FileOperations.pas"/>

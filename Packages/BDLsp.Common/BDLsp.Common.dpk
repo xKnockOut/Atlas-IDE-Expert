@@ -148,6 +148,8 @@ contains
   BDLsp.Common.Rules.Builtin.Security in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Security.pas',
   BDLsp.Common.Rules.Builtin.General in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.General.pas',
   BDLsp.Common.Rules.Builtin.RtlPatterns in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.RtlPatterns.pas',
+  BDLsp.Common.Rules.Builtin.RtlTypePatterns in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.RtlTypePatterns.pas',
+  BDLsp.Common.Rules.DeclaredTypes in 'Source\Rules\BDLsp.Common.Rules.DeclaredTypes.pas',
   BDLsp.Common.Rules.Builtin.DataBinding in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.DataBinding.pas',
   BDLsp.Common.Rules.Builtin.SlashCommands in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.SlashCommands.pas',
   BDLsp.Common.Lsp.FileOperations in 'Source\Lsp\BDLsp.Common.Lsp.FileOperations.pas',

@@ -559,6 +559,60 @@ begin
     '      "description": "Random is used, but the unit never calls Randomize, so every start yields the same sequence. Randomize often sits in the .dpr, so the rule is off by default and has low confidenc' + 'e.",' + #10 +
     '      "bad": "Dice := Random(6) + 1;",' + #10 +
     '      "good": "Randomize; // once at program start\n...\nDice := Random(6) + 1;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "int32-mul-overflow",' + #10 +
+    '      "name": "Int32 multiplication assigned to Int64",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "Both operands have at most 32 bits, so the product is computed in 32 bits and overflows before it is assigned to the Int64 variable. Cast one operand to Int64.",' + #10 +
+    '      "bad": "Total := Width * Height; // Total: Int64; Width, Height: Integer",' + #10 +
+    '      "good": "Total := Int64(Width) * Height;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "sizeof-pointer",' + #10 +
+    '      "name": "SizeOf of a pointer in Move or FillChar",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "description": "SizeOf of a pointer, string or dynamic array is the size of the reference (4 or 8 bytes), not of the data. Move and FillChar then copy or clear too little.",' + #10 +
+    '      "bad": "FillChar(Buffer[0], SizeOf(Buffer), 0); // Buffer: TBytes",' + #10 +
+    '      "good": "FillChar(Buffer[0], Length(Buffer) * SizeOf(Buffer[0]), 0);"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "char-to-pchar",' + #10 +
+    '      "name": "Char cast to PChar",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "description": "PChar(C) with a Char variable turns the character code into an address. A string was meant.",' + #10 +
+    '      "bad": "ShowMessage(PChar(C)); // C: Char",' + #10 +
+    '      "good": "ShowMessage(PChar(string(C)));"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "float-equality",' + #10 +
+    '      "name": "Floating-point comparison with = or <>",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "Floating-point values are rarely exactly equal after calculations. Compare with SameValue from System.Math and a tolerance. Comparisons with 0 are not reported.",' + #10 +
+    '      "bad": "if Total = Expected then",' + #10 +
+    '      "good": "if SameValue(Total, Expected) then"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "constructor-on-instance",' + #10 +
+    '      "name": "Constructor called on an instance",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "Create is called on a variable instead of the class. That does not create a new object; with an unassigned variable it crashes. Class references (class of …) are not reported.",' + #10 +
+    '      "bad": "List.Create; // List: TStringList",' + #10 +
+    '      "good": "List := TStringList.Create;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "format-without-settings",' + #10 +
+    '      "name": "Formatting depends on the locale",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "Format with %f, %n, %m, %g or %e and functions like FloatToStr, StrToFloat or DateToStr without a TFormatSettings parameter use the user''s locale (decimal separator, date format)' + '. For files, protocols and logs pass fixed TFormatSettings. Format(''%d'', …) is not reported.",' + #10 +
+    '      "bad": "Line := Format(''%.2f'', [Amount]);",' + #10 +
+    '      "good": "Line := Format(''%.2f'', [Amount], TFormatSettings.Invariant);"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -870,6 +924,36 @@ begin
     '      "id": "random-without-randomize",' + #10 +
     '      "name": "Random ohne Randomize",' + #10 +
     '      "description": "Random wird verwendet, aber die Unit ruft nie Randomize auf; jeder Start liefert dieselbe Folge. Randomize steht oft in der .dpr, deshalb ist die Regel standardmäßig aus und hat ' + 'niedrige Konfidenz."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "int32-mul-overflow",' + #10 +
+    '      "name": "Int32-Multiplikation an Int64 zugewiesen",' + #10 +
+    '      "description": "Beide Operanden haben höchstens 32 Bit; das Produkt wird in 32 Bit gerechnet und läuft über, bevor es der Int64-Variablen zugewiesen wird. Einen Operanden nach Int64 umwandeln."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "sizeof-pointer",' + #10 +
+    '      "name": "SizeOf eines Zeigers in Move oder FillChar",' + #10 +
+    '      "description": "SizeOf eines Zeigers, Strings oder dynamischen Arrays ist die Größe des Verweises (4 oder 8 Byte), nicht die der Daten. Move und FillChar kopieren bzw. löschen dann zu wenig."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "char-to-pchar",' + #10 +
+    '      "name": "Char nach PChar umgewandelt",' + #10 +
+    '      "description": "PChar(C) mit einer Char-Variablen macht aus dem Zeichencode eine Adresse. Gemeint war ein String."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "float-equality",' + #10 +
+    '      "name": "Gleitkommavergleich mit = oder <>",' + #10 +
+    '      "description": "Gleitkommawerte sind nach Berechnungen selten exakt gleich. Mit SameValue aus System.Math und einer Toleranz vergleichen. Vergleiche mit 0 werden nicht gemeldet."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "constructor-on-instance",' + #10 +
+    '      "name": "Konstruktor auf einer Instanz aufgerufen",' + #10 +
+    '      "description": "Create wird auf einer Variablen statt auf der Klasse aufgerufen. Das legt kein neues Objekt an; mit nicht zugewiesener Variable stürzt es ab. Klassenreferenzen (class of …) werde' + 'n nicht gemeldet."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "format-without-settings",' + #10 +
+    '      "name": "Formatierung abhängig vom Gebietsschema",' + #10 +
+    '      "description": "Format mit %f, %n, %m, %g oder %e und Funktionen wie FloatToStr, StrToFloat oder DateToStr ohne TFormatSettings-Parameter verwenden das Gebietsschema des Benutzers (Dezimaltrenne' + 'r, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format(''%d'', …) wird nicht gemeldet."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
