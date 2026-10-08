@@ -39,15 +39,19 @@ procedure RegisterLeakMonitor;
 
 implementation
 
+// Delphi 13 liefert DUnitX mit DUnitX.ServiceLocator (TDUnitXServiceLocator)
+// statt des früheren DUnitX.IoC (TDUnitXIoC); die Schnittstelle ist gleich.
 uses
-  DUnitX.IoC;
+  DUnitX.ServiceLocator;
 
 function AllocatedBytes: Int64;
 var
   State: TMemoryManagerState;
   I: Integer;
 begin
+  {$WARN SYMBOL_PLATFORM OFF}
   GetMemoryManagerState(State);
+  {$WARN SYMBOL_PLATFORM ON}
   Result := Int64(State.TotalAllocatedMediumBlockSize) + Int64(State.TotalAllocatedLargeBlockSize);
   for I := Low(State.SmallBlockTypeStates) to High(State.SmallBlockTypeStates) do
     Inc(Result, Int64(State.SmallBlockTypeStates[I].AllocatedBlockCount) *
@@ -56,7 +60,7 @@ end;
 
 procedure RegisterLeakMonitor;
 begin
-  TDUnitXIoC.DefaultContainer.RegisterType<IMemoryLeakMonitor>(
+  TDUnitXServiceLocator.DefaultContainer.RegisterType<IMemoryLeakMonitor>(
     function: IMemoryLeakMonitor
     begin
       Result := TLeakMonitor.Create;
