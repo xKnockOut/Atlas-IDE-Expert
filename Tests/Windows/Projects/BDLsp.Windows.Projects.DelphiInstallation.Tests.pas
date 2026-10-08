@@ -13,6 +13,8 @@ type
   TDelphiInstallationTests = class
   public
     [Test]
+    // RTL legt bei erster Benutzung Singletons an (Kodierungen, Pfad-/Registry-Hilfen); kein Leck des Testcodes.
+    [IgnoreMemoryLeaks]
     procedure VersionsAreSortedAscending;
     [Test]
     procedure LatestProvidesExpandedLibraryPaths;
