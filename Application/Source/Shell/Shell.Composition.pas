@@ -110,6 +110,9 @@ type
     FCompiling: Boolean;
     FHasPendingCompile: Boolean;
     FPendingCompile: TCompilerRequest;
+    /// <summary>Grund, warum der Compiler nicht nutzbar ist; '' = nutzbar. Unter FCompileLock.
+    /// Dann kompiliert der Server nach dem Speichern nicht mehr, bis das Projekt neu geladen wird.</summary>
+    FCompilerUnavailable: string;
     procedure AddWorkspace(const AFolder: TWorkspaceFolder);
     procedure RemoveWorkspace(const AFolder: TWorkspaceFolder);
     /// <summary>Innerster Ordner zur Datei oder nil. Aufrufer hält FWorkspacesLock.</summary>
@@ -128,8 +131,11 @@ type
     /// <summary>Namespaces aller Projekte an die Features weitergeben, Diagnosen neu prüfen.</summary>
     procedure ProjectLoaded;
     procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
-    /// <summary>Kompiliert das Projekt zu AFileName ('' = einziger Ordner) im Hintergrund.</summary>
-    procedure StartCompile(const AFileName: string);
+    /// <summary>Kompiliert das Projekt zu AFileName ('' = einziger Ordner) im Hintergrund.
+    /// AManual: über den Befehl, auch wenn der Compiler zuletzt nicht nutzbar war.</summary>
+    procedure StartCompile(const AFileName: string; AManual: Boolean);
+    /// <summary>Merkt sich, dass der Compiler nicht nutzbar ist, und meldet das einmal.</summary>
+    procedure CompilerUnavailable(const AReason: string);
     /// <summary>Hintergrund-Thread: führt ARequest und vorgemerkte Läufe aus.</summary>
     procedure CompileLoop(const ARequest: TCompilerRequest);
     procedure HandleDidChangeConfiguration(const AParams: TJSONValue);
@@ -159,6 +165,7 @@ implementation
 
 uses
   System.IOUtils,
+  System.Math,
   System.StrUtils,
   BDLsp.Common.Product.Version,
   BDLsp.Common.Logging.Providers.Logger,
@@ -416,9 +423,9 @@ begin
       if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
         Uri := AArguments.Items[0].Value;
       if Uri <> '' then
-        StartCompile(TDocumentUris.ToPath(Uri))
+        StartCompile(TDocumentUris.ToPath(Uri), True)
       else
-        StartCompile('');
+        StartCompile('', True);
       Result := TJSONNull.Create;
     end);
   FCommands.Attach(FDispatcher);
@@ -745,6 +752,16 @@ var
   Namespaces: TArray<string>;
   Namespace: string;
 begin
+  // Neues Projekt oder neue Installation: Der Compiler bekommt eine neue Chance (#40).
+  if FCompileLock <> nil then
+  begin
+    TMonitor.Enter(FCompileLock);
+    try
+      FCompilerUnavailable := '';
+    finally
+      TMonitor.Exit(FCompileLock);
+    end;
+  end;
   // Die Features kennen eine Liste: die Namespaces aller Projekte ohne Doppelte.
   Namespaces := nil;
   TMonitor.Enter(FWorkspacesLock);
@@ -788,7 +805,7 @@ begin
       TMonitor.Exit(FWorkspacesLock);
     end;
     if OnSave then
-      StartCompile(TDocumentUris.ToPath(ADocument.Uri));
+      StartCompile(TDocumentUris.ToPath(ADocument.Uri), False);
     Exit;
   end;
   if not SameText(ExtractFileName(TDocumentUris.ToPath(ADocument.Uri)), ConfigurationFileName) then
@@ -806,12 +823,38 @@ begin
     FLooseConfiguration.DocumentEvent(AKind, ADocument);
 end;
 
-procedure TServerComposition.StartCompile(const AFileName: string);
+procedure TServerComposition.CompilerUnavailable(const AReason: string);
+var
+  First: Boolean;
+begin
+  TMonitor.Enter(FCompileLock);
+  try
+    First := FCompilerUnavailable <> AReason;
+    FCompilerUnavailable := AReason;
+  finally
+    TMonitor.Exit(FCompileLock);
+  end;
+  if First then
+    FLogger.Warning('Kompilieren nicht möglich: ' + AReason +
+      '. Nach dem Speichern wird bis zum nächsten Laden des Projekts nicht mehr kompiliert; ' +
+      'der Befehl "Projekt kompilieren" versucht es erneut.');
+end;
+
+procedure TServerComposition.StartCompile(const AFileName: string; AManual: Boolean);
 var
   Workspace: TShellWorkspace;
   Request: TCompilerRequest;
   Error: string;
+  Unavailable: Boolean;
 begin
+  TMonitor.Enter(FCompileLock);
+  try
+    Unavailable := FCompilerUnavailable <> '';
+  finally
+    TMonitor.Exit(FCompileLock);
+  end;
+  if Unavailable and not AManual then
+    Exit;
   TMonitor.Enter(FWorkspacesLock);
   try
     Workspace := nil;
@@ -828,7 +871,7 @@ begin
   end;
   if Error <> '' then
   begin
-    FLogger.Warning('Kompilieren nicht möglich: ' + Error);
+    CompilerUnavailable(Error);
     Exit;
   end;
   TMonitor.Enter(FCompileLock);
@@ -865,8 +908,8 @@ var
   Messages: TArray<TCompilerMessage>;
   Item: TCompilerMessage;
   Counts: array[TCompilerSeverity] of Integer;
-  Code: Integer;
-  Summary: string;
+  Code, Index: Integer;
+  Summary, Output: string;
 begin
   Request := ARequest;
   repeat
@@ -880,23 +923,44 @@ begin
             Lines.Add(ALine);
           end);
         Messages := TCompilerOutputParser.Parse(Lines.ToArray, Request.WorkingDir);
-        FillChar(Counts, SizeOf(Counts), 0);
-        for Item in Messages do
+        if (Code <> 0) and (Length(Messages) = 0) then
         begin
-          Inc(Counts[Item.Severity]);
-          if Item.FileName = '' then
-            FLogger.Warning(Format('Compiler: %s %s', [Item.Code, Item.Text]));
+          // Abbruch ohne eine einzige Meldung: Der Compiler selbst ist nicht nutzbar,
+          // z. B. ohne Lizenz für die Kommandozeile. Bisherige Meldungen bleiben stehen.
+          Output := '';
+          for Index := 0 to Min(Lines.Count, 3) - 1 do
+            if Trim(Lines[Index]) <> '' then
+              Output := Output + ' ' + Trim(Lines[Index]);
+          CompilerUnavailable(Format('%s endet mit Exit-Code %d ohne Meldungen:%s',
+            [Request.Executable, Code, Output]));
+          FCompileProgress.Finish('Compiler nicht nutzbar');
+        end
+        else
+        begin
+          TMonitor.Enter(FCompileLock);
+          try
+            FCompilerUnavailable := '';
+          finally
+            TMonitor.Exit(FCompileLock);
+          end;
+          FillChar(Counts, SizeOf(Counts), 0);
+          for Item in Messages do
+          begin
+            Inc(Counts[Item.Severity]);
+            if Item.FileName = '' then
+              FLogger.Warning(Format('Compiler: %s %s', [Item.Code, Item.Text]));
+          end;
+          FSyntaxDiagnostics.RefreshFiles(FCompilerResults.Replace(Messages));
+          Summary := Format('%d Fehler, %d Warnungen, %d Hinweise',
+            [Counts[TCompilerSeverity.Error] + Counts[TCompilerSeverity.Fatal], Counts[TCompilerSeverity.Warning],
+            Counts[TCompilerSeverity.Hint]]);
+          FLogger.Info(Format('Kompiliert mit %s (Exit-Code %d): %s', [Request.Executable, Code, Summary]));
+          FCompileProgress.Finish(Summary);
         end;
-        FSyntaxDiagnostics.RefreshFiles(FCompilerResults.Replace(Messages));
-        Summary := Format('%d Fehler, %d Warnungen, %d Hinweise',
-          [Counts[TCompilerSeverity.Error] + Counts[TCompilerSeverity.Fatal], Counts[TCompilerSeverity.Warning],
-          Counts[TCompilerSeverity.Hint]]);
-        FLogger.Info(Format('Kompiliert mit %s (Exit-Code %d): %s', [Request.Executable, Code, Summary]));
-        FCompileProgress.Finish(Summary);
       except
         on E: Exception do
         begin
-          FLogger.Error('Kompilieren fehlgeschlagen: ' + E.Message);
+          CompilerUnavailable(E.Message);
           FCompileProgress.Finish('Fehlgeschlagen');
         end;
       end;
