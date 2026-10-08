@@ -81,6 +81,10 @@ type
     class function Default: TCompilerSettings; static;
   end;
 
+  /// <summary>Blöcke, die nach Enter automatisch geschlossen werden (#179).</summary>
+  TBlockKind = (Begin_, Try_, Case_, Record_, Class_, Repeat_);
+  TBlockKinds = set of TBlockKind;
+
   /// <summary>Auswahl der Vervollständigung (#229): unscharf oder nur nach Präfix.</summary>
   TCompletionMatching = (Fuzzy, Prefix);
 
@@ -110,6 +114,8 @@ type
     InlayHints: TInlayHintSettings;
     Compiler: TCompilerSettings;
     Completion: TCompletionSettings;
+    /// <summary>Blockabschluss beim Tippen; Vorgabe alle (#179).</summary>
+    CompleteBlocks: TBlockKinds;
     /// <summary>Obergrenze für den Symbolindex in MB; 0 = unbegrenzt (#185).</summary>
     MemoryBudgetMb: Integer;
     /// <summary>Vorgaben, wenn keine Konfigurationsdatei existiert.</summary>
@@ -266,6 +272,7 @@ begin
   Result.InlayHints := TInlayHintSettings.Default;
   Result.Compiler := TCompilerSettings.Default;
   Result.Completion := TCompletionSettings.Default;
+  Result.CompleteBlocks := [Low(TBlockKind)..High(TBlockKind)];
   Result.MemoryBudgetMb := 0;
 end;
 

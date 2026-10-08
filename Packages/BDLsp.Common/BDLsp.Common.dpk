@@ -108,6 +108,7 @@ contains
   BDLsp.Common.Lsp.DocumentLinks in 'Source\Lsp\BDLsp.Common.Lsp.DocumentLinks.pas',
   BDLsp.Common.Editing.CodeActions in 'Source\Editing\BDLsp.Common.Editing.CodeActions.pas',
   BDLsp.Common.Editing.UsesClause in 'Source\Editing\BDLsp.Common.Editing.UsesClause.pas',
+  BDLsp.Common.Editing.BlockCompletion in 'Source\Editing\BDLsp.Common.Editing.BlockCompletion.pas',
   BDLsp.Common.Editing.ClassCompletion in 'Source\Editing\BDLsp.Common.Editing.ClassCompletion.pas',
   BDLsp.Common.Dfm.Contract in 'Source\Dfm\BDLsp.Common.Dfm.Contract.pas',
   BDLsp.Common.Dfm.Parser in 'Source\Dfm\BDLsp.Common.Dfm.Parser.pas',

@@ -18,6 +18,7 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 | `rules` | object | – |  | Prüfregeln einzeln einstellen: Regel-ID → Schweregrad oder Objekt mit "severity" und Optionen. |
 | `compiler` | object | – |  | Compiler-Anbindung (dcc32/dcc64). |
 | `completion` | object | – |  | Code-Vervollständigung. |
+| `completeBlocks` | object | – |  | Blockabschluss beim Tippen: nach Enter hinter dem Schlüsselwort den passenden Abschluss ergänzen, wenn der Block noch offen ist. |
 | `memoryBudgetMb` | integer | `0` | 0… | Obergrenze für den Symbolindex in MB. Darüber werden zuerst Bibliotheks-Units (RTL, VCL), dann Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. |
 | `inlayHints` | object | – |  | Inlay Hints im Editor. |
 | `minConfidence` | string | `"medium"` | `"low"`, `"medium"`, `"high"` | Regeltreffer unter dieser Konfidenz ausblenden. |
@@ -35,6 +36,17 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 | Schlüssel | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|
 | `completion.matching` | string | `"fuzzy"` | `"fuzzy"`, `"prefix"` | Auswahl der Vorschläge: unscharf (Teilfolgen, Kürzel wie TSL für TStringList) oder nur nach Präfix, falls ein Editor nachträglich strikt filtert. |
+
+## completeBlocks
+
+| Schlüssel | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|
+| `completeBlocks.begin` | boolean | `true` |  | begin → end; |
+| `completeBlocks.try` | boolean | `true` |  | try → finally und end; |
+| `completeBlocks.case` | boolean | `true` |  | case … of → end; |
+| `completeBlocks.record` | boolean | `true` |  | record → end; |
+| `completeBlocks.class` | boolean | `true` |  | class, interface und object → end; |
+| `completeBlocks.repeat` | boolean | `true` |  | repeat → until ; |
 
 ## inlayHints
 

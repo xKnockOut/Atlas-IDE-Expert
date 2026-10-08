@@ -250,6 +250,13 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Assert.IsTrue(Parse('{"completion": {"matching": "egal", "x": 1}}', Issues).Completion.Matching = TCompletionMatching.Fuzzy);
   Assert.AreEqual(2, Integer(Length(Issues)));
+  // Blockabschluss (#179)
+  Assert.IsTrue(Parse('{}', Issues).CompleteBlocks = [Low(TBlockKind)..High(TBlockKind)]);
+  Settings := Parse('{"completeBlocks": {"try": false, "repeat": false}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsTrue(Settings.CompleteBlocks = [TBlockKind.Begin_, TBlockKind.Case_, TBlockKind.Record_, TBlockKind.Class_]);
+  Parse('{"completeBlocks": {"while": true}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Speicherbudget (#185)
   Assert.AreEqual(0, Parse('{}', Issues).MemoryBudgetMb);
   Assert.AreEqual(512, Parse('{"memoryBudgetMb": 512}', Issues).MemoryBudgetMb);

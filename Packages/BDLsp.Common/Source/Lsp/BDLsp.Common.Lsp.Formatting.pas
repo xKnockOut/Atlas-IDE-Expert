@@ -4,6 +4,9 @@
 // Einstellungen kommen in drei Ebenen: die FormattingOptions des Editors,
 // darüber .editorconfig und darüber ausdrücklich gesetzte Werte aus
 // "format" in delphi-lsp.json. Die Logik liegt in BDLsp.Common.Editing.Formatter.
+//
+// textDocument/onTypeFormatting (#179) ergänzt nach Enter den Blockabschluss
+// (BDLsp.Common.Editing.BlockCompletion), schaltbar über "completeBlocks".
 
 interface
 
@@ -19,15 +22,20 @@ uses
 type
   /// <summary>Block "format" aus delphi-lsp.json bzw. dem Editor für AUri.</summary>
   TFormatStyleProvider = reference to function(const AUri: string): TFormatStyle;
+  /// <summary>Block "completeBlocks" für AUri.</summary>
+  TBlockKindsProvider = reference to function(const AUri: string): TBlockKinds;
 
   TLspFormatting = class
   public const
     Method = 'textDocument/formatting';
     RangeMethod = 'textDocument/rangeFormatting';
+    OnTypeMethod = 'textDocument/onTypeFormatting';
   private
     FStore: IDocumentStore;
     FSettingsProvider: TFormatStyleProvider;
     FReadFile: TEditorConfigReadFile;
+    FBlockKindsFor: TBlockKindsProvider;
+    function HandleOnType(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function Handle(const AParams: TJSONValue; AWithRange: Boolean): TJSONValue;
     function HandleFormatting(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleRangeFormatting(const AParams: TJSONValue;
@@ -36,9 +44,13 @@ type
     constructor Create(const AStore: IDocumentStore; const ASettingsProvider: TFormatStyleProvider;
       const AReadFile: TEditorConfigReadFile);
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
+    /// <summary>documentOnTypeFormattingProvider: ausgelöst durch Enter.</summary>
+    class function OnTypeCapability: TJSONObject; static;
     /// <summary>Einstellungen für AFileName aus Editor-Optionen, .editorconfig und AConfigured.</summary>
     class function Resolve(const AOptions: TJSONValue; const AFileName: string; const AConfigured: TFormatStyle;
       const AReadFile: TEditorConfigReadFile): TFormatStyle; static;
+    /// <summary>Ohne Zuweisung werden alle Blöcke ergänzt.</summary>
+    property BlockKindsFor: TBlockKindsProvider read FBlockKindsFor write FBlockKindsFor;
   end;
 
 implementation
@@ -48,7 +60,8 @@ uses
   BDLsp.Common.Lsp.Positions,
   BDLsp.Common.Rules.Contract,
   BDLsp.Common.Pascal.Lexer,
-  BDLsp.Common.Editing.Formatter;
+  BDLsp.Common.Editing.Formatter,
+  BDLsp.Common.Editing.BlockCompletion;
 
 { TLspFormatting }
 
@@ -65,6 +78,45 @@ procedure TLspFormatting.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(Method, HandleFormatting);
   ADispatcher.RegisterConcurrentRequest(RangeMethod, HandleRangeFormatting);
+  ADispatcher.RegisterConcurrentRequest(OnTypeMethod, HandleOnType);
+end;
+
+class function TLspFormatting.OnTypeCapability: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('firstTriggerCharacter', #10);
+end;
+
+function TLspFormatting.HandleOnType(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  Uri, Character: string;
+  Document: ITextDocument;
+  PositionValue: TJSONValue;
+  Kinds: TBlockKinds;
+  Edit: TRuleEdit;
+  Item: TJSONObject;
+begin
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Felder "textDocument.uri" und "position" fehlen');
+  Result := TJSONArray.Create;
+  if not TJSONObject(AParams).TryGetValue<string>('ch', Character) or (Character <> #10) then
+    Exit;
+  if not FStore.TryGet(Uri, Document) then
+    Exit;
+  if Assigned(FBlockKindsFor) then
+    Kinds := FBlockKindsFor(Uri)
+  else
+    Kinds := [Low(TBlockKind)..High(TBlockKind)];
+  if TBlockCompletion.AfterEnter(Document.Text, TPascalLexer.Tokenize(Document.Text),
+    TLspPositions.ReadPosition(PositionValue), Kinds, Edit) then
+  begin
+    Item := TJSONObject.Create;
+    Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
+    Item.AddPair('newText', Edit.NewText);
+    TJSONArray(Result).AddElement(Item);
+  end;
 end;
 
 class function TLspFormatting.Resolve(const AOptions: TJSONValue; const AFileName: string;

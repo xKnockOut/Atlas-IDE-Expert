@@ -112,6 +112,19 @@
         }
       }
     },
+    "completeBlocks": {
+      "type": "object",
+      "description": "Blockabschluss beim Tippen: nach Enter hinter dem Schlüsselwort den passenden Abschluss ergänzen, wenn der Block noch offen ist.",
+      "additionalProperties": false,
+      "properties": {
+        "begin": { "type": "boolean", "default": true, "description": "begin → end;" },
+        "try": { "type": "boolean", "default": true, "description": "try → finally und end;" },
+        "case": { "type": "boolean", "default": true, "description": "case … of → end;" },
+        "record": { "type": "boolean", "default": true, "description": "record → end;" },
+        "class": { "type": "boolean", "default": true, "description": "class, interface und object → end;" },
+        "repeat": { "type": "boolean", "default": true, "description": "repeat → until ;" }
+      }
+    },
     "memoryBudgetMb": {
       "type": "integer",
       "minimum": 0,

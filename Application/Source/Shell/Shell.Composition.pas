@@ -312,6 +312,24 @@ begin
       if Result then
         AText := TFile.ReadAllText(AFileName);
     end);
+  FFormatting.BlockKindsFor :=
+    function(const AUri: string): TBlockKinds
+    var
+      Workspace: TShellWorkspace;
+    begin
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+        if (Workspace = nil) and (FWorkspaces.Count = 1) then
+          Workspace := FWorkspaces[0];
+        if Workspace = nil then
+          Result := TServerSettings.Default.CompleteBlocks
+        else
+          Result := Workspace.Configuration.Settings.CompleteBlocks;
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+    end;
   FFormatting.Attach(FDispatcher);
   FSelectionRanges := TLspSelectionRanges.Create(FDocuments);
   FSelectionRanges.Attach(FDispatcher);
@@ -1280,6 +1298,7 @@ begin
   Result.AddPair('foldingRangeProvider', TJSONBool.Create(True));
   Result.AddPair('linkedEditingRangeProvider', TJSONBool.Create(True));
   Result.AddPair('documentFormattingProvider', TJSONBool.Create(True));
+  Result.AddPair('documentOnTypeFormattingProvider', TLspFormatting.OnTypeCapability);
   Result.AddPair('documentRangeFormattingProvider', TJSONBool.Create(True));
   Result.AddPair('selectionRangeProvider', TJSONBool.Create(True));
   Result.AddPair('definitionProvider', TJSONBool.Create(True));

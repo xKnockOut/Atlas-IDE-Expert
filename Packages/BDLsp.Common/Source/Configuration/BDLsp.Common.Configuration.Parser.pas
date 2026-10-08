@@ -50,6 +50,7 @@ type
     procedure ReadInlayHints(ANode: TJsonNode);
     procedure ReadCompiler(ANode: TJsonNode);
     procedure ReadCompletion(ANode: TJsonNode);
+    procedure ReadCompleteBlocks(ANode: TJsonNode);
     procedure ReadFormat(ANode: TJsonNode);
     function ExpectBoolean(ANode: TJsonNode; const AName: string; var AValue: Boolean): Boolean;
     /// <summary>Wurzel oder nil nach gemeldetem Syntaxfehler.</summary>
@@ -282,6 +283,41 @@ begin
   end;
 end;
 
+procedure TValidator.ReadCompleteBlocks(ANode: TJsonNode);
+const
+  Names: array[TBlockKind] of string = ('begin', 'try', 'case', 'record', 'class', 'repeat');
+var
+  Index: Integer;
+  Key: string;
+  Kind: TBlockKind;
+  Known, Enabled: Boolean;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"completeBlocks" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    Known := False;
+    for Kind := Low(TBlockKind) to High(TBlockKind) do
+      if Key = Names[Kind] then
+      begin
+        Known := True;
+        Enabled := Kind in FSettings.CompleteBlocks;
+        if ExpectBoolean(ANode[Index], Key, Enabled) then
+          if Enabled then
+            Include(FSettings.CompleteBlocks, Kind)
+          else
+            Exclude(FSettings.CompleteBlocks, Kind);
+      end;
+    if not Known then
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "completeBlocks.%s"', [Key]), False);
+  end;
+end;
+
 procedure TValidator.ReadCompletion(ANode: TJsonNode);
 var
   Index: Integer;
@@ -467,6 +503,8 @@ begin
         ReadCompiler(Value)
       else if Key = 'completion' then
         ReadCompletion(Value)
+      else if Key = 'completeBlocks' then
+        ReadCompleteBlocks(Value)
       else if Key = 'memoryBudgetMb' then
       begin
         if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Budget) and (Budget >= 0) then
@@ -624,6 +662,8 @@ begin
       Result.Compiler := FileSettings.Compiler
     else if Key = 'completion' then
       Result.Completion := FileSettings.Completion
+    else if Key = 'completeBlocks' then
+      Result.CompleteBlocks := FileSettings.CompleteBlocks
     else if Key = 'memoryBudgetMb' then
       Result.MemoryBudgetMb := FileSettings.MemoryBudgetMb;
 end;
