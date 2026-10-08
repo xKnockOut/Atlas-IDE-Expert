@@ -48,6 +48,32 @@ type
     class function Default: TInlayHintSettings; static;
   end;
 
+  {$SCOPEDENUMS ON}
+  TKeywordCase = (Preserve, Lower, Upper);
+  /// <summary>Schlüssel im Block "format", die ausdrücklich gesetzt sind.</summary>
+  TFormatKey = (IndentSize, UseTabs, KeywordCase, TrimTrailingWhitespace, InsertFinalNewline,
+    SpaceAroundAssignment, SpaceAfterComma, EndOfLine);
+  {$SCOPEDENUMS OFF}
+  TFormatKeys = set of TFormatKey;
+
+  /// <summary>Formatierung (#43). Given sagt, welche Werte aus delphi-lsp.json bzw. dem
+  /// Editor stammen; nur die haben Vorrang vor .editorconfig.</summary>
+  TFormatStyle = record
+    IndentSize: Integer;
+    UseTabs: Boolean;
+    KeywordCase: TKeywordCase;
+    TrimTrailingWhitespace: Boolean;
+    InsertFinalNewline: Boolean;
+    /// <summary>Genau ein Leerzeichen vor und nach :=.</summary>
+    SpaceAroundAssignment: Boolean;
+    /// <summary>Genau ein Leerzeichen nach Kommas.</summary>
+    SpaceAfterComma: Boolean;
+    /// <summary>'' = beibehalten, sonst #10 oder #13#10.</summary>
+    EndOfLine: string;
+    Given: TFormatKeys;
+    class function Default: TFormatStyle; static;
+  end;
+
   /// <summary>Compiler-Anbindung (#40).</summary>
   TCompilerSettings = record
     /// <summary>Nach dem Speichern einer Quelldatei im Hintergrund kompilieren.</summary>
@@ -71,6 +97,8 @@ type
     Exclude: TArray<string>;
     /// <summary>Formatierungsstil als JSON-Objekt (Text), sonst ''.</summary>
     Format: string;
+    /// <summary>Ausgewerteter Block "format" (#43).</summary>
+    Formatting: TFormatStyle;
     InlayHints: TInlayHintSettings;
     Compiler: TCompilerSettings;
     /// <summary>Vorgaben, wenn keine Konfigurationsdatei existiert.</summary>
@@ -181,6 +209,21 @@ begin
   Result.EndMarkerMinLines := 20;
 end;
 
+{ TFormatStyle }
+
+class function TFormatStyle.Default: TFormatStyle;
+begin
+  Result.IndentSize := 2;
+  Result.UseTabs := False;
+  Result.KeywordCase := TKeywordCase.Preserve;
+  Result.TrimTrailingWhitespace := True;
+  Result.InsertFinalNewline := False;
+  Result.SpaceAroundAssignment := True;
+  Result.SpaceAfterComma := True;
+  Result.EndOfLine := '';
+  Result.Given := [];
+end;
+
 { TCompilerSettings }
 
 class function TCompilerSettings.Default: TCompilerSettings;
@@ -201,6 +244,7 @@ begin
   Result.MinConfidence := TRuleConfidence.Medium;
   Result.Exclude := nil;
   Result.Format := '';
+  Result.Formatting := TFormatStyle.Default;
   Result.InlayHints := TInlayHintSettings.Default;
   Result.Compiler := TCompilerSettings.Default;
 end;

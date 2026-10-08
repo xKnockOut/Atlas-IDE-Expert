@@ -119,6 +119,8 @@
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Unicode.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.CodeActions.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.ClassCompletion.pas"/>
+        <DCCReference Include="Source\Editing\BDLsp.Common.Editing.EditorConfig.pas"/>
+        <DCCReference Include="Source\Editing\BDLsp.Common.Editing.Formatter.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.DocumentLinks.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.DocumentLinks.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.Colors.pas"/>
@@ -145,6 +147,7 @@
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Hover.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.HoverValues.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.LinkedEditing.pas"/>
+        <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Formatting.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.FuzzyMatch.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.WorkspaceSymbols.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.DocumentHighlights.pas"/>

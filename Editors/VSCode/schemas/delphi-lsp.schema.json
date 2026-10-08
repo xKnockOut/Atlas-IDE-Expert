@@ -152,7 +152,53 @@
     },
     "format": {
       "type": "object",
-      "description": "Formatierungsstil (folgt mit der Formatierung)."
+      "description": "Formatierung (Dokument und Auswahl formatieren). Gesetzte Werte haben Vorrang vor .editorconfig.",
+      "additionalProperties": false,
+      "properties": {
+        "indentSize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16,
+          "default": 2,
+          "description": "Breite einer Einrückungsebene."
+        },
+        "useTabs": {
+          "type": "boolean",
+          "default": false,
+          "description": "Mit Tabs statt Leerzeichen einrücken."
+        },
+        "keywordCase": {
+          "type": "string",
+          "enum": ["preserve", "lower", "upper"],
+          "default": "preserve",
+          "description": "Schreibweise reservierter Wörter."
+        },
+        "trimTrailingWhitespace": {
+          "type": "boolean",
+          "default": true,
+          "description": "Leerzeichen am Zeilenende entfernen."
+        },
+        "insertFinalNewline": {
+          "type": "boolean",
+          "default": false,
+          "description": "Datei mit einem Zeilenende abschließen."
+        },
+        "spaceAroundAssignment": {
+          "type": "boolean",
+          "default": true,
+          "description": "Genau ein Leerzeichen vor und nach :=."
+        },
+        "spaceAfterComma": {
+          "type": "boolean",
+          "default": true,
+          "description": "Genau ein Leerzeichen nach Kommas."
+        },
+        "endOfLine": {
+          "type": "string",
+          "enum": ["lf", "crlf"],
+          "description": "Zeilenenden vereinheitlichen; ohne Angabe bleiben sie."
+        }
+      }
     }
   },
   "additionalProperties": false
