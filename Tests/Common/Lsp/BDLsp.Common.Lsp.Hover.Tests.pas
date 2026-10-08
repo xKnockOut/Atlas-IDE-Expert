@@ -34,6 +34,8 @@ type
     procedure FormatsParameterDocumentation;
     [Test]
     procedure WritesMarkdown;
+    [Test]
+    procedure LinksLibrarySymbolsToDocWiki;
   end;
 
 implementation
@@ -44,7 +46,8 @@ uses
   BDLsp.Common.Pascal.SyntaxTree,
   BDLsp.Common.Pascal.Parser,
   BDLsp.Common.Index.SymbolIndex,
-  BDLsp.Common.Index.Extractor;
+  BDLsp.Common.Index.Extractor,
+  BDLsp.Common.Lsp.DocWiki;
 
 const
   WerkzeugFile = 'C:\P\Werkzeug.pas';
@@ -155,6 +158,8 @@ begin
   Assert.AreEqual('function Summe(A, B: Integer): Integer;', Info.Declaration);
   Assert.AreEqual('Addiert zwei Zahlen.'#10#10'*A*: Erster Wert', Info.Documentation);
   Assert.AreEqual('Werkzeug', Info.UnitName);
+  // Eigene Units haben keine DocWiki-Seite.
+  Assert.AreEqual('', Info.DocWikiUrl);
 end;
 
 procedure TLspHoverTests.ShowsLocals;
@@ -194,6 +199,40 @@ begin
   Info.Documentation := 'Tut etwas.';
   Info.UnitName := 'U';
   Assert.AreEqual('```pascal'#10'procedure P;'#10'```'#10#10'Tut etwas.'#10#10'Unit `U`', Info.ToMarkdown);
+end;
+
+procedure TLspHoverTests.LinksLibrarySymbolsToDocWiki;
+const
+  LibFile = 'C:\Lib\Vcl.Werkzeug.pas';
+var
+  Index: ISymbolIndex;
+  Resolver: TNameResolver;
+  Tree: TSyntaxTree;
+  LibText, MainText: string;
+  Info: THoverInfo;
+begin
+  LibText := StringReplace(UnitWerkzeug, 'unit Werkzeug;', 'unit Vcl.Werkzeug;', []);
+  MainText := StringReplace(UnitHaupt, 'uses Werkzeug;', 'uses Vcl.Werkzeug;', []);
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText(LibText, LibFile, nil));
+  Resolver := TNameResolver.Create(Index);
+  Tree := TPascalParser.Parse(MainText);
+  try
+    Info := TLspHover.InfoAt(Resolver, Index, Tree, MainText, 'C:\P\Haupt.pas', PositionOf(MainText, 'Summe', 1),
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        Result := SameText(AFileName, LibFile);
+        AText := LibText;
+      end, '23.0');
+    Assert.AreEqual(TDocWiki.BaseUri + 'Athens/en/Vcl.Werkzeug.TRechner.Summe', Info.DocWikiUrl);
+    Assert.IsTrue(Pos('[DocWiki](' + Info.DocWikiUrl + ')', Info.ToMarkdown) > 0);
+    Info := TLspHover.InfoAt(Resolver, Index, Tree, MainText, 'C:\P\Haupt.pas',
+      PositionOf(MainText, 'Vcl.Werkzeug;', 1), nil, '');
+    Assert.AreEqual(TDocWiki.BaseUri + 'Florence/en/Vcl.Werkzeug', Info.DocWikiUrl);
+  finally
+    Tree.Free;
+    Resolver.Free;
+  end;
 end;
 
 initialization

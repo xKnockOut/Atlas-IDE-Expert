@@ -25,6 +25,8 @@ uses
 type
   /// <summary>Liefert den Text einer Datei; False, wenn sie nicht lesbar ist.</summary>
   THoverReadText = reference to function(const AFileName: string; out AText: string): Boolean;
+  /// <summary>Delphi-Version des Dokuments AUri (z. B. "23.0"); '' = unbekannt.</summary>
+  THoverVersionProvider = reference to function(const AUri: string): string;
 
   THoverInfo = record
     Declaration: string;
@@ -33,6 +35,8 @@ type
     UnitName: string;
     /// <summary>Markdown mit published-Properties und Ereignissen bei Klassen; sonst ''.</summary>
     Members: string;
+    /// <summary>Link zur DocWiki bei RTL- und VCL-Symbolen (#27); sonst ''.</summary>
+    DocWikiUrl: string;
     function Found: Boolean;
     function ToMarkdown: string;
   end;
@@ -46,6 +50,7 @@ type
     FEnsureUnit: TEnsureUnitFunc;
     FReadText: THoverReadText;
     FNamespaces: TArray<string>;
+    FVersionProvider: THoverVersionProvider;
     function HandleHover(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AReadText: THoverReadText;
@@ -54,10 +59,12 @@ type
     /// <summary>Hover-Inhalt an APosition; ATreeText ist der Text von ATree.</summary>
     class function InfoAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const ATreeText, AFileName: string; const APosition: TTextPosition;
-      const AReadText: THoverReadText): THoverInfo; static;
+      const AReadText: THoverReadText; const ADelphiVersion: string = ''): THoverInfo; static;
     /// <summary>Dokumentationskommentar über ALine als Markdown; '' ohne Kommentar.</summary>
     class function DocumentationAbove(const ALines: TArray<string>; ALine: Integer): string; static;
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
+    /// <summary>Für den Release-Namen der DocWiki-Links; ohne Provider gilt die neueste Version.</summary>
+    property VersionProvider: THoverVersionProvider read FVersionProvider write FVersionProvider;
   end;
 
 implementation
@@ -68,6 +75,7 @@ uses
   BDLsp.Common.Lsp.Positions,
   BDLsp.Common.Lsp.Definition,
   BDLsp.Common.Lsp.PublishedMembers,
+  BDLsp.Common.Lsp.DocWiki,
   BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.Parser,
   BDLsp.Common.Lsp.Internals.Cancellation;
@@ -142,6 +150,8 @@ begin
     Result := Result + #10#10 + Documentation;
   if UnitName <> '' then
     Result := Result + #10#10 + 'Unit `' + UnitName + '`';
+  if DocWikiUrl <> '' then
+    Result := Result + #10#10 + '[DocWiki](' + DocWikiUrl + ')';
   if Members <> '' then
     Result := Result + #10#10 + '---' + #10#10 + Members;
 end;
@@ -193,7 +203,7 @@ end;
 
 class function TLspHover.InfoAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const ATreeText, AFileName: string; const APosition: TTextPosition;
-  const AReadText: THoverReadText): THoverInfo;
+  const AReadText: THoverReadText; const ADelphiVersion: string): THoverInfo;
 var
   Targets: TArray<TDefinitionTarget>;
   Text: string;
@@ -218,7 +228,10 @@ begin
     not SameText(Targets[0].FileName, AFileName) then
   begin
     if AIndex.FindFile(Targets[0].FileName, OwnerUnit) then
+    begin
       Result.Declaration := 'unit ' + OwnerUnit.UnitName + ';';
+      Result.DocWikiUrl := TDocWiki.Url(ADelphiVersion, OwnerUnit.UnitName, '', '');
+    end;
     Result.Documentation := '`' + Targets[0].FileName + '`';
     Exit;
   end;
@@ -230,6 +243,12 @@ begin
     Exit;
   if not SameText(Targets[0].FileName, AFileName) then
     Result.UnitName := OwnerUnit.UnitName;
+  for Symbol in OwnerUnit.Symbols do
+    if Symbol.SelectionRange.StartPos = Targets[0].SelectionRange.StartPos then
+    begin
+      Result.DocWikiUrl := TDocWiki.Url(ADelphiVersion, OwnerUnit.UnitName, Symbol.Container, Symbol.Name);
+      Break;
+    end;
   for Symbol in OwnerUnit.Symbols do
     if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') and
       ((Symbol.Range.StartPos = Start) or (Symbol.SelectionRange.StartPos = Start)) then
@@ -260,6 +279,7 @@ var
   Resolver: TNameResolver;
   Info: THoverInfo;
   Contents: TJSONObject;
+  DelphiVersion: string;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
@@ -269,6 +289,10 @@ begin
     Exit(TJSONNull.Create);
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
+  if Assigned(FVersionProvider) then
+    DelphiVersion := FVersionProvider(Uri)
+  else
+    DelphiVersion := '';
   Tree := TPascalParser.Parse(Document.Text, Cancellation);
   try
     ACancellation.ThrowIfCancellationRequested;
@@ -276,7 +300,7 @@ begin
     try
       Resolver.Namespaces := FNamespaces;
       Info := InfoAt(Resolver, FIndex, Tree, Document.Text, TDocumentUris.ToPath(Uri),
-        TLspPositions.ReadPosition(PositionValue), FReadText);
+        TLspPositions.ReadPosition(PositionValue), FReadText, DelphiVersion);
     finally
       Resolver.Free;
     end;

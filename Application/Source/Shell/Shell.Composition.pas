@@ -232,6 +232,7 @@ begin
     begin
       Result := EnsureUnit(AUnitName);
     end);
+  FHover.VersionProvider := DelphiVersionFor;
   FHover.Attach(FDispatcher);
   FWorkspaceSymbols := TLspWorkspaceSymbols.Create(FIndex);
   FWorkspaceSymbols.Attach(FDispatcher);
