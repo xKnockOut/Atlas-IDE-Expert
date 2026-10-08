@@ -100,6 +100,7 @@
         <DCCReference Include="Source\Index\BDLsp.Common.Index.ProjectFiles.pas"/>
         <DCCReference Include="Source\Index\BDLsp.Common.Index.Service.pas"/>
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.NameResolver.pas"/>
+        <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Definition.pas"/>
         <DCCReference Include="Source\Index\Adapters\BDLsp.Common.Index.Adapters.DiskFileSystem.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.WorkDoneProgress.pas"/>
         <DCCReference Include="Source\Configuration\BDLsp.Common.Configuration.Contract.pas"/>

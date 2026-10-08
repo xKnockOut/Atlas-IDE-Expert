@@ -21,6 +21,7 @@ uses
   BDLsp.Common.Lsp.DocumentSymbols,
   BDLsp.Common.Lsp.FoldingRanges,
   BDLsp.Common.Lsp.SelectionRanges,
+  BDLsp.Common.Lsp.Definition,
   BDLsp.Common.Lsp.Configuration,
   BDLsp.Common.Lsp.WorkDoneProgress,
   BDLsp.Common.Documents.Contract,
@@ -43,6 +44,7 @@ type
     FDocumentSymbols: TLspDocumentSymbols;
     FFoldingRanges: TLspFoldingRanges;
     FSelectionRanges: TLspSelectionRanges;
+    FDefinition: TLspDefinition;
     FConfiguration: TLspConfiguration;
     FConnection: TJsonRpcConnection;
     FIndex: ISymbolIndex;
@@ -184,6 +186,12 @@ begin
   FConfiguration.Attach;
   FIndex := TSymbolIndex.Create;
   FIndexService := TIndexService.Create(FIndex, TDiskIndexFileSystem.Create);
+  FDefinition := TLspDefinition.Create(FDocuments, FIndex,
+    function(const AUnitName: string): Boolean
+    begin
+      Result := FIndexService.EnsureUnit(AUnitName);
+    end);
+  FDefinition.Attach(FDispatcher);
   FIndexProgress := TLspWorkDoneProgress.Create(FTransport, 'bdlsp-index');
   FIndexService.OnProgress := FIndexProgress.AsIndexProgress;
   FIndexService.OnFinished :=
@@ -227,6 +235,7 @@ begin
   FDocumentSymbols.Free;
   FFoldingRanges.Free;
   FSelectionRanges.Free;
+  FDefinition.Free;
   FConfiguration.Free;
   FTextDocumentSync.Free;
   FDocuments := nil;
@@ -319,6 +328,7 @@ begin
   if Signature = FIndexSignature then
     Exit;
   FIndexSignature := Signature;
+  FDefinition.Namespaces := Project.Namespaces;
   FIndexService.Stop;
   if Installation <> nil then
     LibraryPaths := Installation.LibraryPaths(Project.Platform) + Installation.BrowsingPaths(Project.Platform)
@@ -398,6 +408,8 @@ begin
   Result.AddPair('documentSymbolProvider', TJSONBool.Create(True));
   Result.AddPair('foldingRangeProvider', TJSONBool.Create(True));
   Result.AddPair('selectionRangeProvider', TJSONBool.Create(True));
+  Result.AddPair('definitionProvider', TJSONBool.Create(True));
+  Result.AddPair('declarationProvider', TJSONBool.Create(True));
 end;
 
 function TServerComposition.Run: Integer;

@@ -34,6 +34,7 @@ uses
   BDLsp.Common.Documents.Uris.Tests in 'Common\Documents\BDLsp.Common.Documents.Uris.Tests.pas',
   BDLsp.Common.Index.Tests in 'Common\Index\BDLsp.Common.Index.Tests.pas',
   BDLsp.Common.Semantics.NameResolver.Tests in 'Common\Semantics\BDLsp.Common.Semantics.NameResolver.Tests.pas',
+  BDLsp.Common.Lsp.Definition.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Definition.Tests.pas',
   BDLsp.Windows.Documents.PathCanonicalizer.Tests in 'Windows\Documents\BDLsp.Windows.Documents.PathCanonicalizer.Tests.pas',
   BDLsp.Common.Pascal.Lexer.Tests in 'Common\Pascal\BDLsp.Common.Pascal.Lexer.Tests.pas',
   BDLsp.Common.Lsp.Internals.Debouncer.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Internals.Debouncer.Tests.pas',
