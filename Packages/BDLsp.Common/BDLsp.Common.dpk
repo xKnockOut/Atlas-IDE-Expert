@@ -89,6 +89,7 @@ contains
   BDLsp.Common.Lsp.Completion in 'Source\Lsp\BDLsp.Common.Lsp.Completion.pas',
   BDLsp.Common.Lsp.SignatureHelp in 'Source\Lsp\BDLsp.Common.Lsp.SignatureHelp.pas',
   BDLsp.Common.Lsp.Hierarchies in 'Source\Lsp\BDLsp.Common.Lsp.Hierarchies.pas',
+  BDLsp.Common.Lsp.Implementations in 'Source\Lsp\BDLsp.Common.Lsp.Implementations.pas',
   BDLsp.Common.Lsp.Commands in 'Source\Lsp\BDLsp.Common.Lsp.Commands.pas',
   BDLsp.Common.Lsp.Status in 'Source\Lsp\BDLsp.Common.Lsp.Status.pas',
   BDLsp.Common.Lsp.DocWiki in 'Source\Lsp\BDLsp.Common.Lsp.DocWiki.pas',
