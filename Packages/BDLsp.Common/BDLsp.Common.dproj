@@ -137,6 +137,7 @@
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Declarations.pas"/>
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Inheritance.pas"/>
         <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Capture.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Components.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.FileOperations.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.ClassCompletion.pas"/>
         <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.Contract.pas"/>

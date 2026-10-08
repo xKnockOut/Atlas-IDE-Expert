@@ -123,6 +123,7 @@ contains
   BDLsp.Common.Rules.Builtin.Declarations in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Declarations.pas',
   BDLsp.Common.Rules.Builtin.Inheritance in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Inheritance.pas',
   BDLsp.Common.Rules.Builtin.Capture in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Capture.pas',
+  BDLsp.Common.Rules.Builtin.Components in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Components.pas',
   BDLsp.Common.Lsp.FileOperations in 'Source\Lsp\BDLsp.Common.Lsp.FileOperations.pas',
   BDLsp.Common.Editing.ClassCompletion in 'Source\Editing\BDLsp.Common.Editing.ClassCompletion.pas',
   BDLsp.Common.Dfm.Contract in 'Source\Dfm\BDLsp.Common.Dfm.Contract.pas',

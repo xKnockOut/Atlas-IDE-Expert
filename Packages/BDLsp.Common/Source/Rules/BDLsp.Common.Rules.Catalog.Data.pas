@@ -253,6 +253,60 @@ begin
     '      "description": "An anonymous method passed to a deferred API (TThread.Queue, TTask.Run, ...) captures a variable that changes before it runs, such as a for-in loop variable. Delphi captures the ' + 'variable, not its value.",' + #10 +
     '      "bad": "for S in List do\n  TThread.Queue(nil, procedure begin Memo1.Lines.Add(S); end);",' + #10 +
     '      "good": "function CaptureS(const AValue: string): TProc;\nbegin\n  Result := procedure begin Memo1.Lines.Add(AValue); end;\nend;\n...\nfor S in List do\n  TThread.Queue(nil, CaptureS(S));"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "component-missing-inherited",' + #10 +
+    '      "name": "Component method without inherited",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "An overridden Loaded, CreateParams, CreateWnd, Notification, SetParent, Destroy or Paint of a component does not call inherited, so the VCL skips its own work there. For Paint th' + 'e confidence is low, because TCustomControl.Paint only draws the design-time frame.",' + #10 +
+    '      "bad": "procedure TMyControl.Loaded;\nbegin\n  UpdateLayout;\nend;",' + #10 +
+    '      "good": "procedure TMyControl.Loaded;\nbegin\n  inherited;\n  UpdateLayout;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "component-default-mismatch",' + #10 +
+    '      "name": "default does not match constructor",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "A property declares a default value, but the constructor sets its field to a different literal. The streaming system does not store values equal to default, so the property is lo' + 'aded wrongly from the DFM.",' + #10 +
+    '      "bad": "property Size: Integer read FSize write FSize default 5;\n...\nFSize := 10;",' + #10 +
+    '      "good": "property Size: Integer read FSize write FSize default 10;\n...\nFSize := 10;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "component-missing-free-notification",' + #10 +
+    '      "name": "Component reference without FreeNotification",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "A component property refers to another component, but its setter does not call FreeNotification. When the other component is freed, a dangling pointer remains. Subcomponents crea' + 'ted in the constructor are ignored.",' + #10 +
+    '      "bad": "procedure TMyControl.SetLink(const Value: TControl);\nbegin\n  FLink := Value;\nend;",' + #10 +
+    '      "good": "procedure TMyControl.SetLink(const Value: TControl);\nbegin\n  FLink := Value;\n  if Value <> nil then Value.FreeNotification(Self);\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "component-setter-without-invalidate",' + #10 +
+    '      "name": "Setter without Invalidate",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "A property setter changes a field that Paint reads, but does not call Invalidate (or Repaint, Refresh, Changed). The control keeps showing the old state.",' + #10 +
+    '      "bad": "procedure TMyControl.SetColor(const Value: TColor);\nbegin\n  FColor := Value;\nend;",' + #10 +
+    '      "good": "procedure TMyControl.SetColor(const Value: TColor);\nbegin\n  FColor := Value;\n  Invalidate;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "component-fixed-pixels",' + #10 +
+    '      "name": "Fixed pixel values",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "Paint or Resize uses fixed pixel values that are too small above 96 dpi. Values passed through ScaleValue or MulDiv, 0, 1 and -1, and factors of multiplications and divisions are' + ' not reported.",' + #10 +
+    '      "bad": "Canvas.FillRect(Rect(0, 0, 16, 16));",' + #10 +
+    '      "good": "Canvas.FillRect(Rect(0, 0, ScaleValue(16), ScaleValue(16)));"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "component-hardcoded-color",' + #10 +
+    '      "name": "Hardcoded color in Paint",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "Paint uses an RGB literal, a $00BBGGRR constant or a TColor cast. Such colors ignore VCL styles; system colors like clBtnFace are fine.",' + #10 +
+    '      "bad": "Canvas.Brush.Color := $00FF8000;",' + #10 +
+    '      "good": "Canvas.Brush.Color := StyleServices.GetSystemColor(clHighlight);"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -394,6 +448,36 @@ begin
     '      "id": "captured-loop-variable",' + #10 +
     '      "name": "Erfasste Schleifenvariable",' + #10 +
     '      "description": "Eine anonyme Methode, die an eine verzögert ausführende API (TThread.Queue, TTask.Run …) geht, erfasst eine Variable, die sich vor dem Aufruf noch ändert, etwa die Variable einer' + ' for-in-Schleife. Delphi erfasst die Variable, nicht ihren Wert."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "component-missing-inherited",' + #10 +
+    '      "name": "Komponentenmethode ohne inherited",' + #10 +
+    '      "description": "Ein überschriebenes Loaded, CreateParams, CreateWnd, Notification, SetParent, Destroy oder Paint einer Komponente ruft inherited nicht auf; die VCL überspringt dann ihre eigene A' + 'rbeit. Bei Paint ist die Konfidenz niedrig, weil TCustomControl.Paint nur den Rahmen im Designer zeichnet."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "component-default-mismatch",' + #10 +
+    '      "name": "default passt nicht zum Konstruktor",' + #10 +
+    '      "description": "Eine Eigenschaft gibt einen default-Wert an, der Konstruktor setzt das Feld aber auf ein anderes Literal. Werte gleich default speichert die DFM nicht, deshalb wird die Eigenscha' + 'ft falsch geladen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "component-missing-free-notification",' + #10 +
+    '      "name": "Komponentenreferenz ohne FreeNotification",' + #10 +
+    '      "description": "Eine Eigenschaft verweist auf eine andere Komponente, ihr Setter ruft aber FreeNotification nicht auf. Wird die andere Komponente freigegeben, bleibt ein ungültiger Zeiger zurück' + '. Im Konstruktor erzeugte Unterkomponenten sind ausgenommen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "component-setter-without-invalidate",' + #10 +
+    '      "name": "Setter ohne Invalidate",' + #10 +
+    '      "description": "Ein Setter ändert ein Feld, das Paint liest, ruft aber weder Invalidate noch Repaint, Refresh oder Changed auf. Das Steuerelement zeigt weiter den alten Zustand."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "component-fixed-pixels",' + #10 +
+    '      "name": "Feste Pixelwerte",' + #10 +
+    '      "description": "Paint oder Resize verwenden feste Pixelwerte, die über 96 dpi zu klein sind. Werte über ScaleValue oder MulDiv, 0, 1 und -1 sowie Faktoren von Multiplikationen und Divisionen wer' + 'den nicht gemeldet."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "component-hardcoded-color",' + #10 +
+    '      "name": "Feste Farbe in Paint",' + #10 +
+    '      "description": "Paint verwendet ein RGB-Literal, eine $00BBGGRR-Konstante oder einen TColor-Cast. Solche Farben ignorieren VCL-Styles; Systemfarben wie clBtnFace sind in Ordnung."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
