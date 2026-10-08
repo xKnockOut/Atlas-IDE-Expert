@@ -99,7 +99,7 @@ type
     function ReadInteger: Int64;
     function EndOfList: Boolean;
     procedure ReadListEnd;
-    procedure Write(const AText: string);
+    procedure Emit(const AText: string);
     procedure WriteIndent;
     procedure NewLine;
     procedure WriteString(const AText: string);
@@ -256,7 +256,7 @@ begin
     raise EBinaryForm.Create('Listenende erwartet');
 end;
 
-procedure TConverter.Write(const AText: string);
+procedure TConverter.Emit(const AText: string);
 begin
   FOut.Append(AText);
 end;
@@ -268,7 +268,7 @@ end;
 
 procedure TConverter.NewLine;
 begin
-  Write(CrLf);
+  Emit(CrLf);
   WriteIndent;
 end;
 
@@ -280,7 +280,7 @@ begin
   Count := Length(AText);
   if Count = 0 then
   begin
-    Write('''''');
+    Emit('''''');
     Exit;
   end;
   Index := 1;
@@ -300,18 +300,18 @@ begin
           (Index - LineStart >= TDfmBinary.LineLength) or (Ord(AText[Index]) > 127);
         if Index - LineStart >= TDfmBinary.LineLength then
           LineBreak := True;
-        Write('''' + Copy(AText, Start, Index - Start) + '''');
+        Emit('''' + Copy(AText, Start, Index - Start) + '''');
       end
       else
       begin
-        Write('#' + IntToStr(Ord(AText[Index])));
+        Emit('#' + IntToStr(Ord(AText[Index])));
         Inc(Index);
         if Index - LineStart >= TDfmBinary.LineLength then
           LineBreak := True;
       end;
       if LineBreak and (Index <= Count) then
       begin
-        Write(' +');
+        Emit(' +');
         NewLine;
         LineStart := Index;
       end;
@@ -336,7 +336,7 @@ begin
     vaList:
       begin
         ReadByte;
-        Write('(');
+        Emit('(');
         Inc(FNesting);
         while not EndOfList do
         begin
@@ -345,34 +345,34 @@ begin
         end;
         ReadListEnd;
         Dec(FNesting);
-        Write(')');
+        Emit(')');
       end;
     vaInt8, vaInt16, vaInt32, vaInt64:
-      Write(IntToStr(ReadInteger));
+      Emit(IntToStr(ReadInteger));
     vaExtended:
       begin
         ReadByte;
-        Write(FloatText(ReadExtended));
+        Emit(FloatText(ReadExtended));
       end;
     vaDouble:
       begin
         ReadByte;
-        Write(FloatText(ReadDouble));
+        Emit(FloatText(ReadDouble));
       end;
     vaSingle:
       begin
         ReadByte;
-        Write(FloatText(ReadSingle) + 's');
+        Emit(FloatText(ReadSingle) + 's');
       end;
     vaCurrency:
       begin
         ReadByte;
-        Write(FloatText(ReadInt64 / 10000) + 'c');
+        Emit(FloatText(ReadInt64 / 10000) + 'c');
       end;
     vaDate:
       begin
         ReadByte;
-        Write(FloatText(ReadDouble) + 'd');
+        Emit(FloatText(ReadDouble) + 'd');
       end;
     vaString:
       begin
@@ -400,34 +400,34 @@ begin
     vaIdent:
       begin
         ReadByte;
-        Write(ReadStr);
+        Emit(ReadStr);
       end;
     vaFalse:
       begin
         ReadByte;
-        Write('False');
+        Emit('False');
       end;
     vaTrue:
       begin
         ReadByte;
-        Write('True');
+        Emit('True');
       end;
     vaNil:
       begin
         ReadByte;
-        Write('nil');
+        Emit('nil');
       end;
     vaNull:
       begin
         ReadByte;
-        Write('Null');
+        Emit('Null');
       end;
     vaBinary:
       begin
         ReadByte;
         Count := ReadInt32;
         Bytes := ReadBytes(Count);
-        Write('{');
+        Emit('{');
         Inc(FNesting);
         Index := 0;
         while Index < Count do
@@ -441,43 +441,43 @@ begin
             Inc(Index);
             Dec(Chunk);
           end;
-          Write(Line);
+          Emit(Line);
         end;
         Dec(FNesting);
-        Write('}');
+        Emit('}');
       end;
     vaSet:
       begin
         ReadByte;
-        Write('[');
+        Emit('[');
         First := True;
         repeat
           Name := ReadStr;
           if Name = '' then
             Break;
           if not First then
-            Write(', ');
-          Write(Name);
+            Emit(', ');
+          Emit(Name);
           First := False;
         until False;
-        Write(']');
+        Emit(']');
       end;
     vaCollection:
       begin
         ReadByte;
-        Write('<');
+        Emit('<');
         Inc(FNesting);
         while not EndOfList do
         begin
           NewLine;
-          Write('item');
+          Emit('item');
           if NextByte in [vaInt8, vaInt16, vaInt32] then
           begin
-            Write(' [');
+            Emit(' [');
             ConvertValue;
-            Write(']');
+            Emit(']');
           end;
-          Write(CrLf);
+          Emit(CrLf);
           if ReadByte <> vaList then
             raise EBinaryForm.Create('Collection-Eintrag erwartet');
           Inc(FNesting);
@@ -486,11 +486,11 @@ begin
           ReadListEnd;
           Dec(FNesting);
           WriteIndent;
-          Write('end');
+          Emit('end');
         end;
         ReadListEnd;
         Dec(FNesting);
-        Write('>');
+        Emit('>');
       end;
   else
     raise EBinaryForm.CreateFmt('Unbekannter Werttyp %d', [Kind]);
@@ -500,9 +500,9 @@ end;
 procedure TConverter.ConvertProperty;
 begin
   WriteIndent;
-  Write(ReadStr + ' = ');
+  Emit(ReadStr + ' = ');
   ConvertValue;
-  Write(CrLf);
+  Emit(CrLf);
 end;
 
 procedure TConverter.ConvertObject;
@@ -523,17 +523,17 @@ begin
   ObjectName := ReadStr;
   WriteIndent;
   if (Flags and ffInherited) <> 0 then
-    Write('inherited ')
+    Emit('inherited ')
   else if (Flags and ffInline) <> 0 then
-    Write('inline ')
+    Emit('inline ')
   else
-    Write('object ');
+    Emit('object ');
   if ObjectName <> '' then
-    Write(ObjectName + ': ');
-  Write(ClassName);
+    Emit(ObjectName + ': ');
+  Emit(ClassName);
   if (Flags and ffChildPos) <> 0 then
-    Write(' [' + IntToStr(Position) + ']');
-  Write(CrLf);
+    Emit(' [' + IntToStr(Position) + ']');
+  Emit(CrLf);
   Inc(FNesting);
   while not EndOfList do
     ConvertProperty;
@@ -543,7 +543,7 @@ begin
   ReadListEnd;
   Dec(FNesting);
   WriteIndent;
-  Write('end' + CrLf);
+  Emit('end' + CrLf);
 end;
 
 function TConverter.Run: string;
