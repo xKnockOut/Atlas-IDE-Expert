@@ -54,6 +54,8 @@ type
     Library_: Boolean;
     /// <summary>Nur interface-Symbole behalten, um das Speicherbudget einzuhalten (#185).</summary>
     Compact: Boolean;
+    /// <summary>Eingebundene Include-Dateien (#264); ändert sich eine davon, wird die Unit neu eingelesen.</summary>
+    Includes: TArray<string>;
   end;
 
   TSymbolLocation = record

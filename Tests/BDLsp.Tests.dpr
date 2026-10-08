@@ -75,6 +75,7 @@ uses
   BDLsp.Common.Lsp.Configuration.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Configuration.Tests.pas',
   BDLsp.Common.Pascal.Parser.Tests in 'Common\Pascal\BDLsp.Common.Pascal.Parser.Tests.pas',
   BDLsp.Common.Pascal.TreeCache.Tests in 'Common\Pascal\BDLsp.Common.Pascal.TreeCache.Tests.pas',
+  BDLsp.Common.Pascal.IncludeFiles.Tests in 'Common\Pascal\BDLsp.Common.Pascal.IncludeFiles.Tests.pas',
   BDLsp.Common.Pascal.Parser.Robustness.Tests in 'Common\Pascal\BDLsp.Common.Pascal.Parser.Robustness.Tests.pas',
   BDLsp.Common.Pascal.LanguageFeatures.Tests in 'Common\Pascal\BDLsp.Common.Pascal.LanguageFeatures.Tests.pas',
   BDLsp.Common.Pascal.Preprocessor.Tests in 'Common\Pascal\BDLsp.Common.Pascal.Preprocessor.Tests.pas',

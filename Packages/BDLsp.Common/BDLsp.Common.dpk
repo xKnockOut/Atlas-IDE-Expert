@@ -166,6 +166,7 @@ contains
   BDLsp.Common.Pascal.SyntaxTree in 'Source\Pascal\BDLsp.Common.Pascal.SyntaxTree.pas',
   BDLsp.Common.Pascal.Parser in 'Source\Pascal\BDLsp.Common.Pascal.Parser.pas',
   BDLsp.Common.Pascal.TreeCache in 'Source\Pascal\BDLsp.Common.Pascal.TreeCache.pas',
+  BDLsp.Common.Pascal.IncludeFiles in 'Source\Pascal\BDLsp.Common.Pascal.IncludeFiles.pas',
   BDLsp.Common.Pascal.LanguageFeatures in 'Source\Pascal\BDLsp.Common.Pascal.LanguageFeatures.pas',
   BDLsp.Common.Pascal.Preprocessor in 'Source\Pascal\BDLsp.Common.Pascal.Preprocessor.pas';
 

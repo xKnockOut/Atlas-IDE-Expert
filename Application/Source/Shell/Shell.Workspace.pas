@@ -69,7 +69,7 @@ type
     procedure StartIndex(const ASettings: TServerSettings);
     function FindProjectFile(const ASettings: TServerSettings): string;
     function GetNamespaces: TArray<string>;
-    function GetSearchPaths: TArray<string>;
+    function GetIncludePaths: TArray<string>;
     function GetProjectFiles: TArray<string>;
   public
     constructor Create(const ARoot, AName: string; const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
@@ -109,8 +109,8 @@ type
     property Configuration: TLspConfiguration read FConfiguration;
     /// <summary>Unit-Namespaces des Projekts. Threadsicher.</summary>
     property Namespaces: TArray<string> read GetNamespaces;
-    /// <summary>Suchpfade des Projekts, z. B. für Include-Dateien. Threadsicher.</summary>
-    property SearchPaths: TArray<string> read GetSearchPaths;
+    /// <summary>Suchpfade für Include-Dateien (#264): Projekt-Suchpfade, dann Bibliothekspfade. Threadsicher.</summary>
+    property IncludePaths: TArray<string> read GetIncludePaths;
     /// <summary>Quelltexte des Projekts (Hauptdatei, Units). Threadsicher.</summary>
     property ProjectFiles: TArray<string> read GetProjectFiles;
     /// <summary>Nach dem Laden eines Projekts (Defines und Namespaces neu).</summary>
@@ -434,11 +434,11 @@ begin
   end;
 end;
 
-function TShellWorkspace.GetSearchPaths: TArray<string>;
+function TShellWorkspace.GetIncludePaths: TArray<string>;
 begin
   TMonitor.Enter(FLock);
   try
-    Result := FSearchPaths;
+    Result := FSearchPaths + FCompilerLibraryPaths;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -610,6 +610,11 @@ begin
   FUnitResolver := Resolver;
   Request.Files := TIndexProjectFiles.Files(Project);
   Request.Defines := TIndexProjectFiles.Defines(Project, Version);
+  // $I-Dateien wie beim Compiler: Projekt-Suchpfade, dann Bibliothekspfade (#264).
+  if Installation <> nil then
+    Request.IncludePaths := Project.SearchPaths + Installation.LibraryPaths(Project.Platform)
+  else
+    Request.IncludePaths := Project.SearchPaths;
   Request.ResolveUnit :=
     function(const AUnitName: string): string
     begin

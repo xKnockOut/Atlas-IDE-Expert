@@ -13,6 +13,9 @@
 //   andere Werkzeuge): bekannte Units neu einlesen, gelöschte entfernen.
 //   Neue Dateien kommen erst in den Index, wenn sie referenziert werden;
 //   dafür vergisst der Builder die bisher nicht gefundenen Units.
+// - Include-Dateien (#264) werden über IncludePaths gesucht. Units mit
+//   Includes übernimmt der Builder nie ungeprüft aus dem Cache, und eine
+//   geänderte Include-Datei liest alle Units neu ein, die sie einbinden.
 // - Läuft im aufrufenden Thread; den Hintergrund-Thread stellt die
 //   Komposition bereit.
 
@@ -21,6 +24,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
+  BDLsp.Common.Pascal.Preprocessor,
   BDLsp.Common.Index.Contract;
 
 type
@@ -41,6 +45,8 @@ type
     // Von EnsureUnit aus Anfrage-Threads genutzt.
     FFailedUnits: TDictionary<string, Boolean>;
     FFailedLock: TObject;
+    FIncludePaths: TArray<string>;
+    function IncludeResolver: TIncludeResolver;
     function IndexFile(const AFileName: string; ALibrary: Boolean; var AResult: TIndexBuildResult): Boolean;
     procedure IndexReferenced(var AResult: TIndexBuildResult; const AProgress: TIndexProgressEvent;
       const ACancelled: TIndexCancelled);
@@ -57,11 +63,14 @@ type
     function EnsureUnit(const AUnitName: string): Boolean;
     /// <summary>Übernimmt Dateiänderungen; liefert die Zahl geänderter Units.</summary>
     function ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
+    /// <summary>Suchpfade für $I nach dem Ordner der Unit (Projekt-Suchpfade, dann Bibliothekspfade).</summary>
+    property IncludePaths: TArray<string> read FIncludePaths write FIncludePaths;
   end;
 
 implementation
 
 uses
+  BDLsp.Common.Pascal.IncludeFiles,
   BDLsp.Common.Index.Cache,
   BDLsp.Common.Index.Extractor;
 
@@ -103,6 +112,24 @@ begin
   Result := Assigned(ACancelled) and ACancelled();
 end;
 
+function TIndexBuilder.IncludeResolver: TIncludeResolver;
+var
+  FileSystem: IIndexFileSystem;
+begin
+  FileSystem := FFileSystem;
+  Result := TIncludeFiles.Resolver(FIncludePaths,
+    function(const AFileName: string): Boolean
+    var
+      Stamp: Int64;
+    begin
+      Result := FileSystem.FileStamp(AFileName, Stamp);
+    end,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := FileSystem.ReadText(AFileName, AText);
+    end);
+end;
+
 function TIndexBuilder.IndexFile(const AFileName: string; ALibrary: Boolean;
   var AResult: TIndexBuildResult): Boolean;
 var
@@ -117,6 +144,9 @@ begin
     Exit(False);
   end;
   HasCache := FCached.TryGetValue(AnsiUpperCase(AFileName), Cached);
+  // Mit Includes kann sich das Ergebnis ändern, ohne dass die Unit sich ändert.
+  if HasCache and (Length(Cached.Includes) > 0) then
+    HasCache := False;
   if HasCache and (Cached.Stamp = Stamp) then
   begin
     Cached.Library_ := ALibrary;
@@ -138,7 +168,7 @@ begin
     Inc(AResult.FromCache);
     Exit(True);
   end;
-  UnitIndex := TIndexExtractor.ExtractText(Text, AFileName, FDefines);
+  UnitIndex := TIndexExtractor.ExtractText(Text, AFileName, FDefines, IncludeResolver);
   UnitIndex.Stamp := Stamp;
   UnitIndex.Hash := Hash;
   UnitIndex.Library_ := ALibrary;
@@ -267,11 +297,26 @@ var
   Existing: TUnitIndex;
   Ignored: TIndexBuildResult;
   Known: Boolean;
+  UnitIndex: TUnitIndex;
+  Dependent: TArray<TUnitIndex>;
+  Include: string;
 begin
   Result := 0;
   Ignored := Default(TIndexBuildResult);
   for Change in AChanges do
   begin
+    // Units, die die Datei per $I einbinden, neu einlesen.
+    Dependent := nil;
+    for UnitIndex in FIndex.Units do
+      for Include in UnitIndex.Includes do
+        if SameText(Include, Change.FileName) then
+        begin
+          Dependent := Dependent + [UnitIndex];
+          Break;
+        end;
+    for UnitIndex in Dependent do
+      if IndexFile(UnitIndex.FileName, UnitIndex.Library_, Ignored) then
+        Inc(Result);
     Known := FIndex.FindFile(Change.FileName, Existing);
     case Change.Kind of
       TFileChangeKind.Deleted:

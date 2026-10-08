@@ -16,6 +16,7 @@ uses
   BDLsp.Common.Documents.Contract,
   BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.SyntaxTree,
+  BDLsp.Common.Pascal.Preprocessor,
   BDLsp.Common.Index.Contract;
 
 type
@@ -44,16 +45,21 @@ type
     /// <summary>Index-Eintrag aus einem fertigen Syntaxbaum (ohne Stamp und Hash).</summary>
     class function Extract(ATree: TSyntaxTree; const AFileName: string): TUnitIndex; static;
     /// <summary>Parst AText mit den aktiven Symbolen ADefines und liefert den Eintrag.</summary>
-    class function ExtractText(const AText, AFileName: string; const ADefines: TArray<string>): TUnitIndex; static;
+    /// <summary>Mit AResolver werden $I-Dateien gelesen (#264): ihre $DEFINEs gelten, Includes listet sie auf.</summary>
+    class function ExtractText(const AText, AFileName: string; const ADefines: TArray<string>;
+      const AResolver: TIncludeResolver = nil): TUnitIndex; static;
     /// <summary>Ersetzt inaktive Zweige durch Leerzeichen; Zeilen und Spalten bleiben erhalten.</summary>
-    class function BlankInactive(const AText: string; const ADefines: TArray<string>): string; static;
+    class function BlankInactive(const AText: string; const ADefines: TArray<string>): string; overload; static;
+    /// <summary>Wie oben, mit Include-Auflösung; AIncludes erhält die eingebundenen Dateien.</summary>
+    class function BlankInactive(const AText, AFileName: string; const ADefines: TArray<string>;
+      const AResolver: TIncludeResolver; out AIncludes: TArray<string>): string; overload; static;
   end;
 
 implementation
 
 uses
-  BDLsp.Common.Pascal.TreeCache,
-  BDLsp.Common.Pascal.Preprocessor;
+  System.StrUtils,
+  BDLsp.Common.Pascal.TreeCache;
 
 function NodeRange(ANode: TSyntaxNode): TTextRange;
 begin
@@ -401,6 +407,14 @@ end;
 
 class function TIndexExtractor.BlankInactive(const AText: string; const ADefines: TArray<string>): string;
 var
+  Includes: TArray<string>;
+begin
+  Result := BlankInactive(AText, '', ADefines, nil, Includes);
+end;
+
+class function TIndexExtractor.BlankInactive(const AText, AFileName: string; const ADefines: TArray<string>;
+  const AResolver: TIncludeResolver; out AIncludes: TArray<string>): string;
+var
   Options: TPreprocessorOptions;
   Processed: TPreprocessorResult;
   LineStarts: TList<Integer>;
@@ -419,11 +433,17 @@ var
 
 begin
   Result := AText;
+  AIncludes := nil;
   if Pos('{$', AText) + Pos('(*$', AText) = 0 then
     Exit;
   Options := TPreprocessorOptions.Default;
   Options.Defines := ADefines;
+  Options.FileName := AFileName;
+  Options.ResolveInclude := AResolver;
   Processed := TPascalPreprocessor.Process(AText, Options);
+  for Index := 1 to High(Processed.Files) do
+    if IndexText(Processed.Files[Index], AIncludes) < 0 then
+      AIncludes := AIncludes + [Processed.Files[Index]];
   if Length(Processed.InactiveRanges) = 0 then
     Exit;
   LineStarts := TList<Integer>.Create;
@@ -458,13 +478,15 @@ begin
 end;
 
 class function TIndexExtractor.ExtractText(const AText, AFileName: string;
-  const ADefines: TArray<string>): TUnitIndex;
+  const ADefines: TArray<string>; const AResolver: TIncludeResolver): TUnitIndex;
 var
   Tree: TSyntaxTree;
+  Includes: TArray<string>;
 begin
-  Tree := TSyntaxTreeCache.Parse(BlankInactive(AText, ADefines));
+  Tree := TSyntaxTreeCache.Parse(BlankInactive(AText, AFileName, ADefines, AResolver, Includes));
   try
     Result := Extract(Tree, AFileName);
+    Result.Includes := Includes;
   finally
     Tree.Free;
   end;
