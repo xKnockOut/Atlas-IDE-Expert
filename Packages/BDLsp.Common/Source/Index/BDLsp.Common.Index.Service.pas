@@ -49,6 +49,8 @@ type
     procedure WaitFor;
     /// <summary>Indiziert eine Unit nachträglich (z. B. für die Namensauflösung).</summary>
     function EnsureUnit(const AUnitName: string): Boolean;
+    /// <summary>Übernimmt Dateiänderungen im aufrufenden Thread; 0 ohne laufenden Builder.</summary>
+    function ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
     property Index: ISymbolIndex read FIndex;
     property OnProgress: TIndexProgressEvent read FOnProgress write FOnProgress;
     property OnFinished: TIndexFinishedEvent read FOnFinished write FOnFinished;
@@ -175,6 +177,18 @@ begin
   try
     Builder := FBuilder;
     Result := (Builder <> nil) and Builder.EnsureUnit(AUnitName);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+function TIndexService.ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
+begin
+  TMonitor.Enter(FLock);
+  try
+    if FBuilder = nil then
+      Exit(0);
+    Result := FBuilder.ApplyChanges(AChanges);
   finally
     TMonitor.Exit(FLock);
   end;

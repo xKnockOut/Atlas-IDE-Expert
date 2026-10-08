@@ -9,6 +9,10 @@
 //   Resolver gesucht und indiziert, rekursiv, aber nur was wirklich in einer
 //   uses-Liste vorkommt. So kommen RTL und VCL nur teilweise in den Index.
 // - EnsureUnit indiziert eine einzelne Unit nachträglich.
+// - ApplyChanges übernimmt Dateiänderungen von außen (git checkout,
+//   andere Werkzeuge): bekannte Units neu einlesen, gelöschte entfernen.
+//   Neue Dateien kommen erst in den Index, wenn sie referenziert werden;
+//   dafür vergisst der Builder die bisher nicht gefundenen Units.
 // - Läuft im aufrufenden Thread; den Hintergrund-Thread stellt die
 //   Komposition bereit.
 
@@ -51,6 +55,8 @@ type
       const ACancelled: TIndexCancelled): TIndexBuildResult;
     /// <summary>Indiziert die Unit, falls noch nicht vorhanden. False, wenn sie nicht gefunden wird.</summary>
     function EnsureUnit(const AUnitName: string): Boolean;
+    /// <summary>Übernimmt Dateiänderungen; liefert die Zahl geänderter Units.</summary>
+    function ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
   end;
 
 implementation
@@ -245,6 +251,52 @@ begin
       FFailedUnits.AddOrSetValue(UpperCase(AUnitName), True);
     finally
       TMonitor.Exit(FFailedLock);
+    end;
+  end;
+end;
+
+function TIndexBuilder.ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
+var
+  Change: TFileChange;
+  Existing: TUnitIndex;
+  Ignored: TIndexBuildResult;
+  Known: Boolean;
+begin
+  Result := 0;
+  Ignored := Default(TIndexBuildResult);
+  for Change in AChanges do
+  begin
+    Known := FIndex.FindFile(Change.FileName, Existing);
+    case Change.Kind of
+      TFileChangeKind.Deleted:
+        if Known then
+        begin
+          FIndex.RemoveFile(Change.FileName);
+          Inc(Result);
+        end;
+      TFileChangeKind.Created, TFileChangeKind.Changed:
+        if Known then
+        begin
+          // IndexFile vergleicht mit dem Cache vom Start; ein geänderter
+          // Zeitstempel führt zum Neueinlesen, gleicher Inhalt nicht.
+          if IndexFile(Change.FileName, Ignored) then
+            Inc(Result)
+          else
+          begin
+            FIndex.RemoveFile(Change.FileName);
+            Inc(Result);
+          end;
+        end
+        else
+        begin
+          // Eine neue Datei kann eine bisher fehlende Unit sein.
+          TMonitor.Enter(FFailedLock);
+          try
+            FFailedUnits.Clear;
+          finally
+            TMonitor.Exit(FFailedLock);
+          end;
+        end;
     end;
   end;
 end;

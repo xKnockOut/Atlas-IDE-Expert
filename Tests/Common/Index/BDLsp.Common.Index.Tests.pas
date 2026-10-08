@@ -22,6 +22,7 @@ type
     function FileStamp(const AFileName: string; out AStamp: Int64): Boolean;
     function ReadText(const AFileName: string; out AText: string): Boolean;
     function WriteText(const AFileName, AText: string): Boolean;
+    procedure Delete(const AFileName: string);
     property Reads: Integer read FReads write FReads;
   end;
 
@@ -84,6 +85,8 @@ type
     procedure ReportsProgressAndCancels;
     [Test]
     procedure EnsureUnitIndexesOnDemand;
+    [Test]
+    procedure AppliesExternalChanges;
     [Test]
     procedure ServiceBuildsInBackgroundAndWritesCache;
   end;
@@ -205,6 +208,12 @@ procedure TMemoryIndexFileSystem.Put(const AFileName, AText: string; AStamp: Int
 begin
   FTexts.AddOrSetValue(UpperCase(AFileName), AText);
   FStamps.AddOrSetValue(UpperCase(AFileName), AStamp);
+end;
+
+procedure TMemoryIndexFileSystem.Delete(const AFileName: string);
+begin
+  FTexts.Remove(UpperCase(AFileName));
+  FStamps.Remove(UpperCase(AFileName));
 end;
 
 function TMemoryIndexFileSystem.FileStamp(const AFileName: string; out AStamp: Int64): Boolean;
@@ -592,6 +601,34 @@ begin
     Assert.IsTrue(FIndex.FindUnit('F', U));
     Assert.IsFalse(Builder.EnsureUnit('GibtEsNicht'));
     Assert.IsFalse(Builder.EnsureUnit('System.SysUtils'));
+  finally
+    Builder.Free;
+  end;
+end;
+
+procedure TIndexBuilderTests.AppliesExternalChanges;
+var
+  Builder: TIndexBuilder;
+  U: TUnitIndex;
+begin
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  try
+    Builder.Build(['C:\Lib\C.pas', 'C:\Lib\D.pas'], nil, nil);
+    Assert.IsFalse(Builder.EnsureUnit('G'));
+    // D geändert, C gelöscht, G neu angelegt, F unbekannt und unverändert.
+    FFiles.Put('C:\Lib\D.pas', 'unit D;'#10'interface'#10'type TNeu = class end;'#10'implementation'#10'end.', 2);
+    FFiles.Delete('C:\Lib\C.pas');
+    FFiles.Put('C:\Lib\G.pas', 'unit G;'#10'interface'#10'implementation'#10'end.', 2);
+    Assert.AreEqual(2, Builder.ApplyChanges([TFileChange.Create('C:\Lib\D.pas', TFileChangeKind.Changed),
+      TFileChange.Create('C:\Lib\C.pas', TFileChangeKind.Deleted),
+      TFileChange.Create('C:\Lib\G.pas', TFileChangeKind.Created),
+      TFileChange.Create('C:\Lib\F.pas', TFileChangeKind.Changed)]));
+    Assert.AreEqual<NativeInt>(1, Length(FIndex.FindSymbols('TNeu')));
+    Assert.IsFalse(FIndex.FindUnit('C', U));
+    Assert.IsFalse(FIndex.FindUnit('F', U));
+    // Neue Dateien kommen erst bei Bedarf in den Index, auch wenn die Unit vorher fehlte.
+    Assert.IsFalse(FIndex.FindUnit('G', U));
+    Assert.IsTrue(Builder.EnsureUnit('G'));
   finally
     Builder.Free;
   end;

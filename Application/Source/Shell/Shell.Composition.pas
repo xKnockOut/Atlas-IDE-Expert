@@ -25,6 +25,7 @@ uses
   BDLsp.Common.Lsp.Hover,
   BDLsp.Common.Lsp.WorkspaceSymbols,
   BDLsp.Common.Lsp.DocumentHighlights,
+  BDLsp.Common.Lsp.WatchedFiles,
   BDLsp.Common.Lsp.Configuration,
   BDLsp.Common.Lsp.WorkDoneProgress,
   BDLsp.Common.Documents.Contract,
@@ -51,6 +52,7 @@ type
     FHover: TLspHover;
     FWorkspaceSymbols: TLspWorkspaceSymbols;
     FDocumentHighlights: TLspDocumentHighlights;
+    FWatchedFiles: TLspWatchedFiles;
     FConfiguration: TLspConfiguration;
     FConnection: TJsonRpcConnection;
     FIndex: ISymbolIndex;
@@ -60,6 +62,8 @@ type
     FIndexSignature: string;
     /// <summary>Startet den Indexaufbau, wenn sich Projekt, Konfiguration, Plattform oder Version geändert haben.</summary>
     procedure StartIndex(const ASettings: TServerSettings);
+    /// <summary>Dateiänderungen von außen: Projektdateien laden das Projekt neu, Quelltexte aktualisieren den Index.</summary>
+    procedure HandleWatchedFiles(const AChanges: TArray<TFileChange>);
     function FindProjectFile(const ASettings: TServerSettings): string;
     class function BuildCapabilities: TJSONObject; static;
     /// <summary>Fehlerbeschreibung mit letzter Nachricht und Stacktrace für das Log.</summary>
@@ -230,6 +234,9 @@ begin
       Result := FIndexService.EnsureUnit(AUnitName);
     end);
   FDocumentHighlights.Attach(FDispatcher);
+  FWatchedFiles := TLspWatchedFiles.Create(FTransport);
+  FWatchedFiles.OnChanged := HandleWatchedFiles;
+  FWatchedFiles.Attach(FDispatcher);
   FIndexProgress := TLspWorkDoneProgress.Create(FTransport, 'bdlsp-index');
   FIndexService.OnProgress := FIndexProgress.AsIndexProgress;
   FIndexService.OnFinished :=
@@ -248,6 +255,7 @@ begin
     procedure
     begin
       FConfiguration.LoadWorkspace(TLspConfiguration.RootPathFromInitialize(FLifecycle.InitializeParams));
+      FWatchedFiles.RegisterWatchers(FLifecycle.InitializeParams);
     end;
   FConnection := TJsonRpcConnection.Create(FTransport, FDispatcher);
   FConnection.OnError :=
@@ -277,6 +285,7 @@ begin
   FHover.Free;
   FWorkspaceSymbols.Free;
   FDocumentHighlights.Free;
+  FWatchedFiles.Free;
   FConfiguration.Free;
   FTextDocumentSync.Free;
   FDocuments := nil;
@@ -393,6 +402,34 @@ begin
   FLogger.Info(Format('Symbolindex für %s (%s, %s): %d Projektdateien, Cache %s',
     [ProjectFile, Project.Config, Project.Platform, Length(Request.Files), CacheFile]));
   FIndexService.Start(Request);
+end;
+
+procedure TServerComposition.HandleWatchedFiles(const AChanges: TArray<TFileChange>);
+var
+  Change: TFileChange;
+  Sources: TArray<TFileChange>;
+  ProjectChanged: Boolean;
+  Updated: Integer;
+begin
+  Sources := nil;
+  ProjectChanged := False;
+  for Change in AChanges do
+    if TLspWatchedFiles.IsProjectFile(Change.FileName) then
+      ProjectChanged := True
+    else if SameText(ExtractFileExt(Change.FileName), '.pas') or SameText(ExtractFileExt(Change.FileName), '.dpr') then
+      Sources := Sources + [Change];
+  if ProjectChanged then
+  begin
+    // Neu aufbauen: Suchpfade, Defines oder Units können sich geändert haben.
+    FLogger.Info('Projektdatei geändert, Symbolindex wird neu aufgebaut');
+    FIndexSignature := '';
+    StartIndex(FConfiguration.Settings);
+    Exit;
+  end;
+  if Length(Sources) = 0 then
+    Exit;
+  Updated := FIndexService.ApplyChanges(Sources);
+  FLogger.Debug(Format('%d Dateiänderungen von außen, %d Units im Index aktualisiert', [Length(Sources), Updated]));
 end;
 
 class function TServerComposition.CreateForStdio(const AOptions: TCommandLineOptions): TServerComposition;
