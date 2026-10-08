@@ -64,6 +64,8 @@ end;
 procedure TDocumentStoreTests.TearDown;
 begin
   FStore := nil;
+  // Sonst gibt erst das nächste Setup die Ereignisliste frei (Leck-Monitor).
+  FEvents := nil;
 end;
 
 procedure TDocumentStoreTests.OpensAndFindsDocument;
