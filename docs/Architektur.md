@@ -1,5 +1,7 @@
 # Architektur von BetterDelphiLSP
 
+Entscheidungen mit Begründung stehen im Entscheidungsprotokoll unter [`docs/adr/`](adr/README.md).
+
 Grundlage ist das Konzept „Rollenbasierte Kopplung und Kohäsion“ (Entwurf, Stand 30.09.2026). Dieses Dokument hält fest, wie das Konzept in diesem Projekt angewendet wird. Bei Widersprüchen gilt das Konzept.
 
 ## Ausgabeartefakte
@@ -91,12 +93,12 @@ Komposition von Hand (keine Container-Bibliothek). Composition-Units tragen desh
 | `BDLsp.Common.Logging` (Platform) | `Contract`, `Providers.Logger`, `Providers.StreamSink` | `ILogger` (API) und `ILogSink` (SPI), Logger mit Mindeststufe je Senke, Senke für Datei und stderr |
 | `BDLsp.Common.JsonRpc` (Platform) | `Contract`, `Messages`, `StreamTransport`, `TracingTransport`, `PendingRequests`, `Watchdog`, `Dispatcher`, `Connection` | JSON-RPC 2.0 mit LSP-Rahmung (`Content-Length`) über beliebige Streams, Mitschnitt, Verteilung auf Handler, Nachrichtenschleife mit Lese-Thread, nebenläufige Anfragen im Thread-Pool, `$/cancelRequest`, Zeitlimit je Anfrage (`Watchdog`), Meldung unerwarteter Handler-Fehler (`OnRequestFailed`) |
 | `BDLsp.Common.Documents` (Platform) | `Contract`, `TextDocument`, `FileEncoding`, `Uris`, `Providers.DocumentStore` | Kodierung (UTF-8 mit/ohne BOM, Windows-1252, UTF-16) und Zeilenenden von Dateien erkennen und beim Schreiben erhalten, gemischte Kodierungen im Projekt zählen; geöffnete Dokumente als unveränderliche Momentaufnahmen mit Zeilenindex, Positionen in UTF-16-Codeeinheiten, inkrementelle Änderungen, Speicher je URI mit Ereignissen (Opened, Changed, Saved, Closed); URI ↔ Pfad und eindeutige Dokumentschlüssel (Kodierung, Laufwerksbuchstabe, Groß-/Kleinschreibung, `\\?\`, `.`/`..`) |
-| `BDLsp.Common.Pascal` (Platform) | `Contract`, `Lexer`, `SyntaxTree`, `Parser`, `Preprocessor` | Eigener rekursiv absteigender Parser (statt DelphiAST) mit vollständigem Syntaxbaum auch bei fehlerhaftem Code (`Error`-Knoten, `Diagnostics`, Wiederaufsetzen an Deklarations-, Mitglieds- und Anweisungsgrenzen). Lexer für Object Pascal: reservierte Wörter, Bezeichner mit `&`, Zahlen (dezimal, `$`, `%`, `&`), Strings auch mehrzeilig, `#`-Zeichen, Kommentare und Direktiven als eigene Token, UTF-16-Positionen, fehlertolerant (`Terminated`, `Unknown`). Präprozessor: `$IFDEF`/`$IF`/`$ELSEIF`/`$ELSE`/`$ENDIF`, `$DEFINE`/`$UNDEF`, Includes mit Positionen je Datei, inaktive Bereiche, vordefinierte Plattformsymbole |
+| `BDLsp.Common.Pascal` (Platform) | `Contract`, `Lexer`, `SyntaxTree`, `Parser`, `Preprocessor`, `LanguageFeatures` | Eigener rekursiv absteigender Parser (statt DelphiAST) mit vollständigem Syntaxbaum auch bei fehlerhaftem Code (`Error`-Knoten, `Diagnostics`, Wiederaufsetzen an Deklarations-, Mitglieds- und Anweisungsgrenzen). Lexer für Object Pascal: reservierte Wörter, Bezeichner mit `&`, Zahlen (dezimal, `$`, `%`, `&`), Strings auch mehrzeilig, `#`-Zeichen, Kommentare und Direktiven als eigene Token, UTF-16-Positionen, fehlertolerant (`Terminated`, `Unknown`). Präprozessor: `$IFDEF`/`$IF`/`$ELSEIF`/`$ELSE`/`$ENDIF`, `$DEFINE`/`$UNDEF`, Includes mit Positionen je Datei, inaktive Bereiche, vordefinierte Plattformsymbole; Sprachmerkmale mit Mindestversion (Inline-Variablen, Managed Records, mehrzeilige Strings, If-Ausdrücke) |
 | `BDLsp.Common.Projects` (Platform) | `Contract`, `Paths`, `DprojReader`, `UnitResolver`, `Internals.Xml`, `Internals.MSBuild` | `.dproj` für Konfiguration und Plattform auswerten (MSBuild-Bedingungen, `$(…)`-Verweise): Hauptdatei, Defines, Suchpfade, Namespaces, Units mit Pfad; Unit-Namen wie der Compiler zu Dateien auflösen (Projekt, Ordner, Suchpfade, Bibliothek, Namespace-Präfixe); eigener kleiner XML-Leser, da `Xml.XMLDoc` MSXML braucht |
 | `BDLsp.Common.Configuration` (Platform) | `Contract`, `Parser`, `Internals.JsonTree` | `delphi-lsp.json` (JSONC) lesen und prüfen: Delphi-Version, Sprache, Projekt, Konfiguration, Plattform, Regel-Schweregrade, Ausschlüsse (Globs), Formatierung; Fehler mit Position für Diagnosen |
 | `BDLsp.Common.Index` (Platform) | `Contract`, `Extractor`, `SymbolIndex`, `Cache`, `Builder`, `ProjectFiles`, `Service`, `Adapters.DiskFileSystem` | Symbolindex: Deklarationen je Unit mit Position, Art, Container, Vorfahren und uses-Listen (inaktive Zweige ausgeblendet); threadsicherer Speicher mit Suche nach Namen und Nachfahren; JSON-Cache mit Zeitstempel und Hash; Aufbau im Hintergrund, referenzierte Bibliotheks-Units bedarfsweise; Dateiänderungen von außen übernehmen |
-| `BDLsp.Common.Semantics` (Fachlogik) | `NameResolver` | Namensauflösung: Bezeichner und Punktketten an einer Position zur Deklaration auflösen (lokale Variablen, Parameter, Self und Klassenmitglieder samt Vorfahren, aktuelle Unit, uses-Reihenfolge, System, Unit-Namen); Typen über Aliase verfolgen |
-| `BDLsp.Common.Lsp` (Platform) | `Contract`, `Lifecycle`, `Positions`, `TextDocumentSync`, `SyntaxDiagnostics`, `DocumentSymbols`, `FoldingRanges`, `SelectionRanges`, `Definition`, `Hover`, `WorkspaceSymbols`, `DocumentHighlights`, `WatchedFiles`, `InactiveRegions`, `WorkspaceFolders`, `Configuration`, `WorkDoneProgress`, `Internals.Debouncer`, `Internals.Cancellation`, `Adapters.LogMessageSink` | LSP-Fehlercodes und Konstanten, Lebenszyklus `initialize` → `initialized` → `shutdown` → `exit`, Position/Range, `didOpen`/`didChange`/`didSave`/`didClose`, Syntaxfehler als `publishDiagnostics` mit 100 ms Debouncing im Hintergrundthread, Gliederung `documentSymbol` (Unit → interface/implementation → Typen mit Mitgliedern, Routinen mit lokalen Deklarationen), Faltbereiche `foldingRange` (Typen, Routinen, Blöcke, Abschnitte, `uses`, `{$REGION}`, Kommentarblöcke), intelligente Auswahl `selectionRange` (Token → umgebende Knoten bis zur Datei), `definition`/`declaration` über die Namensauflösung (Wechsel zwischen Deklaration und Implementierung, Unit-Namen öffnen die Datei), `typeDefinition` zum Typ von Variablen, Feldern und Funktionen, `hover` mit Deklaration und ///-Dokumentation als Markdown, projektweite Symbolsuche `workspace/symbol` (exakt vor Anfang vor Teilstring, höchstens 200 Treffer), Vorkommen `documentHighlight` mit Lese-/Schreibzugriff, Dateibeobachter über `workspace/didChangeWatchedFiles` (Index aktualisieren, bei Projektdateien neu aufbauen), inaktive `{$IFDEF}`-Bereiche als Hinweise mit Tag `Unnecessary`, Multi-Root-Arbeitsbereiche (`workspaceFolders`, `didChangeWorkspaceFolders`), Log-Senke `window/logMessage`, Laden und Live-Prüfung der `delphi-lsp.json` mit Diagnosen, Editor-Einstellungen über `workspace/didChangeConfiguration` (Datei hat Vorrang), Fortschritt über `$/progress` |
+| `BDLsp.Common.Semantics` (Fachlogik) | `NameResolver`, `ControlFlow` | Namensauflösung: Bezeichner und Punktketten an einer Position zur Deklaration auflösen (lokale Variablen, Parameter, Self und Klassenmitglieder samt Vorfahren, aktuelle Unit, uses-Reihenfolge, System, Unit-Namen); Typen über Aliase verfolgen; Kontrollflussgraph je Routine mit Erreichbarkeit, Dominanz und erreichenden Zuweisungen als Grundlage für flussbasierte Prüfregeln |
+| `BDLsp.Common.Lsp` (Platform) | `Contract`, `Lifecycle`, `Positions`, `TextDocumentSync`, `SyntaxDiagnostics`, `DocumentSymbols`, `FoldingRanges`, `SelectionRanges`, `Definition`, `Hover`, `WorkspaceSymbols`, `DocumentHighlights`, `WatchedFiles`, `InactiveRegions`, `WorkspaceFolders`, `Configuration`, `WorkDoneProgress`, `PublishedMembers`, `Internals.Debouncer`, `Internals.Cancellation`, `Adapters.LogMessageSink` | LSP-Fehlercodes und Konstanten, Lebenszyklus `initialize` → `initialized` → `shutdown` → `exit`, Position/Range, `didOpen`/`didChange`/`didSave`/`didClose`, Syntaxfehler als `publishDiagnostics` mit 100 ms Debouncing im Hintergrundthread, Gliederung `documentSymbol` (Unit → interface/implementation → Typen mit Mitgliedern, Routinen mit lokalen Deklarationen), Faltbereiche `foldingRange` (Typen, Routinen, Blöcke, Abschnitte, `uses`, `{$REGION}`, Kommentarblöcke), intelligente Auswahl `selectionRange` (Token → umgebende Knoten bis zur Datei), `definition`/`declaration` über die Namensauflösung (Wechsel zwischen Deklaration und Implementierung, Unit-Namen öffnen die Datei), `typeDefinition` zum Typ von Variablen, Feldern und Funktionen, `hover` mit Deklaration und ///-Dokumentation als Markdown (bei Klassen mit published-Properties und Ereignissen samt geerbter), projektweite Symbolsuche `workspace/symbol` (exakt vor Anfang vor Teilstring, höchstens 200 Treffer), Vorkommen `documentHighlight` mit Lese-/Schreibzugriff, Dateibeobachter über `workspace/didChangeWatchedFiles` (Index aktualisieren, bei Projektdateien neu aufbauen), inaktive `{$IFDEF}`-Bereiche als Hinweise mit Tag `Unnecessary`, Multi-Root-Arbeitsbereiche (`workspaceFolders`, `didChangeWorkspaceFolders`), Log-Senke `window/logMessage`, Laden und Live-Prüfung der `delphi-lsp.json` mit Diagnosen, Editor-Einstellungen über `workspace/didChangeConfiguration` (Datei hat Vorrang), Fortschritt über `$/progress` |
 | `BDLsp.Windows.Console` (Platform) | `StdStreams` | stdin/stdout/stderr als Streams; nach `ReserveOutputForProtocol` landen `Writeln` und `GetStdHandle(STD_OUTPUT_HANDLE)` auf stderr |
 | `BDLsp.Windows.Projects` (Platform) | `DelphiInstallation` | Installierte Delphi-Versionen, `RootDir`, Bibliotheks- und Quellpfade je Plattform und `$(BDS)`-Variablen aus der Registry (`ILibraryPathProvider`) |
 | `BDLsp.Windows.Documents` (Platform) | `PathCanonicalizer` | Kanonische Pfade über `GetFinalPathNameByHandle` (Junctions, Symlinks, subst, 8.3-Namen, lange Pfade) für die Dokumentschlüssel |
@@ -125,6 +127,47 @@ Threads und Reihenfolge:
 Features, die Dateien auswerten, lesen Momentaufnahmen aus `IDocumentStore` (`TServerComposition.Documents`) und abonnieren dessen Ereignisse, um nur die geänderte Datei neu zu verarbeiten. Eine Momentaufnahme ändert sich nie und darf auch in nebenläufigen Anfragen gelesen werden.
 
 Neue LSP-Methoden registrieren ihre Handler in `Shell.Composition` am Dispatcher und tragen ihre Capability in `BuildCapabilities` ein.
+
+## Schichten
+
+Innerhalb von `BDLsp.Common` hängen die Features in dieser Richtung voneinander ab (nur nach unten):
+
+```text
+Lsp            LSP-Methoden, Capabilities, Positionen
+Semantics      Namensauflösung, Kontrollfluss
+Index          Symbolindex, Cache, Aufbau
+Pascal         Lexer, Präprozessor, Parser, Syntaxbaum
+Projects, Configuration, Documents, JsonRpc, Logging
+RTL
+```
+
+`Lsp` verbindet Protokoll und Fachlogik; die Fachlogik darunter kennt kein JSON-RPC. `Shell` in der Anwendung setzt alles zusammen und ist die einzige Stelle, die Windows-Adapter und Common-Features verbindet.
+
+## Symbolindex
+
+Datenstrukturen (`BDLsp.Common.Index.Contract`):
+
+- `TUnitIndex` je Datei: Unit-Name, Dateiname, Zeitstempel, Inhalts-Hash, uses-Listen aus interface und implementation, Symbole.
+- `TIndexSymbol`: Name, Container (umgebender Typ, `''` auf Unit-Ebene), Art (`TIndexSymbolKind`), Bereich der ganzen Deklaration und des Namens, `InInterface`, Vorfahren (Klassen und Interfaces) bzw. Zieltyp (Helfer), deklarierter Typ.
+- Sichtbarkeiten, Parameterlisten und Rümpfe stehen nicht im Index. Wer sie braucht (Hover mit published-Properties, Namensauflösung lokaler Variablen), parst die Datei bei Bedarf.
+
+Speicher (`TSymbolIndex`): ein Wörterbuch Dateischlüssel → `TUnitIndex` und eines Unit-Name → Dateischlüssel, beide unter einer `TCriticalSection`. Die Suche nach Namen und Nachfahren läuft linear über alle Symbole; bei den bisherigen Projektgrößen genügt das. `AddUnit` ersetzt den Stand einer Datei vollständig, deshalb sehen Leser nie eine halb aktualisierte Unit.
+
+Aufbau (`TIndexBuilder`, `TIndexService`): ein Hintergrund-Thread liest den Cache, indiziert zuerst die Projektdateien und danach referenzierte Units über den `TUnitFileResolver`. Ein neuer Start bricht den laufenden Aufbau ab und wartet auf ihn. `EnsureUnit` indiziert eine Unit nachträglich im aufrufenden Thread, z. B. für die Namensauflösung.
+
+## Cache-Format
+
+`TIndexCache` schreibt JSON mit kurzen Schlüsseln (Formatversion 2):
+
+```text
+{"version":2,"units":[{"u":Unit,"f":Datei,"t":Zeitstempel,"h":Hash,
+  "iu":[interface-uses],"mu":[implementation-uses],
+  "s":[[Name,Container,Art,L1,C1,L2,C2,SL1,SC1,SL2,SC2,InInterface,[Vorfahren],Typ], ...]}]}
+```
+
+- Beim Start gilt ein Eintrag, solange Zeitstempel oder Hash zur Datei passen; sonst wird die Datei neu eingelesen.
+- Ein Cache mit anderer Version oder kaputtem JSON wird verworfen. Ändert sich `TIndexSymbol`, steigt `FormatVersion`.
+- Geschrieben wird nur, wenn etwas neu eingelesen wurde oder Units weggefallen sind.
 
 ## Geplante Zuordnung der Bausteine
 
