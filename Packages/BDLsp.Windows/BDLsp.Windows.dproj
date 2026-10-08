@@ -73,6 +73,7 @@
         <DCCReference Include="Source\Diagnostics\BDLsp.Windows.Diagnostics.DebugOutput.pas"/>
         <DCCReference Include="Source\Diagnostics\BDLsp.Windows.Diagnostics.Adapters.DebugOutputSink.pas"/>
         <DCCReference Include="Source\Diagnostics\BDLsp.Windows.Diagnostics.StackTrace.pas"/>
+        <DCCReference Include="Source\Projects\BDLsp.Windows.Projects.DelphiInstallation.pas"/>
         <DCCReference Include="Source\Console\BDLsp.Windows.Console.StdStreams.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
