@@ -69,6 +69,7 @@
         <DCCReference Include="Common\Documents\BDLsp.Common.Documents.Providers.DocumentStore.Tests.pas"/>
         <DCCReference Include="Common\Documents\BDLsp.Common.Documents.Uris.Tests.pas"/>
         <DCCReference Include="Common\Index\BDLsp.Common.Index.Tests.pas"/>
+        <DCCReference Include="Common\Index\BDLsp.Common.Index.CacheHousekeeping.Tests.pas"/>
         <DCCReference Include="Common\Semantics\BDLsp.Common.Semantics.ControlFlow.Tests.pas"/>
         <DCCReference Include="Common\Semantics\BDLsp.Common.Semantics.NameResolver.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Definition.Tests.pas"/>

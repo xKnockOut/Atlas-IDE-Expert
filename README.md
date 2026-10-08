@@ -61,6 +61,8 @@ pwsh Tools/Check-ConsoleOutput.ps1         # kein Write/Writeln auf stdout
 
 Werte gehen auch mit `=` (`--log=server.log`). `--stdio` und `--clientProcessId`, die Editoren anhängen, werden ignoriert.
 
+`BetterDelphiLSP.exe --clear-cache` löscht alle Index-Caches unter `%LOCALAPPDATA%\BetterDelphiLSP`, die keine laufende Instanz nutzt. Der Ordner wird ohnehin auf 256 MB begrenzt, ältere Caches gehen zuerst.
+
 ### Linter-Modus
 
 `BetterDelphiLSP.exe --check <Ziel>` prüft ohne Editor. Das Ziel kann eine `.dproj` (Hauptdatei und Units), ein Ordner (alle `.pas`, `.dpr` und `.dpk` darunter) oder eine Datei sein. `delphi-lsp.json` im Ordner des Ziels gilt wie im Editor.

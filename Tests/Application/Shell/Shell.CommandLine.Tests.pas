@@ -115,7 +115,7 @@ var
 begin
   Options := TCommandLineOptions.Parse(['--check', 'App.dproj', '--format=sarif', '--output', 'out.sarif',
     '--rules', 'syntax, empty-except', '--units=Main,Legacy/**', '--min-severity', 'warning', '--suppression-stats',
-    '--baseline', 'alt.json', '--update-baseline']);
+    '--baseline', 'alt.json', '--update-baseline', '--clear-cache']);
   Assert.AreEqual(0, Integer(Length(Options.Warnings)));
   Assert.AreEqual('App.dproj', Options.CheckTarget);
   Assert.AreEqual(Ord(TFindingsFormat.Sarif), Ord(Options.CheckFormat));
@@ -127,6 +127,7 @@ begin
   Assert.IsTrue(Options.SuppressionStats);
   Assert.AreEqual('alt.json', Options.BaselineFile);
   Assert.IsTrue(Options.UpdateBaseline);
+  Assert.IsTrue(Options.ClearCache);
 end;
 
 procedure TCommandLineOptionsTests.WarnsAboutInvalidLinterValues;

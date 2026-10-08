@@ -29,6 +29,8 @@ var
 begin
   try
     Options := TCommandLineOptions.FromProcess;
+    if Options.ClearCache then
+      Exit(TLinterShell.ClearCache);
     if Options.CheckTarget <> '' then
       Exit(TLinterShell.Run(Options));
     Composition := TServerComposition.CreateForStdio(Options);
