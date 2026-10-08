@@ -66,6 +66,8 @@ type
     FVersionProvider: TDelphiVersionProvider;
     FRuleProvider: TRuleContextProvider;
     FCompilerProvider: TCompilerMessagesProvider;
+    FPullMode: Boolean;
+    FOnPullChanged: TProc;
     procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
     procedure ScheduleParse(const ADocument: ITextDocument);
     procedure Publish(const ADocument: ITextDocument);
@@ -104,6 +106,9 @@ type
     /// Der Aufrufer übernimmt das Objekt.</summary>
     class function CompilerMessageToJson(const AMessage: TCompilerMessage; const ALineText: string;
       AHasLineText: Boolean): TJSONObject; static;
+    /// <summary>Parameter für publishDiagnostics zu ADocument (Pascal oder Formular) mit Regeln
+    /// und Compilermeldungen. Threadsicher; der Aufrufer übernimmt das Objekt.</summary>
+    function Compute(const ADocument: ITextDocument): TJSONObject;
     /// <summary>Prüft alle geöffneten Dokumente neu, z. B. nach geänderten Symbolen.</summary>
     procedure Refresh;
     /// <summary>Meldet die Compilermeldungen zu AFileNames neu: geöffnete Dokumente
@@ -120,6 +125,10 @@ type
     property RuleProvider: TRuleContextProvider write SetRuleProvider;
     /// <summary>Liefert die Meldungen des letzten Compilerlaufs; ohne Provider keine.</summary>
     property CompilerMessagesProvider: TCompilerMessagesProvider write SetCompilerProvider;
+    /// <summary>Der Client holt Diagnosen selbst ab (#82): nichts senden, bei Änderungen
+    /// stattdessen OnPullChanged aufrufen.</summary>
+    property PullMode: Boolean read FPullMode write FPullMode;
+    property OnPullChanged: TProc read FOnPullChanged write FOnPullChanged;
   end;
 
 implementation
@@ -349,6 +358,12 @@ var
   Items: TJSONArray;
   Params: TJSONObject;
 begin
+  if FPullMode then
+  begin
+    if Assigned(FOnPullChanged) then
+      FOnPullChanged();
+    Exit;
+  end;
   for FileName in AFileNames do
   begin
     Uri := TDocumentUris.FromPath(FileName);
@@ -383,6 +398,12 @@ procedure TLspSyntaxDiagnostics.Refresh;
 var
   Document: ITextDocument;
 begin
+  if FPullMode then
+  begin
+    if Assigned(FOnPullChanged) then
+      FOnPullChanged();
+    Exit;
+  end;
   for Document in FStore.Documents do
     if not SameText(ExtractFileExt(Document.Uri), '.json') then
       ScheduleParse(Document);
@@ -391,7 +412,8 @@ end;
 procedure TLspSyntaxDiagnostics.HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
 begin
   // JSON-Dateien wie delphi-lsp.json prüft TLspConfiguration.
-  if SameText(ExtractFileExt(ADocument.Uri), '.json') then
+  // Im Pull-Modus fragt der Client nach Änderungen selbst nach.
+  if SameText(ExtractFileExt(ADocument.Uri), '.json') or FPullMode then
     Exit;
   case AKind of
     TDocumentEventKind.Opened, TDocumentEventKind.Changed:
@@ -426,9 +448,8 @@ begin
   Result := FStore.TryGet(ADocument.Uri, Current) and (Current.Version = ADocument.Version);
 end;
 
-procedure TLspSyntaxDiagnostics.Publish(const ADocument: ITextDocument);
+function TLspSyntaxDiagnostics.Compute(const ADocument: ITextDocument): TJSONObject;
 var
-  Params: TJSONObject;
   Defines: TArray<string>;
   Inactive: TArray<TTextRange>;
   Rules: TRuleCheckContext;
@@ -441,26 +462,31 @@ begin
   begin
     Form := TDfmParser.Parse(ADocument.Text);
     try
-      Params := TJSONObject.Create;
-      Params.AddPair('uri', ADocument.Uri);
-      Params.AddPair('diagnostics', TLspFormFiles.BuildDiagnostics(Form));
+      Result := TJSONObject.Create;
+      Result.AddPair('uri', ADocument.Uri);
+      Result.AddPair('diagnostics', TLspFormFiles.BuildDiagnostics(Form));
     finally
       Form.Free;
     end;
-  end
-  else
-  begin
-    Inactive := nil;
-    if CurrentDefines(ADocument.Uri, Defines) then
-      Inactive := TLspInactiveRegions.Ranges(ADocument.Text, Defines);
-    if not CurrentRules(ADocument.Uri, Rules) then
-      Rules := Default(TRuleCheckContext);
-    Params := BuildParams(ADocument, Inactive, CurrentVersion(ADocument.Uri), Rules);
-    Items := Params.GetValue('diagnostics') as TJSONArray;
-    for Compiled in CurrentCompilerMessages(TDocumentUris.ToPath(ADocument.Uri)) do
-      if Compiled.Line < ADocument.LineCount then
-        Items.AddElement(CompilerMessageToJson(Compiled, ADocument.LineText(Max(Compiled.Line, 0)), True));
+    Exit;
   end;
+  Inactive := nil;
+  if CurrentDefines(ADocument.Uri, Defines) then
+    Inactive := TLspInactiveRegions.Ranges(ADocument.Text, Defines);
+  if not CurrentRules(ADocument.Uri, Rules) then
+    Rules := Default(TRuleCheckContext);
+  Result := BuildParams(ADocument, Inactive, CurrentVersion(ADocument.Uri), Rules);
+  Items := Result.GetValue('diagnostics') as TJSONArray;
+  for Compiled in CurrentCompilerMessages(TDocumentUris.ToPath(ADocument.Uri)) do
+    if Compiled.Line < ADocument.LineCount then
+      Items.AddElement(CompilerMessageToJson(Compiled, ADocument.LineText(Max(Compiled.Line, 0)), True));
+end;
+
+procedure TLspSyntaxDiagnostics.Publish(const ADocument: ITextDocument);
+var
+  Params: TJSONObject;
+begin
+  Params := Compute(ADocument);
   TMonitor.Enter(FSendLock);
   try
     // Inzwischen geändert oder geschlossen: Der neuere Stand meldet selbst.

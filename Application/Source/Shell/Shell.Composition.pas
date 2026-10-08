@@ -22,6 +22,7 @@ uses
   BDLsp.Common.Lsp.Lifecycle,
   BDLsp.Common.Lsp.TextDocumentSync,
   BDLsp.Common.Lsp.SyntaxDiagnostics,
+  BDLsp.Common.Lsp.PullDiagnostics,
   BDLsp.Common.Lsp.DocumentSymbols,
   BDLsp.Common.Lsp.FoldingRanges,
   BDLsp.Common.Lsp.LinkedEditing,
@@ -68,6 +69,7 @@ type
     FDocuments: IDocumentStore;
     FTextDocumentSync: TLspTextDocumentSync;
     FSyntaxDiagnostics: TLspSyntaxDiagnostics;
+    FPullDiagnostics: TLspPullDiagnostics;
     FDocumentSymbols: TLspDocumentSymbols;
     FFoldingRanges: TLspFoldingRanges;
     FLinkedEditing: TLspLinkedEditing;
@@ -243,6 +245,13 @@ begin
     function: TJSONObject
     begin
       Result := BuildCapabilities;
+      // Pull-Diagnosen nur für Clients, die sie können; sonst bleibt es bei publishDiagnostics (#82).
+      if TLspPullDiagnostics.ClientSupportsPull(FLifecycle.InitializeParams) then
+      begin
+        Result.AddPair('diagnosticProvider', TLspPullDiagnostics.Capability);
+        FPullDiagnostics.RefreshSupport := TLspPullDiagnostics.ClientSupportsRefresh(FLifecycle.InitializeParams);
+        FSyntaxDiagnostics.PullMode := True;
+      end;
     end);
   FLifecycle.Attach(FDispatcher);
   FDocuments := TDocumentStore.Create(
@@ -268,6 +277,27 @@ begin
       Result := FCompilerResults.MessagesFor(AFileName);
     end;
   FSyntaxDiagnostics.Attach;
+  FPullDiagnostics := TLspPullDiagnostics.Create(FDocuments, FSyntaxDiagnostics, FTransport, ProjectSourceFiles,
+    function(const AFileName: string; out AStamp: Int64): Boolean
+    begin
+      Result := TFile.Exists(AFileName);
+      if Result then
+        AStamp := Round(TFile.GetLastWriteTimeUtc(AFileName) * MSecsPerDay)
+      else
+        AStamp := 0;
+    end,
+    function(const AFileName: string; out AText: string): Boolean
+    var
+      FileFormat: TFileFormat;
+    begin
+      Result := TFile.Exists(AFileName);
+      if Result then
+        AText := TFileEncoding.LoadFromFile(AFileName, FileFormat)
+      else
+        AText := '';
+    end);
+  FPullDiagnostics.Attach(FDispatcher);
+  FSyntaxDiagnostics.OnPullChanged := FPullDiagnostics.Changed;
   FDocumentSymbols := TLspDocumentSymbols.Create(FDocuments);
   FDocumentSymbols.Attach(FDispatcher);
   FFoldingRanges := TLspFoldingRanges.Create(FDocuments);
@@ -578,6 +608,7 @@ begin
     FreeAndNil(FCompileThread);
   end;
   // Vor den Ordnern: der Hintergrund-Thread der Syntaxprüfung fragt ihre Symbole ab.
+  FPullDiagnostics.Free;
   FSyntaxDiagnostics.Free;
   // Ordner vor dem Index: ihre Index-Threads laufen noch.
   FWorkspaces.Free;
