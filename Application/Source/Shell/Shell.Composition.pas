@@ -49,6 +49,8 @@ uses
   BDLsp.Common.Lsp.SemanticTokens,
   BDLsp.Common.Lsp.Status,
   BDLsp.Common.Lsp.QualifiedNames,
+  BDLsp.Common.Lsp.StringLiteralCommands,
+  BDLsp.Common.Editing.StringLiterals,
   BDLsp.Common.JsonRpc.Statistics,
   BDLsp.Common.Lsp.WatchedFiles,
   BDLsp.Common.Lsp.WorkspaceFolders,
@@ -150,6 +152,8 @@ type
     function SlashCommandsFor(const AUri: string; out ADisabled: TArray<string>): Boolean;
     function InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
     function CompletionSettingsFor(const AUri: string): TCompletionSettings;
+    /// <summary>"stringLiteral" für AUri; AMultiline nach Stil und Delphi-Version (#312).</summary>
+    function StringLiteralFor(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings;
     function FormatStyleFor(const AUri: string): TFormatStyle;
     function RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
     /// <summary>Namespaces aller Projekte an die Features weitergeben, Diagnosen neu prüfen.</summary>
@@ -620,6 +624,7 @@ begin
         Chain.Free;
       end;
     end;
+  FCodeActions.StringLiteralFor := StringLiteralFor;
   FCodeActions.SortUsesFor :=
     function(const AUri: string): Boolean
     var
@@ -783,6 +788,23 @@ begin
         begin
           Result := EnsureUnit(AUnitName);
         end, FDefinition.Namespaces, AArguments);
+    end);
+  FCommands.Register(TStringLiteralCommands.PlainTextCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TStringLiteralCommands.ExecutePlainText(FDocuments, AArguments);
+    end);
+  FCommands.Register(TStringLiteralCommands.ToLiteralCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    var
+      Settings: TStringLiteralSettings;
+      Multiline: Boolean;
+    begin
+      Settings := TStringLiteralSettings.Default;
+      Multiline := False;
+      if (AArguments <> nil) and (AArguments.Count > 0) then
+        Settings := StringLiteralFor(AArguments.Items[0].Value, Multiline);
+      Result := TStringLiteralCommands.ExecuteToLiteral(FDocuments, Settings, Multiline, AArguments);
     end);
   FCommands.Register(StatusCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1251,6 +1273,25 @@ begin
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
+end;
+
+function TServerComposition.StringLiteralFor(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings;
+var
+  Workspace: TShellWorkspace;
+begin
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+    if (Workspace = nil) and (FWorkspaces.Count = 1) then
+      Workspace := FWorkspaces[0];
+    if Workspace = nil then
+      Result := TStringLiteralSettings.Default
+    else
+      Result := Workspace.Configuration.Settings.StringLiteral;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  AMultiline := TStringLiterals.UseMultiline(Result.Style, DelphiVersionFor(AUri));
 end;
 
 function TServerComposition.InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
@@ -1732,6 +1773,8 @@ begin
   Commands.Add(SelectBuildCommand);
   Commands.Add(RebuildIndexCommand);
   Commands.Add(TQualifiedNames.Command);
+  Commands.Add(TStringLiteralCommands.PlainTextCommand);
+  Commands.Add(TStringLiteralCommands.ToLiteralCommand);
   Result.AddPair('executeCommandProvider', TJSONObject.Create(TJSONPair.Create('commands', Commands)));
   Workspace := TLspWorkspaceFolders.Capability;
   Workspace.AddPair('fileOperations', TLspFileOperations.Capability);

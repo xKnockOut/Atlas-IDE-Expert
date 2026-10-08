@@ -111,6 +111,8 @@ contains
   BDLsp.Common.Lsp.QualifiedNames in 'Source\Lsp\BDLsp.Common.Lsp.QualifiedNames.pas',
   BDLsp.Common.Lsp.WinApiDocs in 'Source\Lsp\BDLsp.Common.Lsp.WinApiDocs.pas',
   BDLsp.Common.Editing.AssignmentSwap in 'Source\Editing\BDLsp.Common.Editing.AssignmentSwap.pas',
+  BDLsp.Common.Editing.StringLiterals in 'Source\Editing\BDLsp.Common.Editing.StringLiterals.pas',
+  BDLsp.Common.Lsp.StringLiteralCommands in 'Source\Lsp\BDLsp.Common.Lsp.StringLiteralCommands.pas',
   BDLsp.Common.Lsp.DocWiki in 'Source\Lsp\BDLsp.Common.Lsp.DocWiki.pas',
   BDLsp.Common.Lsp.CompilerDirectives in 'Source\Lsp\BDLsp.Common.Lsp.CompilerDirectives.pas',
   BDLsp.Common.Lsp.Colors in 'Source\Lsp\BDLsp.Common.Lsp.Colors.pas',

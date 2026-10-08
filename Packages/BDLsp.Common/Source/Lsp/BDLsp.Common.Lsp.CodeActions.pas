@@ -22,6 +22,7 @@ uses
   BDLsp.Common.Documents.Contract,
   BDLsp.Common.Editing.CodeActions,
   BDLsp.Common.Editing.UsesActions,
+  BDLsp.Common.Configuration.Contract,
   BDLsp.Common.Lsp.SyntaxDiagnostics;
 
 type
@@ -30,6 +31,10 @@ type
   /// <summary>Index und Einstellungen für die uses-Aktionen; False ohne Index.</summary>
   /// <summary>Aktionen in Formulardateien (#115).</summary>
   TFormActionsFunc = reference to function(const AUri, AText: string; const ARange: TTextRange): TArray<TCodeAction>;
+
+  /// <summary>Einstellungen "stringLiteral" für AUri und ob ein mehrzeiliger String entsteht (#312).</summary>
+  TStringLiteralProvider = reference to function(const AUri: string;
+    out AMultiline: Boolean): TStringLiteralSettings;
 
   TUsesContextProvider = reference to function(const AUri: string; out AContext: TUsesContext): Boolean;
 
@@ -43,6 +48,7 @@ type
     FSortUsesByNamespaceFor: TSortUsesProvider;
     FUsesContextFor: TUsesContextProvider;
     FFormActions: TFormActionsFunc;
+    FStringLiteralFor: TStringLiteralProvider;
     function HandleCodeAction(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore; const ARuleProvider: TRuleContextProvider);
@@ -57,6 +63,8 @@ type
     property SortUsesByNamespaceFor: TSortUsesProvider read FSortUsesByNamespaceFor write FSortUsesByNamespaceFor;
     /// <summary>Ohne Zuweisung keine uses-Aktionen (#284).</summary>
     property UsesContextFor: TUsesContextProvider read FUsesContextFor write FUsesContextFor;
+    /// <summary>Ohne Zuweisung gelten die Vorgaben mit Verkettung.</summary>
+    property StringLiteralFor: TStringLiteralProvider read FStringLiteralFor write FStringLiteralFor;
     /// <summary>Aktionen in .dfm/.fmx; ohne Zuweisung keine.</summary>
     property FormActions: TFormActionsFunc read FFormActions write FFormActions;
   end;
@@ -185,6 +193,8 @@ var
   Action, Completion: TCodeAction;
   HasRules, HasCompletion, WantsEditing, WantsOrganize, WantsFixAll, WantsRemoveUnused: Boolean;
   UsesContext: TUsesContext;
+  LiteralSettings: TStringLiteralSettings;
+  Multiline: Boolean;
   UsesActions: TArray<TCodeAction>;
   Only: TArray<string>;
   OnlyValue: TJSONArray;
@@ -249,6 +259,16 @@ begin
   if WantsEditing and TCodeActions.SwapAssignments(Document.Text, Range, ReadOnlyCheck(HasRules, Rules, Uri,
     Document.Text), Action) then
     TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+  if WantsEditing then
+  begin
+    Multiline := False;
+    if Assigned(FStringLiteralFor) then
+      LiteralSettings := FStringLiteralFor(Uri, Multiline)
+    else
+      LiteralSettings := TStringLiteralSettings.Default;
+    for Action in TCodeActions.StringLiteralActions(Document.Text, Range, LiteralSettings, Multiline) do
+      TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+  end;
   for Action in UsesActions do
     TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
   if WantsOrganize and TCodeActions.OrganizeImports(Document.Text, Assigned(FSortUsesFor) and FSortUsesFor(Uri),

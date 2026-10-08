@@ -26,6 +26,8 @@ type
     [Test]
     procedure ReadsInlayHints;
     [Test]
+    procedure ReadsStringLiteral;
+    [Test]
     procedure ReadsDfmPropertyRules;
     [Test]
     procedure ReadsCompilerSettings;
@@ -354,6 +356,27 @@ begin
   Assert.AreEqual(1, Integer(Length(Settings.DfmPropertyRules)));
   Parse('{"dfmPropertyRules": {}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
+procedure TConfigurationParserTests.ReadsStringLiteral;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.AreEqual(Ord(TStringLiteralStyle.Auto), Ord(Settings.StringLiteral.Style));
+  Assert.AreEqual(Ord(TStringLiteralBreak.SLineBreak), Ord(Settings.StringLiteral.LineBreak));
+  Assert.AreEqual(0, Settings.StringLiteral.MaxLineLength);
+  Settings := Parse('{"stringLiteral": {"style": "concat", "lineBreak": "#13#10", "maxLineLength": 100}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual(Ord(TStringLiteralStyle.Concat), Ord(Settings.StringLiteral.Style));
+  Assert.AreEqual(Ord(TStringLiteralBreak.CrLf), Ord(Settings.StringLiteral.LineBreak));
+  Assert.AreEqual(100, Settings.StringLiteral.MaxLineLength);
+  Settings := Parse('{"stringLiteral": {"style": "kurz", "lineBreak": "space", "maxLineLength": -1, "x": 1}}', Issues);
+  // Ungültiger Stil und negative Länge (Fehler), "x" unbekannt (Warnung).
+  Assert.AreEqual(3, Integer(Length(Issues)));
+  Assert.AreEqual(Ord(TStringLiteralBreak.Space), Ord(Settings.StringLiteral.LineBreak));
+  Assert.AreEqual(Ord(TStringLiteralStyle.Auto), Ord(Settings.StringLiteral.Style));
 end;
 
 procedure TConfigurationParserTests.ReadsInlayHints;

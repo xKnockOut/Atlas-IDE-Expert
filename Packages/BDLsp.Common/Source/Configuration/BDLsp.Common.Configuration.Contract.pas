@@ -88,8 +88,21 @@ type
   /// <summary>Schlüssel im Block "format", die ausdrücklich gesetzt sind.</summary>
   TFormatKey = (IndentSize, UseTabs, KeywordCase, TrimTrailingWhitespace, InsertFinalNewline,
     SpaceAroundAssignment, SpaceAfterComma, EndOfLine);
+  /// <summary>"stringLiteral.style" (#312).</summary>
+  TStringLiteralStyle = (Auto, Multiline, Concat);
+  /// <summary>"stringLiteral.lineBreak": Trenner zwischen verketteten Zeilen (#312).</summary>
+  TStringLiteralBreak = (SLineBreak, CrLf, Lf, Space, None);
   {$SCOPEDENUMS OFF}
   TFormatKeys = set of TFormatKey;
+
+  /// <summary>Klartext als String-Literal (#312).</summary>
+  TStringLiteralSettings = record
+    Style: TStringLiteralStyle;
+    LineBreak: TStringLiteralBreak;
+    /// <summary>Bei Verkettung lange Zeilen zusätzlich umbrechen; 0 = nicht umbrechen.</summary>
+    MaxLineLength: Integer;
+    class function Default: TStringLiteralSettings; static;
+  end;
 
   /// <summary>Formatierung (#43). Given sagt, welche Werte aus delphi-lsp.json bzw. dem
   /// Editor stammen; nur die haben Vorrang vor .editorconfig.</summary>
@@ -134,11 +147,13 @@ type
     class function Default: TCompletionSettings; static;
   end;
 
+  {$SCOPEDENUMS ON}
   /// <summary>Bedingung einer Eigenschaftsregel für DFMs (#309).</summary>
   TDfmCondition = (Equal, NotEqual, Contains, NotContains, Empty, NotEmpty);
 
   /// <summary>Korrektur: auto gilt als sicher (source.fixAll), prompt nur als Code-Aktion, none gar nicht.</summary>
   TDfmFixMode = (Prompt, Auto, None);
+  {$SCOPEDENUMS OFF}
 
   /// <summary>Eigenschaftsregel aus dfmPropertyRules (#309).</summary>
   TDfmPropertyRule = record
@@ -209,6 +224,8 @@ type
     SortUsesByNamespace: Boolean;
     /// <summary>Units, die "ungenutzte uses entfernen" nie entfernt (#284).</summary>
     UsesKeep: TArray<string>;
+    /// <summary>Klartext als String-Literal (#312).</summary>
+    StringLiteral: TStringLiteralSettings;
     /// <summary>Eigenschaftsregeln für Formulardateien (#309).</summary>
     DfmPropertyRules: TArray<TDfmPropertyRule>;
     /// <summary>Obergrenze für den Symbolindex in MB; 0 = unbegrenzt (#185).</summary>
@@ -368,6 +385,15 @@ begin
   Result.EndMarkerMinLines := 20;
 end;
 
+{ TStringLiteralSettings }
+
+class function TStringLiteralSettings.Default: TStringLiteralSettings;
+begin
+  Result.Style := TStringLiteralStyle.Auto;
+  Result.LineBreak := TStringLiteralBreak.SLineBreak;
+  Result.MaxLineLength := 0;
+end;
+
 { THighlightSettings }
 
 class function THighlightSettings.Default: THighlightSettings;
@@ -441,6 +467,7 @@ begin
   Result.SortUses := False;
   Result.SortUsesByNamespace := False;
   Result.UsesKeep := nil;
+  Result.StringLiteral := TStringLiteralSettings.Default;
   Result.DfmPropertyRules := nil;
   Result.MemoryBudgetMb := 0;
   Result.RequestTimeoutMs := 10000;

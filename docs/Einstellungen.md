@@ -29,6 +29,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Robustheit | `requestTimeoutMs` | `10000` | delphi-lsp.json, Editor (`betterDelphiLsp.requestTimeoutMs`) | nein | Zahlenfeld (ms) | #283 |
 | Editor | `highlight`: `blockPairs`, `directives`, `exitPoints`, `exitKeywords` | – | delphi-lsp.json, Editor (`betterDelphiLsp.highlight`) | nein | Kontrollkästchen, Liste | #307 |
 | Editor | `inlayHints`: `parameterNames`, `inferredTypes`, `endMarkers`, `endMarkerMinLines` | – | delphi-lsp.json, Editor (`betterDelphiLsp.inlayHints`) | nein | Kontrollkästchen, Zahlenfeld | #35 |
+| Editor | `stringLiteral`: `style`, `lineBreak`, `maxLineLength` | – | delphi-lsp.json, Editor (`betterDelphiLsp.stringLiteral`) | nein | Auswahl, Zahlenfeld | #312 |
 | Prüfregeln | `minConfidence` | `"medium"` | delphi-lsp.json, Editor (`betterDelphiLsp.minConfidence`) | nein | Auswahl | #144 |
 | Projekt | `exclude` | – | delphi-lsp.json, Editor (`betterDelphiLsp.exclude`) | nein | Liste mit Hinzufügen/Entfernen | #24 |
 | Formatierung | `format`: `indentSize`, `useTabs`, `keywordCase`, `trimTrailingWhitespace`, `insertFinalNewline`, `spaceAroundAssignment`, `spaceAfterComma`, `endOfLine` | – | delphi-lsp.json, Editor (`betterDelphiLsp.format`) | nein | Zahlenfeld, Kontrollkästchen, Auswahl | #43 |

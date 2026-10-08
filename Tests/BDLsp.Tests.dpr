@@ -60,6 +60,7 @@ uses
   BDLsp.Common.Lsp.QualifiedNames.Tests in 'Common\Lsp\BDLsp.Common.Lsp.QualifiedNames.Tests.pas',
   BDLsp.Common.Lsp.WinApiDocs.Tests in 'Common\Lsp\BDLsp.Common.Lsp.WinApiDocs.Tests.pas',
   BDLsp.Common.Editing.AssignmentSwap.Tests in 'Common\Editing\BDLsp.Common.Editing.AssignmentSwap.Tests.pas',
+  BDLsp.Common.Editing.StringLiterals.Tests in 'Common\Editing\BDLsp.Common.Editing.StringLiterals.Tests.pas',
   BDLsp.Common.Lsp.DocWiki.Tests in 'Common\Lsp\BDLsp.Common.Lsp.DocWiki.Tests.pas',
   BDLsp.Common.Lsp.CompilerDirectives.Tests in 'Common\Lsp\BDLsp.Common.Lsp.CompilerDirectives.Tests.pas',
   BDLsp.Common.Lsp.Hover.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Hover.Tests.pas',

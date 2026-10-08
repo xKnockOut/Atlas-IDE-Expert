@@ -11,6 +11,7 @@
 //   - uses-Aktionen (#284): fehlende Unit ergänzen, ungenutzte entfernen,
 //     ins implementation verschieben (Logik in Editing.UsesActions)
 //   - Zuweisungen umkehren (#313, Logik in Editing.AssignmentSwap)
+//   - "Als String-Literal" und "Als Klartext kopieren" (#312, Logik in Editing.StringLiterals)
 
 interface
 
@@ -20,6 +21,7 @@ uses
   BDLsp.Common.Pascal.SyntaxTree,
   BDLsp.Common.Rules.Contract,
   BDLsp.Common.Editing.UsesActions,
+  BDLsp.Common.Configuration.Contract,
   BDLsp.Common.Editing.AssignmentSwap;
 
 const
@@ -30,6 +32,8 @@ const
   FixAllKind = 'source.fixAll';
   /// <summary>Ungenutzte uses entfernen (#284).</summary>
   RemoveUnusedKind = 'source.removeUnusedImports';
+  /// <summary>Client-Befehl, der das erste Argument in die Zwischenablage legt (#312).</summary>
+  CopyTextCommand = 'betterDelphiLsp.copyText';
 
 type
   TCodeAction = record
@@ -72,6 +76,10 @@ type
     /// <summary>"Zuweisungen umkehren" für die Zeilen von ARange (#313); False, wenn keine passt.</summary>
     class function SwapAssignments(const AText: string; const ARange: TTextRange; const AReadOnly: TReadOnlyCheck;
       out AAction: TCodeAction): Boolean; static;
+    /// <summary>#312: Bei einer Markierung, die kein Literal ist, "Als String-Literal" (ganze Zeilen);
+    /// auf einem Literal "Als Klartext kopieren" über CopyTextCommand.</summary>
+    class function StringLiteralActions(const AText: string; const ARange: TTextRange;
+      const ASettings: TStringLiteralSettings; AMultiline: Boolean): TArray<TCodeAction>; static;
     /// <summary>True, wenn AKind unter einer der angefragten Arten liegt (LSP "only"); leeres AOnly = alle.</summary>
     class function KindRequested(const AKind: string; const AOnly: TArray<string>): Boolean; static;
   end;
@@ -82,7 +90,8 @@ uses
   System.StrUtils,
   BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.Lexer,
-  BDLsp.Common.Editing.UsesClause;
+  BDLsp.Common.Editing.UsesClause,
+  BDLsp.Common.Editing.StringLiterals;
 
 /// <summary>Offset des ersten Tokens ab APosition (für die Wahl des uses-Abschnitts).</summary>
 function OffsetNear(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
@@ -394,6 +403,61 @@ begin
     AAction.Title := 'Zuweisungen umkehren';
     AAction.Kind := RewriteKind;
   end;
+end;
+
+class function TCodeActions.StringLiteralActions(const AText: string; const ARange: TTextRange;
+  const ASettings: TStringLiteralSettings; AMultiline: Boolean): TArray<TCodeAction>;
+var
+  Lines: TArray<string>;
+  Action: TCodeAction;
+  Literal: TTextRange;
+  Plain, Indent: string;
+  First, Last, Line, Common: Integer;
+begin
+  Result := nil;
+  if TStringLiterals.LiteralAt(AText, ARange.StartPos, Literal) and
+    TStringLiterals.PlainText(TStringLiterals.TextOf(AText, Literal), Plain) then
+  begin
+    Action := Default(TCodeAction);
+    Action.Title := 'Als Klartext kopieren';
+    Action.Kind := RewriteKind;
+    Action.Command := CopyTextCommand;
+    Action.CommandArguments := [Plain];
+    Exit([Action]);
+  end;
+  if (ARange.StartPos.Line = ARange.EndPos.Line) and (ARange.StartPos.Character = ARange.EndPos.Character) then
+    Exit;
+  Lines := SplitLines(AText);
+  First := ARange.StartPos.Line;
+  Last := ARange.EndPos.Line;
+  if (Last > First) and (ARange.EndPos.Character = 0) then
+    Dec(Last);
+  if Last > High(Lines) then
+    Last := High(Lines);
+  if (First < 0) or (First > Last) then
+    Exit;
+  // Gemeinsame Einrückung entfernen; die erste Zeile gibt die Einrückung des Literals vor.
+  Common := MaxInt;
+  for Line := First to Last do
+    if (Trim(StripCr(Lines[Line])) <> '') and (Length(IndentOf(StripCr(Lines[Line]))) < Common) then
+      Common := Length(IndentOf(StripCr(Lines[Line])));
+  if Common = MaxInt then
+    Exit;
+  Indent := IndentOf(StripCr(Lines[First]));
+  Plain := '';
+  for Line := First to Last do
+  begin
+    if Line > First then
+      Plain := Plain + #10;
+    Plain := Plain + Copy(StripCr(Lines[Line]), Common + 1, MaxInt);
+  end;
+  Action := Default(TCodeAction);
+  Action.Title := 'Als String-Literal';
+  Action.Kind := RewriteKind;
+  Action.Edits := [TRuleEdit.Create(TTextRange.Create(First, 0, Last, Length(StripCr(Lines[Last]))),
+    TStringLiterals.ToLiteral(Plain, Indent, True, AMultiline, ASettings.LineBreak, ASettings.MaxLineLength,
+    LineBreakOf(AText)))];
+  Result := [Action];
 end;
 
 class function TCodeActions.ForRange(const AFindings: TArray<TRuleFinding>; const AText: string;

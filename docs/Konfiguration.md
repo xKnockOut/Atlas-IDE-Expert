@@ -33,6 +33,7 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 | `requestTimeoutMs` | integer | `10000` | 1000… | Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet. |
 | `highlight` | object | – |  | Zusammengehörige Schlüsselwörter hervorheben, wenn der Cursor auf einem steht. |
 | `inlayHints` | object | – |  | Inlay Hints im Editor. |
+| `stringLiteral` | object | – |  | Code-Aktionen „Als String-Literal“ und „Als Klartext kopieren“. |
 | `minConfidence` | string | `"medium"` | `"low"`, `"medium"`, `"high"` | Regeltreffer unter dieser Konfidenz ausblenden. |
 | `exclude` | array<string> | – | z. B. `["ThirdParty/**","Generated/*.pas"]` | Ordner und Dateien, die nicht geprüft werden (Glob-Muster relativ zu diesem Ordner: *, **, ?). |
 | `format` | object | – |  | Formatierung (Dokument und Auswahl formatieren). Gesetzte Werte haben Vorrang vor .editorconfig. |
@@ -89,6 +90,14 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 | `inlayHints.inferredTypes` | boolean | `true` |  | Abgeleiteter Typ hinter var X := …. |
 | `inlayHints.endMarkers` | boolean | `true` |  | Hinter dem end langer Blöcke anzeigen, was dort endet. |
 | `inlayHints.endMarkerMinLines` | integer | `20` | 1… | Mindestlänge eines Blocks in Zeilen für eine Endmarkierung. |
+
+## stringLiteral
+
+| Schlüssel | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|
+| `stringLiteral.style` | string | `"auto"` | `"auto"`, `"multiline"`, `"concat"` | auto: mehrzeiliger String mit ''', wenn die Delphi-Version ihn kennt (ab Delphi 12), sonst Verkettung. |
+| `stringLiteral.lineBreak` | string | `"sLineBreak"` | `"sLineBreak"`, `"#13#10"`, `"#10"`, `"space"`, `"none"` | Was bei Verkettung zwischen den Zeilen steht; space z. B. für SQL, das einzeilig ankommen soll. |
+| `stringLiteral.maxLineLength` | integer | `0` | 0… | Bei Verkettung lange Zeilen zusätzlich umbrechen (0 = nicht umbrechen). |
 
 ## format
 

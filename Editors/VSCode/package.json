@@ -300,6 +300,11 @@
           "default": {},
           "markdownDescription": "Inlay Hints im Editor. delphi-lsp.json im Projekt hat Vorrang."
         },
+        "betterDelphiLsp.stringLiteral": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Code-Aktionen „Als String-Literal“ und „Als Klartext kopieren“. delphi-lsp.json im Projekt hat Vorrang."
+        },
         "betterDelphiLsp.minConfidence": {
           "type": "string",
           "enum": [
@@ -391,12 +396,27 @@
         "command": "betterDelphiLsp.copyQualifiedNameWithParameters",
         "title": "Qualifizierten Namen mit Parametertypen kopieren",
         "category": "BetterDelphiLSP"
+      },
+      {
+        "command": "betterDelphiLsp.copyAsPlainText",
+        "title": "String-Literal als Klartext kopieren",
+        "category": "BetterDelphiLSP"
+      },
+      {
+        "command": "betterDelphiLsp.pasteAsLiteral",
+        "title": "Klartext als String-Literal einfügen",
+        "category": "BetterDelphiLSP"
       }
     ],
     "menus": {
       "editor/context": [
         {
           "command": "betterDelphiLsp.copyQualifiedName",
+          "when": "editorLangId == objectpascal",
+          "group": "9_cutcopypaste"
+        },
+        {
+          "command": "betterDelphiLsp.pasteAsLiteral",
           "when": "editorLangId == objectpascal",
           "group": "9_cutcopypaste"
         }
