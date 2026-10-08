@@ -122,6 +122,7 @@
         <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.Contract.pas"/>
         <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.Parser.pas"/>
         <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.Navigation.pas"/>
+        <DCCReference Include="Source\Dfm\BDLsp.Common.Dfm.ComponentRename.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.FormFiles.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.EditorConfig.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.Formatter.pas"/>

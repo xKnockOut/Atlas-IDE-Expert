@@ -108,6 +108,7 @@ contains
   BDLsp.Common.Dfm.Contract in 'Source\Dfm\BDLsp.Common.Dfm.Contract.pas',
   BDLsp.Common.Dfm.Parser in 'Source\Dfm\BDLsp.Common.Dfm.Parser.pas',
   BDLsp.Common.Dfm.Navigation in 'Source\Dfm\BDLsp.Common.Dfm.Navigation.pas',
+  BDLsp.Common.Dfm.ComponentRename in 'Source\Dfm\BDLsp.Common.Dfm.ComponentRename.pas',
   BDLsp.Common.Lsp.FormFiles in 'Source\Lsp\BDLsp.Common.Lsp.FormFiles.pas',
   BDLsp.Common.Editing.EditorConfig in 'Source\Editing\BDLsp.Common.Editing.EditorConfig.pas',
   BDLsp.Common.Editing.Formatter in 'Source\Editing\BDLsp.Common.Editing.Formatter.pas',

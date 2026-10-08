@@ -4,6 +4,8 @@
 // textDocument/rename, #30). Grundlage ist die Referenzsuche samt .dfm.
 // Umbenannt werden nur Symbole, die im Projekt oder in geöffneten Dokumenten
 // deklariert sind; RTL, VCL und andere Bibliotheken bleiben unangetastet.
+// Bei Komponenten eines Formulars werden automatisch benannte Ereignis-Handler
+// (Button1Click) mit umbenannt (#45).
 
 interface
 
@@ -22,6 +24,7 @@ type
   TRenameEdit = record
     FileName: string;
     Range: TTextRange;
+    NewText: string;
   end;
 
   TRenameCheck = record
@@ -30,6 +33,8 @@ type
     /// <summary>Bereich des Namens unter dem Cursor.</summary>
     Range: TTextRange;
     Name: string;
+    /// <summary>Datei mit der Deklaration.</summary>
+    DeclarationFile: string;
   end;
 
   TLspRename = class
@@ -43,6 +48,7 @@ type
     FReadText: TReferenceReadText;
     FFiles: TReferenceFilesProvider;
     FNamespaces: TArray<string>;
+    FRenameHandlers: Boolean;
     function ProjectFiles: TArray<string>;
     function HandlePrepare(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleRename(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -60,8 +66,10 @@ type
     class function Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const APosition: TTextPosition; const ANewName: string;
       const AFiles: TArray<string>; const AReadText: TReferenceReadText;
-      const ACancellation: IJsonRpcCancellationToken = nil): TArray<TRenameEdit>; static;
+      const ACancellation: IJsonRpcCancellationToken = nil; ARenameHandlers: Boolean = True): TArray<TRenameEdit>; static;
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
+    /// <summary>Handler wie Button1Click beim Umbenennen von Button1 anpassen (Standard True).</summary>
+    property RenameHandlers: Boolean read FRenameHandlers write FRenameHandlers;
   end;
 
 implementation
@@ -75,7 +83,9 @@ uses
   BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.Lexer,
   BDLsp.Common.Pascal.Parser,
-  BDLsp.Common.Lsp.Internals.Cancellation;
+  BDLsp.Common.Lsp.Internals.Cancellation,
+  BDLsp.Common.Index.Extractor,
+  BDLsp.Common.Dfm.ComponentRename;
 
 function TokenAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 var
@@ -106,6 +116,7 @@ begin
   FReadText := AReadText;
   FFiles := AFiles;
   FEnsureUnit := AEnsureUnit;
+  FRenameHandlers := True;
 end;
 
 procedure TLspRename.Attach(ADispatcher: TJsonRpcDispatcher);
@@ -148,6 +159,8 @@ begin
   if StartsStr('&', Result.Name) then
     Result.Name := Copy(Result.Name, 2, MaxInt);
   Targets := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
+  if Length(Targets) > 0 then
+    Result.DeclarationFile := Targets[0].FileName;
   if Length(Targets) = 0 then
     Result.Error := Format('"%s" ist nicht bekannt.', [Result.Name])
   else if not SameText(Targets[0].FileName, AFileName) and (IndexText(Targets[0].FileName, AFiles) < 0) then
@@ -159,10 +172,76 @@ begin
     Result.Error := 'Units werden über den Dateinamen umbenannt.';
 end;
 
+function HandlerEdits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName: string; const AChecked: TRenameCheck; const ANewName: string; const AFiles: TArray<string>;
+  const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TArray<TRenameEdit>;
+var
+  FormText, UnitText: string;
+  Renames: TArray<THandlerRename>;
+  Rename: THandlerRename;
+  Tree: TSyntaxTree;
+  Symbols: TArray<TIndexSymbol>;
+  Symbol, Handler: TIndexSymbol;
+  Found, Taken: Boolean;
+  Location: TReferenceLocation;
+  Edit: TRenameEdit;
+begin
+  Result := nil;
+  if AChecked.DeclarationFile = '' then
+    Exit;
+  if not AReadText(ChangeFileExt(AChecked.DeclarationFile, '.dfm'), FormText) and
+    not AReadText(ChangeFileExt(AChecked.DeclarationFile, '.fmx'), FormText) then
+    Exit;
+  Renames := TDfmComponentRename.Handlers(FormText, AChecked.Name, ANewName);
+  if Length(Renames) = 0 then
+    Exit;
+  // Die Handler stehen in der Unit des Formulars.
+  if SameText(AChecked.DeclarationFile, AFileName) then
+    Tree := ATree
+  else
+  begin
+    if not AReadText(AChecked.DeclarationFile, UnitText) then
+      Exit;
+    Tree := TPascalParser.Parse(UnitText);
+  end;
+  try
+    Symbols := TIndexExtractor.Extract(Tree, AChecked.DeclarationFile).Symbols;
+    for Rename in Renames do
+    begin
+      Found := False;
+      Taken := False;
+      Handler := Default(TIndexSymbol);
+      for Symbol in Symbols do
+        if Symbol.Kind = TIndexSymbolKind.Method then
+          if SameText(Symbol.Name, Rename.OldName) and not Found then
+          begin
+            Handler := Symbol;
+            Found := True;
+          end
+          else if SameText(Symbol.Name, Rename.NewName) then
+            Taken := True;
+      // Ein vorhandener Handler mit dem neuen Namen würde doppelt deklariert.
+      if not Found or Taken then
+        Continue;
+      for Location in TLspReferences.Find(AResolver, AIndex, Tree, AChecked.DeclarationFile,
+        Handler.SelectionRange.StartPos, True, AFiles, AReadText, ACancellation) do
+      begin
+        Edit.FileName := Location.FileName;
+        Edit.Range := Location.Range;
+        Edit.NewText := Rename.NewName;
+        Result := Result + [Edit];
+      end;
+    end;
+  finally
+    if Tree <> ATree then
+      Tree.Free;
+  end;
+end;
+
 class function TLspRename.Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const AFileName: string; const APosition: TTextPosition; const ANewName: string;
   const AFiles: TArray<string>; const AReadText: TReferenceReadText;
-  const ACancellation: IJsonRpcCancellationToken): TArray<TRenameEdit>;
+  const ACancellation: IJsonRpcCancellationToken; ARenameHandlers: Boolean): TArray<TRenameEdit>;
 var
   Checked: TRenameCheck;
   Location: TReferenceLocation;
@@ -179,8 +258,12 @@ begin
   begin
     Edit.FileName := Location.FileName;
     Edit.Range := Location.Range;
+    Edit.NewText := ANewName;
     Result := Result + [Edit];
   end;
+  if ARenameHandlers and Assigned(AReadText) then
+    Result := Result + HandlerEdits(AResolver, AIndex, ATree, AFileName, Checked, ANewName, AFiles, AReadText,
+      ACancellation);
 end;
 
 function TLspRename.ProjectFiles: TArray<string>;
@@ -261,7 +344,7 @@ begin
     try
       Resolver.Namespaces := FNamespaces;
       Found := Edits(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
-        Trim(NewName), ProjectFiles, FReadText, ACancellation);
+        Trim(NewName), ProjectFiles, FReadText, ACancellation, FRenameHandlers);
     finally
       Resolver.Free;
     end;
@@ -281,7 +364,7 @@ begin
       end;
       Item := TJSONObject.Create;
       Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-      Item.AddPair('newText', Trim(NewName));
+      Item.AddPair('newText', Edit.NewText);
       List.AddElement(Item);
     end;
     Result := TJSONObject.Create;
