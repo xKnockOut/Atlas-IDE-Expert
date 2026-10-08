@@ -99,6 +99,8 @@ type
     /// <summary>Löst die Kette ANames (A.B.C) so auf, wie sie an AOffset stünde.</summary>
     function ResolveChain(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
       AOffset: Integer; AInherited: Boolean = False): TResolvedSymbol;
+    /// <summary>Typ des Bezeichners an APosition (Aliase verfolgt); Typen liefern sich selbst.</summary>
+    function ResolveType(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition): TResolvedSymbol;
     /// <summary>Unit-Namespaces des Projekts (DCC_Namespace) für uses ohne Präfix.</summary>
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
   end;
@@ -651,6 +653,19 @@ begin
       Exit;
   end;
   Result := Current;
+end;
+
+function TNameResolver.ResolveType(ATree: TSyntaxTree; const AFileName: string;
+  const APosition: TTextPosition): TResolvedSymbol;
+var
+  Symbol, TypeInfo: TResolvedSymbol;
+begin
+  // Resolve setzt den Zustand (aktuelle Unit, Abschnitt), den TypeOf braucht.
+  Symbol := Resolve(ATree, AFileName, APosition);
+  if (Symbol.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) and TypeOf(Symbol, TypeInfo) then
+    Result := TypeInfo
+  else
+    Result := NoResult;
 end;
 
 function TNameResolver.TokenIndexAt(const APosition: TTextPosition): Integer;

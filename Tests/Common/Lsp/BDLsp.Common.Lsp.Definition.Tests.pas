@@ -33,6 +33,8 @@ type
     [Test]
     procedure LocalVariableAndUnknownName;
     [Test]
+    procedure TypeDefinitionFollowsDeclaredTypes;
+    [Test]
     procedure WritesLocations;
   end;
 
@@ -201,6 +203,43 @@ begin
   Assert.AreEqual(11, Targets[0].SelectionRange.StartPos.Line);
   Targets := TargetsAt('Unbekannt', 1, False);
   Assert.AreEqual(0, Integer(Length(Targets)));
+end;
+
+procedure TLspDefinitionTests.TypeDefinitionFollowsDeclaredTypes;
+const
+  Source =
+    'unit Typen;'#10 +                       // 0
+    'interface'#10 +                         // 1
+    'type'#10 +                              // 2
+    '  TBasis = class end;'#10 +             // 3
+    '  TAlias = TBasis;'#10 +                // 4
+    'var Global: TAlias;'#10 +               // 5
+    'implementation'#10 +                    // 6
+    'function Liefere(Zahl: Integer): TBasis;'#10 + // 7
+    'begin'#10 +                             // 8
+    '  Global := Liefere(Zahl);'#10 +        // 9
+    'end;'#10 +                              // 10
+    'end.';
+var
+  Tree: TSyntaxTree;
+  Targets: TArray<TDefinitionTarget>;
+begin
+  Tree := TPascalParser.Parse(Source);
+  try
+    // Variable mit Alias-Typ: zum Zieltyp des Alias.
+    Targets := TLspDefinition.TypeTargets(FResolver, Tree, 'C:\P\Typen.pas', PositionOf(Source, 'Global :=', 1));
+    Assert.AreEqual(1, Integer(Length(Targets)));
+    Assert.AreEqual(3, Targets[0].SelectionRange.StartPos.Line);
+    // Funktion: zum Ergebnistyp.
+    Targets := TLspDefinition.TypeTargets(FResolver, Tree, 'C:\P\Typen.pas', PositionOf(Source, 'Liefere(Zahl)', 1));
+    Assert.AreEqual(1, Integer(Length(Targets)));
+    Assert.AreEqual(3, Targets[0].SelectionRange.StartPos.Line);
+    // Integer steht nicht im Index: kein Ziel.
+    Targets := TLspDefinition.TypeTargets(FResolver, Tree, 'C:\P\Typen.pas', PositionOf(Source, 'Zahl);', 1));
+    Assert.AreEqual(0, Integer(Length(Targets)));
+  finally
+    Tree.Free;
+  end;
 end;
 
 procedure TLspDefinitionTests.WritesLocations;
