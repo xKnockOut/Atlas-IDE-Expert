@@ -53,6 +53,7 @@ contains
   BDLsp.Common.Lsp.Adapters.LogMessageSink in 'Source\Lsp\BDLsp.Common.Lsp.Adapters.LogMessageSink.pas',
   BDLsp.Common.Documents.Contract in 'Source\Documents\BDLsp.Common.Documents.Contract.pas',
   BDLsp.Common.Documents.TextDocument in 'Source\Documents\BDLsp.Common.Documents.TextDocument.pas',
+  BDLsp.Common.Documents.FileEncoding in 'Source\Documents\BDLsp.Common.Documents.FileEncoding.pas',
   BDLsp.Common.Documents.Providers.DocumentStore in 'Source\Documents\Providers\BDLsp.Common.Documents.Providers.DocumentStore.pas',
   BDLsp.Common.Lsp.Positions in 'Source\Lsp\BDLsp.Common.Lsp.Positions.pas',
   BDLsp.Common.Lsp.Internals.Debouncer in 'Source\Lsp\Internals\BDLsp.Common.Lsp.Internals.Debouncer.pas',

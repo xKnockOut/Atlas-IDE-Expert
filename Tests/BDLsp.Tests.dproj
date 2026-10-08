@@ -63,6 +63,7 @@
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.Adapters.LogMessageSink.Tests.pas"/>
         <DCCReference Include="Common\Lsp\BDLsp.Common.Lsp.TextDocumentSync.Tests.pas"/>
         <DCCReference Include="Common\Documents\BDLsp.Common.Documents.TextDocument.Tests.pas"/>
+        <DCCReference Include="Common\Documents\BDLsp.Common.Documents.FileEncoding.Tests.pas"/>
         <DCCReference Include="Common\Documents\BDLsp.Common.Documents.Providers.DocumentStore.Tests.pas"/>
         <DCCReference Include="Common\Pascal\BDLsp.Common.Pascal.Lexer.Tests.pas"/>
         <DCCReference Include="Common\Pascal\BDLsp.Common.Pascal.Parser.Tests.pas"/>

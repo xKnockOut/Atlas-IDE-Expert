@@ -85,6 +85,7 @@
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Adapters.LogMessageSink.pas"/>
         <DCCReference Include="Source\Documents\BDLsp.Common.Documents.Contract.pas"/>
         <DCCReference Include="Source\Documents\BDLsp.Common.Documents.TextDocument.pas"/>
+        <DCCReference Include="Source\Documents\BDLsp.Common.Documents.FileEncoding.pas"/>
         <DCCReference Include="Source\Documents\Providers\BDLsp.Common.Documents.Providers.DocumentStore.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Positions.pas"/>
         <DCCReference Include="Source\Lsp\Internals\BDLsp.Common.Lsp.Internals.Debouncer.pas"/>
