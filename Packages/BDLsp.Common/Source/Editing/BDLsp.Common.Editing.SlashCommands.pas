@@ -99,7 +99,8 @@ uses
   BDLsp.Common.Editing.DeclarationCommands,
   BDLsp.Common.Editing.ClassCommands,
   BDLsp.Common.Editing.WrapCommands,
-  BDLsp.Common.Editing.MaintenanceCommands;
+  BDLsp.Common.Editing.MaintenanceCommands,
+  BDLsp.Common.Editing.TypeCommands;
 
 function IsDisabled(const AName: string; const ADisabled: TArray<string>): Boolean;
 var
@@ -169,6 +170,7 @@ begin
     RegisterClassCommands(Created);
     RegisterWrapCommands(Created);
     RegisterMaintenanceCommands(Created);
+    RegisterTypeCommands(Created);
     if AtomicCmpExchange(Pointer(FShared), Pointer(Created), nil) <> nil then
       Created.Free;
   end;
