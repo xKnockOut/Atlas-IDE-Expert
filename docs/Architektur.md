@@ -39,6 +39,7 @@ Application/
 Tests/
   BDLsp.Tests.dpr/.dproj
   Common/  Windows/  Application/  (Tests je Ausgabeartefakt)
+  Data/Protocol/                   aufgezeichnete Nachrichtenfolgen für Protokolltests (JSON)
 Editors/VSCode/                    minimale VS-Code-Erweiterung (TypeScript), startet den Server
 Tools/                             Hilfsskripte
 Output/<Plattform>/<Konfiguration>/ Build-Ausgabe (nicht versioniert): Dcu, Dcp, Bpl, Bin
@@ -69,6 +70,15 @@ Platform-Features in den Packages (Konzept 8.3) importieren weder Host noch Host
 | Composition | eigenes Contract, Providers, Adapters, Root und Composition, fremdes Contract und Root |
 
 Für die Anwendung gelten die Host-Matrix (8.1) und die Hosted-Feature-Matrix (8.2). Hosted-Features importieren sich nie gegenseitig; feature-übergreifende Abläufe orchestriert der Host (Konzept 11).
+
+## Tests
+
+- Unit-Tests mit DUnitX je Unit in `Tests/<Ausgabeartefakt>/<Feature>/`.
+- Protokolltests: `Tests/Data/Protocol/*.json` enthalten Schritte `send` und `expect`; `BDLsp.Common.Lsp.ProtocolReplay` spielt sie gegen den Server ohne Threads ab und vergleicht die Antworten feldweise. Neue Aufzeichnung = neue JSON-Datei, kein Code nötig.
+- Fuzzing: zufällig beschädigter Code (fester Startwert) darf den Parser weder abstürzen noch hängen lassen.
+- Korpustest: parst RTL und VCL aus `$(BDS)\source` oder dem Ordner in `BDLSP_CORPUS`; ohne beides wird er übersprungen.
+- Leistungsmessung mit festen Zielwerten (Syntaxfehler < 200 ms, Gliederung und Faltbereiche < 100 ms).
+- Der Parser begrenzt die Verschachtelung auf 256 Ebenen und gibt Bäume iterativ frei, damit kaputter Code keinen Stapelüberlauf auslöst.
 
 ## DI-Strategie
 
