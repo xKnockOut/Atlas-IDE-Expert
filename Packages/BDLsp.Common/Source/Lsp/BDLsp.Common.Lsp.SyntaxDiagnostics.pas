@@ -111,7 +111,8 @@ uses
   BDLsp.Common.Pascal.Parser,
   BDLsp.Common.Pascal.LanguageFeatures,
   BDLsp.Common.Lsp.InactiveRegions,
-  BDLsp.Common.Rules.Engine;
+  BDLsp.Common.Rules.Engine,
+  BDLsp.Common.Rules.Catalog;
 
 // Übernimmt AParams.
 procedure Send(const ATransport: IJsonRpcTransport; AParams: TJSONObject);
@@ -343,6 +344,8 @@ begin
   Result.AddPair('range', TLspPositions.RangeToJson(AFinding.Range));
   Result.AddPair('severity', TJSONNumber.Create(Severity));
   Result.AddPair('code', AFinding.RuleId);
+  Result.AddPair('codeDescription', TJSONObject.Create(
+    TJSONPair.Create('href', TRuleCatalog.HelpUri(AFinding.RuleId))));
   Result.AddPair('source', Source);
   Result.AddPair('message', AFinding.DisplayMessage);
 end;

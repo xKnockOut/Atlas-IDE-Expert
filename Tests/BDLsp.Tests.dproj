@@ -1,4 +1,4 @@
-﻿﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{7737E737-7F8E-4B01-9B7C-42DA754393D2}</ProjectGuid>
         <MainSource>BDLsp.Tests.dpr</MainSource>
@@ -103,6 +103,7 @@
         <DCCReference Include="Common\Rules\BDLsp.Common.Rules.Engine.Tests.pas"/>
         <DCCReference Include="Common\Rules\BDLsp.Common.Rules.Confidence.Tests.pas"/>
         <DCCReference Include="Common\Rules\BDLsp.Common.Rules.Output.Tests.pas"/>
+        <DCCReference Include="Common\Rules\BDLsp.Common.Rules.Catalog.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Unicode.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.CodeActions.Tests.pas"/>
         <BuildConfiguration Include="Base">

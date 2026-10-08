@@ -74,6 +74,8 @@ contains
   BDLsp.Common.Rules.Checker in 'Source\Rules\BDLsp.Common.Rules.Checker.pas',
   BDLsp.Common.Rules.Filter in 'Source\Rules\BDLsp.Common.Rules.Filter.pas',
   BDLsp.Common.Rules.Output in 'Source\Rules\BDLsp.Common.Rules.Output.pas',
+  BDLsp.Common.Rules.Catalog in 'Source\Rules\BDLsp.Common.Rules.Catalog.pas',
+  BDLsp.Common.Rules.Catalog.Data in 'Source\Rules\BDLsp.Common.Rules.Catalog.Data.pas',
   BDLsp.Common.Rules.Builtin in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.pas',
   BDLsp.Common.Rules.Builtin.Unicode in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Unicode.pas',
   BDLsp.Common.Editing.CodeActions in 'Source\Editing\BDLsp.Common.Editing.CodeActions.pas',

@@ -36,7 +36,9 @@ implementation
 
 uses
   BDLsp.Common.Documents.Contract,
-  BDLsp.Common.Product.Version;
+  BDLsp.Common.Product.Version,
+  BDLsp.Common.Rules.Catalog,
+  BDLsp.Common.Rules.Catalog.Data;
 
 class function TFindingsOutput.TryParseFormat(const AText: string; out AFormat: TFindingsFormat): Boolean;
 var
@@ -226,8 +228,12 @@ var
   CheckedFile: TCheckedFile;
   Finding: TRuleFinding;
   Rule: TRuleDescriptor;
+  Entry: TRuleCatalogEntry;
+  Catalog: TRuleCatalog;
   First: Boolean;
 begin
+  // Immer der englische Katalog: stabile Texte für GitHub Code Scanning.
+  Catalog := TRuleCatalog.Create(RuleCatalogBaseJson);
   Builder := TStringBuilder.Create;
   try
     Builder.Append('{"$schema":"https://json.schemastore.org/sarif-2.1.0.json","version":"2.1.0","runs":[{');
@@ -241,8 +247,18 @@ begin
         Builder.Append(',');
       First := False;
       Builder.Append('{"id":').Append(TFindingsOutput.JsonString(Rule.Id));
-      Builder.Append(',"shortDescription":{"text":').Append(TFindingsOutput.JsonString(Rule.Description));
-      Builder.Append('},"defaultConfiguration":{"level":').Append(TFindingsOutput.JsonString(SarifLevel(Rule.DefaultSeverity)));
+      if Catalog.TryFind(Rule.Id, Entry) then
+      begin
+        Builder.Append(',"name":').Append(TFindingsOutput.JsonString(Entry.Name));
+        Builder.Append(',"shortDescription":{"text":').Append(TFindingsOutput.JsonString(Entry.Name));
+        Builder.Append('},"fullDescription":{"text":').Append(TFindingsOutput.JsonString(Entry.Description));
+        Builder.Append('},"properties":{"tags":[').Append(TFindingsOutput.JsonString(TRuleCatalog.CategoryName(Entry.Category)));
+        Builder.Append(']}');
+      end
+      else
+        Builder.Append(',"shortDescription":{"text":').Append(TFindingsOutput.JsonString(Rule.Description)).Append('}');
+      Builder.Append(',"helpUri":').Append(TFindingsOutput.JsonString(TRuleCatalog.HelpUri(Rule.Id)));
+      Builder.Append(',"defaultConfiguration":{"level":').Append(TFindingsOutput.JsonString(SarifLevel(Rule.DefaultSeverity)));
       Builder.Append('}}');
     end;
     Builder.Append(']}},"results":[');
@@ -268,6 +284,7 @@ begin
     Result := Builder.ToString;
   finally
     Builder.Free;
+    Catalog.Free;
   end;
 end;
 

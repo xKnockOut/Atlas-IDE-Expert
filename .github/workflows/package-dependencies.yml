@@ -16,3 +16,6 @@ jobs:
       - name: Keine Ausgaben auf stdout
         shell: pwsh
         run: ./Tools/Check-ConsoleOutput.ps1
+      - name: Regelkatalog aktuell und vollständig
+        shell: pwsh
+        run: ./Tools/Update-RuleCatalog.ps1 -Check

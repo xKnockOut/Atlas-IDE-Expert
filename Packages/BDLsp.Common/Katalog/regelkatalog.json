@@ -1,0 +1,58 @@
+{
+  "rules": [
+    {
+      "id": "syntax",
+      "name": "Syntax error",
+      "category": "bug",
+      "severity": "error",
+      "description": "The parser could not read the source code.",
+      "bad": "procedure Foo;\nbegin\n  if X then\nend;",
+      "good": "procedure Foo;\nbegin\n  if X then\n    Bar;\nend;"
+    },
+    {
+      "id": "unused-suppression",
+      "name": "Unused suppression",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "An lsp-ignore comment suppresses no finding and can be removed.",
+      "bad": "// lsp-ignore: empty-except\nX := 1;",
+      "good": "X := 1;"
+    },
+    {
+      "id": "bidi-control",
+      "name": "Bidirectional control character",
+      "category": "vulnerability",
+      "severity": "error",
+      "description": "Bidirectional control characters can make code display differently from how it compiles (Trojan Source).",
+      "bad": "if IsAdmin then { U+202E } begin",
+      "good": "if IsAdmin then begin"
+    },
+    {
+      "id": "invisible-char",
+      "name": "Invisible character",
+      "category": "security-hotspot",
+      "severity": "warning",
+      "description": "Invisible or zero-width characters in the source code.",
+      "bad": "Count{U+200B} := 0;",
+      "good": "Count := 0;"
+    },
+    {
+      "id": "control-char",
+      "name": "Control character",
+      "category": "bug",
+      "severity": "error",
+      "description": "NUL or control characters or invalid bytes (U+FFFD) in the source code.",
+      "bad": "S := 'abc{U+0000}';",
+      "good": "S := 'abc' + #0;"
+    },
+    {
+      "id": "confusable-identifier",
+      "name": "Confusable identifier",
+      "category": "security-hotspot",
+      "severity": "warning",
+      "description": "Identifiers that mix scripts or contain non-ASCII characters can be confused with others.",
+      "bad": "var Pаssword: string; { Cyrillic 'а' }",
+      "good": "var Password: string;"
+    }
+  ]
+}
