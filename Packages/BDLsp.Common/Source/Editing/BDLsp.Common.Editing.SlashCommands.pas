@@ -20,9 +20,36 @@ uses
   BDLsp.Common.Documents.Contract,
   BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Index.Contract,
+  BDLsp.Common.Projects.Contract,
   BDLsp.Common.Rules.Contract;
 
 type
+  /// <summary>Zugriff auf Projekt und Editor für Befehle, die mehr als die Datei ändern (#301).</summary>
+  ISlashHost = interface
+    ['{8E4A2C61-3B7D-4F95-A0C8-5D1E9F27B364}']
+    /// <summary>Geladenes Projekt zur Datei AUri; False ohne Projekt.</summary>
+    function Project(const AUri: string; out AProject: TProjectInfo): Boolean;
+    function ReadFile(const AFileName: string; out AText: string): Boolean;
+    function DirectoryExists(const APath: string): Boolean;
+    /// <summary>Schreibt die .dproj in ihrer Kodierung zurück und lädt das Projekt neu.</summary>
+    procedure WriteProject(const AUri, AText: string);
+    /// <summary>Wechselt Konfiguration bzw. Plattform ('' = unverändert) wie der Befehl aus #46.</summary>
+    procedure SelectBuild(const AUri, AConfig, APlatform: string);
+    /// <summary>Öffnet AFileName im Editor und markiert ASelection (window/showDocument).</summary>
+    procedure ShowDocument(const AFileName: string; const ASelection: TTextRange);
+  end;
+
+  /// <summary>Aktionen, die erst nach erfolgreichem Befehl laufen; bei Hinweisen werden sie verworfen.</summary>
+  TSlashActions = class
+  private
+    FItems: TList<TProc>;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Add(const AAction: TProc);
+    procedure Run;
+  end;
+
   /// <summary>Ort und Inhalt der Befehlszeile.</summary>
   TSlashContext = record
     /// <summary>Ganzer Text der Datei, Befehlszeile noch enthalten.</summary>
@@ -39,6 +66,14 @@ type
     Index: ISymbolIndex;
     /// <summary>Eingestellte Delphi-Version (BDS-Nummer, #109); '' = unbekannt, alles erlaubt.</summary>
     DelphiVersion: string;
+    /// <summary>URI der Datei; '' ohne.</summary>
+    Uri: string;
+    /// <summary>Projekt und Editor; nil ohne (z. B. bei der Prüfung stehen gebliebener Zeilen).</summary>
+    Host: ISlashHost;
+    /// <summary>Ziel für Defer; nil, wenn nichts ausgeführt werden soll.</summary>
+    Actions: TSlashActions;
+    /// <summary>Merkt AAction für nach dem Befehl vor; ohne Actions ohne Wirkung.</summary>
+    procedure Defer(const AAction: TProc);
   end;
 
   /// <summary>Führt den Befehl aus. False mit AReason, wenn er hier nicht passt.</summary>
@@ -84,7 +119,7 @@ type
     /// ausführbarer Befehl steht (dann bleibt die Zeile stehen).</summary>
     function AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
       ADisabled: TArray<string>; out AEdits: TArray<TRuleEdit>; const AIndex: ISymbolIndex = nil;
-      const ADelphiVersion: string = ''): Boolean;
+      const ADelphiVersion: string = ''; const AUri: string = ''; const AHost: ISlashHost = nil): Boolean;
     /// <summary>Hinweise für Befehlszeilen, die stehen geblieben sind (unbekannt, abgeschaltet, falscher Ort).</summary>
     function Problems(const AText: string; const ADisabled: TArray<string>;
       const AIndex: ISymbolIndex = nil; const ADelphiVersion: string = ''): TArray<TSlashProblem>;
@@ -107,6 +142,7 @@ uses
   BDLsp.Common.Editing.CollectionCommands,
   BDLsp.Common.Editing.ExpressionCommands,
   BDLsp.Common.Editing.RefactoringCommands,
+  BDLsp.Common.Editing.ProjectCommands,
   BDLsp.Common.Editing.ErrorCommands;
 
 function IsDisabled(const AName: string; const ADisabled: TArray<string>): Boolean;
@@ -126,6 +162,41 @@ begin
   else
     ALineBreak := #10;
   Result := AText.Split([ALineBreak]);
+end;
+
+{ TSlashContext }
+
+procedure TSlashContext.Defer(const AAction: TProc);
+begin
+  if Actions <> nil then
+    Actions.Add(AAction);
+end;
+
+{ TSlashActions }
+
+constructor TSlashActions.Create;
+begin
+  inherited Create;
+  FItems := TList<TProc>.Create;
+end;
+
+destructor TSlashActions.Destroy;
+begin
+  FItems.Free;
+  inherited;
+end;
+
+procedure TSlashActions.Add(const AAction: TProc);
+begin
+  FItems.Add(AAction);
+end;
+
+procedure TSlashActions.Run;
+var
+  Action: TProc;
+begin
+  for Action in FItems do
+    Action();
 end;
 
 { TSlashCommandRegistry }
@@ -182,6 +253,7 @@ begin
     RegisterErrorCommands(Created);
     RegisterRefactoringCommands(Created);
     RegisterExpressionCommands(Created);
+    RegisterProjectCommands(Created);
     if AtomicCmpExchange(Pointer(FShared), Pointer(Created), nil) <> nil then
       Created.Free;
   end;
@@ -283,7 +355,7 @@ end;
 
 function TSlashCommandRegistry.AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
   ADisabled: TArray<string>; out AEdits: TArray<TRuleEdit>; const AIndex: ISymbolIndex;
-  const ADelphiVersion: string): Boolean;
+  const ADelphiVersion, AUri: string; const AHost: ISlashHost): Boolean;
 var
   Lines: TArray<string>;
   LineBreak, Reason: string;
@@ -304,9 +376,18 @@ begin
   Context.Namespaces := ANamespaces;
   Context.Index := AIndex;
   Context.DelphiVersion := ADelphiVersion;
-  Result := Command.Execute(Context, AEdits, Reason);
-  if not Result then
-    AEdits := nil;
+  Context.Uri := AUri;
+  Context.Host := AHost;
+  Context.Actions := TSlashActions.Create;
+  try
+    Result := Command.Execute(Context, AEdits, Reason);
+    if Result then
+      Context.Actions.Run
+    else
+      AEdits := nil;
+  finally
+    Context.Actions.Free;
+  end;
 end;
 
 function TSlashCommandRegistry.Problems(const AText: string; const ADisabled: TArray<string>;

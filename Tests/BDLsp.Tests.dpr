@@ -31,6 +31,7 @@ uses
   BDLsp.Common.Documents.FileEncoding.Tests in 'Common\Documents\BDLsp.Common.Documents.FileEncoding.Tests.pas',
   BDLsp.Common.Projects.Tests in 'Common\Projects\BDLsp.Common.Projects.Tests.pas',
   BDLsp.Common.Projects.DelphiVersions.Tests in 'Common\Projects\BDLsp.Common.Projects.DelphiVersions.Tests.pas',
+  BDLsp.Common.Projects.DprojEditor.Tests in 'Common\Projects\BDLsp.Common.Projects.DprojEditor.Tests.pas',
   BDLsp.Windows.Projects.DelphiInstallation.Tests in 'Windows\Projects\BDLsp.Windows.Projects.DelphiInstallation.Tests.pas',
   BDLsp.Common.Compiler.Tests in 'Common\Compiler\BDLsp.Common.Compiler.Tests.pas',
   BDLsp.Common.Compiler.Backends.Tests in 'Common\Compiler\BDLsp.Common.Compiler.Backends.Tests.pas',
@@ -162,6 +163,7 @@ uses
   BDLsp.Common.Lsp.Completion.Postfix.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Completion.Postfix.Tests.pas',
   BDLsp.Common.Editing.RefactoringCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.RefactoringCommands.Tests.pas',
   BDLsp.Common.Editing.ExpressionCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.ExpressionCommands.Tests.pas',
+  BDLsp.Common.Editing.ProjectCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.ProjectCommands.Tests.pas',
   BDLsp.Common.Rules.Builtin.DataBinding.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.DataBinding.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}

@@ -207,6 +207,7 @@ uses
   BDLsp.Common.Documents.Providers.DocumentStore,
   BDLsp.Common.Documents.FileEncoding,
   BDLsp.Common.Documents.Uris,
+  Shell.SlashHost,
   BDLsp.Common.JsonRpc.Messages,
   BDLsp.Common.Lsp.FormEvents,
   BDLsp.Common.Lsp.FormFiles,
@@ -369,6 +370,22 @@ begin
     end;
   FFormatting.SlashCommandsFor := SlashCommandsFor;
   FFormatting.DelphiVersionFor := DelphiVersionFor;
+  FFormatting.SlashHost := TShellSlashHost.Create(
+    function(const AUri: string): TShellWorkspace
+    begin
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Result := WorkspaceOf(TDocumentUris.ToPath(AUri));
+        if (Result = nil) and (FWorkspaces.Count = 1) then
+          Result := FWorkspaces[0];
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+    end,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end, FTransport, FLogger);
   FFormatting.Attach(FDispatcher);
   FSelectionRanges := TLspSelectionRanges.Create(FDocuments);
   FSelectionRanges.Attach(FDispatcher);
