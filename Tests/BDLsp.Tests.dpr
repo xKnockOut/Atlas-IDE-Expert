@@ -159,6 +159,7 @@ uses
   BDLsp.Common.Rules.Builtin.RtlPatterns.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.RtlPatterns.Tests.pas',
   BDLsp.Common.Rules.Builtin.RtlTypePatterns.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.RtlTypePatterns.Tests.pas',
   BDLsp.Common.Rules.Builtin.Exceptions.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Exceptions.Tests.pas',
+  BDLsp.Common.Rules.Builtin.Style.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Style.Tests.pas',
   BDLsp.Common.Rules.Builtin.Performance.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Performance.Tests.pas',
   BDLsp.Common.Rules.ChangedFiles.Tests in 'Common\Rules\BDLsp.Common.Rules.ChangedFiles.Tests.pas',
   BDLsp.Common.Editing.PostfixTemplates.Tests in 'Common\Editing\BDLsp.Common.Editing.PostfixTemplates.Tests.pas',

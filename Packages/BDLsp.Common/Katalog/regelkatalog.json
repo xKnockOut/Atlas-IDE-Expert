@@ -647,6 +647,51 @@
       "description": "Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Off by default.",
       "bad": "for I := 1 to 1000 do\n  ListBox1.Items.Add(IntToStr(I));",
       "good": "ListBox1.Items.BeginUpdate;\ntry\n  for I := 1 to 1000 do\n    ListBox1.Items.Add(IntToStr(I));\nfinally\n  ListBox1.Items.EndUpdate;\nend;"
+    },
+    {
+      "id": "bool-compare",
+      "name": "Comparison with True or False",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "Comparing a Boolean with True or False is redundant; use the expression or not directly.",
+      "bad": "if Visible = True then\n  Show;",
+      "good": "if Visible then\n  Show;"
+    },
+    {
+      "id": "redundant-assigned-free",
+      "name": "Assigned check before Free",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "Free already checks for nil, so testing Assigned before Free or FreeAndNil is redundant.",
+      "bad": "if Assigned(List) then\n  List.Free;",
+      "good": "List.Free;"
+    },
+    {
+      "id": "raise-in-finally",
+      "name": "raise in a finally block",
+      "category": "bug",
+      "severity": "warning",
+      "description": "An exception raised in a finally block replaces the exception that is currently propagating, which is then lost.",
+      "bad": "try\n  Work;\nfinally\n  raise Exception.Create('Fehler');\nend;",
+      "good": "try\n  Work;\nfinally\n  Cleanup;\nend;"
+    },
+    {
+      "id": "redundant-parens",
+      "name": "Redundant parentheses",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "Parentheses around a whole condition or a single identifier add nothing. Off by default.",
+      "bad": "if (Done) then\n  Exit;",
+      "good": "if Done then\n  Exit;"
+    },
+    {
+      "id": "redundant-begin-end",
+      "name": "begin … end around a single statement",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "A begin … end block that holds exactly one statement can be removed. Off by default.",
+      "bad": "if Done then\nbegin\n  Exit;\nend;",
+      "good": "if Done then\n  Exit;"
     }
   ]
 }

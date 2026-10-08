@@ -76,6 +76,11 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`string-concat-in-loop`](#string-concat-in-loop) | String-Verkettung in einer Schleife | Code Smell | Hinweis |
 | [`loop-invariant-call`](#loop-invariant-call) | Teurer Aufruf in der Schleifenbedingung | Code Smell | Hinweis |
 | [`missing-begin-update`](#missing-begin-update) | Hinzufügen in einer Schleife ohne BeginUpdate | Code Smell | Hinweis |
+| [`bool-compare`](#bool-compare) | Vergleich mit True oder False | Code Smell | Hinweis |
+| [`redundant-assigned-free`](#redundant-assigned-free) | Assigned-Prüfung vor Free | Code Smell | Hinweis |
+| [`raise-in-finally`](#raise-in-finally) | raise in einem finally-Block | Bug | Warnung |
+| [`redundant-parens`](#redundant-parens) | Überflüssige Klammern | Code Smell | Hinweis |
+| [`redundant-begin-end`](#redundant-begin-end) | begin … end um eine einzelne Anweisung | Code Smell | Hinweis |
 
 <a id="syntax"></a>
 ## syntax
@@ -1699,4 +1704,116 @@ try
 finally
   ListBox1.Items.EndUpdate;
 end;
+```
+
+<a id="bool-compare"></a>
+## bool-compare
+
+**Vergleich mit True oder False** · Code Smell · Hinweis
+
+Ein Vergleich eines Boolean mit True oder False ist überflüssig; den Ausdruck oder not direkt verwenden.
+
+Mit Treffer:
+
+```pascal
+if Visible = True then
+  Show;
+```
+
+Richtig:
+
+```pascal
+if Visible then
+  Show;
+```
+
+<a id="redundant-assigned-free"></a>
+## redundant-assigned-free
+
+**Assigned-Prüfung vor Free** · Code Smell · Hinweis
+
+Free prüft selbst auf nil, eine Assigned-Prüfung vor Free oder FreeAndNil ist überflüssig.
+
+Mit Treffer:
+
+```pascal
+if Assigned(List) then
+  List.Free;
+```
+
+Richtig:
+
+```pascal
+List.Free;
+```
+
+<a id="raise-in-finally"></a>
+## raise-in-finally
+
+**raise in einem finally-Block** · Bug · Warnung
+
+Eine im finally-Block ausgelöste Exception ersetzt die gerade laufende Exception, die dadurch verloren geht.
+
+Mit Treffer:
+
+```pascal
+try
+  Work;
+finally
+  raise Exception.Create('Fehler');
+end;
+```
+
+Richtig:
+
+```pascal
+try
+  Work;
+finally
+  Cleanup;
+end;
+```
+
+<a id="redundant-parens"></a>
+## redundant-parens
+
+**Überflüssige Klammern** · Code Smell · Hinweis
+
+Klammern um eine ganze Bedingung oder einen einzelnen Bezeichner bringen nichts. Standardmäßig aus.
+
+Mit Treffer:
+
+```pascal
+if (Done) then
+  Exit;
+```
+
+Richtig:
+
+```pascal
+if Done then
+  Exit;
+```
+
+<a id="redundant-begin-end"></a>
+## redundant-begin-end
+
+**begin … end um eine einzelne Anweisung** · Code Smell · Hinweis
+
+Ein begin … end-Block mit genau einer Anweisung kann entfallen. Standardmäßig aus.
+
+Mit Treffer:
+
+```pascal
+if Done then
+begin
+  Exit;
+end;
+```
+
+Richtig:
+
+```pascal
+if Done then
+  Exit;
 ```

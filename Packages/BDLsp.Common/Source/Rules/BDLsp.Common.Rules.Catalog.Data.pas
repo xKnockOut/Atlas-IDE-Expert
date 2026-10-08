@@ -667,6 +667,51 @@ begin
     '      "description": "Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Off by default.",' + #10 +
     '      "bad": "for I := 1 to 1000 do\n  ListBox1.Items.Add(IntToStr(I));",' + #10 +
     '      "good": "ListBox1.Items.BeginUpdate;\ntry\n  for I := 1 to 1000 do\n    ListBox1.Items.Add(IntToStr(I));\nfinally\n  ListBox1.Items.EndUpdate;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "bool-compare",' + #10 +
+    '      "name": "Comparison with True or False",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "Comparing a Boolean with True or False is redundant; use the expression or not directly.",' + #10 +
+    '      "bad": "if Visible = True then\n  Show;",' + #10 +
+    '      "good": "if Visible then\n  Show;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "redundant-assigned-free",' + #10 +
+    '      "name": "Assigned check before Free",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "Free already checks for nil, so testing Assigned before Free or FreeAndNil is redundant.",' + #10 +
+    '      "bad": "if Assigned(List) then\n  List.Free;",' + #10 +
+    '      "good": "List.Free;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "raise-in-finally",' + #10 +
+    '      "name": "raise in a finally block",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "An exception raised in a finally block replaces the exception that is currently propagating, which is then lost.",' + #10 +
+    '      "bad": "try\n  Work;\nfinally\n  raise Exception.Create(''Fehler'');\nend;",' + #10 +
+    '      "good": "try\n  Work;\nfinally\n  Cleanup;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "redundant-parens",' + #10 +
+    '      "name": "Redundant parentheses",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "Parentheses around a whole condition or a single identifier add nothing. Off by default.",' + #10 +
+    '      "bad": "if (Done) then\n  Exit;",' + #10 +
+    '      "good": "if Done then\n  Exit;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "redundant-begin-end",' + #10 +
+    '      "name": "begin … end around a single statement",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "A begin … end block that holds exactly one statement can be removed. Off by default.",' + #10 +
+    '      "bad": "if Done then\nbegin\n  Exit;\nend;",' + #10 +
+    '      "good": "if Done then\n  Exit;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -1038,6 +1083,31 @@ begin
     '      "id": "missing-begin-update",' + #10 +
     '      "name": "Hinzufügen in einer Schleife ohne BeginUpdate",' + #10 +
     '      "description": "Items.Add, Lines.Add und ähnliche Aufrufe in einer Schleife zeichnen das Steuerelement bei jedem Aufruf neu. Die Schleife mit BeginUpdate und try … finally EndUpdate umschließen.' + ' Standardmäßig aus."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "bool-compare",' + #10 +
+    '      "name": "Vergleich mit True oder False",' + #10 +
+    '      "description": "Ein Vergleich eines Boolean mit True oder False ist überflüssig; den Ausdruck oder not direkt verwenden."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "redundant-assigned-free",' + #10 +
+    '      "name": "Assigned-Prüfung vor Free",' + #10 +
+    '      "description": "Free prüft selbst auf nil, eine Assigned-Prüfung vor Free oder FreeAndNil ist überflüssig."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "raise-in-finally",' + #10 +
+    '      "name": "raise in einem finally-Block",' + #10 +
+    '      "description": "Eine im finally-Block ausgelöste Exception ersetzt die gerade laufende Exception, die dadurch verloren geht."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "redundant-parens",' + #10 +
+    '      "name": "Überflüssige Klammern",' + #10 +
+    '      "description": "Klammern um eine ganze Bedingung oder einen einzelnen Bezeichner bringen nichts. Standardmäßig aus."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "redundant-begin-end",' + #10 +
+    '      "name": "begin … end um eine einzelne Anweisung",' + #10 +
+    '      "description": "Ein begin … end-Block mit genau einer Anweisung kann entfallen. Standardmäßig aus."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

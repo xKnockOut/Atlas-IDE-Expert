@@ -180,6 +180,7 @@
         <DCCReference Include="Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.RtlPatterns.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.RtlTypePatterns.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Exceptions.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Style.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Performance.Tests.pas"/>
         <DCCReference Include="Common\Rules\BDLsp.Common.Rules.ChangedFiles.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.PostfixTemplates.Tests.pas"/>

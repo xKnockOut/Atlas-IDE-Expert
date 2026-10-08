@@ -14,6 +14,7 @@ Server und Erweiterung tragen immer dieselbe Version.
 - Attribute: Gehe zu Definition und Referenzsuche lösen `[Foo]` zuerst als `FooAttribute` auf (auch qualifiziert); der Hover zeigt die passenden Konstruktoren (#119).
 - Dokumentationskommentar: nach `///` über einer Deklaration entsteht das Gerüst mit `<summary>`, `<typeparam>`, `<param>` und `<returns>`; Code-Aktionen erzeugen den Kommentar bzw. passen die `<param>` an die Signatur an (#88).
 - Code-Aktion „Klassenmitglieder ordnen“ nach `memberOrder` (Abschnitte, Arten, `sortFields`, `sortPublished`); Kommentare und Attribute wandern mit, packed-Klassen, Records und `{$IF}` quer zu Abschnitten bleiben unangetastet (#89).
+- Stilregeln: `bool-compare`, `redundant-assigned-free`, `raise-in-finally` sowie standardmäßig aus `redundant-parens` und `redundant-begin-end` (#104).
 - Schnellbefehle für eigene Komponenten: `/notify OnChange`, `/changed Farbe` (Invalidate bei Controls), `/loaded` und `/notification` samt FreeNotification im Setter (#320).
 - Schnellbefehle `/header` (Dateikopf aus `slashCommands.headerTemplate`, Jahr fortschreiben), `/deprecated Grund`, `/region-all` und `/bookmark Name`; die Symbolsuche findet Lesezeichen `// @bookmark Name` (#306).
 - Schnellbefehle für Datenbankcode: `/sql`, `/params`, `/loop` und `/transaction`, passend zu FireDAC, ADO, dbExpress und IBX (#302).
