@@ -1,0 +1,29 @@
+# Beispiel (#157): im Pull Request nur geänderte Dateien und Zeilen prüfen und
+# das Ergebnis als SARIF an GitHub Code Scanning geben. Läuft auf einem
+# Windows-Runner, auf dem BetterDelphiLSP.exe liegt (siehe Release, #83).
+name: BetterDelphiLSP
+
+on:
+  pull_request:
+
+jobs:
+  pruefen:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Für die Merge-Base braucht git die Historie beider Branches.
+          fetch-depth: 0
+      - name: Geänderte Dateien prüfen
+        shell: pwsh
+        run: |
+          .\BetterDelphiLSP.exe --check . --changed origin/${{ github.base_ref }} --changed-lines `
+            --format sarif --output bdlsp.sarif
+          if ($LASTEXITCODE -ge 3) { exit $LASTEXITCODE }
+          exit 0
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: bdlsp.sarif

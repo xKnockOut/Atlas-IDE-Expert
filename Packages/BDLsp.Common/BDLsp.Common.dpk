@@ -151,6 +151,7 @@ contains
   BDLsp.Common.Rules.Builtin.RtlTypePatterns in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.RtlTypePatterns.pas',
   BDLsp.Common.Rules.Builtin.Exceptions in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Exceptions.pas',
   BDLsp.Common.Rules.Builtin.Performance in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.Performance.pas',
+  BDLsp.Common.Rules.ChangedFiles in 'Source\Rules\BDLsp.Common.Rules.ChangedFiles.pas',
   BDLsp.Common.Rules.DeclaredTypes in 'Source\Rules\BDLsp.Common.Rules.DeclaredTypes.pas',
   BDLsp.Common.Rules.Builtin.DataBinding in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.DataBinding.pas',
   BDLsp.Common.Rules.Builtin.SlashCommands in 'Source\Rules\Builtin\BDLsp.Common.Rules.Builtin.SlashCommands.pas',

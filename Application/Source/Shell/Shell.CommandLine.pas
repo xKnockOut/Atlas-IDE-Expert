@@ -14,6 +14,11 @@
 //   --units <a,b>         nur diese Units (Name oder Glob-Muster für Pfade)
 //   --min-severity <S>    hint, info, warning, error
 //   --profile <Name>      Regelprofil (#146), vor "profile" aus delphi-lsp.json
+//   --changed [<Basis>]   nur Dateien, die sich gegenüber der Merge-Base mit <Basis>
+//                         (Standard main) geändert haben (Git, #157)
+//   --diff <Ref>          nur Dateien, die sich gegenüber <Ref> geändert haben
+//   --include-uncommitted mit --changed/--diff auch Index und Arbeitsverzeichnis
+//   --changed-lines       nur Treffer in geänderten Zeilen
 //
 // MCP-Modus (#48):
 //   --mcp                 Symbolindex über das Model Context Protocol anbieten
@@ -34,6 +39,7 @@ type
   TCommandLineOptions = record
   public const
     DefaultLogLevel = TLogLevel.Info;
+    DefaultChangedBase = 'main';
   public
     LogFile: string;
     LogLevel: TLogLevel;
@@ -53,6 +59,14 @@ type
     BaselineFile: string;
     /// <summary>Baseline aus den aktuellen Treffern neu schreiben statt zu prüfen.</summary>
     UpdateBaseline: Boolean;
+    /// <summary>Git-Ref, gegen den --changed/--diff vergleicht (#157); '' = alle Dateien.</summary>
+    ChangedRef: string;
+    /// <summary>True bei --changed: Vergleich mit der Merge-Base von ChangedRef und HEAD.</summary>
+    ChangedMergeBase: Boolean;
+    /// <summary>Index und Arbeitsverzeichnis einbeziehen.</summary>
+    IncludeUncommitted: Boolean;
+    /// <summary>Nur Treffer in geänderten Zeilen ausgeben.</summary>
+    ChangedLines: Boolean;
     /// <summary>Index-Caches löschen und beenden (#184).</summary>
     ClearCache: Boolean;
     /// <summary>Nicht vertrauenswürdiger Arbeitsbereich (#186): nichts ausführen, was Code aus dem Projekt startet.</summary>
@@ -216,6 +230,28 @@ begin
       if TakeValue then
         Result.BaselineFile := Value;
     end
+    else if Name = '--changed' then
+    begin
+      // Basis optional: --changed, --changed=dev oder --changed dev
+      Result.ChangedMergeBase := True;
+      if HasValue then
+        Result.ChangedRef := Value
+      else if (Index < High(AArgs)) and not AArgs[Index + 1].StartsWith('-') then
+      begin
+        Inc(Index);
+        Result.ChangedRef := AArgs[Index];
+      end
+      else
+        Result.ChangedRef := DefaultChangedBase;
+    end
+    else if Name = '--diff' then
+    begin
+      if TakeValue then
+      begin
+        Result.ChangedRef := Value;
+        Result.ChangedMergeBase := False;
+      end;
+    end
     else if Name = '--root' then
     begin
       if TakeValue then
@@ -227,6 +263,10 @@ begin
       Result.Restricted := True
     else if Name = '--clear-cache' then
       Result.ClearCache := True
+    else if Name = '--include-uncommitted' then
+      Result.IncludeUncommitted := True
+    else if Name = '--changed-lines' then
+      Result.ChangedLines := True
     else if Name = '--update-baseline' then
       Result.UpdateBaseline := True
     else if Name = '--suppression-stats' then
@@ -245,6 +285,12 @@ begin
       AddWarning(Format('Unbekannter Parameter "%s" wird ignoriert', [Arg]));
 
     Inc(Index);
+  end;
+  if (Result.IncludeUncommitted or Result.ChangedLines) and (Result.ChangedRef = '') then
+  begin
+    // Ohne Ref gilt --changed mit der Standardbasis.
+    Result.ChangedRef := DefaultChangedBase;
+    Result.ChangedMergeBase := True;
   end;
 end;
 

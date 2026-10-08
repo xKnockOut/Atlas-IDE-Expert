@@ -7,6 +7,7 @@ Server und Erweiterung tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Linter: `--changed`, `--diff`, `--include-uncommitted` und `--changed-lines` prüfen nur, was sich laut Git geändert hat; Beispiele für Pre-Commit-Hook und GitHub Action (#157).
 - Performance-Regeln, alle standardmäßig aus: `string-concat-in-loop`, `loop-invariant-call` und `missing-begin-update` (#278).
 - Exception-Regeln: `generic-exception-raised`, `catch-all-without-raise` (standardmäßig aus) und `exception-freed` (#277).
 - Regeln für fehleranfällige RTL-Muster, Stufe 2 (typbasiert): `int32-mul-overflow`, `sizeof-pointer`, `char-to-pchar`, `float-equality`, `constructor-on-instance`, `format-without-settings` (#153).

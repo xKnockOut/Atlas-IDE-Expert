@@ -13,6 +13,11 @@
 // Bekannte Treffer aus der Baseline (--baseline, sonst delphi-lsp-baseline.json
 // neben delphi-lsp.json) werden ausgeblendet; --update-baseline schreibt sie aus
 // den aktuellen Treffern neu (#97), Exit-Code dann 0.
+// Mit --changed bzw. --diff werden nur die geänderten Dateien laut Git geprüft
+// (#157), mit --changed-lines nur Treffer in geänderten Zeilen ausgegeben;
+// zusammen mit der Baseline zählt ein Treffer nur, wenn er in einer geänderten
+// Zeile liegt und nicht in der Baseline steht. Die Regeln prüfen jede Datei für
+// sich, deshalb ergibt die Teilmenge dieselben Treffer wie ein voller Lauf.
 // Exit-Code: 0 ohne Warnungen und Fehler, 1 Warnungen, 2 Fehler,
 // 3 Aufruf- oder Lesefehler.
 
@@ -48,8 +53,11 @@ uses
   BDLsp.Common.Rules.Builtin,
   BDLsp.Common.Rules.SuppressionStats,
   BDLsp.Common.Rules.Baseline,
+  BDLsp.Common.Rules.ChangedFiles,
   BDLsp.Common.Index.Adapters.CacheDirectory,
-  BDLsp.Windows.Console.StdStreams;
+  BDLsp.Windows.Console.StdStreams,
+  BDLsp.Windows.Compiler.Adapters.ProcessRunner,
+  Shell.GitChanges;
 
 procedure WriteText(const AStream: TStream; const AText: string);
 var
@@ -143,6 +151,42 @@ begin
   end;
 end;
 
+/// <summary>Teilmenge von AFiles nach den Änderungen laut Git; AGit bleibt für --changed-lines geladen.</summary>
+function SelectChanged(const AOptions: TCommandLineOptions;
+  const AFiles: TArray<string>; AGit: TGitChanges): TArray<string>;
+begin
+  AGit.Load(AOptions.ChangedRef, AOptions.ChangedMergeBase, AOptions.IncludeUncommitted, AOptions.ChangedLines);
+  Result := TChangedFiles.Select(AGit.Files, AFiles,
+    function(const AFileName: string): TArray<string>
+    var
+      FileFormat: TFileFormat;
+    begin
+      try
+        Result := TChangedFiles.IncludeNames(TFileEncoding.LoadFromFile(AFileName, FileFormat));
+      except
+        on EFileStreamError do
+          Result := nil;
+      end;
+    end);
+  WriteError(Format('%d von %d Dateien geändert gegenüber %s', [Length(Result), Length(AFiles),
+    AOptions.ChangedRef]));
+end;
+
+/// <summary>Nur Treffer in geänderten Zeilen von AFileName.</summary>
+function InChangedLines(const AFindings: TArray<TRuleFinding>; AGit: TGitChanges;
+  const AFileName: string): TArray<TRuleFinding>;
+var
+  Lines: TChangedLines;
+  Finding: TRuleFinding;
+begin
+  Result := nil;
+  if not TChangedFiles.LinesOf(AGit.Lines, AGit.RepoRoot, AFileName, Lines) then
+    Exit;
+  for Finding in AFindings do
+    if Lines.Contains(Finding.Range.StartPos.Line) then
+      Result := Result + [Finding];
+end;
+
 class function TLinterShell.ClearCache: Integer;
 begin
   try
@@ -179,6 +223,8 @@ var
   Baseline: IRuleBaseline;
   Sources: TArray<TBaselineSource>;
   Source: TBaselineSource;
+  Candidates: TArray<string>;
+  Git: TGitChanges;
 begin
   for Warning in AOptions.Warnings do
     WriteError(Warning);
@@ -223,9 +269,18 @@ begin
 
     Files := nil;
     Sources := nil;
+    Git := nil;
     Stats := TSuppressionStats.Create;
     try
-      for FileName in CollectFiles(AOptions.CheckTarget, Settings, Root) do
+      Candidates := CollectFiles(AOptions.CheckTarget, Settings, Root);
+      if (AOptions.ChangedRef <> '') and AOptions.UpdateBaseline then
+        WriteError('--update-baseline schreibt die Baseline immer für alle Dateien; --changed/--diff wird ignoriert')
+      else if AOptions.ChangedRef <> '' then
+      begin
+        Git := TGitChanges.Create(TProcessRunner.Create, ConfigRoot);
+        Candidates := SelectChanged(AOptions, Candidates, Git);
+      end;
+      for FileName in Candidates do
       begin
         RelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(Root), FileName);
         if not Filter.AcceptsFile(RelativePath) then
@@ -253,6 +308,8 @@ begin
           Findings := Baseline.Filter(RelativePath, Text, Findings);
         Checked.Path := RelativePath;
         Checked.Findings := Filter.Apply(Findings);
+        if (Git <> nil) and AOptions.ChangedLines then
+          Checked.Findings := InChangedLines(Checked.Findings, Git, FileName);
         Files := Files + [Checked];
       end;
 
@@ -273,6 +330,7 @@ begin
       else
         Output := TFindingsOutput.Render(Files, AOptions.CheckFormat, Descriptors);
     finally
+      Git.Free;
       Stats.Free;
     end;
     if AOptions.OutputFile <> '' then
