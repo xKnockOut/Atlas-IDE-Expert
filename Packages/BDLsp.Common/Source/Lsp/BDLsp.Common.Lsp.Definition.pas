@@ -9,6 +9,8 @@
 //     dem Namen der Implementierung, zurück zur Deklaration. So wechselt
 //     dieselbe Taste zwischen beiden.
 // Unit-Namen (z. B. in uses) führen an den Anfang der Unit-Datei.
+// textDocument/typeDefinition springt von Variablen, Feldern, Parametern,
+// Properties und Funktionen zur Deklaration ihres Typs.
 
 interface
 
@@ -29,19 +31,23 @@ type
     SelectionRange: TTextRange;
   end;
 
+  TDefinitionRequestKind = (Definition, Declaration, TypeDefinition);
+
   TLspDefinition = class
   public const
     DefinitionMethod = 'textDocument/definition';
     DeclarationMethod = 'textDocument/declaration';
+    TypeDefinitionMethod = 'textDocument/typeDefinition';
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
     FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken;
-      ADeclaration: Boolean): TJSONValue;
+      AKind: TDefinitionRequestKind): TJSONValue;
     function HandleDefinition(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleDeclaration(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+    function HandleTypeDefinition(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
       const AEnsureUnit: TEnsureUnitFunc = nil);
@@ -50,6 +56,9 @@ type
     /// <summary>Sprungziele für den Bezeichner an APosition; leer, wenn er nicht auflösbar ist.</summary>
     class function Targets(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const APosition: TTextPosition; ADeclaration: Boolean): TArray<TDefinitionTarget>; static;
+    /// <summary>Deklaration des Typs des Bezeichners an APosition; leer, wenn er keinen bekannten Typ hat.</summary>
+    class function TypeTargets(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+      const APosition: TTextPosition): TArray<TDefinitionTarget>; static;
     /// <summary>LocationLink[] des LSP. Der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const ATargets: TArray<TDefinitionTarget>): TJSONArray; static;
     /// <summary>Unit-Namespaces des Projekts (DCC_Namespace).</summary>
@@ -100,6 +109,7 @@ procedure TLspDefinition.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(DefinitionMethod, HandleDefinition);
   ADispatcher.RegisterConcurrentRequest(DeclarationMethod, HandleDeclaration);
+  ADispatcher.RegisterConcurrentRequest(TypeDefinitionMethod, HandleTypeDefinition);
 end;
 
 class function TLspDefinition.Targets(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -166,6 +176,18 @@ begin
     Result := [Target(OwnerUnit.FileName, Last.Range, Last.SelectionRange)];
 end;
 
+class function TLspDefinition.TypeTargets(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+  const APosition: TTextPosition): TArray<TDefinitionTarget>;
+var
+  TypeInfo: TResolvedSymbol;
+begin
+  TypeInfo := AResolver.ResolveType(ATree, AFileName, APosition);
+  if TypeInfo.Kind = TResolvedKind.Symbol then
+    Result := [Target(TypeInfo.FileName, TypeInfo.Range, TypeInfo.SelectionRange)]
+  else
+    Result := nil;
+end;
+
 class function TLspDefinition.ToJson(const ATargets: TArray<TDefinitionTarget>): TJSONArray;
 var
   Item: TDefinitionTarget;
@@ -182,7 +204,7 @@ begin
 end;
 
 function TLspDefinition.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken;
-  ADeclaration: Boolean): TJSONValue;
+  AKind: TDefinitionRequestKind): TJSONValue;
 var
   Cancellation: IPascalCancellation;
   Uri: string;
@@ -206,8 +228,12 @@ begin
     Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
     try
       Resolver.Namespaces := FNamespaces;
-      Result := ToJson(Targets(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri),
-        TLspPositions.ReadPosition(PositionValue), ADeclaration));
+      if AKind = TDefinitionRequestKind.TypeDefinition then
+        Result := ToJson(TypeTargets(Resolver, Tree, TDocumentUris.ToPath(Uri),
+          TLspPositions.ReadPosition(PositionValue)))
+      else
+        Result := ToJson(Targets(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri),
+          TLspPositions.ReadPosition(PositionValue), AKind = TDefinitionRequestKind.Declaration));
     finally
       Resolver.Free;
     end;
@@ -219,13 +245,19 @@ end;
 function TLspDefinition.HandleDefinition(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 begin
-  Result := Handle(AParams, ACancellation, False);
+  Result := Handle(AParams, ACancellation, TDefinitionRequestKind.Definition);
 end;
 
 function TLspDefinition.HandleDeclaration(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 begin
-  Result := Handle(AParams, ACancellation, True);
+  Result := Handle(AParams, ACancellation, TDefinitionRequestKind.Declaration);
+end;
+
+function TLspDefinition.HandleTypeDefinition(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+begin
+  Result := Handle(AParams, ACancellation, TDefinitionRequestKind.TypeDefinition);
 end;
 
 end.

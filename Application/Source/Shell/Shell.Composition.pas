@@ -492,6 +492,7 @@ begin
   Result.AddPair('selectionRangeProvider', TJSONBool.Create(True));
   Result.AddPair('definitionProvider', TJSONBool.Create(True));
   Result.AddPair('declarationProvider', TJSONBool.Create(True));
+  Result.AddPair('typeDefinitionProvider', TJSONBool.Create(True));
   Result.AddPair('hoverProvider', TJSONBool.Create(True));
   Result.AddPair('workspaceSymbolProvider', TJSONBool.Create(True));
   Result.AddPair('documentHighlightProvider', TJSONBool.Create(True));
