@@ -305,6 +305,11 @@
           "default": {},
           "markdownDescription": "Code-Aktionen „Als String-Literal“ und „Als Klartext kopieren“. delphi-lsp.json im Projekt hat Vorrang."
         },
+        "betterDelphiLsp.memberOrder": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Code-Aktion „Klassenmitglieder ordnen“: Reihenfolge der Sichtbarkeitsabschnitte und der Mitglieder darin. delphi-lsp.json im Projekt hat Vorrang."
+        },
         "betterDelphiLsp.minConfidence": {
           "type": "string",
           "enum": [

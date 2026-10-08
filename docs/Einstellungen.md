@@ -30,6 +30,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Editor | `highlight`: `blockPairs`, `directives`, `exitPoints`, `exitKeywords` | – | delphi-lsp.json, Editor (`betterDelphiLsp.highlight`) | nein | Kontrollkästchen, Liste | #307 |
 | Editor | `inlayHints`: `parameterNames`, `inferredTypes`, `endMarkers`, `endMarkerMinLines` | – | delphi-lsp.json, Editor (`betterDelphiLsp.inlayHints`) | nein | Kontrollkästchen, Zahlenfeld | #35 |
 | Editor | `stringLiteral`: `style`, `lineBreak`, `maxLineLength` | – | delphi-lsp.json, Editor (`betterDelphiLsp.stringLiteral`) | nein | Auswahl, Zahlenfeld | #312 |
+| Editor | `memberOrder`: `sections`, `members`, `sortFields`, `sortPublished` | – | delphi-lsp.json, Editor (`betterDelphiLsp.memberOrder`) | nein | Liste, Kontrollkästchen | #89 |
 | Prüfregeln | `minConfidence` | `"medium"` | delphi-lsp.json, Editor (`betterDelphiLsp.minConfidence`) | nein | Auswahl | #144 |
 | Projekt | `exclude` | – | delphi-lsp.json, Editor (`betterDelphiLsp.exclude`) | nein | Liste mit Hinzufügen/Entfernen | #24 |
 | Formatierung | `format`: `indentSize`, `useTabs`, `keywordCase`, `trimTrailingWhitespace`, `insertFinalNewline`, `spaceAroundAssignment`, `spaceAfterComma`, `endOfLine` | – | delphi-lsp.json, Editor (`betterDelphiLsp.format`) | nein | Zahlenfeld, Kontrollkästchen, Auswahl | #43 |

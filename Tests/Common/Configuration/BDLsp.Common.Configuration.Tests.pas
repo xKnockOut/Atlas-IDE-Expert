@@ -28,6 +28,8 @@ type
     [Test]
     procedure ReadsStringLiteral;
     [Test]
+    procedure ReadsMemberOrder;
+    [Test]
     procedure ReadsDfmPropertyRules;
     [Test]
     procedure ReadsCompilerSettings;
@@ -377,6 +379,27 @@ begin
   Assert.AreEqual(3, Integer(Length(Issues)));
   Assert.AreEqual(Ord(TStringLiteralBreak.Space), Ord(Settings.StringLiteral.LineBreak));
   Assert.AreEqual(Ord(TStringLiteralStyle.Auto), Ord(Settings.StringLiteral.Style));
+end;
+
+procedure TConfigurationParserTests.ReadsMemberOrder;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.AreEqual(6, Integer(Length(Settings.MemberOrder.Sections)));
+  Assert.AreEqual('field', Settings.MemberOrder.Members[0]);
+  Assert.IsFalse(Settings.MemberOrder.SortFields);
+  Settings := Parse('{"memberOrder": {"sections": ["public", "private"], "members": ["method", "field"], ' +
+    '"sortFields": true, "sortPublished": true}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('public', Settings.MemberOrder.Sections[0]);
+  Assert.AreEqual('method', Settings.MemberOrder.Members[0]);
+  Assert.IsTrue(Settings.MemberOrder.SortFields);
+  Assert.IsTrue(Settings.MemberOrder.SortPublished);
+  Settings := Parse('{"memberOrder": {"sections": ["intern"], "x": 1}}', Issues);
+  // Unbekannte Sichtbarkeit (Fehler), "x" unbekannt (Warnung).
+  Assert.AreEqual(2, Integer(Length(Issues)));
 end;
 
 procedure TConfigurationParserTests.ReadsInlayHints;

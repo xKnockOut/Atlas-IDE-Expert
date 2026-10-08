@@ -62,6 +62,7 @@ type
     procedure ReadSortUses(ANode: TJsonNode);
     procedure ReadInlayHints(ANode: TJsonNode);
     procedure ReadStringLiteral(ANode: TJsonNode);
+    procedure ReadMemberOrder(ANode: TJsonNode);
     procedure ReadHighlight(ANode: TJsonNode);
     procedure ReadCompiler(ANode: TJsonNode);
     procedure ReadCompletion(ANode: TJsonNode);
@@ -651,6 +652,58 @@ begin
   end;
 end;
 
+procedure TValidator.ReadMemberOrder(ANode: TJsonNode);
+const
+  SectionNames: array[0..5] of string = ('strict private', 'private', 'strict protected', 'protected', 'public',
+    'published');
+  MemberNames: array[0..4] of string = ('field', 'constructor', 'destructor', 'method', 'property');
+var
+  Index, Item: Integer;
+  Key, Text: string;
+  Value: TJsonNode;
+  Names: TArray<string>;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"memberOrder" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    Value := ANode[Index];
+    if (Key = 'sections') or (Key = 'members') then
+    begin
+      if Value.Kind <> TJsonKind.Array_ then
+      begin
+        ReportNode(Value, Format('"memberOrder.%s" muss eine Liste sein', [Key]));
+        Continue;
+      end;
+      Names := nil;
+      for Item := 0 to Value.Count - 1 do
+        if ExpectString(Value[Item], Key, Text) then
+        begin
+          if ((Key = 'sections') and not MatchText(Text, SectionNames)) or
+            ((Key = 'members') and not MatchText(Text, MemberNames)) then
+            ReportNode(Value[Item], Format('Unbekannter Eintrag "%s" in "memberOrder.%s"', [Text, Key]))
+          else
+            Names := Names + [LowerCase(Text)];
+        end;
+      if Key = 'sections' then
+        FSettings.MemberOrder.Sections := Names
+      else
+        FSettings.MemberOrder.Members := Names;
+    end
+    else if Key = 'sortFields' then
+      ExpectBoolean(Value, Key, FSettings.MemberOrder.SortFields)
+    else if Key = 'sortPublished' then
+      ExpectBoolean(Value, Key, FSettings.MemberOrder.SortPublished)
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "memberOrder.%s"', [Key]), False);
+  end;
+end;
+
 procedure TValidator.ReadHighlight(ANode: TJsonNode);
 var
   Index, Item: Integer;
@@ -975,6 +1028,8 @@ begin
         ReadInlayHints(Value)
       else if Key = 'stringLiteral' then
         ReadStringLiteral(Value)
+      else if Key = 'memberOrder' then
+        ReadMemberOrder(Value)
       else if Key = 'highlight' then
         ReadHighlight(Value)
       else if Key = 'compiler' then
@@ -1203,6 +1258,8 @@ begin
       Result.InlayHints := FileSettings.InlayHints
     else if Key = 'stringLiteral' then
       Result.StringLiteral := FileSettings.StringLiteral
+    else if Key = 'memberOrder' then
+      Result.MemberOrder := FileSettings.MemberOrder
     else if Key = 'highlight' then
       Result.Highlight := FileSettings.Highlight
     else if Key = 'compiler' then

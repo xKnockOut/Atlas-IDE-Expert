@@ -104,6 +104,19 @@ type
     class function Default: TStringLiteralSettings; static;
   end;
 
+  /// <summary>Klassenmitglieder ordnen (#89).</summary>
+  TMemberOrderSettings = record
+    /// <summary>Sichtbarkeiten in Zielreihenfolge, z. B. 'strict private', 'private', 'public'.</summary>
+    Sections: TArray<string>;
+    /// <summary>Arten in Zielreihenfolge: field, constructor, destructor, method, property.</summary>
+    Members: TArray<string>;
+    /// <summary>Abschnitte mit Feldern dürfen die Reihenfolge der Felder (Speicherlayout) ändern.</summary>
+    SortFields: Boolean;
+    /// <summary>published-Abschnitte umsortieren (Streaming, Objektinspektor).</summary>
+    SortPublished: Boolean;
+    class function Default: TMemberOrderSettings; static;
+  end;
+
   /// <summary>Formatierung (#43). Given sagt, welche Werte aus delphi-lsp.json bzw. dem
   /// Editor stammen; nur die haben Vorrang vor .editorconfig.</summary>
   TFormatStyle = record
@@ -228,6 +241,8 @@ type
     UsesKeep: TArray<string>;
     /// <summary>Klartext als String-Literal (#312).</summary>
     StringLiteral: TStringLiteralSettings;
+    /// <summary>Klassenmitglieder ordnen (#89).</summary>
+    MemberOrder: TMemberOrderSettings;
     /// <summary>Eigenschaftsregeln für Formulardateien (#309).</summary>
     DfmPropertyRules: TArray<TDfmPropertyRule>;
     /// <summary>Obergrenze für den Symbolindex in MB; 0 = unbegrenzt (#185).</summary>
@@ -396,6 +411,16 @@ begin
   Result.MaxLineLength := 0;
 end;
 
+{ TMemberOrderSettings }
+
+class function TMemberOrderSettings.Default: TMemberOrderSettings;
+begin
+  Result.Sections := ['strict private', 'private', 'strict protected', 'protected', 'public', 'published'];
+  Result.Members := ['field', 'constructor', 'destructor', 'method', 'property'];
+  Result.SortFields := False;
+  Result.SortPublished := False;
+end;
+
 { THighlightSettings }
 
 class function THighlightSettings.Default: THighlightSettings;
@@ -471,6 +496,7 @@ begin
   Result.SortUsesByNamespace := False;
   Result.UsesKeep := nil;
   Result.StringLiteral := TStringLiteralSettings.Default;
+  Result.MemberOrder := TMemberOrderSettings.Default;
   Result.DfmPropertyRules := nil;
   Result.MemoryBudgetMb := 0;
   Result.RequestTimeoutMs := 10000;

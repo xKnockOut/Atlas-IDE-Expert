@@ -34,6 +34,7 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 | `highlight` | object | – |  | Zusammengehörige Schlüsselwörter hervorheben, wenn der Cursor auf einem steht. |
 | `inlayHints` | object | – |  | Inlay Hints im Editor. |
 | `stringLiteral` | object | – |  | Code-Aktionen „Als String-Literal“ und „Als Klartext kopieren“. |
+| `memberOrder` | object | – |  | Code-Aktion „Klassenmitglieder ordnen“: Reihenfolge der Sichtbarkeitsabschnitte und der Mitglieder darin. |
 | `minConfidence` | string | `"medium"` | `"low"`, `"medium"`, `"high"` | Regeltreffer unter dieser Konfidenz ausblenden. |
 | `exclude` | array<string> | – | z. B. `["ThirdParty/**","Generated/*.pas"]` | Ordner und Dateien, die nicht geprüft werden (Glob-Muster relativ zu diesem Ordner: *, **, ?). |
 | `format` | object | – |  | Formatierung (Dokument und Auswahl formatieren). Gesetzte Werte haben Vorrang vor .editorconfig. |
@@ -99,6 +100,15 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 | `stringLiteral.style` | string | `"auto"` | `"auto"`, `"multiline"`, `"concat"` | auto: mehrzeiliger String mit ''', wenn die Delphi-Version ihn kennt (ab Delphi 12), sonst Verkettung. |
 | `stringLiteral.lineBreak` | string | `"sLineBreak"` | `"sLineBreak"`, `"#13#10"`, `"#10"`, `"space"`, `"none"` | Was bei Verkettung zwischen den Zeilen steht; space z. B. für SQL, das einzeilig ankommen soll. |
 | `stringLiteral.maxLineLength` | integer | `0` | 0… | Bei Verkettung lange Zeilen zusätzlich umbrechen (0 = nicht umbrechen). |
+
+## memberOrder
+
+| Schlüssel | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|
+| `memberOrder.sections` | array<string> | `["strict private","private","strict protected","protected","public","published"]` |  | Zielreihenfolge der Sichtbarkeitsabschnitte; nicht genannte kommen ans Ende. |
+| `memberOrder.members` | array<string> | `["field","constructor","destructor","method","property"]` |  | Zielreihenfolge der Mitglieder in einem Abschnitt; innerhalb einer Art bleibt die Reihenfolge. |
+| `memberOrder.sortFields` | boolean | `false` |  | Abschnitte mit Feldern auch dann verschieben, wenn sich dadurch die Reihenfolge der Felder (Speicherlayout) ändert. |
+| `memberOrder.sortPublished` | boolean | `false` |  | Auch published-Abschnitte umsortieren; ihre Reihenfolge bestimmt Streaming und Objektinspektor. |
 
 ## format
 
