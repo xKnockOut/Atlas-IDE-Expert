@@ -41,6 +41,7 @@ contains
   BDLsp.Windows.Diagnostics.Adapters.DebugOutputSink in 'Source\Diagnostics\BDLsp.Windows.Diagnostics.Adapters.DebugOutputSink.pas',
   BDLsp.Windows.Diagnostics.StackTrace in 'Source\Diagnostics\BDLsp.Windows.Diagnostics.StackTrace.pas',
   BDLsp.Windows.Projects.DelphiInstallation in 'Source\Projects\BDLsp.Windows.Projects.DelphiInstallation.pas',
+  BDLsp.Windows.Documents.PathCanonicalizer in 'Source\Documents\BDLsp.Windows.Documents.PathCanonicalizer.pas',
   BDLsp.Windows.Console.StdStreams in 'Source\Console\BDLsp.Windows.Console.StdStreams.pas';
 
 end.

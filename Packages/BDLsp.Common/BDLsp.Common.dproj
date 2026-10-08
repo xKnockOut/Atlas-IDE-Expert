@@ -95,8 +95,8 @@
         <DCCReference Include="Source\Configuration\BDLsp.Common.Configuration.Contract.pas"/>
         <DCCReference Include="Source\Configuration\Internals\BDLsp.Common.Configuration.Internals.JsonTree.pas"/>
         <DCCReference Include="Source\Configuration\BDLsp.Common.Configuration.Parser.pas"/>
-        <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Uris.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Configuration.pas"/>
+        <DCCReference Include="Source\Documents\BDLsp.Common.Documents.Uris.pas"/>
         <DCCReference Include="Source\Documents\Providers\BDLsp.Common.Documents.Providers.DocumentStore.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Positions.pas"/>
         <DCCReference Include="Source\Lsp\Internals\BDLsp.Common.Lsp.Internals.Debouncer.pas"/>

@@ -31,6 +31,8 @@ type
     procedure ReportsEventsPerDocument;
     [Test]
     procedure ListsOpenDocuments;
+    [Test]
+    procedure FindsDocumentUnderOtherSpelling;
   end;
 
 implementation
@@ -134,6 +136,20 @@ begin
   FStore.Close(UriA);
   Assert.AreEqual<NativeInt>(1, Length(FStore.Documents));
   Assert.AreEqual(UriB, FStore.Documents[0].Uri);
+end;
+
+procedure TDocumentStoreTests.FindsDocumentUnderOtherSpelling;
+var
+  Document: ITextDocument;
+begin
+  FStore.Open('file:///c%3A/Projekt/%C3%84.pas', 'pascal', 1, 'a');
+  Assert.IsTrue(FStore.TryGet('file:///C:/projekt/' + #$00E4 + '.pas', Document));
+  // Das Dokument behält die URI des Clients.
+  Assert.AreEqual('file:///c%3A/Projekt/%C3%84.pas', Document.Uri);
+  FStore.Change('file:///C:/Projekt/%C3%84.pas', 2, [TTextChange.Full('b')]);
+  Assert.AreEqual<NativeInt>(1, Length(FStore.Documents));
+  FStore.Close('file:///C:/PROJEKT/%C3%84.pas');
+  Assert.AreEqual<NativeInt>(0, Length(FStore.Documents));
 end;
 
 initialization

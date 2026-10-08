@@ -75,6 +75,7 @@ uses
   BDLsp.Common.Documents.FileEncoding,
   BDLsp.Common.Configuration.Contract,
   BDLsp.Windows.Console.StdStreams,
+  BDLsp.Windows.Documents.PathCanonicalizer,
   BDLsp.Windows.Diagnostics.Adapters.DebugOutputSink,
   BDLsp.Windows.Diagnostics.StackTrace;
 
@@ -120,7 +121,11 @@ begin
       Result := BuildCapabilities;
     end);
   FLifecycle.Attach(FDispatcher);
-  FDocuments := TDocumentStore.Create;
+  FDocuments := TDocumentStore.Create(
+    function(const APath: string): string
+    begin
+      Result := TWindowsPathCanonicalizer.Canonicalize(APath);
+    end);
   FTextDocumentSync := TLspTextDocumentSync.Create(FDocuments);
   FTextDocumentSync.Attach(FDispatcher);
   FSyntaxDiagnostics := TLspSyntaxDiagnostics.Create(FDocuments, FTransport);
