@@ -78,6 +78,7 @@ uses
   BDLsp.Common.Pascal.SyntaxTree,
   BDLsp.Common.Pascal.TreeCache,
   BDLsp.Common.Editing.ClassCompletion,
+  BDLsp.Common.Editing.DocComments,
   BDLsp.Common.Documents.Uris,
   BDLsp.Common.Dfm.Parser,
   BDLsp.Common.Index.Contract,
@@ -271,6 +272,10 @@ begin
   end;
   for Action in UsesActions do
     TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+  // Dokumentationskommentar erzeugen bzw. an die Signatur anpassen (#88).
+  if WantsEditing then
+    for Action in TDocComments.Actions(Document.Text, Tree, Range.StartPos.Line) do
+      TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
   if WantsOrganize and TCodeActions.OrganizeImports(Document.Text, Assigned(FSortUsesFor) and FSortUsesFor(Uri),
     Action, Assigned(FSortUsesByNamespaceFor) and FSortUsesByNamespaceFor(Uri)) then
     TJSONArray(Result).AddElement(ActionToJson(Uri, Action));

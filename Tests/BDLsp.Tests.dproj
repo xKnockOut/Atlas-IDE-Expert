@@ -187,6 +187,7 @@
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.RefactoringCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.ExpressionCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.Modernizer.Tests.pas"/>
+        <DCCReference Include="Common\Editing\BDLsp.Common.Editing.DocComments.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.ProjectCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.SqlText.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.DatabaseCommands.Tests.pas"/>

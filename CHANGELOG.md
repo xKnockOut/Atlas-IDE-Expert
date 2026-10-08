@@ -12,6 +12,7 @@ Server und Erweiterung tragen immer dieselbe Version.
 - Schnellbefehle für Records und Wertobjekte: `/record` (mit `ro` nur lesbar), `/operator` (`=` bringt `<>` mit), `/equals` (Equals und GetHashCode über dieselben Felder) und `/clone` (#323).
 - Schnellbefehl `/modern`: for-in statt Indexschleife, Inline-Variablen und FreeAndNil in der umgebenden Routine, einzeln abschaltbar mit `-for`, `-inline`, `-free` (#303).
 - Attribute: Gehe zu Definition und Referenzsuche lösen `[Foo]` zuerst als `FooAttribute` auf (auch qualifiziert); der Hover zeigt die passenden Konstruktoren (#119).
+- Dokumentationskommentar: nach `///` über einer Deklaration entsteht das Gerüst mit `<summary>`, `<typeparam>`, `<param>` und `<returns>`; Code-Aktionen erzeugen den Kommentar bzw. passen die `<param>` an die Signatur an (#88).
 - Schnellbefehle für eigene Komponenten: `/notify OnChange`, `/changed Farbe` (Invalidate bei Controls), `/loaded` und `/notification` samt FreeNotification im Setter (#320).
 - Schnellbefehle `/header` (Dateikopf aus `slashCommands.headerTemplate`, Jahr fortschreiben), `/deprecated Grund`, `/region-all` und `/bookmark Name`; die Symbolsuche findet Lesezeichen `// @bookmark Name` (#306).
 - Schnellbefehle für Datenbankcode: `/sql`, `/params`, `/loop` und `/transaction`, passend zu FireDAC, ADO, dbExpress und IBX (#302).

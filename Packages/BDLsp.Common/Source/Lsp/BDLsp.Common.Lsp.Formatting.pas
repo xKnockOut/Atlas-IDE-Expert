@@ -8,6 +8,8 @@
 // textDocument/onTypeFormatting (#179) ergänzt nach Enter den Blockabschluss
 // (BDLsp.Common.Editing.BlockCompletion), schaltbar über "completeBlocks",
 // und führt Schnellbefehle wie "/uses Unit" über das Register aus (#293, "slashCommands").
+// Nach dem dritten "/" über einer Deklaration entsteht das Gerüst des
+// Dokumentationskommentars (#88, BDLsp.Common.Editing.DocComments).
 
 interface
 
@@ -55,7 +57,7 @@ type
     constructor Create(const AStore: IDocumentStore; const ASettingsProvider: TFormatStyleProvider;
       const AReadFile: TEditorConfigReadFile);
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
-    /// <summary>documentOnTypeFormattingProvider: ausgelöst durch Enter.</summary>
+    /// <summary>documentOnTypeFormattingProvider: ausgelöst durch Enter und "/" (#88).</summary>
     class function OnTypeCapability: TJSONObject; static;
     /// <summary>Einstellungen für AFileName aus Editor-Optionen, .editorconfig und AConfigured.</summary>
     class function Resolve(const AOptions: TJSONValue; const AFileName: string; const AConfigured: TFormatStyle;
@@ -79,8 +81,10 @@ uses
   BDLsp.Common.Lsp.Positions,
   BDLsp.Common.Rules.Contract,
   BDLsp.Common.Pascal.Lexer,
+  BDLsp.Common.Pascal.TreeCache,
   BDLsp.Common.Editing.Formatter,
-  BDLsp.Common.Editing.BlockCompletion;
+  BDLsp.Common.Editing.BlockCompletion,
+  BDLsp.Common.Editing.DocComments;
 
 { TLspFormatting }
 
@@ -104,6 +108,7 @@ class function TLspFormatting.OnTypeCapability: TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('firstTriggerCharacter', #10);
+  Result.AddPair('moreTriggerCharacter', TJSONArray.Create.Add('/'));
 end;
 
 function TLspFormatting.HandleOnType(const AParams: TJSONValue;
@@ -118,15 +123,29 @@ var
   Disabled: TArray<string>;
   Item: TJSONObject;
   Version: string;
+  Shared: ISharedSyntaxTree;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Felder "textDocument.uri" und "position" fehlen');
   Result := TJSONArray.Create;
-  if not TJSONObject(AParams).TryGetValue<string>('ch', Character) or (Character <> #10) then
+  if not TJSONObject(AParams).TryGetValue<string>('ch', Character) or ((Character <> #10) and
+    (Character <> '/')) then
     Exit;
   if not FStore.TryGet(Uri, Document) then
     Exit;
+  if Character = '/' then
+  begin
+    Shared := TSyntaxTreeCache.Get(Document);
+    if TDocComments.AfterSlash(Document.Text, Shared.Tree, TLspPositions.ReadPosition(PositionValue), Edit) then
+    begin
+      Item := TJSONObject.Create;
+      Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
+      Item.AddPair('newText', Edit.NewText);
+      TJSONArray(Result).AddElement(Item);
+    end;
+    Exit;
+  end;
   Disabled := nil;
   Version := '';
   if Assigned(FDelphiVersionFor) then
