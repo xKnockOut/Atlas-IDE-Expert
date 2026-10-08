@@ -28,6 +28,8 @@ type
     [IgnoreMemoryLeaks]
     procedure CancelsRunningConcurrentRequest;
     [Test]
+    // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
+    [IgnoreMemoryLeaks]
     procedure KeepsOrderOfNotificationsAndRequests;
     [Test]
     procedure RaisesTransportErrorOfBrokenStream;
