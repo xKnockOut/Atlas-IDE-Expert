@@ -18,6 +18,8 @@ uses
   System.JSON,
   BDLsp.Common.JsonRpc.Contract,
   BDLsp.Common.Documents.Contract,
+  BDLsp.Common.Configuration.Contract,
+  BDLsp.Common.Rules.Contract,
   BDLsp.Common.Lsp.Internals.Debouncer;
 
 type
@@ -26,6 +28,17 @@ type
   TDefinesProvider = reference to function(const AUri: string; out ADefines: TArray<string>): Boolean;
   /// <summary>Eingestellte Delphi-Version für AUri; '' = unbekannt. Hintergrund-Thread.</summary>
   TDelphiVersionProvider = reference to function(const AUri: string): string;
+
+  /// <summary>Was die Prüfregeln für ein Dokument brauchen.</summary>
+  TRuleCheckContext = record
+    Rules: TArray<IRule>;
+    Settings: TServerSettings;
+    /// <summary>Pfad relativ zum Ordner der Konfiguration, '' wenn unbekannt.</summary>
+    RelativePath: string;
+  end;
+
+  /// <summary>Regeln und Einstellungen für AUri; False = keine Regeln prüfen. Hintergrund-Thread.</summary>
+  TRuleContextProvider = reference to function(const AUri: string; out AContext: TRuleCheckContext): Boolean;
 
   TLspSyntaxDiagnostics = class
   public const
@@ -42,6 +55,7 @@ type
     FDefinesLock: TObject;
     FDefinesProvider: TDefinesProvider;
     FVersionProvider: TDelphiVersionProvider;
+    FRuleProvider: TRuleContextProvider;
     procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
     procedure ScheduleParse(const ADocument: ITextDocument);
     procedure Publish(const ADocument: ITextDocument);
@@ -52,6 +66,8 @@ type
     procedure SetDefinesProvider(const AValue: TDefinesProvider);
     function CurrentVersion(const AUri: string): string;
     procedure SetVersionProvider(const AValue: TDelphiVersionProvider);
+    function CurrentRules(const AUri: string; out AContext: TRuleCheckContext): Boolean;
+    procedure SetRuleProvider(const AValue: TRuleContextProvider);
   public
     /// <summary>Bei ADelayMs = 0 wird sofort im Thread der Nachrichtenschleife geparst.</summary>
     constructor Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
@@ -67,6 +83,11 @@ type
     /// <summary>Wie oben, zusätzlich mit Sprachmerkmalen, die ADelphiVersion nicht kennt.</summary>
     class function BuildParams(const ADocument: ITextDocument; const AInactive: TArray<TTextRange>;
       const ADelphiVersion: string): TJSONObject; overload; static;
+    /// <summary>Wie oben, zusätzlich mit den Treffern der Prüfregeln aus ARules.</summary>
+    class function BuildParams(const ADocument: ITextDocument; const AInactive: TArray<TTextRange>;
+      const ADelphiVersion: string; const ARules: TRuleCheckContext): TJSONObject; overload; static;
+    /// <summary>Ein Regeltreffer als LSP-Diagnostic (code = Regelkennung). Der Aufrufer übernimmt das Objekt.</summary>
+    class function FindingToJson(const AFinding: TRuleFinding): TJSONObject; static;
     /// <summary>Prüft alle geöffneten Dokumente neu, z. B. nach geänderten Symbolen.</summary>
     procedure Refresh;
     /// <summary>Parameter mit leerer Liste, z. B. nach dem Schließen. Der Aufrufer übernimmt das Objekt.</summary>
@@ -76,6 +97,8 @@ type
     /// <summary>Liefert die Symbole für das Abblenden inaktiver Bereiche.</summary>
     property DefinesProvider: TDefinesProvider write SetDefinesProvider;
     property VersionProvider: TDelphiVersionProvider write SetVersionProvider;
+    /// <summary>Liefert Regeln und Einstellungen; ohne Provider laufen keine Prüfregeln.</summary>
+    property RuleProvider: TRuleContextProvider write SetRuleProvider;
   end;
 
 implementation
@@ -87,7 +110,8 @@ uses
   BDLsp.Common.Pascal.SyntaxTree,
   BDLsp.Common.Pascal.Parser,
   BDLsp.Common.Pascal.LanguageFeatures,
-  BDLsp.Common.Lsp.InactiveRegions;
+  BDLsp.Common.Lsp.InactiveRegions,
+  BDLsp.Common.Rules.Engine;
 
 // Übernimmt AParams.
 procedure Send(const ATransport: IJsonRpcTransport; AParams: TJSONObject);
@@ -188,6 +212,30 @@ begin
   end;
 end;
 
+function TLspSyntaxDiagnostics.CurrentRules(const AUri: string; out AContext: TRuleCheckContext): Boolean;
+var
+  Provider: TRuleContextProvider;
+begin
+  TMonitor.Enter(FDefinesLock);
+  try
+    Provider := FRuleProvider;
+  finally
+    TMonitor.Exit(FDefinesLock);
+  end;
+  AContext := Default(TRuleCheckContext);
+  Result := Assigned(Provider) and Provider(AUri, AContext);
+end;
+
+procedure TLspSyntaxDiagnostics.SetRuleProvider(const AValue: TRuleContextProvider);
+begin
+  TMonitor.Enter(FDefinesLock);
+  try
+    FRuleProvider := AValue;
+  finally
+    TMonitor.Exit(FDefinesLock);
+  end;
+end;
+
 procedure TLspSyntaxDiagnostics.Refresh;
 var
   Document: ITextDocument;
@@ -240,11 +288,14 @@ var
   Params: TJSONObject;
   Defines: TArray<string>;
   Inactive: TArray<TTextRange>;
+  Rules: TRuleCheckContext;
 begin
   Inactive := nil;
   if CurrentDefines(ADocument.Uri, Defines) then
     Inactive := TLspInactiveRegions.Ranges(ADocument.Text, Defines);
-  Params := BuildParams(ADocument, Inactive, CurrentVersion(ADocument.Uri));
+  if not CurrentRules(ADocument.Uri, Rules) then
+    Rules := Default(TRuleCheckContext);
+  Params := BuildParams(ADocument, Inactive, CurrentVersion(ADocument.Uri), Rules);
   TMonitor.Enter(FSendLock);
   try
     // Inzwischen geändert oder geschlossen: Der neuere Stand meldet selbst.
@@ -270,6 +321,37 @@ end;
 
 class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
   const AInactive: TArray<TTextRange>; const ADelphiVersion: string): TJSONObject;
+begin
+  Result := BuildParams(ADocument, AInactive, ADelphiVersion, Default(TRuleCheckContext));
+end;
+
+class function TLspSyntaxDiagnostics.FindingToJson(const AFinding: TRuleFinding): TJSONObject;
+var
+  Severity: Integer;
+begin
+  case AFinding.Severity of
+    TRuleSeverity.Error:
+      Severity := TLspDiagnosticSeverity.Error;
+    TRuleSeverity.Warning:
+      Severity := TLspDiagnosticSeverity.Warning;
+    TRuleSeverity.Information:
+      Severity := TLspDiagnosticSeverity.Information;
+  else
+    Severity := TLspDiagnosticSeverity.Hint;
+  end;
+  Result := TJSONObject.Create;
+  Result.AddPair('range', TLspPositions.RangeToJson(AFinding.Range));
+  Result.AddPair('severity', TJSONNumber.Create(Severity));
+  Result.AddPair('code', AFinding.RuleId);
+  Result.AddPair('source', Source);
+  Result.AddPair('message', AFinding.DisplayMessage);
+end;
+
+class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
+  const AInactive: TArray<TTextRange>; const ADelphiVersion: string; const ARules: TRuleCheckContext): TJSONObject;
+var
+  RuleFinding: TRuleFinding;
+  Context: TRuleContext;
 var
   Finding: TLanguageFeatureFinding;
   Range: TTextRange;
@@ -299,6 +381,16 @@ begin
       Item.AddPair('source', Source);
       Item.AddPair('message', Finding.Message);
       Items.AddElement(Item);
+    end;
+    if Length(ARules.Rules) > 0 then
+    begin
+      Context := Default(TRuleContext);
+      Context.RelativePath := ARules.RelativePath;
+      Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARules.RelativePath, '/', '\', [rfReplaceAll])), '');
+      Context.Text := ADocument.Text;
+      Context.Tree := Tree;
+      for RuleFinding in TRuleEngine.Run(ARules.Rules, ARules.Settings, Context) do
+        Items.AddElement(FindingToJson(RuleFinding));
     end;
   finally
     Tree.Free;

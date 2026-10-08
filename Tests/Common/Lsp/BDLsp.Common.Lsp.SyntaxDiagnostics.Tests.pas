@@ -56,6 +56,12 @@ type
     procedure AddsInactiveRangesAsUnnecessaryHints;
     [Test]
     procedure FindsInactiveRanges;
+    [Test]
+    procedure AddsRuleFindingsWithCode;
+    [Test]
+    procedure RuleOffInSettingsAddsNothing;
+    [Test]
+    procedure MapsRuleSeverityAndConfidence;
   end;
 
 implementation
@@ -65,6 +71,10 @@ uses
   System.Classes,
   System.Diagnostics,
   BDLsp.Common.Documents.Providers.DocumentStore,
+  BDLsp.Common.Configuration.Contract,
+  BDLsp.Common.Configuration.Parser,
+  BDLsp.Common.Rules.Contract,
+  BDLsp.Common.Rules.Builtin,
   BDLsp.Common.Lsp.SyntaxDiagnostics;
 
 const
@@ -300,6 +310,70 @@ begin
     Assert.AreEqual(1, Params.GetValue<TJSONArray>('diagnostics').Count);
   finally
     Params.Free;
+  end;
+end;
+
+function RulesWith(const AConfigJson: string): TRuleCheckContext;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Result := Default(TRuleCheckContext);
+  Result.Rules := BuiltinRules;
+  if AConfigJson = '' then
+    Result.Settings := TServerSettings.Default
+  else
+    Result.Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+  Result.RelativePath := 'A.pas';
+end;
+
+procedure TLspSyntaxDiagnosticsTests.AddsRuleFindingsWithCode;
+var
+  Params: TJSONObject;
+  Document: ITextDocument;
+  Item: TJSONObject;
+begin
+  Document := FStore.Open(Uri, 'objectpascal', 1, ValidCode + ' // ' + Char($202E));
+  Params := TLspSyntaxDiagnostics.BuildParams(Document, nil, '', RulesWith(''));
+  try
+    Assert.AreEqual(1, Params.GetValue<TJSONArray>('diagnostics').Count);
+    Item := Params.GetValue<TJSONArray>('diagnostics').Items[0] as TJSONObject;
+    Assert.AreEqual('bidi-control', Item.GetValue<string>('code'));
+    Assert.AreEqual(1, Item.GetValue<Integer>('severity'));
+  finally
+    Params.Free;
+  end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.RuleOffInSettingsAddsNothing;
+var
+  Params: TJSONObject;
+  Document: ITextDocument;
+begin
+  Document := FStore.Open(Uri, 'objectpascal', 1, ValidCode + ' // ' + Char($202E));
+  Params := TLspSyntaxDiagnostics.BuildParams(Document, nil, '', RulesWith('{ "rules": { "bidi-control": "off" } }'));
+  try
+    Assert.AreEqual(0, Params.GetValue<TJSONArray>('diagnostics').Count);
+  finally
+    Params.Free;
+  end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.MapsRuleSeverityAndConfidence;
+var
+  Finding: TRuleFinding;
+  Item: TJSONObject;
+begin
+  Finding := Default(TRuleFinding);
+  Finding.RuleId := 'x';
+  Finding.Message := 'Meldung';
+  Finding.Severity := TRuleSeverity.Information;
+  Finding.Confidence := TRuleConfidence.Medium;
+  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  try
+    Assert.AreEqual(3, Item.GetValue<Integer>('severity'));
+    Assert.AreEqual('Meldung (Konfidenz: mittel)', Item.GetValue<string>('message'));
+  finally
+    Item.Free;
   end;
 end;
 
