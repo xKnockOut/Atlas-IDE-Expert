@@ -111,7 +111,8 @@ uses
   BDLsp.Common.Rules.Builtin.UnitFiles.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.UnitFiles.Tests.pas',
   BDLsp.Common.Lsp.FileOperations.Tests in 'Common\Lsp\BDLsp.Common.Lsp.FileOperations.Tests.pas',
   BDLsp.Common.Semantics.UnresolvedNames.Tests in 'Common\Semantics\BDLsp.Common.Semantics.UnresolvedNames.Tests.pas',
-  BDLsp.Common.Rules.Builtin.Architecture.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Architecture.Tests.pas';
+  BDLsp.Common.Rules.Builtin.Architecture.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Architecture.Tests.pas',
+  BDLsp.Common.Rules.Builtin.Concurrency.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Concurrency.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

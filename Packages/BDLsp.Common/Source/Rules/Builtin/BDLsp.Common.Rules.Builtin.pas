@@ -16,7 +16,8 @@ uses
   BDLsp.Common.Rules.Registry,
   BDLsp.Common.Rules.Builtin.Unicode,
   BDLsp.Common.Rules.Builtin.UnitFiles,
-  BDLsp.Common.Rules.Builtin.Architecture;
+  BDLsp.Common.Rules.Builtin.Architecture,
+  BDLsp.Common.Rules.Builtin.Concurrency;
 
 function BuiltinRules: TArray<IRule>;
 var
@@ -27,6 +28,7 @@ begin
     RegisterUnicodeRules(Registry);
     RegisterUnitFileRules(Registry);
     RegisterArchitectureRules(Registry);
+    RegisterConcurrencyRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

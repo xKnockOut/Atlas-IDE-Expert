@@ -71,6 +71,51 @@
       "description": "A uses entry violates a layer rule configured under \"layers\" in delphi-lsp.json, e.g. *.Common.* must not use Vcl.*.",
       "bad": "unit App.Common.Model;\ninterface\nuses Vcl.Forms;",
       "good": "unit App.Common.Model;\ninterface\nuses System.Classes;"
+    },
+    {
+      "id": "lock-without-finally",
+      "name": "Lock without try/finally",
+      "category": "bug",
+      "severity": "warning",
+      "description": "A lock (Enter, Acquire, BeginWrite, BeginRead, LockList, Lock, TMonitor.Enter) is not directly followed by try/finally releasing it. An exception leaves the lock held.",
+      "bad": "FLock.Enter;\nDoWork;\nFLock.Leave;",
+      "good": "FLock.Enter;\ntry\n  DoWork;\nfinally\n  FLock.Leave;\nend;"
+    },
+    {
+      "id": "thread-used-after-start",
+      "name": "Thread used after start with FreeOnTerminate",
+      "category": "bug",
+      "severity": "warning",
+      "description": "A thread with FreeOnTerminate := True may free itself as soon as it is started; using the variable afterwards can access a freed object.",
+      "bad": "T.FreeOnTerminate := True;\nT.Start;\nT.WaitFor;",
+      "good": "T.FreeOnTerminate := True;\nT.Start;\nT := nil;"
+    },
+    {
+      "id": "synchronize-in-destructor",
+      "name": "Synchronize in destructor",
+      "category": "bug",
+      "severity": "warning",
+      "description": "Synchronize in a destructor deadlocks when the main thread is waiting for the object to be freed.",
+      "bad": "destructor TWorker.Destroy;\nbegin\n  Synchronize(Notify);\n  inherited;\nend;",
+      "good": "destructor TWorker.Destroy;\nbegin\n  inherited;\nend;"
+    },
+    {
+      "id": "deprecated-suspend-resume",
+      "name": "Deprecated TThread.Suspend/Resume",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "TThread.Resume and Suspend are deprecated. Start a created thread with Start; wait with an event instead of Suspend.",
+      "bad": "FWorker.Resume;",
+      "good": "FWorker.Start;"
+    },
+    {
+      "id": "thread-free-without-waitfor",
+      "name": "Thread freed without WaitFor",
+      "category": "bug",
+      "severity": "hint",
+      "description": "A thread variable is freed without a prior WaitFor in the same routine. TThread.Destroy waits itself, but errors and the end of the thread go unnoticed. Experimental.",
+      "bad": "FWorkerThread.Free;",
+      "good": "FWorkerThread.Terminate;\nFWorkerThread.WaitFor;\nFWorkerThread.Free;"
     }
   ]
 }

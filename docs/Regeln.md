@@ -12,6 +12,11 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`confusable-identifier`](#confusable-identifier) | Verwechselbarer Bezeichner | Sicherheits-Hotspot | Warnung |
 | [`unit-name-mismatch`](#unit-name-mismatch) | Unit-Name passt nicht zum Dateinamen | Bug | Warnung |
 | [`forbidden-uses`](#forbidden-uses) | Verbotene uses-Beziehung | Code Smell | Fehler |
+| [`lock-without-finally`](#lock-without-finally) | Sperre ohne try/finally | Bug | Warnung |
+| [`thread-used-after-start`](#thread-used-after-start) | Thread nach dem Start mit FreeOnTerminate benutzt | Bug | Warnung |
+| [`synchronize-in-destructor`](#synchronize-in-destructor) | Synchronize im Destruktor | Bug | Warnung |
+| [`deprecated-suspend-resume`](#deprecated-suspend-resume) | Veraltetes TThread.Suspend/Resume | Code Smell | Hinweis |
+| [`thread-free-without-waitfor`](#thread-free-without-waitfor) | Thread ohne WaitFor freigegeben | Bug | Hinweis |
 
 <a id="syntax"></a>
 ## syntax
@@ -177,4 +182,119 @@ Richtig:
 unit App.Common.Model;
 interface
 uses System.Classes;
+```
+
+<a id="lock-without-finally"></a>
+## lock-without-finally
+
+**Sperre ohne try/finally** · Bug · Warnung
+
+Auf eine Sperre (Enter, Acquire, BeginWrite, BeginRead, LockList, Lock, TMonitor.Enter) folgt kein try/finally mit der Freigabe. Eine Ausnahme lässt die Sperre gesetzt.
+
+Mit Treffer:
+
+```pascal
+FLock.Enter;
+DoWork;
+FLock.Leave;
+```
+
+Richtig:
+
+```pascal
+FLock.Enter;
+try
+  DoWork;
+finally
+  FLock.Leave;
+end;
+```
+
+<a id="thread-used-after-start"></a>
+## thread-used-after-start
+
+**Thread nach dem Start mit FreeOnTerminate benutzt** · Bug · Warnung
+
+Ein Thread mit FreeOnTerminate := True kann sich gleich nach dem Start selbst freigeben; danach greift die Variable womöglich auf ein freigegebenes Objekt zu.
+
+Mit Treffer:
+
+```pascal
+T.FreeOnTerminate := True;
+T.Start;
+T.WaitFor;
+```
+
+Richtig:
+
+```pascal
+T.FreeOnTerminate := True;
+T.Start;
+T := nil;
+```
+
+<a id="synchronize-in-destructor"></a>
+## synchronize-in-destructor
+
+**Synchronize im Destruktor** · Bug · Warnung
+
+Synchronize im Destruktor verklemmt sich, wenn der Hauptthread auf die Freigabe wartet.
+
+Mit Treffer:
+
+```pascal
+destructor TWorker.Destroy;
+begin
+  Synchronize(Notify);
+  inherited;
+end;
+```
+
+Richtig:
+
+```pascal
+destructor TWorker.Destroy;
+begin
+  inherited;
+end;
+```
+
+<a id="deprecated-suspend-resume"></a>
+## deprecated-suspend-resume
+
+**Veraltetes TThread.Suspend/Resume** · Code Smell · Hinweis
+
+TThread.Resume und Suspend sind veraltet. Einen erzeugten Thread mit Start starten, statt Suspend mit einem Ereignis warten.
+
+Mit Treffer:
+
+```pascal
+FWorker.Resume;
+```
+
+Richtig:
+
+```pascal
+FWorker.Start;
+```
+
+<a id="thread-free-without-waitfor"></a>
+## thread-free-without-waitfor
+
+**Thread ohne WaitFor freigegeben** · Bug · Hinweis
+
+Eine Thread-Variable wird ohne vorheriges WaitFor in derselben Routine freigegeben. TThread.Destroy wartet zwar selbst, Fehler und Ende des Threads bleiben aber unbemerkt. Experimentell.
+
+Mit Treffer:
+
+```pascal
+FWorkerThread.Free;
+```
+
+Richtig:
+
+```pascal
+FWorkerThread.Terminate;
+FWorkerThread.WaitFor;
+FWorkerThread.Free;
 ```

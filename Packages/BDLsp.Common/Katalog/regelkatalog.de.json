@@ -39,6 +39,31 @@
       "id": "forbidden-uses",
       "name": "Verbotene uses-Beziehung",
       "description": "Ein uses-Eintrag verletzt eine Schichtregel unter \"layers\" in delphi-lsp.json, z. B. darf *.Common.* nicht Vcl.* verwenden."
+    },
+    {
+      "id": "lock-without-finally",
+      "name": "Sperre ohne try/finally",
+      "description": "Auf eine Sperre (Enter, Acquire, BeginWrite, BeginRead, LockList, Lock, TMonitor.Enter) folgt kein try/finally mit der Freigabe. Eine Ausnahme lässt die Sperre gesetzt."
+    },
+    {
+      "id": "thread-used-after-start",
+      "name": "Thread nach dem Start mit FreeOnTerminate benutzt",
+      "description": "Ein Thread mit FreeOnTerminate := True kann sich gleich nach dem Start selbst freigeben; danach greift die Variable womöglich auf ein freigegebenes Objekt zu."
+    },
+    {
+      "id": "synchronize-in-destructor",
+      "name": "Synchronize im Destruktor",
+      "description": "Synchronize im Destruktor verklemmt sich, wenn der Hauptthread auf die Freigabe wartet."
+    },
+    {
+      "id": "deprecated-suspend-resume",
+      "name": "Veraltetes TThread.Suspend/Resume",
+      "description": "TThread.Resume und Suspend sind veraltet. Einen erzeugten Thread mit Start starten, statt Suspend mit einem Ereignis warten."
+    },
+    {
+      "id": "thread-free-without-waitfor",
+      "name": "Thread ohne WaitFor freigegeben",
+      "description": "Eine Thread-Variable wird ohne vorheriges WaitFor in derselben Routine freigegeben. TThread.Destroy wartet zwar selbst, Fehler und Ende des Threads bleiben aber unbemerkt. Experimentell."
     }
   ]
 }
