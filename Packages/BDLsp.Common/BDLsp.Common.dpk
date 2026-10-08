@@ -132,6 +132,7 @@ contains
   BDLsp.Common.Editing.WrapCommands in 'Source\Editing\BDLsp.Common.Editing.WrapCommands.pas',
   BDLsp.Common.Editing.RefactoringCommands in 'Source\Editing\BDLsp.Common.Editing.RefactoringCommands.pas',
   BDLsp.Common.Editing.ExpressionCommands in 'Source\Editing\BDLsp.Common.Editing.ExpressionCommands.pas',
+  BDLsp.Common.Editing.Modernizer in 'Source\Editing\BDLsp.Common.Editing.Modernizer.pas',
   BDLsp.Common.Editing.ProjectCommands in 'Source\Editing\BDLsp.Common.Editing.ProjectCommands.pas',
   BDLsp.Common.Editing.SqlText in 'Source\Editing\BDLsp.Common.Editing.SqlText.pas',
   BDLsp.Common.Editing.DatabaseCommands in 'Source\Editing\BDLsp.Common.Editing.DatabaseCommands.pas',

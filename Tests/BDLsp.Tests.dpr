@@ -163,6 +163,7 @@ uses
   BDLsp.Common.Lsp.Completion.Postfix.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Completion.Postfix.Tests.pas',
   BDLsp.Common.Editing.RefactoringCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.RefactoringCommands.Tests.pas',
   BDLsp.Common.Editing.ExpressionCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.ExpressionCommands.Tests.pas',
+  BDLsp.Common.Editing.Modernizer.Tests in 'Common\Editing\BDLsp.Common.Editing.Modernizer.Tests.pas',
   BDLsp.Common.Editing.ProjectCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.ProjectCommands.Tests.pas',
   BDLsp.Common.Editing.SqlText.Tests in 'Common\Editing\BDLsp.Common.Editing.SqlText.Tests.pas',
   BDLsp.Common.Editing.DatabaseCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.DatabaseCommands.Tests.pas',

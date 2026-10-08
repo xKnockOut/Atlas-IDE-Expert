@@ -140,6 +140,7 @@
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.WrapCommands.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.RefactoringCommands.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.ExpressionCommands.pas"/>
+        <DCCReference Include="Source\Editing\BDLsp.Common.Editing.Modernizer.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.ProjectCommands.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.SqlText.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.DatabaseCommands.pas"/>
