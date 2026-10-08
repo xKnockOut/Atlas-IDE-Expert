@@ -46,6 +46,16 @@ type
     DidChange = 'textDocument/didChange';
     DidSave = 'textDocument/didSave';
     DidClose = 'textDocument/didClose';
+    PublishDiagnostics = 'textDocument/publishDiagnostics';
+  end;
+
+  /// <summary>Werte für DiagnosticSeverity.</summary>
+  TLspDiagnosticSeverity = record
+  public const
+    Error = 1;
+    Warning = 2;
+    Information = 3;
+    Hint = 4;
   end;
 
   /// <summary>Zustand des Servers im Lebenszyklus.</summary>

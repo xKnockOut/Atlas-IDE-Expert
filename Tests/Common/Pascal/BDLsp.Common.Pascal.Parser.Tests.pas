@@ -381,7 +381,10 @@ begin
   Tree := TPascalParser.Parse(Lines(['program P;', 'begin', '  A := 1', '  B := 2;', 'end.']));
   try
     Assert.AreEqual<NativeInt>(1, Length(Tree.Diagnostics));
-    Assert.IsTrue(TTextPosition.Create(3, 2) = Tree.Diagnostics[0].StartPos);
+    // Gemeldet am Ende der Zeile, in der das Semikolon fehlt.
+    Assert.IsTrue(TTextPosition.Create(2, 8) = Tree.Diagnostics[0].StartPos);
+    Assert.IsTrue(TTextPosition.Create(2, 8) = Tree.Diagnostics[0].EndPos);
+    Assert.AreEqual('";" fehlt', Tree.Diagnostics[0].Message);
     Assert.AreEqual(2, CountKind(Tree.Root, TSyntaxKind.AssignStatement));
   finally
     Tree.Free;
