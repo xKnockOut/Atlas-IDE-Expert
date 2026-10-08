@@ -194,6 +194,7 @@
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.CodeLens.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.SemanticTokens.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Status.pas"/>
+        <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.QualifiedNames.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.CodeActions.pas"/>
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.ControlFlow.pas"/>
         <DCCReference Include="Source\Semantics\BDLsp.Common.Semantics.NameResolver.pas"/>

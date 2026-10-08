@@ -381,8 +381,27 @@
         "command": "betterDelphiLsp.selectBuild",
         "title": "Konfiguration und Plattform wählen",
         "category": "BetterDelphiLSP"
+      },
+      {
+        "command": "betterDelphiLsp.copyQualifiedName",
+        "title": "Qualifizierten Namen kopieren",
+        "category": "BetterDelphiLSP"
+      },
+      {
+        "command": "betterDelphiLsp.copyQualifiedNameWithParameters",
+        "title": "Qualifizierten Namen mit Parametertypen kopieren",
+        "category": "BetterDelphiLSP"
       }
     ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "betterDelphiLsp.copyQualifiedName",
+          "when": "editorLangId == objectpascal",
+          "group": "9_cutcopypaste"
+        }
+      ]
+    },
     "jsonValidation": [
       {
         "fileMatch": "delphi-lsp.json",

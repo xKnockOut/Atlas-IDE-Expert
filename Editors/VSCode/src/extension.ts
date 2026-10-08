@@ -214,6 +214,33 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       });
       await vscode.commands.executeCommand('markdown.showPreview', document.uri);
     }),
+    // Qualifizierten Namen des Symbols unter dem Cursor kopieren (#128); der Server liefert ihn als String.
+    ...[false, true].map((withParameters) =>
+      vscode.commands.registerCommand(
+        withParameters ? `${Section}.copyQualifiedNameWithParameters` : `${Section}.copyQualifiedName`,
+        async () => {
+          const editor = vscode.window.activeTextEditor;
+          if (!client || !editor) {
+            void vscode.window.showWarningMessage('BetterDelphiLSP läuft nicht oder kein Editor ist aktiv.');
+            return;
+          }
+          try {
+            const name = await client.sendRequest<string>('workspace/executeCommand', {
+              command: 'betterdelphilsp.qualifiedName',
+              arguments: [
+                editor.document.uri.toString(),
+                { line: editor.selection.active.line, character: editor.selection.active.character },
+                withParameters,
+              ],
+            });
+            await vscode.env.clipboard.writeText(name);
+            void vscode.window.setStatusBarMessage(`Kopiert: ${name}`, 3000);
+          } catch (error) {
+            void vscode.window.showWarningMessage(`BetterDelphiLSP: ${(error as Error).message}`);
+          }
+        },
+      ),
+    ),
     // Konfiguration und Plattform des Projekts umschalten (#46).
     vscode.commands.registerCommand(`${Section}.selectBuild`, async () => {
       if (!client) {

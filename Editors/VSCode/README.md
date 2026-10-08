@@ -10,7 +10,7 @@ Gesucht wird der Server in dieser Reihenfolge: Einstellung `betterDelphiLsp.serv
 
 ## Befehle
 
-Server neu starten, Status anzeigen, Projekt kompilieren, Index neu aufbauen, Konfiguration und Plattform wählen (alle unter „BetterDelphiLSP:“ in der Befehlspalette).
+Server neu starten, Status anzeigen, Projekt kompilieren, Index neu aufbauen, Konfiguration und Plattform wählen, qualifizierten Namen kopieren (auch mit Parametertypen; alle unter „BetterDelphiLSP:“ in der Befehlspalette). „Qualifizierten Namen kopieren“ steht auch im Kontextmenü des Editors.
 
 ## Entwickeln
 

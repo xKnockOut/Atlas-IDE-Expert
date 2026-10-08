@@ -38,6 +38,9 @@ type
     function References(const AName: string): string;
     /// <summary>Aufrufer und/oder aufgerufene Routinen einer Methode oder Routine.</summary>
     function CallHierarchy(const AName: string; ADirection: TMcpCallDirection): string;
+    /// <summary>qualified_name (#128): voll qualifizierter Name des Symbols an ALine/AColumn (ab 1);
+    /// EMcpToolError, wenn dort keins steht.</summary>
+    function QualifiedName(const AFileName: string; ALine, AColumn: Integer; AWithParameters: Boolean): string;
     /// <summary>Befunde der Prüfregeln und Syntaxfehler je Datei; ARoot für relative Pfade.</summary>
     class function Diagnostics(const ARules: TArray<IRule>; const ASettings: TServerSettings;
       const ARoot: string; const AFiles: TArray<string>; const AReadText: TReferenceReadText): string; static;
@@ -65,6 +68,7 @@ uses
   BDLsp.Common.Pascal.SyntaxTree,
   BDLsp.Common.Pascal.TreeCache,
   BDLsp.Common.Lsp.Hierarchies,
+  BDLsp.Common.Lsp.QualifiedNames,
   BDLsp.Common.Rules.Checker,
   BDLsp.Common.Rules.Output,
   BDLsp.Common.Mcp.IndexTools,
@@ -120,6 +124,33 @@ begin
       Result := Trim(Lines[ALine]);
   finally
     Lines.Free;
+  end;
+end;
+
+function TMcpCodeTools.QualifiedName(const AFileName: string; ALine, AColumn: Integer;
+  AWithParameters: Boolean): string;
+var
+  Text, Error: string;
+  Tree: TSyntaxTree;
+  Resolver: TNameResolver;
+begin
+  if (ALine < 1) or (AColumn < 1) then
+    raise EMcpToolError.Create('line und column zählen ab 1');
+  if not FReadText(AFileName, Text) then
+    raise EMcpToolError.CreateFmt('Datei %s nicht lesbar', [AFileName]);
+  Tree := TSyntaxTreeCache.Parse(Text);
+  try
+    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
+    try
+      Resolver.Namespaces := FNamespaces;
+      if not TQualifiedNames.At(Resolver, FIndex, Tree, AFileName, TTextPosition.Create(ALine - 1, AColumn - 1),
+        AWithParameters, Result, Error) then
+        raise EMcpToolError.Create(Error);
+    finally
+      Resolver.Free;
+    end;
+  finally
+    Tree.Free;
   end;
 end;
 

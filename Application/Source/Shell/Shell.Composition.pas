@@ -48,6 +48,7 @@ uses
   BDLsp.Common.Lsp.CodeLens,
   BDLsp.Common.Lsp.SemanticTokens,
   BDLsp.Common.Lsp.Status,
+  BDLsp.Common.Lsp.QualifiedNames,
   BDLsp.Common.JsonRpc.Statistics,
   BDLsp.Common.Lsp.WatchedFiles,
   BDLsp.Common.Lsp.WorkspaceFolders,
@@ -773,6 +774,15 @@ begin
         end;
       end;
       Result := TJSONNull.Create;
+    end);
+  FCommands.Register(TQualifiedNames.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TQualifiedNames.Execute(FDocuments, FIndex,
+        function(const AUnitName: string): Boolean
+        begin
+          Result := EnsureUnit(AUnitName);
+        end, FDefinition.Namespaces, AArguments);
     end);
   FCommands.Register(StatusCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1721,6 +1731,7 @@ begin
   Commands.Add(CompileCommand);
   Commands.Add(SelectBuildCommand);
   Commands.Add(RebuildIndexCommand);
+  Commands.Add(TQualifiedNames.Command);
   Result.AddPair('executeCommandProvider', TJSONObject.Create(TJSONPair.Create('commands', Commands)));
   Workspace := TLspWorkspaceFolders.Capability;
   Workspace.AddPair('fileOperations', TLspFileOperations.Capability);
