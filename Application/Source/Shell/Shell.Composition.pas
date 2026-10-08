@@ -22,7 +22,12 @@ uses
   BDLsp.Common.Lsp.FoldingRanges,
   BDLsp.Common.Lsp.SelectionRanges,
   BDLsp.Common.Lsp.Configuration,
+  BDLsp.Common.Lsp.WorkDoneProgress,
   BDLsp.Common.Documents.Contract,
+  BDLsp.Common.Configuration.Contract,
+  BDLsp.Common.Projects.UnitResolver,
+  BDLsp.Common.Index.Contract,
+  BDLsp.Common.Index.Service,
   Shell.CommandLine;
 
 type
@@ -40,6 +45,14 @@ type
     FSelectionRanges: TLspSelectionRanges;
     FConfiguration: TLspConfiguration;
     FConnection: TJsonRpcConnection;
+    FIndex: ISymbolIndex;
+    FIndexService: TIndexService;
+    FIndexProgress: TLspWorkDoneProgress;
+    FUnitResolver: TUnitResolver;
+    FIndexSignature: string;
+    /// <summary>Startet den Indexaufbau, wenn sich Projekt, Konfiguration, Plattform oder Version geändert haben.</summary>
+    procedure StartIndex(const ASettings: TServerSettings);
+    function FindProjectFile(const ASettings: TServerSettings): string;
     class function BuildCapabilities: TJSONObject; static;
     /// <summary>Fehlerbeschreibung mit letzter Nachricht und Stacktrace für das Log.</summary>
     function DescribeFailure(const AError: Exception): string;
@@ -58,6 +71,7 @@ type
     property Documents: IDocumentStore read FDocuments;
     /// <summary>Einstellungen aus delphi-lsp.json.</summary>
     property Configuration: TLspConfiguration read FConfiguration;
+    property Index: ISymbolIndex read FIndex;
   end;
 
 implementation
@@ -65,6 +79,7 @@ implementation
 uses
   System.Classes,
   System.IOUtils,
+  System.StrUtils,
   BDLsp.Common.Product.Version,
   BDLsp.Common.Logging.Providers.Logger,
   BDLsp.Common.Logging.Providers.StreamSink,
@@ -73,8 +88,15 @@ uses
   BDLsp.Common.Lsp.Adapters.LogMessageSink,
   BDLsp.Common.Documents.Providers.DocumentStore,
   BDLsp.Common.Documents.FileEncoding,
-  BDLsp.Common.Configuration.Contract,
+  BDLsp.Common.Projects.Contract,
+  BDLsp.Common.Projects.Paths,
+  BDLsp.Common.Projects.DprojReader,
+  BDLsp.Common.Index.SymbolIndex,
+  BDLsp.Common.Index.Builder,
+  BDLsp.Common.Index.ProjectFiles,
+  BDLsp.Common.Index.Adapters.DiskFileSystem,
   BDLsp.Windows.Console.StdStreams,
+  BDLsp.Windows.Projects.DelphiInstallation,
   BDLsp.Windows.Documents.PathCanonicalizer,
   BDLsp.Windows.Diagnostics.Adapters.DebugOutputSink,
   BDLsp.Windows.Diagnostics.StackTrace;
@@ -157,8 +179,25 @@ begin
     begin
       FLogger.Info(Format('Einstellungen geladen: Delphi %s, Projekt %s, %d Regeleinstellungen, %d Ausschlüsse',
         [ASettings.DelphiVersion, ASettings.Project, Length(ASettings.Rules), Length(ASettings.Exclude)]));
+      StartIndex(ASettings);
     end;
   FConfiguration.Attach;
+  FIndex := TSymbolIndex.Create;
+  FIndexService := TIndexService.Create(FIndex, TDiskIndexFileSystem.Create);
+  FIndexProgress := TLspWorkDoneProgress.Create(FTransport, 'bdlsp-index');
+  FIndexService.OnProgress := FIndexProgress.AsIndexProgress;
+  FIndexService.OnFinished :=
+    procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
+    begin
+      FLogger.Info(Format('Symbolindex fertig in %d ms: %d Units, %d Symbole (%d neu eingelesen, %d aus dem Cache, %d fehlen)%s',
+        [AElapsedMs, FIndex.UnitCount, FIndex.SymbolCount, AResult.Parsed, AResult.FromCache, AResult.Missing,
+         IfThen(AResult.Cancelled, ', abgebrochen', '')]));
+    end;
+  FIndexService.OnError :=
+    procedure(const AError: Exception)
+    begin
+      FLogger.Error(Format('Fehler beim Aufbau des Symbolindex: %s: %s', [AError.ClassName, AError.Message]));
+    end;
   FLifecycle.OnInitialized :=
     procedure
     begin
@@ -180,6 +219,10 @@ end;
 destructor TServerComposition.Destroy;
 begin
   FConnection.Free;
+  FIndexService.Free;
+  FIndexProgress.Free;
+  FUnitResolver.Free;
+  FIndex := nil;
   FSyntaxDiagnostics.Free;
   FDocumentSymbols.Free;
   FFoldingRanges.Free;
@@ -193,6 +236,110 @@ begin
   FTransport := nil;
   FLogger := nil;
   inherited;
+end;
+
+function TServerComposition.FindProjectFile(const ASettings: TServerSettings): string;
+var
+  Root: string;
+  Candidates: TArray<string>;
+begin
+  Result := '';
+  Root := FConfiguration.RootPath;
+  if ASettings.Project <> '' then
+  begin
+    if TProjectPaths.IsAbsolute(ASettings.Project) then
+      Result := ASettings.Project
+    else if Root <> '' then
+      Result := TProjectPaths.Combine(Root, ASettings.Project);
+    if not FileExists(Result) then
+    begin
+      FLogger.Warning('Projektdatei nicht gefunden: ' + Result);
+      Result := '';
+    end;
+    Exit;
+  end;
+  // Ohne Angabe: die einzige .dproj im Wurzelordner.
+  if (Root = '') or not TDirectory.Exists(Root) then
+    Exit;
+  Candidates := TDirectory.GetFiles(Root, '*.dproj');
+  if Length(Candidates) = 1 then
+    Result := Candidates[0]
+  else if Length(Candidates) > 1 then
+    FLogger.Info(Format('%d Projektdateien im Arbeitsbereich; "project" in %s wählt eine aus',
+      [Length(Candidates), ConfigurationFileName]));
+end;
+
+procedure TServerComposition.StartIndex(const ASettings: TServerSettings);
+var
+  ProjectFile, Signature, CacheFile: string;
+  Installation: ILibraryPathProvider;
+  Options: TDprojOptions;
+  Project: TProjectInfo;
+  LibraryPaths: TArray<string>;
+  Request: TIndexRequest;
+  Resolver: TUnitResolver;
+  FileExistsFunc: TFunc<string, Boolean>;
+begin
+  ProjectFile := FindProjectFile(ASettings);
+  if ProjectFile = '' then
+    Exit;
+  try
+    if ASettings.DelphiVersion <> '' then
+      Installation := TDelphiInstallation.Create(ASettings.DelphiVersion)
+    else
+      Installation := TDelphiInstallation.Latest;
+  except
+    on E: EProjectError do
+    begin
+      FLogger.Warning('Delphi-Installation nicht gefunden: ' + E.Message);
+      Installation := nil;
+    end;
+  end;
+  FileExistsFunc :=
+    function(AFileName: string): Boolean
+    begin
+      Result := FileExists(AFileName);
+    end;
+  Options := Default(TDprojOptions);
+  Options.Config := ASettings.Config;
+  Options.Platform := ASettings.Platform;
+  Options.FileExists := FileExistsFunc;
+  if Installation <> nil then
+    Options.Variables := Installation.Variables;
+  try
+    Project := TDprojReader.Load(ProjectFile, Options);
+  except
+    on E: EProjectError do
+    begin
+      FLogger.Error(Format('Projekt %s nicht lesbar: %s', [ProjectFile, E.Message]));
+      Exit;
+    end;
+  end;
+  Signature := TIndexProjectFiles.Signature(Project, ASettings.DelphiVersion);
+  if Signature = FIndexSignature then
+    Exit;
+  FIndexSignature := Signature;
+  FIndexService.Stop;
+  if Installation <> nil then
+    LibraryPaths := Installation.LibraryPaths(Project.Platform) + Installation.BrowsingPaths(Project.Platform)
+  else
+    LibraryPaths := nil;
+  Resolver := TUnitResolver.Create(Project, LibraryPaths, FileExistsFunc);
+  FUnitResolver.Free;
+  FUnitResolver := Resolver;
+  Request.Files := TIndexProjectFiles.Files(Project);
+  Request.Defines := TIndexProjectFiles.Defines(Project, ASettings.DelphiVersion);
+  Request.ResolveUnit :=
+    function(const AUnitName: string): string
+    begin
+      Result := Resolver.Resolve(AUnitName);
+    end;
+  CacheFile := TPath.Combine(TPath.Combine(TPath.GetCachePath, 'BetterDelphiLSP'),
+    Format('index-%.8x.json', [Cardinal(Signature.GetHashCode)]));
+  Request.CacheFile := CacheFile;
+  FLogger.Info(Format('Symbolindex für %s (%s, %s): %d Projektdateien, Cache %s',
+    [ProjectFile, Project.Config, Project.Platform, Length(Request.Files), CacheFile]));
+  FIndexService.Start(Request);
 end;
 
 class function TServerComposition.CreateForStdio(const AOptions: TCommandLineOptions): TServerComposition;
