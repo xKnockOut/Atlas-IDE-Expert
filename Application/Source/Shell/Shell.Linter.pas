@@ -8,6 +8,8 @@
 // .pas, .dpr, .dpk darunter) oder eine einzelne Datei. delphi-lsp.json im
 // Ordner des Ziels gilt wie im Editor. Das Ergebnis geht auf stdout oder in
 // die Datei aus --output, Meldungen zum Ablauf auf stderr.
+// Mit --suppression-stats erscheint statt der Treffer die Auswertung der
+// Unterdrückungskommentare je Regel; Exit-Code dann 0.
 // Exit-Code: 0 ohne Warnungen und Fehler, 1 Warnungen, 2 Fehler,
 // 3 Aufruf- oder Lesefehler.
 
@@ -39,6 +41,7 @@ uses
   BDLsp.Common.Rules.Filter,
   BDLsp.Common.Rules.Output,
   BDLsp.Common.Rules.Builtin,
+  BDLsp.Common.Rules.SuppressionStats,
   BDLsp.Windows.Console.StdStreams;
 
 procedure WriteText(const AStream: TStream; const AText: string);
@@ -148,6 +151,8 @@ var
   Output: string;
   Stream: TStream;
   Warning: string;
+  Stats: TSuppressionStats;
+  Findings: TArray<TRuleFinding>;
 begin
   for Warning in AOptions.Warnings do
     WriteError(Warning);
@@ -174,26 +179,37 @@ begin
       Descriptors := Descriptors + [Rule.Descriptor];
 
     Files := nil;
-    for FileName in CollectFiles(AOptions.CheckTarget, Settings, Root) do
-    begin
-      RelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(Root), FileName);
-      if not Filter.AcceptsFile(RelativePath) then
-        Continue;
-      try
-        Text := TFileEncoding.LoadFromFile(FileName, FileFormat);
-      except
-        on E: Exception do
-        begin
-          WriteError(Format('%s: %s', [FileName, E.Message]));
+    Stats := TSuppressionStats.Create;
+    try
+      for FileName in CollectFiles(AOptions.CheckTarget, Settings, Root) do
+      begin
+        RelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(Root), FileName);
+        if not Filter.AcceptsFile(RelativePath) then
           Continue;
+        try
+          Text := TFileEncoding.LoadFromFile(FileName, FileFormat);
+        except
+          on E: Exception do
+          begin
+            WriteError(Format('%s: %s', [FileName, E.Message]));
+            Continue;
+          end;
         end;
+        Findings := TFileChecker.CheckText(Rules, Settings, RelativePath, Text);
+        if AOptions.SuppressionStats then
+          Stats.Add(Text, Findings);
+        Checked.Path := RelativePath;
+        Checked.Findings := Filter.Apply(Findings);
+        Files := Files + [Checked];
       end;
-      Checked.Path := RelativePath;
-      Checked.Findings := Filter.Apply(TFileChecker.CheckText(Rules, Settings, RelativePath, Text));
-      Files := Files + [Checked];
-    end;
 
-    Output := TFindingsOutput.Render(Files, AOptions.CheckFormat, Descriptors);
+      if AOptions.SuppressionStats then
+        Output := Stats.Render(AOptions.CheckFormat)
+      else
+        Output := TFindingsOutput.Render(Files, AOptions.CheckFormat, Descriptors);
+    finally
+      Stats.Free;
+    end;
     if AOptions.OutputFile <> '' then
     begin
       Encoding := TUTF8Encoding.Create(False);
@@ -212,7 +228,10 @@ begin
         Stream.Free;
       end;
     end;
-    Result := TFindingsOutput.ExitCode(Files);
+    if AOptions.SuppressionStats then
+      Result := TFindingsOutput.ExitClean
+    else
+      Result := TFindingsOutput.ExitCode(Files);
   except
     on E: Exception do
     begin

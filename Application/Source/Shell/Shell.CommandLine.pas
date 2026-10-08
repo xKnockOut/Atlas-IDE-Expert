@@ -39,6 +39,8 @@ type
     RuleFilter: TArray<string>;
     UnitFilter: TArray<string>;
     MinSeverity: TRuleSeverity;
+    /// <summary>Statt der Treffer die Unterdrückungen je Regel ausgeben (#147).</summary>
+    SuppressionStats: Boolean;
     /// <summary>Hinweise zu ungültigen oder unbekannten Parametern, für das Log.</summary>
     Warnings: TArray<string>;
     class function Parse(const AArgs: TArray<string>): TCommandLineOptions; static;
@@ -181,6 +183,8 @@ begin
         else
           AddWarning(Format('Unbekannter Schweregrad "%s", gemeldet wird alles', [Value]));
     end
+    else if Name = '--suppression-stats' then
+      Result.SuppressionStats := True
     else if (Name = '--stdio') or (Name = '--clientprocessid') then
       // von Editoren angehängt, ohne Bedeutung für den Server
     else
