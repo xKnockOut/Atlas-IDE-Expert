@@ -368,6 +368,60 @@
       "description": "Random is assigned to a token, password, salt, nonce or key. Random is predictable; use a cryptographic random generator. Missing Randomize is a separate topic (#153).",
       "bad": "Token := IntToStr(Random(MaxInt));",
       "good": "Token := TNetEncoding.Base64URL.EncodeBytesToString(CryptoRandomBytes(32));"
+    },
+    {
+      "id": "dfm-circular-datasource",
+      "name": "Circular master-detail or data source link",
+      "category": "bug",
+      "severity": "warning",
+      "description": "MasterSource/DataSource links in the form file form a cycle (tblA → dsB → tblB → dsA → tblA). Opening the datasets recurses or never shows consistent data.",
+      "bad": "tblA.MasterSource = dsB; tblB.MasterSource = dsA",
+      "good": "tblB.MasterSource = dsA  // tblA has no master"
+    },
+    {
+      "id": "dfm-master-without-fields",
+      "name": "Master-detail without MasterFields",
+      "category": "bug",
+      "severity": "warning",
+      "description": "A dataset has MasterSource but no MasterFields. The detail is not filtered and shows all records.",
+      "bad": "MasterSource = dsKunden",
+      "good": "MasterSource = dsKunden; MasterFields = 'KundenID'"
+    },
+    {
+      "id": "dfm-required-field-without-control",
+      "name": "Required field without visible input control",
+      "category": "bug",
+      "severity": "warning",
+      "description": "A persistent field with Required = True is bound to no visible data-aware control (a grid without DataField counts for all fields). The user cannot fill it and posting fails.",
+      "bad": "tblKundenName: Required = True, no TDBEdit for Name",
+      "good": "edName: TDBEdit; DataSource = dsKunden; DataField = 'Name'"
+    },
+    {
+      "id": "dfm-control-field-type-mismatch",
+      "name": "Data-aware control does not fit the field type",
+      "category": "bug",
+      "severity": "warning",
+      "description": "The control does not suit the persistent field, e.g. TDBEdit on a TBooleanField or blob field, TDBImage on a non-graphic field.",
+      "bad": "edAktiv: TDBEdit; DataField = 'Aktiv'  // TBooleanField",
+      "good": "cbAktiv: TDBCheckBox; DataField = 'Aktiv'"
+    },
+    {
+      "id": "dfm-duplicate-binding",
+      "name": "Two controls bound to the same field",
+      "category": "bug",
+      "severity": "warning",
+      "description": "Two input controls use the same DataSource and DataField. Usually a copy-and-paste error. Display controls (TDBText, TDBImage) are ignored.",
+      "bad": "ed1, ed2: DataSource = dsA; DataField = 'Name'",
+      "good": "ed1: DataField = 'Name'; ed2: DataField = 'Vorname'"
+    },
+    {
+      "id": "foreign-form-control-access",
+      "name": "Access to controls of another form",
+      "category": "code-smell",
+      "severity": "warning",
+      "description": "Code accesses a field of a form or frame from another unit through its global variable (Form2.Edit1.Text). This couples the units tightly; use a method or property of the form.",
+      "bad": "Form2.Edit1.Text := 'x';",
+      "good": "Form2.Kundenname := 'x';"
     }
   ]
 }

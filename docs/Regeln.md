@@ -45,6 +45,12 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`security-tls-verification-disabled`](#security-tls-verification-disabled) | TLS-Zertifikatsprüfung abgeschaltet | Schwachstelle | Warnung |
 | [`security-insecure-http`](#security-insecure-http) | Unverschlüsselte http://-URL | Sicherheits-Hotspot | Hinweis |
 | [`security-insecure-random`](#security-insecure-random) | Random für sicherheitsrelevante Werte | Sicherheits-Hotspot | Warnung |
+| [`dfm-circular-datasource`](#dfm-circular-datasource) | Zirkuläre Master-Detail- bzw. DataSource-Verknüpfung | Bug | Warnung |
+| [`dfm-master-without-fields`](#dfm-master-without-fields) | Master-Detail ohne MasterFields | Bug | Warnung |
+| [`dfm-required-field-without-control`](#dfm-required-field-without-control) | Pflichtfeld ohne sichtbares Eingabe-Control | Bug | Warnung |
+| [`dfm-control-field-type-mismatch`](#dfm-control-field-type-mismatch) | Datensensitives Control passt nicht zum Feldtyp | Bug | Warnung |
+| [`dfm-duplicate-binding`](#dfm-duplicate-binding) | Zwei Controls an demselben Feld | Bug | Warnung |
+| [`foreign-form-control-access`](#foreign-form-control-access) | Zugriff auf Controls eines anderen Formulars | Code Smell | Warnung |
 
 <a id="syntax"></a>
 ## syntax
@@ -1013,4 +1019,118 @@ Richtig:
 
 ```pascal
 Token := TNetEncoding.Base64URL.EncodeBytesToString(CryptoRandomBytes(32));
+```
+
+<a id="dfm-circular-datasource"></a>
+## dfm-circular-datasource
+
+**Zirkuläre Master-Detail- bzw. DataSource-Verknüpfung** · Bug · Warnung
+
+MasterSource/DataSource-Verknüpfungen der Formulardatei bilden einen Kreis (tblA → dsB → tblB → dsA → tblA). Das Öffnen der Datasets läuft in eine Rekursion oder zeigt keine stimmigen Daten.
+
+Mit Treffer:
+
+```pascal
+tblA.MasterSource = dsB; tblB.MasterSource = dsA
+```
+
+Richtig:
+
+```pascal
+tblB.MasterSource = dsA  // tblA has no master
+```
+
+<a id="dfm-master-without-fields"></a>
+## dfm-master-without-fields
+
+**Master-Detail ohne MasterFields** · Bug · Warnung
+
+Ein Dataset hat MasterSource, aber keine MasterFields. Das Detail wird nicht gefiltert und zeigt alle Datensätze.
+
+Mit Treffer:
+
+```pascal
+MasterSource = dsKunden
+```
+
+Richtig:
+
+```pascal
+MasterSource = dsKunden; MasterFields = 'KundenID'
+```
+
+<a id="dfm-required-field-without-control"></a>
+## dfm-required-field-without-control
+
+**Pflichtfeld ohne sichtbares Eingabe-Control** · Bug · Warnung
+
+Ein persistentes Feld mit Required = True ist an kein sichtbares datensensitives Control gebunden (ein Gitter ohne DataField zählt für alle Felder). Der Anwender kann es nicht füllen, Post schlägt fehl.
+
+Mit Treffer:
+
+```pascal
+tblKundenName: Required = True, no TDBEdit for Name
+```
+
+Richtig:
+
+```pascal
+edName: TDBEdit; DataSource = dsKunden; DataField = 'Name'
+```
+
+<a id="dfm-control-field-type-mismatch"></a>
+## dfm-control-field-type-mismatch
+
+**Datensensitives Control passt nicht zum Feldtyp** · Bug · Warnung
+
+Das Control passt nicht zum persistenten Feld, z. B. TDBEdit an einem TBooleanField oder Blob-Feld, TDBImage an einem Feld ohne Grafik.
+
+Mit Treffer:
+
+```pascal
+edAktiv: TDBEdit; DataField = 'Aktiv'  // TBooleanField
+```
+
+Richtig:
+
+```pascal
+cbAktiv: TDBCheckBox; DataField = 'Aktiv'
+```
+
+<a id="dfm-duplicate-binding"></a>
+## dfm-duplicate-binding
+
+**Zwei Controls an demselben Feld** · Bug · Warnung
+
+Zwei Eingabe-Controls nutzen dieselbe DataSource und dasselbe DataField. Meist ein Kopierfehler. Anzeige-Controls (TDBText, TDBImage) zählen nicht.
+
+Mit Treffer:
+
+```pascal
+ed1, ed2: DataSource = dsA; DataField = 'Name'
+```
+
+Richtig:
+
+```pascal
+ed1: DataField = 'Name'; ed2: DataField = 'Vorname'
+```
+
+<a id="foreign-form-control-access"></a>
+## foreign-form-control-access
+
+**Zugriff auf Controls eines anderen Formulars** · Code Smell · Warnung
+
+Code greift über die globale Variable auf ein Feld eines Formulars oder Frames aus einer anderen Unit zu (Form2.Edit1.Text). Das koppelt die Units eng; besser eine Methode oder Property des Formulars nutzen.
+
+Mit Treffer:
+
+```pascal
+Form2.Edit1.Text := 'x';
+```
+
+Richtig:
+
+```pascal
+Form2.Kundenname := 'x';
 ```

@@ -25,7 +25,8 @@ uses
   BDLsp.Common.Rules.Builtin.Capture,
   BDLsp.Common.Rules.Builtin.Components,
   BDLsp.Common.Rules.Builtin.FormFields,
-  BDLsp.Common.Rules.Builtin.Security;
+  BDLsp.Common.Rules.Builtin.Security,
+  BDLsp.Common.Rules.Builtin.DataBinding;
 
 function BuiltinRules: TArray<IRule>;
 var
@@ -45,6 +46,7 @@ begin
     RegisterComponentRules(Registry);
     RegisterFormFieldRules(Registry);
     RegisterSecurityRules(Registry);
+    RegisterDataBindingRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;
