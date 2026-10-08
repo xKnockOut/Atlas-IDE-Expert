@@ -93,6 +93,7 @@ contains
   BDLsp.Common.Lsp.InlayHints in 'Source\Lsp\BDLsp.Common.Lsp.InlayHints.pas',
   BDLsp.Common.Lsp.MessageHandlers in 'Source\Lsp\BDLsp.Common.Lsp.MessageHandlers.pas',
   BDLsp.Common.Lsp.CodeLens in 'Source\Lsp\BDLsp.Common.Lsp.CodeLens.pas',
+  BDLsp.Common.Lsp.SemanticTokens in 'Source\Lsp\BDLsp.Common.Lsp.SemanticTokens.pas',
   BDLsp.Common.Lsp.Commands in 'Source\Lsp\BDLsp.Common.Lsp.Commands.pas',
   BDLsp.Common.Lsp.Status in 'Source\Lsp\BDLsp.Common.Lsp.Status.pas',
   BDLsp.Common.Lsp.DocWiki in 'Source\Lsp\BDLsp.Common.Lsp.DocWiki.pas',

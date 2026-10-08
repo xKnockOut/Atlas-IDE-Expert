@@ -40,6 +40,7 @@ uses
   BDLsp.Common.Lsp.Implementations,
   BDLsp.Common.Lsp.InlayHints,
   BDLsp.Common.Lsp.CodeLens,
+  BDLsp.Common.Lsp.SemanticTokens,
   BDLsp.Common.Lsp.Status,
   BDLsp.Common.JsonRpc.Statistics,
   BDLsp.Common.Lsp.WatchedFiles,
@@ -76,6 +77,7 @@ type
     FImplementations: TLspImplementations;
     FInlayHints: TLspInlayHints;
     FCodeLens: TLspCodeLens;
+    FSemanticTokens: TLspSemanticTokens;
     FCodeActions: TLspCodeActions;
     FDocumentLinks: TLspDocumentLinks;
     FColors: TLspColors;
@@ -336,6 +338,12 @@ begin
       Result := EnsureUnit(AUnitName);
     end);
   FCodeLens.Attach(FDispatcher);
+  FSemanticTokens := TLspSemanticTokens.Create(FDocuments, FIndex,
+    function(const AUnitName: string): Boolean
+    begin
+      Result := EnsureUnit(AUnitName);
+    end);
+  FSemanticTokens.Attach(FDispatcher);
   FCodeActions := TLspCodeActions.Create(FDocuments, RuleContextFor);
   FCodeActions.Attach(FDispatcher);
   FDocumentLinks := TLspDocumentLinks.Create(FDocuments,
@@ -423,6 +431,7 @@ begin
   FWorkspaceSymbols.Free;
   FDocumentHighlights.Free;
   FReferences.Free;
+  FSemanticTokens.Free;
   FCodeLens.Free;
   FInlayHints.Free;
   FImplementations.Free;
@@ -700,6 +709,7 @@ begin
   FImplementations.Namespaces := Namespaces;
   FInlayHints.Namespaces := Namespaces;
   FCodeLens.Namespaces := Namespaces;
+  FSemanticTokens.Namespaces := Namespaces;
   FSyntaxDiagnostics.Refresh;
 end;
 
@@ -847,6 +857,7 @@ begin
   Result.AddPair('implementationProvider', TJSONBool.Create(True));
   Result.AddPair('inlayHintProvider', TJSONBool.Create(True));
   Result.AddPair('codeLensProvider', TLspCodeLens.Capability);
+  Result.AddPair('semanticTokensProvider', TLspSemanticTokens.Capability);
   Result.AddPair('codeActionProvider', TLspCodeActions.Capability);
   Result.AddPair('documentLinkProvider', TLspDocumentLinks.Capability);
   Result.AddPair('colorProvider', TJSONBool.Create(True));
