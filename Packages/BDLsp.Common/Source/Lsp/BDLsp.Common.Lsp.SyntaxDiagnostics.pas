@@ -48,6 +48,8 @@ type
     Baseline: IRuleBaseline;
     /// <summary>Symbolindex für Regeln, die Vorfahren auflösen (#125); nil = keiner.</summary>
     Index: ISymbolIndex;
+    /// <summary>Formulardatei neben der Unit (#123); '' ohne.</summary>
+    FormText: string;
   end;
 
   /// <summary>Regeln und Einstellungen für AUri; False = keine Regeln prüfen. Hintergrund-Thread.</summary>
@@ -646,6 +648,7 @@ begin
     Context.Text := ADocument.Text;
     Context.Tree := Tree;
     Context.Index := ARules.Index;
+    Context.FormText := ARules.FormText;
     RuleFindings := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
     if ARules.Baseline <> nil then
       RuleFindings := ARules.Baseline.Filter(ARules.RelativePath, ADocument.Text, RuleFindings);

@@ -1279,6 +1279,11 @@ begin
   // Neue Instanzen je Prüfung: Regeln dürfen so Zustand halten, ohne Threads zu teilen.
   AContext.Rules := BuiltinRules;
   AContext.Index := FIndex;
+  // Formulardatei neben der Unit für den Abgleich von Feldern und Objekten (#123).
+  if SameText(ExtractFileExt(FileName), '.pas') and
+    not ReadSourceText(ChangeFileExt(FileName, '.dfm'), AContext.FormText) and
+    not ReadSourceText(ChangeFileExt(FileName, '.fmx'), AContext.FormText) then
+    AContext.FormText := '';
   Result := True;
 end;
 

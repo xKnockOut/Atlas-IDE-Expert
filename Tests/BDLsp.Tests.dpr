@@ -129,7 +129,8 @@ uses
   BDLsp.Common.Rules.Builtin.Declarations.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Declarations.Tests.pas',
   BDLsp.Common.Rules.Builtin.Inheritance.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Inheritance.Tests.pas',
   BDLsp.Common.Rules.Builtin.Capture.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Capture.Tests.pas',
-  BDLsp.Common.Rules.Builtin.Components.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Components.Tests.pas';
+  BDLsp.Common.Rules.Builtin.Components.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Components.Tests.pas',
+  BDLsp.Common.Rules.Builtin.FormFields.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.FormFields.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var
