@@ -47,6 +47,8 @@ type
     /// <summary>Nur bedeutungstragende Token, ohne Kommentare und Direktiven.</summary>
     FTokens: TArray<TPascalToken>;
     FIndex: Integer;
+    /// <summary>Aktuelle Verschachtelungstiefe von Anweisungen, Typen und Ausdrücken.</summary>
+    FDepth: Integer;
     FDiagnostics: TList<TSyntaxDiagnostic>;
     FEndPos: TTextPosition;
     FEndOffset: Integer;
@@ -112,6 +114,7 @@ type
     procedure ParseExports(AParent: TSyntaxNode);
     function IsRoutineStart: Boolean;
     procedure ParseRoutine(AParent: TSyntaxNode; AWithBody: Boolean);
+    procedure ParseRoutineBody(AParent: TSyntaxNode; AWithBody: Boolean);
     function ParseRoutineHeader(AParent: TSyntaxNode; AKind: TSyntaxKind): TSyntaxNode;
     procedure ParseParameters(AParent: TSyntaxNode);
     procedure ParseDirectives(AParent: TSyntaxNode);
@@ -119,7 +122,9 @@ type
 
     // Typen
     function ParseType(AParent: TSyntaxNode): TSyntaxNode;
+    function ParseTypeBody(AParent: TSyntaxNode): TSyntaxNode;
     function ParseTypeReference(AParent: TSyntaxNode): TSyntaxNode;
+    function ParseTypeReferenceBody(AParent: TSyntaxNode): TSyntaxNode;
     procedure ParseClassBody(ANode: TSyntaxNode; AKind: TSyntaxKind);
     procedure ParseMembers(AParent: TSyntaxNode);
     procedure ParseProperty(AParent: TSyntaxNode);
@@ -133,6 +138,7 @@ type
     procedure ParseStatementList(AParent: TSyntaxNode; const ATerminators: array of string);
     procedure ParseStatementsUntil(AParent: TSyntaxNode);
     procedure ParseStatement(AParent: TSyntaxNode);
+    procedure ParseStatementBody(AParent: TSyntaxNode);
     procedure ParseIf(AParent: TSyntaxNode);
     procedure ParseCase(AParent: TSyntaxNode);
     procedure ParseFor(AParent: TSyntaxNode);
@@ -148,6 +154,9 @@ type
     function ParseSimpleExpression: TSyntaxNode;
     function ParseTerm: TSyntaxNode;
     function ParseFactor: TSyntaxNode;
+    function ParseFactorBody: TSyntaxNode;
+    function EnterNesting: Boolean;
+    function TooDeep: TSyntaxNode;
     function ParsePrimary: TSyntaxNode;
     function ParseAnonymousMethod: TSyntaxNode;
     function LooksLikeGenericArgs: Boolean;
@@ -171,6 +180,8 @@ const
     'message', 'near', 'noreturn', 'overload', 'override', 'pascal', 'platform',
     'register', 'reintroduce', 'safecall', 'static', 'stdcall', 'unsafe', 'varargs',
     'virtual', 'winapi', 'delayed');
+  /// <summary>Höchste Verschachtelungstiefe; schützt vor Stapelüberlauf bei kaputtem Code.</summary>
+  MaxNesting = 256;
   CallingConventions: array[0..5] of string = ('stdcall', 'cdecl', 'pascal', 'register', 'safecall', 'winapi');
   VisibilityWords: array[0..5] of string = ('private', 'protected', 'public', 'published', 'automated', 'strict');
   HintWords: array[0..3] of string = ('deprecated', 'platform', 'library', 'experimental');
@@ -1030,6 +1041,20 @@ begin
 end;
 
 procedure TParser.ParseRoutine(AParent: TSyntaxNode; AWithBody: Boolean);
+begin
+  if not EnterNesting then
+  begin
+    AParent.Add(TooDeep);
+    Exit;
+  end;
+  try
+    ParseRoutineBody(AParent, AWithBody);
+  finally
+    Dec(FDepth);
+  end;
+end;
+
+procedure TParser.ParseRoutineBody(AParent: TSyntaxNode; AWithBody: Boolean);
 var
   Start: Integer;
   Node: TSyntaxNode;
@@ -1067,6 +1092,21 @@ end;
 { Typen }
 
 function TParser.ParseTypeReference(AParent: TSyntaxNode): TSyntaxNode;
+begin
+  if not EnterNesting then
+  begin
+    Result := TooDeep;
+    AParent.Add(Result);
+    Exit;
+  end;
+  try
+    Result := ParseTypeReferenceBody(AParent);
+  finally
+    Dec(FDepth);
+  end;
+end;
+
+function TParser.ParseTypeReferenceBody(AParent: TSyntaxNode): TSyntaxNode;
 var
   Start: Integer;
   Name: string;
@@ -1111,6 +1151,21 @@ begin
 end;
 
 function TParser.ParseType(AParent: TSyntaxNode): TSyntaxNode;
+begin
+  if not EnterNesting then
+  begin
+    Result := TooDeep;
+    AParent.Add(Result);
+    Exit;
+  end;
+  try
+    Result := ParseTypeBody(AParent);
+  finally
+    Dec(FDepth);
+  end;
+end;
+
+function TParser.ParseTypeBody(AParent: TSyntaxNode): TSyntaxNode;
 var
   Start: Integer;
   Expr: TSyntaxNode;
@@ -1566,6 +1621,20 @@ begin
 end;
 
 procedure TParser.ParseStatement(AParent: TSyntaxNode);
+begin
+  if not EnterNesting then
+  begin
+    AParent.Add(TooDeep);
+    Exit;
+  end;
+  try
+    ParseStatementBody(AParent);
+  finally
+    Dec(FDepth);
+  end;
+end;
+
+procedure TParser.ParseStatementBody(AParent: TSyntaxNode);
 var
   Start: Integer;
   Node: TSyntaxNode;
@@ -1959,7 +2028,37 @@ begin
   end;
 end;
 
+function TParser.EnterNesting: Boolean;
+begin
+  Result := FDepth < MaxNesting;
+  if Result then
+    Inc(FDepth);
+end;
+
+function TParser.TooDeep: TSyntaxNode;
+var
+  Start: Integer;
+begin
+  // Schutz vor Stapelüberlauf: Der Rest der Datei wird nicht mehr ausgewertet.
+  Diagnose(Format('Zu tief verschachtelt (mehr als %d Ebenen); Rest der Datei nicht ausgewertet', [MaxNesting]));
+  Start := NodeStart;
+  Result := StartNode(TSyntaxKind.Error);
+  FIndex := Length(FTokens);
+  FinishNode(Result, Start);
+end;
+
 function TParser.ParseFactor: TSyntaxNode;
+begin
+  if not EnterNesting then
+    Exit(TooDeep);
+  try
+    Result := ParseFactorBody;
+  finally
+    Dec(FDepth);
+  end;
+end;
+
+function TParser.ParseFactorBody: TSyntaxNode;
 var
   Start: Integer;
 begin
