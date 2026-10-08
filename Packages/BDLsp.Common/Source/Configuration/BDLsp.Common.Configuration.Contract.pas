@@ -35,6 +35,19 @@ type
     Options: string;
   end;
 
+  /// <summary>Inlay Hints im Editor (#35).</summary>
+  TInlayHintSettings = record
+    /// <summary>Parameternamen vor Argumenten.</summary>
+    ParameterNames: Boolean;
+    /// <summary>Abgeleiteter Typ bei var X := ….</summary>
+    InferredTypes: Boolean;
+    /// <summary>Hinter dem end langer Blöcke anzeigen, was dort endet.</summary>
+    EndMarkers: Boolean;
+    /// <summary>Mindestlänge eines Blocks in Zeilen für eine Endmarkierung.</summary>
+    EndMarkerMinLines: Integer;
+    class function Default: TInlayHintSettings; static;
+  end;
+
   TServerSettings = record
     /// <summary>Delphi-Version wie in der Registry, z. B. "37.0"; '' = neueste installierte.</summary>
     DelphiVersion: string;
@@ -51,6 +64,7 @@ type
     Exclude: TArray<string>;
     /// <summary>Formatierungsstil als JSON-Objekt (Text), sonst ''.</summary>
     Format: string;
+    InlayHints: TInlayHintSettings;
     /// <summary>Vorgaben, wenn keine Konfigurationsdatei existiert.</summary>
     class function Default: TServerSettings; static;
     /// <summary>Schweregrad aus der Konfiguration oder ADefault.</summary>
@@ -149,6 +163,16 @@ begin
     ((Pos('*', Pattern) = 0) and (Pos('?', Pattern) = 0) and MatchAt(Pattern + '/**', 1, NormalizeSlashes(APath), 1));
 end;
 
+{ TInlayHintSettings }
+
+class function TInlayHintSettings.Default: TInlayHintSettings;
+begin
+  Result.ParameterNames := True;
+  Result.InferredTypes := True;
+  Result.EndMarkers := True;
+  Result.EndMarkerMinLines := 20;
+end;
+
 { TServerSettings }
 
 class function TServerSettings.Default: TServerSettings;
@@ -162,6 +186,7 @@ begin
   Result.MinConfidence := TRuleConfidence.Medium;
   Result.Exclude := nil;
   Result.Format := '';
+  Result.InlayHints := TInlayHintSettings.Default;
 end;
 
 function TServerSettings.IsRuleEnabledExplicitly(const ARuleId: string): Boolean;

@@ -38,6 +38,7 @@ uses
   BDLsp.Common.Lsp.SignatureHelp,
   BDLsp.Common.Lsp.Hierarchies,
   BDLsp.Common.Lsp.Implementations,
+  BDLsp.Common.Lsp.InlayHints,
   BDLsp.Common.Lsp.Status,
   BDLsp.Common.JsonRpc.Statistics,
   BDLsp.Common.Lsp.WatchedFiles,
@@ -72,6 +73,7 @@ type
     FSignatureHelp: TLspSignatureHelp;
     FHierarchies: TLspHierarchies;
     FImplementations: TLspImplementations;
+    FInlayHints: TLspInlayHints;
     FCodeActions: TLspCodeActions;
     FDocumentLinks: TLspDocumentLinks;
     FColors: TLspColors;
@@ -102,6 +104,7 @@ type
     function CollectStatus: TServerStatus;
     function DefinesFor(const AUri: string; out ADefines: TArray<string>): Boolean;
     function DelphiVersionFor(const AUri: string): string;
+    function InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
     function RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
     /// <summary>Namespaces aller Projekte an die Features weitergeben, Diagnosen neu prüfen.</summary>
     procedure ProjectLoaded;
@@ -309,6 +312,17 @@ begin
       Result := EnsureUnit(AUnitName);
     end);
   FImplementations.Attach(FDispatcher);
+  FInlayHints := TLspInlayHints.Create(FDocuments, FIndex,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    InlayHintSettingsFor,
+    function(const AUnitName: string): Boolean
+    begin
+      Result := EnsureUnit(AUnitName);
+    end);
+  FInlayHints.Attach(FDispatcher);
   FCodeActions := TLspCodeActions.Create(FDocuments, RuleContextFor);
   FCodeActions.Attach(FDispatcher);
   FDocumentLinks := TLspDocumentLinks.Create(FDocuments,
@@ -396,6 +410,7 @@ begin
   FWorkspaceSymbols.Free;
   FDocumentHighlights.Free;
   FReferences.Free;
+  FInlayHints.Free;
   FImplementations.Free;
   FHierarchies.Free;
   FSignatureHelp.Free;
@@ -599,6 +614,24 @@ begin
   end;
 end;
 
+function TServerComposition.InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
+var
+  Workspace: TShellWorkspace;
+begin
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+    if (Workspace = nil) and (FWorkspaces.Count = 1) then
+      Workspace := FWorkspaces[0];
+    if Workspace = nil then
+      Result := TInlayHintSettings.Default
+    else
+      Result := Workspace.Configuration.Settings.InlayHints;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
 function TServerComposition.RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
 var
   Workspace: TShellWorkspace;
@@ -651,6 +684,7 @@ begin
   FSignatureHelp.Namespaces := Namespaces;
   FHierarchies.Namespaces := Namespaces;
   FImplementations.Namespaces := Namespaces;
+  FInlayHints.Namespaces := Namespaces;
   FSyntaxDiagnostics.Refresh;
 end;
 
@@ -796,6 +830,7 @@ begin
   Result.AddPair('typeHierarchyProvider', TJSONBool.Create(True));
   Result.AddPair('callHierarchyProvider', TJSONBool.Create(True));
   Result.AddPair('implementationProvider', TJSONBool.Create(True));
+  Result.AddPair('inlayHintProvider', TJSONBool.Create(True));
   Result.AddPair('codeActionProvider', TLspCodeActions.Capability);
   Result.AddPair('documentLinkProvider', TLspDocumentLinks.Capability);
   Result.AddPair('colorProvider', TJSONBool.Create(True));

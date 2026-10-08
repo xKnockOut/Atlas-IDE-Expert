@@ -87,6 +87,34 @@
         ]
       }
     },
+    "inlayHints": {
+      "type": "object",
+      "description": "Inlay Hints im Editor.",
+      "additionalProperties": false,
+      "properties": {
+        "parameterNames": {
+          "type": "boolean",
+          "default": true,
+          "description": "Parameternamen vor den Argumenten eines Aufrufs."
+        },
+        "inferredTypes": {
+          "type": "boolean",
+          "default": true,
+          "description": "Abgeleiteter Typ hinter var X := …."
+        },
+        "endMarkers": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hinter dem end langer Blöcke anzeigen, was dort endet."
+        },
+        "endMarkerMinLines": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 20,
+          "description": "Mindestlänge eines Blocks in Zeilen für eine Endmarkierung."
+        }
+      }
+    },
     "minConfidence": {
       "type": "string",
       "enum": [
