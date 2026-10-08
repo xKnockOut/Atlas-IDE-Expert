@@ -23,6 +23,7 @@ uses
   BDLsp.Common.Lsp.SyntaxDiagnostics,
   BDLsp.Common.Lsp.DocumentSymbols,
   BDLsp.Common.Lsp.FoldingRanges,
+  BDLsp.Common.Lsp.LinkedEditing,
   BDLsp.Common.Lsp.SelectionRanges,
   BDLsp.Common.Lsp.Definition,
   BDLsp.Common.Lsp.Hover,
@@ -64,6 +65,7 @@ type
     FSyntaxDiagnostics: TLspSyntaxDiagnostics;
     FDocumentSymbols: TLspDocumentSymbols;
     FFoldingRanges: TLspFoldingRanges;
+    FLinkedEditing: TLspLinkedEditing;
     FSelectionRanges: TLspSelectionRanges;
     FDefinition: TLspDefinition;
     FHover: TLspHover;
@@ -220,6 +222,8 @@ begin
   FDocumentSymbols.Attach(FDispatcher);
   FFoldingRanges := TLspFoldingRanges.Create(FDocuments);
   FFoldingRanges.Attach(FDispatcher);
+  FLinkedEditing := TLspLinkedEditing.Create(FDocuments);
+  FLinkedEditing.Attach(FDispatcher);
   FSelectionRanges := TLspSelectionRanges.Create(FDocuments);
   FSelectionRanges.Attach(FDispatcher);
   FWorkspaces := TObjectList<TShellWorkspace>.Create(True);
@@ -425,6 +429,7 @@ begin
   FIndex := nil;
   FDocumentSymbols.Free;
   FFoldingRanges.Free;
+  FLinkedEditing.Free;
   FSelectionRanges.Free;
   FDefinition.Free;
   FHover.Free;
@@ -841,6 +846,7 @@ begin
   Result.AddPair('textDocumentSync', TLspTextDocumentSync.Capability);
   Result.AddPair('documentSymbolProvider', TJSONBool.Create(True));
   Result.AddPair('foldingRangeProvider', TJSONBool.Create(True));
+  Result.AddPair('linkedEditingRangeProvider', TJSONBool.Create(True));
   Result.AddPair('selectionRangeProvider', TJSONBool.Create(True));
   Result.AddPair('definitionProvider', TJSONBool.Create(True));
   Result.AddPair('declarationProvider', TJSONBool.Create(True));

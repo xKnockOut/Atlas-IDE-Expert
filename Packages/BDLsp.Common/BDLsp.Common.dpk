@@ -107,6 +107,8 @@ contains
   BDLsp.Common.Lsp.PublishedMembers in 'Source\Lsp\BDLsp.Common.Lsp.PublishedMembers.pas',
   BDLsp.Common.Lsp.Hover in 'Source\Lsp\BDLsp.Common.Lsp.Hover.pas',
   BDLsp.Common.Lsp.HoverValues in 'Source\Lsp\BDLsp.Common.Lsp.HoverValues.pas',
+  BDLsp.Common.Lsp.LinkedEditing in 'Source\Lsp\BDLsp.Common.Lsp.LinkedEditing.pas',
+  BDLsp.Common.Lsp.FuzzyMatch in 'Source\Lsp\BDLsp.Common.Lsp.FuzzyMatch.pas',
   BDLsp.Common.Lsp.WorkspaceSymbols in 'Source\Lsp\BDLsp.Common.Lsp.WorkspaceSymbols.pas',
   BDLsp.Common.Lsp.DocumentHighlights in 'Source\Lsp\BDLsp.Common.Lsp.DocumentHighlights.pas',
   BDLsp.Common.Lsp.WatchedFiles in 'Source\Lsp\BDLsp.Common.Lsp.WatchedFiles.pas',

@@ -2,10 +2,9 @@
 
 // Projektweite Symbolsuche (workspace/symbol) über den Symbolindex.
 //
-// Treffer sind Symbole, deren Name die Anfrage enthält (ohne Groß-/
-// Kleinschreibung). Reihenfolge: exakter Name, dann Namensanfang, dann
-// Teilstring; innerhalb gleicher Güte Typen vor Mitgliedern und danach
-// alphabetisch. Höchstens MaxResults Treffer. Implementierungen von
+// Treffer und Reihenfolge nach TFuzzyMatch: exakter Name, Namensanfang,
+// Teilstring, dann Teilfolge mit Kürzeln wie "TBB" für TBButton (#39);
+// innerhalb gleicher Güte Typen vor Mitgliedern und danach alphabetisch. Höchstens MaxResults Treffer. Implementierungen von
 // Methoden (TFoo.Bar in implementation) erscheinen nicht doppelt.
 // Eine leere Anfrage liefert nichts, damit der Client nicht den ganzen
 // Index erhält.
@@ -51,7 +50,8 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   BDLsp.Common.Documents.Uris,
-  BDLsp.Common.Lsp.Positions;
+  BDLsp.Common.Lsp.Positions,
+  BDLsp.Common.Lsp.FuzzyMatch;
 
 type
   TCandidate = record
@@ -63,22 +63,6 @@ const
   TypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType, TIndexSymbolKind.EnumType,
     TIndexSymbolKind.TypeAlias];
-
-function MatchRank(const AName, AQuery: string): Integer;
-var
-  Found: Integer;
-begin
-  // 0 exakt, 1 Anfang, 2 enthalten, -1 kein Treffer.
-  Found := Pos(AQuery, LowerCase(AName));
-  if Found = 0 then
-    Result := -1
-  else if Found > 1 then
-    Result := 2
-  else if Length(AName) = Length(AQuery) then
-    Result := 0
-  else
-    Result := 1;
-end;
 
 { TLspWorkspaceSymbols }
 
@@ -118,8 +102,8 @@ begin
         ACancellation.ThrowIfCancellationRequested;
       for Symbol in UnitIndex.Symbols do
       begin
-        Rank := MatchRank(Symbol.Name, Query);
-        if Rank < 0 then
+        Rank := TFuzzyMatch.Score(Symbol.Name, Query);
+        if Rank = TFuzzyMatch.NoMatch then
           Continue;
         // Deklaration und Implementierung derselben Routine nur einmal.
         Key := LowerCase(UnitIndex.FileName + '|' + Symbol.Container + '|' + Symbol.Name + '|' +
@@ -133,7 +117,8 @@ begin
         Candidate.Item.Symbol := Symbol;
         Candidate.Item.UnitName := UnitIndex.UnitName;
         Candidate.Item.FileName := UnitIndex.FileName;
-        Candidate.Rank := Rank * 2;
+        // Höhere Punktzahl zuerst; bei Gleichstand Typen vor anderen Symbolen.
+        Candidate.Rank := -Rank * 2;
         if not (Symbol.Kind in TypeKinds) then
           Inc(Candidate.Rank);
         Candidates.Add(Candidate);
