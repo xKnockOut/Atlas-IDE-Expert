@@ -140,6 +140,7 @@ contains
   BDLsp.Common.Editing.ComponentCommands in 'Source\Editing\BDLsp.Common.Editing.ComponentCommands.pas',
   BDLsp.Common.Editing.WinApiCommands in 'Source\Editing\BDLsp.Common.Editing.WinApiCommands.pas',
   BDLsp.Common.Editing.TaskCommands in 'Source\Editing\BDLsp.Common.Editing.TaskCommands.pas',
+  BDLsp.Common.Editing.RecordCommands in 'Source\Editing\BDLsp.Common.Editing.RecordCommands.pas',
   BDLsp.Common.Editing.MaintenanceCommands in 'Source\Editing\BDLsp.Common.Editing.MaintenanceCommands.pas',
   BDLsp.Common.Editing.TypeCommands in 'Source\Editing\BDLsp.Common.Editing.TypeCommands.pas',
   BDLsp.Common.Editing.CollectionCommands in 'Source\Editing\BDLsp.Common.Editing.CollectionCommands.pas',

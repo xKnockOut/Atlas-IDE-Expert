@@ -148,6 +148,7 @@
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.ComponentCommands.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.WinApiCommands.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.TaskCommands.pas"/>
+        <DCCReference Include="Source\Editing\BDLsp.Common.Editing.RecordCommands.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.MaintenanceCommands.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.TypeCommands.pas"/>
         <DCCReference Include="Source\Editing\BDLsp.Common.Editing.CollectionCommands.pas"/>

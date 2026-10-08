@@ -171,6 +171,7 @@ uses
   BDLsp.Common.Editing.ComponentCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.ComponentCommands.Tests.pas',
   BDLsp.Common.Editing.WinApiCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.WinApiCommands.Tests.pas',
   BDLsp.Common.Editing.TaskCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.TaskCommands.Tests.pas',
+  BDLsp.Common.Editing.RecordCommands.Tests in 'Common\Editing\BDLsp.Common.Editing.RecordCommands.Tests.pas',
   BDLsp.Common.Rules.Builtin.DataBinding.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.DataBinding.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}

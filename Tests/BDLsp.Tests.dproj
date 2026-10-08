@@ -192,6 +192,7 @@
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.ComponentCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.WinApiCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.TaskCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\BDLsp.Common.Editing.RecordCommands.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.DataBinding.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.ClassCompletion.Tests.pas"/>
         <DCCReference Include="Common\Dfm\BDLsp.Common.Dfm.Tests.pas"/>
