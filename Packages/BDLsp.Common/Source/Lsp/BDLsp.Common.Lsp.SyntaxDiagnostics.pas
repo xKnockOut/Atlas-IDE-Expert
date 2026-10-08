@@ -135,7 +135,10 @@ uses
   BDLsp.Common.Pascal.LanguageFeatures,
   BDLsp.Common.Lsp.InactiveRegions,
   BDLsp.Common.Rules.Engine,
-  BDLsp.Common.Rules.Catalog;
+  BDLsp.Common.Rules.Catalog,
+  BDLsp.Common.Dfm.Contract,
+  BDLsp.Common.Dfm.Parser,
+  BDLsp.Common.Lsp.FormFiles;
 
 // Übernimmt AParams.
 procedure Send(const ATransport: IJsonRpcTransport; AParams: TJSONObject);
@@ -431,17 +434,33 @@ var
   Rules: TRuleCheckContext;
   Items: TJSONArray;
   Compiled: TCompilerMessage;
+  Form: TDfmDocument;
 begin
-  Inactive := nil;
-  if CurrentDefines(ADocument.Uri, Defines) then
-    Inactive := TLspInactiveRegions.Ranges(ADocument.Text, Defines);
-  if not CurrentRules(ADocument.Uri, Rules) then
-    Rules := Default(TRuleCheckContext);
-  Params := BuildParams(ADocument, Inactive, CurrentVersion(ADocument.Uri), Rules);
-  Items := Params.GetValue('diagnostics') as TJSONArray;
-  for Compiled in CurrentCompilerMessages(TDocumentUris.ToPath(ADocument.Uri)) do
-    if Compiled.Line < ADocument.LineCount then
-      Items.AddElement(CompilerMessageToJson(Compiled, ADocument.LineText(Max(Compiled.Line, 0)), True));
+  // Formulardateien (#44): nur Lesefehler der DFM, keine Pascal-Prüfungen.
+  if TDfmParser.IsFormFile(ADocument.Uri) then
+  begin
+    Form := TDfmParser.Parse(ADocument.Text);
+    try
+      Params := TJSONObject.Create;
+      Params.AddPair('uri', ADocument.Uri);
+      Params.AddPair('diagnostics', TLspFormFiles.BuildDiagnostics(Form));
+    finally
+      Form.Free;
+    end;
+  end
+  else
+  begin
+    Inactive := nil;
+    if CurrentDefines(ADocument.Uri, Defines) then
+      Inactive := TLspInactiveRegions.Ranges(ADocument.Text, Defines);
+    if not CurrentRules(ADocument.Uri, Rules) then
+      Rules := Default(TRuleCheckContext);
+    Params := BuildParams(ADocument, Inactive, CurrentVersion(ADocument.Uri), Rules);
+    Items := Params.GetValue('diagnostics') as TJSONArray;
+    for Compiled in CurrentCompilerMessages(TDocumentUris.ToPath(ADocument.Uri)) do
+      if Compiled.Line < ADocument.LineCount then
+        Items.AddElement(CompilerMessageToJson(Compiled, ADocument.LineText(Max(Compiled.Line, 0)), True));
+  end;
   TMonitor.Enter(FSendLock);
   try
     // Inzwischen geändert oder geschlossen: Der neuere Stand meldet selbst.

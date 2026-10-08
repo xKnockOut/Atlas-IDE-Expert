@@ -31,8 +31,10 @@ type
     Function_ = 12;
     Variable = 13;
     Constant = 14;
+    Object_ = 19;
     EnumMember = 22;
     Struct = 23;
+    Event = 24;
     TypeParameter = 26;
   end;
 
@@ -53,6 +55,9 @@ type
 implementation
 
 uses
+  BDLsp.Common.Dfm.Contract,
+  BDLsp.Common.Dfm.Parser,
+  BDLsp.Common.Lsp.FormFiles,
   BDLsp.Common.Lsp.Positions,
   BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.Parser,
@@ -385,12 +390,23 @@ var
   Uri: string;
   Document: ITextDocument;
   Tree: TSyntaxTree;
+  Form: TDfmDocument;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt in ' + Method);
   // Nicht geöffnete Dokumente haben keine Gliederung.
   if not FStore.TryGet(Uri, Document) then
     Exit(TJSONNull.Create);
+  // Formulardateien (#44) haben einen eigenen Baum.
+  if TDfmParser.IsFormFile(Uri) then
+  begin
+    Form := TDfmParser.Parse(Document.Text);
+    try
+      Exit(TLspFormFiles.BuildSymbols(Form));
+    finally
+      Form.Free;
+    end;
+  end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
   Tree := TPascalParser.Parse(Document.Text, Cancellation);

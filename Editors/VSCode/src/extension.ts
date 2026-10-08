@@ -109,6 +109,8 @@ async function startClient(): Promise<void> {
       { scheme: 'file', language: 'objectpascal' },
       // Fehler in der Konfigurationsdatei meldet der Server.
       { scheme: 'file', pattern: '**/delphi-lsp.json' },
+      // Text-Formulardateien (#44): Gliederung und Sprung zum Ereignis.
+      { scheme: 'file', pattern: '**/*.{dfm,fmx}' },
     ],
     outputChannel: output,
     traceOutputChannel: traceOutput,

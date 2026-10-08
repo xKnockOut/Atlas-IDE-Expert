@@ -45,6 +45,9 @@ implementation
 
 uses
   System.Generics.Defaults,
+  BDLsp.Common.Dfm.Contract,
+  BDLsp.Common.Dfm.Parser,
+  BDLsp.Common.Lsp.FormFiles,
   BDLsp.Common.Pascal.Contract,
   BDLsp.Common.Pascal.Parser,
   BDLsp.Common.Lsp.Internals.Cancellation;
@@ -237,12 +240,23 @@ var
   Uri: string;
   Document: ITextDocument;
   Tree: TSyntaxTree;
+  Form: TDfmDocument;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt in ' + Method);
   // Nicht geöffnete Dokumente haben keine Faltbereiche.
   if not FStore.TryGet(Uri, Document) then
     Exit(TJSONNull.Create);
+  // Formulardateien (#44) haben einen eigenen Baum.
+  if TDfmParser.IsFormFile(Uri) then
+  begin
+    Form := TDfmParser.Parse(Document.Text);
+    try
+      Exit(TLspFormFiles.BuildFoldingRanges(Form));
+    finally
+      Form.Free;
+    end;
+  end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
   Tree := TPascalParser.Parse(Document.Text, Cancellation);
