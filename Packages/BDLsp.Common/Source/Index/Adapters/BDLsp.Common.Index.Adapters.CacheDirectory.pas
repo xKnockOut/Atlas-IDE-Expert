@@ -4,6 +4,7 @@
 // - Sperre je Cache-Datei über "<cache>.lock", offen gehalten ohne Mitbenutzung.
 //   Öffnen mehrere Serverinstanzen dasselbe Projekt, schreibt nur die erste den
 //   Cache; die anderen lesen ihn nur.
+// - Ein Name je Projektschlüssel, gleich für LSP- und MCP-Modus (#62).
 // - Aufräumen auf eine Höchstgröße, älteste Caches zuerst.
 // - Leeren auf Wunsch (Kommandozeile --clear-cache).
 
@@ -21,6 +22,9 @@ type
   public
     /// <summary>Ordner der Caches unter dem Benutzerprofil (Windows: %LOCALAPPDATA%).</summary>
     class function DefaultRoot: string; static;
+    /// <summary>Cache-Datei zum Projektschlüssel (TIndexProjectFiles.Signature) unter ARoot.
+    /// Hängt nur am Schlüssel, damit LSP- und MCP-Prozess denselben Cache teilen (#62).</summary>
+    class function FileFor(const ARoot, ASignature: string): string; static;
     /// <summary>Sperrt ACacheFile; nil, wenn eine andere Instanz sie hält. Freigeben hebt die Sperre auf.</summary>
     class function TryLock(const ACacheFile: string): TStream; static;
     /// <summary>True, wenn eine andere Instanz ACacheFile gesperrt hat.</summary>
@@ -40,6 +44,11 @@ uses
 class function TIndexCacheDirectory.DefaultRoot: string;
 begin
   Result := TPath.Combine(TPath.GetCachePath, 'BetterDelphiLSP');
+end;
+
+class function TIndexCacheDirectory.FileFor(const ARoot, ASignature: string): string;
+begin
+  Result := TPath.Combine(ARoot, Format('index-%.8x.json', [Cardinal(ASignature.GetHashCode)]));
 end;
 
 class function TIndexCacheDirectory.TryLock(const ACacheFile: string): TStream;

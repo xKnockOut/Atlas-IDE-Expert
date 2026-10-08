@@ -77,6 +77,10 @@ begin
       Result := False;
     on EFCreateError do
       Result := False;
+    // TFile.Replace meldet Fehler des Betriebssystems, z. B. wenn ein zweiter Schreiber
+    // gerade ersetzt (#62); der Cache bleibt dann der des anderen.
+    on EOSError do
+      Result := False;
   end;
   if not Result and FileExists(Temp) then
     System.SysUtils.DeleteFile(Temp);
