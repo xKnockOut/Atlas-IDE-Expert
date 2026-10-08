@@ -21,6 +21,8 @@ type
     [Test]
     procedure RanksExactPrefixAndSubstring;
     [Test]
+    procedure FindsAbbreviations;
+    [Test]
     procedure IgnoresCase;
     [Test]
     procedure ListsRoutinesOnce;
@@ -93,9 +95,17 @@ end;
 
 procedure TLspWorkspaceSymbolsTests.RanksExactPrefixAndSubstring;
 begin
-  // Exakt, dann Anfang (Typen vor Routinen), dann Teilstring.
+  // Exakt, dann Anfang, dann Teilstring.
   Assert.AreEqual('TKunde TKundenListe', Names('TKunde'));
   Assert.AreEqual('KundeLaden TKunde TKundenListe GroßKunde', Names('Kunde'));
+end;
+
+procedure TLspWorkspaceSymbolsTests.FindsAbbreviations;
+begin
+  // Großbuchstaben-Kürzel und Teilfolgen (#39).
+  Assert.AreEqual('TKundenListe', Names('TKL'));
+  Assert.AreEqual('TKundenListe', Names('tkl'));
+  Assert.AreEqual('KundeLaden TKundenListe', Names('KL'));
 end;
 
 procedure TLspWorkspaceSymbolsTests.IgnoresCase;

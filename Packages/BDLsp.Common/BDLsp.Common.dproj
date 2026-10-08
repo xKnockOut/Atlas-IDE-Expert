@@ -139,6 +139,8 @@
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.PublishedMembers.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Hover.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.HoverValues.pas"/>
+        <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.LinkedEditing.pas"/>
+        <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.FuzzyMatch.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.WorkspaceSymbols.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.DocumentHighlights.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.WatchedFiles.pas"/>

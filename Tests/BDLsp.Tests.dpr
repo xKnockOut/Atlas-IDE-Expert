@@ -51,6 +51,8 @@ uses
   BDLsp.Common.Lsp.DocWiki.Tests in 'Common\Lsp\BDLsp.Common.Lsp.DocWiki.Tests.pas',
   BDLsp.Common.Lsp.Hover.Tests in 'Common\Lsp\BDLsp.Common.Lsp.Hover.Tests.pas',
   BDLsp.Common.Lsp.HoverValues.Tests in 'Common\Lsp\BDLsp.Common.Lsp.HoverValues.Tests.pas',
+  BDLsp.Common.Lsp.LinkedEditing.Tests in 'Common\Lsp\BDLsp.Common.Lsp.LinkedEditing.Tests.pas',
+  BDLsp.Common.Lsp.FuzzyMatch.Tests in 'Common\Lsp\BDLsp.Common.Lsp.FuzzyMatch.Tests.pas',
   BDLsp.Common.Lsp.WorkspaceSymbols.Tests in 'Common\Lsp\BDLsp.Common.Lsp.WorkspaceSymbols.Tests.pas',
   BDLsp.Common.Lsp.DocumentHighlights.Tests in 'Common\Lsp\BDLsp.Common.Lsp.DocumentHighlights.Tests.pas',
   BDLsp.Common.Lsp.WatchedFiles.Tests in 'Common\Lsp\BDLsp.Common.Lsp.WatchedFiles.Tests.pas',
