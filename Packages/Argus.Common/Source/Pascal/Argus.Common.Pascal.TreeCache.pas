@@ -71,7 +71,9 @@ type
   end;
 
 var
-  RunLock: TObject;
+  // TCriticalSection statt TMonitor: TMonitor legt Sperrdaten erst beim ersten Zugriff
+  // bzw. Konflikt an und behält sie; der Leck-Monitor meldete das im ersten Test.
+  RunLock: TCriticalSection;
   // Laufender gemeinsamer Parse je URI; hält die Läufe über ihre Schnittstelle am Leben.
   Running: TDictionary<string, IPascalCancellation>;
   Parses: Integer;
@@ -123,7 +125,7 @@ var
 begin
   Run := TParseRun.Create(ADocument.Version);
   Signal := Run;
-  TMonitor.Enter(RunLock);
+  RunLock.Enter;
   try
     if not Running.TryGetValue(ADocument.Uri, Previous) then
       Running.Add(ADocument.Uri, Signal)
@@ -134,16 +136,16 @@ begin
     end;
     // Ist schon eine neuere Version in Arbeit, läuft dieser Parse ohne Eintrag zu Ende.
   finally
-    TMonitor.Exit(RunLock);
+    RunLock.Leave;
   end;
   Tree := TPascalParser.Parse(ADocument.Text, Signal);
   TInterlocked.Increment(Parses);
-  TMonitor.Enter(RunLock);
+  RunLock.Enter;
   try
     if Running.TryGetValue(ADocument.Uri, Previous) and (Previous = Signal) then
       Running.Remove(ADocument.Uri);
   finally
-    TMonitor.Exit(RunLock);
+    RunLock.Leave;
   end;
   if Run.IsCancelled then
   begin
@@ -184,7 +186,7 @@ begin
 end;
 
 initialization
-  RunLock := TObject.Create;
+  RunLock := TCriticalSection.Create;
   // Gleich mit Platz anlegen: Wächst das Wörterbuch erst beim ersten Parse, bleibt der
   // vergrößerte Speicher bis Programmende liegen und gilt im Test als Leck.
   Running := TDictionary<string, IPascalCancellation>.Create(64);
