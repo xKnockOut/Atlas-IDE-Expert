@@ -8,6 +8,8 @@
 // Server: Pfad und Argumente aus HKCU\Software\BetterDelphiLSP\IdePlugin
 // (ServerPath, ServerArguments). Ohne Eintrag: BetterDelphiLSP.exe neben dem
 // Plugin, sonst ..\..\..\Win64\Debug\Bin\ (Ausgabeordner des Repos).
+// Diagnose = 1 (DWORD) im selben Schlüssel protokolliert die Aufrufe der IDE
+// in BDLsp.IdePlugin.log neben dem Plugin.
 
 interface
 
@@ -25,13 +27,17 @@ type
     FServer: TLspServerProcess;
     FSession: TLspSession;
     FLastError: string;
+    FDiagnose: Boolean;
     function EnsureSession: Boolean;
     procedure StopSession;
     procedure ReportError(const AMessage: string);
+    procedure Diagnose(const AMessage: string);
     function CurrentEditView: IOTAEditView;
     class function BufferText(const ABuffer: IOTAEditBuffer): string; static;
     class function TabWidth(const ABuffer: IOTAEditBuffer): Integer; static;
     class function ServerPath(out AArguments: string): string; static;
+    class function DiagnoseEnabled: Boolean; static;
+    class function DiagnoseLog: string; static;
   public
     constructor Create;
     destructor Destroy; override;
@@ -68,6 +74,8 @@ type
 implementation
 
 uses
+  System.IOUtils,
+  System.StrUtils,
   System.Win.Registry,
   Winapi.Windows;
 
@@ -83,12 +91,37 @@ constructor TBDLspCodeInsightManager.Create;
 begin
   inherited Create;
   FEnabled := True;
+  FDiagnose := DiagnoseEnabled;
+  Diagnose('Plugin geladen: ' + GetModuleName(HInstance));
 end;
 
 destructor TBDLspCodeInsightManager.Destroy;
 begin
   StopSession;
   inherited;
+end;
+
+class function TBDLspCodeInsightManager.DiagnoseEnabled: Boolean;
+var
+  Registry: TRegistry;
+begin
+  // Diagnose = 1 (DWORD): Aufrufe der IDE und Ergebnisse in DiagnoseLog.
+  Result := False;
+  Registry := TRegistry.Create(KEY_READ);
+  try
+    Registry.RootKey := HKEY_CURRENT_USER;
+    if Registry.OpenKeyReadOnly(RegistryKey) and Registry.ValueExists('Diagnose') and
+      (Registry.GetDataType('Diagnose') = rdInteger) then
+      Result := Registry.ReadInteger('Diagnose') <> 0;
+  finally
+    Registry.Free;
+  end;
+end;
+
+class function TBDLspCodeInsightManager.DiagnoseLog: string;
+begin
+  // Neben dem Plugin, nicht im Temp-Ordner: Den hat die IDE nicht in jedem Fall gemeinsam mit uns.
+  Result := ChangeFileExt(GetModuleName(HInstance), '.log');
 end;
 
 class function TBDLspCodeInsightManager.ServerPath(out AArguments: string): string;
@@ -123,12 +156,25 @@ procedure TBDLspCodeInsightManager.ReportError(const AMessage: string);
 var
   Messages: IOTAMessageServices;
 begin
+  Diagnose('Fehler: ' + AMessage);
   // Jede Meldung nur einmal, sonst flutet ein fehlender Server das Meldungsfenster.
   if AMessage = FLastError then
     Exit;
   FLastError := AMessage;
   if Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
     Messages.AddTitleMessage('BetterDelphiLSP: ' + AMessage);
+end;
+
+procedure TBDLspCodeInsightManager.Diagnose(const AMessage: string);
+begin
+  if not FDiagnose then
+    Exit;
+  try
+    TFile.AppendAllText(DiagnoseLog, FormatDateTime('hh:nn:ss.zzz', Now) + ' ' + AMessage + sLineBreak,
+      TEncoding.UTF8);
+  except
+    // Diagnose darf die IDE nie stören.
+  end;
 end;
 
 procedure TBDLspCodeInsightManager.StopSession;
@@ -145,6 +191,7 @@ begin
     Exit(True);
   StopSession;
   Path := ServerPath(Arguments);
+  Diagnose('Starte Server: ' + Path);
   if not FileExists(Path) then
   begin
     ReportError('Server nicht gefunden: ' + Path);
@@ -224,6 +271,7 @@ var
   Lines: TArray<string>;
 begin
   Result := '';
+  Diagnose(Format('GetHintText(%d, %d) aufgerufen', [HintLine, HintCol]));
   try
     View := CurrentEditView;
     if (View = nil) or (View.Buffer = nil) or not EnsureSession then
@@ -234,6 +282,8 @@ begin
       Exit;
     Result := FSession.Hover(View.Buffer.FileName, Text, HintLine - 1,
       TLspSession.ColumnToIndex(Lines[HintLine - 1], HintCol, TabWidth(View.Buffer)));
+    Diagnose(Format('Hover in %s, Zeile %d, Spalte %d (Cursor %d/%d): %s', [ExtractFileName(View.Buffer.FileName),
+      HintLine, HintCol, View.CursorPos.Line, View.CursorPos.Col, IfThen(Result = '', 'leer', Result)]));
   except
     on E: Exception do
     begin
@@ -250,33 +300,49 @@ var
   Text: string;
   Lines: TArray<string>;
   Cursor: TOTAEditPos;
+  Character: Integer;
   Location: TLspLocation;
 begin
+  // Laut ToolsAPI: AFileName = '' und ALineNum = 0 bricht ohne Meldung ab.
+  // Mit False meldet die IDE „Datei "" nicht gefunden“; deshalb True.
   AFileName := '';
   ALineNum := 0;
   Result := True;
+  Diagnose(Format('GotoDefinition(Index %d) aufgerufen', [Index]));
   try
     View := CurrentEditView;
-    if (View = nil) or (View.Buffer = nil) or not EnsureSession then
+    if (View = nil) or (View.Buffer = nil) then
+    begin
+      Diagnose('Gehe zu Definition: keine Editoransicht');
+      Exit;
+    end;
+    if not EnsureSession then
       Exit;
     Text := BufferText(View.Buffer);
     Lines := Text.Split([#13#10, #10]);
+    // Die synchrone Schnittstelle übergibt keine Klickposition; maßgeblich ist der Cursor.
     Cursor := View.CursorPos;
     if (Cursor.Line < 1) or (Cursor.Line > Length(Lines)) then
+    begin
+      Diagnose(Format('Gehe zu Definition: Cursorzeile %d außerhalb des Puffers (%d Zeilen)',
+        [Cursor.Line, Length(Lines)]));
       Exit;
-    if FSession.Definition(View.Buffer.FileName, Text, Cursor.Line - 1,
-      TLspSession.ColumnToIndex(Lines[Cursor.Line - 1], Cursor.Col, TabWidth(View.Buffer)), Location) then
+    end;
+    Character := TLspSession.ColumnToIndex(Lines[Cursor.Line - 1], Cursor.Col, TabWidth(View.Buffer));
+    if FSession.Definition(View.Buffer.FileName, Text, Cursor.Line - 1, Character, Location) then
     begin
       AFileName := Location.FileName;
       ALineNum := Location.Line + 1;
-    end
-    else
-      Result := False;
+    end;
+    Diagnose(Format('Gehe zu Definition (Index %d) in %s, Zeile %d, Spalte %d (Zeichen %d): %s',
+      [Index, ExtractFileName(View.Buffer.FileName), Cursor.Line, Cursor.Col, Character,
+       IfThen(AFileName <> '', Format('%s, Zeile %d', [AFileName, ALineNum]), 'keine Definition')]));
   except
     on E: Exception do
     begin
       ReportError('Gehe zu Definition: ' + E.Message);
-      Result := False;
+      AFileName := '';
+      ALineNum := 0;
     end;
   end;
 end;
@@ -310,6 +376,7 @@ end;
 procedure TBDLspCodeInsightManager.SetEnabled(Value: Boolean);
 begin
   FEnabled := Value;
+  Diagnose('SetEnabled(' + BoolToStr(Value, True) + ')');
   if not Value then
     StopSession;
 end;
@@ -326,6 +393,7 @@ begin
   // #2 Browse (Strg+Klick), #3 Symbolhinweis; Vervollständigung (#0) und
   // Parameterhilfe (#1) folgen.
   Allow := CharInSet(Key, [#2, #3]);
+  Diagnose(Format('AllowCodeInsight(#%d) = %s', [Ord(Key), BoolToStr(Allow, True)]));
 end;
 
 function TBDLspCodeInsightManager.PreValidateCodeInsight(const Str: string): Boolean;
@@ -360,6 +428,7 @@ var
 begin
   Extension := LowerCase(ExtractFileExt(AFileName));
   Result := (Extension = '.pas') or (Extension = '.dpr') or (Extension = '.dpk') or (Extension = '.inc');
+  Diagnose(Format('HandlesFile(%s) = %s', [AFileName, BoolToStr(Result, True)]));
 end;
 
 function TBDLspCodeInsightManager.GetLongestItem: string;
@@ -382,6 +451,7 @@ begin
   else
     CodeInsightType := citNone;
   end;
+  Diagnose(Format('GetCodeInsightType(#%d, Element %d) = %d', [Ord(AChar), AElement, Ord(CodeInsightType)]));
 end;
 
 function TBDLspCodeInsightManager.InvokeCodeCompletion(HowInvoked: TOTAInvokeType; var Str: string): Boolean;
