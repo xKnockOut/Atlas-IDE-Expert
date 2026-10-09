@@ -1,7 +1,6 @@
 ﻿unit Argus.IDE.CodeInsight.Composition;
 
-// Meldet den Code Insight-Manager beim Laden des Packages an und beim
-// Entladen wieder ab (ADR 0006).
+// Meldet den Code Insight-Manager und die Optionsseite 
 
 interface
 
@@ -12,7 +11,8 @@ implementation
 uses
   System.SysUtils,
   ToolsAPI,
-  Argus.IDE.CodeInsight.Manager;
+  Argus.IDE.CodeInsight.Manager,
+  Argus.IDE.Settings.Options;
 
 var
   ManagerIndex: Integer = -1;
@@ -23,12 +23,14 @@ var
 begin
   if (ManagerIndex < 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
     ManagerIndex := Services.AddCodeInsightManager(TArgusCodeInsightManager.Create);
+  TArgusOptionsRegistration.Register(nil);
 end;
 
 procedure Unregister;
 var
   Services: IOTACodeInsightServices;
 begin
+  TArgusOptionsRegistration.Unregister;
   if (ManagerIndex >= 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
     Services.RemoveCodeInsightManager(ManagerIndex);
   ManagerIndex := -1;

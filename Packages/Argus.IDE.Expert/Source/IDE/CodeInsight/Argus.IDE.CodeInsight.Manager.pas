@@ -86,6 +86,7 @@ uses
   System.IOUtils,
   System.StrUtils,
   System.Win.Registry,
+  Argus.IDE.Settings.Store,
   Winapi.Windows,
   Argus.IDE.Editor.Buffer;
 
@@ -465,7 +466,8 @@ var
   Extension: string;
 begin
   Extension := LowerCase(ExtractFileExt(AFileName));
-  Result := (Extension = '.pas') or (Extension = '.dpr') or (Extension = '.dpk') or (Extension = '.inc');
+  // Hauptschalter (#407): ausgeschaltet übernimmt die eingebaute Code Insight.
+  Result := TArgusIdeSettings.Current.Enabled and ((Extension = '.pas') or (Extension = '.dpr') or (Extension = '.dpk') or (Extension = '.inc'));
   Diagnose(Format('HandlesFile(%s) = %s', [AFileName, BoolToStr(Result, True)]));
 end;
 
