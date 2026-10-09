@@ -51,7 +51,8 @@ begin
   try
     Context := Default(TRuleContext);
     Context.RelativePath := ARelativePath;
-    Context.UnitName := ChangeFileExt(ExtractFileName(ARelativePath), '');
+    // Wie Rules.Checker: relative Pfade haben '/', ExtractFileName kennt unter Windows nur '\'.
+    Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARelativePath, '/', '\', [rfReplaceAll])), '');
     Context.Text := ASource;
     Context.Tree := Tree;
     Result := TRuleEngine.Run([ARule], Settings, Context);
