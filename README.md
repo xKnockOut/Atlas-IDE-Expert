@@ -22,7 +22,7 @@ Details zu Rollen, Benennung und Importregeln: [docs/Architektur.md](docs/Archit
 
 ## Bauen
 
-In der IDE `BetterDelphiLSP.groupproj` öffnen und **Alle erstellen**. Die Reihenfolge Common → Windows → Anwendung → Tests ist in der Projektgruppe hinterlegt.
+In der IDE `BetterDelphiLSP.groupproj` öffnen und **Alle erstellen**. Die Reihenfolge Common → Windows → Anwendung → IDE-Plugin → Tests ist in der Projektgruppe hinterlegt. Das IDE-Plugin ist nur für Win32 eingerichtet (die IDE ist 32-Bit); ein Gruppenbau für Win64 übersetzt es trotzdem mit und prüft so den Quelltext.
 
 Auf der Kommandozeile (RAD-Studio-Eingabeaufforderung bzw. nach `rsvars.bat`):
 

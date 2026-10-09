@@ -154,17 +154,17 @@
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.Positions.pas"/>
         <DCCReference Include="Source\Lsp\Internals\BDLsp.Common.Lsp.Internals.Debouncer.pas"/>
         <DCCReference Include="Source\Lsp\Internals\BDLsp.Common.Lsp.Internals.Cancellation.pas"/>
-        <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.SyntaxDiagnostics.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.DocumentSymbols.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.FoldingRanges.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.SelectionRanges.pas"/>
+        <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.SyntaxDiagnostics.pas"/>
         <DCCReference Include="Source\Lsp\BDLsp.Common.Lsp.TextDocumentSync.pas"/>
         <DCCReference Include="Source\Pascal\BDLsp.Common.Pascal.Contract.pas"/>
         <DCCReference Include="Source\Pascal\BDLsp.Common.Pascal.Lexer.pas"/>
         <DCCReference Include="Source\Pascal\BDLsp.Common.Pascal.SyntaxTree.pas"/>
         <DCCReference Include="Source\Pascal\BDLsp.Common.Pascal.Parser.pas"/>
-        <DCCReference Include="Source\Pascal\BDLsp.Common.Pascal.Preprocessor.pas"/>
         <DCCReference Include="Source\Pascal\BDLsp.Common.Pascal.LanguageFeatures.pas"/>
+        <DCCReference Include="Source\Pascal\BDLsp.Common.Pascal.Preprocessor.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -121,6 +121,10 @@
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.CodeActions.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.DocumentLinks.Tests.pas"/>
         <DCCReference Include="Common\Editing\BDLsp.Common.Editing.Colors.Tests.pas"/>
+        <DCCReference Include="..\Packages\BDLsp.IdePlugin\Source\Lsp\BDLsp.IdePlugin.Lsp.Client.pas"/>
+        <DCCReference Include="..\Packages\BDLsp.IdePlugin\Source\Lsp\BDLsp.IdePlugin.Lsp.Session.pas"/>
+        <DCCReference Include="..\Packages\BDLsp.IdePlugin\Source\Lsp\BDLsp.IdePlugin.Lsp.Adapters.ServerProcess.pas"/>
+        <DCCReference Include="IdePlugin\BDLsp.IdePlugin.Lsp.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
