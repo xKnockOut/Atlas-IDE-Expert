@@ -80,6 +80,7 @@ contains
   Argus.Core.Completion.Ranking in 'Source\Core\Completion\Argus.Core.Completion.Ranking.pas',
   Argus.Core.Completion.Usage in 'Source\Core\Completion\Argus.Core.Completion.Usage.pas',
   Argus.IDE.Completion.History in 'Source\IDE\Completion\Argus.IDE.Completion.History.pas',
-  Argus.UI.Strings in 'Source\UI\Argus.UI.Strings.pas';
+  Argus.UI.Strings in 'Source\UI\Argus.UI.Strings.pas',
+  Argus.Core.Completion.Providers.XmlDoc in 'Source\Core\Completion\Providers\Argus.Core.Completion.Providers.XmlDoc.pas';
 
 end.

@@ -26,7 +26,8 @@ type
 
   /// <summary>Art eines Eintrags (Symbol und Badge im Popup, #421).</summary>
   TArgusItemKind = (Unknown, Method, Function_, Procedure_, Constructor_, Destructor_, Property_, Field, Event,
-    Variable, Parameter, Constant, Type_, Class_, Interface_, Record_, Enum, EnumMember, Unit_, Keyword, Snippet);
+    Variable, Parameter, Constant, Type_, Class_, Interface_, Record_, Enum, EnumMember, Unit_, Keyword, Snippet,
+    XmlDocTag);
 
   TArgusVisibility = (Unknown, StrictPrivate, Private_, StrictProtected, Protected_, Public_, Published_);
 
@@ -74,7 +75,7 @@ type
     Overloads: TArray<string>;
     /// <summary>Unit des Symbols ist schon eingebunden (sonst trägt AdditionalEdits sie ein, #180).</summary>
     UnitUsed: Boolean;
-    /// <summary>Text beim Übernehmen; '' = Name.</summary>
+    /// <summary>Text beim Übernehmen; '' = Name. "$0" markiert die Cursorposition danach.</summary>
     InsertText: string;
     /// <summary>Text, gegen den gefiltert wird; '' = Name.</summary>
     FilterText: string;

@@ -156,7 +156,8 @@ uses
   Argus.Core.Completion.Usage in '..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Usage.pas',
   Argus.Core.Completion.Ranking.Tests in 'IDE.Expert\Argus.Core.Completion.Ranking.Tests.pas',
   Argus.UI.Strings in '..\Packages\Argus.IDE.Expert\Source\UI\Argus.UI.Strings.pas',
-  Argus.UI.Strings.Tests in 'IDE.Expert\Argus.UI.Strings.Tests.pas';
+  Argus.UI.Strings.Tests in 'IDE.Expert\Argus.UI.Strings.Tests.pas',
+  Argus.Core.Completion.Providers.XmlDoc in '..\Packages\Argus.IDE.Expert\Source\Core\Completion\Providers\Argus.Core.Completion.Providers.XmlDoc.pas';
 
 {$IFNDEF TESTINSIGHT}
 var
