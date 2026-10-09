@@ -27,7 +27,7 @@ Die Regeln für die Packages prüft `Tools/Check-PackageDependencies.ps1` (uses-
 ## Verzeichnisstruktur
 
 ```text
-BetterDelphiLSP.groupproj          Projektgruppe (Build-Reihenfolge: Common, Windows, Anwendung, Tests)
+BetterDelphiLSP.groupproj          Projektgruppe (Build-Reihenfolge: Common, Windows, Anwendung, IDE-Plugin, Tests)
 Packages/
   BDLsp.Common/
     BDLsp.Common.dpk/.dproj

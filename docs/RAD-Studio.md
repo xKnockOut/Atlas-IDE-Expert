@@ -7,7 +7,7 @@ Es gibt zwei Wege:
 
 ## IDE-Plugin
 
-1. Das Package `Packages\BDLsp.IdePlugin\BDLsp.IdePlugin.dproj` für **Win32** bauen (die IDE ist 32-Bit). Ergebnis: `Output\Win32\Debug\Bpl\BDLsp.IdePlugin.bpl`.
+1. Das Package `Packages\BDLsp.IdePlugin\BDLsp.IdePlugin.dproj` (in der Projektgruppe enthalten) für **Win32** bauen (die IDE ist 32-Bit). Ergebnis: `Output\Win32\Debug\Bpl\BDLsp.IdePlugin.bpl`. Ist das Plugin installiert, sperrt die IDE diese BPL; zum Neubauen das Package vorher entladen.
 2. In RAD Studio: *Komponente > Packages installieren > Hinzufügen*, die BPL auswählen.
 3. *Tools > Optionen > Editor > Sprache > Code Insight*: im Code Insight-Manager **„BetterDelphiLSP (Plugin)“** wählen.
 4. Den Server findet das Plugin in dieser Reihenfolge:
