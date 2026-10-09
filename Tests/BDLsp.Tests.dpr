@@ -83,7 +83,11 @@ uses
   BDLsp.Common.Rules.Builtin.Unicode.Tests in 'Common\Rules\Builtin\BDLsp.Common.Rules.Builtin.Unicode.Tests.pas',
   BDLsp.Common.Editing.Colors.Tests in 'Common\Editing\BDLsp.Common.Editing.Colors.Tests.pas',
   BDLsp.Common.Editing.DocumentLinks.Tests in 'Common\Editing\BDLsp.Common.Editing.DocumentLinks.Tests.pas',
-  BDLsp.Common.Editing.CodeActions.Tests in 'Common\Editing\BDLsp.Common.Editing.CodeActions.Tests.pas';
+  BDLsp.Common.Editing.CodeActions.Tests in 'Common\Editing\BDLsp.Common.Editing.CodeActions.Tests.pas',
+  BDLsp.IdePlugin.Lsp.Client in '..\Packages\BDLsp.IdePlugin\Source\Lsp\BDLsp.IdePlugin.Lsp.Client.pas',
+  BDLsp.IdePlugin.Lsp.Session in '..\Packages\BDLsp.IdePlugin\Source\Lsp\BDLsp.IdePlugin.Lsp.Session.pas',
+  BDLsp.IdePlugin.Lsp.Adapters.ServerProcess in '..\Packages\BDLsp.IdePlugin\Source\Lsp\BDLsp.IdePlugin.Lsp.Adapters.ServerProcess.pas',
+  BDLsp.IdePlugin.Lsp.Tests in 'IdePlugin\BDLsp.IdePlugin.Lsp.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

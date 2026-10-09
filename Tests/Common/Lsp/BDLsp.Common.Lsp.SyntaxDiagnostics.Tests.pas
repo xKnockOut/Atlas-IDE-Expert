@@ -49,6 +49,8 @@ type
     [Test]
     procedure ClearsDiagnosticsOnClose;
     [Test]
+    // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
+    [IgnoreMemoryLeaks]
     procedure PublishesWithin200MsAfterLastChange;
     [Test]
     procedure BuildsParamsForSnapshot;

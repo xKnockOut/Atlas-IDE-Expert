@@ -9,6 +9,7 @@ Hier stehen Architekturentscheidungen mit Kontext, Entscheidung und Folgen. Eine
 | [0003](0003-index-cache-json.md) | Symbolindex-Cache als JSON-Datei | Angenommen |
 | [0004](0004-nebenlaeufige-anfragen.md) | Lesende Anfragen nebenläufig auf Momentaufnahmen | Angenommen |
 | [0005](0005-hybrid-modus.md) | Hybrid-Modus mit Embarcadero DelphiLSP | Offen |
+| [0006](0006-ide-plugin.md) | IDE-Plugin als Code Insight-Manager für RAD Studio | Angenommen |
 
 ## Vorlage
 
