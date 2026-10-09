@@ -5,7 +5,8 @@
 // Umgesetzt: Symbolhinweis (Hover, GetHintText), Browse (Strg+Klick,
 // GotoDefinition) und Vervollständigung im eigenen Popup (#410): Strg+Leer und
 // "." lösen sie aus, InvokeCodeCompletion öffnet das Popup und meldet der IDE
-// False, damit sie keine eigene Liste zeigt (#407). Parameterhilfe folgt.
+// False, damit sie keine eigene Liste zeigt (#407). Parameterhilfe ebenso im eigenen
+// Hint (#436): "(", "," und Strg+Umschalt+Leer, InvokeParameterCodeInsight meldet False.
 //
 // Server: Pfad und Argumente aus HKCU\Software\Argus\IdePlugin
 // (ServerPath, ServerArguments), ersatzweise aus dem früheren Schlüssel
@@ -22,7 +23,8 @@ uses
   ToolsAPI,
   Argus.Core.Lsp.Adapters.ServerProcess,
   Argus.Core.Lsp.Session,
-  Argus.IDE.Completion.Editor;
+  Argus.IDE.Completion.Editor,
+  Argus.IDE.Signature.Editor;
 
 type
   TArgusCodeInsightManager = class(TInterfacedObject, IOTACodeInsightManager, IOTACodeInsightSelection)
@@ -33,12 +35,15 @@ type
     FLastError: string;
     FDiagnose: Boolean;
     FCompletion: TArgusEditorCompletion;
+    FSignature: TArgusEditorSignature;
     function EnsureSession: Boolean;
     procedure StopSession;
     procedure ReportError(const AMessage: string);
     procedure Diagnose(const AMessage: string);
     function CurrentEditView: IOTAEditView;
     function Completion: TArgusEditorCompletion;
+    function Signature: TArgusEditorSignature;
+    function SessionOrNil: TLspSession;
     class function ServerPath(out AArguments: string): string; static;
     class function DiagnoseEnabled: Boolean; static;
     class function DiagnoseLog: string; static;
@@ -118,6 +123,7 @@ end;
 destructor TArgusCodeInsightManager.Destroy;
 begin
   // Vor der Sitzung: wartet auf laufende Anfragen und meldet Tasten und Beobachter ab.
+  FreeAndNil(FSignature);
   FreeAndNil(FCompletion);
   StopSession;
   inherited;
@@ -207,6 +213,8 @@ begin
   // Laufende Anfragen der Vervollständigung nutzen die Sitzung noch.
   if FCompletion <> nil then
     FCompletion.Shutdown;
+  if FSignature <> nil then
+    FSignature.Shutdown;
   FreeAndNil(FSession);
   FreeAndNil(FServer);
 end;
@@ -252,16 +260,40 @@ begin
     Result := (BorlandIDEServices as IOTAEditorServices).TopView;
 end;
 
+function TArgusCodeInsightManager.SessionOrNil: TLspSession;
+begin
+  if EnsureSession then
+    Result := FSession
+  else
+    Result := nil;
+end;
+
+function TArgusCodeInsightManager.Signature: TArgusEditorSignature;
+begin
+  if FSignature = nil then
+    FSignature := TArgusEditorSignature.Create(
+      function: TLspSession
+      begin
+        Result := SessionOrNil;
+      end,
+      function: Boolean
+      begin
+        Result := (FCompletion <> nil) and FCompletion.Visible;
+      end,
+      procedure(const AMessage: string)
+      begin
+        Diagnose(AMessage);
+      end);
+  Result := FSignature;
+end;
+
 function TArgusCodeInsightManager.Completion: TArgusEditorCompletion;
 begin
   if FCompletion = nil then
     FCompletion := TArgusEditorCompletion.Create(
       function: TLspSession
       begin
-        if EnsureSession then
-          Result := FSession
-        else
-          Result := nil;
+        Result := SessionOrNil;
       end,
       procedure(const AMessage: string)
       begin
@@ -397,8 +429,8 @@ end;
 procedure TArgusCodeInsightManager.AllowCodeInsight(var Allow: Boolean; const Key: Char);
 begin
   // #0 Vervollständigung (Strg+Leer), "." Vervollständigung nach Punkt, #2 Browse
-  // (Strg+Klick), #3 Symbolhinweis; Parameterhilfe (#1) folgt.
-  Allow := CharInSet(Key, [#0, '.', #2, #3]);
+  // (Strg+Klick), #3 Symbolhinweis; #1 Parameterhilfe (Strg+Umschalt+Leer), "(" und ",".
+  Allow := CharInSet(Key, [#0, '.', #1, '(', ',', #2, #3]);
   Diagnose(Format('AllowCodeInsight(#%d) = %s', [Ord(Key), BoolToStr(Allow, True)]));
 end;
 
@@ -459,13 +491,20 @@ begin
         CodeInsightType := citCodeInsight;
         InvokeType := itTimer;
       end;
+    #1: CodeInsightType := citParameterCodeInsight;
+    '(', ',':
+      begin
+        CodeInsightType := citParameterCodeInsight;
+        InvokeType := itTimer;
+      end;
     #2: CodeInsightType := citBrowseCodeInsight;
     #3: CodeInsightType := citHintCodeInsight;
   else
     CodeInsightType := citNone;
   end;
   // In Kommentaren und Strings keine Vervollständigung.
-  if (CodeInsightType = citCodeInsight) and ((AElement = atComment) or (AElement = atString)) then
+  if (CodeInsightType in [citCodeInsight, citParameterCodeInsight]) and
+    ((AElement = atComment) or (AElement = atString)) then
     CodeInsightType := citNone;
   Diagnose(Format('GetCodeInsightType(#%d, Element %d) = %d', [Ord(AChar), AElement, Ord(CodeInsightType)]));
 end;
@@ -486,7 +525,15 @@ end;
 function TArgusCodeInsightManager.InvokeParameterCodeInsight(HowInvoked: TOTAInvokeType;
   var SelectedIndex: Integer): Boolean;
 begin
+  // False: Die IDE zeigt keine eigene Parameterhilfe; unser Hint übernimmt (#436).
   Result := False;
+  Diagnose(Format('InvokeParameterCodeInsight(%d)', [Ord(HowInvoked)]));
+  try
+    Signature.Invoke(CurrentEditView);
+  except
+    on E: Exception do
+      ReportError('Parameterhilfe: ' + E.Message);
+  end;
 end;
 
 procedure TArgusCodeInsightManager.ParameterCodeInsightAnchorPos(var EdPos: TOTAEditPos);
