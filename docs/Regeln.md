@@ -29,6 +29,12 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`hides-virtual`](#hides-virtual) | Methode verdeckt virtuelle Methode | Bug | Warnung |
 | [`virtual-instead-of-override`](#virtual-instead-of-override) | virtual statt override | Bug | Warnung |
 | [`captured-loop-variable`](#captured-loop-variable) | Erfasste Schleifenvariable | Bug | Warnung |
+| [`component-missing-inherited`](#component-missing-inherited) | Komponentenmethode ohne inherited | Bug | Warnung |
+| [`component-default-mismatch`](#component-default-mismatch) | default passt nicht zum Konstruktor | Bug | Warnung |
+| [`component-missing-free-notification`](#component-missing-free-notification) | Komponentenreferenz ohne FreeNotification | Bug | Warnung |
+| [`component-setter-without-invalidate`](#component-setter-without-invalidate) | Setter ohne Invalidate | Code Smell | Hinweis |
+| [`component-fixed-pixels`](#component-fixed-pixels) | Feste Pixelwerte | Code Smell | Warnung |
+| [`component-hardcoded-color`](#component-hardcoded-color) | Feste Farbe in Paint | Code Smell | Hinweis |
 
 <a id="syntax"></a>
 ## syntax
@@ -666,4 +672,143 @@ end;
 ...
 for S in List do
   TThread.Queue(nil, CaptureS(S));
+```
+
+<a id="component-missing-inherited"></a>
+## component-missing-inherited
+
+**Komponentenmethode ohne inherited** · Bug · Warnung
+
+Ein überschriebenes Loaded, CreateParams, CreateWnd, Notification, SetParent, Destroy oder Paint einer Komponente ruft inherited nicht auf; die VCL überspringt dann ihre eigene Arbeit. Bei Paint ist die Konfidenz niedrig, weil TCustomControl.Paint nur den Rahmen im Designer zeichnet.
+
+Mit Treffer:
+
+```pascal
+procedure TMyControl.Loaded;
+begin
+  UpdateLayout;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TMyControl.Loaded;
+begin
+  inherited;
+  UpdateLayout;
+end;
+```
+
+<a id="component-default-mismatch"></a>
+## component-default-mismatch
+
+**default passt nicht zum Konstruktor** · Bug · Warnung
+
+Eine Eigenschaft gibt einen default-Wert an, der Konstruktor setzt das Feld aber auf ein anderes Literal. Werte gleich default speichert die DFM nicht, deshalb wird die Eigenschaft falsch geladen.
+
+Mit Treffer:
+
+```pascal
+property Size: Integer read FSize write FSize default 5;
+...
+FSize := 10;
+```
+
+Richtig:
+
+```pascal
+property Size: Integer read FSize write FSize default 10;
+...
+FSize := 10;
+```
+
+<a id="component-missing-free-notification"></a>
+## component-missing-free-notification
+
+**Komponentenreferenz ohne FreeNotification** · Bug · Warnung
+
+Eine Eigenschaft verweist auf eine andere Komponente, ihr Setter ruft aber FreeNotification nicht auf. Wird die andere Komponente freigegeben, bleibt ein ungültiger Zeiger zurück. Im Konstruktor erzeugte Unterkomponenten sind ausgenommen.
+
+Mit Treffer:
+
+```pascal
+procedure TMyControl.SetLink(const Value: TControl);
+begin
+  FLink := Value;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TMyControl.SetLink(const Value: TControl);
+begin
+  FLink := Value;
+  if Value <> nil then Value.FreeNotification(Self);
+end;
+```
+
+<a id="component-setter-without-invalidate"></a>
+## component-setter-without-invalidate
+
+**Setter ohne Invalidate** · Code Smell · Hinweis
+
+Ein Setter ändert ein Feld, das Paint liest, ruft aber weder Invalidate noch Repaint, Refresh oder Changed auf. Das Steuerelement zeigt weiter den alten Zustand.
+
+Mit Treffer:
+
+```pascal
+procedure TMyControl.SetColor(const Value: TColor);
+begin
+  FColor := Value;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TMyControl.SetColor(const Value: TColor);
+begin
+  FColor := Value;
+  Invalidate;
+end;
+```
+
+<a id="component-fixed-pixels"></a>
+## component-fixed-pixels
+
+**Feste Pixelwerte** · Code Smell · Warnung
+
+Paint oder Resize verwenden feste Pixelwerte, die über 96 dpi zu klein sind. Werte über ScaleValue oder MulDiv, 0, 1 und -1 sowie Faktoren von Multiplikationen und Divisionen werden nicht gemeldet.
+
+Mit Treffer:
+
+```pascal
+Canvas.FillRect(Rect(0, 0, 16, 16));
+```
+
+Richtig:
+
+```pascal
+Canvas.FillRect(Rect(0, 0, ScaleValue(16), ScaleValue(16)));
+```
+
+<a id="component-hardcoded-color"></a>
+## component-hardcoded-color
+
+**Feste Farbe in Paint** · Code Smell · Hinweis
+
+Paint verwendet ein RGB-Literal, eine $00BBGGRR-Konstante oder einen TColor-Cast. Solche Farben ignorieren VCL-Styles; Systemfarben wie clBtnFace sind in Ordnung.
+
+Mit Treffer:
+
+```pascal
+Canvas.Brush.Color := $00FF8000;
+```
+
+Richtig:
+
+```pascal
+Canvas.Brush.Color := StyleServices.GetSystemColor(clHighlight);
 ```
