@@ -4,6 +4,10 @@
 // Cache laden, Projektdateien und referenzierte Units indizieren, Cache
 // schreiben. Ein neuer Start (z. B. nach geänderter Konfiguration) bricht
 // den laufenden Aufbau ab und wartet auf ihn.
+//
+// Schreibt eine andere Instanz den Cache gerade (#62), wartet der Aufbau
+// begrenzt, bis sie fertig ist oder die Sperre freigibt, und lädt dann ihren
+// Stand, statt alles selbst noch einmal zu lesen.
 
 interface
 
@@ -25,6 +29,10 @@ type
     CacheFile: string;
     /// <summary>Cache nur lesen, z. B. weil eine andere Instanz ihn schreibt (#184).</summary>
     ReadOnlyCache: Boolean;
+    /// <summary>Hält eine andere Instanz die Sperre noch? nil = nicht warten (#62).</summary>
+    CacheBusy: TFunc<Boolean>;
+    /// <summary>Höchstens so lange auf die andere Instanz warten, in ms.</summary>
+    CacheWaitMs: Integer;
   end;
 
   TIndexFinishedEvent = reference to procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64);
@@ -42,6 +50,7 @@ type
     FOnFinished: TIndexFinishedEvent;
     FOnError: TIndexErrorEvent;
     procedure Run(const ARequest: TIndexRequest);
+    procedure WaitForOtherWriter(const ARequest: TIndexRequest);
   public
     constructor Create(const AIndex: ISymbolIndex; const AFileSystem: IIndexFileSystem);
     destructor Destroy; override;
@@ -130,6 +139,7 @@ begin
     finally
       TMonitor.Exit(FLock);
     end;
+    WaitForOtherWriter(ARequest);
     if (ARequest.CacheFile <> '') and FFileSystem.ReadText(ARequest.CacheFile, Text) then
     begin
       Cached := TIndexCache.Deserialize(Text);
@@ -149,6 +159,26 @@ begin
     on E: Exception do
       if Assigned(FOnError) then
         FOnError(E);
+  end;
+end;
+
+procedure TIndexService.WaitForOtherWriter(const ARequest: TIndexRequest);
+var
+  Watch: TStopwatch;
+  Before, Stamp: Int64;
+begin
+  if (ARequest.CacheFile = '') or not ARequest.ReadOnlyCache or not Assigned(ARequest.CacheBusy) then
+    Exit;
+  if not FFileSystem.FileStamp(ARequest.CacheFile, Before) then
+    Before := 0;
+  Watch := TStopwatch.StartNew;
+  // Bis die andere Instanz einen neuen Stand geschrieben oder die Sperre freigegeben hat,
+  // nie länger als CacheWaitMs.
+  while not FCancelled and (Watch.ElapsedMilliseconds < ARequest.CacheWaitMs) and ARequest.CacheBusy() do
+  begin
+    if FFileSystem.FileStamp(ARequest.CacheFile, Stamp) and (Stamp <> Before) then
+      Exit;
+    TThread.Sleep(200);
   end;
 end;
 
