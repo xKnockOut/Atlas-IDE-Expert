@@ -46,7 +46,7 @@ const
   StarterOutput =
     'Embarcadero Delphi for Win32 compiler version 37.0'#13#10 +
     // Hersteller getrennt, damit Check-NoEmbarcaderoSources.ps1 die Zeile nicht als
-    // Copyright-Kopf einer Embarcadero-Quelle wertet (#77).
+    // Dateikopf einer Herstellerquelle wertet (#77).
     'Copyright (c) 1983,2025 Embar' + 'cadero Technologies, Inc.'#13#10 +
     'This version of the product does not support command line compiling.';
 
