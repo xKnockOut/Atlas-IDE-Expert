@@ -19,6 +19,9 @@ uses
 const
   QuickFixKind = 'quickfix';
   RewriteKind = 'refactor.rewrite';
+  // Für editor.codeActionsOnSave (#182).
+  OrganizeImportsKind = 'source.organizeImports';
+  FixAllKind = 'source.fixAll';
 
 type
   TCodeAction = record
@@ -44,12 +47,21 @@ type
     /// <summary>Alle Aktionen für ARange: Treffer und try/finally in der Startzeile.</summary>
     class function ForRange(const AFindings: TArray<TRuleFinding>; const AText: string;
       const ARange: TTextRange): TArray<TCodeAction>; static;
+    /// <summary>Alle als sicher markierten Korrekturen der Datei in einer Aktion; überlappende
+    /// Edits werden ausgelassen. False ohne sichere Korrektur.</summary>
+    class function FixAll(const AFindings: TArray<TRuleFinding>; out AAction: TCodeAction): Boolean; static;
+    /// <summary>uses aufräumen (doppelte entfernen, mit ASort sortieren); False ohne Änderung.</summary>
+    class function OrganizeImports(const AText: string; ASort: Boolean; out AAction: TCodeAction): Boolean; static;
+    /// <summary>True, wenn AKind unter einer der angefragten Arten liegt (LSP "only"); leeres AOnly = alle.</summary>
+    class function KindRequested(const AKind: string; const AOnly: TArray<string>): Boolean; static;
   end;
 
 implementation
 
 uses
-  System.StrUtils;
+  System.StrUtils,
+  Argus.Common.Pascal.Lexer,
+  Argus.Common.Editing.UsesClause;
 
 function SplitLines(const AText: string): TArray<string>;
 var
@@ -214,6 +226,72 @@ begin
       LB + Indent + 'try' + LB + LB + Indent + 'finally' + LB + Indent + '  ' + Target + '.Free;' + LB + Indent + 'end;')];
   end;
   Result := True;
+end;
+
+function Overlaps(const A, B: TTextRange): Boolean;
+
+  function Before(const X, Y: TTextPosition): Boolean;
+  begin
+    Result := (X.Line < Y.Line) or ((X.Line = Y.Line) and (X.Character <= Y.Character));
+  end;
+
+begin
+  // Bereiche, die sich nur berühren, überlappen nicht.
+  Result := not (Before(A.EndPos, B.StartPos) or Before(B.EndPos, A.StartPos));
+end;
+
+class function TCodeActions.FixAll(const AFindings: TArray<TRuleFinding>; out AAction: TCodeAction): Boolean;
+var
+  Finding: TRuleFinding;
+  Fix: TRuleFix;
+  Edit, Taken: TRuleEdit;
+  Fits: Boolean;
+begin
+  AAction := Default(TCodeAction);
+  AAction.Title := 'Alle sicheren Korrekturen anwenden';
+  AAction.Kind := FixAllKind;
+  for Finding in AFindings do
+    for Fix in Finding.Fixes do
+    begin
+      if not Fix.Safe then
+        Continue;
+      Fits := True;
+      for Edit in Fix.Edits do
+        for Taken in AAction.Edits do
+          if Overlaps(Edit.Range, Taken.Range) then
+            Fits := False;
+      // Eine Korrektur ganz oder gar nicht; die übersprungene kommt beim nächsten Lauf.
+      if Fits then
+        AAction.Edits := AAction.Edits + Fix.Edits;
+      Break;
+    end;
+  Result := AAction.Edits <> nil;
+end;
+
+class function TCodeActions.OrganizeImports(const AText: string; ASort: Boolean; out AAction: TCodeAction): Boolean;
+var
+  Edits: TArray<TRuleEdit>;
+begin
+  AAction := Default(TCodeAction);
+  Result := TUsesClauses.Organize(TPascalLexer.Tokenize(AText), AText, ASort, LineBreakOf(AText), Edits);
+  if not Result then
+    Exit;
+  AAction.Title := 'uses aufräumen';
+  AAction.Kind := OrganizeImportsKind;
+  AAction.Edits := Edits;
+end;
+
+class function TCodeActions.KindRequested(const AKind: string; const AOnly: TArray<string>): Boolean;
+var
+  Only: string;
+begin
+  if AOnly = nil then
+    Exit(True);
+  // "source" umfasst "source.fixAll", aber nicht "sourceX".
+  for Only in AOnly do
+    if SameText(AKind, Only) or StartsText(Only + '.', AKind) then
+      Exit(True);
+  Result := False;
 end;
 
 class function TCodeActions.ForRange(const AFindings: TArray<TRuleFinding>; const AText: string;

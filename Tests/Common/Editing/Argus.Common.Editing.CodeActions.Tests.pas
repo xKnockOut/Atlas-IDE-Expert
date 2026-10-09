@@ -20,6 +20,14 @@ type
     [Test]
     procedure ResultGetsTryExceptInsteadOfFree;
     [Test]
+    procedure FixAllTakesOnlySafeFixes;
+    [Test]
+    procedure FixAllSkipsOverlappingFixes;
+    [Test]
+    procedure OrganizeImportsAsSourceAction;
+    [Test]
+    procedure MatchesRequestedKinds;
+    [Test]
     procedure NoTryFinallyWithoutCreate;
     [Test]
     procedure SuppressLineInsertsCommentAbove;
@@ -143,6 +151,58 @@ begin
   Assert.AreEqual(0, Pos('finally', NewText));
 end;
 
+function FindingWith(ALine: Integer; const ANewText: string; ASafe: Boolean): TRuleFinding;
+begin
+  Result := Default(TRuleFinding);
+  Result.RuleId := 'regel';
+  Result.Range := TTextRange.Create(ALine, 0, ALine, 1);
+  Result.Fixes := [TRuleFix.Create('Fix', [TRuleEdit.Create(TTextRange.Create(ALine, 0, ALine, 1), ANewText)], ASafe)];
+end;
+
+procedure TCodeActionTests.FixAllTakesOnlySafeFixes;
+var
+  Action: TCodeAction;
+begin
+  Assert.IsFalse(TCodeActions.FixAll([FindingWith(0, 'a', False)], Action));
+  Assert.IsTrue(TCodeActions.FixAll([FindingWith(0, 'a', False), FindingWith(2, 'b', True), FindingWith(4, 'c', True)],
+    Action));
+  Assert.AreEqual(FixAllKind, Action.Kind);
+  Assert.AreEqual(2, Integer(Length(Action.Edits)));
+  Assert.AreEqual('b', Action.Edits[0].NewText);
+  Assert.AreEqual('c', Action.Edits[1].NewText);
+end;
+
+procedure TCodeActionTests.FixAllSkipsOverlappingFixes;
+var
+  Action: TCodeAction;
+begin
+  Assert.IsTrue(TCodeActions.FixAll([FindingWith(1, 'a', True), FindingWith(1, 'b', True)], Action));
+  Assert.AreEqual(1, Integer(Length(Action.Edits)));
+  Assert.AreEqual('a', Action.Edits[0].NewText);
+end;
+
+procedure TCodeActionTests.OrganizeImportsAsSourceAction;
+var
+  Action: TCodeAction;
+begin
+  Assert.IsTrue(TCodeActions.OrganizeImports('unit A;' + LB + 'interface' + LB + 'uses B, B;' + LB +
+    'implementation' + LB + 'end.', False, Action));
+  Assert.AreEqual(OrganizeImportsKind, Action.Kind);
+  Assert.AreEqual('B', Action.Edits[0].NewText);
+  Assert.IsFalse(TCodeActions.OrganizeImports('unit A;' + LB + 'interface' + LB + 'uses B, C;' + LB +
+    'implementation' + LB + 'end.', True, Action));
+end;
+
+procedure TCodeActionTests.MatchesRequestedKinds;
+begin
+  Assert.IsTrue(TCodeActions.KindRequested(FixAllKind, nil));
+  Assert.IsTrue(TCodeActions.KindRequested(FixAllKind, ['source']));
+  Assert.IsTrue(TCodeActions.KindRequested(OrganizeImportsKind, ['source.organizeImports']));
+  Assert.IsFalse(TCodeActions.KindRequested(FixAllKind, ['source.organizeImports']));
+  Assert.IsFalse(TCodeActions.KindRequested(QuickFixKind, ['source']));
+  Assert.IsFalse(TCodeActions.KindRequested('sourceX', ['source']));
+end;
+
 procedure TCodeActionTests.NoTryFinallyWhenAlreadyProtected;
 var
   Action: TCodeAction;
@@ -228,6 +288,8 @@ begin
   Assert.AreEqual(1, Findings[0].Fixes[0].Edits[0].Range.StartPos.Line);
   Assert.AreEqual(0, Findings[0].Fixes[0].Edits[0].Range.StartPos.Character);
   Assert.AreEqual(2, Findings[0].Fixes[0].Edits[0].Range.EndPos.Line);
+  // Ungenutzte Unterdrückungen zu entfernen ist sicher und läuft über source.fixAll (#182).
+  Assert.IsTrue(Findings[0].Fixes[0].Safe);
 end;
 
 procedure TCodeActionTests.UsedSuppressionNotReported;

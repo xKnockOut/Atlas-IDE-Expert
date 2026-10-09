@@ -41,7 +41,10 @@ type
   TRuleFix = record
     Title: string;
     Edits: TArray<TRuleEdit>;
-    constructor Create(const ATitle: string; const AEdits: TArray<TRuleEdit>);
+    /// <summary>Sicher ohne Rückfrage anwendbar, z. B. beim Speichern über source.fixAll (#182).
+    /// Jede Regel entscheidet das für ihre Korrekturen selbst.</summary>
+    Safe: Boolean;
+    constructor Create(const ATitle: string; const AEdits: TArray<TRuleEdit>; ASafe: Boolean = False);
   end;
 
   /// <summary>Ein Treffer einer Regel. Severity setzt die Engine.</summary>
@@ -133,10 +136,11 @@ end;
 
 { TRuleFix }
 
-constructor TRuleFix.Create(const ATitle: string; const AEdits: TArray<TRuleEdit>);
+constructor TRuleFix.Create(const ATitle: string; const AEdits: TArray<TRuleEdit>; ASafe: Boolean);
 begin
   Title := ATitle;
   Edits := AEdits;
+  Safe := ASafe;
 end;
 
 end.

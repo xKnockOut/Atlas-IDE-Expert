@@ -17,6 +17,21 @@ code --install-extension argus-0.1.0.vsix
 
 Sie startet, sobald ein Ordner mit `.dproj` oder `argus.json` geöffnet wird. Einstellungen und Befehle: [Editors/VSCode/README.md](../Editors/VSCode/README.md).
 
+### Beim Speichern aufräumen
+
+In der `settings.json` von VS Code:
+
+```json
+"[objectpascal]": {
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit",
+    "source.fixAll": "explicit"
+  }
+}
+```
+
+`source.organizeImports` entfernt doppelte Einträge in den uses-Listen; mit `"sortUses": true` in `argus.json` werden sie zusätzlich sortiert. `source.fixAll` wendet alle Korrekturen an, die ihre Regel als sicher markiert, z. B. das Entfernen ungenutzter `lsp-ignore`-Kommentare.
+
 ## Claude Code
 
 Als MCP-Server (Index-Werkzeuge für den Agenten):

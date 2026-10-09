@@ -19,6 +19,7 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 | `compiler` | object | – |  | Compiler-Anbindung (dcc32/dcc64). |
 | `completion` | object | – |  | Code-Vervollständigung. |
 | `usesCommand` | boolean | `true` |  | Eine Zeile "/uses Unit1, Unit2" wird nach Enter gelöscht und die Units kommen ins passende uses. |
+| `sortUses` | boolean | `false` |  | "uses aufräumen" (source.organizeImports, z. B. beim Speichern) sortiert die uses alphabetisch. Achtung: Die Reihenfolge bestimmt die Initialisierung der Units. |
 | `memoryBudgetMb` | integer | `0` | 0… | Obergrenze für den Symbolindex in MB. Darüber werden zuerst Bibliotheks-Units (RTL, VCL), dann Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. |
 | `inlayHints` | object | – |  | Inlay Hints im Editor. |
 | `minConfidence` | string | `"medium"` | `"low"`, `"medium"`, `"high"` | Regeltreffer unter dieser Konfidenz ausblenden. |
