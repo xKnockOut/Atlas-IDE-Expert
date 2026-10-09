@@ -19,6 +19,10 @@ type
     procedure FindsInnermostFolder;
     [Test]
     procedure WritesCapability;
+    [Test]
+    procedure IgnoresDriveRoots;
+    [Test]
+    procedure FindsNearestProjectFolder;
   end;
 
 implementation
@@ -110,6 +114,47 @@ begin
   finally
     Capability.Free;
   end;
+end;
+
+procedure TLspWorkspaceFoldersTests.IgnoresDriveRoots;
+var
+  Params: TJSONObject;
+begin
+  // So meldet sich RAD Studio: rootUri ohne Pfad, keine workspaceFolders.
+  Params := ParseObject('{"rootUri": "file:///", "workspaceFolders": [{"uri": "file:///c%3A/"}]}');
+  try
+    Assert.AreEqual(0, Integer(Length(TLspWorkspaceFolders.FromInitialize(Params))));
+  finally
+    Params.Free;
+  end;
+  Assert.IsFalse(TLspWorkspaceFolders.IsUsableRoot(''));
+  Assert.IsFalse(TLspWorkspaceFolders.IsUsableRoot('/'));
+  Assert.IsFalse(TLspWorkspaceFolders.IsUsableRoot('C:'));
+  Assert.IsFalse(TLspWorkspaceFolders.IsUsableRoot('C:\'));
+  Assert.IsTrue(TLspWorkspaceFolders.IsUsableRoot('C:\Projekte'));
+end;
+
+procedure TLspWorkspaceFoldersTests.FindsNearestProjectFolder;
+var
+  Asked: string;
+begin
+  Asked := '';
+  Assert.AreEqual('C:\Projekte\App', TLspWorkspaceFolders.ProjectFolderFor('C:\Projekte\App\Source\Main.pas',
+    function(const AFolder: string): Boolean
+    begin
+      Asked := Asked + AFolder + ';';
+      Result := SameText(AFolder, 'C:\Projekte\App') or SameText(AFolder, 'C:\Projekte');
+    end));
+  Assert.AreEqual('C:\Projekte\App\Source;C:\Projekte\App;', Asked);
+  // Ohne Projektdatei: aufwärts bis vor die Laufwerkswurzel, dann ''.
+  Asked := '';
+  Assert.AreEqual('', TLspWorkspaceFolders.ProjectFolderFor('C:\Lose\Datei.pas',
+    function(const AFolder: string): Boolean
+    begin
+      Asked := Asked + AFolder + ';';
+      Result := False;
+    end));
+  Assert.AreEqual('C:\Lose;', Asked);
 end;
 
 initialization
