@@ -185,7 +185,9 @@ end;
 
 initialization
   RunLock := TObject.Create;
-  Running := TDictionary<string, IPascalCancellation>.Create;
+  // Gleich mit Platz anlegen: Wächst das Wörterbuch erst beim ersten Parse, bleibt der
+  // vergrößerte Speicher bis Programmende liegen und gilt im Test als Leck.
+  Running := TDictionary<string, IPascalCancellation>.Create(64);
 
 finalization
   FreeAndNil(Running);
