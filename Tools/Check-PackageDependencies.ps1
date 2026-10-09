@@ -53,6 +53,15 @@ $Packages = @(
         ForbiddenPrefix  = @('Vcl.', 'FMX.')
         ForbiddenUnits   = $LegacyVclUnits
         Reason           = 'frei von VCL'
+    },
+    @{
+        # ADR 0006: eigenständig, damit die IDE nur ein BPL laden muss.
+        Name             = 'BDLsp.IdePlugin'
+        Path             = 'Packages/BDLsp.IdePlugin'
+        AllowedRequires  = @('rtl', 'vcl', 'designide')
+        ForbiddenPrefix  = @('BDLsp.Common', 'BDLsp.Windows', 'FMX.')
+        ForbiddenUnits   = @()
+        Reason           = 'eigenständig ohne BDLsp.Common und BDLsp.Windows'
     }
 )
 
