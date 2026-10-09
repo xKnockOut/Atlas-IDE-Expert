@@ -13,7 +13,14 @@
 //   - Gekürzte Zeilen zeigen nach 600 ms Verweilen mit der Maus den vollen Text (#420).
 //   - Detailpanel (#424) im selben Fenster, durch eine Linie abgetrennt auf
 //     abgesetzter Fläche; rechts der Liste, ohne Platz dort links davon. Ist
-//     es einmal offen, bleibt sein Bereich bis zum Schließen stehen.
+//     es einmal offen, bleibt sein Bereich bis zum Schließen stehen. Strg+Q bzw.
+//     Klick auf die Leiste klappt es auf eine schmale Leiste ein und wieder auf
+//     (#428); passt es weder rechts noch links, ist es automatisch eingeklappt.
+//   - Breiten (#416): Splitter zwischen Liste und Panel, rechter Rand und Griff
+//     unten rechts mit der Maus ziehbar; Doppelklick auf den Griff stellt die
+//     automatische Breite wieder her. Ohne gezogene Breite wächst die Liste mit
+//     dem breitesten Eintrag. Gezogen wird ohne Aktivierung, der Editor behält
+//     den Fokus.
 // Die Position ergibt sich aus dem Anker (Caret-Rechteck in Bildschirm-
 // koordinaten): darunter, sonst darüber; nie über den Monitorrand hinaus.
 // Ohne Treffer zeigt es den leeren Zustand (#423). Breite und Höhe wachsen bei
@@ -41,12 +48,22 @@ uses
 
 type
   TArgusPositionEvent = reference to procedure(APosition: Integer);
+  /// <summary>Gezogene Breiten in logischen Pixeln; AListWidth 0 = automatisch.</summary>
+  TArgusWidthsEvent = reference to procedure(AListWidth, APanelWidth: Integer);
+  TArgusPanelEvent = reference to procedure(ACollapsed: Boolean);
+
+{$SCOPEDENUMS ON}
+  TArgusDragKind = (None, ListWidth, PanelWidth);
+  TArgusHitArea = (None, Splitter, Edge, Grip, PanelBar);
+{$SCOPEDENUMS OFF}
 
   TArgusCompletionPopup = class(TArgusPopupWindow, IArgusCompletionView)
   public const
     DefaultVisibleRows = 9;
     MinWidth = 280;
     MaxWidth = 720;
+    DefaultPanelWidth = 320;
+    CollapsedPanelWidth = 22;
   private
     FItems: TArgusCompletionItems;
     FOrder: TArray<Integer>;
@@ -72,6 +89,24 @@ type
     FTipTimer: TTimer;
     FTruncated: TArray<Boolean>;
     FHoverPosition: Integer;
+    // Breiten (#416) in logischen Pixeln und eingeklapptes Panel (#428).
+    FManualListWidth: Integer;
+    FPanelWidthSetting: Integer;
+    FPanelCollapsed: Boolean;
+    FAutoCollapsed: Boolean;
+    FDrag: TArgusDragKind;
+    FDragStartX: Integer;
+    FDragStartWidth: Integer;
+    /// <summary>-1, wenn Ziehen nach links verbreitert (Panel links der Liste).</summary>
+    FDragSign: Integer;
+    FOnWidthsChanged: TArgusWidthsEvent;
+    FOnPanelToggled: TArgusPanelEvent;
+    function ListWidth: Integer;
+    function Collapsed: Boolean;
+    function HitArea(AX, AY: Integer): TArgusHitArea;
+    function Logical(APixels: Integer): Integer;
+    procedure DrawGrip;
+    procedure WidthsChanged;
     procedure TipTimer(Sender: TObject);
     procedure HideTip;
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
@@ -107,6 +142,7 @@ type
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure DblClick; override;
     function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
   public
@@ -116,6 +152,8 @@ type
     procedure ShowDetails(const ADetails: TArgusItemDetails);
     /// <summary>Details leeren; ein offener Panelbereich bleibt mit Hinweis stehen.</summary>
     procedure ClearDetails;
+    /// <summary>Panel ein- bzw. ausklappen (Strg+Q, #428).</summary>
+    procedure TogglePanel;
     { IArgusCompletionView }
     procedure ShowList(const AItems: TArgusCompletionItems; const AOrder: TArray<Integer>; ASelected: Integer;
       const APattern: string);
@@ -127,6 +165,13 @@ type
     property VisibleRows: Integer read FVisibleRows write FVisibleRows;
     property OnSelect: TArgusPositionEvent read FOnSelect write FOnSelect;
     property OnAccept: TArgusPositionEvent read FOnAccept write FOnAccept;
+    /// <summary>Gezogene Breite der Liste in logischen Pixeln, 0 = automatisch (#416).</summary>
+    property ManualListWidth: Integer read FManualListWidth write FManualListWidth;
+    /// <summary>Breite des Panels in logischen Pixeln (#416).</summary>
+    property PanelWidthSetting: Integer read FPanelWidthSetting write FPanelWidthSetting;
+    property PanelCollapsed: Boolean read FPanelCollapsed write FPanelCollapsed;
+    property OnWidthsChanged: TArgusWidthsEvent read FOnWidthsChanged write FOnWidthsChanged;
+    property OnPanelToggled: TArgusPanelEvent read FOnPanelToggled write FOnPanelToggled;
   end;
 
 implementation
@@ -153,6 +198,7 @@ begin
   FTipTimer.Enabled := False;
   FTipTimer.Interval := 600;
   FTipTimer.OnTimer := TipTimer;
+  FPanelWidthSetting := DefaultPanelWidth;
 end;
 
 destructor TArgusCompletionPopup.Destroy;
@@ -161,12 +207,32 @@ begin
   inherited Destroy;
 end;
 
+function TArgusCompletionPopup.Collapsed: Boolean;
+begin
+  Result := FPanelCollapsed or FAutoCollapsed;
+end;
+
 function TArgusCompletionPopup.PanelWidth: Integer;
 begin
-  if FPanelShown then
-    Result := Scale(TArgusDetailView.DefaultWidth)
+  if not FPanelShown then
+    Result := 0
+  else if Collapsed then
+    Result := Scale(CollapsedPanelWidth)
   else
-    Result := 0;
+    Result := Scale(FPanelWidthSetting);
+end;
+
+function TArgusCompletionPopup.ListWidth: Integer;
+begin
+  if FManualListWidth > 0 then
+    Result := Scale(FManualListWidth)
+  else
+    Result := FSessionWidth;
+end;
+
+function TArgusCompletionPopup.Logical(APixels: Integer): Integer;
+begin
+  Result := MulDiv(APixels, 96, PPI);
 end;
 
 function TArgusCompletionPopup.ListLeft: Integer;
@@ -179,7 +245,7 @@ end;
 
 function TArgusCompletionPopup.ListRight: Integer;
 begin
-  Result := ListLeft + FSessionWidth;
+  Result := ListLeft + ListWidth;
 end;
 
 function TArgusCompletionPopup.ListHeight: Integer;
@@ -192,7 +258,7 @@ end;
 
 function TArgusCompletionPopup.PanelHeight: Integer;
 begin
-  if not FPanelShown then
+  if not FPanelShown or Collapsed then
     Exit(0);
   Result := FDetailView.Render(Canvas, Colors, Font, UIFont, Rect(0, 0, PanelWidth, 0), PPI, False);
   Canvas.Font := Font;
@@ -213,7 +279,7 @@ begin
     FSessionHeight := Max(FSessionHeight, Max(ListHeight, PanelHeight))
   else
     FSessionHeight := ListHeight;
-  PlaceAt(FSessionWidth, FSessionHeight);
+  PlaceAt(ListWidth, FSessionHeight);
 end;
 
 procedure TArgusCompletionPopup.ShowDetails(const ADetails: TArgusItemDetails);
@@ -222,6 +288,16 @@ begin
   if not FPanelShown and ADetails.IsEmpty then
     Exit;
   FPanelShown := True;
+  if IsShown then
+    Relayout;
+  Invalidate;
+end;
+
+procedure TArgusCompletionPopup.TogglePanel;
+begin
+  FPanelCollapsed := not FPanelCollapsed;
+  if Assigned(FOnPanelToggled) then
+    FOnPanelToggled(FPanelCollapsed);
   if IsShown then
     Relayout;
   Invalidate;
@@ -309,7 +385,7 @@ var
   Tag: TArgusTag;
   Detail: string;
 begin
-  // Nur die ersten Einträge messen; Breite manuell ziehen folgt mit #416.
+  // Nur die ersten Einträge messen; eine gezogene Breite (#416) hat Vorrang (ListWidth).
   Canvas.Font := Font;
   Widest := 0;
   Count := Min(Length(FOrder), 200);
@@ -345,10 +421,21 @@ var
   Left, Width: Integer;
 begin
   Area := WorkAreaAt(FAnchor.TopLeft);
-  Width := AListWidth + PanelWidth;
-  // Die Liste bleibt am Wortanfang; das Panel rechts davon, ohne Platz dort links.
+  // Die Liste bleibt am Wortanfang; das Panel rechts davon, ohne Platz dort links, ohne Platz auf
+  // beiden Seiten eingeklappt (#428).
   Left := FAnchor.Left;
-  FPanelLeft := FPanelShown and (Left + Width > Area.Right) and (Left - PanelWidth >= Area.Left);
+  FAutoCollapsed := False;
+  FPanelLeft := False;
+  if FPanelShown then
+    if Left + AListWidth + PanelWidth > Area.Right then
+      if Left - PanelWidth >= Area.Left then
+        FPanelLeft := True
+      else if not FPanelCollapsed then
+      begin
+        FAutoCollapsed := True;
+        FPanelLeft := Left + AListWidth + PanelWidth > Area.Right;
+      end;
+  Width := AListWidth + PanelWidth;
   if FPanelLeft then
     Dec(Left, PanelWidth);
   Bounds := TRect.Create(Point(Left, FAnchor.Bottom + 2), Width, AHeight);
@@ -386,6 +473,8 @@ begin
   FSessionHeight := 0;
   FShowingEmpty := False;
   FPanelShown := False;
+  FAutoCollapsed := False;
+  FDrag := TArgusDragKind.None;
   FDetailView.Details := Default(TArgusItemDetails);
 end;
 
@@ -654,13 +743,15 @@ begin
   end;
   if FPanelShown then
     PaintPanel;
+  DrawGrip;
   PaintBorder;
 end;
 
 procedure TArgusCompletionPopup.PaintPanel;
 var
-  Panel: TRect;
+  Panel, Bar: TRect;
   Edge: Integer;
+  Arrow: string;
 begin
   Panel := PanelRect;
   Canvas.Brush.Style := bsSolid;
@@ -675,7 +766,23 @@ begin
   Canvas.Pen.Color := ToColor(Colors.Line);
   Canvas.MoveTo(Edge, 0);
   Canvas.LineTo(Edge, ClientHeight);
-  FDetailView.Render(Canvas, Colors, Font, UIFont, Panel, PPI, True);
+  if Collapsed then
+  begin
+    // Schmale Leiste (#428): Pfeil zeigt, wohin das Panel aufklappt.
+    Canvas.Font := UIFont;
+    Canvas.Font.Style := [fsBold];
+    Canvas.Font.Color := ToColor(Colors.Muted);
+    Canvas.Brush.Style := bsClear;
+    Bar := Rect(Panel.Left, Scale(6), Panel.Right, Scale(6) + Canvas.TextHeight('Wg'));
+    if FPanelLeft then
+      Arrow := '‹'
+    else
+      Arrow := '›';
+    DrawText(Canvas.Handle, PChar(Arrow), -1, Bar, DT_CENTER or DT_SINGLELINE or DT_NOPREFIX);
+    Canvas.Font.Style := [];
+  end
+  else
+    FDetailView.Render(Canvas, Colors, Font, UIFont, Panel, PPI, True);
   Canvas.Font := Font;
   Canvas.Brush.Style := bsSolid;
 end;
@@ -687,29 +794,169 @@ begin
   inherited;
   if Button <> mbLeft then
     Exit;
+  case HitArea(X, Y) of
+    TArgusHitArea.PanelBar:
+      begin
+        TogglePanel;
+        Exit;
+      end;
+    TArgusHitArea.Splitter:
+      begin
+        // Splitter: rechts liegendes Panel → Breite der Liste; links liegendes → Breite des Panels.
+        HideTip;
+        FDragSign := 1;
+        if FPanelLeft then
+        begin
+          // Die Liste bleibt am Wortanfang; das Panel wächst nach links.
+          FDrag := TArgusDragKind.PanelWidth;
+          FDragStartWidth := PanelWidth;
+          FDragSign := -1;
+        end
+        else
+        begin
+          FDrag := TArgusDragKind.ListWidth;
+          FDragStartWidth := ListWidth;
+        end;
+        FDragStartX := Mouse.CursorPos.X;
+        Exit;
+      end;
+    TArgusHitArea.Edge, TArgusHitArea.Grip:
+      begin
+        // Rechter Rand: Panel rechts und offen → dessen Breite, sonst die der Liste.
+        HideTip;
+        FDragSign := 1;
+        if FPanelShown and not FPanelLeft and not Collapsed then
+        begin
+          FDrag := TArgusDragKind.PanelWidth;
+          FDragStartWidth := PanelWidth;
+        end
+        else
+        begin
+          FDrag := TArgusDragKind.ListWidth;
+          FDragStartWidth := ListWidth;
+        end;
+        FDragStartX := Mouse.CursorPos.X;
+        Exit;
+      end;
+  end;
   Position := RowAt(X, Y);
   if (Position >= 0) and Assigned(FOnSelect) then
     FOnSelect(Position);
 end;
 
 procedure TArgusCompletionPopup.DblClick;
+var
+  Point_: TPoint;
 begin
   inherited;
+  // Doppelklick auf den Griff: automatische Breiten (#416).
+  Point_ := ScreenToClient(Mouse.CursorPos);
+  if HitArea(Point_.X, Point_.Y) = TArgusHitArea.Grip then
+  begin
+    FManualListWidth := 0;
+    FPanelWidthSetting := DefaultPanelWidth;
+    FDrag := TArgusDragKind.None;
+    Relayout;
+    Invalidate;
+    WidthsChanged;
+    Exit;
+  end;
   if (FSelected >= 0) and Assigned(FOnAccept) then
     FOnAccept(FSelected);
 end;
 
 procedure TArgusCompletionPopup.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  Position: Integer;
+  Position, Width: Integer;
 begin
   inherited;
+  // Ziehen (#416): Bildschirmkoordinaten, weil das Fenster beim Ziehen mitwächst.
+  if FDrag <> TArgusDragKind.None then
+  begin
+    Width := FDragStartWidth + FDragSign * (Mouse.CursorPos.X - FDragStartX);
+    if FDrag = TArgusDragKind.ListWidth then
+      FManualListWidth := EnsureRange(Logical(Width), MinWidth, MaxWidth)
+    else
+      FPanelWidthSetting := EnsureRange(Logical(Width), 220, 600);
+    Relayout;
+    Invalidate;
+    Exit;
+  end;
+  case HitArea(X, Y) of
+    TArgusHitArea.Splitter: Cursor := crHSplit;
+    TArgusHitArea.Edge, TArgusHitArea.Grip: Cursor := crSizeWE;
+    TArgusHitArea.PanelBar: Cursor := crHandPoint;
+  else
+    Cursor := crDefault;
+  end;
   Position := RowAt(X, Y);
   if Position = FHoverPosition then
     Exit;
   HideTip;
   FHoverPosition := Position;
   FTipTimer.Enabled := Position >= 0;
+end;
+
+procedure TArgusCompletionPopup.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited;
+  if FDrag = TArgusDragKind.None then
+    Exit;
+  FDrag := TArgusDragKind.None;
+  WidthsChanged;
+end;
+
+procedure TArgusCompletionPopup.WidthsChanged;
+begin
+  if Assigned(FOnWidthsChanged) then
+    FOnWidthsChanged(FManualListWidth, FPanelWidthSetting);
+end;
+
+function TArgusCompletionPopup.HitArea(AX, AY: Integer): TArgusHitArea;
+var
+  Boundary, Zone: Integer;
+begin
+  Result := TArgusHitArea.None;
+  Zone := Scale(4);
+  if AX >= ClientWidth - Zone then
+  begin
+    if AY >= ClientHeight - Scale(16) then
+      Result := TArgusHitArea.Grip
+    else
+      Result := TArgusHitArea.Edge;
+    Exit;
+  end;
+  if not FPanelShown then
+    Exit;
+  if Collapsed then
+  begin
+    if PtInRect(PanelRect, Point(AX, AY)) then
+      Result := TArgusHitArea.PanelBar;
+    Exit;
+  end;
+  if FPanelLeft then
+    Boundary := PanelWidth
+  else
+    Boundary := ListRight;
+  if Abs(AX - Boundary) <= Zone then
+    Result := TArgusHitArea.Splitter;
+end;
+
+procedure TArgusCompletionPopup.DrawGrip;
+var
+  Row, Column, Size, Step, Right, Bottom: Integer;
+begin
+  // Punktmuster unten rechts (#416): drei Reihen, nach unten rechts dichter.
+  Size := Max(1, Scale(2));
+  Step := Scale(4);
+  Right := ClientWidth - Scale(4);
+  Bottom := ClientHeight - Scale(4);
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(TArgusColorMath.Mix(Colors.Muted, Colors.Surface, 0.6));
+  for Row := 0 to 2 do
+    for Column := 0 to 2 - Row do
+      Canvas.FillRect(Rect(Right - (Column + 1) * Step + Step - Size, Bottom - (Row + 1) * Step + Step - Size,
+        Right - Column * Step, Bottom - Row * Step));
 end;
 
 procedure TArgusCompletionPopup.CMMouseLeave(var Message: TMessage);
