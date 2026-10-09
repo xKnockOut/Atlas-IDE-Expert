@@ -2031,7 +2031,10 @@ begin
         end;
       end;
       if Symbol.Kind = TResolvedKind.UnitName then
-        Exit([Symbol]);
+      begin
+        Result := [Symbol];
+        Exit;
+      end;
     end;
     // Aufruf mit Klammern: Argumente bestimmen die Überladung.
     Call := nil;
