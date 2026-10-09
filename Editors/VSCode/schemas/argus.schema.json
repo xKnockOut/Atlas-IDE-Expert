@@ -9,8 +9,8 @@
     },
     "delphiVersion": {
       "type": "string",
-      "pattern": "^[0-9]+\\.[0-9]+$",
-      "description": "Delphi-Version wie in der Registry, z. B. \"37.0\" für Delphi 13 oder \"23.0\" für Delphi 12. Leer: neueste installierte Version.",
+      "pattern": "^[0-9]+(\\.[0-9]+)?$",
+      "description": "Delphi-Version als Produktnummer (\"13\", \"12\", \"10.4\") oder wie in der Registry (\"37.0\" für Delphi 13, \"23.0\" für Delphi 12). Leer: neueste installierte Version.",
       "examples": [
         "37.0",
         "23.0"

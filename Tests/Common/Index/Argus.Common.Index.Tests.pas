@@ -694,6 +694,7 @@ var
   Defines: TArray<string>;
   Define: string;
   HasDebug, HasWin64, HasVer: Boolean;
+  Signature: string;
 begin
   Project := Default(TProjectInfo);
   Project.Platform := 'Win64';
@@ -712,6 +713,27 @@ begin
   Assert.IsTrue(HasWin64);
   Assert.IsTrue(HasVer);
   Assert.AreNotEqual(TIndexProjectFiles.Signature(Project, '37.0'), TIndexProjectFiles.Signature(Project, '36.0'));
+  // Geänderte Symbole, Suchpfade oder Namespaces machen den Cache ungültig, die Reihenfolge der Symbole nicht.
+  Signature := TIndexProjectFiles.Signature(Project, '37.0');
+  Project.Defines := ['debug'];
+  Assert.AreEqual(Signature, TIndexProjectFiles.Signature(Project, '37.0'));
+  Project.Defines := ['DEBUG', 'TRACE'];
+  Assert.AreNotEqual(Signature, TIndexProjectFiles.Signature(Project, '37.0'));
+  Project.Defines := ['DEBUG'];
+  Project.SearchPaths := ['C:\Lib'];
+  Assert.AreNotEqual(Signature, TIndexProjectFiles.Signature(Project, '37.0'));
+  Project.SearchPaths := nil;
+  Project.Namespaces := ['Vcl'];
+  Assert.AreNotEqual(Signature, TIndexProjectFiles.Signature(Project, '37.0'));
+  Project.Namespaces := nil;
+  // Delphi 12: BDS 23.0 ergibt VER360, nicht VER230.
+  HasVer := False;
+  for Define in TIndexProjectFiles.Defines(Project, '23.0') do
+  begin
+    Assert.AreNotEqual('VER230', Define);
+    HasVer := HasVer or (Define = 'VER360');
+  end;
+  Assert.IsTrue(HasVer);
 end;
 
 initialization

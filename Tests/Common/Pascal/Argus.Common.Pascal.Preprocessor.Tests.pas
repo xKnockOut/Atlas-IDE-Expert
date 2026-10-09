@@ -41,6 +41,10 @@ type
     procedure KeepsOtherDirectives;
     [Test]
     procedure PredefinesPlatformSymbols;
+    [Test]
+    procedure MapsBdsToCompilerVersion;
+    [Test]
+    procedure CompilerVersionFollowsVerDefine;
   end;
 
 implementation
@@ -285,6 +289,35 @@ begin
   Assert.IsTrue(Has('LINUX'));
   Assert.IsTrue(Has('POSIX'));
   Assert.IsFalse(Has('MSWINDOWS'));
+end;
+
+procedure TPascalPreprocessorTests.MapsBdsToCompilerVersion;
+begin
+  // Delphi 12 hat BDS 23.0, aber Compilerversion 36.0 (VER360); ab Delphi 13 sind beide 37.0.
+  Assert.AreEqual(36.0, TPascalPreprocessor.CompilerVersionOfBds(23.0), 0.001);
+  Assert.AreEqual(35.0, TPascalPreprocessor.CompilerVersionOfBds(22.0), 0.001);
+  Assert.AreEqual(37.0, TPascalPreprocessor.CompilerVersionOfBds(37.0), 0.001);
+  Assert.AreEqual(0.0, TPascalPreprocessor.CompilerVersionOfBds(0), 0.001);
+end;
+
+procedure TPascalPreprocessorTests.CompilerVersionFollowsVerDefine;
+
+  function Branch(const ADefine: string; const AName: string = 'CompilerVersion'): string;
+  var
+    Opts: TPreprocessorOptions;
+  begin
+    // Ohne ausdrückliche CompilerVersion, wie im Server.
+    Opts := TPreprocessorOptions.Default;
+    Opts.Defines := [ADefine];
+    Result := Words(TPascalPreprocessor.Process('{$IF ' + AName + ' >= 36} neu {$ELSE} alt {$IFEND}', Opts));
+  end;
+
+begin
+  Assert.AreEqual(36.0, TPascalPreprocessor.CompilerVersionFromDefines(['DEBUG', 'VER360']), 0.001);
+  Assert.AreEqual(0.0, TPascalPreprocessor.CompilerVersionFromDefines(['VERBOSE']), 0.001);
+  Assert.AreEqual('neu', Branch('VER360'));
+  Assert.AreEqual('neu', Branch('VER360', 'RTLVersion'));
+  Assert.AreEqual('alt', Branch('VER350'));
 end;
 
 initialization
