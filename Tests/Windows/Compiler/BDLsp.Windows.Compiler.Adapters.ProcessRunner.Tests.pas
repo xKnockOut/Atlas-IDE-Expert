@@ -53,7 +53,7 @@ begin
         Lines.Add(ALine);
       end);
     Assert.AreEqual(3, Code);
-    Assert.AreEqual(2, Lines.Count);
+    Assert.AreEqual(2, Integer(Lines.Count));
     Assert.AreEqual('eins', Lines[0]);
     Assert.AreEqual('zwei', Lines[1]);
   finally

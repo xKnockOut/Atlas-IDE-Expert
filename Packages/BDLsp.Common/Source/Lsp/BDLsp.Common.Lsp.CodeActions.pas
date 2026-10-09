@@ -128,7 +128,6 @@ begin
     Exit(TJSONArray.Create);
   Range := TLspPositions.ReadRange(RangeValue);
   Findings := nil;
-  HasCompletion := False;
   Tree := TPascalParser.Parse(Document.Text);
   try
     ACancellation.ThrowIfCancellationRequested;

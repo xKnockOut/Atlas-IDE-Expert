@@ -79,6 +79,8 @@ begin
   FConfiguration.Free;
   FStore := nil;
   FTransport := nil;
+  // Sonst gibt erst das nächste Setup den Text frei (Leck-Monitor).
+  FDiskText := '';
 end;
 
 procedure TLspConfigurationTests.UsesDefaultsWithoutFile;
