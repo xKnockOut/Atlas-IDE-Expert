@@ -15,6 +15,8 @@ type
     procedure UnwatchedRequestIsNotCancelled;
     [Test]
     procedure ZeroTimeoutDisablesWatching;
+    [Test]
+    procedure SetTimeoutAppliesToLaterRequests;
   end;
 
 implementation
@@ -109,6 +111,39 @@ begin
   Id := TJSONNumber.Create(9);
   try
     Assert.AreEqual(Int64(0), Watchdog.Watch(Id, 'test/any'));
+  finally
+    Id.Free;
+  end;
+end;
+
+procedure TJsonRpcWatchdogTests.SetTimeoutAppliesToLaterRequests;
+var
+  Pending: IJsonRpcPendingRequests;
+  Watchdog: IJsonRpcWatchdog;
+  Id: TJSONValue;
+  Token: IJsonRpcCancellationToken;
+  Reported: Cardinal;
+begin
+  Pending := TJsonRpcPendingRequests.Create;
+  Reported := 0;
+  Watchdog := TJsonRpcWatchdog.Create(Pending, 60000,
+    procedure(const AMethod: string; ATimeoutMs: Cardinal)
+    begin
+      Reported := ATimeoutMs;
+    end);
+  Watchdog.SetTimeout(20);
+  Id := TJSONNumber.Create(10);
+  try
+    Token := Pending.Acquire(Id);
+    Watchdog.Watch(Id, 'test/slow');
+    Assert.IsTrue(WaitUntil(
+      function: Boolean
+      begin
+        Result := Reported <> 0;
+      end, 2000));
+    Assert.AreEqual(Cardinal(20), Reported);
+    Assert.IsTrue(Token.IsCancellationRequested);
+    Pending.Release(Id, Token);
   finally
     Id.Free;
   end;

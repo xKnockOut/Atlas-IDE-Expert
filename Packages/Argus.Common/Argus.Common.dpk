@@ -39,6 +39,7 @@ contains
   Argus.Common.Product.Version in 'Source\Product\Argus.Common.Product.Version.pas',
   Argus.Common.Logging.Contract in 'Source\Logging\Argus.Common.Logging.Contract.pas',
   Argus.Common.Logging.Providers.Logger in 'Source\Logging\Providers\Argus.Common.Logging.Providers.Logger.pas',
+  Argus.Common.Logging.Providers.RotatingFileStream in 'Source\Logging\Providers\Argus.Common.Logging.Providers.RotatingFileStream.pas',
   Argus.Common.Logging.Providers.StreamSink in 'Source\Logging\Providers\Argus.Common.Logging.Providers.StreamSink.pas',
   Argus.Common.JsonRpc.Contract in 'Source\JsonRpc\Argus.Common.JsonRpc.Contract.pas',
   Argus.Common.JsonRpc.Messages in 'Source\JsonRpc\Argus.Common.JsonRpc.Messages.pas',

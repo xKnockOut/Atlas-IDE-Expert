@@ -267,6 +267,12 @@ begin
   Assert.AreEqual(1, Integer(Length(Issues)));
   Settings := TConfigurationParser.ParseLayered('{"memoryBudgetMb": 100}', '{"memoryBudgetMb": 200}', Issues);
   Assert.AreEqual(200, Settings.MemoryBudgetMb);
+  // Zeitlimit für Anfragen (#283)
+  Assert.AreEqual(10000, Parse('{}', Issues).RequestTimeoutMs);
+  Assert.AreEqual(30000, Parse('{"requestTimeoutMs": 30000}', Issues).RequestTimeoutMs);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual(10000, Parse('{"requestTimeoutMs": 10}', Issues).RequestTimeoutMs);
+  Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
 procedure TConfigurationParserTests.ReadsInlayHints;

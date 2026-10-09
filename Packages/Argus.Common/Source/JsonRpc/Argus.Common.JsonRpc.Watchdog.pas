@@ -23,6 +23,9 @@ type
     /// <summary>Überwacht eine Anfrage; liefert eine Nummer für Unwatch.</summary>
     function Watch(const AId: TJSONValue; const AMethod: string): Int64;
     procedure Unwatch(ATicket: Int64);
+    /// <summary>Neues Zeitlimit für künftige Anfragen (#283, Einstellung "requestTimeoutMs").
+    /// Wirkt nur, wenn die Überwachung mit einem Limit &gt; 0 gestartet wurde.</summary>
+    procedure SetTimeout(ATimeoutMs: Cardinal);
   end;
 
   TJsonRpcWatchdog = class(TInterfacedObject, IJsonRpcWatchdog)
@@ -49,6 +52,8 @@ type
     destructor Destroy; override;
     function Watch(const AId: TJSONValue; const AMethod: string): Int64;
     procedure Unwatch(ATicket: Int64);
+    procedure SetTimeout(ATimeoutMs: Cardinal);
+    function Timeout: Cardinal;
   end;
 
 implementation
@@ -104,9 +109,9 @@ begin
     Exit(0);
   Entry.Id := TJSONValue(AId.Clone);
   Entry.Method := AMethod;
-  Entry.Due := TThread.GetTickCount64 + FTimeout;
   TMonitor.Enter(FEntries);
   try
+    Entry.Due := TThread.GetTickCount64 + FTimeout;
     Inc(FNextTicket);
     Result := FNextTicket;
     FEntries.Add(Result, Entry);
@@ -133,12 +138,34 @@ begin
   Entry.Id.Free;
 end;
 
+procedure TJsonRpcWatchdog.SetTimeout(ATimeoutMs: Cardinal);
+begin
+  if (FThread = nil) or (ATimeoutMs = 0) then
+    Exit;
+  TMonitor.Enter(FEntries);
+  try
+    FTimeout := ATimeoutMs;
+  finally
+    TMonitor.Exit(FEntries);
+  end;
+end;
+
+function TJsonRpcWatchdog.Timeout: Cardinal;
+begin
+  TMonitor.Enter(FEntries);
+  try
+    Result := FTimeout;
+  finally
+    TMonitor.Exit(FEntries);
+  end;
+end;
+
 procedure TJsonRpcWatchdog.Expire(const AEntry: TEntry);
 begin
   try
     FPending.Cancel(AEntry.Id);
     if Assigned(FOnTimeout) then
-      FOnTimeout(AEntry.Method, FTimeout);
+      FOnTimeout(AEntry.Method, Timeout);
   finally
     AEntry.Id.Free;
   end;

@@ -19,8 +19,9 @@
 //   --mcp                 Symbolindex über das Model Context Protocol anbieten
 //   --root <Ordner>       Projektordner (Standard: aktuelles Verzeichnis)
 //
-// Werte können auch mit "=" angegeben werden (--log=server.log). Parameter,
-// die Editoren selbst anhängen (--stdio, --clientProcessId), werden ignoriert.
+// Werte können auch mit "=" angegeben werden (--log=server.log). --stdio, das
+// Editoren anhängen, wird ignoriert; --clientProcessId=<PID> nennt den Editor-
+// Prozess, dessen Ende auch den Server beendet (#283).
 
 interface
 
@@ -60,6 +61,8 @@ type
     Mcp: Boolean;
     /// <summary>Projektordner im MCP-Modus; '' = aktuelles Verzeichnis.</summary>
     McpRoot: string;
+    /// <summary>Prozess-ID des Editors aus --clientProcessId; 0 = unbekannt.</summary>
+    ClientProcessId: Cardinal;
     /// <summary>Hinweise zu ungültigen oder unbekannten Parametern, für das Log.</summary>
     Warnings: TArray<string>;
     class function Parse(const AArgs: TArray<string>): TCommandLineOptions; static;
@@ -127,6 +130,7 @@ var
   Level: TLogLevel;
   CheckFormat: TFindingsFormat;
   Severity: TRuleSeverity;
+  ProcessId: Cardinal;
 begin
   Result := Default(TCommandLineOptions);
   Result.LogLevel := DefaultLogLevel;
@@ -227,7 +231,15 @@ begin
       Result.UpdateBaseline := True
     else if Name = '--suppression-stats' then
       Result.SuppressionStats := True
-    else if (Name = '--stdio') or (Name = '--clientprocessid') then
+    else if Name = '--clientprocessid' then
+    begin
+      if TakeValue then
+        if TryStrToUInt(Value, ProcessId) then
+          Result.ClientProcessId := ProcessId
+        else
+          AddWarning(Format('Ungültige Prozess-ID "%s" wird ignoriert', [Value]));
+    end
+    else if Name = '--stdio' then
       // von Editoren angehängt, ohne Bedeutung für den Server
     else
       AddWarning(Format('Unbekannter Parameter "%s" wird ignoriert', [Arg]));

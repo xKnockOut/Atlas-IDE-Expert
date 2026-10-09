@@ -20,6 +20,8 @@ type
     InternalError = -32603;
     /// <summary>Anfrage wurde per $/cancelRequest abgebrochen (LSP-Basisprotokoll).</summary>
     RequestCancelled = -32800;
+    /// <summary>Das Dokument hat sich geändert, das Ergebnis wäre veraltet (LSP, #283).</summary>
+    ContentModified = -32801;
   end;
 
 const
@@ -42,6 +44,12 @@ type
 
   /// <summary>Die Anfrage wurde abgebrochen; wird zur Fehlerantwort RequestCancelled.</summary>
   EJsonRpcRequestCancelled = class(EJsonRpcError)
+  public
+    constructor Create;
+  end;
+
+  /// <summary>Abgebrochen, weil sich das Dokument der Anfrage geändert hat (#283).</summary>
+  EJsonRpcContentModified = class(EJsonRpcError)
   public
     constructor Create;
   end;
@@ -82,7 +90,8 @@ type
   IJsonRpcCancellationToken = interface
     ['{3F8A1C62-7D4B-4E95-B0C3-9A2E5D6F1B87}']
     function IsCancellationRequested: Boolean;
-    /// <summary>Löst EJsonRpcRequestCancelled aus, wenn die Anfrage abgebrochen wurde.</summary>
+    /// <summary>Löst EJsonRpcRequestCancelled aus, wenn die Anfrage abgebrochen wurde,
+    /// EJsonRpcContentModified, wenn das Dokument sich inzwischen geändert hat.</summary>
     procedure ThrowIfCancellationRequested;
   end;
 
@@ -129,6 +138,13 @@ end;
 constructor EJsonRpcRequestCancelled.Create;
 begin
   inherited Create(TJsonRpcErrorCode.RequestCancelled, 'Anfrage abgebrochen');
+end;
+
+{ EJsonRpcContentModified }
+
+constructor EJsonRpcContentModified.Create;
+begin
+  inherited Create(TJsonRpcErrorCode.ContentModified, 'Dokument wurde geändert');
 end;
 
 end.

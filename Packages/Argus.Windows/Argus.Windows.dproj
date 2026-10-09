@@ -73,6 +73,7 @@
         <DCCReference Include="Source\Diagnostics\Argus.Windows.Diagnostics.DebugOutput.pas"/>
         <DCCReference Include="Source\Diagnostics\Argus.Windows.Diagnostics.Adapters.DebugOutputSink.pas"/>
         <DCCReference Include="Source\Diagnostics\Argus.Windows.Diagnostics.StackTrace.pas"/>
+        <DCCReference Include="Source\Process\Argus.Windows.Process.ParentWatcher.pas"/>
         <DCCReference Include="Source\Projects\Argus.Windows.Projects.DelphiInstallation.pas"/>
         <DCCReference Include="Source\Compiler\Argus.Windows.Compiler.Adapters.ProcessRunner.pas"/>
         <DCCReference Include="Source\Documents\Argus.Windows.Documents.PathCanonicalizer.pas"/>

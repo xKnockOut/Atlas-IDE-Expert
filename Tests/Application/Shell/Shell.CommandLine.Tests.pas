@@ -20,6 +20,10 @@ type
     [Test]
     procedure WarnsAboutUnknownArgument;
     [Test]
+    procedure ReadsClientProcessId;
+    [Test]
+    procedure WarnsAboutInvalidClientProcessId;
+    [Test]
     procedure WarnsAboutInvalidLogLevel;
     [Test]
     procedure WarnsAboutMissingValue;
@@ -86,6 +90,26 @@ var
 begin
   Options := TCommandLineOptions.Parse(['--stdio', '--clientProcessId=4711']);
   Assert.AreEqual<NativeInt>(0, Length(Options.Warnings));
+end;
+
+procedure TCommandLineOptionsTests.ReadsClientProcessId;
+var
+  Options: TCommandLineOptions;
+begin
+  Options := TCommandLineOptions.Parse(['--stdio', '--clientProcessId=1234']);
+  Assert.AreEqual(Cardinal(1234), Options.ClientProcessId);
+  Options := TCommandLineOptions.Parse(['--clientProcessId', '99']);
+  Assert.AreEqual(Cardinal(99), Options.ClientProcessId);
+end;
+
+procedure TCommandLineOptionsTests.WarnsAboutInvalidClientProcessId;
+var
+  Options: TCommandLineOptions;
+begin
+  Options := TCommandLineOptions.Parse(['--clientProcessId=abc']);
+  Assert.AreEqual(Cardinal(0), Options.ClientProcessId);
+  Assert.AreEqual<NativeInt>(1, Length(Options.Warnings));
+  Assert.Contains(Options.Warnings[0], 'abc');
 end;
 
 procedure TCommandLineOptionsTests.WarnsAboutUnknownArgument;

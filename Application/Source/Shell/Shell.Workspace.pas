@@ -56,6 +56,7 @@ type
     FBuildConfig: string;
     FBuildPlatform: string;
     FOnProjectLoaded: TProc;
+    FOnSettingsChanged: TProc<TServerSettings>;
     FBaseline: IRuleBaseline;
     FLastIndexMs: Int64;
     FLastIndex: TIndexBuildResult;
@@ -116,6 +117,8 @@ type
     property ProjectFiles: TArray<string> read GetProjectFiles;
     /// <summary>Nach dem Laden eines Projekts (Defines und Namespaces neu).</summary>
     property OnProjectLoaded: TProc read FOnProjectLoaded write FOnProjectLoaded;
+    /// <summary>Nach dem Lesen der Einstellungen, für serverweite Werte wie das Zeitlimit (#283).</summary>
+    property OnSettingsChanged: TProc<TServerSettings> read FOnSettingsChanged write FOnSettingsChanged;
   end;
 
 implementation
@@ -165,6 +168,8 @@ begin
         [FName, ASettings.DelphiVersion, ASettings.Project, Length(ASettings.Rules), Length(ASettings.Exclude)]));
       // Der Index ist gemeinsam; bei mehreren Ordnern gilt das zuletzt gelesene Budget.
       FIndex.SetBudget(Int64(ASettings.MemoryBudgetMb) * 1024 * 1024);
+      if Assigned(FOnSettingsChanged) then
+        FOnSettingsChanged(ASettings);
       StartIndex(ASettings);
     end;
   FIndexService := TIndexService.Create(FIndex, TDiskIndexFileSystem.Create);

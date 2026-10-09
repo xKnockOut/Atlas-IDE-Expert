@@ -17,6 +17,7 @@ uses
   Argus.Common.Product.Version.Tests in 'Common\Argus.Common.Product.Version.Tests.pas',
   Argus.Common.Logging.Providers.Logger.Tests in 'Common\Logging\Argus.Common.Logging.Providers.Logger.Tests.pas',
   Argus.Common.Logging.Providers.StreamSink.Tests in 'Common\Logging\Argus.Common.Logging.Providers.StreamSink.Tests.pas',
+  Argus.Common.Logging.Providers.RotatingFileStream.Tests in 'Common\Logging\Argus.Common.Logging.Providers.RotatingFileStream.Tests.pas',
   Argus.Common.JsonRpc.TestSupport in 'Common\JsonRpc\Argus.Common.JsonRpc.TestSupport.pas',
   Argus.Common.JsonRpc.StreamTransport.Tests in 'Common\JsonRpc\Argus.Common.JsonRpc.StreamTransport.Tests.pas',
   Argus.Common.JsonRpc.TracingTransport.Tests in 'Common\JsonRpc\Argus.Common.JsonRpc.TracingTransport.Tests.pas',
