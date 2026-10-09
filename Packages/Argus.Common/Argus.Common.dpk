@@ -143,6 +143,7 @@ contains
   Argus.Common.Lsp.FuzzyMatch in 'Source\Lsp\Argus.Common.Lsp.FuzzyMatch.pas',
   Argus.Common.Lsp.WorkspaceSymbols in 'Source\Lsp\Argus.Common.Lsp.WorkspaceSymbols.pas',
   Argus.Common.Lsp.DocumentHighlights in 'Source\Lsp\Argus.Common.Lsp.DocumentHighlights.pas',
+  Argus.Common.Lsp.KeywordHighlights in 'Source\Lsp\Argus.Common.Lsp.KeywordHighlights.pas',
   Argus.Common.Lsp.WatchedFiles in 'Source\Lsp\Argus.Common.Lsp.WatchedFiles.pas',
   Argus.Common.Lsp.InactiveRegions in 'Source\Lsp\Argus.Common.Lsp.InactiveRegions.pas',
   Argus.Common.Lsp.WorkspaceFolders in 'Source\Lsp\Argus.Common.Lsp.WorkspaceFolders.pas',

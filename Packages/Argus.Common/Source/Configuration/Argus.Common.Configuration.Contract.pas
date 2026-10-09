@@ -70,6 +70,19 @@ type
     class function Default: TInlayHintSettings; static;
   end;
 
+  /// <summary>Hervorheben zusammengehöriger Schlüsselwörter (#307).</summary>
+  THighlightSettings = record
+    /// <summary>Blockpaare (begin/end, try/finally …) und Routinen.</summary>
+    BlockPairs: Boolean;
+    /// <summary>Zusammengehörige {$IF…}/{$ELSE}/{$ENDIF} und Regionen.</summary>
+    Directives: Boolean;
+    /// <summary>Ausstiegspunkte einer Routine und Schleifenziele von Break/Continue.</summary>
+    ExitPoints: Boolean;
+    /// <summary>Was als Ausstiegspunkt gilt, z. B. Exit, raise, Abort, Halt.</summary>
+    ExitKeywords: TArray<string>;
+    class function Default: THighlightSettings; static;
+  end;
+
   {$SCOPEDENUMS ON}
   TKeywordCase = (Preserve, Lower, Upper);
   /// <summary>Schlüssel im Block "format", die ausdrücklich gesetzt sind.</summary>
@@ -145,6 +158,7 @@ type
     /// <summary>Ausgewerteter Block "format" (#43).</summary>
     Formatting: TFormatStyle;
     InlayHints: TInlayHintSettings;
+    Highlight: THighlightSettings;
     Compiler: TCompilerSettings;
     Completion: TCompletionSettings;
     /// <summary>Schnellbefehl "/uses Unit" nach Enter auswerten (#254).</summary>
@@ -333,6 +347,16 @@ begin
   Result.EndMarkerMinLines := 20;
 end;
 
+{ THighlightSettings }
+
+class function THighlightSettings.Default: THighlightSettings;
+begin
+  Result.BlockPairs := True;
+  Result.Directives := True;
+  Result.ExitPoints := True;
+  Result.ExitKeywords := ['Exit', 'raise', 'Abort', 'Halt'];
+end;
+
 { TFormatStyle }
 
 class function TFormatStyle.Default: TFormatStyle;
@@ -384,6 +408,7 @@ begin
   Result.Format := '';
   Result.Formatting := TFormatStyle.Default;
   Result.InlayHints := TInlayHintSettings.Default;
+  Result.Highlight := THighlightSettings.Default;
   Result.Compiler := TCompilerSettings.Default;
   Result.Completion := TCompletionSettings.Default;
   Result.UsesCommand := True;

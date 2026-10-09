@@ -206,6 +206,34 @@
       "default": 10000,
       "description": "Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet."
     },
+    "highlight": {
+      "type": "object",
+      "description": "Zusammengehörige Schlüsselwörter hervorheben, wenn der Cursor auf einem steht.",
+      "additionalProperties": false,
+      "properties": {
+        "blockPairs": {
+          "type": "boolean",
+          "default": true,
+          "description": "Blockpaare (begin/end, try/finally/except/end, case/of/end, repeat/until, if/then/else, Typen) und Routinen hervorheben."
+        },
+        "directives": {
+          "type": "boolean",
+          "default": true,
+          "description": "Zusammengehörige {$IF…}/{$ELSE}/{$ENDIF} sowie {$REGION}/{$ENDREGION} hervorheben."
+        },
+        "exitPoints": {
+          "type": "boolean",
+          "default": true,
+          "description": "Ausstiegspunkte der Routine sowie Kopf und Ende der Schleife bei Break/Continue hervorheben."
+        },
+        "exitKeywords": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["Exit", "raise", "Abort", "Halt"],
+          "description": "Was als Ausstiegspunkt gilt; eigene Routinen, die immer eine Exception auslösen, lassen sich ergänzen."
+        }
+      }
+    },
     "inlayHints": {
       "type": "object",
       "description": "Inlay Hints im Editor.",
