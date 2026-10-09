@@ -235,6 +235,15 @@ begin
     '      "description": "A descendant declares a method virtual although the ancestor already has a virtual method with the same signature; this starts a new chain instead of overriding.",' + #10 +
     '      "bad": "type\n  TFoo = class(TBase)\n    procedure Run; virtual;\n  end;",' + #10 +
     '      "good": "type\n  TFoo = class(TBase)\n    procedure Run; override;\n  end;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "captured-loop-variable",' + #10 +
+    '      "name": "Captured loop variable",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "An anonymous method passed to a deferred API (TThread.Queue, TTask.Run, ...) captures a variable that changes before it runs, such as a for-in loop variable. Delphi captures the ' + 'variable, not its value.",' + #10 +
+    '      "bad": "for S in List do\n  TThread.Queue(nil, procedure begin Memo1.Lines.Add(S); end);",' + #10 +
+    '      "good": "function CaptureS(const AValue: string): TProc;\nbegin\n  Result := procedure begin Memo1.Lines.Add(AValue); end;\nend;\n...\nfor S in List do\n  TThread.Queue(nil, CaptureS(S));"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -366,6 +375,11 @@ begin
     '      "id": "virtual-instead-of-override",' + #10 +
     '      "name": "virtual statt override",' + #10 +
     '      "description": "Ein Nachfahre deklariert eine Methode als virtual, obwohl der Vorfahr schon eine virtuelle Methode mit derselben Signatur hat; das beginnt eine neue Kette statt zu überschreiben.' + '"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "captured-loop-variable",' + #10 +
+    '      "name": "Erfasste Schleifenvariable",' + #10 +
+    '      "description": "Eine anonyme Methode, die an eine verzögert ausführende API (TThread.Queue, TTask.Run …) geht, erfasst eine Variable, die sich vor dem Aufruf noch ändert, etwa die Variable einer' + ' for-in-Schleife. Delphi erfasst die Variable, nicht ihren Wert."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

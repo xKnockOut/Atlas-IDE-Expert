@@ -119,6 +119,7 @@ contains
   Argus.Common.Rules.Builtin.Unused in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.Unused.pas',
   Argus.Common.Rules.Builtin.Declarations in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.Declarations.pas',
   Argus.Common.Rules.Builtin.Inheritance in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.Inheritance.pas',
+  Argus.Common.Rules.Builtin.Capture in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.Capture.pas',
   Argus.Common.Editing.ClassCompletion in 'Source\Editing\Argus.Common.Editing.ClassCompletion.pas',
   Argus.Common.Dfm.Contract in 'Source\Dfm\Argus.Common.Dfm.Contract.pas',
   Argus.Common.Dfm.Parser in 'Source\Dfm\Argus.Common.Dfm.Parser.pas',
