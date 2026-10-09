@@ -68,7 +68,7 @@ type
     procedure Log(const AMessage: string);
     procedure TimerTick(Sender: TObject);
     procedure Recheck;
-    procedure ApplyStyle;
+    procedure ApplyStyle(const ACaret: TRect);
     procedure ActiveChanged;
     function WantsKey(AKey: Word; AShift: TShiftState): Boolean;
     procedure HandleKey(AKey: Word; AShift: TShiftState);
@@ -263,9 +263,9 @@ begin
   Result := FController.Active or FPending;
 end;
 
-procedure TArgusEditorSignature.ApplyStyle;
+procedure TArgusEditorSignature.ApplyStyle(const ACaret: TRect);
 begin
-  TArgusIdeStyle.Apply(FHint);
+  TArgusIdeStyle.Apply(FHint, ACaret);
 end;
 
 function TArgusEditorSignature.Invoke(const AView: IOTAEditView): Boolean;
@@ -303,7 +303,7 @@ begin
     Exit;
   Anchor := Info.rcCaret;
   MapWindowPoints(Info.hwndCaret, 0, Anchor, 2);
-  ApplyStyle;
+  ApplyStyle(Anchor);
   // Linke Kante an der öffnenden Klammer, wenn sie in derselben Zeile vor dem Caret steht.
   FHint.Canvas.Font := FHint.Font;
   if Caret - Site.OpenParen <= Character then

@@ -181,6 +181,7 @@
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Style\Argus.Core.Style.Color.pas"/>
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Style\Argus.Core.Style.Palette.pas"/>
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Style\Argus.Core.Style.Syntax.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Style\Argus.Core.Style.Scaling.pas"/>
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Presentation.pas"/>
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Word.pas"/>
         <DCCReference Include="IDE.Expert\Argus.Core.Style.Tests.pas"/>

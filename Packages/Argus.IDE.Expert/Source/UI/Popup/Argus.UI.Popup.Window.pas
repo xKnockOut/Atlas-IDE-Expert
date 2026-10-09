@@ -11,6 +11,9 @@
 // Akzentfarbe, abgerundete Ecken (ab Windows 11 vom Fenstermanager mit
 // Kantenglättung, sonst über eine Fensterregion). Code (Namen, Signaturen)
 // steht in der Editorschrift (Font), Beschriftungen in der UI-Schrift (UIFont).
+// Maße (#412, #445): alle in logischen Pixeln (96 dpi), umgerechnet mit PPI =
+// DPI des Monitors am Caret mal Zoom des Editors (SetScaling). So wachsen Schrift,
+// Zeilen, Badges und Abstände gemeinsam.
 // Tasten bekommt das Fenster nie; der Editor leitet sie über den Tastatur-Hook
 // weiter (Argus.IDE).
 
@@ -34,6 +37,7 @@ type
     FUIFont: TFont;
     FBorderColor: TArgusColor;
     FSystemCorners: Boolean;
+    FPPI: Integer;
     /// <summary>CreateWnd hat entschieden, wer die Ecken rundet; vorher keine Region setzen.</summary>
     FCornersKnown: Boolean;
     procedure WMMouseActivate(var Message: TWMMouseActivate); message WM_MOUSEACTIVATE;
@@ -69,6 +73,12 @@ type
     property Colors: TArgusColors read FColors write SetColors;
     /// <summary>Rahmenfarbe; Standard Akzent, im Fehlerzustand des Hints Fehlerfarbe.</summary>
     property BorderColor: TArgusColor read FBorderColor write SetBorderColor;
+    /// <summary>Wirksame Pixel je Zoll: Monitor-DPI mal Zoom; Schriften in AFontName/AFontSize (Punkt).</summary>
+    procedure SetScaling(AMonitorPPI: Integer; AZoom: Double; const AFontName: string; AFontSize: Integer);
+    /// <summary>Pixel je Zoll des Monitors, auf dem APoint liegt.</summary>
+    class function MonitorPPI(const APoint: TPoint): Integer; static;
+    /// <summary>Wirksame Pixel je Zoll (Monitor-DPI mal Zoom).</summary>
+    property PPI: Integer read FPPI;
     /// <summary>Schrift für Beschriftungen, folgt Font in der Größe.</summary>
     property UIFont: TFont read FUIFont;
     property Canvas;
@@ -107,6 +117,7 @@ begin
   DoubleBuffered := True;
   Visible := False;
   FUIFont := TFont.Create;
+  FPPI := Screen.PixelsPerInch;
   FColors := StyleColors;
   FBorderColor := FColors.Accent;
   Perform(CM_FONTCHANGED, 0, 0);
@@ -125,7 +136,7 @@ end;
 
 function TArgusPopupWindow.Scale(AValue: Integer): Integer;
 begin
-  Result := MulDiv(AValue, CurrentPPI, 96);
+  Result := MulDiv(AValue, FPPI, 96);
 end;
 
 procedure TArgusPopupWindow.CreateParams(var Params: TCreateParams);
@@ -200,9 +211,10 @@ begin
   inherited;
   if FUIFont = nil then
     Exit;
-  // UI-Schrift der IDE, eine Stufe kleiner als die Editorschrift (Entwurf: 12 zu 13 px).
+  // UI-Schrift der IDE, etwas kleiner als die Editorschrift (Entwurf: 12 zu 13 px).
   FUIFont.Name := Screen.MessageFont.Name;
-  FUIFont.Size := Max(8, Font.Size - 1);
+  FUIFont.PixelsPerInch := Font.PixelsPerInch;
+  FUIFont.Height := MulDiv(Font.Height, 12, 13);
   FUIFont.Charset := Font.Charset;
 end;
 
@@ -277,6 +289,29 @@ end;
 function TArgusPopupWindow.IsShown: Boolean;
 begin
   Result := HandleAllocated and IsWindowVisible(Handle);
+end;
+
+procedure TArgusPopupWindow.SetScaling(AMonitorPPI: Integer; AZoom: Double; const AFontName: string;
+  AFontSize: Integer);
+begin
+  FPPI := Max(48, Round(AMonitorPPI * AZoom));
+  if AFontName <> '' then
+    Font.Name := AFontName;
+  Font.PixelsPerInch := FPPI;
+  // Erst nach PixelsPerInch: Size rechnet mit der neuen Dichte in die Höhe um.
+  Font.Size := AFontSize;
+  UpdateCorners;
+end;
+
+class function TArgusPopupWindow.MonitorPPI(const APoint: TPoint): Integer;
+var
+  Monitor: TMonitor;
+begin
+  Monitor := Screen.MonitorFromPoint(APoint, mdNearest);
+  if Monitor <> nil then
+    Result := Monitor.PixelsPerInch
+  else
+    Result := Screen.PixelsPerInch;
 end;
 
 class function TArgusPopupWindow.WorkAreaAt(const APoint: TPoint): TRect;

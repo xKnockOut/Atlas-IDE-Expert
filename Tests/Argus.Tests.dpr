@@ -133,6 +133,7 @@ uses
   Argus.Core.Style.Color in '..\Packages\Argus.IDE.Expert\Source\Core\Style\Argus.Core.Style.Color.pas',
   Argus.Core.Style.Palette in '..\Packages\Argus.IDE.Expert\Source\Core\Style\Argus.Core.Style.Palette.pas',
   Argus.Core.Style.Syntax in '..\Packages\Argus.IDE.Expert\Source\Core\Style\Argus.Core.Style.Syntax.pas',
+  Argus.Core.Style.Scaling in '..\Packages\Argus.IDE.Expert\Source\Core\Style\Argus.Core.Style.Scaling.pas',
   Argus.Core.Completion.Presentation in '..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Presentation.pas',
   Argus.Core.Completion.Word in '..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Word.pas',
   Argus.Core.Style.Tests in 'IDE.Expert\Argus.Core.Style.Tests.pas',

@@ -176,7 +176,7 @@ function TArgusCompletionPopup.PanelHeight: Integer;
 begin
   if not FPanelShown then
     Exit(0);
-  Result := FDetailView.Render(Canvas, Colors, Font, UIFont, Rect(0, 0, PanelWidth, 0), CurrentPPI, False);
+  Result := FDetailView.Render(Canvas, Colors, Font, UIFont, Rect(0, 0, PanelWidth, 0), PPI, False);
   Canvas.Font := Font;
 end;
 
@@ -648,7 +648,7 @@ begin
   Canvas.Pen.Color := ToColor(Colors.Line);
   Canvas.MoveTo(Edge, 0);
   Canvas.LineTo(Edge, ClientHeight);
-  FDetailView.Render(Canvas, Colors, Font, UIFont, Panel, CurrentPPI, True);
+  FDetailView.Render(Canvas, Colors, Font, UIFont, Panel, PPI, True);
   Canvas.Font := Font;
   Canvas.Brush.Style := bsSolid;
 end;
