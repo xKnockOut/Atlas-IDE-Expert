@@ -109,6 +109,7 @@
         <DCCReference Include="Source\Core\Style\Argus.Core.Style.Palette.pas"/>
         <DCCReference Include="Source\Core\Style\Argus.Core.Style.Syntax.pas"/>
         <DCCReference Include="Source\Core\Completion\Argus.Core.Completion.Presentation.pas"/>
+        <DCCReference Include="Source\Core\Completion\Argus.Core.Completion.Word.pas"/>
         <DCCReference Include="Source\UI\Popup\Argus.UI.Popup.Styled.pas"/>
         <DCCReference Include="Source\IDE\Editor\Argus.IDE.Editor.Style.pas"/>
         <DCCReference Include="Source\IDE\Editor\Argus.IDE.Editor.Buffer.pas"/>
