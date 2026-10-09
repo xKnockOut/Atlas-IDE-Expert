@@ -133,6 +133,7 @@
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Unused.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Declarations.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Inheritance.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Capture.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.ClassCompletion.pas"/>
         <DCCReference Include="Source\Dfm\Argus.Common.Dfm.Contract.pas"/>
         <DCCReference Include="Source\Dfm\Argus.Common.Dfm.Parser.pas"/>

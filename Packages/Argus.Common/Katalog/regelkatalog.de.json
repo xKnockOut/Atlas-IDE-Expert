@@ -119,6 +119,11 @@
       "id": "virtual-instead-of-override",
       "name": "virtual statt override",
       "description": "Ein Nachfahre deklariert eine Methode als virtual, obwohl der Vorfahr schon eine virtuelle Methode mit derselben Signatur hat; das beginnt eine neue Kette statt zu überschreiben."
+    },
+    {
+      "id": "captured-loop-variable",
+      "name": "Erfasste Schleifenvariable",
+      "description": "Eine anonyme Methode, die an eine verzögert ausführende API (TThread.Queue, TTask.Run …) geht, erfasst eine Variable, die sich vor dem Aufruf noch ändert, etwa die Variable einer for-in-Schleife. Delphi erfasst die Variable, nicht ihren Wert."
     }
   ]
 }
