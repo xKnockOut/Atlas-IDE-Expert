@@ -29,23 +29,26 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
-## RAD Studio als LSP-Client (#175) – erledigt
-- Anleitung: `docs/RAD-Studio.md`. Wird mit #84 in `docs/Installation.md` verlinkt, sobald die Kette `84-benutzerdoku` nach `main` bringt.
-- Checkliste als Kommentar in #175 (09.10.2026).
+## RAD Studio als LSP-Client (#175)
+- **Anleitung:** `docs/RAD-Studio.md`. Wird mit #84 in `docs/Installation.md` verlinkt.
 - **Eintrag in RAD Studio:**
   - Registry `HKCU\Software\Embarcadero\BDS\37.0\LSP\UserDefined\BetterDelphiLSP` mit `LanguageId = Delphi`.
-  - Die Auswahl steht in `…\Editor\Source Options\Borland.EditOptions.Pascal`, Wert `Insight Manager`.
-  - Die exe liegt unter `C:\Projekte\BetterDelphiLSP.exe`, Log und Mitschnitt in `C:\Temp`.
-- **Geprüft in der IDE:**
-  - Der Arbeitsbereich wird aus der Datei abgeleitet (Gallery, Index in 4,9 s).
-  - Hover liefert `plaintext`.
-  - documentSymbol und Diagnosen funktionieren.
-- **Neustarts:** Das ist kein Absturz. Jede `bds.exe` startet einen eigenen Server, außerdem greift die Voreinstellung „Restart server each time a project is activated“. Die IDE beendet den Server hart, deshalb fehlt „Beendet mit Exit-Code“. Das ließ sich belegen: 38 von 44 Sitzungen beginnen direkt nach einem IDE-Start.
-- **Behoben (7d0cfaa):** Bei belegter `--trace`-Datei weicht der Server auf `<Datei>-<PID>.<Endung>` aus. Vorher lief jeder weitere Server ohne Mitschnitt.
-- **Kein Handlungsbedarf:** `languageId = "pascal"`, weil der Server `languageId` nicht auswertet.
-- **Offen:** `textDocument/completion`. Die IDE fragt an, der Server antwortet `MethodNotFound`. Das wird mit `feature/31-vervollstaendigung` aus der Kette gelöst.
-- **Aufräumen:** `C:\Projekte\BetterDelphiLSP.old.exe` ist eine identische Kopie, die gerade läuft. Löschen, sobald Delphi den Server beendet hat.
-
+  - Die IDE hält die Werte im Speicher und schreibt sie beim Beenden zurück. Änderungen deshalb im Dialog *Code Insight-Manager > Bearbeiten* machen, nicht in der Registry.
+  - Die exe läuft direkt aus `repo\Output\Win64\Debug\Bin\` (Wunsch des Users). Vor jedem Build muss Delphi das Projekt geschlossen haben, sonst ist die exe gesperrt. Log und Mitschnitt liegen in `C:\Temp`.
+  - `Help Insight` steht wieder auf `True`.
+- **Funktioniert über den eingebauten Client:** Arbeitsbereich aus der Datei abgeleitet, documentSymbol, Diagnosen als Error Insight.
+- **Hover funktioniert nicht und ist nicht lösbar über diesen Weg** (Belege in ADR 0006):
+  - Ein Mitschnitt des eingebauten DelphiLSP zeigt dieselben Anfragen und die Antwort `{"contents":"…"}`, und die IDE zeigt sie an.
+  - BetterDelphiLSP antwortet seit `ffed3c5` genauso.
+  - Auch mit den Fähigkeiten von DelphiLSP und ohne Log- und Fortschrittsnachrichten (nur getestet, nicht committet) blitzt nur „Wird berechnet …“ auf.
+- **Neustarts:** Kein Absturz. Jede `bds.exe` startet einen eigenen Server, außerdem gilt „Restart server each time a project is activated“. Die IDE startet zusätzlich parallel ihren eigenen DelphiLSP.
+- **Behoben:** Ausweichen beim belegten `--trace` (`7d0cfaa`), Hover-Klartext als String (`ffed3c5`).
+- **Entscheidung (ADR 0006):** Ein Design-Time-Package `BDLsp.IdePlugin` (Win32) als Code Insight-Manager und dünner LSP-Client mit eigenem Serverprozess. Reihenfolge: Hover, Gehe zu Definition, Vervollständigung (#31), Parameterhilfe (#32), Error Insight selbst gezeichnet (`INTACodeEditorEvents`).
+- **Werkzeuge der Analyse:**
+  - Der Vermittler `LspProxy` liegt nur im Scratchpad, `C:\Temp\LspProxy` ist gelöscht.
+  - In `bin` und `bin64` liegen noch je eine `DelphiLSP.proxy-alt.exe` (6 KB), die der User löschen kann (Administratorrechte nötig).
+  - `DelphiLSP.exe` selbst ist wieder das Original.
+- **Offen:** Kommentar mit diesem Ergebnis in #175, die Zustimmung des Users steht noch aus.
 ## Feature-Kette (pausiert, Fortsetzung nur auf Anweisung des Users)
 - 98 verkettete Branches von `14-projektmodell` bis `122-binaere-dfm`. Für jeden: `main` einmergen, in frischer IDE bauen, beheben, prüfen, Branch pushen, per Fast-Forward nach `main`, `main` pushen.
 - **Stand:** 38 von 98 sind in `main`. Weiter geht es bei Index 39, `feature/31-vervollstaendigung`.
@@ -57,4 +60,5 @@
 - Die IDE sortiert `DCCReference` um und fügt Leerzeilen ein. Reine Umsortierungen und Leerraum-Änderungen werden verworfen.
 
 ## Stand nach diesem Vorgang
-- `main` = `7d0cfaa`, Win64 0/0/0, 528/528 Tests.
+- `main` = `ffed3c5`, Win64 0/0/0, 528/528 Tests.
+- Nächster Schritt nach Absprache: Kette bis mindestens 31/32 fortsetzen, dann `BDLsp.IdePlugin` nach ADR 0006.
