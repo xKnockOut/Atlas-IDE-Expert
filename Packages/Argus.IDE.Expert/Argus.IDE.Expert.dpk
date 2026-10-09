@@ -48,6 +48,12 @@ contains
   Argus.Core.Completion.Composite in 'Source\Core\Completion\Argus.Core.Completion.Composite.pas',
   Argus.Core.Completion.Providers.Fixed in 'Source\Core\Completion\Providers\Argus.Core.Completion.Providers.Fixed.pas',
   Argus.Core.Completion.Providers.Server in 'Source\Core\Completion\Providers\Argus.Core.Completion.Providers.Server.pas',
+  Argus.Core.Completion.Matching in 'Source\Core\Completion\Argus.Core.Completion.Matching.pas',
+  Argus.Core.Completion.Controller in 'Source\Core\Completion\Argus.Core.Completion.Controller.pas',
+  Argus.UI.Popup.Window in 'Source\UI\Popup\Argus.UI.Popup.Window.pas',
+  Argus.UI.Completion.Popup in 'Source\UI\Completion\Argus.UI.Completion.Popup.pas',
+  Argus.IDE.Editor.Buffer in 'Source\IDE\Editor\Argus.IDE.Editor.Buffer.pas',
+  Argus.IDE.Completion.Editor in 'Source\IDE\Completion\Argus.IDE.Completion.Editor.pas',
   Argus.IDE.CodeInsight.Manager in 'Source\IDE\CodeInsight\Argus.IDE.CodeInsight.Manager.pas',
   Argus.IDE.CodeInsight.Composition in 'Source\IDE\CodeInsight\Argus.IDE.CodeInsight.Composition.pas';
 

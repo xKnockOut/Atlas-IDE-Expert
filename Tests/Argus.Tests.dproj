@@ -170,6 +170,9 @@
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Providers\Argus.Core.Completion.Providers.Fixed.pas"/>
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Providers\Argus.Core.Completion.Providers.Server.pas"/>
         <DCCReference Include="IDE.Expert\Argus.Core.Completion.Tests.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Matching.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Controller.pas"/>
+        <DCCReference Include="IDE.Expert\Argus.Core.Completion.Controller.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

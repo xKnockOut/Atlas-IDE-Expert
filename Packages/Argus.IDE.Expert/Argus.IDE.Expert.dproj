@@ -95,6 +95,12 @@
         <DCCReference Include="Source\Core\Completion\Argus.Core.Completion.Composite.pas"/>
         <DCCReference Include="Source\Core\Completion\Providers\Argus.Core.Completion.Providers.Fixed.pas"/>
         <DCCReference Include="Source\Core\Completion\Providers\Argus.Core.Completion.Providers.Server.pas"/>
+        <DCCReference Include="Source\Core\Completion\Argus.Core.Completion.Matching.pas"/>
+        <DCCReference Include="Source\Core\Completion\Argus.Core.Completion.Controller.pas"/>
+        <DCCReference Include="Source\UI\Popup\Argus.UI.Popup.Window.pas"/>
+        <DCCReference Include="Source\UI\Completion\Argus.UI.Completion.Popup.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Argus.IDE.Editor.Buffer.pas"/>
+        <DCCReference Include="Source\IDE\Completion\Argus.IDE.Completion.Editor.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Argus.IDE.CodeInsight.Manager.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Argus.IDE.CodeInsight.Composition.pas"/>
         <BuildConfiguration Include="Base">
