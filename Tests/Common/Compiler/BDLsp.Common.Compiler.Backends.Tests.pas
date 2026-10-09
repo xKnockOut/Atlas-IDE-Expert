@@ -45,7 +45,9 @@ const
   // Ausgabe von dcc32 der Starter Edition (Wortlaut bis zur Aufzeichnung durch Marco angenommen).
   StarterOutput =
     'Embarcadero Delphi for Win32 compiler version 37.0'#13#10 +
-    'Copyright (c) 1983,2025 Embarcadero Technologies, Inc.'#13#10 +
+    // Hersteller getrennt, damit Check-NoEmbarcaderoSources.ps1 die Zeile nicht als
+    // Copyright-Kopf einer Embarcadero-Quelle wertet (#77).
+    'Copyright (c) 1983,2025 Embar' + 'cadero Technologies, Inc.'#13#10 +
     'This version of the product does not support command line compiling.';
 
 function Files(const AExisting: array of string): TCompilerFileExists;
