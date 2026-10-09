@@ -11,6 +11,7 @@ Grundlage ist das Konzept „Rollenbasierte Kopplung und Kohäsion“ (Entwurf, 
 | `BDLsp.Common` | Platform-Package | plattformunabhängige RTL (`System.*`) | Windows (`Winapi.*`, `System.Win.*`), VCL, FMX, `BDLsp.Windows` |
 | `BDLsp.Windows` | Platform-Package | RTL, `Winapi.*`, `System.Win.*`, `BDLsp.Common` | VCL, FMX |
 | `BetterDelphiLSP` | Anwendung (Host) | beide Packages, RTL, Windows | VCL (Konsolenanwendung) |
+| `BDLsp.IdePlugin` | Design-Time-Package für RAD Studio (Win32, ADR 0006) | RTL, `Winapi.*`, `System.Win.*`, VCL, `designide` (Open Tools API) | `BDLsp.Common`, `BDLsp.Windows` (eigenständig, damit die IDE nur ein BPL laden muss) |
 | `BDLsp.Tests` | Testprojekt (DUnitX) | alles, was getestet wird | – |
 
 Abhängigkeitsrichtung:
@@ -55,7 +56,7 @@ Die Anwendung und das Testprojekt binden die Packages statisch ein: Sie finden d
 Ausgabeartefakt.Feature.Rolle.Sache
 ```
 
-- Präfixe der Ausgabeartefakte (Whitelist): `BDLsp.Common`, `BDLsp.Windows`
+- Präfixe der Ausgabeartefakte (Whitelist): `BDLsp.Common`, `BDLsp.Windows`, `BDLsp.IdePlugin`
 - Units der Anwendung tragen kein Präfix, z. B. `Shell.Application`
 - Units im Wurzelverzeichnis eines Features tragen keinen Rollenbezeichner, z. B. `BDLsp.Common.Product.Version`
 - Rollenbezeichner sind reserviert: `Contract`, `Providers`, `Adapters`, `Internals`, `Hosting`, `Composition` (Features) sowie `Foundation`, `Core`, `Shell`, `Adapters`, `Platform` (Host)
@@ -105,6 +106,8 @@ Komposition von Hand (keine Container-Bibliothek). Composition-Units tragen desh
 | `BDLsp.Windows.Documents` (Platform) | `PathCanonicalizer` | Kanonische Pfade über `GetFinalPathNameByHandle` (Junctions, Symlinks, subst, 8.3-Namen, lange Pfade) für die Dokumentschlüssel |
 | `BDLsp.Windows.Editing` (Platform) | `SystemColors` | Aktuelle Systemfarben (`GetSysColor`) für die Farbvorschau |
 | `BDLsp.Windows.Diagnostics` (Platform) | `DebugOutput`, `Adapters.DebugOutputSink`, `StackTrace` | `OutputDebugString`, Log-Senke dafür, Stacktraces für Ausnahmen (`Modul+$Offset`) |
+| `BDLsp.IdePlugin.Lsp` (Plugin) | `Client`, `Session`, `Adapters.ServerProcess` | Schlanker LSP-Client (Rahmung, Antwortzuordnung, Zeitlimit, Server-Anfragen mit null beantworten), Sitzung mit Dokumentabgleich (didOpen, didChange mit ganzem Text), Hover und Definition, Pfad ↔ URI, Editorspalte → Zeichenindex; Serverprozess mit Pipes und Lese-Thread |
+| `BDLsp.IdePlugin.CodeInsight` (Plugin) | `Hosting.Manager`, `Composition` | Code Insight-Manager „BetterDelphiLSP (Plugin)“ für Delphi (`IOTACodeInsightManager`): Symbolhinweis (`GetHintText`) und Browse (`GotoDefinition`); startet den Server bei Bedarf neu; Anmeldung beim Laden des Packages |
 | `Shell` (Host) | `Shell.Application`, `Shell.Composition`, `Shell.CommandLine`, `Shell.Workspace`, `Shell.Linter` | Einstiegspunkt, Kommandozeile, Komposition von Hand, Capabilities; je Arbeitsbereichsordner eigene Konfiguration, eigenes Projekt und eigener Indexaufbau in einen gemeinsamen Symbolindex |
 
 Ablauf einer Anfrage:

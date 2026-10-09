@@ -1,5 +1,26 @@
 ﻿# BetterDelphiLSP in RAD Studio 13 einbinden
 
+Es gibt zwei Wege:
+
+- **Empfohlen: das IDE-Plugin** `BDLsp.IdePlugin` (ADR 0006). Es meldet sich als eigener Code Insight-Manager an und zeigt Hover und Gehe zu Definition an.
+- **Eingebauter LSP-Client** (Abschnitt unten). Damit funktionieren Gliederung und Error Insight. Den Hover fremder Server zeigt RAD Studio auf diesem Weg aber nicht an.
+
+## IDE-Plugin
+
+1. Das Package `Packages\BDLsp.IdePlugin\BDLsp.IdePlugin.dproj` für **Win32** bauen (die IDE ist 32-Bit). Ergebnis: `Output\Win32\Debug\Bpl\BDLsp.IdePlugin.bpl`.
+2. In RAD Studio: *Komponente > Packages installieren > Hinzufügen*, die BPL auswählen.
+3. *Tools > Optionen > Editor > Sprache > Code Insight*: im Code Insight-Manager **„BetterDelphiLSP (Plugin)“** wählen.
+4. Den Server findet das Plugin in dieser Reihenfolge:
+   - Registry `HKCU\Software\BetterDelphiLSP\IdePlugin`, Wert `ServerPath` (optional `ServerArguments`, z. B. `--log C:\Temp\bdlsp.log`)
+   - `BetterDelphiLSP.exe` neben der BPL
+   - `..\..\..\Win64\Debug\Bin\BetterDelphiLSP.exe`, im Repo also die Win64-Build-Ausgabe
+
+Fehler beim Start meldet das Plugin einmalig im Meldungsfenster. Stürzt der Server ab, startet es ihn bei der nächsten Anfrage neu.
+
+Umgesetzt sind Symbolhinweis (Hover) und Strg+Klick (Gehe zu Definition). Vervollständigung, Parameterhilfe und Error Insight folgen.
+
+## Eingebauter LSP-Client
+
 RAD Studio 13 kann fremde Sprachserver (LSP) über stdio einbinden. So ersetzt BetterDelphiLSP für Delphi-Dateien den eingebauten Code Insight-Server.
 
 ## Voraussetzungen
