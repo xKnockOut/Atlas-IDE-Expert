@@ -88,6 +88,8 @@ type
     [Test]
     procedure AppliesExternalChanges;
     [Test]
+    procedure ChangedIncludeReindexesUnit;
+    [Test]
     // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
     [IgnoreMemoryLeaks]
     procedure ServiceBuildsInBackgroundAndWritesCache;
@@ -631,6 +633,32 @@ begin
     // Neue Dateien kommen erst bei Bedarf in den Index, auch wenn die Unit vorher fehlte.
     Assert.IsFalse(FIndex.FindUnit('G', U));
     Assert.IsTrue(Builder.EnsureUnit('G'));
+  finally
+    Builder.Free;
+  end;
+end;
+
+procedure TIndexBuilderTests.ChangedIncludeReindexesUnit;
+const
+  UnitText = 'unit H;'#10'interface'#10'{$I C:\Inc\Schalter.inc}'#10 +
+    '{$IFDEF NEU}type TMitNeu = class end;{$ELSE}type TOhneNeu = class end;{$ENDIF}'#10'implementation'#10'end.';
+var
+  Builder: TIndexBuilder;
+  U: TUnitIndex;
+begin
+  // #264: $DEFINE aus der .inc wirkt; Änderung an der .inc liest H neu ein.
+  FFiles.Put('C:\Inc\Schalter.inc', '{$DEFINE NEU}', 1);
+  FFiles.Put('C:\Lib\H.pas', UnitText, 1);
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  try
+    Builder.Build(['C:\Lib\H.pas'], nil, nil);
+    Assert.IsTrue(FIndex.FindUnit('H', U));
+    Assert.AreEqual<NativeInt>(1, Length(U.Includes));
+    Assert.AreEqual<NativeInt>(1, Length(FIndex.FindSymbols('TMitNeu')));
+    FFiles.Put('C:\Inc\Schalter.inc', '', 2);
+    Assert.AreEqual(1, Builder.ApplyChanges([TFileChange.Create('C:\Inc\Schalter.inc', TFileChangeKind.Changed)]));
+    Assert.AreEqual<NativeInt>(0, Length(FIndex.FindSymbols('TMitNeu')));
+    Assert.AreEqual<NativeInt>(1, Length(FIndex.FindSymbols('TOhneNeu')));
   finally
     Builder.Free;
   end;

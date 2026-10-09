@@ -363,6 +363,21 @@ begin
   FDocuments.Subscribe(HandleDocumentEvent);
   FDispatcher.RegisterNotification(TLspConfiguration.DidChangeConfigurationMethod, HandleDidChangeConfiguration);
   FSyntaxDiagnostics.DefinesProvider := DefinesFor;
+  FSyntaxDiagnostics.IncludePathsProvider :=
+    function(const AUri: string): TArray<string>
+    var
+      Workspace: TShellWorkspace;
+    begin
+      Result := nil;
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+        if Workspace <> nil then
+          Result := Workspace.IncludePaths;
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+    end;
   FSyntaxDiagnostics.VersionProvider := DelphiVersionFor;
   FSyntaxDiagnostics.RuleProvider := RuleContextFor;
   FIndex := TSymbolIndex.Create;
@@ -511,7 +526,7 @@ begin
       try
         Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
         if Workspace <> nil then
-          Result := Workspace.SearchPaths;
+          Result := Workspace.IncludePaths;
       finally
         TMonitor.Exit(FWorkspacesLock);
       end;
@@ -1300,7 +1315,8 @@ begin
         if (Workspace <> nil) and not Reload.Contains(Workspace) then
           Reload.Add(Workspace);
       end
-      else if SameText(ExtractFileExt(Change.FileName), '.pas') or SameText(ExtractFileExt(Change.FileName), '.dpr') then
+      // .inc (#264): der Index liest die einbindenden Units neu ein.
+      else if MatchText(ExtractFileExt(Change.FileName), ['.pas', '.dpr', '.inc']) then
         Sources := Sources + [Change];
     // Neu aufbauen: Suchpfade, Defines oder Units können sich geändert haben.
     for Workspace in Reload do

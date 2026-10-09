@@ -19,6 +19,8 @@ type
     Files: TArray<string>;
     Defines: TArray<string>;
     ResolveUnit: TUnitFileResolver;
+    /// <summary>Suchpfade für $I-Dateien (#264).</summary>
+    IncludePaths: TArray<string>;
     /// <summary>Cache-Datei; '' = ohne Cache.</summary>
     CacheFile: string;
     /// <summary>Cache nur lesen, z. B. weil eine andere Instanz ihn schreibt (#184).</summary>
@@ -120,6 +122,7 @@ begin
   try
     Watch := TStopwatch.StartNew;
     Builder := TIndexBuilder.Create(FIndex, FFileSystem, ARequest.Defines, ARequest.ResolveUnit);
+    Builder.IncludePaths := ARequest.IncludePaths;
     TMonitor.Enter(FLock);
     try
       FBuilder.Free;

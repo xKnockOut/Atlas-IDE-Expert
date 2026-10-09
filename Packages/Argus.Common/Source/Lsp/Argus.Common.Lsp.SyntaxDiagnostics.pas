@@ -12,6 +12,8 @@
 // die diese Version noch nicht kennt, als Warnung gemeldet.
 // Meldungen des letzten Compilerlaufs (CompilerMessagesProvider, #40) kommen
 // mit der Quelle "dcc" dazu, auch für Dateien, die nicht geöffnet sind.
+// Include-Dateien (#264) sucht der Präprozessor über IncludePathsProvider;
+// ein Include-Zyklus ist eine Warnung, eine nicht gefundene Datei ein Hinweis.
 
 interface
 
@@ -30,6 +32,8 @@ type
   /// <summary>Symbole für das Dokument AUri; False, wenn kein Projekt sie festlegt.
   /// Wird im Hintergrund-Thread aufgerufen.</summary>
   TDefinesProvider = reference to function(const AUri: string; out ADefines: TArray<string>): Boolean;
+  /// <summary>Suchpfade für $I-Dateien zum Dokument AUri (#264).</summary>
+  TIncludePathsProvider = reference to function(const AUri: string): TArray<string>;
   /// <summary>Eingestellte Delphi-Version für AUri; '' = unbekannt. Hintergrund-Thread.</summary>
   TDelphiVersionProvider = reference to function(const AUri: string): string;
 
@@ -63,6 +67,7 @@ type
     FSendLock: TObject;
     FDefinesLock: TObject;
     FDefinesProvider: TDefinesProvider;
+    FIncludePathsProvider: TIncludePathsProvider;
     FVersionProvider: TDelphiVersionProvider;
     FRuleProvider: TRuleContextProvider;
     FCompilerProvider: TCompilerMessagesProvider;
@@ -76,6 +81,8 @@ type
     procedure SetOnError(const AValue: TProc<Exception>);
     function CurrentDefines(const AUri: string; out ADefines: TArray<string>): Boolean;
     procedure SetDefinesProvider(const AValue: TDefinesProvider);
+    function CurrentIncludePaths(const AUri: string): TArray<string>;
+    procedure SetIncludePathsProvider(const AValue: TIncludePathsProvider);
     function CurrentVersion(const AUri: string): string;
     procedure SetVersionProvider(const AValue: TDelphiVersionProvider);
     function CurrentRules(const AUri: string; out AContext: TRuleCheckContext): Boolean;
@@ -120,6 +127,7 @@ type
     property OnError: TProc<Exception> read GetOnError write SetOnError;
     /// <summary>Liefert die Symbole für das Abblenden inaktiver Bereiche.</summary>
     property DefinesProvider: TDefinesProvider write SetDefinesProvider;
+    property IncludePathsProvider: TIncludePathsProvider write SetIncludePathsProvider;
     property VersionProvider: TDelphiVersionProvider write SetVersionProvider;
     /// <summary>Liefert Regeln und Einstellungen; ohne Provider laufen keine Prüfregeln.</summary>
     property RuleProvider: TRuleContextProvider write SetRuleProvider;
@@ -143,6 +151,8 @@ uses
   Argus.Common.Pascal.TreeCache,
   Argus.Common.Pascal.LanguageFeatures,
   Argus.Common.Lsp.InactiveRegions,
+  Argus.Common.Pascal.Preprocessor,
+  Argus.Common.Pascal.IncludeFiles,
   Argus.Common.Rules.Engine,
   Argus.Common.Rules.Catalog,
   Argus.Common.Dfm.Contract,
@@ -217,6 +227,32 @@ begin
   TMonitor.Enter(FDefinesLock);
   try
     FDefinesProvider := AValue;
+  finally
+    TMonitor.Exit(FDefinesLock);
+  end;
+end;
+
+function TLspSyntaxDiagnostics.CurrentIncludePaths(const AUri: string): TArray<string>;
+var
+  Provider: TIncludePathsProvider;
+begin
+  TMonitor.Enter(FDefinesLock);
+  try
+    Provider := FIncludePathsProvider;
+  finally
+    TMonitor.Exit(FDefinesLock);
+  end;
+  if Assigned(Provider) then
+    Result := Provider(AUri)
+  else
+    Result := nil;
+end;
+
+procedure TLspSyntaxDiagnostics.SetIncludePathsProvider(const AValue: TIncludePathsProvider);
+begin
+  TMonitor.Enter(FDefinesLock);
+  try
+    FIncludePathsProvider := AValue;
   finally
     TMonitor.Exit(FDefinesLock);
   end;
@@ -456,6 +492,9 @@ var
   Items: TJSONArray;
   Compiled: TCompilerMessage;
   Form: TDfmDocument;
+  Issues: TArray<TPreprocessorIssue>;
+  Issue: TPreprocessorIssue;
+  Item: TJSONObject;
 begin
   // Formulardateien (#44): nur Lesefehler der DFM, keine Pascal-Prüfungen.
   if TDfmParser.IsFormFile(ADocument.Uri) then
@@ -471,12 +510,26 @@ begin
     Exit;
   end;
   Inactive := nil;
+  Issues := nil;
   if CurrentDefines(ADocument.Uri, Defines) then
-    Inactive := TLspInactiveRegions.Ranges(ADocument.Text, Defines);
+    Inactive := TLspInactiveRegions.Ranges(ADocument.Text, Defines, TDocumentUris.ToPath(ADocument.Uri),
+      TIncludeFiles.Resolver(CurrentIncludePaths(ADocument.Uri)), Issues);
   if not CurrentRules(ADocument.Uri, Rules) then
     Rules := Default(TRuleCheckContext);
   Result := BuildParams(ADocument, Inactive, CurrentVersion(ADocument.Uri), Rules);
   Items := Result.GetValue('diagnostics') as TJSONArray;
+  for Issue in Issues do
+  begin
+    Item := TJSONObject.Create;
+    Item.AddPair('range', TLspPositions.RangeToJson(Issue.Range));
+    if Issue.Kind = TPreprocessorIssueKind.IncludeCycle then
+      Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Warning))
+    else
+      Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Hint));
+    Item.AddPair('source', Source);
+    Item.AddPair('message', Issue.Message);
+    Items.AddElement(Item);
+  end;
   for Compiled in CurrentCompilerMessages(TDocumentUris.ToPath(ADocument.Uri)) do
     if Compiled.Line < ADocument.LineCount then
       Items.AddElement(CompilerMessageToJson(Compiled, ADocument.LineText(Max(Compiled.Line, 0)), True));
