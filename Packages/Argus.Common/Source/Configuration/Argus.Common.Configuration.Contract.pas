@@ -101,6 +101,8 @@ type
     Formatting: TFormatStyle;
     InlayHints: TInlayHintSettings;
     Compiler: TCompilerSettings;
+    /// <summary>Obergrenze für den Symbolindex in MB; 0 = unbegrenzt (#185).</summary>
+    MemoryBudgetMb: Integer;
     /// <summary>Vorgaben, wenn keine Konfigurationsdatei existiert.</summary>
     class function Default: TServerSettings; static;
     /// <summary>Schweregrad aus der Konfiguration oder ADefault.</summary>
@@ -273,6 +275,7 @@ begin
   Result.Formatting := TFormatStyle.Default;
   Result.InlayHints := TInlayHintSettings.Default;
   Result.Compiler := TCompilerSettings.Default;
+  Result.MemoryBudgetMb := 0;
 end;
 
 function TServerSettings.IsRuleEnabledExplicitly(const ARuleId: string): Boolean;

@@ -50,6 +50,10 @@ type
     InterfaceUses: TArray<string>;
     ImplementationUses: TArray<string>;
     Symbols: TArray<TIndexSymbol>;
+    /// <summary>Über eine uses-Liste nachgeladen (RTL, VCL, Bibliotheken), nicht aus dem Projekt.</summary>
+    Library_: Boolean;
+    /// <summary>Nur interface-Symbole behalten, um das Speicherbudget einzuhalten (#185).</summary>
+    Compact: Boolean;
   end;
 
   TSymbolLocation = record
@@ -72,6 +76,14 @@ type
     function Units: TArray<TUnitIndex>;
     function UnitCount: Integer;
     function SymbolCount: Integer;
+    /// <summary>Geschätzter Speicherbedarf der Einträge in Byte.</summary>
+    function MemoryBytes: Int64;
+    /// <summary>Zahl der kompakt gehaltenen Units.</summary>
+    function CompactCount: Integer;
+    /// <summary>Obergrenze in Byte; 0 = unbegrenzt. Wird sie überschritten, hält der Index
+    /// zuerst Bibliotheks-, dann Projekt-Units kompakt.</summary>
+    procedure SetBudget(ABytes: Int64);
+    function Budget: Int64;
   end;
 
   IIndexFileSystem = interface

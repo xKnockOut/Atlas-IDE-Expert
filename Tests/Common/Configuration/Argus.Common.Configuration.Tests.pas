@@ -249,6 +249,14 @@ begin
   Assert.AreEqual(2, Integer(Length(Issues)));
   Settings := TConfigurationParser.ParseLayered('{"compiler": {"onSave": false}}', '{}', Issues);
   Assert.IsFalse(Settings.Compiler.OnSave);
+  // Speicherbudget (#185)
+  Assert.AreEqual(0, Parse('{}', Issues).MemoryBudgetMb);
+  Assert.AreEqual(512, Parse('{"memoryBudgetMb": 512}', Issues).MemoryBudgetMb);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual(0, Parse('{"memoryBudgetMb": -1}', Issues).MemoryBudgetMb);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{"memoryBudgetMb": 100}', '{"memoryBudgetMb": 200}', Issues);
+  Assert.AreEqual(200, Settings.MemoryBudgetMb);
 end;
 
 procedure TConfigurationParserTests.ReadsInlayHints;

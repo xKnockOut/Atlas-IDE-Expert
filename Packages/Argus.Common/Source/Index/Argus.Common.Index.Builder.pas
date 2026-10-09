@@ -41,7 +41,7 @@ type
     // Von EnsureUnit aus Anfrage-Threads genutzt.
     FFailedUnits: TDictionary<string, Boolean>;
     FFailedLock: TObject;
-    function IndexFile(const AFileName: string; var AResult: TIndexBuildResult): Boolean;
+    function IndexFile(const AFileName: string; ALibrary: Boolean; var AResult: TIndexBuildResult): Boolean;
     procedure IndexReferenced(var AResult: TIndexBuildResult; const AProgress: TIndexProgressEvent;
       const ACancelled: TIndexCancelled);
     function IsCancelled(const ACancelled: TIndexCancelled): Boolean;
@@ -93,7 +93,9 @@ var
   UnitIndex: TUnitIndex;
 begin
   for UnitIndex in AUnits do
-    FCached.AddOrSetValue(AnsiUpperCase(UnitIndex.FileName), UnitIndex);
+    // Kompakt gespeicherte Units fehlen Symbole; sie werden neu eingelesen.
+    if not UnitIndex.Compact then
+      FCached.AddOrSetValue(AnsiUpperCase(UnitIndex.FileName), UnitIndex);
 end;
 
 function TIndexBuilder.IsCancelled(const ACancelled: TIndexCancelled): Boolean;
@@ -101,7 +103,8 @@ begin
   Result := Assigned(ACancelled) and ACancelled();
 end;
 
-function TIndexBuilder.IndexFile(const AFileName: string; var AResult: TIndexBuildResult): Boolean;
+function TIndexBuilder.IndexFile(const AFileName: string; ALibrary: Boolean;
+  var AResult: TIndexBuildResult): Boolean;
 var
   Stamp: Int64;
   Text, Hash: string;
@@ -116,6 +119,7 @@ begin
   HasCache := FCached.TryGetValue(AnsiUpperCase(AFileName), Cached);
   if HasCache and (Cached.Stamp = Stamp) then
   begin
+    Cached.Library_ := ALibrary;
     FIndex.AddUnit(Cached);
     Inc(AResult.FromCache);
     Exit(True);
@@ -129,6 +133,7 @@ begin
   if HasCache and (Cached.Hash = Hash) then
   begin
     Cached.Stamp := Stamp;
+    Cached.Library_ := ALibrary;
     FIndex.AddUnit(Cached);
     Inc(AResult.FromCache);
     Exit(True);
@@ -136,6 +141,7 @@ begin
   UnitIndex := TIndexExtractor.ExtractText(Text, AFileName, FDefines);
   UnitIndex.Stamp := Stamp;
   UnitIndex.Hash := Hash;
+  UnitIndex.Library_ := ALibrary;
   FIndex.AddUnit(UnitIndex);
   Inc(AResult.Parsed);
   Result := True;
@@ -181,7 +187,7 @@ begin
         Continue;
       if Assigned(AProgress) then
         AProgress(TIndexProgressKind.Report, Name, -1);
-      if IndexFile(FileName, AResult) and FIndex.FindFile(FileName, UnitIndex) then
+      if IndexFile(FileName, True, AResult) and FIndex.FindFile(FileName, UnitIndex) then
       begin
         // Nur das interface ist von außen sichtbar; dessen uses reichen.
         for UsedName in UnitIndex.InterfaceUses do
@@ -212,7 +218,7 @@ begin
       end;
       if Assigned(AProgress) then
         AProgress(TIndexProgressKind.Report, AFiles[Index], (Index * 100) div Length(AFiles));
-      IndexFile(AFiles[Index], Result);
+      IndexFile(AFiles[Index], False, Result);
     end;
     IndexReferenced(Result, AProgress, ACancelled);
   finally
@@ -243,7 +249,7 @@ begin
     Exit(False);
   FileName := FResolveUnit(AUnitName);
   Ignored := Default(TIndexBuildResult);
-  Result := (FileName <> '') and IndexFile(FileName, Ignored);
+  Result := (FileName <> '') and IndexFile(FileName, True, Ignored);
   if not Result then
   begin
     TMonitor.Enter(FFailedLock);
@@ -279,7 +285,7 @@ begin
         begin
           // IndexFile vergleicht mit dem Cache vom Start; ein geänderter
           // Zeitstempel führt zum Neueinlesen, gleicher Inhalt nicht.
-          if IndexFile(Change.FileName, Ignored) then
+          if IndexFile(Change.FileName, Existing.Library_, Ignored) then
             Inc(Result)
           else
           begin
