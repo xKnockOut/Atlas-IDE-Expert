@@ -136,6 +136,24 @@ begin
     '      "description": "TThread.Resume and Suspend are deprecated. Start a created thread with Start; Suspend has no safe replacement, wait with an event instead.",' + #10 +
     '      "bad": "FWorker.Resume;",' + #10 +
     '      "good": "FWorker.Start;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "result-not-set",' + #10 +
+    '      "name": "Function result possibly not set",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "A path through the function ends without assigning Result. The caller then reads an undefined value.",' + #10 +
+    '      "bad": "function Find: Integer;\nbegin\n  if Ok then\n    Result := 1;\nend;",' + #10 +
+    '      "good": "function Find: Integer;\nbegin\n  Result := 0;\n  if Ok then\n    Result := 1;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "possibly-uninitialized",' + #10 +
+    '      "name": "Variable possibly uninitialized",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "A local variable is read on a path where it was never assigned.",' + #10 +
+    '      "bad": "var I: Integer;\nbegin\n  if Ok then\n    I := 1;\n  Writeln(I);\nend;",' + #10 +
+    '      "good": "var I: Integer;\nbegin\n  I := 0;\n  if Ok then\n    I := 1;\n  Writeln(I);\nend;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -212,6 +230,16 @@ begin
     '      "id": "thread-resume-suspend",' + #10 +
     '      "name": "Veraltetes TThread.Resume/Suspend",' + #10 +
     '      "description": "TThread.Resume und Suspend sind veraltet. Einen erzeugten Thread mit Start starten; Suspend hat keinen sicheren Ersatz, stattdessen mit einem Ereignis warten."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "result-not-set",' + #10 +
+    '      "name": "Funktionsergebnis eventuell nicht gesetzt",' + #10 +
+    '      "description": "Ein Pfad durch die Funktion endet, ohne Result zuzuweisen. Der Aufrufer liest dann einen undefinierten Wert."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "possibly-uninitialized",' + #10 +
+    '      "name": "Variable eventuell nicht initialisiert",' + #10 +
+    '      "description": "Eine lokale Variable wird auf einem Pfad gelesen, auf dem ihr nie ein Wert zugewiesen wurde."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

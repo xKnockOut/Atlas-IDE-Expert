@@ -116,6 +116,24 @@
       "description": "TThread.Resume and Suspend are deprecated. Start a created thread with Start; Suspend has no safe replacement, wait with an event instead.",
       "bad": "FWorker.Resume;",
       "good": "FWorker.Start;"
+    },
+    {
+      "id": "result-not-set",
+      "name": "Function result possibly not set",
+      "category": "bug",
+      "severity": "warning",
+      "description": "A path through the function ends without assigning Result. The caller then reads an undefined value.",
+      "bad": "function Find: Integer;\nbegin\n  if Ok then\n    Result := 1;\nend;",
+      "good": "function Find: Integer;\nbegin\n  Result := 0;\n  if Ok then\n    Result := 1;\nend;"
+    },
+    {
+      "id": "possibly-uninitialized",
+      "name": "Variable possibly uninitialized",
+      "category": "bug",
+      "severity": "warning",
+      "description": "A local variable is read on a path where it was never assigned.",
+      "bad": "var I: Integer;\nbegin\n  if Ok then\n    I := 1;\n  Writeln(I);\nend;",
+      "good": "var I: Integer;\nbegin\n  I := 0;\n  if Ok then\n    I := 1;\n  Writeln(I);\nend;"
     }
   ]
 }

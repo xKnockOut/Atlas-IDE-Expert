@@ -113,6 +113,7 @@ contains
   Argus.Common.Semantics.UnresolvedNames in 'Source\Semantics\Argus.Common.Semantics.UnresolvedNames.pas',
   Argus.Common.Rules.Builtin.Architecture in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.Architecture.pas',
   Argus.Common.Rules.Builtin.Concurrency in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.Concurrency.pas',
+  Argus.Common.Rules.Builtin.Flow in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.Flow.pas',
   Argus.Common.Editing.ClassCompletion in 'Source\Editing\Argus.Common.Editing.ClassCompletion.pas',
   Argus.Common.Dfm.Contract in 'Source\Dfm\Argus.Common.Dfm.Contract.pas',
   Argus.Common.Dfm.Parser in 'Source\Dfm\Argus.Common.Dfm.Parser.pas',
