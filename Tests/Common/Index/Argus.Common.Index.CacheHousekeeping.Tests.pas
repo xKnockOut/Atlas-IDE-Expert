@@ -39,6 +39,8 @@ type
     procedure ClearSkipsLockedCaches;
     [Test]
     procedure CleanupKeepsOwnCache;
+    [Test]
+    procedure DiskFileSystemOverwritesExistingFile;
   end;
 
 implementation
@@ -48,7 +50,8 @@ uses
   System.Classes,
   System.IOUtils,
   Argus.Common.Index.CacheHousekeeping,
-  Argus.Common.Index.Adapters.CacheDirectory;
+  Argus.Common.Index.Adapters.CacheDirectory,
+  Argus.Common.Index.Adapters.DiskFileSystem;
 
 function Info(const AName: string; ASize: Int64; AAgeDays: Integer; ALocked: Boolean = False): TCacheFileInfo;
 begin
@@ -107,6 +110,25 @@ begin
   TDirectory.Delete(FRoot, True);
   // Sonst gibt erst das nächste Setup den Pfad frei (Leck-Monitor).
   FRoot := '';
+end;
+
+procedure TIndexCacheDirectoryTests.DiskFileSystemOverwritesExistingFile;
+var
+  FileSystem: TDiskIndexFileSystem;
+  Cache, Text: string;
+begin
+  // Der zweite Start schreibt über einen vorhandenen Cache (TFile.Replace); das scheiterte
+  // an der leeren Sicherungsdatei ("Pfad ist leer").
+  Cache := CreateCache('index-00000002.json');
+  FileSystem := TDiskIndexFileSystem.Create;
+  try
+    Assert.IsTrue(FileSystem.WriteText(Cache, '{"version":2}'));
+    Assert.IsTrue(FileSystem.ReadText(Cache, Text));
+    Assert.AreEqual('{"version":2}', Text);
+    Assert.AreEqual(1, Integer(Length(TDirectory.GetFiles(FRoot))), 'keine .tmp- oder .bak-Reste');
+  finally
+    FileSystem.Free;
+  end;
 end;
 
 function TIndexCacheDirectoryTests.CreateCache(const AName: string): string;
