@@ -102,6 +102,7 @@ uses
   Vcl.Forms,
   DockForm,
   Argus.Core.Lsp.Session,
+  Argus.Core.Completion.Word,
   Argus.IDE.Editor.Buffer,
   Argus.IDE.Editor.Style;
 
@@ -128,11 +129,6 @@ type
     Text: string;
     IsWord: Boolean;
   end;
-
-function IsIdentifierChar(AChar: Char): Boolean;
-begin
-  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AChar) > 127);
-end;
 
 type
   /// <summary>Tasten des Popups über den gemeinsamen Hook; Priorität vor dem Parameter-Hint.</summary>
@@ -356,9 +352,7 @@ begin
   Cursor := AView.CursorPos;
   LineText := TArgusEditorBuffer.LineText(AView, Cursor.Line);
   Character := TLspSession.ColumnToIndex(LineText, Cursor.Col, TArgusEditorBuffer.TabWidth(AView.Buffer));
-  WordStart := Character;
-  while (WordStart > 0) and IsIdentifierChar(LineText[WordStart]) do
-    Dec(WordStart);
+  WordStart := TArgusWord.StartBefore(LineText, Character);
   if not CaretRect(Window, Anchor) then
   begin
     Log('Vervollständigung: kein Caret gefunden');
@@ -527,7 +521,7 @@ begin
     Exit;
   end;
   for Index := FWordStart + 1 to Character do
-    if not IsIdentifierChar(LineText[Index]) then
+    if not TArgusWord.IsIdentifierChar(LineText[Index]) then
     begin
       // Commit-Zeichen direkt hinter dem Wort (#429): übernehmen, das Zeichen bleibt.
       if (Index = Character) and CharInSet(LineText[Index], ['(', ';', '.']) and
@@ -588,7 +582,10 @@ begin
   Character := TLspSession.ColumnToIndex(LineText, Cursor.Col, TArgusEditorBuffer.TabWidth(View.Buffer));
   // Über ein Commit-Zeichen: Das Wort endet davor, das Zeichen bleibt stehen.
   if FCommitEnd >= 0 then
-    Character := FCommitEnd;
+    Character := FCommitEnd
+  else
+    // Mitten im Wort: bis zu seinem Ende ersetzen, sonst bliebe der Rest stehen.
+    Character := TArgusWord.EndAfter(LineText, Character);
   NewText := AItem.InsertText;
   if NewText = '' then
     NewText := AItem.Name;

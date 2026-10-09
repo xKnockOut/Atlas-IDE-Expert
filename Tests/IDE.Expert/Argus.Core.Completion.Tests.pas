@@ -36,6 +36,17 @@ type
     procedure CompletesMembersFromServer;
   end;
 
+  [TestFixture]
+  TArgusWordTests = class
+  public
+    [Test]
+    procedure FindsStartBeforeCursor;
+    [Test]
+    procedure FindsEndBehindCursorInsideWord;
+    [Test]
+    procedure EndStaysAtCursorWithoutWordBehind;
+  end;
+
 implementation
 
 uses
@@ -49,6 +60,7 @@ uses
   Argus.Core.Completion.Composite,
   Argus.Core.Completion.Providers.Fixed,
   Argus.Core.Completion.Providers.Server,
+  Argus.Core.Completion.Word,
   Argus.Core.Lsp.Session,
   Argus.Core.Lsp.Adapters.ServerProcess;
 
@@ -391,8 +403,35 @@ begin
   end;
 end;
 
+{ TArgusWordTests }
+
+procedure TArgusWordTests.FindsStartBeforeCursor;
+begin
+  // "  myList := TStringL|ist.": Präfix ab Index 12.
+  Assert.AreEqual(12, TArgusWord.StartBefore('  myList := TStringList.', 20));
+  Assert.AreEqual(0, TArgusWord.StartBefore('Format', 3));
+  Assert.AreEqual(5, TArgusWord.StartBefore('List.Ad', 7));
+  Assert.AreEqual(5, TArgusWord.StartBefore('List.', 5));
+end;
+
+procedure TArgusWordTests.FindsEndBehindCursorInsideWord;
+begin
+  // Mitten im Wort: bis zum Punkt ersetzen, nicht nur bis zum Cursor.
+  Assert.AreEqual(23, TArgusWord.EndAfter('  myList := TStringList.', 20));
+  Assert.AreEqual(6, TArgusWord.EndAfter('Format', 3));
+  Assert.AreEqual(5, TArgusWord.EndAfter('Größe(', 2));
+end;
+
+procedure TArgusWordTests.EndStaysAtCursorWithoutWordBehind;
+begin
+  Assert.AreEqual(4, TArgusWord.EndAfter('List.Add', 4));
+  Assert.AreEqual(6, TArgusWord.EndAfter('Format', 6));
+  Assert.AreEqual(8, TArgusWord.EndAfter('  Add(  ', 8));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TArgusCompletionProviderTests);
   TDUnitX.RegisterTestFixture(TArgusServerCompletionTests);
+  TDUnitX.RegisterTestFixture(TArgusWordTests);
 
 end.

@@ -134,6 +134,7 @@ uses
   Argus.Core.Style.Palette in '..\Packages\Argus.IDE.Expert\Source\Core\Style\Argus.Core.Style.Palette.pas',
   Argus.Core.Style.Syntax in '..\Packages\Argus.IDE.Expert\Source\Core\Style\Argus.Core.Style.Syntax.pas',
   Argus.Core.Completion.Presentation in '..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Presentation.pas',
+  Argus.Core.Completion.Word in '..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Word.pas',
   Argus.Core.Style.Tests in 'IDE.Expert\Argus.Core.Style.Tests.pas',
   Argus.Common.Pascal.XmlDoc.Tests in 'Common\Pascal\Argus.Common.Pascal.XmlDoc.Tests.pas',
   Argus.Common.Editing.UsesClause.Tests in 'Common\Editing\Argus.Common.Editing.UsesClause.Tests.pas',
