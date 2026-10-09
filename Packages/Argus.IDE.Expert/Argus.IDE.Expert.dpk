@@ -72,6 +72,10 @@ contains
   Argus.IDE.Signature.Editor in 'Source\IDE\Signature\Argus.IDE.Signature.Editor.pas',
   Argus.IDE.Completion.Editor in 'Source\IDE\Completion\Argus.IDE.Completion.Editor.pas',
   Argus.IDE.CodeInsight.Manager in 'Source\IDE\CodeInsight\Argus.IDE.CodeInsight.Manager.pas',
-  Argus.IDE.CodeInsight.Composition in 'Source\IDE\CodeInsight\Argus.IDE.CodeInsight.Composition.pas';
+  Argus.IDE.CodeInsight.Composition in 'Source\IDE\CodeInsight\Argus.IDE.CodeInsight.Composition.pas',
+  Argus.Core.Settings.Plugin in 'Source\Core\Settings\Argus.Core.Settings.Plugin.pas',
+  Argus.UI.Settings.Page in 'Source\UI\Settings\Argus.UI.Settings.Page.pas',
+  Argus.IDE.Settings.Store in 'Source\IDE\Settings\Argus.IDE.Settings.Store.pas',
+  Argus.IDE.Settings.Options in 'Source\IDE\Settings\Argus.IDE.Settings.Options.pas';
 
 end.

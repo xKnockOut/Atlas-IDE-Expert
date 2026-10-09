@@ -186,6 +186,8 @@
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Word.pas"/>
         <DCCReference Include="IDE.Expert\Argus.Core.Style.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Argus.Common.Pascal.XmlDoc.Tests.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Settings\Argus.Core.Settings.Plugin.pas"/>
+        <DCCReference Include="IDE.Expert\Argus.Core.Settings.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

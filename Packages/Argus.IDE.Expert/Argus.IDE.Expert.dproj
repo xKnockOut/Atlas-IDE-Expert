@@ -120,6 +120,10 @@
         <DCCReference Include="Source\IDE\Completion\Argus.IDE.Completion.Editor.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Argus.IDE.CodeInsight.Manager.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Argus.IDE.CodeInsight.Composition.pas"/>
+        <DCCReference Include="Source\Core\Settings\Argus.Core.Settings.Plugin.pas"/>
+        <DCCReference Include="Source\UI\Settings\Argus.UI.Settings.Page.pas"/>
+        <DCCReference Include="Source\IDE\Settings\Argus.IDE.Settings.Store.pas"/>
+        <DCCReference Include="Source\IDE\Settings\Argus.IDE.Settings.Options.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

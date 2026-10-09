@@ -103,6 +103,7 @@ uses
   DockForm,
   Argus.Core.Lsp.Session,
   Argus.Core.Completion.Word,
+  Argus.IDE.Settings.Store,
   Argus.IDE.Editor.Buffer,
   Argus.IDE.Editor.Style;
 
@@ -370,6 +371,7 @@ begin
   else
     Context.Kind := TArgusContextKind.Identifier;
   ApplyStyle(Anchor);
+  FPopup.VisibleRows := TArgusIdeSettings.Current.VisibleRows;
   // Das Popup beginnt am Wortanfang, nicht am Caret.
   FPopup.Canvas.Font := FPopup.Font;
   Anchor.Left := Anchor.Left - FPopup.Canvas.TextWidth(Context.Prefix);

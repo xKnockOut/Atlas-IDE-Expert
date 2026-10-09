@@ -149,7 +149,9 @@ uses
   Argus.Common.Rules.Builtin.Declarations.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Declarations.Tests.pas',
   Argus.Common.Rules.Builtin.Inheritance.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Inheritance.Tests.pas',
   Argus.Common.Rules.Builtin.Capture.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Capture.Tests.pas',
-  Argus.Common.Rules.Builtin.Components.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Components.Tests.pas';
+  Argus.Common.Rules.Builtin.Components.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Components.Tests.pas',
+  Argus.Core.Settings.Plugin in '..\Packages\Argus.IDE.Expert\Source\Core\Settings\Argus.Core.Settings.Plugin.pas',
+  Argus.Core.Settings.Tests in 'IDE.Expert\Argus.Core.Settings.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var
