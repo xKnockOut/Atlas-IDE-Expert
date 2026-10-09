@@ -84,6 +84,26 @@
 - **Weitere Fixes in 78–97:** E2029 (Listentrenner), Profilerwartungen (#269, #91, #124, #125), Konflikte `UsesClause` (#284), `Shell.Composition` (#283: Mitschnitt rotiert und weicht aus; Methodendeklaration hinter die Felder), `DiskFileSystem` (#62: `EArgumentException` und `EOSError`), `System.Classes` im Index-Test, RotatingFileStream-Tests (`WillRaiseDescendant`).
 - Die IDE sortiert `DCCReference` um und fügt Leerzeilen ein. Reine Umsortierungen und Leerraum-Änderungen werden verworfen.
 
+## Issue-Durchsicht 09.10.2026: Plugin als Hauptweg
+- **Anlass:** Das Produkt wird ein RAD-Studio-Plugin, das mit dem Server spricht. Neuer Name: **Argus IDE Expert**, innen Präfix `Argus.*` (#403, erledigt mit #460).
+- **Liste:** `planung/durchsicht-ide-plugin.md` im Projektordner, vom User freigegeben und auf GitHub übernommen.
+- **Geschlossen:** #40, #60, #75, #86, #93, #105, #111, #115, #141, #179, #181, #271, #308, #316 (nicht geplant), #266 (erledigt).
+- **Neu:** Epic #392 (Plugin) mit #393 bis #402; #175, #227 und #63 hängen jetzt an #392. #403 Umbenennung unter #140.
+- **Ergänzt:** 54 Issues mit Abschnitt „Ergänzungen aus der Durchsicht (09.10.2026)“; Abhängigkeiten neu berechnet (`planung/abhaengigkeiten.py`).
+- **VS Code** bleibt als Nebenweg ohne Weiterentwicklung. #87 (FireMonkey) bleibt, ganz hinten.
+- **Feature-Kette:** Branches geschlossener Issues aus der Kette genommen (bis `122-binaere-dfm` erledigt, siehe oben): `40-compiler`, `86-weitere-editoren`, `111-ereignis-handler`, `115-geerbte-formulare`, `179-blockabschluss`, `181-dateioperationen`, `271-bildvorschau`, `308-dfm-hover`. `45-komponente-umbenennen` und `87-firemonkey` bleiben (87 ans Ende).
+
+## Argus-Entwurf 09.10.2026: eigene Oberfläche
+- **Vorlage:** Marcos „Argus – Critical Issues“ (ARG-001 bis ARG-048), abgelegt als `planung/argus-critical-issues.md` im Projektordner.
+- **Neu:** Unter-Epic #404 (unter #392) mit 42 Issues #406 bis #447, Titel jeweils mit ARG-Nummer; #405 Server-Daten für Argus (unter #132). Die Zuordnung ARG → Issue steht in #404.
+- **In bestehende Issues übernommen:** ARG-010 → #281, ARG-014 → #229, ARG-040 → #401, ARG-041 → #180, ARG-043 → #51, ARG-046 → #227 (Abschnitt „Ergänzungen aus dem Argus-Entwurf“). Hinweise ergänzt in #19, #31, #32, #42, #63, #85, #88, #102, #295, #392, #394, #403.
+- **Folgen für die Architektur:** Argus zeigt eigene, nicht fokussierende Fenster statt der Listen der IDE; #394 liefert nur noch Daten, ADR 0006 muss fortgeschrieben werden. Filtern und Sortieren laufen im Plugin (16 ms je Filterschritt). Datenquelle bleibt der eigene Server.
+- **Teil 2 (ARG-049 bis ARG-061):** abgelegt als `planung/argus-critical-issues-2.md`. Neu #448 bis #459 unter #404; ARG-053 in #188 übernommen (#188 jetzt priority:high); #405 um die Serverdaten aus Teil 2 ergänzt.
+- **Teil 3 (ARG-062 bis ARG-071):** abgelegt als `planung/argus-critical-issues-3.md`. Neu #461 bis #470 unter #404, nichts zusammengelegt. Überschneidungen sind in den Issues vermerkt: Datenbank mit #70/#302, Attribute mit #119, Interface und Property mit #42/#294/#295, uses mit #31/#180. #405 nennt die Serverdaten aus Teil 3.
+- **Teil 4 und 5 (ARG-072 bis ARG-089):** abgelegt als `planung/argus-critical-issues-4.md` und `-5.md`. Neu #471 bis #487 unter #404; ARG-075 in #88 übernommen (#88 jetzt priority:medium). Entschieden: `.argus` (ARG-088, #486) bleibt eine eigene Datei neben `argus.json`.
+- **Teil 6 (ARG-090 bis ARG-097):** abgelegt als `planung/argus-critical-issues-6.md`. Neu #488 bis #495 unter #404. Grundlagen zuerst: Index #492 und Absturzsicherheit #493. Der Index bleibt im Server; vieles davon gibt es schon (#16, #184, #185, #262), #492 enthält nur den Rest.
+- **Repo umbenannt:** jetzt `xKnockOut/Argus-IDE-Expert`. Lokale Remotes und Skripte auf den neuen Namen umstellen, die GitHub-API lehnt den alten Pfad über den Proxy ab.
+
 ## Umbenennung in Argus (#403, 09.10.2026)
 - **GitHub:** Das Repository heißt jetzt `xKnockOut/Argus-IDE-Expert` (vom User umbenannt, alte URLs leiten weiter). Der lokale Ordner `C:\Projekte\BetterDelphiLSP\repo` bleibt, bis der User ihn selbst umbenennt.
 - **Code:** Präfix `Argus.*` statt `BDLsp.*` in Units, Ordnern, `.dpk`, `.dproj`; Projektgruppe `Argus.groupproj`; Anwendung `Application\ArgusServer.dpr` → `ArgusServer.exe`; Tests `Tests\Argus.Tests.dpr` → `Argus.Tests.exe`; Plugin `Argus.IdePlugin.bpl`, Typ `TArgusCodeInsightManager`.
@@ -95,6 +115,14 @@
   - Alte Ausgaben (`BetterDelphiLSP.exe`, `BDLsp.*.bpl/.dcp`, `%LOCALAPPDATA%\BetterDelphiLSP`) können gelöscht werden.
 - **Feature-Kette:** Beim Einmergen von `main` in die übrigen Branches folgen Umbenennungen von Dateien meist automatisch. Neue Units der Branches und ihre uses-Einträge danach nach denselben Regeln umbenennen: `BDLsp` → `Argus`, `bdlsp` → `argus`, `BetterDelphiLSP` → `ArgusServer` in `.dproj`/`.groupproj`/`.dpr`, sonst `Argus`; `delphi-lsp.json` → `argus.json`. Danach muss `git grep -n "BDLsp\|BetterDelphiLSP"` leer sein, außer an den Stellen für Abwärtskompatibilität.
 - **Offen:** Gruppenbau und Tests in der IDE (in der Cloud nicht baubar). Schichten `Argus.Core/UI/IDE` und eigenes `Argus.Tests.dpr` für das Plugin folgen mit #406 und #415.
+
+## Branch-Durchsicht 09.10.2026
+- **Liste:** `planung/branch-durchsicht.md` im Projektordner.
+- **Achtung:** „Feature-Kette abgeschlossen“ gilt nur für die 98 Branches bis `122-binaere-dfm`. Danach hängen noch 41 Branches (`123-formularfelder` bis `87-firemonkey`, PR #342 bis #391), alle zu offenen Issues.
+- **In `main`, Löschen empfohlen (wartet auf den User):** 101 Feature-Branches bis 122, die gestrichenen Branches 86, 179, 181, 111, 115, 271, 308 sowie `claude/project-thread-pjsmb5` und `claude/project-thread-mhrxdt`. Vor dem Löschen die Basis von PR #342 auf `main`, von #349 auf `270-sql-injection` und von #360 auf `304-fehlerbefehle` umstellen, sonst schließt GitHub diese PRs.
+- **Issues:** Keins geschlossen. Regel des Users: nur schließen, wenn die Beschreibung zu 100 % umgesetzt ist. Bei allen 58 offenen Issues hinter übernommenen Branches fehlt noch etwas; die Liste steht in der Datei.
+- **Beim Fortsetzen der Kette:** `126` braucht `TFormInheritance` (#115), `309` legt seine Prüfung in `TFormSymbols` (#308) ab, `293` und `88` ändern nur die uses-Zeile mit `BlockCompletion` (#179), `87` erweitert `FormEvents`/`FormInheritance`/`FormSymbols`.
+- **Befunde aus dem Review** (nicht behoben): Operatorrang in `Rules.Builtin.Inheritance.pas:166`, `processId: null` im Plugin, Umbenennen in binären DFMs, try/finally für Felder, `/uses` in Kommentaren, `possibly-uninitialized` meldet nie Aufrufargumente, Fuzzy-Reihenfolge, `.gitignore`-Name der DUnitX-Ergebnisse.
 
 ## Stand nach diesem Vorgang
 - `main` = `2a4f2fd` (Kette vollständig), Gruppenbau `Argus.groupproj` Win64 0/0/0 (5 Projekte), 964/964 Tests.
