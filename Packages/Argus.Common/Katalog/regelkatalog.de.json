@@ -34,6 +34,36 @@
       "id": "forbidden-uses",
       "name": "Verbotene uses-Beziehung",
       "description": "Ein uses-Eintrag verletzt eine Schichtregel unter \"layers\" in argus.json, z. B. darf *.Common.* nicht Vcl.* verwenden."
+    },
+    {
+      "id": "thread-vcl-access",
+      "name": "VCL-Zugriff aus einem Thread",
+      "description": "TThread.Execute, TThread.CreateAnonymousThread oder TTask greift außerhalb von Synchronize oder Queue auf die VCL zu (Application, Screen, ShowMessage, MessageDlg …). Die VCL ist nicht threadsicher."
+    },
+    {
+      "id": "lock-without-finally",
+      "name": "Sperre ohne try/finally",
+      "description": "Auf eine Sperre (TCriticalSection.Enter/Acquire, TMonitor.Enter, BeginRead/BeginWrite, TSpinLock.Enter, TMutex.Acquire, EnterCriticalSection oder ein Paar aus der Option lockPairs) folgt kein try/finally mit der Freigabe. Eine Ausnahme lässt die Sperre gesetzt."
+    },
+    {
+      "id": "thread-use-after-free-on-terminate",
+      "name": "Thread nach dem Start mit FreeOnTerminate benutzt",
+      "description": "Ein Thread mit FreeOnTerminate := True kann sich gleich nach dem Start selbst freigeben; danach greift die Variable womöglich auf ein freigegebenes Objekt zu."
+    },
+    {
+      "id": "thread-free-with-free-on-terminate",
+      "name": "Free auf einem Thread mit FreeOnTerminate",
+      "description": "Free auf einem Thread mit FreeOnTerminate := True gibt ihn doppelt frei."
+    },
+    {
+      "id": "synchronize-in-destructor",
+      "name": "Synchronize im Destruktor eines Threads",
+      "description": "Synchronize im Destruktor eines TThread-Nachfahren (oder in einer Methode, die er aufruft) verklemmt sich: Der Hauptthread wartet in WaitFor, der Thread auf Synchronize."
+    },
+    {
+      "id": "thread-resume-suspend",
+      "name": "Veraltetes TThread.Resume/Suspend",
+      "description": "TThread.Resume und Suspend sind veraltet. Einen erzeugten Thread mit Start starten; Suspend hat keinen sicheren Ersatz, stattdessen mit einem Ereignis warten."
     }
   ]
 }
