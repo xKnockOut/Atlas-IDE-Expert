@@ -8,8 +8,11 @@
 //     lesen die aktuelle Zeile und filtern neu.
 //   - Schließen (#414): Cursor verlässt das Wort oder die Zeile, Editor verliert
 //     den Fokus, IDE wird inaktiv, Editor scrollt, Ansicht wechselt.
-//   - Tasten: Eine Tastaturbindung leitet ↑ ↓ Bild↑ Bild↓ Pos1 Ende Enter Tab Esc
-//     an das Popup, aber nur, solange es offen ist; sonst gehen sie an den Editor.
+//   - Tasten: Nur solange das Popup offen ist, fängt ein Tastatur-Hook des Hauptthreads
+//     ↑ ↓ Bild↑ Bild↓ Pos1 Ende Enter Tab Esc (ohne Umschalt/Strg/Alt) ab und gibt sie an
+//     das Popup. Keine Tastaturbindung der IDE: Eine Bindung für diese Tasten nimmt sie
+//     dem Editor auch bei geschlossenem Popup weg, weil der Editor sie ohne eigenen
+//     Handler verarbeitet (in der IDE gesehen: Pfeile und Enter gingen nicht mehr).
 //   - Übernahme: ein Undo-Schritt (CreateUndoableWriter) für Name und uses-Ergänzung.
 //   - Commit-Zeichen (#429): Wird hinter dem Wort "(", ";" oder "." getippt und trifft
 //     der gewählte Eintrag klar, wird er übernommen und das Zeichen bleibt stehen;
@@ -44,7 +47,6 @@ type
     FPopup: TArgusCompletionPopup;
     FController: TArgusCompletionController;
     FTimer: TTimer;
-    FKeyBindingIndex: Integer;
     FNotifierIndex: Integer;
     FLog: TArgusLogProc;
     // Zustand der offenen Vervollständigung.
@@ -63,13 +65,17 @@ type
     procedure ApplyStyle;
     function CaretRect(out AWindow: HWND; out ARect: TRect): Boolean;
     procedure ActiveChanged;
+    procedure InstallKeyHook;
+    procedure RemoveKeyHook;
+    /// <summary>Gehört die Taste gerade dem Popup?</summary>
+    function WantsKey(AKey: TArgusNavigationKey): Boolean;
   public
     constructor Create(const ASession: TArgusSessionFunc; const ALog: TArgusLogProc);
     destructor Destroy; override;
     /// <summary>Öffnet die Vervollständigung an der Cursorstelle von AView; False, wenn nicht möglich.</summary>
     function Invoke(const AView: IOTAEditView): Boolean;
     procedure Close;
-    /// <summary>Taste aus der Tastaturbindung; True, wenn verbraucht.</summary>
+    /// <summary>Taste aus dem Tastatur-Hook; True, wenn verbraucht.</summary>
     function HandleKey(AKey: TArgusNavigationKey): Boolean;
     /// <summary>Editortext wurde geändert.</summary>
     procedure EditorModified(const AView: IOTAEditView);
@@ -86,7 +92,6 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Vcl.Forms,
-  Vcl.Menus,
   Vcl.Graphics,
   Vcl.Themes,
   DockForm,
@@ -95,18 +100,6 @@ uses
   Argus.IDE.Editor.Buffer;
 
 type
-  TArgusCompletionKeyBinding = class(TNotifierObject, IOTAKeyboardBinding)
-  private
-    FOwner: TArgusEditorCompletion;
-    procedure KeyProc(const Context: IOTAKeyContext; KeyCode: TShortCut; var BindingResult: TKeyBindingResult);
-  public
-    constructor Create(AOwner: TArgusEditorCompletion);
-    function GetBindingType: TBindingType;
-    function GetDisplayName: string;
-    function GetName: string;
-    procedure BindKeyboard(const BindingServices: IOTAKeyBindingServices);
-  end;
-
   TArgusEditNotifier = class(TNotifierObject, INTAEditServicesNotifier)
   private
     FOwner: TArgusEditorCompletion;
@@ -135,69 +128,55 @@ begin
   Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AChar) > 127);
 end;
 
-{ TArgusCompletionKeyBinding }
-
-constructor TArgusCompletionKeyBinding.Create(AOwner: TArgusEditorCompletion);
-begin
-  inherited Create;
-  FOwner := AOwner;
-end;
-
-function TArgusCompletionKeyBinding.GetBindingType: TBindingType;
-begin
-  Result := btPartial;
-end;
-
-function TArgusCompletionKeyBinding.GetDisplayName: string;
-begin
-  Result := 'Argus IDE Expert: Vervollständigung';
-end;
-
-function TArgusCompletionKeyBinding.GetName: string;
-begin
-  Result := 'Argus.Completion.Keys';
-end;
-
-procedure TArgusCompletionKeyBinding.BindKeyboard(const BindingServices: IOTAKeyBindingServices);
-const
-  Keys: array[0..8] of Word = (VK_UP, VK_DOWN, VK_PRIOR, VK_NEXT, VK_HOME, VK_END, VK_RETURN, VK_TAB, VK_ESCAPE);
 var
-  Key: Word;
-begin
-  // Ohne kfImplicitShift: Umschalt+↑ markiert weiter im Editor.
-  for Key in Keys do
-    BindingServices.AddKeyBinding([ShortCut(Key, [])], KeyProc, nil, kfImplicitKeypad);
-end;
+  // Es gibt genau eine Vervollständigung je IDE; der Hook braucht eine einfache Funktion.
+  HookOwner: TArgusEditorCompletion = nil;
+  KeyHook: HHOOK = 0;
 
-procedure TArgusCompletionKeyBinding.KeyProc(const Context: IOTAKeyContext; KeyCode: TShortCut;
-  var BindingResult: TKeyBindingResult);
-var
-  Key: TArgusNavigationKey;
+function NavigationKey(AKey: WPARAM; out ANavigation: TArgusNavigationKey): Boolean;
 begin
-  BindingResult := krUnhandled;
-  try
-    if not FOwner.Visible then
-      Exit;
-    case KeyCode and $FF of
-      VK_UP: Key := TArgusNavigationKey.Up;
-      VK_DOWN: Key := TArgusNavigationKey.Down;
-      VK_PRIOR: Key := TArgusNavigationKey.PageUp;
-      VK_NEXT: Key := TArgusNavigationKey.PageDown;
-      VK_HOME: Key := TArgusNavigationKey.First;
-      VK_END: Key := TArgusNavigationKey.Last;
-      VK_RETURN, VK_TAB: Key := TArgusNavigationKey.Accept;
-      VK_ESCAPE: Key := TArgusNavigationKey.Cancel;
-    else
-      Exit;
-    end;
-    if FOwner.HandleKey(Key) then
-      BindingResult := krHandled;
-  except
-    // Keine Exception an die IDE (#493); die Taste geht dann an den Editor.
-    BindingResult := krUnhandled;
+  Result := True;
+  case AKey of
+    VK_UP: ANavigation := TArgusNavigationKey.Up;
+    VK_DOWN: ANavigation := TArgusNavigationKey.Down;
+    VK_PRIOR: ANavigation := TArgusNavigationKey.PageUp;
+    VK_NEXT: ANavigation := TArgusNavigationKey.PageDown;
+    VK_HOME: ANavigation := TArgusNavigationKey.First;
+    VK_END: ANavigation := TArgusNavigationKey.Last;
+    VK_RETURN, VK_TAB: ANavigation := TArgusNavigationKey.Accept;
+    VK_ESCAPE: ANavigation := TArgusNavigationKey.Cancel;
+  else
+    Result := False;
   end;
 end;
 
+function KeyboardProc(Code: Integer; WParam: WPARAM; LParam: LPARAM): LRESULT; stdcall;
+var
+  Owner: TArgusEditorCompletion;
+  Navigation: TArgusNavigationKey;
+begin
+  Owner := HookOwner;
+  try
+    if (Code = HC_ACTION) and (Owner <> nil) and NavigationKey(WParam, Navigation) and
+      (GetKeyState(VK_SHIFT) >= 0) and (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0) and
+      Owner.WantsKey(Navigation) then
+    begin
+      // Gedrückt (auch Wiederholung): nach der Nachrichtenverarbeitung ausführen, nicht im Hook.
+      if (LParam and $80000000) = 0 then
+        TThread.ForceQueue(nil,
+          procedure
+          begin
+            if HookOwner = Owner then
+              Owner.HandleKey(Navigation);
+          end);
+      // Drücken und Loslassen erreichen den Editor nicht.
+      Exit(1);
+    end;
+  except
+    // Keine Exception an die IDE (#493); die Taste geht dann an den Editor.
+  end;
+  Result := CallNextHookEx(KeyHook, Code, WParam, LParam);
+end;
 { TArgusEditNotifier }
 
 constructor TArgusEditNotifier.Create(AOwner: TArgusEditorCompletion);
@@ -256,14 +235,11 @@ end;
 
 constructor TArgusEditorCompletion.Create(const ASession: TArgusSessionFunc; const ALog: TArgusLogProc);
 var
-  Keyboard: IOTAKeyboardServices;
   Editor: IOTAEditorServices;
-  Binding: IOTAKeyboardBinding;
   Notifier: INTAEditServicesNotifier;
 begin
   inherited Create;
   FLog := ALog;
-  FKeyBindingIndex := -1;
   FNotifierIndex := -1;
   FCommitEnd := -1;
   FProviders := TArgusCompletionProviders.Create;
@@ -293,11 +269,6 @@ begin
   FTimer.Enabled := False;
   FTimer.Interval := 50;
   FTimer.OnTimer := TimerTick;
-  if Supports(BorlandIDEServices, IOTAKeyboardServices, Keyboard) then
-  begin
-    Binding := TArgusCompletionKeyBinding.Create(Self);
-    FKeyBindingIndex := Keyboard.AddKeyboardBinding(Binding);
-  end;
   if Supports(BorlandIDEServices, IOTAEditorServices, Editor) then
   begin
     Notifier := TArgusEditNotifier.Create(Self);
@@ -307,12 +278,10 @@ end;
 
 destructor TArgusEditorCompletion.Destroy;
 var
-  Keyboard: IOTAKeyboardServices;
   Editor: IOTAEditorServices;
 begin
   // Erst abmelden, dann freigeben: Die IDE ruft sonst noch in freigegebene Objekte (#493).
-  if (FKeyBindingIndex >= 0) and Supports(BorlandIDEServices, IOTAKeyboardServices, Keyboard) then
-    Keyboard.RemoveKeyboardBinding(FKeyBindingIndex);
+  RemoveKeyHook;
   if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAEditorServices, Editor) then
     Editor.RemoveNotifier(FNotifierIndex);
   FTimer.Free;
@@ -441,8 +410,43 @@ end;
 procedure TArgusEditorCompletion.ActiveChanged;
 begin
   FTimer.Enabled := FController.Active;
-  if not FController.Active then
+  if FController.Active then
+    InstallKeyHook
+  else
+  begin
+    RemoveKeyHook;
     FView := nil;
+  end;
+end;
+
+procedure TArgusEditorCompletion.InstallKeyHook;
+begin
+  if KeyHook <> 0 then
+    Exit;
+  HookOwner := Self;
+  KeyHook := SetWindowsHookEx(WH_KEYBOARD, @KeyboardProc, 0, GetCurrentThreadId);
+  if KeyHook = 0 then
+  begin
+    HookOwner := nil;
+    Log('Vervollständigung: Tastatur-Hook nicht möglich: ' + SysErrorMessage(GetLastError));
+  end;
+end;
+
+procedure TArgusEditorCompletion.RemoveKeyHook;
+begin
+  if HookOwner = Self then
+    HookOwner := nil;
+  if KeyHook <> 0 then
+  begin
+    UnhookWindowsHookEx(KeyHook);
+    KeyHook := 0;
+  end;
+end;
+
+function TArgusEditorCompletion.WantsKey(AKey: TArgusNavigationKey): Boolean;
+begin
+  // Liste offen: alle Navigationstasten. Leerer Zustand (#423): nur Esc.
+  Result := FController.Visible or (FController.Empty and (AKey = TArgusNavigationKey.Cancel));
 end;
 
 function TArgusEditorCompletion.HandleKey(AKey: TArgusNavigationKey): Boolean;
