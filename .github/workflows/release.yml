@@ -114,6 +114,7 @@ jobs:
         working-directory: Editors/VSCode
         run: |
           npm ci
+          cp ../../THIRD-PARTY-NOTICES.md .
           npx vsce package -o "argus-$VERSION.vsix"
       - name: Changelog-Abschnitt
         shell: pwsh
