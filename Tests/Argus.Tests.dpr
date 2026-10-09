@@ -112,6 +112,7 @@ uses
   Argus.IdePlugin.Lsp.Adapters.ServerProcess in '..\Packages\Argus.IdePlugin\Source\Lsp\Argus.IdePlugin.Lsp.Adapters.ServerProcess.pas',
   Argus.IdePlugin.Lsp.Tests in 'IdePlugin\Argus.IdePlugin.Lsp.Tests.pas',
   Argus.Common.Editing.UsesClause.Tests in 'Common\Editing\Argus.Common.Editing.UsesClause.Tests.pas',
+  Argus.Common.Editing.UsesActions.Tests in 'Common\Editing\Argus.Common.Editing.UsesActions.Tests.pas',
   Argus.Common.Editing.UsesCommand.Tests in 'Common\Editing\Argus.Common.Editing.UsesCommand.Tests.pas',
   Argus.Common.Semantics.UnresolvedNames.Tests in 'Common\Semantics\Argus.Common.Semantics.UnresolvedNames.Tests.pas',
   Argus.Common.Rules.Builtin.Architecture.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Architecture.Tests.pas',

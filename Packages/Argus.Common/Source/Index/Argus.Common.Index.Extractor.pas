@@ -564,6 +564,8 @@ var
 begin
   AUnit.InterfaceUses := nil;
   AUnit.ImplementationUses := nil;
+  AUnit.HasInitialization := (ARoot.FindChild(TSyntaxKind.InitializationSection) <> nil) or
+    (ARoot.FindChild(TSyntaxKind.FinalizationSection) <> nil);
   if ARoot.Kind = TSyntaxKind.UnitFile then
   begin
     AUnit.InterfaceUses := UsesOf(ARoot.FindChild(TSyntaxKind.InterfaceSection));

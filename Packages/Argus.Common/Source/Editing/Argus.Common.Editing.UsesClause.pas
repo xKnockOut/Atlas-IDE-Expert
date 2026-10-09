@@ -2,6 +2,10 @@
 
 // uses-Listen lesen und ergänzen (#180), ohne Protokollbezug.
 //
+// - Rewrite (#284) schreibt die schlichten Listen neu: doppelte entfernen,
+//   sortieren (alphabetisch oder nach Namespace gruppiert), Namen streichen.
+//   Listen mit Direktiven ({$IFDEF}) oder //-Kommentaren bleiben unberührt.
+//
 // - Abschnitt: in einer Unit interface oder implementation, je nachdem, wo der
 //   Cursor steht; in Programmen und Packages die uses nach dem Kopf.
 // - Gibt es dort schon ein uses, kommt der Name vor dessen Semikolon; steht die
@@ -26,8 +30,35 @@ type
     Range: TTextRange;
   end;
 
+  /// <summary>Eine uses-Liste (#284).</summary>
+  TUsesClauseInfo = record
+    /// <summary>Token-Index von "uses" und vom abschließenden Semikolon.</summary>
+    UsesIndex: Integer;
+    Semicolon: Integer;
+    Names: TArray<string>;
+    /// <summary>Im interface einer Unit.</summary>
+    InInterface: Boolean;
+    /// <summary>Ohne Direktiven und //-Kommentare; nur solche Listen werden umgeschrieben.</summary>
+    Plain: Boolean;
+  end;
+
+  /// <summary>Was Rewrite mit den Listen tut.</summary>
+  TUsesRewrite = record
+    Dedupe: Boolean;
+    Sort: Boolean;
+    /// <summary>Mit Sort: erst nach Namespace (System, Vcl, ...), Units ohne Namespace zuletzt.</summary>
+    ByNamespace: Boolean;
+    /// <summary>Diese Units entfallen.</summary>
+    Drop: TArray<string>;
+  end;
+
   TUsesClauses = class
   public
+    /// <summary>Alle uses-Listen (nicht requires/contains) in Reihenfolge.</summary>
+    class function Clauses(const ATokens: TArray<TPascalToken>): TArray<TUsesClauseInfo>; static;
+    /// <summary>Schreibt die schlichten Listen nach AOptions um; False ohne Änderung.</summary>
+    class function Rewrite(const ATokens: TArray<TPascalToken>; const AText: string; const AOptions: TUsesRewrite;
+      const ALineBreak: string; out AEdits: TArray<TRuleEdit>): Boolean; static;
     /// <summary>Alle Unit-Namen aus den uses-Listen (interface und implementation).</summary>
     class function UsedUnits(const ATokens: TArray<TPascalToken>): TArray<string>; static;
     /// <summary>Alle Einträge aus uses, contains und requires mit Position, in Quelltextreihenfolge.</summary>
@@ -45,7 +76,7 @@ type
     /// implementation-uses, die schon im interface stehen; mit ASort alphabetisch sortieren.
     /// Listen mit Direktiven oder //-Kommentaren bleiben unangetastet. False ohne Änderung.</summary>
     class function Organize(const ATokens: TArray<TPascalToken>; const AText: string; ASort: Boolean;
-      const ALineBreak: string; out AEdits: TArray<TRuleEdit>): Boolean; static;
+      const ALineBreak: string; out AEdits: TArray<TRuleEdit>; AByNamespace: Boolean = False): Boolean; static;
   end;
 
 implementation
@@ -281,16 +312,32 @@ begin
   Result := AToken.Offset + Length(AToken.Text);
 end;
 
-function ItemLess(const A, B: TUsesItem): Boolean;
+/// <summary>Sortierschlüssel der Gruppe: Namespace, Units ohne Namespace zuletzt.</summary>
+function GroupOf(const AName: string): string;
+var
+  Dot: Integer;
+begin
+  Dot := Pos('.', AName);
+  if Dot = 0 then
+    Result := #$FFFF
+  else
+    Result := Copy(AName, 1, Dot - 1);
+end;
+
+function ItemLess(const A, B: TUsesItem; AByNamespace: Boolean): Boolean;
 var
   Compared: Integer;
 begin
-  Compared := CompareText(A.Name, B.Name);
+  Compared := 0;
+  if AByNamespace then
+    Compared := CompareText(GroupOf(A.Name), GroupOf(B.Name));
+  if Compared = 0 then
+    Compared := CompareText(A.Name, B.Name);
   Result := (Compared < 0) or ((Compared = 0) and (A.Order < B.Order));
 end;
 
 /// <summary>Stabiles Sortieren durch Einfügen; uses-Listen sind kurz.</summary>
-procedure SortItems(var AItems: TArray<TUsesItem>);
+procedure SortItems(var AItems: TArray<TUsesItem>; AByNamespace: Boolean);
 var
   I, J: Integer;
   Item: TUsesItem;
@@ -299,7 +346,7 @@ begin
   begin
     Item := AItems[I];
     J := I - 1;
-    while (J >= 0) and ItemLess(Item, AItems[J]) do
+    while (J >= 0) and ItemLess(Item, AItems[J], AByNamespace) do
     begin
       AItems[J + 1] := AItems[J];
       Dec(J);
@@ -330,8 +377,51 @@ begin
   Result := True;
 end;
 
+class function TUsesClauses.Clauses(const ATokens: TArray<TPascalToken>): TArray<TUsesClauseInfo>;
+var
+  Index: Integer;
+  IsUnit, InImplementation: Boolean;
+  Clause: TUsesClauseInfo;
+begin
+  Result := nil;
+  Index := FirstIndex(ATokens);
+  IsUnit := (Index >= 0) and ATokens[Index].IsKeyword('unit');
+  InImplementation := False;
+  Index := 0;
+  while Index <= High(ATokens) do
+  begin
+    if ATokens[Index].IsKeyword('implementation') then
+      InImplementation := True
+    else if ATokens[Index].IsKeyword('uses') then
+    begin
+      Clause.UsesIndex := Index;
+      Clause.Names := nil;
+      Clause.Semicolon := ReadNames(ATokens, Index, Clause.Names);
+      if Clause.Semicolon < 0 then
+        Exit;
+      Clause.InInterface := IsUnit and not InImplementation;
+      Clause.Plain := IsPlainList(ATokens, Index + 1, Clause.Semicolon - 1);
+      Result := Result + [Clause];
+      Index := Clause.Semicolon;
+    end;
+    Inc(Index);
+  end;
+end;
+
 class function TUsesClauses.Organize(const ATokens: TArray<TPascalToken>; const AText: string; ASort: Boolean;
-  const ALineBreak: string; out AEdits: TArray<TRuleEdit>): Boolean;
+  const ALineBreak: string; out AEdits: TArray<TRuleEdit>; AByNamespace: Boolean): Boolean;
+var
+  Options: TUsesRewrite;
+begin
+  Options := Default(TUsesRewrite);
+  Options.Dedupe := True;
+  Options.Sort := ASort;
+  Options.ByNamespace := AByNamespace;
+  Result := Rewrite(ATokens, AText, Options, ALineBreak, AEdits);
+end;
+
+class function TUsesClauses.Rewrite(const ATokens: TArray<TPascalToken>; const AText: string;
+  const AOptions: TUsesRewrite; const ALineBreak: string; out AEdits: TArray<TRuleEdit>): Boolean;
 var
   Index, Semicolon, Cursor, First, Last, ItemIndex: Integer;
   Seen: TArray<string>;
@@ -394,13 +484,13 @@ begin
     end;
     Kept := nil;
     for Item in Items do
-      if not ContainsName(Seen, Item.Name) then
+      if not ContainsName(AOptions.Drop, Item.Name) and not (AOptions.Dedupe and ContainsName(Seen, Item.Name)) then
       begin
         Kept := Kept + [Item];
         Seen := Seen + [Item.Name];
       end;
-    if ASort then
-      SortItems(Kept);
+    if AOptions.Sort then
+      SortItems(Kept, AOptions.ByNamespace);
     Changed := Length(Kept) <> Length(Items);
     for ItemIndex := 0 to High(Kept) do
       if Kept[ItemIndex].Order <> ItemIndex then

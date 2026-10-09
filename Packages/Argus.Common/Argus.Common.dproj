@@ -123,6 +123,7 @@
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Unicode.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.CodeActions.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.UsesClause.pas"/>
+        <DCCReference Include="Source\Editing\Argus.Common.Editing.UsesActions.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.UsesCommand.pas"/>
         <DCCReference Include="Source\Semantics\Argus.Common.Semantics.UnresolvedNames.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Architecture.pas"/>

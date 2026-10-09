@@ -73,6 +73,9 @@ type
     Compact: Boolean;
     /// <summary>Eingebundene Include-Dateien (#264); ändert sich eine davon, wird die Unit neu eingelesen.</summary>
     Includes: TArray<string>;
+    /// <summary>Hat einen initialization- oder finalization-Abschnitt (#284); solche Units
+    /// entfernt "ungenutzte uses entfernen" nie, weil sie etwas registrieren können.</summary>
+    HasInitialization: Boolean;
   end;
 
   TSymbolLocation = record
