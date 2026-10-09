@@ -75,13 +75,11 @@ implementation
 
 uses
   Vcl.Forms,
-  Vcl.Graphics,
-  Vcl.Themes,
   DockForm,
-  Argus.UI.Popup.Window,
   Argus.Core.Signature.CallScanner,
   Argus.Core.Lsp.Session,
-  Argus.IDE.Editor.Buffer;
+  Argus.IDE.Editor.Buffer,
+  Argus.IDE.Editor.Style;
 
 type
   TSignatureKeys = class(TArgusKeyClient)
@@ -250,28 +248,8 @@ begin
 end;
 
 procedure TArgusEditorSignature.ApplyStyle;
-var
-  Theming: IOTAIDEThemingServices;
-  Editor: IOTAEditorServices;
-  Colors: TArgusPopupColors;
 begin
-  Colors := TArgusPopupColors.FromStyle;
-  if Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) and Theming.IDEThemingEnabled then
-  begin
-    Colors.Background := Theming.StyleServices.GetSystemColor(clWindow);
-    Colors.Text := Theming.StyleServices.GetSystemColor(clWindowText);
-    Colors.SecondaryText := Theming.StyleServices.GetSystemColor(clGrayText);
-    Colors.SelectionBackground := Theming.StyleServices.GetSystemColor(clHighlight);
-    Colors.SelectionText := Theming.StyleServices.GetSystemColor(clHighlightText);
-    Colors.Border := Theming.StyleServices.GetSystemColor(clBtnShadow);
-    Colors.Accent := Theming.StyleServices.GetSystemColor(clHighlight);
-  end;
-  FHint.Colors := Colors;
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editor) and (Editor.EditOptions <> nil) then
-  begin
-    FHint.Font.Name := Editor.EditOptions.FontName;
-    FHint.Font.Size := Editor.EditOptions.FontSize;
-  end;
+  TArgusIdeStyle.Apply(FHint);
 end;
 
 function TArgusEditorSignature.Invoke(const AView: IOTAEditView): Boolean;

@@ -63,14 +63,15 @@ type
     Selected: Integer;
     Empty: Boolean;
     EmptyText: string;
-    procedure ShowList(const AItems: TArgusCompletionItems; const AOrder: TArray<Integer>; ASelected: Integer);
+    procedure ShowList(const AItems: TArgusCompletionItems; const AOrder: TArray<Integer>; ASelected: Integer;
+      const APattern: string);
     procedure HideList;
     procedure ShowEmpty(const APrefix: string; ATotal: Integer);
     function PageSize: Integer;
   end;
 
 procedure TFakeView.ShowList(const AItems: TArgusCompletionItems; const AOrder: TArray<Integer>;
-  ASelected: Integer);
+  ASelected: Integer; const APattern: string);
 var
   Index: Integer;
 begin

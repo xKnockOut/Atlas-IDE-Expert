@@ -30,8 +30,9 @@ type
   IArgusCompletionView = interface
     ['{8D2F4B61-3E9A-4C57-A1D0-6B7E2F9C3A15}']
     /// <summary>Zeigt bzw. aktualisiert die Liste. AOrder: Indizes in AItems in Anzeigereihenfolge;
-    /// ASelected: Position in AOrder.</summary>
-    procedure ShowList(const AItems: TArgusCompletionItems; const AOrder: TArray<Integer>; ASelected: Integer);
+    /// ASelected: Position in AOrder; APattern: getippter Anfang, zum Hervorheben der Treffer.</summary>
+    procedure ShowList(const AItems: TArgusCompletionItems; const AOrder: TArray<Integer>; ASelected: Integer;
+      const APattern: string);
     procedure HideList;
     /// <summary>Leerer Zustand (#423): keine Treffer für APrefix unter ATotal Einträgen.</summary>
     procedure ShowEmpty(const APrefix: string; ATotal: Integer);
@@ -319,7 +320,7 @@ begin
     if (SelectedName <> '') and (Length(FOrder) > 0) then
     begin
       SelectByName(SelectedName);
-      FView.ShowList(FItems, FOrder, FSelected);
+      FView.ShowList(FItems, FOrder, FSelected, FPrefix);
     end;
     Exit;
   end;
@@ -361,7 +362,7 @@ begin
       end;
   FEmpty := False;
   if Length(FOrder) > 0 then
-    FView.ShowList(FItems, FOrder, FSelected)
+    FView.ShowList(FItems, FOrder, FSelected, FPrefix)
   else
   begin
     FSelected := -1;
@@ -390,7 +391,7 @@ begin
   if APosition = FSelected then
     Exit;
   FSelected := APosition;
-  FView.ShowList(FItems, FOrder, FSelected);
+  FView.ShowList(FItems, FOrder, FSelected, FPrefix);
 end;
 
 function TArgusCompletionController.HandleKey(AKey: TArgusNavigationKey): Boolean;
