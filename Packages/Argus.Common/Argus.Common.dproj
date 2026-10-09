@@ -208,6 +208,7 @@
         <DCCReference Include="Source\Pascal\Argus.Common.Pascal.TreeCache.pas"/>
         <DCCReference Include="Source\Pascal\Argus.Common.Pascal.IncludeFiles.pas"/>
         <DCCReference Include="Source\Pascal\Argus.Common.Pascal.Preprocessor.pas"/>
+        <DCCReference Include="Source\Pascal\Argus.Common.Pascal.XmlDoc.pas"/>
         <DCCReference Include="Source\Pascal\Argus.Common.Pascal.LanguageFeatures.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

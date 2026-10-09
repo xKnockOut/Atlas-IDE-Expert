@@ -60,6 +60,8 @@ type
     function Completion(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
     /// <summary>textDocument/signatureHelp ohne Abgleich, wie Completion.</summary>
     function SignatureHelp(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
+    /// <summary>completionItem/resolve für AItem (wird übernommen); threadsicher wie Completion.</summary>
+    function ResolveCompletion(AItem: TJSONObject; ATimeoutMs: Cardinal): TJSONValue;
     property Initialized: Boolean read FInitialized;
   end;
 
@@ -338,6 +340,11 @@ function TLspSession.SignatureHelp(const AFileName: string; ALine, ACharacter: I
   ATimeoutMs: Cardinal): TJSONValue;
 begin
   Result := FClient.Request('textDocument/signatureHelp', PositionParams(AFileName, ALine, ACharacter), ATimeoutMs);
+end;
+
+function TLspSession.ResolveCompletion(AItem: TJSONObject; ATimeoutMs: Cardinal): TJSONValue;
+begin
+  Result := FClient.Request('completionItem/resolve', AItem, ATimeoutMs);
 end;
 
 end.

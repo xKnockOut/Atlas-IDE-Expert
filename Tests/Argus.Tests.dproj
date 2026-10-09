@@ -178,6 +178,7 @@
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Signature\Argus.Core.Signature.Controller.pas"/>
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Signature\Argus.Core.Signature.Providers.Server.pas"/>
         <DCCReference Include="IDE.Expert\Argus.Core.Signature.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Argus.Common.Pascal.XmlDoc.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

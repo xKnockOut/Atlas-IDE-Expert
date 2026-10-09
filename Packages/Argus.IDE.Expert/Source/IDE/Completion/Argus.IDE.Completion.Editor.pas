@@ -12,6 +12,8 @@
 //     Tastatur-Hook (Argus.IDE.Editor.KeyHook) ↑ ↓ Bild↑ Bild↓ Pos1 Ende Enter Tab Esc
 //     ohne Umschalt/Strg/Alt entgegen; sonst gehen alle Tasten an den Editor.
 //   - Übernahme: ein Undo-Schritt (CreateUndoableWriter) für Name und uses-Ergänzung.
+//   - Detailpanel (#424): 80 ms nach einem Wechsel der Auswahl fragt die Quelle die
+//     Details nach (completionItem/resolve); das Panel steht neben der Liste.
 //   - Commit-Zeichen (#429): Wird hinter dem Wort "(", ";" oder "." getippt und trifft
 //     der gewählte Eintrag klar, wird er übernommen und das Zeichen bleibt stehen;
 //     sonst bleibt nur das Zeichen und das Popup schließt. Erkannt nach dem Tippen im
@@ -31,6 +33,7 @@ uses
   Argus.Core.Completion.Controller,
   Argus.Core.Completion.Providers.Server,
   Argus.UI.Completion.Popup,
+  Argus.UI.Completion.Details,
   Argus.IDE.Editor.KeyHook;
 
 type
@@ -44,6 +47,11 @@ type
     FServerProvider: TArgusServerCompletionProvider;
     FServerProviderRef: IArgusCompletionProvider;
     FPopup: TArgusCompletionPopup;
+    FDetails: TArgusDetailPanel;
+    // Detailpanel: Schlüssel der gewählten Einträge, Zeitpunkt der Anfrage, schon angefragt.
+    FDetailKey: string;
+    FDetailDue: UInt64;
+    FDetailRequested: Boolean;
     FController: TArgusCompletionController;
     FTimer: TTimer;
     FKeys: TArgusKeyClient;
@@ -65,6 +73,8 @@ type
     procedure ApplyStyle;
     function CaretRect(out AWindow: HWND; out ARect: TRect): Boolean;
     procedure ActiveChanged;
+    procedure UpdateDetails;
+    procedure HideDetails;
     procedure InstallKeyHook;
     procedure RemoveKeyHook;
     /// <summary>Gehört die Taste gerade dem Popup?</summary>
@@ -250,6 +260,7 @@ begin
   FServerProviderRef := FServerProvider;
   FProviders.Add(FServerProviderRef);
   FPopup := TArgusCompletionPopup.Create(nil);
+  FDetails := TArgusDetailPanel.Create(nil);
   FController := TArgusCompletionController.Create(FProvidersRef, FPopup);
   FController.OnCommit :=
     procedure(const AItem: TArgusCompletionItem)
@@ -290,6 +301,7 @@ begin
   FTimer.Free;
   Shutdown;
   FController.Free;
+  FDetails.Free;
   FPopup.Free;
   FKeys.Free;
   FServerProviderRef := nil;
@@ -334,10 +346,13 @@ begin
     Colors.Accent := Theming.StyleServices.GetSystemColor(clHighlight);
   end;
   FPopup.Colors := Colors;
+  FDetails.Colors := Colors;
   if Supports(BorlandIDEServices, IOTAEditorServices, Editor) and (Editor.EditOptions <> nil) then
   begin
     FPopup.Font.Name := Editor.EditOptions.FontName;
     FPopup.Font.Size := Editor.EditOptions.FontSize;
+    FDetails.Font.Name := Editor.EditOptions.FontName;
+    FDetails.Font.Size := Editor.EditOptions.FontSize;
   end;
 end;
 
@@ -419,6 +434,7 @@ begin
   else
   begin
     RemoveKeyHook;
+    HideDetails;
     FView := nil;
   end;
 end;
@@ -453,10 +469,53 @@ begin
     Recheck;
 end;
 
+procedure TArgusEditorCompletion.HideDetails;
+begin
+  FDetails.HideDetails;
+  FDetailKey := '';
+  FDetailRequested := False;
+end;
+
+procedure TArgusEditorCompletion.UpdateDetails;
+var
+  Item: TArgusCompletionItem;
+  Key: string;
+  Resolver: IArgusCompletionResolver;
+begin
+  if not FController.Visible or not FController.SelectedItem(Item) then
+  begin
+    HideDetails;
+    Exit;
+  end;
+  Key := Item.Name + #0 + Item.ResolveData;
+  if Key <> FDetailKey then
+  begin
+    // Erst nach 80 ms Ruhe nachfragen, damit schnelles Scrollen nicht flackert (#424).
+    FDetailKey := Key;
+    FDetailDue := TThread.GetTickCount64 + 80;
+    FDetailRequested := False;
+    Exit;
+  end;
+  if FDetails.IsShown then
+    FDetails.Follow(FPopup.BoundsRect);
+  if FDetailRequested or (TThread.GetTickCount64 < FDetailDue) then
+    Exit;
+  FDetailRequested := True;
+  if not Supports(FServerProviderRef, IArgusCompletionResolver, Resolver) or not Resolver.Resolve(Item,
+    procedure(const ADetails: TArgusItemDetails)
+    begin
+      // Nur zeigen, wenn noch derselbe Eintrag gewählt und die Liste offen ist.
+      if (FDetailKey = Key) and FController.Visible then
+        FDetails.ShowDetails(ADetails, FPopup.BoundsRect);
+    end) then
+    FDetails.HideDetails;
+end;
+
 procedure TArgusEditorCompletion.TimerTick(Sender: TObject);
 begin
   try
     Recheck;
+    UpdateDetails;
   except
     on E: Exception do
     begin

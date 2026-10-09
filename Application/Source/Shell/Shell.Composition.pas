@@ -469,6 +469,12 @@ begin
     begin
       Result := CompletionSettingsFor(AUri).Matching;
     end;
+  // Für completionItem/resolve (Detailpanel von Argus, #405).
+  FCompletion.ReadText :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end;
   FCompletion.Attach(FDispatcher);
   FSignatureHelp := TLspSignatureHelp.Create(FDocuments, FIndex,
     function(const AFileName: string; out AText: string): Boolean

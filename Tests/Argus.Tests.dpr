@@ -130,6 +130,7 @@ uses
   Argus.Core.Signature.Controller in '..\Packages\Argus.IDE.Expert\Source\Core\Signature\Argus.Core.Signature.Controller.pas',
   Argus.Core.Signature.Providers.Server in '..\Packages\Argus.IDE.Expert\Source\Core\Signature\Argus.Core.Signature.Providers.Server.pas',
   Argus.Core.Signature.Tests in 'IDE.Expert\Argus.Core.Signature.Tests.pas',
+  Argus.Common.Pascal.XmlDoc.Tests in 'Common\Pascal\Argus.Common.Pascal.XmlDoc.Tests.pas',
   Argus.Common.Editing.UsesClause.Tests in 'Common\Editing\Argus.Common.Editing.UsesClause.Tests.pas',
   Argus.Common.Editing.UsesActions.Tests in 'Common\Editing\Argus.Common.Editing.UsesActions.Tests.pas',
   Argus.Common.Editing.UsesCommand.Tests in 'Common\Editing\Argus.Common.Editing.UsesCommand.Tests.pas',

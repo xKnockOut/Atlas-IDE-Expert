@@ -20,8 +20,16 @@ type
   /// <summary>True, sobald der Query abgebrochen oder durch einen neuen ersetzt ist.</summary>
   TArgusCancelledFunc = reference to function: Boolean;
 
+  /// <summary>Merker, ob die Quelle noch lebt; eingereihte Aufrufe halten ihn selbst.</summary>
+  TArgusAliveToken = class(TInterfacedObject)
+  public
+    Alive: Boolean;
+  end;
+
   TArgusAsyncCompletionProvider = class(TInterfacedObject, IArgusCompletionProvider)
   private
+    FToken: TArgusAliveToken;
+    FTokenRef: IInterface;
     FLock: TCriticalSection;
     FGeneration: Integer;
     FWorkers: TList<TThread>;
@@ -35,6 +43,11 @@ type
     /// gekürzt, beim Weitertippen neu fragen (#431).</summary>
     function Fetch(const AContext: TArgusContext; AData: TObject; const ACancelled: TArgusCancelledFunc;
       out AIncomplete: Boolean): TArgusCompletionItems; virtual; abstract;
+    /// <summary>Weitere Arbeit im Hintergrund (z. B. Details nachfragen); Shutdown wartet auch darauf.</summary>
+    procedure RunInBackground(const AWork: TProc);
+    /// <summary>Für Aufrufe per TThread.Queue: nur ausführen, solange Token.Alive gilt.</summary>
+    property Token: TArgusAliveToken read FToken;
+    property TokenRef: IInterface read FTokenRef;
   public
     constructor Create;
     destructor Destroy; override;
@@ -52,6 +65,9 @@ implementation
 constructor TArgusAsyncCompletionProvider.Create;
 begin
   inherited Create;
+  FToken := TArgusAliveToken.Create;
+  FToken.Alive := True;
+  FTokenRef := FToken;
   FLock := TCriticalSection.Create;
   FWorkers := TList<TThread>.Create;
 end;
@@ -59,6 +75,8 @@ end;
 destructor TArgusAsyncCompletionProvider.Destroy;
 begin
   Shutdown;
+  FToken.Alive := False;
+  FTokenRef := nil;
   FWorkers.Free;
   FLock.Free;
   inherited;
@@ -73,6 +91,30 @@ end;
 function TArgusAsyncCompletionProvider.IsCurrent(AGeneration: Integer): Boolean;
 begin
   Result := TInterlocked.CompareExchange(FGeneration, 0, 0) = AGeneration;
+end;
+
+procedure TArgusAsyncCompletionProvider.RunInBackground(const AWork: TProc);
+var
+  Worker: TThread;
+begin
+  ReapWorkers;
+  Worker := TThread.CreateAnonymousThread(
+    procedure
+    begin
+      try
+        AWork();
+      except
+        // Hintergrundarbeit darf die IDE nie stören (#493).
+      end;
+    end);
+  Worker.FreeOnTerminate := False;
+  FLock.Enter;
+  try
+    FWorkers.Add(Worker);
+  finally
+    FLock.Leave;
+  end;
+  Worker.Start;
 end;
 
 procedure TArgusAsyncCompletionProvider.ReapWorkers;
