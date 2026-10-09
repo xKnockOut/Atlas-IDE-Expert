@@ -70,6 +70,8 @@ end;
 procedure TRotatingFileStreamTests.TearDown;
 begin
   DeleteFiles;
+  // Sonst gibt erst das nächste Setup den Pfad frei (Leck-Monitor).
+  FFileName := '';
 end;
 
 procedure TRotatingFileStreamTests.AppendsToExistingFile;
@@ -142,7 +144,8 @@ var
 begin
   First := TRotatingFileStream.Create(FFileName, False, '');
   try
-    Assert.WillRaise(
+    // Belegt meldet die RTL EFOpenError bzw. EFCreateError, beides Unterklassen von EStreamError.
+    Assert.WillRaiseDescendant(
       procedure
       begin
         TRotatingFileStream.Create(FFileName, True, '').Free;
