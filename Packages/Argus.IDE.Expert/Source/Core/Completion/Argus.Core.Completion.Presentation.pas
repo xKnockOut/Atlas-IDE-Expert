@@ -27,9 +27,13 @@ type
 
   TArgusTagKind = (Neutral, Accent, Add, Warn);
 
+  /// <summary>Übersetzbare Marken (#446); Plain = Text unverändert zeigen.</summary>
+  TArgusTagId = (Plain, Recent, Frequent);
+
   TArgusTag = record
     Text: string;
     Kind: TArgusTagKind;
+    Id: TArgusTagId;
   end;
 
   TArgusTags = TArray<TArgusTag>;
@@ -65,6 +69,7 @@ function MakeTag(const AText: string; AKind: TArgusTagKind): TArgusTag;
 begin
   Result.Text := AText;
   Result.Kind := AKind;
+  Result.Id := TArgusTagId.Plain;
 end;
 
 function IsWordStart(const AName: string; AIndex: Integer): Boolean;
@@ -251,8 +256,16 @@ begin
   if AItem.IsHelper then
     Result := Result + [MakeTag('Helper', TArgusTagKind.Accent)];
   case AItem.Usage of
-    TArgusUsageMark.Recent: Result := Result + [MakeTag('zuletzt', TArgusTagKind.Accent)];
-    TArgusUsageMark.Frequent: Result := Result + [MakeTag('häufig', TArgusTagKind.Neutral)];
+    TArgusUsageMark.Recent:
+      begin
+        Result := Result + [MakeTag('zuletzt', TArgusTagKind.Accent)];
+        Result[High(Result)].Id := TArgusTagId.Recent;
+      end;
+    TArgusUsageMark.Frequent:
+      begin
+        Result := Result + [MakeTag('häufig', TArgusTagKind.Neutral)];
+        Result[High(Result)].Id := TArgusTagId.Frequent;
+      end;
   end;
 end;
 

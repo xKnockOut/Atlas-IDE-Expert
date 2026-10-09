@@ -36,8 +36,6 @@ type
   public const
     /// <summary>Markiert in der Reihenfolge eine Gruppenüberschrift vor dem nächsten Eintrag.</summary>
     Header = -1;
-    ChipNames: array[TArgusChip] of string = ('Alle', 'Methoden', 'Eigenschaften', 'Ereignisse', 'Typen',
-      'Snippets');
   public
     /// <summary>Art des Eintrags für die Chips; nie All.</summary>
     class function ChipOf(const AItem: TArgusCompletionItem): TArgusChip; static;

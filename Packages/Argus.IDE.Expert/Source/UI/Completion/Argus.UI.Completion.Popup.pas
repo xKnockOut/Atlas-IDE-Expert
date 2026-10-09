@@ -45,6 +45,7 @@ uses
   Argus.Core.Completion.Ranking,
   Argus.UI.Popup.Window,
   Argus.UI.Popup.Tip,
+  Argus.UI.Strings,
   Argus.UI.Completion.Details;
 
 type
@@ -208,7 +209,17 @@ uses
 
 const
   TextFlags = DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX;
-  FooterKeys = 'Enter übernehmen · Esc schließen';
+
+/// <summary>Text einer Marke in der Sprache der IDE (#446).</summary>
+function TagText(const ATag: TArgusTag): string;
+begin
+  case ATag.Id of
+    TArgusTagId.Recent: Result := TArgusStrings.Text(TArgusTextId.TagRecent);
+    TArgusTagId.Frequent: Result := TArgusStrings.Text(TArgusTextId.TagFrequent);
+  else
+    Result := ATag.Text;
+  end;
+end;
 
 { TArgusCompletionPopup }
 
@@ -375,7 +386,8 @@ begin
   begin
     if (Chip <> TArgusChip.All) and (FChipCounts[Chip] = 0) then
       Continue;
-    Text := Format('%s %d', [TArgusRanking.ChipNames[Chip], FChipCounts[Chip]]);
+    Text := Format('%s %d', [TArgusStrings.Text(TArgusTextId(Ord(TArgusTextId.ChipAll) + Ord(Chip))),
+      FChipCounts[Chip]]);
     Canvas.Font := UIFont;
     Box := Rect(X, Top, X + Canvas.TextWidth(Text) + Scale(14), Top + Height);
     if Box.Right > ListRight - Pad then
@@ -407,10 +419,10 @@ var
   Text: string;
 begin
   // Überschrift einer Gruppe geerbter Member (#419): Klasse des nächsten Eintrags.
-  Text := 'Geerbt';
+  Text := TArgusStrings.Text(TArgusTextId.InheritedPlain);
   if (APosition < High(FOrder)) and (FOrder[APosition + 1] >= 0) and
     (FItems[FOrder[APosition + 1]].DeclaringClass <> '') then
-    Text := 'Geerbt von ' + FItems[FOrder[APosition + 1]].DeclaringClass;
+    Text := TArgusStrings.Fmt(TArgusTextId.InheritedFrom, [FItems[FOrder[APosition + 1]].DeclaringClass]);
   Row := RowRect(ARow);
   Inc(Row.Left, Scale(7));
   Canvas.Font := UIFont;
@@ -519,7 +531,7 @@ end;
 function TArgusCompletionPopup.TagWidth(const ATag: TArgusTag): Integer;
 begin
   Canvas.Font := UIFont;
-  Result := Canvas.TextWidth(ATag.Text) + Scale(10);
+  Result := Canvas.TextWidth(TagText(ATag)) + Scale(10);
   Canvas.Font := Font;
 end;
 
@@ -550,7 +562,8 @@ begin
   // Badge (7 + 24 + 9), rechter Rand der Zeile (7), Ränder und Scrollleiste.
   Inc(Widest, Scale(7 + 24 + 9 + 7) + 2 * Pad + ScrollReserve);
   Canvas.Font := UIFont;
-  Widest := Max(Widest, Canvas.TextWidth(FooterKeys + '    999 von 9999') + Scale(18));
+  Widest := Max(Widest, Canvas.TextWidth(TArgusStrings.Text(TArgusTextId.FooterKeys) + '    ' +
+    TArgusStrings.Fmt(TArgusTextId.CountOf, [999, 9999])) + Scale(18));
   Canvas.Font := Font;
   Result := EnsureRange(Widest, Scale(MinWidth), Scale(MaxWidth));
 end;
@@ -638,7 +651,7 @@ begin
   FShowingEmpty := True;
   Canvas.Font := UIFont;
   FSessionWidth := Max(FSessionWidth, Max(Scale(MinWidth),
-    Canvas.TextWidth('Keine Treffer für „' + APrefix + '“') + Scale(32)));
+    Canvas.TextWidth(TArgusStrings.Fmt(TArgusTextId.NoMatchesFor, [APrefix])) + Scale(32)));
   Canvas.Font := Font;
   Relayout;
 end;
@@ -683,13 +696,13 @@ var
 begin
   if FEmptyPrefix <> '' then
   begin
-    DrawLine(0, 'Keine Treffer für „' + FEmptyPrefix + '“', Colors.Text);
-    DrawLine(1, 'Rücktaste erweitert die Suche', Colors.Muted);
+    DrawLine(0, TArgusStrings.Fmt(TArgusTextId.NoMatchesFor, [FEmptyPrefix]), Colors.Text);
+    DrawLine(1, TArgusStrings.Text(TArgusTextId.BackspaceWidens), Colors.Muted);
   end
   else
-    DrawLine(0, 'Keine Vorschläge an dieser Stelle', Colors.Text);
+    DrawLine(0, TArgusStrings.Text(TArgusTextId.NoSuggestions), Colors.Text);
   Canvas.Brush.Style := bsSolid;
-  DrawFooter('Esc schließt', Format('0 von %d', [FEmptyTotal]));
+  DrawFooter(TArgusStrings.Text(TArgusTextId.EscCloses), TArgusStrings.Fmt(TArgusTextId.CountOf, [0, FEmptyTotal]));
 end;
 
 procedure TArgusCompletionPopup.DrawBadge(const ARow: TRect; const AItem: TArgusCompletionItem;
@@ -786,7 +799,7 @@ begin
   Canvas.Font.Color := ToColor(TextColor);
   Canvas.Brush.Style := bsClear;
   Text := Box;
-  DrawText(Canvas.Handle, PChar(ATag.Text), -1, Text, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+  DrawText(Canvas.Handle, PChar(TagText(ATag)), -1, Text, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
   Canvas.Brush.Style := bsSolid;
   Canvas.Font := Font;
 end;
@@ -895,7 +908,8 @@ begin
         else
           DrawRow(Row, FTop + Row);
     DrawScrollBar;
-    DrawFooter(FooterKeys, Format('%d von %d', [TArgusRanking.ItemCount(FOrder), Length(FItems)]));
+    DrawFooter(TArgusStrings.Text(TArgusTextId.FooterKeys), TArgusStrings.Fmt(TArgusTextId.CountOf,
+      [TArgusRanking.ItemCount(FOrder), Length(FItems)]));
   end;
   if FPanelShown then
     PaintPanel;
@@ -1167,7 +1181,7 @@ begin
   if Detail <> '' then
     Text := Text + '   ' + Detail;
   for Tag in TArgusItemPresentation.Tags(Item) do
-    Text := Text + '   [' + Tag.Text + ']';
+    Text := Text + '   [' + TagText(Tag) + ']';
   FTip.Colors := Colors;
   FTip.SetScaling(PPI, 1, Font.Name, Font.Size);
   Area := RowRect(Row);
