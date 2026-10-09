@@ -18,7 +18,7 @@ uses
 type
   TIndexCache = class
   public
-    const FormatVersion = 2;
+    const FormatVersion = 3;
     class function Serialize(const AUnits: TArray<TUnitIndex>): string; static;
     /// <summary>Liest den Cache; bei falscher Version oder kaputtem JSON leer.</summary>
     class function Deserialize(const AText: string): TArray<TUnitIndex>; static;
@@ -143,6 +143,8 @@ begin
         Item.AddPair('l', TJSONBool.Create(True));
       if UnitIndex.Compact then
         Item.AddPair('c', TJSONBool.Create(True));
+      if Length(UnitIndex.Includes) > 0 then
+        Item.AddPair('inc', StringsToJson(UnitIndex.Includes));
       Symbols := TJSONArray.Create;
       Item.AddPair('s', Symbols);
       for Symbol in UnitIndex.Symbols do
@@ -198,6 +200,7 @@ begin
       UnitIndex.ImplementationUses := JsonToStrings(Item.GetValue('mu'));
       UnitIndex.Library_ := FlagOf(Item.GetValue('l'));
       UnitIndex.Compact := FlagOf(Item.GetValue('c'));
+      UnitIndex.Includes := JsonToStrings(Item.GetValue('inc'));
       SymbolList.Clear;
       Value := Item.GetValue('s');
       if Value is TJSONArray then

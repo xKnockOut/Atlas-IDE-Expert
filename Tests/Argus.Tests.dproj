@@ -102,6 +102,7 @@
         <DCCReference Include="Common\Pascal\Argus.Common.Pascal.Lexer.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Argus.Common.Pascal.Parser.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Argus.Common.Pascal.TreeCache.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Argus.Common.Pascal.IncludeFiles.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.Internals.Debouncer.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Argus.Common.JsonRpc.Watchdog.Tests.pas"/>
         <DCCReference Include="Windows\Diagnostics\Argus.Windows.Diagnostics.StackTrace.Tests.pas"/>

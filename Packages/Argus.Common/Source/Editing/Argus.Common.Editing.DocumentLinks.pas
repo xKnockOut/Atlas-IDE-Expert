@@ -12,10 +12,12 @@ interface
 
 uses
   System.SysUtils,
-  Argus.Common.Documents.Contract;
+  Argus.Common.Documents.Contract,
+  Argus.Common.Pascal.IncludeFiles;
 
 type
-  TFileExistsFunc = reference to function(const AFileName: string): Boolean;
+  /// <summary>Gleicher Typ wie bei der Include-Suche (#264).</summary>
+  TFileExistsFunc = TIncludeFileExists;
 
   TDocumentLink = record
     Range: TTextRange;
@@ -70,30 +72,6 @@ begin
   Result := not CharInSet(C, [#0..' ', '''', '"', '<', '>', '{', '}', '`']);
 end;
 
-function ResolveFile(const AName, ABaseDir: string; const ASearchPaths: TArray<string>;
-  const AFileExists: TFileExistsFunc; out APath: string): Boolean;
-var
-  Dir: string;
-begin
-  if AName = '' then
-    Exit(False);
-  if ExtractFileDrive(AName) <> '' then
-  begin
-    APath := AName;
-    Exit(AFileExists(APath));
-  end;
-  APath := ExpandFileName(IncludeTrailingPathDelimiter(ABaseDir) + AName);
-  if AFileExists(APath) then
-    Exit(True);
-  for Dir in ASearchPaths do
-  begin
-    APath := ExpandFileName(IncludeTrailingPathDelimiter(Dir) + AName);
-    if AFileExists(APath) then
-      Exit(True);
-  end;
-  Result := False;
-end;
-
 procedure AddLink(var ALinks: TArray<TDocumentLink>; const ARange: TTextRange; const ATarget: string;
   AIsUrl: Boolean);
 var
@@ -110,6 +88,7 @@ procedure FindDirectiveLink(const AToken: TPascalToken; const AFileName: string;
 var
   Text, Name, Word, Path: string;
   I, Start, Stop: Integer;
+  Found: Boolean;
 begin
   Text := AToken.Text;
   // {$ oder (*$
@@ -152,7 +131,12 @@ begin
     Exit;
   // {$R *.dfm}: "*" ist der Dateiname der Unit ohne Endung.
   Name := StringReplace(Name, '*', ChangeFileExt(ExtractFileName(AFileName), ''), [rfReplaceAll]);
-  if ResolveFile(Name, ExtractFileDir(AFileName), ASearchPaths, AFileExists, Path) then
+  // Dieselbe Suche wie Präprozessor und Index (#264): $I ergänzt ".inc"/".pas".
+  if (Word = 'I') or (Word = 'INCLUDE') then
+    Found := TIncludeFiles.FindInclude(Name, AFileName, ASearchPaths, AFileExists, Path)
+  else
+    Found := TIncludeFiles.FindFile(Name, ExtractFileDir(AFileName), ASearchPaths, AFileExists, Path);
+  if Found then
     AddLink(ALinks, RangeIn(AToken, Start, Stop - Start), Path, False);
 end;
 
@@ -199,7 +183,7 @@ begin
   for C in Name do
     if not IsPathChar(C) or (C = '*') or (C = '%') then
       Exit;
-  if ResolveFile(Name, ExtractFileDir(AFileName), ASearchPaths, AFileExists, Path) then
+  if TIncludeFiles.FindFile(Name, ExtractFileDir(AFileName), ASearchPaths, AFileExists, Path) then
     AddLink(ALinks, RangeIn(AToken, 2, Length(Name)), Path, False);
 end;
 

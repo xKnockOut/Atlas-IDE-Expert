@@ -44,9 +44,16 @@ type
     class function Default: TPreprocessorOptions; static;
   end;
 
+  /// <summary>Art eines Präprozessor-Befunds; Include-Probleme werden in Diagnosen unterschieden (#264).</summary>
+  TPreprocessorIssueKind = (General, IncludeMissing, IncludeCycle);
+
   TPreprocessorIssue = record
+    Kind: TPreprocessorIssueKind;
     FileIndex: Integer;
     Range: TTextRange;
+    /// <summary>Bereich der $I-Direktive in der Hauptdatei, über die der Befund erreicht wurde;
+    /// bei FileIndex = 0 gleich Range.</summary>
+    RootRange: TTextRange;
     Message: string;
   end;
 
@@ -133,7 +140,10 @@ type
     FInactive: TList<TInactiveRange>;
     FIssues: TList<TPreprocessorIssue>;
     FIncludeStack: TList<string>;
-    procedure AddIssue(AFileIndex: Integer; const AToken: TPascalToken; const AMessage: string);
+    // $I-Direktive der Hauptdatei, die gerade verarbeitet wird.
+    FRootRange: TTextRange;
+    procedure AddIssue(AFileIndex: Integer; const AToken: TPascalToken; const AMessage: string;
+      AKind: TPreprocessorIssueKind = TPreprocessorIssueKind.General);
     procedure ProcessText(const AText: string; AFileIndex, ADepth: Integer);
     procedure Include(const AName: string; AFileIndex, ADepth: Integer; const AToken: TPascalToken);
     function EvaluateCondition(const AExpression: string; AFileIndex: Integer; const AToken: TPascalToken): Boolean;
@@ -512,12 +522,18 @@ begin
   inherited;
 end;
 
-procedure TPreprocessorRun.AddIssue(AFileIndex: Integer; const AToken: TPascalToken; const AMessage: string);
+procedure TPreprocessorRun.AddIssue(AFileIndex: Integer; const AToken: TPascalToken; const AMessage: string;
+  AKind: TPreprocessorIssueKind);
 var
   Issue: TPreprocessorIssue;
 begin
+  Issue.Kind := AKind;
   Issue.FileIndex := AFileIndex;
   Issue.Range := TTextRange.Create(AToken.StartPos, AToken.EndPos);
+  if AFileIndex = 0 then
+    Issue.RootRange := Issue.Range
+  else
+    Issue.RootRange := FRootRange;
   Issue.Message := AMessage;
   FIssues.Add(Issue);
 end;
@@ -548,6 +564,8 @@ var
   FileName, Text, Existing: string;
   Index: Integer;
 begin
+  if AFileIndex = 0 then
+    FRootRange := TTextRange.Create(AToken.StartPos, AToken.EndPos);
   if AName = '' then
   begin
     AddIssue(AFileIndex, AToken, 'Include-Datei fehlt');
@@ -556,18 +574,20 @@ begin
   if not Assigned(FOptions.ResolveInclude) or
     not FOptions.ResolveInclude(AName, FFiles[AFileIndex], FileName, Text) then
   begin
-    AddIssue(AFileIndex, AToken, Format('Include-Datei "%s" nicht gefunden', [AName]));
+    AddIssue(AFileIndex, AToken, Format('Include-Datei "%s" nicht gefunden', [AName]),
+      TPreprocessorIssueKind.IncludeMissing);
     Exit;
   end;
   if ADepth >= FOptions.MaxIncludeDepth then
   begin
-    AddIssue(AFileIndex, AToken, 'Include-Dateien zu tief verschachtelt');
+    AddIssue(AFileIndex, AToken, 'Include-Dateien zu tief verschachtelt', TPreprocessorIssueKind.IncludeCycle);
     Exit;
   end;
   for Existing in FIncludeStack do
     if SameText(Existing, FileName) then
     begin
-      AddIssue(AFileIndex, AToken, Format('Include-Datei "%s" bindet sich selbst ein', [AName]));
+      AddIssue(AFileIndex, AToken, Format('Include-Datei "%s" bindet sich selbst ein', [AName]),
+        TPreprocessorIssueKind.IncludeCycle);
       Exit;
     end;
   Index := FFiles.Add(FileName);

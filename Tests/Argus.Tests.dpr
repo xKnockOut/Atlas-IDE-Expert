@@ -75,6 +75,7 @@ uses
   Argus.Common.Lsp.Configuration.Tests in 'Common\Lsp\Argus.Common.Lsp.Configuration.Tests.pas',
   Argus.Common.Pascal.Parser.Tests in 'Common\Pascal\Argus.Common.Pascal.Parser.Tests.pas',
   Argus.Common.Pascal.TreeCache.Tests in 'Common\Pascal\Argus.Common.Pascal.TreeCache.Tests.pas',
+  Argus.Common.Pascal.IncludeFiles.Tests in 'Common\Pascal\Argus.Common.Pascal.IncludeFiles.Tests.pas',
   Argus.Common.Pascal.Parser.Robustness.Tests in 'Common\Pascal\Argus.Common.Pascal.Parser.Robustness.Tests.pas',
   Argus.Common.Pascal.LanguageFeatures.Tests in 'Common\Pascal\Argus.Common.Pascal.LanguageFeatures.Tests.pas',
   Argus.Common.Pascal.Preprocessor.Tests in 'Common\Pascal\Argus.Common.Pascal.Preprocessor.Tests.pas',
