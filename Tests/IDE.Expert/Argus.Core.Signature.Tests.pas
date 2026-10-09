@@ -22,6 +22,8 @@ type
     [Test]
     procedure ClosedCallIsLeft;
     [Test]
+    procedure NamesCallAndOuterCalls;
+    [Test]
     procedure DetectsRemovedClosingParen;
     [Test]
     procedure OtherEditsAreNoRemovedParen;
@@ -137,6 +139,26 @@ begin
   Assert.AreEqual(Length('Foo(1, Bar'), Site.OpenParen);
   Assert.AreEqual(1, ScanEnd('Foo(1, (2 + 3').ActiveParameter, 'Klammer zur Gruppierung gehört zu Foo');
   Assert.AreEqual(1, ScanEnd('Foo(1, [2, 3').ActiveParameter, 'Mengen- bzw. Array-Klammern');
+end;
+
+procedure TArgusCallScannerTests.NamesCallAndOuterCalls;
+var
+  Site: TArgusCallSite;
+begin
+  // Beispiel aus #438.
+  Site := ScanEnd('  ShowMessage(Format(''%d Zeilen'', [');
+  Assert.AreEqual('Format', Site.Name);
+  Assert.AreEqual(1, Integer(Length(Site.Outer)));
+  Assert.AreEqual('ShowMessage', Site.Outer[0]);
+  // Nach der schließenden Klammer von Format wieder ShowMessage, ohne äußere Aufrufe.
+  Site := ScanEnd('  ShowMessage(Format(''%d'', [N])');
+  Assert.AreEqual('ShowMessage', Site.Name);
+  Assert.AreEqual(0, Integer(Length(Site.Outer)));
+  // Qualifizierter Aufruf: letzter Bezeichner; Gruppierungsklammern zählen nicht als Ebene.
+  Site := ScanEnd('A(B((1 + 2), TStringList.Create(');
+  Assert.AreEqual('Create', Site.Name);
+  Assert.AreEqual('A,B', String.Join(',', Site.Outer));
+  Assert.AreEqual('', ScanEnd('Liste[0](').Name, 'Nach ] kein Name');
 end;
 
 procedure TArgusCallScannerTests.KeywordParenthesesAreNoCall;
