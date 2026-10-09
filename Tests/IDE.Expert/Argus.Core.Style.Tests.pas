@@ -45,6 +45,17 @@ type
   end;
 
   [TestFixture]
+  TArgusScalingTests = class
+  public
+    [Test]
+    procedure NormalCaretIsNoZoom;
+    [Test]
+    procedure LargerCaretIsZoom;
+    [Test]
+    procedure ClampsAndIgnoresInvalidValues;
+  end;
+
+  [TestFixture]
   TArgusSyntaxTests = class
   public
     [Test]
@@ -80,6 +91,7 @@ uses
   System.SysUtils,
   System.Math,
   Argus.Core.Style.Syntax,
+  Argus.Core.Style.Scaling,
   Argus.Core.Completion.Contract,
   Argus.Core.Completion.Presentation;
 
@@ -260,6 +272,33 @@ begin
   Assert.IsFalse(TArgusColors.Light.IsDark);
 end;
 
+{ TArgusScalingTests }
+
+procedure TArgusScalingTests.NormalCaretIsNoZoom;
+begin
+  // Caret so hoch wie der Text oder mit Zeilenabstand: 100 %.
+  Assert.AreEqual(1.0, TArgusScaling.ZoomFromCaret(15, 15), 0.001);
+  Assert.AreEqual(1.0, TArgusScaling.ZoomFromCaret(17, 15), 0.001);
+  Assert.AreEqual(1.0, TArgusScaling.ZoomFromCaret(14, 15), 0.001);
+end;
+
+procedure TArgusScalingTests.LargerCaretIsZoom;
+begin
+  // 150 % mit Zeilenabstand von einem Achtel: Caret 1,5 × 1,125 × Text.
+  Assert.AreEqual(1.5, TArgusScaling.ZoomFromCaret(Round(15 * 1.5 * 1.125), 15), 0.05);
+  Assert.AreEqual(2.0, TArgusScaling.ZoomFromCaret(Round(15 * 2 * 1.125), 15), 0.05);
+  // Verkleinert.
+  Assert.AreEqual(0.6, TArgusScaling.ZoomFromCaret(9, 15), 0.01);
+end;
+
+procedure TArgusScalingTests.ClampsAndIgnoresInvalidValues;
+begin
+  Assert.AreEqual(1.0, TArgusScaling.ZoomFromCaret(0, 15), 0.001);
+  Assert.AreEqual(1.0, TArgusScaling.ZoomFromCaret(15, 0), 0.001);
+  Assert.AreEqual(TArgusScaling.MaxZoom, TArgusScaling.ZoomFromCaret(500, 10), 0.001);
+  Assert.AreEqual(TArgusScaling.MinZoom, TArgusScaling.ZoomFromCaret(2, 15), 0.001);
+end;
+
 { TArgusSyntaxTests }
 
 function Describe(const AText: string): string;
@@ -412,6 +451,7 @@ end;
 initialization
   TDUnitX.RegisterTestFixture(TArgusColorTests);
   TDUnitX.RegisterTestFixture(TArgusPaletteTests);
+  TDUnitX.RegisterTestFixture(TArgusScalingTests);
   TDUnitX.RegisterTestFixture(TArgusSyntaxTests);
   TDUnitX.RegisterTestFixture(TArgusPresentationTests);
 

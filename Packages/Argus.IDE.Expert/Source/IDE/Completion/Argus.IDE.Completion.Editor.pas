@@ -68,7 +68,7 @@ type
     procedure Recheck;
     procedure TimerTick(Sender: TObject);
     procedure Commit(const AItem: TArgusCompletionItem);
-    procedure ApplyStyle;
+    procedure ApplyStyle(const ACaret: TRect);
     function CaretRect(out AWindow: HWND; out ARect: TRect): Boolean;
     procedure ActiveChanged;
     procedure UpdateDetails;
@@ -317,10 +317,11 @@ begin
   Result := FController.Visible or FController.Empty;
 end;
 
-procedure TArgusEditorCompletion.ApplyStyle;
+procedure TArgusEditorCompletion.ApplyStyle(const ACaret: TRect);
 begin
-  // Farben aus dem Thema der IDE (hell/dunkel), Schrift aus den Editoroptionen (#411, #445).
-  TArgusIdeStyle.Apply(FPopup);
+  // Farben aus dem Thema der IDE (hell/dunkel), Schrift aus den Editoroptionen, Monitor-DPI und Zoom
+  // am Caret (#411, #412, #445).
+  Log(TArgusIdeStyle.Apply(FPopup, ACaret));
 end;
 
 function TArgusEditorCompletion.CaretRect(out AWindow: HWND; out ARect: TRect): Boolean;
@@ -368,7 +369,7 @@ begin
     Context.Kind := TArgusContextKind.MemberAccess
   else
     Context.Kind := TArgusContextKind.Identifier;
-  ApplyStyle;
+  ApplyStyle(Anchor);
   // Das Popup beginnt am Wortanfang, nicht am Caret.
   FPopup.Canvas.Font := FPopup.Font;
   Anchor.Left := Anchor.Left - FPopup.Canvas.TextWidth(Context.Prefix);

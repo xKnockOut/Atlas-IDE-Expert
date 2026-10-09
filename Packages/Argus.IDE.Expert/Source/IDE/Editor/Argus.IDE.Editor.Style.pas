@@ -1,13 +1,16 @@
 ﻿unit Argus.IDE.Editor.Style;
 
-// Aussehen der Argus-Fenster in der IDE (#411, #445): Hell oder Dunkel nach
-// dem aktiven IDE-Thema, ersatzweise nach der Windows-Einstellung „App-Modus“;
-// Schrift aus den Editoroptionen. Wird bei jedem Öffnen eines Fensters
-// abgefragt, sodass ein Themawechsel ohne Neustart wirkt.
+// Aussehen der Argus-Fenster in der IDE (#411, #412, #445): Hell oder Dunkel
+// nach dem aktiven IDE-Thema, ersatzweise nach der Windows-Einstellung
+// „App-Modus“; Schrift aus den Editoroptionen; Pixeldichte des Monitors am
+// Caret mal Zoom des Editors (aus der Caret-Höhe, TArgusScaling). Wird bei
+// jedem Öffnen eines Fensters abgefragt, sodass Thema, Monitor und Zoom ohne
+// Neustart wirken.
 
 interface
 
 uses
+  System.Types,
   Argus.Core.Style.Palette,
   Argus.UI.Popup.Window;
 
@@ -16,8 +19,9 @@ type
   public
     /// <summary>Farben passend zum IDE-Thema bzw. zu Windows.</summary>
     class function Colors: TArgusColors; static;
-    /// <summary>Farben und Editorschrift auf AWindow übertragen.</summary>
-    class procedure Apply(AWindow: TArgusPopupWindow); static;
+    /// <summary>Farben, Editorschrift und Skalierung auf AWindow übertragen. ACaret: Caret-Rechteck in
+    /// Bildschirmkoordinaten (Monitor und Zoom). Liefert eine Zeile für das Diagnoseprotokoll.</summary>
+    class function Apply(AWindow: TArgusPopupWindow; const ACaret: TRect): string; static;
   end;
 
 implementation
@@ -28,7 +32,8 @@ uses
   System.Win.Registry,
   Vcl.Graphics,
   ToolsAPI,
-  Argus.Core.Style.Color;
+  Argus.Core.Style.Color,
+  Argus.Core.Style.Scaling;
 
 function WindowsUsesLightApps: Boolean;
 var
@@ -46,6 +51,22 @@ begin
   end;
 end;
 
+/// <summary>Texthöhe der Schrift bei APPI ohne Zoom, in Gerätepixeln.</summary>
+function TextHeightAt(const AFontName: string; AFontSize, APPI: Integer): Integer;
+var
+  Bitmap: TBitmap;
+begin
+  Bitmap := TBitmap.Create;
+  try
+    Bitmap.Canvas.Font.Name := AFontName;
+    Bitmap.Canvas.Font.PixelsPerInch := APPI;
+    Bitmap.Canvas.Font.Size := AFontSize;
+    Result := Bitmap.Canvas.TextHeight('Wg');
+  finally
+    Bitmap.Free;
+  end;
+end;
+
 { TArgusIdeStyle }
 
 class function TArgusIdeStyle.Colors: TArgusColors;
@@ -60,16 +81,27 @@ begin
     Result := TArgusColors.Dark;
 end;
 
-class procedure TArgusIdeStyle.Apply(AWindow: TArgusPopupWindow);
+class function TArgusIdeStyle.Apply(AWindow: TArgusPopupWindow; const ACaret: TRect): string;
 var
   Editor: IOTAEditorServices;
+  FontName: string;
+  FontSize, MonitorPPI, TextHeight: Integer;
+  Zoom: Double;
 begin
   AWindow.Colors := Colors;
+  FontName := AWindow.Font.Name;
+  FontSize := AWindow.Font.Size;
   if Supports(BorlandIDEServices, IOTAEditorServices, Editor) and (Editor.EditOptions <> nil) then
   begin
-    AWindow.Font.Name := Editor.EditOptions.FontName;
-    AWindow.Font.Size := Editor.EditOptions.FontSize;
+    FontName := Editor.EditOptions.FontName;
+    FontSize := Editor.EditOptions.FontSize;
   end;
+  MonitorPPI := TArgusPopupWindow.MonitorPPI(ACaret.CenterPoint);
+  TextHeight := TextHeightAt(FontName, FontSize, MonitorPPI);
+  Zoom := TArgusScaling.ZoomFromCaret(ACaret.Height, TextHeight);
+  AWindow.SetScaling(MonitorPPI, Zoom, FontName, FontSize);
+  Result := Format('Darstellung: %s %d pt, Monitor %d dpi, Caret %d px, Text %d px, Zoom %.2f',
+    [FontName, FontSize, MonitorPPI, ACaret.Height, TextHeight, Zoom]);
 end;
 
 end.
