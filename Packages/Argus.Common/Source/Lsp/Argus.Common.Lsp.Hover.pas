@@ -94,6 +94,7 @@ uses
   Argus.Common.Lsp.DocWiki,
   Argus.Common.Lsp.MessageHandlers,
   Argus.Common.Lsp.HoverValues,
+  Argus.Common.Lsp.CompilerDirectives,
   Argus.Common.Pascal.Contract,
   Argus.Common.Pascal.TreeCache,
   Argus.Common.Lsp.Internals.Cancellation;
@@ -427,7 +428,7 @@ var
   Resolver: TNameResolver;
   Info: THoverInfo;
   Contents: TJSONObject;
-  DelphiVersion: string;
+  DelphiVersion, Markdown: string;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
@@ -444,6 +445,16 @@ begin
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
   Tree := Shared.Tree;
   ACancellation.ThrowIfCancellationRequested;
+  // Compiler-Direktiven wie {$R+} oder {$WARN …} (#102).
+  if TCompilerDirectives.HoverAt(Tree, TLspPositions.ReadPosition(PositionValue), DelphiVersion, Markdown) then
+  begin
+    Contents := TJSONObject.Create;
+    Contents.AddPair('kind', 'markdown');
+    Contents.AddPair('value', Markdown);
+    Result := TJSONObject.Create;
+    TJSONObject(Result).AddPair('contents', Contents);
+    Exit;
+  end;
   Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
     Resolver.Namespaces := FNamespaces;
