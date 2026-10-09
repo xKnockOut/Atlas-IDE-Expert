@@ -9,6 +9,8 @@ type
   [TestFixture]
   TDfmBinaryTests = class
   public
+    [SetupFixture]
+    procedure SetupFixture;
     [Test]
     procedure ConvertsSimpleForm;
     [Test]
@@ -68,6 +70,17 @@ end;
 function Convert(const ABytes: TBytes): string;
 begin
   Assert.IsTrue(TDfmBinary.ToText(ABytes, Result), 'Umwandlung');
+end;
+
+{ TDfmBinaryTests }
+
+procedure TDfmBinaryTests.SetupFixture;
+begin
+  // Die Kodierungen legt die RTL beim ersten Zugriff an und hält sie bis Programmende;
+  // vorab anlegen, damit der Leck-Monitor in den Tests nur deren Speicher sieht.
+  TEncoding.ANSI.GetString(B([65]));
+  TEncoding.Unicode.GetString(B([65, 0]));
+  TEncoding.UTF8.GetString(B([65]));
 end;
 
 procedure TDfmBinaryTests.ConvertsSimpleForm;
