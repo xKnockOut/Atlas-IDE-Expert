@@ -35,6 +35,10 @@ type
     [Test]
     procedure WritesMarkdown;
     [Test]
+    procedure WritesPlainText;
+    [Test]
+    procedure DetectsMarkdownSupport;
+    [Test]
     procedure LinksLibrarySymbolsToDocWiki;
   end;
 
@@ -42,6 +46,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.JSON,
   BDLsp.Common.Documents.Contract,
   BDLsp.Common.Pascal.SyntaxTree,
   BDLsp.Common.Pascal.Parser,
@@ -199,6 +204,40 @@ begin
   Info.Documentation := 'Tut etwas.';
   Info.UnitName := 'U';
   Assert.AreEqual('```pascal'#10'procedure P;'#10'```'#10#10'Tut etwas.'#10#10'Unit `U`', Info.ToMarkdown);
+end;
+
+procedure TLspHoverTests.WritesPlainText;
+var
+  Info: THoverInfo;
+begin
+  Info.Declaration := 'procedure P(X: Integer);';
+  Info.Documentation := 'Tut etwas.'#10#10'*X*: Wert';
+  Info.UnitName := 'U';
+  Info.DocWikiUrl := 'https://docwiki.example/P';
+  Assert.AreEqual('procedure P(X: Integer);'#10#10'Tut etwas.'#10#10'X: Wert'#10#10'Unit U'#10#10 +
+    'DocWiki: https://docwiki.example/P', Info.ToPlainText);
+end;
+
+procedure TLspHoverTests.DetectsMarkdownSupport;
+
+  function Supports(const AJson: string): Boolean;
+  var
+    Params: TJSONObject;
+  begin
+    Params := TJSONObject.ParseJSONValue(AJson) as TJSONObject;
+    try
+      Result := TLspHover.ClientSupportsMarkdown(Params);
+    finally
+      Params.Free;
+    end;
+  end;
+
+begin
+  // RAD Studio meldet nur Klartext.
+  Assert.IsFalse(Supports('{"capabilities": {"textDocument": {"hover": {"contentFormat": ["plaintext"]}}}}'));
+  Assert.IsTrue(Supports('{"capabilities": {"textDocument": {"hover": {"contentFormat": ["markdown", "plaintext"]}}}}'));
+  Assert.IsTrue(Supports('{"capabilities": {}}'));
+  Assert.IsTrue(TLspHover.ClientSupportsMarkdown(nil));
 end;
 
 procedure TLspHoverTests.LinksLibrarySymbolsToDocWiki;
