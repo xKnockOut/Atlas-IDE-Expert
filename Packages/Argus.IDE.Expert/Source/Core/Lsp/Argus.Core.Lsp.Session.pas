@@ -1,4 +1,4 @@
-﻿unit Argus.IdePlugin.Lsp.Session;
+﻿unit Argus.Core.Lsp.Session;
 
 // LSP-Sitzung des IDE-Plugins (ADR 0006): initialize, Dokumentabgleich und die
 // Anfragen, die die IDE über den Code Insight-Manager stellt.
@@ -13,7 +13,7 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Argus.IdePlugin.Lsp.Client;
+  Argus.Core.Lsp.Client;
 
 type
   TLspLocation = record

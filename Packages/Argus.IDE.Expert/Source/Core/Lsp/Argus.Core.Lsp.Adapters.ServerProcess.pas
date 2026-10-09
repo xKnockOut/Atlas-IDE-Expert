@@ -1,4 +1,4 @@
-﻿unit Argus.IdePlugin.Lsp.Adapters.ServerProcess;
+﻿unit Argus.Core.Lsp.Adapters.ServerProcess;
 
 // Startet Argus als Kindprozess mit umgeleitetem stdin/stdout und
 // verbindet ihn mit einem TLspClient (ADR 0006). Ein Lese-Thread reicht die
@@ -12,7 +12,7 @@ uses
   Winapi.Windows,
   System.SysUtils,
   System.Classes,
-  Argus.IdePlugin.Lsp.Client;
+  Argus.Core.Lsp.Client;
 
 type
   TLspServerProcess = class

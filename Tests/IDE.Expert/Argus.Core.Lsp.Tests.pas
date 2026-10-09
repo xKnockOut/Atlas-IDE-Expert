@@ -1,4 +1,4 @@
-﻿unit Argus.IdePlugin.Lsp.Tests;
+﻿unit Argus.Core.Lsp.Tests;
 
 interface
 
@@ -48,9 +48,9 @@ uses
   System.IOUtils,
   System.JSON,
   System.Generics.Collections,
-  Argus.IdePlugin.Lsp.Client,
-  Argus.IdePlugin.Lsp.Session,
-  Argus.IdePlugin.Lsp.Adapters.ServerProcess;
+  Argus.Core.Lsp.Client,
+  Argus.Core.Lsp.Session,
+  Argus.Core.Lsp.Adapters.ServerProcess;
 
 // Liest die JSON-Nachricht aus gerahmten Bytes.
 function Unframe(const ABytes: TBytes): TJSONObject;
