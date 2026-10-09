@@ -1,7 +1,7 @@
 ﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{6E1B3C52-7F0A-4C1D-9B8E-2A5D4F7C9E31}</ProjectGuid>
-        <MainSource>Argus.IdePlugin.dpk</MainSource>
+        <MainSource>Argus.IDE.Expert.dpk</MainSource>
         <ProjectVersion>20.3</ProjectVersion>
         <FrameworkType>VCL</FrameworkType>
         <AppType>Package</AppType>
@@ -9,9 +9,19 @@
         <Config Condition="'$(Config)'==''">Debug</Config>
         <Platform Condition="'$(Platform)'==''">Win32</Platform>
         <TargetedPlatforms>1</TargetedPlatforms>
-        <ProjectName Condition="'$(ProjectName)'==''">Argus.IdePlugin</ProjectName>
+        <ProjectName Condition="'$(ProjectName)'==''">Argus.IDE.Expert</ProjectName>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Base)'=='true') or '$(Base_Win32)'!=''">
+        <Base_Win32>true</Base_Win32>
+        <CfgParent>Base</CfgParent>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="('$(Platform)'=='Win64' and '$(Base)'=='true') or '$(Base_Win64)'!=''">
+        <Base_Win64>true</Base_Win64>
+        <CfgParent>Base</CfgParent>
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="('$(Platform)'=='Win64x' and '$(Base)'=='true') or '$(Base_Win64x)'!=''">
@@ -30,16 +40,22 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
-        <SanitizedProjectName>Argus_IdePlugin</SanitizedProjectName>
+        <SanitizedProjectName>Argus_IDE_Expert</SanitizedProjectName>
         <GenPackage>true</GenPackage>
         <GenDll>true</GenDll>
         <DesignOnlyPackage>true</DesignOnlyPackage>
         <DCC_Description>Argus IDE Expert (Code Insight-Manager)</DCC_Description>
         <DCC_Namespace>System;Winapi;System.Win;Vcl;$(DCC_Namespace)</DCC_Namespace>
         <DCC_OutputNeverBuildDcps>true</DCC_OutputNeverBuildDcps>
-        <DCC_DcuOutput>..\..\Output\$(Platform)\$(Config)\Dcu\Argus.IdePlugin</DCC_DcuOutput>
+        <DCC_DcuOutput>..\..\Output\$(Platform)\$(Config)\Dcu\Argus.IDE.Expert</DCC_DcuOutput>
         <DCC_DcpOutput>..\..\Output\$(Platform)\$(Config)\Dcp</DCC_DcpOutput>
         <DCC_BplOutput>..\..\Output\$(Platform)\$(Config)\Bpl</DCC_BplOutput>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Base_Win32)'!=''">
+        <DCC_UsePackage>vcl;rtl;$(DCC_UsePackage)</DCC_UsePackage>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Base_Win64)'!=''">
+        <DCC_UsePackage>vcl;rtl;$(DCC_UsePackage)</DCC_UsePackage>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64x)'!=''">
         <DCC_Namespace>Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
@@ -48,6 +64,7 @@
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <BCC_EnableBatchCompilation>true</BCC_EnableBatchCompilation>
+        <DCC_UsePackage>vcl;rtl;$(DCC_UsePackage)</DCC_UsePackage>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
@@ -70,11 +87,11 @@
         <DCCReference Include="rtl.dcp"/>
         <DCCReference Include="vcl.dcp"/>
         <DCCReference Include="designide.dcp"/>
-        <DCCReference Include="Source\Lsp\Argus.IdePlugin.Lsp.Client.pas"/>
-        <DCCReference Include="Source\Lsp\Argus.IdePlugin.Lsp.Session.pas"/>
-        <DCCReference Include="Source\Lsp\Argus.IdePlugin.Lsp.Adapters.ServerProcess.pas"/>
-        <DCCReference Include="Source\CodeInsight\Argus.IdePlugin.CodeInsight.Hosting.Manager.pas"/>
-        <DCCReference Include="Source\CodeInsight\Argus.IdePlugin.CodeInsight.Composition.pas"/>
+        <DCCReference Include="Source\Core\Lsp\Argus.Core.Lsp.Client.pas"/>
+        <DCCReference Include="Source\Core\Lsp\Argus.Core.Lsp.Session.pas"/>
+        <DCCReference Include="Source\Core\Lsp\Argus.Core.Lsp.Adapters.ServerProcess.pas"/>
+        <DCCReference Include="Source\IDE\CodeInsight\Argus.IDE.CodeInsight.Manager.pas"/>
+        <DCCReference Include="Source\IDE\CodeInsight\Argus.IDE.CodeInsight.Composition.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -93,7 +110,7 @@
         <BorlandProject>
             <Delphi.Personality>
                 <Source>
-                    <Source Name="MainSource">Argus.IdePlugin.dpk</Source>
+                    <Source Name="MainSource">Argus.IDE.Expert.dpk</Source>
                 </Source>
             </Delphi.Personality>
             <Platforms>

@@ -1,4 +1,4 @@
-﻿unit Argus.IdePlugin.Lsp.Client;
+﻿unit Argus.Core.Lsp.Client;
 
 // Schlanker LSP-Client für das IDE-Plugin (ADR 0006): JSON-RPC mit
 // Content-Length-Rahmung, Zuordnung der Antworten zu Anfragen und Warten mit

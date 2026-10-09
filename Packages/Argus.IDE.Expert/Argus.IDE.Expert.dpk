@@ -1,4 +1,4 @@
-﻿package Argus.IdePlugin;
+﻿package Argus.IDE.Expert;
 
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
@@ -40,10 +40,10 @@ requires
   designide;
 
 contains
-  Argus.IdePlugin.Lsp.Client in 'Source\Lsp\Argus.IdePlugin.Lsp.Client.pas',
-  Argus.IdePlugin.Lsp.Session in 'Source\Lsp\Argus.IdePlugin.Lsp.Session.pas',
-  Argus.IdePlugin.Lsp.Adapters.ServerProcess in 'Source\Lsp\Argus.IdePlugin.Lsp.Adapters.ServerProcess.pas',
-  Argus.IdePlugin.CodeInsight.Hosting.Manager in 'Source\CodeInsight\Argus.IdePlugin.CodeInsight.Hosting.Manager.pas',
-  Argus.IdePlugin.CodeInsight.Composition in 'Source\CodeInsight\Argus.IdePlugin.CodeInsight.Composition.pas';
+  Argus.Core.Lsp.Client in 'Source\Core\Lsp\Argus.Core.Lsp.Client.pas',
+  Argus.Core.Lsp.Session in 'Source\Core\Lsp\Argus.Core.Lsp.Session.pas',
+  Argus.Core.Lsp.Adapters.ServerProcess in 'Source\Core\Lsp\Argus.Core.Lsp.Adapters.ServerProcess.pas',
+  Argus.IDE.CodeInsight.Manager in 'Source\IDE\CodeInsight\Argus.IDE.CodeInsight.Manager.pas',
+  Argus.IDE.CodeInsight.Composition in 'Source\IDE\CodeInsight\Argus.IDE.CodeInsight.Composition.pas';
 
 end.

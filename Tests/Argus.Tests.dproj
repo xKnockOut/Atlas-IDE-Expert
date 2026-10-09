@@ -160,10 +160,10 @@
         <DCCReference Include="Common\Editing\Argus.Common.Editing.Formatter.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.DocumentLinks.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.Colors.Tests.pas"/>
-        <DCCReference Include="..\Packages\Argus.IdePlugin\Source\Lsp\Argus.IdePlugin.Lsp.Client.pas"/>
-        <DCCReference Include="..\Packages\Argus.IdePlugin\Source\Lsp\Argus.IdePlugin.Lsp.Session.pas"/>
-        <DCCReference Include="..\Packages\Argus.IdePlugin\Source\Lsp\Argus.IdePlugin.Lsp.Adapters.ServerProcess.pas"/>
-        <DCCReference Include="IdePlugin\Argus.IdePlugin.Lsp.Tests.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Lsp\Argus.Core.Lsp.Client.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Lsp\Argus.Core.Lsp.Session.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Lsp\Argus.Core.Lsp.Adapters.ServerProcess.pas"/>
+        <DCCReference Include="IDE.Expert\Argus.Core.Lsp.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

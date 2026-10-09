@@ -1,4 +1,4 @@
-﻿unit Argus.IdePlugin.CodeInsight.Hosting.Manager;
+﻿unit Argus.IDE.CodeInsight.Manager;
 
 // Code Insight-Manager für Delphi in RAD Studio (ADR 0006). Die IDE ruft ihn
 // direkt auf; er fragt Argus über eine eigene LSP-Sitzung.
@@ -10,7 +10,7 @@
 // HKCU\Software\BetterDelphiLSP\IdePlugin (#403). Ohne Eintrag: ArgusServer.exe neben dem
 // Plugin, sonst ..\..\..\Win64\Debug\Bin\ (Ausgabeordner des Repos).
 // Diagnose = 1 (DWORD) im selben Schlüssel protokolliert die Aufrufe der IDE
-// in Argus.IdePlugin.log neben dem Plugin.
+// in Argus.IDE.Expert.log neben dem Plugin.
 
 interface
 
@@ -18,8 +18,8 @@ uses
   System.SysUtils,
   System.Classes,
   ToolsAPI,
-  Argus.IdePlugin.Lsp.Adapters.ServerProcess,
-  Argus.IdePlugin.Lsp.Session;
+  Argus.Core.Lsp.Adapters.ServerProcess,
+  Argus.Core.Lsp.Session;
 
 type
   TArgusCodeInsightManager = class(TInterfacedObject, IOTACodeInsightManager, IOTACodeInsightSelection)

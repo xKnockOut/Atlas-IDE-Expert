@@ -23,7 +23,7 @@ Die Open Tools API bietet dafür:
 
 ## Entscheidung
 
-Ein Design-Time-Package `Argus.IdePlugin` (Win32, denn `bds.exe` ist 32-Bit) meldet sich als **Code Insight-Manager für Delphi** an. Es ist ein **dünner LSP-Client**:
+Ein Design-Time-Package `Argus.IDE.Expert` (bis #406 `Argus.IdePlugin`; Win32, denn `bds.exe` ist 32-Bit) meldet sich als **Code Insight-Manager für Delphi** an. Es ist ein **dünner LSP-Client**:
 
 - Es startet ArgusServer als **eigenen Prozess** und spricht mit ihm JSON-RPC über stdin/stdout. Die Protokollschicht `Argus.Common.JsonRpc.*` wird wiederverwendet.
 - Es übersetzt Editor-Ereignisse in LSP-Nachrichten (`didOpen`, `didChange`, `didClose`) und die Aufrufe der IDE in Anfragen (`hover`, `definition`, `completion`, `signatureHelp`).

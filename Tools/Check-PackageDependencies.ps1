@@ -5,6 +5,9 @@
 .DESCRIPTION
     - Argus.Common  : frei von Windows und VCL (nur plattformunabhängige RTL)
     - Argus.Windows : frei von VCL (RTL, Winapi.*, System.Win.*, Argus.Common)
+    - Argus.IDE.Expert: eigenständig; darin Schichten (#406):
+        Argus.Core.* ohne VCL, Open Tools API, Argus.UI.* und Argus.IDE.*
+        Argus.UI.*   ohne Open Tools API und Argus.IDE.*
 
     Ausgewertet werden alle uses-Klauseln der .pas-Dateien und die
     requires-Klausel der .dpk-Datei jedes Packages. Kommentare, Strings und
@@ -17,11 +20,16 @@
 #>
 [CmdletBinding()]
 param(
-    [string] $Root = (Split-Path -Parent $PSScriptRoot)
+    [string] $Root = ''
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+# Windows PowerShell 5.1 kennt $PSScriptRoot im param-Block nicht.
+if ($Root -eq '') {
+    $Root = Split-Path -Parent $PSScriptRoot
+}
 
 # Unit-Namen der VCL bzw. FireMonkey ohne Namespace (Altcode ohne Unit-Scope-Namen)
 $LegacyVclUnits = @(
@@ -56,12 +64,31 @@ $Packages = @(
     },
     @{
         # ADR 0006: eigenständig, damit die IDE nur ein BPL laden muss.
-        Name             = 'Argus.IdePlugin'
-        Path             = 'Packages/Argus.IdePlugin'
+        Name             = 'Argus.IDE.Expert'
+        Path             = 'Packages/Argus.IDE.Expert'
         AllowedRequires  = @('rtl', 'vcl', 'designide')
         ForbiddenPrefix  = @('Argus.Common', 'Argus.Windows', 'FMX.')
         ForbiddenUnits   = @()
         Reason           = 'eigenständig ohne Argus.Common und Argus.Windows'
+    }
+)
+
+# Units der Open Tools API und des Designers (designide)
+$OpenToolsPrefix = @('ToolsAPI', 'DesignIntf', 'DesignEditors', 'DesignMenus', 'DesignWindows', 'PropInspAPI', 'DockForm')
+
+# Schichten im Plugin (#406): gelten zusätzlich je nach Präfix der Unit selbst.
+$Layers = @(
+    @{
+        UnitPrefix      = 'Argus.Core.'
+        ForbiddenPrefix = @('Vcl.', 'Argus.UI.', 'Argus.IDE.') + $OpenToolsPrefix
+        ForbiddenUnits  = $LegacyVclUnits
+        Reason          = 'frei von VCL, Open Tools API, Argus.UI und Argus.IDE'
+    },
+    @{
+        UnitPrefix      = 'Argus.UI.'
+        ForbiddenPrefix = @('Argus.IDE.') + $OpenToolsPrefix
+        ForbiddenUnits  = @()
+        Reason          = 'frei von Open Tools API und Argus.IDE'
     }
 )
 
@@ -99,14 +126,24 @@ foreach ($package in $Packages) {
     }
 
     foreach ($file in Get-ChildItem -Path $packageDir -Recurse -File -Include '*.pas', '*.dpk', '*.inc') {
-        $relative = [IO.Path]::GetRelativePath($Root, $file.FullName)
+        # Ohne [IO.Path]::GetRelativePath, damit das Skript auch unter Windows PowerShell 5.1 läuft.
+        $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1)
         $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
+        $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+        $layer = $Layers | Where-Object { $ownUnit.StartsWith($_.UnitPrefix, [StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
 
         foreach ($unit in Get-ClauseEntries $text 'uses') {
             $prefixHit = $package.ForbiddenPrefix | Where-Object { $unit.Name.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) }
             $unitHit = $package.ForbiddenUnits | Where-Object { $unit.Name -ieq $_ }
             if ($prefixHit -or $unitHit) {
                 $violations += "${relative}:$($unit.Line): uses $($unit.Name) – $($package.Name) muss $($package.Reason) sein"
+            }
+            if ($layer) {
+                $prefixHit = $layer.ForbiddenPrefix | Where-Object { $unit.Name.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) }
+                $unitHit = $layer.ForbiddenUnits | Where-Object { $unit.Name -ieq $_ }
+                if ($prefixHit -or $unitHit) {
+                    $violations += "${relative}:$($unit.Line): uses $($unit.Name) – $($layer.UnitPrefix)* muss $($layer.Reason) sein"
+                }
             }
         }
 
