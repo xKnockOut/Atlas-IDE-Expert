@@ -27,6 +27,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.JSON,
   Argus.Common.JsonRpc.Contract,
   Argus.Common.Mcp.Server;
