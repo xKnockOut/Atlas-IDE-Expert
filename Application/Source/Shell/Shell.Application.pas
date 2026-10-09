@@ -20,6 +20,7 @@ uses
   Argus.Windows.Diagnostics.DebugOutput,
   Shell.CommandLine,
   Shell.Composition,
+  Shell.Mcp,
   Shell.Linter;
 
 class function TApplicationShell.Run: Integer;
@@ -33,6 +34,8 @@ begin
       Exit(TLinterShell.ClearCache);
     if Options.CheckTarget <> '' then
       Exit(TLinterShell.Run(Options));
+    if Options.Mcp then
+      Exit(TMcpShell.Run(Options));
     Composition := TServerComposition.CreateForStdio(Options);
     try
       Result := Composition.Run;

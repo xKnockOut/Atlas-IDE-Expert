@@ -55,6 +55,7 @@
         <DCCReference Include="Source\Shell\Shell.CommandLine.pas"/>
         <DCCReference Include="Source\Shell\Shell.Workspace.pas"/>
         <DCCReference Include="Source\Shell\Shell.Linter.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Mcp.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

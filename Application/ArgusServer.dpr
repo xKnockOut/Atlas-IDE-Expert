@@ -7,7 +7,8 @@ uses
   Shell.Composition in 'Source\Shell\Shell.Composition.pas',
   Shell.CommandLine in 'Source\Shell\Shell.CommandLine.pas',
   Shell.Workspace in 'Source\Shell\Shell.Workspace.pas',
-  Shell.Linter in 'Source\Shell\Shell.Linter.pas';
+  Shell.Linter in 'Source\Shell\Shell.Linter.pas',
+  Shell.Mcp in 'Source\Shell\Shell.Mcp.pas';
 
 begin
   // Lecks beim Beenden melden; der Bericht geht nicht auf stdout.

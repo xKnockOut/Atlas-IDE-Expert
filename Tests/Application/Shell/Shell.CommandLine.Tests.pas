@@ -26,6 +26,8 @@ type
     [Test]
     procedure ReadsLinterArguments;
     [Test]
+    procedure ReadsMcpArguments;
+    [Test]
     procedure WarnsAboutInvalidLinterValues;
   end;
 
@@ -128,6 +130,17 @@ begin
   Assert.AreEqual('alt.json', Options.BaselineFile);
   Assert.IsTrue(Options.UpdateBaseline);
   Assert.IsTrue(Options.ClearCache);
+end;
+
+procedure TCommandLineOptionsTests.ReadsMcpArguments;
+var
+  Options: TCommandLineOptions;
+begin
+  Options := TCommandLineOptions.Parse(['--mcp', '--root', 'C:\Projekte\App']);
+  Assert.AreEqual(0, Integer(Length(Options.Warnings)));
+  Assert.IsTrue(Options.Mcp);
+  Assert.AreEqual('C:\Projekte\App', Options.McpRoot);
+  Assert.IsFalse(TCommandLineOptions.Parse([]).Mcp);
 end;
 
 procedure TCommandLineOptionsTests.WarnsAboutInvalidLinterValues;
