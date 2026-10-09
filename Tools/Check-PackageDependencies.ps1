@@ -3,8 +3,8 @@
     Prüft, ob die Packages ihre erlaubten Abhängigkeiten einhalten.
 
 .DESCRIPTION
-    - BDLsp.Common  : frei von Windows und VCL (nur plattformunabhängige RTL)
-    - BDLsp.Windows : frei von VCL (RTL, Winapi.*, System.Win.*, BDLsp.Common)
+    - Argus.Common  : frei von Windows und VCL (nur plattformunabhängige RTL)
+    - Argus.Windows : frei von VCL (RTL, Winapi.*, System.Win.*, Argus.Common)
 
     Ausgewertet werden alle uses-Klauseln der .pas-Dateien und die
     requires-Klausel der .dpk-Datei jedes Packages. Kommentare, Strings und
@@ -39,29 +39,29 @@ $LegacyWindowsUnits = @(
 
 $Packages = @(
     @{
-        Name             = 'BDLsp.Common'
-        Path             = 'Packages/BDLsp.Common'
+        Name             = 'Argus.Common'
+        Path             = 'Packages/Argus.Common'
         AllowedRequires  = @('rtl')
-        ForbiddenPrefix  = @('Winapi.', 'System.Win.', 'Vcl.', 'FMX.', 'BDLsp.Windows')
+        ForbiddenPrefix  = @('Winapi.', 'System.Win.', 'Vcl.', 'FMX.', 'Argus.Windows')
         ForbiddenUnits   = $LegacyVclUnits + $LegacyWindowsUnits
         Reason           = 'frei von Windows und VCL'
     },
     @{
-        Name             = 'BDLsp.Windows'
-        Path             = 'Packages/BDLsp.Windows'
-        AllowedRequires  = @('rtl', 'BDLsp.Common')
+        Name             = 'Argus.Windows'
+        Path             = 'Packages/Argus.Windows'
+        AllowedRequires  = @('rtl', 'Argus.Common')
         ForbiddenPrefix  = @('Vcl.', 'FMX.')
         ForbiddenUnits   = $LegacyVclUnits
         Reason           = 'frei von VCL'
     },
     @{
         # ADR 0006: eigenständig, damit die IDE nur ein BPL laden muss.
-        Name             = 'BDLsp.IdePlugin'
-        Path             = 'Packages/BDLsp.IdePlugin'
+        Name             = 'Argus.IdePlugin'
+        Path             = 'Packages/Argus.IdePlugin'
         AllowedRequires  = @('rtl', 'vcl', 'designide')
-        ForbiddenPrefix  = @('BDLsp.Common', 'BDLsp.Windows', 'FMX.')
+        ForbiddenPrefix  = @('Argus.Common', 'Argus.Windows', 'FMX.')
         ForbiddenUnits   = @()
-        Reason           = 'eigenständig ohne BDLsp.Common und BDLsp.Windows'
+        Reason           = 'eigenständig ohne Argus.Common und Argus.Windows'
     }
 )
 

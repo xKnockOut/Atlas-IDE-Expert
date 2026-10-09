@@ -33,9 +33,9 @@ implementation
 
 uses
   System.SysUtils,
-  BDLsp.Common.Logging.Contract,
-  BDLsp.Common.Configuration.Contract,
-  BDLsp.Common.Rules.Output,
+  Argus.Common.Logging.Contract,
+  Argus.Common.Configuration.Contract,
+  Argus.Common.Rules.Output,
   Shell.CommandLine;
 
 { TCommandLineOptionsTests }

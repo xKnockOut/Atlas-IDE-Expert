@@ -20,9 +20,9 @@
 interface
 
 uses
-  BDLsp.Common.Logging.Contract,
-  BDLsp.Common.Configuration.Contract,
-  BDLsp.Common.Rules.Output;
+  Argus.Common.Logging.Contract,
+  Argus.Common.Configuration.Contract,
+  Argus.Common.Rules.Output;
 
 type
   TCommandLineOptions = record
@@ -41,7 +41,7 @@ type
     MinSeverity: TRuleSeverity;
     /// <summary>Statt der Treffer die Unterdrückungen je Regel ausgeben (#147).</summary>
     SuppressionStats: Boolean;
-    /// <summary>Baseline-Datei (#97); '' = delphi-lsp-baseline.json neben delphi-lsp.json, falls vorhanden.</summary>
+    /// <summary>Baseline-Datei (#97); '' = argus-baseline.json neben argus.json, falls vorhanden.</summary>
     BaselineFile: string;
     /// <summary>Baseline aus den aktuellen Treffern neu schreiben statt zu prüfen.</summary>
     UpdateBaseline: Boolean;
@@ -59,8 +59,8 @@ implementation
 
 uses
   System.SysUtils,
-  BDLsp.Common.Configuration.Parser,
-  BDLsp.Common.Rules.Filter;
+  Argus.Common.Configuration.Parser,
+  Argus.Common.Rules.Filter;
 
 { TCommandLineOptions }
 

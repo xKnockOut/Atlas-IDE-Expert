@@ -1,23 +1,23 @@
-﻿# BetterDelphiLSP in RAD Studio 13 einbinden
+﻿# Argus IDE Expert in RAD Studio 13 einbinden
 
 Es gibt zwei Wege:
 
-- **Empfohlen: das IDE-Plugin** `BDLsp.IdePlugin` (ADR 0006). Es meldet sich als eigener Code Insight-Manager an und zeigt Hover und Gehe zu Definition an.
+- **Empfohlen: das IDE-Plugin** `Argus.IdePlugin` (ADR 0006). Es meldet sich als eigener Code Insight-Manager an und zeigt Hover und Gehe zu Definition an.
 - **Eingebauter LSP-Client** (Abschnitt unten). Damit funktionieren Gliederung und Error Insight. Den Hover fremder Server zeigt RAD Studio auf diesem Weg aber nicht an.
 
 ## IDE-Plugin
 
-1. Das Package `Packages\BDLsp.IdePlugin\BDLsp.IdePlugin.dproj` (in der Projektgruppe enthalten) für **Win32** bauen (die IDE ist 32-Bit). Ergebnis: `Output\Win32\Debug\Bpl\BDLsp.IdePlugin.bpl`. Ist das Plugin installiert, sperrt die IDE diese BPL; zum Neubauen das Package vorher entladen.
+1. Das Package `Packages\Argus.IdePlugin\Argus.IdePlugin.dproj` (in der Projektgruppe enthalten) für **Win32** bauen (die IDE ist 32-Bit). Ergebnis: `Output\Win32\Debug\Bpl\Argus.IdePlugin.bpl`. Ist das Plugin installiert, sperrt die IDE diese BPL; zum Neubauen das Package vorher entladen.
 2. In RAD Studio: *Komponente > Packages installieren > Hinzufügen*, die BPL auswählen.
-3. *Tools > Optionen > Editor > Sprache > Code Insight*: im Code Insight-Manager **„BetterDelphiLSP (Plugin)“** wählen.
+3. *Tools > Optionen > Editor > Sprache > Code Insight*: im Code Insight-Manager **„Argus IDE Expert“** wählen.
 4. Den Server findet das Plugin in dieser Reihenfolge:
-   - Registry `HKCU\Software\BetterDelphiLSP\IdePlugin`, Wert `ServerPath` (optional `ServerArguments`, z. B. `--log C:\Temp\bdlsp.log`)
-   - `BetterDelphiLSP.exe` neben der BPL
-   - `..\..\..\Win64\Debug\Bin\BetterDelphiLSP.exe`, im Repo also die Win64-Build-Ausgabe
+   - Registry `HKCU\Software\Argus\IdePlugin` (fehlt er, der frühere Schlüssel `HKCU\Software\ArgusServer\IdePlugin`), Wert `ServerPath` (optional `ServerArguments`, z. B. `--log C:\Temp\argus.log`)
+   - `ArgusServer.exe` neben der BPL
+   - `..\..\..\Win64\Debug\Bin\ArgusServer.exe`, im Repo also die Win64-Build-Ausgabe
 
 Fehler beim Start meldet das Plugin einmalig im Meldungsfenster. Stürzt der Server ab, startet es ihn bei der nächsten Anfrage neu.
 
-Zur Fehlersuche: Wert `Diagnose` (DWORD) = `1` unter `HKCU\Software\BetterDelphiLSP\IdePlugin` setzen und die IDE neu starten. Das Plugin schreibt dann jeden Aufruf der IDE (Hover, Strg+Klick, Position und Ergebnis) in `BDLsp.IdePlugin.log` neben der BPL.
+Zur Fehlersuche: Wert `Diagnose` (DWORD) = `1` unter `HKCU\Software\Argus\IdePlugin` setzen und die IDE neu starten. Das Plugin schreibt dann jeden Aufruf der IDE (Hover, Strg+Klick, Position und Ergebnis) in `Argus.IdePlugin.log` neben der BPL.
 
 Findet der Server keine Definition, passiert bei Strg+Klick nichts. Deklarationen in Include-Dateien (`{$I …}`) findet der Server erst mit dem Include-Resolver (#264).
 
@@ -25,12 +25,12 @@ Umgesetzt sind Symbolhinweis (Hover) und Strg+Klick (Gehe zu Definition). Vervol
 
 ## Eingebauter LSP-Client
 
-RAD Studio 13 kann fremde Sprachserver (LSP) über stdio einbinden. So ersetzt BetterDelphiLSP für Delphi-Dateien den eingebauten Code Insight-Server.
+RAD Studio 13 kann fremde Sprachserver (LSP) über stdio einbinden. So ersetzt der Argus-Server für Delphi-Dateien den eingebauten Code Insight-Server.
 
 ## Voraussetzungen
 
 - RAD Studio 13 (Registry-Version `37.0`)
-- `BetterDelphiLSP.exe` an einem festen Ort, z. B. `C:\Tools\BetterDelphiLSP.exe`. Die Datei ist gesperrt, solange die IDE den Server laufen lässt. Für ein Update die IDE schließen oder die alte Datei umbenennen und die neue daneben legen.
+- `ArgusServer.exe` an einem festen Ort, z. B. `C:\Tools\ArgusServer.exe`. Die Datei ist gesperrt, solange die IDE den Server laufen lässt. Für ein Update die IDE schließen oder die alte Datei umbenennen und die neue daneben legen.
 
 ## 1. Server im Code Insight-Manager anlegen
 
@@ -38,9 +38,9 @@ RAD Studio 13 kann fremde Sprachserver (LSP) über stdio einbinden. So ersetzt B
 
 | Feld | Wert |
 |---|---|
-| Name | `BetterDelphiLSP` |
-| Ausführbare Datei | Pfad zu `BetterDelphiLSP.exe` |
-| Befehlszeilenparameter | leer, oder zur Fehlersuche `--log C:\Temp\bdlsp.log --log-level debug` |
+| Name | `Argus` |
+| Ausführbare Datei | Pfad zu `ArgusServer.exe` |
+| Befehlszeilenparameter | leer, oder zur Fehlersuche `--log C:\Temp\argus.log --log-level debug` |
 | Sprachbezeichner | beliebig (siehe Schritt 2) |
 | Timeout | `15000` |
 | InitializationOptions | `{}` |
@@ -50,15 +50,15 @@ RAD Studio 13 kann fremde Sprachserver (LSP) über stdio einbinden. So ersetzt B
 Die Sprachliste im Dialog bietet weder `delphi` noch `pascal` an. Deshalb wird der Eintrag mit einer beliebigen Sprache angelegt und die Sprache danach in der Registry geändert. Die IDE muss dabei geschlossen sein.
 
 ```
-HKEY_CURRENT_USER\Software\Embarcadero\BDS\37.0\LSP\UserDefined\BetterDelphiLSP
+HKEY_CURRENT_USER\Software\Embarcadero\BDS\37.0\LSP\UserDefined\Argus
   LanguageId = Delphi
 ```
 
-Danach steht „BetterDelphiLSP“ im Code Insight-Manager für Delphi zur Auswahl. Die Auswahl landet hier:
+Danach steht „Argus“ im Code Insight-Manager für Delphi zur Auswahl. Die Auswahl landet hier:
 
 ```
 HKEY_CURRENT_USER\Software\Embarcadero\BDS\37.0\Editor\Source Options\Borland.EditOptions.Pascal
-  Insight Manager = BetterDelphiLSP
+  Insight Manager = Argus
 ```
 
 ## 3. Prüfen

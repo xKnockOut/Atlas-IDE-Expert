@@ -1,0 +1,49 @@
+﻿package Argus.IdePlugin;
+
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Argus IDE Expert (Code Insight-Manager)'}
+{$DESIGNONLY}
+{$IMPLICITBUILD ON}
+
+// Design-Time-Package für RAD Studio (ADR 0006): meldet Argus als
+// Code Insight-Manager für Delphi an und spricht über eine eigene LSP-Sitzung
+// mit dem Server. Nur Win32, weil die IDE (bds.exe) 32-Bit ist.
+// Bewusst ohne Argus.Common/Argus.Windows: ein einzelnes Package, das die IDE
+// ohne weitere BPLs laden kann.
+
+requires
+  rtl,
+  vcl,
+  designide;
+
+contains
+  Argus.IdePlugin.Lsp.Client in 'Source\Lsp\Argus.IdePlugin.Lsp.Client.pas',
+  Argus.IdePlugin.Lsp.Session in 'Source\Lsp\Argus.IdePlugin.Lsp.Session.pas',
+  Argus.IdePlugin.Lsp.Adapters.ServerProcess in 'Source\Lsp\Argus.IdePlugin.Lsp.Adapters.ServerProcess.pas',
+  Argus.IdePlugin.CodeInsight.Hosting.Manager in 'Source\CodeInsight\Argus.IdePlugin.CodeInsight.Hosting.Manager.pas',
+  Argus.IdePlugin.CodeInsight.Composition in 'Source\CodeInsight\Argus.IdePlugin.CodeInsight.Composition.pas';
+
+end.

@@ -1,0 +1,202 @@
+﻿unit Argus.Common.JsonRpc.PendingRequests.Tests;
+
+interface
+
+uses
+  DUnitX.TestFramework;
+
+type
+  [TestFixture]
+  TJsonRpcPendingRequestsTests = class
+  public
+    [Test]
+    procedure CancelMarksAcquiredToken;
+    [Test]
+    procedure ObserveTracksRequestAndExecutesCancelRequest;
+    [Test]
+    procedure ObservePassesOtherMessagesOn;
+    [Test]
+    procedure IgnoresCancelForReleasedRequest;
+    [Test]
+    procedure DistinguishesNumberAndStringIds;
+    [Test]
+    procedure CancelAllCancelsEveryOpenRequest;
+    [Test]
+    procedure ThrowIfCancellationRequestedRaisesRequestCancelled;
+    [Test]
+    procedure WaitForWorkWaitsUntilWorkEnds;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  System.JSON,
+  Argus.Common.JsonRpc.Contract,
+  Argus.Common.JsonRpc.PendingRequests,
+  Argus.Common.JsonRpc.TestSupport;
+
+function Observe(const APending: IJsonRpcPendingRequests; const AJson: string): Boolean;
+var
+  Message: TJSONObject;
+begin
+  Message := TJsonRpcTestSupport.Parse(AJson);
+  try
+    Result := APending.Observe(Message);
+  finally
+    Message.Free;
+  end;
+end;
+
+function AcquireJson(const APending: IJsonRpcPendingRequests; const AIdJson: string): IJsonRpcCancellationToken;
+var
+  Id: TJSONValue;
+begin
+  Id := TJSONValue.ParseJSONValue(AIdJson);
+  try
+    Result := APending.Acquire(Id);
+  finally
+    Id.Free;
+  end;
+end;
+
+procedure CancelJson(const APending: IJsonRpcPendingRequests; const AIdJson: string);
+var
+  Id: TJSONValue;
+begin
+  Id := TJSONValue.ParseJSONValue(AIdJson);
+  try
+    APending.Cancel(Id);
+  finally
+    Id.Free;
+  end;
+end;
+
+procedure ReleaseJson(const APending: IJsonRpcPendingRequests; const AIdJson: string;
+  const AToken: IJsonRpcCancellationToken);
+var
+  Id: TJSONValue;
+begin
+  Id := TJSONValue.ParseJSONValue(AIdJson);
+  try
+    APending.Release(Id, AToken);
+  finally
+    Id.Free;
+  end;
+end;
+
+{ TJsonRpcPendingRequestsTests }
+
+procedure TJsonRpcPendingRequestsTests.CancelMarksAcquiredToken;
+var
+  Pending: IJsonRpcPendingRequests;
+  Token: IJsonRpcCancellationToken;
+begin
+  Pending := TJsonRpcPendingRequests.Create;
+  Token := AcquireJson(Pending, '1');
+  Assert.IsFalse(Token.IsCancellationRequested);
+  CancelJson(Pending, '1');
+  Assert.IsTrue(Token.IsCancellationRequested);
+end;
+
+procedure TJsonRpcPendingRequestsTests.ObserveTracksRequestAndExecutesCancelRequest;
+var
+  Pending: IJsonRpcPendingRequests;
+begin
+  Pending := TJsonRpcPendingRequests.Create;
+  Assert.IsFalse(Observe(Pending, '{"jsonrpc":"2.0","id":7,"method":"langsam"}'));
+  Assert.IsTrue(Observe(Pending, '{"jsonrpc":"2.0","method":"$/cancelRequest","params":{"id":7}}'));
+  Assert.IsTrue(AcquireJson(Pending, '7').IsCancellationRequested);
+end;
+
+procedure TJsonRpcPendingRequestsTests.ObservePassesOtherMessagesOn;
+var
+  Pending: IJsonRpcPendingRequests;
+begin
+  Pending := TJsonRpcPendingRequests.Create;
+  Assert.IsFalse(Observe(Pending, '{"jsonrpc":"2.0","method":"textDocument/didChange"}'));
+  Assert.IsFalse(Observe(Pending, '{"jsonrpc":"2.0","id":1,"result":null}'));
+  // Ein Abbruch ohne gültige Parameter ist trotzdem erledigt.
+  Assert.IsTrue(Observe(Pending, '{"jsonrpc":"2.0","method":"$/cancelRequest"}'));
+end;
+
+procedure TJsonRpcPendingRequestsTests.IgnoresCancelForReleasedRequest;
+var
+  Pending: IJsonRpcPendingRequests;
+  Token: IJsonRpcCancellationToken;
+begin
+  Pending := TJsonRpcPendingRequests.Create;
+  Token := AcquireJson(Pending, '3');
+  ReleaseJson(Pending, '3', Token);
+  CancelJson(Pending, '3');
+  Assert.IsFalse(Token.IsCancellationRequested);
+  Assert.IsFalse(AcquireJson(Pending, '3').IsCancellationRequested);
+end;
+
+procedure TJsonRpcPendingRequestsTests.DistinguishesNumberAndStringIds;
+var
+  Pending: IJsonRpcPendingRequests;
+  NumberToken: IJsonRpcCancellationToken;
+  StringToken: IJsonRpcCancellationToken;
+begin
+  Pending := TJsonRpcPendingRequests.Create;
+  NumberToken := AcquireJson(Pending, '1');
+  StringToken := AcquireJson(Pending, '"1"');
+  CancelJson(Pending, '"1"');
+  Assert.IsFalse(NumberToken.IsCancellationRequested);
+  Assert.IsTrue(StringToken.IsCancellationRequested);
+end;
+
+procedure TJsonRpcPendingRequestsTests.CancelAllCancelsEveryOpenRequest;
+var
+  Pending: IJsonRpcPendingRequests;
+  First: IJsonRpcCancellationToken;
+  Second: IJsonRpcCancellationToken;
+begin
+  Pending := TJsonRpcPendingRequests.Create;
+  First := AcquireJson(Pending, '1');
+  Second := AcquireJson(Pending, '"zwei"');
+  Pending.CancelAll;
+  Assert.IsTrue(First.IsCancellationRequested);
+  Assert.IsTrue(Second.IsCancellationRequested);
+end;
+
+procedure TJsonRpcPendingRequestsTests.ThrowIfCancellationRequestedRaisesRequestCancelled;
+var
+  Pending: IJsonRpcPendingRequests;
+  Token: IJsonRpcCancellationToken;
+  Code: Integer;
+begin
+  Pending := TJsonRpcPendingRequests.Create;
+  Token := AcquireJson(Pending, '1');
+  Token.ThrowIfCancellationRequested;
+  CancelJson(Pending, '1');
+  Code := 0;
+  try
+    Token.ThrowIfCancellationRequested;
+  except
+    on E: EJsonRpcRequestCancelled do
+      Code := E.Code;
+  end;
+  Assert.AreEqual(TJsonRpcErrorCode.RequestCancelled, Code);
+end;
+
+procedure TJsonRpcPendingRequestsTests.WaitForWorkWaitsUntilWorkEnds;
+var
+  Pending: IJsonRpcPendingRequests;
+begin
+  Pending := TJsonRpcPendingRequests.Create;
+  Assert.IsTrue(Pending.WaitForWork(0));
+  Pending.BeginWork;
+  Pending.BeginWork;
+  Assert.IsFalse(Pending.WaitForWork(0));
+  Pending.EndWork;
+  Assert.IsFalse(Pending.WaitForWork(0));
+  Pending.EndWork;
+  Assert.IsTrue(Pending.WaitForWork(0));
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TJsonRpcPendingRequestsTests);
+
+end.

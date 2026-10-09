@@ -31,7 +31,7 @@ jobs:
         id: ide
         shell: pwsh
         run: |
-          $out = & $env:CC_SCRIPT start -Project "$env:GITHUB_WORKSPACE\BetterDelphiLSP.groupproj" | Out-String
+          $out = & $env:CC_SCRIPT start -Project "$env:GITHUB_WORKSPACE\Argus.groupproj" | Out-String
           Write-Host $out
           if ($out -notmatch 'pid\D*(\d+)') { throw 'pid der Scratch-IDE nicht gefunden' }
           "pid=$($Matches[1])" >> $env:GITHUB_OUTPUT
@@ -43,11 +43,11 @@ jobs:
           $r | ConvertTo-Json -Depth 5 | Write-Host
           if (-not $r.ok -or -not $r.outputWritten) { throw 'Build fehlgeschlagen oder keine Ausgabe geschrieben' }
           if ($r.logFile -and (Select-String -Path $r.logFile -Pattern '\[dcc.*(Hinweis|Warnung)')) { throw 'Build hat Hinweise oder Warnungen' }
-          $exe = 'Output\Win64\Debug\Bin\BDLsp.Tests.exe'
+          $exe = 'Output\Win64\Debug\Bin\Argus.Tests.exe'
           if ((Get-Item $exe).LastWriteTime -lt $start) { throw 'Test-exe wurde nicht neu geschrieben' }
       - name: DUnitX-Tests ausführen
         shell: cmd
-        run: Output\Win64\Debug\Bin\BDLsp.Tests.exe --exitbehavior:Continue --xmlfile:dunitx-ergebnisse.xml
+        run: Output\Win64\Debug\Bin\Argus.Tests.exe --exitbehavior:Continue --xmlfile:dunitx-ergebnisse.xml
       - name: Scratch-IDE beenden
         if: always() && steps.ide.outputs.pid != ''
         shell: pwsh

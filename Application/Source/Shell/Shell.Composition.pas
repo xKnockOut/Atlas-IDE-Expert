@@ -14,47 +14,47 @@ uses
   System.Classes,
   System.JSON,
   System.Generics.Collections,
-  BDLsp.Common.Logging.Contract,
-  BDLsp.Common.JsonRpc.Contract,
-  BDLsp.Common.JsonRpc.Dispatcher,
-  BDLsp.Common.JsonRpc.Connection,
-  BDLsp.Common.JsonRpc.Watchdog,
-  BDLsp.Common.Lsp.Lifecycle,
-  BDLsp.Common.Lsp.TextDocumentSync,
-  BDLsp.Common.Lsp.SyntaxDiagnostics,
-  BDLsp.Common.Lsp.DocumentSymbols,
-  BDLsp.Common.Lsp.FoldingRanges,
-  BDLsp.Common.Lsp.LinkedEditing,
-  BDLsp.Common.Lsp.Formatting,
-  BDLsp.Common.Lsp.SelectionRanges,
-  BDLsp.Common.Lsp.Definition,
-  BDLsp.Common.Lsp.Hover,
-  BDLsp.Common.Lsp.WorkspaceSymbols,
-  BDLsp.Common.Lsp.DocumentHighlights,
-  BDLsp.Common.Lsp.CodeActions,
-  BDLsp.Common.Lsp.DocumentLinks,
-  BDLsp.Common.Lsp.Colors,
-  BDLsp.Common.Lsp.Commands,
-  BDLsp.Common.Lsp.References,
-  BDLsp.Common.Lsp.Rename,
-  BDLsp.Common.Lsp.Completion,
-  BDLsp.Common.Lsp.SignatureHelp,
-  BDLsp.Common.Lsp.Hierarchies,
-  BDLsp.Common.Lsp.Implementations,
-  BDLsp.Common.Lsp.InlayHints,
-  BDLsp.Common.Lsp.CodeLens,
-  BDLsp.Common.Lsp.SemanticTokens,
-  BDLsp.Common.Lsp.Status,
-  BDLsp.Common.JsonRpc.Statistics,
-  BDLsp.Common.Lsp.WatchedFiles,
-  BDLsp.Common.Lsp.WorkspaceFolders,
-  BDLsp.Common.Lsp.Configuration,
-  BDLsp.Common.Documents.Contract,
-  BDLsp.Common.Configuration.Contract,
-  BDLsp.Common.Index.Contract,
-  BDLsp.Common.Compiler.Contract,
-  BDLsp.Common.Compiler.Results,
-  BDLsp.Common.Lsp.WorkDoneProgress,
+  Argus.Common.Logging.Contract,
+  Argus.Common.JsonRpc.Contract,
+  Argus.Common.JsonRpc.Dispatcher,
+  Argus.Common.JsonRpc.Connection,
+  Argus.Common.JsonRpc.Watchdog,
+  Argus.Common.Lsp.Lifecycle,
+  Argus.Common.Lsp.TextDocumentSync,
+  Argus.Common.Lsp.SyntaxDiagnostics,
+  Argus.Common.Lsp.DocumentSymbols,
+  Argus.Common.Lsp.FoldingRanges,
+  Argus.Common.Lsp.LinkedEditing,
+  Argus.Common.Lsp.Formatting,
+  Argus.Common.Lsp.SelectionRanges,
+  Argus.Common.Lsp.Definition,
+  Argus.Common.Lsp.Hover,
+  Argus.Common.Lsp.WorkspaceSymbols,
+  Argus.Common.Lsp.DocumentHighlights,
+  Argus.Common.Lsp.CodeActions,
+  Argus.Common.Lsp.DocumentLinks,
+  Argus.Common.Lsp.Colors,
+  Argus.Common.Lsp.Commands,
+  Argus.Common.Lsp.References,
+  Argus.Common.Lsp.Rename,
+  Argus.Common.Lsp.Completion,
+  Argus.Common.Lsp.SignatureHelp,
+  Argus.Common.Lsp.Hierarchies,
+  Argus.Common.Lsp.Implementations,
+  Argus.Common.Lsp.InlayHints,
+  Argus.Common.Lsp.CodeLens,
+  Argus.Common.Lsp.SemanticTokens,
+  Argus.Common.Lsp.Status,
+  Argus.Common.JsonRpc.Statistics,
+  Argus.Common.Lsp.WatchedFiles,
+  Argus.Common.Lsp.WorkspaceFolders,
+  Argus.Common.Lsp.Configuration,
+  Argus.Common.Documents.Contract,
+  Argus.Common.Configuration.Contract,
+  Argus.Common.Index.Contract,
+  Argus.Common.Compiler.Contract,
+  Argus.Common.Compiler.Results,
+  Argus.Common.Lsp.WorkDoneProgress,
   Shell.CommandLine,
   Shell.Workspace;
 
@@ -93,7 +93,7 @@ type
     FStatistics: IJsonRpcStatistics;
     FWatchedFiles: TLspWatchedFiles;
     FWorkspaceFolders: TLspWorkspaceFolders;
-    /// <summary>Für delphi-lsp.json außerhalb aller Ordner: nur Fehlermeldungen.</summary>
+    /// <summary>Für argus.json außerhalb aller Ordner: nur Fehlermeldungen.</summary>
     FLooseConfiguration: TLspConfiguration;
     FConnection: TJsonRpcConnection;
     FIndex: ISymbolIndex;
@@ -153,8 +153,8 @@ type
     /// <summary>Fehlerbeschreibung mit letzter Nachricht und Stacktrace für das Log.</summary>
     function DescribeFailure(const AError: Exception): string;
   public const
-    CompileCommand = 'betterdelphilsp.compile';
-    SelectBuildCommand = 'betterdelphilsp.selectBuild';
+    CompileCommand = 'argus.server.compile';
+    SelectBuildCommand = 'argus.server.selectBuild';
     /// <summary>Anfragen, die länger laufen, werden abgebrochen und gemeldet.</summary>
     RequestTimeoutMs = 10000;
   public
@@ -178,25 +178,25 @@ uses
   System.IOUtils,
   System.Math,
   System.StrUtils,
-  BDLsp.Common.Product.Version,
-  BDLsp.Common.Logging.Providers.Logger,
-  BDLsp.Common.Logging.Providers.StreamSink,
-  BDLsp.Common.JsonRpc.StreamTransport,
-  BDLsp.Common.JsonRpc.TracingTransport,
-  BDLsp.Common.Lsp.Adapters.LogMessageSink,
-  BDLsp.Common.Documents.Providers.DocumentStore,
-  BDLsp.Common.Documents.FileEncoding,
-  BDLsp.Common.Documents.Uris,
-  BDLsp.Common.Index.SymbolIndex,
-  BDLsp.Common.Rules.Builtin,
-  BDLsp.Common.Compiler.OutputParser,
-  BDLsp.Windows.Compiler.Adapters.ProcessRunner,
-  BDLsp.Windows.Console.StdStreams,
-  BDLsp.Windows.Documents.PathCanonicalizer,
-  BDLsp.Windows.Diagnostics.Adapters.DebugOutputSink,
-  BDLsp.Windows.Diagnostics.StackTrace,
-  BDLsp.Windows.Editing.SystemColors,
-  BDLsp.Common.Projects.Contract;
+  Argus.Common.Product.Version,
+  Argus.Common.Logging.Providers.Logger,
+  Argus.Common.Logging.Providers.StreamSink,
+  Argus.Common.JsonRpc.StreamTransport,
+  Argus.Common.JsonRpc.TracingTransport,
+  Argus.Common.Lsp.Adapters.LogMessageSink,
+  Argus.Common.Documents.Providers.DocumentStore,
+  Argus.Common.Documents.FileEncoding,
+  Argus.Common.Documents.Uris,
+  Argus.Common.Index.SymbolIndex,
+  Argus.Common.Rules.Builtin,
+  Argus.Common.Compiler.OutputParser,
+  Argus.Windows.Compiler.Adapters.ProcessRunner,
+  Argus.Windows.Console.StdStreams,
+  Argus.Windows.Documents.PathCanonicalizer,
+  Argus.Windows.Diagnostics.Adapters.DebugOutputSink,
+  Argus.Windows.Diagnostics.StackTrace,
+  Argus.Windows.Editing.SystemColors,
+  Argus.Common.Projects.Contract;
 
 function StringsToJson(const AValues: TArray<string>): TJSONArray;
 var
@@ -279,7 +279,7 @@ begin
     end;
   FCompilerResults := TCompilerResults.Create;
   FCompilerProcess := TProcessRunner.Create;
-  FCompileProgress := TLspWorkDoneProgress.Create(FTransport, 'bdlsp-compile');
+  FCompileProgress := TLspWorkDoneProgress.Create(FTransport, 'argus-compile');
   FCompileLock := TObject.Create;
   FSyntaxDiagnostics.CompilerMessagesProvider :=
     function(const AFileName: string): TArray<TCompilerMessage>
@@ -635,7 +635,7 @@ var
 begin
   Inc(FWorkspaceCounter);
   Workspace := TShellWorkspace.Create(AFolder.Path, AFolder.Name, FDocuments, FTransport, FLogger, FIndex,
-    Format('bdlsp-index-%d', [FWorkspaceCounter]));
+    Format('argus-index-%d', [FWorkspaceCounter]));
   Workspace.OnProjectLoaded := ProjectLoaded;
   Workspace.Configuration.SetEditorSettings(FEditorSettings);
   TMonitor.Enter(FWorkspacesLock);
@@ -975,7 +975,7 @@ begin
       StartCompile(TDocumentUris.ToPath(ADocument.Uri), False);
     Exit;
   end;
-  if not SameText(ExtractFileName(TDocumentUris.ToPath(ADocument.Uri)), ConfigurationFileName) then
+  if not IsConfigurationFileName(ExtractFileName(TDocumentUris.ToPath(ADocument.Uri))) then
     Exit;
   TMonitor.Enter(FWorkspacesLock);
   try

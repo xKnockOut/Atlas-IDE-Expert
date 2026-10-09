@@ -2,16 +2,16 @@
 
 // Host-Rolle Shell: Linter-Modus ohne Editor (#95).
 //
-//   BetterDelphiLSP.exe --check Projekt.dproj --format sarif --output ergebnis.sarif
+//   ArgusServer.exe --check Projekt.dproj --format sarif --output ergebnis.sarif
 //
 // Ziel ist eine .dproj (Hauptdatei und Units des Projekts), ein Ordner (alle
-// .pas, .dpr, .dpk darunter) oder eine einzelne Datei. delphi-lsp.json im
+// .pas, .dpr, .dpk darunter) oder eine einzelne Datei. argus.json im
 // Ordner des Ziels gilt wie im Editor. Das Ergebnis geht auf stdout oder in
 // die Datei aus --output, Meldungen zum Ablauf auf stderr.
 // Mit --suppression-stats erscheint statt der Treffer die Auswertung der
 // Unterdrückungskommentare je Regel; Exit-Code dann 0.
-// Bekannte Treffer aus der Baseline (--baseline, sonst delphi-lsp-baseline.json
-// neben delphi-lsp.json) werden ausgeblendet; --update-baseline schreibt sie aus
+// Bekannte Treffer aus der Baseline (--baseline, sonst argus-baseline.json
+// neben argus.json) werden ausgeblendet; --update-baseline schreibt sie aus
 // den aktuellen Treffern neu (#97), Exit-Code dann 0.
 // Exit-Code: 0 ohne Warnungen und Fehler, 1 Warnungen, 2 Fehler,
 // 3 Aufruf- oder Lesefehler.
@@ -36,20 +36,20 @@ uses
   System.Classes,
   System.IOUtils,
   System.Generics.Collections,
-  BDLsp.Common.Configuration.Contract,
-  BDLsp.Common.Configuration.Parser,
-  BDLsp.Common.Documents.FileEncoding,
-  BDLsp.Common.Projects.Contract,
-  BDLsp.Common.Projects.DprojReader,
-  BDLsp.Common.Rules.Contract,
-  BDLsp.Common.Rules.Checker,
-  BDLsp.Common.Rules.Filter,
-  BDLsp.Common.Rules.Output,
-  BDLsp.Common.Rules.Builtin,
-  BDLsp.Common.Rules.SuppressionStats,
-  BDLsp.Common.Rules.Baseline,
-  BDLsp.Common.Index.Adapters.CacheDirectory,
-  BDLsp.Windows.Console.StdStreams;
+  Argus.Common.Configuration.Contract,
+  Argus.Common.Configuration.Parser,
+  Argus.Common.Documents.FileEncoding,
+  Argus.Common.Projects.Contract,
+  Argus.Common.Projects.DprojReader,
+  Argus.Common.Rules.Contract,
+  Argus.Common.Rules.Checker,
+  Argus.Common.Rules.Filter,
+  Argus.Common.Rules.Output,
+  Argus.Common.Rules.Builtin,
+  Argus.Common.Rules.SuppressionStats,
+  Argus.Common.Rules.Baseline,
+  Argus.Common.Index.Adapters.CacheDirectory,
+  Argus.Windows.Console.StdStreams;
 
 procedure WriteText(const AStream: TStream; const AText: string);
 var
@@ -87,7 +87,7 @@ var
   Issues: TArray<TConfigurationIssue>;
   Issue: TConfigurationIssue;
 begin
-  FileName := TPath.Combine(ARoot, ConfigurationFileName);
+  FileName := ExistingOrLegacyFile(ARoot, ConfigurationFileName, LegacyConfigurationFileName);
   if not TFile.Exists(FileName) then
     Exit(TServerSettings.Default);
   Result := TConfigurationParser.Parse(TFileEncoding.LoadFromFile(FileName, FileFormat), Issues);
@@ -205,8 +205,11 @@ begin
       Descriptors := Descriptors + [Rule.Descriptor];
 
     BaselinePath := AOptions.BaselineFile;
-    if BaselinePath = '' then
-      BaselinePath := TPath.Combine(ConfigRoot, BaselineFileName);
+    // --update-baseline schreibt immer unter dem neuen Namen.
+    if (BaselinePath = '') and AOptions.UpdateBaseline then
+      BaselinePath := TPath.Combine(ConfigRoot, BaselineFileName)
+    else if BaselinePath = '' then
+      BaselinePath := ExistingOrLegacyFile(ConfigRoot, BaselineFileName, LegacyBaselineFileName);
     if not AOptions.UpdateBaseline then
       if TFile.Exists(BaselinePath) then
         Baseline := TRuleBaseline.FromJson(TFileEncoding.LoadFromFile(BaselinePath, FileFormat))
