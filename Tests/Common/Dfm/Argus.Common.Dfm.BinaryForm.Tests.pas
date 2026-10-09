@@ -125,7 +125,7 @@ begin
   Bytes := Header + S('TForm1') + S('Form1') +
     S('Caption') + B([18, 7, 0, 0, 0]) + TEncoding.Unicode.GetBytes('Kai''s ä') +
     B([0, 0]);
-  Assert.AreEqual('object Form1: TForm1'#13#10'  Caption = ''Kai''#39''s ''#228'#13#10'end'#13#10, Convert(SimpleForm));
+  Assert.AreEqual('object Form1: TForm1'#13#10'  Caption = ''Kai''#39''s ''#228'#13#10'end'#13#10, Convert(Bytes));
 end;
 
 procedure TDfmBinaryTests.SplitsLongStrings;
@@ -139,7 +139,7 @@ begin
     '  Hint = '#13#10 +
     '    ''' + StringOfChar('a', 64) + ''' +'#13#10 +
     '    ''' + StringOfChar('a', 6) + ''''#13#10 +
-    'end'#13#10, Convert(SimpleForm));
+    'end'#13#10, Convert(Bytes));
 end;
 
 procedure TDfmBinaryTests.ConvertsCollectionsListsAndBinaryData;
@@ -167,7 +167,7 @@ begin
     '    ''y'')'#13#10 +
     '  Data = {'#13#10 +
     '    01ABFF}'#13#10 +
-    'end'#13#10, Convert(SimpleForm));
+    'end'#13#10, Convert(Bytes));
 end;
 
 procedure TDfmBinaryTests.ConvertsInheritedWithPosition;
@@ -183,7 +183,7 @@ begin
     '  end'#13#10 +
     '  inline Rahmen1: TRahmen'#13#10 +
     '  end'#13#10 +
-    'end'#13#10, Convert(SimpleForm));
+    'end'#13#10, Convert(Bytes));
 end;
 
 procedure TDfmBinaryTests.SkipsResourceHeader;
@@ -193,7 +193,7 @@ begin
   Bytes := B([$FF, $0A, $00]) + TEncoding.ASCII.GetBytes('TFORM1') + B([0, $30, $10, 20, 0, 0, 0]) +
     Header + S('TForm1') + S('Form1') + B([0, 0]);
   Assert.IsTrue(TDfmBinary.IsBinary(Bytes));
-  Assert.AreEqual('object Form1: TForm1'#13#10'end'#13#10, Convert(SimpleForm));
+  Assert.AreEqual('object Form1: TForm1'#13#10'end'#13#10, Convert(Bytes));
 end;
 
 procedure TDfmBinaryTests.RejectsDamagedData;
