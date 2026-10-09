@@ -159,7 +159,7 @@ const
     'thread-use-after-free-on-terminate,thread-vcl-access';
   // ActiveRules sortiert alphabetisch: thread-resume-suspend steht vor thread-use-after-...
   All = 'bidi-control,confusable-identifier,control-char,forbidden-uses,invisible-char,' +
-    'lock-without-finally,synchronize-in-destructor,thread-free-with-free-on-terminate,' +
+    'lock-without-finally,possibly-uninitialized,result-not-set,synchronize-in-destructor,thread-free-with-free-on-terminate,' +
     'thread-resume-suspend,thread-use-after-free-on-terminate,thread-vcl-access';
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
