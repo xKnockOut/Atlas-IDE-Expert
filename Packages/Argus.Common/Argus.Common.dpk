@@ -106,6 +106,7 @@ contains
   Argus.Common.Lsp.Commands in 'Source\Lsp\Argus.Common.Lsp.Commands.pas',
   Argus.Common.Lsp.Status in 'Source\Lsp\Argus.Common.Lsp.Status.pas',
   Argus.Common.Lsp.DocWiki in 'Source\Lsp\Argus.Common.Lsp.DocWiki.pas',
+  Argus.Common.Lsp.CompilerDirectives in 'Source\Lsp\Argus.Common.Lsp.CompilerDirectives.pas',
   Argus.Common.Lsp.Colors in 'Source\Lsp\Argus.Common.Lsp.Colors.pas',
   Argus.Common.Lsp.DocumentLinks in 'Source\Lsp\Argus.Common.Lsp.DocumentLinks.pas',
   Argus.Common.Editing.CodeActions in 'Source\Editing\Argus.Common.Editing.CodeActions.pas',

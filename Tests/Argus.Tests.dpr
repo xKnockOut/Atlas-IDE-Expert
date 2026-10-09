@@ -55,6 +55,7 @@ uses
   Argus.Common.Lsp.SemanticTokens.Tests in 'Common\Lsp\Argus.Common.Lsp.SemanticTokens.Tests.pas',
   Argus.Common.Lsp.Status.Tests in 'Common\Lsp\Argus.Common.Lsp.Status.Tests.pas',
   Argus.Common.Lsp.DocWiki.Tests in 'Common\Lsp\Argus.Common.Lsp.DocWiki.Tests.pas',
+  Argus.Common.Lsp.CompilerDirectives.Tests in 'Common\Lsp\Argus.Common.Lsp.CompilerDirectives.Tests.pas',
   Argus.Common.Lsp.Hover.Tests in 'Common\Lsp\Argus.Common.Lsp.Hover.Tests.pas',
   Argus.Common.Lsp.HoverValues.Tests in 'Common\Lsp\Argus.Common.Lsp.HoverValues.Tests.pas',
   Argus.Common.Lsp.LinkedEditing.Tests in 'Common\Lsp\Argus.Common.Lsp.LinkedEditing.Tests.pas',

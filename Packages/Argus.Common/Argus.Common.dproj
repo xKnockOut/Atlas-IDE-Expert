@@ -151,6 +151,7 @@
         <DCCReference Include="Source\Editing\Argus.Common.Editing.Colors.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.Colors.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.DocWiki.pas"/>
+        <DCCReference Include="Source\Lsp\Argus.Common.Lsp.CompilerDirectives.pas"/>
         <DCCReference Include="Source\JsonRpc\Argus.Common.JsonRpc.Statistics.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.Commands.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.References.pas"/>
