@@ -35,7 +35,8 @@ uses
 
 function TransportOn(const AText: string): IJsonRpcTransport;
 begin
-  Result := TJsonRpcLineTransport.Create(TJsonRpcTestSupport.RawInput(AText), nil, False);
+  // Der Transport gibt den Eingabestream frei (Ausgabe ist nil).
+  Result := TJsonRpcLineTransport.Create(TJsonRpcTestSupport.RawInput(AText), nil, True);
 end;
 
 function ReadId(const ATransport: IJsonRpcTransport): Integer;
@@ -109,8 +110,8 @@ procedure TJsonRpcLineTransportTests.WritesSingleLineWithEscapedLineBreaks;
 var
   Output: TBytesStream;
   Transport: IJsonRpcTransport;
-  Message: TJSONObject;
-  Text: string;
+  Message, Decoded: TJSONObject;
+  Text, Value: string;
 begin
   Output := TBytesStream.Create;
   try
@@ -123,7 +124,18 @@ begin
       Message.Free;
     end;
     Text := TEncoding.UTF8.GetString(Output.Bytes, 0, Output.Size);
-    Assert.AreEqual('{"text":"a\nä"}'#10, Text);
+    // Eine Zeile mit LF am Ende; der Umbruch im Wert ist maskiert. Nicht-ASCII-Zeichen
+    // maskiert ToJSON als \uXXXX, wie beim LSP-Transport.
+    Assert.IsTrue(Text.EndsWith(#10));
+    Assert.AreEqual(Text.Length - 1, Text.IndexOf(#10), 'nur das abschließende LF');
+    Assert.IsTrue(Text.Contains('a\n'), Text);
+    Decoded := TJSONObject.ParseJSONValue(Text.TrimRight) as TJSONObject;
+    try
+      Value := Decoded.GetValue<string>('text');
+      Assert.AreEqual('a'#10'ä', Value);
+    finally
+      Decoded.Free;
+    end;
   finally
     Transport := nil;
     Output.Free;
