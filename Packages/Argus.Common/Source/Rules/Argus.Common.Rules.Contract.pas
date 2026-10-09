@@ -11,6 +11,7 @@ uses
   System.SysUtils,
   Argus.Common.Documents.Contract,
   Argus.Common.Configuration.Contract,
+  Argus.Common.Index.Contract,
   Argus.Common.Pascal.SyntaxTree;
 
 type
@@ -44,6 +45,8 @@ type
     /// <summary>Sicher ohne Rückfrage anwendbar, z. B. beim Speichern über source.fixAll (#182).
     /// Jede Regel entscheidet das für ihre Korrekturen selbst.</summary>
     Safe: Boolean;
+    /// <summary>Eine von mehreren gleichwertigen Korrekturen (#125): keine wird als bevorzugt angeboten.</summary>
+    Alternative: Boolean;
     constructor Create(const ATitle: string; const AEdits: TArray<TRuleEdit>; ASafe: Boolean = False);
   end;
 
@@ -69,6 +72,9 @@ type
     Tree: TSyntaxTree;
     /// <summary>Optionen der Regel aus argus.json als JSON-Text, sonst ''.</summary>
     Options: string;
+    /// <summary>Symbolindex für Vorfahren aus anderen Units (#125); nil ohne Index (z. B. Linter).
+    /// Regeln treffen dann keine Aussage, die ihn bräuchte.</summary>
+    Index: ISymbolIndex;
   end;
 
   /// <summary>Sammelt die Treffer einer Regel.</summary>
@@ -141,6 +147,7 @@ begin
   Title := ATitle;
   Edits := AEdits;
   Safe := ASafe;
+  Alternative := False;
 end;
 
 end.

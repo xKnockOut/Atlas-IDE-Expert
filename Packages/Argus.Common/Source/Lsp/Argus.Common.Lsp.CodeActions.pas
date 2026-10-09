@@ -178,6 +178,7 @@ begin
     Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(Rules.RelativePath, '/', '\', [rfReplaceAll])), '');
     Context.Text := Document.Text;
     Context.Tree := Tree;
+    Context.Index := Rules.Index;
     Findings := TRuleEngine.Run(Rules.Rules, Rules.Settings, Context);
   end;
   HasCompletion := WantsEditing and TClassCompletion.MissingBodies(Tree, Document.Text, Range.StartPos, Completion);

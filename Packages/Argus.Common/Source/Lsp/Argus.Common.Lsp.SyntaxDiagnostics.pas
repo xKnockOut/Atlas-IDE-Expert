@@ -23,6 +23,7 @@ uses
   Argus.Common.JsonRpc.Contract,
   Argus.Common.Documents.Contract,
   Argus.Common.Configuration.Contract,
+  Argus.Common.Index.Contract,
   Argus.Common.Rules.Contract,
   Argus.Common.Rules.Baseline,
   Argus.Common.Compiler.Contract,
@@ -45,6 +46,8 @@ type
     RelativePath: string;
     /// <summary>Bekannte Treffer, die ausgeblendet werden (#97); nil = keine Baseline.</summary>
     Baseline: IRuleBaseline;
+    /// <summary>Symbolindex für Regeln, die Vorfahren auflösen (#125); nil = keiner.</summary>
+    Index: ISymbolIndex;
   end;
 
   /// <summary>Regeln und Einstellungen für AUri; False = keine Regeln prüfen. Hintergrund-Thread.</summary>
@@ -637,6 +640,7 @@ begin
     Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARules.RelativePath, '/', '\', [rfReplaceAll])), '');
     Context.Text := ADocument.Text;
     Context.Tree := Tree;
+    Context.Index := ARules.Index;
     RuleFindings := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
     if ARules.Baseline <> nil then
       RuleFindings := ARules.Baseline.Filter(ARules.RelativePath, ADocument.Text, RuleFindings);

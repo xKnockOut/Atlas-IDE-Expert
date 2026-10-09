@@ -142,6 +142,7 @@
         <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.Flow.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.Unused.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.Declarations.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.Inheritance.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.ClassCompletion.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Argus.Common.Dfm.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Argus.Common.Dfm.ComponentRename.Tests.pas"/>
