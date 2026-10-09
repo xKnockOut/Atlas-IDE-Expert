@@ -73,7 +73,7 @@ uses
   Argus.Common.Documents.Uris,
   Argus.Common.Lsp.Positions,
   Argus.Common.Pascal.Contract,
-  Argus.Common.Pascal.Parser,
+  Argus.Common.Pascal.TreeCache,
   Argus.Common.Index.Extractor,
   Argus.Common.Lsp.Internals.Cancellation;
 
@@ -383,6 +383,7 @@ var
   Range: TTextRange;
   Document: ITextDocument;
   Tree: TSyntaxTree;
+  Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Values: TArray<Integer>;
   Data: TJSONArray;
@@ -400,18 +401,15 @@ begin
   if not FStore.TryGet(Uri, Document) then
     Exit(TJSONNull.Create);
   Cancellation := TRequestCancellation.Create(ACancellation);
-  Tree := TPascalParser.Parse(Document.Text, Cancellation);
+  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+  Tree := Shared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
-    ACancellation.ThrowIfCancellationRequested;
-    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
-    try
-      Resolver.Namespaces := FNamespaces;
-      Values := Encode(Collect(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), Range, AWithRange, ACancellation));
-    finally
-      Resolver.Free;
-    end;
+    Resolver.Namespaces := FNamespaces;
+    Values := Encode(Collect(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), Range, AWithRange, ACancellation));
   finally
-    Tree.Free;
+    Resolver.Free;
   end;
   Data := TJSONArray.Create;
   for Value in Values do

@@ -76,7 +76,7 @@ uses
   Argus.Common.Documents.Uris,
   Argus.Common.Lsp.Positions,
   Argus.Common.Pascal.Contract,
-  Argus.Common.Pascal.Parser,
+  Argus.Common.Pascal.TreeCache,
   Argus.Common.Index.Extractor,
   Argus.Common.Lsp.Internals.Cancellation,
   Argus.Common.Dfm.Parser;
@@ -226,6 +226,7 @@ var
   PositionValue: TJSONValue;
   Document: ITextDocument;
   Tree: TSyntaxTree;
+  Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
@@ -238,24 +239,21 @@ begin
     Exit(FormTargets(Document.Text, Uri, TLspPositions.ReadPosition(PositionValue)));
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
-  Tree := TPascalParser.Parse(Document.Text, Cancellation);
+  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+  Tree := Shared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  // Je Anfrage ein eigener Resolver: er hält Zustand pro Aufruf.
+  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
-    ACancellation.ThrowIfCancellationRequested;
-    // Je Anfrage ein eigener Resolver: er hält Zustand pro Aufruf.
-    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
-    try
-      Resolver.Namespaces := FNamespaces;
-      if AKind = TDefinitionRequestKind.TypeDefinition then
-        Result := ToJson(TypeTargets(Resolver, Tree, TDocumentUris.ToPath(Uri),
-          TLspPositions.ReadPosition(PositionValue)))
-      else
-        Result := ToJson(Targets(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri),
-          TLspPositions.ReadPosition(PositionValue), AKind = TDefinitionRequestKind.Declaration));
-    finally
-      Resolver.Free;
-    end;
+    Resolver.Namespaces := FNamespaces;
+    if AKind = TDefinitionRequestKind.TypeDefinition then
+      Result := ToJson(TypeTargets(Resolver, Tree, TDocumentUris.ToPath(Uri),
+        TLspPositions.ReadPosition(PositionValue)))
+    else
+      Result := ToJson(Targets(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri),
+        TLspPositions.ReadPosition(PositionValue), AKind = TDefinitionRequestKind.Declaration));
   finally
-    Tree.Free;
+    Resolver.Free;
   end;
 end;
 

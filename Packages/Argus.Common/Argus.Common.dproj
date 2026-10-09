@@ -194,6 +194,8 @@
         <DCCReference Include="Source\Pascal\Argus.Common.Pascal.Lexer.pas"/>
         <DCCReference Include="Source\Pascal\Argus.Common.Pascal.SyntaxTree.pas"/>
         <DCCReference Include="Source\Pascal\Argus.Common.Pascal.Parser.pas"/>
+        <DCCReference Include="Source\Pascal\Argus.Common.Pascal.TreeCache.pas"/>
+        <DCCReference Include="Source\Pascal\Argus.Common.Pascal.Preprocessor.pas"/>
         <DCCReference Include="Source\Pascal\Argus.Common.Pascal.LanguageFeatures.pas"/>
         <DCCReference Include="Source\Pascal\Argus.Common.Pascal.Preprocessor.pas"/>
         <BuildConfiguration Include="Base">

@@ -51,7 +51,7 @@ uses
   Argus.Common.Rules.Contract,
   Argus.Common.Rules.Engine,
   Argus.Common.Pascal.SyntaxTree,
-  Argus.Common.Pascal.Parser,
+  Argus.Common.Pascal.TreeCache,
   Argus.Common.Editing.ClassCompletion;
 
 { TLspCodeActions }
@@ -127,6 +127,7 @@ var
   Range: TTextRange;
   Document: ITextDocument;
   Tree: TSyntaxTree;
+  Shared: ISharedSyntaxTree;
   Rules: TRuleCheckContext;
   Context: TRuleContext;
   Findings: TArray<TRuleFinding>;
@@ -152,22 +153,19 @@ begin
   WantsOrganize := (Only <> nil) and TCodeActions.KindRequested(OrganizeImportsKind, Only);
   WantsFixAll := (Only <> nil) and TCodeActions.KindRequested(FixAllKind, Only);
   Findings := nil;
-  Tree := TPascalParser.Parse(Document.Text);
-  try
-    ACancellation.ThrowIfCancellationRequested;
-    if Assigned(FRuleProvider) and FRuleProvider(Uri, Rules) and (Length(Rules.Rules) > 0) then
-    begin
-      Context := Default(TRuleContext);
-      Context.RelativePath := Rules.RelativePath;
-      Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(Rules.RelativePath, '/', '\', [rfReplaceAll])), '');
-      Context.Text := Document.Text;
-      Context.Tree := Tree;
-      Findings := TRuleEngine.Run(Rules.Rules, Rules.Settings, Context);
-    end;
-    HasCompletion := WantsEditing and TClassCompletion.MissingBodies(Tree, Document.Text, Range.StartPos, Completion);
-  finally
-    Tree.Free;
+  Shared := TSyntaxTreeCache.Get(Document);
+  Tree := Shared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  if Assigned(FRuleProvider) and FRuleProvider(Uri, Rules) and (Length(Rules.Rules) > 0) then
+  begin
+    Context := Default(TRuleContext);
+    Context.RelativePath := Rules.RelativePath;
+    Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(Rules.RelativePath, '/', '\', [rfReplaceAll])), '');
+    Context.Text := Document.Text;
+    Context.Tree := Tree;
+    Findings := TRuleEngine.Run(Rules.Rules, Rules.Settings, Context);
   end;
+  HasCompletion := WantsEditing and TClassCompletion.MissingBodies(Tree, Document.Text, Range.StartPos, Completion);
   // Erst jetzt anlegen: Ein Abbruch oben soll kein Objekt zurücklassen.
   Result := TJSONArray.Create;
   if WantsEditing then

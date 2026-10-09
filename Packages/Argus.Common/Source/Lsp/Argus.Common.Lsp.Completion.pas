@@ -102,7 +102,7 @@ uses
   Argus.Common.Documents.Uris,
   Argus.Common.Lsp.Positions,
   Argus.Common.Pascal.Contract,
-  Argus.Common.Pascal.Parser,
+  Argus.Common.Pascal.TreeCache,
   Argus.Common.Lsp.FuzzyMatch,
   Argus.Common.Editing.UsesClause,
   Argus.Common.Lsp.Internals.Cancellation;
@@ -521,6 +521,7 @@ var
   PositionValue: TJSONValue;
   Document: ITextDocument;
   Tree: TSyntaxTree;
+  Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Matching: TCompletionMatching;
 begin
@@ -531,23 +532,20 @@ begin
   if not FStore.TryGet(Uri, Document) then
     Exit(TJSONNull.Create);
   Cancellation := TRequestCancellation.Create(ACancellation);
-  Tree := TPascalParser.Parse(Document.Text, Cancellation);
+  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+  Tree := Shared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
-    ACancellation.ThrowIfCancellationRequested;
-    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
-    try
-      Resolver.Namespaces := FNamespaces;
-      if Assigned(FMatchingFor) then
-        Matching := FMatchingFor(Uri)
-      else
-        Matching := TCompletionMatching.Fuzzy;
-      Result := ToJson(Collect(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri),
-        TLspPositions.ReadPosition(PositionValue), Matching));
-    finally
-      Resolver.Free;
-    end;
+    Resolver.Namespaces := FNamespaces;
+    if Assigned(FMatchingFor) then
+      Matching := FMatchingFor(Uri)
+    else
+      Matching := TCompletionMatching.Fuzzy;
+    Result := ToJson(Collect(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri),
+      TLspPositions.ReadPosition(PositionValue), Matching));
   finally
-    Tree.Free;
+    Resolver.Free;
   end;
 end;
 

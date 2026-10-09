@@ -52,7 +52,7 @@ implementation
 uses
   System.Generics.Defaults,
   Argus.Common.Pascal.SyntaxTree,
-  Argus.Common.Pascal.Parser,
+  Argus.Common.Pascal.TreeCache,
   Argus.Common.Rules.Suppressions,
   Argus.Common.Rules.Engine;
 
@@ -96,7 +96,7 @@ var
   Seen: TList<string>;
 begin
   Inc(FFiles);
-  Tree := TPascalParser.Parse(AText);
+  Tree := TSyntaxTreeCache.Parse(AText);
   Seen := TList<string>.Create;
   try
     Suppressions := TSuppressions.Create(Tree.Tokens);

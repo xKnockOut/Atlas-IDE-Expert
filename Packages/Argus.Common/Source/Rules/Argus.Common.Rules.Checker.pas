@@ -35,7 +35,7 @@ implementation
 
 uses
   Argus.Common.Pascal.SyntaxTree,
-  Argus.Common.Pascal.Parser,
+  Argus.Common.Pascal.TreeCache,
   Argus.Common.Documents.Contract,
   Argus.Common.Rules.Engine;
 
@@ -55,7 +55,7 @@ var
 begin
   if (ARelativePath <> '') and ASettings.IsExcluded(ARelativePath) then
     Exit(nil);
-  Tree := TPascalParser.Parse(AText);
+  Tree := TSyntaxTreeCache.Parse(AText);
   try
     Syntax := nil;
     if ASettings.RuleSeverity(SyntaxRuleId, TRuleSeverity.Error) <> TRuleSeverity.Off then

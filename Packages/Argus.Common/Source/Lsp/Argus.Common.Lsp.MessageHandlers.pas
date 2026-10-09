@@ -50,7 +50,7 @@ implementation
 uses
   System.Generics.Collections,
   Argus.Common.Pascal.Contract,
-  Argus.Common.Pascal.Parser,
+  Argus.Common.Pascal.TreeCache,
   Argus.Common.Index.Extractor;
 
 function FirstTokenAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
@@ -272,7 +272,7 @@ begin
       begin
         if not (Assigned(AReadText) and AReadText(Ancestor.FileName, Text)) then
           Break;
-        Tree := TPascalParser.Parse(Text);
+        Tree := TSyntaxTreeCache.Parse(Text);
         Trees.Add(UpperCase(Ancestor.FileName), Tree);
       end;
       Handlers := InTree(Tree, Ancestor.FileName, Ancestor.Name);
