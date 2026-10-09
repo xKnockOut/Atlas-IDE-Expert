@@ -45,6 +45,10 @@ type
     procedure FuzzySetsFilterTextAndIsIncomplete;
     [Test]
     procedure PrefixModeKeepsStrictSelection;
+    [Test]
+    procedure OffersSymbolsOfUnusedUnitsWithUsesEdit;
+    [Test]
+    procedure ImportsNeedTwoCharactersAndSkipUsedUnits;
   end;
 
 implementation
@@ -279,6 +283,38 @@ begin
   Items := ItemsAt(WithCode('  zlr'), '  zlr', TCompletionMatching.Prefix);
   Assert.AreEqual('', Names(Items));
   Assert.IsFalse(Items.Incomplete);
+end;
+
+procedure TLspCompletionTests.OffersSymbolsOfUnusedUnitsWithUsesEdit;
+var
+  Bibliothek: TUnitIndex;
+  Items: TCompletionItems;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText('unit Extra;'#10'interface'#10'procedure Berechne;'#10 +
+    'implementation'#10'procedure Berechne; begin end;'#10'end.', 'C:\P\Extra.pas', nil));
+  Bibliothek := TIndexExtractor.ExtractText('unit Bib.Mathe;'#10'interface'#10'procedure Berechne;'#10 +
+    'implementation'#10'procedure Berechne; begin end;'#10'end.', 'C:\Bib\Bib.Mathe.pas', nil);
+  Bibliothek.Library_ := True;
+  FIndex.AddUnit(Bibliothek);
+  Items := ItemsAt(WithCode('  Ber'), '  Ber', TCompletionMatching.Fuzzy);
+  // Projekt-Unit vor Bibliothek; eingetragen wird im implementation-Teil, der noch kein uses hat.
+  Assert.AreEqual('Berechne Berechne', Names(Items));
+  Assert.AreEqual('Extra (uses ergänzen)', Items.Items[0].Detail);
+  Assert.AreEqual('Bib.Mathe (uses ergänzen)', Items.Items[1].Detail);
+  Assert.AreEqual(1, Integer(Length(Items.Items[0].AdditionalEdits)));
+  Assert.AreEqual(#13#10#13#10'uses'#13#10'  Extra;', Items.Items[0].AdditionalEdits[0].NewText);
+  Assert.AreEqual(8, Items.Items[0].AdditionalEdits[0].Range.StartPos.Line);
+end;
+
+procedure TLspCompletionTests.ImportsNeedTwoCharactersAndSkipUsedUnits;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText('unit Extra;'#10'interface'#10'procedure Berechne;'#10 +
+    'implementation'#10'end.', 'C:\P\Extra.pas', nil));
+  Assert.AreEqual('Bar', Names(ItemsAt(WithCode('  B'), '  B', TCompletionMatching.Prefix)).Split([' '])[0]);
+  Assert.IsFalse(Names(ItemsAt(WithCode('  B'), '  B', TCompletionMatching.Prefix)).Contains('Berechne'));
+  // Rechne kommt aus dem eingebundenen Werkzeug und erscheint nur einmal, ohne uses-Eintrag.
+  Assert.AreEqual('Rechne', Names(ItemsAt(WithCode('  Rech'), '  Rech', TCompletionMatching.Prefix)));
+  Assert.AreEqual(0, Integer(Length(ItemsAt(WithCode('  Rech'), '  Rech', TCompletionMatching.Prefix).Items[0].AdditionalEdits)));
 end;
 
 initialization

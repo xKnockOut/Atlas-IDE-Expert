@@ -107,6 +107,7 @@ contains
   Argus.Common.Lsp.Colors in 'Source\Lsp\Argus.Common.Lsp.Colors.pas',
   Argus.Common.Lsp.DocumentLinks in 'Source\Lsp\Argus.Common.Lsp.DocumentLinks.pas',
   Argus.Common.Editing.CodeActions in 'Source\Editing\Argus.Common.Editing.CodeActions.pas',
+  Argus.Common.Editing.UsesClause in 'Source\Editing\Argus.Common.Editing.UsesClause.pas',
   Argus.Common.Editing.ClassCompletion in 'Source\Editing\Argus.Common.Editing.ClassCompletion.pas',
   Argus.Common.Dfm.Contract in 'Source\Dfm\Argus.Common.Dfm.Contract.pas',
   Argus.Common.Dfm.Parser in 'Source\Dfm\Argus.Common.Dfm.Parser.pas',
