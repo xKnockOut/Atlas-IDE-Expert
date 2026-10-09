@@ -111,6 +111,7 @@ type
 implementation
 
 uses
+  System.Classes,
   Argus.Common.Documents.Contract,
   Argus.Common.Projects.Contract,
   Argus.Common.Index.Extractor,
