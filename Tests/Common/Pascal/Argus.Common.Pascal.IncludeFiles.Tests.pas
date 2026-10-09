@@ -64,7 +64,7 @@ end;
 
 function Resolver(const ASearchPaths: TArray<string>): TIncludeResolver;
 begin
-  Result := TIncludeFiles.Resolver(ASearchPaths, Exists,
+  Result := TIncludeFiles.Resolver(ASearchPaths, Exists(),
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := Files.TryGetValue(UpperCase(AFileName), AText);
@@ -79,12 +79,12 @@ var
 begin
   Files.Clear;
   Put('C:\Lib\Shared.inc', '');
-  Assert.IsTrue(TIncludeFiles.FindInclude('Shared.inc', MainFile, ['C:\Lib'], Exists, FileName));
+  Assert.IsTrue(TIncludeFiles.FindInclude('Shared.inc', MainFile, ['C:\Lib'], Exists(), FileName));
   Assert.AreEqual('C:\Lib\Shared.inc', FileName);
   Put('C:\P\Shared.inc', '');
-  Assert.IsTrue(TIncludeFiles.FindInclude('Shared.inc', MainFile, ['C:\Lib'], Exists, FileName));
+  Assert.IsTrue(TIncludeFiles.FindInclude('Shared.inc', MainFile, ['C:\Lib'], Exists(), FileName));
   Assert.AreEqual('C:\P\Shared.inc', FileName, 'Ordner der Unit vor Suchpfad');
-  Assert.IsFalse(TIncludeFiles.FindInclude('Fehlt.inc', MainFile, ['C:\Lib'], Exists, FileName));
+  Assert.IsFalse(TIncludeFiles.FindInclude('Fehlt.inc', MainFile, ['C:\Lib'], Exists(), FileName));
 end;
 
 procedure TIncludeFilesTests.AddsIncExtension;
@@ -93,10 +93,10 @@ var
 begin
   Files.Clear;
   Put('C:\P\Defines.inc', '');
-  Assert.IsTrue(TIncludeFiles.FindInclude('Defines', MainFile, nil, Exists, FileName));
+  Assert.IsTrue(TIncludeFiles.FindInclude('Defines', MainFile, nil, Exists(), FileName));
   Assert.AreEqual('C:\P\Defines.inc', FileName);
   // FindFile ($R, Strings) ergänzt keine Endung.
-  Assert.IsFalse(TIncludeFiles.FindFile('Defines', 'C:\P', nil, Exists, FileName));
+  Assert.IsFalse(TIncludeFiles.FindFile('Defines', 'C:\P', nil, Exists(), FileName));
 end;
 
 procedure TIncludeFilesTests.QuotedNameWithSpaces;
@@ -105,7 +105,7 @@ var
 begin
   Files.Clear;
   Put('C:\P\Mit Leerzeichen.inc', '');
-  Assert.IsTrue(TIncludeFiles.FindInclude('''Mit Leerzeichen.inc''', MainFile, nil, Exists, FileName));
+  Assert.IsTrue(TIncludeFiles.FindInclude('''Mit Leerzeichen.inc''', MainFile, nil, Exists(), FileName));
   Assert.AreEqual('C:\P\Mit Leerzeichen.inc', FileName);
 end;
 
@@ -131,16 +131,16 @@ begin
     Names := Names + Symbol.Name + ';';
   Assert.Contains(Names, 'MitFeature');
   Assert.DoesNotContain(Names, 'OhneFeature');
-  Assert.AreEqual(1, Length(UnitIndex.Includes));
+  Assert.AreEqual(1, Integer(Length(UnitIndex.Includes)));
   Assert.AreEqual('C:\Lib\Defines.inc', UnitIndex.Includes[0]);
   // Abblenden: nur der $ELSE-Zweig (Zeile 6) ist inaktiv.
   Ranges := TLspInactiveRegions.Ranges(Text, nil, MainFile, Resolver(['C:\Lib']), Issues);
-  Assert.AreEqual(1, Length(Ranges));
+  Assert.AreEqual(1, Integer(Length(Ranges)));
   Assert.IsTrue((Ranges[0].StartPos.Line <= 6) and (Ranges[0].EndPos.Line >= 6) and (Ranges[0].StartPos.Line >= 5));
-  Assert.AreEqual(0, Length(Issues));
+  Assert.AreEqual(0, Integer(Length(Issues)));
   // Verweise: dieselbe Datei
-  Links := TDocumentLinks.Find(Text, MainFile, ['C:\Lib'], Exists);
-  Assert.AreEqual(1, Length(Links));
+  Links := TDocumentLinks.Find(Text, MainFile, ['C:\Lib'], Exists());
+  Assert.AreEqual(1, Integer(Length(Links)));
   Assert.AreEqual('C:\Lib\Defines.inc', Links[0].Target);
 end;
 
@@ -150,7 +150,7 @@ var
 begin
   Files.Clear;
   TLspInactiveRegions.Ranges('unit Main;'#10'{$I Fehlt.inc}'#10'end.', nil, MainFile, Resolver(nil), Issues);
-  Assert.AreEqual(1, Length(Issues));
+  Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.AreEqual(Ord(TPreprocessorIssueKind.IncludeMissing), Ord(Issues[0].Kind));
   Assert.AreEqual(1, Issues[0].Range.StartPos.Line);
 end;
@@ -163,7 +163,7 @@ begin
   Put('C:\P\A.inc', '{$I B.inc}');
   Put('C:\P\B.inc', '{$I A.inc}');
   TLspInactiveRegions.Ranges('unit Main;'#10'{$I A.inc}'#10'end.', nil, MainFile, Resolver(nil), Issues);
-  Assert.AreEqual(1, Length(Issues));
+  Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.AreEqual(Ord(TPreprocessorIssueKind.IncludeCycle), Ord(Issues[0].Kind));
   // Gemeldet an der $I-Direktive der Datei selbst, mit Ort in der .inc.
   Assert.AreEqual(1, Issues[0].Range.StartPos.Line);
@@ -175,7 +175,7 @@ var
   Issues: TArray<TPreprocessorIssue>;
 begin
   TLspInactiveRegions.Ranges('unit Main;'#10'{$I Fehlt.inc}'#10'end.', nil, MainFile, nil, Issues);
-  Assert.AreEqual(0, Length(Issues));
+  Assert.AreEqual(0, Integer(Length(Issues)));
 end;
 
 initialization
