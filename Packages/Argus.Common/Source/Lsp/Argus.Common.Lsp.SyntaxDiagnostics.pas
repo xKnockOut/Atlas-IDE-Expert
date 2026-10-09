@@ -160,6 +160,7 @@ uses
   Argus.Common.Rules.Catalog,
   Argus.Common.Dfm.Contract,
   Argus.Common.Dfm.Parser,
+  Argus.Common.Dfm.FormModel,
   Argus.Common.Lsp.FormFiles;
 
 // Übernimmt AParams.
@@ -506,7 +507,11 @@ begin
     try
       Result := TJSONObject.Create;
       Result.AddPair('uri', ADocument.Uri);
-      Result.AddPair('diagnostics', TLspFormFiles.BuildDiagnostics(Form));
+      // Binär gespeichert (#122): ein Hinweis statt Lesefehlern.
+      if TFormModel.IsBinary(ADocument.Text) then
+        Result.AddPair('diagnostics', TLspFormFiles.BinaryDiagnostics)
+      else
+        Result.AddPair('diagnostics', TLspFormFiles.BuildDiagnostics(Form));
     finally
       Form.Free;
     end;

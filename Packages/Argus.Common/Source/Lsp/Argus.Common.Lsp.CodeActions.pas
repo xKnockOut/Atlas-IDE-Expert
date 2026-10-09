@@ -29,6 +29,8 @@ type
   TSortUsesProvider = reference to function(const AUri: string): Boolean;
   /// <summary>Index und Einstellungen für die uses-Aktionen; False ohne Index.</summary>
   TUsesContextProvider = reference to function(const AUri: string; out AContext: TUsesContext): Boolean;
+  /// <summary>Aktionen in Formulardateien, z. B. binär gespeicherte in Text umwandeln (#122).</summary>
+  TFormActionsFunc = reference to function(const AUri, AText: string; const ARange: TTextRange): TArray<TCodeAction>;
 
   TLspCodeActions = class
   public const
@@ -39,6 +41,7 @@ type
     FSortUsesFor: TSortUsesProvider;
     FSortUsesByNamespaceFor: TSortUsesProvider;
     FUsesContextFor: TUsesContextProvider;
+    FFormActions: TFormActionsFunc;
     function HandleCodeAction(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore; const ARuleProvider: TRuleContextProvider);
@@ -53,6 +56,8 @@ type
     property SortUsesByNamespaceFor: TSortUsesProvider read FSortUsesByNamespaceFor write FSortUsesByNamespaceFor;
     /// <summary>Ohne Zuweisung keine uses-Aktionen (#284).</summary>
     property UsesContextFor: TUsesContextProvider read FUsesContextFor write FUsesContextFor;
+    /// <summary>Aktionen in .dfm/.fmx; ohne Zuweisung keine.</summary>
+    property FormActions: TFormActionsFunc read FFormActions write FFormActions;
   end;
 
 implementation
@@ -63,7 +68,9 @@ uses
   Argus.Common.Rules.Engine,
   Argus.Common.Pascal.SyntaxTree,
   Argus.Common.Pascal.TreeCache,
-  Argus.Common.Editing.ClassCompletion;
+  Argus.Common.Editing.ClassCompletion,
+  Argus.Common.Documents.Uris,
+  Argus.Common.Dfm.Parser;
 
 { TLspCodeActions }
 
@@ -97,8 +104,9 @@ class function TLspCodeActions.ActionToJson(const AUri: string; const AAction: T
 var
   Edits: TJSONArray;
   Edit: TRuleEdit;
-  Item, Changes, WorkspaceEdit, Diagnostic: TJSONObject;
-  Diagnostics: TJSONArray;
+  Item, Changes, WorkspaceEdit, Diagnostic, Command: TJSONObject;
+  Diagnostics, Arguments: TJSONArray;
+  Argument: string;
 begin
   Edits := TJSONArray.Create;
   for Edit in AAction.Edits do
@@ -115,6 +123,17 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('title', AAction.Title);
   Result.AddPair('kind', AAction.Kind);
+  if AAction.Command <> '' then
+  begin
+    Command := TJSONObject.Create;
+    Command.AddPair('title', AAction.Title);
+    Command.AddPair('command', AAction.Command);
+    Arguments := TJSONArray.Create;
+    for Argument in AAction.CommandArguments do
+      Arguments.Add(Argument);
+    Command.AddPair('arguments', Arguments);
+    Result.AddPair('command', Command);
+  end;
   if AAction.IsPreferred then
     Result.AddPair('isPreferred', TJSONBool.Create(True));
   if AAction.RuleId <> '' then
@@ -158,6 +177,14 @@ begin
   if not FStore.TryGet(Uri, Document) then
     Exit(TJSONArray.Create);
   Range := TLspPositions.ReadRange(RangeValue);
+  if TDfmParser.IsFormFile(TDocumentUris.ToPath(Uri)) then
+  begin
+    Result := TJSONArray.Create;
+    if Assigned(FFormActions) then
+      for Action in FFormActions(Uri, Document.Text, Range) do
+        TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+    Exit;
+  end;
   Only := nil;
   if TJSONObject(AParams).TryGetValue<TJSONArray>('context.only', OnlyValue) then
     for Item in OnlyValue do
