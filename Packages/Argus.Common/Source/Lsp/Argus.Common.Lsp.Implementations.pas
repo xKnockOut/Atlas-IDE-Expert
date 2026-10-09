@@ -48,7 +48,7 @@ uses
   Argus.Common.Documents.Uris,
   Argus.Common.Lsp.Positions,
   Argus.Common.Pascal.Contract,
-  Argus.Common.Pascal.Parser,
+  Argus.Common.Pascal.TreeCache,
   Argus.Common.Index.Extractor,
   Argus.Common.Lsp.Internals.Cancellation;
 
@@ -307,6 +307,7 @@ var
   PositionValue: TJSONValue;
   Document: ITextDocument;
   Tree: TSyntaxTree;
+  Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
@@ -316,19 +317,16 @@ begin
   if not FStore.TryGet(Uri, Document) then
     Exit(TJSONNull.Create);
   Cancellation := TRequestCancellation.Create(ACancellation);
-  Tree := TPascalParser.Parse(Document.Text, Cancellation);
+  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+  Tree := Shared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
-    ACancellation.ThrowIfCancellationRequested;
-    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
-    try
-      Resolver.Namespaces := FNamespaces;
-      Result := TLspDefinition.ToJson(Targets(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri),
-        TLspPositions.ReadPosition(PositionValue)));
-    finally
-      Resolver.Free;
-    end;
+    Resolver.Namespaces := FNamespaces;
+    Result := TLspDefinition.ToJson(Targets(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri),
+      TLspPositions.ReadPosition(PositionValue)));
   finally
-    Tree.Free;
+    Resolver.Free;
   end;
 end;
 

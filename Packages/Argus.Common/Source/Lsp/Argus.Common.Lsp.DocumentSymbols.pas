@@ -60,7 +60,7 @@ uses
   Argus.Common.Lsp.FormFiles,
   Argus.Common.Lsp.Positions,
   Argus.Common.Pascal.Contract,
-  Argus.Common.Pascal.Parser,
+  Argus.Common.Pascal.TreeCache,
   Argus.Common.Lsp.Internals.Cancellation;
 
 type
@@ -390,6 +390,7 @@ var
   Uri: string;
   Document: ITextDocument;
   Tree: TSyntaxTree;
+  Shared: ISharedSyntaxTree;
   Form: TDfmDocument;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
@@ -409,13 +410,10 @@ begin
   end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
-  Tree := TPascalParser.Parse(Document.Text, Cancellation);
-  try
-    ACancellation.ThrowIfCancellationRequested;
-    Result := BuildSymbols(Tree);
-  finally
-    Tree.Free;
-  end;
+  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+  Tree := Shared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  Result := BuildSymbols(Tree);
 end;
 
 end.

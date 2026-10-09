@@ -37,7 +37,7 @@ uses
   System.Generics.Collections,
   Argus.Common.Lsp.Positions,
   Argus.Common.Pascal.Contract,
-  Argus.Common.Pascal.Parser,
+  Argus.Common.Pascal.TreeCache,
   Argus.Common.Lsp.Internals.Cancellation;
 
 // Erstes Kind, das den Bereich AStart..AEnd umschließt, sonst nil.
@@ -165,6 +165,7 @@ var
   Position: TJSONValue;
   Document: ITextDocument;
   Tree: TSyntaxTree;
+  Shared: ISharedSyntaxTree;
   Item: TJSONObject;
   Offset: Integer;
 begin
@@ -176,30 +177,27 @@ begin
     Exit(TJSONNull.Create);
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
-  Tree := TPascalParser.Parse(Document.Text, Cancellation);
+  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+  Tree := Shared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  Result := TJSONArray.Create;
   try
-    ACancellation.ThrowIfCancellationRequested;
-    Result := TJSONArray.Create;
-    try
-      for Position in Positions do
+    for Position in Positions do
+    begin
+      Offset := Document.OffsetAt(TLspPositions.ReadPosition(Position));
+      Item := ToJson(RangesAt(Tree, Offset));
+      // Die Antwort braucht je Position ein Element; ohne Bereich die Position selbst.
+      if Item = nil then
       begin
-        Offset := Document.OffsetAt(TLspPositions.ReadPosition(Position));
-        Item := ToJson(RangesAt(Tree, Offset));
-        // Die Antwort braucht je Position ein Element; ohne Bereich die Position selbst.
-        if Item = nil then
-        begin
-          Item := TJSONObject.Create;
-          Item.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(Document.PositionAt(Offset),
-            Document.PositionAt(Offset))));
-        end;
-        TJSONArray(Result).AddElement(Item);
+        Item := TJSONObject.Create;
+        Item.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(Document.PositionAt(Offset),
+          Document.PositionAt(Offset))));
       end;
-    except
-      Result.Free;
-      raise;
+      TJSONArray(Result).AddElement(Item);
     end;
-  finally
-    Tree.Free;
+  except
+    Result.Free;
+    raise;
   end;
 end;
 

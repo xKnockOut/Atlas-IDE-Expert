@@ -59,7 +59,7 @@ uses
   Argus.Common.Lsp.Positions,
   Argus.Common.Lsp.Definition,
   Argus.Common.Pascal.Contract,
-  Argus.Common.Pascal.Parser,
+  Argus.Common.Pascal.TreeCache,
   Argus.Common.Lsp.Internals.Cancellation;
 
 function CleanName(const AText: string): string;
@@ -163,6 +163,7 @@ var
   PositionValue: TJSONValue;
   Document: ITextDocument;
   Tree: TSyntaxTree;
+  Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Found: TArray<TDocumentHighlight>;
   Highlight: TDocumentHighlight;
@@ -176,19 +177,16 @@ begin
     Exit(TJSONNull.Create);
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
-  Tree := TPascalParser.Parse(Document.Text, Cancellation);
+  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+  Tree := Shared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
-    ACancellation.ThrowIfCancellationRequested;
-    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
-    try
-      Resolver.Namespaces := FNamespaces;
-      Found := Highlights(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri),
-        TLspPositions.ReadPosition(PositionValue), ACancellation);
-    finally
-      Resolver.Free;
-    end;
+    Resolver.Namespaces := FNamespaces;
+    Found := Highlights(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri),
+      TLspPositions.ReadPosition(PositionValue), ACancellation);
   finally
-    Tree.Free;
+    Resolver.Free;
   end;
   Result := TJSONArray.Create;
   for Highlight in Found do

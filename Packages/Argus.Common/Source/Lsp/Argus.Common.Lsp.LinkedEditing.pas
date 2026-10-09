@@ -44,7 +44,7 @@ uses
   Argus.Common.Index.Extractor,
   Argus.Common.Lsp.Positions,
   Argus.Common.Pascal.Contract,
-  Argus.Common.Pascal.Parser,
+  Argus.Common.Pascal.TreeCache,
   Argus.Common.Lsp.Internals.Cancellation;
 
 const
@@ -119,6 +119,7 @@ var
   PositionValue: TJSONValue;
   Document: ITextDocument;
   Tree: TSyntaxTree;
+  Shared: ISharedSyntaxTree;
   Found: TArray<TTextRange>;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
@@ -129,13 +130,10 @@ begin
     Exit(TJSONNull.Create);
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
-  Tree := TPascalParser.Parse(Document.Text, Cancellation);
-  try
-    ACancellation.ThrowIfCancellationRequested;
-    Found := Ranges(Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue));
-  finally
-    Tree.Free;
-  end;
+  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+  Tree := Shared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  Found := Ranges(Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue));
   Result := ToJson(Found);
 end;
 

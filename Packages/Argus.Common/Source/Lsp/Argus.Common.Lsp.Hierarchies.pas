@@ -102,7 +102,7 @@ uses
   Argus.Common.Documents.Uris,
   Argus.Common.Lsp.Positions,
   Argus.Common.Pascal.Contract,
-  Argus.Common.Pascal.Parser,
+  Argus.Common.Pascal.TreeCache,
   Argus.Common.Index.Extractor,
   Argus.Common.Lsp.Internals.Cancellation;
 
@@ -422,7 +422,7 @@ begin
   Calls := TList<THierarchyCall>.Create;
   Keys := TDictionary<string, Integer>.Create;
   try
-    Tree := TPascalParser.Parse(Text);
+    Tree := TSyntaxTreeCache.Parse(Text);
     Trees.Add(UpperCase(AItem.FileName), Tree);
     Locations := TLspReferences.Find(AResolver, AIndex, Tree, AItem.FileName, AItem.SelectionRange.StartPos, False,
       AFiles, AReadText, ACancellation);
@@ -437,7 +437,7 @@ begin
       begin
         if not AReadText(Location.FileName, Text) then
           Continue;
-        Tree := TPascalParser.Parse(Text);
+        Tree := TSyntaxTreeCache.Parse(Text);
         Trees.Add(UpperCase(Location.FileName), Tree);
       end;
       Routine := EnclosingRoutine(Tree.Root, Location.Range.StartPos);
@@ -489,7 +489,7 @@ begin
   Result := nil;
   if not (Assigned(AReadText) and AReadText(AItem.FileName, Text)) then
     Exit;
-  Tree := TPascalParser.Parse(Text);
+  Tree := TSyntaxTreeCache.Parse(Text);
   Calls := TList<THierarchyCall>.Create;
   Keys := TDictionary<string, Integer>.Create;
   try
@@ -636,6 +636,7 @@ var
   PositionValue: TJSONValue;
   Document: ITextDocument;
   Tree: TSyntaxTree;
+  Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Item: THierarchyItem;
   Found: Boolean;
@@ -647,20 +648,17 @@ begin
   if not FStore.TryGet(Uri, Document) then
     Exit(TJSONNull.Create);
   Cancellation := TRequestCancellation.Create(ACancellation);
-  Tree := TPascalParser.Parse(Document.Text, Cancellation);
+  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+  Tree := Shared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  Resolver := NewResolver;
   try
-    ACancellation.ThrowIfCancellationRequested;
-    Resolver := NewResolver;
-    try
-      if ACall then
-        Found := CallItemAt(Resolver, Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue), Item)
-      else
-        Found := TypeItemAt(Resolver, Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue), Item);
-    finally
-      Resolver.Free;
-    end;
+    if ACall then
+      Found := CallItemAt(Resolver, Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue), Item)
+    else
+      Found := TypeItemAt(Resolver, Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue), Item);
   finally
-    Tree.Free;
+    Resolver.Free;
   end;
   if not Found then
     Exit(TJSONNull.Create);

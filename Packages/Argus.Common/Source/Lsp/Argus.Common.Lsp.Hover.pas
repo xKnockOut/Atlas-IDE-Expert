@@ -95,7 +95,7 @@ uses
   Argus.Common.Lsp.MessageHandlers,
   Argus.Common.Lsp.HoverValues,
   Argus.Common.Pascal.Contract,
-  Argus.Common.Pascal.Parser,
+  Argus.Common.Pascal.TreeCache,
   Argus.Common.Lsp.Internals.Cancellation;
 
 function SplitLines(const AText: string): TArray<string>;
@@ -401,7 +401,7 @@ begin
           end).ToMarkdown
       else
       begin
-        ClassTree := TPascalParser.Parse(Text);
+        ClassTree := TSyntaxTreeCache.Parse(Text);
         try
           Result.Messages := TMessageHandlers.Overview(AResolver, AIndex, ClassTree, Targets[0].FileName, Symbol.Name,
             function(const AName: string; out AText: string): Boolean
@@ -423,6 +423,7 @@ var
   PositionValue: TJSONValue;
   Document: ITextDocument;
   Tree: TSyntaxTree;
+  Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Info: THoverInfo;
   Contents: TJSONObject;
@@ -440,19 +441,16 @@ begin
     DelphiVersion := FVersionProvider(Uri)
   else
     DelphiVersion := '';
-  Tree := TPascalParser.Parse(Document.Text, Cancellation);
+  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+  Tree := Shared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
-    ACancellation.ThrowIfCancellationRequested;
-    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
-    try
-      Resolver.Namespaces := FNamespaces;
-      Info := InfoAt(Resolver, FIndex, Tree, Document.Text, TDocumentUris.ToPath(Uri),
-        TLspPositions.ReadPosition(PositionValue), FReadText, DelphiVersion);
-    finally
-      Resolver.Free;
-    end;
+    Resolver.Namespaces := FNamespaces;
+    Info := InfoAt(Resolver, FIndex, Tree, Document.Text, TDocumentUris.ToPath(Uri),
+      TLspPositions.ReadPosition(PositionValue), FReadText, DelphiVersion);
   finally
-    Tree.Free;
+    Resolver.Free;
   end;
   if not Info.Found then
     Exit(TJSONNull.Create);
