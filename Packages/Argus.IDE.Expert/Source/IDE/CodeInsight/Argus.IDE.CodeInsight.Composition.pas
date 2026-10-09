@@ -1,4 +1,4 @@
-﻿unit Argus.IdePlugin.CodeInsight.Composition;
+﻿unit Argus.IDE.CodeInsight.Composition;
 
 // Meldet den Code Insight-Manager beim Laden des Packages an und beim
 // Entladen wieder ab (ADR 0006).
@@ -12,7 +12,7 @@ implementation
 uses
   System.SysUtils,
   ToolsAPI,
-  Argus.IdePlugin.CodeInsight.Hosting.Manager;
+  Argus.IDE.CodeInsight.Manager;
 
 var
   ManagerIndex: Integer = -1;

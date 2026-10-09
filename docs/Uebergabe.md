@@ -2,7 +2,7 @@
 
 ## Kontext
 - Repo: https://github.com/xKnockOut/Argus-IDE-Expert.git, lokal unter `C:\Projekte\BetterDelphiLSP\repo`. Gearbeitet wird auf `main`.
-- Projektgruppe `Argus.groupproj`: `Argus.Common`, `Argus.Windows` (Packages), `ArgusServer` (Anwendung), `Argus.IdePlugin` (Design-Time-Package, Win32, ADR 0006), `Argus.Tests` (DUnitX, nur Win64).
+- Projektgruppe `Argus.groupproj`: `Argus.Common`, `Argus.Windows` (Packages), `ArgusServer` (Anwendung), `Argus.IDE.Expert` (Design-Time-Package, Win32, ADR 0006; bis #406 `Argus.IdePlugin`), `Argus.Tests` (DUnitX, nur Win64).
 - Projektregeln in `CLAUDE.md`: Deutsch, UTF-8 mit BOM und CRLF, Rollenkonzept in `docs/Architektur.md`.
 - Regeln des Users:
   - Hinweise und Warnungen sofort beheben. Ein Build gilt erst bei 0/0/0 als fertig.
@@ -51,16 +51,23 @@
   - `DelphiLSP.exe` selbst ist wieder das Original.
 - **Kommentar in #175** mit diesem Ergebnis ist veröffentlicht.
 
-## IDE-Plugin `Argus.IdePlugin` (ADR 0006)
-- **Stand (`c1cfae2`):** Code Insight-Manager „Argus IDE Expert“ mit Hover (`GetHintText`) und Strg+Klick (`GotoDefinition`). Dünner LSP-Client (`Lsp.Client`, `Lsp.Session`, `Lsp.Adapters.ServerProcess`), 9 DUnitX-Tests in `Tests\IdePlugin`, davon einer gegen den echten Server.
-- **Projektgruppe:** Das Plugin steht seit diesem Vorgang in `Argus.groupproj` (vom User in der IDE hinzugefügt). Ein `group-build -Platform Win64` übersetzt es mit (0/0/0), installiert wird aber die Win32-BPL `Output\Win32\Debug\Bpl\Argus.IdePlugin.bpl`. Win32 einzeln: `build -Project …\Argus.IdePlugin.dproj -Platform Win32`.
+## IDE-Plugin `Argus.IDE.Expert` (ADR 0006)
+- **Stand (`c1cfae2`):** Code Insight-Manager „Argus IDE Expert“ mit Hover (`GetHintText`) und Strg+Klick (`GotoDefinition`). Dünner LSP-Client (`Argus.Core.Lsp.Client`, `.Session`, `.Adapters.ServerProcess`), 9 DUnitX-Tests in `Tests\IDE.Expert`, davon einer gegen den echten Server.
+- **Projektgruppe:** Das Plugin steht seit diesem Vorgang in `Argus.groupproj` (vom User in der IDE hinzugefügt). Ein `group-build -Platform Win64` übersetzt es mit (0/0/0), installiert wird aber die Win32-BPL `Output\Win32\Debug\Bpl\Argus.IDE.Expert.bpl`. Win32 einzeln: `build -Project …\Packages\Argus.IDE.Expert\Argus.IDE.Expert.dproj -Platform Win32`.
 - **Server:** Registry `HKCU\Software\Argus\IdePlugin\ServerPath`, sonst neben der BPL, sonst `Output\Win64\Debug\Bin\ArgusServer.exe`. Solange das Plugin aktiv ist, ist diese exe gesperrt.
 - **In der IDE getestet (User):** Hover funktioniert, Strg+Klick auf Bezeichner derselben Unit springt. Strg+Klick auf eine Klasse, die per `{$I …}` aus einer Include-Datei kommt, findet nichts: Auch mit #264 (Include-Resolver, jetzt in `main`) indiziert der Index keine Deklarationen aus `.inc`-Dateien. Dafür wäre ein eigenes Issue nötig (noch nicht angelegt, Entscheidung des Users offen); nachstellen mit einem eigenen kleinen Fixture im Repo.
 - **Kein Zugriff auf Beryl:** Argus-Arbeit greift nicht auf die Beryl-Quellen zu (keine Proben, Tests oder Issue-Begründungen damit). Automatisierte Abnahmen über Fixtures im Repo bzw. das Referenzprojekt #94; Beryl bleibt ein manueller Zusatztest des Users (#136, #138, #67, #72).
-- **`ce3da00`:** Ohne Treffer gibt `GotoDefinition` `True` mit leerem Dateinamen und Zeile 0 zurück (mit `False` meldete die IDE „Datei "" nicht gefunden“). Diagnose: `Diagnose` = 1 (DWORD) unter `HKCU\Software\Argus\IdePlugin` schreibt `Argus.IdePlugin.log` neben die BPL (der Temp-Ordner funktionierte in der IDE des Users nicht).
+- **`ce3da00`:** Ohne Treffer gibt `GotoDefinition` `True` mit leerem Dateinamen und Zeile 0 zurück (mit `False` meldete die IDE „Datei "" nicht gefunden“). Diagnose: `Diagnose` = 1 (DWORD) unter `HKCU\Software\Argus\IdePlugin` schreibt `Argus.IDE.Expert.log` neben die BPL (Name folgt der BPL) (der Temp-Ordner funktionierte in der IDE des Users nicht).
 - **Registry aus der Sandbox:** Werte für die IDE nur mit deaktivierter Sandbox schreiben, sonst sieht die vom User gestartete IDE sie womöglich nicht.
 - **Delphi des Users** darf ich selbst schließen (`CloseMainWindow` auf `bds.exe`), wenn die Plugin-BPL oder die Server-exe gesperrt ist.
-- **Offen:** Vervollständigung (`GetSymbolList`), Parameterhilfe (`GetParameterList`), Error Insight selbst gezeichnet.
+- **#406 (Package-Struktur):** Package heißt jetzt `Argus.IDE.Expert` (Wunsch des Users), Units nach Schichten: `Argus.Core.*` (`Source\Core`, ohne VCL und Open Tools API), `Argus.UI.*` (`Source\UI`, nur VCL, noch leer), `Argus.IDE.*` (`Source\IDE`, Open Tools API). `Tools/Check-PackageDependencies.ps1` prüft die Schichten und läuft jetzt auch unter Windows PowerShell 5.1 (`pwsh` fehlt hier). Der Registry-Schlüssel bleibt `HKCU\Software\Argus\IdePlugin`.
+- **Beim User nötig:** In der IDE das alte `Argus.IdePlugin.bpl` entfernen und `Output\Win32\Debug\Bpl\Argus.IDE.Expert.bpl` installieren.
+- **#408 (Datenquelle):** `Argus.Core.Completion.*`: `IArgusCompletionProvider`/`IArgusCompletionSink` (Teilmengen, genau ein `Complete`, nach `Cancel` nichts mehr), `TArgusCompletionProviders` (Zusammenführen), `TArgusServerCompletionProvider` (`Sync` im Hauptthread, `textDocument/completion` im Hintergrund; vor dem Freigeben der Sitzung `Shutdown`), `TArgusFixedCompletionProvider` (Testdaten, optional verzögert). 7 Tests, davon einer gegen den echten Server. Entscheidung in ADR 0006 fortgeschrieben. Noch nicht im Manager verdrahtet (kommt mit dem Popup).
+- **Popup (#410, #413, #414, #407, #429, #423, #416 Teil):** `Argus.Core.Completion.Matching`/`Controller`, `Argus.UI.Popup.Window`, `Argus.UI.Completion.Popup`, `Argus.IDE.Completion.Editor`, `Argus.IDE.Editor.Buffer`. **In der IDE vom User getestet und funktionsfähig** (09.10.2026). Stand: Strg+Leer und `.` lösen aus; Filter nur gegen den Namen (den `filterText` des Servers für VS Code ignorieren!); Teilfolge nur an Wortgrenzen; Commit-Zeichen `(` `;` `.` bei klarem Treffer; leerer Zustand; Breite wächst nur. **Tasten:** keine IDE-Tastaturbindung für Pfeile/Enter/Tab/Pos1/Ende/Esc (nimmt sie dem Editor auch bei geschlossenem Popup weg), stattdessen Tastatur-Hook nur bei offenem Popup. Offene Frage zum Filtern: #497. Offen: Breite ziehen (#416), DPI (#412), Detailpanel (#424), #405-Daten, Nachladen bei `isIncomplete` (#431), Parameter-Hint (#436).
+- **Plugin aktuell halten (Wunsch des Users):** Nach jeder Plugin-/Serveränderung `update-plugin.ps1` (Scratchpad): Delphi des Users schließen, Gruppe Win64 und Plugin Win32 bauen, Delphi neu starten. Bricht ab, wenn Delphi einen Dialog offen hat.
+- **Fokus (User, 09.10.2026):** nur Delphi/RAD Studio; VS Code und andere Editoren später.
+- **Plan Vervollständigung (User-Entscheidung: direkt eigenes Popup):** #406 → #408 Provider-Interface → #405 Teil 1 (Server-Daten) → #410 Popup ohne Fokus, #413 virtuelle Liste, #414 Schließlogik, Tastenweiterleitung (#399), #407 eingebaute Completion unterdrücken → #409 lokales Filtern; danach #395, Rest #393, #493.
+- **Offen:** Parameterhilfe (`GetParameterList`), Error Insight selbst gezeichnet.
 
 ## Feature-Kette (abgeschlossen am 09.10.2026)
 - 98 verkettete Branches von `14-projektmodell` bis `122-binaere-dfm`.
@@ -110,7 +117,7 @@
 - **Namen nach außen:** Code Insight-Manager „Argus IDE Expert“, `serverInfo.name`, `source` der Diagnosen und SARIF-Werkzeug „Argus“. Befehle des Servers `argus.server.compile`, `argus.server.selectBuild`, `argus.server.status`; Editor-Abschnitt `argus` (VS Code `argus.*`); Cache `%LOCALAPPDATA%\Argus`, Compiler-Ausgabe `%TEMP%\Argus\dcc-…`.
 - **Abwärtskompatibel:** `argus.json` und `argus-baseline.json`; fehlen sie, gelten `delphi-lsp.json` bzw. `delphi-lsp-baseline.json` (`ExistingOrLegacyFile`, `IsConfigurationFileName`). Das Plugin liest `HKCU\Software\Argus\IdePlugin`, ersatzweise den alten Schlüssel `HKCU\Software\BetterDelphiLSP\IdePlugin`; zeigt dessen `ServerPath` auf eine fehlende exe, gelten die Vorgaben.
 - **Beim User nach dem ersten Bau nötig:**
-  - Altes Package `BDLsp.IdePlugin.bpl` in der IDE entfernen, `Output\Win32\Debug\Bpl\Argus.IdePlugin.bpl` installieren, im Code Insight-Manager „Argus IDE Expert“ wählen.
+  - Altes Package `BDLsp.IdePlugin.bpl` in der IDE entfernen, `Output\Win32\Debug\Bpl\Argus.IDE.Expert.bpl` installieren, im Code Insight-Manager „Argus IDE Expert“ wählen.
   - Der benutzerdefinierte LSP-Eintrag `UserDefined\BetterDelphiLSP` zeigt noch auf `BetterDelphiLSP.exe`: im Dialog auf `ArgusServer.exe` umstellen (Name `Argus`).
   - Alte Ausgaben (`BetterDelphiLSP.exe`, `BDLsp.*.bpl/.dcp`, `%LOCALAPPDATA%\BetterDelphiLSP`) können gelöscht werden.
 - **Feature-Kette:** Beim Einmergen von `main` in die übrigen Branches folgen Umbenennungen von Dateien meist automatisch. Neue Units der Branches und ihre uses-Einträge danach nach denselben Regeln umbenennen: `BDLsp` → `Argus`, `bdlsp` → `argus`, `BetterDelphiLSP` → `ArgusServer` in `.dproj`/`.groupproj`/`.dpr`, sonst `Argus`; `delphi-lsp.json` → `argus.json`. Danach muss `git grep -n "BDLsp\|BetterDelphiLSP"` leer sein, außer an den Stellen für Abwärtskompatibilität.

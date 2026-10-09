@@ -160,10 +160,24 @@
         <DCCReference Include="Common\Editing\Argus.Common.Editing.Formatter.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.DocumentLinks.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.Colors.Tests.pas"/>
-        <DCCReference Include="..\Packages\Argus.IdePlugin\Source\Lsp\Argus.IdePlugin.Lsp.Client.pas"/>
-        <DCCReference Include="..\Packages\Argus.IdePlugin\Source\Lsp\Argus.IdePlugin.Lsp.Session.pas"/>
-        <DCCReference Include="..\Packages\Argus.IdePlugin\Source\Lsp\Argus.IdePlugin.Lsp.Adapters.ServerProcess.pas"/>
-        <DCCReference Include="IdePlugin\Argus.IdePlugin.Lsp.Tests.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Lsp\Argus.Core.Lsp.Client.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Lsp\Argus.Core.Lsp.Session.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Lsp\Argus.Core.Lsp.Adapters.ServerProcess.pas"/>
+        <DCCReference Include="IDE.Expert\Argus.Core.Lsp.Tests.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Contract.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Internals\Argus.Core.Completion.Internals.Async.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Composite.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Providers\Argus.Core.Completion.Providers.Fixed.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Providers\Argus.Core.Completion.Providers.Server.pas"/>
+        <DCCReference Include="IDE.Expert\Argus.Core.Completion.Tests.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Matching.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Controller.pas"/>
+        <DCCReference Include="IDE.Expert\Argus.Core.Completion.Controller.Tests.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Signature\Argus.Core.Signature.Contract.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Signature\Argus.Core.Signature.CallScanner.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Signature\Argus.Core.Signature.Controller.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Signature\Argus.Core.Signature.Providers.Server.pas"/>
+        <DCCReference Include="IDE.Expert\Argus.Core.Signature.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

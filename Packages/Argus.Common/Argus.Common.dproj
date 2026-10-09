@@ -200,7 +200,6 @@
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.DocumentSymbols.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.FoldingRanges.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.SelectionRanges.pas"/>
-        <DCCReference Include="Source\Lsp\Argus.Common.Lsp.SyntaxDiagnostics.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.TextDocumentSync.pas"/>
         <DCCReference Include="Source\Pascal\Argus.Common.Pascal.Contract.pas"/>
         <DCCReference Include="Source\Pascal\Argus.Common.Pascal.Lexer.pas"/>
@@ -210,7 +209,6 @@
         <DCCReference Include="Source\Pascal\Argus.Common.Pascal.IncludeFiles.pas"/>
         <DCCReference Include="Source\Pascal\Argus.Common.Pascal.Preprocessor.pas"/>
         <DCCReference Include="Source\Pascal\Argus.Common.Pascal.LanguageFeatures.pas"/>
-        <DCCReference Include="Source\Pascal\Argus.Common.Pascal.Preprocessor.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

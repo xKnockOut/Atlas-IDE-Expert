@@ -2,22 +2,22 @@
 
 Es gibt zwei Wege:
 
-- **Empfohlen: das IDE-Plugin** `Argus.IdePlugin` (ADR 0006). Es meldet sich als eigener Code Insight-Manager an und zeigt Hover und Gehe zu Definition an.
+- **Empfohlen: das IDE-Plugin** `Argus.IDE.Expert` (ADR 0006). Es meldet sich als eigener Code Insight-Manager an und zeigt Hover und Gehe zu Definition an.
 - **Eingebauter LSP-Client** (Abschnitt unten). Damit funktionieren Gliederung und Error Insight. Den Hover fremder Server zeigt RAD Studio auf diesem Weg aber nicht an.
 
 ## IDE-Plugin
 
-1. Das Package `Packages\Argus.IdePlugin\Argus.IdePlugin.dproj` (in der Projektgruppe enthalten) für **Win32** bauen (die IDE ist 32-Bit). Ergebnis: `Output\Win32\Debug\Bpl\Argus.IdePlugin.bpl`. Ist das Plugin installiert, sperrt die IDE diese BPL; zum Neubauen das Package vorher entladen.
+1. Das Package `Packages\Argus.IDE.Expert\Argus.IDE.Expert.dproj` (in der Projektgruppe enthalten) für **Win32** bauen (die IDE ist 32-Bit). Ergebnis: `Output\Win32\Debug\Bpl\Argus.IDE.Expert.bpl`. Ist das Plugin installiert, sperrt die IDE diese BPL; zum Neubauen das Package vorher entladen.
 2. In RAD Studio: *Komponente > Packages installieren > Hinzufügen*, die BPL auswählen.
 3. *Tools > Optionen > Editor > Sprache > Code Insight*: im Code Insight-Manager **„Argus IDE Expert“** wählen.
 4. Den Server findet das Plugin in dieser Reihenfolge:
-   - Registry `HKCU\Software\Argus\IdePlugin` (fehlt er, der frühere Schlüssel `HKCU\Software\ArgusServer\IdePlugin`), Wert `ServerPath` (optional `ServerArguments`, z. B. `--log C:\Temp\argus.log`)
+   - Registry `HKCU\Software\Argus\IdePlugin` (fehlt er, der frühere Schlüssel `HKCU\Software\BetterDelphiLSP\IdePlugin`), Wert `ServerPath` (optional `ServerArguments`, z. B. `--log C:\Temp\argus.log`)
    - `ArgusServer.exe` neben der BPL
    - `..\..\..\Win64\Debug\Bin\ArgusServer.exe`, im Repo also die Win64-Build-Ausgabe
 
 Fehler beim Start meldet das Plugin einmalig im Meldungsfenster. Stürzt der Server ab, startet es ihn bei der nächsten Anfrage neu.
 
-Zur Fehlersuche: Wert `Diagnose` (DWORD) = `1` unter `HKCU\Software\Argus\IdePlugin` setzen und die IDE neu starten. Das Plugin schreibt dann jeden Aufruf der IDE (Hover, Strg+Klick, Position und Ergebnis) in `Argus.IdePlugin.log` neben der BPL.
+Zur Fehlersuche: Wert `Diagnose` (DWORD) = `1` unter `HKCU\Software\Argus\IdePlugin` setzen und die IDE neu starten. Das Plugin schreibt dann jeden Aufruf der IDE (Hover, Strg+Klick, Position und Ergebnis) in `Argus.IDE.Expert.log` neben der BPL.
 
 Findet der Server keine Definition, passiert bei Strg+Klick nichts. Deklarationen in Include-Dateien (`{$I …}`) findet der Server erst mit dem Include-Resolver (#264).
 

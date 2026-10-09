@@ -1,0 +1,67 @@
+﻿package Argus.IDE.Expert;
+
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Argus IDE Expert (Code Insight-Manager)'}
+{$DESIGNONLY}
+{$IMPLICITBUILD ON}
+
+// Design-Time-Package für RAD Studio (ADR 0006): meldet Argus als
+// Code Insight-Manager für Delphi an und spricht über eine eigene LSP-Sitzung
+// mit dem Server. Nur Win32, weil die IDE (bds.exe) 32-Bit ist.
+// Bewusst ohne Argus.Common/Argus.Windows: ein einzelnes Package, das die IDE
+// ohne weitere BPLs laden kann.
+
+requires
+  rtl,
+  vcl,
+  designide;
+
+contains
+  Argus.Core.Lsp.Client in 'Source\Core\Lsp\Argus.Core.Lsp.Client.pas',
+  Argus.Core.Lsp.Session in 'Source\Core\Lsp\Argus.Core.Lsp.Session.pas',
+  Argus.Core.Lsp.Adapters.ServerProcess in 'Source\Core\Lsp\Argus.Core.Lsp.Adapters.ServerProcess.pas',
+  Argus.Core.Completion.Contract in 'Source\Core\Completion\Argus.Core.Completion.Contract.pas',
+  Argus.Core.Completion.Internals.Async in 'Source\Core\Completion\Internals\Argus.Core.Completion.Internals.Async.pas',
+  Argus.Core.Completion.Composite in 'Source\Core\Completion\Argus.Core.Completion.Composite.pas',
+  Argus.Core.Completion.Providers.Fixed in 'Source\Core\Completion\Providers\Argus.Core.Completion.Providers.Fixed.pas',
+  Argus.Core.Completion.Providers.Server in 'Source\Core\Completion\Providers\Argus.Core.Completion.Providers.Server.pas',
+  Argus.Core.Completion.Matching in 'Source\Core\Completion\Argus.Core.Completion.Matching.pas',
+  Argus.Core.Completion.Controller in 'Source\Core\Completion\Argus.Core.Completion.Controller.pas',
+  Argus.Core.Signature.Contract in 'Source\Core\Signature\Argus.Core.Signature.Contract.pas',
+  Argus.Core.Signature.CallScanner in 'Source\Core\Signature\Argus.Core.Signature.CallScanner.pas',
+  Argus.Core.Signature.Controller in 'Source\Core\Signature\Argus.Core.Signature.Controller.pas',
+  Argus.Core.Signature.Providers.Server in 'Source\Core\Signature\Argus.Core.Signature.Providers.Server.pas',
+  Argus.UI.Signature.Hint in 'Source\UI\Signature\Argus.UI.Signature.Hint.pas',
+  Argus.UI.Popup.Window in 'Source\UI\Popup\Argus.UI.Popup.Window.pas',
+  Argus.UI.Completion.Popup in 'Source\UI\Completion\Argus.UI.Completion.Popup.pas',
+  Argus.IDE.Editor.Buffer in 'Source\IDE\Editor\Argus.IDE.Editor.Buffer.pas',
+  Argus.IDE.Editor.KeyHook in 'Source\IDE\Editor\Argus.IDE.Editor.KeyHook.pas',
+  Argus.IDE.Signature.Editor in 'Source\IDE\Signature\Argus.IDE.Signature.Editor.pas',
+  Argus.IDE.Completion.Editor in 'Source\IDE\Completion\Argus.IDE.Completion.Editor.pas',
+  Argus.IDE.CodeInsight.Manager in 'Source\IDE\CodeInsight\Argus.IDE.CodeInsight.Manager.pas',
+  Argus.IDE.CodeInsight.Composition in 'Source\IDE\CodeInsight\Argus.IDE.CodeInsight.Composition.pas';
+
+end.

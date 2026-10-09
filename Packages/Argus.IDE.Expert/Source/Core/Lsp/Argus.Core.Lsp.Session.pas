@@ -1,4 +1,4 @@
-﻿unit Argus.IdePlugin.Lsp.Session;
+﻿unit Argus.Core.Lsp.Session;
 
 // LSP-Sitzung des IDE-Plugins (ADR 0006): initialize, Dokumentabgleich und die
 // Anfragen, die die IDE über den Code Insight-Manager stellt.
@@ -13,7 +13,7 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Argus.IdePlugin.Lsp.Client;
+  Argus.Core.Lsp.Client;
 
 type
   TLspLocation = record
@@ -52,6 +52,14 @@ type
     function Hover(const AFileName, AText: string; ALine, ACharacter: Integer): string;
     function Definition(const AFileName, AText: string; ALine, ACharacter: Integer;
       out ALocation: TLspLocation): Boolean;
+    /// <summary>
+    /// textDocument/completion ohne Abgleich: Sync vorher im Hauptthread. Darf aus einem
+    /// anderen Thread kommen, solange die Sitzung lebt. Liefert die Antwort (CompletionList,
+    /// CompletionItem[] oder nil); der Aufrufer gibt sie frei.
+    /// </summary>
+    function Completion(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
+    /// <summary>textDocument/signatureHelp ohne Abgleich, wie Completion.</summary>
+    function SignatureHelp(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
     property Initialized: Boolean read FInitialized;
   end;
 
@@ -202,6 +210,10 @@ begin
   Hover.AddPair('contentFormat', Formats);
   TextDocument := TJSONObject.Create;
   TextDocument.AddPair('hover', Hover);
+  // Dokumentation der Vervollständigung als Klartext, keine Snippets (#408).
+  TextDocument.AddPair('completion', TJSONObject.Create(TJSONPair.Create('completionItem',
+    TJSONObject.Create.AddPair('snippetSupport', TJSONBool.Create(False))
+      .AddPair('documentationFormat', TJSONArray.Create.Add('plaintext')))));
   Capabilities := TJSONObject.Create;
   Capabilities.AddPair('textDocument', TextDocument);
   Params := TJSONObject.Create;
@@ -314,6 +326,18 @@ begin
   finally
     Response.Free;
   end;
+end;
+
+function TLspSession.Completion(const AFileName: string; ALine, ACharacter: Integer;
+  ATimeoutMs: Cardinal): TJSONValue;
+begin
+  Result := FClient.Request('textDocument/completion', PositionParams(AFileName, ALine, ACharacter), ATimeoutMs);
+end;
+
+function TLspSession.SignatureHelp(const AFileName: string; ALine, ACharacter: Integer;
+  ATimeoutMs: Cardinal): TJSONValue;
+begin
+  Result := FClient.Request('textDocument/signatureHelp', PositionParams(AFileName, ALine, ACharacter), ATimeoutMs);
 end;
 
 end.

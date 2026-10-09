@@ -11,7 +11,7 @@ Grundlage ist das Konzept „Rollenbasierte Kopplung und Kohäsion“ (Entwurf, 
 | `Argus.Common` | Platform-Package | plattformunabhängige RTL (`System.*`) | Windows (`Winapi.*`, `System.Win.*`), VCL, FMX, `Argus.Windows` |
 | `Argus.Windows` | Platform-Package | RTL, `Winapi.*`, `System.Win.*`, `Argus.Common` | VCL, FMX |
 | `ArgusServer` | Anwendung (Host) | beide Packages, RTL, Windows | VCL (Konsolenanwendung) |
-| `Argus.IdePlugin` | Design-Time-Package für RAD Studio (Win32, ADR 0006) | RTL, `Winapi.*`, `System.Win.*`, VCL, `designide` (Open Tools API) | `Argus.Common`, `Argus.Windows` (eigenständig, damit die IDE nur ein BPL laden muss) |
+| `Argus.IDE.Expert` | Design-Time-Package für RAD Studio (Win32, ADR 0006) | RTL, `Winapi.*`, `System.Win.*`, VCL, `designide` (Open Tools API) | `Argus.Common`, `Argus.Windows` (eigenständig, damit die IDE nur ein BPL laden muss) |
 | `Argus.Tests` | Testprojekt (DUnitX) | alles, was getestet wird | – |
 
 Abhängigkeitsrichtung:
@@ -35,13 +35,16 @@ Packages/
   Argus.Windows/
     Argus.Windows.dpk/.dproj
     Source/<Feature>/
+  Argus.IDE.Expert/
+    Argus.IDE.Expert.dpk/.dproj
+    Source/Core/  Source/UI/  Source/IDE/   (Schichten des Plugins, #406)
 Application/
   ArgusServer.dpr/.dproj
   Source/
     Foundation/  Core/  Adapters/  Platform/  Features/  Shell/   (Host-Rollen, Konzept 7.2/7.3)
 Tests/
   Argus.Tests.dpr/.dproj
-  Common/  Windows/  Application/  (Tests je Ausgabeartefakt)
+  Common/  Windows/  Application/  IDE.Expert/  (Tests je Ausgabeartefakt)
   Data/Protocol/                   aufgezeichnete Nachrichtenfolgen für Protokolltests (JSON)
 Editors/VSCode/                    minimale VS-Code-Erweiterung (TypeScript), startet den Server
 Tools/                             Hilfsskripte
@@ -56,9 +59,10 @@ Die Anwendung und das Testprojekt binden die Packages statisch ein: Sie finden d
 Ausgabeartefakt.Feature.Rolle.Sache
 ```
 
-- Präfixe der Ausgabeartefakte (Whitelist): `Argus.Common`, `Argus.Windows`, `Argus.IdePlugin`
+- Präfixe der Ausgabeartefakte (Whitelist): `Argus.Common`, `Argus.Windows`, `Argus.IDE.Expert`
 - Units der Anwendung tragen kein Präfix, z. B. `Shell.Application`
 - Units im Wurzelverzeichnis eines Features tragen keinen Rollenbezeichner, z. B. `Argus.Common.Product.Version`
+- Ausnahme Plugin (#406): Die Units von `Argus.IDE.Expert` heißen nach ihrer Schicht `Argus.Core.*` (Datenmodell, Matching, LSP-Client; ohne VCL und Open Tools API), `Argus.UI.*` (Fenster; nur VCL) und `Argus.IDE.*` (Open Tools API, Tastaturbindung, Einstellungen), darunter `Feature.Rolle.Sache`. `Core` und `UI` verwenden nie `Argus.IDE.*`, `Core` nie `Argus.UI.*`; geprüft durch `Tools/Check-PackageDependencies.ps1`. So lassen sich `Core` und `UI` später ohne Codeänderung in ein Runtime-Package auslagern.
 - Rollenbezeichner sind reserviert: `Contract`, `Providers`, `Adapters`, `Internals`, `Hosting`, `Composition` (Features) sowie `Foundation`, `Core`, `Shell`, `Adapters`, `Platform` (Host)
 
 ## Importregeln
@@ -110,8 +114,14 @@ Komposition von Hand (keine Container-Bibliothek). Composition-Units tragen desh
 | `Argus.Windows.Documents` (Platform) | `PathCanonicalizer` | Kanonische Pfade über `GetFinalPathNameByHandle` (Junctions, Symlinks, subst, 8.3-Namen, lange Pfade) für die Dokumentschlüssel |
 | `Argus.Windows.Editing` (Platform) | `SystemColors` | Aktuelle Systemfarben (`GetSysColor`) für die Farbvorschau |
 | `Argus.Windows.Diagnostics` (Platform) | `DebugOutput`, `Adapters.DebugOutputSink`, `StackTrace` | `OutputDebugString`, Log-Senke dafür, Stacktraces für Ausnahmen (`Modul+$Offset`) |
-| `Argus.IdePlugin.Lsp` (Plugin) | `Client`, `Session`, `Adapters.ServerProcess` | Schlanker LSP-Client (Rahmung, Antwortzuordnung, Zeitlimit, Server-Anfragen mit null beantworten), Sitzung mit Dokumentabgleich (didOpen, didChange mit ganzem Text), Hover und Definition, Pfad ↔ URI, Editorspalte → Zeichenindex; Serverprozess mit Pipes und Lese-Thread |
-| `Argus.IdePlugin.CodeInsight` (Plugin) | `Hosting.Manager`, `Composition` | Code Insight-Manager „ArgusServer (Plugin)“ für Delphi (`IOTACodeInsightManager`): Symbolhinweis (`GetHintText`) und Browse (`GotoDefinition`); startet den Server bei Bedarf neu; Anmeldung beim Laden des Packages |
+| `Argus.Core.Lsp` (Plugin) | `Client`, `Session`, `Adapters.ServerProcess` | Schlanker LSP-Client (Rahmung, Antwortzuordnung, Zeitlimit, Server-Anfragen mit null beantworten), Sitzung mit Dokumentabgleich (didOpen, didChange mit ganzem Text), Hover und Definition, Pfad ↔ URI, Editorspalte → Zeichenindex; Serverprozess mit Pipes und Lese-Thread |
+| `Argus.Core.Completion` (Plugin) | `Contract`, `Composite`, `Internals.Async`, `Providers.Server`, `Providers.Fixed` | Datenquelle der Vervollständigung (#408): Kontext und Eintrag, `IArgusCompletionProvider` mit Senke (Teilmengen, genau ein `Complete`, nach `Cancel` nichts mehr), Zusammenführen mehrerer Quellen, Quelle Server (Abgleich im Hauptthread, Anfrage im Hintergrund, LSP-Einträge übersetzen), feste Testdaten mit optionaler Verzögerung |
+| `Argus.Core.Completion` (Plugin, Ablauf) | `Matching`, `Controller` | Filtern und Sortieren im Plugin (#409: genauer Name, Anfang, Wortanfänge/CamelCase, Teilstring, Teilfolge; bei Gleichstand Reihenfolge der Quelle); Ablauf ohne Fenster (#410, #414): Start, Einträge aus Hintergrund-Threads per `TThread.Queue` in den Hauptthread, Neu-Filtern beim Tippen, Tasten, Übernahme, Schließen; Anzeige über `IArgusCompletionView` |
+| `Argus.UI.Popup` / `Argus.UI.Completion` (Plugin) | `Window`, `Popup` | Fenster ohne Fokus (#410: `WS_EX_NOACTIVATE`, `MA_NOACTIVATE`, Zeigen mit `SWP_NOACTIVATE`), Farben aus dem IDE-Thema; Vervollständigungs-Popup als virtuelle Liste (#413) mit Kennbuchstabe, Name, Signatur, schmaler Scrollleiste, Mausauswahl und Mausrad; Platzierung unter bzw. über dem Caret im Arbeitsbereich des Monitors |
+| `Argus.IDE.Editor` / `Argus.IDE.Completion` (Plugin) | `Buffer`, `Editor` | Editorpuffer lesen (ganz, eine Zeile), Tabulatorweite, LSP-Position → Byte-Offset; Vervollständigung im Editor: Präfix und Caret am Cursor, Tastaturbindung für ↑ ↓ Bild↑ Bild↓ Pos1 Ende Enter Tab Esc nur bei offenem Popup, Neu-Filtern über `EditorViewModified` und Zeitgeber, Schließen bei Fokusverlust, Scrollen, Tab-Wechsel oder Verlassen des Worts (#414), Übernahme samt uses-Ergänzung als ein Undo-Schritt |
+| `Argus.Core.Signature` / `Argus.UI.Signature` / `Argus.IDE.Signature` (Plugin) | `Contract`, `CallScanner`, `Controller`, `Providers.Server`, `Hint`, `Editor` | Parameter-Hint (#436, #437, #440): Aufruf am Caret lokal finden und aktiven Parameter zählen (Strings, Kommentare, `[...]`, innere Aufrufe und `if (` ausgenommen), Signaturen über `textDocument/signatureHelp` im Hintergrund, automatischer Wechsel zur passenden Überladung und Alt+↑/↓, Hint ohne Fokus mit hervorgehobenem Parameter und dessen Doku, unter bzw. bei offenem Popup über der Zeile; schließt beim Verlassen des Aufrufs, Esc, Fokusverlust |
+| `Argus.IDE.Editor.KeyHook` (Plugin) | – | Gemeinsamer Tastatur-Hook des Hauptthreads, nur solange ein Argus-Fenster Tasten braucht; Clients nach Priorität (Vervollständigung vor Parameter-Hint); keine IDE-Tastaturbindung für Navigationstasten |
+| `Argus.IDE.CodeInsight` (Plugin) | `Manager`, `Composition` | Code Insight-Manager „Argus IDE Expert“ für Delphi (`IOTACodeInsightManager`): Symbolhinweis (`GetHintText`) und Browse (`GotoDefinition`); startet den Server bei Bedarf neu; Anmeldung beim Laden des Packages |
 | `Shell` (Host) | `Shell.Application`, `Shell.Composition`, `Shell.CommandLine`, `Shell.Workspace`, `Shell.Linter` | Einstiegspunkt, Kommandozeile, Komposition von Hand, Capabilities; je Arbeitsbereichsordner eigene Konfiguration, eigenes Projekt und eigener Indexaufbau in einen gemeinsamen Symbolindex |
 
 Ablauf einer Anfrage:

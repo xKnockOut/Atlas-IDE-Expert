@@ -12,7 +12,7 @@
         <Projects Include="Application\ArgusServer.dproj">
             <Dependencies>Packages\Argus.Common\Argus.Common.dproj;Packages\Argus.Windows\Argus.Windows.dproj</Dependencies>
         </Projects>
-        <Projects Include="Packages\Argus.IdePlugin\Argus.IdePlugin.dproj">
+        <Projects Include="Packages\Argus.IDE.Expert\Argus.IDE.Expert.dproj">
             <Dependencies/>
         </Projects>
         <Projects Include="Tests\Argus.Tests.dproj">
@@ -53,14 +53,14 @@
     <Target Name="ArgusServer:Make">
         <MSBuild Projects="Application\ArgusServer.dproj" Targets="Make"/>
     </Target>
-    <Target Name="Argus_IdePlugin">
-        <MSBuild Projects="Packages\Argus.IdePlugin\Argus.IdePlugin.dproj"/>
+    <Target Name="Argus_IDE_Expert">
+        <MSBuild Projects="Packages\Argus.IDE.Expert\Argus.IDE.Expert.dproj"/>
     </Target>
-    <Target Name="Argus_IdePlugin:Clean">
-        <MSBuild Projects="Packages\Argus.IdePlugin\Argus.IdePlugin.dproj" Targets="Clean"/>
+    <Target Name="Argus_IDE_Expert:Clean">
+        <MSBuild Projects="Packages\Argus.IDE.Expert\Argus.IDE.Expert.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="Argus_IdePlugin:Make">
-        <MSBuild Projects="Packages\Argus.IdePlugin\Argus.IdePlugin.dproj" Targets="Make"/>
+    <Target Name="Argus_IDE_Expert:Make">
+        <MSBuild Projects="Packages\Argus.IDE.Expert\Argus.IDE.Expert.dproj" Targets="Make"/>
     </Target>
     <Target Name="Argus_Tests">
         <MSBuild Projects="Tests\Argus.Tests.dproj"/>
@@ -72,13 +72,13 @@
         <MSBuild Projects="Tests\Argus.Tests.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="Argus_Common;Argus_Windows;ArgusServer;Argus_IdePlugin;Argus_Tests"/>
+        <CallTarget Targets="Argus_Common;Argus_Windows;ArgusServer;Argus_IDE_Expert;Argus_Tests"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="Argus_Common:Clean;Argus_Windows:Clean;ArgusServer:Clean;Argus_IdePlugin:Clean;Argus_Tests:Clean"/>
+        <CallTarget Targets="Argus_Common:Clean;Argus_Windows:Clean;ArgusServer:Clean;Argus_IDE_Expert:Clean;Argus_Tests:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="Argus_Common:Make;Argus_Windows:Make;ArgusServer:Make;Argus_IdePlugin:Make;Argus_Tests:Make"/>
+        <CallTarget Targets="Argus_Common:Make;Argus_Windows:Make;ArgusServer:Make;Argus_IDE_Expert:Make;Argus_Tests:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

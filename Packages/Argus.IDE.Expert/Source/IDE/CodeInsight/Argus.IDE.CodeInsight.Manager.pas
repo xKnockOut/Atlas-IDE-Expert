@@ -1,16 +1,19 @@
-﻿unit Argus.IdePlugin.CodeInsight.Hosting.Manager;
+﻿unit Argus.IDE.CodeInsight.Manager;
 
 // Code Insight-Manager für Delphi in RAD Studio (ADR 0006). Die IDE ruft ihn
 // direkt auf; er fragt Argus über eine eigene LSP-Sitzung.
-// Umgesetzt: Symbolhinweis (Hover, GetHintText) und Browse (Strg+Klick,
-// GotoDefinition). Vervollständigung und Parameterhilfe folgen.
+// Umgesetzt: Symbolhinweis (Hover, GetHintText), Browse (Strg+Klick,
+// GotoDefinition) und Vervollständigung im eigenen Popup (#410): Strg+Leer und
+// "." lösen sie aus, InvokeCodeCompletion öffnet das Popup und meldet der IDE
+// False, damit sie keine eigene Liste zeigt (#407). Parameterhilfe ebenso im eigenen
+// Hint (#436): "(", "," und Strg+Umschalt+Leer, InvokeParameterCodeInsight meldet False.
 //
 // Server: Pfad und Argumente aus HKCU\Software\Argus\IdePlugin
 // (ServerPath, ServerArguments), ersatzweise aus dem früheren Schlüssel
 // HKCU\Software\BetterDelphiLSP\IdePlugin (#403). Ohne Eintrag: ArgusServer.exe neben dem
 // Plugin, sonst ..\..\..\Win64\Debug\Bin\ (Ausgabeordner des Repos).
 // Diagnose = 1 (DWORD) im selben Schlüssel protokolliert die Aufrufe der IDE
-// in Argus.IdePlugin.log neben dem Plugin.
+// in Argus.IDE.Expert.log neben dem Plugin.
 
 interface
 
@@ -18,8 +21,10 @@ uses
   System.SysUtils,
   System.Classes,
   ToolsAPI,
-  Argus.IdePlugin.Lsp.Adapters.ServerProcess,
-  Argus.IdePlugin.Lsp.Session;
+  Argus.Core.Lsp.Adapters.ServerProcess,
+  Argus.Core.Lsp.Session,
+  Argus.IDE.Completion.Editor,
+  Argus.IDE.Signature.Editor;
 
 type
   TArgusCodeInsightManager = class(TInterfacedObject, IOTACodeInsightManager, IOTACodeInsightSelection)
@@ -29,13 +34,16 @@ type
     FSession: TLspSession;
     FLastError: string;
     FDiagnose: Boolean;
+    FCompletion: TArgusEditorCompletion;
+    FSignature: TArgusEditorSignature;
     function EnsureSession: Boolean;
     procedure StopSession;
     procedure ReportError(const AMessage: string);
     procedure Diagnose(const AMessage: string);
     function CurrentEditView: IOTAEditView;
-    class function BufferText(const ABuffer: IOTAEditBuffer): string; static;
-    class function TabWidth(const ABuffer: IOTAEditBuffer): Integer; static;
+    function Completion: TArgusEditorCompletion;
+    function Signature: TArgusEditorSignature;
+    function SessionOrNil: TLspSession;
     class function ServerPath(out AArguments: string): string; static;
     class function DiagnoseEnabled: Boolean; static;
     class function DiagnoseLog: string; static;
@@ -78,7 +86,8 @@ uses
   System.IOUtils,
   System.StrUtils,
   System.Win.Registry,
-  Winapi.Windows;
+  Winapi.Windows,
+  Argus.IDE.Editor.Buffer;
 
 const
   RegistryKey = 'Software\Argus\IdePlugin';
@@ -113,6 +122,9 @@ end;
 
 destructor TArgusCodeInsightManager.Destroy;
 begin
+  // Vor der Sitzung: wartet auf laufende Anfragen und meldet Tasten und Beobachter ab.
+  FreeAndNil(FSignature);
+  FreeAndNil(FCompletion);
   StopSession;
   inherited;
 end;
@@ -198,6 +210,11 @@ end;
 
 procedure TArgusCodeInsightManager.StopSession;
 begin
+  // Laufende Anfragen der Vervollständigung nutzen die Sitzung noch.
+  if FCompletion <> nil then
+    FCompletion.Shutdown;
+  if FSignature <> nil then
+    FSignature.Shutdown;
   FreeAndNil(FSession);
   FreeAndNil(FServer);
 end;
@@ -243,44 +260,46 @@ begin
     Result := (BorlandIDEServices as IOTAEditorServices).TopView;
 end;
 
-class function TArgusCodeInsightManager.BufferText(const ABuffer: IOTAEditBuffer): string;
-const
-  ChunkSize = 65536;
-var
-  Reader: IOTAEditReader;
-  Chunk: AnsiString;
-  Bytes: TBytes;
-  Position, Count: Integer;
+function TArgusCodeInsightManager.SessionOrNil: TLspSession;
 begin
-  Reader := ABuffer.CreateReader;
-  Position := 0;
-  repeat
-    SetLength(Chunk, ChunkSize);
-    Count := Reader.GetText(Position, PAnsiChar(Chunk), ChunkSize);
-    if Count > 0 then
-    begin
-      SetLength(Bytes, Length(Bytes) + Count);
-      Move(Chunk[1], Bytes[Length(Bytes) - Count], Count);
-      Inc(Position, Count);
-    end;
-  until Count < ChunkSize;
-  // Der Editorpuffer ist UTF-8.
-  Result := TEncoding.UTF8.GetString(Bytes);
+  if EnsureSession then
+    Result := FSession
+  else
+    Result := nil;
 end;
 
-class function TArgusCodeInsightManager.TabWidth(const ABuffer: IOTAEditBuffer): Integer;
-var
-  Stops: string;
+function TArgusCodeInsightManager.Signature: TArgusEditorSignature;
 begin
-  Result := 8;
-  if ABuffer.BufferOptions <> nil then
-  begin
-    Stops := Trim(ABuffer.BufferOptions.TabStops);
-    if Stops <> '' then
-      Result := StrToIntDef(Stops.Split([' '])[0], 8);
-    if Result < 1 then
-      Result := 8;
-  end;
+  if FSignature = nil then
+    FSignature := TArgusEditorSignature.Create(
+      function: TLspSession
+      begin
+        Result := SessionOrNil;
+      end,
+      function: Boolean
+      begin
+        Result := (FCompletion <> nil) and FCompletion.Visible;
+      end,
+      procedure(const AMessage: string)
+      begin
+        Diagnose(AMessage);
+      end);
+  Result := FSignature;
+end;
+
+function TArgusCodeInsightManager.Completion: TArgusEditorCompletion;
+begin
+  if FCompletion = nil then
+    FCompletion := TArgusEditorCompletion.Create(
+      function: TLspSession
+      begin
+        Result := SessionOrNil;
+      end,
+      procedure(const AMessage: string)
+      begin
+        Diagnose(AMessage);
+      end);
+  Result := FCompletion;
 end;
 
 function TArgusCodeInsightManager.GetHintText(HintLine, HintCol: Integer): string;
@@ -295,12 +314,12 @@ begin
     View := CurrentEditView;
     if (View = nil) or (View.Buffer = nil) or not EnsureSession then
       Exit;
-    Text := BufferText(View.Buffer);
+    Text := TArgusEditorBuffer.Text(View.Buffer);
     Lines := Text.Split([#13#10, #10]);
     if (HintLine < 1) or (HintLine > Length(Lines)) then
       Exit;
     Result := FSession.Hover(View.Buffer.FileName, Text, HintLine - 1,
-      TLspSession.ColumnToIndex(Lines[HintLine - 1], HintCol, TabWidth(View.Buffer)));
+      TLspSession.ColumnToIndex(Lines[HintLine - 1], HintCol, TArgusEditorBuffer.TabWidth(View.Buffer)));
     Diagnose(Format('Hover in %s, Zeile %d, Spalte %d (Cursor %d/%d): %s', [ExtractFileName(View.Buffer.FileName),
       HintLine, HintCol, View.CursorPos.Line, View.CursorPos.Col, IfThen(Result = '', 'leer', Result)]));
   except
@@ -337,7 +356,7 @@ begin
     end;
     if not EnsureSession then
       Exit;
-    Text := BufferText(View.Buffer);
+    Text := TArgusEditorBuffer.Text(View.Buffer);
     Lines := Text.Split([#13#10, #10]);
     // Die synchrone Schnittstelle übergibt keine Klickposition; maßgeblich ist der Cursor.
     Cursor := View.CursorPos;
@@ -347,7 +366,7 @@ begin
         [Cursor.Line, Length(Lines)]));
       Exit;
     end;
-    Character := TLspSession.ColumnToIndex(Lines[Cursor.Line - 1], Cursor.Col, TabWidth(View.Buffer));
+    Character := TLspSession.ColumnToIndex(Lines[Cursor.Line - 1], Cursor.Col, TArgusEditorBuffer.TabWidth(View.Buffer));
     if FSession.Definition(View.Buffer.FileName, Text, Cursor.Line - 1, Character, Location) then
     begin
       AFileName := Location.FileName;
@@ -409,9 +428,9 @@ end;
 
 procedure TArgusCodeInsightManager.AllowCodeInsight(var Allow: Boolean; const Key: Char);
 begin
-  // #2 Browse (Strg+Klick), #3 Symbolhinweis; Vervollständigung (#0) und
-  // Parameterhilfe (#1) folgen.
-  Allow := CharInSet(Key, [#2, #3]);
+  // #0 Vervollständigung (Strg+Leer), "." Vervollständigung nach Punkt, #2 Browse
+  // (Strg+Klick), #3 Symbolhinweis; #1 Parameterhilfe (Strg+Umschalt+Leer), "(" und ",".
+  Allow := CharInSet(Key, [#0, '.', #1, '(', ',', #2, #3]);
   Diagnose(Format('AllowCodeInsight(#%d) = %s', [Ord(Key), BoolToStr(Allow, True)]));
 end;
 
@@ -465,23 +484,56 @@ procedure TArgusCodeInsightManager.GetCodeInsightType(AChar: Char; AElement: Int
 begin
   InvokeType := itManual;
   case AChar of
+    #0: CodeInsightType := citCodeInsight;
+    '.':
+      begin
+        // Nach der in den Editoroptionen eingestellten Verzögerung.
+        CodeInsightType := citCodeInsight;
+        InvokeType := itTimer;
+      end;
+    #1: CodeInsightType := citParameterCodeInsight;
+    '(', ',':
+      begin
+        CodeInsightType := citParameterCodeInsight;
+        InvokeType := itTimer;
+      end;
     #2: CodeInsightType := citBrowseCodeInsight;
     #3: CodeInsightType := citHintCodeInsight;
   else
     CodeInsightType := citNone;
   end;
+  // In Kommentaren und Strings keine Vervollständigung.
+  if (CodeInsightType in [citCodeInsight, citParameterCodeInsight]) and
+    ((AElement = atComment) or (AElement = atString)) then
+    CodeInsightType := citNone;
   Diagnose(Format('GetCodeInsightType(#%d, Element %d) = %d', [Ord(AChar), AElement, Ord(CodeInsightType)]));
 end;
 
 function TArgusCodeInsightManager.InvokeCodeCompletion(HowInvoked: TOTAInvokeType; var Str: string): Boolean;
 begin
+  // False: Die IDE zeigt keine eigene Liste; unser Popup übernimmt (#407, #410).
   Result := False;
+  Diagnose(Format('InvokeCodeCompletion(%d, "%s")', [Ord(HowInvoked), Str]));
+  try
+    Completion.Invoke(CurrentEditView);
+  except
+    on E: Exception do
+      ReportError('Vervollständigung: ' + E.Message);
+  end;
 end;
 
 function TArgusCodeInsightManager.InvokeParameterCodeInsight(HowInvoked: TOTAInvokeType;
   var SelectedIndex: Integer): Boolean;
 begin
+  // False: Die IDE zeigt keine eigene Parameterhilfe; unser Hint übernimmt (#436).
   Result := False;
+  Diagnose(Format('InvokeParameterCodeInsight(%d)', [Ord(HowInvoked)]));
+  try
+    Signature.Invoke(CurrentEditView);
+  except
+    on E: Exception do
+      ReportError('Parameterhilfe: ' + E.Message);
+  end;
 end;
 
 procedure TArgusCodeInsightManager.ParameterCodeInsightAnchorPos(var EdPos: TOTAEditPos);
