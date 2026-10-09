@@ -27,6 +27,9 @@ type
   public
     /// <summary>Innerster offener Aufruf vor ACaret (0-basierter Zeichenoffset in AText).</summary>
     class function Scan(const AText: string; ACaret: Integer): TArgusCallSite; static;
+    /// <summary>ANew ist AOld mit genau einem entfernten ")" (Rücktaste oder Entf). Dann soll der
+    /// Hint wieder erscheinen, wenn der Caret danach in einem Aufruf steht.</summary>
+    class function RemovedClosingParen(const AOld, ANew: string): Boolean; static;
   end;
 
 implementation
@@ -172,6 +175,19 @@ begin
   finally
     Stack.Free;
   end;
+end;
+
+class function TArgusCallScanner.RemovedClosingParen(const AOld, ANew: string): Boolean;
+var
+  Index: Integer;
+begin
+  if Length(AOld) <> Length(ANew) + 1 then
+    Exit(False);
+  // Erste Abweichung; dort muss die Klammer gestanden haben, der Rest ist gleich.
+  Index := 1;
+  while (Index <= Length(ANew)) and (AOld[Index] = ANew[Index]) do
+    Inc(Index);
+  Result := (AOld[Index] = ')') and (Copy(AOld, Index + 1, MaxInt) = Copy(ANew, Index, MaxInt));
 end;
 
 end.
