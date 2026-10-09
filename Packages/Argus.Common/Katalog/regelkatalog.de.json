@@ -89,6 +89,16 @@
       "id": "unused-assignment",
       "name": "Zugewiesener Wert ungenutzt",
       "description": "Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077."
+    },
+    {
+      "id": "declared-not-implemented",
+      "name": "Deklariert, aber nicht implementiert",
+      "description": "Eine Methode ist in einer Klasse, einem Record oder Objekt deklariert, hat aber keinen Rumpf im implementation-Abschnitt. Der Compiler meldet das erst beim Kompilieren (E2065)."
+    },
+    {
+      "id": "implemented-not-declared",
+      "name": "Implementiert, aber nicht deklariert",
+      "description": "Ein Methodenrumpf TFoo.Bar hat keine passende Deklaration im Typ."
     }
   ]
 }

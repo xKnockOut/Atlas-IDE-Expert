@@ -22,6 +22,8 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`unused-local`](#unused-local) | Ungenutzte lokale Variable | Code Smell | Hinweis |
 | [`unused-parameter`](#unused-parameter) | Ungenutzter Parameter | Code Smell | Hinweis |
 | [`unused-assignment`](#unused-assignment) | Zugewiesener Wert ungenutzt | Code Smell | Hinweis |
+| [`declared-not-implemented`](#declared-not-implemented) | Deklariert, aber nicht implementiert | Bug | Fehler |
+| [`implemented-not-declared`](#implemented-not-declared) | Implementiert, aber nicht deklariert | Bug | Fehler |
 
 <a id="syntax"></a>
 ## syntax
@@ -452,5 +454,79 @@ var
 begin
   I := Calc;
   Bar(I);
+end;
+```
+
+<a id="declared-not-implemented"></a>
+## declared-not-implemented
+
+**Deklariert, aber nicht implementiert** · Bug · Fehler
+
+Eine Methode ist in einer Klasse, einem Record oder Objekt deklariert, hat aber keinen Rumpf im implementation-Abschnitt. Der Compiler meldet das erst beim Kompilieren (E2065).
+
+Mit Treffer:
+
+```pascal
+type
+  TFoo = class
+    procedure Run;
+  end;
+
+implementation
+
+end.
+```
+
+Richtig:
+
+```pascal
+type
+  TFoo = class
+    procedure Run;
+  end;
+
+implementation
+
+procedure TFoo.Run;
+begin
+end;
+
+end.
+```
+
+<a id="implemented-not-declared"></a>
+## implemented-not-declared
+
+**Implementiert, aber nicht deklariert** · Bug · Fehler
+
+Ein Methodenrumpf TFoo.Bar hat keine passende Deklaration im Typ.
+
+Mit Treffer:
+
+```pascal
+type
+  TFoo = class
+  end;
+
+implementation
+
+procedure TFoo.Run;
+begin
+end;
+```
+
+Richtig:
+
+```pascal
+type
+  TFoo = class
+  private
+    procedure Run;
+  end;
+
+implementation
+
+procedure TFoo.Run;
+begin
 end;
 ```
