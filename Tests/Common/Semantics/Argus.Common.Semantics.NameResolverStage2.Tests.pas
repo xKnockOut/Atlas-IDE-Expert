@@ -254,7 +254,7 @@ begin
   R := ResolveAt(Source, 'Format(''%d'', [1], FS)');
   Assert.AreEqual(3, R.MaxArgs);
   // Negativ: drei Argumente wählen nie die Überladung mit zwei.
-  Assert.AreEqual(1, Length(ResolveAllAt(Source, 'Format(''%d'', [1], FS)')));
+  Assert.AreEqual(1, Integer(Length(ResolveAllAt(Source, 'Format(''%d'', [1], FS)'))));
 end;
 
 procedure TNameResolverStage2Tests.AmbiguousOverloadsGiveAllCandidates;
@@ -262,7 +262,7 @@ const
   Source = Head + '  S := IntToStr(I);'#10'  S := IntToStr(Name);' + Tail;
 begin
   // Integer passt genau, Int64 nur der Familie nach: beide gleich gut, also beide.
-  Assert.AreEqual(2, Length(ResolveAllAt(Source, 'IntToStr(I)')));
+  Assert.AreEqual(2, Integer(Length(ResolveAllAt(Source, 'IntToStr(I)'))));
   Assert.IsTrue(ResolveAt(Source, 'IntToStr(I)').Found);
 end;
 
@@ -389,7 +389,7 @@ var
 begin
   Units := TIndexCache.Deserialize(TIndexCache.Serialize([TIndexExtractor.ExtractText(UnitCollections,
     'C:\Lib\System.Generics.Collections.pas', nil), TIndexExtractor.ExtractText(UnitKunden, 'C:\P\Kunden.pas', nil)]));
-  Assert.AreEqual(2, Length(Units));
+  Assert.AreEqual(2, Integer(Length(Units)));
   Checked := 0;
   for Symbol in Units[0].Symbols do
     if (Symbol.Name = 'TList') then
