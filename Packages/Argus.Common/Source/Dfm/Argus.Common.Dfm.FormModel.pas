@@ -7,8 +7,8 @@
 // - je Ereignis (OnClick = Button1Click) die Methode,
 // - geerbte Formulare (inherited) mit dem Vorfahren aus der Unit,
 // - Verweise auf andere Module (DataSource = DM.dsKunden).
-// Binäre Formulardateien (Kennung TPF0) werden als nicht lesbar gemeldet,
-// nie still übergangen.
+// Binäre Formulardateien (Kennung TPF0) werden gemeldet (Binary) und über die
+// Umwandlung in Text (#122) trotzdem gelesen.
 //
 // Alle Stellen, die DFM und Code verbinden (Referenzsuche, Umbenennen,
 // Vervollständigung, Hover), lesen die Formulardatei über dieses Modell.
@@ -73,7 +73,7 @@ type
     function Occurrences(const AName: string): TArray<TTextRange>;
     /// <summary>Formularobjekt mit diesem Namen; nil ohne.</summary>
     function FindComponent(const AName: string): TDfmObject;
-    /// <summary>Binär und daher nicht lesbar; Document ist dann nil.</summary>
+    /// <summary>Binär gespeichert; gelesen wird die Umwandlung in Text.</summary>
     property Binary: Boolean read FBinary;
     property Document: TDfmDocument read FDocument;
     /// <summary>Klasse des Formulars, z. B. TForm1; '' ohne Wurzelobjekt.</summary>
@@ -100,9 +100,8 @@ var
   Symbol: TIndexSymbol;
 begin
   inherited Create;
+  // Binäre Formulare liest der Parser über die Umwandlung in Text (#122).
   FBinary := IsBinary(AFormText);
-  if FBinary then
-    Exit;
   FDocument := TDfmParser.Parse(AFormText);
   if AUnitText <> '' then
   begin
