@@ -9,6 +9,9 @@
 // getrennter Implementierung gilt die Deklaration (TLspDefinition).
 // Bei Klassen folgen die published-Properties und Ereignisse samt geerbter
 // (TPublishedMembers).
+//
+// Clients ohne Markdown (RAD Studio meldet hover.contentFormat ["plaintext"])
+// bekommen denselben Inhalt als Klartext (#175).
 
 interface
 
@@ -39,6 +42,8 @@ type
     DocWikiUrl: string;
     function Found: Boolean;
     function ToMarkdown: string;
+    /// <summary>Derselbe Inhalt ohne Markdown-Auszeichnung.</summary>
+    function ToPlainText: string;
   end;
 
   TLspHover = class
@@ -51,6 +56,7 @@ type
     FReadText: THoverReadText;
     FNamespaces: TArray<string>;
     FVersionProvider: THoverVersionProvider;
+    FMarkdown: Boolean;
     function HandleHover(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AReadText: THoverReadText;
@@ -62,6 +68,10 @@ type
       const AReadText: THoverReadText; const ADelphiVersion: string = ''): THoverInfo; static;
     /// <summary>Dokumentationskommentar über ALine als Markdown; '' ohne Kommentar.</summary>
     class function DocumentationAbove(const ALines: TArray<string>; ALine: Integer): string; static;
+    /// <summary>False, wenn der Client in initialize nur Klartext für Hover meldet.</summary>
+    class function ClientSupportsMarkdown(const AInitializeParams: TJSONObject): Boolean; static;
+    /// <summary>Antwort als Markdown (Vorgabe) oder als Klartext.</summary>
+    property Markdown: Boolean read FMarkdown write FMarkdown;
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
     /// <summary>Für den Release-Namen der DocWiki-Links; ohne Provider gilt die neueste Version.</summary>
     property VersionProvider: THoverVersionProvider read FVersionProvider write FVersionProvider;
@@ -136,6 +146,13 @@ begin
   end;
 end;
 
+// Entfernt die Auszeichnung, die Dokumentation und Mitgliederliste verwenden: `, ** und *.
+function StripMarkdown(const AText: string): string;
+begin
+  Result := StringReplace(AText, '`', '', [rfReplaceAll]);
+  Result := StringReplace(Result, '*', '', [rfReplaceAll]);
+end;
+
 { THoverInfo }
 
 function THoverInfo.Found: Boolean;
@@ -156,6 +173,19 @@ begin
     Result := Result + #10#10 + '---' + #10#10 + Members;
 end;
 
+function THoverInfo.ToPlainText: string;
+begin
+  Result := Declaration;
+  if Documentation <> '' then
+    Result := Result + #10#10 + StripMarkdown(Documentation);
+  if UnitName <> '' then
+    Result := Result + #10#10 + 'Unit ' + UnitName;
+  if DocWikiUrl <> '' then
+    Result := Result + #10#10 + 'DocWiki: ' + DocWikiUrl;
+  if Members <> '' then
+    Result := Result + #10#10 + StripMarkdown(Members);
+end;
+
 { TLspHover }
 
 constructor TLspHover.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
@@ -166,6 +196,7 @@ begin
   FIndex := AIndex;
   FReadText := AReadText;
   FEnsureUnit := AEnsureUnit;
+  FMarkdown := True;
 end;
 
 procedure TLspHover.Attach(ADispatcher: TJsonRpcDispatcher);
@@ -199,6 +230,22 @@ begin
         Result := Result + ' ';
     Result := Result + Line;
   end;
+end;
+
+class function TLspHover.ClientSupportsMarkdown(const AInitializeParams: TJSONObject): Boolean;
+var
+  Formats: TJSONArray;
+  Item: TJSONValue;
+begin
+  // Ohne Angabe bleibt es bei Markdown, wie bisher.
+  if (AInitializeParams = nil) or
+    not AInitializeParams.TryGetValue<TJSONArray>('capabilities.textDocument.hover.contentFormat', Formats) or
+    (Formats.Count = 0) then
+    Exit(True);
+  for Item in Formats do
+    if SameText(Item.Value, 'markdown') then
+      Exit(True);
+  Result := False;
 end;
 
 class function TLspHover.InfoAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -311,8 +358,16 @@ begin
   if not Info.Found then
     Exit(TJSONNull.Create);
   Contents := TJSONObject.Create;
-  Contents.AddPair('kind', 'markdown');
-  Contents.AddPair('value', Info.ToMarkdown);
+  if FMarkdown then
+  begin
+    Contents.AddPair('kind', 'markdown');
+    Contents.AddPair('value', Info.ToMarkdown);
+  end
+  else
+  begin
+    Contents.AddPair('kind', 'plaintext');
+    Contents.AddPair('value', Info.ToPlainText);
+  end;
   Result := TJSONObject.Create;
   TJSONObject(Result).AddPair('contents', Contents);
 end;

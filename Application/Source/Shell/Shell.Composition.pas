@@ -81,7 +81,12 @@ type
     FWorkspacesLock: TObject;
     FWorkspaceCounter: Integer;
     FEditorSettings: string;
+    /// <summary>Der Client hat keinen brauchbaren Ordner gemeldet (RAD Studio, #175):
+    /// Ordner werden aus den geöffneten Dateien abgeleitet.</summary>
+    FDeriveWorkspaces: Boolean;
     procedure AddWorkspace(const AFolder: TWorkspaceFolder);
+    /// <summary>Legt zur Datei den Ordner mit der nächsten Projektdatei an, falls sie in keinem Ordner liegt.</summary>
+    procedure DeriveWorkspace(const AFileName: string);
     procedure RemoveWorkspace(const AFolder: TWorkspaceFolder);
     /// <summary>Innerster Ordner zur Datei oder nil. Aufrufer hält FWorkspacesLock.</summary>
     function WorkspaceOf(const AFileName: string): TShellWorkspace;
@@ -317,9 +322,15 @@ begin
   FLifecycle.OnInitialized :=
     procedure
     var
+      Folders: TArray<TWorkspaceFolder>;
       Folder: TWorkspaceFolder;
     begin
-      for Folder in TLspWorkspaceFolders.FromInitialize(FLifecycle.InitializeParams) do
+      FHover.Markdown := TLspHover.ClientSupportsMarkdown(FLifecycle.InitializeParams);
+      Folders := TLspWorkspaceFolders.FromInitialize(FLifecycle.InitializeParams);
+      FDeriveWorkspaces := Length(Folders) = 0;
+      if FDeriveWorkspaces then
+        FLogger.Info('Kein Arbeitsbereichsordner gemeldet; Ordner werden aus den geöffneten Dateien abgeleitet');
+      for Folder in Folders do
         AddWorkspace(Folder);
       FWatchedFiles.RegisterWatchers(FLifecycle.InitializeParams);
     end;
@@ -418,6 +429,36 @@ begin
       FIndex.RemoveFile(UnitIndex.FileName);
   Workspace.Free;
   ProjectLoaded;
+end;
+
+function HasProjectFile(const AFolder: string): Boolean;
+begin
+  try
+    Result := (Length(TDirectory.GetFiles(AFolder, '*.dproj')) > 0) or
+      (Length(TDirectory.GetFiles(AFolder, '*.groupproj')) > 0);
+  except
+    // Ungültige oder nicht lesbare Ordner zählen als ohne Projekt.
+    on Exception do
+      Result := False;
+  end;
+end;
+
+procedure TServerComposition.DeriveWorkspace(const AFileName: string);
+var
+  Known: Boolean;
+  Folder: string;
+begin
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Known := WorkspaceOf(AFileName) <> nil;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  if Known then
+    Exit;
+  Folder := TLspWorkspaceFolders.ProjectFolderFor(AFileName, HasProjectFile);
+  if Folder <> '' then
+    AddWorkspace(TWorkspaceFolder.Create(Folder, ExtractFileName(Folder)));
 end;
 
 function TServerComposition.WorkspaceOf(const AFileName: string): TShellWorkspace;
@@ -611,6 +652,8 @@ procedure TServerComposition.HandleDocumentEvent(AKind: TDocumentEventKind; cons
 var
   Workspace: TShellWorkspace;
 begin
+  if FDeriveWorkspaces and (AKind = TDocumentEventKind.Opened) and StartsText('file:', ADocument.Uri) then
+    DeriveWorkspace(TDocumentUris.ToPath(ADocument.Uri));
   if not SameText(ExtractFileName(TDocumentUris.ToPath(ADocument.Uri)), ConfigurationFileName) then
     Exit;
   TMonitor.Enter(FWorkspacesLock);
