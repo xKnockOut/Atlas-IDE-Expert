@@ -87,6 +87,7 @@ implementation
 
 uses
   System.StrUtils,
+  System.RegularExpressions,
   Argus.Common.Documents.Uris,
   Argus.Common.Lsp.Positions,
   Argus.Common.Lsp.Definition,
@@ -195,11 +196,14 @@ begin
     end;
 end;
 
-// Entfernt die Auszeichnung, die Dokumentation und Mitgliederliste verwenden: `, ** und *.
+// Entfernt nur die Auszeichnung, die der Hover selbst erzeugt: **fett** (Veraltet,
+// Überschriften), *Name*: am Absatzanfang (Parameter) und `Code`. Andere Zeichen aus
+// dem Kommentar bleiben stehen, z. B. das * in "(Gallery.Page.*)" (in der IDE gesehen).
 function StripMarkdown(const AText: string): string;
 begin
-  Result := StringReplace(AText, '`', '', [rfReplaceAll]);
-  Result := StringReplace(Result, '*', '', [rfReplaceAll]);
+  Result := TRegEx.Replace(AText, '\*\*([^*\n]+)\*\*', '$1');
+  Result := TRegEx.Replace(Result, '(^|\n)\*([^*\n]+)\*:', '$1$2:');
+  Result := TRegEx.Replace(Result, '`([^`\n]*)`', '$1');
 end;
 
 { THoverInfo }

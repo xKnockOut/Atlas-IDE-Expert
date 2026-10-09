@@ -39,6 +39,8 @@ type
     [Test]
     procedure WritesPlainTextWithValueAndDeprecation;
     [Test]
+    procedure PlainTextKeepsLiteralAsterisks;
+    [Test]
     procedure DetectsMarkdownSupport;
     [Test]
     procedure LinksLibrarySymbolsToDocWiki;
@@ -244,6 +246,19 @@ begin
   Info.Value := '10';
   Info.Messages := '`WM_PAINT`';
   Assert.AreEqual('Max = 10;'#10#10'Veraltet'#10#10'Wert: 10'#10#10'WM_PAINT', Info.ToPlainText);
+end;
+
+procedure TLspHoverTests.PlainTextKeepsLiteralAsterisks;
+var
+  Info: THoverInfo;
+begin
+  // In der IDE gesehen: "(Gallery.Page.*)" kam als "(Gallery.Page.)" an.
+  Info := Default(THoverInfo);
+  Info.Declaration := 'TFrameClass = class of TFrame;';
+  Info.Deprecation := '**Veraltet**: Stattdessen TNeu';
+  Info.Documentation := 'Frame einer Seite (Gallery.Page.*), a*b.'#10#10'*AName*: Der Name';
+  Assert.AreEqual('TFrameClass = class of TFrame;'#10#10'Veraltet: Stattdessen TNeu'#10#10 +
+    'Frame einer Seite (Gallery.Page.*), a*b.'#10#10'AName: Der Name', Info.ToPlainText);
 end;
 
 procedure TLspHoverTests.DetectsMarkdownSupport;

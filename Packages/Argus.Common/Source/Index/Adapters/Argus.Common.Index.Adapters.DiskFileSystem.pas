@@ -90,6 +90,10 @@ begin
   end;
   if not Result and FileExists(Temp) then
     System.SysUtils.DeleteFile(Temp);
+  // Scheitert Replace, während ein zweiter Schreiber ersetzt (#62), kann die Sicherung schon
+  // angelegt sein; sie bliebe sonst liegen (Test ConcurrentWritersLeaveReadableCache).
+  if FileExists(Backup) then
+    System.SysUtils.DeleteFile(Backup);
 end;
 
 end.
