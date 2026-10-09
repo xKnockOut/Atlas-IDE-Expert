@@ -27,6 +27,7 @@ implementation
 
 uses
   System.SysUtils,
+  Argus.Common.Configuration.Contract,
   Argus.Common.Rules.Contract,
   Argus.Common.Rules.Builtin.Architecture,
   Argus.Tests.RuleAssert;
