@@ -1111,6 +1111,7 @@ begin
   end;
   // Neue Instanzen je Prüfung: Regeln dürfen so Zustand halten, ohne Threads zu teilen.
   AContext.Rules := BuiltinRules;
+  AContext.Index := FIndex;
   Result := True;
 end;
 

@@ -184,7 +184,7 @@ begin
       Action.Title := Fix.Title;
       Action.Kind := QuickFixKind;
       Action.Edits := Fix.Edits;
-      Action.IsPreferred := First;
+      Action.IsPreferred := First and not Fix.Alternative;
       Action.RuleId := Finding.RuleId;
       Action.DiagnosticRange := Finding.Range;
       Result := Result + [Action];

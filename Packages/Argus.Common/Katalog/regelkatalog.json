@@ -179,6 +179,42 @@
       "description": "A method body TFoo.Bar has no matching declaration in the type.",
       "bad": "type\n  TFoo = class\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;",
       "good": "type\n  TFoo = class\n  private\n    procedure Run;\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;"
+    },
+    {
+      "id": "destroy-without-override",
+      "name": "Destroy without override",
+      "category": "bug",
+      "severity": "warning",
+      "description": "A destructor Destroy is declared without override. Free calls TObject.Destroy, so this destructor never runs.",
+      "bad": "type\n  TFoo = class\n    destructor Destroy;\n  end;",
+      "good": "type\n  TFoo = class\n    destructor Destroy; override;\n  end;"
+    },
+    {
+      "id": "component-create-without-override",
+      "name": "Component constructor without override",
+      "category": "bug",
+      "severity": "warning",
+      "description": "A TComponent descendant declares constructor Create(AOwner: TComponent) without override. Components created from a form file are built through the virtual constructor and skip this one.",
+      "bad": "type\n  TMyPanel = class(TCustomPanel)\n    constructor Create(AOwner: TComponent);\n  end;",
+      "good": "type\n  TMyPanel = class(TCustomPanel)\n    constructor Create(AOwner: TComponent); override;\n  end;"
+    },
+    {
+      "id": "hides-virtual",
+      "name": "Method hides virtual method",
+      "category": "bug",
+      "severity": "warning",
+      "description": "A method has the same name as a virtual method of an ancestor but neither overrides nor reintroduces it (compiler warning W1010).",
+      "bad": "type\n  TBase = class\n    procedure Run; virtual;\n  end;\n  TFoo = class(TBase)\n    procedure Run;\n  end;",
+      "good": "type\n  TBase = class\n    procedure Run; virtual;\n  end;\n  TFoo = class(TBase)\n    procedure Run; override;\n  end;"
+    },
+    {
+      "id": "virtual-instead-of-override",
+      "name": "virtual instead of override",
+      "category": "bug",
+      "severity": "warning",
+      "description": "A descendant declares a method virtual although the ancestor already has a virtual method with the same signature; this starts a new chain instead of overriding.",
+      "bad": "type\n  TFoo = class(TBase)\n    procedure Run; virtual;\n  end;",
+      "good": "type\n  TFoo = class(TBase)\n    procedure Run; override;\n  end;"
     }
   ]
 }

@@ -54,6 +54,8 @@ type
     ParamTypes: TArray<string>;
     /// <summary>Default-Property (Liste[i]).</summary>
     IsDefault: Boolean;
+    /// <summary>Deklaration einer Methode mit virtual, dynamic, abstract oder override (#125).</summary>
+    IsVirtual: Boolean;
     function QualifiedName: string;
   end;
 

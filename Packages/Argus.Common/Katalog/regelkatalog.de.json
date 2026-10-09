@@ -99,6 +99,26 @@
       "id": "implemented-not-declared",
       "name": "Implementiert, aber nicht deklariert",
       "description": "Ein Methodenrumpf TFoo.Bar hat keine passende Deklaration im Typ."
+    },
+    {
+      "id": "destroy-without-override",
+      "name": "Destroy ohne override",
+      "description": "Ein destructor Destroy ist ohne override deklariert. Free ruft TObject.Destroy auf, dieser Destruktor läuft also nie."
+    },
+    {
+      "id": "component-create-without-override",
+      "name": "Komponentenkonstruktor ohne override",
+      "description": "Ein TComponent-Nachfahre deklariert constructor Create(AOwner: TComponent) ohne override. Beim Laden aus der Formulardatei wird der virtuelle Konstruktor benutzt und dieser übergangen."
+    },
+    {
+      "id": "hides-virtual",
+      "name": "Methode verdeckt virtuelle Methode",
+      "description": "Eine Methode heißt wie eine virtuelle Methode eines Vorfahren, überschreibt sie aber weder noch führt sie sie neu ein (Compilerwarnung W1010)."
+    },
+    {
+      "id": "virtual-instead-of-override",
+      "name": "virtual statt override",
+      "description": "Ein Nachfahre deklariert eine Methode als virtual, obwohl der Vorfahr schon eine virtuelle Methode mit derselben Signatur hat; das beginnt eine neue Kette statt zu überschreiben."
     }
   ]
 }

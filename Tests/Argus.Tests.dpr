@@ -120,7 +120,8 @@ uses
   Argus.Common.Rules.Builtin.Concurrency.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Concurrency.Tests.pas',
   Argus.Common.Rules.Builtin.Flow.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Flow.Tests.pas',
   Argus.Common.Rules.Builtin.Unused.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Unused.Tests.pas',
-  Argus.Common.Rules.Builtin.Declarations.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Declarations.Tests.pas';
+  Argus.Common.Rules.Builtin.Declarations.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Declarations.Tests.pas',
+  Argus.Common.Rules.Builtin.Inheritance.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Inheritance.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var
