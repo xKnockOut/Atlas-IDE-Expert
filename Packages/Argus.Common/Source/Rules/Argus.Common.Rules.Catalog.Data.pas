@@ -181,6 +181,24 @@ begin
     '      "description": "A value assigned to a local variable is overwritten or the routine ends before it is read. Like compiler hint H2077.",' + #10 +
     '      "bad": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := 0;\n  I := Calc;\n  Bar(I);\nend;",' + #10 +
     '      "good": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := Calc;\n  Bar(I);\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "declared-not-implemented",' + #10 +
+    '      "name": "Declared but not implemented",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "description": "A method is declared in a class, record or object but has no body in the implementation section. The compiler reports this only when compiling (E2065).",' + #10 +
+    '      "bad": "type\n  TFoo = class\n    procedure Run;\n  end;\n\nimplementation\n\nend.",' + #10 +
+    '      "good": "type\n  TFoo = class\n    procedure Run;\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;\n\nend."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "implemented-not-declared",' + #10 +
+    '      "name": "Implemented but not declared",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "description": "A method body TFoo.Bar has no matching declaration in the type.",' + #10 +
+    '      "bad": "type\n  TFoo = class\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;",' + #10 +
+    '      "good": "type\n  TFoo = class\n  private\n    procedure Run;\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -282,6 +300,16 @@ begin
     '      "id": "unused-assignment",' + #10 +
     '      "name": "Zugewiesener Wert ungenutzt",' + #10 +
     '      "description": "Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "declared-not-implemented",' + #10 +
+    '      "name": "Deklariert, aber nicht implementiert",' + #10 +
+    '      "description": "Eine Methode ist in einer Klasse, einem Record oder Objekt deklariert, hat aber keinen Rumpf im implementation-Abschnitt. Der Compiler meldet das erst beim Kompilieren (E2065)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "implemented-not-declared",' + #10 +
+    '      "name": "Implementiert, aber nicht deklariert",' + #10 +
+    '      "description": "Ein Methodenrumpf TFoo.Bar hat keine passende Deklaration im Typ."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

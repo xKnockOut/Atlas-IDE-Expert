@@ -9,17 +9,42 @@
 // Methoden von Interfaces und generische Typen werden übergangen. Die Rümpfe
 // kommen hinter die letzte vorhandene Methode des Typs, sonst vor
 // initialization, finalization bzw. das abschließende "end.".
+//
+// Unmatched liefert für die Prüfregeln aus #124 beide Richtungen: deklarierte
+// Methoden ohne Rumpf und Rümpfe ohne Deklaration. AddDeclaration ergänzt eine
+// fehlende Deklaration im private-Abschnitt des Typs.
 
 interface
 
 uses
   Argus.Common.Documents.Contract,
   Argus.Common.Pascal.SyntaxTree,
+  Argus.Common.Index.Contract,
+  Argus.Common.Rules.Contract,
   Argus.Common.Editing.CodeActions;
 
 type
+  /// <summary>Methode ohne Gegenstück (#124).</summary>
+  TUnmatchedMethod = record
+    /// <summary>Typ, ggf. mit umgebendem Typ (TAussen.TInnen).</summary>
+    TypeName: string;
+    Symbol: TIndexSymbol;
+    /// <summary>True: deklariert, aber ohne Rumpf; False: Rumpf ohne Deklaration.</summary>
+    Declared: Boolean;
+    /// <summary>Kopf ohne ";", z. B. "procedure TFoo.Bar(A: Integer)" beim Rumpf.</summary>
+    Header: string;
+  end;
+
   TClassCompletion = class
   public
+    /// <summary>Methoden ohne Gegenstück in Typen dieser Datei. Abstrakte, externe und forward-
+    /// Methoden sowie generische Typen werden übergangen; Rümpfe zu Typen, die nicht in der
+    /// Datei stehen, ebenfalls.</summary>
+    class function Unmatched(ATree: TSyntaxTree; const AText: string): TArray<TUnmatchedMethod>; static;
+    /// <summary>Fügt die Deklaration zu einem Rumpf ohne Deklaration im private-Abschnitt ein
+    /// (legt ihn bei Bedarf an); False, wenn der Typ nicht passend aufgebaut ist.</summary>
+    class function AddDeclaration(ATree: TSyntaxTree; const AText: string; const AMethod: TUnmatchedMethod;
+      out AEdit: TRuleEdit): Boolean; static;
     /// <summary>Aktion für fehlende Rümpfe an APosition; False, wenn nichts fehlt.</summary>
     class function MissingBodies(ATree: TSyntaxTree; const AText: string; const APosition: TTextPosition;
       out AAction: TCodeAction): Boolean; static;
@@ -31,8 +56,6 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
-  Argus.Common.Rules.Contract,
-  Argus.Common.Index.Contract,
   Argus.Common.Index.Extractor,
   Argus.Common.Pascal.Contract;
 
@@ -172,7 +195,164 @@ begin
   end;
 end;
 
+function TypeNameOf(const ASymbol: TIndexSymbol): string;
+begin
+  if ASymbol.Container <> '' then
+    Result := ASymbol.Container + '.' + ASymbol.Name
+  else
+    Result := ASymbol.Name;
+end;
+
+function IndentOf(const ALine: string): string;
+begin
+  Result := Copy(ALine, 1, Length(ALine) - Length(TrimLeft(ALine)));
+end;
+
 { TClassCompletion }
+
+class function TClassCompletion.Unmatched(ATree: TSyntaxTree; const AText: string): TArray<TUnmatchedMethod>;
+var
+  Lines: TArray<string>;
+  UnitIndex: TUnitIndex;
+  TypeSymbol, Symbol: TIndexSymbol;
+  Declarations, Bodies: TList<TIndexSymbol>;
+  BodyKeys: TList<string>;
+  TypeName, Rest, Header, Key: string;
+  Index: Integer;
+  Item: TUnmatchedMethod;
+begin
+  Result := nil;
+  Lines := SplitLines(AText);
+  UnitIndex := TIndexExtractor.Extract(ATree, '');
+  Declarations := TList<TIndexSymbol>.Create;
+  Bodies := TList<TIndexSymbol>.Create;
+  BodyKeys := TList<string>.Create;
+  try
+    for TypeSymbol in UnitIndex.Symbols do
+    begin
+      if not (TypeSymbol.Kind in TypeKinds) then
+        Continue;
+      // Generische Typen brauchen die Typparameter im Kopf; die kennt der Index nicht.
+      Rest := Copy(Lines[TypeSymbol.SelectionRange.EndPos.Line], TypeSymbol.SelectionRange.EndPos.Character + 1,
+        MaxInt);
+      if (TypeSymbol.TypeParams <> '') or TrimLeft(Rest).StartsWith('<') then
+        Continue;
+      TypeName := TypeNameOf(TypeSymbol);
+      Declarations.Clear;
+      Bodies.Clear;
+      BodyKeys.Clear;
+      for Symbol in UnitIndex.Symbols do
+      begin
+        if not (Symbol.Kind in MethodKinds) or not SameText(Symbol.Container, TypeName) then
+          Continue;
+        if ContainsLine(TypeSymbol.Range, Symbol.Range.StartPos.Line) then
+          Declarations.Add(Symbol)
+        else
+        begin
+          Bodies.Add(Symbol);
+          BodyKeys.Add(LowerCase(Symbol.Name) + ParameterKey(Signature(RangeText(Lines, Symbol.Range), Rest)));
+        end;
+      end;
+      for Symbol in Declarations do
+      begin
+        Header := Signature(RangeText(Lines, Symbol.Range), Rest);
+        if HasWord(Rest, 'abstract') or HasWord(Rest, 'external') or HasWord(Rest, 'forward') then
+          Continue;
+        Key := LowerCase(Symbol.Name) + ParameterKey(Header);
+        Index := BodyKeys.IndexOf(Key);
+        // Ohne Parameterliste im Rumpf passt er zur ersten Deklaration gleichen Namens.
+        if Index < 0 then
+          Index := BodyKeys.IndexOf(LowerCase(Symbol.Name));
+        if Index >= 0 then
+        begin
+          BodyKeys.Delete(Index);
+          Bodies.Delete(Index);
+          Continue;
+        end;
+        Item := Default(TUnmatchedMethod);
+        Item.TypeName := TypeName;
+        Item.Symbol := Symbol;
+        Item.Declared := True;
+        Item.Header := Header;
+        Result := Result + [Item];
+      end;
+      for Symbol in Bodies do
+      begin
+        Item := Default(TUnmatchedMethod);
+        Item.TypeName := TypeName;
+        Item.Symbol := Symbol;
+        Item.Header := Signature(RangeText(Lines, Symbol.Range), Rest);
+        Result := Result + [Item];
+      end;
+    end;
+  finally
+    BodyKeys.Free;
+    Bodies.Free;
+    Declarations.Free;
+  end;
+end;
+
+class function TClassCompletion.AddDeclaration(ATree: TSyntaxTree; const AText: string;
+  const AMethod: TUnmatchedMethod; out AEdit: TRuleEdit): Boolean;
+var
+  Lines: TArray<string>;
+  UnitIndex: TUnitIndex;
+  Symbol, TypeSymbol: TIndexSymbol;
+  Found, Overloaded: Boolean;
+  Declaration, Trimmed, LB: string;
+  Index, Line, EndLine: Integer;
+begin
+  Result := False;
+  AEdit := Default(TRuleEdit);
+  if AMethod.Declared then
+    Exit;
+  Lines := SplitLines(AText);
+  UnitIndex := TIndexExtractor.Extract(ATree, '');
+  Found := False;
+  TypeSymbol := Default(TIndexSymbol);
+  for Symbol in UnitIndex.Symbols do
+    if (Symbol.Kind in TypeKinds) and SameText(TypeNameOf(Symbol), AMethod.TypeName) then
+    begin
+      TypeSymbol := Symbol;
+      Found := True;
+      Break;
+    end;
+  if not Found or (TypeSymbol.Range.EndPos.Line <= TypeSymbol.Range.StartPos.Line) or
+    (TypeSymbol.Range.EndPos.Line > High(Lines)) then
+    Exit;
+  // "procedure TFoo.Bar(A: Integer)" wird "procedure Bar(A: Integer);".
+  Index := Pos(LowerCase(AMethod.TypeName + '.'), LowerCase(AMethod.Header));
+  if Index = 0 then
+    Exit;
+  Declaration := Copy(AMethod.Header, 1, Index - 1) + Copy(AMethod.Header, Index + Length(AMethod.TypeName) + 1,
+    MaxInt) + ';';
+  Overloaded := False;
+  for Symbol in UnitIndex.Symbols do
+    if (Symbol.Kind in MethodKinds) and SameText(Symbol.Container, AMethod.TypeName) and
+      SameText(Symbol.Name, AMethod.Symbol.Name) and ContainsLine(TypeSymbol.Range, Symbol.Range.StartPos.Line) then
+      Overloaded := True;
+  if Overloaded and not HasWord(Declaration, 'overload') then
+    Declaration := Declaration + ' overload;';
+  LB := LineBreakOf(AText);
+  // Vorhandener private-Abschnitt (nicht strict private) direkt im Typ.
+  for Line := TypeSymbol.Range.StartPos.Line + 1 to TypeSymbol.Range.EndPos.Line - 1 do
+  begin
+    Trimmed := LowerCase(Trim(Lines[Line]));
+    if Trimmed = 'private' then
+    begin
+      AEdit := TRuleEdit.Create(TTextRange.Create(Line, Length(Lines[Line]), Line, Length(Lines[Line])),
+        LB + IndentOf(Lines[Line]) + '  ' + Declaration);
+      Exit(True);
+    end;
+  end;
+  // Sonst einen anlegen, vor dem "end" des Typs.
+  EndLine := TypeSymbol.Range.EndPos.Line;
+  if not LowerCase(TrimLeft(Lines[EndLine])).StartsWith('end') then
+    Exit;
+  AEdit := TRuleEdit.Create(TTextRange.Create(EndLine, 0, EndLine, 0),
+    IndentOf(Lines[EndLine]) + 'private' + LB + IndentOf(Lines[EndLine]) + '  ' + Declaration + LB);
+  Result := True;
+end;
 
 class function TClassCompletion.MissingBodies(ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; out AAction: TCodeAction): Boolean;

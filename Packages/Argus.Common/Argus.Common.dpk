@@ -117,6 +117,7 @@ contains
   Argus.Common.Rules.Builtin.Concurrency in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.Concurrency.pas',
   Argus.Common.Rules.Builtin.Flow in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.Flow.pas',
   Argus.Common.Rules.Builtin.Unused in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.Unused.pas',
+  Argus.Common.Rules.Builtin.Declarations in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.Declarations.pas',
   Argus.Common.Editing.ClassCompletion in 'Source\Editing\Argus.Common.Editing.ClassCompletion.pas',
   Argus.Common.Dfm.Contract in 'Source\Dfm\Argus.Common.Dfm.Contract.pas',
   Argus.Common.Dfm.Parser in 'Source\Dfm\Argus.Common.Dfm.Parser.pas',
