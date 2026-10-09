@@ -157,12 +157,14 @@ procedure TRuleProfilesTests.BuiltinProfilesActivateExpectedRules;
 const
   Bugs = 'lock-without-finally,synchronize-in-destructor,thread-free-with-free-on-terminate,' +
     'thread-use-after-free-on-terminate,thread-vcl-access';
-  All = 'bidi-control,confusable-identifier,control-char,forbidden-uses,invisible-char,' + Bugs +
-    ',thread-resume-suspend';
+  // ActiveRules sortiert alphabetisch: thread-resume-suspend steht vor thread-use-after-...
+  All = 'bidi-control,confusable-identifier,control-char,forbidden-uses,invisible-char,' +
+    'lock-without-finally,synchronize-in-destructor,thread-free-with-free-on-terminate,' +
+    'thread-resume-suspend,thread-use-after-free-on-terminate,thread-vcl-access';
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
   Assert.AreEqual(All, ActiveRules('strict'));
-  Assert.AreEqual('bidi-control,control-char,' + Bugs + '', ActiveRules('fast'));
+  Assert.AreEqual('bidi-control,control-char,' + Bugs, ActiveRules('fast'));
   Assert.AreEqual('bidi-control,confusable-identifier,invisible-char', ActiveRules('security'));
   Assert.AreEqual('forbidden-uses,thread-resume-suspend', ActiveRules('style'));
 end;
