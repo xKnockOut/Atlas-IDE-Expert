@@ -131,8 +131,12 @@ procedure TArgusCompletionMatcherTests.MatchesCamelCaseAndSubsequence;
 begin
   Assert.AreEqual(TArgusCompletionMatcher.ScoreWordStarts, TArgusCompletionMatcher.Score('TSL', 'TStringList'));
   Assert.AreEqual(TArgusCompletionMatcher.ScoreWordStarts, TArgusCompletionMatcher.Score('gtc', 'Get_Tick_Count'));
-  Assert.AreEqual(TArgusCompletionMatcher.ScoreSubsequence, TArgusCompletionMatcher.Score('tsit', 'TStringList'));
+  // Teilfolge nur an Wortgrenzen bzw. zusammenhängend.
+  Assert.AreEqual(TArgusCompletionMatcher.ScoreSubsequence, TArgusCompletionMatcher.Score('stl', 'TStringList'));
   Assert.AreEqual(TArgusCompletionMatcher.ScoreSubsequence, TArgusCompletionMatcher.Score('', 'Beliebig'));
+  // Verstreute Treffer sind Rauschen (Fall aus der IDE: "myLis" bei nicht deklariertem myList).
+  Assert.AreEqual(TArgusCompletionMatcher.NoMatch, TArgusCompletionMatcher.Score('myLis', 'ERROR_TOO_MANY_LINKS'));
+  Assert.AreEqual(TArgusCompletionMatcher.NoMatch, TArgusCompletionMatcher.Score('tsit', 'TStringList'));
 end;
 
 procedure TArgusCompletionMatcherTests.FiltersAndKeepsSourceOrderOnTies;

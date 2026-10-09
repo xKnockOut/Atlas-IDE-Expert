@@ -70,13 +70,35 @@ end;
 
 function MatchesSubsequence(const APattern, AName: string): Boolean;
 var
+  Reached, Next: TArray<Boolean>;
   PatternIndex, NameIndex: Integer;
+  Previous: Boolean;
 begin
-  PatternIndex := 1;
+  // Teilfolge mit Wortgrenzen: Das erste Zeichen trifft einen Wortanfang, jedes weitere
+  // folgt direkt auf das vorige oder trifft einen Wortanfang. "stl" passt auf TStringList,
+  // verstreute Treffer wie "myLis" in ERROR_TOO_MANY_LINKS nicht.
+  // Reached[i]: Das Muster bis zum aktuellen Zeichen endet passend bei AName[i].
+  SetLength(Reached, Length(AName) + 1);
   for NameIndex := 1 to Length(AName) do
-    if (PatternIndex <= Length(APattern)) and (UpCase(AName[NameIndex]) = UpCase(APattern[PatternIndex])) then
-      Inc(PatternIndex);
-  Result := PatternIndex > Length(APattern);
+    Reached[NameIndex] := IsWordStart(AName, NameIndex) and (UpCase(AName[NameIndex]) = UpCase(APattern[1]));
+  for PatternIndex := 2 to Length(APattern) do
+  begin
+    SetLength(Next, Length(AName) + 1);
+    Previous := False;
+    for NameIndex := 1 to Length(AName) do
+    begin
+      // Previous: Irgendwo vor NameIndex - 1 endete das bisherige Muster.
+      Next[NameIndex] := (UpCase(AName[NameIndex]) = UpCase(APattern[PatternIndex])) and
+        (Reached[NameIndex - 1] or (Previous and IsWordStart(AName, NameIndex)));
+      Previous := Previous or Reached[NameIndex - 1];
+    end;
+    Reached := Next;
+    Next := nil;
+  end;
+  Result := False;
+  for NameIndex := 1 to Length(AName) do
+    if Reached[NameIndex] then
+      Exit(True);
 end;
 
 { TArgusCompletionMatcher }
