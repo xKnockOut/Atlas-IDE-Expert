@@ -58,6 +58,8 @@ type
     /// CompletionItem[] oder nil); der Aufrufer gibt sie frei.
     /// </summary>
     function Completion(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
+    /// <summary>textDocument/signatureHelp ohne Abgleich, wie Completion.</summary>
+    function SignatureHelp(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
     property Initialized: Boolean read FInitialized;
   end;
 
@@ -330,6 +332,12 @@ function TLspSession.Completion(const AFileName: string; ALine, ACharacter: Inte
   ATimeoutMs: Cardinal): TJSONValue;
 begin
   Result := FClient.Request('textDocument/completion', PositionParams(AFileName, ALine, ACharacter), ATimeoutMs);
+end;
+
+function TLspSession.SignatureHelp(const AFileName: string; ALine, ACharacter: Integer;
+  ATimeoutMs: Cardinal): TJSONValue;
+begin
+  Result := FClient.Request('textDocument/signatureHelp', PositionParams(AFileName, ALine, ACharacter), ATimeoutMs);
 end;
 
 end.

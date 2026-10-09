@@ -8,11 +8,9 @@
 //     lesen die aktuelle Zeile und filtern neu.
 //   - Schließen (#414): Cursor verlässt das Wort oder die Zeile, Editor verliert
 //     den Fokus, IDE wird inaktiv, Editor scrollt, Ansicht wechselt.
-//   - Tasten: Nur solange das Popup offen ist, fängt ein Tastatur-Hook des Hauptthreads
-//     ↑ ↓ Bild↑ Bild↓ Pos1 Ende Enter Tab Esc (ohne Umschalt/Strg/Alt) ab und gibt sie an
-//     das Popup. Keine Tastaturbindung der IDE: Eine Bindung für diese Tasten nimmt sie
-//     dem Editor auch bei geschlossenem Popup weg, weil der Editor sie ohne eigenen
-//     Handler verarbeitet (in der IDE gesehen: Pfeile und Enter gingen nicht mehr).
+//   - Tasten: Nur solange das Popup offen ist, nimmt es über den gemeinsamen
+//     Tastatur-Hook (Argus.IDE.Editor.KeyHook) ↑ ↓ Bild↑ Bild↓ Pos1 Ende Enter Tab Esc
+//     ohne Umschalt/Strg/Alt entgegen; sonst gehen alle Tasten an den Editor.
 //   - Übernahme: ein Undo-Schritt (CreateUndoableWriter) für Name und uses-Ergänzung.
 //   - Commit-Zeichen (#429): Wird hinter dem Wort "(", ";" oder "." getippt und trifft
 //     der gewählte Eintrag klar, wird er übernommen und das Zeichen bleibt stehen;
@@ -32,7 +30,8 @@ uses
   Argus.Core.Completion.Composite,
   Argus.Core.Completion.Controller,
   Argus.Core.Completion.Providers.Server,
-  Argus.UI.Completion.Popup;
+  Argus.UI.Completion.Popup,
+  Argus.IDE.Editor.KeyHook;
 
 type
   /// <summary>Protokoll für die Diagnose (Registry-Wert Diagnose).</summary>
@@ -47,6 +46,7 @@ type
     FPopup: TArgusCompletionPopup;
     FController: TArgusCompletionController;
     FTimer: TTimer;
+    FKeys: TArgusKeyClient;
     FNotifierIndex: Integer;
     FLog: TArgusLogProc;
     // Zustand der offenen Vervollständigung.
@@ -128,12 +128,19 @@ begin
   Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AChar) > 127);
 end;
 
-var
-  // Es gibt genau eine Vervollständigung je IDE; der Hook braucht eine einfache Funktion.
-  HookOwner: TArgusEditorCompletion = nil;
-  KeyHook: HHOOK = 0;
+type
+  /// <summary>Tasten des Popups über den gemeinsamen Hook; Priorität vor dem Parameter-Hint.</summary>
+  TCompletionKeys = class(TArgusKeyClient)
+  private
+    FOwner: TArgusEditorCompletion;
+  protected
+    function WantsKey(AKey: Word; AShift: TShiftState): Boolean; override;
+    procedure HandleKey(AKey: Word; AShift: TShiftState); override;
+  public
+    constructor Create(AOwner: TArgusEditorCompletion);
+  end;
 
-function NavigationKey(AKey: WPARAM; out ANavigation: TArgusNavigationKey): Boolean;
+function NavigationKey(AKey: Word; out ANavigation: TArgusNavigationKey): Boolean;
 begin
   Result := True;
   case AKey of
@@ -150,32 +157,27 @@ begin
   end;
 end;
 
-function KeyboardProc(Code: Integer; WParam: WPARAM; LParam: LPARAM): LRESULT; stdcall;
+{ TCompletionKeys }
+
+constructor TCompletionKeys.Create(AOwner: TArgusEditorCompletion);
+begin
+  inherited Create(0);
+  FOwner := AOwner;
+end;
+
+function TCompletionKeys.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
 var
-  Owner: TArgusEditorCompletion;
   Navigation: TArgusNavigationKey;
 begin
-  Owner := HookOwner;
-  try
-    if (Code = HC_ACTION) and (Owner <> nil) and NavigationKey(WParam, Navigation) and
-      (GetKeyState(VK_SHIFT) >= 0) and (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0) and
-      Owner.WantsKey(Navigation) then
-    begin
-      // Gedrückt (auch Wiederholung): nach der Nachrichtenverarbeitung ausführen, nicht im Hook.
-      if (LParam and $80000000) = 0 then
-        TThread.ForceQueue(nil,
-          procedure
-          begin
-            if HookOwner = Owner then
-              Owner.HandleKey(Navigation);
-          end);
-      // Drücken und Loslassen erreichen den Editor nicht.
-      Exit(1);
-    end;
-  except
-    // Keine Exception an die IDE (#493); die Taste geht dann an den Editor.
-  end;
-  Result := CallNextHookEx(KeyHook, Code, WParam, LParam);
+  Result := (AShift = []) and NavigationKey(AKey, Navigation) and FOwner.WantsKey(Navigation);
+end;
+
+procedure TCompletionKeys.HandleKey(AKey: Word; AShift: TShiftState);
+var
+  Navigation: TArgusNavigationKey;
+begin
+  if NavigationKey(AKey, Navigation) then
+    FOwner.HandleKey(Navigation);
 end;
 { TArgusEditNotifier }
 
@@ -265,6 +267,7 @@ begin
       FController.Select(APosition);
       FController.CommitSelected;
     end;
+  FKeys := TCompletionKeys.Create(Self);
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
   FTimer.Interval := 50;
@@ -288,6 +291,7 @@ begin
   Shutdown;
   FController.Free;
   FPopup.Free;
+  FKeys.Free;
   FServerProviderRef := nil;
   FProvidersRef := nil;
   inherited;
@@ -421,26 +425,14 @@ end;
 
 procedure TArgusEditorCompletion.InstallKeyHook;
 begin
-  if KeyHook <> 0 then
-    Exit;
-  HookOwner := Self;
-  KeyHook := SetWindowsHookEx(WH_KEYBOARD, @KeyboardProc, 0, GetCurrentThreadId);
-  if KeyHook = 0 then
-  begin
-    HookOwner := nil;
+  TArgusKeyHook.Add(FKeys);
+  if not TArgusKeyHook.Installed then
     Log('Vervollständigung: Tastatur-Hook nicht möglich: ' + SysErrorMessage(GetLastError));
-  end;
 end;
 
 procedure TArgusEditorCompletion.RemoveKeyHook;
 begin
-  if HookOwner = Self then
-    HookOwner := nil;
-  if KeyHook <> 0 then
-  begin
-    UnhookWindowsHookEx(KeyHook);
-    KeyHook := 0;
-  end;
+  TArgusKeyHook.Remove(FKeys);
 end;
 
 function TArgusEditorCompletion.WantsKey(AKey: TArgusNavigationKey): Boolean;

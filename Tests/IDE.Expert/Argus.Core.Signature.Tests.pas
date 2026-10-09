@@ -1,0 +1,238 @@
+﻿unit Argus.Core.Signature.Tests;
+
+// Tests für den Parameter-Hint ohne IDE (#436, #437).
+
+interface
+
+uses
+  DUnitX.TestFramework;
+
+type
+  [TestFixture]
+  TArgusCallScannerTests = class
+  public
+    [Test]
+    procedure CountsParametersOfFormat;
+    [Test]
+    procedure IgnoresCommasInStringsAndComments;
+    [Test]
+    procedure IgnoresInnerCallsAndGrouping;
+    [Test]
+    procedure KeywordParenthesesAreNoCall;
+    [Test]
+    procedure ClosedCallIsLeft;
+  end;
+
+  [TestFixture]
+  TArgusSignatureControllerTests = class
+  public
+    [Test]
+    procedure SwitchesToFittingOverload;
+    [Test]
+    procedure ManualOverloadSwitchWraps;
+    [Test]
+    procedure ReadsLspSignatureHelp;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  System.JSON,
+  Argus.Core.Signature.Contract,
+  Argus.Core.Signature.CallScanner,
+  Argus.Core.Signature.Controller,
+  Argus.Core.Signature.Providers.Server;
+
+type
+  TFakeSignatureView = class(TInterfacedObject, IArgusSignatureView)
+  public
+    Shown: Boolean;
+    Signature: Integer;
+    Parameter: Integer;
+    procedure ShowSignature(const AHelp: TArgusSignatureHelp; ASignature, AParameter: Integer);
+    procedure HideSignature;
+  end;
+
+procedure TFakeSignatureView.ShowSignature(const AHelp: TArgusSignatureHelp; ASignature, AParameter: Integer);
+begin
+  Shown := True;
+  Signature := ASignature;
+  Parameter := AParameter;
+end;
+
+procedure TFakeSignatureView.HideSignature;
+begin
+  Shown := False;
+end;
+
+/// <summary>Caret am Ende von AText.</summary>
+function ScanEnd(const AText: string): TArgusCallSite;
+begin
+  Result := TArgusCallScanner.Scan(AText, Length(AText));
+end;
+
+function Signature(const ALabel: string; const AParameters: array of string): TArgusSignature;
+var
+  Name: string;
+  Parameter: TArgusSignatureParameter;
+begin
+  Result := Default(TArgusSignature);
+  Result.Label_ := ALabel;
+  for Name in AParameters do
+  begin
+    Parameter := Default(TArgusSignatureParameter);
+    Parameter.Start := Pos(Name, ALabel) - 1;
+    Parameter.Stop := Parameter.Start + Length(Name);
+    Result.Parameters := Result.Parameters + [Parameter];
+  end;
+end;
+
+function FormatHelp: TArgusSignatureHelp;
+begin
+  Result := Default(TArgusSignatureHelp);
+  Result.ActiveSignature := -1;
+  Result.ActiveParameter := -1;
+  Result.Signatures := [
+    Signature('function Format(const Format: string; const Args: array of const): string',
+      ['const Format: string', 'const Args: array of const']),
+    Signature('function Format(const Format: string; const Args: array of const; ' +
+      'const AFormatSettings: TFormatSettings): string',
+      ['const Format: string', 'const Args: array of const', 'const AFormatSettings: TFormatSettings'])];
+end;
+
+{ TArgusCallScannerTests }
+
+procedure TArgusCallScannerTests.CountsParametersOfFormat;
+var
+  Site: TArgusCallSite;
+begin
+  Site := ScanEnd('  S := Format(''%d'', [');
+  Assert.IsTrue(Site.Found);
+  Assert.AreEqual(1, Site.ActiveParameter, 'Format(''%d'', [ hebt Args hervor');
+  Assert.AreEqual(Pos('(', '  S := Format(''%d'', [') - 1, Site.OpenParen);
+  Assert.AreEqual(0, ScanEnd('Foo(').ActiveParameter);
+  Assert.AreEqual(2, ScanEnd('Foo(1, X,').ActiveParameter);
+end;
+
+procedure TArgusCallScannerTests.IgnoresCommasInStringsAndComments;
+begin
+  Assert.AreEqual(1, ScanEnd('Foo(''a,b'', ').ActiveParameter, 'Kommas im String zählen nicht');
+  Assert.AreEqual(1, ScanEnd('Foo(''it''''s, ok'', ').ActiveParameter, 'Doppeltes Anführungszeichen');
+  Assert.AreEqual(1, ScanEnd('Foo(1 { , } , (* , *) ').ActiveParameter, 'Kommentare');
+  Assert.AreEqual(1, ScanEnd('Foo(1, // a, b'#13#10'  ').ActiveParameter, 'Zeilenkommentar');
+end;
+
+procedure TArgusCallScannerTests.IgnoresInnerCallsAndGrouping;
+var
+  Site: TArgusCallSite;
+begin
+  Assert.AreEqual(1, ScanEnd('Foo(Bar(1, 2), ').ActiveParameter, 'Innerer Aufruf ist geschlossen');
+  Site := ScanEnd('Foo(1, Bar(2, ');
+  Assert.AreEqual(1, Site.ActiveParameter, 'Im inneren Aufruf zählt dessen Komma');
+  Assert.AreEqual(Length('Foo(1, Bar'), Site.OpenParen);
+  Assert.AreEqual(1, ScanEnd('Foo(1, (2 + 3').ActiveParameter, 'Klammer zur Gruppierung gehört zu Foo');
+  Assert.AreEqual(1, ScanEnd('Foo(1, [2, 3').ActiveParameter, 'Mengen- bzw. Array-Klammern');
+end;
+
+procedure TArgusCallScannerTests.KeywordParenthesesAreNoCall;
+begin
+  Assert.IsFalse(ScanEnd('if (A').Found);
+  Assert.IsFalse(ScanEnd('while not (A').Found);
+  Assert.IsTrue(ScanEnd('X := Liste[0].Add(').Found, 'Nach ] und Punkt ist es ein Aufruf');
+end;
+
+procedure TArgusCallScannerTests.ClosedCallIsLeft;
+begin
+  Assert.IsFalse(ScanEnd('Foo(1, 2)').Found, 'Nach ) ist der Aufruf verlassen');
+  Assert.IsFalse(ScanEnd('Foo(1);'#13#10'  ').Found);
+end;
+
+{ TArgusSignatureControllerTests }
+
+procedure TArgusSignatureControllerTests.SwitchesToFittingOverload;
+var
+  View: TFakeSignatureView;
+  ViewRef: IArgusSignatureView;
+  Controller: TArgusSignatureController;
+begin
+  View := TFakeSignatureView.Create;
+  ViewRef := View;
+  Controller := TArgusSignatureController.Create(ViewRef);
+  try
+    Controller.Show(FormatHelp, 0);
+    Assert.AreEqual(0, View.Signature, 'Kürzeste passende Variante zuerst');
+    Controller.UpdateParameter(1);
+    Assert.AreEqual(0, View.Signature);
+    Assert.AreEqual(1, View.Parameter);
+    // #437: Beim dritten Argument wechselt der Hint auf die Variante mit TFormatSettings.
+    Controller.UpdateParameter(2);
+    Assert.AreEqual(1, View.Signature);
+    Assert.AreEqual(2, View.Parameter);
+    // Zurück (Rücktaste über das Komma): die gezeigte Variante passt weiter und bleibt.
+    Controller.UpdateParameter(1);
+    Assert.AreEqual(1, View.Signature);
+    Controller.Close;
+    Assert.IsFalse(View.Shown);
+  finally
+    Controller.Free;
+  end;
+end;
+
+procedure TArgusSignatureControllerTests.ManualOverloadSwitchWraps;
+var
+  View: TFakeSignatureView;
+  ViewRef: IArgusSignatureView;
+  Controller: TArgusSignatureController;
+  Help: TArgusSignatureHelp;
+begin
+  View := TFakeSignatureView.Create;
+  ViewRef := View;
+  Controller := TArgusSignatureController.Create(ViewRef);
+  try
+    Help := FormatHelp;
+    Help.ActiveSignature := 1;
+    Controller.Show(Help, 0);
+    Assert.AreEqual(1, View.Signature, 'Vom Server gewählte Variante, wenn sie passt');
+    Controller.NextOverload;
+    Assert.AreEqual(0, View.Signature, 'Alt+↓ läuft im Kreis');
+    Controller.PreviousOverload;
+    Assert.AreEqual(1, View.Signature);
+    // Leere Hilfe schließt.
+    Controller.Show(Default(TArgusSignatureHelp), 0);
+    Assert.IsFalse(Controller.Active);
+  finally
+    Controller.Free;
+  end;
+end;
+
+procedure TArgusSignatureControllerTests.ReadsLspSignatureHelp;
+var
+  Response: TJSONValue;
+  Help: TArgusSignatureHelp;
+begin
+  Response := TJSONObject.ParseJSONValue(
+    '{"signatures":[{"label":"procedure Add(const S: string; Index: Integer)",' +
+    '"documentation":{"kind":"markdown","value":"Fügt ein."},' +
+    '"parameters":[{"label":[14,29],"documentation":"Der Text"},{"label":"Index: Integer"}]}],' +
+    '"activeSignature":0,"activeParameter":1}');
+  try
+    Help := TArgusServerSignatureProvider.HelpFromLsp(Response);
+  finally
+    Response.Free;
+  end;
+  Assert.AreEqual(1, Integer(Length(Help.Signatures)));
+  Assert.AreEqual(0, Help.ActiveSignature);
+  Assert.AreEqual(1, Help.ActiveParameter);
+  Assert.AreEqual('Fügt ein.', Help.Signatures[0].Documentation);
+  Assert.AreEqual('const S: string', Help.Signatures[0].Parameters[0].Text(Help.Signatures[0].Label_));
+  Assert.AreEqual('Der Text', Help.Signatures[0].Parameters[0].Documentation);
+  Assert.AreEqual('Index: Integer', Help.Signatures[0].Parameters[1].Text(Help.Signatures[0].Label_));
+  Assert.IsTrue(TArgusServerSignatureProvider.HelpFromLsp(nil).IsEmpty);
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TArgusCallScannerTests);
+  TDUnitX.RegisterTestFixture(TArgusSignatureControllerTests);
+
+end.

@@ -173,6 +173,11 @@
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Matching.pas"/>
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Controller.pas"/>
         <DCCReference Include="IDE.Expert\Argus.Core.Completion.Controller.Tests.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Signature\Argus.Core.Signature.Contract.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Signature\Argus.Core.Signature.CallScanner.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Signature\Argus.Core.Signature.Controller.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Signature\Argus.Core.Signature.Providers.Server.pas"/>
+        <DCCReference Include="IDE.Expert\Argus.Core.Signature.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
