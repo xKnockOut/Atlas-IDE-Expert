@@ -1,7 +1,7 @@
 ﻿package RefRuntime;
 
 {$R *.res}
-{$DESCRIPTION 'BetterDelphiLSP Referenz: Runtime'}
+{$DESCRIPTION 'Argus Referenz: Runtime'}
 {$RUNONLY}
 {$IMPLICITBUILD ON}
 

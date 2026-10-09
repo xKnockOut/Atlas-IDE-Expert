@@ -10,9 +10,9 @@ Der größte Teil des Servers ist reine Textverarbeitung. Windows-Abhängigkeite
 
 ## Entscheidung
 
-- `BDLsp.Common`: frei von Windows und VCL.
-- `BDLsp.Windows`: Windows-Adapter, frei von VCL.
-- `BetterDelphiLSP`: Anwendung mit Komposition von Hand.
+- `Argus.Common`: frei von Windows und VCL.
+- `Argus.Windows`: Windows-Adapter, frei von VCL.
+- `ArgusServer`: Anwendung mit Komposition von Hand.
 
 `Tools/Check-PackageDependencies.ps1` prüft die Regeln lokal und in der GitHub Action.
 

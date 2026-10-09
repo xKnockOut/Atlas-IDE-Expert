@@ -1,6 +1,6 @@
-// Minimale VS-Code-Erweiterung: startet BetterDelphiLSP.exe über stdio und
+// Minimale VS-Code-Erweiterung: startet ArgusServer.exe über stdio und
 // bindet sie mit vscode-languageclient an. Meldungen des Servers
-// (window/logMessage und stderr) erscheinen im Ausgabefenster „BetterDelphiLSP“.
+// (window/logMessage und stderr) erscheinen im Ausgabefenster „Argus“.
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -18,8 +18,8 @@ import {
   TransportKind,
 } from 'vscode-languageclient/node';
 
-const Section = 'betterDelphiLsp';
-const DefaultServerPath = path.join('Output', 'Win64', 'Debug', 'Bin', 'BetterDelphiLSP.exe');
+const Section = 'argus';
+const DefaultServerPath = path.join('Output', 'Win64', 'Debug', 'Bin', 'ArgusServer.exe');
 
 /** Höchstens so viele Neustarts nach Absturz innerhalb des Zeitfensters. */
 const MaxRestarts = 5;
@@ -75,8 +75,8 @@ class RestartingErrorHandler implements ErrorHandler {
       return {
         action: CloseAction.DoNotRestart,
         message:
-          `BetterDelphiLSP ist ${MaxRestarts}-mal in kurzer Zeit abgestürzt und bleibt aus. ` +
-          'Details im Ausgabefenster „BetterDelphiLSP“; Neustart über „BetterDelphiLSP: Server neu starten“.',
+          `Argus ist ${MaxRestarts}-mal in kurzer Zeit abgestürzt und bleibt aus. ` +
+          'Details im Ausgabefenster „Argus“; Neustart über „Argus: Server neu starten“.',
       };
     }
     this.restarts.push(now);
@@ -89,8 +89,8 @@ async function startClient(): Promise<void> {
   const serverPath = resolveServerPath();
   if (!serverPath || !fs.existsSync(serverPath)) {
     const choice = await vscode.window.showErrorMessage(
-      `BetterDelphiLSP: Server nicht gefunden (${serverPath ?? 'kein Arbeitsbereich geöffnet'}). ` +
-        'Bitte den Pfad in der Einstellung „betterDelphiLsp.serverPath“ angeben.',
+      `Argus: Server nicht gefunden (${serverPath ?? 'kein Arbeitsbereich geöffnet'}). ` +
+        'Bitte den Pfad in der Einstellung „argus.serverPath“ angeben.',
       'Einstellungen öffnen',
     );
     if (choice) {
@@ -108,6 +108,7 @@ async function startClient(): Promise<void> {
     documentSelector: [
       { scheme: 'file', language: 'objectpascal' },
       // Fehler in der Konfigurationsdatei meldet der Server.
+      { scheme: 'file', pattern: '**/argus.json' },
       { scheme: 'file', pattern: '**/delphi-lsp.json' },
       // Text-Formulardateien (#44): Gliederung und Sprung zum Ereignis.
       { scheme: 'file', pattern: '**/*.{dfm,fmx}' },
@@ -115,12 +116,12 @@ async function startClient(): Promise<void> {
     outputChannel: output,
     traceOutputChannel: traceOutput,
     errorHandler: new RestartingErrorHandler(),
-    // Schickt die Einstellungen betterDelphiLsp.* per workspace/didChangeConfiguration;
-    // delphi-lsp.json im Projekt hat Vorrang.
+    // Schickt die Einstellungen argus.* per workspace/didChangeConfiguration;
+    // argus.json im Projekt hat Vorrang.
     synchronize: { configurationSection: Section },
   };
 
-  client = new LanguageClient(Section, 'BetterDelphiLSP', serverOptions, clientOptions);
+  client = new LanguageClient(Section, 'Argus', serverOptions, clientOptions);
   await client.start();
 }
 
@@ -147,8 +148,8 @@ function toPosition(position: LspPosition): vscode.Position {
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  output = vscode.window.createOutputChannel('BetterDelphiLSP');
-  traceOutput = vscode.window.createOutputChannel('BetterDelphiLSP Trace');
+  output = vscode.window.createOutputChannel('Argus');
+  traceOutput = vscode.window.createOutputChannel('Argus Trace');
   context.subscriptions.push(output, traceOutput);
   context.subscriptions.push(
     vscode.commands.registerCommand(`${Section}.restartServer`, async () => {
@@ -157,12 +158,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     vscode.commands.registerCommand(`${Section}.showStatus`, async () => {
       if (!client) {
-        void vscode.window.showWarningMessage('BetterDelphiLSP läuft nicht.');
+        void vscode.window.showWarningMessage('Argus läuft nicht.');
         return;
       }
       // Der Server liefert den Status als JSON mit einer Markdown-Fassung zum Anzeigen.
       const status = await client.sendRequest<{ markdown?: string }>('workspace/executeCommand', {
-        command: 'betterdelphilsp.status',
+        command: 'argus.server.status',
       });
       const document = await vscode.workspace.openTextDocument({
         language: 'markdown',
@@ -173,7 +174,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Konfiguration und Plattform des Projekts umschalten (#46).
     vscode.commands.registerCommand(`${Section}.selectBuild`, async () => {
       if (!client) {
-        void vscode.window.showWarningMessage('BetterDelphiLSP läuft nicht.');
+        void vscode.window.showWarningMessage('Argus läuft nicht.');
         return;
       }
       interface BuildProject {
@@ -184,11 +185,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         platforms: string[];
       }
       const current = await client.sendRequest<{ projects: BuildProject[] }>('workspace/executeCommand', {
-        command: 'betterdelphilsp.selectBuild',
+        command: 'argus.server.selectBuild',
       });
       const project = current?.projects?.[0];
       if (!project) {
-        void vscode.window.showWarningMessage('BetterDelphiLSP: Kein Projekt geladen.');
+        void vscode.window.showWarningMessage('Argus: Kein Projekt geladen.');
         return;
       }
       const config = await vscode.window.showQuickPick(project.configs.length > 0 ? project.configs : [project.config], {
@@ -205,7 +206,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return;
       }
       await client.sendRequest('workspace/executeCommand', {
-        command: 'betterdelphilsp.selectBuild',
+        command: 'argus.server.selectBuild',
         arguments: [{ config, platform }],
       });
     }),

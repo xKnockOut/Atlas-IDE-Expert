@@ -1,7 +1,7 @@
 ﻿unit Shell.Workspace;
 
 // Host-Rolle Shell: ein Ordner des Arbeitsbereichs mit eigener
-// delphi-lsp.json, eigenem Projekt und eigenem Indexaufbau. Alle Ordner
+// argus.json, eigenem Projekt und eigenem Indexaufbau. Alle Ordner
 // schreiben in denselben Symbolindex, damit Navigation und Suche über
 // Ordnergrenzen funktionieren.
 
@@ -10,20 +10,20 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  BDLsp.Common.Logging.Contract,
-  BDLsp.Common.JsonRpc.Contract,
-  BDLsp.Common.Documents.Contract,
-  BDLsp.Common.Configuration.Contract,
-  BDLsp.Common.Lsp.Configuration,
-  BDLsp.Common.Lsp.WorkDoneProgress,
-  BDLsp.Common.Projects.Contract,
-  BDLsp.Common.Projects.UnitResolver,
-  BDLsp.Common.Compiler.Contract,
-  BDLsp.Common.Index.Contract,
-  BDLsp.Common.Index.Service,
-  BDLsp.Common.Index.Builder,
-  BDLsp.Common.Rules.Baseline,
-  BDLsp.Common.Lsp.Status;
+  Argus.Common.Logging.Contract,
+  Argus.Common.JsonRpc.Contract,
+  Argus.Common.Documents.Contract,
+  Argus.Common.Configuration.Contract,
+  Argus.Common.Lsp.Configuration,
+  Argus.Common.Lsp.WorkDoneProgress,
+  Argus.Common.Projects.Contract,
+  Argus.Common.Projects.UnitResolver,
+  Argus.Common.Compiler.Contract,
+  Argus.Common.Index.Contract,
+  Argus.Common.Index.Service,
+  Argus.Common.Index.Builder,
+  Argus.Common.Rules.Baseline,
+  Argus.Common.Lsp.Status;
 
 type
   TShellWorkspace = class
@@ -74,7 +74,7 @@ type
     constructor Create(const ARoot, AName: string; const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
       const ALogger: ILogger; const AIndex: ISymbolIndex; const AProgressToken: string);
     destructor Destroy; override;
-    /// <summary>Liest delphi-lsp.json des Ordners und startet den Indexaufbau.</summary>
+    /// <summary>Liest argus.json des Ordners und startet den Indexaufbau.</summary>
     procedure Load;
     /// <summary>Lädt das Projekt neu, auch wenn sich die Einstellungen nicht geändert haben.</summary>
     procedure Reload;
@@ -85,7 +85,7 @@ type
     /// <summary>Symbole des Projekts für das Abblenden; False ohne Projekt. Threadsicher.</summary>
     function Defines(out ADefines: TArray<string>): Boolean;
     /// <summary>
-    /// delphi-lsp-baseline.json des Ordners (#97), neu gelesen, sobald sich die
+    /// argus-baseline.json des Ordners (#97), neu gelesen, sobald sich die
     /// Datei ändert; nil ohne oder bei ungültiger Datei. Threadsicher.
     /// </summary>
     function Baseline: IRuleBaseline;
@@ -119,16 +119,16 @@ implementation
 uses
   System.IOUtils,
   System.StrUtils,
-  BDLsp.Common.Documents.FileEncoding,
-  BDLsp.Common.Compiler.CommandLine,
-  BDLsp.Common.Projects.Paths,
-  BDLsp.Common.Projects.DprojReader,
-  BDLsp.Common.Projects.DelphiVersions,
-  BDLsp.Common.Index.ProjectFiles,
-  BDLsp.Common.Index.Adapters.DiskFileSystem,
-  BDLsp.Common.Index.Adapters.CacheDirectory,
-  BDLsp.Common.Index.CacheHousekeeping,
-  BDLsp.Windows.Projects.DelphiInstallation;
+  Argus.Common.Documents.FileEncoding,
+  Argus.Common.Compiler.CommandLine,
+  Argus.Common.Projects.Paths,
+  Argus.Common.Projects.DprojReader,
+  Argus.Common.Projects.DelphiVersions,
+  Argus.Common.Index.ProjectFiles,
+  Argus.Common.Index.Adapters.DiskFileSystem,
+  Argus.Common.Index.Adapters.CacheDirectory,
+  Argus.Common.Index.CacheHousekeeping,
+  Argus.Windows.Projects.DelphiInstallation;
 
 { TShellWorkspace }
 
@@ -332,7 +332,7 @@ var
   FileTime: TDateTime;
   FileFormat: TFileFormat;
 begin
-  FileName := TPath.Combine(FRoot, BaselineFileName);
+  FileName := ExistingOrLegacyFile(FRoot, BaselineFileName, LegacyBaselineFileName);
   TMonitor.Enter(FLock);
   try
     if not TFile.Exists(FileName) then
@@ -391,7 +391,7 @@ begin
     Exit(False);
   end;
   // Eigener Ausgabeordner je Projekt, Plattform und Konfiguration; der Build des Entwicklers bleibt unberührt.
-  OutputDir := TPath.Combine(TPath.GetTempPath, Format('BetterDelphiLSP\dcc-%.8x\%s-%s',
+  OutputDir := TPath.Combine(TPath.GetTempPath, Format('Argus\dcc-%.8x\%s-%s',
     [Cardinal(LowerCase(Project.FileName).GetHashCode), Project.Platform, Project.Config]));
   try
     ARequest := TCompilerCommandLine.Build(Project, LibraryPaths, BdsRoot, OutputDir);

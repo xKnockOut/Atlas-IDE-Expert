@@ -17,7 +17,7 @@ implementation
 
 uses
   System.SysUtils,
-  BDLsp.Windows.Diagnostics.DebugOutput,
+  Argus.Windows.Diagnostics.DebugOutput,
   Shell.CommandLine,
   Shell.Composition,
   Shell.Linter;

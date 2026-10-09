@@ -1,0 +1,155 @@
+﻿package Argus.Common;
+
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Argus Common (frei von Windows und VCL)'}
+{$RUNONLY}
+{$IMPLICITBUILD ON}
+
+// Platform-Package ohne Abhängigkeit zu Windows und VCL.
+// Erlaubt ist ausschließlich die plattformunabhängige RTL (System.*).
+// Geprüft durch Tools\Check-PackageDependencies.ps1.
+
+requires
+  rtl;
+
+contains
+  Argus.Common.Product.Version in 'Source\Product\Argus.Common.Product.Version.pas',
+  Argus.Common.Logging.Contract in 'Source\Logging\Argus.Common.Logging.Contract.pas',
+  Argus.Common.Logging.Providers.Logger in 'Source\Logging\Providers\Argus.Common.Logging.Providers.Logger.pas',
+  Argus.Common.Logging.Providers.StreamSink in 'Source\Logging\Providers\Argus.Common.Logging.Providers.StreamSink.pas',
+  Argus.Common.JsonRpc.Contract in 'Source\JsonRpc\Argus.Common.JsonRpc.Contract.pas',
+  Argus.Common.JsonRpc.Messages in 'Source\JsonRpc\Argus.Common.JsonRpc.Messages.pas',
+  Argus.Common.JsonRpc.StreamTransport in 'Source\JsonRpc\Argus.Common.JsonRpc.StreamTransport.pas',
+  Argus.Common.JsonRpc.TracingTransport in 'Source\JsonRpc\Argus.Common.JsonRpc.TracingTransport.pas',
+  Argus.Common.JsonRpc.PendingRequests in 'Source\JsonRpc\Argus.Common.JsonRpc.PendingRequests.pas',
+  Argus.Common.JsonRpc.Watchdog in 'Source\JsonRpc\Argus.Common.JsonRpc.Watchdog.pas',
+  Argus.Common.JsonRpc.Dispatcher in 'Source\JsonRpc\Argus.Common.JsonRpc.Dispatcher.pas',
+  Argus.Common.JsonRpc.Connection in 'Source\JsonRpc\Argus.Common.JsonRpc.Connection.pas',
+  Argus.Common.Lsp.Contract in 'Source\Lsp\Argus.Common.Lsp.Contract.pas',
+  Argus.Common.Lsp.Lifecycle in 'Source\Lsp\Argus.Common.Lsp.Lifecycle.pas',
+  Argus.Common.Lsp.Adapters.LogMessageSink in 'Source\Lsp\Argus.Common.Lsp.Adapters.LogMessageSink.pas',
+  Argus.Common.Documents.Contract in 'Source\Documents\Argus.Common.Documents.Contract.pas',
+  Argus.Common.Documents.TextDocument in 'Source\Documents\Argus.Common.Documents.TextDocument.pas',
+  Argus.Common.Documents.FileEncoding in 'Source\Documents\Argus.Common.Documents.FileEncoding.pas',
+  Argus.Common.Projects.Contract in 'Source\Projects\Argus.Common.Projects.Contract.pas',
+  Argus.Common.Projects.Paths in 'Source\Projects\Argus.Common.Projects.Paths.pas',
+  Argus.Common.Projects.DelphiVersions in 'Source\Projects\Argus.Common.Projects.DelphiVersions.pas',
+  Argus.Common.Projects.Internals.Xml in 'Source\Projects\Internals\Argus.Common.Projects.Internals.Xml.pas',
+  Argus.Common.Projects.Internals.MSBuild in 'Source\Projects\Internals\Argus.Common.Projects.Internals.MSBuild.pas',
+  Argus.Common.Projects.DprojReader in 'Source\Projects\Argus.Common.Projects.DprojReader.pas',
+  Argus.Common.Projects.UnitResolver in 'Source\Projects\Argus.Common.Projects.UnitResolver.pas',
+  Argus.Common.Compiler.Contract in 'Source\Compiler\Argus.Common.Compiler.Contract.pas',
+  Argus.Common.Compiler.OutputParser in 'Source\Compiler\Argus.Common.Compiler.OutputParser.pas',
+  Argus.Common.Compiler.CommandLine in 'Source\Compiler\Argus.Common.Compiler.CommandLine.pas',
+  Argus.Common.Compiler.Results in 'Source\Compiler\Argus.Common.Compiler.Results.pas',
+  Argus.Common.Index.Contract in 'Source\Index\Argus.Common.Index.Contract.pas',
+  Argus.Common.Index.Extractor in 'Source\Index\Argus.Common.Index.Extractor.pas',
+  Argus.Common.Index.SymbolIndex in 'Source\Index\Argus.Common.Index.SymbolIndex.pas',
+  Argus.Common.Index.Cache in 'Source\Index\Argus.Common.Index.Cache.pas',
+  Argus.Common.Index.CacheHousekeeping in 'Source\Index\Argus.Common.Index.CacheHousekeeping.pas',
+  Argus.Common.Index.Builder in 'Source\Index\Argus.Common.Index.Builder.pas',
+  Argus.Common.Index.ProjectFiles in 'Source\Index\Argus.Common.Index.ProjectFiles.pas',
+  Argus.Common.Index.Service in 'Source\Index\Argus.Common.Index.Service.pas',
+  Argus.Common.Rules.Contract in 'Source\Rules\Argus.Common.Rules.Contract.pas',
+  Argus.Common.Rules.Registry in 'Source\Rules\Argus.Common.Rules.Registry.pas',
+  Argus.Common.Rules.Suppressions in 'Source\Rules\Argus.Common.Rules.Suppressions.pas',
+  Argus.Common.Rules.Engine in 'Source\Rules\Argus.Common.Rules.Engine.pas',
+  Argus.Common.Rules.Checker in 'Source\Rules\Argus.Common.Rules.Checker.pas',
+  Argus.Common.Rules.Filter in 'Source\Rules\Argus.Common.Rules.Filter.pas',
+  Argus.Common.Rules.Output in 'Source\Rules\Argus.Common.Rules.Output.pas',
+  Argus.Common.Rules.Baseline in 'Source\Rules\Argus.Common.Rules.Baseline.pas',
+  Argus.Common.Rules.SuppressionStats in 'Source\Rules\Argus.Common.Rules.SuppressionStats.pas',
+  Argus.Common.Rules.Catalog in 'Source\Rules\Argus.Common.Rules.Catalog.pas',
+  Argus.Common.Rules.Catalog.Data in 'Source\Rules\Argus.Common.Rules.Catalog.Data.pas',
+  Argus.Common.Rules.Builtin in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.pas',
+  Argus.Common.Rules.Builtin.Unicode in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.Unicode.pas',
+  Argus.Common.Editing.DocumentLinks in 'Source\Editing\Argus.Common.Editing.DocumentLinks.pas',
+  Argus.Common.Editing.Colors in 'Source\Editing\Argus.Common.Editing.Colors.pas',
+  Argus.Common.JsonRpc.Statistics in 'Source\JsonRpc\Argus.Common.JsonRpc.Statistics.pas',
+  Argus.Common.Lsp.References in 'Source\Lsp\Argus.Common.Lsp.References.pas',
+  Argus.Common.Lsp.Rename in 'Source\Lsp\Argus.Common.Lsp.Rename.pas',
+  Argus.Common.Lsp.Completion in 'Source\Lsp\Argus.Common.Lsp.Completion.pas',
+  Argus.Common.Lsp.SignatureHelp in 'Source\Lsp\Argus.Common.Lsp.SignatureHelp.pas',
+  Argus.Common.Lsp.Hierarchies in 'Source\Lsp\Argus.Common.Lsp.Hierarchies.pas',
+  Argus.Common.Lsp.Implementations in 'Source\Lsp\Argus.Common.Lsp.Implementations.pas',
+  Argus.Common.Lsp.InlayHints in 'Source\Lsp\Argus.Common.Lsp.InlayHints.pas',
+  Argus.Common.Lsp.MessageHandlers in 'Source\Lsp\Argus.Common.Lsp.MessageHandlers.pas',
+  Argus.Common.Lsp.CodeLens in 'Source\Lsp\Argus.Common.Lsp.CodeLens.pas',
+  Argus.Common.Lsp.SemanticTokens in 'Source\Lsp\Argus.Common.Lsp.SemanticTokens.pas',
+  Argus.Common.Lsp.Commands in 'Source\Lsp\Argus.Common.Lsp.Commands.pas',
+  Argus.Common.Lsp.Status in 'Source\Lsp\Argus.Common.Lsp.Status.pas',
+  Argus.Common.Lsp.DocWiki in 'Source\Lsp\Argus.Common.Lsp.DocWiki.pas',
+  Argus.Common.Lsp.Colors in 'Source\Lsp\Argus.Common.Lsp.Colors.pas',
+  Argus.Common.Lsp.DocumentLinks in 'Source\Lsp\Argus.Common.Lsp.DocumentLinks.pas',
+  Argus.Common.Editing.CodeActions in 'Source\Editing\Argus.Common.Editing.CodeActions.pas',
+  Argus.Common.Editing.ClassCompletion in 'Source\Editing\Argus.Common.Editing.ClassCompletion.pas',
+  Argus.Common.Dfm.Contract in 'Source\Dfm\Argus.Common.Dfm.Contract.pas',
+  Argus.Common.Dfm.Parser in 'Source\Dfm\Argus.Common.Dfm.Parser.pas',
+  Argus.Common.Dfm.Navigation in 'Source\Dfm\Argus.Common.Dfm.Navigation.pas',
+  Argus.Common.Dfm.ComponentRename in 'Source\Dfm\Argus.Common.Dfm.ComponentRename.pas',
+  Argus.Common.Lsp.FormFiles in 'Source\Lsp\Argus.Common.Lsp.FormFiles.pas',
+  Argus.Common.Editing.EditorConfig in 'Source\Editing\Argus.Common.Editing.EditorConfig.pas',
+  Argus.Common.Editing.Formatter in 'Source\Editing\Argus.Common.Editing.Formatter.pas',
+  Argus.Common.Lsp.CodeActions in 'Source\Lsp\Argus.Common.Lsp.CodeActions.pas',
+  Argus.Common.Semantics.ControlFlow in 'Source\Semantics\Argus.Common.Semantics.ControlFlow.pas',
+  Argus.Common.Semantics.NameResolver in 'Source\Semantics\Argus.Common.Semantics.NameResolver.pas',
+  Argus.Common.Lsp.Definition in 'Source\Lsp\Argus.Common.Lsp.Definition.pas',
+  Argus.Common.Lsp.PublishedMembers in 'Source\Lsp\Argus.Common.Lsp.PublishedMembers.pas',
+  Argus.Common.Lsp.Hover in 'Source\Lsp\Argus.Common.Lsp.Hover.pas',
+  Argus.Common.Lsp.HoverValues in 'Source\Lsp\Argus.Common.Lsp.HoverValues.pas',
+  Argus.Common.Lsp.LinkedEditing in 'Source\Lsp\Argus.Common.Lsp.LinkedEditing.pas',
+  Argus.Common.Lsp.Formatting in 'Source\Lsp\Argus.Common.Lsp.Formatting.pas',
+  Argus.Common.Lsp.FuzzyMatch in 'Source\Lsp\Argus.Common.Lsp.FuzzyMatch.pas',
+  Argus.Common.Lsp.WorkspaceSymbols in 'Source\Lsp\Argus.Common.Lsp.WorkspaceSymbols.pas',
+  Argus.Common.Lsp.DocumentHighlights in 'Source\Lsp\Argus.Common.Lsp.DocumentHighlights.pas',
+  Argus.Common.Lsp.WatchedFiles in 'Source\Lsp\Argus.Common.Lsp.WatchedFiles.pas',
+  Argus.Common.Lsp.InactiveRegions in 'Source\Lsp\Argus.Common.Lsp.InactiveRegions.pas',
+  Argus.Common.Lsp.WorkspaceFolders in 'Source\Lsp\Argus.Common.Lsp.WorkspaceFolders.pas',
+  Argus.Common.Index.Adapters.DiskFileSystem in 'Source\Index\Adapters\Argus.Common.Index.Adapters.DiskFileSystem.pas',
+  Argus.Common.Index.Adapters.CacheDirectory in 'Source\Index\Adapters\Argus.Common.Index.Adapters.CacheDirectory.pas',
+  Argus.Common.Lsp.WorkDoneProgress in 'Source\Lsp\Argus.Common.Lsp.WorkDoneProgress.pas',
+  Argus.Common.Configuration.Contract in 'Source\Configuration\Argus.Common.Configuration.Contract.pas',
+  Argus.Common.Configuration.Internals.JsonTree in 'Source\Configuration\Internals\Argus.Common.Configuration.Internals.JsonTree.pas',
+  Argus.Common.Configuration.Parser in 'Source\Configuration\Argus.Common.Configuration.Parser.pas',
+  Argus.Common.Lsp.Configuration in 'Source\Lsp\Argus.Common.Lsp.Configuration.pas',
+  Argus.Common.Documents.Uris in 'Source\Documents\Argus.Common.Documents.Uris.pas',
+  Argus.Common.Documents.Providers.DocumentStore in 'Source\Documents\Providers\Argus.Common.Documents.Providers.DocumentStore.pas',
+  Argus.Common.Lsp.Positions in 'Source\Lsp\Argus.Common.Lsp.Positions.pas',
+  Argus.Common.Lsp.Internals.Debouncer in 'Source\Lsp\Internals\Argus.Common.Lsp.Internals.Debouncer.pas',
+  Argus.Common.Lsp.Internals.Cancellation in 'Source\Lsp\Internals\Argus.Common.Lsp.Internals.Cancellation.pas',
+  Argus.Common.Lsp.DocumentSymbols in 'Source\Lsp\Argus.Common.Lsp.DocumentSymbols.pas',
+  Argus.Common.Lsp.FoldingRanges in 'Source\Lsp\Argus.Common.Lsp.FoldingRanges.pas',
+  Argus.Common.Lsp.SelectionRanges in 'Source\Lsp\Argus.Common.Lsp.SelectionRanges.pas',
+  Argus.Common.Lsp.SyntaxDiagnostics in 'Source\Lsp\Argus.Common.Lsp.SyntaxDiagnostics.pas',
+  Argus.Common.Lsp.TextDocumentSync in 'Source\Lsp\Argus.Common.Lsp.TextDocumentSync.pas',
+  Argus.Common.Pascal.Contract in 'Source\Pascal\Argus.Common.Pascal.Contract.pas',
+  Argus.Common.Pascal.Lexer in 'Source\Pascal\Argus.Common.Pascal.Lexer.pas',
+  Argus.Common.Pascal.SyntaxTree in 'Source\Pascal\Argus.Common.Pascal.SyntaxTree.pas',
+  Argus.Common.Pascal.Parser in 'Source\Pascal\Argus.Common.Pascal.Parser.pas',
+  Argus.Common.Pascal.LanguageFeatures in 'Source\Pascal\Argus.Common.Pascal.LanguageFeatures.pas',
+  Argus.Common.Pascal.Preprocessor in 'Source\Pascal\Argus.Common.Pascal.Preprocessor.pas';
+
+end.

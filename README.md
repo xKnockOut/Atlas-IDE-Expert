@@ -1,15 +1,15 @@
-# BetterDelphiLSP
+# Argus IDE Expert
 
-Eigener Language Server (LSP) für Delphi/Object Pascal, mit zusätzlicher MCP-Schnittstelle für Claude Code. Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnockOut/BetterDelphiLSP/issues); die Epics #130 bis #139 bilden die Ausbaustufen ab.
+Experte für RAD Studio mit eigenem Language Server (LSP) für Delphi/Object Pascal, mit zusätzlicher MCP-Schnittstelle für Claude Code. Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnockOut/Argus-IDE-Expert/issues); die Epics #130 bis #139 bilden die Ausbaustufen ab.
 
 ## Aufbau
 
 | Projekt | Inhalt |
 |---|---|
-| `Packages/BDLsp.Common` | Package, frei von Windows und VCL |
-| `Packages/BDLsp.Windows` | Package für Windows-spezifische Funktionen, frei von VCL |
-| `Application/BetterDelphiLSP` | Die Anwendung (Konsolenprogramm, spricht LSP über stdin/stdout) |
-| `Tests/BDLsp.Tests` | DUnitX-Tests |
+| `Packages/Argus.Common` | Package, frei von Windows und VCL |
+| `Packages/Argus.Windows` | Package für Windows-spezifische Funktionen, frei von VCL |
+| `Application/ArgusServer` | Die Anwendung (Konsolenprogramm, spricht LSP über stdin/stdout) |
+| `Tests/Argus.Tests` | DUnitX-Tests |
 
 Details zu Rollen, Benennung und Importregeln: [docs/Architektur.md](docs/Architektur.md).
 
@@ -22,12 +22,12 @@ Details zu Rollen, Benennung und Importregeln: [docs/Architektur.md](docs/Archit
 
 ## Bauen
 
-In der IDE `BetterDelphiLSP.groupproj` öffnen und **Alle erstellen**. Die Reihenfolge Common → Windows → Anwendung → IDE-Plugin → Tests ist in der Projektgruppe hinterlegt. Das IDE-Plugin ist nur für Win32 eingerichtet (die IDE ist 32-Bit); ein Gruppenbau für Win64 übersetzt es trotzdem mit und prüft so den Quelltext.
+In der IDE `Argus.groupproj` öffnen und **Alle erstellen**. Die Reihenfolge Common → Windows → Anwendung → IDE-Plugin → Tests ist in der Projektgruppe hinterlegt. Das IDE-Plugin ist nur für Win32 eingerichtet (die IDE ist 32-Bit); ein Gruppenbau für Win64 übersetzt es trotzdem mit und prüft so den Quelltext.
 
 Auf der Kommandozeile (RAD-Studio-Eingabeaufforderung bzw. nach `rsvars.bat`):
 
 ```bat
-msbuild BetterDelphiLSP.groupproj /t:Build /p:Config=Debug /p:Platform=Win32
+msbuild Argus.groupproj /t:Build /p:Config=Debug /p:Platform=Win32
 ```
 
 Die Ausgabe landet in `Output\<Plattform>\<Konfiguration>\` (`Bin`, `Bpl`, `Dcp`, `Dcu`).
@@ -35,7 +35,7 @@ Die Ausgabe landet in `Output\<Plattform>\<Konfiguration>\` (`Bin`, `Bpl`, `Dcp`
 ## Testen
 
 ```bat
-Output\Win64\Debug\Bin\BDLsp.Tests.exe --exit:Continue
+Output\Win64\Debug\Bin\Argus.Tests.exe --exit:Continue
 ```
 
 Prüfskripte (laufen auch als GitHub Action):
@@ -61,11 +61,11 @@ pwsh Tools/Check-ConsoleOutput.ps1         # kein Write/Writeln auf stdout
 
 Werte gehen auch mit `=` (`--log=server.log`). `--stdio` und `--clientProcessId`, die Editoren anhängen, werden ignoriert.
 
-`BetterDelphiLSP.exe --clear-cache` löscht alle Index-Caches unter `%LOCALAPPDATA%\BetterDelphiLSP`, die keine laufende Instanz nutzt. Der Ordner wird ohnehin auf 256 MB begrenzt, ältere Caches gehen zuerst.
+`ArgusServer.exe --clear-cache` löscht alle Index-Caches unter `%LOCALAPPDATA%\Argus`, die keine laufende Instanz nutzt. Der Ordner wird ohnehin auf 256 MB begrenzt, ältere Caches gehen zuerst.
 
 ### Linter-Modus
 
-`BetterDelphiLSP.exe --check <Ziel>` prüft ohne Editor. Das Ziel kann eine `.dproj` (Hauptdatei und Units), ein Ordner (alle `.pas`, `.dpr` und `.dpk` darunter) oder eine Datei sein. `delphi-lsp.json` im Ordner des Ziels gilt wie im Editor.
+`ArgusServer.exe --check <Ziel>` prüft ohne Editor. Das Ziel kann eine `.dproj` (Hauptdatei und Units), ein Ordner (alle `.pas`, `.dpr` und `.dpk` darunter) oder eine Datei sein. `argus.json` im Ordner des Ziels gilt wie im Editor. Fehlt sie, gilt die frühere `delphi-lsp.json` (ebenso `delphi-lsp-baseline.json` für die Baseline).
 
 | Parameter | Bedeutung |
 |---|---|
@@ -74,7 +74,7 @@ Werte gehen auch mit `=` (`--log=server.log`). `--stdio` und `--clientProcessId`
 | `--rules <a,b>` | nur diese Regeln, z. B. `syntax` |
 | `--units <a,b>` | nur diese Units: Name oder Glob-Muster für Pfade |
 | `--min-severity <S>` | `hint`, `info`, `warning`, `error` |
-| `--baseline <Datei>` | bekannte Treffer ausblenden; ohne Angabe gilt `delphi-lsp-baseline.json` neben `delphi-lsp.json`, falls vorhanden. Der Editor blendet sie ebenso aus |
+| `--baseline <Datei>` | bekannte Treffer ausblenden; ohne Angabe gilt `argus-baseline.json` neben `argus.json`, falls vorhanden. Der Editor blendet sie ebenso aus |
 | `--update-baseline` | Baseline aus den aktuellen Treffern neu schreiben (verschwundene Einträge fallen heraus), Exit-Code 0 |
 | `--suppression-stats` | statt der Treffer: wie oft jede Regel per `lsp-ignore` unterdrückt wird (häufigste zuerst, mit ungenutzten), als Text oder JSON; Exit-Code 0 |
 
@@ -82,8 +82,8 @@ Exit-Code: 0 ohne Warnungen und Fehler, 1 bei Warnungen, 2 bei Fehlern, 3 bei Au
 
 ### Prüfregeln
 
-Alle Regeln sind in [docs/Regeln.md](docs/Regeln.md) beschrieben. Einzige Quelle ist der Regelkatalog `Packages/BDLsp.Common/Katalog/regelkatalog.json` (englisch) mit der Übersetzung `regelkatalog.de.json`. Nach Änderungen `pwsh Tools/Update-RuleCatalog.ps1` ausführen; die CI prüft mit `-Check`, dass Katalog, Implementierung und Dokumentation übereinstimmen.
+Alle Regeln sind in [docs/Regeln.md](docs/Regeln.md) beschrieben. Einzige Quelle ist der Regelkatalog `Packages/Argus.Common/Katalog/regelkatalog.json` (englisch) mit der Übersetzung `regelkatalog.de.json`. Nach Änderungen `pwsh Tools/Update-RuleCatalog.ps1` ausführen; die CI prüft mit `-Check`, dass Katalog, Implementierung und Dokumentation übereinstimmen.
 
 ## Wichtig: stdout gehört dem Protokoll
 
-Der Server spricht LSP über stdin/stdout. Jede zusätzliche Ausgabe auf stdout (`Writeln`, unbehandelte Exceptions) zerstört die Kommunikation mit dem Editor. Alle Diagnosemeldungen laufen über `ILogger` (`BDLsp.Common.Logging`) an `OutputDebugString`, die Logdatei, `window/logMessage` und bei Fehlern stderr. Nach dem Start biegt der Server das stdout-Handle und `Output` auf stderr um, sodass auch Bibliotheken das Protokoll nicht stören können.
+Der Server spricht LSP über stdin/stdout. Jede zusätzliche Ausgabe auf stdout (`Writeln`, unbehandelte Exceptions) zerstört die Kommunikation mit dem Editor. Alle Diagnosemeldungen laufen über `ILogger` (`Argus.Common.Logging`) an `OutputDebugString`, die Logdatei, `window/logMessage` und bei Fehlern stderr. Nach dem Start biegt der Server das stdout-Handle und `Output` auf stderr um, sodass auch Bibliotheken das Protokoll nicht stören können.

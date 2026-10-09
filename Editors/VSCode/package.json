@@ -1,14 +1,14 @@
 {
-  "name": "betterdelphilsp",
-  "displayName": "BetterDelphiLSP",
-  "description": "Minimale Hülle, die den Language Server BetterDelphiLSP für Delphi-Quelltexte startet.",
+  "name": "argus",
+  "displayName": "Argus",
+  "description": "Minimale Hülle, die den Argus-Server (Argus IDE Expert) für Delphi-Quelltexte startet.",
   "version": "0.1.0",
   "publisher": "xknockout",
   "license": "SEE LICENSE IN ../../LICENSE",
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/xKnockOut/BetterDelphiLSP.git"
+    "url": "https://github.com/xKnockOut/Argus-IDE-Expert.git"
   },
   "engines": {
     "vscode": "^1.82.0"
@@ -42,68 +42,68 @@
       }
     ],
     "configuration": {
-      "title": "BetterDelphiLSP",
+      "title": "Argus",
       "properties": {
-        "betterDelphiLsp.serverPath": {
+        "argus.serverPath": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Pfad zu `BetterDelphiLSP.exe`. Leer: `Output\\Win64\\Debug\\Bin\\BetterDelphiLSP.exe` im ersten Arbeitsbereichsordner."
+          "markdownDescription": "Pfad zu `ArgusServer.exe`. Leer: `Output\\Win64\\Debug\\Bin\\ArgusServer.exe` im ersten Arbeitsbereichsordner."
         },
-        "betterDelphiLsp.delphiVersion": {
+        "argus.delphiVersion": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Delphi-Version wie in der Registry, z. B. `37.0`; leer: neueste installierte. delphi-lsp.json im Projekt hat Vorrang."
+          "markdownDescription": "Delphi-Version wie in der Registry, z. B. `37.0`; leer: neueste installierte. argus.json im Projekt hat Vorrang."
         },
-        "betterDelphiLsp.language": {
+        "argus.language": {
           "type": "string",
           "enum": [
             "de",
             "en"
           ],
           "default": "de",
-          "description": "Sprache der Meldungen. delphi-lsp.json im Projekt hat Vorrang."
+          "description": "Sprache der Meldungen. argus.json im Projekt hat Vorrang."
         },
-        "betterDelphiLsp.project": {
+        "argus.project": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Projektdatei (`.dproj`) relativ zum Arbeitsbereich; leer: die einzige `.dproj` im Wurzelordner. delphi-lsp.json im Projekt hat Vorrang."
+          "markdownDescription": "Projektdatei (`.dproj`) relativ zum Arbeitsbereich; leer: die einzige `.dproj` im Wurzelordner. argus.json im Projekt hat Vorrang."
         },
-        "betterDelphiLsp.config": {
+        "argus.config": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Build-Konfiguration, z. B. `Debug`; leer: die im Projekt eingestellte. delphi-lsp.json im Projekt hat Vorrang."
+          "markdownDescription": "Build-Konfiguration, z. B. `Debug`; leer: die im Projekt eingestellte. argus.json im Projekt hat Vorrang."
         },
-        "betterDelphiLsp.platform": {
+        "argus.platform": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Zielplattform, z. B. `Win64`; leer: die im Projekt eingestellte. delphi-lsp.json im Projekt hat Vorrang."
+          "markdownDescription": "Zielplattform, z. B. `Win64`; leer: die im Projekt eingestellte. argus.json im Projekt hat Vorrang."
         },
-        "betterDelphiLsp.rules": {
+        "argus.rules": {
           "type": "object",
           "default": {},
-          "markdownDescription": "Prüfregeln: Regel-Id auf `off`, `hint`, `info`, `warning` oder `error`. Einträge in delphi-lsp.json haben je Regel Vorrang."
+          "markdownDescription": "Prüfregeln: Regel-Id auf `off`, `hint`, `info`, `warning` oder `error`. Einträge in argus.json haben je Regel Vorrang."
         },
-        "betterDelphiLsp.exclude": {
+        "argus.exclude": {
           "type": "array",
           "items": {
             "type": "string"
           },
           "default": [],
-          "markdownDescription": "Ausgeschlossene Ordner und Dateien als Glob-Muster, z. B. `ThirdParty/**`. delphi-lsp.json im Projekt hat Vorrang."
+          "markdownDescription": "Ausgeschlossene Ordner und Dateien als Glob-Muster, z. B. `ThirdParty/**`. argus.json im Projekt hat Vorrang."
         },
-        "betterDelphiLsp.compiler": {
+        "argus.compiler": {
           "type": "object",
           "default": {
             "onSave": true
           },
-          "markdownDescription": "Compiler-Anbindung: `onSave` kompiliert das Projekt nach dem Speichern im Hintergrund und zeigt Fehler, Warnungen und Hinweise von dcc32/dcc64 an. delphi-lsp.json im Projekt hat Vorrang."
+          "markdownDescription": "Compiler-Anbindung: `onSave` kompiliert das Projekt nach dem Speichern im Hintergrund und zeigt Fehler, Warnungen und Hinweise von dcc32/dcc64 an. argus.json im Projekt hat Vorrang."
         },
-        "betterDelphiLsp.format": {
+        "argus.format": {
           "type": "object",
           "default": {},
-          "markdownDescription": "Formatierung: `indentSize`, `useTabs`, `keywordCase` (`preserve`/`lower`/`upper`), `trimTrailingWhitespace`, `insertFinalNewline`, `spaceAroundAssignment`, `spaceAfterComma`, `endOfLine` (`lf`/`crlf`). Gesetzte Werte haben Vorrang vor `.editorconfig`; delphi-lsp.json im Projekt hat Vorrang."
+          "markdownDescription": "Formatierung: `indentSize`, `useTabs`, `keywordCase` (`preserve`/`lower`/`upper`), `trimTrailingWhitespace`, `insertFinalNewline`, `spaceAroundAssignment`, `spaceAfterComma`, `endOfLine` (`lf`/`crlf`). Gesetzte Werte haben Vorrang vor `.editorconfig`; argus.json im Projekt hat Vorrang."
         },
-        "betterDelphiLsp.inlayHints": {
+        "argus.inlayHints": {
           "type": "object",
           "default": {
             "parameterNames": true,
@@ -111,9 +111,9 @@
             "endMarkers": true,
             "endMarkerMinLines": 20
           },
-          "markdownDescription": "Inlay Hints: `parameterNames`, `inferredTypes`, `endMarkers` (an/aus) und `endMarkerMinLines` (Mindestlänge eines Blocks in Zeilen für eine Endmarkierung). delphi-lsp.json im Projekt hat Vorrang."
+          "markdownDescription": "Inlay Hints: `parameterNames`, `inferredTypes`, `endMarkers` (an/aus) und `endMarkerMinLines` (Mindestlänge eines Blocks in Zeilen für eine Endmarkierung). argus.json im Projekt hat Vorrang."
         },
-        "betterDelphiLsp.logLevel": {
+        "argus.logLevel": {
           "type": "string",
           "enum": [
             "debug",
@@ -124,17 +124,17 @@
           "default": "info",
           "description": "Mindeststufe der Meldungen im Ausgabefenster und in der Logdatei."
         },
-        "betterDelphiLsp.logFile": {
+        "argus.logFile": {
           "type": "string",
           "default": "",
           "description": "Optionale Logdatei des Servers."
         },
-        "betterDelphiLsp.traceFile": {
+        "argus.traceFile": {
           "type": "string",
           "default": "",
           "description": "Optionaler Mitschnitt aller JSON-Nachrichten (zur Fehlersuche)."
         },
-        "betterDelphiLsp.trace.server": {
+        "argus.trace.server": {
           "type": "string",
           "enum": [
             "off",
@@ -142,36 +142,36 @@
             "verbose"
           ],
           "default": "off",
-          "description": "Protokolliert den Nachrichtenaustausch im Ausgabefenster „BetterDelphiLSP Trace“."
+          "description": "Protokolliert den Nachrichtenaustausch im Ausgabefenster „Argus Trace“."
         }
       }
     },
     "commands": [
       {
-        "command": "betterDelphiLsp.restartServer",
+        "command": "argus.restartServer",
         "title": "Server neu starten",
-        "category": "BetterDelphiLSP"
+        "category": "Argus"
       },
       {
-        "command": "betterDelphiLsp.showStatus",
+        "command": "argus.showStatus",
         "title": "Status anzeigen",
-        "category": "BetterDelphiLSP"
+        "category": "Argus"
       },
       {
-        "command": "betterdelphilsp.compile",
+        "command": "argus.server.compile",
         "title": "Projekt kompilieren",
-        "category": "BetterDelphiLSP"
+        "category": "Argus"
       },
       {
-        "command": "betterDelphiLsp.selectBuild",
+        "command": "argus.selectBuild",
         "title": "Konfiguration und Plattform wählen",
-        "category": "BetterDelphiLSP"
+        "category": "Argus"
       }
     ],
     "jsonValidation": [
       {
-        "fileMatch": "delphi-lsp.json",
-        "url": "./schemas/delphi-lsp.schema.json"
+        "fileMatch": ["argus.json", "delphi-lsp.json"],
+        "url": "./schemas/argus.schema.json"
       }
     ]
   },

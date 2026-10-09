@@ -6,15 +6,15 @@
 
 ## Kontext
 
-RAD Studio 13 kann über den Code Insight-Manager fremde LSP-Server einbinden. Mit BetterDelphiLSP funktionieren dabei `initialize`, die Dokumentsynchronisation, `documentSymbol` und `publishDiagnostics`. Syntaxfehler erscheinen als Error Insight.
+RAD Studio 13 kann über den Code Insight-Manager fremde LSP-Server einbinden. Mit ArgusServer funktionieren dabei `initialize`, die Dokumentsynchronisation, `documentSymbol` und `publishDiagnostics`. Syntaxfehler erscheinen als Error Insight.
 
 **Hover zeigt die IDE für benutzerdefinierte Server aber nicht an.** Der Tooltip blitzt mit „Wird berechnet …“ auf und verschwindet. Belegt ist das so:
-- **Anfragen:** Ein Mitschnitt des Verkehrs zwischen IDE und dem eingebauten DelphiLSP (über einen Vermittler, 09.10.2026) zeigt dieselben Hover-Anfragen wie bei BetterDelphiLSP.
+- **Anfragen:** Ein Mitschnitt des Verkehrs zwischen IDE und dem eingebauten DelphiLSP (über einen Vermittler, 09.10.2026) zeigt dieselben Hover-Anfragen wie bei ArgusServer.
 - **Antworten:** DelphiLSP antwortet `{"contents":"…"}`, und die IDE zeigt das an.
-- **Angleichen hilft nicht:** BetterDelphiLSP liefert inzwischen genau dieselbe Form, ohne `range`. Er meldet beim Start testweise sogar nur die Fähigkeiten von DelphiLSP (`textDocumentSync: 1`) und sendet keine Log- oder Fortschrittsnachrichten. Der Tooltip erscheint trotzdem nicht.
+- **Angleichen hilft nicht:** ArgusServer liefert inzwischen genau dieselbe Form, ohne `range`. Er meldet beim Start testweise sogar nur die Fähigkeiten von DelphiLSP (`textDocumentSync: 1`) und sendet keine Log- oder Fortschrittsnachrichten. Der Tooltip erscheint trotzdem nicht.
 - **Ursache:** Die IDE behandelt benutzerdefinierte Server intern anders (`TLSPUserMgr` in `idelsp370.bpl`) als ihren eigenen DelphiLSP. Dem eigenen Server übergibt sie zudem `returnHoverModel: true`.
 
-Codevervollständigung und Parameterhilfe sollen ebenfalls aus BetterDelphiLSP kommen. Der Compiler der Community Edition ist nur aus der IDE heraus nutzbar. BetterDelphiLSP braucht ihn nicht, Parser, Index und Namensauflösung sind eigen (ADR 0001).
+Codevervollständigung und Parameterhilfe sollen ebenfalls aus ArgusServer kommen. Der Compiler der Community Edition ist nur aus der IDE heraus nutzbar. ArgusServer braucht ihn nicht, Parser, Index und Namensauflösung sind eigen (ADR 0001).
 
 Die Open Tools API bietet dafür:
 - **Code Insight:** `IOTACodeInsightManager` (`ToolsAPI.pas`). Die IDE ruft den Manager für Vervollständigung (`#0`, `GetSymbolList`), Parameterhilfe (`#1`, `GetParameterList`), Browse/Strg+Klick (`#2`) und Symbolhinweis (`#3`) auf, Help Insight geht über `GetHelpInsightHtml`. Mit `IOTACodeInsightSelection` erscheint er in der Auswahl unter *Tools > Optionen*.
@@ -23,9 +23,9 @@ Die Open Tools API bietet dafür:
 
 ## Entscheidung
 
-Ein Design-Time-Package `BDLsp.IdePlugin` (Win32, denn `bds.exe` ist 32-Bit) meldet sich als **Code Insight-Manager für Delphi** an. Es ist ein **dünner LSP-Client**:
+Ein Design-Time-Package `Argus.IdePlugin` (Win32, denn `bds.exe` ist 32-Bit) meldet sich als **Code Insight-Manager für Delphi** an. Es ist ein **dünner LSP-Client**:
 
-- Es startet BetterDelphiLSP als **eigenen Prozess** und spricht mit ihm JSON-RPC über stdin/stdout. Die Protokollschicht `BDLsp.Common.JsonRpc.*` wird wiederverwendet.
+- Es startet ArgusServer als **eigenen Prozess** und spricht mit ihm JSON-RPC über stdin/stdout. Die Protokollschicht `Argus.Common.JsonRpc.*` wird wiederverwendet.
 - Es übersetzt Editor-Ereignisse in LSP-Nachrichten (`didOpen`, `didChange`, `didClose`) und die Aufrufe der IDE in Anfragen (`hover`, `definition`, `completion`, `signatureHelp`).
 - Die gesamte Sprachlogik bleibt im Server. VS Code, Claude Code, Neovim und RAD Studio bekommen dieselben Ergebnisse.
 - Stürzt der Server ab oder hängt er, startet das Plugin ihn neu. Die IDE läuft weiter.
@@ -41,9 +41,9 @@ Bis Schritt 5 umgesetzt ist, liefert der eingebaute LSP-Weg die Diagnosen, sofer
 
 ## Alternativen
 
-- **Nur der eingebaute Code Insight-Manager mit BetterDelphiLSP:** Er zeigt keinen Hover an (siehe Kontext). Vervollständigung und Parameterhilfe hängen am selben Client.
-- **Plugin mit eigener Logik im IDE-Prozess** (`BDLsp.Common` direkt geladen): Index, Parser und Hintergrund-Threads liefen im Speicher der 32-Bit-IDE. Ein Fehler darin reißt die IDE mit, und große Projekte wie die Gallery mit über 120.000 Symbolen belasten den knappen Speicher. Geladene Packages hält die IDE fest, Änderungen erfordern einen Neustart. Und es wäre ein zweiter Integrationsweg neben dem Server.
-- **Kombination aus eingebautem Client und Plugin ohne Manager-Rolle:** Dann liefen zwei BetterDelphiLSP-Prozesse mit doppeltem Index und doppeltem Speicher.
+- **Nur der eingebaute Code Insight-Manager mit ArgusServer:** Er zeigt keinen Hover an (siehe Kontext). Vervollständigung und Parameterhilfe hängen am selben Client.
+- **Plugin mit eigener Logik im IDE-Prozess** (`Argus.Common` direkt geladen): Index, Parser und Hintergrund-Threads liefen im Speicher der 32-Bit-IDE. Ein Fehler darin reißt die IDE mit, und große Projekte wie die Gallery mit über 120.000 Symbolen belasten den knappen Speicher. Geladene Packages hält die IDE fest, Änderungen erfordern einen Neustart. Und es wäre ein zweiter Integrationsweg neben dem Server.
+- **Kombination aus eingebautem Client und Plugin ohne Manager-Rolle:** Dann liefen zwei ArgusServer-Prozesse mit doppeltem Index und doppeltem Speicher.
 
 ## Folgen
 
