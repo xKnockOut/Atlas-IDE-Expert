@@ -7,7 +7,8 @@
 //     steht halbfett in Akzentfarbe auf einer Akzentfläche.
 //   - In den übrigen passenden Überladungen ist der aktive Parameter halbfett;
 //     Überladungen mit zu wenigen Parametern sind gedämpft.
-//   - Darunter auf abgesetzter Fläche Name und Beschreibung des aktiven Parameters.
+//   - Darunter auf abgesetzter Fläche Name und Beschreibung des aktiven Parameters;
+//     Standardwerte (#441) gedämpft, die Pille endet davor, unten "optional, Standard 1".
 //   - Erlaubt keine Überladung so viele Argumente: Rahmen und untere Zeile in
 //     Fehlerfarbe, "Keine Überladung mit n Parametern." (#439).
 //   - Verschachtelte Aufrufe (#438): Pfadzeile oben mit den äußeren Aufrufen,
@@ -156,6 +157,7 @@ function TArgusSignatureHint.ParameterDoc(out AName, AText: string): Boolean;
 var
   Signature: TArgusSignature;
   Parameter: TArgusSignatureParameter;
+  Default: string;
 begin
   AName := '';
   AText := '';
@@ -166,15 +168,27 @@ begin
   if (FParameter < 0) or (FParameter > High(Signature.Parameters)) then
     Exit;
   Parameter := Signature.Parameters[FParameter];
-  if Parameter.Documentation = '' then
+  Default := Parameter.Text(Signature.Label_);
+  if Pos('=', Default) > 0 then
+    Default := Trim(Copy(Default, Pos('=', Default) + 1, MaxInt))
+  else
+    Default := '';
+  if (Parameter.Documentation = '') and (Default = '') then
     Exit;
   AName := Trim(Parameter.Text(Signature.Label_));
+  if Pos('=', AName) > 0 then
+    AName := Trim(Copy(AName, 1, Pos('=', AName) - 1));
   if Pos(':', AName) > 0 then
     AName := Trim(Copy(AName, 1, Pos(':', AName) - 1));
   // "const S" → "S"
   if LastDelimiter(' ', AName) > 0 then
     AName := Copy(AName, LastDelimiter(' ', AName) + 1, MaxInt);
   AText := StringReplace(Parameter.Documentation, sLineBreak, ' ', [rfReplaceAll]);
+  if Default <> '' then
+    if AText <> '' then
+      AText := AText + ' · optional, Standard ' + Default
+    else
+      AText := 'optional, Standard ' + Default;
   Result := True;
 end;
 
@@ -240,6 +254,7 @@ procedure TArgusSignatureHint.Prepare;
 var
   Index: Integer;
   Signature: TArgusSignature;
+  Range: TPoint;
 begin
   // Eingefärbte Labels; aktiver Parameter nur in passenden Überladungen, Fläche nur in der gewählten.
   SetLength(FStyled, Shown);
@@ -254,6 +269,10 @@ begin
     begin
       FStyled[Index].ActiveStart := Signature.Parameters[FParameter].Start;
       FStyled[Index].ActiveStop := Signature.Parameters[FParameter].Stop;
+      // Der Standardwert steht gedämpft hinter der Pille (#441).
+      for Range in FStyled[Index].MutedRanges do
+        if (Range.X >= FStyled[Index].ActiveStart) and (Range.X < FStyled[Index].ActiveStop) then
+          FStyled[Index].ActiveStop := Range.X;
     end;
   end;
 end;

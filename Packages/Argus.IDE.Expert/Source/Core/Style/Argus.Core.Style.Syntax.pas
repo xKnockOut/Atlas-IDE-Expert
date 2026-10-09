@@ -8,7 +8,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  System.Types;
 
 type
   TArgusTokenKind = (Plain, Keyword, StringLiteral, Comment, Number);
@@ -28,6 +29,9 @@ type
     class function IsKeyword(const AWord: string): Boolean; static;
     /// <summary>Lückenlose Zerlegung von AText; benachbarte Plain-Stücke sind zusammengefasst.</summary>
     class function Tokens(const AText: string): TArgusTokens; static;
+    /// <summary>Standardwerte der Parameter (#441): je Parameter der Bereich " = Wert" (0-basiert, Stop
+    /// exklusiv, X = Start, Y = Stop) innerhalb der äußersten Klammern einer Signatur.</summary>
+    class function DefaultRanges(const ASignature: string): TArray<TPoint>; static;
   end;
 
 implementation
@@ -145,6 +149,53 @@ begin
     Emit(Start - 1, Index - 1, Kind);
   end;
   SetLength(Result, Count);
+end;
+
+class function TArgusSyntax.DefaultRanges(const ASignature: string): TArray<TPoint>;
+var
+  Index, Depth, Start: Integer;
+  InString: Boolean;
+begin
+  // 1-basiert über den Text; Ergebnis 0-basiert. "=" auf Ebene 1 beginnt einen Standardwert, der bis
+  // vor das nächste ";" bzw. die schließende Klammer derselben Ebene reicht.
+  Result := nil;
+  Depth := 0;
+  Start := -1;
+  InString := False;
+  for Index := 1 to Length(ASignature) do
+  begin
+    if ASignature[Index] = '''' then
+      InString := not InString;
+    if InString then
+      Continue;
+    case ASignature[Index] of
+      '(', '[':
+        Inc(Depth);
+      ')', ']':
+        begin
+          if (Depth = 1) and (Start >= 0) then
+          begin
+            Result := Result + [Point(Start, Index - 1)];
+            Start := -1;
+          end;
+          Dec(Depth);
+        end;
+      ';':
+        if (Depth = 1) and (Start >= 0) then
+        begin
+          Result := Result + [Point(Start, Index - 1)];
+          Start := -1;
+        end;
+      '=':
+        if (Depth = 1) and (Start < 0) then
+        begin
+          // Leerzeichen vor "=" gehören dazu: "Offset: Integer = 1" → " = 1".
+          Start := Index - 1;
+          while (Start > 0) and (ASignature[Start] = ' ') do
+            Dec(Start);
+        end;
+    end;
+  end;
 end;
 
 end.

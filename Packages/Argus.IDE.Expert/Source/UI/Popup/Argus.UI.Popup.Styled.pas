@@ -3,7 +3,8 @@
 // Eingefärbter Code-Text für Detailpanel und Parameter-Hint (#411, #436):
 // Schlüsselwörter halbfett in Schlüsselwortfarbe, Strings und Kommentare in
 // eigener Farbe; optional ein aktiver Bereich (aktiver Parameter) halbfett in
-// Akzentfarbe auf einer abgerundeten Akzentfläche. Messen und Zeichnen gehen
+// Akzentfarbe auf einer abgerundeten Akzentfläche; Standardwerte von Parametern
+// (" = 1", #441) gedämpft. Messen und Zeichnen gehen
 // über dieselben Stücke, damit Umbruch und Zeichnung übereinstimmen.
 
 interface
@@ -23,6 +24,7 @@ type
       Stop: Integer;
       Kind: TArgusTokenKind;
       Active: Boolean;
+      Muted: Boolean;
     end;
   private
     function Pieces(AFrom, ATill: Integer): TArray<TPiece>;
@@ -35,6 +37,8 @@ type
     ActiveStop: Integer;
     /// <summary>Aktiven Bereich auf Akzentfläche (sonst nur halbfett).</summary>
     ActiveFill: Boolean;
+    /// <summary>Gedämpfte Bereiche (Standardwerte), X = Start, Y = Stop.</summary>
+    MutedRanges: TArray<TPoint>;
     class function Create(const AText: string): TArgusStyledText; static;
     /// <summary>Breite von Text[AFrom..ATill) in der Schrift von ACanvas.</summary>
     function Width(ACanvas: TCanvas; AFrom, ATill: Integer): Integer;
@@ -49,7 +53,8 @@ implementation
 
 uses
   Winapi.Windows,
-  System.Math;
+  System.Math,
+  System.Generics.Collections;
 
 { TArgusStyledText }
 
@@ -60,6 +65,7 @@ begin
   Result.ActiveStart := -1;
   Result.ActiveStop := -1;
   Result.ActiveFill := True;
+  Result.MutedRanges := TArgusSyntax.DefaultRanges(AText);
 end;
 
 function TArgusStyledText.Pieces(AFrom, ATill: Integer): TArray<TPiece>;
@@ -68,6 +74,8 @@ var
   Cuts: TArray<Integer>;
   Piece: TPiece;
   Index, From, Till: Integer;
+  Range: TPoint;
+  Sorted: TArray<Integer>;
 begin
   Result := nil;
   for Token in Tokens do
@@ -78,17 +86,34 @@ begin
       Continue;
     // Innerhalb des Tokens an den Grenzen des aktiven Bereichs schneiden.
     Cuts := [From];
-    if (ActiveStart > From) and (ActiveStart < Till) then
-      Cuts := Cuts + [ActiveStart];
-    if (ActiveStop > From) and (ActiveStop < Till) then
-      Cuts := Cuts + [ActiveStop];
+    for Index in [ActiveStart, ActiveStop] do
+      if (Index > From) and (Index < Till) then
+        Cuts := Cuts + [Index];
+    for Range in MutedRanges do
+    begin
+      if (Range.X > From) and (Range.X < Till) then
+        Cuts := Cuts + [Range.X];
+      if (Range.Y > From) and (Range.Y < Till) then
+        Cuts := Cuts + [Range.Y];
+    end;
     Cuts := Cuts + [Till];
+    // Aufsteigend und ohne Doppelte.
+    TArray.Sort<Integer>(Cuts);
+    Sorted := nil;
+    for Index in Cuts do
+      if (Length(Sorted) = 0) or (Sorted[High(Sorted)] <> Index) then
+        Sorted := Sorted + [Index];
+    Cuts := Sorted;
     for Index := 0 to High(Cuts) - 1 do
     begin
       Piece.Start := Cuts[Index];
       Piece.Stop := Cuts[Index + 1];
       Piece.Kind := Token.Kind;
       Piece.Active := (ActiveStart >= 0) and (Piece.Start >= ActiveStart) and (Piece.Stop <= ActiveStop);
+      Piece.Muted := False;
+      for Range in MutedRanges do
+        if (Piece.Start >= Range.X) and (Piece.Stop <= Range.Y) then
+          Piece.Muted := True;
       Result := Result + [Piece];
     end;
   end;
@@ -97,7 +122,7 @@ end;
 procedure TArgusStyledText.ApplyFont(ACanvas: TCanvas; const APiece: TPiece; ADimmed: Boolean);
 begin
   // Breite und Zeichnung gleich: Schlüsselwörter auch gedämpft halbfett.
-  if APiece.Active or (APiece.Kind = TArgusTokenKind.Keyword) then
+  if APiece.Active or (not APiece.Muted and (APiece.Kind = TArgusTokenKind.Keyword)) then
     ACanvas.Font.Style := [fsBold]
   else
     ACanvas.Font.Style := [];
@@ -169,7 +194,7 @@ begin
       Break;
     if Piece.Active and not ADimmed then
       Color := AColors.Accent
-    else if ADimmed then
+    else if ADimmed or Piece.Muted then
       Color := AColors.Muted
     else
       case Piece.Kind of
