@@ -130,6 +130,7 @@
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Architecture.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Concurrency.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Flow.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Unused.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.ClassCompletion.pas"/>
         <DCCReference Include="Source\Dfm\Argus.Common.Dfm.Contract.pas"/>
         <DCCReference Include="Source\Dfm\Argus.Common.Dfm.Parser.pas"/>

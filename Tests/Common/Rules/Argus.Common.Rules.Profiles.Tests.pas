@@ -160,13 +160,15 @@ const
   // ActiveRules sortiert alphabetisch: thread-resume-suspend steht vor thread-use-after-...
   All = 'bidi-control,confusable-identifier,control-char,forbidden-uses,invisible-char,' +
     'lock-without-finally,possibly-uninitialized,result-not-set,synchronize-in-destructor,thread-free-with-free-on-terminate,' +
-    'thread-resume-suspend,thread-use-after-free-on-terminate,thread-vcl-access';
+    'thread-resume-suspend,thread-use-after-free-on-terminate,thread-vcl-access,' +
+    'unused-assignment,unused-local,unused-parameter';
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
   Assert.AreEqual(All, ActiveRules('strict'));
   Assert.AreEqual('bidi-control,control-char,' + Bugs, ActiveRules('fast'));
   Assert.AreEqual('bidi-control,confusable-identifier,invisible-char', ActiveRules('security'));
-  Assert.AreEqual('forbidden-uses,thread-resume-suspend', ActiveRules('style'));
+  Assert.AreEqual('forbidden-uses,thread-resume-suspend,unused-assignment,unused-local,unused-parameter',
+    ActiveRules('style'));
 end;
 
 procedure TRuleProfilesTests.TestProfileAppliesToTestUnits;

@@ -154,6 +154,33 @@ begin
     '      "description": "A local variable is read on a path where it was never assigned.",' + #10 +
     '      "bad": "var I: Integer;\nbegin\n  if Ok then\n    I := 1;\n  Writeln(I);\nend;",' + #10 +
     '      "good": "var I: Integer;\nbegin\n  I := 0;\n  if Ok then\n    I := 1;\n  Writeln(I);\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-local",' + #10 +
+    '      "name": "Unused local variable",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "A local variable is declared but never used. Like compiler hint H2164, but while typing.",' + #10 +
+    '      "bad": "procedure Foo;\nvar\n  I, Count: Integer;\nbegin\n  I := 1;\n  Bar(I);\nend;",' + #10 +
+    '      "good": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := 1;\n  Bar(I);\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-parameter",' + #10 +
+    '      "name": "Unused parameter",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "A parameter is never used in the routine body. Overridden and virtual methods, event handlers, published methods, interface implementations and callbacks are exempt.",' + #10 +
+    '      "bad": "function Twice(A, B: Integer): Integer;\nbegin\n  Result := 2 * A;\nend;",' + #10 +
+    '      "good": "function Twice(A: Integer): Integer;\nbegin\n  Result := 2 * A;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-assignment",' + #10 +
+    '      "name": "Value assigned is never used",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "A value assigned to a local variable is overwritten or the routine ends before it is read. Like compiler hint H2077.",' + #10 +
+    '      "bad": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := 0;\n  I := Calc;\n  Bar(I);\nend;",' + #10 +
+    '      "good": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := Calc;\n  Bar(I);\nend;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -240,6 +267,21 @@ begin
     '      "id": "possibly-uninitialized",' + #10 +
     '      "name": "Variable eventuell nicht initialisiert",' + #10 +
     '      "description": "Eine lokale Variable wird auf einem Pfad gelesen, auf dem ihr nie ein Wert zugewiesen wurde."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-local",' + #10 +
+    '      "name": "Ungenutzte lokale Variable",' + #10 +
+    '      "description": "Eine lokale Variable ist deklariert, wird aber nie verwendet. Wie Compilerhinweis H2164, aber schon beim Tippen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-parameter",' + #10 +
+    '      "name": "Ungenutzter Parameter",' + #10 +
+    '      "description": "Ein Parameter wird im Rumpf der Routine nicht verwendet. Ausgenommen sind überschriebene und virtuelle Methoden, Ereignis-Handler, published-Methoden, Interface-Implementierungen' + ' und Callbacks."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-assignment",' + #10 +
+    '      "name": "Zugewiesener Wert ungenutzt",' + #10 +
+    '      "description": "Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

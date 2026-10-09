@@ -17,7 +17,8 @@ uses
   Argus.Common.Rules.Builtin.Unicode,
   Argus.Common.Rules.Builtin.Architecture,
   Argus.Common.Rules.Builtin.Concurrency,
-  Argus.Common.Rules.Builtin.Flow;
+  Argus.Common.Rules.Builtin.Flow,
+  Argus.Common.Rules.Builtin.Unused;
 
 function BuiltinRules: TArray<IRule>;
 var
@@ -29,6 +30,7 @@ begin
     RegisterArchitectureRules(Registry);
     RegisterConcurrencyRules(Registry);
     RegisterFlowRules(Registry);
+    RegisterUnusedRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;
