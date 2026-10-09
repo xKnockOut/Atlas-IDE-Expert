@@ -130,8 +130,13 @@ begin
   Assert.AreEqual(1, TSyntaxTreeCache.ParseCount - Before);
   // Das Dokument hält den Baum; die Zeiger der Threads sind deshalb noch gültig.
   Shared := TSyntaxTreeCache.Get(Document);
-  for Index := 0 to Features - 1 do
-    Assert.IsTrue(SharedTrees[Index] = Shared.Tree);
+  try
+    for Index := 0 to Features - 1 do
+      Assert.IsTrue(SharedTrees[Index] = Shared.Tree);
+  finally
+    // Unit-Variable: sonst bleibt das Array über den Test hinaus liegen (Leck-Monitor).
+    SharedTrees := nil;
+  end;
 end;
 
 procedure TSyntaxTreeCacheTests.TreeOutlivesDocument;
