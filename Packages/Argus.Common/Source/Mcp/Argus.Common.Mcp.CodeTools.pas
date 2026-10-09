@@ -42,6 +42,17 @@ type
     class function Diagnostics(const ARules: TArray<IRule>; const ASettings: TServerSettings;
       const ARoot: string; const AFiles: TArray<string>; const AReadText: TReferenceReadText): string; static;
     class function ParseDirection(const AText: string): TMcpCallDirection; static;
+    /// <summary>
+    /// check_code (#178): prüft AText als neuen Inhalt von AFileName, ohne zu schreiben.
+    /// Mit AStartLine > 0 ersetzt AText nur die Zeilen AStartLine..AEndLine (ab 1, einschließlich;
+    /// AEndLine = AStartLine - 1 fügt vor AStartLine ein). Liefert Syntaxfehler, Regeltreffer und
+    /// nicht auflösbare Bezeichner; Positionen beziehen sich auf den neuen Text.
+    /// </summary>
+    function CheckCode(const ARules: TArray<IRule>; const ASettings: TServerSettings; const ARoot, AFileName,
+      AText: string; AStartLine, AEndLine: Integer): string;
+    /// <summary>Ersetzt die Zeilen AStartLine..AEndLine (ab 1) von AOriginal durch AText; EMcpToolError bei
+    /// ungültigem Bereich.</summary>
+    class function ReplaceLines(const AOriginal, AText: string; AStartLine, AEndLine: Integer): string; static;
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
   end;
 
@@ -56,7 +67,9 @@ uses
   Argus.Common.Lsp.Hierarchies,
   Argus.Common.Rules.Checker,
   Argus.Common.Rules.Output,
-  Argus.Common.Mcp.IndexTools;
+  Argus.Common.Mcp.IndexTools,
+  Argus.Common.Mcp.Server,
+  Argus.Common.Semantics.UnresolvedNames;
 
 { TMcpCodeTools }
 
@@ -268,6 +281,128 @@ begin
     if Count > MaxFindings then
       Lines.Add(Format('… %d weitere Befunde', [Count - MaxFindings]));
     Lines.Insert(0, Format('%d Befunde in %d Dateien.', [Count, Checked]));
+    Result := TrimRight(Lines.Text);
+  finally
+    Lines.Free;
+  end;
+end;
+
+function SplitKeepingBreaks(const AText: string): TArray<string>;
+var
+  Index, Start: Integer;
+begin
+  // Jede Zeile behält ihren Zeilenwechsel, damit CRLF/LF erhalten bleiben.
+  Result := nil;
+  Start := 1;
+  for Index := 1 to Length(AText) do
+    if AText[Index] = #10 then
+    begin
+      Result := Result + [Copy(AText, Start, Index - Start + 1)];
+      Start := Index + 1;
+    end;
+  if Start <= Length(AText) then
+    Result := Result + [Copy(AText, Start, MaxInt)];
+end;
+
+function LineBreakIn(const AText: string): string;
+begin
+  if Pos(#13#10, AText) > 0 then
+    Result := #13#10
+  else
+    Result := #10;
+end;
+
+class function TMcpCodeTools.ReplaceLines(const AOriginal, AText: string; AStartLine, AEndLine: Integer): string;
+var
+  Lines: TArray<string>;
+  Index: Integer;
+  Inserted: string;
+begin
+  Lines := SplitKeepingBreaks(AOriginal);
+  if (AStartLine < 1) or (AStartLine > Length(Lines) + 1) or (AEndLine < AStartLine - 1) or
+    (AEndLine > Length(Lines)) then
+    raise EMcpToolError.CreateFmt('Ungültiger Bereich %d-%d; die Datei hat %d Zeilen',
+      [AStartLine, AEndLine, Length(Lines)]);
+  Inserted := AText;
+  // Der ersetzte Bereich endet mit einem Zeilenwechsel, wenn danach noch etwas kommt.
+  if (Inserted <> '') and (AEndLine < Length(Lines)) and not EndsStr(#10, Inserted) then
+    Inserted := Inserted + LineBreakIn(AOriginal);
+  Result := '';
+  for Index := 0 to AStartLine - 2 do
+    Result := Result + Lines[Index];
+  Result := Result + Inserted;
+  for Index := AEndLine to High(Lines) do
+    Result := Result + Lines[Index];
+end;
+
+function TMcpCodeTools.CheckCode(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+  const ARoot, AFileName, AText: string; AStartLine, AEndLine: Integer): string;
+var
+  Lines: TStringList;
+  Original, NewText, RelativePath: string;
+  Finding: TRuleFinding;
+  Count: Integer;
+  Tree: TSyntaxTree;
+  Resolver: TNameResolver;
+  Name: TUnresolvedName;
+  Unresolved: TArray<TUnresolvedName>;
+  CheckNames: Boolean;
+begin
+  if AStartLine > 0 then
+  begin
+    if not (Assigned(FReadText) and FReadText(AFileName, Original)) then
+      raise EMcpToolError.CreateFmt('%s ist nicht lesbar; ohne Bereich den ganzen Text angeben', [AFileName]);
+    NewText := ReplaceLines(Original, AText, AStartLine, AEndLine);
+  end
+  else
+    NewText := AText;
+  RelativePath := AFileName;
+  if (ARoot <> '') and StartsText(IncludeTrailingPathDelimiter(ARoot), AFileName) then
+    RelativePath := Copy(AFileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
+  Lines := TStringList.Create;
+  try
+    Count := 0;
+    for Finding in TFileChecker.CheckText(ARules, ASettings, RelativePath, NewText) do
+    begin
+      Inc(Count);
+      if Count <= MaxFindings then
+        Lines.Add(Format('%d:%d: %s [%s] %s', [Finding.Range.StartPos.Line + 1, Finding.Range.StartPos.Character + 1,
+          TFindingsOutput.SeverityName(Finding.Severity), Finding.RuleId, Finding.DisplayMessage]));
+    end;
+    CheckNames := TUnresolvedNames.Available(FIndex);
+    if CheckNames then
+    begin
+      Tree := TPascalParser.Parse(NewText);
+      try
+        Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
+        try
+          Resolver.Namespaces := FNamespaces;
+          Unresolved := TUnresolvedNames.Find(Resolver, Tree, AFileName);
+        finally
+          Resolver.Free;
+        end;
+      finally
+        Tree.Free;
+      end;
+      for Name in Unresolved do
+      begin
+        Inc(Count);
+        if Count <= MaxFindings then
+          Lines.Add(Format('%d:%d: warning [unresolved-identifier] "%s" ist nicht auflösbar', [Name.Range.StartPos.Line + 1,
+            Name.Range.StartPos.Character + 1, Name.Name]));
+      end;
+    end;
+    if Count > MaxFindings then
+      Lines.Add(Format('… %d weitere Befunde', [Count - MaxFindings]));
+    if Count = 0 then
+      Lines.Insert(0, Format('Keine Befunde in %s.', [ExtractFileName(AFileName)]))
+    else
+      Lines.Insert(0, Format('%d Befunde in %s (Positionen im neuen Text, Zeile:Spalte):', [Count, ExtractFileName(AFileName)]));
+    if not CheckNames then
+      Lines.Add('Hinweis: Unit System ist nicht im Index, Bezeichner wurden nicht geprüft.')
+    else
+      Lines.Add('Hinweis: Die Namensprüfung kennt keine Überladungen, Generics, Class Helper und with; ' +
+        'einzelne Meldungen können Fehlalarme sein.');
     Result := TrimRight(Lines.Text);
   finally
     Lines.Free;
