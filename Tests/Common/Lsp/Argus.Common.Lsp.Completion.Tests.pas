@@ -5,6 +5,7 @@ interface
 uses
   DUnitX.TestFramework,
   Argus.Common.Index.Contract,
+  Argus.Common.Configuration.Contract,
   Argus.Common.Semantics.NameResolver,
   Argus.Common.Lsp.Completion;
 
@@ -14,7 +15,8 @@ type
   private
     FIndex: ISymbolIndex;
     FResolver: TNameResolver;
-    function ItemsAt(const AText, AMarker: string): TCompletionItems;
+    function ItemsAt(const AText, AMarker: string;
+      AMatching: TCompletionMatching = TCompletionMatching.Prefix): TCompletionItems;
     function Names(const AItems: TCompletionItems): string;
   public
     [Setup]
@@ -35,6 +37,14 @@ type
     procedure NothingInCommentsAndStrings;
     [Test]
     procedure WritesCompletionList;
+    [Test]
+    procedure FuzzyFindsSubsequencesAndAbbreviations;
+    [Test]
+    procedure FuzzySortsByScoreThenScope;
+    [Test]
+    procedure FuzzySetsFilterTextAndIsIncomplete;
+    [Test]
+    procedure PrefixModeKeepsStrictSelection;
   end;
 
 implementation
@@ -130,13 +140,14 @@ begin
   FIndex := nil;
 end;
 
-function TLspCompletionTests.ItemsAt(const AText, AMarker: string): TCompletionItems;
+function TLspCompletionTests.ItemsAt(const AText, AMarker: string;
+  AMatching: TCompletionMatching): TCompletionItems;
 var
   Tree: TSyntaxTree;
 begin
   Tree := TPascalParser.Parse(AText);
   try
-    Result := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(AText, AMarker));
+    Result := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(AText, AMarker), AMatching);
   finally
     Tree.Free;
   end;
@@ -218,6 +229,56 @@ begin
   finally
     Json.Free;
   end;
+end;
+
+procedure TLspCompletionTests.FuzzyFindsSubsequencesAndAbbreviations;
+begin
+  // "zlr" ist Teilfolge von Zaehler, "TB" Kürzel von TBasis.
+  Assert.AreEqual('Zaehler', Names(ItemsAt(WithCode('  zlr'), '  zlr', TCompletionMatching.Fuzzy)));
+  Assert.AreEqual('TBasis', Names(ItemsAt(WithCode('  TBa'), '  TBa', TCompletionMatching.Fuzzy)));
+  Assert.AreEqual('', Names(ItemsAt(WithCode('  xyz'), '  xyz', TCompletionMatching.Fuzzy)));
+end;
+
+procedure TLspCompletionTests.FuzzySortsByScoreThenScope;
+var
+  Items: TCompletionItems;
+begin
+  // Präfix-Treffer vor Teilfolgen; "me" passt als Präfix auf Melde, als Teilwort nicht weiter.
+  Items := ItemsAt(WithCode('  me'), '  me', TCompletionMatching.Fuzzy);
+  Assert.AreEqual('Melde', Items.Items[0].Name, Names(Items));
+  // Ohne Eingabe bleibt die Reihenfolge der Gültigkeitsbereiche.
+  Assert.AreEqual('Anzahl Wert Self Name Bar Zaehler Melde TFoo TBasis Rechne',
+    Names(ItemsAt(WithCode('  '), #10'begin'#10'  ', TCompletionMatching.Fuzzy)));
+end;
+
+procedure TLspCompletionTests.FuzzySetsFilterTextAndIsIncomplete;
+var
+  Items: TCompletionItems;
+  Json: TJSONObject;
+begin
+  Items := ItemsAt(WithCode('  zlr'), '  zlr', TCompletionMatching.Fuzzy);
+  Assert.IsTrue(Items.Incomplete);
+  Assert.AreEqual('zlr', Items.Items[0].FilterText);
+  Json := TLspCompletion.ToJson(Items);
+  try
+    Assert.AreEqual('zlr', Json.GetValue<string>('items[0].filterText'));
+    Assert.IsTrue(Json.GetValue<Boolean>('isIncomplete'));
+  finally
+    Json.Free;
+  end;
+  // Präfix-Treffer brauchen keinen filterText.
+  Items := ItemsAt(WithCode('  We'), '  We', TCompletionMatching.Fuzzy);
+  Assert.AreEqual('Wert', Items.Items[0].Name);
+  Assert.AreEqual('', Items.Items[0].FilterText);
+end;
+
+procedure TLspCompletionTests.PrefixModeKeepsStrictSelection;
+var
+  Items: TCompletionItems;
+begin
+  Items := ItemsAt(WithCode('  zlr'), '  zlr', TCompletionMatching.Prefix);
+  Assert.AreEqual('', Names(Items));
+  Assert.IsFalse(Items.Incomplete);
 end;
 
 initialization

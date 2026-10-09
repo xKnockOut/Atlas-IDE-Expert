@@ -99,6 +99,19 @@
         }
       }
     },
+    "completion": {
+      "type": "object",
+      "description": "Code-Vervollständigung.",
+      "additionalProperties": false,
+      "properties": {
+        "matching": {
+          "type": "string",
+          "enum": ["fuzzy", "prefix"],
+          "default": "fuzzy",
+          "description": "Auswahl der Vorschläge: unscharf (Teilfolgen, Kürzel wie TSL für TStringList) oder nur nach Präfix, falls ein Editor nachträglich strikt filtert."
+        }
+      }
+    },
     "memoryBudgetMb": {
       "type": "integer",
       "minimum": 0,

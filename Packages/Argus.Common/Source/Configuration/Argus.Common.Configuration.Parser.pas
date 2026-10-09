@@ -49,6 +49,7 @@ type
     procedure ReadExclude(ANode: TJsonNode);
     procedure ReadInlayHints(ANode: TJsonNode);
     procedure ReadCompiler(ANode: TJsonNode);
+    procedure ReadCompletion(ANode: TJsonNode);
     procedure ReadFormat(ANode: TJsonNode);
     function ExpectBoolean(ANode: TJsonNode; const AName: string; var AValue: Boolean): Boolean;
     /// <summary>Wurzel oder nil nach gemeldetem Syntaxfehler.</summary>
@@ -281,6 +282,35 @@ begin
   end;
 end;
 
+procedure TValidator.ReadCompletion(ANode: TJsonNode);
+var
+  Index: Integer;
+  Key, Text: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"completion" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if Key = 'matching' then
+    begin
+      if ExpectString(ANode[Index], Key, Text) then
+        if Text = 'fuzzy' then
+          FSettings.Completion.Matching := TCompletionMatching.Fuzzy
+        else if Text = 'prefix' then
+          FSettings.Completion.Matching := TCompletionMatching.Prefix
+        else
+          ReportNode(ANode[Index], 'Erlaubt sind "fuzzy" und "prefix"');
+    end
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "completion.%s"', [Key]), False);
+  end;
+end;
+
 procedure TValidator.ReadFormat(ANode: TJsonNode);
 var
   Index, Size: Integer;
@@ -435,6 +465,8 @@ begin
         ReadInlayHints(Value)
       else if Key = 'compiler' then
         ReadCompiler(Value)
+      else if Key = 'completion' then
+        ReadCompletion(Value)
       else if Key = 'memoryBudgetMb' then
       begin
         if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Budget) and (Budget >= 0) then
@@ -590,6 +622,8 @@ begin
       Result.InlayHints := FileSettings.InlayHints
     else if Key = 'compiler' then
       Result.Compiler := FileSettings.Compiler
+    else if Key = 'completion' then
+      Result.Completion := FileSettings.Completion
     else if Key = 'memoryBudgetMb' then
       Result.MemoryBudgetMb := FileSettings.MemoryBudgetMb;
 end;
