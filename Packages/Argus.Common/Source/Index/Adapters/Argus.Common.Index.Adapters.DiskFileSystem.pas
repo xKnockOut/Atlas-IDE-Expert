@@ -58,16 +58,20 @@ end;
 
 function TDiskIndexFileSystem.WriteText(const AFileName, AText: string): Boolean;
 var
-  Temp: string;
+  Temp, Backup: string;
 begin
-  // Eindeutiger Name: zwei Schreiber kommen sich nicht in die Quere.
+  // Eindeutige Namen: zwei Schreiber kommen sich nicht in die Quere.
   Temp := Format('%s.%d.tmp', [AFileName, TThread.CurrentThread.ThreadID]);
+  // TFile.Replace braucht eine Sicherungsdatei: Mit '' scheitert es an
+  // TPath.GetFullPath('') ("Pfad ist leer"), sobald die Zieldatei existiert.
+  Backup := Format('%s.%d.bak', [AFileName, TThread.CurrentThread.ThreadID]);
   try
     ForceDirectories(ExtractFileDir(AFileName));
     TFile.WriteAllText(Temp, AText, TEncoding.UTF8);
     if FileExists(AFileName) then
     begin
-      TFile.Replace(Temp, AFileName, '');
+      TFile.Replace(Temp, AFileName, Backup);
+      System.SysUtils.DeleteFile(Backup);
       Result := True;
     end
     else
@@ -76,6 +80,8 @@ begin
     on EInOutError do
       Result := False;
     on EFCreateError do
+      Result := False;
+    on EArgumentException do
       Result := False;
   end;
   if not Result and FileExists(Temp) then

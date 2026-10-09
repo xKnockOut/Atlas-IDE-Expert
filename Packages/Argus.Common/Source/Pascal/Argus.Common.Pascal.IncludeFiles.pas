@@ -113,6 +113,26 @@ begin
   end;
 end;
 
+// Die Vorgaben stehen in eigenen Routinen: Im selben Rahmen wie der Resolver hielte
+// dieser sich über die eingefangenen Variablen selbst fest (Referenzzyklus, Leck).
+function DiskExists: TIncludeFileExists;
+begin
+  Result :=
+    function(const AFileName: string): Boolean
+    begin
+      Result := TFile.Exists(AFileName);
+    end;
+end;
+
+function DiskReadText: TIncludeReadText;
+begin
+  Result :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := TIncludeFiles.ReadFile(AFileName, AText);
+    end;
+end;
+
 class function TIncludeFiles.Resolver(const ASearchPaths: TArray<string>; const AFileExists: TIncludeFileExists;
   const AReadText: TIncludeReadText): TIncludeResolver;
 var
@@ -123,18 +143,10 @@ begin
   Paths := ASearchPaths;
   Exists := AFileExists;
   if not Assigned(Exists) then
-    Exists :=
-      function(const AFileName: string): Boolean
-      begin
-        Result := TFile.Exists(AFileName);
-      end;
+    Exists := DiskExists();
   Read := AReadText;
   if not Assigned(Read) then
-    Read :=
-      function(const AFileName: string; out AText: string): Boolean
-      begin
-        Result := TIncludeFiles.ReadFile(AFileName, AText);
-      end;
+    Read := DiskReadText();
   Result :=
     function(const AName, AFromFile: string; out AFileName, AText: string): Boolean
     begin
