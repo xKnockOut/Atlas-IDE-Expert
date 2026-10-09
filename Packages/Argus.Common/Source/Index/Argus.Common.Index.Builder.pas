@@ -168,7 +168,7 @@ begin
     Inc(AResult.FromCache);
     Exit(True);
   end;
-  UnitIndex := TIndexExtractor.ExtractText(Text, AFileName, FDefines, IncludeResolver);
+  UnitIndex := TIndexExtractor.ExtractText(Text, AFileName, FDefines, IncludeResolver());
   UnitIndex.Stamp := Stamp;
   UnitIndex.Hash := Hash;
   UnitIndex.Library_ := ALibrary;
