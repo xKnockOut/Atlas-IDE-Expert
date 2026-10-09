@@ -30,6 +30,8 @@ type
     [Test]
     procedure ReadsRestricted;
     [Test]
+    procedure ReadsProfile;
+    [Test]
     procedure WarnsAboutInvalidLinterValues;
   end;
 
@@ -143,6 +145,16 @@ begin
   Assert.IsTrue(Options.Mcp);
   Assert.AreEqual('C:\Projekte\App', Options.McpRoot);
   Assert.IsFalse(TCommandLineOptions.Parse([]).Mcp);
+end;
+
+procedure TCommandLineOptionsTests.ReadsProfile;
+var
+  Options: TCommandLineOptions;
+begin
+  Options := TCommandLineOptions.Parse(['--check', 'App.dproj', '--profile', 'strict']);
+  Assert.AreEqual(0, Integer(Length(Options.Warnings)));
+  Assert.AreEqual('strict', Options.Profile);
+  Assert.AreEqual('', TCommandLineOptions.Parse([]).Profile);
 end;
 
 procedure TCommandLineOptionsTests.ReadsRestricted;

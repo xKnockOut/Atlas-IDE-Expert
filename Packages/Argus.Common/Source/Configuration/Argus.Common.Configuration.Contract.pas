@@ -21,6 +21,10 @@ uses
   System.SysUtils,
   Argus.Common.Documents.Contract;
 
+const
+  /// <summary>Eingebaute Regelprofile (#146).</summary>
+  BuiltinProfileNames: array[0..4] of string = ('standard', 'fast', 'strict', 'security', 'style');
+
 type
   /// <summary>Schweregrad einer Prüfregel; Default = Vorgabe der Regel.</summary>
   TRuleSeverity = (Default, Off, Hint, Information, Warning, Error);
@@ -33,6 +37,24 @@ type
     Severity: TRuleSeverity;
     /// <summary>Weitere Optionen der Regel als JSON-Objekt (Text), sonst ''.</summary>
     Options: string;
+  end;
+
+  /// <summary>Regelprofil (#146): eingebaut (standard, fast, strict, security, style) oder
+  /// eigenes aus "profiles", das ein eingebautes erweitern kann.</summary>
+  TRuleProfile = record
+    Name: string;
+    /// <summary>Eingebautes oder eigenes Profil als Grundlage, '' = standard.</summary>
+    Extends: string;
+    /// <summary>Nur Regeln dieser Kategorien (bug, vulnerability, code-smell, security-hotspot); leer = alle.</summary>
+    Categories: TArray<string>;
+    Rules: TArray<TRuleSetting>;
+  end;
+
+  /// <summary>Pfadregel (#146): Schweregrade für Dateien, die eines der Muster treffen.
+  /// Die Regel-ID "*" steht für alle Regeln.</summary>
+  TPathOverride = record
+    Files: TArray<string>;
+    Rules: TArray<TRuleSetting>;
   end;
 
   /// <summary>Inlay Hints im Editor (#35).</summary>
@@ -100,8 +122,22 @@ type
     Config: string;
     Platform: string;
     Rules: TArray<TRuleSetting>;
+    /// <summary>Aktives Regelprofil im Editor, '' = standard (#146).</summary>
+    Profile: string;
+    /// <summary>Regelprofil der Kommandozeile, '' = wie Profile.</summary>
+    CliProfile: string;
+    /// <summary>Eigene Profile aus "profiles".</summary>
+    Profiles: TArray<TRuleProfile>;
+    /// <summary>Pfadregeln aus "overrides"; spätere Einträge haben Vorrang.</summary>
+    Overrides: TArray<TPathOverride>;
+    /// <summary>Test-Units und Testprojekte (DUnit, DUnitX) nicht prüfen.</summary>
+    ExcludeTests: Boolean;
+    /// <summary>Regelprofil für Test-Units und Testprojekte, '' = wie Profile.</summary>
+    TestProfile: string;
     /// <summary>Treffer unter dieser Konfidenz werden ausgeblendet; Vorgabe Medium.</summary>
     MinConfidence: TRuleConfidence;
+    /// <summary>"minConfidence" steht ausdrücklich in der Konfiguration und geht dem Profil vor (#146).</summary>
+    MinConfidenceGiven: Boolean;
     /// <summary>Glob-Muster relativ zum Ordner der Konfiguration (*, **, ?).</summary>
     Exclude: TArray<string>;
     /// <summary>Formatierungsstil als JSON-Objekt (Text), sonst ''.</summary>
@@ -126,6 +162,10 @@ type
     function IsExcluded(const ARelativePath: string): Boolean;
     /// <summary>True, wenn die Regel in "rules" steht und nicht abgeschaltet ist.</summary>
     function IsRuleEnabledExplicitly(const ARuleId: string): Boolean;
+    /// <summary>True für '', eingebaute Profile und Profile aus "profiles".</summary>
+    function IsKnownProfile(const AName: string): Boolean;
+    /// <summary>Eigenes Profil aus "profiles".</summary>
+    function TryFindProfile(const AName: string; out AProfile: TRuleProfile): Boolean;
   end;
 
   /// <summary>Fehler oder Warnung beim Lesen der Konfiguration, mit Position in der Datei.</summary>
@@ -326,6 +366,13 @@ begin
   Result.Config := '';
   Result.Platform := '';
   Result.Rules := nil;
+  Result.Profile := '';
+  Result.CliProfile := '';
+  Result.Profiles := nil;
+  Result.Overrides := nil;
+  Result.ExcludeTests := False;
+  Result.TestProfile := '';
+  Result.MinConfidenceGiven := False;
   Result.MinConfidence := TRuleConfidence.Medium;
   Result.Exclude := nil;
   Result.Format := '';
@@ -356,6 +403,37 @@ begin
     if SameText(Rule.Id, ARuleId) and (Rule.Severity <> TRuleSeverity.Default) then
       Exit(Rule.Severity);
   Result := ADefault;
+end;
+
+function TServerSettings.TryFindProfile(const AName: string; out AProfile: TRuleProfile): Boolean;
+var
+  Profile: TRuleProfile;
+begin
+  for Profile in Profiles do
+    if SameText(Profile.Name, AName) then
+    begin
+      AProfile := Profile;
+      Exit(True);
+    end;
+  // Nicht Default(…): innerhalb von TServerSettings träfe das die gleichnamige Klassenfunktion.
+  AProfile.Name := '';
+  AProfile.Extends := '';
+  AProfile.Categories := nil;
+  AProfile.Rules := nil;
+  Result := False;
+end;
+
+function TServerSettings.IsKnownProfile(const AName: string): Boolean;
+var
+  Name: string;
+  Profile: TRuleProfile;
+begin
+  if AName = '' then
+    Exit(True);
+  for Name in BuiltinProfileNames do
+    if SameText(Name, AName) then
+      Exit(True);
+  Result := TryFindProfile(AName, Profile);
 end;
 
 function TServerSettings.IsExcluded(const ARelativePath: string): Boolean;

@@ -111,6 +111,7 @@
         <DCCReference Include="Source\Rules\Argus.Common.Rules.Registry.pas"/>
         <DCCReference Include="Source\Rules\Argus.Common.Rules.Suppressions.pas"/>
         <DCCReference Include="Source\Rules\Argus.Common.Rules.Engine.pas"/>
+        <DCCReference Include="Source\Rules\Argus.Common.Rules.Profiles.pas"/>
         <DCCReference Include="Source\Rules\Argus.Common.Rules.Checker.pas"/>
         <DCCReference Include="Source\Rules\Argus.Common.Rules.Filter.pas"/>
         <DCCReference Include="Source\Rules\Argus.Common.Rules.Output.pas"/>

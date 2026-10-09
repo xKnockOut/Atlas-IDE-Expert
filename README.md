@@ -82,6 +82,7 @@ Werte gehen auch mit `=` (`--log=server.log`). `--stdio` und `--clientProcessId`
 | `--rules <a,b>` | nur diese Regeln, z. B. `syntax` |
 | `--units <a,b>` | nur diese Units: Name oder Glob-Muster für Pfade |
 | `--min-severity <S>` | `hint`, `info`, `warning`, `error` |
+| `--profile <Name>` | Regelprofil (`standard`, `fast`, `strict`, `security`, `style` oder eigenes aus `profiles`); geht `profile` in `argus.json` vor |
 | `--baseline <Datei>` | bekannte Treffer ausblenden; ohne Angabe gilt `argus-baseline.json` neben `argus.json`, falls vorhanden. Der Editor blendet sie ebenso aus |
 | `--update-baseline` | Baseline aus den aktuellen Treffern neu schreiben (verschwundene Einträge fallen heraus), Exit-Code 0 |
 | `--suppression-stats` | statt der Treffer: wie oft jede Regel per `lsp-ignore` unterdrückt wird (häufigste zuerst, mit ungenutzten), als Text oder JSON; Exit-Code 0 |
