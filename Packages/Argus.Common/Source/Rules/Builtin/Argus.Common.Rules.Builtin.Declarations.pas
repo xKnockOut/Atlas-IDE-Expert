@@ -12,7 +12,9 @@
 // Konfidenz (höchstens Warnung).
 //
 // Korrekturen: "Rumpf erzeugen" (#42) bzw. "Deklaration ergänzen" im
-// private-Abschnitt.
+// private-Abschnitt. Gibt es auf der anderen Seite genau eine gleichnamige
+// Methode mit gleich vielen Parametern, weichen nur die Signaturen ab: Dann
+// kommen zuerst die Aktionen, die eine Seite an die andere angleichen (#100).
 
 interface
 
@@ -110,6 +112,13 @@ begin
   Result := (Line >= 0) and (Line <= High(ALines)) and ALines[Line];
 end;
 
+/// <summary>AFix als gleichrangige Alternative markieren, wenn schon andere Korrekturen vorliegen.</summary>
+function Alternative(const AFix: TRuleFix; AIsAlternative: Boolean): TRuleFix;
+begin
+  Result := AFix;
+  Result.Alternative := AIsAlternative;
+end;
+
 function Confidence(const AContext: TRuleContext): TRuleConfidence;
 begin
   if HasIncludes(AContext) then
@@ -131,6 +140,7 @@ var
   Lines: TArray<Boolean>;
   Method: TUnmatchedMethod;
   Action: TCodeAction;
+  Fixes: TArray<TRuleFix>;
   Message: string;
   Level: TRuleConfidence;
 begin
@@ -142,11 +152,14 @@ begin
   begin
     if not Method.Declared or IsConditional(Lines, Method) then
       Continue;
-    Message := Format('"%s.%s" ist deklariert, aber nicht implementiert', [Method.TypeName, Method.Symbol.Name]);
-    if TClassCompletion.MissingBodies(AContext.Tree, AContext.Text, Method.Symbol.SelectionRange.StartPos, Action) then
-      AReport.Add(Method.Symbol.SelectionRange, Message, Level, [TRuleFix.Create(Action.Title, Action.Edits)])
+    if TClassCompletion.SignatureFixes(AContext.Tree, AContext.Text, Method, Fixes) then
+      Message := Format('Die Implementierung von "%s.%s" hat eine andere Signatur als die Deklaration',
+        [Method.TypeName, Method.Symbol.Name])
     else
-      AReport.Add(Method.Symbol.SelectionRange, Message, Level);
+      Message := Format('"%s.%s" ist deklariert, aber nicht implementiert', [Method.TypeName, Method.Symbol.Name]);
+    if TClassCompletion.MissingBodies(AContext.Tree, AContext.Text, Method.Symbol.SelectionRange.StartPos, Action) then
+      Fixes := Fixes + [Alternative(TRuleFix.Create(Action.Title, Action.Edits), Length(Fixes) > 0)];
+    AReport.Add(Method.Symbol.SelectionRange, Message, Level, Fixes);
   end;
 end;
 
@@ -163,6 +176,7 @@ var
   Lines: TArray<Boolean>;
   Method: TUnmatchedMethod;
   Edit: TRuleEdit;
+  Fixes: TArray<TRuleFix>;
   Message: string;
   Level: TRuleConfidence;
 begin
@@ -174,13 +188,16 @@ begin
   begin
     if Method.Declared or IsConditional(Lines, Method) then
       Continue;
-    Message := Format('"%s.%s" hat keine passende Deklaration in %s',
-      [Method.TypeName, Method.Symbol.Name, Method.TypeName]);
-    if TClassCompletion.AddDeclaration(AContext.Tree, AContext.Text, Method, Edit) then
-      AReport.Add(Method.Symbol.SelectionRange, Message, Level,
-        [TRuleFix.Create(Format('Deklaration von %s in %s ergänzen', [Method.Symbol.Name, Method.TypeName]), [Edit])])
+    if TClassCompletion.SignatureFixes(AContext.Tree, AContext.Text, Method, Fixes) then
+      Message := Format('"%s.%s" hat eine andere Signatur als die Deklaration in %s',
+        [Method.TypeName, Method.Symbol.Name, Method.TypeName])
     else
-      AReport.Add(Method.Symbol.SelectionRange, Message, Level);
+      Message := Format('"%s.%s" hat keine passende Deklaration in %s',
+        [Method.TypeName, Method.Symbol.Name, Method.TypeName]);
+    if TClassCompletion.AddDeclaration(AContext.Tree, AContext.Text, Method, Edit) then
+      Fixes := Fixes + [Alternative(TRuleFix.Create(Format('Deklaration von %s in %s ergänzen',
+        [Method.Symbol.Name, Method.TypeName]), [Edit]), Length(Fixes) > 0)];
+    AReport.Add(Method.Symbol.SelectionRange, Message, Level, Fixes);
   end;
 end;
 
