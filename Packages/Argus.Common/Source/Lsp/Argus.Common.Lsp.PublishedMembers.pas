@@ -35,9 +35,15 @@ type
     /// <summary>Ab so vielen Einträgen werden nur noch Namen je Klasse gezeigt.</summary>
     CompactLimit = 40;
     MaxDepth = 32;
+    /// <summary>Signatur, wenn der Ereignistyp nicht im Index steht.</summary>
+    NotifyTail = '(Sender: TObject)';
     /// <summary>Alle published-Mitglieder, abgeleitete Klassen zuerst.</summary>
     class function Collect(const AIndex: ISymbolIndex; const AClassName: string;
       const AReadText: TMemberReadText): TArray<TPublishedMember>; static;
+    /// <summary>Parameter und ggf. Rückgabetyp des Ereignisses AEventName von AComponentClass,
+    /// z. B. "(Sender: TObject)", aus der Deklaration des Ereignistyps im Index.</summary>
+    class function EventTail(const AIndex: ISymbolIndex; const AReadText: TMemberReadText;
+      const AComponentClass, AEventName: string; out ATail: string): Boolean; static;
     /// <summary>Markdown-Abschnitt für den Hover; '' ohne Mitglieder.</summary>
     class function ToMarkdown(const AMembers: TArray<TPublishedMember>): string; static;
   end;
@@ -45,7 +51,9 @@ type
 implementation
 
 uses
+  System.StrUtils,
   System.Generics.Collections,
+  Argus.Common.Documents.Contract,
   Argus.Common.Pascal.SyntaxTree,
   Argus.Common.Pascal.TreeCache;
 
@@ -228,6 +236,105 @@ begin
     Positions.Free;
     Members.Free;
   end;
+end;
+
+/// <summary>Index des passenden ";" auf oberster Klammerebene ab AStart.</summary>
+function DeclarationEnd(const AText: string; AStart: Integer): Integer;
+var
+  Depth: Integer;
+begin
+  Depth := 0;
+  Result := AStart;
+  while Result <= Length(AText) do
+  begin
+    case AText[Result] of
+      '(', '[':
+        Inc(Depth);
+      ')', ']':
+        Dec(Depth);
+      ';':
+        if Depth = 0 then
+          Exit;
+    end;
+    Inc(Result);
+  end;
+end;
+
+/// <summary>"procedure(Sender: TObject) of object" → "(Sender: TObject)".</summary>
+function TailOfType(const ADeclaration: string): string;
+var
+  Lower: string;
+  Start, Stop: Integer;
+begin
+  Result := '';
+  Lower := LowerCase(ADeclaration);
+  Start := Pos('procedure', Lower);
+  if Start > 0 then
+    Inc(Start, Length('procedure'))
+  else
+  begin
+    Start := Pos('function', Lower);
+    if Start = 0 then
+      Exit;
+    Inc(Start, Length('function'));
+  end;
+  Stop := DeclarationEnd(ADeclaration, Start);
+  Result := Trim(Copy(ADeclaration, Start, Stop - Start));
+  if EndsText('of object', Result) then
+    Result := Trim(Copy(Result, 1, Length(Result) - Length('of object')));
+end;
+
+/// <summary>1-basierter Index von APosition in AText.</summary>
+function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
+var
+  Line, Index: Integer;
+begin
+  Line := 0;
+  Index := 1;
+  while (Line < APosition.Line) and (Index <= Length(AText)) do
+  begin
+    if AText[Index] = #10 then
+      Inc(Line)
+    else if (AText[Index] = #13) and ((Index = Length(AText)) or (AText[Index + 1] <> #10)) then
+      Inc(Line);
+    Inc(Index);
+  end;
+  Result := Index + APosition.Character;
+end;
+
+class function TPublishedMembers.EventTail(const AIndex: ISymbolIndex; const AReadText: TMemberReadText;
+  const AComponentClass, AEventName: string; out ATail: string): Boolean;
+var
+  Member: TPublishedMember;
+  TypeName, Text: string;
+  Location: TSymbolLocation;
+  Start: Integer;
+begin
+  ATail := '';
+  TypeName := '';
+  if AIndex <> nil then
+    for Member in Collect(AIndex, AComponentClass, AReadText) do
+      if SameText(Member.Name, AEventName) then
+      begin
+        TypeName := Member.TypeName;
+        Break;
+      end;
+  if TypeName = '' then
+    Exit(False);
+  if LastDelimiter('.', TypeName) > 0 then
+    TypeName := Copy(TypeName, LastDelimiter('.', TypeName) + 1, MaxInt);
+  if Assigned(AReadText) then
+    for Location in AIndex.FindSymbols(TypeName) do
+      if (Location.Symbol.Container = '') and AReadText(Location.FileName, Text) then
+      begin
+        Start := OffsetOf(Text, Location.Symbol.SelectionRange.EndPos);
+        ATail := TailOfType(Copy(Text, Start, DeclarationEnd(Text, Start) - Start + 1));
+        if ATail <> '' then
+          Exit(True);
+      end;
+  if SameText(TypeName, 'TNotifyEvent') then
+    ATail := NotifyTail;
+  Result := ATail <> '';
 end;
 
 function MemberLine(const AMember: TPublishedMember): string;

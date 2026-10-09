@@ -68,7 +68,6 @@ implementation
 uses
   System.StrUtils,
   Argus.Common.Lsp.PublishedMembers,
-  Argus.Common.Lsp.FormEvents,
   Argus.Common.Dfm.Contract,
   Argus.Common.Dfm.Parser;
 
@@ -429,7 +428,7 @@ begin
       if Member.IsEvent then
       begin
         Line := Format('  %s: %s', [Member.Name, Member.TypeName]);
-        if TFormEvents.EventTail(FIndex, ReadText, Found[0].Symbol.Name, Member.Name, Tail) then
+        if TPublishedMembers.EventTail(FIndex, ReadText, Found[0].Symbol.Name, Member.Name, Tail) then
           Line := Line + ' – Signatur ' + Tail;
         if not SameText(Member.DeclaringClass, Found[0].Symbol.Name) then
           Line := Line + ' (aus ' + Member.DeclaringClass + ')';

@@ -30,6 +30,8 @@ type
     procedure WritesGroupedMarkdown;
     [Test]
     procedure UnknownClassGivesNothing;
+    [Test]
+    procedure EventTailFallsBackToNotifyEvent;
   end;
 
 implementation
@@ -172,6 +174,18 @@ procedure TPublishedMembersTests.UnknownClassGivesNothing;
 begin
   Assert.AreEqual(0, Integer(Length(TPublishedMembers.Collect(FIndex, 'TUnbekannt', ReadSource))));
   Assert.AreEqual('', TPublishedMembers.ToMarkdown(nil));
+end;
+
+procedure TPublishedMembersTests.EventTailFallsBackToNotifyEvent;
+var
+  Tail: string;
+begin
+  // TNotifyEvent steht nicht im Index: die bekannte Signatur; geerbt von TBasis (#113).
+  Assert.IsTrue(TPublishedMembers.EventTail(FIndex, ReadSource, 'TKnopf', 'OnChange', Tail));
+  Assert.AreEqual(TPublishedMembers.NotifyTail, Tail);
+  // Unbekannter Ereignistyp und unbekanntes Ereignis: keine Signatur.
+  Assert.IsFalse(TPublishedMembers.EventTail(FIndex, ReadSource, 'TKnopf', 'OnKlick', Tail));
+  Assert.IsFalse(TPublishedMembers.EventTail(FIndex, ReadSource, 'TKnopf', 'OnFehlt', Tail));
 end;
 
 initialization
