@@ -127,7 +127,9 @@ type
 
 implementation
 
+// Winapi.Windows zuerst, damit die System-Units bei gleichen Namen Vorrang haben.
 uses
+  Winapi.Windows,
   System.Classes,
   System.IOUtils,
   System.StrUtils,
@@ -148,14 +150,27 @@ uses
   BDLsp.Windows.Diagnostics.StackTrace,
   BDLsp.Windows.Editing.SystemColors;
 
-function CreateTraceStream(const AFileName: string): TStream;
+// Mitschnitt anlegen. Hält ihn schon ein anderer Server (jede RAD-Studio-IDE
+// startet einen eigenen), weicht er auf <Name>-<PID><Endung> aus, statt ganz
+// ohne Mitschnitt zu laufen. AActualName ist die tatsächlich benutzte Datei.
+function CreateTraceStream(const AFileName: string; out AActualName: string): TStream;
 var
   Directory: string;
 begin
   Directory := TPath.GetDirectoryName(TPath.GetFullPath(AFileName));
   if Directory <> '' then
     ForceDirectories(Directory);
-  Result := TFileStream.Create(AFileName, fmCreate or fmShareDenyWrite);
+  AActualName := AFileName;
+  try
+    Result := TFileStream.Create(AActualName, fmCreate or fmShareDenyWrite);
+  except
+    on EFCreateError do
+    begin
+      AActualName := TPath.Combine(TPath.GetDirectoryName(AFileName), TPath.GetFileNameWithoutExtension(AFileName) +
+        Format('-%d', [Winapi.Windows.GetCurrentProcessId]) + TPath.GetExtension(AFileName));
+      Result := TFileStream.Create(AActualName, fmCreate or fmShareDenyWrite);
+    end;
+  end;
 end;
 
 { TServerComposition }
@@ -727,6 +742,7 @@ var
   Logger: ILogger;
   Transport: IJsonRpcTransport;
   Warning: string;
+  TraceName: string;
 begin
   // Stacktraces für das Absturzprotokoll (Exception.StackTrace).
   TStackTrace.Install;
@@ -748,7 +764,9 @@ begin
   Transport := TJsonRpcStreamTransport.Create(TStdStreams.CreateInput, TStdStreams.ReserveOutputForProtocol, True);
   if AOptions.TraceFile <> '' then
     try
-      Transport := TJsonRpcTracingTransport.Create(Transport, CreateTraceStream(AOptions.TraceFile), True);
+      Transport := TJsonRpcTracingTransport.Create(Transport, CreateTraceStream(AOptions.TraceFile, TraceName), True);
+      if not SameText(TraceName, AOptions.TraceFile) then
+        Logger.Info(Format('Mitschnitt "%s" ist belegt, schreibe nach "%s"', [AOptions.TraceFile, TraceName]));
     except
       on E: Exception do
         Logger.Error(Format('Mitschnitt "%s" kann nicht angelegt werden: %s', [AOptions.TraceFile, E.Message]));
