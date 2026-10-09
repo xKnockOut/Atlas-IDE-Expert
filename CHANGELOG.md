@@ -1,0 +1,19 @@
+# Changelog
+
+Alle nennenswerten Änderungen an Argus (Server und VS-Code-Erweiterung).
+Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionen nach [SemVer](https://semver.org/lang/de/).
+Server und Erweiterung tragen immer dieselbe Version.
+
+## [Unveröffentlicht]
+
+### Neu
+- Release-Prozess mit GitHub Releases, optionaler Code-Signierung und Marketplace/Open VSX (#83).
+- Pull-Diagnosen und projektweite Diagnosen (#82).
+- VS-Code-Erweiterung als `.vsix`, Konfiguration für Claude Code und Neovim (#49).
+- MCP-Modus mit lesenden Werkzeugen (#48).
+- Delphi-Version je Projekt aus der ProjectVersion (#47).
+
+## [0.1.0] - 2026-10-08
+
+### Neu
+- Erste Fassung: Language Server mit Navigation, Prüfregeln, Formatierung, Umbenennen, Compiler-Anbindung und minimaler VS-Code-Erweiterung.

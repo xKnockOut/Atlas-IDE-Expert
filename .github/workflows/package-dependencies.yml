@@ -19,3 +19,6 @@ jobs:
       - name: Regelkatalog aktuell und vollständig
         shell: pwsh
         run: ./Tools/Update-RuleCatalog.ps1 -Check
+      - name: Versionen von Server und Erweiterung gleich
+        shell: pwsh
+        run: ./Tools/Check-Version.ps1

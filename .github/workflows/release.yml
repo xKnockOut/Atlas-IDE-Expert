@@ -1,0 +1,142 @@
+name: Release
+
+# Veröffentlicht eine Version (#83), ausgelöst durch ein Tag v<SemVer>, z. B. v0.2.0.
+#
+# 1. Prüft, dass Tag, TProductVersion und package.json dieselbe Version tragen.
+# 2. Baut den Server (Win64 Release) auf dem selbst gehosteten Delphi-Runner,
+#    sofern DELPHI_RUNNER = 'true'; signiert ihn, wenn SIGN_CERT_BASE64 und
+#    SIGN_CERT_PASSWORD gesetzt sind.
+# 3. Packt die .vsix mit der EXE unter server/.
+# 4. Legt ein GitHub Release mit EXE, .vsix und dem Abschnitt aus CHANGELOG.md an.
+# 5. Veröffentlicht optional im VS Code Marketplace (VSCE_PAT) und auf Open VSX (OVSX_PAT).
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Versionen vergleichen
+        id: check
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}'.TrimStart('v')
+          ./Tools/Check-Version.ps1 -Expected $version
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+  server:
+    needs: version
+    if: vars.DELPHI_RUNNER == 'true'
+    runs-on: [self-hosted, windows, delphi]
+    env:
+      CC_SCRIPT: ${{ vars.CC_SCRIPT || 'C:\Projekte\IDE-Plugins\Claude-Compile\cc.ps1' }}
+      HAS_SIGNING: ${{ secrets.SIGN_CERT_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      # Wie server.yml: RAD Studio Starter hat kein msbuild, gebaut wird über cc.ps1.
+      - name: Eigene Scratch-IDE starten
+        id: ide
+        shell: pwsh
+        run: |
+          $out = & $env:CC_SCRIPT start -Project "$env:GITHUB_WORKSPACE\Argus.groupproj" | Out-String
+          Write-Host $out
+          if ($out -notmatch 'pid\D*(\d+)') { throw 'pid der Scratch-IDE nicht gefunden' }
+          "pid=$($Matches[1])" >> $env:GITHUB_OUTPUT
+      - name: Server bauen (Win64 Release)
+        shell: pwsh
+        run: |
+          $start = Get-Date
+          $r = & $env:CC_SCRIPT group-build -Instance ${{ steps.ide.outputs.pid }} -Platform Win64 -Config Release -Json | Out-String | ConvertFrom-Json
+          $r | ConvertTo-Json -Depth 5 | Write-Host
+          if (-not $r.ok -or -not $r.outputWritten) { throw 'Build fehlgeschlagen oder keine Ausgabe geschrieben' }
+          if ($r.logFile -and (Select-String -Path $r.logFile -Pattern '\[dcc.*(Hinweis|Warnung)')) { throw 'Build hat Hinweise oder Warnungen' }
+          $exe = 'Output\Win64\Release\Bin\ArgusServer.exe'
+          if (-not (Test-Path $exe) -or (Get-Item $exe).LastWriteTime -lt $start) { throw 'Release-exe wurde nicht neu geschrieben' }
+      - name: Scratch-IDE beenden
+        if: always() && steps.ide.outputs.pid != ''
+        shell: pwsh
+        run: |
+          for ($i = 0; $i -lt 10; $i++) {
+            & $env:CC_SCRIPT quit -Instance ${{ steps.ide.outputs.pid }}
+            if ($LASTEXITCODE -eq 0) { break }
+            Start-Sleep -Seconds 5
+          }
+      - name: Signieren (optional)
+        if: env.HAS_SIGNING == 'true'
+        shell: pwsh
+        env:
+          SIGN_CERT_BASE64: ${{ secrets.SIGN_CERT_BASE64 }}
+          SIGN_CERT_PASSWORD: ${{ secrets.SIGN_CERT_PASSWORD }}
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP 'sign.pfx'
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGN_CERT_BASE64))
+          try {
+            signtool sign /f $pfx /p $env:SIGN_CERT_PASSWORD /fd sha256 /tr http://timestamp.digicert.com /td sha256 Output\Win64\Release\Bin\ArgusServer.exe
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            Remove-Item $pfx -Force
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server
+          path: Output/Win64/Release/Bin/ArgusServer.exe
+
+  release:
+    needs: [version, server]
+    # Auch ohne Delphi-Runner: dann enthält das Release nur die .vsix ohne EXE.
+    if: always() && needs.version.result == 'success' && needs.server.result != 'failure'
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      HAS_VSCE: ${{ secrets.VSCE_PAT != '' }}
+      HAS_OVSX: ${{ secrets.OVSX_PAT != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        if: needs.server.result == 'success'
+        with:
+          name: server
+          path: Editors/VSCode/server
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Editors/VSCode/package-lock.json
+      - name: .vsix packen
+        working-directory: Editors/VSCode
+        run: |
+          npm ci
+          npx vsce package -o "argus-$VERSION.vsix"
+      - name: Changelog-Abschnitt
+        shell: pwsh
+        run: ./Tools/Get-ChangelogSection.ps1 -Version $env:VERSION | Set-Content -Encoding utf8 release-notes.md
+      - name: Release anlegen
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Argus ${{ env.VERSION }}
+          body_path: release-notes.md
+          prerelease: ${{ startsWith(env.VERSION, '0.') || contains(env.VERSION, '-') }}
+          files: |
+            Editors/VSCode/argus-${{ env.VERSION }}.vsix
+            Editors/VSCode/server/ArgusServer.exe
+          fail_on_unmatched_files: false
+      - name: VS Code Marketplace (optional)
+        if: env.HAS_VSCE == 'true'
+        working-directory: Editors/VSCode
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx vsce publish --packagePath "argus-$VERSION.vsix"
+      - name: Open VSX (optional)
+        if: env.HAS_OVSX == 'true'
+        working-directory: Editors/VSCode
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: npx --yes ovsx@0.10.1 publish "argus-$VERSION.vsix" -p "$OVSX_PAT"
