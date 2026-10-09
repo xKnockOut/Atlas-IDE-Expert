@@ -37,6 +37,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.JSON,
   BDLsp.Common.Documents.Contract,
   BDLsp.Common.Dfm.Contract,
@@ -110,12 +111,12 @@ begin
     Assert.IsNotNull(Document.Root);
     Assert.AreEqual('Form1', Document.Root.Name);
     Assert.AreEqual('TForm1', Document.Root.TypeName);
-    Assert.AreEqual(2, Document.Root.Children.Count);
+    Assert.AreEqual(2, Integer(Document.Root.Children.Count));
     Assert.AreEqual('Button1', Document.Root.Children[0].Name);
     Assert.AreEqual('TStringGrid', Document.Root.Children[1].TypeName);
     Assert.AreEqual(6, Document.Root.Children[0].Range.StartPos.Line);
     Assert.AreEqual(9, Document.Root.Children[0].Range.EndPos.Line);
-    Assert.AreEqual(0, Length(Document.Errors));
+    Assert.AreEqual(0, Integer(Length(Document.Errors)));
   finally
     Document.Free;
   end;
@@ -172,7 +173,7 @@ begin
   try
     Assert.IsTrue(Length(Document.Errors) > 0);
     Assert.AreEqual(1, Document.Errors[0].Position.Line);
-    Assert.AreEqual(1, Document.Root.Children.Count);
+    Assert.AreEqual(1, Integer(Document.Root.Children.Count));
   finally
     Document.Free;
   end;
@@ -237,13 +238,16 @@ procedure TDfmTests.BuildsSymbolsAndFolding;
 var
   Document: TDfmDocument;
   Symbols, Folding: TJSONArray;
+  Name: string;
 begin
   Document := TDfmParser.Parse(Form);
   try
     Symbols := TLspFormFiles.BuildSymbols(Document);
     try
       Assert.AreEqual(1, Symbols.Count);
-      Assert.AreEqual('Form1', (Symbols.Items[0] as TJSONObject).GetValue<string>('name'));
+      // Gliederung zeigt Name und Typ, wie der Objektinspektor.
+      Name := (Symbols.Items[0] as TJSONObject).GetValue<string>('name');
+      Assert.AreEqual('Form1: TForm1', Name);
       Assert.IsTrue(Pos('Button1', Symbols.ToJSON) > 0);
       Assert.IsTrue(Pos('Button1Click', Symbols.ToJSON) > 0);
     finally
