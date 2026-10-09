@@ -19,6 +19,9 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`thread-resume-suspend`](#thread-resume-suspend) | Veraltetes TThread.Resume/Suspend | Code Smell | Warnung |
 | [`result-not-set`](#result-not-set) | Funktionsergebnis eventuell nicht gesetzt | Bug | Warnung |
 | [`possibly-uninitialized`](#possibly-uninitialized) | Variable eventuell nicht initialisiert | Bug | Warnung |
+| [`unused-local`](#unused-local) | Ungenutzte lokale Variable | Code Smell | Hinweis |
+| [`unused-parameter`](#unused-parameter) | Ungenutzter Parameter | Code Smell | Hinweis |
+| [`unused-assignment`](#unused-assignment) | Zugewiesener Wert ungenutzt | Code Smell | Hinweis |
 
 <a id="syntax"></a>
 ## syntax
@@ -361,5 +364,93 @@ begin
   if Ok then
     I := 1;
   Writeln(I);
+end;
+```
+
+<a id="unused-local"></a>
+## unused-local
+
+**Ungenutzte lokale Variable** · Code Smell · Hinweis
+
+Eine lokale Variable ist deklariert, wird aber nie verwendet. Wie Compilerhinweis H2164, aber schon beim Tippen.
+
+Mit Treffer:
+
+```pascal
+procedure Foo;
+var
+  I, Count: Integer;
+begin
+  I := 1;
+  Bar(I);
+end;
+```
+
+Richtig:
+
+```pascal
+procedure Foo;
+var
+  I: Integer;
+begin
+  I := 1;
+  Bar(I);
+end;
+```
+
+<a id="unused-parameter"></a>
+## unused-parameter
+
+**Ungenutzter Parameter** · Code Smell · Hinweis
+
+Ein Parameter wird im Rumpf der Routine nicht verwendet. Ausgenommen sind überschriebene und virtuelle Methoden, Ereignis-Handler, published-Methoden, Interface-Implementierungen und Callbacks.
+
+Mit Treffer:
+
+```pascal
+function Twice(A, B: Integer): Integer;
+begin
+  Result := 2 * A;
+end;
+```
+
+Richtig:
+
+```pascal
+function Twice(A: Integer): Integer;
+begin
+  Result := 2 * A;
+end;
+```
+
+<a id="unused-assignment"></a>
+## unused-assignment
+
+**Zugewiesener Wert ungenutzt** · Code Smell · Hinweis
+
+Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077.
+
+Mit Treffer:
+
+```pascal
+procedure Foo;
+var
+  I: Integer;
+begin
+  I := 0;
+  I := Calc;
+  Bar(I);
+end;
+```
+
+Richtig:
+
+```pascal
+procedure Foo;
+var
+  I: Integer;
+begin
+  I := Calc;
+  Bar(I);
 end;
 ```
