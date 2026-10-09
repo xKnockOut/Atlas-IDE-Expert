@@ -41,11 +41,18 @@ type
     FText: string;
     FIssues: TList<TConfigurationIssue>;
     FSettings: TServerSettings;
+    /// <summary>"testProfile" mit einem Namen, der erst nach "profiles" geprüft werden kann.</summary>
+    FTestProfileNode: TJsonNode;
     function PositionAt(AOffset: Integer): TTextPosition;
     procedure Report(AStart, AStop: Integer; const AMessage: string; AIsError: Boolean);
     procedure ReportNode(ANode: TJsonNode; const AMessage: string);
     function ExpectString(ANode: TJsonNode; const AName: string; out AValue: string): Boolean;
     procedure ReadRules(ANode: TJsonNode);
+    function ParseRules(ANode: TJsonNode; const AName: string; out ARules: TArray<TRuleSetting>): Boolean;
+    function ParseStrings(ANode: TJsonNode; const AName: string; out AItems: TArray<string>): Boolean;
+    procedure ReadProfile(ANode: TJsonNode);
+    procedure ReadProfiles(ANode: TJsonNode);
+    procedure ReadOverrides(ANode: TJsonNode);
     procedure ReadExclude(ANode: TJsonNode);
     procedure ReadInlayHints(ANode: TJsonNode);
     procedure ReadCompiler(ANode: TJsonNode);
@@ -141,6 +148,14 @@ end;
 
 procedure TValidator.ReadRules(ANode: TJsonNode);
 var
+  Rules: TArray<TRuleSetting>;
+begin
+  if ParseRules(ANode, 'rules', Rules) then
+    FSettings.Rules := Rules;
+end;
+
+function TValidator.ParseRules(ANode: TJsonNode; const AName: string; out ARules: TArray<TRuleSetting>): Boolean;
+var
   Index: Integer;
   Inner: Integer;
   Value: TJsonNode;
@@ -148,10 +163,11 @@ var
   Rules: TList<TRuleSetting>;
   Severity: TRuleSeverity;
 begin
+  ARules := nil;
   if ANode.Kind <> TJsonKind.Object_ then
   begin
-    ReportNode(ANode, '"rules" muss ein Objekt sein: { "regel": "warning" }');
-    Exit;
+    ReportNode(ANode, Format('"%s" muss ein Objekt sein: { "regel": "warning" }', [AName]));
+    Exit(False);
   end;
   Rules := TList<TRuleSetting>.Create;
   try
@@ -190,9 +206,138 @@ begin
       end;
       Rules.Add(Rule);
     end;
-    FSettings.Rules := Rules.ToArray;
+    ARules := Rules.ToArray;
+    Result := True;
   finally
     Rules.Free;
+  end;
+end;
+
+function TValidator.ParseStrings(ANode: TJsonNode; const AName: string; out AItems: TArray<string>): Boolean;
+var
+  Index: Integer;
+  Value: string;
+begin
+  AItems := nil;
+  if ANode.Kind <> TJsonKind.Array_ then
+  begin
+    ReportNode(ANode, Format('"%s" muss eine Liste von Texten sein', [AName]));
+    Exit(False);
+  end;
+  for Index := 0 to ANode.Count - 1 do
+    if ExpectString(ANode[Index], AName, Value) then
+      AItems := AItems + [Value];
+  Result := True;
+end;
+
+procedure TValidator.ReadProfile(ANode: TJsonNode);
+var
+  Index: Integer;
+  Text: string;
+begin
+  // "profile": "fast" oder { "editor": "fast", "cli": "strict" }
+  if ANode.Kind = TJsonKind.String_ then
+  begin
+    FSettings.Profile := ANode.Value;
+    Exit;
+  end;
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"profile" erwartet einen Namen oder { "editor": …, "cli": … }');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+    if ANode.Keys[Index] = 'editor' then
+    begin
+      if ExpectString(ANode[Index], 'profile.editor', Text) then
+        FSettings.Profile := Text;
+    end
+    else if ANode.Keys[Index] = 'cli' then
+    begin
+      if ExpectString(ANode[Index], 'profile.cli', Text) then
+        FSettings.CliProfile := Text;
+    end
+    else
+      ReportNode(ANode[Index], Format('Unbekannter Schlüssel "%s"; erlaubt: editor, cli', [ANode.Keys[Index]]));
+end;
+
+procedure TValidator.ReadProfiles(ANode: TJsonNode);
+var
+  Index: Integer;
+  Inner: Integer;
+  Value: TJsonNode;
+  Profile: TRuleProfile;
+  Key: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"profiles" muss ein Objekt sein: { "name": { "extends": …, "rules": … } }');
+    Exit;
+  end;
+  FSettings.Profiles := nil;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Value := ANode[Index];
+    if Value.Kind <> TJsonKind.Object_ then
+    begin
+      ReportNode(Value, 'Ein Profil ist ein Objekt mit "extends", "categories" und "rules"');
+      Continue;
+    end;
+    Profile := Default(TRuleProfile);
+    Profile.Name := ANode.Keys[Index];
+    for Inner := 0 to Value.Count - 1 do
+    begin
+      Key := Value.Keys[Inner];
+      if Key = 'extends' then
+        ExpectString(Value[Inner], 'extends', Profile.Extends)
+      else if Key = 'categories' then
+        ParseStrings(Value[Inner], 'categories', Profile.Categories)
+      else if Key = 'rules' then
+        ParseRules(Value[Inner], 'rules', Profile.Rules)
+      else
+        ReportNode(Value[Inner], Format('Unbekannter Schlüssel "%s"; erlaubt: extends, categories, rules', [Key]));
+    end;
+    FSettings.Profiles := FSettings.Profiles + [Profile];
+  end;
+end;
+
+procedure TValidator.ReadOverrides(ANode: TJsonNode);
+var
+  Index: Integer;
+  Inner: Integer;
+  Value: TJsonNode;
+  Item: TPathOverride;
+  Key: string;
+begin
+  if ANode.Kind <> TJsonKind.Array_ then
+  begin
+    ReportNode(ANode, '"overrides" muss eine Liste sein: [{ "files": ["Tests/**"], "rules": { … } }]');
+    Exit;
+  end;
+  FSettings.Overrides := nil;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Value := ANode[Index];
+    if Value.Kind <> TJsonKind.Object_ then
+    begin
+      ReportNode(Value, 'Eine Pfadregel ist ein Objekt mit "files" und "rules"');
+      Continue;
+    end;
+    Item := Default(TPathOverride);
+    for Inner := 0 to Value.Count - 1 do
+    begin
+      Key := Value.Keys[Inner];
+      if Key = 'files' then
+        ParseStrings(Value[Inner], 'files', Item.Files)
+      else if Key = 'rules' then
+        ParseRules(Value[Inner], 'rules', Item.Rules)
+      else
+        ReportNode(Value[Inner], Format('Unbekannter Schlüssel "%s"; erlaubt: files, rules', [Key]));
+    end;
+    if Item.Files = nil then
+      ReportNode(Value, 'Pfadregel ohne "files"')
+    else
+      FSettings.Overrides := FSettings.Overrides + [Item];
   end;
 end;
 
@@ -406,7 +551,11 @@ var
   Value: TJsonNode;
   Text: string;
   Budget: Integer;
+  ProfileNode: TJsonNode;
+  Profile: TRuleProfile;
+  ProfileNames: TArray<string>;
 begin
+  ProfileNode := nil;
   Root := ParseRoot;
   if Root = nil then
     Exit;
@@ -455,12 +604,33 @@ begin
       end
       else if Key = 'rules' then
         ReadRules(Value)
+      else if Key = 'profile' then
+      begin
+        ProfileNode := Value;
+        ReadProfile(Value);
+      end
+      else if Key = 'profiles' then
+        ReadProfiles(Value)
+      else if Key = 'overrides' then
+        ReadOverrides(Value)
+      else if Key = 'excludeTests' then
+        ExpectBoolean(Value, Key, FSettings.ExcludeTests)
+      else if Key = 'testProfile' then
+      begin
+        if ExpectString(Value, Key, Text) then
+          if FSettings.IsKnownProfile(Text) or (Text = '') then
+            FSettings.TestProfile := Text
+          else
+            FTestProfileNode := Value;
+      end
       else if Key = 'exclude' then
         ReadExclude(Value)
       else if Key = 'minConfidence' then
       begin
         if ExpectString(Value, Key, Text) then
-          if not TConfigurationParser.TryParseConfidence(Text, FSettings.MinConfidence) then
+          if TConfigurationParser.TryParseConfidence(Text, FSettings.MinConfidence) then
+            FSettings.MinConfidenceGiven := True
+          else
             ReportNode(Value, 'Erlaubt sind "low", "medium" und "high"');
       end
       else if Key = 'inlayHints' then
@@ -494,6 +664,20 @@ begin
         Report(Root.KeyStarts[Index], Root.KeyStarts[Index] + Length(Key) + 2,
           Format('Unbekannte Einstellung "%s"', [Key]), False);
     end;
+    // Profilnamen erst prüfen, wenn auch "profiles" gelesen ist.
+    ProfileNames := [FSettings.Profile, FSettings.CliProfile];
+    for Text in ProfileNames do
+      if (ProfileNode <> nil) and not FSettings.IsKnownProfile(Text) then
+        ReportNode(ProfileNode, Format('Unbekanntes Profil "%s"; eingebaut: %s, sonst unter "profiles" anlegen',
+          [Text, string.Join(', ', BuiltinProfileNames)]));
+    if FTestProfileNode <> nil then
+      if FSettings.IsKnownProfile(FTestProfileNode.Value) then
+        FSettings.TestProfile := FTestProfileNode.Value
+      else
+        ReportNode(FTestProfileNode, Format('Unbekanntes Profil "%s"', [FTestProfileNode.Value]));
+    for Profile in FSettings.Profiles do
+      if not FSettings.IsKnownProfile(Profile.Extends) then
+        ReportNode(Root, Format('Profil "%s" erweitert das unbekannte Profil "%s"', [Profile.Name, Profile.Extends]));
   finally
     Root.Free;
   end;
@@ -615,10 +799,26 @@ begin
       Result.Platform := FileSettings.Platform
     else if Key = 'rules' then
       Result.Rules := MergeRules(Result.Rules, FileSettings.Rules)
+    else if Key = 'profile' then
+    begin
+      Result.Profile := FileSettings.Profile;
+      Result.CliProfile := FileSettings.CliProfile;
+    end
+    else if Key = 'profiles' then
+      Result.Profiles := FileSettings.Profiles
+    else if Key = 'overrides' then
+      Result.Overrides := FileSettings.Overrides
+    else if Key = 'excludeTests' then
+      Result.ExcludeTests := FileSettings.ExcludeTests
+    else if Key = 'testProfile' then
+      Result.TestProfile := FileSettings.TestProfile
     else if Key = 'exclude' then
       Result.Exclude := FileSettings.Exclude
     else if Key = 'minConfidence' then
-      Result.MinConfidence := FileSettings.MinConfidence
+    begin
+      Result.MinConfidence := FileSettings.MinConfidence;
+      Result.MinConfidenceGiven := FileSettings.MinConfidenceGiven;
+    end
     else if Key = 'format' then
     begin
       Result.Format := FileSettings.Format;

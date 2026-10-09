@@ -13,6 +13,7 @@
 //   --rules <a,b>         nur diese Regeln
 //   --units <a,b>         nur diese Units (Name oder Glob-Muster für Pfade)
 //   --min-severity <S>    hint, info, warning, error
+//   --profile <Name>      Regelprofil (#146), vor "profile" aus argus.json
 //
 // MCP-Modus (#48):
 //   --mcp                 Symbolindex über das Model Context Protocol anbieten
@@ -43,6 +44,8 @@ type
     RuleFilter: TArray<string>;
     UnitFilter: TArray<string>;
     MinSeverity: TRuleSeverity;
+    /// <summary>Regelprofil für --check (#146); '' = aus argus.json.</summary>
+    Profile: string;
     /// <summary>Statt der Treffer die Unterdrückungen je Regel ausgeben (#147).</summary>
     SuppressionStats: Boolean;
     /// <summary>Baseline-Datei (#97); '' = argus-baseline.json neben argus.json, falls vorhanden.</summary>
@@ -198,6 +201,11 @@ begin
           Result.MinSeverity := Severity
         else
           AddWarning(Format('Unbekannter Schweregrad "%s", gemeldet wird alles', [Value]));
+    end
+    else if Name = '--profile' then
+    begin
+      if TakeValue then
+        Result.Profile := Value;
     end
     else if Name = '--baseline' then
     begin
