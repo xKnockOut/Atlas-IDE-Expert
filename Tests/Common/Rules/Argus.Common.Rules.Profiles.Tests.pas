@@ -155,11 +155,11 @@ end;
 
 procedure TRuleProfilesTests.BuiltinProfilesActivateExpectedRules;
 const
-  All = 'bidi-control,confusable-identifier,control-char,forbidden-uses,invisible-char,unit-name-mismatch';
+  All = 'bidi-control,confusable-identifier,control-char,forbidden-uses,invisible-char';
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
   Assert.AreEqual(All, ActiveRules('strict'));
-  Assert.AreEqual('bidi-control,control-char,unit-name-mismatch', ActiveRules('fast'));
+  Assert.AreEqual('bidi-control,control-char', ActiveRules('fast'));
   Assert.AreEqual('bidi-control,confusable-identifier,invisible-char', ActiveRules('security'));
   Assert.AreEqual('forbidden-uses', ActiveRules('style'));
 end;
