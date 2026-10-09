@@ -193,6 +193,7 @@
         <DCCReference Include="IDE.Expert\Argus.Core.Completion.Ranking.Tests.pas"/>
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\UI\Argus.UI.Strings.pas"/>
         <DCCReference Include="IDE.Expert\Argus.UI.Strings.Tests.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Providers\Argus.Core.Completion.Providers.XmlDoc.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -128,6 +128,7 @@
         <DCCReference Include="Source\Core\Completion\Argus.Core.Completion.Usage.pas"/>
         <DCCReference Include="Source\IDE\Completion\Argus.IDE.Completion.History.pas"/>
         <DCCReference Include="Source\UI\Argus.UI.Strings.pas"/>
+        <DCCReference Include="Source\Core\Completion\Providers\Argus.Core.Completion.Providers.XmlDoc.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -193,6 +193,8 @@ begin
       Result := MakeBadge(TArgusBadgeKind.Keyword, 'kw');
     TArgusItemKind.Snippet:
       Result := MakeBadge(TArgusBadgeKind.Snippet, 'sn');
+    TArgusItemKind.XmlDocTag:
+      Result := MakeBadge(TArgusBadgeKind.XmlDoc, 'xd');
   else
     Result := MakeBadge(TArgusBadgeKind.Variable, '··');
   end;

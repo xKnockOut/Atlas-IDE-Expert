@@ -41,6 +41,8 @@ type
     procedure ReportError(const AMessage: string);
     procedure Diagnose(const AMessage: string);
     function CurrentEditView: IOTAEditView;
+    /// <summary>Cursorzeile ist ein ///-Kommentar (XMLDoc, #435).</summary>
+    function InXmlDocLine: Boolean;
     function Completion: TArgusEditorCompletion;
     function Signature: TArgusEditorSignature;
     function SessionOrNil: TLspSession;
@@ -431,7 +433,8 @@ procedure TArgusCodeInsightManager.AllowCodeInsight(var Allow: Boolean; const Ke
 begin
   // #0 Vervollständigung (Strg+Leer), "." Vervollständigung nach Punkt, #2 Browse
   // (Strg+Klick), #3 Symbolhinweis; #1 Parameterhilfe (Strg+Umschalt+Leer), "(" und ",".
-  Allow := CharInSet(Key, [#0, '.', #1, '(', ',', #2, #3]);
+  // "<" nur für XMLDoc-Tags in ///-Kommentaren (#435), siehe GetCodeInsightType.
+  Allow := CharInSet(Key, [#0, '.', #1, '(', ',', #2, #3, '<']);
   Diagnose(Format('AllowCodeInsight(#%d) = %s', [Ord(Key), BoolToStr(Allow, True)]));
 end;
 
@@ -481,6 +484,15 @@ begin
   ParameterList := nil;
 end;
 
+function TArgusCodeInsightManager.InXmlDocLine: Boolean;
+var
+  View: IOTAEditView;
+begin
+  View := CurrentEditView;
+  Result := (View <> nil) and (View.Buffer <> nil) and
+    TrimLeft(TArgusEditorBuffer.LineText(View, View.CursorPos.Line)).StartsWith('///');
+end;
+
 procedure TArgusCodeInsightManager.GetCodeInsightType(AChar: Char; AElement: Integer;
   out CodeInsightType: TOTACodeInsightType; out InvokeType: TOTAInvokeType);
 begin
@@ -499,14 +511,22 @@ begin
         CodeInsightType := citParameterCodeInsight;
         InvokeType := itTimer;
       end;
+    '<':
+      begin
+        CodeInsightType := citCodeInsight;
+        InvokeType := itTimer;
+      end;
     #2: CodeInsightType := citBrowseCodeInsight;
     #3: CodeInsightType := citHintCodeInsight;
   else
     CodeInsightType := citNone;
   end;
-  // In Kommentaren und Strings keine Vervollständigung.
-  if (CodeInsightType in [citCodeInsight, citParameterCodeInsight]) and
-    ((AElement = atComment) or (AElement = atString)) then
+  // In Kommentaren und Strings keine Vervollständigung (#435); Ausnahme: XMLDoc-Tags in ///-Zeilen.
+  // "<" außerhalb davon ist ein Vergleich, keine Auslösung.
+  if (CodeInsightType = citCodeInsight) and ((AChar = '<') or (AElement = atComment)) and InXmlDocLine then
+    // Vervollständigung bleibt; die XMLDoc-Quelle liefert die Tags.
+  else if (AChar = '<') or ((CodeInsightType in [citCodeInsight, citParameterCodeInsight]) and
+    ((AElement = atComment) or (AElement = atString))) then
     CodeInsightType := citNone;
   Diagnose(Format('GetCodeInsightType(#%d, Element %d) = %d', [Ord(AChar), AElement, Ord(CodeInsightType)]));
 end;

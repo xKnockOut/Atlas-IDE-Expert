@@ -36,6 +36,16 @@ type
     procedure CompletesMembersFromServer;
   end;
 
+  /// <summary>XMLDoc-Tags in ///-Kommentaren (#435).</summary>
+  [TestFixture]
+  TArgusXmlDocTests = class
+  public
+    [Test]
+    procedure RecognizesTagContext;
+    [Test]
+    procedure OffersParamsOfFollowingMethod;
+  end;
+
   /// <summary>Zeitbudget (#409): Filtern und Sortieren beim Weitertippen.</summary>
   [TestFixture]
   TArgusMatchingBudgetTests = class
@@ -70,6 +80,7 @@ uses
   Argus.Core.Completion.Providers.Server,
   Argus.Core.Completion.Word,
   Argus.Core.Completion.Matching,
+  Argus.Core.Completion.Providers.XmlDoc,
   System.Diagnostics,
   Argus.Core.Lsp.Session,
   Argus.Core.Lsp.Adapters.ServerProcess;
@@ -413,6 +424,43 @@ begin
   end;
 end;
 
+{ TArgusXmlDocTests }
+
+procedure TArgusXmlDocTests.RecognizesTagContext;
+begin
+  Assert.IsTrue(TArgusXmlDoc.IsTagContext('  /// <'));
+  Assert.IsTrue(TArgusXmlDoc.IsTagContext('  /// Text <su'));
+  Assert.IsFalse(TArgusXmlDoc.IsTagContext('  // <'), 'nur ///');
+  Assert.IsFalse(TArgusXmlDoc.IsTagContext('  /// Text'));
+  Assert.IsFalse(TArgusXmlDoc.IsTagContext('  if A < B'));
+end;
+
+procedure TArgusXmlDocTests.OffersParamsOfFollowingMethod;
+const
+  Text = 'type'#13#10 +
+    '  TFoo = class'#13#10 +
+    '    /// <'#13#10 +
+    '    /// weiter'#13#10 +
+    '    function CalcDiscount(const Customer: TCustomer;'#13#10 +
+    '      Rate, Extra: Double): Currency;'#13#10 +
+    '  end;';
+var
+  Declaration, Names: string;
+  Item: TArgusCompletionItem;
+begin
+  Declaration := TArgusXmlDoc.FollowingDeclaration(Text, 2);
+  Assert.AreEqual('function CalcDiscount(const Customer: TCustomer; Rate, Extra: Double): Currency;', Declaration);
+  Assert.AreEqual('Customer,Rate,Extra', String.Join(',', TArgusXmlDoc.ParamNames(Declaration)));
+  Names := '';
+  for Item in TArgusXmlDoc.TagItems(Declaration) do
+    Names := Names + Item.Name + '|';
+  Assert.IsTrue(Names.StartsWith('summary|param name="Customer"|param name="Rate"|param name="Extra"|returns|'),
+    Names);
+  Assert.AreEqual('summary>$0</summary>', TArgusXmlDoc.TagItems(Declaration)[0].InsertText);
+  // Prozedur: kein returns.
+  Assert.IsFalse(String.Join('|', [TArgusXmlDoc.TagItems('procedure Add(A: Integer);')[2].Name]) = 'returns');
+end;
+
 { TArgusMatchingBudgetTests }
 
 procedure TArgusMatchingBudgetTests.Filters5000EntriesWithin12ms;
@@ -479,6 +527,7 @@ end;
 initialization
   TDUnitX.RegisterTestFixture(TArgusCompletionProviderTests);
   TDUnitX.RegisterTestFixture(TArgusServerCompletionTests);
+  TDUnitX.RegisterTestFixture(TArgusXmlDocTests);
   TDUnitX.RegisterTestFixture(TArgusMatchingBudgetTests);
   TDUnitX.RegisterTestFixture(TArgusWordTests);
 

@@ -109,6 +109,7 @@ uses
   DockForm,
   Argus.Core.Lsp.Session,
   Argus.Core.Completion.Word,
+  Argus.Core.Completion.Providers.XmlDoc,
   Argus.Core.Settings.Plugin,
   Argus.IDE.Settings.Store,
   Argus.IDE.Completion.History,
@@ -265,6 +266,8 @@ begin
   FServerProvider := TArgusServerCompletionProvider.Create(ASession);
   FServerProviderRef := FServerProvider;
   FProviders.Add(FServerProviderRef);
+  // XMLDoc-Tags in ///-Kommentaren (#435), lokal.
+  FProviders.Add(TArgusXmlDocCompletionProvider.Create as IArgusCompletionProvider);
   FPopup := TArgusCompletionPopup.Create(nil);
   FController := TArgusCompletionController.Create(FProvidersRef, FPopup);
   FController.OnCommit :=
@@ -673,7 +676,7 @@ var
   TextEdit: TArgusTextEdit;
   Writer: IOTAEditWriter;
   Cursor: TOTAEditPos;
-  Character, Shift, CursorByte: Integer;
+  Character, Shift, CursorByte, CaretMarker: Integer;
   CharPos: TOTACharPos;
 begin
   View := FView;
@@ -692,6 +695,10 @@ begin
   NewText := AItem.InsertText;
   if NewText = '' then
     NewText := AItem.Name;
+  // "$0" im Einfügetext (XMLDoc-Tags, #435): dort steht der Cursor danach.
+  CaretMarker := Pos('$0', NewText);
+  if CaretMarker > 0 then
+    Delete(NewText, CaretMarker, 2);
   Edits := TList<TPendingEdit>.Create;
   try
     // Das getippte Wort durch den Eintrag ersetzen.
@@ -725,7 +732,10 @@ begin
       Writer.Insert(PAnsiChar(UTF8Encode(Edit.Text)));
       if Edit.IsWord then
       begin
-        CursorByte := Edit.Start + Shift + Length(UTF8Encode(Edit.Text));
+        if CaretMarker > 0 then
+          CursorByte := Edit.Start + Shift + Length(UTF8Encode(Copy(Edit.Text, 1, CaretMarker - 1)))
+        else
+          CursorByte := Edit.Start + Shift + Length(UTF8Encode(Edit.Text));
         if FCommitEnd >= 0 then
           Inc(CursorByte, FCommitSuffixBytes);
       end;
