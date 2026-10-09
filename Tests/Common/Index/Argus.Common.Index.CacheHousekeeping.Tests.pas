@@ -27,6 +27,8 @@ type
     FRoot: string;
     function CreateCache(const AName: string): string;
   public
+    [SetupFixture]
+    procedure SetupFixture;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -66,6 +68,37 @@ begin
   Result.Locked := ALocked;
 end;
 
+function StartWriter(const AFile, AContent: string; ARounds: Integer): TThread;
+begin
+  Result := TThread.CreateAnonymousThread(
+    procedure
+    var
+      Round: Integer;
+      Disk: IIndexFileSystem;
+    begin
+      Disk := TDiskIndexFileSystem.Create;
+      for Round := 1 to ARounds do
+        Disk.WriteText(AFile, AContent);
+    end);
+  Result.FreeOnTerminate := False;
+  Result.Start;
+end;
+
+/// <summary>Zwei Schreiber ersetzen AFile gleichzeitig ARounds-mal ('a…' gegen 'b…').</summary>
+procedure WriteConcurrently(const AFile: string; ARounds: Integer);
+var
+  Writers: array[0..1] of TThread;
+  Index: Integer;
+begin
+  Writers[0] := StartWriter(AFile, StringOfChar('a', 100000), ARounds);
+  Writers[1] := StartWriter(AFile, StringOfChar('b', 100000), ARounds);
+  for Index := 0 to High(Writers) do
+  begin
+    Writers[Index].WaitFor;
+    Writers[Index].Free;
+  end;
+end;
+
 { TIndexCacheHousekeepingTests }
 
 procedure TIndexCacheHousekeepingTests.KeepsEverythingBelowLimit;
@@ -103,6 +136,22 @@ begin
 end;
 
 { TIndexCacheDirectoryTests }
+
+procedure TIndexCacheDirectoryTests.SetupFixture;
+var
+  Root: string;
+begin
+  // Gleichzeitiges Ersetzen löst Fehler aus, deren Meldungstexte die RTL beim ersten Mal
+  // bis Programmende zwischenspeichert. Einmal vorab durchlaufen, damit der Leck-Monitor
+  // in ConcurrentWritersLeaveReadableCache nur den Speicher des Tests sieht.
+  Root := TPath.Combine(TPath.GetTempPath, 'ArgusCacheWarmup' + IntToStr(TThread.GetTickCount64));
+  ForceDirectories(Root);
+  try
+    WriteConcurrently(TPath.Combine(Root, 'index-00000000.json'), 50);
+  finally
+    TDirectory.Delete(Root, True);
+  end;
+end;
 
 procedure TIndexCacheDirectoryTests.Setup;
 begin
@@ -199,42 +248,15 @@ begin
 end;
 
 procedure TIndexCacheDirectoryTests.ConcurrentWritersLeaveReadableCache;
-const
-  Rounds = 50;
 var
   Cache: string;
-  Writers: array[0..1] of TThread;
-  Index: Integer;
   Text: string;
   FileSystem: IIndexFileSystem;
-
-  function StartWriter(const AFile, AContent: string): TThread;
-  begin
-    Result := TThread.CreateAnonymousThread(
-      procedure
-      var
-        Round: Integer;
-        Disk: IIndexFileSystem;
-      begin
-        Disk := TDiskIndexFileSystem.Create;
-        for Round := 1 to Rounds do
-          Disk.WriteText(AFile, AContent);
-      end);
-    Result.FreeOnTerminate := False;
-    Result.Start;
-  end;
-
 begin
   // Zwei Schreiber, die gleichzeitig ersetzen (#62): Am Ende steht einer der beiden
   // Stände vollständig in der Datei, nie ein halber.
   Cache := TPath.Combine(FRoot, 'index-00000003.json');
-  Writers[0] := StartWriter(Cache, StringOfChar('a', 100000));
-  Writers[1] := StartWriter(Cache, StringOfChar('b', 100000));
-  for Index := 0 to High(Writers) do
-  begin
-    Writers[Index].WaitFor;
-    Writers[Index].Free;
-  end;
+  WriteConcurrently(Cache, 50);
   FileSystem := TDiskIndexFileSystem.Create;
   Assert.IsTrue(FileSystem.ReadText(Cache, Text));
   Assert.IsTrue((Text = StringOfChar('a', 100000)) or (Text = StringOfChar('b', 100000)));
