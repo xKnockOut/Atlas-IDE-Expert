@@ -54,12 +54,18 @@
 - **Stand (`c1cfae2`):** Code Insight-Manager „BetterDelphiLSP (Plugin)“ mit Hover (`GetHintText`) und Strg+Klick (`GotoDefinition`). Dünner LSP-Client (`Lsp.Client`, `Lsp.Session`, `Lsp.Adapters.ServerProcess`), 9 DUnitX-Tests in `Tests\IdePlugin`, davon einer gegen den echten Server.
 - **Projektgruppe:** Das Plugin steht seit diesem Vorgang in `BetterDelphiLSP.groupproj` (vom User in der IDE hinzugefügt). Ein `group-build -Platform Win64` übersetzt es mit (0/0/0), installiert wird aber die Win32-BPL `Output\Win32\Debug\Bpl\BDLsp.IdePlugin.bpl`. Win32 einzeln: `build -Project …\BDLsp.IdePlugin.dproj -Platform Win32`.
 - **Server:** Registry `HKCU\Software\BetterDelphiLSP\IdePlugin\ServerPath`, sonst neben der BPL, sonst `Output\Win64\Debug\Bin\BetterDelphiLSP.exe`. Solange das Plugin aktiv ist, ist diese exe gesperrt.
-- **Offen:** Test in der IDE durch den User (installieren, Manager auswählen, Hover und Strg+Klick). Danach Vervollständigung (`GetSymbolList`), Parameterhilfe (`GetParameterList`), Error Insight selbst gezeichnet.
+- **In der IDE getestet (User, GalleryDemo):** Hover funktioniert, Strg+Klick auf Bezeichner derselben Unit springt. Strg+Klick auf `TBThemeController` findet nichts, weil der Typ in einer Include-Datei steht (`Beryl.VCL.Forms.ThemeController.intf.inc`); das löst erst `264-include-resolver` (Kette Index 77). Server direkt geprüft: liefert dort `[]`.
+- **`ce3da00`:** Ohne Treffer gibt `GotoDefinition` `True` mit leerem Dateinamen und Zeile 0 zurück (mit `False` meldete die IDE „Datei "" nicht gefunden“). Diagnose: `Diagnose` = 1 (DWORD) unter `HKCU\Software\BetterDelphiLSP\IdePlugin` schreibt `BDLsp.IdePlugin.log` neben die BPL (der Temp-Ordner funktionierte in der IDE des Users nicht).
+- **Registry aus der Sandbox:** Werte für die IDE nur mit deaktivierter Sandbox schreiben, sonst sieht die vom User gestartete IDE sie womöglich nicht.
+- **Delphi des Users** darf ich selbst schließen (`CloseMainWindow` auf `bds.exe`), wenn die Plugin-BPL oder die Server-exe gesperrt ist.
+- **Offen:** Vervollständigung (`GetSymbolList`), Parameterhilfe (`GetParameterList`), Error Insight selbst gezeichnet.
 
 ## Feature-Kette (pausiert, Fortsetzung nur auf Anweisung des Users)
 - 98 verkettete Branches von `14-projektmodell` bis `122-binaere-dfm`. Für jeden: `main` einmergen, in frischer IDE bauen, beheben, prüfen, Branch pushen, per Fast-Forward nach `main`, `main` pushen.
-- **Stand:** 40 von 98 sind in `main` (zuletzt 31-vervollstaendigung und 32-parameterhilfe). Weiter geht es bei Index 41, `33-hierarchien`.
-- Neue Commits auf `main` (Plugin, Projektgruppe) kommen beim nächsten Branch über „main einmergen“ automatisch mit. Achtung: Die Kette nutzt `git checkout -- BetterDelphiLSP.groupproj` zum Aufräumen; ältere Branches kennen das Plugin noch nicht, der Merge bringt es mit.
+- **Stand:** 54 von 98 sind in `main` (zuletzt `47-delphi-versionen`, 659 Tests). Weiter ginge es bei Index 55, `48-mcp-server`.
+- **Pausiert auf Wunsch des Users:** Es ist offen, ob die restlichen Branches noch alle benötigt werden. Erst nach Rückmeldung fortsetzen. Ein lokaler, nicht gepushter Merge-Commit auf `48-mcp-server` (`954b730`) kann verworfen werden.
+- **Behoben in 41–54:** Merge-Konflikte (Hover-Klartext mit Wert/Deprecation, Shell.Composition mit Compiler und abgeleiteten Arbeitsbereichen, Shell.Workspace-uses, mehrfach `BDLsp.Tests.dpr`), `Count`/`Length` als `Integer` (E2532), `ReadTabsConfig()` (E2010), H2077, H2443, DFM-Gliederungstest.
+- **Kettenskript:** Konflikte nur in `Tests/BDLsp.Tests.dpr` löst es selbst (beide Seiten übernehmen, Dubletten entfernen). Jeder andere Konflikt hält an.
 - **Leck-Monitor (seit 177):**
   - Felder im `TearDown` freigeben.
   - Thread- und RTL-Tests bekommen `[IgnoreMemoryLeaks]` mit Begründung.
@@ -67,5 +73,5 @@
 - Die IDE sortiert `DCCReference` um und fügt Leerzeilen ein. Reine Umsortierungen und Leerraum-Änderungen werden verworfen.
 
 ## Stand nach diesem Vorgang
-- `main` enthält Plugin und Projektgruppe mit Plugin. Gruppenbau Win64 0/0/0 (5 Projekte), 550/550 Tests.
-- Nächster Schritt: Rückmeldung des Users zum Plugin-Test in der IDE abwarten, dann Vervollständigung und Parameterhilfe im Plugin.
+- `main` = `e33c092` (Kette bis 54), Gruppenbau Win64 0/0/0 (5 Projekte), 659/659 Tests.
+- Nächster Schritt: Entscheidung des Users, welche Branches der Kette noch gebraucht werden. Danach Kette fortsetzen bzw. Vervollständigung und Parameterhilfe im Plugin.
