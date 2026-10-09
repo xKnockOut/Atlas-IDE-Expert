@@ -54,7 +54,8 @@ implementation
 uses
   System.Math,
   Argus.UI.Popup.Window,
-  Argus.UI.Popup.Styled;
+  Argus.UI.Popup.Styled,
+  Argus.UI.Strings;
 
 { TArgusDetailView }
 
@@ -165,7 +166,7 @@ begin
     begin
       ACanvas.Brush.Style := bsClear;
       ACanvas.Font.Color := ToColor(AColors.Muted);
-      ACanvas.TextOut(Left, Y, 'Überladung');
+      ACanvas.TextOut(Left, Y, TArgusStrings.Text(TArgusTextId.Overload));
       ACanvas.Font.Color := ToColor(AColors.Text);
       DrawText(ACanvas.Handle, PChar(Text), -1, Rect_, DT_SINGLELINE or DT_NOPREFIX);
       ACanvas.Font.Style := [fsBold];
@@ -178,7 +179,7 @@ begin
   end;
   if FDetails.IsEmpty then
   begin
-    Block('Keine Details zu diesem Eintrag', AColors.Muted, []);
+    Block(TArgusStrings.Text(TArgusTextId.NoDetails), AColors.Muted, []);
     Exit(Y - ABounds.Top + Scale(5));
   end;
   // 1. Tags als umrandete Marken.
@@ -245,9 +246,9 @@ begin
     Separator;
     if FDetails.IsDeprecated then
       if FDetails.DeprecatedText <> '' then
-        Block('Veraltet: ' + FDetails.DeprecatedText, AColors.Warn, [])
+        Block(TArgusStrings.Fmt(TArgusTextId.DeprecatedWith, [FDetails.DeprecatedText]), AColors.Warn, [])
       else
-        Block('Veraltet.', AColors.Warn, []);
+        Block(TArgusStrings.Text(TArgusTextId.DeprecatedPlain), AColors.Warn, []);
     Block(FDetails.Summary, AColors.Text, []);
     ACanvas.Font := AFont;
     ACanvas.Font.Style := [fsBold];

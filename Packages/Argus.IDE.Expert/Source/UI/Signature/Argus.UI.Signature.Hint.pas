@@ -99,7 +99,8 @@ implementation
 
 uses
   System.Math,
-  Argus.Core.Style.Color;
+  Argus.Core.Style.Color,
+  Argus.UI.Strings;
 
 const
   TextFlags = DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX;
@@ -186,9 +187,9 @@ begin
   AText := StringReplace(Parameter.Documentation, sLineBreak, ' ', [rfReplaceAll]);
   if Default <> '' then
     if AText <> '' then
-      AText := AText + ' · optional, Standard ' + Default
+      AText := AText + ' · ' + TArgusStrings.Fmt(TArgusTextId.OptionalDefault, [Default])
     else
-      AText := 'optional, Standard ' + Default;
+      AText := TArgusStrings.Fmt(TArgusTextId.OptionalDefault, [Default]);
   Result := True;
 end;
 
@@ -461,7 +462,7 @@ begin
   begin
     Canvas.Font := UIFont;
     Canvas.Font.Color := ToColor(Fore);
-    DrawText(Canvas.Handle, PChar(Format('Keine Überladung mit %d Parametern.', [FParameter + 1])), -1, Part,
+    DrawText(Canvas.Handle, PChar(TArgusStrings.Fmt(TArgusTextId.NoOverloadWith, [FParameter + 1])), -1, Part,
       TextFlags or DT_END_ELLIPSIS);
   end
   else if ParameterDoc(Name, Text) then
@@ -523,7 +524,7 @@ begin
     Canvas.Font.Color := ToColor(Colors.Muted);
     Canvas.Brush.Style := bsClear;
     Part := Rect(Left, Top + RowIndex * Height, Right, Top + (RowIndex + 1) * Height);
-    DrawText(Canvas.Handle, PChar(Format('… %d weitere', [Length(FHelp.Signatures) - MaxSignatures])), -1, Part,
+    DrawText(Canvas.Handle, PChar(TArgusStrings.Fmt(TArgusTextId.MoreOverloads, [Length(FHelp.Signatures) - MaxSignatures])), -1, Part,
       TextFlags);
     Inc(RowIndex);
   end;

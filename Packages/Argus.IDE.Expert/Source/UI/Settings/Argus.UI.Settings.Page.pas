@@ -16,7 +16,8 @@ uses
   Vcl.ComCtrls,
   Vcl.ExtCtrls,
   Vcl.Forms,
-  Argus.Core.Settings.Plugin;
+  Argus.Core.Settings.Plugin,
+  Argus.UI.Strings;
 
 type
   TArgusSettingsPage = class(TFrame)
@@ -66,14 +67,14 @@ begin
   Title.Parent := Self;
   Title.Align := alTop;
   Title.AlignWithMargins := True;
-  Title.Caption := 'Vervollständigung, Parameter-Hint und Tooltip von Argus';
+  Title.Caption := TArgusStrings.Text(TArgusTextId.SettingsTitle);
   Title.Font.Style := [fsBold];
   FNextTop := 100;
-  FEnabled := AddCheck('Argus aktiv (aus: eingebaute Code Insight der IDE)');
+  FEnabled := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsEnabled));
   Panel := AddPanel(26);
   FRowsLabel := TLabel.Create(Self);
   FRowsLabel.Parent := Panel;
-  FRowsLabel.Caption := 'Sichtbare Zeilen der Liste:';
+  FRowsLabel.Caption := TArgusStrings.Text(TArgusTextId.SettingsRows);
   FRowsLabel.Left := 0;
   FRowsLabel.Top := 5;
   FRows := TEdit.Create(Self);
@@ -87,24 +88,24 @@ begin
   FRowsUpDown.Associate := FRows;
   FRowsUpDown.Min := TArgusPluginSettings.MinVisibleRows;
   FRowsUpDown.Max := TArgusPluginSettings.MaxVisibleRows;
-  FPanelCollapsed := AddCheck('Detailpanel eingeklappt (Strg+Q schaltet im Popup um)');
-  FAutoParentheses := AddCheck('Klammern beim Übernehmen von Methoden ergänzen');
-  FFilterChips := AddCheck('Filter-Chips über der Liste (Alt+1 … Alt+6)');
-  FLearning := AddCheck('Häufig und zuletzt gewählte Einträge nach oben');
-  FGroupInherited := AddCheck('Geerbte Member nachrangig und nach Klasse gruppiert');
-  FPreview := AddCheck('Vorschau des gewählten Eintrags im Editor');
-  FHoverTooltip := AddCheck('Eigener Tooltip beim Verweilen über Bezeichnern');
+  FPanelCollapsed := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsPanelCollapsed));
+  FAutoParentheses := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsParentheses));
+  FFilterChips := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsChips));
+  FLearning := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsLearning));
+  FGroupInherited := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsGroupInherited));
+  FPreview := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsPreview));
+  FHoverTooltip := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsHover));
   Panel := AddPanel(32);
   FResetHistory := TButton.Create(Self);
   FResetHistory.Parent := Panel;
-  FResetHistory.Caption := 'Verlauf zurücksetzen';
+  FResetHistory.Caption := TArgusStrings.Text(TArgusTextId.SettingsResetHistory);
   FResetHistory.Left := 0;
   FResetHistory.Top := 3;
   FResetHistory.Width := 150;
   FResetHistory.OnClick := ResetHistoryClick;
   FResetWidths := TButton.Create(Self);
   FResetWidths.Parent := Panel;
-  FResetWidths.Caption := 'Breiten zurücksetzen';
+  FResetWidths.Caption := TArgusStrings.Text(TArgusTextId.SettingsResetWidths);
   FResetWidths.Left := 160;
   FResetWidths.Top := 3;
   FResetWidths.Width := 150;
