@@ -98,6 +98,7 @@
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.SemanticTokens.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.WorkspaceSymbols.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.DocumentHighlights.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Argus.Common.Lsp.KeywordHighlights.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.WatchedFiles.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.WorkspaceFolders.Tests.pas"/>
         <DCCReference Include="Windows\Documents\Argus.Windows.Documents.PathCanonicalizer.Tests.pas"/>

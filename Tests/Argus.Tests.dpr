@@ -62,6 +62,7 @@ uses
   Argus.Common.Lsp.FuzzyMatch.Tests in 'Common\Lsp\Argus.Common.Lsp.FuzzyMatch.Tests.pas',
   Argus.Common.Lsp.WorkspaceSymbols.Tests in 'Common\Lsp\Argus.Common.Lsp.WorkspaceSymbols.Tests.pas',
   Argus.Common.Lsp.DocumentHighlights.Tests in 'Common\Lsp\Argus.Common.Lsp.DocumentHighlights.Tests.pas',
+  Argus.Common.Lsp.KeywordHighlights.Tests in 'Common\Lsp\Argus.Common.Lsp.KeywordHighlights.Tests.pas',
   Argus.Common.Lsp.WatchedFiles.Tests in 'Common\Lsp\Argus.Common.Lsp.WatchedFiles.Tests.pas',
   Argus.Common.Lsp.WorkspaceFolders.Tests in 'Common\Lsp\Argus.Common.Lsp.WorkspaceFolders.Tests.pas',
   Argus.Windows.Documents.PathCanonicalizer.Tests in 'Windows\Documents\Argus.Windows.Documents.PathCanonicalizer.Tests.pas',
