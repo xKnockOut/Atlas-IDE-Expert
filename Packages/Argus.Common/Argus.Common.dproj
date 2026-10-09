@@ -1,4 +1,4 @@
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{9B47206F-D86A-4DB3-B051-00A4CA336E9F}</ProjectGuid>
         <MainSource>Argus.Common.dpk</MainSource>
@@ -103,6 +103,7 @@
         <DCCReference Include="Source\Index\Argus.Common.Index.SymbolIndex.pas"/>
         <DCCReference Include="Source\Index\Argus.Common.Index.Cache.pas"/>
         <DCCReference Include="Source\Index\Argus.Common.Index.CacheHousekeeping.pas"/>
+        <DCCReference Include="Source\Index\Argus.Common.Index.Memory.pas"/>
         <DCCReference Include="Source\Index\Argus.Common.Index.Builder.pas"/>
         <DCCReference Include="Source\Index\Argus.Common.Index.ProjectFiles.pas"/>
         <DCCReference Include="Source\Index\Argus.Common.Index.Service.pas"/>

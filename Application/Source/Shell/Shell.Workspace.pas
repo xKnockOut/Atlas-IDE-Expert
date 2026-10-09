@@ -163,6 +163,8 @@ begin
     begin
       FLogger.Info(Format('Einstellungen für %s: Delphi %s, Projekt %s, %d Regeleinstellungen, %d Ausschlüsse',
         [FName, ASettings.DelphiVersion, ASettings.Project, Length(ASettings.Rules), Length(ASettings.Exclude)]));
+      // Der Index ist gemeinsam; bei mehreren Ordnern gilt das zuletzt gelesene Budget.
+      FIndex.SetBudget(Int64(ASettings.MemoryBudgetMb) * 1024 * 1024);
       StartIndex(ASettings);
     end;
   FIndexService := TIndexService.Create(FIndex, TDiskIndexFileSystem.Create);

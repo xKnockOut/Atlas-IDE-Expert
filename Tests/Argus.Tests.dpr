@@ -37,6 +37,7 @@ uses
   Argus.Common.Documents.Uris.Tests in 'Common\Documents\Argus.Common.Documents.Uris.Tests.pas',
   Argus.Common.Index.Tests in 'Common\Index\Argus.Common.Index.Tests.pas',
   Argus.Common.Index.CacheHousekeeping.Tests in 'Common\Index\Argus.Common.Index.CacheHousekeeping.Tests.pas',
+  Argus.Common.Index.Memory.Tests in 'Common\Index\Argus.Common.Index.Memory.Tests.pas',
   Argus.Common.Semantics.ControlFlow.Tests in 'Common\Semantics\Argus.Common.Semantics.ControlFlow.Tests.pas',
   Argus.Common.Semantics.NameResolver.Tests in 'Common\Semantics\Argus.Common.Semantics.NameResolver.Tests.pas',
   Argus.Common.Lsp.Definition.Tests in 'Common\Lsp\Argus.Common.Lsp.Definition.Tests.pas',

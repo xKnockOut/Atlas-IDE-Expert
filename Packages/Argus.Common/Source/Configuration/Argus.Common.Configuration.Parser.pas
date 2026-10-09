@@ -375,6 +375,7 @@ var
   Key: string;
   Value: TJsonNode;
   Text: string;
+  Budget: Integer;
 begin
   Root := ParseRoot;
   if Root = nil then
@@ -434,6 +435,13 @@ begin
         ReadInlayHints(Value)
       else if Key = 'compiler' then
         ReadCompiler(Value)
+      else if Key = 'memoryBudgetMb' then
+      begin
+        if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Budget) and (Budget >= 0) then
+          FSettings.MemoryBudgetMb := Budget
+        else
+          ReportNode(Value, '"memoryBudgetMb" muss eine ganze Zahl ab 0 sein');
+      end
       else if Key = 'format' then
       begin
         if Value.Kind = TJsonKind.Object_ then
@@ -581,7 +589,9 @@ begin
     else if Key = 'inlayHints' then
       Result.InlayHints := FileSettings.InlayHints
     else if Key = 'compiler' then
-      Result.Compiler := FileSettings.Compiler;
+      Result.Compiler := FileSettings.Compiler
+    else if Key = 'memoryBudgetMb' then
+      Result.MemoryBudgetMb := FileSettings.MemoryBudgetMb;
 end;
 
 class function TConfigurationParser.Parse(const AText: string; out AIssues: TArray<TConfigurationIssue>): TServerSettings;

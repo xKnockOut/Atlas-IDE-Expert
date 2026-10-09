@@ -194,6 +194,10 @@ begin
   Status.Units := 3;
   Status.Symbols := 40;
   Status.MemoryBytes := 5 * 1024 * 1024;
+  Status.IndexBytes := 2 * 1024 * 1024;
+  Status.BudgetBytes := 4 * 1024 * 1024;
+  Status.CompactUnits := 7;
+  Status.DocumentBytes := 1024 * 1024;
   Workspace := Default(TWorkspaceStatus);
   Workspace.Name := 'App';
   Workspace.LastIndexMs := 120;
@@ -208,12 +212,16 @@ begin
   Status.Requests := [Request];
   Assert.IsTrue(Pos('- Index: 3 Units, 40 Symbole', Status.ToMarkdown) > 0, Status.ToMarkdown);
   Assert.IsTrue(Pos('- Speicher: 5.0 MB', Status.ToMarkdown) > 0, Status.ToMarkdown);
+  Assert.IsTrue(Pos('- davon Symbolindex: 2.0 MB von 4.0 MB, 7 Units kompakt', Status.ToMarkdown) > 0, Status.ToMarkdown);
+  Assert.IsTrue(Pos('- davon geöffnete Dokumente: 1.0 MB', Status.ToMarkdown) > 0, Status.ToMarkdown);
   Assert.IsTrue(Pos('- App: letzter Indexlauf 120 ms (2 neu eingelesen, 1 aus dem Cache, 0 fehlen)',
     Status.ToMarkdown) > 0, Status.ToMarkdown);
   Assert.IsTrue(Pos('| textDocument/hover | 4 | 2.5 | 6 | 0 |', Status.ToMarkdown) > 0, Status.ToMarkdown);
   Json := Status.ToJson;
   try
     Assert.AreEqual(40, Json.GetValue<Integer>('symbols'));
+    Assert.AreEqual(7, Json.GetValue<Integer>('compactUnits'));
+    Assert.AreEqual<Int64>(4 * 1024 * 1024, Json.GetValue<Int64>('budgetBytes'));
     Assert.AreEqual('App', Json.GetValue<string>('workspaces[0].name'));
     Assert.AreEqual(4, Json.GetValue<Integer>('requests[0].count'));
     Assert.AreEqual(Status.ToMarkdown, Json.GetValue<string>('markdown'));

@@ -71,6 +71,7 @@ contains
   Argus.Common.Index.SymbolIndex in 'Source\Index\Argus.Common.Index.SymbolIndex.pas',
   Argus.Common.Index.Cache in 'Source\Index\Argus.Common.Index.Cache.pas',
   Argus.Common.Index.CacheHousekeeping in 'Source\Index\Argus.Common.Index.CacheHousekeeping.pas',
+  Argus.Common.Index.Memory in 'Source\Index\Argus.Common.Index.Memory.pas',
   Argus.Common.Index.Builder in 'Source\Index\Argus.Common.Index.Builder.pas',
   Argus.Common.Index.ProjectFiles in 'Source\Index\Argus.Common.Index.ProjectFiles.pas',
   Argus.Common.Index.Service in 'Source\Index\Argus.Common.Index.Service.pas',

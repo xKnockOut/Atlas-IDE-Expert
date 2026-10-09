@@ -99,6 +99,12 @@
         }
       }
     },
+    "memoryBudgetMb": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Obergrenze für den Symbolindex in MB. Darüber werden zuerst Bibliotheks-Units (RTL, VCL), dann Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt."
+    },
     "inlayHints": {
       "type": "object",
       "description": "Inlay Hints im Editor.",
