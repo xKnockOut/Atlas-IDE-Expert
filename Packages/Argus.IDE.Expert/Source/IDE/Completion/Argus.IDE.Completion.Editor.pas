@@ -85,7 +85,7 @@ type
     procedure Close;
     /// <summary>Taste aus dem Tastatur-Hook; True, wenn verbraucht.</summary>
     function HandleKey(AKey: TArgusNavigationKey): Boolean;
-    /// <summary>Befehle im offenen Popup: Strg+Q Panel ein/aus (#428).</summary>
+    /// <summary>Befehle im offenen Popup: Strg+Q Panel ein/aus (#428), Alt+1 … Alt+6 Chips (#422).</summary>
     function WantsCommand(AKey: Word; AShift: TShiftState): Boolean;
     procedure HandleCommand(AKey: Word; AShift: TShiftState);
     /// <summary>Editortext wurde geändert.</summary>
@@ -108,6 +108,8 @@ uses
   Argus.Core.Completion.Word,
   Argus.Core.Settings.Plugin,
   Argus.IDE.Settings.Store,
+  Argus.IDE.Completion.History,
+  Argus.Core.Completion.Ranking,
   Argus.IDE.Editor.Buffer,
   Argus.IDE.Editor.Style;
 
@@ -265,11 +267,18 @@ begin
     procedure(const AItem: TArgusCompletionItem)
     begin
       Commit(AItem);
+      if FController.Usage <> nil then
+        TArgusIdeHistory.Committed;
     end;
   FPopup.OnSelect :=
     procedure(APosition: Integer)
     begin
       FController.Select(APosition);
+    end;
+  FPopup.OnChip :=
+    procedure(AChip: TArgusChip)
+    begin
+      FController.SelectChip(AChip);
     end;
   FPopup.OnAccept :=
     procedure(APosition: Integer)
@@ -402,6 +411,14 @@ begin
   FPopup.ManualListWidth := TArgusIdeSettings.Current.ListWidth;
   FPopup.PanelWidthSetting := TArgusIdeSettings.Current.PanelWidth;
   FPopup.PanelCollapsed := TArgusIdeSettings.Current.PanelCollapsed;
+  // Gruppen geerbter Member (#419), Chips (#422), lernende Gewichtung (#418).
+  FController.GroupInherited := TArgusIdeSettings.Current.GroupInherited;
+  FPopup.DimInherited := TArgusIdeSettings.Current.GroupInherited;
+  FController.ChipsEnabled := TArgusIdeSettings.Current.FilterChips;
+  if TArgusIdeSettings.Current.Learning then
+    FController.Usage := TArgusIdeHistory.Instance
+  else
+    FController.Usage := nil;
   // Das Popup beginnt am Wortanfang, nicht am Caret.
   FPopup.Canvas.Font := FPopup.Font;
   Anchor.Left := Anchor.Left - FPopup.Canvas.TextWidth(Context.Prefix);
@@ -457,13 +474,17 @@ end;
 
 function TArgusEditorCompletion.WantsCommand(AKey: Word; AShift: TShiftState): Boolean;
 begin
-  Result := FController.Visible and (AKey = Ord('Q')) and (AShift = [ssCtrl]);
+  // Strg+Q Panel (#428), Alt+1 … Alt+6 Chips (#422).
+  Result := FController.Visible and (((AKey = Ord('Q')) and (AShift = [ssCtrl])) or
+    (FController.ChipsEnabled and (AKey >= Ord('1')) and (AKey <= Ord('6')) and (AShift = [ssAlt])));
 end;
 
 procedure TArgusEditorCompletion.HandleCommand(AKey: Word; AShift: TShiftState);
 begin
   if (AKey = Ord('Q')) and (AShift = [ssCtrl]) then
-    FPopup.TogglePanel;
+    FPopup.TogglePanel
+  else if (AKey >= Ord('1')) and (AKey <= Ord('6')) then
+    FController.SelectChipAt(AKey - Ord('1'));
 end;
 
 function TArgusEditorCompletion.HandleKey(AKey: TArgusNavigationKey): Boolean;

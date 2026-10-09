@@ -101,8 +101,9 @@ end;
 
 class function TArgusServerCompletionProvider.ItemFromLsp(AItem: TJSONObject; ARank: Integer): TArgusCompletionItem;
 var
-  Documentation, Edits, Value: TJSONValue;
+  Documentation, Edits, Value, Overloads: TJSONValue;
   Edit: TArgusTextEdit;
+  Data, Twin: TJSONObject;
 begin
   Result := Default(TArgusCompletionItem);
   Result.Name := AItem.GetValue<string>('label', '');
@@ -122,6 +123,32 @@ begin
   // data unverändert für completionItem/resolve aufheben.
   if AItem.GetValue('data') <> nil then
     Result.ResolveData := AItem.GetValue('data').ToJSON;
+  // Herkunft, Vererbungstiefe, Helper und Überladungen (#419, #425, #456).
+  if AItem.GetValue('data') is TJSONObject then
+  begin
+    Data := TJSONObject(AItem.GetValue('data'));
+    Result.DeclaringClass := Data.GetValue<string>('container', '');
+    Result.Depth := Data.GetValue<Integer>('depth', 0);
+    Result.IsHelper := Data.GetValue('helper') is TJSONTrue;
+    Overloads := Data.GetValue('overloads');
+    if Overloads is TJSONArray then
+      for Value in TJSONArray(Overloads) do
+        if Value is TJSONObject then
+        begin
+          // Gleiche Datei, andere Position: ein data je Überladung für completionItem/resolve.
+          Twin := Data.Clone as TJSONObject;
+          try
+            Twin.RemovePair('overloads').Free;
+            Twin.RemovePair('line').Free;
+            Twin.RemovePair('character').Free;
+            Twin.AddPair('line', TJSONNumber.Create(TJSONObject(Value).GetValue<Integer>('line', 0)));
+            Twin.AddPair('character', TJSONNumber.Create(TJSONObject(Value).GetValue<Integer>('character', 0)));
+            Result.OverloadData := Result.OverloadData + [Twin.ToJSON];
+          finally
+            Twin.Free;
+          end;
+        end;
+  end;
   Edits := AItem.GetValue('additionalTextEdits');
   if Edits is TJSONArray then
     for Value in TJSONArray(Edits) do

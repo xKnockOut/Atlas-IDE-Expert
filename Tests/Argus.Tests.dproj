@@ -188,6 +188,9 @@
         <DCCReference Include="Common\Pascal\Argus.Common.Pascal.XmlDoc.Tests.pas"/>
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Settings\Argus.Core.Settings.Plugin.pas"/>
         <DCCReference Include="IDE.Expert\Argus.Core.Settings.Tests.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Ranking.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Usage.pas"/>
+        <DCCReference Include="IDE.Expert\Argus.Core.Completion.Ranking.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

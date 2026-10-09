@@ -30,6 +30,9 @@ type
 
   TArgusVisibility = (Unknown, StrictPrivate, Private_, StrictProtected, Protected_, Public_, Published_);
 
+  /// <summary>Lernende Gewichtung (#418): zuletzt bzw. häufig gewählt.</summary>
+  TArgusUsageMark = (None, Recent, Frequent);
+
   /// <summary>Textänderung, 0-basiert in UTF-16-Einheiten wie im LSP.</summary>
   TArgusTextEdit = record
     StartLine: Integer;
@@ -81,6 +84,16 @@ type
     AdditionalEdits: TArray<TArgusTextEdit>;
     /// <summary>Daten der Quelle, um Details nachzufragen (#424); '' ohne.</summary>
     ResolveData: string;
+    /// <summary>Vererbungstiefe bei Mitgliedern: 0 = eigener Typ, 1 = direkter Vorfahr (#419).</summary>
+    Depth: Integer;
+    /// <summary>Mitglied aus einem Class- bzw. Record-Helper (#456).</summary>
+    IsHelper: Boolean;
+    /// <summary>ResolveData der weiteren Überladungen (#425); die erste ist ResolveData.</summary>
+    OverloadData: TArray<string>;
+    /// <summary>Vom Controller gesetzt (#418).</summary>
+    Usage: TArgusUsageMark;
+    /// <summary>Zahl der Überladungen samt dieser (mindestens 1).</summary>
+    function OverloadCount: Integer;
   end;
 
   TArgusCompletionItems = TArray<TArgusCompletionItem>;
@@ -139,6 +152,13 @@ type
   end;
 
 implementation
+
+{ TArgusCompletionItem }
+
+function TArgusCompletionItem.OverloadCount: Integer;
+begin
+  Result := 1 + Length(OverloadData);
+end;
 
 { TArgusItemDetails }
 
