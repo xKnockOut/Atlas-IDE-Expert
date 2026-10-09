@@ -31,9 +31,11 @@ type
     [Test]
     procedure EscapeClosesAndKeysPassThroughWhenClosed;
     [Test]
-    procedure NoMatchHidesButStaysActive;
+    procedure NoMatchShowsEmptyState;
     [Test]
-    procedure EmptyResultClosesWithoutShowing;
+    procedure EmptyResultShowsEmptyStateUntilEscape;
+    [Test]
+    procedure CommitCharacterOnlyForClearMatch;
     [Test]
     procedure ItemsAfterCloseAreDropped;
   end;
@@ -55,8 +57,11 @@ type
     ShowCount: Integer;
     Names: string;
     Selected: Integer;
+    Empty: Boolean;
+    EmptyText: string;
     procedure ShowList(const AItems: TArgusCompletionItems; const AOrder: TArray<Integer>; ASelected: Integer);
     procedure HideList;
+    procedure ShowEmpty(const APrefix: string; ATotal: Integer);
     function PageSize: Integer;
   end;
 
@@ -66,6 +71,7 @@ var
   Index: Integer;
 begin
   Shown := True;
+  Empty := False;
   Inc(ShowCount);
   Names := '';
   for Index in AOrder do
@@ -80,6 +86,14 @@ end;
 procedure TFakeView.HideList;
 begin
   Shown := False;
+  Empty := False;
+end;
+
+procedure TFakeView.ShowEmpty(const APrefix: string; ATotal: Integer);
+begin
+  Shown := False;
+  Empty := True;
+  EmptyText := Format('%s/%d', [APrefix, ATotal]);
 end;
 
 function TFakeView.PageSize: Integer;
@@ -282,7 +296,7 @@ begin
   end;
 end;
 
-procedure TArgusCompletionControllerTests.NoMatchHidesButStaysActive;
+procedure TArgusCompletionControllerTests.NoMatchShowsEmptyState;
 var
   View: TFakeView;
   ViewRef: IArgusCompletionView;
@@ -299,20 +313,23 @@ begin
       begin
         Result := not Controller.Loading;
       end));
+    // #423: "Lines.Axq" zeigt den leeren Zustand, Rücktaste bis "Lines.A" wieder Treffer.
     Controller.UpdatePrefix('axq');
-    Assert.IsFalse(View.Shown);
+    Assert.IsTrue(View.Empty);
+    Assert.AreEqual('axq/2', View.EmptyText);
     Assert.IsTrue(Controller.Active);
     Assert.IsFalse(Controller.HandleKey(TArgusNavigationKey.Accept), 'Ohne Treffer gehört Enter dem Editor');
-    // Rücktaste: Treffer wieder da.
+    Assert.IsFalse(Controller.HandleKey(TArgusNavigationKey.Down), 'Ohne Treffer gehören Pfeile dem Editor');
     Controller.UpdatePrefix('a');
     Assert.IsTrue(View.Shown);
+    Assert.IsFalse(View.Empty);
     Assert.AreEqual('Add,Clear', View.Names);
   finally
     Controller.Free;
   end;
 end;
 
-procedure TArgusCompletionControllerTests.EmptyResultClosesWithoutShowing;
+procedure TArgusCompletionControllerTests.EmptyResultShowsEmptyStateUntilEscape;
 var
   View: TFakeView;
   ViewRef: IArgusCompletionView;
@@ -323,18 +340,51 @@ begin
   Controller := TArgusCompletionController.Create(
     TArgusFixedCompletionProvider.Create(nil) as IArgusCompletionProvider, ViewRef);
   try
-    Controller.Start(Context(''));
+    Controller.Start(Context('mylist'));
     Assert.IsTrue(WaitFor(
       function: Boolean
       begin
-        Result := not Controller.Active;
+        Result := not Controller.Loading;
       end));
-    Assert.AreEqual(0, View.ShowCount);
+    Assert.IsTrue(View.Empty, 'Nichts gefunden: leerer Zustand statt Verschwinden');
+    Assert.AreEqual('mylist/0', View.EmptyText);
+    Assert.IsTrue(Controller.HandleKey(TArgusNavigationKey.Cancel), 'Esc schließt den leeren Zustand');
+    Assert.IsFalse(Controller.Active);
+    Assert.IsFalse(View.Empty);
   finally
     Controller.Free;
   end;
 end;
 
+procedure TArgusCompletionControllerTests.CommitCharacterOnlyForClearMatch;
+var
+  View: TFakeView;
+  ViewRef: IArgusCompletionView;
+  Controller: TArgusCompletionController;
+begin
+  View := TFakeView.Create;
+  ViewRef := View;
+  Controller := TArgusCompletionController.Create(
+    TArgusFixedCompletionProvider.Create([Item('Add'), Item('AddStrings'), Item('Exchange')])
+      as IArgusCompletionProvider, ViewRef);
+  try
+    Controller.Start(Context(''));
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    Assert.IsFalse(Controller.CanCommitOnCharacter, 'Ohne getipptes Wort übernimmt ";" nichts');
+    Controller.UpdatePrefix('A');
+    Assert.IsTrue(Controller.CanCommitOnCharacter, '"Lines.A" + "(" ergibt "Lines.Add("');
+    Controller.UpdatePrefix('as');
+    Assert.IsTrue(Controller.CanCommitOnCharacter, 'Wortanfänge: AddStrings');
+    Controller.UpdatePrefix('xch');
+    Assert.IsFalse(Controller.CanCommitOnCharacter, 'Nur Teilstring von Exchange: Zeichen bleibt allein');
+  finally
+    Controller.Free;
+  end;
+end;
 procedure TArgusCompletionControllerTests.ItemsAfterCloseAreDropped;
 var
   View: TFakeView;
