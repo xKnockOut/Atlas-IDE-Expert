@@ -10,6 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`invisible-char`](#invisible-char) | Unsichtbares Zeichen | Sicherheits-Hotspot | Warnung |
 | [`control-char`](#control-char) | Steuerzeichen | Bug | Fehler |
 | [`confusable-identifier`](#confusable-identifier) | Verwechselbarer Bezeichner | Sicherheits-Hotspot | Warnung |
+| [`forbidden-uses`](#forbidden-uses) | Verbotene uses-Beziehung | Code Smell | Fehler |
 
 <a id="syntax"></a>
 ## syntax
@@ -131,4 +132,27 @@ Richtig:
 
 ```pascal
 var Password: string;
+```
+
+<a id="forbidden-uses"></a>
+## forbidden-uses
+
+**Verbotene uses-Beziehung** · Code Smell · Fehler
+
+Ein uses-Eintrag verletzt eine Schichtregel unter "layers" in argus.json, z. B. darf *.Common.* nicht Vcl.* verwenden.
+
+Mit Treffer:
+
+```pascal
+unit App.Common.Model;
+interface
+uses Vcl.Forms;
+```
+
+Richtig:
+
+```pascal
+unit App.Common.Model;
+interface
+uses System.Classes;
 ```

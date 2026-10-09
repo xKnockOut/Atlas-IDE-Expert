@@ -109,7 +109,8 @@ uses
   Argus.IdePlugin.Lsp.Tests in 'IdePlugin\Argus.IdePlugin.Lsp.Tests.pas',
   Argus.Common.Editing.UsesClause.Tests in 'Common\Editing\Argus.Common.Editing.UsesClause.Tests.pas',
   Argus.Common.Editing.UsesCommand.Tests in 'Common\Editing\Argus.Common.Editing.UsesCommand.Tests.pas',
-  Argus.Common.Semantics.UnresolvedNames.Tests in 'Common\Semantics\Argus.Common.Semantics.UnresolvedNames.Tests.pas';
+  Argus.Common.Semantics.UnresolvedNames.Tests in 'Common\Semantics\Argus.Common.Semantics.UnresolvedNames.Tests.pas',
+  Argus.Common.Rules.Builtin.Architecture.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Architecture.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

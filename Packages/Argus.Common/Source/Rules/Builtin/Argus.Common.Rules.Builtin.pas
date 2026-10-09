@@ -14,7 +14,8 @@ implementation
 
 uses
   Argus.Common.Rules.Registry,
-  Argus.Common.Rules.Builtin.Unicode;
+  Argus.Common.Rules.Builtin.Unicode,
+  Argus.Common.Rules.Builtin.Architecture;
 
 function BuiltinRules: TArray<IRule>;
 var
@@ -23,6 +24,7 @@ begin
   Registry := TRuleRegistry.Create;
   try
     RegisterUnicodeRules(Registry);
+    RegisterArchitectureRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;
