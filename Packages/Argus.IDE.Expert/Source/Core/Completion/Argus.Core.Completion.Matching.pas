@@ -27,6 +27,8 @@ type
     class function Score(const APattern, AName: string): Integer; static;
     /// <summary>Indizes der passenden Einträge, beste zuerst.</summary>
     class function Filter(const AItems: TArgusCompletionItems; const APattern: string): TArray<Integer>; static;
+    /// <summary>AName[AIndex] (1-basiert) beginnt ein Wort: CamelCase, nach "_", Ziffern.</summary>
+    class function IsWordStart(const AName: string; AIndex: Integer): Boolean; static;
   end;
 
 implementation
@@ -102,6 +104,11 @@ begin
 end;
 
 { TArgusCompletionMatcher }
+
+class function TArgusCompletionMatcher.IsWordStart(const AName: string; AIndex: Integer): Boolean;
+begin
+  Result := Argus.Core.Completion.Matching.IsWordStart(AName, AIndex);
+end;
 
 class function TArgusCompletionMatcher.Score(const APattern, AName: string): Integer;
 begin

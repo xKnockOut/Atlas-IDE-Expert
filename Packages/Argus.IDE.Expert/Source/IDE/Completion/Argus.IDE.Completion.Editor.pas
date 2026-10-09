@@ -13,7 +13,7 @@
 //     ohne Umschalt/Strg/Alt entgegen; sonst gehen alle Tasten an den Editor.
 //   - Übernahme: ein Undo-Schritt (CreateUndoableWriter) für Name und uses-Ergänzung.
 //   - Detailpanel (#424): 80 ms nach einem Wechsel der Auswahl fragt die Quelle die
-//     Details nach (completionItem/resolve); das Panel steht neben der Liste.
+//     Details nach (completionItem/resolve); das Panel ist Teil des Popups (rechts der Liste).
 //   - Commit-Zeichen (#429): Wird hinter dem Wort "(", ";" oder "." getippt und trifft
 //     der gewählte Eintrag klar, wird er übernommen und das Zeichen bleibt stehen;
 //     sonst bleibt nur das Zeichen und das Popup schließt. Erkannt nach dem Tippen im
@@ -33,7 +33,6 @@ uses
   Argus.Core.Completion.Controller,
   Argus.Core.Completion.Providers.Server,
   Argus.UI.Completion.Popup,
-  Argus.UI.Completion.Details,
   Argus.IDE.Editor.KeyHook;
 
 type
@@ -47,7 +46,6 @@ type
     FServerProvider: TArgusServerCompletionProvider;
     FServerProviderRef: IArgusCompletionProvider;
     FPopup: TArgusCompletionPopup;
-    FDetails: TArgusDetailPanel;
     // Detailpanel: Schlüssel der gewählten Einträge, Zeitpunkt der Anfrage, schon angefragt.
     FDetailKey: string;
     FDetailDue: UInt64;
@@ -102,12 +100,10 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Vcl.Forms,
-  Vcl.Graphics,
-  Vcl.Themes,
   DockForm,
-  Argus.UI.Popup.Window,
   Argus.Core.Lsp.Session,
-  Argus.IDE.Editor.Buffer;
+  Argus.IDE.Editor.Buffer,
+  Argus.IDE.Editor.Style;
 
 type
   TArgusEditNotifier = class(TNotifierObject, INTAEditServicesNotifier)
@@ -260,7 +256,6 @@ begin
   FServerProviderRef := FServerProvider;
   FProviders.Add(FServerProviderRef);
   FPopup := TArgusCompletionPopup.Create(nil);
-  FDetails := TArgusDetailPanel.Create(nil);
   FController := TArgusCompletionController.Create(FProvidersRef, FPopup);
   FController.OnCommit :=
     procedure(const AItem: TArgusCompletionItem)
@@ -301,7 +296,6 @@ begin
   FTimer.Free;
   Shutdown;
   FController.Free;
-  FDetails.Free;
   FPopup.Free;
   FKeys.Free;
   FServerProviderRef := nil;
@@ -328,32 +322,9 @@ begin
 end;
 
 procedure TArgusEditorCompletion.ApplyStyle;
-var
-  Theming: IOTAIDEThemingServices;
-  Editor: IOTAEditorServices;
-  Colors: TArgusPopupColors;
 begin
-  Colors := TArgusPopupColors.FromStyle;
-  // Farben aus dem Thema der IDE (hell/dunkel), Schrift aus den Editoroptionen (#411, #445 folgen).
-  if Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) and Theming.IDEThemingEnabled then
-  begin
-    Colors.Background := Theming.StyleServices.GetSystemColor(clWindow);
-    Colors.Text := Theming.StyleServices.GetSystemColor(clWindowText);
-    Colors.SecondaryText := Theming.StyleServices.GetSystemColor(clGrayText);
-    Colors.SelectionBackground := Theming.StyleServices.GetSystemColor(clHighlight);
-    Colors.SelectionText := Theming.StyleServices.GetSystemColor(clHighlightText);
-    Colors.Border := Theming.StyleServices.GetSystemColor(clBtnShadow);
-    Colors.Accent := Theming.StyleServices.GetSystemColor(clHighlight);
-  end;
-  FPopup.Colors := Colors;
-  FDetails.Colors := Colors;
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editor) and (Editor.EditOptions <> nil) then
-  begin
-    FPopup.Font.Name := Editor.EditOptions.FontName;
-    FPopup.Font.Size := Editor.EditOptions.FontSize;
-    FDetails.Font.Name := Editor.EditOptions.FontName;
-    FDetails.Font.Size := Editor.EditOptions.FontSize;
-  end;
+  // Farben aus dem Thema der IDE (hell/dunkel), Schrift aus den Editoroptionen (#411, #445).
+  TArgusIdeStyle.Apply(FPopup);
 end;
 
 function TArgusEditorCompletion.CaretRect(out AWindow: HWND; out ARect: TRect): Boolean;
@@ -471,7 +442,7 @@ end;
 
 procedure TArgusEditorCompletion.HideDetails;
 begin
-  FDetails.HideDetails;
+  FPopup.ClearDetails;
   FDetailKey := '';
   FDetailRequested := False;
 end;
@@ -496,8 +467,6 @@ begin
     FDetailRequested := False;
     Exit;
   end;
-  if FDetails.IsShown then
-    FDetails.Follow(FPopup.BoundsRect);
   if FDetailRequested or (TThread.GetTickCount64 < FDetailDue) then
     Exit;
   FDetailRequested := True;
@@ -506,9 +475,9 @@ begin
     begin
       // Nur zeigen, wenn noch derselbe Eintrag gewählt und die Liste offen ist.
       if (FDetailKey = Key) and FController.Visible then
-        FDetails.ShowDetails(ADetails, FPopup.BoundsRect);
+        FPopup.ShowDetails(ADetails);
     end) then
-    FDetails.HideDetails;
+    FPopup.ClearDetails;
 end;
 
 procedure TArgusEditorCompletion.TimerTick(Sender: TObject);
