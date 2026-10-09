@@ -30,8 +30,8 @@ type
     FTimeoutMs: Cardinal;
   protected
     function Prepare(const AContext: TArgusContext; out AData: TObject): Boolean; override;
-    function Fetch(const AContext: TArgusContext; AData: TObject;
-      const ACancelled: TArgusCancelledFunc): TArgusCompletionItems; override;
+    function Fetch(const AContext: TArgusContext; AData: TObject; const ACancelled: TArgusCancelledFunc;
+      out AIncomplete: Boolean): TArgusCompletionItems; override;
   public
     constructor Create(const ASession: TArgusSessionFunc; ATimeoutMs: Cardinal = DefaultTimeoutMs);
     /// <summary>LSP-CompletionItemKind → Art des Eintrags.</summary>
@@ -155,14 +155,19 @@ begin
 end;
 
 function TArgusServerCompletionProvider.Fetch(const AContext: TArgusContext; AData: TObject;
-  const ACancelled: TArgusCancelledFunc): TArgusCompletionItems;
+  const ACancelled: TArgusCancelledFunc; out AIncomplete: Boolean): TArgusCompletionItems;
 var
   Response: TJSONValue;
 begin
+  AIncomplete := False;
   Response := TLspSession(AData).Completion(AContext.FileName, AContext.Line, AContext.Character, FTimeoutMs);
   try
     if ACancelled() then
       Exit(nil);
+    // CompletionList mit isIncomplete: Der Server hat gekürzt und will beim Weitertippen neu gefragt werden.
+    // Ohne GetValue<Boolean>: das lässt über TValue Speicher liegen (Leck-Monitor).
+    AIncomplete := (Response is TJSONObject) and (TJSONObject(Response).GetValue('isIncomplete') is TJSONBool) and
+      TJSONBool(TJSONObject(Response).GetValue('isIncomplete')).AsBoolean;
     Result := ItemsFromLsp(Response);
   finally
     Response.Free;

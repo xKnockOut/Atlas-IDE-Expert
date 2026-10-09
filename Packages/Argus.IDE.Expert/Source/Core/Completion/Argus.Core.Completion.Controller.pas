@@ -9,6 +9,10 @@
 // Alle öffentlichen Methoden laufen im Hauptthread. Einträge aus anderen
 // Threads stellt die Senke über TThread.Queue in den Hauptthread; was nach
 // Close, einem neuen Start oder dem Freigeben ankommt, wird verworfen.
+//
+// Gekürzte Listen (#431, LSP isIncomplete): Beim Weitertippen filtert Requery
+// sofort lokal und fragt im Hintergrund neu; die neue Liste ersetzt die alte,
+// sobald sie eintrifft, und die Auswahl bleibt auf demselben Eintrag.
 
 interface
 
@@ -54,6 +58,7 @@ type
     public
       constructor Create(AController: TArgusCompletionController; AFlag: TAliveFlag; AGeneration: Integer);
       procedure AddItems(const AItems: TArgusCompletionItems);
+      procedure MarkIncomplete;
       procedure Complete;
     end;
   private
@@ -69,8 +74,14 @@ type
     FSelected: Integer;
     FPrefix: string;
     FEmpty: Boolean;
+    FIncomplete: Boolean;
+    /// <summary>Die nächsten Einträge ersetzen die Liste (laufendes Requery).</summary>
+    FReplace: Boolean;
     FOnCommit: TArgusCommitEvent;
     procedure ItemsArrived(AGeneration: Integer; const AItems: TArgusCompletionItems);
+    procedure IncompleteArrived(AGeneration: Integer);
+    procedure Query(const AContext: TArgusContext);
+    procedure SelectByName(const AName: string);
     procedure Completed(AGeneration: Integer);
     procedure Refresh(AKeepSelection: Boolean);
     procedure MoveSelection(APosition: Integer);
@@ -82,6 +93,8 @@ type
     procedure Start(const AContext: TArgusContext);
     /// <summary>Das Wort unter dem Cursor hat sich geändert: neu filtern.</summary>
     procedure UpdatePrefix(const APrefix: string);
+    /// <summary>Wie UpdatePrefix, fragt aber zusätzlich neu an (gekürzte Liste, #431).</summary>
+    procedure Requery(const AContext: TArgusContext);
     procedure Close;
     /// <summary>True, wenn die Taste verbraucht wurde; nur bei sichtbarer Liste.</summary>
     function HandleKey(AKey: TArgusNavigationKey): Boolean;
@@ -98,6 +111,8 @@ type
     property Visible: Boolean read GetVisible;
     /// <summary>Leerer Zustand wird gezeigt (#423).</summary>
     property Empty: Boolean read FEmpty;
+    /// <summary>Die Quelle hat gekürzt; beim Weitertippen Requery statt UpdatePrefix.</summary>
+    property Incomplete: Boolean read FIncomplete;
     property Prefix: string read FPrefix;
     property Items: TArgusCompletionItems read FItems;
     property Order: TArray<Integer> read FOrder;
@@ -142,6 +157,25 @@ begin
     begin
       if Flag.Alive and (FlagRef <> nil) then
         Controller.ItemsArrived(Generation, Items);
+    end);
+end;
+
+procedure TArgusCompletionController.TControllerSink.MarkIncomplete;
+var
+  Controller: TArgusCompletionController;
+  Flag: TAliveFlag;
+  FlagRef: IInterface;
+  Generation: Integer;
+begin
+  Controller := FController;
+  Flag := FFlag;
+  FlagRef := FFlagRef;
+  Generation := FGeneration;
+  TThread.Queue(nil,
+    procedure
+    begin
+      if Flag.Alive and (FlagRef <> nil) then
+        Controller.IncompleteArrived(Generation);
     end);
 end;
 
@@ -193,8 +227,6 @@ begin
 end;
 
 procedure TArgusCompletionController.Start(const AContext: TArgusContext);
-var
-  Sink: IArgusCompletionSink;
 begin
   Close;
   Inc(FGeneration);
@@ -205,8 +237,50 @@ begin
   FOrder := nil;
   FSelected := -1;
   FEmpty := False;
+  Query(AContext);
+end;
+
+procedure TArgusCompletionController.Query(const AContext: TArgusContext);
+var
+  Sink: IArgusCompletionSink;
+begin
+  FIncomplete := False;
   Sink := TControllerSink.Create(Self, FFlag, FGeneration);
   FProvider.Query(AContext, Sink);
+end;
+
+procedure TArgusCompletionController.Requery(const AContext: TArgusContext);
+begin
+  if not FActive then
+  begin
+    Start(AContext);
+    Exit;
+  end;
+  // Sofort lokal filtern, damit das Popup ohne Warten folgt (#409) ...
+  UpdatePrefix(AContext.Prefix);
+  // ... und im Hintergrund die vollständigere Liste holen; ältere Antworten verfallen.
+  Inc(FGeneration);
+  FLoading := True;
+  FReplace := True;
+  Query(AContext);
+end;
+
+procedure TArgusCompletionController.IncompleteArrived(AGeneration: Integer);
+begin
+  if FActive and (AGeneration = FGeneration) then
+    FIncomplete := True;
+end;
+
+procedure TArgusCompletionController.SelectByName(const AName: string);
+var
+  Position: Integer;
+begin
+  for Position := 0 to High(FOrder) do
+    if FItems[FOrder[Position]].Name = AName then
+    begin
+      FSelected := Position;
+      Exit;
+    end;
 end;
 
 procedure TArgusCompletionController.Close;
@@ -215,6 +289,8 @@ begin
     Exit;
   FActive := False;
   FLoading := False;
+  FIncomplete := False;
+  FReplace := False;
   Inc(FGeneration);
   FProvider.Cancel;
   FItems := nil;
@@ -225,9 +301,28 @@ begin
 end;
 
 procedure TArgusCompletionController.ItemsArrived(AGeneration: Integer; const AItems: TArgusCompletionItems);
+var
+  Item: TArgusCompletionItem;
+  SelectedName: string;
 begin
   if not FActive or (AGeneration <> FGeneration) or (Length(AItems) = 0) then
     Exit;
+  if FReplace then
+  begin
+    // Neue Liste nach Requery: ersetzen, die Auswahl bleibt auf demselben Eintrag.
+    SelectedName := '';
+    if SelectedItem(Item) then
+      SelectedName := Item.Name;
+    FReplace := False;
+    FItems := AItems;
+    Refresh(False);
+    if (SelectedName <> '') and (Length(FOrder) > 0) then
+    begin
+      SelectByName(SelectedName);
+      FView.ShowList(FItems, FOrder, FSelected);
+    end;
+    Exit;
+  end;
   FItems := FItems + AItems;
   Refresh(True);
 end;
@@ -237,6 +332,12 @@ begin
   if not FActive or (AGeneration <> FGeneration) then
     Exit;
   FLoading := False;
+  // Requery ohne Einträge: Die alte Liste gilt nicht mehr.
+  if FReplace then
+  begin
+    FReplace := False;
+    FItems := nil;
+  end;
   // Nichts gefunden: leerer Zustand statt kommentarlos zu verschwinden (#423).
   if Length(FItems) = 0 then
     Refresh(False);

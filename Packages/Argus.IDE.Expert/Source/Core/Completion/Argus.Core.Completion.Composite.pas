@@ -26,6 +26,7 @@ type
       constructor Create(const ASink: IArgusCompletionSink; ACount: Integer);
       destructor Destroy; override;
       procedure Add(const AItems: TArgusCompletionItems);
+      procedure Incomplete;
       procedure PartDone;
       procedure Cancel;
     end;
@@ -39,6 +40,7 @@ type
     public
       constructor Create(AState: TQueryState);
       procedure AddItems(const AItems: TArgusCompletionItems);
+      procedure MarkIncomplete;
       procedure Complete;
     end;
   private
@@ -86,6 +88,18 @@ begin
   end;
 end;
 
+procedure TArgusCompletionProviders.TQueryState.Incomplete;
+begin
+  // Ist eine Quelle gekürzt, ist es die ganze Liste.
+  FLock.Enter;
+  try
+    if FSink <> nil then
+      FSink.MarkIncomplete;
+  finally
+    FLock.Leave;
+  end;
+end;
+
 procedure TArgusCompletionProviders.TQueryState.PartDone;
 begin
   FLock.Enter;
@@ -124,6 +138,12 @@ procedure TArgusCompletionProviders.TPartSink.AddItems(const AItems: TArgusCompl
 begin
   if TInterlocked.CompareExchange(FDone, 0, 0) = 0 then
     FState.Add(AItems);
+end;
+
+procedure TArgusCompletionProviders.TPartSink.MarkIncomplete;
+begin
+  if TInterlocked.CompareExchange(FDone, 0, 0) = 0 then
+    FState.Incomplete;
 end;
 
 procedure TArgusCompletionProviders.TPartSink.Complete;

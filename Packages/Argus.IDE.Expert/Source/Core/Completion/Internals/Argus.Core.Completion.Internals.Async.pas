@@ -31,9 +31,10 @@ type
     /// <summary>Im aufrufenden Thread vor dem Start; False = nichts zu tun (Complete sofort).
     /// AData geht unverändert an Fetch (nicht übernommen, muss bis zum Ende von Fetch leben).</summary>
     function Prepare(const AContext: TArgusContext; out AData: TObject): Boolean; virtual;
-    /// <summary>Im Hintergrund. Ausnahmen gelten als leeres Ergebnis.</summary>
-    function Fetch(const AContext: TArgusContext; AData: TObject;
-      const ACancelled: TArgusCancelledFunc): TArgusCompletionItems; virtual; abstract;
+    /// <summary>Im Hintergrund. Ausnahmen gelten als leeres Ergebnis. AIncomplete: Die Liste ist
+    /// gekürzt, beim Weitertippen neu fragen (#431).</summary>
+    function Fetch(const AContext: TArgusContext; AData: TObject; const ACancelled: TArgusCancelledFunc;
+      out AIncomplete: Boolean): TArgusCompletionItems; virtual; abstract;
   public
     constructor Create;
     destructor Destroy; override;
@@ -137,14 +138,16 @@ begin
     procedure
     var
       Items: TArgusCompletionItems;
+      Incomplete: Boolean;
     begin
       Items := nil;
+      Incomplete := False;
       try
         Items := Fetch(Context, Data,
           function: Boolean
           begin
             Result := not IsCurrent(Generation);
-          end);
+          end, Incomplete);
       except
         // Server weg, Zeitlimit oder unerwartete Antwort: keine Einträge.
         Items := nil;
@@ -152,6 +155,8 @@ begin
       if IsCurrent(Generation) then
       begin
         Sink.AddItems(Items);
+        if Incomplete then
+          Sink.MarkIncomplete;
         Sink.Complete;
       end;
     end);

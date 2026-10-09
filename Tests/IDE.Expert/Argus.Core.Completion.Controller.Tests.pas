@@ -38,6 +38,10 @@ type
     procedure CommitCharacterOnlyForClearMatch;
     [Test]
     procedure ItemsAfterCloseAreDropped;
+    [Test]
+    procedure TruncatedListIsRequeried;
+    [Test]
+    procedure RequeryKeepsSelectedEntry;
   end;
 
 implementation
@@ -99,6 +103,33 @@ end;
 function TFakeView.PageSize: Integer;
 begin
   Result := 3;
+end;
+
+type
+  /// <summary>Liefert sofort zwei Einträge aus dem Präfix und meldet die Liste als gekürzt.</summary>
+  TPrefixProvider = class(TInterfacedObject, IArgusCompletionProvider)
+  public
+    Queries: Integer;
+    procedure Query(const AContext: TArgusContext; const ASink: IArgusCompletionSink);
+    procedure Cancel;
+  end;
+
+procedure TPrefixProvider.Query(const AContext: TArgusContext; const ASink: IArgusCompletionSink);
+var
+  First, Second: TArgusCompletionItem;
+begin
+  Inc(Queries);
+  First := Default(TArgusCompletionItem);
+  First.Name := AContext.Prefix + '1';
+  Second := Default(TArgusCompletionItem);
+  Second.Name := AContext.Prefix + '2';
+  ASink.AddItems([First, Second]);
+  ASink.MarkIncomplete;
+  ASink.Complete;
+end;
+
+procedure TPrefixProvider.Cancel;
+begin
 end;
 
 function Item(const AName: string; ARank: Integer = 0): TArgusCompletionItem;
@@ -410,8 +441,76 @@ begin
   end;
 end;
 
-initialization
-  TDUnitX.RegisterTestFixture(TArgusCompletionMatcherTests);
+procedure TArgusCompletionControllerTests.TruncatedListIsRequeried;
+var
+  View: TFakeView;
+  ViewRef: IArgusCompletionView;
+  Provider: TPrefixProvider;
+  ProviderRef: IArgusCompletionProvider;
+  Controller: TArgusCompletionController;
+begin
+  View := TFakeView.Create;
+  ViewRef := View;
+  Provider := TPrefixProvider.Create;
+  ProviderRef := Provider;
+  Controller := TArgusCompletionController.Create(ProviderRef, ViewRef);
+  try
+    Controller.Start(Context('ab'));
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    Assert.AreEqual('ab1,ab2', View.Names);
+    Assert.IsTrue(Controller.Incomplete, 'Gekürzte Liste gemeldet');
+    // #431: Weitertippen fragt neu, die neue Liste ersetzt die alte.
+    Controller.Requery(Context('abc'));
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    Assert.AreEqual(2, Provider.Queries);
+    Assert.AreEqual('abc1,abc2', View.Names);
+    Assert.IsTrue(View.Shown);
+  finally
+    Controller.Free;
+  end;
+end;
+
+procedure TArgusCompletionControllerTests.RequeryKeepsSelectedEntry;
+var
+  View: TFakeView;
+  ViewRef: IArgusCompletionView;
+  Controller: TArgusCompletionController;
+begin
+  View := TFakeView.Create;
+  ViewRef := View;
+  Controller := TArgusCompletionController.Create(TPrefixProvider.Create as IArgusCompletionProvider, ViewRef);
+  try
+    Controller.Start(Context('ab'));
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    Controller.HandleKey(TArgusNavigationKey.Down);
+    Assert.AreEqual(1, View.Selected);
+    // Neue Einträge verschieben die Auswahl nicht (#431).
+    Controller.Requery(Context('ab'));
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    Assert.AreEqual('ab1,ab2', View.Names);
+    Assert.AreEqual(1, View.Selected);
+  finally
+    Controller.Free;
+  end;
+end;
+
+initialization  TDUnitX.RegisterTestFixture(TArgusCompletionMatcherTests);
   TDUnitX.RegisterTestFixture(TArgusCompletionControllerTests);
 
 end.

@@ -62,6 +62,7 @@ type
     constructor Create;
     destructor Destroy; override;
     procedure AddItems(const AItems: TArgusCompletionItems);
+    procedure MarkIncomplete;
     procedure Complete;
     function WaitDone(ATimeoutMs: Cardinal): Boolean;
     function Names: string;
@@ -95,6 +96,10 @@ begin
   finally
     FLock.Leave;
   end;
+end;
+
+procedure TCollectingSink.MarkIncomplete;
+begin
 end;
 
 procedure TCollectingSink.Complete;

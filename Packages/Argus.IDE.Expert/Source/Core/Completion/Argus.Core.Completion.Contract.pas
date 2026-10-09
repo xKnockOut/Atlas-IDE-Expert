@@ -86,6 +86,9 @@ type
   IArgusCompletionSink = interface
     ['{5B0E6F3A-2C47-4D8E-9A1F-7E3C2B9D4A61}']
     procedure AddItems(const AItems: TArgusCompletionItems);
+    /// <summary>Die Liste ist gekürzt (LSP isIncomplete): Beim Weitertippen neu fragen (#431).
+    /// Vor Complete aufzurufen.</summary>
+    procedure MarkIncomplete;
     /// <summary>Die Quelle ist fertig; genau einmal je Query.</summary>
     procedure Complete;
   end;
