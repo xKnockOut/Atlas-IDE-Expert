@@ -17,6 +17,15 @@
     "Programming Languages"
   ],
   "main": "./out/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "In nicht vertrauenswürdigen Ordnern laufen nur lesende Funktionen; der Compiler wird nicht gestartet und Server-Pfade aus dem Arbeitsbereich werden ignoriert.",
+      "restrictedConfigurations": [
+        "argus.serverPath"
+      ]
+    }
+  },
   "activationEvents": [
     "workspaceContains:**/*.dproj",
     "workspaceContains:**/argus.json"
