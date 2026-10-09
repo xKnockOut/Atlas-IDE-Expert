@@ -6,6 +6,11 @@
 // rootPath als einziger Ordner) und ändern sich über
 // workspace/didChangeWorkspaceFolders. FolderOf ordnet einer Datei den
 // innersten Ordner zu, der sie enthält.
+//
+// Manche Clients melden keinen brauchbaren Ordner: RAD Studio schickt
+// rootUri "file:///" und keine workspaceFolders. Laufwerkswurzeln und "/"
+// gelten deshalb nicht als Ordner; der Server leitet ihn dann aus der
+// geöffneten Datei ab (ProjectFolderFor, #175).
 
 interface
 
@@ -23,6 +28,8 @@ type
   end;
 
   TWorkspaceFoldersChangedEvent = reference to procedure(const AAdded, ARemoved: TArray<TWorkspaceFolder>);
+  /// <summary>True, wenn im Ordner AFolder eine Projektdatei liegt.</summary>
+  THasProjectFileFunc = reference to function(const AFolder: string): Boolean;
 
   TLspWorkspaceFolders = class
   public const
@@ -38,6 +45,11 @@ type
     class procedure ParseChange(const AParams: TJSONValue; out AAdded, ARemoved: TArray<TWorkspaceFolder>); static;
     /// <summary>Index des innersten Ordners, der AFileName enthält; -1 wenn keiner.</summary>
     class function FolderOf(const AFolders: TArray<TWorkspaceFolder>; const AFileName: string): Integer; static;
+    /// <summary>False für '', "/" und Laufwerkswurzeln: Dort zu indizieren hieße, die ganze Platte zu lesen.</summary>
+    class function IsUsableRoot(const APath: string): Boolean; static;
+    /// <summary>Nächster Ordner ab dem Ordner von AFileName aufwärts, für den AHasProjectFile
+    /// True liefert; Laufwerkswurzeln ausgenommen. '' wenn keiner.</summary>
+    class function ProjectFolderFor(const AFileName: string; const AHasProjectFile: THasProjectFileFunc): string; static;
     /// <summary>Capability workspace.workspaceFolders. Der Aufrufer übernimmt das Objekt.</summary>
     class function Capability: TJSONObject; static;
     property OnChanged: TWorkspaceFoldersChangedEvent read FOnChanged write FOnChanged;
@@ -61,7 +73,7 @@ begin
     if not Item.TryGetValue<string>('uri', Uri) then
       Continue;
     Path := TDocumentUris.ToPath(Uri);
-    if Path = '' then
+    if not TLspWorkspaceFolders.IsUsableRoot(Path) then
       Continue;
     if not Item.TryGetValue<string>('name', Name) then
       Name := ExtractFileName(ExcludeTrailingPathDelimiter(Path));
@@ -113,7 +125,7 @@ begin
     if Value is TJSONString then
       Path := Value.Value;
   end;
-  if Path <> '' then
+  if IsUsableRoot(Path) then
     Result := [TWorkspaceFolder.Create(Path, ExtractFileName(ExcludeTrailingPathDelimiter(Path)))];
 end;
 
@@ -150,6 +162,35 @@ begin
       Result := Index;
       BestLength := Length(Folder);
     end;
+  end;
+end;
+
+class function TLspWorkspaceFolders.IsUsableRoot(const APath: string): Boolean;
+var
+  Path: string;
+begin
+  Path := StringReplace(Trim(APath), '/', '\', [rfReplaceAll]);
+  while (Path <> '') and (Path[Length(Path)] = '\') do
+    SetLength(Path, Length(Path) - 1);
+  // Übrig bleibt bei "/" nichts, bei "C:\" nur "C:".
+  Result := (Path <> '') and not ((Length(Path) = 2) and (Path[2] = ':'));
+end;
+
+class function TLspWorkspaceFolders.ProjectFolderFor(const AFileName: string;
+  const AHasProjectFile: THasProjectFileFunc): string;
+var
+  Folder, Parent: string;
+begin
+  Result := '';
+  Folder := ExcludeTrailingPathDelimiter(ExtractFileDir(StringReplace(AFileName, '/', '\', [rfReplaceAll])));
+  while IsUsableRoot(Folder) do
+  begin
+    if AHasProjectFile(Folder) then
+      Exit(Folder);
+    Parent := ExcludeTrailingPathDelimiter(ExtractFileDir(Folder));
+    if SameText(Parent, Folder) then
+      Break;
+    Folder := Parent;
   end;
 end;
 
