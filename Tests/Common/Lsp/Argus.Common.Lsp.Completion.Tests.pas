@@ -49,12 +49,15 @@ type
     procedure OffersSymbolsOfUnusedUnitsWithUsesEdit;
     [Test]
     procedure ImportsNeedTwoCharactersAndSkipUsedUnits;
+    [Test]
+    procedure MembersCarryContainerDepthAndOverloads;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.JSON,
   Argus.Common.Documents.Contract,
   Argus.Common.Pascal.SyntaxTree,
@@ -315,6 +318,66 @@ begin
   // Rechne kommt aus dem eingebundenen Werkzeug und erscheint nur einmal, ohne uses-Eintrag.
   Assert.AreEqual('Rechne', Names(ItemsAt(WithCode('  Rech'), '  Rech', TCompletionMatching.Prefix)));
   Assert.AreEqual(0, Integer(Length(ItemsAt(WithCode('  Rech'), '  Rech', TCompletionMatching.Prefix).Items[0].AdditionalEdits)));
+end;
+
+procedure TLspCompletionTests.MembersCarryContainerDepthAndOverloads;
+const
+  UnitUeber =
+    'unit Ueber;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TGrund = class'#10 +
+    '    procedure Schreibe; overload;'#10 +
+    '    procedure Schreibe(const Text: string); overload;'#10 +
+    '    procedure Schreibe(Wert: Integer); overload;'#10 +
+    '  end;'#10 +
+    '  TAbleitung = class(TGrund)'#10 +
+    '    procedure Eigen;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TGrund.Schreibe; begin end;'#10 +
+    'procedure TGrund.Schreibe(const Text: string); begin end;'#10 +
+    'procedure TGrund.Schreibe(Wert: Integer); begin end;'#10 +
+    'procedure TAbleitung.Eigen; begin end;'#10 +
+    'end.';
+  Text =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'uses Ueber;'#10 +
+    'implementation'#10 +
+    'procedure Test;'#10 +
+    'var'#10 +
+    '  A: TAbleitung;'#10 +
+    'begin'#10 +
+    '  A.'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Items: TCompletionItems;
+  Json: TJSONObject;
+  Data: TJSONObject;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitUeber, 'C:\P\Ueber.pas', nil));
+  Items := ItemsAt(Text, '  A.');
+  Assert.AreEqual('Eigen Schreibe', Names(Items));
+  // Eigene Klasse: Tiefe 0; geerbt: Tiefe 1 mit deklarierender Klasse (#419).
+  Assert.AreEqual('TAbleitung', Items.Items[0].Container);
+  Assert.AreEqual(0, Items.Items[0].Depth);
+  Assert.AreEqual('TGrund', Items.Items[1].Container);
+  Assert.AreEqual(1, Items.Items[1].Depth);
+  // Drei Überladungen: ein Eintrag mit zwei weiteren Positionen; Rümpfe zählen nicht (#425).
+  Assert.AreEqual(2, Integer(Length(Items.Items[1].Overloads)));
+  Assert.AreEqual(0, Integer(Length(Items.Items[0].Overloads)));
+  Json := TLspCompletion.ToJson(Items);
+  try
+    Data := ((Json.GetValue('items') as TJSONArray).Items[1] as TJSONObject).GetValue('data') as TJSONObject;
+    Assert.AreEqual('TGrund', Data.GetValue<string>('container'));
+    Assert.AreEqual(1, Data.GetValue<Integer>('depth'));
+    Assert.AreEqual(2, (Data.GetValue('overloads') as TJSONArray).Count);
+    Assert.AreEqual(5, (Data.GetValue('overloads') as TJSONArray).Items[0].GetValue<Integer>('line'));
+  finally
+    Json.Free;
+  end;
 end;
 
 initialization

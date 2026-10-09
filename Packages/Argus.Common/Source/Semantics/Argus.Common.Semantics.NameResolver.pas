@@ -64,6 +64,16 @@ type
     SymbolKind: TIndexSymbolKind;
     /// <summary>Umgebender Typ bei Mitgliedern.</summary>
     Container: string;
+    /// <summary>Bei Mitgliedern (MemberCandidates): 0 = eigener Typ, 1 = direkter Vorfahr usw. (#419).</summary>
+    Depth: Integer;
+    /// <summary>Mitglied aus einem Class- bzw. Record-Helper (#456).</summary>
+    IsHelper: Boolean;
+    /// <summary>Namenspositionen weiterer Überladungen in derselben Datei (#425).</summary>
+    Overloads: TArray<TTextRange>;
+    /// <summary>Parametertypen je Variante (erste zuerst), um Rümpfe nicht als Überladung zu zählen.</summary>
+    VariantParams: TArray<string>;
+    /// <summary>Deklaration im interface-Abschnitt.</summary>
+    InInterface: Boolean;
     /// <summary>Deklarierter Typ (Variablen, Felder, Properties, Parameter, Funktionsergebnis).</summary>
     TypeName: string;
     Ancestors: TArray<string>;
@@ -560,6 +570,8 @@ begin
   Result.MaxArgs := ASymbol.MaxArgs;
   Result.ParamTypes := ASymbol.ParamTypes;
   Result.IsDefault := ASymbol.IsDefault;
+  Result.InInterface := ASymbol.InInterface;
+  Result.VariantParams := [String.Join(';', ASymbol.ParamTypes)];
 end;
 
 function TNameResolver.FromNode(ANode: TSyntaxNode; const AName: string; AKind: TIndexSymbolKind;
@@ -1696,14 +1708,47 @@ end;
 procedure TNameResolver.AddCandidate(AList: TList<TResolvedSymbol>; ASeen: TDictionary<string, Boolean>;
   const ASymbol: TResolvedSymbol);
 var
-  Key: string;
+  Key, Params: string;
+  Index: Integer;
+  Existing: TResolvedSymbol;
 begin
-  // Der nächste Gültigkeitsbereich verdeckt gleichnamige weiter außen; Überladungen erscheinen einmal.
+  // Der nächste Gültigkeitsbereich verdeckt gleichnamige weiter außen; Überladungen erscheinen einmal,
+  // ihre Positionen merkt sich der erste Eintrag (#425).
   Key := UpperCase(ASymbol.Name);
-  if (Key = '') or ASeen.ContainsKey(Key) then
+  if Key = '' then
     Exit;
+  if ASeen.ContainsKey(Key) then
+  begin
+    for Index := AList.Count - 1 downto 0 do
+      if SameText(AList[Index].Name, ASymbol.Name) then
+      begin
+        // Gleiche Klasse und Datei, gleicher Abschnitt (Rümpfe in implementation zählen nicht) und andere
+        // Parametertypen als jede bisherige Variante (Rümpfe überladener Methoden wiederholen sie).
+        Params := String.Join(';', ASymbol.ParamTypes);
+        if SameText(AList[Index].Container, ASymbol.Container) and SameText(AList[Index].FileName, ASymbol.FileName) and
+          (AList[Index].SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine]) and
+          (AList[Index].InInterface = ASymbol.InInterface) and
+          not MatchText(Params, AList[Index].VariantParams) then
+        begin
+          Existing := AList[Index];
+          Existing.Overloads := Existing.Overloads + [ASymbol.SelectionRange];
+          Existing.VariantParams := Existing.VariantParams + [Params];
+          AList[Index] := Existing;
+        end;
+        Break;
+      end;
+    Exit;
+  end;
   ASeen.Add(Key, True);
   AList.Add(ASymbol);
+end;
+
+/// <summary>ASymbol als Mitglied in Vererbungstiefe ADepth (#419), ggf. aus einem Helper.</summary>
+function MemberOf(const ASymbol: TResolvedSymbol; ADepth: Integer; AIsHelper: Boolean): TResolvedSymbol;
+begin
+  Result := ASymbol;
+  Result.Depth := ADepth;
+  Result.IsHelper := AIsHelper;
 end;
 
 procedure TNameResolver.CollectMembers(const AType: TResolvedSymbol; AList: TList<TResolvedSymbol>;
@@ -1722,14 +1767,14 @@ begin
     if HelperFor(Current, Helper) and UnitOf(Helper, HelperUnit) then
       for Symbol in HelperUnit.Symbols do
         if SameText(Symbol.Container, Helper.QualifiedName) and IsVisible(Symbol, HelperUnit, Helper) then
-          AddCandidate(AList, ASeen, FromSymbol(HelperUnit, Symbol));
+          AddCandidate(AList, ASeen, MemberOf(FromSymbol(HelperUnit, Symbol), Depth, True));
     if Current.Builtin or not UnitOf(Current, OwnerUnit) then
       Exit;
     TypeName := Current.QualifiedName;
     for Symbol in OwnerUnit.Symbols do
       if SameText(Symbol.Container, TypeName) then
         if IsVisible(Symbol, OwnerUnit, Current) then
-          AddCandidate(AList, ASeen, FromSymbol(OwnerUnit, Symbol))
+          AddCandidate(AList, ASeen, MemberOf(FromSymbol(OwnerUnit, Symbol), Depth, False))
         else
           // Unsichtbare Deklaration: auch ihren Rumpf aus implementation nicht anbieten.
           ASeen.AddOrSetValue(UpperCase(Symbol.Name), True);

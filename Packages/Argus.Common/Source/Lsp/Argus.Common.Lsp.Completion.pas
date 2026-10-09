@@ -53,6 +53,14 @@ type
     /// <summary>Datei und Namensposition der Deklaration für completionItem/resolve; '' ohne.</summary>
     SourceFile: string;
     SourcePosition: TTextPosition;
+    /// <summary>Deklarierender Typ bei Mitgliedern (#419); ''.</summary>
+    Container: string;
+    /// <summary>Vererbungstiefe bei Mitgliedern: 0 = eigener Typ (#419).</summary>
+    Depth: Integer;
+    /// <summary>Mitglied aus einem Helper (#456).</summary>
+    IsHelper: Boolean;
+    /// <summary>Namenspositionen weiterer Überladungen in SourceFile (#425).</summary>
+    Overloads: TArray<TTextPosition>;
   end;
 
   TCompletionReadText = reference to function(const AFileName: string; out AText: string): Boolean;
@@ -430,9 +438,12 @@ var
   Index: Integer;
   SourceFile: string;
   SourcePosition: TTextPosition;
+  Member: TResolvedSymbol;
 
   procedure Add(const AName, ADetail: string; AKind: Integer; APenalty: Integer = 0;
     const AEdits: TArray<TRuleEdit> = nil);
+  var
+    Range: TTextRange;
   begin
     Scored.Score := MatchScore(AName, Context.Prefix, AMatching);
     if Scored.Score = TFuzzyMatch.NoMatch then
@@ -444,6 +455,12 @@ var
     Scored.Item.Kind := AKind;
     Scored.Item.SourceFile := SourceFile;
     Scored.Item.SourcePosition := SourcePosition;
+    Scored.Item.Container := Member.Container;
+    Scored.Item.Depth := Member.Depth;
+    Scored.Item.IsHelper := Member.IsHelper;
+    Scored.Item.Overloads := nil;
+    for Range in Member.Overloads do
+      Scored.Item.Overloads := Scored.Item.Overloads + [Range.StartPos];
     // Der Editor filtert selbst nach dem getippten Wort; unscharfe Treffer bekommen es
     // als filterText, damit er sie nicht verwirft.
     if (AMatching = TCompletionMatching.Fuzzy) and not AName.StartsWith(Context.Prefix, True) then
@@ -510,6 +527,7 @@ begin
   Context := Analyze(ATree, APosition);
   SourceFile := '';
   SourcePosition := Default(TTextPosition);
+  Member := Default(TResolvedSymbol);
   List := TList<TScoredItem>.Create(TScoredItemComparer.Create);
   try
     case Context.Kind of
@@ -530,6 +548,7 @@ begin
             // Wo die Deklaration steht, für completionItem/resolve.
             SourceFile := Candidate.FileName;
             SourcePosition := Candidate.SelectionRange.StartPos;
+            Member := Candidate;
             if Candidate.TypeName <> '' then
               Add(Candidate.Name, Candidate.TypeName, KindOf(Candidate.SymbolKind))
             else if Candidate.Container <> '' then
@@ -538,6 +557,7 @@ begin
               Add(Candidate.Name, Candidate.UnitName, KindOf(Candidate.SymbolKind));
           end;
           SourceFile := '';
+          Member := Default(TResolvedSymbol);
           if (Context.Kind = TCompletionContextKind.Scope) and (Length(Context.Prefix) >= MinImportPrefix) then
             AddFromOtherUnits;
         end;
@@ -558,10 +578,11 @@ end;
 
 class function TLspCompletion.ToJson(const AItems: TCompletionItems): TJSONObject;
 var
-  Items, Edits: TJSONArray;
+  Items, Edits, Overloads: TJSONArray;
   Entry, EditJson, Data: TJSONObject;
   Edit: TRuleEdit;
   Index: Integer;
+  Position: TTextPosition;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('isIncomplete', TJSONBool.Create(AItems.Incomplete));
@@ -597,6 +618,21 @@ begin
       Data.AddPair('file', AItems.Items[Index].SourceFile);
       Data.AddPair('line', TJSONNumber.Create(AItems.Items[Index].SourcePosition.Line));
       Data.AddPair('character', TJSONNumber.Create(AItems.Items[Index].SourcePosition.Character));
+      // Für die Argus-Oberfläche: Herkunft, Vererbungstiefe, Helper, Überladungen (#419, #425, #456).
+      if AItems.Items[Index].Container <> '' then
+        Data.AddPair('container', AItems.Items[Index].Container);
+      if AItems.Items[Index].Depth > 0 then
+        Data.AddPair('depth', TJSONNumber.Create(AItems.Items[Index].Depth));
+      if AItems.Items[Index].IsHelper then
+        Data.AddPair('helper', TJSONBool.Create(True));
+      if Length(AItems.Items[Index].Overloads) > 0 then
+      begin
+        Overloads := TJSONArray.Create;
+        Data.AddPair('overloads', Overloads);
+        for Position in AItems.Items[Index].Overloads do
+          Overloads.AddElement(TJSONObject.Create.AddPair('line', TJSONNumber.Create(Position.Line))
+            .AddPair('character', TJSONNumber.Create(Position.Character)));
+      end;
       Entry.AddPair('data', Data);
     end;
   end;
