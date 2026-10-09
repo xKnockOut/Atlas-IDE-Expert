@@ -10,6 +10,10 @@
 //     Parameter lokal neu; der Hint wechselt bei Bedarf die Überladung.
 //   - Schließen (#414): Caret verlässt den Aufruf (auch durch ")"), Esc,
 //     Fokusverlust, IDE inaktiv, Scrollen, Tab-Wechsel.
+//   - Wieder öffnen: Wird die schließende Klammer entfernt (Rücktaste, Entf) und
+//     steht der Caret danach in einem Aufruf, erscheint der Hint erneut; nicht für
+//     einen Aufruf, dessen Hint mit Esc geschlossen wurde. Dazu merkt sich jede
+//     Änderung die Zeile vorher.
 //   - Alle Überladungen stehen untereinander; Klick wählt eine. Tasten über den
 //     gemeinsamen Hook: Esc schließt, Alt+↑/↓ wechselt die gewählte Überladung;
 //     nach der Vervollständigung, die Esc zuerst bekommt.
@@ -51,6 +55,14 @@ type
     FOpenParen: Integer;
     FTopRow: Integer;
     FPending: Boolean;
+    // Zeile vor der letzten Änderung (Wieder öffnen nach entfernter ")").
+    FLastFile: string;
+    FLastLine: Integer;
+    FLastLineText: string;
+    // Mit Esc geschlossener Aufruf.
+    FDismissedFile: string;
+    FDismissedParen: Integer;
+    procedure Reopen(const AView: IOTAEditView);
     procedure Log(const AMessage: string);
     procedure TimerTick(Sender: TObject);
     procedure Recheck;
@@ -65,7 +77,7 @@ type
     /// <summary>Öffnet den Hint für den Aufruf am Cursor von AView; False ohne Aufruf.</summary>
     function Invoke(const AView: IOTAEditView): Boolean;
     procedure Close;
-    procedure EditorModified;
+    procedure EditorModified(const AView: IOTAEditView);
     /// <summary>Bricht laufende Serveranfragen ab und wartet auf sie; vor dem Freigeben der Sitzung.</summary>
     procedure Shutdown;
     function Active: Boolean;
@@ -163,7 +175,7 @@ end;
 procedure TSignatureNotifier.EditorViewModified(const EditWindow: INTAEditWindow; const EditView: IOTAEditView);
 begin
   try
-    FOwner.EditorModified;
+    FOwner.EditorModified(EditView);
   except
   end;
 end;
@@ -193,6 +205,8 @@ begin
   FCompletionOpen := ACompletionOpen;
   FNotifierIndex := -1;
   FOpenParen := -1;
+  FLastLine := -1;
+  FDismissedParen := -1;
   FProvider := TArgusServerSignatureProvider.Create(ASession);
   FHint := TArgusSignatureHint.Create(nil);
   FController := TArgusSignatureController.Create(FHint);
@@ -295,6 +309,7 @@ begin
   FHint.Anchor := Anchor;
   FHint.Above := Assigned(FCompletionOpen) and FCompletionOpen();
   FController.Close;
+  FDismissedParen := -1;
   FView := AView;
   FEditorWindow := Info.hwndCaret;
   FOpenParen := Site.OpenParen;
@@ -348,10 +363,57 @@ begin
   end;
 end;
 
-procedure TArgusEditorSignature.EditorModified;
+procedure TArgusEditorSignature.EditorModified(const AView: IOTAEditView);
+var
+  FileName, LineText: string;
+  Line: Integer;
+  Removed: Boolean;
 begin
   if Active then
     Recheck;
+  if (AView = nil) or (AView.Buffer = nil) then
+    Exit;
+  FileName := AView.Buffer.FileName;
+  Line := AView.CursorPos.Line;
+  LineText := TArgusEditorBuffer.LineText(AView, Line);
+  Removed := not Active and SameText(FileName, FLastFile) and (Line = FLastLine) and
+    TArgusCallScanner.RemovedClosingParen(FLastLineText, LineText);
+  FLastFile := FileName;
+  FLastLine := Line;
+  FLastLineText := LineText;
+  if not Removed then
+    Exit;
+  // Erst nach der Änderung, wenn die IDE den Caret gesetzt hat.
+  TThread.ForceQueue(nil,
+    procedure
+    begin
+      try
+        Reopen(AView);
+      except
+        on E: Exception do
+          Log('Parameter-Hint: ' + E.Message);
+      end;
+    end);
+end;
+
+procedure TArgusEditorSignature.Reopen(const AView: IOTAEditView);
+var
+  Text, LineText: string;
+  Cursor: TOTAEditPos;
+  Character: Integer;
+  Site: TArgusCallSite;
+begin
+  if Active or (AView = nil) or (AView.Buffer = nil) or not Application.Active then
+    Exit;
+  Text := TArgusEditorBuffer.Text(AView.Buffer);
+  Cursor := AView.CursorPos;
+  LineText := TArgusEditorBuffer.LineText(AView, Cursor.Line);
+  Character := TLspSession.ColumnToIndex(LineText, Cursor.Col, TArgusEditorBuffer.TabWidth(AView.Buffer));
+  Site := TArgusCallScanner.Scan(Text, TArgusEditorBuffer.CharOffset(Text, Cursor.Line - 1, Character));
+  if not Site.Found or ((Site.OpenParen = FDismissedParen) and SameText(AView.Buffer.FileName, FDismissedFile)) then
+    Exit;
+  Log('Parameter-Hint: nach entfernter Klammer wieder geöffnet');
+  Invoke(AView);
 end;
 
 procedure TArgusEditorSignature.TimerTick(Sender: TObject);
@@ -413,7 +475,13 @@ procedure TArgusEditorSignature.HandleKey(AKey: Word; AShift: TShiftState);
 begin
   case AKey of
     VK_ESCAPE:
-      Close;
+      begin
+        // Für diesen Aufruf nicht von selbst wieder öffnen.
+        if FView <> nil then
+          FDismissedFile := FView.Buffer.FileName;
+        FDismissedParen := FOpenParen;
+        Close;
+      end;
     VK_UP:
       FController.PreviousOverload;
     VK_DOWN:

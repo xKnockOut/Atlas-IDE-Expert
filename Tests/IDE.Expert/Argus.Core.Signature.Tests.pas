@@ -21,6 +21,10 @@ type
     procedure KeywordParenthesesAreNoCall;
     [Test]
     procedure ClosedCallIsLeft;
+    [Test]
+    procedure DetectsRemovedClosingParen;
+    [Test]
+    procedure OtherEditsAreNoRemovedParen;
   end;
 
   [TestFixture]
@@ -236,6 +240,29 @@ begin
   Assert.AreEqual('Der Text', Help.Signatures[0].Parameters[0].Documentation);
   Assert.AreEqual('Index: Integer', Help.Signatures[0].Parameters[1].Text(Help.Signatures[0].Label_));
   Assert.IsTrue(TArgusServerSignatureProvider.HelpFromLsp(nil).IsEmpty);
+end;
+
+procedure TArgusCallScannerTests.DetectsRemovedClosingParen;
+const
+  Typed = '  myList := TStringList.Create(True)';
+begin
+  // Rücktaste hinter ")".
+  Assert.IsTrue(TArgusCallScanner.RemovedClosingParen(Typed + ';', '  myList := TStringList.Create(True;'));
+  Assert.IsTrue(TArgusCallScanner.RemovedClosingParen(Typed, '  myList := TStringList.Create(True'));
+  // Entf vor ")" mitten in der Zeile, auch bei doppelter Klammer.
+  Assert.IsTrue(TArgusCallScanner.RemovedClosingParen('Foo(Bar()) + 1', 'Foo(Bar() + 1'));
+  // Danach steht der Caret wieder im Aufruf.
+  Assert.IsTrue(TArgusCallScanner.Scan('  myList := TStringList.Create(True', 35).Found);
+end;
+
+procedure TArgusCallScannerTests.OtherEditsAreNoRemovedParen;
+begin
+  Assert.IsFalse(TArgusCallScanner.RemovedClosingParen('Foo(True)', 'Foo(Tru)'));
+  Assert.IsFalse(TArgusCallScanner.RemovedClosingParen('Foo(True)', 'Foo(True)'));
+  Assert.IsFalse(TArgusCallScanner.RemovedClosingParen('Foo(True)', 'Foo(True));'));
+  Assert.IsFalse(TArgusCallScanner.RemovedClosingParen('Foo(True)', 'Foo(Tr)'));
+  Assert.IsFalse(TArgusCallScanner.RemovedClosingParen('Foo(', 'Foo'));
+  Assert.IsFalse(TArgusCallScanner.RemovedClosingParen('', ''));
 end;
 
 initialization
