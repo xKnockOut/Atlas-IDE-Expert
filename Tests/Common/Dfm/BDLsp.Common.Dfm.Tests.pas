@@ -110,12 +110,12 @@ begin
     Assert.IsNotNull(Document.Root);
     Assert.AreEqual('Form1', Document.Root.Name);
     Assert.AreEqual('TForm1', Document.Root.TypeName);
-    Assert.AreEqual(2, Document.Root.Children.Count);
+    Assert.AreEqual(2, Integer(Document.Root.Children.Count));
     Assert.AreEqual('Button1', Document.Root.Children[0].Name);
     Assert.AreEqual('TStringGrid', Document.Root.Children[1].TypeName);
     Assert.AreEqual(6, Document.Root.Children[0].Range.StartPos.Line);
     Assert.AreEqual(9, Document.Root.Children[0].Range.EndPos.Line);
-    Assert.AreEqual(0, Length(Document.Errors));
+    Assert.AreEqual(0, Integer(Length(Document.Errors)));
   finally
     Document.Free;
   end;
@@ -172,7 +172,7 @@ begin
   try
     Assert.IsTrue(Length(Document.Errors) > 0);
     Assert.AreEqual(1, Document.Errors[0].Position.Line);
-    Assert.AreEqual(1, Document.Root.Children.Count);
+    Assert.AreEqual(1, Integer(Document.Root.Children.Count));
   finally
     Document.Free;
   end;
