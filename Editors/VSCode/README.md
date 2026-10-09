@@ -4,7 +4,7 @@ Startet den Server `ArgusServer.exe` automatisch, sobald ein Ordner mit `.dproj`
 
 ## Installieren
 
-`pwsh Tools/Package-VSCode.ps1` baut `argus-<Version>.vsix` mit mitgelieferter EXE; installieren mit `code --install-extension argus-0.2.0.vsix`.
+`pwsh Tools/Package-VSCode.ps1` baut `argus-<Version>.vsix` mit mitgelieferter EXE; installieren mit `code --install-extension argus-0.1.0.vsix`.
 
 Gesucht wird der Server in dieser Reihenfolge: Einstellung `argus.serverPath`, mitgelieferte EXE, `Output\Win64\Release|Debug\Bin` im Arbeitsbereich, `PATH`.
 

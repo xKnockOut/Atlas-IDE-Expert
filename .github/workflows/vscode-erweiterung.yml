@@ -25,7 +25,7 @@ jobs:
       - name: Übersetzen
         run: npm run compile
       - name: .vsix packen
-        run: npx --yes @vscode/vsce@3.2.1 package --no-dependencies -o argus.vsix
+        run: npx vsce package -o argus.vsix
       - name: .vsix als Artefakt ablegen
         uses: actions/upload-artifact@v4
         with:
