@@ -10,6 +10,8 @@
 //   - Darunter auf abgesetzter Fläche Name und Beschreibung des aktiven Parameters.
 //   - Erlaubt keine Überladung so viele Argumente: Rahmen und untere Zeile in
 //     Fehlerfarbe, "Keine Überladung mit n Parametern." (#439).
+//   - Verschachtelte Aufrufe (#438): Pfadzeile oben mit den äußeren Aufrufen,
+//     "ShowMessage › Format"; höchstens drei Ebenen, darüber "… ›".
 //   - Klick auf eine Überladung wählt sie; Alt+↑/↓ über die Tastatur (Argus.IDE).
 // Platz: unter der Zeile an der öffnenden Klammer; über der Zeile, wenn unten
 // kein Platz ist oder das Vervollständigungs-Popup offen ist. Breite höchstens
@@ -51,6 +53,11 @@ type
     FLayouts: TArray<TArray<TPoint>>;
     /// <summary>Erste Zeile jeder gezeigten Überladung (für Mausklicks).</summary>
     FFirstRows: TArray<Integer>;
+    FOuter: TArray<string>;
+    FCallName: string;
+    function CrumbHeight: Integer;
+    function CrumbParts: TArray<string>;
+    procedure PaintCrumb;
     function LineHeight: Integer;
     function Pad: Integer;
     function Gap: Integer;
@@ -80,6 +87,9 @@ type
     property Anchor: TRect read FAnchor write FAnchor;
     /// <summary>Über der Zeile statt darunter (Vervollständigung offen, #440).</summary>
     property Above: Boolean read FAbove write FAbove;
+    /// <summary>Pfad für verschachtelte Aufrufe (#438): äußere Aufrufe (äußerster zuerst) und der Name des
+    /// gezeigten Aufrufs; vor ShowSignature setzen.</summary>
+    procedure SetPath(const AOuter: TArray<string>; const ACallName: string);
     /// <summary>Klick auf eine Überladung.</summary>
     property OnSelect: TArgusIndexEvent read FOnSelect write FOnSelect;
   end;
@@ -279,9 +289,14 @@ begin
     Canvas.Font := UIFont;
     Widest := Max(Widest, Min(Width + Canvas.TextWidth(Text), Available));
   end;
+  if CrumbHeight > 0 then
+  begin
+    Canvas.Font := Font;
+    Widest := Max(Widest, Min(Canvas.TextWidth(String.Join(' › ', CrumbParts)), Available));
+  end;
   Canvas.Font := Font;
   Width := Min(Widest + 2 * Gap + Bar + 2, Scale(MaxWidth));
-  Height := 2 * Pad + TotalRows * LineHeight;
+  Height := CrumbHeight + 2 * Pad + TotalRows * LineHeight;
   if HasDocLine then
     Inc(Height, DocHeight);
   if TooMany then
@@ -315,11 +330,83 @@ begin
   Place;
 end;
 
+procedure TArgusSignatureHint.SetPath(const AOuter: TArray<string>; const ACallName: string);
+begin
+  FOuter := AOuter;
+  FCallName := ACallName;
+end;
+
+function TArgusSignatureHint.CrumbParts: TArray<string>;
+var
+  Index: Integer;
+begin
+  // Höchstens drei Ebenen samt dem gezeigten Aufruf; darüber "…".
+  Result := nil;
+  if Length(FOuter) > 2 then
+    Result := ['…'];
+  for Index := Max(0, Length(FOuter) - 2) to High(FOuter) do
+    if FOuter[Index] <> '' then
+      Result := Result + [FOuter[Index]]
+    else
+      Result := Result + ['…'];
+  if FCallName <> '' then
+    Result := Result + [FCallName]
+  else
+    Result := Result + ['…'];
+end;
+
+function TArgusSignatureHint.CrumbHeight: Integer;
+begin
+  if Length(FOuter) = 0 then
+    Exit(0);
+  Canvas.Font := Font;
+  Result := Canvas.TextHeight('Wg') + Scale(8);
+end;
+
+procedure TArgusSignatureHint.PaintCrumb;
+var
+  Band, Part: TRect;
+  Parts: TArray<string>;
+  Index, X: Integer;
+  Text: string;
+begin
+  if CrumbHeight = 0 then
+    Exit;
+  Band := Rect(0, 0, ClientWidth, CrumbHeight);
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(Colors.Gutter);
+  Canvas.FillRect(Band);
+  Canvas.Pen.Color := ToColor(Colors.Line);
+  Canvas.MoveTo(0, Band.Bottom - 1);
+  Canvas.LineTo(ClientWidth, Band.Bottom - 1);
+  Canvas.Brush.Style := bsClear;
+  Canvas.Font := Font;
+  Parts := CrumbParts;
+  X := Gap + Bar;
+  for Index := 0 to High(Parts) do
+  begin
+    // Äußere Aufrufe gedämpft, der gezeigte in Textfarbe.
+    if Index = High(Parts) then
+      Canvas.Font.Color := ToColor(Colors.Text)
+    else
+      Canvas.Font.Color := ToColor(Colors.Muted);
+    Text := Parts[Index];
+    if Index < High(Parts) then
+      Text := Text + ' › ';
+    Part := Rect(X, Band.Top, ClientWidth - Gap, Band.Bottom - 1);
+    DrawText(Canvas.Handle, PChar(Text), -1, Part, TextFlags or DT_END_ELLIPSIS);
+    Inc(X, Canvas.TextWidth(Text));
+  end;
+  Canvas.Brush.Style := bsSolid;
+end;
+
 procedure TArgusSignatureHint.HideSignature;
 begin
   HidePopup;
   FHelp := Default(TArgusSignatureHelp);
   FStyled := nil;
+  FOuter := nil;
+  FCallName := '';
   FLayouts := nil;
   FFirstRows := nil;
 end;
@@ -376,7 +463,7 @@ end;
 procedure TArgusSignatureHint.Paint;
 var
   Row, Part: TRect;
-  Height, Index, Line, RowIndex, Left, Right, X: Integer;
+  Height, Index, Line, RowIndex, Left, Right, X, Top: Integer;
 begin
   Canvas.Font := Font;
   Canvas.Brush.Style := bsSolid;
@@ -391,15 +478,17 @@ begin
   Left := Bar + Gap;
   Right := ClientWidth - Gap;
   RowIndex := 0;
+  PaintCrumb;
+  Top := CrumbHeight + Pad;
   for Index := 0 to High(FLayouts) do
   begin
     // Akzentbalken links neben der gewählten Überladung.
     if Index = FSignature then
-      FillRounded(Rect(Scale(3), Pad + RowIndex * Height + Scale(3), Scale(3) + Bar,
-        Pad + (RowIndex + Length(FLayouts[Index])) * Height - Scale(3)), Colors.Accent, 1);
+      FillRounded(Rect(Scale(3), Top + RowIndex * Height + Scale(3), Scale(3) + Bar,
+        Top + (RowIndex + Length(FLayouts[Index])) * Height - Scale(3)), Colors.Accent, 1);
     for Line := 0 to High(FLayouts[Index]) do
     begin
-      Row := Rect(Left, Pad + RowIndex * Height, Right, Pad + (RowIndex + 1) * Height);
+      Row := Rect(Left, Top + RowIndex * Height, Right, Top + (RowIndex + 1) * Height);
       if Line > 0 then
         Inc(Row.Left, Indent);
       X := Row.Left;
@@ -414,13 +503,13 @@ begin
     Canvas.Font := UIFont;
     Canvas.Font.Color := ToColor(Colors.Muted);
     Canvas.Brush.Style := bsClear;
-    Part := Rect(Left, Pad + RowIndex * Height, Right, Pad + (RowIndex + 1) * Height);
+    Part := Rect(Left, Top + RowIndex * Height, Right, Top + (RowIndex + 1) * Height);
     DrawText(Canvas.Handle, PChar(Format('… %d weitere', [Length(FHelp.Signatures) - MaxSignatures])), -1, Part,
       TextFlags);
     Inc(RowIndex);
   end;
   if HasDocLine then
-    PaintDocLine(Pad + RowIndex * Height + Pad);
+    PaintDocLine(Top + RowIndex * Height + Pad);
   PaintBorder;
 end;
 
@@ -429,9 +518,9 @@ var
   Row, Index: Integer;
 begin
   inherited;
-  if (Button <> mbLeft) or not Assigned(FOnSelect) or (Y < Pad) then
+  if (Button <> mbLeft) or not Assigned(FOnSelect) or (Y < CrumbHeight + Pad) then
     Exit;
-  Row := (Y - Pad) div LineHeight;
+  Row := (Y - CrumbHeight - Pad) div LineHeight;
   for Index := High(FFirstRows) downto 0 do
     if Row >= FFirstRows[Index] then
     begin

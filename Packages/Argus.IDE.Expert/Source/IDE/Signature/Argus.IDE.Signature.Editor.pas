@@ -8,6 +8,8 @@
 //     Server anfragen, Hint an der öffnenden Klammer zeigen.
 //   - Weitertippen: EditorViewModified und ein Zeitgeber zählen den aktiven
 //     Parameter lokal neu; der Hint wechselt bei Bedarf die Überladung.
+//   - Verschachtelt (#438): Pfadzeile mit den äußeren Aufrufen; verlässt der Caret
+//     den inneren Aufruf nach vorn (Klammer davor), zeigt der Hint den äußeren.
 //   - Schließen (#414): Caret verlässt den Aufruf (auch durch ")"), Esc,
 //     Fokusverlust, IDE inaktiv, Scrollen, Tab-Wechsel.
 //   - Wieder öffnen: Wird die schließende Klammer entfernt (Rücktaste, Entf) und
@@ -333,6 +335,7 @@ begin
         Exit;
       end;
       FHint.Above := Assigned(FCompletionOpen) and FCompletionOpen();
+      FHint.SetPath(Current.Outer, Current.Name);
       FController.Show(AHelp, Current.ActiveParameter);
       Log(Format('Parameter-Hint: %d Signaturen, Parameter %d', [Length(AHelp.Signatures), Current.ActiveParameter]));
       ActiveChanged;
@@ -435,6 +438,7 @@ var
   Cursor: TOTAEditPos;
   Character: Integer;
   Site: TArgusCallSite;
+  View: IOTAEditView;
 begin
   if not Active or (FView = nil) then
   begin
@@ -452,9 +456,17 @@ begin
   Character := TLspSession.ColumnToIndex(LineText, Cursor.Col, TArgusEditorBuffer.TabWidth(FView.Buffer));
   Site := TArgusCallScanner.Scan(Text, TArgusEditorBuffer.CharOffset(Text, Cursor.Line - 1, Character));
   // Aufruf verlassen (auch durch ")") oder in einen anderen gewechselt.
-  if not Site.Found or (Site.OpenParen <> FOpenParen) then
+  if not Site.Found or (Site.OpenParen > FOpenParen) then
   begin
     Close;
+    Exit;
+  end;
+  // Inneren Aufruf verlassen: wieder den äußeren zeigen (#438).
+  if Site.OpenParen < FOpenParen then
+  begin
+    View := FView;
+    Close;
+    Invoke(View);
     Exit;
   end;
   if FController.Active then

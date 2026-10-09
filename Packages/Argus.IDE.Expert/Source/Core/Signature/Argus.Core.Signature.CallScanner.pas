@@ -6,6 +6,7 @@
 // Zeile). Strings ('' als Anführungszeichen), Kommentare ({ }, (* *), //) und
 // Kommas in eckigen Klammern oder inneren Klammern zählen nicht. Eine Klammer
 // gilt als Aufruf, wenn davor ein Bezeichner, ")" oder "]" steht; "if (a" nicht.
+// Für die Pfadzeile (#438) liefert er auch die Namen der äußeren Aufrufe.
 
 interface
 
@@ -19,6 +20,10 @@ type
     OpenParen: Integer;
     /// <summary>0-basiert: Zahl der Kommas auf der Ebene des Aufrufs vor dem Caret.</summary>
     ActiveParameter: Integer;
+    /// <summary>Name vor der Klammer (letzter Bezeichner, z. B. Create in TStringList.Create); '' nach ")" oder "]".</summary>
+    Name: string;
+    /// <summary>Namen der umschließenden Aufrufe, äußerster zuerst (#438).</summary>
+    Outer: TArray<string>;
   end;
 
   TArgusCallScanner = class
@@ -45,6 +50,7 @@ type
     IsParen: Boolean;
     IsCall: Boolean;
     Commas: Integer;
+    Name: string;
   end;
 
 function IsIdentifierChar(AChar: Char): Boolean;
@@ -74,6 +80,20 @@ begin
   while (Index >= AFrom) and IsIdentifierChar(AText[Index]) do
     Dec(Index);
   Result := not MatchText(Copy(AText, Index + 1, Stop - Index), Keywords);
+end;
+
+/// <summary>Bezeichner direkt vor der Klammer an AIndex (1-basiert); '' ohne.</summary>
+function CalleeName(const AText: string; AFrom, AIndex: Integer): string;
+var
+  Index, Stop: Integer;
+begin
+  Index := AIndex - 1;
+  while (Index >= AFrom) and CharInSet(AText[Index], [' ', #9, #13, #10]) do
+    Dec(Index);
+  Stop := Index;
+  while (Index >= AFrom) and IsIdentifierChar(AText[Index]) do
+    Dec(Index);
+  Result := Copy(AText, Index + 1, Stop - Index);
 end;
 
 class function TArgusCallScanner.Scan(const AText: string; ACaret: Integer): TArgusCallSite;
@@ -135,6 +155,8 @@ begin
             Frame.Position := Index - 1;
             Frame.IsParen := True;
             Frame.IsCall := FollowsCallee(AText, Start, Index);
+            if Frame.IsCall then
+              Frame.Name := CalleeName(AText, Start, Index);
             Stack.Add(Frame);
           end;
         '[':
@@ -170,6 +192,10 @@ begin
         Result.Found := True;
         Result.OpenParen := Stack[Level].Position;
         Result.ActiveParameter := Stack[Level].Commas;
+        Result.Name := Stack[Level].Name;
+        for Index := 0 to Level - 1 do
+          if Stack[Index].IsParen and Stack[Index].IsCall then
+            Result.Outer := Result.Outer + [Stack[Index].Name];
         Break;
       end;
   finally
