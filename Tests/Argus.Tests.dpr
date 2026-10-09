@@ -40,6 +40,7 @@ uses
   Argus.Common.Index.Memory.Tests in 'Common\Index\Argus.Common.Index.Memory.Tests.pas',
   Argus.Common.Semantics.ControlFlow.Tests in 'Common\Semantics\Argus.Common.Semantics.ControlFlow.Tests.pas',
   Argus.Common.Semantics.NameResolver.Tests in 'Common\Semantics\Argus.Common.Semantics.NameResolver.Tests.pas',
+  Argus.Common.Semantics.NameResolverStage2.Tests in 'Common\Semantics\Argus.Common.Semantics.NameResolverStage2.Tests.pas',
   Argus.Common.Lsp.Definition.Tests in 'Common\Lsp\Argus.Common.Lsp.Definition.Tests.pas',
   Argus.Common.Lsp.PublishedMembers.Tests in 'Common\Lsp\Argus.Common.Lsp.PublishedMembers.Tests.pas',
   Argus.Common.Lsp.References.Tests in 'Common\Lsp\Argus.Common.Lsp.References.Tests.pas',

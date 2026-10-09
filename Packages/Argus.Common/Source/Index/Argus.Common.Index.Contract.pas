@@ -22,6 +22,9 @@ type
     ClassType, ObjectType, RecordType, InterfaceType, HelperType, EnumType, TypeAlias,
     EnumMember, Constant, Variable, Field, Property_, Method, Constructor_, Routine);
 
+  /// <summary>Sichtbarkeit eines Mitglieds (#263); Public auch für Symbole auf Unit-Ebene.</summary>
+  TIndexVisibility = (Public, Published, Protected, StrictProtected, Private, StrictPrivate);
+
   TIndexSymbol = record
     Name: string;
     /// <summary>Umgebender Typ, z. B. TFoo bei TFoo.Bar; '' auf Unit-Ebene.</summary>
@@ -37,6 +40,20 @@ type
     Ancestors: TArray<string>;
     /// <summary>Deklarierter Typ bei Variablen, Feldern, Properties, Konstanten und Funktionen (Ergebnis); sonst ''.</summary>
     TypeName: string;
+    /// <summary>Typargumente zu TypeName, z. B. 'TKunde' bei TList&lt;TKunde&gt; (#263); sonst ''.</summary>
+    TypeArgs: string;
+    /// <summary>Typargumente des ersten Vorfahren (class(TObjectList&lt;TKunde&gt;)); sonst ''.</summary>
+    AncestorArgs: string;
+    /// <summary>Typparameter generischer Typen und Methoden, kommagetrennt (TDictionary&lt;TKey,TValue&gt;).</summary>
+    TypeParams: string;
+    Visibility: TIndexVisibility;
+    /// <summary>Routinen und indizierte Properties: Parameterzahl ohne bzw. mit Standardwerten.</summary>
+    MinArgs: Integer;
+    MaxArgs: Integer;
+    /// <summary>Typen der Parameter in Reihenfolge ('' bei untypisierten).</summary>
+    ParamTypes: TArray<string>;
+    /// <summary>Default-Property (Liste[i]).</summary>
+    IsDefault: Boolean;
     function QualifiedName: string;
   end;
 
