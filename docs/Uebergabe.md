@@ -61,9 +61,12 @@
 - **Offen:** Vervollständigung (`GetSymbolList`), Parameterhilfe (`GetParameterList`), Error Insight selbst gezeichnet.
 
 ## Feature-Kette (pausiert, Fortsetzung nur auf Anweisung des Users)
-- 98 verkettete Branches von `14-projektmodell` bis `122-binaere-dfm`. Für jeden: `main` einmergen, in frischer IDE bauen, beheben, prüfen, Branch pushen, per Fast-Forward nach `main`, `main` pushen.
-- **Stand:** 54 von 98 sind in `main` (zuletzt `47-delphi-versionen`, 659 Tests). Weiter ginge es bei Index 55, `48-mcp-server`.
-- **Pausiert auf Wunsch des Users:** Es ist offen, ob die restlichen Branches noch alle benötigt werden. Erst nach Rückmeldung fortsetzen. Ein lokaler, nicht gepushter Merge-Commit auf `48-mcp-server` (`954b730`) kann verworfen werden.
+- 98 verkettete Branches von `14-projektmodell` bis `122-binaere-dfm`.
+- **Stand:** bis Index 66 (`254-uses-befehl`) in `main`, 724 Tests. Weiter ginge es bei Index 67 (`181-dateioperationen`, wird übersprungen), dann 68 `review-befunde`.
+- **Vor jedem Branch Issue prüfen (Auftrag des Users):** offen → übernehmen; geschlossen → prüfen, ob noch gebraucht. Laut Durchsicht vom 09.10.2026 (Epic #392) „nicht geplant“ und aus der Kette genommen: #86 (Index 61), #179 (65), #181 (67), #111 (94), #115 (96). `review-befunde` (68) hat kein Issue, enthält Review-Korrekturen und wird übernommen.
+- **Seit #460 (Umbenennung) neues Verfahren, Skript `chainrun2.ps1` im Scratchpad:** Eigene Änderung des Branches (Basis = `merge-base` mit dem Vorgänger in der Kette, so fallen ausgelassene Branches heraus) auf beiden Ständen mit `rename-argus.ps1` umbenennen (gegen #460 geprüft) und als 3-Wege-Cherry-Pick auf `main` anwenden (Arbeitsbranch `kette-arbeit`), bauen, testen, per Fast-Forward nach `main`. Die Feature-Branches auf GitHub bleiben unverändert (kein Force-Push). Listenkonflikte in `.dpr`/`.dpk`/`.dproj` (`resolve-lists.ps1`) und reine H2443-Hinweise (`fix-h2443.ps1`) löst das Skript selbst.
+- **#254 ohne #179:** `/uses` hing im onTypeFormatting-Handler aus #179. Übernommen ohne Blockabschluss (User-Entscheidung): Handler nur für `/uses`, Capability `documentOnTypeFormattingProvider`, Einstellung `usesCommand`. Achtung bei späteren Branches, die auf `completeBlocks`/`BlockCompletion` aufbauen.
+- **Behoben in 55–66:** H2443 (mehrfach), Zeilentransport-Tests (Lecks, `ä`), Index-Cache-Flags ohne `GetValue<Boolean>` (Leck), E1019 in `Completion.AddFromOtherUnits`, Konflikte in VS-Code-`package.json`, `Architektur.md` (`argus.server.status` wie im Code), Editor-Dateien `betterdelphilsp` → `argus`, `bench.mjs` mit `ArgusServer.exe`.
 - **Behoben in 41–54:** Merge-Konflikte (Hover-Klartext mit Wert/Deprecation, Shell.Composition mit Compiler und abgeleiteten Arbeitsbereichen, Shell.Workspace-uses, mehrfach `Argus.Tests.dpr`), `Count`/`Length` als `Integer` (E2532), `ReadTabsConfig()` (E2010), H2077, H2443, DFM-Gliederungstest.
 - **Kettenskript:** Konflikte nur in `Tests/Argus.Tests.dpr` löst es selbst (beide Seiten übernehmen, Dubletten entfernen). Jeder andere Konflikt hält an.
 - **Leck-Monitor (seit 177):**
@@ -85,5 +88,5 @@
 - **Offen:** Gruppenbau und Tests in der IDE (in der Cloud nicht baubar). Schichten `Argus.Core/UI/IDE` und eigenes `Argus.Tests.dpr` für das Plugin folgen mit #406 und #415.
 
 ## Stand nach diesem Vorgang
-- `main` = `e33c092` (Kette bis 54), Gruppenbau Win64 0/0/0 (5 Projekte), 659/659 Tests.
-- Nächster Schritt: Entscheidung des Users, welche Branches der Kette noch gebraucht werden. Danach Kette fortsetzen bzw. Vervollständigung und Parameterhilfe im Plugin.
+- `main` = `ebad9ee` (Kette bis 66, nach #460), Gruppenbau `Argus.groupproj` Win64 0/0/0 (5 Projekte), 724/724 Tests.
+- Kette auf Wunsch des Users nach Index 66 angehalten. Fortsetzung nur auf Anweisung: `chainrun2.ps1 -StartAt 67`.
