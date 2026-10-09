@@ -13,13 +13,19 @@
 // Gekürzte Listen (#431, LSP isIncomplete): Beim Weitertippen filtert Requery
 // sofort lokal und fragt im Hintergrund neu; die neue Liste ersetzt die alte,
 // sobald sie eintrifft, und die Auswahl bleibt auf demselben Eintrag.
+//
+// Rangfolge über TArgusRanking: Lernzuschlag (#418, Usage), Gruppen geerbter
+// Member mit Überschriften (#419; Header in der Reihenfolge, die Auswahl
+// überspringt sie), Filter-Chips (#422).
 
 interface
 
 uses
   System.SysUtils,
   System.Classes,
-  Argus.Core.Completion.Contract;
+  Argus.Core.Completion.Contract,
+  Argus.Core.Completion.Ranking,
+  Argus.Core.Completion.Usage;
 
 {$SCOPEDENUMS ON}
 
@@ -38,6 +44,8 @@ type
     procedure ShowEmpty(const APrefix: string; ATotal: Integer);
     /// <summary>Zahl der sichtbaren Zeilen für Bild auf/ab.</summary>
     function PageSize: Integer;
+    /// <summary>Filter-Chips (#422): Treffer je Art, gewählter Chip; AVisible = False blendet sie aus.</summary>
+    procedure ShowChips(const ACounts: TArgusChipCounts; AActive: TArgusChip; AVisible: Boolean);
   end;
 
   TArgusCommitEvent = reference to procedure(const AItem: TArgusCompletionItem);
@@ -79,13 +87,19 @@ type
     /// <summary>Die nächsten Einträge ersetzen die Liste (laufendes Requery).</summary>
     FReplace: Boolean;
     FOnCommit: TArgusCommitEvent;
+    FGroupInherited: Boolean;
+    FChipsEnabled: Boolean;
+    FChip: TArgusChip;
+    FUsage: TArgusUsage;
+    procedure ShowChips;
+    function FirstItemFrom(APosition, ADirection: Integer): Integer;
     procedure ItemsArrived(AGeneration: Integer; const AItems: TArgusCompletionItems);
     procedure IncompleteArrived(AGeneration: Integer);
     procedure Query(const AContext: TArgusContext);
     procedure SelectByName(const AName: string);
     procedure Completed(AGeneration: Integer);
     procedure Refresh(AKeepSelection: Boolean);
-    procedure MoveSelection(APosition: Integer);
+    procedure MoveSelection(APosition: Integer; ADirection: Integer = 1);
     function GetVisible: Boolean;
   public
     constructor Create(const AProvider: IArgusCompletionProvider; const AView: IArgusCompletionView);
@@ -119,6 +133,16 @@ type
     property Order: TArray<Integer> read FOrder;
     property Selected: Integer read FSelected;
     property OnCommit: TArgusCommitEvent read FOnCommit write FOnCommit;
+    /// <summary>Filter-Chip wählen (#422); gilt bis zum Schließen.</summary>
+    procedure SelectChip(AChip: TArgusChip);
+    /// <summary>Chip an Position AIndex (0-basiert) unter den angezeigten (Alt+1 … Alt+6).</summary>
+    procedure SelectChipAt(AIndex: Integer);
+    property Chip: TArgusChip read FChip;
+    /// <summary>Geerbte Member gruppieren (#419).</summary>
+    property GroupInherited: Boolean read FGroupInherited write FGroupInherited;
+    property ChipsEnabled: Boolean read FChipsEnabled write FChipsEnabled;
+    /// <summary>Lernende Gewichtung (#418); nil = aus. Gehört dem Aufrufer.</summary>
+    property Usage: TArgusUsage read FUsage write FUsage;
   end;
 
 implementation
@@ -224,7 +248,57 @@ end;
 
 function TArgusCompletionController.GetVisible: Boolean;
 begin
-  Result := FActive and (Length(FOrder) > 0);
+  Result := FActive and (FSelected >= 0) and (Length(FOrder) > 0);
+end;
+
+function TArgusCompletionController.FirstItemFrom(APosition, ADirection: Integer): Integer;
+begin
+  // Nächster Eintrag ab APosition in Richtung ADirection, sonst in der Gegenrichtung; -1 ohne.
+  Result := APosition;
+  while (Result >= 0) and (Result <= High(FOrder)) and (FOrder[Result] = TArgusRanking.Header) do
+    Inc(Result, ADirection);
+  if (Result >= 0) and (Result <= High(FOrder)) then
+    Exit;
+  Result := APosition;
+  while (Result >= 0) and (Result <= High(FOrder)) and (FOrder[Result] = TArgusRanking.Header) do
+    Dec(Result, ADirection);
+  if (Result < 0) or (Result > High(FOrder)) then
+    Result := -1;
+end;
+
+procedure TArgusCompletionController.ShowChips;
+begin
+  if FChipsEnabled then
+    FView.ShowChips(TArgusRanking.ChipCounts(FItems, FPrefix), FChip, Length(FItems) > 0)
+  else
+    FView.ShowChips(Default(TArgusChipCounts), TArgusChip.All, False);
+end;
+
+procedure TArgusCompletionController.SelectChip(AChip: TArgusChip);
+begin
+  if not FActive or (AChip = FChip) then
+    Exit;
+  FChip := AChip;
+  Refresh(True);
+end;
+
+procedure TArgusCompletionController.SelectChipAt(AIndex: Integer);
+var
+  Counts: TArgusChipCounts;
+  Chip: TArgusChip;
+begin
+  // Wie angezeigt: nur Chips mit Treffern, "Alle" immer.
+  Counts := TArgusRanking.ChipCounts(FItems, FPrefix);
+  for Chip := Low(TArgusChip) to High(TArgusChip) do
+    if (Chip = TArgusChip.All) or (Counts[Chip] > 0) then
+    begin
+      if AIndex = 0 then
+      begin
+        SelectChip(Chip);
+        Exit;
+      end;
+      Dec(AIndex);
+    end;
 end;
 
 procedure TArgusCompletionController.Start(const AContext: TArgusContext);
@@ -233,6 +307,7 @@ begin
   Inc(FGeneration);
   FActive := True;
   FLoading := True;
+  FChip := TArgusChip.All;
   FPrefix := AContext.Prefix;
   FItems := nil;
   FOrder := nil;
@@ -277,7 +352,7 @@ var
   Position: Integer;
 begin
   for Position := 0 to High(FOrder) do
-    if FItems[FOrder[Position]].Name = AName then
+    if (FOrder[Position] <> TArgusRanking.Header) and (FItems[FOrder[Position]].Name = AName) then
     begin
       FSelected := Position;
       Exit;
@@ -305,6 +380,7 @@ procedure TArgusCompletionController.ItemsArrived(AGeneration: Integer; const AI
 var
   Item: TArgusCompletionItem;
   SelectedName: string;
+  Index: Integer;
 begin
   if not FActive or (AGeneration <> FGeneration) or (Length(AItems) = 0) then
     Exit;
@@ -316,6 +392,9 @@ begin
       SelectedName := Item.Name;
     FReplace := False;
     FItems := AItems;
+    if FUsage <> nil then
+      for Index := 0 to High(FItems) do
+        FItems[Index].Usage := FUsage.Mark(FItems[Index]);
     Refresh(False);
     if (SelectedName <> '') and (Length(FOrder) > 0) then
     begin
@@ -325,6 +404,9 @@ begin
     Exit;
   end;
   FItems := FItems + AItems;
+  if FUsage <> nil then
+    for Index := Length(FItems) - Length(AItems) to High(FItems) do
+      FItems[Index].Usage := FUsage.Mark(FItems[Index]);
   Refresh(True);
 end;
 
@@ -347,12 +429,30 @@ end;
 procedure TArgusCompletionController.Refresh(AKeepSelection: Boolean);
 var
   SelectedIndex, Position: Integer;
+  Options: TArgusRankOptions;
+  Usage: TArgusUsage;
+  Items: TArgusCompletionItems;
 begin
   SelectedIndex := -1;
   if AKeepSelection and (FSelected >= 0) and (FSelected < Length(FOrder)) then
     SelectedIndex := FOrder[FSelected];
-  FOrder := TArgusCompletionMatcher.Filter(FItems, FPrefix);
-  FSelected := 0;
+  Options := TArgusRankOptions.Defaults;
+  Options.GroupInherited := FGroupInherited;
+  if FChipsEnabled then
+    Options.Chip := FChip;
+  if FUsage <> nil then
+  begin
+    Usage := FUsage;
+    Items := FItems;
+    Options.Boost :=
+      function(AIndex: Integer): Integer
+      begin
+        Result := Usage.Boost(Items[AIndex]);
+      end;
+  end;
+  FOrder := TArgusRanking.Order(FItems, FPrefix, Options);
+  FSelected := FirstItemFrom(0, 1);
+  ShowChips;
   if SelectedIndex >= 0 then
     for Position := 0 to High(FOrder) do
       if FOrder[Position] = SelectedIndex then
@@ -361,7 +461,7 @@ begin
         Break;
       end;
   FEmpty := False;
-  if Length(FOrder) > 0 then
+  if FSelected >= 0 then
     FView.ShowList(FItems, FOrder, FSelected, FPrefix)
   else
   begin
@@ -385,10 +485,11 @@ begin
   Refresh(False);
 end;
 
-procedure TArgusCompletionController.MoveSelection(APosition: Integer);
+procedure TArgusCompletionController.MoveSelection(APosition: Integer; ADirection: Integer);
 begin
-  APosition := EnsureRange(APosition, 0, High(FOrder));
-  if APosition = FSelected then
+  // Überschriften (#419) werden übersprungen.
+  APosition := FirstItemFrom(EnsureRange(APosition, 0, High(FOrder)), ADirection);
+  if (APosition < 0) or (APosition = FSelected) then
     Exit;
   FSelected := APosition;
   FView.ShowList(FItems, FOrder, FSelected, FPrefix);
@@ -410,17 +511,17 @@ begin
   Page := Max(1, FView.PageSize - 1);
   case AKey of
     TArgusNavigationKey.Up:
-      MoveSelection(FSelected - 1);
+      MoveSelection(FSelected - 1, -1);
     TArgusNavigationKey.Down:
       MoveSelection(FSelected + 1);
     TArgusNavigationKey.PageUp:
-      MoveSelection(FSelected - Page);
+      MoveSelection(FSelected - Page, -1);
     TArgusNavigationKey.PageDown:
       MoveSelection(FSelected + Page);
     TArgusNavigationKey.First:
       MoveSelection(0);
     TArgusNavigationKey.Last:
-      MoveSelection(High(FOrder));
+      MoveSelection(High(FOrder), -1);
     TArgusNavigationKey.Accept:
       CommitSelected;
     TArgusNavigationKey.Cancel:
@@ -457,6 +558,8 @@ var
 begin
   if not SelectedItem(Item) then
     Exit;
+  if FUsage <> nil then
+    FUsage.Record_(Item);
   Close;
   if Assigned(FOnCommit) then
     FOnCommit(Item);

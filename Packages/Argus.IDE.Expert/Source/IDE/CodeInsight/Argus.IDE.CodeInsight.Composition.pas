@@ -12,7 +12,8 @@ uses
   System.SysUtils,
   ToolsAPI,
   Argus.IDE.CodeInsight.Manager,
-  Argus.IDE.Settings.Options;
+  Argus.IDE.Settings.Options,
+  Argus.IDE.Completion.History;
 
 var
   ManagerIndex: Integer = -1;
@@ -23,7 +24,11 @@ var
 begin
   if (ManagerIndex < 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
     ManagerIndex := Services.AddCodeInsightManager(TArgusCodeInsightManager.Create);
-  TArgusOptionsRegistration.Register(nil);
+  TArgusOptionsRegistration.Register(
+    procedure
+    begin
+      TArgusIdeHistory.Reset;
+    end);
 end;
 
 procedure Unregister;
@@ -31,6 +36,7 @@ var
   Services: IOTACodeInsightServices;
 begin
   TArgusOptionsRegistration.Unregister;
+  TArgusIdeHistory.Release;
   if (ManagerIndex >= 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
     Services.RemoveCodeInsightManager(ManagerIndex);
   ManagerIndex := -1;

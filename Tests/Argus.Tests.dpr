@@ -151,7 +151,10 @@ uses
   Argus.Common.Rules.Builtin.Capture.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Capture.Tests.pas',
   Argus.Common.Rules.Builtin.Components.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Components.Tests.pas',
   Argus.Core.Settings.Plugin in '..\Packages\Argus.IDE.Expert\Source\Core\Settings\Argus.Core.Settings.Plugin.pas',
-  Argus.Core.Settings.Tests in 'IDE.Expert\Argus.Core.Settings.Tests.pas';
+  Argus.Core.Settings.Tests in 'IDE.Expert\Argus.Core.Settings.Tests.pas',
+  Argus.Core.Completion.Ranking in '..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Ranking.pas',
+  Argus.Core.Completion.Usage in '..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Usage.pas',
+  Argus.Core.Completion.Ranking.Tests in 'IDE.Expert\Argus.Core.Completion.Ranking.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

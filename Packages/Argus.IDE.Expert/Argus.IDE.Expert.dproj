@@ -124,6 +124,9 @@
         <DCCReference Include="Source\UI\Settings\Argus.UI.Settings.Page.pas"/>
         <DCCReference Include="Source\IDE\Settings\Argus.IDE.Settings.Store.pas"/>
         <DCCReference Include="Source\IDE\Settings\Argus.IDE.Settings.Options.pas"/>
+        <DCCReference Include="Source\Core\Completion\Argus.Core.Completion.Ranking.pas"/>
+        <DCCReference Include="Source\Core\Completion\Argus.Core.Completion.Usage.pas"/>
+        <DCCReference Include="Source\IDE\Completion\Argus.IDE.Completion.History.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -42,6 +42,7 @@ uses
   Argus.Core.Completion.Contract,
   Argus.Core.Completion.Controller,
   Argus.Core.Completion.Presentation,
+  Argus.Core.Completion.Ranking,
   Argus.UI.Popup.Window,
   Argus.UI.Popup.Tip,
   Argus.UI.Completion.Details;
@@ -53,6 +54,7 @@ type
   TArgusPanelEvent = reference to procedure(ACollapsed: Boolean);
 
 {$SCOPEDENUMS ON}
+  TArgusChipEvent = reference to procedure(AChip: TArgusChip);
   TArgusDragKind = (None, ListWidth, PanelWidth);
   TArgusHitArea = (None, Splitter, Edge, Grip, PanelBar);
 {$SCOPEDENUMS OFF}
@@ -100,7 +102,21 @@ type
     /// <summary>-1, wenn Ziehen nach links verbreitert (Panel links der Liste).</summary>
     FDragSign: Integer;
     FOnWidthsChanged: TArgusWidthsEvent;
+    // Filter-Chips (#422) und geerbte Member (#419).
+    FChipCounts: TArgusChipCounts;
+    FChip: TArgusChip;
+    FChipsVisible: Boolean;
+    FChipRects: TArray<TRect>;
+    FChipKinds: TArray<TArgusChip>;
+    FOnChip: TArgusChipEvent;
+    FDimInherited: Boolean;
+    FDimRow: Boolean;
     FOnPanelToggled: TArgusPanelEvent;
+    function Dim(AColor: TArgusColor): TArgusColor;
+    function ChipsHeight: Integer;
+    function ListTop: Integer;
+    procedure DrawChips;
+    procedure DrawHeader(ARow, APosition: Integer);
     function ListWidth: Integer;
     function Collapsed: Boolean;
     function HitArea(AX, AY: Integer): TArgusHitArea;
@@ -160,6 +176,7 @@ type
     procedure HideList;
     procedure ShowEmpty(const APrefix: string; ATotal: Integer);
     function PageSize: Integer;
+    procedure ShowChips(const ACounts: TArgusChipCounts; AActive: TArgusChip; AVisible: Boolean);
     /// <summary>Caret-Rechteck in Bildschirmkoordinaten; vor dem ersten ShowList setzen.</summary>
     property Anchor: TRect read FAnchor write FAnchor;
     property VisibleRows: Integer read FVisibleRows write FVisibleRows;
@@ -172,6 +189,9 @@ type
     property PanelCollapsed: Boolean read FPanelCollapsed write FPanelCollapsed;
     property OnWidthsChanged: TArgusWidthsEvent read FOnWidthsChanged write FOnWidthsChanged;
     property OnPanelToggled: TArgusPanelEvent read FOnPanelToggled write FOnPanelToggled;
+    property OnChip: TArgusChipEvent read FOnChip write FOnChip;
+    /// <summary>Geerbte Member abgeschwächt zeichnen (#419).</summary>
+    property DimInherited: Boolean read FDimInherited write FDimInherited;
   end;
 
 implementation
@@ -251,9 +271,9 @@ end;
 function TArgusCompletionPopup.ListHeight: Integer;
 begin
   if FShowingEmpty then
-    Result := 2 * Pad + 2 * RowHeight + FooterHeight
+    Result := 2 * Pad + ChipsHeight + 2 * RowHeight + FooterHeight
   else
-    Result := 2 * Pad + RowCount * RowHeight + FooterHeight;
+    Result := 2 * Pad + ChipsHeight + RowCount * RowHeight + FooterHeight;
 end;
 
 function TArgusCompletionPopup.PanelHeight: Integer;
@@ -291,6 +311,114 @@ begin
   if IsShown then
     Relayout;
   Invalidate;
+end;
+
+function TArgusCompletionPopup.Dim(AColor: TArgusColor): TArgusColor;
+begin
+  if FDimRow then
+    Result := TArgusColorMath.Mix(AColor, Colors.Surface, 0.62)
+  else
+    Result := AColor;
+end;
+
+function TArgusCompletionPopup.ChipsHeight: Integer;
+begin
+  if not FChipsVisible or FShowingEmpty then
+    Exit(0);
+  Canvas.Font := UIFont;
+  Result := Canvas.TextHeight('Wg') + Scale(12);
+  Canvas.Font := Font;
+end;
+
+function TArgusCompletionPopup.ListTop: Integer;
+begin
+  Result := Pad + ChipsHeight;
+end;
+
+procedure TArgusCompletionPopup.ShowChips(const ACounts: TArgusChipCounts; AActive: TArgusChip; AVisible: Boolean);
+var
+  Shown: Integer;
+  Chip: TArgusChip;
+begin
+  FChipCounts := ACounts;
+  FChip := AActive;
+  // Nur sinnvoll, wenn es mehr als eine Art gibt.
+  Shown := 0;
+  for Chip := Succ(TArgusChip.All) to High(TArgusChip) do
+    if ACounts[Chip] > 0 then
+      Inc(Shown);
+  FChipsVisible := AVisible and (Shown >= 2);
+end;
+
+procedure TArgusCompletionPopup.DrawChips;
+var
+  Chip: TArgusChip;
+  Text: string;
+  X, Top, Height: Integer;
+  Box, TextRect: TRect;
+begin
+  FChipRects := nil;
+  FChipKinds := nil;
+  if ChipsHeight = 0 then
+    Exit;
+  Canvas.Font := UIFont;
+  Height := Canvas.TextHeight('Wg') + Scale(4);
+  Top := Pad + (ChipsHeight - Height) div 2;
+  X := ListLeft + Pad + Scale(4);
+  for Chip := Low(TArgusChip) to High(TArgusChip) do
+  begin
+    if (Chip <> TArgusChip.All) and (FChipCounts[Chip] = 0) then
+      Continue;
+    Text := Format('%s %d', [TArgusRanking.ChipNames[Chip], FChipCounts[Chip]]);
+    Canvas.Font := UIFont;
+    Box := Rect(X, Top, X + Canvas.TextWidth(Text) + Scale(14), Top + Height);
+    if Box.Right > ListRight - Pad then
+      Break;
+    if Chip = FChip then
+    begin
+      FrameRounded(Box, Colors.Accent, 9, ToColor(Colors.AccentSoft));
+      Canvas.Font.Color := ToColor(Colors.Accent);
+    end
+    else
+    begin
+      FrameRounded(Box, Colors.Line, 9);
+      Canvas.Font.Color := ToColor(Colors.Muted);
+    end;
+    Canvas.Brush.Style := bsClear;
+    TextRect := Box;
+    DrawText(Canvas.Handle, PChar(Text), -1, TextRect, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+    FChipRects := FChipRects + [Box];
+    FChipKinds := FChipKinds + [Chip];
+    X := Box.Right + Scale(6);
+  end;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Font := Font;
+end;
+
+procedure TArgusCompletionPopup.DrawHeader(ARow, APosition: Integer);
+var
+  Row: TRect;
+  Text: string;
+begin
+  // Überschrift einer Gruppe geerbter Member (#419): Klasse des nächsten Eintrags.
+  Text := 'Geerbt';
+  if (APosition < High(FOrder)) and (FOrder[APosition + 1] >= 0) and
+    (FItems[FOrder[APosition + 1]].DeclaringClass <> '') then
+    Text := 'Geerbt von ' + FItems[FOrder[APosition + 1]].DeclaringClass;
+  Row := RowRect(ARow);
+  Inc(Row.Left, Scale(7));
+  Canvas.Font := UIFont;
+  Canvas.Font.Style := [fsBold];
+  Canvas.Font.Color := ToColor(Colors.Muted);
+  Canvas.Brush.Style := bsClear;
+  Row.Top := Row.Top + Scale(4);
+  DrawText(Canvas.Handle, PChar(Text), -1, Row, TextFlags or DT_END_ELLIPSIS);
+  Canvas.Font.Style := [];
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Font := Font;
+  if ARow >= Length(FTruncated) then
+    SetLength(FTruncated, ARow + 1);
+  FTruncated[ARow] := False;
 end;
 
 procedure TArgusCompletionPopup.TogglePanel;
@@ -348,14 +476,14 @@ var
   Height: Integer;
 begin
   Height := RowHeight;
-  Result := Rect(ListLeft + Pad, Pad + ARow * Height, ListRight - Pad - ScrollReserve, Pad + (ARow + 1) * Height);
+  Result := Rect(ListLeft + Pad, ListTop + ARow * Height, ListRight - Pad - ScrollReserve, ListTop + (ARow + 1) * Height);
 end;
 
 function TArgusCompletionPopup.RowAt(AX, AY: Integer): Integer;
 begin
-  if (AY < Pad) or (AX < ListLeft) or (AX >= ListRight) then
+  if (AY < ListTop) or (AX < ListLeft) or (AX >= ListRight) then
     Exit(-1);
-  Result := FTop + (AY - Pad) div RowHeight;
+  Result := FTop + (AY - ListTop) div RowHeight;
   if (Result < FTop) or (Result >= Min(FTop + RowCount, Length(FOrder))) then
     Result := -1;
 end;
@@ -391,6 +519,8 @@ begin
   Count := Min(Length(FOrder), 200);
   for Position := 0 to Count - 1 do
   begin
+    if FOrder[Position] = TArgusRanking.Header then
+      Continue;
     Item := FItems[FOrder[Position]];
     Width := Canvas.TextWidth(Item.Name);
     Detail := TArgusItemPresentation.Detail(Item);
@@ -523,8 +653,8 @@ var
 
   procedure DrawLine(AIndex: Integer; const AText: string; AColor: TArgusColor);
   begin
-    Line := Rect(ListLeft + Pad + Scale(7), Pad + AIndex * RowHeight, ListRight - Pad - Scale(7),
-      Pad + (AIndex + 1) * RowHeight);
+    Line := Rect(ListLeft + Pad + Scale(7), ListTop + AIndex * RowHeight, ListRight - Pad - Scale(7),
+      ListTop + (AIndex + 1) * RowHeight);
     Canvas.Font := UIFont;
     Canvas.Font.Color := ToColor(AColor);
     Canvas.Brush.Style := bsClear;
@@ -553,11 +683,11 @@ begin
   Badge := TArgusItemPresentation.Badge(AItem);
   Top := ARow.Top + (ARow.Height - Scale(17)) div 2;
   Box := Rect(ARow.Left + Scale(7), Top, ARow.Left + Scale(7 + 24), Top + Scale(17));
-  FillRounded(Box, Colors.Badges[Badge.Kind].Background, 4);
+  FillRounded(Box, Dim(Colors.Badges[Badge.Kind].Background), 4);
   Canvas.Font := Font;
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Height := -Round(Box.Height * 0.62);
-  Canvas.Font.Color := ToColor(Colors.Badges[Badge.Kind].Text);
+  Canvas.Font.Color := ToColor(Dim(Colors.Badges[Badge.Kind].Text));
   Canvas.Brush.Style := bsClear;
   Text := Box;
   DrawText(Canvas.Handle, PChar(Badge.Code), -1, Text, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
@@ -578,7 +708,7 @@ begin
   if ATruncated or (FPattern = '') then
   begin
     // Gekürzt ohne Hervorhebung: Die Positionen passen nicht mehr zur Ellipse.
-    Canvas.Font.Color := ToColor(Colors.Text);
+    Canvas.Font.Color := ToColor(Dim(Colors.Text));
     Part := Rect(ALeft, ARow.Top, ARight, ARow.Bottom);
     DrawText(Canvas.Handle, PChar(AName), -1, Part, TextFlags or DT_END_ELLIPSIS);
     Exit;
@@ -599,12 +729,12 @@ begin
     if Marks[Index] then
     begin
       Canvas.Font.Style := [fsBold];
-      Canvas.Font.Color := ToColor(Colors.Accent);
+      Canvas.Font.Color := ToColor(Dim(Colors.Accent));
     end
     else
     begin
       Canvas.Font.Style := [];
-      Canvas.Font.Color := ToColor(Colors.Text);
+      Canvas.Font.Color := ToColor(Dim(Colors.Text));
     end;
     Part := Rect(X, ARow.Top, ARight, ARow.Bottom);
     DrawText(Canvas.Handle, PChar(Text), -1, Part, TextFlags);
@@ -654,6 +784,8 @@ var
 begin
   Item := FItems[FOrder[APosition]];
   Row := RowRect(ARow);
+  // Geerbte Member mit 62 % Deckkraft (#419); die gewählte Zeile bleibt voll lesbar.
+  FDimRow := FDimInherited and (Item.Depth > 0) and (APosition <> FSelected);
   if APosition = FSelected then
     FillRounded(Row, Colors.Selection, 4);
   DrawBadge(Row, Item, NameLeft);
@@ -683,7 +815,7 @@ begin
   if DetailWidth > 0 then
   begin
     Part := Rect(X - DetailWidth, Row.Top, X, Row.Bottom);
-    Canvas.Font.Color := ToColor(Colors.Muted);
+    Canvas.Font.Color := ToColor(Dim(Colors.Muted));
     Canvas.Brush.Style := bsClear;
     DrawText(Canvas.Handle, PChar(Detail), -1, Part, TextFlags or DT_END_ELLIPSIS);
     Dec(X, DetailWidth + Gap);
@@ -704,6 +836,7 @@ begin
   if ARow >= Length(FTruncated) then
     SetLength(FTruncated, ARow + 1);
   FTruncated[ARow] := Truncated or (NameLeft + NameWidth > X - Gap);
+  FDimRow := False;
 end;
 
 procedure TArgusCompletionPopup.DrawScrollBar;
@@ -715,8 +848,8 @@ begin
   Visible := RowCount;
   if Total <= Visible then
     Exit;
-  Track := Rect(ListRight - Pad - Scale(5), Pad + Scale(2), ListRight - Pad - Scale(1),
-    Pad + Visible * RowHeight - Scale(2));
+  Track := Rect(ListRight - Pad - Scale(5), ListTop + Scale(2), ListRight - Pad - Scale(1),
+    ListTop + Visible * RowHeight - Scale(2));
   ThumbHeight := Max(Scale(16), Track.Height * Visible div Total);
   ThumbTop := Track.Top + (Track.Height - ThumbHeight) * FTop div Max(1, Total - Visible);
   Thumb := Rect(Track.Left, ThumbTop, Track.Right, ThumbTop + ThumbHeight);
@@ -735,11 +868,15 @@ begin
     PaintEmpty
   else
   begin
+    DrawChips;
     for Row := 0 to RowCount - 1 do
       if FTop + Row < Length(FOrder) then
-        DrawRow(Row, FTop + Row);
+        if FOrder[FTop + Row] = TArgusRanking.Header then
+          DrawHeader(Row, FTop + Row)
+        else
+          DrawRow(Row, FTop + Row);
     DrawScrollBar;
-    DrawFooter(FooterKeys, Format('%d von %d', [Length(FOrder), Length(FItems)]));
+    DrawFooter(FooterKeys, Format('%d von %d', [TArgusRanking.ItemCount(FOrder), Length(FItems)]));
   end;
   if FPanelShown then
     PaintPanel;
@@ -789,7 +926,7 @@ end;
 
 procedure TArgusCompletionPopup.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  Position: Integer;
+  Position, Index: Integer;
 begin
   inherited;
   if Button <> mbLeft then
@@ -839,6 +976,14 @@ begin
         Exit;
       end;
   end;
+  // Klick auf einen Chip (#422).
+  for Index := 0 to High(FChipRects) do
+    if PtInRect(FChipRects[Index], Point(X, Y)) then
+    begin
+      if Assigned(FOnChip) then
+        FOnChip(FChipKinds[Index]);
+      Exit;
+    end;
   Position := RowAt(X, Y);
   if (Position >= 0) and Assigned(FOnSelect) then
     FOnSelect(Position);
@@ -983,7 +1128,7 @@ begin
   FTipTimer.Enabled := False;
   Row := FHoverPosition - FTop;
   if not IsShown or (FHoverPosition < 0) or (FHoverPosition >= Length(FOrder)) or (Row < 0) or
-    (Row >= Length(FTruncated)) or not FTruncated[Row] then
+    (Row >= Length(FTruncated)) or not FTruncated[Row] or (FOrder[FHoverPosition] = TArgusRanking.Header) then
     Exit;
   Item := FItems[FOrder[FHoverPosition]];
   Text := Item.Name;

@@ -5,7 +5,9 @@
 //     der Signatur, solange der Server beides als Methode meldet.
 //   - Detail: gedämpfter Text rechts (Typ, Klasse, Unit-Datei).
 //   - Tags: "+ Unit" für Einträge aus nicht eingebundenen Units (#180),
-//     "deprecated", "constructor"/"destructor".
+//     "deprecated", "constructor"/"destructor", "+2" bei drei Überladungen
+//     (#425), "Helper" (#456), "zuletzt"/"häufig" (#418).
+//   - Geerbte Member (#419): Detail beginnt mit der deklarierenden Klasse.
 //   - Treffer: Positionen der getippten Zeichen im Namen zum Hervorheben,
 //     nach denselben Regeln wie TArgusCompletionMatcher.
 
@@ -221,6 +223,12 @@ begin
   // Units: nur der Dateiname statt des ganzen Pfads.
   if AItem.Kind = TArgusItemKind.Unit_ then
     Result := ExtractFileName(Result);
+  // Geerbt (#419): Herkunft vorn, damit sie beim Kürzen bleibt.
+  if (AItem.Depth > 0) and (AItem.DeclaringClass <> '') then
+    if (Result <> '') and not SameText(Result, AItem.DeclaringClass) then
+      Result := AItem.DeclaringClass + ' · ' + Result
+    else
+      Result := AItem.DeclaringClass;
 end;
 
 class function TArgusItemPresentation.Tags(const AItem: TArgusCompletionItem): TArgusTags;
@@ -238,6 +246,14 @@ begin
   for Directive in AItem.Directives do
     if SameText(Directive, 'deprecated') then
       Result := Result + [MakeTag('deprecated', TArgusTagKind.Warn)];
+  if AItem.OverloadCount > 1 then
+    Result := Result + [MakeTag('+' + IntToStr(AItem.OverloadCount - 1), TArgusTagKind.Neutral)];
+  if AItem.IsHelper then
+    Result := Result + [MakeTag('Helper', TArgusTagKind.Accent)];
+  case AItem.Usage of
+    TArgusUsageMark.Recent: Result := Result + [MakeTag('zuletzt', TArgusTagKind.Accent)];
+    TArgusUsageMark.Frequent: Result := Result + [MakeTag('häufig', TArgusTagKind.Neutral)];
+  end;
 end;
 
 class function TArgusItemPresentation.Highlights(const APattern, AName: string): TArray<Integer>;

@@ -52,6 +52,8 @@ uses
   Argus.Core.Completion.Contract,
   Argus.Core.Completion.Matching,
   Argus.Core.Completion.Controller,
+  Argus.Core.Completion.Ranking,
+  Argus.Core.Completion.Usage,
   Argus.Core.Completion.Providers.Fixed;
 
 type
@@ -68,7 +70,12 @@ type
     procedure HideList;
     procedure ShowEmpty(const APrefix: string; ATotal: Integer);
     function PageSize: Integer;
+    procedure ShowChips(const ACounts: TArgusChipCounts; AActive: TArgusChip; AVisible: Boolean);
   end;
+
+procedure TFakeView.ShowChips(const ACounts: TArgusChipCounts; AActive: TArgusChip; AVisible: Boolean);
+begin
+end;
 
 procedure TFakeView.ShowList(const AItems: TArgusCompletionItems; const AOrder: TArray<Integer>;
   ASelected: Integer; const APattern: string);
@@ -83,7 +90,10 @@ begin
   begin
     if Names <> '' then
       Names := Names + ',';
-    Names := Names + AItems[Index].Name;
+    if Index = TArgusRanking.Header then
+      Names := Names + '#'
+    else
+      Names := Names + AItems[Index].Name;
   end;
   Selected := ASelected;
 end;
