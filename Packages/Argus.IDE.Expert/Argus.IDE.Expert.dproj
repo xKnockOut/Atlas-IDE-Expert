@@ -90,6 +90,11 @@
         <DCCReference Include="Source\Core\Lsp\Argus.Core.Lsp.Client.pas"/>
         <DCCReference Include="Source\Core\Lsp\Argus.Core.Lsp.Session.pas"/>
         <DCCReference Include="Source\Core\Lsp\Argus.Core.Lsp.Adapters.ServerProcess.pas"/>
+        <DCCReference Include="Source\Core\Completion\Argus.Core.Completion.Contract.pas"/>
+        <DCCReference Include="Source\Core\Completion\Internals\Argus.Core.Completion.Internals.Async.pas"/>
+        <DCCReference Include="Source\Core\Completion\Argus.Core.Completion.Composite.pas"/>
+        <DCCReference Include="Source\Core\Completion\Providers\Argus.Core.Completion.Providers.Fixed.pas"/>
+        <DCCReference Include="Source\Core\Completion\Providers\Argus.Core.Completion.Providers.Server.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Argus.IDE.CodeInsight.Manager.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Argus.IDE.CodeInsight.Composition.pas"/>
         <BuildConfiguration Include="Base">

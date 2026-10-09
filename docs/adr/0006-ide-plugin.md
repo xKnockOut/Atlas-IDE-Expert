@@ -51,3 +51,10 @@ Bis Schritt 5 umgesetzt ist, liefert der eingebaute LSP-Weg die Diagnosen, sofer
 - **DelphiLSP inaktiv:** Ist der Manager ausgewählt, bedient er die gesamte Code Insight für Delphi. Ob unsichere Fälle an DelphiLSP weitergereicht werden, entscheidet ADR 0005 (#63).
 - **Plugin baut sich nicht selbst:** Das Build-Plugin (`cc.ps1`) kann ein geladenes Design-Package nicht neu bauen, solange die IDE es hält. Zum Bauen wird es entladen (`unload-package`) oder in einer IDE gebaut, die es nicht geladen hat.
 - **Tests:** Die Übersetzung zwischen Editor und LSP wird ohne IDE getestet, mit Fakes für die Open-Tools-API-Schnittstellen. Die Anzeige in der IDE wird von Hand geprüft.
+
+## Fortschreibung: eigene Oberfläche und Datenquelle (#404, #408, 09.10.2026)
+
+- **Eigene Fenster:** Argus zeigt Vervollständigung, Parameter-Hint und Hover in eigenen, nicht fokussierenden Fenstern (#410) statt in den Listen der IDE. Der Code Insight-Manager bleibt angemeldet, damit die eingebaute Completion für Delphi-Quelltext unterdrückt ist (#407); `GetSymbolList` und `GetParameterList` liefern deshalb keine Daten an die IDE.
+- **Datenquelle über eine Schnittstelle:** Die Oberfläche kennt nur `IArgusCompletionProvider` (`Argus.Core.Completion.Contract`). Eine Quelle liefert Teilmengen an eine Senke und meldet zum Schluss genau einmal `Complete`; nach `Cancel` oder einem neuen Query erreicht nichts mehr die alte Senke. `TArgusCompletionProviders` führt mehrere Quellen zusammen.
+- **Standardquelle ist der eigene Server** (ADR 0001): `TArgusServerCompletionProvider` gleicht den Editortext im Hauptthread ab und fragt `textDocument/completion` im Hintergrund an, damit die IDE nie wartet. DelphiLSP wäre eine weitere Quelle (#63), Snippets ebenfalls (#51). Die Abwägung DelphiLSP gegen eigenen Parser ist damit zugunsten des eigenen Parsers entschieden, bleibt aber über die Schnittstelle umkehrbar.
+- **Testdaten:** `TArgusFixedCompletionProvider` liefert feste Einträge, auf Wunsch verzögert; damit lässt sich die Oberfläche ohne Server testen (#415) und ein langsamer Provider nachstellen (#409).

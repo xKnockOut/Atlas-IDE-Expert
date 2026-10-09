@@ -43,6 +43,11 @@ contains
   Argus.Core.Lsp.Client in 'Source\Core\Lsp\Argus.Core.Lsp.Client.pas',
   Argus.Core.Lsp.Session in 'Source\Core\Lsp\Argus.Core.Lsp.Session.pas',
   Argus.Core.Lsp.Adapters.ServerProcess in 'Source\Core\Lsp\Argus.Core.Lsp.Adapters.ServerProcess.pas',
+  Argus.Core.Completion.Contract in 'Source\Core\Completion\Argus.Core.Completion.Contract.pas',
+  Argus.Core.Completion.Internals.Async in 'Source\Core\Completion\Internals\Argus.Core.Completion.Internals.Async.pas',
+  Argus.Core.Completion.Composite in 'Source\Core\Completion\Argus.Core.Completion.Composite.pas',
+  Argus.Core.Completion.Providers.Fixed in 'Source\Core\Completion\Providers\Argus.Core.Completion.Providers.Fixed.pas',
+  Argus.Core.Completion.Providers.Server in 'Source\Core\Completion\Providers\Argus.Core.Completion.Providers.Server.pas',
   Argus.IDE.CodeInsight.Manager in 'Source\IDE\CodeInsight\Argus.IDE.CodeInsight.Manager.pas',
   Argus.IDE.CodeInsight.Composition in 'Source\IDE\CodeInsight\Argus.IDE.CodeInsight.Composition.pas';
 
