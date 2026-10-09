@@ -150,6 +150,32 @@ begin
       Result := TMcpCodeTools.Diagnostics(BuiltinRules, AWorkspace.Configuration.Settings, ARoot, Files,
         ReadSourceText);
     end);
+  AServer.AddTool('check_code',
+    'Prüft geplanten Code ohne zu schreiben (#178): Syntaxfehler, Regeltreffer und nicht auflösbare Bezeichner. ' +
+    'Entweder den ganzen neuen Text der Unit angeben oder mit startLine/endLine nur einen Zeilenbereich ersetzen.',
+    '{"type":"object","properties":{' +
+      '"file":{"type":"string","description":"Pfad der Unit (relativ zum Projekt oder absolut)"},' +
+      '"text":{"type":"string","description":"Neuer Text: die ganze Unit oder der Ersatz für startLine..endLine"},' +
+      '"startLine":{"type":"integer","minimum":1,"description":"Erste ersetzte Zeile (ab 1); ohne Angabe ist text die ganze Unit"},' +
+      '"endLine":{"type":"integer","minimum":0,"description":"Letzte ersetzte Zeile; startLine - 1 fügt nur ein"}},' +
+      '"required":["file","text"]}',
+    function(const AArguments: TJSONObject): string
+    var
+      FileName, Text: string;
+      StartLine, EndLine: Integer;
+    begin
+      FileName := TMcpServer.RequiredString(AArguments, 'file');
+      if TPath.IsRelativePath(FileName) then
+        FileName := TPath.Combine(ARoot, FileName);
+      if not AArguments.TryGetValue<string>('text', Text) then
+        raise EMcpToolError.Create('Argument "text" fehlt');
+      if not AArguments.TryGetValue<Integer>('startLine', StartLine) then
+        StartLine := 0;
+      if not AArguments.TryGetValue<Integer>('endLine', EndLine) then
+        EndLine := StartLine;
+      Result := ACode.CheckCode(BuiltinRules, AWorkspace.Configuration.Settings, ARoot, FileName, Text,
+        StartLine, EndLine);
+    end);
   AServer.AddTool('get_dfm_info',
     'Komponenten eines Formulars (.dfm/.fmx in Textform) mit Typen, Eigenschaften und Ereignisbehandlern.',
     TMcpServer.StringSchema(['file'], ['Pfad der .dfm/.fmx-Datei oder der zugehörigen .pas-Datei']),

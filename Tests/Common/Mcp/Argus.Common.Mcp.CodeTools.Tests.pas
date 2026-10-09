@@ -19,6 +19,10 @@ type
     procedure ListsDiagnosticsWithLocation;
     [Test]
     procedure ParsesDirection;
+    [Test]
+    procedure ReplacesLineRange;
+    [Test]
+    procedure CheckCodeReportsWithoutWriting;
   end;
 
 implementation
@@ -152,6 +156,39 @@ begin
     end);
   Assert.Contains(Text, 'C:\P\Kaputt.pas:6:');
   Assert.Contains(Text, 'in 1 Dateien');
+end;
+
+procedure TMcpCodeToolsTests.ReplacesLineRange;
+begin
+  Assert.AreEqual('a'#13#10'X'#13#10'c', TMcpCodeTools.ReplaceLines('a'#13#10'b'#13#10'c', 'X', 2, 2));
+  // Einfügen vor Zeile 2 (endLine = startLine - 1).
+  Assert.AreEqual('a'#10'X'#10'b', TMcpCodeTools.ReplaceLines('a'#10'b', 'X', 2, 1));
+  Assert.AreEqual('a'#10'b'#10'X', TMcpCodeTools.ReplaceLines('a'#10'b'#10, 'X', 3, 2));
+  Assert.WillRaise(
+    procedure
+    begin
+      TMcpCodeTools.ReplaceLines('a', 'X', 3, 3);
+    end);
+end;
+
+procedure TMcpCodeToolsTests.CheckCodeReportsWithoutWriting;
+var
+  Tools: TMcpCodeTools;
+  Text: string;
+begin
+  Tools := NewTools;
+  try
+    // Zeile 9 ("begin") bleibt, Zeile 10 "W.Run;" wird durch fehlerhaften Code ersetzt.
+    Text := Tools.CheckCode(BuiltinRules, TServerSettings.Default, 'C:\P', MainFile, '  if then', 10, 10);
+    Assert.Contains(Text, '10:');
+    Assert.Contains(Text, '[syntax]');
+    // Ohne System im Index werden Bezeichner nicht geprüft, und das steht dabei.
+    Assert.Contains(Text, 'Unit System ist nicht im Index');
+    Text := Tools.CheckCode(BuiltinRules, TServerSettings.Default, 'C:\P', MainFile, MainUnit, 0, 0);
+    Assert.Contains(Text, 'Keine Befunde');
+  finally
+    Tools.Free;
+  end;
 end;
 
 procedure TMcpCodeToolsTests.ParsesDirection;
