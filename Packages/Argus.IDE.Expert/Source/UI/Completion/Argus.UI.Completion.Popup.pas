@@ -55,6 +55,7 @@ type
 
 {$SCOPEDENUMS ON}
   TArgusChipEvent = reference to procedure(AChip: TArgusChip);
+  TArgusOverloadEvent = reference to procedure(ADelta: Integer);
   TArgusDragKind = (None, ListWidth, PanelWidth);
   TArgusHitArea = (None, Splitter, Edge, Grip, PanelBar);
 {$SCOPEDENUMS OFF}
@@ -109,6 +110,7 @@ type
     FChipRects: TArray<TRect>;
     FChipKinds: TArray<TArgusChip>;
     FOnChip: TArgusChipEvent;
+    FOnOverload: TArgusOverloadEvent;
     FDimInherited: Boolean;
     FDimRow: Boolean;
     FOnPanelToggled: TArgusPanelEvent;
@@ -170,6 +172,8 @@ type
     procedure ClearDetails;
     /// <summary>Panel ein- bzw. ausklappen (Strg+Q, #428).</summary>
     procedure TogglePanel;
+    /// <summary>Gezeigte Überladung im Panel (#425); ACount 1 = keine Kopfzeile.</summary>
+    procedure SetOverload(AIndex, ACount: Integer);
     { IArgusCompletionView }
     procedure ShowList(const AItems: TArgusCompletionItems; const AOrder: TArray<Integer>; ASelected: Integer;
       const APattern: string);
@@ -190,6 +194,8 @@ type
     property OnWidthsChanged: TArgusWidthsEvent read FOnWidthsChanged write FOnWidthsChanged;
     property OnPanelToggled: TArgusPanelEvent read FOnPanelToggled write FOnPanelToggled;
     property OnChip: TArgusChipEvent read FOnChip write FOnChip;
+    /// <summary>Klick auf ‹ bzw. › im Panel (#425).</summary>
+    property OnOverload: TArgusOverloadEvent read FOnOverload write FOnOverload;
     /// <summary>Geerbte Member abgeschwächt zeichnen (#419).</summary>
     property DimInherited: Boolean read FDimInherited write FDimInherited;
   end;
@@ -421,6 +427,17 @@ begin
   FTruncated[ARow] := False;
 end;
 
+procedure TArgusCompletionPopup.SetOverload(AIndex, ACount: Integer);
+begin
+  if (FDetailView.OverloadIndex = AIndex) and (FDetailView.OverloadCount = ACount) then
+    Exit;
+  FDetailView.OverloadIndex := AIndex;
+  FDetailView.OverloadCount := ACount;
+  if IsShown and FPanelShown then
+    Relayout;
+  Invalidate;
+end;
+
 procedure TArgusCompletionPopup.TogglePanel;
 begin
   FPanelCollapsed := not FPanelCollapsed;
@@ -606,6 +623,8 @@ begin
   FAutoCollapsed := False;
   FDrag := TArgusDragKind.None;
   FDetailView.Details := Default(TArgusItemDetails);
+  FDetailView.OverloadIndex := 0;
+  FDetailView.OverloadCount := 0;
 end;
 
 procedure TArgusCompletionPopup.ShowEmpty(const APrefix: string; ATotal: Integer);
@@ -976,6 +995,18 @@ begin
         Exit;
       end;
   end;
+  // Pfeile der Überladungen im Panel (#425).
+  if FPanelShown and not Collapsed and Assigned(FOnOverload) then
+    if PtInRect(FDetailView.PreviousRect, Point(X, Y)) then
+    begin
+      FOnOverload(-1);
+      Exit;
+    end
+    else if PtInRect(FDetailView.NextRect, Point(X, Y)) then
+    begin
+      FOnOverload(1);
+      Exit;
+    end;
   // Klick auf einen Chip (#422).
   for Index := 0 to High(FChipRects) do
     if PtInRect(FChipRects[Index], Point(X, Y)) then
