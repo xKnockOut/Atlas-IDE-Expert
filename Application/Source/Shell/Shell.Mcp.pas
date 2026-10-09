@@ -104,6 +104,14 @@ begin
     begin
       Result := ATools.TypeHierarchy(TMcpServer.RequiredString(AArguments, 'name'));
     end);
+  AServer.AddTool('get_component_info',
+    'published-Properties mit Typ und Default, Ereignisse mit Signatur, Vorfahren, Palettenseite und Package ' +
+    'einer Komponentenklasse, auch aus der VCL.',
+    TMcpServer.StringSchema(['name'], ['Klassenname, z. B. TButton']),
+    function(const AArguments: TJSONObject): string
+    begin
+      Result := ATools.ComponentInfo(TMcpServer.RequiredString(AArguments, 'name'));
+    end);
   AServer.AddTool('get_unit_outline',
     'Gliederung einer Unit ohne Quelltext: uses-Listen, Typen, Methoden, Felder mit Zeilennummern.',
     TMcpServer.StringSchema(['unit'], ['Unit-Name (Vcl.Forms) oder Pfad der .pas-Datei']),
@@ -245,6 +253,17 @@ begin
   Workspace := TShellWorkspace.Create(Root, ExtractFileName(Root), Store, Silent, Logger, Index,
     'argus-mcp-index');
   Tools := TMcpIndexTools.Create(Index, ReadSourceText);
+  // Package einer Unit: .dpk unter dem Projektordner, deren contains sie führt.
+  Tools.PackageOf :=
+    function(const AUnitName: string): string
+    var
+      Dpk, Text: string;
+    begin
+      Result := '';
+      for Dpk in TDirectory.GetFiles(Root, '*.dpk', TSearchOption.soAllDirectories) do
+        if ReadSourceText(Dpk, Text) and TMcpIndexTools.PackageContains(Text, AUnitName) then
+          Exit(ChangeFileExt(ExtractFileName(Dpk), ''));
+    end;
   Code := TMcpCodeTools.Create(Index, ReadSourceText,
     function: TArray<string>
     begin
