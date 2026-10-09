@@ -3,7 +3,8 @@
 // Ablauf der Vervollständigung ohne Fenster und ohne IDE (#410, #414): Start
 // fragt die Datenquelle (#408), eintreffende Einträge werden lokal nach dem
 // getippten Präfix gefiltert (#409) und an die Ansicht gegeben. Tasten
-// verschieben die Auswahl, Enter/Tab übernehmen, Esc schließt.
+// verschieben die Auswahl, Enter/Tab übernehmen, Esc schließt. Ohne Treffer
+// zeigt die Ansicht den leeren Zustand (#423), statt zu verschwinden.
 //
 // Alle öffentlichen Methoden laufen im Hauptthread. Einträge aus anderen
 // Threads stellt die Senke über TThread.Queue in den Hauptthread; was nach
@@ -28,6 +29,8 @@ type
     /// ASelected: Position in AOrder.</summary>
     procedure ShowList(const AItems: TArgusCompletionItems; const AOrder: TArray<Integer>; ASelected: Integer);
     procedure HideList;
+    /// <summary>Leerer Zustand (#423): keine Treffer für APrefix unter ATotal Einträgen.</summary>
+    procedure ShowEmpty(const APrefix: string; ATotal: Integer);
     /// <summary>Zahl der sichtbaren Zeilen für Bild auf/ab.</summary>
     function PageSize: Integer;
   end;
@@ -65,6 +68,7 @@ type
     FOrder: TArray<Integer>;
     FSelected: Integer;
     FPrefix: string;
+    FEmpty: Boolean;
     FOnCommit: TArgusCommitEvent;
     procedure ItemsArrived(AGeneration: Integer; const AItems: TArgusCompletionItems);
     procedure Completed(AGeneration: Integer);
@@ -85,10 +89,15 @@ type
     procedure Select(APosition: Integer);
     procedure CommitSelected;
     function SelectedItem(out AItem: TArgusCompletionItem): Boolean;
+    /// <summary>Ein Commit-Zeichen (#429) darf übernehmen: Liste offen und der gewählte Eintrag
+    /// trifft das Präfix klar (genau, Anfang, Wortanfänge), nicht nur unscharf.</summary>
+    function CanCommitOnCharacter: Boolean;
     property Active: Boolean read FActive;
     property Loading: Boolean read FLoading;
     /// <summary>Liste ist offen und hat Treffer.</summary>
     property Visible: Boolean read GetVisible;
+    /// <summary>Leerer Zustand wird gezeigt (#423).</summary>
+    property Empty: Boolean read FEmpty;
     property Prefix: string read FPrefix;
     property Items: TArgusCompletionItems read FItems;
     property Order: TArray<Integer> read FOrder;
@@ -195,6 +204,7 @@ begin
   FItems := nil;
   FOrder := nil;
   FSelected := -1;
+  FEmpty := False;
   Sink := TControllerSink.Create(Self, FFlag, FGeneration);
   FProvider.Query(AContext, Sink);
 end;
@@ -210,6 +220,7 @@ begin
   FItems := nil;
   FOrder := nil;
   FSelected := -1;
+  FEmpty := False;
   FView.HideList;
 end;
 
@@ -226,9 +237,9 @@ begin
   if not FActive or (AGeneration <> FGeneration) then
     Exit;
   FLoading := False;
-  // Nichts gefunden: gar nicht erst öffnen (Hinweis für den leeren Zustand folgt mit #423).
+  // Nichts gefunden: leerer Zustand statt kommentarlos zu verschwinden (#423).
   if Length(FItems) = 0 then
-    Close;
+    Refresh(False);
 end;
 
 procedure TArgusCompletionController.Refresh(AKeepSelection: Boolean);
@@ -247,13 +258,21 @@ begin
         FSelected := Position;
         Break;
       end;
-  if Length(FOrder) = 0 then
+  FEmpty := False;
+  if Length(FOrder) > 0 then
+    FView.ShowList(FItems, FOrder, FSelected)
+  else
   begin
     FSelected := -1;
-    FView.HideList;
-  end
-  else
-    FView.ShowList(FItems, FOrder, FSelected);
+    // Solange noch nichts da ist, nichts zeigen; sonst den leeren Zustand.
+    if FLoading and (Length(FItems) = 0) then
+      FView.HideList
+    else
+    begin
+      FEmpty := True;
+      FView.ShowEmpty(FPrefix, Length(FItems));
+    end;
+  end;
 end;
 
 procedure TArgusCompletionController.UpdatePrefix(const APrefix: string);
@@ -277,6 +296,12 @@ function TArgusCompletionController.HandleKey(AKey: TArgusNavigationKey): Boolea
 var
   Page: Integer;
 begin
+  // Leerer Zustand: nur Esc gehört dem Popup; Pfeile und Enter gehen an den Editor.
+  if FActive and FEmpty and (AKey = TArgusNavigationKey.Cancel) then
+  begin
+    Close;
+    Exit(True);
+  end;
   if not GetVisible then
     Exit(False);
   Result := True;
@@ -314,6 +339,14 @@ begin
     AItem := FItems[FOrder[FSelected]]
   else
     AItem := Default(TArgusCompletionItem);
+end;
+
+function TArgusCompletionController.CanCommitOnCharacter: Boolean;
+var
+  Item: TArgusCompletionItem;
+begin
+  Result := (FPrefix <> '') and SelectedItem(Item) and
+    (TArgusCompletionMatcher.Score(FPrefix, Item.Name) >= TArgusCompletionMatcher.ScoreWordStarts);
 end;
 
 procedure TArgusCompletionController.CommitSelected;

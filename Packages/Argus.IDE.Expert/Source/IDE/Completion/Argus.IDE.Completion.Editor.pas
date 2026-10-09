@@ -11,6 +11,10 @@
 //   - Tasten: Eine Tastaturbindung leitet ↑ ↓ Bild↑ Bild↓ Pos1 Ende Enter Tab Esc
 //     an das Popup, aber nur, solange es offen ist; sonst gehen sie an den Editor.
 //   - Übernahme: ein Undo-Schritt (CreateUndoableWriter) für Name und uses-Ergänzung.
+//   - Commit-Zeichen (#429): Wird hinter dem Wort "(", ";" oder "." getippt und trifft
+//     der gewählte Eintrag klar, wird er übernommen und das Zeichen bleibt stehen;
+//     sonst bleibt nur das Zeichen und das Popup schließt. Erkannt nach dem Tippen im
+//     Puffer, nicht über eine Tastenbindung: unabhängig vom Tastaturlayout.
 
 interface
 
@@ -49,6 +53,9 @@ type
     FLine: Integer;
     FWordStart: Integer;
     FTopRow: Integer;
+    // Commit über ein Zeichen: Ende des Worts und Bytes des stehen bleibenden Zeichens.
+    FCommitEnd: Integer;
+    FCommitSuffixBytes: Integer;
     procedure Log(const AMessage: string);
     procedure Recheck;
     procedure TimerTick(Sender: TObject);
@@ -258,6 +265,7 @@ begin
   FLog := ALog;
   FKeyBindingIndex := -1;
   FNotifierIndex := -1;
+  FCommitEnd := -1;
   FProviders := TArgusCompletionProviders.Create;
   FProvidersRef := FProviders;
   FServerProvider := TArgusServerCompletionProvider.Create(ASession);
@@ -330,7 +338,8 @@ end;
 
 function TArgusEditorCompletion.Visible: Boolean;
 begin
-  Result := FController.Visible;
+  // Auch der leere Zustand (#423) nimmt Esc entgegen.
+  Result := FController.Visible or FController.Empty;
 end;
 
 procedure TArgusEditorCompletion.ApplyStyle;
@@ -495,6 +504,20 @@ begin
   for Index := FWordStart + 1 to Character do
     if not IsIdentifierChar(LineText[Index]) then
     begin
+      // Commit-Zeichen direkt hinter dem Wort (#429): übernehmen, das Zeichen bleibt.
+      if (Index = Character) and CharInSet(LineText[Index], ['(', ';', '.']) and
+        FController.CanCommitOnCharacter then
+      begin
+        FCommitEnd := Character - 1;
+        FCommitSuffixBytes := TEncoding.UTF8.GetByteCount(string(LineText[Index]));
+        try
+          FController.CommitSelected;
+        finally
+          FCommitEnd := -1;
+        end;
+        ActiveChanged;
+        Exit;
+      end;
       Close;
       Exit;
     end;
@@ -522,6 +545,9 @@ begin
   Cursor := View.CursorPos;
   LineText := TArgusEditorBuffer.LineText(View, Cursor.Line);
   Character := TLspSession.ColumnToIndex(LineText, Cursor.Col, TArgusEditorBuffer.TabWidth(View.Buffer));
+  // Über ein Commit-Zeichen: Das Wort endet davor, das Zeichen bleibt stehen.
+  if FCommitEnd >= 0 then
+    Character := FCommitEnd;
   NewText := AItem.InsertText;
   if NewText = '' then
     NewText := AItem.Name;
@@ -557,7 +583,11 @@ begin
       Writer.DeleteTo(Edit.Stop);
       Writer.Insert(PAnsiChar(UTF8Encode(Edit.Text)));
       if Edit.IsWord then
+      begin
         CursorByte := Edit.Start + Shift + Length(UTF8Encode(Edit.Text));
+        if FCommitEnd >= 0 then
+          Inc(CursorByte, FCommitSuffixBytes);
+      end;
       Inc(Shift, Length(UTF8Encode(Edit.Text)) - (Edit.Stop - Edit.Start));
     end;
     Writer := nil;

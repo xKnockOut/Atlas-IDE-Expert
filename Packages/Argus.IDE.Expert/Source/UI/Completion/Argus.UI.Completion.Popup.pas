@@ -6,6 +6,8 @@
 // Art, Name und grau die Signatur. Schmale eigene Scrollleiste, Mausrad 3 Zeilen.
 // Die Position ergibt sich aus dem Anker (Caret-Rechteck in Bildschirm-
 // koordinaten): darunter, sonst darüber; nie über den Monitorrand hinaus.
+// Ohne Treffer zeigt es den leeren Zustand (#423). Die Breite wächst bei Bedarf,
+// schrumpft während einer Sitzung aber nicht (#416), damit es beim Filtern nicht springt.
 
 interface
 
@@ -37,6 +39,10 @@ type
     FTop: Integer;
     FVisibleRows: Integer;
     FAnchor: TRect;
+    FSessionWidth: Integer;
+    FEmptyPrefix: string;
+    FEmptyTotal: Integer;
+    FShowingEmpty: Boolean;
     FOnSelect: TArgusPositionEvent;
     FOnAccept: TArgusPositionEvent;
     function RowHeight: Integer;
@@ -47,6 +53,8 @@ type
     function MeasureWidth: Integer;
     procedure DrawRow(ARow, APosition: Integer);
     procedure DrawScrollBar;
+    procedure PaintEmpty;
+    procedure PlaceAt(AWidth, AHeight: Integer);
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -57,6 +65,7 @@ type
     { IArgusCompletionView }
     procedure ShowList(const AItems: TArgusCompletionItems; const AOrder: TArray<Integer>; ASelected: Integer);
     procedure HideList;
+    procedure ShowEmpty(const APrefix: string; ATotal: Integer);
     function PageSize: Integer;
     /// <summary>Caret-Rechteck in Bildschirmkoordinaten; vor dem ersten ShowList setzen.</summary>
     property Anchor: TRect read FAnchor write FAnchor;
@@ -155,12 +164,19 @@ begin
 end;
 
 procedure TArgusCompletionPopup.PlaceAndShow;
+begin
+  // Nur wachsen, nie schrumpfen, solange die Sitzung läuft (#416).
+  FSessionWidth := Max(FSessionWidth, MeasureWidth);
+  PlaceAt(FSessionWidth, RowCount * RowHeight + 2);
+end;
+
+procedure TArgusCompletionPopup.PlaceAt(AWidth, AHeight: Integer);
 var
   Bounds, Area: TRect;
   Width, Height: Integer;
 begin
-  Width := MeasureWidth;
-  Height := RowCount * RowHeight + 2;
+  Width := AWidth;
+  Height := AHeight;
   Area := WorkAreaAt(FAnchor.TopLeft);
   Bounds := TRect.Create(Point(FAnchor.Left, FAnchor.Bottom + 2), Width, Height);
   // Unten kein Platz: über die Zeile.
@@ -176,6 +192,7 @@ end;
 procedure TArgusCompletionPopup.ShowList(const AItems: TArgusCompletionItems; const AOrder: TArray<Integer>;
   ASelected: Integer);
 begin
+  FShowingEmpty := False;
   FItems := AItems;
   FOrder := AOrder;
   FSelected := ASelected;
@@ -190,6 +207,48 @@ begin
   FOrder := nil;
   FSelected := -1;
   FTop := 0;
+  FSessionWidth := 0;
+  FShowingEmpty := False;
+end;
+
+procedure TArgusCompletionPopup.ShowEmpty(const APrefix: string; ATotal: Integer);
+begin
+  FItems := nil;
+  FOrder := nil;
+  FSelected := -1;
+  FTop := 0;
+  FEmptyPrefix := APrefix;
+  FEmptyTotal := ATotal;
+  FShowingEmpty := True;
+  Canvas.Font := Font;
+  FSessionWidth := Max(FSessionWidth, Max(MulDiv(MinWidth, CurrentPPI, 96),
+    Canvas.TextWidth('Keine Treffer für ‚' + APrefix + '‘') + MulDiv(24, CurrentPPI, 96)));
+  PlaceAt(FSessionWidth, 3 * RowHeight + 2);
+end;
+
+procedure TArgusCompletionPopup.PaintEmpty;
+var
+  Line: TRect;
+  Gap: Integer;
+
+  procedure DrawLine(AIndex: Integer; const AText: string; AColor: TColor);
+  begin
+    Line := Rect(Gap, 1 + AIndex * RowHeight, ClientWidth - Gap, 1 + (AIndex + 1) * RowHeight);
+    Canvas.Font.Color := AColor;
+    DrawText(Canvas.Handle, PChar(AText), -1, Line, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
+  end;
+
+begin
+  Gap := MulDiv(8, CurrentPPI, 96);
+  Canvas.Brush.Style := bsClear;
+  if FEmptyPrefix <> '' then
+    DrawLine(0, 'Keine Treffer für ‚' + FEmptyPrefix + '‘', Colors.Text)
+  else
+    DrawLine(0, 'Keine Vorschläge an dieser Stelle', Colors.Text);
+  if FEmptyPrefix <> '' then
+    DrawLine(1, 'Rücktaste erweitert die Suche', Colors.SecondaryText);
+  DrawLine(2, Format('0 von %d    Esc schließt', [FEmptyTotal]), Colors.SecondaryText);
+  Canvas.Brush.Style := bsSolid;
 end;
 
 procedure TArgusCompletionPopup.DrawRow(ARow, APosition: Integer);
@@ -264,6 +323,12 @@ begin
   Canvas.Font := Font;
   Canvas.Brush.Color := Colors.Background;
   Canvas.FillRect(ClientRect);
+  if FShowingEmpty then
+  begin
+    PaintEmpty;
+    PaintBorder;
+    Exit;
+  end;
   for Row := 0 to RowCount - 1 do
     if FTop + Row < Length(FOrder) then
       DrawRow(Row, FTop + Row);
