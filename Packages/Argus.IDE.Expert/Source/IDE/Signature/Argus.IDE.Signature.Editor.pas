@@ -10,8 +10,9 @@
 //     Parameter lokal neu; der Hint wechselt bei Bedarf die Überladung.
 //   - Schließen (#414): Caret verlässt den Aufruf (auch durch ")"), Esc,
 //     Fokusverlust, IDE inaktiv, Scrollen, Tab-Wechsel.
-//   - Tasten über den gemeinsamen Hook: Esc schließt, Alt+↑/↓ wechselt die
-//     Überladung; nach der Vervollständigung, die Esc zuerst bekommt.
+//   - Alle Überladungen stehen untereinander; Klick wählt eine. Tasten über den
+//     gemeinsamen Hook: Esc schließt, Alt+↑/↓ wechselt die gewählte Überladung;
+//     nach der Vervollständigung, die Esc zuerst bekommt.
 
 interface
 
@@ -197,15 +198,10 @@ begin
   FProvider := TArgusServerSignatureProvider.Create(ASession);
   FHint := TArgusSignatureHint.Create(nil);
   FController := TArgusSignatureController.Create(FHint);
-  FHint.OnPrevious :=
-    procedure
+  FHint.OnSelect :=
+    procedure(AIndex: Integer)
     begin
-      FController.PreviousOverload;
-    end;
-  FHint.OnNext :=
-    procedure
-    begin
-      FController.NextOverload;
+      FController.SelectOverload(AIndex);
     end;
   FKeys := TSignatureKeys.Create(Self);
   FTimer := TTimer.Create(nil);

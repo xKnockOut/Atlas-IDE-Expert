@@ -198,6 +198,13 @@ begin
     Assert.AreEqual(0, View.Signature, 'Alt+↓ läuft im Kreis');
     Controller.PreviousOverload;
     Assert.AreEqual(1, View.Signature);
+    // Klick auf eine Überladung im Hint.
+    Controller.SelectOverload(0);
+    Assert.AreEqual(0, View.Signature);
+    // Beim dritten Argument passt nur noch die Variante mit TFormatSettings.
+    Controller.UpdateParameter(2);
+    Assert.IsFalse(Controller.OverloadFits(0));
+    Assert.IsTrue(Controller.OverloadFits(1));
     // Leere Hilfe schließt.
     Controller.Show(Default(TArgusSignatureHelp), 0);
     Assert.IsFalse(Controller.Active);
