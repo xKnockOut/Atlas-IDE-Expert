@@ -17,6 +17,10 @@ Es gibt zwei Wege:
 
 Fehler beim Start meldet das Plugin einmalig im Meldungsfenster. Stürzt der Server ab, startet es ihn bei der nächsten Anfrage neu.
 
+Zur Fehlersuche: Wert `Diagnose` (DWORD) = `1` unter `HKCU\Software\BetterDelphiLSP\IdePlugin` setzen und die IDE neu starten. Das Plugin schreibt dann jeden Aufruf der IDE (Hover, Strg+Klick, Position und Ergebnis) in `BDLsp.IdePlugin.log` neben der BPL.
+
+Findet der Server keine Definition, passiert bei Strg+Klick nichts. Deklarationen in Include-Dateien (`{$I …}`) findet der Server erst mit dem Include-Resolver (#264).
+
 Umgesetzt sind Symbolhinweis (Hover) und Strg+Klick (Gehe zu Definition). Vervollständigung, Parameterhilfe und Error Insight folgen.
 
 ## Eingebauter LSP-Client
