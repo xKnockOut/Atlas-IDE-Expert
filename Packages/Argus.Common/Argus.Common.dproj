@@ -121,6 +121,7 @@
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Unicode.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.CodeActions.pas"/>
+        <DCCReference Include="Source\Editing\Argus.Common.Editing.UsesClause.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.ClassCompletion.pas"/>
         <DCCReference Include="Source\Dfm\Argus.Common.Dfm.Contract.pas"/>
         <DCCReference Include="Source\Dfm\Argus.Common.Dfm.Parser.pas"/>

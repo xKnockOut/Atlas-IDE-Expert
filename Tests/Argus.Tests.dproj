@@ -128,6 +128,7 @@
         <DCCReference Include="Common\Rules\Argus.Common.Rules.Catalog.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.Unicode.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.CodeActions.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Argus.Common.Editing.UsesClause.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.ClassCompletion.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Argus.Common.Dfm.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Argus.Common.Dfm.ComponentRename.Tests.pas"/>

@@ -8,6 +8,8 @@
 // completion.matching = prefix nur nach dem Anfang. Unscharf sortiert die Punktzahl,
 // bei Gleichstand der nächste Gültigkeitsbereich; isIncomplete lässt den Editor bei
 // jedem Tastendruck neu fragen, filterText verhindert, dass er Treffer verwirft.
+// Ab zwei getippten Zeichen kommen Symbole aus noch nicht eingebundenen Units dazu (#180),
+// Projekt-Units vor Bibliotheken; additionalTextEdits trägt die Unit beim Annehmen ins uses ein.
 // Noch nicht: Sichtbarkeit (private/protected), Generics, Class Helper, Typinferenz bei var X := ….
 
 interface
@@ -23,6 +25,7 @@ uses
   Argus.Common.Pascal.SyntaxTree,
   Argus.Common.Index.Contract,
   Argus.Common.Configuration.Contract,
+  Argus.Common.Rules.Contract,
   Argus.Common.Semantics.NameResolver;
 
 type
@@ -45,6 +48,8 @@ type
     Kind: Integer;
     /// <summary>Text für den Filter des Editors; '' = Name.</summary>
     FilterText: string;
+    /// <summary>Weitere Änderungen beim Annehmen, z. B. der uses-Eintrag.</summary>
+    AdditionalEdits: TArray<TRuleEdit>;
   end;
 
   TCompletionItems = record
@@ -59,6 +64,10 @@ type
   public const
     Method = 'textDocument/completion';
     MaxItems = 1000;
+    /// <summary>Höchstzahl der Vorschläge aus nicht eingebundenen Units.</summary>
+    MaxImportItems = 200;
+    /// <summary>So viele Zeichen muss der Name haben, bevor nicht eingebundene Units mitsuchen.</summary>
+    MinImportPrefix = 2;
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -95,6 +104,7 @@ uses
   Argus.Common.Pascal.Contract,
   Argus.Common.Pascal.Parser,
   Argus.Common.Lsp.FuzzyMatch,
+  Argus.Common.Editing.UsesClause,
   Argus.Common.Lsp.Internals.Cancellation;
 
 const
@@ -351,12 +361,15 @@ var
   Scored: TScoredItem;
   Index: Integer;
 
-  procedure Add(const AName, ADetail: string; AKind: Integer);
+  procedure Add(const AName, ADetail: string; AKind: Integer; APenalty: Integer = 0;
+    const AEdits: TArray<TRuleEdit> = nil);
   begin
     Scored.Score := MatchScore(AName, Context.Prefix, AMatching);
     if Scored.Score = TFuzzyMatch.NoMatch then
       Exit;
+    Dec(Scored.Score, APenalty);
     Scored.Item.Name := AName;
+    Scored.Item.AdditionalEdits := AEdits;
     Scored.Item.Detail := ADetail;
     Scored.Item.Kind := AKind;
     // Der Editor filtert selbst nach dem getippten Wort; unscharfe Treffer bekommen es
@@ -367,6 +380,55 @@ var
       Scored.Item.FilterText := '';
     Scored.Order := List.Count;
     List.Add(Scored);
+  end;
+
+  procedure AddFromOtherUnits;
+  var
+    Known: TDictionary<string, Boolean>;
+    Used: TArray<string>;
+    Own: string;
+    Existing: TScoredItem;
+    Symbol: TIndexSymbol;
+    Edit: TRuleEdit;
+    Added, Before: Integer;
+  begin
+    Known := TDictionary<string, Boolean>.Create;
+    try
+      for Existing in List do
+        Known.AddOrSetValue(UpperCase(Existing.Item.Name), True);
+      Used := TUsesClauses.UsedUnits(ATree.Tokens);
+      Own := TUsesClauses.OwnName(ATree.Tokens);
+      Added := 0;
+      for UnitInfo in AIndex.Units do
+      begin
+        if SameText(UnitInfo.UnitName, Own) or TUsesClauses.IsUsed(Used, UnitInfo.UnitName, AResolver.Namespaces) then
+          Continue;
+        for Symbol in UnitInfo.Symbols do
+        begin
+          if not Symbol.InInterface or (Symbol.Container <> '') or Known.ContainsKey(UpperCase(Symbol.Name)) then
+            Continue;
+          if MatchScore(Symbol.Name, Context.Prefix, AMatching) = TFuzzyMatch.NoMatch then
+            Continue;
+          if not TUsesClauses.AddUnit(ATree.Tokens, Context.Offset, UnitInfo.UnitName, #13#10, Edit) then
+            Exit;
+          Before := List.Count;
+          // Eingebundenes zuerst, dann Projekt-Units, dann RTL/VCL und andere Bibliotheken.
+          if UnitInfo.Library_ then
+            Add(Symbol.Name, UnitInfo.UnitName + ' (uses ergänzen)', KindOf(Symbol.Kind), 200, [Edit])
+          else
+            Add(Symbol.Name, UnitInfo.UnitName + ' (uses ergänzen)', KindOf(Symbol.Kind), 100, [Edit]);
+          // Gleichnamige Symbole verschiedener Units bleiben alle wählbar.
+          if List.Count > Before then
+          begin
+            Inc(Added);
+            if Added >= MaxImportItems then
+              Exit;
+          end;
+        end;
+      end;
+    finally
+      Known.Free;
+    end;
   end;
 
 begin
@@ -394,6 +456,8 @@ begin
               Add(Candidate.Name, Candidate.Container, KindOf(Candidate.SymbolKind))
             else
               Add(Candidate.Name, Candidate.UnitName, KindOf(Candidate.SymbolKind));
+          if (Context.Kind = TCompletionContextKind.Scope) and (Length(Context.Prefix) >= MinImportPrefix) then
+            AddFromOtherUnits;
         end;
     end;
     List.Sort;
@@ -412,8 +476,9 @@ end;
 
 class function TLspCompletion.ToJson(const AItems: TCompletionItems): TJSONObject;
 var
-  Items: TJSONArray;
-  Entry: TJSONObject;
+  Items, Edits: TJSONArray;
+  Entry, EditJson: TJSONObject;
+  Edit: TRuleEdit;
   Index: Integer;
 begin
   Result := TJSONObject.Create;
@@ -430,6 +495,18 @@ begin
       Entry.AddPair('detail', AItems.Items[Index].Detail);
     if AItems.Items[Index].FilterText <> '' then
       Entry.AddPair('filterText', AItems.Items[Index].FilterText);
+    if Length(AItems.Items[Index].AdditionalEdits) > 0 then
+    begin
+      Edits := TJSONArray.Create;
+      Entry.AddPair('additionalTextEdits', Edits);
+      for Edit in AItems.Items[Index].AdditionalEdits do
+      begin
+        EditJson := TJSONObject.Create;
+        Edits.AddElement(EditJson);
+        EditJson.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
+        EditJson.AddPair('newText', Edit.NewText);
+      end;
+    end;
     // Reihenfolge wie geliefert: beste Punktzahl, dann nächster Gültigkeitsbereich.
     Entry.AddPair('sortText', Format('%.5d', [Index]));
   end;
