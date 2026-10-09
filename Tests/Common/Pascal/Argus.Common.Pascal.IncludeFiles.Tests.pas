@@ -12,6 +12,12 @@ type
   [TestFixture]
   TIncludeFilesTests = class
   public
+    // Dateien je Test neu anlegen: Ein gemeinsames Wörterbuch wuchs und schrumpfte
+    // zwischen den Tests, der Leck-Monitor meldete das als Lecks.
+    [Setup]
+    procedure Setup;
+    [TearDown]
+    procedure TearDown;
     [Test]
     procedure SearchOrderUnitDirThenSearchPaths;
     [Test]
@@ -72,6 +78,16 @@ begin
 end;
 
 { TIncludeFilesTests }
+
+procedure TIncludeFilesTests.Setup;
+begin
+  Files := TDictionary<string, string>.Create;
+end;
+
+procedure TIncludeFilesTests.TearDown;
+begin
+  FreeAndNil(Files);
+end;
 
 procedure TIncludeFilesTests.SearchOrderUnitDirThenSearchPaths;
 var
@@ -179,10 +195,6 @@ begin
 end;
 
 initialization
-  Files := TDictionary<string, string>.Create;
   TDUnitX.RegisterTestFixture(TIncludeFilesTests);
-
-finalization
-  Files.Free;
 
 end.
