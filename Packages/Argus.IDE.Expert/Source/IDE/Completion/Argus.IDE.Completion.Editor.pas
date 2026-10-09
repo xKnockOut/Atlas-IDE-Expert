@@ -471,6 +471,7 @@ var
   Cursor: TOTAEditPos;
   LineText, Prefix: string;
   Character, Index: Integer;
+  Context: TArgusContext;
 begin
   if not FController.Active or (FView = nil) then
   begin
@@ -518,7 +519,23 @@ begin
       Exit;
     end;
   Prefix := Copy(LineText, FWordStart + 1, Character - FWordStart);
-  FController.UpdatePrefix(Prefix);
+  // Gekürzte Liste (#431): lokal weiterfiltern und im Hintergrund neu fragen.
+  if FController.Incomplete and (Prefix <> FController.Prefix) then
+  begin
+    Context := Default(TArgusContext);
+    Context.FileName := FView.Buffer.FileName;
+    Context.Text := TArgusEditorBuffer.Text(FView.Buffer);
+    Context.Line := Cursor.Line - 1;
+    Context.Character := Character;
+    Context.Prefix := Prefix;
+    if (FWordStart > 0) and (LineText[FWordStart] = '.') then
+      Context.Kind := TArgusContextKind.MemberAccess
+    else
+      Context.Kind := TArgusContextKind.Identifier;
+    FController.Requery(Context);
+  end
+  else
+    FController.UpdatePrefix(Prefix);
   ActiveChanged;
 end;
 
