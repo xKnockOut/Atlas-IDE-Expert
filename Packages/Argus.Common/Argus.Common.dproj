@@ -176,6 +176,8 @@
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.Positions.pas"/>
         <DCCReference Include="Source\Lsp\Internals\Argus.Common.Lsp.Internals.Debouncer.pas"/>
         <DCCReference Include="Source\Lsp\Internals\Argus.Common.Lsp.Internals.Cancellation.pas"/>
+        <DCCReference Include="Source\Lsp\Argus.Common.Lsp.SyntaxDiagnostics.pas"/>
+        <DCCReference Include="Source\Lsp\Argus.Common.Lsp.PullDiagnostics.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.DocumentSymbols.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.FoldingRanges.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.SelectionRanges.pas"/>

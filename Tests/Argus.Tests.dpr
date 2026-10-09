@@ -99,6 +99,7 @@ uses
   Argus.Common.Mcp.Server.Tests in 'Common\Mcp\Argus.Common.Mcp.Server.Tests.pas',
   Argus.Common.Mcp.IndexTools.Tests in 'Common\Mcp\Argus.Common.Mcp.IndexTools.Tests.pas',
   Argus.Common.Mcp.CodeTools.Tests in 'Common\Mcp\Argus.Common.Mcp.CodeTools.Tests.pas',
+  Argus.Common.Lsp.PullDiagnostics.Tests in 'Common\Lsp\Argus.Common.Lsp.PullDiagnostics.Tests.pas',
   Argus.Common.Editing.Formatter.Tests in 'Common\Editing\Argus.Common.Editing.Formatter.Tests.pas',
   Argus.Common.Editing.CodeActions.Tests in 'Common\Editing\Argus.Common.Editing.CodeActions.Tests.pas',
   Argus.IdePlugin.Lsp.Client in '..\Packages\Argus.IdePlugin\Source\Lsp\Argus.IdePlugin.Lsp.Client.pas',
