@@ -66,7 +66,7 @@ var
 begin
   Json := Options;
   try
-    Style := TLspFormatting.Resolve(Json, 'C:\P\Unit1.pas', TFormatStyle.Default, ReadTabsConfig);
+    Style := TLspFormatting.Resolve(Json, 'C:\P\Unit1.pas', TFormatStyle.Default, ReadTabsConfig());
     Assert.AreEqual(3, Style.IndentSize);
     Assert.IsFalse(Style.UseTabs);
   finally
@@ -85,7 +85,7 @@ begin
   Configured.Given := [TFormatKey.IndentSize];
   Json := Options;
   try
-    Style := TLspFormatting.Resolve(Json, 'C:\P\Unit1.pas', Configured, ReadTabsConfig);
+    Style := TLspFormatting.Resolve(Json, 'C:\P\Unit1.pas', Configured, ReadTabsConfig());
     Assert.AreEqual(8, Style.IndentSize);
     // Nicht ausdrücklich gesetzt: bleibt beim Wert aus .editorconfig bzw. der Vorgabe.
     Assert.IsFalse(Style.UseTabs);
