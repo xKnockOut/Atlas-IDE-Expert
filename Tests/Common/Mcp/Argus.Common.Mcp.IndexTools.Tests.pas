@@ -275,7 +275,7 @@ var
 begin
   Items := TMcpIndexTools.Registrations(
     'RegisterComponents(''Standard'', [TA, TB]);'#10'registercomponents(''Extra'', [TC]);');
-  Assert.AreEqual(3, Length(Items));
+  Assert.AreEqual(3, Integer(Length(Items)));
   Assert.AreEqual('Standard', Items[1].Page);
   Assert.AreEqual('TB', Items[1].ClassName);
   Assert.AreEqual('Extra', Items[2].Page);
