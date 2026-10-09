@@ -41,6 +41,10 @@ type
     procedure UpdateParameter(AParameter: Integer);
     procedure NextOverload;
     procedure PreviousOverload;
+    /// <summary>Wählt die Überladung AIndex (Klick im Hint).</summary>
+    procedure SelectOverload(AIndex: Integer);
+    /// <summary>Passt der aktive Parameter zur Überladung AIndex (sonst gedämpft gezeigt)?</summary>
+    function OverloadFits(AIndex: Integer): Boolean;
     procedure Close;
     property Active: Boolean read FActive;
     property Signature: Integer read FSignature;
@@ -124,6 +128,19 @@ begin
     Exit;
   FSignature := (FSignature + Length(FHelp.Signatures) - 1) mod Length(FHelp.Signatures);
   Update;
+end;
+
+procedure TArgusSignatureController.SelectOverload(AIndex: Integer);
+begin
+  if not FActive or (AIndex < 0) or (AIndex > High(FHelp.Signatures)) or (AIndex = FSignature) then
+    Exit;
+  FSignature := AIndex;
+  Update;
+end;
+
+function TArgusSignatureController.OverloadFits(AIndex: Integer): Boolean;
+begin
+  Result := FActive and (AIndex >= 0) and (AIndex <= High(FHelp.Signatures)) and Fits(AIndex, FParameter);
 end;
 
 procedure TArgusSignatureController.Close;
