@@ -17,6 +17,7 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 | `platform` | string | – | z. B. `"Win32"`, `"Win64"` | Zielplattform. |
 | `rules` | object | – |  | Prüfregeln einzeln einstellen: Regel-ID → Schweregrad oder Objekt mit "severity" und Optionen. |
 | `compiler` | object | – |  | Compiler-Anbindung (dcc32/dcc64). |
+| `completion` | object | – |  | Code-Vervollständigung. |
 | `memoryBudgetMb` | integer | `0` | 0… | Obergrenze für den Symbolindex in MB. Darüber werden zuerst Bibliotheks-Units (RTL, VCL), dann Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. |
 | `inlayHints` | object | – |  | Inlay Hints im Editor. |
 | `minConfidence` | string | `"medium"` | `"low"`, `"medium"`, `"high"` | Regeltreffer unter dieser Konfidenz ausblenden. |
@@ -28,6 +29,12 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 | Schlüssel | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|
 | `compiler.onSave` | boolean | `true` |  | Nach dem Speichern einer Quelldatei das Projekt im Hintergrund kompilieren und die Meldungen anzeigen. |
+
+## completion
+
+| Schlüssel | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|
+| `completion.matching` | string | `"fuzzy"` | `"fuzzy"`, `"prefix"` | Auswahl der Vorschläge: unscharf (Teilfolgen, Kürzel wie TSL für TStringList) oder nur nach Präfix, falls ein Editor nachträglich strikt filtert. |
 
 ## inlayHints
 

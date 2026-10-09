@@ -136,6 +136,7 @@ type
     function DefinesFor(const AUri: string; out ADefines: TArray<string>): Boolean;
     function DelphiVersionFor(const AUri: string): string;
     function InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
+    function CompletionSettingsFor(const AUri: string): TCompletionSettings;
     function FormatStyleFor(const AUri: string): TFormatStyle;
     function RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
     /// <summary>Namespaces aller Projekte an die Features weitergeben, Diagnosen neu prüfen.</summary>
@@ -405,6 +406,11 @@ begin
     begin
       Result := EnsureUnit(AUnitName);
     end);
+  FCompletion.MatchingFor :=
+    function(const AUri: string): TCompletionMatching
+    begin
+      Result := CompletionSettingsFor(AUri).Matching;
+    end;
   FCompletion.Attach(FDispatcher);
   FSignatureHelp := TLspSignatureHelp.Create(FDocuments, FIndex,
     function(const AFileName: string; out AText: string): Boolean
@@ -900,6 +906,24 @@ begin
       if Result = '' then
         Result := Workspace.Configuration.Settings.DelphiVersion;
     end;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+function TServerComposition.CompletionSettingsFor(const AUri: string): TCompletionSettings;
+var
+  Workspace: TShellWorkspace;
+begin
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+    if (Workspace = nil) and (FWorkspaces.Count = 1) then
+      Workspace := FWorkspaces[0];
+    if Workspace = nil then
+      Result := TCompletionSettings.Default
+    else
+      Result := Workspace.Configuration.Settings.Completion;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
