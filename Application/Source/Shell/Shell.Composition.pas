@@ -115,7 +115,12 @@ type
     /// <summary>Grund, warum der Compiler nicht nutzbar ist; '' = nutzbar. Unter FCompileLock.
     /// Dann kompiliert der Server nach dem Speichern nicht mehr, bis das Projekt neu geladen wird.</summary>
     FCompilerUnavailable: string;
+    /// <summary>Der Client hat keinen brauchbaren Ordner gemeldet (RAD Studio, #175):
+    /// Ordner werden aus den geöffneten Dateien abgeleitet.</summary>
+    FDeriveWorkspaces: Boolean;
     procedure AddWorkspace(const AFolder: TWorkspaceFolder);
+    /// <summary>Legt zur Datei den Ordner mit der nächsten Projektdatei an, falls sie in keinem Ordner liegt.</summary>
+    procedure DeriveWorkspace(const AFileName: string);
     procedure RemoveWorkspace(const AFolder: TWorkspaceFolder);
     /// <summary>Innerster Ordner zur Datei oder nil. Aufrufer hält FWorkspacesLock.</summary>
     function WorkspaceOf(const AFileName: string): TShellWorkspace;
@@ -166,7 +171,9 @@ type
 
 implementation
 
+// Winapi.Windows zuerst, damit die System-Units bei gleichen Namen Vorrang haben.
 uses
+  Winapi.Windows,
   System.IOUtils,
   System.Math,
   System.StrUtils,
@@ -189,14 +196,27 @@ uses
   BDLsp.Windows.Diagnostics.StackTrace,
   BDLsp.Windows.Editing.SystemColors;
 
-function CreateTraceStream(const AFileName: string): TStream;
+// Mitschnitt anlegen. Hält ihn schon ein anderer Server (jede RAD-Studio-IDE
+// startet einen eigenen), weicht er auf <Name>-<PID><Endung> aus, statt ganz
+// ohne Mitschnitt zu laufen. AActualName ist die tatsächlich benutzte Datei.
+function CreateTraceStream(const AFileName: string; out AActualName: string): TStream;
 var
   Directory: string;
 begin
   Directory := TPath.GetDirectoryName(TPath.GetFullPath(AFileName));
   if Directory <> '' then
     ForceDirectories(Directory);
-  Result := TFileStream.Create(AFileName, fmCreate or fmShareDenyWrite);
+  AActualName := AFileName;
+  try
+    Result := TFileStream.Create(AActualName, fmCreate or fmShareDenyWrite);
+  except
+    on EFCreateError do
+    begin
+      AActualName := TPath.Combine(TPath.GetDirectoryName(AFileName), TPath.GetFileNameWithoutExtension(AFileName) +
+        Format('-%d', [Winapi.Windows.GetCurrentProcessId]) + TPath.GetExtension(AFileName));
+      Result := TFileStream.Create(AActualName, fmCreate or fmShareDenyWrite);
+    end;
+  end;
 end;
 
 { TServerComposition }
@@ -458,9 +478,15 @@ begin
   FLifecycle.OnInitialized :=
     procedure
     var
+      Folders: TArray<TWorkspaceFolder>;
       Folder: TWorkspaceFolder;
     begin
-      for Folder in TLspWorkspaceFolders.FromInitialize(FLifecycle.InitializeParams) do
+      FHover.Markdown := TLspHover.ClientSupportsMarkdown(FLifecycle.InitializeParams);
+      Folders := TLspWorkspaceFolders.FromInitialize(FLifecycle.InitializeParams);
+      FDeriveWorkspaces := Length(Folders) = 0;
+      if FDeriveWorkspaces then
+        FLogger.Info('Kein Arbeitsbereichsordner gemeldet; Ordner werden aus den geöffneten Dateien abgeleitet');
+      for Folder in Folders do
         AddWorkspace(Folder);
       FWatchedFiles.RegisterWatchers(FLifecycle.InitializeParams);
     end;
@@ -580,6 +606,36 @@ begin
   ProjectLoaded;
 end;
 
+function HasProjectFile(const AFolder: string): Boolean;
+begin
+  try
+    Result := (Length(TDirectory.GetFiles(AFolder, '*.dproj')) > 0) or
+      (Length(TDirectory.GetFiles(AFolder, '*.groupproj')) > 0);
+  except
+    // Ungültige oder nicht lesbare Ordner zählen als ohne Projekt.
+    on Exception do
+      Result := False;
+  end;
+end;
+
+procedure TServerComposition.DeriveWorkspace(const AFileName: string);
+var
+  Known: Boolean;
+  Folder: string;
+begin
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Known := WorkspaceOf(AFileName) <> nil;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  if Known then
+    Exit;
+  Folder := TLspWorkspaceFolders.ProjectFolderFor(AFileName, HasProjectFile);
+  if Folder <> '' then
+    AddWorkspace(TWorkspaceFolder.Create(Folder, ExtractFileName(Folder)));
+end;
+
 function TServerComposition.WorkspaceOf(const AFileName: string): TShellWorkspace;
 var
   Folders: TArray<TWorkspaceFolder>;
@@ -634,7 +690,9 @@ var
   State: TMemoryManagerState;
   I: Integer;
 begin
+  {$WARN SYMBOL_PLATFORM OFF}
   GetMemoryManagerState(State);
+  {$WARN SYMBOL_PLATFORM ON}
   Result := Int64(State.TotalAllocatedMediumBlockSize) + Int64(State.TotalAllocatedLargeBlockSize);
   for I := Low(State.SmallBlockTypeStates) to High(State.SmallBlockTypeStates) do
     Inc(Result, Int64(State.SmallBlockTypeStates[I].AllocatedBlockCount) *
@@ -823,6 +881,8 @@ var
   Workspace: TShellWorkspace;
   OnSave: Boolean;
 begin
+  if FDeriveWorkspaces and (AKind = TDocumentEventKind.Opened) and StartsText('file:', ADocument.Uri) then
+    DeriveWorkspace(TDocumentUris.ToPath(ADocument.Uri));
   // Nach dem Speichern einer Quelldatei kompilieren (#40), abschaltbar über compiler.onSave.
   if (AKind = TDocumentEventKind.Saved) and MatchText(ExtractFileExt(TDocumentUris.ToPath(ADocument.Uri)),
     ['.pas', '.dpr', '.dpk', '.inc']) then
@@ -1070,6 +1130,7 @@ var
   Logger: ILogger;
   Transport: IJsonRpcTransport;
   Warning: string;
+  TraceName: string;
 begin
   // Stacktraces für das Absturzprotokoll (Exception.StackTrace).
   TStackTrace.Install;
@@ -1091,7 +1152,9 @@ begin
   Transport := TJsonRpcStreamTransport.Create(TStdStreams.CreateInput, TStdStreams.ReserveOutputForProtocol, True);
   if AOptions.TraceFile <> '' then
     try
-      Transport := TJsonRpcTracingTransport.Create(Transport, CreateTraceStream(AOptions.TraceFile), True);
+      Transport := TJsonRpcTracingTransport.Create(Transport, CreateTraceStream(AOptions.TraceFile, TraceName), True);
+      if not SameText(TraceName, AOptions.TraceFile) then
+        Logger.Info(Format('Mitschnitt "%s" ist belegt, schreibe nach "%s"', [AOptions.TraceFile, TraceName]));
     except
       on E: Exception do
         Logger.Error(Format('Mitschnitt "%s" kann nicht angelegt werden: %s', [AOptions.TraceFile, E.Message]));
