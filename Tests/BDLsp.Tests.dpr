@@ -96,7 +96,11 @@ uses
   BDLsp.Common.Dfm.Tests in 'Common\Dfm\BDLsp.Common.Dfm.Tests.pas',
   BDLsp.Common.Dfm.ComponentRename.Tests in 'Common\Dfm\BDLsp.Common.Dfm.ComponentRename.Tests.pas',
   BDLsp.Common.Editing.Formatter.Tests in 'Common\Editing\BDLsp.Common.Editing.Formatter.Tests.pas',
-  BDLsp.Common.Editing.CodeActions.Tests in 'Common\Editing\BDLsp.Common.Editing.CodeActions.Tests.pas';
+  BDLsp.Common.Editing.CodeActions.Tests in 'Common\Editing\BDLsp.Common.Editing.CodeActions.Tests.pas',
+  BDLsp.IdePlugin.Lsp.Client in '..\Packages\BDLsp.IdePlugin\Source\Lsp\BDLsp.IdePlugin.Lsp.Client.pas',
+  BDLsp.IdePlugin.Lsp.Session in '..\Packages\BDLsp.IdePlugin\Source\Lsp\BDLsp.IdePlugin.Lsp.Session.pas',
+  BDLsp.IdePlugin.Lsp.Adapters.ServerProcess in '..\Packages\BDLsp.IdePlugin\Source\Lsp\BDLsp.IdePlugin.Lsp.Adapters.ServerProcess.pas',
+  BDLsp.IdePlugin.Lsp.Tests in 'IdePlugin\BDLsp.IdePlugin.Lsp.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var
