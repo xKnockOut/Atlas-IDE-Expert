@@ -508,7 +508,7 @@ end;
 
 procedure TShellWorkspace.StartIndex(const ASettings: TServerSettings);
 var
-  ProjectFile, Signature, CacheFile: string;
+  ProjectFile, Signature, State, CacheFile: string;
   Installation: ILibraryPathProvider;
   Options: TDprojOptions;
   Project: TProjectInfo;
@@ -595,9 +595,11 @@ begin
     TMonitor.Exit(FLock);
   end;
   Signature := TIndexProjectFiles.Signature(Project, Version);
-  if Signature = FSignature then
+  // Neu indexieren, wenn sich Schlüssel oder Unit-Liste ändern; der Cache hängt nur am Schlüssel.
+  State := Signature + '#' + AnsiUpperCase(String.Join(';', TIndexProjectFiles.Files(Project)));
+  if State = FSignature then
     Exit;
-  FSignature := Signature;
+  FSignature := State;
   FIndexService.Stop;
   if Installation <> nil then
     LibraryPaths := Installation.LibraryPaths(Project.Platform) + Installation.BrowsingPaths(Project.Platform)

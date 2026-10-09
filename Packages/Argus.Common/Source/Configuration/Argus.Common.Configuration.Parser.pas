@@ -423,10 +423,12 @@ begin
       if Key = 'delphiVersion' then
       begin
         if ExpectString(Value, Key, Text) then
-          if (Text <> '') and (StrToFloatDef(Text, -1, TFormatSettings.Invariant) <= 0) then
-            ReportNode(Value, 'Version wie in der Registry erwartet, z. B. "37.0" für Delphi 13')
+          if Text = '' then
+            FSettings.DelphiVersion := ''
+          else if BdsVersionOf(Text) = '' then
+            ReportNode(Value, 'Unbekannte Delphi-Version; erwartet z. B. "13" oder "37.0" für Delphi 13, "12" oder "23.0" für Delphi 12')
           else
-            FSettings.DelphiVersion := Text;
+            FSettings.DelphiVersion := BdsVersionOf(Text);
       end
       else if Key = 'language' then
       begin

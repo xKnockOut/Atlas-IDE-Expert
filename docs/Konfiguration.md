@@ -10,7 +10,7 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 
 | Schlüssel | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|
-| `delphiVersion` | string | – | z. B. `"37.0"`, `"23.0"` | Delphi-Version wie in der Registry, z. B. "37.0" für Delphi 13 oder "23.0" für Delphi 12. Leer: neueste installierte Version. |
+| `delphiVersion` | string | – | z. B. `"37.0"`, `"23.0"` | Delphi-Version als Produktnummer ("13", "12", "10.4") oder wie in der Registry ("37.0" für Delphi 13, "23.0" für Delphi 12). Leer: neueste installierte Version. |
 | `language` | string | `"de"` | `"de"`, `"en"` | Sprache der Meldungen. |
 | `project` | string | – |  | Projektdatei (.dproj) relativ zu diesem Ordner. Leer: automatisch suchen. |
 | `config` | string | – | z. B. `"Debug"`, `"Release"` | Build-Konfiguration, z. B. Debug oder Release. |

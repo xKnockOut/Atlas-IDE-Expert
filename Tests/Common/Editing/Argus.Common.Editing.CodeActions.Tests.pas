@@ -18,6 +18,8 @@ type
     [Test]
     procedure NoTryFinallyWhenAlreadyProtected;
     [Test]
+    procedure ResultGetsTryExceptInsteadOfFree;
+    [Test]
     procedure NoTryFinallyWithoutCreate;
     [Test]
     procedure SuppressLineInsertsCommentAbove;
@@ -126,6 +128,19 @@ begin
     'procedure P;' + LB + 'var' + LB + '  L: TStringList;' + LB + 'begin' + LB +
     '  L := TStringList.Create;' + LB + '  try' + LB + LB + '  finally' + LB + '    L.Free;' + LB + '  end;' + LB +
     '  L.Add(''x'');' + LB + 'end;', NewText);
+end;
+
+procedure TCodeActionTests.ResultGetsTryExceptInsteadOfFree;
+var
+  Action: TCodeAction;
+  NewText: string;
+begin
+  // Ein Rückgabewert darf nicht im finally freigegeben werden, nur im Fehlerfall.
+  Assert.IsTrue(TCodeActions.TryFinally('begin' + LB + '  Result := TList.Create;' + LB + 'end;', 1, Action));
+  NewText := Apply('begin' + LB + '  Result := TList.Create;' + LB + 'end;', Action.Edits[0]);
+  Assert.AreEqual('begin' + LB + '  Result := TList.Create;' + LB + '  try' + LB + LB + '  except' + LB +
+    '    Result.Free;' + LB + '    raise;' + LB + '  end;' + LB + 'end;', NewText);
+  Assert.AreEqual(0, Pos('finally', NewText));
 end;
 
 procedure TCodeActionTests.NoTryFinallyWhenAlreadyProtected;

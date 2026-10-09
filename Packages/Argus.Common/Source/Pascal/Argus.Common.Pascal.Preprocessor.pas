@@ -73,6 +73,11 @@ type
     class function Process(const AText: string; const AOptions: TPreprocessorOptions): TPreprocessorResult; static;
     /// <summary>Vordefinierte Symbole für Plattform und Compilerversion (z. B. Win64, 37.0).</summary>
     class function PredefinedSymbols(const APlatform: string; ACompilerVersion: Double): TArray<string>; static;
+    /// <summary>Compilerversion zur BDS-Version der Registry: bis Delphi 12 (BDS 23.0) BDS + 13,
+    /// z. B. 23.0 -> 36.0; ab Delphi 13 gleich (37.0). 0 für unbekannte Werte.</summary>
+    class function CompilerVersionOfBds(ABdsVersion: Double): Double; static;
+    /// <summary>Compilerversion aus einem Symbol VERnnn in ADefines (VER360 -> 36.0); 0 ohne.</summary>
+    class function CompilerVersionFromDefines(const ADefines: TArray<string>): Double; static;
     /// <summary>Wertet einen $IF-Ausdruck aus; False und AError bei Fehlern.</summary>
     class function Evaluate(const AExpression: string; const AOptions: TPreprocessorOptions;
       const ADefines: TArray<string>; out AError: string): Boolean; static;
@@ -477,6 +482,12 @@ var
 begin
   inherited Create;
   FOptions := AOptions;
+  // Ohne ausdrückliche Angabe folgen CompilerVersion und RTLVersion dem VERnnn der Defines,
+  // damit {$IF CompilerVersion >= 36} zu den Projektsymbolen passt.
+  if FOptions.CompilerVersion = 0 then
+    FOptions.CompilerVersion := TPascalPreprocessor.CompilerVersionFromDefines(AOptions.Defines);
+  if FOptions.RTLVersion = 0 then
+    FOptions.RTLVersion := FOptions.CompilerVersion;
   FDefines := TDictionary<string, Boolean>.Create;
   for Define in AOptions.Defines do
     if Trim(Define) <> '' then
@@ -760,6 +771,31 @@ begin
   finally
     Defines.Free;
   end;
+end;
+
+class function TPascalPreprocessor.CompilerVersionOfBds(ABdsVersion: Double): Double;
+begin
+  if ABdsVersion >= 37 then
+    Result := ABdsVersion
+  else if ABdsVersion >= 8 then
+    Result := ABdsVersion + 13
+  else
+    Result := 0;
+end;
+
+class function TPascalPreprocessor.CompilerVersionFromDefines(const ADefines: TArray<string>): Double;
+var
+  Define, Digits: string;
+  Number: Integer;
+begin
+  for Define in ADefines do
+  begin
+    Digits := Trim(Define);
+    if (Length(Digits) > 3) and SameText(Copy(Digits, 1, 3), 'VER') and
+      TryStrToInt(Copy(Digits, 4, MaxInt), Number) and (Number > 0) then
+      Exit(Number / 10);
+  end;
+  Result := 0;
 end;
 
 class function TPascalPreprocessor.PredefinedSymbols(const APlatform: string; ACompilerVersion: Double): TArray<string>;
