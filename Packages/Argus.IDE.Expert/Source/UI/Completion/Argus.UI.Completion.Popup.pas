@@ -10,6 +10,7 @@
 //     Detail kürzen, dann den Namen.
 //   - Gewählte Zeile auf einer abgerundeten Akzentfläche, Text bleibt lesbar.
 //   - Fußzeile mit Tasten und "n von m"; schmale Scrollleiste.
+//   - Gekürzte Zeilen zeigen nach 600 ms Verweilen mit der Maus den vollen Text (#420).
 //   - Detailpanel (#424) im selben Fenster, durch eine Linie abgetrennt auf
 //     abgesetzter Fläche; rechts der Liste, ohne Platz dort links davon. Ist
 //     es einmal offen, bleibt sein Bereich bis zum Schließen stehen.
@@ -29,11 +30,13 @@ uses
   System.Types,
   Vcl.Graphics,
   Vcl.Controls,
+  Vcl.ExtCtrls,
   Argus.Core.Style.Color,
   Argus.Core.Completion.Contract,
   Argus.Core.Completion.Controller,
   Argus.Core.Completion.Presentation,
   Argus.UI.Popup.Window,
+  Argus.UI.Popup.Tip,
   Argus.UI.Completion.Details;
 
 type
@@ -64,6 +67,14 @@ type
     FPanelLeft: Boolean;
     FOnSelect: TArgusPositionEvent;
     FOnAccept: TArgusPositionEvent;
+    // Tooltip für gekürzte Zeilen (#420): je sichtbarer Zeile gekürzt ja/nein, Zeile unter der Maus.
+    FTip: TArgusTextTip;
+    FTipTimer: TTimer;
+    FTruncated: TArray<Boolean>;
+    FHoverPosition: Integer;
+    procedure TipTimer(Sender: TObject);
+    procedure HideTip;
+    procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
     function PanelWidth: Integer;
     /// <summary>Linker Rand der Listenspalte im Fenster.</summary>
     function ListLeft: Integer;
@@ -95,6 +106,7 @@ type
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure DblClick; override;
     function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
   public
@@ -135,6 +147,12 @@ begin
   FVisibleRows := DefaultVisibleRows;
   FSelected := -1;
   FDetailView := TArgusDetailView.Create;
+  FHoverPosition := -1;
+  FTip := TArgusTextTip.Create(Self);
+  FTipTimer := TTimer.Create(Self);
+  FTipTimer.Enabled := False;
+  FTipTimer.Interval := 600;
+  FTipTimer.OnTimer := TipTimer;
 end;
 
 destructor TArgusCompletionPopup.Destroy;
@@ -358,6 +376,7 @@ end;
 
 procedure TArgusCompletionPopup.HideList;
 begin
+  HideTip;
   HidePopup;
   FItems := nil;
   FOrder := nil;
@@ -542,6 +561,7 @@ var
   Tags: TArgusTags;
   Tag: TArgusTag;
   Detail: string;
+  Truncated: Boolean;
 begin
   Item := FItems[FOrder[APosition]];
   Row := RowRect(ARow);
@@ -568,6 +588,7 @@ begin
     if DetailWidth < Scale(40) then
       DetailWidth := 0;
   end;
+  Truncated := (Detail <> '') and (DetailWidth < Canvas.TextWidth(Detail));
   // Rechts: Detail ganz außen, Tags davor.
   X := Right;
   if DetailWidth > 0 then
@@ -582,12 +603,18 @@ begin
   begin
     Dec(X, TagWidth(Tag));
     if X < NameLeft + Scale(40) then
+    begin
+      Truncated := True;
       Break;
+    end;
     DrawTag(Tag, X, Row);
     Dec(X, Gap);
   end;
   DrawName(Item.Name, NameLeft, Max(NameLeft, X - Gap), Row, NameLeft + NameWidth > X - Gap);
   Canvas.Brush.Style := bsSolid;
+  if ARow >= Length(FTruncated) then
+    SetLength(FTruncated, ARow + 1);
+  FTruncated[ARow] := Truncated or (NameLeft + NameWidth > X - Gap);
 end;
 
 procedure TArgusCompletionPopup.DrawScrollBar;
@@ -672,9 +699,62 @@ begin
     FOnAccept(FSelected);
 end;
 
+procedure TArgusCompletionPopup.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  Position: Integer;
+begin
+  inherited;
+  Position := RowAt(X, Y);
+  if Position = FHoverPosition then
+    Exit;
+  HideTip;
+  FHoverPosition := Position;
+  FTipTimer.Enabled := Position >= 0;
+end;
+
+procedure TArgusCompletionPopup.CMMouseLeave(var Message: TMessage);
+begin
+  inherited;
+  HideTip;
+  FHoverPosition := -1;
+end;
+
+procedure TArgusCompletionPopup.HideTip;
+begin
+  FTipTimer.Enabled := False;
+  FTip.HidePopup;
+end;
+
+procedure TArgusCompletionPopup.TipTimer(Sender: TObject);
+var
+  Row: Integer;
+  Item: TArgusCompletionItem;
+  Text, Detail: string;
+  Tag: TArgusTag;
+  Area: TRect;
+begin
+  FTipTimer.Enabled := False;
+  Row := FHoverPosition - FTop;
+  if not IsShown or (FHoverPosition < 0) or (FHoverPosition >= Length(FOrder)) or (Row < 0) or
+    (Row >= Length(FTruncated)) or not FTruncated[Row] then
+    Exit;
+  Item := FItems[FOrder[FHoverPosition]];
+  Text := Item.Name;
+  Detail := TArgusItemPresentation.Detail(Item);
+  if Detail <> '' then
+    Text := Text + '   ' + Detail;
+  for Tag in TArgusItemPresentation.Tags(Item) do
+    Text := Text + '   [' + Tag.Text + ']';
+  FTip.Colors := Colors;
+  FTip.SetScaling(PPI, 1, Font.Name, Font.Size);
+  Area := RowRect(Row);
+  FTip.ShowText(Text, ClientToScreen(Point(Area.Left, Area.Bottom + Scale(2))));
+end;
+
 function TArgusCompletionPopup.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
 begin
   Result := True;
+  HideTip;
   if WheelDelta > 0 then
     FTop := Max(0, FTop - 3)
   else

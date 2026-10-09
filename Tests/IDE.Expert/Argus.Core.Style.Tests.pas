@@ -64,6 +64,8 @@ type
     procedure TokensCoverWholeText;
     [Test]
     procedure NameAfterDotIsNoKeyword;
+    [Test]
+    procedure FindsDefaultValues;
   end;
 
   [TestFixture]
@@ -90,6 +92,7 @@ implementation
 uses
   System.SysUtils,
   System.Math,
+  System.Types,
   Argus.Core.Style.Syntax,
   Argus.Core.Style.Scaling,
   Argus.Core.Completion.Contract,
@@ -348,6 +351,24 @@ begin
   Assert.AreEqual('k:constructor|p: TFoo.Create(Owner: TComponent)|',
     Describe('constructor TFoo.Create(Owner: TComponent)'));
   Assert.AreEqual('p:Stream.Read(Buffer)|', Describe('Stream.Read(Buffer)'));
+end;
+
+function Defaults(const ASignature: string): string;
+var
+  Range: TPoint;
+begin
+  Result := '';
+  for Range in TArgusSyntax.DefaultRanges(ASignature) do
+    Result := Result + '[' + Copy(ASignature, Range.X + 1, Range.Y - Range.X) + ']';
+end;
+
+procedure TArgusSyntaxTests.FindsDefaultValues;
+begin
+  Assert.AreEqual('[ = 1]', Defaults('function Pos(const SubStr, Str: string; Offset: Integer = 1): Integer'));
+  Assert.AreEqual('[ = ''a;b''][ = 1]', Defaults('procedure Log(Msg: string = ''a;b''; Level: Integer = 1)'));
+  Assert.AreEqual('[ = nil][ = []]', Defaults('procedure P(A: TFoo = nil; B: TArray<Integer> = [])'));
+  Assert.AreEqual('', Defaults('procedure X(A: array of Integer)'));
+  Assert.AreEqual('', Defaults('property Items[Index: Integer]: string read Get; default;'));
 end;
 
 { TArgusPresentationTests }

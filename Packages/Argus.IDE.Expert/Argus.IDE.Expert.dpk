@@ -65,6 +65,7 @@ contains
   Argus.Core.Completion.Presentation in 'Source\Core\Completion\Argus.Core.Completion.Presentation.pas',
   Argus.Core.Completion.Word in 'Source\Core\Completion\Argus.Core.Completion.Word.pas',
   Argus.UI.Popup.Styled in 'Source\UI\Popup\Argus.UI.Popup.Styled.pas',
+  Argus.UI.Popup.Tip in 'Source\UI\Popup\Argus.UI.Popup.Tip.pas',
   Argus.IDE.Editor.Style in 'Source\IDE\Editor\Argus.IDE.Editor.Style.pas',
   Argus.IDE.Editor.Buffer in 'Source\IDE\Editor\Argus.IDE.Editor.Buffer.pas',
   Argus.IDE.Editor.KeyHook in 'Source\IDE\Editor\Argus.IDE.Editor.KeyHook.pas',

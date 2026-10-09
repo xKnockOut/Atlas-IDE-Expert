@@ -36,6 +36,14 @@ type
     procedure CompletesMembersFromServer;
   end;
 
+  /// <summary>Zeitbudget (#409): Filtern und Sortieren beim Weitertippen.</summary>
+  [TestFixture]
+  TArgusMatchingBudgetTests = class
+  public
+    [Test]
+    procedure Filters5000EntriesWithin12ms;
+  end;
+
   [TestFixture]
   TArgusWordTests = class
   public
@@ -61,6 +69,8 @@ uses
   Argus.Core.Completion.Providers.Fixed,
   Argus.Core.Completion.Providers.Server,
   Argus.Core.Completion.Word,
+  Argus.Core.Completion.Matching,
+  System.Diagnostics,
   Argus.Core.Lsp.Session,
   Argus.Core.Lsp.Adapters.ServerProcess;
 
@@ -403,6 +413,43 @@ begin
   end;
 end;
 
+{ TArgusMatchingBudgetTests }
+
+procedure TArgusMatchingBudgetTests.Filters5000EntriesWithin12ms;
+const
+  Words: array[0..11] of string = ('Add', 'String', 'List', 'Item', 'Get', 'Set', 'Count', 'Object', 'Begin',
+    'Update', 'Index', 'Value');
+var
+  Items: TArgusCompletionItems;
+  Index, Run: Integer;
+  Pattern: string;
+  Watch: TStopwatch;
+  Times: TArray<Int64>;
+begin
+  SetLength(Items, 5000);
+  for Index := 0 to High(Items) do
+  begin
+    Items[Index].Name := Words[Index mod 12] + Words[(Index div 12) mod 12] + Words[(Index div 144) mod 12] +
+      IntToStr(Index);
+    Items[Index].Rank := Index;
+  end;
+  // Typische Schritte beim Tippen: Anfang, CamelCase, Teilfolge, kein Treffer.
+  for Pattern in ['A', 'Ad', 'AddS', 'ASL', 'stl', 'xyz'] do
+  begin
+    TArgusCompletionMatcher.Filter(Items, Pattern);
+    Times := nil;
+    for Run := 1 to 5 do
+    begin
+      Watch := TStopwatch.StartNew;
+      TArgusCompletionMatcher.Filter(Items, Pattern);
+      Times := Times + [Watch.ElapsedMilliseconds];
+    end;
+    // Median von fünf Läufen, damit ein einzelner Ausreißer der Maschine nicht zählt.
+    TArray.Sort<Int64>(Times);
+    Assert.IsTrue(Times[2] <= 12, Format('Filtern nach "%s" dauerte %d ms', [Pattern, Times[2]]));
+  end;
+end;
+
 { TArgusWordTests }
 
 procedure TArgusWordTests.FindsStartBeforeCursor;
@@ -432,6 +479,7 @@ end;
 initialization
   TDUnitX.RegisterTestFixture(TArgusCompletionProviderTests);
   TDUnitX.RegisterTestFixture(TArgusServerCompletionTests);
+  TDUnitX.RegisterTestFixture(TArgusMatchingBudgetTests);
   TDUnitX.RegisterTestFixture(TArgusWordTests);
 
 end.
