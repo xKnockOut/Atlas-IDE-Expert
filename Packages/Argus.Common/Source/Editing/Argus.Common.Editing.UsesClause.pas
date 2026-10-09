@@ -20,10 +20,18 @@ uses
   Argus.Common.Rules.Contract;
 
 type
+  /// <summary>Eintrag einer uses-, contains- oder requires-Liste mit Position (#183).</summary>
+  TUsesReference = record
+    Name: string;
+    Range: TTextRange;
+  end;
+
   TUsesClauses = class
   public
     /// <summary>Alle Unit-Namen aus den uses-Listen (interface und implementation).</summary>
     class function UsedUnits(const ATokens: TArray<TPascalToken>): TArray<string>; static;
+    /// <summary>Alle Einträge aus uses, contains und requires mit Position, in Quelltextreihenfolge.</summary>
+    class function References(const ATokens: TArray<TPascalToken>): TArray<TUsesReference>; static;
     /// <summary>Name der eigenen Unit bzw. des Programms; '' wenn unbekannt.</summary>
     class function OwnName(const ATokens: TArray<TPascalToken>): string; static;
     /// <summary>True, wenn AUnitName eingebunden ist, auch über einen der Namespaces.</summary>
@@ -152,6 +160,76 @@ begin
       Index := ReadNames(ATokens, Index, Result);
       if Index < 0 then
         Exit;
+    end;
+    Inc(Index);
+  end;
+end;
+
+/// <summary>True am Anfang einer uses-, contains- oder requires-Liste. contains und
+/// requires sind keine reservierten Wörter, nur am Anweisungsanfang gemeint.</summary>
+function IsListStart(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+var
+  Previous: Integer;
+begin
+  if ATokens[AIndex].IsKeyword('uses') or ATokens[AIndex].IsKeyword('requires') or
+    ATokens[AIndex].IsKeyword('contains') then
+    Exit(True);
+  if not ((ATokens[AIndex].Kind = TPascalTokenKind.Identifier) and
+    (SameText(ATokens[AIndex].Text, 'contains') or SameText(ATokens[AIndex].Text, 'requires'))) then
+    Exit(False);
+  Previous := AIndex - 1;
+  while (Previous >= 0) and IsTrivia(ATokens[Previous]) do
+    Dec(Previous);
+  Result := (Previous >= 0) and ATokens[Previous].IsSymbol(';');
+end;
+
+class function TUsesClauses.References(const ATokens: TArray<TPascalToken>): TArray<TUsesReference>;
+var
+  Index, First, Last: Integer;
+  Name: string;
+  AfterIn: Boolean;
+  Reference: TUsesReference;
+begin
+  Result := nil;
+  Index := 0;
+  while Index <= High(ATokens) do
+  begin
+    if IsListStart(ATokens, Index) then
+    begin
+      // uses A, B.C in 'b.pas', D; ein Eintrag je Name, Position über alle Namensteile.
+      Name := '';
+      First := -1;
+      Last := -1;
+      AfterIn := False;
+      Inc(Index);
+      while Index <= High(ATokens) do
+      begin
+        if ATokens[Index].IsSymbol(';') or ATokens[Index].IsSymbol(',') then
+        begin
+          if Name <> '' then
+          begin
+            Reference.Name := Name;
+            Reference.Range := TTextRange.Create(ATokens[First].StartPos, ATokens[Last].EndPos);
+            Result := Result + [Reference];
+          end;
+          Name := '';
+          First := -1;
+          AfterIn := False;
+          if ATokens[Index].IsSymbol(';') then
+            Break;
+        end
+        else if ATokens[Index].IsKeyword('in') then
+          AfterIn := True
+        else if not AfterIn and ((ATokens[Index].Kind = TPascalTokenKind.Identifier) or
+          ATokens[Index].IsSymbol('.')) then
+        begin
+          if First < 0 then
+            First := Index;
+          Last := Index;
+          Name := Name + ATokens[Index].Text;
+        end;
+        Inc(Index);
+      end;
     end;
     Inc(Index);
   end;

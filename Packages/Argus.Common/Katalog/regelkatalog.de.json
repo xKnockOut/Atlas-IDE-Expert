@@ -29,6 +29,11 @@
       "id": "confusable-identifier",
       "name": "Verwechselbarer Bezeichner",
       "description": "Bezeichner mit Zeichen aus mehreren Schriften oder Nicht-ASCII-Zeichen sind mit anderen verwechselbar."
+    },
+    {
+      "id": "forbidden-uses",
+      "name": "Verbotene uses-Beziehung",
+      "description": "Ein uses-Eintrag verletzt eine Schichtregel unter \"layers\" in argus.json, z. B. darf *.Common.* nicht Vcl.* verwenden."
     }
   ]
 }

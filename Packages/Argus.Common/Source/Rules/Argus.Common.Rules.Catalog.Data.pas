@@ -73,6 +73,15 @@ begin
     '      "description": "Identifiers that mix scripts or contain non-ASCII characters can be confused with others.",' + #10 +
     '      "bad": "var Pаssword: string; { Cyrillic ''а'' }",' + #10 +
     '      "good": "var Password: string;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "forbidden-uses",' + #10 +
+    '      "name": "Forbidden uses",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "description": "A uses entry violates a layer rule configured under \"layers\" in argus.json, e.g. *.Common.* must not use Vcl.*.",' + #10 +
+    '      "bad": "unit App.Common.Model;\ninterface\nuses Vcl.Forms;",' + #10 +
+    '      "good": "unit App.Common.Model;\ninterface\nuses System.Classes;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -114,6 +123,11 @@ begin
     '      "id": "confusable-identifier",' + #10 +
     '      "name": "Verwechselbarer Bezeichner",' + #10 +
     '      "description": "Bezeichner mit Zeichen aus mehreren Schriften oder Nicht-ASCII-Zeichen sind mit anderen verwechselbar."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "forbidden-uses",' + #10 +
+    '      "name": "Verbotene uses-Beziehung",' + #10 +
+    '      "description": "Ein uses-Eintrag verletzt eine Schichtregel unter \"layers\" in argus.json, z. B. darf *.Common.* nicht Vcl.* verwenden."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

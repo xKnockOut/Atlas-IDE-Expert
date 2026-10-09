@@ -110,6 +110,7 @@ contains
   Argus.Common.Editing.UsesClause in 'Source\Editing\Argus.Common.Editing.UsesClause.pas',
   Argus.Common.Editing.UsesCommand in 'Source\Editing\Argus.Common.Editing.UsesCommand.pas',
   Argus.Common.Semantics.UnresolvedNames in 'Source\Semantics\Argus.Common.Semantics.UnresolvedNames.pas',
+  Argus.Common.Rules.Builtin.Architecture in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.Architecture.pas',
   Argus.Common.Editing.ClassCompletion in 'Source\Editing\Argus.Common.Editing.ClassCompletion.pas',
   Argus.Common.Dfm.Contract in 'Source\Dfm\Argus.Common.Dfm.Contract.pas',
   Argus.Common.Dfm.Parser in 'Source\Dfm\Argus.Common.Dfm.Parser.pas',

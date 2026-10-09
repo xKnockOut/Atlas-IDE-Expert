@@ -16,6 +16,8 @@ type
     [Test]
     procedure ReadsOwnName;
     [Test]
+    procedure ReadsReferencesWithPositions;
+    [Test]
     procedure KnowsUnitsWithoutNamespace;
     [Test]
     procedure AppendsToSingleLineUses;
@@ -87,6 +89,28 @@ procedure TUsesClauseTests.ReadsUsedUnitsOfBothSections;
 begin
   Assert.AreEqual('System.SysUtils Werkzeug Classes Daten.Kunden',
     string.Join(' ', TUsesClauses.UsedUnits(TPascalLexer.Tokenize(UnitText))));
+end;
+
+procedure TUsesClauseTests.ReadsReferencesWithPositions;
+var
+  References: TArray<TUsesReference>;
+  Name: string;
+begin
+  // Zeile 2: "uses A, B.C in 'b.pas';" – Position über alle Namensteile, ohne Pfad.
+  References := TUsesClauses.References(TPascalLexer.Tokenize(
+    'unit U;'#10'interface'#10'uses A, B.C in ''b.pas'';'#10'implementation'#10'end.'));
+  Assert.AreEqual(2, Integer(Length(References)));
+  Name := References[1].Name;
+  Assert.AreEqual('B.C', Name);
+  Assert.AreEqual(2, References[1].Range.StartPos.Line);
+  Assert.AreEqual(8, References[1].Range.StartPos.Character);
+  Assert.AreEqual(11, References[1].Range.EndPos.Character);
+  // Packages: requires und contains, auch wenn sie als Bezeichner gelesen werden.
+  References := TUsesClauses.References(TPascalLexer.Tokenize(
+    'package P;'#10'requires rtl;'#10'contains X in ''x.pas'', Y;'#10'end.'));
+  Assert.AreEqual(3, Integer(Length(References)));
+  Name := References[2].Name;
+  Assert.AreEqual('Y', Name);
 end;
 
 procedure TUsesClauseTests.ReadsOwnName;
