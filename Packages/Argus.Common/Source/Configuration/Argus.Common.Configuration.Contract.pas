@@ -158,6 +158,8 @@ type
     UsesKeep: TArray<string>;
     /// <summary>Obergrenze für den Symbolindex in MB; 0 = unbegrenzt (#185).</summary>
     MemoryBudgetMb: Integer;
+    /// <summary>Zeitlimit für Anfragen in ms (#283); länger laufende werden abgebrochen.</summary>
+    RequestTimeoutMs: Integer;
     /// <summary>Vorgaben, wenn keine Konfigurationsdatei existiert.</summary>
     class function Default: TServerSettings; static;
     /// <summary>Schweregrad aus der Konfiguration oder ADefault.</summary>
@@ -389,6 +391,7 @@ begin
   Result.SortUsesByNamespace := False;
   Result.UsesKeep := nil;
   Result.MemoryBudgetMb := 0;
+  Result.RequestTimeoutMs := 10000;
 end;
 
 function TServerSettings.IsRuleEnabledExplicitly(const ARuleId: string): Boolean;

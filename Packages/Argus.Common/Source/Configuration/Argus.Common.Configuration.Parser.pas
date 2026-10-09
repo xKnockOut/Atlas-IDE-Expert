@@ -688,6 +688,13 @@ begin
         else
           ReportNode(Value, '"memoryBudgetMb" muss eine ganze Zahl ab 0 sein');
       end
+      else if Key = 'requestTimeoutMs' then
+      begin
+        if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Budget) and (Budget >= 1000) then
+          FSettings.RequestTimeoutMs := Budget
+        else
+          ReportNode(Value, '"requestTimeoutMs" muss eine ganze Zahl ab 1000 sein');
+      end
       else if Key = 'format' then
       begin
         if Value.Kind = TJsonKind.Object_ then
@@ -878,7 +885,9 @@ begin
     else if Key = 'usesKeep' then
       Result.UsesKeep := FileSettings.UsesKeep
     else if Key = 'memoryBudgetMb' then
-      Result.MemoryBudgetMb := FileSettings.MemoryBudgetMb;
+      Result.MemoryBudgetMb := FileSettings.MemoryBudgetMb
+    else if Key = 'requestTimeoutMs' then
+      Result.RequestTimeoutMs := FileSettings.RequestTimeoutMs;
 end;
 
 class function TConfigurationParser.Parse(const AText: string; out AIssues: TArray<TConfigurationIssue>): TServerSettings;

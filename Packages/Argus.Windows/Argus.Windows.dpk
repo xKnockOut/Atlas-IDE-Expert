@@ -40,6 +40,7 @@ contains
   Argus.Windows.Diagnostics.DebugOutput in 'Source\Diagnostics\Argus.Windows.Diagnostics.DebugOutput.pas',
   Argus.Windows.Diagnostics.Adapters.DebugOutputSink in 'Source\Diagnostics\Argus.Windows.Diagnostics.Adapters.DebugOutputSink.pas',
   Argus.Windows.Diagnostics.StackTrace in 'Source\Diagnostics\Argus.Windows.Diagnostics.StackTrace.pas',
+  Argus.Windows.Process.ParentWatcher in 'Source\Process\Argus.Windows.Process.ParentWatcher.pas',
   Argus.Windows.Projects.DelphiInstallation in 'Source\Projects\Argus.Windows.Projects.DelphiInstallation.pas',
   Argus.Windows.Compiler.Adapters.ProcessRunner in 'Source\Compiler\Argus.Windows.Compiler.Adapters.ProcessRunner.pas',
   Argus.Windows.Documents.PathCanonicalizer in 'Source\Documents\Argus.Windows.Documents.PathCanonicalizer.pas',

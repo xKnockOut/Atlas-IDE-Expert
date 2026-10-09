@@ -53,6 +53,7 @@
         <DCCReference Include="Common\Argus.Common.Product.Version.Tests.pas"/>
         <DCCReference Include="Common\Logging\Argus.Common.Logging.Providers.Logger.Tests.pas"/>
         <DCCReference Include="Common\Logging\Argus.Common.Logging.Providers.StreamSink.Tests.pas"/>
+        <DCCReference Include="Common\Logging\Argus.Common.Logging.Providers.RotatingFileStream.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Argus.Common.JsonRpc.TestSupport.pas"/>
         <DCCReference Include="Common\JsonRpc\Argus.Common.JsonRpc.StreamTransport.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Argus.Common.JsonRpc.TracingTransport.Tests.pas"/>

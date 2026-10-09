@@ -71,6 +71,7 @@
         <DCCReference Include="Source\Product\Argus.Common.Product.Version.pas"/>
         <DCCReference Include="Source\Logging\Argus.Common.Logging.Contract.pas"/>
         <DCCReference Include="Source\Logging\Providers\Argus.Common.Logging.Providers.Logger.pas"/>
+        <DCCReference Include="Source\Logging\Providers\Argus.Common.Logging.Providers.RotatingFileStream.pas"/>
         <DCCReference Include="Source\Logging\Providers\Argus.Common.Logging.Providers.StreamSink.pas"/>
         <DCCReference Include="Source\JsonRpc\Argus.Common.JsonRpc.Contract.pas"/>
         <DCCReference Include="Source\JsonRpc\Argus.Common.JsonRpc.Messages.pas"/>
