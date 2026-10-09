@@ -357,19 +357,19 @@ begin
   end;
   if not Info.Found then
     Exit(TJSONNull.Create);
-  Contents := TJSONObject.Create;
+  Result := TJSONObject.Create;
   if FMarkdown then
   begin
+    Contents := TJSONObject.Create;
     Contents.AddPair('kind', 'markdown');
     Contents.AddPair('value', Info.ToMarkdown);
+    TJSONObject(Result).AddPair('contents', Contents);
   end
   else
-  begin
-    Contents.AddPair('kind', 'plaintext');
-    Contents.AddPair('value', Info.ToPlainText);
-  end;
-  Result := TJSONObject.Create;
-  TJSONObject(Result).AddPair('contents', Contents);
+    // Klartext als einfacher String und ohne "range", genau wie DelphiLSP
+    // antwortet. RAD Studio zeigt den Hover benutzerdefinierter Server trotzdem
+    // nicht als Tooltip an; dafür braucht es ein IDE-Plugin (#175).
+    TJSONObject(Result).AddPair('contents', Info.ToPlainText);
 end;
 
 end.
