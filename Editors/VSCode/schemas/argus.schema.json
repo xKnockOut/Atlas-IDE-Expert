@@ -112,6 +112,11 @@
         }
       }
     },
+    "usesCommand": {
+      "type": "boolean",
+      "default": true,
+      "description": "Eine Zeile \"/uses Unit1, Unit2\" wird nach Enter gelöscht und die Units kommen ins passende uses."
+    },
     "memoryBudgetMb": {
       "type": "integer",
       "minimum": 0,
