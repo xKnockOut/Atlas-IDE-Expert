@@ -85,6 +85,9 @@ type
     procedure Close;
     /// <summary>Taste aus dem Tastatur-Hook; True, wenn verbraucht.</summary>
     function HandleKey(AKey: TArgusNavigationKey): Boolean;
+    /// <summary>Befehle im offenen Popup: Strg+Q Panel ein/aus (#428).</summary>
+    function WantsCommand(AKey: Word; AShift: TShiftState): Boolean;
+    procedure HandleCommand(AKey: Word; AShift: TShiftState);
     /// <summary>Editortext wurde geändert.</summary>
     procedure EditorModified(const AView: IOTAEditView);
     /// <summary>Bricht laufende Serveranfragen ab und wartet auf sie; vor dem Freigeben der Sitzung.</summary>
@@ -103,6 +106,7 @@ uses
   DockForm,
   Argus.Core.Lsp.Session,
   Argus.Core.Completion.Word,
+  Argus.Core.Settings.Plugin,
   Argus.IDE.Settings.Store,
   Argus.IDE.Editor.Buffer,
   Argus.IDE.Editor.Style;
@@ -172,14 +176,17 @@ function TCompletionKeys.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
 var
   Navigation: TArgusNavigationKey;
 begin
-  Result := (AShift = []) and NavigationKey(AKey, Navigation) and FOwner.WantsKey(Navigation);
+  Result := ((AShift = []) and NavigationKey(AKey, Navigation) and FOwner.WantsKey(Navigation)) or
+    FOwner.WantsCommand(AKey, AShift);
 end;
 
 procedure TCompletionKeys.HandleKey(AKey: Word; AShift: TShiftState);
 var
   Navigation: TArgusNavigationKey;
 begin
-  if NavigationKey(AKey, Navigation) then
+  if FOwner.WantsCommand(AKey, AShift) then
+    FOwner.HandleCommand(AKey, AShift)
+  else if NavigationKey(AKey, Navigation) then
     FOwner.HandleKey(Navigation);
 end;
 { TArgusEditNotifier }
@@ -269,6 +276,26 @@ begin
     begin
       FController.Select(APosition);
       FController.CommitSelected;
+    end;
+  // Gezogene Breiten (#416) und eingeklapptes Panel (#428) gelten auch beim nächsten Mal.
+  FPopup.OnWidthsChanged :=
+    procedure(AListWidth, APanelWidth: Integer)
+    var
+      Settings: TArgusPluginSettings;
+    begin
+      Settings := TArgusIdeSettings.Current;
+      Settings.ListWidth := AListWidth;
+      Settings.PanelWidth := APanelWidth;
+      TArgusIdeSettings.Update(Settings);
+    end;
+  FPopup.OnPanelToggled :=
+    procedure(ACollapsed: Boolean)
+    var
+      Settings: TArgusPluginSettings;
+    begin
+      Settings := TArgusIdeSettings.Current;
+      Settings.PanelCollapsed := ACollapsed;
+      TArgusIdeSettings.Update(Settings);
     end;
   FKeys := TCompletionKeys.Create(Self);
   FTimer := TTimer.Create(nil);
@@ -372,6 +399,9 @@ begin
     Context.Kind := TArgusContextKind.Identifier;
   ApplyStyle(Anchor);
   FPopup.VisibleRows := TArgusIdeSettings.Current.VisibleRows;
+  FPopup.ManualListWidth := TArgusIdeSettings.Current.ListWidth;
+  FPopup.PanelWidthSetting := TArgusIdeSettings.Current.PanelWidth;
+  FPopup.PanelCollapsed := TArgusIdeSettings.Current.PanelCollapsed;
   // Das Popup beginnt am Wortanfang, nicht am Caret.
   FPopup.Canvas.Font := FPopup.Font;
   Anchor.Left := Anchor.Left - FPopup.Canvas.TextWidth(Context.Prefix);
@@ -423,6 +453,17 @@ function TArgusEditorCompletion.WantsKey(AKey: TArgusNavigationKey): Boolean;
 begin
   // Liste offen: alle Navigationstasten. Leerer Zustand (#423): nur Esc.
   Result := FController.Visible or (FController.Empty and (AKey = TArgusNavigationKey.Cancel));
+end;
+
+function TArgusEditorCompletion.WantsCommand(AKey: Word; AShift: TShiftState): Boolean;
+begin
+  Result := FController.Visible and (AKey = Ord('Q')) and (AShift = [ssCtrl]);
+end;
+
+procedure TArgusEditorCompletion.HandleCommand(AKey: Word; AShift: TShiftState);
+begin
+  if (AKey = Ord('Q')) and (AShift = [ssCtrl]) then
+    FPopup.TogglePanel;
 end;
 
 function TArgusEditorCompletion.HandleKey(AKey: TArgusNavigationKey): Boolean;
