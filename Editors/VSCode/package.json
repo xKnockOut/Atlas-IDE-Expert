@@ -1,8 +1,8 @@
 {
   "name": "argus",
   "displayName": "Argus",
-  "description": "Minimale Hülle, die den Argus-Server (Argus IDE Expert) für Delphi-Quelltexte startet.",
-  "version": "0.1.0",
+  "description": "Delphi/Object Pascal in VS Code mit dem Language Server Argus: Navigation, Prüfregeln, Formatierung, Umbenennen und mehr.",
+  "version": "0.2.0",
   "publisher": "xknockout",
   "license": "SEE LICENSE IN ../../LICENSE",
   "private": true,
@@ -17,7 +17,10 @@
     "Programming Languages"
   ],
   "main": "./out/extension.js",
-  "activationEvents": [],
+  "activationEvents": [
+    "workspaceContains:**/*.dproj",
+    "workspaceContains:**/argus.json"
+  ],
   "contributes": {
     "languages": [
       {
@@ -47,12 +50,12 @@
         "argus.serverPath": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Pfad zu `ArgusServer.exe`. Leer: `Output\\Win64\\Debug\\Bin\\ArgusServer.exe` im ersten Arbeitsbereichsordner."
+          "markdownDescription": "Pfad zu `ArgusServer.exe`. Leer: die mitgelieferte EXE (`server\\` in der Erweiterung), dann `Output\\Win64\\Release|Debug\\Bin` im Arbeitsbereich, zuletzt `PATH`."
         },
         "argus.delphiVersion": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Delphi-Version wie in der Registry, z. B. `37.0`; leer: neueste installierte. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Delphi-Version wie in der Registry, z. B. `37.0`; leer: passend zur `ProjectVersion` der .dproj, sonst neueste installierte. argus.json im Projekt hat Vorrang."
         },
         "argus.language": {
           "type": "string",
@@ -163,6 +166,11 @@
         "category": "Argus"
       },
       {
+        "command": "argus.server.rebuildIndex",
+        "title": "Index neu aufbauen",
+        "category": "Argus"
+      },
+      {
         "command": "argus.selectBuild",
         "title": "Konfiguration und Plattform wählen",
         "category": "Argus"
@@ -178,8 +186,9 @@
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "package": "vsce package --no-dependencies",
-    "lint": "tsc --noEmit -p ./"
+    "package": "vsce package",
+    "lint": "tsc --noEmit -p ./",
+    "vscode:prepublish": "npm run compile"
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"
@@ -187,6 +196,7 @@
   "devDependencies": {
     "@types/node": "^18.19.0",
     "@types/vscode": "~1.82.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "@vscode/vsce": "^3.2.1"
   }
 }
