@@ -6,7 +6,7 @@
 //
 // Kurze Schlüssel halten die Datei klein:
 //   {"version":1,"units":[{"u":"Name","f":"Datei","t":Stamp,"h":"Hash",
-//     "iu":[...],"mu":[...],"l":Bibliothek,"c":Kompakt,"s":[[Name,Container,Art,
+//     "iu":[...],"mu":[...],"l":Bibliothek,"c":Kompakt,"ini":Initialisierung,"s":[[Name,Container,Art,
 //     L1,C1,L2,C2, SL1,SC1,SL2,SC2, InInterface, [Vorfahren], Typ, Typargumente,
 //     Vorfahr-Typargumente, Typparameter, Sichtbarkeit, MinArgs, MaxArgs,
 //     [Parametertypen], Default], ...]}]}
@@ -20,7 +20,7 @@ uses
 type
   TIndexCache = class
   public
-    const FormatVersion = 4;
+    const FormatVersion = 5;
     class function Serialize(const AUnits: TArray<TUnitIndex>): string; static;
     /// <summary>Liest den Cache; bei falscher Version oder kaputtem JSON leer.</summary>
     class function Deserialize(const AText: string): TArray<TUnitIndex>; static;
@@ -164,6 +164,8 @@ begin
         Item.AddPair('l', TJSONBool.Create(True));
       if UnitIndex.Compact then
         Item.AddPair('c', TJSONBool.Create(True));
+      if UnitIndex.HasInitialization then
+        Item.AddPair('ini', TJSONBool.Create(True));
       if Length(UnitIndex.Includes) > 0 then
         Item.AddPair('inc', StringsToJson(UnitIndex.Includes));
       Symbols := TJSONArray.Create;
@@ -222,6 +224,7 @@ begin
       UnitIndex.Library_ := FlagOf(Item.GetValue('l'));
       UnitIndex.Compact := FlagOf(Item.GetValue('c'));
       UnitIndex.Includes := JsonToStrings(Item.GetValue('inc'));
+      UnitIndex.HasInitialization := Item.GetValue<Boolean>('ini', False);
       SymbolList.Clear;
       Value := Item.GetValue('s');
       if Value is TJSONArray then

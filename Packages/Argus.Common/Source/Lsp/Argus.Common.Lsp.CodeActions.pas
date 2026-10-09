@@ -8,7 +8,9 @@
 // Für editor.codeActionsOnSave (#182) gibt es source.organizeImports (uses
 // aufräumen, sortieren über "sortUses") und source.fixAll (alle als sicher
 // markierten Korrekturen). Beide kommen nur, wenn der Client sie über
-// context.only ausdrücklich anfragt.
+// context.only ausdrücklich anfragt. Ebenso source.removeUnusedImports (#284);
+// "fehlende Unit ergänzen" und "ins implementation verschieben" kommen mit den
+// übrigen Korrekturen, sobald UsesContextFor gesetzt ist.
 
 interface
 
@@ -19,11 +21,14 @@ uses
   Argus.Common.JsonRpc.Dispatcher,
   Argus.Common.Documents.Contract,
   Argus.Common.Editing.CodeActions,
+  Argus.Common.Editing.UsesActions,
   Argus.Common.Lsp.SyntaxDiagnostics;
 
 type
   /// <summary>Einstellung "sortUses" für AUri.</summary>
   TSortUsesProvider = reference to function(const AUri: string): Boolean;
+  /// <summary>Index und Einstellungen für die uses-Aktionen; False ohne Index.</summary>
+  TUsesContextProvider = reference to function(const AUri: string; out AContext: TUsesContext): Boolean;
 
   TLspCodeActions = class
   public const
@@ -32,6 +37,8 @@ type
     FStore: IDocumentStore;
     FRuleProvider: TRuleContextProvider;
     FSortUsesFor: TSortUsesProvider;
+    FSortUsesByNamespaceFor: TSortUsesProvider;
+    FUsesContextFor: TUsesContextProvider;
     function HandleCodeAction(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore; const ARuleProvider: TRuleContextProvider);
@@ -42,6 +49,10 @@ type
     class function ActionToJson(const AUri: string; const AAction: TCodeAction): TJSONObject; static;
     /// <summary>Ohne Zuweisung werden uses nicht sortiert.</summary>
     property SortUsesFor: TSortUsesProvider read FSortUsesFor write FSortUsesFor;
+    /// <summary>"sortUses": "namespace"; ohne Zuweisung rein alphabetisch.</summary>
+    property SortUsesByNamespaceFor: TSortUsesProvider read FSortUsesByNamespaceFor write FSortUsesByNamespaceFor;
+    /// <summary>Ohne Zuweisung keine uses-Aktionen (#284).</summary>
+    property UsesContextFor: TUsesContextProvider read FUsesContextFor write FUsesContextFor;
   end;
 
 implementation
@@ -77,6 +88,7 @@ begin
   Kinds.Add(RewriteKind);
   Kinds.Add(OrganizeImportsKind);
   Kinds.Add(FixAllKind);
+  Kinds.Add(RemoveUnusedKind);
   Result := TJSONObject.Create;
   Result.AddPair('codeActionKinds', Kinds);
 end;
@@ -132,7 +144,9 @@ var
   Context: TRuleContext;
   Findings: TArray<TRuleFinding>;
   Action, Completion: TCodeAction;
-  HasCompletion, WantsEditing, WantsOrganize, WantsFixAll: Boolean;
+  HasCompletion, WantsEditing, WantsOrganize, WantsFixAll, WantsRemoveUnused: Boolean;
+  UsesContext: TUsesContext;
+  UsesActions: TArray<TCodeAction>;
   Only: TArray<string>;
   OnlyValue: TJSONArray;
   Item: TJSONValue;
@@ -152,6 +166,7 @@ begin
   // source.* nur auf ausdrückliche Anfrage, nicht bei jeder Cursorbewegung.
   WantsOrganize := (Only <> nil) and TCodeActions.KindRequested(OrganizeImportsKind, Only);
   WantsFixAll := (Only <> nil) and TCodeActions.KindRequested(FixAllKind, Only);
+  WantsRemoveUnused := (Only <> nil) and TCodeActions.KindRequested(RemoveUnusedKind, Only);
   Findings := nil;
   Shared := TSyntaxTreeCache.Get(Document);
   Tree := Shared.Tree;
@@ -166,6 +181,11 @@ begin
     Findings := TRuleEngine.Run(Rules.Rules, Rules.Settings, Context);
   end;
   HasCompletion := WantsEditing and TClassCompletion.MissingBodies(Tree, Document.Text, Range.StartPos, Completion);
+  UsesActions := nil;
+  if (WantsEditing or WantsRemoveUnused) and Assigned(FUsesContextFor) and FUsesContextFor(Uri, UsesContext) then
+    UsesActions := TCodeActions.UsesActions(Document.Text, Tree, Range, UsesContext, WantsEditing,
+      WantsRemoveUnused);
+  ACancellation.ThrowIfCancellationRequested;
   // Erst jetzt anlegen: Ein Abbruch oben soll kein Objekt zurücklassen.
   Result := TJSONArray.Create;
   if WantsEditing then
@@ -173,8 +193,10 @@ begin
       TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
   if HasCompletion then
     TJSONArray(Result).AddElement(ActionToJson(Uri, Completion));
+  for Action in UsesActions do
+    TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
   if WantsOrganize and TCodeActions.OrganizeImports(Document.Text, Assigned(FSortUsesFor) and FSortUsesFor(Uri),
-    Action) then
+    Action, Assigned(FSortUsesByNamespaceFor) and FSortUsesByNamespaceFor(Uri)) then
     TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
   if WantsFixAll and TCodeActions.FixAll(Findings, Action) then
     TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
