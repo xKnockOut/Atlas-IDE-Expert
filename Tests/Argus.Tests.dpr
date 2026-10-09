@@ -116,6 +116,7 @@ uses
   Argus.Common.Semantics.UnresolvedNames.Tests in 'Common\Semantics\Argus.Common.Semantics.UnresolvedNames.Tests.pas',
   Argus.Common.Rules.Builtin.Architecture.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Architecture.Tests.pas',
   Argus.Common.Rules.Builtin.Concurrency.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Concurrency.Tests.pas';
+  Argus.Common.Rules.Builtin.Flow.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Flow.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

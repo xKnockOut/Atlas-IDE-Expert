@@ -155,7 +155,7 @@ end;
 
 procedure TRuleProfilesTests.BuiltinProfilesActivateExpectedRules;
 const
-  Bugs = 'lock-without-finally,synchronize-in-destructor,thread-free-with-free-on-terminate,' +
+  Bugs = 'lock-without-finally,possibly-uninitialized,result-not-set,synchronize-in-destructor,thread-free-with-free-on-terminate,' +
     'thread-use-after-free-on-terminate,thread-vcl-access';
   // ActiveRules sortiert alphabetisch: thread-resume-suspend steht vor thread-use-after-...
   All = 'bidi-control,confusable-identifier,control-char,forbidden-uses,invisible-char,' +

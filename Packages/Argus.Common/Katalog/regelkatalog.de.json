@@ -64,6 +64,16 @@
       "id": "thread-resume-suspend",
       "name": "Veraltetes TThread.Resume/Suspend",
       "description": "TThread.Resume und Suspend sind veraltet. Einen erzeugten Thread mit Start starten; Suspend hat keinen sicheren Ersatz, stattdessen mit einem Ereignis warten."
+    },
+    {
+      "id": "result-not-set",
+      "name": "Funktionsergebnis eventuell nicht gesetzt",
+      "description": "Ein Pfad durch die Funktion endet, ohne Result zuzuweisen. Der Aufrufer liest dann einen undefinierten Wert."
+    },
+    {
+      "id": "possibly-uninitialized",
+      "name": "Variable eventuell nicht initialisiert",
+      "description": "Eine lokale Variable wird auf einem Pfad gelesen, auf dem ihr nie ein Wert zugewiesen wurde."
     }
   ]
 }

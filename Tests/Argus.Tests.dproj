@@ -137,6 +137,7 @@
         <DCCReference Include="Common\Semantics\Argus.Common.Semantics.UnresolvedNames.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.Architecture.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.Concurrency.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.Flow.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.ClassCompletion.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Argus.Common.Dfm.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Argus.Common.Dfm.ComponentRename.Tests.pas"/>
