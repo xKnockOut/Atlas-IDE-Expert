@@ -126,6 +126,7 @@ contains
   Argus.Common.Dfm.Contract in 'Source\Dfm\Argus.Common.Dfm.Contract.pas',
   Argus.Common.Dfm.Parser in 'Source\Dfm\Argus.Common.Dfm.Parser.pas',
   Argus.Common.Dfm.Navigation in 'Source\Dfm\Argus.Common.Dfm.Navigation.pas',
+  Argus.Common.Dfm.FormModel in 'Source\Dfm\Argus.Common.Dfm.FormModel.pas',
   Argus.Common.Dfm.ComponentRename in 'Source\Dfm\Argus.Common.Dfm.ComponentRename.pas',
   Argus.Common.Mcp.Server in 'Source\Mcp\Argus.Common.Mcp.Server.pas',
   Argus.Common.Mcp.IndexTools in 'Source\Mcp\Argus.Common.Mcp.IndexTools.pas',

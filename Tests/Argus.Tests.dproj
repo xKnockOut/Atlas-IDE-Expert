@@ -150,6 +150,7 @@
         <DCCReference Include="Common\Editing\Argus.Common.Editing.ClassCompletion.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Argus.Common.Dfm.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Argus.Common.Dfm.ComponentRename.Tests.pas"/>
+        <DCCReference Include="Common\Dfm\Argus.Common.Dfm.FormModel.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Argus.Common.JsonRpc.LineTransport.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Argus.Common.Mcp.Server.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Argus.Common.Mcp.IndexTools.Tests.pas"/>
