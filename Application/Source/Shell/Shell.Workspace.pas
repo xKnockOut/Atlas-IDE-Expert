@@ -21,6 +21,7 @@ uses
   BDLsp.Common.Compiler.Contract,
   BDLsp.Common.Index.Contract,
   BDLsp.Common.Index.Service,
+  BDLsp.Common.Index.Builder,
   BDLsp.Common.Rules.Baseline,
   BDLsp.Common.Lsp.Status;
 
@@ -58,9 +59,9 @@ type
     /// <summary>Sperre des eigenen Index-Caches (#184); nil, wenn eine andere Instanz ihn hält.</summary>
     FCacheLock: TStream;
     FCacheLockFile: string;
+    FBaselineTime: TDateTime;
     /// <summary>Sperrt ACacheFile, gibt eine alte Sperre frei; False = nur lesen.</summary>
     function LockCache(const ACacheFile: string): Boolean;
-    FBaselineTime: TDateTime;
     /// <summary>Weist auf gemischte Kodierungen der Projektdateien hin (Index-Thread).</summary>
     procedure ReportEncodings;
     procedure StartIndex(const ASettings: TServerSettings);
@@ -119,7 +120,6 @@ uses
   BDLsp.Common.Compiler.CommandLine,
   BDLsp.Common.Projects.Paths,
   BDLsp.Common.Projects.DprojReader,
-  BDLsp.Common.Index.Builder,
   BDLsp.Common.Index.ProjectFiles,
   BDLsp.Common.Index.Adapters.DiskFileSystem,
   BDLsp.Common.Index.Adapters.CacheDirectory,
@@ -159,7 +159,7 @@ begin
     end;
   FIndexService := TIndexService.Create(FIndex, TDiskIndexFileSystem.Create);
   FProgress := TLspWorkDoneProgress.Create(ATransport, AProgressToken);
-  FIndexService.OnProgress := FProgress.AsIndexProgress;
+  FIndexService.OnProgress := FProgress.AsIndexProgress();
   FIndexService.OnFinished :=
     procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
     begin
