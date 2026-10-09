@@ -137,6 +137,63 @@ end;
 
 { TIndexCacheDirectoryTests }
 
+procedure WarmUpFailures(const ARoot: string);
+var
+  Target: string;
+  Lock, BackupLock: TFileStream;
+  Disk: IIndexFileSystem;
+  Missing: string;
+begin
+  Disk := TDiskIndexFileSystem.Create;
+  Target := TPath.Combine(ARoot, 'index-00000001.json');
+  Disk.WriteText(Target, 'x');
+  Lock := TFileStream.Create(Target, fmOpenRead or fmShareExclusive);
+  try
+    Disk.WriteText(Target, 'y');
+  finally
+    Lock.Free;
+  end;
+  Disk.WriteText(Target, 'z');
+  BackupLock := TFileStream.Create(Format('%s.%d.bak', [Target, TThread.CurrentThread.ThreadID]), fmCreate or
+    fmShareExclusive);
+  try
+    Disk.WriteText(Target, 'w');
+  finally
+    BackupLock.Free;
+  end;
+  // TFile.Replace prüft, ob Quelle und Ziel existieren; im Wettlauf fehlt das Ziel kurz (EFileNotFoundException
+  // mit Ressourcentext). Beide Fälle einmal auslösen.
+  for Missing in [TPath.Combine(ARoot, 'fehlt-ziel.json'), TPath.Combine(ARoot, 'fehlt-quelle.json')] do
+    try
+      if Missing.Contains('ziel') then
+        TFile.Replace(Target, Missing, Target + '.bak')
+      else
+        TFile.Replace(Missing, Target, Target + '.bak');
+    except
+      on Exception do
+        ;
+    end;
+  // Dasselbe in einem anderen Thread: Thread-lokale Daten der RTL legt jeder Thread selbst an.
+  with TThread.CreateAnonymousThread(
+    procedure
+    var
+      ThreadLock: TFileStream;
+    begin
+      ThreadLock := TFileStream.Create(Target, fmOpenRead or fmShareExclusive);
+      try
+        Disk.WriteText(Target, 'v');
+      finally
+        ThreadLock.Free;
+      end;
+    end) do
+  begin
+    FreeOnTerminate := False;
+    Start;
+    WaitFor;
+    Free;
+  end;
+end;
+
 procedure TIndexCacheDirectoryTests.SetupFixture;
 var
   Root: string;
@@ -148,6 +205,9 @@ begin
   ForceDirectories(Root);
   try
     WriteConcurrently(TPath.Combine(Root, 'index-00000000.json'), 50);
+    // Die Fehlerpfade gezielt, nicht nur zufällig: Ziel gesperrt (Replace scheitert), Ziel und
+    // Sicherung gesperrt, Ziel fehlt.
+    WarmUpFailures(Root);
   finally
     TDirectory.Delete(Root, True);
   end;
