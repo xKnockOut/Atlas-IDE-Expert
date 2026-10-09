@@ -205,9 +205,13 @@ end;
 procedure TIndexMemoryTests.CacheKeepsLibraryAndCompactFlags;
 var
   Units: TArray<TUnitIndex>;
+  LibraryUnit, CompactUnit: TUnitIndex;
 begin
-  Units := TIndexCache.Deserialize(TIndexCache.Serialize([MakeUnit('A', True, 1, 0),
-    TIndexMemory.Compacted(MakeUnit('B', False, 1, 1))]));
+  // Erst in Variablen: Temporäre Records mit verwalteten Feldern im offenen
+  // Array-Konstruktor gibt der Compiler nicht zuverlässig frei.
+  LibraryUnit := MakeUnit('A', True, 1, 0);
+  CompactUnit := TIndexMemory.Compacted(MakeUnit('B', False, 1, 1));
+  Units := TIndexCache.Deserialize(TIndexCache.Serialize([LibraryUnit, CompactUnit]));
   Assert.AreEqual(2, Integer(Length(Units)));
   Assert.IsTrue(Units[0].Library_ and not Units[0].Compact);
   Assert.IsTrue(Units[1].Compact and not Units[1].Library_);
