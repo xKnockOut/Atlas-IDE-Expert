@@ -178,11 +178,13 @@ procedure TArgusCompletionProviderTests.ReadsItemArrayAndNull;
 var
   Response: TJSONValue;
 begin
-  Response := TJSONObject.ParseJSONValue('[{"label":"A"},{"label":"B","kind":99}]');
+  Response := TJSONObject.ParseJSONValue('[{"label":"A"},{"label":"B","kind":99,"filterText":"mylist"}]');
   try
     Assert.AreEqual(2, Integer(Length(TArgusServerCompletionProvider.ItemsFromLsp(Response))));
     Assert.AreEqual(Ord(TArgusItemKind.Unknown),
       Ord(TArgusServerCompletionProvider.ItemsFromLsp(Response)[1].Kind));
+    // Der filterText des Servers ist das getippte Wort (für VS Code); Argus filtert gegen den Namen.
+    Assert.AreEqual('', TArgusServerCompletionProvider.ItemsFromLsp(Response)[1].FilterText);
   finally
     Response.Free;
   end;

@@ -101,7 +101,9 @@ begin
   Result.Kind := KindOf(AItem.GetValue<Integer>('kind', 0));
   Result.Signature := AItem.GetValue<string>('detail', '');
   Result.InsertText := AItem.GetValue<string>('insertText', '');
-  Result.FilterText := AItem.GetValue<string>('filterText', '');
+  // filterText nicht übernehmen: Der Server setzt dort bei unscharfen Treffern das getippte
+  // Wort, damit VS Code sie nicht verwirft. Argus filtert selbst gegen den Namen (#409);
+  // sonst passt jeder Eintrag genau (in der IDE: "mylist" zeigte ERROR_TOO_MANY_LINKS).
   Result.Rank := ARank;
   // documentation: string oder MarkupContent.
   Documentation := AItem.GetValue('documentation');
