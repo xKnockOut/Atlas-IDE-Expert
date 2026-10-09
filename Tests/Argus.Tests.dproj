@@ -164,6 +164,12 @@
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Lsp\Argus.Core.Lsp.Session.pas"/>
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Lsp\Argus.Core.Lsp.Adapters.ServerProcess.pas"/>
         <DCCReference Include="IDE.Expert\Argus.Core.Lsp.Tests.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Contract.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Internals\Argus.Core.Completion.Internals.Async.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Composite.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Providers\Argus.Core.Completion.Providers.Fixed.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Providers\Argus.Core.Completion.Providers.Server.pas"/>
+        <DCCReference Include="IDE.Expert\Argus.Core.Completion.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
