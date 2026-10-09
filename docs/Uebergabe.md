@@ -55,25 +55,33 @@
 - **Stand (`c1cfae2`):** Code Insight-Manager „Argus IDE Expert“ mit Hover (`GetHintText`) und Strg+Klick (`GotoDefinition`). Dünner LSP-Client (`Lsp.Client`, `Lsp.Session`, `Lsp.Adapters.ServerProcess`), 9 DUnitX-Tests in `Tests\IdePlugin`, davon einer gegen den echten Server.
 - **Projektgruppe:** Das Plugin steht seit diesem Vorgang in `Argus.groupproj` (vom User in der IDE hinzugefügt). Ein `group-build -Platform Win64` übersetzt es mit (0/0/0), installiert wird aber die Win32-BPL `Output\Win32\Debug\Bpl\Argus.IdePlugin.bpl`. Win32 einzeln: `build -Project …\Argus.IdePlugin.dproj -Platform Win32`.
 - **Server:** Registry `HKCU\Software\Argus\IdePlugin\ServerPath`, sonst neben der BPL, sonst `Output\Win64\Debug\Bin\ArgusServer.exe`. Solange das Plugin aktiv ist, ist diese exe gesperrt.
-- **In der IDE getestet (User, GalleryDemo):** Hover funktioniert, Strg+Klick auf Bezeichner derselben Unit springt. Strg+Klick auf `TBThemeController` findet nichts, weil der Typ in einer Include-Datei steht (`Beryl.VCL.Forms.ThemeController.intf.inc`); das löst erst `264-include-resolver` (Kette Index 77). Server direkt geprüft: liefert dort `[]`.
+- **In der IDE getestet (User):** Hover funktioniert, Strg+Klick auf Bezeichner derselben Unit springt. Strg+Klick auf eine Klasse, die per `{$I …}` aus einer Include-Datei kommt, findet nichts: Auch mit #264 (Include-Resolver, jetzt in `main`) indiziert der Index keine Deklarationen aus `.inc`-Dateien. Dafür wäre ein eigenes Issue nötig (noch nicht angelegt, Entscheidung des Users offen); nachstellen mit einem eigenen kleinen Fixture im Repo.
+- **Kein Zugriff auf Beryl:** Argus-Arbeit greift nicht auf die Beryl-Quellen zu (keine Proben, Tests oder Issue-Begründungen damit). Automatisierte Abnahmen über Fixtures im Repo bzw. das Referenzprojekt #94; Beryl bleibt ein manueller Zusatztest des Users (#136, #138, #67, #72).
 - **`ce3da00`:** Ohne Treffer gibt `GotoDefinition` `True` mit leerem Dateinamen und Zeile 0 zurück (mit `False` meldete die IDE „Datei "" nicht gefunden“). Diagnose: `Diagnose` = 1 (DWORD) unter `HKCU\Software\Argus\IdePlugin` schreibt `Argus.IdePlugin.log` neben die BPL (der Temp-Ordner funktionierte in der IDE des Users nicht).
 - **Registry aus der Sandbox:** Werte für die IDE nur mit deaktivierter Sandbox schreiben, sonst sieht die vom User gestartete IDE sie womöglich nicht.
 - **Delphi des Users** darf ich selbst schließen (`CloseMainWindow` auf `bds.exe`), wenn die Plugin-BPL oder die Server-exe gesperrt ist.
 - **Offen:** Vervollständigung (`GetSymbolList`), Parameterhilfe (`GetParameterList`), Error Insight selbst gezeichnet.
 
-## Feature-Kette (pausiert, Fortsetzung nur auf Anweisung des Users)
+## Feature-Kette (abgeschlossen am 09.10.2026)
 - 98 verkettete Branches von `14-projektmodell` bis `122-binaere-dfm`.
-- **Stand:** bis Index 66 (`254-uses-befehl`) in `main`, 724 Tests. Weiter ginge es bei Index 67 (`181-dateioperationen`, wird übersprungen), dann 68 `review-befunde`.
+- **Stand:** vollständig in `main` (letzter Schritt Index 97 `122-binaere-dfm`), 964 Tests. Übersprungen wurden nur die „nicht geplanten“ Issues (siehe unten).
+- **Abhängigkeiten zu übersprungenen Branches, so gelöst:**
+  - #254 ohne #179 (siehe unten); `completeBlocks` aus #179 ist auch aus Schema, `Konfiguration.md`, `Einstellungen.md` und VS-Code-`package.json` entfernt (#307, #265). `Tools/Update-ConfigDoc.ps1` braucht `pwsh` (hier nicht installiert); die erzeugten Dateien wurden von Hand angepasst, bei Gelegenheit mit `pwsh Tools/Update-ConfigDoc.ps1 -Check` gegenprüfen.
+  - #113 nutzte `TFormEvents.EventTail` aus #111: Die Funktion steht jetzt in `TPublishedMembers.EventTail` (mit Test), `FormEvents` entfällt.
+  - #122 baute auf #115 und #111 auf: Übernommen sind nur der Befehl `argus.server.convertBinaryForms` und die Code-Aktion „Formular in Text umwandeln“; dafür kam der Hook `TLspCodeActions.FormActions` aus #115 mit. Vererbungsaktion, `FormEvents.CreateCommand` und `FileOperations` (#181) fehlen bewusst.
+  - `unit-name-mismatch` (#86) fehlt in allen Profil-Erwartungen; `Builtin.UnitFiles` und `FileOperations` fehlen in `Architektur.md`.
+- **Leck-Monitor, offen:** `DeepNestingIsReportedNotFatal` ist vorläufig mit `[IgnoreMemoryLeaks]` markiert (im vollen Lauf 24–40 Byte, allein sauber, Ursache unbekannt). `ConcurrentWritersLeaveReadableCache` meldet gelegentlich ein Leck. Einmal-Belegungen der RTL (erste `EFOpenError`, Kodierungen) werden per `[SetupFixture]` vorab ausgelöst. Für die Ursachensuche ist eine eigene Aufgabe vorgeschlagen.
 - **Vor jedem Branch Issue prüfen (Auftrag des Users):** offen → übernehmen; geschlossen → prüfen, ob noch gebraucht. Laut Durchsicht vom 09.10.2026 (Epic #392) „nicht geplant“ und aus der Kette genommen: #86 (Index 61), #179 (65), #181 (67), #111 (94), #115 (96). `review-befunde` (68) hat kein Issue, enthält Review-Korrekturen und wird übernommen.
 - **Seit #460 (Umbenennung) neues Verfahren, Skript `chainrun2.ps1` im Scratchpad:** Eigene Änderung des Branches (Basis = `merge-base` mit dem Vorgänger in der Kette, so fallen ausgelassene Branches heraus) auf beiden Ständen mit `rename-argus.ps1` umbenennen (gegen #460 geprüft) und als 3-Wege-Cherry-Pick auf `main` anwenden (Arbeitsbranch `kette-arbeit`), bauen, testen, per Fast-Forward nach `main`. Die Feature-Branches auf GitHub bleiben unverändert (kein Force-Push). Listenkonflikte in `.dpr`/`.dpk`/`.dproj` (`resolve-lists.ps1`) und reine H2443-Hinweise (`fix-h2443.ps1`) löst das Skript selbst.
 - **#254 ohne #179:** `/uses` hing im onTypeFormatting-Handler aus #179. Übernommen ohne Blockabschluss (User-Entscheidung): Handler nur für `/uses`, Capability `documentOnTypeFormattingProvider`, Einstellung `usesCommand`. Achtung bei späteren Branches, die auf `completeBlocks`/`BlockCompletion` aufbauen.
 - **Behoben in 55–66:** H2443 (mehrfach), Zeilentransport-Tests (Lecks, `ä`), Index-Cache-Flags ohne `GetValue<Boolean>` (Leck), E1019 in `Completion.AddFromOtherUnits`, Konflikte in VS-Code-`package.json`, `Architektur.md` (`argus.server.status` wie im Code), Editor-Dateien `betterdelphilsp` → `argus`, `bench.mjs` mit `ArgusServer.exe`.
 - **Behoben in 41–54:** Merge-Konflikte (Hover-Klartext mit Wert/Deprecation, Shell.Composition mit Compiler und abgeleiteten Arbeitsbereichen, Shell.Workspace-uses, mehrfach `Argus.Tests.dpr`), `Count`/`Length` als `Integer` (E2532), `ReadTabsConfig()` (E2010), H2077, H2443, DFM-Gliederungstest.
-- **Kettenskript:** Konflikte nur in `Tests/Argus.Tests.dpr` löst es selbst (beide Seiten übernehmen, Dubletten entfernen). Jeder andere Konflikt hält an.
+- **Kettenskript:** Löst selbst: Listenkonflikte, falsche `;` in `.dpr`/`.dpk`-Listen nach konfliktfreiem Merge (`fix-terminators.ps1`), Profiltest-Erwartungen (Branch-Seite ohne `unit-name-mismatch`), `Architektur.md` und `Konfiguration.md` (Branch-Seite ohne Teile übersprungener Branches), H2443 und E2532. Jeder andere Konflikt hält an.
 - **Leck-Monitor (seit 177):**
   - Felder im `TearDown` freigeben.
-  - Thread- und RTL-Tests bekommen `[IgnoreMemoryLeaks]` mit Begründung.
-  - Bei reinen Leck-Fehlschlägen die Tests bis zu dreimal laufen lassen.
+  - Einmal-Belegungen der RTL im `[SetupFixture]` vorab auslösen; `[IgnoreMemoryLeaks]` nur mit Begründung.
+  - Bei reinen Leck-Fehlschlägen bis zu sechs Läufe; gilt als zeitabhängig, wenn jeder gemeldete Test mindestens einmal sauber war.
+- **Weitere Fixes in 78–97:** E2029 (Listentrenner), Profilerwartungen (#269, #91, #124, #125), Konflikte `UsesClause` (#284), `Shell.Composition` (#283: Mitschnitt rotiert und weicht aus; Methodendeklaration hinter die Felder), `DiskFileSystem` (#62: `EArgumentException` und `EOSError`), `System.Classes` im Index-Test, RotatingFileStream-Tests (`WillRaiseDescendant`).
 - Die IDE sortiert `DCCReference` um und fügt Leerzeilen ein. Reine Umsortierungen und Leerraum-Änderungen werden verworfen.
 
 ## Umbenennung in Argus (#403, 09.10.2026)
@@ -89,5 +97,6 @@
 - **Offen:** Gruppenbau und Tests in der IDE (in der Cloud nicht baubar). Schichten `Argus.Core/UI/IDE` und eigenes `Argus.Tests.dpr` für das Plugin folgen mit #406 und #415.
 
 ## Stand nach diesem Vorgang
-- `main` = `ebad9ee` (Kette bis 66, nach #460), Gruppenbau `Argus.groupproj` Win64 0/0/0 (5 Projekte), 724/724 Tests.
-- Kette auf Wunsch des Users nach Index 66 angehalten. Fortsetzung nur auf Anweisung: `chainrun2.ps1 -StartAt 67`.
+- `main` = `2a4f2fd` (Kette vollständig), Gruppenbau `Argus.groupproj` Win64 0/0/0 (5 Projekte), 964/964 Tests.
+- Zwischencommit `e545259` auf `main` hat 5 rote BinaryForm-Tests (falsches Ersetzen), behoben im direkt folgenden `2a4f2fd`.
+- Offen: Issue für Deklarationen aus Include-Dateien (Entscheidung des Users), Ursache der Leck-Meldungen im vollen Testlauf, im Plugin Vervollständigung, Parameterhilfe und Error Insight.
