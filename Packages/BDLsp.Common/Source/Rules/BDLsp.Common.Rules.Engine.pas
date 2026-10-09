@@ -192,6 +192,7 @@ var
   Kept: TList<TRuleFinding>;
   Suppressions: TSuppressions;
   Rule: IRule;
+  Report: IRuleReport;
   Descriptor: TRuleDescriptor;
   Severity: TRuleSeverity;
   Context: TRuleContext;
@@ -221,7 +222,11 @@ begin
       Context.Options := RuleOptions(Descriptor.Id, ASettings);
       if IsExceptedByOptions(Context.Options, Context.RelativePath, Context.UnitName) then
         Continue;
-      Rule.Check(Context, TRuleReport.Create(Descriptor.Id, Severity, Findings));
+      // Erst in einer Interface-Variablen halten: Check nimmt den Report als
+      // const; ohne gezählte Referenz würde er nie freigegeben (Speicherleck).
+      Report := TRuleReport.Create(Descriptor.Id, Severity, Findings);
+      Rule.Check(Context, Report);
+      Report := nil;
       RanIds.Add(LowerCase(Descriptor.Id));
     end;
 
