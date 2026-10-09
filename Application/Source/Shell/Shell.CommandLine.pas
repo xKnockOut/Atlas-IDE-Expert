@@ -14,6 +14,10 @@
 //   --units <a,b>         nur diese Units (Name oder Glob-Muster für Pfade)
 //   --min-severity <S>    hint, info, warning, error
 //
+// MCP-Modus (#48):
+//   --mcp                 Symbolindex über das Model Context Protocol anbieten
+//   --root <Ordner>       Projektordner (Standard: aktuelles Verzeichnis)
+//
 // Werte können auch mit "=" angegeben werden (--log=server.log). Parameter,
 // die Editoren selbst anhängen (--stdio, --clientProcessId), werden ignoriert.
 
@@ -47,6 +51,10 @@ type
     UpdateBaseline: Boolean;
     /// <summary>Index-Caches löschen und beenden (#184).</summary>
     ClearCache: Boolean;
+    /// <summary>MCP-Modus statt LSP (#48).</summary>
+    Mcp: Boolean;
+    /// <summary>Projektordner im MCP-Modus; '' = aktuelles Verzeichnis.</summary>
+    McpRoot: string;
     /// <summary>Hinweise zu ungültigen oder unbekannten Parametern, für das Log.</summary>
     Warnings: TArray<string>;
     class function Parse(const AArgs: TArray<string>): TCommandLineOptions; static;
@@ -194,6 +202,13 @@ begin
       if TakeValue then
         Result.BaselineFile := Value;
     end
+    else if Name = '--root' then
+    begin
+      if TakeValue then
+        Result.McpRoot := Value;
+    end
+    else if Name = '--mcp' then
+      Result.Mcp := True
     else if Name = '--clear-cache' then
       Result.ClearCache := True
     else if Name = '--update-baseline' then

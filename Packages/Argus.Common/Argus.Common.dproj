@@ -75,6 +75,7 @@
         <DCCReference Include="Source\JsonRpc\Argus.Common.JsonRpc.Contract.pas"/>
         <DCCReference Include="Source\JsonRpc\Argus.Common.JsonRpc.Messages.pas"/>
         <DCCReference Include="Source\JsonRpc\Argus.Common.JsonRpc.StreamTransport.pas"/>
+        <DCCReference Include="Source\JsonRpc\Argus.Common.JsonRpc.LineTransport.pas"/>
         <DCCReference Include="Source\JsonRpc\Argus.Common.JsonRpc.TracingTransport.pas"/>
         <DCCReference Include="Source\JsonRpc\Argus.Common.JsonRpc.PendingRequests.pas"/>
         <DCCReference Include="Source\JsonRpc\Argus.Common.JsonRpc.Watchdog.pas"/>
@@ -124,6 +125,9 @@
         <DCCReference Include="Source\Dfm\Argus.Common.Dfm.Parser.pas"/>
         <DCCReference Include="Source\Dfm\Argus.Common.Dfm.Navigation.pas"/>
         <DCCReference Include="Source\Dfm\Argus.Common.Dfm.ComponentRename.pas"/>
+        <DCCReference Include="Source\Mcp\Argus.Common.Mcp.Server.pas"/>
+        <DCCReference Include="Source\Mcp\Argus.Common.Mcp.IndexTools.pas"/>
+        <DCCReference Include="Source\Mcp\Argus.Common.Mcp.CodeTools.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.FormFiles.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.EditorConfig.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.Formatter.pas"/>
