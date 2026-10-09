@@ -64,7 +64,7 @@
         "argus.delphiVersion": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Delphi-Version wie in der Registry, z. B. `37.0`; leer: passend zur `ProjectVersion` der .dproj, sonst neueste installierte. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Delphi-Version als Produktnummer (\"13\", \"12\", \"10.4\") oder wie in der Registry (\"37.0\" für Delphi 13, \"23.0\" für Delphi 12). Leer: neueste installierte Version. argus.json im Projekt hat Vorrang."
         },
         "argus.language": {
           "type": "string",
@@ -73,27 +73,153 @@
             "en"
           ],
           "default": "de",
-          "description": "Sprache der Meldungen. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Sprache der Meldungen. argus.json im Projekt hat Vorrang."
         },
         "argus.project": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Projektdatei (`.dproj`) relativ zum Arbeitsbereich; leer: die einzige `.dproj` im Wurzelordner. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Projektdatei (.dproj) relativ zu diesem Ordner. Leer: automatisch suchen. argus.json im Projekt hat Vorrang."
         },
         "argus.config": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Build-Konfiguration, z. B. `Debug`; leer: die im Projekt eingestellte. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Build-Konfiguration, z. B. Debug oder Release. argus.json im Projekt hat Vorrang."
         },
         "argus.platform": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Zielplattform, z. B. `Win64`; leer: die im Projekt eingestellte. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Zielplattform. argus.json im Projekt hat Vorrang."
         },
         "argus.rules": {
           "type": "object",
           "default": {},
-          "markdownDescription": "Prüfregeln: Regel-Id auf `off`, `hint`, `info`, `warning` oder `error`. Einträge in argus.json haben je Regel Vorrang."
+          "markdownDescription": "Prüfregeln einzeln einstellen: Regel-ID → Schweregrad oder Objekt mit \"severity\" und Optionen. argus.json im Projekt hat Vorrang."
+        },
+        "argus.profile": {
+          "type": [
+            "string",
+            "object"
+          ],
+          "default": "standard",
+          "markdownDescription": "Regelprofil: standard, fast (nur Bugs und Schwachstellen), strict (experimentelle Regeln an, minConfidence low), security, style oder ein eigenes aus \"profiles\". Als Objekt getrennt für Editor und Kommandozeile. argus.json im Projekt hat Vorrang."
+        },
+        "argus.profiles": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Eigene Regelprofile: Name → { \"extends\": eingebautes oder eigenes Profil, \"categories\": nur diese Kategorien, \"rules\": Regel-ID → Schweregrad }. argus.json im Projekt hat Vorrang."
+        },
+        "argus.overrides": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "files"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "rules": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string",
+                  "enum": [
+                    "off",
+                    "hint",
+                    "info",
+                    "information",
+                    "warning",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "default": [],
+          "markdownDescription": "Pfadregeln: Schweregrade für Dateien, die eines der Glob-Muster treffen, z. B. Tests oder generierten Code herabstufen. Regel-ID \"*\" steht für alle Regeln; spätere Einträge haben Vorrang. argus.json im Projekt hat Vorrang."
+        },
+        "argus.excludeTests": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Test-Units und Testprojekte (uses DUnitX.TestFramework, TestFramework oder TestInsight.*) nicht prüfen. argus.json im Projekt hat Vorrang."
+        },
+        "argus.testProfile": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Regelprofil für Test-Units und Testprojekte; leer: wie \"profile\". argus.json im Projekt hat Vorrang."
+        },
+        "argus.compiler": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Compiler-Anbindung (dcc32/dcc64). argus.json im Projekt hat Vorrang."
+        },
+        "argus.completion": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Code-Vervollständigung. argus.json im Projekt hat Vorrang."
+        },
+        "argus.usesCommand": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Eine Zeile \"/uses Unit1, Unit2\" wird nach Enter gelöscht und die Units kommen ins passende uses. argus.json im Projekt hat Vorrang."
+        },
+        "argus.sortUses": {
+          "type": [
+            "boolean",
+            "string"
+          ],
+          "enum": [
+            true,
+            false,
+            "alphabetic",
+            "namespace"
+          ],
+          "default": false,
+          "markdownDescription": "\"uses aufräumen\" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder \"alphabetic\" alphabetisch, \"namespace\" nach Namespace gruppiert (System, Vcl, ... und Units ohne Namespace zuletzt). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units. argus.json im Projekt hat Vorrang."
+        },
+        "argus.usesKeep": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": null,
+          "markdownDescription": "Units, die \"ungenutzte uses entfernen\" nie entfernt, zusätzlich zu allen Units mit initialization-Abschnitt. argus.json im Projekt hat Vorrang."
+        },
+        "argus.memoryBudgetMb": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "markdownDescription": "Obergrenze für den Symbolindex in MB. Darüber werden zuerst Bibliotheks-Units (RTL, VCL), dann Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. argus.json im Projekt hat Vorrang."
+        },
+        "argus.requestTimeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "default": 10000,
+          "markdownDescription": "Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet. argus.json im Projekt hat Vorrang."
+        },
+        "argus.highlight": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Zusammengehörige Schlüsselwörter hervorheben, wenn der Cursor auf einem steht. argus.json im Projekt hat Vorrang."
+        },
+        "argus.inlayHints": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Inlay Hints im Editor. argus.json im Projekt hat Vorrang."
+        },
+        "argus.minConfidence": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "default": "medium",
+          "markdownDescription": "Regeltreffer unter dieser Konfidenz ausblenden. argus.json im Projekt hat Vorrang."
         },
         "argus.exclude": {
           "type": "array",
@@ -101,29 +227,12 @@
             "type": "string"
           },
           "default": [],
-          "markdownDescription": "Ausgeschlossene Ordner und Dateien als Glob-Muster, z. B. `ThirdParty/**`. argus.json im Projekt hat Vorrang."
-        },
-        "argus.compiler": {
-          "type": "object",
-          "default": {
-            "onSave": true
-          },
-          "markdownDescription": "Compiler-Anbindung: `onSave` kompiliert das Projekt nach dem Speichern im Hintergrund und zeigt Fehler, Warnungen und Hinweise von dcc32/dcc64 an. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Ordner und Dateien, die nicht geprüft werden (Glob-Muster relativ zu diesem Ordner: *, **, ?). argus.json im Projekt hat Vorrang."
         },
         "argus.format": {
           "type": "object",
           "default": {},
-          "markdownDescription": "Formatierung: `indentSize`, `useTabs`, `keywordCase` (`preserve`/`lower`/`upper`), `trimTrailingWhitespace`, `insertFinalNewline`, `spaceAroundAssignment`, `spaceAfterComma`, `endOfLine` (`lf`/`crlf`). Gesetzte Werte haben Vorrang vor `.editorconfig`; argus.json im Projekt hat Vorrang."
-        },
-        "argus.inlayHints": {
-          "type": "object",
-          "default": {
-            "parameterNames": true,
-            "inferredTypes": true,
-            "endMarkers": true,
-            "endMarkerMinLines": 20
-          },
-          "markdownDescription": "Inlay Hints: `parameterNames`, `inferredTypes`, `endMarkers` (an/aus) und `endMarkerMinLines` (Mindestlänge eines Blocks in Zeilen für eine Endmarkierung). argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Formatierung (Dokument und Auswahl formatieren). Gesetzte Werte haben Vorrang vor .editorconfig. argus.json im Projekt hat Vorrang."
         },
         "argus.logLevel": {
           "type": "string",
@@ -134,17 +243,17 @@
             "error"
           ],
           "default": "info",
-          "description": "Mindeststufe der Meldungen im Ausgabefenster und in der Logdatei."
+          "markdownDescription": "Mindeststufe der Meldungen im Ausgabefenster und in der Logdatei. Gilt ab dem nächsten Start; die Kommandozeilenoption --log-level hat Vorrang."
         },
         "argus.logFile": {
           "type": "string",
           "default": "",
-          "description": "Optionale Logdatei des Servers."
+          "markdownDescription": "Optionale Logdatei des Servers (Rotation bei 10 MB). Gilt ab dem nächsten Start; --log hat Vorrang."
         },
         "argus.traceFile": {
           "type": "string",
           "default": "",
-          "description": "Optionaler Mitschnitt aller JSON-Nachrichten (zur Fehlersuche)."
+          "markdownDescription": "Optionaler Mitschnitt aller JSON-Nachrichten zur Fehlersuche. Gilt ab dem nächsten Start; --trace hat Vorrang."
         },
         "argus.trace.server": {
           "type": "string",
