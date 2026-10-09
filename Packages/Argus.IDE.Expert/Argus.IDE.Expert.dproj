@@ -104,6 +104,7 @@
         <DCCReference Include="Source\UI\Signature\Argus.UI.Signature.Hint.pas"/>
         <DCCReference Include="Source\UI\Popup\Argus.UI.Popup.Window.pas"/>
         <DCCReference Include="Source\UI\Completion\Argus.UI.Completion.Popup.pas"/>
+        <DCCReference Include="Source\UI\Completion\Argus.UI.Completion.Details.pas"/>
         <DCCReference Include="Source\IDE\Editor\Argus.IDE.Editor.Buffer.pas"/>
         <DCCReference Include="Source\IDE\Editor\Argus.IDE.Editor.KeyHook.pas"/>
         <DCCReference Include="Source\IDE\Signature\Argus.IDE.Signature.Editor.pas"/>

@@ -50,7 +50,12 @@ type
     FilterText: string;
     /// <summary>Weitere Änderungen beim Annehmen, z. B. der uses-Eintrag.</summary>
     AdditionalEdits: TArray<TRuleEdit>;
+    /// <summary>Datei und Namensposition der Deklaration für completionItem/resolve; '' ohne.</summary>
+    SourceFile: string;
+    SourcePosition: TTextPosition;
   end;
+
+  TCompletionReadText = reference to function(const AFileName: string; out AText: string): Boolean;
 
   TCompletionItems = record
     Items: TArray<TCompletionItem>;
@@ -63,6 +68,7 @@ type
   TLspCompletion = class
   public const
     Method = 'textDocument/completion';
+    ResolveMethod = 'completionItem/resolve';
     MaxItems = 1000;
     /// <summary>Höchstzahl der Vorschläge aus nicht eingebundenen Units.</summary>
     MaxImportItems = 200;
@@ -74,7 +80,9 @@ type
     FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
     FMatchingFor: TCompletionMatchingFunc;
+    FReadText: TCompletionReadText;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+    function HandleResolve(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
       const AEnsureUnit: TEnsureUnitFunc = nil);
@@ -89,7 +97,14 @@ type
     class function KindOf(AKind: TIndexSymbolKind): Integer; static;
     /// <summary>CompletionList des LSP. Der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const AItems: TCompletionItems): TJSONObject; static;
+    /// <summary>Details zur Deklaration an APosition (Namensposition) in AText für das Detailpanel
+    /// von Argus (#405, #424): declaration, unit, container, visibility, directives, deprecated,
+    /// summary, params, returns, exceptions, remarks. Der Aufrufer übernimmt das Objekt.</summary>
+    class function Details(const AIndex: ISymbolIndex; const AFileName, AText: string;
+      const APosition: TTextPosition): TJSONObject; static;
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
+    /// <summary>Liest Dateien für completionItem/resolve; ohne Zuweisung keine Details.</summary>
+    property ReadText: TCompletionReadText read FReadText write FReadText;
     /// <summary>Auswahl je Dokument; ohne Zuweisung unscharf.</summary>
     property MatchingFor: TCompletionMatchingFunc read FMatchingFor write FMatchingFor;
   end;
@@ -108,7 +123,8 @@ uses
   Argus.Common.Lsp.FuzzyMatch,
   Argus.Common.Editing.UsesClause,
   Argus.Common.Lsp.CompilerDirectives,
-  Argus.Common.Lsp.Internals.Cancellation;
+  Argus.Common.Lsp.Internals.Cancellation,
+  Argus.Common.Pascal.XmlDoc;
 
 const
   // CompletionItemKind
@@ -231,6 +247,7 @@ end;
 procedure TLspCompletion.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(Method, Handle);
+  ADispatcher.RegisterConcurrentRequest(ResolveMethod, HandleResolve);
 end;
 
 class function TLspCompletion.Capability: TJSONObject;
@@ -243,7 +260,8 @@ begin
   Triggers.Add('$');
   Result := TJSONObject.Create;
   Result.AddPair('triggerCharacters', Triggers);
-  Result.AddPair('resolveProvider', TJSONBool.Create(False));
+  // Details für das Detailpanel von Argus erst für den gewählten Eintrag (#405, #424).
+  Result.AddPair('resolveProvider', TJSONBool.Create(True));
 end;
 
 class function TLspCompletion.Analyze(ATree: TSyntaxTree; const APosition: TTextPosition): TCompletionContext;
@@ -410,6 +428,8 @@ var
   List: TList<TScoredItem>;
   Scored: TScoredItem;
   Index: Integer;
+  SourceFile: string;
+  SourcePosition: TTextPosition;
 
   procedure Add(const AName, ADetail: string; AKind: Integer; APenalty: Integer = 0;
     const AEdits: TArray<TRuleEdit> = nil);
@@ -422,6 +442,8 @@ var
     Scored.Item.AdditionalEdits := AEdits;
     Scored.Item.Detail := ADetail;
     Scored.Item.Kind := AKind;
+    Scored.Item.SourceFile := SourceFile;
+    Scored.Item.SourcePosition := SourcePosition;
     // Der Editor filtert selbst nach dem getippten Wort; unscharfe Treffer bekommen es
     // als filterText, damit er sie nicht verwirft.
     if (AMatching = TCompletionMatching.Fuzzy) and not AName.StartsWith(Context.Prefix, True) then
@@ -486,6 +508,8 @@ var
 begin
   Result := Default(TCompletionItems);
   Context := Analyze(ATree, APosition);
+  SourceFile := '';
+  SourcePosition := Default(TTextPosition);
   List := TList<TScoredItem>.Create(TScoredItemComparer.Create);
   try
     case Context.Kind of
@@ -502,12 +526,18 @@ begin
           else
             Candidates := AResolver.ScopeCandidates(ATree, AFileName, Context.Offset);
           for Candidate in Candidates do
+          begin
+            // Wo die Deklaration steht, für completionItem/resolve.
+            SourceFile := Candidate.FileName;
+            SourcePosition := Candidate.SelectionRange.StartPos;
             if Candidate.TypeName <> '' then
               Add(Candidate.Name, Candidate.TypeName, KindOf(Candidate.SymbolKind))
             else if Candidate.Container <> '' then
               Add(Candidate.Name, Candidate.Container, KindOf(Candidate.SymbolKind))
             else
               Add(Candidate.Name, Candidate.UnitName, KindOf(Candidate.SymbolKind));
+          end;
+          SourceFile := '';
           if (Context.Kind = TCompletionContextKind.Scope) and (Length(Context.Prefix) >= MinImportPrefix) then
             AddFromOtherUnits;
         end;
@@ -529,7 +559,7 @@ end;
 class function TLspCompletion.ToJson(const AItems: TCompletionItems): TJSONObject;
 var
   Items, Edits: TJSONArray;
-  Entry, EditJson: TJSONObject;
+  Entry, EditJson, Data: TJSONObject;
   Edit: TRuleEdit;
   Index: Integer;
 begin
@@ -561,6 +591,14 @@ begin
     end;
     // Reihenfolge wie geliefert: beste Punktzahl, dann nächster Gültigkeitsbereich.
     Entry.AddPair('sortText', Format('%.5d', [Index]));
+    if AItems.Items[Index].SourceFile <> '' then
+    begin
+      Data := TJSONObject.Create;
+      Data.AddPair('file', AItems.Items[Index].SourceFile);
+      Data.AddPair('line', TJSONNumber.Create(AItems.Items[Index].SourcePosition.Line));
+      Data.AddPair('character', TJSONNumber.Create(AItems.Items[Index].SourcePosition.Character));
+      Entry.AddPair('data', Data);
+    end;
   end;
 end;
 
@@ -600,6 +638,238 @@ begin
   finally
     Resolver.Free;
   end;
+end;
+
+function VisibilityText(AVisibility: TIndexVisibility): string;
+begin
+  case AVisibility of
+    TIndexVisibility.Published: Result := 'published';
+    TIndexVisibility.Protected: Result := 'protected';
+    TIndexVisibility.StrictProtected: Result := 'strict protected';
+    TIndexVisibility.Private: Result := 'private';
+    TIndexVisibility.StrictPrivate: Result := 'strict private';
+  else
+    Result := 'public';
+  end;
+end;
+
+/// <summary>Zeilen von AText ohne Zeilenende.</summary>
+function TextLines(const AText: string): TArray<string>;
+var
+  Index: Integer;
+begin
+  Result := AText.Split([#10]);
+  for Index := 0 to High(Result) do
+    if Result[Index].EndsWith(#13) then
+      Result[Index] := Copy(Result[Index], 1, Length(Result[Index]) - 1);
+end;
+
+/// <summary>Deklaration von ARange; über mehr als MaxLines Zeilen (Klassen, Records) nur die erste.</summary>
+function DeclarationOf(const ALines: TArray<string>; const ARange: TTextRange): string;
+const
+  MaxLines = 6;
+  MaxLength = 600;
+var
+  Line, Last: Integer;
+begin
+  Result := '';
+  Last := ARange.EndPos.Line;
+  if Last - ARange.StartPos.Line >= MaxLines then
+    Last := ARange.StartPos.Line;
+  for Line := ARange.StartPos.Line to Last do
+  begin
+    if (Line < 0) or (Line > High(ALines)) then
+      Break;
+    if Line = ARange.StartPos.Line then
+      Result := Trim(Copy(ALines[Line], ARange.StartPos.Character + 1, MaxInt))
+    else
+      Result := Result + ' ' + Trim(ALines[Line]);
+  end;
+  while Pos('  ', Result) > 0 do
+    Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);
+  if Length(Result) > MaxLength then
+    Result := Copy(Result, 1, MaxLength) + ' …';
+end;
+
+/// <summary>Direktiven einer Deklaration (virtual, override, deprecated ...); ADeprecated: Text
+/// hinter deprecated, '' ohne Text; AIsDeprecated: deprecated kommt vor.</summary>
+function DirectivesOf(const ADeclaration: string; out ADeprecated: string; out AIsDeprecated: Boolean): TArray<string>;
+const
+  Known: array[0..13] of string = ('class', 'static', 'virtual', 'dynamic', 'override', 'abstract', 'final',
+    'reintroduce', 'overload', 'inline', 'message', 'deprecated', 'platform', 'experimental');
+var
+  Text, Word: string;
+  Index, Start, Quote: Integer;
+  Words: TArray<string>;
+begin
+  Result := nil;
+  ADeprecated := '';
+  AIsDeprecated := False;
+  // Strings ausblenden, damit Wörter darin nicht zählen; den deprecated-Text merken.
+  Text := '';
+  Index := 1;
+  while Index <= Length(ADeclaration) do
+  begin
+    if ADeclaration[Index] = '''' then
+    begin
+      Quote := PosEx('''', ADeclaration, Index + 1);
+      if Quote = 0 then
+        Quote := Length(ADeclaration);
+      if EndsText('deprecated', TrimRight(Text)) then
+        ADeprecated := Copy(ADeclaration, Index + 1, Quote - Index - 1);
+      Text := Text + ' ';
+      Index := Quote + 1;
+      Continue;
+    end;
+    Text := Text + ADeclaration[Index];
+    Inc(Index);
+  end;
+  Words := nil;
+  Start := 0;
+  for Index := 1 to Length(Text) + 1 do
+    if (Index > Length(Text)) or not CharInSet(Text[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+    begin
+      if Index - 1 > Start then
+        Words := Words + [LowerCase(Copy(Text, Start + 1, Index - 1 - Start))];
+      Start := Index;
+    end;
+  // "class" nur am Anfang (class function), sonst wäre jeder Klassentyp eine Klassenmethode.
+  for Index := 0 to High(Words) do
+  begin
+    Word := Words[Index];
+    if not MatchStr(Word, Known) or ((Word = 'class') and (Index > 0)) then
+      Continue;
+    if (Word = 'class') and ((High(Words) < 1) or not MatchStr(Words[1], ['function', 'procedure', 'property',
+      'operator', 'constructor', 'destructor', 'var'])) then
+      Continue;
+    if Word = 'deprecated' then
+      AIsDeprecated := True;
+    if IndexStr(Word, Result) < 0 then
+      Result := Result + [Word];
+  end;
+end;
+
+class function TLspCompletion.Details(const AIndex: ISymbolIndex; const AFileName, AText: string;
+  const APosition: TTextPosition): TJSONObject;
+var
+  Lines: TArray<string>;
+  UnitInfo: TUnitIndex;
+  Symbol, Candidate: TIndexSymbol;
+  Found, IsDeprecated: Boolean;
+  Declaration, Deprecated: string;
+  Directives: TArray<string>;
+  Directive: string;
+  Doc: TXmlDoc;
+  Entry: TXmlDocEntry;
+  List: TJSONArray;
+  Item: TJSONObject;
+  Range: TTextRange;
+begin
+  Result := TJSONObject.Create;
+  Lines := TextLines(AText);
+  Found := False;
+  Symbol := Default(TIndexSymbol);
+  if (AIndex <> nil) and AIndex.FindFile(AFileName, UnitInfo) then
+  begin
+    Result.AddPair('unit', UnitInfo.UnitName);
+    for Candidate in UnitInfo.Symbols do
+      if (Candidate.SelectionRange.StartPos.Line = APosition.Line) and
+        (Candidate.SelectionRange.StartPos.Character = APosition.Character) then
+      begin
+        Symbol := Candidate;
+        Found := True;
+        Break;
+      end;
+  end;
+  if Found then
+    Range := Symbol.Range
+  else
+  begin
+    // Nicht im Index (lokale Variable, Parameter): die Zeile ab dem Namen.
+    Range.StartPos := APosition;
+    Range.EndPos := APosition;
+  end;
+  Declaration := DeclarationOf(Lines, Range);
+  if Declaration <> '' then
+    Result.AddPair('declaration', Declaration);
+  if Found and (Symbol.Container <> '') then
+  begin
+    Result.AddPair('container', Symbol.Container);
+    Result.AddPair('visibility', VisibilityText(Symbol.Visibility));
+  end;
+  Directives := DirectivesOf(Declaration, Deprecated, IsDeprecated);
+  if Length(Directives) > 0 then
+  begin
+    List := TJSONArray.Create;
+    for Directive in Directives do
+      List.Add(Directive);
+    Result.AddPair('directives', List);
+  end;
+  if IsDeprecated then
+    Result.AddPair('deprecated', Deprecated);
+  Doc := TXmlDoc.Parse(TXmlDoc.CommentAbove(Lines, Range.StartPos.Line));
+  if Doc.Summary <> '' then
+    Result.AddPair('summary', Doc.Summary);
+  if Doc.Returns <> '' then
+    Result.AddPair('returns', Doc.Returns);
+  if Doc.Remarks <> '' then
+    Result.AddPair('remarks', Doc.Remarks);
+  if Length(Doc.Params) > 0 then
+  begin
+    List := TJSONArray.Create;
+    for Entry in Doc.Params do
+    begin
+      Item := TJSONObject.Create;
+      Item.AddPair('name', Entry.Name);
+      Item.AddPair('text', Entry.Text);
+      List.AddElement(Item);
+    end;
+    Result.AddPair('params', List);
+  end;
+  if Length(Doc.Exceptions) > 0 then
+  begin
+    List := TJSONArray.Create;
+    for Entry in Doc.Exceptions do
+    begin
+      Item := TJSONObject.Create;
+      Item.AddPair('name', Entry.Name);
+      Item.AddPair('text', Entry.Text);
+      List.AddElement(Item);
+    end;
+    Result.AddPair('exceptions', List);
+  end;
+end;
+
+function TLspCompletion.HandleResolve(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  Item, Data, Details: TJSONObject;
+  FileName, Text, Summary: string;
+  Position: TTextPosition;
+begin
+  if not (AParams is TJSONObject) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'CompletionItem fehlt in ' + ResolveMethod);
+  // Antwort ist der Eintrag selbst, ergänzt um Details; ohne data unverändert.
+  Item := TJSONObject(AParams.Clone);
+  Result := Item;
+  if not (Item.GetValue('data') is TJSONObject) or not Assigned(FReadText) then
+    Exit;
+  Data := TJSONObject(Item.GetValue('data'));
+  if not (Data.TryGetValue<string>('file', FileName) and Data.TryGetValue<Integer>('line', Position.Line) and
+    Data.TryGetValue<Integer>('character', Position.Character)) then
+    Exit;
+  if not FReadText(FileName, Text) then
+    Exit;
+  Details := TLspCompletion.Details(FIndex, FileName, Text, Position);
+  // Für Argus (Detailpanel) strukturiert in data.argus; für andere Clients detail und documentation.
+  if Details.TryGetValue<string>('declaration', Text) then
+  begin
+    Item.RemovePair('detail').Free;
+    Item.AddPair('detail', Text);
+  end;
+  if Details.TryGetValue<string>('summary', Summary) then
+    Item.AddPair('documentation', Summary);
+  Data.AddPair('argus', Details);
 end;
 
 end.

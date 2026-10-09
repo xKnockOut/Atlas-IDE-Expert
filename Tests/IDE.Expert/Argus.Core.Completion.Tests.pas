@@ -16,6 +16,8 @@ type
     [Test]
     procedure ReadsItemArrayAndNull;
     [Test]
+    procedure ReadsResolvedDetails;
+    [Test]
     procedure MergesProvidersAndCompletesOnce;
     [Test]
     procedure CancelDropsLateItems;
@@ -194,6 +196,54 @@ begin
     Response.Free;
   end;
   Assert.AreEqual(0, Integer(Length(TArgusServerCompletionProvider.ItemsFromLsp(nil))));
+end;
+
+procedure TArgusCompletionProviderTests.ReadsResolvedDetails;
+var
+  Response: TJSONValue;
+  Items: TArgusCompletionItems;
+  Details: TArgusItemDetails;
+begin
+  // data bleibt für completionItem/resolve erhalten.
+  Response := TJSONObject.ParseJSONValue('[{"label":"Add","data":{"file":"C:\\P\\A.pas","line":9,"character":13}}]');
+  try
+    Items := TArgusServerCompletionProvider.ItemsFromLsp(Response);
+  finally
+    Response.Free;
+  end;
+  Assert.Contains(Items[0].ResolveData, '"line":9');
+  Response := TJSONObject.ParseJSONValue(
+    '{"label":"Add","detail":"function Add(const S: string): Integer; virtual;","data":{"argus":{' +
+    '"declaration":"function Add(const S: string): Integer; virtual;","unit":"Liste","container":"TListe",' +
+    '"visibility":"public","directives":["virtual","deprecated"],"deprecated":"Neu verwenden",' +
+    '"summary":"Hängt S an.","returns":"Index.","params":[{"name":"S","text":"Der Text."}],' +
+    '"exceptions":[{"name":"EListError","text":"Voll."}]}}}');
+  try
+    Details := TArgusServerCompletionProvider.DetailsFromLsp(Response);
+  finally
+    Response.Free;
+  end;
+  Assert.AreEqual('function Add(const S: string): Integer; virtual;', Details.Declaration);
+  Assert.AreEqual('Liste', Details.UnitName);
+  Assert.AreEqual('TListe', Details.Container);
+  Assert.AreEqual('public', Details.Visibility);
+  Assert.AreEqual(2, Integer(Length(Details.Directives)));
+  Assert.IsTrue(Details.IsDeprecated);
+  Assert.AreEqual('Neu verwenden', Details.DeprecatedText);
+  Assert.AreEqual('Hängt S an.', Details.Summary);
+  Assert.AreEqual('Index.', Details.Returns);
+  Assert.AreEqual('Der Text.', Details.Params[0].Text);
+  Assert.AreEqual('EListError', Details.Exceptions[0].Name);
+  // Andere Server: detail und documentation.
+  Response := TJSONObject.ParseJSONValue('{"label":"X","detail":"X: Integer","documentation":{"value":"Doku"}}');
+  try
+    Details := TArgusServerCompletionProvider.DetailsFromLsp(Response);
+  finally
+    Response.Free;
+  end;
+  Assert.AreEqual('X: Integer', Details.Declaration);
+  Assert.AreEqual('Doku', Details.Summary);
+  Assert.IsFalse(Details.IsDeprecated);
 end;
 
 procedure TArgusCompletionProviderTests.MergesProvidersAndCompletesOnce;

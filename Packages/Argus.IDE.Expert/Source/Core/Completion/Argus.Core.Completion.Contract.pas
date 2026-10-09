@@ -79,9 +79,46 @@ type
     Rank: Integer;
     /// <summary>Weitere Änderungen beim Übernehmen, z. B. der uses-Eintrag.</summary>
     AdditionalEdits: TArray<TArgusTextEdit>;
+    /// <summary>Daten der Quelle, um Details nachzufragen (#424); '' ohne.</summary>
+    ResolveData: string;
   end;
 
   TArgusCompletionItems = TArray<TArgusCompletionItem>;
+
+  TArgusDocEntry = record
+    /// <summary>Parametername bzw. Exception-Klasse.</summary>
+    Name: string;
+    Text: string;
+  end;
+
+  /// <summary>Details zum gewählten Eintrag für das Detailpanel (#424, #426, #427).</summary>
+  TArgusItemDetails = record
+    Declaration: string;
+    UnitName: string;
+    Container: string;
+    /// <summary>public, protected, ... bzw. '' bei Symbolen außerhalb von Klassen.</summary>
+    Visibility: string;
+    Directives: TArray<string>;
+    IsDeprecated: Boolean;
+    /// <summary>Text hinter deprecated, '' ohne.</summary>
+    DeprecatedText: string;
+    Summary: string;
+    Returns: string;
+    Remarks: string;
+    Params: TArray<TArgusDocEntry>;
+    Exceptions: TArray<TArgusDocEntry>;
+    function IsEmpty: Boolean;
+  end;
+
+  TArgusDetailsCallback = reference to procedure(const ADetails: TArgusItemDetails);
+
+  /// <summary>Quelle, die Details zu einem ihrer Einträge nachliefern kann.</summary>
+  IArgusCompletionResolver = interface
+    ['{7D1E4A92-3B6C-4F8E-A5D0-9C2B81E6F347}']
+    /// <summary>Fragt die Details zu AItem an; ACallback im Hauptthread, nur für die jüngste Anfrage.
+    /// False, wenn die Quelle zu AItem nichts weiß.</summary>
+    function Resolve(const AItem: TArgusCompletionItem; const ACallback: TArgusDetailsCallback): Boolean;
+  end;
 
   IArgusCompletionSink = interface
     ['{5B0E6F3A-2C47-4D8E-9A1F-7E3C2B9D4A61}']
@@ -102,5 +139,12 @@ type
   end;
 
 implementation
+
+{ TArgusItemDetails }
+
+function TArgusItemDetails.IsEmpty: Boolean;
+begin
+  Result := (Declaration = '') and (Summary = '') and (UnitName = '');
+end;
 
 end.

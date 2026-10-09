@@ -57,6 +57,7 @@ contains
   Argus.UI.Signature.Hint in 'Source\UI\Signature\Argus.UI.Signature.Hint.pas',
   Argus.UI.Popup.Window in 'Source\UI\Popup\Argus.UI.Popup.Window.pas',
   Argus.UI.Completion.Popup in 'Source\UI\Completion\Argus.UI.Completion.Popup.pas',
+  Argus.UI.Completion.Details in 'Source\UI\Completion\Argus.UI.Completion.Details.pas',
   Argus.IDE.Editor.Buffer in 'Source\IDE\Editor\Argus.IDE.Editor.Buffer.pas',
   Argus.IDE.Editor.KeyHook in 'Source\IDE\Editor\Argus.IDE.Editor.KeyHook.pas',
   Argus.IDE.Signature.Editor in 'Source\IDE\Signature\Argus.IDE.Signature.Editor.pas',

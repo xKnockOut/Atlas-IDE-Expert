@@ -176,6 +176,7 @@ contains
   Argus.Common.Pascal.TreeCache in 'Source\Pascal\Argus.Common.Pascal.TreeCache.pas',
   Argus.Common.Pascal.IncludeFiles in 'Source\Pascal\Argus.Common.Pascal.IncludeFiles.pas',
   Argus.Common.Pascal.LanguageFeatures in 'Source\Pascal\Argus.Common.Pascal.LanguageFeatures.pas',
-  Argus.Common.Pascal.Preprocessor in 'Source\Pascal\Argus.Common.Pascal.Preprocessor.pas';
+  Argus.Common.Pascal.Preprocessor in 'Source\Pascal\Argus.Common.Pascal.Preprocessor.pas',
+  Argus.Common.Pascal.XmlDoc in 'Source\Pascal\Argus.Common.Pascal.XmlDoc.pas';
 
 end.
