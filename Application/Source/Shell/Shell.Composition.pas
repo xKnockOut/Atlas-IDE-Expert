@@ -155,6 +155,7 @@ type
   public const
     CompileCommand = 'argus.server.compile';
     SelectBuildCommand = 'argus.server.selectBuild';
+    RebuildIndexCommand = 'argus.server.rebuildIndex';
     /// <summary>Anfragen, die länger laufen, werden abgebrochen und gemeldet.</summary>
     RequestTimeoutMs = 10000;
   public
@@ -473,6 +474,24 @@ begin
         StartCompile(TDocumentUris.ToPath(Uri), True)
       else
         StartCompile('', True);
+      Result := TJSONNull.Create;
+    end);
+  FCommands.Register(RebuildIndexCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    var
+      Workspace: TShellWorkspace;
+      Targets: TArray<TShellWorkspace>;
+    begin
+      // Alle Ordner ohne Cache neu einlesen (#49), z. B. nach Änderungen außerhalb des Editors.
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Targets := FWorkspaces.ToArray;
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+      for Workspace in Targets do
+        Workspace.Rebuild;
+      FLogger.Info(Format('Index wird für %d Ordner neu aufgebaut', [Length(Targets)]));
       Result := TJSONNull.Create;
     end);
   FCommands.Register(SelectBuildCommand,
@@ -1288,6 +1307,7 @@ begin
   Commands.Add(StatusCommand);
   Commands.Add(CompileCommand);
   Commands.Add(SelectBuildCommand);
+  Commands.Add(RebuildIndexCommand);
   Result.AddPair('executeCommandProvider', TJSONObject.Create(TJSONPair.Create('commands', Commands)));
   Result.AddPair('workspace', TLspWorkspaceFolders.Capability);
 end;

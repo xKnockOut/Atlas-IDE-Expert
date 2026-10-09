@@ -1,14 +1,22 @@
-# Argus für VS Code (minimal)
+# Argus für VS Code
 
-Kleine Hülle, die den Server `ArgusServer.exe` für `.pas`, `.dpr` und `.dpk` startet. Sie dient zum Prüfen der Server-Funktionen in VS Code. Der vollständige Ausbau mit `.vsix` und Befehlen folgt in einem eigenen Issue.
+Startet den Server `ArgusServer.exe` automatisch, sobald ein Ordner mit `.dproj` oder `argus.json` oder eine Delphi-Datei geöffnet wird.
 
-## Ausprobieren
+## Installieren
+
+`pwsh Tools/Package-VSCode.ps1` baut `argus-<Version>.vsix` mit mitgelieferter EXE; installieren mit `code --install-extension argus-0.2.0.vsix`.
+
+Gesucht wird der Server in dieser Reihenfolge: Einstellung `argus.serverPath`, mitgelieferte EXE, `Output\Win64\Release|Debug\Bin` im Arbeitsbereich, `PATH`.
+
+## Befehle
+
+Server neu starten, Status anzeigen, Projekt kompilieren, Index neu aufbauen, Konfiguration und Plattform wählen (alle unter „Argus:“ in der Befehlspalette).
+
+## Entwickeln
 
 1. Server bauen (Win64, Debug). Er liegt dann unter `Output\Win64\Debug\Bin\ArgusServer.exe`.
 2. In diesem Ordner `npm install` und `npm run compile` ausführen.
 3. Den Ordner `Editors/VSCode` in VS Code öffnen und mit F5 einen Erweiterungs-Host starten. Darin den Repo-Ordner oder ein Delphi-Projekt öffnen.
-
-Ohne Einstellung sucht die Erweiterung den Server unter `Output\Win64\Debug\Bin` im ersten Arbeitsbereichsordner.
 
 ## Einstellungen
 

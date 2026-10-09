@@ -49,6 +49,8 @@ type
     FHasProject: Boolean;
     FBdsRoot: string;
     FDelphiVersion: string;
+    /// <summary>Beim nächsten Indexaufbau den Cache verwerfen (#49).</summary>
+    FDiscardCache: Boolean;
     FCompilerLibraryPaths: TArray<string>;
     // Per Befehl gewählte Konfiguration und Plattform (#46), unter FLock; '' = Einstellung.
     FBuildConfig: string;
@@ -78,6 +80,8 @@ type
     procedure Load;
     /// <summary>Lädt das Projekt neu, auch wenn sich die Einstellungen nicht geändert haben.</summary>
     procedure Reload;
+    /// <summary>Baut den Index ohne Cache neu auf (Befehl „Index neu aufbauen“, #49).</summary>
+    procedure Rebuild;
     /// <summary>Hält den Indexaufbau an.</summary>
     procedure Stop;
     function EnsureUnit(const AUnitName: string): Boolean;
@@ -212,6 +216,12 @@ procedure TShellWorkspace.Reload;
 begin
   FSignature := '';
   StartIndex(FConfiguration.Settings);
+end;
+
+procedure TShellWorkspace.Rebuild;
+begin
+  FDiscardCache := True;
+  Reload;
 end;
 
 procedure TShellWorkspace.Stop;
@@ -607,6 +617,18 @@ begin
   Request.ReadOnlyCache := not LockCache(CacheFile);
   if Request.ReadOnlyCache then
     FLogger.Info(Format('Cache %s wird von einer anderen Instanz geschrieben und hier nur gelesen', [CacheFile]));
+  if FDiscardCache then
+  begin
+    FDiscardCache := False;
+    if not Request.ReadOnlyCache and TFile.Exists(CacheFile) then
+      try
+        TFile.Delete(CacheFile);
+        FLogger.Info('Index-Cache verworfen: ' + CacheFile);
+      except
+        on E: Exception do
+          FLogger.Warning(Format('Index-Cache %s nicht löschbar: %s', [CacheFile, E.Message]));
+      end;
+  end;
   TMonitor.Enter(FLock);
   try
     // Dieselben Symbole bestimmen, welche {$IFDEF}-Zweige der Editor abblendet.
