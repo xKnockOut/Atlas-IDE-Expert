@@ -72,22 +72,10 @@ begin
   Assert.IsTrue(TDfmBinary.ToText(ABytes, Result), 'Umwandlung');
 end;
 
-{ TDfmBinaryTests }
-
-procedure TDfmBinaryTests.SetupFixture;
+/// <summary>Formular mit den gängigen Werttypen und einer Unterkomponente.</summary>
+function SimpleForm: TBytes;
 begin
-  // Die Kodierungen legt die RTL beim ersten Zugriff an und hält sie bis Programmende;
-  // vorab anlegen, damit der Leck-Monitor in den Tests nur deren Speicher sieht.
-  TEncoding.ANSI.GetString(B([65]));
-  TEncoding.Unicode.GetString(B([65, 0]));
-  TEncoding.UTF8.GetString(B([65]));
-end;
-
-procedure TDfmBinaryTests.ConvertsSimpleForm;
-var
-  Bytes: TBytes;
-begin
-  Bytes := Header + S('TForm1') + S('Form1') +
+  Result := Header + S('TForm1') + S('Form1') +
     S('Left') + B([2, 8]) +
     S('Width') + B([3, $2C, $01]) +
     S('Caption') + Str('Hallo') +
@@ -99,6 +87,22 @@ begin
     S('OnClick') + Ident('Button1Click') +
     B([0, 0]) +
     B([0]);
+end;
+
+{ TDfmBinaryTests }
+
+procedure TDfmBinaryTests.SetupFixture;
+begin
+  // Kodierungen und Formatierungen legt die RTL beim ersten Zugriff an und hält sie bis
+  // Programmende; einmal vorab umwandeln, damit der Leck-Monitor nur den Test sieht.
+  TEncoding.ANSI.GetString(B([65]));
+  TEncoding.Unicode.GetString(B([65, 0]));
+  TEncoding.UTF8.GetString(B([65]));
+  Convert(SimpleForm);
+end;
+
+procedure TDfmBinaryTests.ConvertsSimpleForm;
+begin
   Assert.AreEqual(
     'object Form1: TForm1'#13#10 +
     '  Left = 8'#13#10 +
@@ -110,7 +114,7 @@ begin
     '  object Button1: TButton'#13#10 +
     '    OnClick = Button1Click'#13#10 +
     '  end'#13#10 +
-    'end'#13#10, Convert(Bytes));
+    'end'#13#10, Convert(SimpleForm));
 end;
 
 procedure TDfmBinaryTests.WritesSpecialCharactersAsCodes;
@@ -121,7 +125,7 @@ begin
   Bytes := Header + S('TForm1') + S('Form1') +
     S('Caption') + B([18, 7, 0, 0, 0]) + TEncoding.Unicode.GetBytes('Kai''s ä') +
     B([0, 0]);
-  Assert.AreEqual('object Form1: TForm1'#13#10'  Caption = ''Kai''#39''s ''#228'#13#10'end'#13#10, Convert(Bytes));
+  Assert.AreEqual('object Form1: TForm1'#13#10'  Caption = ''Kai''#39''s ''#228'#13#10'end'#13#10, Convert(SimpleForm));
 end;
 
 procedure TDfmBinaryTests.SplitsLongStrings;
@@ -135,7 +139,7 @@ begin
     '  Hint = '#13#10 +
     '    ''' + StringOfChar('a', 64) + ''' +'#13#10 +
     '    ''' + StringOfChar('a', 6) + ''''#13#10 +
-    'end'#13#10, Convert(Bytes));
+    'end'#13#10, Convert(SimpleForm));
 end;
 
 procedure TDfmBinaryTests.ConvertsCollectionsListsAndBinaryData;
@@ -163,7 +167,7 @@ begin
     '    ''y'')'#13#10 +
     '  Data = {'#13#10 +
     '    01ABFF}'#13#10 +
-    'end'#13#10, Convert(Bytes));
+    'end'#13#10, Convert(SimpleForm));
 end;
 
 procedure TDfmBinaryTests.ConvertsInheritedWithPosition;
@@ -179,7 +183,7 @@ begin
     '  end'#13#10 +
     '  inline Rahmen1: TRahmen'#13#10 +
     '  end'#13#10 +
-    'end'#13#10, Convert(Bytes));
+    'end'#13#10, Convert(SimpleForm));
 end;
 
 procedure TDfmBinaryTests.SkipsResourceHeader;
@@ -189,7 +193,7 @@ begin
   Bytes := B([$FF, $0A, $00]) + TEncoding.ASCII.GetBytes('TFORM1') + B([0, $30, $10, 20, 0, 0, 0]) +
     Header + S('TForm1') + S('Form1') + B([0, 0]);
   Assert.IsTrue(TDfmBinary.IsBinary(Bytes));
-  Assert.AreEqual('object Form1: TForm1'#13#10'end'#13#10, Convert(Bytes));
+  Assert.AreEqual('object Form1: TForm1'#13#10'end'#13#10, Convert(SimpleForm));
 end;
 
 procedure TDfmBinaryTests.RejectsDamagedData;
