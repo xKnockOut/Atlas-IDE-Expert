@@ -4,6 +4,10 @@
 // Einstellungen kommen in drei Ebenen: die FormattingOptions des Editors,
 // darüber .editorconfig und darüber ausdrücklich gesetzte Werte aus
 // "format" in argus.json. Die Logik liegt in Argus.Common.Editing.Formatter.
+//
+// textDocument/onTypeFormatting wertet nach Enter den Schnellbefehl
+// "/uses Unit" aus (#254, schaltbar über "usesCommand"). Den Blockabschluss
+// aus #179 gibt es nicht: Den erledigt die IDE selbst.
 
 interface
 
@@ -19,15 +23,19 @@ uses
 type
   /// <summary>Block "format" aus argus.json bzw. dem Editor für AUri.</summary>
   TFormatStyleProvider = reference to function(const AUri: string): TFormatStyle;
+  TBooleanProvider = reference to function(const AUri: string): Boolean;
 
   TLspFormatting = class
   public const
     Method = 'textDocument/formatting';
     RangeMethod = 'textDocument/rangeFormatting';
+    OnTypeMethod = 'textDocument/onTypeFormatting';
   private
     FStore: IDocumentStore;
     FSettingsProvider: TFormatStyleProvider;
     FReadFile: TEditorConfigReadFile;
+    FUsesCommandFor: TBooleanProvider;
+    function HandleOnType(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function Handle(const AParams: TJSONValue; AWithRange: Boolean): TJSONValue;
     function HandleFormatting(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleRangeFormatting(const AParams: TJSONValue;
@@ -36,9 +44,13 @@ type
     constructor Create(const AStore: IDocumentStore; const ASettingsProvider: TFormatStyleProvider;
       const AReadFile: TEditorConfigReadFile);
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
+    /// <summary>documentOnTypeFormattingProvider: ausgelöst durch Enter.</summary>
+    class function OnTypeCapability: TJSONObject; static;
     /// <summary>Einstellungen für AFileName aus Editor-Optionen, .editorconfig und AConfigured.</summary>
     class function Resolve(const AOptions: TJSONValue; const AFileName: string; const AConfigured: TFormatStyle;
       const AReadFile: TEditorConfigReadFile): TFormatStyle; static;
+    /// <summary>Ohne Zuweisung ist /uses eingeschaltet.</summary>
+    property UsesCommandFor: TBooleanProvider read FUsesCommandFor write FUsesCommandFor;
   end;
 
 implementation
@@ -48,7 +60,8 @@ uses
   Argus.Common.Lsp.Positions,
   Argus.Common.Rules.Contract,
   Argus.Common.Pascal.Lexer,
-  Argus.Common.Editing.Formatter;
+  Argus.Common.Editing.Formatter,
+  Argus.Common.Editing.UsesCommand;
 
 { TLspFormatting }
 
@@ -65,6 +78,44 @@ procedure TLspFormatting.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(Method, HandleFormatting);
   ADispatcher.RegisterConcurrentRequest(RangeMethod, HandleRangeFormatting);
+  ADispatcher.RegisterConcurrentRequest(OnTypeMethod, HandleOnType);
+end;
+
+class function TLspFormatting.OnTypeCapability: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('firstTriggerCharacter', #10);
+end;
+
+function TLspFormatting.HandleOnType(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  Uri, Character: string;
+  Document: ITextDocument;
+  PositionValue: TJSONValue;
+  Edit: TRuleEdit;
+  Edits: TArray<TRuleEdit>;
+  Item: TJSONObject;
+begin
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Felder "textDocument.uri" und "position" fehlen');
+  Result := TJSONArray.Create;
+  if not TJSONObject(AParams).TryGetValue<string>('ch', Character) or (Character <> #10) then
+    Exit;
+  if not FStore.TryGet(Uri, Document) then
+    Exit;
+  if (not Assigned(FUsesCommandFor) or FUsesCommandFor(Uri)) and
+    TUsesCommand.AfterEnter(Document.Text, TLspPositions.ReadPosition(PositionValue), nil, Edits) then
+  begin
+    for Edit in Edits do
+    begin
+      Item := TJSONObject.Create;
+      Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
+      Item.AddPair('newText', Edit.NewText);
+      TJSONArray(Result).AddElement(Item);
+    end;
+  end;
 end;
 
 class function TLspFormatting.Resolve(const AOptions: TJSONValue; const AFileName: string;

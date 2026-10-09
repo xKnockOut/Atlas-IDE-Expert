@@ -107,7 +107,8 @@ uses
   Argus.IdePlugin.Lsp.Session in '..\Packages\Argus.IdePlugin\Source\Lsp\Argus.IdePlugin.Lsp.Session.pas',
   Argus.IdePlugin.Lsp.Adapters.ServerProcess in '..\Packages\Argus.IdePlugin\Source\Lsp\Argus.IdePlugin.Lsp.Adapters.ServerProcess.pas',
   Argus.IdePlugin.Lsp.Tests in 'IdePlugin\Argus.IdePlugin.Lsp.Tests.pas',
-  Argus.Common.Editing.UsesClause.Tests in 'Common\Editing\Argus.Common.Editing.UsesClause.Tests.pas';
+  Argus.Common.Editing.UsesClause.Tests in 'Common\Editing\Argus.Common.Editing.UsesClause.Tests.pas',
+  Argus.Common.Editing.UsesCommand.Tests in 'Common\Editing\Argus.Common.Editing.UsesCommand.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var
