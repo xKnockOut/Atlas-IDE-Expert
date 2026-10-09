@@ -124,6 +124,36 @@
       "id": "captured-loop-variable",
       "name": "Erfasste Schleifenvariable",
       "description": "Eine anonyme Methode, die an eine verzögert ausführende API (TThread.Queue, TTask.Run …) geht, erfasst eine Variable, die sich vor dem Aufruf noch ändert, etwa die Variable einer for-in-Schleife. Delphi erfasst die Variable, nicht ihren Wert."
+    },
+    {
+      "id": "component-missing-inherited",
+      "name": "Komponentenmethode ohne inherited",
+      "description": "Ein überschriebenes Loaded, CreateParams, CreateWnd, Notification, SetParent, Destroy oder Paint einer Komponente ruft inherited nicht auf; die VCL überspringt dann ihre eigene Arbeit. Bei Paint ist die Konfidenz niedrig, weil TCustomControl.Paint nur den Rahmen im Designer zeichnet."
+    },
+    {
+      "id": "component-default-mismatch",
+      "name": "default passt nicht zum Konstruktor",
+      "description": "Eine Eigenschaft gibt einen default-Wert an, der Konstruktor setzt das Feld aber auf ein anderes Literal. Werte gleich default speichert die DFM nicht, deshalb wird die Eigenschaft falsch geladen."
+    },
+    {
+      "id": "component-missing-free-notification",
+      "name": "Komponentenreferenz ohne FreeNotification",
+      "description": "Eine Eigenschaft verweist auf eine andere Komponente, ihr Setter ruft aber FreeNotification nicht auf. Wird die andere Komponente freigegeben, bleibt ein ungültiger Zeiger zurück. Im Konstruktor erzeugte Unterkomponenten sind ausgenommen."
+    },
+    {
+      "id": "component-setter-without-invalidate",
+      "name": "Setter ohne Invalidate",
+      "description": "Ein Setter ändert ein Feld, das Paint liest, ruft aber weder Invalidate noch Repaint, Refresh oder Changed auf. Das Steuerelement zeigt weiter den alten Zustand."
+    },
+    {
+      "id": "component-fixed-pixels",
+      "name": "Feste Pixelwerte",
+      "description": "Paint oder Resize verwenden feste Pixelwerte, die über 96 dpi zu klein sind. Werte über ScaleValue oder MulDiv, 0, 1 und -1 sowie Faktoren von Multiplikationen und Divisionen werden nicht gemeldet."
+    },
+    {
+      "id": "component-hardcoded-color",
+      "name": "Feste Farbe in Paint",
+      "description": "Paint verwendet ein RGB-Literal, eine $00BBGGRR-Konstante oder einen TColor-Cast. Solche Farben ignorieren VCL-Styles; Systemfarben wie clBtnFace sind in Ordnung."
     }
   ]
 }

@@ -21,7 +21,8 @@ uses
   Argus.Common.Rules.Builtin.Unused,
   Argus.Common.Rules.Builtin.Declarations,
   Argus.Common.Rules.Builtin.Inheritance,
-  Argus.Common.Rules.Builtin.Capture;
+  Argus.Common.Rules.Builtin.Capture,
+  Argus.Common.Rules.Builtin.Components;
 
 function BuiltinRules: TArray<IRule>;
 var
@@ -37,6 +38,7 @@ begin
     RegisterDeclarationRules(Registry);
     RegisterInheritanceRules(Registry);
     RegisterCaptureRules(Registry);
+    RegisterComponentRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

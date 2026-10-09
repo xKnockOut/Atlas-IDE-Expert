@@ -17,10 +17,49 @@ interface
 
 uses
   System.SysUtils,
+  Argus.Common.Pascal.SyntaxTree,
+  Argus.Common.Index.Contract,
   Argus.Common.Rules.Contract,
   Argus.Common.Rules.Registry;
 
 type
+  /// <summary>Eine Methodendeklaration einer Klasse der geprüften Datei.</summary>
+  TMethodDecl = record
+    ClassName: string;
+    Header: TSyntaxNode;
+    Symbol: TIndexSymbol;
+    /// <summary>procedure, function, constructor, destructor (klein).</summary>
+    Keyword: string;
+    Directives: TArray<string>;
+    function Has(const ADirective: string): Boolean;
+  end;
+
+  /// <summary>Gefundene virtuelle Methode eines Vorfahren.</summary>
+  TInherited = record
+    Found: Boolean;
+    TypeName: string;
+    Symbol: TIndexSymbol;
+    SameSignature: Boolean;
+  end;
+
+  /// <summary>Löst Vorfahren über die Datei und den Index auf; auch für die Komponentenregeln (#55).</summary>
+  TAncestry = class
+  private
+    FIndex: ISymbolIndex;
+    FLocal: TUnitIndex;
+    function FindType(const AName: string; out AType: TSymbolLocation): Boolean;
+    function MethodsOf(const AType: TSymbolLocation; const AName: string): TArray<TIndexSymbol>;
+  public
+    constructor Create(const AContext: TRuleContext);
+    /// <summary>Name des direkten Vorfahren; TObject ohne Angabe; '' wenn der Typ unbekannt ist.</summary>
+    function ParentOf(const ATypeName: string): string;
+    /// <summary>Erbt ATypeName (auch über mehrere Stufen) von AAncestor? False, wenn die Kette abbricht.</summary>
+    function DescendsFrom(const ATypeName, AAncestor: string): Boolean;
+    /// <summary>Nächste gleichnamige Methode in den Vorfahren, falls sie virtuell ist.</summary>
+    function InheritedVirtual(const AMethod: TMethodDecl): TInherited;
+    property Local: TUnitIndex read FLocal;
+  end;
+
   TDestroyWithoutOverrideRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
@@ -55,47 +94,7 @@ uses
   Argus.Common.Documents.Contract,
   Argus.Common.Configuration.Contract,
   Argus.Common.Pascal.Contract,
-  Argus.Common.Pascal.SyntaxTree,
-  Argus.Common.Index.Contract,
   Argus.Common.Index.Extractor;
-
-type
-  /// <summary>Eine Methodendeklaration einer Klasse der geprüften Datei.</summary>
-  TMethodDecl = record
-    ClassName: string;
-    Header: TSyntaxNode;
-    Symbol: TIndexSymbol;
-    /// <summary>procedure, function, constructor, destructor (klein).</summary>
-    Keyword: string;
-    Directives: TArray<string>;
-    function Has(const ADirective: string): Boolean;
-  end;
-
-  /// <summary>Gefundene virtuelle Methode eines Vorfahren.</summary>
-  TInherited = record
-    Found: Boolean;
-    TypeName: string;
-    Symbol: TIndexSymbol;
-    SameSignature: Boolean;
-  end;
-
-  /// <summary>Löst Vorfahren über die Datei und den Index auf.</summary>
-  TAncestry = class
-  private
-    FIndex: ISymbolIndex;
-    FLocal: TUnitIndex;
-    function FindType(const AName: string; out AType: TSymbolLocation): Boolean;
-    function MethodsOf(const AType: TSymbolLocation; const AName: string): TArray<TIndexSymbol>;
-  public
-    constructor Create(const AContext: TRuleContext);
-    /// <summary>Name des direkten Vorfahren; TObject ohne Angabe; '' wenn der Typ unbekannt ist.</summary>
-    function ParentOf(const ATypeName: string): string;
-    /// <summary>Erbt ATypeName (auch über mehrere Stufen) von AAncestor? False, wenn die Kette abbricht.</summary>
-    function DescendsFrom(const ATypeName, AAncestor: string): Boolean;
-    /// <summary>Nächste gleichnamige Methode in den Vorfahren, falls sie virtuell ist.</summary>
-    function InheritedVirtual(const AMethod: TMethodDecl): TInherited;
-    property Local: TUnitIndex read FLocal;
-  end;
 
 function TMethodDecl.Has(const ADirective: string): Boolean;
 begin

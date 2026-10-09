@@ -224,6 +224,60 @@
       "description": "An anonymous method passed to a deferred API (TThread.Queue, TTask.Run, ...) captures a variable that changes before it runs, such as a for-in loop variable. Delphi captures the variable, not its value.",
       "bad": "for S in List do\n  TThread.Queue(nil, procedure begin Memo1.Lines.Add(S); end);",
       "good": "function CaptureS(const AValue: string): TProc;\nbegin\n  Result := procedure begin Memo1.Lines.Add(AValue); end;\nend;\n...\nfor S in List do\n  TThread.Queue(nil, CaptureS(S));"
+    },
+    {
+      "id": "component-missing-inherited",
+      "name": "Component method without inherited",
+      "category": "bug",
+      "severity": "warning",
+      "description": "An overridden Loaded, CreateParams, CreateWnd, Notification, SetParent, Destroy or Paint of a component does not call inherited, so the VCL skips its own work there. For Paint the confidence is low, because TCustomControl.Paint only draws the design-time frame.",
+      "bad": "procedure TMyControl.Loaded;\nbegin\n  UpdateLayout;\nend;",
+      "good": "procedure TMyControl.Loaded;\nbegin\n  inherited;\n  UpdateLayout;\nend;"
+    },
+    {
+      "id": "component-default-mismatch",
+      "name": "default does not match constructor",
+      "category": "bug",
+      "severity": "warning",
+      "description": "A property declares a default value, but the constructor sets its field to a different literal. The streaming system does not store values equal to default, so the property is loaded wrongly from the DFM.",
+      "bad": "property Size: Integer read FSize write FSize default 5;\n...\nFSize := 10;",
+      "good": "property Size: Integer read FSize write FSize default 10;\n...\nFSize := 10;"
+    },
+    {
+      "id": "component-missing-free-notification",
+      "name": "Component reference without FreeNotification",
+      "category": "bug",
+      "severity": "warning",
+      "description": "A component property refers to another component, but its setter does not call FreeNotification. When the other component is freed, a dangling pointer remains. Subcomponents created in the constructor are ignored.",
+      "bad": "procedure TMyControl.SetLink(const Value: TControl);\nbegin\n  FLink := Value;\nend;",
+      "good": "procedure TMyControl.SetLink(const Value: TControl);\nbegin\n  FLink := Value;\n  if Value <> nil then Value.FreeNotification(Self);\nend;"
+    },
+    {
+      "id": "component-setter-without-invalidate",
+      "name": "Setter without Invalidate",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "A property setter changes a field that Paint reads, but does not call Invalidate (or Repaint, Refresh, Changed). The control keeps showing the old state.",
+      "bad": "procedure TMyControl.SetColor(const Value: TColor);\nbegin\n  FColor := Value;\nend;",
+      "good": "procedure TMyControl.SetColor(const Value: TColor);\nbegin\n  FColor := Value;\n  Invalidate;\nend;"
+    },
+    {
+      "id": "component-fixed-pixels",
+      "name": "Fixed pixel values",
+      "category": "code-smell",
+      "severity": "warning",
+      "description": "Paint or Resize uses fixed pixel values that are too small above 96 dpi. Values passed through ScaleValue or MulDiv, 0, 1 and -1, and factors of multiplications and divisions are not reported.",
+      "bad": "Canvas.FillRect(Rect(0, 0, 16, 16));",
+      "good": "Canvas.FillRect(Rect(0, 0, ScaleValue(16), ScaleValue(16)));"
+    },
+    {
+      "id": "component-hardcoded-color",
+      "name": "Hardcoded color in Paint",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "Paint uses an RGB literal, a $00BBGGRR constant or a TColor cast. Such colors ignore VCL styles; system colors like clBtnFace are fine.",
+      "bad": "Canvas.Brush.Color := $00FF8000;",
+      "good": "Canvas.Brush.Color := StyleServices.GetSystemColor(clHighlight);"
     }
   ]
 }
