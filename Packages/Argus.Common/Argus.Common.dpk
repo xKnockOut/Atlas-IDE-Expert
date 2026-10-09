@@ -148,6 +148,7 @@ contains
   Argus.Common.Lsp.FoldingRanges in 'Source\Lsp\Argus.Common.Lsp.FoldingRanges.pas',
   Argus.Common.Lsp.SelectionRanges in 'Source\Lsp\Argus.Common.Lsp.SelectionRanges.pas',
   Argus.Common.Lsp.SyntaxDiagnostics in 'Source\Lsp\Argus.Common.Lsp.SyntaxDiagnostics.pas',
+  Argus.Common.Lsp.PullDiagnostics in 'Source\Lsp\Argus.Common.Lsp.PullDiagnostics.pas',
   Argus.Common.Lsp.TextDocumentSync in 'Source\Lsp\Argus.Common.Lsp.TextDocumentSync.pas',
   Argus.Common.Pascal.Contract in 'Source\Pascal\Argus.Common.Pascal.Contract.pas',
   Argus.Common.Pascal.Lexer in 'Source\Pascal\Argus.Common.Pascal.Lexer.pas',

@@ -134,6 +134,7 @@
         <DCCReference Include="Common\Mcp\Argus.Common.Mcp.Server.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Argus.Common.Mcp.IndexTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Argus.Common.Mcp.CodeTools.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Argus.Common.Lsp.PullDiagnostics.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.Formatter.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.DocumentLinks.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.Colors.Tests.pas"/>
