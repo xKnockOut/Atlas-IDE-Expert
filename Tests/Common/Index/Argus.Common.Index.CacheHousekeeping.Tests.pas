@@ -41,6 +41,10 @@ type
     procedure CleanupKeepsOwnCache;
     [Test]
     procedure DiskFileSystemOverwritesExistingFile;
+    [Test]
+    procedure FileNameDependsOnlyOnSignature;
+    [Test]
+    procedure ConcurrentWritersLeaveReadableCache;
   end;
 
 implementation
@@ -49,6 +53,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.IOUtils,
+  Argus.Common.Index.Contract,
   Argus.Common.Index.CacheHousekeeping,
   Argus.Common.Index.Adapters.CacheDirectory,
   Argus.Common.Index.Adapters.DiskFileSystem;
@@ -181,6 +186,60 @@ begin
   CreateCache('index-00000002.json');
   Assert.AreEqual(1, TIndexCacheDirectory.Cleanup(FRoot, 0, Own));
   Assert.IsTrue(FileExists(Own));
+end;
+
+procedure TIndexCacheDirectoryTests.FileNameDependsOnlyOnSignature;
+begin
+  // LSP- und MCP-Prozess bilden denselben Namen (#62).
+  Assert.AreEqual(TIndexCacheDirectory.FileFor(FRoot, 'C:\P\App.dproj|Debug|Win64'),
+    TIndexCacheDirectory.FileFor(FRoot, 'C:\P\App.dproj|Debug|Win64'));
+  Assert.AreNotEqual(TIndexCacheDirectory.FileFor(FRoot, 'C:\P\App.dproj|Debug|Win64'),
+    TIndexCacheDirectory.FileFor(FRoot, 'C:\P\App.dproj|Release|Win64'));
+  Assert.StartsWith(TPath.Combine(FRoot, 'index-'), TIndexCacheDirectory.FileFor(FRoot, 'x'));
+end;
+
+procedure TIndexCacheDirectoryTests.ConcurrentWritersLeaveReadableCache;
+const
+  Rounds = 50;
+var
+  Cache: string;
+  Writers: array[0..1] of TThread;
+  Index: Integer;
+  Text: string;
+  FileSystem: IIndexFileSystem;
+
+  function StartWriter(const AFile, AContent: string): TThread;
+  begin
+    Result := TThread.CreateAnonymousThread(
+      procedure
+      var
+        Round: Integer;
+        Disk: IIndexFileSystem;
+      begin
+        Disk := TDiskIndexFileSystem.Create;
+        for Round := 1 to Rounds do
+          Disk.WriteText(AFile, AContent);
+      end);
+    Result.FreeOnTerminate := False;
+    Result.Start;
+  end;
+
+begin
+  // Zwei Schreiber, die gleichzeitig ersetzen (#62): Am Ende steht einer der beiden
+  // Stände vollständig in der Datei, nie ein halber.
+  Cache := TPath.Combine(FRoot, 'index-00000003.json');
+  Writers[0] := StartWriter(Cache, StringOfChar('a', 100000));
+  Writers[1] := StartWriter(Cache, StringOfChar('b', 100000));
+  for Index := 0 to High(Writers) do
+  begin
+    Writers[Index].WaitFor;
+    Writers[Index].Free;
+  end;
+  FileSystem := TDiskIndexFileSystem.Create;
+  Assert.IsTrue(FileSystem.ReadText(Cache, Text));
+  Assert.IsTrue((Text = StringOfChar('a', 100000)) or (Text = StringOfChar('b', 100000)));
+  // Keine temporären Dateien zurückgelassen.
+  Assert.AreEqual<NativeInt>(1, Length(TDirectory.GetFiles(FRoot)));
 end;
 
 initialization

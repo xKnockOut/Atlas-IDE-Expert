@@ -137,6 +137,10 @@ uses
   Argus.Common.Index.CacheHousekeeping,
   Argus.Windows.Projects.DelphiInstallation;
 
+const
+  /// <summary>So lange wartet ein lesender Prozess höchstens auf den Cache des schreibenden (#62).</summary>
+  CacheWaitMs = 120000;
+
 { TShellWorkspace }
 
 constructor TShellWorkspace.Create(const ARoot, AName: string; const AStore: IDocumentStore;
@@ -625,12 +629,20 @@ begin
     begin
       Result := Resolver.Resolve(AUnitName);
     end;
-  CacheFile := TPath.Combine(TIndexCacheDirectory.DefaultRoot,
-    Format('index-%.8x.json', [Cardinal(Signature.GetHashCode)]));
+  CacheFile := TIndexCacheDirectory.FileFor(TIndexCacheDirectory.DefaultRoot, Signature);
   Request.CacheFile := CacheFile;
   Request.ReadOnlyCache := not LockCache(CacheFile);
   if Request.ReadOnlyCache then
+  begin
     FLogger.Info(Format('Cache %s wird von einer anderen Instanz geschrieben und hier nur gelesen', [CacheFile]));
+    // Auf deren Stand warten statt alles doppelt zu lesen (#62), begrenzt.
+    Request.CacheBusy :=
+      function: Boolean
+      begin
+        Result := TIndexCacheDirectory.IsLocked(CacheFile);
+      end;
+    Request.CacheWaitMs := CacheWaitMs;
+  end;
   if FDiscardCache then
   begin
     FDiscardCache := False;

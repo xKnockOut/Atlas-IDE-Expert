@@ -93,6 +93,10 @@ type
     // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
     [IgnoreMemoryLeaks]
     procedure ServiceBuildsInBackgroundAndWritesCache;
+    [Test]
+    procedure ReadOnlyServiceWaitsForOtherWriter;
+    [Test]
+    procedure ReadOnlyServiceStopsWaitingAfterLimit;
   end;
 
   [TestFixture]
@@ -693,6 +697,92 @@ begin
   end;
   Assert.IsTrue(FFileSystem.ReadText('C:\Cache\index.json', Text));
   Assert.AreEqual<NativeInt>(5, Length(TIndexCache.Deserialize(Text)));
+end;
+
+procedure TIndexBuilderTests.ReadOnlyServiceWaitsForOtherWriter;
+const
+  CacheFile = 'C:\Cache\index.json';
+var
+  Service: TIndexService;
+  Request: TIndexRequest;
+  Builder: TIndexBuilder;
+  CacheText: string;
+  Busy: Boolean;
+  Writer: TThread;
+begin
+  // Stand der anderen Instanz vorbereiten, aber noch nicht schreiben.
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  try
+    Builder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], nil, nil);
+  finally
+    Builder.Free;
+  end;
+  CacheText := TIndexCache.Serialize(FIndex.Units);
+  FIndex := TSymbolIndex.Create;
+  Busy := True;
+  // Die andere Instanz schreibt nach kurzer Zeit ihren Cache und gibt die Sperre frei.
+  Writer := TThread.CreateAnonymousThread(
+    procedure
+    begin
+      TThread.Sleep(300);
+      FFileSystem.WriteText(CacheFile, CacheText);
+      Busy := False;
+    end);
+  Writer.FreeOnTerminate := False;
+  Service := TIndexService.Create(FIndex, FFileSystem);
+  try
+    Request := Default(TIndexRequest);
+    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    Request.ResolveUnit := Resolve;
+    Request.CacheFile := CacheFile;
+    Request.ReadOnlyCache := True;
+    Request.CacheBusy :=
+      function: Boolean
+      begin
+        Result := Busy;
+      end;
+    Request.CacheWaitMs := 10000;
+    FFiles.Reads := 0;
+    Writer.Start;
+    Service.Start(Request);
+    Service.WaitFor;
+    // Nur der Cache wurde gelesen, keine Quelldatei.
+    Assert.AreEqual(1, FFiles.Reads);
+    Assert.AreEqual(5, Service.Index.UnitCount);
+  finally
+    Service.Free;
+    Writer.WaitFor;
+    Writer.Free;
+  end;
+end;
+
+procedure TIndexBuilderTests.ReadOnlyServiceStopsWaitingAfterLimit;
+var
+  Service: TIndexService;
+  Request: TIndexRequest;
+  Text: string;
+begin
+  Service := TIndexService.Create(FIndex, FFileSystem);
+  try
+    Request := Default(TIndexRequest);
+    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    Request.ResolveUnit := Resolve;
+    Request.CacheFile := 'C:\Cache\index.json';
+    Request.ReadOnlyCache := True;
+    Request.CacheBusy :=
+      function: Boolean
+      begin
+        Result := True;
+      end;
+    Request.CacheWaitMs := 300;
+    Service.Start(Request);
+    Service.WaitFor;
+    Assert.AreEqual(5, Service.Index.UnitCount);
+  finally
+    Service.Free;
+  end;
+  // Nur lesend: kein Cache geschrieben.
+  Assert.IsFalse(FFileSystem.ReadText('C:\Cache\index.json', Text));
 end;
 
 { TIndexProjectFilesTests }
