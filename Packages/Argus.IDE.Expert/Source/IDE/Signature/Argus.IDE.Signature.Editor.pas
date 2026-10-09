@@ -72,7 +72,12 @@ type
     procedure ActiveChanged;
     function WantsKey(AKey: Word; AShift: TShiftState): Boolean;
     procedure HandleKey(AKey: Word; AShift: TShiftState);
+  private class var
+    FPreferredName: string;
+    FPreferredIndex: Integer;
   public
+    /// <summary>Beim nächsten Hint für AName die Überladung AIndex wählen (aus dem Detailpanel, #425).</summary>
+    class procedure PreferOverload(const AName: string; AIndex: Integer); static;
     constructor Create(const ASession: TArgusSessionFunc; const ACompletionOpen: TArgusBoolFunc;
       const ALog: TArgusLogFunc);
     destructor Destroy; override;
@@ -337,11 +342,22 @@ begin
       FHint.Above := Assigned(FCompletionOpen) and FCompletionOpen();
       FHint.SetPath(Current.Outer, Current.Name);
       FController.Show(AHelp, Current.ActiveParameter);
+      // Im Detailpanel gewählte Überladung übernehmen (#425), einmalig.
+      if (FPreferredName <> '') and SameText(FPreferredName, Current.Name) and (FPreferredIndex > 0) and
+        (FPreferredIndex < Length(AHelp.Signatures)) then
+        FController.SelectOverload(FPreferredIndex);
+      FPreferredName := '';
       Log(Format('Parameter-Hint: %d Signaturen, Parameter %d', [Length(AHelp.Signatures), Current.ActiveParameter]));
       ActiveChanged;
     end);
   ActiveChanged;
   Result := FPending;
+end;
+
+class procedure TArgusEditorSignature.PreferOverload(const AName: string; AIndex: Integer);
+begin
+  FPreferredName := AName;
+  FPreferredIndex := AIndex;
 end;
 
 procedure TArgusEditorSignature.Close;

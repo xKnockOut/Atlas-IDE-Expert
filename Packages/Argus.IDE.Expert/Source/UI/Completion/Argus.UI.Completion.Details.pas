@@ -10,8 +10,9 @@
 //   5. Beschreibung (<summary>), bei deprecated "Veraltet: …" in Warnfarbe
 //   6. Parameter (Name in Akzentfarbe), Rückgabe (→) und Exceptions (!), zweispaltig
 //   7. Bemerkungen (<remarks>), höchstens drei Zeilen
-// Leere Abschnitte entfallen. Ohne Details (z. B. Schlüsselwort) steht ein
-// gedämpfter Hinweis, damit das Popup beim Blättern nicht schmaler wird.
+// Bei Überladungen (#425) steht oben "Überladung ‹ 2 / 3 ›"; die Pfeile sind
+// klickbar. Leere Abschnitte entfallen. Ohne Details (z. B. Schlüsselwort) steht
+// ein gedämpfter Hinweis, damit das Popup beim Blättern nicht schmaler wird.
 
 interface
 
@@ -30,12 +31,22 @@ type
     DefaultWidth = 320;
   private
     FDetails: TArgusItemDetails;
+    FOverloadIndex: Integer;
+    FOverloadCount: Integer;
+    FPreviousRect: TRect;
+    FNextRect: TRect;
   public
     /// <summary>Zeichnet (ADraw) bzw. misst den Inhalt in ABounds; liefert die benötigte Höhe.
     /// APPI: Pixel je Zoll des Fensters; AFont: Editorschrift; AUIFont: Beschriftungen.</summary>
     function Render(ACanvas: TCanvas; const AColors: TArgusColors; AFont, AUIFont: TFont; const ABounds: TRect;
       APPI: Integer; ADraw: Boolean): Integer;
     property Details: TArgusItemDetails read FDetails write FDetails;
+    /// <summary>Gezeigte Überladung (0-basiert) und Anzahl; Anzahl 1 = keine Kopfzeile.</summary>
+    property OverloadIndex: Integer read FOverloadIndex write FOverloadIndex;
+    property OverloadCount: Integer read FOverloadCount write FOverloadCount;
+    /// <summary>Klickflächen der Pfeile nach dem letzten Zeichnen (Fensterkoordinaten).</summary>
+    property PreviousRect: TRect read FPreviousRect;
+    property NextRect: TRect read FNextRect;
   end;
 
 implementation
@@ -135,6 +146,36 @@ begin
   Left := ABounds.Left + Scale(13);
   Right := ABounds.Right - Scale(13);
   Y := ABounds.Top + Scale(11);
+  FPreviousRect := TRect.Empty;
+  FNextRect := TRect.Empty;
+  // Kopfzeile bei Überladungen (#425): "‹ 2 / 3 ›" rechtsbündig.
+  if FOverloadCount > 1 then
+  begin
+    ACanvas.Font := AUIFont;
+    LineHeight := ACanvas.TextHeight('Wg');
+    Text := Format('%d / %d', [FOverloadIndex + 1, FOverloadCount]);
+    X := Right - ACanvas.TextWidth('›') - Scale(4);
+    FNextRect := Rect(X - Scale(4), Y - Scale(2), Right, Y + LineHeight + Scale(2));
+    Dec(X, ACanvas.TextWidth(Text) + Scale(8));
+    Rect_ := Rect(X, Y, X + ACanvas.TextWidth(Text), Y + LineHeight);
+    Dec(X, ACanvas.TextWidth('‹') + Scale(8));
+    FPreviousRect := Rect(X - Scale(4), Y - Scale(2), X + ACanvas.TextWidth('‹') + Scale(4),
+      Y + LineHeight + Scale(2));
+    if ADraw then
+    begin
+      ACanvas.Brush.Style := bsClear;
+      ACanvas.Font.Color := ToColor(AColors.Muted);
+      ACanvas.TextOut(Left, Y, 'Überladung');
+      ACanvas.Font.Color := ToColor(AColors.Text);
+      DrawText(ACanvas.Handle, PChar(Text), -1, Rect_, DT_SINGLELINE or DT_NOPREFIX);
+      ACanvas.Font.Style := [fsBold];
+      ACanvas.Font.Color := ToColor(AColors.Accent);
+      ACanvas.TextOut(FPreviousRect.Left + Scale(4), Y, '‹');
+      ACanvas.TextOut(FNextRect.Left + Scale(4), Y, '›');
+      ACanvas.Font.Style := [];
+    end;
+    Inc(Y, LineHeight + Scale(8));
+  end;
   if FDetails.IsEmpty then
   begin
     Block('Keine Details zu diesem Eintrag', AColors.Muted, []);

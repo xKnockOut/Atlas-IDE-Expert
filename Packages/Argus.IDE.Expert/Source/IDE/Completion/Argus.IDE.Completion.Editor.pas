@@ -50,6 +50,8 @@ type
     FDetailKey: string;
     FDetailDue: UInt64;
     FDetailRequested: Boolean;
+    // Gezeigte Überladung des gewählten Eintrags (#425).
+    FOverloadIndex: Integer;
     FController: TArgusCompletionController;
     FTimer: TTimer;
     FKeys: TArgusKeyClient;
@@ -72,6 +74,7 @@ type
     function CaretRect(out AWindow: HWND; out ARect: TRect): Boolean;
     procedure ActiveChanged;
     procedure UpdateDetails;
+    procedure ChangeOverload(ADelta: Integer);
     procedure HideDetails;
     procedure InstallKeyHook;
     procedure RemoveKeyHook;
@@ -109,6 +112,7 @@ uses
   Argus.Core.Settings.Plugin,
   Argus.IDE.Settings.Store,
   Argus.IDE.Completion.History,
+  Argus.IDE.Signature.Editor,
   Argus.Core.Completion.Ranking,
   Argus.IDE.Editor.Buffer,
   Argus.IDE.Editor.Style;
@@ -266,6 +270,8 @@ begin
   FController.OnCommit :=
     procedure(const AItem: TArgusCompletionItem)
     begin
+      // Die zuletzt gezeigte Überladung gilt auch im Parameter-Hint (#425, #437).
+      TArgusEditorSignature.PreferOverload(AItem.Name, FOverloadIndex);
       Commit(AItem);
       if FController.Usage <> nil then
         TArgusIdeHistory.Committed;
@@ -274,6 +280,11 @@ begin
     procedure(APosition: Integer)
     begin
       FController.Select(APosition);
+    end;
+  FPopup.OnOverload :=
+    procedure(ADelta: Integer)
+    begin
+      ChangeOverload(ADelta);
     end;
   FPopup.OnChip :=
     procedure(AChip: TArgusChip)
@@ -473,9 +484,13 @@ begin
 end;
 
 function TArgusEditorCompletion.WantsCommand(AKey: Word; AShift: TShiftState): Boolean;
+var
+  Item: TArgusCompletionItem;
 begin
   // Strg+Q Panel (#428), Alt+1 … Alt+6 Chips (#422).
   Result := FController.Visible and (((AKey = Ord('Q')) and (AShift = [ssCtrl])) or
+    (((AKey = VK_UP) or (AKey = VK_DOWN)) and (AShift = [ssAlt]) and FController.SelectedItem(Item) and
+      (Item.OverloadCount > 1)) or
     (FController.ChipsEnabled and (AKey >= Ord('1')) and (AKey <= Ord('6')) and (AShift = [ssAlt])));
 end;
 
@@ -483,6 +498,10 @@ procedure TArgusEditorCompletion.HandleCommand(AKey: Word; AShift: TShiftState);
 begin
   if (AKey = Ord('Q')) and (AShift = [ssCtrl]) then
     FPopup.TogglePanel
+  else if (AKey = VK_UP) and (AShift = [ssAlt]) then
+    ChangeOverload(-1)
+  else if (AKey = VK_DOWN) and (AShift = [ssAlt]) then
+    ChangeOverload(1)
   else if (AKey >= Ord('1')) and (AKey <= Ord('6')) then
     FController.SelectChipAt(AKey - Ord('1'));
 end;
@@ -522,6 +541,8 @@ begin
   begin
     // Erst nach 80 ms Ruhe nachfragen, damit schnelles Scrollen nicht flackert (#424).
     FDetailKey := Key;
+    FOverloadIndex := 0;
+    FPopup.SetOverload(0, Item.OverloadCount);
     FDetailDue := TThread.GetTickCount64 + 80;
     FDetailRequested := False;
     Exit;
@@ -529,6 +550,9 @@ begin
   if FDetailRequested or (TThread.GetTickCount64 < FDetailDue) then
     Exit;
   FDetailRequested := True;
+  // Überladung (#425): deren Position statt der ersten nachfragen.
+  if (FOverloadIndex > 0) and (FOverloadIndex <= Length(Item.OverloadData)) then
+    Item.ResolveData := Item.OverloadData[FOverloadIndex - 1];
   if not Supports(FServerProviderRef, IArgusCompletionResolver, Resolver) or not Resolver.Resolve(Item,
     procedure(const ADetails: TArgusItemDetails)
     begin
@@ -537,6 +561,20 @@ begin
         FPopup.ShowDetails(ADetails);
     end) then
     FPopup.ClearDetails;
+end;
+
+procedure TArgusEditorCompletion.ChangeOverload(ADelta: Integer);
+var
+  Item: TArgusCompletionItem;
+begin
+  if not FController.SelectedItem(Item) or (Item.OverloadCount < 2) then
+    Exit;
+  FOverloadIndex := (FOverloadIndex + ADelta + Item.OverloadCount) mod Item.OverloadCount;
+  FPopup.SetOverload(FOverloadIndex, Item.OverloadCount);
+  // Sofort nachfragen, ohne die 80 ms Ruhe beim Blättern in der Liste.
+  FDetailRequested := False;
+  FDetailDue := 0;
+  UpdateDetails;
 end;
 
 procedure TArgusEditorCompletion.TimerTick(Sender: TObject);

@@ -1,6 +1,7 @@
 ﻿unit Argus.IDE.CodeInsight.Composition;
 
-// Meldet den Code Insight-Manager und die Optionsseite 
+// Meldet den Code Insight-Manager und die Optionsseite "Argus" (#227) beim
+// Laden des Packages an und beim Entladen wieder ab (ADR 0006).
 
 interface
 
