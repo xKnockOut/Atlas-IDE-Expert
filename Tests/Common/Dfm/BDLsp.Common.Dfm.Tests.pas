@@ -238,13 +238,16 @@ procedure TDfmTests.BuildsSymbolsAndFolding;
 var
   Document: TDfmDocument;
   Symbols, Folding: TJSONArray;
+  Name: string;
 begin
   Document := TDfmParser.Parse(Form);
   try
     Symbols := TLspFormFiles.BuildSymbols(Document);
     try
       Assert.AreEqual(1, Symbols.Count);
-      Assert.AreEqual('Form1', (Symbols.Items[0] as TJSONObject).GetValue<string>('name'));
+      // Gliederung zeigt Name und Typ, wie der Objektinspektor.
+      Name := (Symbols.Items[0] as TJSONObject).GetValue<string>('name');
+      Assert.AreEqual('Form1: TForm1', Name);
       Assert.IsTrue(Pos('Button1', Symbols.ToJSON) > 0);
       Assert.IsTrue(Pos('Button1Click', Symbols.ToJSON) > 0);
     finally
