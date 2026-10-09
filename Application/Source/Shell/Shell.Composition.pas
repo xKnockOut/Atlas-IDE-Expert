@@ -81,6 +81,8 @@ type
     FDocumentHighlights: TLspDocumentHighlights;
     FReferences: TLspReferences;
     FRename: TLspRename;
+    /// <summary>Nicht vertrauenswürdiger Arbeitsbereich (#186): kein Compiler-Lauf.</summary>
+    FRestricted: Boolean;
     FCompletion: TLspCompletion;
     FSignatureHelp: TLspSignatureHelp;
     FHierarchies: TLspHierarchies;
@@ -1124,6 +1126,13 @@ var
   Error: string;
   Unavailable: Boolean;
 begin
+  // Workspace Trust (#186): Ein Compiler-Lauf kann Build-Events des Projekts ausführen.
+  if FRestricted then
+  begin
+    if AManual then
+      FLogger.Warning('Kompilieren ist in einem nicht vertrauenswürdigen Arbeitsbereich abgeschaltet');
+    Exit;
+  end;
   TMonitor.Enter(FCompileLock);
   try
     Unavailable := FCompilerUnavailable <> '';
@@ -1352,6 +1361,9 @@ begin
     Logger.Warning(Warning);
 
   Result := TServerComposition.Create(Transport, Logger);
+  Result.FRestricted := AOptions.Restricted;
+  if AOptions.Restricted then
+    Logger.Info('Eingeschränkter Modus (Arbeitsbereich nicht vertrauenswürdig): der Compiler wird nicht gestartet');
 end;
 
 function TServerComposition.DescribeFailure(const AError: Exception): string;
