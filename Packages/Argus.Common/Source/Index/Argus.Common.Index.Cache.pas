@@ -57,6 +57,13 @@ begin
     Result[Index] := Items.Items[Index].Value;
 end;
 
+/// <summary>True nur bei einem JSON-Wert true. Ohne GetValue&lt;Boolean&gt;: dessen
+/// Umweg über TValue ließ je Aufruf Speicher liegen.</summary>
+function FlagOf(AValue: TJSONValue): Boolean;
+begin
+  Result := (AValue is TJSONBool) and TJSONBool(AValue).AsBoolean;
+end;
+
 function IntAt(AItems: TJSONArray; AIndex: Integer): Integer;
 begin
   Result := StrToIntDef(AItems.Items[AIndex].Value, 0);
@@ -189,8 +196,8 @@ begin
       UnitIndex.Hash := Item.GetValue<string>('h', '');
       UnitIndex.InterfaceUses := JsonToStrings(Item.GetValue('iu'));
       UnitIndex.ImplementationUses := JsonToStrings(Item.GetValue('mu'));
-      UnitIndex.Library_ := Item.GetValue<Boolean>('l', False);
-      UnitIndex.Compact := Item.GetValue<Boolean>('c', False);
+      UnitIndex.Library_ := FlagOf(Item.GetValue('l'));
+      UnitIndex.Compact := FlagOf(Item.GetValue('c'));
       SymbolList.Clear;
       Value := Item.GetValue('s');
       if Value is TJSONArray then
