@@ -62,6 +62,60 @@
       "description": "A uses entry violates a layer rule configured under \"layers\" in argus.json, e.g. *.Common.* must not use Vcl.*.",
       "bad": "unit App.Common.Model;\ninterface\nuses Vcl.Forms;",
       "good": "unit App.Common.Model;\ninterface\nuses System.Classes;"
+    },
+    {
+      "id": "thread-vcl-access",
+      "name": "VCL access from a thread",
+      "category": "bug",
+      "severity": "warning",
+      "description": "TThread.Execute, TThread.CreateAnonymousThread or TTask accesses the VCL (Application, Screen, ShowMessage, MessageDlg …) outside Synchronize or Queue. The VCL is not thread-safe.",
+      "bad": "procedure TWorker.Execute;\nbegin\n  Application.Title := 'Done';\nend;",
+      "good": "procedure TWorker.Execute;\nbegin\n  TThread.Queue(nil, procedure begin Application.Title := 'Done' end);\nend;"
+    },
+    {
+      "id": "lock-without-finally",
+      "name": "Lock without try/finally",
+      "category": "bug",
+      "severity": "warning",
+      "description": "A lock (TCriticalSection.Enter/Acquire, TMonitor.Enter, BeginRead/BeginWrite, TSpinLock.Enter, TMutex.Acquire, EnterCriticalSection or a pair from the lockPairs option) is not directly followed by try/finally releasing it. An exception leaves the lock held.",
+      "bad": "CS.Enter;\nDoWork;\nCS.Leave;",
+      "good": "CS.Enter;\ntry\n  DoWork;\nfinally\n  CS.Leave;\nend;"
+    },
+    {
+      "id": "thread-use-after-free-on-terminate",
+      "name": "Thread used after start with FreeOnTerminate",
+      "category": "bug",
+      "severity": "warning",
+      "description": "A thread with FreeOnTerminate := True may free itself as soon as it is started; using the variable afterwards can access a freed object.",
+      "bad": "T.FreeOnTerminate := True;\nT.Start;\nLog(T.ThreadID);",
+      "good": "Log(T.ThreadID);\nT.FreeOnTerminate := True;\nT.Start;"
+    },
+    {
+      "id": "thread-free-with-free-on-terminate",
+      "name": "Free on a thread with FreeOnTerminate",
+      "category": "bug",
+      "severity": "error",
+      "description": "Free on a thread with FreeOnTerminate := True frees it twice.",
+      "bad": "T.FreeOnTerminate := True;\nT.Start;\nT.Free;",
+      "good": "T.FreeOnTerminate := True;\nT.Start;"
+    },
+    {
+      "id": "synchronize-in-destructor",
+      "name": "Synchronize in thread destructor",
+      "category": "bug",
+      "severity": "warning",
+      "description": "Synchronize in the destructor of a TThread descendant (or a method it calls) deadlocks: the main thread waits in WaitFor while the thread waits for Synchronize.",
+      "bad": "destructor TWorker.Destroy;\nbegin\n  Synchronize(Notify);\n  inherited;\nend;",
+      "good": "destructor TWorker.Destroy;\nbegin\n  inherited;\nend;"
+    },
+    {
+      "id": "thread-resume-suspend",
+      "name": "Deprecated TThread.Resume/Suspend",
+      "category": "code-smell",
+      "severity": "warning",
+      "description": "TThread.Resume and Suspend are deprecated. Start a created thread with Start; Suspend has no safe replacement, wait with an event instead.",
+      "bad": "FWorker.Resume;",
+      "good": "FWorker.Start;"
     }
   ]
 }
