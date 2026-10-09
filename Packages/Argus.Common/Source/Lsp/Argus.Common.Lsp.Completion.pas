@@ -388,6 +388,8 @@ var
     Used: TArray<string>;
     Own: string;
     Existing: TScoredItem;
+    // Lokal: Eine for-Schleifenvariable darf nicht aus der äußeren Routine stammen (E1019).
+    UnitInfo: TUnitIndex;
     Symbol: TIndexSymbol;
     Edit: TRuleEdit;
     Added, Before: Integer;
