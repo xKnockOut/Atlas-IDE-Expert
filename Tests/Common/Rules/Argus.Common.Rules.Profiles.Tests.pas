@@ -160,9 +160,9 @@ const
     'component-fixed-pixels,component-hardcoded-color,component-missing-free-notification,' +
     'component-missing-inherited,component-setter-without-invalidate,confusable-identifier,control-char,' +
     'declared-not-implemented,destroy-without-override,dfm-circular-datasource,dfm-control-field-type-mismatch,dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,' +
-    'forbidden-uses,foreign-form-control-access,form-field-type-mismatch,' +
+    'duplicate-interface-guid,empty-except,forbidden-uses,foreign-form-control-access,form-field-type-mismatch,' +
     'form-field-without-object,form-object-without-field,hides-virtual,implemented-not-declared,' +
-    'invisible-char,lock-without-finally,possibly-uninitialized,result-not-set,security-command-injection,' +
+    'interface-guid,invisible-char,lock-without-finally,possibly-uninitialized,result-not-set,security-command-injection,' +
     'security-insecure-http,security-insecure-random,security-sql-injection,security-tls-verification-disabled,' +
     'security-weak-crypto,slash-command,synchronize-in-destructor,' +
     'thread-free-with-free-on-terminate,thread-resume-suspend,thread-use-after-free-on-terminate,' +
@@ -171,13 +171,16 @@ const
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
   // strict schaltet experimentelle Regeln ein (#146), z. B. security-path-traversal (#149).
-  Assert.AreEqual(All.Replace('security-insecure-random,', 'security-insecure-random,security-path-traversal,'),
+  // file-header und hardcoded-string (#56) sind ebenfalls experimentell.
+  Assert.AreEqual(All.Replace('security-insecure-random,', 'security-insecure-random,security-path-traversal,')
+    .Replace('empty-except,', 'empty-except,file-header,')
+    .Replace('form-object-without-field,', 'form-object-without-field,hardcoded-string,'),
     ActiveRules('strict'));
   Assert.AreEqual('bidi-control,captured-loop-variable,component-create-without-override,component-default-mismatch,' +
     'component-missing-free-notification,component-missing-inherited,control-char,declared-not-implemented,' +
     'destroy-without-override,dfm-circular-datasource,dfm-control-field-type-mismatch,dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,' +
-    'form-field-type-mismatch,form-field-without-object,form-object-without-field,' +
-    'hides-virtual,implemented-not-declared,lock-without-finally,possibly-uninitialized,' +
+    'duplicate-interface-guid,form-field-type-mismatch,form-field-without-object,form-object-without-field,' +
+    'hides-virtual,implemented-not-declared,interface-guid,lock-without-finally,possibly-uninitialized,' +
     'result-not-set,security-command-injection,security-sql-injection,security-tls-verification-disabled,' +
     'synchronize-in-destructor,' +
     Threads + ',virtual-instead-of-override',
@@ -187,7 +190,7 @@ begin
     'security-weak-crypto',
     ActiveRules('security'));
   Assert.AreEqual('component-fixed-pixels,component-hardcoded-color,component-setter-without-invalidate,' +
-    'forbidden-uses,foreign-form-control-access,slash-command,thread-resume-suspend,unused-assignment,unused-local,' +
+    'empty-except,forbidden-uses,foreign-form-control-access,slash-command,thread-resume-suspend,unused-assignment,unused-local,' +
     'unused-parameter',
     ActiveRules('style'));
 end;
