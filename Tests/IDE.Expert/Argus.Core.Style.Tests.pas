@@ -210,6 +210,7 @@ procedure TArgusPaletteTests.CheckContrast(const AColors: TArgusColors; const AM
 
 var
   Kind: TArgusBadgeKind;
+  Index: Integer;
 begin
   Pair('Text', AColors.Text, AColors.Surface);
   Pair('Text auf Auswahl', AColors.Text, AColors.Selection);
@@ -229,6 +230,9 @@ begin
   Pair('Warnung auf Gutter', AColors.Warn, AColors.Gutter);
   Pair('Warnung auf Warnfläche', AColors.Warn, AColors.WarnSoft);
   Pair('Fehler', AColors.Error, AColors.Surface);
+  // Klammer- und Blockpaare (#514): jede Tiefe lesbar.
+  for Index := 0 to High(AColors.Pairs) do
+    Pair('Paar ' + IntToStr(Index), AColors.Pairs[Index], AColors.Surface);
   Pair('Fehler auf Fehlerfläche', AColors.Error, AColors.ErrorSoft);
   Pair('Fehler auf Gutter', AColors.Error, AColors.Gutter);
   for Kind := Low(TArgusBadgeKind) to High(TArgusBadgeKind) do

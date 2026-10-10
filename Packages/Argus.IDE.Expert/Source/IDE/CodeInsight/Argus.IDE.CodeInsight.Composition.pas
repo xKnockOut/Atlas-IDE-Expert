@@ -2,7 +2,8 @@
 
 // Meldet den Code Insight-Manager, die Optionsseite "Argus" (#227), die
 // Compile-Ereignisse (#527), den Einfrier-Wächter (#501), das Neuladen
-// extern geänderter Dateien (#536) und die Befehlspalette (#502) beim Laden des
+// extern geänderter Dateien (#536), die Befehlspalette (#502) und die farbigen
+// Klammerpaare (#514) beim Laden des
 // Packages an und beim Entladen in umgekehrter Reihenfolge wieder ab (ADR 0006).
 
 interface
@@ -28,7 +29,8 @@ uses
   Argus.IDE.Settings.Store,
   Argus.IDE.Diagnostics.Watchdog,
   Argus.IDE.Files.Reloader,
-  Argus.IDE.Commands.Palette;
+  Argus.IDE.Commands.Palette,
+  Argus.IDE.Editor.Pairs;
 
 var
   ManagerIndex: Integer = -1;
@@ -39,6 +41,7 @@ var
   Hangs: TArgusHangMonitor;
   Reloader: TArgusFileReloader;
   Palette: TArgusIdePalette;
+  Pairs: TArgusEditorPairs;
 
 const
   // Ab dieser Dauer ein Hinweis im Meldungsfenster (#501).
@@ -203,6 +206,8 @@ begin
     RegisterWatchdog(LoadedAt);
   if Palette = nil then
     RegisterPalette;
+  if Pairs = nil then
+    Pairs := TArgusEditorPairs.Create;
   if Reloader = nil then
     Reloader := TArgusFileReloader.Create(
       procedure(AText: string)
@@ -221,6 +226,7 @@ procedure Unregister;
 var
   Services: IOTACodeInsightServices;
 begin
+  FreeAndNil(Pairs);
   FreeAndNil(Palette);
   FreeAndNil(Reloader);
   UnregisterWatchdog;

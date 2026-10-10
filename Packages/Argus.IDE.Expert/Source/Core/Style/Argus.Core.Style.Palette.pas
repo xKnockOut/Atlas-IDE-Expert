@@ -47,6 +47,8 @@ type
     Error: TArgusColor;
     ErrorSoft: TArgusColor;
     Badges: array[TArgusBadgeKind] of TArgusBadgeColors;
+    /// <summary>Klammer- und Blockpaare je Tiefe, zyklisch (#514).</summary>
+    Pairs: array[0..4] of TArgusColor;
     class function Light: TArgusColors; static;
     class function Dark: TArgusColors; static;
     /// <summary>Light oder Dark, je nachdem ob ABackground (Fensterfarbe der IDE) dunkel ist.</summary>
@@ -101,6 +103,11 @@ begin
   Result.Badges[TArgusBadgeKind.Snippet] := Badge('#ECEFF3', '#3E4756');
   Result.Badges[TArgusBadgeKind.Keyword] := Badge('#ECEFF3', '#3E4756');
   Result.Badges[TArgusBadgeKind.XmlDoc] := Badge('#ECEFF3', '#3E4756');
+  Result.Pairs[0] := Hex('#0D5EAF');
+  Result.Pairs[1] := Hex('#7B3FB0');
+  Result.Pairs[2] := Hex('#9A5B00');
+  Result.Pairs[3] := Hex('#1E6B3A');
+  Result.Pairs[4] := Hex('#B0306A');
 end;
 
 class function TArgusColors.Dark: TArgusColors;
@@ -137,6 +144,11 @@ begin
   Result.Badges[TArgusBadgeKind.Snippet] := Badge('#272D36', '#B9C1CC');
   Result.Badges[TArgusBadgeKind.Keyword] := Badge('#272D36', '#B9C1CC');
   Result.Badges[TArgusBadgeKind.XmlDoc] := Badge('#272D36', '#B9C1CC');
+  Result.Pairs[0] := Hex('#7FB0EE');
+  Result.Pairs[1] := Hex('#C79BF2');
+  Result.Pairs[2] := Hex('#F0C06A');
+  Result.Pairs[3] := Hex('#7FD39A');
+  Result.Pairs[4] := Hex('#F28DB6');
 end;
 
 class function TArgusColors.ForBackground(ABackground: TArgusColor): TArgusColors;

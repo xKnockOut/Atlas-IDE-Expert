@@ -170,7 +170,9 @@ uses
   Argus.Core.Files.ExternalChanges in '..\Packages\Argus.IDE.Expert\Source\Core\Files\Argus.Core.Files.ExternalChanges.pas',
   Argus.Core.Files.ExternalChanges.Tests in 'IDE.Expert\Argus.Core.Files.ExternalChanges.Tests.pas',
   Argus.Core.Commands.Palette in '..\Packages\Argus.IDE.Expert\Source\Core\Commands\Argus.Core.Commands.Palette.pas',
-  Argus.Core.Commands.Palette.Tests in 'IDE.Expert\Argus.Core.Commands.Palette.Tests.pas';
+  Argus.Core.Commands.Palette.Tests in 'IDE.Expert\Argus.Core.Commands.Palette.Tests.pas',
+  Argus.Core.Editor.Pairs in '..\Packages\Argus.IDE.Expert\Source\Core\Editor\Argus.Core.Editor.Pairs.pas',
+  Argus.Core.Editor.Pairs.Tests in 'IDE.Expert\Argus.Core.Editor.Pairs.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

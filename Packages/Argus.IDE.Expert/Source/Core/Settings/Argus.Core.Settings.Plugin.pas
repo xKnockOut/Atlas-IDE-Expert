@@ -57,6 +57,8 @@ type
     HangHint: Boolean;
     /// <summary>Extern geänderte Dateien ohne eigene Änderungen still neu laden (#536).</summary>
     ReloadExternal: Boolean;
+    /// <summary>Klammer- und Blockpaare nach Tiefe färben (#514).</summary>
+    PairColors: Boolean;
     class function Defaults: TArgusPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -95,6 +97,7 @@ begin
   Result.HangThresholdMs := 500;
   Result.HangHint := True;
   Result.ReloadExternal := True;
+  Result.PairColors := True;
 end;
 
 procedure TArgusPluginSettings.Normalize;
@@ -125,6 +128,7 @@ begin
   HangThresholdMs := AStore.ReadInteger('HangThresholdMs', Default.HangThresholdMs);
   HangHint := AStore.ReadInteger('HangHint', BoolValue(Default.HangHint)) <> 0;
   ReloadExternal := AStore.ReadInteger('ReloadExternal', BoolValue(Default.ReloadExternal)) <> 0;
+  PairColors := AStore.ReadInteger('PairColors', BoolValue(Default.PairColors)) <> 0;
   Normalize;
 end;
 
@@ -145,6 +149,7 @@ begin
   AStore.WriteInteger('HangThresholdMs', HangThresholdMs);
   AStore.WriteInteger('HangHint', BoolValue(HangHint));
   AStore.WriteInteger('ReloadExternal', BoolValue(ReloadExternal));
+  AStore.WriteInteger('PairColors', BoolValue(PairColors));
 end;
 
 end.
