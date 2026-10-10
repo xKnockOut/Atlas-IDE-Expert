@@ -63,6 +63,12 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`assert-side-effect`](#assert-side-effect) | Assert mit Seiteneffekt | Bug | Warnung |
 | [`ifthen-side-effect`](#ifthen-side-effect) | IfThen wertet beide Zweige aus | Bug | Warnung |
 | [`random-without-randomize`](#random-without-randomize) | Random ohne Randomize | Code Smell | Hinweis |
+| [`int32-mul-overflow`](#int32-mul-overflow) | Int32-Multiplikation an Int64 zugewiesen | Bug | Warnung |
+| [`sizeof-pointer`](#sizeof-pointer) | SizeOf eines Zeigers in Move oder FillChar | Bug | Fehler |
+| [`char-to-pchar`](#char-to-pchar) | Char nach PChar umgewandelt | Bug | Fehler |
+| [`float-equality`](#float-equality) | Gleitkommavergleich mit = oder <> | Bug | Hinweis |
+| [`constructor-on-instance`](#constructor-on-instance) | Konstruktor auf einer Instanz aufgerufen | Bug | Warnung |
+| [`format-without-settings`](#format-without-settings) | Formatierung abhängig vom Gebietsschema | Code Smell | Hinweis |
 
 <a id="syntax"></a>
 ## syntax
@@ -1408,4 +1414,118 @@ Richtig:
 Randomize; // once at program start
 ...
 Dice := Random(6) + 1;
+```
+
+<a id="int32-mul-overflow"></a>
+## int32-mul-overflow
+
+**Int32-Multiplikation an Int64 zugewiesen** · Bug · Warnung
+
+Beide Operanden haben höchstens 32 Bit; das Produkt wird in 32 Bit gerechnet und läuft über, bevor es der Int64-Variablen zugewiesen wird. Einen Operanden nach Int64 umwandeln.
+
+Mit Treffer:
+
+```pascal
+Total := Width * Height; // Total: Int64; Width, Height: Integer
+```
+
+Richtig:
+
+```pascal
+Total := Int64(Width) * Height;
+```
+
+<a id="sizeof-pointer"></a>
+## sizeof-pointer
+
+**SizeOf eines Zeigers in Move oder FillChar** · Bug · Fehler
+
+SizeOf eines Zeigers, Strings oder dynamischen Arrays ist die Größe des Verweises (4 oder 8 Byte), nicht die der Daten. Move und FillChar kopieren bzw. löschen dann zu wenig.
+
+Mit Treffer:
+
+```pascal
+FillChar(Buffer[0], SizeOf(Buffer), 0); // Buffer: TBytes
+```
+
+Richtig:
+
+```pascal
+FillChar(Buffer[0], Length(Buffer) * SizeOf(Buffer[0]), 0);
+```
+
+<a id="char-to-pchar"></a>
+## char-to-pchar
+
+**Char nach PChar umgewandelt** · Bug · Fehler
+
+PChar(C) mit einer Char-Variablen macht aus dem Zeichencode eine Adresse. Gemeint war ein String.
+
+Mit Treffer:
+
+```pascal
+ShowMessage(PChar(C)); // C: Char
+```
+
+Richtig:
+
+```pascal
+ShowMessage(PChar(string(C)));
+```
+
+<a id="float-equality"></a>
+## float-equality
+
+**Gleitkommavergleich mit = oder <>** · Bug · Hinweis
+
+Gleitkommawerte sind nach Berechnungen selten exakt gleich. Mit SameValue aus System.Math und einer Toleranz vergleichen. Vergleiche mit 0 werden nicht gemeldet.
+
+Mit Treffer:
+
+```pascal
+if Total = Expected then
+```
+
+Richtig:
+
+```pascal
+if SameValue(Total, Expected) then
+```
+
+<a id="constructor-on-instance"></a>
+## constructor-on-instance
+
+**Konstruktor auf einer Instanz aufgerufen** · Bug · Warnung
+
+Create wird auf einer Variablen statt auf der Klasse aufgerufen. Das legt kein neues Objekt an; mit nicht zugewiesener Variable stürzt es ab. Klassenreferenzen (class of …) werden nicht gemeldet.
+
+Mit Treffer:
+
+```pascal
+List.Create; // List: TStringList
+```
+
+Richtig:
+
+```pascal
+List := TStringList.Create;
+```
+
+<a id="format-without-settings"></a>
+## format-without-settings
+
+**Formatierung abhängig vom Gebietsschema** · Code Smell · Hinweis
+
+Format mit %f, %n, %m, %g oder %e und Funktionen wie FloatToStr, StrToFloat oder DateToStr ohne TFormatSettings-Parameter verwenden das Gebietsschema des Benutzers (Dezimaltrenner, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format('%d', …) wird nicht gemeldet.
+
+Mit Treffer:
+
+```pascal
+Line := Format('%.2f', [Amount]);
+```
+
+Richtig:
+
+```pascal
+Line := Format('%.2f', [Amount], TFormatSettings.Invariant);
 ```
