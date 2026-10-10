@@ -126,7 +126,7 @@ Komposition von Hand (keine Container-Bibliothek). Composition-Units tragen desh
 | `Argus.IDE.Editor.Style` (Plugin) | – | Hell/Dunkel nach dem IDE-Thema, ersatzweise nach `AppsUseLightTheme`; Editorschrift; bei jedem Öffnen eines Argus-Fensters neu abgefragt |
 | `Argus.IDE.Editor.KeyHook` (Plugin) | – | Gemeinsamer Tastatur-Hook des Hauptthreads, nur solange ein Argus-Fenster Tasten braucht; Clients nach Priorität (Vervollständigung vor Parameter-Hint); keine IDE-Tastaturbindung für Navigationstasten |
 | `Argus.IDE.CodeInsight` (Plugin) | `Manager`, `Composition` | Code Insight-Manager „Argus IDE Expert“ für Delphi (`IOTACodeInsightManager`): Symbolhinweis (`GetHintText`) und Browse (`GotoDefinition`); startet den Server bei Bedarf neu; Anmeldung beim Laden des Packages |
-| `Shell` (Host) | `Shell.Application`, `Shell.Composition`, `Shell.CommandLine`, `Shell.Workspace`, `Shell.Linter`, `Shell.GitChanges` | Einstiegspunkt, Kommandozeile, Komposition von Hand, Capabilities; je Arbeitsbereichsordner eigene Konfiguration, eigenes Projekt und eigener Indexaufbau in einen gemeinsamen Symbolindex |
+| `Shell` (Host) | `Shell.Application`, `Shell.Composition`, `Shell.CommandLine`, `Shell.Workspace`, `Shell.Linter`, `Shell.VcsChanges` | Einstiegspunkt, Kommandozeile, Komposition von Hand, Capabilities; je Arbeitsbereichsordner eigene Konfiguration, eigenes Projekt und eigener Indexaufbau in einen gemeinsamen Symbolindex |
 
 Ablauf einer Anfrage:
 
