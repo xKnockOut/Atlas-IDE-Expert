@@ -25,6 +25,7 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
+        <DCC_MapFile>3</DCC_MapFile>
         <SanitizedProjectName>Argus_Tests</SanitizedProjectName>
         <DCC_Namespace>System;Winapi;System.Win;$(DCC_Namespace)</DCC_Namespace>
         <DCC_UnitSearchPath>$(DUnitX);..\Output\$(Platform)\$(Config)\Dcu\Argus.Common;..\Output\$(Platform)\$(Config)\Dcu\Argus.Windows;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
@@ -69,6 +70,7 @@
         <DCCReference Include="Common\Projects\Argus.Common.Projects.DelphiVersions.Tests.pas"/>
         <DCCReference Include="Windows\Projects\Argus.Windows.Projects.DelphiInstallation.Tests.pas"/>
         <DCCReference Include="Common\Compiler\Argus.Common.Compiler.Tests.pas"/>
+        <DCCReference Include="Common\Diagnostics\Argus.Common.Diagnostics.MapFile.Tests.pas"/>
         <DCCReference Include="Windows\Compiler\Argus.Windows.Compiler.Adapters.ProcessRunner.Tests.pas"/>
         <DCCReference Include="Common\Documents\Argus.Common.Documents.Providers.DocumentStore.Tests.pas"/>
         <DCCReference Include="Common\Documents\Argus.Common.Documents.Uris.Tests.pas"/>
