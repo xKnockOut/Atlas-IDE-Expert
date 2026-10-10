@@ -7,6 +7,7 @@ Server und Erweiterung tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Exception-Regeln: `generic-exception-raised`, `catch-all-without-raise` (standardmäßig aus) und `exception-freed` (#277).
 - Regeln für fehleranfällige RTL-Muster, Stufe 2 (typbasiert): `int32-mul-overflow`, `sizeof-pointer`, `char-to-pchar`, `float-equality`, `constructor-on-instance`, `format-without-settings` (#153).
 - Regeln für fehleranfällige RTL-Muster, Stufe 1: `self-assignment`, `for-high-to-low`, `exception-not-raised`, `assert-side-effect`, `ifthen-side-effect`, `random-without-randomize` (#153).
 - Hover über seltenen Schlüsselwörtern und Direktiven mit Kurztext und DocWiki-Link, Hinweis auf Delphi-13-Elemente (#187).

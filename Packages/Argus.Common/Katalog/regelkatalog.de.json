@@ -324,6 +324,21 @@
       "id": "format-without-settings",
       "name": "Formatierung abhängig vom Gebietsschema",
       "description": "Format mit %f, %n, %m, %g oder %e und Funktionen wie FloatToStr, StrToFloat oder DateToStr ohne TFormatSettings-Parameter verwenden das Gebietsschema des Benutzers (Dezimaltrenner, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format('%d', …) wird nicht gemeldet."
+    },
+    {
+      "id": "generic-exception-raised",
+      "name": "Allgemeine Exception ausgelöst",
+      "description": "Wer die Basisklasse Exception auslöst, nimmt Aufrufern die Möglichkeit, den Fehler gezielt zu behandeln. Besser eine eigene Exception-Klasse deklarieren."
+    },
+    {
+      "id": "catch-all-without-raise",
+      "name": "Exception-Handler ohne erneutes raise",
+      "description": "Ein Handler für Exception, der weder erneut auslöst noch das Programm beendet, verschluckt jeden Fehler, auch Programmierfehler. Standardmäßig aus; gedacht für Bibliothekscode."
+    },
+    {
+      "id": "exception-freed",
+      "name": "Exception-Objekt manuell freigegeben",
+      "description": "Die RTL gibt ein Exception-Objekt nach seinem Handler bzw. nach raise selbst frei. Manuelles Freigeben führt zur doppelten Freigabe."
     }
   ]
 }
