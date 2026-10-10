@@ -171,7 +171,8 @@ begin
         Exit;
       Manager.Report('Meldungsfenster: ' + AInfo);
       Manager.NotifyServer('argus/compilerMessages',
-        TArgusCompilerMessages.ToJson(AMessages, AProject.FileName, AProject.Platform, ASucceeded));
+        TArgusCompilerMessages.ToJson(AMessages, AProject.FileName, AProject.Platform, ASucceeded,
+        AProject.Background));
     end));
   Compile := TArgusIdeCompileEvents.Create(Events);
 end;

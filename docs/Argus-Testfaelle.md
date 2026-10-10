@@ -140,6 +140,20 @@ Schreibweise: `|` steht für die Cursorposition.
 | O5 | Bereits überschriebene Methode | Erscheint nicht noch einmal in der Liste |
 | O6 | Liste aus O1 ansehen | Kein „+Unit“-Tag an den Einträgen |
 
+## Letzter Build für Claude Code (#556)
+
+Vorbereitung: MCP eingerichtet (`claude mcp add delphi -- ArgusServer.exe --mcp --root <Projektordner>`); in der IDE einmal Strg+Leer, damit der Argus-Server läuft.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LB1 | Ohne bisherigen Build `get_last_build` aufrufen | „Noch kein Build aus der IDE für … bekannt …“ statt eines Fehlers |
+| LB2 | In der IDE ein Projekt mit Fehler erzeugen (Umschalt+F9), dann `get_last_build` | `result: failed`, Art `build`, Projekt, Konfiguration, Plattform, Dauer, Fehlerzahl und die Meldungen mit Datei, Zeile, Spalte, Code und Text |
+| LB3 | Mit `project` = anderer Projektname | „Der letzte Build betraf …, nicht …“ |
+| LB4 | Nach dem Speichern (Hintergrundprüfung #548) erneut abfragen | Weiterhin der letzte Build des Benutzers, nicht die Prüfung |
+| LB5 | Meldung in einer Bibliotheks-Unit außerhalb des Projektordners | Nicht in `messages`, gezählt in `omittedOutsideWorkspace` |
+
+Rauchtest im MCP-Modus: `tools/list` enthält `get_last_build`, ohne Build die Antwort aus LB1.
+
 ## Compilerprüfung nach dem Speichern (#548)
 
 Vorab gemessen (RAD Studio 13, Mini-Projekt): Syntaxprüfung 0,6–0,9 s, schreibt keine `.exe`/`.dcu` (nur `.res`). In der echten IDE geprüft: Speichern → nach 2 s Prüfung (640 ms) → 2 Meldungen gelesen.

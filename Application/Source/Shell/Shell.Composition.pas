@@ -49,6 +49,8 @@ uses
   Argus.Common.JsonRpc.Statistics,
   Argus.Common.Lsp.WatchedFiles,
   Argus.Common.Lsp.IdeBuild,
+  Argus.Common.Mcp.BuildTools,
+  Argus.Common.Index.Adapters.CacheDirectory,
   Argus.Common.Lsp.WorkspaceFolders,
   Argus.Common.Lsp.Configuration,
   Argus.Common.Documents.Contract,
@@ -794,6 +796,36 @@ begin
     begin
       FSyntaxDiagnostics.RefreshFiles(FCompilerResults.Replace(AMessages));
       FLogger.Info(Format('Compilermeldungen aus der IDE: %d', [Length(AMessages)]));
+    end;
+  // Letzten Build für den MCP-Prozess ablegen (#556): je Arbeitsordner eine Datei im Argus-Cache.
+  FIdeBuild.OnChanged :=
+    procedure(const ABuild: TIdeBuild)
+    var
+      Workspace: TShellWorkspace;
+      Root: string;
+    begin
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Workspace := WorkspaceOf(ABuild.Project);
+        if (Workspace = nil) and (FWorkspaces.Count = 1) then
+          Workspace := FWorkspaces[0];
+        if Workspace <> nil then
+          Root := Workspace.Root
+        else
+          Root := ExtractFileDir(ABuild.Project);
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+      if Root = '' then
+        Exit;
+      try
+        ForceDirectories(TIndexCacheDirectory.DefaultRoot);
+        TFile.WriteAllText(TIndexCacheDirectory.BuildFileFor(TIndexCacheDirectory.DefaultRoot, Root),
+          TMcpBuildTools.ToFileText(ABuild), TEncoding.UTF8);
+      except
+        on E: Exception do
+          FLogger.Warning(Format('Letzter Build nicht gespeichert: %s', [E.Message]));
+      end;
     end;
   FIdeBuild.Attach(FDispatcher);
   FWorkspaceFolders := TLspWorkspaceFolders.Create;
