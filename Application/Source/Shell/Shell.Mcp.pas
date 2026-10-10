@@ -44,6 +44,7 @@ uses
   Argus.Common.Mcp.IndexTools,
   Argus.Common.Mcp.CodeTools,
   Argus.Common.Mcp.BuildTools,
+  Argus.Common.Mcp.Paths,
   Argus.Common.Lsp.IdeBuild,
   Argus.Common.Index.Adapters.CacheDirectory,
   Argus.Common.Rules.Builtin,
@@ -82,7 +83,7 @@ begin
 end;
 
 procedure RegisterTools(AServer: TMcpServer; ATools: TMcpIndexTools; ACode: TMcpCodeTools;
-  AWorkspace: TShellWorkspace; const ARoot: string);
+  AWorkspace: TShellWorkspace; const ARoot: string; AGuard: TMcpPathGuard);
 begin
   AServer.AddTool('find_symbol',
     'Sucht Delphi-Symbole (Typen, Methoden, Felder, Konstanten …) im Projekt und in RTL/VCL. ' +
@@ -165,11 +166,7 @@ begin
     begin
       FileName := TMcpServer.OptionalString(AArguments, 'file');
       if FileName <> '' then
-      begin
-        if TPath.IsRelativePath(FileName) then
-          FileName := TPath.Combine(ARoot, FileName);
-        Files := [FileName];
-      end
+        Files := [AGuard.Resolve(FileName)]
       else
         Files := AWorkspace.ProjectFiles;
       if Length(Files) = 0 then
@@ -191,9 +188,7 @@ begin
       FileName, Text: string;
       StartLine, EndLine: Integer;
     begin
-      FileName := TMcpServer.RequiredString(AArguments, 'file');
-      if TPath.IsRelativePath(FileName) then
-        FileName := TPath.Combine(ARoot, FileName);
+      FileName := AGuard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
       if not AArguments.TryGetValue<string>('text', Text) then
         raise EMcpToolError.Create('Argument "text" fehlt');
       if not AArguments.TryGetValue<Integer>('startLine', StartLine) then
@@ -210,9 +205,7 @@ begin
     var
       FileName, Text: string;
     begin
-      FileName := TMcpServer.RequiredString(AArguments, 'file');
-      if TPath.IsRelativePath(FileName) then
-        FileName := TPath.Combine(ARoot, FileName);
+      FileName := AGuard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
       if SameText(ExtractFileExt(FileName), '.pas') then
       begin
         if FileExists(ChangeFileExt(FileName, '.dfm')) then
@@ -239,6 +232,7 @@ var
   Index: ISymbolIndex;
   Store: IDocumentStore;
   Workspace: TShellWorkspace;
+  Guard: TMcpPathGuard;
   Root, Warning: string;
 begin
   LoggerImpl := TLogger.Create;
@@ -291,13 +285,23 @@ begin
     begin
       Result := Workspace.EnsureUnit(AUnitName);
     end);
+  // Pfadregeln (#99): Arbeitsordner und Include-Pfade, Verknüpfungen aufgelöst.
+  Guard := TMcpPathGuard.Create(Root,
+    function: TArray<string>
+    begin
+      Result := Workspace.IncludePaths;
+    end,
+    function(APath: string): string
+    begin
+      Result := TWindowsPathCanonicalizer.Canonicalize(APath);
+    end);
   Server := TMcpServer.Create(TProductVersion.Name, TProductVersion.Version);
   Dispatcher := TJsonRpcDispatcher.Create;
   Connection := TJsonRpcConnection.Create(Transport, Dispatcher);
   try
     Server.Instructions := 'Delphi-Projekt in ' + Root + '. Für Fragen zu Typen, Units und Formularen ' +
       'zuerst diese Werkzeuge nutzen statt Quelldateien vollständig zu lesen.';
-    RegisterTools(Server, Tools, Code, Workspace, Root);
+    RegisterTools(Server, Tools, Code, Workspace, Root, Guard);
     Server.Attach(Dispatcher);
     Connection.OnError :=
       procedure(const AError: Exception)
@@ -321,6 +325,7 @@ begin
     Connection.Free;
     Dispatcher.Free;
     Server.Free;
+    Guard.Free;
     Code.Free;
     Tools.Free;
     Workspace.Free;

@@ -12,6 +12,13 @@ claude mcp add delphi -- ArgusServer.exe --mcp --root C:\Projekte\App
 aktuelle Verzeichnis. `--log <Datei>` schreibt ein Protokoll, stdout gehört allein
 dem Protokoll.
 
+Pfadparameter (#99): relativ zu `--root` oder absolut; sie werden normalisiert
+(`..`, Junctions, Symlinks, subst-Laufwerke aufgelöst) und nur im Arbeitsordner
+sowie in den Such- und Bibliothekspfaden des Projekts angenommen. Alles andere
+ergibt einen Werkzeugfehler mit Begründung. Schreibende Werkzeuge und solche mit
+Prozessstart gibt es noch nicht; für sie gelten Vorschau, Protokoll und
+Abschaltbarkeit aus #99, sobald sie kommen (#61, #69).
+
 | Werkzeug | Parameter | Ergebnis |
 |---|---|---|
 | `find_symbol` | `name` | Fundstellen mit Art, Typ, Unit, Datei:Zeile; ohne exakten Treffer Teilstring-Suche |

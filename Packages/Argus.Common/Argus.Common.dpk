@@ -151,6 +151,7 @@ contains
   Argus.Common.Lsp.WatchedFiles in 'Source\Lsp\Argus.Common.Lsp.WatchedFiles.pas',
   Argus.Common.Lsp.IdeBuild in 'Source\Lsp\Argus.Common.Lsp.IdeBuild.pas',
   Argus.Common.Mcp.BuildTools in 'Source\Mcp\Argus.Common.Mcp.BuildTools.pas',
+  Argus.Common.Mcp.Paths in 'Source\Mcp\Argus.Common.Mcp.Paths.pas',
   Argus.Common.Lsp.InactiveRegions in 'Source\Lsp\Argus.Common.Lsp.InactiveRegions.pas',
   Argus.Common.Lsp.WorkspaceFolders in 'Source\Lsp\Argus.Common.Lsp.WorkspaceFolders.pas',
   Argus.Common.Index.Adapters.DiskFileSystem in 'Source\Index\Adapters\Argus.Common.Index.Adapters.DiskFileSystem.pas',
