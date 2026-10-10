@@ -297,8 +297,27 @@
         "command": "argus.selectBuild",
         "title": "Konfiguration und Plattform wählen",
         "category": "Argus"
+      },
+      {
+        "command": "argus.copyQualifiedName",
+        "title": "Qualifizierten Namen kopieren",
+        "category": "Argus"
+      },
+      {
+        "command": "argus.copyQualifiedNameWithParameters",
+        "title": "Qualifizierten Namen mit Parametertypen kopieren",
+        "category": "Argus"
       }
     ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "argus.copyQualifiedName",
+          "when": "editorLangId == objectpascal",
+          "group": "9_cutcopypaste"
+        }
+      ]
+    },
     "jsonValidation": [
       {
         "fileMatch": [
