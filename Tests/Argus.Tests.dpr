@@ -148,6 +148,7 @@ uses
   Argus.Common.Editing.ClassCommands.Tests in 'Common\Editing\Argus.Common.Editing.ClassCommands.Tests.pas',
   Argus.Common.Editing.WrapCommands.Tests in 'Common\Editing\Argus.Common.Editing.WrapCommands.Tests.pas',
   Argus.Common.Editing.MaintenanceCommands.Tests in 'Common\Editing\Argus.Common.Editing.MaintenanceCommands.Tests.pas',
+  Argus.Common.Editing.TypeCommands.Tests in 'Common\Editing\Argus.Common.Editing.TypeCommands.Tests.pas',
   Argus.Common.Semantics.UnresolvedNames.Tests in 'Common\Semantics\Argus.Common.Semantics.UnresolvedNames.Tests.pas',
   Argus.Common.Rules.Builtin.Architecture.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Architecture.Tests.pas',
   Argus.Common.Rules.Builtin.Concurrency.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Concurrency.Tests.pas',
