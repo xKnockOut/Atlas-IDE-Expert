@@ -426,6 +426,15 @@ begin
     '      "good": "ed1: DataField = ''Name''; ed2: DataField = ''Vorname''"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "dfm-property",' + #10 +
+    '      "name": "Component property violates a property rule",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "A component property in the form file does not meet a rule from dfmPropertyRules in argus.json (class, property, condition, value). A property that is not stored counts with its ' + 'default value; objects of the ancestor form are only reported where this form sets the value itself.",' + #10 +
+    '      "bad": "// dfmPropertyRules: TLabel.Transparent = True\nobject Label1: TLabel\n  Caption = ''Name''\nend",' + #10 +
+    '      "good": "object Label1: TLabel\n  Caption = ''Name''\n  Transparent = True\nend"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "foreign-form-control-access",' + #10 +
     '      "name": "Access to controls of another form",' + #10 +
     '      "category": "code-smell",' + #10 +
@@ -948,6 +957,11 @@ begin
     '      "id": "dfm-duplicate-binding",' + #10 +
     '      "name": "Zwei Controls an demselben Feld",' + #10 +
     '      "description": "Zwei Eingabe-Controls nutzen dieselbe DataSource und dasselbe DataField. Meist ein Kopierfehler. Anzeige-Controls (TDBText, TDBImage) zählen nicht."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "dfm-property",' + #10 +
+    '      "name": "Komponenten-Property verletzt eine Eigenschaftsregel",' + #10 +
+    '      "description": "Eine Komponenten-Property in der Formulardatei erfüllt eine Regel aus dfmPropertyRules in argus.json nicht (Klasse, Property, Bedingung, Wert). Nicht gespeicherte Properties zähl' + 'en mit ihrem default-Wert; Objekte aus dem Vorfahrenformular werden nur gemeldet, wenn dieses Formular den Wert selbst setzt."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "foreign-form-control-access",' + #10 +

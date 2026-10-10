@@ -49,6 +49,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`dfm-required-field-without-control`](#dfm-required-field-without-control) | Pflichtfeld ohne sichtbares Eingabe-Control | Bug | Warnung |
 | [`dfm-control-field-type-mismatch`](#dfm-control-field-type-mismatch) | Datensensitives Control passt nicht zum Feldtyp | Bug | Warnung |
 | [`dfm-duplicate-binding`](#dfm-duplicate-binding) | Zwei Controls an demselben Feld | Bug | Warnung |
+| [`dfm-property`](#dfm-property) | Komponenten-Property verletzt eine Eigenschaftsregel | Code Smell | Warnung |
 | [`foreign-form-control-access`](#foreign-form-control-access) | Zugriff auf Controls eines anderen Formulars | Code Smell | Warnung |
 | [`security-sql-injection`](#security-sql-injection) | SQL-Text aus zusammengesetzten Werten (SQL-Injection) | Schwachstelle | Warnung |
 | [`slash-command`](#slash-command) | Schnellbefehl nicht ausgeführt | Code Smell | Hinweis |
@@ -1123,6 +1124,31 @@ Richtig:
 
 ```pascal
 ed1: DataField = 'Name'; ed2: DataField = 'Vorname'
+```
+
+<a id="dfm-property"></a>
+## dfm-property
+
+**Komponenten-Property verletzt eine Eigenschaftsregel** · Code Smell · Warnung
+
+Eine Komponenten-Property in der Formulardatei erfüllt eine Regel aus dfmPropertyRules in argus.json nicht (Klasse, Property, Bedingung, Wert). Nicht gespeicherte Properties zählen mit ihrem default-Wert; Objekte aus dem Vorfahrenformular werden nur gemeldet, wenn dieses Formular den Wert selbst setzt.
+
+Mit Treffer:
+
+```pascal
+// dfmPropertyRules: TLabel.Transparent = True
+object Label1: TLabel
+  Caption = 'Name'
+end
+```
+
+Richtig:
+
+```pascal
+object Label1: TLabel
+  Caption = 'Name'
+  Transparent = True
+end
 ```
 
 <a id="foreign-form-control-access"></a>

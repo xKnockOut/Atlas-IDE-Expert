@@ -406,6 +406,15 @@
       "good": "ed1: DataField = 'Name'; ed2: DataField = 'Vorname'"
     },
     {
+      "id": "dfm-property",
+      "name": "Component property violates a property rule",
+      "category": "code-smell",
+      "severity": "warning",
+      "description": "A component property in the form file does not meet a rule from dfmPropertyRules in argus.json (class, property, condition, value). A property that is not stored counts with its default value; objects of the ancestor form are only reported where this form sets the value itself.",
+      "bad": "// dfmPropertyRules: TLabel.Transparent = True\nobject Label1: TLabel\n  Caption = 'Name'\nend",
+      "good": "object Label1: TLabel\n  Caption = 'Name'\n  Transparent = True\nend"
+    },
+    {
       "id": "foreign-form-control-access",
       "name": "Access to controls of another form",
       "category": "code-smell",

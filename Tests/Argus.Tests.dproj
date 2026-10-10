@@ -193,6 +193,7 @@
         <DCCReference Include="Common\Editing\Argus.Common.Editing.TaskCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.RecordCommands.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.DataBinding.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.DfmProperties.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.ClassCompletion.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Argus.Common.Dfm.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Argus.Common.Dfm.ComponentRename.Tests.pas"/>

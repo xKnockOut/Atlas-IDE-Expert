@@ -360,6 +360,30 @@
       "x-control": "Liste",
       "x-issue": "#284"
     },
+    "dfmPropertyRules": {
+      "type": "array",
+      "default": [],
+      "description": "Eigenschaftsregeln für Formulardateien: Vorgaben für Komponenten-Properties, gemeldet als dfm-property am Feld der Komponente in der Unit. Nicht gespeicherte Properties gelten mit ihrem default-Wert.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["class", "property"],
+        "properties": {
+          "class": { "type": "string", "description": "Komponentenklasse, z. B. TLabel." },
+          "property": { "type": "string", "description": "Property-Pfad, auch Font.Name (nur gespeicherte Werte)." },
+          "condition": { "type": "string", "enum": ["=", "<>", "contains", "notContains", "empty", "notEmpty"], "default": "=", "description": "Bedingung; contains und notContains für Mengen und Strings." },
+          "value": { "type": "string", "description": "Sollwert wie in der DFM, z. B. True, poScreenCenter, dgRowSelect." },
+          "message": { "type": "string", "description": "Meldung; ohne Angabe aus Klasse, Property und Bedingung gebildet." },
+          "severity": { "type": "string", "enum": ["off", "hint", "info", "warning", "error"], "default": "warning", "description": "Schweregrad der Meldung." },
+          "includeDescendants": { "type": "boolean", "default": true, "description": "Gilt auch für Nachfahren der Klasse." },
+          "fix": { "type": "string", "enum": ["auto", "prompt", "none"], "default": "prompt", "description": "Korrektur: auto sicher mit source.fixAll, prompt nur als Code-Aktion, none keine (Korrektur folgt)." },
+          "exclude": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Glob-Muster für Dateien, die die Regel nicht prüft." }
+        }
+      },
+      "x-page": "Prüfregeln",
+      "x-control": "Eigener Editor (Klasse und Property aus dem Index)",
+      "x-issue": "#309"
+    },
     "memoryBudgetMb": {
       "type": "integer",
       "minimum": 0,

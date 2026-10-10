@@ -168,6 +168,7 @@ contains
   Argus.Common.Rules.DeclaredTypes in 'Source\Rules\Argus.Common.Rules.DeclaredTypes.pas',
   Argus.Common.Rules.ResourceNames in 'Source\Rules\Argus.Common.Rules.ResourceNames.pas',
   Argus.Common.Rules.Builtin.DataBinding in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.DataBinding.pas',
+  Argus.Common.Rules.Builtin.DfmProperties in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.DfmProperties.pas',
   Argus.Common.Rules.Builtin.SlashCommands in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.SlashCommands.pas',
   Argus.Common.Editing.ClassCompletion in 'Source\Editing\Argus.Common.Editing.ClassCompletion.pas',
   Argus.Common.Dfm.Contract in 'Source\Dfm\Argus.Common.Dfm.Contract.pas',
