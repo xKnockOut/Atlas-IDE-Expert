@@ -98,6 +98,9 @@ Schreibweise: `|` steht für die Cursorposition.
 | U5 | Bei U3 `'x'` tippen, dann `)` | `List.Add('x')` – keine doppelte Klammer |
 | U6 | `List.Add(` steht schon da, Cursor vor `(` in `Ad|(`, Strg+Leer, Enter | Keine zweite Klammer |
 | U7 | Optionen › Argus › „Klammern … ergänzen“ aus | `Add` ohne Klammern |
+| U8 | Optionen › Argus › „Vorschau … im Editor“ an; `List.AddS` am Zeilenende (#434) | Hinter dem Cursor kursiv und blass `trings`; folgt der Auswahl mit ↑/↓ |
+| U9 | Popup mit Esc schließen bzw. übernehmen | Vorschau verschwindet; Datei unverändert, Rückgängig enthält nichts von der Vorschau |
+| U10 | Hinter dem Cursor steht noch Text (z. B. `)`) | Keine Vorschau |
 
 ## Parameter-Hint (#436, #437, #438, #439, #440)
 
@@ -124,6 +127,17 @@ Schreibweise: `|` steht für die Cursorposition.
 | H4 | Bei offenem Tooltip tippen, klicken oder scrollen | Tooltip schließt sofort |
 | H5 | Über einer Konstante verweilen | Zusätzlich „= Wert“ |
 | H6 | Optionen › Argus › „Eigener Tooltip …“ aus | Wieder der Tooltip der IDE |
+| H7 | Bei offenem Tooltip mit Alt+Tab in ein anderes Programm wechseln (#414) | Tooltip verschwindet nach spätestens 0,25 s und bleibt nicht über dem anderen Programm stehen |
+
+## Methoden überschreiben (#443)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| O1 | In `TLogList = class(TStringList)` im Abschnitt `protected` eine Zeile `procedure ` tippen, Strg+Leer | Liste mit überschreibbaren Methoden von `TStringList` und Vorfahren (z. B. `Changed`, `Put`), Badge Methode |
+| O2 | `Changed` übernehmen | Zeile wird `procedure Changed; override;`; im implementation-Teil entsteht `procedure TLogList.Changed; begin inherited; end;` |
+| O3 | `function ` tippen, `Get` übernehmen | `function Get(Index: Integer): string; override;`, Rumpf mit `Result := inherited Get(Index);` |
+| O4 | Abstrakte Methode des Vorfahren übernehmen | Rumpf ohne `inherited` |
+| O5 | Bereits überschriebene Methode | Erscheint nicht noch einmal in der Liste |
 
 ## Monitor und Zoom (#412, #445)
 

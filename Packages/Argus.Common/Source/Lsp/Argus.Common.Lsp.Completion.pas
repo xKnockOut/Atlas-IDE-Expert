@@ -63,6 +63,8 @@ type
     Overloads: TArray<TTextPosition>;
     /// <summary>Routine mit Parametern (in irgendeiner Überladung), für Klammern beim Übernehmen (#430).</summary>
     HasParameters: Boolean;
+    /// <summary>Text beim Übernehmen statt des Namens; ''.</summary>
+    InsertText: string;
   end;
 
   TCompletionReadText = reference to function(const AFileName: string; out AText: string): Boolean;
@@ -104,6 +106,12 @@ type
     class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const APosition: TTextPosition;
       AMatching: TCompletionMatching = TCompletionMatching.Fuzzy): TCompletionItems; static;
+    /// <summary>In einer Klassendeklaration nach "procedure " bzw. "function " (#443): überschreibbare
+    /// Methoden der Vorfahren; Übernehmen setzt den Rest der Deklaration mit override und erzeugt den Rumpf
+    /// mit inherited. False außerhalb dieses Kontexts.</summary>
+    class function OverrideItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
+      const APosition: TTextPosition; const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean;
+      static;
     class function KindOf(AKind: TIndexSymbolKind): Integer; static;
     /// <summary>CompletionList des LSP. Der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const AItems: TCompletionItems): TJSONObject; static;
@@ -134,7 +142,10 @@ uses
   Argus.Common.Editing.UsesClause,
   Argus.Common.Lsp.CompilerDirectives,
   Argus.Common.Lsp.Internals.Cancellation,
-  Argus.Common.Pascal.XmlDoc;
+  Argus.Common.Pascal.XmlDoc,
+  Argus.Common.Index.Extractor,
+  Argus.Common.Editing.ClassCompletion,
+  System.RegularExpressions;
 
 const
   // CompletionItemKind
@@ -605,6 +616,8 @@ begin
       Entry.AddPair('detail', AItems.Items[Index].Detail);
     if AItems.Items[Index].FilterText <> '' then
       Entry.AddPair('filterText', AItems.Items[Index].FilterText);
+    if AItems.Items[Index].InsertText <> '' then
+      Entry.AddPair('insertText', AItems.Items[Index].InsertText);
     if Length(AItems.Items[Index].AdditionalEdits) > 0 then
     begin
       Edits := TJSONArray.Create;
@@ -657,7 +670,7 @@ var
   Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Matching: TCompletionMatching;
-  Directives: TCompletionItems;
+  Directives, Overrides: TCompletionItems;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
@@ -674,6 +687,10 @@ begin
   Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
     Resolver.Namespaces := FNamespaces;
+    // Methoden überschreiben (#443) vor der allgemeinen Vervollständigung.
+    if OverrideItems(Resolver, Tree, Document.Text, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
+      FReadText, Overrides) then
+      Exit(ToJson(Overrides));
     if Assigned(FMatchingFor) then
       Matching := FMatchingFor(Uri)
     else
@@ -915,6 +932,157 @@ begin
   if Details.TryGetValue<string>('summary', Summary) then
     Item.AddPair('documentation', Summary);
   Data.AddPair('argus', Details);
+end;
+
+/// <summary>Parameternamen aus "Name(const A, B: T; var C: U): R" in Reihenfolge (#443).</summary>
+function OverrideParamNames(const AHead: string): TArray<string>;
+var
+  Open, Close: Integer;
+  Group, Names, Name: string;
+begin
+  Result := nil;
+  Open := Pos('(', AHead);
+  Close := LastDelimiter(')', AHead);
+  if (Open = 0) or (Close <= Open) then
+    Exit;
+  for Group in Copy(AHead, Open + 1, Close - Open - 1).Split([';']) do
+  begin
+    Names := Group;
+    if Pos(':', Names) > 0 then
+      Names := Copy(Names, 1, Pos(':', Names) - 1);
+    Names := Trim(Names);
+    for Name in ['const ', 'var ', 'out ', 'constref '] do
+      if StartsText(Name, Names) then
+        Names := Trim(Copy(Names, Length(Name) + 1, MaxInt));
+    for Name in Names.Split([',']) do
+      if Trim(Name) <> '' then
+        Result := Result + [Trim(Name)];
+  end;
+end;
+
+/// <summary>Kopf "Name(...): T" und Direktiven aus "procedure Name(...): T; virtual; overload;".</summary>
+function SplitOverrideDeclaration(const ADeclaration: string; out AIsClass: Boolean; out AKind, AHead,
+  ADirectives: string): Boolean;
+var
+  Text: string;
+  Index, Depth: Integer;
+begin
+  Text := Trim(ADeclaration);
+  AIsClass := StartsText('class ', Text);
+  if AIsClass then
+    Text := TrimLeft(Copy(Text, 7, MaxInt));
+  if StartsText('procedure ', Text) then
+    AKind := 'procedure'
+  else if StartsText('function ', Text) then
+    AKind := 'function'
+  else
+    Exit(False);
+  Text := TrimLeft(Copy(Text, Length(AKind) + 1, MaxInt));
+  // Ende des Kopfs: erstes ";" außerhalb von Klammern.
+  Depth := 0;
+  for Index := 1 to Length(Text) do
+    case Text[Index] of
+      '(': Inc(Depth);
+      ')': Dec(Depth);
+      ';':
+        if Depth = 0 then
+        begin
+          AHead := Trim(Copy(Text, 1, Index - 1));
+          ADirectives := ' ' + LowerCase(Copy(Text, Index + 1, MaxInt)).Replace(';', ' ') + ' ';
+          Exit(AHead <> '');
+        end;
+    end;
+  Result := False;
+end;
+
+class function TLspCompletion.OverrideItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
+  const APosition: TTextPosition; const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean;
+var
+  Match: TMatch;
+  UnitIndex: TUnitIndex;
+  Symbol, TypeSymbol: TIndexSymbol;
+  Found, TypedClass, IsClass, IsAbstract: Boolean;
+  TypedKind, TypeName, Source, Declaration, Kind, Head, Directives, Insert, Body, Args, LB, MethodName: string;
+  Candidate: TResolvedSymbol;
+  Item: TCompletionItem;
+  Edit: TRuleEdit;
+begin
+  AItems := Default(TCompletionItems);
+  Result := False;
+  // "    procedure Ch|", "    function |", "    class procedure |"
+  Match := TRegEx.Match(LineBefore(AText, APosition), '^\s*(class\s+)?(procedure|function)\s+(\w*)$', [roIgnoreCase]);
+  if not Match.Success then
+    Exit;
+  TypedClass := Match.Groups[1].Length > 0;
+  TypedKind := LowerCase(Match.Groups[2].Value);
+  // Innerster Klassentyp, in dessen Deklaration die Zeile liegt.
+  UnitIndex := TIndexExtractor.Extract(ATree, AFileName);
+  Found := False;
+  TypeSymbol := Default(TIndexSymbol);
+  for Symbol in UnitIndex.Symbols do
+    if (Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType]) and
+      (Symbol.Range.StartPos.Line < APosition.Line) and (Symbol.Range.EndPos.Line >= APosition.Line) and
+      (not Found or (Symbol.Range.StartPos.Line >= TypeSymbol.Range.StartPos.Line)) then
+    begin
+      TypeSymbol := Symbol;
+      Found := True;
+    end;
+  if not Found then
+    Exit;
+  Result := True;
+  if TypeSymbol.Container <> '' then
+    TypeName := TypeSymbol.Container + '.' + TypeSymbol.Name
+  else
+    TypeName := TypeSymbol.Name;
+  if AText.Contains(#13#10) then
+    LB := #13#10
+  else
+    LB := #10;
+  for Candidate in AResolver.OverridableMembers(UnitIndex, TypeName) do
+  begin
+    if SameText(Candidate.FileName, AFileName) then
+      Source := AText
+    else if not (Assigned(AReadText) and AReadText(Candidate.FileName, Source)) then
+      Continue;
+    Declaration := DeclarationOf(TextLines(Source), Candidate.Range);
+    if not SplitOverrideDeclaration(Declaration, IsClass, Kind, Head, Directives) or (Kind <> TypedKind) or
+      (IsClass <> TypedClass) then
+      Continue;
+    IsAbstract := Directives.Contains(' abstract ');
+    Insert := Head + ';';
+    if Directives.Contains(' overload ') then
+      Insert := Insert + ' overload;';
+    Insert := Insert + ' override;';
+    // Rumpf: Kopf mit Typ, inherited bzw. Result := inherited ...; abstrakt ohne inherited.
+    MethodName := Candidate.Name;
+    Args := String.Join(', ', OverrideParamNames(Head));
+    // Standardwerte stehen nur in der Deklaration.
+    Body := Kind + ' ' + TypeName + '.' + TRegEx.Replace(Head, '\s*=\s*[^;)]+', '') + ';';
+    if IsClass then
+      Body := 'class ' + Body;
+    Body := Body + LB + 'begin' + LB;
+    if IsAbstract then
+      Body := Body + LB
+    else if Kind = 'procedure' then
+      Body := Body + '  inherited;' + LB
+    else if Args <> '' then
+      Body := Body + '  Result := inherited ' + MethodName + '(' + Args + ');' + LB
+    else
+      Body := Body + '  Result := inherited ' + MethodName + ';' + LB;
+    Body := Body + 'end;';
+    Item := Default(TCompletionItem);
+    Item.Name := MethodName;
+    Item.Kind := KindMethod;
+    Item.Detail := Declaration;
+    Item.InsertText := Insert;
+    Item.Container := Candidate.Container;
+    Item.Depth := Candidate.Depth;
+    Item.SourceFile := Candidate.FileName;
+    Item.SourcePosition := Candidate.SelectionRange.StartPos;
+    if TClassCompletion.BodyEdit(ATree, AText, TypeName, Body, Edit) then
+      Item.AdditionalEdits := [Edit];
+    AItems.Items := AItems.Items + [Item];
+  end;
 end;
 
 end.

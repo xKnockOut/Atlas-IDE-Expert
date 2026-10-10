@@ -74,6 +74,8 @@ type
     VariantParams: TArray<string>;
     /// <summary>Deklaration im interface-Abschnitt.</summary>
     InInterface: Boolean;
+    /// <summary>Methode mit virtual, dynamic, abstract oder override (#443).</summary>
+    IsVirtual: Boolean;
     /// <summary>Deklarierter Typ (Variablen, Felder, Properties, Parameter, Funktionsergebnis).</summary>
     TypeName: string;
     Ancestors: TArray<string>;
@@ -201,6 +203,9 @@ type
     procedure UnpinTree;
     /// <summary>Löst ATypeName so auf, wie er in AFromUnit stünde (z. B. Vorfahren aus dem Index).</summary>
     function ResolveTypeFrom(const AFromUnit: TUnitIndex; const ATypeName: string; out AResult: TResolvedSymbol): Boolean;
+    /// <summary>Überschreibbare Methoden für ATypeName aus AFromUnit (#443): virtual, dynamic, abstract oder
+    /// override in einem Vorfahren, im Typ selbst noch nicht deklariert; nächster Vorfahr zuerst (Depth 1).</summary>
+    function OverridableMembers(const AFromUnit: TUnitIndex; const ATypeName: string): TArray<TResolvedSymbol>;
     /// <summary>Unit-Namespaces des Projekts (DCC_Namespace) für uses ohne Präfix.</summary>
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
   end;
@@ -571,6 +576,7 @@ begin
   Result.ParamTypes := ASymbol.ParamTypes;
   Result.IsDefault := ASymbol.IsDefault;
   Result.InInterface := ASymbol.InInterface;
+  Result.IsVirtual := ASymbol.IsVirtual;
   Result.VariantParams := [String.Join(';', ASymbol.ParamTypes)];
 end;
 
@@ -1971,6 +1977,50 @@ begin
   FHelperTree := nil;
   FHelpers.Clear;
   Result := ResolveTypeName(ATypeName, AFromUnit, True, AResult);
+end;
+
+function TNameResolver.OverridableMembers(const AFromUnit: TUnitIndex; const ATypeName: string): TArray<TResolvedSymbol>;
+var
+  Own, Current, Ancestor: TResolvedSymbol;
+  OwnerUnit: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Seen: TDictionary<string, Boolean>;
+  List: TList<TResolvedSymbol>;
+  Depth: Integer;
+  Candidate: TResolvedSymbol;
+begin
+  Result := nil;
+  if not ResolveTypeFrom(AFromUnit, ATypeName, Own) or not UnitOf(Own, OwnerUnit) then
+    Exit;
+  Seen := TDictionary<string, Boolean>.Create;
+  List := TList<TResolvedSymbol>.Create;
+  try
+    // Im Typ selbst Deklariertes ist schon überschrieben bzw. verdeckt.
+    for Symbol in OwnerUnit.Symbols do
+      if SameText(Symbol.Container, Own.QualifiedName) then
+        Seen.AddOrSetValue(UpperCase(Symbol.Name), True);
+    Current := Own;
+    for Depth := 1 to MaxDepth do
+    begin
+      if not AncestorOf(Current, Ancestor) or not UnitOf(Ancestor, OwnerUnit) then
+        Break;
+      for Symbol in OwnerUnit.Symbols do
+        if SameText(Symbol.Container, Ancestor.QualifiedName) and Symbol.IsVirtual and
+          (Symbol.Kind in [TIndexSymbolKind.Method]) and (Symbol.Visibility <> TIndexVisibility.StrictPrivate) and
+          (Symbol.Visibility <> TIndexVisibility.Private) and not Seen.ContainsKey(UpperCase(Symbol.Name)) then
+        begin
+          Seen.Add(UpperCase(Symbol.Name), True);
+          Candidate := FromSymbol(OwnerUnit, Symbol);
+          Candidate.Depth := Depth;
+          List.Add(Candidate);
+        end;
+      Current := Ancestor;
+    end;
+    Result := List.ToArray;
+  finally
+    List.Free;
+    Seen.Free;
+  end;
 end;
 
 function TNameResolver.ResolveType(ATree: TSyntaxTree; const AFileName: string;

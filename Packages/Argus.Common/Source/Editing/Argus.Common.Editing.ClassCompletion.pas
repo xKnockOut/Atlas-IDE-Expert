@@ -58,6 +58,10 @@ type
     /// "Deklaration an Implementierung angleichen" (#100). False ohne eindeutigen Partner.</summary>
     class function SignatureFixes(ATree: TSyntaxTree; const AText: string; const AMethod: TUnmatchedMethod;
       out AFixes: TArray<TRuleFix>): Boolean; static;
+    /// <summary>Fügt den Rumpf ABody (ohne Zeilenumbruch am Ende) für einen Typ dieser Datei ein: hinter die
+    /// letzte vorhandene Methode des Typs, sonst vor initialization, finalization bzw. "end." (#443).</summary>
+    class function BodyEdit(ATree: TSyntaxTree; const AText, ATypeName, ABody: string; out AEdit: TRuleEdit): Boolean;
+      static;
   end;
 
 implementation
@@ -613,6 +617,49 @@ begin
     Exit;
   AEdit := TRuleEdit.Create(TTextRange.Create(EndLine, 0, EndLine, 0),
     IndentOf(Lines[EndLine]) + 'private' + LB + IndentOf(Lines[EndLine]) + '  ' + Declaration + LB);
+  Result := True;
+end;
+
+class function TClassCompletion.BodyEdit(ATree: TSyntaxTree; const AText, ATypeName, ABody: string;
+  out AEdit: TRuleEdit): Boolean;
+var
+  Lines: TArray<string>;
+  UnitIndex: TUnitIndex;
+  Symbol, TypeSymbol: TIndexSymbol;
+  LastLine, InsertLine: Integer;
+  Found: Boolean;
+  LB: string;
+begin
+  AEdit := Default(TRuleEdit);
+  Lines := SplitLines(AText);
+  UnitIndex := TIndexExtractor.Extract(ATree, '');
+  Found := False;
+  TypeSymbol := Default(TIndexSymbol);
+  for Symbol in UnitIndex.Symbols do
+    if (Symbol.Kind in TypeKinds) and SameText(TypeNameOf(Symbol), ATypeName) then
+    begin
+      TypeSymbol := Symbol;
+      Found := True;
+      Break;
+    end;
+  if not Found then
+    Exit(False);
+  LastLine := -1;
+  for Symbol in UnitIndex.Symbols do
+    if (Symbol.Kind in MethodKinds) and SameText(Symbol.Container, ATypeName) and
+      not ContainsLine(TypeSymbol.Range, Symbol.Range.StartPos.Line) and (Symbol.Range.EndPos.Line > LastLine) then
+      LastLine := Symbol.Range.EndPos.Line;
+  LB := LineBreakOf(AText);
+  if LastLine >= 0 then
+    AEdit := TRuleEdit.Create(TTextRange.Create(LastLine, Length(Lines[LastLine]), LastLine, Length(Lines[LastLine])),
+      LB + LB + ABody)
+  else
+  begin
+    InsertLine := ImplementationEndLine(ATree);
+    if InsertLine < 0 then
+      Exit(False);
+    AEdit := TRuleEdit.Create(TTextRange.Create(InsertLine, 0, InsertLine, 0), ABody + LB + LB);
+  end;
   Result := True;
 end;
 

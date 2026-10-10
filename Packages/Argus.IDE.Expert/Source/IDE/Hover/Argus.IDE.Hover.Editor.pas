@@ -5,7 +5,8 @@
 //   - Nach 500 ms Verweilen auf demselben Bezeichner: textDocument/hover in
 //     Teilen (TLspSession.HoverParts) und Tooltip unter dem Wort.
 //   - Schließen 300 ms nachdem die Maus Bezeichner und Tooltip verlassen hat;
-//     sofort bei Taste, Mausklick, Scrollen, Größenänderung, IDE inaktiv.
+//     sofort bei Taste, Mausklick, Scrollen, Größenänderung, IDE inaktiv (ein
+//     Wächter prüft das, solange der Tooltip offen ist, #414).
 // Die IDE zeigt dann keinen eigenen Tooltip: GetHintText liefert '' (Manager).
 
 interface
@@ -38,6 +39,7 @@ type
     FTip: TArgusHoverTip;
     FShowTimer: TTimer;
     FHideTimer: TTimer;
+    FWatchTimer: TTimer;
     FSession: TArgusHoverSessionFunc;
     FLog: TArgusHoverLogFunc;
     // Bezeichner unter der Maus bzw. im offenen Tooltip.
@@ -55,6 +57,7 @@ type
     procedure EditorResized(const Editor: TWinControl);
     procedure ShowTimerTick(Sender: TObject);
     procedure HideTimerTick(Sender: TObject);
+    procedure WatchTimerTick(Sender: TObject);
     procedure Log(const AMessage: string);
   public
     constructor Create(const ASession: TArgusHoverSessionFunc; const ALog: TArgusHoverLogFunc);
@@ -98,6 +101,10 @@ begin
   FHideTimer.Enabled := False;
   FHideTimer.Interval := 300;
   FHideTimer.OnTimer := HideTimerTick;
+  FWatchTimer := TTimer.Create(nil);
+  FWatchTimer.Enabled := False;
+  FWatchTimer.Interval := 250;
+  FWatchTimer.OnTimer := WatchTimerTick;
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorMouseMove := EditorMouseMove;
@@ -124,6 +131,7 @@ begin
   FEventsRef := nil;
   FShowTimer.Free;
   FHideTimer.Free;
+  FWatchTimer.Free;
   FTip.Free;
   inherited Destroy;
 end;
@@ -136,6 +144,7 @@ end;
 
 procedure TArgusEditorHover.Hide;
 begin
+  FWatchTimer.Enabled := False;
   FShowTimer.Enabled := False;
   FHideTimer.Enabled := False;
   FTip.HidePopup;
@@ -247,10 +256,20 @@ begin
     FTip.ShowContent(Content, FWordRect);
     FShownKey := FKey;
     FHideTimer.Enabled := False;
+    FWatchTimer.Enabled := True;
   except
     on E: Exception do
       Log('Hover: ' + E.Message);
   end;
+end;
+
+procedure TArgusEditorHover.WatchTimerTick(Sender: TObject);
+begin
+  // Andere Anwendung im Vordergrund: kein Argus-Fenster bleibt stehen (#414).
+  if not FTip.IsShown then
+    FWatchTimer.Enabled := False
+  else if not Application.Active then
+    Hide;
 end;
 
 procedure TArgusEditorHover.HideTimerTick(Sender: TObject);
