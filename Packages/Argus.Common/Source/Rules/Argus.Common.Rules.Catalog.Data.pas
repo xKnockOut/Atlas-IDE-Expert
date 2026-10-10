@@ -379,6 +379,60 @@ begin
     '      "description": "Random is assigned to a token, password, salt, nonce or key. Random is predictable; use a cryptographic random generator. Missing Randomize is a separate topic (#153).",' + #10 +
     '      "bad": "Token := IntToStr(Random(MaxInt));",' + #10 +
     '      "good": "Token := TNetEncoding.Base64URL.EncodeBytesToString(CryptoRandomBytes(32));"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "dfm-circular-datasource",' + #10 +
+    '      "name": "Circular master-detail or data source link",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "MasterSource/DataSource links in the form file form a cycle (tblA → dsB → tblB → dsA → tblA). Opening the datasets recurses or never shows consistent data.",' + #10 +
+    '      "bad": "tblA.MasterSource = dsB; tblB.MasterSource = dsA",' + #10 +
+    '      "good": "tblB.MasterSource = dsA  // tblA has no master"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "dfm-master-without-fields",' + #10 +
+    '      "name": "Master-detail without MasterFields",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "A dataset has MasterSource but no MasterFields. The detail is not filtered and shows all records.",' + #10 +
+    '      "bad": "MasterSource = dsKunden",' + #10 +
+    '      "good": "MasterSource = dsKunden; MasterFields = ''KundenID''"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "dfm-required-field-without-control",' + #10 +
+    '      "name": "Required field without visible input control",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "A persistent field with Required = True is bound to no visible data-aware control (a grid without DataField counts for all fields). The user cannot fill it and posting fails.",' + #10 +
+    '      "bad": "tblKundenName: Required = True, no TDBEdit for Name",' + #10 +
+    '      "good": "edName: TDBEdit; DataSource = dsKunden; DataField = ''Name''"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "dfm-control-field-type-mismatch",' + #10 +
+    '      "name": "Data-aware control does not fit the field type",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "The control does not suit the persistent field, e.g. TDBEdit on a TBooleanField or blob field, TDBImage on a non-graphic field.",' + #10 +
+    '      "bad": "edAktiv: TDBEdit; DataField = ''Aktiv''  // TBooleanField",' + #10 +
+    '      "good": "cbAktiv: TDBCheckBox; DataField = ''Aktiv''"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "dfm-duplicate-binding",' + #10 +
+    '      "name": "Two controls bound to the same field",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "Two input controls use the same DataSource and DataField. Usually a copy-and-paste error. Display controls (TDBText, TDBImage) are ignored.",' + #10 +
+    '      "bad": "ed1, ed2: DataSource = dsA; DataField = ''Name''",' + #10 +
+    '      "good": "ed1: DataField = ''Name''; ed2: DataField = ''Vorname''"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "foreign-form-control-access",' + #10 +
+    '      "name": "Access to controls of another form",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "Code accesses a field of a form or frame from another unit through its global variable (Form2.Edit1.Text). This couples the units tightly; use a method or property of the form.",' + #10 +
+    '      "bad": "Form2.Edit1.Text := ''x'';",' + #10 +
+    '      "good": "Form2.Kundenname := ''x'';"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -590,6 +644,36 @@ begin
     '      "id": "security-insecure-random",' + #10 +
     '      "name": "Random für sicherheitsrelevante Werte",' + #10 +
     '      "description": "Random wird einem Token, Kennwort, Salt, Nonce oder Schlüssel zugewiesen. Random ist vorhersagbar; einen kryptografischen Zufallsgenerator verwenden. Fehlendes Randomize behandel' + 't #153."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "dfm-circular-datasource",' + #10 +
+    '      "name": "Zirkuläre Master-Detail- bzw. DataSource-Verknüpfung",' + #10 +
+    '      "description": "MasterSource/DataSource-Verknüpfungen der Formulardatei bilden einen Kreis (tblA → dsB → tblB → dsA → tblA). Das Öffnen der Datasets läuft in eine Rekursion oder zeigt keine stim' + 'migen Daten."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "dfm-master-without-fields",' + #10 +
+    '      "name": "Master-Detail ohne MasterFields",' + #10 +
+    '      "description": "Ein Dataset hat MasterSource, aber keine MasterFields. Das Detail wird nicht gefiltert und zeigt alle Datensätze."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "dfm-required-field-without-control",' + #10 +
+    '      "name": "Pflichtfeld ohne sichtbares Eingabe-Control",' + #10 +
+    '      "description": "Ein persistentes Feld mit Required = True ist an kein sichtbares datensensitives Control gebunden (ein Gitter ohne DataField zählt für alle Felder). Der Anwender kann es nicht fü' + 'llen, Post schlägt fehl."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "dfm-control-field-type-mismatch",' + #10 +
+    '      "name": "Datensensitives Control passt nicht zum Feldtyp",' + #10 +
+    '      "description": "Das Control passt nicht zum persistenten Feld, z. B. TDBEdit an einem TBooleanField oder Blob-Feld, TDBImage an einem Feld ohne Grafik."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "dfm-duplicate-binding",' + #10 +
+    '      "name": "Zwei Controls an demselben Feld",' + #10 +
+    '      "description": "Zwei Eingabe-Controls nutzen dieselbe DataSource und dasselbe DataField. Meist ein Kopierfehler. Anzeige-Controls (TDBText, TDBImage) zählen nicht."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "foreign-form-control-access",' + #10 +
+    '      "name": "Zugriff auf Controls eines anderen Formulars",' + #10 +
+    '      "description": "Code greift über die globale Variable auf ein Feld eines Formulars oder Frames aus einer anderen Unit zu (Form2.Edit1.Text). Das koppelt die Units eng; besser eine Methode oder P' + 'roperty des Formulars nutzen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

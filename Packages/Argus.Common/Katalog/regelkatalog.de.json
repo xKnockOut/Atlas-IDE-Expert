@@ -199,6 +199,36 @@
       "id": "security-insecure-random",
       "name": "Random für sicherheitsrelevante Werte",
       "description": "Random wird einem Token, Kennwort, Salt, Nonce oder Schlüssel zugewiesen. Random ist vorhersagbar; einen kryptografischen Zufallsgenerator verwenden. Fehlendes Randomize behandelt #153."
+    },
+    {
+      "id": "dfm-circular-datasource",
+      "name": "Zirkuläre Master-Detail- bzw. DataSource-Verknüpfung",
+      "description": "MasterSource/DataSource-Verknüpfungen der Formulardatei bilden einen Kreis (tblA → dsB → tblB → dsA → tblA). Das Öffnen der Datasets läuft in eine Rekursion oder zeigt keine stimmigen Daten."
+    },
+    {
+      "id": "dfm-master-without-fields",
+      "name": "Master-Detail ohne MasterFields",
+      "description": "Ein Dataset hat MasterSource, aber keine MasterFields. Das Detail wird nicht gefiltert und zeigt alle Datensätze."
+    },
+    {
+      "id": "dfm-required-field-without-control",
+      "name": "Pflichtfeld ohne sichtbares Eingabe-Control",
+      "description": "Ein persistentes Feld mit Required = True ist an kein sichtbares datensensitives Control gebunden (ein Gitter ohne DataField zählt für alle Felder). Der Anwender kann es nicht füllen, Post schlägt fehl."
+    },
+    {
+      "id": "dfm-control-field-type-mismatch",
+      "name": "Datensensitives Control passt nicht zum Feldtyp",
+      "description": "Das Control passt nicht zum persistenten Feld, z. B. TDBEdit an einem TBooleanField oder Blob-Feld, TDBImage an einem Feld ohne Grafik."
+    },
+    {
+      "id": "dfm-duplicate-binding",
+      "name": "Zwei Controls an demselben Feld",
+      "description": "Zwei Eingabe-Controls nutzen dieselbe DataSource und dasselbe DataField. Meist ein Kopierfehler. Anzeige-Controls (TDBText, TDBImage) zählen nicht."
+    },
+    {
+      "id": "foreign-form-control-access",
+      "name": "Zugriff auf Controls eines anderen Formulars",
+      "description": "Code greift über die globale Variable auf ein Feld eines Formulars oder Frames aus einer anderen Unit zu (Form2.Edit1.Text). Das koppelt die Units eng; besser eine Methode oder Property des Formulars nutzen."
     }
   ]
 }

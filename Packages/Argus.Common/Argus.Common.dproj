@@ -137,6 +137,7 @@
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Components.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.FormFields.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Security.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.DataBinding.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.ClassCompletion.pas"/>
         <DCCReference Include="Source\Dfm\Argus.Common.Dfm.Contract.pas"/>
         <DCCReference Include="Source\Dfm\Argus.Common.Dfm.Parser.pas"/>
