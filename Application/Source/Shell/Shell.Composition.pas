@@ -88,7 +88,6 @@ type
     FWorkspaceSymbols: TLspWorkspaceSymbols;
     /// <summary>Lesezeichen "// @bookmark Name" für die Symbolsuche (#306).</summary>
     FBookmarks: TBookmarkStore;
-    function CollectBookmarks: TArray<TBookmarkHit>;
     FDocumentHighlights: TLspDocumentHighlights;
     FReferences: TLspReferences;
     FRename: TLspRename;
@@ -152,6 +151,7 @@ type
     /// <summary>Projektdateien aller Ordner und geöffnete Dokumente, für Referenzen und Umbenennen.</summary>
     function ProjectSourceFiles: TArray<string>;
     /// <summary>Inhalt des Status-Befehls (#28).</summary>
+    function CollectBookmarks: TArray<TBookmarkHit>;
     function CollectStatus: TServerStatus;
     function DefinesFor(const AUri: string; out ADefines: TArray<string>): Boolean;
     function DelphiVersionFor(const AUri: string): string;
