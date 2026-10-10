@@ -77,6 +77,7 @@ uses
   Argus.Common.Pascal.SyntaxTree,
   Argus.Common.Pascal.TreeCache,
   Argus.Common.Editing.ClassCompletion,
+  Argus.Common.Editing.DocComments,
   Argus.Common.Documents.Uris,
   Argus.Common.Dfm.Parser,
   Argus.Common.Index.Contract,
@@ -269,6 +270,10 @@ begin
   end;
   for Action in UsesActions do
     TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+  // Dokumentationskommentar erzeugen bzw. an die Signatur anpassen (#88).
+  if WantsEditing then
+    for Action in TDocComments.Actions(Document.Text, Tree, Range.StartPos.Line) do
+      TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
   if WantsOrganize and TCodeActions.OrganizeImports(Document.Text, Assigned(FSortUsesFor) and FSortUsesFor(Uri),
     Action, Assigned(FSortUsesByNamespaceFor) and FSortUsesByNamespaceFor(Uri)) then
     TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
