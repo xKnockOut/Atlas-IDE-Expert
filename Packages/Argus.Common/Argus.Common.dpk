@@ -146,6 +146,7 @@ contains
   Argus.Common.Rules.Builtin.RtlPatterns in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.RtlPatterns.pas',
   Argus.Common.Rules.Builtin.RtlTypePatterns in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.RtlTypePatterns.pas',
   Argus.Common.Rules.Builtin.Exceptions in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.Exceptions.pas',
+  Argus.Common.Rules.Builtin.Performance in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.Performance.pas',
   Argus.Common.Rules.DeclaredTypes in 'Source\Rules\Argus.Common.Rules.DeclaredTypes.pas',
   Argus.Common.Rules.Builtin.DataBinding in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.DataBinding.pas',
   Argus.Common.Rules.Builtin.SlashCommands in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.SlashCommands.pas',
