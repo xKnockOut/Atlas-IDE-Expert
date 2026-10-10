@@ -18,7 +18,8 @@ type
     FResolver: TNameResolver;
     function CheckAt(const AMarker: string; const AFiles: TArray<string>): TRenameCheck;
     function EditsAt(const AMarker, ANewName: string): TArray<TRenameEdit>;
-    function FormEdits(const AMarker, ANewName: string; AHandlers: Boolean): TArray<TRenameEdit>;
+    function FormEdits(const AMarker, ANewName: string; AHandlers: Boolean;
+      AFmx: Boolean = False): TArray<TRenameEdit>;
   public
     [Setup]
     procedure Setup;
@@ -40,6 +41,8 @@ type
     procedure RenamesComponentWithHandlers;
     [Test]
     procedure KeepsHandlersWhenDisabled;
+    [Test]
+    procedure RenamesHandlersInFmxViews;
   end;
 
 implementation
@@ -97,6 +100,8 @@ const
 
   MaskeFile = 'C:\P\Maske.pas';
   MaskeDfm = 'C:\P\Maske.dfm';
+  MaskeFmx = 'C:\P\Maske.fmx';
+  MaskeWindowsFmx = 'C:\P\Maske.Windows.fmx';
 
   UnitMaske =
     'unit Maske;'#10 +                               // 0
@@ -193,25 +198,34 @@ begin
   end;
 end;
 
-function TLspRenameTests.FormEdits(const AMarker, ANewName: string; AHandlers: Boolean): TArray<TRenameEdit>;
+function TLspRenameTests.FormEdits(const AMarker, ANewName: string; AHandlers: Boolean;
+  AFmx: Boolean): TArray<TRenameEdit>;
 var
   Index: ISymbolIndex;
   Resolver: TNameResolver;
   Tree: TSyntaxTree;
+  UnitText: string;
 begin
+  // FMX (#87): Formular und Plattformansicht über die {$R}-Direktiven der Unit.
+  UnitText := UnitMaske;
+  if AFmx then
+    UnitText := StringReplace(UnitText, 'implementation'#10,
+      'implementation'#10'{$R *.fmx}'#10'{$R *.Windows.fmx MSWINDOWS}'#10, []);
   Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(UnitMaske, MaskeFile, nil));
+  Index.AddUnit(TIndexExtractor.ExtractText(UnitText, MaskeFile, nil));
   Resolver := TNameResolver.Create(Index);
-  Tree := TPascalParser.Parse(UnitMaske);
+  Tree := TPascalParser.Parse(UnitText);
   try
-    Result := TLspRename.Edits(Resolver, Index, Tree, MaskeFile, PositionOf(UnitMaske, AMarker), ANewName,
+    Result := TLspRename.Edits(Resolver, Index, Tree, MaskeFile, PositionOf(UnitText, AMarker), ANewName,
       [MaskeFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
         Result := True;
         if SameText(AFileName, MaskeFile) then
-          AText := UnitMaske
-        else if SameText(AFileName, MaskeDfm) then
+          AText := UnitText
+        else if not AFmx and SameText(AFileName, MaskeDfm) then
+          AText := FormMaske
+        else if AFmx and (SameText(AFileName, MaskeFmx) or SameText(AFileName, MaskeWindowsFmx)) then
           AText := FormMaske
         else
           Result := False;
@@ -323,6 +337,23 @@ var
 begin
   for Edit in FormEdits('Button1: TObject', 'btnSpeichern', False) do
     Assert.AreEqual('btnSpeichern', Edit.NewText);
+end;
+
+procedure TLspRenameTests.RenamesHandlersInFmxViews;
+var
+  Edit: TRenameEdit;
+  Fmx, Windows: Integer;
+begin
+  Fmx := 0;
+  Windows := 0;
+  for Edit in FormEdits('Button1: TObject', 'btnSpeichern', True, True) do
+    if SameText(Edit.FileName, MaskeFmx) then
+      Inc(Fmx)
+    else if SameText(Edit.FileName, MaskeWindowsFmx) then
+      Inc(Windows);
+  // Objektname und Zuordnung OnClick in beiden Formularen.
+  Assert.AreEqual(2, Fmx);
+  Assert.AreEqual(2, Windows);
 end;
 
 initialization

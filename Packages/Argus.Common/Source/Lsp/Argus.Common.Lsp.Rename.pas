@@ -76,6 +76,7 @@ implementation
 
 uses
   System.StrUtils,
+  Argus.Common.Dfm.FormFiles,
   Argus.Common.Documents.Uris,
   Argus.Common.Lsp.Contract,
   Argus.Common.Lsp.Positions,
@@ -172,11 +173,21 @@ begin
     Result.Error := 'Units werden über den Dateinamen umbenannt.';
 end;
 
+function HasHandler(const ARenames: TArray<THandlerRename>; const AOldName: string): Boolean;
+var
+  Rename: THandlerRename;
+begin
+  for Rename in ARenames do
+    if SameText(Rename.OldName, AOldName) then
+      Exit(True);
+  Result := False;
+end;
+
 function HandlerEdits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const AFileName: string; const AChecked: TRenameCheck; const ANewName: string; const AFiles: TArray<string>;
   const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TArray<TRenameEdit>;
 var
-  FormText, UnitText: string;
+  FormText, UnitText, FormFile: string;
   Renames: TArray<THandlerRename>;
   Rename: THandlerRename;
   Tree: TSyntaxTree;
@@ -189,21 +200,22 @@ begin
   Result := nil;
   if AChecked.DeclarationFile = '' then
     Exit;
-  if not AReadText(ChangeFileExt(AChecked.DeclarationFile, '.dfm'), FormText) and
-    not AReadText(ChangeFileExt(AChecked.DeclarationFile, '.fmx'), FormText) then
+  if not AReadText(AChecked.DeclarationFile, UnitText) then
     Exit;
-  Renames := TDfmComponentRename.Handlers(FormText, AChecked.Name, ANewName);
+  // .dfm, .fmx und FMX-Plattformansichten (#87); jeder Handler nur einmal.
+  Renames := nil;
+  for FormFile in TFormFiles.FormFiles(AChecked.DeclarationFile, UnitText) do
+    if AReadText(FormFile, FormText) then
+      for Rename in TDfmComponentRename.Handlers(FormText, AChecked.Name, ANewName) do
+        if not HasHandler(Renames, Rename.OldName) then
+          Renames := Renames + [Rename];
   if Length(Renames) = 0 then
     Exit;
   // Die Handler stehen in der Unit des Formulars.
   if SameText(AChecked.DeclarationFile, AFileName) then
     Tree := ATree
   else
-  begin
-    if not AReadText(AChecked.DeclarationFile, UnitText) then
-      Exit;
     Tree := TSyntaxTreeCache.Parse(UnitText);
-  end;
   try
     Symbols := TIndexExtractor.Extract(Tree, AChecked.DeclarationFile).Symbols;
     for Rename in Renames do
