@@ -28,6 +28,10 @@ type
     MaxPanelWidth = 600;
     MinHangThreshold = 100;
     MaxHangThreshold = 10000;
+    MinCheckDelay = 500;
+    MaxCheckDelay = 10000;
+    MinCheckMax = 200;
+    MaxCheckMax = 20000;
   public
     /// <summary>Hauptschalter (#407): aus = eingebaute Code Insight der IDE.</summary>
     Enabled: Boolean;
@@ -59,6 +63,12 @@ type
     ReloadExternal: Boolean;
     /// <summary>Klammer- und Blockpaare nach Tiefe färben (#514).</summary>
     PairColors: Boolean;
+    /// <summary>Syntaxprüfung des Compilers nach dem Speichern (#548).</summary>
+    CheckOnSave: Boolean;
+    /// <summary>Wartezeit nach dem letzten Speichern.</summary>
+    CheckOnSaveDelayMs: Integer;
+    /// <summary>Höchstdauer einer Prüfung; darüber nur noch von Hand (Strg+Alt+F9).</summary>
+    CheckOnSaveMaxMs: Integer;
     class function Defaults: TArgusPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -98,6 +108,9 @@ begin
   Result.HangHint := True;
   Result.ReloadExternal := True;
   Result.PairColors := True;
+  Result.CheckOnSave := True;
+  Result.CheckOnSaveDelayMs := 2000;
+  Result.CheckOnSaveMaxMs := 1500;
 end;
 
 procedure TArgusPluginSettings.Normalize;
@@ -107,6 +120,8 @@ begin
     ListWidth := EnsureRange(ListWidth, MinListWidth, MaxListWidth);
   PanelWidth := EnsureRange(PanelWidth, MinPanelWidth, MaxPanelWidth);
   HangThresholdMs := EnsureRange(HangThresholdMs, MinHangThreshold, MaxHangThreshold);
+  CheckOnSaveDelayMs := EnsureRange(CheckOnSaveDelayMs, MinCheckDelay, MaxCheckDelay);
+  CheckOnSaveMaxMs := EnsureRange(CheckOnSaveMaxMs, MinCheckMax, MaxCheckMax);
 end;
 
 procedure TArgusPluginSettings.Load(const AStore: IArgusSettingsStore);
@@ -129,6 +144,9 @@ begin
   HangHint := AStore.ReadInteger('HangHint', BoolValue(Default.HangHint)) <> 0;
   ReloadExternal := AStore.ReadInteger('ReloadExternal', BoolValue(Default.ReloadExternal)) <> 0;
   PairColors := AStore.ReadInteger('PairColors', BoolValue(Default.PairColors)) <> 0;
+  CheckOnSave := AStore.ReadInteger('CheckOnSave', BoolValue(Default.CheckOnSave)) <> 0;
+  CheckOnSaveDelayMs := AStore.ReadInteger('CheckOnSaveDelayMs', Default.CheckOnSaveDelayMs);
+  CheckOnSaveMaxMs := AStore.ReadInteger('CheckOnSaveMaxMs', Default.CheckOnSaveMaxMs);
   Normalize;
 end;
 
@@ -150,6 +168,9 @@ begin
   AStore.WriteInteger('HangHint', BoolValue(HangHint));
   AStore.WriteInteger('ReloadExternal', BoolValue(ReloadExternal));
   AStore.WriteInteger('PairColors', BoolValue(PairColors));
+  AStore.WriteInteger('CheckOnSave', BoolValue(CheckOnSave));
+  AStore.WriteInteger('CheckOnSaveDelayMs', CheckOnSaveDelayMs);
+  AStore.WriteInteger('CheckOnSaveMaxMs', CheckOnSaveMaxMs);
 end;
 
 end.

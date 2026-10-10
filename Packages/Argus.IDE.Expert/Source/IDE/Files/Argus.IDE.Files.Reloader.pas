@@ -27,6 +27,7 @@ type
     FChanges: TArgusExternalChanges;
     FBusy: Boolean;
     FReport: TProc<string>;
+    FOnSaved: TProc<string>;
     procedure Tick(Sender: TObject);
     function OpenFiles: TArray<TArgusObservedFile>;
     procedure Process(const ADecisions: TArray<TArgusReloadDecision>);
@@ -40,6 +41,8 @@ type
     /// <summary>AReport erhält je Vorgang eine Zeile fürs Protokoll (was neu geladen bzw. behalten wurde).</summary>
     constructor Create(const AReport: TProc<string>);
     destructor Destroy; override;
+    /// <summary>Datei wurde gespeichert (neuer Zeitstempel, Inhalt wie im Puffer), z. B. für #548.</summary>
+    property OnSaved: TProc<string> read FOnSaved write FOnSaved;
   end;
 
 implementation
@@ -92,24 +95,43 @@ class function TArgusFileReloader.SourceEditorOf(const AModule: IOTAModule): IOT
 var
   Index: Integer;
   Editor: IOTAEditor;
+  First: IOTASourceEditor;
 begin
   Result := nil;
+  First := nil;
   for Index := 0 to AModule.ModuleFileCount - 1 do
   begin
     Editor := AModule.ModuleFileEditors[Index];
-    if Supports(Editor, IOTASourceEditor, Result) and SameText(Editor.FileName, AModule.FileName) then
-      Exit;
+    if Supports(Editor, IOTASourceEditor, Result) then
+    begin
+      if SameText(Editor.FileName, AModule.FileName) then
+        Exit;
+      if First = nil then
+        First := Result;
+    end;
     Result := nil;
   end;
+  // Projekte (.dproj): ihr Quelltext ist die .dpr bzw. .dpk.
+  if Supports(AModule, IOTAProject) then
+    Result := First;
 end;
 
 class function TArgusFileReloader.FindModule(const AFileName: string): IOTAModule;
 var
   Services: IOTAModuleServices;
+  Index: Integer;
+  Editor: IOTASourceEditor;
 begin
   Result := nil;
-  if Supports(BorlandIDEServices, IOTAModuleServices, Services) then
-    Result := Services.FindModule(AFileName);
+  if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+    Exit;
+  // Über den Quelltexteditor: Die .dpr gehört zum Projektmodul (.dproj).
+  for Index := 0 to Services.ModuleCount - 1 do
+  begin
+    Editor := SourceEditorOf(Services.Modules[Index]);
+    if (Editor <> nil) and SameText(Editor.FileName, AFileName) then
+      Exit(Services.Modules[Index]);
+  end;
 end;
 
 function TArgusFileReloader.OpenFiles: TArray<TArgusObservedFile>;
@@ -131,14 +153,15 @@ begin
     Editor := SourceEditorOf(Module);
     if Editor = nil then
       Continue;
-    Exists := DiskStamp(Module.FileName, Stamp);
-    Result := Result + [TArgusObservedFile.Create(Module.FileName, Exists, Stamp, Editor.Modified)];
+    Exists := DiskStamp(Editor.FileName, Stamp);
+    Result := Result + [TArgusObservedFile.Create(Editor.FileName, Exists, Stamp, Editor.Modified)];
   end;
 end;
 
 procedure TArgusFileReloader.Tick(Sender: TObject);
 begin
-  if FBusy or not TArgusIdeSettings.Current.ReloadExternal then
+  // Beobachtet wird immer (Speichern erkennen, #548); neu geladen nur mit der Einstellung.
+  if FBusy then
     Exit;
   FBusy := True;
   try
@@ -192,8 +215,14 @@ begin
   Editor := SourceEditorOf(Module);
   if (Editor = nil) or Editor.Modified then
     Exit;
-  // Nur der Zeitstempel (z. B. Touch, eigenes Speichern): nichts neu laden, Rückgängig bleibt.
+  // Nur der Zeitstempel (eigenes Speichern, Touch): nichts neu laden, Rückgängig bleibt.
   if SameAsDisk(Editor, AFileName) then
+  begin
+    if Assigned(FOnSaved) then
+      FOnSaved(AFileName);
+    Exit;
+  end;
+  if not TArgusIdeSettings.Current.ReloadExternal then
     Exit;
   SetLength(States, Editor.EditViewCount);
   for Index := 0 to High(States) do
@@ -239,7 +268,7 @@ var
 begin
   Activity := TArgusActivity.Scope('Dateien neu laden');
   Reloaded := nil;
-  if Assigned(FReport) then
+  if Assigned(FReport) and TArgusIdeSettings.Current.ReloadExternal then
     for Decision in ADecisions do
       FReport(Format('Extern geändert: %s (%s)', [Decision.FileName,
         TArgusExternalChanges.ActionText(Decision.Action)]));
@@ -249,9 +278,11 @@ begin
         if Reload(Decision.FileName) then
           Reloaded := Reloaded + [Decision.FileName];
       TArgusReloadAction.KeepModified:
-        AddMessage(TArgusStrings.Fmt(TArgusTextId.ReloadKeptModified, [ExtractFileName(Decision.FileName)]));
+        if TArgusIdeSettings.Current.ReloadExternal then
+          AddMessage(TArgusStrings.Fmt(TArgusTextId.ReloadKeptModified, [ExtractFileName(Decision.FileName)]));
       TArgusReloadAction.Deleted:
-        AddMessage(TArgusStrings.Fmt(TArgusTextId.ReloadDeleted, [ExtractFileName(Decision.FileName)]));
+        if TArgusIdeSettings.Current.ReloadExternal then
+          AddMessage(TArgusStrings.Fmt(TArgusTextId.ReloadDeleted, [ExtractFileName(Decision.FileName)]));
     end;
   if Length(Reloaded) = 0 then
     Exit;

@@ -17,7 +17,8 @@ type
     MoreOverloads, ChipAll, ChipMethods, ChipProperties, ChipEvents, ChipTypes, ChipSnippets, TagRecent,
     TagFrequent, SettingsTitle, SettingsEnabled, SettingsRows, SettingsPanelCollapsed, SettingsParentheses,
     SettingsChips, SettingsLearning, SettingsGroupInherited, SettingsPreview, SettingsHover, SettingsResetHistory,
-    SettingsResetWidths, FitsType, OtherGroup, CountFits, CompileCancelled, SettingsHangThreshold, SettingsHangHint, HangHint, SettingsHangTest, SettingsReload, ReloadDone, ReloadKeptModified, ReloadDeleted, PaletteLog, PaletteResetHistory, SettingsPairs);
+    SettingsResetWidths, FitsType, OtherGroup, CountFits, CompileCancelled, SettingsHangThreshold, SettingsHangHint, HangHint, SettingsHangTest, SettingsReload, ReloadDone, ReloadKeptModified, ReloadDeleted, PaletteLog, PaletteResetHistory, SettingsPairs, SettingsCheckOnSave,
+    SettingsCheckDelay, SettingsCheckMax, CheckOnSaveDisabled, PaletteCheckNow);
 
   TArgusStrings = class
   private class var
@@ -51,7 +52,10 @@ const
      'Außerhalb geänderte Dateien ohne Rückfrage neu laden (nur ohne ungespeicherte Änderungen)',
      'Argus: %d Dateien neu geladen', 'Argus: %s wurde außerhalb geändert und hat ungespeicherte Änderungen; die IDE fragt nach.',
      'Argus: %s existiert nicht mehr.', 'Protokoll öffnen', 'Verlauf der Vervollständigung zurücksetzen',
-     'Klammern und Blockpaare (begin/end …) nach Tiefe färben'),
+     'Klammern und Blockpaare (begin/end …) nach Tiefe färben', 'Compiler prüft nach dem Speichern (Syntaxprüfung)',
+     'Wartezeit nach dem Speichern (ms):', 'Höchstdauer der Prüfung (ms):',
+     'Argus: Compilerprüfung nach dem Speichern für %s abgeschaltet (%d ms > %d ms); Strg+Alt+F9 prüft von Hand.',
+     'Compiler prüfen (Syntaxprüfung)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -66,7 +70,10 @@ const
      'Reload files changed outside the IDE without asking (only without unsaved changes)',
      'Argus: %d files reloaded', 'Argus: %s was changed outside and has unsaved changes; the IDE will ask.',
      'Argus: %s no longer exists.', 'Open log', 'Reset completion history',
-     'Colour brackets and block pairs (begin/end …) by depth'));
+     'Colour brackets and block pairs (begin/end …) by depth', 'Compiler checks after saving (syntax check)',
+     'Delay after saving (ms):', 'Maximum check duration (ms):',
+     'Argus: compiler check after saving switched off for %s (%d ms > %d ms); Ctrl+Alt+F9 checks manually.',
+     'Check with compiler (syntax check)'));
 
 { TArgusStrings }
 

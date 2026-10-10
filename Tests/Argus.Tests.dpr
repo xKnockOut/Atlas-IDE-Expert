@@ -175,7 +175,9 @@ uses
   Argus.Core.Editor.Pairs.Tests in 'IDE.Expert\Argus.Core.Editor.Pairs.Tests.pas',
   Argus.Core.Build.Messages in '..\Packages\Argus.IDE.Expert\Source\Core\Build\Argus.Core.Build.Messages.pas',
   Argus.Core.Build.Messages.Tests in 'IDE.Expert\Argus.Core.Build.Messages.Tests.pas',
-  Argus.Common.Lsp.IdeBuild.Tests in 'Common\Lsp\Argus.Common.Lsp.IdeBuild.Tests.pas';
+  Argus.Common.Lsp.IdeBuild.Tests in 'Common\Lsp\Argus.Common.Lsp.IdeBuild.Tests.pas',
+  Argus.Core.Build.CheckOnSave in '..\Packages\Argus.IDE.Expert\Source\Core\Build\Argus.Core.Build.CheckOnSave.pas',
+  Argus.Core.Build.CheckOnSave.Tests in 'IDE.Expert\Argus.Core.Build.CheckOnSave.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

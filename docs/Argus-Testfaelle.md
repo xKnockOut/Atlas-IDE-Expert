@@ -140,6 +140,25 @@ Schreibweise: `|` steht für die Cursorposition.
 | O5 | Bereits überschriebene Methode | Erscheint nicht noch einmal in der Liste |
 | O6 | Liste aus O1 ansehen | Kein „+Unit“-Tag an den Einträgen |
 
+## Compilerprüfung nach dem Speichern (#548)
+
+Vorab gemessen (RAD Studio 13, Mini-Projekt): Syntaxprüfung 0,6–0,9 s, schreibt keine `.exe`/`.dcu` (nur `.res`). In der echten IDE geprüft: Speichern → nach 2 s Prüfung (640 ms) → 2 Meldungen gelesen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CS1 | In einer Unit des aktiven Projekts `I := 'Text';` (I: Integer) schreiben, speichern | Nach ca. 2 s läuft die Syntaxprüfung; Protokoll „Compilerprüfung nach dem Speichern: Projekt.dproj, n ms“ und „Meldungsfenster: … Meldungen“; im Reiter „Build“ E2010 an der richtigen Zeile |
+| CS2 | Mehrmals kurz hintereinander speichern | Nur eine Prüfung, 2 s nach dem letzten Speichern |
+| CS3 | Fehler beheben, speichern | Neue Prüfung, keine Meldung mehr |
+| CS4 | Während eines eigenen Builds speichern | Keine Prüfung während des Builds |
+| CS5 | Im Debugger laufend speichern | Keine Prüfung |
+| CS6 | Optionen › Argus › „Höchstdauer der Prüfung“ auf 200 setzen, speichern | Meldung „Compilerprüfung nach dem Speichern für … abgeschaltet“; weiteres Speichern prüft nicht mehr |
+| CS7 | Danach Strg+Alt+F9 bzw. Palette „Argus: Compiler prüfen“ | Prüfung läuft von Hand |
+| CS8 | Optionen › Argus › „Compiler prüft nach dem Speichern“ aus | Keine Prüfung mehr |
+| CS9 | Fortschrittsdialog der IDE (falls „Compilerfortschritt anzeigen“ an) | Schließt nach einer fehlgeschlagenen Prüfung von selbst; bei eigenen Builds bleibt er wie gewohnt |
+| CS10 | Wächter-Protokoll bei einer langsamen Prüfung | Hänger mit „Argus: Compilerprüfung nach dem Speichern“ |
+
+Abweichung vom Issue: Einstellungen in den Plugin-Optionen (Registry) statt `build.checkOnSave*` im Server-Schema; Statusleiste noch offen.
+
 ## Compilermeldungen aus der IDE (#528)
 
 Leseweg (Spike 10.10.2026, RAD Studio 13): Reiter „Build“ des Meldungsfensters per RTTI, Objekte `TCompilerMsgLine` mit Kind, Message, FileName, Line, Column – ohne Zwischenablage. Probe mit einem Projekt mit `I := 'Text'` (E2010) und `Writeln(Gibtsnicht)` (E2003): beide Meldungen mit Datei, Zeile und Spalte erkannt.

@@ -32,7 +32,8 @@ uses
   Argus.IDE.Diagnostics.Watchdog,
   Argus.IDE.Files.Reloader,
   Argus.IDE.Commands.Palette,
-  Argus.IDE.Editor.Pairs;
+  Argus.IDE.Editor.Pairs,
+  Argus.IDE.Build.CheckOnSave;
 
 var
   ManagerIndex: Integer = -1;
@@ -44,6 +45,7 @@ var
   Reloader: TArgusFileReloader;
   Palette: TArgusIdePalette;
   Pairs: TArgusEditorPairs;
+  CheckOnSave: TArgusIdeCheckOnSave;
 
 const
   // Ab dieser Dauer ein Hinweis im Meldungsfenster (#501).
@@ -97,6 +99,12 @@ begin
     procedure
     begin
       TArgusIdeHistory.Reset;
+    end);
+  Palette.RegisterCommand('Argus.CheckNow', TArgusStrings.Text(TArgusTextId.PaletteCheckNow), '',
+    procedure
+    begin
+      if CheckOnSave <> nil then
+        CheckOnSave.CheckNow;
     end);
   Palette.RegisterCommand('Argus.HangTest', TArgusStrings.Text(TArgusTextId.SettingsHangTest), '',
     procedure
@@ -217,17 +225,33 @@ begin
     RegisterCompileEvents;
   if Watchdog = nil then
     RegisterWatchdog(LoadedAt);
+  if (CheckOnSave = nil) and (Compile <> nil) then
+    CheckOnSave := TArgusIdeCheckOnSave.Create(Compile.Events,
+      procedure(AText: string)
+      begin
+        if Manager <> nil then
+          Manager.Report(AText);
+      end);
   if Palette = nil then
     RegisterPalette;
   if Pairs = nil then
     Pairs := TArgusEditorPairs.Create;
   if Reloader = nil then
+  begin
     Reloader := TArgusFileReloader.Create(
       procedure(AText: string)
       begin
         if Manager <> nil then
           Manager.Report(AText);
       end);
+    // Gespeichert: Compilerprüfung vormerken (#548).
+    Reloader.OnSaved :=
+      procedure(AFileName: string)
+      begin
+        if CheckOnSave <> nil then
+          CheckOnSave.Saved(AFileName);
+      end;
+  end;
   TArgusOptionsRegistration.Register(
     procedure
     begin
@@ -240,6 +264,7 @@ var
   Services: IOTACodeInsightServices;
 begin
   FreeAndNil(Pairs);
+  FreeAndNil(CheckOnSave);
   FreeAndNil(Palette);
   FreeAndNil(Reloader);
   UnregisterWatchdog;
