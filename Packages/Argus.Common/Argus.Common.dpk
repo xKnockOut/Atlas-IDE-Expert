@@ -130,6 +130,8 @@ contains
   Argus.Common.Editing.RefactoringCommands in 'Source\Editing\Argus.Common.Editing.RefactoringCommands.pas',
   Argus.Common.Editing.ExpressionCommands in 'Source\Editing\Argus.Common.Editing.ExpressionCommands.pas',
   Argus.Common.Editing.ProjectCommands in 'Source\Editing\Argus.Common.Editing.ProjectCommands.pas',
+  Argus.Common.Editing.SqlText in 'Source\Editing\Argus.Common.Editing.SqlText.pas',
+  Argus.Common.Editing.DatabaseCommands in 'Source\Editing\Argus.Common.Editing.DatabaseCommands.pas',
   Argus.Common.Editing.MaintenanceCommands in 'Source\Editing\Argus.Common.Editing.MaintenanceCommands.pas',
   Argus.Common.Editing.TypeCommands in 'Source\Editing\Argus.Common.Editing.TypeCommands.pas',
   Argus.Common.Editing.CollectionCommands in 'Source\Editing\Argus.Common.Editing.CollectionCommands.pas',
