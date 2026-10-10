@@ -174,6 +174,7 @@
         <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.RtlTypePatterns.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.Exceptions.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.Style.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.PaletteIcons.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.Performance.Tests.pas"/>
         <DCCReference Include="Common\Rules\Argus.Common.Rules.ChangedFiles.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.RefactoringCommands.Tests.pas"/>

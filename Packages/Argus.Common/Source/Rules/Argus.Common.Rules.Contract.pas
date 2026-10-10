@@ -63,6 +63,9 @@ type
   end;
 
   /// <summary>Alles, was eine Regel über die geprüfte Datei wissen darf.</summary>
+  /// <summary>Liest eine Datei neben der Unit, z. B. die .dcr aus {$R *.dcr} (#114).</summary>
+  TRuleFileReader = reference to function(const AFileName: string; out AData: TBytes): Boolean;
+
   TRuleContext = record
     /// <summary>Pfad relativ zum Ordner der Konfiguration, '' wenn unbekannt.</summary>
     RelativePath: string;
@@ -80,6 +83,8 @@ type
     /// <summary>Eingestellte Delphi-Version (BDS-Nummer, #109); '' = unbekannt. Setzt TRuleEngine.Run
     /// aus den Einstellungen, wenn der Aufrufer sie nicht angibt.</summary>
     DelphiVersion: string;
+    /// <summary>Dateien relativ zum Ordner der Unit lesen (#114); nil = keine Dateien, die Regel schweigt.</summary>
+    ReadFile: TRuleFileReader;
   end;
 
   /// <summary>Sammelt die Treffer einer Regel.</summary>

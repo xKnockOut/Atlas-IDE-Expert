@@ -30,6 +30,7 @@ uses
   Argus.Common.Rules.Builtin.RtlTypePatterns,
   Argus.Common.Rules.Builtin.Exceptions,
   Argus.Common.Rules.Builtin.Style,
+  Argus.Common.Rules.Builtin.PaletteIcons,
   Argus.Common.Rules.Builtin.Performance,
   Argus.Common.Rules.Builtin.DataBinding,
   Argus.Common.Rules.Builtin.SlashCommands;
@@ -56,6 +57,7 @@ begin
     RegisterRtlTypePatternRules(Registry);
     RegisterExceptionRules(Registry);
     RegisterStyleRules(Registry);
+    RegisterPaletteIconRules(Registry);
     RegisterPerformanceRules(Registry);
     RegisterDataBindingRules(Registry);
     RegisterSlashCommandRules(Registry);
