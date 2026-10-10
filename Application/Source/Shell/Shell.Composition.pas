@@ -355,6 +355,7 @@ begin
         AText := TFile.ReadAllText(AFileName);
     end);
   FFormatting.SlashCommandsFor := SlashCommandsFor;
+  FFormatting.DelphiVersionFor := DelphiVersionFor;
   FFormatting.Attach(FDispatcher);
   FSelectionRanges := TLspSelectionRanges.Create(FDocuments);
   FSelectionRanges.Attach(FDispatcher);

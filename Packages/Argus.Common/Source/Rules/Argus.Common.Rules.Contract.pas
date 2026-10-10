@@ -77,6 +77,9 @@ type
     Index: ISymbolIndex;
     /// <summary>Inhalt der Formulardatei (.dfm/.fmx) neben der Unit (#123); '' ohne.</summary>
     FormText: string;
+    /// <summary>Eingestellte Delphi-Version (BDS-Nummer, #109); '' = unbekannt. Setzt TRuleEngine.Run
+    /// aus den Einstellungen, wenn der Aufrufer sie nicht angibt.</summary>
+    DelphiVersion: string;
   end;
 
   /// <summary>Sammelt die Treffer einer Regel.</summary>
