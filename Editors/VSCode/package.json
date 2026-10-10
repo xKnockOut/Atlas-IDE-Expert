@@ -167,6 +167,11 @@
           "default": true,
           "markdownDescription": "Eine Zeile \"/uses Unit1, Unit2\" wird nach Enter gelöscht und die Units kommen ins passende uses. argus.json im Projekt hat Vorrang."
         },
+        "argus.slashCommands": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Schnellbefehle: Eine Zeile, die mit /name beginnt, wird nach Enter ausgeführt und verschwindet. Nach / schlägt die Vervollständigung alle Befehle vor. argus.json im Projekt hat Vorrang."
+        },
         "argus.sortUses": {
           "type": [
             "boolean",

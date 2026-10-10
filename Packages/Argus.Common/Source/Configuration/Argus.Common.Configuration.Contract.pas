@@ -161,8 +161,13 @@ type
     Highlight: THighlightSettings;
     Compiler: TCompilerSettings;
     Completion: TCompletionSettings;
-    /// <summary>Schnellbefehl "/uses Unit" nach Enter auswerten (#254).</summary>
+    /// <summary>Schnellbefehl "/uses Unit" nach Enter auswerten (#254); false wirkt wie "uses" in
+    /// SlashCommandsDisabled.</summary>
     UsesCommand: Boolean;
+    /// <summary>Schnellbefehle mit "/" überhaupt auswerten (#293).</summary>
+    SlashCommands: Boolean;
+    /// <summary>Abgeschaltete Schnellbefehle ohne "/", z. B. uses.</summary>
+    SlashCommandsDisabled: TArray<string>;
     /// <summary>"uses aufräumen" (source.organizeImports) sortiert alphabetisch; Vorgabe aus,
     /// weil die Reihenfolge die Initialisierung bestimmt (#182).</summary>
     SortUses: Boolean;
@@ -418,6 +423,8 @@ begin
   Result.Compiler := TCompilerSettings.Default;
   Result.Completion := TCompletionSettings.Default;
   Result.UsesCommand := True;
+  Result.SlashCommands := True;
+  Result.SlashCommandsDisabled := nil;
   Result.SortUses := False;
   Result.SortUsesByNamespace := False;
   Result.UsesKeep := nil;

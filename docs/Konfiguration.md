@@ -24,6 +24,7 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 | `compiler` | object | – |  | Compiler-Anbindung (dcc32/dcc64). |
 | `completion` | object | – |  | Code-Vervollständigung. |
 | `usesCommand` | boolean | `true` |  | Eine Zeile "/uses Unit1, Unit2" wird nach Enter gelöscht und die Units kommen ins passende uses. |
+| `slashCommands` | object | – |  | Schnellbefehle: Eine Zeile, die mit /name beginnt, wird nach Enter ausgeführt und verschwindet. Nach / schlägt die Vervollständigung alle Befehle vor. |
 | `sortUses` | boolean string | `false` | `true`, `false`, `"alphabetic"`, `"namespace"` | "uses aufräumen" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder "alphabetic" alphabetisch, "namespace" nach Namespace gruppiert (System, Vcl, ... und Units ohne Namespace zuletzt). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units. |
 | `usesKeep` | array<string> | `` |  | Units, die "ungenutzte uses entfernen" nie entfernt, zusätzlich zu allen Units mit initialization-Abschnitt. |
 | `memoryBudgetMb` | integer | `0` | 0… | Obergrenze für den Symbolindex in MB. Darüber werden zuerst Bibliotheks-Units (RTL, VCL), dann Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. |
@@ -48,6 +49,13 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 | Schlüssel | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|
 | `completion.matching` | string | `"fuzzy"` | `"fuzzy"`, `"prefix"` | Auswahl der Vorschläge: unscharf (Teilfolgen, Kürzel wie TSL für TStringList) oder nur nach Präfix, falls ein Editor nachträglich strikt filtert. |
+
+## slashCommands
+
+| Schlüssel | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|
+| `slashCommands.enabled` | boolean | `true` |  | Schnellbefehle auswerten. |
+| `slashCommands.disabled` | array<string> | `` |  | Abgeschaltete Befehle ohne /, z. B. ["uses"]. usesCommand: false wirkt wie "uses" in dieser Liste. |
 
 ## highlight
 

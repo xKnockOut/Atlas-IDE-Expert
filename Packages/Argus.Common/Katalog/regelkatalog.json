@@ -422,6 +422,15 @@
       "description": "SQL.Text, SQL.Add, CommandText, ExecSQL or Open receives text built with + or Format from non-constant values. User input could inject SQL. Use parameters (:Name, ParamByName). Constants, resourcestrings, IntToStr and QuotedStr are not reported; user input (TEdit.Text, TMemo.Lines) raises the confidence to high.",
       "bad": "Q.SQL.Text := 'select * from K where N = ''' + Edit1.Text + '''';",
       "good": "Q.SQL.Text := 'select * from K where N = :N';\nQ.ParamByName('N').AsString := Edit1.Text;"
+    },
+    {
+      "id": "slash-command",
+      "name": "Quick command not executed",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "A line starting with /name was not executed and stays in the code: the command is unknown, switched off (slashCommands.disabled) or does not fit at this place. The message names the reason.",
+      "bad": "/gibtsnicht X",
+      "good": "/uses System.Classes"
     }
   ]
 }

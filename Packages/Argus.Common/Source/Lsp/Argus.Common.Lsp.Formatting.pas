@@ -5,9 +5,9 @@
 // darüber .editorconfig und darüber ausdrücklich gesetzte Werte aus
 // "format" in argus.json. Die Logik liegt in Argus.Common.Editing.Formatter.
 //
-// textDocument/onTypeFormatting wertet nach Enter den Schnellbefehl
-// "/uses Unit" aus (#254, schaltbar über "usesCommand"). Den Blockabschluss
-// aus #179 gibt es nicht: Den erledigt die IDE selbst.
+// textDocument/onTypeFormatting führt nach Enter Schnellbefehle wie "/uses Unit"
+// über das Register aus (#293, "slashCommands"; #254 "usesCommand" bleibt Alias).
+// Den Blockabschluss aus #179 gibt es nicht: Den erledigt die IDE selbst.
 
 interface
 
@@ -18,12 +18,12 @@ uses
   Argus.Common.JsonRpc.Dispatcher,
   Argus.Common.Documents.Contract,
   Argus.Common.Configuration.Contract,
-  Argus.Common.Editing.EditorConfig;
+  Argus.Common.Editing.EditorConfig,
+  Argus.Common.Editing.SlashCommands;
 
 type
   /// <summary>Block "format" aus argus.json bzw. dem Editor für AUri.</summary>
   TFormatStyleProvider = reference to function(const AUri: string): TFormatStyle;
-  TBooleanProvider = reference to function(const AUri: string): Boolean;
 
   TLspFormatting = class
   public const
@@ -34,7 +34,7 @@ type
     FStore: IDocumentStore;
     FSettingsProvider: TFormatStyleProvider;
     FReadFile: TEditorConfigReadFile;
-    FUsesCommandFor: TBooleanProvider;
+    FSlashCommandsFor: TSlashCommandsProvider;
     function HandleOnType(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function Handle(const AParams: TJSONValue; AWithRange: Boolean): TJSONValue;
     function HandleFormatting(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -49,8 +49,8 @@ type
     /// <summary>Einstellungen für AFileName aus Editor-Optionen, .editorconfig und AConfigured.</summary>
     class function Resolve(const AOptions: TJSONValue; const AFileName: string; const AConfigured: TFormatStyle;
       const AReadFile: TEditorConfigReadFile): TFormatStyle; static;
-    /// <summary>Ohne Zuweisung ist /uses eingeschaltet.</summary>
-    property UsesCommandFor: TBooleanProvider read FUsesCommandFor write FUsesCommandFor;
+    /// <summary>Ohne Zuweisung sind alle Schnellbefehle eingeschaltet.</summary>
+    property SlashCommandsFor: TSlashCommandsProvider read FSlashCommandsFor write FSlashCommandsFor;
   end;
 
 implementation
@@ -60,8 +60,7 @@ uses
   Argus.Common.Lsp.Positions,
   Argus.Common.Rules.Contract,
   Argus.Common.Pascal.Lexer,
-  Argus.Common.Editing.Formatter,
-  Argus.Common.Editing.UsesCommand;
+  Argus.Common.Editing.Formatter;
 
 { TLspFormatting }
 
@@ -95,6 +94,7 @@ var
   PositionValue: TJSONValue;
   Edit: TRuleEdit;
   Edits: TArray<TRuleEdit>;
+  Disabled: TArray<string>;
   Item: TJSONObject;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
@@ -105,8 +105,10 @@ begin
     Exit;
   if not FStore.TryGet(Uri, Document) then
     Exit;
-  if (not Assigned(FUsesCommandFor) or FUsesCommandFor(Uri)) and
-    TUsesCommand.AfterEnter(Document.Text, TLspPositions.ReadPosition(PositionValue), nil, Edits) then
+  Disabled := nil;
+  if (not Assigned(FSlashCommandsFor) or FSlashCommandsFor(Uri, Disabled)) and
+    TSlashCommandRegistry.Shared.AfterEnter(Document.Text, TLspPositions.ReadPosition(PositionValue), nil, Disabled,
+    Edits) then
   begin
     for Edit in Edits do
     begin
