@@ -114,6 +114,8 @@ type
     FOnOverload: TArgusOverloadEvent;
     FDimInherited: Boolean;
     FDimRow: Boolean;
+    // Zeile einer Aktion („Neue Methode …“, #444): Name in Akzentfarbe.
+    FActionRow: Boolean;
     FOnPanelToggled: TArgusPanelEvent;
     function Dim(AColor: TArgusColor): TArgusColor;
     function ChipsHeight: Integer;
@@ -418,11 +420,16 @@ var
   Row: TRect;
   Text: string;
 begin
-  // Überschrift einer Gruppe geerbter Member (#419): Klasse des nächsten Eintrags.
+  // Überschrift einer Gruppe geerbter Member (#419): Klasse des nächsten Eintrags;
+  // Gruppen vom Server (#444) bringen ihre Überschrift mit.
   Text := TArgusStrings.Text(TArgusTextId.InheritedPlain);
-  if (APosition < High(FOrder)) and (FOrder[APosition + 1] >= 0) and
-    (FItems[FOrder[APosition + 1]].DeclaringClass <> '') then
-    Text := TArgusStrings.Fmt(TArgusTextId.InheritedFrom, [FItems[FOrder[APosition + 1]].DeclaringClass]);
+  if (APosition < High(FOrder)) and (FOrder[APosition + 1] >= 0) then
+  begin
+    if FItems[FOrder[APosition + 1]].Group <> '' then
+      Text := FItems[FOrder[APosition + 1]].Group
+    else if FItems[FOrder[APosition + 1]].DeclaringClass <> '' then
+      Text := TArgusStrings.Fmt(TArgusTextId.InheritedFrom, [FItems[FOrder[APosition + 1]].DeclaringClass]);
+  end;
   Row := RowRect(ARow);
   Inc(Row.Left, Scale(7));
   Canvas.Font := UIFont;
@@ -737,10 +744,13 @@ var
 begin
   Canvas.Font := Font;
   Canvas.Brush.Style := bsClear;
-  if ATruncated or (FPattern = '') then
+  if ATruncated or (FPattern = '') or FActionRow then
   begin
     // Gekürzt ohne Hervorhebung: Die Positionen passen nicht mehr zur Ellipse.
-    Canvas.Font.Color := ToColor(Dim(Colors.Text));
+    if FActionRow then
+      Canvas.Font.Color := ToColor(Colors.Accent)
+    else
+      Canvas.Font.Color := ToColor(Dim(Colors.Text));
     Part := Rect(ALeft, ARow.Top, ARight, ARow.Bottom);
     DrawText(Canvas.Handle, PChar(AName), -1, Part, TextFlags or DT_END_ELLIPSIS);
     Exit;
@@ -863,7 +873,9 @@ begin
     DrawTag(Tag, X, Row);
     Dec(X, Gap);
   end;
+  FActionRow := Item.IsAction;
   DrawName(Item.Name, NameLeft, Max(NameLeft, X - Gap), Row, NameLeft + NameWidth > X - Gap);
+  FActionRow := False;
   Canvas.Brush.Style := bsSolid;
   if ARow >= Length(FTruncated) then
     SetLength(FTruncated, ARow + 1);

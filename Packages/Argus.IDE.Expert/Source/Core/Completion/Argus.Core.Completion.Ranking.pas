@@ -8,6 +8,8 @@
 //     ersten Eintrag der Gruppe). Mit Präfix keine Überschriften; bei gleicher
 //     Güte steht der eigene Member vor dem geerbten.
 //   - Chips: Einschränkung auf eine Art (Methoden, Eigenschaften, ...).
+//   - Einträge mit Group (#444) bekommen deren Überschrift, auch mit Präfix;
+//     Aktionen („Neue Methode …“) passen immer und stehen zuletzt.
 
 interface
 
@@ -110,7 +112,7 @@ var
   Found: TList<Integer>;
   Index, Position, Depth: Integer;
   Grouped: Boolean;
-  Container: string;
+  Container, Group: string;
   Options: TArgusRankOptions;
 begin
   Items := AItems;
@@ -124,7 +126,10 @@ begin
     begin
       if not TArgusRanking.Matches(Items[Index], Options.Chip) then
         Continue;
-      Scores[Index] := TArgusCompletionMatcher.Score(APattern, NameOf(Items[Index]));
+      if Items[Index].IsAction then
+        Scores[Index] := 0
+      else
+        Scores[Index] := TArgusCompletionMatcher.Score(APattern, NameOf(Items[Index]));
       if Scores[Index] = TArgusCompletionMatcher.NoMatch then
         Continue;
       if Assigned(Options.Boost) then
@@ -134,6 +139,9 @@ begin
     Found.Sort(TComparer<Integer>.Construct(
       function(const A, B: Integer): Integer
       begin
+        Result := Ord(Items[A].IsAction) - Ord(Items[B].IsAction);
+        if Result <> 0 then
+          Exit;
         if Grouped then
         begin
           // Ohne Präfix: Gruppen nach Tiefe, darin Gelerntes zuerst.
@@ -159,13 +167,20 @@ begin
     Result := nil;
     Depth := 0;
     Container := '';
+    Group := '';
     for Position := 0 to Found.Count - 1 do
     begin
       Index := Found[Position];
-      // Überschrift vor jeder Gruppe geerbter Member (#419).
-      if Grouped and (Items[Index].Depth > 0) and ((Items[Index].Depth <> Depth) or
+      // Überschrift der Gruppe vom Server (#444), sonst vor jeder Gruppe geerbter Member (#419).
+      if Items[Index].Group <> '' then
+      begin
+        if not SameText(Items[Index].Group, Group) then
+          Result := Result + [Header];
+      end
+      else if Grouped and (Items[Index].Depth > 0) and ((Items[Index].Depth <> Depth) or
         not SameText(Items[Index].DeclaringClass, Container)) then
         Result := Result + [Header];
+      Group := Items[Index].Group;
       Depth := Items[Index].Depth;
       Container := Items[Index].DeclaringClass;
       Result := Result + [Index];
