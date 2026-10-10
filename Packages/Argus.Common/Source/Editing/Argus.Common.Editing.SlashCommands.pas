@@ -151,6 +151,7 @@ uses
   Argus.Common.Editing.ComponentCommands,
   Argus.Common.Editing.WinApiCommands,
   Argus.Common.Editing.TaskCommands,
+  Argus.Common.Editing.RecordCommands,
   Argus.Common.Editing.ErrorCommands;
 
 function IsDisabled(const AName: string; const ADisabled: TArray<string>): Boolean;
@@ -267,6 +268,7 @@ begin
     RegisterComponentCommands(Created);
     RegisterWinApiCommands(Created);
     RegisterTaskCommands(Created);
+    RegisterRecordCommands(Created);
     if AtomicCmpExchange(Pointer(FShared), Pointer(Created), nil) <> nil then
       Created.Free;
   end;

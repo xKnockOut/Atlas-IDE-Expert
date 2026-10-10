@@ -137,6 +137,7 @@ contains
   Argus.Common.Editing.ComponentCommands in 'Source\Editing\Argus.Common.Editing.ComponentCommands.pas',
   Argus.Common.Editing.WinApiCommands in 'Source\Editing\Argus.Common.Editing.WinApiCommands.pas',
   Argus.Common.Editing.TaskCommands in 'Source\Editing\Argus.Common.Editing.TaskCommands.pas',
+  Argus.Common.Editing.RecordCommands in 'Source\Editing\Argus.Common.Editing.RecordCommands.pas',
   Argus.Common.Editing.MaintenanceCommands in 'Source\Editing\Argus.Common.Editing.MaintenanceCommands.pas',
   Argus.Common.Editing.TypeCommands in 'Source\Editing\Argus.Common.Editing.TypeCommands.pas',
   Argus.Common.Editing.CollectionCommands in 'Source\Editing\Argus.Common.Editing.CollectionCommands.pas',
