@@ -27,6 +27,7 @@ uses
   Argus.Common.Rules.Builtin.Security,
   Argus.Common.Rules.Builtin.General,
   Argus.Common.Rules.Builtin.RtlPatterns,
+  Argus.Common.Rules.Builtin.RtlTypePatterns,
   Argus.Common.Rules.Builtin.DataBinding,
   Argus.Common.Rules.Builtin.SlashCommands;
 
@@ -49,6 +50,7 @@ begin
     RegisterSecurityRules(Registry);
     RegisterGeneralRules(Registry);
     RegisterRtlPatternRules(Registry);
+    RegisterRtlTypePatternRules(Registry);
     RegisterDataBindingRules(Registry);
     RegisterSlashCommandRules(Registry);
     Result := Registry.Rules;

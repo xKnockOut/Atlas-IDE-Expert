@@ -530,6 +530,60 @@
       "description": "Random is used, but the unit never calls Randomize, so every start yields the same sequence. Randomize often sits in the .dpr, so the rule is off by default and has low confidence.",
       "bad": "Dice := Random(6) + 1;",
       "good": "Randomize; // once at program start\n...\nDice := Random(6) + 1;"
+    },
+    {
+      "id": "int32-mul-overflow",
+      "name": "Int32 multiplication assigned to Int64",
+      "category": "bug",
+      "severity": "warning",
+      "description": "Both operands have at most 32 bits, so the product is computed in 32 bits and overflows before it is assigned to the Int64 variable. Cast one operand to Int64.",
+      "bad": "Total := Width * Height; // Total: Int64; Width, Height: Integer",
+      "good": "Total := Int64(Width) * Height;"
+    },
+    {
+      "id": "sizeof-pointer",
+      "name": "SizeOf of a pointer in Move or FillChar",
+      "category": "bug",
+      "severity": "error",
+      "description": "SizeOf of a pointer, string or dynamic array is the size of the reference (4 or 8 bytes), not of the data. Move and FillChar then copy or clear too little.",
+      "bad": "FillChar(Buffer[0], SizeOf(Buffer), 0); // Buffer: TBytes",
+      "good": "FillChar(Buffer[0], Length(Buffer) * SizeOf(Buffer[0]), 0);"
+    },
+    {
+      "id": "char-to-pchar",
+      "name": "Char cast to PChar",
+      "category": "bug",
+      "severity": "error",
+      "description": "PChar(C) with a Char variable turns the character code into an address. A string was meant.",
+      "bad": "ShowMessage(PChar(C)); // C: Char",
+      "good": "ShowMessage(PChar(string(C)));"
+    },
+    {
+      "id": "float-equality",
+      "name": "Floating-point comparison with = or <>",
+      "category": "bug",
+      "severity": "hint",
+      "description": "Floating-point values are rarely exactly equal after calculations. Compare with SameValue from System.Math and a tolerance. Comparisons with 0 are not reported.",
+      "bad": "if Total = Expected then",
+      "good": "if SameValue(Total, Expected) then"
+    },
+    {
+      "id": "constructor-on-instance",
+      "name": "Constructor called on an instance",
+      "category": "bug",
+      "severity": "warning",
+      "description": "Create is called on a variable instead of the class. That does not create a new object; with an unassigned variable it crashes. Class references (class of …) are not reported.",
+      "bad": "List.Create; // List: TStringList",
+      "good": "List := TStringList.Create;"
+    },
+    {
+      "id": "format-without-settings",
+      "name": "Formatting depends on the locale",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "Format with %f, %n, %m, %g or %e and functions like FloatToStr, StrToFloat or DateToStr without a TFormatSettings parameter use the user's locale (decimal separator, date format). For files, protocols and logs pass fixed TFormatSettings. Format('%d', …) is not reported.",
+      "bad": "Line := Format('%.2f', [Amount]);",
+      "good": "Line := Format('%.2f', [Amount], TFormatSettings.Invariant);"
     }
   ]
 }
