@@ -119,3 +119,29 @@
 - **Übrig: 48 Ketten-Branches** (Index 98 ff. hinter `122-binaere-dfm`), alle mit offenem Issue und Code, der nicht in `main` ist; noch mit Namen vor der Umbenennung. Reihenfolge der Kette: 123 → 126 → 149 → 151 → 261 → 270 → 281 → 282 → 293 … 299 → 304 → 309 → 319 → 152 → 56 → 128 → 120 → 313 → 312 → 187 → 153 → 153-typen → 277 → 278 → 157 → 188 → 276 → 300 → 303-ausdruck → 301 → 302 → 306 → 320 … 323 → 303-modern → 119 → 88 → 89 → 104 → 114 → 87. Nachbauen mit dem Verfahren aus `chainrun2.ps1` (Umbenennen, 3-Wege-Cherry-Pick, Listenkonflikte selbst lösen), Branch nach Übernahme löschen. Achtung: #261 überschneidet sich mit #527/#528/#548, #188 mit der umgebauten Vervollständigung.
 - **Issues:** 77 umgesetzte geschlossen (mit Commit im Kommentar). Bewusst offen: #48 (Abnahme mit Claude Code), #62 und #100 (nur teilweise), #102 (Teil 1), #227 (nur Vervollständigung), #99 (schreibende Werkzeuge), #414 (Hint schließt beim Scrollen statt mitzuwandern), #433, #447, #528/#548 (Error Insight, projektweite Liste), #536 (Sammeldialog, Vergleichen).
 - Testfälle der umgesetzten Plugin-Issues: `docs/Argus-Testfaelle.md`.
+
+## Nachbau der Ketten-Branches (Stand 10.10.2026, 18:20, angehalten)
+- **Verfahren:** Skript `C:\Projekte\BetterDelphiLSP\kette\chainrun3.ps1` (Liste `chain3.txt` daneben: Branch|Vorgänger|Basis-Commit). Je Branch nur dessen eigene Commits umbenennen und als 3-Wege-Cherry-Pick auf `kette-arbeit` anwenden, bauen (eigene IDE, Win64-Gruppe), testen, per Fast-Forward nach lokalem `main`. Gepusht wird in Blöcken von 5–10 Branches; danach Abnahme der Issues prüfen (schließen mit Commit im Kommentar oder Stand kommentieren) und die Branches auf GitHub löschen. Fortsetzen mit `chainrun3.ps1 -StartAt <Index> -StopAfter <Index> [-ResumeLocal]`.
+- **Das Skript löst selbst:** Listenkonflikte, H2443, einfache E2532, Leck-Wiederholungen, Doku-Einfügungen (`doc_inserts.py`) und neue Regeln im Profiltest (`fixprof.py`: Kategorie aus `regelkatalog.json`, experimentelle Regeln über `Merged(All, [...])` im strict-Fall). Alles andere hält an.
+- **Gepusht und Branches gelöscht:** Blöcke 1–4, Index 98–129: #123, #126 (ohne Vererbung), #149, #151, #270, #281, #282, #293–#299, #304, #319, #152, #56, #128, #120, #313, #312, #187, #153 (beide Stufen), #277, #278, #157, dazu der Cache-Fix #62 (`6dcce739`). origin/main = `3d85d18f`.
+- **Lokal auf `main`, nicht gepusht (Block 5):** #276, #300, #303 (Ausdrucksbefehle), #301, #302, #306, #320, #321 – alle grün.
+- **Lokal auf `kette-arbeit`, Build abgebrochen:** #322 (`0a1084bf`) mit drei Korrekturen (`Inline` → `UseInline`; Umschließen lehnt reine Leerzeilen ab, in `CommandSource.Wrap` und `TaskCommands.FollowingLines`; Test `/parallel` mit `ShowMessage`). Weiter mit `-StartAt 39 -StopAfter 39 -ResumeLocal`, danach Block 5 pushen, Abnahme von #276, #300, #301, #302, #303, #306, #320–#322 prüfen, Branches löschen.
+- **Danach offen in der Kette (Index 40–47):** #323, #303-modern, #119, #88 (`DocComments.pas` enthält `Exit([Action])`, unter dcc64 E2001 → als `Result := [...]; Exit;` schreiben), #89, #104, #114, #87.
+- **Übersprungen, nach der Kette neu bauen (User-Entscheidung):**
+  - #309 Eigenschaftsregeln: neu auf `Argus.Common.Dfm.FormModel` (#267), Einstellung `dfmPropertyRules` und Tests aus dem Branch, kein Code aus dem abgelehnten #308.
+  - #188 Postfix-Vorlagen: Server-Teil aus dem Branch übernehmen und das Plugin erweitern (textEdit-Bereich ersetzen, filterText bei Postfix-Einträgen, Snippets als Klartext; Tests in Core).
+  - #261 ganz übersprungen; Branch bleibt auf GitHub.
+- **Fallstricke der Branches (aus Cloud-Sitzungen, nie unter Delphi gebaut):**
+  - `Exit([..])` → E2001 unter dcc64.
+  - Reservierte Wörter als Bezeichner, z. B. `Inline`.
+  - Methodendeklaration zwischen Feldern → E2169.
+  - Testhelfer mit `/` statt `\` (`ExtractFileName` trennt unter Windows nicht an `/`).
+  - Falsch gezählte Hochkommas in Literalen.
+  - Widersprüchliche Testerwartungen.
+  - Leck-Meldungen im ersten Test einer Fixture → `[SetupFixture]` zum Aufwärmen.
+  - Direkte Aufrufe von `TPascalParser.Parse` → über `TSyntaxTreeCache.Parse` (Wächter #262).
+  - `TDUnitX.CurrentRunner.Log` zählt als Leck → `System.Writeln`.
+- **Teile abgelehnter Issues weglassen:** #111 (FormEvents, FormItems), #115 (TFormActionsFunc des Branches), #179 (Blockabschluss), #308 (FormSymbols), #309 (DfmPropertyRules in #312).
+- **Offen zu entscheiden (im Issue kommentiert):** #157 filtert die Dateien vor der Prüfung statt nur die Ausgabe.
+- **CI:** „Package-Abhängigkeiten“ ist seit `64e42a6a` wieder grün (`package.json` im Format von `Update-ConfigDoc`). `pwsh` fehlt lokal; `Tools/Check-Delphi12.ps1` und den package.json-Teil von `Update-ConfigDoc.ps1` gibt es als Python-Nachbau (`check_d12.py`, `configpkg.py`) in `C:\Projekte\BetterDelphiLSP\kette`.
+- **Delphi des Users:** wurde von einer Nebensitzung über `cycle.ps1` geschlossen und ist noch nicht neu gestartet. Nach Abschluss mit `update-plugin.ps1` bauen und neu starten.
