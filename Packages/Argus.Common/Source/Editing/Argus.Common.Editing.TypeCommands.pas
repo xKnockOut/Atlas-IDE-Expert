@@ -13,13 +13,17 @@
 interface
 
 uses
-  Argus.Common.Editing.SlashCommands;
+  Argus.Common.Index.Contract,
+  Argus.Common.Editing.SlashCommands,
+  Argus.Common.Editing.CommandSource;
 
 /// <summary>Trägt die Typbefehle in ARegistry ein.</summary>
 procedure RegisterTypeCommands(ARegistry: TSlashCommandRegistry);
 
 /// <summary>Präfix aus den Großbuchstaben des Typnamens ohne führendes T, klein: TKundenStatus wird ks.</summary>
 function EnumPrefix(const ATypeName: string): string;
+/// <summary>Ist ATypeName eine Klasse (in der Datei, im Index oder bekannt aus RTL/VCL)?</summary>
+function IsClassType(ASource: TCommandSource; const AIndex: ISymbolIndex; const ATypeName: string): Boolean;
 
 implementation
 
@@ -31,9 +35,7 @@ uses
   Argus.Common.Pascal.Contract,
   Argus.Common.Pascal.SyntaxTree,
   Argus.Common.Pascal.Lexer,
-  Argus.Common.Index.Contract,
-  Argus.Common.Editing.UsesClause,
-  Argus.Common.Editing.CommandSource;
+  Argus.Common.Editing.UsesClause;
 
 const
   // Typen, die per Zuweisung kopiert und als JSON-Wert geschrieben werden.
