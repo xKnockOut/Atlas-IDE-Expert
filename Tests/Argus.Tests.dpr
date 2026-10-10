@@ -145,6 +145,7 @@ uses
   Argus.Common.Editing.UsesCommand.Tests in 'Common\Editing\Argus.Common.Editing.UsesCommand.Tests.pas',
   Argus.Common.Editing.SlashCommands.Tests in 'Common\Editing\Argus.Common.Editing.SlashCommands.Tests.pas',
   Argus.Common.Editing.DeclarationCommands.Tests in 'Common\Editing\Argus.Common.Editing.DeclarationCommands.Tests.pas',
+  Argus.Common.Editing.ClassCommands.Tests in 'Common\Editing\Argus.Common.Editing.ClassCommands.Tests.pas',
   Argus.Common.Semantics.UnresolvedNames.Tests in 'Common\Semantics\Argus.Common.Semantics.UnresolvedNames.Tests.pas',
   Argus.Common.Rules.Builtin.Architecture.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Architecture.Tests.pas',
   Argus.Common.Rules.Builtin.Concurrency.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Concurrency.Tests.pas',

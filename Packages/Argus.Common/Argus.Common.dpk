@@ -116,6 +116,8 @@ contains
   Argus.Common.Editing.UsesCommand in 'Source\Editing\Argus.Common.Editing.UsesCommand.pas',
   Argus.Common.Editing.SlashCommands in 'Source\Editing\Argus.Common.Editing.SlashCommands.pas',
   Argus.Common.Editing.DeclarationCommands in 'Source\Editing\Argus.Common.Editing.DeclarationCommands.pas',
+  Argus.Common.Editing.CommandSource in 'Source\Editing\Argus.Common.Editing.CommandSource.pas',
+  Argus.Common.Editing.ClassCommands in 'Source\Editing\Argus.Common.Editing.ClassCommands.pas',
   Argus.Common.Semantics.UnresolvedNames in 'Source\Semantics\Argus.Common.Semantics.UnresolvedNames.pas',
   Argus.Common.Rules.Builtin.Architecture in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.Architecture.pas',
   Argus.Common.Rules.Builtin.Concurrency in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.Concurrency.pas',

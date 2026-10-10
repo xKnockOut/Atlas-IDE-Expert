@@ -19,6 +19,7 @@ uses
   System.Generics.Collections,
   Argus.Common.Documents.Contract,
   Argus.Common.Pascal.Contract,
+  Argus.Common.Index.Contract,
   Argus.Common.Rules.Contract;
 
 type
@@ -34,6 +35,8 @@ type
     /// <summary>Text nach dem Namen, ohne führende und folgende Leerzeichen.</summary>
     Arguments: string;
     Namespaces: TArray<string>;
+    /// <summary>Symbolindex für Vorfahren und Interfaces aus anderen Units (#295); nil ohne.</summary>
+    Index: ISymbolIndex;
   end;
 
   /// <summary>Führt den Befehl aus. False mit AReason, wenn er hier nicht passt.</summary>
@@ -78,9 +81,10 @@ type
     /// <summary>Edits nach Enter in APosition.Line für die Befehlszeile darüber. False, wenn dort kein
     /// ausführbarer Befehl steht (dann bleibt die Zeile stehen).</summary>
     function AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
-      ADisabled: TArray<string>; out AEdits: TArray<TRuleEdit>): Boolean;
+      ADisabled: TArray<string>; out AEdits: TArray<TRuleEdit>; const AIndex: ISymbolIndex = nil): Boolean;
     /// <summary>Hinweise für Befehlszeilen, die stehen geblieben sind (unbekannt, abgeschaltet, falscher Ort).</summary>
-    function Problems(const AText: string; const ADisabled: TArray<string>): TArray<TSlashProblem>;
+    function Problems(const AText: string; const ADisabled: TArray<string>;
+      const AIndex: ISymbolIndex = nil): TArray<TSlashProblem>;
     /// <summary>Befehle, deren Name mit APrefix beginnt (ohne "/"), ohne abgeschaltete.</summary>
     function Matching(const APrefix: string; const ADisabled: TArray<string>): TArray<TSlashCommand>;
   end;
@@ -92,7 +96,8 @@ uses
   System.Generics.Defaults,
   Argus.Common.Pascal.Lexer,
   Argus.Common.Editing.UsesCommand,
-  Argus.Common.Editing.DeclarationCommands;
+  Argus.Common.Editing.DeclarationCommands,
+  Argus.Common.Editing.ClassCommands;
 
 function IsDisabled(const AName: string; const ADisabled: TArray<string>): Boolean;
 var
@@ -159,6 +164,7 @@ begin
     Created := TSlashCommandRegistry.Create;
     Created.Register(UsesCommand);
     RegisterDeclarationCommands(Created);
+    RegisterClassCommands(Created);
     if AtomicCmpExchange(Pointer(FShared), Pointer(Created), nil) <> nil then
       Created.Free;
   end;
@@ -259,7 +265,7 @@ begin
 end;
 
 function TSlashCommandRegistry.AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
-  ADisabled: TArray<string>; out AEdits: TArray<TRuleEdit>): Boolean;
+  ADisabled: TArray<string>; out AEdits: TArray<TRuleEdit>; const AIndex: ISymbolIndex): Boolean;
 var
   Lines: TArray<string>;
   LineBreak, Reason: string;
@@ -278,12 +284,14 @@ begin
     Exit(False);
   Context.Text := AText;
   Context.Namespaces := ANamespaces;
+  Context.Index := AIndex;
   Result := Command.Execute(Context, AEdits, Reason);
   if not Result then
     AEdits := nil;
 end;
 
-function TSlashCommandRegistry.Problems(const AText: string; const ADisabled: TArray<string>): TArray<TSlashProblem>;
+function TSlashCommandRegistry.Problems(const AText: string; const ADisabled: TArray<string>;
+  const AIndex: ISymbolIndex): TArray<TSlashProblem>;
 var
   Lines: TArray<string>;
   LineBreak, Name, Arguments, Reason: string;
@@ -318,6 +326,7 @@ begin
       Context.LineText := Lines[Line];
       Context.Name := Name;
       Context.Arguments := Arguments;
+      Context.Index := AIndex;
       if not Command.Execute(Context, Edits, Reason) and (Reason = '') then
         Reason := Format('Schnellbefehl /%s passt hier nicht', [Name]);
     end;
