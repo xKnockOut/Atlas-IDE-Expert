@@ -136,6 +136,7 @@
         <DCCReference Include="Source\Editing\Argus.Common.Editing.ClassCommands.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.WrapCommands.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.RefactoringCommands.pas"/>
+        <DCCReference Include="Source\Editing\Argus.Common.Editing.ExpressionCommands.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.MaintenanceCommands.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.TypeCommands.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.CollectionCommands.pas"/>

@@ -40,7 +40,7 @@ procedure TSlashCommandRule.Check(const AContext: TRuleContext; const AReport: I
 var
   Problem: TSlashProblem;
 begin
-  for Problem in TSlashCommandRegistry.Shared.Problems(AContext.Text, nil, AContext.Index) do
+  for Problem in TSlashCommandRegistry.Shared.Problems(AContext.Text, nil, AContext.Index, AContext.DelphiVersion) do
     AReport.Add(Problem.Range, Problem.Message);
 end;
 
