@@ -1,7 +1,8 @@
 ﻿unit Argus.IDE.CodeInsight.Composition;
 
-// Meldet den Code Insight-Manager und die Optionsseite "Argus" (#227) beim
-// Laden des Packages an und beim Entladen wieder ab (ADR 0006).
+// Meldet den Code Insight-Manager, die Optionsseite "Argus" (#227) und die
+// Compile-Ereignisse (#527) beim Laden des Packages an und beim Entladen in
+// umgekehrter Reihenfolge wieder ab (ADR 0006).
 
 interface
 
@@ -14,14 +15,44 @@ uses
   System.SysUtils,
   System.Classes,
   System.Win.Registry,
+  System.JSON,
   ToolsAPI,
   Argus.UI.Strings,
+  Argus.Core.Build.Events,
   Argus.IDE.CodeInsight.Manager,
   Argus.IDE.Settings.Options,
-  Argus.IDE.Completion.History;
+  Argus.IDE.Completion.History,
+  Argus.IDE.Build.Notifier;
 
 var
   ManagerIndex: Integer = -1;
+  // Gehört der IDE (Schnittstellenzähler); gültig, solange er angemeldet ist.
+  Manager: TArgusCodeInsightManager;
+  Compile: TArgusIdeCompileEvents;
+
+procedure LogLine(const AText: string);
+begin
+  if Manager <> nil then
+    Manager.Log(AText);
+end;
+
+procedure RegisterCompileEvents;
+var
+  Events: TArgusCompileEvents;
+begin
+  Events := TArgusCompileEvents.Create;
+  Events.OnNotify :=
+    procedure(const AMethod: string; AParams: TJSONObject)
+    begin
+      if Manager <> nil then
+        Manager.NotifyServer(AMethod, AParams)
+      else
+        AParams.Free;
+    end;
+  Events.OnLog := LogLine;
+  Events.Add(TArgusCompileLog.Create(Events, LogLine));
+  Compile := TArgusIdeCompileEvents.Create(Events);
+end;
 
 /// <summary>Sprache der IDE (#446): Eintrag für bds.exe unter HKCU\Software\Embarcadero\Locales (von
 /// BDSSetLang), sonst Sprache der Windows-Oberfläche; Rückfall Englisch.</summary>
@@ -62,7 +93,12 @@ var
 begin
   TArgusStrings.Language := IdeLanguage;
   if (ManagerIndex < 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
-    ManagerIndex := Services.AddCodeInsightManager(TArgusCodeInsightManager.Create);
+  begin
+    Manager := TArgusCodeInsightManager.Create;
+    ManagerIndex := Services.AddCodeInsightManager(Manager);
+  end;
+  if Compile = nil then
+    RegisterCompileEvents;
   TArgusOptionsRegistration.Register(
     procedure
     begin
@@ -74,11 +110,13 @@ procedure Unregister;
 var
   Services: IOTACodeInsightServices;
 begin
+  FreeAndNil(Compile);
   TArgusOptionsRegistration.Unregister;
   TArgusIdeHistory.Release;
   if (ManagerIndex >= 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
     Services.RemoveCodeInsightManager(ManagerIndex);
   ManagerIndex := -1;
+  Manager := nil;
 end;
 
 initialization

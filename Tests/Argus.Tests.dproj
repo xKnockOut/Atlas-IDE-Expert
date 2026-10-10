@@ -199,6 +199,8 @@
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Preview.pas"/>
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\UI\Settings\Argus.UI.Settings.Page.pas"/>
         <DCCReference Include="IDE.Expert\Argus.UI.Settings.Page.Tests.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Build\Argus.Core.Build.Events.pas"/>
+        <DCCReference Include="IDE.Expert\Argus.Core.Build.Events.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

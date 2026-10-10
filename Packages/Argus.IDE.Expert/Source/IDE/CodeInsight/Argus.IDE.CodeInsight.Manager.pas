@@ -20,6 +20,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
+  System.JSON,
   ToolsAPI,
   Argus.Core.Lsp.Adapters.ServerProcess,
   Argus.Core.Lsp.Session,
@@ -55,6 +56,11 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    /// <summary>Benachrichtigung an den Server, falls eine Sitzung läuft (#527); übernimmt AParams.
+    /// Startet den Server dafür nicht.</summary>
+    procedure NotifyServer(const AMethod: string; AParams: TJSONObject);
+    /// <summary>Zeile im Diagnoseprotokoll (nur mit Diagnose = 1).</summary>
+    procedure Log(const AMessage: string);
     { IOTACodeInsightManager100 }
     function GetName: string;
     function GetIDString: string;
@@ -599,4 +605,24 @@ begin
   DisplayParams := False;
 end;
 
+procedure TArgusCodeInsightManager.NotifyServer(const AMethod: string; AParams: TJSONObject);
+begin
+  // Nur eine laufende Sitzung; für eine Meldung startet der Server nicht.
+  if (FSession = nil) or not FSession.Initialized then
+  begin
+    AParams.Free;
+    Exit;
+  end;
+  try
+    FSession.Notify(AMethod, AParams);
+  except
+    on E: Exception do
+      Diagnose(Format('%s nicht gesendet: %s', [AMethod, E.Message]));
+  end;
+end;
+
+procedure TArgusCodeInsightManager.Log(const AMessage: string);
+begin
+  Diagnose(AMessage);
+end;
 end.

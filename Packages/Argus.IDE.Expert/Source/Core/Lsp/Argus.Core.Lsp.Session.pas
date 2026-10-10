@@ -76,6 +76,8 @@ type
     function SignatureHelp(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
     /// <summary>completionItem/resolve für AItem (wird übernommen); threadsicher wie Completion.</summary>
     function ResolveCompletion(AItem: TJSONObject; ATimeoutMs: Cardinal): TJSONValue;
+    /// <summary>Benachrichtigung ohne Antwort, z. B. argus/compileStarted (#527); übernimmt AParams.</summary>
+    procedure Notify(const AMethod: string; AParams: TJSONObject);
     property Initialized: Boolean read FInitialized;
   end;
 
@@ -408,6 +410,11 @@ end;
 function TLspSession.ResolveCompletion(AItem: TJSONObject; ATimeoutMs: Cardinal): TJSONValue;
 begin
   Result := FClient.Request('completionItem/resolve', AItem, ATimeoutMs);
+end;
+
+procedure TLspSession.Notify(const AMethod: string; AParams: TJSONObject);
+begin
+  FClient.Notify(AMethod, AParams);
 end;
 
 end.
