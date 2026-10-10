@@ -140,6 +140,19 @@ Schreibweise: `|` steht für die Cursorposition.
 | O5 | Bereits überschriebene Methode | Erscheint nicht noch einmal in der Liste |
 | O6 | Liste aus O1 ansehen | Kein „+Unit“-Tag an den Einträgen |
 
+## Compilermeldungen aus der IDE (#528)
+
+Leseweg (Spike 10.10.2026, RAD Studio 13): Reiter „Build“ des Meldungsfensters per RTTI, Objekte `TCompilerMsgLine` mit Kind, Message, FileName, Line, Column – ohne Zwischenablage. Probe mit einem Projekt mit `I := 'Text'` (E2010) und `Writeln(Gibtsnicht)` (E2003): beide Meldungen mit Datei, Zeile und Spalte erkannt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CM1 | Projekt mit einem Fehler compilieren | Im Protokoll „Meldungsfenster: n Knoten, m Meldungen“ mit m = Zahl der Fehler/Warnungen/Hinweise im Reiter „Build“ |
+| CM2 | Fehler beheben, erneut compilieren | „… 0 Meldungen“ (bzw. nur noch Hinweise) |
+| CM3 | IDE auf Englisch | Gleiche Zahlen; Codes (E2003 …) unabhängig von der Sprache |
+| CM4 | Vorher einmal Strg+Leer (Server läuft), dann compilieren | Im Server-Log „Compilermeldungen aus der IDE: m“ |
+
+Noch offen: Anzeige in Error Insight und in einer projektweiten Liste (#398), Mitwandern der Markierungen bei Änderungen.
+
 ## Compile-Ereignisse (#527)
 
 Vorbereitung: Diagnoseprotokoll an (`HKCU\Software\Argus\IdePlugin`, DWORD `Diagnose` = 1), IDE neu starten; Protokoll `Argus.IDE.Expert.log` neben dem Plugin.
