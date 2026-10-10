@@ -703,6 +703,15 @@ begin
     '      "description": "A begin … end block that holds exactly one statement can be removed. Off by default.",' + #10 +
     '      "bad": "if Done then\nbegin\n  Exit;\nend;",' + #10 +
     '      "good": "if Done then\n  Exit;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "component-palette-icon",' + #10 +
+    '      "name": "Registered component without palette icon",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "Every class passed to RegisterComponents needs a bitmap named after the class in upper case in a .dcr or .res included with {$R}. From Delphi 11 the sizes 16, 24 and 32 px (NAME1' + '6, NAME24, NAME32) are expected as well. Silent when the unit includes no readable resource file.",' + #10 +
+    '      "bad": "{$R *.dcr} // without TMYBUTTON\nRegisterComponents(''Samples'', [TMyButton]);",' + #10 +
+    '      "good": "{$R *.dcr} // with TMYBUTTON16, TMYBUTTON24, TMYBUTTON32\nRegisterComponents(''Samples'', [TMyButton]);"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -1094,6 +1103,11 @@ begin
     '      "id": "redundant-begin-end",' + #10 +
     '      "name": "begin … end um eine einzelne Anweisung",' + #10 +
     '      "description": "Ein begin … end-Block mit genau einer Anweisung kann entfallen. Standardmäßig aus."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "component-palette-icon",' + #10 +
+    '      "name": "Registrierte Komponente ohne Palettensymbol",' + #10 +
+    '      "description": "Jede an RegisterComponents übergebene Klasse braucht in einer per {$R} eingebundenen .dcr oder .res eine Bitmap mit dem Klassennamen in Großbuchstaben. Ab Delphi 11 werden zusätz' + 'lich die Größen 16, 24 und 32 px (NAME16, NAME24, NAME32) erwartet. Ohne lesbare eingebundene Ressourcendatei schweigt die Regel."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
