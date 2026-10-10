@@ -8,6 +8,7 @@
 //   /assign                          Assign(Source: TPersistent) für alle Felder
 //   /json                            ToJson und FromJson mit System.JSON für einfache Felder
 //   /thread TWorker                  TThread-Nachfahre mit Execute-Schleife (#299)
+//   /exception EName [: EBasis]      Ausnahmeklasse (#304)
 
 interface
 
@@ -59,16 +60,6 @@ end;
 function Capitalize(const AText: string): string;
 begin
   Result := UpperCase(Copy(AText, 1, 1)) + Copy(AText, 2, MaxInt);
-end;
-
-/// <summary>Zeichenoffset von Zeile ALine.</summary>
-function LineOffset(ASource: TCommandSource; ALine: Integer): Integer;
-var
-  Index: Integer;
-begin
-  Result := 0;
-  for Index := 0 to ALine - 1 do
-    Inc(Result, Length(ASource.Lines[Index]) + Length(ASource.LineBreak));
 end;
 
 /// <summary>Steht die Befehlszeile in einem type-Abschnitt (nicht in Klasse oder Routine)?
@@ -495,9 +486,42 @@ begin
     AEdits := AddToClass(Source, TypeSymbol, ['public', 'function ToJson: TJSONObject;',
       Format('class function FromJson(AJson: TJSONObject): %s; static;', [Name])], Text) + [Source.RemoveCommand];
     if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(Source.Tree.Tokens), 'System.JSON', AContext.Namespaces) and
-      TUsesClauses.AddUnit(Source.Tree.Tokens, LineOffset(Source, TypeSymbol.Range.StartPos.Line), 'System.JSON',
+      TUsesClauses.AddUnit(Source.Tree.Tokens, Source.Offset(TypeSymbol.Range.StartPos.Line), 'System.JSON',
       Source.LineBreak, UsesEdit) then
       AEdits := AEdits + [UsesEdit];
+    Result := True;
+  finally
+    Source.Free;
+  end;
+end;
+
+{ /exception }
+
+function ExecuteException(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>;
+  out AReason: string): Boolean;
+var
+  Source: TCommandSource;
+  Name, Ancestor: string;
+  InTypeSection: Boolean;
+begin
+  AEdits := nil;
+  if Pos(':', AContext.Arguments) > 0 then
+  begin
+    Name := Trim(Copy(AContext.Arguments, 1, Pos(':', AContext.Arguments) - 1));
+    Ancestor := Trim(Copy(AContext.Arguments, Pos(':', AContext.Arguments) + 1, MaxInt));
+  end
+  else
+  begin
+    Name := Trim(AContext.Arguments);
+    Ancestor := 'Exception';
+  end;
+  if not IsValidIdent(Name) or not IsValidIdent(Ancestor, True) then
+    Exit(Fail('Erwartet wird /exception EName [: EBasis]', AReason));
+  Source := TCommandSource.Create(AContext);
+  try
+    if not TypePlace(Source, 'exception', InTypeSection, AReason) then
+      Exit(False);
+    AEdits := [TypeDeclaration(Source, InTypeSection, [Format('%s = class(%s);', [Name, Ancestor])])];
     Result := True;
   finally
     Source.Free;
@@ -528,7 +552,7 @@ begin
       '  while not Terminated do', '  begin',
       '    // Ergebnisse im Hauptthread zeigen: TThread.Queue(nil, procedure begin … end);', '  end;', 'end;']))];
     if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(Source.Tree.Tokens), 'System.Classes', AContext.Namespaces) and
-      TUsesClauses.AddUnit(Source.Tree.Tokens, LineOffset(Source, Source.Line), 'System.Classes', Source.LineBreak,
+      TUsesClauses.AddUnit(Source.Tree.Tokens, Source.Offset(Source.Line), 'System.Classes', Source.LineBreak,
       UsesEdit) then
       AEdits := AEdits + [UsesEdit];
     Result := True;
@@ -563,6 +587,7 @@ begin
     ExecuteEncapsulate));
   ARegistry.Register(Command('assign', 'Assign für alle Felder anlegen', '/assign', ExecuteAssign));
   ARegistry.Register(Command('json', 'ToJson und FromJson anlegen', '/json', ExecuteJson));
+  ARegistry.Register(Command('exception', 'Ausnahmeklasse anlegen', '/exception EImportFehler', ExecuteException));
   ARegistry.Register(Command('thread', 'TThread-Nachfahre mit Execute anlegen', '/thread TWorker', ExecuteThread));
 end;
 

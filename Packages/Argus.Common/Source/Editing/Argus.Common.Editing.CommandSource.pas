@@ -54,6 +54,8 @@ type
     function AddBody(const AClassName, ABody: string): TRuleEdit;
     /// <summary>Text mit der Befehlszeile als Leerzeichen.</summary>
     function Text: string;
+    /// <summary>Zeichenoffset des Anfangs von Zeile ALine.</summary>
+    function Offset(ALine: Integer): Integer;
     property Lines: TArray<string> read FLines;
     property LineBreak: string read FLineBreak;
     property Tree: TSyntaxTree read FTree;
@@ -277,6 +279,15 @@ end;
 function TCommandSource.Text: string;
 begin
   Result := string.Join(FLineBreak, FLines);
+end;
+
+function TCommandSource.Offset(ALine: Integer): Integer;
+var
+  Index: Integer;
+begin
+  Result := 0;
+  for Index := 0 to ALine - 1 do
+    Inc(Result, Length(FLines[Index]) + Length(FLineBreak));
 end;
 
 function SplitDeclaration(const AArguments: string; ASeparator: Char; out AName, AValue: string): Boolean;
