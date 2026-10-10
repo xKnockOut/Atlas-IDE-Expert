@@ -73,12 +73,16 @@ end;
 function FollowingLines(ASource: TCommandSource; const AName: string; out AFirst, ALast: Integer;
   out AReason: string): Boolean;
 var
-  Stop: Integer;
+  Stop, Index: Integer;
 begin
   if ASource.RoutineAt = nil then
     Exit(Fail('/' + AName + ' gilt nur im Rumpf einer Routine', AReason));
   Stop := BlockEnd(ASource, ASource.Line);
-  if (Stop < 0) or (Stop <= ASource.Line + 1) then
+  // Nur Leerzeilen bis zum Blockende zählen nicht als Anweisungen.
+  Index := ASource.Line + 1;
+  while (Stop > 0) and (Index < Stop) and (Trim(ASource.Lines[Index]) = '') do
+    Inc(Index);
+  if (Stop < 0) or (Index >= Stop) then
     Exit(Fail('Nach /' + AName + ' stehen keine Anweisungen im Block', AReason));
   AFirst := ASource.Line + 1;
   ALast := Stop - 1;
