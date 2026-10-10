@@ -12,6 +12,10 @@ type
   [TestFixture]
   TGoldenCorpusTests = class
   public
+    /// <summary>Prüft das Referenzprojekt einmal vorab; einmalig angelegte Daten der Regeln zählen
+    /// sonst als Leck von ReferenceProjectMatchesMarkers.</summary>
+    [SetupFixture]
+    procedure WarmUp;
     [Test]
     procedure MarkersReadExpectedAndNoFinding;
     [Test]
@@ -168,6 +172,26 @@ begin
   Result := '';
 end;
 
+procedure TGoldenCorpusTests.WarmUp;
+var
+  Folder, FileName, Text: string;
+  Rules: TArray<IRule>;
+  Texts: TArray<string>;
+begin
+  Folder := ReferenceFolder;
+  if Folder = '' then
+    Exit;
+  Rules := BuiltinRules;
+  Texts := nil;
+  for FileName in TDirectory.GetFiles(TPath.Combine(Folder, 'Source'), '*.pas') do
+  begin
+    Text := TFile.ReadAllText(FileName, TEncoding.UTF8);
+    Texts := Texts + [Text];
+    TFileChecker.CheckText(Rules, TServerSettings.Default, ExtractFileName(FileName), Text);
+  end;
+  TGoldenCorpus.TimeRules(Rules, TServerSettings.Default, Texts);
+end;
+
 procedure TGoldenCorpusTests.ReferenceProjectMatchesMarkers;
 var
   Folder, FileName, Text, Problems, Line: string;
@@ -197,15 +221,16 @@ begin
     Inc(Markers, Length(TGoldenCorpus.Markers(Text)));
     Outcome := TGoldenCorpus.Compare(ExtractFileName(FileName), TGoldenCorpus.Markers(Text),
       TFileChecker.CheckText(Rules, TServerSettings.Default, ExtractFileName(FileName), Text), Known, Planned);
+    // Writeln statt CurrentRunner.Log: DUnitX hält Log-Meldungen bis zum Ende des Laufs (Leck-Monitor).
     for Line in Outcome.Skipped do
-      TDUnitX.CurrentRunner.Log(TLogLevel.Warning, Line);
+      System.Writeln('  übersprungen: ', Line);
     for Line in Outcome.Missing + Outcome.FalseAlarms + Outcome.Unknown do
       Problems := Problems + sLineBreak + Line;
   end;
   Assert.IsTrue(Markers > 0, 'Keine Markierungen im Referenzprojekt gefunden');
   // Laufzeit je Regel über den ganzen Korpus, um langsame Regeln zu erkennen.
   for Timing in TGoldenCorpus.TimeRules(Rules, TServerSettings.Default, Texts) do
-    TDUnitX.CurrentRunner.Log(TLogLevel.Information, Format('%s: %.1f ms', [Timing.RuleId, Timing.Milliseconds]));
+    System.Writeln(Format('  %s: %.1f ms', [Timing.RuleId, Timing.Milliseconds]));
   Assert.AreEqual('', Problems, 'Golden-Korpus weicht ab:' + Problems);
 end;
 
