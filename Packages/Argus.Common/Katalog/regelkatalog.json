@@ -476,6 +476,60 @@
       "description": "A string literal with words for people stands in a statement. Move it to a resourcestring so it can be translated. Off by default, low confidence.",
       "bad": "ShowMessage('File not found');",
       "good": "resourcestring\n  SFileNotFound = 'File not found';\n...\nShowMessage(SFileNotFound);"
+    },
+    {
+      "id": "self-assignment",
+      "name": "Assignment to itself",
+      "category": "bug",
+      "severity": "warning",
+      "description": "A variable, field or property is assigned to itself. Usually a different value was meant, for example a parameter or another field.",
+      "bad": "FName := FName;",
+      "good": "FName := AName;"
+    },
+    {
+      "id": "for-high-to-low",
+      "name": "for loop counts down with to",
+      "category": "bug",
+      "severity": "warning",
+      "description": "The loop starts at the upper bound (High, Count - 1) and ends at the lower one, but uses to. It never runs; downto was meant.",
+      "bad": "for I := High(A) to Low(A) do\n  Save(A[I]);",
+      "good": "for I := High(A) downto Low(A) do\n  Save(A[I]);"
+    },
+    {
+      "id": "exception-not-raised",
+      "name": "Exception created but not raised",
+      "category": "bug",
+      "severity": "warning",
+      "description": "An exception object is created as a statement on its own. Without raise nothing happens and the object leaks.",
+      "bad": "if X = nil then\n  EArgumentException.Create('X missing');",
+      "good": "if X = nil then\n  raise EArgumentException.Create('X missing');"
+    },
+    {
+      "id": "assert-side-effect",
+      "name": "Assert with side effect",
+      "category": "bug",
+      "severity": "warning",
+      "description": "The argument of Assert changes data (Inc, Dec, a Try… function with an out parameter or a method from the option mutatingMethods). With {$C-} the compiler removes the whole call including the side effect.",
+      "bad": "Assert(List.Remove(X) >= 0);",
+      "good": "Index := List.Remove(X);\nAssert(Index >= 0);"
+    },
+    {
+      "id": "ifthen-side-effect",
+      "name": "IfThen evaluates both branches",
+      "category": "bug",
+      "severity": "warning",
+      "description": "IfThen is a function: both branches are evaluated before the call. A nil access or a function call in the branch that is not chosen still happens. High confidence when a branch dereferences a name checked in the condition, medium for a function call.",
+      "bad": "S := IfThen(Assigned(X), X.Name, '');",
+      "good": "if Assigned(X) then S := X.Name else S := '';"
+    },
+    {
+      "id": "random-without-randomize",
+      "name": "Random without Randomize",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "Random is used, but the unit never calls Randomize, so every start yields the same sequence. Randomize often sits in the .dpr, so the rule is off by default and has low confidence.",
+      "bad": "Dice := Random(6) + 1;",
+      "good": "Randomize; // once at program start\n...\nDice := Random(6) + 1;"
     }
   ]
 }
