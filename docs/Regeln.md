@@ -72,6 +72,9 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`generic-exception-raised`](#generic-exception-raised) | Allgemeine Exception ausgelöst | Code Smell | Hinweis |
 | [`catch-all-without-raise`](#catch-all-without-raise) | Exception-Handler ohne erneutes raise | Code Smell | Warnung |
 | [`exception-freed`](#exception-freed) | Exception-Objekt manuell freigegeben | Bug | Fehler |
+| [`string-concat-in-loop`](#string-concat-in-loop) | String-Verkettung in einer Schleife | Code Smell | Hinweis |
+| [`loop-invariant-call`](#loop-invariant-call) | Teurer Aufruf in der Schleifenbedingung | Code Smell | Hinweis |
+| [`missing-begin-update`](#missing-begin-update) | Hinzufügen in einer Schleife ohne BeginUpdate | Code Smell | Hinweis |
 
 <a id="syntax"></a>
 ## syntax
@@ -1599,4 +1602,79 @@ Richtig:
 ```pascal
 on E: Exception do
   Log(E.Message);
+```
+
+<a id="string-concat-in-loop"></a>
+## string-concat-in-loop
+
+**String-Verkettung in einer Schleife** · Code Smell · Hinweis
+
+Eine String-Variable wird in einer Schleife schrittweise verlängert. Delphi vergrößert Strings meist an Ort und Stelle, deshalb nur mit niedriger Konfidenz und standardmäßig aus; bei vielen Durchläufen ist TStringBuilder schneller.
+
+Mit Treffer:
+
+```pascal
+for I := 1 to 10000 do
+  S := S + IntToStr(I);
+```
+
+Richtig:
+
+```pascal
+Builder := TStringBuilder.Create;
+try
+  for I := 1 to 10000 do
+    Builder.Append(I);
+  S := Builder.ToString;
+finally
+  Builder.Free;
+end;
+```
+
+<a id="loop-invariant-call"></a>
+## loop-invariant-call
+
+**Teurer Aufruf in der Schleifenbedingung** · Code Smell · Hinweis
+
+Die Bedingung von while und until wird bei jedem Durchlauf ausgewertet. Aufrufe wie Trim, Format oder FileExists und Eigenschaften wie Lines.Text werden dort jedes Mal neu berechnet; besser einmal vor der Schleife. Die Grenzen von for werden nur einmal ausgewertet und nicht gemeldet. Standardmäßig aus.
+
+Mit Treffer:
+
+```pascal
+while I < Length(Trim(Memo.Lines.Text)) do
+  Inc(I);
+```
+
+Richtig:
+
+```pascal
+Text := Trim(Memo.Lines.Text);
+while I < Length(Text) do
+  Inc(I);
+```
+
+<a id="missing-begin-update"></a>
+## missing-begin-update
+
+**Hinzufügen in einer Schleife ohne BeginUpdate** · Code Smell · Hinweis
+
+Items.Add, Lines.Add und ähnliche Aufrufe in einer Schleife zeichnen das Steuerelement bei jedem Aufruf neu. Die Schleife mit BeginUpdate und try … finally EndUpdate umschließen. Standardmäßig aus.
+
+Mit Treffer:
+
+```pascal
+for I := 1 to 1000 do
+  ListBox1.Items.Add(IntToStr(I));
+```
+
+Richtig:
+
+```pascal
+ListBox1.Items.BeginUpdate;
+try
+  for I := 1 to 1000 do
+    ListBox1.Items.Add(IntToStr(I));
+finally
+  ListBox1.Items.EndUpdate;
+end;
 ```
