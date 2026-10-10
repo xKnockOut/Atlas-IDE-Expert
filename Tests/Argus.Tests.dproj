@@ -147,6 +147,7 @@
         <DCCReference Include="Common\Editing\Argus.Common.Editing.MaintenanceCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.TypeCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.UnitTemplates.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Argus.Common.Editing.ErrorCommands.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Argus.Common.Semantics.UnresolvedNames.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.Architecture.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.Concurrency.Tests.pas"/>

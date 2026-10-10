@@ -28,6 +28,8 @@ type
     [Test]
     procedure IfdefAndRegion;
     [Test]
+    procedure ExceptLogsAndReraises;
+    [Test]
     procedure NothingToWrapFails;
     [Test]
     procedure ResultsParseWithoutErrors;
@@ -217,6 +219,17 @@ begin
     Text) > 0, Text);
 end;
 
+procedure TWrapCommandsTests.ExceptLogsAndReraises;
+var
+  Text: string;
+begin
+  Text := Expand('/except');
+  Assert.IsTrue(Pos('  try'#10'    Liste.Add(''a'');'#10'    Liste.Sort;'#10'  except'#10'    on E: Exception do'#10 +
+    '    begin'#10'      OutputDebugString(PChar(E.ClassName + '': '' + E.Message));'#10'      raise;'#10'    end;'#10 +
+    '  end;'#10'end;', Text) > 0, Text);
+  Assert.IsTrue(Parses(Text), Text);
+end;
+
 procedure TWrapCommandsTests.NothingToWrapFails;
 const
   Text = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  /sync'#10'end;'#10'end.';
@@ -230,7 +243,7 @@ end;
 
 procedure TWrapCommandsTests.ResultsParseWithoutErrors;
 const
-  Commands: array[0..5] of string = ('/try', '/lock', '/sync', '/sync!', '/ifdef DEBUG', '/region Teil');
+  Commands: array[0..6] of string = ('/try', '/lock', '/sync', '/sync!', '/ifdef DEBUG', '/region Teil', '/except');
 var
   Command, Text: string;
 begin

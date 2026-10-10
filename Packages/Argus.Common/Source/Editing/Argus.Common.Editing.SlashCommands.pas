@@ -100,7 +100,8 @@ uses
   Argus.Common.Editing.ClassCommands,
   Argus.Common.Editing.WrapCommands,
   Argus.Common.Editing.MaintenanceCommands,
-  Argus.Common.Editing.TypeCommands;
+  Argus.Common.Editing.TypeCommands,
+  Argus.Common.Editing.ErrorCommands;
 
 function IsDisabled(const AName: string; const ADisabled: TArray<string>): Boolean;
 var
@@ -171,6 +172,7 @@ begin
     RegisterWrapCommands(Created);
     RegisterMaintenanceCommands(Created);
     RegisterTypeCommands(Created);
+    RegisterErrorCommands(Created);
     if AtomicCmpExchange(Pointer(FShared), Pointer(Created), nil) <> nil then
       Created.Free;
   end;

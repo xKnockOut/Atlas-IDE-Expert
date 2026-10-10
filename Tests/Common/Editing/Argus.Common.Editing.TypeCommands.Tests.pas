@@ -42,6 +42,10 @@ type
     [Test]
     procedure ThreadInClassFails;
     [Test]
+    procedure ExceptionWithAndWithoutAncestor;
+    [Test]
+    procedure ExceptionInRoutineFails;
+    [Test]
     procedure ResultsParseWithoutErrors;
   end;
 
@@ -286,6 +290,21 @@ end;
 procedure TTypeCommandsTests.ThreadInClassFails;
 begin
   Assert.AreEqual('/thread gilt nur auf Unit-Ebene', ProblemOf(Format(ClassUnit, ['/thread TWorker'])));
+end;
+
+procedure TTypeCommandsTests.ExceptionWithAndWithoutAncestor;
+begin
+  Assert.AreEqual(Format(TypeUnit, ['EImportFehler = class(Exception);']),
+    Expand(Format(TypeUnit, ['/exception EImportFehler']), 4));
+  Assert.AreEqual(Format(TypeUnit, ['EImportFehler = class(EBasis);']),
+    Expand(Format(TypeUnit, ['/exception EImportFehler : EBasis']), 4));
+end;
+
+procedure TTypeCommandsTests.ExceptionInRoutineFails;
+const
+  Text = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  /exception EX'#10'end;'#10'end.';
+begin
+  Assert.AreEqual('/exception gilt nur auf Unit-Ebene', ProblemOf(Text));
 end;
 
 procedure TTypeCommandsTests.ResultsParseWithoutErrors;
