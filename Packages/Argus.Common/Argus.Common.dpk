@@ -83,6 +83,7 @@ contains
   Argus.Common.Rules.Engine in 'Source\Rules\Argus.Common.Rules.Engine.pas',
   Argus.Common.Rules.Profiles in 'Source\Rules\Argus.Common.Rules.Profiles.pas',
   Argus.Common.Rules.Checker in 'Source\Rules\Argus.Common.Rules.Checker.pas',
+  Argus.Common.Rules.GoldenCorpus in 'Source\Rules\Argus.Common.Rules.GoldenCorpus.pas',
   Argus.Common.Rules.Filter in 'Source\Rules\Argus.Common.Rules.Filter.pas',
   Argus.Common.Rules.Output in 'Source\Rules\Argus.Common.Rules.Output.pas',
   Argus.Common.Rules.Baseline in 'Source\Rules\Argus.Common.Rules.Baseline.pas',

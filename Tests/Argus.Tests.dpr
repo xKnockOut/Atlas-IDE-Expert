@@ -92,6 +92,7 @@ uses
   Argus.Tests.LeakMonitor.Tests in 'Support\Argus.Tests.LeakMonitor.Tests.pas',
   Argus.Tests.RuleAssert in 'Support\Argus.Tests.RuleAssert.pas',
   Argus.Common.Rules.Engine.Tests in 'Common\Rules\Argus.Common.Rules.Engine.Tests.pas',
+  Argus.Common.Rules.GoldenCorpus.Tests in 'Common\Rules\Argus.Common.Rules.GoldenCorpus.Tests.pas',
   Argus.Common.Rules.Profiles.Tests in 'Common\Rules\Argus.Common.Rules.Profiles.Tests.pas',
   Argus.Common.Rules.Confidence.Tests in 'Common\Rules\Argus.Common.Rules.Confidence.Tests.pas',
   Argus.Common.Rules.Output.Tests in 'Common\Rules\Argus.Common.Rules.Output.Tests.pas',
