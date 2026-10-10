@@ -208,6 +208,7 @@ uses
   Argus.Common.Rules.Builtin.RtlTypePatterns.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.RtlTypePatterns.Tests.pas',
   Argus.Common.Rules.Builtin.Exceptions.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Exceptions.Tests.pas',
   Argus.Common.Rules.Builtin.Performance.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Performance.Tests.pas',
+  Argus.Common.Rules.ChangedFiles.Tests in 'Common\Rules\Argus.Common.Rules.ChangedFiles.Tests.pas',
   Argus.Common.Rules.Builtin.DataBinding.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.DataBinding.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}

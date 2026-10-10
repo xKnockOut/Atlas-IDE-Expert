@@ -37,6 +37,8 @@ type
     procedure ReadsProfile;
     [Test]
     procedure WarnsAboutInvalidLinterValues;
+    [Test]
+    procedure ReadsChangedArguments;
   end;
 
 implementation
@@ -169,6 +171,27 @@ begin
   Assert.IsTrue(Options.Mcp);
   Assert.AreEqual('C:\Projekte\App', Options.McpRoot);
   Assert.IsFalse(TCommandLineOptions.Parse([]).Mcp);
+end;
+
+procedure TCommandLineOptionsTests.ReadsChangedArguments;
+var
+  Options: TCommandLineOptions;
+begin
+  Options := TCommandLineOptions.Parse(['--check', 'App.dproj', '--changed', '--changed-lines']);
+  Assert.AreEqual(0, Integer(Length(Options.Warnings)));
+  Assert.AreEqual('main', Options.ChangedRef);
+  Assert.IsTrue(Options.ChangedMergeBase);
+  Assert.IsTrue(Options.ChangedLines);
+  Assert.IsFalse(Options.IncludeUncommitted);
+  Options := TCommandLineOptions.Parse(['--changed', 'develop', '--check', 'App.dproj']);
+  Assert.AreEqual('develop', Options.ChangedRef);
+  Assert.AreEqual('App.dproj', Options.CheckTarget);
+  Options := TCommandLineOptions.Parse(['--diff=HEAD~3', '--include-uncommitted']);
+  Assert.AreEqual('HEAD~3', Options.ChangedRef);
+  Assert.IsFalse(Options.ChangedMergeBase);
+  Assert.IsTrue(Options.IncludeUncommitted);
+  Options := TCommandLineOptions.Parse(['--check', 'App.dproj']);
+  Assert.AreEqual('', Options.ChangedRef);
 end;
 
 procedure TCommandLineOptionsTests.ReadsProfile;
