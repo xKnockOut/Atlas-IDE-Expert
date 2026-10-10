@@ -19,23 +19,26 @@ type
   /// <summary>Ordner zur Datei AUri; nil ohne.</summary>
   TWorkspaceOfFunc = reference to function(const AUri: string): TShellWorkspace;
   TReadTextFunc = reference to function(const AFileName: string; out AText: string): Boolean;
+  THeaderTemplateFunc = reference to function(const AUri: string): string;
 
   TShellSlashHost = class(TInterfacedObject, ISlashHost)
   private
     FWorkspaceOf: TWorkspaceOfFunc;
     FReadText: TReadTextFunc;
+    FHeaderTemplate: THeaderTemplateFunc;
     FTransport: IJsonRpcTransport;
     FLogger: ILogger;
     FRequestId: Integer;
   public
     constructor Create(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
-      const ATransport: IJsonRpcTransport; const ALogger: ILogger);
+      const AHeaderTemplate: THeaderTemplateFunc; const ATransport: IJsonRpcTransport; const ALogger: ILogger);
     function Project(const AUri: string; out AProject: TProjectInfo): Boolean;
     function ReadFile(const AFileName: string; out AText: string): Boolean;
     function DirectoryExists(const APath: string): Boolean;
     procedure WriteProject(const AUri, AText: string);
     procedure SelectBuild(const AUri, AConfig, APlatform: string);
     procedure ShowDocument(const AFileName: string; const ASelection: TTextRange);
+    function HeaderTemplate(const AUri: string): string;
   end;
 
 implementation
@@ -47,11 +50,12 @@ uses
   Argus.Common.Lsp.Positions;
 
 constructor TShellSlashHost.Create(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
-  const ATransport: IJsonRpcTransport; const ALogger: ILogger);
+  const AHeaderTemplate: THeaderTemplateFunc; const ATransport: IJsonRpcTransport; const ALogger: ILogger);
 begin
   inherited Create;
   FWorkspaceOf := AWorkspaceOf;
   FReadText := AReadText;
+  FHeaderTemplate := AHeaderTemplate;
   FTransport := ATransport;
   FLogger := ALogger;
 end;
@@ -123,6 +127,11 @@ begin
   finally
     Request.Free;
   end;
+end;
+
+function TShellSlashHost.HeaderTemplate(const AUri: string): string;
+begin
+  Result := FHeaderTemplate(AUri);
 end;
 
 end.
