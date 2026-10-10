@@ -134,6 +134,7 @@ contains
   Argus.Common.Editing.DatabaseCommands in 'Source\Editing\Argus.Common.Editing.DatabaseCommands.pas',
   Argus.Common.Editing.Bookmarks in 'Source\Editing\Argus.Common.Editing.Bookmarks.pas',
   Argus.Common.Editing.DocumentationCommands in 'Source\Editing\Argus.Common.Editing.DocumentationCommands.pas',
+  Argus.Common.Editing.ComponentCommands in 'Source\Editing\Argus.Common.Editing.ComponentCommands.pas',
   Argus.Common.Editing.MaintenanceCommands in 'Source\Editing\Argus.Common.Editing.MaintenanceCommands.pas',
   Argus.Common.Editing.TypeCommands in 'Source\Editing\Argus.Common.Editing.TypeCommands.pas',
   Argus.Common.Editing.CollectionCommands in 'Source\Editing\Argus.Common.Editing.CollectionCommands.pas',

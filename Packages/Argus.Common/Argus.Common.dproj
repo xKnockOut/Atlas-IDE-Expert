@@ -143,6 +143,7 @@
         <DCCReference Include="Source\Editing\Argus.Common.Editing.DatabaseCommands.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.Bookmarks.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.DocumentationCommands.pas"/>
+        <DCCReference Include="Source\Editing\Argus.Common.Editing.ComponentCommands.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.MaintenanceCommands.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.TypeCommands.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.CollectionCommands.pas"/>
