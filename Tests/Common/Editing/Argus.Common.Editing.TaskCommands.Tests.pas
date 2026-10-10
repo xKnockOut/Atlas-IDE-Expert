@@ -166,7 +166,7 @@ begin
   Assert.AreEqual('', Expand(Format(Routine, ['/parallel', '  for I := 0 to 9 do'#10'    Summe := Summe + I;']), 8));
   Assert.AreEqual('', Expand(Format(Routine, ['/parallel', '  for I := 0 to 9 do'#10'    Inc(Summe);']), 8));
   Assert.AreEqual('', Expand(Format(Routine, ['/parallel', '  for I := 0 to 9 do'#10 +
-    '    Label1.Caption := IntToStr(I);']), 8));
+    '    ShowMessage(IntToStr(I));']), 8));
 end;
 
 procedure TTaskCommandsTests.ParallelRejectsBreakAndDownto;
