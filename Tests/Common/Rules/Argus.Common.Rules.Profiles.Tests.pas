@@ -175,16 +175,16 @@ const
     'component-setter-without-invalidate,confusable-identifier,constructor-on-instance,control-char,' +
     'declared-not-implemented,destroy-without-override,dfm-circular-datasource,' +
     'dfm-control-field-type-mismatch,dfm-duplicate-binding,dfm-master-without-fields,' +
-    'dfm-required-field-without-control,duplicate-interface-guid,empty-except,exception-not-raised,' +
-    'float-equality,for-high-to-low,forbidden-uses,foreign-form-control-access,form-field-type-mismatch,' +
-    'form-field-without-object,form-object-without-field,format-without-settings,hides-virtual,' +
-    'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,invisible-char,' +
-    'lock-without-finally,possibly-uninitialized,result-not-set,security-command-injection,' +
-    'security-insecure-http,security-insecure-random,security-sql-injection,' +
-    'security-tls-verification-disabled,security-weak-crypto,self-assignment,sizeof-pointer,' +
-    'slash-command,synchronize-in-destructor,thread-free-with-free-on-terminate,thread-resume-suspend,' +
-    'thread-use-after-free-on-terminate,thread-vcl-access,unused-assignment,unused-local,' +
-    'unused-parameter,virtual-instead-of-override';
+    'dfm-required-field-without-control,duplicate-interface-guid,empty-except,exception-freed,' +
+    'exception-not-raised,float-equality,for-high-to-low,forbidden-uses,foreign-form-control-access,' +
+    'form-field-type-mismatch,form-field-without-object,form-object-without-field,' +
+    'format-without-settings,generic-exception-raised,hides-virtual,ifthen-side-effect,' +
+    'implemented-not-declared,int32-mul-overflow,interface-guid,invisible-char,lock-without-finally,' +
+    'possibly-uninitialized,result-not-set,security-command-injection,security-insecure-http,' +
+    'security-insecure-random,security-sql-injection,security-tls-verification-disabled,' +
+    'security-weak-crypto,self-assignment,sizeof-pointer,slash-command,synchronize-in-destructor,' +
+    'thread-free-with-free-on-terminate,thread-resume-suspend,thread-use-after-free-on-terminate,' +
+    'thread-vcl-access,unused-assignment,unused-local,unused-parameter,virtual-instead-of-override';
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
   // strict schaltet experimentelle Regeln ein (#146): security-path-traversal (#149), file-header und
@@ -196,7 +196,7 @@ begin
     'component-missing-inherited,constructor-on-instance,control-char,declared-not-implemented,' +
     'destroy-without-override,dfm-circular-datasource,dfm-control-field-type-mismatch,' +
     'dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,' +
-    'duplicate-interface-guid,exception-not-raised,float-equality,for-high-to-low,' +
+    'duplicate-interface-guid,exception-freed,exception-not-raised,float-equality,for-high-to-low,' +
     'form-field-type-mismatch,form-field-without-object,form-object-without-field,hides-virtual,' +
     'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,lock-without-finally,' +
     'possibly-uninitialized,result-not-set,security-command-injection,security-sql-injection,' +
@@ -209,8 +209,8 @@ begin
     'security-weak-crypto',
     ActiveRules('security'));
   Assert.AreEqual('component-fixed-pixels,component-hardcoded-color,component-setter-without-invalidate,empty-except,' +
-    'forbidden-uses,foreign-form-control-access,format-without-settings,slash-command,' +
-    'thread-resume-suspend,unused-assignment,unused-local,unused-parameter',
+    'forbidden-uses,foreign-form-control-access,format-without-settings,generic-exception-raised,' +
+    'slash-command,thread-resume-suspend,unused-assignment,unused-local,unused-parameter',
     ActiveRules('style'));
 end;
 
