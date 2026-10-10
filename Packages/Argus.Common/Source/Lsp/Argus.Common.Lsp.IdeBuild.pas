@@ -6,6 +6,8 @@
 // Meldungen ersetzen die Compilermeldungen (source "dcc") für alle Dateien,
 // wie ein eigener Compilerlauf (#40); der letzte Build bleibt für Abfragen
 // (z. B. MCP, #556) stehen. Zeilen und Spalten kommen 1-basiert aus der IDE.
+// Hintergrundprüfungen nach dem Speichern (#548, "background") ersetzen die
+// Meldungen, zählen aber nicht als letzter Build des Benutzers.
 
 interface
 
@@ -29,6 +31,7 @@ type
   end;
 
   TIdeBuildMessagesEvent = reference to procedure(const AMessages: TArray<TCompilerMessage>);
+  TIdeBuildChangedEvent = reference to procedure(const ABuild: TIdeBuild);
 
   TLspIdeBuild = class
   public const
@@ -39,6 +42,8 @@ type
     FLock: TObject;
     FLast: TIdeBuild;
     FOnMessages: TIdeBuildMessagesEvent;
+    FOnChanged: TIdeBuildChangedEvent;
+    procedure Changed;
     procedure HandleFinished(const AParams: TJSONValue);
     procedure HandleMessages(const AParams: TJSONValue);
   public
@@ -50,6 +55,8 @@ type
     /// <summary>Letzter Build aus der IDE; Known = False ohne.</summary>
     function LastBuild: TIdeBuild;
     property OnMessages: TIdeBuildMessagesEvent read FOnMessages write FOnMessages;
+    /// <summary>Der letzte Build hat sich geändert (nicht bei Hintergrundprüfungen, #548), z. B. zum Speichern (#556).</summary>
+    property OnChanged: TIdeBuildChangedEvent read FOnChanged write FOnChanged;
   end;
 
 implementation
@@ -126,6 +133,8 @@ begin
   if not (AParams is TJSONObject) then
     Exit;
   Params := TJSONObject(AParams);
+  if Params.GetValue<Boolean>('background', False) then
+    Exit;
   // Der Gruppenlauf hat kein Projekt; dann bleibt das Projekt des letzten Laufs.
   TMonitor.Enter(FLock);
   try
@@ -143,6 +152,13 @@ begin
   finally
     TMonitor.Exit(FLock);
   end;
+  Changed;
+end;
+
+procedure TLspIdeBuild.Changed;
+begin
+  if Assigned(FOnChanged) then
+    FOnChanged(LastBuild);
 end;
 
 procedure TLspIdeBuild.HandleMessages(const AParams: TJSONValue);
@@ -150,6 +166,12 @@ var
   Messages: TArray<TCompilerMessage>;
 begin
   Messages := ParseMessages(AParams);
+  if (AParams is TJSONObject) and TJSONObject(AParams).GetValue<Boolean>('background', False) then
+  begin
+    if Assigned(FOnMessages) then
+      FOnMessages(Messages);
+    Exit;
+  end;
   TMonitor.Enter(FLock);
   try
     FLast.Known := True;
@@ -168,6 +190,7 @@ begin
   end;
   if Assigned(FOnMessages) then
     FOnMessages(Messages);
+  Changed;
 end;
 
 function TLspIdeBuild.LastBuild: TIdeBuild;

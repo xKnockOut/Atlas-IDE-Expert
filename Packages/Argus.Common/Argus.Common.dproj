@@ -182,6 +182,7 @@
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.KeywordHighlights.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.WatchedFiles.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.IdeBuild.pas"/>
+        <DCCReference Include="Source\Mcp\Argus.Common.Mcp.BuildTools.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.InactiveRegions.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.WorkspaceFolders.pas"/>
         <DCCReference Include="Source\Index\Adapters\Argus.Common.Index.Adapters.DiskFileSystem.pas"/>

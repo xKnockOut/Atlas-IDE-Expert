@@ -25,6 +25,9 @@ type
     /// <summary>Cache-Datei zum Projektschlüssel (TIndexProjectFiles.Signature) unter ARoot.
     /// Hängt nur am Schlüssel, damit LSP- und MCP-Prozess denselben Cache teilen (#62).</summary>
     class function FileFor(const ARoot, ASignature: string): string; static;
+    /// <summary>Datei des letzten IDE-Builds für den Arbeitsordner AWorkspace (#556), gleich für LSP- und
+    /// MCP-Prozess; bewusst nicht "index-*", damit das Aufräumen der Index-Caches sie nicht erfasst.</summary>
+    class function BuildFileFor(const ARoot, AWorkspace: string): string; static;
     /// <summary>Sperrt ACacheFile; nil, wenn eine andere Instanz sie hält. Freigeben hebt die Sperre auf.</summary>
     class function TryLock(const ACacheFile: string): TStream; static;
     /// <summary>True, wenn eine andere Instanz ACacheFile gesperrt hat.</summary>
@@ -49,6 +52,14 @@ end;
 class function TIndexCacheDirectory.FileFor(const ARoot, ASignature: string): string;
 begin
   Result := TPath.Combine(ARoot, Format('index-%.8x.json', [Cardinal(ASignature.GetHashCode)]));
+end;
+
+class function TIndexCacheDirectory.BuildFileFor(const ARoot, AWorkspace: string): string;
+var
+  Key: string;
+begin
+  Key := AnsiUpperCase(ExcludeTrailingPathDelimiter(AWorkspace.Replace('/', '\')));
+  Result := TPath.Combine(ARoot, Format('build-%.8x.json', [Cardinal(Key.GetHashCode)]));
 end;
 
 class function TIndexCacheDirectory.TryLock(const ACacheFile: string): TStream;

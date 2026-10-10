@@ -43,6 +43,9 @@ uses
   Argus.Common.Mcp.Server,
   Argus.Common.Mcp.IndexTools,
   Argus.Common.Mcp.CodeTools,
+  Argus.Common.Mcp.BuildTools,
+  Argus.Common.Lsp.IdeBuild,
+  Argus.Common.Index.Adapters.CacheDirectory,
   Argus.Common.Rules.Builtin,
   Argus.Windows.Console.StdStreams,
   Argus.Windows.Process.ParentWatcher,
@@ -136,6 +139,21 @@ begin
       ACode.Namespaces := AWorkspace.Namespaces;
       Result := ACode.CallHierarchy(TMcpServer.RequiredString(AArguments, 'name'),
         TMcpCodeTools.ParseDirection(TMcpServer.OptionalString(AArguments, 'direction')));
+    end);
+  AServer.AddTool('get_last_build',
+    'Ergebnis des letzten Builds, den der Benutzer in der IDE gestartet hat: Erfolg, Art, Zeitpunkt, Dauer, ' +
+    'Projekt, Konfiguration, Plattform und alle Compilermeldungen mit Datei, Zeile, Spalte, Code und Text.',
+    TMcpServer.StringSchema(['project'], ['Projekt (Name oder .dproj) zum Filtern; leer = letzter Build'], 0),
+    function(const AArguments: TJSONObject): string
+    var
+      FileName: string;
+      Build: TIdeBuild;
+    begin
+      FileName := TIndexCacheDirectory.BuildFileFor(TIndexCacheDirectory.DefaultRoot, ARoot);
+      if not FileExists(FileName) or
+        not TMcpBuildTools.FromFileText(TFile.ReadAllText(FileName, TEncoding.UTF8), Build) then
+        Exit(TMcpBuildTools.NoBuild(ARoot));
+      Result := TMcpBuildTools.Report(Build, ARoot, TMcpServer.OptionalString(AArguments, 'project'));
     end);
   AServer.AddTool('get_diagnostics',
     'Syntaxfehler und Befunde der Prüfregeln (wie --check) für eine Datei oder das ganze Projekt.',

@@ -35,7 +35,7 @@ type
     class function SeverityText(ASeverity: TArgusCompilerSeverity): string; static;
     /// <summary>Parameter für argus/compilerMessages; Info-Meldungen bleiben weg.</summary>
     class function ToJson(const AMessages: TArray<TArgusCompilerMessage>; const AProject, APlatform: string;
-      ASucceeded: Boolean): TJSONObject; static;
+      ASucceeded: Boolean; ABackground: Boolean = False): TJSONObject; static;
   end;
 
 implementation
@@ -91,7 +91,7 @@ begin
 end;
 
 class function TArgusCompilerMessages.ToJson(const AMessages: TArray<TArgusCompilerMessage>; const AProject,
-  APlatform: string; ASucceeded: Boolean): TJSONObject;
+  APlatform: string; ASucceeded, ABackground: Boolean): TJSONObject;
 var
   Items: TJSONArray;
   Message: TArgusCompilerMessage;
@@ -101,6 +101,8 @@ begin
   Result.AddPair('project', AProject);
   Result.AddPair('platform', APlatform);
   Result.AddPair('success', TJSONBool.Create(ASucceeded));
+  if ABackground then
+    Result.AddPair('background', TJSONBool.Create(True));
   Items := TJSONArray.Create;
   Result.AddPair('messages', Items);
   for Message in AMessages do
