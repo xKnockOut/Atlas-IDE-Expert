@@ -242,6 +242,51 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         },
       ),
     ),
+    // Klartext und String-Literal (#312): copyText kommt aus der Code-Aktion "Als Klartext kopieren".
+    vscode.commands.registerCommand(`${Section}.copyText`, async (text: string) => {
+      await vscode.env.clipboard.writeText(text);
+      void vscode.window.setStatusBarMessage('Klartext kopiert', 3000);
+    }),
+    vscode.commands.registerCommand(`${Section}.copyAsPlainText`, async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!client || !editor) {
+        void vscode.window.showWarningMessage('Argus läuft nicht oder kein Editor ist aktiv.');
+        return;
+      }
+      try {
+        const text = await client.sendRequest<string>('workspace/executeCommand', {
+          command: 'argus.server.plainText',
+          arguments: [
+            editor.document.uri.toString(),
+            { line: editor.selection.active.line, character: editor.selection.active.character },
+          ],
+        });
+        await vscode.env.clipboard.writeText(text);
+        void vscode.window.setStatusBarMessage('Klartext kopiert', 3000);
+      } catch (error) {
+        void vscode.window.showWarningMessage(`Argus: ${(error as Error).message}`);
+      }
+    }),
+    vscode.commands.registerCommand(`${Section}.pasteAsLiteral`, async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!client || !editor) {
+        void vscode.window.showWarningMessage('Argus läuft nicht oder kein Editor ist aktiv.');
+        return;
+      }
+      try {
+        const literal = await client.sendRequest<string>('workspace/executeCommand', {
+          command: 'argus.server.textToLiteral',
+          arguments: [
+            editor.document.uri.toString(),
+            { line: editor.selection.start.line, character: editor.selection.start.character },
+            await vscode.env.clipboard.readText(),
+          ],
+        });
+        await editor.edit((builder) => builder.replace(editor.selection, literal));
+      } catch (error) {
+        void vscode.window.showWarningMessage(`Argus: ${(error as Error).message}`);
+      }
+    }),
     // Konfiguration und Plattform des Projekts umschalten (#46).
     vscode.commands.registerCommand(`${Section}.selectBuild`, async () => {
       if (!client) {

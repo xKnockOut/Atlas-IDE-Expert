@@ -88,8 +88,21 @@ type
   /// <summary>Schlüssel im Block "format", die ausdrücklich gesetzt sind.</summary>
   TFormatKey = (IndentSize, UseTabs, KeywordCase, TrimTrailingWhitespace, InsertFinalNewline,
     SpaceAroundAssignment, SpaceAfterComma, EndOfLine);
+  /// <summary>"stringLiteral.style" (#312).</summary>
+  TStringLiteralStyle = (Auto, Multiline, Concat);
+  /// <summary>"stringLiteral.lineBreak": Trenner zwischen verketteten Zeilen (#312).</summary>
+  TStringLiteralBreak = (SLineBreak, CrLf, Lf, Space, None);
   {$SCOPEDENUMS OFF}
   TFormatKeys = set of TFormatKey;
+
+  /// <summary>Klartext als String-Literal (#312).</summary>
+  TStringLiteralSettings = record
+    Style: TStringLiteralStyle;
+    LineBreak: TStringLiteralBreak;
+    /// <summary>Bei Verkettung lange Zeilen zusätzlich umbrechen; 0 = nicht umbrechen.</summary>
+    MaxLineLength: Integer;
+    class function Default: TStringLiteralSettings; static;
+  end;
 
   /// <summary>Formatierung (#43). Given sagt, welche Werte aus argus.json bzw. dem
   /// Editor stammen; nur die haben Vorrang vor .editorconfig.</summary>
@@ -175,6 +188,8 @@ type
     SortUsesByNamespace: Boolean;
     /// <summary>Units, die "ungenutzte uses entfernen" nie entfernt (#284).</summary>
     UsesKeep: TArray<string>;
+    /// <summary>Klartext als String-Literal (#312).</summary>
+    StringLiteral: TStringLiteralSettings;
     /// <summary>Obergrenze für den Symbolindex in MB; 0 = unbegrenzt (#185).</summary>
     MemoryBudgetMb: Integer;
     /// <summary>Zeitlimit für Anfragen in ms (#283); länger laufende werden abgebrochen.</summary>
@@ -358,6 +373,15 @@ begin
   Result.EndMarkerMinLines := 20;
 end;
 
+{ TStringLiteralSettings }
+
+class function TStringLiteralSettings.Default: TStringLiteralSettings;
+begin
+  Result.Style := TStringLiteralStyle.Auto;
+  Result.LineBreak := TStringLiteralBreak.SLineBreak;
+  Result.MaxLineLength := 0;
+end;
+
 { THighlightSettings }
 
 class function THighlightSettings.Default: THighlightSettings;
@@ -428,6 +452,7 @@ begin
   Result.SortUses := False;
   Result.SortUsesByNamespace := False;
   Result.UsesKeep := nil;
+  Result.StringLiteral := TStringLiteralSettings.Default;
   Result.MemoryBudgetMb := 0;
   Result.RequestTimeoutMs := 10000;
   Result.LogLevel := 'info';

@@ -59,6 +59,7 @@ type
     procedure ReadSlashCommands(ANode: TJsonNode);
     procedure ReadSortUses(ANode: TJsonNode);
     procedure ReadInlayHints(ANode: TJsonNode);
+    procedure ReadStringLiteral(ANode: TJsonNode);
     procedure ReadHighlight(ANode: TJsonNode);
     procedure ReadCompiler(ANode: TJsonNode);
     procedure ReadCompletion(ANode: TJsonNode);
@@ -478,6 +479,70 @@ begin
   end;
 end;
 
+procedure TValidator.ReadStringLiteral(ANode: TJsonNode);
+const
+  Styles: array[TStringLiteralStyle] of string = ('auto', 'multiline', 'concat');
+  Breaks: array[TStringLiteralBreak] of string = ('sLineBreak', '#13#10', '#10', 'space', 'none');
+var
+  Index, Length_: Integer;
+  Key, Text: string;
+  Value: TJsonNode;
+  Style: TStringLiteralStyle;
+  Break_: TStringLiteralBreak;
+  Found: Boolean;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"stringLiteral" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    Value := ANode[Index];
+    if Key = 'style' then
+    begin
+      if ExpectString(Value, Key, Text) then
+      begin
+        Found := False;
+        for Style := Low(TStringLiteralStyle) to High(TStringLiteralStyle) do
+          if Text = Styles[Style] then
+          begin
+            FSettings.StringLiteral.Style := Style;
+            Found := True;
+          end;
+        if not Found then
+          ReportNode(Value, 'Erlaubt sind "auto", "multiline" und "concat"');
+      end;
+    end
+    else if Key = 'lineBreak' then
+    begin
+      if ExpectString(Value, Key, Text) then
+      begin
+        Found := False;
+        for Break_ := Low(TStringLiteralBreak) to High(TStringLiteralBreak) do
+          if Text = Breaks[Break_] then
+          begin
+            FSettings.StringLiteral.LineBreak := Break_;
+            Found := True;
+          end;
+        if not Found then
+          ReportNode(Value, 'Erlaubt sind "sLineBreak", "#13#10", "#10", "space" und "none"');
+      end;
+    end
+    else if Key = 'maxLineLength' then
+    begin
+      if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Length_) and (Length_ >= 0) then
+        FSettings.StringLiteral.MaxLineLength := Length_
+      else
+        ReportNode(Value, '"maxLineLength" muss eine ganze Zahl ab 0 sein');
+    end
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "stringLiteral.%s"', [Key]), False);
+  end;
+end;
+
 procedure TValidator.ReadHighlight(ANode: TJsonNode);
 var
   Index, Item: Integer;
@@ -746,6 +811,8 @@ begin
       end
       else if Key = 'inlayHints' then
         ReadInlayHints(Value)
+      else if Key = 'stringLiteral' then
+        ReadStringLiteral(Value)
       else if Key = 'highlight' then
         ReadHighlight(Value)
       else if Key = 'compiler' then
@@ -968,6 +1035,8 @@ begin
     end
     else if Key = 'inlayHints' then
       Result.InlayHints := FileSettings.InlayHints
+    else if Key = 'stringLiteral' then
+      Result.StringLiteral := FileSettings.StringLiteral
     else if Key = 'highlight' then
       Result.Highlight := FileSettings.Highlight
     else if Key = 'compiler' then

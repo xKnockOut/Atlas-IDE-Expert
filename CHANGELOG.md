@@ -7,6 +7,7 @@ Server und Erweiterung tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Klartext und String-Literal umwandeln: Code-Aktionen „Als String-Literal“ und „Als Klartext kopieren“, Befehle zum Kopieren und Einfügen, Einstellung `stringLiteral` (#312).
 - Code-Aktion „Zuweisungen umkehren“ für markierte Zeilen (#313).
 - Hover verlinkt bei Windows-API-Funktionen die Microsoft-Dokumentation (#120).
 - Qualifizierten Namen des Symbols unter dem Cursor kopieren: Befehl `argus.server.qualifiedName`, VS-Code-Befehl und MCP-Werkzeug `qualified_name` (#128).

@@ -110,6 +110,8 @@ contains
   Argus.Common.Lsp.QualifiedNames in 'Source\Lsp\Argus.Common.Lsp.QualifiedNames.pas',
   Argus.Common.Lsp.WinApiDocs in 'Source\Lsp\Argus.Common.Lsp.WinApiDocs.pas',
   Argus.Common.Editing.AssignmentSwap in 'Source\Editing\Argus.Common.Editing.AssignmentSwap.pas',
+  Argus.Common.Editing.StringLiterals in 'Source\Editing\Argus.Common.Editing.StringLiterals.pas',
+  Argus.Common.Lsp.StringLiteralCommands in 'Source\Lsp\Argus.Common.Lsp.StringLiteralCommands.pas',
   Argus.Common.Lsp.DocWiki in 'Source\Lsp\Argus.Common.Lsp.DocWiki.pas',
   Argus.Common.Lsp.CompilerDirectives in 'Source\Lsp\Argus.Common.Lsp.CompilerDirectives.pas',
   Argus.Common.Lsp.Colors in 'Source\Lsp\Argus.Common.Lsp.Colors.pas',
