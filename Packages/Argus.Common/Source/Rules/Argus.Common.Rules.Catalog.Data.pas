@@ -982,7 +982,7 @@ begin
     '    {' + #10 +
     '      "id": "file-header",' + #10 +
     '      "name": "Dateikopf fehlt oder weicht ab",' + #10 +
-    '      "description": "Die Datei beginnt nicht mit dem Kopf aus der Regeloption \"template\". Standardmäßig aus; in argus.json mit einer Vorlage einschalten. Die Schnellkorrektur fügt den Kopf ein' + '."' + #10 +
+    '      "description": "Die Datei beginnt nicht mit dem Kopf aus der Regeloption \"template\". Standardmäßig aus; in argus.json mit einer Vorlage einschalten. Die Schnellkorrektur fügt den Kopf ein."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "hardcoded-string",' + #10 +
