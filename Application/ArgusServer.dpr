@@ -8,7 +8,7 @@ uses
   Shell.CommandLine in 'Source\Shell\Shell.CommandLine.pas',
   Shell.Workspace in 'Source\Shell\Shell.Workspace.pas',
   Shell.Linter in 'Source\Shell\Shell.Linter.pas',
-  Shell.GitChanges in 'Source\Shell\Shell.GitChanges.pas',
+  Shell.VcsChanges in 'Source\Shell\Shell.VcsChanges.pas',
   Shell.Mcp in 'Source\Shell\Shell.Mcp.pas';
 
 begin

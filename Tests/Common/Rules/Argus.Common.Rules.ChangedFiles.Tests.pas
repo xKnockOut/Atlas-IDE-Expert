@@ -27,6 +27,10 @@ type
     procedure LinesOfFullPath;
     [Test]
     procedure QuotedPaths;
+    [Test]
+    procedure SvnStatusAndSummarize;
+    [Test]
+    procedure SvnDiffCountsOnlyAddedLines;
   end;
 
 implementation
@@ -138,6 +142,44 @@ begin
   Assert.AreEqual('A"B.pas', TChangedFiles.UnquotePath('"A\"B.pas"'));
   Assert.AreEqual('Src/'#$00FC'.pas', TChangedFiles.ParseNameStatus(['M'#9'"Src/\303\274.pas"'])[0]);
   Assert.AreEqual('Src/'#$00FC'.pas', TChangedFiles.ParseHunks(['+++ "b/Src/\303\274.pas"'])[0].Path);
+end;
+
+procedure TChangedFilesTests.SvnStatusAndSummarize;
+var
+  Paths: TArray<string>;
+begin
+  Paths := TChangedFiles.ParseSvnStatus(['M       Src\Kunde.pas', 'A  +    Src\Neu.pas', 'D       Src\Weg.pas',
+    '?       Src\Entwurf.pas', ' M      Src', 'R       Src\Ersetzt.pas'], False);
+  Assert.AreEqual(3, Integer(Length(Paths)));
+  Assert.AreEqual('Src\Kunde.pas', Paths[0]);
+  Assert.AreEqual('Src\Neu.pas', Paths[1]);
+  Assert.AreEqual('Src\Ersetzt.pas', Paths[2]);
+  Assert.AreEqual(4, Integer(Length(TChangedFiles.ParseSvnStatus(['M       A.pas', '?       B.pas',
+    'A       C.dfm', 'D       D.pas', '?       E.pas'], True))));
+  Paths := TChangedFiles.ParseSvnSummarize(['M       Src/Kunde.pas', 'D       Src/Weg.pas', ' M      Src/Prop.pas',
+    'A       Src/Form1.dfm']);
+  Assert.AreEqual(2, Integer(Length(Paths)));
+  Assert.AreEqual('Src/Form1.dfm', Paths[1]);
+end;
+
+procedure TChangedFilesTests.SvnDiffCountsOnlyAddedLines;
+var
+  Changes: TArray<TChangedLines>;
+begin
+  Changes := TChangedFiles.ParseSvnDiff(['Index: Src/A.pas', StringOfChar('=', 67),
+    '--- Src/A.pas'#9'(revision 12)', '+++ Src/A.pas'#9'(working copy)', '@@ -3,5 +3,6 @@', ' kontext',
+    '-alt', '+neu', '+neu2', ' kontext', ' kontext', '@@ -20,2 +21,2 @@', ' kontext', '+neu3', '-alt',
+    'Index: Src/B.pas']);
+  Assert.AreEqual(1, Integer(Length(Changes)));
+  Assert.AreEqual('Src/A.pas', Changes[0].Path);
+  // Zeile 3 (1-basiert) ist Kontext, 4 und 5 neu, 22 neu.
+  Assert.IsFalse(Changes[0].Contains(2));
+  Assert.IsTrue(Changes[0].Contains(3));
+  Assert.IsTrue(Changes[0].Contains(4));
+  Assert.IsFalse(Changes[0].Contains(5));
+  Assert.IsFalse(Changes[0].Contains(20));
+  Assert.IsTrue(Changes[0].Contains(21));
+  Assert.AreEqual(2, Integer(Length(Changes[0].Spans)));
 end;
 
 initialization
