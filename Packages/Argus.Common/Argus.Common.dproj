@@ -134,6 +134,7 @@
         <DCCReference Include="Source\Editing\Argus.Common.Editing.CommandSource.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.ClassCommands.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.WrapCommands.pas"/>
+        <DCCReference Include="Source\Editing\Argus.Common.Editing.MaintenanceCommands.pas"/>
         <DCCReference Include="Source\Semantics\Argus.Common.Semantics.UnresolvedNames.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Architecture.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Concurrency.pas"/>

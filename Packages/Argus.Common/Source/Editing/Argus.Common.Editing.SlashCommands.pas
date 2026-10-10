@@ -98,7 +98,8 @@ uses
   Argus.Common.Editing.UsesCommand,
   Argus.Common.Editing.DeclarationCommands,
   Argus.Common.Editing.ClassCommands,
-  Argus.Common.Editing.WrapCommands;
+  Argus.Common.Editing.WrapCommands,
+  Argus.Common.Editing.MaintenanceCommands;
 
 function IsDisabled(const AName: string; const ADisabled: TArray<string>): Boolean;
 var
@@ -167,6 +168,7 @@ begin
     RegisterDeclarationCommands(Created);
     RegisterClassCommands(Created);
     RegisterWrapCommands(Created);
+    RegisterMaintenanceCommands(Created);
     if AtomicCmpExchange(Pointer(FShared), Pointer(Created), nil) <> nil then
       Created.Free;
   end;
