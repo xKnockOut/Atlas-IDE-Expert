@@ -2,7 +2,7 @@ src/**
 tsconfig.json
 **/*.map
 # Map des Servers für Stacktraces mit Unit und Routine (#282).
-!server/BetterDelphiLSP.map
+!server/ArgusServer.map
 .vscode/**
 .gitignore
 *.vsix
