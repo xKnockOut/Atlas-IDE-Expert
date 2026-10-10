@@ -49,6 +49,7 @@ type
     FVersion: string;
     FInstructions: string;
     FTools: TList<TMcpTool>;
+    FOnBeforeToolCall: TProc;
     function FindTool(const AName: string; out ATool: TMcpTool): Boolean;
   public
     constructor Create(const AName, AVersion: string);
@@ -68,6 +69,8 @@ type
     class function OptionalString(const AArguments: TJSONObject; const AName: string): string; static;
     /// <summary>Hinweis an das Modell in der Antwort auf initialize.</summary>
     property Instructions: string read FInstructions write FInstructions;
+    /// <summary>Läuft vor jedem Werkzeugaufruf, z. B. um den Index aktuell zu halten (#48).</summary>
+    property OnBeforeToolCall: TProc read FOnBeforeToolCall write FOnBeforeToolCall;
   end;
 
 implementation
@@ -208,6 +211,9 @@ begin
     Arguments := TJSONObject(TJSONObject(AParams).GetValue('arguments'));
   IsError := False;
   try
+    // Z. B. geänderte Units nachladen (#48); ein Fehler dort trifft den Aufruf wie einer des Werkzeugs.
+    if Assigned(FOnBeforeToolCall) then
+      FOnBeforeToolCall();
     Text := Tool.Handler(Arguments);
   except
     on E: EMcpToolError do

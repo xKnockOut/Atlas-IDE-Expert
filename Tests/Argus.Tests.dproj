@@ -216,6 +216,10 @@
         <DCCReference Include="IDE.Expert\Argus.Core.Build.CheckOnSave.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Argus.Common.Mcp.BuildTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Argus.Common.Mcp.Paths.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Workspace.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.pas"/>
+        <DCCReference Include="Common\Mcp\Argus.Common.Mcp.Freshness.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Mcp.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
