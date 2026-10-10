@@ -170,6 +170,7 @@
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.RtlPatterns.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.RtlTypePatterns.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Exceptions.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Style.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Performance.pas"/>
         <DCCReference Include="Source\Rules\Argus.Common.Rules.ChangedFiles.pas"/>
         <DCCReference Include="Source\Rules\Argus.Common.Rules.DeclaredTypes.pas"/>

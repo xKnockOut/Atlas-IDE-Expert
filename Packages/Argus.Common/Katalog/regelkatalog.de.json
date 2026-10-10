@@ -354,6 +354,31 @@
       "id": "missing-begin-update",
       "name": "Hinzufügen in einer Schleife ohne BeginUpdate",
       "description": "Items.Add, Lines.Add und ähnliche Aufrufe in einer Schleife zeichnen das Steuerelement bei jedem Aufruf neu. Die Schleife mit BeginUpdate und try … finally EndUpdate umschließen. Standardmäßig aus."
+    },
+    {
+      "id": "bool-compare",
+      "name": "Vergleich mit True oder False",
+      "description": "Ein Vergleich eines Boolean mit True oder False ist überflüssig; den Ausdruck oder not direkt verwenden."
+    },
+    {
+      "id": "redundant-assigned-free",
+      "name": "Assigned-Prüfung vor Free",
+      "description": "Free prüft selbst auf nil, eine Assigned-Prüfung vor Free oder FreeAndNil ist überflüssig."
+    },
+    {
+      "id": "raise-in-finally",
+      "name": "raise in einem finally-Block",
+      "description": "Eine im finally-Block ausgelöste Exception ersetzt die gerade laufende Exception, die dadurch verloren geht."
+    },
+    {
+      "id": "redundant-parens",
+      "name": "Überflüssige Klammern",
+      "description": "Klammern um eine ganze Bedingung oder einen einzelnen Bezeichner bringen nichts. Standardmäßig aus."
+    },
+    {
+      "id": "redundant-begin-end",
+      "name": "begin … end um eine einzelne Anweisung",
+      "description": "Ein begin … end-Block mit genau einer Anweisung kann entfallen. Standardmäßig aus."
     }
   ]
 }
