@@ -45,6 +45,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.JSON,
   Argus.Common.Documents.Contract,
