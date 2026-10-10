@@ -139,6 +139,7 @@
         <DCCReference Include="Source\Editing\Argus.Common.Editing.RefactoringCommands.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.ExpressionCommands.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.Modernizer.pas"/>
+        <DCCReference Include="Source\Editing\Argus.Common.Editing.DocComments.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.ProjectCommands.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.SqlText.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.DatabaseCommands.pas"/>
