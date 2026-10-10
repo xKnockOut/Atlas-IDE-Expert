@@ -33,6 +33,7 @@ uses
   Argus.Common.Rules.Builtin.PaletteIcons,
   Argus.Common.Rules.Builtin.Performance,
   Argus.Common.Rules.Builtin.DataBinding,
+  Argus.Common.Rules.Builtin.DfmProperties,
   Argus.Common.Rules.Builtin.SlashCommands;
 
 function BuiltinRules: TArray<IRule>;
@@ -60,6 +61,7 @@ begin
     RegisterPaletteIconRules(Registry);
     RegisterPerformanceRules(Registry);
     RegisterDataBindingRules(Registry);
+    RegisterDfmPropertyRules(Registry);
     RegisterSlashCommandRules(Registry);
     Result := Registry.Rules;
   finally

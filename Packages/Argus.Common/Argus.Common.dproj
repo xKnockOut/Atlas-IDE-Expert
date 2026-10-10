@@ -177,6 +177,7 @@
         <DCCReference Include="Source\Rules\Argus.Common.Rules.DeclaredTypes.pas"/>
         <DCCReference Include="Source\Rules\Argus.Common.Rules.ResourceNames.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.DataBinding.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.DfmProperties.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.SlashCommands.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.ClassCompletion.pas"/>
         <DCCReference Include="Source\Dfm\Argus.Common.Dfm.Contract.pas"/>

@@ -117,6 +117,30 @@ type
     class function Default: TMemberOrderSettings; static;
   end;
 
+  {$SCOPEDENUMS ON}
+  /// <summary>Bedingung einer Eigenschaftsregel für Formulardateien (#309).</summary>
+  TDfmCondition = (Equal, NotEqual, Contains, NotContains, Empty, NotEmpty);
+
+  /// <summary>Korrektur: auto gilt als sicher (source.fixAll), prompt nur als Code-Aktion, none gar nicht.</summary>
+  TDfmFixMode = (Prompt, Auto, None);
+  {$SCOPEDENUMS OFF}
+
+  /// <summary>Eigenschaftsregel aus dfmPropertyRules (#309).</summary>
+  TDfmPropertyRule = record
+    ClassName: string;
+    /// <summary>Property-Pfad, auch Font.Name.</summary>
+    PropertyPath: string;
+    Condition: TDfmCondition;
+    Value: string;
+    /// <summary>Meldung; '' = aus Klasse, Property, Bedingung und Wert gebildet.</summary>
+    Message: string;
+    Severity: TRuleSeverity;
+    IncludeDescendants: Boolean;
+    Fix: TDfmFixMode;
+    /// <summary>Glob-Muster für Dateien, die die Regel nicht prüft.</summary>
+    Exclude: TArray<string>;
+  end;
+
   /// <summary>Formatierung (#43). Given sagt, welche Werte aus argus.json bzw. dem
   /// Editor stammen; nur die haben Vorrang vor .editorconfig.</summary>
   TFormatStyle = record
@@ -207,6 +231,8 @@ type
     StringLiteral: TStringLiteralSettings;
     /// <summary>Klassenmitglieder ordnen (#89).</summary>
     MemberOrder: TMemberOrderSettings;
+    /// <summary>Eigenschaftsregeln für Formulardateien (#309).</summary>
+    DfmPropertyRules: TArray<TDfmPropertyRule>;
     /// <summary>Obergrenze für den Symbolindex in MB; 0 = unbegrenzt (#185).</summary>
     MemoryBudgetMb: Integer;
     /// <summary>Zeitlimit für Anfragen in ms (#283); länger laufende werden abgebrochen.</summary>
@@ -482,6 +508,7 @@ begin
   Result.UsesKeep := nil;
   Result.StringLiteral := TStringLiteralSettings.Default;
   Result.MemberOrder := TMemberOrderSettings.Default;
+  Result.DfmPropertyRules := nil;
   Result.MemoryBudgetMb := 0;
   Result.RequestTimeoutMs := 10000;
   Result.LogLevel := 'info';

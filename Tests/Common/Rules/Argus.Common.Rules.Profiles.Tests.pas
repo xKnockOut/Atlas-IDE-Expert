@@ -175,8 +175,8 @@ const
     'component-palette-icon,component-setter-without-invalidate,confusable-identifier,' +
     'constructor-on-instance,control-char,declared-not-implemented,destroy-without-override,' +
     'dfm-circular-datasource,dfm-control-field-type-mismatch,dfm-duplicate-binding,' +
-    'dfm-master-without-fields,dfm-required-field-without-control,duplicate-interface-guid,empty-except,' +
-    'exception-freed,exception-not-raised,float-equality,for-high-to-low,forbidden-uses,' +
+    'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,duplicate-interface-guid,' +
+    'empty-except,exception-freed,exception-not-raised,float-equality,for-high-to-low,forbidden-uses,' +
     'foreign-form-control-access,form-field-type-mismatch,form-field-without-object,' +
     'form-object-without-field,format-without-settings,generic-exception-raised,hides-virtual,' +
     'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,invisible-char,' +
@@ -211,9 +211,10 @@ begin
     'security-weak-crypto',
     ActiveRules('security'));
   Assert.AreEqual('bool-compare,component-fixed-pixels,component-hardcoded-color,component-palette-icon,' +
-    'component-setter-without-invalidate,empty-except,forbidden-uses,foreign-form-control-access,' +
-    'format-without-settings,generic-exception-raised,redundant-assigned-free,slash-command,' +
-    'thread-resume-suspend,unused-assignment,unused-local,unused-parameter',
+    'component-setter-without-invalidate,dfm-property,empty-except,forbidden-uses,' +
+    'foreign-form-control-access,format-without-settings,generic-exception-raised,' +
+    'redundant-assigned-free,slash-command,thread-resume-suspend,unused-assignment,unused-local,' +
+    'unused-parameter',
     ActiveRules('style'));
 end;
 

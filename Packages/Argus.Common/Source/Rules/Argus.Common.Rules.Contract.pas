@@ -85,6 +85,8 @@ type
     DelphiVersion: string;
     /// <summary>Dateien relativ zum Ordner der Unit lesen (#114); nil = keine Dateien, die Regel schweigt.</summary>
     ReadFile: TRuleFileReader;
+    /// <summary>Eigenschaftsregeln für Formulardateien aus argus.json (#309); setzt TRuleEngine.Run.</summary>
+    DfmPropertyRules: TArray<TDfmPropertyRule>;
   end;
 
   /// <summary>Sammelt die Treffer einer Regel.</summary>
@@ -96,6 +98,10 @@ type
     procedure Add(const ARange: TTextRange; const AMessage: string; AConfidence: TRuleConfidence); overload;
     procedure Add(const ARange: TTextRange; const AMessage: string; AConfidence: TRuleConfidence;
       const AFixes: TArray<TRuleFix>); overload;
+    /// <summary>Treffer mit eigenem Schweregrad aus der Konfiguration der Regel (#309);
+    /// TRuleSeverity.Default = Schweregrad der Regel.</summary>
+    procedure AddWithSeverity(const ARange: TTextRange; const AMessage: string; ASeverity: TRuleSeverity;
+      const AFixes: TArray<TRuleFix>);
   end;
 
   IRule = interface

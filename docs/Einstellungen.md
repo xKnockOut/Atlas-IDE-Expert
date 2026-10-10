@@ -23,6 +23,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Eingabehilfen | `slashCommands`: `enabled`, `disabled`, `headerTemplate` | – | argus.json, Editor (`argus.slashCommands`) | nein | Kontrollkästchen, Liste | #293 |
 | Eingabehilfen | `sortUses` | `false` | argus.json, Editor (`argus.sortUses`) | nein | Auswahl | #182, #284 |
 | Eingabehilfen | `usesKeep` | `` | argus.json, Editor (`argus.usesKeep`) | nein | Liste | #284 |
+| Prüfregeln | `dfmPropertyRules` | `` | argus.json, Editor (`argus.dfmPropertyRules`) | nein | Eigener Editor (Klasse und Property aus dem Index) | #309 |
 | Speicher | `memoryBudgetMb` | `0` | argus.json, Editor (`argus.memoryBudgetMb`) | nein | Zahlenfeld (MB) | #185 |
 | Robustheit | `requestTimeoutMs` | `10000` | argus.json, Editor (`argus.requestTimeoutMs`) | nein | Zahlenfeld (ms) | #283 |
 | Editor | `highlight`: `blockPairs`, `directives`, `exitPoints`, `exitKeywords` | – | argus.json, Editor (`argus.highlight`) | nein | Kontrollkästchen, Liste | #307 |

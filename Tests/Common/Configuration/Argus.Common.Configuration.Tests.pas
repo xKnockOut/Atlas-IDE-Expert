@@ -30,6 +30,8 @@ type
     [Test]
     procedure ReadsMemberOrder;
     [Test]
+    procedure ReadsDfmPropertyRules;
+    [Test]
     procedure ReadsCompilerSettings;
     [Test]
     procedure ReadsFormatSettings;
@@ -332,6 +334,45 @@ begin
   Assert.AreEqual(3, Integer(Length(Issues)));
   Assert.AreEqual(Ord(TStringLiteralBreak.Space), Ord(Settings.StringLiteral.LineBreak));
   Assert.AreEqual(Ord(TStringLiteralStyle.Auto), Ord(Settings.StringLiteral.Style));
+end;
+
+procedure TConfigurationParserTests.ReadsDfmPropertyRules;
+var
+  Issues: TArray<TConfigurationIssue>;
+  Settings: TServerSettings;
+begin
+  Assert.AreEqual(0, Integer(Length(Parse('{}', Issues).DfmPropertyRules)));
+  Settings := Parse('{"dfmPropertyRules": [' +
+    '{"class": "TLabel", "property": "Transparent", "condition": "=", "value": "True", "fix": "auto"},' +
+    '{"class": "TForm", "property": "Position", "condition": "<>", "value": "poDesigned", "message": "Zentriert",' +
+    ' "severity": "hint", "includeDescendants": false, "exclude": ["**/Alt/*.dfm"]},' +
+    '{"class": "TEdit", "property": "Hint", "condition": "notEmpty", "fix": "none"}]}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual(3, Integer(Length(Settings.DfmPropertyRules)));
+  Assert.AreEqual('TLabel', Settings.DfmPropertyRules[0].ClassName);
+  Assert.AreEqual('Transparent', Settings.DfmPropertyRules[0].PropertyPath);
+  Assert.IsTrue(Settings.DfmPropertyRules[0].Condition = TDfmCondition.Equal);
+  Assert.IsTrue(Settings.DfmPropertyRules[0].Fix = TDfmFixMode.Auto);
+  Assert.IsTrue(Settings.DfmPropertyRules[0].Severity = TRuleSeverity.Warning);
+  Assert.IsTrue(Settings.DfmPropertyRules[0].IncludeDescendants);
+  Assert.IsTrue(Settings.DfmPropertyRules[1].Condition = TDfmCondition.NotEqual);
+  Assert.IsTrue(Settings.DfmPropertyRules[1].Severity = TRuleSeverity.Hint);
+  Assert.IsFalse(Settings.DfmPropertyRules[1].IncludeDescendants);
+  Assert.AreEqual('Zentriert', Settings.DfmPropertyRules[1].Message);
+  Assert.AreEqual('**/Alt/*.dfm', Settings.DfmPropertyRules[1].Exclude[0]);
+  Assert.IsTrue(Settings.DfmPropertyRules[2].Condition = TDfmCondition.NotEmpty);
+  Assert.IsTrue(Settings.DfmPropertyRules[2].Fix = TDfmFixMode.None);
+  // Fehlerhafte Regeln: ohne property, = ohne value, unbekannte Bedingung, unbekannter Schlüssel.
+  Settings := Parse('{"dfmPropertyRules": [{"class": "TLabel"}, {"class": "TA", "property": "B", "condition": "="},' +
+    ' {"class": "TA", "property": "B", "condition": "gleich", "value": "1", "x": 1}, 5]}', Issues);
+  Assert.AreEqual(5, Integer(Length(Issues)));
+  Assert.AreEqual(1, Integer(Length(Settings.DfmPropertyRules)));
+  Parse('{"dfmPropertyRules": {}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Editor zuerst, die Datei hat Vorrang.
+  Settings := TConfigurationParser.ParseLayered('{"dfmPropertyRules": []}',
+    '{"dfmPropertyRules": [{"class": "TA", "property": "B", "value": "1"}]}', Issues);
+  Assert.AreEqual(1, Integer(Length(Settings.DfmPropertyRules)));
 end;
 
 procedure TConfigurationParserTests.ReadsMemberOrder;

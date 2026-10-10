@@ -73,6 +73,8 @@ type
     procedure Add(const ARange: TTextRange; const AMessage: string; AConfidence: TRuleConfidence); overload;
     procedure Add(const ARange: TTextRange; const AMessage: string; AConfidence: TRuleConfidence;
       const AFixes: TArray<TRuleFix>); overload;
+    procedure AddWithSeverity(const ARange: TTextRange; const AMessage: string; ASeverity: TRuleSeverity;
+      const AFixes: TArray<TRuleFix>);
   end;
 
 function CompareFindings(const A, B: TRuleFinding): Integer;
@@ -119,6 +121,25 @@ begin
   Finding.Message := AMessage;
   Finding.Severity := TRuleEngine.CapSeverity(FSeverity, AConfidence);
   Finding.Confidence := AConfidence;
+  Finding.Fixes := AFixes;
+  FFindings.Add(Finding);
+end;
+
+procedure TRuleReport.AddWithSeverity(const ARange: TTextRange; const AMessage: string; ASeverity: TRuleSeverity;
+  const AFixes: TArray<TRuleFix>);
+var
+  Finding: TRuleFinding;
+begin
+  if ASeverity = TRuleSeverity.Off then
+    Exit;
+  Finding.RuleId := FRuleId;
+  Finding.Range := ARange;
+  Finding.Message := AMessage;
+  if ASeverity = TRuleSeverity.Default then
+    Finding.Severity := FSeverity
+  else
+    Finding.Severity := ASeverity;
+  Finding.Confidence := TRuleConfidence.High;
   Finding.Fixes := AFixes;
   FFindings.Add(Finding);
 end;
@@ -250,6 +271,7 @@ begin
       if Context.DelphiVersion = '' then
         Context.DelphiVersion := Settings.DelphiVersion;
       Context.Options := RuleOptions(Descriptor.Id, Settings);
+      Context.DfmPropertyRules := Settings.DfmPropertyRules;
       if IsExceptedByOptions(Context.Options, Context.RelativePath, Context.UnitName) then
         Continue;
       // Erst in einer Interface-Variablen halten: Check nimmt den Report als
