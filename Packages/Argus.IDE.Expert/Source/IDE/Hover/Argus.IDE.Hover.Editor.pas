@@ -2,11 +2,21 @@
 
 // Hover-Tooltip im Editor (#442) über die Code-Editor-API (ToolsAPI.Editor):
 //   - Mausbewegung im Editor → Bezeichner unter der Maus (Zeile, Wortgrenzen).
-//   - Nach 500 ms Verweilen auf demselben Bezeichner: textDocument/hover in
-//     Teilen (TLspSession.HoverParts) und Tooltip unter dem Wort.
+//   - Nach 500 ms Verweilen auf demselben Bezeichner: textDocument/hover
+//     (TLspSession.HoverData) und Tooltip unter dem Wort (Kurzform).
 //   - Schließen 300 ms nachdem die Maus Bezeichner und Tooltip verlassen hat;
-//     sofort bei Taste, Mausklick, Scrollen, Größenänderung, IDE inaktiv (ein
-//     Wächter prüft das, solange der Tooltip offen ist, #414).
+//     sofort bei Taste (außer Umschalt, Strg, Alt allein), Mausklick, Scrollen,
+//     Größenänderung, IDE inaktiv (ein Wächter prüft das, solange der Tooltip
+//     offen ist, #414).
+// Navigation über Typen (#588):
+//   - Klick auf einen Typ (Deklaration, Kette, Pfad) zeigt dessen Inhalt im
+//     selben Fenster (Hover über den Fundort, TArgusHoverHistory) und heftet
+//     den Tooltip an: Dann schließt er nur mit Esc oder Klick in den Editor.
+//   - Strg+Klick springt zur Deklaration und schließt.
+//   - Tasten über den gemeinsamen Hook, solange der Tooltip sichtbar ist:
+//     Esc schließt; angeheftet Rücktaste bzw. Alt+← zurück; angeheftet oder mit
+//     der Maus über dem Tooltip F12, Umschalt+F12, Strg+C und F1 für den
+//     angezeigten Typ.
 // Die IDE zeigt dann keinen eigenen Tooltip: GetHintText liefert '' (Manager).
 
 interface
@@ -20,6 +30,9 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Argus.Core.Lsp.Session,
+  Argus.Core.Hover.Contract,
+  Argus.Core.Hover.History,
+  Argus.IDE.Editor.KeyHook,
   Argus.UI.Hover.Tip;
 
 type
@@ -32,11 +45,27 @@ type
     protected
       function AllowedEvents: TCodeEditorEvents; override;
     end;
+
+    THoverKeys = class(TArgusKeyClient)
+    private
+      FOwner: TArgusEditorHover;
+    protected
+      function WantsKey(AKey: Word; AShift: TShiftState): Boolean; override;
+      procedure HandleKey(AKey: Word; AShift: TShiftState); override;
+    public
+      constructor Create(AOwner: TArgusEditorHover);
+    end;
+  public const
+    /// <summary>Nach Vervollständigung (0) und Parameter-Hint (10).</summary>
+    KeyPriority = 20;
   private
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;
     FTip: TArgusHoverTip;
+    FKeys: THoverKeys;
+    FHistory: TArgusHoverHistory;
+    FUsagesCount: Integer;
     FShowTimer: TTimer;
     FHideTimer: TTimer;
     FWatchTimer: TTimer;
@@ -58,28 +87,65 @@ type
     procedure ShowTimerTick(Sender: TObject);
     procedure HideTimerTick(Sender: TObject);
     procedure WatchTimerTick(Sender: TObject);
+    procedure TipLink(Sender: TObject; const ARef: TArgusHoverTypeRef; AControl: Boolean);
+    procedure TipPath(Sender: TObject; AIndex: Integer);
+    procedure TipBack(Sender: TObject);
+    procedure TipAction(Sender: TObject; AAction: TArgusHoverAction);
+    function CurrentSession: TLspSession;
+    function Fetch(const ARef: TArgusHoverTypeRef; out AData: TArgusHoverData): Boolean;
+    function CurrentView: TArgusHoverView;
+    procedure Refresh;
+    procedure Execute(AAction: TArgusHoverAction);
+    procedure ShowUsages;
+    function MouseOverTip: Boolean;
+    function WantsKey(AKey: Word; AShift: TShiftState): Boolean;
+    procedure HandleKey(AKey: Word; AShift: TShiftState);
     procedure Log(const AMessage: string);
   public
     constructor Create(const ASession: TArgusHoverSessionFunc; const ALog: TArgusHoverLogFunc);
     destructor Destroy; override;
     procedure Hide;
+    /// <summary>Öffnet AFileName im Editor und setzt den Cursor (0-basiert).</summary>
+    class procedure GoToLocation(const AFileName: string; ALine, ACharacter: Integer); static;
   end;
 
 implementation
 
 uses
   Winapi.Windows,
+  Winapi.ShellAPI,
+  System.IOUtils,
   Vcl.Forms,
+  Vcl.Clipbrd,
   Argus.Core.Completion.Word,
   Argus.IDE.Editor.Buffer,
   Argus.IDE.Editor.Style,
-  Argus.IDE.Settings.Store;
+  Argus.IDE.Settings.Store,
+  Argus.UI.Strings;
 
 { TArgusEditorHover.TEvents }
 
 function TArgusEditorHover.TEvents.AllowedEvents: TCodeEditorEvents;
 begin
   Result := [cevWindowEvents, cevMouseEvents, cevKeyboardEvents];
+end;
+
+{ TArgusEditorHover.THoverKeys }
+
+constructor TArgusEditorHover.THoverKeys.Create(AOwner: TArgusEditorHover);
+begin
+  inherited Create(KeyPriority);
+  FOwner := AOwner;
+end;
+
+function TArgusEditorHover.THoverKeys.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
+begin
+  Result := FOwner.WantsKey(AKey, AShift);
+end;
+
+procedure TArgusEditorHover.THoverKeys.HandleKey(AKey: Word; AShift: TShiftState);
+begin
+  FOwner.HandleKey(AKey, AShift);
 end;
 
 { TArgusEditorHover }
@@ -92,7 +158,14 @@ begin
   FSession := ASession;
   FLog := ALog;
   FIndex := -1;
+  FUsagesCount := -1;
   FTip := TArgusHoverTip.Create(nil);
+  FTip.OnLink := TipLink;
+  FTip.OnPath := TipPath;
+  FTip.OnBack := TipBack;
+  FTip.OnAction := TipAction;
+  FKeys := THoverKeys.Create(Self);
+  FHistory := TArgusHoverHistory.Create(Fetch);
   FShowTimer := TTimer.Create(nil);
   FShowTimer.Enabled := False;
   FShowTimer.Interval := 500;
@@ -123,6 +196,7 @@ begin
   // Erst abmelden, dann freigeben (#493).
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
     Services.RemoveEditorEventsNotifier(FIndex);
+  TArgusKeyHook.Remove(FKeys);
   FEvents.OnEditorMouseMove := nil;
   FEvents.OnEditorMouseDown := nil;
   FEvents.OnEditorKeyDown := nil;
@@ -133,6 +207,8 @@ begin
   FHideTimer.Free;
   FWatchTimer.Free;
   FTip.Free;
+  FHistory.Free;
+  FKeys.Free;
   inherited Destroy;
 end;
 
@@ -142,15 +218,58 @@ begin
     FLog(AMessage);
 end;
 
+function TArgusEditorHover.CurrentSession: TLspSession;
+begin
+  Result := nil;
+  if Assigned(FSession) then
+    Result := FSession();
+end;
+
+function TArgusEditorHover.Fetch(const ARef: TArgusHoverTypeRef; out AData: TArgusHoverData): Boolean;
+var
+  Session: TLspSession;
+begin
+  AData := Default(TArgusHoverData);
+  Session := CurrentSession;
+  Result := (Session <> nil) and ARef.HasLocation;
+  if Result then
+  begin
+    AData := Session.HoverDataAt(ARef.FileName, ARef.Line, ARef.Character);
+    Result := AData.Found;
+  end;
+end;
+
+function TArgusEditorHover.CurrentView: TArgusHoverView;
+begin
+  Result := TArgusHoverView.Create(FHistory.Current);
+  Result.Path := FHistory.Path;
+  Result.Pinned := FHistory.Pinned;
+  Result.CanGoBack := FHistory.CanGoBack;
+  Result.UsagesCount := FUsagesCount;
+end;
+
+procedure TArgusEditorHover.Refresh;
+begin
+  FTip.UpdateContent(CurrentView);
+end;
+
 procedure TArgusEditorHover.Hide;
 begin
   FWatchTimer.Enabled := False;
   FShowTimer.Enabled := False;
   FHideTimer.Enabled := False;
+  TArgusKeyHook.Remove(FKeys);
   FTip.HidePopup;
+  FHistory.Clear;
+  FUsagesCount := -1;
   FShownKey := '';
   FKey := '';
   FView := nil;
+end;
+
+function TArgusEditorHover.MouseOverTip: Boolean;
+begin
+  Result := FTip.IsShown and PtInRect(FTip.BoundsRect, Mouse.CursorPos);
 end;
 
 procedure TArgusEditorHover.EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
@@ -165,6 +284,9 @@ begin
   try
     if not TArgusIdeSettings.Current.Enabled or not TArgusIdeSettings.Current.HoverTooltip or
       not Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+      Exit;
+    // Angeheftet: Der Tooltip bleibt, bis Esc oder ein Klick in den Editor ihn schließt (#588).
+    if FHistory.Pinned and FTip.IsShown then
       Exit;
     State := Services.EditorState[Editor];
     Key := '';
@@ -228,32 +350,27 @@ procedure TArgusEditorHover.ShowTimerTick(Sender: TObject);
 var
   Session: TLspSession;
   Text: string;
-  Parts: TLspHoverParts;
-  Content: TArgusHoverContent;
+  Data: TArgusHoverData;
 begin
   FShowTimer.Enabled := False;
   try
     if (FView = nil) or (FKey = '') or not Application.Active then
       Exit;
-    Session := nil;
-    if Assigned(FSession) then
-      Session := FSession();
+    Session := CurrentSession;
     if Session = nil then
       Exit;
     Text := TArgusEditorBuffer.Text(FView.Buffer);
-    Parts := Session.HoverParts(FView.Buffer.FileName, Text, FLine - 1, FStart);
-    if not Parts.Found then
+    Data := Session.HoverData(FView.Buffer.FileName, Text, FLine - 1, FStart);
+    if not Data.Found then
     begin
       Hide;
       Exit;
     end;
-    Content.Declaration := Parts.Declaration;
-    Content.UnitName := Parts.UnitName;
-    Content.Documentation := Parts.Documentation;
-    Content.Value := Parts.Value;
-    Content.Deprecation := Parts.Deprecation;
+    FHistory.Start(Data);
+    FUsagesCount := -1;
     TArgusIdeStyle.Apply(FTip, FWordRect);
-    FTip.ShowContent(Content, FWordRect);
+    FTip.ShowContent(CurrentView, FWordRect);
+    TArgusKeyHook.Add(FKeys);
     FShownKey := FKey;
     FHideTimer.Enabled := False;
     FWatchTimer.Enabled := True;
@@ -275,14 +392,217 @@ end;
 procedure TArgusEditorHover.HideTimerTick(Sender: TObject);
 begin
   FHideTimer.Enabled := False;
-  // Die Maus darf in den Tooltip wandern (#442).
-  if FTip.IsShown and PtInRect(FTip.BoundsRect, Mouse.CursorPos) and Application.Active then
+  // Angeheftet bleibt der Tooltip; sonst darf die Maus in den Tooltip wandern (#442).
+  if FTip.IsShown and (FHistory.Pinned or MouseOverTip) and Application.Active then
   begin
-    FHideTimer.Enabled := True;
+    if not FHistory.Pinned then
+      FHideTimer.Enabled := True;
     Exit;
   end;
-  FTip.HidePopup;
-  FShownKey := '';
+  Hide;
+end;
+
+procedure TArgusEditorHover.TipLink(Sender: TObject; const ARef: TArgusHoverTypeRef; AControl: Boolean);
+begin
+  try
+    // Strg+Klick: wie bisher zur Deklaration im Quelltext.
+    if AControl then
+    begin
+      if ARef.HasLocation then
+      begin
+        Hide;
+        GoToLocation(ARef.FileName, ARef.Line, ARef.Character);
+      end;
+      Exit;
+    end;
+    if FHistory.Open(ARef) then
+    begin
+      FUsagesCount := -1;
+      Refresh;
+    end;
+  except
+    on E: Exception do
+      Log('Hover: ' + E.Message);
+  end;
+end;
+
+procedure TArgusEditorHover.TipPath(Sender: TObject; AIndex: Integer);
+begin
+  if FHistory.JumpTo(AIndex) then
+  begin
+    FUsagesCount := -1;
+    Refresh;
+  end;
+end;
+
+procedure TArgusEditorHover.TipBack(Sender: TObject);
+begin
+  if FHistory.Back then
+  begin
+    FUsagesCount := -1;
+    Refresh;
+  end;
+end;
+
+procedure TArgusEditorHover.TipAction(Sender: TObject; AAction: TArgusHoverAction);
+begin
+  Execute(AAction);
+end;
+
+class procedure TArgusEditorHover.GoToLocation(const AFileName: string; ALine, ACharacter: Integer);
+var
+  Actions: IOTAActionServices;
+  Modules: IOTAModuleServices;
+  Module: IOTAModule;
+  Index: Integer;
+  Editor: IOTASourceEditor;
+  View: IOTAEditView;
+  Cursor: TOTAEditPos;
+begin
+  if not Supports(BorlandIDEServices, IOTAActionServices, Actions) or not Actions.OpenFile(AFileName) or
+    not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+    Exit;
+  Module := Modules.FindModule(AFileName);
+  if Module = nil then
+    Exit;
+  for Index := 0 to Module.ModuleFileCount - 1 do
+    if Supports(Module.ModuleFileEditors[Index], IOTASourceEditor, Editor) then
+    begin
+      Editor.Show;
+      if Editor.EditViewCount = 0 then
+        Exit;
+      View := Editor.EditViews[0];
+      Cursor.Line := ALine + 1;
+      Cursor.Col := ACharacter + 1;
+      View.CursorPos := Cursor;
+      View.MoveViewToCursor;
+      View.Paint;
+      Exit;
+    end;
+end;
+
+procedure TArgusEditorHover.ShowUsages;
+var
+  Session: TLspSession;
+  Data: TArgusHoverData;
+  Locations: TArray<TLspLocation>;
+  Location: TLspLocation;
+  Messages: IOTAMessageServices;
+  Group: IOTAMessageGroup;
+  Lines: TArray<string>;
+  LastFile, Text: string;
+  LineRef: Pointer;
+begin
+  Session := CurrentSession;
+  Data := FHistory.Current;
+  if (Session = nil) or not Data.Location.HasLocation then
+    Exit;
+  Screen.Cursor := crHourGlass;
+  try
+    Locations := Session.References(Data.Location.FileName, Data.Location.Line, Data.Location.Character);
+  finally
+    Screen.Cursor := crDefault;
+  end;
+  FUsagesCount := Length(Locations);
+  Refresh;
+  // Bis es ein eigenes Ergebnisfenster gibt (#400): im Meldungsfenster, Gruppe Argus.
+  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+    Exit;
+  Group := Messages.GetGroup('Argus');
+  if Group = nil then
+    Group := Messages.AddMessageGroup('Argus');
+  Messages.ClearMessageGroup(Group);
+  Messages.AddTitleMessage(TArgusStrings.Fmt(TArgusTextId.HoverUsagesOf, [Length(Locations), Data.Title]), Group);
+  LastFile := '';
+  Lines := nil;
+  for Location in Locations do
+  begin
+    if not SameText(Location.FileName, LastFile) then
+    begin
+      LastFile := Location.FileName;
+      try
+        Lines := TFile.ReadAllLines(LastFile);
+      except
+        Lines := nil;
+      end;
+    end;
+    Text := Data.Title;
+    if (Location.Line >= 0) and (Location.Line <= High(Lines)) then
+      Text := Trim(Lines[Location.Line]);
+    Messages.AddToolMessage(Location.FileName, Text, 'Argus', Location.Line + 1, Location.Character + 1, nil,
+      LineRef, Group);
+  end;
+  Messages.ShowMessageView(Group);
+end;
+
+procedure TArgusEditorHover.Execute(AAction: TArgusHoverAction);
+var
+  Data: TArgusHoverData;
+begin
+  try
+    Data := FHistory.Current;
+    case AAction of
+      TArgusHoverAction.Navigate:
+        if Data.Location.HasLocation then
+        begin
+          Hide;
+          GoToLocation(Data.Location.FileName, Data.Location.Line, Data.Location.Character);
+        end;
+      TArgusHoverAction.Usages:
+        ShowUsages;
+      TArgusHoverAction.Copy:
+        Clipboard.AsText := Data.Declaration;
+      TArgusHoverAction.Help:
+        if Data.DocWiki <> '' then
+          ShellExecute(0, 'open', PChar(Data.DocWiki), nil, nil, SW_SHOWNORMAL);
+    end;
+  except
+    on E: Exception do
+      Log('Hover: ' + E.Message);
+  end;
+end;
+
+function TArgusEditorHover.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
+var
+  Data: TArgusHoverData;
+  ForTip: Boolean;
+begin
+  Result := False;
+  if not FTip.IsShown then
+    Exit;
+  if (AKey = VK_ESCAPE) and (AShift = []) then
+    Exit(True);
+  if FHistory.Pinned and FHistory.CanGoBack and (((AKey = VK_BACK) and (AShift = [])) or
+    ((AKey = VK_LEFT) and (AShift = [ssAlt]))) then
+    Exit(True);
+  // Kürzel der Aktionsleiste nur, wenn der Tooltip gemeint ist: angeheftet oder mit der Maus darüber.
+  ForTip := FHistory.Pinned or MouseOverTip;
+  Data := FHistory.Current;
+  if not ForTip or not Data.Location.HasLocation then
+    Exit;
+  Result := ((AKey = VK_F12) and ((AShift = []) or (AShift = [ssShift]))) or
+    ((AKey = Ord('C')) and (AShift = [ssCtrl])) or
+    ((AKey = VK_F1) and (AShift = []) and (Data.DocWiki <> ''));
+end;
+
+procedure TArgusEditorHover.HandleKey(AKey: Word; AShift: TShiftState);
+begin
+  case AKey of
+    VK_ESCAPE:
+      Hide;
+    VK_BACK, VK_LEFT:
+      TipBack(nil);
+    VK_F12:
+      if ssShift in AShift then
+        Execute(TArgusHoverAction.Usages)
+      else
+        Execute(TArgusHoverAction.Navigate);
+    VK_F1:
+      Execute(TArgusHoverAction.Help);
+  else
+    if AKey = Ord('C') then
+      Execute(TArgusHoverAction.Copy);
+  end;
 end;
 
 procedure TArgusEditorHover.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState;
@@ -294,6 +614,9 @@ end;
 procedure TArgusEditorHover.EditorKeyDown(const Editor: TWinControl; Key: Word; Shift: TShiftState;
   var Handled: Boolean);
 begin
+  // Umschalt, Strg und Alt allein schließen nicht: Strg+Klick und die Kürzel brauchen sie.
+  if (Key = VK_SHIFT) or (Key = VK_CONTROL) or (Key = VK_MENU) then
+    Exit;
   Hide;
 end;
 

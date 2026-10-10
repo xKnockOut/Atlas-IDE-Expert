@@ -129,6 +129,20 @@ Schreibweise: `|` steht für die Cursorposition.
 | H6 | Optionen › Argus › „Eigener Tooltip …“ aus | Wieder der Tooltip der IDE |
 | H7 | Bei offenem Tooltip mit Alt+Tab in ein anderes Programm wechseln (#414) | Tooltip verschwindet nach spätestens 0,25 s und bleibt nicht über dem anderen Programm stehen |
 
+## Hover-Navigation (#588)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HN1 | Über `TGalleryFrameClass` in `TGalleryFrameClass = class of TBFrame;` verweilen | Kurzform ohne Pfadzeile; Kopfzeile „Klassenreferenz“, rechts Datei : Zeile; `TBFrame` unterstrichen; Abschnitt „Zieltyp TBFrame“ mit der Kette von TBFrame |
+| HN2 | Auf `TBFrame` klicken | Deklaration und Kette von TBFrame, Pfad „TGalleryFrameClass › TBFrame“, „angeheftet“; Maus aus dem Tooltip bewegen: er bleibt offen |
+| HN3 | In der Kette auf `TFrame` klicken, dann Rücktaste (bzw. Alt+←) | Wieder TBFrame; der Zurück-Pfeil führt ebenso zurück |
+| HN4 | Elfmal auf verschiedene Typen klicken | Pfad beginnt mit „…“, zehn Schritte bleiben |
+| HN5 | Esc; dann erneut verweilen | Tooltip schließt; beim nächsten Verweilen wieder die Kurzform |
+| HN6 | Angeheftet F12, Umschalt+F12, Strg+C, F1 | Wirken auf den angezeigten Typ: Sprung zu dessen Deklaration; Verwendungen im Meldungsfenster (Gruppe Argus) und „Verwendungen (n)“; Deklaration in der Zwischenablage; DocWiki bei RTL/VCL-Typen |
+| HN7 | Inhalt mehrmals wechseln | Position bleibt, das Fenster wird höchstens größer |
+| HN8 | Strg+Klick auf einen Typ im Tooltip | Sprung zur Deklaration, Tooltip schließt |
+| HN9 | Strg drücken, während der Tooltip offen ist | Tooltip bleibt offen (nur Umschalt, Strg, Alt allein) |
+
 ## Methoden überschreiben (#443)
 
 | Nr. | Schritte | Erwartet |

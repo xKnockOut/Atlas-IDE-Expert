@@ -98,6 +98,8 @@
         <DCCReference Include="Source\Core\Completion\Argus.Core.Completion.Matching.pas"/>
         <DCCReference Include="Source\Core\Completion\Argus.Core.Completion.Controller.pas"/>
         <DCCReference Include="Source\Core\Signature\Argus.Core.Signature.Contract.pas"/>
+        <DCCReference Include="Source\Core\Hover\Argus.Core.Hover.Contract.pas"/>
+        <DCCReference Include="Source\Core\Hover\Argus.Core.Hover.History.pas"/>
         <DCCReference Include="Source\Core\Signature\Argus.Core.Signature.CallScanner.pas"/>
         <DCCReference Include="Source\Core\Signature\Argus.Core.Signature.Controller.pas"/>
         <DCCReference Include="Source\Core\Signature\Argus.Core.Signature.Providers.Server.pas"/>

@@ -51,6 +51,8 @@ contains
   Argus.Core.Completion.Matching in 'Source\Core\Completion\Argus.Core.Completion.Matching.pas',
   Argus.Core.Completion.Controller in 'Source\Core\Completion\Argus.Core.Completion.Controller.pas',
   Argus.Core.Signature.Contract in 'Source\Core\Signature\Argus.Core.Signature.Contract.pas',
+  Argus.Core.Hover.Contract in 'Source\Core\Hover\Argus.Core.Hover.Contract.pas',
+  Argus.Core.Hover.History in 'Source\Core\Hover\Argus.Core.Hover.History.pas',
   Argus.Core.Signature.CallScanner in 'Source\Core\Signature\Argus.Core.Signature.CallScanner.pas',
   Argus.Core.Signature.Controller in 'Source\Core\Signature\Argus.Core.Signature.Controller.pas',
   Argus.Core.Signature.Providers.Server in 'Source\Core\Signature\Argus.Core.Signature.Providers.Server.pas',

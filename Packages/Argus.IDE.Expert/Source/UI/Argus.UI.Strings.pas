@@ -18,7 +18,9 @@ type
     TagFrequent, SettingsTitle, SettingsEnabled, SettingsRows, SettingsPanelCollapsed, SettingsParentheses,
     SettingsChips, SettingsLearning, SettingsGroupInherited, SettingsPreview, SettingsHover, SettingsResetHistory,
     SettingsResetWidths, FitsType, OtherGroup, CountFits, CompileCancelled, SettingsHangThreshold, SettingsHangHint, HangHint, SettingsHangTest, SettingsReload, ReloadDone, ReloadKeptModified, ReloadDeleted, PaletteLog, PaletteResetHistory, SettingsPairs, SettingsCheckOnSave,
-    SettingsCheckDelay, SettingsCheckMax, CheckOnSaveDisabled, PaletteCheckNow);
+    SettingsCheckDelay, SettingsCheckMax, CheckOnSaveDisabled, PaletteCheckNow,
+    HoverInheritance, HoverTargetType, HoverPinned, HoverGoTo, HoverUsages, HoverUsagesCount, HoverCopy, HoverHelp, HoverUsagesOf,
+    KindClass, KindClassRef, KindObject, KindRecord, KindInterface, KindHelper, KindEnum, KindType, KindMethod, KindConstructor, KindRoutine, KindProperty, KindField, KindVariable, KindConstant, KindEnumMember, HoverKeyUsages, HoverKeyCopy);
 
   TArgusStrings = class
   private class var
@@ -55,7 +57,9 @@ const
      'Klammern und Blockpaare (begin/end …) nach Tiefe färben', 'Compiler prüft nach dem Speichern (Syntaxprüfung)',
      'Wartezeit nach dem Speichern (ms):', 'Höchstdauer der Prüfung (ms):',
      'Argus: Compilerprüfung nach dem Speichern für %s abgeschaltet (%d ms > %d ms); Strg+Alt+F9 prüft von Hand.',
-     'Compiler prüfen (Syntaxprüfung)'),
+     'Compiler prüfen (Syntaxprüfung)',
+     'Vererbung', 'Zieltyp %s', 'angeheftet', 'Gehe zu %s', 'Verwendungen', 'Verwendungen (%d)', 'Deklaration kopieren', 'Hilfe', 'Argus: %d Verwendungen von %s',
+     'Klasse', 'Klassenreferenz', 'Objekttyp', 'Record', 'Interface', 'Helfer', 'Aufzählung', 'Typ', 'Methode', 'Konstruktor', 'Routine', 'Property', 'Feld', 'Variable', 'Konstante', 'Aufzählungswert', 'Umschalt+F12', 'Strg+C'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -73,7 +77,9 @@ const
      'Colour brackets and block pairs (begin/end …) by depth', 'Compiler checks after saving (syntax check)',
      'Delay after saving (ms):', 'Maximum check duration (ms):',
      'Argus: compiler check after saving switched off for %s (%d ms > %d ms); Ctrl+Alt+F9 checks manually.',
-     'Check with compiler (syntax check)'));
+     'Check with compiler (syntax check)',
+     'Inheritance', 'Target type %s', 'pinned', 'Go to %s', 'Usages', 'Usages (%d)', 'Copy declaration', 'Help', 'Argus: %d usages of %s',
+     'Class', 'Class reference', 'Object type', 'Record', 'Interface', 'Helper', 'Enumeration', 'Type', 'Method', 'Constructor', 'Routine', 'Property', 'Field', 'Variable', 'Constant', 'Enumeration value', 'Shift+F12', 'Ctrl+C'));
 
 { TArgusStrings }
 

@@ -13,7 +13,8 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Argus.Core.Lsp.Client;
+  Argus.Core.Lsp.Client,
+  Argus.Core.Hover.Contract;
 
 type
   TLspLocation = record
@@ -64,6 +65,12 @@ type
     function Hover(const AFileName, AText: string; ALine, ACharacter: Integer): string;
     /// <summary>Hover in Teilen (#442).</summary>
     function HoverParts(const AFileName, AText: string; ALine, ACharacter: Integer): TLspHoverParts;
+    /// <summary>Hover mit allen Teilen für den Tooltip (#588): Art, Fundort, Links, Vererbungskette.</summary>
+    function HoverData(const AFileName, AText: string; ALine, ACharacter: Integer): TArgusHoverData;
+    /// <summary>Hover an einem Fundort ohne Abgleich: Der Server liest nicht geöffnete Dateien selbst (#588).</summary>
+    function HoverDataAt(const AFileName: string; ALine, ACharacter: Integer): TArgusHoverData;
+    /// <summary>Verwendungen des Symbols am Fundort ohne die Deklaration (textDocument/references).</summary>
+    function References(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspLocation>;
     function Definition(const AFileName, AText: string; ALine, ACharacter: Integer;
       out ALocation: TLspLocation): Boolean;
     /// <summary>
@@ -319,6 +326,54 @@ begin
   Response := FClient.Request('textDocument/hover', PositionParams(AFileName, ALine, ACharacter), FTimeoutMs);
   try
     Result := TLspHoverParts.FromHover(Response);
+  finally
+    Response.Free;
+  end;
+end;
+
+function TLspSession.HoverData(const AFileName, AText: string; ALine, ACharacter: Integer): TArgusHoverData;
+begin
+  Sync(AFileName, AText);
+  Result := HoverDataAt(AFileName, ALine, ACharacter);
+end;
+
+function TLspSession.HoverDataAt(const AFileName: string; ALine, ACharacter: Integer): TArgusHoverData;
+var
+  Response: TJSONValue;
+begin
+  Response := FClient.Request('textDocument/hover', PositionParams(AFileName, ALine, ACharacter), FTimeoutMs);
+  try
+    Result := TArgusHoverData.FromHover(Response);
+  finally
+    Response.Free;
+  end;
+end;
+
+function TLspSession.References(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspLocation>;
+var
+  Params: TJSONObject;
+  Context: TJSONObject;
+  Response, Item: TJSONValue;
+  Location: TLspLocation;
+begin
+  Result := nil;
+  Params := PositionParams(AFileName, ALine, ACharacter);
+  Context := TJSONObject.Create;
+  Context.AddPair('includeDeclaration', TJSONBool.Create(False));
+  Params.AddPair('context', Context);
+  // Die Suche geht über das ganze Projekt; dafür mehr Zeit als für einen Hover.
+  Response := FClient.Request('textDocument/references', Params, FTimeoutMs * 10);
+  try
+    if Response is TJSONArray then
+      for Item in TJSONArray(Response) do
+        if Item is TJSONObject then
+        begin
+          Location.FileName := UriToPath(TJSONObject(Item).GetValue<string>('uri', ''));
+          Location.Line := TJSONObject(Item).GetValue<Integer>('range.start.line', 0);
+          Location.Character := TJSONObject(Item).GetValue<Integer>('range.start.character', 0);
+          if Location.FileName <> '' then
+            Result := Result + [Location];
+        end;
   finally
     Response.Free;
   end;
