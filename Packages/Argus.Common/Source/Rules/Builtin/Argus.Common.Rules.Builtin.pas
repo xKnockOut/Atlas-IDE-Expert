@@ -29,6 +29,7 @@ uses
   Argus.Common.Rules.Builtin.RtlPatterns,
   Argus.Common.Rules.Builtin.RtlTypePatterns,
   Argus.Common.Rules.Builtin.Exceptions,
+  Argus.Common.Rules.Builtin.Style,
   Argus.Common.Rules.Builtin.Performance,
   Argus.Common.Rules.Builtin.DataBinding,
   Argus.Common.Rules.Builtin.SlashCommands;
@@ -54,6 +55,7 @@ begin
     RegisterRtlPatternRules(Registry);
     RegisterRtlTypePatternRules(Registry);
     RegisterExceptionRules(Registry);
+    RegisterStyleRules(Registry);
     RegisterPerformanceRules(Registry);
     RegisterDataBindingRules(Registry);
     RegisterSlashCommandRules(Registry);
