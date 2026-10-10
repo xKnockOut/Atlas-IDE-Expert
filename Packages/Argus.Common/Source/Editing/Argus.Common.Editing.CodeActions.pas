@@ -10,6 +10,7 @@
 //     Fehlerfall freigibt (das Objekt wird ja zurückgegeben)
 //   - uses-Aktionen (#284): fehlende Unit ergänzen, ungenutzte entfernen,
 //     ins implementation verschieben (Logik in Editing.UsesActions)
+//   - Zuweisungen umkehren (#313, Logik in Editing.AssignmentSwap)
 
 interface
 
@@ -18,7 +19,8 @@ uses
   Argus.Common.Documents.Contract,
   Argus.Common.Pascal.SyntaxTree,
   Argus.Common.Rules.Contract,
-  Argus.Common.Editing.UsesActions;
+  Argus.Common.Editing.UsesActions,
+  Argus.Common.Editing.AssignmentSwap;
 
 const
   QuickFixKind = 'quickfix';
@@ -67,6 +69,9 @@ type
     /// "ungenutzte uses entfernen" (source.removeUnusedImports).</summary>
     class function UsesActions(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange;
       const AContext: TUsesContext; AEditing, ARemoveUnused: Boolean): TArray<TCodeAction>; static;
+    /// <summary>"Zuweisungen umkehren" für die Zeilen von ARange (#313); False, wenn keine passt.</summary>
+    class function SwapAssignments(const AText: string; const ARange: TTextRange; const AReadOnly: TReadOnlyCheck;
+      out AAction: TCodeAction): Boolean; static;
     /// <summary>True, wenn AKind unter einer der angefragten Arten liegt (LSP "only"); leeres AOnly = alle.</summary>
     class function KindRequested(const AKind: string; const AOnly: TArray<string>): Boolean; static;
   end;
@@ -377,6 +382,18 @@ begin
     if SameText(AKind, Only) or StartsText(Only + '.', AKind) then
       Exit(True);
   Result := False;
+end;
+
+class function TCodeActions.SwapAssignments(const AText: string; const ARange: TTextRange;
+  const AReadOnly: TReadOnlyCheck; out AAction: TCodeAction): Boolean;
+begin
+  AAction := Default(TCodeAction);
+  Result := TAssignmentSwap.Swap(AText, ARange, AReadOnly, AAction.Edits);
+  if Result then
+  begin
+    AAction.Title := 'Zuweisungen umkehren';
+    AAction.Kind := RewriteKind;
+  end;
 end;
 
 class function TCodeActions.ForRange(const AFindings: TArray<TRuleFinding>; const AText: string;

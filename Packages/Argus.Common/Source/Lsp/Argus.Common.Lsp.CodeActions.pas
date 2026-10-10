@@ -70,7 +70,9 @@ uses
   Argus.Common.Pascal.TreeCache,
   Argus.Common.Editing.ClassCompletion,
   Argus.Common.Documents.Uris,
-  Argus.Common.Dfm.Parser;
+  Argus.Common.Dfm.Parser,
+  Argus.Common.Index.Contract,
+  Argus.Common.Editing.AssignmentSwap;
 
 { TLspCodeActions }
 
@@ -150,6 +152,23 @@ begin
   Result.AddPair('edit', WorkspaceEdit);
 end;
 
+/// <summary>Schreibzugriff über den Index prüfen (#313); ohne Index nil.</summary>
+function ReadOnlyCheck(AHasRules: Boolean; const ARules: TRuleCheckContext; const AUri, AText: string): TReadOnlyCheck;
+var
+  Index: ISymbolIndex;
+  FileName: string;
+begin
+  if not AHasRules or (ARules.Index = nil) then
+    Exit(nil);
+  Index := ARules.Index;
+  FileName := TDocumentUris.ToPath(AUri);
+  Result :=
+    function(const AExpression: string): Boolean
+    begin
+      Result := TAssignmentSwap.ReadOnlyByIndex(Index, FileName, AText, AExpression);
+    end;
+end;
+
 function TLspCodeActions.HandleCodeAction(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
@@ -163,7 +182,7 @@ var
   Context: TRuleContext;
   Findings: TArray<TRuleFinding>;
   Action, Completion: TCodeAction;
-  HasCompletion, WantsEditing, WantsOrganize, WantsFixAll, WantsRemoveUnused: Boolean;
+  HasRules, HasCompletion, WantsEditing, WantsOrganize, WantsFixAll, WantsRemoveUnused: Boolean;
   UsesContext: TUsesContext;
   UsesActions: TArray<TCodeAction>;
   Only: TArray<string>;
@@ -195,10 +214,13 @@ begin
   WantsFixAll := (Only <> nil) and TCodeActions.KindRequested(FixAllKind, Only);
   WantsRemoveUnused := (Only <> nil) and TCodeActions.KindRequested(RemoveUnusedKind, Only);
   Findings := nil;
+  HasRules := False;
   Shared := TSyntaxTreeCache.Get(Document);
   Tree := Shared.Tree;
   ACancellation.ThrowIfCancellationRequested;
-  if Assigned(FRuleProvider) and FRuleProvider(Uri, Rules) and (Length(Rules.Rules) > 0) then
+  if Assigned(FRuleProvider) and FRuleProvider(Uri, Rules) then
+    HasRules := True;
+  if HasRules and (Length(Rules.Rules) > 0) then
   begin
     Context := Default(TRuleContext);
     Context.RelativePath := Rules.RelativePath;
@@ -222,6 +244,9 @@ begin
       TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
   if HasCompletion then
     TJSONArray(Result).AddElement(ActionToJson(Uri, Completion));
+  if WantsEditing and TCodeActions.SwapAssignments(Document.Text, Range, ReadOnlyCheck(HasRules, Rules, Uri,
+    Document.Text), Action) then
+    TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
   for Action in UsesActions do
     TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
   if WantsOrganize and TCodeActions.OrganizeImports(Document.Text, Assigned(FSortUsesFor) and FSortUsesFor(Uri),

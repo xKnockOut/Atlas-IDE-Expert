@@ -45,6 +45,8 @@ type
     procedure UsedSuppressionNotReported;
     [Test]
     procedure SuppressionForUnknownRuleNotReported;
+    [Test]
+    procedure SwapAssignmentsIsRewrite;
   end;
 
 implementation
@@ -302,6 +304,16 @@ procedure TCodeActionTests.SuppressionForUnknownRuleNotReported;
 begin
   TRuleAssert.Silent(TMarkerRule.Create,
     'unit U; interface implementation' + LB + 'var X: Integer; // lsp-ignore: other-rule' + LB + 'end.');
+end;
+
+procedure TCodeActionTests.SwapAssignmentsIsRewrite;
+var
+  Action: TCodeAction;
+begin
+  Assert.IsTrue(TCodeActions.SwapAssignments('  A := B;', TTextRange.Create(0, 0, 0, 0), nil, Action));
+  Assert.AreEqual(RewriteKind, Action.Kind);
+  Assert.AreEqual('  B := A;', Action.Edits[0].NewText);
+  Assert.IsFalse(TCodeActions.SwapAssignments('  A := F(B);', TTextRange.Create(0, 0, 0, 0), nil, Action));
 end;
 
 initialization

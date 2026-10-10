@@ -214,6 +214,7 @@
         <DCCReference Include="Source\Editing\Argus.Common.Editing.Formatter.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.QualifiedNames.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.WinApiDocs.pas"/>
+        <DCCReference Include="Source\Editing\Argus.Common.Editing.AssignmentSwap.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.CodeActions.pas"/>
         <DCCReference Include="Source\Semantics\Argus.Common.Semantics.ControlFlow.pas"/>
         <DCCReference Include="Source\Semantics\Argus.Common.Semantics.NameResolver.pas"/>
