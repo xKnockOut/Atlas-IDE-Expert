@@ -131,6 +131,8 @@ begin
     Result.Depth := Data.GetValue<Integer>('depth', 0);
     Result.IsHelper := Data.GetValue('helper') is TJSONTrue;
     Result.HasParameters := Data.GetValue('parameters') is TJSONTrue;
+    Result.Group := Data.GetValue<string>('group', '');
+    Result.IsAction := Data.GetValue<string>('action', '') = 'create';
     Overloads := Data.GetValue('overloads');
     if Overloads is TJSONArray then
       for Value in TJSONArray(Overloads) do
@@ -156,8 +158,10 @@ begin
       if (Value is TJSONObject) and EditFromLsp(TJSONObject(Value), Edit) then
         Result.AdditionalEdits := Result.AdditionalEdits + [Edit];
   // Bis #405 "Unit eingebunden" liefert: Ein Eintrag mit uses-Ergänzung (#180) kommt aus
-  // einer noch nicht eingebundenen Unit.
-  Result.UnitUsed := Length(Result.AdditionalEdits) = 0;
+  // einer noch nicht eingebundenen Unit. Einträge mit data.action (override, neue Methode;
+  // #443, #444) ergänzen Code statt uses.
+  Result.UnitUsed := (Length(Result.AdditionalEdits) = 0) or
+    ((AItem.GetValue('data') is TJSONObject) and (TJSONObject(AItem.GetValue('data')).GetValue('action') <> nil));
 end;
 
 class function TArgusServerCompletionProvider.ItemsFromLsp(AResponse: TJSONValue): TArgusCompletionItems;

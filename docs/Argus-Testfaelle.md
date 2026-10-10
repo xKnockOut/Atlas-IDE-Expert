@@ -138,6 +138,20 @@ Schreibweise: `|` steht für die Cursorposition.
 | O3 | `function ` tippen, `Get` übernehmen | `function Get(Index: Integer): string; override;`, Rumpf mit `Result := inherited Get(Index);` |
 | O4 | Abstrakte Methode des Vorfahren übernehmen | Rumpf ohne `inherited` |
 | O5 | Bereits überschriebene Methode | Erscheint nicht noch einmal in der Liste |
+| O6 | Liste aus O1 ansehen | Kein „+Unit“-Tag an den Einträgen |
+
+## Ereignis-Zuweisung (#444)
+
+Vorbereitung: Formular mit Button `btnSave` und den Methoden `FormCreate(Sender: TObject)` und `FormCloseQuery(Sender: TObject; var CanClose: Boolean)`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| V1 | In `FormCreate` `btnSave.OnClick := ` tippen, Strg+Leer | Überschrift „Passt zu TNotifyEvent“, darunter nur Methoden mit `(Sender: TObject)` (also `FormCreate`, nicht `FormCloseQuery`); zuletzt „Neue Methode btnSaveClick …“ in Akzentfarbe |
+| V2 | Vorhandene Methode übernehmen | `btnSave.OnClick := FormCreate` – ohne Klammern |
+| V3 | „Neue Methode btnSaveClick …“ übernehmen | Zuweisung `btnSave.OnClick := btnSaveClick`; im `private`-Abschnitt `procedure btnSaveClick(Sender: TObject);`; hinter der aktuellen Methode ein leerer Rumpf `procedure TForm1.btnSaveClick(Sender: TObject); begin end;`; ein Rückgängig nimmt alles zurück |
+| V4 | V3 wiederholen (Name ist jetzt vergeben) | Vorschlag „Neue Methode btnSaveClick2 …“ |
+| V5 | `btnSave.OnClick := Fo` | Gefiltert auf `FormCreate`; „Neue Methode …“ bleibt sichtbar |
+| V6 | `X := ` mit einer Integer-Variablen | Normale Vervollständigung, keine Überschrift |
 
 ## Monitor und Zoom (#412, #445)
 

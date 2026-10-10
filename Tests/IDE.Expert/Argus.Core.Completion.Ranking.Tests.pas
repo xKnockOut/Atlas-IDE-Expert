@@ -19,6 +19,8 @@ type
     procedure BoostReordersButNeverBeatsBetterMatch;
     [Test]
     procedure ChipsFilterAndCount;
+    [Test]
+    procedure ServerGroupHeaderAndActionLast;
   end;
 
   [TestFixture]
@@ -223,6 +225,22 @@ begin
   Assert.AreEqual(1, TArgusRanking.ChipCounts(Items, 'cou')[TArgusChip.Properties]);
 end;
 
+procedure TArgusRankingTests.ServerGroupHeaderAndActionLast;
+var
+  Options: TArgusRankOptions;
+  Items: TArgusCompletionItems;
+begin
+  // Ereignis-Zuweisung (#444): Überschrift „Passt zu …“, die neue Methode immer zuletzt und immer sichtbar.
+  Items := [Member('Neue Methode btnSaveClick …', '', 0, 0), Member('FormCreate', 'TForm1', 0, 1),
+    Member('Klick', 'TBasis', 1, 2)];
+  Items[0].IsAction := True;
+  Items[1].Group := 'Passt zu TNotifyEvent';
+  Items[2].Group := 'Passt zu TNotifyEvent';
+  Options := TArgusRankOptions.Defaults;
+  Options.GroupInherited := True;
+  Assert.AreEqual('#,FormCreate,Klick,Neue Methode btnSaveClick …', Names(Items, TArgusRanking.Order(Items, '', Options)));
+  Assert.AreEqual('#,Klick,Neue Methode btnSaveClick …', Names(Items, TArgusRanking.Order(Items, 'Kl', Options)));
+end;
 { TArgusUsageTests }
 
 procedure TArgusUsageTests.RecordsBoostAndMarks;

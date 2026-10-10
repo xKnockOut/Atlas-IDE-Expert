@@ -53,6 +53,8 @@ type
     procedure MembersCarryContainerDepthAndOverloads;
     [Test]
     procedure OffersOverridesWithDeclarationAndBody;
+    [Test]
+    procedure OffersMatchingHandlersAndNewMethodForEvents;
   end;
 
 implementation
@@ -65,7 +67,8 @@ uses
   Argus.Common.Pascal.SyntaxTree,
   Argus.Common.Pascal.Parser,
   Argus.Common.Index.SymbolIndex,
-  Argus.Common.Index.Extractor;
+  Argus.Common.Index.Extractor,
+  Argus.Common.Rules.Contract;
 
 const
   HauptFile = 'C:\P\Haupt.pas';
@@ -442,6 +445,89 @@ begin
     Assert.IsFalse(Body.Contains('inherited'), Body);
     // Außerhalb einer Klassendeklaration kein Override-Kontext.
     Assert.IsFalse(TLspCompletion.OverrideItems(Resolver, Tree, Text, HauptFile, PositionOf(Text, 'uses Ba'), nil, Items));
+  finally
+    Resolver.Free;
+    Tree.Free;
+  end;
+end;
+
+procedure TLspCompletionTests.OffersMatchingHandlersAndNewMethodForEvents;
+const
+  UnitBasis =
+    'unit Basis;'#13#10 +
+    'interface'#13#10 +
+    'type'#13#10 +
+    '  TNotifyEvent = procedure(Sender: TObject) of object;'#13#10 +
+    '  TButton = class'#13#10 +
+    '  published'#13#10 +
+    '    property OnClick: TNotifyEvent read FOnClick write FOnClick;'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'end.';
+  Text =
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'uses Basis;'#13#10 +
+    'type'#13#10 +
+    '  TForm1 = class'#13#10 +
+    '    btnSave: TButton;'#13#10 +
+    '    procedure FormCreate(Sender: TObject);'#13#10 +
+    '    procedure Fertig(Sender: TObject; var Done: Boolean);'#13#10 +
+    '    procedure btnSaveClick(Sender: TObject);'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'procedure TForm1.FormCreate(Sender: TObject);'#13#10 +
+    'begin'#13#10 +
+    '  btnSave.OnClick := '#13#10 +
+    'end;'#13#10 +
+    'procedure TForm1.Fertig(Sender: TObject; var Done: Boolean);'#13#10 +
+    'begin'#13#10 +
+    'end;'#13#10 +
+    'procedure TForm1.btnSaveClick(Sender: TObject);'#13#10 +
+    'begin'#13#10 +
+    'end;'#13#10 +
+    'end.';
+var
+  Tree: TSyntaxTree;
+  Resolver: TNameResolver;
+  Items: TCompletionItems;
+  Item: TCompletionItem;
+  Handlers, Edits: string;
+  Edit: TRuleEdit;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBasis, 'C:\P\Basis.pas', nil));
+  Tree := TPascalParser.Parse(Text);
+  Resolver := TNameResolver.Create(FIndex);
+  try
+    Assert.IsTrue(TLspCompletion.EventItems(Resolver, Tree, Text, HauptFile, PositionOf(Text, 'btnSave.OnClick := '),
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        AText := UnitBasis;
+        Result := SameText(AFileName, 'C:\P\Basis.pas');
+      end, Items));
+    // Nur Methoden mit (Sender: TObject); Fertig hat zwei Parameter.
+    Handlers := '';
+    for Item in Items.Items do
+      if Item.Action = '' then
+      begin
+        Handlers := Handlers + ' ' + Item.Name;
+        Assert.AreEqual('Passt zu TNotifyEvent', Item.Group);
+      end;
+    Assert.AreEqual(' FormCreate btnSaveClick', Handlers);
+    // Zuletzt die neue Methode; btnSaveClick ist vergeben.
+    Item := Items.Items[High(Items.Items)];
+    Assert.AreEqual('create', Item.Action);
+    Assert.AreEqual('Neue Methode btnSaveClick2 …', Item.Name);
+    Assert.AreEqual('btnSaveClick2', Item.InsertText);
+    Edits := '';
+    for Edit in Item.AdditionalEdits do
+      Edits := Edits + Edit.NewText + '|';
+    Assert.AreEqual(2, Integer(Length(Item.AdditionalEdits)), Edits);
+    Assert.IsTrue(Edits.Contains('private'#13#10'    procedure btnSaveClick2(Sender: TObject);'), Edits);
+    Assert.IsTrue(Edits.Contains('procedure TForm1.btnSaveClick2(Sender: TObject);'#13#10'begin'#13#10#13#10'end;'),
+      Edits);
+    // Keine Ereignis-Zuweisung: normale Vervollständigung.
+    Assert.IsFalse(TLspCompletion.EventItems(Resolver, Tree, Text, HauptFile, PositionOf(Text, 'uses Ba'), nil, Items));
   finally
     Resolver.Free;
     Tree.Free;

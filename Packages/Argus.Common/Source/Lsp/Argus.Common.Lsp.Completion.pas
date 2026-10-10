@@ -65,6 +65,11 @@ type
     HasParameters: Boolean;
     /// <summary>Text beim Übernehmen statt des Namens; ''.</summary>
     InsertText: string;
+    /// <summary>Überschrift der Gruppe in Argus, z. B. "Passt zu TNotifyEvent" (#444); ''.</summary>
+    Group: string;
+    /// <summary>Eintrag erzeugt Code statt nur einen Namen: 'override' (#443), 'create' (neue Methode, #444);
+    /// Argus wertet AdditionalEdits dann nicht als uses-Ergänzung.</summary>
+    Action: string;
   end;
 
   TCompletionReadText = reference to function(const AFileName: string; out AText: string): Boolean;
@@ -110,6 +115,12 @@ type
     /// Methoden der Vorfahren; Übernehmen setzt den Rest der Deklaration mit override und erzeugt den Rumpf
     /// mit inherited. False außerhalb dieses Kontexts.</summary>
     class function OverrideItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
+      const APosition: TTextPosition; const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean;
+      static;
+    /// <summary>Nach "Objekt.Ereignis := " (#444): Methoden der umgebenden Klasse, deren Parameter zum
+    /// Methodenzeigertyp des Ereignisses passen, zuletzt "Neue Methode …" mit Deklaration im private-Abschnitt
+    /// und leerem Rumpf. False außerhalb dieses Kontexts.</summary>
+    class function EventItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
       const APosition: TTextPosition; const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean;
       static;
     class function KindOf(AKind: TIndexSymbolKind): Integer; static;
@@ -632,12 +643,20 @@ begin
     end;
     // Reihenfolge wie geliefert: beste Punktzahl, dann nächster Gültigkeitsbereich.
     Entry.AddPair('sortText', Format('%.5d', [Index]));
-    if AItems.Items[Index].SourceFile <> '' then
+    if (AItems.Items[Index].SourceFile <> '') or (AItems.Items[Index].Group <> '') or
+      (AItems.Items[Index].Action <> '') then
     begin
       Data := TJSONObject.Create;
-      Data.AddPair('file', AItems.Items[Index].SourceFile);
-      Data.AddPair('line', TJSONNumber.Create(AItems.Items[Index].SourcePosition.Line));
-      Data.AddPair('character', TJSONNumber.Create(AItems.Items[Index].SourcePosition.Character));
+      if AItems.Items[Index].SourceFile <> '' then
+      begin
+        Data.AddPair('file', AItems.Items[Index].SourceFile);
+        Data.AddPair('line', TJSONNumber.Create(AItems.Items[Index].SourcePosition.Line));
+        Data.AddPair('character', TJSONNumber.Create(AItems.Items[Index].SourcePosition.Character));
+      end;
+      if AItems.Items[Index].Group <> '' then
+        Data.AddPair('group', AItems.Items[Index].Group);
+      if AItems.Items[Index].Action <> '' then
+        Data.AddPair('action', AItems.Items[Index].Action);
       // Für die Argus-Oberfläche: Herkunft, Vererbungstiefe, Helper, Überladungen (#419, #425, #456).
       if AItems.Items[Index].Container <> '' then
         Data.AddPair('container', AItems.Items[Index].Container);
@@ -670,7 +689,7 @@ var
   Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Matching: TCompletionMatching;
-  Directives, Overrides: TCompletionItems;
+  Directives, Overrides, Events: TCompletionItems;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
@@ -691,6 +710,10 @@ begin
     if OverrideItems(Resolver, Tree, Document.Text, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
       FReadText, Overrides) then
       Exit(ToJson(Overrides));
+    // Ereignis-Zuweisung (#444).
+    if EventItems(Resolver, Tree, Document.Text, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
+      FReadText, Events) then
+      Exit(ToJson(Events));
     if Assigned(FMatchingFor) then
       Matching := FMatchingFor(Uri)
     else
@@ -1075,6 +1098,7 @@ begin
     Item.Kind := KindMethod;
     Item.Detail := Declaration;
     Item.InsertText := Insert;
+    Item.Action := 'override';
     Item.Container := Candidate.Container;
     Item.Depth := Candidate.Depth;
     Item.SourceFile := Candidate.FileName;
@@ -1083,6 +1107,183 @@ begin
       Item.AdditionalEdits := [Edit];
     AItems.Items := AItems.Items + [Item];
   end;
+end;
+
+/// <summary>Typen der Parameter aus "const A, B: T; var C: U; D" in Reihenfolge; untypisiert ''.</summary>
+function EventParamTypes(const AParams: string): TArray<string>;
+var
+  Group, Names, TypeText: string;
+  Count, Index: Integer;
+begin
+  Result := nil;
+  for Group in AParams.Split([';']) do
+  begin
+    if Trim(Group) = '' then
+      Continue;
+    Names := Group;
+    TypeText := '';
+    if Pos(':', Group) > 0 then
+    begin
+      Names := Copy(Group, 1, Pos(':', Group) - 1);
+      TypeText := Copy(Group, Pos(':', Group) + 1, MaxInt);
+      if Pos('=', TypeText) > 0 then
+        TypeText := Copy(TypeText, 1, Pos('=', TypeText) - 1);
+    end;
+    Count := Length(Names.Split([',']));
+    for Index := 1 to Count do
+      Result := Result + [Trim(TypeText)];
+  end;
+end;
+
+/// <summary>Typname für den Vergleich: ohne Leerzeichen und Unit-Präfix, klein.</summary>
+function PlainType(const AType: string): string;
+begin
+  Result := LowerCase(AType.Replace(' ', ''));
+  if (Pos('<', Result) = 0) and (LastDelimiter('.', Result) > 0) then
+    Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
+end;
+
+class function TLspCompletion.EventItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
+  const APosition: TTextPosition; const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean;
+var
+  Match, TypeMatch: TMatch;
+  Names, TypeNames: TArray<string>;
+  Offset, Index, Number: Integer;
+  Event, EventType, Candidate: TResolvedSymbol;
+  Source, Declaration, Kind, Params, ResultType, Base, Name, Header, Body, LB, TypeName, Prefix: string;
+  ParamTypes: TArray<string>;
+  UnitIndex: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Taken: TDictionary<string, Boolean>;
+  Item: TCompletionItem;
+  Method: TUnmatchedMethod;
+  Edit: TRuleEdit;
+  Fits: Boolean;
+begin
+  AItems := Default(TCompletionItems);
+  Result := False;
+  // "btnSave.OnClick := btn|", "OnClick := |"; nicht "A.B := " in Ausdrücken mit "=" davor.
+  Match := TRegEx.Match(LineBefore(AText, APosition), '(?:^|[^\w.&])((?:&?\w+\.)*)&?(\w+)\s*:=\s*(\w*)$');
+  if not Match.Success then
+    Exit;
+  Prefix := Match.Groups[3].Value;
+  Names := nil;
+  for Name in Match.Groups[1].Value.Split(['.']) do
+    if Name <> '' then
+      Names := Names + [CleanName(Name)];
+  Names := Names + [Match.Groups[2].Value];
+  Offset := Analyze(ATree, APosition).Offset;
+  Event := AResolver.ResolveChain(ATree, AFileName, Names, Offset);
+  if not Event.Found or not (Event.SymbolKind in [TIndexSymbolKind.Property_, TIndexSymbolKind.Field,
+    TIndexSymbolKind.Variable]) or (Event.TypeName = '') then
+    Exit;
+  // Methodenzeigertyp auflösen: wie im Quelltext, sonst über die Unit der Eigenschaft.
+  TypeNames := Event.TypeName.Split(['.']);
+  EventType := AResolver.ResolveChain(ATree, AFileName, TypeNames, Offset);
+  if not EventType.Found and (Event.UnitName <> '') then
+    EventType := AResolver.ResolveChain(ATree, AFileName, Event.UnitName.Split(['.']) + TypeNames, Offset);
+  if not EventType.Found or (EventType.FileName = '') then
+    Exit;
+  if SameText(EventType.FileName, AFileName) then
+    Source := AText
+  else if not (Assigned(AReadText) and AReadText(EventType.FileName, Source)) then
+    Exit;
+  Declaration := DeclarationOf(TextLines(Source), EventType.Range);
+  TypeMatch := TRegEx.Match(Declaration,
+    '=\s*(reference\s+to\s+)?(procedure|function)\s*(?:\((.*)\))?\s*(?::\s*([\w.<>, ]+?))?\s*(of\s+object)?\s*;',
+    [roIgnoreCase]);
+  if not TypeMatch.Success or ((TypeMatch.Groups[1].Length = 0) and (TypeMatch.Groups[5].Length = 0)) then
+    Exit;
+  Kind := LowerCase(TypeMatch.Groups[2].Value);
+  Params := Trim(TypeMatch.Groups[3].Value);
+  ResultType := Trim(TypeMatch.Groups[4].Value);
+  ParamTypes := EventParamTypes(Params);
+  // Umgebende Klasse: Methodenrumpf, in dem der Cursor steht.
+  UnitIndex := TIndexExtractor.Extract(ATree, AFileName);
+  TypeName := '';
+  for Symbol in UnitIndex.Symbols do
+    if (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and (Symbol.Container <> '') and
+      (Symbol.Range.StartPos.Line < APosition.Line) and (Symbol.Range.EndPos.Line >= APosition.Line) then
+      TypeName := Symbol.Container;
+  if TypeName = '' then
+    Exit;
+  Result := True;
+  LB := IfThen(AText.Contains(#13#10), #13#10, #10);
+  Taken := TDictionary<string, Boolean>.Create;
+  try
+    for Symbol in UnitIndex.Symbols do
+      if SameText(Symbol.Container, TypeName) then
+        Taken.AddOrSetValue(LowerCase(Symbol.Name), True);
+    // Passende Methoden der Klasse samt geerbter.
+    for Candidate in AResolver.MemberCandidates(ATree, AFileName, ['Self'], Offset) do
+    begin
+      Taken.AddOrSetValue(LowerCase(Candidate.Name), True);
+      if (Candidate.SymbolKind <> TIndexSymbolKind.Method) or (Length(Candidate.ParamTypes) <> Length(ParamTypes)) or
+        ((Kind = 'function') <> (Candidate.TypeName <> '')) or
+        ((Kind = 'function') and (PlainType(Candidate.TypeName) <> PlainType(ResultType))) then
+        Continue;
+      Fits := True;
+      for Index := 0 to High(ParamTypes) do
+        if PlainType(Candidate.ParamTypes[Index]) <> PlainType(ParamTypes[Index]) then
+          Fits := False;
+      if not Fits then
+        Continue;
+      Item := Default(TCompletionItem);
+      Item.Name := Candidate.Name;
+      Item.Kind := KindMethod;
+      Item.Detail := Candidate.Container;
+      Item.Container := Candidate.Container;
+      Item.Depth := Candidate.Depth;
+      Item.SourceFile := Candidate.FileName;
+      Item.SourcePosition := Candidate.SelectionRange.StartPos;
+      Item.Group := 'Passt zu ' + EventType.Name;
+      AItems.Items := AItems.Items + [Item];
+    end;
+    // Neue Methode: Objekt + Ereignis ohne "On" (btnSave.OnClick → btnSaveClick), eindeutig gemacht.
+    if (Length(Names) > 1) and not SameText(Names[High(Names) - 1], 'Self') then
+      Base := Names[High(Names) - 1]
+    else if StartsText('T', TypeName) and (Pos('.', TypeName) = 0) then
+      Base := Copy(TypeName, 2, MaxInt)
+    else
+      Base := TypeName.Substring(TypeName.LastIndexOf('.') + 1);
+    if StartsText('On', Match.Groups[2].Value) then
+      Base := Base + Copy(Match.Groups[2].Value, 3, MaxInt)
+    else
+      Base := Base + Match.Groups[2].Value;
+    Name := Base;
+    Number := 1;
+    while Taken.ContainsKey(LowerCase(Name)) do
+    begin
+      Inc(Number);
+      Name := Base + IntToStr(Number);
+    end;
+  finally
+    Taken.Free;
+  end;
+  Header := Kind + ' ' + TypeName + '.' + Name;
+  if Params <> '' then
+    Header := Header + '(' + Params + ')';
+  if Kind = 'function' then
+    Header := Header + ': ' + ResultType;
+  Item := Default(TCompletionItem);
+  Item.Name := 'Neue Methode ' + Name + ' …';
+  Item.Kind := KindMethod;
+  Item.Detail := Copy(Header, Length(Kind) + 2, MaxInt);
+  Item.InsertText := Name;
+  // Immer sichtbar, auch wenn das Getippte nicht zum Namen passt.
+  Item.FilterText := Prefix;
+  Item.Action := 'create';
+  Method := Default(TUnmatchedMethod);
+  Method.TypeName := TypeName;
+  Method.Header := Header;
+  Method.Symbol.Name := Name;
+  Method.Declared := False;
+  if TClassCompletion.AddDeclaration(ATree, AText, Method, Edit) then
+    Item.AdditionalEdits := Item.AdditionalEdits + [Edit];
+  Body := Header + ';' + LB + 'begin' + LB + LB + 'end;';
+  if TClassCompletion.BodyEdit(ATree, AText, TypeName, Body, Edit) then
+    Item.AdditionalEdits := Item.AdditionalEdits + [Edit];
+  AItems.Items := AItems.Items + [Item];
 end;
 
 end.
