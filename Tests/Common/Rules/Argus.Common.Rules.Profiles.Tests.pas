@@ -190,7 +190,8 @@ begin
   // strict schaltet experimentelle Regeln ein (#146): security-path-traversal (#149), file-header und
   // hardcoded-string (#56), random-without-randomize (#153).
   Assert.AreEqual(Merged(All, ['catch-all-without-raise', 'file-header', 'hardcoded-string',
-    'random-without-randomize', 'security-path-traversal']), ActiveRules('strict'));
+    'loop-invariant-call', 'missing-begin-update', 'random-without-randomize', 'security-path-traversal',
+    'string-concat-in-loop']), ActiveRules('strict'));
   Assert.AreEqual('assert-side-effect,bidi-control,captured-loop-variable,char-to-pchar,' +
     'component-create-without-override,component-default-mismatch,component-missing-free-notification,' +
     'component-missing-inherited,constructor-on-instance,control-char,declared-not-implemented,' +
