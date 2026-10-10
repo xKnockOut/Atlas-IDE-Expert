@@ -76,6 +76,8 @@ type
     class function DocumentationAbove(const ALines: TArray<string>; ALine: Integer): string; static;
     /// <summary>False, wenn der Client in initialize nur Klartext für Hover meldet.</summary>
     class function ClientSupportsMarkdown(const AInitializeParams: TJSONObject): Boolean; static;
+    /// <summary>Teile des Hovers für den Argus-Tooltip (#442), Doku und Hinweis als Klartext.</summary>
+    class function ArgusJson(const AInfo: THoverInfo): TJSONObject; static;
     /// <summary>Antwort als Markdown (Vorgabe) oder als Klartext.</summary>
     property Markdown: Boolean read FMarkdown write FMarkdown;
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
@@ -207,6 +209,20 @@ begin
 end;
 
 { THoverInfo }
+
+class function TLspHover.ArgusJson(const AInfo: THoverInfo): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('declaration', AInfo.Declaration);
+  if AInfo.UnitName <> '' then
+    Result.AddPair('unit', AInfo.UnitName);
+  if AInfo.Documentation <> '' then
+    Result.AddPair('documentation', StripMarkdown(AInfo.Documentation));
+  if AInfo.Value <> '' then
+    Result.AddPair('value', AInfo.Value);
+  if AInfo.Deprecation <> '' then
+    Result.AddPair('deprecation', StripMarkdown(AInfo.Deprecation));
+end;
 
 function THoverInfo.Found: Boolean;
 begin
@@ -482,6 +498,8 @@ begin
     // antwortet. RAD Studio zeigt den Hover benutzerdefinierter Server trotzdem
     // nicht als Tooltip an; dafür braucht es ein IDE-Plugin (#175).
     TJSONObject(Result).AddPair('contents', Info.ToPlainText);
+  // Für den Argus-Tooltip (#442) die Teile einzeln; andere Clients ignorieren das Feld.
+  TJSONObject(Result).AddPair('argus', ArgusJson(Info));
 end;
 
 end.

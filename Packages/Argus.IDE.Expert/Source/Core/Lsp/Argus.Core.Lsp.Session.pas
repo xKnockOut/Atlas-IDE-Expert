@@ -24,6 +24,18 @@ type
     Character: Integer;
   end;
 
+  /// <summary>Teile eines Hovers für den Argus-Tooltip (#442).</summary>
+  TLspHoverParts = record
+    Declaration: string;
+    UnitName: string;
+    Documentation: string;
+    Value: string;
+    Deprecation: string;
+    function Found: Boolean;
+    /// <summary>Aus einer Hover-Antwort: das Feld "argus" des Servers, sonst erster Absatz als Deklaration.</summary>
+    class function FromHover(const AHover: TJSONValue): TLspHoverParts; static;
+  end;
+
   TLspSession = class
   private type
     TDocumentState = record
@@ -50,6 +62,8 @@ type
     /// <summary>Schickt AText, falls neu oder geändert.</summary>
     procedure Sync(const AFileName, AText: string);
     function Hover(const AFileName, AText: string; ALine, ACharacter: Integer): string;
+    /// <summary>Hover in Teilen (#442).</summary>
+    function HoverParts(const AFileName, AText: string; ALine, ACharacter: Integer): TLspHoverParts;
     function Definition(const AFileName, AText: string; ALine, ACharacter: Integer;
       out ALocation: TLspLocation): Boolean;
     /// <summary>
@@ -293,6 +307,55 @@ begin
   finally
     Response.Free;
   end;
+end;
+
+function TLspSession.HoverParts(const AFileName, AText: string; ALine, ACharacter: Integer): TLspHoverParts;
+var
+  Response: TJSONValue;
+begin
+  Sync(AFileName, AText);
+  Response := FClient.Request('textDocument/hover', PositionParams(AFileName, ALine, ACharacter), FTimeoutMs);
+  try
+    Result := TLspHoverParts.FromHover(Response);
+  finally
+    Response.Free;
+  end;
+end;
+
+{ TLspHoverParts }
+
+function TLspHoverParts.Found: Boolean;
+begin
+  Result := Declaration <> '';
+end;
+
+class function TLspHoverParts.FromHover(const AHover: TJSONValue): TLspHoverParts;
+var
+  Parts: TJSONValue;
+  Text: string;
+  Paragraphs: TArray<string>;
+begin
+  Result := Default(TLspHoverParts);
+  if not (AHover is TJSONObject) then
+    Exit;
+  Parts := TJSONObject(AHover).GetValue('argus');
+  if Parts is TJSONObject then
+  begin
+    Result.Declaration := TJSONObject(Parts).GetValue<string>('declaration', '');
+    Result.UnitName := TJSONObject(Parts).GetValue<string>('unit', '');
+    Result.Documentation := TJSONObject(Parts).GetValue<string>('documentation', '');
+    Result.Value := TJSONObject(Parts).GetValue<string>('value', '');
+    Result.Deprecation := TJSONObject(Parts).GetValue<string>('deprecation', '');
+    Exit;
+  end;
+  // Ältere Server: Klartext, erster Absatz ist die Deklaration, der Rest Doku.
+  Text := TLspSession.HoverText(AHover).Replace(#13#10, #10).Trim;
+  if Text = '' then
+    Exit;
+  Paragraphs := Text.Split([#10#10], 2);
+  Result.Declaration := Paragraphs[0];
+  if Length(Paragraphs) > 1 then
+    Result.Documentation := Paragraphs[1];
 end;
 
 function TLspSession.Definition(const AFileName, AText: string; ALine, ACharacter: Integer;
