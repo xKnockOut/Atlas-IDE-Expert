@@ -143,6 +143,7 @@ uses
   Argus.Common.Editing.ExpressionCommands,
   Argus.Common.Editing.RefactoringCommands,
   Argus.Common.Editing.ProjectCommands,
+  Argus.Common.Editing.DatabaseCommands,
   Argus.Common.Editing.ErrorCommands;
 
 function IsDisabled(const AName: string; const ADisabled: TArray<string>): Boolean;
@@ -254,6 +255,7 @@ begin
     RegisterRefactoringCommands(Created);
     RegisterExpressionCommands(Created);
     RegisterProjectCommands(Created);
+    RegisterDatabaseCommands(Created);
     if AtomicCmpExchange(Pointer(FShared), Pointer(Created), nil) <> nil then
       Created.Free;
   end;

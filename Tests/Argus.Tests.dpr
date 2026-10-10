@@ -213,6 +213,8 @@ uses
   Argus.Common.Editing.RefactoringCommands.Tests in 'Common\Editing\Argus.Common.Editing.RefactoringCommands.Tests.pas',
   Argus.Common.Editing.ExpressionCommands.Tests in 'Common\Editing\Argus.Common.Editing.ExpressionCommands.Tests.pas',
   Argus.Common.Editing.ProjectCommands.Tests in 'Common\Editing\Argus.Common.Editing.ProjectCommands.Tests.pas',
+  Argus.Common.Editing.SqlText.Tests in 'Common\Editing\Argus.Common.Editing.SqlText.Tests.pas',
+  Argus.Common.Editing.DatabaseCommands.Tests in 'Common\Editing\Argus.Common.Editing.DatabaseCommands.Tests.pas',
   Argus.Common.Rules.Builtin.DataBinding.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.DataBinding.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
