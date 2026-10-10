@@ -59,39 +59,47 @@ end;
 function TDiskIndexFileSystem.WriteText(const AFileName, AText: string): Boolean;
 var
   Temp, Backup: string;
+  Written: Boolean;
 begin
   // Eindeutige Namen: zwei Schreiber kommen sich nicht in die Quere.
   Temp := Format('%s.%d.tmp', [AFileName, TThread.CurrentThread.ThreadID]);
   // TFile.Replace braucht eine Sicherungsdatei: Mit '' scheitert es an
   // TPath.GetFullPath('') ("Pfad ist leer"), sobald die Zieldatei existiert.
   Backup := Format('%s.%d.bak', [AFileName, TThread.CurrentThread.ThreadID]);
+  Written := False;
   try
     ForceDirectories(ExtractFileDir(AFileName));
     TFile.WriteAllText(Temp, AText, TEncoding.UTF8);
+    Written := True;
     if FileExists(AFileName) then
-    begin
-      TFile.Replace(Temp, AFileName, Backup);
-      System.SysUtils.DeleteFile(Backup);
-      Result := True;
-    end
+      TFile.Replace(Temp, AFileName, Backup)
     else
-      Result := RenameFile(Temp, AFileName);
+      RenameFile(Temp, AFileName);
   except
+    // TFile.Replace prüft vorab, ob Quelle und Ziel existieren; im Wettlauf mit einem zweiten
+    // Schreiber (#62) fehlt das Ziel kurz (EFileNotFoundException).
     on EInOutError do
-      Result := False;
+      ;
     on EFCreateError do
-      Result := False;
+      ;
     on EArgumentException do
-      Result := False;
-    // TFile.Replace meldet Fehler des Betriebssystems, z. B. wenn ein zweiter Schreiber
-    // gerade ersetzt (#62); der Cache bleibt dann der des anderen.
+      ;
     on EOSError do
-      Result := False;
+      ;
   end;
-  if not Result and FileExists(Temp) then
+  // TFile.Replace wertet das Ergebnis von ReplaceFile nicht aus und wirft bei einem Fehler
+  // nichts (gesperrtes Ziel, zweiter Schreiber). Gelungen ist das Schreiben genau dann, wenn
+  // die temporäre Datei an die Stelle des Ziels getreten ist.
+  Result := Written and not FileExists(Temp);
+  // ReplaceFile kann das alte Ziel schon zur Sicherung umbenannt haben, ohne die neue Datei
+  // nachzuschieben (ERROR_UNABLE_TO_MOVE_REPLACEMENT_2). Die temporäre Datei ist vollständig
+  // geschrieben, also an ihre Stelle setzen; hat ein zweiter Schreiber das Ziel inzwischen
+  // angelegt, scheitert das Umbenennen, und der Cache bleibt der des anderen.
+  if Written and not Result and not FileExists(AFileName) then
+    Result := RenameFile(Temp, AFileName);
+  // Keine Reste, weder bei Erfolg noch bei Fehler (Test ConcurrentWritersLeaveReadableCache).
+  if FileExists(Temp) then
     System.SysUtils.DeleteFile(Temp);
-  // Scheitert Replace, während ein zweiter Schreiber ersetzt (#62), kann die Sicherung schon
-  // angelegt sein; sie bliebe sonst liegen (Test ConcurrentWritersLeaveReadableCache).
   if FileExists(Backup) then
     System.SysUtils.DeleteFile(Backup);
 end;
