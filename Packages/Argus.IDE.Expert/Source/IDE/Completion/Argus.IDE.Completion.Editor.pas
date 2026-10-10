@@ -33,6 +33,7 @@ uses
   Argus.Core.Completion.Controller,
   Argus.Core.Completion.Providers.Server,
   Argus.Core.Completion.Parentheses,
+  Argus.IDE.Completion.Preview,
   Argus.UI.Completion.Popup,
   Argus.IDE.Editor.KeyHook;
 
@@ -56,6 +57,8 @@ type
     // Automatisch eingefügte ")" nach dem Übernehmen (#430).
     FAutoParen: TArgusAutoParen;
     FOnOpenSignature: TProc;
+    // Vorschau des gewählten Eintrags im Editor (#434).
+    FPreview: TArgusEditorPreview;
     FController: TArgusCompletionController;
     FTimer: TTimer;
     FKeys: TArgusKeyClient;
@@ -80,6 +83,7 @@ type
     procedure UpdateDetails;
     procedure ChangeOverload(ADelta: Integer);
     procedure SkipAutoParen(const AView: IOTAEditView; ARemoveAt: Integer);
+    procedure UpdatePreview;
     procedure HideDetails;
     procedure InstallKeyHook;
     procedure RemoveKeyHook;
@@ -117,6 +121,7 @@ uses
   Argus.Core.Lsp.Session,
   Argus.Core.Completion.Word,
   Argus.Core.Completion.Providers.XmlDoc,
+  Argus.Core.Completion.Preview,
   Argus.Core.Settings.Plugin,
   Argus.IDE.Settings.Store,
   Argus.IDE.Completion.History,
@@ -328,6 +333,7 @@ begin
       TArgusIdeSettings.Update(Settings);
     end;
   FKeys := TCompletionKeys.Create(Self);
+  FPreview := TArgusEditorPreview.Create;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
   FTimer.Interval := 50;
@@ -345,6 +351,7 @@ var
 begin
   // Erst abmelden, dann freigeben: Die IDE ruft sonst noch in freigegebene Objekte (#493).
   RemoveKeyHook;
+  FreeAndNil(FPreview);
   if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAEditorServices, Editor) then
     Editor.RemoveNotifier(FNotifierIndex);
   FTimer.Free;
@@ -459,12 +466,16 @@ end;
 procedure TArgusEditorCompletion.Close;
 begin
   FController.Close;
+  if FPreview <> nil then
+    FPreview.Clear;
   ActiveChanged;
 end;
 
 procedure TArgusEditorCompletion.ActiveChanged;
 begin
   FTimer.Enabled := FController.Active;
+  if not FController.Active and (FPreview <> nil) then
+    FPreview.Clear;
   if FController.Active then
     InstallKeyHook
   else
@@ -629,11 +640,34 @@ begin
   UpdateDetails;
 end;
 
+procedure TArgusEditorCompletion.UpdatePreview;
+var
+  Item: TArgusCompletionItem;
+  LineText, Text: string;
+  Character: Integer;
+begin
+  if FPreview = nil then
+    Exit;
+  Text := '';
+  if TArgusIdeSettings.Current.Preview and FController.Visible and FController.SelectedItem(Item) and
+    (FView <> nil) and (FView.Buffer <> nil) and (FView.CursorPos.Line = FLine) then
+  begin
+    LineText := TArgusEditorBuffer.LineText(FView, FLine);
+    Character := TLspSession.ColumnToIndex(LineText, FView.CursorPos.Col, TArgusEditorBuffer.TabWidth(FView.Buffer));
+    Text := TArgusPreview.RestOf(Item.Name, FController.Prefix, Copy(LineText, Character + 1, MaxInt));
+  end;
+  if Text = '' then
+    FPreview.Clear
+  else
+    FPreview.Show(FView.Buffer.FileName, FLine, FView.CursorPos.Col, Text);
+end;
+
 procedure TArgusEditorCompletion.TimerTick(Sender: TObject);
 begin
   try
     Recheck;
     UpdateDetails;
+    UpdatePreview;
   except
     on E: Exception do
     begin
