@@ -153,6 +153,19 @@ begin
   Result := string.Join(',', Ids);
 end;
 
+/// <summary>AList um AExtra ergänzt und sortiert wie ActiveRules.</summary>
+function Merged(const AList: string; const AExtra: array of string): string;
+var
+  Ids: TArray<string>;
+  Id: string;
+begin
+  Ids := AList.Split([',']);
+  for Id in AExtra do
+    Ids := Ids + [Id];
+  TArray.Sort<string>(Ids);
+  Result := string.Join(',', Ids);
+end;
+
 procedure TRuleProfilesTests.BuiltinProfilesActivateExpectedRules;
 const
   Threads = 'thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,thread-vcl-access';
@@ -172,12 +185,10 @@ const
     'thread-vcl-access,unused-assignment,unused-local,unused-parameter,virtual-instead-of-override';
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
-  // strict schaltet experimentelle Regeln ein (#146), z. B. security-path-traversal (#149).
-  // file-header und hardcoded-string (#56) sind ebenfalls experimentell.
-  Assert.AreEqual(All.Replace('security-insecure-random,', 'security-insecure-random,security-path-traversal,')
-    .Replace('empty-except,', 'empty-except,file-header,')
-    .Replace('form-object-without-field,', 'form-object-without-field,hardcoded-string,'),
-    ActiveRules('strict'));
+  // strict schaltet experimentelle Regeln ein (#146): security-path-traversal (#149), file-header und
+  // hardcoded-string (#56), random-without-randomize (#153).
+  Assert.AreEqual(Merged(All, ['file-header', 'hardcoded-string', 'random-without-randomize',
+    'security-path-traversal']), ActiveRules('strict'));
   Assert.AreEqual('assert-side-effect,bidi-control,captured-loop-variable,component-create-without-override,' +
     'component-default-mismatch,component-missing-free-notification,component-missing-inherited,' +
     'control-char,declared-not-implemented,destroy-without-override,dfm-circular-datasource,' +
