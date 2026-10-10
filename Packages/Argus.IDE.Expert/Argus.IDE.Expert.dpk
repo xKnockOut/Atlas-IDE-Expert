@@ -97,6 +97,8 @@ contains
   Argus.UI.Commands.Palette in 'Source\UI\Commands\Argus.UI.Commands.Palette.pas',
   Argus.IDE.Commands.Palette in 'Source\IDE\Commands\Argus.IDE.Commands.Palette.pas',
   Argus.Core.Editor.Pairs in 'Source\Core\Editor\Argus.Core.Editor.Pairs.pas',
-  Argus.IDE.Editor.Pairs in 'Source\IDE\Editor\Argus.IDE.Editor.Pairs.pas';
+  Argus.IDE.Editor.Pairs in 'Source\IDE\Editor\Argus.IDE.Editor.Pairs.pas',
+  Argus.IDE.Build.MessageView in 'Source\IDE\Build\Argus.IDE.Build.MessageView.pas',
+  Argus.Core.Build.Messages in 'Source\Core\Build\Argus.Core.Build.Messages.pas';
 
 end.

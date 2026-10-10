@@ -48,6 +48,7 @@ uses
   Argus.Common.Lsp.Status,
   Argus.Common.JsonRpc.Statistics,
   Argus.Common.Lsp.WatchedFiles,
+  Argus.Common.Lsp.IdeBuild,
   Argus.Common.Lsp.WorkspaceFolders,
   Argus.Common.Lsp.Configuration,
   Argus.Common.Documents.Contract,
@@ -100,6 +101,8 @@ type
     FCommands: TLspCommands;
     FStatistics: IJsonRpcStatistics;
     FWatchedFiles: TLspWatchedFiles;
+    /// <summary>Build-Ergebnisse und Compilermeldungen aus der IDE (#528).</summary>
+    FIdeBuild: TLspIdeBuild;
     FWorkspaceFolders: TLspWorkspaceFolders;
     /// <summary>Für argus.json außerhalb aller Ordner: nur Fehlermeldungen.</summary>
     FLooseConfiguration: TLspConfiguration;
@@ -784,6 +787,15 @@ begin
   FWatchedFiles := TLspWatchedFiles.Create(FTransport);
   FWatchedFiles.OnChanged := HandleWatchedFiles;
   FWatchedFiles.Attach(FDispatcher);
+  // Compilermeldungen aus dem Meldungsfenster der IDE ersetzen die des letzten Laufs wie ein eigener Compile (#528).
+  FIdeBuild := TLspIdeBuild.Create;
+  FIdeBuild.OnMessages :=
+    procedure(const AMessages: TArray<TCompilerMessage>)
+    begin
+      FSyntaxDiagnostics.RefreshFiles(FCompilerResults.Replace(AMessages));
+      FLogger.Info(Format('Compilermeldungen aus der IDE: %d', [Length(AMessages)]));
+    end;
+  FIdeBuild.Attach(FDispatcher);
   FWorkspaceFolders := TLspWorkspaceFolders.Create;
   FWorkspaceFolders.OnChanged :=
     procedure(const AAdded, ARemoved: TArray<TWorkspaceFolder>)
@@ -872,6 +884,7 @@ begin
   FCompilerResults.Free;
   FCompilerProcess := nil;
   FWatchedFiles.Free;
+  FIdeBuild.Free;
   FTextDocumentSync.Free;
   FDocuments := nil;
   FLifecycle.Free;

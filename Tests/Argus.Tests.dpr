@@ -172,7 +172,10 @@ uses
   Argus.Core.Commands.Palette in '..\Packages\Argus.IDE.Expert\Source\Core\Commands\Argus.Core.Commands.Palette.pas',
   Argus.Core.Commands.Palette.Tests in 'IDE.Expert\Argus.Core.Commands.Palette.Tests.pas',
   Argus.Core.Editor.Pairs in '..\Packages\Argus.IDE.Expert\Source\Core\Editor\Argus.Core.Editor.Pairs.pas',
-  Argus.Core.Editor.Pairs.Tests in 'IDE.Expert\Argus.Core.Editor.Pairs.Tests.pas';
+  Argus.Core.Editor.Pairs.Tests in 'IDE.Expert\Argus.Core.Editor.Pairs.Tests.pas',
+  Argus.Core.Build.Messages in '..\Packages\Argus.IDE.Expert\Source\Core\Build\Argus.Core.Build.Messages.pas',
+  Argus.Core.Build.Messages.Tests in 'IDE.Expert\Argus.Core.Build.Messages.Tests.pas',
+  Argus.Common.Lsp.IdeBuild.Tests in 'Common\Lsp\Argus.Common.Lsp.IdeBuild.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

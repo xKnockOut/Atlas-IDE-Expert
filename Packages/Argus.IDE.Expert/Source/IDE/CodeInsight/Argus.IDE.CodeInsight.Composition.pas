@@ -21,10 +21,12 @@ uses
   ToolsAPI,
   Argus.UI.Strings,
   Argus.Core.Build.Events,
+  Argus.Core.Build.Messages,
   Argus.IDE.CodeInsight.Manager,
   Argus.IDE.Settings.Options,
   Argus.IDE.Completion.History,
   Argus.IDE.Build.Notifier,
+  Argus.IDE.Build.MessageView,
   Argus.Core.Diagnostics.Hangs,
   Argus.IDE.Settings.Store,
   Argus.IDE.Diagnostics.Watchdog,
@@ -152,6 +154,17 @@ begin
     end;
   Events.OnLog := LogLine;
   Events.Add(TArgusCompileLog.Create(Events, LogLine));
+  // Compilermeldungen aus dem Reiter „Build“ an den Server (#528).
+  Events.Add(TArgusMessageViewReader.Create(
+    procedure(const AMessages: TArray<TArgusCompilerMessage>; const AProject: TArgusCompileProject;
+      ASucceeded: Boolean; const AInfo: string)
+    begin
+      if Manager = nil then
+        Exit;
+      Manager.Report('Meldungsfenster: ' + AInfo);
+      Manager.NotifyServer('argus/compilerMessages',
+        TArgusCompilerMessages.ToJson(AMessages, AProject.FileName, AProject.Platform, ASucceeded));
+    end));
   Compile := TArgusIdeCompileEvents.Create(Events);
 end;
 
