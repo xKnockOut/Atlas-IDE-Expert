@@ -220,8 +220,8 @@ begin
   Assert.Contains(Text, '    FQuelle := nil;'#10'  if (Operation = opRemove) and (AComponent = FZiel) then'#10 +
     '    FZiel := nil;'#10'end;');
   // Keine zweite Notification, keine doppelte Bedingung.
-  Assert.AreEqual(1, Length(Text.Split(['procedure TVerbinder.Notification'])) - 1);
-  Assert.AreEqual(1, Length(Text.Split(['(AComponent = FQuelle)'])) - 1);
+  Assert.AreEqual(1, Integer(Length(Text.Split(['procedure TVerbinder.Notification']))) - 1);
+  Assert.AreEqual(1, Integer(Length(Text.Split(['(AComponent = FQuelle)']))) - 1);
   Assert.Contains(Text, 'begin'#10'  if FZiel <> nil then'#10'    FZiel.RemoveFreeNotification(Self);'#10 +
     '  FZiel := Value;'#10'  if FZiel <> nil then'#10'    FZiel.FreeNotification(Self);'#10'end;');
   // Zweiter Aufruf: nichts mehr zu tun.
