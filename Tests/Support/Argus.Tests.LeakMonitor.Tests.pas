@@ -17,6 +17,12 @@ type
     [Test]
     procedure BalancedAllocationIsNoLeak;
     [Test]
+    procedure NegativeBalanceIsNoLeak;
+    [Test]
+    procedure FreeOnOtherThreadIsNoLeak;
+    [Test]
+    procedure ReportNamesThreads;
+    [Test]
     [IgnoreMemoryLeaks]
     procedure ReplayDoesNotGrowMemory;
   end;
@@ -25,6 +31,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Classes,
   System.IOUtils,
   System.JSON,
   System.Generics.Collections,
@@ -62,6 +69,60 @@ begin
   Temp.Free;
   Monitor.PostTest;
   Assert.AreEqual(Int64(0), Monitor.TestMemoryAllocated);
+end;
+
+procedure TLeakMonitorTests.NegativeBalanceIsNoLeak;
+var
+  Monitor: IMemoryLeakMonitor;
+  Old: TObject;
+begin
+  // Freigaben älteren Speichers (z. B. durch Threads früherer Tests) sind kein Leck.
+  Monitor := TLeakMonitor.Create;
+  Old := TStringBuilder.Create(1024);
+  Monitor.PreTest;
+  Old.Free;
+  Monitor.PostTest;
+  Assert.AreEqual(Int64(0), Monitor.TestMemoryAllocated);
+end;
+
+procedure TLeakMonitorTests.FreeOnOtherThreadIsNoLeak;
+var
+  Monitor: IMemoryLeakMonitor;
+  Shared: TObject;
+  Worker: TThread;
+begin
+  // Ein Thread des Tests gibt Speicher frei, während der Test schon endet: Der
+  // Monitor wartet die Freigabe ab, statt ein Leck zu melden.
+  Monitor := TLeakMonitor.Create;
+  Worker := TThread.CreateAnonymousThread(
+    procedure
+    begin
+      FreeAndNil(Shared);
+    end);
+  Worker.FreeOnTerminate := False;
+  try
+    Monitor.PreTest;
+    Shared := TStringBuilder.Create(1024);
+    Worker.Start;
+    Monitor.PostTest;
+    Worker.WaitFor;
+  finally
+    Worker.Free;
+  end;
+  Assert.AreEqual(Int64(0), Monitor.TestMemoryAllocated);
+end;
+
+procedure TLeakMonitorTests.ReportNamesThreads;
+var
+  Monitor: IMemoryLeakMonitor;
+  Report: IMemoryLeakMonitor2;
+begin
+  Monitor := TLeakMonitor.Create;
+  Monitor.PreTest;
+  Monitor.PostTest;
+  Assert.IsTrue(Supports(Monitor, IMemoryLeakMonitor2, Report));
+  Assert.Contains(Report.GetReport, 'Threads am Anfang');
+  Assert.IsTrue(ProcessThreadCount > 0);
 end;
 
 procedure TLeakMonitorTests.ReplayDoesNotGrowMemory;
