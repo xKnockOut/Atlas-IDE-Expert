@@ -301,7 +301,10 @@
     ],
     "jsonValidation": [
       {
-        "fileMatch": ["argus.json", "delphi-lsp.json"],
+        "fileMatch": [
+          "argus.json",
+          "delphi-lsp.json"
+        ],
         "url": "./schemas/argus.schema.json"
       }
     ]
