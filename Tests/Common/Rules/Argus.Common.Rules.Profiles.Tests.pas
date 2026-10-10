@@ -169,7 +169,7 @@ end;
 procedure TRuleProfilesTests.BuiltinProfilesActivateExpectedRules;
 const
   Threads = 'thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,thread-vcl-access';
-  All = 'assert-side-effect,bidi-control,captured-loop-variable,char-to-pchar,' +
+  All = 'assert-side-effect,bidi-control,bool-compare,captured-loop-variable,char-to-pchar,' +
     'component-create-without-override,component-default-mismatch,component-fixed-pixels,' +
     'component-hardcoded-color,component-missing-free-notification,component-missing-inherited,' +
     'component-setter-without-invalidate,confusable-identifier,constructor-on-instance,control-char,' +
@@ -180,11 +180,12 @@ const
     'form-field-type-mismatch,form-field-without-object,form-object-without-field,' +
     'format-without-settings,generic-exception-raised,hides-virtual,ifthen-side-effect,' +
     'implemented-not-declared,int32-mul-overflow,interface-guid,invisible-char,lock-without-finally,' +
-    'possibly-uninitialized,result-not-set,security-command-injection,security-insecure-http,' +
-    'security-insecure-random,security-sql-injection,security-tls-verification-disabled,' +
-    'security-weak-crypto,self-assignment,sizeof-pointer,slash-command,synchronize-in-destructor,' +
-    'thread-free-with-free-on-terminate,thread-resume-suspend,thread-use-after-free-on-terminate,' +
-    'thread-vcl-access,unused-assignment,unused-local,unused-parameter,virtual-instead-of-override';
+    'possibly-uninitialized,raise-in-finally,redundant-assigned-free,result-not-set,' +
+    'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
+    'security-tls-verification-disabled,security-weak-crypto,self-assignment,sizeof-pointer,' +
+    'slash-command,synchronize-in-destructor,thread-free-with-free-on-terminate,thread-resume-suspend,' +
+    'thread-use-after-free-on-terminate,thread-vcl-access,unused-assignment,unused-local,' +
+    'unused-parameter,virtual-instead-of-override';
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
   // strict schaltet experimentelle Regeln ein (#146): security-path-traversal (#149), file-header und
@@ -200,18 +201,19 @@ begin
     'duplicate-interface-guid,exception-freed,exception-not-raised,float-equality,for-high-to-low,' +
     'form-field-type-mismatch,form-field-without-object,form-object-without-field,hides-virtual,' +
     'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,lock-without-finally,' +
-    'possibly-uninitialized,result-not-set,security-command-injection,security-sql-injection,' +
-    'security-tls-verification-disabled,self-assignment,sizeof-pointer,synchronize-in-destructor,' +
-    'thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,thread-vcl-access,' +
-    'virtual-instead-of-override',
+    'possibly-uninitialized,raise-in-finally,result-not-set,security-command-injection,' +
+    'security-sql-injection,security-tls-verification-disabled,self-assignment,sizeof-pointer,' +
+    'synchronize-in-destructor,thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,' +
+    'thread-vcl-access,virtual-instead-of-override',
     ActiveRules('fast'));
   Assert.AreEqual('bidi-control,confusable-identifier,invisible-char,security-command-injection,security-insecure-http,' +
     'security-insecure-random,security-sql-injection,security-tls-verification-disabled,' +
     'security-weak-crypto',
     ActiveRules('security'));
-  Assert.AreEqual('component-fixed-pixels,component-hardcoded-color,component-setter-without-invalidate,empty-except,' +
-    'forbidden-uses,foreign-form-control-access,format-without-settings,generic-exception-raised,' +
-    'slash-command,thread-resume-suspend,unused-assignment,unused-local,unused-parameter',
+  Assert.AreEqual('bool-compare,component-fixed-pixels,component-hardcoded-color,component-setter-without-invalidate,' +
+    'empty-except,forbidden-uses,foreign-form-control-access,format-without-settings,' +
+    'generic-exception-raised,redundant-assigned-free,slash-command,thread-resume-suspend,' +
+    'unused-assignment,unused-local,unused-parameter',
     ActiveRules('style'));
 end;
 
