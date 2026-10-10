@@ -13,6 +13,11 @@
 //
 // Clients ohne Markdown (RAD Studio meldet hover.contentFormat ["plaintext"])
 // bekommen denselben Inhalt als Klartext (#175).
+//
+// Für den Argus-Tooltip (#588) kommen Art, Herkunft, Fundort, Typverweise in der
+// Deklaration und die Vererbungskette dazu (Argus.Common.Lsp.HoverTypes). Ist die
+// Datei nicht geöffnet, liest der Hover sie selbst: So fragt das Plugin einen
+// angeklickten Typ über seinen Fundort ab.
 
 interface
 
@@ -24,7 +29,8 @@ uses
   Argus.Common.Documents.Contract,
   Argus.Common.Pascal.SyntaxTree,
   Argus.Common.Index.Contract,
-  Argus.Common.Semantics.NameResolver;
+  Argus.Common.Semantics.NameResolver,
+  Argus.Common.Lsp.HoverTypes;
 
 type
   /// <summary>Liefert den Text einer Datei; False, wenn sie nicht lesbar ist.</summary>
@@ -53,6 +59,20 @@ type
     FormValues: string;
     /// <summary>Konstruktoren der Attributklasse auf einem Attribut (#119); sonst ''.</summary>
     Constructors: string;
+    /// <summary>Art für Badge und Kopfzeile (#588), siehe TLspHoverTypes.KindOf; '' wenn unbekannt.</summary>
+    Kind: string;
+    /// <summary>VCL, FMX oder RTL; '' bei eigenen Units.</summary>
+    Origin: string;
+    /// <summary>Fundort des Namens der Deklaration (0-basiert); FileName '' ohne.</summary>
+    FileName: string;
+    Line: Integer;
+    Character: Integer;
+    /// <summary>Typnamen in Declaration mit Fundort.</summary>
+    Links: TArray<THoverLink>;
+    /// <summary>Typ, dessen Kette Ancestors zeigt: der Typ selbst bzw. bei "class of T" T.</summary>
+    ChainOf: string;
+    /// <summary>Vererbungskette ab ChainOf aufwärts; leer bei anderen Arten.</summary>
+    Ancestors: TArray<THoverTypeRef>;
     function Found: Boolean;
     function ToMarkdown: string;
     /// <summary>Derselbe Inhalt ohne Markdown-Auszeichnung.</summary>
@@ -113,6 +133,7 @@ uses
   Argus.Common.Pascal.Contract,
   Argus.Common.Pascal.TreeCache,
   Argus.Common.Semantics.Attributes,
+  Argus.Common.Index.Extractor,
   Argus.Common.Lsp.Internals.Cancellation;
 
 function SplitLines(const AText: string): TArray<string>;
@@ -223,7 +244,23 @@ end;
 
 { THoverInfo }
 
+function TypeRefJson(const ARef: THoverTypeRef): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('name', ARef.Name);
+  if ARef.UnitName <> '' then
+    Result.AddPair('unit', ARef.UnitName);
+  Result.AddPair('file', ARef.FileName);
+  Result.AddPair('line', TJSONNumber.Create(ARef.Line));
+  Result.AddPair('character', TJSONNumber.Create(ARef.Character));
+end;
+
 class function TLspHover.ArgusJson(const AInfo: THoverInfo): TJSONObject;
+var
+  Links, Ancestors: TJSONArray;
+  Link: THoverLink;
+  Ancestor: THoverTypeRef;
+  Item: TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('declaration', AInfo.Declaration);
@@ -235,6 +272,38 @@ begin
     Result.AddPair('value', AInfo.Value);
   if AInfo.Deprecation <> '' then
     Result.AddPair('deprecation', StripMarkdown(AInfo.Deprecation));
+  if AInfo.Kind <> '' then
+    Result.AddPair('kind', AInfo.Kind);
+  if AInfo.Origin <> '' then
+    Result.AddPair('origin', AInfo.Origin);
+  if AInfo.FileName <> '' then
+  begin
+    Result.AddPair('file', AInfo.FileName);
+    Result.AddPair('line', TJSONNumber.Create(AInfo.Line));
+    Result.AddPair('character', TJSONNumber.Create(AInfo.Character));
+  end;
+  if AInfo.DocWikiUrl <> '' then
+    Result.AddPair('docWiki', AInfo.DocWikiUrl);
+  if Length(AInfo.Links) > 0 then
+  begin
+    Links := TJSONArray.Create;
+    for Link in AInfo.Links do
+    begin
+      Item := TypeRefJson(Link.Target);
+      Item.AddPair('start', TJSONNumber.Create(Link.Start));
+      Item.AddPair('length', TJSONNumber.Create(Link.Length));
+      Links.AddElement(Item);
+    end;
+    Result.AddPair('links', Links);
+  end;
+  if Length(AInfo.Ancestors) > 0 then
+  begin
+    Result.AddPair('chainOf', AInfo.ChainOf);
+    Ancestors := TJSONArray.Create;
+    for Ancestor in AInfo.Ancestors do
+      Ancestors.AddElement(TypeRefJson(Ancestor));
+    Result.AddPair('ancestors', Ancestors);
+  end;
 end;
 
 function THoverInfo.Found: Boolean;
@@ -418,6 +487,9 @@ var
   Token: TPascalToken;
   Number: Int64;
   Use: TAttributeUse;
+  SelfName, ChainName: string;
+  TypeSymbol: Boolean;
+  Resolved: TResolvedSymbol;
 begin
   Result := Default(THoverInfo);
   // Zahlenliteral unter dem Cursor: Schreibweisen statt Deklaration.
@@ -459,17 +531,30 @@ begin
   Result.Declaration := TrimRight(Copy(Lines[Start.Line], Start.Character + 1, MaxInt));
   Result.Documentation := DocumentationAbove(Lines, Start.Line);
   Result.Deprecation := THoverValues.Deprecation(DeclarationText(Lines, Targets[0].Range));
-  // Aus einer Include-Datei (#500): die einbindende Unit, die Datei dahinter.
+  Result.FileName := Targets[0].FileName;
+  Result.Line := Targets[0].SelectionRange.StartPos.Line;
+  Result.Character := Targets[0].SelectionRange.StartPos.Character;
+  // Aus einer Include-Datei (#500): die einbindende Unit, die Datei dahinter. Die eigene Datei
+  // auch ohne Index (noch nicht gespeichert bzw. nicht im Projekt) aus dem Baum.
   if not TIndexFiles.UnitOf(AIndex, Targets[0].FileName, OwnerUnit) then
-    Exit;
+    if SameText(Targets[0].FileName, AFileName) then
+      OwnerUnit := TIndexExtractor.Extract(ATree, AFileName)
+    else
+      Exit;
   if not SameText(Targets[0].FileName, OwnerUnit.FileName) then
     Result.UnitName := OwnerUnit.UnitName + ' (' + ExtractFileName(Targets[0].FileName) + ')'
   else if not SameText(Targets[0].FileName, AFileName) then
     Result.UnitName := OwnerUnit.UnitName;
+  SelfName := '';
+  TypeSymbol := False;
   for Symbol in OwnerUnit.Symbols do
     if (Symbol.SelectionRange.StartPos = Targets[0].SelectionRange.StartPos) and
       SameText(OwnerUnit.SymbolFile(Symbol), Targets[0].FileName) then
     begin
+      SelfName := Symbol.Name;
+      Result.Kind := TLspHoverTypes.KindOf(Symbol.Kind, Result.Declaration);
+      TypeSymbol := (Symbol.Container = '') and (Symbol.Kind in [TIndexSymbolKind.ClassType,
+        TIndexSymbolKind.ObjectType, TIndexSymbolKind.InterfaceType]);
       Result.DocWikiUrl := TDocWiki.Url(ADelphiVersion, OwnerUnit.UnitName, Symbol.Container, Symbol.Name);
       if (Symbol.Container = '') and TWinApiDocs.IsWinApiUnit(OwnerUnit.UnitName) then
         Result.WinApi := TWinApiDocs.HoverText(Symbol.Name);
@@ -482,6 +567,20 @@ begin
           AFileName, ATreeText, AReadText);
       Break;
     end;
+  // Typen in der Deklaration und Vererbungskette für den Argus-Tooltip (#588).
+  Result.Origin := TLspHoverTypes.Origin(OwnerUnit.UnitName);
+  Result.Links := TLspHoverTypes.Links(AResolver, OwnerUnit, Result.Declaration, SelfName);
+  if TypeSymbol then
+  begin
+    ChainName := TLspHoverTypes.ClassRefTarget(Result.Declaration);
+    if ChainName = '' then
+      ChainName := SelfName;
+    if AResolver.ResolveTypeFrom(OwnerUnit, ChainName, Resolved) then
+    begin
+      Result.ChainOf := Resolved.Name;
+      Result.Ancestors := TLspHoverTypes.Chain(AResolver, Resolved);
+    end;
+  end;
   for Symbol in OwnerUnit.Symbols do
     if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') and
       ((Symbol.Range.StartPos = Start) or (Symbol.SelectionRange.StartPos = Start)) and
@@ -530,10 +629,10 @@ end;
 function TLspHover.HandleHover(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
   Cancellation: IPascalCancellation;
-  Uri: string;
+  Uri, Text: string;
   PositionValue: TJSONValue;
   Document: ITextDocument;
-  Tree: TSyntaxTree;
+  Tree, OwnTree: TSyntaxTree;
   Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Info: THoverInfo;
@@ -544,63 +643,78 @@ begin
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Felder "textDocument.uri" und "position" fehlen in ' + Method);
-  if not FStore.TryGet(Uri, Document) then
-    Exit(TJSONNull.Create);
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
-  if Assigned(FVersionProvider) then
-    DelphiVersion := FVersionProvider(Uri)
-  else
-    DelphiVersion := '';
-  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
-  Tree := Shared.Tree;
-  ACancellation.ThrowIfCancellationRequested;
-  // Compiler-Direktiven wie {$R+} oder {$WARN …} (#102).
-  if TCompilerDirectives.HoverAt(Tree, TLspPositions.ReadPosition(PositionValue), DelphiVersion, Markdown) then
+  OwnTree := nil;
+  if FStore.TryGet(Uri, Document) then
   begin
-    Contents := TJSONObject.Create;
-    Contents.AddPair('kind', 'markdown');
-    Contents.AddPair('value', Markdown);
-    Result := TJSONObject.Create;
-    TJSONObject(Result).AddPair('contents', Contents);
-    Exit;
-  end;
-  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
-  try
-    Resolver.Namespaces := FNamespaces;
-    Info := InfoAt(Resolver, FIndex, Tree, Document.Text, TDocumentUris.ToPath(Uri),
-      TLspPositions.ReadPosition(PositionValue), FReadText, DelphiVersion);
-  finally
-    Resolver.Free;
-  end;
-  if not Info.Found then
+    Text := Document.Text;
+    Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+    Tree := Shared.Tree;
+  end
+  // Nicht geöffnete Datei (Typ aus dem Argus-Tooltip angeklickt, #588): selbst lesen.
+  else if Assigned(FReadText) and FReadText(TDocumentUris.ToPath(Uri), Text) then
   begin
-    // Seltene Schlüsselwörter und Direktiven (#187), wenn kein Symbol so heißt.
-    if not TKeywordReference.HoverAt(Document.Text, TLspPositions.ReadPosition(PositionValue), DelphiVersion,
-      Markdown) then
-      Exit(TJSONNull.Create);
-    Contents := TJSONObject.Create;
-    Contents.AddPair('kind', 'markdown');
-    Contents.AddPair('value', Markdown);
-    Result := TJSONObject.Create;
-    TJSONObject(Result).AddPair('contents', Contents);
-    Exit;
-  end;
-  Result := TJSONObject.Create;
-  if FMarkdown then
-  begin
-    Contents := TJSONObject.Create;
-    Contents.AddPair('kind', 'markdown');
-    Contents.AddPair('value', Info.ToMarkdown);
-    TJSONObject(Result).AddPair('contents', Contents);
+    OwnTree := TSyntaxTreeCache.Parse(Text, Cancellation);
+    Tree := OwnTree;
   end
   else
-    // Klartext als einfacher String und ohne "range", genau wie DelphiLSP
-    // antwortet. RAD Studio zeigt den Hover benutzerdefinierter Server trotzdem
-    // nicht als Tooltip an; dafür braucht es ein IDE-Plugin (#175).
-    TJSONObject(Result).AddPair('contents', Info.ToPlainText);
-  // Für den Argus-Tooltip (#442) die Teile einzeln; andere Clients ignorieren das Feld.
-  TJSONObject(Result).AddPair('argus', ArgusJson(Info));
+    Exit(TJSONNull.Create);
+  try
+    if Assigned(FVersionProvider) then
+      DelphiVersion := FVersionProvider(Uri)
+    else
+      DelphiVersion := '';
+    ACancellation.ThrowIfCancellationRequested;
+    // Compiler-Direktiven wie {$R+} oder {$WARN …} (#102).
+    if TCompilerDirectives.HoverAt(Tree, TLspPositions.ReadPosition(PositionValue), DelphiVersion, Markdown) then
+    begin
+      Contents := TJSONObject.Create;
+      Contents.AddPair('kind', 'markdown');
+      Contents.AddPair('value', Markdown);
+      Result := TJSONObject.Create;
+      TJSONObject(Result).AddPair('contents', Contents);
+      Exit;
+    end;
+    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
+    try
+      Resolver.Namespaces := FNamespaces;
+      Info := InfoAt(Resolver, FIndex, Tree, Text, TDocumentUris.ToPath(Uri),
+        TLspPositions.ReadPosition(PositionValue), FReadText, DelphiVersion);
+    finally
+      Resolver.Free;
+    end;
+    if not Info.Found then
+    begin
+      // Seltene Schlüsselwörter und Direktiven (#187), wenn kein Symbol so heißt.
+      if not TKeywordReference.HoverAt(Text, TLspPositions.ReadPosition(PositionValue), DelphiVersion,
+        Markdown) then
+        Exit(TJSONNull.Create);
+      Contents := TJSONObject.Create;
+      Contents.AddPair('kind', 'markdown');
+      Contents.AddPair('value', Markdown);
+      Result := TJSONObject.Create;
+      TJSONObject(Result).AddPair('contents', Contents);
+      Exit;
+    end;
+    Result := TJSONObject.Create;
+    if FMarkdown then
+    begin
+      Contents := TJSONObject.Create;
+      Contents.AddPair('kind', 'markdown');
+      Contents.AddPair('value', Info.ToMarkdown);
+      TJSONObject(Result).AddPair('contents', Contents);
+    end
+    else
+      // Klartext als einfacher String und ohne "range", genau wie DelphiLSP
+      // antwortet. RAD Studio zeigt den Hover benutzerdefinierter Server trotzdem
+      // nicht als Tooltip an; dafür braucht es ein IDE-Plugin (#175).
+      TJSONObject(Result).AddPair('contents', Info.ToPlainText);
+    // Für den Argus-Tooltip (#442, #588) die Teile einzeln; andere Clients ignorieren das Feld.
+    TJSONObject(Result).AddPair('argus', ArgusJson(Info));
+  finally
+    OwnTree.Free;
+  end;
 end;
 
 end.

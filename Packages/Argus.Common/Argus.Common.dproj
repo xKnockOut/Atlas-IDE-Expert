@@ -250,6 +250,7 @@
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.Definition.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.PublishedMembers.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.Hover.pas"/>
+        <DCCReference Include="Source\Lsp\Argus.Common.Lsp.HoverTypes.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.HoverValues.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.LinkedEditing.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.Formatting.pas"/>

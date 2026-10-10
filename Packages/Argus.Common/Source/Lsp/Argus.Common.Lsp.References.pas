@@ -248,9 +248,10 @@ var
   PositionValue: TJSONValue;
   IncludeDeclaration: Boolean;
   Document: ITextDocument;
-  Tree: TSyntaxTree;
+  Tree, OwnTree: TSyntaxTree;
   Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
+  Text: string;
   Files: TArray<string>;
   Found: TArray<TReferenceLocation>;
   Location: TReferenceLocation;
@@ -262,23 +263,37 @@ begin
       'Felder "textDocument.uri" und "position" fehlen in ' + Method);
   if not TJSONObject(AParams).TryGetValue<Boolean>('context.includeDeclaration', IncludeDeclaration) then
     IncludeDeclaration := True;
-  if not FStore.TryGet(Uri, Document) then
-    Exit(TJSONNull.Create);
-  Files := nil;
-  if Assigned(FFiles) then
-    Files := FFiles();
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
-  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
-  Tree := Shared.Tree;
-  ACancellation.ThrowIfCancellationRequested;
-  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
+  OwnTree := nil;
+  if FStore.TryGet(Uri, Document) then
+  begin
+    Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+    Tree := Shared.Tree;
+  end
+  // Nicht geöffnete Datei (Verwendungen eines Typs aus dem Argus-Tooltip, #588): selbst lesen.
+  else if Assigned(FReadText) and FReadText(TDocumentUris.ToPath(Uri), Text) then
+  begin
+    OwnTree := TSyntaxTreeCache.Parse(Text, Cancellation);
+    Tree := OwnTree;
+  end
+  else
+    Exit(TJSONNull.Create);
   try
-    Resolver.Namespaces := FNamespaces;
-    Found := Find(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
-      IncludeDeclaration, Files, FReadText, ACancellation);
+    Files := nil;
+    if Assigned(FFiles) then
+      Files := FFiles();
+    ACancellation.ThrowIfCancellationRequested;
+    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
+    try
+      Resolver.Namespaces := FNamespaces;
+      Found := Find(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
+        IncludeDeclaration, Files, FReadText, ACancellation);
+    finally
+      Resolver.Free;
+    end;
   finally
-    Resolver.Free;
+    OwnTree.Free;
   end;
   Result := TJSONArray.Create;
   for Location in Found do

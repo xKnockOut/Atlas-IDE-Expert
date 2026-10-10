@@ -86,6 +86,7 @@
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.Attributes.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.PublishedMembers.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.Hover.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Argus.Common.Lsp.HoverTypes.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.HoverValues.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.LinkedEditing.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.Formatting.Tests.pas"/>
