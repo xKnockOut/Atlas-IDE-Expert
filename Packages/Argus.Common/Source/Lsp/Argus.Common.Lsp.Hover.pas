@@ -106,6 +106,7 @@ uses
   Argus.Common.Lsp.MessageHandlers,
   Argus.Common.Lsp.HoverValues,
   Argus.Common.Lsp.CompilerDirectives,
+  Argus.Common.Lsp.KeywordReference,
   Argus.Common.Pascal.Contract,
   Argus.Common.Pascal.TreeCache,
   Argus.Common.Lsp.Internals.Cancellation;
@@ -538,7 +539,18 @@ begin
     Resolver.Free;
   end;
   if not Info.Found then
-    Exit(TJSONNull.Create);
+  begin
+    // Seltene Schlüsselwörter und Direktiven (#187), wenn kein Symbol so heißt.
+    if not TKeywordReference.HoverAt(Document.Text, TLspPositions.ReadPosition(PositionValue), DelphiVersion,
+      Markdown) then
+      Exit(TJSONNull.Create);
+    Contents := TJSONObject.Create;
+    Contents.AddPair('kind', 'markdown');
+    Contents.AddPair('value', Markdown);
+    Result := TJSONObject.Create;
+    TJSONObject(Result).AddPair('contents', Contents);
+    Exit;
+  end;
   Result := TJSONObject.Create;
   if FMarkdown then
   begin
