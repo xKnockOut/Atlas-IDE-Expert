@@ -780,12 +780,15 @@ begin
   NewText := AItem.InsertText;
   if NewText = '' then
     NewText := AItem.Name;
+  if AItem.HasTextEdit then
+    NewText := AItem.TextEdit.NewText;
   // Klammern (#430): Methode mit Parametern, nicht über ein Commit-Zeichen, keine "(" dahinter.
   if Character < Length(LineText) then
     NextChar := LineText[Character + 1]
   else
     NextChar := #0;
   AutoParen := TArgusIdeSettings.Current.AutoParentheses and (FCommitEnd < 0) and (Pos('$0', NewText) = 0) and
+    not AItem.HasTextEdit and
     TArgusParentheses.Wanted(AItem.Kind in [TArgusItemKind.Method, TArgusItemKind.Function_,
       TArgusItemKind.Procedure_, TArgusItemKind.Constructor_], AItem.HasParameters, NextChar);
   if AutoParen then
@@ -796,8 +799,11 @@ begin
     Delete(NewText, CaretMarker, 2);
   Edits := TList<TPendingEdit>.Create;
   try
-    // Das getippte Wort durch den Eintrag ersetzen.
-    Edit.Start := TArgusEditorBuffer.ByteOffset(Text, Cursor.Line - 1, FWordStart);
+    // Das getippte Wort durch den Eintrag ersetzen; mit textEdit ab dessen Anfang (Postfix-Vorlagen, #188).
+    if AItem.HasTextEdit then
+      Edit.Start := TArgusEditorBuffer.ByteOffset(Text, AItem.TextEdit.StartLine, AItem.TextEdit.StartCharacter)
+    else
+      Edit.Start := TArgusEditorBuffer.ByteOffset(Text, Cursor.Line - 1, FWordStart);
     Edit.Stop := TArgusEditorBuffer.ByteOffset(Text, Cursor.Line - 1, Character);
     Edit.Text := NewText;
     Edit.IsWord := True;

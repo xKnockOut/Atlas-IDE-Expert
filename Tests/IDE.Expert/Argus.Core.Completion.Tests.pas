@@ -14,6 +14,8 @@ type
     [Test]
     procedure MapsLspCompletionList;
     [Test]
+    procedure ReadsTextEditOfPostfixItems;
+    [Test]
     procedure ReadsItemArrayAndNull;
     [Test]
     procedure ReadsResolvedDetails;
@@ -180,6 +182,30 @@ begin
 end;
 
 { TArgusCompletionProviderTests }
+
+procedure TArgusCompletionProviderTests.ReadsTextEditOfPostfixItems;
+var
+  Response: TJSONValue;
+  Items: TArgusCompletionItems;
+begin
+  // Liste.for (#188): ersetzt ab dem Anfang von "Liste" bis zum Cursor.
+  Response := TJSONObject.ParseJSONValue(
+    '{"isIncomplete":false,"items":[{"label":"for","kind":15,"filterText":"Liste.for",' +
+    '"textEdit":{"range":{"start":{"line":7,"character":2},"end":{"line":7,"character":10}},' +
+    '"newText":"for var Item in Liste do\n    "}},{"label":"Count","kind":10}]}');
+  try
+    Items := TArgusServerCompletionProvider.ItemsFromLsp(Response);
+  finally
+    Response.Free;
+  end;
+  Assert.AreEqual(Ord(TArgusItemKind.Snippet), Ord(Items[0].Kind));
+  Assert.IsTrue(Items[0].HasTextEdit);
+  Assert.AreEqual(7, Items[0].TextEdit.StartLine);
+  Assert.AreEqual(2, Items[0].TextEdit.StartCharacter);
+  Assert.AreEqual(10, Items[0].TextEdit.EndCharacter);
+  Assert.AreEqual('for var Item in Liste do'#10'    ', Items[0].TextEdit.NewText);
+  Assert.IsFalse(Items[1].HasTextEdit);
+end;
 
 procedure TArgusCompletionProviderTests.MapsLspCompletionList;
 var

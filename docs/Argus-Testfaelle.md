@@ -143,6 +143,17 @@ Schreibweise: `|` steht für die Cursorposition.
 | HN8 | Strg+Klick auf einen Typ im Tooltip | Sprung zur Deklaration, Tooltip schließt |
 | HN9 | Strg drücken, während der Tooltip offen ist | Tooltip bleibt offen (nur Umschalt, Strg, Alt allein) |
 
+## Postfix-Vorlagen (#188)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PF1 | In einer Routine `Liste.` tippen (Liste: TStringList), `for` wählen | Zeile wird zu `for var Item in Liste do` (bzw. mit Element-Typ), Cursor eingerückt in der nächsten Zeile; ein Undo-Schritt |
+| PF2 | `Obj.tryf` bei einem Objekt | `try … finally Obj.Free; end;` um die Folgezeile |
+| PF3 | `X.ifa` bei einer Objekt- oder Zeigervariable | `if Assigned(X) then` |
+| PF4 | `S.fmt` bei einem String | `Format(S, [])` |
+| PF5 | `Zahl.` (Integer) | keine Postfix-Einträge (Typ passt nicht) |
+| PF6 | Projekt mit `delphiVersion` vor 10.3, `Liste.for` | klassische Schleife, `Item` im `var`-Abschnitt der Routine |
+
 ## Methoden überschreiben (#443)
 
 | Nr. | Schritte | Erwartet |
