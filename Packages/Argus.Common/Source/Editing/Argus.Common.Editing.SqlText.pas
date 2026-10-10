@@ -175,7 +175,10 @@ var
 begin
   Sql := Trim(ASql);
   if Length(Sql) <= AMaxLength then
-    Exit([Sql]);
+  begin
+    Result := [Sql];
+    Exit;
+  end;
   // In Wörter teilen; Strings bleiben ein Wort.
   Words := nil;
   Index := 1;
