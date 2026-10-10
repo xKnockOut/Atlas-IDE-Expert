@@ -7,6 +7,7 @@
 //   security-tls-verification-disabled  Zertifikatsprüfung abgeschaltet oder immer erfolgreich
 //   security-insecure-http              http://-URLs in Strings
 //   security-insecure-random            Random für Token, Kennwörter, Salt, Nonce, Schlüssel
+//   security-sql-injection              SQL-Text aus zusammengesetzten Nicht-Konstanten (#270)
 //
 // Ohne Datenflussanalyse (#143) erkennen die Regeln nur einfache Muster und
 // melden mit mittlerer oder niedriger Konfidenz.
@@ -50,6 +51,12 @@ type
   end;
 
   TSecurityInsecureRandomRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TSecuritySqlInjectionRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -472,6 +479,149 @@ begin
   end;
 end;
 
+{ TSecuritySqlInjectionRule }
+
+function TSecuritySqlInjectionRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('security-sql-injection', TRuleSeverity.Warning,
+    'SQL-Text aus zusammengesetzten Werten (SQL-Injection)');
+end;
+
+const
+  SqlCalls: array[0..4] of string = ('ExecSQL', 'Open', 'ExecSQLScalar', 'ExecuteDirect', 'Execute');
+  // Umwandlungen, deren Ergebnis keine SQL-Syntax einschleusen kann.
+  SafeConversions: array[0..5] of string = ('IntToStr', 'QuotedStr', 'FloatToStr', 'IntToHex', 'BoolToStr',
+    'UIntToStr');
+  // Bezeichner, die Benutzereingaben liefern: TEdit.Text, TMemo.Lines, ParamStr, Webanfragen.
+  UserInputs: array[0..5] of string = ('Text', 'Lines', 'ParamStr', 'Request', 'QueryFields', 'ContentFields');
+
+/// <summary>Namen aus const- und resourcestring-Abschnitten der Datei.</summary>
+function ConstantNames(const ATokens: TArray<TPascalToken>): TArray<string>;
+var
+  Index, Depth: Integer;
+  InConst: Boolean;
+begin
+  Result := nil;
+  InConst := False;
+  Depth := 0;
+  for Index := 0 to High(ATokens) - 1 do
+  begin
+    // "const" in Parameterlisten ist kein Konstantenabschnitt.
+    if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('[') then
+      Inc(Depth)
+    else if ATokens[Index].IsSymbol(')') or ATokens[Index].IsSymbol(']') then
+      Dec(Depth)
+    else if Depth > 0 then
+      Continue
+    else if ATokens[Index].IsKeyword('const') or ATokens[Index].IsKeyword('resourcestring') then
+      InConst := True
+    else if ATokens[Index].IsKeyword('var') or ATokens[Index].IsKeyword('type') or
+      ATokens[Index].IsKeyword('begin') or ATokens[Index].IsKeyword('procedure') or
+      ATokens[Index].IsKeyword('function') or ATokens[Index].IsKeyword('implementation') then
+      InConst := False
+    else if InConst and (ATokens[Index].Kind = TPascalTokenKind.Identifier) and
+      (ATokens[Index + 1].IsSymbol('=') or ATokens[Index + 1].IsSymbol(':')) and
+      ((Index = 0) or not ATokens[Index - 1].IsSymbol('.')) then
+      Result := Result + [ATokens[Index].Text];
+  end;
+end;
+
+/// <summary>Ist der SQL-Ausdruck ATokens[AFirst..ALast] aus Nicht-Konstanten zusammengesetzt?
+/// AFromInput: eine Quelle ist Benutzereingabe.</summary>
+function IsComposedSql(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer;
+  const AConstants: TArray<string>; out AFromInput: Boolean): Boolean;
+var
+  Index, Close: Integer;
+  Joined, Variable: Boolean;
+begin
+  Joined := False;
+  Variable := False;
+  AFromInput := False;
+  Index := AFirst;
+  while Index <= ALast do
+  begin
+    if ATokens[Index].IsSymbol('+') then
+      Joined := True
+    else if ATokens[Index].Kind = TPascalTokenKind.Identifier then
+    begin
+      if IsOneOf(ATokens[Index].Text, SafeConversions) and (Index < ALast) and ATokens[Index + 1].IsSymbol('(') then
+      begin
+        // IntToStr(Id), QuotedStr(Name): Inhalt überspringen.
+        Close := MatchingParen(ATokens, Index + 1);
+        if Close > 0 then
+          Index := Close;
+      end
+      else if IsOneOf(ATokens[Index].Text, ['Format', 'Concat']) then
+        Joined := True
+      else if not IsOneOf(ATokens[Index].Text, AConstants) and
+        not IsOneOf(ATokens[Index].Text, ['string', 'nil', 'sLineBreak']) then
+      begin
+        Variable := True;
+        if IsOneOf(ATokens[Index].Text, UserInputs) then
+          AFromInput := True;
+      end;
+    end;
+    Inc(Index);
+  end;
+  Result := Joined and Variable;
+end;
+
+procedure TSecuritySqlInjectionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Constants: TArray<string>;
+  Index, First, Last, Close: Integer;
+  Sink: TPascalToken;
+  FromInput: Boolean;
+  Confidence: TRuleConfidence;
+  Argument: TArray<Integer>;
+begin
+  Tokens := CodeTokens(AContext);
+  Constants := ConstantNames(Tokens);
+  for Index := 0 to High(Tokens) - 2 do
+  begin
+    if Tokens[Index].Kind <> TPascalTokenKind.Identifier then
+      Continue;
+    First := -1;
+    Last := -1;
+    Sink := Tokens[Index];
+    // SQL.Text := …, CommandText := …
+    if ((SameText(Tokens[Index].Text, 'Text') and (Index >= 2) and Tokens[Index - 1].IsSymbol('.') and
+      SameText(Tokens[Index - 2].Text, 'SQL')) or SameText(Tokens[Index].Text, 'CommandText')) and
+      Tokens[Index + 1].IsSymbol(':=') then
+    begin
+      First := Index + 2;
+      Last := StatementEnd(Tokens, First) - 1;
+    end
+    // SQL.Add(…), ExecSQL(…), Open(…)
+    else if Tokens[Index + 1].IsSymbol('(') and ((SameText(Tokens[Index].Text, 'Add') and (Index >= 2) and
+      Tokens[Index - 1].IsSymbol('.') and SameText(Tokens[Index - 2].Text, 'SQL')) or
+      (IsOneOf(Tokens[Index].Text, SqlCalls) and (Index >= 1) and Tokens[Index - 1].IsSymbol('.'))) then
+    begin
+      Close := MatchingParen(Tokens, Index + 1);
+      if Close < 0 then
+        Continue;
+      for Argument in Arguments(Tokens, Index + 1, Close) do
+      begin
+        // Nur das erste Argument ist der SQL-Text; weitere sind Parameterwerte.
+        First := Argument[0];
+        Last := Argument[1];
+        Break;
+      end;
+    end;
+    if (First < 0) or (Last < First) then
+      Continue;
+    if not IsComposedSql(Tokens, First, Last, Constants, FromInput) then
+      Continue;
+    if FromInput then
+      Confidence := TRuleConfidence.High
+    else
+      Confidence := TRuleConfidence.Medium;
+    AReport.Add(TokenRange(Sink), 'SQL-Text wird aus Werten zusammengesetzt: Eingaben könnten SQL einschleusen. ' +
+      'Parameter verwenden (:Name, ParamByName)', Confidence);
+  end;
+end;
+
 procedure RegisterSecurityRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TSecurityCommandInjectionRule.Create);
@@ -480,6 +630,7 @@ begin
   ARegistry.Register(TSecurityTlsVerificationDisabledRule.Create);
   ARegistry.Register(TSecurityInsecureHttpRule.Create);
   ARegistry.Register(TSecurityInsecureRandomRule.Create);
+  ARegistry.Register(TSecuritySqlInjectionRule.Create);
 end;
 
 end.
