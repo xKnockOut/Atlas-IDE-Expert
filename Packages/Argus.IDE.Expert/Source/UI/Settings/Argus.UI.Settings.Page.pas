@@ -1,8 +1,9 @@
 ﻿unit Argus.UI.Settings.Page;
 
 // Seite „Argus“ unter Tools › Optionen › Drittanbieter (#227, Teil
-// Vervollständigung). Reine VCL, im Code aufgebaut (kein DFM): Steuerelemente
-// untereinander, die IDE skaliert sie mit dem Dialog. Laden und Speichern über
+// Vervollständigung). Reine VCL, im Code aufgebaut: Steuerelemente
+// untereinander, die IDE skaliert sie mit dem Dialog. Die DFM ist leer;
+// TCustomFrame.Create verlangt für abgeleitete Frames eine Ressource. Laden und Speichern über
 // TArgusPluginSettings; die IDE-Schicht liest und schreibt die Registry.
 
 interface
@@ -51,6 +52,8 @@ type
   end;
 
 implementation
+
+{$R *.dfm}
 
 { TArgusSettingsPage }
 

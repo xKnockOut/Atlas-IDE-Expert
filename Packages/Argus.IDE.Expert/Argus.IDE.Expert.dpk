@@ -74,7 +74,7 @@ contains
   Argus.IDE.CodeInsight.Manager in 'Source\IDE\CodeInsight\Argus.IDE.CodeInsight.Manager.pas',
   Argus.IDE.CodeInsight.Composition in 'Source\IDE\CodeInsight\Argus.IDE.CodeInsight.Composition.pas',
   Argus.Core.Settings.Plugin in 'Source\Core\Settings\Argus.Core.Settings.Plugin.pas',
-  Argus.UI.Settings.Page in 'Source\UI\Settings\Argus.UI.Settings.Page.pas',
+  Argus.UI.Settings.Page in 'Source\UI\Settings\Argus.UI.Settings.Page.pas' {ArgusSettingsPage: TFrame},
   Argus.IDE.Settings.Store in 'Source\IDE\Settings\Argus.IDE.Settings.Store.pas',
   Argus.IDE.Settings.Options in 'Source\IDE\Settings\Argus.IDE.Settings.Options.pas',
   Argus.Core.Completion.Ranking in 'Source\Core\Completion\Argus.Core.Completion.Ranking.pas',
