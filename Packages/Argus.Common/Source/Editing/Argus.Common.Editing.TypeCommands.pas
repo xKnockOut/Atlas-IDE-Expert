@@ -7,6 +7,7 @@
 //   /encapsulate FName               Feld wird private, dazu Property Name mit Setter
 //   /assign                          Assign(Source: TPersistent) für alle Felder
 //   /json                            ToJson und FromJson mit System.JSON für einfache Felder
+//   /thread TWorker                  TThread-Nachfahre mit Execute-Schleife (#299)
 
 interface
 
@@ -503,6 +504,39 @@ begin
   end;
 end;
 
+{ /thread }
+
+function ExecuteThread(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+var
+  Source: TCommandSource;
+  TypeName: string;
+  InTypeSection: Boolean;
+  UsesEdit: TRuleEdit;
+begin
+  AEdits := nil;
+  TypeName := Trim(AContext.Arguments);
+  if not IsValidIdent(TypeName) then
+    Exit(Fail('Erwartet wird /thread TName', AReason));
+  Source := TCommandSource.Create(AContext);
+  try
+    if not TypePlace(Source, 'thread', InTypeSection, AReason) then
+      Exit(False);
+    AEdits := [TypeDeclaration(Source, InTypeSection, [Format('%s = class(TThread)', [TypeName]), 'protected',
+      '  procedure Execute; override;', 'end;']), Source.AddBody(TypeName, Join(Source, [
+      Format('procedure %s.Execute;', [TypeName]), 'begin',
+      '  // Wartet niemand auf den Thread, im Konstruktor FreeOnTerminate := True setzen.',
+      '  while not Terminated do', '  begin',
+      '    // Ergebnisse im Hauptthread zeigen: TThread.Queue(nil, procedure begin … end);', '  end;', 'end;']))];
+    if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(Source.Tree.Tokens), 'System.Classes', AContext.Namespaces) and
+      TUsesClauses.AddUnit(Source.Tree.Tokens, LineOffset(Source, Source.Line), 'System.Classes', Source.LineBreak,
+      UsesEdit) then
+      AEdits := AEdits + [UsesEdit];
+    Result := True;
+  finally
+    Source.Free;
+  end;
+end;
+
 function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
 begin
   Result.Name := AName;
@@ -529,6 +563,7 @@ begin
     ExecuteEncapsulate));
   ARegistry.Register(Command('assign', 'Assign für alle Felder anlegen', '/assign', ExecuteAssign));
   ARegistry.Register(Command('json', 'ToJson und FromJson anlegen', '/json', ExecuteJson));
+  ARegistry.Register(Command('thread', 'TThread-Nachfahre mit Execute anlegen', '/thread TWorker', ExecuteThread));
 end;
 
 end.

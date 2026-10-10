@@ -38,6 +38,10 @@ type
     [Test]
     procedure JsonOutsideTypeFails;
     [Test]
+    procedure ThreadWithoutTypeSection;
+    [Test]
+    procedure ThreadInClassFails;
+    [Test]
     procedure ResultsParseWithoutErrors;
   end;
 
@@ -262,6 +266,26 @@ end;
 procedure TTypeCommandsTests.JsonOutsideTypeFails;
 begin
   Assert.AreEqual('/json gilt nur in einer Klasse oder einer ihrer Methoden', ProblemOf(Format(TypeUnit, ['/json'])));
+end;
+
+procedure TTypeCommandsTests.ThreadWithoutTypeSection;
+const
+  Text = 'unit U;'#10'interface'#10'implementation'#10'uses'#10'  System.SysUtils;'#10'/thread TWorker'#10#10'end.';
+var
+  Result_: string;
+begin
+  Result_ := Expand(Text, 5);
+  Assert.IsTrue(Pos('type'#10'  TWorker = class(TThread)'#10'  protected'#10'    procedure Execute; override;'#10 +
+    '  end;'#10, Result_) > 0, Result_);
+  Assert.IsTrue(Pos('procedure TWorker.Execute;'#10'begin'#10, Result_) > 0, Result_);
+  Assert.IsTrue(Pos('  while not Terminated do'#10, Result_) > 0, Result_);
+  Assert.IsTrue(Pos('System.Classes', Result_) > 0, Result_);
+  Assert.IsTrue(Parses(Result_), Result_);
+end;
+
+procedure TTypeCommandsTests.ThreadInClassFails;
+begin
+  Assert.AreEqual('/thread gilt nur auf Unit-Ebene', ProblemOf(Format(ClassUnit, ['/thread TWorker'])));
 end;
 
 procedure TTypeCommandsTests.ResultsParseWithoutErrors;
