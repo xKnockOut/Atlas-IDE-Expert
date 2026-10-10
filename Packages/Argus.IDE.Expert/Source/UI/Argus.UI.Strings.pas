@@ -17,7 +17,7 @@ type
     MoreOverloads, ChipAll, ChipMethods, ChipProperties, ChipEvents, ChipTypes, ChipSnippets, TagRecent,
     TagFrequent, SettingsTitle, SettingsEnabled, SettingsRows, SettingsPanelCollapsed, SettingsParentheses,
     SettingsChips, SettingsLearning, SettingsGroupInherited, SettingsPreview, SettingsHover, SettingsResetHistory,
-    SettingsResetWidths, FitsType, OtherGroup, CountFits, CompileCancelled, SettingsHangThreshold, SettingsHangHint, HangHint, SettingsHangTest);
+    SettingsResetWidths, FitsType, OtherGroup, CountFits, CompileCancelled, SettingsHangThreshold, SettingsHangHint, HangHint, SettingsHangTest, SettingsReload, ReloadDone, ReloadKeptModified, ReloadDeleted);
 
   TArgusStrings = class
   private class var
@@ -47,7 +47,10 @@ const
      'Geerbte Member nachrangig und nach Klasse gruppiert', 'Vorschau des gewählten Eintrags im Editor',
      'Eigener Tooltip beim Verweilen über Bezeichnern', 'Verlauf zurücksetzen', 'Breiten zurücksetzen',
      'Passt zu %s', 'Weitere', '%d passend · %d gesamt', 'Argus: Compile abgebrochen – %s', 'Als Hänger melden ab (ms):',
-     'Hinweis im Meldungsfenster nach langen Hängern (ab 2 s)', 'Argus: Die IDE hat %d ms nicht reagiert%s', 'Wächter testen (1 s)'),
+     'Hinweis im Meldungsfenster nach langen Hängern (ab 2 s)', 'Argus: Die IDE hat %d ms nicht reagiert%s', 'Wächter testen (1 s)',
+     'Außerhalb geänderte Dateien ohne Rückfrage neu laden (nur ohne ungespeicherte Änderungen)',
+     'Argus: %d Dateien neu geladen', 'Argus: %s wurde außerhalb geändert und hat ungespeicherte Änderungen; die IDE fragt nach.',
+     'Argus: %s existiert nicht mehr.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -58,7 +61,10 @@ const
      'Frequently and recently chosen entries first', 'Inherited members ranked lower and grouped by class',
      'Preview of the selected entry in the editor', 'Own tooltip when hovering identifiers', 'Reset history',
      'Reset widths', 'Matches %s', 'Other', '%d matching · %d total', 'Argus: compile cancelled – %s', 'Report a hang after (ms):',
-     'Message after long hangs (2 s and more)', 'Argus: the IDE did not respond for %d ms%s', 'Test watchdog (1 s)'));
+     'Message after long hangs (2 s and more)', 'Argus: the IDE did not respond for %d ms%s', 'Test watchdog (1 s)',
+     'Reload files changed outside the IDE without asking (only without unsaved changes)',
+     'Argus: %d files reloaded', 'Argus: %s was changed outside and has unsaved changes; the IDE will ask.',
+     'Argus: %s no longer exists.'));
 
 { TArgusStrings }
 

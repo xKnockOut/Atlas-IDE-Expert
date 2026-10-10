@@ -37,6 +37,7 @@ type
     FHoverTooltip: TCheckBox;
     FHangThreshold: TEdit;
     FHangHint: TCheckBox;
+    FReloadExternal: TCheckBox;
     FResetHistory: TButton;
     FResetWidths: TButton;
     FHangTest: TButton;
@@ -71,7 +72,7 @@ begin
   inherited Create(AOwner);
   Name := 'ArgusSettingsPage';
   Width := 480;
-  Height := 440;
+  Height := 470;
   Title := TLabel.Create(Self);
   Title.Parent := Self;
   Title.Align := alTop;
@@ -107,6 +108,7 @@ begin
   // Einfrier-Wächter (#501).
   FHangThreshold := AddNumber(TArgusStrings.Text(TArgusTextId.SettingsHangThreshold));
   FHangHint := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsHangHint));
+  FReloadExternal := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsReload));
   Panel := AddPanel(32);
   FResetHistory := TButton.Create(Self);
   FResetHistory.Parent := Panel;
@@ -189,6 +191,7 @@ begin
   FHoverTooltip.Checked := ASettings.HoverTooltip;
   FHangThreshold.Text := IntToStr(ASettings.HangThresholdMs);
   FHangHint.Checked := ASettings.HangHint;
+  FReloadExternal.Checked := ASettings.ReloadExternal;
 end;
 
 procedure TArgusSettingsPage.SaveTo(var ASettings: TArgusPluginSettings);
@@ -204,6 +207,7 @@ begin
   ASettings.HoverTooltip := FHoverTooltip.Checked;
   ASettings.HangThresholdMs := StrToIntDef(FHangThreshold.Text, ASettings.HangThresholdMs);
   ASettings.HangHint := FHangHint.Checked;
+  ASettings.ReloadExternal := FReloadExternal.Checked;
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;
