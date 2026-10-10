@@ -28,6 +28,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Editor | `highlight`: `blockPairs`, `directives`, `exitPoints`, `exitKeywords` | – | argus.json, Editor (`argus.highlight`) | nein | Kontrollkästchen, Liste | #307 |
 | Editor | `inlayHints`: `parameterNames`, `inferredTypes`, `endMarkers`, `endMarkerMinLines` | – | argus.json, Editor (`argus.inlayHints`) | nein | Kontrollkästchen, Zahlenfeld | #35 |
 | Editor | `stringLiteral`: `style`, `lineBreak`, `maxLineLength` | – | argus.json, Editor (`argus.stringLiteral`) | nein | Auswahl, Zahlenfeld | #312 |
+| Editor | `memberOrder`: `sections`, `members`, `sortFields`, `sortPublished` | – | argus.json, Editor (`argus.memberOrder`) | nein | Liste, Kontrollkästchen | #89 |
 | Prüfregeln | `minConfidence` | `"medium"` | argus.json, Editor (`argus.minConfidence`) | nein | Auswahl | #144 |
 | Projekt | `exclude` | – | argus.json, Editor (`argus.exclude`) | nein | Liste mit Hinzufügen/Entfernen | #24 |
 | Formatierung | `format`: `indentSize`, `useTabs`, `keywordCase`, `trimTrailingWhitespace`, `insertFinalNewline`, `spaceAroundAssignment`, `spaceAfterComma`, `endOfLine` | – | argus.json, Editor (`argus.format`) | nein | Zahlenfeld, Kontrollkästchen, Auswahl | #43 |

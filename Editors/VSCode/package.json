@@ -221,6 +221,11 @@
           "default": {},
           "markdownDescription": "Code-Aktionen „Als String-Literal“ und „Als Klartext kopieren“. argus.json im Projekt hat Vorrang."
         },
+        "argus.memberOrder": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Code-Aktion „Klassenmitglieder ordnen“: Reihenfolge der Sichtbarkeitsabschnitte und der Mitglieder darin. argus.json im Projekt hat Vorrang."
+        },
         "argus.minConfidence": {
           "type": "string",
           "enum": [
