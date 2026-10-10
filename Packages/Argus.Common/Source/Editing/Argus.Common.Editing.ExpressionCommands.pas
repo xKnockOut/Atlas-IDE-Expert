@@ -10,7 +10,8 @@
 //   /iif          if B then X := A else X := C; wird zu X := if B then A else C;
 //                 (ab Delphi 13)
 //   /inc          X := X + 1 wird zu Inc(X), X := X - N zu Dec(X, N)
-// /modern aus #303 folgt getrennt.
+//   /modern       moderne Schreibweisen in der umgebenden Routine (for-in, Inline-Variablen,
+//                 FreeAndNil); mit -for, -inline bzw. -free einzeln abschaltbar
 
 interface
 
@@ -31,9 +32,11 @@ uses
   Argus.Common.Rules.Contract,
   Argus.Common.Pascal.Contract,
   Argus.Common.Pascal.Lexer,
+  Argus.Common.Pascal.SyntaxTree,
   Argus.Common.Pascal.LanguageFeatures,
   Argus.Common.Rules.DeclaredTypes,
   Argus.Common.Editing.StringLiterals,
+  Argus.Common.Editing.Modernizer,
   Argus.Common.Editing.CommandSource;
 
 type
@@ -457,8 +460,59 @@ begin
   Result.Execute := AExecute;
 end;
 
+{ /modern }
+
+function ExecuteModern(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+var
+  Source: TCommandSource;
+  Routine: TSyntaxNode;
+  Kinds: TModernizations;
+  Option, Text: string;
+  Lines: TArray<string>;
+  Line, Count: Integer;
+begin
+  AEdits := nil;
+  Kinds := [TModernization.ForIn, TModernization.InlineVar, TModernization.FreeAndNilCall];
+  for Option in AContext.Arguments.Split([' '], TStringSplitOptions.ExcludeEmpty) do
+    if SameText(Option, '-for') then
+      Exclude(Kinds, TModernization.ForIn)
+    else if SameText(Option, '-inline') then
+      Exclude(Kinds, TModernization.InlineVar)
+    else if SameText(Option, '-free') then
+      Exclude(Kinds, TModernization.FreeAndNilCall)
+    else
+      Exit(Fail('Erwartet wird /modern [-for] [-inline] [-free]', AReason));
+  // for var und Inline-Variablen gibt es erst ab Delphi 10.3.
+  if not TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, AContext.DelphiVersion) then
+    Kinds := Kinds - [TModernization.ForIn, TModernization.InlineVar];
+  Source := TCommandSource.Create(AContext);
+  try
+    Routine := Source.RoutineAt;
+    if Routine = nil then
+      Exit(Fail('/modern gilt nur im Rumpf einer Routine', AReason));
+    Lines := nil;
+    for Line := Routine.StartPos.Line to Routine.EndPos.Line do
+      if Line <> Source.Line then
+        Lines := Lines + [Source.Lines[Line]];
+    Lines := TModernizer.Apply(Lines, Kinds, Count);
+    if Count = 0 then
+      Exit(Fail('In dieser Routine gibt es nichts zu modernisieren', AReason));
+    Text := '';
+    for Line := 0 to High(Lines) do
+      Text := Text + Lines[Line] + Source.LineBreak;
+    AEdits := [TRuleEdit.Create(TTextRange.Create(Routine.StartPos.Line, 0, Routine.EndPos.Line + 1, 0), Text)];
+    if TModernization.FreeAndNilCall in Kinds then
+      AddUses(Source, AContext, Routine.StartPos.Line, ['System.SysUtils'], AEdits);
+    Result := True;
+  finally
+    Source.Free;
+  end;
+end;
+
 procedure RegisterExpressionCommands(ARegistry: TSlashCommandRegistry);
 begin
+  ARegistry.Register(Command('modern', 'Umgebende Routine modernisieren (for-in, Inline-Variablen, FreeAndNil)',
+    '/modern -inline', ExecuteModern));
   ARegistry.Register(Command('format', 'String-Verkettung darunter in Format(…) umwandeln', '/format',
     ExecuteFormat));
   ARegistry.Register(Command('multiline', 'Verkettetes Literal darunter als mehrzeiligen String schreiben',

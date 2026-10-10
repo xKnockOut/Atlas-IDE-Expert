@@ -212,6 +212,7 @@ uses
   Argus.Common.Rules.ChangedFiles.Tests in 'Common\Rules\Argus.Common.Rules.ChangedFiles.Tests.pas',
   Argus.Common.Editing.RefactoringCommands.Tests in 'Common\Editing\Argus.Common.Editing.RefactoringCommands.Tests.pas',
   Argus.Common.Editing.ExpressionCommands.Tests in 'Common\Editing\Argus.Common.Editing.ExpressionCommands.Tests.pas',
+  Argus.Common.Editing.Modernizer.Tests in 'Common\Editing\Argus.Common.Editing.Modernizer.Tests.pas',
   Argus.Common.Editing.ProjectCommands.Tests in 'Common\Editing\Argus.Common.Editing.ProjectCommands.Tests.pas',
   Argus.Common.Editing.SqlText.Tests in 'Common\Editing\Argus.Common.Editing.SqlText.Tests.pas',
   Argus.Common.Editing.DatabaseCommands.Tests in 'Common\Editing\Argus.Common.Editing.DatabaseCommands.Tests.pas',
