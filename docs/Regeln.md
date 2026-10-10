@@ -50,6 +50,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`dfm-control-field-type-mismatch`](#dfm-control-field-type-mismatch) | Datensensitives Control passt nicht zum Feldtyp | Bug | Warnung |
 | [`dfm-duplicate-binding`](#dfm-duplicate-binding) | Zwei Controls an demselben Feld | Bug | Warnung |
 | [`foreign-form-control-access`](#foreign-form-control-access) | Zugriff auf Controls eines anderen Formulars | Code Smell | Warnung |
+| [`security-sql-injection`](#security-sql-injection) | SQL-Text aus zusammengesetzten Werten (SQL-Injection) | Schwachstelle | Warnung |
 
 <a id="syntax"></a>
 ## syntax
@@ -1111,4 +1112,24 @@ Richtig:
 
 ```pascal
 Form2.Kundenname := 'x';
+```
+
+<a id="security-sql-injection"></a>
+## security-sql-injection
+
+**SQL-Text aus zusammengesetzten Werten (SQL-Injection)** · Schwachstelle · Warnung
+
+SQL.Text, SQL.Add, CommandText, ExecSQL oder Open erhalten Text, der per + oder Format aus Nicht-Konstanten zusammengesetzt ist. Benutzereingaben könnten SQL einschleusen. Parameter verwenden (:Name, ParamByName). Konstanten, resourcestrings, IntToStr und QuotedStr zählen nicht; Benutzereingaben (TEdit.Text, TMemo.Lines) heben die Konfidenz auf hoch.
+
+Mit Treffer:
+
+```pascal
+Q.SQL.Text := 'select * from K where N = ''' + Edit1.Text + '''';
+```
+
+Richtig:
+
+```pascal
+Q.SQL.Text := 'select * from K where N = :N';
+Q.ParamByName('N').AsString := Edit1.Text;
 ```

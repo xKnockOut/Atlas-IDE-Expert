@@ -163,8 +163,8 @@ const
     'forbidden-uses,foreign-form-control-access,form-field-type-mismatch,' +
     'form-field-without-object,form-object-without-field,hides-virtual,implemented-not-declared,' +
     'invisible-char,lock-without-finally,possibly-uninitialized,result-not-set,security-command-injection,' +
-    'security-insecure-http,security-insecure-random,security-tls-verification-disabled,security-weak-crypto,' +
-    'synchronize-in-destructor,' +
+    'security-insecure-http,security-insecure-random,security-sql-injection,security-tls-verification-disabled,' +
+    'security-weak-crypto,synchronize-in-destructor,' +
     'thread-free-with-free-on-terminate,thread-resume-suspend,thread-use-after-free-on-terminate,' +
     'thread-vcl-access,unused-assignment,unused-local,unused-parameter,' +
     'virtual-instead-of-override';
@@ -178,11 +178,13 @@ begin
     'destroy-without-override,dfm-circular-datasource,dfm-control-field-type-mismatch,dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,' +
     'form-field-type-mismatch,form-field-without-object,form-object-without-field,' +
     'hides-virtual,implemented-not-declared,lock-without-finally,possibly-uninitialized,' +
-    'result-not-set,security-command-injection,security-tls-verification-disabled,synchronize-in-destructor,' +
+    'result-not-set,security-command-injection,security-sql-injection,security-tls-verification-disabled,' +
+    'synchronize-in-destructor,' +
     Threads + ',virtual-instead-of-override',
     ActiveRules('fast'));
   Assert.AreEqual('bidi-control,confusable-identifier,invisible-char,security-command-injection,' +
-    'security-insecure-http,security-insecure-random,security-tls-verification-disabled,security-weak-crypto',
+    'security-insecure-http,security-insecure-random,security-sql-injection,security-tls-verification-disabled,' +
+    'security-weak-crypto',
     ActiveRules('security'));
   Assert.AreEqual('component-fixed-pixels,component-hardcoded-color,component-setter-without-invalidate,' +
     'forbidden-uses,foreign-form-control-access,thread-resume-suspend,unused-assignment,unused-local,unused-parameter',

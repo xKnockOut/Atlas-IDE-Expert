@@ -37,6 +37,12 @@ type
     procedure RandomTokenReports;
     [Test]
     procedure RandomForOtherValuesIsSilent;
+    [Test]
+    procedure SqlFromEditIsHighConfidence;
+    [Test]
+    procedure SqlFromVariableIsMedium;
+    [Test]
+    procedure ParameterizedOrConstantSqlIsSilent;
   end;
 
 implementation
@@ -176,6 +182,45 @@ procedure TSecurityRulesTests.RandomForOtherValuesIsSilent;
 begin
   TRuleAssert.Silent(TSecurityInsecureRandomRule.Create,
     Body('  Wurf := Random(6) + 1;'#10'  Token := TGUID.NewGuid.ToString;'));
+end;
+
+procedure TSecurityRulesTests.SqlFromEditIsHighConfidence;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TSecuritySqlInjectionRule.Create,
+    Body('  Q.SQL.Text := ''select * from K where N = '''''' + Edit1.Text + '''''''';'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
+end;
+
+procedure TSecurityRulesTests.SqlFromVariableIsMedium;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TSecuritySqlInjectionRule.Create,
+    Body('  Q.SQL.Add(''where Name = '' + Name);'#10 +
+    '  Q.Open(Format(''select * from %s'', [Tabelle]));'#10 +
+    '  Cmd.CommandText := ''delete from K where Id = '' + Wert;'));
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+end;
+
+procedure TSecurityRulesTests.ParameterizedOrConstantSqlIsSilent;
+begin
+  TRuleAssert.Silent(TSecuritySqlInjectionRule.Create,
+    'unit U;'#10'interface'#10'implementation'#10 +
+    'const'#10'  Tabelle = ''Kunden'';'#10 +
+    'resourcestring'#10'  Abfrage = ''select * from '';'#10 +
+    'procedure Run(const Id: Integer);'#10'begin'#10 +
+    '  Q.SQL.Text := ''select * from K where N = :N'';'#10 +
+    '  Q.SQL.Text := Abfrage + Tabelle;'#10 +
+    '  Q.SQL.Text := ''select * from K where Id = '' + IntToStr(Id);'#10 +
+    '  Q.SQL.Add(''and Name = '' + QuotedStr(Edit1.Text));'#10 +
+    '  Q.Open;'#10 +
+    '  Q.ExecSQL(''update K set A = :A'', [Edit1.Text]);'#10 +
+    'end;'#10'end.');
 end;
 
 initialization

@@ -229,6 +229,11 @@
       "id": "foreign-form-control-access",
       "name": "Zugriff auf Controls eines anderen Formulars",
       "description": "Code greift über die globale Variable auf ein Feld eines Formulars oder Frames aus einer anderen Unit zu (Form2.Edit1.Text). Das koppelt die Units eng; besser eine Methode oder Property des Formulars nutzen."
+    },
+    {
+      "id": "security-sql-injection",
+      "name": "SQL-Text aus zusammengesetzten Werten (SQL-Injection)",
+      "description": "SQL.Text, SQL.Add, CommandText, ExecSQL oder Open erhalten Text, der per + oder Format aus Nicht-Konstanten zusammengesetzt ist. Benutzereingaben könnten SQL einschleusen. Parameter verwenden (:Name, ParamByName). Konstanten, resourcestrings, IntToStr und QuotedStr zählen nicht; Benutzereingaben (TEdit.Text, TMemo.Lines) heben die Konfidenz auf hoch."
     }
   ]
 }
