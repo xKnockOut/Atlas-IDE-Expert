@@ -101,6 +101,7 @@ begin
     AUnit.Symbols[Index].TypeArgs := Intern(AUnit.Symbols[Index].TypeArgs);
     AUnit.Symbols[Index].AncestorArgs := Intern(AUnit.Symbols[Index].AncestorArgs);
     AUnit.Symbols[Index].TypeParams := Intern(AUnit.Symbols[Index].TypeParams);
+    AUnit.Symbols[Index].FileName := Intern(AUnit.Symbols[Index].FileName);
     AUnit.Symbols[Index].ParamTypes := Copy(AUnit.Symbols[Index].ParamTypes);
     for Inner := 0 to High(AUnit.Symbols[Index].ParamTypes) do
       AUnit.Symbols[Index].ParamTypes[Inner] := Intern(AUnit.Symbols[Index].ParamTypes[Inner]);

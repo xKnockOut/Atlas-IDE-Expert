@@ -1054,12 +1054,14 @@ begin
   Lines := TextLines(AText);
   Found := False;
   Symbol := Default(TIndexSymbol);
-  if (AIndex <> nil) and AIndex.FindFile(AFileName, UnitInfo) then
+  // Auch für Include-Dateien (#500): Unit, die sie einbindet; Symbole nur aus dieser Datei.
+  if TIndexFiles.UnitOf(AIndex, AFileName, UnitInfo) then
   begin
     Result.AddPair('unit', UnitInfo.UnitName);
     for Candidate in UnitInfo.Symbols do
       if (Candidate.SelectionRange.StartPos.Line = APosition.Line) and
-        (Candidate.SelectionRange.StartPos.Character = APosition.Character) then
+        (Candidate.SelectionRange.StartPos.Character = APosition.Character) and
+        SameText(UnitInfo.SymbolFile(Candidate), AFileName) then
       begin
         Symbol := Candidate;
         Found := True;

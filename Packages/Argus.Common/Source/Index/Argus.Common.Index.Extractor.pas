@@ -7,6 +7,15 @@
 // Vor dem Parsen werden die inaktiven Zweige der bedingten Kompilierung
 // durch Leerzeichen ersetzt (Zeilenumbrüche bleiben), damit nur aktive
 // Deklarationen erscheinen und alle Positionen stimmen.
+//
+// Mit Include-Auflösung kommen die Deklarationen aktiver $I-Dateien dazu
+// (#500): Jede Datei wird für sich geparst (ein Fragment ohne unit-Kopf
+// liefert seine Deklarationen), ihre Symbole tragen die .inc als FileName
+// und zählen zum Abschnitt, in dem die Direktive steht. Steht die Direktive
+// mitten in einem type-, const- oder var-Abschnitt und beginnt die Datei
+// nicht selbst mit einem Abschnitt, wird das Schlüsselwort vorangestellt.
+// Zyklen und zu tiefe Verschachtelung überspringt der Extractor; die
+// Diagnose dazu kommt aus dem Präprozessor.
 
 interface
 
@@ -43,6 +52,10 @@ type
     procedure AddRoutine(ANode: TSyntaxNode);
     procedure Walk(ARoot: TSyntaxNode; var AUnit: TUnitIndex);
     class function UsesOf(ASection: TSyntaxNode): TArray<string>; static;
+    class function ExtractLevel(const AText, AFileName: string; const ADefines: TArray<string>;
+      const AResolver: TIncludeResolver; const AStack: TArray<string>): TUnitIndex; static;
+    class procedure AddIncluded(ATree: TSyntaxTree; const AFileName: string; const ADefines: TArray<string>;
+      const AResolver: TIncludeResolver; const AStack: TArray<string>; var AUnit: TUnitIndex); static;
   public
     /// <summary>Erster direkter Typverweis eines Knotens (A: TFoo, function F: TFoo); sonst ''.</summary>
     class function DeclaredType(ANode: TSyntaxNode): string; static;
@@ -213,6 +226,7 @@ begin
   if AKind = TIndexSymbolKind.Property_ then
     Symbol.IsDefault := IsDefaultProperty(ANode);
   Symbol.IsVirtual := (AKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and IsVirtualHeader(ANode);
+  Symbol.FileName := '';
   FSymbols.Add(Symbol);
 end;
 
@@ -704,6 +718,12 @@ end;
 
 class function TIndexExtractor.ExtractText(const AText, AFileName: string;
   const ADefines: TArray<string>; const AResolver: TIncludeResolver): TUnitIndex;
+begin
+  Result := ExtractLevel(AText, AFileName, ADefines, AResolver, [AFileName]);
+end;
+
+class function TIndexExtractor.ExtractLevel(const AText, AFileName: string; const ADefines: TArray<string>;
+  const AResolver: TIncludeResolver; const AStack: TArray<string>): TUnitIndex;
 var
   Tree: TSyntaxTree;
   Includes: TArray<string>;
@@ -712,9 +732,154 @@ begin
   try
     Result := Extract(Tree, AFileName);
     Result.Includes := Includes;
+    AddIncluded(Tree, AFileName, ADefines, AResolver, AStack, Result);
   finally
     Tree.Free;
   end;
 end;
 
+/// <summary>Name aus "{$I Name}", "{$INCLUDE 'Name'}" bzw. "(*$I Name*)"; False bei Schaltern wie {$I+}.</summary>
+function IncludeNameOf(const ADirective: string; out AName: string): Boolean;
+var
+  Text, Word: string;
+  Index: Integer;
+begin
+  Result := False;
+  Text := ADirective;
+  if Text.StartsWith('{$') and Text.EndsWith('}') then
+    Text := Copy(Text, 3, Length(Text) - 3)
+  else if Text.StartsWith('(*$') and Text.EndsWith('*)') then
+    Text := Copy(Text, 4, Length(Text) - 5)
+  else
+    Exit;
+  Index := 1;
+  while (Index <= Length(Text)) and CharInSet(Text[Index], ['A'..'Z', 'a'..'z']) do
+    Inc(Index);
+  Word := UpperCase(Copy(Text, 1, Index - 1));
+  if (Word <> 'I') and (Word <> 'INCLUDE') then
+    Exit;
+  AName := Trim(Copy(Text, Index, MaxInt));
+  Result := (AName <> '') and not CharInSet(AName[1], ['+', '-']);
+end;
+
+/// <summary>Erstes Wort von AText hinter Leerraum und Kommentaren, klein.</summary>
+function FirstWord(const AText: string): string;
+var
+  Index, Start: Integer;
+begin
+  Result := '';
+  Index := 1;
+  while Index <= Length(AText) do
+  begin
+    if CharInSet(AText[Index], [#1..' ']) then
+      Inc(Index)
+    else if AText[Index] = '{' then
+    begin
+      Index := PosEx('}', AText, Index);
+      if Index = 0 then
+        Exit;
+      Inc(Index);
+    end
+    else if Copy(AText, Index, 2) = '(*' then
+    begin
+      Index := PosEx('*)', AText, Index);
+      if Index = 0 then
+        Exit;
+      Inc(Index, 2);
+    end
+    else if Copy(AText, Index, 2) = '//' then
+    begin
+      while (Index <= Length(AText)) and not CharInSet(AText[Index], [#10, #13]) do
+        Inc(Index);
+    end
+    else
+    begin
+      Start := Index;
+      while (Index <= Length(AText)) and CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+        Inc(Index);
+      Exit(LowerCase(Copy(AText, Start, Index - Start)));
+    end;
+  end;
+end;
+
+function Shifted(const APosition: TTextPosition; ALines: Integer): TTextPosition;
+begin
+  Result := TTextPosition.Create(APosition.Line - ALines, APosition.Character);
+end;
+
+class procedure TIndexExtractor.AddIncluded(ATree: TSyntaxTree; const AFileName: string;
+  const ADefines: TArray<string>; const AResolver: TIncludeResolver; const AStack: TArray<string>;
+  var AUnit: TUnitIndex);
+const
+  MaxDepth = 16;
+  SectionWords: array[0..4] of string = ('type', 'const', 'var', 'resourcestring', 'threadvar');
+  StartWords: array[0..13] of string = ('type', 'const', 'var', 'resourcestring', 'threadvar', 'procedure',
+    'function', 'constructor', 'destructor', 'class', 'operator', 'uses', 'begin', 'exports');
+var
+  Token: TPascalToken;
+  ImplementationOffset, Shift: Integer;
+  IsUnit, InInterface: Boolean;
+  Section, Name, IncFile, IncText: string;
+  Included: TUnitIndex;
+  Symbol, Copied: TIndexSymbol;
+  Symbols: TList<TIndexSymbol>;
+begin
+  if not Assigned(AResolver) or (Length(AStack) > MaxDepth) then
+    Exit;
+  IsUnit := ATree.Root.Kind = TSyntaxKind.UnitFile;
+  ImplementationOffset := MaxInt;
+  for Token in ATree.Tokens do
+    if Token.IsKeyword('implementation') then
+    begin
+      ImplementationOffset := Token.Offset;
+      Break;
+    end;
+  Section := '';
+  Symbols := TList<TIndexSymbol>.Create;
+  try
+    Symbols.AddRange(AUnit.Symbols);
+    for Token in ATree.Tokens do
+    begin
+      // Zuletzt geöffneter Deklarationsabschnitt, für Dateien ohne eigenes Schlüsselwort.
+      if (Token.Kind = TPascalTokenKind.Keyword) and (IndexText(Token.Text, SectionWords) >= 0) then
+        Section := LowerCase(Token.Text)
+      else if Token.IsKeyword('begin') or Token.IsKeyword('implementation') or Token.IsKeyword('interface') then
+        Section := '';
+      if (Token.Kind <> TPascalTokenKind.Directive) or not IncludeNameOf(Token.Text, Name) then
+        Continue;
+      // Nicht gefunden oder Zyklus: überspringen, die Diagnose kommt aus dem Präprozessor.
+      if not AResolver(Name, AFileName, IncFile, IncText) or (IndexText(IncFile, AStack) >= 0) then
+        Continue;
+      InInterface := IsUnit and (Token.Offset < ImplementationOffset);
+      Shift := 0;
+      if (Section <> '') and (IndexText(FirstWord(IncText), StartWords) < 0) then
+      begin
+        IncText := Section + #10 + IncText;
+        Shift := 1;
+      end;
+      Included := ExtractLevel(IncText, IncFile, ADefines, AResolver, AStack + [IncFile]);
+      for Symbol in Included.Symbols do
+      begin
+        Copied := Symbol;
+        if Copied.FileName = '' then
+        begin
+          Copied.FileName := IncFile;
+          Copied.Range := TTextRange.Create(Shifted(Copied.Range.StartPos, Shift), Shifted(Copied.Range.EndPos, Shift));
+          Copied.SelectionRange := TTextRange.Create(Shifted(Copied.SelectionRange.StartPos, Shift),
+            Shifted(Copied.SelectionRange.EndPos, Shift));
+        end;
+        Copied.InInterface := InInterface;
+        Symbols.Add(Copied);
+      end;
+      if IndexText(IncFile, AUnit.Includes) < 0 then
+        AUnit.Includes := AUnit.Includes + [IncFile];
+      for Name in Included.Includes do
+        if IndexText(Name, AUnit.Includes) < 0 then
+          AUnit.Includes := AUnit.Includes + [Name];
+    end;
+    AUnit.Symbols := Symbols.ToArray;
+  finally
+    Symbols.Free;
+  end;
+end;
 end.

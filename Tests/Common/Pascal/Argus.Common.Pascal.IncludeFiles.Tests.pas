@@ -32,6 +32,12 @@ type
     procedure CycleGivesOneIssue;
     [Test]
     procedure WithoutResolverNoIssues;
+    [Test]
+    procedure IndexesDeclarationsFromIncludes;
+    [Test]
+    procedure IncludeCycleEndsWithoutDuplicates;
+    [Test]
+    procedure DefinitionAndCompletionReachIncludeFile;
   end;
 
 implementation
@@ -45,7 +51,13 @@ uses
   Argus.Common.Index.Contract,
   Argus.Common.Index.Extractor,
   Argus.Common.Editing.DocumentLinks,
-  Argus.Common.Lsp.InactiveRegions;
+  Argus.Common.Lsp.InactiveRegions,
+  Argus.Common.Index.SymbolIndex,
+  Argus.Common.Pascal.SyntaxTree,
+  Argus.Common.Pascal.Parser,
+  Argus.Common.Semantics.NameResolver,
+  Argus.Common.Lsp.Definition,
+  Argus.Common.Lsp.Completion;
 
 const
   MainFile = 'C:\P\Main.pas';
@@ -192,6 +204,136 @@ var
 begin
   TLspInactiveRegions.Ranges('unit Main;'#10'{$I Fehlt.inc}'#10'end.', nil, MainFile, nil, Issues);
   Assert.AreEqual(0, Integer(Length(Issues)));
+end;
+
+const
+  // Unit mit drei Include-Dateien (#500): mit eigenem type, mitten im type-Abschnitt, Rumpf im implementation-Teil.
+  HauptText =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    '{$I Typen.inc}'#10 +
+    'type'#10 +
+    '  TListe = class'#10 +
+    '  end;'#10 +
+    '  {$I Mehr.inc}'#10 +
+    'implementation'#10 +
+    '{$I Rumpf.inc}'#10 +
+    'end.';
+
+procedure PutIncludes;
+begin
+  Files.Clear;
+  Put('C:\P\Typen.inc', 'type'#10'  TKunde = class'#10'    procedure Speichern;'#10'  end;');
+  Put('C:\P\Mehr.inc', 'TAuftrag = record'#10'  Nr: Integer;'#10'end;');
+  Put('C:\P\Rumpf.inc', 'procedure TKunde.Speichern;'#10'begin'#10'end;');
+end;
+
+function FindSymbol(const AUnit: TUnitIndex; const AName, AContainer, AFile: string; out ASymbol: TIndexSymbol): Boolean;
+var
+  Symbol: TIndexSymbol;
+begin
+  for Symbol in AUnit.Symbols do
+    if SameText(Symbol.Name, AName) and SameText(Symbol.Container, AContainer) and SameText(Symbol.FileName, AFile) then
+    begin
+      ASymbol := Symbol;
+      Exit(True);
+    end;
+  Result := False;
+end;
+
+procedure TIncludeFilesTests.IndexesDeclarationsFromIncludes;
+var
+  UnitIndex: TUnitIndex;
+  Symbol: TIndexSymbol;
+begin
+  PutIncludes;
+  UnitIndex := TIndexExtractor.ExtractText(HauptText, 'C:\P\Haupt.pas', nil, Resolver(nil));
+  // Eigene Deklaration bleibt in der Unit.
+  Assert.IsTrue(FindSymbol(UnitIndex, 'TListe', '', '', Symbol));
+  Assert.AreEqual('', Symbol.FileName);
+  Assert.AreEqual('C:\P\Haupt.pas', UnitIndex.SymbolFile(Symbol));
+  // Aus Typen.inc: Ort in der .inc, sichtbar wie interface.
+  Assert.IsTrue(FindSymbol(UnitIndex, 'TKunde', '', 'C:\P\Typen.inc', Symbol));
+  Assert.AreEqual('C:\P\Typen.inc', Symbol.FileName);
+  Assert.IsTrue(Symbol.InInterface);
+  Assert.AreEqual(1, Symbol.SelectionRange.StartPos.Line);
+  Assert.AreEqual(2, Symbol.SelectionRange.StartPos.Character);
+  // Mehr.inc ohne eigenes type: Zeilen stimmen trotz vorangestelltem Schlüsselwort.
+  Assert.IsTrue(FindSymbol(UnitIndex, 'TAuftrag', '', 'C:\P\Mehr.inc', Symbol));
+  Assert.AreEqual('C:\P\Mehr.inc', Symbol.FileName);
+  Assert.AreEqual(0, Symbol.SelectionRange.StartPos.Line);
+  Assert.AreEqual(0, Symbol.SelectionRange.StartPos.Character);
+  // Rumpf.inc im implementation-Teil.
+  Assert.IsTrue(FindSymbol(UnitIndex, 'Speichern', 'TKunde', 'C:\P\Rumpf.inc', Symbol));
+  Assert.AreEqual('C:\P\Rumpf.inc', Symbol.FileName);
+  Assert.IsFalse(Symbol.InInterface);
+  Assert.AreEqual(3, Integer(Length(UnitIndex.Includes)));
+end;
+
+procedure TIncludeFilesTests.IncludeCycleEndsWithoutDuplicates;
+var
+  UnitIndex: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Count: Integer;
+begin
+  Files.Clear;
+  Put('C:\P\A.inc', 'const'#10'  WertA = 1;'#10'{$I B.inc}');
+  Put('C:\P\B.inc', 'const'#10'  WertB = 2;'#10'{$I A.inc}');
+  UnitIndex := TIndexExtractor.ExtractText('unit Main;'#10'interface'#10'{$I A.inc}'#10'implementation'#10'end.',
+    MainFile, nil, Resolver(nil));
+  Count := 0;
+  for Symbol in UnitIndex.Symbols do
+    if SameText(Symbol.Name, 'WertA') or SameText(Symbol.Name, 'WertB') then
+      Inc(Count);
+  Assert.AreEqual(2, Count);
+end;
+
+procedure TIncludeFilesTests.DefinitionAndCompletionReachIncludeFile;
+const
+  DritteText = 'unit Dritte;'#10'interface'#10'uses Haupt;'#10'var K: TKunde;'#10'implementation'#10'end.';
+  TippText = 'unit Dritte;'#10'interface'#10'uses Haupt;'#10'var K: TKu'#10'implementation'#10'end.';
+var
+  Index: ISymbolIndex;
+  Resolver_: TNameResolver;
+  Tree: TSyntaxTree;
+  Targets: TArray<TDefinitionTarget>;
+  Items: TCompletionItems;
+  Item: TCompletionItem;
+  Found: Boolean;
+begin
+  PutIncludes;
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText(HauptText, 'C:\P\Haupt.pas', nil, Resolver(nil)));
+  Resolver_ := TNameResolver.Create(Index);
+  try
+    // Strg+Klick auf TKunde in einer dritten Unit springt in Typen.inc.
+    Tree := TPascalParser.Parse(DritteText);
+    try
+      Targets := TLspDefinition.Targets(Resolver_, Index, Tree, 'C:\P\Dritte.pas', TTextPosition.Create(3, 8), False);
+    finally
+      Tree.Free;
+    end;
+    Assert.AreEqual(1, Integer(Length(Targets)));
+    Assert.AreEqual('C:\P\Typen.inc', Targets[0].FileName);
+    Assert.AreEqual(1, Targets[0].SelectionRange.StartPos.Line);
+    // Vervollständigung bietet TKunde an, Details kommen aus der .inc.
+    Tree := TPascalParser.Parse(TippText);
+    try
+      Items := TLspCompletion.Collect(Resolver_, Index, Tree, 'C:\P\Dritte.pas', TTextPosition.Create(3, 10));
+    finally
+      Tree.Free;
+    end;
+    Found := False;
+    for Item in Items.Items do
+      if Item.Name = 'TKunde' then
+      begin
+        Found := True;
+        Assert.AreEqual('C:\P\Typen.inc', Item.SourceFile);
+      end;
+    Assert.IsTrue(Found, 'TKunde fehlt in der Vervollständigung');
+  finally
+    Resolver_.Free;
+  end;
 end;
 
 initialization

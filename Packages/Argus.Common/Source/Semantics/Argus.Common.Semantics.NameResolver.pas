@@ -166,6 +166,8 @@ type
     function LookupInDeclarations(ANode: TSyntaxNode; const AName: string; out AResult: TResolvedSymbol): Boolean;
     function LookupInlineVars(ANode: TSyntaxNode; const AName: string; out AResult: TResolvedSymbol): Boolean;
     function MethodClass(out AType: TResolvedSymbol): Boolean;
+    /// <summary>Unit aus dem Baum samt der Symbole ihrer $I-Dateien aus dem Index (#500).</summary>
+    function TreeUnit(ATree: TSyntaxTree; const AFileName: string): TUnitIndex;
     function ResolveFirst(const ANames: TArray<string>; out AConsumed: Integer; out AResult: TResolvedSymbol): Boolean;
     function TokenIndexAt(const APosition: TTextPosition): Integer;
     procedure Prepare(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer);
@@ -563,7 +565,7 @@ begin
   Result.Kind := TResolvedKind.Symbol;
   Result.Name := ASymbol.Name;
   Result.UnitName := AUnit.UnitName;
-  Result.FileName := AUnit.FileName;
+  Result.FileName := AUnit.SymbolFile(ASymbol);
   Result.Range := ASymbol.Range;
   Result.SelectionRange := ASymbol.SelectionRange;
   Result.SymbolKind := ASymbol.Kind;
@@ -1703,7 +1705,7 @@ begin
   if (ATree = FPinnedTree) and SameText(AFileName, FPinnedFile) then
     FCurrent := FPinnedUnit
   else
-    FCurrent := TIndexExtractor.Extract(ATree, AFileName);
+    FCurrent := TreeUnit(ATree, AFileName);
   // Helfer hängen an der Unit und ihren uses; je Baum neu bestimmen.
   if ATree <> FHelperTree then
   begin
@@ -1956,11 +1958,26 @@ begin
   end;
 end;
 
+function TNameResolver.TreeUnit(ATree: TSyntaxTree; const AFileName: string): TUnitIndex;
+var
+  Indexed: TUnitIndex;
+  Symbol: TIndexSymbol;
+begin
+  Result := TIndexExtractor.Extract(ATree, AFileName);
+  // Der Baum kennt nur die Datei selbst; Deklarationen aus Include-Dateien stehen im Index.
+  if (FIndex = nil) or (AFileName = '') or not FIndex.FindFile(AFileName, Indexed) then
+    Exit;
+  for Symbol in Indexed.Symbols do
+    if Symbol.FileName <> '' then
+      Result.Symbols := Result.Symbols + [Symbol];
+  Result.Includes := Indexed.Includes;
+end;
+
 procedure TNameResolver.PinTree(ATree: TSyntaxTree; const AFileName: string);
 begin
   FPinnedTree := ATree;
   FPinnedFile := AFileName;
-  FPinnedUnit := TIndexExtractor.Extract(ATree, AFileName);
+  FPinnedUnit := TreeUnit(ATree, AFileName);
 end;
 
 procedure TNameResolver.UnpinTree;

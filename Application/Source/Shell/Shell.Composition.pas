@@ -1248,6 +1248,10 @@ begin
   if (AKind = TDocumentEventKind.Saved) and MatchText(ExtractFileExt(TDocumentUris.ToPath(ADocument.Uri)),
     ['.pas', '.dpr', '.dpk', '.inc']) then
   begin
+    // Index nachziehen (#500): Clients ohne Dateiüberwachung (IDE-Plugin) melden nur das Speichern;
+    // bei einer .inc liest der Index die einbindenden Units neu ein.
+    if not SameText(ExtractFileExt(TDocumentUris.ToPath(ADocument.Uri)), '.dpk') then
+      HandleWatchedFiles([TFileChange.Create(TDocumentUris.ToPath(ADocument.Uri), TFileChangeKind.Changed)]);
     TMonitor.Enter(FWorkspacesLock);
     try
       Workspace := WorkspaceOf(TDocumentUris.ToPath(ADocument.Uri));

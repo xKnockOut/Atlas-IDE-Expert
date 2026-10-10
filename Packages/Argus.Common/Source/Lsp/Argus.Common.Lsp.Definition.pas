@@ -171,7 +171,7 @@ begin
   // Deklaration und Implementierung derselben Routine: erste und letzte Fundstelle.
   if SameText(Resolved.FileName, AFileName) then
     OwnerUnit := TIndexExtractor.Extract(ATree, AFileName)
-  else if not AIndex.FindFile(Resolved.FileName, OwnerUnit) then
+  else if not TIndexFiles.UnitOf(AIndex, Resolved.FileName, OwnerUnit) then
     Exit;
   Count := 0;
   for Symbol in OwnerUnit.Symbols do
@@ -185,10 +185,11 @@ begin
     end;
   if Count < 2 then
     Exit;
-  if ADeclaration or (SameText(OwnerUnit.FileName, AFileName) and Within(APosition, Last.SelectionRange)) then
-    Result := [Target(OwnerUnit.FileName, First.Range, First.SelectionRange)]
+  // Mit Include-Dateien (#500) kann jede Fundstelle in einer anderen Datei stehen.
+  if ADeclaration or (SameText(OwnerUnit.SymbolFile(Last), AFileName) and Within(APosition, Last.SelectionRange)) then
+    Result := [Target(OwnerUnit.SymbolFile(First), First.Range, First.SelectionRange)]
   else
-    Result := [Target(OwnerUnit.FileName, Last.Range, Last.SelectionRange)];
+    Result := [Target(OwnerUnit.SymbolFile(Last), Last.Range, Last.SelectionRange)];
 end;
 
 class function TLspDefinition.TypeTargets(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;

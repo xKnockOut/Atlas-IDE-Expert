@@ -384,12 +384,16 @@ begin
   Result.Declaration := TrimRight(Copy(Lines[Start.Line], Start.Character + 1, MaxInt));
   Result.Documentation := DocumentationAbove(Lines, Start.Line);
   Result.Deprecation := THoverValues.Deprecation(DeclarationText(Lines, Targets[0].Range));
-  if not AIndex.FindFile(Targets[0].FileName, OwnerUnit) then
+  // Aus einer Include-Datei (#500): die einbindende Unit, die Datei dahinter.
+  if not TIndexFiles.UnitOf(AIndex, Targets[0].FileName, OwnerUnit) then
     Exit;
-  if not SameText(Targets[0].FileName, AFileName) then
+  if not SameText(Targets[0].FileName, OwnerUnit.FileName) then
+    Result.UnitName := OwnerUnit.UnitName + ' (' + ExtractFileName(Targets[0].FileName) + ')'
+  else if not SameText(Targets[0].FileName, AFileName) then
     Result.UnitName := OwnerUnit.UnitName;
   for Symbol in OwnerUnit.Symbols do
-    if Symbol.SelectionRange.StartPos = Targets[0].SelectionRange.StartPos then
+    if (Symbol.SelectionRange.StartPos = Targets[0].SelectionRange.StartPos) and
+      SameText(OwnerUnit.SymbolFile(Symbol), Targets[0].FileName) then
     begin
       Result.DocWikiUrl := TDocWiki.Url(ADelphiVersion, OwnerUnit.UnitName, Symbol.Container, Symbol.Name);
       if Symbol.Kind = TIndexSymbolKind.Constant then
@@ -400,7 +404,8 @@ begin
     end;
   for Symbol in OwnerUnit.Symbols do
     if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') and
-      ((Symbol.Range.StartPos = Start) or (Symbol.SelectionRange.StartPos = Start)) then
+      ((Symbol.Range.StartPos = Start) or (Symbol.SelectionRange.StartPos = Start)) and
+      SameText(OwnerUnit.SymbolFile(Symbol), Targets[0].FileName) then
     begin
       // Die eigene Datei kommt aus dem Editor, nicht von der Platte.
       ReadText :=
