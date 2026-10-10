@@ -297,15 +297,15 @@ function ExecuteFuture(const AContext: TSlashContext; out AEdits: TArray<TRuleEd
 var
   Source: TCommandSource;
   Name, TypeName, Head: string;
-  Inline: Boolean;
+  UseInline: Boolean;
 begin
   AEdits := nil;
   if not SplitDeclaration(AContext.Arguments, ':', Name, TypeName) then
     Exit(Fail('Erwartet wird /future Name: Typ', AReason));
   Source := TCommandSource.Create(AContext);
   try
-    Inline := TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, AContext.DelphiVersion);
-    if Inline then
+    UseInline := TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, AContext.DelphiVersion);
+    if UseInline then
       Head := Format('var %s := TTask.Future<%s>(', [Name, TypeName])
     else
       Head := Format('%s := TTask.Future<%s>(', [Name, TypeName]);
@@ -314,7 +314,7 @@ begin
     if not Result then
       Exit;
     // Ohne Inline-Variablen (vor Delphi 10.3) in den var-Abschnitt.
-    if not Inline then
+    if not UseInline then
       AEdits := AEdits + [AddLocal(Source, Source.RoutineAt, TSyntaxKind.VarSection, 'var',
         Format('%s: IFuture<%s>;', [Name, TypeName]))];
     AddUses(Source, AContext, Source.Line, ['System.Threading'], AEdits);
