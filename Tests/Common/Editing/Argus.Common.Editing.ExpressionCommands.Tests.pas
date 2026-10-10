@@ -31,6 +31,10 @@ type
     procedure IncRejectsOtherShapes;
     [Test]
     procedure OutsideRoutineFails;
+    [Test]
+    procedure ModernUsesInlineVariable;
+    [Test]
+    procedure ModernWithoutChangesFails;
   end;
 
 implementation
@@ -201,6 +205,25 @@ var
 begin
   Text := StringReplace(Source('', '  S := S;'), 'interface'#10, 'interface'#10'/inc'#10, []);
   Assert.AreEqual(1, Integer(Length(TSlashCommandRegistry.Shared.Problems(Text, nil))));
+end;
+
+procedure TExpressionCommandsTests.ModernUsesInlineVariable;
+var
+  Text: string;
+begin
+  Text := Expand('/modern', '  Zaehler := N;'#10'  Log(Zaehler);');
+  Assert.IsTrue(Pos('  var Zaehler: Integer := N;', Text) > 0, Text);
+  Assert.IsTrue(Pos('  Zaehler: Integer;', Text) = 0, Text);
+end;
+
+procedure TExpressionCommandsTests.ModernWithoutChangesFails;
+var
+  Text: string;
+begin
+  Assert.IsFalse(TryRun('/modern', '  Log(N);', '', Text));
+  // Vor Delphi 10.3 keine Inline-Variablen.
+  Assert.IsFalse(TryRun('/modern', '  Zaehler := N;', '19.0', Text));
+  Assert.IsFalse(TryRun('/modern -inline', '  Zaehler := N;', '', Text));
 end;
 
 initialization
