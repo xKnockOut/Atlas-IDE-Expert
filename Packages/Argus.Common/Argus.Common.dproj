@@ -240,6 +240,7 @@
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.CodeActions.pas"/>
         <DCCReference Include="Source\Semantics\Argus.Common.Semantics.ControlFlow.pas"/>
         <DCCReference Include="Source\Semantics\Argus.Common.Semantics.NameResolver.pas"/>
+        <DCCReference Include="Source\Semantics\Argus.Common.Semantics.Attributes.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.Definition.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.PublishedMembers.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.Hover.pas"/>

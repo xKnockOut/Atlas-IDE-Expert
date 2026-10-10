@@ -99,6 +99,15 @@ begin
   Result := -1;
 end;
 
+/// <summary>Andere Schreibweise eines Attributnamens: Foo zu FooAttribute und umgekehrt.</summary>
+function AlternativeName(const AName: string): string;
+begin
+  if EndsText('Attribute', AName) and (Length(AName) > Length('Attribute')) then
+    Result := Copy(AName, 1, Length(AName) - Length('Attribute'))
+  else
+    Result := AName + 'Attribute';
+end;
+
 function SameTarget(const A, B: TDefinitionTarget): Boolean;
 begin
   Result := SameText(A.FileName, B.FileName) and (A.SelectionRange.StartPos = B.SelectionRange.StartPos);
@@ -146,7 +155,9 @@ begin
   Result := nil;
   for Token in ATree.Tokens do
   begin
-    if (Token.Kind <> TPascalTokenKind.Identifier) or not SameText(CleanName(Token.Text), AName) then
+    // Attribute (#119): [TestFixture] verwendet TestFixtureAttribute.
+    if (Token.Kind <> TPascalTokenKind.Identifier) or not (SameText(CleanName(Token.Text), AName) or
+      SameText(CleanName(Token.Text), AlternativeName(AName))) then
       Continue;
     if ACancellation <> nil then
       ACancellation.ThrowIfCancellationRequested;
@@ -198,7 +209,9 @@ begin
     if IndexText(FileName, Searched) >= 0 then
       Continue;
     Searched := Searched + [FileName];
-    if not (Assigned(AReadText) and AReadText(FileName, Text)) or not ContainsText(Text, Name) then
+    // Die kürzere Schreibweise ist in der längeren enthalten.
+    if not (Assigned(AReadText) and AReadText(FileName, Text)) or not (ContainsText(Text, Name) or
+      ContainsText(Text, AlternativeName(Name))) then
       Continue;
     Tree := TSyntaxTreeCache.Parse(Text);
     try

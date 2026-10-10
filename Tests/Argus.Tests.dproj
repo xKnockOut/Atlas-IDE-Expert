@@ -80,8 +80,10 @@
         <DCCReference Include="Common\Index\Argus.Common.Index.Memory.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Argus.Common.Semantics.ControlFlow.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Argus.Common.Semantics.NameResolver.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Argus.Common.Semantics.Attributes.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Argus.Common.Semantics.NameResolverStage2.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.Definition.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Argus.Common.Lsp.Attributes.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.PublishedMembers.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.Hover.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.HoverValues.Tests.pas"/>
