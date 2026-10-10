@@ -11,6 +11,7 @@
 interface
 
 uses
+  Winapi.Windows,
   System.SysUtils,
   System.Classes,
   System.Types,
@@ -154,6 +155,8 @@ var
   Original: TColor;
   CharColors: TArray<TColor>;
   Found: Boolean;
+  DC: HDC;
+  Saved: Integer;
 begin
   if not BeforeEvent or Hilight or (Text = '') or (Context = nil) then
     Exit;
@@ -186,20 +189,27 @@ begin
     if not Found then
       Exit;
     // Lauf selbst zeichnen: Hintergrund wie vorbereitet, Zeichen in fester Zellbreite.
+    // Direkt im DC und mit gesichertem Zustand: Die IDE setzt die Textfarbe nur
+    // beim Wechsel des Attributs; eine stehengebliebene Paarfarbe färbte sonst
+    // Teile späterer Läufe ein (z. B. nach dem Neuzeichnen unter einem Tooltip).
     AllowDefaultPainting := False;
     Cell := Context.CellSize.cx;
     if Cell <= 0 then
       Cell := Canvas.TextWidth('W');
     Top := Rect.Top + (Rect.Height - Canvas.TextHeight('Wg')) div 2;
     Canvas.FillRect(Rect);
-    Canvas.Brush.Style := bsClear;
-    for Index := 0 to High(CharColors) do
-    begin
-      Canvas.Font.Color := CharColors[Index];
-      Canvas.TextOut(Rect.Left + Index * Cell, Top, Text[Index + 1]);
+    DC := Canvas.Handle;
+    Saved := SaveDC(DC);
+    try
+      SetBkMode(DC, TRANSPARENT);
+      for Index := 0 to High(CharColors) do
+      begin
+        SetTextColor(DC, ColorToRGB(CharColors[Index]));
+        Winapi.Windows.TextOut(DC, Rect.Left + Index * Cell, Top, PChar(Text) + Index, 1);
+      end;
+    finally
+      RestoreDC(DC, Saved);
     end;
-    Canvas.Font.Color := Original;
-    Canvas.Brush.Style := bsSolid;
   except
     // Zeichnen darf die IDE nie stören; die IDE zeichnet dann selbst.
     AllowDefaultPainting := True;
