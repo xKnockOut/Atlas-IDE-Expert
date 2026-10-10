@@ -51,6 +51,8 @@ type
     procedure ImportsNeedTwoCharactersAndSkipUsedUnits;
     [Test]
     procedure MembersCarryContainerDepthAndOverloads;
+    [Test]
+    procedure OffersOverridesWithDeclarationAndBody;
   end;
 
 implementation
@@ -381,6 +383,68 @@ begin
     Assert.AreEqual(5, (Data.GetValue('overloads') as TJSONArray).Items[0].GetValue<Integer>('line'));
   finally
     Json.Free;
+  end;
+end;
+
+procedure TLspCompletionTests.OffersOverridesWithDeclarationAndBody;
+const
+  UnitBasis =
+    'unit Basis;'#13#10 +
+    'interface'#13#10 +
+    'type'#13#10 +
+    '  TBasisListe = class'#13#10 +
+    '  protected'#13#10 +
+    '    procedure Changed; virtual;'#13#10 +
+    '    function Count: Integer; virtual;'#13#10 +
+    '    procedure Fest;'#13#10 +
+    '    procedure Pruefe(A: Integer; const B: string = ''''); virtual; abstract;'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'end.';
+  Text =
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'uses Basis;'#13#10 +
+    'type'#13#10 +
+    '  TLogList = class(TBasisListe)'#13#10 +
+    '  protected'#13#10 +
+    '    procedure '#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'end.';
+var
+  Tree: TSyntaxTree;
+  Resolver: TNameResolver;
+  Items: TCompletionItems;
+  Body: string;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBasis, 'C:\P\Basis.pas', nil));
+  Tree := TPascalParser.Parse(Text);
+  Resolver := TNameResolver.Create(FIndex);
+  try
+    Assert.IsTrue(TLspCompletion.OverrideItems(Resolver, Tree, Text, HauptFile, PositionOf(Text, '    procedure '),
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        AText := UnitBasis;
+        Result := SameText(AFileName, 'C:\P\Basis.pas');
+      end, Items));
+    // Nur virtuelle Prozeduren; Count ist eine Funktion, Fest nicht virtuell.
+    Assert.AreEqual('Changed Pruefe', Names(Items));
+    Assert.AreEqual('Changed; override;', Items.Items[0].InsertText);
+    Assert.AreEqual('TBasisListe', Items.Items[0].Container);
+    Assert.AreEqual(1, Integer(Length(Items.Items[0].AdditionalEdits)));
+    Body := Items.Items[0].AdditionalEdits[0].NewText;
+    Assert.IsTrue(Body.Contains('procedure TLogList.Changed;'#13#10'begin'#13#10'  inherited;'#13#10'end;'), Body);
+    // Abstrakt: ohne inherited; Standardwert nur in der Deklaration.
+    Assert.AreEqual('Pruefe(A: Integer; const B: string = ''''); override;', Items.Items[1].InsertText);
+    Body := Items.Items[1].AdditionalEdits[0].NewText;
+    Assert.IsTrue(Body.Contains('procedure TLogList.Pruefe(A: Integer; const B: string);'), Body);
+    Assert.IsFalse(Body.Contains('inherited'), Body);
+    // Außerhalb einer Klassendeklaration kein Override-Kontext.
+    Assert.IsFalse(TLspCompletion.OverrideItems(Resolver, Tree, Text, HauptFile, PositionOf(Text, 'uses Ba'), nil, Items));
+  finally
+    Resolver.Free;
+    Tree.Free;
   end;
 end;
 
