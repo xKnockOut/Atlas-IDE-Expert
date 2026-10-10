@@ -13,6 +13,7 @@
 interface
 
 uses
+  Argus.Common.Rules.Contract,
   Argus.Common.Index.Contract,
   Argus.Common.Editing.SlashCommands,
   Argus.Common.Editing.CommandSource;
@@ -25,13 +26,29 @@ function EnumPrefix(const ATypeName: string): string;
 /// <summary>Ist ATypeName eine Klasse (in der Datei, im Index oder bekannt aus RTL/VCL)?</summary>
 function IsClassType(ASource: TCommandSource; const AIndex: ISymbolIndex; const ATypeName: string): Boolean;
 
+// Bausteine für weitere Typbefehle (#323).
+
+/// <summary>Steht die Befehlszeile auf Unit-Ebene? AInTypeSection, wenn sie in einem type-Abschnitt steht.</summary>
+function TypePlace(ASource: TCommandSource; const AName: string; out AInTypeSection: Boolean;
+  out AReason: string): Boolean;
+/// <summary>Ersetzt die Befehlszeile durch ALines; ohne type-Abschnitt kommt "type" davor.</summary>
+function TypeDeclaration(ASource: TCommandSource; AInTypeSection: Boolean; const ALines: array of string): TRuleEdit;
+/// <summary>Deklarationen vor "end" der Klasse, Rümpfe hinter ihre letzte Methode.</summary>
+function AddToClass(ASource: TCommandSource; const AClass: TIndexSymbol; const ADeclarations: array of string;
+  const ABodies: string): TArray<TRuleEdit>;
+/// <summary>ALines mit dem Zeilenende der Datei verbunden.</summary>
+function Join(ASource: TCommandSource; const ALines: array of string): string;
+/// <summary>Felder von AClass in der Datei.</summary>
+function FieldsOf(ASource: TCommandSource; const AClass: TIndexSymbol): TArray<TIndexSymbol>;
+/// <summary>Ist das Feld ein Objekt (Klassentyp, kein einfacher Typ)?</summary>
+function IsObjectField(ASource: TCommandSource; const AIndex: ISymbolIndex; const AField: TIndexSymbol): Boolean;
+
 implementation
 
 uses
   System.SysUtils,
   System.StrUtils,
   Argus.Common.Documents.Contract,
-  Argus.Common.Rules.Contract,
   Argus.Common.Pascal.Contract,
   Argus.Common.Pascal.SyntaxTree,
   Argus.Common.Pascal.Lexer,
