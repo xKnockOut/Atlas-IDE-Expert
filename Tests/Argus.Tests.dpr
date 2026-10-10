@@ -164,7 +164,9 @@ uses
   Argus.UI.Settings.Page in '..\Packages\Argus.IDE.Expert\Source\UI\Settings\Argus.UI.Settings.Page.pas',
   Argus.UI.Settings.Page.Tests in 'IDE.Expert\Argus.UI.Settings.Page.Tests.pas',
   Argus.Core.Build.Events in '..\Packages\Argus.IDE.Expert\Source\Core\Build\Argus.Core.Build.Events.pas',
-  Argus.Core.Build.Events.Tests in 'IDE.Expert\Argus.Core.Build.Events.Tests.pas';
+  Argus.Core.Build.Events.Tests in 'IDE.Expert\Argus.Core.Build.Events.Tests.pas',
+  Argus.Core.Diagnostics.Hangs in '..\Packages\Argus.IDE.Expert\Source\Core\Diagnostics\Argus.Core.Diagnostics.Hangs.pas',
+  Argus.Core.Diagnostics.Hangs.Tests in 'IDE.Expert\Argus.Core.Diagnostics.Hangs.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

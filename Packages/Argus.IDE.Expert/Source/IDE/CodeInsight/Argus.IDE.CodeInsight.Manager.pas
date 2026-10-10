@@ -61,6 +61,8 @@ type
     procedure NotifyServer(const AMethod: string; AParams: TJSONObject);
     /// <summary>Zeile im Diagnoseprotokoll (nur mit Diagnose = 1).</summary>
     procedure Log(const AMessage: string);
+    /// <summary>Zeile im Protokoll unabhängig von Diagnose, z. B. Hänger (#501).</summary>
+    procedure Report(const AMessage: string);
     { IOTACodeInsightManager100 }
     function GetName: string;
     function GetIDString: string;
@@ -98,6 +100,7 @@ uses
   System.StrUtils,
   System.Win.Registry,
   Argus.IDE.Settings.Store,
+  Argus.Core.Diagnostics.Hangs,
   Winapi.Windows,
   Argus.IDE.Editor.Buffer;
 
@@ -340,7 +343,9 @@ var
   View: IOTAEditView;
   Text: string;
   Lines: TArray<string>;
+  Activity: IInterface;
 begin
+  Activity := TArgusActivity.Scope('Symbolhinweis');
   Result := '';
   Diagnose(Format('GetHintText(%d, %d) aufgerufen', [HintLine, HintCol]));
   // Eigener Tooltip (#442): die IDE zeigt keinen zweiten.
@@ -376,7 +381,9 @@ var
   Cursor: TOTAEditPos;
   Character: Integer;
   Location: TLspLocation;
+  Activity: IInterface;
 begin
+  Activity := TArgusActivity.Scope('Gehe zu Definition');
   // Laut ToolsAPI: AFileName = '' und ALineNum = 0 bricht ohne Meldung ab.
   // Mit False meldet die IDE „Datei "" nicht gefunden“; deshalb True.
   AFileName := '';
@@ -565,7 +572,10 @@ begin
 end;
 
 function TArgusCodeInsightManager.InvokeCodeCompletion(HowInvoked: TOTAInvokeType; var Str: string): Boolean;
+var
+  Activity: IInterface;
 begin
+  Activity := TArgusActivity.Scope('Vervollständigung öffnen');
   // False: Die IDE zeigt keine eigene Liste; unser Popup übernimmt (#407, #410).
   Result := False;
   Diagnose(Format('InvokeCodeCompletion(%d, "%s")', [Ord(HowInvoked), Str]));
@@ -579,7 +589,10 @@ end;
 
 function TArgusCodeInsightManager.InvokeParameterCodeInsight(HowInvoked: TOTAInvokeType;
   var SelectedIndex: Integer): Boolean;
+var
+  Activity: IInterface;
 begin
+  Activity := TArgusActivity.Scope('Parameterhilfe');
   // False: Die IDE zeigt keine eigene Parameterhilfe; unser Hint übernimmt (#436).
   Result := False;
   Diagnose(Format('InvokeParameterCodeInsight(%d)', [Ord(HowInvoked)]));
@@ -624,5 +637,15 @@ end;
 procedure TArgusCodeInsightManager.Log(const AMessage: string);
 begin
   Diagnose(AMessage);
+end;
+
+procedure TArgusCodeInsightManager.Report(const AMessage: string);
+begin
+  try
+    TFile.AppendAllText(DiagnoseLog, FormatDateTime('hh:nn:ss.zzz', Now) + ' ' + AMessage + sLineBreak,
+      TEncoding.UTF8);
+  except
+    // Protokoll ist Beiwerk; ein gesperrtes Log darf die IDE nicht stören.
+  end;
 end;
 end.

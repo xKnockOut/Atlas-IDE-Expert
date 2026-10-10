@@ -26,6 +26,8 @@ type
     MaxListWidth = 720;
     MinPanelWidth = 220;
     MaxPanelWidth = 600;
+    MinHangThreshold = 100;
+    MaxHangThreshold = 10000;
   public
     /// <summary>Hauptschalter (#407): aus = eingebaute Code Insight der IDE.</summary>
     Enabled: Boolean;
@@ -49,6 +51,10 @@ type
     Preview: Boolean;
     /// <summary>Eigener Hover-Tooltip (#442).</summary>
     HoverTooltip: Boolean;
+    /// <summary>Ab so vielen Millisekunden ohne Antwort gilt die IDE als hängend (#501).</summary>
+    HangThresholdMs: Integer;
+    /// <summary>Hinweis im Meldungsfenster nach langen Hängern (ab 2 s, #501).</summary>
+    HangHint: Boolean;
     class function Defaults: TArgusPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -84,6 +90,8 @@ begin
   Result.GroupInherited := True;
   Result.Preview := False;
   Result.HoverTooltip := True;
+  Result.HangThresholdMs := 500;
+  Result.HangHint := True;
 end;
 
 procedure TArgusPluginSettings.Normalize;
@@ -92,6 +100,7 @@ begin
   if ListWidth <> 0 then
     ListWidth := EnsureRange(ListWidth, MinListWidth, MaxListWidth);
   PanelWidth := EnsureRange(PanelWidth, MinPanelWidth, MaxPanelWidth);
+  HangThresholdMs := EnsureRange(HangThresholdMs, MinHangThreshold, MaxHangThreshold);
 end;
 
 procedure TArgusPluginSettings.Load(const AStore: IArgusSettingsStore);
@@ -110,6 +119,8 @@ begin
   GroupInherited := AStore.ReadInteger('GroupInherited', BoolValue(Default.GroupInherited)) <> 0;
   Preview := AStore.ReadInteger('Preview', BoolValue(Default.Preview)) <> 0;
   HoverTooltip := AStore.ReadInteger('HoverTooltip', BoolValue(Default.HoverTooltip)) <> 0;
+  HangThresholdMs := AStore.ReadInteger('HangThresholdMs', Default.HangThresholdMs);
+  HangHint := AStore.ReadInteger('HangHint', BoolValue(Default.HangHint)) <> 0;
   Normalize;
 end;
 
@@ -127,6 +138,8 @@ begin
   AStore.WriteInteger('GroupInherited', BoolValue(GroupInherited));
   AStore.WriteInteger('Preview', BoolValue(Preview));
   AStore.WriteInteger('HoverTooltip', BoolValue(HoverTooltip));
+  AStore.WriteInteger('HangThresholdMs', HangThresholdMs);
+  AStore.WriteInteger('HangHint', BoolValue(HangHint));
 end;
 
 end.
