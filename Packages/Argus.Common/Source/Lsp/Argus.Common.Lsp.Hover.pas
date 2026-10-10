@@ -520,6 +520,9 @@ begin
           ClassTree.Free;
         end;
       end;
+      // ReadText liegt im selben Closure-Rahmen, den es selbst und die Aufrufe oben einfangen:
+      // ohne Freigabe hielte der Rahmen sich selbst (Leck je Hover auf eine Klasse).
+      ReadText := nil;
       Break;
     end;
 end;
