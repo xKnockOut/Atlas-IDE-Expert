@@ -168,7 +168,8 @@
 - **#188 Postfix-Vorlagen (Server `9f6d527c`, Plugin `6bba6ffb`):**
   - Das Plugin ersetzt bei Einträgen mit `textEdit` ab dessen Anfang.
   - Offen: Platzhalter-Modus (#51) und die manuelle Prüfung PF1–PF6.
-- **Plugin beim User:** am 11.10.2026 um 01:22 aktualisiert.
+- **Farbfehler im Editor behoben (`d93a834f`):** Klammerfarben (#514) und Vorschau (#434) ließen ihre Textfarbe im DC stehen; beim Neuzeichnen einzelner Bereiche wurden Teile von Bezeichnern in Paarfarbe gezeichnet. Jetzt direkt im DC zwischen SaveDC/RestoreDC.
+- **Plugin beim User:** am 11.10.2026 um 01:49 aktualisiert.
 - **Neu in `update-plugin.ps1`:** sichert `.dproj`/`.dpk` vor dem Bau und schreibt sie danach zurück.
 - **Weiter:**
   - Reste der Serie: #528/#548, #536, #414, #443, #433, #447, #227, #99, #48, #102.
