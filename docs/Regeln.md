@@ -35,6 +35,9 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`component-setter-without-invalidate`](#component-setter-without-invalidate) | Setter ohne Invalidate | Code Smell | Hinweis |
 | [`component-fixed-pixels`](#component-fixed-pixels) | Feste Pixelwerte | Code Smell | Warnung |
 | [`component-hardcoded-color`](#component-hardcoded-color) | Feste Farbe in Paint | Code Smell | Hinweis |
+| [`form-field-without-object`](#form-field-without-object) | Formularfeld ohne Objekt | Bug | Warnung |
+| [`form-object-without-field`](#form-object-without-field) | Formularobjekt ohne Feld | Bug | Warnung |
+| [`form-field-type-mismatch`](#form-field-type-mismatch) | Feldtyp weicht vom Formularobjekt ab | Bug | Warnung |
 
 <a id="syntax"></a>
 ## syntax
@@ -811,4 +814,61 @@ Richtig:
 
 ```pascal
 Canvas.Brush.Color := StyleServices.GetSystemColor(clHighlight);
+```
+
+<a id="form-field-without-object"></a>
+## form-field-without-object
+
+**Formularfeld ohne Objekt** · Bug · Warnung
+
+Ein published-Komponentenfeld der Formularklasse hat kein Objekt in der .dfm/.fmx neben der Unit. Nach dem Laden bleibt das Feld nil. Felder außerhalb von published werden nicht geprüft.
+
+Mit Treffer:
+
+```pascal
+Edit1: TEdit;  // object Edit1 was deleted from the form
+```
+
+Richtig:
+
+```pascal
+// remove the field or restore the object
+```
+
+<a id="form-object-without-field"></a>
+## form-object-without-field
+
+**Formularobjekt ohne Feld** · Bug · Warnung
+
+Ein Objekt der Formulardatei hat kein Feld in der Formularklasse. Geerbte Objekte, Objekte in inline-Frames, namenlose Komponenten und Collection-Einträge werden übergangen. Die Korrektur ergänzt das Feld.
+
+Mit Treffer:
+
+```pascal
+object Button2: TButton  // no Button2 in TForm1
+```
+
+Richtig:
+
+```pascal
+Button2: TButton;
+```
+
+<a id="form-field-type-mismatch"></a>
+## form-field-type-mismatch
+
+**Feldtyp weicht vom Formularobjekt ab** · Bug · Warnung
+
+Der Typ des Felds weicht von der Klasse des Objekts in der Formulardatei ab. Ohne Quelltext der Klasse aus der Formulardatei wird nicht verglichen. Die Korrektur ändert den Feldtyp.
+
+Mit Treffer:
+
+```pascal
+Edit1: TEdit;  // object Edit1: TMaskEdit
+```
+
+Richtig:
+
+```pascal
+Edit1: TMaskEdit;
 ```

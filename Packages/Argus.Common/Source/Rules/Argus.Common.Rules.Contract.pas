@@ -75,6 +75,8 @@ type
     /// <summary>Symbolindex für Vorfahren aus anderen Units (#125); nil ohne Index (z. B. Linter).
     /// Regeln treffen dann keine Aussage, die ihn bräuchte.</summary>
     Index: ISymbolIndex;
+    /// <summary>Inhalt der Formulardatei (.dfm/.fmx) neben der Unit (#123); '' ohne.</summary>
+    FormText: string;
   end;
 
   /// <summary>Sammelt die Treffer einer Regel.</summary>

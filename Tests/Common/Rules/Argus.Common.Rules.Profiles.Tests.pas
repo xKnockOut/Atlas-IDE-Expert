@@ -159,7 +159,8 @@ const
   All = 'bidi-control,captured-loop-variable,component-create-without-override,component-default-mismatch,' +
     'component-fixed-pixels,component-hardcoded-color,component-missing-free-notification,' +
     'component-missing-inherited,component-setter-without-invalidate,confusable-identifier,control-char,' +
-    'declared-not-implemented,destroy-without-override,forbidden-uses,hides-virtual,implemented-not-declared,' +
+    'declared-not-implemented,destroy-without-override,forbidden-uses,form-field-type-mismatch,' +
+    'form-field-without-object,form-object-without-field,hides-virtual,implemented-not-declared,' +
     'invisible-char,lock-without-finally,possibly-uninitialized,result-not-set,synchronize-in-destructor,' +
     'thread-free-with-free-on-terminate,thread-resume-suspend,thread-use-after-free-on-terminate,' +
     'thread-vcl-access,unused-assignment,unused-local,unused-parameter,' +
@@ -169,7 +170,8 @@ begin
   Assert.AreEqual(All, ActiveRules('strict'));
   Assert.AreEqual('bidi-control,captured-loop-variable,component-create-without-override,component-default-mismatch,' +
     'component-missing-free-notification,component-missing-inherited,control-char,declared-not-implemented,' +
-    'destroy-without-override,hides-virtual,implemented-not-declared,lock-without-finally,possibly-uninitialized,' +
+    'destroy-without-override,form-field-type-mismatch,form-field-without-object,form-object-without-field,' +
+    'hides-virtual,implemented-not-declared,lock-without-finally,possibly-uninitialized,' +
     'result-not-set,synchronize-in-destructor,' + Threads + ',virtual-instead-of-override',
     ActiveRules('fast'));
   Assert.AreEqual('bidi-control,confusable-identifier,invisible-char', ActiveRules('security'));

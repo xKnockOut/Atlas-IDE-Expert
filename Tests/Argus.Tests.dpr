@@ -183,7 +183,8 @@ uses
   Shell.Workspace in '..\Application\Source\Shell\Shell.Workspace.pas',
   Shell.Mcp in '..\Application\Source\Shell\Shell.Mcp.pas',
   Argus.Common.Mcp.Freshness.Tests in 'Common\Mcp\Argus.Common.Mcp.Freshness.Tests.pas',
-  Shell.Mcp.Tests in 'Application\Shell\Shell.Mcp.Tests.pas';
+  Shell.Mcp.Tests in 'Application\Shell\Shell.Mcp.Tests.pas',
+  Argus.Common.Rules.Builtin.FormFields.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.FormFields.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

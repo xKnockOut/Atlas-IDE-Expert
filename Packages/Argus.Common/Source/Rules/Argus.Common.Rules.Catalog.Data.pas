@@ -298,6 +298,33 @@ begin
     '      "description": "Paint uses an RGB literal, a $00BBGGRR constant or a TColor cast. Such colors ignore VCL styles; system colors like clBtnFace are fine.",' + #10 +
     '      "bad": "Canvas.Brush.Color := $00FF8000;",' + #10 +
     '      "good": "Canvas.Brush.Color := StyleServices.GetSystemColor(clHighlight);"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "form-field-without-object",' + #10 +
+    '      "name": "Form field without object",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "A published component field of the form class has no object in the .dfm/.fmx next to the unit. After loading, the field stays nil. Fields outside published are not checked.",' + #10 +
+    '      "bad": "Edit1: TEdit;  // object Edit1 was deleted from the form",' + #10 +
+    '      "good": "// remove the field or restore the object"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "form-object-without-field",' + #10 +
+    '      "name": "Form object without field",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "An object of the form file has no field in the form class. Inherited objects, objects inside inline frames, unnamed components and collection items are skipped. The fix adds the ' + 'field.",' + #10 +
+    '      "bad": "object Button2: TButton  // no Button2 in TForm1",' + #10 +
+    '      "good": "Button2: TButton;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "form-field-type-mismatch",' + #10 +
+    '      "name": "Form field type differs from object",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "The field type differs from the class of the object in the form file. Without source for the class in the form file, nothing is compared. The fix changes the field type.",' + #10 +
+    '      "bad": "Edit1: TEdit;  // object Edit1: TMaskEdit",' + #10 +
+    '      "good": "Edit1: TMaskEdit;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -464,6 +491,21 @@ begin
     '      "id": "component-hardcoded-color",' + #10 +
     '      "name": "Feste Farbe in Paint",' + #10 +
     '      "description": "Paint verwendet ein RGB-Literal, eine $00BBGGRR-Konstante oder einen TColor-Cast. Solche Farben ignorieren VCL-Styles; Systemfarben wie clBtnFace sind in Ordnung."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "form-field-without-object",' + #10 +
+    '      "name": "Formularfeld ohne Objekt",' + #10 +
+    '      "description": "Ein published-Komponentenfeld der Formularklasse hat kein Objekt in der .dfm/.fmx neben der Unit. Nach dem Laden bleibt das Feld nil. Felder außerhalb von published werden nicht ' + 'geprüft."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "form-object-without-field",' + #10 +
+    '      "name": "Formularobjekt ohne Feld",' + #10 +
+    '      "description": "Ein Objekt der Formulardatei hat kein Feld in der Formularklasse. Geerbte Objekte, Objekte in inline-Frames, namenlose Komponenten und Collection-Einträge werden übergangen. Die ' + 'Korrektur ergänzt das Feld."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "form-field-type-mismatch",' + #10 +
+    '      "name": "Feldtyp weicht vom Formularobjekt ab",' + #10 +
+    '      "description": "Der Typ des Felds weicht von der Klasse des Objekts in der Formulardatei ab. Ohne Quelltext der Klasse aus der Formulardatei wird nicht verglichen. Die Korrektur ändert den Feldt' + 'yp."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
