@@ -122,6 +122,8 @@ type
     function ListTop: Integer;
     procedure DrawChips;
     procedure DrawHeader(ARow, APosition: Integer);
+    /// <summary>Rechts in der Fußzeile: „3 von 84“ bzw. mit erwartetem Typ „3 passend · 84 gesamt“ (#417).</summary>
+    function CountText: string;
     function ListWidth: Integer;
     function Collapsed: Boolean;
     function HitArea(AX, AY: Integer): TArgusHitArea;
@@ -415,18 +417,37 @@ begin
   Canvas.Font := Font;
 end;
 
+function TArgusCompletionPopup.CountText: string;
+var
+  Index, Fitting: Integer;
+begin
+  Fitting := 0;
+  for Index in FOrder do
+    if (Index >= 0) and FItems[Index].Fits and not FItems[Index].IsAction then
+      Inc(Fitting);
+  if Fitting > 0 then
+    Result := TArgusStrings.Fmt(TArgusTextId.CountFits, [Fitting, TArgusRanking.ItemCount(FOrder)])
+  else
+    Result := TArgusStrings.Fmt(TArgusTextId.CountOf, [TArgusRanking.ItemCount(FOrder), Length(FItems)]);
+end;
+
 procedure TArgusCompletionPopup.DrawHeader(ARow, APosition: Integer);
 var
   Row: TRect;
   Text: string;
 begin
   // Überschrift einer Gruppe geerbter Member (#419): Klasse des nächsten Eintrags;
-  // Gruppen vom Server (#444) bringen ihre Überschrift mit.
+  // mit erwartetem Typ (#417, #444) „Passt zu …“ bzw. „Weitere“.
   Text := TArgusStrings.Text(TArgusTextId.InheritedPlain);
   if (APosition < High(FOrder)) and (FOrder[APosition + 1] >= 0) then
   begin
-    if FItems[FOrder[APosition + 1]].Group <> '' then
-      Text := FItems[FOrder[APosition + 1]].Group
+    if FItems[FOrder[APosition + 1]].ExpectedType <> '' then
+    begin
+      if FItems[FOrder[APosition + 1]].Fits then
+        Text := TArgusStrings.Fmt(TArgusTextId.FitsType, [FItems[FOrder[APosition + 1]].ExpectedType])
+      else
+        Text := TArgusStrings.Text(TArgusTextId.OtherGroup);
+    end
     else if FItems[FOrder[APosition + 1]].DeclaringClass <> '' then
       Text := TArgusStrings.Fmt(TArgusTextId.InheritedFrom, [FItems[FOrder[APosition + 1]].DeclaringClass]);
   end;
@@ -570,7 +591,7 @@ begin
   Inc(Widest, Scale(7 + 24 + 9 + 7) + 2 * Pad + ScrollReserve);
   Canvas.Font := UIFont;
   Widest := Max(Widest, Canvas.TextWidth(TArgusStrings.Text(TArgusTextId.FooterKeys) + '    ' +
-    TArgusStrings.Fmt(TArgusTextId.CountOf, [999, 9999])) + Scale(18));
+    TArgusStrings.Fmt(TArgusTextId.CountFits, [999, 9999])) + Scale(18));
   Canvas.Font := Font;
   Result := EnsureRange(Widest, Scale(MinWidth), Scale(MaxWidth));
 end;
@@ -920,8 +941,7 @@ begin
         else
           DrawRow(Row, FTop + Row);
     DrawScrollBar;
-    DrawFooter(TArgusStrings.Text(TArgusTextId.FooterKeys), TArgusStrings.Fmt(TArgusTextId.CountOf,
-      [TArgusRanking.ItemCount(FOrder), Length(FItems)]));
+    DrawFooter(TArgusStrings.Text(TArgusTextId.FooterKeys), CountText);
   end;
   if FPanelShown then
     PaintPanel;

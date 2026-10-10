@@ -140,6 +140,21 @@ Schreibweise: `|` steht für die Cursorposition.
 | O5 | Bereits überschriebene Methode | Erscheint nicht noch einmal in der Liste |
 | O6 | Liste aus O1 ansehen | Kein „+Unit“-Tag an den Einträgen |
 
+## Erwarteter Typ (#417)
+
+Vorbereitung: in einer Methode `var I: Integer; S: string; Obj: TPersistent;` und ein Memo `memLog`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| T1 | `I := memLog.Lines.` | Oben Überschrift „Passt zu Integer“ mit `Count`, `Add`, `IndexOf` …, darunter „Weitere“; Fußzeile „n passend · m gesamt“ |
+| T2 | In T1 `Cle` weitertippen | Nur „Weitere“ mit `Clear` (passt nicht zu Integer) |
+| T3 | `S := memLog.` | „Passt zu string“ mit `Text`, `Name` … |
+| T4 | `Obj := memLog.` | Unter „Passt zu TPersistent“ u. a. `Lines`, `Font` (Nachfahren) |
+| T5 | `ShowMessage(memLog.` | „Passt zu string“ (Parametertyp) |
+| T6 | In einer Funktion mit Ergebnis Integer: `Result := memLog.Lines.` | Wie T1 |
+| T7 | `memLog.` als eigene Anweisung | Keine Überschriften, Fußzeile „n von m“ – wie bisher |
+| T8 | IDE auf Englisch | „Matches Integer“, „Other“, „n matching · m total“ |
+
 ## Ereignis-Zuweisung (#444)
 
 Vorbereitung: Formular mit Button `btnSave` und den Methoden `FormCreate(Sender: TObject)` und `FormCloseQuery(Sender: TObject; var CanClose: Boolean)`.

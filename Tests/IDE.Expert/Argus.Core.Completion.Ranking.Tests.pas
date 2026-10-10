@@ -234,12 +234,23 @@ begin
   Items := [Member('Neue Methode btnSaveClick …', '', 0, 0), Member('FormCreate', 'TForm1', 0, 1),
     Member('Klick', 'TBasis', 1, 2)];
   Items[0].IsAction := True;
-  Items[1].Group := 'Passt zu TNotifyEvent';
-  Items[2].Group := 'Passt zu TNotifyEvent';
+  Items[1].ExpectedType := 'TNotifyEvent';
+  Items[1].Fits := True;
+  Items[2].ExpectedType := 'TNotifyEvent';
+  Items[2].Fits := True;
   Options := TArgusRankOptions.Defaults;
   Options.GroupInherited := True;
   Assert.AreEqual('#,FormCreate,Klick,Neue Methode btnSaveClick …', Names(Items, TArgusRanking.Order(Items, '', Options)));
   Assert.AreEqual('#,Klick,Neue Methode btnSaveClick …', Names(Items, TArgusRanking.Order(Items, 'Kl', Options)));
+  // Erwarteter Typ (#417): Passende oben, auch wenn ein übriger Eintrag besser zum Präfix passt.
+  Items := [Member('Count', '', 0, 0), Member('Capacity', '', 0, 1), Member('Clear', '', 0, 2)];
+  Items[0].ExpectedType := 'Integer';
+  Items[1].ExpectedType := 'Integer';
+  Items[1].Fits := True;
+  Items[2].ExpectedType := 'Integer';
+  Items[2].Fits := True;
+  Assert.AreEqual('#,Capacity,Clear,#,Count', Names(Items, TArgusRanking.Order(Items, 'C', Options)));
+  Assert.AreEqual('#,Count', Names(Items, TArgusRanking.Order(Items, 'Cou', Options)));
 end;
 { TArgusUsageTests }
 
