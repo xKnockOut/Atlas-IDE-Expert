@@ -68,6 +68,7 @@
         <DCCReference Include="Common\Documents\Argus.Common.Documents.FileEncoding.Tests.pas"/>
         <DCCReference Include="Common\Projects\Argus.Common.Projects.Tests.pas"/>
         <DCCReference Include="Common\Projects\Argus.Common.Projects.DelphiVersions.Tests.pas"/>
+        <DCCReference Include="Common\Projects\Argus.Common.Projects.DprojEditor.Tests.pas"/>
         <DCCReference Include="Windows\Projects\Argus.Windows.Projects.DelphiInstallation.Tests.pas"/>
         <DCCReference Include="Common\Compiler\Argus.Common.Compiler.Tests.pas"/>
         <DCCReference Include="Common\Diagnostics\Argus.Common.Diagnostics.MapFile.Tests.pas"/>
@@ -174,6 +175,7 @@
         <DCCReference Include="Common\Rules\Argus.Common.Rules.ChangedFiles.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.RefactoringCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.ExpressionCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Argus.Common.Editing.ProjectCommands.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.DataBinding.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.ClassCompletion.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Argus.Common.Dfm.Tests.pas"/>

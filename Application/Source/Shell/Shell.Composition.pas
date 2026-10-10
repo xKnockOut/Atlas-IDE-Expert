@@ -211,6 +211,7 @@ uses
   Argus.Common.Documents.Providers.DocumentStore,
   Argus.Common.Documents.FileEncoding,
   Argus.Common.Documents.Uris,
+  Shell.SlashHost,
   Argus.Common.Lsp.FormFiles,
   Argus.Common.Dfm.FormModel,
   Argus.Common.Dfm.BinaryForm,
@@ -356,6 +357,22 @@ begin
     end);
   FFormatting.SlashCommandsFor := SlashCommandsFor;
   FFormatting.DelphiVersionFor := DelphiVersionFor;
+  FFormatting.SlashHost := TShellSlashHost.Create(
+    function(const AUri: string): TShellWorkspace
+    begin
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Result := WorkspaceOf(TDocumentUris.ToPath(AUri));
+        if (Result = nil) and (FWorkspaces.Count = 1) then
+          Result := FWorkspaces[0];
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+    end,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end, FTransport, FLogger);
   FFormatting.Attach(FDispatcher);
   FSelectionRanges := TLspSelectionRanges.Create(FDocuments);
   FSelectionRanges.Attach(FDispatcher);

@@ -41,6 +41,7 @@ type
     FSlashCommandsFor: TSlashCommandsProvider;
     FDelphiVersionFor: TFormattingVersionFunc;
     FIndex: ISymbolIndex;
+    FSlashHost: ISlashHost;
     function HandleOnType(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function Handle(const AParams: TJSONValue; AWithRange: Boolean): TJSONValue;
     function HandleFormatting(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -55,6 +56,8 @@ type
     /// <summary>Einstellungen für AFileName aus Editor-Optionen, .editorconfig und AConfigured.</summary>
     class function Resolve(const AOptions: TJSONValue; const AFileName: string; const AConfigured: TFormatStyle;
       const AReadFile: TEditorConfigReadFile): TFormatStyle; static;
+    /// <summary>Projekt und Editor für Schnellbefehle wie /define und /dfm (#301); nil ohne.</summary>
+    property SlashHost: ISlashHost read FSlashHost write FSlashHost;
     /// <summary>Ohne Zuweisung sind alle Schnellbefehle eingeschaltet.</summary>
     property SlashCommandsFor: TSlashCommandsProvider read FSlashCommandsFor write FSlashCommandsFor;
     /// <summary>Delphi-Version je Dokument für versionsabhängige Schnellbefehle (#303); ohne Zuweisung ''.</summary>
@@ -122,7 +125,7 @@ begin
     Version := FDelphiVersionFor(Uri);
   if (not Assigned(FSlashCommandsFor) or FSlashCommandsFor(Uri, Disabled)) and
     TSlashCommandRegistry.Shared.AfterEnter(Document.Text, TLspPositions.ReadPosition(PositionValue), nil, Disabled,
-    Edits, FIndex, Version) then
+    Edits, FIndex, Version, Uri, FSlashHost) then
   begin
     for Edit in Edits do
     begin

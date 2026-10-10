@@ -96,6 +96,7 @@
         <DCCReference Include="Source\Projects\Internals\Argus.Common.Projects.Internals.Xml.pas"/>
         <DCCReference Include="Source\Projects\Internals\Argus.Common.Projects.Internals.MSBuild.pas"/>
         <DCCReference Include="Source\Projects\Argus.Common.Projects.DprojReader.pas"/>
+        <DCCReference Include="Source\Projects\Argus.Common.Projects.DprojEditor.pas"/>
         <DCCReference Include="Source\Projects\Argus.Common.Projects.UnitResolver.pas"/>
         <DCCReference Include="Source\Compiler\Argus.Common.Compiler.Contract.pas"/>
         <DCCReference Include="Source\Compiler\Argus.Common.Compiler.OutputParser.pas"/>
@@ -137,6 +138,7 @@
         <DCCReference Include="Source\Editing\Argus.Common.Editing.WrapCommands.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.RefactoringCommands.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.ExpressionCommands.pas"/>
+        <DCCReference Include="Source\Editing\Argus.Common.Editing.ProjectCommands.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.MaintenanceCommands.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.TypeCommands.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.CollectionCommands.pas"/>
