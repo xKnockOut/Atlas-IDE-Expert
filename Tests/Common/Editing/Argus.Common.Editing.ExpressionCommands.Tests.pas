@@ -125,7 +125,9 @@ procedure TExpressionCommandsTests.FormatUnknownTypeAddsHint;
 var
   Text: string;
 begin
-  Text := Expand('/format', '  ShowMessage(''Wert: '' + Liste.Text);');
+  // Nicht über Expand: Der Hinweis nennt den Befehl selbst ("// /format: ...").
+  Assert.IsTrue(TryRun('/format', '  ShowMessage(''Wert: '' + Liste.Text);', '', Text));
+  Assert.AreEqual(0, Pos(#10'  /format', Text), Text);
   Assert.IsTrue(Pos('ShowMessage(Format(''Wert: %s'', [Liste.Text]));', Text) > 0, Text);
   Assert.IsTrue(Pos('// /format: Typ von Liste.Text unbekannt', Text) > 0, Text);
 end;
@@ -143,8 +145,8 @@ var
   Text: string;
 begin
   Text := Expand('/multiline', '  S := ''SELECT *'' + sLineBreak + ''FROM Kunde'';');
-  Assert.IsTrue(Pos('  S := '''''''#10'    SELECT *'#10'    FROM Kunde'#10'    '''''''';', Text) > 0, Text);
-  Text := Expand('/multiline!', '  S := '''''''#10'    SELECT *'#10'    FROM Kunde'#10'    '''''''';');
+  Assert.IsTrue(Pos('  S := '''''''#10'    SELECT *'#10'    FROM Kunde'#10'    '''''';', Text) > 0, Text);
+  Text := Expand('/multiline!', '  S := '''''''#10'    SELECT *'#10'    FROM Kunde'#10'    '''''';');
   Assert.IsTrue(Pos('''SELECT *'' + sLineBreak', Text) > 0, Text);
   Assert.IsTrue(Pos('''FROM Kunde'';', Text) > 0, Text);
 end;
