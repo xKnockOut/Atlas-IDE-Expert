@@ -141,6 +141,7 @@
         <DCCReference Include="Source\Dfm\Argus.Common.Dfm.Parser.pas"/>
         <DCCReference Include="Source\Dfm\Argus.Common.Dfm.Navigation.pas"/>
         <DCCReference Include="Source\Dfm\Argus.Common.Dfm.FormModel.pas"/>
+        <DCCReference Include="Source\Dfm\Argus.Common.Dfm.FormInfo.pas"/>
         <DCCReference Include="Source\Dfm\Argus.Common.Dfm.BinaryForm.pas"/>
         <DCCReference Include="Source\Dfm\Argus.Common.Dfm.ComponentRename.pas"/>
         <DCCReference Include="Source\Mcp\Argus.Common.Mcp.Server.pas"/>

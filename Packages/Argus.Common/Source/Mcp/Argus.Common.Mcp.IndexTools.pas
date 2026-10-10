@@ -68,8 +68,7 @@ implementation
 uses
   System.StrUtils,
   Argus.Common.Lsp.PublishedMembers,
-  Argus.Common.Dfm.Contract,
-  Argus.Common.Dfm.Parser;
+  Argus.Common.Dfm.FormInfo;
 
 const
   TypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
@@ -537,55 +536,10 @@ begin
   end;
 end;
 
-procedure AddDfmObject(ALines: TStrings; AObject: TDfmObject; ADepth: Integer);
-var
-  Indent, Events, Value: string;
-  Prop: TDfmProperty;
-  Child: TDfmObject;
-begin
-  Indent := StringOfChar(' ', ADepth * 2);
-  if AObject.Kind = TDfmObjectKind.Item then
-    ALines.Add(Indent + '- item')
-  else
-    ALines.Add(Format('%s- %s: %s%s', [Indent, IfThen(AObject.Name <> '', AObject.Name, '(ohne Namen)'),
-      AObject.TypeName, IfThen(AObject.Kind = TDfmObjectKind.Inherited_, ' (geerbt)', '')]));
-  Events := '';
-  for Prop in AObject.Properties do
-    if Prop.IsEvent then
-      Events := Events + IfThen(Events <> '', ', ', '') + Prop.Name + ' → ' + Prop.Value
-    else
-    begin
-      Value := StringReplace(Prop.Value, sLineBreak, ' ', [rfReplaceAll]);
-      if Length(Value) > 60 then
-        Value := Copy(Value, 1, 57) + '...';
-      ALines.Add(Format('%s    %s = %s', [Indent, Prop.Name, Value]));
-    end;
-  if Events <> '' then
-    ALines.Add(Indent + '    Ereignisse: ' + Events);
-  for Child in AObject.Children do
-    AddDfmObject(ALines, Child, ADepth + 1);
-end;
-
 class function TMcpIndexTools.DfmInfo(const AText: string): string;
-var
-  Document: TDfmDocument;
-  Lines: TStringList;
-  Error: TDfmError;
 begin
-  Document := TDfmParser.Parse(AText);
-  Lines := TStringList.Create;
-  try
-    if Document.Root = nil then
-      Lines.Add('Kein Formular gefunden (binäre DFM-Dateien werden nicht gelesen).')
-    else
-      AddDfmObject(Lines, Document.Root, 0);
-    for Error in Document.Errors do
-      Lines.Add(Format('Fehler Zeile %d: %s', [Error.Position.Line + 1, Error.Message]));
-    Result := JoinLines(Lines);
-  finally
-    Lines.Free;
-    Document.Free;
-  end;
+  // Gemeinsam mit dem Hover über Formularfelder (#126).
+  Result := TFormInfo.Describe(AText);
 end;
 
 end.
