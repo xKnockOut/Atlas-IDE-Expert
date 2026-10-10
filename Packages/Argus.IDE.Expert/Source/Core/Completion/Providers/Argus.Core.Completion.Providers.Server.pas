@@ -131,7 +131,8 @@ begin
     Result.Depth := Data.GetValue<Integer>('depth', 0);
     Result.IsHelper := Data.GetValue('helper') is TJSONTrue;
     Result.HasParameters := Data.GetValue('parameters') is TJSONTrue;
-    Result.Group := Data.GetValue<string>('group', '');
+    Result.ExpectedType := Data.GetValue<string>('expected', '');
+    Result.Fits := Data.GetValue('fits') is TJSONTrue;
     Result.IsAction := Data.GetValue<string>('action', '') = 'create';
     Overloads := Data.GetValue('overloads');
     if Overloads is TJSONArray then

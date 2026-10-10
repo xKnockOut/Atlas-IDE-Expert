@@ -65,8 +65,10 @@ type
     HasParameters: Boolean;
     /// <summary>Text beim Übernehmen statt des Namens; ''.</summary>
     InsertText: string;
-    /// <summary>Überschrift der Gruppe in Argus, z. B. "Passt zu TNotifyEvent" (#444); ''.</summary>
-    Group: string;
+    /// <summary>Erwarteter Typ an der Stelle (#417, #444); '' ohne. Argus gruppiert dann nach Fits.</summary>
+    Expected: string;
+    /// <summary>Eintrag passt zu Expected.</summary>
+    Fits: Boolean;
     /// <summary>Eintrag erzeugt Code statt nur einen Namen: 'override' (#443), 'create' (neue Methode, #444);
     /// Argus wertet AdditionalEdits dann nicht als uses-Ergänzung.</summary>
     Action: string;
@@ -108,6 +110,10 @@ type
     class function Capability: TJSONObject; static;
     /// <summary>Was an APosition vervollständigt wird.</summary>
     class function Analyze(ATree: TSyntaxTree; const APosition: TTextPosition): TCompletionContext; static;
+    /// <summary>Erwarteter Typ an APosition (#417): Typ des aktiven Parameters im innersten Aufruf, sonst der
+    /// linken Seite einer Zuweisung (auch Result); '' wenn unbekannt.</summary>
+    class function ExpectedType(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+      const APosition: TTextPosition): string; static;
     class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const APosition: TTextPosition;
       AMatching: TCompletionMatching = TCompletionMatching.Fuzzy): TCompletionItems; static;
@@ -156,6 +162,7 @@ uses
   Argus.Common.Pascal.XmlDoc,
   Argus.Common.Index.Extractor,
   Argus.Common.Editing.ClassCompletion,
+  Argus.Common.Lsp.SignatureHelp,
   System.RegularExpressions;
 
 const
@@ -436,6 +443,58 @@ begin
 end;
 
 /// <summary>Punktzahl von AName; TFuzzyMatch.NoMatch, wenn er nicht passt.</summary>
+/// <summary>Typname für den Vergleich: ohne Leerzeichen und Unit-Präfix, klein.</summary>
+function PlainType(const AType: string): string;
+begin
+  Result := LowerCase(AType.Replace(' ', ''));
+  if (Pos('<', Result) = 0) and (LastDelimiter('.', Result) > 0) then
+    Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
+end;
+
+type
+  TTypeFamily = (None, Integer_, Float, String_, Char_, Boolean_);
+
+/// <summary>Familie eingebauter Typen für die Zuweisungsverträglichkeit (#417).</summary>
+function TypeFamily(const APlain: string): TTypeFamily;
+begin
+  if MatchText(APlain, ['integer', 'cardinal', 'int64', 'uint64', 'byte', 'word', 'shortint', 'smallint', 'longint',
+    'longword', 'nativeint', 'nativeuint', 'int8', 'int16', 'int32', 'uint8', 'uint16', 'uint32', 'fixedint',
+    'fixeduint']) then
+    Result := TTypeFamily.Integer_
+  else if MatchText(APlain, ['double', 'single', 'extended', 'real', 'currency', 'comp']) then
+    Result := TTypeFamily.Float
+  else if MatchText(APlain, ['string', 'unicodestring', 'ansistring', 'widestring', 'shortstring', 'rawbytestring',
+    'utf8string']) then
+    Result := TTypeFamily.String_
+  else if MatchText(APlain, ['char', 'widechar', 'ansichar']) then
+    Result := TTypeFamily.Char_
+  else if MatchText(APlain, ['boolean', 'bytebool', 'wordbool', 'longbool']) then
+    Result := TTypeFamily.Boolean_
+  else
+    Result := TTypeFamily.None;
+end;
+
+/// <summary>Ein Wert vom Typ AActual passt zu AExpected: gleich, gleiche Familie eingebauter Typen,
+/// Integer zu Gleitkomma, Char zu String. ACheckDescent: Beides sind keine eingebauten Typen; ob AActual
+/// von AExpected abstammt, muss die Namensauflösung klären.</summary>
+function TypeFits(const AActual, AExpected: string; out ACheckDescent: Boolean): Boolean;
+var
+  Actual, Expected: TTypeFamily;
+begin
+  ACheckDescent := False;
+  if (AActual = '') or (AExpected = '') then
+    Exit(False);
+  if PlainType(AActual) = PlainType(AExpected) then
+    Exit(True);
+  Actual := TypeFamily(PlainType(AActual));
+  Expected := TypeFamily(PlainType(AExpected));
+  if Expected <> TTypeFamily.None then
+    Exit((Actual = Expected) or (Expected = TTypeFamily.Float) and (Actual = TTypeFamily.Integer_) or
+      (Expected = TTypeFamily.String_) and (Actual = TTypeFamily.Char_));
+  ACheckDescent := Actual = TTypeFamily.None;
+  Result := False;
+end;
+
 function MatchScore(const AName, APrefix: string; AMatching: TCompletionMatching): Integer;
 begin
   if APrefix = '' then
@@ -447,6 +506,80 @@ begin
     Exit(TFuzzyMatch.NoMatch);
   end;
   Result := TFuzzyMatch.Score(AName, APrefix);
+end;
+
+class function TLspCompletion.ExpectedType(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+  const APosition: TTextPosition): string;
+var
+  Site: TCallSite;
+  Callee, Target: TResolvedSymbol;
+  Tokens: TArray<TPascalToken>;
+  Index, Last: Integer;
+  Names: TArray<string>;
+  UnitIndex: TUnitIndex;
+  Symbol: TIndexSymbol;
+begin
+  Result := '';
+  if ATree = nil then
+    Exit;
+  // Argument eines Aufrufs: Typ des aktiven Parameters (erste passende Überladung).
+  Site := TLspSignatureHelp.CallSiteAt(ATree, APosition);
+  if Site.Found then
+  begin
+    Callee := AResolver.Resolve(ATree, AFileName, Site.NamePosition);
+    if Callee.Found and (Site.ActiveParameter < Length(Callee.ParamTypes)) then
+      Result := Callee.ParamTypes[Site.ActiveParameter];
+    Exit;
+  end;
+  // Zuweisung: "Ziel := A.B.Anf|" – rückwärts über die Kette rechts bis zum ":=".
+  Tokens := ATree.Tokens;
+  Last := -1;
+  for Index := 0 to High(Tokens) do
+  begin
+    if ComparePositions(Tokens[Index].StartPos, APosition) >= 0 then
+      Break;
+    Last := Index;
+  end;
+  Index := PreviousIndex(Tokens, Last + 1);
+  if (Index >= 0) and (Tokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
+    (ComparePositions(APosition, Tokens[Index].EndPos) <= 0) then
+    Index := PreviousIndex(Tokens, Index);
+  while (Index >= 0) and Tokens[Index].IsSymbol('.') do
+  begin
+    Index := PreviousIndex(Tokens, Index);
+    if (Index < 0) or (Tokens[Index].Kind <> TPascalTokenKind.Identifier) then
+      Exit;
+    Index := PreviousIndex(Tokens, Index);
+  end;
+  if (Index < 0) or not Tokens[Index].IsSymbol(':=') then
+    Exit;
+  Last := Tokens[Index].Offset;
+  Index := PreviousIndex(Tokens, Index);
+  Names := nil;
+  while (Index >= 0) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) do
+  begin
+    Names := [CleanName(Tokens[Index].Text)] + Names;
+    Index := PreviousIndex(Tokens, Index);
+    if (Index >= 0) and Tokens[Index].IsSymbol('.') then
+      Index := PreviousIndex(Tokens, Index)
+    else
+      Break;
+  end;
+  if Names = nil then
+    Exit;
+  Target := AResolver.ResolveChain(ATree, AFileName, Names, Last);
+  if Target.Found and not Target.IsType and (Target.SymbolKind <> TIndexSymbolKind.Routine) and
+    (Target.SymbolKind <> TIndexSymbolKind.Method) then
+    Result := Target.TypeName;
+  // Result: Rückgabetyp der umgebenden Funktion.
+  if (Result = '') and (Length(Names) = 1) and SameText(Names[0], 'Result') then
+  begin
+    UnitIndex := TIndexExtractor.Extract(ATree, AFileName);
+    for Symbol in UnitIndex.Symbols do
+      if (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) and (Symbol.TypeName <> '') and
+        (Symbol.Range.StartPos.Line < APosition.Line) and (Symbol.Range.EndPos.Line >= APosition.Line) then
+        Result := Symbol.TypeName;
+  end;
 end;
 
 class function TLspCompletion.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -463,6 +596,32 @@ var
   SourceFile: string;
   SourcePosition: TTextPosition;
   Member: TResolvedSymbol;
+  Expected: string;
+  Descends: TDictionary<string, Boolean>;
+  AnyFits: Boolean;
+
+  function MemberFits: Boolean;
+  var
+    TypeText: string;
+    CheckDescent: Boolean;
+  begin
+    // Typ des Werts: Variablen, Felder, Eigenschaften, Funktionsergebnis; Aufzählungswerte über ihren Typ.
+    if Member.SymbolKind = TIndexSymbolKind.EnumMember then
+      TypeText := Member.Container
+    else if Member.IsType then
+      Exit(False)
+    else
+      TypeText := Member.TypeName;
+    Result := TypeFits(TypeText, Expected, CheckDescent);
+    if Result or not CheckDescent then
+      Exit;
+    // Klassen: Nachfahr des erwarteten Typs; je Typname einmal auflösen.
+    if not Descends.TryGetValue(LowerCase(TypeText), Result) then
+    begin
+      Result := AResolver.TypeDescendsFrom(ATree, AFileName, Context.Offset, TypeText, Expected);
+      Descends.Add(LowerCase(TypeText), Result);
+    end;
+  end;
 
   procedure Add(const AName, ADetail: string; AKind: Integer; APenalty: Integer = 0;
     const AEdits: TArray<TRuleEdit> = nil);
@@ -496,6 +655,11 @@ var
       Scored.Item.FilterText := Context.Prefix
     else
       Scored.Item.FilterText := '';
+    // Erwarteter Typ (#417): Argus gruppiert nach Fits.
+    Scored.Item.Expected := Expected;
+    Scored.Item.Fits := (Expected <> '') and (Member.Name <> '') and MemberFits;
+    if Scored.Item.Fits then
+      AnyFits := True;
     Scored.Order := List.Count;
     List.Add(Scored);
   end;
@@ -557,6 +721,14 @@ begin
   SourceFile := '';
   SourcePosition := Default(TTextPosition);
   Member := Default(TResolvedSymbol);
+  Expected := '';
+  AnyFits := False;
+  if Context.Kind in [TCompletionContextKind.Member, TCompletionContextKind.Scope] then
+    Expected := ExpectedType(AResolver, ATree, AFileName, APosition);
+  // Viele Typprüfungen auf demselben Baum: einmal auswerten.
+  if Expected <> '' then
+    AResolver.PinTree(ATree, AFileName);
+  Descends := TDictionary<string, Boolean>.Create;
   List := TList<TScoredItem>.Create(TScoredItemComparer.Create);
   try
     case Context.Kind of
@@ -592,6 +764,28 @@ begin
         end;
     end;
     List.Sort;
+    // Passende zuerst (#417); passt nichts, entfällt die Gruppierung.
+    if AnyFits then
+    begin
+      for Index := 0 to List.Count - 1 do
+      begin
+        Scored := List[Index];
+        Scored.Order := Index + IfThen(Scored.Item.Fits, 0, List.Count);
+        List[Index] := Scored;
+      end;
+      List.Sort(TComparer<TScoredItem>.Construct(
+        function(const Left, Right: TScoredItem): Integer
+        begin
+          Result := Left.Order - Right.Order;
+        end));
+    end
+    else
+      for Index := 0 to List.Count - 1 do
+      begin
+        Scored := List[Index];
+        Scored.Item.Expected := '';
+        List[Index] := Scored;
+      end;
     // Unscharf fragt der Editor bei jedem Tastendruck neu, weil sich die Reihenfolge ändert.
     Result.Incomplete := (List.Count > MaxItems) or
       ((AMatching = TCompletionMatching.Fuzzy) and (Context.Kind <> TCompletionContextKind.None));
@@ -602,6 +796,9 @@ begin
       Result.Items[Index] := List[Index].Item;
   finally
     List.Free;
+    Descends.Free;
+    if Expected <> '' then
+      AResolver.UnpinTree;
   end;
 end;
 
@@ -643,7 +840,7 @@ begin
     end;
     // Reihenfolge wie geliefert: beste Punktzahl, dann nächster Gültigkeitsbereich.
     Entry.AddPair('sortText', Format('%.5d', [Index]));
-    if (AItems.Items[Index].SourceFile <> '') or (AItems.Items[Index].Group <> '') or
+    if (AItems.Items[Index].SourceFile <> '') or (AItems.Items[Index].Expected <> '') or
       (AItems.Items[Index].Action <> '') then
     begin
       Data := TJSONObject.Create;
@@ -653,8 +850,11 @@ begin
         Data.AddPair('line', TJSONNumber.Create(AItems.Items[Index].SourcePosition.Line));
         Data.AddPair('character', TJSONNumber.Create(AItems.Items[Index].SourcePosition.Character));
       end;
-      if AItems.Items[Index].Group <> '' then
-        Data.AddPair('group', AItems.Items[Index].Group);
+      if AItems.Items[Index].Expected <> '' then
+      begin
+        Data.AddPair('expected', AItems.Items[Index].Expected);
+        Data.AddPair('fits', TJSONBool.Create(AItems.Items[Index].Fits));
+      end;
       if AItems.Items[Index].Action <> '' then
         Data.AddPair('action', AItems.Items[Index].Action);
       // Für die Argus-Oberfläche: Herkunft, Vererbungstiefe, Helper, Überladungen (#419, #425, #456).
@@ -1135,14 +1335,6 @@ begin
   end;
 end;
 
-/// <summary>Typname für den Vergleich: ohne Leerzeichen und Unit-Präfix, klein.</summary>
-function PlainType(const AType: string): string;
-begin
-  Result := LowerCase(AType.Replace(' ', ''));
-  if (Pos('<', Result) = 0) and (LastDelimiter('.', Result) > 0) then
-    Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
-end;
-
 class function TLspCompletion.EventItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
   const APosition: TTextPosition; const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean;
 var
@@ -1236,7 +1428,8 @@ begin
       Item.Depth := Candidate.Depth;
       Item.SourceFile := Candidate.FileName;
       Item.SourcePosition := Candidate.SelectionRange.StartPos;
-      Item.Group := 'Passt zu ' + EventType.Name;
+      Item.Expected := EventType.Name;
+      Item.Fits := True;
       AItems.Items := AItems.Items + [Item];
     end;
     // Neue Methode: Objekt + Ereignis ohne "On" (btnSave.OnClick → btnSaveClick), eindeutig gemacht.

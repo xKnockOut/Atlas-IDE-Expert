@@ -206,6 +206,10 @@ type
     /// <summary>Überschreibbare Methoden für ATypeName aus AFromUnit (#443): virtual, dynamic, abstract oder
     /// override in einem Vorfahren, im Typ selbst noch nicht deklariert; nächster Vorfahr zuerst (Depth 1).</summary>
     function OverridableMembers(const AFromUnit: TUnitIndex; const ATypeName: string): TArray<TResolvedSymbol>;
+    /// <summary>ATypeName ist ATargetName oder stammt davon ab, beide so aufgelöst, wie sie an AOffset
+    /// stünden (#417).</summary>
+    function TypeDescendsFrom(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer;
+      const ATypeName, ATargetName: string): Boolean;
     /// <summary>Unit-Namespaces des Projekts (DCC_Namespace) für uses ohne Präfix.</summary>
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
   end;
@@ -2158,6 +2162,16 @@ begin
     Result := Results[0]
   else
     Result := NoResult;
+end;
+
+function TNameResolver.TypeDescendsFrom(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer;
+  const ATypeName, ATargetName: string): Boolean;
+var
+  Actual, Target: TResolvedSymbol;
+begin
+  Actual := ResolveChain(ATree, AFileName, ATypeName.Split(['.']), AOffset);
+  Target := ResolveChain(ATree, AFileName, ATargetName.Split(['.']), AOffset);
+  Result := Actual.Found and Target.Found and Actual.IsType and Target.IsType and DescendsFrom(Actual, Target);
 end;
 
 end.

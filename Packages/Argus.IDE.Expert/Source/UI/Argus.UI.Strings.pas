@@ -17,7 +17,7 @@ type
     MoreOverloads, ChipAll, ChipMethods, ChipProperties, ChipEvents, ChipTypes, ChipSnippets, TagRecent,
     TagFrequent, SettingsTitle, SettingsEnabled, SettingsRows, SettingsPanelCollapsed, SettingsParentheses,
     SettingsChips, SettingsLearning, SettingsGroupInherited, SettingsPreview, SettingsHover, SettingsResetHistory,
-    SettingsResetWidths);
+    SettingsResetWidths, FitsType, OtherGroup, CountFits);
 
   TArgusStrings = class
   private class var
@@ -45,7 +45,8 @@ const
      'Detailpanel eingeklappt (Strg+Q schaltet im Popup um)', 'Klammern beim Übernehmen von Methoden ergänzen',
      'Filter-Chips über der Liste (Alt+1 … Alt+6)', 'Häufig und zuletzt gewählte Einträge nach oben',
      'Geerbte Member nachrangig und nach Klasse gruppiert', 'Vorschau des gewählten Eintrags im Editor',
-     'Eigener Tooltip beim Verweilen über Bezeichnern', 'Verlauf zurücksetzen', 'Breiten zurücksetzen'),
+     'Eigener Tooltip beim Verweilen über Bezeichnern', 'Verlauf zurücksetzen', 'Breiten zurücksetzen',
+     'Passt zu %s', 'Weitere', '%d passend · %d gesamt'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -55,7 +56,7 @@ const
      'Add parentheses when accepting methods', 'Filter chips above the list (Alt+1 … Alt+6)',
      'Frequently and recently chosen entries first', 'Inherited members ranked lower and grouped by class',
      'Preview of the selected entry in the editor', 'Own tooltip when hovering identifiers', 'Reset history',
-     'Reset widths'));
+     'Reset widths', 'Matches %s', 'Other', '%d matching · %d total'));
 
 { TArgusStrings }
 

@@ -95,8 +95,10 @@ type
     HasParameters: Boolean;
     /// <summary>Vom Controller gesetzt (#418).</summary>
     Usage: TArgusUsageMark;
-    /// <summary>Überschrift der Gruppe, z. B. "Passt zu TNotifyEvent" (#444); ''.</summary>
-    Group: string;
+    /// <summary>Erwarteter Typ an der Stelle (#417, #444); '' ohne. Die Liste gruppiert dann nach Fits.</summary>
+    ExpectedType: string;
+    /// <summary>Eintrag passt zu ExpectedType.</summary>
+    Fits: Boolean;
     /// <summary>Eintrag erzeugt Code („Neue Methode …“, #444): in Akzentfarbe, immer zuletzt.</summary>
     IsAction: Boolean;
     /// <summary>Zahl der Überladungen samt dieser (mindestens 1).</summary>

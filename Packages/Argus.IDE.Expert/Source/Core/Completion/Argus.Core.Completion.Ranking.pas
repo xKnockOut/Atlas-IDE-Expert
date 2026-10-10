@@ -8,8 +8,9 @@
 //     ersten Eintrag der Gruppe). Mit Präfix keine Überschriften; bei gleicher
 //     Güte steht der eigene Member vor dem geerbten.
 //   - Chips: Einschränkung auf eine Art (Methoden, Eigenschaften, ...).
-//   - Einträge mit Group (#444) bekommen deren Überschrift, auch mit Präfix;
-//     Aktionen („Neue Methode …“) passen immer und stehen zuletzt.
+//   - Erwarteter Typ (#417, #444): passende Einträge oben, darunter die
+//     übrigen, je mit Überschrift, auch mit Präfix. Innerhalb der Gruppe wie
+//     oben. Aktionen („Neue Methode …“) passen immer und stehen zuletzt.
 
 interface
 
@@ -104,6 +105,17 @@ begin
     Result := AItem.Name;
 end;
 
+/// <summary>0 = passt zum erwarteten Typ, 1 = übrige, 2 = ohne erwarteten Typ.</summary>
+function GroupOf(const AItem: TArgusCompletionItem): Integer;
+begin
+  if AItem.ExpectedType = '' then
+    Result := 2
+  else if AItem.Fits then
+    Result := 0
+  else
+    Result := 1;
+end;
+
 class function TArgusRanking.Order(const AItems: TArgusCompletionItems; const APattern: string;
   const AOptions: TArgusRankOptions): TArray<Integer>;
 var
@@ -112,7 +124,8 @@ var
   Found: TList<Integer>;
   Index, Position, Depth: Integer;
   Grouped: Boolean;
-  Container, Group: string;
+  Container: string;
+  Group: Integer;
   Options: TArgusRankOptions;
 begin
   Items := AItems;
@@ -140,6 +153,8 @@ begin
       function(const A, B: Integer): Integer
       begin
         Result := Ord(Items[A].IsAction) - Ord(Items[B].IsAction);
+        if Result = 0 then
+          Result := GroupOf(Items[A]) - GroupOf(Items[B]);
         if Result <> 0 then
           Exit;
         if Grouped then
@@ -167,20 +182,20 @@ begin
     Result := nil;
     Depth := 0;
     Container := '';
-    Group := '';
+    Group := -1;
     for Position := 0 to Found.Count - 1 do
     begin
       Index := Found[Position];
-      // Überschrift der Gruppe vom Server (#444), sonst vor jeder Gruppe geerbter Member (#419).
-      if Items[Index].Group <> '' then
+      // Überschrift je Gruppe zum erwarteten Typ (#417), sonst vor jeder Gruppe geerbter Member (#419).
+      if (Items[Index].ExpectedType <> '') and not Items[Index].IsAction then
       begin
-        if not SameText(Items[Index].Group, Group) then
+        if GroupOf(Items[Index]) <> Group then
           Result := Result + [Header];
       end
       else if Grouped and (Items[Index].Depth > 0) and ((Items[Index].Depth <> Depth) or
         not SameText(Items[Index].DeclaringClass, Container)) then
         Result := Result + [Header];
-      Group := Items[Index].Group;
+      Group := GroupOf(Items[Index]);
       Depth := Items[Index].Depth;
       Container := Items[Index].DeclaringClass;
       Result := Result + [Index];

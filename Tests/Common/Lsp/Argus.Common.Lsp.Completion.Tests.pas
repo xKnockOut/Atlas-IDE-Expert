@@ -55,6 +55,8 @@ type
     procedure OffersOverridesWithDeclarationAndBody;
     [Test]
     procedure OffersMatchingHandlersAndNewMethodForEvents;
+    [Test]
+    procedure GroupsByExpectedType;
   end;
 
 implementation
@@ -511,7 +513,8 @@ begin
       if Item.Action = '' then
       begin
         Handlers := Handlers + ' ' + Item.Name;
-        Assert.AreEqual('Passt zu TNotifyEvent', Item.Group);
+        Assert.AreEqual('TNotifyEvent', Item.Expected);
+        Assert.IsTrue(Item.Fits);
       end;
     Assert.AreEqual(' FormCreate btnSaveClick', Handlers);
     // Zuletzt die neue Methode; btnSaveClick ist vergeben.
@@ -532,6 +535,90 @@ begin
     Resolver.Free;
     Tree.Free;
   end;
+end;
+
+procedure TLspCompletionTests.GroupsByExpectedType;
+
+  function MakeText(const ALine: string): string;
+  begin
+    Result :=
+      'unit Haupt;'#13#10 +
+      'interface'#13#10 +
+      'type'#13#10 +
+      '  TBasis = class'#13#10 +
+      '  end;'#13#10 +
+      '  TKind = class(TBasis)'#13#10 +
+      '  end;'#13#10 +
+      '  TListe = class'#13#10 +
+      '  public'#13#10 +
+      '    function Count: Integer;'#13#10 +
+      '    function Name: string;'#13#10 +
+      '    function IndexOf(const S: string): Integer;'#13#10 +
+      '    procedure Clear;'#13#10 +
+      '    property Erstes: TKind read FErstes;'#13#10 +
+      '  end;'#13#10 +
+      'function Rechne(A: Integer; B: TBasis): Integer;'#13#10 +
+      'implementation'#13#10 +
+      'function Rechne(A: Integer; B: TBasis): Integer;'#13#10 +
+      'var'#13#10 +
+      '  L: TListe;'#13#10 +
+      '  I: Integer;'#13#10 +
+      '  Obj: TBasis;'#13#10 +
+      'begin'#13#10 +
+      '  ' + ALine + #13#10 +
+      'end;'#13#10 +
+      'end.';
+  end;
+
+  function Check(const ALine, AExpected, AFits: string): string;
+  var
+    Text, Fits: string;
+    Tree: TSyntaxTree;
+    Resolver: TNameResolver;
+    Items: TCompletionItems;
+    Item: TCompletionItem;
+    Position: TTextPosition;
+    Fitting: Boolean;
+  begin
+    Text := MakeText(ALine);
+    Position := PositionOf(Text, ALine);
+    Tree := TPascalParser.Parse(Text);
+    Resolver := TNameResolver.Create(FIndex);
+    try
+      Result := TLspCompletion.ExpectedType(Resolver, Tree, HauptFile, Position);
+      Items := TLspCompletion.Collect(Resolver, FIndex, Tree, HauptFile, Position);
+      // Passende zuerst, danach keine passenden mehr.
+      Fits := '';
+      Fitting := True;
+      for Item in Items.Items do
+      begin
+        Assert.AreEqual(AExpected, Item.Expected, ALine + ': ' + Item.Name);
+        if Item.Fits then
+        begin
+          Assert.IsTrue(Fitting, ALine + ': ' + Item.Name + ' steht hinter nicht passenden');
+          Fits := Fits + ' ' + Item.Name;
+        end
+        else
+          Fitting := False;
+      end;
+      Assert.AreEqual(AFits, Trim(Fits), ALine);
+    finally
+      Resolver.Free;
+      Tree.Free;
+    end;
+  end;
+
+begin
+  // Beispiel aus #417: Integer-Zuweisung, Count und IndexOf oben.
+  Assert.AreEqual('Integer', Check('I := L.', 'Integer', 'Count IndexOf'));
+  // Klasse: Nachfahr passt.
+  Assert.AreEqual('TBasis', Check('Obj := L.', 'TBasis', 'Erstes'));
+  // Parameter im Aufruf.
+  Assert.AreEqual('TBasis', Check('Rechne(1, L.', 'TBasis', 'Erstes'));
+  // Rückgabetyp bei Result.
+  Assert.AreEqual('Integer', Check('Result := L.', 'Integer', 'Count IndexOf'));
+  // Ohne erwarteten Typ keine Gruppierung.
+  Assert.AreEqual('', Check('L.', '', ''));
 end;
 
 initialization
