@@ -130,6 +130,7 @@
         <DCCReference Include="Source\Editing\Argus.Common.Editing.UsesActions.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.UsesCommand.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.SlashCommands.pas"/>
+        <DCCReference Include="Source\Editing\Argus.Common.Editing.DeclarationCommands.pas"/>
         <DCCReference Include="Source\Semantics\Argus.Common.Semantics.UnresolvedNames.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Architecture.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Concurrency.pas"/>
