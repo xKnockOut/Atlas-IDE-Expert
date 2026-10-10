@@ -40,6 +40,8 @@ type
     Members: string;
     /// <summary>Link zur DocWiki bei RTL- und VCL-Symbolen (#27); sonst ''.</summary>
     DocWikiUrl: string;
+    /// <summary>Microsoft-Link und 64-Bit-Hinweis bei Windows-API-Funktionen (#120); sonst ''.</summary>
+    WinApi: string;
     /// <summary>Message-Handler der Klasse als Markdown (#36); sonst ''.</summary>
     Messages: string;
     /// <summary>Wert bei Zahlen, Konstanten und Aufzählungswerten (#38); sonst ''.</summary>
@@ -100,6 +102,7 @@ uses
   Argus.Common.Dfm.FormInfo,
   Argus.Common.Dfm.Parser,
   Argus.Common.Lsp.DocWiki,
+  Argus.Common.Lsp.WinApiDocs,
   Argus.Common.Lsp.MessageHandlers,
   Argus.Common.Lsp.HoverValues,
   Argus.Common.Lsp.CompilerDirectives,
@@ -247,6 +250,8 @@ begin
     Result := Result + #10#10 + 'Unit `' + UnitName + '`';
   if DocWikiUrl <> '' then
     Result := Result + #10#10 + '[DocWiki](' + DocWikiUrl + ')';
+  if WinApi <> '' then
+    Result := Result + #10#10 + WinApi;
   if Members <> '' then
     Result := Result + #10#10 + '---' + #10#10 + Members;
   if Messages <> '' then
@@ -435,6 +440,8 @@ begin
       SameText(OwnerUnit.SymbolFile(Symbol), Targets[0].FileName) then
     begin
       Result.DocWikiUrl := TDocWiki.Url(ADelphiVersion, OwnerUnit.UnitName, Symbol.Container, Symbol.Name);
+      if (Symbol.Container = '') and TWinApiDocs.IsWinApiUnit(OwnerUnit.UnitName) then
+        Result.WinApi := TWinApiDocs.HoverText(Symbol.Name);
       if Symbol.Kind = TIndexSymbolKind.Constant then
         Result.Value := THoverValues.ConstantValue(Result.Declaration)
       else if Symbol.Kind = TIndexSymbolKind.EnumMember then
