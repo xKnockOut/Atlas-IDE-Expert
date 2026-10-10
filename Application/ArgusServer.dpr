@@ -8,6 +8,7 @@ uses
   Shell.CommandLine in 'Source\Shell\Shell.CommandLine.pas',
   Shell.Workspace in 'Source\Shell\Shell.Workspace.pas',
   Shell.Linter in 'Source\Shell\Shell.Linter.pas',
+  Shell.SlashHost in 'Source\Shell\Shell.SlashHost.pas',
   Shell.VcsChanges in 'Source\Shell\Shell.VcsChanges.pas',
   Shell.Mcp in 'Source\Shell\Shell.Mcp.pas';
 

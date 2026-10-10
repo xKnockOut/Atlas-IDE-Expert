@@ -7,6 +7,7 @@ Server und Erweiterung tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Schnellbefehle `/define`, `/define!`, `/searchpath` (ändern nur die betroffene Zeile der `.dproj`), `/config Release Win64` und `/dfm` (Sprung in die Formulardatei) (#301).
 - Schnellbefehle `/format`, `/multiline`, `/multiline!`, `/iif` und `/inc` für Ausdrücke; Vorschläge richten sich nach `delphiVersion` (#303).
 - Schnellbefehle `/fmt` (umgebende Routine formatieren) und `/measure` (Laufzeit mit TStopwatch messen) (#300).
 - Linter: `--changed` und `--diff` auch in SVN-Arbeitskopien (#276).

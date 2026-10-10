@@ -31,6 +31,7 @@ uses
   Argus.Common.Documents.FileEncoding.Tests in 'Common\Documents\Argus.Common.Documents.FileEncoding.Tests.pas',
   Argus.Common.Projects.Tests in 'Common\Projects\Argus.Common.Projects.Tests.pas',
   Argus.Common.Projects.DelphiVersions.Tests in 'Common\Projects\Argus.Common.Projects.DelphiVersions.Tests.pas',
+  Argus.Common.Projects.DprojEditor.Tests in 'Common\Projects\Argus.Common.Projects.DprojEditor.Tests.pas',
   Argus.Windows.Projects.DelphiInstallation.Tests in 'Windows\Projects\Argus.Windows.Projects.DelphiInstallation.Tests.pas',
   Argus.Common.Compiler.Tests in 'Common\Compiler\Argus.Common.Compiler.Tests.pas',
   Argus.Common.Diagnostics.MapFile.Tests in 'Common\Diagnostics\Argus.Common.Diagnostics.MapFile.Tests.pas',
@@ -211,6 +212,7 @@ uses
   Argus.Common.Rules.ChangedFiles.Tests in 'Common\Rules\Argus.Common.Rules.ChangedFiles.Tests.pas',
   Argus.Common.Editing.RefactoringCommands.Tests in 'Common\Editing\Argus.Common.Editing.RefactoringCommands.Tests.pas',
   Argus.Common.Editing.ExpressionCommands.Tests in 'Common\Editing\Argus.Common.Editing.ExpressionCommands.Tests.pas',
+  Argus.Common.Editing.ProjectCommands.Tests in 'Common\Editing\Argus.Common.Editing.ProjectCommands.Tests.pas',
   Argus.Common.Rules.Builtin.DataBinding.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.DataBinding.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
