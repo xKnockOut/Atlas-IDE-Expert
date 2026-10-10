@@ -423,7 +423,8 @@ begin
     Action.Kind := RewriteKind;
     Action.Command := CopyTextCommand;
     Action.CommandArguments := [Plain];
-    Exit([Action]);
+    Result := [Action];
+    Exit;
   end;
   if (ARange.StartPos.Line = ARange.EndPos.Line) and (ARange.StartPos.Character = ARange.EndPos.Character) then
     Exit;
