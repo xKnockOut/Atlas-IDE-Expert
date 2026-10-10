@@ -234,7 +234,9 @@ uses
   Argus.Common.Editing.TaskCommands.Tests in 'Common\Editing\Argus.Common.Editing.TaskCommands.Tests.pas',
   Argus.Common.Editing.RecordCommands.Tests in 'Common\Editing\Argus.Common.Editing.RecordCommands.Tests.pas',
   Argus.Common.Rules.Builtin.DataBinding.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.DataBinding.Tests.pas',
-  Argus.Common.Rules.Builtin.DfmProperties.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.DfmProperties.Tests.pas';
+  Argus.Common.Rules.Builtin.DfmProperties.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.DfmProperties.Tests.pas',
+  Argus.Common.Editing.PostfixTemplates.Tests in 'Common\Editing\Argus.Common.Editing.PostfixTemplates.Tests.pas',
+  Argus.Common.Lsp.Completion.Postfix.Tests in 'Common\Lsp\Argus.Common.Lsp.Completion.Postfix.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

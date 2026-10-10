@@ -192,6 +192,8 @@
         <DCCReference Include="Common\Editing\Argus.Common.Editing.WinApiCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.TaskCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.RecordCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Argus.Common.Editing.PostfixTemplates.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Argus.Common.Lsp.Completion.Postfix.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.DataBinding.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.DfmProperties.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.ClassCompletion.Tests.pas"/>
