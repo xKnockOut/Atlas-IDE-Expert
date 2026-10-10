@@ -1,0 +1,485 @@
+﻿unit Argus.Common.Rules.Builtin.Security;
+
+// Sicherheitsregeln, Teil 2 (#149), auf den Token der Datei:
+//   security-command-injection          ShellExecute, CreateProcess, WinExec mit zusammengesetztem Argument
+//   security-path-traversal             Dateizugriff mit Pfad aus Eingabedaten (experimentell)
+//   security-weak-crypto                MD5, SHA-1, DES, RC4
+//   security-tls-verification-disabled  Zertifikatsprüfung abgeschaltet oder immer erfolgreich
+//   security-insecure-http              http://-URLs in Strings
+//   security-insecure-random            Random für Token, Kennwörter, Salt, Nonce, Schlüssel
+//
+// Ohne Datenflussanalyse (#143) erkennen die Regeln nur einfache Muster und
+// melden mit mittlerer oder niedriger Konfidenz.
+
+interface
+
+uses
+  System.SysUtils,
+  Argus.Common.Rules.Contract,
+  Argus.Common.Rules.Registry;
+
+type
+  TSecurityCommandInjectionRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TSecurityPathTraversalRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TSecurityWeakCryptoRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TSecurityTlsVerificationDisabledRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TSecurityInsecureHttpRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TSecurityInsecureRandomRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+procedure RegisterSecurityRules(const ARegistry: TRuleRegistry);
+
+implementation
+
+uses
+  System.StrUtils,
+  Argus.Common.Documents.Contract,
+  Argus.Common.Configuration.Contract,
+  Argus.Common.Pascal.Contract;
+
+const
+  CommandCalls: array[0..7] of string = ('ShellExecute', 'ShellExecuteA', 'ShellExecuteW', 'ShellExecuteEx',
+    'CreateProcess', 'CreateProcessA', 'CreateProcessW', 'WinExec');
+  FileCalls: array[0..5] of string = ('AssignFile', 'LoadFromFile', 'SaveToFile', 'ReadAllText', 'ReadAllBytes',
+    'WriteAllText');
+  InputMarkers: array[0..3] of string = ('ParamStr', 'Text', 'Request', 'QueryFields');
+  WeakCrypto: array[0..9] of string = ('THashMD5', 'THashSHA1', 'TIdHashMessageDigest5', 'TIdHashSHA1',
+    'TDCP_des', 'TDCP_3des', 'TDCP_rc4', 'TCipher_DES', 'TCipher_RC4', 'TLbDES');
+  SensitiveHash: array[0..2] of string = ('password', 'secret', 'signature');
+  SensitiveRandom: array[0..6] of string = ('token', 'password', 'passwort', 'salt', 'nonce', 'key', 'secret');
+  // URLs, die kein Netzverkehr sind oder lokal bleiben.
+  HttpExceptions: array[0..5] of string = ('http://localhost', 'http://127.0.0.1', 'http://[::1]',
+    'http://www.w3.org/', 'http://schemas.', 'http://ns.');
+
+/// <summary>Token ohne Kommentare und Direktiven.</summary>
+function CodeTokens(const AContext: TRuleContext): TArray<TPascalToken>;
+var
+  Token: TPascalToken;
+begin
+  Result := nil;
+  if AContext.Tree = nil then
+    Exit;
+  for Token in AContext.Tree.Tokens do
+    if not (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+      Result := Result + [Token];
+end;
+
+function IsOneOf(const AText: string; const AWords: array of string): Boolean;
+var
+  Word: string;
+begin
+  for Word in AWords do
+    if SameText(AText, Word) then
+      Exit(True);
+  Result := False;
+end;
+
+function ContainsOneOf(const AText: string; const AWords: array of string): Boolean;
+var
+  Word: string;
+begin
+  for Word in AWords do
+    if ContainsText(AText, Word) then
+      Exit(True);
+  Result := False;
+end;
+
+function TokenRange(const AToken: TPascalToken): TTextRange;
+begin
+  Result := TTextRange.Create(AToken.StartPos, AToken.EndPos);
+end;
+
+/// <summary>Index der schließenden Klammer zu ATokens[AOpen]; -1 ohne.</summary>
+function MatchingParen(const ATokens: TArray<TPascalToken>; AOpen: Integer): Integer;
+var
+  Depth: Integer;
+begin
+  Depth := 0;
+  for Result := AOpen to High(ATokens) do
+    if ATokens[Result].IsSymbol('(') or ATokens[Result].IsSymbol('[') then
+      Inc(Depth)
+    else if ATokens[Result].IsSymbol(')') or ATokens[Result].IsSymbol(']') then
+    begin
+      Dec(Depth);
+      if Depth = 0 then
+        Exit;
+    end;
+  Result := -1;
+end;
+
+/// <summary>Argumente eines Aufrufs als [Anfang, Ende]-Paare (Indizes inklusive).</summary>
+function Arguments(const ATokens: TArray<TPascalToken>; AOpen, AClose: Integer): TArray<TArray<Integer>>;
+var
+  Index, Depth, Start: Integer;
+begin
+  Result := nil;
+  Depth := 0;
+  Start := AOpen + 1;
+  for Index := AOpen + 1 to AClose do
+  begin
+    if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('[') then
+      Inc(Depth)
+    else if (ATokens[Index].IsSymbol(')') or ATokens[Index].IsSymbol(']')) and (Depth > 0) then
+      Dec(Depth)
+    else if (Depth = 0) and (ATokens[Index].IsSymbol(',') or (Index = AClose)) then
+    begin
+      if Index > Start then
+        Result := Result + [TArray<Integer>.Create(Start, Index - 1)];
+      Start := Index + 1;
+    end;
+  end;
+end;
+
+/// <summary>Zusammengesetzt (+, Format, Concat) und mit mindestens einem Bezeichner, der kein Cast ist?</summary>
+function IsComposed(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): Boolean;
+var
+  Index: Integer;
+  Joined, Variable: Boolean;
+begin
+  Joined := False;
+  Variable := False;
+  for Index := AFirst to ALast do
+    if ATokens[Index].IsSymbol('+') then
+      Joined := True
+    else if ATokens[Index].Kind = TPascalTokenKind.Identifier then
+    begin
+      if IsOneOf(ATokens[Index].Text, ['Format', 'Concat']) then
+        Joined := True
+      else if not IsOneOf(ATokens[Index].Text, ['PChar', 'PWideChar', 'PAnsiChar', 'string', 'nil']) then
+        Variable := True;
+    end;
+  Result := Joined and Variable;
+end;
+
+/// <summary>Anfang der Anweisung vor AIndex: Token nach ";", begin, then, else, do; sonst 0.</summary>
+function StatementStart(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while Result > 0 do
+  begin
+    if ATokens[Result - 1].IsSymbol(';') or ATokens[Result - 1].IsKeyword('begin') or
+      ATokens[Result - 1].IsKeyword('then') or ATokens[Result - 1].IsKeyword('else') or
+      ATokens[Result - 1].IsKeyword('do') or ATokens[Result - 1].IsKeyword('try') or
+      ATokens[Result - 1].IsKeyword('finally') or ATokens[Result - 1].IsKeyword('except') then
+      Exit;
+    Dec(Result);
+  end;
+end;
+
+/// <summary>Index des ";" oder end am Ende der Anweisung ab AIndex.</summary>
+function StatementEnd(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+var
+  Depth: Integer;
+begin
+  Depth := 0;
+  for Result := AIndex to High(ATokens) do
+  begin
+    if ATokens[Result].IsSymbol('(') or ATokens[Result].IsSymbol('[') then
+      Inc(Depth)
+    else if ATokens[Result].IsSymbol(')') or ATokens[Result].IsSymbol(']') then
+      Dec(Depth)
+    else if (Depth <= 0) and (ATokens[Result].IsSymbol(';') or ATokens[Result].IsKeyword('end') or
+      ATokens[Result].IsKeyword('else')) then
+      Exit;
+  end;
+  Result := High(ATokens);
+end;
+
+{ TSecurityCommandInjectionRule }
+
+function TSecurityCommandInjectionRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('security-command-injection', TRuleSeverity.Warning,
+    'Befehl aus zusammengesetztem Text (Befehlsinjektion)');
+end;
+
+procedure TSecurityCommandInjectionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Index, Close: Integer;
+  Argument: TArray<Integer>;
+begin
+  Tokens := CodeTokens(AContext);
+  for Index := 0 to High(Tokens) - 1 do
+    if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and IsOneOf(Tokens[Index].Text, CommandCalls) and
+      Tokens[Index + 1].IsSymbol('(') then
+    begin
+      Close := MatchingParen(Tokens, Index + 1);
+      if Close < 0 then
+        Continue;
+      for Argument in Arguments(Tokens, Index + 1, Close) do
+        if IsComposed(Tokens, Argument[0], Argument[1]) then
+        begin
+          AReport.Add(TokenRange(Tokens[Index]), Format('%s mit zusammengesetztem Argument: Eingaben könnten ' +
+            'weitere Befehle einschleusen', [Tokens[Index].Text]), TRuleConfidence.Medium);
+          Break;
+        end;
+    end;
+end;
+
+{ TSecurityPathTraversalRule }
+
+function TSecurityPathTraversalRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('security-path-traversal', TRuleSeverity.Warning,
+    'Dateizugriff mit Pfad aus Eingabedaten (Pfad-Traversal)', True);
+end;
+
+procedure TSecurityPathTraversalRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Index, Close, Inner: Integer;
+  IsFileCall, FromInput, Checked: Boolean;
+begin
+  Tokens := CodeTokens(AContext);
+  for Index := 0 to High(Tokens) - 1 do
+  begin
+    if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or not Tokens[Index + 1].IsSymbol('(') then
+      Continue;
+    IsFileCall := IsOneOf(Tokens[Index].Text, FileCalls) or
+      (SameText(Tokens[Index].Text, 'Create') and (Index >= 2) and SameText(Tokens[Index - 2].Text, 'TFileStream'));
+    if not IsFileCall then
+      Continue;
+    Close := MatchingParen(Tokens, Index + 1);
+    if Close < 0 then
+      Continue;
+    FromInput := False;
+    Checked := False;
+    for Inner := Index + 2 to Close - 1 do
+      if Tokens[Inner].Kind = TPascalTokenKind.Identifier then
+      begin
+        if IsOneOf(Tokens[Inner].Text, InputMarkers) then
+          FromInput := True;
+        if IsOneOf(Tokens[Inner].Text, ['GetFullPath', 'ExpandFileName', 'ExtractFileName']) then
+          Checked := True;
+      end;
+    if FromInput and not Checked then
+      AReport.Add(TokenRange(Tokens[Index]), Format('%s mit einem Pfad aus Eingabedaten ohne Prüfung; ".." ' +
+        'könnte Dateien außerhalb des erwarteten Ordners erreichen', [Tokens[Index].Text]), TRuleConfidence.Medium);
+  end;
+end;
+
+{ TSecurityWeakCryptoRule }
+
+function TSecurityWeakCryptoRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('security-weak-crypto', TRuleSeverity.Hint,
+    'Schwacher Kryptoalgorithmus (MD5, SHA-1, DES, RC4)');
+end;
+
+procedure TSecurityWeakCryptoRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Index, Inner, Stop: Integer;
+  Confidence: TRuleConfidence;
+begin
+  Tokens := CodeTokens(AContext);
+  for Index := 0 to High(Tokens) do
+    if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and IsOneOf(Tokens[Index].Text, WeakCrypto) then
+    begin
+      // Prüfsummen sind legitim; nur mit Kennwort, Geheimnis oder Signatur in der Anweisung ist es mittel.
+      Confidence := TRuleConfidence.Low;
+      Stop := StatementEnd(Tokens, Index);
+      for Inner := StatementStart(Tokens, Index) to Stop do
+        if (Tokens[Inner].Kind = TPascalTokenKind.Identifier) and ContainsOneOf(Tokens[Inner].Text, SensitiveHash) then
+          Confidence := TRuleConfidence.Medium;
+      AReport.Add(TokenRange(Tokens[Index]), Format('%s ist für Sicherheitszwecke zu schwach; für Kennwörter und ' +
+        'Signaturen SHA-256 oder besser verwenden', [Tokens[Index].Text]), Confidence);
+    end;
+end;
+
+{ TSecurityTlsVerificationDisabledRule }
+
+function TSecurityTlsVerificationDisabledRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('security-tls-verification-disabled', TRuleSeverity.Warning,
+    'TLS-Zertifikatsprüfung abgeschaltet');
+end;
+
+procedure TSecurityTlsVerificationDisabledRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Index, Inner, Start, Depth: Integer;
+  Header: string;
+  InHeader: Boolean;
+begin
+  Tokens := CodeTokens(AContext);
+  Header := '';
+  Depth := 0;
+  InHeader := False;
+  for Index := 0 to High(Tokens) do
+  begin
+    // Kopf der aktuellen Routine merken (bis zum ersten ";" nach der Parameterliste).
+    if Tokens[Index].IsKeyword('procedure') or Tokens[Index].IsKeyword('function') then
+    begin
+      Header := '';
+      Depth := 0;
+      InHeader := True;
+    end;
+    if InHeader then
+    begin
+      Header := Header + ' ' + Tokens[Index].Text;
+      if Tokens[Index].IsSymbol('(') then
+        Inc(Depth)
+      else if Tokens[Index].IsSymbol(')') then
+        Dec(Depth)
+      else if (Depth = 0) and Tokens[Index].IsSymbol(';') then
+        InHeader := False;
+      Continue;
+    end;
+    if Index + 3 > High(Tokens) then
+      Continue;
+    // Indy: SSLOptions.VerifyMode := [];
+    if SameText(Tokens[Index].Text, 'VerifyMode') and Tokens[Index + 1].IsSymbol(':=') and
+      Tokens[Index + 2].IsSymbol('[') and Tokens[Index + 3].IsSymbol(']') then
+    begin
+      AReport.Add(TokenRange(Tokens[Index]), 'VerifyMode := [] schaltet die Prüfung des Serverzertifikats ab',
+        TRuleConfidence.High);
+      Continue;
+    end;
+    // Accepted := True bzw. Result := True ohne Bedingung in einem Prüf-Handler.
+    if Tokens[Index + 1].IsSymbol(':=') and SameText(Tokens[Index + 2].Text, 'True') and
+      (Tokens[Index + 3].IsSymbol(';') or Tokens[Index + 3].IsKeyword('end')) then
+    begin
+      Start := StatementStart(Tokens, Index);
+      if (Start <> Index) or ((Index > 0) and (Tokens[Index - 1].IsKeyword('then') or
+        Tokens[Index - 1].IsKeyword('else'))) then
+        Continue;
+      // Steht vorher im Rumpf eine Bedingung, wird geprüft.
+      Inner := Index - 1;
+      while (Inner > 0) and not (Tokens[Inner].IsKeyword('procedure') or Tokens[Inner].IsKeyword('function')) do
+      begin
+        if Tokens[Inner].IsKeyword('if') or Tokens[Inner].IsKeyword('case') then
+          Break;
+        Dec(Inner);
+      end;
+      if (Inner > 0) and (Tokens[Inner].IsKeyword('if') or Tokens[Inner].IsKeyword('case')) then
+        Continue;
+      if (IsOneOf(Tokens[Index].Text, ['Accepted', 'AAccepted']) and ContainsText(Header, 'Certificate')) or
+        (SameText(Tokens[Index].Text, 'Result') and (ContainsText(Header, 'TIdX509') or
+        ContainsText(Header, 'VerifyPeer'))) then
+        AReport.Add(TokenRange(Tokens[Index]), 'Der Handler akzeptiert jedes Serverzertifikat ohne Prüfung',
+          TRuleConfidence.High);
+    end;
+  end;
+end;
+
+{ TSecurityInsecureHttpRule }
+
+function TSecurityInsecureHttpRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('security-insecure-http', TRuleSeverity.Hint, 'Unverschlüsselte http://-URL');
+end;
+
+procedure TSecurityInsecureHttpRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Index, Offset: Integer;
+  Lower: string;
+  Excepted: Boolean;
+  Exception_: string;
+  Start: TTextPosition;
+begin
+  Tokens := CodeTokens(AContext);
+  for Index := 0 to High(Tokens) do
+  begin
+    if Tokens[Index].Kind <> TPascalTokenKind.StringLiteral then
+      Continue;
+    Lower := LowerCase(Tokens[Index].Text);
+    Offset := Pos('http://', Lower);
+    if Offset = 0 then
+      Continue;
+    Excepted := Pos('xmlns', Lower) > 0;
+    for Exception_ in HttpExceptions do
+      if Copy(Lower, Offset, Length(Exception_)) = Exception_ then
+        Excepted := True;
+    if Excepted then
+      Continue;
+    // Einzeilige Strings: Spalte des "http://" im Token.
+    if Tokens[Index].StartPos.Line <> Tokens[Index].EndPos.Line then
+    begin
+      AReport.Add(TokenRange(Tokens[Index]), 'Unverschlüsselte http://-URL; https:// verwenden', TRuleConfidence.Medium);
+      Continue;
+    end;
+    Start := TTextPosition.Create(Tokens[Index].StartPos.Line, Tokens[Index].StartPos.Character + Offset - 1);
+    AReport.Add(TTextRange.Create(Start.Line, Start.Character, Start.Line, Start.Character + Length('http://')),
+      'Unverschlüsselte http://-URL; https:// verwenden', TRuleConfidence.Medium,
+      [TRuleFix.Create('http:// durch https:// ersetzen',
+      [TRuleEdit.Create(TTextRange.Create(Start.Line, Start.Character, Start.Line, Start.Character + Length('http://')),
+      Copy(Tokens[Index].Text, Offset, 4) + 's://')])]);
+  end;
+end;
+
+{ TSecurityInsecureRandomRule }
+
+function TSecurityInsecureRandomRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('security-insecure-random', TRuleSeverity.Warning,
+    'Random für sicherheitsrelevante Werte');
+end;
+
+procedure TSecurityInsecureRandomRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Index, Inner, Stop, Target: Integer;
+begin
+  Tokens := CodeTokens(AContext);
+  for Index := 1 to High(Tokens) do
+  begin
+    if not Tokens[Index].IsSymbol(':=') then
+      Continue;
+    // Ziel der Zuweisung: letzter Bezeichner vor := (auch Self.FToken).
+    Target := Index - 1;
+    if (Tokens[Target].Kind <> TPascalTokenKind.Identifier) or
+      not ContainsOneOf(Tokens[Target].Text, SensitiveRandom) then
+      Continue;
+    Stop := StatementEnd(Tokens, Index + 1);
+    for Inner := Index + 1 to Stop do
+      if (Tokens[Inner].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Inner].Text, 'Random') then
+      begin
+        AReport.Add(TokenRange(Tokens[Inner]), Format('Random ist vorhersagbar und für %s ungeeignet; einen ' +
+          'kryptografischen Zufallsgenerator verwenden', [Tokens[Target].Text]), TRuleConfidence.Medium);
+        Break;
+      end;
+  end;
+end;
+
+procedure RegisterSecurityRules(const ARegistry: TRuleRegistry);
+begin
+  ARegistry.Register(TSecurityCommandInjectionRule.Create);
+  ARegistry.Register(TSecurityPathTraversalRule.Create);
+  ARegistry.Register(TSecurityWeakCryptoRule.Create);
+  ARegistry.Register(TSecurityTlsVerificationDisabledRule.Create);
+  ARegistry.Register(TSecurityInsecureHttpRule.Create);
+  ARegistry.Register(TSecurityInsecureRandomRule.Create);
+end;
+
+end.

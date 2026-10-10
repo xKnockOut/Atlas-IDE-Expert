@@ -38,6 +38,12 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`form-field-without-object`](#form-field-without-object) | Formularfeld ohne Objekt | Bug | Warnung |
 | [`form-object-without-field`](#form-object-without-field) | Formularobjekt ohne Feld | Bug | Warnung |
 | [`form-field-type-mismatch`](#form-field-type-mismatch) | Feldtyp weicht vom Formularobjekt ab | Bug | Warnung |
+| [`security-command-injection`](#security-command-injection) | Befehlsinjektion | Schwachstelle | Warnung |
+| [`security-path-traversal`](#security-path-traversal) | Pfad-Traversal | Schwachstelle | Warnung |
+| [`security-weak-crypto`](#security-weak-crypto) | Schwache Kryptografie | Sicherheits-Hotspot | Hinweis |
+| [`security-tls-verification-disabled`](#security-tls-verification-disabled) | TLS-Zertifikatsprüfung abgeschaltet | Schwachstelle | Warnung |
+| [`security-insecure-http`](#security-insecure-http) | Unverschlüsselte http://-URL | Sicherheits-Hotspot | Hinweis |
+| [`security-insecure-random`](#security-insecure-random) | Random für sicherheitsrelevante Werte | Sicherheits-Hotspot | Warnung |
 
 <a id="syntax"></a>
 ## syntax
@@ -871,4 +877,118 @@ Richtig:
 
 ```pascal
 Edit1: TMaskEdit;
+```
+
+<a id="security-command-injection"></a>
+## security-command-injection
+
+**Befehlsinjektion** · Schwachstelle · Warnung
+
+ShellExecute, ShellExecuteEx, CreateProcess oder WinExec erhält ein Argument, das mit +, Format oder Concat aus nicht konstanten Werten zusammengesetzt ist. Eingaben könnten weitere Befehle einschleusen. Ohne Datenflussanalyse wird nur dieses einfache Muster erkannt (mittlere Konfidenz).
+
+Mit Treffer:
+
+```pascal
+ShellExecute(0, 'open', PChar('cmd /c ' + Edit1.Text), nil, nil, SW_SHOW);
+```
+
+Richtig:
+
+```pascal
+ShellExecute(0, 'open', 'tool.exe', PChar(QuotedArgument), nil, SW_SHOW);  // validated
+```
+
+<a id="security-path-traversal"></a>
+## security-path-traversal
+
+**Pfad-Traversal** · Schwachstelle · Warnung
+
+Ein Dateizugriff (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) verwendet einen Pfad aus Eingabedaten (Text, ParamStr, Request) ohne Prüfung über TPath.GetFullPath. Experimentell, bis die Datenflussanalyse verfügbar ist.
+
+Mit Treffer:
+
+```pascal
+List.LoadFromFile('C:\Data\' + Edit1.Text);
+```
+
+Richtig:
+
+```pascal
+Path := TPath.GetFullPath(TPath.Combine(Root, Edit1.Text));  // then check it starts with Root
+```
+
+<a id="security-weak-crypto"></a>
+## security-weak-crypto
+
+**Schwache Kryptografie** · Sicherheits-Hotspot · Hinweis
+
+MD5, SHA-1, DES oder RC4 wird verwendet. Für Prüfsummen ist das in Ordnung, für Kennwörter und Signaturen nicht. Niedrige Konfidenz, mittlere, wenn die Anweisung ein Kennwort, Geheimnis oder eine Signatur nennt.
+
+Mit Treffer:
+
+```pascal
+Stored := THashSHA1.GetHashString(PasswordText);
+```
+
+Richtig:
+
+```pascal
+Stored := THashSHA2.GetHashString(Salt + PasswordText);
+```
+
+<a id="security-tls-verification-disabled"></a>
+## security-tls-verification-disabled
+
+**TLS-Zertifikatsprüfung abgeschaltet** · Schwachstelle · Warnung
+
+Indy SSLOptions.VerifyMode := [], ein OnVerifyPeer-Handler, der immer True liefert, oder ein ValidateServerCertificate-Handler, der Accepted := True ohne Prüfung setzt.
+
+Mit Treffer:
+
+```pascal
+IdSSL.SSLOptions.VerifyMode := [];
+```
+
+Richtig:
+
+```pascal
+IdSSL.SSLOptions.VerifyMode := [sslvrfPeer];
+```
+
+<a id="security-insecure-http"></a>
+## security-insecure-http
+
+**Unverschlüsselte http://-URL** · Sicherheits-Hotspot · Hinweis
+
+Ein String enthält eine http://-URL. XML-Namensräume und Schema-URIs, Kommentare sowie localhost, 127.0.0.1 und [::1] sind ausgenommen. Die Korrektur ersetzt http:// durch https://.
+
+Mit Treffer:
+
+```pascal
+Client.Get('http://api.example.com/data');
+```
+
+Richtig:
+
+```pascal
+Client.Get('https://api.example.com/data');
+```
+
+<a id="security-insecure-random"></a>
+## security-insecure-random
+
+**Random für sicherheitsrelevante Werte** · Sicherheits-Hotspot · Warnung
+
+Random wird einem Token, Kennwort, Salt, Nonce oder Schlüssel zugewiesen. Random ist vorhersagbar; einen kryptografischen Zufallsgenerator verwenden. Fehlendes Randomize behandelt #153.
+
+Mit Treffer:
+
+```pascal
+Token := IntToStr(Random(MaxInt));
+```
+
+Richtig:
+
+```pascal
+Token := TNetEncoding.Base64URL.EncodeBytesToString(CryptoRandomBytes(32));
 ```
