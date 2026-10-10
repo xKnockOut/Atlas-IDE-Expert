@@ -10,7 +10,8 @@
 // Der Wächter arbeitet im Hauptthread nur die Antwort auf die Messnachricht.
 // Gemessen wird erst, wenn die Nachrichtenschleife nach dem Laden frei ist;
 // das Laden der übrigen Packages beim Start ist kein Hänger (die Startzeit
-// meldet OnStartup).
+// meldet OnStartup). Ebenso das Beenden: ohne sichtbares Hauptfenster oder
+// nach Application.Terminate wird nichts gemeldet.
 
 interface
 
@@ -81,7 +82,14 @@ implementation
 
 uses
   System.Diagnostics,
-  Winapi.PsAPI;
+  Winapi.PsAPI,
+  Vcl.Forms;
+
+/// <summary>IDE läuft normal: Hauptfenster sichtbar, nicht im Beenden. Liest nur Felder, aus jedem Thread.</summary>
+function Running: Boolean;
+begin
+  Result := not Application.Terminated and (Application.MainForm <> nil) and Application.MainForm.Visible;
+end;
 
 function InternalGetWindowText(hWnd: HWND; pString: PWideChar; cchMaxCount: Integer): Integer; stdcall;
   external user32 name 'InternalGetWindowText';
@@ -117,7 +125,7 @@ begin
     begin
       FOwner.FWake.WaitFor(25);
       Waited := NowMs - SentAt;
-      if not Captured and (Waited >= TInterlocked.CompareExchange(FOwner.FThresholdMs, 0, 0)) then
+      if not Captured and (Waited >= TInterlocked.CompareExchange(FOwner.FThresholdMs, 0, 0)) and Running then
       begin
         Captured := True;
         Hang.At := Now;
@@ -128,7 +136,7 @@ begin
     end;
     if Terminated then
       Break;
-    if Captured then
+    if Captured and Running then
     begin
       Hang.DurationMs := NowMs - SentAt;
       Report(Hang, FOwner.TakeAddresses);
