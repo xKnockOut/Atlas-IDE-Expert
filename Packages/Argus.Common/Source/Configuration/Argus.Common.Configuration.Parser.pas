@@ -390,6 +390,8 @@ begin
         if ExpectString(ANode[Index][Item], 'disabled', Value) then
           FSettings.SlashCommandsDisabled := FSettings.SlashCommandsDisabled + [Value];
     end
+    else if Key = 'headerTemplate' then
+      ExpectString(ANode[Index], 'headerTemplate', FSettings.SlashHeaderTemplate)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "slashCommands.%s"', [Key]), False);
@@ -1049,6 +1051,7 @@ begin
     begin
       Result.SlashCommands := FileSettings.SlashCommands;
       Result.SlashCommandsDisabled := FileSettings.SlashCommandsDisabled;
+      Result.SlashHeaderTemplate := FileSettings.SlashHeaderTemplate;
     end
     else if Key = 'sortUses' then
     begin

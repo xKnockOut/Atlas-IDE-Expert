@@ -7,6 +7,7 @@ Server und Erweiterung tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Schnellbefehle `/header` (Dateikopf aus `slashCommands.headerTemplate`, Jahr fortschreiben), `/deprecated Grund`, `/region-all` und `/bookmark Name`; die Symbolsuche findet Lesezeichen `// @bookmark Name` (#306).
 - Schnellbefehle für Datenbankcode: `/sql`, `/params`, `/loop` und `/transaction`, passend zu FireDAC, ADO, dbExpress und IBX (#302).
 - Schnellbefehle `/define`, `/define!`, `/searchpath` (ändern nur die betroffene Zeile der `.dproj`), `/config Release Win64` und `/dfm` (Sprung in die Formulardatei) (#301).
 - Schnellbefehle `/format`, `/multiline`, `/multiline!`, `/iif` und `/inc` für Ausdrücke; Vorschläge richten sich nach `delphiVersion` (#303).

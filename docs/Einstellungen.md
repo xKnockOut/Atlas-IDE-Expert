@@ -20,7 +20,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Compiler | `compiler`: `onSave` | – | argus.json, Editor (`argus.compiler`) | nein | Kontrollkästchen | #40 |
 | Vervollständigung | `completion`: `matching` | – | argus.json, Editor (`argus.completion`) | nein | Auswahl | #229 |
 | Eingabehilfen | `usesCommand` | `true` | argus.json, Editor (`argus.usesCommand`) | nein | Kontrollkästchen | #254 |
-| Eingabehilfen | `slashCommands`: `enabled`, `disabled` | – | argus.json, Editor (`argus.slashCommands`) | nein | Kontrollkästchen, Liste | #293 |
+| Eingabehilfen | `slashCommands`: `enabled`, `disabled`, `headerTemplate` | – | argus.json, Editor (`argus.slashCommands`) | nein | Kontrollkästchen, Liste | #293 |
 | Eingabehilfen | `sortUses` | `false` | argus.json, Editor (`argus.sortUses`) | nein | Auswahl | #182, #284 |
 | Eingabehilfen | `usesKeep` | `` | argus.json, Editor (`argus.usesKeep`) | nein | Liste | #284 |
 | Speicher | `memoryBudgetMb` | `0` | argus.json, Editor (`argus.memoryBudgetMb`) | nein | Zahlenfeld (MB) | #185 |

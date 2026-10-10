@@ -178,6 +178,8 @@
         <DCCReference Include="Common\Editing\Argus.Common.Editing.ProjectCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.SqlText.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.DatabaseCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Argus.Common.Editing.Bookmarks.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Argus.Common.Editing.DocumentationCommands.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.DataBinding.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.ClassCompletion.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Argus.Common.Dfm.Tests.pas"/>

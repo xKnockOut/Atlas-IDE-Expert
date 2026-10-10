@@ -215,6 +215,8 @@ uses
   Argus.Common.Editing.ProjectCommands.Tests in 'Common\Editing\Argus.Common.Editing.ProjectCommands.Tests.pas',
   Argus.Common.Editing.SqlText.Tests in 'Common\Editing\Argus.Common.Editing.SqlText.Tests.pas',
   Argus.Common.Editing.DatabaseCommands.Tests in 'Common\Editing\Argus.Common.Editing.DatabaseCommands.Tests.pas',
+  Argus.Common.Editing.Bookmarks.Tests in 'Common\Editing\Argus.Common.Editing.Bookmarks.Tests.pas',
+  Argus.Common.Editing.DocumentationCommands.Tests in 'Common\Editing\Argus.Common.Editing.DocumentationCommands.Tests.pas',
   Argus.Common.Rules.Builtin.DataBinding.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.DataBinding.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}

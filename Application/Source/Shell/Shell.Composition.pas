@@ -31,6 +31,7 @@ uses
   Argus.Common.Lsp.Definition,
   Argus.Common.Lsp.Hover,
   Argus.Common.Lsp.WorkspaceSymbols,
+  Argus.Common.Editing.Bookmarks,
   Argus.Common.Lsp.DocumentHighlights,
   Argus.Common.Lsp.CodeActions,
   Argus.Common.Lsp.DocumentLinks,
@@ -85,6 +86,9 @@ type
     FDefinition: TLspDefinition;
     FHover: TLspHover;
     FWorkspaceSymbols: TLspWorkspaceSymbols;
+    /// <summary>Lesezeichen "// @bookmark Name" für die Symbolsuche (#306).</summary>
+    FBookmarks: TBookmarkStore;
+    function CollectBookmarks: TArray<TBookmarkHit>;
     FDocumentHighlights: TLspDocumentHighlights;
     FReferences: TLspReferences;
     FRename: TLspRename;
@@ -212,6 +216,8 @@ uses
   Argus.Common.Documents.FileEncoding,
   Argus.Common.Documents.Uris,
   Shell.SlashHost,
+  Argus.Common.Rules.Engine,
+  Argus.Common.Rules.Builtin.General,
   Argus.Common.Lsp.FormFiles,
   Argus.Common.Dfm.FormModel,
   Argus.Common.Dfm.BinaryForm,
@@ -372,6 +378,27 @@ begin
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := ReadSourceText(AFileName, AText);
+    end,
+    function(const AUri: string): string
+    var
+      Workspace: TShellWorkspace;
+      Settings: TServerSettings;
+    begin
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+        if (Workspace = nil) and (FWorkspaces.Count = 1) then
+          Workspace := FWorkspaces[0];
+        if Workspace = nil then
+          Exit('');
+        Settings := Workspace.Configuration.Settings;
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+      // Eigene Vorlage der Schnellbefehle, sonst die der Regel file-header (#56).
+      Result := Settings.SlashHeaderTemplate;
+      if Result = '' then
+        Result := TFileHeaderRule.Template(TRuleEngine.RuleOptions('file-header', Settings));
     end, FTransport, FLogger);
   FFormatting.Attach(FDispatcher);
   FSelectionRanges := TLspSelectionRanges.Create(FDocuments);
@@ -429,6 +456,8 @@ begin
   FHover.VersionProvider := DelphiVersionFor;
   FHover.Attach(FDispatcher);
   FWorkspaceSymbols := TLspWorkspaceSymbols.Create(FIndex);
+  FBookmarks := TBookmarkStore.Create;
+  FWorkspaceSymbols.BookmarksFor := CollectBookmarks;
   FWorkspaceSymbols.Attach(FDispatcher);
   FDocumentHighlights := TLspDocumentHighlights.Create(FDocuments, FIndex,
     function(const AUnitName: string): Boolean
@@ -937,6 +966,7 @@ begin
   FDefinition.Free;
   FHover.Free;
   FWorkspaceSymbols.Free;
+  FBookmarks.Free;
   FDocumentHighlights.Free;
   FReferences.Free;
   FSemanticTokens.Free;
@@ -1150,6 +1180,29 @@ begin
   // Geöffnete Dateien außerhalb des Projekts zählen mit.
   for Document in FDocuments.Documents do
     Result := Result + [TDocumentUris.ToPath(Document.Uri)];
+end;
+
+function TServerComposition.CollectBookmarks: TArray<TBookmarkHit>;
+var
+  Files: TArray<string>;
+  FileName: string;
+  Document: ITextDocument;
+  Stamp: Int64;
+begin
+  Files := ProjectSourceFiles;
+  for FileName in Files do
+  begin
+    // Geöffnete Dateien nach Version (negativ), sonst nach Änderungszeit der Datei.
+    if FDocuments.TryGet(TDocumentUris.FromPath(FileName), Document) then
+      Stamp := -1 - Document.Version
+    else if FileExists(FileName) then
+      Stamp := Trunc(TFile.GetLastWriteTimeUtc(FileName) * MSecsPerDay)
+    else
+      Stamp := 0;
+    FBookmarks.Update(FileName, Stamp, ReadSourceText);
+  end;
+  FBookmarks.Retain(Files);
+  Result := FBookmarks.All;
 end;
 
 function TServerComposition.CollectStatus: TServerStatus;
