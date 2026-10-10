@@ -29,7 +29,7 @@ uses
   Argus.Common.Rules.Contract,
   Argus.Common.Pascal.Contract,
   Argus.Common.Pascal.SyntaxTree,
-  Argus.Common.Pascal.Parser,
+  Argus.Common.Pascal.TreeCache,
   Argus.Common.Index.Contract,
   Argus.Common.Index.Extractor;
 
@@ -83,7 +83,7 @@ begin
   FLines := AContext.Text.Split([FLineBreak]);
   FLines[Line] := StringOfChar(' ', Length(FLines[Line]));
   Blanked := string.Join(FLineBreak, FLines);
-  FTree := TPascalParser.Parse(Blanked);
+  FTree := TSyntaxTreeCache.Parse(Blanked);
 end;
 
 destructor TCommandSource.Destroy;
