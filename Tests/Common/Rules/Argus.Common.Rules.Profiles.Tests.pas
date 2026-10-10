@@ -169,7 +169,9 @@ const
     'virtual-instead-of-override';
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
-  Assert.AreEqual(All, ActiveRules('strict'));
+  // strict schaltet experimentelle Regeln ein (#146), z. B. security-path-traversal (#149).
+  Assert.AreEqual(All.Replace('security-insecure-random,', 'security-insecure-random,security-path-traversal,'),
+    ActiveRules('strict'));
   Assert.AreEqual('bidi-control,captured-loop-variable,component-create-without-override,component-default-mismatch,' +
     'component-missing-free-notification,component-missing-inherited,control-char,declared-not-implemented,' +
     'destroy-without-override,form-field-type-mismatch,form-field-without-object,form-object-without-field,' +
