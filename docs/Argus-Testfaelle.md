@@ -155,6 +155,22 @@ Vorbereitung: Diagnoseprotokoll an (`HKCU\Software\Argus\IdePlugin`, DWORD `Diag
 
 Abbruch mit Grund im Meldungsfenster („Argus“) ist im Dienst vorhanden und getestet; einen Teilnehmer, der abbricht, bringen erst #529/#530.
 
+## Befehlspalette (#502)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BP1 | Im Editor Strg+Umschalt+P | Palette oben mittig über dem aktiven Fenster, sofort (unter 100 ms), Eingabefeld mit „>“ |
+| BP2 | `bpj` tippen bzw. `pe` (deutsche IDE) | „Projekt erzeugen“ bzw. „Build Project“ in der Liste, getroffene Zeichen hervorgehoben; Menüpfad gedimmt, Tastenkürzel rechts |
+| BP3 | Enter | Befehl läuft (Projekt wird erzeugt); Palette ist zu |
+| BP4 | Strg+Umschalt+P erneut, nichts tippen | Der eben ausgeführte Befehl steht oben |
+| BP5 | `argus` tippen | Argus-Befehle („Argus: Protokoll öffnen“, „Argus: Verlauf … zurücksetzen“, „Argus: Wächter testen (1 s)“) gemeinsam mit IDE-Aktionen |
+| BP6 | „Argus: Protokoll öffnen“ | `Argus.IDE.Expert.log` öffnet sich im Editor |
+| BP7 | Esc bzw. Klick neben die Palette | Palette schließt, nichts wird ausgeführt |
+| BP8 | ↑/↓, Bild↑/↓, Mausrad, Klick auf eine Zeile | Auswahl bewegt sich, Klick führt aus |
+| BP9 | Rücktaste, Strg+Rücktaste | Ein Zeichen bzw. ganze Eingabe gelöscht |
+
+Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komponenten, kennt aber keine Argus-Befehle und keinen Verlauf. Strg+Umschalt+P ist in der IDE „Tastenmakro abspielen“; die Palette übernimmt das Kürzel. Noch offen: Strg+Enter (Kürzel zuweisen).
+
 ## Extern geänderte Dateien (#536)
 
 | Nr. | Schritte | Erwartet |

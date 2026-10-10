@@ -92,6 +92,9 @@ contains
   Argus.Core.Diagnostics.Hangs in 'Source\Core\Diagnostics\Argus.Core.Diagnostics.Hangs.pas',
   Argus.IDE.Diagnostics.Watchdog in 'Source\IDE\Diagnostics\Argus.IDE.Diagnostics.Watchdog.pas',
   Argus.Core.Files.ExternalChanges in 'Source\Core\Files\Argus.Core.Files.ExternalChanges.pas',
-  Argus.IDE.Files.Reloader in 'Source\IDE\Files\Argus.IDE.Files.Reloader.pas';
+  Argus.IDE.Files.Reloader in 'Source\IDE\Files\Argus.IDE.Files.Reloader.pas',
+  Argus.Core.Commands.Palette in 'Source\Core\Commands\Argus.Core.Commands.Palette.pas',
+  Argus.UI.Commands.Palette in 'Source\UI\Commands\Argus.UI.Commands.Palette.pas',
+  Argus.IDE.Commands.Palette in 'Source\IDE\Commands\Argus.IDE.Commands.Palette.pas';
 
 end.
