@@ -84,6 +84,20 @@ begin
   Abort; // ERWARTET: unreachable-code
 end;
 
+function RueckwaertsSummieren(const AWerte: TArray<Integer>): Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  for I := High(AWerte) to Low(AWerte) do // ERWARTET: for-high-to-low
+    Inc(Result, AWerte[I]);
+end;
+
+procedure NameUebernehmen(var AName: string);
+begin
+  AName := AName; // ERWARTET: self-assignment
+end;
+
 procedure SqlVerkettet(AAbfrage: TFDQuery; const AName: string);
 begin
   AAbfrage.SQL.Text := 'SELECT * FROM Kunden WHERE Name = ''' + AName + ''''; // ERWARTET: security-sql-injection

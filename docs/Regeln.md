@@ -57,6 +57,12 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`duplicate-interface-guid`](#duplicate-interface-guid) | Zwei Interfaces mit derselben GUID | Bug | Fehler |
 | [`file-header`](#file-header) | Dateikopf fehlt oder weicht ab | Code Smell | Hinweis |
 | [`hardcoded-string`](#hardcoded-string) | Text im Code statt resourcestring | Code Smell | Hinweis |
+| [`self-assignment`](#self-assignment) | Zuweisung an sich selbst | Bug | Warnung |
+| [`for-high-to-low`](#for-high-to-low) | for-Schleife zählt mit to abwärts | Bug | Warnung |
+| [`exception-not-raised`](#exception-not-raised) | Exception erzeugt, aber nicht ausgelöst | Bug | Warnung |
+| [`assert-side-effect`](#assert-side-effect) | Assert mit Seiteneffekt | Bug | Warnung |
+| [`ifthen-side-effect`](#ifthen-side-effect) | IfThen wertet beide Zweige aus | Bug | Warnung |
+| [`random-without-randomize`](#random-without-randomize) | Random ohne Randomize | Code Smell | Hinweis |
 
 <a id="syntax"></a>
 ## syntax
@@ -1281,4 +1287,125 @@ resourcestring
   SFileNotFound = 'File not found';
 ...
 ShowMessage(SFileNotFound);
+```
+
+<a id="self-assignment"></a>
+## self-assignment
+
+**Zuweisung an sich selbst** · Bug · Warnung
+
+Einer Variablen, einem Feld oder einer Property wird der eigene Wert zugewiesen. Gemeint ist meist ein anderer Wert, etwa ein Parameter oder ein anderes Feld.
+
+Mit Treffer:
+
+```pascal
+FName := FName;
+```
+
+Richtig:
+
+```pascal
+FName := AName;
+```
+
+<a id="for-high-to-low"></a>
+## for-high-to-low
+
+**for-Schleife zählt mit to abwärts** · Bug · Warnung
+
+Die Schleife beginnt beim oberen Wert (High, Count - 1) und endet beim unteren, verwendet aber to. Sie läuft nie; gemeint war downto.
+
+Mit Treffer:
+
+```pascal
+for I := High(A) to Low(A) do
+  Save(A[I]);
+```
+
+Richtig:
+
+```pascal
+for I := High(A) downto Low(A) do
+  Save(A[I]);
+```
+
+<a id="exception-not-raised"></a>
+## exception-not-raised
+
+**Exception erzeugt, aber nicht ausgelöst** · Bug · Warnung
+
+Ein Exception-Objekt wird als eigene Anweisung erzeugt. Ohne raise passiert nichts, und das Objekt bleibt als Speicherleck zurück.
+
+Mit Treffer:
+
+```pascal
+if X = nil then
+  EArgumentException.Create('X missing');
+```
+
+Richtig:
+
+```pascal
+if X = nil then
+  raise EArgumentException.Create('X missing');
+```
+
+<a id="assert-side-effect"></a>
+## assert-side-effect
+
+**Assert mit Seiteneffekt** · Bug · Warnung
+
+Das Argument von Assert verändert Daten (Inc, Dec, eine Try…-Funktion mit out-Parameter oder eine Methode aus der Option mutatingMethods). Mit {$C-} entfernt der Compiler den ganzen Aufruf samt Seiteneffekt.
+
+Mit Treffer:
+
+```pascal
+Assert(List.Remove(X) >= 0);
+```
+
+Richtig:
+
+```pascal
+Index := List.Remove(X);
+Assert(Index >= 0);
+```
+
+<a id="ifthen-side-effect"></a>
+## ifthen-side-effect
+
+**IfThen wertet beide Zweige aus** · Bug · Warnung
+
+IfThen ist eine Funktion: Beide Zweige werden vor dem Aufruf ausgewertet. Ein Nil-Zugriff oder Funktionsaufruf im nicht gewählten Zweig passiert trotzdem. Hohe Konfidenz, wenn ein Zweig einen in der Bedingung geprüften Namen dereferenziert, mittlere bei einem Funktionsaufruf.
+
+Mit Treffer:
+
+```pascal
+S := IfThen(Assigned(X), X.Name, '');
+```
+
+Richtig:
+
+```pascal
+if Assigned(X) then S := X.Name else S := '';
+```
+
+<a id="random-without-randomize"></a>
+## random-without-randomize
+
+**Random ohne Randomize** · Code Smell · Hinweis
+
+Random wird verwendet, aber die Unit ruft nie Randomize auf; jeder Start liefert dieselbe Folge. Randomize steht oft in der .dpr, deshalb ist die Regel standardmäßig aus und hat niedrige Konfidenz.
+
+Mit Treffer:
+
+```pascal
+Dice := Random(6) + 1;
+```
+
+Richtig:
+
+```pascal
+Randomize; // once at program start
+...
+Dice := Random(6) + 1;
 ```

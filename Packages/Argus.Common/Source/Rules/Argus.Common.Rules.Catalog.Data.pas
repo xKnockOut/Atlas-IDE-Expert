@@ -496,6 +496,60 @@ begin
     '      "description": "A string literal with words for people stands in a statement. Move it to a resourcestring so it can be translated. Off by default, low confidence.",' + #10 +
     '      "bad": "ShowMessage(''File not found'');",' + #10 +
     '      "good": "resourcestring\n  SFileNotFound = ''File not found'';\n...\nShowMessage(SFileNotFound);"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "self-assignment",' + #10 +
+    '      "name": "Assignment to itself",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "A variable, field or property is assigned to itself. Usually a different value was meant, for example a parameter or another field.",' + #10 +
+    '      "bad": "FName := FName;",' + #10 +
+    '      "good": "FName := AName;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "for-high-to-low",' + #10 +
+    '      "name": "for loop counts down with to",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "The loop starts at the upper bound (High, Count - 1) and ends at the lower one, but uses to. It never runs; downto was meant.",' + #10 +
+    '      "bad": "for I := High(A) to Low(A) do\n  Save(A[I]);",' + #10 +
+    '      "good": "for I := High(A) downto Low(A) do\n  Save(A[I]);"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "exception-not-raised",' + #10 +
+    '      "name": "Exception created but not raised",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "An exception object is created as a statement on its own. Without raise nothing happens and the object leaks.",' + #10 +
+    '      "bad": "if X = nil then\n  EArgumentException.Create(''X missing'');",' + #10 +
+    '      "good": "if X = nil then\n  raise EArgumentException.Create(''X missing'');"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "assert-side-effect",' + #10 +
+    '      "name": "Assert with side effect",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "The argument of Assert changes data (Inc, Dec, a Try… function with an out parameter or a method from the option mutatingMethods). With {$C-} the compiler removes the whole call ' + 'including the side effect.",' + #10 +
+    '      "bad": "Assert(List.Remove(X) >= 0);",' + #10 +
+    '      "good": "Index := List.Remove(X);\nAssert(Index >= 0);"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "ifthen-side-effect",' + #10 +
+    '      "name": "IfThen evaluates both branches",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "IfThen is a function: both branches are evaluated before the call. A nil access or a function call in the branch that is not chosen still happens. High confidence when a branch d' + 'ereferences a name checked in the condition, medium for a function call.",' + #10 +
+    '      "bad": "S := IfThen(Assigned(X), X.Name, '''');",' + #10 +
+    '      "good": "if Assigned(X) then S := X.Name else S := '''';"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "random-without-randomize",' + #10 +
+    '      "name": "Random without Randomize",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "Random is used, but the unit never calls Randomize, so every start yields the same sequence. Randomize often sits in the .dpr, so the rule is off by default and has low confidenc' + 'e.",' + #10 +
+    '      "bad": "Dice := Random(6) + 1;",' + #10 +
+    '      "good": "Randomize; // once at program start\n...\nDice := Random(6) + 1;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -772,6 +826,36 @@ begin
     '      "id": "hardcoded-string",' + #10 +
     '      "name": "Text im Code statt resourcestring",' + #10 +
     '      "description": "In einer Anweisung steht ein String mit Wörtern für Menschen. In einen resourcestring auslagern, damit er übersetzt werden kann. Standardmäßig aus, niedrige Konfidenz."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "self-assignment",' + #10 +
+    '      "name": "Zuweisung an sich selbst",' + #10 +
+    '      "description": "Einer Variablen, einem Feld oder einer Property wird der eigene Wert zugewiesen. Gemeint ist meist ein anderer Wert, etwa ein Parameter oder ein anderes Feld."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "for-high-to-low",' + #10 +
+    '      "name": "for-Schleife zählt mit to abwärts",' + #10 +
+    '      "description": "Die Schleife beginnt beim oberen Wert (High, Count - 1) und endet beim unteren, verwendet aber to. Sie läuft nie; gemeint war downto."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "exception-not-raised",' + #10 +
+    '      "name": "Exception erzeugt, aber nicht ausgelöst",' + #10 +
+    '      "description": "Ein Exception-Objekt wird als eigene Anweisung erzeugt. Ohne raise passiert nichts, und das Objekt bleibt als Speicherleck zurück."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "assert-side-effect",' + #10 +
+    '      "name": "Assert mit Seiteneffekt",' + #10 +
+    '      "description": "Das Argument von Assert verändert Daten (Inc, Dec, eine Try…-Funktion mit out-Parameter oder eine Methode aus der Option mutatingMethods). Mit {$C-} entfernt der Compiler den gan' + 'zen Aufruf samt Seiteneffekt."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "ifthen-side-effect",' + #10 +
+    '      "name": "IfThen wertet beide Zweige aus",' + #10 +
+    '      "description": "IfThen ist eine Funktion: Beide Zweige werden vor dem Aufruf ausgewertet. Ein Nil-Zugriff oder Funktionsaufruf im nicht gewählten Zweig passiert trotzdem. Hohe Konfidenz, wenn ei' + 'n Zweig einen in der Bedingung geprüften Namen dereferenziert, mittlere bei einem Funktionsaufruf."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "random-without-randomize",' + #10 +
+    '      "name": "Random ohne Randomize",' + #10 +
+    '      "description": "Random wird verwendet, aber die Unit ruft nie Randomize auf; jeder Start liefert dieselbe Folge. Randomize steht oft in der .dpr, deshalb ist die Regel standardmäßig aus und hat ' + 'niedrige Konfidenz."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
