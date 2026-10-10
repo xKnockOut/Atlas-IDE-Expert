@@ -2,14 +2,16 @@
 
 // Hover-Tooltip auf Bezeichnern (#442) im Stil von Hint und Panel, mit
 // Navigation über Typen (#588):
-//   - Pfadzeile (nur angeheftet): Zurück-Pfeil, besuchte Typen, „angeheftet“.
+//   - Pfadzeile (nur angeheftet) auf Randfläche: Zurück-Knopf, besuchte Typen,
+//     rechts „angeheftet“.
 //   - Kopfzeile: Badge, Art und Herkunft, rechts der Fundort.
-//   - Eingefärbte Deklaration; Typnamen darin unterstrichen und anklickbar.
-//   - Wert, Veraltung, Beschreibung (höchstens vier Zeilen).
-//   - Vererbung bzw. Zieltyp: Kette mit anklickbaren Gliedern, der angezeigte
-//     Typ hervorgehoben; mehr als fünf Glieder als erste vier, „…“, letztes.
-//   - Aktionsleiste für den angezeigten Typ: Gehe zu, Verwendungen,
-//     Deklaration kopieren, Hilfe.
+//   - Eingefärbte Deklaration; Typnamen darin in Akzentfarbe unterstrichen
+//     und anklickbar.
+//   - Unter einer Linie: Wert, Veraltung, Beschreibung (höchstens vier Zeilen).
+//   - Vererbung bzw. Zieltyp auf Randfläche: Glieder als Kästchen, das
+//     angezeigte in Akzentfarbe; mehr als fünf als erste vier, „…“, letztes.
+//   - Aktionsleiste auf Randfläche am unteren Rand: Gehe zu, Verwendungen,
+//     Deklaration kopieren, Hilfe; Tasten in Akzentfarbe.
 // Ohne Fokus wie alle Argus-Fenster; Klicks kommen trotzdem an (MA_NOACTIVATE).
 // Beim Wechsel des Inhalts bleibt die Position, das Fenster wächst höchstens.
 
@@ -50,7 +52,7 @@ type
 
   TArgusHoverTip = class(TArgusPopupWindow)
   public const
-    MaxWidth = 440;
+    MaxWidth = 460;
     MaxDocumentationLines = 4;
   private type
     THitKind = (hkLink, hkAncestor, hkPath, hkBack, hkAction);
@@ -158,15 +160,22 @@ begin
 end;
 
 function TArgusHoverTip.Render(AWidth: Integer; ADraw: Boolean): Integer;
+const
+  FontUI = 0;
+  FontMono = 1;
+  FontSmall = 2;
+  BandChain = 0;
+  BandActions = 1;
 var
-  Left, Right, Y, X, LineHeight, Line, Index, From, Till, LinkFrom, LinkTill, Start: Integer;
+  Left, Right, Y, X, LineHeight, RowHeight, Line, Index, From, Till, Pos, Next, LinkFrom, LinkTill, Start,
+    NavHeight, FlowFont: Integer;
   Data: TArgusHoverData;
   Declaration: TArgusStyledText;
   Lines: TArray<TPoint>;
-  Chain: TArray<Integer>;
   Caption, Location: string;
   Box, Area: TRect;
   Badge: TArgusBadgeKind;
+  Drawing, NoWrap: Boolean;
 
   procedure AddHit(AKind: THitKind; AIndex: Integer; const ARect: TRect);
   var
@@ -176,6 +185,38 @@ var
     Hit.Index := AIndex;
     Hit.Rect := ARect;
     FHits := FHits + [Hit];
+  end;
+
+  // Kleinere Schrift für Beschriftungen (UI) bzw. Abschnittstitel (Editorschrift).
+  procedure SmallFont(AMono: Boolean);
+  begin
+    if AMono then
+    begin
+      Canvas.Font := Font;
+      Canvas.Font.Height := Round(Font.Height * 0.8);
+    end
+    else
+    begin
+      Canvas.Font := UIFont;
+      Canvas.Font.Height := Round(UIFont.Height * 0.88);
+    end;
+  end;
+
+  procedure SetFlowFont(ABold, AUnderline: Boolean);
+  begin
+    case FlowFont of
+      FontMono:
+        Canvas.Font := Font;
+      FontSmall:
+        SmallFont(False);
+    else
+      Canvas.Font := UIFont;
+    end;
+    Canvas.Font.Style := [];
+    if ABold then
+      Canvas.Font.Style := [fsBold];
+    if AUnderline then
+      Canvas.Font.Style := Canvas.Font.Style + [fsUnderline];
   end;
 
   procedure Block(const AText: string; AColor: TArgusColor; AMaxLines: Integer);
@@ -192,43 +233,40 @@ var
     Area.Right := Right;
     if AMaxLines > 0 then
       Area.Bottom := Min(Area.Bottom, Y + AMaxLines * Canvas.TextHeight('Wg'));
-    if ADraw then
+    if Drawing then
       DrawText(Canvas.Handle, PChar(AText), -1, Area, DT_WORDBREAK or DT_NOPREFIX or DT_END_ELLIPSIS);
     Y := Area.Bottom + Scale(6);
   end;
 
-  procedure Separator;
+  procedure HorizontalLine(ATop: Integer);
   begin
-    if ADraw then
+    if Drawing then
     begin
       Canvas.Pen.Color := ToColor(Colors.Line);
-      Canvas.MoveTo(Scale(1), Y);
-      Canvas.LineTo(AWidth - Scale(1), Y);
+      Canvas.Pen.Width := 1;
+      Canvas.MoveTo(0, ATop);
+      Canvas.LineTo(AWidth, ATop);
     end;
-    Inc(Y, Scale(6));
   end;
 
-  // Fließtext in UIFont mit Umbruch; AKind/AIndex legen eine Klickfläche an (AIndex < 0: keine).
+  // Fließtext mit Umbruch; AKind/AIndex legen eine Klickfläche an (AIndex < 0: keine).
   procedure Flow(const AText: string; AColor: TArgusColor; ABold: Boolean; AKind: THitKind; AIndex: Integer;
     AUnderline: Boolean = False);
   var
     TextWidth, Height: Integer;
     Cell: TRect;
   begin
-    Canvas.Font := UIFont;
-    if ABold then
-      Canvas.Font.Style := [fsBold];
-    if AUnderline then
-      Canvas.Font.Style := Canvas.Font.Style + [fsUnderline];
+    SetFlowFont(ABold, AUnderline);
     TextWidth := Canvas.TextWidth(AText);
     Height := Canvas.TextHeight('Wg');
-    if (X + TextWidth > Right) and (X > Left) then
+    if not NoWrap and (X + TextWidth > Right) and (X > Left) then
     begin
       X := Left;
-      Inc(Y, Height + Scale(2));
+      Inc(Y, RowHeight + Scale(4));
+      RowHeight := 0;
     end;
     Cell := Rect(X, Y, X + TextWidth, Y + Height);
-    if ADraw then
+    if Drawing then
     begin
       Canvas.Brush.Style := bsClear;
       Canvas.Font.Color := ToColor(AColor);
@@ -237,47 +275,228 @@ var
     if AIndex >= 0 then
       AddHit(AKind, AIndex, Cell);
     Inc(X, TextWidth);
+    RowHeight := Max(RowHeight, Height);
   end;
 
   procedure EndFlow;
   begin
-    Canvas.Font := UIFont;
-    Inc(Y, Canvas.TextHeight('Wg') + Scale(6));
+    Inc(Y, RowHeight);
+    RowHeight := 0;
     X := Left;
   end;
 
+  // Glied der Vererbungskette als umrandetes Kästchen; das angezeigte in Akzentfarbe.
+  procedure Chip(const AText: string; ACurrent: Boolean; AIndex: Integer);
+  var
+    TextWidth, Height: Integer;
+    Cell: TRect;
+    Marked: Boolean;
+  begin
+    Canvas.Font := Font;
+    if ACurrent then
+      Canvas.Font.Style := [fsBold];
+    TextWidth := Canvas.TextWidth(AText);
+    Height := Canvas.TextHeight('Wg') + Scale(2);
+    if (X + TextWidth + Scale(12) > Right) and (X > Left) then
+    begin
+      X := Left;
+      Inc(Y, RowHeight + Scale(4));
+      RowHeight := 0;
+    end;
+    Cell := Rect(X, Y, X + TextWidth + Scale(12), Y + Height);
+    if Drawing then
+    begin
+      Marked := ACurrent or IsHot(hkAncestor, AIndex);
+      if Marked then
+        FrameRounded(Cell, Colors.Accent, 4, ToColor(Colors.Surface))
+      else
+        FrameRounded(Cell, Colors.Line, 4, ToColor(Colors.Surface));
+      Canvas.Brush.Style := bsClear;
+      if Marked then
+        Canvas.Font.Color := ToColor(Colors.Accent)
+      else
+        Canvas.Font.Color := ToColor(Colors.Text);
+      Canvas.TextOut(Cell.Left + Scale(6), Cell.Top + Scale(1), AText);
+    end;
+    if not ACurrent then
+      AddHit(hkAncestor, AIndex, Cell);
+    X := Cell.Right;
+    RowHeight := Max(RowHeight, Height);
+  end;
+
+  // Eintrag der Aktionsleiste: Taste in Akzentfarbe, Beschriftung gedämpft; bleibt in einer Zeile.
   procedure ActionItem(const AKey, ACaption: string; AAction: TArgusHoverAction; AEnabled: Boolean);
   var
-    Color: TArgusColor;
+    KeyColor, TextColor: TArgusColor;
+    Total: Integer;
   begin
     if X > Left then
-      Flow('   ', Colors.Muted, False, hkAction, -1);
+      Inc(X, Scale(14));
+    SmallFont(False);
+    Canvas.Font.Style := [fsBold];
+    Total := Canvas.TextWidth(AKey + ' ');
+    Canvas.Font.Style := [];
+    Inc(Total, Canvas.TextWidth(ACaption));
+    if (X + Total > Right) and (X > Left) then
+    begin
+      X := Left;
+      Inc(Y, RowHeight + Scale(3));
+      RowHeight := 0;
+    end;
     if AEnabled then
-      Color := Colors.Text
+      KeyColor := Colors.Accent
     else
-      Color := Colors.Muted;
+      KeyColor := Colors.Muted;
+    TextColor := Colors.Muted;
+    if AEnabled and IsHot(hkAction, Ord(AAction)) then
+      TextColor := Colors.Text;
     Start := X;
-    Flow(AKey + ' ', Colors.Muted, True, hkAction, -1);
-    Flow(ACaption, Color, False, hkAction, -1, AEnabled and IsHot(hkAction, Ord(AAction)));
+    Flow(AKey + ' ', KeyColor, True, hkAction, -1);
+    Flow(ACaption, TextColor, False, hkAction, -1, AEnabled and IsHot(hkAction, Ord(AAction)));
     if AEnabled then
-      AddHit(hkAction, Ord(AAction), Rect(Start, Y, X, Y + Canvas.TextHeight('Wg')));
+      AddHit(hkAction, Ord(AAction), Rect(Start, Y, X, Y + RowHeight));
+  end;
+
+  procedure BandContent(AKind: Integer);
+  var
+    Chain: TArray<Integer>;
+    Item: Integer;
+  begin
+    X := Left;
+    RowHeight := 0;
+    case AKind of
+      BandChain:
+        begin
+          Inc(Y, Scale(8));
+          if Data.Kind = TArgusHoverData.KindClassRef then
+            Caption := TArgusStrings.Fmt(TArgusTextId.HoverTargetType, [Data.ChainOf])
+          else
+            Caption := TArgusStrings.Text(TArgusTextId.HoverInheritance);
+          SmallFont(True);
+          Canvas.Font.Style := [fsBold];
+          if Drawing then
+          begin
+            Canvas.Brush.Style := bsClear;
+            Canvas.Font.Color := ToColor(Colors.Muted);
+            Canvas.TextOut(Left, Y, AnsiUpperCase(Caption));
+          end;
+          Inc(Y, Canvas.TextHeight('Wg') + Scale(6));
+          FlowFont := FontMono;
+          Chain := Data.VisibleChain;
+          for Item := 0 to High(Chain) do
+          begin
+            if Item > 0 then
+              Flow(' › ', Colors.Muted, False, hkAncestor, -1);
+            if Chain[Item] < 0 then
+              Flow('…', Colors.Muted, False, hkAncestor, -1)
+            else
+              Chip(Data.Ancestors[Chain[Item]].Name, Data.Ancestors[Chain[Item]].Key = Data.Location.Key,
+                Chain[Item]);
+          end;
+          EndFlow;
+          Inc(Y, Scale(8));
+        end;
+      BandActions:
+        begin
+          Inc(Y, Scale(6));
+          FlowFont := FontSmall;
+          ActionItem('F12', TArgusStrings.Fmt(TArgusTextId.HoverGoTo, [Data.Title]), TArgusHoverAction.Navigate,
+            True);
+          if FView.UsagesCount >= 0 then
+            Caption := TArgusStrings.Fmt(TArgusTextId.HoverUsagesCount, [FView.UsagesCount])
+          else
+            Caption := TArgusStrings.Text(TArgusTextId.HoverUsages);
+          ActionItem(TArgusStrings.Text(TArgusTextId.HoverKeyUsages), Caption, TArgusHoverAction.Usages, True);
+          ActionItem(TArgusStrings.Text(TArgusTextId.HoverKeyCopy), TArgusStrings.Text(TArgusTextId.HoverCopy),
+            TArgusHoverAction.Copy, True);
+          ActionItem('F1', TArgusStrings.Text(TArgusTextId.HoverHelp), TArgusHoverAction.Help, Data.DocWiki <> '');
+          EndFlow;
+          Inc(Y, Scale(6));
+        end;
+    end;
+    FlowFont := FontUI;
+  end;
+
+  // Abschnitt auf Randfläche mit Linie oben; der letzte sitzt am unteren Fensterrand.
+  procedure Band(AKind: Integer; ALast: Boolean);
+  var
+    Top, Height, Saved: Integer;
+  begin
+    Top := Y;
+    if Drawing then
+    begin
+      Saved := Length(FHits);
+      Drawing := False;
+      BandContent(AKind);
+      SetLength(FHits, Saved);
+      Drawing := True;
+      Height := Y - Top;
+      if ALast then
+        Top := Max(Top, ClientHeight - Height);
+      Canvas.Brush.Style := bsSolid;
+      Canvas.Brush.Color := ToColor(Colors.Gutter);
+      Canvas.FillRect(Rect(0, Top, AWidth, Top + Height));
+      HorizontalLine(Top);
+      Y := Top;
+    end;
+    BandContent(AKind);
+  end;
+
+  procedure DrawPart(AFrom, ATill: Integer);
+  begin
+    Canvas.Font := Font;
+    if Drawing then
+      Declaration.Draw(Canvas, Colors, AFrom, ATill, X, Rect(X, Y, Right, Y + LineHeight), False, Scale(3))
+    else
+      Inc(X, Declaration.Width(Canvas, AFrom, ATill));
   end;
 
 begin
   FHits := nil;
   Data := FView.Data;
+  Drawing := ADraw;
+  NoWrap := False;
+  FlowFont := FontUI;
+  RowHeight := 0;
   Left := Scale(11);
   Right := AWidth - Scale(11);
   Y := Scale(8);
   X := Left;
-  // Pfadzeile (nur angeheftet).
+  // Pfadzeile (nur angeheftet) auf Randfläche: Zurück-Knopf, besuchte Typen, rechts „angeheftet“.
   if FView.Pinned then
   begin
+    NavHeight := Scale(30);
+    if Drawing then
+    begin
+      Canvas.Brush.Style := bsSolid;
+      Canvas.Brush.Color := ToColor(Colors.Gutter);
+      Canvas.FillRect(Rect(0, 0, AWidth, NavHeight));
+      HorizontalLine(NavHeight - 1);
+    end;
+    Box := Rect(Scale(8), (NavHeight - Scale(20)) div 2, Scale(30), (NavHeight - Scale(20)) div 2 + Scale(20));
+    if Drawing then
+    begin
+      if FView.CanGoBack and IsHot(hkBack, 0) then
+        FrameRounded(Box, Colors.Accent, 4, ToColor(Colors.Surface))
+      else
+        FrameRounded(Box, Colors.Line, 4, ToColor(Colors.Surface));
+      Canvas.Font := Font;
+      Canvas.Font.Style := [fsBold];
+      if FView.CanGoBack then
+        Canvas.Font.Color := ToColor(Colors.Text)
+      else
+        Canvas.Font.Color := ToColor(Colors.Muted);
+      Canvas.Brush.Style := bsClear;
+      Area := Box;
+      DrawText(Canvas.Handle, PChar('‹'), -1, Area, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+    end;
     if FView.CanGoBack then
-      Flow('←', Colors.Accent, True, hkBack, 0)
-    else
-      Flow('←', Colors.Muted, True, hkBack, -1);
-    Flow('  ', Colors.Muted, False, hkPath, -1);
+      AddHit(hkBack, 0, Box);
+    FlowFont := FontMono;
+    NoWrap := True;
+    Canvas.Font := Font;
+    Y := (NavHeight - Canvas.TextHeight('Wg')) div 2;
+    X := Box.Right + Scale(6);
     for Index := 0 to High(FView.Path) do
     begin
       if Index > 0 then
@@ -287,18 +506,22 @@ begin
       else if FView.Path[Index].Index < 0 then
         Flow(FView.Path[Index].Caption, Colors.Muted, False, hkPath, -1)
       else
-        Flow(FView.Path[Index].Caption, Colors.Accent, False, hkPath, FView.Path[Index].Index,
+        Flow(FView.Path[Index].Caption, Colors.Muted, False, hkPath, FView.Path[Index].Index,
           IsHot(hkPath, FView.Path[Index].Index));
     end;
-    Canvas.Font := UIFont;
+    SmallFont(False);
     Caption := TArgusStrings.Text(TArgusTextId.HoverPinned);
-    if ADraw and (X + Canvas.TextWidth(Caption) + Scale(12) < Right) then
+    if Drawing and (X + Canvas.TextWidth(Caption) + Scale(12) < Right) then
     begin
+      Canvas.Brush.Style := bsClear;
       Canvas.Font.Color := ToColor(Colors.Muted);
-      Canvas.TextOut(Right - Canvas.TextWidth(Caption), Y, Caption);
+      Canvas.TextOut(Right - Canvas.TextWidth(Caption), (NavHeight - Canvas.TextHeight('Wg')) div 2, Caption);
     end;
-    EndFlow;
-    Separator;
+    NoWrap := False;
+    FlowFont := FontUI;
+    RowHeight := 0;
+    Y := NavHeight + Scale(8);
+    X := Left;
   end;
   // Kopfzeile: Badge, Art · Herkunft, rechts der Fundort.
   Caption := KindCaption(Data.Kind);
@@ -314,7 +537,7 @@ begin
     begin
       Badge := BadgeKind(Data.Badge);
       Box := Rect(Left, Y, Left + Scale(24), Y + Scale(17));
-      if ADraw then
+      if Drawing then
       begin
         FillRounded(Box, Colors.Badges[Badge].Background, 4);
         Canvas.Font := Font;
@@ -328,20 +551,25 @@ begin
       end;
       X := Box.Right + Scale(7);
     end;
-    Canvas.Font := UIFont;
-    if ADraw then
+    if Drawing then
     begin
+      SmallFont(False);
       Canvas.Brush.Style := bsClear;
       Canvas.Font.Color := ToColor(Colors.Muted);
       Canvas.TextOut(X, Y + (LineHeight - Canvas.TextHeight('Wg')) div 2, Caption);
       if Location <> '' then
-        Canvas.TextOut(Max(X + Canvas.TextWidth(Caption) + Scale(12), Right - Canvas.TextWidth(Location)),
+      begin
+        Start := X + Canvas.TextWidth(Caption) + Scale(12);
+        SmallFont(True);
+        Canvas.Font.Color := ToColor(Colors.Muted);
+        Canvas.TextOut(Max(Start, Right - Canvas.TextWidth(Location)),
           Y + (LineHeight - Canvas.TextHeight('Wg')) div 2, Location);
+      end;
     end;
     Inc(Y, LineHeight + Scale(5));
     X := Left;
   end;
-  // Deklaration eingefärbt, an Leerzeichen umbrochen; Typnamen unterstrichen.
+  // Deklaration eingefärbt, an Leerzeichen umbrochen; Typnamen als Verweise in Akzentfarbe, unterstrichen.
   Canvas.Font := Font;
   LineHeight := Canvas.TextHeight('Wg') + Scale(2);
   Declaration := TArgusStyledText.Create(Data.Declaration);
@@ -351,80 +579,69 @@ begin
     X := Left + IfThen(Line > 0, Scale(16));
     From := Lines[Line].X;
     Till := Lines[Line].Y;
-    Start := X;
-    if ADraw then
-      Declaration.Draw(Canvas, Colors, From, Till, X, Rect(X, Y, Right, Y + LineHeight), False, Scale(3));
-    for Index := 0 to High(Data.Links) do
+    Pos := From;
+    while Pos < Till do
     begin
-      LinkFrom := Max(From, Data.Links[Index].Start);
-      LinkTill := Min(Till, Data.Links[Index].Start + Data.Links[Index].Length);
-      if LinkFrom >= LinkTill then
-        Continue;
-      Canvas.Font := Font;
-      Area := Rect(Start + Declaration.Width(Canvas, From, LinkFrom), Y,
-        Start + Declaration.Width(Canvas, From, LinkTill), Y + LineHeight);
-      AddHit(hkLink, Index, Area);
-      if ADraw then
+      // Nächster Verweis, der in [Pos, Till) hineinreicht.
+      Next := -1;
+      for Index := 0 to High(Data.Links) do
+        if (Data.Links[Index].Start + Data.Links[Index].Length > Pos) and (Data.Links[Index].Start < Till) and
+          ((Next < 0) or (Data.Links[Index].Start < Data.Links[Next].Start)) then
+          Next := Index;
+      if Next < 0 then
       begin
+        DrawPart(Pos, Till);
+        Pos := Till;
+        Continue;
+      end;
+      LinkFrom := Max(Pos, Data.Links[Next].Start);
+      LinkTill := Min(Till, Data.Links[Next].Start + Data.Links[Next].Length);
+      if LinkFrom > Pos then
+        DrawPart(Pos, LinkFrom);
+      Canvas.Font := Font;
+      Start := X;
+      Inc(X, Declaration.Width(Canvas, LinkFrom, LinkTill));
+      Area := Rect(Start, Y, X, Y + LineHeight);
+      AddHit(hkLink, Next, Area);
+      if Drawing then
+      begin
+        Canvas.Font := Font;
+        Canvas.Font.Color := ToColor(Colors.Accent);
+        Canvas.Brush.Style := bsClear;
+        Canvas.TextOut(Start, Y + (LineHeight - Canvas.TextHeight('Wg')) div 2,
+          Copy(Data.Declaration, LinkFrom + 1, LinkTill - LinkFrom));
         Canvas.Pen.Color := ToColor(Colors.Accent);
-        Canvas.Pen.Width := IfThen(IsHot(hkLink, Index), Scale(2), 1);
+        Canvas.Pen.Width := IfThen(IsHot(hkLink, Next), Scale(2), 1);
         Canvas.MoveTo(Area.Left, Area.Bottom - Scale(2));
         Canvas.LineTo(Area.Right, Area.Bottom - Scale(2));
         Canvas.Pen.Width := 1;
       end;
+      Pos := LinkTill;
     end;
     Inc(Y, LineHeight);
   end;
-  Inc(Y, Scale(4));
+  Inc(Y, Scale(6));
   X := Left;
-  if Location = '' then
-    Block(Data.UnitName, Colors.Muted, 0);
-  if Data.Value <> '' then
-    Block('= ' + Data.Value, Colors.Muted, 2);
-  Block(Data.Deprecation, Colors.Warn, 2);
-  Block(Data.Documentation, Colors.Text, MaxDocumentationLines);
-  // Vererbung bzw. Zieltyp: Kette mit anklickbaren Gliedern.
+  // Beschreibung unter einer Linie.
+  if ((Location = '') and (Data.UnitName <> '')) or (Data.Value <> '') or (Data.Deprecation <> '') or
+    (Data.Documentation <> '') then
+  begin
+    HorizontalLine(Y);
+    Inc(Y, Scale(7));
+    if Location = '' then
+      Block(Data.UnitName, Colors.Muted, 0);
+    if Data.Value <> '' then
+      Block('= ' + Data.Value, Colors.Muted, 2);
+    Block(Data.Deprecation, Colors.Warn, 2);
+    Block(Data.Documentation, Colors.Text, MaxDocumentationLines);
+    Inc(Y, Scale(1));
+  end;
+  // Vererbung bzw. Zieltyp und Aktionsleiste auf eigener Randfläche.
   if Length(Data.Ancestors) > 0 then
-  begin
-    if Data.Kind = TArgusHoverData.KindClassRef then
-      Caption := TArgusStrings.Fmt(TArgusTextId.HoverTargetType, [Data.ChainOf])
-    else
-      Caption := TArgusStrings.Text(TArgusTextId.HoverInheritance);
-    Flow(Caption, Colors.Muted, True, hkAncestor, -1);
-    EndFlow;
-    Dec(Y, Scale(3));
-    Chain := Data.VisibleChain;
-    for Index := 0 to High(Chain) do
-    begin
-      if Index > 0 then
-        Flow(' › ', Colors.Muted, False, hkAncestor, -1);
-      if Chain[Index] < 0 then
-        Flow('…', Colors.Muted, False, hkAncestor, -1)
-      else if Data.Ancestors[Chain[Index]].Key = Data.Location.Key then
-        Flow(Data.Ancestors[Chain[Index]].Name, Colors.Accent, True, hkAncestor, Chain[Index])
-      else
-        Flow(Data.Ancestors[Chain[Index]].Name, Colors.Text, False, hkAncestor, Chain[Index],
-          IsHot(hkAncestor, Chain[Index]));
-    end;
-    EndFlow;
-  end;
-  // Aktionsleiste für den angezeigten Typ.
+    Band(BandChain, not Data.Location.HasLocation);
   if Data.Location.HasLocation then
-  begin
-    Separator;
-    ActionItem('F12', TArgusStrings.Fmt(TArgusTextId.HoverGoTo, [Data.Title]), TArgusHoverAction.Navigate, True);
-    if FView.UsagesCount >= 0 then
-      Caption := TArgusStrings.Fmt(TArgusTextId.HoverUsagesCount, [FView.UsagesCount])
-    else
-      Caption := TArgusStrings.Text(TArgusTextId.HoverUsages);
-    ActionItem(TArgusStrings.Text(TArgusTextId.HoverKeyUsages), Caption, TArgusHoverAction.Usages, True);
-    ActionItem(TArgusStrings.Text(TArgusTextId.HoverKeyCopy), TArgusStrings.Text(TArgusTextId.HoverCopy),
-      TArgusHoverAction.Copy, True);
-    ActionItem('F1', TArgusStrings.Text(TArgusTextId.HoverHelp), TArgusHoverAction.Help, Data.DocWiki <> '');
-    EndFlow;
-    Dec(Y, Scale(3));
-  end;
-  Result := Y + Scale(3);
+    Band(BandActions, True);
+  Result := Y;
 end;
 
 function TArgusHoverTip.PreferredWidth: Integer;
