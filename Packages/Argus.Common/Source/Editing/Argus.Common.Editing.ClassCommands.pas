@@ -13,6 +13,7 @@
 interface
 
 uses
+  Argus.Common.Documents.Contract,
   Argus.Common.Editing.SlashCommands;
 
 /// <summary>Trägt die Klassenbefehle in ARegistry ein.</summary>
@@ -26,6 +27,9 @@ function MessageRecord(const AMessage: string): string;
 function RoutineSignature(const ADeclaration: string): string;
 /// <summary>Parameternamen aus dem Kopf, kommagetrennt.</summary>
 function ParameterNames(const ASignature: string): string;
+/// <summary>Text in ARange aus ALines, Zeilen mit Leerzeichen verbunden.</summary>
+function RangeText(const ALines: TArray<string>; const ARange: TTextRange): string;
+function LoadText(const AFileName: string; out AText: string): Boolean;
 
 implementation
 
@@ -33,7 +37,6 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Classes,
-  Argus.Common.Documents.Contract,
   Argus.Common.Documents.FileEncoding,
   Argus.Common.Rules.Contract,
   Argus.Common.Pascal.SyntaxTree,
