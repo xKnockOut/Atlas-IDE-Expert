@@ -442,6 +442,34 @@
       "x-control": "Kontrollkästchen, Zahlenfeld",
       "x-issue": "#35"
     },
+    "stringLiteral": {
+      "type": "object",
+      "description": "Code-Aktionen „Als String-Literal“ und „Als Klartext kopieren“.",
+      "additionalProperties": false,
+      "properties": {
+        "style": {
+          "type": "string",
+          "enum": ["auto", "multiline", "concat"],
+          "default": "auto",
+          "description": "auto: mehrzeiliger String mit ''', wenn die Delphi-Version ihn kennt (ab Delphi 12), sonst Verkettung."
+        },
+        "lineBreak": {
+          "type": "string",
+          "enum": ["sLineBreak", "#13#10", "#10", "space", "none"],
+          "default": "sLineBreak",
+          "description": "Was bei Verkettung zwischen den Zeilen steht; space z. B. für SQL, das einzeilig ankommen soll."
+        },
+        "maxLineLength": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Bei Verkettung lange Zeilen zusätzlich umbrechen (0 = nicht umbrechen)."
+        }
+      },
+      "x-page": "Editor",
+      "x-control": "Auswahl, Zahlenfeld",
+      "x-issue": "#312"
+    },
     "minConfidence": {
       "type": "string",
       "enum": [

@@ -216,6 +216,11 @@
           "default": {},
           "markdownDescription": "Inlay Hints im Editor. argus.json im Projekt hat Vorrang."
         },
+        "argus.stringLiteral": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Code-Aktionen „Als String-Literal“ und „Als Klartext kopieren“. argus.json im Projekt hat Vorrang."
+        },
         "argus.minConfidence": {
           "type": "string",
           "enum": [
@@ -307,12 +312,27 @@
         "command": "argus.copyQualifiedNameWithParameters",
         "title": "Qualifizierten Namen mit Parametertypen kopieren",
         "category": "Argus"
+      },
+      {
+        "command": "argus.copyAsPlainText",
+        "title": "String-Literal als Klartext kopieren",
+        "category": "Argus"
+      },
+      {
+        "command": "argus.pasteAsLiteral",
+        "title": "Klartext als String-Literal einfügen",
+        "category": "Argus"
       }
     ],
     "menus": {
       "editor/context": [
         {
           "command": "argus.copyQualifiedName",
+          "when": "editorLangId == objectpascal",
+          "group": "9_cutcopypaste"
+        },
+        {
+          "command": "argus.pasteAsLiteral",
           "when": "editorLangId == objectpascal",
           "group": "9_cutcopypaste"
         }
