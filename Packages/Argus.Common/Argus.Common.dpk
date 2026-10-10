@@ -113,6 +113,7 @@ contains
   Argus.Common.Lsp.KeywordReference in 'Source\Lsp\Argus.Common.Lsp.KeywordReference.pas',
   Argus.Common.Editing.AssignmentSwap in 'Source\Editing\Argus.Common.Editing.AssignmentSwap.pas',
   Argus.Common.Editing.StringLiterals in 'Source\Editing\Argus.Common.Editing.StringLiterals.pas',
+  Argus.Common.Editing.PostfixTemplates in 'Source\Editing\Argus.Common.Editing.PostfixTemplates.pas',
   Argus.Common.Lsp.StringLiteralCommands in 'Source\Lsp\Argus.Common.Lsp.StringLiteralCommands.pas',
   Argus.Common.Lsp.DocWiki in 'Source\Lsp\Argus.Common.Lsp.DocWiki.pas',
   Argus.Common.Lsp.CompilerDirectives in 'Source\Lsp\Argus.Common.Lsp.CompilerDirectives.pas',

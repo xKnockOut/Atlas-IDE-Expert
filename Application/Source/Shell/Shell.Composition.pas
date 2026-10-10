@@ -40,6 +40,7 @@ uses
   Argus.Common.Lsp.References,
   Argus.Common.Lsp.Rename,
   Argus.Common.Lsp.Completion,
+  Argus.Common.Pascal.LanguageFeatures,
   Argus.Common.Lsp.SignatureHelp,
   Argus.Common.Lsp.Hierarchies,
   Argus.Common.Lsp.Implementations,
@@ -516,6 +517,13 @@ begin
       Result := CompletionSettingsFor(AUri).Matching;
     end;
   FCompletion.SlashCommandsFor := SlashCommandsFor;
+  // Postfix-Vorlagen (#188): for var nur, wenn die Sprachversion Inline-Variablen kennt.
+  FCompletion.PostfixFor :=
+    function(const AUri: string): TPostfixOptions
+    begin
+      Result := TPostfixOptions.Default;
+      Result.InlineVar := TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, DelphiVersionFor(AUri));
+    end;
   // Für completionItem/resolve (Detailpanel von Argus, #405).
   FCompletion.ReadText :=
     function(const AFileName: string; out AText: string): Boolean
