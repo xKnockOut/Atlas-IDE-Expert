@@ -18,6 +18,7 @@ uses
   Argus.Common.JsonRpc.Dispatcher,
   Argus.Common.Documents.Contract,
   Argus.Common.Configuration.Contract,
+  Argus.Common.Index.Contract,
   Argus.Common.Editing.EditorConfig,
   Argus.Common.Editing.SlashCommands;
 
@@ -35,6 +36,7 @@ type
     FSettingsProvider: TFormatStyleProvider;
     FReadFile: TEditorConfigReadFile;
     FSlashCommandsFor: TSlashCommandsProvider;
+    FIndex: ISymbolIndex;
     function HandleOnType(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function Handle(const AParams: TJSONValue; AWithRange: Boolean): TJSONValue;
     function HandleFormatting(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -51,6 +53,8 @@ type
       const AReadFile: TEditorConfigReadFile): TFormatStyle; static;
     /// <summary>Ohne Zuweisung sind alle Schnellbefehle eingeschaltet.</summary>
     property SlashCommandsFor: TSlashCommandsProvider read FSlashCommandsFor write FSlashCommandsFor;
+    /// <summary>Index für Schnellbefehle, die Vorfahren und Interfaces brauchen (#295); nil ohne.</summary>
+    property Index: ISymbolIndex read FIndex write FIndex;
   end;
 
 implementation
@@ -108,7 +112,7 @@ begin
   Disabled := nil;
   if (not Assigned(FSlashCommandsFor) or FSlashCommandsFor(Uri, Disabled)) and
     TSlashCommandRegistry.Shared.AfterEnter(Document.Text, TLspPositions.ReadPosition(PositionValue), nil, Disabled,
-    Edits) then
+    Edits, FIndex) then
   begin
     for Edit in Edits do
     begin
