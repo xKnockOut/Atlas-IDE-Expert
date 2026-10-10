@@ -149,6 +149,7 @@ uses
   Argus.Common.Editing.WrapCommands.Tests in 'Common\Editing\Argus.Common.Editing.WrapCommands.Tests.pas',
   Argus.Common.Editing.MaintenanceCommands.Tests in 'Common\Editing\Argus.Common.Editing.MaintenanceCommands.Tests.pas',
   Argus.Common.Editing.TypeCommands.Tests in 'Common\Editing\Argus.Common.Editing.TypeCommands.Tests.pas',
+  Argus.Common.Editing.CollectionCommands.Tests in 'Common\Editing\Argus.Common.Editing.CollectionCommands.Tests.pas',
   Argus.Common.Editing.UnitTemplates.Tests in 'Common\Editing\Argus.Common.Editing.UnitTemplates.Tests.pas',
   Argus.Common.Editing.ErrorCommands.Tests in 'Common\Editing\Argus.Common.Editing.ErrorCommands.Tests.pas',
   Argus.Common.Semantics.UnresolvedNames.Tests in 'Common\Semantics\Argus.Common.Semantics.UnresolvedNames.Tests.pas',

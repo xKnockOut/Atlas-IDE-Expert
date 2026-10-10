@@ -121,6 +121,7 @@ contains
   Argus.Common.Editing.WrapCommands in 'Source\Editing\Argus.Common.Editing.WrapCommands.pas',
   Argus.Common.Editing.MaintenanceCommands in 'Source\Editing\Argus.Common.Editing.MaintenanceCommands.pas',
   Argus.Common.Editing.TypeCommands in 'Source\Editing\Argus.Common.Editing.TypeCommands.pas',
+  Argus.Common.Editing.CollectionCommands in 'Source\Editing\Argus.Common.Editing.CollectionCommands.pas',
   Argus.Common.Editing.UnitTemplates in 'Source\Editing\Argus.Common.Editing.UnitTemplates.pas',
   Argus.Common.Editing.ErrorCommands in 'Source\Editing\Argus.Common.Editing.ErrorCommands.pas',
   Argus.Common.Semantics.UnresolvedNames in 'Source\Semantics\Argus.Common.Semantics.UnresolvedNames.pas',

@@ -31,62 +31,6 @@ uses
   Argus.Common.Index.Contract,
   Argus.Common.Editing.CommandSource;
 
-/// <summary>Zeile des Tokens, das den Block um ALine schließt; -1 ohne.</summary>
-function BlockEnd(ASource: TCommandSource; ALine: Integer): Integer;
-var
-  Tokens: TArray<TPascalToken>;
-  Index, Depth: Integer;
-begin
-  Tokens := ASource.Tree.Tokens;
-  Depth := 0;
-  for Index := 0 to High(Tokens) do
-  begin
-    if (Tokens[Index].StartPos.Line <= ALine) or (Tokens[Index].Kind <> TPascalTokenKind.Keyword) then
-      Continue;
-    if Tokens[Index].IsKeyword('begin') or Tokens[Index].IsKeyword('try') or Tokens[Index].IsKeyword('case') or
-      Tokens[Index].IsKeyword('repeat') or Tokens[Index].IsKeyword('asm') then
-      Inc(Depth)
-    else if Tokens[Index].IsKeyword('end') or Tokens[Index].IsKeyword('until') then
-    begin
-      if Depth = 0 then
-        Exit(Tokens[Index].StartPos.Line);
-      Dec(Depth);
-    end
-    else if (Depth = 0) and (Tokens[Index].IsKeyword('finally') or Tokens[Index].IsKeyword('except')) then
-      Exit(Tokens[Index].StartPos.Line);
-  end;
-  Result := -1;
-end;
-
-/// <summary>Ersetzt Befehlszeile und folgende Anweisungen durch AHead, die eingerückten Anweisungen und ATail.
-/// ABodyIndent ist die zusätzliche Einrückung der Anweisungen.</summary>
-function Wrap(ASource: TCommandSource; const AName: string; const AHead, ATail: array of string;
-  const ABodyIndent: string; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
-var
-  Stop, Index: Integer;
-  Indent, Text: string;
-begin
-  AEdits := nil;
-  if ASource.RoutineAt = nil then
-    Exit(Fail('/' + AName + ' gilt nur im Rumpf einer Routine', AReason));
-  Stop := BlockEnd(ASource, ASource.Line);
-  if (Stop < 0) or (Stop <= ASource.Line + 1) then
-    Exit(Fail('Nach /' + AName + ' stehen keine Anweisungen im Block', AReason));
-  Indent := ASource.Indent(ASource.Line);
-  Text := '';
-  for Index := 0 to High(AHead) do
-    Text := Text + Indent + AHead[Index] + ASource.LineBreak;
-  for Index := ASource.Line + 1 to Stop - 1 do
-    if Trim(ASource.Lines[Index]) = '' then
-      Text := Text + ASource.LineBreak
-    else
-      Text := Text + ABodyIndent + ASource.Lines[Index] + ASource.LineBreak;
-  for Index := 0 to High(ATail) do
-    Text := Text + Indent + ATail[Index] + ASource.LineBreak;
-  AEdits := [TRuleEdit.Create(TTextRange.Create(ASource.Line, 0, Stop, 0), Text)];
-  Result := True;
-end;
-
 { /try }
 
 /// <summary>Variable aus "X := T….Create(…)" bzw. "var X := …Create"; '' sonst.</summary>
