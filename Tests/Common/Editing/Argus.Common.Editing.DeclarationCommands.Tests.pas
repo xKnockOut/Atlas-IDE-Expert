@@ -11,6 +11,9 @@ type
   [TestFixture]
   TDeclarationCommandsTests = class
   public
+    /// <summary>Führt einen Befehl vorab aus; einmalig angelegte Daten zählen sonst als Leck des ersten Tests.</summary>
+    [SetupFixture]
+    procedure WarmUp;
     [Test]
     procedure VarCreatesSectionBeforeBegin;
     [Test]
@@ -127,6 +130,14 @@ begin
   finally
     Tree.Free;
   end;
+end;
+
+procedure TDeclarationCommandsTests.WarmUp;
+var
+  Edits: TArray<TRuleEdit>;
+begin
+  Run(WithCommand('/var Count: Integer'), 16, Edits);
+  Parses(WithCommand(''));
 end;
 
 procedure TDeclarationCommandsTests.VarCreatesSectionBeforeBegin;
