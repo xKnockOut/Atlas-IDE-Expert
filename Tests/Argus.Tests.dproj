@@ -215,6 +215,7 @@
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Build\Argus.Core.Build.CheckOnSave.pas"/>
         <DCCReference Include="IDE.Expert\Argus.Core.Build.CheckOnSave.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Argus.Common.Mcp.BuildTools.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\Argus.Common.Mcp.Paths.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

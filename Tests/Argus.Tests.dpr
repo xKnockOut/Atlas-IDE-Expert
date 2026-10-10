@@ -178,7 +178,8 @@ uses
   Argus.Common.Lsp.IdeBuild.Tests in 'Common\Lsp\Argus.Common.Lsp.IdeBuild.Tests.pas',
   Argus.Core.Build.CheckOnSave in '..\Packages\Argus.IDE.Expert\Source\Core\Build\Argus.Core.Build.CheckOnSave.pas',
   Argus.Core.Build.CheckOnSave.Tests in 'IDE.Expert\Argus.Core.Build.CheckOnSave.Tests.pas',
-  Argus.Common.Mcp.BuildTools.Tests in 'Common\Mcp\Argus.Common.Mcp.BuildTools.Tests.pas';
+  Argus.Common.Mcp.BuildTools.Tests in 'Common\Mcp\Argus.Common.Mcp.BuildTools.Tests.pas',
+  Argus.Common.Mcp.Paths.Tests in 'Common\Mcp\Argus.Common.Mcp.Paths.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var
