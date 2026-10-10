@@ -8,6 +8,9 @@
 // dem Ende des Hängers wertet der Hauptthread die Kopie aus (Module, Fenster,
 // Argus-Aktion) und meldet den Hänger über OnHang.
 // Der Wächter arbeitet im Hauptthread nur die Antwort auf die Messnachricht.
+// Gemessen wird erst, wenn die Nachrichtenschleife nach dem Laden frei ist;
+// das Laden der übrigen Packages beim Start ist kein Hänger (die Startzeit
+// meldet OnStartup).
 
 interface
 
@@ -44,6 +47,7 @@ type
     FWake: TEvent;
     FMainThread: THandle;
     FPong: Integer;
+    FStarted: Integer;
     FThresholdMs: Integer;
     FLoadedAt: Int64;
     FOnHang: TArgusHangProc;
@@ -95,6 +99,11 @@ begin
   Seq := 0;
   while not Terminated do
   begin
+    if TInterlocked.CompareExchange(FOwner.FStarted, 0, 0) = 0 then
+    begin
+      FOwner.FWake.WaitFor(PeriodMs);
+      Continue;
+    end;
     Inc(Seq);
     SentAt := NowMs;
     if not PostMessage(FOwner.FWindow, WM_ARGUS_PING, WPARAM(Seq), 0) then
@@ -208,8 +217,11 @@ begin
           TInterlocked.Exchange(FThresholdMs, FThresholdFunc());
       end;
     WM_ARGUS_STARTUP:
-      if Assigned(FOnStartup) then
-        FOnStartup(NowMs - FLoadedAt);
+      begin
+        TInterlocked.Exchange(FStarted, 1);
+        if Assigned(FOnStartup) then
+          FOnStartup(NowMs - FLoadedAt);
+      end;
   else
     AMessage.Result := DefWindowProc(FWindow, AMessage.Msg, AMessage.WParam, AMessage.LParam);
   end;
