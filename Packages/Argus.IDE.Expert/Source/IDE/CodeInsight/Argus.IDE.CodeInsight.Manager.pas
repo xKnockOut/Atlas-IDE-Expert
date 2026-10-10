@@ -293,6 +293,7 @@ end;
 function TArgusCodeInsightManager.Completion: TArgusEditorCompletion;
 begin
   if FCompletion = nil then
+  begin
     FCompletion := TArgusEditorCompletion.Create(
       function: TLspSession
       begin
@@ -302,6 +303,13 @@ begin
       begin
         Diagnose(AMessage);
       end);
+    // Nach "Add(|)" den Parameter-Hint öffnen (#430).
+    FCompletion.OnOpenSignature :=
+      procedure
+      begin
+        Signature.Invoke(CurrentEditView);
+      end;
+  end;
   Result := FCompletion;
 end;
 

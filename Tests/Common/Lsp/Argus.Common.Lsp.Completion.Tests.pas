@@ -368,11 +368,15 @@ begin
   // Drei Überladungen: ein Eintrag mit zwei weiteren Positionen; Rümpfe zählen nicht (#425).
   Assert.AreEqual(2, Integer(Length(Items.Items[1].Overloads)));
   Assert.AreEqual(0, Integer(Length(Items.Items[0].Overloads)));
+  // Klammern beim Übernehmen (#430): Eigen hat keine Parameter, Schreibe in zwei Überladungen.
+  Assert.IsFalse(Items.Items[0].HasParameters);
+  Assert.IsTrue(Items.Items[1].HasParameters);
   Json := TLspCompletion.ToJson(Items);
   try
     Data := ((Json.GetValue('items') as TJSONArray).Items[1] as TJSONObject).GetValue('data') as TJSONObject;
     Assert.AreEqual('TGrund', Data.GetValue<string>('container'));
     Assert.AreEqual(1, Data.GetValue<Integer>('depth'));
+    Assert.IsTrue(Data.GetValue('parameters') is TJSONTrue);
     Assert.AreEqual(2, (Data.GetValue('overloads') as TJSONArray).Count);
     Assert.AreEqual(5, (Data.GetValue('overloads') as TJSONArray).Items[0].GetValue<Integer>('line'));
   finally
