@@ -168,7 +168,9 @@ uses
   Argus.Core.Diagnostics.Hangs in '..\Packages\Argus.IDE.Expert\Source\Core\Diagnostics\Argus.Core.Diagnostics.Hangs.pas',
   Argus.Core.Diagnostics.Hangs.Tests in 'IDE.Expert\Argus.Core.Diagnostics.Hangs.Tests.pas',
   Argus.Core.Files.ExternalChanges in '..\Packages\Argus.IDE.Expert\Source\Core\Files\Argus.Core.Files.ExternalChanges.pas',
-  Argus.Core.Files.ExternalChanges.Tests in 'IDE.Expert\Argus.Core.Files.ExternalChanges.Tests.pas';
+  Argus.Core.Files.ExternalChanges.Tests in 'IDE.Expert\Argus.Core.Files.ExternalChanges.Tests.pas',
+  Argus.Core.Commands.Palette in '..\Packages\Argus.IDE.Expert\Source\Core\Commands\Argus.Core.Commands.Palette.pas',
+  Argus.Core.Commands.Palette.Tests in 'IDE.Expert\Argus.Core.Commands.Palette.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

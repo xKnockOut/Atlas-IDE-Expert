@@ -205,6 +205,8 @@
         <DCCReference Include="IDE.Expert\Argus.Core.Diagnostics.Hangs.Tests.pas"/>
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Files\Argus.Core.Files.ExternalChanges.pas"/>
         <DCCReference Include="IDE.Expert\Argus.Core.Files.ExternalChanges.Tests.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Commands\Argus.Core.Commands.Palette.pas"/>
+        <DCCReference Include="IDE.Expert\Argus.Core.Commands.Palette.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

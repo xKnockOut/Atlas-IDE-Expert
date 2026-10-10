@@ -52,8 +52,9 @@ type
     function SessionOrNil: TLspSession;
     class function ServerPath(out AArguments: string): string; static;
     class function DiagnoseEnabled: Boolean; static;
-    class function DiagnoseLog: string; static;
   public
+    /// <summary>Protokolldatei neben dem Plugin.</summary>
+    class function DiagnoseLog: string; static;
     constructor Create;
     destructor Destroy; override;
     /// <summary>Benachrichtigung an den Server, falls eine Sitzung läuft (#527); übernimmt AParams.

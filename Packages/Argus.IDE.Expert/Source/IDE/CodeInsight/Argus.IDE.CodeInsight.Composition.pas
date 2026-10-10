@@ -1,8 +1,8 @@
 ﻿unit Argus.IDE.CodeInsight.Composition;
 
 // Meldet den Code Insight-Manager, die Optionsseite "Argus" (#227), die
-// Compile-Ereignisse (#527), den Einfrier-Wächter (#501) und das Neuladen
-// extern geänderter Dateien (#536) beim Laden des
+// Compile-Ereignisse (#527), den Einfrier-Wächter (#501), das Neuladen
+// extern geänderter Dateien (#536) und die Befehlspalette (#502) beim Laden des
 // Packages an und beim Entladen in umgekehrter Reihenfolge wieder ab (ADR 0006).
 
 interface
@@ -27,7 +27,8 @@ uses
   Argus.Core.Diagnostics.Hangs,
   Argus.IDE.Settings.Store,
   Argus.IDE.Diagnostics.Watchdog,
-  Argus.IDE.Files.Reloader;
+  Argus.IDE.Files.Reloader,
+  Argus.IDE.Commands.Palette;
 
 var
   ManagerIndex: Integer = -1;
@@ -37,6 +38,7 @@ var
   Watchdog: TArgusWatchdog;
   Hangs: TArgusHangMonitor;
   Reloader: TArgusFileReloader;
+  Palette: TArgusIdePalette;
 
 const
   // Ab dieser Dauer ein Hinweis im Meldungsfenster (#501).
@@ -73,6 +75,32 @@ begin
     Group := Messages.AddMessageGroup('Argus');
   // Nie als Dialog und ohne das Meldungsfenster nach vorn zu holen.
   Messages.AddTitleMessage(TArgusStrings.Fmt(TArgusTextId.HangHint, [Hang.DurationMs, Activity]), Group);
+end;
+
+procedure RegisterPalette;
+begin
+  Palette := TArgusIdePalette.Create;
+  Palette.RegisterCommand('Argus.Log', TArgusStrings.Text(TArgusTextId.PaletteLog), '',
+    procedure
+    var
+      Actions: IOTAActionServices;
+    begin
+      if Supports(BorlandIDEServices, IOTAActionServices, Actions) and FileExists(TArgusCodeInsightManager.DiagnoseLog) then
+        Actions.OpenFile(TArgusCodeInsightManager.DiagnoseLog);
+    end);
+  Palette.RegisterCommand('Argus.ResetHistory', TArgusStrings.Text(TArgusTextId.PaletteResetHistory), '',
+    procedure
+    begin
+      TArgusIdeHistory.Reset;
+    end);
+  Palette.RegisterCommand('Argus.HangTest', TArgusStrings.Text(TArgusTextId.SettingsHangTest), '',
+    procedure
+    var
+      Activity: IInterface;
+    begin
+      Activity := TArgusActivity.Scope('Wächter-Test');
+      Sleep(1000);
+    end);
 end;
 
 procedure RegisterWatchdog(ALoadedAt: Int64);
@@ -173,6 +201,8 @@ begin
     RegisterCompileEvents;
   if Watchdog = nil then
     RegisterWatchdog(LoadedAt);
+  if Palette = nil then
+    RegisterPalette;
   if Reloader = nil then
     Reloader := TArgusFileReloader.Create(
       procedure(AText: string)
@@ -191,6 +221,7 @@ procedure Unregister;
 var
   Services: IOTACodeInsightServices;
 begin
+  FreeAndNil(Palette);
   FreeAndNil(Reloader);
   UnregisterWatchdog;
   FreeAndNil(Compile);
