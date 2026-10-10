@@ -47,6 +47,8 @@ type
     procedure FileNameDependsOnlyOnSignature;
     [Test]
     procedure ConcurrentWritersLeaveReadableCache;
+    [Test]
+    procedure FailedReplaceLeavesNoRemains;
   end;
 
 implementation
@@ -322,6 +324,28 @@ begin
   Assert.IsTrue((Text = StringOfChar('a', 100000)) or (Text = StringOfChar('b', 100000)));
   // Keine temporären Dateien zurückgelassen.
   Assert.AreEqual<NativeInt>(1, Length(TDirectory.GetFiles(FRoot)));
+end;
+
+procedure TIndexCacheDirectoryTests.FailedReplaceLeavesNoRemains;
+var
+  Cache, Text: string;
+  Lock: TFileStream;
+  FileSystem: IIndexFileSystem;
+begin
+  // Der Fehlerpfad aus ConcurrentWritersLeaveReadableCache, aber deterministisch: Ist das Ziel
+  // gesperrt, scheitert ReplaceFile, ohne dass TFile.Replace eine Ausnahme wirft. Früher meldete
+  // WriteText dann Erfolg und ließ die temporäre Datei liegen.
+  Cache := CreateCache('index-00000004.json');
+  FileSystem := TDiskIndexFileSystem.Create;
+  Lock := TFileStream.Create(Cache, fmOpenRead or fmShareExclusive);
+  try
+    Assert.IsFalse(FileSystem.WriteText(Cache, '{"version":2}'));
+  finally
+    Lock.Free;
+  end;
+  Assert.IsTrue(FileSystem.ReadText(Cache, Text));
+  Assert.AreEqual('{}', Text, 'alter Stand vollständig erhalten');
+  Assert.AreEqual<NativeInt>(1, Length(TDirectory.GetFiles(FRoot)), 'keine .tmp- oder .bak-Reste');
 end;
 
 initialization
