@@ -46,7 +46,7 @@ type
     /// <summary>Springt auf den Eintrag AIndex; spätere Einträge fallen weg.</summary>
     function JumpTo(AIndex: Integer): Boolean;
     function CanGoBack: Boolean;
-    /// <summary>Einträge der Pfadzeile; bei mehr als MaxPathShown zuerst "…".</summary>
+    /// <summary>Einträge der Pfadzeile, höchstens MaxPathShown; bei mehr zuerst "…" und die letzten.</summary>
     function Path: TArray<TArgusHoverPathItem>;
     property Current: TArgusHoverData read GetCurrent;
     property Count: Integer read GetCount;
@@ -146,7 +146,7 @@ begin
   First := 0;
   if Length(FItems) > MaxPathShown then
   begin
-    First := Length(FItems) - MaxPathShown;
+    First := Length(FItems) - MaxPathShown + 1;
     Item.Index := -1;
     Item.Caption := '…';
     Result := Result + [Item];

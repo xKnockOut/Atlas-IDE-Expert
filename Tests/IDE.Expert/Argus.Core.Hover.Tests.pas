@@ -254,7 +254,7 @@ begin
     Path := History.Path;
     Assert.AreEqual('…', Path[0].Caption, 'Pfad beginnt mit …');
     Assert.AreEqual(-1, Path[0].Index);
-    Assert.AreEqual(TArgusHoverHistory.MaxPathShown + 1, Integer(Length(Path)));
+    Assert.AreEqual(TArgusHoverHistory.MaxPathShown, Integer(Length(Path)));
     Assert.AreEqual('T11', Path[High(Path)].Caption);
     Assert.AreEqual(History.Count - 1, Path[High(Path)].Index);
   finally
