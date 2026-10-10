@@ -37,6 +37,9 @@ type
   /// <summary>Aktionen in Formulardateien, z. B. binär gespeicherte in Text umwandeln (#122).</summary>
   TFormActionsFunc = reference to function(const AUri, AText: string; const ARange: TTextRange): TArray<TCodeAction>;
 
+  /// <summary>Einstellungen "memberOrder" für AUri (#89).</summary>
+  TMemberOrderProvider = reference to function(const AUri: string): TMemberOrderSettings;
+
   TLspCodeActions = class
   public const
     Method = 'textDocument/codeAction';
@@ -48,6 +51,7 @@ type
     FUsesContextFor: TUsesContextProvider;
     FFormActions: TFormActionsFunc;
     FStringLiteralFor: TStringLiteralProvider;
+    FMemberOrderFor: TMemberOrderProvider;
     function HandleCodeAction(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore; const ARuleProvider: TRuleContextProvider);
@@ -64,6 +68,8 @@ type
     property UsesContextFor: TUsesContextProvider read FUsesContextFor write FUsesContextFor;
     /// <summary>Ohne Zuweisung gelten die Vorgaben mit Verkettung.</summary>
     property StringLiteralFor: TStringLiteralProvider read FStringLiteralFor write FStringLiteralFor;
+    /// <summary>Ohne Zuweisung gelten die Vorgaben von "memberOrder".</summary>
+    property MemberOrderFor: TMemberOrderProvider read FMemberOrderFor write FMemberOrderFor;
     /// <summary>Aktionen in .dfm/.fmx; ohne Zuweisung keine.</summary>
     property FormActions: TFormActionsFunc read FFormActions write FFormActions;
   end;
@@ -78,6 +84,7 @@ uses
   Argus.Common.Pascal.TreeCache,
   Argus.Common.Editing.ClassCompletion,
   Argus.Common.Editing.DocComments,
+  Argus.Common.Editing.MemberOrder,
   Argus.Common.Documents.Uris,
   Argus.Common.Dfm.Parser,
   Argus.Common.Index.Contract,
@@ -199,6 +206,8 @@ var
   Only: TArray<string>;
   OnlyValue: TJSONArray;
   Item: TJSONValue;
+  OrderSettings: TMemberOrderSettings;
+  OrderEdit: TRuleEdit;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue)) then
@@ -274,6 +283,22 @@ begin
   if WantsEditing then
     for Action in TDocComments.Actions(Document.Text, Tree, Range.StartPos.Line) do
       TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+  // Klassenmitglieder ordnen (#89).
+  if WantsEditing then
+  begin
+    if Assigned(FMemberOrderFor) then
+      OrderSettings := FMemberOrderFor(Uri)
+    else
+      OrderSettings := TMemberOrderSettings.Default;
+    if TMemberOrder.Sort(Document.Text, Tree, Range.StartPos.Line, OrderSettings, OrderEdit) then
+    begin
+      Action := Default(TCodeAction);
+      Action.Title := 'Klassenmitglieder ordnen';
+      Action.Kind := RewriteKind;
+      Action.Edits := [OrderEdit];
+      TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+    end;
+  end;
   if WantsOrganize and TCodeActions.OrganizeImports(Document.Text, Assigned(FSortUsesFor) and FSortUsesFor(Uri),
     Action, Assigned(FSortUsesByNamespaceFor) and FSortUsesByNamespaceFor(Uri)) then
     TJSONArray(Result).AddElement(ActionToJson(Uri, Action));

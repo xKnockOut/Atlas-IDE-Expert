@@ -475,6 +475,38 @@
       "x-control": "Auswahl, Zahlenfeld",
       "x-issue": "#312"
     },
+    "memberOrder": {
+      "type": "object",
+      "description": "Code-Aktion „Klassenmitglieder ordnen“: Reihenfolge der Sichtbarkeitsabschnitte und der Mitglieder darin.",
+      "additionalProperties": false,
+      "properties": {
+        "sections": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["strict private", "private", "strict protected", "protected", "public", "published"] },
+          "default": ["strict private", "private", "strict protected", "protected", "public", "published"],
+          "description": "Zielreihenfolge der Sichtbarkeitsabschnitte; nicht genannte kommen ans Ende."
+        },
+        "members": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["field", "constructor", "destructor", "method", "property"] },
+          "default": ["field", "constructor", "destructor", "method", "property"],
+          "description": "Zielreihenfolge der Mitglieder in einem Abschnitt; innerhalb einer Art bleibt die Reihenfolge."
+        },
+        "sortFields": {
+          "type": "boolean",
+          "default": false,
+          "description": "Abschnitte mit Feldern auch dann verschieben, wenn sich dadurch die Reihenfolge der Felder (Speicherlayout) ändert."
+        },
+        "sortPublished": {
+          "type": "boolean",
+          "default": false,
+          "description": "Auch published-Abschnitte umsortieren; ihre Reihenfolge bestimmt Streaming und Objektinspektor."
+        }
+      },
+      "x-page": "Editor",
+      "x-control": "Liste, Kontrollkästchen",
+      "x-issue": "#89"
+    },
     "minConfidence": {
       "type": "string",
       "enum": [

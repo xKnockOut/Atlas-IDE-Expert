@@ -598,6 +598,24 @@ begin
       end;
     end;
   FCodeActions.StringLiteralFor := StringLiteralFor;
+  FCodeActions.MemberOrderFor :=
+    function(const AUri: string): TMemberOrderSettings
+    var
+      Workspace: TShellWorkspace;
+    begin
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+        if (Workspace = nil) and (FWorkspaces.Count = 1) then
+          Workspace := FWorkspaces[0];
+        if Workspace = nil then
+          Result := TMemberOrderSettings.Default
+        else
+          Result := Workspace.Configuration.Settings.MemberOrder;
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+    end;
   FCodeActions.SortUsesFor :=
     function(const AUri: string): Boolean
     var

@@ -179,6 +179,7 @@
         <DCCReference Include="Common\Editing\Argus.Common.Editing.ExpressionCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.Modernizer.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.DocComments.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Argus.Common.Editing.MemberOrder.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.ProjectCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.SqlText.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.DatabaseCommands.Tests.pas"/>
