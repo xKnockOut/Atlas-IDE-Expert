@@ -584,6 +584,33 @@
       "description": "Format with %f, %n, %m, %g or %e and functions like FloatToStr, StrToFloat or DateToStr without a TFormatSettings parameter use the user's locale (decimal separator, date format). For files, protocols and logs pass fixed TFormatSettings. Format('%d', …) is not reported.",
       "bad": "Line := Format('%.2f', [Amount]);",
       "good": "Line := Format('%.2f', [Amount], TFormatSettings.Invariant);"
+    },
+    {
+      "id": "generic-exception-raised",
+      "name": "Generic exception raised",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "Raising the base class Exception prevents callers from handling the error specifically. Declare a dedicated exception class.",
+      "bad": "raise Exception.Create('Customer missing');",
+      "good": "raise ECustomerMissing.Create('Customer missing');"
+    },
+    {
+      "id": "catch-all-without-raise",
+      "name": "Catch-all handler without re-raise",
+      "category": "code-smell",
+      "severity": "warning",
+      "description": "A handler for Exception that neither re-raises nor ends the program swallows every error, including programming errors. Off by default; intended for library code.",
+      "bad": "except\n  on E: Exception do\n    Log(E.Message);\nend;",
+      "good": "except\n  on E: Exception do\n  begin\n    Log(E.Message);\n    raise;\n  end;\nend;"
+    },
+    {
+      "id": "exception-freed",
+      "name": "Exception object freed manually",
+      "category": "bug",
+      "severity": "error",
+      "description": "The RTL frees an exception object after its handler or after raise. Freeing it manually causes a double free.",
+      "bad": "on E: Exception do\n  E.Free;",
+      "good": "on E: Exception do\n  Log(E.Message);"
     }
   ]
 }

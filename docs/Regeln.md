@@ -69,6 +69,9 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`float-equality`](#float-equality) | Gleitkommavergleich mit = oder <> | Bug | Hinweis |
 | [`constructor-on-instance`](#constructor-on-instance) | Konstruktor auf einer Instanz aufgerufen | Bug | Warnung |
 | [`format-without-settings`](#format-without-settings) | Formatierung abhängig vom Gebietsschema | Code Smell | Hinweis |
+| [`generic-exception-raised`](#generic-exception-raised) | Allgemeine Exception ausgelöst | Code Smell | Hinweis |
+| [`catch-all-without-raise`](#catch-all-without-raise) | Exception-Handler ohne erneutes raise | Code Smell | Warnung |
+| [`exception-freed`](#exception-freed) | Exception-Objekt manuell freigegeben | Bug | Fehler |
 
 <a id="syntax"></a>
 ## syntax
@@ -1528,4 +1531,72 @@ Richtig:
 
 ```pascal
 Line := Format('%.2f', [Amount], TFormatSettings.Invariant);
+```
+
+<a id="generic-exception-raised"></a>
+## generic-exception-raised
+
+**Allgemeine Exception ausgelöst** · Code Smell · Hinweis
+
+Wer die Basisklasse Exception auslöst, nimmt Aufrufern die Möglichkeit, den Fehler gezielt zu behandeln. Besser eine eigene Exception-Klasse deklarieren.
+
+Mit Treffer:
+
+```pascal
+raise Exception.Create('Customer missing');
+```
+
+Richtig:
+
+```pascal
+raise ECustomerMissing.Create('Customer missing');
+```
+
+<a id="catch-all-without-raise"></a>
+## catch-all-without-raise
+
+**Exception-Handler ohne erneutes raise** · Code Smell · Warnung
+
+Ein Handler für Exception, der weder erneut auslöst noch das Programm beendet, verschluckt jeden Fehler, auch Programmierfehler. Standardmäßig aus; gedacht für Bibliothekscode.
+
+Mit Treffer:
+
+```pascal
+except
+  on E: Exception do
+    Log(E.Message);
+end;
+```
+
+Richtig:
+
+```pascal
+except
+  on E: Exception do
+  begin
+    Log(E.Message);
+    raise;
+  end;
+end;
+```
+
+<a id="exception-freed"></a>
+## exception-freed
+
+**Exception-Objekt manuell freigegeben** · Bug · Fehler
+
+Die RTL gibt ein Exception-Objekt nach seinem Handler bzw. nach raise selbst frei. Manuelles Freigeben führt zur doppelten Freigabe.
+
+Mit Treffer:
+
+```pascal
+on E: Exception do
+  E.Free;
+```
+
+Richtig:
+
+```pascal
+on E: Exception do
+  Log(E.Message);
 ```
