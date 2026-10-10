@@ -25,6 +25,7 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
+        <DCC_MapFile>3</DCC_MapFile>
         <SanitizedProjectName>ArgusServer</SanitizedProjectName>
         <DCC_Namespace>System;Winapi;System.Win;$(DCC_Namespace)</DCC_Namespace>
         <DCC_UnitSearchPath>..\Output\$(Platform)\$(Config)\Dcu\Argus.Common;..\Output\$(Platform)\$(Config)\Dcu\Argus.Windows;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
@@ -43,7 +44,8 @@
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
         <DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
-        <DCC_DebugInformation>0</DCC_DebugInformation>
+        <!-- Begrenzte Debug-Informationen: Zeilennummern in der .map (#282), die EXE bleibt gleich groß. -->
+        <DCC_DebugInformation>1</DCC_DebugInformation>
         <DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
     </PropertyGroup>
     <ItemGroup>

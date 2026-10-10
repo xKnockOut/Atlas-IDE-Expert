@@ -67,6 +67,7 @@ contains
   Argus.Common.Compiler.OutputParser in 'Source\Compiler\Argus.Common.Compiler.OutputParser.pas',
   Argus.Common.Compiler.CommandLine in 'Source\Compiler\Argus.Common.Compiler.CommandLine.pas',
   Argus.Common.Compiler.Results in 'Source\Compiler\Argus.Common.Compiler.Results.pas',
+  Argus.Common.Diagnostics.MapFile in 'Source\Diagnostics\Argus.Common.Diagnostics.MapFile.pas',
   Argus.Common.Index.Contract in 'Source\Index\Argus.Common.Index.Contract.pas',
   Argus.Common.Index.Extractor in 'Source\Index\Argus.Common.Index.Extractor.pas',
   Argus.Common.Index.SymbolIndex in 'Source\Index\Argus.Common.Index.SymbolIndex.pas',

@@ -33,6 +33,7 @@ uses
   Argus.Common.Projects.DelphiVersions.Tests in 'Common\Projects\Argus.Common.Projects.DelphiVersions.Tests.pas',
   Argus.Windows.Projects.DelphiInstallation.Tests in 'Windows\Projects\Argus.Windows.Projects.DelphiInstallation.Tests.pas',
   Argus.Common.Compiler.Tests in 'Common\Compiler\Argus.Common.Compiler.Tests.pas',
+  Argus.Common.Diagnostics.MapFile.Tests in 'Common\Diagnostics\Argus.Common.Diagnostics.MapFile.Tests.pas',
   Argus.Windows.Compiler.Adapters.ProcessRunner.Tests in 'Windows\Compiler\Argus.Windows.Compiler.Adapters.ProcessRunner.Tests.pas',
   Argus.Common.Documents.Providers.DocumentStore.Tests in 'Common\Documents\Argus.Common.Documents.Providers.DocumentStore.Tests.pas',
   Argus.Common.Documents.Uris.Tests in 'Common\Documents\Argus.Common.Documents.Uris.Tests.pas',
