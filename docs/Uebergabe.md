@@ -144,4 +144,23 @@
 - **Teile abgelehnter Issues weglassen:** #111 (FormEvents, FormItems), #115 (TFormActionsFunc des Branches), #179 (Blockabschluss), #308 (FormSymbols), #309 (DfmPropertyRules in #312).
 - **Offen zu entscheiden (im Issue kommentiert):** #157 filtert die Dateien vor der Prüfung statt nur die Ausgabe.
 - **CI:** „Package-Abhängigkeiten“ ist seit `64e42a6a` wieder grün (`package.json` im Format von `Update-ConfigDoc`). `pwsh` fehlt lokal; `Tools/Check-Delphi12.ps1` und den package.json-Teil von `Update-ConfigDoc.ps1` gibt es als Python-Nachbau (`check_d12.py`, `configpkg.py`) in `C:\Projekte\BetterDelphiLSP\kette`.
-- **Delphi des Users:** wurde von einer Nebensitzung über `cycle.ps1` geschlossen und ist noch nicht neu gestartet. Nach Abschluss mit `update-plugin.ps1` bauen und neu starten.
+- **Delphi des Users:** wurde von einer Nebensitzung über `cycle.ps1` geschlossen; am 11.10.2026 mit dem neuen Plugin wieder gestartet.
+
+## Stand 11.10.2026: Kette abgeschlossen, #588 umgesetzt
+- **Kette:** alle Ketten-Branches nachgebaut, gepusht und gelöscht. Übrig: `feature/261-ide-compiler` (übersprungen), `feature/309-eigenschaftsregeln` und `feature/188-postfix-vorlagen` (Vorlagen für die Neubauten). Abnahmen je Block geprüft; teilweise erfüllte Issues sind kommentiert und offen.
+- **Nebenbefunde:**
+  - Referenzzyklus in `TLspHover.InfoAt` behoben (lokale anonyme Methode `ReadText`, 752 Byte je Klassen-Hover).
+  - `Rules.Catalog.Data.pas` mit `Tools/Update-RuleCatalog.ps1` neu erzeugt; die CI war seit dem Kettennachbau rot.
+  - Unter PowerShell 5.1 das Skript als UTF-8 laden, sonst werden die Umlaute verfälscht: `powershell -Command "& ([scriptblock]::Create([IO.File]::ReadAllText('Tools\Update-RuleCatalog.ps1', [Text.Encoding]::UTF8))) -Root C:\Projekte\BetterDelphiLSP\repo"`.
+- **#588 Hover-Tooltip-Navigation:**
+  - Server `68a55b05`: `Argus.Common.Lsp.HoverTypes`; Hover und Referenzen lesen nicht geöffnete Dateien selbst.
+  - Plugin `39723c99`: `Argus.Core.Hover.Contract/History`, Tooltip mit Pfadzeile, Links, Kette und Aktionsleiste.
+  - Die manuelle Abnahme HN1–HN9 in `docs/Argus-Testfaelle.md` steht aus; das Issue ist offen.
+- **Bauen:**
+  - `C:\Projekte\BetterDelphiLSP\kette\build.ps1` baut die Gruppe (Win64) und die Tests in einer eigenen IDE; es sichert `.dproj`/`.dpk` vorher und schreibt sie danach zurück.
+  - Plugin für den User: `kette\update-plugin.ps1`, ohne Sandbox ausführen. Es startet Delphi nur neu, wenn es vorher lief.
+- **Weiter:**
+  - Neubau #309 auf `FormModel`.
+  - Neubau #188: Server-Teil plus Plugin-Unterstützung für textEdit und filterText.
+  - Dann die Reste der Serie: #528/#548, #536, #414, #443, #433, #447, #227, #99, #48, #102.
+  - Danach weitere Issues nach Priorität.
