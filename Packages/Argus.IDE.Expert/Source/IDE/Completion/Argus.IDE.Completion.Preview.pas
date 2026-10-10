@@ -47,6 +47,7 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   Argus.IDE.Editor.Style;
 
 { TArgusEditorPreview.TEvents }
@@ -123,8 +124,9 @@ procedure TArgusEditorPreview.PaintLine(const Rect: TRect; const Stage: TPaintLi
 var
   Cell: TRect;
   Canvas: TCanvas;
-  Style: TFontStyles;
-  Color: TColor;
+  Italic: TFont;
+  DC: HDC;
+  Saved, Top: Integer;
 begin
   try
     if BeforeEvent or (Stage <> plsEndPaint) or (FText = '') or (Context = nil) or
@@ -132,17 +134,26 @@ begin
       Exit;
     Cell := Context.EditorState.GetCharacterPosPx(FColumn, Context.EditorLineNum);
     Canvas := Context.Canvas;
-    Style := Canvas.Font.Style;
-    Color := Canvas.Font.Color;
+    Top := Rect.Top + (Rect.Height - Canvas.TextHeight('Wg')) div 2;
+    // Eigene kursive Schrift und gesicherter DC-Zustand: Schrift, Textfarbe und
+    // Hintergrundmodus der IDE bleiben unverändert (sonst färbt die Vorschaufarbe
+    // später gezeichnete Läufe ein).
+    Italic := TFont.Create;
     try
-      Canvas.Font.Style := [fsItalic];
-      Canvas.Font.Color := TColor(TArgusIdeStyle.Colors.Muted);
-      Canvas.Brush.Style := bsClear;
-      Canvas.TextOut(Cell.Left, Rect.Top + (Rect.Height - Canvas.TextHeight('Wg')) div 2, FText);
+      Italic.Assign(Canvas.Font);
+      Italic.Style := [fsItalic];
+      DC := Canvas.Handle;
+      Saved := SaveDC(DC);
+      try
+        SelectObject(DC, Italic.Handle);
+        SetBkMode(DC, TRANSPARENT);
+        SetTextColor(DC, ColorToRGB(TColor(TArgusIdeStyle.Colors.Muted)));
+        Winapi.Windows.TextOut(DC, Cell.Left, Top, PChar(FText), Length(FText));
+      finally
+        RestoreDC(DC, Saved);
+      end;
     finally
-      Canvas.Font.Style := Style;
-      Canvas.Font.Color := Color;
-      Canvas.Brush.Style := bsSolid;
+      Italic.Free;
     end;
   except
     // Zeichnen darf die IDE nie stören.
