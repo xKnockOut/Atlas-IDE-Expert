@@ -159,8 +159,16 @@
 - **Bauen:**
   - `C:\Projekte\BetterDelphiLSP\kette\build.ps1` baut die Gruppe (Win64) und die Tests in einer eigenen IDE; es sichert `.dproj`/`.dpk` vorher und schreibt sie danach zurück.
   - Plugin für den User: `kette\update-plugin.ps1`, ohne Sandbox ausführen. Es startet Delphi nur neu, wenn es vorher lief.
+- **#309 Eigenschaftsregeln (`b2039f6d`):**
+  - Neu auf `FormModel`: Einstellung `dfmPropertyRules` und Regel `dfm-property`.
+  - Meldung in der Unit; nicht gespeicherte Properties gelten mit ihrem `default` aus der Klasse.
+  - Offen: Korrekturen in der DFM, Projektbefehl, Diagnose bei unbekannter Klasse.
+  - Der Branch `feature/309-eigenschaftsregeln` bleibt als Vorlage stehen.
+- **#188 Postfix-Vorlagen (Server `9f6d527c`, Plugin `6bba6ffb`):**
+  - Das Plugin ersetzt bei Einträgen mit `textEdit` ab dessen Anfang.
+  - Offen: Platzhalter-Modus (#51) und die manuelle Prüfung PF1–PF6.
+- **Plugin beim User:** am 11.10.2026 um 01:06 aktualisiert.
+- **Neu in `update-plugin.ps1`:** sichert `.dproj`/`.dpk` vor dem Bau und schreibt sie danach zurück.
 - **Weiter:**
-  - Neubau #309 auf `FormModel`.
-  - Neubau #188: Server-Teil plus Plugin-Unterstützung für textEdit und filterText.
-  - Dann die Reste der Serie: #528/#548, #536, #414, #443, #433, #447, #227, #99, #48, #102.
+  - Reste der Serie: #528/#548, #536, #414, #443, #433, #447, #227, #99, #48, #102.
   - Danach weitere Issues nach Priorität.
