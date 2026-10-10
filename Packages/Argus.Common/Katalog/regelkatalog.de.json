@@ -239,6 +239,31 @@
       "id": "slash-command",
       "name": "Schnellbefehl nicht ausgeführt",
       "description": "Eine Zeile, die mit /name beginnt, wurde nicht ausgeführt und steht noch im Code: Der Befehl ist unbekannt, abgeschaltet (slashCommands.disabled) oder passt an dieser Stelle nicht. Die Meldung nennt den Grund."
+    },
+    {
+      "id": "empty-except",
+      "name": "Leerer except-Block",
+      "description": "Ein except-Block ohne Anweisung verschluckt jede Ausnahme. Ein Block, der nur einen Kommentar enthält, gilt als begründet und wird nicht gemeldet."
+    },
+    {
+      "id": "interface-guid",
+      "name": "Interface ohne GUID",
+      "description": "Ein Interface deklariert keine GUID. Supports, as und QueryInterface brauchen eine. Die Konfidenz ist hoch, wenn das Interface in derselben Datei damit verwendet wird, sonst niedrig. Die Schnellkorrektur fügt eine neue GUID ein."
+    },
+    {
+      "id": "duplicate-interface-guid",
+      "name": "Zwei Interfaces mit derselben GUID",
+      "description": "Zwei Interfaces der Datei deklarieren dieselbe GUID, meist nach dem Kopieren einer Deklaration. Supports und as verwechseln sie dann. Die Schnellkorrektur erzeugt eine neue GUID."
+    },
+    {
+      "id": "file-header",
+      "name": "Dateikopf fehlt oder weicht ab",
+      "description": "Die Datei beginnt nicht mit dem Kopf aus der Regeloption \"template\". Standardmäßig aus; in argus.json mit einer Vorlage einschalten. Die Schnellkorrektur fügt den Kopf ein."
+    },
+    {
+      "id": "hardcoded-string",
+      "name": "Text im Code statt resourcestring",
+      "description": "In einer Anweisung steht ein String mit Wörtern für Menschen. In einen resourcestring auslagern, damit er übersetzt werden kann. Standardmäßig aus, niedrige Konfidenz."
     }
   ]
 }

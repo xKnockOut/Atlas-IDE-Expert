@@ -431,6 +431,51 @@
       "description": "A line starting with /name was not executed and stays in the code: the command is unknown, switched off (slashCommands.disabled) or does not fit at this place. The message names the reason.",
       "bad": "/gibtsnicht X",
       "good": "/uses System.Classes"
+    },
+    {
+      "id": "empty-except",
+      "name": "Empty except block",
+      "category": "code-smell",
+      "severity": "warning",
+      "description": "An except block without statements swallows every exception. A block that contains only a comment counts as deliberate and is not reported.",
+      "bad": "try\n  Save;\nexcept\nend;",
+      "good": "try\n  Save;\nexcept\n  on E: EInOutError do\n    Log(E.Message);\nend;"
+    },
+    {
+      "id": "interface-guid",
+      "name": "Interface without GUID",
+      "category": "bug",
+      "severity": "warning",
+      "description": "An interface declares no GUID. Supports, as and QueryInterface need one. The confidence is high when the interface is used with them in the same file, otherwise low. The quick fix inserts a new GUID.",
+      "bad": "type\n  ISaver = interface\n    procedure Save;\n  end;",
+      "good": "type\n  ISaver = interface\n    ['{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}']\n    procedure Save;\n  end;"
+    },
+    {
+      "id": "duplicate-interface-guid",
+      "name": "Two interfaces with the same GUID",
+      "category": "bug",
+      "severity": "error",
+      "description": "Two interfaces in the file declare the same GUID, usually after copying a declaration. Supports and as then mix them up. The quick fix generates a new GUID.",
+      "bad": "ILoader = interface\n  ['{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}']\nend;\nISaver = interface\n  ['{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}']\nend;",
+      "good": "ILoader = interface\n  ['{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}']\nend;\nISaver = interface\n  ['{0B9E4F21-7C6D-4A3E-8F15-2D9C7B6A4E31}']\nend;"
+    },
+    {
+      "id": "file-header",
+      "name": "File header missing or different",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "The file does not start with the header from the rule option \"template\". Off by default; switch it on in argus.json with a template. The quick fix inserts the header.",
+      "bad": "unit Tools;",
+      "good": "// Copyright (c) Example GmbH\nunit Tools;"
+    },
+    {
+      "id": "hardcoded-string",
+      "name": "Text in code instead of resourcestring",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "A string literal with words for people stands in a statement. Move it to a resourcestring so it can be translated. Off by default, low confidence.",
+      "bad": "ShowMessage('File not found');",
+      "good": "resourcestring\n  SFileNotFound = 'File not found';\n...\nShowMessage(SFileNotFound);"
     }
   ]
 }

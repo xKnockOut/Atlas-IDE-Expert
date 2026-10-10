@@ -136,6 +136,7 @@ contains
   Argus.Common.Rules.Builtin.Components in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.Components.pas',
   Argus.Common.Rules.Builtin.FormFields in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.FormFields.pas',
   Argus.Common.Rules.Builtin.Security in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.Security.pas',
+  Argus.Common.Rules.Builtin.General in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.General.pas',
   Argus.Common.Rules.Builtin.DataBinding in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.DataBinding.pas',
   Argus.Common.Rules.Builtin.SlashCommands in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.SlashCommands.pas',
   Argus.Common.Editing.ClassCompletion in 'Source\Editing\Argus.Common.Editing.ClassCompletion.pas',
