@@ -18,6 +18,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Forms,
   Argus.Core.Settings.Plugin,
+  Argus.Core.Diagnostics.Hangs,
   Argus.UI.Strings;
 
 type
@@ -34,15 +35,20 @@ type
     FGroupInherited: TCheckBox;
     FPreview: TCheckBox;
     FHoverTooltip: TCheckBox;
+    FHangThreshold: TEdit;
+    FHangHint: TCheckBox;
     FResetHistory: TButton;
     FResetWidths: TButton;
+    FHangTest: TButton;
     FWidths: TArgusPluginSettings;
     FNextTop: Integer;
     FOnResetHistory: TProc;
     function AddCheck(const ACaption: string): TCheckBox;
     function AddPanel(AHeight: Integer): TPanel;
+    function AddNumber(const ACaption: string): TEdit;
     procedure ResetHistoryClick(Sender: TObject);
     procedure ResetWidthsClick(Sender: TObject);
+    procedure HangTestClick(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
     procedure LoadFrom(const ASettings: TArgusPluginSettings);
@@ -65,7 +71,7 @@ begin
   inherited Create(AOwner);
   Name := 'ArgusSettingsPage';
   Width := 480;
-  Height := 360;
+  Height := 440;
   Title := TLabel.Create(Self);
   Title.Parent := Self;
   Title.Align := alTop;
@@ -98,6 +104,9 @@ begin
   FGroupInherited := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsGroupInherited));
   FPreview := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsPreview));
   FHoverTooltip := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsHover));
+  // Einfrier-Wächter (#501).
+  FHangThreshold := AddNumber(TArgusStrings.Text(TArgusTextId.SettingsHangThreshold));
+  FHangHint := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsHangHint));
   Panel := AddPanel(32);
   FResetHistory := TButton.Create(Self);
   FResetHistory.Parent := Panel;
@@ -113,6 +122,13 @@ begin
   FResetWidths.Top := 3;
   FResetWidths.Width := 150;
   FResetWidths.OnClick := ResetWidthsClick;
+  FHangTest := TButton.Create(Self);
+  FHangTest.Parent := Panel;
+  FHangTest.Caption := TArgusStrings.Text(TArgusTextId.SettingsHangTest);
+  FHangTest.Left := 320;
+  FHangTest.Top := 3;
+  FHangTest.Width := 150;
+  FHangTest.OnClick := HangTestClick;
 end;
 
 function TArgusSettingsPage.AddCheck(const ACaption: string): TCheckBox;
@@ -140,6 +156,25 @@ begin
   Result.ParentBackground := True;
 end;
 
+function TArgusSettingsPage.AddNumber(const ACaption: string): TEdit;
+var
+  Panel: TPanel;
+  Caption: TLabel;
+begin
+  Panel := AddPanel(26);
+  Caption := TLabel.Create(Self);
+  Caption.Parent := Panel;
+  Caption.Caption := ACaption;
+  Caption.Left := 0;
+  Caption.Top := 5;
+  Result := TEdit.Create(Self);
+  Result.Parent := Panel;
+  Result.Left := 180;
+  Result.Top := 1;
+  Result.Width := 60;
+  Result.NumbersOnly := True;
+end;
+
 procedure TArgusSettingsPage.LoadFrom(const ASettings: TArgusPluginSettings);
 begin
   FWidths := ASettings;
@@ -152,6 +187,8 @@ begin
   FGroupInherited.Checked := ASettings.GroupInherited;
   FPreview.Checked := ASettings.Preview;
   FHoverTooltip.Checked := ASettings.HoverTooltip;
+  FHangThreshold.Text := IntToStr(ASettings.HangThresholdMs);
+  FHangHint.Checked := ASettings.HangHint;
 end;
 
 procedure TArgusSettingsPage.SaveTo(var ASettings: TArgusPluginSettings);
@@ -165,6 +202,8 @@ begin
   ASettings.GroupInherited := FGroupInherited.Checked;
   ASettings.Preview := FPreview.Checked;
   ASettings.HoverTooltip := FHoverTooltip.Checked;
+  ASettings.HangThresholdMs := StrToIntDef(FHangThreshold.Text, ASettings.HangThresholdMs);
+  ASettings.HangHint := FHangHint.Checked;
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;
@@ -175,6 +214,15 @@ begin
   if Assigned(FOnResetHistory) then
     FOnResetHistory();
   FResetHistory.Enabled := False;
+end;
+
+procedure TArgusSettingsPage.HangTestClick(Sender: TObject);
+var
+  Activity: IInterface;
+begin
+  // Künstlicher Hänger für den Einfrier-Wächter (#501): erscheint im Protokoll mit dieser Aktion.
+  Activity := TArgusActivity.Scope('Wächter-Test');
+  Sleep(1000);
 end;
 
 procedure TArgusSettingsPage.ResetWidthsClick(Sender: TObject);

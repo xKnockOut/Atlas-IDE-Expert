@@ -88,6 +88,8 @@ contains
   Argus.Core.Completion.Preview in 'Source\Core\Completion\Argus.Core.Completion.Preview.pas',
   Argus.IDE.Completion.Preview in 'Source\IDE\Completion\Argus.IDE.Completion.Preview.pas',
   Argus.Core.Build.Events in 'Source\Core\Build\Argus.Core.Build.Events.pas',
-  Argus.IDE.Build.Notifier in 'Source\IDE\Build\Argus.IDE.Build.Notifier.pas';
+  Argus.IDE.Build.Notifier in 'Source\IDE\Build\Argus.IDE.Build.Notifier.pas',
+  Argus.Core.Diagnostics.Hangs in 'Source\Core\Diagnostics\Argus.Core.Diagnostics.Hangs.pas',
+  Argus.IDE.Diagnostics.Watchdog in 'Source\IDE\Diagnostics\Argus.IDE.Diagnostics.Watchdog.pas';
 
 end.

@@ -201,6 +201,8 @@
         <DCCReference Include="IDE.Expert\Argus.UI.Settings.Page.Tests.pas"/>
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Build\Argus.Core.Build.Events.pas"/>
         <DCCReference Include="IDE.Expert\Argus.Core.Build.Events.Tests.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Diagnostics\Argus.Core.Diagnostics.Hangs.pas"/>
+        <DCCReference Include="IDE.Expert\Argus.Core.Diagnostics.Hangs.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
