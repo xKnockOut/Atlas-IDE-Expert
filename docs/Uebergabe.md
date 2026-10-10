@@ -155,6 +155,7 @@
 - **#588 Hover-Tooltip-Navigation:**
   - Server `68a55b05`: `Argus.Common.Lsp.HoverTypes`; Hover und Referenzen lesen nicht geöffnete Dateien selbst.
   - Plugin `39723c99`: `Argus.Core.Hover.Contract/History`, Tooltip mit Pfadzeile, Links, Kette und Aktionsleiste.
+  - Aussehen an den Entwurf (Artifact „Argus Tooltip-Navigation“) angeglichen (`3f571121`): Randflächen für Pfad, Kette und Aktionsleiste, Kettenglieder als Kästchen, Verweise in Akzentfarbe, Pfad höchstens vier Einträge.
   - Die manuelle Abnahme HN1–HN9 in `docs/Argus-Testfaelle.md` steht aus; das Issue ist offen.
 - **Bauen:**
   - `C:\Projekte\BetterDelphiLSP\kette\build.ps1` baut die Gruppe (Win64) und die Tests in einer eigenen IDE; es sichert `.dproj`/`.dpk` vorher und schreibt sie danach zurück.
@@ -167,7 +168,7 @@
 - **#188 Postfix-Vorlagen (Server `9f6d527c`, Plugin `6bba6ffb`):**
   - Das Plugin ersetzt bei Einträgen mit `textEdit` ab dessen Anfang.
   - Offen: Platzhalter-Modus (#51) und die manuelle Prüfung PF1–PF6.
-- **Plugin beim User:** am 11.10.2026 um 01:06 aktualisiert.
+- **Plugin beim User:** am 11.10.2026 um 01:22 aktualisiert.
 - **Neu in `update-plugin.ps1`:** sichert `.dproj`/`.dpk` vor dem Bau und schreibt sie danach zurück.
 - **Weiter:**
   - Reste der Serie: #528/#548, #536, #414, #443, #433, #447, #227, #99, #48, #102.
