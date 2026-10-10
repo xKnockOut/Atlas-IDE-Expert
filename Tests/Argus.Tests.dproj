@@ -196,6 +196,7 @@
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Providers\Argus.Core.Completion.Providers.XmlDoc.pas"/>
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Parentheses.pas"/>
         <DCCReference Include="IDE.Expert\Argus.Core.Completion.Parentheses.Tests.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Preview.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

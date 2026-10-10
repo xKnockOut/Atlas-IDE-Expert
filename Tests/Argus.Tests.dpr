@@ -159,7 +159,8 @@ uses
   Argus.UI.Strings.Tests in 'IDE.Expert\Argus.UI.Strings.Tests.pas',
   Argus.Core.Completion.Providers.XmlDoc in '..\Packages\Argus.IDE.Expert\Source\Core\Completion\Providers\Argus.Core.Completion.Providers.XmlDoc.pas',
   Argus.Core.Completion.Parentheses in '..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Parentheses.pas',
-  Argus.Core.Completion.Parentheses.Tests in 'IDE.Expert\Argus.Core.Completion.Parentheses.Tests.pas';
+  Argus.Core.Completion.Parentheses.Tests in 'IDE.Expert\Argus.Core.Completion.Parentheses.Tests.pas',
+  Argus.Core.Completion.Preview in '..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Preview.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

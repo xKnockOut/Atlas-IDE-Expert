@@ -84,6 +84,8 @@ contains
   Argus.Core.Completion.Providers.XmlDoc in 'Source\Core\Completion\Providers\Argus.Core.Completion.Providers.XmlDoc.pas',
   Argus.Core.Completion.Parentheses in 'Source\Core\Completion\Argus.Core.Completion.Parentheses.pas',
   Argus.UI.Hover.Tip in 'Source\UI\Hover\Argus.UI.Hover.Tip.pas',
-  Argus.IDE.Hover.Editor in 'Source\IDE\Hover\Argus.IDE.Hover.Editor.pas';
+  Argus.IDE.Hover.Editor in 'Source\IDE\Hover\Argus.IDE.Hover.Editor.pas',
+  Argus.Core.Completion.Preview in 'Source\Core\Completion\Argus.Core.Completion.Preview.pas',
+  Argus.IDE.Completion.Preview in 'Source\IDE\Completion\Argus.IDE.Completion.Preview.pas';
 
 end.

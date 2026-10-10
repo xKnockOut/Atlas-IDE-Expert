@@ -1,6 +1,6 @@
 ﻿unit Argus.Core.Completion.Parentheses.Tests;
 
-// Tests für Klammern beim Übernehmen (#430).
+// Tests für Klammern beim Übernehmen (#430) und die Vorschau im Editor (#434).
 
 interface
 
@@ -23,10 +23,20 @@ type
     procedure StopsWhenParenIsDeletedOrLineReplaced;
   end;
 
+  [TestFixture]
+  TArgusPreviewTests = class
+  public
+    [Test]
+    procedure ShowsRestOfName;
+    [Test]
+    procedure NothingWhenTextFollowsOrNoMatch;
+  end;
+
 implementation
 
 uses
-  Argus.Core.Completion.Parentheses;
+  Argus.Core.Completion.Parentheses,
+  Argus.Core.Completion.Preview;
 
 procedure TArgusParenthesesTests.WantsParenthesesOnlyForRoutinesWithParameters;
 begin
@@ -98,7 +108,24 @@ begin
   Assert.AreEqual(-1, RemoveAt);
 end;
 
+{ TArgusPreviewTests }
+
+procedure TArgusPreviewTests.ShowsRestOfName;
+begin
+  Assert.AreEqual('Strings', TArgusPreview.RestOf('AddStrings', 'Add', ''));
+  Assert.AreEqual('Strings', TArgusPreview.RestOf('AddStrings', 'add', '   '), 'Groß-/Kleinschreibung egal');
+  Assert.AreEqual('BeginUpdate', TArgusPreview.RestOf('BeginUpdate', '', ''));
+end;
+
+procedure TArgusPreviewTests.NothingWhenTextFollowsOrNoMatch;
+begin
+  Assert.AreEqual('', TArgusPreview.RestOf('AddStrings', 'Add', ');'), 'würde Text verdecken');
+  Assert.AreEqual('', TArgusPreview.RestOf('Count', 'Add', ''), 'passt nicht');
+  Assert.AreEqual('', TArgusPreview.RestOf('Add', 'Add', ''), 'schon vollständig');
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TArgusParenthesesTests);
+  TDUnitX.RegisterTestFixture(TArgusPreviewTests);
 
 end.
