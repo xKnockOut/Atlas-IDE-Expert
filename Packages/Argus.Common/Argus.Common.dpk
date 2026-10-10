@@ -119,6 +119,7 @@ contains
   Argus.Common.Editing.CommandSource in 'Source\Editing\Argus.Common.Editing.CommandSource.pas',
   Argus.Common.Editing.ClassCommands in 'Source\Editing\Argus.Common.Editing.ClassCommands.pas',
   Argus.Common.Editing.WrapCommands in 'Source\Editing\Argus.Common.Editing.WrapCommands.pas',
+  Argus.Common.Editing.MaintenanceCommands in 'Source\Editing\Argus.Common.Editing.MaintenanceCommands.pas',
   Argus.Common.Semantics.UnresolvedNames in 'Source\Semantics\Argus.Common.Semantics.UnresolvedNames.pas',
   Argus.Common.Rules.Builtin.Architecture in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.Architecture.pas',
   Argus.Common.Rules.Builtin.Concurrency in 'Source\Rules\Builtin\Argus.Common.Rules.Builtin.Concurrency.pas',

@@ -4,6 +4,7 @@
 //   x := 1; // lsp-ignore: regel-a, regel-b   gilt für diese Zeile
 //   // lsp-ignore: regel-a                    allein in der Zeile: gilt für die nächste Zeile
 //   // lsp-ignore-file: regel-a                gilt für die ganze Datei
+//   // lsp-ignore: regel-a -- Begründung       ab "--" folgt freier Text
 // "*" steht für alle Regeln. Kommentare in { } und (* *) zählen ebenso.
 // Merkt sich, welche Kommentare tatsächlich etwas unterdrückt haben, damit
 // ungenutzte gemeldet werden können (#147).
@@ -70,12 +71,17 @@ begin
   try
     Start := 1;
     for I := 1 to Length(AText) + 1 do
+    begin
+      // Begründung nach "--" gehört nicht zu den Kennungen.
+      if (I = Start) and (Copy(AText, I, 2) = '--') then
+        Break;
       if (I > Length(AText)) or CharInSet(AText[I], [',', ' ', #9]) then
       begin
         if I > Start then
           List.Add(LowerCase(Copy(AText, Start, I - Start)));
         Start := I + 1;
       end;
+    end;
     Result := List.ToArray;
   finally
     List.Free;
