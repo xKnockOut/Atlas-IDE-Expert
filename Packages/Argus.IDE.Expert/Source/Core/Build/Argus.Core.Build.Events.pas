@@ -32,6 +32,8 @@ type
     Configuration: string;
     Platform: string;
     OutputFile: string;
+    /// <summary>Eigene Hintergrundprüfung von Argus (#548), kein Build des Benutzers.</summary>
+    Background: Boolean;
   end;
 
   /// <summary>Teilnehmer an den Compile-Ereignissen; alle Methoden sind optional.</summary>
@@ -66,6 +68,7 @@ type
     FCodeInsightStarted: Int64;
     FCodeInsightCount: Integer;
     FCodeInsightMs: Int64;
+    FBackground: Boolean;
     function Now_: Int64;
     function RunningIndex(const AFileName: string): Integer;
     procedure Notify(const AMethod: string; AParams: TJSONObject);
@@ -86,6 +89,8 @@ type
     class function KindText(AKind: TArgusCompileKind): string; static;
     property CodeInsightCount: Integer read FCodeInsightCount;
     property CodeInsightMs: Int64 read FCodeInsightMs;
+    /// <summary>Solange True, sind beginnende Läufe Argus-eigene Hintergrundprüfungen (#548).</summary>
+    property Background: Boolean read FBackground write FBackground;
     property OnNotify: TArgusNotifyProc read FOnNotify write FOnNotify;
     property OnLog: TArgusTextProc read FOnLog write FOnLog;
   end;
@@ -306,6 +311,8 @@ begin
   Result.AddPair('platform', AProject.Platform);
   if AProject.OutputFile <> '' then
     Result.AddPair('output', AProject.OutputFile);
+  if AProject.Background then
+    Result.AddPair('background', TJSONBool.Create(True));
 end;
 
 procedure TArgusCompileEvents.ProjectStarted(const AProject: TArgusCompileProject);
@@ -316,11 +323,12 @@ begin
   if (AProject.FileName = '') or (RunningIndex(AProject.FileName) >= 0) then
     Exit;
   Running.Project := AProject;
+  Running.Project.Background := FBackground;
   Running.Started := Now_;
   FRunning.Add(Running);
   for Participant in FParticipants do
-    Guard(Participant.ClassName, procedure begin Participant.ProjectStarted(AProject); end);
-  Notify('argus/compileStarted', ProjectJson(AProject));
+    Guard(Participant.ClassName, procedure begin Participant.ProjectStarted(Running.Project); end);
+  Notify('argus/compileStarted', ProjectJson(Running.Project));
 end;
 
 procedure TArgusCompileEvents.ProjectFinished(const AFileName: string; ASucceeded: Boolean);

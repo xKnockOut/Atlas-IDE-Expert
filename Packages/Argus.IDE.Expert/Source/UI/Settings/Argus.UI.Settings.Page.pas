@@ -39,6 +39,9 @@ type
     FHangHint: TCheckBox;
     FReloadExternal: TCheckBox;
     FPairColors: TCheckBox;
+    FCheckOnSave: TCheckBox;
+    FCheckDelay: TEdit;
+    FCheckMax: TEdit;
     FResetHistory: TButton;
     FResetWidths: TButton;
     FHangTest: TButton;
@@ -73,7 +76,7 @@ begin
   inherited Create(AOwner);
   Name := 'ArgusSettingsPage';
   Width := 480;
-  Height := 500;
+  Height := 590;
   Title := TLabel.Create(Self);
   Title.Parent := Self;
   Title.Align := alTop;
@@ -111,6 +114,10 @@ begin
   FHangHint := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsHangHint));
   FReloadExternal := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsReload));
   FPairColors := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsPairs));
+  // Compilerprüfung nach dem Speichern (#548).
+  FCheckOnSave := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsCheckOnSave));
+  FCheckDelay := AddNumber(TArgusStrings.Text(TArgusTextId.SettingsCheckDelay));
+  FCheckMax := AddNumber(TArgusStrings.Text(TArgusTextId.SettingsCheckMax));
   Panel := AddPanel(32);
   FResetHistory := TButton.Create(Self);
   FResetHistory.Parent := Panel;
@@ -195,6 +202,9 @@ begin
   FHangHint.Checked := ASettings.HangHint;
   FReloadExternal.Checked := ASettings.ReloadExternal;
   FPairColors.Checked := ASettings.PairColors;
+  FCheckOnSave.Checked := ASettings.CheckOnSave;
+  FCheckDelay.Text := IntToStr(ASettings.CheckOnSaveDelayMs);
+  FCheckMax.Text := IntToStr(ASettings.CheckOnSaveMaxMs);
 end;
 
 procedure TArgusSettingsPage.SaveTo(var ASettings: TArgusPluginSettings);
@@ -212,6 +222,9 @@ begin
   ASettings.HangHint := FHangHint.Checked;
   ASettings.ReloadExternal := FReloadExternal.Checked;
   ASettings.PairColors := FPairColors.Checked;
+  ASettings.CheckOnSave := FCheckOnSave.Checked;
+  ASettings.CheckOnSaveDelayMs := StrToIntDef(FCheckDelay.Text, ASettings.CheckOnSaveDelayMs);
+  ASettings.CheckOnSaveMaxMs := StrToIntDef(FCheckMax.Text, ASettings.CheckOnSaveMaxMs);
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;

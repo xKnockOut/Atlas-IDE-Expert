@@ -99,6 +99,8 @@ contains
   Argus.Core.Editor.Pairs in 'Source\Core\Editor\Argus.Core.Editor.Pairs.pas',
   Argus.IDE.Editor.Pairs in 'Source\IDE\Editor\Argus.IDE.Editor.Pairs.pas',
   Argus.IDE.Build.MessageView in 'Source\IDE\Build\Argus.IDE.Build.MessageView.pas',
-  Argus.Core.Build.Messages in 'Source\Core\Build\Argus.Core.Build.Messages.pas';
+  Argus.Core.Build.Messages in 'Source\Core\Build\Argus.Core.Build.Messages.pas',
+  Argus.Core.Build.CheckOnSave in 'Source\Core\Build\Argus.Core.Build.CheckOnSave.pas',
+  Argus.IDE.Build.CheckOnSave in 'Source\IDE\Build\Argus.IDE.Build.CheckOnSave.pas';
 
 end.
