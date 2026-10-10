@@ -444,7 +444,7 @@ var
   Source: TCommandSource;
   ClassSymbol, Field: TIndexSymbol;
   T: string;
-  Copies: TArray<string>;
+  Copies, Body: TArray<string>;
 begin
   AEdits := nil;
   Source := TCommandSource.Create(AContext);
@@ -464,9 +464,11 @@ begin
             Format('    Result.%s := %s.Clone;', [Field.Name, Field.Name])]
         else
           Copies := Copies + [Format('    // TODO: Result.%s aus %s kopieren', [Field.Name, Field.Name])];
-    AEdits := AddToClass(Source, ClassSymbol, ['public', Format('function Clone: %s;', [T])],
-      Join(Source, [Format('function %s.Clone: %s;', [T, T]), 'begin', Format('  Result := %s.Create;', [T]),
-      '  try'] + Copies + ['  except', '    Result.Free;', '    raise;', '  end;', 'end;'])) +
+    // Erst zusammensetzen: "[...] + Copies" geht nicht als offenes Array-Argument.
+    Body := TArray<string>.Create(Format('function %s.Clone: %s;', [T, T]), 'begin',
+      Format('  Result := %s.Create;', [T]), '  try') + Copies +
+      TArray<string>.Create('  except', '    Result.Free;', '    raise;', '  end;', 'end;');
+    AEdits := AddToClass(Source, ClassSymbol, ['public', Format('function Clone: %s;', [T])], Join(Source, Body)) +
       [Source.RemoveCommand];
     Result := True;
   finally
