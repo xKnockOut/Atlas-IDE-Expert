@@ -155,6 +155,20 @@ Vorbereitung: Diagnoseprotokoll an (`HKCU\Software\Argus\IdePlugin`, DWORD `Diag
 
 Abbruch mit Grund im Meldungsfenster („Argus“) ist im Dienst vorhanden und getestet; einen Teilnehmer, der abbricht, bringen erst #529/#530.
 
+## Extern geänderte Dateien (#536)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| X1 | Mehrere Units öffnen (gespeichert), im Terminal `git checkout` eines Branches, der sie ändert; zurück in die IDE | Kein Dialog „time/date changed. Reload?“; Editor zeigt den neuen Stand; Meldungsfenster, Gruppe „Argus“: „Argus: n Dateien neu geladen“ mit den Dateinamen |
+| X2 | Nach X1 im Editor | Cursor und sichtbarer Bereich wie vorher (gleiche Zeile) |
+| X3 | Eine Unit mit ungespeicherten Änderungen, Datei extern ändern, zurück in die IDE | Argus fasst den Puffer nicht an; Meldung „… hat ungespeicherte Änderungen; die IDE fragt nach“; danach die Rückfrage der IDE mit Warnung |
+| X4 | Offene Unit extern löschen | Meldung „… existiert nicht mehr“, Tab bleibt offen |
+| X5 | Unit in der IDE speichern | Kein Neuladen, Rückgängig bleibt erhalten |
+| X6 | Optionen › Argus › „Außerhalb geänderte Dateien … neu laden“ aus, X1 wiederholen | Wieder die Rückfragen der IDE |
+| X7 | Formular-Unit extern ändern (`.pas` und `.dfm`, z. B. per `git checkout`) | Unit und Formular neu geladen |
+
+Protokoll: jede erkannte Änderung als Zeile „Extern geändert: … (neu laden | ungespeicherte Änderungen, behalten | gelöscht)“.
+
 ## Einfrier-Wächter (#501)
 
 Protokoll: `Argus.IDE.Expert.log` neben dem Plugin (Hänger stehen dort immer, auch ohne `Diagnose`).

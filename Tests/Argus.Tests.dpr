@@ -166,7 +166,9 @@ uses
   Argus.Core.Build.Events in '..\Packages\Argus.IDE.Expert\Source\Core\Build\Argus.Core.Build.Events.pas',
   Argus.Core.Build.Events.Tests in 'IDE.Expert\Argus.Core.Build.Events.Tests.pas',
   Argus.Core.Diagnostics.Hangs in '..\Packages\Argus.IDE.Expert\Source\Core\Diagnostics\Argus.Core.Diagnostics.Hangs.pas',
-  Argus.Core.Diagnostics.Hangs.Tests in 'IDE.Expert\Argus.Core.Diagnostics.Hangs.Tests.pas';
+  Argus.Core.Diagnostics.Hangs.Tests in 'IDE.Expert\Argus.Core.Diagnostics.Hangs.Tests.pas',
+  Argus.Core.Files.ExternalChanges in '..\Packages\Argus.IDE.Expert\Source\Core\Files\Argus.Core.Files.ExternalChanges.pas',
+  Argus.Core.Files.ExternalChanges.Tests in 'IDE.Expert\Argus.Core.Files.ExternalChanges.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

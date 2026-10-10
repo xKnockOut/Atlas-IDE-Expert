@@ -55,6 +55,8 @@ type
     HangThresholdMs: Integer;
     /// <summary>Hinweis im Meldungsfenster nach langen Hängern (ab 2 s, #501).</summary>
     HangHint: Boolean;
+    /// <summary>Extern geänderte Dateien ohne eigene Änderungen still neu laden (#536).</summary>
+    ReloadExternal: Boolean;
     class function Defaults: TArgusPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -92,6 +94,7 @@ begin
   Result.HoverTooltip := True;
   Result.HangThresholdMs := 500;
   Result.HangHint := True;
+  Result.ReloadExternal := True;
 end;
 
 procedure TArgusPluginSettings.Normalize;
@@ -121,6 +124,7 @@ begin
   HoverTooltip := AStore.ReadInteger('HoverTooltip', BoolValue(Default.HoverTooltip)) <> 0;
   HangThresholdMs := AStore.ReadInteger('HangThresholdMs', Default.HangThresholdMs);
   HangHint := AStore.ReadInteger('HangHint', BoolValue(Default.HangHint)) <> 0;
+  ReloadExternal := AStore.ReadInteger('ReloadExternal', BoolValue(Default.ReloadExternal)) <> 0;
   Normalize;
 end;
 
@@ -140,6 +144,7 @@ begin
   AStore.WriteInteger('HoverTooltip', BoolValue(HoverTooltip));
   AStore.WriteInteger('HangThresholdMs', HangThresholdMs);
   AStore.WriteInteger('HangHint', BoolValue(HangHint));
+  AStore.WriteInteger('ReloadExternal', BoolValue(ReloadExternal));
 end;
 
 end.

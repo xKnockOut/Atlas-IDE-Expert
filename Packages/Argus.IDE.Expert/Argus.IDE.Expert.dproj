@@ -142,6 +142,8 @@
         <DCCReference Include="Source\IDE\Build\Argus.IDE.Build.Notifier.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Argus.Core.Diagnostics.Hangs.pas"/>
         <DCCReference Include="Source\IDE\Diagnostics\Argus.IDE.Diagnostics.Watchdog.pas"/>
+        <DCCReference Include="Source\Core\Files\Argus.Core.Files.ExternalChanges.pas"/>
+        <DCCReference Include="Source\IDE\Files\Argus.IDE.Files.Reloader.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

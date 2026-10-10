@@ -90,6 +90,8 @@ contains
   Argus.Core.Build.Events in 'Source\Core\Build\Argus.Core.Build.Events.pas',
   Argus.IDE.Build.Notifier in 'Source\IDE\Build\Argus.IDE.Build.Notifier.pas',
   Argus.Core.Diagnostics.Hangs in 'Source\Core\Diagnostics\Argus.Core.Diagnostics.Hangs.pas',
-  Argus.IDE.Diagnostics.Watchdog in 'Source\IDE\Diagnostics\Argus.IDE.Diagnostics.Watchdog.pas';
+  Argus.IDE.Diagnostics.Watchdog in 'Source\IDE\Diagnostics\Argus.IDE.Diagnostics.Watchdog.pas',
+  Argus.Core.Files.ExternalChanges in 'Source\Core\Files\Argus.Core.Files.ExternalChanges.pas',
+  Argus.IDE.Files.Reloader in 'Source\IDE\Files\Argus.IDE.Files.Reloader.pas';
 
 end.

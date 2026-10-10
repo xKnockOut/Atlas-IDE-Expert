@@ -1,7 +1,8 @@
 ﻿unit Argus.IDE.CodeInsight.Composition;
 
 // Meldet den Code Insight-Manager, die Optionsseite "Argus" (#227), die
-// Compile-Ereignisse (#527) und den Einfrier-Wächter (#501) beim Laden des
+// Compile-Ereignisse (#527), den Einfrier-Wächter (#501) und das Neuladen
+// extern geänderter Dateien (#536) beim Laden des
 // Packages an und beim Entladen in umgekehrter Reihenfolge wieder ab (ADR 0006).
 
 interface
@@ -25,7 +26,8 @@ uses
   Argus.IDE.Build.Notifier,
   Argus.Core.Diagnostics.Hangs,
   Argus.IDE.Settings.Store,
-  Argus.IDE.Diagnostics.Watchdog;
+  Argus.IDE.Diagnostics.Watchdog,
+  Argus.IDE.Files.Reloader;
 
 var
   ManagerIndex: Integer = -1;
@@ -34,6 +36,7 @@ var
   Compile: TArgusIdeCompileEvents;
   Watchdog: TArgusWatchdog;
   Hangs: TArgusHangMonitor;
+  Reloader: TArgusFileReloader;
 
 const
   // Ab dieser Dauer ein Hinweis im Meldungsfenster (#501).
@@ -170,6 +173,13 @@ begin
     RegisterCompileEvents;
   if Watchdog = nil then
     RegisterWatchdog(LoadedAt);
+  if Reloader = nil then
+    Reloader := TArgusFileReloader.Create(
+      procedure(AText: string)
+      begin
+        if Manager <> nil then
+          Manager.Report(AText);
+      end);
   TArgusOptionsRegistration.Register(
     procedure
     begin
@@ -181,6 +191,7 @@ procedure Unregister;
 var
   Services: IOTACodeInsightServices;
 begin
+  FreeAndNil(Reloader);
   UnregisterWatchdog;
   FreeAndNil(Compile);
   TArgusOptionsRegistration.Unregister;
