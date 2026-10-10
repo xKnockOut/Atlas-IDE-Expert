@@ -66,6 +66,7 @@ uses
   Argus.Common.Lsp.DocWiki.Tests in 'Common\Lsp\Argus.Common.Lsp.DocWiki.Tests.pas',
   Argus.Common.Lsp.CompilerDirectives.Tests in 'Common\Lsp\Argus.Common.Lsp.CompilerDirectives.Tests.pas',
   Argus.Common.Lsp.Hover.Tests in 'Common\Lsp\Argus.Common.Lsp.Hover.Tests.pas',
+  Argus.Common.Lsp.HoverTypes.Tests in 'Common\Lsp\Argus.Common.Lsp.HoverTypes.Tests.pas',
   Argus.Common.Lsp.HoverValues.Tests in 'Common\Lsp\Argus.Common.Lsp.HoverValues.Tests.pas',
   Argus.Common.Lsp.LinkedEditing.Tests in 'Common\Lsp\Argus.Common.Lsp.LinkedEditing.Tests.pas',
   Argus.Common.Lsp.Formatting.Tests in 'Common\Lsp\Argus.Common.Lsp.Formatting.Tests.pas',

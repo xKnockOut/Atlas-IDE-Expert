@@ -160,7 +160,6 @@ type
     function ResolveAt(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition): TArray<TResolvedSymbol>;
     function TypeOf(const AResolved: TResolvedSymbol; out AType: TResolvedSymbol): Boolean;
     function FindMember(const AType: TResolvedSymbol; const AName: string; out AResult: TResolvedSymbol): Boolean;
-    function AncestorOf(const AType: TResolvedSymbol; out AAncestor: TResolvedSymbol): Boolean;
     function IsAttributeClass(const AType: TResolvedSymbol): Boolean;
     function EnclosingRoutines: TArray<TSyntaxNode>;
     function LookupLocal(const AName: string; out AResult: TResolvedSymbol): Boolean;
@@ -185,6 +184,8 @@ type
   public
     constructor Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc = nil);
     destructor Destroy; override;
+    /// <summary>Direkter Vorfahr eines Typs (ohne Angabe TObject bzw. IInterface); False ohne oder bei Helfern.</summary>
+    function AncestorOf(const AType: TResolvedSymbol; out AAncestor: TResolvedSymbol): Boolean;
     /// <summary>Löst den Bezeichner an APosition auf; bei gleich guten Überladungen die erste.</summary>
     function Resolve(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition): TResolvedSymbol;
     /// <summary>Wie Resolve, aber alle gleich guten Kandidaten, wenn die Überladung nicht eindeutig ist (#263).</summary>

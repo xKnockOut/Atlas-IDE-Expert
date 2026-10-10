@@ -191,6 +191,7 @@ contains
   Argus.Common.Lsp.Definition in 'Source\Lsp\Argus.Common.Lsp.Definition.pas',
   Argus.Common.Lsp.PublishedMembers in 'Source\Lsp\Argus.Common.Lsp.PublishedMembers.pas',
   Argus.Common.Lsp.Hover in 'Source\Lsp\Argus.Common.Lsp.Hover.pas',
+  Argus.Common.Lsp.HoverTypes in 'Source\Lsp\Argus.Common.Lsp.HoverTypes.pas',
   Argus.Common.Lsp.HoverValues in 'Source\Lsp\Argus.Common.Lsp.HoverValues.pas',
   Argus.Common.Lsp.LinkedEditing in 'Source\Lsp\Argus.Common.Lsp.LinkedEditing.pas',
   Argus.Common.Lsp.Formatting in 'Source\Lsp\Argus.Common.Lsp.Formatting.pas',
