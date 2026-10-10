@@ -181,6 +181,7 @@
         <DCCReference Include="Common\Editing\Argus.Common.Editing.Bookmarks.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.DocumentationCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.ComponentCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Argus.Common.Editing.WinApiCommands.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Argus.Common.Rules.Builtin.DataBinding.Tests.pas"/>
         <DCCReference Include="Common\Editing\Argus.Common.Editing.ClassCompletion.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Argus.Common.Dfm.Tests.pas"/>
