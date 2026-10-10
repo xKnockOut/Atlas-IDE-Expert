@@ -61,6 +61,8 @@ type
     IsHelper: Boolean;
     /// <summary>Namenspositionen weiterer Überladungen in SourceFile (#425).</summary>
     Overloads: TArray<TTextPosition>;
+    /// <summary>Routine mit Parametern (in irgendeiner Überladung), für Klammern beim Übernehmen (#430).</summary>
+    HasParameters: Boolean;
   end;
 
   TCompletionReadText = reference to function(const AFileName: string; out AText: string): Boolean;
@@ -444,6 +446,7 @@ var
     const AEdits: TArray<TRuleEdit> = nil);
   var
     Range: TTextRange;
+    Params: string;
   begin
     Scored.Score := MatchScore(AName, Context.Prefix, AMatching);
     if Scored.Score = TFuzzyMatch.NoMatch then
@@ -459,6 +462,10 @@ var
     Scored.Item.Depth := Member.Depth;
     Scored.Item.IsHelper := Member.IsHelper;
     Scored.Item.Overloads := nil;
+    Scored.Item.HasParameters := Member.MaxArgs > 0;
+    for Params in Member.VariantParams do
+      if Params <> '' then
+        Scored.Item.HasParameters := True;
     for Range in Member.Overloads do
       Scored.Item.Overloads := Scored.Item.Overloads + [Range.StartPos];
     // Der Editor filtert selbst nach dem getippten Wort; unscharfe Treffer bekommen es
@@ -625,6 +632,8 @@ begin
         Data.AddPair('depth', TJSONNumber.Create(AItems.Items[Index].Depth));
       if AItems.Items[Index].IsHelper then
         Data.AddPair('helper', TJSONBool.Create(True));
+      if AItems.Items[Index].HasParameters then
+        Data.AddPair('parameters', TJSONBool.Create(True));
       if Length(AItems.Items[Index].Overloads) > 0 then
       begin
         Overloads := TJSONArray.Create;

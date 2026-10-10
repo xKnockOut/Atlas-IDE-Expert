@@ -91,6 +91,8 @@ type
     IsHelper: Boolean;
     /// <summary>ResolveData der weiteren Überladungen (#425); die erste ist ResolveData.</summary>
     OverloadData: TArray<string>;
+    /// <summary>Routine mit Parametern (#430): beim Übernehmen Klammern ergänzen.</summary>
+    HasParameters: Boolean;
     /// <summary>Vom Controller gesetzt (#418).</summary>
     Usage: TArgusUsageMark;
     /// <summary>Zahl der Überladungen samt dieser (mindestens 1).</summary>

@@ -32,6 +32,7 @@ uses
   Argus.Core.Completion.Composite,
   Argus.Core.Completion.Controller,
   Argus.Core.Completion.Providers.Server,
+  Argus.Core.Completion.Parentheses,
   Argus.UI.Completion.Popup,
   Argus.IDE.Editor.KeyHook;
 
@@ -52,6 +53,9 @@ type
     FDetailRequested: Boolean;
     // Gezeigte Überladung des gewählten Eintrags (#425).
     FOverloadIndex: Integer;
+    // Automatisch eingefügte ")" nach dem Übernehmen (#430).
+    FAutoParen: TArgusAutoParen;
+    FOnOpenSignature: TProc;
     FController: TArgusCompletionController;
     FTimer: TTimer;
     FKeys: TArgusKeyClient;
@@ -75,12 +79,15 @@ type
     procedure ActiveChanged;
     procedure UpdateDetails;
     procedure ChangeOverload(ADelta: Integer);
+    procedure SkipAutoParen(const AView: IOTAEditView; ARemoveAt: Integer);
     procedure HideDetails;
     procedure InstallKeyHook;
     procedure RemoveKeyHook;
     /// <summary>Gehört die Taste gerade dem Popup?</summary>
     function WantsKey(AKey: TArgusNavigationKey): Boolean;
   public
+    /// <summary>Nach dem Übernehmen mit Klammern den Parameter-Hint öffnen (#430).</summary>
+    property OnOpenSignature: TProc read FOnOpenSignature write FOnOpenSignature;
     constructor Create(const ASession: TArgusSessionFunc; const ALog: TArgusLogProc);
     destructor Destroy; override;
     /// <summary>Öffnet die Vervollständigung an der Cursorstelle von AView; False, wenn nicht möglich.</summary>
@@ -516,9 +523,51 @@ begin
 end;
 
 procedure TArgusEditorCompletion.EditorModified(const AView: IOTAEditView);
+var
+  RemoveAt: Integer;
 begin
   if FController.Active then
     Recheck;
+  // ")" vor der automatischen Klammer (#430): diese überspringen.
+  if FAutoParen.Active and (AView <> nil) and (AView.Buffer <> nil) then
+    if AView.CursorPos.Line <> FAutoParen.Line then
+      FAutoParen.Stop
+    else
+    begin
+      FAutoParen.Update(TArgusEditorBuffer.LineText(AView, FAutoParen.Line), RemoveAt);
+      if RemoveAt >= 0 then
+        SkipAutoParen(AView, RemoveAt);
+    end;
+end;
+
+procedure TArgusEditorCompletion.SkipAutoParen(const AView: IOTAEditView; ARemoveAt: Integer);
+var
+  View: IOTAEditView;
+  Line: Integer;
+begin
+  View := AView;
+  Line := FAutoParen.Line;
+  if Line = 0 then
+    Line := View.CursorPos.Line;
+  // Nicht im Benachrichtigungsaufruf selbst ändern, sondern gleich danach.
+  TThread.ForceQueue(nil,
+    procedure
+    var
+      Text: string;
+      Offset: Integer;
+      Writer: IOTAEditWriter;
+      Cursor: TOTAEditPos;
+    begin
+      Text := TArgusEditorBuffer.Text(View.Buffer);
+      Offset := TArgusEditorBuffer.ByteOffset(Text, Line - 1, ARemoveAt);
+      Cursor := View.CursorPos;
+      Writer := View.Buffer.CreateUndoableWriter;
+      Writer.CopyTo(Offset);
+      Writer.DeleteTo(Offset + 1);
+      Writer := nil;
+      View.CursorPos := Cursor;
+      View.Paint;
+    end);
 end;
 
 procedure TArgusEditorCompletion.HideDetails;
@@ -677,6 +726,8 @@ var
   Writer: IOTAEditWriter;
   Cursor: TOTAEditPos;
   Character, Shift, CursorByte, CaretMarker: Integer;
+  NextChar: Char;
+  AutoParen: Boolean;
   CharPos: TOTACharPos;
 begin
   View := FView;
@@ -695,7 +746,17 @@ begin
   NewText := AItem.InsertText;
   if NewText = '' then
     NewText := AItem.Name;
-  // "$0" im Einfügetext (XMLDoc-Tags, #435): dort steht der Cursor danach.
+  // Klammern (#430): Methode mit Parametern, nicht über ein Commit-Zeichen, keine "(" dahinter.
+  if Character < Length(LineText) then
+    NextChar := LineText[Character + 1]
+  else
+    NextChar := #0;
+  AutoParen := TArgusIdeSettings.Current.AutoParentheses and (FCommitEnd < 0) and (Pos('$0', NewText) = 0) and
+    TArgusParentheses.Wanted(AItem.Kind in [TArgusItemKind.Method, TArgusItemKind.Function_,
+      TArgusItemKind.Procedure_, TArgusItemKind.Constructor_], AItem.HasParameters, NextChar);
+  if AutoParen then
+    NewText := NewText + '($0)';
+  // "$0" im Einfügetext (XMLDoc-Tags, #435, Klammern): dort steht der Cursor danach.
   CaretMarker := Pos('$0', NewText);
   if CaretMarker > 0 then
     Delete(NewText, CaretMarker, 2);
@@ -753,6 +814,20 @@ begin
     View.CursorPos := Cursor;
     View.MoveViewToCursor;
     View.Paint;
+  end;
+  if AutoParen and (CursorByte >= 0) then
+  begin
+    // Die ")" steht direkt hinter dem Cursor; ihre Lage verfolgen und den Hint öffnen.
+    LineText := TArgusEditorBuffer.LineText(View, View.CursorPos.Line);
+    FAutoParen := TArgusAutoParen.Start(View.CursorPos.Line, TLspSession.ColumnToIndex(LineText,
+      View.CursorPos.Col, TArgusEditorBuffer.TabWidth(View.Buffer)), LineText);
+    if Assigned(FOnOpenSignature) then
+      TThread.ForceQueue(nil,
+        procedure
+        begin
+          if Assigned(FOnOpenSignature) then
+            FOnOpenSignature();
+        end);
   end;
   Log(Format('Übernommen: %s (%d weitere Änderungen)', [AItem.Name, Length(AItem.AdditionalEdits)]));
   ActiveChanged;

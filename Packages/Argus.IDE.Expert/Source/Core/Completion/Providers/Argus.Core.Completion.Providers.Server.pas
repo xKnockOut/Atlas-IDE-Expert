@@ -130,6 +130,7 @@ begin
     Result.DeclaringClass := Data.GetValue<string>('container', '');
     Result.Depth := Data.GetValue<Integer>('depth', 0);
     Result.IsHelper := Data.GetValue('helper') is TJSONTrue;
+    Result.HasParameters := Data.GetValue('parameters') is TJSONTrue;
     Overloads := Data.GetValue('overloads');
     if Overloads is TJSONArray then
       for Value in TJSONArray(Overloads) do
