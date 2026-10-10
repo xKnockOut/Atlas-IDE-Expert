@@ -83,6 +83,10 @@ type
     Rank: Integer;
     /// <summary>Weitere Änderungen beim Übernehmen, z. B. der uses-Eintrag.</summary>
     AdditionalEdits: TArray<TArgusTextEdit>;
+    /// <summary>Ersetzt TextEdit statt des getippten Worts, z. B. bei Postfix-Vorlagen wie Liste.for (#188):
+    /// vom Anfang des Ausdrucks bis zum Cursor.</summary>
+    HasTextEdit: Boolean;
+    TextEdit: TArgusTextEdit;
     /// <summary>Daten der Quelle, um Details nachzufragen (#424); '' ohne.</summary>
     ResolveData: string;
     /// <summary>Vererbungstiefe bei Mitgliedern: 0 = eigener Typ, 1 = direkter Vorfahr (#419).</summary>
