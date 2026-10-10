@@ -90,6 +90,7 @@
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.DocWiki.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.CompilerDirectives.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.Status.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Argus.Common.Lsp.QualifiedNames.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.References.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.Rename.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Argus.Common.Lsp.Completion.Tests.pas"/>

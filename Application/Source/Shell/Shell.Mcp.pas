@@ -160,6 +160,28 @@ begin
         Exit(TMcpBuildTools.NoBuild(ARoot));
       Result := TMcpBuildTools.Report(Build, ARoot, TMcpServer.OptionalString(AArguments, 'project'));
     end);
+  AServer.AddTool('qualified_name',
+    'Voll qualifizierter Name des Symbols an einer Stelle (Unit.TKlasse.Methode), z. B. für Dokumentation.',
+    '{"type":"object","properties":{' +
+      '"file":{"type":"string","description":"Pfad der Unit (relativ zum Projekt oder absolut)"},' +
+      '"line":{"type":"integer","minimum":1,"description":"Zeile ab 1"},' +
+      '"column":{"type":"integer","minimum":1,"description":"Spalte ab 1"},' +
+      '"withParameters":{"type":"boolean","description":"Bei Routinen die Parametertypen anhängen"}},' +
+      '"required":["file","line","column"]}',
+    function(const AArguments: TJSONObject): string
+    var
+      FileName: string;
+      Line, Column: Integer;
+      WithParameters: Boolean;
+    begin
+      FileName := AGuard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+      if not (AArguments.TryGetValue<Integer>('line', Line) and AArguments.TryGetValue<Integer>('column', Column)) then
+        raise EMcpToolError.Create('Argumente "line" und "column" fehlen');
+      if not AArguments.TryGetValue<Boolean>('withParameters', WithParameters) then
+        WithParameters := False;
+      ACode.Namespaces := AWorkspace.Namespaces;
+      Result := ACode.QualifiedName(FileName, Line, Column, WithParameters);
+    end);
   AServer.AddTool('get_diagnostics',
     'Syntaxfehler und Befunde der Prüfregeln (wie --check) für eine Datei oder das ganze Projekt.',
     TMcpServer.StringSchema(['file'], ['Pfad einer .pas-Datei; leer = alle Projektdateien'], 0),

@@ -14,6 +14,8 @@ type
     [Test]
     procedure ShowsIncomingAndOutgoingCalls;
     [Test]
+    procedure GivesQualifiedName;
+    [Test]
     procedure ReportsUnknownSymbol;
     [Test]
     procedure ListsDiagnosticsWithLocation;
@@ -36,6 +38,7 @@ uses
   Argus.Common.Rules.Contract,
   Argus.Common.Rules.Builtin,
   Argus.Common.Lsp.References,
+  Argus.Common.Mcp.Server,
   Argus.Common.Mcp.CodeTools;
 
 const
@@ -126,6 +129,26 @@ begin
     Text := Tools.CallHierarchy('TWorker.Step', TMcpCallDirection.Incoming);
     Assert.Contains(Text, '← TWorker.Run');
     Assert.DoesNotContain(Text, 'Ruft auf:');
+  finally
+    Tools.Free;
+  end;
+end;
+
+procedure TMcpCodeToolsTests.GivesQualifiedName;
+var
+  Tools: TMcpCodeTools;
+begin
+  Tools := NewTools;
+  try
+    // Zeile 10, Spalte 5: "Run" in "W.Run;".
+    Assert.AreEqual('Worker.TWorker.Run', Tools.QualifiedName(MainFile, 10, 5, False));
+    Assert.AreEqual('Worker.TWorker.Run()', Tools.QualifiedName(MainFile, 10, 5, True));
+    Assert.AreEqual('Main.Start.W', Tools.QualifiedName(MainFile, 7, 3, False));
+    Assert.WillRaise(
+      procedure
+      begin
+        Tools.QualifiedName(MainFile, 2, 1, False);
+      end, EMcpToolError);
   finally
     Tools.Free;
   end;

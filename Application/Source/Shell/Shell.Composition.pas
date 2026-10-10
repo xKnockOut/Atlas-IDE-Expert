@@ -46,6 +46,7 @@ uses
   Argus.Common.Lsp.CodeLens,
   Argus.Common.Lsp.SemanticTokens,
   Argus.Common.Lsp.Status,
+  Argus.Common.Lsp.QualifiedNames,
   Argus.Common.JsonRpc.Statistics,
   Argus.Common.Lsp.WatchedFiles,
   Argus.Common.Lsp.IdeBuild,
@@ -676,6 +677,15 @@ begin
       FLogger.Info(Format('%d binäre Formulare in Text umgewandelt, %d Sicherungskopien (.bak)',
         [Converted, Backups]));
       Result := TJSONString.Create(Format('%d Formulare umgewandelt', [Converted]));
+    end);
+  FCommands.Register(TQualifiedNames.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TQualifiedNames.Execute(FDocuments, FIndex,
+        function(const AUnitName: string): Boolean
+        begin
+          Result := EnsureUnit(AUnitName);
+        end, FDefinition.Namespaces, AArguments);
     end);
   FCommands.Register(StatusCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1677,6 +1687,7 @@ begin
   Commands.Add(CompileCommand);
   Commands.Add(SelectBuildCommand);
   Commands.Add(RebuildIndexCommand);
+  Commands.Add(TQualifiedNames.Command);
   Result.AddPair('executeCommandProvider', TJSONObject.Create(TJSONPair.Create('commands', Commands)));
   Result.AddPair('workspace', TLspWorkspaceFolders.Capability);
 end;

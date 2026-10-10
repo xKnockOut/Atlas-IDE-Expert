@@ -107,6 +107,7 @@ contains
   Argus.Common.Lsp.SemanticTokens in 'Source\Lsp\Argus.Common.Lsp.SemanticTokens.pas',
   Argus.Common.Lsp.Commands in 'Source\Lsp\Argus.Common.Lsp.Commands.pas',
   Argus.Common.Lsp.Status in 'Source\Lsp\Argus.Common.Lsp.Status.pas',
+  Argus.Common.Lsp.QualifiedNames in 'Source\Lsp\Argus.Common.Lsp.QualifiedNames.pas',
   Argus.Common.Lsp.DocWiki in 'Source\Lsp\Argus.Common.Lsp.DocWiki.pas',
   Argus.Common.Lsp.CompilerDirectives in 'Source\Lsp\Argus.Common.Lsp.CompilerDirectives.pas',
   Argus.Common.Lsp.Colors in 'Source\Lsp\Argus.Common.Lsp.Colors.pas',

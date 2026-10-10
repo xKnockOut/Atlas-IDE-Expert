@@ -7,6 +7,7 @@ Server und Erweiterung tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Qualifizierten Namen des Symbols unter dem Cursor kopieren: Befehl `argus.server.qualifiedName`, VS-Code-Befehl und MCP-Werkzeug `qualified_name` (#128).
 - Release-Prozess mit GitHub Releases, optionaler Code-Signierung und Marketplace/Open VSX (#83).
 - Pull-Diagnosen und projektweite Diagnosen (#82).
 - VS-Code-Erweiterung als `.vsix`, Konfiguration für Claude Code und Neovim (#49).
