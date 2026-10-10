@@ -129,6 +129,7 @@
         <DCCReference Include="Support\Argus.Tests.LeakMonitor.Tests.pas"/>
         <DCCReference Include="Support\Argus.Tests.RuleAssert.pas"/>
         <DCCReference Include="Common\Rules\Argus.Common.Rules.Engine.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Argus.Common.Rules.GoldenCorpus.Tests.pas"/>
         <DCCReference Include="Common\Rules\Argus.Common.Rules.Profiles.Tests.pas"/>
         <DCCReference Include="Common\Rules\Argus.Common.Rules.Confidence.Tests.pas"/>
         <DCCReference Include="Common\Rules\Argus.Common.Rules.Output.Tests.pas"/>

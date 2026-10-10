@@ -38,6 +38,24 @@ wird. Mehrere Regeln werden mit Komma getrennt. Zeilen mit
 nicht anschlagen darf. Ein Werkzeug für #152 kann so Treffer und
 Fehlalarme zählen, ohne Zeilennummern zu pflegen.
 
+## Regelqualität (#152)
+
+Der DUnitX-Test `TGoldenCorpusTests.ReferenceProjectMatchesMarkers` prüft alle
+Units unter `Source` mit den eingebauten Regeln:
+
+- Fehlt ein erwarteter Treffer, schlägt der Test fehl.
+- Meldet eine Regel etwas auf einer `KEIN-TREFFER`-Zeile, schlägt der Test fehl.
+- Eine Regel-ID, die weder im Regelkatalog noch in
+  `geplante-regeln.txt` steht, lässt den Test fehlschlagen. IDs aus
+  `geplante-regeln.txt` werden mit Warnung übersprungen.
+
+Der Test protokolliert außerdem die Laufzeit je Regel.
+
+Bewertungen von Treffern aus echten Projekten stehen in
+`bewertungen.csv` mit den Spalten Regel-ID, Datei, Zeile, Bewertung und Datum.
+Die Bewertung ist `richtig` oder `falsch`.
+`pwsh Tools/Get-RuleQuality.ps1` berechnet daraus die Fehlalarmquote je Regel.
+
 ## Öffnen
 
 `RefGruppe.groupproj` in RAD Studio öffnen. Die `.dproj`-Dateien sind

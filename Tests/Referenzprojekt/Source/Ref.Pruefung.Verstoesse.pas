@@ -43,8 +43,8 @@ end;
 
 procedure UngenutzteVariable;
 var
-  Unbenutzt: Integer; // ERWARTET: unused-variable
-  Benutzt: Integer; // KEIN-TREFFER: unused-variable
+  Unbenutzt: Integer; // ERWARTET: unused-local
+  Benutzt: Integer; // KEIN-TREFFER: unused-local
 begin
   Benutzt := 1;
   if Benutzt > 0 then
@@ -87,13 +87,13 @@ end;
 
 procedure SqlVerkettet(AAbfrage: TFDQuery; const AName: string);
 begin
-  AAbfrage.SQL.Text := 'SELECT * FROM Kunden WHERE Name = ' + QuotedStr(AName); // ERWARTET: sql-concatenation
+  AAbfrage.SQL.Text := 'SELECT * FROM Kunden WHERE Name = ''' + AName + ''''; // ERWARTET: security-sql-injection
   AAbfrage.Open;
 end;
 
 procedure SqlMitParameter(AAbfrage: TFDQuery; const AName: string);
 begin
-  AAbfrage.SQL.Text := 'SELECT * FROM Kunden WHERE Name = :Name'; // KEIN-TREFFER: sql-concatenation
+  AAbfrage.SQL.Text := 'SELECT * FROM Kunden WHERE Name = :Name'; // KEIN-TREFFER: security-sql-injection
   AAbfrage.ParamByName('Name').AsString := AName;
   AAbfrage.Open;
 end;
