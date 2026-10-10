@@ -24,7 +24,8 @@ uses
   Argus.Core.Lsp.Adapters.ServerProcess,
   Argus.Core.Lsp.Session,
   Argus.IDE.Completion.Editor,
-  Argus.IDE.Signature.Editor;
+  Argus.IDE.Signature.Editor,
+  Argus.IDE.Hover.Editor;
 
 type
   TArgusCodeInsightManager = class(TInterfacedObject, IOTACodeInsightManager, IOTACodeInsightSelection)
@@ -36,6 +37,8 @@ type
     FDiagnose: Boolean;
     FCompletion: TArgusEditorCompletion;
     FSignature: TArgusEditorSignature;
+    /// <summary>Eigener Hover-Tooltip (#442).</summary>
+    FHover: TArgusEditorHover;
     function EnsureSession: Boolean;
     procedure StopSession;
     procedure ReportError(const AMessage: string);
@@ -121,11 +124,24 @@ begin
   FEnabled := True;
   FDiagnose := DiagnoseEnabled;
   Diagnose('Plugin geladen: ' + GetModuleName(HInstance));
+  FHover := TArgusEditorHover.Create(
+    function: TLspSession
+    begin
+      if EnsureSession then
+        Result := FSession
+      else
+        Result := nil;
+    end,
+    procedure(const AMessage: string)
+    begin
+      Diagnose(AMessage);
+    end);
 end;
 
 destructor TArgusCodeInsightManager.Destroy;
 begin
   // Vor der Sitzung: wartet auf laufende Anfragen und meldet Tasten und Beobachter ab.
+  FreeAndNil(FHover);
   FreeAndNil(FSignature);
   FreeAndNil(FCompletion);
   StopSession;
@@ -321,6 +337,9 @@ var
 begin
   Result := '';
   Diagnose(Format('GetHintText(%d, %d) aufgerufen', [HintLine, HintCol]));
+  // Eigener Tooltip (#442): die IDE zeigt keinen zweiten.
+  if TArgusIdeSettings.Current.HoverTooltip then
+    Exit;
   try
     View := CurrentEditView;
     if (View = nil) or (View.Buffer = nil) or not EnsureSession then

@@ -27,6 +27,8 @@ type
     [Test]
     procedure ReadsAllHoverForms;
     [Test]
+    procedure ReadsHoverParts;
+    [Test]
     procedure MapsEditorColumnsWithTabs;
     [Test]
     procedure SendsOpenOnceAndChangeOnlyWhenTextChanged;
@@ -215,6 +217,35 @@ begin
   Assert.AreEqual('B', Text('{"contents":{"kind":"plaintext","value":"B"}}'));
   Assert.AreEqual('C' + sLineBreak + 'D', Text('{"contents":["C",{"language":"delphi","value":"D"}]}'));
   Assert.AreEqual('', Text('null'));
+end;
+
+procedure TLspSessionTests.ReadsHoverParts;
+var
+  Hover: TJSONValue;
+  Parts: TLspHoverParts;
+begin
+  // Mit Teilen des Servers (#442).
+  Hover := TJSONObject.ParseJSONValue('{"contents":"x","argus":{"declaration":"procedure BeginUpdate;",' +
+    '"unit":"System.Classes","documentation":"Unterdrückt das Neuzeichnen."}}');
+  try
+    Parts := TLspHoverParts.FromHover(Hover);
+    Assert.AreEqual('procedure BeginUpdate;', Parts.Declaration);
+    Assert.AreEqual('System.Classes', Parts.UnitName);
+    Assert.AreEqual('Unterdrückt das Neuzeichnen.', Parts.Documentation);
+    Assert.IsTrue(Parts.Found);
+  finally
+    Hover.Free;
+  end;
+  // Ältere Server: erster Absatz Deklaration, Rest Doku.
+  Hover := TJSONObject.ParseJSONValue('{"contents":"function Max(A, B: Integer): Integer;\n\nGrößerer Wert."}');
+  try
+    Parts := TLspHoverParts.FromHover(Hover);
+    Assert.AreEqual('function Max(A, B: Integer): Integer;', Parts.Declaration);
+    Assert.AreEqual('Größerer Wert.', Parts.Documentation);
+  finally
+    Hover.Free;
+  end;
+  Assert.IsFalse(TLspHoverParts.FromHover(nil).Found);
 end;
 
 procedure TLspSessionTests.MapsEditorColumnsWithTabs;

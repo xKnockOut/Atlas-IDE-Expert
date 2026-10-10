@@ -114,6 +114,17 @@ Schreibweise: `|` steht für die Cursorposition.
 | P10 | Methode mit Standardwert im Detailpanel ansehen | ` = Wert` in der Deklaration gedämpft |
 | P8 | Während der Hint offen ist, `.` tippen, sodass die Vervollständigung aufgeht | Hint steht über der Zeile, Liste darunter |
 
+## Hover-Tooltip (#442)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| H1 | Maus 0,5 s über `BeginUpdate` (in `Lines.BeginUpdate`) halten | Argus-Tooltip unter dem Wort: eingefärbte Deklaration, „System.Classes“, Beschreibung (höchstens 4 Zeilen); kein zweiter IDE-Tooltip |
+| H2 | Maus vom Wort in den Tooltip bewegen | Tooltip bleibt offen |
+| H3 | Maus aus Wort und Tooltip heraus | Tooltip schließt nach etwa 0,3 s |
+| H4 | Bei offenem Tooltip tippen, klicken oder scrollen | Tooltip schließt sofort |
+| H5 | Über einer Konstante verweilen | Zusätzlich „= Wert“ |
+| H6 | Optionen › Argus › „Eigener Tooltip …“ aus | Wieder der Tooltip der IDE |
+
 ## Monitor und Zoom (#412, #445)
 
 | Nr. | Schritte | Erwartet |

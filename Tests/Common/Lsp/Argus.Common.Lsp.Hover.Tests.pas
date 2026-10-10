@@ -41,6 +41,8 @@ type
     [Test]
     procedure PlainTextKeepsLiteralAsterisks;
     [Test]
+    procedure ArgusPartsForTooltip;
+    [Test]
     procedure DetectsMarkdownSupport;
     [Test]
     procedure LinksLibrarySymbolsToDocWiki;
@@ -246,6 +248,26 @@ begin
   Info.Value := '10';
   Info.Messages := '`WM_PAINT`';
   Assert.AreEqual('Max = 10;'#10#10'Veraltet'#10#10'Wert: 10'#10#10'WM_PAINT', Info.ToPlainText);
+end;
+
+procedure TLspHoverTests.ArgusPartsForTooltip;
+var
+  Info: THoverInfo;
+  Json: TJSONObject;
+begin
+  Info := Default(THoverInfo);
+  Info.Declaration := 'procedure BeginUpdate;';
+  Info.UnitName := 'System.Classes';
+  Info.Documentation := 'Unterdrückt das **Neuzeichnen**.';
+  Json := TLspHover.ArgusJson(Info);
+  try
+    Assert.AreEqual('procedure BeginUpdate;', Json.GetValue<string>('declaration'));
+    Assert.AreEqual('System.Classes', Json.GetValue<string>('unit'));
+    Assert.AreEqual('Unterdrückt das Neuzeichnen.', Json.GetValue<string>('documentation'));
+    Assert.IsNull(Json.GetValue('value'), 'leere Teile entfallen');
+  finally
+    Json.Free;
+  end;
 end;
 
 procedure TLspHoverTests.PlainTextKeepsLiteralAsterisks;
