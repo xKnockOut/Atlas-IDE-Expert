@@ -56,6 +56,8 @@ type
     IsDefault: Boolean;
     /// <summary>Deklaration einer Methode mit virtual, dynamic, abstract oder override (#125).</summary>
     IsVirtual: Boolean;
+    /// <summary>Datei der Deklaration, wenn sie aus einer $I-Datei kommt (#500); '' = Datei der Unit.</summary>
+    FileName: string;
     function QualifiedName: string;
   end;
 
@@ -78,6 +80,8 @@ type
     /// <summary>Hat einen initialization- oder finalization-Abschnitt (#284); solche Units
     /// entfernt "ungenutzte uses entfernen" nie, weil sie etwas registrieren können.</summary>
     HasInitialization: Boolean;
+    /// <summary>Datei, in der ASymbol steht: seine Include-Datei (#500), sonst FileName.</summary>
+    function SymbolFile(const ASymbol: TIndexSymbol): string;
   end;
 
   TSymbolLocation = record
@@ -139,7 +143,17 @@ type
   /// <summary>Abbruch des Aufbaus abfragen.</summary>
   TIndexCancelled = reference to function: Boolean;
 
+  TIndexFiles = class
+  public
+    /// <summary>Unit zu AFileName: die Unit dieser Datei, sonst eine Unit, die sie per $I einbindet (#500).</summary>
+    class function UnitOf(const AIndex: ISymbolIndex; const AFileName: string; out AUnit: TUnitIndex): Boolean;
+      static;
+  end;
+
 implementation
+
+uses
+  System.StrUtils;
 
 { TIndexSymbol }
 
@@ -149,6 +163,33 @@ begin
     Result := Name
   else
     Result := Container + '.' + Name;
+end;
+
+{ TUnitIndex }
+
+function TUnitIndex.SymbolFile(const ASymbol: TIndexSymbol): string;
+begin
+  if ASymbol.FileName <> '' then
+    Result := ASymbol.FileName
+  else
+    Result := FileName;
+end;
+
+{ TIndexFiles }
+
+class function TIndexFiles.UnitOf(const AIndex: ISymbolIndex; const AFileName: string; out AUnit: TUnitIndex): Boolean;
+var
+  Candidate: TUnitIndex;
+begin
+  Result := (AIndex <> nil) and AIndex.FindFile(AFileName, AUnit);
+  if Result or (AIndex = nil) then
+    Exit;
+  for Candidate in AIndex.Units do
+    if IndexText(AFileName, Candidate.Includes) >= 0 then
+    begin
+      AUnit := Candidate;
+      Exit(True);
+    end;
 end;
 
 { TFileChange }

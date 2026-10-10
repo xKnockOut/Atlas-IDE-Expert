@@ -449,7 +449,7 @@ begin
     begin
       if SameText(Resolved.FileName, AFileName) then
         OwnerUnit := TIndexExtractor.Extract(ATree, AFileName)
-      else if not AIndex.FindFile(Resolved.FileName, OwnerUnit) then
+      else if not TIndexFiles.UnitOf(AIndex, Resolved.FileName, OwnerUnit) then
         Exit;
       HasInterface := False;
       for Symbol in OwnerUnit.Symbols do
@@ -459,7 +459,8 @@ begin
       // Rümpfe globaler Routinen aus interface weglassen: sie dürfen die Parameter auslassen.
       for Symbol in OwnerUnit.Symbols do
         if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Name, Resolved.Name) and
-          SameText(Symbol.Container, Resolved.Container) and (Symbol.InInterface or not HasInterface) then
+          SameText(Symbol.Container, Resolved.Container) and (Symbol.InInterface or not HasInterface) and
+          SameText(OwnerUnit.SymbolFile(Symbol), Resolved.FileName) then
           Starts.Add(Symbol.Range.StartPos);
     end;
     for Start in Starts do

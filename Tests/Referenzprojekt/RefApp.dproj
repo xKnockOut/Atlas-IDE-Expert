@@ -32,6 +32,8 @@
         <DCCReference Include="Source\Ref.Sprache.Merkmale.pas"/>
         <DCCReference Include="Source\Ref.Daten.Kunden.pas"/>
         <DCCReference Include="Source\Ref.Pruefung.Verstoesse.pas"/>
+        <DCCReference Include="Source\Ref.Daten.Auftraege.pas"/>
+        <DCCReference Include="Source\Ref.Daten.Verwendung.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

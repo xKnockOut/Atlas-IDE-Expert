@@ -209,7 +209,7 @@ begin
           if AFilter(Symbol) then
           begin
             Location.UnitName := UnitIndex.UnitName;
-            Location.FileName := UnitIndex.FileName;
+            Location.FileName := UnitIndex.SymbolFile(Symbol);
             Location.Symbol := Symbol;
             Found.Add(Location);
           end;

@@ -9,7 +9,7 @@
 //     "iu":[...],"mu":[...],"l":Bibliothek,"c":Kompakt,"ini":Initialisierung,"s":[[Name,Container,Art,
 //     L1,C1,L2,C2, SL1,SC1,SL2,SC2, InInterface, [Vorfahren], Typ, Typargumente,
 //     Vorfahr-Typargumente, Typparameter, Sichtbarkeit, MinArgs, MaxArgs,
-//     [Parametertypen], Default, Virtuell], ...]}]}
+//     [Parametertypen], Default, Virtuell, Include-Datei], ...]}]}
 
 interface
 
@@ -20,7 +20,7 @@ uses
 type
   TIndexCache = class
   public
-    const FormatVersion = 6;
+    const FormatVersion = 7;
     class function Serialize(const AUnits: TArray<TUnitIndex>): string; static;
     /// <summary>Liest den Cache; bei falscher Version oder kaputtem JSON leer.</summary>
     class function Deserialize(const AText: string): TArray<TUnitIndex>; static;
@@ -97,13 +97,14 @@ begin
   Result.AddElement(StringsToJson(ASymbol.ParamTypes));
   Result.Add(ASymbol.IsDefault);
   Result.Add(ASymbol.IsVirtual);
+  Result.Add(ASymbol.FileName);
 end;
 
 function JsonToSymbol(AItems: TJSONArray; out ASymbol: TIndexSymbol): Boolean;
 var
   Kind: Integer;
 begin
-  Result := AItems.Count >= 23;
+  Result := AItems.Count >= 24;
   if not Result then
     Exit;
   Kind := IntAt(AItems, 2);
@@ -131,6 +132,7 @@ begin
   ASymbol.ParamTypes := JsonToStrings(AItems.Items[20]);
   ASymbol.IsDefault := (AItems.Items[21] is TJSONBool) and TJSONBool(AItems.Items[21]).AsBoolean;
   ASymbol.IsVirtual := (AItems.Items[22] is TJSONBool) and TJSONBool(AItems.Items[22]).AsBoolean;
+  ASymbol.FileName := AItems.Items[23].Value;
 end;
 
 { TIndexCache }

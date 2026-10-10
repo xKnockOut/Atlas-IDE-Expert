@@ -21,6 +21,8 @@ Projektgruppe des Servers und wird von dessen Build nicht übersetzt.
 | `Source/Ref.Sprache.Merkmale.pas` | Generics, Interfaces, Class Helper, anonyme Methoden, Inline-Variablen, `{$IFDEF WIN32/WIN64}` |
 | `Source/Ref.Daten.Kunden.pas` | FireDAC-Zugriffe für die Framework-Profile |
 | `Source/Ref.Pruefung.Verstoesse.pas` | Bewusst eingebaute Regelverstöße |
+| `Source/Ref.Daten.Auftraege.pas` mit `.inc`, `.Rumpf.inc` | Deklarationen und Rümpfe aus Include-Dateien (#500) |
+| `Source/Ref.Daten.Verwendung.pas` | Nutzt die Typen aus der Include-Datei aus einer anderen Unit (#500) |
 
 ## Markierung erwarteter Treffer
 
