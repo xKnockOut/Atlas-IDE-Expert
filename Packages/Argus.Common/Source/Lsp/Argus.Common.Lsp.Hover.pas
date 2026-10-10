@@ -46,6 +46,8 @@ type
     Value: string;
     /// <summary>Hinweis bei deprecated, platform, experimental (#38); sonst ''.</summary>
     Deprecation: string;
+    /// <summary>In der Formulardatei gesetzte Werte eines Komponentenfelds (#126); sonst ''.</summary>
+    FormValues: string;
     function Found: Boolean;
     function ToMarkdown: string;
     /// <summary>Derselbe Inhalt ohne Markdown-Auszeichnung.</summary>
@@ -94,6 +96,9 @@ uses
   Argus.Common.Lsp.Positions,
   Argus.Common.Lsp.Definition,
   Argus.Common.Lsp.PublishedMembers,
+  Argus.Common.Dfm.Contract,
+  Argus.Common.Dfm.FormInfo,
+  Argus.Common.Dfm.Parser,
   Argus.Common.Lsp.DocWiki,
   Argus.Common.Lsp.MessageHandlers,
   Argus.Common.Lsp.HoverValues,
@@ -246,6 +251,8 @@ begin
     Result := Result + #10#10 + '---' + #10#10 + Members;
   if Messages <> '' then
     Result := Result + #10#10 + '---' + #10#10 + Messages;
+  if FormValues <> '' then
+    Result := Result + #10#10 + '---' + #10#10 + FormValues;
 end;
 
 function THoverInfo.ToPlainText: string;
@@ -329,6 +336,38 @@ begin
   Result := False;
 end;
 
+/// <summary>Werte des Komponentenfelds AFieldName aus der Formulardatei neben AUnitFile (#126); nur die eigene
+/// Formulardatei, ohne Vorfahr-Formulare (#115 nicht geplant).</summary>
+function FormFieldValues(const AUnitFile, AFormClass, AFieldName, AOpenFile, AOpenText: string;
+  const AReadText: THoverReadText): string;
+var
+  FormFile, FormText, Extension: string;
+  Document: TDfmDocument;
+  Obj: TDfmObject;
+begin
+  Result := '';
+  FormText := '';
+  for Extension in TArray<string>.Create('.dfm', '.fmx') do
+  begin
+    FormFile := ChangeFileExt(AUnitFile, Extension);
+    if SameText(FormFile, AOpenFile) then
+      FormText := AOpenText
+    else if not (Assigned(AReadText) and AReadText(FormFile, FormText)) then
+      FormText := '';
+    if FormText <> '' then
+      Break;
+  end;
+  if FormText = '' then
+    Exit;
+  Document := TDfmParser.Parse(FormText);
+  try
+    Obj := TFormInfo.FindComponent(Document, AFormClass, AFieldName);
+    if Obj <> nil then
+      Result := TFormInfo.ComponentMarkdown(Obj, FormFile);
+  finally
+    Document.Free;
+  end;end;
+
 class function TLspHover.InfoAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const ATreeText, AFileName: string; const APosition: TTextPosition;
   const AReadText: THoverReadText; const ADelphiVersion: string): THoverInfo;
@@ -399,7 +438,10 @@ begin
       if Symbol.Kind = TIndexSymbolKind.Constant then
         Result.Value := THoverValues.ConstantValue(Result.Declaration)
       else if Symbol.Kind = TIndexSymbolKind.EnumMember then
-        Result.Value := 'Ord = ' + IntToStr(EnumOrdinal(OwnerUnit, Symbol));
+        Result.Value := 'Ord = ' + IntToStr(EnumOrdinal(OwnerUnit, Symbol))
+      else if (Symbol.Kind = TIndexSymbolKind.Field) and (Symbol.Container <> '') then
+        Result.FormValues := FormFieldValues(Targets[0].FileName, Symbol.Container, Symbol.Name,
+          AFileName, ATreeText, AReadText);
       Break;
     end;
   for Symbol in OwnerUnit.Symbols do
