@@ -11,6 +11,9 @@ type
   [TestFixture]
   TClassCommandsTests = class
   public
+    /// <summary>Führt einen Befehl vorab aus; einmalig angelegte Daten zählen sonst als Leck des ersten Tests.</summary>
+    [SetupFixture]
+    procedure WarmUp;
     [Test]
     procedure ImplAddsMissingBodies;
     [Test]
@@ -141,6 +144,12 @@ begin
   finally
     Tree.Free;
   end;
+end;
+
+procedure TClassCommandsTests.WarmUp;
+begin
+  Expand('/impl');
+  Parses(WithCommand(''));
 end;
 
 procedure TClassCommandsTests.ImplAddsMissingBodies;
