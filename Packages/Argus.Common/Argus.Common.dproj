@@ -129,6 +129,7 @@
         <DCCReference Include="Source\Editing\Argus.Common.Editing.UsesClause.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.UsesActions.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.UsesCommand.pas"/>
+        <DCCReference Include="Source\Editing\Argus.Common.Editing.SlashCommands.pas"/>
         <DCCReference Include="Source\Semantics\Argus.Common.Semantics.UnresolvedNames.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Architecture.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Concurrency.pas"/>
@@ -141,6 +142,7 @@
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.FormFields.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.Security.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.DataBinding.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Argus.Common.Rules.Builtin.SlashCommands.pas"/>
         <DCCReference Include="Source\Editing\Argus.Common.Editing.ClassCompletion.pas"/>
         <DCCReference Include="Source\Dfm\Argus.Common.Dfm.Contract.pas"/>
         <DCCReference Include="Source\Dfm\Argus.Common.Dfm.Parser.pas"/>

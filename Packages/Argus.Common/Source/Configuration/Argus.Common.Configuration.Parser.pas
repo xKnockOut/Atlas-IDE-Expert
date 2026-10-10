@@ -56,6 +56,7 @@ type
     procedure ReadOverrides(ANode: TJsonNode);
     procedure ReadExclude(ANode: TJsonNode);
     procedure ReadUsesKeep(ANode: TJsonNode);
+    procedure ReadSlashCommands(ANode: TJsonNode);
     procedure ReadSortUses(ANode: TJsonNode);
     procedure ReadInlayHints(ANode: TJsonNode);
     procedure ReadHighlight(ANode: TJsonNode);
@@ -359,6 +360,39 @@ begin
   for Index := 0 to ANode.Count - 1 do
     if ExpectString(ANode[Index], 'usesKeep', Value) then
       FSettings.UsesKeep := FSettings.UsesKeep + [Value];
+end;
+
+procedure TValidator.ReadSlashCommands(ANode: TJsonNode);
+var
+  Index, Item: Integer;
+  Key, Value: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"slashCommands" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if Key = 'enabled' then
+      ExpectBoolean(ANode[Index], Key, FSettings.SlashCommands)
+    else if Key = 'disabled' then
+    begin
+      if ANode[Index].Kind <> TJsonKind.Array_ then
+      begin
+        ReportNode(ANode[Index], '"slashCommands.disabled" muss eine Liste von Befehlsnamen sein');
+        Continue;
+      end;
+      FSettings.SlashCommandsDisabled := nil;
+      for Item := 0 to ANode[Index].Count - 1 do
+        if ExpectString(ANode[Index][Item], 'disabled', Value) then
+          FSettings.SlashCommandsDisabled := FSettings.SlashCommandsDisabled + [Value];
+    end
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "slashCommands.%s"', [Key]), False);
+  end;
 end;
 
 procedure TValidator.ReadSortUses(ANode: TJsonNode);
@@ -720,6 +754,8 @@ begin
         ReadCompletion(Value)
       else if Key = 'usesCommand' then
         ExpectBoolean(Value, Key, FSettings.UsesCommand)
+      else if Key = 'slashCommands' then
+        ReadSlashCommands(Value)
       else if Key = 'sortUses' then
         ReadSortUses(Value)
       else if Key = 'usesKeep' then
@@ -940,6 +976,11 @@ begin
       Result.Completion := FileSettings.Completion
     else if Key = 'usesCommand' then
       Result.UsesCommand := FileSettings.UsesCommand
+    else if Key = 'slashCommands' then
+    begin
+      Result.SlashCommands := FileSettings.SlashCommands;
+      Result.SlashCommandsDisabled := FileSettings.SlashCommandsDisabled;
+    end
     else if Key = 'sortUses' then
     begin
       Result.SortUses := FileSettings.SortUses;

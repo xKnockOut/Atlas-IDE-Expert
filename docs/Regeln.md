@@ -51,6 +51,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`dfm-duplicate-binding`](#dfm-duplicate-binding) | Zwei Controls an demselben Feld | Bug | Warnung |
 | [`foreign-form-control-access`](#foreign-form-control-access) | Zugriff auf Controls eines anderen Formulars | Code Smell | Warnung |
 | [`security-sql-injection`](#security-sql-injection) | SQL-Text aus zusammengesetzten Werten (SQL-Injection) | Schwachstelle | Warnung |
+| [`slash-command`](#slash-command) | Schnellbefehl nicht ausgeführt | Code Smell | Hinweis |
 
 <a id="syntax"></a>
 ## syntax
@@ -1132,4 +1133,23 @@ Richtig:
 ```pascal
 Q.SQL.Text := 'select * from K where N = :N';
 Q.ParamByName('N').AsString := Edit1.Text;
+```
+
+<a id="slash-command"></a>
+## slash-command
+
+**Schnellbefehl nicht ausgeführt** · Code Smell · Hinweis
+
+Eine Zeile, die mit /name beginnt, wurde nicht ausgeführt und steht noch im Code: Der Befehl ist unbekannt, abgeschaltet (slashCommands.disabled) oder passt an dieser Stelle nicht. Die Meldung nennt den Grund.
+
+Mit Treffer:
+
+```pascal
+/gibtsnicht X
+```
+
+Richtig:
+
+```pascal
+/uses System.Classes
 ```
