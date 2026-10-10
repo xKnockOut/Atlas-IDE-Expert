@@ -102,8 +102,9 @@ const
 /// <summary>Wie TDocumentUris.ToPath es für die Datei zurückgibt, plattformunabhängig.</summary>
 function SameFile(const ALeft, ARight: string): Boolean;
 begin
-  Result := SameText(ExtractFileName(StringReplace(ALeft, '\', '/', [rfReplaceAll])),
-    ExtractFileName(StringReplace(ARight, '\', '/', [rfReplaceAll])));
+  // ExtractFileName trennt unter Windows nur an "\" und ":", daher "/" vereinheitlichen.
+  Result := SameText(ExtractFileName(StringReplace(ALeft, '/', '\', [rfReplaceAll])),
+    ExtractFileName(StringReplace(ARight, '/', '\', [rfReplaceAll])));
 end;
 
 { TFakeHost }
