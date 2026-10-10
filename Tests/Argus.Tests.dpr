@@ -57,6 +57,7 @@ uses
   Argus.Common.Lsp.Status.Tests in 'Common\Lsp\Argus.Common.Lsp.Status.Tests.pas',
   Argus.Common.Lsp.QualifiedNames.Tests in 'Common\Lsp\Argus.Common.Lsp.QualifiedNames.Tests.pas',
   Argus.Common.Lsp.WinApiDocs.Tests in 'Common\Lsp\Argus.Common.Lsp.WinApiDocs.Tests.pas',
+  Argus.Common.Lsp.KeywordReference.Tests in 'Common\Lsp\Argus.Common.Lsp.KeywordReference.Tests.pas',
   Argus.Common.Editing.AssignmentSwap.Tests in 'Common\Editing\Argus.Common.Editing.AssignmentSwap.Tests.pas',
   Argus.Common.Editing.StringLiterals.Tests in 'Common\Editing\Argus.Common.Editing.StringLiterals.Tests.pas',
   Argus.Common.Lsp.DocWiki.Tests in 'Common\Lsp\Argus.Common.Lsp.DocWiki.Tests.pas',

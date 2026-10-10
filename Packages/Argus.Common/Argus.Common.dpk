@@ -109,6 +109,7 @@ contains
   Argus.Common.Lsp.Status in 'Source\Lsp\Argus.Common.Lsp.Status.pas',
   Argus.Common.Lsp.QualifiedNames in 'Source\Lsp\Argus.Common.Lsp.QualifiedNames.pas',
   Argus.Common.Lsp.WinApiDocs in 'Source\Lsp\Argus.Common.Lsp.WinApiDocs.pas',
+  Argus.Common.Lsp.KeywordReference in 'Source\Lsp\Argus.Common.Lsp.KeywordReference.pas',
   Argus.Common.Editing.AssignmentSwap in 'Source\Editing\Argus.Common.Editing.AssignmentSwap.pas',
   Argus.Common.Editing.StringLiterals in 'Source\Editing\Argus.Common.Editing.StringLiterals.pas',
   Argus.Common.Lsp.StringLiteralCommands in 'Source\Lsp\Argus.Common.Lsp.StringLiteralCommands.pas',
