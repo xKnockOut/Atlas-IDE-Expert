@@ -38,6 +38,7 @@ type
     FHangThreshold: TEdit;
     FHangHint: TCheckBox;
     FReloadExternal: TCheckBox;
+    FPairColors: TCheckBox;
     FResetHistory: TButton;
     FResetWidths: TButton;
     FHangTest: TButton;
@@ -72,7 +73,7 @@ begin
   inherited Create(AOwner);
   Name := 'ArgusSettingsPage';
   Width := 480;
-  Height := 470;
+  Height := 500;
   Title := TLabel.Create(Self);
   Title.Parent := Self;
   Title.Align := alTop;
@@ -109,6 +110,7 @@ begin
   FHangThreshold := AddNumber(TArgusStrings.Text(TArgusTextId.SettingsHangThreshold));
   FHangHint := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsHangHint));
   FReloadExternal := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsReload));
+  FPairColors := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsPairs));
   Panel := AddPanel(32);
   FResetHistory := TButton.Create(Self);
   FResetHistory.Parent := Panel;
@@ -192,6 +194,7 @@ begin
   FHangThreshold.Text := IntToStr(ASettings.HangThresholdMs);
   FHangHint.Checked := ASettings.HangHint;
   FReloadExternal.Checked := ASettings.ReloadExternal;
+  FPairColors.Checked := ASettings.PairColors;
 end;
 
 procedure TArgusSettingsPage.SaveTo(var ASettings: TArgusPluginSettings);
@@ -208,6 +211,7 @@ begin
   ASettings.HangThresholdMs := StrToIntDef(FHangThreshold.Text, ASettings.HangThresholdMs);
   ASettings.HangHint := FHangHint.Checked;
   ASettings.ReloadExternal := FReloadExternal.Checked;
+  ASettings.PairColors := FPairColors.Checked;
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;

@@ -155,6 +155,21 @@ Vorbereitung: Diagnoseprotokoll an (`HKCU\Software\Argus\IdePlugin`, DWORD `Diag
 
 Abbruch mit Grund im Meldungsfenster („Argus“) ist im Dienst vorhanden und getestet; einen Teilnehmer, der abbricht, bringen erst #529/#530.
 
+## Klammer- und Blockpaare (#514)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KP1 | Methode mit drei verschachtelten `begin`/`end` | Drei verschiedene Farben; zusammengehörige `begin`/`end` gleich |
+| KP2 | `try … finally … end`, `repeat … until` | `finally` und `end` in der Farbe ihres `try`, `until` wie `repeat` |
+| KP3 | `Format('(%d', [Length(S)])` | `(` im String ungefärbt, Klammern nach Tiefe |
+| KP4 | Ein `end;` löschen | Das unpaarige `begin` wird rot |
+| KP5 | `TFoo = class` … `end;`, `class function`, `TBar = class;`, `procedure … of object` | Nur die Klassendeklaration mit Rumpf ist ein Paar |
+| KP6 | Text markieren | Markierung wie gewohnt (Argus färbt markierten Text nicht) |
+| KP7 | Helles und dunkles IDE-Thema | Farben in beiden lesbar |
+| KP8 | Optionen › Argus › „Klammern und Blockpaare … färben“ aus | Normale Farben der IDE |
+
+Strukturlinien zeichnet die IDE selbst, ebenfalls nach Tiefe gefärbt (Tools › Optionen › Benutzeroberfläche › Editor › Strukturhervorhebung; dort abschaltbar). Argus zeichnet keine zweiten Linien.
+
 ## Befehlspalette (#502)
 
 | Nr. | Schritte | Erwartet |

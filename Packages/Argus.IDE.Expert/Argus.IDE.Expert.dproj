@@ -147,6 +147,8 @@
         <DCCReference Include="Source\Core\Commands\Argus.Core.Commands.Palette.pas"/>
         <DCCReference Include="Source\UI\Commands\Argus.UI.Commands.Palette.pas"/>
         <DCCReference Include="Source\IDE\Commands\Argus.IDE.Commands.Palette.pas"/>
+        <DCCReference Include="Source\Core\Editor\Argus.Core.Editor.Pairs.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Argus.IDE.Editor.Pairs.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -17,7 +17,7 @@ type
     MoreOverloads, ChipAll, ChipMethods, ChipProperties, ChipEvents, ChipTypes, ChipSnippets, TagRecent,
     TagFrequent, SettingsTitle, SettingsEnabled, SettingsRows, SettingsPanelCollapsed, SettingsParentheses,
     SettingsChips, SettingsLearning, SettingsGroupInherited, SettingsPreview, SettingsHover, SettingsResetHistory,
-    SettingsResetWidths, FitsType, OtherGroup, CountFits, CompileCancelled, SettingsHangThreshold, SettingsHangHint, HangHint, SettingsHangTest, SettingsReload, ReloadDone, ReloadKeptModified, ReloadDeleted, PaletteLog, PaletteResetHistory);
+    SettingsResetWidths, FitsType, OtherGroup, CountFits, CompileCancelled, SettingsHangThreshold, SettingsHangHint, HangHint, SettingsHangTest, SettingsReload, ReloadDone, ReloadKeptModified, ReloadDeleted, PaletteLog, PaletteResetHistory, SettingsPairs);
 
   TArgusStrings = class
   private class var
@@ -50,7 +50,8 @@ const
      'Hinweis im Meldungsfenster nach langen Hängern (ab 2 s)', 'Argus: Die IDE hat %d ms nicht reagiert%s', 'Wächter testen (1 s)',
      'Außerhalb geänderte Dateien ohne Rückfrage neu laden (nur ohne ungespeicherte Änderungen)',
      'Argus: %d Dateien neu geladen', 'Argus: %s wurde außerhalb geändert und hat ungespeicherte Änderungen; die IDE fragt nach.',
-     'Argus: %s existiert nicht mehr.', 'Protokoll öffnen', 'Verlauf der Vervollständigung zurücksetzen'),
+     'Argus: %s existiert nicht mehr.', 'Protokoll öffnen', 'Verlauf der Vervollständigung zurücksetzen',
+     'Klammern und Blockpaare (begin/end …) nach Tiefe färben'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -64,7 +65,8 @@ const
      'Message after long hangs (2 s and more)', 'Argus: the IDE did not respond for %d ms%s', 'Test watchdog (1 s)',
      'Reload files changed outside the IDE without asking (only without unsaved changes)',
      'Argus: %d files reloaded', 'Argus: %s was changed outside and has unsaved changes; the IDE will ask.',
-     'Argus: %s no longer exists.', 'Open log', 'Reset completion history'));
+     'Argus: %s no longer exists.', 'Open log', 'Reset completion history',
+     'Colour brackets and block pairs (begin/end …) by depth'));
 
 { TArgusStrings }
 
