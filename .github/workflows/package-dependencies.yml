@@ -16,6 +16,9 @@ jobs:
       - name: Keine Ausgaben auf stdout
         shell: pwsh
         run: ./Tools/Check-ConsoleOutput.ps1
+      - name: Mit Delphi 12 verträglich
+        shell: pwsh
+        run: ./Tools/Check-Delphi12.ps1
       - name: Regelkatalog aktuell und vollständig
         shell: pwsh
         run: ./Tools/Update-RuleCatalog.ps1 -Check
