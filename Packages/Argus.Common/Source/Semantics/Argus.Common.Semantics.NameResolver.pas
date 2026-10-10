@@ -161,6 +161,7 @@ type
     function TypeOf(const AResolved: TResolvedSymbol; out AType: TResolvedSymbol): Boolean;
     function FindMember(const AType: TResolvedSymbol; const AName: string; out AResult: TResolvedSymbol): Boolean;
     function AncestorOf(const AType: TResolvedSymbol; out AAncestor: TResolvedSymbol): Boolean;
+    function IsAttributeClass(const AType: TResolvedSymbol): Boolean;
     function EnclosingRoutines: TArray<TSyntaxNode>;
     function LookupLocal(const AName: string; out AResult: TResolvedSymbol): Boolean;
     function LookupInDeclarations(ANode: TSyntaxNode; const AName: string; out AResult: TResolvedSymbol): Boolean;
@@ -221,7 +222,8 @@ implementation
 uses
   System.StrUtils,
   System.Math,
-  Argus.Common.Index.Extractor;
+  Argus.Common.Index.Extractor,
+  Argus.Common.Semantics.Attributes;
 
 const
   TypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
@@ -830,6 +832,28 @@ begin
     Exit;
   Result := ResolveTypeText(Name, FromUnit, SameText(FromUnit.FileName, FCurrent.FileName), AAncestor) and
     not AAncestor.Builtin and not SameText(AAncestor.QualifiedName, AType.QualifiedName);
+end;
+
+/// <summary>Stammt die Klasse von TCustomAttribute ab? Bricht die Kette an einem unbekannten Vorfahren ab,
+/// gilt sie als Attribut; endet sie bei TObject, nicht.</summary>
+function TNameResolver.IsAttributeClass(const AType: TResolvedSymbol): Boolean;
+var
+  Current, Next: TResolvedSymbol;
+  Depth: Integer;
+begin
+  Current := AType;
+  for Depth := 0 to MaxDepth do
+  begin
+    if SameText(Current.Name, 'TCustomAttribute') then
+      Exit(True);
+    if (Length(Current.Ancestors) = 0) or SameText(Current.Ancestors[0], 'TObject') or
+      SameText(Current.Ancestors[0], 'System.TObject') then
+      Exit(False);
+    if not AncestorOf(Current, Next) then
+      Exit(True);
+    Current := Next;
+  end;
+  Result := True;
 end;
 
 function TNameResolver.CurrentClass(out AType: TResolvedSymbol): Boolean;
@@ -2087,6 +2111,8 @@ var
   Symbol: TResolvedSymbol;
   Receiver, Call: TSyntaxNode;
   Before: TPascalToken;
+  Use: TAttributeUse;
+  AttributeNames: TArray<string>;
 
   function Clean(const AText: string): string;
   begin
@@ -2157,6 +2183,19 @@ begin
     if (Index < High(Tokens)) and Tokens[Index + 1].IsSymbol('(') then
       Call := FindCall(Tokens[Index].Offset + Length(Tokens[Index].Text));
     IsInherited := (Receiver = nil) and (First >= 1) and Tokens[First - 1].IsKeyword('inherited');
+    // Attribut (#119): [Foo] meint zuerst die Klasse FooAttribute, dann Foo; Argumente gehen an den Konstruktor.
+    if (Receiver = nil) and (First >= 1) and (Tokens[First - 1].IsSymbol('[') or Tokens[First - 1].IsSymbol(',')) and
+      not ((Index < High(Tokens)) and Tokens[Index + 1].IsSymbol('.')) and TAttributes.At(ATree, APosition, Use) then
+    begin
+      AttributeNames := Names.ToArray;
+      AttributeNames[High(AttributeNames)] := AttributeNames[High(AttributeNames)] + 'Attribute';
+      Result := ResolveNames(ATree, AFileName, AttributeNames, Tokens[Index].Offset, False, nil, nil);
+      if (Length(Result) > 0) and (Result[0].SymbolKind = TIndexSymbolKind.ClassType) and
+        IsAttributeClass(Result[0]) then
+        Exit;
+      Result := ResolveNames(ATree, AFileName, Names.ToArray, Tokens[Index].Offset, False, nil, nil);
+      Exit;
+    end;
     Result := ResolveNames(ATree, AFileName, Names.ToArray, Tokens[Index].Offset, IsInherited, Receiver, Call);
   finally
     Names.Free;

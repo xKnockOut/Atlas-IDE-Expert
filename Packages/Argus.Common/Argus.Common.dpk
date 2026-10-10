@@ -181,6 +181,7 @@ contains
   Argus.Common.Lsp.CodeActions in 'Source\Lsp\Argus.Common.Lsp.CodeActions.pas',
   Argus.Common.Semantics.ControlFlow in 'Source\Semantics\Argus.Common.Semantics.ControlFlow.pas',
   Argus.Common.Semantics.NameResolver in 'Source\Semantics\Argus.Common.Semantics.NameResolver.pas',
+  Argus.Common.Semantics.Attributes in 'Source\Semantics\Argus.Common.Semantics.Attributes.pas',
   Argus.Common.Lsp.Definition in 'Source\Lsp\Argus.Common.Lsp.Definition.pas',
   Argus.Common.Lsp.PublishedMembers in 'Source\Lsp\Argus.Common.Lsp.PublishedMembers.pas',
   Argus.Common.Lsp.Hover in 'Source\Lsp\Argus.Common.Lsp.Hover.pas',
