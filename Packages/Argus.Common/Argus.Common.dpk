@@ -176,6 +176,7 @@ contains
   Argus.Common.Dfm.FormModel in 'Source\Dfm\Argus.Common.Dfm.FormModel.pas',
   Argus.Common.Dfm.FormInfo in 'Source\Dfm\Argus.Common.Dfm.FormInfo.pas',
   Argus.Common.Dfm.BinaryForm in 'Source\Dfm\Argus.Common.Dfm.BinaryForm.pas',
+  Argus.Common.Dfm.FormFiles in 'Source\Dfm\Argus.Common.Dfm.FormFiles.pas',
   Argus.Common.Dfm.ComponentRename in 'Source\Dfm\Argus.Common.Dfm.ComponentRename.pas',
   Argus.Common.Mcp.Server in 'Source\Mcp\Argus.Common.Mcp.Server.pas',
   Argus.Common.Mcp.IndexTools in 'Source\Mcp\Argus.Common.Mcp.IndexTools.pas',

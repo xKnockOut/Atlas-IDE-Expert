@@ -36,6 +36,7 @@ type
 implementation
 
 uses
+  Argus.Common.Dfm.FormFiles,
   Argus.Common.Index.Contract,
   Argus.Common.Index.Extractor,
   Argus.Common.Dfm.Parser;
@@ -124,7 +125,7 @@ begin
   end;
   if (Wanted = '') or not Assigned(AReadText) then
     Exit;
-  UnitFile := ChangeFileExt(ADfmFileName, '.pas');
+  UnitFile := TFormFiles.UnitFile(ADfmFileName);
   if not AReadText(UnitFile, UnitText) then
     Exit;
   UnitIndex := TIndexExtractor.ExtractText(UnitText, UnitFile, nil);

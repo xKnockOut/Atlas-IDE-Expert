@@ -116,6 +116,7 @@ uses
   Argus.Common.Dfm.FormModel.Tests in 'Common\Dfm\Argus.Common.Dfm.FormModel.Tests.pas',
   Argus.Common.Dfm.FormInfo.Tests in 'Common\Dfm\Argus.Common.Dfm.FormInfo.Tests.pas',
   Argus.Common.Dfm.BinaryForm.Tests in 'Common\Dfm\Argus.Common.Dfm.BinaryForm.Tests.pas',
+  Argus.Common.Dfm.FormFiles.Tests in 'Common\Dfm\Argus.Common.Dfm.FormFiles.Tests.pas',
   Argus.Common.JsonRpc.LineTransport.Tests in 'Common\JsonRpc\Argus.Common.JsonRpc.LineTransport.Tests.pas',
   Argus.Common.Mcp.Server.Tests in 'Common\Mcp\Argus.Common.Mcp.Server.Tests.pas',
   Argus.Common.Mcp.IndexTools.Tests in 'Common\Mcp\Argus.Common.Mcp.IndexTools.Tests.pas',
