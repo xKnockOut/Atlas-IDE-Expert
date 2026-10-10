@@ -138,6 +138,8 @@
         <DCCReference Include="Source\IDE\Hover\Argus.IDE.Hover.Editor.pas"/>
         <DCCReference Include="Source\Core\Completion\Argus.Core.Completion.Preview.pas"/>
         <DCCReference Include="Source\IDE\Completion\Argus.IDE.Completion.Preview.pas"/>
+        <DCCReference Include="Source\Core\Build\Argus.Core.Build.Events.pas"/>
+        <DCCReference Include="Source\IDE\Build\Argus.IDE.Build.Notifier.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

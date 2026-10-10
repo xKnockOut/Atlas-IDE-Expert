@@ -140,6 +140,21 @@ Schreibweise: `|` steht für die Cursorposition.
 | O5 | Bereits überschriebene Methode | Erscheint nicht noch einmal in der Liste |
 | O6 | Liste aus O1 ansehen | Kein „+Unit“-Tag an den Einträgen |
 
+## Compile-Ereignisse (#527)
+
+Vorbereitung: Diagnoseprotokoll an (`HKCU\Software\Argus\IdePlugin`, DWORD `Diagnose` = 1), IDE neu starten; Protokoll `Argus.IDE.Expert.log` neben dem Plugin.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| C1 | Projekt compilieren (Strg+F9) | Im Protokoll genau einmal „Compile: make App.dproj (Debug, Win32) beginnt“ und „… erfolgreich nach n ms“ |
+| C2 | Projekt erzeugen (Umschalt+F9) bzw. Syntaxprüfung | Art „build“ bzw. „check“ |
+| C3 | Projektgruppe: „Alle erzeugen“ | „Gruppe build beginnt“, dazwischen jedes Projekt, „Gruppe erfolgreich nach n ms; Code Insight bisher …“ |
+| C4 | Fehler einbauen und compilieren | „… fehlgeschlagen nach n ms“ |
+| C5 | Im Editor tippen (Code Insight kompiliert im Hintergrund) | Keine Compile-Zeilen; die Zahl „Code Insight bisher n-mal“ steigt beim nächsten Gruppenlauf |
+| C6 | IDE schließen bzw. Package über Komponenten › Packages installieren aus- und wieder einschalten | Keine Zugriffsverletzung, danach keine doppelten Zeilen |
+
+Abbruch mit Grund im Meldungsfenster („Argus“) ist im Dienst vorhanden und getestet; einen Teilnehmer, der abbricht, bringen erst #529/#530.
+
 ## Include-Dateien (#500)
 
 Vorbereitung: `Tests\Referenzprojekt\RefGruppe.groupproj` öffnen; `Ref.Daten.Auftraege.pas` bindet `Ref.Daten.Auftraege.inc` (Typen) und `Ref.Daten.Auftraege.Rumpf.inc` (Rümpfe) ein.

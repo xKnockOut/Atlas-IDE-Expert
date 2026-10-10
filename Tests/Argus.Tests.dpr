@@ -162,7 +162,9 @@ uses
   Argus.Core.Completion.Parentheses.Tests in 'IDE.Expert\Argus.Core.Completion.Parentheses.Tests.pas',
   Argus.Core.Completion.Preview in '..\Packages\Argus.IDE.Expert\Source\Core\Completion\Argus.Core.Completion.Preview.pas',
   Argus.UI.Settings.Page in '..\Packages\Argus.IDE.Expert\Source\UI\Settings\Argus.UI.Settings.Page.pas',
-  Argus.UI.Settings.Page.Tests in 'IDE.Expert\Argus.UI.Settings.Page.Tests.pas';
+  Argus.UI.Settings.Page.Tests in 'IDE.Expert\Argus.UI.Settings.Page.Tests.pas',
+  Argus.Core.Build.Events in '..\Packages\Argus.IDE.Expert\Source\Core\Build\Argus.Core.Build.Events.pas',
+  Argus.Core.Build.Events.Tests in 'IDE.Expert\Argus.Core.Build.Events.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var
