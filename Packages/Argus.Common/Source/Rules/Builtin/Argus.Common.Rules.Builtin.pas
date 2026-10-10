@@ -24,7 +24,8 @@ uses
   Argus.Common.Rules.Builtin.Capture,
   Argus.Common.Rules.Builtin.Components,
   Argus.Common.Rules.Builtin.FormFields,
-  Argus.Common.Rules.Builtin.Security;
+  Argus.Common.Rules.Builtin.Security,
+  Argus.Common.Rules.Builtin.DataBinding;
 
 function BuiltinRules: TArray<IRule>;
 var
@@ -43,6 +44,7 @@ begin
     RegisterComponentRules(Registry);
     RegisterFormFieldRules(Registry);
     RegisterSecurityRules(Registry);
+    RegisterDataBindingRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

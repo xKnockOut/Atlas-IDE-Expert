@@ -186,7 +186,8 @@ uses
   Argus.Common.Mcp.Freshness.Tests in 'Common\Mcp\Argus.Common.Mcp.Freshness.Tests.pas',
   Shell.Mcp.Tests in 'Application\Shell\Shell.Mcp.Tests.pas',
   Argus.Common.Rules.Builtin.FormFields.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.FormFields.Tests.pas',
-  Argus.Common.Rules.Builtin.Security.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Security.Tests.pas';
+  Argus.Common.Rules.Builtin.Security.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.Security.Tests.pas',
+  Argus.Common.Rules.Builtin.DataBinding.Tests in 'Common\Rules\Builtin\Argus.Common.Rules.Builtin.DataBinding.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

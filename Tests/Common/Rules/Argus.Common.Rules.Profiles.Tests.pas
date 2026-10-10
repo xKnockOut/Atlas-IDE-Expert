@@ -159,7 +159,8 @@ const
   All = 'bidi-control,captured-loop-variable,component-create-without-override,component-default-mismatch,' +
     'component-fixed-pixels,component-hardcoded-color,component-missing-free-notification,' +
     'component-missing-inherited,component-setter-without-invalidate,confusable-identifier,control-char,' +
-    'declared-not-implemented,destroy-without-override,forbidden-uses,form-field-type-mismatch,' +
+    'declared-not-implemented,destroy-without-override,dfm-circular-datasource,dfm-control-field-type-mismatch,dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,' +
+    'forbidden-uses,foreign-form-control-access,form-field-type-mismatch,' +
     'form-field-without-object,form-object-without-field,hides-virtual,implemented-not-declared,' +
     'invisible-char,lock-without-finally,possibly-uninitialized,result-not-set,security-command-injection,' +
     'security-insecure-http,security-insecure-random,security-tls-verification-disabled,security-weak-crypto,' +
@@ -174,7 +175,8 @@ begin
     ActiveRules('strict'));
   Assert.AreEqual('bidi-control,captured-loop-variable,component-create-without-override,component-default-mismatch,' +
     'component-missing-free-notification,component-missing-inherited,control-char,declared-not-implemented,' +
-    'destroy-without-override,form-field-type-mismatch,form-field-without-object,form-object-without-field,' +
+    'destroy-without-override,dfm-circular-datasource,dfm-control-field-type-mismatch,dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,' +
+    'form-field-type-mismatch,form-field-without-object,form-object-without-field,' +
     'hides-virtual,implemented-not-declared,lock-without-finally,possibly-uninitialized,' +
     'result-not-set,security-command-injection,security-tls-verification-disabled,synchronize-in-destructor,' +
     Threads + ',virtual-instead-of-override',
@@ -183,7 +185,7 @@ begin
     'security-insecure-http,security-insecure-random,security-tls-verification-disabled,security-weak-crypto',
     ActiveRules('security'));
   Assert.AreEqual('component-fixed-pixels,component-hardcoded-color,component-setter-without-invalidate,' +
-    'forbidden-uses,thread-resume-suspend,unused-assignment,unused-local,unused-parameter',
+    'forbidden-uses,foreign-form-control-access,thread-resume-suspend,unused-assignment,unused-local,unused-parameter',
     ActiveRules('style'));
 end;
 
