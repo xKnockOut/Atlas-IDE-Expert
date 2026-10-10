@@ -22,7 +22,8 @@ uses
   Argus.Common.Rules.Builtin.Declarations,
   Argus.Common.Rules.Builtin.Inheritance,
   Argus.Common.Rules.Builtin.Capture,
-  Argus.Common.Rules.Builtin.Components;
+  Argus.Common.Rules.Builtin.Components,
+  Argus.Common.Rules.Builtin.FormFields;
 
 function BuiltinRules: TArray<IRule>;
 var
@@ -39,6 +40,7 @@ begin
     RegisterInheritanceRules(Registry);
     RegisterCaptureRules(Registry);
     RegisterComponentRules(Registry);
+    RegisterFormFieldRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

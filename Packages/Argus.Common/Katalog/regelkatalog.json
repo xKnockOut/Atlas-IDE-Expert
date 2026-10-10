@@ -278,6 +278,33 @@
       "description": "Paint uses an RGB literal, a $00BBGGRR constant or a TColor cast. Such colors ignore VCL styles; system colors like clBtnFace are fine.",
       "bad": "Canvas.Brush.Color := $00FF8000;",
       "good": "Canvas.Brush.Color := StyleServices.GetSystemColor(clHighlight);"
+    },
+    {
+      "id": "form-field-without-object",
+      "name": "Form field without object",
+      "category": "bug",
+      "severity": "warning",
+      "description": "A published component field of the form class has no object in the .dfm/.fmx next to the unit. After loading, the field stays nil. Fields outside published are not checked.",
+      "bad": "Edit1: TEdit;  // object Edit1 was deleted from the form",
+      "good": "// remove the field or restore the object"
+    },
+    {
+      "id": "form-object-without-field",
+      "name": "Form object without field",
+      "category": "bug",
+      "severity": "warning",
+      "description": "An object of the form file has no field in the form class. Inherited objects, objects inside inline frames, unnamed components and collection items are skipped. The fix adds the field.",
+      "bad": "object Button2: TButton  // no Button2 in TForm1",
+      "good": "Button2: TButton;"
+    },
+    {
+      "id": "form-field-type-mismatch",
+      "name": "Form field type differs from object",
+      "category": "bug",
+      "severity": "warning",
+      "description": "The field type differs from the class of the object in the form file. Without source for the class in the form file, nothing is compared. The fix changes the field type.",
+      "bad": "Edit1: TEdit;  // object Edit1: TMaskEdit",
+      "good": "Edit1: TMaskEdit;"
     }
   ]
 }

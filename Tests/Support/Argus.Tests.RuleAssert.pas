@@ -19,6 +19,8 @@ type
     /// <summary>Treffer von ARule auf ASource mit Einstellungen aus AConfigJson ('' = Vorgaben).</summary>
     class function Findings(ARule: IRule; const ASource: string;
       const AConfigJson: string = ''; const ARelativePath: string = ''): TArray<TRuleFinding>; static;
+    /// <summary>Treffer von ARule auf ASource mit der Formulardatei AFormText daneben (#123).</summary>
+    class function FormFindings(const ARule: IRule; const ASource, AFormText: string): TArray<TRuleFinding>; static;
     /// <summary>Positiver Testfall: genau ACount Treffer.</summary>
     class procedure Reports(ARule: IRule; const ASource: string; ACount: Integer = 1); static;
     /// <summary>Negativer Testfall: kein Treffer.</summary>
@@ -56,6 +58,23 @@ begin
     Context.Text := ASource;
     Context.Tree := Tree;
     Result := TRuleEngine.Run([ARule], Settings, Context);
+  finally
+    Tree.Free;
+  end;
+end;
+
+class function TRuleAssert.FormFindings(const ARule: IRule; const ASource, AFormText: string): TArray<TRuleFinding>;
+var
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+begin
+  Tree := TPascalParser.Parse(ASource);
+  try
+    Context := Default(TRuleContext);
+    Context.Text := ASource;
+    Context.Tree := Tree;
+    Context.FormText := AFormText;
+    Result := TRuleEngine.Run([ARule], TServerSettings.Default, Context);
   finally
     Tree.Free;
   end;
