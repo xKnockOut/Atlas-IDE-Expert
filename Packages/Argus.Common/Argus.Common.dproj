@@ -184,6 +184,7 @@
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.IdeBuild.pas"/>
         <DCCReference Include="Source\Mcp\Argus.Common.Mcp.BuildTools.pas"/>
         <DCCReference Include="Source\Mcp\Argus.Common.Mcp.Paths.pas"/>
+        <DCCReference Include="Source\Mcp\Argus.Common.Mcp.Freshness.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.InactiveRegions.pas"/>
         <DCCReference Include="Source\Lsp\Argus.Common.Lsp.WorkspaceFolders.pas"/>
         <DCCReference Include="Source\Index\Adapters\Argus.Common.Index.Adapters.DiskFileSystem.pas"/>

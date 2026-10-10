@@ -16,6 +16,8 @@ uses
 type
   TMcpShell = class
   public
+    /// <summary>Namen aller Werkzeuge, in der Reihenfolge von tools/list (für den Abgleich mit docs/MCP.md).</summary>
+    class function ToolNames: TArray<string>; static;
     /// <summary>Läuft, bis der Client die Eingabe schließt; liefert den Exit-Code.</summary>
     class function Run(const AOptions: TCommandLineOptions): Integer; static;
   end;
@@ -45,6 +47,8 @@ uses
   Argus.Common.Mcp.CodeTools,
   Argus.Common.Mcp.BuildTools,
   Argus.Common.Mcp.Paths,
+  Argus.Common.Mcp.Freshness,
+  Argus.Common.Index.Adapters.DiskFileSystem,
   Argus.Common.Lsp.IdeBuild,
   Argus.Common.Index.Adapters.CacheDirectory,
   Argus.Common.Rules.Builtin,
@@ -219,6 +223,28 @@ begin
     end);
 end;
 
+class function TMcpShell.ToolNames: TArray<string>;
+var
+  Server: TMcpServer;
+  Listed: TJSONObject;
+  Tool: TJSONValue;
+begin
+  Result := nil;
+  // Nur registrieren, nicht aufrufen: Die Werkzeuge greifen erst beim Aufruf auf ihre Dienste zu.
+  Server := TMcpServer.Create('Argus', '0');
+  try
+    RegisterTools(Server, nil, nil, nil, '', nil);
+    Listed := Server.ListTools;
+    try
+      for Tool in Listed.GetValue<TJSONArray>('tools') do
+        Result := Result + [Tool.GetValue<string>('name')];
+    finally
+      Listed.Free;
+    end;
+  finally
+    Server.Free;
+  end;
+end;
 class function TMcpShell.Run(const AOptions: TCommandLineOptions): Integer;
 var
   LoggerImpl: TLogger;
@@ -302,6 +328,17 @@ begin
     Server.Instructions := 'Delphi-Projekt in ' + Root + '. Für Fragen zu Typen, Units und Formularen ' +
       'zuerst diese Werkzeuge nutzen statt Quelldateien vollständig zu lesen.';
     RegisterTools(Server, Tools, Code, Workspace, Root, Guard);
+    // Vor jedem Werkzeugaufruf geänderte Projektdateien nachladen (#48).
+    Server.OnBeforeToolCall :=
+      procedure
+      var
+        Changes: TArray<TFileChange>;
+      begin
+        Changes := TMcpFreshness.Changes(Index, TDiskIndexFileSystem.Create, Workspace.ProjectFiles);
+        if Length(Changes) > 0 then
+          Logger.Info(Format('%d geänderte Dateien nachgeladen, %d Units aktualisiert',
+            [Length(Changes), Workspace.ApplyChanges(Changes)]));
+      end;
     Server.Attach(Dispatcher);
     Connection.OnError :=
       procedure(const AError: Exception)
