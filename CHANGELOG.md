@@ -7,6 +7,7 @@ Server und Erweiterung tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Schnellbefehle `/fmt` (umgebende Routine formatieren) und `/measure` (Laufzeit mit TStopwatch messen) (#300).
 - Linter: `--changed` und `--diff` auch in SVN-Arbeitskopien (#276).
 - Linter: `--changed`, `--diff`, `--include-uncommitted` und `--changed-lines` prüfen nur, was sich laut Git geändert hat; Beispiele für Pre-Commit-Hook und GitHub Action (#157).
 - Performance-Regeln, alle standardmäßig aus: `string-concat-in-loop`, `loop-invariant-call` und `missing-begin-update` (#278).
