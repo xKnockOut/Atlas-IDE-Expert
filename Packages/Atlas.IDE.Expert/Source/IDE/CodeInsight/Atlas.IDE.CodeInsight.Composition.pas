@@ -38,7 +38,8 @@ uses
   Atlas.IDE.Build.CheckOnSave,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Commands.MainMenu,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.IDE.Commands.Keys;
 
 var
   ManagerIndex: Integer = -1;
@@ -293,6 +294,24 @@ begin
     RegisterPalette;
   if Pairs = nil then
     Pairs := TAtlasEditorPairs.Create;
+  // Geänderte Tastenkürzel sofort neu belegen; fremde Vervollständigung melden (#494).
+  TAtlasIdeSettings.OnChanged :=
+    procedure
+    begin
+      if Palette <> nil then
+        Palette.Rebind;
+      if CheckOnSave <> nil then
+        CheckOnSave.Rebind;
+    end;
+  TThread.ForceQueue(nil,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          TAtlasIdeKeys.ReportForeignCompletion;
+        end);
+    end);
   if MainMenu = nil then
     MainMenu := TAtlasMainMenu.Create(
       function: string
@@ -348,6 +367,7 @@ var
   Services: IOTACodeInsightServices;
 begin
   TAtlasGuard.OnWarning := nil;
+  TAtlasIdeSettings.OnChanged := nil;
   FreeAndNil(DirtyExport);
   FreeAndNil(MainMenu);
   FreeAndNil(Pairs);

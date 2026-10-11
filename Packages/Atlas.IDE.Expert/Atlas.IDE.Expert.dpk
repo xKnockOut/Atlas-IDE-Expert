@@ -86,6 +86,8 @@ contains
   Atlas.Core.Settings.SchemaData in 'Source\Core\Settings\Atlas.Core.Settings.SchemaData.pas',
   Atlas.UI.Settings.ProjectDialog in 'Source\UI\Settings\Atlas.UI.Settings.ProjectDialog.pas',
   Atlas.IDE.Settings.Project in 'Source\IDE\Settings\Atlas.IDE.Settings.Project.pas',
+  Atlas.Core.Commands.KeyConflicts in 'Source\Core\Commands\Atlas.Core.Commands.KeyConflicts.pas',
+  Atlas.IDE.Commands.Keys in 'Source\IDE\Commands\Atlas.IDE.Commands.Keys.pas',
   Atlas.IDE.Commands.MainMenu in 'Source\IDE\Commands\Atlas.IDE.Commands.MainMenu.pas',
   Atlas.Core.Completion.Ranking in 'Source\Core\Completion\Atlas.Core.Completion.Ranking.pas',
   Atlas.Core.Completion.Usage in 'Source\Core\Completion\Atlas.Core.Completion.Usage.pas',

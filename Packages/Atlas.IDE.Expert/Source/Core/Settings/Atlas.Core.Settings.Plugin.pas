@@ -49,6 +49,12 @@ type
     AutoParentheses: Boolean;
     /// <summary>Schreibweise des getippten Worts beim Übernehmen korrigieren (#433).</summary>
     FixCase: Boolean;
+    /// <summary>Tastenkürzel der Befehlspalette und der Syntaxprüfung (TShortCut, 0 = keins, #494).</summary>
+    PaletteKey: Integer;
+    CheckKey: Integer;
+    /// <summary>Kürzel auch belegen, wenn die IDE oder eine andere Erweiterung es schon nutzt.</summary>
+    PaletteKeyPriority: Boolean;
+    CheckKeyPriority: Boolean;
     /// <summary>Filter-Chips über der Liste (#422).</summary>
     FilterChips: Boolean;
     /// <summary>Lernende Gewichtung (#418).</summary>
@@ -110,6 +116,10 @@ begin
   Result.PanelCollapsed := False;
   Result.AutoParentheses := True;
   Result.FixCase := True;
+  Result.PaletteKey := $6050; // Strg+Umschalt+P
+  Result.CheckKey := $C078; // Strg+Alt+F9
+  Result.PaletteKeyPriority := False;
+  Result.CheckKeyPriority := False;
   Result.FilterChips := True;
   Result.Learning := True;
   Result.GroupInherited := True;
@@ -151,6 +161,10 @@ begin
   PanelCollapsed := AStore.ReadInteger('PanelCollapsed', BoolValue(Default.PanelCollapsed)) <> 0;
   AutoParentheses := AStore.ReadInteger('AutoParentheses', BoolValue(Default.AutoParentheses)) <> 0;
   FixCase := AStore.ReadInteger('FixCase', BoolValue(Default.FixCase)) <> 0;
+  PaletteKey := AStore.ReadInteger('PaletteKey', Default.PaletteKey);
+  CheckKey := AStore.ReadInteger('CheckKey', Default.CheckKey);
+  PaletteKeyPriority := AStore.ReadInteger('PaletteKeyPriority', BoolValue(Default.PaletteKeyPriority)) <> 0;
+  CheckKeyPriority := AStore.ReadInteger('CheckKeyPriority', BoolValue(Default.CheckKeyPriority)) <> 0;
   FilterChips := AStore.ReadInteger('FilterChips', BoolValue(Default.FilterChips)) <> 0;
   Learning := AStore.ReadInteger('Learning', BoolValue(Default.Learning)) <> 0;
   GroupInherited := AStore.ReadInteger('GroupInherited', BoolValue(Default.GroupInherited)) <> 0;
@@ -179,6 +193,10 @@ begin
   AStore.WriteInteger('PanelCollapsed', BoolValue(PanelCollapsed));
   AStore.WriteInteger('AutoParentheses', BoolValue(AutoParentheses));
   AStore.WriteInteger('FixCase', BoolValue(FixCase));
+  AStore.WriteInteger('PaletteKey', PaletteKey);
+  AStore.WriteInteger('CheckKey', CheckKey);
+  AStore.WriteInteger('PaletteKeyPriority', BoolValue(PaletteKeyPriority));
+  AStore.WriteInteger('CheckKeyPriority', BoolValue(CheckKeyPriority));
   AStore.WriteInteger('FilterChips', BoolValue(FilterChips));
   AStore.WriteInteger('Learning', BoolValue(Learning));
   AStore.WriteInteger('GroupInherited', BoolValue(GroupInherited));

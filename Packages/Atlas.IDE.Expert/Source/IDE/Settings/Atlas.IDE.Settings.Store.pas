@@ -8,12 +8,14 @@
 interface
 
 uses
+  System.SysUtils,
   Atlas.Core.Settings.Plugin;
 
 type
   TAtlasIdeSettings = class
   private class var
     FCurrent: TAtlasPluginSettings;
+    FOnChanged: TProc;
     FLoaded: Boolean;
   public
     class function Current: TAtlasPluginSettings; static;
@@ -21,6 +23,8 @@ type
     class procedure Update(const ASettings: TAtlasPluginSettings); static;
     /// <summary>Für Diagnose und Tests: beim nächsten Zugriff neu lesen.</summary>
     class procedure Reload; static;
+    /// <summary>Nach Update (Optionsseite, Menü Atlas): z. B. Tastenkürzel neu belegen (#494).</summary>
+    class property OnChanged: TProc read FOnChanged write FOnChanged;
   end;
 
 const
@@ -30,7 +34,6 @@ implementation
 
 uses
   Winapi.Windows,
-  System.SysUtils,
   System.Win.Registry;
 
 type
@@ -146,6 +149,8 @@ begin
   FLoaded := True;
   Store := TRegistryStore.Create(True);
   FCurrent.Save(Store);
+  if Assigned(FOnChanged) then
+    FOnChanged();
 end;
 
 class procedure TAtlasIdeSettings.Reload;
