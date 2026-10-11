@@ -57,6 +57,8 @@ type
     [Test]
     procedure AnnouncementNamesKindPositionAndDetail;
     [Test]
+    procedure TyposAppearUnderDidYouMean;
+    [Test]
     procedure CommitTextKeepsTypedCaseWhenOff;
     [Test]
     procedure Filters5000EntriesWithin12ms;
@@ -89,6 +91,7 @@ uses
   Atlas.Core.Completion.Word,
   Atlas.Core.Completion.Matching,
   Atlas.Core.Completion.Presentation,
+  Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Providers.XmlDoc,
   System.Diagnostics,
   Atlas.Core.Lsp.Session,
@@ -555,6 +558,32 @@ begin
   Assert.AreEqual(4, TAtlasWord.EndAfter('List.Add', 4));
   Assert.AreEqual(6, TAtlasWord.EndAfter('Format', 6));
   Assert.AreEqual(8, TAtlasWord.EndAfter('  Add(  ', 8));
+end;
+
+procedure TAtlasMatchingBudgetTests.TyposAppearUnderDidYouMean;
+var
+  Items: TAtlasCompletionItems;
+  Order: TArray<Integer>;
+  Name: string;
+  Item: TAtlasCompletionItem;
+begin
+  Assert.AreEqual(1, TAtlasCompletionMatcher.Distance('Lenght', 'Length'), 'Vertauschung zählt 1');
+  Assert.AreEqual(1, TAtlasCompletionMatcher.Distance('lengh', 'Length'));
+  Assert.AreEqual(0, TAtlasCompletionMatcher.TypoLimit('Le'));
+  Items := nil;
+  for Name in ['Length', 'Low', 'High', 'Lengthy'] do
+  begin
+    Item := Default(TAtlasCompletionItem);
+    Item.Name := Name;
+    Items := Items + [Item];
+  end;
+  Order := TAtlasRanking.Order(Items, 'Lenght', TAtlasRankOptions.Defaults);
+  Assert.AreEqual(TAtlasRanking.TypoHeader, Order[0], 'keine regulären Treffer: gleich „Meintest du“');
+  Assert.AreEqual('Length', Items[Order[1]].Name);
+  Assert.AreEqual(2, TAtlasRanking.ItemCount(Order), 'Length und Lengthy (Anfang), nicht Low');
+  // Mit genug regulären Treffern keine Tippfehler-Gruppe.
+  Order := TAtlasRanking.Order(Items, 'L', TAtlasRankOptions.Defaults);
+  Assert.IsFalse(TAtlasRanking.IsHeader(Order[0]));
 end;
 
 procedure TAtlasMatchingBudgetTests.AnnouncementNamesKindPositionAndDetail;

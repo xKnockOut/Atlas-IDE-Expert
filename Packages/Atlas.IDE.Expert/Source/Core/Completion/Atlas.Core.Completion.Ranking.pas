@@ -39,10 +39,18 @@ type
   public const
     /// <summary>Markiert in der Reihenfolge eine Gruppenüberschrift vor dem nächsten Eintrag.</summary>
     Header = -1;
+    /// <summary>Überschrift „Meintest du“ vor den Tippfehler-Treffern (#485).</summary>
+    TypoHeader = -2;
+    /// <summary>Höchstens so viele Tippfehler-Treffer; nur bei weniger regulären als MinRegular.</summary>
+    MaxTypos = 5;
+    MinRegular = 3;
   public
     /// <summary>Art des Eintrags für die Chips; nie All.</summary>
     class function ChipOf(const AItem: TAtlasCompletionItem): TAtlasChip; static;
     class function Matches(const AItem: TAtlasCompletionItem; AChip: TAtlasChip): Boolean; static;
+    /// <summary>Ähnliche Namen zu APattern als TypoHeader + Indizes (#485); leer ohne.</summary>
+    class function Typos(const AItems: TAtlasCompletionItems; const APattern: string;
+      const AOptions: TAtlasRankOptions; const AScores, ABoosts: TArray<Integer>): TArray<Integer>; static;
     /// <summary>Anzeigereihenfolge: Indizes in AItems, Header (-1) vor Gruppen geerbter Member.</summary>
     class function Order(const AItems: TAtlasCompletionItems; const APattern: string;
       const AOptions: TAtlasRankOptions): TArray<Integer>; static;
@@ -50,6 +58,8 @@ type
     class function ChipCounts(const AItems: TAtlasCompletionItems; const APattern: string): TAtlasChipCounts; static;
     /// <summary>Einträge ohne Überschriften.</summary>
     class function ItemCount(const AOrder: TArray<Integer>): Integer; static;
+    /// <summary>Überschrift statt Eintrag (Header, TypoHeader)?</summary>
+    class function IsHeader(AValue: Integer): Boolean; static;
   end;
 
 implementation
@@ -220,8 +230,56 @@ begin
       Container := Items[Index].DeclaringClass;
       Result := Result + [Index];
     end;
+    // Tippfehler (#485): wenig reguläre Treffer, dann bis zu MaxTypos ähnliche Namen unter „Meintest du“.
+    if (ItemCount(Result) < MinRegular) and (TAtlasCompletionMatcher.TypoLimit(APattern) > 0) then
+      Result := Result + Typos(Items, APattern, Options, Scores, Boosts);
   finally
     Found.Free;
+  end;
+end;
+
+class function TAtlasRanking.Typos(const AItems: TAtlasCompletionItems; const APattern: string;
+  const AOptions: TAtlasRankOptions; const AScores, ABoosts: TArray<Integer>): TArray<Integer>;
+var
+  Items: TAtlasCompletionItems;
+  Distances: TArray<Integer>;
+  Candidates: TList<Integer>;
+  Index, Limit: Integer;
+  Boosts: TArray<Integer>;
+begin
+  Result := nil;
+  Items := AItems;
+  Boosts := ABoosts;
+  Limit := TAtlasCompletionMatcher.TypoLimit(APattern);
+  SetLength(Distances, Length(Items));
+  Candidates := TList<Integer>.Create;
+  try
+    for Index := 0 to High(Items) do
+    begin
+      // Nur, was nicht schon regulär passt; keine Aktionen.
+      if Items[Index].IsAction or not Matches(Items[Index], AOptions.Chip) or
+        (AScores[Index] <> TAtlasCompletionMatcher.NoMatch) then
+        Continue;
+      Distances[Index] := TAtlasCompletionMatcher.TypoDistance(APattern, NameOf(Items[Index]));
+      if Distances[Index] <= Limit then
+        Candidates.Add(Index);
+    end;
+    if Candidates.Count = 0 then
+      Exit;
+    Candidates.Sort(TComparer<Integer>.Construct(
+      function(const A, B: Integer): Integer
+      begin
+        Result := Distances[A] - Distances[B];
+        if Result = 0 then
+          Result := Boosts[B] - Boosts[A];
+        if Result = 0 then
+          Result := CompareText(Items[A].Name, Items[B].Name);
+      end));
+    Result := [TypoHeader];
+    for Index := 0 to Min(Candidates.Count, MaxTypos) - 1 do
+      Result := Result + [Candidates[Index]];
+  finally
+    Candidates.Free;
   end;
 end;
 
@@ -248,8 +306,13 @@ var
 begin
   Result := 0;
   for Index in AOrder do
-    if Index <> Header then
+    if not IsHeader(Index) then
       Inc(Result);
+end;
+
+class function TAtlasRanking.IsHeader(AValue: Integer): Boolean;
+begin
+  Result := AValue < 0;
 end;
 
 end.

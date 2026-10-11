@@ -442,7 +442,10 @@ begin
   // Überschrift einer Gruppe geerbter Member (#419): Klasse des nächsten Eintrags;
   // mit erwartetem Typ (#417, #444) „Passt zu …“ bzw. „Weitere“.
   Text := TAtlasStrings.Text(TAtlasTextId.InheritedPlain);
-  if (APosition < High(FOrder)) and (FOrder[APosition + 1] >= 0) then
+  // Tippfehler-Treffer (#485).
+  if FOrder[APosition] = TAtlasRanking.TypoHeader then
+    Text := TAtlasStrings.Text(TAtlasTextId.DidYouMean)
+  else if (APosition < High(FOrder)) and (FOrder[APosition + 1] >= 0) then
   begin
     if FItems[FOrder[APosition + 1]].ExpectedType <> '' then
     begin
@@ -579,7 +582,7 @@ begin
   Count := Min(Length(FOrder), 200);
   for Position := 0 to Count - 1 do
   begin
-    if FOrder[Position] = TAtlasRanking.Header then
+    if TAtlasRanking.IsHeader(FOrder[Position]) then
       Continue;
     Item := FItems[FOrder[Position]];
     Width := Canvas.TextWidth(Item.Name);
@@ -982,7 +985,7 @@ begin
     DrawChips;
     for Row := 0 to RowCount - 1 do
       if FTop + Row < Length(FOrder) then
-        if FOrder[FTop + Row] = TAtlasRanking.Header then
+        if TAtlasRanking.IsHeader(FOrder[FTop + Row]) then
           DrawHeader(Row, FTop + Row)
         else
           DrawRow(Row, FTop + Row);
@@ -1251,7 +1254,7 @@ begin
   FTipTimer.Enabled := False;
   Row := FHoverPosition - FTop;
   if not IsShown or (FHoverPosition < 0) or (FHoverPosition >= Length(FOrder)) or (Row < 0) or
-    (Row >= Length(FTruncated)) or not FTruncated[Row] or (FOrder[FHoverPosition] = TAtlasRanking.Header) then
+    (Row >= Length(FTruncated)) or not FTruncated[Row] or TAtlasRanking.IsHeader(FOrder[FHoverPosition]) then
     Exit;
   Item := FItems[FOrder[FHoverPosition]];
   Text := Item.Name;

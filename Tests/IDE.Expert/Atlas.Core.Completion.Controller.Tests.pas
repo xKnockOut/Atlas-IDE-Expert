@@ -90,7 +90,7 @@ begin
   begin
     if Names <> '' then
       Names := Names + ',';
-    if Index = TAtlasRanking.Header then
+    if TAtlasRanking.IsHeader(Index) then
       Names := Names + '#'
     else
       Names := Names + AItems[Index].Name;
