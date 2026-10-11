@@ -136,6 +136,8 @@ type
     /// <summary>Probleme an der Stelle (0-basiert) für den Hover-Tooltip.</summary>
     function ProblemsAt(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;
     property Store: TAtlasProblemStore read FStore;
+    /// <summary>Speicher des laufenden Controllers für andere Zeichner (inaktive Zweige, #615); nil ohne.</summary>
+    class function Current: TAtlasProblemStore; static;
   end;
 
 implementation
@@ -334,6 +336,10 @@ end;
 
 { TAtlasProblemsController }
 
+var
+  // Speicher des laufenden Controllers (#615).
+  CurrentStore: TAtlasProblemStore = nil;
+
 constructor TAtlasProblemsController.Create(const ASession: TAtlasProblemsSessionFunc;
   const ALog: TAtlasProblemsLogProc);
 begin
@@ -341,6 +347,7 @@ begin
   FSession := ASession;
   FLog := ALog;
   FStore := TAtlasProblemStore.Create;
+  CurrentStore := FStore;
   FPainter := TAtlasProblemsPainter.Create(FStore);
   FList := TAtlasProblemsList.Create;
   FRetired := TObjectList<TThread>.Create(True);
@@ -352,8 +359,15 @@ begin
   FTimer.Enabled := True;
 end;
 
+class function TAtlasProblemsController.Current: TAtlasProblemStore;
+begin
+  Result := CurrentStore;
+end;
+
 destructor TAtlasProblemsController.Destroy;
 begin
+  if CurrentStore = FStore then
+    CurrentStore := nil;
   FTimer.Free;
   BeginShutdown;
   WaitShutdown;

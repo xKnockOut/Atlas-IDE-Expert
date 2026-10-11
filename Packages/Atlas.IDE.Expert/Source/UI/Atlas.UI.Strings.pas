@@ -34,7 +34,8 @@ type
     ProjectSettingsBadNumber, ProjectSettingsFile,
     MenuAtlas, MenuToggleEnabled, MenuToggleHover, MenuTogglePairs, MenuToggleGuides, MenuToggleProblems, MenuOptions, MenuEnableAll,
     MenuIndexStatus, MenuIndexRebuild, MenuIndexRebuilding, MenuIndexNoServer,
-    SettingsPaletteKey, SettingsCheckKey, SettingsKeyPriority, KeyConflict, ForeignCompletion);
+    SettingsPaletteKey, SettingsCheckKey, SettingsKeyPriority, KeyConflict, ForeignCompletion,
+    SettingsInactiveDim, MenuToggleInactive);
 
   TAtlasStrings = class
   private class var
@@ -100,7 +101,8 @@ const
      'Atlas: %0:s ist schon belegt (%1:s); Atlas überlässt die Taste und belegt sie nicht für %2:s. ' +
        'Andere Taste oder Vorrang unter Tools > Optionen > Atlas.',
      'Atlas: %s bringt eine eigene Vervollständigung mit. Laufen beide, stören sie sich; ' +
-       'eine davon abschalten (Atlas: Menü Atlas > Code Insight von Atlas). Atlas ändert fremde Erweiterungen nicht.'),
+       'eine davon abschalten (Atlas: Menü Atlas > Code Insight von Atlas). Atlas ändert fremde Erweiterungen nicht.',
+     'Inaktive {$IFDEF}-Zweige ausgrauen', 'Inaktive {$IFDEF}-Zweige ausgrauen'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -147,7 +149,8 @@ const
      'Atlas: %0:s is already assigned (%1:s); Atlas leaves the key and does not use it for %2:s. ' +
        'Choose another key or precedence under Tools > Options > Atlas.',
      'Atlas: %s brings its own code completion. Running both interferes; ' +
-       'switch one off (Atlas: menu Atlas > Atlas Code Insight). Atlas does not change other extensions.'));
+       'switch one off (Atlas: menu Atlas > Atlas Code Insight). Atlas does not change other extensions.',
+     'Grey out inactive {$IFDEF} branches', 'Grey out inactive {$IFDEF} branches'));
 
 { TAtlasStrings }
 

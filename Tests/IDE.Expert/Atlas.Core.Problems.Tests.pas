@@ -15,6 +15,8 @@ type
     [Test]
     procedure ReadsLspDiagnostics;
     [Test]
+    procedure LinesBetweenDirectivesAreInactive;
+    [Test]
     procedure ContainsTreatsEmptyRangeAsOneCharacter;
     [Test]
     procedure ReadsDiagnosticReports;
@@ -189,6 +191,31 @@ begin
     Assert.AreEqual(1, Integer(Length(Problems)));
     Assert.AreEqual(3, Problems[0].StartLine);
     Assert.IsFalse(Problems[0].Stale);
+  finally
+    Store.Free;
+  end;
+end;
+
+procedure TAtlasProblemsTests.LinesBetweenDirectivesAreInactive;
+var
+  Store: TAtlasProblemStore;
+  Inactive: TAtlasProblem;
+begin
+  // {$IFDEF WIN64} in Zeile 1, Inhalt in 2 und 3, {$ENDIF} in Zeile 4 (#615).
+  Inactive := Problem(1, 14, 'inaktiv');
+  Inactive.EndLine := 4;
+  Inactive.EndCharacter := 2;
+  Inactive.Unnecessary := True;
+  Store := TAtlasProblemStore.Create;
+  try
+    Store.Update('C:\P\B.pas', 'type'#13#10'  {$IFDEF WIN64}'#13#10'  TNur64 = class end;'#13#10'  // x'#13#10 +
+      '  {$ENDIF}', True, [Inactive, Problem(2, 2, 'echt')], '1', True);
+    Assert.IsFalse(Store.LineInactive('C:\P\B.pas', 1), 'Zeile der Direktive');
+    Assert.IsTrue(Store.LineInactive('C:\P\B.pas', 2));
+    Assert.IsTrue(Store.LineInactive('C:\P\B.pas', 3));
+    Assert.IsFalse(Store.LineInactive('C:\P\B.pas', 4), 'Zeile von $ENDIF');
+    Assert.AreEqual(1, Integer(Length(Store.Inactive('C:\P\B.pas'))));
+    Assert.IsFalse(Store.LineInactive('C:\P\Fremd.pas', 2));
   finally
     Store.Free;
   end;

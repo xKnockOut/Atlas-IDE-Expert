@@ -11,6 +11,10 @@
 // Linien der Blöcke über mehrere Zeilen in den Paarfarben, mit Haken an Öffner
 // und Schließer; die Strukturhervorhebung der IDE ist dann aus
 // (Atlas.IDE.Editor.Structure).
+// Inaktive {$IFDEF}-Zweige (#615): Zeilen darin zeichnet Atlas in einer
+// Farbe zwischen Text und Hintergrund; die Bereiche liefert der Server mit den
+// Diagnosen (Tag Unnecessary). Hier statt in einem eigenen Notifier, damit
+// nicht zwei Zeichner denselben Lauf übermalen.
 
 interface
 
@@ -62,6 +66,9 @@ type
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     procedure Refresh(const Context: INTACodeEditorPaintContext);
+    /// <summary>Lauf in einer Farbe selbst zeichnen (Hintergrund wie vorbereitet).</summary>
+    class procedure PaintRun(const ARect: TRect; const AText: string; const AContext: INTACodeEditorPaintContext;
+      AColor: TColor); static;
   public
     constructor Create;
     destructor Destroy; override;
@@ -78,7 +85,8 @@ uses
   Atlas.Core.Diagnostics.Hangs,
   Atlas.IDE.Editor.Buffer,
   Atlas.IDE.Editor.Style,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Problems.Controller;
 
 { TAtlasEditorPairs.TEvents }
 
@@ -203,6 +211,31 @@ begin
     end;
 end;
 
+class procedure TAtlasEditorPairs.PaintRun(const ARect: TRect; const AText: string;
+  const AContext: INTACodeEditorPaintContext; AColor: TColor);
+var
+  Canvas: TCanvas;
+  Cell, Top, Index, Saved: Integer;
+  DC: HDC;
+begin
+  Canvas := AContext.Canvas;
+  Cell := AContext.CellSize.cx;
+  if Cell <= 0 then
+    Cell := Canvas.TextWidth('W');
+  Top := ARect.Top + (ARect.Height - Canvas.TextHeight('Wg')) div 2;
+  Canvas.FillRect(ARect);
+  DC := Canvas.Handle;
+  Saved := SaveDC(DC);
+  try
+    SetBkMode(DC, TRANSPARENT);
+    SetTextColor(DC, ColorToRGB(AColor));
+    for Index := 0 to Length(AText) - 1 do
+      Winapi.Windows.TextOut(DC, ARect.Left + Index * Cell, Top, PChar(AText) + Index, 1);
+  finally
+    RestoreDC(DC, Saved);
+  end;
+end;
+
 procedure TAtlasEditorPairs.PaintText(const Rect: TRect; const ColNum: SmallInt; const Text: string;
   const SyntaxCode: TOTASyntaxCode; const Hilight, BeforeEvent: Boolean; var AllowDefaultPainting: Boolean;
   const Context: INTACodeEditorPaintContext);
@@ -224,6 +257,15 @@ begin
   if not BeforeEvent or Hilight or (Text = '') or (Context = nil) then
     Exit;
   try
+    if TAtlasIdeSettings.Current.InactiveDim and (TAtlasProblemsController.Current <> nil) and
+      TAtlasProblemsController.Current.LineInactive(Context.FileName, Context.LogicalLineNum - 1) then
+    begin
+      PaintRun(Rect, Text, Context,
+        TColor(TAtlasColorMath.Mix(TAtlasColor(ColorToRGB(Context.Canvas.Font.Color)),
+        TAtlasColor(ColorToRGB(Context.Canvas.Brush.Color)), 0.45)));
+      AllowDefaultPainting := False;
+      Exit;
+    end;
     if not TAtlasIdeSettings.Current.PairColors then
       Exit;
     if FCheck or not SameText(Context.FileName, FFileName) then
