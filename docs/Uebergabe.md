@@ -186,3 +186,15 @@
 - **Weiter:**
   - Reste der Serie: #528/#548, #536, #414, #443, #433, #447, #227, #99, #48, #102.
   - Danach weitere Issues nach Priorität.
+
+## Stand 11.10.2026 (Nachtrag)
+
+- MCP: explain_finding, rename_symbol, apply_code_action; CheckOnSave über die IDE standardmäßig aus, Plugin schickt didSave, Server prüft mit dcc (54bf7479).
+- Regel `unresolved-identifier` (fc636997).
+- #536: Sammeldialog entfernt, Unterschied im Meldungsfenster (ea0b4a25, geschlossen).
+- #414: Hint/Popup schließen bei Größenänderung, Hint wandert beim Scrollen mit, Tooltip schließt bei Fokus-/Tabwechsel (3d6a38b8); Abnahme SL1–SL9 offen.
+- #443 war schon erledigt (450ac5b7).
+- #433: Einstellung „Schreibweise beim Übernehmen korrigieren“ (b853a445); Abnahme offen.
+- #447: UI-Automation + Ansagen für Popup, Hint, Tooltip (e5208869); Abnahme mit Narrator offen.
+- Hinweis: neue .pas ohne BOM lassen den Test NoParserCallsOutsideCache 40 Byte „lecken“ (TEncoding-Instanz) – immer mit BOM speichern.
+- Weiter: #227, #102.
