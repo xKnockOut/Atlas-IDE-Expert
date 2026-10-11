@@ -122,6 +122,7 @@ uses
   DockForm,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Completion.Word,
+  Atlas.Core.Completion.Matching,
   Atlas.Core.Completion.Providers.XmlDoc,
   Atlas.Core.Completion.Preview,
   Atlas.Core.Settings.Plugin,
@@ -796,6 +797,10 @@ begin
   NewText := AItem.InsertText;
   if NewText = '' then
     NewText := AItem.Name;
+  // Schreibweise (#433): abgeschaltet bleibt das Getippte, nur der Rest kommt dazu.
+  if (FWordStart >= 0) and (Character >= FWordStart) then
+    NewText := TAtlasCompletionMatcher.CommitText(Copy(LineText, FWordStart + 1, Character - FWordStart), NewText,
+      TAtlasIdeSettings.Current.FixCase);
   if AItem.HasTextEdit then
     NewText := AItem.TextEdit.NewText;
   // Klammern (#430): Methode mit Parametern, nicht über ein Commit-Zeichen, keine "(" dahinter.

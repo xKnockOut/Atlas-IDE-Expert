@@ -53,6 +53,10 @@ type
   TAtlasMatchingBudgetTests = class
   public
     [Test]
+    procedure CommitTextFixesCase;
+    [Test]
+    procedure CommitTextKeepsTypedCaseWhenOff;
+    [Test]
     procedure Filters5000EntriesWithin12ms;
   end;
 
@@ -548,6 +552,20 @@ begin
   Assert.AreEqual(4, TAtlasWord.EndAfter('List.Add', 4));
   Assert.AreEqual(6, TAtlasWord.EndAfter('Format', 6));
   Assert.AreEqual(8, TAtlasWord.EndAfter('  Add(  ', 8));
+end;
+
+procedure TAtlasMatchingBudgetTests.CommitTextFixesCase;
+begin
+  Assert.AreEqual('ShowMessage', TAtlasCompletionMatcher.CommitText('showmessage', 'ShowMessage', True));
+  Assert.AreEqual('ShowMessage', TAtlasCompletionMatcher.CommitText('showm', 'ShowMessage', True));
+end;
+
+procedure TAtlasMatchingBudgetTests.CommitTextKeepsTypedCaseWhenOff;
+begin
+  Assert.AreEqual('showmessage', TAtlasCompletionMatcher.CommitText('showmessage', 'ShowMessage', False));
+  Assert.AreEqual('showMessage', TAtlasCompletionMatcher.CommitText('show', 'ShowMessage', False));
+  // Unscharfer Treffer ("TSL" → TStringList): kein Anfang, also der Name.
+  Assert.AreEqual('TStringList', TAtlasCompletionMatcher.CommitText('tsl', 'TStringList', False));
 end;
 
 initialization

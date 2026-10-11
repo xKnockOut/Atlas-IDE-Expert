@@ -35,6 +35,7 @@ type
     FRowsUpDown: TUpDown;
     FPanelCollapsed: TCheckBox;
     FAutoParentheses: TCheckBox;
+    FFixCase: TCheckBox;
     FFilterChips: TCheckBox;
     FLearning: TCheckBox;
     FGroupInherited: TCheckBox;
@@ -144,6 +145,7 @@ begin
   FRowsUpDown.Max := TAtlasPluginSettings.MaxVisibleRows;
   FPanelCollapsed := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPanelCollapsed));
   FAutoParentheses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsParentheses));
+  FFixCase := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFixCase));
   FFilterChips := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsChips));
   FLearning := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsLearning));
   FGroupInherited := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGroupInherited));
@@ -237,6 +239,7 @@ begin
   FRowsUpDown.Position := ASettings.VisibleRows;
   FPanelCollapsed.Checked := ASettings.PanelCollapsed;
   FAutoParentheses.Checked := ASettings.AutoParentheses;
+  FFixCase.Checked := ASettings.FixCase;
   FFilterChips.Checked := ASettings.FilterChips;
   FLearning.Checked := ASettings.Learning;
   FGroupInherited.Checked := ASettings.GroupInherited;
@@ -260,6 +263,7 @@ begin
   ASettings.VisibleRows := FRowsUpDown.Position;
   ASettings.PanelCollapsed := FPanelCollapsed.Checked;
   ASettings.AutoParentheses := FAutoParentheses.Checked;
+  ASettings.FixCase := FFixCase.Checked;
   ASettings.FilterChips := FFilterChips.Checked;
   ASettings.Learning := FLearning.Checked;
   ASettings.GroupInherited := FGroupInherited.Checked;
