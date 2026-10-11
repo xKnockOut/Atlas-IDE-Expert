@@ -282,6 +282,9 @@ begin
     Reloader.OnSaved :=
       procedure(AFileName: string)
       begin
+        // Prüfung des Servers mit dcc (#40); die Prüfung in der IDE nur, wenn eingeschaltet (#548).
+        if Manager <> nil then
+          Manager.NotifySaved(AFileName);
         if CheckOnSave <> nil then
           CheckOnSave.Saved(AFileName);
       end;

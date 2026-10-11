@@ -117,6 +117,8 @@ type
       ATimeoutMs: Cardinal): TArray<TLspDiagnosticReport>;
     /// <summary>didClose für eine abgeglichene Datei; danach liest der Server sie wieder von der Platte.</summary>
     procedure Close(const AFileName: string);
+    /// <summary>didSave für eine abgeglichene Datei: Der Server prüft dann mit dcc (compiler.onSave, #40).</summary>
+    procedure Saved(const AFileName: string);
     /// <summary>Abgeglichene Dateien (Hauptthread).</summary>
     function SyncedFiles: TArray<string>;
     /// <summary>Zuletzt geschickter Text einer Datei (Hauptthread).</summary>
@@ -525,6 +527,14 @@ begin
     Exit;
   FDocuments.Remove(Key);
   FClient.Notify('textDocument/didClose', TJSONObject.Create(TJSONPair.Create('textDocument',
+    TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))))));
+end;
+
+procedure TLspSession.Saved(const AFileName: string);
+begin
+  if not FDocuments.ContainsKey(AnsiLowerCase(AFileName)) then
+    Exit;
+  FClient.Notify('textDocument/didSave', TJSONObject.Create(TJSONPair.Create('textDocument',
     TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))))));
 end;
 

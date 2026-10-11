@@ -70,6 +70,8 @@ type
     /// <summary>Benachrichtigung an den Server, falls eine Sitzung läuft (#527); übernimmt AParams.
     /// Startet den Server dafür nicht.</summary>
     procedure NotifyServer(const AMethod: string; AParams: TJSONObject);
+    /// <summary>Gespeichert: didSave an den Server, falls eine Sitzung läuft (Prüfung mit dcc).</summary>
+    procedure NotifySaved(const AFileName: string);
     /// <summary>Zeile im Diagnoseprotokoll (nur mit Diagnose = 1).</summary>
     procedure Log(const AMessage: string);
     /// <summary>Zeile im Protokoll unabhängig von Diagnose, z. B. Hänger (#501).</summary>
@@ -685,6 +687,18 @@ end;
 procedure TAtlasCodeInsightManager.Done(Accepted: Boolean; out DisplayParams: Boolean);
 begin
   DisplayParams := False;
+end;
+
+procedure TAtlasCodeInsightManager.NotifySaved(const AFileName: string);
+begin
+  if (FSession = nil) or not FSession.Initialized then
+    Exit;
+  try
+    FSession.Saved(AFileName);
+  except
+    on E: Exception do
+      Diagnose('didSave nicht gesendet: ' + E.Message);
+  end;
 end;
 
 procedure TAtlasCodeInsightManager.NotifyServer(const AMethod: string; AParams: TJSONObject);
