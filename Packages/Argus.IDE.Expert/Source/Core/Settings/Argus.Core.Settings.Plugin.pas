@@ -16,6 +16,8 @@ type
     ['{4C8E2A17-9B3D-4F61-A5E2-7D0C1B9F3E84}']
     function ReadInteger(const AName: string; ADefault: Integer): Integer;
     procedure WriteInteger(const AName: string; AValue: Integer);
+    function ReadString(const AName, ADefault: string): string;
+    procedure WriteString(const AName, AValue: string);
   end;
 
   TArgusPluginSettings = record
@@ -63,6 +65,8 @@ type
     ReloadExternal: Boolean;
     /// <summary>Klammer- und Blockpaare nach Tiefe färben (#514).</summary>
     PairColors: Boolean;
+    /// <summary>Pfad zu ArgusServer.exe; leer: neben dem Plugin bzw. Output\Win64\Debug\Bin.</summary>
+    ServerPath: string;
     /// <summary>Blocklinien in den Paarfarben statt der Strukturhervorhebung der IDE (#514).</summary>
     PairGuides: Boolean;
     /// <summary>Probleme im Editor unterstreichen und im Meldungsfenster auflisten (#398).</summary>
@@ -112,6 +116,7 @@ begin
   Result.HangHint := True;
   Result.ReloadExternal := True;
   Result.PairColors := True;
+  Result.ServerPath := '';
   Result.PairGuides := True;
   Result.Problems := True;
   Result.CheckOnSave := True;
@@ -150,6 +155,7 @@ begin
   HangHint := AStore.ReadInteger('HangHint', BoolValue(Default.HangHint)) <> 0;
   ReloadExternal := AStore.ReadInteger('ReloadExternal', BoolValue(Default.ReloadExternal)) <> 0;
   PairColors := AStore.ReadInteger('PairColors', BoolValue(Default.PairColors)) <> 0;
+  ServerPath := Trim(AStore.ReadString('ServerPath', Default.ServerPath));
   PairGuides := AStore.ReadInteger('PairGuides', BoolValue(Default.PairGuides)) <> 0;
   Problems := AStore.ReadInteger('Problems', BoolValue(Default.Problems)) <> 0;
   CheckOnSave := AStore.ReadInteger('CheckOnSave', BoolValue(Default.CheckOnSave)) <> 0;
@@ -176,6 +182,7 @@ begin
   AStore.WriteInteger('HangHint', BoolValue(HangHint));
   AStore.WriteInteger('ReloadExternal', BoolValue(ReloadExternal));
   AStore.WriteInteger('PairColors', BoolValue(PairColors));
+  AStore.WriteString('ServerPath', Trim(ServerPath));
   AStore.WriteInteger('PairGuides', BoolValue(PairGuides));
   AStore.WriteInteger('Problems', BoolValue(Problems));
   AStore.WriteInteger('CheckOnSave', BoolValue(CheckOnSave));

@@ -17,6 +17,7 @@ uses
   Vcl.ComCtrls,
   Vcl.ExtCtrls,
   Vcl.Forms,
+  Vcl.Dialogs,
   Argus.Core.Settings.Plugin,
   Argus.Core.Diagnostics.Hangs,
   Argus.UI.Strings;
@@ -25,6 +26,10 @@ type
   TArgusSettingsPage = class(TFrame)
   private
     FEnabled: TCheckBox;
+    FServerPath: TEdit;
+    FServerBrowse: TButton;
+    FServerStatus: TLabel;
+    FDefaultServerPath: string;
     FRowsLabel: TLabel;
     FRows: TEdit;
     FRowsUpDown: TUpDown;
@@ -56,12 +61,17 @@ type
     procedure ResetHistoryClick(Sender: TObject);
     procedure ResetWidthsClick(Sender: TObject);
     procedure HangTestClick(Sender: TObject);
+    procedure ServerBrowseClick(Sender: TObject);
+    procedure ServerPathChange(Sender: TObject);
+    procedure SetDefaultServerPath(const AValue: string);
   public
     constructor Create(AOwner: TComponent); override;
     procedure LoadFrom(const ASettings: TArgusPluginSettings);
     procedure SaveTo(var ASettings: TArgusPluginSettings);
     /// <summary>„Verlauf zurücksetzen“ der lernenden Gewichtung (#418).</summary>
     property OnResetHistory: TProc read FOnResetHistory write FOnResetHistory;
+    /// <summary>Server, der bei leerem Pfad gilt (für die Anzeige „Verwendet: …“).</summary>
+    property DefaultServerPath: string read FDefaultServerPath write SetDefaultServerPath;
   end;
 
 implementation
@@ -78,7 +88,7 @@ begin
   inherited Create(AOwner);
   Name := 'ArgusSettingsPage';
   Width := 480;
-  Height := 590;
+  Height := 660;
   Title := TLabel.Create(Self);
   Title.Parent := Self;
   Title.Align := alTop;
@@ -87,6 +97,34 @@ begin
   Title.Font.Style := [fsBold];
   FNextTop := 100;
   FEnabled := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsEnabled));
+  // Wo der Server liegt; leer gilt der Standard neben dem Plugin.
+  Panel := AddPanel(26);
+  Title := TLabel.Create(Self);
+  Title.Parent := Panel;
+  Title.Caption := TArgusStrings.Text(TArgusTextId.SettingsServerPath);
+  Title.Left := 0;
+  Title.Top := 5;
+  FServerPath := TEdit.Create(Self);
+  FServerPath.Parent := Panel;
+  FServerPath.Left := 180;
+  FServerPath.Top := 1;
+  FServerPath.Width := 250;
+  FServerPath.Anchors := [akLeft, akTop, akRight];
+  FServerPath.OnChange := ServerPathChange;
+  FServerBrowse := TButton.Create(Self);
+  FServerBrowse.Parent := Panel;
+  FServerBrowse.Caption := '…';
+  FServerBrowse.Left := 436;
+  FServerBrowse.Top := 0;
+  FServerBrowse.Width := 30;
+  FServerBrowse.Anchors := [akTop, akRight];
+  FServerBrowse.OnClick := ServerBrowseClick;
+  Panel := AddPanel(18);
+  FServerStatus := TLabel.Create(Self);
+  FServerStatus.Parent := Panel;
+  FServerStatus.Left := 180;
+  FServerStatus.Top := 0;
+  FServerStatus.Font.Color := clGrayText;
   Panel := AddPanel(26);
   FRowsLabel := TLabel.Create(Self);
   FRowsLabel.Parent := Panel;
@@ -194,6 +232,8 @@ procedure TArgusSettingsPage.LoadFrom(const ASettings: TArgusPluginSettings);
 begin
   FWidths := ASettings;
   FEnabled.Checked := ASettings.Enabled;
+  FServerPath.Text := ASettings.ServerPath;
+  ServerPathChange(nil);
   FRowsUpDown.Position := ASettings.VisibleRows;
   FPanelCollapsed.Checked := ASettings.PanelCollapsed;
   FAutoParentheses.Checked := ASettings.AutoParentheses;
@@ -216,6 +256,7 @@ end;
 procedure TArgusSettingsPage.SaveTo(var ASettings: TArgusPluginSettings);
 begin
   ASettings.Enabled := FEnabled.Checked;
+  ASettings.ServerPath := Trim(FServerPath.Text);
   ASettings.VisibleRows := FRowsUpDown.Position;
   ASettings.PanelCollapsed := FPanelCollapsed.Checked;
   ASettings.AutoParentheses := FAutoParentheses.Checked;
@@ -236,6 +277,46 @@ begin
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;
+end;
+
+procedure TArgusSettingsPage.SetDefaultServerPath(const AValue: string);
+begin
+  FDefaultServerPath := AValue;
+  ServerPathChange(nil);
+end;
+
+procedure TArgusSettingsPage.ServerPathChange(Sender: TObject);
+var
+  Path: string;
+begin
+  Path := Trim(FServerPath.Text);
+  if Path = '' then
+    Path := FDefaultServerPath;
+  if Path = '' then
+    FServerStatus.Caption := ''
+  else if FileExists(Path) then
+    FServerStatus.Caption := TArgusStrings.Fmt(TArgusTextId.SettingsServerFound, [Path])
+  else
+    FServerStatus.Caption := TArgusStrings.Fmt(TArgusTextId.SettingsServerMissing, [Path]);
+end;
+
+procedure TArgusSettingsPage.ServerBrowseClick(Sender: TObject);
+var
+  Dialog: TOpenDialog;
+begin
+  Dialog := TOpenDialog.Create(nil);
+  try
+    Dialog.Filter := TArgusStrings.Text(TArgusTextId.SettingsServerFilter);
+    Dialog.Options := Dialog.Options + [ofFileMustExist];
+    if Trim(FServerPath.Text) <> '' then
+      Dialog.FileName := Trim(FServerPath.Text)
+    else if FDefaultServerPath <> '' then
+      Dialog.InitialDir := ExtractFilePath(FDefaultServerPath);
+    if Dialog.Execute then
+      FServerPath.Text := Dialog.FileName;
+  finally
+    Dialog.Free;
+  end;
 end;
 
 procedure TArgusSettingsPage.ResetHistoryClick(Sender: TObject);
