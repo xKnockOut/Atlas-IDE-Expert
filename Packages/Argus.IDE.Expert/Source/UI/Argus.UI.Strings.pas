@@ -23,7 +23,8 @@ type
     KindClass, KindClassRef, KindObject, KindRecord, KindInterface, KindHelper, KindEnum, KindType, KindMethod, KindConstructor, KindRoutine, KindProperty, KindField, KindVariable, KindConstant, KindEnumMember, HoverKeyUsages, HoverKeyCopy,
     SettingsPairGuides, PairGuidesIdeOff, PairGuidesIdeOn,
     SettingsProblems, ProblemsGroup, ProblemsSourceArgus, ProblemsSourceCompiler, ProblemsStale, ProblemsMore,
-    SeverityError, SeverityWarning, SeverityInformation, SeverityHint);
+    SeverityError, SeverityWarning, SeverityInformation, SeverityHint,
+    SettingsTabGeneral, SettingsTabCompletion, SettingsTabEditor, SettingsTabCompiler, SettingsTabRobustness);
 
   TArgusStrings = class
   private class var
@@ -46,7 +47,7 @@ const
      'Keine Vorschläge an dieser Stelle', 'Esc schließt', 'Keine Details zu diesem Eintrag', 'Überladung',
      'Veraltet: %s', 'Veraltet.', 'Geerbt von %s', 'Geerbt', 'optional, Standard %s',
      'Keine Überladung mit %d Parametern.', '… %d weitere', 'Alle', 'Methoden', 'Eigenschaften', 'Ereignisse',
-     'Typen', 'Snippets', 'zuletzt', 'häufig', 'Vervollständigung, Parameter-Hint und Tooltip von Argus',
+     'Typen', 'Snippets', 'zuletzt', 'häufig', 'Einstellungen des Argus-Plugins',
      'Argus aktiv (aus: eingebaute Code Insight der IDE)', 'Sichtbare Zeilen der Liste:',
      'Detailpanel eingeklappt (Strg+Q schaltet im Popup um)', 'Klammern beim Übernehmen von Methoden ergänzen',
      'Filter-Chips über der Liste (Alt+1 … Alt+6)', 'Häufig und zuletzt gewählte Einträge nach oben',
@@ -68,12 +69,13 @@ const
      'Argus hat die Strukturhervorhebung der IDE wieder eingeschaltet; wirkt nach dem nächsten Start von Delphi.',
      'Probleme im Editor unterstreichen und im Meldungsfenster auflisten (Syntax, Regeln, Compiler)',
      'Argus-Probleme', 'Argus', 'Compiler', 'seit dem letzten Prüfen geändert', '… %d weitere Probleme',
-     'Fehler', 'Warnung', 'Info', 'Hinweis'),
+     'Fehler', 'Warnung', 'Info', 'Hinweis',
+     'Allgemein', 'Vervollständigung', 'Editor', 'Compiler', 'Robustheit'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
      'All', 'Methods', 'Properties', 'Events', 'Types', 'Snippets', 'recent', 'frequent',
-     'Completion, parameter hint and tooltip by Argus', 'Argus active (off: built-in Code Insight of the IDE)',
+     'Argus plug-in settings', 'Argus active (off: built-in Code Insight of the IDE)',
      'Visible rows of the list:', 'Detail panel collapsed (Ctrl+Q toggles in the popup)',
      'Add parentheses when accepting methods', 'Filter chips above the list (Alt+1 … Alt+6)',
      'Frequently and recently chosen entries first', 'Inherited members ranked lower and grouped by class',
@@ -94,7 +96,8 @@ const
      'Argus switched the IDE''s structural highlighting back on; takes effect after the next start of Delphi.',
      'Underline problems in the editor and list them in the message view (syntax, rules, compiler)',
      'Argus problems', 'Argus', 'Compiler', 'changed since the last check', '… %d more problems',
-     'Error', 'Warning', 'Info', 'Hint'));
+     'Error', 'Warning', 'Info', 'Hint',
+     'General', 'Completion', 'Editor', 'Compiler', 'Robustness'));
 
 { TArgusStrings }
 

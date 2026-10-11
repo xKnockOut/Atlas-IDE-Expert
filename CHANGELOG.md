@@ -41,6 +41,9 @@ Server und Erweiterung tragen immer dieselbe Version.
 - MCP-Modus mit lesenden Werkzeugen (#48).
 - Delphi-Version je Projekt aus der ProjectVersion (#47).
 
+### Geändert
+- Optionsseite „Argus“ in Reitern Allgemein, Vervollständigung, Editor, Compiler und Robustheit statt einer langen Liste (#227).
+
 ## [0.1.0] - 2026-10-08
 
 ### Neu
