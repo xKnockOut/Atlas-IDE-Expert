@@ -20,7 +20,8 @@ type
     SettingsResetWidths, FitsType, OtherGroup, CountFits, CompileCancelled, SettingsHangThreshold, SettingsHangHint, HangHint, SettingsHangTest, SettingsReload, ReloadDone, ReloadKeptModified, ReloadDeleted, PaletteLog, PaletteResetHistory, SettingsPairs, SettingsCheckOnSave,
     SettingsCheckDelay, SettingsCheckMax, CheckOnSaveDisabled, PaletteCheckNow,
     HoverInheritance, HoverTargetType, HoverPinned, HoverGoTo, HoverUsages, HoverUsagesCount, HoverCopy, HoverHelp, HoverUsagesOf,
-    KindClass, KindClassRef, KindObject, KindRecord, KindInterface, KindHelper, KindEnum, KindType, KindMethod, KindConstructor, KindRoutine, KindProperty, KindField, KindVariable, KindConstant, KindEnumMember, HoverKeyUsages, HoverKeyCopy);
+    KindClass, KindClassRef, KindObject, KindRecord, KindInterface, KindHelper, KindEnum, KindType, KindMethod, KindConstructor, KindRoutine, KindProperty, KindField, KindVariable, KindConstant, KindEnumMember, HoverKeyUsages, HoverKeyCopy,
+    SettingsPairGuides, PairGuidesIdeOff, PairGuidesIdeOn);
 
   TArgusStrings = class
   private class var
@@ -59,7 +60,10 @@ const
      'Argus: Compilerprüfung nach dem Speichern für %s abgeschaltet (%d ms > %d ms); Strg+Alt+F9 prüft von Hand.',
      'Compiler prüfen (Syntaxprüfung)',
      'Vererbung', 'Zieltyp %s', 'angeheftet', 'Gehe zu %s', 'Verwendungen', 'Verwendungen (%d)', 'Deklaration kopieren', 'Hilfe', 'Argus: %d Verwendungen von %s',
-     'Klasse', 'Klassenreferenz', 'Objekttyp', 'Record', 'Interface', 'Helfer', 'Aufzählung', 'Typ', 'Methode', 'Konstruktor', 'Routine', 'Property', 'Feld', 'Variable', 'Konstante', 'Aufzählungswert', 'Umschalt+F12', 'Strg+C'),
+     'Klasse', 'Klassenreferenz', 'Objekttyp', 'Record', 'Interface', 'Helfer', 'Aufzählung', 'Typ', 'Methode', 'Konstruktor', 'Routine', 'Property', 'Feld', 'Variable', 'Konstante', 'Aufzählungswert', 'Umschalt+F12', 'Strg+C',
+     'Blocklinien in den Paarfarben (schaltet die Strukturhervorhebung der IDE ab)',
+     'Argus zeichnet die Blocklinien selbst und hat die Strukturhervorhebung der IDE abgeschaltet; wirkt nach dem nächsten Start von Delphi.',
+     'Argus hat die Strukturhervorhebung der IDE wieder eingeschaltet; wirkt nach dem nächsten Start von Delphi.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -79,7 +83,10 @@ const
      'Argus: compiler check after saving switched off for %s (%d ms > %d ms); Ctrl+Alt+F9 checks manually.',
      'Check with compiler (syntax check)',
      'Inheritance', 'Target type %s', 'pinned', 'Go to %s', 'Usages', 'Usages (%d)', 'Copy declaration', 'Help', 'Argus: %d usages of %s',
-     'Class', 'Class reference', 'Object type', 'Record', 'Interface', 'Helper', 'Enumeration', 'Type', 'Method', 'Constructor', 'Routine', 'Property', 'Field', 'Variable', 'Constant', 'Enumeration value', 'Shift+F12', 'Ctrl+C'));
+     'Class', 'Class reference', 'Object type', 'Record', 'Interface', 'Helper', 'Enumeration', 'Type', 'Method', 'Constructor', 'Routine', 'Property', 'Field', 'Variable', 'Constant', 'Enumeration value', 'Shift+F12', 'Ctrl+C',
+     'Block lines in the pair colours (switches off the IDE''s structural highlighting)',
+     'Argus draws the block lines itself and switched off the IDE''s structural highlighting; takes effect after the next start of Delphi.',
+     'Argus switched the IDE''s structural highlighting back on; takes effect after the next start of Delphi.'));
 
 { TArgusStrings }
 

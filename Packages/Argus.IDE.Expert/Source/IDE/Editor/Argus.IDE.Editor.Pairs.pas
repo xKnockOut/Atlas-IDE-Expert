@@ -7,6 +7,10 @@
 // (Pinsel und Schrift hat die IDE vorbereitet), die Paare in der Farbe ihrer
 // Tiefe, unpaarige in der Fehlerfarbe. Markierter Text bleibt der IDE.
 // Strings und Kommentare zählen nicht (eigener Lexer). Abschaltbar.
+// Blocklinien (eigene Einstellung): Nach dem Zeichnen jeder Zeile senkrechte
+// Linien der Blöcke über mehrere Zeilen in den Paarfarben, mit Haken an Öffner
+// und Schließer; die Strukturhervorhebung der IDE ist dann aus
+// (Argus.IDE.Editor.Structure).
 
 interface
 
@@ -19,7 +23,8 @@ uses
   Vcl.Graphics,
   ToolsAPI,
   ToolsAPI.Editor,
-  Argus.Core.Editor.Pairs;
+  Argus.Core.Editor.Pairs,
+  Argus.Core.Editor.Guides;
 
 type
   TArgusEditorPairs = class
@@ -27,8 +32,15 @@ type
     TEvents = class(TNTACodeEditorNotifier)
     protected
       function AllowedEvents: TCodeEditorEvents; override;
+      function AllowedLineStages: TPaintLineStages; override;
     end;
     TLineTokens = TArray<TArgusPairToken>;
+    TGuidePart = (gpFirst, gpMiddle, gpLast);
+    TLineGuide = record
+      Column: Integer;
+      Depth: Integer;
+      Part: TGuidePart;
+    end;
   private
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
@@ -40,9 +52,14 @@ type
     FLines: TArray<TLineTokens>;
     // Je 0-basierter Zeile der Text wie im Editor (Tabs aufgelöst), zum Abgleich der Läufe.
     FDisplay: TArray<string>;
+    // Je 0-basierter Zeile die Blocklinien, die sie kreuzen.
+    FGuides: TArray<TArray<TLineGuide>>;
+    FTabWidth: Integer;
     procedure BeginPaint(const Editor: TWinControl; const ForceFullRepaint: Boolean);
     procedure PaintText(const Rect: TRect; const ColNum: SmallInt; const Text: string;
       const SyntaxCode: TOTASyntaxCode; const Hilight, BeforeEvent: Boolean;
+      var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+    procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     procedure Refresh(const Context: INTACodeEditorPaintContext);
   public
@@ -53,6 +70,8 @@ type
 implementation
 
 uses
+  System.Math,
+  Argus.Core.Settings.Plugin,
   Argus.Core.Style.Color,
   Argus.Core.Style.Palette,
   Argus.Core.Diagnostics.Hangs,
@@ -64,7 +83,12 @@ uses
 
 function TArgusEditorPairs.TEvents.AllowedEvents: TCodeEditorEvents;
 begin
-  Result := [cevBeginEndPaintEvents, cevPaintTextEvents];
+  Result := [cevBeginEndPaintEvents, cevPaintTextEvents, cevPaintLineEvents];
+end;
+
+function TArgusEditorPairs.TEvents.AllowedLineStages: TPaintLineStages;
+begin
+  Result := [plsEndPaint];
 end;
 
 { TArgusEditorPairs }
@@ -79,6 +103,7 @@ begin
   FEventsRef := FEvents;
   FEvents.OnEditorBeginPaint := BeginPaint;
   FEvents.OnEditorPaintText := PaintText;
+  FEvents.OnEditorPaintLine := PaintLine;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
     FIndex := Services.AddEditorEventsNotifier(FEventsRef);
 end;
@@ -92,6 +117,7 @@ begin
     Services.RemoveEditorEventsNotifier(FIndex);
   FEvents.OnEditorBeginPaint := nil;
   FEvents.OnEditorPaintText := nil;
+  FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
   inherited Destroy;
 end;
@@ -120,7 +146,10 @@ var
   Text: string;
   Lines: TArray<string>;
   Token: TArgusPairToken;
-  TabWidth, Index: Integer;
+  Blocks: TArray<TArgusPairBlock>;
+  Guide: TArgusGuide;
+  LineGuide: TLineGuide;
+  TabWidth, Index, Line: Integer;
   Activity: IInterface;
 begin
   FCheck := False;
@@ -137,15 +166,31 @@ begin
   FLines := nil;
   SetLength(FLines, Length(Lines));
   SetLength(FDisplay, Length(Lines));
+  FGuides := nil;
+  SetLength(FGuides, Length(Lines));
   TabWidth := TArgusEditorBuffer.TabWidth(View.Buffer);
+  FTabWidth := TabWidth;
   for Index := 0 to High(Lines) do
     FDisplay[Index] := TArgusPairs.DisplayLine(Lines[Index], TabWidth);
-  for Token in TArgusPairs.Analyze(Text) do
+  for Token in TArgusPairs.Analyze(Text, Blocks) do
     if Token.Line <= High(FLines) then
     begin
       // Spalte der IDE statt Zeichenindex.
       FLines[Token.Line] := FLines[Token.Line] + [Token];
       FLines[Token.Line][High(FLines[Token.Line])].Character := ColumnOf(Lines[Token.Line], Token.Character, TabWidth);
+    end;
+  for Guide in TArgusGuides.FromBlocks(Lines, Blocks, TabWidth) do
+    for Line := Guide.FirstLine to Guide.LastLine do
+    begin
+      LineGuide.Column := Guide.Column;
+      LineGuide.Depth := Guide.Depth;
+      if Line = Guide.FirstLine then
+        LineGuide.Part := gpFirst
+      else if Line = Guide.LastLine then
+        LineGuide.Part := gpLast
+      else
+        LineGuide.Part := gpMiddle;
+      FGuides[Line] := FGuides[Line] + [LineGuide];
     end;
 end;
 
@@ -224,6 +269,84 @@ begin
   except
     // Zeichnen darf die IDE nie stören; die IDE zeichnet dann selbst.
     AllowDefaultPainting := True;
+  end;
+end;
+
+procedure TArgusEditorPairs.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
+  var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+var
+  Settings: TArgusPluginSettings;
+  LineState: INTACodeEditorLineState;
+  Line, X, Top, Bottom, Tick: Integer;
+  Guide: TLineGuide;
+  Colors: TArgusColors;
+  Cell, Code: TRect;
+  DC: HDC;
+  Saved: Integer;
+  Pen, Old: HGDIOBJ;
+begin
+  if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) then
+    Exit;
+  try
+    Settings := TArgusIdeSettings.Current;
+    if not (Settings.PairColors and Settings.PairGuides) then
+      Exit;
+    if FCheck or not SameText(Context.FileName, FFileName) then
+      Refresh(Context);
+    Line := Context.LogicalLineNum - 1;
+    if (Line < 0) or (Line > High(FGuides)) or (Length(FGuides[Line]) = 0) then
+      Exit;
+    // Wie bei den Läufen: nur, wenn die Zeile zur Analyse passt.
+    LineState := Context.LineState;
+    if (LineState = nil) or
+      (TrimRight(TArgusPairs.DisplayLine(LineState.Text, FTabWidth)) <> TrimRight(FDisplay[Line])) then
+      Exit;
+    Colors := TArgusIdeStyle.Colors;
+    Code := LineState.CodeRect;
+    DC := Context.Canvas.Handle;
+    Saved := SaveDC(DC);
+    try
+      // Nicht in den Rand zeichnen.
+      if Code.Right > Code.Left then
+        IntersectClipRect(DC, Code.Left, Rect.Top, Rect.Right, Rect.Bottom);
+      for Guide in FGuides[Line] do
+      begin
+        Cell := Context.EditorState.GetCharacterPosPx(Guide.Column, Context.EditorLineNum);
+        Tick := Max(3, Cell.Width div 2);
+        X := Cell.Left - Max(2, Cell.Width div 3);
+        Top := Rect.Top;
+        Bottom := Rect.Bottom;
+        if Guide.Part = gpFirst then
+          Top := Rect.Top + 2;
+        if Guide.Part = gpLast then
+          Bottom := Rect.Bottom - 3;
+        Pen := CreatePen(PS_SOLID, 1, ColorToRGB(TColor(Colors.Pairs[Guide.Depth mod Length(Colors.Pairs)])));
+        Old := SelectObject(DC, Pen);
+        try
+          MoveToEx(DC, X, Top, nil);
+          LineTo(DC, X, Bottom + 1);
+          if Guide.Part = gpFirst then
+          begin
+            MoveToEx(DC, X, Top, nil);
+            LineTo(DC, X + Tick, Top);
+          end;
+          if Guide.Part = gpLast then
+          begin
+            MoveToEx(DC, X, Bottom, nil);
+            LineTo(DC, X + Tick, Bottom);
+          end;
+        finally
+          SelectObject(DC, Old);
+          DeleteObject(Pen);
+        end;
+      end;
+    finally
+      RestoreDC(DC, Saved);
+    end;
+  except
+    // Zeichnen darf die IDE nie stören.
+    on Exception do
+      FGuides := nil;
   end;
 end;
 

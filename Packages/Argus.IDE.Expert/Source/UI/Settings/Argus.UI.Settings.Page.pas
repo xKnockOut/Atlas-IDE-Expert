@@ -39,6 +39,7 @@ type
     FHangHint: TCheckBox;
     FReloadExternal: TCheckBox;
     FPairColors: TCheckBox;
+    FPairGuides: TCheckBox;
     FCheckOnSave: TCheckBox;
     FCheckDelay: TEdit;
     FCheckMax: TEdit;
@@ -114,6 +115,7 @@ begin
   FHangHint := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsHangHint));
   FReloadExternal := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsReload));
   FPairColors := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsPairs));
+  FPairGuides := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsPairGuides));
   // Compilerprüfung nach dem Speichern (#548).
   FCheckOnSave := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsCheckOnSave));
   FCheckDelay := AddNumber(TArgusStrings.Text(TArgusTextId.SettingsCheckDelay));
@@ -202,6 +204,7 @@ begin
   FHangHint.Checked := ASettings.HangHint;
   FReloadExternal.Checked := ASettings.ReloadExternal;
   FPairColors.Checked := ASettings.PairColors;
+  FPairGuides.Checked := ASettings.PairGuides;
   FCheckOnSave.Checked := ASettings.CheckOnSave;
   FCheckDelay.Text := IntToStr(ASettings.CheckOnSaveDelayMs);
   FCheckMax.Text := IntToStr(ASettings.CheckOnSaveMaxMs);
@@ -222,6 +225,7 @@ begin
   ASettings.HangHint := FHangHint.Checked;
   ASettings.ReloadExternal := FReloadExternal.Checked;
   ASettings.PairColors := FPairColors.Checked;
+  ASettings.PairGuides := FPairGuides.Checked;
   ASettings.CheckOnSave := FCheckOnSave.Checked;
   ASettings.CheckOnSaveDelayMs := StrToIntDef(FCheckDelay.Text, ASettings.CheckOnSaveDelayMs);
   ASettings.CheckOnSaveMaxMs := StrToIntDef(FCheckMax.Text, ASettings.CheckOnSaveMaxMs);
