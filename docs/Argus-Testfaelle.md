@@ -259,6 +259,8 @@ Abbruch mit Grund im Meldungsfenster („Argus“) ist im Dienst vorhanden und g
 | KP12 | Erster Start mit Blocklinien | Meldung im Meldungsfenster; ab dem nächsten Start keine Linien der IDE mehr |
 | KP13 | Optionen › Argus › „Blocklinien in den Paarfarben“ aus, Delphi neu starten | Keine Argus-Linien; Strukturhervorhebung der IDE wieder an |
 
+Help Insight der IDE (#442): Solange der Argus-Tooltip an ist, schaltet Argus Help Insight in der Registry ab (`Code Insight\Borland.EditOptions.Borland.CodeInsight.LSP.Pascal`, `Help Insight`), ab dem nächsten Start zeigt die IDE keinen zweiten Tooltip; mit Argus-Tooltip aus wieder an (nur wenn Argus abgeschaltet hatte).
+
 Blocklinien zeichnet Argus selbst (Einstellung „Blocklinien in den Paarfarben“). Solange sie an sind, ist die Strukturhervorhebung der IDE in der Registry abgeschaltet (`Editor\Highlight\Structural Highlighting`, `Enabled`). Die IDE liest das nur beim Start. Hat der User sie selbst abgeschaltet, ändert Argus nichts.
 
 ## Befehlspalette (#502)

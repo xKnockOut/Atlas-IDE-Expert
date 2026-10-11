@@ -24,7 +24,8 @@ type
     SettingsPairGuides, PairGuidesIdeOff, PairGuidesIdeOn,
     SettingsProblems, ProblemsGroup, ProblemsSourceArgus, ProblemsSourceCompiler, ProblemsStale, ProblemsMore,
     SeverityError, SeverityWarning, SeverityInformation, SeverityHint,
-    SettingsServerPath, SettingsServerFound, SettingsServerMissing, SettingsServerFilter);
+    SettingsServerPath, SettingsServerFound, SettingsServerMissing, SettingsServerFilter,
+    HelpInsightIdeOff, HelpInsightIdeOn);
 
   TArgusStrings = class
   private class var
@@ -72,7 +73,9 @@ const
      'Fehler', 'Warnung', 'Info', 'Hinweis',
      'Argus-Server (ArgusServer.exe), leer = Standard:', 'Verwendet: %s (gefunden)',
      'Verwendet: %s (nicht gefunden; ohne Server bleibt die Code Insight der IDE aktiv)',
-     'Argus-Server|ArgusServer.exe|Programme (*.exe)|*.exe'),
+     'Argus-Server|ArgusServer.exe|Programme (*.exe)|*.exe',
+     'Argus zeigt den Tooltip selbst und hat Help Insight der IDE abgeschaltet; wirkt nach dem nächsten Start von Delphi.',
+     'Argus hat Help Insight der IDE wieder eingeschaltet; wirkt nach dem nächsten Start von Delphi.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -101,7 +104,9 @@ const
      'Error', 'Warning', 'Info', 'Hint',
      'Argus server (ArgusServer.exe), empty = default:', 'In use: %s (found)',
      'In use: %s (not found; without a server the IDE''s Code Insight stays active)',
-     'Argus server|ArgusServer.exe|Programs (*.exe)|*.exe'));
+     'Argus server|ArgusServer.exe|Programs (*.exe)|*.exe',
+     'Argus shows the tooltip itself and switched off the IDE''s Help Insight; takes effect after the next start of Delphi.',
+     'Argus switched the IDE''s Help Insight back on; takes effect after the next start of Delphi.'));
 
 { TArgusStrings }
 
