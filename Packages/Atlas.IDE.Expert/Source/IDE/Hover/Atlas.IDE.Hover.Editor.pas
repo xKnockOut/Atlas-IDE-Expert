@@ -91,6 +91,8 @@ type
     FLine: Integer;
     FStart: Integer;
     FWordRect: TRect;
+    // Fokus beim Anzeigen; wechselt er innerhalb der IDE, schließt der Tooltip (#414).
+    FShownFocus: THandle;
     FKey: string;
     FShownKey: string;
     procedure EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
@@ -114,6 +116,7 @@ type
     procedure Execute(AAction: TAtlasHoverAction);
     procedure ShowUsages;
     function MouseOverTip: Boolean;
+    function CurrentEditView: IOTAEditView;
     function WantsKey(AKey: Word; AShift: TShiftState): Boolean;
     procedure HandleKey(AKey: Word; AShift: TShiftState);
     procedure Log(const AMessage: string);
@@ -307,6 +310,15 @@ begin
   FView := nil;
 end;
 
+function TAtlasEditorHover.CurrentEditView: IOTAEditView;
+var
+  Editors: IOTAEditorServices;
+begin
+  Result := nil;
+  if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+    Result := Editors.TopView;
+end;
+
 function TAtlasEditorHover.MouseOverTip: Boolean;
 begin
   Result := FTip.IsShown and PtInRect(FTip.BoundsRect, Mouse.CursorPos);
@@ -439,6 +451,7 @@ begin
     FTip.ShowContent(CurrentView, FWordRect);
     TAtlasKeyHook.Add(FKeys);
     FShownKey := FKey;
+    FShownFocus := GetFocus;
     FHideTimer.Enabled := False;
     FWatchTimer.Enabled := True;
   except
@@ -453,6 +466,11 @@ begin
   if not FTip.IsShown then
     FWatchTimer.Enabled := False
   else if not Application.Active then
+    Hide
+  // Anderer Editor-Tab oder Fokus woanders in der IDE (Objektinspektor, Projektverwaltung …).
+  else if not FHistory.Pinned and not MouseOverTip and
+    ((GetFocus <> FShownFocus) or ((FView <> nil) and ((CurrentEditView = nil) or
+    not SameText(CurrentEditView.Buffer.FileName, FView.Buffer.FileName)))) then
     Hide;
 end;
 

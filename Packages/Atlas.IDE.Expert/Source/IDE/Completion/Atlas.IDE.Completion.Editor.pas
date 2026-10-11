@@ -70,6 +70,8 @@ type
     FLine: Integer;
     FWordStart: Integer;
     FTopRow: Integer;
+    // Größe des Editors beim Öffnen; ändert sie sich, schließt das Popup (#414).
+    FEditorSize: TPoint;
     // Commit über ein Zeichen: Ende des Worts und Bytes des stehen bleibenden Zeichens.
     FCommitEnd: Integer;
     FCommitSuffixBytes: Integer;
@@ -129,6 +131,18 @@ uses
   Atlas.Core.Completion.Ranking,
   Atlas.IDE.Editor.Buffer,
   Atlas.IDE.Editor.Style;
+
+/// <summary>Größe des Editorfensters (Client-Bereich); (0, 0) ohne Fenster.</summary>
+function EditorSize(AWindow: HWND): TPoint;
+var
+  Area: TRect;
+begin
+  if (AWindow <> 0) and GetClientRect(AWindow, Area) then
+    Result := Point(Area.Width, Area.Height)
+  else
+    Result := Point(0, 0);
+end;
+
 
 type
   TAtlasEditNotifier = class(TNotifierObject, INTAEditServicesNotifier)
@@ -456,6 +470,7 @@ begin
   FLine := Cursor.Line;
   FWordStart := WordStart;
   FTopRow := AView.TopRow;
+  FEditorSize := EditorSize(FEditorWindow);
   Log(Format('Vervollständigung in %s, Zeile %d, Zeichen %d, Präfix "%s"',
     [ExtractFileName(Context.FileName), Context.Line + 1, Context.Character, Context.Prefix]));
   FController.Start(Context);
@@ -690,7 +705,8 @@ begin
     Exit;
   end;
   // IDE inaktiv, anderes Fenster im Fokus, gescrollt: schließen (#414).
-  if not Application.Active or (GetFocus <> FEditorWindow) or (FView.TopRow <> FTopRow) then
+  if not Application.Active or (GetFocus <> FEditorWindow) or (FView.TopRow <> FTopRow) or
+    (EditorSize(FEditorWindow) <> FEditorSize) then
   begin
     Close;
     Exit;

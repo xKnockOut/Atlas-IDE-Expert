@@ -56,6 +56,8 @@ type
     FEditorWindow: HWND;
     FOpenParen: Integer;
     FTopRow: Integer;
+    // Größe des Editors beim Öffnen; ändert sie sich, schließt der Hint (#414).
+    FEditorSize: TPoint;
     FPending: Boolean;
     // Zeile vor der letzten Änderung (Wieder öffnen nach entfernter ")").
     FLastFile: string;
@@ -99,6 +101,18 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.IDE.Editor.Buffer,
   Atlas.IDE.Editor.Style;
+
+/// <summary>Größe des Editorfensters (Client-Bereich); (0, 0) ohne Fenster.</summary>
+function EditorSize(AWindow: HWND): TPoint;
+var
+  Area: TRect;
+begin
+  if (AWindow <> 0) and GetClientRect(AWindow, Area) then
+    Result := Point(Area.Width, Area.Height)
+  else
+    Result := Point(0, 0);
+end;
+
 
 type
   TSignatureKeys = class(TAtlasKeyClient)
@@ -321,6 +335,7 @@ begin
   FEditorWindow := Info.hwndCaret;
   FOpenParen := Site.OpenParen;
   FTopRow := AView.TopRow;
+  FEditorSize := EditorSize(FEditorWindow);
   FPending := FProvider.Query(AView.Buffer.FileName, Text, Cursor.Line - 1, Character,
     procedure(const AHelp: TAtlasSignatureHelp)
     var
@@ -450,6 +465,7 @@ end;
 
 procedure TAtlasEditorSignature.Recheck;
 var
+  Anchor: TRect;
   Text, LineText: string;
   Cursor: TOTAEditPos;
   Character: Integer;
@@ -461,10 +477,23 @@ begin
     ActiveChanged;
     Exit;
   end;
-  if not Application.Active or (GetFocus <> FEditorWindow) or (FView.TopRow <> FTopRow) then
+  if not Application.Active or (GetFocus <> FEditorWindow) or (EditorSize(FEditorWindow) <> FEditorSize) then
   begin
     Close;
     Exit;
+  end;
+  // Gescrollt: mitwandern, solange die Zeile sichtbar ist (#414).
+  if FView.TopRow <> FTopRow then
+  begin
+    if (FView.CursorPos.Line < FView.TopRow) or (FView.CursorPos.Line >= FView.TopRow + FView.ViewSize.cy) then
+    begin
+      Close;
+      Exit;
+    end;
+    Anchor := FHint.Anchor;
+    Anchor.Offset(0, (FTopRow - FView.TopRow) * Anchor.Height);
+    FHint.MoveTo(Anchor);
+    FTopRow := FView.TopRow;
   end;
   Text := TAtlasEditorBuffer.Text(FView.Buffer);
   Cursor := FView.CursorPos;
