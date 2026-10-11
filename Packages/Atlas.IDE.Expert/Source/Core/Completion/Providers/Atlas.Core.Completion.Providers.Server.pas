@@ -154,7 +154,9 @@ begin
         end;
   end;
   // textEdit (#188): ersetzt mehr als das getippte Wort, etwa den Ausdruck vor dem Punkt.
-  if (AItem.GetValue('textEdit') is TJSONObject) and EditFromLsp(TJSONObject(AItem.GetValue('textEdit')), Edit) then
+  // Ein textEdit ohne Text ersetzt nichts sinnvoll; ignorieren statt den Bereich zu löschen.
+  if (AItem.GetValue('textEdit') is TJSONObject) and EditFromLsp(TJSONObject(AItem.GetValue('textEdit')), Edit) and
+    (Edit.NewText <> '') then
   begin
     Result.HasTextEdit := True;
     Result.TextEdit := Edit;

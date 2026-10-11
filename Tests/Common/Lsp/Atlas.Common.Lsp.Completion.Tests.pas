@@ -26,6 +26,8 @@ type
     [Test]
     procedure ScopeListsLocalsMembersAndUsedUnits;
     [Test]
+    procedure PlainItemsHaveNoTextEdit;
+    [Test]
     procedure ScopeFiltersByPrefix;
     [Test]
     procedure MembersAfterDotIncludeInherited;
@@ -325,6 +327,21 @@ begin
   // Rechne kommt aus dem eingebundenen Werkzeug und erscheint nur einmal, ohne uses-Eintrag.
   Assert.AreEqual('Rechne', Names(ItemsAt(WithCode('  Rech'), '  Rech', TCompletionMatching.Prefix)));
   Assert.AreEqual(0, Integer(Length(ItemsAt(WithCode('  Rech'), '  Rech', TCompletionMatching.Prefix).Items[0].AdditionalEdits)));
+end;
+
+procedure TLspCompletionTests.PlainItemsHaveNoTextEdit;
+var
+  Items: TCompletionItems;
+  Index: Integer;
+begin
+  // Regression: Add verwendete Scored wieder, ohne es zu leeren; HasTextEdit blieb mit
+  // leerem Bereich stehen und das Plugin löschte alles vom Dateianfang bis zum Wort.
+  FIndex.AddUnit(TIndexExtractor.ExtractText('unit Extra;'#10'interface'#10'procedure Berechne;'#10 +
+    'implementation'#10'end.', 'C:\P\Extra.pas', nil));
+  Items := ItemsAt(WithCode('  B'), '  B', TCompletionMatching.Fuzzy);
+  Assert.IsTrue(Length(Items.Items) > 1);
+  for Index := 0 to High(Items.Items) do
+    Assert.IsFalse(Items.Items[Index].HasTextEdit, Items.Items[Index].Name);
 end;
 
 procedure TLspCompletionTests.MembersCarryContainerDepthAndOverloads;

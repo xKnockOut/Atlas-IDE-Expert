@@ -834,6 +834,9 @@ var
     if Scored.Score = TFuzzyMatch.NoMatch then
       Exit;
     Dec(Scored.Score, APenalty);
+    // Frisch beginnen: Scored wird wiederverwendet; sonst blieben z. B. HasTextEdit und
+    // TextEdit stehen (oder Datenmüll) – im Plugin löschte das alles bis zum Wort.
+    Scored.Item := Default(TCompletionItem);
     Scored.Item.Name := AName;
     Scored.Item.AdditionalEdits := AEdits;
     Scored.Item.Detail := ADetail;

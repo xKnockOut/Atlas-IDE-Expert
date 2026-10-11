@@ -849,6 +849,8 @@ begin
     CursorByte := -1;
     for Edit in Edits do
     begin
+      Log(Format('  Änderung Byte %d bis %d (Wortanfang %d, Zeile %d, Ende %d): "%s"',
+        [Edit.Start, Edit.Stop, FWordStart, Cursor.Line, Character, Edit.Text]));
       Writer.CopyTo(Edit.Start);
       Writer.DeleteTo(Edit.Stop);
       Writer.Insert(PAnsiChar(UTF8Encode(Edit.Text)));
