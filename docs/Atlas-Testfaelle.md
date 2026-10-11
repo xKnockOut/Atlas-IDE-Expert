@@ -374,7 +374,7 @@ Vorbereitung: Formular mit Button `btnSave` und den Methoden `FormCreate(Sender:
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| PE1 | Projekt öffnen, *Projekt > Atlas-Einstellungen…* | Dialog mit Seiten links (Allgemein, Projekt, Prüfregeln …); Menüpunkt steht hinter „Optionen…“ |
+| PE1 | Projekt öffnen, *Atlas > Projekt-Einstellungen (atlas.json)…* | Dialog mit Seiten links (Allgemein, Projekt, Prüfregeln …); Menü „Atlas“ steht hinter „Tools“ |
 | PE2 | Ohne `atlas.json`: Seite Protokoll, `logLevel` auf `debug`, OK | `atlas.json` entsteht neben der .dproj mit `"logLevel": "debug"` |
 | PE3 | `atlas.json` mit Kommentaren und unbekanntem Schlüssel; `format.indentSize` auf 4 setzen | Nur der Wert kommt dazu bzw. ändert sich; Kommentare, Reihenfolge, unbekannter Schlüssel bleiben |
 | PE4 | Bei einem gesetzten Wert „Zurücksetzen“, OK | Schlüssel samt Komma entfernt; Zustand zeigt „Standard: …“ |
@@ -382,4 +382,6 @@ Vorbereitung: Formular mit Button `btnSave` und den Methoden `FormCreate(Sender:
 | PE6 | Zahlenfeld mit „abc“, OK | Hinweis „keine ganze Zahl“, Dialog bleibt offen |
 | PE7 | „atlas.json öffnen“ | Dialog schließt, Datei öffnet sich im Editor |
 | PE8 | Befehlspalette: „Atlas: Atlas-Einstellungen des Projekts“ | Öffnet denselben Dialog |
-
+| PE9 | Menü *Atlas* öffnen | Häkchen bei den fünf Schaltern entsprechen Tools > Optionen > Atlas |
+| PE10 | *Atlas > Klammerpaare färben* abschalten, Menü erneut öffnen | Häkchen weg, Paare ungefärbt; in Tools > Optionen > Atlas ebenfalls aus |
+| PE11 | *Atlas > Optionen…* | Tools > Optionen öffnet direkt auf der Seite Atlas |

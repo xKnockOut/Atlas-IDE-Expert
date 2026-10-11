@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Settings.Project;
 
-// Projekt > Atlas-Einstellungen… (#227): atlas.json neben der .dproj des
+// Atlas > Projekt-Einstellungen (#227): atlas.json neben der .dproj des
 // aktiven Projekts im Dialog bearbeiten. Geschrieben werden nur die geänderten
 // Werte (TAtlasJsonText); Kommentare, unbekannte Schlüssel und Reihenfolge
 // bleiben. Die Datei behält ihr BOM; neue Dateien entstehen ohne BOM wie bei
@@ -9,22 +9,11 @@
 interface
 
 uses
-  System.SysUtils,
-  System.Classes,
-  Vcl.ActnList,
-  Vcl.Menus;
+  System.SysUtils;
 
 type
   TAtlasProjectSettings = class
-  private
-    FAction: TAction;
-    FMenuItem: TMenuItem;
-    procedure ActionExecute(Sender: TObject);
-    procedure ActionUpdate(Sender: TObject);
   public
-    /// <summary>Menüpunkt hinter „Optionen…“ im Projekt-Menü; ohne dieses nur über Execute.</summary>
-    constructor Create;
-    destructor Destroy; override;
     /// <summary>atlas.json des aktiven Projekts; '' ohne Projekt.</summary>
     class function SettingsFile: string; static;
     /// <summary>Dialog zeigen und Änderungen schreiben.</summary>
@@ -47,56 +36,7 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Settings.ProjectDialog;
 
-const
-  // Name des Menüpunkts „Projekt > Optionen…“ in der IDE.
-  ProjectOptionsItem = 'ProjectOptionsItem';
-
 { TAtlasProjectSettings }
-
-constructor TAtlasProjectSettings.Create;
-var
-  Services: INTAServices;
-begin
-  inherited Create;
-  if not Supports(BorlandIDEServices, INTAServices, Services) then
-    Exit;
-  FAction := TAction.Create(nil);
-  FAction.Name := 'AtlasProjectSettingsAction';
-  FAction.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsMenu);
-  FAction.Category := 'Atlas';
-  FAction.OnExecute := ActionExecute;
-  FAction.OnUpdate := ActionUpdate;
-  FMenuItem := TMenuItem.Create(nil);
-  FMenuItem.Name := 'AtlasProjectSettingsItem';
-  FMenuItem.Action := FAction;
-  try
-    Services.AddActionMenu(ProjectOptionsItem, FAction, FMenuItem, True);
-  except
-    // Menüpunkt nicht gefunden (andere IDE-Version): dann nur über die Befehlspalette.
-    FreeAndNil(FMenuItem);
-    try
-      Services.AddActionMenu('', FAction, nil);
-    except
-    end;
-  end;
-end;
-
-destructor TAtlasProjectSettings.Destroy;
-begin
-  FreeAndNil(FMenuItem);
-  FreeAndNil(FAction);
-  inherited;
-end;
-
-procedure TAtlasProjectSettings.ActionExecute(Sender: TObject);
-begin
-  Execute;
-end;
-
-procedure TAtlasProjectSettings.ActionUpdate(Sender: TObject);
-begin
-  FAction.Enabled := SettingsFile <> '';
-end;
 
 class function TAtlasProjectSettings.SettingsFile: string;
 var
