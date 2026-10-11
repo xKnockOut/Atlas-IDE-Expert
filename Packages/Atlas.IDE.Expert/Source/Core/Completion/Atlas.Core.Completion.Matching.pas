@@ -29,6 +29,9 @@ type
     class function Filter(const AItems: TAtlasCompletionItems; const APattern: string): TArray<Integer>; static;
     /// <summary>AName[AIndex] (1-basiert) beginnt ein Wort: CamelCase, nach "_", Ziffern.</summary>
     class function IsWordStart(const AName: string; AIndex: Integer): Boolean; static;
+    /// <summary>Einfügetext beim Übernehmen (#433): mit AFixCase der deklarierte Name, sonst
+    /// bleibt das getippte Wort in seiner Schreibweise stehen, wenn der Name damit beginnt.</summary>
+    class function CommitText(const ATyped, AName: string; AFixCase: Boolean): string; static;
   end;
 
 implementation
@@ -104,6 +107,15 @@ begin
 end;
 
 { TAtlasCompletionMatcher }
+
+class function TAtlasCompletionMatcher.CommitText(const ATyped, AName: string; AFixCase: Boolean): string;
+begin
+  if not AFixCase and (ATyped <> '') and (Length(ATyped) <= Length(AName)) and
+    SameText(ATyped, Copy(AName, 1, Length(ATyped))) then
+    Result := ATyped + Copy(AName, Length(ATyped) + 1, MaxInt)
+  else
+    Result := AName;
+end;
 
 class function TAtlasCompletionMatcher.IsWordStart(const AName: string; AIndex: Integer): Boolean;
 begin
