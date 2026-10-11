@@ -28,6 +28,8 @@ type
     [Test]
     procedure PlainItemsHaveNoTextEdit;
     [Test]
+    procedure ImportsKnowParameters;
+    [Test]
     procedure ScopeFiltersByPrefix;
     [Test]
     procedure MembersAfterDotIncludeInherited;
@@ -327,6 +329,20 @@ begin
   // Rechne kommt aus dem eingebundenen Werkzeug und erscheint nur einmal, ohne uses-Eintrag.
   Assert.AreEqual('Rechne', Names(ItemsAt(WithCode('  Rech'), '  Rech', TCompletionMatching.Prefix)));
   Assert.AreEqual(0, Integer(Length(ItemsAt(WithCode('  Rech'), '  Rech', TCompletionMatching.Prefix).Items[0].AdditionalEdits)));
+end;
+
+procedure TLspCompletionTests.ImportsKnowParameters;
+var
+  Items: TCompletionItems;
+begin
+  // Import mit uses-Ergänzung: Parameter aus dem Index, damit das Plugin Klammern setzt.
+  FIndex.AddUnit(TIndexExtractor.ExtractText('unit Extra;'#10'interface'#10'procedure Zeige(const S: string);'#10 +
+    'implementation'#10'end.', 'C:\P\Extra.pas', nil));
+  Items := ItemsAt(WithCode('  Zeig'), '  Zeig', TCompletionMatching.Prefix);
+  Assert.AreEqual('Zeige', Items.Items[0].Name);
+  Assert.AreEqual(1, Integer(Length(Items.Items[0].AdditionalEdits)));
+  Assert.IsTrue(Items.Items[0].HasParameters);
+  Assert.AreEqual('C:\P\Extra.pas', Items.Items[0].SourceFile);
 end;
 
 procedure TLspCompletionTests.PlainItemsHaveNoTextEdit;
