@@ -3,7 +3,7 @@
     Prüft, dass Server und VS-Code-Erweiterung dieselbe SemVer-Version tragen (#83).
 
 .DESCRIPTION
-    Quellen: TProductVersion.Version in Argus.Common.Product.Version.pas und
+    Quellen: TProductVersion.Version in Atlas.Common.Product.Version.pas und
     "version" in Editors/VSCode/package.json. Mit -Expected (z. B. aus dem
     Release-Tag) muss auch diese übereinstimmen. CHANGELOG.md braucht einen
     Abschnitt "## [<Version>]".
@@ -23,7 +23,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $SemVer = '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$'
-$Unit = Join-Path $Root 'Packages/Argus.Common/Source/Product/Argus.Common.Product.Version.pas'
+$Unit = Join-Path $Root 'Packages/Atlas.Common/Source/Product/Atlas.Common.Product.Version.pas'
 $Server = [regex]::Match((Get-Content -Raw $Unit), "Version\s*=\s*'([^']+)'").Groups[1].Value
 $Extension = (Get-Content -Raw (Join-Path $Root 'Editors/VSCode/package.json') | ConvertFrom-Json).version
 $Changelog = Get-Content -Raw (Join-Path $Root 'CHANGELOG.md')

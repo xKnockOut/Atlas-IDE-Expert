@@ -13,7 +13,7 @@
 //   --rules <a,b>         nur diese Regeln
 //   --units <a,b>         nur diese Units (Name oder Glob-Muster für Pfade)
 //   --min-severity <S>    hint, info, warning, error
-//   --profile <Name>      Regelprofil (#146), vor "profile" aus argus.json
+//   --profile <Name>      Regelprofil (#146), vor "profile" aus atlas.json
 //   --changed [<Basis>]   nur Dateien, die sich gegenüber der Merge-Base mit <Basis>
 //                         (Standard main) geändert haben (Git, #157)
 //   --diff <Ref>          nur Dateien, die sich gegenüber <Ref> geändert haben
@@ -31,9 +31,9 @@
 interface
 
 uses
-  Argus.Common.Logging.Contract,
-  Argus.Common.Configuration.Contract,
-  Argus.Common.Rules.Output;
+  Atlas.Common.Logging.Contract,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Rules.Output;
 
 type
   TCommandLineOptions = record
@@ -51,11 +51,11 @@ type
     RuleFilter: TArray<string>;
     UnitFilter: TArray<string>;
     MinSeverity: TRuleSeverity;
-    /// <summary>Regelprofil für --check (#146); '' = aus argus.json.</summary>
+    /// <summary>Regelprofil für --check (#146); '' = aus atlas.json.</summary>
     Profile: string;
     /// <summary>Statt der Treffer die Unterdrückungen je Regel ausgeben (#147).</summary>
     SuppressionStats: Boolean;
-    /// <summary>Baseline-Datei (#97); '' = argus-baseline.json neben argus.json, falls vorhanden.</summary>
+    /// <summary>Baseline-Datei (#97); '' = atlas-baseline.json neben atlas.json, falls vorhanden.</summary>
     BaselineFile: string;
     /// <summary>Baseline aus den aktuellen Treffern neu schreiben statt zu prüfen.</summary>
     UpdateBaseline: Boolean;
@@ -89,8 +89,8 @@ implementation
 
 uses
   System.SysUtils,
-  Argus.Common.Configuration.Parser,
-  Argus.Common.Rules.Filter;
+  Atlas.Common.Configuration.Parser,
+  Atlas.Common.Rules.Filter;
 
 { TCommandLineOptions }
 

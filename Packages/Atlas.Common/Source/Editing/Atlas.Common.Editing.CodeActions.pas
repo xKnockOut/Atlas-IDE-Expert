@@ -1,0 +1,474 @@
+﻿unit Atlas.Common.Editing.CodeActions;
+
+// Code-Aktionen ohne Protokollbezug (#42, #147):
+//   - Korrekturen der Regeltreffer (TRuleFix)
+//   - "Regel für diese Zeile unterdrücken": eigene Kommentarzeile darüber,
+//     bestehende "// lsp-ignore:"-Zeile darüber wird ergänzt
+//   - "Regel für diese Datei unterdrücken": "// lsp-ignore-file:" in Zeile 1
+//   - "try/finally ergänzen" nach "X := T.Create(...);" mit passendem X.Free;
+//     bei "Result := T.Create(...)" stattdessen try/except, das Result nur im
+//     Fehlerfall freigibt (das Objekt wird ja zurückgegeben)
+//   - uses-Aktionen (#284): fehlende Unit ergänzen, ungenutzte entfernen,
+//     ins implementation verschieben (Logik in Editing.UsesActions)
+//   - Zuweisungen umkehren (#313, Logik in Editing.AssignmentSwap)
+//   - "Als String-Literal" und "Als Klartext kopieren" (#312, Logik in Editing.StringLiterals)
+
+interface
+
+uses
+  System.SysUtils,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Rules.Contract,
+  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Editing.AssignmentSwap;
+
+const
+  QuickFixKind = 'quickfix';
+  RewriteKind = 'refactor.rewrite';
+  // Für editor.codeActionsOnSave (#182).
+  OrganizeImportsKind = 'source.organizeImports';
+  FixAllKind = 'source.fixAll';
+  /// <summary>Ungenutzte uses entfernen (#284).</summary>
+  RemoveUnusedKind = 'source.removeUnusedImports';
+  /// <summary>Client-Befehl, der das erste Argument in die Zwischenablage legt (#312).</summary>
+  CopyTextCommand = 'atlas.copyText';
+
+type
+  TCodeAction = record
+    Title: string;
+    Kind: string;
+    Edits: TArray<TRuleEdit>;
+    IsPreferred: Boolean;
+    /// <summary>Regelkennung des behobenen Treffers, sonst ''.</summary>
+    RuleId: string;
+    /// <summary>Bereich des behobenen Treffers, wenn RuleId gesetzt ist.</summary>
+    DiagnosticRange: TTextRange;
+    /// <summary>Befehl statt oder nach den Edits, z. B. für Dateiumwandlungen; '' ohne.</summary>
+    Command: string;
+    CommandArguments: TArray<string>;
+  end;
+
+  TCodeActions = class
+  public
+    /// <summary>Aktionen zu allen Treffern, die Zeilen aus ARange berühren.</summary>
+    class function ForFindings(const AFindings: TArray<TRuleFinding>; const AText: string;
+      const ARange: TTextRange): TArray<TCodeAction>; static;
+    class function SuppressLine(const AText: string; ALine: Integer; const ARuleId: string): TRuleEdit; static;
+    class function SuppressFile(const AText, ARuleId: string): TRuleEdit; static;
+    /// <summary>try/finally nach einer Create-Zuweisung in ALine; False, wenn nicht passend.</summary>
+    class function TryFinally(const AText: string; ALine: Integer; out AAction: TCodeAction): Boolean; static;
+    /// <summary>Alle Aktionen für ARange: Treffer und try/finally in der Startzeile.</summary>
+    class function ForRange(const AFindings: TArray<TRuleFinding>; const AText: string;
+      const ARange: TTextRange): TArray<TCodeAction>; static;
+    /// <summary>Alle als sicher markierten Korrekturen der Datei in einer Aktion; überlappende
+    /// Edits werden ausgelassen. False ohne sichere Korrektur.</summary>
+    class function FixAll(const AFindings: TArray<TRuleFinding>; out AAction: TCodeAction): Boolean; static;
+    /// <summary>uses aufräumen (doppelte entfernen, mit ASort sortieren); False ohne Änderung.</summary>
+    class function OrganizeImports(const AText: string; ASort: Boolean; out AAction: TCodeAction;
+      AByNamespace: Boolean = False): Boolean; static;
+    /// <summary>uses-Aktionen (#284): fehlende Unit zum Bezeichner an ARange.StartPos (Quick-Fix),
+    /// interface-Units ins implementation verschieben (Rewrite). Mit ARemoveUnused zusätzlich
+    /// "ungenutzte uses entfernen" (source.removeUnusedImports).</summary>
+    class function UsesActions(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange;
+      const AContext: TUsesContext; AEditing, ARemoveUnused: Boolean): TArray<TCodeAction>; static;
+    /// <summary>"Zuweisungen umkehren" für die Zeilen von ARange (#313); False, wenn keine passt.</summary>
+    class function SwapAssignments(const AText: string; const ARange: TTextRange; const AReadOnly: TReadOnlyCheck;
+      out AAction: TCodeAction): Boolean; static;
+    /// <summary>#312: Bei einer Markierung, die kein Literal ist, "Als String-Literal" (ganze Zeilen);
+    /// auf einem Literal "Als Klartext kopieren" über CopyTextCommand.</summary>
+    class function StringLiteralActions(const AText: string; const ARange: TTextRange;
+      const ASettings: TStringLiteralSettings; AMultiline: Boolean): TArray<TCodeAction>; static;
+    /// <summary>True, wenn AKind unter einer der angefragten Arten liegt (LSP "only"); leeres AOnly = alle.</summary>
+    class function KindRequested(const AKind: string; const AOnly: TArray<string>): Boolean; static;
+  end;
+
+implementation
+
+uses
+  System.StrUtils,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Editing.StringLiterals;
+
+/// <summary>Offset des ersten Tokens ab APosition (für die Wahl des uses-Abschnitts).</summary>
+function OffsetNear(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
+var
+  Token: TPascalToken;
+begin
+  Result := 0;
+  for Token in ATokens do
+  begin
+    Result := Token.Offset;
+    if (Token.EndPos.Line > APosition.Line) or
+      ((Token.EndPos.Line = APosition.Line) and (Token.EndPos.Character >= APosition.Character)) then
+      Exit;
+  end;
+end;
+
+function SplitLines(const AText: string): TArray<string>;
+var
+  I, Start: Integer;
+begin
+  Result := nil;
+  Start := 1;
+  for I := 1 to Length(AText) do
+    if AText[I] = #10 then
+    begin
+      Result := Result + [Copy(AText, Start, I - Start)];
+      Start := I + 1;
+    end;
+  Result := Result + [Copy(AText, Start, MaxInt)];
+end;
+
+function StripCr(const ALine: string): string;
+begin
+  if (ALine <> '') and (ALine[Length(ALine)] = #13) then
+    Result := Copy(ALine, 1, Length(ALine) - 1)
+  else
+    Result := ALine;
+end;
+
+function LineBreakOf(const AText: string): string;
+begin
+  if Pos(#13#10, AText) > 0 then
+    Result := #13#10
+  else
+    Result := #10;
+end;
+
+function IndentOf(const ALine: string): string;
+var
+  I: Integer;
+begin
+  I := 1;
+  while (I <= Length(ALine)) and CharInSet(ALine[I], [' ', #9]) do
+    Inc(I);
+  Result := Copy(ALine, 1, I - 1);
+end;
+
+function IsIdentChar(C: Char): Boolean;
+begin
+  Result := CharInSet(C, ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) or (Ord(C) >= 128);
+end;
+
+{ TCodeActions }
+
+class function TCodeActions.SuppressLine(const AText: string; ALine: Integer; const ARuleId: string): TRuleEdit;
+var
+  Lines: TArray<string>;
+  Above, Line: string;
+begin
+  Lines := SplitLines(AText);
+  if (ALine > 0) and (ALine <= High(Lines)) then
+  begin
+    Above := StripCr(Lines[ALine - 1]);
+    if StartsText('// lsp-ignore:', TrimLeft(Above)) then
+      Exit(TRuleEdit.Create(TTextRange.Create(ALine - 1, Length(Above), ALine - 1, Length(Above)), ', ' + ARuleId));
+  end;
+  if (ALine >= 0) and (ALine <= High(Lines)) then
+    Line := StripCr(Lines[ALine])
+  else
+    Line := '';
+  Result := TRuleEdit.Create(TTextRange.Create(ALine, 0, ALine, 0),
+    IndentOf(Line) + '// lsp-ignore: ' + ARuleId + LineBreakOf(AText));
+end;
+
+class function TCodeActions.SuppressFile(const AText, ARuleId: string): TRuleEdit;
+begin
+  Result := TRuleEdit.Create(TTextRange.Create(0, 0, 0, 0), '// lsp-ignore-file: ' + ARuleId + LineBreakOf(AText));
+end;
+
+class function TCodeActions.ForFindings(const AFindings: TArray<TRuleFinding>; const AText: string;
+  const ARange: TTextRange): TArray<TCodeAction>;
+var
+  Finding: TRuleFinding;
+  Fix: TRuleFix;
+  Action: TCodeAction;
+  First: Boolean;
+begin
+  Result := nil;
+  for Finding in AFindings do
+  begin
+    if (Finding.Range.EndPos.Line < ARange.StartPos.Line) or (Finding.Range.StartPos.Line > ARange.EndPos.Line) then
+      Continue;
+    First := True;
+    for Fix in Finding.Fixes do
+    begin
+      Action := Default(TCodeAction);
+      Action.Title := Fix.Title;
+      Action.Kind := QuickFixKind;
+      Action.Edits := Fix.Edits;
+      Action.IsPreferred := First and not Fix.Alternative;
+      Action.RuleId := Finding.RuleId;
+      Action.DiagnosticRange := Finding.Range;
+      Result := Result + [Action];
+      First := False;
+    end;
+    if SameText(Finding.RuleId, 'unused-suppression') or SameText(Finding.RuleId, 'syntax') then
+      Continue;
+    Action := Default(TCodeAction);
+    Action.Title := Format('"%s" für diese Zeile unterdrücken', [Finding.RuleId]);
+    Action.Kind := QuickFixKind;
+    Action.Edits := [SuppressLine(AText, Finding.Range.StartPos.Line, Finding.RuleId)];
+    Action.RuleId := Finding.RuleId;
+    Action.DiagnosticRange := Finding.Range;
+    Result := Result + [Action];
+    Action.Title := Format('"%s" für diese Datei unterdrücken', [Finding.RuleId]);
+    Action.Edits := [SuppressFile(AText, Finding.RuleId)];
+    Result := Result + [Action];
+  end;
+end;
+
+class function TCodeActions.TryFinally(const AText: string; ALine: Integer; out AAction: TCodeAction): Boolean;
+var
+  Lines: TArray<string>;
+  Line, Trimmed, Target, Indent, LB, Next: string;
+  Assign, I: Integer;
+begin
+  AAction := Default(TCodeAction);
+  Result := False;
+  Lines := SplitLines(AText);
+  if (ALine < 0) or (ALine > High(Lines)) then
+    Exit;
+  Line := StripCr(Lines[ALine]);
+  Trimmed := Trim(Line);
+  Assign := Pos(':=', Trimmed);
+  if (Assign < 2) or not EndsText(';', Trimmed) or (Pos('.CREATE', UpperCase(Copy(Trimmed, Assign, MaxInt))) = 0) then
+    Exit;
+  Target := Trim(Copy(Trimmed, 1, Assign - 1));
+  if Target = '' then
+    Exit;
+  for I := 1 to Length(Target) do
+    if not IsIdentChar(Target[I]) then
+      Exit;
+  // Schon geschützt: Die nächste Zeile mit Inhalt beginnt mit try.
+  for I := ALine + 1 to High(Lines) do
+  begin
+    Next := Trim(StripCr(Lines[I]));
+    if Next = '' then
+      Continue;
+    if SameText(Copy(Next, 1, 3), 'try') and ((Length(Next) = 3) or not IsIdentChar(Next[4])) then
+      Exit;
+    Break;
+  end;
+  Indent := IndentOf(Line);
+  LB := LineBreakOf(AText);
+  AAction.Kind := RewriteKind;
+  if SameText(Target, 'Result') then
+  begin
+    AAction.Title := 'try/except ergänzen (Result bei Fehler freigeben)';
+    AAction.Edits := [TRuleEdit.Create(TTextRange.Create(ALine, Length(Line), ALine, Length(Line)),
+      LB + Indent + 'try' + LB + LB + Indent + 'except' + LB + Indent + '  ' + Target + '.Free;' + LB +
+      Indent + '  raise;' + LB + Indent + 'end;')];
+  end
+  else
+  begin
+    AAction.Title := Format('try/finally mit %s.Free ergänzen', [Target]);
+    AAction.Edits := [TRuleEdit.Create(TTextRange.Create(ALine, Length(Line), ALine, Length(Line)),
+      LB + Indent + 'try' + LB + LB + Indent + 'finally' + LB + Indent + '  ' + Target + '.Free;' + LB + Indent + 'end;')];
+  end;
+  Result := True;
+end;
+
+function Overlaps(const A, B: TTextRange): Boolean;
+
+  function Before(const X, Y: TTextPosition): Boolean;
+  begin
+    Result := (X.Line < Y.Line) or ((X.Line = Y.Line) and (X.Character <= Y.Character));
+  end;
+
+begin
+  // Bereiche, die sich nur berühren, überlappen nicht.
+  Result := not (Before(A.EndPos, B.StartPos) or Before(B.EndPos, A.StartPos));
+end;
+
+class function TCodeActions.FixAll(const AFindings: TArray<TRuleFinding>; out AAction: TCodeAction): Boolean;
+var
+  Finding: TRuleFinding;
+  Fix: TRuleFix;
+  Edit, Taken: TRuleEdit;
+  Fits: Boolean;
+begin
+  AAction := Default(TCodeAction);
+  AAction.Title := 'Alle sicheren Korrekturen anwenden';
+  AAction.Kind := FixAllKind;
+  for Finding in AFindings do
+    for Fix in Finding.Fixes do
+    begin
+      if not Fix.Safe then
+        Continue;
+      Fits := True;
+      for Edit in Fix.Edits do
+        for Taken in AAction.Edits do
+          if Overlaps(Edit.Range, Taken.Range) then
+            Fits := False;
+      // Eine Korrektur ganz oder gar nicht; die übersprungene kommt beim nächsten Lauf.
+      if Fits then
+        AAction.Edits := AAction.Edits + Fix.Edits;
+      Break;
+    end;
+  Result := AAction.Edits <> nil;
+end;
+
+class function TCodeActions.OrganizeImports(const AText: string; ASort: Boolean; out AAction: TCodeAction;
+  AByNamespace: Boolean): Boolean;
+var
+  Edits: TArray<TRuleEdit>;
+begin
+  AAction := Default(TCodeAction);
+  Result := TUsesClauses.Organize(TPascalLexer.Tokenize(AText), AText, ASort, LineBreakOf(AText), Edits,
+    AByNamespace);
+  if not Result then
+    Exit;
+  AAction.Title := 'uses aufräumen';
+  AAction.Kind := OrganizeImportsKind;
+  AAction.Edits := Edits;
+end;
+
+class function TCodeActions.UsesActions(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange;
+  const AContext: TUsesContext; AEditing, ARemoveUnused: Boolean): TArray<TCodeAction>;
+var
+  Tokens: TArray<TPascalToken>;
+  Units: TArray<string>;
+  UnitName: string;
+  Action: TCodeAction;
+  Edit: TRuleEdit;
+  Edits: TArray<TRuleEdit>;
+begin
+  Result := nil;
+  if not Assigned(AContext.Info) then
+    Exit;
+  Tokens := TPascalLexer.Tokenize(AText);
+  if AEditing and Assigned(AContext.Declaring) then
+    for UnitName in TUsesActions.MissingUnits(Tokens, ATree, ARange.StartPos, AContext.Declaring,
+      AContext.Namespaces) do
+      if TUsesClauses.AddUnit(Tokens, OffsetNear(Tokens, ARange.StartPos), UnitName, LineBreakOf(AText),
+        Edit) then
+      begin
+        Action := Default(TCodeAction);
+        Action.Title := Format('uses %s ergänzen', [UnitName]);
+        Action.Kind := QuickFixKind;
+        Action.Edits := [Edit];
+        Result := Result + [Action];
+      end;
+  if AEditing then
+  begin
+    Units := TUsesActions.MovableUnits(Tokens, AContext.Info);
+    if TUsesActions.MoveUnits(Tokens, AText, Units, LineBreakOf(AText), Edits) then
+    begin
+      Action := Default(TCodeAction);
+      Action.Title := Format('%s ins implementation-uses verschieben', [string.Join(', ', Units)]);
+      Action.Kind := RewriteKind;
+      Action.Edits := Edits;
+      Result := Result + [Action];
+    end;
+  end;
+  if ARemoveUnused then
+  begin
+    Units := TUsesActions.UnusedUnits(Tokens, AContext.Info, AContext.Keep);
+    if TUsesActions.RemoveUnits(Tokens, AText, Units, LineBreakOf(AText), Edits) then
+    begin
+      Action := Default(TCodeAction);
+      Action.Title := Format('Ungenutzte uses entfernen (%s)', [string.Join(', ', Units)]);
+      Action.Kind := RemoveUnusedKind;
+      Action.Edits := Edits;
+      Result := Result + [Action];
+    end;
+  end;
+end;
+
+class function TCodeActions.KindRequested(const AKind: string; const AOnly: TArray<string>): Boolean;
+var
+  Only: string;
+begin
+  if AOnly = nil then
+    Exit(True);
+  // "source" umfasst "source.fixAll", aber nicht "sourceX".
+  for Only in AOnly do
+    if SameText(AKind, Only) or StartsText(Only + '.', AKind) then
+      Exit(True);
+  Result := False;
+end;
+
+class function TCodeActions.SwapAssignments(const AText: string; const ARange: TTextRange;
+  const AReadOnly: TReadOnlyCheck; out AAction: TCodeAction): Boolean;
+begin
+  AAction := Default(TCodeAction);
+  Result := TAssignmentSwap.Swap(AText, ARange, AReadOnly, AAction.Edits);
+  if Result then
+  begin
+    AAction.Title := 'Zuweisungen umkehren';
+    AAction.Kind := RewriteKind;
+  end;
+end;
+
+class function TCodeActions.StringLiteralActions(const AText: string; const ARange: TTextRange;
+  const ASettings: TStringLiteralSettings; AMultiline: Boolean): TArray<TCodeAction>;
+var
+  Lines: TArray<string>;
+  Action: TCodeAction;
+  Literal: TTextRange;
+  Plain, Indent: string;
+  First, Last, Line, Common: Integer;
+begin
+  Result := nil;
+  if TStringLiterals.LiteralAt(AText, ARange.StartPos, Literal) and
+    TStringLiterals.PlainText(TStringLiterals.TextOf(AText, Literal), Plain) then
+  begin
+    Action := Default(TCodeAction);
+    Action.Title := 'Als Klartext kopieren';
+    Action.Kind := RewriteKind;
+    Action.Command := CopyTextCommand;
+    Action.CommandArguments := [Plain];
+    Result := [Action];
+    Exit;
+  end;
+  if (ARange.StartPos.Line = ARange.EndPos.Line) and (ARange.StartPos.Character = ARange.EndPos.Character) then
+    Exit;
+  Lines := SplitLines(AText);
+  First := ARange.StartPos.Line;
+  Last := ARange.EndPos.Line;
+  if (Last > First) and (ARange.EndPos.Character = 0) then
+    Dec(Last);
+  if Last > High(Lines) then
+    Last := High(Lines);
+  if (First < 0) or (First > Last) then
+    Exit;
+  // Gemeinsame Einrückung entfernen; die erste Zeile gibt die Einrückung des Literals vor.
+  Common := MaxInt;
+  for Line := First to Last do
+    if (Trim(StripCr(Lines[Line])) <> '') and (Length(IndentOf(StripCr(Lines[Line]))) < Common) then
+      Common := Length(IndentOf(StripCr(Lines[Line])));
+  if Common = MaxInt then
+    Exit;
+  Indent := IndentOf(StripCr(Lines[First]));
+  Plain := '';
+  for Line := First to Last do
+  begin
+    if Line > First then
+      Plain := Plain + #10;
+    Plain := Plain + Copy(StripCr(Lines[Line]), Common + 1, MaxInt);
+  end;
+  Action := Default(TCodeAction);
+  Action.Title := 'Als String-Literal';
+  Action.Kind := RewriteKind;
+  Action.Edits := [TRuleEdit.Create(TTextRange.Create(First, 0, Last, Length(StripCr(Lines[Last]))),
+    TStringLiterals.ToLiteral(Plain, Indent, True, AMultiline, ASettings.LineBreak, ASettings.MaxLineLength,
+    LineBreakOf(AText)))];
+  Result := [Action];
+end;
+
+class function TCodeActions.ForRange(const AFindings: TArray<TRuleFinding>; const AText: string;
+  const ARange: TTextRange): TArray<TCodeAction>;
+var
+  Action: TCodeAction;
+begin
+  Result := ForFindings(AFindings, AText, ARange);
+  if TryFinally(AText, ARange.StartPos.Line, Action) then
+    Result := Result + [Action];
+end;
+
+end.

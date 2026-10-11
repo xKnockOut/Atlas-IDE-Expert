@@ -7,7 +7,7 @@
     Geprüft werden alle Quelltexte unter Packages/ und Application/:
 
     - Write/Writeln ohne Dateiangabe (erlaubt ist nur ErrOutput als erstes Argument)
-    - GetStdHandle(STD_OUTPUT_HANDLE) außerhalb von Argus.Windows.Console.StdStreams
+    - GetStdHandle(STD_OUTPUT_HANDLE) außerhalb von Atlas.Windows.Console.StdStreams
 
     Das Testprojekt ist ausgenommen, der DUnitX-Runner schreibt bewusst auf die Konsole.
     Eine einzelne Zeile lässt sich mit dem Kommentar "// console-ok" freigeben.
@@ -26,7 +26,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $SourceDirs = @('Packages', 'Application')
-$StdHandleOwner = 'Argus.Windows.Console.StdStreams.pas'
+$StdHandleOwner = 'Atlas.Windows.Console.StdStreams.pas'
 
 function Remove-PascalNoise([string] $Text) {
     # Ersetzt Kommentare, Direktiven und Strings durch Leerzeichen und behält

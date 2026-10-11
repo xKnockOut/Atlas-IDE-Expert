@@ -1,0 +1,50 @@
+﻿package Atlas.Windows;
+
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Atlas Windows (frei von VCL)'}
+{$RUNONLY}
+{$IMPLICITBUILD ON}
+
+// Platform-Package für Windows-spezifische Funktionen, ohne Abhängigkeit zur VCL.
+// Erlaubt sind RTL, Winapi.* und System.Win.* sowie Atlas.Common.
+// Geprüft durch Tools\Check-PackageDependencies.ps1.
+
+requires
+  rtl,
+  Atlas.Common;
+
+contains
+  Atlas.Windows.Diagnostics.DebugOutput in 'Source\Diagnostics\Atlas.Windows.Diagnostics.DebugOutput.pas',
+  Atlas.Windows.Diagnostics.Adapters.DebugOutputSink in 'Source\Diagnostics\Atlas.Windows.Diagnostics.Adapters.DebugOutputSink.pas',
+  Atlas.Windows.Diagnostics.StackTrace in 'Source\Diagnostics\Atlas.Windows.Diagnostics.StackTrace.pas',
+  Atlas.Windows.Process.ParentWatcher in 'Source\Process\Atlas.Windows.Process.ParentWatcher.pas',
+  Atlas.Windows.Projects.DelphiInstallation in 'Source\Projects\Atlas.Windows.Projects.DelphiInstallation.pas',
+  Atlas.Windows.Compiler.Adapters.ProcessRunner in 'Source\Compiler\Atlas.Windows.Compiler.Adapters.ProcessRunner.pas',
+  Atlas.Windows.Documents.PathCanonicalizer in 'Source\Documents\Atlas.Windows.Documents.PathCanonicalizer.pas',
+  Atlas.Windows.Console.StdStreams in 'Source\Console\Atlas.Windows.Console.StdStreams.pas',
+  Atlas.Windows.Editing.SystemColors in 'Source\Editing\Atlas.Windows.Editing.SystemColors.pas';
+
+end.

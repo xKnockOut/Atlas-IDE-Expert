@@ -2,7 +2,7 @@
 
 Erzeugt von `Tools/Update-ThirdPartyNotices.ps1`; nicht von Hand ändern.
 
-Argus selbst steht unter der MIT-Lizenz (`LICENSE`). Es enthält keine Quelltexte von Embarcadero;
+Atlas selbst steht unter der MIT-Lizenz (`LICENSE`). Es enthält keine Quelltexte von Embarcadero;
 RTL- und VCL-Quellen werden nur lokal aus der Delphi-Installation gelesen und nie weitergegeben.
 
 ## Nur zum Testen (nicht in Releases enthalten)

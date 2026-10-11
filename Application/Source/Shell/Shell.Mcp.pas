@@ -3,7 +3,7 @@
 // Host-Rolle Shell: MCP-Modus (--mcp, #48). Bietet den Symbolindex eines
 // Projektordners über das Model Context Protocol an, z. B. für Claude Code:
 //
-//   claude mcp add delphi -- ArgusServer.exe --mcp --root C:\Projekte\App
+//   claude mcp add delphi -- AtlasServer.exe --mcp --root C:\Projekte\App
 //
 // stdout gehört dem Protokoll (eine JSON-Nachricht je Zeile); Meldungen gehen
 // auf stderr und in die Logdatei.
@@ -28,33 +28,33 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.JSON,
-  Argus.Common.Product.Version,
-  Argus.Common.Logging.Contract,
-  Argus.Common.Logging.Providers.Logger,
-  Argus.Common.Logging.Providers.StreamSink,
-  Argus.Common.JsonRpc.Contract,
-  Argus.Common.JsonRpc.Dispatcher,
-  Argus.Common.JsonRpc.Connection,
-  Argus.Common.JsonRpc.LineTransport,
-  Argus.Common.Documents.Contract,
-  Argus.Common.Documents.Providers.DocumentStore,
-  Argus.Common.Documents.FileEncoding,
-  Argus.Common.Index.Contract,
-  Argus.Common.Index.SymbolIndex,
-  Argus.Common.Dfm.Parser,
-  Argus.Common.Mcp.Server,
-  Argus.Common.Mcp.IndexTools,
-  Argus.Common.Mcp.CodeTools,
-  Argus.Common.Mcp.BuildTools,
-  Argus.Common.Mcp.Paths,
-  Argus.Common.Mcp.Freshness,
-  Argus.Common.Index.Adapters.DiskFileSystem,
-  Argus.Common.Lsp.IdeBuild,
-  Argus.Common.Index.Adapters.CacheDirectory,
-  Argus.Common.Rules.Builtin,
-  Argus.Windows.Console.StdStreams,
-  Argus.Windows.Process.ParentWatcher,
-  Argus.Windows.Documents.PathCanonicalizer,
+  Atlas.Common.Product.Version,
+  Atlas.Common.Logging.Contract,
+  Atlas.Common.Logging.Providers.Logger,
+  Atlas.Common.Logging.Providers.StreamSink,
+  Atlas.Common.JsonRpc.Contract,
+  Atlas.Common.JsonRpc.Dispatcher,
+  Atlas.Common.JsonRpc.Connection,
+  Atlas.Common.JsonRpc.LineTransport,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Documents.Providers.DocumentStore,
+  Atlas.Common.Documents.FileEncoding,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Dfm.Parser,
+  Atlas.Common.Mcp.Server,
+  Atlas.Common.Mcp.IndexTools,
+  Atlas.Common.Mcp.CodeTools,
+  Atlas.Common.Mcp.BuildTools,
+  Atlas.Common.Mcp.Paths,
+  Atlas.Common.Mcp.Freshness,
+  Atlas.Common.Index.Adapters.DiskFileSystem,
+  Atlas.Common.Lsp.IdeBuild,
+  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Rules.Builtin,
+  Atlas.Windows.Console.StdStreams,
+  Atlas.Windows.Process.ParentWatcher,
+  Atlas.Windows.Documents.PathCanonicalizer,
   Shell.Workspace;
 
 type
@@ -253,7 +253,7 @@ var
 begin
   Result := nil;
   // Nur registrieren, nicht aufrufen: Die Werkzeuge greifen erst beim Aufruf auf ihre Dienste zu.
-  Server := TMcpServer.Create('Argus', '0');
+  Server := TMcpServer.Create('Atlas', '0');
   try
     RegisterTools(Server, nil, nil, nil, '', nil);
     Listed := Server.ListTools;
@@ -311,7 +311,7 @@ begin
     end);
   Silent := TSilentTransport.Create;
   Workspace := TShellWorkspace.Create(Root, ExtractFileName(Root), Store, Silent, Logger, Index,
-    'argus-mcp-index');
+    'atlas-mcp-index');
   Tools := TMcpIndexTools.Create(Index, ReadSourceText);
   // Package einer Unit: .dpk unter dem Projektordner, deren contains sie führt.
   Tools.PackageOf :=

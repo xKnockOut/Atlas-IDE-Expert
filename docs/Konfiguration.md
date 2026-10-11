@@ -1,8 +1,8 @@
-# Konfiguration: argus.json
+# Konfiguration: atlas.json
 
-<!-- Erzeugt von Tools/Update-ConfigDoc.ps1 aus Editors/VSCode/schemas/argus.schema.json. Nicht von Hand bearbeiten. -->
+<!-- Erzeugt von Tools/Update-ConfigDoc.ps1 aus Editors/VSCode/schemas/atlas.schema.json. Nicht von Hand bearbeiten. -->
 
-Einstellungen für Argus im Projektordner.
+Einstellungen für Atlas im Projektordner.
 
 Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; Editor-Einstellungen gelten nur, wo die Datei nichts sagt. Die Prüfregeln stehen in [Regeln.md](Regeln.md).
 
@@ -113,7 +113,7 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/xKnockOut/Argus/main/Editors/VSCode/schemas/argus.schema.json",
+  "$schema": "https://raw.githubusercontent.com/xKnockOut/Atlas/main/Editors/VSCode/schemas/atlas.schema.json",
   "project": "App.dproj",
   "config": "Debug",
   "platform": "Win64",

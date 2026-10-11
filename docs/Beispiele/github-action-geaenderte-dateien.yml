@@ -1,7 +1,7 @@
 # Beispiel (#157): im Pull Request nur geänderte Dateien und Zeilen prüfen und
 # das Ergebnis als SARIF an GitHub Code Scanning geben. Läuft auf einem
-# Windows-Runner, auf dem ArgusServer.exe liegt (siehe Release, #83).
-name: Argus
+# Windows-Runner, auf dem AtlasServer.exe liegt (siehe Release, #83).
+name: Atlas
 
 on:
   pull_request:
@@ -20,10 +20,10 @@ jobs:
       - name: Geänderte Dateien prüfen
         shell: pwsh
         run: |
-          .\ArgusServer.exe --check . --changed origin/${{ github.base_ref }} --changed-lines `
-            --format sarif --output argus.sarif
+          .\AtlasServer.exe --check . --changed origin/${{ github.base_ref }} --changed-lines `
+            --format sarif --output atlas.sarif
           if ($LASTEXITCODE -ge 3) { exit $LASTEXITCODE }
           exit 0
       - uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: argus.sarif
+          sarif_file: atlas.sarif

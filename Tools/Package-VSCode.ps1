@@ -3,10 +3,10 @@
     Baut die VS-Code-Erweiterung als .vsix mit mitgelieferter Server-EXE (#49).
 
 .DESCRIPTION
-    Kopiert ArgusServer.exe nach Editors/VSCode/server, installiert die
+    Kopiert AtlasServer.exe nach Editors/VSCode/server, installiert die
     npm-Abhängigkeiten und packt die Erweiterung mit vsce. Die .vsix liegt
     danach in Editors/VSCode und lässt sich mit
-    "code --install-extension argus-<Version>.vsix" installieren.
+    "code --install-extension atlas-<Version>.vsix" installieren.
 
 .PARAMETER ServerExe
     Pfad zur gebauten EXE; Standard: Output/Win64/Release/Bin, sonst Debug.
@@ -25,7 +25,7 @@ $ErrorActionPreference = 'Stop'
 
 if ($ServerExe -eq '') {
     foreach ($Config in 'Release', 'Debug') {
-        $Candidate = Join-Path $Root "Output/Win64/$Config/Bin/ArgusServer.exe"
+        $Candidate = Join-Path $Root "Output/Win64/$Config/Bin/AtlasServer.exe"
         if (Test-Path $Candidate) {
             $ServerExe = $Candidate
             break
@@ -33,13 +33,13 @@ if ($ServerExe -eq '') {
     }
 }
 if ($ServerExe -eq '' -or -not (Test-Path $ServerExe)) {
-    Write-Error 'ArgusServer.exe nicht gefunden; Server bauen oder -ServerExe angeben.'
+    Write-Error 'AtlasServer.exe nicht gefunden; Server bauen oder -ServerExe angeben.'
 }
 
 $Extension = Join-Path $Root 'Editors/VSCode'
 $ServerDir = Join-Path $Extension 'server'
 New-Item -ItemType Directory -Force -Path $ServerDir | Out-Null
-Copy-Item -Force $ServerExe (Join-Path $ServerDir 'ArgusServer.exe')
+Copy-Item -Force $ServerExe (Join-Path $ServerDir 'AtlasServer.exe')
 
 Push-Location $Extension
 try {

@@ -1,21 +1,21 @@
 # Installation
 
-Argus ist eine einzelne Datei, `ArgusServer.exe` (Windows, Win64). Sie spricht LSP über stdio, mit `--mcp` MCP für KI-Agenten und mit `--check` prüft sie ohne Editor. Eine installierte RAD-Studio-Version braucht der Server nur für Compiler-Meldungen (`compiler.onSave`); die passende Version liest er aus der `.dproj`.
+Atlas ist eine einzelne Datei, `AtlasServer.exe` (Windows, Win64). Sie spricht LSP über stdio, mit `--mcp` MCP für KI-Agenten und mit `--check` prüft sie ohne Editor. Eine installierte RAD-Studio-Version braucht der Server nur für Compiler-Meldungen (`compiler.onSave`); die passende Version liest er aus der `.dproj`.
 
 ## Server besorgen
 
-- **Release:** `ArgusServer.exe` aus dem neuesten [GitHub-Release](https://github.com/xKnockOut/Argus-IDE-Expert/releases) laden und in einen Ordner im `PATH` legen.
-- **Selbst bauen:** `Argus.groupproj` in RAD Studio öffnen und Win64 bauen; die EXE liegt unter `Output\Win64\<Config>\Bin\`.
+- **Release:** `AtlasServer.exe` aus dem neuesten [GitHub-Release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) laden und in einen Ordner im `PATH` legen.
+- **Selbst bauen:** `Atlas.groupproj` in RAD Studio öffnen und Win64 bauen; die EXE liegt unter `Output\Win64\<Config>\Bin\`.
 
 ## VS Code
 
-Die Erweiterung `argus-<Version>.vsix` aus dem Release enthält den Server schon:
+Die Erweiterung `atlas-<Version>.vsix` aus dem Release enthält den Server schon:
 
 ```
-code --install-extension argus-0.1.0.vsix
+code --install-extension atlas-0.1.0.vsix
 ```
 
-Sie startet, sobald ein Ordner mit `.dproj` oder `argus.json` geöffnet wird. Einstellungen und Befehle: [Editors/VSCode/README.md](../Editors/VSCode/README.md).
+Sie startet, sobald ein Ordner mit `.dproj` oder `atlas.json` geöffnet wird. Einstellungen und Befehle: [Editors/VSCode/README.md](../Editors/VSCode/README.md).
 
 ### Beim Speichern aufräumen
 
@@ -30,14 +30,14 @@ In der `settings.json` von VS Code:
 }
 ```
 
-`source.organizeImports` entfernt doppelte Einträge in den uses-Listen; mit `"sortUses": true` in `argus.json` werden sie zusätzlich sortiert. `source.fixAll` wendet alle Korrekturen an, die ihre Regel als sicher markiert, z. B. das Entfernen ungenutzter `lsp-ignore`-Kommentare.
+`source.organizeImports` entfernt doppelte Einträge in den uses-Listen; mit `"sortUses": true` in `atlas.json` werden sie zusätzlich sortiert. `source.fixAll` wendet alle Korrekturen an, die ihre Regel als sicher markiert, z. B. das Entfernen ungenutzter `lsp-ignore`-Kommentare.
 
 ## Claude Code
 
 Als MCP-Server (Index-Werkzeuge für den Agenten):
 
 ```
-claude mcp add delphi -- ArgusServer.exe --mcp --root C:\Projekte\App
+claude mcp add delphi -- AtlasServer.exe --mcp --root C:\Projekte\App
 ```
 
 Mit Diagnosen und Navigation als Plugin: [Editors/ClaudeCode/README.md](../Editors/ClaudeCode/README.md). Werkzeuge: [MCP.md](MCP.md).
@@ -52,35 +52,35 @@ Jeder LSP-Client funktioniert mit diesen Angaben:
 
 | Angabe | Wert |
 |---|---|
-| Befehl | `ArgusServer.exe` (optional `--log <Datei> --log-level debug`) |
+| Befehl | `AtlasServer.exe` (optional `--log <Datei> --log-level debug`) |
 | Transport | stdio |
 | Dateitypen | `.pas`, `.dpr`, `.dpk`, `.inc`, `.dfm` |
 | Sprach-ID | beliebig, üblich `delphi` oder `objectpascal` |
-| Wurzel | Ordner mit `.dproj`, `argus.json` oder `.git` |
+| Wurzel | Ordner mit `.dproj`, `atlas.json` oder `.git` |
 
 Beispiel für Helix (`languages.toml`):
 
 ```toml
-[language-server.argus]
-command = "ArgusServer.exe"
+[language-server.atlas]
+command = "AtlasServer.exe"
 
 [[language]]
 name = "delphi"
 scope = "source.pascal"
 file-types = ["pas", "dpr", "dpk", "inc"]
-roots = [".dproj", "argus.json"]
-language-servers = ["argus"]
+roots = [".dproj", "atlas.json"]
+language-servers = ["atlas"]
 ```
 
 ## Ohne Editor (CI)
 
 ```
-ArgusServer.exe --check App.dproj --format sarif --output befunde.sarif
+AtlasServer.exe --check App.dproj --format sarif --output befunde.sarif
 ```
 
 Weitere Optionen stehen in der [README](../README.md).
 
 ## Weiter
 
-- [Konfiguration.md](Konfiguration.md): alle Schlüssel von `argus.json`
+- [Konfiguration.md](Konfiguration.md): alle Schlüssel von `atlas.json`
 - [Regeln.md](Regeln.md): alle Prüfregeln mit Beispielen und Unterdrückung per `// lsp-ignore: <regel>`

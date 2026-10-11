@@ -1,0 +1,84 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{3C6E2F0A-6B2D-4F0E-9E0B-5A1D7C2B8E41}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="Packages\Atlas.Common\Atlas.Common.dproj">
+            <Dependencies></Dependencies>
+        </Projects>
+        <Projects Include="Packages\Atlas.Windows\Atlas.Windows.dproj">
+            <Dependencies>Packages\Atlas.Common\Atlas.Common.dproj</Dependencies>
+        </Projects>
+        <Projects Include="Application\AtlasServer.dproj">
+            <Dependencies>Packages\Atlas.Common\Atlas.Common.dproj;Packages\Atlas.Windows\Atlas.Windows.dproj</Dependencies>
+        </Projects>
+        <Projects Include="Packages\Atlas.IDE.Expert\Atlas.IDE.Expert.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="Tests\Atlas.Tests.dproj">
+            <Dependencies>Packages\Atlas.Common\Atlas.Common.dproj;Packages\Atlas.Windows\Atlas.Windows.dproj</Dependencies>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="Atlas_Common">
+        <MSBuild Projects="Packages\Atlas.Common\Atlas.Common.dproj"/>
+    </Target>
+    <Target Name="Atlas_Common:Clean">
+        <MSBuild Projects="Packages\Atlas.Common\Atlas.Common.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Atlas_Common:Make">
+        <MSBuild Projects="Packages\Atlas.Common\Atlas.Common.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Atlas_Windows">
+        <MSBuild Projects="Packages\Atlas.Windows\Atlas.Windows.dproj"/>
+    </Target>
+    <Target Name="Atlas_Windows:Clean">
+        <MSBuild Projects="Packages\Atlas.Windows\Atlas.Windows.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Atlas_Windows:Make">
+        <MSBuild Projects="Packages\Atlas.Windows\Atlas.Windows.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="AtlasServer">
+        <MSBuild Projects="Application\AtlasServer.dproj"/>
+    </Target>
+    <Target Name="AtlasServer:Clean">
+        <MSBuild Projects="Application\AtlasServer.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="AtlasServer:Make">
+        <MSBuild Projects="Application\AtlasServer.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Atlas_IDE_Expert">
+        <MSBuild Projects="Packages\Atlas.IDE.Expert\Atlas.IDE.Expert.dproj"/>
+    </Target>
+    <Target Name="Atlas_IDE_Expert:Clean">
+        <MSBuild Projects="Packages\Atlas.IDE.Expert\Atlas.IDE.Expert.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Atlas_IDE_Expert:Make">
+        <MSBuild Projects="Packages\Atlas.IDE.Expert\Atlas.IDE.Expert.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Atlas_Tests">
+        <MSBuild Projects="Tests\Atlas.Tests.dproj"/>
+    </Target>
+    <Target Name="Atlas_Tests:Clean">
+        <MSBuild Projects="Tests\Atlas.Tests.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Atlas_Tests:Make">
+        <MSBuild Projects="Tests\Atlas.Tests.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="Atlas_Common;Atlas_Windows;AtlasServer;Atlas_IDE_Expert;Atlas_Tests"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="Atlas_Common:Clean;Atlas_Windows:Clean;AtlasServer:Clean;Atlas_IDE_Expert:Clean;Atlas_Tests:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="Atlas_Common:Make;Atlas_Windows:Make;AtlasServer:Make;Atlas_IDE_Expert:Make;Atlas_Tests:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

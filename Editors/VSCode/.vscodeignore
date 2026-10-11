@@ -2,7 +2,7 @@ src/**
 tsconfig.json
 **/*.map
 # Map des Servers für Stacktraces mit Unit und Routine (#282).
-!server/ArgusServer.map
+!server/AtlasServer.map
 .vscode/**
 .gitignore
 *.vsix

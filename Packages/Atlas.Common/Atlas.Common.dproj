@@ -1,0 +1,328 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{9B47206F-D86A-4DB3-B051-00A4CA336E9F}</ProjectGuid>
+        <MainSource>Atlas.Common.dpk</MainSource>
+        <ProjectVersion>20.3</ProjectVersion>
+        <FrameworkType>None</FrameworkType>
+        <AppType>Package</AppType>
+        <Base>True</Base>
+        <Config Condition="'$(Config)'==''">Debug</Config>
+        <Platform Condition="'$(Platform)'==''">Win32</Platform>
+        <TargetedPlatforms>3</TargetedPlatforms>
+        <ProjectName Condition="'$(ProjectName)'==''">Atlas.Common</ProjectName>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="('$(Platform)'=='Win64x' and '$(Base)'=='true') or '$(Base_Win64x)'!=''">
+        <Base_Win64x>true</Base_Win64x>
+        <CfgParent>Base</CfgParent>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Config)'=='Debug' or '$(Cfg_1)'!=''">
+        <Cfg_1>true</Cfg_1>
+        <CfgParent>Base</CfgParent>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Config)'=='Release' or '$(Cfg_2)'!=''">
+        <Cfg_2>true</Cfg_2>
+        <CfgParent>Base</CfgParent>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Base)'!=''">
+        <DCC_MapFile>3</DCC_MapFile>
+        <SanitizedProjectName>Atlas_Common</SanitizedProjectName>
+        <GenPackage>true</GenPackage>
+        <GenDll>true</GenDll>
+        <RuntimeOnlyPackage>true</RuntimeOnlyPackage>
+        <DCC_Description>Atlas Common (frei von Windows und VCL)</DCC_Description>
+        <DCC_Namespace>System;$(DCC_Namespace)</DCC_Namespace>
+        <DCC_OutputNeverBuildDcps>true</DCC_OutputNeverBuildDcps>
+        <DCC_DcuOutput>..\..\Output\$(Platform)\$(Config)\Dcu\Atlas.Common</DCC_DcuOutput>
+        <DCC_DcpOutput>..\..\Output\$(Platform)\$(Config)\Dcp</DCC_DcpOutput>
+        <DCC_BplOutput>..\..\Output\$(Platform)\$(Config)\Bpl</DCC_BplOutput>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Base_Win64x)'!=''">
+        <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
+        <BT_BuildType>Debug</BT_BuildType>
+        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+        <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
+        <VerInfo_Locale>1033</VerInfo_Locale>
+        <BCC_EnableBatchCompilation>true</BCC_EnableBatchCompilation>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Cfg_1)'!=''">
+        <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
+        <DCC_DebugDCUs>false</DCC_DebugDCUs>
+        <DCC_Optimize>false</DCC_Optimize>
+        <DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
+        <DCC_DebugInfoInExe>true</DCC_DebugInfoInExe>
+        <DCC_RemoteDebug>false</DCC_RemoteDebug>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Cfg_2)'!=''">
+        <DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
+        <DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
+        <!-- Begrenzte Debug-Informationen: Zeilennummern in der .map des Servers (#282). -->
+        <DCC_DebugInformation>1</DCC_DebugInformation>
+        <DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
+    </PropertyGroup>
+    <ItemGroup>
+        <DelphiCompile Include="$(MainSource)">
+            <MainSource>MainSource</MainSource>
+        </DelphiCompile>
+        <DCCReference Include="rtl.dcp"/>
+        <DCCReference Include="Source\Product\Atlas.Common.Product.Version.pas"/>
+        <DCCReference Include="Source\Logging\Atlas.Common.Logging.Contract.pas"/>
+        <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.Logger.pas"/>
+        <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.RotatingFileStream.pas"/>
+        <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.StreamSink.pas"/>
+        <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Contract.pas"/>
+        <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Messages.pas"/>
+        <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.StreamTransport.pas"/>
+        <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.LineTransport.pas"/>
+        <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.TracingTransport.pas"/>
+        <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.PendingRequests.pas"/>
+        <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Watchdog.pas"/>
+        <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Dispatcher.pas"/>
+        <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Connection.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Contract.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Lifecycle.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Adapters.LogMessageSink.pas"/>
+        <DCCReference Include="Source\Documents\Atlas.Common.Documents.Contract.pas"/>
+        <DCCReference Include="Source\Documents\Atlas.Common.Documents.TextDocument.pas"/>
+        <DCCReference Include="Source\Documents\Atlas.Common.Documents.FileEncoding.pas"/>
+        <DCCReference Include="Source\Projects\Atlas.Common.Projects.Contract.pas"/>
+        <DCCReference Include="Source\Projects\Atlas.Common.Projects.Paths.pas"/>
+        <DCCReference Include="Source\Projects\Atlas.Common.Projects.DelphiVersions.pas"/>
+        <DCCReference Include="Source\Projects\Internals\Atlas.Common.Projects.Internals.Xml.pas"/>
+        <DCCReference Include="Source\Projects\Internals\Atlas.Common.Projects.Internals.MSBuild.pas"/>
+        <DCCReference Include="Source\Projects\Atlas.Common.Projects.DprojReader.pas"/>
+        <DCCReference Include="Source\Projects\Atlas.Common.Projects.DprojEditor.pas"/>
+        <DCCReference Include="Source\Projects\Atlas.Common.Projects.UnitResolver.pas"/>
+        <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.Contract.pas"/>
+        <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.OutputParser.pas"/>
+        <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.CommandLine.pas"/>
+        <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.Results.pas"/>
+        <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.MapFile.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.Contract.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.SymbolIndex.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.Cache.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.CacheHousekeeping.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.Memory.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.Builder.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.ProjectFiles.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.Service.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Contract.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Registry.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Suppressions.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Engine.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Profiles.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Checker.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.GoldenCorpus.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Filter.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Output.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Baseline.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.SuppressionStats.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unicode.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.CodeActions.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesClause.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesActions.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesCommand.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.SlashCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.DeclarationCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.CommandSource.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ClassCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.WrapCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.RefactoringCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ExpressionCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Modernizer.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.DocComments.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.MemberOrder.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ProjectCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.SqlText.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.DatabaseCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Bookmarks.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.DocumentationCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ComponentCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.WinApiCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.TaskCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.RecordCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.MaintenanceCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.CollectionCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.UnitTemplates.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ErrorCommands.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.UnresolvedNames.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Architecture.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Flow.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unused.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Inheritance.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Capture.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Components.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.FormFields.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Security.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.General.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.RtlPatterns.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.RtlTypePatterns.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Exceptions.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Style.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.PaletteIcons.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Performance.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.ChangedFiles.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.DeclaredTypes.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.ResourceNames.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.DataBinding.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.DfmProperties.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.SlashCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ClassCompletion.pas"/>
+        <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.Contract.pas"/>
+        <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.Parser.pas"/>
+        <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.Navigation.pas"/>
+        <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.FormModel.pas"/>
+        <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.FormInfo.pas"/>
+        <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.BinaryForm.pas"/>
+        <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.FormFiles.pas"/>
+        <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.ComponentRename.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Server.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IndexTools.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.CodeTools.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FormFiles.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.EditorConfig.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatter.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.DocumentLinks.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Colors.pas"/>
+        <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Statistics.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.References.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Rename.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SignatureHelp.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hierarchies.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Implementations.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InlayHints.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MessageHandlers.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CodeLens.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SemanticTokens.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Commands.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Status.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DocWiki.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerDirectives.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Colors.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DocumentLinks.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.CodeActions.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesClause.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesActions.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesCommand.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.UnresolvedNames.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Architecture.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Flow.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unused.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Inheritance.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Capture.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Components.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ClassCompletion.pas"/>
+        <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.Contract.pas"/>
+        <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.Parser.pas"/>
+        <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.Navigation.pas"/>
+        <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.FormModel.pas"/>
+        <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.ComponentRename.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Server.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.IndexTools.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.CodeTools.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FormFiles.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.EditorConfig.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatter.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.QualifiedNames.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WinApiDocs.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.KeywordReference.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.AssignmentSwap.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.StringLiterals.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.PostfixTemplates.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StringLiteralCommands.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CodeActions.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ControlFlow.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Attributes.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Definition.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PublishedMembers.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hover.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.HoverTypes.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.HoverValues.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.LinkedEditing.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Formatting.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FuzzyMatch.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceSymbols.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DocumentHighlights.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.KeywordHighlights.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WatchedFiles.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeBuild.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.BuildTools.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Paths.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Freshness.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InactiveRegions.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceFolders.pas"/>
+        <DCCReference Include="Source\Index\Adapters\Atlas.Common.Index.Adapters.DiskFileSystem.pas"/>
+        <DCCReference Include="Source\Index\Adapters\Atlas.Common.Index.Adapters.CacheDirectory.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkDoneProgress.pas"/>
+        <DCCReference Include="Source\Configuration\Atlas.Common.Configuration.Contract.pas"/>
+        <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.JsonTree.pas"/>
+        <DCCReference Include="Source\Configuration\Atlas.Common.Configuration.Parser.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Configuration.pas"/>
+        <DCCReference Include="Source\Documents\Atlas.Common.Documents.Uris.pas"/>
+        <DCCReference Include="Source\Documents\Providers\Atlas.Common.Documents.Providers.DocumentStore.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Positions.pas"/>
+        <DCCReference Include="Source\Lsp\Internals\Atlas.Common.Lsp.Internals.Debouncer.pas"/>
+        <DCCReference Include="Source\Lsp\Internals\Atlas.Common.Lsp.Internals.Cancellation.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DocumentSymbols.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FoldingRanges.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SelectionRanges.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SyntaxDiagnostics.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PullDiagnostics.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TextDocumentSync.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Contract.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Lexer.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.SyntaxTree.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Parser.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TreeCache.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.IncludeFiles.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.LanguageFeatures.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Preprocessor.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.XmlDoc.pas"/>
+        <BuildConfiguration Include="Base">
+            <Key>Base</Key>
+        </BuildConfiguration>
+        <BuildConfiguration Include="Debug">
+            <Key>Cfg_1</Key>
+            <CfgParent>Base</CfgParent>
+        </BuildConfiguration>
+        <BuildConfiguration Include="Release">
+            <Key>Cfg_2</Key>
+            <CfgParent>Base</CfgParent>
+        </BuildConfiguration>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Delphi.Personality.12</Borland.Personality>
+        <Borland.ProjectType>Package</Borland.ProjectType>
+        <BorlandProject>
+            <Delphi.Personality>
+                <Source>
+                    <Source Name="MainSource">Atlas.Common.dpk</Source>
+                </Source>
+            </Delphi.Personality>
+            <Platforms>
+                <Platform value="Win32">True</Platform>
+                <Platform value="Win64">True</Platform>
+                <Platform value="Win64x">False</Platform>
+            </Platforms>
+        </BorlandProject>
+        <ProjectFileVersion>12</ProjectFileVersion>
+    </ProjectExtensions>
+    <Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
+    <Import Project="$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj" Condition="Exists('$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj')"/>
+</Project>

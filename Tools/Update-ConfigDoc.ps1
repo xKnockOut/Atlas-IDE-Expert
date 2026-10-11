@@ -1,18 +1,18 @@
 <#
 .SYNOPSIS
-    Erzeugt aus dem JSON-Schema von argus.json die Doku, die VS-Code-Settings
+    Erzeugt aus dem JSON-Schema von atlas.json die Doku, die VS-Code-Settings
     und die Einstellungstabelle und prüft den Parser dagegen.
 
 .DESCRIPTION
-    Einzige Quelle ist Editors/VSCode/schemas/argus.schema.json (#265):
+    Einzige Quelle ist Editors/VSCode/schemas/atlas.schema.json (#265):
     - docs/Konfiguration.md: jeder Schlüssel mit Typ, Standardwert, erlaubten
       Werten und Beschreibung; verschachtelte Objekte als eigener Abschnitt.
     - Editors/VSCode/package.json: contributes.configuration, je Schlüssel
-      argus.<Schlüssel>. Reine Client-Einstellungen (serverPath,
+      atlas.<Schlüssel>. Reine Client-Einstellungen (serverPath,
       trace.server) bleiben, wie sie sind.
     - docs/Einstellungen.md: Tabelle für das Einstellungs-Plugin (#227) aus den
       Angaben x-page, x-control, x-issue, x-commandLine und x-restart.
-    - Wächter: Die Schlüssel in Argus.Common.Configuration.Parser müssen genau
+    - Wächter: Die Schlüssel in Atlas.Common.Configuration.Parser müssen genau
       denen im Schema entsprechen (Validierung und Schichtung).
 
     Mit -Check wird nichts geschrieben; Exit-Code 1, wenn eine Datei veraltet ist
@@ -34,11 +34,11 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$SchemaPath = Join-Path $Root 'Editors/VSCode/schemas/argus.schema.json'
+$SchemaPath = Join-Path $Root 'Editors/VSCode/schemas/atlas.schema.json'
 $DocPath = Join-Path $Root 'docs/Konfiguration.md'
 $PackagePath = Join-Path $Root 'Editors/VSCode/package.json'
 $TablePath = Join-Path $Root 'docs/Einstellungen.md'
-$ParserPath = Join-Path $Root 'Packages/Argus.Common/Source/Configuration/Argus.Common.Configuration.Parser.pas'
+$ParserPath = Join-Path $Root 'Packages/Atlas.Common/Source/Configuration/Atlas.Common.Configuration.Parser.pas'
 $Utf8 = New-Object System.Text.UTF8Encoding($false)
 
 $Schema = Get-Content -Raw -Encoding utf8 $SchemaPath | ConvertFrom-Json -AsHashtable
@@ -72,9 +72,9 @@ function Write-Table([System.Text.StringBuilder] $Out, [hashtable] $Properties, 
 }
 
 $Out = New-Object System.Text.StringBuilder
-[void]$Out.AppendLine('# Konfiguration: argus.json')
+[void]$Out.AppendLine('# Konfiguration: atlas.json')
 [void]$Out.AppendLine()
-[void]$Out.AppendLine('<!-- Erzeugt von Tools/Update-ConfigDoc.ps1 aus Editors/VSCode/schemas/argus.schema.json. Nicht von Hand bearbeiten. -->')
+[void]$Out.AppendLine('<!-- Erzeugt von Tools/Update-ConfigDoc.ps1 aus Editors/VSCode/schemas/atlas.schema.json. Nicht von Hand bearbeiten. -->')
 [void]$Out.AppendLine()
 [void]$Out.AppendLine((Escape $Schema['description']))
 [void]$Out.AppendLine()
@@ -97,7 +97,7 @@ foreach ($Name in $Schema['properties'].Keys) {
 [void]$Out.AppendLine()
 [void]$Out.AppendLine('```json')
 [void]$Out.AppendLine('{')
-[void]$Out.AppendLine('  "$schema": "https://raw.githubusercontent.com/xKnockOut/Argus/main/Editors/VSCode/schemas/argus.schema.json",')
+[void]$Out.AppendLine('  "$schema": "https://raw.githubusercontent.com/xKnockOut/Atlas/main/Editors/VSCode/schemas/atlas.schema.json",')
 [void]$Out.AppendLine('  "project": "App.dproj",')
 [void]$Out.AppendLine('  "config": "Debug",')
 [void]$Out.AppendLine('  "platform": "Win64",')
@@ -108,7 +108,7 @@ foreach ($Name in $Schema['properties'].Keys) {
 $Text = $Out.ToString().Replace("`r`n", "`n")
 
 # --- VS-Code-Settings (package.json) ---
-$Section = 'argus'
+$Section = 'atlas'
 $ClientOnly = @('serverPath', 'trace.server')
 $Package = Get-Content -Raw -Encoding utf8 $PackagePath | ConvertFrom-Json -AsHashtable
 $OldSettings = $Package['contributes']['configuration']['properties']
@@ -135,7 +135,7 @@ foreach ($Name in $Schema['properties'].Keys) {
                         elseif ($Type -eq 'array') { ,@() }
                         else { [ordered]@{} }
     $Description = if (Has $P 'description') { $P['description'] } else { '' }
-    if (-not (Has $P 'x-commandLine')) { $Description = ($Description + ' argus.json im Projekt hat Vorrang.').Trim() }
+    if (-not (Has $P 'x-commandLine')) { $Description = ($Description + ' atlas.json im Projekt hat Vorrang.').Trim() }
     $Entry['markdownDescription'] = $Description
     $NewSettings["$Section.$Name"] = $Entry
 }
@@ -147,7 +147,7 @@ $PackageText = ($Package | ConvertTo-Json -Depth 32).Replace("`r`n", "`n") + "`n
 $Table = New-Object System.Text.StringBuilder
 [void]$Table.AppendLine('# Einstellungen')
 [void]$Table.AppendLine()
-[void]$Table.AppendLine('<!-- Erzeugt von Tools/Update-ConfigDoc.ps1 aus Editors/VSCode/schemas/argus.schema.json. Nicht von Hand bearbeiten. -->')
+[void]$Table.AppendLine('<!-- Erzeugt von Tools/Update-ConfigDoc.ps1 aus Editors/VSCode/schemas/atlas.schema.json. Nicht von Hand bearbeiten. -->')
 [void]$Table.AppendLine()
 [void]$Table.AppendLine('Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Einzelheiten zu Werten und Bedeutung stehen in [Konfiguration.md](Konfiguration.md).')
 [void]$Table.AppendLine()
@@ -159,7 +159,7 @@ foreach ($Name in $Schema['properties'].Keys) {
     $Setting = '`' + $Name + '`'
     if (Has $P 'properties') { $Setting += ': ' + (($P['properties'].Keys | ForEach-Object { '`' + $_ + '`' }) -join ', ') }
     $Default = if ($P.ContainsKey('default')) { Format-Value $P['default'] } else { '–' }
-    $Source = "argus.json, Editor (``$Section.$Name``)"
+    $Source = "atlas.json, Editor (``$Section.$Name``)"
     if (Has $P 'x-commandLine') { $Source += ', ``' + $P['x-commandLine'] + '``' }
     $Restart = if ((Has $P 'x-restart') -and $P['x-restart']) { 'ja' } else { 'nein' }
     $Page = if (Has $P 'x-page') { $P['x-page'] } else { '' }
@@ -167,11 +167,11 @@ foreach ($Name in $Schema['properties'].Keys) {
     $Issue = if (Has $P 'x-issue') { $P['x-issue'] } else { '' }
     [void]$Table.AppendLine("| $Page | $Setting | $Default | $Source | $Restart | $(Escape $Control) | $Issue |")
 }
-# Was kein Schlüssel in argus.json ist, aber im Plugin erscheint.
-[void]$Table.AppendLine('| Allgemein | Pfad zu `ArgusServer.exe` | – | VS Code (`argus.serverPath`) | ja | Datei wählen, Version anzeigen | #12, #49 |')
-[void]$Table.AppendLine('| Baseline | `argus-baseline.json` | – | Datei, `--baseline`, `--update-baseline` | nein | Anzahl Einträge, „Baseline neu erzeugen“, „Baseline löschen“ | #97 |')
+# Was kein Schlüssel in atlas.json ist, aber im Plugin erscheint.
+[void]$Table.AppendLine('| Allgemein | Pfad zu `AtlasServer.exe` | – | VS Code (`atlas.serverPath`) | ja | Datei wählen, Version anzeigen | #12, #49 |')
+[void]$Table.AppendLine('| Baseline | `atlas-baseline.json` | – | Datei, `--baseline`, `--update-baseline` | nein | Anzahl Einträge, „Baseline neu erzeugen“, „Baseline löschen“ | #97 |')
 [void]$Table.AppendLine('| Baseline | Unterdrückungen `lsp-ignore` | – | `--suppression-stats` | nein | Übersicht je Regel (nur Anzeige) | #147 |')
-[void]$Table.AppendLine('| Speicher | Index-Cache löschen | – | `--clear-cache`, Befehl `argus.server.rebuildIndex` | nein | Knopf „Index-Cache löschen“ | #184 |')
+[void]$Table.AppendLine('| Speicher | Index-Cache löschen | – | `--clear-cache`, Befehl `atlas.server.rebuildIndex` | nein | Knopf „Index-Cache löschen“ | #184 |')
 $TableText = $Table.ToString().Replace("`r`n", "`n")
 
 # --- Wächter: Schlüssel im Parser ---

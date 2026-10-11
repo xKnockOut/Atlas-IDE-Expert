@@ -1,14 +1,14 @@
 # MCP-Modus
 
-Mit `--mcp` bietet Argus den Symbolindex eines Projektordners über das
+Mit `--mcp` bietet Atlas den Symbolindex eines Projektordners über das
 Model Context Protocol an (stdio, eine JSON-Nachricht je Zeile). Ein KI-Assistent
 kann damit Fragen zum Projekt beantworten, ohne Quelldateien vollständig zu lesen.
 
 ```
-claude mcp add delphi -- ArgusServer.exe --mcp --root C:\Projekte\App
+claude mcp add delphi -- AtlasServer.exe --mcp --root C:\Projekte\App
 ```
 
-`--root` ist der Ordner mit `argus.json` bzw. der .dproj; ohne Angabe das
+`--root` ist der Ordner mit `atlas.json` bzw. der .dproj; ohne Angabe das
 aktuelle Verzeichnis. `--log <Datei>` schreibt ein Protokoll, stdout gehört allein
 dem Protokoll.
 
@@ -32,4 +32,4 @@ Abschaltbarkeit aus #99, sobald sie kommen (#61, #69).
 | `get_diagnostics` | `file` (optional) | Syntaxfehler und Regelbefunde einer Datei oder aller Projektdateien |
 | `check_code` | `file`, `text`, `startLine`/`endLine` (optional) | Prüft geplanten Code ohne zu schreiben: Syntaxfehler, Regelbefunde, nicht auflösbare Bezeichner. Ohne Bereich ist `text` die ganze Unit, sonst der Ersatz für die Zeilen `startLine`..`endLine` |
 | `get_dfm_info` | `file` | Komponentenbaum eines Text-Formulars mit Eigenschaften und Ereignissen |
-| `get_last_build` | `project` (optional) | Letzter Build, den der Benutzer in der IDE gestartet hat (über das IDE-Plugin, #556): Ergebnis, Art, Zeitpunkt, Dauer, Projekt, Konfiguration, Plattform, Zahl der Fehler/Warnungen/Hinweise und alle Meldungen mit Datei, Zeile, Spalte (1-basiert), Code und Text; Meldungen außerhalb von `--root` bleiben weg. Ohne Build: „Noch kein Build …“. Austausch über `%LOCALAPPDATA%\Argus\build-*.json`, die der LSP-Server schreibt |
+| `get_last_build` | `project` (optional) | Letzter Build, den der Benutzer in der IDE gestartet hat (über das IDE-Plugin, #556): Ergebnis, Art, Zeitpunkt, Dauer, Projekt, Konfiguration, Plattform, Zahl der Fehler/Warnungen/Hinweise und alle Meldungen mit Datei, Zeile, Spalte (1-basiert), Code und Text; Meldungen außerhalb von `--root` bleiben weg. Ohne Build: „Noch kein Build …“. Austausch über `%LOCALAPPDATA%\Atlas\build-*.json`, die der LSP-Server schreibt |

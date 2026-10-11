@@ -3,10 +3,10 @@
     Erzeugt aus dem Regelkatalog die eingebettete Unit und die Benutzerdokumentation.
 
 .DESCRIPTION
-    Einzige Quelle ist Packages/Argus.Common/Katalog/regelkatalog.json mit den
+    Einzige Quelle ist Packages/Atlas.Common/Katalog/regelkatalog.json mit den
     Übersetzungen regelkatalog.<sprache>.json (#145). Daraus entstehen:
 
-    - Packages/Argus.Common/Source/Rules/Argus.Common.Rules.Catalog.Data.pas
+    - Packages/Atlas.Common/Source/Rules/Atlas.Common.Rules.Catalog.Data.pas
     - docs/Regeln.md
 
     Zusätzlich wird geprüft, dass jede implementierte Regel (TRuleDescriptor.Create
@@ -29,9 +29,9 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$CatalogDir = Join-Path $Root 'Packages/Argus.Common/Katalog'
-$SourceDir = Join-Path $Root 'Packages/Argus.Common/Source'
-$UnitPath = Join-Path $SourceDir 'Rules/Argus.Common.Rules.Catalog.Data.pas'
+$CatalogDir = Join-Path $Root 'Packages/Atlas.Common/Katalog'
+$SourceDir = Join-Path $Root 'Packages/Atlas.Common/Source'
+$UnitPath = Join-Path $SourceDir 'Rules/Atlas.Common.Rules.Catalog.Data.pas'
 $DocPath = Join-Path $Root 'docs/Regeln.md'
 $Utf8Bom = New-Object System.Text.UTF8Encoding($true)
 
@@ -98,7 +98,7 @@ function ConvertTo-DelphiLiteral([string] $Text) {
 }
 
 $Unit = New-Object System.Text.StringBuilder
-[void]$Unit.Append("unit Argus.Common.Rules.Catalog.Data;`r`n`r`n")
+[void]$Unit.Append("unit Atlas.Common.Rules.Catalog.Data;`r`n`r`n")
 [void]$Unit.Append("// Erzeugt von Tools/Update-RuleCatalog.ps1 aus Katalog\regelkatalog*.json.`r`n")
 [void]$Unit.Append("// Nicht von Hand ändern.`r`n`r`ninterface`r`n`r`n")
 [void]$Unit.Append("/// <summary>Englischer Grundkatalog als JSON.</summary>`r`nfunction RuleCatalogBaseJson: string;`r`n")

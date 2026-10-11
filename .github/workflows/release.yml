@@ -46,7 +46,7 @@ jobs:
         id: ide
         shell: pwsh
         run: |
-          $out = & $env:CC_SCRIPT start -Project "$env:GITHUB_WORKSPACE\Argus.groupproj" | Out-String
+          $out = & $env:CC_SCRIPT start -Project "$env:GITHUB_WORKSPACE\Atlas.groupproj" | Out-String
           Write-Host $out
           if ($out -notmatch 'pid\D*(\d+)') { throw 'pid der Scratch-IDE nicht gefunden' }
           "pid=$($Matches[1])" >> $env:GITHUB_OUTPUT
@@ -58,7 +58,7 @@ jobs:
           $r | ConvertTo-Json -Depth 5 | Write-Host
           if (-not $r.ok -or -not $r.outputWritten) { throw 'Build fehlgeschlagen oder keine Ausgabe geschrieben' }
           if ($r.logFile -and (Select-String -Path $r.logFile -Pattern '\[dcc.*(Hinweis|Warnung)')) { throw 'Build hat Hinweise oder Warnungen' }
-          $exe = 'Output\Win64\Release\Bin\ArgusServer.exe'
+          $exe = 'Output\Win64\Release\Bin\AtlasServer.exe'
           if (-not (Test-Path $exe) -or (Get-Item $exe).LastWriteTime -lt $start) { throw 'Release-exe wurde nicht neu geschrieben' }
       - name: Scratch-IDE beenden
         if: always() && steps.ide.outputs.pid != ''
@@ -79,7 +79,7 @@ jobs:
           $pfx = Join-Path $env:RUNNER_TEMP 'sign.pfx'
           [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGN_CERT_BASE64))
           try {
-            signtool sign /f $pfx /p $env:SIGN_CERT_PASSWORD /fd sha256 /tr http://timestamp.digicert.com /td sha256 Output\Win64\Release\Bin\ArgusServer.exe
+            signtool sign /f $pfx /p $env:SIGN_CERT_PASSWORD /fd sha256 /tr http://timestamp.digicert.com /td sha256 Output\Win64\Release\Bin\AtlasServer.exe
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           } finally {
             Remove-Item $pfx -Force
@@ -88,8 +88,8 @@ jobs:
         with:
           name: server
           path: |
-            Output/Win64/Release/Bin/ArgusServer.exe
-            Output/Win64/Release/Bin/Argus.map
+            Output/Win64/Release/Bin/AtlasServer.exe
+            Output/Win64/Release/Bin/Atlas.map
 
   release:
     needs: [version, server]
@@ -117,30 +117,30 @@ jobs:
         run: |
           npm ci
           cp ../../THIRD-PARTY-NOTICES.md .
-          npx vsce package -o "argus-$VERSION.vsix"
+          npx vsce package -o "atlas-$VERSION.vsix"
       - name: Changelog-Abschnitt
         shell: pwsh
         run: ./Tools/Get-ChangelogSection.ps1 -Version $env:VERSION | Set-Content -Encoding utf8 release-notes.md
       - name: Release anlegen
         uses: softprops/action-gh-release@v2
         with:
-          name: Argus ${{ env.VERSION }}
+          name: Atlas ${{ env.VERSION }}
           body_path: release-notes.md
           prerelease: ${{ startsWith(env.VERSION, '0.') || contains(env.VERSION, '-') }}
           files: |
-            Editors/VSCode/argus-${{ env.VERSION }}.vsix
-            Editors/VSCode/server/ArgusServer.exe
-            Editors/VSCode/server/Argus.map
+            Editors/VSCode/atlas-${{ env.VERSION }}.vsix
+            Editors/VSCode/server/AtlasServer.exe
+            Editors/VSCode/server/Atlas.map
           fail_on_unmatched_files: false
       - name: VS Code Marketplace (optional)
         if: env.HAS_VSCE == 'true'
         working-directory: Editors/VSCode
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: npx vsce publish --packagePath "argus-$VERSION.vsix"
+        run: npx vsce publish --packagePath "atlas-$VERSION.vsix"
       - name: Open VSX (optional)
         if: env.HAS_OVSX == 'true'
         working-directory: Editors/VSCode
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
-        run: npx --yes ovsx@0.10.1 publish "argus-$VERSION.vsix" -p "$OVSX_PAT"
+        run: npx --yes ovsx@0.10.1 publish "atlas-$VERSION.vsix" -p "$OVSX_PAT"

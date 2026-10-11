@@ -17,7 +17,7 @@ implementation
 
 uses
   System.SysUtils,
-  Argus.Windows.Diagnostics.DebugOutput,
+  Atlas.Windows.Diagnostics.DebugOutput,
   Shell.CommandLine,
   Shell.Composition,
   Shell.Mcp,

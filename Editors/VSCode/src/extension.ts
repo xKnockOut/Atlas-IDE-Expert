@@ -1,6 +1,6 @@
-// VS-Code-Erweiterung (#12, #49): startet ArgusServer.exe über stdio und
+// VS-Code-Erweiterung (#12, #49): startet AtlasServer.exe über stdio und
 // bindet sie mit vscode-languageclient an. Meldungen des Servers
-// (window/logMessage und stderr) erscheinen im Ausgabefenster „Argus“.
+// (window/logMessage und stderr) erscheinen im Ausgabefenster „Atlas“.
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -18,8 +18,8 @@ import {
   TransportKind,
 } from 'vscode-languageclient/node';
 
-const Section = 'argus';
-const ServerExe = 'ArgusServer.exe';
+const Section = 'atlas';
+const ServerExe = 'AtlasServer.exe';
 /** Build-Ausgaben im Arbeitsbereich, in dieser Reihenfolge gesucht. */
 const WorkspaceServerPaths = [
   path.join('Output', 'Win64', 'Release', 'Bin', ServerExe),
@@ -113,8 +113,8 @@ class RestartingErrorHandler implements ErrorHandler {
       return {
         action: CloseAction.DoNotRestart,
         message:
-          `Argus ist ${MaxRestarts}-mal in kurzer Zeit abgestürzt und bleibt aus. ` +
-          'Details im Ausgabefenster „Argus“; Neustart über „Argus: Server neu starten“.',
+          `Atlas ist ${MaxRestarts}-mal in kurzer Zeit abgestürzt und bleibt aus. ` +
+          'Details im Ausgabefenster „Atlas“; Neustart über „Atlas: Server neu starten“.',
       };
     }
     this.restarts.push(now);
@@ -127,8 +127,8 @@ async function startClient(): Promise<void> {
   const serverPath = resolveServerPath();
   if (!serverPath || !fs.existsSync(serverPath)) {
     const choice = await vscode.window.showErrorMessage(
-      `Argus: Server nicht gefunden (${serverPath ?? 'kein Arbeitsbereich geöffnet'}). ` +
-        'Bitte den Pfad in der Einstellung „argus.serverPath“ angeben.',
+      `Atlas: Server nicht gefunden (${serverPath ?? 'kein Arbeitsbereich geöffnet'}). ` +
+        'Bitte den Pfad in der Einstellung „atlas.serverPath“ angeben.',
       'Einstellungen öffnen',
     );
     if (choice) {
@@ -146,7 +146,7 @@ async function startClient(): Promise<void> {
     documentSelector: [
       { scheme: 'file', language: 'objectpascal' },
       // Fehler in der Konfigurationsdatei meldet der Server.
-      { scheme: 'file', pattern: '**/argus.json' },
+      { scheme: 'file', pattern: '**/atlas.json' },
       { scheme: 'file', pattern: '**/delphi-lsp.json' },
       // Text-Formulardateien (#44): Gliederung und Sprung zum Ereignis.
       { scheme: 'file', pattern: '**/*.{dfm,fmx}' },
@@ -154,12 +154,12 @@ async function startClient(): Promise<void> {
     outputChannel: output,
     traceOutputChannel: traceOutput,
     errorHandler: new RestartingErrorHandler(),
-    // Schickt die Einstellungen argus.* per workspace/didChangeConfiguration;
-    // argus.json im Projekt hat Vorrang.
+    // Schickt die Einstellungen atlas.* per workspace/didChangeConfiguration;
+    // atlas.json im Projekt hat Vorrang.
     synchronize: { configurationSection: Section },
   };
 
-  client = new LanguageClient(Section, 'Argus', serverOptions, clientOptions);
+  client = new LanguageClient(Section, 'Atlas', serverOptions, clientOptions);
   await client.start();
 }
 
@@ -187,8 +187,8 @@ function toPosition(position: LspPosition): vscode.Position {
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   extensionPath = context.extensionPath;
-  output = vscode.window.createOutputChannel('Argus');
-  traceOutput = vscode.window.createOutputChannel('Argus Trace');
+  output = vscode.window.createOutputChannel('Atlas');
+  traceOutput = vscode.window.createOutputChannel('Atlas Trace');
   context.subscriptions.push(output, traceOutput);
   context.subscriptions.push(
     vscode.commands.registerCommand(`${Section}.restartServer`, async () => {
@@ -202,12 +202,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     vscode.commands.registerCommand(`${Section}.showStatus`, async () => {
       if (!client) {
-        void vscode.window.showWarningMessage('Argus läuft nicht.');
+        void vscode.window.showWarningMessage('Atlas läuft nicht.');
         return;
       }
       // Der Server liefert den Status als JSON mit einer Markdown-Fassung zum Anzeigen.
       const status = await client.sendRequest<{ markdown?: string }>('workspace/executeCommand', {
-        command: 'argus.server.status',
+        command: 'atlas.server.status',
       });
       const document = await vscode.workspace.openTextDocument({
         language: 'markdown',
@@ -222,12 +222,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         async () => {
           const editor = vscode.window.activeTextEditor;
           if (!client || !editor) {
-            void vscode.window.showWarningMessage('Argus läuft nicht oder kein Editor ist aktiv.');
+            void vscode.window.showWarningMessage('Atlas läuft nicht oder kein Editor ist aktiv.');
             return;
           }
           try {
             const name = await client.sendRequest<string>('workspace/executeCommand', {
-              command: 'argus.server.qualifiedName',
+              command: 'atlas.server.qualifiedName',
               arguments: [
                 editor.document.uri.toString(),
                 { line: editor.selection.active.line, character: editor.selection.active.character },
@@ -237,7 +237,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             await vscode.env.clipboard.writeText(name);
             void vscode.window.setStatusBarMessage(`Kopiert: ${name}`, 3000);
           } catch (error) {
-            void vscode.window.showWarningMessage(`Argus: ${(error as Error).message}`);
+            void vscode.window.showWarningMessage(`Atlas: ${(error as Error).message}`);
           }
         },
       ),
@@ -250,12 +250,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand(`${Section}.copyAsPlainText`, async () => {
       const editor = vscode.window.activeTextEditor;
       if (!client || !editor) {
-        void vscode.window.showWarningMessage('Argus läuft nicht oder kein Editor ist aktiv.');
+        void vscode.window.showWarningMessage('Atlas läuft nicht oder kein Editor ist aktiv.');
         return;
       }
       try {
         const text = await client.sendRequest<string>('workspace/executeCommand', {
-          command: 'argus.server.plainText',
+          command: 'atlas.server.plainText',
           arguments: [
             editor.document.uri.toString(),
             { line: editor.selection.active.line, character: editor.selection.active.character },
@@ -264,18 +264,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         await vscode.env.clipboard.writeText(text);
         void vscode.window.setStatusBarMessage('Klartext kopiert', 3000);
       } catch (error) {
-        void vscode.window.showWarningMessage(`Argus: ${(error as Error).message}`);
+        void vscode.window.showWarningMessage(`Atlas: ${(error as Error).message}`);
       }
     }),
     vscode.commands.registerCommand(`${Section}.pasteAsLiteral`, async () => {
       const editor = vscode.window.activeTextEditor;
       if (!client || !editor) {
-        void vscode.window.showWarningMessage('Argus läuft nicht oder kein Editor ist aktiv.');
+        void vscode.window.showWarningMessage('Atlas läuft nicht oder kein Editor ist aktiv.');
         return;
       }
       try {
         const literal = await client.sendRequest<string>('workspace/executeCommand', {
-          command: 'argus.server.textToLiteral',
+          command: 'atlas.server.textToLiteral',
           arguments: [
             editor.document.uri.toString(),
             { line: editor.selection.start.line, character: editor.selection.start.character },
@@ -284,13 +284,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         });
         await editor.edit((builder) => builder.replace(editor.selection, literal));
       } catch (error) {
-        void vscode.window.showWarningMessage(`Argus: ${(error as Error).message}`);
+        void vscode.window.showWarningMessage(`Atlas: ${(error as Error).message}`);
       }
     }),
     // Konfiguration und Plattform des Projekts umschalten (#46).
     vscode.commands.registerCommand(`${Section}.selectBuild`, async () => {
       if (!client) {
-        void vscode.window.showWarningMessage('Argus läuft nicht.');
+        void vscode.window.showWarningMessage('Atlas läuft nicht.');
         return;
       }
       interface BuildProject {
@@ -301,11 +301,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         platforms: string[];
       }
       const current = await client.sendRequest<{ projects: BuildProject[] }>('workspace/executeCommand', {
-        command: 'argus.server.selectBuild',
+        command: 'atlas.server.selectBuild',
       });
       const project = current?.projects?.[0];
       if (!project) {
-        void vscode.window.showWarningMessage('Argus: Kein Projekt geladen.');
+        void vscode.window.showWarningMessage('Atlas: Kein Projekt geladen.');
         return;
       }
       const config = await vscode.window.showQuickPick(project.configs.length > 0 ? project.configs : [project.config], {
@@ -322,7 +322,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return;
       }
       await client.sendRequest('workspace/executeCommand', {
-        command: 'argus.server.selectBuild',
+        command: 'atlas.server.selectBuild',
         arguments: [{ config, platform }],
       });
     }),

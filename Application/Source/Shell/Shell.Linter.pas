@@ -2,16 +2,16 @@
 
 // Host-Rolle Shell: Linter-Modus ohne Editor (#95).
 //
-//   ArgusServer.exe --check Projekt.dproj --format sarif --output ergebnis.sarif
+//   AtlasServer.exe --check Projekt.dproj --format sarif --output ergebnis.sarif
 //
 // Ziel ist eine .dproj (Hauptdatei und Units des Projekts), ein Ordner (alle
-// .pas, .dpr, .dpk darunter) oder eine einzelne Datei. argus.json im
+// .pas, .dpr, .dpk darunter) oder eine einzelne Datei. atlas.json im
 // Ordner des Ziels gilt wie im Editor. Das Ergebnis geht auf stdout oder in
 // die Datei aus --output, Meldungen zum Ablauf auf stderr.
 // Mit --suppression-stats erscheint statt der Treffer die Auswertung der
 // Unterdrückungskommentare je Regel; Exit-Code dann 0.
-// Bekannte Treffer aus der Baseline (--baseline, sonst argus-baseline.json
-// neben argus.json) werden ausgeblendet; --update-baseline schreibt sie aus
+// Bekannte Treffer aus der Baseline (--baseline, sonst atlas-baseline.json
+// neben atlas.json) werden ausgeblendet; --update-baseline schreibt sie aus
 // den aktuellen Treffern neu (#97), Exit-Code dann 0.
 // Mit --changed bzw. --diff werden nur die geänderten Dateien laut Git (#157)
 // bzw. SVN (#276) geprüft, mit --changed-lines nur Treffer in geänderten Zeilen ausgegeben;
@@ -41,23 +41,23 @@ uses
   System.Classes,
   System.IOUtils,
   System.Generics.Collections,
-  Argus.Common.Configuration.Contract,
-  Argus.Common.Configuration.Parser,
-  Argus.Common.Documents.FileEncoding,
-  Argus.Common.Projects.Contract,
-  Argus.Common.Projects.DprojReader,
-  Argus.Common.Rules.Contract,
-  Argus.Common.Rules.Checker,
-  Argus.Common.Rules.Filter,
-  Argus.Common.Rules.Output,
-  Argus.Common.Rules.Builtin,
-  Argus.Common.Rules.SuppressionStats,
-  Argus.Common.Rules.Baseline,
-  Argus.Common.Rules.ChangedFiles,
-  Argus.Common.Compiler.Contract,
-  Argus.Common.Index.Adapters.CacheDirectory,
-  Argus.Windows.Console.StdStreams,
-  Argus.Windows.Compiler.Adapters.ProcessRunner,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Configuration.Parser,
+  Atlas.Common.Documents.FileEncoding,
+  Atlas.Common.Projects.Contract,
+  Atlas.Common.Projects.DprojReader,
+  Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Checker,
+  Atlas.Common.Rules.Filter,
+  Atlas.Common.Rules.Output,
+  Atlas.Common.Rules.Builtin,
+  Atlas.Common.Rules.SuppressionStats,
+  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Rules.ChangedFiles,
+  Atlas.Common.Compiler.Contract,
+  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Windows.Console.StdStreams,
+  Atlas.Windows.Compiler.Adapters.ProcessRunner,
   Shell.VcsChanges;
 
 procedure WriteText(const AStream: TStream; const AText: string);
@@ -96,7 +96,8 @@ var
   Issues: TArray<TConfigurationIssue>;
   Issue: TConfigurationIssue;
 begin
-  FileName := ExistingOrLegacyFile(ARoot, ConfigurationFileName, LegacyConfigurationFileName);
+  FileName := ExistingOrLegacyFile(ARoot, ConfigurationFileName,
+    [PreviousConfigurationFileName, LegacyConfigurationFileName]);
   if not TFile.Exists(FileName) then
     Exit(TServerSettings.Default);
   Result := TConfigurationParser.Parse(TFileEncoding.LoadFromFile(FileName, FileFormat), Issues);
@@ -264,7 +265,8 @@ begin
     if (BaselinePath = '') and AOptions.UpdateBaseline then
       BaselinePath := TPath.Combine(ConfigRoot, BaselineFileName)
     else if BaselinePath = '' then
-      BaselinePath := ExistingOrLegacyFile(ConfigRoot, BaselineFileName, LegacyBaselineFileName);
+      BaselinePath := ExistingOrLegacyFile(ConfigRoot, BaselineFileName,
+        [PreviousBaselineFileName, LegacyBaselineFileName]);
     if not AOptions.UpdateBaseline then
       if TFile.Exists(BaselinePath) then
         Baseline := TRuleBaseline.FromJson(TFileEncoding.LoadFromFile(BaselinePath, FileFormat))

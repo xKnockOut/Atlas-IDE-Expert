@@ -1,0 +1,133 @@
+﻿unit Atlas.IDE.Settings.Options;
+
+// Meldet die Seite „Atlas“ unter Tools › Optionen › Drittanbieter an
+// (INTAAddInOptions, #227) und verbindet sie mit den Einstellungen in der
+// Registry. „Verlauf zurücksetzen“ leert die lernende Gewichtung (#418).
+
+interface
+
+uses
+  System.SysUtils;
+
+type
+  TAtlasOptionsRegistration = class
+  public
+    class procedure Register(const AResetHistory: TProc); static;
+    class procedure Unregister; static;
+  end;
+
+implementation
+
+uses
+  Vcl.Forms,
+  ToolsAPI,
+  Atlas.Core.Settings.Plugin,
+  Atlas.UI.Settings.Page,
+  Atlas.IDE.Editor.Structure,
+  Atlas.IDE.CodeInsight.Manager,
+  Atlas.IDE.Settings.Store;
+
+type
+  TAtlasAddInOptions = class(TInterfacedObject, INTAAddInOptions)
+  private
+    FPage: TAtlasSettingsPage;
+    FResetHistory: TProc;
+  public
+    constructor Create(const AResetHistory: TProc);
+    function GetArea: string;
+    function GetCaption: string;
+    function GetFrameClass: TCustomFrameClass;
+    procedure FrameCreated(AFrame: TCustomFrame);
+    procedure DialogClosed(Accepted: Boolean);
+    function ValidateContents: Boolean;
+    function GetHelpContext: Integer;
+    function IncludeInIDEInsight: Boolean;
+  end;
+
+var
+  Options: INTAAddInOptions;
+
+{ TAtlasAddInOptions }
+
+constructor TAtlasAddInOptions.Create(const AResetHistory: TProc);
+begin
+  inherited Create;
+  FResetHistory := AResetHistory;
+end;
+
+function TAtlasAddInOptions.GetArea: string;
+begin
+  // Leer: unter „Drittanbieter“, wie die Open Tools API empfiehlt.
+  Result := '';
+end;
+
+function TAtlasAddInOptions.GetCaption: string;
+begin
+  Result := 'Atlas';
+end;
+
+function TAtlasAddInOptions.GetFrameClass: TCustomFrameClass;
+begin
+  Result := TAtlasSettingsPage;
+end;
+
+procedure TAtlasAddInOptions.FrameCreated(AFrame: TCustomFrame);
+begin
+  FPage := AFrame as TAtlasSettingsPage;
+  FPage.DefaultServerPath := TAtlasCodeInsightManager.DefaultServerPath;
+  FPage.LoadFrom(TAtlasIdeSettings.Current);
+  FPage.OnResetHistory := FResetHistory;
+end;
+
+procedure TAtlasAddInOptions.DialogClosed(Accepted: Boolean);
+var
+  Settings: TAtlasPluginSettings;
+begin
+  if Accepted and (FPage <> nil) then
+  begin
+    Settings := TAtlasIdeSettings.Current;
+    FPage.SaveTo(Settings);
+    TAtlasIdeSettings.Update(Settings);
+    TAtlasIdeStructureSwitch.Sync;
+  end;
+  FPage := nil;
+end;
+
+function TAtlasAddInOptions.ValidateContents: Boolean;
+begin
+  Result := True;
+end;
+
+function TAtlasAddInOptions.GetHelpContext: Integer;
+begin
+  Result := 0;
+end;
+
+function TAtlasAddInOptions.IncludeInIDEInsight: Boolean;
+begin
+  Result := True;
+end;
+
+{ TAtlasOptionsRegistration }
+
+class procedure TAtlasOptionsRegistration.Register(const AResetHistory: TProc);
+var
+  Services: INTAEnvironmentOptionsServices;
+begin
+  if (Options = nil) and Supports(BorlandIDEServices, INTAEnvironmentOptionsServices, Services) then
+  begin
+    Options := TAtlasAddInOptions.Create(AResetHistory);
+    Services.RegisterAddInOptions(Options);
+  end;
+end;
+
+class procedure TAtlasOptionsRegistration.Unregister;
+var
+  Services: INTAEnvironmentOptionsServices;
+begin
+  if (Options <> nil) and Supports(BorlandIDEServices, INTAEnvironmentOptionsServices, Services) then
+    Services.UnregisterAddInOptions(Options);
+  Options := nil;
+end;
+
+end.
