@@ -5,9 +5,10 @@
 // offenen Quelltexte an TAtlasExternalChanges. Ist ein Vorgang fertig, lädt
 // Atlas Dateien ohne ungespeicherte Änderungen über IOTAModule.Refresh neu,
 // bevor die IDE beim Zurückwechseln selbst vergleicht; Cursor und sichtbarer
-// Bereich bleiben. Puffer mit eigenen Änderungen fasst Atlas nie an: Für sie
-// bleibt die Rückfrage der IDE („In-memory changes … will be overwritten“).
-// Gelöschte Dateien meldet Atlas nur. Hat sich nur der Zeitstempel geändert
+// Bereich bleiben. Puffer mit eigenen Änderungen fasst Atlas nicht ungefragt an:
+// Sie erscheinen gesammelt in einem Dialog (Vergleichen, Ausgewählte bzw. Alle
+// neu laden, Behalten); behaltene fragt die IDE später noch einmal.
+// Gelöschte Dateien stehen mit Hinweis in derselben Liste. Hat sich nur der Zeitstempel geändert
 // (z. B. eigenes Speichern), bleibt der Puffer unberührt.
 // Ergebnis im Meldungsfenster, Gruppe „Atlas“.
 
@@ -31,7 +32,8 @@ type
     procedure Tick(Sender: TObject);
     function OpenFiles: TArray<TAtlasObservedFile>;
     procedure Process(const ADecisions: TArray<TAtlasReloadDecision>);
-    function Reload(const AFileName: string): Boolean;
+    function Reload(const AFileName: string; AForce: Boolean = False): Boolean;
+    procedure AskModified(const ADecisions: TArray<TAtlasReloadDecision>);
     class function SourceEditorOf(const AModule: IOTAModule): IOTASourceEditor; static;
     class function FindModule(const AFileName: string): IOTAModule; static;
     class function DiskStamp(const AFileName: string; out AStamp: Int64): Boolean; static;
@@ -53,7 +55,9 @@ uses
   Atlas.UI.Strings,
   Atlas.IDE.Settings.Store,
   Atlas.IDE.Editor.Buffer,
-  Atlas.Core.Diagnostics.Hangs;
+  Atlas.Core.Diagnostics.Hangs,
+  Atlas.Core.Files.TextDiff,
+  Atlas.UI.Files.ReloadDialog;
 
 function NowMs: Int64;
 begin
@@ -194,7 +198,7 @@ begin
   Result := Current = Disk;
 end;
 
-function TAtlasFileReloader.Reload(const AFileName: string): Boolean;
+function TAtlasFileReloader.Reload(const AFileName: string; AForce: Boolean): Boolean;
 type
   TViewState = record
     Cursor: TOTAEditPos;
@@ -213,10 +217,10 @@ begin
   if Module = nil then
     Exit;
   Editor := SourceEditorOf(Module);
-  if (Editor = nil) or Editor.Modified then
+  if (Editor = nil) or (Editor.Modified and not AForce) then
     Exit;
   // Nur der Zeitstempel (eigenes Speichern, Touch): nichts neu laden, Rückgängig bleibt.
-  if SameAsDisk(Editor, AFileName) then
+  if not AForce and SameAsDisk(Editor, AFileName) then
   begin
     if Assigned(FOnSaved) then
       FOnSaved(AFileName);
@@ -244,6 +248,53 @@ begin
         View.Paint;
       end;
   Result := True;
+end;
+
+procedure TAtlasFileReloader.AskModified(const ADecisions: TArray<TAtlasReloadDecision>);
+var
+  Decision: TAtlasReloadDecision;
+  Items: TArray<TAtlasReloadItem>;
+  Item: TAtlasReloadItem;
+  Module: IOTAModule;
+  Editor: IOTASourceEditor;
+  Buffer: IOTAEditBuffer;
+  Disk: string;
+  Asked: Boolean;
+  Name: string;
+begin
+  Items := nil;
+  Asked := False;
+  for Decision in ADecisions do
+  begin
+    if Decision.Action = TAtlasReloadAction.Reload then
+      Continue;
+    Item := Default(TAtlasReloadItem);
+    Item.FileName := Decision.FileName;
+    Item.Deleted := Decision.Action = TAtlasReloadAction.Deleted;
+    if not Item.Deleted then
+    begin
+      Asked := True;
+      Module := FindModule(Decision.FileName);
+      Editor := nil;
+      if Module <> nil then
+        Editor := SourceEditorOf(Module);
+      try
+        Disk := TFile.ReadAllText(Decision.FileName);
+      except
+        on Exception do
+          Disk := '';
+      end;
+      if Supports(Editor, IOTAEditBuffer, Buffer) then
+        Item.Diff := TAtlasTextDiff.Lines(TAtlasEditorBuffer.Text(Buffer), Disk);
+    end;
+    Items := Items + [Item];
+  end;
+  // Nur gelöschte Dateien: Hinweis im Meldungsfenster genügt.
+  if not Asked then
+    Exit;
+  for Name in TAtlasReloadDialog.Execute(Items) do
+    if Reload(Name, True) then
+      AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadForced, [ExtractFileName(Name)]));
 end;
 
 class procedure TAtlasFileReloader.AddMessage(const AText: string);
@@ -284,11 +335,15 @@ begin
         if TAtlasIdeSettings.Current.ReloadExternal then
           AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadDeleted, [ExtractFileName(Decision.FileName)]));
     end;
-  if Length(Reloaded) = 0 then
-    Exit;
-  AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadDone, [Length(Reloaded)]));
-  for Name in Reloaded do
-    AddMessage('    ' + Name);
+  if Length(Reloaded) > 0 then
+  begin
+    AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadDone, [Length(Reloaded)]));
+    for Name in Reloaded do
+      AddMessage('    ' + Name);
+  end;
+  // Dateien mit eigenen Änderungen gesammelt fragen (#536).
+  if TAtlasIdeSettings.Current.ReloadExternal then
+    AskModified(ADecisions);
 end;
 
 end.
