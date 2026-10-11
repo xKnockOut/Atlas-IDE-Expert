@@ -34,7 +34,8 @@ uses
   Atlas.Common.Rules.Builtin.Performance,
   Atlas.Common.Rules.Builtin.DataBinding,
   Atlas.Common.Rules.Builtin.DfmProperties,
-  Atlas.Common.Rules.Builtin.SlashCommands;
+  Atlas.Common.Rules.Builtin.SlashCommands,
+  Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
 var
@@ -58,6 +59,7 @@ begin
     RegisterRtlTypePatternRules(Registry);
     RegisterExceptionRules(Registry);
     RegisterStyleRules(Registry);
+    RegisterUnresolvedRules(Registry);
     RegisterPaletteIconRules(Registry);
     RegisterPerformanceRules(Registry);
     RegisterDataBindingRules(Registry);

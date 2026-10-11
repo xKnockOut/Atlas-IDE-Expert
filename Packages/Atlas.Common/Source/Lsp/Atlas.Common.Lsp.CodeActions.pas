@@ -250,6 +250,8 @@ begin
     Context.Text := Document.Text;
     Context.Tree := Tree;
     Context.Index := Rules.Index;
+    Context.EnsureUnit := Rules.EnsureUnit;
+    Context.Namespaces := Rules.Namespaces;
     Context.FormText := Rules.FormText;
     Context.ReadFile := Rules.ReadFile;
     Findings := TRuleEngine.Run(Rules.Rules, Rules.Settings, Context);

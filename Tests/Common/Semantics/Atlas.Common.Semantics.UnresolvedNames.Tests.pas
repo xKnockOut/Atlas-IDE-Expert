@@ -29,6 +29,8 @@ type
     procedure SkipsWithAndExceptionVariables;
     [Test]
     procedure NeedsSystemUnit;
+    [Test]
+    procedure RuleReportsInEditorOnlyWithIndex;
   end;
 
 implementation
@@ -39,7 +41,12 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Semantics.UnresolvedNames;
+  Atlas.Common.Semantics.UnresolvedNames,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Registry,
+  Atlas.Common.Rules.Engine,
+  Atlas.Common.Rules.Builtin.Unresolved;
 
 const
   UnitSystem =
@@ -89,6 +96,46 @@ begin
       Result := Result + Name.Name + Format('@%d:%d;', [Name.Range.StartPos.Line, Name.Range.StartPos.Character]);
   finally
     Tree.Free;
+  end;
+end;
+
+procedure TUnresolvedNamesTests.RuleReportsInEditorOnlyWithIndex;
+const
+  Text =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'procedure P;'#10 +
+    'begin'#10 +
+    '  fdsfds.Create;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Registry: TRuleRegistry;
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+  Findings: TArray<TRuleFinding>;
+begin
+  Registry := TRuleRegistry.Create;
+  Tree := TPascalParser.Parse(Text);
+  try
+    RegisterUnresolvedRules(Registry);
+    Context := Default(TRuleContext);
+    Context.RelativePath := 'Haupt.pas';
+    Context.Text := Text;
+    Context.Tree := Tree;
+    // Ohne Index (Linter): keine Aussage.
+    Findings := TRuleEngine.Run(Registry.Rules, TServerSettings.Default, Context);
+    Assert.AreEqual(0, Integer(Length(Findings)));
+    Context.Index := FIndex;
+    Findings := TRuleEngine.Run(Registry.Rules, TServerSettings.Default, Context);
+    Assert.AreEqual(1, Integer(Length(Findings)));
+    Assert.AreEqual('unresolved-identifier', Findings[0].RuleId);
+    Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
+    Assert.Contains(Findings[0].Message, 'fdsfds');
+  finally
+    Tree.Free;
+    Registry.Free;
   end;
 end;
 

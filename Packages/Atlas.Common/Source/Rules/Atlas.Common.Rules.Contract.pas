@@ -12,7 +12,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Pascal.SyntaxTree;
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Semantics.NameResolver;
 
 type
   /// <summary>Feste Angaben einer Regel.</summary>
@@ -78,6 +79,10 @@ type
     /// <summary>Symbolindex für Vorfahren aus anderen Units (#125); nil ohne Index (z. B. Linter).
     /// Regeln treffen dann keine Aussage, die ihn bräuchte.</summary>
     Index: ISymbolIndex;
+    /// <summary>Units bedarfsweise nachladen (Namensauflösung, #178); nil = nur der vorhandene Index.</summary>
+    EnsureUnit: TEnsureUnitFunc;
+    /// <summary>Namespaces des Projekts für Unit-Namen ohne Präfix; leer ohne Projekt.</summary>
+    Namespaces: TArray<string>;
     /// <summary>Inhalt der Formulardatei (.dfm/.fmx) neben der Unit (#123); '' ohne.</summary>
     FormText: string;
     /// <summary>Eingestellte Delphi-Version (BDS-Nummer, #109); '' = unbekannt. Setzt TRuleEngine.Run

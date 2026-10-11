@@ -82,6 +82,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`redundant-parens`](#redundant-parens) | Überflüssige Klammern | Code Smell | Hinweis |
 | [`redundant-begin-end`](#redundant-begin-end) | begin … end um eine einzelne Anweisung | Code Smell | Hinweis |
 | [`component-palette-icon`](#component-palette-icon) | Registrierte Komponente ohne Palettensymbol | Code Smell | Hinweis |
+| [`unresolved-identifier`](#unresolved-identifier) | Nicht deklarierter Bezeichner | Bug | Warnung |
 
 <a id="syntax"></a>
 ## syntax
@@ -1842,4 +1843,32 @@ Richtig:
 ```pascal
 {$R *.dcr} // with TMYBUTTON16, TMYBUTTON24, TMYBUTTON32
 RegisterComponents('Samples', [TMyButton]);
+```
+
+<a id="unresolved-identifier"></a>
+## unresolved-identifier
+
+**Nicht deklarierter Bezeichner** · Bug · Warnung
+
+Ein Bezeichner in einer Anweisung ist weder in der Unit noch in den eingebundenen Units deklariert (wie Compilerfehler E2003). Geprüft beim Tippen, ohne Compiler; with-Blöcke, asm und anonyme Methoden werden übersprungen.
+
+Mit Treffer:
+
+```pascal
+procedure Foo;
+begin
+  Lst.Add('x');
+end;
+```
+
+Richtig:
+
+```pascal
+procedure Foo;
+var
+  Lst: TStringList;
+begin
+  Lst := TStringList.Create;
+  Lst.Add('x');
+end;
 ```
