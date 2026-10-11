@@ -82,12 +82,22 @@ type
     /// <summary>Wie oben, mit Include-Auflösung; AIncludes erhält die eingebundenen Dateien.</summary>
     class function BlankInactive(const AText, AFileName: string; const ADefines: TArray<string>;
       const AResolver: TIncludeResolver; out AIncludes: TArray<string>): string; overload; static;
+    /// <summary>Wie oben, zusätzlich die bedingten Zweige der Hauptdatei (#476).</summary>
+    class function BlankInactive(const AText, AFileName: string; const ADefines: TArray<string>;
+      const AResolver: TIncludeResolver; out AIncludes: TArray<string>;
+      out AConditionals: TArray<TConditionalRange>): string; overload; static;
+    /// <summary>Bedingungen an die Symbole schreiben und Deklarationen aus nicht geltenden Zweigen
+    /// als Unavailable erfassen (#476).</summary>
+    class procedure AnnotateConditions(var AUnit: TUnitIndex; const AText: string;
+      const AConditionals: TArray<TConditionalRange>); static;
   end;
 
 implementation
 
 uses
   System.StrUtils,
+  System.Math,
+  System.RegularExpressions,
   Atlas.Common.Pascal.TreeCache;
 
 function VisibilityOf(const AText: string): TIndexVisibility;
@@ -654,6 +664,16 @@ end;
 class function TIndexExtractor.BlankInactive(const AText, AFileName: string; const ADefines: TArray<string>;
   const AResolver: TIncludeResolver; out AIncludes: TArray<string>): string;
 var
+  Conditionals: TArray<TConditionalRange>;
+begin
+  Result := BlankInactive(AText, AFileName, ADefines, AResolver, AIncludes, Conditionals);
+end;
+
+class function TIndexExtractor.BlankInactive(const AText, AFileName: string; const ADefines: TArray<string>;
+  const AResolver: TIncludeResolver; out AIncludes: TArray<string>;
+  out AConditionals: TArray<TConditionalRange>): string;
+var
+  Conditional: TConditionalRange;
   Options: TPreprocessorOptions;
   Processed: TPreprocessorResult;
   LineStarts: TList<Integer>;
@@ -673,6 +693,7 @@ var
 begin
   Result := AText;
   AIncludes := nil;
+  AConditionals := nil;
   if Pos('{$', AText) + Pos('(*$', AText) = 0 then
     Exit;
   Options := TPreprocessorOptions.Default;
@@ -683,6 +704,9 @@ begin
   for Index := 1 to High(Processed.Files) do
     if IndexText(Processed.Files[Index], AIncludes) < 0 then
       AIncludes := AIncludes + [Processed.Files[Index]];
+  for Conditional in Processed.Conditionals do
+    if Conditional.FileIndex = 0 then
+      AConditionals := AConditionals + [Conditional];
   if Length(Processed.InactiveRanges) = 0 then
     Exit;
   LineStarts := TList<Integer>.Create;
@@ -722,16 +746,217 @@ begin
   Result := ExtractLevel(AText, AFileName, ADefines, AResolver, [AFileName]);
 end;
 
+/// <summary>Liegt APosition in ARange (Ende ausgeschlossen)?</summary>
+function InRange(const APosition: TTextPosition; const ARange: TTextRange): Boolean;
+begin
+  Result := ((APosition.Line > ARange.StartPos.Line) or
+    ((APosition.Line = ARange.StartPos.Line) and (APosition.Character >= ARange.StartPos.Character))) and
+    ((APosition.Line < ARange.EndPos.Line) or
+    ((APosition.Line = ARange.EndPos.Line) and (APosition.Character < ARange.EndPos.Character)));
+end;
+
+class procedure TIndexExtractor.AnnotateConditions(var AUnit: TUnitIndex; const AText: string;
+  const AConditionals: TArray<TConditionalRange>);
+var
+  Lines: TArray<string>;
+  Index, LineIndex, Best, ImplementationLine, Indent: Integer;
+  Conditional: TConditionalRange;
+  Symbol: TIndexSymbol;
+  Section, Line, Code, Keyword: string;
+  Match: TMatch;
+  Known: TDictionary<string, Boolean>;
+  // Abschnitt (type/const/var …) am Anfang jeder Zeile; einmal für die ganze Datei bestimmt.
+  Sections: TArray<string>;
+
+  function IndentOf(const AValue: string): Integer;
+  begin
+    Result := 0;
+    while (Result < Length(AValue)) and CharInSet(AValue[Result + 1], [' ', #9]) do
+      Inc(Result);
+  end;
+
+  procedure AddUnavailable(const AName: string; AKind: TIndexSymbolKind; ALine, AColumn: Integer;
+    const ACondition: string);
+  var
+    Item: TIndexSymbol;
+  begin
+    if Known.ContainsKey(UpperCase(AName)) then
+      Exit;
+    Known.Add(UpperCase(AName), True);
+    Item := Default(TIndexSymbol);
+    Item.Name := AName;
+    Item.Kind := AKind;
+    Item.Range := TTextRange.Create(TTextPosition.Create(ALine, 0), TTextPosition.Create(ALine, Length(Lines[ALine])));
+    Item.SelectionRange := TTextRange.Create(TTextPosition.Create(ALine, AColumn),
+      TTextPosition.Create(ALine, AColumn + Length(AName)));
+    Item.InInterface := (ImplementationLine < 0) or (ALine < ImplementationLine);
+    Item.Visibility := TIndexVisibility.Public;
+    Item.Condition := ACondition;
+    Item.Unavailable := True;
+    AUnit.Unavailable := AUnit.Unavailable + [Item];
+  end;
+
+  procedure AddType(const AMatch: TMatch; ALine: Integer; const ACondition: string);
+  var
+    Kind: TIndexSymbolKind;
+  begin
+    Keyword := LowerCase(AMatch.Groups[4].Value);
+    if Keyword = 'class' then
+      Kind := TIndexSymbolKind.ClassType
+    else if Keyword = 'record' then
+      Kind := TIndexSymbolKind.RecordType
+    else if (Keyword = 'interface') or (Keyword = 'dispinterface') then
+      Kind := TIndexSymbolKind.InterfaceType
+    else if Keyword = '(' then
+      Kind := TIndexSymbolKind.EnumType
+    else
+      Kind := TIndexSymbolKind.TypeAlias;
+    AddUnavailable(AMatch.Groups[1].Value, Kind, ALine, AMatch.Groups[1].Index - 1, ACondition);
+  end;
+
+begin
+  AUnit.Unavailable := nil;
+  Lines := AText.Replace(#13#10, #10).Split([#10]);
+  // Geltende Zweige: der innerste umgebende Zweig bestimmt die Bedingung.
+  for Index := 0 to High(AUnit.Symbols) do
+  begin
+    if AUnit.Symbols[Index].FileName <> '' then
+      Continue;
+    Best := -1;
+    for LineIndex := 0 to High(AConditionals) do
+      if AConditionals[LineIndex].Active and InRange(AUnit.Symbols[Index].SelectionRange.StartPos,
+        AConditionals[LineIndex].Range) then
+        if (Best < 0) or InRange(AConditionals[LineIndex].Range.StartPos, AConditionals[Best].Range) then
+          Best := LineIndex;
+    if Best >= 0 then
+      AUnit.Symbols[Index].Condition := AConditionals[Best].Condition
+    else
+    begin
+      // Direktive platform an der Deklaration (erste Zeile).
+      LineIndex := AUnit.Symbols[Index].SelectionRange.StartPos.Line;
+      if (LineIndex >= 0) and (LineIndex <= High(Lines)) and
+        TRegEx.IsMatch(Lines[LineIndex], '\bplatform\s*;', [roIgnoreCase]) then
+        AUnit.Symbols[Index].Condition := 'platform';
+    end;
+  end;
+  // Nur wenn ein Zweig nicht gilt, lohnt die Suche nach Deklarationen darin.
+  Best := 0;
+  for Conditional in AConditionals do
+    if not Conditional.Active then
+      Inc(Best);
+  if Best = 0 then
+    Exit;
+  // Ein Durchlauf über die Datei: Abschnitt je Zeile und Beginn des implementation-Teils.
+  // Große Units (System.pas) haben tausende Zweige; je Zweig neu zu suchen wäre quadratisch.
+  ImplementationLine := -1;
+  SetLength(Sections, Length(Lines));
+  Section := '';
+  for LineIndex := 0 to High(Lines) do
+  begin
+    Sections[LineIndex] := Section;
+    Line := TrimLeft(Lines[LineIndex]);
+    if (Line = '') or not CharInSet(Line[1], ['a'..'z', 'A'..'Z']) then
+      Continue;
+    Match := TRegEx.Match(Line, '^(type|const|var|threadvar|resourcestring|implementation|interface)\b',
+      [roIgnoreCase]);
+    if not Match.Success then
+      Continue;
+    Keyword := LowerCase(Match.Groups[1].Value);
+    if (Keyword = 'implementation') or (Keyword = 'interface') then
+    begin
+      Section := '';
+      if (Keyword = 'implementation') and (ImplementationLine < 0) then
+        ImplementationLine := LineIndex;
+    end
+    else
+      Section := Keyword;
+  end;
+  Known := TDictionary<string, Boolean>.Create;
+  try
+    // Was in geltenden Zweigen schon deklariert ist, nicht noch einmal (IFDEF WIN32 ... ELSE ... gleicher Name).
+    for Symbol in AUnit.Symbols do
+      if Symbol.Container = '' then
+        Known.AddOrSetValue(UpperCase(Symbol.Name), True);
+    for Conditional in AConditionals do
+    begin
+      if Conditional.Active then
+        Continue;
+      // Abschnitt am Anfang des Zweigs aus dem einen Durchlauf oben.
+      if (Conditional.Range.StartPos.Line >= 0) and (Conditional.Range.StartPos.Line < Length(Sections) - 1) then
+        Section := Sections[Conditional.Range.StartPos.Line + 1]
+      else
+        Section := '';
+      // Lange Zweige (ganze Implementierungen) im implementation-Teil interessieren nicht.
+      if (ImplementationLine >= 0) and (Conditional.Range.StartPos.Line > ImplementationLine) then
+        Continue;
+      for LineIndex := Conditional.Range.StartPos.Line + 1 to Min(Conditional.Range.EndPos.Line, High(Lines)) do
+      begin
+        Line := Lines[LineIndex];
+        Code := Line;
+        if Pos('//', Code) > 0 then
+          Code := Copy(Code, 1, Pos('//', Code) - 1);
+        Match := TRegEx.Match(Code, '^\s*(type|const|var|threadvar|resourcestring)\b', [roIgnoreCase]);
+        if Match.Success then
+        begin
+          Section := LowerCase(Match.Groups[1].Value);
+          Code := Copy(Code, Match.Length + 1, MaxInt);
+          if Trim(Code) = '' then
+            Continue;
+        end;
+        Indent := IndentOf(Line);
+        // Routinen auf Unit-Ebene stehen am Zeilenanfang.
+        Match := TRegEx.Match(Code, '^(procedure|function)\s+([A-Za-z_]\w*)\s*[(:;]', [roIgnoreCase]);
+        if Match.Success then
+        begin
+          AddUnavailable(Match.Groups[2].Value, TIndexSymbolKind.Routine, LineIndex, Match.Groups[2].Index - 1,
+            Conditional.Condition);
+          Section := '';
+          Continue;
+        end;
+        if Indent > 2 then
+          Continue;
+        if Section = 'type' then
+        begin
+          // Vorwärtsdeklaration "TFoo = class;" zählt nicht.
+          if TRegEx.IsMatch(Code, '=\s*(packed\s+)?(class|interface)\s*;', [roIgnoreCase]) then
+            Continue;
+          Match := TRegEx.Match(Code, '^\s*([A-Za-z_]\w*)\s*(<[^>]*>)?\s*=\s*(packed\s+)?(\w+|\()', [roIgnoreCase]);
+          if Match.Success then
+            AddType(Match, LineIndex, Conditional.Condition);
+        end
+        else if (Section = 'const') or (Section = 'resourcestring') then
+        begin
+          Match := TRegEx.Match(Code, '^\s*([A-Za-z_]\w*)\s*(:[^=]+)?=', [roIgnoreCase]);
+          if Match.Success then
+            AddUnavailable(Match.Groups[1].Value, TIndexSymbolKind.Constant, LineIndex, Match.Groups[1].Index - 1,
+              Conditional.Condition);
+        end
+        else if (Section = 'var') or (Section = 'threadvar') then
+        begin
+          Match := TRegEx.Match(Code, '^\s*([A-Za-z_]\w*)\s*:', [roIgnoreCase]);
+          if Match.Success then
+            AddUnavailable(Match.Groups[1].Value, TIndexSymbolKind.Variable, LineIndex, Match.Groups[1].Index - 1,
+              Conditional.Condition);
+        end;
+      end;
+    end;
+  finally
+    Known.Free;
+  end;
+end;
+
 class function TIndexExtractor.ExtractLevel(const AText, AFileName: string; const ADefines: TArray<string>;
   const AResolver: TIncludeResolver; const AStack: TArray<string>): TUnitIndex;
 var
   Tree: TSyntaxTree;
   Includes: TArray<string>;
+  Conditionals: TArray<TConditionalRange>;
 begin
-  Tree := TSyntaxTreeCache.Parse(BlankInactive(AText, AFileName, ADefines, AResolver, Includes));
+  Tree := TSyntaxTreeCache.Parse(BlankInactive(AText, AFileName, ADefines, AResolver, Includes, Conditionals));
   try
     Result := Extract(Tree, AFileName);
     Result.Includes := Includes;
+    AnnotateConditions(Result, AText, Conditionals);
     AddIncluded(Tree, AFileName, ADefines, AResolver, AStack, Result);
   finally
     Tree.Free;

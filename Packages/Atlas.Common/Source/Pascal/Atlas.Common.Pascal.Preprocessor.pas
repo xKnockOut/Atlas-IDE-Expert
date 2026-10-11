@@ -62,6 +62,15 @@ type
     Range: TTextRange;
   end;
 
+  /// <summary>Zweig eines $IFDEF/$IF (#476): Bereich, Bedingung als Text ("WIN64", "not MSWINDOWS",
+  /// bei Verschachtelung "DEBUG und WIN64") und ob er unter den aktuellen Symbolen gilt.</summary>
+  TConditionalRange = record
+    FileIndex: Integer;
+    Range: TTextRange;
+    Condition: string;
+    Active: Boolean;
+  end;
+
   TPreprocessorResult = record
     /// <summary>Aktive Token ohne die verarbeiteten Direktiven.</summary>
     Tokens: TArray<TPascalToken>;
@@ -70,6 +79,8 @@ type
     /// <summary>Files[0] ist die Hauptdatei, danach die Include-Dateien.</summary>
     Files: TArray<string>;
     InactiveRanges: TArray<TInactiveRange>;
+    /// <summary>Alle Zweige mit Bedingung, deren übergeordneter Zweig gilt (#476).</summary>
+    Conditionals: TArray<TConditionalRange>;
     Issues: TArray<TPreprocessorIssue>;
     /// <summary>Symbole am Ende der Datei (nach $DEFINE/$UNDEF).</summary>
     Defines: TArray<string>;
@@ -103,6 +114,11 @@ type
     Taken: Boolean;
     Active: Boolean;
     InElse: Boolean;
+    /// <summary>Bedingung des übergeordneten Zweigs, des $IF und des laufenden Zweigs (#476).</summary>
+    Outer: string;
+    IfText: string;
+    Text: string;
+    Start: TTextPosition;
   end;
 
   /// <summary>Rekursiv absteigender Auswerter für $IF-Ausdrücke.</summary>
@@ -138,6 +154,7 @@ type
     FFileIndexes: TList<Integer>;
     FFiles: TList<string>;
     FInactive: TList<TInactiveRange>;
+    FConditionals: TList<TConditionalRange>;
     FIssues: TList<TPreprocessorIssue>;
     FIncludeStack: TList<string>;
     // $I-Direktive der Hauptdatei, die gerade verarbeitet wird.
@@ -506,6 +523,7 @@ begin
   FFileIndexes := TList<Integer>.Create;
   FFiles := TList<string>.Create;
   FInactive := TList<TInactiveRange>.Create;
+  FConditionals := TList<TConditionalRange>.Create;
   FIssues := TList<TPreprocessorIssue>.Create;
   FIncludeStack := TList<string>.Create;
 end;
@@ -515,6 +533,7 @@ begin
   FIncludeStack.Free;
   FIssues.Free;
   FInactive.Free;
+  FConditionals.Free;
   FFiles.Free;
   FFileIndexes.Free;
   FTokens.Free;
@@ -609,6 +628,41 @@ var
   Active, WasActive, Condition: Boolean;
   InactiveStart, LastEnd: TTextPosition;
   Range: TInactiveRange;
+
+  /// <summary>Laufenden Zweig bis vor AToken als bedingten Bereich festhalten (nur unter geltendem Elternzweig).</summary>
+  procedure CloseBranch(const AState: TBranchState; const AToken: TPascalToken);
+  var
+    Conditional: TConditionalRange;
+  begin
+    if not AState.ParentActive or (AState.Text = '') then
+      Exit;
+    Conditional.FileIndex := AFileIndex;
+    Conditional.Range := TTextRange.Create(AState.Start, AToken.StartPos);
+    if AState.Outer = '' then
+      Conditional.Condition := AState.Text
+    else
+      Conditional.Condition := AState.Outer + ' und ' + AState.Text;
+    Conditional.Active := AState.Active;
+    FConditionals.Add(Conditional);
+  end;
+
+  /// <summary>Bedingung des innersten geltenden Zweigs, für verschachtelte $IFs.</summary>
+  function OuterText: string;
+  var
+    Top: TBranchState;
+  begin
+    Result := '';
+    if Stack.Count = 0 then
+      Exit;
+    Top := Stack.Peek;
+    if Top.Outer = '' then
+      Result := Top.Text
+    else if Top.Text = '' then
+      Result := Top.Outer
+    else
+      Result := Top.Outer + ' und ' + Top.Text;
+  end;
+
 begin
   Stack := TStack<TBranchState>.Create;
   Opening := TStack<TPascalToken>.Create;
@@ -636,6 +690,17 @@ begin
       begin
         State.ParentActive := Active;
         State.InElse := False;
+        State.Outer := OuterText;
+        if Name = 'IFDEF' then
+          State.IfText := UpperCase(FirstWord(Argument))
+        else if Name = 'IFNDEF' then
+          State.IfText := 'not ' + UpperCase(FirstWord(Argument))
+        else if Name = 'IF' then
+          State.IfText := Trim(Argument)
+        else
+          State.IfText := '';
+        State.Text := State.IfText;
+        State.Start := Token.EndPos;
         if not Active then
           Condition := False
         else if Name = 'IFDEF' then
@@ -662,6 +727,19 @@ begin
         State := Stack.Pop;
         if State.InElse then
           AddIssue(AFileIndex, Token, Format('$%s nach $ELSE', [Name]));
+        CloseBranch(State, Token);
+        State.Start := Token.EndPos;
+        if Name = 'ELSE' then
+        begin
+          if State.IfText = '' then
+            State.Text := ''
+          else if State.IfText.StartsWith('not ') then
+            State.Text := Copy(State.IfText, 5, MaxInt)
+          else
+            State.Text := 'not ' + State.IfText;
+        end
+        else
+          State.Text := Trim(Argument);
         if Name = 'ELSE' then
         begin
           State.Active := State.ParentActive and not State.Taken;
@@ -682,7 +760,9 @@ begin
           AddIssue(AFileIndex, Token, Format('$%s ohne $IF', [Name]));
           Continue;
         end;
-        Active := Stack.Pop.ParentActive;
+        State := Stack.Pop;
+        CloseBranch(State, Token);
+        Active := State.ParentActive;
         Opening.Pop;
       end
       else if not Active then
@@ -736,6 +816,7 @@ begin
   Result.FileIndexes := FFileIndexes.ToArray;
   Result.Files := FFiles.ToArray;
   Result.InactiveRanges := FInactive.ToArray;
+  Result.Conditionals := FConditionals.ToArray;
   Result.Issues := FIssues.ToArray;
   Defines := TList<string>.Create;
   try

@@ -41,6 +41,8 @@ type
     procedure SkipsInactiveBranches;
     [Test]
     procedure ExtractsProgramDeclarations;
+    [Test]
+    procedure RecordsConditionsAndUnavailableDeclarations;
   end;
 
   [TestFixture]
@@ -358,6 +360,49 @@ begin
   Assert.IsFalse(FindSymbol(U, 'NurWindows', S));
   Assert.IsTrue(FindSymbol(U, 'NurAndere', S));
   Assert.AreEqual(5, S.SelectionRange.StartPos.Line);
+end;
+
+procedure TIndexExtractorTests.RecordsConditionsAndUnavailableDeclarations;
+const
+  Source =
+    'unit Plattform;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '{$IFDEF WIN64}'#10 +
+    '  TNur64 = class end;'#10 +
+    '{$ELSE}'#10 +
+    '  TNur32 = class end;'#10 +
+    '{$ENDIF}'#10 +
+    '  TImmer = record end;'#10 +
+    '{$IFDEF MSWINDOWS}'#10 +
+    'procedure NurWindows;'#10 +
+    '{$ENDIF}'#10 +
+    'procedure Alt; platform;'#10 +
+    'implementation'#10 +
+    'procedure NurWindows; begin end;'#10 +
+    'procedure Alt; begin end;'#10 +
+    'end.';
+var
+  U: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Conditions, Missing: string;
+begin
+  U := TIndexExtractor.ExtractText(Source, 'C:\P\Plattform.pas', ['WIN32', 'MSWINDOWS']);
+  Conditions := '';
+  for Symbol in U.Symbols do
+    if Symbol.Container = '' then
+      Conditions := Conditions + Symbol.Name + '=' + Symbol.Condition + ';';
+  Assert.Contains(Conditions, 'TNur32=not WIN64;');
+  Assert.Contains(Conditions, 'TImmer=;');
+  Assert.Contains(Conditions, 'NurWindows=MSWINDOWS;');
+  Assert.Contains(Conditions, 'Alt=platform;');
+  Assert.DoesNotContain(Conditions, 'TNur64');
+  Missing := '';
+  for Symbol in U.Unavailable do
+    Missing := Missing + Symbol.Name + '=' + Symbol.Condition + ';';
+  Assert.AreEqual('TNur64=WIN64;', Missing);
+  Assert.IsTrue(U.Unavailable[0].InInterface);
+  Assert.IsTrue(U.Unavailable[0].Kind = TIndexSymbolKind.ClassType);
 end;
 
 procedure TIndexExtractorTests.ExtractsProgramDeclarations;

@@ -130,6 +130,8 @@ begin
     Result.DeclaringClass := Data.GetValue<string>('container', '');
     Result.Depth := Data.GetValue<Integer>('depth', 0);
     Result.IsHelper := Data.GetValue('helper') is TJSONTrue;
+    Result.Condition := Data.GetValue<string>('condition', '');
+    Result.Unavailable := Data.GetValue('unavailable') is TJSONTrue;
     Result.HasParameters := Data.GetValue('parameters') is TJSONTrue;
     Result.ExpectedType := Data.GetValue<string>('expected', '');
     Result.Fits := Data.GetValue('fits') is TJSONTrue;

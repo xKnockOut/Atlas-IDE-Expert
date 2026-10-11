@@ -271,6 +271,14 @@ begin
   for Directive in AItem.Directives do
     if SameText(Directive, 'deprecated') then
       Result := Result + [MakeTag('deprecated', TAtlasTagKind.Warn)];
+  // Bedingte Deklarationen (#476): "nur WIN64"; in der aktiven Konfiguration nicht vorhanden als Warnung.
+  if SameText(AItem.Condition, 'platform') then
+    Result := Result + [MakeTag('platform', TAtlasTagKind.Warn)]
+  else if AItem.Condition <> '' then
+    if AItem.Unavailable then
+      Result := Result + [MakeTag('nur ' + AItem.Condition, TAtlasTagKind.Warn)]
+    else
+      Result := Result + [MakeTag('nur ' + AItem.Condition, TAtlasTagKind.Neutral)];
   if AItem.OverloadCount > 1 then
     Result := Result + [MakeTag('+' + IntToStr(AItem.OverloadCount - 1), TAtlasTagKind.Neutral)];
   if AItem.IsHelper then

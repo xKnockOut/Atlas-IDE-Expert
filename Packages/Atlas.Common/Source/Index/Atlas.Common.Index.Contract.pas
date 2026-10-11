@@ -58,6 +58,11 @@ type
     IsVirtual: Boolean;
     /// <summary>Datei der Deklaration, wenn sie aus einer $I-Datei kommt (#500); '' = Datei der Unit.</summary>
     FileName: string;
+    /// <summary>Bedingung, unter der die Deklaration steht ("WIN64", "not MSWINDOWS"), "platform" bei der
+    /// gleichnamigen Direktive; '' = immer (#476).</summary>
+    Condition: string;
+    /// <summary>Steht in einem Zweig, der unter der aktiven Konfiguration nicht gilt (#476).</summary>
+    Unavailable: Boolean;
     function QualifiedName: string;
   end;
 
@@ -80,6 +85,10 @@ type
     /// <summary>Hat einen initialization- oder finalization-Abschnitt (#284); solche Units
     /// entfernt "ungenutzte uses entfernen" nie, weil sie etwas registrieren können.</summary>
     HasInitialization: Boolean;
+    /// <summary>Deklarationen aus Zweigen, die unter der aktiven Konfiguration nicht gelten (#476):
+    /// getrennt von Symbols, damit Namensauflösung, Referenzen und Prüfregeln sie nicht sehen;
+    /// nur die Vervollständigung zeigt sie abgeschwächt.</summary>
+    Unavailable: TArray<TIndexSymbol>;
     /// <summary>Datei, in der ASymbol steht: seine Include-Datei (#500), sonst FileName.</summary>
     function SymbolFile(const ASymbol: TIndexSymbol): string;
   end;

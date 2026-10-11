@@ -93,6 +93,10 @@ type
     Depth: Integer;
     /// <summary>Mitglied aus einem Class- bzw. Record-Helper (#456).</summary>
     IsHelper: Boolean;
+    /// <summary>Bedingung der Deklaration ("WIN64", "platform"); '' = immer (#476).</summary>
+    Condition: string;
+    /// <summary>Unter der aktiven Konfiguration nicht deklariert: abgeschwächt und am Ende (#476).</summary>
+    Unavailable: Boolean;
     /// <summary>ResolveData der weiteren Überladungen (#425); die erste ist ResolveData.</summary>
     OverloadData: TArray<string>;
     /// <summary>Routine mit Parametern (#430): beim Übernehmen Klammern ergänzen.</summary>
