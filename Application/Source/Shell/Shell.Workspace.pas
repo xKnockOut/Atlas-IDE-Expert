@@ -637,6 +637,9 @@ begin
     end;
   CacheFile := TIndexCacheDirectory.FileFor(TIndexCacheDirectory.DefaultRoot, Signature);
   Request.CacheFile := CacheFile;
+  // RTL/VCL einmal je Compilerversion, Plattform und Defines, geteilt mit anderen Projekten (#492).
+  Request.LibraryCacheFile := TIndexCacheDirectory.FileFor(TIndexCacheDirectory.DefaultRoot,
+    TIndexProjectFiles.LibrarySignature(Project, Version));
   Request.ReadOnlyCache := not LockCache(CacheFile);
   if Request.ReadOnlyCache then
   begin
@@ -655,6 +658,8 @@ begin
     if not Request.ReadOnlyCache and TFile.Exists(CacheFile) then
       try
         TFile.Delete(CacheFile);
+        if TFile.Exists(Request.LibraryCacheFile) then
+          TFile.Delete(Request.LibraryCacheFile);
         FLogger.Info('Index-Cache verworfen: ' + CacheFile);
       except
         on E: Exception do

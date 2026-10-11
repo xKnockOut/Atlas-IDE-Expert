@@ -27,6 +27,9 @@ type
     IncludePaths: TArray<string>;
     /// <summary>Cache-Datei; '' = ohne Cache.</summary>
     CacheFile: string;
+    /// <summary>Gemeinsamer Cache der Bibliotheks-Units (RTL/VCL) je Compilerversion, Plattform und Defines;
+    /// '' = Bibliothek im Projekt-Cache (#492).</summary>
+    LibraryCacheFile: string;
     /// <summary>Cache nur lesen, z. B. weil eine andere Instanz ihn schreibt (#184).</summary>
     ReadOnlyCache: Boolean;
     /// <summary>Hält eine andere Instanz die Sperre noch? nil = nicht warten (#62).</summary>
@@ -76,6 +79,7 @@ implementation
 
 uses
   System.Diagnostics,
+  System.Generics.Collections,
   Atlas.Common.Index.Cache;
 
 type
@@ -122,13 +126,28 @@ begin
   inherited;
 end;
 
+/// <summary>Steht AUnit mit gleichem Stand (Zeitstempel, Prüfsumme) in AUnits?</summary>
+function ContainsUnit(const AUnits: TArray<TUnitIndex>; const AUnit: TUnitIndex): Boolean;
+var
+  Candidate: TUnitIndex;
+begin
+  Result := False;
+  for Candidate in AUnits do
+    if SameText(Candidate.FileName, AUnit.FileName) and (Candidate.Stamp = AUnit.Stamp) and
+      (Candidate.Hash = AUnit.Hash) then
+      Exit(True);
+end;
+
 procedure TIndexService.Run(const ARequest: TIndexRequest);
 var
   Builder: TIndexBuilder;
-  Cached: TArray<TUnitIndex>;
+  Cached, LibraryCached, ProjectUnits, LibraryUnits: TArray<TUnitIndex>;
   Text: string;
   Watch: TStopwatch;
   BuildResult: TIndexBuildResult;
+  UnitIndex: TUnitIndex;
+  Current: TDictionary<string, Boolean>;
+  LibraryChanged: Boolean;
 begin
   try
     Watch := TStopwatch.StartNew;
@@ -142,19 +161,57 @@ begin
       TMonitor.Exit(FLock);
     end;
     WaitForOtherWriter(ARequest);
+    Cached := nil;
+    LibraryCached := nil;
     if (ARequest.CacheFile <> '') and FFileSystem.ReadText(ARequest.CacheFile, Text) then
-    begin
       Cached := TIndexCache.Deserialize(Text);
-      Builder.UseCache(Cached);
-    end;
+    // Bibliothek aus dem gemeinsamen Cache; Einträge im Projekt-Cache (ältere Stände) gelten weiter.
+    if (ARequest.LibraryCacheFile <> '') and FFileSystem.ReadText(ARequest.LibraryCacheFile, Text) then
+      LibraryCached := TIndexCache.Deserialize(Text);
+    Builder.UseCache(LibraryCached + Cached);
     BuildResult := Builder.Build(ARequest.Files, FOnProgress,
       function: Boolean
       begin
         Result := FCancelled;
       end);
-    if not BuildResult.Cancelled and (ARequest.CacheFile <> '') and not ARequest.ReadOnlyCache and
-      ((BuildResult.Parsed > 0) or (Length(Cached) <> FIndex.UnitCount)) then
-      FFileSystem.WriteText(ARequest.CacheFile, TIndexCache.Serialize(FIndex.Units));
+    if not BuildResult.Cancelled and (ARequest.CacheFile <> '') and not ARequest.ReadOnlyCache then
+    begin
+      if ARequest.LibraryCacheFile = '' then
+      begin
+        if (BuildResult.Parsed > 0) or (Length(Cached) <> FIndex.UnitCount) then
+          FFileSystem.WriteText(ARequest.CacheFile, TIndexCache.Serialize(FIndex.Units));
+      end
+      else
+      begin
+        // Getrennt schreiben: Projekt-Units ins Projekt, Bibliothek in den gemeinsamen Cache.
+        ProjectUnits := nil;
+        LibraryUnits := nil;
+        for UnitIndex in FIndex.Units do
+          if UnitIndex.Library_ then
+            LibraryUnits := LibraryUnits + [UnitIndex]
+          else
+            ProjectUnits := ProjectUnits + [UnitIndex];
+        if (BuildResult.Parsed > 0) or (Length(Cached) <> Length(ProjectUnits)) then
+          FFileSystem.WriteText(ARequest.CacheFile, TIndexCache.Serialize(ProjectUnits));
+        // Units anderer Projekte im gemeinsamen Cache behalten; neu sind nur die fehlenden.
+        Current := TDictionary<string, Boolean>.Create;
+        try
+          for UnitIndex in LibraryUnits do
+            Current.AddOrSetValue(AnsiUpperCase(UnitIndex.FileName), True);
+          LibraryChanged := False;
+          for UnitIndex in LibraryUnits do
+            if not ContainsUnit(LibraryCached, UnitIndex) then
+              LibraryChanged := True;
+          for UnitIndex in LibraryCached do
+            if not Current.ContainsKey(AnsiUpperCase(UnitIndex.FileName)) then
+              LibraryUnits := LibraryUnits + [UnitIndex];
+        finally
+          Current.Free;
+        end;
+        if LibraryChanged then
+          FFileSystem.WriteText(ARequest.LibraryCacheFile, TIndexCache.Serialize(LibraryUnits));
+      end;
+    end;
     if Assigned(FOnFinished) then
       FOnFinished(BuildResult, Watch.ElapsedMilliseconds);
   except

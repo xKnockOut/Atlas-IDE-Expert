@@ -98,6 +98,8 @@ type
     [Test]
     procedure ReadOnlyServiceWaitsForOtherWriter;
     [Test]
+    procedure ServiceSharesLibraryCache;
+    [Test]
     procedure ReadOnlyServiceStopsWaitingAfterLimit;
   end;
 
@@ -725,6 +727,51 @@ begin
   end;
   Assert.IsTrue(FFileSystem.ReadText('C:\Cache\index.json', Text));
   Assert.AreEqual<NativeInt>(5, Length(TIndexCache.Deserialize(Text)));
+end;
+
+procedure TIndexBuilderTests.ServiceSharesLibraryCache;
+var
+  Service: TIndexService;
+  Request: TIndexRequest;
+  Text: string;
+  FromCache: Integer;
+  UnitIndex: TUnitIndex;
+begin
+  // Erstes Projekt: Projekt-Units und Bibliothek getrennt (#492).
+  Service := TIndexService.Create(FIndex, FFileSystem);
+  try
+    Request := Default(TIndexRequest);
+    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    Request.ResolveUnit := Resolve;
+    Request.CacheFile := 'C:\Cache\projekt1.json';
+    Request.LibraryCacheFile := 'C:\Cache\bibliothek.json';
+    Service.Start(Request);
+    Service.WaitFor;
+  finally
+    Service.Free;
+  end;
+  Assert.IsTrue(FFileSystem.ReadText('C:\Cache\projekt1.json', Text));
+  for UnitIndex in TIndexCache.Deserialize(Text) do
+    Assert.IsFalse(UnitIndex.Library_, 'keine Bibliothek im Projekt-Cache: ' + UnitIndex.FileName);
+  Assert.IsTrue(FFileSystem.ReadText('C:\Cache\bibliothek.json', Text));
+  Assert.AreEqual<NativeInt>(3, Length(TIndexCache.Deserialize(Text)));
+  // Zweites Projekt mit eigenem Cache: die Bibliothek kommt aus dem gemeinsamen.
+  FIndex := TSymbolIndex.Create;
+  FromCache := -1;
+  Service := TIndexService.Create(FIndex, FFileSystem);
+  try
+    Service.OnFinished :=
+      procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
+      begin
+        FromCache := AResult.FromCache;
+      end;
+    Request.CacheFile := 'C:\Cache\projekt2.json';
+    Service.Start(Request);
+    Service.WaitFor;
+  finally
+    Service.Free;
+  end;
+  Assert.AreEqual(3, FromCache, 'nur die Projekt-Units neu eingelesen');
 end;
 
 procedure TIndexBuilderTests.ReadOnlyServiceWaitsForOtherWriter;

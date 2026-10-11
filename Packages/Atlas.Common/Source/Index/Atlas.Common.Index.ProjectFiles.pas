@@ -19,6 +19,9 @@ type
     /// <summary>Schlüssel für Projekt, Konfiguration, Plattform, Version, Symbole, Suchpfade und Namespaces;
     /// gleicher Schlüssel, gleicher Index. Ändert sich einer davon, gilt der Cache nicht mehr.</summary>
     class function Signature(const AProject: TProjectInfo; const ACompilerVersion: string): string; static;
+    /// <summary>Schlüssel des Bibliotheks-Caches (#492): Compilerversion, Plattform und Defines, ohne Projekt.
+    /// Projekte mit gleichem Stand teilen sich RTL/VCL; andere Defines ergeben andere {$IFDEF}-Zweige.</summary>
+    class function LibrarySignature(const AProject: TProjectInfo; const ACompilerVersion: string): string; static;
   end;
 
 implementation
@@ -79,6 +82,12 @@ begin
     Version := 0;
   Result := AProject.Defines + TPascalPreprocessor.PredefinedSymbols(AProject.Platform,
     TPascalPreprocessor.CompilerVersionOfBds(Version));
+end;
+
+class function TIndexProjectFiles.LibrarySignature(const AProject: TProjectInfo;
+  const ACompilerVersion: string): string;
+begin
+  Result := 'LIBRARY|' + UpperCase(AProject.Platform) + '|' + ACompilerVersion + '|' + SortedKey(AProject.Defines);
 end;
 
 class function TIndexProjectFiles.Signature(const AProject: TProjectInfo; const ACompilerVersion: string): string;
