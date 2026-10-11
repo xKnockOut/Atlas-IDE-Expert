@@ -34,6 +34,10 @@ type
   public
     /// <summary>Klammern und Blockwörter in AText, nach Position sortiert.</summary>
     class function Analyze(const AText: string): TArray<TArgusPairToken>; static;
+    /// <summary>Zeile wie im Editor: Tabs bis zur nächsten Tabstelle als Leerzeichen, ohne #13.</summary>
+    class function DisplayLine(const ALine: string; ATabWidth: Integer): string; static;
+    /// <summary>True, wenn der Textlauf ARun ab der 1-basierten Spalte AColumn in ADisplayLine steht.</summary>
+    class function RunMatches(const ADisplayLine, ARun: string; AColumn: Integer): Boolean; static;
   end;
 
 implementation
@@ -162,6 +166,29 @@ end;
 function IsKeyword(const AToken: TLexToken; const AWord: string): Boolean;
 begin
   Result := AToken.IsWord and not AToken.Plain and SameText(AToken.Text, AWord);
+end;
+
+class function TArgusPairs.DisplayLine(const ALine: string; ATabWidth: Integer): string;
+var
+  Builder: TStringBuilder;
+  Ch: Char;
+begin
+  Builder := TStringBuilder.Create;
+  try
+    for Ch in ALine do
+      if (Ch = #9) and (ATabWidth > 0) then
+        Builder.Append(' ', ATabWidth - Builder.Length mod ATabWidth)
+      else if Ch <> #13 then
+        Builder.Append(Ch);
+    Result := Builder.ToString;
+  finally
+    Builder.Free;
+  end;
+end;
+
+class function TArgusPairs.RunMatches(const ADisplayLine, ARun: string; AColumn: Integer): Boolean;
+begin
+  Result := (ARun <> '') and (AColumn >= 1) and (Copy(ADisplayLine, AColumn, Length(ARun)) = ARun);
 end;
 
 class function TArgusPairs.Analyze(const AText: string): TArray<TArgusPairToken>;
