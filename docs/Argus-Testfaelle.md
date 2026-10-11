@@ -8,7 +8,7 @@ Schreibweise: `|` steht für die Cursorposition.
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| E1 | Tools › Optionen › Drittanbieter › Argus öffnen | Seite „Argus“ mit Schaltern, Zeilenzahl, „Verlauf zurücksetzen“, „Breiten zurücksetzen“; auch über die IDE-Suche („Argus“) erreichbar |
+| E1 | Tools › Optionen › Drittanbieter › Argus öffnen | Seite „Argus“ mit Reitern Allgemein, Vervollständigung (Zeilenzahl, „Verlauf zurücksetzen“, „Breiten zurücksetzen“), Editor, Compiler, Robustheit („Wächter testen“); auch über die IDE-Suche („Argus“) erreichbar |
 | E2 | „Argus aktiv“ ausschalten, OK, dann `List.` tippen | Die eingebaute Code Insight der IDE erscheint (kein Argus-Popup); ohne IDE-Neustart |
 | E3 | Wieder einschalten | Argus-Popup erscheint wieder; nie zwei Popups gleichzeitig |
 | E4 | Sichtbare Zeilen auf 15, OK, Popup öffnen | Liste zeigt 15 Zeilen; Bild↑/Bild↓ springt um 15 |

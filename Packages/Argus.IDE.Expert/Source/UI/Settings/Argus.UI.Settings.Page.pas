@@ -1,9 +1,11 @@
 ﻿unit Argus.UI.Settings.Page;
 
 // Seite „Argus“ unter Tools › Optionen › Drittanbieter (#227, Teil
-// Vervollständigung). Reine VCL, im Code aufgebaut: Steuerelemente
-// untereinander, die IDE skaliert sie mit dem Dialog. Die DFM ist leer;
-// TCustomFrame.Create verlangt für abgeleitete Frames eine Ressource. Laden und Speichern über
+// Vervollständigung). Reine VCL, im Code aufgebaut: Reiter je Bereich
+// (Allgemein, Vervollständigung, Editor, Compiler, Robustheit wie x-page im
+// Schema), darin Steuerelemente untereinander; die IDE skaliert sie mit dem
+// Dialog. Die DFM ist leer; TCustomFrame.Create verlangt für abgeleitete
+// Frames eine Ressource. Laden und Speichern über
 // TArgusPluginSettings; die IDE-Schicht liest und schreibt die Registry.
 
 interface
@@ -24,6 +26,8 @@ uses
 type
   TArgusSettingsPage = class(TFrame)
   private
+    FPages: TPageControl;
+    FSheet: TTabSheet;
     FEnabled: TCheckBox;
     FRowsLabel: TLabel;
     FRows: TEdit;
@@ -50,6 +54,7 @@ type
     FWidths: TArgusPluginSettings;
     FNextTop: Integer;
     FOnResetHistory: TProc;
+    procedure AddSheet(AId: TArgusTextId);
     function AddCheck(const ACaption: string): TCheckBox;
     function AddPanel(AHeight: Integer): TPanel;
     function AddNumber(const ACaption: string): TEdit;
@@ -60,6 +65,8 @@ type
     constructor Create(AOwner: TComponent); override;
     procedure LoadFrom(const ASettings: TArgusPluginSettings);
     procedure SaveTo(var ASettings: TArgusPluginSettings);
+    /// <summary>Reiter der Seite, einer je Bereich.</summary>
+    property Pages: TPageControl read FPages;
     /// <summary>„Verlauf zurücksetzen“ der lernenden Gewichtung (#418).</summary>
     property OnResetHistory: TProc read FOnResetHistory write FOnResetHistory;
   end;
@@ -67,6 +74,10 @@ type
 implementation
 
 {$R *.dfm}
+
+const
+  // Linke Kante der Zahlenfelder; Platz für „Wartezeit nach dem Speichern (ms):“.
+  NumberLeft = 230;
 
 { TArgusSettingsPage }
 
@@ -85,8 +96,17 @@ begin
   Title.AlignWithMargins := True;
   Title.Caption := TArgusStrings.Text(TArgusTextId.SettingsTitle);
   Title.Font.Style := [fsBold];
-  FNextTop := 100;
+  FPages := TPageControl.Create(Self);
+  FPages.Parent := Self;
+  FPages.Align := alClient;
+  FPages.AlignWithMargins := True;
+  FPages.Top := 100;
+
+  AddSheet(TArgusTextId.SettingsTabGeneral);
   FEnabled := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsEnabled));
+  FReloadExternal := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsReload));
+
+  AddSheet(TArgusTextId.SettingsTabCompletion);
   Panel := AddPanel(26);
   FRowsLabel := TLabel.Create(Self);
   FRowsLabel.Parent := Panel;
@@ -95,7 +115,7 @@ begin
   FRowsLabel.Top := 5;
   FRows := TEdit.Create(Self);
   FRows.Parent := Panel;
-  FRows.Left := 180;
+  FRows.Left := NumberLeft;
   FRows.Top := 1;
   FRows.Width := 44;
   FRows.NumbersOnly := True;
@@ -110,18 +130,6 @@ begin
   FLearning := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsLearning));
   FGroupInherited := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsGroupInherited));
   FPreview := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsPreview));
-  FHoverTooltip := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsHover));
-  // Einfrier-Wächter (#501).
-  FHangThreshold := AddNumber(TArgusStrings.Text(TArgusTextId.SettingsHangThreshold));
-  FHangHint := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsHangHint));
-  FReloadExternal := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsReload));
-  FPairColors := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsPairs));
-  FPairGuides := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsPairGuides));
-  FProblems := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsProblems));
-  // Compilerprüfung nach dem Speichern (#548).
-  FCheckOnSave := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsCheckOnSave));
-  FCheckDelay := AddNumber(TArgusStrings.Text(TArgusTextId.SettingsCheckDelay));
-  FCheckMax := AddNumber(TArgusStrings.Text(TArgusTextId.SettingsCheckMax));
   Panel := AddPanel(32);
   FResetHistory := TButton.Create(Self);
   FResetHistory.Parent := Panel;
@@ -137,19 +145,47 @@ begin
   FResetWidths.Top := 3;
   FResetWidths.Width := 150;
   FResetWidths.OnClick := ResetWidthsClick;
+
+  AddSheet(TArgusTextId.SettingsTabEditor);
+  FHoverTooltip := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsHover));
+  FPairColors := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsPairs));
+  FPairGuides := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsPairGuides));
+  FProblems := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsProblems));
+
+  // Compilerprüfung nach dem Speichern (#548).
+  AddSheet(TArgusTextId.SettingsTabCompiler);
+  FCheckOnSave := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsCheckOnSave));
+  FCheckDelay := AddNumber(TArgusStrings.Text(TArgusTextId.SettingsCheckDelay));
+  FCheckMax := AddNumber(TArgusStrings.Text(TArgusTextId.SettingsCheckMax));
+
+  // Einfrier-Wächter (#501).
+  AddSheet(TArgusTextId.SettingsTabRobustness);
+  FHangThreshold := AddNumber(TArgusStrings.Text(TArgusTextId.SettingsHangThreshold));
+  FHangHint := AddCheck(TArgusStrings.Text(TArgusTextId.SettingsHangHint));
+  Panel := AddPanel(32);
   FHangTest := TButton.Create(Self);
   FHangTest.Parent := Panel;
   FHangTest.Caption := TArgusStrings.Text(TArgusTextId.SettingsHangTest);
-  FHangTest.Left := 320;
+  FHangTest.Left := 0;
   FHangTest.Top := 3;
   FHangTest.Width := 150;
   FHangTest.OnClick := HangTestClick;
+  FPages.ActivePageIndex := 0;
+end;
+
+procedure TArgusSettingsPage.AddSheet(AId: TArgusTextId);
+begin
+  FSheet := TTabSheet.Create(Self);
+  FSheet.PageControl := FPages;
+  FSheet.Caption := TArgusStrings.Text(AId);
+  // Jeder Reiter stapelt seine Elemente neu von oben.
+  FNextTop := 100;
 end;
 
 function TArgusSettingsPage.AddCheck(const ACaption: string): TCheckBox;
 begin
   Result := TCheckBox.Create(Self);
-  Result.Parent := Self;
+  Result.Parent := FSheet;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
   Result.Caption := ACaption;
@@ -161,7 +197,7 @@ end;
 function TArgusSettingsPage.AddPanel(AHeight: Integer): TPanel;
 begin
   Result := TPanel.Create(Self);
-  Result.Parent := Self;
+  Result.Parent := FSheet;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
   Result.BevelOuter := bvNone;
@@ -184,7 +220,7 @@ begin
   Caption.Top := 5;
   Result := TEdit.Create(Self);
   Result.Parent := Panel;
-  Result.Left := 180;
+  Result.Left := NumberLeft;
   Result.Top := 1;
   Result.Width := 60;
   Result.NumbersOnly := True;

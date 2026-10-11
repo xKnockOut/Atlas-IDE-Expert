@@ -17,12 +17,17 @@ type
     procedure WarmUp;
     [Test]
     procedure CreatesAndRoundTripsSettings;
+    /// <summary>Die Einstellungen stehen auf Reitern je Bereich statt auf einer langen Seite.</summary>
+    [Test]
+    procedure GroupsSettingsOnTabs;
   end;
 
 implementation
 
 uses
+  Vcl.ComCtrls,
   Argus.Core.Settings.Plugin,
+  Argus.UI.Strings,
   Argus.UI.Settings.Page;
 
 procedure TArgusSettingsPageTests.WarmUp;
@@ -54,6 +59,28 @@ begin
   Assert.IsTrue(Saved.Preview);
   Assert.IsFalse(Saved.HoverTooltip);
   Assert.AreEqual(333, Saved.ListWidth);
+end;
+
+procedure TArgusSettingsPageTests.GroupsSettingsOnTabs;
+var
+  Page: TArgusSettingsPage;
+  Sheet: TTabSheet;
+  I: Integer;
+begin
+  Page := TArgusSettingsPage.Create(nil);
+  try
+    Assert.AreEqual(5, Page.Pages.PageCount);
+    Assert.AreEqual(TArgusStrings.Text(TArgusTextId.SettingsTabGeneral), Page.Pages.Pages[0].Caption);
+    Assert.AreEqual(TArgusStrings.Text(TArgusTextId.SettingsTabRobustness), Page.Pages.Pages[4].Caption);
+    for I := 0 to Page.Pages.PageCount - 1 do
+    begin
+      Sheet := Page.Pages.Pages[I];
+      Assert.IsTrue(Sheet.ControlCount > 0, Sheet.Caption);
+    end;
+    Assert.AreEqual(0, Page.Pages.ActivePageIndex);
+  finally
+    Page.Free;
+  end;
 end;
 
 initialization
