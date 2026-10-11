@@ -112,6 +112,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DocumentHighlights.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.KeywordHighlights.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WatchedFiles.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IndexRefresh.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WorkspaceFolders.Tests.pas"/>
         <DCCReference Include="Windows\Documents\Atlas.Windows.Documents.PathCanonicalizer.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Lexer.Tests.pas"/>

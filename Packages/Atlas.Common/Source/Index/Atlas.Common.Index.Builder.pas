@@ -63,6 +63,9 @@ type
     function EnsureUnit(const AUnitName: string): Boolean;
     /// <summary>Übernimmt Dateiänderungen; liefert die Zahl geänderter Units.</summary>
     function ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
+    /// <summary>Ungespeicherter Text einer bekannten Unit (Tipp-Pause, #492): nur im Speicher, ohne Cache;
+    /// True, wenn der Index sich dadurch geändert hat.</summary>
+    function ApplyText(const AFileName, AText: string): Boolean;
     /// <summary>Suchpfade für $I nach dem Ordner der Unit (Projekt-Suchpfade, dann Bibliothekspfade).</summary>
     property IncludePaths: TArray<string> read FIncludePaths write FIncludePaths;
   end;
@@ -289,6 +292,27 @@ begin
       TMonitor.Exit(FFailedLock);
     end;
   end;
+end;
+
+function TIndexBuilder.ApplyText(const AFileName, AText: string): Boolean;
+var
+  Existing, UnitIndex: TUnitIndex;
+  Hash: string;
+begin
+  Result := False;
+  // Nur Units, die der Index kennt; neue Dateien kommen wie bisher beim Speichern dazu.
+  if not FIndex.FindFile(AFileName, Existing) then
+    Exit;
+  Hash := TIndexCache.HashOf(AText);
+  if Hash = Existing.Hash then
+    Exit;
+  UnitIndex := TIndexExtractor.ExtractText(AText, AFileName, FDefines, IncludeResolver());
+  // Zeitstempel bleibt der der Datei: Beim Speichern liest IndexFile sie dann neu von der Platte.
+  UnitIndex.Stamp := Existing.Stamp;
+  UnitIndex.Hash := Hash;
+  UnitIndex.Library_ := Existing.Library_;
+  FIndex.AddUnit(UnitIndex);
+  Result := True;
 end;
 
 function TIndexBuilder.ApplyChanges(const AChanges: TArray<TFileChange>): Integer;

@@ -64,6 +64,8 @@ type
     function EnsureUnit(const AUnitName: string): Boolean;
     /// <summary>Übernimmt Dateiänderungen im aufrufenden Thread; 0 ohne laufenden Builder.</summary>
     function ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
+    /// <summary>Ungespeicherter Text einer Unit nach der Tipp-Pause (#492).</summary>
+    function ApplyText(const AFileName, AText: string): Boolean;
     property Index: ISymbolIndex read FIndex;
     property OnProgress: TIndexProgressEvent read FOnProgress write FOnProgress;
     property OnFinished: TIndexFinishedEvent read FOnFinished write FOnFinished;
@@ -212,6 +214,18 @@ begin
   try
     Builder := FBuilder;
     Result := (Builder <> nil) and Builder.EnsureUnit(AUnitName);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+function TIndexService.ApplyText(const AFileName, AText: string): Boolean;
+begin
+  TMonitor.Enter(FLock);
+  try
+    if FBuilder = nil then
+      Exit(False);
+    Result := FBuilder.ApplyText(AFileName, AText);
   finally
     TMonitor.Exit(FLock);
   end;

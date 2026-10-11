@@ -75,6 +75,7 @@ uses
   Atlas.Common.Lsp.DocumentHighlights.Tests in 'Common\Lsp\Atlas.Common.Lsp.DocumentHighlights.Tests.pas',
   Atlas.Common.Lsp.KeywordHighlights.Tests in 'Common\Lsp\Atlas.Common.Lsp.KeywordHighlights.Tests.pas',
   Atlas.Common.Lsp.WatchedFiles.Tests in 'Common\Lsp\Atlas.Common.Lsp.WatchedFiles.Tests.pas',
+  Atlas.Common.Lsp.IndexRefresh.Tests in 'Common\Lsp\Atlas.Common.Lsp.IndexRefresh.Tests.pas',
   Atlas.Common.Lsp.WorkspaceFolders.Tests in 'Common\Lsp\Atlas.Common.Lsp.WorkspaceFolders.Tests.pas',
   Atlas.Windows.Documents.PathCanonicalizer.Tests in 'Windows\Documents\Atlas.Windows.Documents.PathCanonicalizer.Tests.pas',
   Atlas.Common.Pascal.Lexer.Tests in 'Common\Pascal\Atlas.Common.Pascal.Lexer.Tests.pas',

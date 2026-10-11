@@ -53,6 +53,7 @@ uses
   Atlas.Common.Editing.StringLiterals,
   Atlas.Common.JsonRpc.Statistics,
   Atlas.Common.Lsp.WatchedFiles,
+  Atlas.Common.Lsp.IndexRefresh,
   Atlas.Common.Lsp.IdeBuild,
   Atlas.Common.Mcp.BuildTools,
   Atlas.Common.Index.Adapters.CacheDirectory,
@@ -110,6 +111,8 @@ type
     FCommands: TLspCommands;
     FStatistics: IJsonRpcStatistics;
     FWatchedFiles: TLspWatchedFiles;
+    /// <summary>Aktive Unit nach der Tipp-Pause neu in den Index (#492).</summary>
+    FIndexRefresh: TLspIndexRefresh;
     /// <summary>Build-Ergebnisse und Compilermeldungen aus der IDE (#528).</summary>
     FIdeBuild: TLspIdeBuild;
     FWorkspaceFolders: TLspWorkspaceFolders;
@@ -883,6 +886,31 @@ begin
   FCommands.Attach(FDispatcher);
   FWatchedFiles := TLspWatchedFiles.Create(FTransport);
   FWatchedFiles.OnChanged := HandleWatchedFiles;
+  FIndexRefresh := TLspIndexRefresh.Create(TLspIndexRefresh.DefaultDelayMs,
+    procedure(const AFileName, AText: string)
+    var
+      Workspace: TShellWorkspace;
+      Targets: TArray<TShellWorkspace>;
+      Updated: Boolean;
+    begin
+      Updated := False;
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Targets := FWorkspaces.ToArray;
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+      for Workspace in Targets do
+        if Workspace.ApplyText(AFileName, AText) then
+          Updated := True;
+      if Updated then
+        FLogger.Debug(Format('Index nach Tipp-Pause aktualisiert: %s', [ExtractFileName(AFileName)]));
+    end);
+  FIndexRefresh.OnError :=
+    procedure(E: Exception)
+    begin
+      FLogger.Warning('Index nach Tipp-Pause: ' + E.Message);
+    end;
   FWatchedFiles.Attach(FDispatcher);
   // Compilermeldungen aus dem Meldungsfenster der IDE ersetzen die des letzten Laufs wie ein eigener Compile (#528).
   FIdeBuild := TLspIdeBuild.Create;
@@ -966,6 +994,8 @@ end;
 
 destructor TServerComposition.Destroy;
 begin
+  // Zuerst: Eine laufende Übernahme greift auf die Ordner zu.
+  FreeAndNil(FIndexRefresh);
   // Vor der Verbindung: der Wächter ruft FConnection.Stop.
   FParentWatcher.Free;
   FConnection.Free;
@@ -1470,6 +1500,18 @@ var
   Workspace: TShellWorkspace;
   OnSave: Boolean;
 begin
+  // Tipp-Pause (#492): ungespeicherten Stand in den Index; beim Schließen wieder den der Platte.
+  if (FIndexRefresh <> nil) and StartsText('file:', ADocument.Uri) then
+    case AKind of
+      TDocumentEventKind.Changed:
+        FIndexRefresh.Changed(TDocumentUris.ToPath(ADocument.Uri), ADocument.Text);
+      TDocumentEventKind.Closed:
+        if TLspIndexRefresh.Applies(TDocumentUris.ToPath(ADocument.Uri)) then
+        begin
+          FIndexRefresh.Closed(TDocumentUris.ToPath(ADocument.Uri));
+          HandleWatchedFiles([TFileChange.Create(TDocumentUris.ToPath(ADocument.Uri), TFileChangeKind.Changed)]);
+        end;
+    end;
   if FDeriveWorkspaces and (AKind = TDocumentEventKind.Opened) and StartsText('file:', ADocument.Uri) then
     DeriveWorkspace(TDocumentUris.ToPath(ADocument.Uri));
   // Nach dem Speichern einer Quelldatei kompilieren (#40), abschaltbar über compiler.onSave.

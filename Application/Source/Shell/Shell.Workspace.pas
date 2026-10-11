@@ -87,6 +87,7 @@ type
     procedure Stop;
     function EnsureUnit(const AUnitName: string): Boolean;
     function ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
+    function ApplyText(const AFileName, AText: string): Boolean;
     /// <summary>Symbole des Projekts für das Abblenden; False ohne Projekt. Threadsicher.</summary>
     function Defines(out ADefines: TArray<string>): Boolean;
     /// <summary>
@@ -243,6 +244,11 @@ end;
 function TShellWorkspace.EnsureUnit(const AUnitName: string): Boolean;
 begin
   Result := FIndexService.EnsureUnit(AUnitName);
+end;
+
+function TShellWorkspace.ApplyText(const AFileName, AText: string): Boolean;
+begin
+  Result := FIndexService.ApplyText(AFileName, AText);
 end;
 
 function TShellWorkspace.ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
