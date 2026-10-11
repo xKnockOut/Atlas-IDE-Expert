@@ -104,6 +104,8 @@ type
     FRetired: TObjectList<TThread>;
     // Letzter gesehener bzw. zuletzt geholter Editortext je Datei (Schlüssel klein).
     FTexts: TDictionary<string, string>;
+    // Zuletzt aktiver Editor: beim Wechsel seinen Stand sofort an den Server (Index, #492).
+    FLastFile: string;
     FPulled: TDictionary<string, string>;
     FChangedAt: Cardinal;
     FRefreshSeen: Integer;
@@ -496,6 +498,19 @@ begin
       else
       begin
         EnsureWorkers(Session);
+        // Editor gewechselt: Getipptes der vorigen Unit sofort senden, nicht erst bei der Rückkehr.
+        // Sonst fehlt eine neue Deklaration in der anderen Unit (Index nach der Tipp-Pause, #492).
+        if (FLastFile <> '') and not SameText(FLastFile, FileName) then
+        begin
+          if FDocuments.Idle then
+          begin
+            if FTexts.TryGetValue(TAtlasProblemStore.Key(FLastFile), OtherText) then
+              Session.Sync(FLastFile, OtherText);
+            FLastFile := FileName;
+          end;
+        end
+        else
+          FLastFile := FileName;
         Refresh := Session.RefreshCount <> FRefreshSeen;
         Changed := not FPulled.TryGetValue(Key, Known) or (Known <> Text);
         if (Refresh or (Changed and (GetTickCount - FChangedAt >= QuietMs))) and FDocuments.Idle then
