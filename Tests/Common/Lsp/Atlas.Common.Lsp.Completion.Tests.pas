@@ -30,6 +30,8 @@ type
     [Test]
     procedure ImportsKnowParameters;
     [Test]
+    procedure ProjectImportsComeBeforeLibraryLimit;
+    [Test]
     procedure ScopeFiltersByPrefix;
     [Test]
     procedure MembersAfterDotIncludeInherited;
@@ -329,6 +331,32 @@ begin
   // Rechne kommt aus dem eingebundenen Werkzeug und erscheint nur einmal, ohne uses-Eintrag.
   Assert.AreEqual('Rechne', Names(ItemsAt(WithCode('  Rech'), '  Rech', TCompletionMatching.Prefix)));
   Assert.AreEqual(0, Integer(Length(ItemsAt(WithCode('  Rech'), '  Rech', TCompletionMatching.Prefix).Items[0].AdditionalEdits)));
+end;
+
+procedure TLspCompletionTests.ProjectImportsComeBeforeLibraryLimit;
+var
+  Lib: TUnitIndex;
+  Index: Integer;
+  Items: TCompletionItems;
+  Found: Boolean;
+  Item: TCompletionItem;
+begin
+  // Mehr passende Bibliotheks-Symbole als die Höchstzahl: die eigene Unit fehlte sonst (#492).
+  for Index := 1 to 250 do
+  begin
+    Lib := TIndexExtractor.ExtractText(Format('unit Lib%d;'#10'interface'#10'type TTestLib%d = class end;'#10 +
+      'implementation'#10'end.', [Index, Index]), Format('C:\Lib\Lib%d.pas', [Index]), nil);
+    Lib.Library_ := True;
+    FIndex.AddUnit(Lib);
+  end;
+  FIndex.AddUnit(TIndexExtractor.ExtractText('unit Eigene;'#10'interface'#10'type TTestHier = class end;'#10 +
+    'implementation'#10'end.', 'C:\P\Eigene.pas', nil));
+  Items := ItemsAt(WithCode('  TTest'), '  TTest', TCompletionMatching.Prefix);
+  Found := False;
+  for Item in Items.Items do
+    if Item.Name = 'TTestHier' then
+      Found := True;
+  Assert.IsTrue(Found, 'Klasse aus dem Projekt trotz vieler Bibliotheks-Treffer');
 end;
 
 procedure TLspCompletionTests.ImportsKnowParameters;

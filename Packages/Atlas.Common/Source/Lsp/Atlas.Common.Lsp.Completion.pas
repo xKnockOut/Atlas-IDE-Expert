@@ -879,6 +879,8 @@ var
     Symbol: TIndexSymbol;
     Edit: TRuleEdit;
     Added, Before: Integer;
+    Pass: Integer;
+    Units: TArray<TUnitIndex>;
   begin
     Known := TDictionary<string, Boolean>.Create;
     try
@@ -887,8 +889,14 @@ var
       Used := TUsesClauses.UsedUnits(ATree.Tokens);
       Own := TUsesClauses.OwnName(ATree.Tokens);
       Added := 0;
-      for UnitInfo in AIndex.Units do
+      // Projekt-Units vor der Bibliothek: Sonst füllen RTL/VCL die Höchstzahl, bevor eine
+      // gerade getippte Klasse aus dem eigenen Projekt drankommt (#492).
+      Units := AIndex.Units;
+      for Pass := 0 to 1 do
+      for UnitInfo in Units do
       begin
+        if UnitInfo.Library_ <> (Pass = 1) then
+          Continue;
         if SameText(UnitInfo.UnitName, Own) or TUsesClauses.IsUsed(Used, UnitInfo.UnitName, AResolver.Namespaces) then
           Continue;
         for Symbol in UnitInfo.Symbols do
