@@ -28,6 +28,8 @@ type
     [Test]
     procedure PlainItemsHaveNoTextEdit;
     [Test]
+    procedure ItemsCarryTheirScope;
+    [Test]
     procedure ImportsKnowParameters;
     [Test]
     procedure ProjectImportsComeBeforeLibraryLimit;
@@ -371,6 +373,26 @@ begin
   Assert.AreEqual(1, Integer(Length(Items.Items[0].AdditionalEdits)));
   Assert.IsTrue(Items.Items[0].HasParameters);
   Assert.AreEqual('C:\P\Extra.pas', Items.Items[0].SourceFile);
+end;
+
+procedure TLspCompletionTests.ItemsCarryTheirScope;
+var
+  Items: TCompletionItems;
+  Item: TCompletionItem;
+  Scopes: string;
+begin
+  // #488: lokal 1, Parameter 2, Mitglied von Self 3, eigene Unit 4, andere Unit 5.
+  Items := ItemsAt(WithCode('  Ziel := '), 'Ziel := ', TCompletionMatching.Prefix);
+  Scopes := '';
+  for Item in Items.Items do
+    if (Item.Name = 'Wert') or (Item.Name = 'Anzahl') or (Item.Name = 'Name') or (Item.Name = 'TFoo') or
+      (Item.Name = 'Rechne') then
+      Scopes := Scopes + Item.Name + '=' + IntToStr(Item.Scope) + ';';
+  Assert.Contains(Scopes, 'Wert=1;');
+  Assert.Contains(Scopes, 'Anzahl=2;');
+  Assert.Contains(Scopes, 'Name=3;');
+  Assert.Contains(Scopes, 'TFoo=4;');
+  Assert.Contains(Scopes, 'Rechne=5;');
 end;
 
 procedure TLspCompletionTests.PlainItemsHaveNoTextEdit;

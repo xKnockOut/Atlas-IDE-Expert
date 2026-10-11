@@ -271,6 +271,17 @@ begin
   for Directive in AItem.Directives do
     if SameText(Directive, 'deprecated') then
       Result := Result + [MakeTag('deprecated', TAtlasTagKind.Warn)];
+  // Herkunft (#488): woher ein Name ohne Punkt davor stammt.
+  case AItem.Scope of
+    1: Result := Result + [MakeTag('lokal', TAtlasTagKind.Accent)];
+    2: Result := Result + [MakeTag('Parameter', TAtlasTagKind.Accent)];
+    3:
+      if AItem.Kind = TAtlasItemKind.Property_ then
+        Result := Result + [MakeTag('Eigenschaft', TAtlasTagKind.Neutral)]
+      else if AItem.Kind = TAtlasItemKind.Field then
+        Result := Result + [MakeTag('Feld', TAtlasTagKind.Neutral)];
+    4: Result := Result + [MakeTag('Unit', TAtlasTagKind.Neutral)];
+  end;
   // Bedingte Deklarationen (#476): "nur WIN64"; in der aktiven Konfiguration nicht vorhanden als Warnung.
   if SameText(AItem.Condition, 'platform') then
     Result := Result + [MakeTag('platform', TAtlasTagKind.Warn)]

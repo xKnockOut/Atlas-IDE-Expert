@@ -106,6 +106,15 @@ begin
 end;
 
 /// <summary>0 = passt zum erwarteten Typ, 1 = übrige, 2 = ohne erwarteten Typ.</summary>
+/// <summary>Bereichsstufe zum Sortieren (#488): ohne Angabe hinter allen Stufen.</summary>
+function ScopeRank(const AItem: TAtlasCompletionItem): Integer;
+begin
+  if AItem.Scope > 0 then
+    Result := AItem.Scope
+  else
+    Result := 9;
+end;
+
 function GroupOf(const AItem: TAtlasCompletionItem): Integer;
 begin
   if AItem.ExpectedType = '' then
@@ -153,14 +162,20 @@ begin
       function(const A, B: Integer): Integer
       begin
         Result := Ord(Items[A].IsAction) - Ord(Items[B].IsAction);
+        // In der aktiven Konfiguration nicht vorhanden: ans Ende (#476).
+        if Result = 0 then
+          Result := Ord(Items[A].Unavailable) - Ord(Items[B].Unavailable);
         if Result = 0 then
           Result := GroupOf(Items[A]) - GroupOf(Items[B]);
         if Result <> 0 then
           Exit;
         if Grouped then
         begin
-          // Ohne Präfix: Gruppen nach Tiefe, darin Gelerntes zuerst.
-          Result := Items[A].Depth - Items[B].Depth;
+          // Ohne Präfix: nach Bereich (lokal vor Parameter vor Feld …, #488), dann Gruppen nach Tiefe,
+          // darin Gelerntes zuerst.
+          Result := ScopeRank(Items[A]) - ScopeRank(Items[B]);
+          if Result = 0 then
+            Result := Items[A].Depth - Items[B].Depth;
           if (Result = 0) and (Items[A].Depth > 0) then
             Result := CompareText(Items[A].DeclaringClass, Items[B].DeclaringClass);
           if Result = 0 then
@@ -168,7 +183,12 @@ begin
         end
         else
         begin
-          Result := (Scores[B] + Boosts[B]) - (Scores[A] + Boosts[A]);
+          // Güte, dann Bereich (#488), dann Gelerntes (#418).
+          Result := Scores[B] - Scores[A];
+          if Result = 0 then
+            Result := ScopeRank(Items[A]) - ScopeRank(Items[B]);
+          if Result = 0 then
+            Result := Boosts[B] - Boosts[A];
           if (Result = 0) and Options.GroupInherited then
             Result := Items[A].Depth - Items[B].Depth;
         end;

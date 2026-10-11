@@ -81,6 +81,9 @@ type
     Condition: string;
     /// <summary>Unter der aktiven Konfiguration nicht deklariert; Atlas zeigt es abgeschwächt am Ende (#476).</summary>
     Unavailable: Boolean;
+    /// <summary>Gültigkeitsbereich ohne Punkt davor (#488): 1 lokal, 2 Parameter, 3 Mitglied von Self,
+    /// 4 eigene Unit, 5 andere Unit; 0 = keine Angabe (nach einem Punkt, Schlüsselwörter …).</summary>
+    Scope: Integer;
     /// <summary>Eintrag erzeugt Code statt nur einen Namen: 'override' (#443), 'create' (neue Methode, #444);
     /// Atlas wertet AdditionalEdits dann nicht als uses-Ergänzung.</summary>
     Action: string;
@@ -743,6 +746,7 @@ var
   Index: Integer;
   SourceFile: string;
   SourcePosition: TTextPosition;
+  OwnUnit: string;
   Member: TResolvedSymbol;
   Expected: string;
   Descends: TDictionary<string, Boolean>;
@@ -854,6 +858,22 @@ var
     Scored.Item.HasParameters := Member.MaxArgs > 0;
     Scored.Item.Condition := Member.Condition;
     Scored.Item.Unavailable := False;
+    // Bereichsstufe nur im Gültigkeitsbereich, nicht nach einem Punkt (#488).
+    Scored.Item.Scope := 0;
+    if (Context.Kind = TCompletionContextKind.Scope) and (Member.Name <> '') then
+      if Member.Kind = TResolvedKind.Local then
+      begin
+        if Member.IsParameter then
+          Scored.Item.Scope := 2
+        else
+          Scored.Item.Scope := 1;
+      end
+      else if Member.Container <> '' then
+        Scored.Item.Scope := 3
+      else if (OwnUnit <> '') and SameText(Member.UnitName, OwnUnit) then
+        Scored.Item.Scope := 4
+      else
+        Scored.Item.Scope := 5;
     for Params in Member.VariantParams do
       if Params <> '' then
         Scored.Item.HasParameters := True;
@@ -1047,6 +1067,10 @@ begin
   Result := Default(TCompletionItems);
   Postfix := nil;
   Context := Analyze(ATree, APosition);
+  // Name der eigenen Unit für die Bereichsstufe (#488).
+  OwnUnit := '';
+  if ATree <> nil then
+    OwnUnit := TUsesClauses.OwnName(ATree.Tokens);
   SourceFile := '';
   SourcePosition := Default(TTextPosition);
   Member := Default(TResolvedSymbol);
@@ -1184,7 +1208,8 @@ begin
     // Reihenfolge wie geliefert: beste Punktzahl, dann nächster Gültigkeitsbereich.
     Entry.AddPair('sortText', Format('%.5d', [Index]));
     if (AItems.Items[Index].SourceFile <> '') or (AItems.Items[Index].Expected <> '') or
-      (AItems.Items[Index].Action <> '') or (AItems.Items[Index].Condition <> '') then
+      (AItems.Items[Index].Action <> '') or (AItems.Items[Index].Condition <> '') or
+      (AItems.Items[Index].Scope > 0) then
     begin
       Data := TJSONObject.Create;
       if AItems.Items[Index].SourceFile <> '' then
@@ -1214,6 +1239,8 @@ begin
         Data.AddPair('condition', AItems.Items[Index].Condition);
       if AItems.Items[Index].Unavailable then
         Data.AddPair('unavailable', TJSONBool.Create(True));
+      if AItems.Items[Index].Scope > 0 then
+        Data.AddPair('scope', TJSONNumber.Create(AItems.Items[Index].Scope));
       if Length(AItems.Items[Index].Overloads) > 0 then
       begin
         Overloads := TJSONArray.Create;
