@@ -84,6 +84,8 @@ type
     { IAtlasSignatureView }
     procedure ShowSignature(const AHelp: TAtlasSignatureHelp; ASignature, AParameter: Integer);
     procedure HideSignature;
+    /// <summary>Neue Lage der Zeile (z. B. nach dem Scrollen, #414); ein offener Hint wandert mit.</summary>
+    procedure MoveTo(const AAnchor: TRect);
     /// <summary>Rechteck der Zeile an der öffnenden Klammer in Bildschirmkoordinaten.</summary>
     property Anchor: TRect read FAnchor write FAnchor;
     /// <summary>Über der Zeile statt darunter (Vervollständigung offen, #440).</summary>
@@ -276,6 +278,13 @@ begin
           FStyled[Index].ActiveStop := Range.X;
     end;
   end;
+end;
+
+procedure TAtlasSignatureHint.MoveTo(const AAnchor: TRect);
+begin
+  FAnchor := AAnchor;
+  if IsShown then
+    Place;
 end;
 
 procedure TAtlasSignatureHint.Place;

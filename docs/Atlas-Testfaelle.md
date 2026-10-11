@@ -279,6 +279,20 @@ Blocklinien zeichnet Atlas selbst (Einstellung „Blocklinien in den Paarfarben�
 
 Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komponenten, kennt aber keine Atlas-Befehle und keinen Verlauf. Strg+Umschalt+P ist in der IDE „Tastenmakro abspielen“; die Palette übernimmt das Kürzel. Noch offen: Strg+Enter (Kürzel zuweisen).
 
+## Schließen der Atlas-Fenster (#414)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SL1 | Popup und Parameter-Hint offen (z. B. `Foo(` und Strg+Leer), Esc | Erst schließt das Popup, beim zweiten Esc der Hint |
+| SL2 | Popup mit Esc schließen, im selben Wort weitertippen | Popup bleibt zu; Strg+Leer öffnet es wieder |
+| SL3 | Popup offen, mit dem Mausrad scrollen | Popup schließt |
+| SL4 | Parameter-Hint offen, ein paar Zeilen scrollen | Hint wandert mit der Zeile; scrollt die Zeile aus dem Bild, schließt er |
+| SL5 | Popup bzw. Hint offen, Editor in der Größe ändern (Fenster, Splitter, angedockte Fenster) | Fenster schließt |
+| SL6 | Popup, Hint oder Tooltip offen, anderen Editor-Tab wählen | Fenster schließt |
+| SL7 | Tooltip offen, in den Objektinspektor oder die Projektverwaltung klicken | Tooltip schließt (angeheftet bleibt er, bis Esc oder Klick in den Editor) |
+| SL8 | Popup, Hint oder Tooltip offen, Alt+Tab in ein anderes Programm | Kein Atlas-Fenster mehr sichtbar |
+| SL9 | Maus vom Bezeichner wegbewegen (nicht in den Tooltip) | Tooltip schließt nach etwa 300 ms; in den Tooltip hinein bleibt er |
+
 ## Extern geänderte Dateien (#536)
 
 | Nr. | Schritte | Erwartet |
