@@ -26,7 +26,8 @@ uses
   Argus.Core.Lsp.Session,
   Argus.IDE.Completion.Editor,
   Argus.IDE.Signature.Editor,
-  Argus.IDE.Hover.Editor;
+  Argus.IDE.Hover.Editor,
+  Argus.IDE.Problems.Controller;
 
 type
   TArgusCodeInsightManager = class(TInterfacedObject, IOTACodeInsightManager, IOTACodeInsightSelection)
@@ -40,6 +41,8 @@ type
     FSignature: TArgusEditorSignature;
     /// <summary>Eigener Hover-Tooltip (#442).</summary>
     FHover: TArgusEditorHover;
+    /// <summary>Probleme im Editor (#398).</summary>
+    FProblems: TArgusProblemsController;
     function EnsureSession: Boolean;
     procedure StopSession;
     procedure ReportError(const AMessage: string);
@@ -102,6 +105,8 @@ uses
   System.Win.Registry,
   Argus.IDE.Settings.Store,
   Argus.Core.Diagnostics.Hangs,
+  Argus.Core.Lsp.Client,
+  Argus.Core.Problems.Contract,
   Winapi.Windows,
   Argus.IDE.Editor.Buffer;
 
@@ -134,6 +139,20 @@ begin
   FEnabled := True;
   FDiagnose := DiagnoseEnabled;
   Diagnose('Plugin geladen: ' + GetModuleName(HInstance));
+  FProblems := TArgusProblemsController.Create(
+    function(AStart: Boolean): TLspSession
+    begin
+      if AStart and EnsureSession then
+        Result := FSession
+      else if (FServer <> nil) and FServer.Running and (FSession <> nil) and FSession.Initialized then
+        Result := FSession
+      else
+        Result := nil;
+    end,
+    procedure(const AMessage: string)
+    begin
+      Diagnose(AMessage);
+    end);
   FHover := TArgusEditorHover.Create(
     function: TLspSession
     begin
@@ -145,6 +164,13 @@ begin
     procedure(const AMessage: string)
     begin
       Diagnose(AMessage);
+    end,
+    function(const AFileName: string; ALine, ACharacter: Integer): TArray<TArgusProblem>
+    begin
+      if FProblems <> nil then
+        Result := FProblems.ProblemsAt(AFileName, ALine, ACharacter)
+      else
+        Result := nil;
     end);
 end;
 
@@ -155,6 +181,8 @@ begin
   FreeAndNil(FSignature);
   FreeAndNil(FCompletion);
   StopSession;
+  // Nach StopSession: Die Threads sind dort schon angehalten.
+  FreeAndNil(FProblems);
   inherited;
 end;
 
@@ -244,6 +272,13 @@ begin
     FCompletion.Shutdown;
   if FSignature <> nil then
     FSignature.Shutdown;
+  // Probleme: Threads anhalten, Verbindung schließen (laufende Anfragen kehren sofort zurück), warten.
+  if FProblems <> nil then
+    FProblems.BeginShutdown;
+  if FServer <> nil then
+    FServer.Client.Close;
+  if FProblems <> nil then
+    FProblems.WaitShutdown;
   FreeAndNil(FSession);
   FreeAndNil(FServer);
 end;

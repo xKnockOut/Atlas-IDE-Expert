@@ -12,6 +12,9 @@
 //     angezeigte in Akzentfarbe; mehr als fünf als erste vier, „…“, letztes.
 //   - Aktionsleiste auf Randfläche am unteren Rand: Gehe zu, Verwendungen,
 //     Deklaration kopieren, Hilfe; Tasten in Akzentfarbe.
+// Probleme an der Mausposition (#398) stehen ganz oben, je mit Farbbalken nach
+// Schweregrad, Meldung, Regel-ID bzw. Meldungsnummer und Herkunft; ohne
+// Bezeichner zeigt der Tooltip nur sie.
 // Ohne Fokus wie alle Argus-Fenster; Klicks kommen trotzdem an (MA_NOACTIVATE).
 // Beim Wechsel des Inhalts bleibt die Position, das Fenster wächst höchstens.
 
@@ -28,6 +31,7 @@ uses
   Argus.Core.Style.Color,
   Argus.Core.Hover.Contract,
   Argus.Core.Hover.History,
+  Argus.Core.Problems.Contract,
   Argus.UI.Popup.Window;
 
 type
@@ -43,6 +47,8 @@ type
     CanGoBack: Boolean;
     /// <summary>Anzahl der Verwendungen, wenn bekannt; sonst -1.</summary>
     UsagesCount: Integer;
+    /// <summary>Probleme an der Mausposition (#398).</summary>
+    Problems: TArray<TArgusProblem>;
     class function Create(const AData: TArgusHoverData): TArgusHoverView; static;
   end;
 
@@ -176,6 +182,23 @@ var
   Box, Area: TRect;
   Badge: TArgusBadgeKind;
   Drawing, NoWrap: Boolean;
+  Problem: TArgusProblem;
+
+  function SeverityColor(const AProblem: TArgusProblem): TArgusColor;
+  begin
+    case AProblem.Severity of
+      TArgusProblemSeverity.Error:
+        Result := Colors.Error;
+      TArgusProblemSeverity.Warning:
+        Result := Colors.Warn;
+      TArgusProblemSeverity.Information:
+        Result := Colors.Accent;
+    else
+      Result := Colors.Muted;
+    end;
+    if AProblem.Stale then
+      Result := TArgusColorMath.Mix(Result, Colors.Surface, 0.5);
+  end;
 
   procedure AddHit(AKind: THitKind; AIndex: Integer; const ARect: TRect);
   var
@@ -523,6 +546,38 @@ begin
     Y := NavHeight + Scale(8);
     X := Left;
   end;
+  // Probleme an der Mausposition: Farbbalken, Meldung, darunter Code und Herkunft.
+  if Length(FView.Problems) > 0 then
+  begin
+    for Problem in FView.Problems do
+    begin
+      Start := Y;
+      Left := Scale(20);
+      Block(Problem.Caption, Colors.Text, 3);
+      Dec(Y, Scale(4));
+      if Problem.IsCompiler then
+        Caption := TArgusStrings.Text(TArgusTextId.ProblemsSourceCompiler)
+      else
+        Caption := TArgusStrings.Text(TArgusTextId.ProblemsSourceArgus);
+      if Problem.Stale then
+        Caption := Caption + ' · ' + TArgusStrings.Text(TArgusTextId.ProblemsStale);
+      SmallFont(False);
+      if Drawing then
+      begin
+        Canvas.Brush.Style := bsClear;
+        Canvas.Font.Color := ToColor(Colors.Muted);
+        Canvas.TextOut(Left, Y, Caption);
+      end;
+      Inc(Y, Canvas.TextHeight('Wg') + Scale(6));
+      Left := Scale(11);
+      if Drawing then
+        FillRounded(Rect(Left, Start + Scale(1), Left + Scale(3), Y - Scale(7)), SeverityColor(Problem), 1);
+    end;
+    if Data.Declaration = '' then
+      Exit(Y + Scale(2));
+    HorizontalLine(Y);
+    Inc(Y, Scale(8));
+  end;
   // Kopfzeile: Badge, Art · Herkunft, rechts der Fundort.
   Caption := KindCaption(Data.Kind);
   if (Caption <> '') and (Data.Origin <> '') then
@@ -647,6 +702,7 @@ end;
 function TArgusHoverTip.PreferredWidth: Integer;
 var
   Widest: Integer;
+  Problem: TArgusProblem;
 begin
   HandleNeeded;
   // Breite: Deklaration in einer Zeile, sonst die Höchstbreite.
@@ -655,6 +711,8 @@ begin
   Widest := Canvas.TextWidth(FView.Data.Declaration);
   Canvas.Font := UIFont;
   Widest := Max(Widest, Canvas.TextWidth(FView.Data.UnitName));
+  for Problem in FView.Problems do
+    Widest := Max(Widest, Canvas.TextWidth(Problem.Caption) + Scale(9));
   if (FView.Data.Documentation <> '') or (Length(FView.Data.Ancestors) > 0) or FView.Data.Location.HasLocation or
     FView.Pinned then
     Widest := Scale(MaxWidth);

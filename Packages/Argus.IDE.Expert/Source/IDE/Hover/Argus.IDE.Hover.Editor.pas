@@ -17,6 +17,8 @@
 //     Esc schließt; angeheftet Rücktaste bzw. Alt+← zurück; angeheftet oder mit
 //     der Maus über dem Tooltip F12, Umschalt+F12, Strg+C und F1 für den
 //     angezeigten Typ.
+// Probleme (#398): Liegt unter der Maus ein Problem, zeigt der Tooltip es oben
+// an, auch ohne Bezeichner (dann nur das Problem).
 // Die IDE zeigt dann keinen eigenen Tooltip: GetHintText liefert '' (Manager).
 
 interface
@@ -32,12 +34,16 @@ uses
   Argus.Core.Lsp.Session,
   Argus.Core.Hover.Contract,
   Argus.Core.Hover.History,
+  Argus.Core.Problems.Contract,
   Argus.IDE.Editor.KeyHook,
   Argus.UI.Hover.Tip;
 
 type
   TArgusHoverSessionFunc = reference to function: TLspSession;
   TArgusHoverLogFunc = reference to procedure(const AMessage: string);
+  /// <summary>Probleme an der Stelle (0-basiert, #398).</summary>
+  TArgusHoverProblemsFunc = reference to function(const AFileName: string; ALine, ACharacter: Integer):
+    TArray<TArgusProblem>;
 
   TArgusEditorHover = class
   private type
@@ -71,6 +77,11 @@ type
     FWatchTimer: TTimer;
     FSession: TArgusHoverSessionFunc;
     FLog: TArgusHoverLogFunc;
+    FProblemsAt: TArgusHoverProblemsFunc;
+    // Probleme an der Mausposition; nur Probleme, wenn dort kein Bezeichner steht.
+    FProblems: TArray<TArgusProblem>;
+    FMouseCharacter: Integer;
+    FProblemsOnly: Boolean;
     // Bezeichner unter der Maus bzw. im offenen Tooltip.
     FEditor: TWinControl;
     FView: IOTAEditView;
@@ -102,7 +113,8 @@ type
     procedure HandleKey(AKey: Word; AShift: TShiftState);
     procedure Log(const AMessage: string);
   public
-    constructor Create(const ASession: TArgusHoverSessionFunc; const ALog: TArgusHoverLogFunc);
+    constructor Create(const ASession: TArgusHoverSessionFunc; const ALog: TArgusHoverLogFunc;
+      const AProblemsAt: TArgusHoverProblemsFunc = nil);
     destructor Destroy; override;
     procedure Hide;
     /// <summary>Öffnet AFileName im Editor und setzt den Cursor (0-basiert).</summary>
@@ -150,13 +162,15 @@ end;
 
 { TArgusEditorHover }
 
-constructor TArgusEditorHover.Create(const ASession: TArgusHoverSessionFunc; const ALog: TArgusHoverLogFunc);
+constructor TArgusEditorHover.Create(const ASession: TArgusHoverSessionFunc; const ALog: TArgusHoverLogFunc;
+  const AProblemsAt: TArgusHoverProblemsFunc);
 var
   Services: INTACodeEditorServices;
 begin
   inherited Create;
   FSession := ASession;
   FLog := ALog;
+  FProblemsAt := AProblemsAt;
   FIndex := -1;
   FUsagesCount := -1;
   FTip := TArgusHoverTip.Create(nil);
@@ -246,6 +260,9 @@ begin
   Result.Pinned := FHistory.Pinned;
   Result.CanGoBack := FHistory.CanGoBack;
   Result.UsagesCount := FUsagesCount;
+  // Probleme gehören zur Stelle im Editor, nicht zu angeklickten Typen.
+  if FHistory.Count <= 1 then
+    Result.Problems := FProblems;
 end;
 
 procedure TArgusEditorHover.Refresh;
@@ -261,6 +278,7 @@ begin
   TArgusKeyHook.Remove(FKeys);
   FTip.HidePopup;
   FHistory.Clear;
+  FProblems := nil;
   FUsagesCount := -1;
   FShownKey := '';
   FKey := '';
@@ -310,10 +328,29 @@ begin
             FView := View;
             FLine := Line;
             FStart := Start;
+            FMouseCharacter := Index;
+            FProblemsOnly := False;
             // Wortrechteck aus der ersten und letzten Spalte des Worts (Bildschirmkoordinaten).
             First := State.GetCharacterPosPx(Column - (Index - Start), VisibleLine);
             Last := State.GetCharacterPosPx(Column + (Stop - Index - 1), VisibleLine);
             FWordRect := TRect.Create(Editor.ClientToScreen(First.TopLeft), Editor.ClientToScreen(Last.BottomRight));
+          end;
+        end
+        else if Assigned(FProblemsAt) and
+          (Length(FProblemsAt(View.Buffer.FileName, Line - 1, Index)) > 0) then
+        begin
+          // Kein Bezeichner, aber ein Problem (etwa ein fehlendes Semikolon): nur das Problem zeigen.
+          Key := Format('%s|%d|p%d', [View.Buffer.FileName, Line, Index]);
+          if Key <> FKey then
+          begin
+            FEditor := Editor;
+            FView := View;
+            FLine := Line;
+            FStart := Index;
+            FMouseCharacter := Index;
+            FProblemsOnly := True;
+            First := State.GetCharacterPosPx(Column, VisibleLine);
+            FWordRect := TRect.Create(Editor.ClientToScreen(First.TopLeft), Editor.ClientToScreen(First.BottomRight));
           end;
         end;
       end;
@@ -356,12 +393,20 @@ begin
   try
     if (FView = nil) or (FKey = '') or not Application.Active then
       Exit;
-    Session := CurrentSession;
-    if Session = nil then
-      Exit;
-    Text := TArgusEditorBuffer.Text(FView.Buffer);
-    Data := Session.HoverData(FView.Buffer.FileName, Text, FLine - 1, FStart);
-    if not Data.Found then
+    FProblems := nil;
+    if Assigned(FProblemsAt) then
+      FProblems := FProblemsAt(FView.Buffer.FileName, FLine - 1, FMouseCharacter);
+    Data := Default(TArgusHoverData);
+    if not FProblemsOnly then
+    begin
+      Session := CurrentSession;
+      if Session <> nil then
+      begin
+        Text := TArgusEditorBuffer.Text(FView.Buffer);
+        Data := Session.HoverData(FView.Buffer.FileName, Text, FLine - 1, FStart);
+      end;
+    end;
+    if not Data.Found and (Length(FProblems) = 0) then
     begin
       Hide;
       Exit;

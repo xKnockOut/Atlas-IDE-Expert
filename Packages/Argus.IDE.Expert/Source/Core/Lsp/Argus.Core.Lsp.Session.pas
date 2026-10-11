@@ -6,6 +6,9 @@
 // ersten Mal als didOpen, danach als didChange mit dem ganzen Text, aber nur,
 // wenn er sich geändert hat. Positionen sind 0-basiert in UTF-16-Einheiten
 // (Delphi-String-Indizes), wie LSP sie erwartet.
+// Diagnosen (#398) holt das Plugin selbst (Pull: textDocument/diagnostic und
+// workspace/diagnostic); eine Anfrage workspace/diagnostic/refresh des Servers
+// zählt RefreshCount hoch.
 
 interface
 
@@ -14,7 +17,8 @@ uses
   System.JSON,
   System.Generics.Collections,
   Argus.Core.Lsp.Client,
-  Argus.Core.Hover.Contract;
+  Argus.Core.Hover.Contract,
+  Argus.Core.Problems.Contract;
 
 type
   TLspLocation = record
@@ -37,14 +41,34 @@ type
     class function FromHover(const AHover: TJSONValue): TLspHoverParts; static;
   end;
 
+  /// <summary>Diagnosebericht einer Datei (#398).</summary>
+  TLspDiagnosticReport = record
+    FileName: string;
+    ResultId: string;
+    /// <summary>Seit der vorigen Ergebnis-Id unverändert; Problems ist dann leer.</summary>
+    Unchanged: Boolean;
+    Problems: TArray<TArgusProblem>;
+    /// <summary>Aus einem Bericht des Servers ({kind, resultId, items}); AFileName, wenn er keine uri hat.</summary>
+    class function FromJson(const AReport: TJSONObject; const AFileName: string): TLspDiagnosticReport; static;
+  end;
+
+  /// <summary>Zähler, den der Lese-Thread erhöht; überlebt die Sitzung, solange der Client ihn hält.</summary>
+  ILspSignal = interface
+    ['{6B0C1E57-3A44-4E0B-9A63-2F7A5C0D8E11}']
+    function Count: Integer;
+    procedure Signal;
+  end;
+
   TLspSession = class
   private type
     TDocumentState = record
+      FileName: string;
       Version: Integer;
       Text: string;
     end;
   private
     FClient: TLspClient;
+    FRefresh: ILspSignal;
     FTimeoutMs: Cardinal;
     FDocuments: TDictionary<string, TDocumentState>;
     FInitialized: Boolean;
@@ -85,13 +109,51 @@ type
     function ResolveCompletion(AItem: TJSONObject; ATimeoutMs: Cardinal): TJSONValue;
     /// <summary>Benachrichtigung ohne Antwort, z. B. argus/compileStarted (#527); übernimmt AParams.</summary>
     procedure Notify(const AMethod: string; AParams: TJSONObject);
+    /// <summary>Diagnosen einer Datei (textDocument/diagnostic) ohne Abgleich; threadsicher wie Completion.</summary>
+    function DocumentDiagnostics(const AFileName, APreviousResultId: string; ATimeoutMs: Cardinal): TLspDiagnosticReport;
+    /// <summary>Diagnosen aller Projektdateien außer den geöffneten (workspace/diagnostic, Long-Polling);
+    /// APrevious mit FileName und ResultId der bekannten Stände. Threadsicher wie Completion.</summary>
+    function WorkspaceDiagnostics(const APrevious: TArray<TLspDiagnosticReport>;
+      ATimeoutMs: Cardinal): TArray<TLspDiagnosticReport>;
+    /// <summary>didClose für eine abgeglichene Datei; danach liest der Server sie wieder von der Platte.</summary>
+    procedure Close(const AFileName: string);
+    /// <summary>Abgeglichene Dateien (Hauptthread).</summary>
+    function SyncedFiles: TArray<string>;
+    /// <summary>Zuletzt geschickter Text einer Datei (Hauptthread).</summary>
+    function SyncedText(const AFileName: string; out AText: string): Boolean;
+    /// <summary>Anzahl der workspace/diagnostic/refresh-Anfragen des Servers.</summary>
+    function RefreshCount: Integer;
     property Initialized: Boolean read FInitialized;
   end;
 
 implementation
 
+uses
+  System.SyncObjs;
+
 const
   Unreserved = ['A'..'Z', 'a'..'z', '0'..'9', '-', '.', '_', '~', '/'];
+
+type
+  TLspSignal = class(TInterfacedObject, ILspSignal)
+  private
+    FCount: Integer;
+  public
+    function Count: Integer;
+    procedure Signal;
+  end;
+
+{ TLspSignal }
+
+function TLspSignal.Count: Integer;
+begin
+  Result := TInterlocked.CompareExchange(FCount, 0, 0);
+end;
+
+procedure TLspSignal.Signal;
+begin
+  TInterlocked.Increment(FCount);
+end;
 
 { TLspSession }
 
@@ -101,6 +163,7 @@ begin
   FClient := AClient;
   FTimeoutMs := ATimeoutMs;
   FDocuments := TDictionary<string, TDocumentState>.Create;
+  FRefresh := TLspSignal.Create;
 end;
 
 destructor TLspSession.Destroy;
@@ -228,6 +291,7 @@ var
   Params, Capabilities, TextDocument, Hover: TJSONObject;
   Formats: TJSONArray;
   Response: TJSONValue;
+  Refresh: ILspSignal;
 begin
   Formats := TJSONArray.Create;
   Formats.Add('plaintext');
@@ -239,13 +303,26 @@ begin
   TextDocument.AddPair('completion', TJSONObject.Create(TJSONPair.Create('completionItem',
     TJSONObject.Create.AddPair('snippetSupport', TJSONBool.Create(False))
       .AddPair('documentationFormat', TJSONArray.Create.Add('plaintext')))));
+  // Diagnosen holt das Plugin selbst (#398); der Server bittet per refresh um neues Holen.
+  TextDocument.AddPair('diagnostic', TJSONObject.Create.AddPair('dynamicRegistration', TJSONBool.Create(False))
+    .AddPair('relatedDocumentSupport', TJSONBool.Create(False)));
   Capabilities := TJSONObject.Create;
   Capabilities.AddPair('textDocument', TextDocument);
+  Capabilities.AddPair('workspace', TJSONObject.Create(TJSONPair.Create('diagnostics',
+    TJSONObject.Create(TJSONPair.Create('refreshSupport', TJSONBool.Create(True))))));
   Params := TJSONObject.Create;
   Params.AddPair('processId', TJSONNull.Create);
   Params.AddPair('rootUri', TJSONNull.Create);
   Params.AddPair('clientInfo', TJSONObject.Create(TJSONPair.Create('name', 'Argus IDE Expert')));
   Params.AddPair('capabilities', Capabilities);
+  // Nur den Zähler einfangen, nicht die Sitzung: Der Lese-Thread kann die Sitzung überleben.
+  Refresh := FRefresh;
+  FClient.OnServerMessage :=
+    procedure(const AMethod: string; const AParams: TJSONValue)
+    begin
+      if AMethod = 'workspace/diagnostic/refresh' then
+        Refresh.Signal;
+    end;
   // Ohne Arbeitsbereich leitet der Server ihn aus den geöffneten Dateien ab.
   Response := FClient.Request('initialize', Params, 15000);
   Response.Free;
@@ -265,6 +342,7 @@ begin
   Document.AddPair('uri', PathToUri(AFileName));
   if not FDocuments.TryGetValue(Key, State) then
   begin
+    State.FileName := AFileName;
     State.Version := 1;
     State.Text := AText;
     FDocuments.Add(Key, State);
@@ -377,6 +455,122 @@ begin
   finally
     Response.Free;
   end;
+end;
+
+function TLspSession.DocumentDiagnostics(const AFileName, APreviousResultId: string;
+  ATimeoutMs: Cardinal): TLspDiagnosticReport;
+var
+  Params: TJSONObject;
+  Response: TJSONValue;
+begin
+  Params := TJSONObject.Create;
+  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  if APreviousResultId <> '' then
+    Params.AddPair('previousResultId', APreviousResultId);
+  Response := FClient.Request('textDocument/diagnostic', Params, ATimeoutMs);
+  try
+    if Response is TJSONObject then
+      Result := TLspDiagnosticReport.FromJson(TJSONObject(Response), AFileName)
+    else
+    begin
+      Result := Default(TLspDiagnosticReport);
+      Result.FileName := AFileName;
+    end;
+  finally
+    Response.Free;
+  end;
+end;
+
+function TLspSession.WorkspaceDiagnostics(const APrevious: TArray<TLspDiagnosticReport>;
+  ATimeoutMs: Cardinal): TArray<TLspDiagnosticReport>;
+var
+  Params: TJSONObject;
+  Previous: TJSONArray;
+  Known: TLspDiagnosticReport;
+  Response, Items, Item: TJSONValue;
+  Report: TLspDiagnosticReport;
+begin
+  Result := nil;
+  Previous := TJSONArray.Create;
+  for Known in APrevious do
+    if Known.ResultId <> '' then
+      Previous.AddElement(TJSONObject.Create.AddPair('uri', PathToUri(Known.FileName))
+        .AddPair('value', Known.ResultId));
+  Params := TJSONObject.Create;
+  Params.AddPair('previousResultIds', Previous);
+  Response := FClient.Request('workspace/diagnostic', Params, ATimeoutMs);
+  try
+    if not (Response is TJSONObject) then
+      Exit;
+    Items := TJSONObject(Response).GetValue('items');
+    if Items is TJSONArray then
+      for Item in TJSONArray(Items) do
+        if Item is TJSONObject then
+        begin
+          Report := TLspDiagnosticReport.FromJson(TJSONObject(Item), '');
+          if Report.FileName <> '' then
+            Result := Result + [Report];
+        end;
+  finally
+    Response.Free;
+  end;
+end;
+
+procedure TLspSession.Close(const AFileName: string);
+var
+  Key: string;
+begin
+  Key := AnsiLowerCase(AFileName);
+  if not FDocuments.ContainsKey(Key) then
+    Exit;
+  FDocuments.Remove(Key);
+  FClient.Notify('textDocument/didClose', TJSONObject.Create(TJSONPair.Create('textDocument',
+    TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))))));
+end;
+
+function TLspSession.SyncedFiles: TArray<string>;
+var
+  State: TDocumentState;
+begin
+  Result := nil;
+  for State in FDocuments.Values do
+    Result := Result + [State.FileName];
+end;
+
+function TLspSession.SyncedText(const AFileName: string; out AText: string): Boolean;
+var
+  State: TDocumentState;
+begin
+  Result := FDocuments.TryGetValue(AnsiLowerCase(AFileName), State);
+  if Result then
+    AText := State.Text
+  else
+    AText := '';
+end;
+
+function TLspSession.RefreshCount: Integer;
+begin
+  Result := FRefresh.Count;
+end;
+
+{ TLspDiagnosticReport }
+
+class function TLspDiagnosticReport.FromJson(const AReport: TJSONObject; const AFileName: string): TLspDiagnosticReport;
+var
+  Items: TJSONValue;
+  Uri: string;
+begin
+  Result := Default(TLspDiagnosticReport);
+  Uri := AReport.GetValue<string>('uri', '');
+  if Uri <> '' then
+    Result.FileName := TLspSession.UriToPath(Uri)
+  else
+    Result.FileName := AFileName;
+  Result.ResultId := AReport.GetValue<string>('resultId', '');
+  Result.Unchanged := AReport.GetValue<string>('kind', 'full') = 'unchanged';
+  Items := AReport.GetValue('items');
+  if Items is TJSONArray then
+    Result.Problems := TArgusProblem.ListFromJson(TJSONArray(Items));
 end;
 
 { TLspHoverParts }

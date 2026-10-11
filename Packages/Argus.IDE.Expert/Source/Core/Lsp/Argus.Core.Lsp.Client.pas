@@ -6,7 +6,8 @@
 // gerahmte Bytes), empfangene Bytes kommen über Receive herein, auch in
 // beliebigen Stücken und aus einem anderen Thread.
 // Anfragen des Servers (z. B. window/workDoneProgress/create) beantwortet der
-// Client mit null; Benachrichtigungen ignoriert er.
+// Client mit null; Anfragen und Benachrichtigungen gehen außerdem an
+// OnServerMessage (im Lese-Thread, z. B. workspace/diagnostic/refresh, #398).
 
 interface
 
@@ -18,6 +19,8 @@ uses
 
 type
   TLspSendProc = reference to procedure(const ABytes: TBytes);
+  /// <summary>Anfrage oder Benachrichtigung des Servers; läuft im Lese-Thread, AParams gehört dem Client.</summary>
+  TLspServerMessageProc = reference to procedure(const AMethod: string; const AParams: TJSONValue);
 
   ELspClientError = class(Exception);
 
@@ -38,6 +41,7 @@ type
     FNextId: Integer;
     FBuffer: TBytes;
     FClosed: Boolean;
+    FOnServerMessage: TLspServerMessageProc;
     procedure SendText(const AText: string);
     procedure HandleMessage(const AText: string);
     function TakeMessage(out AText: string): Boolean;
@@ -59,6 +63,8 @@ type
     /// <summary>Verbindung beendet: Wartende Anfragen schlagen fehl, neue auch.</summary>
     procedure Close;
     property Closed: Boolean read FClosed;
+    /// <summary>Vor dem ersten Receive setzen.</summary>
+    property OnServerMessage: TLspServerMessageProc read FOnServerMessage write FOnServerMessage;
   end;
 
 implementation
@@ -204,6 +210,14 @@ begin
     IdValue := Message.GetValue('id');
     if Message.GetValue('method') <> nil then
     begin
+      if Assigned(FOnServerMessage) then
+        try
+          FOnServerMessage(Message.GetValue<string>('method', ''), Message.GetValue('params'));
+        except
+          // Ein Fehler im Empfänger darf den Lese-Thread nicht beenden.
+          on Exception do
+            ;
+        end;
       // Anfrage des Servers: mit null beantworten, damit er nicht wartet.
       if IdValue <> nil then
       begin

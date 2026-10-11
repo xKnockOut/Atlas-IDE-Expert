@@ -65,6 +65,8 @@ type
     PairColors: Boolean;
     /// <summary>Blocklinien in den Paarfarben statt der Strukturhervorhebung der IDE (#514).</summary>
     PairGuides: Boolean;
+    /// <summary>Probleme im Editor unterstreichen und im Meldungsfenster auflisten (#398).</summary>
+    Problems: Boolean;
     /// <summary>Syntaxprüfung des Compilers nach dem Speichern (#548).</summary>
     CheckOnSave: Boolean;
     /// <summary>Wartezeit nach dem letzten Speichern.</summary>
@@ -111,6 +113,7 @@ begin
   Result.ReloadExternal := True;
   Result.PairColors := True;
   Result.PairGuides := True;
+  Result.Problems := True;
   Result.CheckOnSave := True;
   Result.CheckOnSaveDelayMs := 2000;
   Result.CheckOnSaveMaxMs := 1500;
@@ -148,6 +151,7 @@ begin
   ReloadExternal := AStore.ReadInteger('ReloadExternal', BoolValue(Default.ReloadExternal)) <> 0;
   PairColors := AStore.ReadInteger('PairColors', BoolValue(Default.PairColors)) <> 0;
   PairGuides := AStore.ReadInteger('PairGuides', BoolValue(Default.PairGuides)) <> 0;
+  Problems := AStore.ReadInteger('Problems', BoolValue(Default.Problems)) <> 0;
   CheckOnSave := AStore.ReadInteger('CheckOnSave', BoolValue(Default.CheckOnSave)) <> 0;
   CheckOnSaveDelayMs := AStore.ReadInteger('CheckOnSaveDelayMs', Default.CheckOnSaveDelayMs);
   CheckOnSaveMaxMs := AStore.ReadInteger('CheckOnSaveMaxMs', Default.CheckOnSaveMaxMs);
@@ -173,6 +177,7 @@ begin
   AStore.WriteInteger('ReloadExternal', BoolValue(ReloadExternal));
   AStore.WriteInteger('PairColors', BoolValue(PairColors));
   AStore.WriteInteger('PairGuides', BoolValue(PairGuides));
+  AStore.WriteInteger('Problems', BoolValue(Problems));
   AStore.WriteInteger('CheckOnSave', BoolValue(CheckOnSave));
   AStore.WriteInteger('CheckOnSaveDelayMs', CheckOnSaveDelayMs);
   AStore.WriteInteger('CheckOnSaveMaxMs', CheckOnSaveMaxMs);
