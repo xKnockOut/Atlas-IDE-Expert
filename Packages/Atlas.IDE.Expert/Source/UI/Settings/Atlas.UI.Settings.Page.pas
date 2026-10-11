@@ -46,6 +46,7 @@ type
     FHangHint: TCheckBox;
     FReloadExternal: TCheckBox;
     FPairColors: TCheckBox;
+    FInactiveDim: TCheckBox;
     FPairGuides: TCheckBox;
     FProblems: TCheckBox;
     FCheckOnSave: TCheckBox;
@@ -163,6 +164,7 @@ begin
   FHangHint := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHangHint));
   FReloadExternal := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReload));
   FPairColors := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairs));
+  FInactiveDim := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim));
   FPairGuides := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuides));
   FProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblems));
   // Compilerprüfung nach dem Speichern (#548).
@@ -288,6 +290,7 @@ begin
   FHangHint.Checked := ASettings.HangHint;
   FReloadExternal.Checked := ASettings.ReloadExternal;
   FPairColors.Checked := ASettings.PairColors;
+  FInactiveDim.Checked := ASettings.InactiveDim;
   FPairGuides.Checked := ASettings.PairGuides;
   FProblems.Checked := ASettings.Problems;
   FCheckOnSave.Checked := ASettings.CheckOnSave;
@@ -316,6 +319,7 @@ begin
   ASettings.HangHint := FHangHint.Checked;
   ASettings.ReloadExternal := FReloadExternal.Checked;
   ASettings.PairColors := FPairColors.Checked;
+  ASettings.InactiveDim := FInactiveDim.Checked;
   ASettings.PairGuides := FPairGuides.Checked;
   ASettings.Problems := FProblems.Checked;
   ASettings.CheckOnSave := FCheckOnSave.Checked;

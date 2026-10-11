@@ -61,6 +61,10 @@ type
     function ResultId(const AFileName: string): string;
     /// <summary>Probleme der Datei ohne inaktive Bereiche und ohne Doppelte, nach Position.</summary>
     function ForFile(const AFileName: string): TArray<TAtlasProblem>;
+    /// <summary>Inaktive {$IFDEF}-Zweige der Datei (Diagnosen mit Tag Unnecessary, #615).</summary>
+    function Inactive(const AFileName: string): TArray<TAtlasProblem>;
+    /// <summary>Liegt die ganze Zeile (0-basiert) in einem inaktiven Zweig?</summary>
+    function LineInactive(const AFileName: string; ALine: Integer): Boolean;
     /// <summary>Probleme, die die Zeile (0-basiert) berühren.</summary>
     function OnLine(const AFileName: string; ALine: Integer): TArray<TAtlasProblem>;
     /// <summary>Probleme an der Stelle (0-basiert).</summary>
@@ -188,6 +192,32 @@ begin
   AEntry.Text := ANewText;
   AEntry.LinesValid := False;
   AEntry.VisibleValid := False;
+end;
+
+function TAtlasProblemStore.Inactive(const AFileName: string): TArray<TAtlasProblem>;
+var
+  Entry: TEntry;
+  Problem: TAtlasProblem;
+begin
+  Result := nil;
+  Entry := Find(AFileName);
+  if Entry = nil then
+    Exit;
+  for Problem in Entry.Atlas do
+    if Problem.Unnecessary then
+      Result := Result + [Problem];
+end;
+
+function TAtlasProblemStore.LineInactive(const AFileName: string; ALine: Integer): Boolean;
+var
+  Problem: TAtlasProblem;
+begin
+  // Ein Bereich beginnt hinter der Direktive, die den Zweig abschaltet, und endet vor der nächsten:
+  // Die Zeilen dazwischen sind ganz inaktiv, die Zeilen der Direktiven selbst nicht.
+  Result := False;
+  for Problem in Inactive(AFileName) do
+    if (ALine > Problem.StartLine) and (ALine < Problem.EndLine) then
+      Exit(True);
 end;
 
 procedure TAtlasProblemStore.Edit(const AFileName, ANewText: string);

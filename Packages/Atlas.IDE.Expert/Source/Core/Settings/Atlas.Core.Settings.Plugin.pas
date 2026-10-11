@@ -73,6 +73,8 @@ type
     ReloadExternal: Boolean;
     /// <summary>Klammer- und Blockpaare nach Tiefe färben (#514).</summary>
     PairColors: Boolean;
+    /// <summary>Inaktive {$IFDEF}-Zweige im Editor ausgrauen (#615).</summary>
+    InactiveDim: Boolean;
     /// <summary>Pfad zu AtlasServer.exe; leer: neben dem Plugin bzw. Output\Win64\Debug\Bin.</summary>
     ServerPath: string;
     /// <summary>Blocklinien in den Paarfarben statt der Strukturhervorhebung der IDE (#514).</summary>
@@ -129,6 +131,7 @@ begin
   Result.HangHint := True;
   Result.ReloadExternal := True;
   Result.PairColors := True;
+  Result.InactiveDim := True;
   Result.ServerPath := '';
   Result.PairGuides := True;
   Result.Problems := True;
@@ -174,6 +177,7 @@ begin
   HangHint := AStore.ReadInteger('HangHint', BoolValue(Default.HangHint)) <> 0;
   ReloadExternal := AStore.ReadInteger('ReloadExternal', BoolValue(Default.ReloadExternal)) <> 0;
   PairColors := AStore.ReadInteger('PairColors', BoolValue(Default.PairColors)) <> 0;
+  InactiveDim := AStore.ReadInteger('InactiveDim', BoolValue(Default.InactiveDim)) <> 0;
   ServerPath := Trim(AStore.ReadString('ServerPath', Default.ServerPath));
   PairGuides := AStore.ReadInteger('PairGuides', BoolValue(Default.PairGuides)) <> 0;
   Problems := AStore.ReadInteger('Problems', BoolValue(Default.Problems)) <> 0;
@@ -206,6 +210,7 @@ begin
   AStore.WriteInteger('HangHint', BoolValue(HangHint));
   AStore.WriteInteger('ReloadExternal', BoolValue(ReloadExternal));
   AStore.WriteInteger('PairColors', BoolValue(PairColors));
+  AStore.WriteInteger('InactiveDim', BoolValue(InactiveDim));
   AStore.WriteString('ServerPath', Trim(ServerPath));
   AStore.WriteInteger('PairGuides', BoolValue(PairGuides));
   AStore.WriteInteger('Problems', BoolValue(Problems));
