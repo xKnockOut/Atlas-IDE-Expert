@@ -900,6 +900,14 @@ var
           if not TUsesClauses.AddUnit(ATree.Tokens, Context.Offset, UnitInfo.UnitName, #13#10, Edit) then
             Exit;
           Before := List.Count;
+          // Add liest Member und Quelle: für den Import aus dem Indexsymbol, nicht vom vorigen
+          // Eintrag (sonst fehlten z. B. die Klammern bei ShowMessage aus Vcl.Dialogs).
+          Member := Default(TResolvedSymbol);
+          Member.Name := Symbol.Name;
+          Member.MinArgs := Symbol.MinArgs;
+          Member.MaxArgs := Symbol.MaxArgs;
+          SourceFile := UnitInfo.FileName;
+          SourcePosition := Symbol.SelectionRange.StartPos;
           // Eingebundenes zuerst, dann Projekt-Units, dann RTL/VCL und andere Bibliotheken.
           if UnitInfo.Library_ then
             Add(Symbol.Name, UnitInfo.UnitName + ' (uses ergänzen)', KindOf(Symbol.Kind), 200, [Edit])
