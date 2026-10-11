@@ -285,7 +285,7 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 |---|---|---|
 | X1 | Mehrere Units öffnen (gespeichert), im Terminal `git checkout` eines Branches, der sie ändert; zurück in die IDE | Kein Dialog „time/date changed. Reload?“; Editor zeigt den neuen Stand; Meldungsfenster, Gruppe „Atlas“: „Atlas: n Dateien neu geladen“ mit den Dateinamen |
 | X2 | Nach X1 im Editor | Cursor und sichtbarer Bereich wie vorher (gleiche Zeile) |
-| X3 | Eine oder mehrere Units mit ungespeicherten Änderungen, Dateien extern ändern | Ein Sammeldialog „Atlas: Außerhalb geänderte Dateien“ listet sie; Klick zeigt den Unterschied (- Editor, + Platte); „Behalten“ lässt die Puffer unverändert, „Ausgewählte/Alle neu laden“ lädt sie neu (Meldung „… neu geladen, Änderungen im Editor verworfen“) |
+| X3 | Eine Unit mit ungespeicherten Änderungen, Datei extern ändern, zurück in die IDE | Atlas fasst den Puffer nicht an; im Meldungsfenster „… hat ungespeicherte Änderungen; die IDE fragt nach“ und „Atlas: Unterschied in … (- Editor, + Platte)“ mit den geänderten Zeilen; danach die Rückfrage der IDE (mit „Alle Ja/Alle Nein“) |
 | X4 | Offene Unit extern löschen | Meldung „… existiert nicht mehr“, Tab bleibt offen |
 | X5 | Unit in der IDE speichern | Kein Neuladen, Rückgängig bleibt erhalten |
 | X6 | Optionen › Atlas › „Außerhalb geänderte Dateien … neu laden“ aus, X1 wiederholen | Wieder die Rückfragen der IDE |

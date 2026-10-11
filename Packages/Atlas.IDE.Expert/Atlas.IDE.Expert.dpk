@@ -106,7 +106,6 @@ contains
   Atlas.IDE.Editor.Structure in 'Source\IDE\Editor\Atlas.IDE.Editor.Structure.pas',
   Atlas.IDE.Files.DirtyExport in 'Source\IDE\Files\Atlas.IDE.Files.DirtyExport.pas',
   Atlas.Core.Files.TextDiff in 'Source\Core\Files\Atlas.Core.Files.TextDiff.pas',
-  Atlas.UI.Files.ReloadDialog in 'Source\UI\Files\Atlas.UI.Files.ReloadDialog.pas',
   Atlas.IDE.Problems.Painter in 'Source\IDE\Problems\Atlas.IDE.Problems.Painter.pas',
   Atlas.IDE.Problems.MessageList in 'Source\IDE\Problems\Atlas.IDE.Problems.MessageList.pas',
   Atlas.IDE.Problems.Controller in 'Source\IDE\Problems\Atlas.IDE.Problems.Controller.pas',
