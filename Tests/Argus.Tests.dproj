@@ -263,6 +263,9 @@
         <DCCReference Include="IDE.Expert\Argus.Core.Commands.Palette.Tests.pas"/>
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Editor\Argus.Core.Editor.Pairs.pas"/>
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Editor\Argus.Core.Editor.Guides.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Problems\Argus.Core.Problems.Contract.pas"/>
+        <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Problems\Argus.Core.Problems.Store.pas"/>
+        <DCCReference Include="IDE.Expert\Argus.Core.Problems.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Argus.Core.Editor.Pairs.Tests.pas"/>
         <DCCReference Include="..\Packages\Argus.IDE.Expert\Source\Core\Build\Argus.Core.Build.Messages.pas"/>
         <DCCReference Include="IDE.Expert\Argus.Core.Build.Messages.Tests.pas"/>

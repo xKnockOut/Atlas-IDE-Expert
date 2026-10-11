@@ -17,6 +17,8 @@ type
     procedure AnswersServerRequestWithNull;
     [Test]
     procedure RejectsRequestsAfterClose;
+    [Test]
+    procedure ForwardsServerMessagesToHandler;
   end;
 
   [TestFixture]
@@ -32,6 +34,10 @@ type
     procedure MapsEditorColumnsWithTabs;
     [Test]
     procedure SendsOpenOnceAndChangeOnlyWhenTextChanged;
+    [Test]
+    procedure ClosesSyncedDocumentsAndListsThem;
+    [Test]
+    procedure InitializeAnnouncesPullDiagnosticsAndCountsRefresh;
   end;
 
   [TestFixture]
@@ -41,6 +47,8 @@ type
     [Test]
     [IgnoreMemoryLeaks]
     procedure HoverAndDefinitionAgainstServer;
+    [Test]
+    procedure PullsDiagnosticsAgainstServer;
   end;
 
 implementation
@@ -52,7 +60,8 @@ uses
   System.Generics.Collections,
   Argus.Core.Lsp.Client,
   Argus.Core.Lsp.Session,
-  Argus.Core.Lsp.Adapters.ServerProcess;
+  Argus.Core.Lsp.Adapters.ServerProcess,
+  Argus.Core.Problems.Contract;
 
 // Liest die JSON-Nachricht aus gerahmten Bytes.
 function Unframe(const ABytes: TBytes): TJSONObject;
@@ -162,6 +171,42 @@ begin
     Assert.AreEqual('{"jsonrpc":"2.0","id":"p1","result":null}', Sent[0]);
   finally
     Client.Free;
+    Sent.Free;
+  end;
+end;
+
+procedure TLspClientTests.ForwardsServerMessagesToHandler;
+var
+  Client: TLspClient;
+  Sent, Seen: TList<string>;
+  Incoming: TBytes;
+begin
+  Sent := TList<string>.Create;
+  Seen := TList<string>.Create;
+  Client := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    begin
+      Sent.Add(TEncoding.UTF8.GetString(ABytes));
+    end);
+  try
+    Client.OnServerMessage :=
+      procedure(const AMethod: string; const AParams: TJSONValue)
+      begin
+        if AParams <> nil then
+          Seen.Add(AMethod + ' ' + AParams.ToJSON)
+        else
+          Seen.Add(AMethod);
+      end;
+    Incoming := TLspClient.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}') +
+      TLspClient.Frame('{"jsonrpc":"2.0","method":"window/logMessage","params":{"type":3}}');
+    Client.Receive(Incoming, Length(Incoming));
+    Assert.AreEqual(2, Integer(Seen.Count));
+    Assert.AreEqual('workspace/diagnostic/refresh', Seen[0]);
+    Assert.AreEqual('window/logMessage {"type":3}', Seen[1]);
+    Assert.AreEqual(1, Integer(Sent.Count), 'Anfrage weiter mit null beantwortet');
+  finally
+    Client.Free;
+    Seen.Free;
     Sent.Free;
   end;
 end;
@@ -296,6 +341,90 @@ begin
   end;
 end;
 
+procedure TLspSessionTests.ClosesSyncedDocumentsAndListsThem;
+var
+  Client: TLspClient;
+  Session: TLspSession;
+  Methods: TList<string>;
+  Text: string;
+begin
+  Methods := TList<string>.Create;
+  Client := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    var
+      Message: TJSONObject;
+    begin
+      Message := Unframe(ABytes);
+      try
+        Methods.Add(Message.GetValue<string>('method') + ' ' + Message.GetValue<string>('params.textDocument.uri', ''));
+      finally
+        Message.Free;
+      end;
+    end);
+  Session := TLspSession.Create(Client);
+  try
+    Session.Sync('C:\P\A.pas', 'unit A;');
+    Session.Sync('C:\P\B.pas', 'unit B;');
+    Assert.AreEqual(2, Integer(Length(Session.SyncedFiles)));
+    Assert.IsTrue(Session.SyncedText('c:\p\b.pas', Text));
+    Assert.AreEqual('unit B;', Text);
+    Session.Close('c:\p\a.pas');
+    Session.Close('C:\P\X.pas');
+    Assert.AreEqual(3, Integer(Methods.Count), 'nur eine didClose');
+    Assert.AreEqual('textDocument/didClose file:///c%3A/p/a.pas', Methods[2]);
+    Assert.AreEqual(1, Integer(Length(Session.SyncedFiles)));
+    Assert.AreEqual('C:\P\B.pas', Session.SyncedFiles[0]);
+    Assert.IsFalse(Session.SyncedText('C:\P\A.pas', Text));
+    // Nach didClose wieder didOpen.
+    Session.Sync('C:\P\A.pas', 'unit A;');
+    Assert.StartsWith('textDocument/didOpen', Methods[3]);
+  finally
+    Session.Free;
+    Client.Free;
+    Methods.Free;
+  end;
+end;
+
+procedure TLspSessionTests.InitializeAnnouncesPullDiagnosticsAndCountsRefresh;
+var
+  Client: TLspClient;
+  Session: TLspSession;
+  Capabilities: string;
+begin
+  Client := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    var
+      Message: TJSONObject;
+      Reply: TBytes;
+    begin
+      Message := Unframe(ABytes);
+      try
+        if Message.GetValue<string>('method', '') = 'initialize' then
+        begin
+          Capabilities := Message.GetValue<TJSONObject>('params.capabilities').ToJSON;
+          Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
+            [Message.GetValue<Integer>('id')]));
+          Client.Receive(Reply, Length(Reply));
+        end;
+      finally
+        Message.Free;
+      end;
+    end);
+  Session := TLspSession.Create(Client);
+  try
+    Session.Initialize;
+    Assert.Contains(Capabilities, '"diagnostic":{"dynamicRegistration":false');
+    Assert.Contains(Capabilities, '"workspace":{"diagnostics":{"refreshSupport":true}}');
+    Assert.AreEqual(0, Session.RefreshCount);
+    Client.Receive(TLspClient.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}'),
+      Length(TLspClient.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}')));
+    Assert.AreEqual(1, Session.RefreshCount);
+  finally
+    Session.Free;
+    Client.Free;
+  end;
+end;
+
 { TLspServerProcessTests }
 
 procedure TLspServerProcessTests.HoverAndDefinitionAgainstServer;
@@ -334,6 +463,49 @@ begin
       Assert.IsTrue(Session.Definition(FileName, UnitText, 10, 3, Location));
       Assert.AreEqual(4, Location.Line);
       Assert.IsTrue(SameText(FileName, Location.FileName), Location.FileName);
+    finally
+      Session.Free;
+    end;
+  finally
+    Server.Free;
+  end;
+end;
+
+procedure TLspServerProcessTests.PullsDiagnosticsAgainstServer;
+const
+  UnitText =
+    'unit ProbeFehler;'#13#10 +
+    'interface'#13#10 +
+    'implementation'#13#10 +
+    'procedure P;'#13#10 +
+    'begin'#13#10 +
+    '  if then'#13#10 +
+    'end;'#13#10 +
+    'end.';
+var
+  ServerExe, FileName: string;
+  Server: TLspServerProcess;
+  Session: TLspSession;
+  Report, Again: TLspDiagnosticReport;
+begin
+  ServerExe := TPath.Combine(ExtractFilePath(ParamStr(0)), 'ArgusServer.exe');
+  if not FileExists(ServerExe) then
+    Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + ServerExe);
+  FileName := TPath.Combine(TPath.GetTempPath, 'ArgusPluginProbeFehler.pas');
+  Server := TLspServerProcess.Create(ServerExe, '');
+  try
+    Session := TLspSession.Create(Server.Client, 5000);
+    try
+      Session.Initialize;
+      Session.Sync(FileName, UnitText);
+      Report := Session.DocumentDiagnostics(FileName, '', 10000);
+      Assert.IsFalse(Report.Unchanged);
+      Assert.IsTrue(Length(Report.Problems) > 0, 'Syntaxfehler gemeldet');
+      Assert.IsTrue(Report.Problems[0].Severity = TArgusProblemSeverity.Error);
+      Assert.AreEqual(5, Report.Problems[0].StartLine);
+      Assert.AreNotEqual('', Report.ResultId);
+      Again := Session.DocumentDiagnostics(FileName, Report.ResultId, 10000);
+      Assert.IsTrue(Again.Unchanged, 'gleiche Version: unverändert');
     finally
       Session.Free;
     end;

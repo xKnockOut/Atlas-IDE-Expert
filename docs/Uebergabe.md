@@ -171,7 +171,11 @@
 - **Farbfehler im Editor behoben (`d93a834f`):** Klammerfarben (#514) und Vorschau (#434) ließen ihre Textfarbe im DC stehen; beim Neuzeichnen einzelner Bereiche wurden Teile von Bezeichnern in Paarfarbe gezeichnet. Jetzt direkt im DC zwischen SaveDC/RestoreDC.
 - **Klammerfarben, zweiter Teil (`f8125482`):** Die IDE meldet beim Neuzeichnen von Teilbereichen nicht immer die Zeile des Laufs. Eingefärbt wird nur, wenn der Lauf an seiner Spalte in der analysierten Zeile steht (`TArgusPairs.DisplayLine/RunMatches`).
 - **Blocklinien (`e8e021d0`):** Argus zeichnet Blocklinien in den Paarfarben (`Argus.Core.Editor.Guides`, PaintLine in `Argus.IDE.Editor.Pairs`) und schaltet die Strukturhervorhebung der IDE per Registry ab (`Argus.IDE.Editor.Structure`, Merker `IdeStructureDisabled` unter `HKCU\Software\Argus\IdePlugin`). Die IDE schreibt den Schalter beim Beenden nicht zurück (geprüft). Testfälle KP9–KP13.
-- **Plugin beim User:** am 11.10.2026 um 03:10 aktualisiert.
+- **Probleme im Editor (#398, offene Teile von #528/#548):**
+  - Plugin holt Diagnosen per Pull (`TLspSession.DocumentDiagnostics/WorkspaceDiagnostics`, Capabilities `textDocument.diagnostic` und `workspace.diagnostics.refreshSupport`; der Server pusht dann nicht mehr). `TLspClient.OnServerMessage` zählt `workspace/diagnostic/refresh` (`TLspSession.RefreshCount`).
+  - `Argus.Core.Problems.Contract/Store` (Markierungen wandern mit, dcc bis zum nächsten Compile blass), `Argus.IDE.Problems.Controller` (Timer 250 ms, Dokument-Thread, Workspace-Thread mit Long-Polling, didClose für geschlossene Dateien; Manager.StopSession hält die Threads an und schließt vorher die Verbindung), `Painter` (Wellenlinien), `MessageList` (Gruppe „Argus-Probleme“).
+  - Hover-Tooltip zeigt Probleme oben, auch ohne Bezeichner. Einstellung `Problems` (Standard an). Testfälle PR1–PR10 stehen aus.
+- **Plugin beim User:** am 11.10.2026 um 10:27 aktualisiert.
 - **Achtung:** In `Argus.Common.Compiler.OutputParser.pas` stehen Testzeilen des Users (verschachtelte begin/end); nicht committen.
 - **Neu in `update-plugin.ps1`:** sichert `.dproj`/`.dpk` vor dem Bau und schreibt sie danach zurück.
 - **Weiter:**

@@ -21,7 +21,9 @@ type
     SettingsCheckDelay, SettingsCheckMax, CheckOnSaveDisabled, PaletteCheckNow,
     HoverInheritance, HoverTargetType, HoverPinned, HoverGoTo, HoverUsages, HoverUsagesCount, HoverCopy, HoverHelp, HoverUsagesOf,
     KindClass, KindClassRef, KindObject, KindRecord, KindInterface, KindHelper, KindEnum, KindType, KindMethod, KindConstructor, KindRoutine, KindProperty, KindField, KindVariable, KindConstant, KindEnumMember, HoverKeyUsages, HoverKeyCopy,
-    SettingsPairGuides, PairGuidesIdeOff, PairGuidesIdeOn);
+    SettingsPairGuides, PairGuidesIdeOff, PairGuidesIdeOn,
+    SettingsProblems, ProblemsGroup, ProblemsSourceArgus, ProblemsSourceCompiler, ProblemsStale, ProblemsMore,
+    SeverityError, SeverityWarning, SeverityInformation, SeverityHint);
 
   TArgusStrings = class
   private class var
@@ -63,7 +65,10 @@ const
      'Klasse', 'Klassenreferenz', 'Objekttyp', 'Record', 'Interface', 'Helfer', 'Aufzählung', 'Typ', 'Methode', 'Konstruktor', 'Routine', 'Property', 'Feld', 'Variable', 'Konstante', 'Aufzählungswert', 'Umschalt+F12', 'Strg+C',
      'Blocklinien in den Paarfarben (schaltet die Strukturhervorhebung der IDE ab)',
      'Argus zeichnet die Blocklinien selbst und hat die Strukturhervorhebung der IDE abgeschaltet; wirkt nach dem nächsten Start von Delphi.',
-     'Argus hat die Strukturhervorhebung der IDE wieder eingeschaltet; wirkt nach dem nächsten Start von Delphi.'),
+     'Argus hat die Strukturhervorhebung der IDE wieder eingeschaltet; wirkt nach dem nächsten Start von Delphi.',
+     'Probleme im Editor unterstreichen und im Meldungsfenster auflisten (Syntax, Regeln, Compiler)',
+     'Argus-Probleme', 'Argus', 'Compiler', 'seit dem letzten Prüfen geändert', '… %d weitere Probleme',
+     'Fehler', 'Warnung', 'Info', 'Hinweis'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -86,7 +91,10 @@ const
      'Class', 'Class reference', 'Object type', 'Record', 'Interface', 'Helper', 'Enumeration', 'Type', 'Method', 'Constructor', 'Routine', 'Property', 'Field', 'Variable', 'Constant', 'Enumeration value', 'Shift+F12', 'Ctrl+C',
      'Block lines in the pair colours (switches off the IDE''s structural highlighting)',
      'Argus draws the block lines itself and switched off the IDE''s structural highlighting; takes effect after the next start of Delphi.',
-     'Argus switched the IDE''s structural highlighting back on; takes effect after the next start of Delphi.'));
+     'Argus switched the IDE''s structural highlighting back on; takes effect after the next start of Delphi.',
+     'Underline problems in the editor and list them in the message view (syntax, rules, compiler)',
+     'Argus problems', 'Argus', 'Compiler', 'changed since the last check', '… %d more problems',
+     'Error', 'Warning', 'Info', 'Hint'));
 
 { TArgusStrings }
 

@@ -226,6 +226,21 @@ Vorbereitung: Diagnoseprotokoll an (`HKCU\Software\Argus\IdePlugin`, DWORD `Diag
 
 Abbruch mit Grund im Meldungsfenster („Argus“) ist im Dienst vorhanden und getestet; einen Teilnehmer, der abbricht, bringen erst #529/#530.
 
+## Probleme im Editor (#398, #528, #548)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PR1 | In einer Unit `if then` tippen und kurz warten | Nach etwa einer halben Sekunde rote Wellenlinie unter der Stelle |
+| PR2 | Maus über die Wellenlinie, auch über `;` oder Leerraum | Tooltip mit roter Leiste, Meldung, darunter „Argus“; über einem Bezeichner zusätzlich der normale Hover darunter |
+| PR3 | Regeltreffer (z. B. unbenutzte Variable) | Gelbe Wellenlinie, Tooltip mit Regel-ID in Klammern |
+| PR4 | Oberhalb eines Problems Zeilen einfügen | Die Markierung wandert sofort mit, ohne zu flackern |
+| PR5 | Strg+F9 mit einem Compilerfehler | Rote Wellenlinie an der Stelle des dcc-Fehlers, im Tooltip „Compiler“ |
+| PR6 | Danach in der Zeile tippen | Compilermarkierung wird blass („seit dem letzten Prüfen geändert“), bis zum nächsten Compile |
+| PR7 | Meldungsfenster, Reiter „Argus-Probleme“ | Probleme aller Projektdateien (auch nicht geöffneter), ohne Compilermeldungen; Doppelklick springt zur Stelle |
+| PR8 | Problem beheben | Wellenlinie und Eintrag in der Liste verschwinden |
+| PR9 | Datei im Editor schließen, außerhalb ändern | Liste zeigt den Stand der Datei auf der Platte |
+| PR10 | Optionen › Argus › „Probleme im Editor unterstreichen …“ aus | Keine Wellenlinien, Liste leer, keine Probleme im Tooltip |
+
 ## Klammer- und Blockpaare (#514)
 
 | Nr. | Schritte | Erwartet |
