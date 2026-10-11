@@ -259,6 +259,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.Hangs.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.ExternalChanges.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Files.ExternalChanges.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.TextDiff.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Commands\Atlas.Core.Commands.Palette.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.Palette.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Pairs.pas"/>

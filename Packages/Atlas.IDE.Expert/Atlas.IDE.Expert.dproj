@@ -156,6 +156,8 @@
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Pairs.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Structure.pas"/>
         <DCCReference Include="Source\IDE\Files\Atlas.IDE.Files.DirtyExport.pas"/>
+        <DCCReference Include="Source\Core\Files\Atlas.Core.Files.TextDiff.pas"/>
+        <DCCReference Include="Source\UI\Files\Atlas.UI.Files.ReloadDialog.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Painter.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.MessageList.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Controller.pas"/>

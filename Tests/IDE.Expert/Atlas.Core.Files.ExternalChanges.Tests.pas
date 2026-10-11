@@ -21,13 +21,16 @@ type
     procedure FirstSaveOfNewFileIsNoChange;
     [Test]
     procedure ChangeBackBeforeQuietCancels;
+    [Test]
+    procedure DiffShowsChangedLinesOnly;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Files.ExternalChanges;
+  Atlas.Core.Files.ExternalChanges,
+  Atlas.Core.Files.TextDiff;
 
 function F(const AName: string; AStamp: Int64; AModified: Boolean = False; AExists: Boolean = True): TAtlasObservedFile;
 begin
@@ -125,6 +128,17 @@ begin
   finally
     Changes.Free;
   end;
+end;
+
+procedure TAtlasExternalChangesTests.DiffShowsChangedLinesOnly;
+var
+  Lines: TArray<string>;
+begin
+  Assert.AreEqual(0, Integer(Length(TAtlasTextDiff.Lines('a'#13#10'b', 'a'#10'b'))), 'gleich trotz Zeilenenden');
+  Lines := TAtlasTextDiff.Lines('a'#10'b'#10'c', 'a'#10'B'#10'c');
+  Assert.AreEqual('Zeile 2:|- b|+ B', string.Join('|', Lines));
+  Lines := TAtlasTextDiff.Lines('a'#10'c', 'a'#10'b'#10'c');
+  Assert.AreEqual('ab Zeile 2:|+ b', string.Join('|', Lines));
 end;
 
 initialization

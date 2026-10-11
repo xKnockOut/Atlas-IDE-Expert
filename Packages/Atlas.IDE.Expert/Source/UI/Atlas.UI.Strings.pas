@@ -25,7 +25,9 @@ type
     SettingsProblems, ProblemsGroup, ProblemsSourceAtlas, ProblemsSourceCompiler, ProblemsStale, ProblemsMore,
     SeverityError, SeverityWarning, SeverityInformation, SeverityHint,
     SettingsServerPath, SettingsServerFound, SettingsServerMissing, SettingsServerFilter,
-    HelpInsightIdeOff, HelpInsightIdeOn);
+    HelpInsightIdeOff, HelpInsightIdeOn,
+    ReloadDialogTitle, ReloadDialogHint, ReloadDialogSelected, ReloadDialogAll, ReloadDialogKeep, ReloadDialogFile,
+    ReloadDialogState, ReloadDialogDeleted, ReloadDialogModified, ReloadDialogSame, ReloadForced);
 
   TAtlasStrings = class
   private class var
@@ -75,7 +77,12 @@ const
      'Verwendet: %s (nicht gefunden; ohne Server bleibt die Code Insight der IDE aktiv)',
      'Atlas-Server|AtlasServer.exe|Programme (*.exe)|*.exe',
      'Atlas zeigt den Tooltip selbst und hat Help Insight der IDE abgeschaltet; wirkt nach dem nächsten Start von Delphi.',
-     'Atlas hat Help Insight der IDE wieder eingeschaltet; wirkt nach dem nächsten Start von Delphi.'),
+     'Atlas hat Help Insight der IDE wieder eingeschaltet; wirkt nach dem nächsten Start von Delphi.',
+     'Atlas: Außerhalb geänderte Dateien',
+     'Diese Dateien wurden außerhalb der IDE geändert und haben im Editor ungespeicherte Änderungen. ' +
+       'Neu laden verwirft die Änderungen im Editor. Eine Datei anklicken zeigt den Unterschied (- Editor, + Platte).',
+     'Ausgewählte neu laden', 'Alle neu laden', 'Behalten', 'Datei', 'Zustand', 'Datei existiert nicht mehr',
+     'ungespeicherte Änderungen', 'Kein Unterschied zum Inhalt auf der Platte.', 'Atlas: %s neu geladen, Änderungen im Editor verworfen'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -106,7 +113,12 @@ const
      'In use: %s (not found; without a server the IDE''s Code Insight stays active)',
      'Atlas server|AtlasServer.exe|Programs (*.exe)|*.exe',
      'Atlas shows the tooltip itself and switched off the IDE''s Help Insight; takes effect after the next start of Delphi.',
-     'Atlas switched the IDE''s Help Insight back on; takes effect after the next start of Delphi.'));
+     'Atlas switched the IDE''s Help Insight back on; takes effect after the next start of Delphi.',
+     'Atlas: Files changed outside the IDE',
+     'These files were changed outside the IDE and have unsaved changes in the editor. ' +
+       'Reloading discards the editor changes. Click a file to see the difference (- editor, + disk).',
+     'Reload selected', 'Reload all', 'Keep', 'File', 'State', 'File no longer exists',
+     'unsaved changes', 'No difference to the content on disk.', 'Atlas: %s reloaded, editor changes discarded'));
 
 { TAtlasStrings }
 

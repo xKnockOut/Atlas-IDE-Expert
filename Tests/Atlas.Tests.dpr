@@ -194,6 +194,7 @@ uses
   Atlas.Core.Diagnostics.Hangs.Tests in 'IDE.Expert\Atlas.Core.Diagnostics.Hangs.Tests.pas',
   Atlas.Core.Files.ExternalChanges in '..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.ExternalChanges.pas',
   Atlas.Core.Files.ExternalChanges.Tests in 'IDE.Expert\Atlas.Core.Files.ExternalChanges.Tests.pas',
+  Atlas.Core.Files.TextDiff in '..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.TextDiff.pas',
   Atlas.Core.Commands.Palette in '..\Packages\Atlas.IDE.Expert\Source\Core\Commands\Atlas.Core.Commands.Palette.pas',
   Atlas.Core.Commands.Palette.Tests in 'IDE.Expert\Atlas.Core.Commands.Palette.Tests.pas',
   Atlas.Core.Editor.Pairs in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Pairs.pas',
