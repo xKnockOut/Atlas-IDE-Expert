@@ -88,6 +88,8 @@ type
     [Test]
     procedure AppliesExternalChanges;
     [Test]
+    procedure AppliesUnsavedTextOfKnownUnits;
+    [Test]
     procedure ChangedIncludeReindexesUnit;
     [Test]
     // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
@@ -610,6 +612,31 @@ begin
     Assert.IsTrue(FIndex.FindUnit('F', U));
     Assert.IsFalse(Builder.EnsureUnit('GibtEsNicht'));
     Assert.IsFalse(Builder.EnsureUnit('System.SysUtils'));
+  finally
+    Builder.Free;
+  end;
+end;
+
+procedure TIndexBuilderTests.AppliesUnsavedTextOfKnownUnits;
+var
+  Builder: TIndexBuilder;
+  U: TUnitIndex;
+begin
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  try
+    Builder.Build(['C:\Lib\D.pas'], nil, nil);
+    // Getippt, nicht gespeichert: neue Klasse sofort im Index, Datei unverändert.
+    Assert.IsTrue(Builder.ApplyText('C:\Lib\D.pas',
+      'unit D;'#10'interface'#10'type TGetippt = class end;'#10'implementation'#10'end.'));
+    Assert.AreEqual<NativeInt>(1, Length(FIndex.FindSymbols('TGetippt')));
+    Assert.IsTrue(FIndex.FindUnit('D', U));
+    // Gleicher Text: nichts zu tun; unbekannte Datei: nichts.
+    Assert.IsFalse(Builder.ApplyText('C:\Lib\D.pas',
+      'unit D;'#10'interface'#10'type TGetippt = class end;'#10'implementation'#10'end.'));
+    Assert.IsFalse(Builder.ApplyText('C:\Lib\Neu.pas', 'unit Neu;'#10'interface'#10'implementation'#10'end.'));
+    // Schließen ohne Speichern: der Stand der Platte gilt wieder.
+    Builder.ApplyChanges([TFileChange.Create('C:\Lib\D.pas', TFileChangeKind.Changed)]);
+    Assert.AreEqual<NativeInt>(0, Length(FIndex.FindSymbols('TGetippt')));
   finally
     Builder.Free;
   end;
