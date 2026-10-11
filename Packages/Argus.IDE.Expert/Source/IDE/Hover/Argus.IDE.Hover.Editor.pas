@@ -20,6 +20,9 @@
 // Probleme (#398): Liegt unter der Maus ein Problem, zeigt der Tooltip es oben
 // an, auch ohne Bezeichner (dann nur das Problem).
 // Die IDE zeigt dann keinen eigenen Tooltip: GetHintText liefert '' (Manager).
+// Delphi 12 (#281): Tastatur-Ereignisse des Code-Editors gibt es erst ab
+// Delphi 13 (INTACodeEditorEvents370). Dort schließt der Tooltip über den
+// Tastatur-Hook, solange er sichtbar ist.
 
 interface
 
@@ -92,7 +95,9 @@ type
     FShownKey: string;
     procedure EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    {$IF CompilerVersion >= 37.0}
     procedure EditorKeyDown(const Editor: TWinControl; Key: Word; Shift: TShiftState; var Handled: Boolean);
+    {$ENDIF}
     procedure EditorScrolled(const Editor: TWinControl; const Direction: TCodeEditorScrollDirection);
     procedure EditorResized(const Editor: TWinControl);
     procedure ShowTimerTick(Sender: TObject);
@@ -139,7 +144,10 @@ uses
 
 function TArgusEditorHover.TEvents.AllowedEvents: TCodeEditorEvents;
 begin
-  Result := [cevWindowEvents, cevMouseEvents, cevKeyboardEvents];
+  Result := [cevWindowEvents, cevMouseEvents];
+  {$IF CompilerVersion >= 37.0}
+  Include(Result, cevKeyboardEvents);
+  {$ENDIF}
 end;
 
 { TArgusEditorHover.THoverKeys }
@@ -153,6 +161,16 @@ end;
 function TArgusEditorHover.THoverKeys.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
 begin
   Result := FOwner.WantsKey(AKey, AShift);
+  {$IF CompilerVersion < 37.0}
+  // Ohne Tastatur-Ereignisse des Editors: andere Tasten schließen nach der Verarbeitung (wie EditorKeyDown).
+  if not Result and (AKey <> VK_SHIFT) and (AKey <> VK_CONTROL) and (AKey <> VK_MENU) and
+    not FOwner.FHistory.Pinned then
+    TThread.ForceQueue(nil,
+      procedure
+      begin
+        FOwner.Hide;
+      end);
+  {$ENDIF}
 end;
 
 procedure TArgusEditorHover.THoverKeys.HandleKey(AKey: Word; AShift: TShiftState);
@@ -196,7 +214,9 @@ begin
   FEventsRef := FEvents;
   FEvents.OnEditorMouseMove := EditorMouseMove;
   FEvents.OnEditorMouseDown := EditorMouseDown;
+  {$IF CompilerVersion >= 37.0}
   FEvents.OnEditorKeyDown := EditorKeyDown;
+  {$ENDIF}
   FEvents.OnEditorScrolled := EditorScrolled;
   FEvents.OnEditorResized := EditorResized;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
@@ -213,7 +233,9 @@ begin
   TArgusKeyHook.Remove(FKeys);
   FEvents.OnEditorMouseMove := nil;
   FEvents.OnEditorMouseDown := nil;
+  {$IF CompilerVersion >= 37.0}
   FEvents.OnEditorKeyDown := nil;
+  {$ENDIF}
   FEvents.OnEditorScrolled := nil;
   FEvents.OnEditorResized := nil;
   FEventsRef := nil;
@@ -656,6 +678,7 @@ begin
   Hide;
 end;
 
+{$IF CompilerVersion >= 37.0}
 procedure TArgusEditorHover.EditorKeyDown(const Editor: TWinControl; Key: Word; Shift: TShiftState;
   var Handled: Boolean);
 begin
@@ -664,6 +687,7 @@ begin
     Exit;
   Hide;
 end;
+{$ENDIF}
 
 procedure TArgusEditorHover.EditorScrolled(const Editor: TWinControl; const Direction: TCodeEditorScrollDirection);
 begin
