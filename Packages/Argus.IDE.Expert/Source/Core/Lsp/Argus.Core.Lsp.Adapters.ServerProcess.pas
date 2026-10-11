@@ -5,6 +5,10 @@
 // Ausgabe an TLspClient.Receive weiter; endet der Prozess, wird der Client
 // geschlossen. stderr geht nach NUL, damit eine volle Pipe den Server nie
 // blockiert.
+// Geschrieben wird in einem eigenen Thread: Write legt die Bytes nur in eine
+// Warteschlange. Liest der Server gerade nicht (etwa beim Einlesen eines
+// großen Projekts), wartet so nie der Hauptthread der IDE an der Pipe; Anfragen
+// kehren nach ihrem Zeitlimit zurück, Benachrichtigungen sofort.
 
 interface
 
@@ -12,6 +16,7 @@ uses
   Winapi.Windows,
   System.SysUtils,
   System.Classes,
+  System.SyncObjs,
   Argus.Core.Lsp.Client;
 
 type
@@ -21,8 +26,8 @@ type
     FInputWrite: THandle;
     FOutputRead: THandle;
     FReader: TThread;
+    FWriter: TThread;
     FClient: TLspClient;
-    FWriteLock: TObject;
     procedure Write(const ABytes: TBytes);
   public
     /// <summary>Startet AExeName mit AArguments; löst bei Fehlern EOSError aus.</summary>
@@ -34,6 +39,9 @@ type
 
 implementation
 
+// Eigene Deklaration (Vista und neuer), unabhängig von der Delphi-Version.
+function CancelSynchronousIoOf(AThread: THandle): BOOL; stdcall; external kernel32 name 'CancelSynchronousIo';
+
 type
   TReaderThread = class(TThread)
   private
@@ -44,6 +52,92 @@ type
   public
     constructor Create(AHandle: THandle; AClient: TLspClient);
   end;
+
+  TWriterThread = class(TThread)
+  private
+    FHandle: THandle;
+    FClient: TLspClient;
+    FLock: TObject;
+    FQueue: TArray<TBytes>;
+    FWake: TEvent;
+  protected
+    procedure Execute; override;
+    procedure TerminatedSet; override;
+  public
+    constructor Create(AHandle: THandle);
+    destructor Destroy; override;
+    procedure Add(const ABytes: TBytes);
+    property Client: TLspClient read FClient write FClient;
+  end;
+
+{ TWriterThread }
+
+constructor TWriterThread.Create(AHandle: THandle);
+begin
+  FHandle := AHandle;
+  FLock := TObject.Create;
+  FWake := TEvent.Create(nil, False, False, '');
+  inherited Create(False);
+end;
+
+destructor TWriterThread.Destroy;
+begin
+  inherited Destroy;
+  FWake.Free;
+  FLock.Free;
+end;
+
+procedure TWriterThread.TerminatedSet;
+begin
+  inherited;
+  FWake.SetEvent;
+end;
+
+procedure TWriterThread.Add(const ABytes: TBytes);
+begin
+  TMonitor.Enter(FLock);
+  try
+    FQueue := FQueue + [ABytes];
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  FWake.SetEvent;
+end;
+
+procedure TWriterThread.Execute;
+var
+  Items: TArray<TBytes>;
+  Bytes: TBytes;
+  Written: DWORD;
+  Offset: Integer;
+begin
+  while not Terminated do
+  begin
+    FWake.WaitFor(INFINITE);
+    TMonitor.Enter(FLock);
+    try
+      Items := FQueue;
+      FQueue := nil;
+    finally
+      TMonitor.Exit(FLock);
+    end;
+    for Bytes in Items do
+    begin
+      Offset := 0;
+      while Offset < Length(Bytes) do
+      begin
+        if Terminated or not WriteFile(FHandle, Bytes[Offset], Length(Bytes) - Offset, Written, nil) then
+        begin
+          // Server nimmt nichts mehr an: Wartende Anfragen sollen nicht bis zum Zeitlimit hängen.
+          if not Terminated and (FClient <> nil) then
+            FClient.Close;
+          Exit;
+        end;
+        Inc(Offset, Integer(Written));
+      end;
+    end;
+  end;
+end;
 
 { TReaderThread }
 
@@ -80,11 +174,11 @@ var
   CommandLine: string;
 begin
   inherited Create;
-  FWriteLock := TObject.Create;
   Security := Default(TSecurityAttributes);
   Security.nLength := SizeOf(Security);
   Security.bInheritHandle := True;
-  if not CreatePipe(InputRead, FInputWrite, @Security, 0) then
+  // Großer Puffer: Ein ganzer Unit-Text passt meist hinein, ohne auf den Server zu warten.
+  if not CreatePipe(InputRead, FInputWrite, @Security, 1 shl 20) then
     RaiseLastOSError;
   if not CreatePipe(FOutputRead, OutputWrite, @Security, 0) then
     RaiseLastOSError;
@@ -113,7 +207,9 @@ begin
   end;
   CloseHandle(Info.hThread);
   FProcess := Info.hProcess;
+  FWriter := TWriterThread.Create(FInputWrite);
   FClient := TLspClient.Create(Write);
+  TWriterThread(FWriter).Client := FClient;
   FReader := TReaderThread.Create(FOutputRead, FClient);
 end;
 
@@ -121,6 +217,19 @@ destructor TLspServerProcess.Destroy;
 begin
   if FClient <> nil then
     FClient.Close;
+  // Schreib-Thread beenden; hängt er an einem Server, der nicht liest, den Server beenden.
+  if FWriter <> nil then
+  begin
+    FWriter.Terminate;
+    if WaitForSingleObject(FWriter.Handle, 1000) <> WAIT_OBJECT_0 then
+    begin
+      CancelSynchronousIoOf(FWriter.Handle);
+      if (FProcess <> 0) and (WaitForSingleObject(FWriter.Handle, 500) <> WAIT_OBJECT_0) then
+        TerminateProcess(FProcess, 1);
+    end;
+    FWriter.WaitFor;
+    FreeAndNil(FWriter);
+  end;
   // stdin schließen: Der Server sieht das Ende der Eingabe und beendet sich.
   if FInputWrite <> 0 then
     CloseHandle(FInputWrite);
@@ -138,27 +247,12 @@ begin
   if FOutputRead <> 0 then
     CloseHandle(FOutputRead);
   FClient.Free;
-  FWriteLock.Free;
   inherited;
 end;
 
 procedure TLspServerProcess.Write(const ABytes: TBytes);
-var
-  Written: DWORD;
-  Offset: Integer;
 begin
-  TMonitor.Enter(FWriteLock);
-  try
-    Offset := 0;
-    while Offset < Length(ABytes) do
-    begin
-      if not WriteFile(FInputWrite, ABytes[Offset], Length(ABytes) - Offset, Written, nil) then
-        raise ELspClientError.Create('Server nimmt keine Daten mehr an');
-      Inc(Offset, Integer(Written));
-    end;
-  finally
-    TMonitor.Exit(FWriteLock);
-  end;
+  TWriterThread(FWriter).Add(ABytes);
 end;
 
 function TLspServerProcess.Running: Boolean;
