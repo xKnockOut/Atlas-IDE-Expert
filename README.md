@@ -1,149 +1,151 @@
 # Atlas IDE Expert
 
-Experte für RAD Studio (Delphi/Object Pascal): ein IDE-Plugin mit eigener Oberfläche und ein eigener Language Server (LSP), dazu eine MCP-Schnittstelle für Claude Code. Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues); die Epics #130 bis #139 bilden die Ausbaustufen ab.
+*Deutsche Fassung: [README.de.md](README.de.md). The detailed documentation in `docs/` is in German.*
 
-## Das IDE-Plugin
+An expert for RAD Studio (Delphi/Object Pascal): an IDE plugin with its own user interface and its own language server (LSP), plus an MCP interface for Claude Code. Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues); epics #130 to #139 describe the stages.
 
-`Atlas.IDE.Expert` ersetzt in RAD Studio 13 (und 12) die eingebaute Code Insight durch eigene Fenster, die der Atlas-Server mit Daten füllt:
+## The IDE plugin
 
-- **Vervollständigung** mit Detailpanel, Filter-Chips, unscharfer Suche, lernender Reihenfolge, Postfix-Vorlagen und Vorschau im Editor
-- **Parameter-Hint** mit allen Überladungen und aktivem Parameter
-- **Hover-Tooltip** mit Deklaration, Dokumentation, anklickbaren Typen, Vererbungskette, Verlauf und Aktionen (Gehe zu, Verwendungen, Deklaration kopieren, Hilfe)
-- **Probleme im Editor**: Syntaxfehler, Regeltreffer und Compilermeldungen als Wellenlinien, im Tooltip und als Liste „Atlas-Probleme“ im Meldungsfenster, projektweit; Markierungen wandern beim Tippen mit
-- **Compilerprüfung nach dem Speichern** und Übernahme der Compilermeldungen aus dem Reiter „Build“
-- **Klammer- und Blockpaare** farbig nach Tiefe, mit eigenen Blocklinien
-- **Befehlspalette** (Strg+Umschalt+P), stilles Neuladen extern geänderter Dateien, Hänger-Wächter mit Protokoll
+`Atlas.IDE.Expert` replaces the built-in Code Insight of RAD Studio 13 (and 12) with its own windows, filled with data by the Atlas server:
 
-Installation und Einstellungen: [docs/RAD-Studio.md](docs/RAD-Studio.md). Alle Einstellungen liegen unter *Tools › Optionen › Drittanbieter › Atlas*, auch der Pfad zum Server.
+- **Code completion** with detail panel, filter chips, fuzzy matching, learning order, postfix templates and an in-editor preview
+- **Parameter hint** with all overloads and the active parameter
+- **Hover tooltip** with declaration, documentation, clickable types, inheritance chain, history and actions (go to, usages, copy declaration, help)
+- **Problems in the editor**: syntax errors, rule findings and compiler messages as squiggles, in the tooltip and as the list "Atlas-Probleme" in the message view, project-wide; marks move along while typing
+- **Compiler check after saving** and the compiler messages of the "Build" tab
+- **Bracket and block pairs** coloured by depth, with matching block lines
+- **Command palette** (Ctrl+Shift+P), silent reload of files changed outside the IDE, hang watchdog with log
+
+All settings are under *Tools › Options › Third Party › Atlas*, including the path to the server.
 
 ## Installation
 
-### IDE-Plugin für RAD Studio 13 und 12
+### IDE plugin for RAD Studio 13 and 12
 
-1. Repository klonen und `Atlas.groupproj` in RAD Studio öffnen.
-2. `Atlas.Common`, `Atlas.Windows` und `AtlasServer` für **Win64** erzeugen (alle drei für dieselbe Plattform). Ergebnis: `Output\Win64\Debug\Bin\AtlasServer.exe`. Alternativ `AtlasServer.exe` aus einem [Release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) nehmen; der Server hängt nicht von der Delphi-Version ab.
-3. `Atlas.IDE.Expert` für **Win32** erzeugen, und zwar mit der Delphi-Version, in der das Plugin laufen soll. Ergebnis: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert.bpl`.
-4. *Komponente › Packages installieren › Hinzufügen* und die BPL auswählen.
-5. Liegt der Server nicht unter `Output\…\Bin` oder neben der BPL: *Tools › Optionen › Drittanbieter › Atlas*, Feld „Atlas-Server“. Die Seite zeigt an, ob der Server gefunden wird.
-6. Delphi einmal neu starten: Atlas schaltet Help Insight und die Strukturhervorhebung der IDE ab, damit nichts doppelt erscheint; die IDE liest diese Schalter nur beim Start.
+1. Clone the repository and open `Atlas.groupproj` in RAD Studio.
+2. Build `Atlas.Common`, `Atlas.Windows` and `AtlasServer` for **Win64** (all three for the same platform). Result: `Output\Win64\Debug\Bin\AtlasServer.exe`. Alternatively take `AtlasServer.exe` from a [release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases); the server does not depend on the Delphi version.
+3. Build `Atlas.IDE.Expert` for **Win32**, with the Delphi version the plugin is meant to run in. Result: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert.bpl`.
+4. *Component › Install Packages › Add* and select the BPL.
+5. If the server is neither in `Output\…\Bin` nor next to the BPL: *Tools › Options › Third Party › Atlas*, field "Atlas-Server". The page shows whether the server is found.
+6. Restart Delphi once: Atlas switches off the IDE's Help Insight and structural highlighting so nothing appears twice; the IDE reads these switches only at startup.
 
-Einzelheiten und Fehlersuche: [docs/RAD-Studio.md](docs/RAD-Studio.md).
+Details and troubleshooting (German): [docs/RAD-Studio.md](docs/RAD-Studio.md).
 
-### Andere Editoren und ohne Editor
+### Other editors and without an editor
 
-- **VS Code:** Erweiterung `atlas-<Version>.vsix` (enthält den Server), siehe [Editors/VSCode](Editors/VSCode/README.md)
-- **Claude Code:** MCP-Werkzeuge und LSP als Plugin, siehe [Editors/ClaudeCode](Editors/ClaudeCode/README.md)
-- **Neovim:** siehe [Editors/Neovim](Editors/Neovim/README.md)
-- **CI und Kommandozeile:** `AtlasServer.exe --check`, siehe [Linter-Modus](#linter-modus)
+- **VS Code:** extension `atlas-<version>.vsix` (contains the server), see [Editors/VSCode](Editors/VSCode/README.md)
+- **Claude Code:** MCP tools and LSP as a plugin, see [Editors/ClaudeCode](Editors/ClaudeCode/README.md)
+- **Neovim:** see [Editors/Neovim](Editors/Neovim/README.md)
+- **CI and command line:** `AtlasServer.exe --check`, see [Linter mode](#linter-mode)
 
-Ausführlich: [docs/Installation.md](docs/Installation.md).
+More: [docs/Installation.md](docs/Installation.md).
 
-## Benutzerdokumentation
+## Documentation (German)
 
-- [Installation](docs/Installation.md) für VS Code, Claude Code, Neovim und andere Editoren
-- [Konfiguration](docs/Konfiguration.md) von `atlas.json` (erzeugt aus dem JSON-Schema mit `pwsh Tools/Update-ConfigDoc.ps1`)
-- [Prüfregeln](docs/Regeln.md)
-- [MCP-Werkzeuge](docs/MCP.md)
-- [Benchmark](docs/Benchmark.md) der Leistungs-Zielwerte
+- [Installation](docs/Installation.md) for VS Code, Claude Code, Neovim and other editors
+- [Configuration](docs/Konfiguration.md) of `atlas.json` (generated from the JSON schema with `pwsh Tools/Update-ConfigDoc.ps1`)
+- [Rules](docs/Regeln.md)
+- [MCP tools](docs/MCP.md)
+- [Benchmark](docs/Benchmark.md) of the performance targets
 
-## Aufbau
+## Structure
 
-| Projekt | Inhalt |
+| Project | Content |
 |---|---|
-| `Packages/Atlas.Common` | Package, frei von Windows und VCL |
-| `Packages/Atlas.Windows` | Package für Windows-spezifische Funktionen, frei von VCL |
-| `Application/AtlasServer` | Der Server (Konsolenprogramm, spricht LSP über stdin/stdout) |
-| `Packages/Atlas.IDE.Expert` | Das IDE-Plugin (Designtime-Package, Win32), Schichten `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
-| `Tests/Atlas.Tests` | DUnitX-Tests |
+| `Packages/Atlas.Common` | Package, free of Windows and VCL |
+| `Packages/Atlas.Windows` | Package for Windows-specific functions, free of VCL |
+| `Application/AtlasServer` | The server (console program, speaks LSP over stdin/stdout) |
+| `Packages/Atlas.IDE.Expert` | The IDE plugin (design-time package, Win32), layers `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
+| `Tests/Atlas.Tests` | DUnitX tests |
 
-Details zu Rollen, Benennung und Importregeln: [docs/Architektur.md](docs/Architektur.md).
+Roles, naming and import rules: [docs/Architektur.md](docs/Architektur.md).
 
-## Voraussetzungen
+## Requirements
 
-- Delphi 12 Athens oder neuer, gebaut wird derzeit mit RAD Studio 13 (Win32 und Win64). Das IDE-Plugin muss mit der Delphi-Version gebaut werden, in der es laufen soll; der Server ist davon unabhängig.
-- Das Testprojekt ist nur für Win64 eingerichtet, weil DUnitX in der Starter-Edition nur als Win64-Bibliothek vorliegt
-- DUnitX (in RAD Studio enthalten, Umgebungsvariable `$(DUnitX)` der IDE)
-- PowerShell für die Prüfskripte
+- Delphi 12 Athens or newer; currently built with RAD Studio 13 (Win32 and Win64). The IDE plugin must be built with the Delphi version it runs in; the server is independent of it.
+- The test project is set up for Win64 only, because DUnitX is available only as a Win64 library in the Starter edition
+- DUnitX (included in RAD Studio, IDE environment variable `$(DUnitX)`)
+- PowerShell for the check scripts
 
-## Bauen
+## Building
 
-In der IDE `Atlas.groupproj` öffnen und **Alle erstellen**. Die Reihenfolge Common → Windows → Server → IDE-Plugin → Tests ist in der Projektgruppe hinterlegt. Common, Windows und Server müssen für dieselbe Plattform gebaut werden, sonst findet der Server die Units der Packages nicht. Das IDE-Plugin ist nur für Win32 eingerichtet (die IDE ist 32-Bit); ein Gruppenbau für Win64 übersetzt es trotzdem mit und prüft so den Quelltext.
+Open `Atlas.groupproj` in the IDE and **Build All**. The order Common → Windows → server → IDE plugin → tests is set in the project group. Common, Windows and the server must be built for the same platform, otherwise the server does not find the package units. The IDE plugin is set up for Win32 only (the IDE is 32-bit); a group build for Win64 still compiles it and thus checks the code.
 
-Auf der Kommandozeile (RAD-Studio-Eingabeaufforderung bzw. nach `rsvars.bat`):
+On the command line (RAD Studio command prompt or after `rsvars.bat`):
 
 ```bat
 msbuild Atlas.groupproj /t:Build /p:Config=Debug /p:Platform=Win32
 ```
 
-Die Ausgabe landet in `Output\<Plattform>\<Konfiguration>\` (`Bin`, `Bpl`, `Dcp`, `Dcu`).
+Output goes to `Output\<platform>\<config>\` (`Bin`, `Bpl`, `Dcp`, `Dcu`).
 
-## Testen
+## Testing
 
 ```bat
 Output\Win64\Debug\Bin\Atlas.Tests.exe --exit:Continue
 ```
 
-Prüfskripte (laufen auch als GitHub Action):
+Check scripts (also run as GitHub Actions):
 
 ```powershell
-pwsh Tools/Check-PackageDependencies.ps1   # Packages halten ihre Abhängigkeiten ein
-pwsh Tools/Check-ConsoleOutput.ps1         # kein Write/Writeln auf stdout
+pwsh Tools/Check-PackageDependencies.ps1   # packages keep their dependencies
+pwsh Tools/Check-ConsoleOutput.ps1         # no Write/Writeln to stdout
 ```
 
 ## CI
 
-- `vscode-erweiterung.yml`: Typprüfung, Build und `.vsix` als Artefakt auf einem gehosteten Ubuntu-Runner.
-- `server.yml`: Build der Projektgruppe über das IDE-Plugin `cc.ps1` (RAD Studio Starter hat kein msbuild) und DUnitX-Tests auf einem selbst gehosteten Windows-Runner (Labels `self-hosted`, `windows`, `delphi`, im angemeldeten Benutzerkontext). Läuft nur mit Repository-Variable `DELPHI_RUNNER=true`; `CC_SCRIPT` überschreibt den Pfad zu `cc.ps1`. Ergebnisse als Check „DUnitX-Ergebnisse“ im Pull Request.
-- `package-dependencies.yml`: Package-Abhängigkeiten und stdout-Regel.
+- `vscode-erweiterung.yml`: type check, build and `.vsix` as artifact on a hosted Ubuntu runner.
+- `server.yml`: build of the project group via the IDE plugin `cc.ps1` (RAD Studio Starter has no msbuild) and DUnitX tests on a self-hosted Windows runner (labels `self-hosted`, `windows`, `delphi`, in the signed-in user context). Runs only with the repository variable `DELPHI_RUNNER=true`; `CC_SCRIPT` overrides the path to `cc.ps1`. Results as the check "DUnitX-Ergebnisse" in pull requests.
+- `package-dependencies.yml`: package dependencies and the stdout rule.
 
-## Kommandozeile
+## Command line
 
-| Parameter | Bedeutung |
+| Parameter | Meaning |
 |---|---|
-| `--log <Datei>` | Logdatei, wird fortgeschrieben |
-| `--log-level <Stufe>` | `debug`, `info` (Standard), `warning`, `error`; gilt für Logdatei und `window/logMessage` |
-| `--trace <Datei>` | Mitschnitt aller JSON-Nachrichten (`-->` empfangen, `<--` gesendet) |
+| `--log <file>` | log file, appended |
+| `--log-level <level>` | `debug`, `info` (default), `warning`, `error`; applies to the log file and `window/logMessage` |
+| `--trace <file>` | trace of all JSON messages (`-->` received, `<--` sent) |
 
-Werte gehen auch mit `=` (`--log=server.log`). `--stdio` und `--clientProcessId`, die Editoren anhängen, werden ignoriert.
+Values also work with `=` (`--log=server.log`). `--stdio` and `--clientProcessId`, appended by editors, are ignored.
 
-`AtlasServer.exe --clear-cache` löscht alle Index-Caches unter `%LOCALAPPDATA%\Atlas`, die keine laufende Instanz nutzt. Der Ordner wird ohnehin auf 256 MB begrenzt, ältere Caches gehen zuerst.
+`AtlasServer.exe --clear-cache` deletes all index caches under `%LOCALAPPDATA%\Atlas` that no running instance uses. The folder is limited to 256 MB anyway; older caches go first.
 
-### Linter-Modus
+### Linter mode
 
-`AtlasServer.exe --check <Ziel>` prüft ohne Editor. Das Ziel kann eine `.dproj` (Hauptdatei und Units), ein Ordner (alle `.pas`, `.dpr` und `.dpk` darunter) oder eine Datei sein. `atlas.json` im Ordner des Ziels gilt wie im Editor. Fehlt sie, gilt die frühere `delphi-lsp.json` (ebenso `delphi-lsp-baseline.json` für die Baseline).
+`AtlasServer.exe --check <target>` checks without an editor. The target can be a `.dproj` (main file and units), a folder (all `.pas`, `.dpr` and `.dpk` below) or a file. `atlas.json` in the target's folder applies as in the editor. If it is missing, the former `delphi-lsp.json` applies (likewise `delphi-lsp-baseline.json` for the baseline).
 
-| Parameter | Bedeutung |
+| Parameter | Meaning |
 |---|---|
-| `--format <Art>` | `text` (Standard, wie Compilermeldungen), `json`, `sarif` (SARIF 2.1.0 für GitHub Code Scanning) |
-| `--output <Datei>` | Ergebnis in eine Datei statt auf stdout |
-| `--rules <a,b>` | nur diese Regeln, z. B. `syntax` |
-| `--units <a,b>` | nur diese Units: Name oder Glob-Muster für Pfade |
-| `--min-severity <S>` | `hint`, `info`, `warning`, `error` |
-| `--profile <Name>` | Regelprofil (`standard`, `fast`, `strict`, `security`, `style` oder eigenes aus `profiles`); geht `profile` in `atlas.json` vor |
-| `--baseline <Datei>` | bekannte Treffer ausblenden; ohne Angabe gilt `atlas-baseline.json` neben `atlas.json`, falls vorhanden. Der Editor blendet sie ebenso aus |
-| `--update-baseline` | Baseline aus den aktuellen Treffern neu schreiben (verschwundene Einträge fallen heraus), Exit-Code 0 |
-| `--changed [<Basis>]` | nur Dateien, die sich laut Git (bzw. SVN, siehe unten) gegenüber der Merge-Base mit `<Basis>` (Standard `main`) geändert haben; geänderte `.dfm`/`.fmx` prüfen ihre Unit, geänderte `.inc` alle Units, die sie einbinden, geänderte `.dproj`/`.dpk`/`.dpr`/`atlas.json` alles |
-| `--diff <Ref>` | wie `--changed`, aber direkt gegenüber `<Ref>` |
-| `--include-uncommitted` | mit `--changed`/`--diff` auch Index, Arbeitsverzeichnis und neue Dateien |
-| `--changed-lines` | nur Treffer in geänderten Zeilen; zusammen mit der Baseline nur neue Treffer in geänderten Zeilen |
-| `--suppression-stats` | statt der Treffer: wie oft jede Regel per `lsp-ignore` unterdrückt wird (häufigste zuerst, mit ungenutzten), als Text oder JSON; Exit-Code 0 |
+| `--format <kind>` | `text` (default, like compiler messages), `json`, `sarif` (SARIF 2.1.0 for GitHub code scanning) |
+| `--output <file>` | result into a file instead of stdout |
+| `--rules <a,b>` | only these rules, e.g. `syntax` |
+| `--units <a,b>` | only these units: name or glob pattern for paths |
+| `--min-severity <s>` | `hint`, `info`, `warning`, `error` |
+| `--profile <name>` | rule profile (`standard`, `fast`, `strict`, `security`, `style` or one of your own from `profiles`); overrides `profile` in `atlas.json` |
+| `--baseline <file>` | hide known findings; without it `atlas-baseline.json` next to `atlas.json` applies if present. The editor hides them as well |
+| `--update-baseline` | rewrite the baseline from the current findings (vanished entries drop out), exit code 0 |
+| `--changed [<base>]` | only files changed according to Git (or SVN, see below) against the merge base with `<base>` (default `main`); changed `.dfm`/`.fmx` check their unit, changed `.inc` all units including them, changed `.dproj`/`.dpk`/`.dpr`/`atlas.json` everything |
+| `--diff <ref>` | like `--changed`, but directly against `<ref>` |
+| `--include-uncommitted` | with `--changed`/`--diff` also index, working tree and new files |
+| `--changed-lines` | only findings in changed lines; together with the baseline only new findings in changed lines |
+| `--suppression-stats` | instead of findings: how often each rule is suppressed via `lsp-ignore` (most frequent first, including unused ones), as text or JSON; exit code 0 |
 
-Exit-Code: 0 ohne Warnungen und Fehler, 1 bei Warnungen, 2 bei Fehlern, 3 bei Aufruf- oder Lesefehlern.
+Exit code: 0 without warnings and errors, 1 with warnings, 2 with errors, 3 for invocation or read errors.
 
-In einer SVN-Arbeitskopie vergleicht `--changed` ohne Basis die Arbeitskopie mit BASE (`svn status`), `--changed <Rev>` und `--diff <Rev>` mit der Revision (`svn diff -r`); `--include-uncommitted` nimmt unversionierte Dateien dazu. Git hat Vorrang, wenn beides vorliegt.
+In an SVN working copy, `--changed` without a base compares the working copy with BASE (`svn status`), `--changed <rev>` and `--diff <rev>` with the revision (`svn diff -r`); `--include-uncommitted` adds unversioned files. Git takes precedence if both are present.
 
-Beispiele für einen Pre-Commit-Hook und eine GitHub Action, die nur Geändertes prüfen, liegen in [docs/Beispiele](docs/Beispiele).
+Examples for a pre-commit hook and a GitHub Action that check only changes are in [docs/Beispiele](docs/Beispiele).
 
-### Prüfregeln
+### Rules
 
-Alle Regeln sind in [docs/Regeln.md](docs/Regeln.md) beschrieben. Einzige Quelle ist der Regelkatalog `Packages/Atlas.Common/Katalog/regelkatalog.json` (englisch) mit der Übersetzung `regelkatalog.de.json`. Nach Änderungen `pwsh Tools/Update-RuleCatalog.ps1` ausführen; die CI prüft mit `-Check`, dass Katalog, Implementierung und Dokumentation übereinstimmen.
+All rules are described in [docs/Regeln.md](docs/Regeln.md). The single source is the rule catalogue `Packages/Atlas.Common/Katalog/regelkatalog.json` (English) with the translation `regelkatalog.de.json`. After changes run `pwsh Tools/Update-RuleCatalog.ps1`; CI checks with `-Check` that catalogue, implementation and documentation agree.
 
-## Wichtig: stdout gehört dem Protokoll
+## Important: stdout belongs to the protocol
 
-Der Server spricht LSP über stdin/stdout. Jede zusätzliche Ausgabe auf stdout (`Writeln`, unbehandelte Exceptions) zerstört die Kommunikation mit dem Editor. Alle Diagnosemeldungen laufen über `ILogger` (`Atlas.Common.Logging`) an `OutputDebugString`, die Logdatei, `window/logMessage` und bei Fehlern stderr. Nach dem Start biegt der Server das stdout-Handle und `Output` auf stderr um, sodass auch Bibliotheken das Protokoll nicht stören können.
+The server speaks LSP over stdin/stdout. Any additional output to stdout (`Writeln`, unhandled exceptions) breaks the communication with the editor. All diagnostic messages go through `ILogger` (`Atlas.Common.Logging`) to `OutputDebugString`, the log file, `window/logMessage` and, for errors, stderr. After starting, the server redirects the stdout handle and `Output` to stderr, so libraries cannot disturb the protocol either.
 
-## Lizenzen
+## Licences
 
-Atlas steht unter der MIT-Lizenz (`LICENSE`); Drittanbieter-Komponenten mit Lizenztexten stehen in `THIRD-PARTY-NOTICES.md` (erzeugt von `Tools/Update-ThirdPartyNotices.ps1`).
+Atlas is licensed under the MIT licence (`LICENSE`); third-party components with their licence texts are listed in `THIRD-PARTY-NOTICES.md` (generated by `Tools/Update-ThirdPartyNotices.ps1`).
 
-Cache und Benchmark-Korpus bleiben lokal, VCL-Quellen werden nie eingecheckt. Der Index-Cache liegt unter `%LOCALAPPDATA%\Atlas`; RTL- und VCL-Quellen liest der Server nur aus der lokalen Delphi-Installation. `Tools/Check-NoEmbarcaderoSources.ps1` prüft in der CI, dass `Tests/` und die `.vsix` keine Datei mit Embarcadero-Copyright-Kopf enthalten.
+Cache and benchmark corpus stay local, VCL sources are never checked in. The index cache lives under `%LOCALAPPDATA%\Atlas`; the server reads RTL and VCL sources only from the local Delphi installation. `Tools/Check-NoEmbarcaderoSources.ps1` checks in CI that `Tests/` and the `.vsix` contain no file with an Embarcadero copyright header.
