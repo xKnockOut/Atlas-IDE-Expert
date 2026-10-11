@@ -1,6 +1,20 @@
 # Atlas IDE Expert
 
-Experte für RAD Studio mit eigenem Language Server (LSP) für Delphi/Object Pascal, mit zusätzlicher MCP-Schnittstelle für Claude Code. Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues); die Epics #130 bis #139 bilden die Ausbaustufen ab.
+Experte für RAD Studio (Delphi/Object Pascal): ein IDE-Plugin mit eigener Oberfläche und ein eigener Language Server (LSP), dazu eine MCP-Schnittstelle für Claude Code. Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues); die Epics #130 bis #139 bilden die Ausbaustufen ab.
+
+## Das IDE-Plugin
+
+`Atlas.IDE.Expert` ersetzt in RAD Studio 13 (und 12) die eingebaute Code Insight durch eigene Fenster, die der Atlas-Server mit Daten füllt:
+
+- **Vervollständigung** mit Detailpanel, Filter-Chips, unscharfer Suche, lernender Reihenfolge, Postfix-Vorlagen und Vorschau im Editor
+- **Parameter-Hint** mit allen Überladungen und aktivem Parameter
+- **Hover-Tooltip** mit Deklaration, Dokumentation, anklickbaren Typen, Vererbungskette, Verlauf und Aktionen (Gehe zu, Verwendungen, Deklaration kopieren, Hilfe)
+- **Probleme im Editor**: Syntaxfehler, Regeltreffer und Compilermeldungen als Wellenlinien, im Tooltip und als Liste „Atlas-Probleme“ im Meldungsfenster, projektweit; Markierungen wandern beim Tippen mit
+- **Compilerprüfung nach dem Speichern** und Übernahme der Compilermeldungen aus dem Reiter „Build“
+- **Klammer- und Blockpaare** farbig nach Tiefe, mit eigenen Blocklinien
+- **Befehlspalette** (Strg+Umschalt+P), stilles Neuladen extern geänderter Dateien, Hänger-Wächter mit Protokoll
+
+Installation und Einstellungen: [docs/RAD-Studio.md](docs/RAD-Studio.md). Alle Einstellungen liegen unter *Tools › Optionen › Drittanbieter › Atlas*, auch der Pfad zum Server.
 
 ## Benutzerdokumentation
 
@@ -16,21 +30,22 @@ Experte für RAD Studio mit eigenem Language Server (LSP) für Delphi/Object Pas
 |---|---|
 | `Packages/Atlas.Common` | Package, frei von Windows und VCL |
 | `Packages/Atlas.Windows` | Package für Windows-spezifische Funktionen, frei von VCL |
-| `Application/AtlasServer` | Die Anwendung (Konsolenprogramm, spricht LSP über stdin/stdout) |
+| `Application/AtlasServer` | Der Server (Konsolenprogramm, spricht LSP über stdin/stdout) |
+| `Packages/Atlas.IDE.Expert` | Das IDE-Plugin (Designtime-Package, Win32), Schichten `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
 | `Tests/Atlas.Tests` | DUnitX-Tests |
 
 Details zu Rollen, Benennung und Importregeln: [docs/Architektur.md](docs/Architektur.md).
 
 ## Voraussetzungen
 
-- Delphi 12 Athens oder neuer, gebaut wird derzeit mit RAD Studio 13 (Win32 und Win64)
+- Delphi 12 Athens oder neuer, gebaut wird derzeit mit RAD Studio 13 (Win32 und Win64). Das IDE-Plugin muss mit der Delphi-Version gebaut werden, in der es laufen soll; der Server ist davon unabhängig.
 - Das Testprojekt ist nur für Win64 eingerichtet, weil DUnitX in der Starter-Edition nur als Win64-Bibliothek vorliegt
 - DUnitX (in RAD Studio enthalten, Umgebungsvariable `$(DUnitX)` der IDE)
 - PowerShell für die Prüfskripte
 
 ## Bauen
 
-In der IDE `Atlas.groupproj` öffnen und **Alle erstellen**. Die Reihenfolge Common → Windows → Anwendung → IDE-Plugin → Tests ist in der Projektgruppe hinterlegt. Das IDE-Plugin ist nur für Win32 eingerichtet (die IDE ist 32-Bit); ein Gruppenbau für Win64 übersetzt es trotzdem mit und prüft so den Quelltext.
+In der IDE `Atlas.groupproj` öffnen und **Alle erstellen**. Die Reihenfolge Common → Windows → Server → IDE-Plugin → Tests ist in der Projektgruppe hinterlegt. Common, Windows und Server müssen für dieselbe Plattform gebaut werden, sonst findet der Server die Units der Packages nicht. Das IDE-Plugin ist nur für Win32 eingerichtet (die IDE ist 32-Bit); ein Gruppenbau für Win64 übersetzt es trotzdem mit und prüft so den Quelltext.
 
 Auf der Kommandozeile (RAD-Studio-Eingabeaufforderung bzw. nach `rsvars.bat`):
 
