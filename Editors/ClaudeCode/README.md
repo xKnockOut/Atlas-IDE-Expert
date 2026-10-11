@@ -1,6 +1,8 @@
 # Atlas in Claude Code
 
-`AtlasServer.exe` muss im `PATH` liegen, sonst in `.lsp.json` und `.mcp.json` den vollen Pfad eintragen.
+## Installation
+
+`AtlasServer.exe` ([Server besorgen](../../docs/Installation.md#server-besorgen)) muss im `PATH` liegen, sonst in `.lsp.json` und `.mcp.json` den vollen Pfad eintragen.
 
 ## Nur MCP-Werkzeuge (ein Befehl)
 

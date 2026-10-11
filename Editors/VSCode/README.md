@@ -2,7 +2,7 @@
 
 Startet den Server `AtlasServer.exe` automatisch, sobald ein Ordner mit `.dproj` oder `atlas.json` oder eine Delphi-Datei geöffnet wird.
 
-## Installieren
+## Installation
 
 `pwsh Tools/Package-VSCode.ps1` baut `atlas-<Version>.vsix` mit mitgelieferter EXE; installieren mit `code --install-extension atlas-0.1.0.vsix`.
 
