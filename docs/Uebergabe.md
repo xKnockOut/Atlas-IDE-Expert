@@ -177,7 +177,8 @@
   - Hover-Tooltip zeigt Probleme oben, auch ohne Bezeichner. Einstellung `Problems` (Standard an).
   - `9d2e9459`: Compilermeldungen ohne Pfad (die IDE nennt teils nur `Gallery.Main.pas`) ergänzt das Plugin zu vollen Pfaden (`TArgusCompilerMessages.Resolve`). Vom User abgenommen; #398, #528, #548 geschlossen.
   - Das Plugin startet den Server jetzt selbst und sofort neu: Für Builds Delphi des Users schließen (`update-plugin.ps1 -NoRestart`, dann `build.ps1`, dann Delphi starten).
-- **Plugin beim User:** am 11.10.2026 um 11:12 aktualisiert.
+- **Delphi 12 (#281, 11.10.2026):** Tastatur-Ereignisse des Editors nur ab Delphi 13 (`e4ea3519`); Senden an den Server in eigenem Thread mit 1-MB-Pipe gegen Einfrieren (`98058471`); Hänger beim Laden großer Projekte lagen laut Wächter in der IDE selbst. Auf dem Delphi-12-Rechner fehlte `ArgusServer.exe`: jetzt Einstellung „Argus-Server“ in den Optionen, und ohne Server bleibt die Code Insight der IDE aktiv (`ad3920bb`).
+- **Plugin beim User:** am 11.10.2026 um 12:24 aktualisiert.
 - **Achtung:** In `Argus.Common.Compiler.OutputParser.pas` stehen Testzeilen des Users (verschachtelte begin/end); nicht committen.
 - **Neu in `update-plugin.ps1`:** sichert `.dproj`/`.dpk` vor dem Bau und schreibt sie danach zurück.
 - **Weiter:**
