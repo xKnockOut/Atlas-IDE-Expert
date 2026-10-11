@@ -36,7 +36,7 @@ jobs:
         # Bericht, kein Abbruch: Treffer im eigenen Quelltext sollen sichtbar
         # werden, ohne den Lauf rot zu färben.
         continue-on-error: true
-        run: ./Output/Win64/Debug/Bin/ArgusServer.exe --root . --check Packages --format sarif --output selbstpruefung.sarif
+        run: ./Output/Win64/Debug/Bin/AtlasServer.exe --root . --check Packages --format sarif --output selbstpruefung.sarif
       - name: Selbstprüfung ablegen
         if: always()
         uses: actions/upload-artifact@v4

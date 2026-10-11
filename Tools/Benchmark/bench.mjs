@@ -4,7 +4,7 @@
 // Bericht (JSON und Markdown). Mit --baseline wird mit einer früheren Messung
 // verglichen; Exit-Code 1 bei verfehltem Zielwert oder Rückschritt.
 //
-//   node Tools/Benchmark/bench.mjs --server Output\Win64\Release\Bin\ArgusServer.exe
+//   node Tools/Benchmark/bench.mjs --server Output\Win64\Release\Bin\AtlasServer.exe
 //     [--corpus Tests/Referenzprojekt] [--corpus "C:\Program Files (x86)\Embarcadero\Studio\37.0\source\vcl"]
 //     [--samples 30] [--out benchmark] [--baseline benchmark/letzte.json] [--no-fail]
 
@@ -17,7 +17,7 @@ import { summarize, checkTargets, compare, samplePositions, toMarkdown } from '.
 
 const args = parseArgs(process.argv.slice(2));
 const repoRoot = resolve(new URL('../..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
-const server = args.server ?? join(repoRoot, 'Output', 'Win64', 'Release', 'Bin', 'ArgusServer.exe');
+const server = args.server ?? join(repoRoot, 'Output', 'Win64', 'Release', 'Bin', 'AtlasServer.exe');
 const corpus = (args.corpus.length ? args.corpus : [join(repoRoot, 'Tests', 'Referenzprojekt')]).map((c) => resolve(c));
 const samples = Number(args.samples ?? 30);
 const outDir = resolve(args.out ?? join(repoRoot, 'benchmark'));

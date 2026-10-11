@@ -45,9 +45,9 @@ implementation
 
 uses
   System.SysUtils,
-  Argus.Common.Logging.Contract,
-  Argus.Common.Configuration.Contract,
-  Argus.Common.Rules.Output,
+  Atlas.Common.Logging.Contract,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Rules.Output,
   Shell.CommandLine;
 
 { TCommandLineOptionsTests }

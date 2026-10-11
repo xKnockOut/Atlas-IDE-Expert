@@ -12,9 +12,9 @@
     2. cc.ps1 group-build -Platform Win64 -Json: ok und outputWritten müssen
        gesetzt sein, die Test-exe muss neu geschrieben sein und das logFile
        darf keine Hinweise oder Warnungen enthalten (0/0/0-Regel).
-    3. Mit -Win32 zusätzlich Win32; dort darf nur Argus.Tests scheitern
+    3. Mit -Win32 zusätzlich Win32; dort darf nur Atlas.Tests scheitern
        (DUnitX gibt es nur für Win64).
-    4. Argus.Tests.exe --exitbehavior:Continue mit NUnit-XML als Ergebnis.
+    4. Atlas.Tests.exe --exitbehavior:Continue mit NUnit-XML als Ergebnis.
     5. cc.ps1 quit, wiederholt, solange die IDE beschäftigt ist.
 
     Exit-Code 0: alles grün. 1: Build-Fehler, Hinweis oder Warnung.
@@ -39,8 +39,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$GroupProject = Join-Path $Root 'Argus.groupproj'
-$TestExe = Join-Path $Root (Join-Path "Output/Win64/$Config/Bin" 'Argus.Tests.exe')
+$GroupProject = Join-Path $Root 'Atlas.groupproj'
+$TestExe = Join-Path $Root (Join-Path "Output/Win64/$Config/Bin" 'Atlas.Tests.exe')
 # Zeilen des Build-Logs, die die 0/0/0-Regel verletzen, z. B. "[dcc64 Hinweis] X.pas(10): H2164 …".
 $HintPattern = '\[dcc\w*\s+(Hinweis|Warnung|Hint|Warning)\]'
 $ErrorPattern = '\[dcc\w*\s+(Fehler|Schwerwiegend|Error|Fatal)\]'
@@ -82,7 +82,7 @@ function Test-Build($Result, [string] $Platform, [datetime] $Started, [bool] $Te
     if ($TestsMayFail) {
         # Win32: nur Fehler im Testprojekt sind erwartet (DUnitX fehlt dort).
         foreach ($line in $errors) {
-            if ($line -notmatch 'Argus\.Tests|[\\/]Tests[\\/]') { $problems += "$Platform`: $line" }
+            if ($line -notmatch 'Atlas\.Tests|[\\/]Tests[\\/]') { $problems += "$Platform`: $line" }
         }
     } else {
         foreach ($line in $errors) { $problems += "$Platform`: $line" }

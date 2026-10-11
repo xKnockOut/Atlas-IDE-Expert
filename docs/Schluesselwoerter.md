@@ -1,6 +1,6 @@
 # Hover über Schlüsselwörtern und Direktiven
 
-Der Hover erklärt seltene Sprachelemente mit einem Kurztext und verlinkt die DocWiki passend zur Delphi-Version des Projekts (#187). Gepflegt wird die Tabelle in `Argus.Common.Lsp.KeywordReference`. Ein Test prüft, dass jedes reservierte Wort des Lexers einen Eintrag hat oder auf der Liste der alltäglichen Wörter steht.
+Der Hover erklärt seltene Sprachelemente mit einem Kurztext und verlinkt die DocWiki passend zur Delphi-Version des Projekts (#187). Gepflegt wird die Tabelle in `Atlas.Common.Lsp.KeywordReference`. Ein Test prüft, dass jedes reservierte Wort des Lexers einen Eintrag hat oder auf der Liste der alltäglichen Wörter steht.
 
 Der Hover erscheint nur, wenn an der Stelle kein Symbol gleichen Namens bekannt ist.
 

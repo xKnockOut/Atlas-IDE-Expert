@@ -210,7 +210,7 @@ var Password: string;
 
 **Verbotene uses-Beziehung** · Code Smell · Fehler
 
-Ein uses-Eintrag verletzt eine Schichtregel unter "layers" in argus.json, z. B. darf *.Common.* nicht Vcl.* verwenden.
+Ein uses-Eintrag verletzt eine Schichtregel unter "layers" in atlas.json, z. B. darf *.Common.* nicht Vcl.* verwenden.
 
 Mit Treffer:
 
@@ -1131,7 +1131,7 @@ ed1: DataField = 'Name'; ed2: DataField = 'Vorname'
 
 **Komponenten-Property verletzt eine Eigenschaftsregel** · Code Smell · Warnung
 
-Eine Komponenten-Property in der Formulardatei erfüllt eine Regel aus dfmPropertyRules in argus.json nicht (Klasse, Property, Bedingung, Wert). Nicht gespeicherte Properties zählen mit ihrem default-Wert; Objekte aus dem Vorfahrenformular werden nur gemeldet, wenn dieses Formular den Wert selbst setzt.
+Eine Komponenten-Property in der Formulardatei erfüllt eine Regel aus dfmPropertyRules in atlas.json nicht (Klasse, Property, Bedingung, Wert). Nicht gespeicherte Properties zählen mit ihrem default-Wert; Objekte aus dem Vorfahrenformular werden nur gemeldet, wenn dieses Formular den Wert selbst setzt.
 
 Mit Treffer:
 
@@ -1296,7 +1296,7 @@ end;
 
 **Dateikopf fehlt oder weicht ab** · Code Smell · Hinweis
 
-Die Datei beginnt nicht mit dem Kopf aus der Regeloption "template". Standardmäßig aus; in argus.json mit einer Vorlage einschalten. Die Schnellkorrektur fügt den Kopf ein.
+Die Datei beginnt nicht mit dem Kopf aus der Regeloption "template". Standardmäßig aus; in atlas.json mit einer Vorlage einschalten. Die Schnellkorrektur fügt den Kopf ein.
 
 Mit Treffer:
 

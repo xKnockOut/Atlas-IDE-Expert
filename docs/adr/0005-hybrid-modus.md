@@ -6,7 +6,7 @@
 
 ## Kontext
 
-Embarcaderos DelphiLSP nutzt den echten Compiler und liefert in manchen Fällen genauere Ergebnisse (Überladungen, Generics, Typinferenz), ist aber langsam und stürzt bei großen Projekten ab. ArgusServer ist schneller und robuster, kennt aber nicht jede Typregel.
+Embarcaderos DelphiLSP nutzt den echten Compiler und liefert in manchen Fällen genauere Ergebnisse (Überladungen, Generics, Typinferenz), ist aber langsam und stürzt bei großen Projekten ab. AtlasServer ist schneller und robuster, kennt aber nicht jede Typregel.
 
 ## Zu entscheiden
 

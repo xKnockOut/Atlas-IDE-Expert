@@ -24,8 +24,8 @@ interface
 
 uses
   System.SysUtils,
-  Argus.Common.Compiler.Contract,
-  Argus.Common.Rules.ChangedFiles;
+  Atlas.Common.Compiler.Contract,
+  Atlas.Common.Rules.ChangedFiles;
 
 type
   EVcsChanges = class(Exception);

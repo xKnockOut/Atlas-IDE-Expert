@@ -27,7 +27,7 @@ if ($Version -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') {
 $Utf8Bom = New-Object System.Text.UTF8Encoding($true)
 $Utf8 = New-Object System.Text.UTF8Encoding($false)
 
-$Unit = Join-Path $Root 'Packages/Argus.Common/Source/Product/Argus.Common.Product.Version.pas'
+$Unit = Join-Path $Root 'Packages/Atlas.Common/Source/Product/Atlas.Common.Product.Version.pas'
 $Text = [IO.File]::ReadAllText($Unit) -replace "(Version\s*=\s*')[^']+(')", "`${1}$Version`${2}"
 [IO.File]::WriteAllText($Unit, $Text, $Utf8Bom)
 

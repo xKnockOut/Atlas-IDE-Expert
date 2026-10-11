@@ -1,7 +1,7 @@
 ﻿unit Shell.Workspace;
 
 // Host-Rolle Shell: ein Ordner des Arbeitsbereichs mit eigener
-// argus.json, eigenem Projekt und eigenem Indexaufbau. Alle Ordner
+// atlas.json, eigenem Projekt und eigenem Indexaufbau. Alle Ordner
 // schreiben in denselben Symbolindex, damit Navigation und Suche über
 // Ordnergrenzen funktionieren.
 
@@ -10,20 +10,20 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  Argus.Common.Logging.Contract,
-  Argus.Common.JsonRpc.Contract,
-  Argus.Common.Documents.Contract,
-  Argus.Common.Configuration.Contract,
-  Argus.Common.Lsp.Configuration,
-  Argus.Common.Lsp.WorkDoneProgress,
-  Argus.Common.Projects.Contract,
-  Argus.Common.Projects.UnitResolver,
-  Argus.Common.Compiler.Contract,
-  Argus.Common.Index.Contract,
-  Argus.Common.Index.Service,
-  Argus.Common.Index.Builder,
-  Argus.Common.Rules.Baseline,
-  Argus.Common.Lsp.Status;
+  Atlas.Common.Logging.Contract,
+  Atlas.Common.JsonRpc.Contract,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Lsp.Configuration,
+  Atlas.Common.Lsp.WorkDoneProgress,
+  Atlas.Common.Projects.Contract,
+  Atlas.Common.Projects.UnitResolver,
+  Atlas.Common.Compiler.Contract,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.Service,
+  Atlas.Common.Index.Builder,
+  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Lsp.Status;
 
 type
   TShellWorkspace = class
@@ -77,7 +77,7 @@ type
     constructor Create(const ARoot, AName: string; const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
       const ALogger: ILogger; const AIndex: ISymbolIndex; const AProgressToken: string);
     destructor Destroy; override;
-    /// <summary>Liest argus.json des Ordners und startet den Indexaufbau.</summary>
+    /// <summary>Liest atlas.json des Ordners und startet den Indexaufbau.</summary>
     procedure Load;
     /// <summary>Lädt das Projekt neu, auch wenn sich die Einstellungen nicht geändert haben.</summary>
     procedure Reload;
@@ -90,7 +90,7 @@ type
     /// <summary>Symbole des Projekts für das Abblenden; False ohne Projekt. Threadsicher.</summary>
     function Defines(out ADefines: TArray<string>): Boolean;
     /// <summary>
-    /// argus-baseline.json des Ordners (#97), neu gelesen, sobald sich die
+    /// atlas-baseline.json des Ordners (#97), neu gelesen, sobald sich die
     /// Datei ändert; nil ohne oder bei ungültiger Datei. Threadsicher.
     /// </summary>
     function Baseline: IRuleBaseline;
@@ -126,16 +126,16 @@ implementation
 uses
   System.IOUtils,
   System.StrUtils,
-  Argus.Common.Documents.FileEncoding,
-  Argus.Common.Compiler.CommandLine,
-  Argus.Common.Projects.Paths,
-  Argus.Common.Projects.DprojReader,
-  Argus.Common.Projects.DelphiVersions,
-  Argus.Common.Index.ProjectFiles,
-  Argus.Common.Index.Adapters.DiskFileSystem,
-  Argus.Common.Index.Adapters.CacheDirectory,
-  Argus.Common.Index.CacheHousekeeping,
-  Argus.Windows.Projects.DelphiInstallation;
+  Atlas.Common.Documents.FileEncoding,
+  Atlas.Common.Compiler.CommandLine,
+  Atlas.Common.Projects.Paths,
+  Atlas.Common.Projects.DprojReader,
+  Atlas.Common.Projects.DelphiVersions,
+  Atlas.Common.Index.ProjectFiles,
+  Atlas.Common.Index.Adapters.DiskFileSystem,
+  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheHousekeeping,
+  Atlas.Windows.Projects.DelphiInstallation;
 
 const
   /// <summary>So lange wartet ein lesender Prozess höchstens auf den Cache des schreibenden (#62).</summary>
@@ -353,7 +353,7 @@ var
   FileTime: TDateTime;
   FileFormat: TFileFormat;
 begin
-  FileName := ExistingOrLegacyFile(FRoot, BaselineFileName, LegacyBaselineFileName);
+  FileName := ExistingOrLegacyFile(FRoot, BaselineFileName, [PreviousBaselineFileName, LegacyBaselineFileName]);
   TMonitor.Enter(FLock);
   try
     if not TFile.Exists(FileName) then
@@ -412,7 +412,7 @@ begin
     Exit(False);
   end;
   // Eigener Ausgabeordner je Projekt, Plattform und Konfiguration; der Build des Entwicklers bleibt unberührt.
-  OutputDir := TPath.Combine(TPath.GetTempPath, Format('Argus\dcc-%.8x\%s-%s',
+  OutputDir := TPath.Combine(TPath.GetTempPath, Format('Atlas\dcc-%.8x\%s-%s',
     [Cardinal(LowerCase(Project.FileName).GetHashCode), Project.Platform, Project.Config]));
   try
     ARequest := TCompilerCommandLine.Build(Project, LibraryPaths, BdsRoot, OutputDir);

@@ -10,7 +10,7 @@ Der Server braucht einen Syntaxbaum für Gliederung, Navigation, Hover, Faltbere
 
 ## Entscheidung
 
-Eigener Lexer und rekursiv absteigender Parser in `Argus.Common.Pascal`. Der Baum ist auch bei Syntaxfehlern vollständig: übersprungene Token stehen in `Error`-Knoten, Fehler in `Diagnostics`, der Parser setzt an Deklarations-, Mitglieds- und Anweisungsgrenzen wieder auf. Kommentare und Direktiven bleiben als Token erhalten.
+Eigener Lexer und rekursiv absteigender Parser in `Atlas.Common.Pascal`. Der Baum ist auch bei Syntaxfehlern vollständig: übersprungene Token stehen in `Error`-Knoten, Fehler in `Diagnostics`, der Parser setzt an Deklarations-, Mitglieds- und Anweisungsgrenzen wieder auf. Kommentare und Direktiven bleiben als Token erhalten.
 
 ## Alternativen
 

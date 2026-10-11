@@ -1,0 +1,311 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{7737E737-7F8E-4B01-9B7C-42DA754393D2}</ProjectGuid>
+        <MainSource>Atlas.Tests.dpr</MainSource>
+        <ProjectVersion>20.3</ProjectVersion>
+        <FrameworkType>None</FrameworkType>
+        <AppType>Console</AppType>
+        <Base>True</Base>
+        <Config Condition="'$(Config)'==''">Debug</Config>
+        <Platform Condition="'$(Platform)'==''">Win64</Platform>
+        <TargetedPlatforms>2</TargetedPlatforms>
+        <ProjectName Condition="'$(ProjectName)'==''">Atlas.Tests</ProjectName>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Config)'=='Debug' or '$(Cfg_1)'!=''">
+        <Cfg_1>true</Cfg_1>
+        <CfgParent>Base</CfgParent>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Config)'=='Release' or '$(Cfg_2)'!=''">
+        <Cfg_2>true</Cfg_2>
+        <CfgParent>Base</CfgParent>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Base)'!=''">
+        <DCC_MapFile>3</DCC_MapFile>
+        <SanitizedProjectName>Atlas_Tests</SanitizedProjectName>
+        <DCC_Namespace>System;Winapi;System.Win;$(DCC_Namespace)</DCC_Namespace>
+        <DCC_UnitSearchPath>$(DUnitX);..\Output\$(Platform)\$(Config)\Dcu\Atlas.Common;..\Output\$(Platform)\$(Config)\Dcu\Atlas.Windows;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_DcuOutput>..\Output\$(Platform)\$(Config)\Dcu\Atlas.Tests</DCC_DcuOutput>
+        <DCC_ExeOutput>..\Output\$(Platform)\$(Config)\Bin</DCC_ExeOutput>
+        <DCC_ConsoleTarget>true</DCC_ConsoleTarget>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Cfg_1)'!=''">
+        <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
+        <DCC_DebugDCUs>false</DCC_DebugDCUs>
+        <DCC_Optimize>false</DCC_Optimize>
+        <DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
+        <DCC_DebugInfoInExe>true</DCC_DebugInfoInExe>
+        <DCC_RemoteDebug>false</DCC_RemoteDebug>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Cfg_2)'!=''">
+        <DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
+        <DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
+        <DCC_DebugInformation>0</DCC_DebugInformation>
+        <DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
+    </PropertyGroup>
+    <ItemGroup>
+        <DelphiCompile Include="$(MainSource)">
+            <MainSource>MainSource</MainSource>
+        </DelphiCompile>
+        <DCCReference Include="Common\Atlas.Common.Product.Version.Tests.pas"/>
+        <DCCReference Include="Common\Logging\Atlas.Common.Logging.Providers.Logger.Tests.pas"/>
+        <DCCReference Include="Common\Logging\Atlas.Common.Logging.Providers.StreamSink.Tests.pas"/>
+        <DCCReference Include="Common\Logging\Atlas.Common.Logging.Providers.RotatingFileStream.Tests.pas"/>
+        <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.TestSupport.pas"/>
+        <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.StreamTransport.Tests.pas"/>
+        <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.TracingTransport.Tests.pas"/>
+        <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.PendingRequests.Tests.pas"/>
+        <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.Dispatcher.Tests.pas"/>
+        <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.Connection.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Lifecycle.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Adapters.LogMessageSink.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.TextDocumentSync.Tests.pas"/>
+        <DCCReference Include="Common\Documents\Atlas.Common.Documents.TextDocument.Tests.pas"/>
+        <DCCReference Include="Common\Documents\Atlas.Common.Documents.FileEncoding.Tests.pas"/>
+        <DCCReference Include="Common\Projects\Atlas.Common.Projects.Tests.pas"/>
+        <DCCReference Include="Common\Projects\Atlas.Common.Projects.DelphiVersions.Tests.pas"/>
+        <DCCReference Include="Common\Projects\Atlas.Common.Projects.DprojEditor.Tests.pas"/>
+        <DCCReference Include="Windows\Projects\Atlas.Windows.Projects.DelphiInstallation.Tests.pas"/>
+        <DCCReference Include="Common\Compiler\Atlas.Common.Compiler.Tests.pas"/>
+        <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.MapFile.Tests.pas"/>
+        <DCCReference Include="Windows\Compiler\Atlas.Windows.Compiler.Adapters.ProcessRunner.Tests.pas"/>
+        <DCCReference Include="Common\Documents\Atlas.Common.Documents.Providers.DocumentStore.Tests.pas"/>
+        <DCCReference Include="Common\Documents\Atlas.Common.Documents.Uris.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.CacheHousekeeping.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.Memory.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ControlFlow.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Attributes.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolverStage2.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Definition.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Attributes.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.PublishedMembers.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Hover.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.HoverTypes.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.HoverValues.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.LinkedEditing.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Formatting.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.FuzzyMatch.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DocWiki.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompilerDirectives.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Status.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.QualifiedNames.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WinApiDocs.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.KeywordReference.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.AssignmentSwap.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.StringLiterals.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.References.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Rename.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SignatureHelp.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Hierarchies.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Implementations.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InlayHints.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CodeLens.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SemanticTokens.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WorkspaceSymbols.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DocumentHighlights.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.KeywordHighlights.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WatchedFiles.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WorkspaceFolders.Tests.pas"/>
+        <DCCReference Include="Windows\Documents\Atlas.Windows.Documents.PathCanonicalizer.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Lexer.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Parser.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.TreeCache.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.IncludeFiles.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Internals.Debouncer.Tests.pas"/>
+        <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.Watchdog.Tests.pas"/>
+        <DCCReference Include="Windows\Diagnostics\Atlas.Windows.Diagnostics.StackTrace.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SyntaxDiagnostics.Tests.pas"/>
+        <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Configuration.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DocumentSymbols.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.FoldingRanges.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SelectionRanges.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Preprocessor.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.LanguageFeatures.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Parser.Robustness.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ProtocolReplay.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Protocol.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.CommandLine.pas"/>
+        <DCCReference Include="Application\Shell\Shell.CommandLine.Tests.pas"/>
+        <DCCReference Include="Support\Atlas.Tests.LeakMonitor.pas"/>
+        <DCCReference Include="Support\Atlas.Tests.LeakMonitor.Tests.pas"/>
+        <DCCReference Include="Support\Atlas.Tests.RuleAssert.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Engine.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.GoldenCorpus.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Profiles.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Confidence.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Output.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Baseline.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.SuppressionStats.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Catalog.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unicode.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.CodeActions.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.UsesClause.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.UsesActions.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.UsesCommand.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.SlashCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.DeclarationCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.WrapCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.MaintenanceCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.TypeCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.CollectionCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.UnitTemplates.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.ErrorCommands.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.UnresolvedNames.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Architecture.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Flow.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unused.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Inheritance.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Capture.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Components.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.FormFields.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Security.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.General.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.RtlPatterns.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.RtlTypePatterns.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Exceptions.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Style.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.PaletteIcons.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Performance.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.ChangedFiles.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.RefactoringCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.ExpressionCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Modernizer.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.DocComments.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.MemberOrder.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.ProjectCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.SqlText.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.DatabaseCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Bookmarks.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.DocumentationCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.ComponentCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.WinApiCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.TaskCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.RecordCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.PostfixTemplates.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Postfix.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DataBinding.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DfmProperties.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassCompletion.Tests.pas"/>
+        <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.Tests.pas"/>
+        <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.ComponentRename.Tests.pas"/>
+        <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.FormModel.Tests.pas"/>
+        <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.FormInfo.Tests.pas"/>
+        <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.BinaryForm.Tests.pas"/>
+        <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.FormFiles.Tests.pas"/>
+        <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.LineTransport.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.Server.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.IndexTools.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.CodeTools.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.PullDiagnostics.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Formatter.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.DocumentLinks.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Colors.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.Client.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.Session.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.Adapters.ServerProcess.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Internals\Atlas.Core.Completion.Internals.Async.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Composite.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.Fixed.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.Server.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Matching.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Controller.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Controller.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Signature\Atlas.Core.Signature.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Hover\Atlas.Core.Hover.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Hover\Atlas.Core.Hover.History.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Signature\Atlas.Core.Signature.CallScanner.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Signature\Atlas.Core.Signature.Controller.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Signature\Atlas.Core.Signature.Providers.Server.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Signature.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Color.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Palette.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Syntax.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Scaling.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Presentation.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Word.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Style.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.XmlDoc.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.Plugin.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Settings.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Ranking.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Usage.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Ranking.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Atlas.UI.Strings.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Strings.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.XmlDoc.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Parentheses.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Parentheses.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Preview.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Settings\Atlas.UI.Settings.Page.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Page.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Events.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Build.Events.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Hangs.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.Hangs.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.ExternalChanges.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Files.ExternalChanges.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Commands\Atlas.Core.Commands.Palette.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Commands.Palette.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Pairs.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Guides.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Problems\Atlas.Core.Problems.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Problems\Atlas.Core.Problems.Store.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Pairs.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Messages.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Build.Messages.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IdeBuild.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.CheckOnSave.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Build.CheckOnSave.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.BuildTools.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.Paths.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Workspace.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.pas"/>
+        <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.Freshness.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Mcp.Tests.pas"/>
+        <BuildConfiguration Include="Base">
+            <Key>Base</Key>
+        </BuildConfiguration>
+        <BuildConfiguration Include="Debug">
+            <Key>Cfg_1</Key>
+            <CfgParent>Base</CfgParent>
+        </BuildConfiguration>
+        <BuildConfiguration Include="Release">
+            <Key>Cfg_2</Key>
+            <CfgParent>Base</CfgParent>
+        </BuildConfiguration>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Delphi.Personality.12</Borland.Personality>
+        <Borland.ProjectType>Application</Borland.ProjectType>
+        <BorlandProject>
+            <Delphi.Personality>
+                <Source>
+                    <Source Name="MainSource">Atlas.Tests.dpr</Source>
+                </Source>
+            </Delphi.Personality>
+            <Platforms>
+                <Platform value="Win32">False</Platform>
+                <Platform value="Win64">True</Platform>
+            </Platforms>
+        </BorlandProject>
+        <ProjectFileVersion>12</ProjectFileVersion>
+    </ProjectExtensions>
+    <Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
+    <Import Project="$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj" Condition="Exists('$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj')"/>
+</Project>

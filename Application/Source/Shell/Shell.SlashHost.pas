@@ -8,11 +8,11 @@ interface
 
 uses
   System.SysUtils,
-  Argus.Common.Logging.Contract,
-  Argus.Common.JsonRpc.Contract,
-  Argus.Common.Documents.Contract,
-  Argus.Common.Projects.Contract,
-  Argus.Common.Editing.SlashCommands,
+  Atlas.Common.Logging.Contract,
+  Atlas.Common.JsonRpc.Contract,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Projects.Contract,
+  Atlas.Common.Editing.SlashCommands,
   Shell.Workspace;
 
 type
@@ -45,9 +45,9 @@ implementation
 
 uses
   System.JSON,
-  Argus.Common.Documents.Uris,
-  Argus.Common.Documents.FileEncoding,
-  Argus.Common.Lsp.Positions;
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Documents.FileEncoding,
+  Atlas.Common.Lsp.Positions;
 
 constructor TShellSlashHost.Create(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
   const AHeaderTemplate: THeaderTemplateFunc; const ATransport: IJsonRpcTransport; const ALogger: ILogger);
@@ -120,7 +120,7 @@ begin
   Request := TJSONObject.Create;
   try
     Request.AddPair('jsonrpc', '2.0');
-    Request.AddPair('id', Format('argus/showDocument/%d', [AtomicIncrement(FRequestId)]));
+    Request.AddPair('id', Format('atlas/showDocument/%d', [AtomicIncrement(FRequestId)]));
     Request.AddPair('method', 'window/showDocument');
     Request.AddPair('params', Params);
     FTransport.WriteMessage(Request);

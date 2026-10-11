@@ -12,12 +12,12 @@
 ## Ausführen
 
 ```
-node Tools/Benchmark/bench.mjs --server Output\Win64\Release\Bin\ArgusServer.exe --baseline benchmark\letzte.json
+node Tools/Benchmark/bench.mjs --server Output\Win64\Release\Bin\AtlasServer.exe --baseline benchmark\letzte.json
 ```
 
 | Option | Bedeutung |
 |---|---|
-| `--server` | Server-EXE, Standard `Output\Win64\Release\Bin\ArgusServer.exe` |
+| `--server` | Server-EXE, Standard `Output\Win64\Release\Bin\AtlasServer.exe` |
 | `--corpus` | Ordner mit Quelltexten, mehrfach möglich; Standard `Tests/Referenzprojekt`. Für den großen Korpus zusätzlich die VCL-Quellen, z. B. `--corpus "C:\Program Files (x86)\Embarcadero\Studio\37.0\source\vcl"`. Der erste Ordner ist die Arbeitsbereichswurzel. |
 | `--samples` | Anzahl der Messpositionen (Standard 30) |
 | `--out` | Ergebnisordner (Standard `benchmark/`, nicht versioniert) |

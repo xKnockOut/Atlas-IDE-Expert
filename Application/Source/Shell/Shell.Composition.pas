@@ -14,58 +14,58 @@ uses
   System.Classes,
   System.JSON,
   System.Generics.Collections,
-  Argus.Common.Logging.Contract,
-  Argus.Common.JsonRpc.Contract,
-  Argus.Common.JsonRpc.Dispatcher,
-  Argus.Common.JsonRpc.Connection,
-  Argus.Common.JsonRpc.Watchdog,
-  Argus.Common.Lsp.Lifecycle,
-  Argus.Common.Lsp.TextDocumentSync,
-  Argus.Common.Lsp.SyntaxDiagnostics,
-  Argus.Common.Lsp.PullDiagnostics,
-  Argus.Common.Lsp.DocumentSymbols,
-  Argus.Common.Lsp.FoldingRanges,
-  Argus.Common.Lsp.LinkedEditing,
-  Argus.Common.Lsp.Formatting,
-  Argus.Common.Lsp.SelectionRanges,
-  Argus.Common.Lsp.Definition,
-  Argus.Common.Lsp.Hover,
-  Argus.Common.Lsp.WorkspaceSymbols,
-  Argus.Common.Editing.Bookmarks,
-  Argus.Common.Lsp.DocumentHighlights,
-  Argus.Common.Lsp.CodeActions,
-  Argus.Common.Lsp.DocumentLinks,
-  Argus.Common.Lsp.Colors,
-  Argus.Common.Lsp.Commands,
-  Argus.Common.Lsp.References,
-  Argus.Common.Lsp.Rename,
-  Argus.Common.Lsp.Completion,
-  Argus.Common.Pascal.LanguageFeatures,
-  Argus.Common.Lsp.SignatureHelp,
-  Argus.Common.Lsp.Hierarchies,
-  Argus.Common.Lsp.Implementations,
-  Argus.Common.Lsp.InlayHints,
-  Argus.Common.Lsp.CodeLens,
-  Argus.Common.Lsp.SemanticTokens,
-  Argus.Common.Lsp.Status,
-  Argus.Common.Lsp.QualifiedNames,
-  Argus.Common.Lsp.StringLiteralCommands,
-  Argus.Common.Editing.StringLiterals,
-  Argus.Common.JsonRpc.Statistics,
-  Argus.Common.Lsp.WatchedFiles,
-  Argus.Common.Lsp.IdeBuild,
-  Argus.Common.Mcp.BuildTools,
-  Argus.Common.Index.Adapters.CacheDirectory,
-  Argus.Common.Lsp.WorkspaceFolders,
-  Argus.Common.Lsp.Configuration,
-  Argus.Common.Documents.Contract,
-  Argus.Common.Configuration.Contract,
-  Argus.Common.Index.Contract,
-  Argus.Common.Compiler.Contract,
-  Argus.Common.Compiler.Results,
-  Argus.Common.Lsp.WorkDoneProgress,
+  Atlas.Common.Logging.Contract,
+  Atlas.Common.JsonRpc.Contract,
+  Atlas.Common.JsonRpc.Dispatcher,
+  Atlas.Common.JsonRpc.Connection,
+  Atlas.Common.JsonRpc.Watchdog,
+  Atlas.Common.Lsp.Lifecycle,
+  Atlas.Common.Lsp.TextDocumentSync,
+  Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Lsp.PullDiagnostics,
+  Atlas.Common.Lsp.DocumentSymbols,
+  Atlas.Common.Lsp.FoldingRanges,
+  Atlas.Common.Lsp.LinkedEditing,
+  Atlas.Common.Lsp.Formatting,
+  Atlas.Common.Lsp.SelectionRanges,
+  Atlas.Common.Lsp.Definition,
+  Atlas.Common.Lsp.Hover,
+  Atlas.Common.Lsp.WorkspaceSymbols,
+  Atlas.Common.Editing.Bookmarks,
+  Atlas.Common.Lsp.DocumentHighlights,
+  Atlas.Common.Lsp.CodeActions,
+  Atlas.Common.Lsp.DocumentLinks,
+  Atlas.Common.Lsp.Colors,
+  Atlas.Common.Lsp.Commands,
+  Atlas.Common.Lsp.References,
+  Atlas.Common.Lsp.Rename,
+  Atlas.Common.Lsp.Completion,
+  Atlas.Common.Pascal.LanguageFeatures,
+  Atlas.Common.Lsp.SignatureHelp,
+  Atlas.Common.Lsp.Hierarchies,
+  Atlas.Common.Lsp.Implementations,
+  Atlas.Common.Lsp.InlayHints,
+  Atlas.Common.Lsp.CodeLens,
+  Atlas.Common.Lsp.SemanticTokens,
+  Atlas.Common.Lsp.Status,
+  Atlas.Common.Lsp.QualifiedNames,
+  Atlas.Common.Lsp.StringLiteralCommands,
+  Atlas.Common.Editing.StringLiterals,
+  Atlas.Common.JsonRpc.Statistics,
+  Atlas.Common.Lsp.WatchedFiles,
+  Atlas.Common.Lsp.IdeBuild,
+  Atlas.Common.Mcp.BuildTools,
+  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Lsp.WorkspaceFolders,
+  Atlas.Common.Lsp.Configuration,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Compiler.Contract,
+  Atlas.Common.Compiler.Results,
+  Atlas.Common.Lsp.WorkDoneProgress,
   Shell.CommandLine,
-  Argus.Windows.Process.ParentWatcher,
+  Atlas.Windows.Process.ParentWatcher,
   Shell.Workspace;
 
 type
@@ -113,7 +113,7 @@ type
     /// <summary>Build-Ergebnisse und Compilermeldungen aus der IDE (#528).</summary>
     FIdeBuild: TLspIdeBuild;
     FWorkspaceFolders: TLspWorkspaceFolders;
-    /// <summary>Für argus.json außerhalb aller Ordner: nur Fehlermeldungen.</summary>
+    /// <summary>Für atlas.json außerhalb aller Ordner: nur Fehlermeldungen.</summary>
     FLooseConfiguration: TLspConfiguration;
     FConnection: TJsonRpcConnection;
     FIndex: ISymbolIndex;
@@ -181,9 +181,9 @@ type
     /// <summary>Fehlerbeschreibung mit letzter Nachricht und Stacktrace für das Log.</summary>
     function DescribeFailure(const AError: Exception): string;
   public const
-    CompileCommand = 'argus.server.compile';
-    SelectBuildCommand = 'argus.server.selectBuild';
-    RebuildIndexCommand = 'argus.server.rebuildIndex';
+    CompileCommand = 'atlas.server.compile';
+    SelectBuildCommand = 'atlas.server.selectBuild';
+    RebuildIndexCommand = 'atlas.server.rebuildIndex';
     /// <summary>Anfragen, die länger laufen, werden abgebrochen und gemeldet.</summary>
     RequestTimeoutMs = 10000;
   public
@@ -207,34 +207,34 @@ uses
   System.IOUtils,
   System.Math,
   System.StrUtils,
-  Argus.Common.Product.Version,
-  Argus.Common.Logging.Providers.Logger,
-  Argus.Common.Logging.Providers.StreamSink,
-  Argus.Common.JsonRpc.StreamTransport,
-  Argus.Common.JsonRpc.TracingTransport,
-  Argus.Common.Lsp.Adapters.LogMessageSink,
-  Argus.Common.Documents.Providers.DocumentStore,
-  Argus.Common.Documents.FileEncoding,
-  Argus.Common.Documents.Uris,
+  Atlas.Common.Product.Version,
+  Atlas.Common.Logging.Providers.Logger,
+  Atlas.Common.Logging.Providers.StreamSink,
+  Atlas.Common.JsonRpc.StreamTransport,
+  Atlas.Common.JsonRpc.TracingTransport,
+  Atlas.Common.Lsp.Adapters.LogMessageSink,
+  Atlas.Common.Documents.Providers.DocumentStore,
+  Atlas.Common.Documents.FileEncoding,
+  Atlas.Common.Documents.Uris,
   Shell.SlashHost,
-  Argus.Common.Rules.Engine,
-  Argus.Common.Rules.Builtin.General,
-  Argus.Common.Lsp.FormFiles,
-  Argus.Common.Dfm.FormModel,
-  Argus.Common.Dfm.BinaryForm,
-  Argus.Common.Editing.CodeActions,
-  Argus.Common.Index.SymbolIndex,
-  Argus.Common.Editing.UsesActions,
-  Argus.Common.Rules.Builtin,
-  Argus.Common.Compiler.OutputParser,
-  Argus.Windows.Compiler.Adapters.ProcessRunner,
-  Argus.Windows.Console.StdStreams,
-  Argus.Windows.Documents.PathCanonicalizer,
-  Argus.Windows.Diagnostics.Adapters.DebugOutputSink,
-  Argus.Windows.Diagnostics.StackTrace,
-  Argus.Common.Logging.Providers.RotatingFileStream,
-  Argus.Windows.Editing.SystemColors,
-  Argus.Common.Projects.Contract;
+  Atlas.Common.Rules.Engine,
+  Atlas.Common.Rules.Builtin.General,
+  Atlas.Common.Lsp.FormFiles,
+  Atlas.Common.Dfm.FormModel,
+  Atlas.Common.Dfm.BinaryForm,
+  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Rules.Builtin,
+  Atlas.Common.Compiler.OutputParser,
+  Atlas.Windows.Compiler.Adapters.ProcessRunner,
+  Atlas.Windows.Console.StdStreams,
+  Atlas.Windows.Documents.PathCanonicalizer,
+  Atlas.Windows.Diagnostics.Adapters.DebugOutputSink,
+  Atlas.Windows.Diagnostics.StackTrace,
+  Atlas.Common.Logging.Providers.RotatingFileStream,
+  Atlas.Windows.Editing.SystemColors,
+  Atlas.Common.Projects.Contract;
 
 function StringsToJson(const AValues: TArray<string>): TJSONArray;
 var
@@ -320,7 +320,7 @@ begin
     end;
   FCompilerResults := TCompilerResults.Create;
   FCompilerProcess := TProcessRunner.Create;
-  FCompileProgress := TLspWorkDoneProgress.Create(FTransport, 'argus-compile');
+  FCompileProgress := TLspWorkDoneProgress.Create(FTransport, 'atlas-compile');
   FCompileLock := TObject.Create;
   FSyntaxDiagnostics.CompilerMessagesProvider :=
     function(const AFileName: string): TArray<TCompilerMessage>
@@ -524,7 +524,7 @@ begin
       Result := TPostfixOptions.Default;
       Result.InlineVar := TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, DelphiVersionFor(AUri));
     end;
-  // Für completionItem/resolve (Detailpanel von Argus, #405).
+  // Für completionItem/resolve (Detailpanel von Atlas, #405).
   FCompletion.ReadText :=
     function(const AFileName: string; out AText: string): Boolean
     begin
@@ -892,7 +892,7 @@ begin
       FSyntaxDiagnostics.RefreshFiles(FCompilerResults.Replace(AMessages));
       FLogger.Info(Format('Compilermeldungen aus der IDE: %d', [Length(AMessages)]));
     end;
-  // Letzten Build für den MCP-Prozess ablegen (#556): je Arbeitsordner eine Datei im Argus-Cache.
+  // Letzten Build für den MCP-Prozess ablegen (#556): je Arbeitsordner eine Datei im Atlas-Cache.
   FIdeBuild.OnChanged :=
     procedure(const ABuild: TIdeBuild)
     var
@@ -1029,7 +1029,7 @@ var
 begin
   Inc(FWorkspaceCounter);
   Workspace := TShellWorkspace.Create(AFolder.Path, AFolder.Name, FDocuments, FTransport, FLogger, FIndex,
-    Format('argus-index-%d', [FWorkspaceCounter]));
+    Format('atlas-index-%d', [FWorkspaceCounter]));
   Workspace.OnProjectLoaded := ProjectLoaded;
   // Das Zeitlimit gilt serverweit; bei mehreren Ordnern das zuletzt gelesene.
   Workspace.OnSettingsChanged :=

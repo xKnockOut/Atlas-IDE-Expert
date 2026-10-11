@@ -1,14 +1,14 @@
 {
-  "name": "argus",
-  "displayName": "Argus",
-  "description": "Delphi/Object Pascal in VS Code mit dem Language Server Argus: Navigation, Prüfregeln, Formatierung, Umbenennen und mehr.",
+  "name": "atlas",
+  "displayName": "Atlas",
+  "description": "Delphi/Object Pascal in VS Code mit dem Language Server Atlas: Navigation, Prüfregeln, Formatierung, Umbenennen und mehr.",
   "version": "0.1.0",
   "publisher": "xknockout",
   "license": "SEE LICENSE IN ../../LICENSE",
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/xKnockOut/Argus-IDE-Expert.git"
+    "url": "https://github.com/xKnockOut/Atlas-IDE-Expert.git"
   },
   "engines": {
     "vscode": "^1.82.0"
@@ -22,13 +22,13 @@
       "supported": "limited",
       "description": "In nicht vertrauenswürdigen Ordnern laufen nur lesende Funktionen; der Compiler wird nicht gestartet und Server-Pfade aus dem Arbeitsbereich werden ignoriert.",
       "restrictedConfigurations": [
-        "argus.serverPath"
+        "atlas.serverPath"
       ]
     }
   },
   "activationEvents": [
     "workspaceContains:**/*.dproj",
-    "workspaceContains:**/argus.json"
+    "workspaceContains:**/atlas.json"
   ],
   "contributes": {
     "languages": [
@@ -54,61 +54,61 @@
       }
     ],
     "configuration": {
-      "title": "Argus",
+      "title": "Atlas",
       "properties": {
-        "argus.serverPath": {
+        "atlas.serverPath": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Pfad zu `ArgusServer.exe`. Leer: die mitgelieferte EXE (`server\\` in der Erweiterung), dann `Output\\Win64\\Release|Debug\\Bin` im Arbeitsbereich, zuletzt `PATH`."
+          "markdownDescription": "Pfad zu `AtlasServer.exe`. Leer: die mitgelieferte EXE (`server\\` in der Erweiterung), dann `Output\\Win64\\Release|Debug\\Bin` im Arbeitsbereich, zuletzt `PATH`."
         },
-        "argus.delphiVersion": {
+        "atlas.delphiVersion": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Delphi-Version als Produktnummer (\"13\", \"12\", \"10.4\") oder wie in der Registry (\"37.0\" für Delphi 13, \"23.0\" für Delphi 12). Leer: neueste installierte Version. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Delphi-Version als Produktnummer (\"13\", \"12\", \"10.4\") oder wie in der Registry (\"37.0\" für Delphi 13, \"23.0\" für Delphi 12). Leer: neueste installierte Version. atlas.json im Projekt hat Vorrang."
         },
-        "argus.language": {
+        "atlas.language": {
           "type": "string",
           "enum": [
             "de",
             "en"
           ],
           "default": "de",
-          "markdownDescription": "Sprache der Meldungen. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Sprache der Meldungen. atlas.json im Projekt hat Vorrang."
         },
-        "argus.project": {
+        "atlas.project": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Projektdatei (.dproj) relativ zu diesem Ordner. Leer: automatisch suchen. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Projektdatei (.dproj) relativ zu diesem Ordner. Leer: automatisch suchen. atlas.json im Projekt hat Vorrang."
         },
-        "argus.config": {
+        "atlas.config": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Build-Konfiguration, z. B. Debug oder Release. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Build-Konfiguration, z. B. Debug oder Release. atlas.json im Projekt hat Vorrang."
         },
-        "argus.platform": {
+        "atlas.platform": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Zielplattform. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Zielplattform. atlas.json im Projekt hat Vorrang."
         },
-        "argus.rules": {
+        "atlas.rules": {
           "type": "object",
           "default": {},
-          "markdownDescription": "Prüfregeln einzeln einstellen: Regel-ID → Schweregrad oder Objekt mit \"severity\" und Optionen. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Prüfregeln einzeln einstellen: Regel-ID → Schweregrad oder Objekt mit \"severity\" und Optionen. atlas.json im Projekt hat Vorrang."
         },
-        "argus.profile": {
+        "atlas.profile": {
           "type": [
             "string",
             "object"
           ],
           "default": "standard",
-          "markdownDescription": "Regelprofil: standard, fast (nur Bugs und Schwachstellen), strict (experimentelle Regeln an, minConfidence low), security, style oder ein eigenes aus \"profiles\". Als Objekt getrennt für Editor und Kommandozeile. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Regelprofil: standard, fast (nur Bugs und Schwachstellen), strict (experimentelle Regeln an, minConfidence low), security, style oder ein eigenes aus \"profiles\". Als Objekt getrennt für Editor und Kommandozeile. atlas.json im Projekt hat Vorrang."
         },
-        "argus.profiles": {
+        "atlas.profiles": {
           "type": "object",
           "default": {},
-          "markdownDescription": "Eigene Regelprofile: Name → { \"extends\": eingebautes oder eigenes Profil, \"categories\": nur diese Kategorien, \"rules\": Regel-ID → Schweregrad }. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Eigene Regelprofile: Name → { \"extends\": eingebautes oder eigenes Profil, \"categories\": nur diese Kategorien, \"rules\": Regel-ID → Schweregrad }. atlas.json im Projekt hat Vorrang."
         },
-        "argus.overrides": {
+        "atlas.overrides": {
           "type": "array",
           "items": {
             "type": "object",
@@ -140,39 +140,39 @@
             }
           },
           "default": [],
-          "markdownDescription": "Pfadregeln: Schweregrade für Dateien, die eines der Glob-Muster treffen, z. B. Tests oder generierten Code herabstufen. Regel-ID \"*\" steht für alle Regeln; spätere Einträge haben Vorrang. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Pfadregeln: Schweregrade für Dateien, die eines der Glob-Muster treffen, z. B. Tests oder generierten Code herabstufen. Regel-ID \"*\" steht für alle Regeln; spätere Einträge haben Vorrang. atlas.json im Projekt hat Vorrang."
         },
-        "argus.excludeTests": {
+        "atlas.excludeTests": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Test-Units und Testprojekte (uses DUnitX.TestFramework, TestFramework oder TestInsight.*) nicht prüfen. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Test-Units und Testprojekte (uses DUnitX.TestFramework, TestFramework oder TestInsight.*) nicht prüfen. atlas.json im Projekt hat Vorrang."
         },
-        "argus.testProfile": {
+        "atlas.testProfile": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Regelprofil für Test-Units und Testprojekte; leer: wie \"profile\". argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Regelprofil für Test-Units und Testprojekte; leer: wie \"profile\". atlas.json im Projekt hat Vorrang."
         },
-        "argus.compiler": {
+        "atlas.compiler": {
           "type": "object",
           "default": {},
-          "markdownDescription": "Compiler-Anbindung (dcc32/dcc64). argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Compiler-Anbindung (dcc32/dcc64). atlas.json im Projekt hat Vorrang."
         },
-        "argus.completion": {
+        "atlas.completion": {
           "type": "object",
           "default": {},
-          "markdownDescription": "Code-Vervollständigung. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Code-Vervollständigung. atlas.json im Projekt hat Vorrang."
         },
-        "argus.usesCommand": {
+        "atlas.usesCommand": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Eine Zeile \"/uses Unit1, Unit2\" wird nach Enter gelöscht und die Units kommen ins passende uses. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Eine Zeile \"/uses Unit1, Unit2\" wird nach Enter gelöscht und die Units kommen ins passende uses. atlas.json im Projekt hat Vorrang."
         },
-        "argus.slashCommands": {
+        "atlas.slashCommands": {
           "type": "object",
           "default": {},
-          "markdownDescription": "Schnellbefehle: Eine Zeile, die mit /name beginnt, wird nach Enter ausgeführt und verschwindet. Nach / schlägt die Vervollständigung alle Befehle vor. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Schnellbefehle: Eine Zeile, die mit /name beginnt, wird nach Enter ausgeführt und verschwindet. Nach / schlägt die Vervollständigung alle Befehle vor. atlas.json im Projekt hat Vorrang."
         },
-        "argus.sortUses": {
+        "atlas.sortUses": {
           "type": [
             "boolean",
             "string"
@@ -184,17 +184,17 @@
             "namespace"
           ],
           "default": false,
-          "markdownDescription": "\"uses aufräumen\" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder \"alphabetic\" alphabetisch, \"namespace\" nach Namespace gruppiert (System, Vcl, ... und Units ohne Namespace zuletzt). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "\"uses aufräumen\" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder \"alphabetic\" alphabetisch, \"namespace\" nach Namespace gruppiert (System, Vcl, ... und Units ohne Namespace zuletzt). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units. atlas.json im Projekt hat Vorrang."
         },
-        "argus.usesKeep": {
+        "atlas.usesKeep": {
           "type": "array",
           "items": {
             "type": "string"
           },
           "default": null,
-          "markdownDescription": "Units, die \"ungenutzte uses entfernen\" nie entfernt, zusätzlich zu allen Units mit initialization-Abschnitt. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Units, die \"ungenutzte uses entfernen\" nie entfernt, zusätzlich zu allen Units mit initialization-Abschnitt. atlas.json im Projekt hat Vorrang."
         },
-        "argus.dfmPropertyRules": {
+        "atlas.dfmPropertyRules": {
           "type": "array",
           "items": {
             "type": "object",
@@ -271,41 +271,41 @@
             }
           },
           "default": null,
-          "markdownDescription": "Eigenschaftsregeln für Formulardateien: Vorgaben für Komponenten-Properties, gemeldet als dfm-property am Feld der Komponente in der Unit. Nicht gespeicherte Properties gelten mit ihrem default-Wert. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Eigenschaftsregeln für Formulardateien: Vorgaben für Komponenten-Properties, gemeldet als dfm-property am Feld der Komponente in der Unit. Nicht gespeicherte Properties gelten mit ihrem default-Wert. atlas.json im Projekt hat Vorrang."
         },
-        "argus.memoryBudgetMb": {
+        "atlas.memoryBudgetMb": {
           "type": "integer",
           "minimum": 0,
           "default": 0,
-          "markdownDescription": "Obergrenze für den Symbolindex in MB. Darüber werden zuerst Bibliotheks-Units (RTL, VCL), dann Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Obergrenze für den Symbolindex in MB. Darüber werden zuerst Bibliotheks-Units (RTL, VCL), dann Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. atlas.json im Projekt hat Vorrang."
         },
-        "argus.requestTimeoutMs": {
+        "atlas.requestTimeoutMs": {
           "type": "integer",
           "minimum": 1000,
           "default": 10000,
-          "markdownDescription": "Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet. atlas.json im Projekt hat Vorrang."
         },
-        "argus.highlight": {
+        "atlas.highlight": {
           "type": "object",
           "default": {},
-          "markdownDescription": "Zusammengehörige Schlüsselwörter hervorheben, wenn der Cursor auf einem steht. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Zusammengehörige Schlüsselwörter hervorheben, wenn der Cursor auf einem steht. atlas.json im Projekt hat Vorrang."
         },
-        "argus.inlayHints": {
+        "atlas.inlayHints": {
           "type": "object",
           "default": {},
-          "markdownDescription": "Inlay Hints im Editor. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Inlay Hints im Editor. atlas.json im Projekt hat Vorrang."
         },
-        "argus.stringLiteral": {
+        "atlas.stringLiteral": {
           "type": "object",
           "default": {},
-          "markdownDescription": "Code-Aktionen „Als String-Literal“ und „Als Klartext kopieren“. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Code-Aktionen „Als String-Literal“ und „Als Klartext kopieren“. atlas.json im Projekt hat Vorrang."
         },
-        "argus.memberOrder": {
+        "atlas.memberOrder": {
           "type": "object",
           "default": {},
-          "markdownDescription": "Code-Aktion „Klassenmitglieder ordnen“: Reihenfolge der Sichtbarkeitsabschnitte und der Mitglieder darin. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Code-Aktion „Klassenmitglieder ordnen“: Reihenfolge der Sichtbarkeitsabschnitte und der Mitglieder darin. atlas.json im Projekt hat Vorrang."
         },
-        "argus.minConfidence": {
+        "atlas.minConfidence": {
           "type": "string",
           "enum": [
             "low",
@@ -313,22 +313,22 @@
             "high"
           ],
           "default": "medium",
-          "markdownDescription": "Regeltreffer unter dieser Konfidenz ausblenden. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Regeltreffer unter dieser Konfidenz ausblenden. atlas.json im Projekt hat Vorrang."
         },
-        "argus.exclude": {
+        "atlas.exclude": {
           "type": "array",
           "items": {
             "type": "string"
           },
           "default": [],
-          "markdownDescription": "Ordner und Dateien, die nicht geprüft werden (Glob-Muster relativ zu diesem Ordner: *, **, ?). argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Ordner und Dateien, die nicht geprüft werden (Glob-Muster relativ zu diesem Ordner: *, **, ?). atlas.json im Projekt hat Vorrang."
         },
-        "argus.format": {
+        "atlas.format": {
           "type": "object",
           "default": {},
-          "markdownDescription": "Formatierung (Dokument und Auswahl formatieren). Gesetzte Werte haben Vorrang vor .editorconfig. argus.json im Projekt hat Vorrang."
+          "markdownDescription": "Formatierung (Dokument und Auswahl formatieren). Gesetzte Werte haben Vorrang vor .editorconfig. atlas.json im Projekt hat Vorrang."
         },
-        "argus.logLevel": {
+        "atlas.logLevel": {
           "type": "string",
           "enum": [
             "debug",
@@ -339,17 +339,17 @@
           "default": "info",
           "markdownDescription": "Mindeststufe der Meldungen im Ausgabefenster und in der Logdatei. Gilt ab dem nächsten Start; die Kommandozeilenoption --log-level hat Vorrang."
         },
-        "argus.logFile": {
+        "atlas.logFile": {
           "type": "string",
           "default": "",
           "markdownDescription": "Optionale Logdatei des Servers (Rotation bei 10 MB). Gilt ab dem nächsten Start; --log hat Vorrang."
         },
-        "argus.traceFile": {
+        "atlas.traceFile": {
           "type": "string",
           "default": "",
           "markdownDescription": "Optionaler Mitschnitt aller JSON-Nachrichten zur Fehlersuche. Gilt ab dem nächsten Start; --trace hat Vorrang."
         },
-        "argus.trace.server": {
+        "atlas.trace.server": {
           "type": "string",
           "enum": [
             "off",
@@ -357,66 +357,66 @@
             "verbose"
           ],
           "default": "off",
-          "description": "Protokolliert den Nachrichtenaustausch im Ausgabefenster „Argus Trace“."
+          "description": "Protokolliert den Nachrichtenaustausch im Ausgabefenster „Atlas Trace“."
         }
       }
     },
     "commands": [
       {
-        "command": "argus.restartServer",
+        "command": "atlas.restartServer",
         "title": "Server neu starten",
-        "category": "Argus"
+        "category": "Atlas"
       },
       {
-        "command": "argus.showStatus",
+        "command": "atlas.showStatus",
         "title": "Status anzeigen",
-        "category": "Argus"
+        "category": "Atlas"
       },
       {
-        "command": "argus.server.compile",
+        "command": "atlas.server.compile",
         "title": "Projekt kompilieren",
-        "category": "Argus"
+        "category": "Atlas"
       },
       {
-        "command": "argus.server.rebuildIndex",
+        "command": "atlas.server.rebuildIndex",
         "title": "Index neu aufbauen",
-        "category": "Argus"
+        "category": "Atlas"
       },
       {
-        "command": "argus.selectBuild",
+        "command": "atlas.selectBuild",
         "title": "Konfiguration und Plattform wählen",
-        "category": "Argus"
+        "category": "Atlas"
       },
       {
-        "command": "argus.copyQualifiedName",
+        "command": "atlas.copyQualifiedName",
         "title": "Qualifizierten Namen kopieren",
-        "category": "Argus"
+        "category": "Atlas"
       },
       {
-        "command": "argus.copyQualifiedNameWithParameters",
+        "command": "atlas.copyQualifiedNameWithParameters",
         "title": "Qualifizierten Namen mit Parametertypen kopieren",
-        "category": "Argus"
+        "category": "Atlas"
       },
       {
-        "command": "argus.copyAsPlainText",
+        "command": "atlas.copyAsPlainText",
         "title": "String-Literal als Klartext kopieren",
-        "category": "Argus"
+        "category": "Atlas"
       },
       {
-        "command": "argus.pasteAsLiteral",
+        "command": "atlas.pasteAsLiteral",
         "title": "Klartext als String-Literal einfügen",
-        "category": "Argus"
+        "category": "Atlas"
       }
     ],
     "menus": {
       "editor/context": [
         {
-          "command": "argus.copyQualifiedName",
+          "command": "atlas.copyQualifiedName",
           "when": "editorLangId == objectpascal",
           "group": "9_cutcopypaste"
         },
         {
-          "command": "argus.pasteAsLiteral",
+          "command": "atlas.pasteAsLiteral",
           "when": "editorLangId == objectpascal",
           "group": "9_cutcopypaste"
         }
@@ -425,10 +425,10 @@
     "jsonValidation": [
       {
         "fileMatch": [
-          "argus.json",
+          "atlas.json",
           "delphi-lsp.json"
         ],
-        "url": "./schemas/argus.schema.json"
+        "url": "./schemas/atlas.schema.json"
       }
     ]
   },

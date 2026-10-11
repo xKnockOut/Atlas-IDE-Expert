@@ -10,9 +10,9 @@ Der größte Teil des Servers ist reine Textverarbeitung. Windows-Abhängigkeite
 
 ## Entscheidung
 
-- `Argus.Common`: frei von Windows und VCL.
-- `Argus.Windows`: Windows-Adapter, frei von VCL.
-- `ArgusServer`: Anwendung mit Komposition von Hand.
+- `Atlas.Common`: frei von Windows und VCL.
+- `Atlas.Windows`: Windows-Adapter, frei von VCL.
+- `AtlasServer`: Anwendung mit Komposition von Hand.
 
 `Tools/Check-PackageDependencies.ps1` prüft die Regeln lokal und in der GitHub Action.
 

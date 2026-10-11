@@ -3,11 +3,11 @@
     Prüft, ob die Packages ihre erlaubten Abhängigkeiten einhalten.
 
 .DESCRIPTION
-    - Argus.Common  : frei von Windows und VCL (nur plattformunabhängige RTL)
-    - Argus.Windows : frei von VCL (RTL, Winapi.*, System.Win.*, Argus.Common)
-    - Argus.IDE.Expert: eigenständig; darin Schichten (#406):
-        Argus.Core.* ohne VCL, Open Tools API, Argus.UI.* und Argus.IDE.*
-        Argus.UI.*   ohne Open Tools API und Argus.IDE.*
+    - Atlas.Common  : frei von Windows und VCL (nur plattformunabhängige RTL)
+    - Atlas.Windows : frei von VCL (RTL, Winapi.*, System.Win.*, Atlas.Common)
+    - Atlas.IDE.Expert: eigenständig; darin Schichten (#406):
+        Atlas.Core.* ohne VCL, Open Tools API, Atlas.UI.* und Atlas.IDE.*
+        Atlas.UI.*   ohne Open Tools API und Atlas.IDE.*
 
     Ausgewertet werden alle uses-Klauseln der .pas-Dateien und die
     requires-Klausel der .dpk-Datei jedes Packages. Kommentare, Strings und
@@ -47,29 +47,29 @@ $LegacyWindowsUnits = @(
 
 $Packages = @(
     @{
-        Name             = 'Argus.Common'
-        Path             = 'Packages/Argus.Common'
+        Name             = 'Atlas.Common'
+        Path             = 'Packages/Atlas.Common'
         AllowedRequires  = @('rtl')
-        ForbiddenPrefix  = @('Winapi.', 'System.Win.', 'Vcl.', 'FMX.', 'Argus.Windows')
+        ForbiddenPrefix  = @('Winapi.', 'System.Win.', 'Vcl.', 'FMX.', 'Atlas.Windows')
         ForbiddenUnits   = $LegacyVclUnits + $LegacyWindowsUnits
         Reason           = 'frei von Windows und VCL'
     },
     @{
-        Name             = 'Argus.Windows'
-        Path             = 'Packages/Argus.Windows'
-        AllowedRequires  = @('rtl', 'Argus.Common')
+        Name             = 'Atlas.Windows'
+        Path             = 'Packages/Atlas.Windows'
+        AllowedRequires  = @('rtl', 'Atlas.Common')
         ForbiddenPrefix  = @('Vcl.', 'FMX.')
         ForbiddenUnits   = $LegacyVclUnits
         Reason           = 'frei von VCL'
     },
     @{
         # ADR 0006: eigenständig, damit die IDE nur ein BPL laden muss.
-        Name             = 'Argus.IDE.Expert'
-        Path             = 'Packages/Argus.IDE.Expert'
+        Name             = 'Atlas.IDE.Expert'
+        Path             = 'Packages/Atlas.IDE.Expert'
         AllowedRequires  = @('rtl', 'vcl', 'designide')
-        ForbiddenPrefix  = @('Argus.Common', 'Argus.Windows', 'FMX.')
+        ForbiddenPrefix  = @('Atlas.Common', 'Atlas.Windows', 'FMX.')
         ForbiddenUnits   = @()
-        Reason           = 'eigenständig ohne Argus.Common und Argus.Windows'
+        Reason           = 'eigenständig ohne Atlas.Common und Atlas.Windows'
     }
 )
 
@@ -79,16 +79,16 @@ $OpenToolsPrefix = @('ToolsAPI', 'DesignIntf', 'DesignEditors', 'DesignMenus', '
 # Schichten im Plugin (#406): gelten zusätzlich je nach Präfix der Unit selbst.
 $Layers = @(
     @{
-        UnitPrefix      = 'Argus.Core.'
-        ForbiddenPrefix = @('Vcl.', 'Argus.UI.', 'Argus.IDE.') + $OpenToolsPrefix
+        UnitPrefix      = 'Atlas.Core.'
+        ForbiddenPrefix = @('Vcl.', 'Atlas.UI.', 'Atlas.IDE.') + $OpenToolsPrefix
         ForbiddenUnits  = $LegacyVclUnits
-        Reason          = 'frei von VCL, Open Tools API, Argus.UI und Argus.IDE'
+        Reason          = 'frei von VCL, Open Tools API, Atlas.UI und Atlas.IDE'
     },
     @{
-        UnitPrefix      = 'Argus.UI.'
-        ForbiddenPrefix = @('Argus.IDE.') + $OpenToolsPrefix
+        UnitPrefix      = 'Atlas.UI.'
+        ForbiddenPrefix = @('Atlas.IDE.') + $OpenToolsPrefix
         ForbiddenUnits  = @()
-        Reason          = 'frei von Open Tools API und Argus.IDE'
+        Reason          = 'frei von Open Tools API und Atlas.IDE'
     }
 )
 

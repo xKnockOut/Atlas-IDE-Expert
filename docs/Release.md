@@ -1,6 +1,6 @@
 # Release
 
-Server und VS-Code-Erweiterung tragen dieselbe [SemVer](https://semver.org/lang/de/)-Version. Quellen sind `TProductVersion.Version` (`Argus.Common.Product.Version.pas`) und `version` in `Editors/VSCode/package.json`; `pwsh Tools/Check-Version.ps1` prüft beide und den Abschnitt in `CHANGELOG.md`.
+Server und VS-Code-Erweiterung tragen dieselbe [SemVer](https://semver.org/lang/de/)-Version. Quellen sind `TProductVersion.Version` (`Atlas.Common.Product.Version.pas`) und `version` in `Editors/VSCode/package.json`; `pwsh Tools/Check-Version.ps1` prüft beide und den Abschnitt in `CHANGELOG.md`.
 
 ## Ablauf
 

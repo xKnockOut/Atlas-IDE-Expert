@@ -3,7 +3,7 @@
     Prüft, dass der eigene Quelltext auch mit Delphi 12 übersetzt (#281).
 
 .DESCRIPTION
-    Argus soll mit Delphi 12 und 13 gebaut werden. Geprüft werden alle
+    Atlas soll mit Delphi 12 und 13 gebaut werden. Geprüft werden alle
     Quelltexte unter Packages/, Application/ und Tests/ auf Syntax, die erst
     Delphi 13 kennt:
 

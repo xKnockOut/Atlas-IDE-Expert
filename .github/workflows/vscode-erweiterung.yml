@@ -30,12 +30,12 @@ jobs:
       - name: .vsix packen
         run: |
           cp ../../THIRD-PARTY-NOTICES.md .
-          npx vsce package -o argus.vsix
+          npx vsce package -o atlas.vsix
       - name: Keine Embarcadero-Quellen in Tests und .vsix (#77)
         shell: pwsh
-        run: ../../Tools/Check-NoEmbarcaderoSources.ps1 -Vsix argus.vsix
+        run: ../../Tools/Check-NoEmbarcaderoSources.ps1 -Vsix atlas.vsix
       - name: .vsix als Artefakt ablegen
         uses: actions/upload-artifact@v4
         with:
-          name: argus-vsix
-          path: Editors/VSCode/argus.vsix
+          name: atlas-vsix
+          path: Editors/VSCode/atlas.vsix

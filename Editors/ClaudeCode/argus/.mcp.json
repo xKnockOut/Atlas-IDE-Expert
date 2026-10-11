@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "delphi": {
-      "type": "stdio",
-      "command": "ArgusServer.exe",
-      "args": ["--mcp"]
-    }
-  }
-}
