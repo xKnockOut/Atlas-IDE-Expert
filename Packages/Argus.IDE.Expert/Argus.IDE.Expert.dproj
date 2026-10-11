@@ -150,7 +150,9 @@
         <DCCReference Include="Source\UI\Commands\Argus.UI.Commands.Palette.pas"/>
         <DCCReference Include="Source\IDE\Commands\Argus.IDE.Commands.Palette.pas"/>
         <DCCReference Include="Source\Core\Editor\Argus.Core.Editor.Pairs.pas"/>
+        <DCCReference Include="Source\Core\Editor\Argus.Core.Editor.Guides.pas"/>
         <DCCReference Include="Source\IDE\Editor\Argus.IDE.Editor.Pairs.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Argus.IDE.Editor.Structure.pas"/>
         <DCCReference Include="Source\IDE\Build\Argus.IDE.Build.MessageView.pas"/>
         <DCCReference Include="Source\Core\Build\Argus.Core.Build.Messages.pas"/>
         <DCCReference Include="Source\Core\Build\Argus.Core.Build.CheckOnSave.pas"/>

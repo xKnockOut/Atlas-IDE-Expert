@@ -33,6 +33,7 @@ uses
   Argus.IDE.Files.Reloader,
   Argus.IDE.Commands.Palette,
   Argus.IDE.Editor.Pairs,
+  Argus.IDE.Editor.Structure,
   Argus.IDE.Build.CheckOnSave;
 
 var
@@ -237,6 +238,8 @@ begin
     RegisterPalette;
   if Pairs = nil then
     Pairs := TArgusEditorPairs.Create;
+  // Eigene Blocklinien: Strukturhervorhebung der IDE abgleichen (#514).
+  TArgusIdeStructureSwitch.Sync;
   if Reloader = nil then
   begin
     Reloader := TArgusFileReloader.Create(

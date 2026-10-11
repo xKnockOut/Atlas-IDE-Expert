@@ -23,13 +23,20 @@ type
     procedure TryFinallyRepeatUntilAndEscapes;
     [Test]
     procedure DisplayLineExpandsTabsAndRunsMatchOnlyAtTheirColumn;
+    [Test]
+    procedure GuidesSpanMultiLineBlocksAtIndentOfOpenerLine;
+    [Test]
+    procedure GuidesForTypesTabsAndSingleLineBlocks;
+    [Test]
+    procedure SwitchTurnsIdeStructureOffAndOnlyRestoresOwnChange;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  Argus.Core.Editor.Pairs;
+  Argus.Core.Editor.Pairs,
+  Argus.Core.Editor.Guides;
 
 /// <summary>"Text@Tiefe" je Token, unpaarige mit "!".</summary>
 function Describe(const AText: string): string;
@@ -105,6 +112,57 @@ begin
   Assert.IsFalse(TArgusPairs.RunMatches(Line, '(', 5));
   Assert.IsFalse(TArgusPairs.RunMatches(Line, 'then', 12));
   Assert.IsFalse(TArgusPairs.RunMatches(Line, '', 1));
+end;
+
+/// <summary>"Erste-Letzte@Spalte:Tiefe" je Linie.</summary>
+function DescribeGuides(const AText: string; ATabWidth: Integer): string;
+var
+  Guide: TArgusGuide;
+begin
+  Result := '';
+  for Guide in TArgusGuides.Compute(AText, ATabWidth) do
+    Result := Result + Format('%d-%d@%d:%d ', [Guide.FirstLine, Guide.LastLine, Guide.Column, Guide.Depth]);
+  Result := Trim(Result);
+end;
+
+procedure TArgusPairsTests.GuidesSpanMultiLineBlocksAtIndentOfOpenerLine;
+begin
+  // Innerer Block zuerst (Reihenfolge des Endes); "if A then begin" steht am Einzug des if.
+  Assert.AreEqual('2-4@3:1 1-5@1:0', DescribeGuides('procedure X;'#10'begin'#10'  if A then begin'#10'    B;'#10 +
+    '  end;'#10'end;', 2));
+  Assert.AreEqual('0-2@1:0', DescribeGuides('repeat'#10'  A;'#10'until B;', 2));
+end;
+
+procedure TArgusPairsTests.GuidesForTypesTabsAndSingleLineBlocks;
+begin
+  Assert.AreEqual('0-2@3:0', DescribeGuides('  TFoo = class'#10'    F: Integer;'#10'  end;', 2));
+  Assert.AreEqual('0-1@5:0', DescribeGuides(#9'begin'#13#10#9'end;', 4));
+  // Block in einer Zeile: keine Linie.
+  Assert.AreEqual('', DescribeGuides('begin end;', 2));
+  // Unpaarig: keine Linie.
+  Assert.AreEqual('', DescribeGuides('begin'#10'  A;', 2));
+end;
+
+procedure TArgusPairsTests.SwitchTurnsIdeStructureOffAndOnlyRestoresOwnChange;
+var
+  State, Next: TArgusIdeStructure;
+begin
+  State.Enabled := True;
+  State.DisabledByArgus := False;
+  Next := TArgusGuides.Switch(State, True);
+  Assert.IsFalse(Next.Enabled, 'eigene Linien: IDE aus');
+  Assert.IsTrue(Next.DisabledByArgus);
+  Next := TArgusGuides.Switch(Next, False);
+  Assert.IsTrue(Next.Enabled, 'eigene Linien aus: IDE wieder an');
+  Assert.IsFalse(Next.DisabledByArgus);
+  // Vom User selbst abgeschaltet: Argus fasst es nicht an.
+  State.Enabled := False;
+  State.DisabledByArgus := False;
+  Next := TArgusGuides.Switch(State, False);
+  Assert.IsFalse(Next.Enabled);
+  Next := TArgusGuides.Switch(State, True);
+  Assert.IsFalse(Next.Enabled);
+  Assert.IsFalse(Next.DisabledByArgus);
 end;
 
 initialization

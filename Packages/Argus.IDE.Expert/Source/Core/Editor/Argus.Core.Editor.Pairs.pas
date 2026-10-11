@@ -30,10 +30,22 @@ type
     IsWord: Boolean;
   end;
 
+  /// <summary>Gepaarter Block (begin … end, repeat … until, class … end …), 0-basiert.</summary>
+  TArgusPairBlock = record
+    OpenLine: Integer;
+    OpenCharacter: Integer;
+    CloseLine: Integer;
+    CloseCharacter: Integer;
+    Depth: Integer;
+  end;
+
   TArgusPairs = class
   public
     /// <summary>Klammern und Blockwörter in AText, nach Position sortiert.</summary>
-    class function Analyze(const AText: string): TArray<TArgusPairToken>; static;
+    class function Analyze(const AText: string): TArray<TArgusPairToken>; overload; static;
+    /// <summary>Wie Analyze; ABlocks erhält zusätzlich die gepaarten Blöcke in der Reihenfolge ihres Endes.</summary>
+    class function Analyze(const AText: string; out ABlocks: TArray<TArgusPairBlock>): TArray<TArgusPairToken>;
+      overload; static;
     /// <summary>Zeile wie im Editor: Tabs bis zur nächsten Tabstelle als Leerzeichen, ohne #13.</summary>
     class function DisplayLine(const ALine: string; ATabWidth: Integer): string; static;
     /// <summary>True, wenn der Textlauf ARun ab der 1-basierten Spalte AColumn in ADisplayLine steht.</summary>
@@ -193,9 +205,17 @@ end;
 
 class function TArgusPairs.Analyze(const AText: string): TArray<TArgusPairToken>;
 var
+  Blocks: TArray<TArgusPairBlock>;
+begin
+  Result := Analyze(AText, Blocks);
+end;
+
+class function TArgusPairs.Analyze(const AText: string; out ABlocks: TArray<TArgusPairBlock>): TArray<TArgusPairToken>;
+var
   Tokens: TArray<TLexToken>;
   Results: TList<TArgusPairToken>;
   Blocks, Brackets: TList<TOpen>;
+  Closed: TList<TArgusPairBlock>;
   Index: Integer;
   Token: TLexToken;
   Word, Previous, Next: string;
@@ -245,6 +265,21 @@ var
     Result := '';
   end;
 
+  // Der oberste offene Block endet am Token AIndex.
+  procedure CloseBlock(AIndex: Integer);
+  var
+    Block: TArgusPairBlock;
+  begin
+    Block.OpenLine := Results.List[Blocks.Last.Index].Line;
+    Block.OpenCharacter := Results.List[Blocks.Last.Index].Character;
+    Blocks.Delete(Blocks.Count - 1);
+    Block.CloseLine := Tokens[AIndex].Line;
+    Block.CloseCharacter := Tokens[AIndex].Character;
+    Block.Depth := Blocks.Count;
+    Closed.Add(Block);
+    Emit(AIndex, Blocks.Count, False);
+  end;
+
   function InRecord: Boolean;
   begin
     Result := (Blocks.Count > 0) and ((Blocks.Last.Word = 'record') or (Blocks.Last.Word = 'class') or
@@ -273,6 +308,7 @@ begin
   Results := TList<TArgusPairToken>.Create;
   Blocks := TList<TOpen>.Create;
   Brackets := TList<TOpen>.Create;
+  Closed := TList<TArgusPairBlock>.Create;
   try
     for Index := 0 to High(Tokens) do
     begin
@@ -309,10 +345,7 @@ begin
       else if Word = 'end' then
       begin
         if (Blocks.Count > 0) and (Blocks.Last.Word <> 'repeat') then
-        begin
-          Blocks.Delete(Blocks.Count - 1);
-          Emit(Index, Blocks.Count, False);
-        end
+          CloseBlock(Index)
         else if (Blocks.Count = 0) and (TextAt(Index + 1) = '.') then
           // Ende der Unit bzw. des Programms.
         else
@@ -321,10 +354,7 @@ begin
       else if Word = 'until' then
       begin
         if (Blocks.Count > 0) and (Blocks.Last.Word = 'repeat') then
-        begin
-          Blocks.Delete(Blocks.Count - 1);
-          Emit(Index, Blocks.Count, False);
-        end
+          CloseBlock(Index)
         else
           Emit(Index, 0, True);
       end
@@ -344,7 +374,9 @@ begin
           Result := A.Character - B.Character;
       end));
     Result := Results.ToArray;
+    ABlocks := Closed.ToArray;
   finally
+    Closed.Free;
     Brackets.Free;
     Blocks.Free;
     Results.Free;

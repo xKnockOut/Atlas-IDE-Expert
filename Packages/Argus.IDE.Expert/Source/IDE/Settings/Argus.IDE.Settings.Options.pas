@@ -23,6 +23,7 @@ uses
   ToolsAPI,
   Argus.Core.Settings.Plugin,
   Argus.UI.Settings.Page,
+  Argus.IDE.Editor.Structure,
   Argus.IDE.Settings.Store;
 
 type
@@ -85,6 +86,7 @@ begin
     Settings := TArgusIdeSettings.Current;
     FPage.SaveTo(Settings);
     TArgusIdeSettings.Update(Settings);
+    TArgusIdeStructureSwitch.Sync;
   end;
   FPage := nil;
 end;
