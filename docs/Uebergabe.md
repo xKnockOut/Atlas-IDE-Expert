@@ -198,3 +198,9 @@
 - #447: UI-Automation + Ansagen für Popup, Hint, Tooltip (e5208869); Abnahme mit Narrator offen.
 - Hinweis: neue .pas ohne BOM lassen den Test NoParserCallsOutsideCache 40 Byte „lecken“ (TEncoding-Instanz) – immer mit BOM speichern.
 - Weiter: #227, #102.
+- Fix Übernahme: Server-Add leerte Scored nicht (leeres textEdit löschte bis Dateianfang, 4924a925); Importe mit Klammern (895d6177).
+- #227: Dialog Atlas > Projekt-Einstellungen (atlas.json aus Schema, kommentarerhaltend), Hauptmenü Atlas mit Schnellschaltern (ba3a8208, 7fa02c4a).
+- #493: TAtlasGuard + Sicherung je Feature, Protokoll %LOCALAPPDATA%\Atlas\Logs (a42a03a6); offen: 200-ms-Limit, Entladen.
+- #492: Fortschritt im Menütitel, Index-Status/Neuaufbau (ef1b32d6); Tipp-Pause-Index (04bbde94, a92bd2f6, 0f14d324) vom User bestätigt; offen: geteilter Bibliotheks-Index, #470, #476.
+- Fehlersuche: Registry HKCU\Software\Atlas\IdePlugin ServerArguments="--log <datei> --log-level debug" und Diagnose=1 (danach wieder entfernen).
+
