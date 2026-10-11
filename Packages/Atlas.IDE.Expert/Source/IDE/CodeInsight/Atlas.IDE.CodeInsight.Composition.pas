@@ -36,7 +36,8 @@ uses
   Atlas.IDE.Editor.Structure,
   Atlas.IDE.Files.DirtyExport,
   Atlas.IDE.Build.CheckOnSave,
-  Atlas.IDE.Settings.Project;
+  Atlas.IDE.Settings.Project,
+  Atlas.IDE.Commands.MainMenu;
 
 var
   ManagerIndex: Integer = -1;
@@ -51,8 +52,8 @@ var
   // Ungespeicherte Dateien für schreibende MCP-Werkzeuge (#61).
   DirtyExport: TAtlasDirtyExport;
   CheckOnSave: TAtlasIdeCheckOnSave;
-  // Projekt > Atlas-Einstellungen… (#227).
-  ProjectSettings: TAtlasProjectSettings;
+  // Hauptmenü Atlas mit Schnellschaltern und Einstellungen (#227).
+  MainMenu: TAtlasMainMenu;
 
 const
   // Ab dieser Dauer ein Hinweis im Meldungsfenster (#501).
@@ -274,8 +275,8 @@ begin
     RegisterPalette;
   if Pairs = nil then
     Pairs := TAtlasEditorPairs.Create;
-  if ProjectSettings = nil then
-    ProjectSettings := TAtlasProjectSettings.Create;
+  if MainMenu = nil then
+    MainMenu := TAtlasMainMenu.Create;
   if DirtyExport = nil then
     DirtyExport := TAtlasDirtyExport.Create;
   // Eigene Blocklinien: Strukturhervorhebung der IDE abgleichen (#514).
@@ -311,7 +312,7 @@ var
   Services: IOTACodeInsightServices;
 begin
   FreeAndNil(DirtyExport);
-  FreeAndNil(ProjectSettings);
+  FreeAndNil(MainMenu);
   FreeAndNil(Pairs);
   FreeAndNil(CheckOnSave);
   FreeAndNil(Palette);
