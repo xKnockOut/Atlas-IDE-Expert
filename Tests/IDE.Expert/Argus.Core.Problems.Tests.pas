@@ -1,4 +1,4 @@
-unit Argus.Core.Problems.Tests;
+﻿unit Argus.Core.Problems.Tests;
 
 // Tests für Probleme im Editor (#398): Diagnosen lesen, Speicher mit
 // mitwandernden Markierungen und Compilermeldungen.
