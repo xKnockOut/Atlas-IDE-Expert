@@ -24,6 +24,7 @@ uses
   Argus.Core.Settings.Plugin,
   Argus.UI.Settings.Page,
   Argus.IDE.Editor.Structure,
+  Argus.IDE.CodeInsight.Manager,
   Argus.IDE.Settings.Store;
 
 type
@@ -73,6 +74,7 @@ end;
 procedure TArgusAddInOptions.FrameCreated(AFrame: TCustomFrame);
 begin
   FPage := AFrame as TArgusSettingsPage;
+  FPage.DefaultServerPath := TArgusCodeInsightManager.DefaultServerPath;
   FPage.LoadFrom(TArgusIdeSettings.Current);
   FPage.OnResetHistory := FResetHistory;
 end;

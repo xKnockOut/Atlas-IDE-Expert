@@ -30,11 +30,14 @@ type
   TMemoryStore = class(TInterfacedObject, IArgusSettingsStore)
   private
     FValues: TDictionary<string, Integer>;
+    FStrings: TDictionary<string, string>;
   public
     constructor Create;
     destructor Destroy; override;
     function ReadInteger(const AName: string; ADefault: Integer): Integer;
     procedure WriteInteger(const AName: string; AValue: Integer);
+    function ReadString(const AName, ADefault: string): string;
+    procedure WriteString(const AName, AValue: string);
   end;
 
 { TMemoryStore }
@@ -43,10 +46,12 @@ constructor TMemoryStore.Create;
 begin
   inherited Create;
   FValues := TDictionary<string, Integer>.Create;
+  FStrings := TDictionary<string, string>.Create;
 end;
 
 destructor TMemoryStore.Destroy;
 begin
+  FStrings.Free;
   FValues.Free;
   inherited Destroy;
 end;
@@ -60,6 +65,17 @@ end;
 procedure TMemoryStore.WriteInteger(const AName: string; AValue: Integer);
 begin
   FValues.AddOrSetValue(AName, AValue);
+end;
+
+function TMemoryStore.ReadString(const AName, ADefault: string): string;
+begin
+  if not FStrings.TryGetValue(AName, Result) then
+    Result := ADefault;
+end;
+
+procedure TMemoryStore.WriteString(const AName, AValue: string);
+begin
+  FStrings.AddOrSetValue(AName, AValue);
 end;
 
 { TArgusPluginSettingsTests }
@@ -94,6 +110,7 @@ begin
   Settings.PanelCollapsed := True;
   Settings.Learning := False;
   Settings.Preview := True;
+  Settings.ServerPath := '  D:\Argus\ArgusServer.exe ';
   Settings.Save(Store);
   Loaded := Default(TArgusPluginSettings);
   Loaded.Load(Store);
@@ -104,6 +121,8 @@ begin
   Assert.IsTrue(Loaded.PanelCollapsed);
   Assert.IsFalse(Loaded.Learning);
   Assert.IsTrue(Loaded.Preview);
+  Assert.AreEqual('D:\Argus\ArgusServer.exe', Loaded.ServerPath, 'Serverpfad ohne Leerraum');
+  Assert.AreEqual('', TArgusPluginSettings.Defaults.ServerPath, 'Standard: leer');
 end;
 
 procedure TArgusPluginSettingsTests.ClampsOutOfRangeValues;

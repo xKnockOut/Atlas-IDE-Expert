@@ -43,6 +43,8 @@ type
     destructor Destroy; override;
     function ReadInteger(const AName: string; ADefault: Integer): Integer;
     procedure WriteInteger(const AName: string; AValue: Integer);
+    function ReadString(const AName, ADefault: string): string;
+    procedure WriteString(const AName, AValue: string);
   end;
 
 { TRegistryStore }
@@ -86,6 +88,32 @@ begin
     Exit;
   try
     FRegistry.WriteInteger(AName, AValue);
+  except
+    // Ohne Schreibrecht bleiben die Werte für diese Sitzung bestehen.
+    on ERegistryException do
+      ;
+  end;
+end;
+
+function TRegistryStore.ReadString(const AName, ADefault: string): string;
+begin
+  Result := ADefault;
+  try
+    if (FRegistry.CurrentKey <> 0) and FRegistry.ValueExists(AName) and
+      (FRegistry.GetDataType(AName) in [rdString, rdExpandString]) then
+      Result := FRegistry.ReadString(AName);
+  except
+    on ERegistryException do
+      Result := ADefault;
+  end;
+end;
+
+procedure TRegistryStore.WriteString(const AName, AValue: string);
+begin
+  if not FWritable then
+    Exit;
+  try
+    FRegistry.WriteString(AName, AValue);
   except
     // Ohne Schreibrecht bleiben die Werte für diese Sitzung bestehen.
     on ERegistryException do

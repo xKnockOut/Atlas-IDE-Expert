@@ -23,7 +23,8 @@ type
     KindClass, KindClassRef, KindObject, KindRecord, KindInterface, KindHelper, KindEnum, KindType, KindMethod, KindConstructor, KindRoutine, KindProperty, KindField, KindVariable, KindConstant, KindEnumMember, HoverKeyUsages, HoverKeyCopy,
     SettingsPairGuides, PairGuidesIdeOff, PairGuidesIdeOn,
     SettingsProblems, ProblemsGroup, ProblemsSourceArgus, ProblemsSourceCompiler, ProblemsStale, ProblemsMore,
-    SeverityError, SeverityWarning, SeverityInformation, SeverityHint);
+    SeverityError, SeverityWarning, SeverityInformation, SeverityHint,
+    SettingsServerPath, SettingsServerFound, SettingsServerMissing, SettingsServerFilter);
 
   TArgusStrings = class
   private class var
@@ -68,7 +69,10 @@ const
      'Argus hat die Strukturhervorhebung der IDE wieder eingeschaltet; wirkt nach dem nächsten Start von Delphi.',
      'Probleme im Editor unterstreichen und im Meldungsfenster auflisten (Syntax, Regeln, Compiler)',
      'Argus-Probleme', 'Argus', 'Compiler', 'seit dem letzten Prüfen geändert', '… %d weitere Probleme',
-     'Fehler', 'Warnung', 'Info', 'Hinweis'),
+     'Fehler', 'Warnung', 'Info', 'Hinweis',
+     'Argus-Server (ArgusServer.exe), leer = Standard:', 'Verwendet: %s (gefunden)',
+     'Verwendet: %s (nicht gefunden; ohne Server bleibt die Code Insight der IDE aktiv)',
+     'Argus-Server|ArgusServer.exe|Programme (*.exe)|*.exe'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -94,7 +98,10 @@ const
      'Argus switched the IDE''s structural highlighting back on; takes effect after the next start of Delphi.',
      'Underline problems in the editor and list them in the message view (syntax, rules, compiler)',
      'Argus problems', 'Argus', 'Compiler', 'changed since the last check', '… %d more problems',
-     'Error', 'Warning', 'Info', 'Hint'));
+     'Error', 'Warning', 'Info', 'Hint',
+     'Argus server (ArgusServer.exe), empty = default:', 'In use: %s (found)',
+     'In use: %s (not found; without a server the IDE''s Code Insight stays active)',
+     'Argus server|ArgusServer.exe|Programs (*.exe)|*.exe'));
 
 { TArgusStrings }
 

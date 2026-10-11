@@ -36,6 +36,9 @@ type
     FServer: TLspServerProcess;
     FSession: TLspSession;
     FLastError: string;
+    // Ob ArgusServer.exe da ist, höchstens alle paar Sekunden neu geprüft.
+    FServerChecked: Cardinal;
+    FServerFound: Boolean;
     FDiagnose: Boolean;
     FCompletion: TArgusEditorCompletion;
     FSignature: TArgusEditorSignature;
@@ -54,10 +57,14 @@ type
     function Signature: TArgusEditorSignature;
     function SessionOrNil: TLspSession;
     class function ServerPath(out AArguments: string): string; static;
+    /// <summary>Gibt es den Server? Ohne ihn übernimmt die eingebaute Code Insight.</summary>
+    function ServerAvailable: Boolean;
     class function DiagnoseEnabled: Boolean; static;
   public
     /// <summary>Protokolldatei neben dem Plugin.</summary>
     class function DiagnoseLog: string; static;
+    /// <summary>Server ohne eingestellten Pfad: neben dem Plugin, sonst Output\Win64\Debug\Bin im Repo.</summary>
+    class function DefaultServerPath: string; static;
     constructor Create;
     destructor Destroy; override;
     /// <summary>Benachrichtigung an den Server, falls eine Sitzung läuft (#527); übernimmt AParams.
@@ -211,7 +218,6 @@ end;
 class function TArgusCodeInsightManager.ServerPath(out AArguments: string): string;
 var
   Registry: TRegistry;
-  PluginDir: string;
   Key: string;
 begin
   Result := '';
@@ -234,6 +240,13 @@ begin
     Result := '';
   if Result <> '' then
     Exit;
+  Result := DefaultServerPath;
+end;
+
+class function TArgusCodeInsightManager.DefaultServerPath: string;
+var
+  PluginDir: string;
+begin
   PluginDir := ExtractFilePath(GetModuleName(HInstance));
   Result := PluginDir + 'ArgusServer.exe';
   if not FileExists(Result) then
@@ -540,13 +553,29 @@ begin
   Accept := False;
 end;
 
+function TArgusCodeInsightManager.ServerAvailable: Boolean;
+var
+  Arguments, Path: string;
+begin
+  if (FServerChecked = 0) or (GetTickCount - FServerChecked > 5000) then
+  begin
+    FServerChecked := GetTickCount;
+    Path := ServerPath(Arguments);
+    FServerFound := FileExists(Path);
+    if not FServerFound then
+      ReportError('Server nicht gefunden: ' + Path + ' (die eingebaute Code Insight bleibt aktiv)');
+  end;
+  Result := FServerFound;
+end;
+
 function TArgusCodeInsightManager.HandlesFile(const AFileName: string): Boolean;
 var
   Extension: string;
 begin
   Extension := LowerCase(ExtractFileExt(AFileName));
-  // Hauptschalter (#407): ausgeschaltet übernimmt die eingebaute Code Insight.
-  Result := TArgusIdeSettings.Current.Enabled and ((Extension = '.pas') or (Extension = '.dpr') or (Extension = '.dpk') or (Extension = '.inc'));
+  // Hauptschalter (#407): ausgeschaltet übernimmt die eingebaute Code Insight; ebenso ohne Server.
+  Result := TArgusIdeSettings.Current.Enabled and ((Extension = '.pas') or (Extension = '.dpr') or
+    (Extension = '.dpk') or (Extension = '.inc')) and ServerAvailable;
   Diagnose(Format('HandlesFile(%s) = %s', [AFileName, BoolToStr(Result, True)]));
 end;
 
