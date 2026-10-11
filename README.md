@@ -16,6 +16,28 @@ Experte für RAD Studio (Delphi/Object Pascal): ein IDE-Plugin mit eigener Oberf
 
 Installation und Einstellungen: [docs/RAD-Studio.md](docs/RAD-Studio.md). Alle Einstellungen liegen unter *Tools › Optionen › Drittanbieter › Atlas*, auch der Pfad zum Server.
 
+## Installation
+
+### IDE-Plugin für RAD Studio 13 und 12
+
+1. Repository klonen und `Atlas.groupproj` in RAD Studio öffnen.
+2. `Atlas.Common`, `Atlas.Windows` und `AtlasServer` für **Win64** erzeugen (alle drei für dieselbe Plattform). Ergebnis: `Output\Win64\Debug\Bin\AtlasServer.exe`. Alternativ `AtlasServer.exe` aus einem [Release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) nehmen; der Server hängt nicht von der Delphi-Version ab.
+3. `Atlas.IDE.Expert` für **Win32** erzeugen, und zwar mit der Delphi-Version, in der das Plugin laufen soll. Ergebnis: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert.bpl`.
+4. *Komponente › Packages installieren › Hinzufügen* und die BPL auswählen.
+5. Liegt der Server nicht unter `Output\…\Bin` oder neben der BPL: *Tools › Optionen › Drittanbieter › Atlas*, Feld „Atlas-Server“. Die Seite zeigt an, ob der Server gefunden wird.
+6. Delphi einmal neu starten: Atlas schaltet Help Insight und die Strukturhervorhebung der IDE ab, damit nichts doppelt erscheint; die IDE liest diese Schalter nur beim Start.
+
+Einzelheiten und Fehlersuche: [docs/RAD-Studio.md](docs/RAD-Studio.md).
+
+### Andere Editoren und ohne Editor
+
+- **VS Code:** Erweiterung `atlas-<Version>.vsix` (enthält den Server), siehe [Editors/VSCode](Editors/VSCode/README.md)
+- **Claude Code:** MCP-Werkzeuge und LSP als Plugin, siehe [Editors/ClaudeCode](Editors/ClaudeCode/README.md)
+- **Neovim:** siehe [Editors/Neovim](Editors/Neovim/README.md)
+- **CI und Kommandozeile:** `AtlasServer.exe --check`, siehe [Linter-Modus](#linter-modus)
+
+Ausführlich: [docs/Installation.md](docs/Installation.md).
+
 ## Benutzerdokumentation
 
 - [Installation](docs/Installation.md) für VS Code, Claude Code, Neovim und andere Editoren
