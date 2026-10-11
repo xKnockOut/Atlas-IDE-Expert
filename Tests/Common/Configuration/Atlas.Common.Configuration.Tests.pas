@@ -26,6 +26,8 @@ type
     [Test]
     procedure ReadsInlayHints;
     [Test]
+    procedure ReadsMcpDisabledTools;
+    [Test]
     procedure ReadsStringLiteral;
     [Test]
     procedure ReadsMemberOrder;
@@ -394,6 +396,22 @@ begin
   Settings := Parse('{"memberOrder": {"sections": ["intern"], "x": 1}}', Issues);
   // Unbekannte Sichtbarkeit (Fehler), "x" unbekannt (Warnung).
   Assert.AreEqual(2, Integer(Length(Issues)));
+end;
+
+procedure TConfigurationParserTests.ReadsMcpDisabledTools;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.AreEqual(0, Integer(Length(Settings.McpDisabledTools)));
+  Settings := Parse('{"mcp": {"disabledTools": ["rename_symbol", 3], "x": 1}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Settings.McpDisabledTools)));
+  Assert.AreEqual('rename_symbol', Settings.McpDisabledTools[0]);
+  Assert.AreEqual(2, Integer(Length(Issues)), 'Zahl in der Liste und unbekannter Schlüssel');
+  Settings := TConfigurationParser.ParseLayered('{"mcp": {"disabledTools": ["a"]}}',
+    '{"mcp": {"disabledTools": ["b"]}}', Issues);
+  Assert.AreEqual('b', Settings.McpDisabledTools[0], 'Datei vor Editor');
 end;
 
 procedure TConfigurationParserTests.ReadsInlayHints;

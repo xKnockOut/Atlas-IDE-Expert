@@ -1,0 +1,375 @@
+﻿unit Atlas.Common.Mcp.EditTools;
+
+// Schreibende MCP-Werkzeuge (#61) nach den Regeln aus #99:
+//   rename_symbol      Symbol an Datei:Zeile:Spalte umbenennen, samt .dfm/.fmx
+//                      und automatisch benannter Ereignis-Handler (#30)
+//   apply_code_action  Korrektur eines Regeltreffers in einer Zeile anwenden
+// dryRun (Vorgabe true) liefert nur den Diff und schreibt nichts. Mit
+// dryRun=false wird atomar geschrieben: alle neuen Texte werden vorher
+// berechnet; hat sich eine Datei seit dem Lesen geändert oder ist sie im Editor
+// ungespeichert geändert (Liste des IDE-Plugins), bricht der Aufruf ohne
+// Änderung ab; scheitert das Schreiben einer Datei, werden die schon
+// geschriebenen zurückgesetzt. Geänderte Dateien gehen ins Protokoll (Audit).
+
+interface
+
+uses
+  System.SysUtils,
+  System.Generics.Collections,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Rules.Contract,
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Lsp.References;
+
+type
+  TMcpFileEdit = record
+    FileName: string;
+    Range: TTextRange;
+    NewText: string;
+    class function Create(const AFileName: string; const ARange: TTextRange; const ANewText: string): TMcpFileEdit; static;
+  end;
+
+  /// <summary>Schreibt AText nach AFileName (Kodierung und Zeilenenden erhalten); Fehler als Exception.</summary>
+  TMcpWriteText = reference to procedure(const AFileName, AText: string);
+  /// <summary>Im Editor ungespeichert geänderte Dateien (IDE-Plugin); leer ohne Editor.</summary>
+  TMcpDirtyFiles = reference to function: TArray<string>;
+  TMcpAudit = reference to procedure(const AText: string);
+
+  TMcpEditTools = class
+  private
+    FIndex: ISymbolIndex;
+    FReadText: TReferenceReadText;
+    FWriteText: TMcpWriteText;
+    FProjectFiles: TFunc<TArray<string>>;
+    FEnsureUnit: TEnsureUnitFunc;
+    FDirtyFiles: TMcpDirtyFiles;
+    FAudit: TMcpAudit;
+    FNamespaces: TArray<string>;
+  public
+    constructor Create(const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
+      const AWriteText: TMcpWriteText; const AProjectFiles: TFunc<TArray<string>>;
+      const AEnsureUnit: TEnsureUnitFunc);
+    /// <summary>Wendet Edits einer Datei auf AText an (von hinten nach vorn).</summary>
+    class function ApplyToText(const AText: string; const AEdits: TArray<TMcpFileEdit>): string; static;
+    /// <summary>Zeilen-Diff (- alt, + neu) mit Zeilennummern des alten Texts.</summary>
+    class function Diff(const AFileName, AOld, ANew: string): string; static;
+    /// <summary>Plant bzw. schreibt AEdits (siehe Unit-Kopf); liefert den Bericht.</summary>
+    function Apply(const ATool: string; const AEdits: TArray<TMcpFileEdit>; ADryRun: Boolean): string;
+    function RenameSymbol(const AFileName: string; ALine, AColumn: Integer; const ANewName: string;
+      ADryRun: Boolean): string;
+    /// <summary>Ohne ATitle: verfügbare Korrekturen der Zeile auflisten, nichts ändern.</summary>
+    function ApplyCodeAction(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+      const ARoot, AFileName: string; ALine: Integer; const ATitle: string; ADryRun: Boolean): string;
+    property Namespaces: TArray<string> read FNamespaces write FNamespaces;
+    property DirtyFiles: TMcpDirtyFiles read FDirtyFiles write FDirtyFiles;
+    property Audit: TMcpAudit read FAudit write FAudit;
+  end;
+
+implementation
+
+uses
+  System.Classes,
+  System.StrUtils,
+  System.Math,
+  System.Generics.Defaults,
+  Atlas.Common.JsonRpc.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Rules.Checker,
+  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Lsp.Rename,
+  Atlas.Common.Mcp.Server;
+
+{ TMcpFileEdit }
+
+class function TMcpFileEdit.Create(const AFileName: string; const ARange: TTextRange;
+  const ANewText: string): TMcpFileEdit;
+begin
+  Result.FileName := AFileName;
+  Result.Range := ARange;
+  Result.NewText := ANewText;
+end;
+
+{ TMcpEditTools }
+
+constructor TMcpEditTools.Create(const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
+  const AWriteText: TMcpWriteText; const AProjectFiles: TFunc<TArray<string>>;
+  const AEnsureUnit: TEnsureUnitFunc);
+begin
+  inherited Create;
+  FIndex := AIndex;
+  FReadText := AReadText;
+  FWriteText := AWriteText;
+  FProjectFiles := AProjectFiles;
+  FEnsureUnit := AEnsureUnit;
+end;
+
+/// <summary>Zeichenindex (0-basiert) zu Zeile/Zeichen; Zeilen enden mit #10.</summary>
+function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
+var
+  Line, Index: Integer;
+begin
+  Line := 0;
+  Index := 1;
+  while (Line < APosition.Line) and (Index <= Length(AText)) do
+  begin
+    if AText[Index] = #10 then
+      Inc(Line);
+    Inc(Index);
+  end;
+  Result := Min(Index - 1 + APosition.Character, Length(AText));
+end;
+
+class function TMcpEditTools.ApplyToText(const AText: string; const AEdits: TArray<TMcpFileEdit>): string;
+var
+  Sorted: TArray<TMcpFileEdit>;
+  Edit: TMcpFileEdit;
+  StartOffset, EndOffset: Integer;
+begin
+  Sorted := Copy(AEdits);
+  TArray.Sort<TMcpFileEdit>(Sorted, TComparer<TMcpFileEdit>.Construct(
+    function(const A, B: TMcpFileEdit): Integer
+    begin
+      Result := B.Range.StartPos.Line - A.Range.StartPos.Line;
+      if Result = 0 then
+        Result := B.Range.StartPos.Character - A.Range.StartPos.Character;
+    end));
+  Result := AText;
+  for Edit in Sorted do
+  begin
+    StartOffset := OffsetOf(Result, Edit.Range.StartPos);
+    EndOffset := OffsetOf(Result, Edit.Range.EndPos);
+    Result := Copy(Result, 1, StartOffset) + Edit.NewText + Copy(Result, EndOffset + 1, MaxInt);
+  end;
+end;
+
+class function TMcpEditTools.Diff(const AFileName, AOld, ANew: string): string;
+var
+  OldLines, NewLines: TArray<string>;
+  Prefix, Suffix, Index: Integer;
+  Builder: TStringBuilder;
+begin
+  OldLines := AOld.Replace(#13#10, #10).Split([#10]);
+  NewLines := ANew.Replace(#13#10, #10).Split([#10]);
+  Prefix := 0;
+  while (Prefix < Length(OldLines)) and (Prefix < Length(NewLines)) and (OldLines[Prefix] = NewLines[Prefix]) do
+    Inc(Prefix);
+  Suffix := 0;
+  while (Suffix < Length(OldLines) - Prefix) and (Suffix < Length(NewLines) - Prefix) and
+    (OldLines[High(OldLines) - Suffix] = NewLines[High(NewLines) - Suffix]) do
+    Inc(Suffix);
+  Builder := TStringBuilder.Create;
+  try
+    Builder.AppendFormat('--- %s', [AFileName]).AppendLine;
+    if Length(OldLines) = Length(NewLines) then
+    begin
+      // Gleiche Zeilenzahl (z. B. Umbenennen): nur die geänderten Zeilen.
+      for Index := Prefix to High(OldLines) - Suffix do
+        if OldLines[Index] <> NewLines[Index] then
+        begin
+          Builder.AppendFormat('Zeile %d:', [Index + 1]).AppendLine;
+          Builder.Append('- ').AppendLine(OldLines[Index]);
+          Builder.Append('+ ').AppendLine(NewLines[Index]);
+        end;
+    end
+    else
+    begin
+      Builder.AppendFormat('ab Zeile %d:', [Prefix + 1]).AppendLine;
+      for Index := Prefix to High(OldLines) - Suffix do
+        Builder.Append('- ').AppendLine(OldLines[Index]);
+      for Index := Prefix to High(NewLines) - Suffix do
+        Builder.Append('+ ').AppendLine(NewLines[Index]);
+    end;
+    Result := TrimRight(Builder.ToString);
+  finally
+    Builder.Free;
+  end;
+end;
+
+function TMcpEditTools.Apply(const ATool: string; const AEdits: TArray<TMcpFileEdit>; ADryRun: Boolean): string;
+var
+  Files: TDictionary<string, TArray<TMcpFileEdit>>;
+  Order: TList<string>;
+  Edit: TMcpFileEdit;
+  Key, FileName, Dirty, Current: string;
+  OldTexts, NewTexts: TArray<string>;
+  Names: TArray<string>;
+  Index, Written: Integer;
+  Report: TStringBuilder;
+begin
+  if Length(AEdits) = 0 then
+    raise EMcpToolError.Create('Keine Änderungen.');
+  Files := TDictionary<string, TArray<TMcpFileEdit>>.Create;
+  Order := TList<string>.Create;
+  Report := TStringBuilder.Create;
+  try
+    for Edit in AEdits do
+    begin
+      Key := AnsiLowerCase(Edit.FileName);
+      if not Files.ContainsKey(Key) then
+      begin
+        Files.Add(Key, nil);
+        Order.Add(Edit.FileName);
+      end;
+      Files[Key] := Files[Key] + [Edit];
+    end;
+    Names := Order.ToArray;
+    SetLength(OldTexts, Length(Names));
+    SetLength(NewTexts, Length(Names));
+    for Index := 0 to High(Names) do
+    begin
+      if not FReadText(Names[Index], OldTexts[Index]) then
+        raise EMcpToolError.CreateFmt('%s ist nicht lesbar; nichts geändert.', [Names[Index]]);
+      NewTexts[Index] := ApplyToText(OldTexts[Index], Files[AnsiLowerCase(Names[Index])]);
+    end;
+    if ADryRun then
+      Report.AppendFormat('Vorschau (dryRun): %d Änderungen in %d Dateien, nichts geschrieben. ' +
+        'Zum Schreiben mit dryRun=false wiederholen.', [Length(AEdits), Length(Names)]).AppendLine
+    else
+    begin
+      // Keine Kollision mit ungespeicherten Änderungen im Editor.
+      if Assigned(FDirtyFiles) then
+        for Dirty in FDirtyFiles() do
+          for FileName in Names do
+            if SameText(Dirty, FileName) then
+              raise EMcpToolError.CreateFmt('%s hat ungespeicherte Änderungen im Editor; nichts geändert. ' +
+                'Erst in der IDE speichern.', [FileName]);
+      // Seit dem Lesen geändert? Dann nichts schreiben.
+      for Index := 0 to High(Names) do
+        if not FReadText(Names[Index], Current) or (Current <> OldTexts[Index]) then
+          raise EMcpToolError.CreateFmt('%s wurde inzwischen geändert; nichts geändert.', [Names[Index]]);
+      Written := 0;
+      try
+        for Index := 0 to High(Names) do
+        begin
+          FWriteText(Names[Index], NewTexts[Index]);
+          Inc(Written);
+        end;
+      except
+        on E: Exception do
+        begin
+          // Alles oder nichts: schon geschriebene Dateien zurücksetzen.
+          for Index := Written - 1 downto 0 do
+            try
+              FWriteText(Names[Index], OldTexts[Index]);
+            except
+              on Exception do
+                ;
+            end;
+          raise EMcpToolError.CreateFmt('Schreiben fehlgeschlagen (%s); alle Dateien zurückgesetzt.', [E.Message]);
+        end;
+      end;
+      if Assigned(FAudit) then
+        FAudit(Format('MCP %s hat geschrieben: %s', [ATool, string.Join(', ', Names)]));
+      Report.AppendFormat('%d Änderungen in %d Dateien geschrieben.', [Length(AEdits), Length(Names)]).AppendLine;
+    end;
+    for Index := 0 to High(Names) do
+    begin
+      Report.AppendLine;
+      Report.AppendLine(Diff(Names[Index], OldTexts[Index], NewTexts[Index]));
+    end;
+    Result := TrimRight(Report.ToString);
+  finally
+    Report.Free;
+    Order.Free;
+    Files.Free;
+  end;
+end;
+
+function TMcpEditTools.RenameSymbol(const AFileName: string; ALine, AColumn: Integer; const ANewName: string;
+  ADryRun: Boolean): string;
+var
+  Text: string;
+  Tree: TSyntaxTree;
+  Resolver: TNameResolver;
+  Renames: TArray<TRenameEdit>;
+  Rename: TRenameEdit;
+  Edits: TArray<TMcpFileEdit>;
+begin
+  if not FReadText(AFileName, Text) then
+    raise EMcpToolError.CreateFmt('%s ist nicht lesbar', [AFileName]);
+  Tree := TSyntaxTreeCache.Parse(Text);
+  try
+    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
+    try
+      Resolver.Namespaces := FNamespaces;
+      try
+        Renames := TLspRename.Edits(Resolver, FIndex, Tree, AFileName, TTextPosition.Create(ALine - 1, AColumn - 1),
+          ANewName, FProjectFiles(), FReadText);
+      except
+        on E: EJsonRpcError do
+          raise EMcpToolError.Create(E.Message);
+      end;
+    finally
+      Resolver.Free;
+    end;
+  finally
+    Tree.Free;
+  end;
+  Edits := nil;
+  for Rename in Renames do
+    Edits := Edits + [TMcpFileEdit.Create(Rename.FileName, Rename.Range, Rename.NewText)];
+  if Length(Edits) = 0 then
+    raise EMcpToolError.Create('An dieser Stelle steht kein umbenennbares Symbol.');
+  Result := Apply('rename_symbol', Edits, ADryRun);
+end;
+
+function TMcpEditTools.ApplyCodeAction(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+  const ARoot, AFileName: string; ALine: Integer; const ATitle: string; ADryRun: Boolean): string;
+var
+  Text, RelativePath: string;
+  Actions: TArray<TCodeAction>;
+  Action: TCodeAction;
+  Chosen: Integer;
+  Index: Integer;
+  Edit: TRuleEdit;
+  Edits: TArray<TMcpFileEdit>;
+  Lines: TStringList;
+begin
+  if not FReadText(AFileName, Text) then
+    raise EMcpToolError.CreateFmt('%s ist nicht lesbar', [AFileName]);
+  RelativePath := AFileName;
+  if (ARoot <> '') and StartsText(IncludeTrailingPathDelimiter(ARoot), AFileName) then
+    RelativePath := Copy(AFileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
+  Actions := nil;
+  for Action in TCodeActions.ForRange(TFileChecker.CheckText(ARules, ASettings, RelativePath, Text), Text,
+    TTextRange.Create(ALine - 1, 0, ALine - 1, MaxInt div 2)) do
+    if (Length(Action.Edits) > 0) and (Action.Command = '') then
+      Actions := Actions + [Action];
+  if Length(Actions) = 0 then
+    raise EMcpToolError.CreateFmt('Keine Korrektur in Zeile %d.', [ALine]);
+  Chosen := -1;
+  if ATitle <> '' then
+    for Index := 0 to High(Actions) do
+      if SameText(Actions[Index].Title, ATitle) or SameText(Actions[Index].RuleId, ATitle) then
+      begin
+        Chosen := Index;
+        Break;
+      end;
+  if Chosen < 0 then
+  begin
+    Lines := TStringList.Create;
+    try
+      if ATitle <> '' then
+        Lines.Add(Format('Keine Korrektur "%s" in Zeile %d. Verfügbar:', [ATitle, ALine]))
+      else
+        Lines.Add(Format('Korrekturen in Zeile %d (mit title anwenden):', [ALine]));
+      for Action in Actions do
+        Lines.Add(Format('- %s [%s]', [Action.Title, Action.RuleId]));
+      Result := TrimRight(Lines.Text);
+    finally
+      Lines.Free;
+    end;
+    if ATitle <> '' then
+      raise EMcpToolError.Create(Result);
+    Exit;
+  end;
+  Edits := nil;
+  for Edit in Actions[Chosen].Edits do
+    Edits := Edits + [TMcpFileEdit.Create(AFileName, Edit.Range, Edit.NewText)];
+  Result := Format('Korrektur: %s', [Actions[Chosen].Title]) + sLineBreak + Apply('apply_code_action', Edits, ADryRun);
+end;
+
+end.

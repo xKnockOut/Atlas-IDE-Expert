@@ -560,6 +560,32 @@
       "x-control": "Liste mit Hinzufügen/Entfernen",
       "x-issue": "#24"
     },
+    "mcp": {
+      "type": "object",
+      "description": "MCP-Modus (--mcp) für KI-Assistenten.",
+      "additionalProperties": false,
+      "properties": {
+        "disabledTools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Werkzeuge, die der MCP-Server nicht anbietet, z. B. rename_symbol oder apply_code_action. Im eingeschränkten Modus (--restricted) sind schreibende Werkzeuge immer aus."
+        }
+      },
+      "examples": [
+        {
+          "disabledTools": [
+            "rename_symbol",
+            "apply_code_action"
+          ]
+        }
+      ],
+      "x-page": "MCP",
+      "x-control": "Liste mit Hinzufügen/Entfernen",
+      "x-issue": "#99"
+    },
     "format": {
       "type": "object",
       "description": "Formatierung (Dokument und Auswahl formatieren). Gesetzte Werte haben Vorrang vor .editorconfig.",

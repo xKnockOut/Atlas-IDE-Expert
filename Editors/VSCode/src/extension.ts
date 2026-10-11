@@ -242,10 +242,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         },
       ),
     ),
-    // Klartext und String-Literal (#312): copyText kommt aus der Code-Aktion "Als Klartext kopieren".
+    // Klartext und String-Literal (#312), Befund als Prompt (#158): copyText kommt aus den Code-Aktionen.
     vscode.commands.registerCommand(`${Section}.copyText`, async (text: string) => {
       await vscode.env.clipboard.writeText(text);
-      void vscode.window.setStatusBarMessage('Klartext kopiert', 3000);
+      void vscode.window.setStatusBarMessage('In die Zwischenablage kopiert', 3000);
     }),
     vscode.commands.registerCommand(`${Section}.copyAsPlainText`, async () => {
       const editor = vscode.window.activeTextEditor;

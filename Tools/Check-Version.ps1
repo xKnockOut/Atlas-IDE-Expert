@@ -27,10 +27,14 @@ $Unit = Join-Path $Root 'Packages/Atlas.Common/Source/Product/Atlas.Common.Produ
 $Server = [regex]::Match((Get-Content -Raw $Unit), "Version\s*=\s*'([^']+)'").Groups[1].Value
 $Extension = (Get-Content -Raw (Join-Path $Root 'Editors/VSCode/package.json') | ConvertFrom-Json).version
 $Changelog = Get-Content -Raw (Join-Path $Root 'CHANGELOG.md')
+$Plugin = (Get-Content -Raw (Join-Path $Root 'Editors/ClaudeCode/atlas/.claude-plugin/plugin.json') | ConvertFrom-Json).version
+$Marketplace = (Get-Content -Raw (Join-Path $Root '.claude-plugin/marketplace.json') | ConvertFrom-Json).plugins[0].version
 
 $Errors = @()
 if ($Server -notmatch $SemVer) { $Errors += "Server-Version '$Server' ist keine SemVer-Version" }
 if ($Server -ne $Extension) { $Errors += "Server $Server und Erweiterung $Extension weichen ab" }
+if ($Server -ne $Plugin) { $Errors += "Server $Server und Claude-Code-Plugin $Plugin weichen ab" }
+if ($Server -ne $Marketplace) { $Errors += "Server $Server und Marketplace-Eintrag $Marketplace weichen ab" }
 if ($Expected -ne '' -and $Expected -ne $Server) { $Errors += "Erwartet $Expected, Server hat $Server" }
 if ($Changelog -notmatch "(?m)^## \[$([regex]::Escape($Server))\]") { $Errors += "CHANGELOG.md hat keinen Abschnitt [$Server]" }
 

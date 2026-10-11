@@ -7,6 +7,9 @@
 //
 // stdout gehört dem Protokoll (eine JSON-Nachricht je Zeile); Meldungen gehen
 // auf stderr und in die Logdatei.
+// Sicherheit (#99): mcp.disabledTools aus atlas.json, --restricted schaltet
+// schreibende Werkzeuge ab, schreibende Aufrufe stehen im Log. Ungespeicherte
+// Dateien der IDE meldet das Plugin in %LOCALAPPDATA%\Atlas\editor-dirty-<pid>.json.
 
 interface
 
@@ -25,8 +28,10 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   System.SysUtils,
   System.IOUtils,
+  System.StrUtils,
   System.JSON,
   Atlas.Common.Product.Version,
   Atlas.Common.Logging.Contract,
@@ -48,6 +53,12 @@ uses
   Atlas.Common.Mcp.BuildTools,
   Atlas.Common.Mcp.Paths,
   Atlas.Common.Mcp.Freshness,
+  Atlas.Common.Mcp.EditTools,
+  Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Catalog,
+  Atlas.Common.Rules.Checker,
+  Atlas.Common.Rules.Prompt,
+  Atlas.Common.Rules.Conventions,
   Atlas.Common.Index.Adapters.DiskFileSystem,
   Atlas.Common.Lsp.IdeBuild,
   Atlas.Common.Index.Adapters.CacheDirectory,
@@ -75,6 +86,74 @@ procedure TSilentTransport.WriteMessage(const AMessage: TJSONObject);
 begin
 end;
 
+/// <summary>Schreibt AText mit Kodierung und Zeilenenden der vorhandenen Datei (#121).</summary>
+procedure WriteSourceText(const AFileName, AText: string);
+var
+  FileFormat: TFileFormat;
+begin
+  TFileEncoding.LoadFromFile(AFileName, FileFormat);
+  TFileEncoding.SaveToFile(AFileName, AText, FileFormat);
+end;
+
+/// <summary>Läuft der Prozess noch?</summary>
+function ProcessRunning(APid: Cardinal): Boolean;
+const
+  QueryLimitedInformation = $1000;
+var
+  Process: THandle;
+  Code: Cardinal;
+begin
+  Process := OpenProcess(QueryLimitedInformation, False, APid);
+  if Process = 0 then
+    Exit(False);
+  try
+    Result := GetExitCodeProcess(Process, Code) and (Code = STILL_ACTIVE);
+  finally
+    CloseHandle(Process);
+  end;
+end;
+
+/// <summary>Im Editor der IDE ungespeichert geänderte Dateien: editor-dirty-<pid>.json je laufender IDE.</summary>
+function EditorDirtyFiles: TArray<string>;
+var
+  FileName, Text: string;
+  Json: TJSONValue;
+  Item: TJSONValue;
+  Pid: Integer;
+begin
+  Result := nil;
+  if not TDirectory.Exists(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas')) then
+    Exit;
+  for FileName in TDirectory.GetFiles(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
+    'editor-dirty-*.json') do
+  begin
+    try
+      Text := TFile.ReadAllText(FileName, TEncoding.UTF8);
+    except
+      on Exception do
+        Continue;
+    end;
+    Json := TJSONObject.ParseJSONValue(Text);
+    try
+      if not (Json is TJSONObject) or not TJSONObject(Json).TryGetValue<Integer>('pid', Pid) or
+        not ProcessRunning(Cardinal(Pid)) then
+        Continue;
+      if TJSONObject(Json).GetValue('files') is TJSONArray then
+        for Item in TJSONArray(TJSONObject(Json).GetValue('files')) do
+          Result := Result + [Item.Value];
+    finally
+      Json.Free;
+    end;
+  end;
+end;
+
+/// <summary>dryRun-Argument; Vorgabe true (#61).</summary>
+function DryRunOf(const AArguments: TJSONObject): Boolean;
+begin
+  if (AArguments = nil) or not AArguments.TryGetValue<Boolean>('dryRun', Result) then
+    Result := True;
+end;
+
 function ReadSourceText(const AFileName: string; out AText: string): Boolean;
 var
   FileFormat: TFileFormat;
@@ -87,7 +166,7 @@ begin
 end;
 
 procedure RegisterTools(AServer: TMcpServer; ATools: TMcpIndexTools; ACode: TMcpCodeTools;
-  AWorkspace: TShellWorkspace; const ARoot: string; AGuard: TMcpPathGuard);
+  AWorkspace: TShellWorkspace; const ARoot: string; AGuard: TMcpPathGuard; AEdit: TMcpEditTools);
 begin
   AServer.AddTool('find_symbol',
     'Sucht Delphi-Symbole (Typen, Methoden, Felder, Konstanten …) im Projekt und in RTL/VCL. ' +
@@ -243,6 +322,88 @@ begin
         raise EMcpToolError.CreateFmt('Formulardatei "%s" nicht gefunden', [FileName]);
       Result := TMcpIndexTools.DfmInfo(Text);
     end);
+  AServer.AddTool('explain_finding',
+    'Erklärt Befunde der Prüfregeln in einer Zeile (#158): Regel, Beschreibung, Codeausschnitt mit markierter Zeile ' +
+    'und Vorher/Nachher-Beispiel als Markdown.',
+    '{"type":"object","properties":{' +
+      '"file":{"type":"string","description":"Pfad der Unit (relativ zum Projekt oder absolut)"},' +
+      '"line":{"type":"integer","minimum":1,"description":"Zeile des Befunds (ab 1)"},' +
+      '"rule":{"type":"string","description":"Optional: nur diese Regel"}},' +
+      '"required":["file","line"]}',
+    function(const AArguments: TJSONObject): string
+    var
+      FileName, Text, RuleId, RelativePath: string;
+      Line: Integer;
+      Finding: TRuleFinding;
+      Catalog: TRuleCatalog;
+    begin
+      FileName := AGuard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+      if not AArguments.TryGetValue<Integer>('line', Line) then
+        raise EMcpToolError.Create('Argument "line" fehlt');
+      RuleId := TMcpServer.OptionalString(AArguments, 'rule');
+      if not ReadSourceText(FileName, Text) then
+        raise EMcpToolError.CreateFmt('%s ist nicht lesbar', [FileName]);
+      RelativePath := FileName;
+      if StartsText(IncludeTrailingPathDelimiter(ARoot), FileName) then
+        RelativePath := Copy(FileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
+      Result := '';
+      Catalog := TFindingPrompt.GermanCatalog;
+      try
+        for Finding in TFileChecker.CheckText(BuiltinRules, AWorkspace.Configuration.Settings, RelativePath, Text) do
+          if (Finding.Range.StartPos.Line = Line - 1) and ((RuleId = '') or SameText(RuleId, Finding.RuleId)) then
+          begin
+            if Result <> '' then
+              Result := Result + sLineBreak + sLineBreak;
+            Result := Result + TFindingPrompt.Markdown(Finding, FileName, Text, Catalog);
+          end;
+      finally
+        Catalog.Free;
+      end;
+      if Result = '' then
+        raise EMcpToolError.CreateFmt('Kein Befund in Zeile %d von %s.', [Line, ExtractFileName(FileName)]);
+    end);
+  AServer.AddTool('rename_symbol',
+    'Benennt ein Symbol projektweit um, samt .dfm/.fmx und automatisch benannter Ereignis-Handler (#61). ' +
+    'dryRun (Vorgabe true) zeigt nur den Diff; dryRun=false schreibt alle Dateien atomar.',
+    '{"type":"object","properties":{' +
+      '"file":{"type":"string","description":"Datei mit dem Symbol (relativ zum Projekt oder absolut)"},' +
+      '"line":{"type":"integer","minimum":1,"description":"Zeile (ab 1)"},' +
+      '"column":{"type":"integer","minimum":1,"description":"Spalte (ab 1) im Bezeichner"},' +
+      '"newName":{"type":"string","description":"Neuer Name"},' +
+      '"dryRun":{"type":"boolean","default":true,"description":"Nur Vorschau, nichts schreiben"}},' +
+      '"required":["file","line","column","newName"]}',
+    function(const AArguments: TJSONObject): string
+    var
+      FileName: string;
+      Line, Column: Integer;
+    begin
+      FileName := AGuard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+      if not AArguments.TryGetValue<Integer>('line', Line) or not AArguments.TryGetValue<Integer>('column', Column) then
+        raise EMcpToolError.Create('Argumente "line" und "column" fehlen');
+      AEdit.Namespaces := AWorkspace.Namespaces;
+      Result := AEdit.RenameSymbol(FileName, Line, Column, TMcpServer.RequiredString(AArguments, 'newName'),
+        DryRunOf(AArguments));
+    end, TMcpToolKind.Write);
+  AServer.AddTool('apply_code_action',
+    'Wendet die Korrektur eines Regeltreffers in einer Zeile an (#61). Ohne title listet es die Korrekturen der Zeile. ' +
+    'dryRun (Vorgabe true) zeigt nur den Diff; dryRun=false schreibt.',
+    '{"type":"object","properties":{' +
+      '"file":{"type":"string","description":"Pfad der Unit (relativ zum Projekt oder absolut)"},' +
+      '"line":{"type":"integer","minimum":1,"description":"Zeile des Befunds (ab 1)"},' +
+      '"title":{"type":"string","description":"Titel der Korrektur oder Regelkennung; leer = Korrekturen auflisten"},' +
+      '"dryRun":{"type":"boolean","default":true,"description":"Nur Vorschau, nichts schreiben"}},' +
+      '"required":["file","line"]}',
+    function(const AArguments: TJSONObject): string
+    var
+      FileName: string;
+      Line: Integer;
+    begin
+      FileName := AGuard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+      if not AArguments.TryGetValue<Integer>('line', Line) then
+        raise EMcpToolError.Create('Argument "line" fehlt');
+      Result := AEdit.ApplyCodeAction(BuiltinRules, AWorkspace.Configuration.Settings, ARoot, FileName, Line,
+        TMcpServer.OptionalString(AArguments, 'title'), DryRunOf(AArguments));
+    end, TMcpToolKind.Write);
 end;
 
 class function TMcpShell.ToolNames: TArray<string>;
@@ -255,7 +416,7 @@ begin
   // Nur registrieren, nicht aufrufen: Die Werkzeuge greifen erst beim Aufruf auf ihre Dienste zu.
   Server := TMcpServer.Create('Atlas', '0');
   try
-    RegisterTools(Server, nil, nil, nil, '', nil);
+    RegisterTools(Server, nil, nil, nil, '', nil, nil);
     Listed := Server.ListTools;
     try
       for Tool in Listed.GetValue<TJSONArray>('tools') do
@@ -281,6 +442,7 @@ var
   Store: IDocumentStore;
   Workspace: TShellWorkspace;
   Guard: TMcpPathGuard;
+  Edit: TMcpEditTools;
   Root, Warning: string;
 begin
   LoggerImpl := TLogger.Create;
@@ -343,13 +505,54 @@ begin
     begin
       Result := TWindowsPathCanonicalizer.Canonicalize(APath);
     end);
+  Edit := TMcpEditTools.Create(Index, ReadSourceText, WriteSourceText,
+    function: TArray<string>
+    begin
+      Result := Workspace.ProjectFiles;
+    end,
+    function(const AUnitName: string): Boolean
+    begin
+      Result := Workspace.EnsureUnit(AUnitName);
+    end);
+  Edit.DirtyFiles := EditorDirtyFiles;
+  Edit.Audit :=
+    procedure(const AText: string)
+    begin
+      Logger.Info(AText);
+    end;
   Server := TMcpServer.Create(TProductVersion.Name, TProductVersion.Version);
   Dispatcher := TJsonRpcDispatcher.Create;
   Connection := TJsonRpcConnection.Create(Transport, Dispatcher);
   try
     Server.Instructions := 'Delphi-Projekt in ' + Root + '. Für Fragen zu Typen, Units und Formularen ' +
       'zuerst diese Werkzeuge nutzen statt Quelldateien vollständig zu lesen.';
-    RegisterTools(Server, Tools, Code, Workspace, Root, Guard);
+    RegisterTools(Server, Tools, Code, Workspace, Root, Guard, Edit);
+    // Sicherheit (#99).
+    Server.Restricted := AOptions.Restricted;
+    Server.OnDisabledTools :=
+      function: TArray<string>
+      begin
+        Result := Workspace.Configuration.Settings.McpDisabledTools;
+      end;
+    Server.OnAudit :=
+      procedure(AText: string)
+      begin
+        Logger.Info(AText);
+      end;
+    // Projektkonventionen (#272).
+    Server.AddResource('delphi://conventions', 'Projektkonventionen',
+      'Regelprofil, Formatstil, Benennungsregeln und aktive Prüfregeln des Projekts als Markdown.', 'text/markdown',
+      function: string
+      var
+        Catalog: TRuleCatalog;
+      begin
+        Catalog := TFindingPrompt.GermanCatalog;
+        try
+          Result := TRuleConventions.Markdown(BuiltinRules, Workspace.Configuration.Settings, Catalog);
+        finally
+          Catalog.Free;
+        end;
+      end);
     // Vor jedem Werkzeugaufruf geänderte Projektdateien nachladen (#48).
     Server.OnBeforeToolCall :=
       procedure
@@ -385,6 +588,7 @@ begin
     Dispatcher.Free;
     Server.Free;
     Guard.Free;
+    Edit.Free;
     Code.Free;
     Tools.Free;
     Workspace.Free;

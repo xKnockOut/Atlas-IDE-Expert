@@ -265,6 +265,9 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.BuildTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Paths.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Freshness.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.EditTools.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Prompt.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Conventions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InactiveRegions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceFolders.pas"/>
         <DCCReference Include="Source\Index\Adapters\Atlas.Common.Index.Adapters.DiskFileSystem.pas"/>

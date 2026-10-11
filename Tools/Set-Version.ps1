@@ -40,6 +40,13 @@ finally {
     Pop-Location
 }
 
+# Claude-Code-Plugin und Marketplace-Eintrag (#101).
+foreach ($Json in @('Editors/ClaudeCode/atlas/.claude-plugin/plugin.json', '.claude-plugin/marketplace.json')) {
+    $Path = Join-Path $Root $Json
+    $Text = [IO.File]::ReadAllText($Path) -replace '("version"\s*:\s*")[^"]+(")', "`${1}$Version`${2}"
+    [IO.File]::WriteAllText($Path, $Text, $Utf8)
+}
+
 $Changelog = Join-Path $Root 'CHANGELOG.md'
 $Text = [IO.File]::ReadAllText($Changelog)
 $Date = Get-Date -Format 'yyyy-MM-dd'

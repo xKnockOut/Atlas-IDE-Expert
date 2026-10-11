@@ -212,6 +212,7 @@ uses
   Shell.Workspace in '..\Application\Source\Shell\Shell.Workspace.pas',
   Shell.Mcp in '..\Application\Source\Shell\Shell.Mcp.pas',
   Atlas.Common.Mcp.Freshness.Tests in 'Common\Mcp\Atlas.Common.Mcp.Freshness.Tests.pas',
+  Atlas.Common.Mcp.EditTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.EditTools.Tests.pas',
   Shell.Mcp.Tests in 'Application\Shell\Shell.Mcp.Tests.pas',
   Atlas.Common.Rules.Builtin.FormFields.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.FormFields.Tests.pas',
   Atlas.Common.Rules.Builtin.Security.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Security.Tests.pas',

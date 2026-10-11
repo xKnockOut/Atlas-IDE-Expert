@@ -34,6 +34,7 @@ uses
   Atlas.IDE.Commands.Palette,
   Atlas.IDE.Editor.Pairs,
   Atlas.IDE.Editor.Structure,
+  Atlas.IDE.Files.DirtyExport,
   Atlas.IDE.Build.CheckOnSave;
 
 var
@@ -46,6 +47,8 @@ var
   Reloader: TAtlasFileReloader;
   Palette: TAtlasIdePalette;
   Pairs: TAtlasEditorPairs;
+  // Ungespeicherte Dateien für schreibende MCP-Werkzeuge (#61).
+  DirtyExport: TAtlasDirtyExport;
   CheckOnSave: TAtlasIdeCheckOnSave;
 
 const
@@ -263,6 +266,8 @@ begin
     RegisterPalette;
   if Pairs = nil then
     Pairs := TAtlasEditorPairs.Create;
+  if DirtyExport = nil then
+    DirtyExport := TAtlasDirtyExport.Create;
   // Eigene Blocklinien: Strukturhervorhebung der IDE abgleichen (#514).
   TAtlasIdeStructureSwitch.Sync;
   if Reloader = nil then
@@ -292,6 +297,7 @@ procedure Unregister;
 var
   Services: IOTACodeInsightServices;
 begin
+  FreeAndNil(DirtyExport);
   FreeAndNil(Pairs);
   FreeAndNil(CheckOnSave);
   FreeAndNil(Palette);

@@ -80,6 +80,7 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
+  Atlas.Common.Rules.Prompt,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.ClassCompletion,
@@ -197,6 +198,7 @@ var
   Rules: TRuleCheckContext;
   Context: TRuleContext;
   Findings: TArray<TRuleFinding>;
+  Finding: TRuleFinding;
   Action, Completion: TCodeAction;
   HasRules, HasCompletion, WantsEditing, WantsOrganize, WantsFixAll, WantsRemoveUnused: Boolean;
   UsesContext: TUsesContext;
@@ -263,6 +265,19 @@ begin
   if WantsEditing then
     for Action in TCodeActions.ForRange(Findings, Document.Text, Range) do
       TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+  // Befund als Prompt kopieren (#158): den Text kopiert der Client (Befehl atlas.copyText).
+  if WantsEditing then
+    for Finding in Findings do
+      if (Finding.Range.StartPos.Line <= Range.EndPos.Line) and (Finding.Range.EndPos.Line >= Range.StartPos.Line) then
+      begin
+        Action := Default(TCodeAction);
+        Action.Title := Format('Befund %s als Prompt kopieren', [Finding.RuleId]);
+        Action.Kind := QuickFixKind;
+        Action.Command := CopyTextCommand;
+        Action.CommandArguments := [TFindingPrompt.Markdown(Finding, TDocumentUris.ToPath(Uri), Document.Text,
+          TFindingPrompt.SharedCatalog)];
+        TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+      end;
   if HasCompletion then
     TJSONArray(Result).AddElement(ActionToJson(Uri, Completion));
   if WantsEditing and TCodeActions.SwapAssignments(Document.Text, Range, ReadOnlyCheck(HasRules, Rules, Uri,

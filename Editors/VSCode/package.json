@@ -323,6 +323,11 @@
           "default": [],
           "markdownDescription": "Ordner und Dateien, die nicht geprüft werden (Glob-Muster relativ zu diesem Ordner: *, **, ?). atlas.json im Projekt hat Vorrang."
         },
+        "atlas.mcp": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "MCP-Modus (--mcp) für KI-Assistenten. atlas.json im Projekt hat Vorrang."
+        },
         "atlas.format": {
           "type": "object",
           "default": {},
