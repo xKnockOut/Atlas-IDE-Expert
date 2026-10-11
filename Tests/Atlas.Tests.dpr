@@ -183,6 +183,8 @@ uses
   Atlas.Core.Settings.SchemaData in '..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.SchemaData.pas',
   Atlas.Core.Diagnostics.Guard in '..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Guard.pas',
   Atlas.Core.Lsp.Progress in '..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.Progress.pas',
+  Atlas.Core.Commands.KeyConflicts in '..\Packages\Atlas.IDE.Expert\Source\Core\Commands\Atlas.Core.Commands.KeyConflicts.pas',
+  Atlas.Core.Commands.KeyConflicts.Tests in 'IDE.Expert\Atlas.Core.Commands.KeyConflicts.Tests.pas',
   Atlas.Core.Lsp.Progress.Tests in 'IDE.Expert\Atlas.Core.Lsp.Progress.Tests.pas',
   Atlas.Core.Diagnostics.Guard.Tests in 'IDE.Expert\Atlas.Core.Diagnostics.Guard.Tests.pas',
   Atlas.Core.Settings.JsonText.Tests in 'IDE.Expert\Atlas.Core.Settings.JsonText.Tests.pas',

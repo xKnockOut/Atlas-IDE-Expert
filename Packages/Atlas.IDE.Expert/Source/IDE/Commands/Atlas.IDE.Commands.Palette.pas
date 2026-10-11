@@ -37,7 +37,10 @@ type
     FHistory: TAtlasCommandHistory;
     FAtlasCommands: TList<TPair<TAtlasCommand, TProc>>;
     FBinding: TBinding;
+    // Hält das Binding am Leben: Abmelden gibt die Referenz der IDE frei, Rebind meldet es neu an.
+    FBindingRef: IOTAKeyboardBinding;
     FBindingIndex: Integer;
+    FKey: Word;
     function HistoryFile: string;
     function Collect: TArray<TAtlasCommand>;
     procedure Run(const ACommand: TAtlasCommand);
@@ -49,6 +52,8 @@ type
     procedure RegisterCommand(const AId, ACaption, ADescription: string; const AProc: TProc);
     /// <summary>Palette über dem aktiven Fenster öffnen.</summary>
     procedure Show;
+    /// <summary>Tastenkürzel nach den Einstellungen (neu) belegen; bei Konflikt ohne Vorrang keins (#494).</summary>
+    procedure Rebind;
   end;
 
 implementation
@@ -60,7 +65,10 @@ uses
   Vcl.ActnList,
   Vcl.Forms,
   Atlas.UI.Commands.Palette,
-  Atlas.IDE.Editor.Style;
+  Atlas.UI.Strings,
+  Atlas.IDE.Editor.Style,
+  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Commands.Keys;
 
 { TAtlasIdePalette.TBinding }
 
@@ -81,7 +89,8 @@ end;
 
 procedure TAtlasIdePalette.TBinding.BindKeyboard(const BindingServices: IOTAKeyBindingServices);
 begin
-  BindingServices.AddKeyBinding([ShortCut(Ord('P'), [ssCtrl, ssShift])], Open, nil);
+  if (FOwner <> nil) and (FOwner.FKey <> 0) then
+    BindingServices.AddKeyBinding([FOwner.FKey], Open, nil);
 end;
 
 procedure TAtlasIdePalette.TBinding.Open(const Context: IOTAKeyContext; KeyCode: TShortCut;
@@ -114,9 +123,29 @@ begin
   if Supports(BorlandIDEServices, IOTAKeyboardServices, Keyboard) then
   begin
     FBinding := TBinding.Create;
+    FBindingRef := FBinding;
     FBinding.FOwner := Self;
-    FBindingIndex := Keyboard.AddKeyboardBinding(FBinding);
+    Rebind;
   end;
+end;
+
+procedure TAtlasIdePalette.Rebind;
+var
+  Key: Word;
+begin
+  if FBinding = nil then
+    Exit;
+  Key := Word(TAtlasIdeSettings.Current.PaletteKey);
+  if not TAtlasIdeKeys.Decide(Key, TAtlasIdeSettings.Current.PaletteKeyPriority,
+    TAtlasStrings.Text(TAtlasTextId.SettingsPaletteKey)) then
+    Key := 0;
+  if (Key = FKey) and ((FBindingIndex >= 0) = (Key <> 0)) then
+    Exit;
+  FKey := Key;
+  if FKey = 0 then
+    TAtlasIdeKeys.Unbind(FBindingIndex)
+  else
+    TAtlasIdeKeys.Bind(FBinding, FBindingIndex);
 end;
 
 destructor TAtlasIdePalette.Destroy;

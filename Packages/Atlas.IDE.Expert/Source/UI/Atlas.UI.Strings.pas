@@ -33,7 +33,8 @@ type
     ProjectSettingsNoProject, ProjectSettingsInvalid, ProjectSettingsOk, ProjectSettingsCancel,
     ProjectSettingsBadNumber, ProjectSettingsFile,
     MenuAtlas, MenuToggleEnabled, MenuToggleHover, MenuTogglePairs, MenuToggleGuides, MenuToggleProblems, MenuOptions, MenuEnableAll,
-    MenuIndexStatus, MenuIndexRebuild, MenuIndexRebuilding, MenuIndexNoServer);
+    MenuIndexStatus, MenuIndexRebuild, MenuIndexRebuilding, MenuIndexNoServer,
+    SettingsPaletteKey, SettingsCheckKey, SettingsKeyPriority, KeyConflict, ForeignCompletion);
 
   TAtlasStrings = class
   private class var
@@ -94,7 +95,12 @@ const
      'Atlas', 'Code Insight von Atlas', 'Eigener Tooltip', 'Klammerpaare färben', 'Blocklinien',
      'Probleme anzeigen', 'Optionen…', 'Abgeschaltete Funktionen einschalten (%s)',
      'Index-Status', 'Index neu aufbauen', 'Atlas: Index wird ohne Cache neu aufgebaut; der Fortschritt steht im Menütitel.',
-     'Atlas: Server nicht erreichbar.'),
+     'Atlas: Server nicht erreichbar.',
+     'Befehlspalette:', 'Syntaxprüfung jetzt:', 'Vorrang vor anderer Belegung',
+     'Atlas: %0:s ist schon belegt (%1:s); Atlas überlässt die Taste und belegt sie nicht für %2:s. ' +
+       'Andere Taste oder Vorrang unter Tools > Optionen > Atlas.',
+     'Atlas: %s bringt eine eigene Vervollständigung mit. Laufen beide, stören sie sich; ' +
+       'eine davon abschalten (Atlas: Menü Atlas > Code Insight von Atlas). Atlas ändert fremde Erweiterungen nicht.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -136,7 +142,12 @@ const
      'Atlas', 'Atlas Code Insight', 'Own tooltip', 'Colour bracket pairs', 'Block guides',
      'Show problems', 'Options…', 'Re-enable switched-off features (%s)',
      'Index status', 'Rebuild index', 'Atlas: rebuilding the index without cache; progress shows in the menu title.',
-     'Atlas: server not reachable.'));
+     'Atlas: server not reachable.',
+     'Command palette:', 'Syntax check now:', 'Take precedence over other assignment',
+     'Atlas: %0:s is already assigned (%1:s); Atlas leaves the key and does not use it for %2:s. ' +
+       'Choose another key or precedence under Tools > Options > Atlas.',
+     'Atlas: %s brings its own code completion. Running both interferes; ' +
+       'switch one off (Atlas: menu Atlas > Atlas Code Insight). Atlas does not change other extensions.'));
 
 { TAtlasStrings }
 

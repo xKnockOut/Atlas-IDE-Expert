@@ -56,7 +56,10 @@ type
     FManual: Boolean;
     FReport: TProc<string>;
     FBinding: TBinding;
+    // Hält das Binding am Leben: Abmelden gibt die Referenz der IDE frei, Rebind meldet es neu an.
+    FBindingRef: IOTAKeyboardBinding;
     FBindingIndex: Integer;
+    FKey: Word;
     procedure Tick(Sender: TObject);
     procedure Run(const AProject: string; AManual: Boolean);
     class function ActiveProject: IOTAProject; static;
@@ -67,6 +70,8 @@ type
     /// <summary>AEvents gehört dem Aufrufer und muss länger leben; der Wächter wird dort angemeldet.</summary>
     constructor Create(AEvents: TAtlasCompileEvents; const AReport: TProc<string>);
     destructor Destroy; override;
+    /// <summary>Tastenkürzel nach den Einstellungen (neu) belegen; bei Konflikt ohne Vorrang keins (#494).</summary>
+    procedure Rebind;
     /// <summary>Eine Datei wurde gespeichert.</summary>
     procedure Saved(const AFileName: string);
     /// <summary>Aktives Projekt jetzt prüfen.</summary>
@@ -76,6 +81,7 @@ type
 implementation
 
 uses
+  Atlas.IDE.Commands.Keys,
   Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
   Vcl.Forms,
@@ -139,7 +145,8 @@ end;
 
 procedure TAtlasIdeCheckOnSave.TBinding.BindKeyboard(const BindingServices: IOTAKeyBindingServices);
 begin
-  BindingServices.AddKeyBinding([ShortCut(VK_F9, [ssCtrl, ssAlt])], Check, nil);
+  if (FOwner <> nil) and (FOwner.FKey <> 0) then
+    BindingServices.AddKeyBinding([FOwner.FKey], Check, nil);
 end;
 
 procedure TAtlasIdeCheckOnSave.TBinding.Check(const Context: IOTAKeyContext; KeyCode: TShortCut;
@@ -169,13 +176,33 @@ begin
   if Supports(BorlandIDEServices, IOTAKeyboardServices, Keyboard) then
   begin
     FBinding := TBinding.Create;
+    FBindingRef := FBinding;
     FBinding.FOwner := Self;
-    FBindingIndex := Keyboard.AddKeyboardBinding(FBinding);
+    Rebind;
   end;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 250;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
+end;
+
+procedure TAtlasIdeCheckOnSave.Rebind;
+var
+  Key: Word;
+begin
+  if FBinding = nil then
+    Exit;
+  Key := Word(TAtlasIdeSettings.Current.CheckKey);
+  if not TAtlasIdeKeys.Decide(Key, TAtlasIdeSettings.Current.CheckKeyPriority,
+    TAtlasStrings.Text(TAtlasTextId.SettingsCheckKey)) then
+    Key := 0;
+  if (Key = FKey) and ((FBindingIndex >= 0) = (Key <> 0)) then
+    Exit;
+  FKey := Key;
+  if FKey = 0 then
+    TAtlasIdeKeys.Unbind(FBindingIndex)
+  else
+    TAtlasIdeKeys.Bind(FBinding, FBindingIndex);
 end;
 
 destructor TAtlasIdeCheckOnSave.Destroy;
