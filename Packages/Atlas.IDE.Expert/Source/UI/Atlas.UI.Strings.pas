@@ -32,7 +32,8 @@ type
     ProjectSettingsDefaultNone, ProjectSettingsReset, ProjectSettingsComplex, ProjectSettingsOpenFile,
     ProjectSettingsNoProject, ProjectSettingsInvalid, ProjectSettingsOk, ProjectSettingsCancel,
     ProjectSettingsBadNumber, ProjectSettingsFile,
-    MenuAtlas, MenuToggleEnabled, MenuToggleHover, MenuTogglePairs, MenuToggleGuides, MenuToggleProblems, MenuOptions, MenuEnableAll);
+    MenuAtlas, MenuToggleEnabled, MenuToggleHover, MenuTogglePairs, MenuToggleGuides, MenuToggleProblems, MenuOptions, MenuEnableAll,
+    MenuIndexStatus, MenuIndexRebuild, MenuIndexRebuilding, MenuIndexNoServer);
 
   TAtlasStrings = class
   private class var
@@ -91,7 +92,9 @@ const
      'Kein Projekt geöffnet.', 'atlas.json ist kein gültiges JSON; bitte zuerst dort korrigieren.', 'OK', 'Abbrechen',
      '%s: "%s" ist keine ganze Zahl.', 'Datei: %s',
      'Atlas', 'Code Insight von Atlas', 'Eigener Tooltip', 'Klammerpaare färben', 'Blocklinien',
-     'Probleme anzeigen', 'Optionen…', 'Abgeschaltete Funktionen einschalten (%s)'),
+     'Probleme anzeigen', 'Optionen…', 'Abgeschaltete Funktionen einschalten (%s)',
+     'Index-Status', 'Index neu aufbauen', 'Atlas: Index wird ohne Cache neu aufgebaut; der Fortschritt steht im Menütitel.',
+     'Atlas: Server nicht erreichbar.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -131,7 +134,9 @@ const
      'No project open.', 'atlas.json is not valid JSON; please fix it there first.', 'OK', 'Cancel',
      '%s: "%s" is not a whole number.', 'File: %s',
      'Atlas', 'Atlas Code Insight', 'Own tooltip', 'Colour bracket pairs', 'Block guides',
-     'Show problems', 'Options…', 'Re-enable switched-off features (%s)'));
+     'Show problems', 'Options…', 'Re-enable switched-off features (%s)',
+     'Index status', 'Rebuild index', 'Atlas: rebuilding the index without cache; progress shows in the menu title.',
+     'Atlas: server not reachable.'));
 
 { TAtlasStrings }
 

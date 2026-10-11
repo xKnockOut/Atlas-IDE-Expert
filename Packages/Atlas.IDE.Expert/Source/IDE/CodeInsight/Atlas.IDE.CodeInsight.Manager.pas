@@ -70,6 +70,10 @@ type
     /// <summary>Benachrichtigung an den Server, falls eine Sitzung läuft (#527); übernimmt AParams.
     /// Startet den Server dafür nicht.</summary>
     procedure NotifyServer(const AMethod: string; AParams: TJSONObject);
+    /// <summary>Fortschritt des Servers ("Index 45 %"); '' ohne Sitzung oder Vorgang. Startet keinen Server (#492).</summary>
+    function ServerProgress: string;
+    /// <summary>Befehl an den Server (startet ihn bei Bedarf); Ergebnis gehört dem Aufrufer, nil bei Fehler.</summary>
+    function ExecuteServerCommand(const ACommand: string; ATimeoutMs: Cardinal = 30000): TJSONValue;
     /// <summary>Gespeichert: didSave an den Server, falls eine Sitzung läuft (Prüfung mit dcc).</summary>
     procedure NotifySaved(const AFileName: string);
     /// <summary>Zeile im Diagnoseprotokoll (nur mit Diagnose = 1).</summary>
@@ -350,6 +354,24 @@ begin
     Result := FSession
   else
     Result := nil;
+end;
+
+function TAtlasCodeInsightManager.ServerProgress: string;
+begin
+  if (FSession <> nil) and FSession.Initialized then
+    Result := FSession.ProgressText
+  else
+    Result := '';
+end;
+
+function TAtlasCodeInsightManager.ExecuteServerCommand(const ACommand: string; ATimeoutMs: Cardinal): TJSONValue;
+var
+  Session: TLspSession;
+begin
+  Session := SessionOrNil;
+  if Session = nil then
+    Exit(nil);
+  Result := Session.ExecuteCommand(ACommand, ATimeoutMs);
 end;
 
 function TAtlasCodeInsightManager.Signature: TAtlasEditorSignature;

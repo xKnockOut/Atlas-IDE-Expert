@@ -17,6 +17,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Core.Lsp.Client,
+  Atlas.Core.Lsp.Progress,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Problems.Contract;
 
@@ -69,6 +70,7 @@ type
   private
     FClient: TLspClient;
     FRefresh: ILspSignal;
+    FProgress: ILspProgress;
     FTimeoutMs: Cardinal;
     FDocuments: TDictionary<string, TDocumentState>;
     FInitialized: Boolean;
@@ -125,6 +127,10 @@ type
     function SyncedText(const AFileName: string; out AText: string): Boolean;
     /// <summary>Anzahl der workspace/diagnostic/refresh-Anfragen des Servers.</summary>
     function RefreshCount: Integer;
+    /// <summary>Laufende Indizierung o. Ä. des Servers ("Index 45 %"); '' ohne (#492).</summary>
+    function ProgressText: string;
+    /// <summary>workspace/executeCommand; Ergebnis gehört dem Aufrufer (nil bei Fehler oder Zeitlimit).</summary>
+    function ExecuteCommand(const ACommand: string; ATimeoutMs: Cardinal): TJSONValue;
     property Initialized: Boolean read FInitialized;
   end;
 
@@ -166,6 +172,7 @@ begin
   FTimeoutMs := ATimeoutMs;
   FDocuments := TDictionary<string, TDocumentState>.Create;
   FRefresh := TLspSignal.Create;
+  FProgress := TLspProgress.Create;
 end;
 
 destructor TLspSession.Destroy;
@@ -294,6 +301,7 @@ var
   Formats: TJSONArray;
   Response: TJSONValue;
   Refresh: ILspSignal;
+  Progress: ILspProgress;
 begin
   Formats := TJSONArray.Create;
   Formats.Add('plaintext');
@@ -319,11 +327,14 @@ begin
   Params.AddPair('capabilities', Capabilities);
   // Nur den Zähler einfangen, nicht die Sitzung: Der Lese-Thread kann die Sitzung überleben.
   Refresh := FRefresh;
+  Progress := FProgress;
   FClient.OnServerMessage :=
     procedure(const AMethod: string; const AParams: TJSONValue)
     begin
       if AMethod = 'workspace/diagnostic/refresh' then
-        Refresh.Signal;
+        Refresh.Signal
+      else if AMethod = '$/progress' then
+        Progress.Handle(AParams);
     end;
   // Ohne Arbeitsbereich leitet der Server ihn aus den geöffneten Dateien ab.
   Response := FClient.Request('initialize', Params, 15000);
@@ -556,6 +567,21 @@ begin
     AText := State.Text
   else
     AText := '';
+end;
+
+function TLspSession.ProgressText: string;
+begin
+  Result := FProgress.Text;
+end;
+
+function TLspSession.ExecuteCommand(const ACommand: string; ATimeoutMs: Cardinal): TJSONValue;
+begin
+  try
+    Result := FClient.Request('workspace/executeCommand',
+      TJSONObject.Create.AddPair('command', ACommand).AddPair('arguments', TJSONArray.Create), ATimeoutMs);
+  except
+    Result := nil;
+  end;
 end;
 
 function TLspSession.RefreshCount: Integer;
