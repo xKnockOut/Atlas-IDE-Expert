@@ -31,7 +31,6 @@ implementation
 uses
   Winapi.Windows,
   System.SysUtils,
-  System.Classes,
   System.Win.Registry;
 
 type
@@ -124,54 +123,12 @@ end;
 
 { TAtlasIdeSettings }
 
-/// <summary>Einstellungen bis 11.10.2026 unter dem Namen Argus: einmalig übernehmen, solange es den
-/// Atlas-Schlüssel noch nicht gibt.</summary>
-procedure MigrateFromArgus;
-const
-  PreviousKey = 'Software\Argus\IdePlugin';
-var
-  Source, Target: TRegistry;
-  Names: TStringList;
-  Name: string;
-begin
-  Source := TRegistry.Create(KEY_READ);
-  Target := TRegistry.Create(KEY_READ or KEY_WRITE);
-  Names := TStringList.Create;
-  try
-    Source.RootKey := HKEY_CURRENT_USER;
-    Target.RootKey := HKEY_CURRENT_USER;
-    try
-      if Target.KeyExists(AtlasRegistryKey) or not Source.OpenKeyReadOnly(PreviousKey) then
-        Exit;
-      if not Target.OpenKey(AtlasRegistryKey, True) then
-        Exit;
-      Source.GetValueNames(Names);
-      for Name in Names do
-        case Source.GetDataType(Name) of
-          rdInteger:
-            Target.WriteInteger(Name, Source.ReadInteger(Name));
-          rdString, rdExpandString:
-            Target.WriteString(Name, Source.ReadString(Name));
-        end;
-    except
-      // Ohne Übernahme gelten die Vorgaben.
-      on ERegistryException do
-        ;
-    end;
-  finally
-    Names.Free;
-    Target.Free;
-    Source.Free;
-  end;
-end;
-
 class function TAtlasIdeSettings.Current: TAtlasPluginSettings;
 var
   Store: IAtlasSettingsStore;
 begin
   if not FLoaded then
   begin
-    MigrateFromArgus;
     FCurrent := TAtlasPluginSettings.Defaults;
     Store := TRegistryStore.Create(False);
     FCurrent.Load(Store);

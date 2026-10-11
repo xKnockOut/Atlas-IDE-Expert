@@ -456,7 +456,6 @@ begin
   Assert.IsTrue(IsConfigurationFileName('atlas.json'));
   Assert.IsTrue(IsConfigurationFileName('Atlas.JSON'));
   Assert.IsTrue(IsConfigurationFileName('delphi-lsp.json'));
-  Assert.IsTrue(IsConfigurationFileName('argus.json'), 'Name bis 11.10.2026');
   Assert.IsFalse(IsConfigurationFileName('atlas-baseline.json'));
 end;
 
@@ -469,10 +468,6 @@ begin
   try
     // Ohne Datei: der neue Name, damit dort angelegt wird.
     Assert.AreEqual(TPath.Combine(Dir, 'atlas.json'), ExistingOrLegacyFile(Dir, 'atlas.json', 'delphi-lsp.json'));
-    TFile.WriteAllText(TPath.Combine(Dir, 'argus.json'), '{}');
-    Assert.AreEqual(TPath.Combine(Dir, 'argus.json'), ExistingOrLegacyFile(Dir, 'atlas.json',
-      ['argus.json', 'delphi-lsp.json']), 'Argus vor delphi-lsp');
-    TFile.Delete(TPath.Combine(Dir, 'argus.json'));
     TFile.WriteAllText(TPath.Combine(Dir, 'delphi-lsp.json'), '{}');
     Assert.AreEqual(TPath.Combine(Dir, 'delphi-lsp.json'), ExistingOrLegacyFile(Dir, 'atlas.json', 'delphi-lsp.json'));
     TFile.WriteAllText(TPath.Combine(Dir, 'atlas.json'), '{}');
