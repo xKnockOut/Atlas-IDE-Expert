@@ -76,6 +76,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
   Vcl.Forms,
   Vcl.Controls,
@@ -252,20 +253,25 @@ var
   Index: Integer;
   Belongs: Boolean;
 begin
-  if FChecking or not TAtlasIdeSettings.Current.CheckOnSave then
-    Exit;
-  Project := ActiveProject;
-  if Project = nil then
-    Exit;
-  Belongs := False;
-  for Index := 0 to Project.GetModuleCount - 1 do
-    if SameText(Project.GetModule(Index).FileName, AFileName) then
+  try
+    if FChecking or not TAtlasIdeSettings.Current.CheckOnSave then
+      Exit;
+    Project := ActiveProject;
+    if Project = nil then
+      Exit;
+    Belongs := False;
+    for Index := 0 to Project.GetModuleCount - 1 do
+      if SameText(Project.GetModule(Index).FileName, AFileName) then
+        Belongs := True;
+    if SameText(ChangeFileExt(Project.FileName, '.dpr'), AFileName) or
+      SameText(ChangeFileExt(Project.FileName, '.dpk'), AFileName) then
       Belongs := True;
-  if SameText(ChangeFileExt(Project.FileName, '.dpr'), AFileName) or
-    SameText(ChangeFileExt(Project.FileName, '.dpk'), AFileName) then
-    Belongs := True;
-  if Belongs then
-    FCore.Saved(Project.FileName, NowMs);
+    if Belongs then
+      FCore.Saved(Project.FileName, NowMs);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.CheckOnSave, E);
+  end;
 end;
 
 procedure TAtlasIdeCheckOnSave.Tick(Sender: TObject);

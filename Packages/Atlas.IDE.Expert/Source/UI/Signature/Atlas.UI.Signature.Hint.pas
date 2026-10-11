@@ -100,6 +100,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Style.Color,
   Atlas.UI.Strings,
@@ -362,6 +363,7 @@ begin
   Place;
   // Sprachausgabe (#447): Signatur und aktueller Parameter.
   SetAccessible(UiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.AccessSignature));
+  GuardFeature := TAtlasFeature.Signature;
   Spoken := AHelp.Signatures[ASignature].Label_;
   if (AParameter >= 0) and (AParameter <= High(AHelp.Signatures[ASignature].Parameters)) then
     Spoken := Spoken + '. ' + TAtlasStrings.Fmt(TAtlasTextId.AccessParameter, [AParameter + 1,

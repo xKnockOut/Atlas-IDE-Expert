@@ -47,6 +47,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
   Atlas.IDE.Editor.Style;
 
@@ -157,8 +158,11 @@ begin
     end;
   except
     // Zeichnen darf die IDE nie stören.
-    on Exception do
+    on E: Exception do
+    begin
       FText := '';
+      TAtlasGuard.Report(TAtlasFeature.Completion, E);
+    end;
   end;
 end;
 

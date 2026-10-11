@@ -109,6 +109,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   System.IOUtils,
   System.StrUtils,
   System.Win.Registry,
@@ -526,11 +527,17 @@ end;
 
 procedure TAtlasCodeInsightManager.AllowCodeInsight(var Allow: Boolean; const Key: Char);
 begin
-  // #0 Vervollständigung (Strg+Leer), "." Vervollständigung nach Punkt, #2 Browse
-  // (Strg+Klick), #3 Symbolhinweis; #1 Parameterhilfe (Strg+Umschalt+Leer), "(" und ",".
-  // "<" nur für XMLDoc-Tags in ///-Kommentaren (#435), siehe GetCodeInsightType.
-  Allow := CharInSet(Key, [#0, '.', #1, '(', ',', #2, #3, '<']);
-  Diagnose(Format('AllowCodeInsight(#%d) = %s', [Ord(Key), BoolToStr(Allow, True)]));
+  Allow := False;
+  try
+    // #0 Vervollständigung (Strg+Leer), "." Vervollständigung nach Punkt, #2 Browse
+    // (Strg+Klick), #3 Symbolhinweis; #1 Parameterhilfe (Strg+Umschalt+Leer), "(" und ",".
+    // "<" nur für XMLDoc-Tags in ///-Kommentaren (#435), siehe GetCodeInsightType.
+    Allow := CharInSet(Key, [#0, '.', #1, '(', ',', #2, #3, '<']);
+    Diagnose(Format('AllowCodeInsight(#%d) = %s', [Ord(Key), BoolToStr(Allow, True)]));
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Completion, E);
+  end;
 end;
 
 function TAtlasCodeInsightManager.PreValidateCodeInsight(const Str: string): Boolean;
@@ -555,8 +562,13 @@ end;
 
 procedure TAtlasCodeInsightManager.OnEditorKey(Key: Char; var CloseViewer: Boolean; var Accept: Boolean);
 begin
-  CloseViewer := True;
-  Accept := False;
+  try
+    CloseViewer := True;
+    Accept := False;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Completion, E);
+  end;
 end;
 
 function TAtlasCodeInsightManager.ServerAvailable: Boolean;
@@ -578,11 +590,17 @@ function TAtlasCodeInsightManager.HandlesFile(const AFileName: string): Boolean;
 var
   Extension: string;
 begin
-  Extension := LowerCase(ExtractFileExt(AFileName));
-  // Hauptschalter (#407): ausgeschaltet übernimmt die eingebaute Code Insight; ebenso ohne Server.
-  Result := TAtlasIdeSettings.Current.Enabled and ((Extension = '.pas') or (Extension = '.dpr') or
-    (Extension = '.dpk') or (Extension = '.inc')) and ServerAvailable;
-  Diagnose(Format('HandlesFile(%s) = %s', [AFileName, BoolToStr(Result, True)]));
+  Result := False;
+  try
+    Extension := LowerCase(ExtractFileExt(AFileName));
+    // Hauptschalter (#407): ausgeschaltet übernimmt die eingebaute Code Insight; ebenso ohne Server.
+    Result := TAtlasIdeSettings.Current.Enabled and not TAtlasGuard.Disabled(TAtlasFeature.Completion) and ((Extension = '.pas') or (Extension = '.dpr') or
+      (Extension = '.dpk') or (Extension = '.inc')) and ServerAvailable;
+    Diagnose(Format('HandlesFile(%s) = %s', [AFileName, BoolToStr(Result, True)]));
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Completion, E);
+  end;
 end;
 
 function TAtlasCodeInsightManager.GetLongestItem: string;
@@ -607,39 +625,46 @@ end;
 procedure TAtlasCodeInsightManager.GetCodeInsightType(AChar: Char; AElement: Integer;
   out CodeInsightType: TOTACodeInsightType; out InvokeType: TOTAInvokeType);
 begin
+  CodeInsightType := citNone;
   InvokeType := itManual;
-  case AChar of
-    #0: CodeInsightType := citCodeInsight;
-    '.':
-      begin
-        // Nach der in den Editoroptionen eingestellten Verzögerung.
-        CodeInsightType := citCodeInsight;
-        InvokeType := itTimer;
-      end;
-    #1: CodeInsightType := citParameterCodeInsight;
-    '(', ',':
-      begin
-        CodeInsightType := citParameterCodeInsight;
-        InvokeType := itTimer;
-      end;
-    '<':
-      begin
-        CodeInsightType := citCodeInsight;
-        InvokeType := itTimer;
-      end;
-    #2: CodeInsightType := citBrowseCodeInsight;
-    #3: CodeInsightType := citHintCodeInsight;
-  else
-    CodeInsightType := citNone;
+  try
+    InvokeType := itManual;
+    case AChar of
+      #0: CodeInsightType := citCodeInsight;
+      '.':
+        begin
+          // Nach der in den Editoroptionen eingestellten Verzögerung.
+          CodeInsightType := citCodeInsight;
+          InvokeType := itTimer;
+        end;
+      #1: CodeInsightType := citParameterCodeInsight;
+      '(', ',':
+        begin
+          CodeInsightType := citParameterCodeInsight;
+          InvokeType := itTimer;
+        end;
+      '<':
+        begin
+          CodeInsightType := citCodeInsight;
+          InvokeType := itTimer;
+        end;
+      #2: CodeInsightType := citBrowseCodeInsight;
+      #3: CodeInsightType := citHintCodeInsight;
+    else
+      CodeInsightType := citNone;
+    end;
+    // In Kommentaren und Strings keine Vervollständigung (#435); Ausnahme: XMLDoc-Tags in ///-Zeilen.
+    // "<" außerhalb davon ist ein Vergleich, keine Auslösung.
+    if (CodeInsightType = citCodeInsight) and ((AChar = '<') or (AElement = atComment)) and InXmlDocLine then
+      // Vervollständigung bleibt; die XMLDoc-Quelle liefert die Tags.
+    else if (AChar = '<') or ((CodeInsightType in [citCodeInsight, citParameterCodeInsight]) and
+      ((AElement = atComment) or (AElement = atString))) then
+      CodeInsightType := citNone;
+    Diagnose(Format('GetCodeInsightType(#%d, Element %d) = %d', [Ord(AChar), AElement, Ord(CodeInsightType)]));
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Completion, E);
   end;
-  // In Kommentaren und Strings keine Vervollständigung (#435); Ausnahme: XMLDoc-Tags in ///-Zeilen.
-  // "<" außerhalb davon ist ein Vergleich, keine Auslösung.
-  if (CodeInsightType = citCodeInsight) and ((AChar = '<') or (AElement = atComment)) and InXmlDocLine then
-    // Vervollständigung bleibt; die XMLDoc-Quelle liefert die Tags.
-  else if (AChar = '<') or ((CodeInsightType in [citCodeInsight, citParameterCodeInsight]) and
-    ((AElement = atComment) or (AElement = atString))) then
-    CodeInsightType := citNone;
-  Diagnose(Format('GetCodeInsightType(#%d, Element %d) = %d', [Ord(AChar), AElement, Ord(CodeInsightType)]));
 end;
 
 function TAtlasCodeInsightManager.InvokeCodeCompletion(HowInvoked: TOTAInvokeType; var Str: string): Boolean;
@@ -663,6 +688,9 @@ function TAtlasCodeInsightManager.InvokeParameterCodeInsight(HowInvoked: TOTAInv
 var
   Activity: IInterface;
 begin
+  // Durch die Sicherung abgeschaltet (#493).
+  if TAtlasGuard.Disabled(TAtlasFeature.Signature) then
+    Exit(False);
   Activity := TAtlasActivity.Scope('Parameterhilfe');
   // False: Die IDE zeigt keine eigene Parameterhilfe; unser Hint übernimmt (#436).
   Result := False;
@@ -687,6 +715,12 @@ end;
 procedure TAtlasCodeInsightManager.Done(Accepted: Boolean; out DisplayParams: Boolean);
 begin
   DisplayParams := False;
+  try
+    DisplayParams := False;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Completion, E);
+  end;
 end;
 
 procedure TAtlasCodeInsightManager.NotifySaved(const AFileName: string);

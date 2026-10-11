@@ -44,6 +44,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   System.Generics.Collections;
 
 var
@@ -90,8 +91,14 @@ begin
             TThread.ForceQueue(nil,
               procedure
               begin
-                if TAtlasKeyHook.Contains(Client) then
-                  Client.HandleKey(Key, Shift);
+                try
+                  if TAtlasKeyHook.Contains(Client) then
+                    Client.HandleKey(Key, Shift);
+                except
+                  // Die Clients melden ihre Fehler selbst; hier nur das letzte Netz (#493).
+                  on E: Exception do
+                    TAtlasGuard.Log('Tastatur: ' + E.ClassName + ': ' + E.Message);
+                end;
               end);
           Exit(1);
         end;

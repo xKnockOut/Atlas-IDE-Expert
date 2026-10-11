@@ -32,7 +32,7 @@ type
     ProjectSettingsDefaultNone, ProjectSettingsReset, ProjectSettingsComplex, ProjectSettingsOpenFile,
     ProjectSettingsNoProject, ProjectSettingsInvalid, ProjectSettingsOk, ProjectSettingsCancel,
     ProjectSettingsBadNumber, ProjectSettingsFile,
-    MenuAtlas, MenuToggleEnabled, MenuToggleHover, MenuTogglePairs, MenuToggleGuides, MenuToggleProblems, MenuOptions);
+    MenuAtlas, MenuToggleEnabled, MenuToggleHover, MenuTogglePairs, MenuToggleGuides, MenuToggleProblems, MenuOptions, MenuEnableAll);
 
   TAtlasStrings = class
   private class var
@@ -91,7 +91,7 @@ const
      'Kein Projekt geöffnet.', 'atlas.json ist kein gültiges JSON; bitte zuerst dort korrigieren.', 'OK', 'Abbrechen',
      '%s: "%s" ist keine ganze Zahl.', 'Datei: %s',
      'Atlas', 'Code Insight von Atlas', 'Eigener Tooltip', 'Klammerpaare färben', 'Blocklinien',
-     'Probleme anzeigen', 'Optionen…'),
+     'Probleme anzeigen', 'Optionen…', 'Abgeschaltete Funktionen einschalten (%s)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -131,7 +131,7 @@ const
      'No project open.', 'atlas.json is not valid JSON; please fix it there first.', 'OK', 'Cancel',
      '%s: "%s" is not a whole number.', 'File: %s',
      'Atlas', 'Atlas Code Insight', 'Own tooltip', 'Colour bracket pairs', 'Block guides',
-     'Show problems', 'Options…'));
+     'Show problems', 'Options…', 'Re-enable switched-off features (%s)'));
 
 { TAtlasStrings }
 

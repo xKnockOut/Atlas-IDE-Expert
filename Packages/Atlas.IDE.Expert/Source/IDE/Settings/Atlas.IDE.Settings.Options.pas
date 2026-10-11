@@ -19,6 +19,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   Vcl.Forms,
   ToolsAPI,
   Atlas.Core.Settings.Plugin,
@@ -83,14 +84,19 @@ procedure TAtlasAddInOptions.DialogClosed(Accepted: Boolean);
 var
   Settings: TAtlasPluginSettings;
 begin
-  if Accepted and (FPage <> nil) then
-  begin
-    Settings := TAtlasIdeSettings.Current;
-    FPage.SaveTo(Settings);
-    TAtlasIdeSettings.Update(Settings);
-    TAtlasIdeStructureSwitch.Sync;
+  try
+    if Accepted and (FPage <> nil) then
+    begin
+      Settings := TAtlasIdeSettings.Current;
+      FPage.SaveTo(Settings);
+      TAtlasIdeSettings.Update(Settings);
+      TAtlasIdeStructureSwitch.Sync;
+    end;
+    FPage := nil;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Settings, E);
   end;
-  FPage := nil;
 end;
 
 function TAtlasAddInOptions.ValidateContents: Boolean;

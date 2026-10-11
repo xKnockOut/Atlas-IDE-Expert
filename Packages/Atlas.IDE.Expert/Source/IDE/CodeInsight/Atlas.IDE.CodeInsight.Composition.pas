@@ -37,7 +37,8 @@ uses
   Atlas.IDE.Files.DirtyExport,
   Atlas.IDE.Build.CheckOnSave,
   Atlas.IDE.Settings.Project,
-  Atlas.IDE.Commands.MainMenu;
+  Atlas.IDE.Commands.MainMenu,
+  Atlas.Core.Diagnostics.Guard;
 
 var
   ManagerIndex: Integer = -1;
@@ -90,6 +91,22 @@ begin
     Group := Messages.AddMessageGroup('Atlas');
   // Nie als Dialog und ohne das Meldungsfenster nach vorn zu holen.
   Messages.AddTitleMessage(TAtlasStrings.Fmt(TAtlasTextId.HangHint, [Hang.DurationMs, Activity]), Group);
+end;
+
+/// <summary>Warnung der Sicherung (#493): Meldungsansicht und Plugin-Protokoll, nie als Dialog.</summary>
+procedure GuardWarning(const AText: string);
+var
+  Messages: IOTAMessageServices;
+  Group: IOTAMessageGroup;
+begin
+  if Manager <> nil then
+    Manager.Report(AText);
+  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+    Exit;
+  Group := Messages.GetGroup('Atlas');
+  if Group = nil then
+    Group := Messages.AddMessageGroup('Atlas');
+  Messages.AddTitleMessage(AText, Group);
 end;
 
 procedure RegisterPalette;
@@ -254,6 +271,7 @@ var
   LoadedAt: Int64;
 begin
   LoadedAt := TAtlasWatchdog.Timestamp;
+  TAtlasGuard.OnWarning := GuardWarning;
   TAtlasStrings.Language := IdeLanguage;
   if (ManagerIndex < 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
   begin
@@ -311,6 +329,7 @@ procedure Unregister;
 var
   Services: IOTACodeInsightServices;
 begin
+  TAtlasGuard.OnWarning := nil;
   FreeAndNil(DirtyExport);
   FreeAndNil(MainMenu);
   FreeAndNil(Pairs);

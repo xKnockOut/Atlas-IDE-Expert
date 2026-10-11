@@ -70,6 +70,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Style.Color,
@@ -124,7 +125,15 @@ end;
 
 procedure TAtlasEditorPairs.BeginPaint(const Editor: TWinControl; const ForceFullRepaint: Boolean);
 begin
-  FCheck := True;
+  // Durch die Sicherung abgeschaltet (#493).
+  if TAtlasGuard.Disabled(TAtlasFeature.Pairs) then
+    Exit;
+  try
+    FCheck := True;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Pairs, E);
+  end;
 end;
 
 /// <summary>Zeichenindex (0-basiert) in ALine als 1-basierte Editorspalte, Tabs aufgelöst.</summary>
@@ -209,6 +218,9 @@ var
   DC: HDC;
   Saved: Integer;
 begin
+  // Durch die Sicherung abgeschaltet (#493).
+  if TAtlasGuard.Disabled(TAtlasFeature.Pairs) then
+    Exit;
   if not BeforeEvent or Hilight or (Text = '') or (Context = nil) then
     Exit;
   try
@@ -268,7 +280,11 @@ begin
     end;
   except
     // Zeichnen darf die IDE nie stören; die IDE zeichnet dann selbst.
-    AllowDefaultPainting := True;
+    on E: Exception do
+    begin
+      AllowDefaultPainting := True;
+      TAtlasGuard.Report(TAtlasFeature.Pairs, E);
+    end;
   end;
 end;
 
@@ -285,6 +301,9 @@ var
   Saved: Integer;
   Pen, Old: HGDIOBJ;
 begin
+  // Durch die Sicherung abgeschaltet (#493).
+  if TAtlasGuard.Disabled(TAtlasFeature.Pairs) then
+    Exit;
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) then
     Exit;
   try
@@ -345,8 +364,11 @@ begin
     end;
   except
     // Zeichnen darf die IDE nie stören.
-    on Exception do
+    on E: Exception do
+    begin
       FGuides := nil;
+      TAtlasGuard.Report(TAtlasFeature.Pairs, E);
+    end;
   end;
 end;
 

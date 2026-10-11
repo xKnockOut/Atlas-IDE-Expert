@@ -39,6 +39,9 @@ type
 
 implementation
 
+uses
+  Atlas.Core.Diagnostics.Guard;
+
 // Eigene Deklaration (Vista und neuer), unabhängig von der Delphi-Version.
 function CancelSynchronousIoOf(AThread: THandle): BOOL; stdcall; external kernel32 name 'CancelSynchronousIo';
 
@@ -154,13 +157,22 @@ var
   Read: DWORD;
 begin
   SetLength(Buffer, 65536);
-  while not Terminated do
-  begin
-    if not ReadFile(FHandle, Buffer[0], Length(Buffer), Read, nil) or (Read = 0) then
-      Break;
-    FClient.Receive(Buffer, Integer(Read));
+  try
+    try
+      while not Terminated do
+      begin
+        if not ReadFile(FHandle, Buffer[0], Length(Buffer), Read, nil) or (Read = 0) then
+          Break;
+        FClient.Receive(Buffer, Integer(Read));
+      end;
+    except
+      // Kein stilles Ende (#493): protokollieren; die Sitzung gilt dann als beendet.
+      on E: Exception do
+        TAtlasGuard.Report(TAtlasFeature.Server, E);
+    end;
+  finally
+    FClient.Close;
   end;
-  FClient.Close;
 end;
 
 { TLspServerProcess }

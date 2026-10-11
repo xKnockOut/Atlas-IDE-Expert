@@ -54,6 +54,9 @@ type
 
 implementation
 
+uses
+  Atlas.Core.Diagnostics.Guard;
+
 { TAtlasServerSignatureProvider }
 
 constructor TAtlasServerSignatureProvider.Create(const ASession: TAtlasSessionFunc; ATimeoutMs: Cardinal);
@@ -241,7 +244,11 @@ begin
         begin
           if Flag.Alive and (FlagRef <> nil) and
             (TInterlocked.CompareExchange(Provider.FGeneration, 0, 0) = Generation) then
-            ACallback(Help);
+            TAtlasGuard.Run(TAtlasFeature.Signature,
+              procedure
+              begin
+                ACallback(Help);
+              end);
         end);
     end);
   Worker.FreeOnTerminate := False;
