@@ -178,7 +178,9 @@
   - `9d2e9459`: Compilermeldungen ohne Pfad (die IDE nennt teils nur `Gallery.Main.pas`) ergänzt das Plugin zu vollen Pfaden (`TArgusCompilerMessages.Resolve`). Vom User abgenommen; #398, #528, #548 geschlossen.
   - Das Plugin startet den Server jetzt selbst und sofort neu: Für Builds Delphi des Users schließen (`update-plugin.ps1 -NoRestart`, dann `build.ps1`, dann Delphi starten).
 - **Delphi 12 (#281, 11.10.2026):** Tastatur-Ereignisse des Editors nur ab Delphi 13 (`e4ea3519`); Senden an den Server in eigenem Thread mit 1-MB-Pipe gegen Einfrieren (`98058471`); Hänger beim Laden großer Projekte lagen laut Wächter in der IDE selbst. Auf dem Delphi-12-Rechner fehlte `ArgusServer.exe`: jetzt Einstellung „Argus-Server“ in den Optionen, und ohne Server bleibt die Code Insight der IDE aktiv (`ad3920bb`).
-- **Plugin beim User:** am 11.10.2026 um 12:24 aktualisiert.
+- **Help Insight (`2a678103`):** Solange der Argus-Tooltip an ist, schaltet Argus Help Insight der IDE ab (Registry `Code Insight\Borland.EditOptions.Borland.CodeInsight.LSP.Pascal`, `Help Insight`, Merker `IdeHelpInsightDisabled`); unter Delphi 12 zeigte die IDE sonst beide Tooltips. Auf diesem Rechner geprüft (Wert False, Merker 1).
+- **Achtung:** Das Plugin war gegen 12:26 aus „Known Packages“ verschwunden (Ursache unklar); der User hat es neu installiert.
+- **Plugin beim User:** am 11.10.2026 um 12:38 aktualisiert.
 - **Achtung:** In `Argus.Common.Compiler.OutputParser.pas` stehen Testzeilen des Users (verschachtelte begin/end); nicht committen.
 - **Neu in `update-plugin.ps1`:** sichert `.dproj`/`.dpk` vor dem Bau und schreibt sie danach zurück.
 - **Weiter:**
