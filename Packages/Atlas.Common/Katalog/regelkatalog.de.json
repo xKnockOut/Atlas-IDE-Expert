@@ -389,6 +389,11 @@
       "id": "component-palette-icon",
       "name": "Registrierte Komponente ohne Palettensymbol",
       "description": "Jede an RegisterComponents übergebene Klasse braucht in einer per {$R} eingebundenen .dcr oder .res eine Bitmap mit dem Klassennamen in Großbuchstaben. Ab Delphi 11 werden zusätzlich die Größen 16, 24 und 32 px (NAME16, NAME24, NAME32) erwartet. Ohne lesbare eingebundene Ressourcendatei schweigt die Regel."
+    },
+    {
+      "id": "unresolved-identifier",
+      "name": "Nicht deklarierter Bezeichner",
+      "description": "Ein Bezeichner in einer Anweisung ist weder in der Unit noch in den eingebundenen Units deklariert (wie Compilerfehler E2003). Geprüft beim Tippen, ohne Compiler; with-Blöcke, asm und anonyme Methoden werden übersprungen."
     }
   ]
 }

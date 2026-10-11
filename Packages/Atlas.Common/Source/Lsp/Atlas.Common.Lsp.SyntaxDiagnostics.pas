@@ -24,6 +24,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Baseline,
   Atlas.Common.Compiler.Contract,
@@ -48,6 +49,9 @@ type
     Baseline: IRuleBaseline;
     /// <summary>Symbolindex für Regeln, die Vorfahren auflösen (#125); nil = keiner.</summary>
     Index: ISymbolIndex;
+    /// <summary>Units nachladen und Namespaces für die Namensauflösung (#178).</summary>
+    EnsureUnit: TEnsureUnitFunc;
+    Namespaces: TArray<string>;
     /// <summary>Formulardatei neben der Unit (#123); '' ohne.</summary>
     FormText: string;
     /// <summary>Dateien neben der Unit, z. B. .dcr (#114); nil = keine.</summary>
@@ -650,6 +654,8 @@ begin
     Context.Text := ADocument.Text;
     Context.Tree := Tree;
     Context.Index := ARules.Index;
+    Context.EnsureUnit := ARules.EnsureUnit;
+    Context.Namespaces := ARules.Namespaces;
     Context.FormText := ARules.FormText;
     Context.ReadFile := ARules.ReadFile;
     RuleFindings := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);

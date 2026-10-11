@@ -208,6 +208,7 @@ contains
   Atlas.Common.Mcp.Freshness in 'Source\Mcp\Atlas.Common.Mcp.Freshness.pas',
   Atlas.Common.Mcp.EditTools in 'Source\Mcp\Atlas.Common.Mcp.EditTools.pas',
   Atlas.Common.Rules.Prompt in 'Source\Rules\Atlas.Common.Rules.Prompt.pas',
+  Atlas.Common.Rules.Builtin.Unresolved in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.pas',
   Atlas.Common.Rules.Conventions in 'Source\Rules\Atlas.Common.Rules.Conventions.pas',
   Atlas.Common.Lsp.InactiveRegions in 'Source\Lsp\Atlas.Common.Lsp.InactiveRegions.pas',
   Atlas.Common.Lsp.WorkspaceFolders in 'Source\Lsp\Atlas.Common.Lsp.WorkspaceFolders.pas',

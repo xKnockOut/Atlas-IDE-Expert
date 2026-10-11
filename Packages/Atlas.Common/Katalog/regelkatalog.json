@@ -701,6 +701,15 @@
       "description": "Every class passed to RegisterComponents needs a bitmap named after the class in upper case in a .dcr or .res included with {$R}. From Delphi 11 the sizes 16, 24 and 32 px (NAME16, NAME24, NAME32) are expected as well. Silent when the unit includes no readable resource file.",
       "bad": "{$R *.dcr} // without TMYBUTTON\nRegisterComponents('Samples', [TMyButton]);",
       "good": "{$R *.dcr} // with TMYBUTTON16, TMYBUTTON24, TMYBUTTON32\nRegisterComponents('Samples', [TMyButton]);"
+    },
+    {
+      "id": "unresolved-identifier",
+      "name": "Unresolved identifier",
+      "category": "bug",
+      "severity": "warning",
+      "description": "An identifier in a statement is declared neither in the unit nor in the units it uses (like compiler error E2003). Checked while typing, without the compiler; with blocks, asm and anonymous methods are skipped.",
+      "bad": "procedure Foo;\nbegin\n  Lst.Add('x');\nend;",
+      "good": "procedure Foo;\nvar\n  Lst: TStringList;\nbegin\n  Lst := TStringList.Create;\n  Lst.Add('x');\nend;"
     }
   ]
 }

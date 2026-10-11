@@ -1390,6 +1390,7 @@ begin
       AContext.Settings := Workspace.Configuration.Settings;
       AContext.RelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(Workspace.Root), FileName);
       AContext.Baseline := Workspace.Baseline;
+      AContext.Namespaces := Workspace.Namespaces;
     end;
   finally
     TMonitor.Exit(FWorkspacesLock);
@@ -1397,6 +1398,7 @@ begin
   // Neue Instanzen je Prüfung: Regeln dürfen so Zustand halten, ohne Threads zu teilen.
   AContext.Rules := BuiltinRules;
   AContext.Index := FIndex;
+  AContext.EnsureUnit := EnsureUnit;
   // Formulardatei neben der Unit für den Abgleich von Feldern und Objekten (#123).
   if SameText(ExtractFileExt(FileName), '.pas') and
     not ReadSourceText(ChangeFileExt(FileName, '.dfm'), AContext.FormText) and
