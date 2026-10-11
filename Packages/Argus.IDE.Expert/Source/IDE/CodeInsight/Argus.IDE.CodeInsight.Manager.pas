@@ -249,8 +249,12 @@ var
 begin
   PluginDir := ExtractFilePath(GetModuleName(HInstance));
   Result := PluginDir + 'ArgusServer.exe';
-  if not FileExists(Result) then
-    Result := ExpandFileName(PluginDir + '..\..\..\Win64\Debug\Bin\ArgusServer.exe');
+  if FileExists(Result) then
+    Exit;
+  // Ausgabeordner des Repos: Win64 bevorzugt, sonst ein Win32-Bau des Servers.
+  Result := ExpandFileName(PluginDir + '..\..\..\Win64\Debug\Bin\ArgusServer.exe');
+  if not FileExists(Result) and FileExists(ExpandFileName(PluginDir + '..\..\..\Win32\Debug\Bin\ArgusServer.exe')) then
+    Result := ExpandFileName(PluginDir + '..\..\..\Win32\Debug\Bin\ArgusServer.exe');
 end;
 
 procedure TArgusCodeInsightManager.ReportError(const AMessage: string);
