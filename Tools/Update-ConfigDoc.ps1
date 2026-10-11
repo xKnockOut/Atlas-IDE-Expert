@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Erzeugt aus dem JSON-Schema von atlas.json die Doku, die VS-Code-Settings
     und die Einstellungstabelle und prüft den Parser dagegen.
@@ -215,6 +215,36 @@ foreach ($Target in $Targets) {
         Write-Host "Geschrieben: $($Target.Path)"
     }
 }
+# --- Schema für den Einstellungsdialog im Plugin (#227): UTF-8 mit BOM, CRLF ---
+$SchemaUnitPath = Join-Path $Root 'Packages/Atlas.IDE.Expert/Source/Core/Settings/Atlas.Core.Settings.SchemaData.pas'
+$SchemaLines = [IO.File]::ReadAllText($SchemaPath, $Utf8).TrimStart([char]0xFEFF).Replace("`r`n", "`n").TrimEnd("`n").Split("`n")
+$Unit = New-Object System.Text.StringBuilder
+foreach ($Line in @(
+    'unit Atlas.Core.Settings.SchemaData;', '',
+    '// Erzeugt von Tools/Update-ConfigDoc.ps1 aus Editors/VSCode/schemas/atlas.schema.json;',
+    '// nicht von Hand ändern. JSON-Schema von atlas.json für den Einstellungsdialog (#227).', '',
+    'interface', '', '/// <summary>Inhalt von atlas.schema.json.</summary>', 'function AtlasSchemaJson: string;', '',
+    'implementation', '', 'const', "  Lines: array[0..$($SchemaLines.Count - 1)] of string = (")) { [void]$Unit.Append($Line + "`r`n") }
+for ($Index = 0; $Index -lt $SchemaLines.Count; $Index++) {
+    $Escaped = $SchemaLines[$Index].Replace("'", "''")
+    $Pieces = @()
+    for ($At = 0; $At -lt $Escaped.Length; $At += 200) { $Pieces += "'" + $Escaped.Substring($At, [Math]::Min(200, $Escaped.Length - $At)) + "'" }
+    if ($Pieces.Count -eq 0) { $Pieces = @("''") }
+    $End = if ($Index -eq $SchemaLines.Count - 1) { ');' } else { ',' }
+    [void]$Unit.Append('    ' + ($Pieces -join ' + ') + $End + "`r`n")
+}
+foreach ($Line in @('', 'function AtlasSchemaJson: string;', 'var', '  Line: string;', 'begin', "  Result := '';",
+    '  for Line in Lines do', '    Result := Result + Line + #10;', 'end;', '', 'end.')) { [void]$Unit.Append($Line + "`r`n") }
+$UnitText = $Unit.ToString()
+$CurrentUnit = if (Test-Path $SchemaUnitPath) { [IO.File]::ReadAllText($SchemaUnitPath, $Utf8).TrimStart([char]0xFEFF) } else { '' }
+if ($CurrentUnit -ne $UnitText) {
+    if ($Check) { $Problems.Add('Atlas.Core.Settings.SchemaData.pas ist veraltet: pwsh Tools/Update-ConfigDoc.ps1 ausführen') }
+    else {
+        [IO.File]::WriteAllText($SchemaUnitPath, $UnitText, (New-Object System.Text.UTF8Encoding($true)))
+        Write-Host "Geschrieben: $SchemaUnitPath"
+    }
+}
+
 if ($Problems.Count -gt 0) {
     foreach ($Problem in $Problems) { Write-Error $Problem -ErrorAction Continue }
     exit 1
