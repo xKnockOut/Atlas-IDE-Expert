@@ -148,6 +148,24 @@ begin
     Manager.Log(AText);
 end;
 
+/// <summary>Dateien, die die IDE kennt: offene Module und die Module des Projekts (für Meldungen ohne Pfad).</summary>
+function KnownFiles(const AProjectFile: string): TArray<string>;
+var
+  Modules: IOTAModuleServices;
+  Project: IOTAProject;
+  Index: Integer;
+begin
+  Result := nil;
+  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+    Exit;
+  for Index := 0 to Modules.ModuleCount - 1 do
+    Result := Result + [Modules.Modules[Index].FileName];
+  if (AProjectFile <> '') and Supports(Modules.FindModule(AProjectFile), IOTAProject, Project) then
+    for Index := 0 to Project.GetModuleCount - 1 do
+      if Project.GetModule(Index).FileName <> '' then
+        Result := Result + [Project.GetModule(Index).FileName];
+end;
+
 procedure RegisterCompileEvents;
 var
   Events: TArgusCompileEvents;
@@ -167,12 +185,19 @@ begin
   Events.Add(TArgusMessageViewReader.Create(
     procedure(const AMessages: TArray<TArgusCompilerMessage>; const AProject: TArgusCompileProject;
       ASucceeded: Boolean; const AInfo: string)
+    var
+      Messages: TArray<TArgusCompilerMessage>;
     begin
       if Manager = nil then
         Exit;
-      Manager.Report('Meldungsfenster: ' + AInfo);
+      Messages := TArgusCompilerMessages.Resolve(AMessages, AProject.FileName, KnownFiles(AProject.FileName));
+      if Length(Messages) > 0 then
+        Manager.Report(Format('Meldungsfenster: %s (z. B. %s, Zeile %d)', [AInfo, Messages[0].FileName,
+          Messages[0].Line]))
+      else
+        Manager.Report('Meldungsfenster: ' + AInfo);
       Manager.NotifyServer('argus/compilerMessages',
-        TArgusCompilerMessages.ToJson(AMessages, AProject.FileName, AProject.Platform, ASucceeded,
+        TArgusCompilerMessages.ToJson(Messages, AProject.FileName, AProject.Platform, ASucceeded,
         AProject.Background));
     end));
   Compile := TArgusIdeCompileEvents.Create(Events);
