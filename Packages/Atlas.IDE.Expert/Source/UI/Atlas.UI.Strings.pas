@@ -27,7 +27,11 @@ type
     SettingsServerPath, SettingsServerFound, SettingsServerMissing, SettingsServerFilter,
     HelpInsightIdeOff, HelpInsightIdeOn,
     ReloadDiffTitle,
-    AccessCompletion, AccessSignature, AccessHover, AccessPosition, AccessParameter);
+    AccessCompletion, AccessSignature, AccessHover, AccessPosition, AccessParameter,
+    ProjectSettingsMenu, ProjectSettingsTitle, ProjectSettingsFromProject, ProjectSettingsDefault,
+    ProjectSettingsDefaultNone, ProjectSettingsReset, ProjectSettingsComplex, ProjectSettingsOpenFile,
+    ProjectSettingsNoProject, ProjectSettingsInvalid, ProjectSettingsOk, ProjectSettingsCancel,
+    ProjectSettingsBadNumber, ProjectSettingsFile);
 
   TAtlasStrings = class
   private class var
@@ -80,7 +84,11 @@ const
      'Atlas zeigt den Tooltip selbst und hat Help Insight der IDE abgeschaltet; wirkt nach dem nächsten Start von Delphi.',
      'Atlas hat Help Insight der IDE wieder eingeschaltet; wirkt nach dem nächsten Start von Delphi.',
      'Atlas: Unterschied in %s (- Editor, + Platte):',
-     'Atlas Vervollständigung', 'Atlas Parameterhilfe', 'Atlas Tooltip', '%d von %d', 'Parameter %d: %s'),
+     'Atlas Vervollständigung', 'Atlas Parameterhilfe', 'Atlas Tooltip', '%d von %d', 'Parameter %d: %s',
+     'Atlas-Einstellungen…', 'Atlas-Einstellungen des Projekts', 'aus dem Projekt', 'Standard: %s',
+     'Standard', 'Zurücksetzen', 'Nur direkt in atlas.json bearbeitbar', 'atlas.json öffnen',
+     'Kein Projekt geöffnet.', 'atlas.json ist kein gültiges JSON; bitte zuerst dort korrigieren.', 'OK', 'Abbrechen',
+     '%s: "%s" ist keine ganze Zahl.', 'Datei: %s'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -114,7 +122,11 @@ const
      'Atlas shows the tooltip itself and switched off the IDE''s Help Insight; takes effect after the next start of Delphi.',
      'Atlas switched the IDE''s Help Insight back on; takes effect after the next start of Delphi.',
      'Atlas: difference in %s (- editor, + disk):',
-     'Atlas completion', 'Atlas parameter info', 'Atlas tooltip', '%d of %d', 'Parameter %d: %s'));
+     'Atlas completion', 'Atlas parameter info', 'Atlas tooltip', '%d of %d', 'Parameter %d: %s',
+     'Atlas Settings…', 'Atlas project settings', 'from the project', 'Default: %s',
+     'Default', 'Reset', 'Edit directly in atlas.json only', 'Open atlas.json',
+     'No project open.', 'atlas.json is not valid JSON; please fix it there first.', 'OK', 'Cancel',
+     '%s: "%s" is not a whole number.', 'File: %s'));
 
 { TAtlasStrings }
 

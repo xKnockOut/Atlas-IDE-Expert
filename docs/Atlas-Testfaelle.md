@@ -369,3 +369,17 @@ Vorbereitung: Formular mit Button `btnSave` und den Methoden `FormCreate(Sender:
 | Z2 | Editor wieder auf 100 % | Normale Größe |
 | Z3 | Mit zwei Monitoren unterschiedlicher Skalierung: IDE auf den anderen Monitor ziehen, Popup öffnen | Scharf und in passender Größe |
 | Z4 | Im Diagnoseprotokoll nach Z1 | Zeile „Darstellung: … Zoom 1,50“ (Wert ungefähr) |
+
+## Projekt-Einstellungen (#227)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PE1 | Projekt öffnen, *Projekt > Atlas-Einstellungen…* | Dialog mit Seiten links (Allgemein, Projekt, Prüfregeln …); Menüpunkt steht hinter „Optionen…“ |
+| PE2 | Ohne `atlas.json`: Seite Protokoll, `logLevel` auf `debug`, OK | `atlas.json` entsteht neben der .dproj mit `"logLevel": "debug"` |
+| PE3 | `atlas.json` mit Kommentaren und unbekanntem Schlüssel; `format.indentSize` auf 4 setzen | Nur der Wert kommt dazu bzw. ändert sich; Kommentare, Reihenfolge, unbekannter Schlüssel bleiben |
+| PE4 | Bei einem gesetzten Wert „Zurücksetzen“, OK | Schlüssel samt Komma entfernt; Zustand zeigt „Standard: …“ |
+| PE5 | `rules` mit Einträgen | Als „Nur direkt in atlas.json bearbeitbar“ mit Vorschau; bleibt beim Speichern unverändert |
+| PE6 | Zahlenfeld mit „abc“, OK | Hinweis „keine ganze Zahl“, Dialog bleibt offen |
+| PE7 | „atlas.json öffnen“ | Dialog schließt, Datei öffnet sich im Editor |
+| PE8 | Befehlspalette: „Atlas: Atlas-Einstellungen des Projekts“ | Öffnet denselben Dialog |
+
