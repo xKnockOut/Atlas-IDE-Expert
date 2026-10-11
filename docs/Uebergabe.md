@@ -170,7 +170,8 @@
   - Offen: Platzhalter-Modus (#51) und die manuelle Prüfung PF1–PF6.
 - **Farbfehler im Editor behoben (`d93a834f`):** Klammerfarben (#514) und Vorschau (#434) ließen ihre Textfarbe im DC stehen; beim Neuzeichnen einzelner Bereiche wurden Teile von Bezeichnern in Paarfarbe gezeichnet. Jetzt direkt im DC zwischen SaveDC/RestoreDC.
 - **Klammerfarben, zweiter Teil (`f8125482`):** Die IDE meldet beim Neuzeichnen von Teilbereichen nicht immer die Zeile des Laufs. Eingefärbt wird nur, wenn der Lauf an seiner Spalte in der analysierten Zeile steht (`TArgusPairs.DisplayLine/RunMatches`).
-- **Plugin beim User:** am 11.10.2026 um 02:09 aktualisiert.
+- **Blocklinien (`e8e021d0`):** Argus zeichnet Blocklinien in den Paarfarben (`Argus.Core.Editor.Guides`, PaintLine in `Argus.IDE.Editor.Pairs`) und schaltet die Strukturhervorhebung der IDE per Registry ab (`Argus.IDE.Editor.Structure`, Merker `IdeStructureDisabled` unter `HKCU\Software\Argus\IdePlugin`). Die IDE schreibt den Schalter beim Beenden nicht zurück (geprüft). Testfälle KP9–KP13.
+- **Plugin beim User:** am 11.10.2026 um 03:10 aktualisiert.
 - **Achtung:** In `Argus.Common.Compiler.OutputParser.pas` stehen Testzeilen des Users (verschachtelte begin/end); nicht committen.
 - **Neu in `update-plugin.ps1`:** sichert `.dproj`/`.dpk` vor dem Bau und schreibt sie danach zurück.
 - **Weiter:**

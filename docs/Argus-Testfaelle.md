@@ -1,4 +1,4 @@
-# Argus: Testfälle in der IDE
+﻿# Argus: Testfälle in der IDE
 
 Manuelle Prüfung des IDE-Plugins `Argus.IDE.Expert` in RAD Studio, gegliedert nach Issues. Voraussetzung: Plugin installiert (`Output\Win32\Debug\Bpl\Argus.IDE.Expert.bpl`), Code Insight-Manager „Argus IDE Expert“ aktiv, ein Delphi-Projekt mit einer VCL-Unit geöffnet. Für Fehlersuche `Diagnose` = 1 unter `HKCU\Software\Argus\IdePlugin` setzen; das Protokoll `Argus.IDE.Expert.log` liegt neben der BPL.
 
@@ -238,8 +238,13 @@ Abbruch mit Grund im Meldungsfenster („Argus“) ist im Dienst vorhanden und g
 | KP6 | Text markieren | Markierung wie gewohnt (Argus färbt markierten Text nicht) |
 | KP7 | Helles und dunkles IDE-Thema | Farben in beiden lesbar |
 | KP8 | Optionen › Argus › „Klammern und Blockpaare … färben“ aus | Normale Farben der IDE |
+| KP9 | Teile des Editors neu zeichnen lassen (Tooltip, Vervollständigung schließen, scrollen) | Keine Paarfarben mitten in Bezeichnern |
+| KP10 | Sechs verschachtelte `begin`/`end` | Senkrechte Linie je Block in der Farbe ihres Wortpaars, Haken an `begin` und `end` |
+| KP11 | `TFoo = class` … `end;`, `if A then begin` … `end;` | Linie vor `TFoo` bzw. vor `if` |
+| KP12 | Erster Start mit Blocklinien | Meldung im Meldungsfenster; ab dem nächsten Start keine Linien der IDE mehr |
+| KP13 | Optionen › Argus › „Blocklinien in den Paarfarben“ aus, Delphi neu starten | Keine Argus-Linien; Strukturhervorhebung der IDE wieder an |
 
-Strukturlinien zeichnet die IDE selbst, ebenfalls nach Tiefe gefärbt (Tools › Optionen › Benutzeroberfläche › Editor › Strukturhervorhebung; dort abschaltbar). Argus zeichnet keine zweiten Linien.
+Blocklinien zeichnet Argus selbst (Einstellung „Blocklinien in den Paarfarben“). Solange sie an sind, ist die Strukturhervorhebung der IDE in der Registry abgeschaltet (`Editor\Highlight\Structural Highlighting`, `Enabled`). Die IDE liest das nur beim Start. Hat der User sie selbst abgeschaltet, ändert Argus nichts.
 
 ## Befehlspalette (#502)
 
