@@ -294,7 +294,25 @@ begin
   if Pairs = nil then
     Pairs := TAtlasEditorPairs.Create;
   if MainMenu = nil then
-    MainMenu := TAtlasMainMenu.Create;
+    MainMenu := TAtlasMainMenu.Create(
+      function: string
+      begin
+        if Manager <> nil then
+          Result := Manager.ServerProgress
+        else
+          Result := '';
+      end,
+      function(ACommand: string): TJSONValue
+      begin
+        if Manager <> nil then
+          Result := Manager.ExecuteServerCommand(ACommand)
+        else
+          Result := nil;
+      end,
+      procedure(AText: string)
+      begin
+        GuardWarning(AText);
+      end);
   if DirtyExport = nil then
     DirtyExport := TAtlasDirtyExport.Create;
   // Eigene Blocklinien: Strukturhervorhebung der IDE abgleichen (#514).

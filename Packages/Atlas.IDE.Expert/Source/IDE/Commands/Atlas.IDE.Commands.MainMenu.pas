@@ -6,13 +6,18 @@
 // Plugin-Einstellungen wie die Optionsseite (Speichern, Strukturhervorhebung
 // und Help Insight der IDE abgleichen); ihre Häkchen werden beim Öffnen des
 // Menüs aus den aktuellen Einstellungen gesetzt.
+// Index des Servers (#492): Der Titel zeigt eine laufende Indizierung
+// ("Atlas – Index 45 %"); „Index-Status“ schreibt die Kennzahlen in die
+// Meldungsansicht, „Index neu aufbauen“ liest alles ohne Cache neu ein.
 
 interface
 
 uses
   System.SysUtils,
   System.Classes,
+  System.JSON,
   Vcl.Menus,
+  Vcl.ExtCtrls,
   Atlas.Core.Settings.Plugin;
 
 type
@@ -25,13 +30,23 @@ type
     FRoot: TMenuItem;
     FToggles: array[TAtlasToggle] of TMenuItem;
     FEnableAll: TMenuItem;
+    FTimer: TTimer;
+    FProgress: TFunc<string>;
+    FCommand: TFunc<string, TJSONValue>;
+    FMessage: TProc<string>;
+    FShownProgress: string;
     procedure EnableAllClick(Sender: TObject);
+    procedure TimerTick(Sender: TObject);
+    procedure IndexStatusClick(Sender: TObject);
+    procedure IndexRebuildClick(Sender: TObject);
     procedure RootClick(Sender: TObject);
     procedure ToggleClick(Sender: TObject);
     procedure ProjectClick(Sender: TObject);
     procedure OptionsClick(Sender: TObject);
   public
-    constructor Create;
+    /// <summary>AProgress: Fortschritt des Servers; ACommand: Serverbefehl ausführen; AMessage: Zeile in die Meldungsansicht.</summary>
+    constructor Create(const AProgress: TFunc<string>; const ACommand: TFunc<string, TJSONValue>;
+      const AMessage: TProc<string>);
     destructor Destroy; override;
     /// <summary>Wert eines Schalters in ASettings.</summary>
     class function Get(const ASettings: TAtlasPluginSettings; AToggle: TAtlasToggle): Boolean; static;
@@ -46,7 +61,8 @@ uses
   Atlas.UI.Strings,
   Atlas.IDE.Settings.Store,
   Atlas.IDE.Settings.Project,
-  Atlas.IDE.Editor.Structure;
+  Atlas.IDE.Editor.Structure,
+  Atlas.Core.Lsp.Progress;
 
 const
   // Name des Menüs „Tools“ in der IDE; Atlas steht dahinter, sonst am Ende.
@@ -70,7 +86,8 @@ end;
 
 { TAtlasMainMenu }
 
-constructor TAtlasMainMenu.Create;
+constructor TAtlasMainMenu.Create(const AProgress: TFunc<string>; const ACommand: TFunc<string, TJSONValue>;
+  const AMessage: TProc<string>);
 var
   Services: INTAServices;
   Toggle: TAtlasToggle;
@@ -78,6 +95,9 @@ var
   Index, Position: Integer;
 begin
   inherited Create;
+  FProgress := AProgress;
+  FCommand := ACommand;
+  FMessage := AMessage;
   if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.MainMenu = nil) then
     Exit;
   FRoot := TMenuItem.Create(nil);
@@ -93,6 +113,15 @@ begin
     FRoot.Add(Item);
     FToggles[Toggle] := Item;
   end;
+  FRoot.Add(NewLine);
+  Item := TMenuItem.Create(FRoot);
+  Item.Caption := TAtlasStrings.Text(TAtlasTextId.MenuIndexStatus);
+  Item.OnClick := IndexStatusClick;
+  FRoot.Add(Item);
+  Item := TMenuItem.Create(FRoot);
+  Item.Caption := TAtlasStrings.Text(TAtlasTextId.MenuIndexRebuild);
+  Item.OnClick := IndexRebuildClick;
+  FRoot.Add(Item);
   FRoot.Add(NewLine);
   Item := TMenuItem.Create(FRoot);
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsMenu);
@@ -112,10 +141,14 @@ begin
     if SameText(Services.MainMenu.Items[Index].Name, ToolsMenu) then
       Position := Index + 1;
   Services.MainMenu.Items.Insert(Position, FRoot);
+  FTimer := TTimer.Create(nil);
+  FTimer.Interval := 500;
+  FTimer.OnTimer := TimerTick;
 end;
 
 destructor TAtlasMainMenu.Destroy;
 begin
+  FreeAndNil(FTimer);
   // Freigeben nimmt den Eintrag auch aus dem Hauptmenü.
   FreeAndNil(FRoot);
   inherited;
@@ -194,6 +227,71 @@ begin
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Menu, E);
   end;
+end;
+
+procedure TAtlasMainMenu.TimerTick(Sender: TObject);
+var
+  Text: string;
+begin
+  TAtlasGuard.Run(TAtlasFeature.Menu,
+    procedure
+    begin
+      Text := '';
+      if Assigned(FProgress) then
+        Text := FProgress();
+      if Text = FShownProgress then
+        Exit;
+      FShownProgress := Text;
+      // Nur bei Änderung: Der Titel im Hauptmenü zeichnet die ganze Leiste neu.
+      if Text = '' then
+        FRoot.Caption := TAtlasStrings.Text(TAtlasTextId.MenuAtlas)
+      else
+        FRoot.Caption := TAtlasStrings.Text(TAtlasTextId.MenuAtlas) + ' – ' + Text;
+    end);
+end;
+
+procedure TAtlasMainMenu.IndexStatusClick(Sender: TObject);
+begin
+  TAtlasGuard.Run(TAtlasFeature.Server,
+    procedure
+    var
+      Status: TJSONValue;
+      Line: string;
+    begin
+      Status := nil;
+      if Assigned(FCommand) then
+        Status := FCommand('atlas.server.status');
+      try
+        if Status = nil then
+          FMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer))
+        else
+          for Line in TLspIndexStatus.Lines(Status) do
+            FMessage(Line);
+      finally
+        Status.Free;
+      end;
+    end);
+end;
+
+procedure TAtlasMainMenu.IndexRebuildClick(Sender: TObject);
+begin
+  TAtlasGuard.Run(TAtlasFeature.Server,
+    procedure
+    var
+      Answer: TJSONValue;
+    begin
+      Answer := nil;
+      if Assigned(FCommand) then
+        Answer := FCommand('atlas.server.rebuildIndex');
+      try
+        if Answer = nil then
+          FMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer))
+        else
+          FMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexRebuilding));
+      finally
+        Answer.Free;
+      end;
+    end);
 end;
 
 procedure TAtlasMainMenu.EnableAllClick(Sender: TObject);

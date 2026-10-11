@@ -40,6 +40,7 @@ requires
   designide;
 
 contains
+  Atlas.Core.Lsp.Progress in 'Source\Core\Lsp\Atlas.Core.Lsp.Progress.pas',
   Atlas.Core.Lsp.Client in 'Source\Core\Lsp\Atlas.Core.Lsp.Client.pas',
   Atlas.Core.Lsp.Session in 'Source\Core\Lsp\Atlas.Core.Lsp.Session.pas',
   Atlas.Core.Lsp.Adapters.ServerProcess in 'Source\Core\Lsp\Atlas.Core.Lsp.Adapters.ServerProcess.pas',
