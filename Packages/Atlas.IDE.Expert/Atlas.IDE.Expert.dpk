@@ -58,6 +58,7 @@ contains
   Atlas.Core.Signature.Providers.Server in 'Source\Core\Signature\Atlas.Core.Signature.Providers.Server.pas',
   Atlas.UI.Signature.Hint in 'Source\UI\Signature\Atlas.UI.Signature.Hint.pas',
   Atlas.UI.Popup.Window in 'Source\UI\Popup\Atlas.UI.Popup.Window.pas',
+  Atlas.UI.Popup.Accessibility in 'Source\UI\Popup\Atlas.UI.Popup.Accessibility.pas',
   Atlas.UI.Completion.Popup in 'Source\UI\Completion\Atlas.UI.Completion.Popup.pas',
   Atlas.UI.Completion.Details in 'Source\UI\Completion\Atlas.UI.Completion.Details.pas',
   Atlas.Core.Style.Color in 'Source\Core\Style\Atlas.Core.Style.Color.pas',

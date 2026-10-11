@@ -55,6 +55,8 @@ type
     [Test]
     procedure CommitTextFixesCase;
     [Test]
+    procedure AnnouncementNamesKindPositionAndDetail;
+    [Test]
     procedure CommitTextKeepsTypedCaseWhenOff;
     [Test]
     procedure Filters5000EntriesWithin12ms;
@@ -86,6 +88,7 @@ uses
   Atlas.Core.Completion.Providers.Server,
   Atlas.Core.Completion.Word,
   Atlas.Core.Completion.Matching,
+  Atlas.Core.Completion.Presentation,
   Atlas.Core.Completion.Providers.XmlDoc,
   System.Diagnostics,
   Atlas.Core.Lsp.Session,
@@ -552,6 +555,19 @@ begin
   Assert.AreEqual(4, TAtlasWord.EndAfter('List.Add', 4));
   Assert.AreEqual(6, TAtlasWord.EndAfter('Format', 6));
   Assert.AreEqual(8, TAtlasWord.EndAfter('  Add(  ', 8));
+end;
+
+procedure TAtlasMatchingBudgetTests.AnnouncementNamesKindPositionAndDetail;
+var
+  Item: TAtlasCompletionItem;
+begin
+  Item := Default(TAtlasCompletionItem);
+  Item.Name := 'ShowMessage';
+  Item.Signature := 'procedure ShowMessage(const Msg: string)';
+  Assert.AreEqual('ShowMessage, Methode, 3 von 12. procedure ShowMessage(const Msg: string)',
+    TAtlasItemPresentation.Announcement(Item, 'Methode', '%d von %d', 3, 12));
+  Item.Signature := '';
+  Assert.AreEqual('ShowMessage, 1 von 1.', TAtlasItemPresentation.Announcement(Item, '', '%d von %d', 1, 1));
 end;
 
 procedure TAtlasMatchingBudgetTests.CommitTextFixesCase;

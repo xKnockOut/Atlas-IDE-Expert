@@ -26,7 +26,8 @@ type
     SeverityError, SeverityWarning, SeverityInformation, SeverityHint,
     SettingsServerPath, SettingsServerFound, SettingsServerMissing, SettingsServerFilter,
     HelpInsightIdeOff, HelpInsightIdeOn,
-    ReloadDiffTitle);
+    ReloadDiffTitle,
+    AccessCompletion, AccessSignature, AccessHover, AccessPosition, AccessParameter);
 
   TAtlasStrings = class
   private class var
@@ -78,7 +79,8 @@ const
      'Atlas-Server|AtlasServer.exe|Programme (*.exe)|*.exe',
      'Atlas zeigt den Tooltip selbst und hat Help Insight der IDE abgeschaltet; wirkt nach dem nächsten Start von Delphi.',
      'Atlas hat Help Insight der IDE wieder eingeschaltet; wirkt nach dem nächsten Start von Delphi.',
-     'Atlas: Unterschied in %s (- Editor, + Platte):'),
+     'Atlas: Unterschied in %s (- Editor, + Platte):',
+     'Atlas Vervollständigung', 'Atlas Parameterhilfe', 'Atlas Tooltip', '%d von %d', 'Parameter %d: %s'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -111,7 +113,8 @@ const
      'Atlas server|AtlasServer.exe|Programs (*.exe)|*.exe',
      'Atlas shows the tooltip itself and switched off the IDE''s Help Insight; takes effect after the next start of Delphi.',
      'Atlas switched the IDE''s Help Insight back on; takes effect after the next start of Delphi.',
-     'Atlas: difference in %s (- editor, + disk):'));
+     'Atlas: difference in %s (- editor, + disk):',
+     'Atlas completion', 'Atlas parameter info', 'Atlas tooltip', '%d of %d', 'Parameter %d: %s'));
 
 { TAtlasStrings }
 

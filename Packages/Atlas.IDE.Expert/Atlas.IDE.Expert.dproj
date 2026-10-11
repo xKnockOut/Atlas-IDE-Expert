@@ -105,6 +105,7 @@
         <DCCReference Include="Source\Core\Signature\Atlas.Core.Signature.Providers.Server.pas"/>
         <DCCReference Include="Source\UI\Signature\Atlas.UI.Signature.Hint.pas"/>
         <DCCReference Include="Source\UI\Popup\Atlas.UI.Popup.Window.pas"/>
+        <DCCReference Include="Source\UI\Popup\Atlas.UI.Popup.Accessibility.pas"/>
         <DCCReference Include="Source\UI\Completion\Atlas.UI.Completion.Popup.pas"/>
         <DCCReference Include="Source\UI\Completion\Atlas.UI.Completion.Details.pas"/>
         <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Color.pas"/>
