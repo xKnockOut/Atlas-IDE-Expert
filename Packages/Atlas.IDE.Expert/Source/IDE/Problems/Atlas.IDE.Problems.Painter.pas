@@ -44,6 +44,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
   System.Math,
   Vcl.Graphics,
@@ -141,6 +142,9 @@ var
   Pen, Old: HGDIOBJ;
   Up: Boolean;
 begin
+  // Durch die Sicherung abgeschaltet (#493).
+  if TAtlasGuard.Disabled(TAtlasFeature.Problems) then
+    Exit;
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) then
     Exit;
   try
@@ -233,8 +237,8 @@ begin
     end;
   except
     // Zeichnen darf die IDE nie stören.
-    on Exception do
-      ;
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Problems, E);
   end;
 end;
 

@@ -31,7 +31,8 @@ uses
   Vcl.Controls,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.UI.Popup.Accessibility,
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasPopupWindow = class(TCustomControl)
@@ -47,6 +48,7 @@ type
     FAccessibleRole: Integer;
     FAccessibleName: string;
     FAnnounced: string;
+    FGuardFeature: TAtlasFeature;
     procedure WMGetObject(var Message: TMessage); message WM_GETOBJECT;
     function Accessible: IAtlasRawElementProvider;
     procedure WMMouseActivate(var Message: TWMMouseActivate); message WM_MOUSEACTIVATE;
@@ -57,6 +59,8 @@ type
     procedure UpdateCorners;
   protected
     procedure CreateParams(var Params: TCreateParams); override;
+    /// <summary>Alle Nachrichten geschützt (#493): Zeichnen, Maus, Tasten des Fensters.</summary>
+    procedure WndProc(var Message: TMessage); override;
     procedure CreateWnd; override;
     procedure DestroyWnd; override;
     procedure Resize; override;
@@ -70,6 +74,8 @@ type
     procedure FrameRounded(const ARect: TRect; ALine: TAtlasColor; ARadius: Integer; AFill: TColor = clNone);
     /// <summary>Rolle (UiaListControlType, UiaToolTipControlType) und Name für Screenreader.</summary>
     procedure SetAccessible(ARole: Integer; const AName: string);
+    /// <summary>Feature, dem Fehler des Fensters angerechnet werden (Sicherung, #493).</summary>
+    property GuardFeature: TAtlasFeature read FGuardFeature write FGuardFeature;
   public
     /// <summary>Lässt einen Screenreader AText vorlesen; derselbe Text zweimal hintereinander nur einmal.</summary>
     procedure Announce(const AText: string);
@@ -187,6 +193,16 @@ begin
     FAccessible := nil;
   end;
   inherited DestroyWnd;
+end;
+
+procedure TAtlasPopupWindow.WndProc(var Message: TMessage);
+begin
+  try
+    inherited WndProc(Message);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(FGuardFeature, E);
+  end;
 end;
 
 procedure TAtlasPopupWindow.SetAccessible(ARole: Integer; const AName: string);

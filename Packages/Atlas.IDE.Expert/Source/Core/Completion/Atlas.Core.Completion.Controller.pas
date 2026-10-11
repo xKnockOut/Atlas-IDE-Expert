@@ -148,6 +148,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Completion.Matching;
 
@@ -181,7 +182,11 @@ begin
     procedure
     begin
       if Flag.Alive and (FlagRef <> nil) then
-        Controller.ItemsArrived(Generation, Items);
+        TAtlasGuard.Run(TAtlasFeature.Completion,
+          procedure
+          begin
+            Controller.ItemsArrived(Generation, Items);
+          end);
     end);
 end;
 
@@ -200,7 +205,11 @@ begin
     procedure
     begin
       if Flag.Alive and (FlagRef <> nil) then
-        Controller.IncompleteArrived(Generation);
+        TAtlasGuard.Run(TAtlasFeature.Completion,
+          procedure
+          begin
+            Controller.IncompleteArrived(Generation);
+          end);
     end);
 end;
 
@@ -219,7 +228,11 @@ begin
     procedure
     begin
       if Flag.Alive and (FlagRef <> nil) then
-        Controller.Completed(Generation);
+        TAtlasGuard.Run(TAtlasFeature.Completion,
+          procedure
+          begin
+            Controller.Completed(Generation);
+          end);
     end);
 end;
 

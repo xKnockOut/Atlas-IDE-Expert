@@ -139,6 +139,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
   ToolsAPI,
   Atlas.Core.Settings.Plugin,
@@ -459,6 +460,9 @@ var
   Pull: TPull;
   Pulls: TArray<TPull>;
 begin
+  // Durch die Sicherung abgeschaltet (#493).
+  if TAtlasGuard.Disabled(TAtlasFeature.Problems) then
+    Exit;
   try
     FreeFinished;
     if not Active then
@@ -532,7 +536,10 @@ begin
     Publish;
   except
     on E: Exception do
+    begin
       FLog('Probleme: ' + E.Message);
+      TAtlasGuard.Report(TAtlasFeature.Problems, E);
+    end;
   end;
 end;
 

@@ -114,6 +114,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   Winapi.Messages,
   System.Math,
   System.Generics.Collections,
@@ -218,10 +219,15 @@ procedure TCompletionKeys.HandleKey(AKey: Word; AShift: TShiftState);
 var
   Navigation: TAtlasNavigationKey;
 begin
-  if FOwner.WantsCommand(AKey, AShift) then
-    FOwner.HandleCommand(AKey, AShift)
-  else if NavigationKey(AKey, Navigation) then
-    FOwner.HandleKey(Navigation);
+  try
+    if FOwner.WantsCommand(AKey, AShift) then
+      FOwner.HandleCommand(AKey, AShift)
+    else if NavigationKey(AKey, Navigation) then
+      FOwner.HandleKey(Navigation);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Completion, E);
+  end;
 end;
 { TAtlasEditNotifier }
 
@@ -688,6 +694,7 @@ begin
     on E: Exception do
     begin
       Log('Vervollständigung: ' + E.Message);
+      TAtlasGuard.Report(TAtlasFeature.Completion, E);
       Close;
     end;
   end;

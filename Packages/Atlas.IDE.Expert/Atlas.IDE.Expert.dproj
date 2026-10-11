@@ -149,6 +149,7 @@
         <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.Preview.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.Events.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.Notifier.pas"/>
+        <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Guard.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Hangs.pas"/>
         <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.Watchdog.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.ExternalChanges.pas"/>

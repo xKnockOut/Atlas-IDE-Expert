@@ -98,6 +98,7 @@ contains
   Atlas.IDE.Completion.Preview in 'Source\IDE\Completion\Atlas.IDE.Completion.Preview.pas',
   Atlas.Core.Build.Events in 'Source\Core\Build\Atlas.Core.Build.Events.pas',
   Atlas.IDE.Build.Notifier in 'Source\IDE\Build\Atlas.IDE.Build.Notifier.pas',
+  Atlas.Core.Diagnostics.Guard in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Guard.pas',
   Atlas.Core.Diagnostics.Hangs in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Hangs.pas',
   Atlas.IDE.Diagnostics.Watchdog in 'Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.Watchdog.pas',
   Atlas.Core.Files.ExternalChanges in 'Source\Core\Files\Atlas.Core.Files.ExternalChanges.pas',

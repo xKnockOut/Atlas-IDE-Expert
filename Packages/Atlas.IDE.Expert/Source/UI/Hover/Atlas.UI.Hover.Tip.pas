@@ -103,6 +103,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   System.Math,
   System.StrUtils,
   Atlas.Core.Style.Palette,
@@ -124,6 +125,7 @@ end;
 constructor TAtlasHoverTip.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  GuardFeature := TAtlasFeature.Hover;
   FHot := -1;
 end;
 

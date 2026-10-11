@@ -81,6 +81,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   System.Diagnostics,
   Winapi.PsAPI,
   Vcl.Forms;
@@ -103,45 +104,51 @@ var
   Captured: Boolean;
   Hang: TAtlasHang;
 begin
-  NameThreadForDebugging('Atlas.Watchdog');
-  Seq := 0;
-  while not Terminated do
-  begin
-    if TInterlocked.CompareExchange(FOwner.FStarted, 0, 0) = 0 then
+  try
+    NameThreadForDebugging('Atlas.Watchdog');
+    Seq := 0;
+    while not Terminated do
     begin
-      FOwner.FWake.WaitFor(PeriodMs);
-      Continue;
-    end;
-    Inc(Seq);
-    SentAt := NowMs;
-    if not PostMessage(FOwner.FWindow, WM_ATLAS_PING, WPARAM(Seq), 0) then
-    begin
-      FOwner.FWake.WaitFor(PeriodMs);
-      Continue;
-    end;
-    Captured := False;
-    Hang := Default(TAtlasHang);
-    while not Terminated and (TInterlocked.CompareExchange(FOwner.FPong, 0, 0) <> Seq) do
-    begin
-      FOwner.FWake.WaitFor(25);
-      Waited := NowMs - SentAt;
-      if not Captured and (Waited >= TInterlocked.CompareExchange(FOwner.FThresholdMs, 0, 0)) and Running then
+      if TInterlocked.CompareExchange(FOwner.FStarted, 0, 0) = 0 then
       begin
-        Captured := True;
-        Hang.At := Now;
-        Hang.Activity := TAtlasActivity.Current;
-        Hang.Window := ForegroundWindowText;
-        FOwner.Capture;
+        FOwner.FWake.WaitFor(PeriodMs);
+        Continue;
       end;
+      Inc(Seq);
+      SentAt := NowMs;
+      if not PostMessage(FOwner.FWindow, WM_ATLAS_PING, WPARAM(Seq), 0) then
+      begin
+        FOwner.FWake.WaitFor(PeriodMs);
+        Continue;
+      end;
+      Captured := False;
+      Hang := Default(TAtlasHang);
+      while not Terminated and (TInterlocked.CompareExchange(FOwner.FPong, 0, 0) <> Seq) do
+      begin
+        FOwner.FWake.WaitFor(25);
+        Waited := NowMs - SentAt;
+        if not Captured and (Waited >= TInterlocked.CompareExchange(FOwner.FThresholdMs, 0, 0)) and Running then
+        begin
+          Captured := True;
+          Hang.At := Now;
+          Hang.Activity := TAtlasActivity.Current;
+          Hang.Window := ForegroundWindowText;
+          FOwner.Capture;
+        end;
+      end;
+      if Terminated then
+        Break;
+      if Captured and Running then
+      begin
+        Hang.DurationMs := NowMs - SentAt;
+        Report(Hang, FOwner.TakeAddresses);
+      end;
+      FOwner.FWake.WaitFor(PeriodMs);
     end;
-    if Terminated then
-      Break;
-    if Captured and Running then
-    begin
-      Hang.DurationMs := NowMs - SentAt;
-      Report(Hang, FOwner.TakeAddresses);
-    end;
-    FOwner.FWake.WaitFor(PeriodMs);
+  except
+    // Der Wächter selbst darf die IDE nie stören (#493).
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Watchdog, E);
   end;
 end;
 
@@ -216,22 +223,27 @@ end;
 
 procedure TAtlasWatchdog.WndProc(var AMessage: TMessage);
 begin
-  case AMessage.Msg of
-    WM_ATLAS_PING:
-      begin
-        TInterlocked.Exchange(FPong, Integer(AMessage.WParam));
-        // Die Schwelle kann sich in den Optionen ändern; hier im Hauptthread lesen.
-        if Assigned(FThresholdFunc) then
-          TInterlocked.Exchange(FThresholdMs, FThresholdFunc());
-      end;
-    WM_ATLAS_STARTUP:
-      begin
-        TInterlocked.Exchange(FStarted, 1);
-        if Assigned(FOnStartup) then
-          FOnStartup(NowMs - FLoadedAt);
-      end;
-  else
-    AMessage.Result := DefWindowProc(FWindow, AMessage.Msg, AMessage.WParam, AMessage.LParam);
+  try
+    case AMessage.Msg of
+      WM_ATLAS_PING:
+        begin
+          TInterlocked.Exchange(FPong, Integer(AMessage.WParam));
+          // Die Schwelle kann sich in den Optionen ändern; hier im Hauptthread lesen.
+          if Assigned(FThresholdFunc) then
+            TInterlocked.Exchange(FThresholdMs, FThresholdFunc());
+        end;
+      WM_ATLAS_STARTUP:
+        begin
+          TInterlocked.Exchange(FStarted, 1);
+          if Assigned(FOnStartup) then
+            FOnStartup(NowMs - FLoadedAt);
+        end;
+    else
+      AMessage.Result := DefWindowProc(FWindow, AMessage.Msg, AMessage.WParam, AMessage.LParam);
+    end;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Watchdog, E);
   end;
 end;
 

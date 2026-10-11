@@ -24,6 +24,8 @@ type
   private
     FRoot: TMenuItem;
     FToggles: array[TAtlasToggle] of TMenuItem;
+    FEnableAll: TMenuItem;
+    procedure EnableAllClick(Sender: TObject);
     procedure RootClick(Sender: TObject);
     procedure ToggleClick(Sender: TObject);
     procedure ProjectClick(Sender: TObject);
@@ -39,6 +41,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   ToolsAPI,
   Atlas.UI.Strings,
   Atlas.IDE.Settings.Store,
@@ -99,6 +102,11 @@ begin
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.MenuOptions);
   Item.OnClick := OptionsClick;
   FRoot.Add(Item);
+  // Nur sichtbar, wenn die Sicherung etwas abgeschaltet hat (#493).
+  FEnableAll := TMenuItem.Create(FRoot);
+  FEnableAll.OnClick := EnableAllClick;
+  FEnableAll.Visible := False;
+  FRoot.Add(FEnableAll);
   Position := Services.MainMenu.Items.Count;
   for Index := 0 to Services.MainMenu.Items.Count - 1 do
     if SameText(Services.MainMenu.Items[Index].Name, ToolsMenu) then
@@ -149,10 +157,25 @@ procedure TAtlasMainMenu.RootClick(Sender: TObject);
 var
   Toggle: TAtlasToggle;
   Settings: TAtlasPluginSettings;
+  Feature: TAtlasFeature;
+  Names: string;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  for Toggle := Low(TAtlasToggle) to High(TAtlasToggle) do
-    FToggles[Toggle].Checked := Get(Settings, Toggle);
+  try
+    Settings := TAtlasIdeSettings.Current;
+    for Toggle := Low(TAtlasToggle) to High(TAtlasToggle) do
+      FToggles[Toggle].Checked := Get(Settings, Toggle);
+    Names := '';
+    for Feature in TAtlasGuard.DisabledSet do
+      if Names = '' then
+        Names := TAtlasGuard.FeatureName(Feature)
+      else
+        Names := Names + ', ' + TAtlasGuard.FeatureName(Feature);
+    FEnableAll.Visible := Names <> '';
+    FEnableAll.Caption := TAtlasStrings.Fmt(TAtlasTextId.MenuEnableAll, [Names]);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Menu, E);
+  end;
 end;
 
 procedure TAtlasMainMenu.ToggleClick(Sender: TObject);
@@ -160,17 +183,32 @@ var
   Toggle: TAtlasToggle;
   Settings: TAtlasPluginSettings;
 begin
-  Toggle := TAtlasToggle(TMenuItem(Sender).Tag);
-  Settings := TAtlasIdeSettings.Current;
-  Put(Settings, Toggle, not Get(Settings, Toggle));
-  TAtlasIdeSettings.Update(Settings);
-  // Wie beim Schließen der Optionsseite: Strukturhervorhebung und Help Insight der IDE abgleichen.
-  TAtlasIdeStructureSwitch.Sync;
+  try
+    Toggle := TAtlasToggle(TMenuItem(Sender).Tag);
+    Settings := TAtlasIdeSettings.Current;
+    Put(Settings, Toggle, not Get(Settings, Toggle));
+    TAtlasIdeSettings.Update(Settings);
+    // Wie beim Schließen der Optionsseite: Strukturhervorhebung und Help Insight der IDE abgleichen.
+    TAtlasIdeStructureSwitch.Sync;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Menu, E);
+  end;
+end;
+
+procedure TAtlasMainMenu.EnableAllClick(Sender: TObject);
+begin
+  TAtlasGuard.EnableAll;
 end;
 
 procedure TAtlasMainMenu.ProjectClick(Sender: TObject);
 begin
-  TAtlasProjectSettings.Execute;
+  try
+    TAtlasProjectSettings.Execute;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Settings, E);
+  end;
 end;
 
 procedure TAtlasMainMenu.OptionsClick(Sender: TObject);
@@ -178,9 +216,14 @@ var
   Options: IOTAEnvironmentOptions140;
   Services: IOTAServices;
 begin
-  if Supports(BorlandIDEServices, IOTAServices, Services) and
-    Supports(Services.GetEnvironmentOptions, IOTAEnvironmentOptions140, Options) then
-    Options.EditOptions('', 'Atlas');
+  try
+    if Supports(BorlandIDEServices, IOTAServices, Services) and
+      Supports(Services.GetEnvironmentOptions, IOTAEnvironmentOptions140, Options) then
+      Options.EditOptions('', 'Atlas');
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Settings, E);
+  end;
 end;
 
 end.

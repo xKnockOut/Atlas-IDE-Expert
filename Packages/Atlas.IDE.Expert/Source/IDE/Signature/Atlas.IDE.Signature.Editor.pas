@@ -95,6 +95,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   Vcl.Forms,
   DockForm,
   Atlas.Core.Signature.CallScanner,
@@ -157,7 +158,12 @@ end;
 
 procedure TSignatureKeys.HandleKey(AKey: Word; AShift: TShiftState);
 begin
-  FOwner.HandleKey(AKey, AShift);
+  try
+    FOwner.HandleKey(AKey, AShift);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Signature, E);
+  end;
 end;
 
 { TSignatureNotifier }
@@ -458,6 +464,7 @@ begin
     on E: Exception do
     begin
       Log('Parameter-Hint: ' + E.Message);
+      TAtlasGuard.Report(TAtlasFeature.Signature, E);
       Close;
     end;
   end;
