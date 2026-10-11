@@ -876,6 +876,55 @@ var
 
   /// <summary>Deklarationen der eigenen und eingebundener Units, die nur unter anderen Bedingungen
   /// existieren (#476): ans Ende, mit Bedingung und als nicht verfügbar markiert.</summary>
+  /// <summary>Einträge aus der eigenen Datei: Der Baum des Editors kennt keine {$IFDEF}-Zweige.
+  /// Bedingung und Verfügbarkeit kommen aus dem Index dieser Unit, der mit Präprozessor gelesen ist (#476).</summary>
+  procedure MarkOwnConditions;
+  var
+    Own: TUnitIndex;
+    Conditions: TDictionary<string, string>;
+    Missing: TDictionary<string, string>;
+    Symbol: TIndexSymbol;
+    Index: Integer;
+    Condition: string;
+  begin
+    if (AIndex = nil) or not AIndex.FindFile(AFileName, Own) then
+      Exit;
+    Conditions := TDictionary<string, string>.Create;
+    Missing := TDictionary<string, string>.Create;
+    try
+      for Symbol in Own.Symbols do
+        if (Symbol.Container = '') and (Symbol.Condition <> '') then
+          Conditions.AddOrSetValue(UpperCase(Symbol.Name), Symbol.Condition);
+      for Symbol in Own.Unavailable do
+        Missing.AddOrSetValue(UpperCase(Symbol.Name), Symbol.Condition);
+      if (Conditions.Count = 0) and (Missing.Count = 0) then
+        Exit;
+      for Index := 0 to List.Count - 1 do
+      begin
+        Scored := List[Index];
+        // Nur Einträge aus dieser Datei; gleichnamige aus anderen Units bleiben unberührt.
+        if (Scored.Item.Condition <> '') or ((Scored.Item.SourceFile <> '') and
+          not SameText(Scored.Item.SourceFile, AFileName)) then
+          Continue;
+        if Missing.TryGetValue(UpperCase(Scored.Item.Name), Condition) then
+        begin
+          Scored.Item.Condition := Condition;
+          Scored.Item.Unavailable := True;
+          // Wie die übrigen nicht verfügbaren Einträge ans Ende.
+          Dec(Scored.Score, 500);
+        end
+        else if Conditions.TryGetValue(UpperCase(Scored.Item.Name), Condition) then
+          Scored.Item.Condition := Condition
+        else
+          Continue;
+        List[Index] := Scored;
+      end;
+    finally
+      Missing.Free;
+      Conditions.Free;
+    end;
+  end;
+
   procedure AddUnavailable;
   var
     Known: TDictionary<string, Boolean>;
@@ -1048,6 +1097,7 @@ begin
             AddPostfix;
         end;
     end;
+    MarkOwnConditions;
     List.Sort;
     // Passende zuerst (#417); passt nichts, entfällt die Gruppierung.
     if AnyFits then
