@@ -97,6 +97,9 @@ type
     Condition: string;
     /// <summary>Unter der aktiven Konfiguration nicht deklariert: abgeschwächt und am Ende (#476).</summary>
     Unavailable: Boolean;
+    /// <summary>Gültigkeitsbereich (#488): 1 lokal, 2 Parameter, 3 Mitglied von Self, 4 eigene Unit,
+    /// 5 andere Unit; 0 ohne Angabe.</summary>
+    Scope: Integer;
     /// <summary>ResolveData der weiteren Überladungen (#425); die erste ist ResolveData.</summary>
     OverloadData: TArray<string>;
     /// <summary>Routine mit Parametern (#430): beim Übernehmen Klammern ergänzen.</summary>

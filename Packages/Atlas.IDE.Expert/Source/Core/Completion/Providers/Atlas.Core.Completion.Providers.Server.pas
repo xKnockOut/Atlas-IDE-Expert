@@ -132,6 +132,7 @@ begin
     Result.IsHelper := Data.GetValue('helper') is TJSONTrue;
     Result.Condition := Data.GetValue<string>('condition', '');
     Result.Unavailable := Data.GetValue('unavailable') is TJSONTrue;
+    Result.Scope := Data.GetValue<Integer>('scope', 0);
     Result.HasParameters := Data.GetValue('parameters') is TJSONTrue;
     Result.ExpectedType := Data.GetValue<string>('expected', '');
     Result.Fits := Data.GetValue('fits') is TJSONTrue;
