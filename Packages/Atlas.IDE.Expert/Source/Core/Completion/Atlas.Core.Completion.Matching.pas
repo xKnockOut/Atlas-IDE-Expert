@@ -168,7 +168,10 @@ begin
     Matches.Sort(TComparer<Integer>.Construct(
       function(const A, B: Integer): Integer
       begin
-        Result := Scores[B] - Scores[A];
+        // In der aktiven Konfiguration nicht vorhanden: immer ans Ende (#476).
+        Result := Ord(Items[A].Unavailable) - Ord(Items[B].Unavailable);
+        if Result = 0 then
+          Result := Scores[B] - Scores[A];
         if Result = 0 then
           Result := Items[A].Rank - Items[B].Rank;
         if Result = 0 then

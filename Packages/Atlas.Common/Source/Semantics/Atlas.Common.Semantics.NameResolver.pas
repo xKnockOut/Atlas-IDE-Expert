@@ -76,6 +76,8 @@ type
     InInterface: Boolean;
     /// <summary>Methode mit virtual, dynamic, abstract oder override (#443).</summary>
     IsVirtual: Boolean;
+    /// <summary>Bedingung der Deklaration wie im Index (#476); '' = immer.</summary>
+    Condition: string;
     /// <summary>Deklarierter Typ (Variablen, Felder, Properties, Parameter, Funktionsergebnis).</summary>
     TypeName: string;
     Ancestors: TArray<string>;
@@ -590,6 +592,7 @@ begin
   Result.IsDefault := ASymbol.IsDefault;
   Result.InInterface := ASymbol.InInterface;
   Result.IsVirtual := ASymbol.IsVirtual;
+  Result.Condition := ASymbol.Condition;
   Result.VariantParams := [String.Join(';', ASymbol.ParamTypes)];
 end;
 

@@ -20,7 +20,7 @@ uses
 type
   TIndexCache = class
   public
-    const FormatVersion = 7;
+    const FormatVersion = 8;
     class function Serialize(const AUnits: TArray<TUnitIndex>): string; static;
     /// <summary>Liest den Cache; bei falscher Version oder kaputtem JSON leer.</summary>
     class function Deserialize(const AText: string): TArray<TUnitIndex>; static;
@@ -98,6 +98,8 @@ begin
   Result.Add(ASymbol.IsDefault);
   Result.Add(ASymbol.IsVirtual);
   Result.Add(ASymbol.FileName);
+  Result.Add(ASymbol.Condition);
+  Result.Add(ASymbol.Unavailable);
 end;
 
 function JsonToSymbol(AItems: TJSONArray; out ASymbol: TIndexSymbol): Boolean;
@@ -133,6 +135,13 @@ begin
   ASymbol.IsDefault := (AItems.Items[21] is TJSONBool) and TJSONBool(AItems.Items[21]).AsBoolean;
   ASymbol.IsVirtual := (AItems.Items[22] is TJSONBool) and TJSONBool(AItems.Items[22]).AsBoolean;
   ASymbol.FileName := AItems.Items[23].Value;
+  ASymbol.Condition := '';
+  ASymbol.Unavailable := False;
+  if AItems.Count >= 26 then
+  begin
+    ASymbol.Condition := AItems.Items[24].Value;
+    ASymbol.Unavailable := (AItems.Items[25] is TJSONBool) and TJSONBool(AItems.Items[25]).AsBoolean;
+  end;
 end;
 
 { TIndexCache }
@@ -176,6 +185,13 @@ begin
       Item.AddPair('s', Symbols);
       for Symbol in UnitIndex.Symbols do
         Symbols.AddElement(SymbolToJson(Symbol));
+      if Length(UnitIndex.Unavailable) > 0 then
+      begin
+        Symbols := TJSONArray.Create;
+        Item.AddPair('x', Symbols);
+        for Symbol in UnitIndex.Unavailable do
+          Symbols.AddElement(SymbolToJson(Symbol));
+      end;
     end;
     Result := Root.ToJSON;
   finally
@@ -240,6 +256,17 @@ begin
             SymbolList.Add(Symbol);
       end;
       UnitIndex.Symbols := SymbolList.ToArray;
+      SymbolList.Clear;
+      Value := Item.GetValue('x');
+      if Value is TJSONArray then
+      begin
+        Symbols := TJSONArray(Value);
+        for SymbolIndex := 0 to Symbols.Count - 1 do
+          if (Symbols.Items[SymbolIndex] is TJSONArray) and
+            JsonToSymbol(TJSONArray(Symbols.Items[SymbolIndex]), Symbol) then
+            SymbolList.Add(Symbol);
+      end;
+      UnitIndex.Unavailable := SymbolList.ToArray;
       if UnitIndex.FileName <> '' then
         Found.Add(UnitIndex);
     end;

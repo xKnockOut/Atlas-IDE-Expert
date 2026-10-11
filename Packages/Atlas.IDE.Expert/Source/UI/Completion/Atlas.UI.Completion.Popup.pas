@@ -893,7 +893,8 @@ begin
   Item := FItems[FOrder[APosition]];
   Row := RowRect(ARow);
   // Geerbte Member mit 62 % Deckkraft (#419); die gewählte Zeile bleibt voll lesbar.
-  FDimRow := FDimInherited and (Item.Depth > 0) and (APosition <> FSelected);
+  // Geerbt (#419) bzw. in der aktiven Konfiguration nicht vorhanden (#476): 62 % Deckkraft.
+  FDimRow := ((FDimInherited and (Item.Depth > 0)) or Item.Unavailable) and (APosition <> FSelected);
   if APosition = FSelected then
     FillRounded(Row, Colors.Selection, 4);
   DrawBadge(Row, Item, NameLeft);

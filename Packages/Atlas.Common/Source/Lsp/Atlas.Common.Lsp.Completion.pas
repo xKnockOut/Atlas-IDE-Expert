@@ -77,6 +77,10 @@ type
     Expected: string;
     /// <summary>Eintrag passt zu Expected.</summary>
     Fits: Boolean;
+    /// <summary>Bedingung der Deklaration ("WIN64", "platform"); '' = immer (#476).</summary>
+    Condition: string;
+    /// <summary>Unter der aktiven Konfiguration nicht deklariert; Atlas zeigt es abgeschwächt am Ende (#476).</summary>
+    Unavailable: Boolean;
     /// <summary>Eintrag erzeugt Code statt nur einen Namen: 'override' (#443), 'create' (neue Methode, #444);
     /// Atlas wertet AdditionalEdits dann nicht als uses-Ergänzung.</summary>
     Action: string;
@@ -848,6 +852,8 @@ var
     Scored.Item.IsHelper := Member.IsHelper;
     Scored.Item.Overloads := nil;
     Scored.Item.HasParameters := Member.MaxArgs > 0;
+    Scored.Item.Condition := Member.Condition;
+    Scored.Item.Unavailable := False;
     for Params in Member.VariantParams do
       if Params <> '' then
         Scored.Item.HasParameters := True;
@@ -866,6 +872,59 @@ var
       AnyFits := True;
     Scored.Order := List.Count;
     List.Add(Scored);
+  end;
+
+  /// <summary>Deklarationen der eigenen und eingebundener Units, die nur unter anderen Bedingungen
+  /// existieren (#476): ans Ende, mit Bedingung und als nicht verfügbar markiert.</summary>
+  procedure AddUnavailable;
+  var
+    Known: TDictionary<string, Boolean>;
+    Used: TArray<string>;
+    Own: string;
+    Existing: TScoredItem;
+    UnitInfo: TUnitIndex;
+    Symbol: TIndexSymbol;
+    Before: Integer;
+  begin
+    Known := TDictionary<string, Boolean>.Create;
+    try
+      for Existing in List do
+        Known.AddOrSetValue(UpperCase(Existing.Item.Name), True);
+      Used := TUsesClauses.UsedUnits(ATree.Tokens);
+      Own := TUsesClauses.OwnName(ATree.Tokens);
+      for UnitInfo in AIndex.Units do
+      begin
+        if Length(UnitInfo.Unavailable) = 0 then
+          Continue;
+        if not SameText(UnitInfo.UnitName, Own) and
+          not TUsesClauses.IsUsed(Used, UnitInfo.UnitName, AResolver.Namespaces) then
+          Continue;
+        for Symbol in UnitInfo.Unavailable do
+        begin
+          if (not Symbol.InInterface and not SameText(UnitInfo.UnitName, Own)) or
+            Known.ContainsKey(UpperCase(Symbol.Name)) then
+            Continue;
+          Member := Default(TResolvedSymbol);
+          Member.Name := Symbol.Name;
+          Member.Condition := Symbol.Condition;
+          SourceFile := UnitInfo.FileName;
+          SourcePosition := Symbol.SelectionRange.StartPos;
+          Before := List.Count;
+          Add(Symbol.Name, UnitInfo.UnitName, KindOf(Symbol.Kind), 500);
+          if List.Count > Before then
+          begin
+            Scored := List[List.Count - 1];
+            Scored.Item.Unavailable := True;
+            List[List.Count - 1] := Scored;
+            Known.AddOrSetValue(UpperCase(Symbol.Name), True);
+          end;
+        end;
+      end;
+    finally
+      Known.Free;
+      SourceFile := '';
+      Member := Default(TResolvedSymbol);
+    end;
   end;
 
   procedure AddFromOtherUnits;
@@ -982,6 +1041,8 @@ begin
           Member := Default(TResolvedSymbol);
           if (Context.Kind = TCompletionContextKind.Scope) and (Length(Context.Prefix) >= MinImportPrefix) then
             AddFromOtherUnits;
+          if Context.Kind = TCompletionContextKind.Scope then
+            AddUnavailable;
           // Postfix-Vorlagen stehen immer hinter den echten Mitgliedern.
           if (Context.Kind = TCompletionContextKind.Member) and APostfix.Enabled and (AText <> '') then
             AddPostfix;
@@ -1073,7 +1134,7 @@ begin
     // Reihenfolge wie geliefert: beste Punktzahl, dann nächster Gültigkeitsbereich.
     Entry.AddPair('sortText', Format('%.5d', [Index]));
     if (AItems.Items[Index].SourceFile <> '') or (AItems.Items[Index].Expected <> '') or
-      (AItems.Items[Index].Action <> '') then
+      (AItems.Items[Index].Action <> '') or (AItems.Items[Index].Condition <> '') then
     begin
       Data := TJSONObject.Create;
       if AItems.Items[Index].SourceFile <> '' then
@@ -1098,6 +1159,11 @@ begin
         Data.AddPair('helper', TJSONBool.Create(True));
       if AItems.Items[Index].HasParameters then
         Data.AddPair('parameters', TJSONBool.Create(True));
+      // Bedingte Deklarationen (#476).
+      if AItems.Items[Index].Condition <> '' then
+        Data.AddPair('condition', AItems.Items[Index].Condition);
+      if AItems.Items[Index].Unavailable then
+        Data.AddPair('unavailable', TJSONBool.Create(True));
       if Length(AItems.Items[Index].Overloads) > 0 then
       begin
         Overloads := TJSONArray.Create;
