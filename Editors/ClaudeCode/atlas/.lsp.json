@@ -5,7 +5,10 @@
     "extensionToLanguage": {
       ".pas": "objectpascal",
       ".dpr": "objectpascal",
-      ".dpk": "objectpascal"
+      ".dpk": "objectpascal",
+      ".inc": "objectpascal",
+      ".dfm": "delphi-form",
+      ".fmx": "delphi-form"
     }
   }
 }

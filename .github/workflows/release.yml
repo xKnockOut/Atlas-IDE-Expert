@@ -118,6 +118,14 @@ jobs:
           npm ci
           cp ../../THIRD-PARTY-NOTICES.md .
           npx vsce package -o "atlas-$VERSION.vsix"
+      - name: Claude-Code-Plugin mit EXE packen (#101)
+        if: needs.server.result == 'success'
+        run: |
+          mkdir -p plugin && cp -r Editors/ClaudeCode/atlas plugin/atlas
+          mkdir -p plugin/atlas/bin && cp Editors/VSCode/server/AtlasServer.exe plugin/atlas/bin/
+          # Mitgelieferte EXE statt PATH.
+          sed -i 's#"AtlasServer.exe"#"${CLAUDE_PLUGIN_ROOT}/bin/AtlasServer.exe"#' plugin/atlas/.lsp.json plugin/atlas/.mcp.json
+          (cd plugin && zip -r "../atlas-claude-plugin-$VERSION.zip" atlas)
       - name: Changelog-Abschnitt
         shell: pwsh
         run: ./Tools/Get-ChangelogSection.ps1 -Version $env:VERSION | Set-Content -Encoding utf8 release-notes.md
@@ -129,6 +137,7 @@ jobs:
           prerelease: ${{ startsWith(env.VERSION, '0.') || contains(env.VERSION, '-') }}
           files: |
             Editors/VSCode/atlas-${{ env.VERSION }}.vsix
+            atlas-claude-plugin-${{ env.VERSION }}.zip
             Editors/VSCode/server/AtlasServer.exe
             Editors/VSCode/server/Atlas.map
           fail_on_unmatched_files: false

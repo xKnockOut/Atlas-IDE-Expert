@@ -32,6 +32,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Editor | `memberOrder`: `sections`, `members`, `sortFields`, `sortPublished` | – | atlas.json, Editor (`atlas.memberOrder`) | nein | Liste, Kontrollkästchen | #89 |
 | Prüfregeln | `minConfidence` | `"medium"` | atlas.json, Editor (`atlas.minConfidence`) | nein | Auswahl | #144 |
 | Projekt | `exclude` | – | atlas.json, Editor (`atlas.exclude`) | nein | Liste mit Hinzufügen/Entfernen | #24 |
+| MCP | `mcp`: `disabledTools` | – | atlas.json, Editor (`atlas.mcp`) | nein | Liste mit Hinzufügen/Entfernen | #99 |
 | Formatierung | `format`: `indentSize`, `useTabs`, `keywordCase`, `trimTrailingWhitespace`, `insertFinalNewline`, `spaceAroundAssignment`, `spaceAfterComma`, `endOfLine` | – | atlas.json, Editor (`atlas.format`) | nein | Zahlenfeld, Kontrollkästchen, Auswahl | #43 |
 | Protokoll | `logLevel` | `"info"` | atlas.json, Editor (`atlas.logLevel`), ``--log-level`` | ja | Auswahl | #76, #96 |
 | Protokoll | `logFile` | `""` | atlas.json, Editor (`atlas.logFile`), ``--log`` | ja | Datei wählen | #76, #96 |

@@ -15,9 +15,31 @@ dem Protokoll.
 Pfadparameter (#99): relativ zu `--root` oder absolut; sie werden normalisiert
 (`..`, Junctions, Symlinks, subst-Laufwerke aufgelöst) und nur im Arbeitsordner
 sowie in den Such- und Bibliothekspfaden des Projekts angenommen. Alles andere
-ergibt einen Werkzeugfehler mit Begründung. Schreibende Werkzeuge und solche mit
-Prozessstart gibt es noch nicht; für sie gelten Vorschau, Protokoll und
-Abschaltbarkeit aus #99, sobald sie kommen (#61, #69).
+ergibt einen Werkzeugfehler mit Begründung. Geschrieben wird nur im Arbeitsordner.
+
+## Sicherheit (#99)
+
+- Jedes Werkzeug ist lesend, schreibend oder startet einen Prozess.
+- `mcp.disabledTools` in `atlas.json` schaltet Werkzeuge einzeln ab, z. B.
+  `"mcp": { "disabledTools": ["rename_symbol", "apply_code_action"] }`. Abgeschaltete
+  Werkzeuge fehlen in `tools/list`; ein Aufruf ergibt einen Werkzeugfehler mit Begründung.
+- Mit `--restricted` (#186) sind nur lesende Werkzeuge verfügbar.
+- Schreibende Werkzeuge haben `dryRun` mit Vorgabe `true`: Sie liefern dann nur den Diff.
+  Mit `dryRun: false` schreiben sie atomar: Hat sich eine Datei seit dem Lesen geändert
+  oder ist sie in der IDE ungespeichert geändert (das IDE-Plugin meldet das in
+  `%LOCALAPPDATA%\Atlas\editor-dirty-<pid>.json`), wird nichts geschrieben; scheitert das Schreiben
+  einer Datei, werden die schon geschriebenen zurückgesetzt. Kodierung und Zeilenenden
+  bleiben erhalten (#121).
+- Jeder schreibende Aufruf steht mit Werkzeug, Parametern und geänderten Dateien im Log
+  (`--log`).
+
+## Ressourcen
+
+| URI | Inhalt |
+|---|---|
+| `delphi://conventions` | Projektkonventionen als Markdown (#272): Regelprofil, Formatstil, Benennungsregeln und jede aktive Prüfregel mit Schweregrad und Kurztext aus dem Regelkatalog. Vor dem Schreiben lesen, danach mit `check_code` prüfen |
+
+## Werkzeuge
 
 | Werkzeug | Parameter | Ergebnis |
 |---|---|---|
@@ -33,3 +55,6 @@ Abschaltbarkeit aus #99, sobald sie kommen (#61, #69).
 | `check_code` | `file`, `text`, `startLine`/`endLine` (optional) | Prüft geplanten Code ohne zu schreiben: Syntaxfehler, Regelbefunde, nicht auflösbare Bezeichner. Ohne Bereich ist `text` die ganze Unit, sonst der Ersatz für die Zeilen `startLine`..`endLine` |
 | `get_dfm_info` | `file` | Komponentenbaum eines Text-Formulars mit Eigenschaften und Ereignissen |
 | `get_last_build` | `project` (optional) | Letzter Build, den der Benutzer in der IDE gestartet hat (über das IDE-Plugin, #556): Ergebnis, Art, Zeitpunkt, Dauer, Projekt, Konfiguration, Plattform, Zahl der Fehler/Warnungen/Hinweise und alle Meldungen mit Datei, Zeile, Spalte (1-basiert), Code und Text; Meldungen außerhalb von `--root` bleiben weg. Ohne Build: „Noch kein Build …“. Austausch über `%LOCALAPPDATA%\Atlas\build-*.json`, die der LSP-Server schreibt |
+| `explain_finding` | `file`, `line`, `rule` (optional) | Befunde einer Zeile als Markdown (#158): Regel mit Beschreibung, Codeausschnitt mit markierter Zeile, Vorher/Nachher-Beispiel aus dem Regelkatalog. Dieselbe Ausgabe liefert in VS Code die Code-Aktion „Befund als Prompt kopieren“ |
+| `rename_symbol` | `file`, `line`, `column`, `newName`, `dryRun` (Vorgabe `true`) | Schreibend (#61): benennt das Symbol an der Stelle projektweit um, samt `.dfm`/`.fmx` und automatisch benannter Ereignis-Handler; liefert den Diff aller Dateien |
+| `apply_code_action` | `file`, `line`, `title` (optional), `dryRun` (Vorgabe `true`) | Schreibend (#61): ohne `title` die Korrekturen der Zeile auflisten, mit `title` (Titel oder Regelkennung) die Korrektur anwenden; liefert den Diff |

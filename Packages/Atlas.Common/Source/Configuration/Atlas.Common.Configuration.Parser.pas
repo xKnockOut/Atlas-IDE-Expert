@@ -55,6 +55,7 @@ type
     procedure ReadProfiles(ANode: TJsonNode);
     procedure ReadOverrides(ANode: TJsonNode);
     procedure ReadExclude(ANode: TJsonNode);
+    procedure ReadMcp(ANode: TJsonNode);
     procedure ReadUsesKeep(ANode: TJsonNode);
     procedure ReadSlashCommands(ANode: TJsonNode);
     procedure ReadSortUses(ANode: TJsonNode);
@@ -439,6 +440,39 @@ begin
   finally
     Items.Free;
   end;
+end;
+
+procedure TValidator.ReadMcp(ANode: TJsonNode);
+var
+  Index, Item: Integer;
+  Items: TList<string>;
+  Value: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"mcp" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+    if ANode.Keys[Index] = 'disabledTools' then
+    begin
+      if ANode[Index].Kind <> TJsonKind.Array_ then
+      begin
+        ReportNode(ANode[Index], '"disabledTools" muss eine Liste von Werkzeugnamen sein');
+        Continue;
+      end;
+      Items := TList<string>.Create;
+      try
+        for Item := 0 to ANode[Index].Count - 1 do
+          if ExpectString(ANode[Index][Item], 'disabledTools', Value) then
+            Items.Add(Value);
+        FSettings.McpDisabledTools := Items.ToArray;
+      finally
+        Items.Free;
+      end;
+    end
+    else
+      ReportNode(ANode[Index], Format('Unbekannte Einstellung "mcp.%s"', [ANode.Keys[Index]]));
 end;
 
 function TValidator.ExpectBoolean(ANode: TJsonNode; const AName: string; var AValue: Boolean): Boolean;
@@ -961,6 +995,8 @@ begin
       end
       else if Key = 'exclude' then
         ReadExclude(Value)
+      else if Key = 'mcp' then
+        ReadMcp(Value)
       else if Key = 'minConfidence' then
       begin
         if ExpectString(Value, Key, Text) then
@@ -1187,6 +1223,8 @@ begin
       Result.TestProfile := FileSettings.TestProfile
     else if Key = 'exclude' then
       Result.Exclude := FileSettings.Exclude
+    else if Key = 'mcp' then
+      Result.McpDisabledTools := FileSettings.McpDisabledTools
     else if Key = 'minConfidence' then
     begin
       Result.MinConfidence := FileSettings.MinConfidence;
