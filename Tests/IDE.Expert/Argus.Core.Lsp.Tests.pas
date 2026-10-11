@@ -49,6 +49,8 @@ type
     procedure HoverAndDefinitionAgainstServer;
     [Test]
     procedure PullsDiagnosticsAgainstServer;
+    [Test]
+    procedure CompilerMessagesReachPulledDiagnostics;
   end;
 
 implementation
@@ -506,6 +508,68 @@ begin
       Assert.AreNotEqual('', Report.ResultId);
       Again := Session.DocumentDiagnostics(FileName, Report.ResultId, 10000);
       Assert.IsTrue(Again.Unchanged, 'gleiche Version: unverändert');
+    finally
+      Session.Free;
+    end;
+  finally
+    Server.Free;
+  end;
+end;
+
+procedure TLspServerProcessTests.CompilerMessagesReachPulledDiagnostics;
+const
+  UnitText =
+    'unit ProbeCompiler;'#13#10 +
+    'interface'#13#10 +
+    'implementation'#13#10 +
+    'procedure P;'#13#10 +
+    'begin'#13#10 +
+    '  Gibtsnicht.Create;'#13#10 +
+    'end;'#13#10 +
+    'end.';
+var
+  ServerExe, FileName: string;
+  Server: TLspServerProcess;
+  Session: TLspSession;
+  Report: TLspDiagnosticReport;
+  Params: TJSONObject;
+  Waited: Integer;
+  Problem: TArgusProblem;
+  Found: Boolean;
+begin
+  ServerExe := TPath.Combine(ExtractFilePath(ParamStr(0)), 'ArgusServer.exe');
+  if not FileExists(ServerExe) then
+    Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + ServerExe);
+  FileName := TPath.Combine(TPath.GetTempPath, 'ArgusPluginProbeCompiler.pas');
+  Server := TLspServerProcess.Create(ServerExe, '');
+  try
+    Session := TLspSession.Create(Server.Client, 5000);
+    try
+      Session.Initialize;
+      Session.Sync(FileName, UnitText);
+      Params := TJSONObject.ParseJSONValue(Format('{"project":"","platform":"Win32","success":false,"background":true,' +
+        '"messages":[{"file":"%s","line":6,"column":3,"severity":"error","code":"E2003",' +
+        '"text":"Undeklarierter Bezeichner: ''Gibtsnicht''"}]}', [StringReplace(FileName, '\', '\\', [rfReplaceAll])]))
+        as TJSONObject;
+      Session.Notify('argus/compilerMessages', Params);
+      // Der Server bittet danach um neues Holen.
+      Waited := 0;
+      while (Session.RefreshCount = 0) and (Waited < 5000) do
+      begin
+        Sleep(50);
+        Inc(Waited, 50);
+      end;
+      Assert.AreEqual(1, Session.RefreshCount, 'workspace/diagnostic/refresh');
+      Report := Session.DocumentDiagnostics(FileName, '', 10000);
+      Found := False;
+      for Problem in Report.Problems do
+        if Problem.IsCompiler and (Problem.Code = 'E2003') then
+        begin
+          Found := True;
+          Assert.AreEqual(5, Problem.StartLine);
+          Assert.IsTrue(Problem.Severity = TArgusProblemSeverity.Error);
+        end;
+      Assert.IsTrue(Found, 'dcc-Meldung in den Diagnosen der geöffneten Datei');
     finally
       Session.Free;
     end;

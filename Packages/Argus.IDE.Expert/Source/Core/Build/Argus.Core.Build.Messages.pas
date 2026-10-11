@@ -5,6 +5,8 @@
 // der Art der IDE (msgError, msgWarning …) bzw. ersatzweise aus dem Code, und
 // die Parameter der Benachrichtigung argus/compilerMessages an den Server.
 // Der Code ist der Schlüssel, nicht der (deutsche oder englische) Text.
+// Die IDE nennt Dateien teils ohne Pfad ("Gallery.Main.pas"); Resolve macht
+// daraus volle Pfade, damit der Server die Meldung der Datei zuordnet (#398).
 
 interface
 
@@ -33,6 +35,10 @@ type
     class function FromIde(const AKind, AMessage, AFileName: string; ALine, AColumn: Integer): TArgusCompilerMessage;
       static;
     class function SeverityText(ASeverity: TArgusCompilerSeverity): string; static;
+    /// <summary>Relative Dateinamen zu vollen Pfaden: zuerst eine bekannte Datei (offen oder im Projekt),
+    /// deren Pfad auf den Namen endet, sonst der Projektordner, wenn die Datei dort liegt.</summary>
+    class function Resolve(const AMessages: TArray<TArgusCompilerMessage>; const AProjectFile: string;
+      const AKnownFiles: TArray<string>): TArray<TArgusCompilerMessage>; static;
     /// <summary>Parameter für argus/compilerMessages; Info-Meldungen bleiben weg.</summary>
     class function ToJson(const AMessages: TArray<TArgusCompilerMessage>; const AProject, APlatform: string;
       ASucceeded: Boolean; ABackground: Boolean = False): TJSONObject; static;
@@ -41,6 +47,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   System.RegularExpressions;
 
 class function TArgusCompilerMessages.FromIde(const AKind, AMessage, AFileName: string; ALine,
@@ -81,6 +88,35 @@ begin
     end
   else
     Result.Severity := TArgusCompilerSeverity.Info;
+end;
+
+class function TArgusCompilerMessages.Resolve(const AMessages: TArray<TArgusCompilerMessage>;
+  const AProjectFile: string; const AKnownFiles: TArray<string>): TArray<TArgusCompilerMessage>;
+var
+  Index: Integer;
+  Name, Known, Candidate: string;
+  Found: Boolean;
+begin
+  Result := Copy(AMessages);
+  for Index := 0 to High(Result) do
+  begin
+    Name := StringReplace(Result[Index].FileName, '/', PathDelim, [rfReplaceAll]);
+    if (Name = '') or (ExtractFileDrive(Name) <> '') or Name.StartsWith(PathDelim) then
+      Continue;
+    Found := False;
+    for Known in AKnownFiles do
+      if SameText(Known, Name) or EndsText(PathDelim + Name, Known) then
+      begin
+        Result[Index].FileName := Known;
+        Found := True;
+        Break;
+      end;
+    if Found or (AProjectFile = '') then
+      Continue;
+    Candidate := ExpandFileName(IncludeTrailingPathDelimiter(ExtractFilePath(AProjectFile)) + Name);
+    if FileExists(Candidate) then
+      Result[Index].FileName := Candidate;
+  end;
 end;
 
 class function TArgusCompilerMessages.SeverityText(ASeverity: TArgusCompilerSeverity): string;

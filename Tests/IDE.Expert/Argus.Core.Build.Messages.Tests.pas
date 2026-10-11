@@ -18,12 +18,15 @@ type
     procedure SeverityFromCodeWhenKindUnknown;
     [Test]
     procedure JsonSkipsInfo;
+    [Test]
+    procedure ResolvesFileNamesWithoutPath;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.IOUtils,
   System.JSON,
   Argus.Core.Build.Messages;
 
@@ -54,6 +57,33 @@ begin
     Ord(TArgusCompilerMessages.FromIde('msgSonstwas', 'W1036 Variable ''X'' ist möglicherweise nicht initialisiert', '', 1, 1).Severity));
   Assert.AreEqual(Ord(TArgusCompilerSeverity.Fatal),
     Ord(TArgusCompilerMessages.FromIde('', 'F2063 Verwendete Unit ''X'' kann nicht compiliert werden', '', 1, 1).Severity));
+end;
+
+procedure TArgusCompilerMessagesTests.ResolvesFileNamesWithoutPath;
+var
+  Messages: TArray<TArgusCompilerMessage>;
+  Dir: string;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'ArgusResolve');
+  TDirectory.CreateDirectory(Dir);
+  TFile.WriteAllText(TPath.Combine(Dir, 'ImOrdner.pas'), 'unit ImOrdner;');
+  try
+    SetLength(Messages, 5);
+    Messages[0].FileName := 'Gallery.Main.pas';
+    Messages[1].FileName := 'C:\X\Abs.pas';
+    Messages[2].FileName := 'Fehlt.pas';
+    Messages[3].FileName := 'sub/gallery.main.pas';
+    Messages[4].FileName := 'ImOrdner.pas';
+    Messages := TArgusCompilerMessages.Resolve(Messages, TPath.Combine(Dir, 'P.dproj'),
+      ['C:\P\Other.pas', 'C:\P\Sub\Gallery.Main.pas']);
+    Assert.AreEqual('C:\P\Sub\Gallery.Main.pas', Messages[0].FileName, 'bekannte Datei');
+    Assert.AreEqual('C:\X\Abs.pas', Messages[1].FileName, 'voller Pfad bleibt');
+    Assert.AreEqual('Fehlt.pas', Messages[2].FileName, 'nicht gefunden: bleibt');
+    Assert.AreEqual('C:\P\Sub\Gallery.Main.pas', Messages[3].FileName, 'Teilpfad mit /');
+    Assert.AreEqual(TPath.Combine(Dir, 'ImOrdner.pas'), Messages[4].FileName, 'Projektordner');
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
 end;
 
 procedure TArgusCompilerMessagesTests.JsonSkipsInfo;
