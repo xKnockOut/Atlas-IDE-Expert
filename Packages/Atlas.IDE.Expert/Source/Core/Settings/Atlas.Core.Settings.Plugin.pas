@@ -119,7 +119,8 @@ begin
   Result.ServerPath := '';
   Result.PairGuides := True;
   Result.Problems := True;
-  Result.CheckOnSave := True;
+  // Die Prüfung in der IDE zeigt deren Fortschritt; Standard ist die Prüfung des Servers mit dcc (compiler.onSave).
+  Result.CheckOnSave := False;
   Result.CheckOnSaveDelayMs := 2000;
   Result.CheckOnSaveMaxMs := 1500;
 end;
