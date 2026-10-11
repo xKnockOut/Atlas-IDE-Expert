@@ -174,8 +174,10 @@
 - **Probleme im Editor (#398, offene Teile von #528/#548):**
   - Plugin holt Diagnosen per Pull (`TLspSession.DocumentDiagnostics/WorkspaceDiagnostics`, Capabilities `textDocument.diagnostic` und `workspace.diagnostics.refreshSupport`; der Server pusht dann nicht mehr). `TLspClient.OnServerMessage` zählt `workspace/diagnostic/refresh` (`TLspSession.RefreshCount`).
   - `Argus.Core.Problems.Contract/Store` (Markierungen wandern mit, dcc bis zum nächsten Compile blass), `Argus.IDE.Problems.Controller` (Timer 250 ms, Dokument-Thread, Workspace-Thread mit Long-Polling, didClose für geschlossene Dateien; Manager.StopSession hält die Threads an und schließt vorher die Verbindung), `Painter` (Wellenlinien), `MessageList` (Gruppe „Argus-Probleme“).
-  - Hover-Tooltip zeigt Probleme oben, auch ohne Bezeichner. Einstellung `Problems` (Standard an). Testfälle PR1–PR10 stehen aus.
-- **Plugin beim User:** am 11.10.2026 um 10:27 aktualisiert.
+  - Hover-Tooltip zeigt Probleme oben, auch ohne Bezeichner. Einstellung `Problems` (Standard an).
+  - `9d2e9459`: Compilermeldungen ohne Pfad (die IDE nennt teils nur `Gallery.Main.pas`) ergänzt das Plugin zu vollen Pfaden (`TArgusCompilerMessages.Resolve`). Vom User abgenommen; #398, #528, #548 geschlossen.
+  - Das Plugin startet den Server jetzt selbst und sofort neu: Für Builds Delphi des Users schließen (`update-plugin.ps1 -NoRestart`, dann `build.ps1`, dann Delphi starten).
+- **Plugin beim User:** am 11.10.2026 um 11:12 aktualisiert.
 - **Achtung:** In `Argus.Common.Compiler.OutputParser.pas` stehen Testzeilen des Users (verschachtelte begin/end); nicht committen.
 - **Neu in `update-plugin.ps1`:** sichert `.dproj`/`.dpk` vor dem Bau und schreibt sie danach zurück.
 - **Weiter:**
