@@ -78,7 +78,7 @@ language-servers = ["atlas"]
 AtlasServer.exe --check App.dproj --format sarif --output befunde.sarif
 ```
 
-Weitere Optionen stehen in der [README](../README.de.md).
+Weitere Optionen stehen in der [README](../README_DE.md).
 
 ## Weiter
 

@@ -1,6 +1,6 @@
 # Atlas IDE Expert
 
-*Deutsche Fassung: [README.de.md](README.de.md). The detailed documentation in `docs/` is in German.*
+*Deutsche Fassung: [README_DE.md](README_DE.md). The detailed documentation in `docs/` is in German.*
 
 An expert for RAD Studio (Delphi/Object Pascal): an IDE plugin with its own user interface and its own language server (LSP), plus an MCP interface for Claude Code. Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues); epics #130 to #139 describe the stages.
 
