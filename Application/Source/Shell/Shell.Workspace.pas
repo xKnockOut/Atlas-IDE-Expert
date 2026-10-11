@@ -353,7 +353,7 @@ var
   FileTime: TDateTime;
   FileFormat: TFileFormat;
 begin
-  FileName := ExistingOrLegacyFile(FRoot, BaselineFileName, [PreviousBaselineFileName, LegacyBaselineFileName]);
+  FileName := ExistingOrLegacyFile(FRoot, BaselineFileName, LegacyBaselineFileName);
   TMonitor.Enter(FLock);
   try
     if not TFile.Exists(FileName) then

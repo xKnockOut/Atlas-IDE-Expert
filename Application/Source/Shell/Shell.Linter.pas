@@ -96,8 +96,7 @@ var
   Issues: TArray<TConfigurationIssue>;
   Issue: TConfigurationIssue;
 begin
-  FileName := ExistingOrLegacyFile(ARoot, ConfigurationFileName,
-    [PreviousConfigurationFileName, LegacyConfigurationFileName]);
+  FileName := ExistingOrLegacyFile(ARoot, ConfigurationFileName, LegacyConfigurationFileName);
   if not TFile.Exists(FileName) then
     Exit(TServerSettings.Default);
   Result := TConfigurationParser.Parse(TFileEncoding.LoadFromFile(FileName, FileFormat), Issues);
@@ -265,8 +264,7 @@ begin
     if (BaselinePath = '') and AOptions.UpdateBaseline then
       BaselinePath := TPath.Combine(ConfigRoot, BaselineFileName)
     else if BaselinePath = '' then
-      BaselinePath := ExistingOrLegacyFile(ConfigRoot, BaselineFileName,
-        [PreviousBaselineFileName, LegacyBaselineFileName]);
+      BaselinePath := ExistingOrLegacyFile(ConfigRoot, BaselineFileName, LegacyBaselineFileName);
     if not AOptions.UpdateBaseline then
       if TFile.Exists(BaselinePath) then
         Baseline := TRuleBaseline.FromJson(TFileEncoding.LoadFromFile(BaselinePath, FileFormat))

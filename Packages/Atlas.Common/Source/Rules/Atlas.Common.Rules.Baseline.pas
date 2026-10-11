@@ -20,8 +20,6 @@ const
   BaselineFileName = 'atlas-baseline.json';
   /// <summary>Name vor der Umbenennung in Atlas (#403); gilt, solange atlas-baseline.json fehlt.</summary>
   LegacyBaselineFileName = 'delphi-lsp-baseline.json';
-  /// <summary>Name vor der Umbenennung in Atlas (bis 11.10.2026 Argus).</summary>
-  PreviousBaselineFileName = 'argus-baseline.json';
 
 type
   ERuleBaseline = class(Exception);

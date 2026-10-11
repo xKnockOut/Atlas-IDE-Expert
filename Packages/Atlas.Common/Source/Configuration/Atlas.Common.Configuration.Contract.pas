@@ -268,9 +268,7 @@ type
 
 const
   ConfigurationFileName = 'atlas.json';
-  /// <summary>Name vor der Umbenennung in Atlas (bis 11.10.2026 Argus); gilt, solange atlas.json fehlt.</summary>
-  PreviousConfigurationFileName = 'argus.json';
-  /// <summary>Name vor der Umbenennung in Argus (#403); gilt, solange atlas.json und argus.json fehlen.</summary>
+  /// <summary>Name vor der Umbenennung in Atlas (#403); gilt, solange atlas.json fehlt.</summary>
   LegacyConfigurationFileName = 'delphi-lsp.json';
 
 /// <summary>True für atlas.json und den früheren Namen (ohne Pfad, ohne Groß-/Kleinschreibung).</summary>
@@ -278,10 +276,7 @@ function IsConfigurationFileName(const AFileName: string): Boolean;
 
 /// <summary>Pfad von AFileName im Ordner ADirectory. Fehlt die Datei und existiert nur
 /// ALegacyFileName, dann dessen Pfad (Abwärtskompatibilität, #403).</summary>
-function ExistingOrLegacyFile(const ADirectory, AFileName, ALegacyFileName: string): string; overload;
-/// <summary>Wie oben mit mehreren früheren Namen, in dieser Reihenfolge.</summary>
-function ExistingOrLegacyFile(const ADirectory, AFileName: string; const ALegacyFileNames: array of string): string;
-  overload;
+function ExistingOrLegacyFile(const ADirectory, AFileName, ALegacyFileName: string): string;
 
 /// <summary>Glob-Vergleich: * ohne Trenner, ** über Ordner, ? ein Zeichen; ohne Groß-/Kleinschreibung.</summary>
 function MatchesGlob(const APattern, APath: string): Boolean;
@@ -296,23 +291,7 @@ implementation
 
 function IsConfigurationFileName(const AFileName: string): Boolean;
 begin
-  Result := SameText(AFileName, ConfigurationFileName) or SameText(AFileName, PreviousConfigurationFileName) or
-    SameText(AFileName, LegacyConfigurationFileName);
-end;
-
-function ExistingOrLegacyFile(const ADirectory, AFileName: string; const ALegacyFileNames: array of string): string;
-var
-  Name, Legacy: string;
-begin
-  Result := IncludeTrailingPathDelimiter(ADirectory) + AFileName;
-  if FileExists(Result) then
-    Exit;
-  for Name in ALegacyFileNames do
-  begin
-    Legacy := IncludeTrailingPathDelimiter(ADirectory) + Name;
-    if FileExists(Legacy) then
-      Exit(Legacy);
-  end;
+  Result := SameText(AFileName, ConfigurationFileName) or SameText(AFileName, LegacyConfigurationFileName);
 end;
 
 function ExistingOrLegacyFile(const ADirectory, AFileName, ALegacyFileName: string): string;

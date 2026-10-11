@@ -43,7 +43,6 @@ type
     FFileName: string;
     FPrimaryFileName: string;
     FLegacyFileName: string;
-    FPreviousFileName: string;
     FOnChanged: TConfigurationChangedEvent;
     // Nur im Thread der Nachrichtenschleife benutzt.
     FFileText: string;
@@ -243,11 +242,6 @@ var
 begin
   FFileName := FPrimaryFileName;
   Found := (FFileName <> '') and FReadFile(FFileName, Text);
-  if not Found and (FPreviousFileName <> '') and FReadFile(FPreviousFileName, Text) then
-  begin
-    FFileName := FPreviousFileName;
-    Found := True;
-  end;
   if not Found and (FLegacyFileName <> '') and FReadFile(FLegacyFileName, Text) then
   begin
     FFileName := FLegacyFileName;
@@ -272,7 +266,6 @@ begin
   if ARootPath = '' then
   begin
     FPrimaryFileName := '';
-    FPreviousFileName := '';
     FLegacyFileName := '';
   end
   else
@@ -286,7 +279,6 @@ begin
     else
       Dir := ARootPath + Separator;
     FPrimaryFileName := Dir + ConfigurationFileName;
-    FPreviousFileName := Dir + PreviousConfigurationFileName;
     FLegacyFileName := Dir + LegacyConfigurationFileName;
   end;
   LoadFromDisk;
