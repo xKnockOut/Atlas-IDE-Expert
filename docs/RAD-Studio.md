@@ -1,27 +1,29 @@
-﻿# Atlas IDE Expert in RAD Studio 13 einbinden
+﻿# Atlas IDE Expert in RAD Studio einbinden
 
 Es gibt zwei Wege:
 
-- **Empfohlen: das IDE-Plugin** `Atlas.IDE.Expert` (ADR 0006). Es meldet sich als eigener Code Insight-Manager an und zeigt Hover und Gehe zu Definition an.
+- **Empfohlen: das IDE-Plugin** `Atlas.IDE.Expert` (ADR 0006) für RAD Studio 13 und 12. Es meldet sich als eigener Code Insight-Manager an und bringt eigene Fenster für Vervollständigung, Parameter-Hint und Hover sowie Probleme im Editor, Klammerpaare, Befehlspalette und Compilerprüfung mit (Übersicht in der [README](../README.md)).
 - **Eingebauter LSP-Client** (Abschnitt unten). Damit funktionieren Gliederung und Error Insight. Den Hover fremder Server zeigt RAD Studio auf diesem Weg aber nicht an.
 
 ## IDE-Plugin
 
 1. Das Package `Packages\Atlas.IDE.Expert\Atlas.IDE.Expert.dproj` (in der Projektgruppe enthalten) für **Win32** bauen (die IDE ist 32-Bit). Ergebnis: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert.bpl`. Ist das Plugin installiert, sperrt die IDE diese BPL; zum Neubauen das Package vorher entladen.
 2. In RAD Studio: *Komponente > Packages installieren > Hinzufügen*, die BPL auswählen.
-3. *Tools > Optionen > Editor > Sprache > Code Insight*: im Code Insight-Manager **„Atlas IDE Expert“** wählen.
+3. Den Server (`AtlasServer.exe`) mit bauen: Common, Windows und Server für dieselbe Plattform (Win64 empfohlen). Der Server ist ein eigenes Programm und hängt nicht von der Delphi-Version ab.
 4. Den Server findet das Plugin in dieser Reihenfolge:
-   - Registry `HKCU\Software\Atlas\IdePlugin` (fehlt er, der frühere Schlüssel `HKCU\Software\BetterDelphiLSP\IdePlugin`), Wert `ServerPath` (optional `ServerArguments`, z. B. `--log C:\Temp\atlas.log`)
+   - *Tools › Optionen › Drittanbieter › Atlas*, Feld „Atlas-Server“ (Registry `HKCU\Software\Atlas\IdePlugin`, Wert `ServerPath`; optional `ServerArguments`, z. B. `--log C:\Temp\atlas.log`). Darunter zeigt die Seite, welcher Server verwendet wird und ob er gefunden wurde.
    - `AtlasServer.exe` neben der BPL
-   - `..\..\..\Win64\Debug\Bin\AtlasServer.exe`, im Repo also die Win64-Build-Ausgabe
+   - `..\..\..\Win64\Debug\Bin\AtlasServer.exe`, sonst `..\..\..\Win32\Debug\Bin\AtlasServer.exe`, im Repo also die Build-Ausgabe
 
-Fehler beim Start meldet das Plugin einmalig im Meldungsfenster. Stürzt der Server ab, startet es ihn bei der nächsten Anfrage neu.
+Fehlt der Server, meldet das Plugin das im Meldungsfenster und überlässt Vervollständigung und Hinweise der eingebauten Code Insight. Stürzt der Server ab, startet es ihn bei der nächsten Anfrage neu.
+
+Was Atlas selbst anzeigt, schaltet es in der IDE ab, damit nichts doppelt erscheint: Help Insight (solange der Atlas-Tooltip an ist) und die Strukturhervorhebung (solange die Atlas-Blocklinien an sind). Die IDE liest diese Schalter nur beim Start; beim ersten Start mit Atlas erscheint daher noch beides.
 
 Zur Fehlersuche: Wert `Diagnose` (DWORD) = `1` unter `HKCU\Software\Atlas\IdePlugin` setzen und die IDE neu starten. Das Plugin schreibt dann jeden Aufruf der IDE (Hover, Strg+Klick, Position und Ergebnis) in `Atlas.IDE.Expert.log` neben der BPL.
 
 Findet der Server keine Definition, passiert bei Strg+Klick nichts. Deklarationen in Include-Dateien (`{$I …}`) findet der Server erst mit dem Include-Resolver (#264).
 
-Umgesetzt sind Symbolhinweis (Hover) und Strg+Klick (Gehe zu Definition). Vervollständigung, Parameterhilfe und Error Insight folgen.
+Unter Delphi 12 schließt der Tooltip über den Tastatur-Hook von Atlas, weil der Code-Editor dort keine Tastatur-Ereignisse meldet; sonst verhält sich das Plugin wie unter Delphi 13.
 
 ## Eingebauter LSP-Client
 
