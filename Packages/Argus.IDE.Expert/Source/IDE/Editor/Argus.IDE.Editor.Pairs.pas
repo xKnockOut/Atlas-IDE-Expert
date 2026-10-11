@@ -38,6 +38,8 @@ type
     FCheck: Boolean;
     // Je 0-basierter Zeile die Paare, Character als 1-basierte Editorspalte (Tabs aufgelöst).
     FLines: TArray<TLineTokens>;
+    // Je 0-basierter Zeile der Text wie im Editor (Tabs aufgelöst), zum Abgleich der Läufe.
+    FDisplay: TArray<string>;
     procedure BeginPaint(const Editor: TWinControl; const ForceFullRepaint: Boolean);
     procedure PaintText(const Rect: TRect; const ColNum: SmallInt; const Text: string;
       const SyntaxCode: TOTASyntaxCode; const Hilight, BeforeEvent: Boolean;
@@ -118,7 +120,7 @@ var
   Text: string;
   Lines: TArray<string>;
   Token: TArgusPairToken;
-  TabWidth: Integer;
+  TabWidth, Index: Integer;
   Activity: IInterface;
 begin
   FCheck := False;
@@ -132,8 +134,12 @@ begin
   FFileName := Context.FileName;
   FText := Text;
   Lines := Text.Split([#10]);
+  FLines := nil;
   SetLength(FLines, Length(Lines));
+  SetLength(FDisplay, Length(Lines));
   TabWidth := TArgusEditorBuffer.TabWidth(View.Buffer);
+  for Index := 0 to High(Lines) do
+    FDisplay[Index] := TArgusPairs.DisplayLine(Lines[Index], TabWidth);
   for Token in TArgusPairs.Analyze(Text) do
     if Token.Line <= High(FLines) then
     begin
@@ -167,6 +173,11 @@ begin
       Refresh(Context);
     Line := Context.LogicalLineNum - 1;
     if (Line < 0) or (Line > High(FLines)) or (Length(FLines[Line]) = 0) then
+      Exit;
+    // Nur einfärben, wenn der Lauf in der analysierten Zeile an dieser Stelle steht.
+    // Die IDE meldet beim Neuzeichnen von Teilbereichen nicht immer die Zeile des
+    // Laufs; sonst landeten Paarfarben mitten in Bezeichnern anderer Zeilen.
+    if (Line > High(FDisplay)) or not TArgusPairs.RunMatches(FDisplay[Line], Text, ColNum) then
       Exit;
     Tokens := FLines[Line];
     Canvas := Context.Canvas;

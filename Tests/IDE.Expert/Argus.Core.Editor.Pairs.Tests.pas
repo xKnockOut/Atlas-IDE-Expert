@@ -21,6 +21,8 @@ type
     procedure TypeDeclarationsAndForwardsAndVariantCase;
     [Test]
     procedure TryFinallyRepeatUntilAndEscapes;
+    [Test]
+    procedure DisplayLineExpandsTabsAndRunsMatchOnlyAtTheirColumn;
   end;
 
 implementation
@@ -86,6 +88,23 @@ begin
   Assert.AreEqual('try@0 repeat@1 until@1 finally@0 end@0',
     Describe('try'#10'  repeat'#10'  until X;'#10'finally'#10'end;'));
   Assert.AreEqual('begin@0 end@0', Describe('begin'#10'  &end := 1;'#10'  A.Begin;'#10'end;'));
+end;
+
+procedure TArgusPairsTests.DisplayLineExpandsTabsAndRunsMatchOnlyAtTheirColumn;
+var
+  Line: string;
+begin
+  Assert.AreEqual('a   b', TArgusPairs.DisplayLine('a'#9'b'#13, 4));
+  Assert.AreEqual('    x', TArgusPairs.DisplayLine(#9'x', 4));
+  Assert.AreEqual(#9'x', TArgusPairs.DisplayLine(#9'x', 0));
+  Line := TArgusPairs.DisplayLine('  if (A) then', 2);
+  Assert.IsTrue(TArgusPairs.RunMatches(Line, '(', 6));
+  Assert.IsTrue(TArgusPairs.RunMatches(Line, 'if', 3));
+  // Lauf einer anderen Zeile bzw. an anderer Spalte: nicht einfärben.
+  Assert.IsFalse(TArgusPairs.RunMatches(Line, 'begin', 3));
+  Assert.IsFalse(TArgusPairs.RunMatches(Line, '(', 5));
+  Assert.IsFalse(TArgusPairs.RunMatches(Line, 'then', 12));
+  Assert.IsFalse(TArgusPairs.RunMatches(Line, '', 1));
 end;
 
 initialization
