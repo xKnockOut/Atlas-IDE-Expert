@@ -107,7 +107,8 @@ uses
   System.StrUtils,
   Atlas.Core.Style.Palette,
   Atlas.UI.Strings,
-  Atlas.UI.Popup.Styled;
+  Atlas.UI.Popup.Styled,
+  Atlas.UI.Popup.Accessibility;
 
 { TAtlasHoverView }
 
@@ -735,6 +736,9 @@ begin
   if Bounds.Right > Area.Right then
     Bounds.SetLocation(Max(Area.Left, Area.Right - Width), Bounds.Top);
   ShowAt(Bounds);
+  // Sprachausgabe (#447): Deklaration und Anfang der Doku.
+  SetAccessible(UiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.AccessHover));
+  Announce(Trim(AView.Data.Declaration + '. ' + Copy(AView.Data.Documentation, 1, 300)));
 end;
 
 procedure TAtlasHoverTip.UpdateContent(const AView: TAtlasHoverView);

@@ -14,6 +14,8 @@
 // Maße (#412, #445): alle in logischen Pixeln (96 dpi), umgerechnet mit PPI =
 // DPI des Monitors am Caret mal Zoom des Editors (SetScaling). So wachsen Schrift,
 // Zeilen, Badges und Abstände gemeinsam.
+// Barrierefreiheit (#447): Jedes Fenster ist ein UI-Automation-Element mit
+// Rolle und Name; Announce lässt die Sprachausgabe einen Text vorlesen.
 // Tasten bekommt das Fenster nie; der Editor leitet sie über den Tastatur-Hook
 // weiter (Atlas.IDE).
 
@@ -28,7 +30,8 @@ uses
   Vcl.Graphics,
   Vcl.Controls,
   Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette;
+  Atlas.Core.Style.Palette,
+  Atlas.UI.Popup.Accessibility;
 
 type
   TAtlasPopupWindow = class(TCustomControl)
@@ -40,6 +43,12 @@ type
     FPPI: Integer;
     /// <summary>CreateWnd hat entschieden, wer die Ecken rundet; vorher keine Region setzen.</summary>
     FCornersKnown: Boolean;
+    FAccessible: IAtlasRawElementProvider;
+    FAccessibleRole: Integer;
+    FAccessibleName: string;
+    FAnnounced: string;
+    procedure WMGetObject(var Message: TMessage); message WM_GETOBJECT;
+    function Accessible: IAtlasRawElementProvider;
     procedure WMMouseActivate(var Message: TWMMouseActivate); message WM_MOUSEACTIVATE;
     procedure WMNCHitTest(var Message: TWMNCHitTest); message WM_NCHITTEST;
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
@@ -59,7 +68,11 @@ type
     procedure FillRounded(const ARect: TRect; AColor: TAtlasColor; ARadius: Integer);
     /// <summary>Umrandetes Rechteck mit abgerundeten Ecken, innen AFill (clNone = durchsichtig).</summary>
     procedure FrameRounded(const ARect: TRect; ALine: TAtlasColor; ARadius: Integer; AFill: TColor = clNone);
+    /// <summary>Rolle (UiaListControlType, UiaToolTipControlType) und Name für Screenreader.</summary>
+    procedure SetAccessible(ARole: Integer; const AName: string);
   public
+    /// <summary>Lässt einen Screenreader AText vorlesen; derselbe Text zweimal hintereinander nur einmal.</summary>
+    procedure Announce(const AText: string);
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     /// <summary>Zeigt das Fenster ohne Aktivierung an ABounds (Bildschirmkoordinaten).</summary>
@@ -168,7 +181,40 @@ end;
 procedure TAtlasPopupWindow.DestroyWnd;
 begin
   FCornersKnown := False;
+  if FAccessible <> nil then
+  begin
+    TAtlasAccessibility.Release(WindowHandle);
+    FAccessible := nil;
+  end;
   inherited DestroyWnd;
+end;
+
+procedure TAtlasPopupWindow.SetAccessible(ARole: Integer; const AName: string);
+begin
+  FAccessibleRole := ARole;
+  FAccessibleName := AName;
+end;
+
+function TAtlasPopupWindow.Accessible: IAtlasRawElementProvider;
+begin
+  if (FAccessible = nil) and (FAccessibleRole <> 0) and HandleAllocated then
+    FAccessible := TAtlasAccessibleElement.Create(Handle, FAccessibleRole, FAccessibleName);
+  Result := FAccessible;
+end;
+
+procedure TAtlasPopupWindow.WMGetObject(var Message: TMessage);
+begin
+  Message.Result := TAtlasAccessibility.Answer(Handle, Message.WParam, Message.LParam, Accessible);
+  if Message.Result = 0 then
+    inherited;
+end;
+
+procedure TAtlasPopupWindow.Announce(const AText: string);
+begin
+  if (AText = FAnnounced) or not IsShown then
+    Exit;
+  FAnnounced := AText;
+  TAtlasAccessibility.Announce(Accessible, AText);
 end;
 
 procedure TAtlasPopupWindow.UpdateCorners;
@@ -282,6 +328,7 @@ end;
 
 procedure TAtlasPopupWindow.HidePopup;
 begin
+  FAnnounced := '';
   if HandleAllocated and IsWindowVisible(Handle) then
     ShowWindow(Handle, SW_HIDE);
 end;

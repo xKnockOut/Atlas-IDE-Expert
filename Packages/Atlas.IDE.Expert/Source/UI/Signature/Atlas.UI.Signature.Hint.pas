@@ -102,7 +102,8 @@ implementation
 uses
   System.Math,
   Atlas.Core.Style.Color,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Popup.Accessibility;
 
 const
   TextFlags = DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX;
@@ -347,6 +348,8 @@ begin
 end;
 
 procedure TAtlasSignatureHint.ShowSignature(const AHelp: TAtlasSignatureHelp; ASignature, AParameter: Integer);
+var
+  Spoken: string;
 begin
   if (ASignature < 0) or (ASignature > High(AHelp.Signatures)) then
   begin
@@ -357,6 +360,13 @@ begin
   FSignature := ASignature;
   FParameter := AParameter;
   Place;
+  // Sprachausgabe (#447): Signatur und aktueller Parameter.
+  SetAccessible(UiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.AccessSignature));
+  Spoken := AHelp.Signatures[ASignature].Label_;
+  if (AParameter >= 0) and (AParameter <= High(AHelp.Signatures[ASignature].Parameters)) then
+    Spoken := Spoken + '. ' + TAtlasStrings.Fmt(TAtlasTextId.AccessParameter, [AParameter + 1,
+      AHelp.Signatures[ASignature].Parameters[AParameter].Text(AHelp.Signatures[ASignature].Label_)]);
+  Announce(Spoken);
 end;
 
 procedure TAtlasSignatureHint.SetPath(const AOuter: TArray<string>; const ACallName: string);

@@ -42,6 +42,10 @@ type
   public
     class function Badge(const AItem: TAtlasCompletionItem): TAtlasBadge; static;
     class function Detail(const AItem: TAtlasCompletionItem): string; static;
+    /// <summary>Ansage für Screenreader (#447): "Name, Art, Position von Anzahl. Kurzbeschreibung";
+    /// AOf ist das Format von "Position von Anzahl" (z. B. "%d von %d").</summary>
+    class function Announcement(const AItem: TAtlasCompletionItem; const AKind, AOf: string;
+      APosition, ACount: Integer): string; static;
     class function Tags(const AItem: TAtlasCompletionItem): TAtlasTags; static;
     /// <summary>Unit, die beim Übernehmen in uses ergänzt wird; '' wenn eingebunden.</summary>
     class function MissingUnit(const AItem: TAtlasCompletionItem): string; static;
@@ -220,6 +224,20 @@ begin
     if Text <> '' then
       Exit(Text);
   end;
+end;
+
+class function TAtlasItemPresentation.Announcement(const AItem: TAtlasCompletionItem; const AKind, AOf: string;
+  APosition, ACount: Integer): string;
+var
+  Short: string;
+begin
+  Result := AItem.Name;
+  if AKind <> '' then
+    Result := Result + ', ' + AKind;
+  Result := Result + ', ' + Format(AOf, [APosition, ACount]) + '.';
+  Short := Detail(AItem);
+  if (Short <> '') and not SameText(Short, AItem.Name) then
+    Result := Result + ' ' + Short;
 end;
 
 class function TAtlasItemPresentation.Detail(const AItem: TAtlasCompletionItem): string;

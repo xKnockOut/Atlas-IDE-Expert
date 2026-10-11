@@ -149,6 +149,7 @@ type
     function RowAt(AX, AY: Integer): Integer;
     function RowRect(ARow: Integer): TRect;
     procedure EnsureSelectedVisible;
+    procedure AnnounceSelected;
     procedure PlaceAndShow;
     function MeasureWidth: Integer;
     function TagWidth(const ATag: TAtlasTag): Integer;
@@ -209,7 +210,8 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Style.Palette;
+  Atlas.Core.Style.Palette,
+  Atlas.UI.Popup.Accessibility;
 
 const
   TextFlags = DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX;
@@ -230,6 +232,7 @@ end;
 constructor TAtlasCompletionPopup.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  SetAccessible(UiaListControlType, TAtlasStrings.Text(TAtlasTextId.AccessCompletion));
   FVisibleRows := DefaultVisibleRows;
   FSelected := -1;
   FDetailView := TAtlasDetailView.Create;
@@ -647,6 +650,48 @@ begin
   FPattern := APattern;
   EnsureSelectedVisible;
   PlaceAndShow;
+  AnnounceSelected;
+end;
+
+/// <summary>Art eines Eintrags in Worten für die Sprachausgabe.</summary>
+function KindText(AKind: TAtlasItemKind): string;
+begin
+  case AKind of
+    TAtlasItemKind.Method, TAtlasItemKind.Function_, TAtlasItemKind.Procedure_:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindMethod);
+    TAtlasItemKind.Constructor_, TAtlasItemKind.Destructor_:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindConstructor);
+    TAtlasItemKind.Property_, TAtlasItemKind.Event:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindProperty);
+    TAtlasItemKind.Field:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindField);
+    TAtlasItemKind.Variable, TAtlasItemKind.Parameter:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindVariable);
+    TAtlasItemKind.Constant:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindConstant);
+    TAtlasItemKind.Type_:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindType);
+    TAtlasItemKind.Class_:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindClass);
+    TAtlasItemKind.Interface_:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindInterface);
+    TAtlasItemKind.Record_:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindRecord);
+    TAtlasItemKind.Enum:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindEnum);
+    TAtlasItemKind.EnumMember:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindEnumMember);
+  else
+    Result := '';
+  end;
+end;
+
+procedure TAtlasCompletionPopup.AnnounceSelected;
+begin
+  if (FSelected < 0) or (FSelected > High(FOrder)) then
+    Exit;
+  Announce(TAtlasItemPresentation.Announcement(FItems[FOrder[FSelected]], KindText(FItems[FOrder[FSelected]].Kind),
+    TAtlasStrings.Text(TAtlasTextId.AccessPosition), FSelected + 1, Length(FOrder)));
 end;
 
 procedure TAtlasCompletionPopup.HideList;
