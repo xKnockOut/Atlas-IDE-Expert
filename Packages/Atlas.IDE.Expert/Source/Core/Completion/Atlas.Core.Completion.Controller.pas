@@ -268,12 +268,12 @@ function TAtlasCompletionController.FirstItemFrom(APosition, ADirection: Integer
 begin
   // Nächster Eintrag ab APosition in Richtung ADirection, sonst in der Gegenrichtung; -1 ohne.
   Result := APosition;
-  while (Result >= 0) and (Result <= High(FOrder)) and (FOrder[Result] = TAtlasRanking.Header) do
+  while (Result >= 0) and (Result <= High(FOrder)) and TAtlasRanking.IsHeader(FOrder[Result]) do
     Inc(Result, ADirection);
   if (Result >= 0) and (Result <= High(FOrder)) then
     Exit;
   Result := APosition;
-  while (Result >= 0) and (Result <= High(FOrder)) and (FOrder[Result] = TAtlasRanking.Header) do
+  while (Result >= 0) and (Result <= High(FOrder)) and TAtlasRanking.IsHeader(FOrder[Result]) do
     Dec(Result, ADirection);
   if (Result < 0) or (Result > High(FOrder)) then
     Result := -1;
@@ -365,7 +365,7 @@ var
   Position: Integer;
 begin
   for Position := 0 to High(FOrder) do
-    if (FOrder[Position] <> TAtlasRanking.Header) and (FItems[FOrder[Position]].Name = AName) then
+    if not TAtlasRanking.IsHeader(FOrder[Position]) and (FItems[FOrder[Position]].Name = AName) then
     begin
       FSelected := Position;
       Exit;
