@@ -125,9 +125,11 @@ begin
     Result := 9;
 end;
 
-function GroupOf(const AItem: TAtlasCompletionItem): Integer;
+function GroupOf(const AItem: TAtlasCompletionItem; AAnyFits: Boolean): Integer;
 begin
-  if AItem.ExpectedType = '' then
+  // Gruppen nur, wenn etwas passt: Teilergebnisse (#616) behalten den erwarteten Typ, auch wenn erst ein
+  // späteres Teil einen passenden Eintrag bringt.
+  if not AAnyFits or (AItem.ExpectedType = '') then
     Result := 2
   else if AItem.Fits then
     Result := 0
@@ -140,9 +142,9 @@ class function TAtlasRanking.Order(const AItems: TAtlasCompletionItems; const AP
 var
   Items: TAtlasCompletionItems;
   Scores, Boosts: TArray<Integer>;
-  Found: TList<Integer>;
+  Found, Ordered: TList<Integer>;
   Index, Position, Depth: Integer;
-  Grouped: Boolean;
+  Grouped, AnyFits: Boolean;
   Container: string;
   Group: Integer;
   Options: TAtlasRankOptions;
@@ -152,7 +154,15 @@ begin
   SetLength(Scores, Length(Items));
   SetLength(Boosts, Length(Items));
   Grouped := Options.GroupInherited and (APattern = '');
+  AnyFits := False;
+  for Index := 0 to High(Items) do
+    if Items[Index].Fits then
+    begin
+      AnyFits := True;
+      Break;
+    end;
   Found := TList<Integer>.Create;
+  Ordered := TList<Integer>.Create;
   try
     for Index := 0 to High(Items) do
     begin
@@ -176,7 +186,7 @@ begin
         if Result = 0 then
           Result := Ord(Items[A].Unavailable) - Ord(Items[B].Unavailable);
         if Result = 0 then
-          Result := GroupOf(Items[A]) - GroupOf(Items[B]);
+          Result := GroupOf(Items[A], AnyFits) - GroupOf(Items[B], AnyFits);
         if Result <> 0 then
           Exit;
         if Grouped then
@@ -209,7 +219,7 @@ begin
         if Result = 0 then
           Result := A - B;
       end));
-    Result := nil;
+    // In einer Liste sammeln: Anhängen an das Array kopierte es bei jedem Eintrag (#616).
     Depth := 0;
     Container := '';
     Group := -1;
@@ -217,23 +227,25 @@ begin
     begin
       Index := Found[Position];
       // Überschrift je Gruppe zum erwarteten Typ (#417), sonst vor jeder Gruppe geerbter Member (#419).
-      if (Items[Index].ExpectedType <> '') and not Items[Index].IsAction then
+      if AnyFits and (Items[Index].ExpectedType <> '') and not Items[Index].IsAction then
       begin
-        if GroupOf(Items[Index]) <> Group then
-          Result := Result + [Header];
+        if GroupOf(Items[Index], AnyFits) <> Group then
+          Ordered.Add(Header);
       end
       else if Grouped and (Items[Index].Depth > 0) and ((Items[Index].Depth <> Depth) or
         not SameText(Items[Index].DeclaringClass, Container)) then
-        Result := Result + [Header];
-      Group := GroupOf(Items[Index]);
+        Ordered.Add(Header);
+      Group := GroupOf(Items[Index], AnyFits);
       Depth := Items[Index].Depth;
       Container := Items[Index].DeclaringClass;
-      Result := Result + [Index];
+      Ordered.Add(Index);
     end;
+    Result := Ordered.ToArray;
     // Tippfehler (#485): wenig reguläre Treffer, dann bis zu MaxTypos ähnliche Namen unter „Meintest du“.
     if (ItemCount(Result) < MinRegular) and (TAtlasCompletionMatcher.TypoLimit(APattern) > 0) then
       Result := Result + Typos(Items, APattern, Options, Scores, Boosts);
   finally
+    Ordered.Free;
     Found.Free;
   end;
 end;

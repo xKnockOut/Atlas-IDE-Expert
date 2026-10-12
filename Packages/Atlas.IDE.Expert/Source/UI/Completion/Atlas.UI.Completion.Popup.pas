@@ -645,14 +645,22 @@ end;
 
 procedure TAtlasCompletionPopup.ShowList(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>;
   ASelected: Integer; const APattern: string);
+var
+  SameList: Boolean;
 begin
+  // Nur die Auswahl bewegt (Pfeiltasten): dieselben Arrays, Breite nicht neu messen (#616).
+  SameList := not FShowingEmpty and (Pointer(AItems) = Pointer(FItems)) and (Pointer(AOrder) = Pointer(FOrder)) and
+    (APattern = FPattern) and IsShown;
   FShowingEmpty := False;
   FItems := AItems;
   FOrder := AOrder;
   FSelected := ASelected;
   FPattern := APattern;
   EnsureSelectedVisible;
-  PlaceAndShow;
+  if SameList then
+    Relayout
+  else
+    PlaceAndShow;
   AnnounceSelected;
 end;
 
