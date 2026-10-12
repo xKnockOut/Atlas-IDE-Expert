@@ -223,4 +223,5 @@
 - **Offen:**
   - Nicht gebaut und nicht getestet (Cloud).
   - Nächster Schritt: Namensverzeichnis im Index für `AddFromOtherUnits`/`AddUnavailable`. Beim User hat der Index 672.431 Symbole, die bei jeder Import-Suche linear durchlaufen werden.
-  - Beim User meldet der Index „0 aus dem Cache“ (79 s je Start); der Bibliotheks-Cache aus #492 greift nicht, das ist zu prüfen.
+  - „0 aus dem Cache“ (79 s je Start): Das Aufräumen des Cache-Ordners (256 MB) schützte nur den Projekt-Cache und löschte den nicht gesperrten Bibliotheks-Cache bei jedem Start. Behoben: `Cleanup` mit beiden Dateien. Beim User prüfen, ob der zweite Start „aus dem Cache“ meldet.
+  - Hover-Zeitüberschreitungen während des Indexlaufs: `TIndexService.EnsureUnit` liest unter der globalen Sperre. Bei Bedarf außerhalb der Sperre lesen.
