@@ -238,6 +238,7 @@ uses
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Index.Extractor,
+  Atlas.Common.Index.NameIndex,
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Common.Lsp.SignatureHelp,
   System.RegularExpressions,
@@ -1109,8 +1110,11 @@ var
     Symbol: TIndexSymbol;
     Edit: TRuleEdit;
     Added, Before: Integer;
-    Pass: Integer;
-    Units: TArray<TUnitIndex>;
+    Names: TImportNameIndex;
+    Entry: TImportNameEntry;
+    QueryMask: UInt64;
+    // Je Unit: 0 = noch nicht geprüft, 1 = überspringen (eigene oder schon eingebunden), 2 = vorschlagen.
+    UnitState: TArray<Byte>;
   begin
     Known := TDictionary<string, Boolean>.Create;
     try
@@ -1122,46 +1126,56 @@ var
       Own := TUsesClauses.OwnName(ATree.Tokens);
       Added := 0;
       // Projekt-Units vor der Bibliothek: Sonst füllen RTL/VCL die Höchstzahl, bevor eine
-      // gerade getippte Klasse aus dem eigenen Projekt drankommt (#492).
-      Units := AIndex.Units;
-      for Pass := 0 to 1 do
-      for UnitInfo in Units do
+      // gerade getippte Klasse aus dem eigenen Projekt drankommt (#492). Der Namensindex (#617)
+      // ist schon so sortiert und enthält nur importierbare Symbole; die Zeichenmaske spart den
+      // unscharfen Vergleich für fast alle Namen.
+      Names := TImportNames.Current(AIndex);
+      QueryMask := TImportNameIndex.MaskOf(Context.Prefix);
+      SetLength(UnitState, Length(Names.Units));
+      for Entry in Names.Entries do
       begin
-        if UnitInfo.Library_ <> (Pass = 1) then
+        if not TImportNameIndex.MayMatch(Entry.Mask, QueryMask) then
           Continue;
-        if SameText(UnitInfo.UnitName, Own) or TUsesClauses.IsUsed(Used, UnitInfo.UnitName, AResolver.Namespaces) then
-          Continue;
-        for Symbol in UnitInfo.Symbols do
+        if UnitState[Entry.UnitPos] = 0 then
         begin
-          if not Symbol.InInterface or (Symbol.Container <> '') or Known.ContainsKey(UpperCase(Symbol.Name)) then
-            Continue;
-          if MatchScore(Symbol.Name, Context.Prefix, AMatching) = TFuzzyMatch.NoMatch then
-            Continue;
-          if not TUsesClauses.AddUnit(ATree.Tokens, Context.Offset, UnitInfo.UnitName, #13#10, Edit) then
-            Exit;
-          Before := List.Count;
-          // Add liest Member und Quelle: für den Import aus dem Indexsymbol, nicht vom vorigen
-          // Eintrag (sonst fehlten z. B. die Klammern bei ShowMessage aus Vcl.Dialogs).
-          Member := Default(TResolvedSymbol);
-          Member.Name := Symbol.Name;
-          Member.MinArgs := Symbol.MinArgs;
-          Member.MaxArgs := Symbol.MaxArgs;
-          SourceFile := UnitInfo.FileName;
-          SourcePosition := Symbol.SelectionRange.StartPos;
-          // Eingebundenes zuerst, dann Projekt-Units, dann RTL/VCL und andere Bibliotheken.
-          if UnitInfo.Library_ then
-            Add(Symbol.Name, UnitInfo.UnitName + ' (uses ergänzen)', KindOf(Symbol.Kind), 200, [Edit])
+          UnitInfo := Names.Units[Entry.UnitPos];
+          if SameText(UnitInfo.UnitName, Own) or TUsesClauses.IsUsed(Used, UnitInfo.UnitName, AResolver.Namespaces) then
+            UnitState[Entry.UnitPos] := 1
           else
-            Add(Symbol.Name, UnitInfo.UnitName + ' (uses ergänzen)', KindOf(Symbol.Kind), 100, [Edit]);
-          // Gleichnamige Symbole verschiedener Units bleiben alle wählbar.
-          if List.Count > Before then
+            UnitState[Entry.UnitPos] := 2;
+        end;
+        if UnitState[Entry.UnitPos] = 1 then
+          Continue;
+        UnitInfo := Names.Units[Entry.UnitPos];
+        Symbol := UnitInfo.Symbols[Entry.SymbolPos];
+        if Known.ContainsKey(UpperCase(Symbol.Name)) then
+          Continue;
+        if MatchScore(Symbol.Name, Context.Prefix, AMatching) = TFuzzyMatch.NoMatch then
+          Continue;
+        if not TUsesClauses.AddUnit(ATree.Tokens, Context.Offset, UnitInfo.UnitName, #13#10, Edit) then
+          Exit;
+        Before := List.Count;
+        // Add liest Member und Quelle: für den Import aus dem Indexsymbol, nicht vom vorigen
+        // Eintrag (sonst fehlten z. B. die Klammern bei ShowMessage aus Vcl.Dialogs).
+        Member := Default(TResolvedSymbol);
+        Member.Name := Symbol.Name;
+        Member.MinArgs := Symbol.MinArgs;
+        Member.MaxArgs := Symbol.MaxArgs;
+        SourceFile := UnitInfo.FileName;
+        SourcePosition := Symbol.SelectionRange.StartPos;
+        // Eingebundenes zuerst, dann Projekt-Units, dann RTL/VCL und andere Bibliotheken.
+        if UnitInfo.Library_ then
+          Add(Symbol.Name, UnitInfo.UnitName + ' (uses ergänzen)', KindOf(Symbol.Kind), 200, [Edit])
+        else
+          Add(Symbol.Name, UnitInfo.UnitName + ' (uses ergänzen)', KindOf(Symbol.Kind), 100, [Edit]);
+        // Gleichnamige Symbole verschiedener Units bleiben alle wählbar.
+        if List.Count > Before then
+        begin
+          Inc(Added);
+          if Added >= MaxImportItems then
           begin
-            Inc(Added);
-            if Added >= MaxImportItems then
-            begin
-              ImportsCapped := True;
-              Exit;
-            end;
+            ImportsCapped := True;
+            Exit;
           end;
         end;
       end;

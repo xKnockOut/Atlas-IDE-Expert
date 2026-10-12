@@ -30,6 +30,7 @@ type
     FBytes: Int64;
     FBudget: Int64;
     FCompactCount: Integer;
+    FGeneration: Int64;
     procedure AddLocked(const AKey: string; const AUnit: TUnitIndex);
     procedure ShrinkLocked;
     function Locations(const AFilter: TFunc<TIndexSymbol, Boolean>): TArray<TSymbolLocation>;
@@ -51,9 +52,15 @@ type
     function CompactCount: Integer;
     procedure SetBudget(ABytes: Int64);
     function Budget: Int64;
+    function Generation: Int64;
   end;
 
 implementation
+
+var
+  // Jeder Index beginnt mit eigener Generation, damit ein neuer Index an derselben Adresse
+  // nie für den alten gehalten wird (#617).
+  IndexSerial: Int64;
 
 function LastPart(const AName: string): string;
 var
@@ -74,6 +81,7 @@ end;
 constructor TSymbolIndex.Create;
 begin
   inherited Create;
+  FGeneration := TInterlocked.Increment(IndexSerial) shl 32;
   FLock := TCriticalSection.Create;
   FFiles := TDictionary<string, TUnitIndex>.Create;
   FUnitFiles := TDictionary<string, string>.Create;
@@ -101,6 +109,7 @@ begin
   if Existing.Compact then
     Dec(FCompactCount);
   FFiles.Remove(AFileKey);
+  Inc(FGeneration);
   if FUnitFiles.TryGetValue(UpperCase(Existing.UnitName), UnitFile) and (UnitFile = AFileKey) then
     FUnitFiles.Remove(UpperCase(Existing.UnitName));
 end;
@@ -108,6 +117,7 @@ end;
 procedure TSymbolIndex.AddLocked(const AKey: string; const AUnit: TUnitIndex);
 begin
   FFiles.Add(AKey, AUnit);
+  Inc(FGeneration);
   FUnitFiles.AddOrSetValue(UpperCase(AUnit.UnitName), AKey);
   Inc(FSymbolCount, Length(AUnit.Symbols));
   Inc(FBytes, TIndexMemory.UnitBytes(AUnit));
@@ -256,6 +266,16 @@ begin
   FLock.Enter;
   try
     Result := FFiles.Values.ToArray;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TSymbolIndex.Generation: Int64;
+begin
+  FLock.Enter;
+  try
+    Result := FGeneration;
   finally
     FLock.Leave;
   end;

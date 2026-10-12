@@ -39,6 +39,7 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore.Tests in 'Common\Documents\Atlas.Common.Documents.Providers.DocumentStore.Tests.pas',
   Atlas.Common.Documents.Uris.Tests in 'Common\Documents\Atlas.Common.Documents.Uris.Tests.pas',
   Atlas.Common.Index.Tests in 'Common\Index\Atlas.Common.Index.Tests.pas',
+  Atlas.Common.Index.NameIndex.Tests in 'Common\Index\Atlas.Common.Index.NameIndex.Tests.pas',
   Atlas.Common.Index.CacheHousekeeping.Tests in 'Common\Index\Atlas.Common.Index.CacheHousekeeping.Tests.pas',
   Atlas.Common.Index.Memory.Tests in 'Common\Index\Atlas.Common.Index.Memory.Tests.pas',
   Atlas.Common.Semantics.ControlFlow.Tests in 'Common\Semantics\Atlas.Common.Semantics.ControlFlow.Tests.pas',

@@ -123,6 +123,9 @@ type
     /// zuerst Bibliotheks-, dann Projekt-Units kompakt.</summary>
     procedure SetBudget(ABytes: Int64);
     function Budget: Int64;
+    /// <summary>Zählt jede Änderung am Index hoch; abgeleitete Strukturen (Namensindex, #617)
+    /// erkennen daran, dass sie neu aufgebaut werden müssen.</summary>
+    function Generation: Int64;
   end;
 
   IIndexFileSystem = interface
