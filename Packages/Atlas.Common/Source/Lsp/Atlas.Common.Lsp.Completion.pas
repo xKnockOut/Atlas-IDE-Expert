@@ -12,6 +12,12 @@
 // Projekt-Units vor Bibliotheken; additionalTextEdits trägt die Unit beim Annehmen ins uses ein.
 // Noch nicht: Sichtbarkeit (private/protected), Generics, Class Helper, Typinferenz bei var X := ….
 //
+// Geschwindigkeit (#616): Ist schon etwas getippt, baut der Resolver nur Kandidaten, deren Name passt
+// (NameFilter). isIncomplete kommt nur, wenn die Liste wirklich unvollständig ist (gekürzt, oder Importe
+// fehlen noch, weil zu wenig getippt ist); sonst filtert der Editor selbst weiter. Schickt der Client einen
+// partialResultToken, kommen die Einträge gestaffelt: eigener Gültigkeitsbereich, Units aus uses, zuletzt
+// Importe aus nicht eingebundenen Units ($/progress mit CompletionItem[], der Rest in der Antwort).
+//
 // Postfix-Vorlagen (#188): Hinter "Ausdruck." kommen nach den Mitgliedern Kürzel wie for, tryf,
 // ifa und fmt, die den Ausdruck ersetzen (textEdit ab Ausdrucksbeginn, filterText "Ausdruck.Kürzel"),
 // sofern der Typ bekannt ist und passt.
@@ -112,6 +118,15 @@ type
 
   TCompletionMatchingFunc = reference to function(const AUri: string): TCompletionMatching;
 
+  /// <summary>Teilergebnis einer gestaffelten Vervollständigung (#616), in Anzeigereihenfolge.</summary>
+  TCompletionPartialProc = reference to procedure(const AItems: TArray<TCompletionItem>);
+
+  /// <summary>Sendet eine Benachrichtigung an den Client (z. B. $/progress); übernimmt AParams.</summary>
+  TCompletionNotifyProc = reference to procedure(const AMethod: string; AParams: TJSONObject);
+
+  /// <summary>Zeitmessung je Anfrage (#616), z. B. für ILogger.Debug.</summary>
+  TCompletionLogProc = reference to procedure(const AText: string);
+
   TLspCompletion = class
   public const
     Method = 'textDocument/completion';
@@ -130,11 +145,21 @@ type
     FReadText: TCompletionReadText;
     FSlashCommandsFor: TSlashCommandsProvider;
     FPostfixFor: TPostfixOptionsFunc;
+    FNotify: TCompletionNotifyProc;
+    FLog: TCompletionLogProc;
+    // Zuletzt für completionItem/resolve gelesene Datei (#616): Beim Blättern in der Liste fragt Atlas oft
+    // nacheinander Symbole derselben großen Bibliotheks-Unit nach.
+    FCacheLock: TObject;
+    FCacheFile: string;
+    FCacheStamp: TDateTime;
+    FCacheText: string;
+    function ReadCached(const AFileName: string; out AText: string): Boolean;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleResolve(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
       const AEnsureUnit: TEnsureUnitFunc = nil);
+    destructor Destroy; override;
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>completionProvider mit Punkt als Auslöser.</summary>
     class function Capability: TJSONObject; static;
@@ -151,6 +176,12 @@ type
     class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName, AText: string; const APosition: TTextPosition; AMatching: TCompletionMatching;
       const APostfix: TPostfixOptions): TCompletionItems; overload; static;
+    /// <summary>Wie oben, gestaffelt (#616): AOnPartial bekommt zuerst den eigenen Gültigkeitsbereich, dann die
+    /// Units aus uses; das Ergebnis enthält nur noch den Rest (Importe, nicht verfügbare, Postfix-Vorlagen).
+    /// Ohne AOnPartial wie oben.</summary>
+    class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AFileName, AText: string; const APosition: TTextPosition; AMatching: TCompletionMatching;
+      const APostfix: TPostfixOptions; const AOnPartial: TCompletionPartialProc): TCompletionItems; overload; static;
     /// <summary>In einer Klassendeklaration nach "procedure " bzw. "function " (#443): überschreibbare
     /// Methoden der Vorfahren; Übernehmen setzt den Rest der Deklaration mit override und erzeugt den Rumpf
     /// mit inherited. False außerhalb dieses Kontexts.</summary>
@@ -165,7 +196,9 @@ type
       static;
     class function KindOf(AKind: TIndexSymbolKind): Integer; static;
     /// <summary>CompletionList des LSP. Der Aufrufer übernimmt das Objekt.</summary>
-    class function ToJson(const AItems: TCompletionItems): TJSONObject; static;
+    class function ToJson(const AItems: TCompletionItems): TJSONObject; overload; static;
+    /// <summary>CompletionItem[]; AFirstSort: sortText des ersten Eintrags (bei Teilergebnissen fortlaufend).</summary>
+    class function ToJson(const AItems: TArray<TCompletionItem>; AFirstSort: Integer): TJSONArray; overload; static;
     /// <summary>Details zur Deklaration an APosition (Namensposition) in AText für das Detailpanel
     /// von Atlas (#405, #424): declaration, unit, container, visibility, directives, deprecated,
     /// summary, params, returns, exceptions, remarks. Der Aufrufer übernimmt das Objekt.</summary>
@@ -180,6 +213,10 @@ type
     property SlashCommandsFor: TSlashCommandsProvider read FSlashCommandsFor write FSlashCommandsFor;
     /// <summary>Postfix-Vorlagen je Dokument (#188); ohne Zuweisung an und mit Inline-Variable.</summary>
     property PostfixFor: TPostfixOptionsFunc read FPostfixFor write FPostfixFor;
+    /// <summary>Für Teilergebnisse über $/progress (#616); ohne Zuweisung kommt alles in der Antwort.</summary>
+    property Notify: TCompletionNotifyProc read FNotify write FNotify;
+    /// <summary>Zeiten je Anfrage (#616); ohne Zuweisung keine Messung.</summary>
+    property Log: TCompletionLogProc read FLog write FLog;
   end;
 
 implementation
@@ -187,6 +224,7 @@ implementation
 uses
   System.Math,
   System.StrUtils,
+  System.Diagnostics,
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Documents.Uris,
@@ -200,6 +238,7 @@ uses
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Index.Extractor,
+  Atlas.Common.Index.NameIndex,
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Common.Lsp.SignatureHelp,
   System.RegularExpressions,
@@ -352,6 +391,46 @@ begin
   FStore := AStore;
   FIndex := AIndex;
   FEnsureUnit := AEnsureUnit;
+  FCacheLock := TObject.Create;
+end;
+
+destructor TLspCompletion.Destroy;
+begin
+  FCacheLock.Free;
+  inherited;
+end;
+
+function TLspCompletion.ReadCached(const AFileName: string; out AText: string): Boolean;
+var
+  Document: ITextDocument;
+  Stamp: TDateTime;
+begin
+  // Geöffnete Dateien immer im Stand des Editors; sonst gilt der Zwischenspeicher, solange die Datei
+  // unverändert ist.
+  if ((FStore <> nil) and FStore.TryGet(TDocumentUris.FromPath(AFileName), Document)) or
+    not FileAge(AFileName, Stamp) then
+    Exit(FReadText(AFileName, AText));
+  TMonitor.Enter(FCacheLock);
+  try
+    if SameText(FCacheFile, AFileName) and (FCacheStamp = Stamp) then
+    begin
+      AText := FCacheText;
+      Exit(True);
+    end;
+  finally
+    TMonitor.Exit(FCacheLock);
+  end;
+  Result := FReadText(AFileName, AText);
+  if not Result then
+    Exit;
+  TMonitor.Enter(FCacheLock);
+  try
+    FCacheFile := AFileName;
+    FCacheStamp := Stamp;
+    FCacheText := AText;
+  finally
+    TMonitor.Exit(FCacheLock);
+  end;
 end;
 
 procedure TLspCompletion.Attach(ADispatcher: TJsonRpcDispatcher);
@@ -583,6 +662,17 @@ begin
   Result := TFuzzyMatch.Score(AName, APrefix);
 end;
 
+/// <summary>Vorfilter des Resolvers (#616): nur Namen, die zu APrefix passen. GetEnumerator bleibt, weil die
+/// Postfix-Vorlagen daran erkennen, ob der Typ aufzählbar ist; Add verwirft ihn ohne Treffer wieder.</summary>
+function PrefixFilter(const APrefix: string; AMatching: TCompletionMatching): TCandidateNameFilter;
+begin
+  Result :=
+    function(const AName: string): Boolean
+    begin
+      Result := (MatchScore(AName, APrefix, AMatching) <> TFuzzyMatch.NoMatch) or SameText(AName, 'GetEnumerator');
+    end;
+end;
+
 class function TLspCompletion.ExpectedType(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const APosition: TTextPosition): string;
 var
@@ -734,11 +824,22 @@ end;
 class function TLspCompletion.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const AFileName, AText: string; const APosition: TTextPosition; AMatching: TCompletionMatching;
   const APostfix: TPostfixOptions): TCompletionItems;
+begin
+  Result := Collect(AResolver, AIndex, ATree, AFileName, AText, APosition, AMatching, APostfix, nil);
+end;
+
+class function TLspCompletion.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName, AText: string; const APosition: TTextPosition; AMatching: TCompletionMatching;
+  const APostfix: TPostfixOptions; const AOnPartial: TCompletionPartialProc): TCompletionItems;
 var
   Postfix: TArray<TCompletionItem>;
+  // Gestaffelt (#616): schon gesendete Einträge und ihre Namen.
+  Sent: Integer;
+  SentNames: TDictionary<string, Boolean>;
+  Truncated: Boolean;
+  ImportsCapped: Boolean;
   Context: TCompletionContext;
   Candidates: TArray<TResolvedSymbol>;
-  Candidate: TResolvedSymbol;
   Units: TArray<TUnitIndex>;
   UnitInfo: TUnitIndex;
   List: TList<TScoredItem>;
@@ -959,6 +1060,8 @@ var
     try
       for Existing in List do
         Known.AddOrSetValue(UpperCase(Existing.Item.Name), True);
+      for Own in SentNames.Keys do
+        Known.AddOrSetValue(Own, True);
       Used := TUsesClauses.UsedUnits(ATree.Tokens);
       Own := TUsesClauses.OwnName(ATree.Tokens);
       for UnitInfo in AIndex.Units do
@@ -1007,54 +1110,72 @@ var
     Symbol: TIndexSymbol;
     Edit: TRuleEdit;
     Added, Before: Integer;
-    Pass: Integer;
-    Units: TArray<TUnitIndex>;
+    Names: TImportNameIndex;
+    Entry: TImportNameEntry;
+    QueryMask: UInt64;
+    // Je Unit: 0 = noch nicht geprüft, 1 = überspringen (eigene oder schon eingebunden), 2 = vorschlagen.
+    UnitState: TArray<Byte>;
   begin
     Known := TDictionary<string, Boolean>.Create;
     try
       for Existing in List do
         Known.AddOrSetValue(UpperCase(Existing.Item.Name), True);
+      for Own in SentNames.Keys do
+        Known.AddOrSetValue(Own, True);
       Used := TUsesClauses.UsedUnits(ATree.Tokens);
       Own := TUsesClauses.OwnName(ATree.Tokens);
       Added := 0;
       // Projekt-Units vor der Bibliothek: Sonst füllen RTL/VCL die Höchstzahl, bevor eine
-      // gerade getippte Klasse aus dem eigenen Projekt drankommt (#492).
-      Units := AIndex.Units;
-      for Pass := 0 to 1 do
-      for UnitInfo in Units do
+      // gerade getippte Klasse aus dem eigenen Projekt drankommt (#492). Der Namensindex (#617)
+      // ist schon so sortiert und enthält nur importierbare Symbole; die Zeichenmaske spart den
+      // unscharfen Vergleich für fast alle Namen.
+      Names := TImportNames.Current(AIndex);
+      QueryMask := TImportNameIndex.MaskOf(Context.Prefix);
+      SetLength(UnitState, Length(Names.Units));
+      for Entry in Names.Entries do
       begin
-        if UnitInfo.Library_ <> (Pass = 1) then
+        if not TImportNameIndex.MayMatch(Entry.Mask, QueryMask) then
           Continue;
-        if SameText(UnitInfo.UnitName, Own) or TUsesClauses.IsUsed(Used, UnitInfo.UnitName, AResolver.Namespaces) then
-          Continue;
-        for Symbol in UnitInfo.Symbols do
+        if UnitState[Entry.UnitPos] = 0 then
         begin
-          if not Symbol.InInterface or (Symbol.Container <> '') or Known.ContainsKey(UpperCase(Symbol.Name)) then
-            Continue;
-          if MatchScore(Symbol.Name, Context.Prefix, AMatching) = TFuzzyMatch.NoMatch then
-            Continue;
-          if not TUsesClauses.AddUnit(ATree.Tokens, Context.Offset, UnitInfo.UnitName, #13#10, Edit) then
-            Exit;
-          Before := List.Count;
-          // Add liest Member und Quelle: für den Import aus dem Indexsymbol, nicht vom vorigen
-          // Eintrag (sonst fehlten z. B. die Klammern bei ShowMessage aus Vcl.Dialogs).
-          Member := Default(TResolvedSymbol);
-          Member.Name := Symbol.Name;
-          Member.MinArgs := Symbol.MinArgs;
-          Member.MaxArgs := Symbol.MaxArgs;
-          SourceFile := UnitInfo.FileName;
-          SourcePosition := Symbol.SelectionRange.StartPos;
-          // Eingebundenes zuerst, dann Projekt-Units, dann RTL/VCL und andere Bibliotheken.
-          if UnitInfo.Library_ then
-            Add(Symbol.Name, UnitInfo.UnitName + ' (uses ergänzen)', KindOf(Symbol.Kind), 200, [Edit])
+          UnitInfo := Names.Units[Entry.UnitPos];
+          if SameText(UnitInfo.UnitName, Own) or TUsesClauses.IsUsed(Used, UnitInfo.UnitName, AResolver.Namespaces) then
+            UnitState[Entry.UnitPos] := 1
           else
-            Add(Symbol.Name, UnitInfo.UnitName + ' (uses ergänzen)', KindOf(Symbol.Kind), 100, [Edit]);
-          // Gleichnamige Symbole verschiedener Units bleiben alle wählbar.
-          if List.Count > Before then
+            UnitState[Entry.UnitPos] := 2;
+        end;
+        if UnitState[Entry.UnitPos] = 1 then
+          Continue;
+        UnitInfo := Names.Units[Entry.UnitPos];
+        Symbol := UnitInfo.Symbols[Entry.SymbolPos];
+        if Known.ContainsKey(UpperCase(Symbol.Name)) then
+          Continue;
+        if MatchScore(Symbol.Name, Context.Prefix, AMatching) = TFuzzyMatch.NoMatch then
+          Continue;
+        if not TUsesClauses.AddUnit(ATree.Tokens, Context.Offset, UnitInfo.UnitName, #13#10, Edit) then
+          Exit;
+        Before := List.Count;
+        // Add liest Member und Quelle: für den Import aus dem Indexsymbol, nicht vom vorigen
+        // Eintrag (sonst fehlten z. B. die Klammern bei ShowMessage aus Vcl.Dialogs).
+        Member := Default(TResolvedSymbol);
+        Member.Name := Symbol.Name;
+        Member.MinArgs := Symbol.MinArgs;
+        Member.MaxArgs := Symbol.MaxArgs;
+        SourceFile := UnitInfo.FileName;
+        SourcePosition := Symbol.SelectionRange.StartPos;
+        // Eingebundenes zuerst, dann Projekt-Units, dann RTL/VCL und andere Bibliotheken.
+        if UnitInfo.Library_ then
+          Add(Symbol.Name, UnitInfo.UnitName + ' (uses ergänzen)', KindOf(Symbol.Kind), 200, [Edit])
+        else
+          Add(Symbol.Name, UnitInfo.UnitName + ' (uses ergänzen)', KindOf(Symbol.Kind), 100, [Edit]);
+        // Gleichnamige Symbole verschiedener Units bleiben alle wählbar.
+        if List.Count > Before then
+        begin
+          Inc(Added);
+          if Added >= MaxImportItems then
           begin
-            Inc(Added);
-            if Added >= MaxImportItems then
-              Exit;
+            ImportsCapped := True;
+            Exit;
           end;
         end;
       end;
@@ -1063,64 +1184,16 @@ var
     end;
   end;
 
-begin
-  Result := Default(TCompletionItems);
-  Postfix := nil;
-  Context := Analyze(ATree, APosition);
-  // Name der eigenen Unit für die Bereichsstufe (#488).
-  OwnUnit := '';
-  if ATree <> nil then
-    OwnUnit := TUsesClauses.OwnName(ATree.Tokens);
-  SourceFile := '';
-  SourcePosition := Default(TTextPosition);
-  Member := Default(TResolvedSymbol);
-  Expected := '';
-  AnyFits := False;
-  if Context.Kind in [TCompletionContextKind.Member, TCompletionContextKind.Scope] then
-    Expected := ExpectedType(AResolver, ATree, AFileName, APosition);
-  // Viele Typprüfungen auf demselben Baum: einmal auswerten.
-  if Expected <> '' then
-    AResolver.PinTree(ATree, AFileName);
-  Descends := TDictionary<string, Boolean>.Create;
-  List := TList<TScoredItem>.Create(TScoredItemComparer.Create);
-  try
-    case Context.Kind of
-      TCompletionContextKind.UsesClause:
-        begin
-          Units := AIndex.Units;
-          for UnitInfo in Units do
-            Add(UnitInfo.UnitName, UnitInfo.FileName, KindModule);
-        end;
-      TCompletionContextKind.Member, TCompletionContextKind.Scope:
-        begin
-          if Context.Kind = TCompletionContextKind.Member then
-            Candidates := AResolver.MemberCandidates(ATree, AFileName, Context.Names, Context.Offset)
-          else
-            Candidates := AResolver.ScopeCandidates(ATree, AFileName, Context.Offset);
-          for Candidate in Candidates do
-          begin
-            // Wo die Deklaration steht, für completionItem/resolve.
-            SourceFile := Candidate.FileName;
-            SourcePosition := Candidate.SelectionRange.StartPos;
-            Member := Candidate;
-            if Candidate.TypeName <> '' then
-              Add(Candidate.Name, Candidate.TypeName, KindOf(Candidate.SymbolKind))
-            else if Candidate.Container <> '' then
-              Add(Candidate.Name, Candidate.Container, KindOf(Candidate.SymbolKind))
-            else
-              Add(Candidate.Name, Candidate.UnitName, KindOf(Candidate.SymbolKind));
-          end;
-          SourceFile := '';
-          Member := Default(TResolvedSymbol);
-          if (Context.Kind = TCompletionContextKind.Scope) and (Length(Context.Prefix) >= MinImportPrefix) then
-            AddFromOtherUnits;
-          if Context.Kind = TCompletionContextKind.Scope then
-            AddUnavailable;
-          // Postfix-Vorlagen stehen immer hinter den echten Mitgliedern.
-          if (Context.Kind = TCompletionContextKind.Member) and APostfix.Enabled and (AText <> '') then
-            AddPostfix;
-        end;
-    end;
+  /// <summary>Sortiert die gesammelten Einträge, kürzt auf den Rest von MaxItems und leert die Liste.
+  /// AStaged: Teilergebnis; dann bleibt Expected stehen, weil spätere Stufen noch passende Einträge bringen
+  /// können (Atlas gruppiert erst, wenn einer passt).</summary>
+  function TakeStage(AStaged: Boolean): TArray<TCompletionItem>;
+  var
+    Room: Integer;
+    // Lokal: Schleifenvariablen dürfen nicht aus der äußeren Routine stammen (E1019).
+    Index: Integer;
+    Scored: TScoredItem;
+  begin
     MarkOwnConditions;
     List.Sort;
     // Passende zuerst (#417); passt nichts, entfällt die Gruppierung.
@@ -1138,24 +1211,158 @@ begin
           Result := Left.Order - Right.Order;
         end));
     end
-    else
+    else if not AStaged then
       for Index := 0 to List.Count - 1 do
       begin
         Scored := List[Index];
         Scored.Item.Expected := '';
         List[Index] := Scored;
       end;
-    // Unscharf fragt der Editor bei jedem Tastendruck neu, weil sich die Reihenfolge ändert.
-    Result.Incomplete := (List.Count > MaxItems) or
-      ((AMatching = TCompletionMatching.Fuzzy) and (Context.Kind <> TCompletionContextKind.None));
-    if List.Count > MaxItems then
-      List.Count := MaxItems;
-    SetLength(Result.Items, List.Count);
+    Room := Max(0, MaxItems - Sent);
+    if List.Count > Room then
+    begin
+      Truncated := True;
+      List.Count := Room;
+    end;
+    SetLength(Result, List.Count);
     for Index := 0 to List.Count - 1 do
-      Result.Items[Index] := List[Index].Item;
+    begin
+      Result[Index] := List[Index].Item;
+      SentNames.AddOrSetValue(UpperCase(List[Index].Item.Name), True);
+    end;
+    Inc(Sent, List.Count);
+    List.Clear;
+  end;
+
+  /// <summary>Teilergebnis senden (#616); ohne AOnPartial bleibt alles für das Ergebnis liegen.</summary>
+  procedure SendStage;
+  var
+    Items: TArray<TCompletionItem>;
+  begin
+    if not Assigned(AOnPartial) or (List.Count = 0) then
+      Exit;
+    Items := TakeStage(True);
+    if Length(Items) > 0 then
+      AOnPartial(Items);
+  end;
+
+  procedure SetNameFilter(AOn: Boolean);
+  begin
+    if AOn and (Context.Prefix <> '') then
+      AResolver.NameFilter := PrefixFilter(Context.Prefix, AMatching)
+    else
+      AResolver.NameFilter := nil;
+  end;
+
+  procedure AddCandidates(const ACandidates: TArray<TResolvedSymbol>);
+  var
+    Candidate: TResolvedSymbol;
+  begin
+    for Candidate in ACandidates do
+    begin
+      // Wo die Deklaration steht, für completionItem/resolve.
+      SourceFile := Candidate.FileName;
+      SourcePosition := Candidate.SelectionRange.StartPos;
+      Member := Candidate;
+      if Candidate.TypeName <> '' then
+        Add(Candidate.Name, Candidate.TypeName, KindOf(Candidate.SymbolKind))
+      else if Candidate.Container <> '' then
+        Add(Candidate.Name, Candidate.Container, KindOf(Candidate.SymbolKind))
+      else
+        Add(Candidate.Name, Candidate.UnitName, KindOf(Candidate.SymbolKind));
+    end;
+    SourceFile := '';
+    Member := Default(TResolvedSymbol);
+  end;
+
+begin
+  Result := Default(TCompletionItems);
+  Postfix := nil;
+  Sent := 0;
+  Truncated := False;
+  ImportsCapped := False;
+  Context := Analyze(ATree, APosition);
+  // Name der eigenen Unit für die Bereichsstufe (#488).
+  OwnUnit := '';
+  if ATree <> nil then
+    OwnUnit := TUsesClauses.OwnName(ATree.Tokens);
+  SourceFile := '';
+  SourcePosition := Default(TTextPosition);
+  Member := Default(TResolvedSymbol);
+  Expected := '';
+  AnyFits := False;
+  if Context.Kind in [TCompletionContextKind.Member, TCompletionContextKind.Scope] then
+    Expected := ExpectedType(AResolver, ATree, AFileName, APosition);
+  // Viele Typprüfungen auf demselben Baum: einmal auswerten.
+  if Expected <> '' then
+    AResolver.PinTree(ATree, AFileName);
+  Descends := TDictionary<string, Boolean>.Create;
+  SentNames := TDictionary<string, Boolean>.Create;
+  List := TList<TScoredItem>.Create(TScoredItemComparer.Create);
+  try
+    case Context.Kind of
+      TCompletionContextKind.UsesClause:
+        begin
+          Units := AIndex.Units;
+          for UnitInfo in Units do
+            Add(UnitInfo.UnitName, UnitInfo.FileName, KindModule);
+        end;
+      TCompletionContextKind.Member, TCompletionContextKind.Scope:
+        begin
+          // Nur passende Namen aufbauen (#616); ohne Eingabe passt ohnehin alles. Der Filter gilt nur beim
+          // Sammeln, nicht für die Typprüfungen in Add.
+          if Context.Kind = TCompletionContextKind.Member then
+          begin
+            // AddPostfix braucht die Mitglieder (GetEnumerator).
+            SetNameFilter(True);
+            try
+              Candidates := AResolver.MemberCandidates(ATree, AFileName, Context.Names, Context.Offset);
+            finally
+              SetNameFilter(False);
+            end;
+            AddCandidates(Candidates);
+          end
+          else
+          begin
+            // Eigener Gültigkeitsbereich zuerst (#616): lokal, Self, eigene Unit; dann die Units aus uses.
+            SetNameFilter(True);
+            try
+              Candidates := AResolver.OwnScopeCandidates(ATree, AFileName, Context.Offset);
+            finally
+              SetNameFilter(False);
+            end;
+            AddCandidates(Candidates);
+            SendStage;
+            SetNameFilter(True);
+            try
+              Candidates := AResolver.UsedScopeCandidates;
+            finally
+              SetNameFilter(False);
+            end;
+            AddCandidates(Candidates);
+          end;
+          if Context.Kind = TCompletionContextKind.Scope then
+          begin
+            // Danach die nicht eingebundenen Units.
+            SendStage;
+            if Length(Context.Prefix) >= MinImportPrefix then
+              AddFromOtherUnits;
+            AddUnavailable;
+          end;
+          // Postfix-Vorlagen stehen immer hinter den echten Mitgliedern.
+          if (Context.Kind = TCompletionContextKind.Member) and APostfix.Enabled and (AText <> '') then
+            AddPostfix;
+        end;
+    end;
+    Result.Items := TakeStage(Sent > 0);
+    // Unvollständig nur, wenn beim Weitertippen etwas dazukommen kann (#616): gekürzt, Importe gekappt oder
+    // noch nicht gesucht (zu kurzer Name). Sonst filtert der Editor selbst weiter.
+    Result.Incomplete := Truncated or ImportsCapped or
+      ((Context.Kind = TCompletionContextKind.Scope) and (Length(Context.Prefix) < MinImportPrefix));
     Result.Items := Result.Items + Postfix;
   finally
     List.Free;
+    SentNames.Free;
     Descends.Free;
     if Expected <> '' then
       AResolver.UnpinTree;
@@ -1163,41 +1370,45 @@ begin
 end;
 
 class function TLspCompletion.ToJson(const AItems: TCompletionItems): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('isIncomplete', TJSONBool.Create(AItems.Incomplete));
+  Result.AddPair('items', ToJson(AItems.Items, 0));
+end;
+
+class function TLspCompletion.ToJson(const AItems: TArray<TCompletionItem>; AFirstSort: Integer): TJSONArray;
 var
-  Items, Edits, Overloads: TJSONArray;
+  Edits, Overloads: TJSONArray;
   Entry, EditJson, Data: TJSONObject;
   Edit: TRuleEdit;
   Index: Integer;
   Position: TTextPosition;
 begin
-  Result := TJSONObject.Create;
-  Result.AddPair('isIncomplete', TJSONBool.Create(AItems.Incomplete));
-  Items := TJSONArray.Create;
-  Result.AddPair('items', Items);
-  for Index := 0 to High(AItems.Items) do
+  Result := TJSONArray.Create;
+  for Index := 0 to High(AItems) do
   begin
     Entry := TJSONObject.Create;
-    Items.AddElement(Entry);
-    Entry.AddPair('label', AItems.Items[Index].Name);
-    Entry.AddPair('kind', TJSONNumber.Create(AItems.Items[Index].Kind));
-    if AItems.Items[Index].Detail <> '' then
-      Entry.AddPair('detail', AItems.Items[Index].Detail);
-    if AItems.Items[Index].FilterText <> '' then
-      Entry.AddPair('filterText', AItems.Items[Index].FilterText);
-    if AItems.Items[Index].HasTextEdit then
+    Result.AddElement(Entry);
+    Entry.AddPair('label', AItems[Index].Name);
+    Entry.AddPair('kind', TJSONNumber.Create(AItems[Index].Kind));
+    if AItems[Index].Detail <> '' then
+      Entry.AddPair('detail', AItems[Index].Detail);
+    if AItems[Index].FilterText <> '' then
+      Entry.AddPair('filterText', AItems[Index].FilterText);
+    if AItems[Index].HasTextEdit then
     begin
       EditJson := TJSONObject.Create;
       Entry.AddPair('textEdit', EditJson);
-      EditJson.AddPair('range', TLspPositions.RangeToJson(AItems.Items[Index].TextEdit.Range));
-      EditJson.AddPair('newText', AItems.Items[Index].TextEdit.NewText);
+      EditJson.AddPair('range', TLspPositions.RangeToJson(AItems[Index].TextEdit.Range));
+      EditJson.AddPair('newText', AItems[Index].TextEdit.NewText);
     end
-    else if AItems.Items[Index].InsertText <> '' then
-      Entry.AddPair('insertText', AItems.Items[Index].InsertText);
-    if Length(AItems.Items[Index].AdditionalEdits) > 0 then
+    else if AItems[Index].InsertText <> '' then
+      Entry.AddPair('insertText', AItems[Index].InsertText);
+    if Length(AItems[Index].AdditionalEdits) > 0 then
     begin
       Edits := TJSONArray.Create;
       Entry.AddPair('additionalTextEdits', Edits);
-      for Edit in AItems.Items[Index].AdditionalEdits do
+      for Edit in AItems[Index].AdditionalEdits do
       begin
         EditJson := TJSONObject.Create;
         Edits.AddElement(EditJson);
@@ -1206,46 +1417,46 @@ begin
       end;
     end;
     // Reihenfolge wie geliefert: beste Punktzahl, dann nächster Gültigkeitsbereich.
-    Entry.AddPair('sortText', Format('%.5d', [Index]));
-    if (AItems.Items[Index].SourceFile <> '') or (AItems.Items[Index].Expected <> '') or
-      (AItems.Items[Index].Action <> '') or (AItems.Items[Index].Condition <> '') or
-      (AItems.Items[Index].Scope > 0) then
+    Entry.AddPair('sortText', Format('%.5d', [AFirstSort + Index]));
+    if (AItems[Index].SourceFile <> '') or (AItems[Index].Expected <> '') or
+      (AItems[Index].Action <> '') or (AItems[Index].Condition <> '') or
+      (AItems[Index].Scope > 0) then
     begin
       Data := TJSONObject.Create;
-      if AItems.Items[Index].SourceFile <> '' then
+      if AItems[Index].SourceFile <> '' then
       begin
-        Data.AddPair('file', AItems.Items[Index].SourceFile);
-        Data.AddPair('line', TJSONNumber.Create(AItems.Items[Index].SourcePosition.Line));
-        Data.AddPair('character', TJSONNumber.Create(AItems.Items[Index].SourcePosition.Character));
+        Data.AddPair('file', AItems[Index].SourceFile);
+        Data.AddPair('line', TJSONNumber.Create(AItems[Index].SourcePosition.Line));
+        Data.AddPair('character', TJSONNumber.Create(AItems[Index].SourcePosition.Character));
       end;
-      if AItems.Items[Index].Expected <> '' then
+      if AItems[Index].Expected <> '' then
       begin
-        Data.AddPair('expected', AItems.Items[Index].Expected);
-        Data.AddPair('fits', TJSONBool.Create(AItems.Items[Index].Fits));
+        Data.AddPair('expected', AItems[Index].Expected);
+        Data.AddPair('fits', TJSONBool.Create(AItems[Index].Fits));
       end;
-      if AItems.Items[Index].Action <> '' then
-        Data.AddPair('action', AItems.Items[Index].Action);
+      if AItems[Index].Action <> '' then
+        Data.AddPair('action', AItems[Index].Action);
       // Für die Atlas-Oberfläche: Herkunft, Vererbungstiefe, Helper, Überladungen (#419, #425, #456).
-      if AItems.Items[Index].Container <> '' then
-        Data.AddPair('container', AItems.Items[Index].Container);
-      if AItems.Items[Index].Depth > 0 then
-        Data.AddPair('depth', TJSONNumber.Create(AItems.Items[Index].Depth));
-      if AItems.Items[Index].IsHelper then
+      if AItems[Index].Container <> '' then
+        Data.AddPair('container', AItems[Index].Container);
+      if AItems[Index].Depth > 0 then
+        Data.AddPair('depth', TJSONNumber.Create(AItems[Index].Depth));
+      if AItems[Index].IsHelper then
         Data.AddPair('helper', TJSONBool.Create(True));
-      if AItems.Items[Index].HasParameters then
+      if AItems[Index].HasParameters then
         Data.AddPair('parameters', TJSONBool.Create(True));
       // Bedingte Deklarationen (#476).
-      if AItems.Items[Index].Condition <> '' then
-        Data.AddPair('condition', AItems.Items[Index].Condition);
-      if AItems.Items[Index].Unavailable then
+      if AItems[Index].Condition <> '' then
+        Data.AddPair('condition', AItems[Index].Condition);
+      if AItems[Index].Unavailable then
         Data.AddPair('unavailable', TJSONBool.Create(True));
-      if AItems.Items[Index].Scope > 0 then
-        Data.AddPair('scope', TJSONNumber.Create(AItems.Items[Index].Scope));
-      if Length(AItems.Items[Index].Overloads) > 0 then
+      if AItems[Index].Scope > 0 then
+        Data.AddPair('scope', TJSONNumber.Create(AItems[Index].Scope));
+      if Length(AItems[Index].Overloads) > 0 then
       begin
         Overloads := TJSONArray.Create;
         Data.AddPair('overloads', Overloads);
-        for Position in AItems.Items[Index].Overloads do
+        for Position in AItems[Index].Overloads do
           Overloads.AddElement(TJSONObject.Create.AddPair('line', TJSONNumber.Create(Position.Line))
             .AddPair('character', TJSONNumber.Create(Position.Character)));
       end;
@@ -1267,7 +1478,16 @@ var
   Directives, Overrides, Events: TCompletionItems;
   Postfix: TPostfixOptions;
   Disabled: TArray<string>;
+  Token: string;
+  Cancel: IJsonRpcCancellationToken;
+  Notify: TCompletionNotifyProc;
+  Partial: TCompletionPartialProc;
+  SentCount: Integer;
+  Collected: TCompletionItems;
+  Watch: TStopwatch;
+  ParseMs: Int64;
 begin
+  Watch := TStopwatch.StartNew;
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
@@ -1284,6 +1504,7 @@ begin
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
   Tree := Shared.Tree;
   ACancellation.ThrowIfCancellationRequested;
+  ParseMs := Watch.ElapsedMilliseconds;
   Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
     Resolver.Namespaces := FNamespaces;
@@ -1303,8 +1524,39 @@ begin
       Postfix := FPostfixFor(Uri)
     else
       Postfix := TPostfixOptions.Default;
-    Result := ToJson(Collect(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), Document.Text,
-      TLspPositions.ReadPosition(PositionValue), Matching, Postfix));
+    // Gestaffelt (#616), wenn der Client einen partialResultToken mitschickt: Teilergebnisse als $/progress
+    // mit CompletionItem[], der Rest in der Antwort. Zwischen den Stufen bricht eine veraltete Anfrage ab.
+    Token := '';
+    Partial := nil;
+    SentCount := 0;
+    if Assigned(FNotify) and (TJSONObject(AParams).GetValue('partialResultToken') is TJSONString) then
+      Token := TJSONString(TJSONObject(AParams).GetValue('partialResultToken')).Value;
+    if Token <> '' then
+    begin
+      Cancel := ACancellation;
+      Notify := FNotify;
+      Partial :=
+        procedure(const AItems: TArray<TCompletionItem>)
+        var
+          Params: TJSONObject;
+        begin
+          Cancel.ThrowIfCancellationRequested;
+          Params := TJSONObject.Create;
+          Params.AddPair('token', Token);
+          Params.AddPair('value', ToJson(AItems, SentCount));
+          Inc(SentCount, Length(AItems));
+          Notify('$/progress', Params);
+        end;
+    end;
+    Collected := Collect(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), Document.Text,
+      TLspPositions.ReadPosition(PositionValue), Matching, Postfix, Partial);
+    Result := TJSONObject.Create;
+    TJSONObject(Result).AddPair('isIncomplete', TJSONBool.Create(Collected.Incomplete));
+    TJSONObject(Result).AddPair('items', ToJson(Collected.Items, SentCount));
+    if Assigned(FLog) then
+      FLog(Format('completion: %d Einträge (%d vorab), unvollständig %s, Baum %d ms, gesamt %d ms',
+        [SentCount + Length(Collected.Items), SentCount, BoolToStr(Collected.Incomplete, True), ParseMs,
+        Watch.ElapsedMilliseconds]));
   finally
     Resolver.Free;
   end;
@@ -1530,7 +1782,7 @@ begin
   if not (Data.TryGetValue<string>('file', FileName) and Data.TryGetValue<Integer>('line', Position.Line) and
     Data.TryGetValue<Integer>('character', Position.Character)) then
     Exit;
-  if not FReadText(FileName, Text) then
+  if not ReadCached(FileName, Text) then
     Exit;
   Details := TLspCompletion.Details(FIndex, FileName, Text, Position);
   // Für Atlas (Detailpanel) strukturiert in data.atlas; für andere Clients detail und documentation.

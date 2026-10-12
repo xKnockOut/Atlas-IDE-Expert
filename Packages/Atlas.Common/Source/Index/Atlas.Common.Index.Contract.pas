@@ -82,6 +82,8 @@ type
     Compact: Boolean;
     /// <summary>Eingebundene Include-Dateien (#264); ändert sich eine davon, wird die Unit neu eingelesen.</summary>
     Includes: TArray<string>;
+    /// <summary>Zeitstempel der Include-Dateien beim Einlesen, parallel zu Includes (#617).</summary>
+    IncludeStamps: TArray<Int64>;
     /// <summary>Hat einen initialization- oder finalization-Abschnitt (#284); solche Units
     /// entfernt "ungenutzte uses entfernen" nie, weil sie etwas registrieren können.</summary>
     HasInitialization: Boolean;
@@ -121,6 +123,9 @@ type
     /// zuerst Bibliotheks-, dann Projekt-Units kompakt.</summary>
     procedure SetBudget(ABytes: Int64);
     function Budget: Int64;
+    /// <summary>Zählt jede Änderung am Index hoch; abgeleitete Strukturen (Namensindex, #617)
+    /// erkennen daran, dass sie neu aufgebaut werden müssen.</summary>
+    function Generation: Int64;
   end;
 
   IIndexFileSystem = interface

@@ -106,6 +106,7 @@
         <DCCReference Include="Source\Index\Atlas.Common.Index.Contract.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.SymbolIndex.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.NameIndex.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Cache.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.CacheHousekeeping.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Memory.pas"/>

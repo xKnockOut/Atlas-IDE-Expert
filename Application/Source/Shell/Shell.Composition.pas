@@ -237,7 +237,8 @@ uses
   Atlas.Windows.Diagnostics.StackTrace,
   Atlas.Common.Logging.Providers.RotatingFileStream,
   Atlas.Windows.Editing.SystemColors,
-  Atlas.Common.Projects.Contract;
+  Atlas.Common.Projects.Contract,
+  Atlas.Common.JsonRpc.Messages;
 
 function StringsToJson(const AValues: TArray<string>): TJSONArray;
 var
@@ -532,6 +533,24 @@ begin
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := ReadSourceText(AFileName, AText);
+    end;
+  // Teilergebnisse (#616) als $/progress; Zeiten je Anfrage im Debug-Protokoll.
+  FCompletion.Notify :=
+    procedure(const AMethod: string; AParams: TJSONObject)
+    var
+      Notification: TJSONObject;
+    begin
+      Notification := TJsonRpcMessages.Notification(AMethod, AParams);
+      try
+        FTransport.WriteMessage(Notification);
+      finally
+        Notification.Free;
+      end;
+    end;
+  FCompletion.Log :=
+    procedure(const AText: string)
+    begin
+      FLogger.Debug(AText);
     end;
   FCompletion.Attach(FDispatcher);
   FSignatureHelp := TLspSignatureHelp.Create(FDocuments, FIndex,

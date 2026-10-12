@@ -20,6 +20,9 @@ type
   /// <summary>True, sobald der Query abgebrochen oder durch einen neuen ersetzt ist.</summary>
   TAtlasCancelledFunc = reference to function: Boolean;
 
+  /// <summary>Teilergebnis während Fetch (#616): geht sofort an die Senke, solange der Query aktuell ist.</summary>
+  TAtlasEmitProc = reference to procedure(const AItems: TAtlasCompletionItems);
+
   /// <summary>Merker, ob die Quelle noch lebt; eingereihte Aufrufe halten ihn selbst.</summary>
   TAtlasAliveToken = class(TInterfacedObject)
   public
@@ -40,9 +43,10 @@ type
     /// AData geht unverändert an Fetch (nicht übernommen, muss bis zum Ende von Fetch leben).</summary>
     function Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean; virtual;
     /// <summary>Im Hintergrund. Ausnahmen gelten als leeres Ergebnis. AIncomplete: Die Liste ist
-    /// gekürzt, beim Weitertippen neu fragen (#431).</summary>
+    /// gekürzt, beim Weitertippen neu fragen (#431). AEmit liefert Teilergebnisse vorab (#616), auch aus
+    /// anderen Threads, aber nur bis Fetch zurückkehrt; das Ergebnis kommt danach dazu.</summary>
     function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
-      out AIncomplete: Boolean): TAtlasCompletionItems; virtual; abstract;
+      const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems; virtual; abstract;
     /// <summary>Weitere Arbeit im Hintergrund (z. B. Details nachfragen); Shutdown wartet auch darauf.</summary>
     procedure RunInBackground(const AWork: TProc);
     /// <summary>Für Aufrufe per TThread.Queue: nur ausführen, solange Token.Alive gilt.</summary>
@@ -189,6 +193,11 @@ begin
           function: Boolean
           begin
             Result := not IsCurrent(Generation);
+          end,
+          procedure(const AItems: TAtlasCompletionItems)
+          begin
+            if (Length(AItems) > 0) and IsCurrent(Generation) then
+              Sink.AddItems(AItems);
           end, Incomplete);
       except
         // Server weg, Zeitlimit oder unerwartete Antwort: keine Einträge.

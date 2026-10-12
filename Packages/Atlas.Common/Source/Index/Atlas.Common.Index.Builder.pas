@@ -14,8 +14,9 @@
 //   Neue Dateien kommen erst in den Index, wenn sie referenziert werden;
 //   dafür vergisst der Builder die bisher nicht gefundenen Units.
 // - Include-Dateien (#264) werden über IncludePaths gesucht. Units mit
-//   Includes übernimmt der Builder nie ungeprüft aus dem Cache, und eine
-//   geänderte Include-Datei liest alle Units neu ein, die sie einbinden.
+//   Includes übernimmt der Builder aus dem Cache nur, wenn auch alle
+//   Include-Dateien denselben Zeitstempel haben (#617); eine geänderte
+//   Include-Datei liest alle Units neu ein, die sie einbinden.
 // - Läuft im aufrufenden Thread; den Hintergrund-Thread stellt die
 //   Komposition bereit.
 
@@ -47,6 +48,8 @@ type
     FFailedLock: TObject;
     FIncludePaths: TArray<string>;
     function IncludeResolver: TIncludeResolver;
+    function IncludeStampsOf(const AIncludes: TArray<string>): TArray<Int64>;
+    function IncludesUnchanged(const ACached: TUnitIndex): Boolean;
     function IndexFile(const AFileName: string; ALibrary: Boolean; var AResult: TIndexBuildResult): Boolean;
     procedure IndexReferenced(var AResult: TIndexBuildResult; const AProgress: TIndexProgressEvent;
       const ACancelled: TIndexCancelled);
@@ -133,6 +136,36 @@ begin
     end);
 end;
 
+function TIndexBuilder.IncludeStampsOf(const AIncludes: TArray<string>): TArray<Int64>;
+var
+  Index: Integer;
+begin
+  SetLength(Result, Length(AIncludes));
+  for Index := 0 to High(AIncludes) do
+    if not FFileSystem.FileStamp(AIncludes[Index], Result[Index]) then
+      Result[Index] := -1;
+end;
+
+function TIndexBuilder.IncludesUnchanged(const ACached: TUnitIndex): Boolean;
+var
+  Index: Integer;
+  Stamp: Int64;
+begin
+  if Length(ACached.Includes) = 0 then
+    Exit(True);
+  // Ältere Einträge ohne Zeitstempel gelten als geändert.
+  if Length(ACached.IncludeStamps) <> Length(ACached.Includes) then
+    Exit(False);
+  for Index := 0 to High(ACached.Includes) do
+  begin
+    if not FFileSystem.FileStamp(ACached.Includes[Index], Stamp) then
+      Exit(False);
+    if (ACached.IncludeStamps[Index] < 0) or (Stamp <> ACached.IncludeStamps[Index]) then
+      Exit(False);
+  end;
+  Result := True;
+end;
+
 function TIndexBuilder.IndexFile(const AFileName: string; ALibrary: Boolean;
   var AResult: TIndexBuildResult): Boolean;
 var
@@ -148,7 +181,7 @@ begin
   end;
   HasCache := FCached.TryGetValue(AnsiUpperCase(AFileName), Cached);
   // Mit Includes kann sich das Ergebnis ändern, ohne dass die Unit sich ändert.
-  if HasCache and (Length(Cached.Includes) > 0) then
+  if HasCache and not IncludesUnchanged(Cached) then
     HasCache := False;
   if HasCache and (Cached.Stamp = Stamp) then
   begin
@@ -174,6 +207,7 @@ begin
   UnitIndex := TIndexExtractor.ExtractText(Text, AFileName, FDefines, IncludeResolver());
   UnitIndex.Stamp := Stamp;
   UnitIndex.Hash := Hash;
+  UnitIndex.IncludeStamps := IncludeStampsOf(UnitIndex.Includes);
   UnitIndex.Library_ := ALibrary;
   FIndex.AddUnit(UnitIndex);
   Inc(AResult.Parsed);
@@ -310,6 +344,7 @@ begin
   // Zeitstempel bleibt der der Datei: Beim Speichern liest IndexFile sie dann neu von der Platte.
   UnitIndex.Stamp := Existing.Stamp;
   UnitIndex.Hash := Hash;
+  UnitIndex.IncludeStamps := IncludeStampsOf(UnitIndex.Includes);
   UnitIndex.Library_ := Existing.Library_;
   FIndex.AddUnit(UnitIndex);
   Result := True;

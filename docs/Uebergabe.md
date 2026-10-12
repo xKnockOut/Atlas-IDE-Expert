@@ -204,3 +204,29 @@
 - #492: Fortschritt im Menütitel, Index-Status/Neuaufbau (ef1b32d6); Tipp-Pause-Index (04bbde94, a92bd2f6, 0f14d324) vom User bestätigt; offen: geteilter Bibliotheks-Index, #470, #476.
 - Fehlersuche: Registry HKCU\Software\Atlas\IdePlugin ServerArguments="--log <datei> --log-level debug" und Diagnose=1 (danach wieder entfernen).
 
+
+## #616 Vervollständigung zu langsam (12.10.2026, Branch `feature/616-completion-langsam`)
+
+- **Ursache (Codeanalyse, nicht gemessen):** Der Server meldete im unscharfen Modus immer `isIncomplete`. Bei jedem Tastendruck schickte das Plugin daher den vollen Text, und der Server baute für alle sichtbaren Symbole (alle uses-Units) vollständige Records, sortierte und kürzte erst dann auf 1000. Dazu kam ein quadratisches Einlesen im Plugin.
+- **Server:**
+  - `TNameResolver.NameFilter` baut nur passende Namen auf; `OwnScopeCandidates`/`UsedScopeCandidates` teilen ScopeCandidates.
+  - `isIncomplete` nur noch bei Kürzung, gekappten Importen oder einem Präfix unter 2 Zeichen.
+  - Mit `partialResultToken` kommen Teilergebnisse als `$/progress`: eigene Unit, dann uses; die Antwort bringt die Importe. Zwischen den Stufen wird ein Abbruch geprüft.
+  - Zeiten je Anfrage gehen ins Debug-Protokoll (`completion: …`).
+  - `completionItem/resolve` puffert die zuletzt gelesene, nicht geöffnete Datei.
+- **Plugin:**
+  - `TLspClient.Request` mit `AOnPartial`; `Fetch` hat `AEmit`.
+  - `TAtlasCompletionController.NeedsQuery`: neu fragen nur, wenn die Liste gekürzt ist oder das Wort nicht mehr mit dem Präfix der Anfrage beginnt.
+  - Einlesen und Rangfolge ohne Anhängen je Eintrag.
+  - Popup misst die Breite bei Pfeiltasten nicht neu.
+  - Gruppen zum erwarteten Typ nur, wenn ein Eintrag passt.
+- **Offen:**
+  - Nicht gebaut und nicht getestet (Cloud).
+  - „0 aus dem Cache“ behoben (`Cleanup` schützt beide Cache-Dateien); beim User bestätigt: 1239 aus dem Cache, Lauf noch 63 s, 351 gelesen.
+- **#617 Umsetzungsreihenfolge** (Marco: Punkte 5, 7, 4 zuerst; alle Schritte in #617):
+  - Includes: `TUnitIndex.IncludeStamps` (Cache-Format 9, Schlüssel `its`). Units mit Includes kommen aus dem Cache, solange alle Include-Dateien denselben Zeitstempel haben.
+  - Sperre: `TIndexService` schützt nur noch den Zugriff auf den Builder und zählt Nutzer (`AcquireBuilder`/`ReleaseBuilder`/`ReplaceBuilder`); `EnsureUnit` parst ohne Sperre. `ApplyText`/`ApplyChanges` laufen über `FApplyLock` in Reihe. Der neue Builder wird erst nach `UseCache` veröffentlicht.
+  - Namensindex: `Atlas.Common.Index.NameIndex` (`TImportNameIndex`, `TImportNames.Current`) mit Zeichenmaske je Name; `ISymbolIndex.Generation` meldet Änderungen. `AddFromOtherUnits` nutzt ihn. Große Schnappschüsse werden während des Aufbaus höchstens einmal pro Sekunde erneuert.
+  - Nicht gebaut und nicht getestet (Cloud). Neue Tests: `CachedIncludeUnitReusedUntilIncludeChanges`, `EnsureUnitDoesNotWaitForOtherRequests`, `TImportNameIndexTests`.
+  - Cache-Format 10: Zeilen mit Tabulator-Feldern statt JSON (`TIndexCache`, Kopf `ATLAS-INDEX`), ein Durchlauf ohne JSON-Baum. Der erste Start danach liest alles neu. Dateiname bleibt `index-*.json`.
+  - Punkt 9 (dauerhafter Server) verworfen (Marco). Punkt 2 (Bibliothek je Version) besteht weitgehend seit #492.

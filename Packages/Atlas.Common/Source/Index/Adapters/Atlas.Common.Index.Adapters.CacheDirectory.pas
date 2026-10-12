@@ -33,7 +33,10 @@ type
     /// <summary>True, wenn eine andere Instanz ACacheFile gesperrt hat.</summary>
     class function IsLocked(const ACacheFile: string): Boolean; static;
     /// <summary>Löscht die ältesten Caches über AMaxBytes; liefert die Anzahl.</summary>
-    class function Cleanup(const ARoot: string; AMaxBytes: Int64; const AKeep: string): Integer; static;
+    class function Cleanup(const ARoot: string; AMaxBytes: Int64; const AKeep: string): Integer; overload; static;
+    /// <summary>Wie oben mit mehreren eigenen Caches (Projekt und Bibliothek, #616).</summary>
+    class function Cleanup(const ARoot: string; AMaxBytes: Int64; const AKeep: TArray<string>): Integer; overload;
+      static;
     /// <summary>Löscht alle nicht gesperrten Caches; liefert die Anzahl.</summary>
     class function Clear(const ARoot: string): Integer; static;
   end;
@@ -112,6 +115,12 @@ begin
 end;
 
 class function TIndexCacheDirectory.Cleanup(const ARoot: string; AMaxBytes: Int64; const AKeep: string): Integer;
+begin
+  Result := Cleanup(ARoot, AMaxBytes, TArray<string>.Create(AKeep));
+end;
+
+class function TIndexCacheDirectory.Cleanup(const ARoot: string; AMaxBytes: Int64;
+  const AKeep: TArray<string>): Integer;
 var
   FileName: string;
 begin

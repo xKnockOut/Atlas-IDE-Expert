@@ -19,6 +19,8 @@ type
     procedure NeverRemovesOwnCache;
     [Test]
     procedure NeverRemovesLockedCache;
+    [Test]
+    procedure KeepsProjectAndLibraryCache;
   end;
 
   [TestFixture]
@@ -135,6 +137,18 @@ var
 begin
   Removed := TIndexCacheHousekeeping.SelectForRemoval([Info('a', 10, 9, True), Info('b', 10, 1, True)], 0, '');
   Assert.AreEqual<NativeInt>(0, Length(Removed));
+end;
+
+procedure TIndexCacheHousekeepingTests.KeepsProjectAndLibraryCache;
+var
+  Removed: TArray<string>;
+begin
+  // Der gemeinsame Bibliotheks-Cache ist nicht gesperrt und älter als der Projekt-Cache; er wurde sonst bei
+  // jedem Start gelöscht (#616).
+  Removed := TIndexCacheHousekeeping.SelectForRemoval([Info('bibliothek', 300, 1), Info('projekt', 10, 9),
+    Info('fremd', 10, 5)], 100, TArray<string>.Create('Projekt', 'Bibliothek'));
+  Assert.AreEqual<NativeInt>(1, Length(Removed));
+  Assert.AreEqual('fremd', Removed[0]);
 end;
 
 { TIndexCacheDirectoryTests }

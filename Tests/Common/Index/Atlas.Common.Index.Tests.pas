@@ -62,6 +62,8 @@ type
     [Test]
     procedure RoundTripsUnits;
     [Test]
+    procedure RoundTripsSpecialCharactersAndFlags;
+    [Test]
     procedure RejectsOtherVersionAndBrokenJson;
   end;
 
@@ -94,9 +96,13 @@ type
     [Test]
     procedure ChangedIncludeReindexesUnit;
     [Test]
+    procedure CachedIncludeUnitReusedUntilIncludeChanges;
+    [Test]
     // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
     [IgnoreMemoryLeaks]
     procedure ServiceBuildsInBackgroundAndWritesCache;
+    [Test]
+    procedure EnsureUnitDoesNotWaitForOtherRequests;
     [Test]
     procedure ReadOnlyServiceWaitsForOtherWriter;
     [Test]
@@ -118,6 +124,8 @@ implementation
 
 uses
   System.Classes,
+  System.SyncObjs,
+  System.Diagnostics,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.Extractor,
@@ -499,6 +507,46 @@ begin
   Assert.IsTrue(S.Kind = TIndexSymbolKind.Property_);
 end;
 
+procedure TIndexCacheTests.RoundTripsSpecialCharactersAndFlags;
+var
+  Original, U: TUnitIndex;
+  Loaded: TArray<TUnitIndex>;
+  Symbol: TIndexSymbol;
+begin
+  // #617: Zeilenformat mit Escapes für Tabulator, Zeilenende, "|" und "\".
+  Original := Default(TUnitIndex);
+  Original.UnitName := 'Sonder';
+  Original.FileName := 'C:\Pfad mit|Strich\Sonder.pas';
+  Original.Library_ := True;
+  Original.HasInitialization := True;
+  Original.Includes := ['C:\Inc\a.inc', 'C:\Inc\b|c.inc'];
+  Original.IncludeStamps := [11, 22];
+  Symbol := Default(TIndexSymbol);
+  Symbol.Name := 'TListe';
+  Symbol.TypeName := 'TDictionary<string,Integer>';
+  Symbol.Condition := 'defined(A)'#9'and'#13#10'B';
+  Symbol.ParamTypes := ['string', 'array of Integer'];
+  Symbol.Unavailable := True;
+  Original.Unavailable := [Symbol];
+  Symbol.Unavailable := False;
+  Original.Symbols := [Symbol];
+  Loaded := TIndexCache.Deserialize(TIndexCache.Serialize([Original]));
+  Assert.AreEqual<NativeInt>(1, Length(Loaded));
+  U := Loaded[0];
+  Assert.AreEqual(Original.FileName, U.FileName);
+  Assert.IsTrue(U.Library_);
+  Assert.IsTrue(U.HasInitialization);
+  Assert.IsFalse(U.Compact);
+  Assert.AreEqual('C:\Inc\b|c.inc', U.Includes[1]);
+  Assert.AreEqual<Int64>(22, U.IncludeStamps[1]);
+  Assert.AreEqual<NativeInt>(1, Length(U.Symbols));
+  Assert.AreEqual('TDictionary<string,Integer>', U.Symbols[0].TypeName);
+  Assert.AreEqual(Symbol.Condition, U.Symbols[0].Condition);
+  Assert.AreEqual('array of Integer', U.Symbols[0].ParamTypes[1]);
+  Assert.AreEqual<NativeInt>(1, Length(U.Unavailable));
+  Assert.IsTrue(U.Unavailable[0].Unavailable);
+end;
+
 procedure TIndexCacheTests.RejectsOtherVersionAndBrokenJson;
 begin
   Assert.AreEqual<NativeInt>(0, Length(TIndexCache.Deserialize('{"version":999,"units":[]}')));
@@ -740,6 +788,101 @@ begin
     Assert.AreEqual<NativeInt>(1, Length(FIndex.FindSymbols('TOhneNeu')));
   finally
     Builder.Free;
+  end;
+end;
+
+procedure TIndexBuilderTests.CachedIncludeUnitReusedUntilIncludeChanges;
+const
+  UnitText = 'unit H;'#10'interface'#10'{$I C:\Inc\Schalter.inc}'#10 +
+    '{$IFDEF NEU}type TMitNeu = class end;{$ENDIF}'#10'implementation'#10'end.';
+var
+  Builder: TIndexBuilder;
+  Cache: TArray<TUnitIndex>;
+  BuildResult: TIndexBuildResult;
+begin
+  // #617: Units mit Includes kommen aus dem Cache, solange keine Include-Datei sich ändert.
+  FFiles.Put('C:\Inc\Schalter.inc', '{$DEFINE NEU}', 1);
+  FFiles.Put('C:\Lib\H.pas', UnitText, 1);
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  try
+    Builder.Build(['C:\Lib\H.pas'], nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Cache := TIndexCache.Deserialize(TIndexCache.Serialize(FIndex.Units));
+  FIndex := TSymbolIndex.Create;
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  try
+    Builder.UseCache(Cache);
+    BuildResult := Builder.Build(['C:\Lib\H.pas'], nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Assert.AreEqual(0, BuildResult.Parsed);
+  Assert.AreEqual(1, BuildResult.FromCache);
+  FFiles.Put('C:\Inc\Schalter.inc', '', 2);
+  FIndex := TSymbolIndex.Create;
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  try
+    Builder.UseCache(Cache);
+    BuildResult := Builder.Build(['C:\Lib\H.pas'], nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Assert.AreEqual(1, BuildResult.Parsed);
+  Assert.AreEqual<NativeInt>(0, Length(FIndex.FindSymbols('TMitNeu')));
+end;
+
+procedure TIndexBuilderTests.EnsureUnitDoesNotWaitForOtherRequests;
+var
+  Service: TIndexService;
+  Request: TIndexRequest;
+  Entered, Release: TEvent;
+  Other: TThread;
+  Watch: TStopwatch;
+begin
+  // #617: Eine Anfrage, die gerade eine Unit sucht und parst, hält die anderen nicht auf.
+  Entered := TEvent.Create(nil, True, False, '');
+  Release := TEvent.Create(nil, True, False, '');
+  Service := TIndexService.Create(FIndex, FFileSystem);
+  try
+    Request := Default(TIndexRequest);
+    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    Request.ResolveUnit :=
+      function(const AUnitName: string): string
+      begin
+        if SameText(AUnitName, 'Langsam') then
+        begin
+          Entered.SetEvent;
+          Release.WaitFor(5000);
+          Exit('');
+        end;
+        Result := Resolve(AUnitName);
+      end;
+    Service.Start(Request);
+    Service.WaitFor;
+    Other := TThread.CreateAnonymousThread(
+      procedure
+      begin
+        Service.EnsureUnit('Langsam');
+      end);
+    Other.FreeOnTerminate := False;
+    Other.Start;
+    try
+      Assert.AreEqual(TWaitResult.wrSignaled, Entered.WaitFor(5000));
+      Watch := TStopwatch.StartNew;
+      Assert.IsTrue(Service.EnsureUnit('F'));
+      // Mit der alten globalen Sperre hätte F bis zur Freigabe (5 s) gewartet.
+      Assert.IsTrue(Watch.ElapsedMilliseconds < 2000, 'F wartete auf Langsam');
+    finally
+      Release.SetEvent;
+      Other.WaitFor;
+      Other.Free;
+    end;
+  finally
+    Service.Free;
+    Release.Free;
+    Entered.Free;
   end;
 end;
 
