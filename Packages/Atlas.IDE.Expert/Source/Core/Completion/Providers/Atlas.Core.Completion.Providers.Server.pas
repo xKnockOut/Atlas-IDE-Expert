@@ -7,6 +7,10 @@
 // fragt Resolve über completionItem/resolve nach; der Server liefert sie
 // strukturiert in data.atlas.
 //
+// Gestaffelt (#616): Fetch fragt mit partialResultToken; der Server schickt zuerst den eigenen
+// Gültigkeitsbereich, dann die Units aus uses, die Antwort bringt den Rest (Importe). Jedes Teilergebnis
+// geht sofort ans Popup. Rank zählt über alle Teile fort.
+//
 // Lebensdauer: Die Sitzung gehört dem Aufrufer. Bevor er sie freigibt (Neustart
 // des Servers, Entladen), muss er Shutdown aufrufen; das wartet auf laufende Anfragen.
 
@@ -33,7 +37,7 @@ type
   protected
     function Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean; override;
     function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
-      out AIncomplete: Boolean): TAtlasCompletionItems; override;
+      const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems; override;
   public
     constructor Create(const ASession: TAtlasSessionFunc; ATimeoutMs: Cardinal = DefaultTimeoutMs);
     /// <summary>LSP-CompletionItemKind → Art des Eintrags.</summary>
@@ -41,7 +45,7 @@ type
     /// <summary>Ein CompletionItem des LSP; ARank ist seine Stelle in der Antwort.</summary>
     class function ItemFromLsp(AItem: TJSONObject; ARank: Integer): TAtlasCompletionItem; static;
     /// <summary>Antwort auf textDocument/completion: CompletionList, CompletionItem[] oder null.</summary>
-    class function ItemsFromLsp(AResponse: TJSONValue): TAtlasCompletionItems; static;
+    class function ItemsFromLsp(AResponse: TJSONValue; AFirstRank: Integer = 0): TAtlasCompletionItems; static;
     /// <summary>Details aus der Antwort auf completionItem/resolve (data.atlas, sonst detail/documentation).</summary>
     class function DetailsFromLsp(AResponse: TJSONValue): TAtlasItemDetails; static;
     { IAtlasCompletionResolver }
@@ -176,10 +180,11 @@ begin
     ((AItem.GetValue('data') is TJSONObject) and (TJSONObject(AItem.GetValue('data')).GetValue('action') <> nil));
 end;
 
-class function TAtlasServerCompletionProvider.ItemsFromLsp(AResponse: TJSONValue): TAtlasCompletionItems;
+class function TAtlasServerCompletionProvider.ItemsFromLsp(AResponse: TJSONValue;
+  AFirstRank: Integer): TAtlasCompletionItems;
 var
   Items: TJSONValue;
-  Index: Integer;
+  Index, Count: Integer;
 begin
   Result := nil;
   if AResponse is TJSONObject then
@@ -188,9 +193,16 @@ begin
     Items := AResponse;
   if not (Items is TJSONArray) then
     Exit;
+  // Einmal anlegen statt je Eintrag anzuhängen: Das kopierte bei 1000 Einträgen die ganze Liste jedes Mal (#616).
+  SetLength(Result, TJSONArray(Items).Count);
+  Count := 0;
   for Index := 0 to TJSONArray(Items).Count - 1 do
     if TJSONArray(Items).Items[Index] is TJSONObject then
-      Result := Result + [ItemFromLsp(TJSONObject(TJSONArray(Items).Items[Index]), Index)];
+    begin
+      Result[Count] := ItemFromLsp(TJSONObject(TJSONArray(Items).Items[Index]), AFirstRank + Index);
+      Inc(Count);
+    end;
+  SetLength(Result, Count);
 end;
 
 function TAtlasServerCompletionProvider.Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean;
@@ -210,12 +222,27 @@ begin
 end;
 
 function TAtlasServerCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
-  const ACancelled: TAtlasCancelledFunc; out AIncomplete: Boolean): TAtlasCompletionItems;
+  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems;
 var
   Response: TJSONValue;
+  NextRank: Integer;
+  Emit: TAtlasEmitProc;
 begin
   AIncomplete := False;
-  Response := TLspSession(AData).Completion(AContext.FileName, AContext.Line, AContext.Character, FTimeoutMs);
+  NextRank := 0;
+  Emit := AEmit;
+  // Teilergebnisse kommen im Lese-Thread nacheinander und alle vor der Antwort.
+  Response := TLspSession(AData).Completion(AContext.FileName, AContext.Line, AContext.Character, FTimeoutMs,
+    procedure(const AValue: TJSONValue)
+    var
+      Items: TAtlasCompletionItems;
+    begin
+      if not (AValue is TJSONArray) then
+        Exit;
+      Items := ItemsFromLsp(AValue, NextRank);
+      Inc(NextRank, TJSONArray(AValue).Count);
+      Emit(Items);
+    end);
   try
     if ACancelled() then
       Exit(nil);
@@ -223,7 +250,7 @@ begin
     // Ohne GetValue<Boolean>: das lässt über TValue Speicher liegen (Leck-Monitor).
     AIncomplete := (Response is TJSONObject) and (TJSONObject(Response).GetValue('isIncomplete') is TJSONBool) and
       TJSONBool(TJSONObject(Response).GetValue('isIncomplete')).AsBoolean;
-    Result := ItemsFromLsp(Response);
+    Result := ItemsFromLsp(Response, NextRank);
   finally
     Response.Free;
   end;

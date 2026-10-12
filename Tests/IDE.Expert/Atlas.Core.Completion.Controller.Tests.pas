@@ -42,6 +42,10 @@ type
     procedure TruncatedListIsRequeried;
     [Test]
     procedure RequeryKeepsSelectedEntry;
+    [Test]
+    procedure CompleteListFiltersLocallyUntilPrefixShrinks;
+    [Test]
+    procedure PartialResultsReplaceThenAppend;
   end;
 
 implementation
@@ -121,6 +125,10 @@ type
   TPrefixProvider = class(TInterfacedObject, IAtlasCompletionProvider)
   public
     Queries: Integer;
+    /// <summary>Liste vollständig melden (#616).</summary>
+    CompleteList: Boolean;
+    /// <summary>Jeden Eintrag als eigenes Teilergebnis liefern (#616).</summary>
+    Staged: Boolean;
     procedure Query(const AContext: TAtlasContext; const ASink: IAtlasCompletionSink);
     procedure Cancel;
   end;
@@ -134,8 +142,15 @@ begin
   First.Name := AContext.Prefix + '1';
   Second := Default(TAtlasCompletionItem);
   Second.Name := AContext.Prefix + '2';
-  ASink.AddItems([First, Second]);
-  ASink.MarkIncomplete;
+  if Staged then
+  begin
+    ASink.AddItems([First]);
+    ASink.AddItems([Second]);
+  end
+  else
+    ASink.AddItems([First, Second]);
+  if not CompleteList then
+    ASink.MarkIncomplete;
   ASink.Complete;
 end;
 
@@ -484,6 +499,78 @@ begin
     Assert.AreEqual(2, Provider.Queries);
     Assert.AreEqual('abc1,abc2', View.Names);
     Assert.IsTrue(View.Shown);
+  finally
+    Controller.Free;
+  end;
+end;
+
+procedure TAtlasCompletionControllerTests.CompleteListFiltersLocallyUntilPrefixShrinks;
+var
+  View: TFakeView;
+  ViewRef: IAtlasCompletionView;
+  Provider: TPrefixProvider;
+  ProviderRef: IAtlasCompletionProvider;
+  Controller: TAtlasCompletionController;
+begin
+  View := TFakeView.Create;
+  ViewRef := View;
+  Provider := TPrefixProvider.Create;
+  Provider.CompleteList := True;
+  ProviderRef := Provider;
+  Controller := TAtlasCompletionController.Create(ProviderRef, ViewRef);
+  try
+    Controller.Start(Context('ab'));
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    Assert.IsFalse(Controller.Incomplete);
+    // Der Server hat nach "ab" gefiltert: Weitertippen filtert lokal, kürzer oder anders fragt neu (#616).
+    Assert.IsFalse(Controller.NeedsQuery('abc'));
+    Assert.IsFalse(Controller.NeedsQuery('ABx'), 'Groß- und Kleinschreibung egal');
+    Assert.IsTrue(Controller.NeedsQuery('a'));
+    Assert.IsTrue(Controller.NeedsQuery('xb'));
+    Controller.UpdatePrefix('ab1');
+    Assert.AreEqual(1, Provider.Queries);
+    Assert.AreEqual('ab1', View.Names);
+    Controller.Close;
+    Assert.IsFalse(Controller.NeedsQuery('a'), 'geschlossen');
+  finally
+    Controller.Free;
+  end;
+end;
+
+procedure TAtlasCompletionControllerTests.PartialResultsReplaceThenAppend;
+var
+  View: TFakeView;
+  ViewRef: IAtlasCompletionView;
+  Provider: TPrefixProvider;
+  ProviderRef: IAtlasCompletionProvider;
+  Controller: TAtlasCompletionController;
+begin
+  View := TFakeView.Create;
+  ViewRef := View;
+  Provider := TPrefixProvider.Create;
+  Provider.Staged := True;
+  ProviderRef := Provider;
+  Controller := TAtlasCompletionController.Create(ProviderRef, ViewRef);
+  try
+    Controller.Start(Context('ab'));
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    Assert.AreEqual('ab1,ab2', View.Names);
+    // Requery: Das erste Teil ersetzt die alte Liste, das zweite hängt an (#616).
+    Controller.Requery(Context('a'));
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    Assert.AreEqual('a1,a2', View.Names);
   finally
     Controller.Free;
   end;

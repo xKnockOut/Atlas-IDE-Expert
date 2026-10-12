@@ -13,6 +13,10 @@
 // Gekürzte Listen (#431, LSP isIncomplete): Beim Weitertippen filtert Requery
 // sofort lokal und fragt im Hintergrund neu; die neue Liste ersetzt die alte,
 // sobald sie eintrifft, und die Auswahl bleibt auf demselben Eintrag.
+// Der Server liefert nur Namen, die zum Präfix der Anfrage passen (#616). Eine Liste gilt daher nur, solange
+// das getippte Wort mit diesem Präfix beginnt; kürzer oder anders (Rücktaste) heißt neu fragen (NeedsQuery).
+// Teilergebnisse (#616) kommen als mehrere AddItems: Das erste ersetzt bei Requery die Liste, die weiteren
+// hängen an.
 //
 // Rangfolge über TAtlasRanking: Lernzuschlag (#418, Usage), Gruppen geerbter
 // Member mit Überschriften (#419; Header in der Reihenfolge, die Auswahl
@@ -82,6 +86,8 @@ type
     FOrder: TArray<Integer>;
     FSelected: Integer;
     FPrefix: string;
+    /// <summary>Präfix, mit dem die aktuelle Liste angefragt wurde (#616).</summary>
+    FQueryPrefix: string;
     FEmpty: Boolean;
     FIncomplete: Boolean;
     /// <summary>Die nächsten Einträge ersetzen die Liste (laufendes Requery).</summary>
@@ -120,6 +126,9 @@ type
     /// <summary>Ein Commit-Zeichen (#429) darf übernehmen: Liste offen und der gewählte Eintrag
     /// trifft das Präfix klar (genau, Anfang, Wortanfänge), nicht nur unscharf.</summary>
     function CanCommitOnCharacter: Boolean;
+    /// <summary>Für APrefix neu fragen statt lokal filtern (#616): Liste gekürzt, oder APrefix beginnt nicht
+    /// mit dem Präfix der Anfrage (der Server hat nach diesem gefiltert).</summary>
+    function NeedsQuery(const APrefix: string): Boolean;
     property Active: Boolean read FActive;
     property Loading: Boolean read FLoading;
     /// <summary>Liste ist offen und hat Treffer.</summary>
@@ -334,6 +343,7 @@ var
   Sink: IAtlasCompletionSink;
 begin
   FIncomplete := False;
+  FQueryPrefix := AContext.Prefix;
   Sink := TControllerSink.Create(Self, FFlag, FGeneration);
   FProvider.Query(AContext, Sink);
 end;
@@ -563,6 +573,11 @@ var
 begin
   Result := (FPrefix <> '') and SelectedItem(Item) and
     (TAtlasCompletionMatcher.Score(FPrefix, Item.Name) >= TAtlasCompletionMatcher.ScoreWordStarts);
+end;
+
+function TAtlasCompletionController.NeedsQuery(const APrefix: string): Boolean;
+begin
+  Result := FActive and (FIncomplete or not APrefix.StartsWith(FQueryPrefix, True));
 end;
 
 procedure TAtlasCompletionController.CommitSelected;

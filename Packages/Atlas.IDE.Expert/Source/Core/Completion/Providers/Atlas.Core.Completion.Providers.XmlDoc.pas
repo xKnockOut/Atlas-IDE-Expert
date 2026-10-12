@@ -29,7 +29,7 @@ type
   TAtlasXmlDocCompletionProvider = class(TAtlasAsyncCompletionProvider)
   protected
     function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
-      out AIncomplete: Boolean): TAtlasCompletionItems; override;
+      const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems; override;
   end;
 
 implementation
@@ -158,7 +158,7 @@ end;
 { TAtlasXmlDocCompletionProvider }
 
 function TAtlasXmlDocCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
-  const ACancelled: TAtlasCancelledFunc; out AIncomplete: Boolean): TAtlasCompletionItems;
+  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems;
 var
   All: TArray<string>;
 begin

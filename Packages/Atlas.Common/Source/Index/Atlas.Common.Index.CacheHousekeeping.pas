@@ -1,8 +1,9 @@
 ﻿unit Atlas.Common.Index.CacheHousekeeping;
 
 // Aufräumregeln für den Cache-Ordner (#184): Der Ordner wird auf eine
-// Höchstgröße begrenzt, die ältesten Caches gehen zuerst. Der Cache des
-// eigenen Projekts und gesperrte Caches anderer Instanzen bleiben stehen.
+// Höchstgröße begrenzt, die ältesten Caches gehen zuerst. Die eigenen Caches
+// (Projekt und gemeinsame Bibliothek, #616) und gesperrte Caches anderer
+// Instanzen bleiben stehen.
 // Reine Logik; die Plattenzugriffe liegen in Index.Adapters.CacheDirectory.
 
 interface
@@ -29,7 +30,11 @@ type
     /// AKeep (eigener Cache) und gesperrte Dateien werden nie gewählt.
     /// </summary>
     class function SelectForRemoval(const AFiles: TArray<TCacheFileInfo>; AMaxBytes: Int64;
-      const AKeep: string): TArray<string>; static;
+      const AKeep: string): TArray<string>; overload; static;
+    /// <summary>Wie oben mit mehreren eigenen Caches (#616): Der Bibliotheks-Cache (#492) ist nicht gesperrt
+    /// und wurde sonst bei jedem Start gelöscht, sobald der Ordner über der Höchstgröße lag.</summary>
+    class function SelectForRemoval(const AFiles: TArray<TCacheFileInfo>; AMaxBytes: Int64;
+      const AKeep: TArray<string>): TArray<string>; overload; static;
   end;
 
 implementation
@@ -50,6 +55,22 @@ end;
 
 class function TIndexCacheHousekeeping.SelectForRemoval(const AFiles: TArray<TCacheFileInfo>;
   AMaxBytes: Int64; const AKeep: string): TArray<string>;
+begin
+  Result := SelectForRemoval(AFiles, AMaxBytes, TArray<string>.Create(AKeep));
+end;
+
+function IsKept(const AFileName: string; const AKeep: TArray<string>): Boolean;
+var
+  Keep: string;
+begin
+  Result := False;
+  for Keep in AKeep do
+    if SameText(AFileName, Keep) then
+      Exit(True);
+end;
+
+class function TIndexCacheHousekeeping.SelectForRemoval(const AFiles: TArray<TCacheFileInfo>;
+  AMaxBytes: Int64; const AKeep: TArray<string>): TArray<string>;
 var
   Sorted: TList<TCacheFileInfo>;
   Info: TCacheFileInfo;
@@ -69,7 +90,7 @@ begin
     begin
       if Total <= AMaxBytes then
         Break;
-      if Info.Locked or SameText(Info.FileName, AKeep) then
+      if Info.Locked or IsKept(Info.FileName, AKeep) then
         Continue;
       Result := Result + [Info.FileName];
       Dec(Total, Info.Size);

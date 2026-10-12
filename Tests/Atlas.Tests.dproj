@@ -76,6 +76,7 @@
         <DCCReference Include="Common\Documents\Atlas.Common.Documents.Providers.DocumentStore.Tests.pas"/>
         <DCCReference Include="Common\Documents\Atlas.Common.Documents.Uris.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.NameIndex.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.CacheHousekeeping.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Memory.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ControlFlow.Tests.pas"/>

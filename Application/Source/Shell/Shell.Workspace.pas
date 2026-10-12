@@ -64,8 +64,9 @@ type
     FCacheLock: TStream;
     FCacheLockFile: string;
     FBaselineTime: TDateTime;
-    /// <summary>Sperrt ACacheFile, gibt eine alte Sperre frei; False = nur lesen.</summary>
-    function LockCache(const ACacheFile: string): Boolean;
+    /// <summary>Sperrt ACacheFile, gibt eine alte Sperre frei; False = nur lesen. Beim Aufräumen bleiben
+    /// ACacheFile und ALibraryCacheFile stehen (#616).</summary>
+    function LockCache(const ACacheFile, ALibraryCacheFile: string): Boolean;
     /// <summary>Weist auf gemischte Kodierungen der Projektdateien hin (Index-Thread).</summary>
     procedure ReportEncodings;
     procedure StartIndex(const ASettings: TServerSettings);
@@ -267,7 +268,7 @@ begin
   end;
 end;
 
-function TShellWorkspace.LockCache(const ACacheFile: string): Boolean;
+function TShellWorkspace.LockCache(const ACacheFile, ALibraryCacheFile: string): Boolean;
 var
   Removed: Integer;
 begin
@@ -278,8 +279,10 @@ begin
   FCacheLock := TIndexCacheDirectory.TryLock(ACacheFile);
   Result := FCacheLock <> nil;
   try
+    // Der gemeinsame Bibliotheks-Cache ist nicht gesperrt; ohne ihn hier zu nennen, löschte das Aufräumen
+    // ihn bei jedem Start, sobald der Ordner über der Höchstgröße lag (#616: "0 aus dem Cache").
     Removed := TIndexCacheDirectory.Cleanup(TIndexCacheDirectory.DefaultRoot,
-      TIndexCacheHousekeeping.DefaultMaxBytes, ACacheFile);
+      TIndexCacheHousekeeping.DefaultMaxBytes, TArray<string>.Create(ACacheFile, ALibraryCacheFile));
     if Removed > 0 then
       FLogger.Info(Format('%d alte Index-Caches gelöscht (Höchstgröße %d MB)',
         [Removed, TIndexCacheHousekeeping.DefaultMaxBytes div (1024 * 1024)]));
@@ -640,7 +643,7 @@ begin
   // RTL/VCL einmal je Compilerversion, Plattform und Defines, geteilt mit anderen Projekten (#492).
   Request.LibraryCacheFile := TIndexCacheDirectory.FileFor(TIndexCacheDirectory.DefaultRoot,
     TIndexProjectFiles.LibrarySignature(Project, Version));
-  Request.ReadOnlyCache := not LockCache(CacheFile);
+  Request.ReadOnlyCache := not LockCache(CacheFile, Request.LibraryCacheFile);
   if Request.ReadOnlyCache then
   begin
     FLogger.Info(Format('Cache %s wird von einer anderen Instanz geschrieben und hier nur gelesen', [CacheFile]));

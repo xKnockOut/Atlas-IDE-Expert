@@ -8,6 +8,11 @@
 // Schreibt eine andere Instanz den Cache gerade (#62), wartet der Aufbau
 // begrenzt, bis sie fertig ist oder die Sperre freigibt, und lädt dann ihren
 // Stand, statt alles selbst noch einmal zu lesen.
+//
+// EnsureUnit parst ohne globale Sperre (#617): Die Sperre schützt nur den
+// Zugriff auf den Builder und zählt seine Nutzer. Ein neuer Aufbau gibt den
+// alten Builder erst frei, wenn ihn niemand mehr nutzt. So warten Hover und
+// Vervollständigung nicht hintereinander auf das Parsen anderer Anfragen.
 
 interface
 
@@ -49,11 +54,18 @@ type
     FCancelled: Boolean;
     FBuilder: TIndexBuilder;
     FLock: TObject;
+    /// <summary>Anfragen, die FBuilder gerade nutzen; nur unter FLock ändern.</summary>
+    FUsers: Integer;
+    /// <summary>Hält ApplyText und ApplyChanges in Reihe; EnsureUnit wartet darauf nicht.</summary>
+    FApplyLock: TObject;
     FOnProgress: TIndexProgressEvent;
     FOnFinished: TIndexFinishedEvent;
     FOnError: TIndexErrorEvent;
     procedure Run(const ARequest: TIndexRequest);
     procedure WaitForOtherWriter(const ARequest: TIndexRequest);
+    function AcquireBuilder: TIndexBuilder;
+    procedure ReleaseBuilder;
+    procedure ReplaceBuilder(ABuilder: TIndexBuilder);
   public
     constructor Create(const AIndex: ISymbolIndex; const AFileSystem: IIndexFileSystem);
     destructor Destroy; override;
@@ -116,12 +128,14 @@ begin
   FIndex := AIndex;
   FFileSystem := AFileSystem;
   FLock := TObject.Create;
+  FApplyLock := TObject.Create;
 end;
 
 destructor TIndexService.Destroy;
 begin
   Stop;
-  FBuilder.Free;
+  ReplaceBuilder(nil);
+  FApplyLock.Free;
   FLock.Free;
   inherited;
 end;
@@ -153,13 +167,6 @@ begin
     Watch := TStopwatch.StartNew;
     Builder := TIndexBuilder.Create(FIndex, FFileSystem, ARequest.Defines, ARequest.ResolveUnit);
     Builder.IncludePaths := ARequest.IncludePaths;
-    TMonitor.Enter(FLock);
-    try
-      FBuilder.Free;
-      FBuilder := Builder;
-    finally
-      TMonitor.Exit(FLock);
-    end;
     WaitForOtherWriter(ARequest);
     Cached := nil;
     LibraryCached := nil;
@@ -169,6 +176,8 @@ begin
     if (ARequest.LibraryCacheFile <> '') and FFileSystem.ReadText(ARequest.LibraryCacheFile, Text) then
       LibraryCached := TIndexCache.Deserialize(Text);
     Builder.UseCache(LibraryCached + Cached);
+    // Erst mit gefülltem Cache veröffentlichen; bis dahin bedient der alte Builder EnsureUnit.
+    ReplaceBuilder(Builder);
     BuildResult := Builder.Build(ARequest.Files, FOnProgress,
       function: Boolean
       begin
@@ -263,40 +272,98 @@ begin
     FThread.WaitFor;
 end;
 
-function TIndexService.EnsureUnit(const AUnitName: string): Boolean;
-var
-  Builder: TIndexBuilder;
+function TIndexService.AcquireBuilder: TIndexBuilder;
 begin
   TMonitor.Enter(FLock);
   try
-    Builder := FBuilder;
-    Result := (Builder <> nil) and Builder.EnsureUnit(AUnitName);
+    Result := FBuilder;
+    if Result <> nil then
+      Inc(FUsers);
   finally
     TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TIndexService.ReleaseBuilder;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Dec(FUsers);
+    if FUsers = 0 then
+      TMonitor.PulseAll(FLock);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TIndexService.ReplaceBuilder(ABuilder: TIndexBuilder);
+var
+  Old: TIndexBuilder;
+begin
+  TMonitor.Enter(FLock);
+  try
+    // Neue Anfragen sehen sofort den neuen Builder; der alte wird frei, sobald niemand ihn nutzt.
+    Old := FBuilder;
+    FBuilder := nil;
+    while FUsers > 0 do
+      TMonitor.Wait(FLock, INFINITE);
+    FBuilder := ABuilder;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  Old.Free;
+end;
+
+function TIndexService.EnsureUnit(const AUnitName: string): Boolean;
+var
+  Builder: TIndexBuilder;
+  Existing: TUnitIndex;
+begin
+  Builder := AcquireBuilder;
+  if Builder = nil then
+    Exit(FIndex.FindUnit(AUnitName, Existing));
+  try
+    Result := Builder.EnsureUnit(AUnitName);
+  finally
+    ReleaseBuilder;
   end;
 end;
 
 function TIndexService.ApplyText(const AFileName, AText: string): Boolean;
+var
+  Builder: TIndexBuilder;
 begin
-  TMonitor.Enter(FLock);
+  Builder := AcquireBuilder;
+  if Builder = nil then
+    Exit(False);
   try
-    if FBuilder = nil then
-      Exit(False);
-    Result := FBuilder.ApplyText(AFileName, AText);
+    TMonitor.Enter(FApplyLock);
+    try
+      Result := Builder.ApplyText(AFileName, AText);
+    finally
+      TMonitor.Exit(FApplyLock);
+    end;
   finally
-    TMonitor.Exit(FLock);
+    ReleaseBuilder;
   end;
 end;
 
 function TIndexService.ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
+var
+  Builder: TIndexBuilder;
 begin
-  TMonitor.Enter(FLock);
+  Builder := AcquireBuilder;
+  if Builder = nil then
+    Exit(0);
   try
-    if FBuilder = nil then
-      Exit(0);
-    Result := FBuilder.ApplyChanges(AChanges);
+    TMonitor.Enter(FApplyLock);
+    try
+      Result := Builder.ApplyChanges(AChanges);
+    finally
+      TMonitor.Exit(FApplyLock);
+    end;
   finally
-    TMonitor.Exit(FLock);
+    ReleaseBuilder;
   end;
 end;
 

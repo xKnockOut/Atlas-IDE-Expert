@@ -52,6 +52,18 @@ type
     [Test]
     procedure FuzzySetsFilterTextAndIsIncomplete;
     [Test]
+    procedure IncompleteOnlyWhenMoreCanCome;
+    [Test]
+    procedure ImportLimitMarksIncomplete;
+    [Test]
+    procedure NameFilterSkipsIndexSymbols;
+    [Test]
+    procedure StagedDeliversOwnScopeThenUsedUnits;
+    [Test]
+    procedure StagedKeepsImportsAfterUsedNames;
+    [Test]
+    procedure PartialJsonContinuesSortText;
+    [Test]
     procedure PrefixModeKeepsStrictSelection;
     [Test]
     procedure OffersSymbolsOfUnusedUnitsWithUsesEdit;
@@ -278,13 +290,14 @@ var
   Items: TCompletionItems;
   Json: TJSONObject;
 begin
+  // Vollständig (#616): Der Editor filtert beim Weitertippen selbst, statt bei jedem Zeichen neu zu fragen.
   Items := ItemsAt(WithCode('  zlr'), '  zlr', TCompletionMatching.Fuzzy);
-  Assert.IsTrue(Items.Incomplete);
+  Assert.IsFalse(Items.Incomplete);
   Assert.AreEqual('zlr', Items.Items[0].FilterText);
   Json := TLspCompletion.ToJson(Items);
   try
     Assert.AreEqual('zlr', Json.GetValue<string>('items[0].filterText'));
-    Assert.IsTrue(Json.GetValue<Boolean>('isIncomplete'));
+    Assert.IsTrue(Json.GetValue('isIncomplete') is TJSONFalse);
   finally
     Json.Free;
   end;
@@ -292,6 +305,151 @@ begin
   Items := ItemsAt(WithCode('  We'), '  We', TCompletionMatching.Fuzzy);
   Assert.AreEqual('Wert', Items.Items[0].Name);
   Assert.AreEqual('', Items.Items[0].FilterText);
+end;
+
+procedure TLspCompletionTests.IncompleteOnlyWhenMoreCanCome;
+begin
+  // Unter MinImportPrefix fehlen die Importe noch: neu fragen, sobald genug getippt ist (#616).
+  Assert.IsTrue(ItemsAt(WithCode('  W'), '  W', TCompletionMatching.Fuzzy).Incomplete, 'ein Zeichen');
+  Assert.IsTrue(ItemsAt(WithCode('  '), #10'begin'#10'  ', TCompletionMatching.Fuzzy).Incomplete, 'ohne Eingabe');
+  Assert.IsFalse(ItemsAt(WithCode('  We'), '  We', TCompletionMatching.Fuzzy).Incomplete, 'zwei Zeichen');
+  // Nach dem Punkt gibt es keine Importe: vollständig, auch ohne Eingabe.
+  Assert.IsFalse(ItemsAt(WithCode('  Wert.'), 'Wert.', TCompletionMatching.Fuzzy).Incomplete, 'Mitglieder');
+end;
+
+procedure TLspCompletionTests.ImportLimitMarksIncomplete;
+var
+  Lib: TUnitIndex;
+  Index: Integer;
+  Items: TCompletionItems;
+begin
+  // Mehr passende Importe als MaxImportItems: Beim Weitertippen können andere drankommen (#616).
+  for Index := 1 to TLspCompletion.MaxImportItems + 5 do
+  begin
+    Lib := TIndexExtractor.ExtractText(Format('unit Lib%d;'#10'interface'#10'type TTestLib%d = class end;'#10 +
+      'implementation'#10'end.', [Index, Index]), Format('C:\Lib\Lib%d.pas', [Index]), nil);
+    Lib.Library_ := True;
+    FIndex.AddUnit(Lib);
+  end;
+  Items := ItemsAt(WithCode('  TTest'), '  TTest', TCompletionMatching.Fuzzy);
+  Assert.AreEqual(TLspCompletion.MaxImportItems, Length(Items.Items));
+  Assert.IsTrue(Items.Incomplete);
+end;
+
+procedure TLspCompletionTests.NameFilterSkipsIndexSymbols;
+var
+  Tree: TSyntaxTree;
+  Text, Found: string;
+  Symbol: TResolvedSymbol;
+begin
+  // Der Filter gilt für Symbole aus dem Index (eigene Unit, uses, Mitglieder), nicht für lokale Namen (#616).
+  Text := WithCode('  ');
+  Tree := TPascalParser.Parse(Text);
+  try
+    FResolver.NameFilter :=
+      function(const AName: string): Boolean
+      begin
+        Result := AName.StartsWith('R', True) or AName.StartsWith('M', True);
+      end;
+    try
+      Found := '';
+      for Symbol in FResolver.ScopeCandidates(Tree, HauptFile,
+        TLspCompletion.Analyze(Tree, PositionOf(Text, #10'begin'#10'  ')).Offset) do
+        Found := Found + Symbol.Name + ' ';
+    finally
+      FResolver.NameFilter := nil;
+    end;
+    Assert.AreEqual('Anzahl Wert Self Melde Rechne', Found.Trim);
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TLspCompletionTests.StagedDeliversOwnScopeThenUsedUnits;
+var
+  Text: string;
+  Tree: TSyntaxTree;
+  Stages: TList<string>;
+  Items: TCompletionItems;
+  Postfix: TPostfixOptions;
+begin
+  Text := WithCode('  ');
+  Tree := TPascalParser.Parse(Text);
+  Stages := TList<string>.Create;
+  try
+    Postfix := TPostfixOptions.Default;
+    Postfix.Enabled := False;
+    Items := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, Text, PositionOf(Text, #10'begin'#10'  '),
+      TCompletionMatching.Fuzzy, Postfix,
+      procedure(const AItems: TArray<TCompletionItem>)
+      var
+        Part: TCompletionItems;
+      begin
+        Part.Items := AItems;
+        Stages.Add(Names(Part));
+      end);
+    // Erst lokal, Self und eigene Unit, dann die Units aus uses; die Antwort bringt den (leeren) Rest.
+    Assert.AreEqual(2, Stages.Count);
+    Assert.AreEqual('Anzahl Wert Self Name Bar Zaehler Melde TFoo', Stages[0]);
+    Assert.AreEqual('TBasis Rechne', Stages[1]);
+    Assert.AreEqual('', Names(Items));
+    Assert.IsTrue(Items.Incomplete, 'ohne Eingabe fehlen noch die Importe');
+  finally
+    Stages.Free;
+    Tree.Free;
+  end;
+end;
+
+procedure TLspCompletionTests.StagedKeepsImportsAfterUsedNames;
+var
+  Text: string;
+  Tree: TSyntaxTree;
+  Sent: string;
+  Items: TCompletionItems;
+  Postfix: TPostfixOptions;
+begin
+  // Gleichnamiges aus nicht eingebundenen Units kommt nicht doppelt, auch wenn der eingebundene Name schon
+  // in einem Teilergebnis stand.
+  FIndex.AddUnit(TIndexExtractor.ExtractText('unit Extra;'#10'interface'#10'procedure Rechne;'#10 +
+    'procedure Rechenweg;'#10'implementation'#10'procedure Rechne; begin end;'#10 +
+    'procedure Rechenweg; begin end;'#10'end.', 'C:\P\Extra.pas', nil));
+  Text := WithCode('  Rech');
+  Tree := TPascalParser.Parse(Text);
+  try
+    Postfix := TPostfixOptions.Default;
+    Postfix.Enabled := False;
+    Sent := '';
+    Items := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, Text, PositionOf(Text, '  Rech'),
+      TCompletionMatching.Fuzzy, Postfix,
+      procedure(const AItems: TArray<TCompletionItem>)
+      var
+        Part: TCompletionItems;
+      begin
+        Part.Items := AItems;
+        Sent := Sent + Names(Part) + '|';
+      end);
+    Assert.AreEqual('Rechne|', Sent);
+    Assert.AreEqual('Rechenweg', Names(Items));
+    Assert.AreEqual('Extra (uses ergänzen)', Items.Items[0].Detail);
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TLspCompletionTests.PartialJsonContinuesSortText;
+var
+  Items: TArray<TCompletionItem>;
+  Json: TJSONArray;
+begin
+  SetLength(Items, 1);
+  Items[0].Name := 'Wert';
+  Items[0].Kind := 6;
+  Json := TLspCompletion.ToJson(Items, 12);
+  try
+    Assert.AreEqual('[{"label":"Wert","kind":6,"sortText":"00012"}]', Json.ToJSON);
+  finally
+    Json.Free;
+  end;
 end;
 
 procedure TLspCompletionTests.PrefixModeKeepsStrictSelection;
