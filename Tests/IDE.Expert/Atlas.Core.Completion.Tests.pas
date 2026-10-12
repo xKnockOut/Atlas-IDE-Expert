@@ -18,6 +18,8 @@ type
     [Test]
     procedure ReadsItemArrayAndNull;
     [Test]
+    procedure PartialItemsContinueRank;
+    [Test]
     procedure ReadsResolvedDetails;
     [Test]
     procedure MergesProvidersAndCompletesOnce;
@@ -248,6 +250,24 @@ begin
   Assert.AreEqual('Klasse', Items[1].Documentation);
   Assert.IsTrue(Items[1].UnitUsed);
   Assert.AreEqual(1, Items[1].Rank);
+end;
+
+procedure TAtlasCompletionProviderTests.PartialItemsContinueRank;
+var
+  Response: TJSONValue;
+  Items: TAtlasCompletionItems;
+begin
+  // Teilergebnis als CompletionItem[] (#616): Rang zählt ab dem ersten Eintrag dieses Teils.
+  Response := TJSONObject.ParseJSONValue('[{"label":"A","kind":6},5,{"label":"B","kind":6}]');
+  try
+    Items := TAtlasServerCompletionProvider.ItemsFromLsp(Response, 10);
+  finally
+    Response.Free;
+  end;
+  Assert.AreEqual(2, Integer(Length(Items)), 'Nicht-Objekte übersprungen');
+  Assert.AreEqual('B', Items[1].Name);
+  Assert.AreEqual(10, Items[0].Rank);
+  Assert.AreEqual(12, Items[1].Rank);
 end;
 
 procedure TAtlasCompletionProviderTests.ReadsItemArrayAndNull;

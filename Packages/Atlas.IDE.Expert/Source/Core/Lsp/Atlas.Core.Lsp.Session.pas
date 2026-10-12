@@ -105,6 +105,11 @@ type
     /// CompletionItem[] oder nil); der Aufrufer gibt sie frei.
     /// </summary>
     function Completion(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
+      overload;
+    /// <summary>Wie oben, gestaffelt (#616): AOnPartial bekommt Teilergebnisse (CompletionItem[]) im
+    /// Lese-Thread, bevor die Antwort den Rest bringt.</summary>
+    function Completion(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal;
+      const AOnPartial: TLspPartialProc): TJSONValue; overload;
     /// <summary>textDocument/signatureHelp ohne Abgleich, wie Completion.</summary>
     function SignatureHelp(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
     /// <summary>completionItem/resolve für AItem (wird übernommen); threadsicher wie Completion.</summary>
@@ -684,6 +689,13 @@ function TLspSession.Completion(const AFileName: string; ALine, ACharacter: Inte
   ATimeoutMs: Cardinal): TJSONValue;
 begin
   Result := FClient.Request('textDocument/completion', PositionParams(AFileName, ALine, ACharacter), ATimeoutMs);
+end;
+
+function TLspSession.Completion(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal;
+  const AOnPartial: TLspPartialProc): TJSONValue;
+begin
+  Result := FClient.Request('textDocument/completion', PositionParams(AFileName, ALine, ACharacter), ATimeoutMs,
+    AOnPartial);
 end;
 
 function TLspSession.SignatureHelp(const AFileName: string; ALine, ACharacter: Integer;

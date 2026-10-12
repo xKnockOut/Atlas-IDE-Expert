@@ -106,11 +106,20 @@ type
 
   TEnsureUnitFunc = reference to function(const AUnitName: string): Boolean;
 
+  /// <summary>Vorfilter für Namen von Kandidaten (#616); False = gar nicht erst aufbauen.</summary>
+  TCandidateNameFilter = reference to function(const AName: string): Boolean;
+
   TNameResolver = class
   private
     FIndex: ISymbolIndex;
     FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
+    FNameFilter: TCandidateNameFilter;
+    // Gestaffelte Kandidaten (#616): Stand nach OwnScopeCandidates für UsedScopeCandidates.
+    FScopeSeen: TDictionary<string, Boolean>;
+    FScopeUnit: TUnitIndex;
+    FScopeInImplementation: Boolean;
+    FScopeOpen: Boolean;
     // Pro Aufruf von Resolve
     FTree: TSyntaxTree;
     FCurrent: TUnitIndex;
@@ -177,6 +186,7 @@ type
       const ASymbol: TResolvedSymbol);
     procedure CollectMembers(const AType: TResolvedSymbol; AList: TList<TResolvedSymbol>;
       ASeen: TDictionary<string, Boolean>);
+    function NameWanted(const AName: string): Boolean;
     procedure CollectUnit(const AUnit: TUnitIndex; AOnlyInterface: Boolean; AList: TList<TResolvedSymbol>;
       ASeen: TDictionary<string, Boolean>);
     procedure CollectDeclarations(ANode: TSyntaxNode; AList: TList<TResolvedSymbol>;
@@ -200,6 +210,12 @@ type
     /// <summary>Alle an AOffset ohne Qualifizierung sichtbaren Namen, nächster Gültigkeitsbereich zuerst:
     /// lokale Namen, Mitglieder der eigenen Klasse, eigene Unit, Units aus uses, System.</summary>
     function ScopeCandidates(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer): TArray<TResolvedSymbol>;
+    /// <summary>Erster Teil von ScopeCandidates (#616): lokale Namen, Mitglieder der eigenen Klasse und die
+    /// eigene Unit. Danach liefert UsedScopeCandidates den Rest.</summary>
+    function OwnScopeCandidates(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer): TArray<TResolvedSymbol>;
+    /// <summary>Zweiter Teil (#616): Units aus uses und System, ohne Namen, die der erste Teil schon brachte.
+    /// Leer ohne vorheriges OwnScopeCandidates.</summary>
+    function UsedScopeCandidates: TArray<TResolvedSymbol>;
     /// <summary>Mitglieder hinter A.B. (samt geerbter) bzw. interface-Symbole, wenn die Kette eine Unit ist.</summary>
     function MemberCandidates(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
       AOffset: Integer): TArray<TResolvedSymbol>;
@@ -222,6 +238,9 @@ type
       const ATypeName, ATargetName: string): Boolean;
     /// <summary>Unit-Namespaces des Projekts (DCC_Namespace) für uses ohne Präfix.</summary>
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
+    /// <summary>Vorfilter für ScopeCandidates und MemberCandidates (#616): Symbole aus dem Index, deren Name
+    /// nicht passt, werden nicht aufgebaut. nil = alle. Lokale Namen aus dem Baum filtert er nicht.</summary>
+    property NameFilter: TCandidateNameFilter read FNameFilter write FNameFilter;
   end;
 
 implementation
@@ -507,6 +526,7 @@ end;
 
 destructor TNameResolver.Destroy;
 begin
+  FScopeSeen.Free;
   FHelpers.Free;
   inherited;
 end;
@@ -1795,6 +1815,12 @@ begin
   Result.IsHelper := AIsHelper;
 end;
 
+function TNameResolver.NameWanted(const AName: string): Boolean;
+begin
+  // Vor FromSymbol prüfen: Das Aufbauen der Records kostet bei großen Units die meiste Zeit (#616).
+  Result := not Assigned(FNameFilter) or FNameFilter(AName);
+end;
+
 procedure TNameResolver.CollectMembers(const AType: TResolvedSymbol; AList: TList<TResolvedSymbol>;
   ASeen: TDictionary<string, Boolean>);
 var
@@ -1810,7 +1836,8 @@ begin
     // Mitglieder des Helfers zuerst (#263), auch für eingebaute Typen.
     if HelperFor(Current, Helper) and UnitOf(Helper, HelperUnit) then
       for Symbol in HelperUnit.Symbols do
-        if SameText(Symbol.Container, Helper.QualifiedName) and IsVisible(Symbol, HelperUnit, Helper) then
+        if SameText(Symbol.Container, Helper.QualifiedName) and IsVisible(Symbol, HelperUnit, Helper) and
+          NameWanted(Symbol.Name) then
           AddCandidate(AList, ASeen, MemberOf(FromSymbol(HelperUnit, Symbol), Depth, True));
     if Current.Builtin or not UnitOf(Current, OwnerUnit) then
       Exit;
@@ -1818,7 +1845,10 @@ begin
     for Symbol in OwnerUnit.Symbols do
       if SameText(Symbol.Container, TypeName) then
         if IsVisible(Symbol, OwnerUnit, Current) then
-          AddCandidate(AList, ASeen, MemberOf(FromSymbol(OwnerUnit, Symbol), Depth, False))
+        begin
+          if NameWanted(Symbol.Name) then
+            AddCandidate(AList, ASeen, MemberOf(FromSymbol(OwnerUnit, Symbol), Depth, False));
+        end
         else
           // Unsichtbare Deklaration: auch ihren Rumpf aus implementation nicht anbieten.
           ASeen.AddOrSetValue(UpperCase(Symbol.Name), True);
@@ -1838,6 +1868,8 @@ begin
     if AOnlyInterface and not Symbol.InInterface then
       Continue;
     if (Symbol.Container <> '') and (Symbol.Kind <> TIndexSymbolKind.EnumMember) then
+      Continue;
+    if not NameWanted(Symbol.Name) then
       Continue;
     AddCandidate(AList, ASeen, FromSymbol(AUnit, Symbol));
   end;
@@ -1900,25 +1932,33 @@ end;
 
 function TNameResolver.ScopeCandidates(ATree: TSyntaxTree; const AFileName: string;
   AOffset: Integer): TArray<TResolvedSymbol>;
+begin
+  Result := OwnScopeCandidates(ATree, AFileName, AOffset);
+  Result := Result + UsedScopeCandidates;
+end;
+
+function TNameResolver.OwnScopeCandidates(ATree: TSyntaxTree; const AFileName: string;
+  AOffset: Integer): TArray<TResolvedSymbol>;
 var
   List: TList<TResolvedSymbol>;
-  Seen: TDictionary<string, Boolean>;
   Routine, Header, Params, Param: TSyntaxNode;
   Index: Integer;
-  Name, UnitName: string;
+  Name: string;
   ClassType, ResultSymbol: TResolvedSymbol;
-  Used: TUnitIndex;
 begin
   Result := nil;
+  FScopeOpen := False;
+  if FScopeSeen = nil then
+    FScopeSeen := TDictionary<string, Boolean>.Create;
+  FScopeSeen.Clear;
   if ATree = nil then
     Exit;
   Prepare(ATree, AFileName, AOffset);
   List := TList<TResolvedSymbol>.Create;
-  Seen := TDictionary<string, Boolean>.Create;
   try
     for Routine in EnclosingRoutines do
     begin
-      CollectInlineVars(Routine, List, Seen);
+      CollectInlineVars(Routine, List, FScopeSeen);
       Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
       if Header <> nil then
       begin
@@ -1929,15 +1969,15 @@ begin
             Param := Params[Index];
             if Param.Kind = TSyntaxKind.Parameter then
               for Name in Param.Name.Split([',']) do
-                AddCandidate(List, Seen, FromNode(Param, Name.Trim, TIndexSymbolKind.Variable, True));
+                AddCandidate(List, FScopeSeen, FromNode(Param, Name.Trim, TIndexSymbolKind.Variable, True));
           end;
         if Header.FindChild(TSyntaxKind.TypeReference) <> nil then
         begin
           ResultSymbol := FromNode(Header, 'Result', TIndexSymbolKind.Variable, False);
-          AddCandidate(List, Seen, ResultSymbol);
+          AddCandidate(List, FScopeSeen, ResultSymbol);
         end;
       end;
-      CollectDeclarations(Routine, List, Seen);
+      CollectDeclarations(Routine, List, FScopeSeen);
     end;
     if MethodClass(ClassType) then
     begin
@@ -1946,17 +1986,39 @@ begin
       ResultSymbol.Kind := TResolvedKind.Local;
       ResultSymbol.SymbolKind := TIndexSymbolKind.Variable;
       ResultSymbol.TypeName := ClassType.QualifiedName;
-      AddCandidate(List, Seen, ResultSymbol);
-      CollectMembers(ClassType, List, Seen);
+      AddCandidate(List, FScopeSeen, ResultSymbol);
+      CollectMembers(ClassType, List, FScopeSeen);
     end;
-    CollectUnit(FCurrent, not FInImplementation, List, Seen);
-    for UnitName in ScopeUnits(FCurrent, FInImplementation) do
-      if FindUnit(UnitName, Used) then
-        CollectUnit(Used, True, List, Seen);
+    CollectUnit(FCurrent, not FInImplementation, List, FScopeSeen);
+    // Für den zweiten Teil merken: Andere Aufrufe dazwischen (z. B. Typprüfungen) bereiten den Zustand neu vor.
+    FScopeUnit := FCurrent;
+    FScopeInImplementation := FInImplementation;
+    FScopeOpen := True;
     Result := List.ToArray;
   finally
-    Seen.Free;
     List.Free;
+  end;
+end;
+
+function TNameResolver.UsedScopeCandidates: TArray<TResolvedSymbol>;
+var
+  List: TList<TResolvedSymbol>;
+  UnitName: string;
+  Used: TUnitIndex;
+begin
+  Result := nil;
+  if not FScopeOpen then
+    Exit;
+  FScopeOpen := False;
+  List := TList<TResolvedSymbol>.Create;
+  try
+    for UnitName in ScopeUnits(FScopeUnit, FScopeInImplementation) do
+      if FindUnit(UnitName, Used) then
+        CollectUnit(Used, True, List, FScopeSeen);
+    Result := List.ToArray;
+  finally
+    List.Free;
+    FScopeSeen.Clear;
   end;
 end;
 

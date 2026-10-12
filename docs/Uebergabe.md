@@ -204,3 +204,23 @@
 - #492: Fortschritt im Menütitel, Index-Status/Neuaufbau (ef1b32d6); Tipp-Pause-Index (04bbde94, a92bd2f6, 0f14d324) vom User bestätigt; offen: geteilter Bibliotheks-Index, #470, #476.
 - Fehlersuche: Registry HKCU\Software\Atlas\IdePlugin ServerArguments="--log <datei> --log-level debug" und Diagnose=1 (danach wieder entfernen).
 
+
+## #616 Vervollständigung zu langsam (12.10.2026, Branch `feature/616-completion-langsam`)
+
+- **Ursache (Codeanalyse, nicht gemessen):** Der Server meldete im unscharfen Modus immer `isIncomplete`. Bei jedem Tastendruck schickte das Plugin daher den vollen Text, und der Server baute für alle sichtbaren Symbole (alle uses-Units) vollständige Records, sortierte und kürzte erst dann auf 1000. Dazu kam ein quadratisches Einlesen im Plugin.
+- **Server:**
+  - `TNameResolver.NameFilter` baut nur passende Namen auf; `OwnScopeCandidates`/`UsedScopeCandidates` teilen ScopeCandidates.
+  - `isIncomplete` nur noch bei Kürzung, gekappten Importen oder einem Präfix unter 2 Zeichen.
+  - Mit `partialResultToken` kommen Teilergebnisse als `$/progress`: eigene Unit, dann uses; die Antwort bringt die Importe. Zwischen den Stufen wird ein Abbruch geprüft.
+  - Zeiten je Anfrage gehen ins Debug-Protokoll (`completion: …`).
+  - `completionItem/resolve` puffert die zuletzt gelesene, nicht geöffnete Datei.
+- **Plugin:**
+  - `TLspClient.Request` mit `AOnPartial`; `Fetch` hat `AEmit`.
+  - `TAtlasCompletionController.NeedsQuery`: neu fragen nur, wenn die Liste gekürzt ist oder das Wort nicht mehr mit dem Präfix der Anfrage beginnt.
+  - Einlesen und Rangfolge ohne Anhängen je Eintrag.
+  - Popup misst die Breite bei Pfeiltasten nicht neu.
+  - Gruppen zum erwarteten Typ nur, wenn ein Eintrag passt.
+- **Offen:**
+  - Nicht gebaut und nicht getestet (Cloud).
+  - Nächster Schritt: Namensverzeichnis im Index für `AddFromOtherUnits`/`AddUnavailable`. Beim User hat der Index 672.431 Symbole, die bei jeder Import-Suche linear durchlaufen werden.
+  - Beim User meldet der Index „0 aus dem Cache“ (79 s je Start); der Bibliotheks-Cache aus #492 greift nicht, das ist zu prüfen.

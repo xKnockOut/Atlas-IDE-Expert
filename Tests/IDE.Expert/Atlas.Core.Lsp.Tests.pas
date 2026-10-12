@@ -19,6 +19,8 @@ type
     procedure RejectsRequestsAfterClose;
     [Test]
     procedure ForwardsServerMessagesToHandler;
+    [Test]
+    procedure RoutesPartialResultsToRequest;
   end;
 
   [TestFixture]
@@ -210,6 +212,68 @@ begin
     Client.Free;
     Seen.Free;
     Sent.Free;
+  end;
+end;
+
+procedure TLspClientTests.RoutesPartialResultsToRequest;
+var
+  Client: TLspClient;
+  Partials, Seen: TList<string>;
+  Response: TJSONValue;
+  Params: TJSONObject;
+begin
+  // #616: $/progress zum partialResultToken geht an die Anfrage, vor der Antwort; andere Tokens nicht.
+  Partials := TList<string>.Create;
+  Seen := TList<string>.Create;
+  Client := nil;
+  Client := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    var
+      Request: TJSONObject;
+      Reply: TBytes;
+      Id: Integer;
+      Token: string;
+    begin
+      Request := Unframe(ABytes);
+      try
+        Id := Request.GetValue<Integer>('id');
+        Token := Request.GetValue<string>('params.partialResultToken');
+      finally
+        Request.Free;
+      end;
+      Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"%s","value":[1]}}',
+        [Token])) +
+        TLspClient.Frame('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"fremd","value":{"kind":"end"}}}') +
+        TLspClient.Frame(Format('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"%s","value":[2,3]}}',
+        [Token])) +
+        TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":[4]}', [Id]));
+      Client.Receive(Reply, Length(Reply));
+    end);
+  try
+    Client.OnServerMessage :=
+      procedure(const AMethod: string; const AParams: TJSONValue)
+      begin
+        Seen.Add(AMethod);
+      end;
+    Params := TJSONObject.Create;
+    Response := Client.Request('textDocument/completion', Params, 1000,
+      procedure(const AValue: TJSONValue)
+      begin
+        Partials.Add(AValue.ToJSON);
+      end);
+    try
+      Assert.AreEqual('[4]', Response.ToJSON);
+    finally
+      Response.Free;
+    end;
+    Assert.AreEqual(2, Integer(Partials.Count));
+    Assert.AreEqual('[1]', Partials[0]);
+    Assert.AreEqual('[2,3]', Partials[1]);
+    Assert.AreEqual(1, Integer(Seen.Count), 'Fremder Fortschritt geht an OnServerMessage');
+  finally
+    Client.Free;
+    Seen.Free;
+    Partials.Free;
   end;
 end;
 

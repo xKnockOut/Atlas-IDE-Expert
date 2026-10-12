@@ -754,8 +754,9 @@ begin
       Exit;
     end;
   Prefix := Copy(LineText, FWordStart + 1, Character - FWordStart);
-  // Gekürzte Liste (#431): lokal weiterfiltern und im Hintergrund neu fragen.
-  if FController.Incomplete and (Prefix <> FController.Prefix) then
+  // Gekürzte Liste (#431) oder Wort nicht mehr Fortsetzung der Anfrage (Rücktaste, #616): lokal weiterfiltern
+  // und im Hintergrund neu fragen. Sonst nur lokal; der Server wird beim Tippen nicht mehr gefragt.
+  if (Prefix <> FController.Prefix) and FController.NeedsQuery(Prefix) then
   begin
     Context := Default(TAtlasContext);
     Context.FileName := FView.Buffer.FileName;

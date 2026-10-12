@@ -8,6 +8,8 @@
 // Anfragen des Servers (z. B. window/workDoneProgress/create) beantwortet der
 // Client mit null; Anfragen und Benachrichtigungen gehen außerdem an
 // OnServerMessage (im Lese-Thread, z. B. workspace/diagnostic/refresh, #398).
+// Teilergebnisse (#616): Request mit AOnPartial schickt einen partialResultToken mit; $/progress zu diesem
+// Token geht an AOnPartial (im Lese-Thread, vor der Antwort), nicht an OnServerMessage.
 
 interface
 
@@ -21,6 +23,8 @@ type
   TLspSendProc = reference to procedure(const ABytes: TBytes);
   /// <summary>Anfrage oder Benachrichtigung des Servers; läuft im Lese-Thread, AParams gehört dem Client.</summary>
   TLspServerMessageProc = reference to procedure(const AMethod: string; const AParams: TJSONValue);
+  /// <summary>Teilergebnis zu einer Anfrage (#616); läuft im Lese-Thread, AValue gehört dem Client.</summary>
+  TLspPartialProc = reference to procedure(const AValue: TJSONValue);
 
   ELspClientError = class(Exception);
 
@@ -38,12 +42,16 @@ type
     FSend: TLspSendProc;
     FLock: TObject;
     FPending: TDictionary<Integer, TPending>;
+    FPartials: TDictionary<string, TLspPartialProc>;
     FNextId: Integer;
+    FNextPartial: Integer;
     FBuffer: TBytes;
     FClosed: Boolean;
     FOnServerMessage: TLspServerMessageProc;
     procedure SendText(const AText: string);
     procedure HandleMessage(const AText: string);
+    /// <summary>$/progress zu einem Token aus Request mit Teilergebnissen; False, wenn es keines ist.</summary>
+    function HandlePartial(AMessage: TJSONObject): Boolean;
     function TakeMessage(out AText: string): Boolean;
   public
     constructor Create(const ASend: TLspSendProc);
@@ -55,7 +63,11 @@ type
     /// Liefert das Ergebnis (nil bei null), der Aufrufer gibt es frei.
     /// Löst ELspClientError bei Fehlerantwort, Zeitüberschreitung oder beendeter Verbindung aus.
     /// </summary>
-    function Request(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal): TJSONValue;
+    function Request(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal): TJSONValue; overload;
+    /// <summary>Wie oben mit Teilergebnissen (#616): AParams muss ein Objekt sein; es bekommt einen
+    /// partialResultToken. AOnPartial läuft im Lese-Thread für jedes Teilergebnis vor der Antwort.</summary>
+    function Request(const AMethod: string; AParams: TJSONObject; ATimeoutMs: Cardinal;
+      const AOnPartial: TLspPartialProc): TJSONValue; overload;
     /// <summary>Sendet eine Benachrichtigung. Übernimmt AParams.</summary>
     procedure Notify(const AMethod: string; AParams: TJSONValue);
     /// <summary>Empfangene Bytes vom Server; threadsicher.</summary>
@@ -95,11 +107,13 @@ begin
   FSend := ASend;
   FLock := TObject.Create;
   FPending := TDictionary<Integer, TPending>.Create;
+  FPartials := TDictionary<string, TLspPartialProc>.Create;
 end;
 
 destructor TLspClient.Destroy;
 begin
   Close;
+  FPartials.Free;
   FPending.Free;
   FLock.Free;
   inherited;
@@ -174,6 +188,34 @@ begin
   end;
 end;
 
+function TLspClient.Request(const AMethod: string; AParams: TJSONObject; ATimeoutMs: Cardinal;
+  const AOnPartial: TLspPartialProc): TJSONValue;
+var
+  Token: string;
+begin
+  if not Assigned(AOnPartial) then
+    Exit(Request(AMethod, AParams, ATimeoutMs));
+  TMonitor.Enter(FLock);
+  try
+    Inc(FNextPartial);
+    Token := 'atlas-partial-' + IntToStr(FNextPartial);
+    FPartials.Add(Token, AOnPartial);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  try
+    AParams.AddPair('partialResultToken', Token);
+    Result := Request(AMethod, AParams, ATimeoutMs);
+  finally
+    TMonitor.Enter(FLock);
+    try
+      FPartials.Remove(Token);
+    finally
+      TMonitor.Exit(FLock);
+    end;
+  end;
+end;
+
 procedure TLspClient.Notify(const AMethod: string; AParams: TJSONValue);
 var
   Message: TJSONObject;
@@ -193,6 +235,37 @@ begin
     SendText(Text);
 end;
 
+function TLspClient.HandlePartial(AMessage: TJSONObject): Boolean;
+var
+  Params, Token: TJSONValue;
+  Partial: TLspPartialProc;
+begin
+  Result := False;
+  if AMessage.GetValue<string>('method', '') <> '$/progress' then
+    Exit;
+  Params := AMessage.GetValue('params');
+  if not (Params is TJSONObject) then
+    Exit;
+  Token := TJSONObject(Params).GetValue('token');
+  if not (Token is TJSONString) then
+    Exit;
+  TMonitor.Enter(FLock);
+  try
+    if not FPartials.TryGetValue(TJSONString(Token).Value, Partial) then
+      Exit;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  Result := True;
+  try
+    Partial(TJSONObject(Params).GetValue('value'));
+  except
+    // Ein Fehler im Empfänger darf den Lese-Thread nicht beenden.
+    on Exception do
+      ;
+  end;
+end;
+
 procedure TLspClient.HandleMessage(const AText: string);
 var
   Value: TJSONValue;
@@ -208,6 +281,8 @@ begin
       Exit;
     Message := TJSONObject(Value);
     IdValue := Message.GetValue('id');
+    if (IdValue = nil) and HandlePartial(Message) then
+      Exit;
     if Message.GetValue('method') <> nil then
     begin
       if Assigned(FOnServerMessage) then
