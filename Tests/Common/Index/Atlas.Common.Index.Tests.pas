@@ -100,6 +100,8 @@ type
     [IgnoreMemoryLeaks]
     procedure ServiceBuildsInBackgroundAndWritesCache;
     [Test]
+    procedure EnsureUnitDoesNotWaitForOtherRequests;
+    [Test]
     procedure ReadOnlyServiceWaitsForOtherWriter;
     [Test]
     procedure ServiceSharesLibraryCache;
@@ -120,6 +122,8 @@ implementation
 
 uses
   System.Classes,
+  System.SyncObjs,
+  System.Diagnostics,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.Extractor,
@@ -785,6 +789,59 @@ begin
   end;
   Assert.AreEqual(1, BuildResult.Parsed);
   Assert.AreEqual<NativeInt>(0, Length(FIndex.FindSymbols('TMitNeu')));
+end;
+
+procedure TIndexBuilderTests.EnsureUnitDoesNotWaitForOtherRequests;
+var
+  Service: TIndexService;
+  Request: TIndexRequest;
+  Entered, Release: TEvent;
+  Other: TThread;
+  Watch: TStopwatch;
+begin
+  // #617: Eine Anfrage, die gerade eine Unit sucht und parst, hält die anderen nicht auf.
+  Entered := TEvent.Create(nil, True, False, '');
+  Release := TEvent.Create(nil, True, False, '');
+  Service := TIndexService.Create(FIndex, FFileSystem);
+  try
+    Request := Default(TIndexRequest);
+    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    Request.ResolveUnit :=
+      function(const AUnitName: string): string
+      begin
+        if SameText(AUnitName, 'Langsam') then
+        begin
+          Entered.SetEvent;
+          Release.WaitFor(5000);
+          Exit('');
+        end;
+        Result := Resolve(AUnitName);
+      end;
+    Service.Start(Request);
+    Service.WaitFor;
+    Other := TThread.CreateAnonymousThread(
+      procedure
+      begin
+        Service.EnsureUnit('Langsam');
+      end);
+    Other.FreeOnTerminate := False;
+    Other.Start;
+    try
+      Assert.AreEqual(TWaitResult.wrSignaled, Entered.WaitFor(5000));
+      Watch := TStopwatch.StartNew;
+      Assert.IsTrue(Service.EnsureUnit('F'));
+      // Mit der alten globalen Sperre hätte F bis zur Freigabe (5 s) gewartet.
+      Assert.IsTrue(Watch.ElapsedMilliseconds < 2000, 'F wartete auf Langsam');
+    finally
+      Release.SetEvent;
+      Other.WaitFor;
+      Other.Free;
+    end;
+  finally
+    Service.Free;
+    Release.Free;
+    Entered.Free;
+  end;
 end;
 
 procedure TIndexBuilderTests.ServiceBuildsInBackgroundAndWritesCache;
