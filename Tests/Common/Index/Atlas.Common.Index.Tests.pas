@@ -62,6 +62,8 @@ type
     [Test]
     procedure RoundTripsUnits;
     [Test]
+    procedure RoundTripsSpecialCharactersAndFlags;
+    [Test]
     procedure RejectsOtherVersionAndBrokenJson;
   end;
 
@@ -503,6 +505,46 @@ begin
   Assert.AreEqual(6, S.SelectionRange.StartPos.Line);
   Assert.IsTrue(FindSymbol(U, 'TFoo.Value', S));
   Assert.IsTrue(S.Kind = TIndexSymbolKind.Property_);
+end;
+
+procedure TIndexCacheTests.RoundTripsSpecialCharactersAndFlags;
+var
+  Original, U: TUnitIndex;
+  Loaded: TArray<TUnitIndex>;
+  Symbol: TIndexSymbol;
+begin
+  // #617: Zeilenformat mit Escapes für Tabulator, Zeilenende, "|" und "\".
+  Original := Default(TUnitIndex);
+  Original.UnitName := 'Sonder';
+  Original.FileName := 'C:\Pfad mit|Strich\Sonder.pas';
+  Original.Library_ := True;
+  Original.HasInitialization := True;
+  Original.Includes := ['C:\Inc\a.inc', 'C:\Inc\b|c.inc'];
+  Original.IncludeStamps := [11, 22];
+  Symbol := Default(TIndexSymbol);
+  Symbol.Name := 'TListe';
+  Symbol.TypeName := 'TDictionary<string,Integer>';
+  Symbol.Condition := 'defined(A)'#9'and'#13#10'B';
+  Symbol.ParamTypes := ['string', 'array of Integer'];
+  Symbol.Unavailable := True;
+  Original.Unavailable := [Symbol];
+  Symbol.Unavailable := False;
+  Original.Symbols := [Symbol];
+  Loaded := TIndexCache.Deserialize(TIndexCache.Serialize([Original]));
+  Assert.AreEqual<NativeInt>(1, Length(Loaded));
+  U := Loaded[0];
+  Assert.AreEqual(Original.FileName, U.FileName);
+  Assert.IsTrue(U.Library_);
+  Assert.IsTrue(U.HasInitialization);
+  Assert.IsFalse(U.Compact);
+  Assert.AreEqual('C:\Inc\b|c.inc', U.Includes[1]);
+  Assert.AreEqual<Int64>(22, U.IncludeStamps[1]);
+  Assert.AreEqual<NativeInt>(1, Length(U.Symbols));
+  Assert.AreEqual('TDictionary<string,Integer>', U.Symbols[0].TypeName);
+  Assert.AreEqual(Symbol.Condition, U.Symbols[0].Condition);
+  Assert.AreEqual('array of Integer', U.Symbols[0].ParamTypes[1]);
+  Assert.AreEqual<NativeInt>(1, Length(U.Unavailable));
+  Assert.IsTrue(U.Unavailable[0].Unavailable);
 end;
 
 procedure TIndexCacheTests.RejectsOtherVersionAndBrokenJson;

@@ -228,4 +228,5 @@
   - Sperre: `TIndexService` schützt nur noch den Zugriff auf den Builder und zählt Nutzer (`AcquireBuilder`/`ReleaseBuilder`/`ReplaceBuilder`); `EnsureUnit` parst ohne Sperre. `ApplyText`/`ApplyChanges` laufen über `FApplyLock` in Reihe. Der neue Builder wird erst nach `UseCache` veröffentlicht.
   - Namensindex: `Atlas.Common.Index.NameIndex` (`TImportNameIndex`, `TImportNames.Current`) mit Zeichenmaske je Name; `ISymbolIndex.Generation` meldet Änderungen. `AddFromOtherUnits` nutzt ihn. Große Schnappschüsse werden während des Aufbaus höchstens einmal pro Sekunde erneuert.
   - Nicht gebaut und nicht getestet (Cloud). Neue Tests: `CachedIncludeUnitReusedUntilIncludeChanges`, `EnsureUnitDoesNotWaitForOtherRequests`, `TImportNameIndexTests`.
-  - Danach messen; als Nächstes Binär-Cache mit vorgefertigter Bibliothek, dann dauerhafter Server.
+  - Cache-Format 10: Zeilen mit Tabulator-Feldern statt JSON (`TIndexCache`, Kopf `ATLAS-INDEX`), ein Durchlauf ohne JSON-Baum. Der erste Start danach liest alles neu. Dateiname bleibt `index-*.json`.
+  - Punkt 9 (dauerhafter Server) verworfen (Marco). Punkt 2 (Bibliothek je Version) besteht weitgehend seit #492.
