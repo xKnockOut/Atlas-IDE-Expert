@@ -1176,6 +1176,9 @@ var
   function TakeStage(AStaged: Boolean): TArray<TCompletionItem>;
   var
     Room: Integer;
+    // Lokal: Schleifenvariablen dürfen nicht aus der äußeren Routine stammen (E1019).
+    Index: Integer;
+    Scored: TScoredItem;
   begin
     MarkOwnConditions;
     List.Sort;
