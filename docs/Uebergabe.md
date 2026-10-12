@@ -222,6 +222,10 @@
   - Gruppen zum erwarteten Typ nur, wenn ein Eintrag passt.
 - **Offen:**
   - Nicht gebaut und nicht getestet (Cloud).
-  - Nächster Schritt: Namensverzeichnis im Index für `AddFromOtherUnits`/`AddUnavailable`. Beim User hat der Index 672.431 Symbole, die bei jeder Import-Suche linear durchlaufen werden.
-  - „0 aus dem Cache“ (79 s je Start): Das Aufräumen des Cache-Ordners (256 MB) schützte nur den Projekt-Cache und löschte den nicht gesperrten Bibliotheks-Cache bei jedem Start. Behoben: `Cleanup` mit beiden Dateien. Beim User prüfen, ob der zweite Start „aus dem Cache“ meldet.
-  - Hover-Zeitüberschreitungen während des Indexlaufs: `TIndexService.EnsureUnit` liest unter der globalen Sperre. Bei Bedarf außerhalb der Sperre lesen.
+  - „0 aus dem Cache“ behoben (`Cleanup` schützt beide Cache-Dateien); beim User bestätigt: 1239 aus dem Cache, Lauf noch 63 s, 351 gelesen.
+- **#617 Umsetzungsreihenfolge** (Marco: Punkte 5, 7, 4 zuerst; alle Schritte in #617):
+  - Includes: `TUnitIndex.IncludeStamps` (Cache-Format 9, Schlüssel `its`). Units mit Includes kommen aus dem Cache, solange alle Include-Dateien denselben Zeitstempel haben.
+  - Sperre: `TIndexService` schützt nur noch den Zugriff auf den Builder und zählt Nutzer (`AcquireBuilder`/`ReleaseBuilder`/`ReplaceBuilder`); `EnsureUnit` parst ohne Sperre. `ApplyText`/`ApplyChanges` laufen über `FApplyLock` in Reihe. Der neue Builder wird erst nach `UseCache` veröffentlicht.
+  - Namensindex: `Atlas.Common.Index.NameIndex` (`TImportNameIndex`, `TImportNames.Current`) mit Zeichenmaske je Name; `ISymbolIndex.Generation` meldet Änderungen. `AddFromOtherUnits` nutzt ihn. Große Schnappschüsse werden während des Aufbaus höchstens einmal pro Sekunde erneuert.
+  - Nicht gebaut und nicht getestet (Cloud). Neue Tests: `CachedIncludeUnitReusedUntilIncludeChanges`, `EnsureUnitDoesNotWaitForOtherRequests`, `TImportNameIndexTests`.
+  - Danach messen; als Nächstes Binär-Cache mit vorgefertigter Bibliothek, dann dauerhafter Server.

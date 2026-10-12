@@ -72,6 +72,7 @@ contains
   Atlas.Common.Index.Contract in 'Source\Index\Atlas.Common.Index.Contract.pas',
   Atlas.Common.Index.Extractor in 'Source\Index\Atlas.Common.Index.Extractor.pas',
   Atlas.Common.Index.SymbolIndex in 'Source\Index\Atlas.Common.Index.SymbolIndex.pas',
+  Atlas.Common.Index.NameIndex in 'Source\Index\Atlas.Common.Index.NameIndex.pas',
   Atlas.Common.Index.Cache in 'Source\Index\Atlas.Common.Index.Cache.pas',
   Atlas.Common.Index.CacheHousekeeping in 'Source\Index\Atlas.Common.Index.CacheHousekeeping.pas',
   Atlas.Common.Index.Memory in 'Source\Index\Atlas.Common.Index.Memory.pas',
