@@ -94,6 +94,8 @@ type
     [Test]
     procedure ChangedIncludeReindexesUnit;
     [Test]
+    procedure CachedIncludeUnitReusedUntilIncludeChanges;
+    [Test]
     // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
     [IgnoreMemoryLeaks]
     procedure ServiceBuildsInBackgroundAndWritesCache;
@@ -741,6 +743,48 @@ begin
   finally
     Builder.Free;
   end;
+end;
+
+procedure TIndexBuilderTests.CachedIncludeUnitReusedUntilIncludeChanges;
+const
+  UnitText = 'unit H;'#10'interface'#10'{$I C:\Inc\Schalter.inc}'#10 +
+    '{$IFDEF NEU}type TMitNeu = class end;{$ENDIF}'#10'implementation'#10'end.';
+var
+  Builder: TIndexBuilder;
+  Cache: TArray<TUnitIndex>;
+  BuildResult: TIndexBuildResult;
+begin
+  // #617: Units mit Includes kommen aus dem Cache, solange keine Include-Datei sich ändert.
+  FFiles.Put('C:\Inc\Schalter.inc', '{$DEFINE NEU}', 1);
+  FFiles.Put('C:\Lib\H.pas', UnitText, 1);
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  try
+    Builder.Build(['C:\Lib\H.pas'], nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Cache := TIndexCache.Deserialize(TIndexCache.Serialize(FIndex.Units));
+  FIndex := TSymbolIndex.Create;
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  try
+    Builder.UseCache(Cache);
+    BuildResult := Builder.Build(['C:\Lib\H.pas'], nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Assert.AreEqual(0, BuildResult.Parsed);
+  Assert.AreEqual(1, BuildResult.FromCache);
+  FFiles.Put('C:\Inc\Schalter.inc', '', 2);
+  FIndex := TSymbolIndex.Create;
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  try
+    Builder.UseCache(Cache);
+    BuildResult := Builder.Build(['C:\Lib\H.pas'], nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Assert.AreEqual(1, BuildResult.Parsed);
+  Assert.AreEqual<NativeInt>(0, Length(FIndex.FindSymbols('TMitNeu')));
 end;
 
 procedure TIndexBuilderTests.ServiceBuildsInBackgroundAndWritesCache;
