@@ -20,7 +20,7 @@ uses
 type
   TIndexCache = class
   public
-    const FormatVersion = 8;
+    const FormatVersion = 9;
     class function Serialize(const AUnits: TArray<TUnitIndex>): string; static;
     /// <summary>Liest den Cache; bei falscher Version oder kaputtem JSON leer.</summary>
     class function Deserialize(const AText: string): TArray<TUnitIndex>; static;
@@ -43,6 +43,27 @@ begin
   Result := TJSONArray.Create;
   for Value in AValues do
     Result.Add(Value);
+end;
+
+function StampsToJson(const AValues: TArray<Int64>): TJSONArray;
+var
+  Value: Int64;
+begin
+  Result := TJSONArray.Create;
+  for Value in AValues do
+    Result.Add(Value);
+end;
+
+function JsonToStamps(AValue: TJSONValue): TArray<Int64>;
+var
+  Index: Integer;
+begin
+  Result := nil;
+  if not (AValue is TJSONArray) then
+    Exit;
+  SetLength(Result, TJSONArray(AValue).Count);
+  for Index := 0 to TJSONArray(AValue).Count - 1 do
+    Result[Index] := TJSONArray(AValue).Items[Index].GetValue<Int64>;
 end;
 
 function JsonToStrings(AValue: TJSONValue): TArray<string>;
@@ -180,7 +201,10 @@ begin
       if UnitIndex.HasInitialization then
         Item.AddPair('ini', TJSONBool.Create(True));
       if Length(UnitIndex.Includes) > 0 then
+      begin
         Item.AddPair('inc', StringsToJson(UnitIndex.Includes));
+        Item.AddPair('its', StampsToJson(UnitIndex.IncludeStamps));
+      end;
       Symbols := TJSONArray.Create;
       Item.AddPair('s', Symbols);
       for Symbol in UnitIndex.Symbols do
@@ -244,6 +268,7 @@ begin
       UnitIndex.Library_ := FlagOf(Item.GetValue('l'));
       UnitIndex.Compact := FlagOf(Item.GetValue('c'));
       UnitIndex.Includes := JsonToStrings(Item.GetValue('inc'));
+      UnitIndex.IncludeStamps := JsonToStamps(Item.GetValue('its'));
       UnitIndex.HasInitialization := Item.GetValue<Boolean>('ini', False);
       SymbolList.Clear;
       Value := Item.GetValue('s');
