@@ -1,6 +1,6 @@
 # Einstellungen
 
-<!-- Erzeugt von Tools/Update-ConfigDoc.ps1 aus Editors/VSCode/schemas/atlas.schema.json. Nicht von Hand bearbeiten. -->
+<!-- Erzeugt von Tools/Update-ConfigDoc.ps1 aus schemas/atlas.schema.json. Nicht von Hand bearbeiten. -->
 
 Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Einzelheiten zu Werten und Bedeutung stehen in [Konfiguration.md](Konfiguration.md).
 
@@ -37,7 +37,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Protokoll | `logLevel` | `"info"` | atlas.json, Editor (`atlas.logLevel`), ``--log-level`` | ja | Auswahl | #76, #96 |
 | Protokoll | `logFile` | `""` | atlas.json, Editor (`atlas.logFile`), ``--log`` | ja | Datei wählen | #76, #96 |
 | Protokoll | `traceFile` | `""` | atlas.json, Editor (`atlas.traceFile`), ``--trace`` | ja | Datei wählen | #76, #96 |
-| Allgemein | Pfad zu `AtlasServer.exe` | – | VS Code (`atlas.serverPath`) | ja | Datei wählen, Version anzeigen | #12, #49 |
+| Allgemein | Pfad zu `AtlasServer.exe` | – | Plugin (Registry `ServerPath`) | ja | Datei wählen, Version anzeigen | #12 |
 | Baseline | `atlas-baseline.json` | – | Datei, `--baseline`, `--update-baseline` | nein | Anzahl Einträge, „Baseline neu erzeugen“, „Baseline löschen“ | #97 |
 | Baseline | Unterdrückungen `lsp-ignore` | – | `--suppression-stats` | nein | Übersicht je Regel (nur Anzeige) | #147 |
 | Speicher | Index-Cache löschen | – | `--clear-cache`, Befehl `atlas.server.rebuildIndex` | nein | Knopf „Index-Cache löschen“ | #184 |

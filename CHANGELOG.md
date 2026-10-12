@@ -2,7 +2,7 @@
 
 Alle nennenswerten Änderungen an Atlas (Server und VS-Code-Erweiterung).
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionen nach [SemVer](https://semver.org/lang/de/).
-Server und Erweiterung tragen immer dieselbe Version.
+Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
@@ -40,6 +40,9 @@ Server und Erweiterung tragen immer dieselbe Version.
 - VS-Code-Erweiterung als `.vsix`, Konfiguration für Claude Code und Neovim (#49).
 - MCP-Modus mit lesenden Werkzeugen (#48).
 - Delphi-Version je Projekt aus der ProjectVersion (#47).
+
+### Entfernt
+- VS-Code-Erweiterung und Neovim-Konfiguration samt Workflow, Release-Schritten (`.vsix`, Marketplace, Open VSX) und `Tools/Package-VSCode.ps1`; Atlas konzentriert sich auf das Delphi-Plugin. Das Schema von `atlas.json` liegt jetzt unter `schemas/atlas.schema.json`.
 
 ## [0.1.0] - 2026-10-08
 

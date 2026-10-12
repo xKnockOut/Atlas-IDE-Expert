@@ -1,6 +1,6 @@
 # Konfiguration: atlas.json
 
-<!-- Erzeugt von Tools/Update-ConfigDoc.ps1 aus Editors/VSCode/schemas/atlas.schema.json. Nicht von Hand bearbeiten. -->
+<!-- Erzeugt von Tools/Update-ConfigDoc.ps1 aus schemas/atlas.schema.json. Nicht von Hand bearbeiten. -->
 
 Einstellungen für Atlas im Projektordner.
 
@@ -114,7 +114,7 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/xKnockOut/Atlas/main/Editors/VSCode/schemas/atlas.schema.json",
+  "$schema": "https://raw.githubusercontent.com/xKnockOut/Atlas/main/schemas/atlas.schema.json",
   "project": "App.dproj",
   "config": "Debug",
   "platform": "Win64",

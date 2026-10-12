@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Settings.SchemaData;
 
-// Erzeugt von Tools/Update-ConfigDoc.ps1 aus Editors/VSCode/schemas/atlas.schema.json;
+// Erzeugt von Tools/Update-ConfigDoc.ps1 aus schemas/atlas.schema.json;
 // nicht von Hand ändern. JSON-Schema von atlas.json für den Einstellungsdialog (#227).
 
 interface
