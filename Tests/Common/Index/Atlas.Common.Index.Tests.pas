@@ -57,6 +57,8 @@ type
     procedure ReplacesUnitOfSameFile;
     [Test]
     procedure FindsDescendants;
+    [Test]
+    procedure FindSymbolsMatchesWholeNamesOnly;
   end;
 
   [TestFixture]
@@ -533,6 +535,22 @@ begin
   Assert.AreEqual<NativeInt>(1, Length(Found));
   Assert.AreEqual('TKind', Found[0].Symbol.Name);
   Assert.AreEqual<NativeInt>(1, Length(Index.Descendants('TList')));
+end;
+
+procedure TSymbolIndexTests.FindSymbolsMatchesWholeNamesOnly;
+var
+  Index: ISymbolIndex;
+  Found: TArray<TSymbolLocation>;
+begin
+  // Vorprüfung über die Länge (#647): gleich lange und längere Namen dürfen nicht treffen.
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['TFooBar', 'TFoo', 'TFo']));
+  Index.AddUnit(MakeUnit('B', 'C:\B.pas', ['TBaz', 'TFOO']));
+  Found := Index.FindSymbols('tfoo');
+  Assert.AreEqual<NativeInt>(2, Length(Found));
+  Assert.IsTrue(SameText('TFoo', Found[0].Symbol.Name));
+  Assert.IsTrue(SameText('TFoo', Found[1].Symbol.Name));
+  Assert.AreEqual<NativeInt>(0, Length(Index.FindSymbols('TFooB')));
 end;
 
 { TIndexCacheTests }

@@ -431,7 +431,8 @@ var
   R: TResolvedSymbol;
 begin
   // Nachladen durchsucht die Suchpfade aller Projekte (#647): nicht für Units, die der Index mit
-  // Namespace schon kennt, und eine fehlende Unit je Resolver nur einmal.
+  // Namespace schon kennt, und eine fehlende Unit je Resolver nur einmal. Die Namespaces probiert
+  // der Unit-Resolver selbst; Firma.Fehlt wird nicht noch einmal gesucht.
   Calls := nil;
   Resolver := TNameResolver.Create(FIndex,
     function(const AUnitName: string): Boolean
@@ -453,7 +454,7 @@ begin
   finally
     Resolver.Free;
   end;
-  Assert.AreEqual('Fehlt,Firma.Fehlt', string.Join(',', Calls));
+  Assert.AreEqual('Fehlt', string.Join(',', Calls));
 end;
 
 procedure TNameResolverTests.GivesUpOnExpressions;
