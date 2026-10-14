@@ -51,6 +51,9 @@ type
     /// <summary>Mitglieder in bedingten Teilen eines Klassenrumpfs (#476).</summary>
     [Test]
     procedure RecordsConditionsOfMembers;
+    /// <summary>Routinen nur im implementation-Teil unter einem nicht geltenden Zweig (#476).</summary>
+    [Test]
+    procedure RecordsUnavailableImplementationRoutines;
   end;
 
   [TestFixture]
@@ -558,6 +561,38 @@ begin
   Assert.IsTrue(U.Unavailable[2].Kind = TIndexSymbolKind.Method);
   Assert.IsTrue(U.Unavailable[3].Kind = TIndexSymbolKind.Property_);
   Assert.AreEqual(15, U.Unavailable[1].SelectionRange.StartPos.Character, 'Spalte des zweiten Felds');
+end;
+
+procedure TIndexExtractorTests.RecordsUnavailableImplementationRoutines;
+const
+  Source =
+    'unit Start;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    '{$IFDEF FPC}'#10 +
+    'procedure ApplyAppIcon;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'procedure TFoo.Bar;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    '{$ENDIF}'#10 +
+    'procedure Immer;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'end.';
+var
+  U: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Missing: string;
+begin
+  U := TIndexExtractor.ExtractText(Source, 'C:\P\Start.pas', ['WIN32', 'MSWINDOWS']);
+  Missing := '';
+  for Symbol in U.Unavailable do
+    Missing := Missing + Symbol.Name + '=' + Symbol.Condition + ';';
+  Assert.AreEqual('ApplyAppIcon=FPC;', Missing);
+  Assert.IsFalse(U.Unavailable[0].InInterface);
+  Assert.IsTrue(U.Unavailable[0].Kind = TIndexSymbolKind.Routine);
 end;
 
 procedure TIndexExtractorTests.ExtractsProgramDeclarations;
