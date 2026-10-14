@@ -263,14 +263,16 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - `feature/395-puffer-sync` (b6073d6):
   - didChange enthält nur den geänderten Bereich (`Atlas.Core.Lsp.TextChanges`; trennt nie CR|LF oder Surrogatpaare, per FPC-Fuzzing geprüft).
   - Änderungen außerhalb der IDE: `Atlas.Core.Files.WatchedChanges` und `Adapters.FolderWatcher` beobachten Git-Arbeitsverzeichnis bzw. Projektordner mit `ReadDirectoryChangesW`. Nach 300 ms Ruhe geht `workspace/didChangeWatchedFiles` an den Server.
-- `feature/397-arbeitsbereich-aenderungen` (5f401ba):
+- `feature/397-arbeitsbereich-aenderungen` (5f401ba, 9e54080):
   - WorkspaceEdits lesen und anwenden (`Atlas.Core.Lsp.WorkspaceEdits`). Die Änderungen landen in den IDE-Puffern, je Datei als ein Rückgängig-Schritt (`Atlas.IDE.Editor.WorkspaceEdit`).
   - Nicht geöffnete Dateien werden geöffnet (Einstellung `OpenForEdits`) oder in ihrer Kodierung auf die Platte geschrieben (`Atlas.Core.Files.TextFile`).
   - Erster Nutzer ist „Symbol umbenennen…“ (Menü Atlas, Palette).
-  - Offen: vom Server angestoßenes `workspace/applyEdit` (sendet er nicht), der Weg über MCP, DFM (#402).
-- `feature/396-projektkontext` (fd1dafe):
+  - `workspace/applyEdit` des Servers: Das Plugin kündigt die Fähigkeit an, wendet die Änderung im Hauptthread an und antwortet mit `applied`/`failureReason` (`TLspClient.OnServerRequest`, `TLspSession.OnApplyEdit`). Der Server sendet es bisher nicht.
+  - MCP bei laufender IDE: `editor-dirty-<pid>.json` listet unter `open` die offenen Dateien. Für eine offene Datei legt der MCP-Server einen Auftrag in `%LOCALAPPDATA%\Atlas\ide-edits\<pid>\` (`Atlas.Common.Mcp.IdeEdits`). Das Plugin übernimmt ihn per Umbenennen, ändert den Puffer als einen Rückgängig-Schritt und speichert, wenn die Datei vorher gespeichert war (`Atlas.Core.Files.EditInbox`, `Atlas.IDE.Files.EditInbox`). Nimmt es ihn nicht binnen 3 s an, schreibt der MCP-Server selbst.
+  - DFM bleibt bei #402.
+- `feature/396-projektkontext` (fd1dafe, 02b8943):
   - Das Plugin meldet je Projekt der Gruppe Konfiguration, Plattform, `DCC_Define`, `DCC_UnitSearchPath`, `DCC_Namespace` (über `IOTABuildConfiguration.GetValue(…, True)` der aktiven Plattform), die Bibliothekspfade der IDE-Registry und die IDE-Version. Das geschieht in `initialize` (`initializationOptions.projectContexts`) und danach als `atlas/projectContext`, höchstens einmal je Sekunde geprüft.
   - Server: `Atlas.Common.Lsp.IdeProject`. `TShellWorkspace.StartIndex` nimmt diese Werte vor der `.dproj`, löst `$(…)` mit den Variablen der Installation auf und lädt bei Änderung neu.
-  - Offen: ob `GetValue(…, True)` in der IDE wirklich geerbte Werte liefert.
-- `feature/401-inlay-hints` (d714d30): Parameternamen vor Literal-Argumenten (`Atlas.Core.InlayHints.Store`, `Atlas.IDE.InlayHints.Editor`), Einstellung „Inlay-Hints“ (aus). Geholt werden nur fehlende sichtbare Zeilen, 300 ms nach der letzten Änderung. Weil der Editor keinen eingeschobenen Text kennt, zeichnet das Plugin die Namen als Marken hinter dem Zeilenende.
+  - Ob `GetValue(…, True)` geerbte Werte liefert, ist nur in der IDE prüfbar. Steht danach noch `$(DCC_Define)` o. Ä. im Wert, setzt das Plugin die Elternkonfigurationen selbst ein. Fehlt die Konfigurationsschnittstelle oder wirft sie, gelten `IOTAProjectOptions.Values`. Mit `Diagnose=1` steht je gemeldetem Kontext eine Zeile „Projektkontext: …“ mit Herkunft, Defines und Anzahl der Pfade im Protokoll.
+- `feature/401-inlay-hints` (d714d30, enthält alle vorigen Branches): Parameternamen vor Literal-Argumenten (`Atlas.Core.InlayHints.Store`, `Atlas.IDE.InlayHints.Editor`), Einstellung „Inlay-Hints“ (aus). Geholt werden nur fehlende sichtbare Zeilen, 300 ms nach der letzten Änderung. Weil der Editor keinen eingeschobenen Text kennt, zeichnet das Plugin die Namen als Marken hinter dem Zeilenende.
 - Offen für alle: Delphi-Build mit 0/0/0 (`cc.ps1`), Testlauf, Prüfung in der IDE. Die Issues bleiben offen, bis alles in main ist.
