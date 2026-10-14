@@ -41,6 +41,9 @@ type
     FIndexService: TIndexService;
     FProgress: TLspWorkDoneProgress;
     FUnitResolver: TUnitResolver;
+    /// <summary>Frühere Resolver: Der alte Builder bedient EnsureUnit, bis der neue veröffentlicht ist,
+    /// und ruft sie dabei noch auf. Freigabe erst mit dem Arbeitsbereich.</summary>
+    FRetiredResolvers: TObjectList<TUnitResolver>;
     FSignature: string;
     // Schützt Defines und Namespaces, die Anfrage-Threads lesen.
     FLock: TObject;
@@ -74,6 +77,7 @@ type
     FBuildConfig: string;
     FBuildPlatform: string;
     FOnProjectLoaded: TProc;
+    FOnIndexFinished: TProc;
     FOnSettingsChanged: TProc<TServerSettings>;
     FBaseline: IRuleBaseline;
     FLastIndexMs: Int64;
@@ -141,6 +145,8 @@ type
     property ProjectFiles: TArray<string> read GetProjectFiles;
     /// <summary>Nach dem Laden eines Projekts (Defines und Namespaces neu).</summary>
     property OnProjectLoaded: TProc read FOnProjectLoaded write FOnProjectLoaded;
+    /// <summary>Nach einem vollständigen (nicht abgebrochenen) Indexaufbau; im Index-Thread.</summary>
+    property OnIndexFinished: TProc read FOnIndexFinished write FOnIndexFinished;
     /// <summary>Nach dem Lesen der Einstellungen, für serverweite Werte wie das Zeitlimit (#283).</summary>
     property OnSettingsChanged: TProc<TServerSettings> read FOnSettingsChanged write FOnSettingsChanged;
     /// <summary>True, wenn AFileName zum Projekt gehört (DCCReference, Hauptdatei oder Suchpfad-Unit). Threadsicher.</summary>
@@ -190,6 +196,7 @@ begin
   FIndex := AIndex;
   FLock := TObject.Create;
   FOwnFiles := TDictionary<string, Boolean>.Create;
+  FRetiredResolvers := TObjectList<TUnitResolver>.Create(True);
   FLastIndexMs := -1;
   FConfiguration := TLspConfiguration.Create(AStore, ATransport,
     function(const AFileName: string; out AText: string): Boolean
@@ -233,7 +240,11 @@ begin
         [FName, AElapsedMs, FIndex.UnitCount, FIndex.SymbolCount, AResult.Parsed, AResult.FromCache, AResult.Missing,
          IfThen(AResult.Cancelled, ', abgebrochen', '')]));
       if not AResult.Cancelled then
+      begin
         ReportEncodings;
+        if Assigned(FOnIndexFinished) then
+          FOnIndexFinished();
+      end;
     end;
   FIndexService.OnError :=
     procedure(const AError: Exception)
@@ -248,6 +259,7 @@ begin
   FCacheLock.Free;
   FProgress.Free;
   FUnitResolver.Free;
+  FRetiredResolvers.Free;
   FConfiguration.Free;
   FOwnFiles.Free;
   FLock.Free;
@@ -753,7 +765,9 @@ begin
   FSignature := State;
   FIndexService.Stop;
   Resolver := TUnitResolver.Create(Project, LibraryPaths, FileExistsFunc);
-  FUnitResolver.Free;
+  // Nicht freigeben: Anfragen können den alten Builder noch nutzen (EnsureUnit ohne Sperre, #647).
+  if FUnitResolver <> nil then
+    FRetiredResolvers.Add(FUnitResolver);
   FUnitResolver := Resolver;
   Request.Files := Files;
   Request.SearchFiles := SearchFiles;

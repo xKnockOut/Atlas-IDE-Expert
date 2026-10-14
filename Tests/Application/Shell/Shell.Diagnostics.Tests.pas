@@ -34,6 +34,8 @@ type
     procedure EveryRunEndHasReason;
     [Test]
     procedure DisabledLogWritesNothing;
+    [Test]
+    procedure FirstRunEndWins;
   end;
 
 implementation
@@ -283,6 +285,35 @@ procedure TShellDiagnosticsTests.DisabledLogWritesNothing;
 begin
   RunSession(False);
   Assert.AreEqual<NativeInt>(0, Length(TDirectory.GetFiles(FLogFolder, '*', TSearchOption.soAllDirectories)));
+end;
+
+procedure TShellDiagnosticsTests.FirstRunEndWins;
+var
+  Diagnostics: TShellDiagnostics;
+  Ref: IJsonRpcRequestObserver;
+  Settings: TServerSettings;
+  Text: string;
+  Store: IDocumentStore;
+  Index: ISymbolIndex;
+begin
+  // Die Endzeile kommt schon beim Ende der Eingabe; der Aufruf nach dem Warten auf laufende
+  // Anfragen schreibt keine zweite (#647).
+  // Erst in Variablen halten: Bei Übergabe als const würden die Objekte nie freigegeben.
+  Store := TDocumentStore.Create;
+  Index := TSymbolIndex.Create;
+  Diagnostics := TShellDiagnostics.Create(FLogFolder, 'test', Store, Index);
+  Ref := Diagnostics;
+  Diagnostics.BeginRun('1.0.0', 1024 * 1024);
+  Settings := TServerSettings.Default;
+  Settings.DiagnosticsLog := True;
+  Diagnostics.ApplySettings(Settings);
+  Diagnostics.EndRun(TDiagnosticEndReason.InputClosed, 0, 1024 * 1024);
+  Diagnostics.EndRun(TDiagnosticEndReason.ParentExited, 1, 1024 * 1024);
+  Ref := nil;
+  Text := AllLogText;
+  Assert.Contains(Text, 'run end reason inputClosed exit 0');
+  Assert.DoesNotContain(Text, 'parentExited');
+  Assert.AreEqual<NativeInt>(0, Length(TDirectory.GetFiles(FLogFolder, 'run-*.open')));
 end;
 
 initialization
