@@ -220,6 +220,8 @@ uses
   Atlas.Core.Projects.Context.Tests in 'IDE.Expert\Atlas.Core.Projects.Context.Tests.pas',
   Atlas.Core.InlayHints.Store in '..\Packages\Atlas.IDE.Expert\Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas',
   Atlas.Core.InlayHints.Store.Tests in 'IDE.Expert\Atlas.Core.InlayHints.Store.Tests.pas',
+  Atlas.Core.Results.Model in '..\Packages\Atlas.IDE.Expert\Source\Core\Results\Atlas.Core.Results.Model.pas',
+  Atlas.Core.Results.Model.Tests in 'IDE.Expert\Atlas.Core.Results.Model.Tests.pas',
   Atlas.Core.Files.EditInbox in '..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.EditInbox.pas',
   Atlas.Core.Files.EditInbox.Tests in 'IDE.Expert\Atlas.Core.Files.EditInbox.Tests.pas',
   Atlas.Core.Commands.Palette in '..\Packages\Atlas.IDE.Expert\Source\Core\Commands\Atlas.Core.Commands.Palette.pas',

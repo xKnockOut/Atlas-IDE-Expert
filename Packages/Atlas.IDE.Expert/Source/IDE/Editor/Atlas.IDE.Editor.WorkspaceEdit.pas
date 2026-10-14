@@ -35,6 +35,8 @@ type
   public
     /// <summary>Puffer der IDE zu einer Datei, auch wenn sie nicht vorn liegt; nil, wenn sie nicht offen ist.</summary>
     class function BufferOf(const AFileName: string): IOTAEditBuffer; static;
+    /// <summary>Aktueller Text: offener Puffer, sonst die Datei auf der Platte; '' wenn sie fehlt (#400).</summary>
+    class function CurrentText(const AFileName: string): string; static;
     /// <summary>Wendet AEdit an. AOpenUnopened: nicht geöffnete Dateien im Editor öffnen,
     /// sonst auf die Platte schreiben.</summary>
     class function Apply(const AEdit: TLspWorkspaceEdit; AOpenUnopened: Boolean): TAtlasWorkspaceEditResult; static;
@@ -54,6 +56,23 @@ type
     Disk: TAtlasTextFileContent;
     Ranges: TArray<TLspTextRange>;
   end;
+
+class function TAtlasIdeWorkspaceEdit.CurrentText(const AFileName: string): string;
+var
+  Buffer: IOTAEditBuffer;
+begin
+  Result := '';
+  Buffer := BufferOf(AFileName);
+  if Buffer <> nil then
+    Exit(TAtlasEditorBuffer.Text(Buffer));
+  try
+    if FileExists(AFileName) then
+      Result := TAtlasTextFile.Load(AFileName).Text;
+  except
+    on Exception do
+      Result := '';
+  end;
+end;
 
 class function TAtlasIdeWorkspaceEdit.BufferOf(const AFileName: string): IOTAEditBuffer;
 var
