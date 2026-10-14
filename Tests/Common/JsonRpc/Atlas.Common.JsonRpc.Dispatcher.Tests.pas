@@ -39,6 +39,8 @@ type
     [Test]
     procedure IgnoresResponsesFromClient;
     [Test]
+    procedure RoutesExpectedResponseOnce;
+    [Test]
     procedure GuardRejectsRequestWithItsCode;
     [Test]
     procedure GuardDropsNotification;
@@ -307,6 +309,36 @@ end;
 procedure TJsonRpcDispatcherTests.IgnoresResponsesFromClient;
 begin
   Assert.IsNull(DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":1,"result":null}'));
+end;
+
+procedure TJsonRpcDispatcherTests.RoutesExpectedResponseOnce;
+var
+  Calls: Integer;
+  Applied: Boolean;
+begin
+  // #397: Antwort des Clients auf workspace/applyEdit geht einmal an den angemeldeten Handler.
+  Calls := 0;
+  Applied := False;
+  FDispatcher.ExpectResponse('atlas/applyEdit/1',
+    procedure(const AResponse: TJSONObject)
+    begin
+      Inc(Calls);
+      Applied := AResponse.GetValue<Boolean>('result.applied');
+    end);
+  Assert.IsNull(DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":"atlas/applyEdit/1","result":{"applied":true}}'));
+  Assert.AreEqual(1, Calls);
+  Assert.IsTrue(Applied);
+  Assert.IsNull(DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":"atlas/applyEdit/1","result":{"applied":true}}'));
+  Assert.AreEqual(1, Calls);
+  // Zurückgegebene Anmeldung: kein Aufruf.
+  FDispatcher.ExpectResponse('7',
+    procedure(const AResponse: TJSONObject)
+    begin
+      Inc(Calls);
+    end);
+  FDispatcher.ForgetResponse('7');
+  Assert.IsNull(DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":7,"error":{"code":-1,"message":"x"}}'));
+  Assert.AreEqual(1, Calls);
 end;
 
 procedure TJsonRpcDispatcherTests.GuardRejectsRequestWithItsCode;
