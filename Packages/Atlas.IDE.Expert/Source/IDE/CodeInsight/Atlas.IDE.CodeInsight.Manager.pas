@@ -348,6 +348,7 @@ begin
     FServer := TLspServerProcess.Create(Path, Arguments);
     FSession := TLspSession.Create(FServer.Client);
     FSession.SetProjects(GroupProjects);
+    FSession.ServerSettings := TAtlasIdeSettings.Current.ServerSettingsJson;
     FProjectsChecked := GetTickCount;
     FSession.Initialize;
     FLastError := '';
