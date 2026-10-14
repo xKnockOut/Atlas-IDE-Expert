@@ -15,6 +15,11 @@
 // Farbe zwischen Text und Hintergrund; die Bereiche liefert der Server mit den
 // Diagnosen (Tag Unnecessary). Hier statt in einem eigenen Notifier, damit
 // nicht zwei Zeichner denselben Lauf übermalen.
+// #653: Besitzer-Schlüsselwörter (if, then, else, for, do, procedure …) in der
+// Farbe ihres Blocks und Blocklinien ab der Anweisung (Einstellung
+// PairOwners); Linienbreite PairGuideWidth (1–3 px bei 100 %, skaliert mit
+// Monitor und Zoom). Hell oder dunkel nach dem Hintergrund, den die IDE für
+// den Lauf vorbereitet hat (Editor-Farbschema), nicht nach dem IDE-Thema.
 
 interface
 
@@ -27,6 +32,7 @@ uses
   Vcl.Graphics,
   ToolsAPI,
   ToolsAPI.Editor,
+  Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Pairs,
   Atlas.Core.Editor.Guides;
 
@@ -59,6 +65,14 @@ type
     // Je 0-basierter Zeile die Blocklinien, die sie kreuzen.
     FGuides: TArray<TArray<TLineGuide>>;
     FTabWidth: Integer;
+    // Besitzer mitgefärbt beim letzten Refresh (#653).
+    FOwners: Boolean;
+    // Hintergrund des Editors aus dem letzten Lauf; bestimmt hell/dunkel (#653).
+    FBackground: TColor;
+    FHasBackground: Boolean;
+    // Texthöhe der Editorschrift bei 100 %, für die Linienbreite.
+    FBaseTextHeight: Integer;
+    function PaletteFor(const AContext: INTACodeEditorPaintContext): TAtlasColors;
     procedure BeginPaint(const Editor: TWinControl; const ForceFullRepaint: Boolean);
     procedure PaintText(const Rect: TRect; const ColNum: SmallInt; const Text: string;
       const SyntaxCode: TOTASyntaxCode; const Hilight, BeforeEvent: Boolean;
@@ -81,7 +95,6 @@ uses
   System.Math,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.IDE.Editor.Buffer,
   Atlas.IDE.Editor.Style,
@@ -138,6 +151,7 @@ begin
     Exit;
   try
     FCheck := True;
+    FBaseTextHeight := 0;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Pairs, E);
@@ -174,8 +188,10 @@ begin
   if (View = nil) or (View.Buffer = nil) then
     Exit;
   Text := TAtlasEditorBuffer.Text(View.Buffer);
-  if (Text = FText) and SameText(Context.FileName, FFileName) then
+  if (Text = FText) and SameText(Context.FileName, FFileName) and
+    (FOwners = TAtlasIdeSettings.Current.PairOwners) then
     Exit;
+  FOwners := TAtlasIdeSettings.Current.PairOwners;
   Activity := TAtlasActivity.Scope('Klammerpaare');
   FFileName := Context.FileName;
   FText := Text;
@@ -190,13 +206,13 @@ begin
   for Index := 0 to High(Lines) do
     FDisplay[Index] := TAtlasPairs.DisplayLine(Lines[Index], TabWidth);
   for Token in TAtlasPairs.Analyze(Text, Blocks) do
-    if Token.Line <= High(FLines) then
+    if (Token.Line <= High(FLines)) and (FOwners or not Token.Owner) then
     begin
       // Spalte der IDE statt Zeichenindex.
       FLines[Token.Line] := FLines[Token.Line] + [Token];
       FLines[Token.Line][High(FLines[Token.Line])].Character := ColumnOf(Lines[Token.Line], Token.Character, TabWidth);
     end;
-  for Guide in TAtlasGuides.FromBlocks(Lines, Blocks, TabWidth) do
+  for Guide in TAtlasGuides.FromBlocks(Lines, Blocks, TabWidth, FOwners) do
     for Line := Guide.FirstLine to Guide.LastLine do
     begin
       LineGuide.Column := Guide.Column;
@@ -209,6 +225,20 @@ begin
         LineGuide.Part := gpMiddle;
       FGuides[Line] := FGuides[Line] + [LineGuide];
     end;
+end;
+
+function TAtlasEditorPairs.PaletteFor(const AContext: INTACodeEditorPaintContext): TAtlasColors;
+begin
+  // Der vorbereitete Pinsel ist der Hintergrund des Editor-Farbschemas.
+  if (AContext <> nil) and (AContext.Canvas <> nil) then
+  begin
+    FBackground := AContext.Canvas.Brush.Color;
+    FHasBackground := True;
+  end;
+  if FHasBackground then
+    Result := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(FBackground)))
+  else
+    Result := TAtlasIdeStyle.Colors;
 end;
 
 class procedure TAtlasEditorPairs.PaintRun(const ARect: TRect; const AText: string;
@@ -284,7 +314,7 @@ begin
     SetLength(CharColors, Length(Text));
     for Index := 0 to High(CharColors) do
       CharColors[Index] := Original;
-    Colors := TAtlasIdeStyle.Colors;
+    Colors := PaletteFor(Context);
     Found := False;
     for Token in Tokens do
       for Column := Token.Character to Token.Character + Token.Length - 1 do
@@ -335,7 +365,7 @@ procedure TAtlasEditorPairs.PaintLine(const Rect: TRect; const Stage: TPaintLine
 var
   Settings: TAtlasPluginSettings;
   LineState: INTACodeEditorLineState;
-  Line, X, Top, Bottom, Tick: Integer;
+  Line, X, Top, Bottom, Tick, Width: Integer;
   Guide: TLineGuide;
   Colors: TAtlasColors;
   Cell, Code: TRect;
@@ -362,7 +392,14 @@ begin
     if (LineState = nil) or
       (TrimRight(TAtlasPairs.DisplayLine(LineState.Text, FTabWidth)) <> TrimRight(FDisplay[Line])) then
       Exit;
-    Colors := TAtlasIdeStyle.Colors;
+    // Hintergrund aus den Textläufen: Beim Zeichnen der Zeile ist der Pinsel nicht sicher der des Editors.
+    if FHasBackground then
+      Colors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(FBackground)))
+    else
+      Colors := TAtlasIdeStyle.Colors;
+    if FBaseTextHeight <= 0 then
+      FBaseTextHeight := TAtlasIdeStyle.BaseTextHeight;
+    Width := TAtlasGuides.PenWidth(Settings.PairGuideWidth, Context.CellSize.cy, FBaseTextHeight);
     Code := LineState.CodeRect;
     DC := Context.Canvas.Handle;
     Saved := SaveDC(DC);
@@ -374,14 +411,14 @@ begin
       begin
         Cell := Context.EditorState.GetCharacterPosPx(Guide.Column, Context.EditorLineNum);
         Tick := Max(3, Cell.Width div 2);
-        X := Cell.Left - Max(2, Cell.Width div 3);
+        X := Cell.Left - Max(2, Cell.Width div 3) - (Width - 1) div 2;
         Top := Rect.Top;
         Bottom := Rect.Bottom;
         if Guide.Part = gpFirst then
           Top := Rect.Top + 2;
         if Guide.Part = gpLast then
           Bottom := Rect.Bottom - 3;
-        Pen := CreatePen(PS_SOLID, 1, ColorToRGB(TColor(Colors.Pairs[Guide.Depth mod Length(Colors.Pairs)])));
+        Pen := CreatePen(PS_SOLID, Width, ColorToRGB(TColor(Colors.Pairs[Guide.Depth mod Length(Colors.Pairs)])));
         Old := SelectObject(DC, Pen);
         try
           MoveToEx(DC, X, Top, nil);

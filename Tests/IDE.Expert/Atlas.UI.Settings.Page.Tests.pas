@@ -41,6 +41,8 @@ begin
   Settings.Preview := True;
   Settings.HoverTooltip := False;
   Settings.ListWidth := 333;
+  Settings.PairOwners := False;
+  Settings.PairGuideWidth := 3;
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
@@ -54,6 +56,8 @@ begin
   Assert.IsTrue(Saved.Preview);
   Assert.IsFalse(Saved.HoverTooltip);
   Assert.AreEqual(333, Saved.ListWidth);
+  Assert.IsFalse(Saved.PairOwners);
+  Assert.AreEqual(3, Saved.PairGuideWidth);
 end;
 
 initialization
