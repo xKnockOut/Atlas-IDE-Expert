@@ -244,8 +244,14 @@ type
     /// <summary>Methoden der Interfaces aus der Vorfahrenliste von ATypeName samt ihrer Vorfahren (#466), die
     /// weder der Typ noch eine Vorfahrklasse mit gleichem Namen und gleichen Parametertypen deklariert.
     /// Container ist das deklarierende Interface; Reihenfolge wie in der Vorfahrenliste, je Interface erst seine
-    /// Methoden, dann die seiner Vorfahren.</summary>
-    function MissingInterfaceMembers(const AFromUnit: TUnitIndex; const ATypeName: string): TArray<TResolvedSymbol>;
+    /// Methoden, dann die seiner Vorfahren. AAncestors: Vorfahrenliste wie im Quelltext samt Typargumenten
+    /// ("IComparer<TKunde>"); ohne gilt die des Index. Bei generischen Interfaces trägt jedes Ergebnis die
+    /// Bindungen ("T=TKunde", ohne Unit-Präfix) in Bindings; verglichen wird mit eingesetzten Typen.</summary>
+    function MissingInterfaceMembers(const AFromUnit: TUnitIndex; const ATypeName: string;
+      const AAncestors: TArray<string> = nil): TArray<TResolvedSymbol>;
+    /// <summary>Entfernt Unit-Präfixe aus einem Typtext ("Kunden.TKunde" → "TKunde", auch in Typargumenten):
+    /// Units des Index und AOwnUnit.</summary>
+    function UnqualifyType(const AText: string; const AOwnUnit: string = ''): string;
     /// <summary>ATypeName ist ATargetName oder stammt davon ab, beide so aufgelöst, wie sie an AOffset
     /// stünden (#417).</summary>
     function TypeDescendsFrom(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer;
@@ -2303,16 +2309,80 @@ begin
   Result := Result + ')';
 end;
 
-function TNameResolver.MissingInterfaceMembers(const AFromUnit: TUnitIndex;
-  const ATypeName: string): TArray<TResolvedSymbol>;
+function TNameResolver.UnqualifyType(const AText, AOwnUnit: string): string;
 var
-  Own, Current, Ancestor, Intf: TResolvedSymbol;
+  Index, Start, Dot: Integer;
+  Chain: string;
+  UnitIndex: TUnitIndex;
+begin
+  Result := '';
+  Index := 1;
+  while Index <= Length(AText) do
+    if CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '_', '&']) then
+    begin
+      Start := Index;
+      while (Index <= Length(AText)) and CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '_', '0'..'9', '.', '&']) do
+        Inc(Index);
+      Chain := Copy(AText, Start, Index - Start);
+      // Längstes Präfix, das eine Unit ist, entfernen.
+      Dot := LastDelimiter('.', Chain);
+      while Dot > 0 do
+      begin
+        if ((AOwnUnit <> '') and SameText(Copy(Chain, 1, Dot - 1), AOwnUnit)) or
+          FIndex.FindUnit(Copy(Chain, 1, Dot - 1), UnitIndex) then
+        begin
+          Chain := Copy(Chain, Dot + 1, MaxInt);
+          Break;
+        end;
+        Dot := LastDelimiter('.', Copy(Chain, 1, Dot - 1));
+      end;
+      Result := Result + Chain;
+    end
+    else
+    begin
+      Result := Result + AText[Index];
+      Inc(Index);
+    end;
+end;
+
+function TNameResolver.MissingInterfaceMembers(const AFromUnit: TUnitIndex; const ATypeName: string;
+  const AAncestors: TArray<string>): TArray<TResolvedSymbol>;
+
+  function Unqualified(const ABindings: TArray<string>): TArray<string>;
+  var
+    Index, Equal: Integer;
+  begin
+    Result := Copy(ABindings);
+    for Index := 0 to High(Result) do
+    begin
+      Equal := Pos('=', Result[Index]);
+      // Auch die eigene Unit, falls sie (noch) nicht im Index steht.
+      Result[Index] := Copy(Result[Index], 1, Equal) + UnqualifyType(Copy(Result[Index], Equal + 1, MaxInt),
+        AFromUnit.UnitName);
+    end;
+  end;
+
+  /// <summary>Signaturschlüssel mit eingesetzten Typargumenten.</summary>
+  function KeyOf(const ASymbol: TIndexSymbol; const ABindings: TArray<string>): string;
+  var
+    Types: TArray<string>;
+    Index: Integer;
+  begin
+    Types := Copy(ASymbol.ParamTypes);
+    for Index := 0 to High(Types) do
+      Types[Index] := UnqualifyType(Substitute(Types[Index], ABindings));
+    Result := SignatureKey(ASymbol.Name, Types);
+  end;
+
+var
+  Own, Current, Ancestor, Intf, Member: TResolvedSymbol;
   OwnerUnit, IntfUnit: TUnitIndex;
   Symbol: TIndexSymbol;
   Implemented, SeenInterfaces: TDictionary<string, Boolean>;
   List: TList<TResolvedSymbol>;
   Depth: Integer;
   Name, Key: string;
+  Names, Bindings: TArray<string>;
 begin
   Result := nil;
   if not ResolveTypeFrom(AFromUnit, ATypeName, Own) or not UnitOf(Own, OwnerUnit) then
@@ -2327,15 +2397,19 @@ begin
     begin
       if (Current.SymbolKind = TIndexSymbolKind.InterfaceType) or not UnitOf(Current, IntfUnit) then
         Break;
+      Bindings := Unqualified(Current.Bindings);
       for Symbol in IntfUnit.Symbols do
         if SameText(Symbol.Container, Current.QualifiedName) and (Symbol.Kind in RoutineKinds) then
-          Implemented.AddOrSetValue(SignatureKey(Symbol.Name, Symbol.ParamTypes), True);
+          Implemented.AddOrSetValue(KeyOf(Symbol, Bindings), True);
       if not AncestorOf(Current, Ancestor) then
         Break;
       Current := Ancestor;
     end;
     // Interfaces der Vorfahrenliste, jeweils mit ihren Vorfahren.
-    for Name in Own.Ancestors do
+    Names := AAncestors;
+    if Length(Names) = 0 then
+      Names := Own.Ancestors;
+    for Name in Names do
     begin
       if not ResolveTypeText(Name, OwnerUnit, True, Intf) or (Intf.SymbolKind <> TIndexSymbolKind.InterfaceType) then
         Continue;
@@ -2344,14 +2418,17 @@ begin
         if SeenInterfaces.ContainsKey(UpperCase(Intf.QualifiedName)) or not UnitOf(Intf, IntfUnit) then
           Break;
         SeenInterfaces.Add(UpperCase(Intf.QualifiedName), True);
+        Bindings := Unqualified(Intf.Bindings);
         for Symbol in IntfUnit.Symbols do
           if SameText(Symbol.Container, Intf.QualifiedName) and (Symbol.Kind in RoutineKinds) then
           begin
-            Key := SignatureKey(Symbol.Name, Symbol.ParamTypes);
+            Key := KeyOf(Symbol, Bindings);
             if Implemented.ContainsKey(Key) then
               Continue;
             Implemented.Add(Key, True);
-            List.Add(FromSymbol(IntfUnit, Symbol));
+            Member := FromSymbol(IntfUnit, Symbol);
+            Member.Bindings := Bindings;
+            List.Add(Member);
           end;
         if not AncestorOf(Intf, Ancestor) or (Ancestor.SymbolKind <> TIndexSymbolKind.InterfaceType) then
           Break;

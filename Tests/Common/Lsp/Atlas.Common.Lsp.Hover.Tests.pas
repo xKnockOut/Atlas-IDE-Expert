@@ -386,7 +386,7 @@ procedure TLspHoverTests.HintsUnknownDataFieldNames;
 
   function Hint(const ALine: string; out AText: string): Boolean;
   begin
-    Result := TLspHover.DataNameHint('unit Orders;'#13#10'{$R *.dfm}'#13#10 + ALine + #13#10, 'C:\P\Orders.pas',
+    Result := TLspHover.DataNameHint(nil, 'unit Orders;'#13#10'{$R *.dfm}'#13#10 + ALine + #13#10, 'C:\P\Orders.pas',
       TTextPosition.Create(2, Pos('''', ALine) + 1),
       function(const AFileName: string; out AFormText: string): Boolean
       begin

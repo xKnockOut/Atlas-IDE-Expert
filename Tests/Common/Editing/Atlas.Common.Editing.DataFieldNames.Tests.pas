@@ -16,6 +16,10 @@ type
     [Test]
     procedure IgnoresOtherStringsAndDataModules;
     [Test]
+    procedure FindsDataModuleCall;
+    [Test]
+    procedure LooksUpOwnFormAndDataModules;
+    [Test]
     procedure SplitsSelectList;
     [Test]
     procedure CollectsFieldsFromForm;
@@ -29,6 +33,9 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
   Atlas.Common.Editing.DataFieldNames;
 
 const
@@ -110,12 +117,93 @@ procedure TDataFieldNamesTests.IgnoresOtherStringsAndDataModules;
 var
   Call: TDataNameCall;
 begin
-  // Zweites Argument, anderer Aufruf, Datenmodul, Cursor hinter dem String.
+  // Zweites Argument, anderer Aufruf, lange Kette, Cursor hinter dem String.
   Assert.IsFalse(TDataFieldNames.CallAt('  Log(''cu'');', 8, Call));
-  Assert.IsFalse(TDataFieldNames.CallAt('  dmMain.qryOrders.FieldByName(''cu'');', 34, Call));
+  Assert.IsFalse(TDataFieldNames.CallAt('  App.dmMain.qryOrders.FieldByName(''cu'');', 38, Call));
   Assert.IsFalse(TDataFieldNames.CallAt('  qryOrders.FieldByName(''cu'').AsString := ''x'';', 30, Call));
   Assert.IsFalse(TDataFieldNames.CallAt('  FieldByName(''cu'');', 17, Call));
   Assert.IsFalse(TDataFieldNames.CallAt('  // qryOrders.FieldByName(''cu'');', 30, Call));
+end;
+
+procedure TDataFieldNamesTests.FindsDataModuleCall;
+var
+  Call: TDataNameCall;
+begin
+  Assert.IsTrue(TDataFieldNames.CallAt('  dmMain.qryOrders.FieldByName(''cu'');', 34, Call));
+  Assert.AreEqual('dmMain', Call.Owner);
+  Assert.AreEqual('qryOrders', Call.DataSet);
+  Assert.AreEqual('dmMain.qryOrders', Call.DisplayName);
+  Assert.IsTrue(TDataFieldNames.CallAt('  Self.dmMain.qryOrders.Params.ParamByName(''', 44, Call));
+  Assert.AreEqual('dmMain', Call.Owner);
+  Assert.IsTrue(Call.Kind = TDataNameKind.Param);
+  Assert.IsTrue(TDataFieldNames.CallAt('  qryOrders.FieldByName(''cu'');', 27, Call));
+  Assert.AreEqual('', Call.Owner);
+  Assert.AreEqual('qryOrders', Call.DisplayName);
+end;
+
+procedure TDataFieldNamesTests.LooksUpOwnFormAndDataModules;
+const
+  MainFile = 'C:\P\Main.pas';
+  ModuleFile = 'C:\P\Daten.pas';
+  MainText = 'unit Main;'#13#10'interface'#13#10'implementation'#13#10'{$R *.dfm}'#13#10'end.'#13#10;
+  ModuleText = 'unit Daten;'#13#10'interface'#13#10'type'#13#10'  TdmMain = class(TDataModule)'#13#10'  end;'#13#10 +
+    'var'#13#10'  dmMain: TdmMain;'#13#10'implementation'#13#10'{$R *.dfm}'#13#10'end.'#13#10;
+  ModuleForm =
+    'object dmMain: TdmMain'#13#10 +
+    '  object qryKunden: TSQLQuery'#13#10 +
+    '    SQL.Strings = ('#13#10 +
+    '      ''select K.KUNDE_ID, K.NAME from KUNDEN K'')'#13#10 +
+    '  end'#13#10 +
+    'end'#13#10;
+var
+  Index: ISymbolIndex;
+  Reader: TDataTextReader;
+  Call: TDataNameCall;
+  Sql: string;
+  Found: Boolean;
+  Items: TArray<TDataName>;
+begin
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText(ModuleText, ModuleFile, nil));
+  Reader :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := True;
+      if SameText(AFileName, MainFile) then
+        AText := MainText
+      else if SameText(AFileName, ChangeFileExt(MainFile, '.dfm')) then
+        AText := Form
+      else if SameText(AFileName, ModuleFile) then
+        AText := ModuleText
+      else if SameText(AFileName, ChangeFileExt(ModuleFile, '.dfm')) then
+        AText := ModuleForm
+      else
+        Result := False;
+    end;
+  // Eigene Unit, auch über den Namen des eigenen Formulars.
+  Assert.IsTrue(TDataFieldNames.CallAt('  qryOrders.FieldByName(''cu'');', 27, Call));
+  Items := TDataFieldNames.Lookup(MainText, MainFile, Call, Index, Reader, Sql, Found);
+  Assert.IsTrue(Found);
+  Assert.Contains(Names(Items), 'CUSTOMER_ID');
+  Assert.IsTrue(TDataFieldNames.CallAt('  frmOrders.qryOrders.FieldByName(''cu'');', 37, Call));
+  Items := TDataFieldNames.Lookup(MainText, MainFile, Call, Index, Reader, Sql, Found);
+  Assert.IsTrue(Found);
+  // Anderes Datenmodul über die globale Variable im Index.
+  Assert.IsTrue(TDataFieldNames.CallAt('  dmMain.qryKunden.FieldByName(''na'');', 34, Call));
+  Items := TDataFieldNames.Lookup(MainText, MainFile, Call, Index, Reader, Sql, Found);
+  Assert.IsTrue(Found);
+  Assert.AreEqual('KUNDE_ID|NAME', Names(Items));
+  Assert.Contains(Sql, 'from KUNDEN');
+  // Ohne Index, unbekanntes Datenmodul oder unbekannte Datenmenge: nichts.
+  Items := TDataFieldNames.Lookup(MainText, MainFile, Call, nil, Reader, Sql, Found);
+  Assert.IsFalse(Found);
+  Assert.IsTrue(TDataFieldNames.CallAt('  dmFremd.qryKunden.FieldByName(''na'');', 35, Call));
+  Items := TDataFieldNames.Lookup(MainText, MainFile, Call, Index, Reader, Sql, Found);
+  Assert.IsFalse(Found);
+  Assert.AreEqual(0, Integer(Length(Items)));
+  Assert.IsTrue(TDataFieldNames.CallAt('  dmMain.qryOrders.FieldByName(''na'');', 34, Call));
+  Items := TDataFieldNames.Lookup(MainText, MainFile, Call, Index, Reader, Sql, Found);
+  Assert.IsFalse(Found);
 end;
 
 procedure TDataFieldNamesTests.SplitsSelectList;
