@@ -174,12 +174,17 @@ type
   TCompletionInterfaceSection = (Private, Protected, Public);
   /// <summary>Typumwandlung von Sender (#480): "(Sender as TButton)" oder "TButton(Sender)".</summary>
   TCompletionSenderCast = (AsOperator, HardCast);
+  /// <summary>Freigabe im finally von „Freigabe absichern“ (#489): "List.Free" oder "FreeAndNil(List)".</summary>
+  TCompletionFreeStyle = (Free, FreeAndNil);
   {$SCOPEDENUMS OFF}
 
   TCompletionSettings = record
     Matching: TCompletionMatching;
     InterfaceSection: TCompletionInterfaceSection;
     SenderCast: TCompletionSenderCast;
+    /// <summary>Nach Übernahme eines Konstruktors try…finally anbieten (#489).</summary>
+    OfferTryFinally: Boolean;
+    FreeStyle: TCompletionFreeStyle;
     class function Default: TCompletionSettings; static;
   end;
 
@@ -499,6 +504,8 @@ begin
   Result.Matching := TCompletionMatching.Fuzzy;
   Result.InterfaceSection := TCompletionInterfaceSection.Public;
   Result.SenderCast := TCompletionSenderCast.AsOperator;
+  Result.OfferTryFinally := True;
+  Result.FreeStyle := TCompletionFreeStyle.Free;
 end;
 
 { TServerSettings }

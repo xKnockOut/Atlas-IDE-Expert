@@ -129,6 +129,8 @@ type
     DataSet: string;
     /// <summary>Kurzform der SQL-Anweisung als Quellenangabe für die Fußzeile; '' ohne Anweisung.</summary>
     DataSource: string;
+    /// <summary>Freigabe absichern (#489): 'newLine' oder 'routineEnd'; '' sonst. Weitertippen verwirft.</summary>
+    Guard: string;
   end;
 
   /// <summary>Postfix-Vorlagen (#188) je Dokument.</summary>
@@ -267,6 +269,11 @@ type
     /// String gibt es sonst nichts vorzuschlagen.</summary>
     class function DataNameItems(const AText, AFileName: string; const APosition: TTextPosition;
       const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean; static;
+    /// <summary>Freigabe absichern (#489): Nach "Liste := TStringList.Create;" in Zeile APosition.Line „Mit
+    /// try…finally absichern“ und, wenn danach noch Zeilen bis zum Routinenende folgen, dieselbe Absicherung bis
+    /// dorthin. False, wenn die Anweisung nicht passt (TGuardFree.Check).</summary>
+    class function GuardItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
+      const APosition: TTextPosition; AStyle: TCompletionFreeStyle; out AItems: TCompletionItems): Boolean; static;
     /// <summary>"Sender." in einem Ereignisbehandler mit "Sender: TObject" (#480): Ist die Methode im Formular
     /// Komponenten zugewiesen, die Mitglieder des nächsten gemeinsamen Vorfahren ihrer Typen. Jeder Eintrag
     /// ersetzt "Sender.Na" (TextEdit) durch die Umwandlung nach ACast und den Namen. False ohne Zuweisung im
@@ -335,7 +342,8 @@ uses
   Atlas.Common.Editing.PostfixTemplates,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Lsp.CompletionEnums,
-  Atlas.Common.Editing.DataFieldNames;
+  Atlas.Common.Editing.DataFieldNames,
+  Atlas.Common.Editing.GuardFree;
 
 const
   /// <summary>Art der Stelle im Diagnoselog (#647).</summary>
@@ -1534,7 +1542,8 @@ begin
     if (AItems[Index].SourceFile <> '') or (AItems[Index].Expected <> '') or
       (AItems[Index].Action <> '') or (AItems[Index].Condition <> '') or
       (AItems[Index].Scope > 0) or (AItems[Index].Ordinal > 0) or AItems[Index].Pinned or AItems[Index].Hint or
-      (AItems[Index].Form <> '') or (AItems[Index].Sender <> '') or (AItems[Index].DataSet <> '') then
+      (AItems[Index].Form <> '') or (AItems[Index].Sender <> '') or (AItems[Index].DataSet <> '') or
+      (AItems[Index].Guard <> '') then
     begin
       Data := TJSONObject.Create;
       if AItems[Index].SourceFile <> '' then
@@ -1606,6 +1615,9 @@ begin
         if AItems[Index].DataSource <> '' then
           Data.AddPair('dataSource', AItems[Index].DataSource);
       end;
+      // Freigabe absichern (#489).
+      if AItems[Index].Guard <> '' then
+        Data.AddPair('guard', AItems[Index].Guard);
       if Length(AItems[Index].Overloads) > 0 then
       begin
         Overloads := TJSONArray.Create;
@@ -1676,6 +1688,7 @@ var
   Hints: TArray<TCompletionItem>;
   Components: TArray<TCompletionItem>;
   Senders: TCompletionItems;
+  GuardTrigger: string;
   Batch: Boolean;
   Settings: TCompletionSettings;
 begin
@@ -1708,6 +1721,20 @@ begin
   Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
     Resolver.Namespaces := FNamespaces;
+    if Assigned(FSettingsFor) then
+      Settings := FSettingsFor(Uri)
+    else
+      Settings := TCompletionSettings.Default;
+    // Freigabe absichern (#489): Das Plugin fragt nach dem ";" hinter einem übernommenen Konstruktor mit diesem
+    // Auslöser; dann gibt es nur dieses Angebot oder nichts.
+    if TJSONObject(AParams).TryGetValue<string>('context.triggerCharacter', GuardTrigger) and
+      (GuardTrigger = ';') then
+    begin
+      if not (Settings.OfferTryFinally and GuardItems(Resolver, Tree, Document.Text, TDocumentUris.ToPath(Uri),
+        TLspPositions.ReadPosition(PositionValue), Settings.FreeStyle, Senders)) then
+        Senders := Default(TCompletionItems);
+      Exit(ToJson(Senders));
+    end;
     // Methoden überschreiben (#443) vor der allgemeinen Vervollständigung.
     if OverrideItems(Resolver, Tree, Document.Text, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
       FReadText, Overrides) then
@@ -1718,10 +1745,6 @@ begin
       Exit(ToJson(Events));
     // Interface implementieren (#466): auf leerer Zeile der Klasse nur die fehlenden Methoden mit
     // Kontrollkästchen; bei angefangenem Wort ein Hinweis oben in der normalen Liste.
-    if Assigned(FSettingsFor) then
-      Settings := FSettingsFor(Uri)
-    else
-      Settings := TCompletionSettings.Default;
     if not InterfaceItems(Resolver, Tree, Document.Text, TDocumentUris.ToPath(Uri),
       TLspPositions.ReadPosition(PositionValue), FReadText, Settings.InterfaceSection, Hints, Batch) then
       Hints := nil
@@ -2705,6 +2728,53 @@ begin
     Item.TextEdit := TRuleEdit.Create(Range, StringReplace(Name.Name, '''', '''''', [rfReplaceAll]));
     Item.DataSet := Call.DataSet;
     Item.DataSource := Source;
+    AItems.Items := AItems.Items + [Item];
+  end;
+end;
+
+class function TLspCompletion.GuardItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText,
+  AFileName: string; const APosition: TTextPosition; AStyle: TCompletionFreeStyle;
+  out AItems: TCompletionItems): Boolean;
+var
+  UnitIndex: TUnitIndex;
+  Offer: TGuardOffer;
+  Item: TCompletionItem;
+begin
+  AItems := Default(TCompletionItems);
+  UnitIndex := TIndexExtractor.Extract(ATree, AFileName);
+  // Art des erzeugten Typs: Record oder Interface schließen aus, TComponent-Nachfahren prüfen den Owner.
+  Result := TGuardFree.Check(ATree, AText, APosition.Line,
+    function(const ATypeName: string): TGuardTypeKind
+    var
+      Symbol: TResolvedSymbol;
+    begin
+      if not AResolver.ResolveTypeFrom(UnitIndex, ATypeName, Symbol) then
+        Exit(TGuardTypeKind.Unknown);
+      if Symbol.SymbolKind <> TIndexSymbolKind.ClassType then
+        Exit(TGuardTypeKind.Other);
+      if IndexText('TComponent', TypeChain(AResolver, UnitIndex, ATypeName)) >= 0 then
+        Result := TGuardTypeKind.Component
+      else
+        Result := TGuardTypeKind.Class_;
+    end, Offer);
+  if not Result then
+    Exit;
+  Item := Default(TCompletionItem);
+  Item.Kind := KindSnippet;
+  Item.HasTextEdit := True;
+  if AStyle = TCompletionFreeStyle.FreeAndNil then
+    Item.Detail := 'FreeAndNil(' + Offer.Variable + ')'
+  else
+    Item.Detail := Offer.Variable + '.Free';
+  Item.Name := 'Mit try…finally absichern';
+  Item.Guard := 'newLine';
+  Item.TextEdit := TGuardFree.Edit(AText, Offer, TGuardScope.NewLine, AStyle);
+  AItems.Items := [Item];
+  if Offer.CanEnclose then
+  begin
+    Item.Name := 'Bis Routinenende mit try…finally absichern';
+    Item.Guard := 'routineEnd';
+    Item.TextEdit := TGuardFree.Edit(AText, Offer, TGuardScope.ToRoutineEnd, AStyle);
     AItems.Items := AItems.Items + [Item];
   end;
 end;

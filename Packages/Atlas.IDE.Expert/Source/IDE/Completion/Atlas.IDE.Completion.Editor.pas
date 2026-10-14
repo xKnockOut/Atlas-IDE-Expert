@@ -75,6 +75,9 @@ type
     // Commit über ein Zeichen: Ende des Worts und Bytes des stehen bleibenden Zeichens.
     FCommitEnd: Integer;
     FCommitSuffixBytes: Integer;
+    /// <summary>Freigabe absichern (#489): Zeile (ab 1) und Datei des zuletzt übernommenen Konstruktors; 0 ohne.</summary>
+    FGuardLine: Integer;
+    FGuardFile: string;
     procedure Log(const AMessage: string);
     procedure Recheck;
     procedure TimerTick(Sender: TObject);
@@ -111,6 +114,9 @@ type
     /// <summary>Bricht laufende Serveranfragen ab und wartet auf sie; vor dem Freigeben der Sitzung.</summary>
     procedure Shutdown;
     function Visible: Boolean;
+    /// <summary>Wurde in der Zeile des Cursors gerade ein Konstruktor übernommen (#489)? Dann fragt ";" dort
+    /// nach „Mit try…finally absichern“.</summary>
+    function GuardPending(const AView: IOTAEditView): Boolean;
   end;
 
 implementation
@@ -461,7 +467,14 @@ begin
     Context.Kind := TAtlasContextKind.Identifier;
   // Nach "[" automatisch geöffnet (#448): nur ein Mengenkonstruktor bekommt eine Liste.
   if AAutomatic and (Character > 0) and (Character <= Length(LineText)) and (LineText[Character] = '[') then
-    Context.Trigger := '[';
+    Context.Trigger := '['
+  // Nach dem ";" hinter einem übernommenen Konstruktor (#489): nur „Mit try…finally absichern“.
+  else if AAutomatic and (Character > 0) and (Character <= Length(LineText)) and (LineText[Character] = ';') and
+    GuardPending(AView) then
+  begin
+    Context.Trigger := ';';
+    FGuardLine := 0;
+  end;
   ApplyStyle(Anchor);
   FPopup.VisibleRows := TAtlasIdeSettings.Current.VisibleRows;
   FPopup.ManualListWidth := TAtlasIdeSettings.Current.ListWidth;
@@ -921,7 +934,28 @@ begin
         end);
   end;
   Log(Format('Übernommen: %s (%d weitere Änderungen)', [AItem.Name, Length(AItem.AdditionalEdits)]));
+  // Freigabe absichern (#489): nach dem ";" dieser Zeile anbieten. Kam das ";" als Commit-Zeichen (#429), steht es
+  // schon da; dann gleich fragen.
+  FGuardLine := 0;
+  if AItem.Kind = TAtlasItemKind.Constructor_ then
+  begin
+    FGuardLine := View.CursorPos.Line;
+    FGuardFile := View.Buffer.FileName;
+    if (FCommitEnd >= 0) and (FCommitEnd < Length(LineText)) and (LineText[FCommitEnd + 1] = ';') then
+      TThread.ForceQueue(nil,
+        procedure
+        begin
+          if GuardPending(View) then
+            Invoke(View, True);
+        end);
+  end;
   ActiveChanged;
+end;
+
+function TAtlasEditorCompletion.GuardPending(const AView: IOTAEditView): Boolean;
+begin
+  Result := (FGuardLine > 0) and (AView <> nil) and (AView.Buffer <> nil) and (AView.CursorPos.Line = FGuardLine) and
+    SameText(AView.Buffer.FileName, FGuardFile);
 end;
 
 end.

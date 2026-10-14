@@ -90,6 +90,8 @@ type
     [Test]
     procedure OffersDataFieldNames;
     [Test]
+    procedure OffersTryFinallyAfterConstructor;
+    [Test]
     procedure GroupsByExpectedType;
   end;
 
@@ -1576,6 +1578,73 @@ begin
   Assert.AreEqual(0, Integer(Length(Found.Items)));
   // Andere Strings gehören nicht dazu.
   Assert.IsFalse(Items('  ShowMessage(''cu'');', 17, Found));
+end;
+
+procedure TLspCompletionTests.OffersTryFinallyAfterConstructor;
+const
+  UnitTeile =
+    'unit Teile;'#13#10 +
+    'interface'#13#10 +
+    'type'#13#10 +
+    '  TComponent = class'#13#10 +
+    '  end;'#13#10 +
+    '  TTimer = class(TComponent)'#13#10 +
+    '  end;'#13#10 +
+    '  TPunkt = record'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'end.';
+
+  /// <summary>Anweisung in Zeile 8, ARest danach.</summary>
+  function Guards(const AVar, AStatement, ARest: string; AStyle: TCompletionFreeStyle;
+    out AItems: TCompletionItems): Boolean;
+  var
+    Text: string;
+    Tree: TSyntaxTree;
+    Resolver: TNameResolver;
+  begin
+    Text := 'unit Haupt;'#13#10'interface'#13#10'implementation'#13#10'uses Teile;'#13#10 +
+      'procedure Laden;'#13#10'var'#13#10'  ' + AVar + #13#10'begin'#13#10'  ' + AStatement + #13#10 + ARest +
+      'end;'#13#10'end.';
+    Tree := TPascalParser.Parse(Text);
+    Resolver := TNameResolver.Create(FIndex);
+    try
+      Result := TLspCompletion.GuardItems(Resolver, Tree, Text, HauptFile, TTextPosition.Create(8,
+        2 + Length(AStatement)), AStyle, AItems);
+    finally
+      Resolver.Free;
+      Tree.Free;
+    end;
+  end;
+
+var
+  Items: TCompletionItems;
+  Json: TJSONObject;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitTeile, 'C:\P\Teile.pas', nil));
+  // Neue Zeile: ein Eintrag mit Cursor im try.
+  Assert.IsTrue(Guards('List: TStringList;', 'List := TStringList.Create;', '', TCompletionFreeStyle.Free, Items));
+  Assert.AreEqual(1, Integer(Length(Items.Items)));
+  Assert.AreEqual('Mit try…finally absichern', Items.Items[0].Name);
+  Assert.AreEqual('List.Free', Items.Items[0].Detail);
+  Assert.AreEqual('newLine', Items.Items[0].Guard);
+  Assert.IsTrue(Items.Items[0].TextEdit.NewText.Contains('try'#13#10'    $0'));
+  Json := TLspCompletion.ToJson(Items);
+  try
+    Assert.IsTrue(Json.ToJSON.Contains('"guard":"newLine"'));
+  finally
+    Json.Free;
+  end;
+  // Folgende Zeilen: zweiter Eintrag bis zum Routinenende; FreeAndNil nach Einstellung.
+  Assert.IsTrue(Guards('List: TStringList;', 'List := TStringList.Create;', '  List.Add(''a'');'#13#10,
+    TCompletionFreeStyle.FreeAndNil, Items));
+  Assert.AreEqual(2, Integer(Length(Items.Items)));
+  Assert.AreEqual('routineEnd', Items.Items[1].Guard);
+  Assert.AreEqual('FreeAndNil(List)', Items.Items[1].Detail);
+  // Komponente mit Owner und Record: nichts; Komponente ohne Owner: angeboten.
+  Assert.IsFalse(Guards('Timer: TTimer;', 'Timer := TTimer.Create(pnlOben);', '', TCompletionFreeStyle.Free, Items));
+  Assert.IsTrue(Guards('Timer: TTimer;', 'Timer := TTimer.Create(nil);', '', TCompletionFreeStyle.Free, Items));
+  Assert.IsFalse(Guards('P: TPunkt;', 'P := TPunkt.Create;', '', TCompletionFreeStyle.Free, Items));
 end;
 
 end.

@@ -176,6 +176,8 @@ begin
     // Feld- und Parameternamen (#461).
     Result.DataSet := Data.GetValue<string>('dataSet', '');
     Result.DataSource := Data.GetValue<string>('dataSource', '');
+    // Freigabe absichern (#489).
+    Result.Guard := Data.GetValue<string>('guard', '') <> '';
     Overloads := Data.GetValue('overloads');
     if Overloads is TJSONArray then
       for Value in TJSONArray(Overloads) do

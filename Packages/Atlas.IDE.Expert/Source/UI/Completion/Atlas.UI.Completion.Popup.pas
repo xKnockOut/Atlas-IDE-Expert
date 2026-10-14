@@ -1070,6 +1070,9 @@ begin
     DrawScrollBar;
     if TAtlasCompletionSets.Active(FItems) then
       DrawFooter(TAtlasStrings.Text(TAtlasTextId.SetFooterKeys), CountText)
+    // Freigabe absichern (#489).
+    else if TAtlasItemPresentation.Guarding(FItems) then
+      DrawFooter(TAtlasStrings.Text(TAtlasTextId.GuardFooterKeys), '')
     // Feld- und Parameternamen (#461): die SQL-Anweisung als Quellenangabe.
     else if TAtlasItemPresentation.DataSource(FItems) <> '' then
       DrawFooter(TAtlasStrings.Fmt(TAtlasTextId.DataSourceFooter, [TAtlasItemPresentation.DataSource(FItems)]),

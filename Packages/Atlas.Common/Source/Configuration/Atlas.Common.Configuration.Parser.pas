@@ -844,6 +844,18 @@ begin
         else
           ReportNode(ANode[Index], 'Erlaubt sind "as" und "cast"');
     end
+    else if Key = 'offerTryFinally' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.OfferTryFinally)
+    else if Key = 'freeStyle' then
+    begin
+      if ExpectString(ANode[Index], Key, Text) then
+        if Text = 'free' then
+          FSettings.Completion.FreeStyle := TCompletionFreeStyle.Free
+        else if Text = 'freeAndNil' then
+          FSettings.Completion.FreeStyle := TCompletionFreeStyle.FreeAndNil
+        else
+          ReportNode(ANode[Index], 'Erlaubt sind "free" und "freeAndNil"');
+    end
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "completion.%s"', [Key]), False);

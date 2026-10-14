@@ -152,6 +152,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ProjectCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SqlText.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DataFieldNames.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.GuardFree.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DatabaseCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Bookmarks.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DocumentationCommands.pas"/>

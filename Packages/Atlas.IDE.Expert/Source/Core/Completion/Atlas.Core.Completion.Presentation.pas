@@ -55,6 +55,8 @@ type
     /// <summary>SQL-Anweisung, aus der die Feld- oder Parameternamen der Liste stammen (#461), für die
     /// Fußzeile; '' bei anderen Listen.</summary>
     class function DataSource(const AItems: TAtlasCompletionItems): string; static;
+    /// <summary>Nur das Angebot „Mit try…finally absichern“ (#489) in der Liste?</summary>
+    class function Guarding(const AItems: TAtlasCompletionItems): Boolean; static;
   end;
 
 implementation
@@ -345,6 +347,16 @@ begin
     if Item.DataSource <> '' then
       Exit(Item.DataSource);
   Result := '';
+end;
+
+class function TAtlasItemPresentation.Guarding(const AItems: TAtlasCompletionItems): Boolean;
+var
+  Item: TAtlasCompletionItem;
+begin
+  Result := Length(AItems) > 0;
+  for Item in AItems do
+    if not Item.Guard then
+      Exit(False);
 end;
 
 end.
