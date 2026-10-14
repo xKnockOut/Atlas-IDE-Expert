@@ -53,6 +53,7 @@ type
     [IgnoreMemoryLeaks]
     procedure PublishesWithin200MsAfterLastChange;
     [Test]
+    // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
     [IgnoreMemoryLeaks]
     procedure RefreshLaterBundlesCalls;
     [Test]

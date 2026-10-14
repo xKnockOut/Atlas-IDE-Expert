@@ -23,6 +23,8 @@ type
     procedure ReportsErrorsAndKeepsRunning;
     [Test]
     procedure DestroyDropsPendingActions;
+    [Test]
+    procedure WaitIdleWaitsForPendingAndRunningActions;
   end;
 
 implementation
@@ -152,6 +154,30 @@ begin
   finally
     Debouncer.Free;
     Recorder.Free;
+  end;
+end;
+
+procedure TDebouncerTests.WaitIdleWaitsForPendingAndRunningActions;
+var
+  Debouncer: TDebouncer;
+  Finished: Integer;
+begin
+  // #177: Messungen im Dauerlauf erst, wenn nichts mehr geplant ist und nichts läuft.
+  Finished := 0;
+  Debouncer := TDebouncer.Create(20);
+  try
+    Assert.IsTrue(Debouncer.WaitIdle(0), 'leer ist sofort ruhig');
+    Debouncer.Schedule('a',
+      procedure
+      begin
+        TThread.Sleep(50);
+        TInterlocked.Increment(Finished);
+      end);
+    Assert.IsFalse(Debouncer.WaitIdle(5), 'geplant ist nicht ruhig');
+    Assert.IsTrue(Debouncer.WaitIdle(2000));
+    Assert.AreEqual(1, TInterlocked.CompareExchange(Finished, 0, 0), 'erst nach der laufenden Aktion ruhig');
+  finally
+    Debouncer.Free;
   end;
 end;
 
