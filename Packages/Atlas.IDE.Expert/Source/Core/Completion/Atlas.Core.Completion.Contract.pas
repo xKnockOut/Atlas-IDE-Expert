@@ -147,6 +147,8 @@ type
     DataSet: string;
     /// <summary>Kurzform der SQL-Anweisung für die Fußzeile; '' ohne Anweisung.</summary>
     DataSource: string;
+    /// <summary>Freigabe absichern (#489): Angebot nach dem ";" eines Konstruktors. Weitertippen verwirft es.</summary>
+    Guard: Boolean;
     /// <summary>Zahl der Überladungen samt dieser (mindestens 1).</summary>
     function OverloadCount: Integer;
   end;

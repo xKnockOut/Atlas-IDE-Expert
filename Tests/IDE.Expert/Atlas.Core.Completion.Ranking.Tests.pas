@@ -40,6 +40,8 @@ type
     procedure LearnedEntryRisesInController;
     [Test]
     procedure SelectionSkipsHeaders;
+    [Test]
+    procedure TypingDiscardsGuardOffer;
   end;
 
 implementation
@@ -467,5 +469,45 @@ end;
 initialization
   TDUnitX.RegisterTestFixture(TAtlasRankingTests);
   TDUnitX.RegisterTestFixture(TAtlasUsageTests);
+
+procedure TAtlasUsageTests.TypingDiscardsGuardOffer;
+var
+  View: TRecordingView;
+  ViewRef: IAtlasCompletionView;
+  Controller: TAtlasCompletionController;
+  Json: TJSONObject;
+  Guard: TAtlasCompletionItem;
+  Item: TAtlasCompletionItem;
+begin
+  // Freigabe absichern (#489): Das Angebot ist gewählt; jedes getippte Zeichen schließt die Liste.
+  Json := TJSONObject.ParseJSONValue('{"label":"Mit try…finally absichern","kind":15,"detail":"List.Free",' +
+    '"data":{"guard":"newLine"}}') as TJSONObject;
+  try
+    Guard := TAtlasServerCompletionProvider.ItemFromLsp(Json, 0);
+  finally
+    Json.Free;
+  end;
+  Assert.IsTrue(Guard.Guard);
+  Assert.IsTrue(TAtlasItemPresentation.Guarding([Guard]));
+  Assert.IsFalse(TAtlasItemPresentation.Guarding([Guard, Member('Add', 'TStrings', 0, 0)]));
+  View := TRecordingView.Create;
+  ViewRef := View;
+  Controller := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create([Guard]) as
+    IAtlasCompletionProvider, ViewRef);
+  try
+    Controller.Start(Context(''));
+    Assert.IsTrue(Wait(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    Assert.IsTrue(Controller.SelectedItem(Item));
+    Assert.AreEqual('Mit try…finally absichern', Item.Name);
+    Controller.UpdatePrefix('L');
+    Assert.IsFalse(Controller.Active);
+  finally
+    Controller.Free;
+  end;
+end;
 
 end.

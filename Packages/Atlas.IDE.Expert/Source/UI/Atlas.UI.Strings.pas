@@ -52,7 +52,8 @@ type
     BatchHeader,
     FormHeader,
     SenderHeader,
-    DataSourceFooter);
+    DataSourceFooter,
+    GuardFooterKeys);
 
   TAtlasStrings = class
   private class var
@@ -178,7 +179,8 @@ const
      'Fehlende Methoden von %s',
      'Formular %s',
      'Sender ist %s · %s',
-     'Quelle: %s'),
+     'Quelle: %s',
+     'Enter anwenden · weitertippen verwirft'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -285,7 +287,8 @@ const
      'Missing methods of %s',
      'Form %s',
      'Sender is %s · %s',
-     'Source: %s'));
+     'Source: %s',
+     'Enter applies · keep typing to discard'));
 
 { TAtlasStrings }
 

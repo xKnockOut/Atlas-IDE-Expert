@@ -30,6 +30,8 @@
 // dem Editor und schließt die Liste, damit ein neuer Name nicht ungefragt deklariert wird; eine Pfeiltaste wählt
 // die erste Deklaration. Ebenso, wenn oben nur ein Hinweis „n Methoden von I fehlen“ (#466) steht und sonst nichts:
 // Der Hinweis wird nie vorgewählt, die Auswahl beginnt beim ersten Eintrag danach.
+//
+// Freigabe absichern (#489): Steht nur dieses Angebot in der Liste, schließt jedes getippte Zeichen sie.
 
 interface
 
@@ -182,6 +184,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Completion.Matching,
+  Atlas.Core.Completion.Presentation,
   Atlas.Core.Completion.Sets;
 
 { TAtlasCompletionController.TControllerSink }
@@ -548,6 +551,12 @@ procedure TAtlasCompletionController.UpdatePrefix(const APrefix: string);
 begin
   if not FActive or (APrefix = FPrefix) then
     Exit;
+  // Weitertippen verwirft das Angebot „Mit try…finally absichern“ (#489).
+  if (APrefix <> '') and TAtlasItemPresentation.Guarding(FItems) then
+  begin
+    Close;
+    Exit;
+  end;
   FPrefix := APrefix;
   Refresh(False);
 end;

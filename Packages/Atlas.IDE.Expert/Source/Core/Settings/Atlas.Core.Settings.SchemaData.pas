@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..764] of string = (
+  Lines: array[0..778] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -323,11 +323,25 @@ const
     '          ],',
     '          "default": "as",',
     '          "description": "Form der Typumwandlung, wenn nach Sender. ein Member der zugewiesenen Komponenten gewählt wird: \"as\" schreibt (Sender as TButton), \"cast\" schreibt TButton(Sender)."',
+    '        },',
+    '        "offerTryFinally": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Nach Übernahme eines Konstruktors in \"Liste := TStringList.Create;\" anbieten, den folgenden Code in try…finally mit Freigabe einzuschließen."',
+    '        },',
+    '        "freeStyle": {',
+    '          "type": "string",',
+    '          "enum": [',
+    '            "free",',
+    '            "freeAndNil"',
+    '          ],',
+    '          "default": "free",',
+    '          "description": "Freigabe im finally von „Freigabe absichern“: \"free\" schreibt Liste.Free, \"freeAndNil\" schreibt FreeAndNil(Liste)."',
     '        }',
     '      },',
     '      "x-page": "Vervollständigung",',
     '      "x-control": "Auswahl",',
-    '      "x-issue": "#229, #466, #480"',
+    '      "x-issue": "#229, #466, #480, #489"',
     '    },',
     '    "usesCommand": {',
     '      "type": "boolean",',

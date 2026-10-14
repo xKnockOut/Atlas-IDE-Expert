@@ -295,6 +295,15 @@ begin
   Assert.IsTrue(Parse('{"completion": {"senderCast": "hart"}}', Issues).Completion.SenderCast =
     TCompletionSenderCast.AsOperator);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Freigabe absichern (#489)
+  Assert.IsTrue(Parse('{}', Issues).Completion.OfferTryFinally);
+  Assert.IsTrue(Parse('{}', Issues).Completion.FreeStyle = TCompletionFreeStyle.Free);
+  Assert.IsFalse(Parse('{"completion": {"offerTryFinally": false}}', Issues).Completion.OfferTryFinally);
+  Assert.IsTrue(Parse('{"completion": {"freeStyle": "freeAndNil"}}', Issues).Completion.FreeStyle =
+    TCompletionFreeStyle.FreeAndNil);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"freeStyle": "nil"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Speicherbudget (#185)
   Assert.AreEqual(0, Parse('{}', Issues).MemoryBudgetMb);
   Assert.AreEqual(512, Parse('{"memoryBudgetMb": 512}', Issues).MemoryBudgetMb);

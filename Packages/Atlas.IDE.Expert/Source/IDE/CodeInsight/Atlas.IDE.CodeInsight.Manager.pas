@@ -934,6 +934,13 @@ begin
           CodeInsightType := citCodeInsight;
           InvokeType := itTimer;
         end;
+      // Nach dem ";" hinter einem übernommenen Konstruktor „Mit try…finally absichern“ (#489).
+      ';':
+        if Completion.GuardPending(CurrentEditView) then
+        begin
+          CodeInsightType := citCodeInsight;
+          InvokeType := itTimer;
+        end;
       // Nach FieldByName(' die Feldnamen (#461).
       '''':
         if InDataNameString(True) then

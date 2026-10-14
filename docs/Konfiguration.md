@@ -57,6 +57,8 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 | `completion.matching` | string | `"fuzzy"` | `"fuzzy"`, `"prefix"` | Auswahl der Vorschläge: unscharf (Teilfolgen, Kürzel wie TSL für TStringList) oder nur nach Präfix, falls ein Editor nachträglich strikt filtert. |
 | `completion.interfaceSection` | string | `"public"` | `"private"`, `"protected"`, `"public"` | Abschnitt der Klasse, in den „Interface implementieren“ die Deklarationen fehlender Interface-Methoden schreibt. |
 | `completion.senderCast` | string | `"as"` | `"as"`, `"cast"` | Form der Typumwandlung, wenn nach Sender. ein Member der zugewiesenen Komponenten gewählt wird: "as" schreibt (Sender as TButton), "cast" schreibt TButton(Sender). |
+| `completion.offerTryFinally` | boolean | `true` |  | Nach Übernahme eines Konstruktors in "Liste := TStringList.Create;" anbieten, den folgenden Code in try…finally mit Freigabe einzuschließen. |
+| `completion.freeStyle` | string | `"free"` | `"free"`, `"freeAndNil"` | Freigabe im finally von „Freigabe absichern“: "free" schreibt Liste.Free, "freeAndNil" schreibt FreeAndNil(Liste). |
 
 ## slashCommands
 
