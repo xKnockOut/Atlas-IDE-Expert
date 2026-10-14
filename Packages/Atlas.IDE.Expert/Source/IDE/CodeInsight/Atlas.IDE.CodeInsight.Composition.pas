@@ -66,7 +66,10 @@ uses
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Diagnostics.TimeLimit,
   Atlas.IDE.Commands.Keys,
-  Atlas.IDE.Undo.Changes;
+  Atlas.IDE.Undo.Changes,
+  Atlas.Core.Updates.Check,
+  Atlas.Core.Updates.Adapters.HttpSource,
+  Atlas.IDE.Updates.Check;
 
 var
   ManagerIndex: Integer = -1;
@@ -101,6 +104,8 @@ var
   QuickToggles: TAtlasIdeQuickToggles;
   // Abgesicherter Start nach einem Absturz (#722).
   SafeMode: TAtlasIdeSafeMode;
+  // Rückfrage und tägliche Update-Prüfung (#495).
+  Updates: TAtlasIdeUpdates;
   // Zeitpunkt des Ladens (TAtlasWatchdog.Timestamp) für Wächter und Ladezeit.
   LoadedAt: Int64;
   // Laden abgeschlossen: Später angemeldete Teile messen ab dann.
@@ -175,6 +180,20 @@ var
 begin
   if Manager <> nil then
     Manager.Report(AText);
+  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+    Exit;
+  Group := Messages.GetGroup('Atlas');
+  if Group = nil then
+    Group := Messages.AddMessageGroup('Atlas');
+  Messages.AddTitleMessage(AText, Group);
+end;
+
+/// <summary>Zeile in der Meldungsansicht, ohne Plugin-Protokoll (z. B. Hinweis auf eine neue Version, #495).</summary>
+procedure MessageLine(const AText: string);
+var
+  Messages: IOTAMessageServices;
+  Group: IOTAMessageGroup;
+begin
   if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
     Exit;
   Group := Messages.GetGroup('Atlas');
@@ -645,6 +664,20 @@ begin
       begin
         TAtlasGuard.Log(AText);
       end);
+  // Update-Prüfung nur nach Zustimmung und höchstens einmal täglich (#495).
+  if Basic and (Updates = nil) then
+  begin
+    Updates := TAtlasIdeUpdates.Create(nil);
+    Updates.Start(TAtlasUpdates.StateFile, TAtlasHttpVersionSource.Create,
+      procedure(AText: string)
+      begin
+        MessageLine(AText);
+      end,
+      procedure(AText: string)
+      begin
+        TAtlasGuard.Log(AText);
+      end);
+  end;
   if Basic and (EditorKeys = nil) then
     EditorKeys := TAtlasIdeEditorKeys.Create;
   // Designer-Notifier nur im normalen Betrieb (#722).
@@ -799,6 +832,9 @@ begin
         SafeMode.UpdateFeatures;
       // undo.multiFile* (#721).
       TAtlasIdeUndo.ApplySettings;
+      // updates.check (#495).
+      if Updates <> nil then
+        Updates.ApplySettings;
       TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
       // Index-Optionen an den laufenden Server; er baut neu auf, wenn sich der Umfang ändert (#652).
       if Manager <> nil then
@@ -860,6 +896,7 @@ begin
   FreeAndNil(Forms);
   FreeAndNil(EditorKeys);
   TAtlasIdeUndo.Stop;
+  FreeAndNil(Updates);
   if CommandsInstalled then
   begin
     TAtlasIdeEditorCommands.Uninstall;

@@ -4,13 +4,13 @@
 
 .DESCRIPTION
     Atlas soll mit Delphi 12 und 13 gebaut werden. Geprüft werden alle
-    Quelltexte unter Packages/, Application/ und Tests/ auf Syntax, die erst
+    Quelltexte unter Packages/, Application/, Setup/ und Tests/ auf Syntax, die erst
     Delphi 13 kennt:
 
     - Bedingungsausdruck "if … then … else" als Ausdruck (nach :=, (, [ oder ,)
     - "is not" und "not in"
 
-    In Packages/ und Application/ außerdem Code mit fester Zeigergröße, der
+    In Packages/, Application/ und Setup/ außerdem Code mit fester Zeigergröße, der
     in der 64-Bit-IDE und im Win64-Server bricht (#281):
 
     - GetWindowLong/SetWindowLong/GetClassLong/SetClassLong statt …LongPtr
@@ -37,7 +37,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$SourceDirs = @('Packages', 'Application', 'Tests')
+$SourceDirs = @('Packages', 'Application', 'Setup', 'Tests')
 $MaxProjectVersion = [version]'20.3'
 
 function Remove-PascalNoise([string] $Text) {
@@ -59,7 +59,7 @@ $Checks = @(
     @{ Pattern = '(?i)\bnot\s+in\b'; Message = '"not in" gibt es erst ab Delphi 13; "not (X in M)" verwenden' }
 )
 
-$PointerDirs = @('Packages', 'Application')
+$PointerDirs = @('Packages', 'Application', 'Setup')
 $PointerChecks = @(
     @{ Pattern = '(?i)\b(Get|Set)(Window|Class)Long[AW]?\s*\('; Message = '…Long schneidet Zeiger in 64 Bit ab; …LongPtr verwenden' },
     @{ Pattern = '(?i)\b(Integer|Cardinal|LongInt|LongWord|DWORD|UInt32|Int32)\s*\(\s*(Pointer\b|@|Self\b|Addr\s*\()'; Message = 'Zeiger in 32-Bit-Ganzzahl umgewandelt; NativeInt oder NativeUInt verwenden' },

@@ -6,8 +6,12 @@ name: Release
 # 2. Baut den Server (Win64 Release) auf dem selbst gehosteten Delphi-Runner,
 #    sofern DELPHI_RUNNER = 'true'; signiert ihn, wenn SIGN_CERT_BASE64 und
 #    SIGN_CERT_PASSWORD gesetzt sind.
+#    Baut außerdem Plugin (Win32 und Win64) und Installer (#495) und packt sie
+#    mit dem Server in atlas-ide-expert-<Version>.zip.
 # 3. Packt die .vsix mit der EXE unter server/.
-# 4. Legt ein GitHub Release mit EXE, .vsix und dem Abschnitt aus CHANGELOG.md an.
+# 4. Legt ein GitHub Release mit EXE, ZIP, .vsix, der Versionsdatei
+#    atlas-version.json (Update-Prüfung des Plugins, #495) und dem Abschnitt aus
+#    CHANGELOG.md an.
 # 5. Veröffentlicht optional im VS Code Marketplace (VSCE_PAT) und auf Open VSX (OVSX_PAT).
 
 on:
@@ -60,6 +64,17 @@ jobs:
           if ($r.logFile -and (Select-String -Path $r.logFile -Pattern '\[dcc.*(Hinweis|Warnung)')) { throw 'Build hat Hinweise oder Warnungen' }
           $exe = 'Output\Win64\Release\Bin\AtlasServer.exe'
           if (-not (Test-Path $exe) -or (Get-Item $exe).LastWriteTime -lt $start) { throw 'Release-exe wurde nicht neu geschrieben' }
+      - name: Plugin und Installer bauen (Win32 Release)
+        shell: pwsh
+        run: |
+          # Die klassische IDE lädt die Win32-BPL; der Installer läuft als 32-Bit-Programm überall.
+          $start = Get-Date
+          $r = & $env:CC_SCRIPT group-build -Instance ${{ steps.ide.outputs.pid }} -Platform Win32 -Config Release -Json | Out-String | ConvertFrom-Json
+          $r | ConvertTo-Json -Depth 5 | Write-Host
+          if (-not $r.ok -or -not $r.outputWritten) { throw 'Build fehlgeschlagen oder keine Ausgabe geschrieben' }
+          if ($r.logFile -and (Select-String -Path $r.logFile -Pattern '\[dcc.*(Hinweis|Warnung)')) { throw 'Build hat Hinweise oder Warnungen' }
+          $exe = 'Output\Win32\Release\Bin\AtlasSetup.exe'
+          if (-not (Test-Path $exe) -or (Get-Item $exe).LastWriteTime -lt $start) { throw 'AtlasSetup.exe wurde nicht neu geschrieben' }
       - name: Scratch-IDE beenden
         if: always() && steps.ide.outputs.pid != ''
         shell: pwsh
@@ -79,17 +94,35 @@ jobs:
           $pfx = Join-Path $env:RUNNER_TEMP 'sign.pfx'
           [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGN_CERT_BASE64))
           try {
-            signtool sign /f $pfx /p $env:SIGN_CERT_PASSWORD /fd sha256 /tr http://timestamp.digicert.com /td sha256 Output\Win64\Release\Bin\AtlasServer.exe
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $files = @('Output\Win64\Release\Bin\AtlasServer.exe', 'Output\Win32\Release\Bin\AtlasSetup.exe') +
+              @(Get-ChildItem 'Output\Win32\Release\Bpl\Atlas.IDE.Expert*.bpl', 'Output\Win64\Release\Bpl\Atlas.IDE.Expert*.bpl' -ErrorAction SilentlyContinue | ForEach-Object FullName)
+            foreach ($file in $files) {
+              signtool sign /f $pfx /p $env:SIGN_CERT_PASSWORD /fd sha256 /tr http://timestamp.digicert.com /td sha256 $file
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            }
           } finally {
             Remove-Item $pfx -Force
           }
+      - name: Installationspaket packen (#495)
+        shell: pwsh
+        run: |
+          # Aufbau wie der Zielordner: der Installer nimmt die Dateien aus seinem eigenen Ordner.
+          $dist = Join-Path $env:RUNNER_TEMP 'atlas-ide-expert'
+          Remove-Item $dist -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force "$dist\Win32", "$dist\Win64" | Out-Null
+          Copy-Item 'Output\Win64\Release\Bin\AtlasServer.exe', 'Output\Win32\Release\Bin\AtlasSetup.exe', 'LICENSE', 'THIRD-PARTY-NOTICES.md' $dist
+          Copy-Item 'Output\Win32\Release\Bpl\Atlas.IDE.Expert*.bpl' "$dist\Win32"
+          Copy-Item 'Output\Win64\Release\Bpl\Atlas.IDE.Expert*.bpl' "$dist\Win64"
+          if (-not (Get-ChildItem "$dist\Win32\*.bpl")) { throw 'Win32-BPL fehlt' }
+          # Neben die EXE, damit das Artefakt flach bleibt (gemeinsamer Ordner aller Dateien).
+          Compress-Archive -Path "$dist\*" -DestinationPath 'Output\Win64\Release\Bin\atlas-ide-expert-${{ needs.version.outputs.version }}.zip' -Force
       - uses: actions/upload-artifact@v4
         with:
           name: server
           path: |
             Output/Win64/Release/Bin/AtlasServer.exe
             Output/Win64/Release/Bin/Atlas.map
+            Output/Win64/Release/Bin/atlas-ide-expert-${{ needs.version.outputs.version }}.zip
 
   release:
     needs: [version, server]
@@ -126,6 +159,13 @@ jobs:
           # Mitgelieferte EXE statt PATH.
           sed -i 's#"AtlasServer.exe"#"${CLAUDE_PLUGIN_ROOT}/bin/AtlasServer.exe"#' plugin/atlas/.lsp.json plugin/atlas/.mcp.json
           (cd plugin && zip -r "../atlas-claude-plugin-$VERSION.zip" atlas)
+      - name: Versionsdatei für die Update-Prüfung (#495)
+        run: |
+          # Das Plugin liest sie über releases/latest/download/atlas-version.json:
+          # nur die Version und der Link zu den Änderungen.
+          printf '{"version": "%s", "changes": "%s"}\n' "$VERSION" \
+            "${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}" > atlas-version.json
+          cat atlas-version.json
       - name: Changelog-Abschnitt
         shell: pwsh
         run: ./Tools/Get-ChangelogSection.ps1 -Version $env:VERSION | Set-Content -Encoding utf8 release-notes.md
@@ -140,6 +180,8 @@ jobs:
             atlas-claude-plugin-${{ env.VERSION }}.zip
             Editors/VSCode/server/AtlasServer.exe
             Editors/VSCode/server/Atlas.map
+            Editors/VSCode/server/atlas-ide-expert-${{ env.VERSION }}.zip
+            atlas-version.json
           fail_on_unmatched_files: false
       - name: VS Code Marketplace (optional)
         if: env.HAS_VSCE == 'true'

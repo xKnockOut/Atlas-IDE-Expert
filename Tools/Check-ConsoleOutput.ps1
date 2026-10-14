@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     stdout gehört ausschließlich dem LSP-Protokoll (Spezifikation, Abschnitt 9).
-    Geprüft werden alle Quelltexte unter Packages/ und Application/:
+    Geprüft werden alle Quelltexte unter Packages/, Application/ und Setup/:
 
     - Write/Writeln ohne Dateiangabe (erlaubt ist nur ErrOutput als erstes Argument)
     - GetStdHandle(STD_OUTPUT_HANDLE) außerhalb von Atlas.Windows.Console.StdStreams
@@ -25,7 +25,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$SourceDirs = @('Packages', 'Application')
+$SourceDirs = @('Packages', 'Application', 'Setup')
 $StdHandleOwner = 'Atlas.Windows.Console.StdStreams.pas'
 
 function Remove-PascalNoise([string] $Text) {

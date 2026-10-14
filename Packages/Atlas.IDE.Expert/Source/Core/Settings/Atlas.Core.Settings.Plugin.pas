@@ -183,6 +183,9 @@ type
     /// Editor-Kürzel aus #399 änderbar, TShortCut, 0 = keins).</summary>
     UndoKey: Integer;
     RedoKey: Integer;
+    /// <summary>Einmal täglich nach einer neuen Version sehen (#495, updates.check); Vorgabe aus, beim ersten
+    /// Start wird gefragt.</summary>
+    UpdatesCheck: Boolean;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -280,6 +283,7 @@ begin
   Result.UndoMultiFileNewFiles := 'recycleBin';
   Result.UndoKey := $C05A; // Strg+Alt+Z
   Result.RedoKey := $E05A; // Strg+Alt+Umschalt+Z
+  Result.UpdatesCheck := False;
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -396,6 +400,7 @@ begin
   UndoMultiFileNewFiles := AStore.ReadString('UndoMultiFileNewFiles', Default.UndoMultiFileNewFiles);
   UndoKey := AStore.ReadInteger('UndoKey', Default.UndoKey);
   RedoKey := AStore.ReadInteger('RedoKey', Default.RedoKey);
+  UpdatesCheck := AStore.ReadInteger('UpdatesCheck', BoolValue(Default.UpdatesCheck)) <> 0;
   Normalize;
 end;
 
@@ -470,6 +475,7 @@ begin
   AStore.WriteString('UndoMultiFileNewFiles', UndoMultiFileNewFiles);
   AStore.WriteInteger('UndoKey', UndoKey);
   AStore.WriteInteger('RedoKey', RedoKey);
+  AStore.WriteInteger('UpdatesCheck', BoolValue(UpdatesCheck));
 end;
 
 function JsonBool(AValue: Boolean): string;

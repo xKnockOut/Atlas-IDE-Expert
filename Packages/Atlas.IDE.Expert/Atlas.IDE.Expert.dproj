@@ -220,6 +220,11 @@
         <DCCReference Include="Source\UI\Undo\Atlas.UI.Undo.DiffView.pas"/>
         <DCCReference Include="Source\IDE\Undo\Atlas.IDE.Undo.Target.pas"/>
         <DCCReference Include="Source\IDE\Undo\Atlas.IDE.Undo.Changes.pas"/>
+        <DCCReference Include="Source\Core\Updates\Atlas.Core.Updates.Contract.pas"/>
+        <DCCReference Include="Source\Core\Updates\Atlas.Core.Updates.Check.pas"/>
+        <DCCReference Include="Source\Core\Updates\Atlas.Core.Updates.Adapters.HttpSource.pas"/>
+        <DCCReference Include="Source\UI\Updates\Atlas.UI.Updates.Consent.pas"/>
+        <DCCReference Include="Source\IDE\Updates\Atlas.IDE.Updates.Check.pas"/>
         <DCCReference Include="Source\IDE\Status\Atlas.IDE.Status.Lines.pas"/>
         <DCCReference Include="Source\IDE\Status\Atlas.IDE.Status.Field.pas"/>
         <DCCReference Include="Source\IDE\Files\Atlas.IDE.Files.DirtyExport.pas"/>

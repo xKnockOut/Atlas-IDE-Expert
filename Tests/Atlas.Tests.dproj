@@ -351,6 +351,16 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Undo\Atlas.UI.Undo.DiffView.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Results\Atlas.UI.Results.Frame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Undo.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Updates\Atlas.Core.Updates.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Updates\Atlas.Core.Updates.Check.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Updates.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Updates\Atlas.UI.Updates.Consent.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Updates.Tests.pas"/>
+        <DCCReference Include="..\Setup\Source\Core\Setup.Core.Contract.pas"/>
+        <DCCReference Include="..\Setup\Source\Core\Setup.Core.Ides.pas"/>
+        <DCCReference Include="..\Setup\Source\Core\Setup.Core.Installer.pas"/>
+        <DCCReference Include="..\Setup\Source\Shell\Setup.Shell.Texts.pas"/>
+        <DCCReference Include="Setup\Setup.Core.Installer.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Commands\Atlas.Core.Commands.Palette.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.Palette.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Pairs.pas"/>

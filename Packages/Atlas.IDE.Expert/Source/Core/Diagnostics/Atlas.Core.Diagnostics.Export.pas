@@ -4,7 +4,8 @@
 // eine ZIP-Datei. Vorher zeigt das Plugin mit Preview den Inhalt, so wie er
 // in der ZIP landet. Die Zuordnung Kurz-ID → Name (diag-map-*.txt) gehört nie
 // dazu. Die Dateien sind beim Export oft noch offen (laufender Server), daher
-// wird lesend ohne Sperre geöffnet.
+// wird lesend ohne Sperre geöffnet. Mit Kopf (#495) steht vorn eine Datei
+// atlas-info.txt mit Atlas-Version, IDE-Version und Plattform.
 
 interface
 
@@ -17,15 +18,23 @@ type
   public const
     DefaultDays = 7;
     PreviewLines = 400;
+    InfoFileName = 'atlas-info.txt';
   public
     /// <summary>Ordner des Servers: %LOCALAPPDATA%\Atlas\Logs\Diagnose.</summary>
     class function DefaultFolder: string; static;
     /// <summary>Diagnoselogs in AFolder, die in den letzten ADays Tagen geschrieben wurden, sortiert.</summary>
     class function Files(const AFolder: string; ADays: Integer; ANow: TDateTime): TArray<string>; static;
     /// <summary>Inhalt wie in der ZIP: je Datei eine Kopfzeile, danach die Zeilen (höchstens AMaxLines insgesamt).</summary>
-    class function Preview(const AFiles: TArray<string>; AMaxLines: Integer = PreviewLines): string; static;
+    class function Preview(const AFiles: TArray<string>; AMaxLines: Integer = PreviewLines): string; overload;
+      static;
+    /// <summary>Wie oben, davor AInfo als atlas-info.txt.</summary>
+    class function Preview(const AFiles: TArray<string>; const AInfo: string): string; overload; static;
     /// <summary>Schreibt die Dateien ohne Ordner in die ZIP-Datei ATarget; eine vorhandene wird ersetzt.</summary>
-    class procedure WriteZip(const AFiles: TArray<string>; const ATarget: string); static;
+    class procedure WriteZip(const AFiles: TArray<string>; const ATarget: string); overload; static;
+    /// <summary>Wie oben, dazu AInfo als atlas-info.txt.</summary>
+    class procedure WriteZip(const AFiles: TArray<string>; const ATarget, AInfo: string); overload; static;
+    /// <summary>Inhalt von atlas-info.txt: Atlas-Version, IDE-Version, Plattform; keine Pfade.</summary>
+    class function Info(const AAtlasVersion, AIdeVersion, APlatform: string): string; static;
   end;
 
 implementation
@@ -121,7 +130,23 @@ begin
   end;
 end;
 
+class function TAtlasDiagnosticExport.Info(const AAtlasVersion, AIdeVersion, APlatform: string): string;
+begin
+  Result := 'Atlas ' + AAtlasVersion + sLineBreak + 'IDE ' + AIdeVersion + sLineBreak + 'Plattform ' + APlatform +
+    sLineBreak;
+end;
+
+class function TAtlasDiagnosticExport.Preview(const AFiles: TArray<string>; const AInfo: string): string;
+begin
+  Result := '== ' + InfoFileName + ' ==' + sLineBreak + AInfo + Preview(AFiles);
+end;
+
 class procedure TAtlasDiagnosticExport.WriteZip(const AFiles: TArray<string>; const ATarget: string);
+begin
+  WriteZip(AFiles, ATarget, '');
+end;
+
+class procedure TAtlasDiagnosticExport.WriteZip(const AFiles: TArray<string>; const ATarget, AInfo: string);
 var
   Zip: TZipFile;
   FileName: string;
@@ -132,6 +157,15 @@ begin
   Zip := TZipFile.Create;
   try
     Zip.Open(ATarget, TZipMode.zmWrite);
+    if AInfo <> '' then
+    begin
+      Content := TBytesStream.Create(TEncoding.UTF8.GetBytes(AInfo));
+      try
+        Zip.Add(Content, InfoFileName);
+      finally
+        Content.Free;
+      end;
+    end;
     for FileName in AFiles do
     begin
       Content := TBytesStream.Create(ReadShared(FileName));
