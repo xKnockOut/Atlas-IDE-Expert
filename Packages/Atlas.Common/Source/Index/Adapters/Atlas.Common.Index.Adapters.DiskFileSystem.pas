@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Index.Adapters.DiskFileSystem;
 
 // IIndexFileSystem auf der echten Platte. Lesen erkennt die Kodierung wie
-// beim Öffnen im Editor; Schreiben (Cache) geht über eine temporäre Datei,
+// beim Öffnen im Editor; der binäre Index-Cache (#617) geht über ReadBytes und
+// WriteBytes. Schreiben (Cache) geht über eine temporäre Datei,
 // die die alte in einem Schritt ersetzt (TFile.Replace). So sieht ein Leser
 // nie einen halben Cache, auch nicht nach einem Abbruch (#184).
 
@@ -17,6 +18,8 @@ type
     function FileStamp(const AFileName: string; out AStamp: Int64): Boolean;
     function ReadText(const AFileName: string; out AText: string): Boolean;
     function WriteText(const AFileName, AText: string): Boolean;
+    function ReadBytes(const AFileName: string; out ABytes: TBytes): Boolean;
+    function WriteBytes(const AFileName: string; const ABytes: TBytes): Boolean;
   end;
 
 implementation
@@ -56,7 +59,33 @@ begin
     AText := '';
 end;
 
+function TDiskIndexFileSystem.ReadBytes(const AFileName: string; out ABytes: TBytes): Boolean;
+begin
+  // Ohne Datei keine Ausnahme: Der erste Start hat noch keinen Cache.
+  if not FileExists(AFileName) then
+  begin
+    ABytes := nil;
+    Exit(False);
+  end;
+  try
+    ABytes := TFile.ReadAllBytes(AFileName);
+    Result := True;
+  except
+    on EInOutError do
+      Result := False;
+    on EFOpenError do
+      Result := False;
+  end;
+  if not Result then
+    ABytes := nil;
+end;
+
 function TDiskIndexFileSystem.WriteText(const AFileName, AText: string): Boolean;
+begin
+  Result := WriteBytes(AFileName, TEncoding.UTF8.GetPreamble + TEncoding.UTF8.GetBytes(AText));
+end;
+
+function TDiskIndexFileSystem.WriteBytes(const AFileName: string; const ABytes: TBytes): Boolean;
 var
   Temp, Backup: string;
   Written: Boolean;
@@ -69,7 +98,7 @@ begin
   Written := False;
   try
     ForceDirectories(ExtractFileDir(AFileName));
-    TFile.WriteAllText(Temp, AText, TEncoding.UTF8);
+    TFile.WriteAllBytes(Temp, ABytes);
     Written := True;
     if FileExists(AFileName) then
       TFile.Replace(Temp, AFileName, Backup)
