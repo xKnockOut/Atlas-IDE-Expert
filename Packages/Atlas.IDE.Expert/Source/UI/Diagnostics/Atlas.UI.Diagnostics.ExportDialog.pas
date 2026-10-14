@@ -1,0 +1,126 @@
+﻿unit Atlas.UI.Diagnostics.ExportDialog;
+
+// Vorschau vor dem Export des Diagnoselogs (#647): zeigt genau die Zeilen, die
+// in die ZIP-Datei kommen, und fragt nach dem Speicherort. Geschrieben wird
+// nicht hier, sondern vom Aufrufer (TAtlasDiagnosticExport.WriteZip).
+
+interface
+
+uses
+  System.SysUtils,
+  System.Classes,
+  Vcl.Controls,
+  Vcl.Forms,
+  Vcl.StdCtrls,
+  Vcl.ExtCtrls,
+  Vcl.Dialogs,
+  Vcl.Graphics;
+
+type
+  TAtlasDiagnosticExportDialog = class(TForm)
+  private
+    FFileName: string;
+    procedure SaveClick(Sender: TObject);
+  public
+    constructor CreateDialog(AOwner: TComponent; const AHint, APreview: string);
+    /// <summary>True mit AFileName, wenn der Nutzer einen Speicherort gewählt hat.</summary>
+    class function Execute(const AHint, APreview: string; out AFileName: string): Boolean; static;
+    property FileName: string read FFileName;
+  end;
+
+implementation
+
+uses
+  Atlas.UI.Strings;
+
+const
+  Gap = 8;
+
+constructor TAtlasDiagnosticExportDialog.CreateDialog(AOwner: TComponent; const AHint, APreview: string);
+var
+  Bottom: TPanel;
+  Button: TButton;
+  Hint: TLabel;
+  Memo: TMemo;
+begin
+  inherited CreateNew(AOwner);
+  Caption := TAtlasStrings.Text(TAtlasTextId.DiagExportTitle);
+  BorderStyle := bsSizeable;
+  Position := poMainFormCenter;
+  Width := 900;
+  Height := 600;
+
+  Hint := TLabel.Create(Self);
+  Hint.Parent := Self;
+  Hint.Align := alTop;
+  Hint.AlignWithMargins := True;
+  Hint.Margins.SetBounds(Gap, Gap, Gap, Gap);
+  Hint.WordWrap := True;
+  Hint.Caption := AHint;
+
+  Bottom := TPanel.Create(Self);
+  Bottom.Parent := Self;
+  Bottom.Align := alBottom;
+  Bottom.Height := 44;
+  Bottom.BevelOuter := bvNone;
+  Button := TButton.Create(Self);
+  Button.Parent := Bottom;
+  Button.SetBounds(Bottom.Width - 2 * (100 + Gap), 8, 100, 28);
+  Button.Anchors := [akTop, akRight];
+  Button.Caption := TAtlasStrings.Text(TAtlasTextId.DiagExportSave);
+  Button.Default := True;
+  Button.OnClick := SaveClick;
+  Button := TButton.Create(Self);
+  Button.Parent := Bottom;
+  Button.SetBounds(Bottom.Width - (100 + Gap), 8, 100, 28);
+  Button.Anchors := [akTop, akRight];
+  Button.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel);
+  Button.Cancel := True;
+  Button.ModalResult := mrCancel;
+
+  Memo := TMemo.Create(Self);
+  Memo.Parent := Self;
+  Memo.Align := alClient;
+  Memo.AlignWithMargins := True;
+  Memo.Margins.SetBounds(Gap, 0, Gap, 0);
+  Memo.ReadOnly := True;
+  Memo.ScrollBars := ssBoth;
+  Memo.WordWrap := False;
+  Memo.Font.Name := 'Consolas';
+  Memo.Font.Size := 9;
+  Memo.Lines.Text := APreview;
+end;
+
+procedure TAtlasDiagnosticExportDialog.SaveClick(Sender: TObject);
+var
+  Dialog: TSaveDialog;
+begin
+  Dialog := TSaveDialog.Create(Self);
+  try
+    Dialog.Filter := TAtlasStrings.Text(TAtlasTextId.DiagExportFilter);
+    Dialog.DefaultExt := 'zip';
+    Dialog.FileName := 'atlas-diagnose-' + FormatDateTime('yyyymmdd', Now) + '.zip';
+    Dialog.Options := Dialog.Options + [ofOverwritePrompt, ofPathMustExist];
+    if not Dialog.Execute then
+      Exit;
+    FFileName := Dialog.FileName;
+    ModalResult := mrOk;
+  finally
+    Dialog.Free;
+  end;
+end;
+
+class function TAtlasDiagnosticExportDialog.Execute(const AHint, APreview: string; out AFileName: string): Boolean;
+var
+  Dialog: TAtlasDiagnosticExportDialog;
+begin
+  Dialog := TAtlasDiagnosticExportDialog.CreateDialog(nil, AHint, APreview);
+  try
+    Result := Dialog.ShowModal = mrOk;
+    AFileName := Dialog.FileName;
+  finally
+    Dialog.Free;
+  end;
+end;
+
+end.

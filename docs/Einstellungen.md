@@ -26,6 +26,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Prüfregeln | `dfmPropertyRules` | `` | atlas.json, Editor (`atlas.dfmPropertyRules`) | nein | Eigener Editor (Klasse und Property aus dem Index) | #309 |
 | Speicher | `memoryBudgetMb` | `0` | atlas.json, Editor (`atlas.memoryBudgetMb`) | nein | Zahlenfeld (MB) | #185 |
 | Robustheit | `requestTimeoutMs` | `10000` | atlas.json, Editor (`atlas.requestTimeoutMs`) | nein | Zahlenfeld (ms) | #283 |
+| Robustheit | `diagnostics`: `log`, `logDays`, `logMapFile` | – | atlas.json, Editor (`atlas.diagnostics`) | nein | Kontrollkästchen, Zahlenfeld (Tage) | #647 |
 | Editor | `highlight`: `blockPairs`, `directives`, `exitPoints`, `exitKeywords` | – | atlas.json, Editor (`atlas.highlight`) | nein | Kontrollkästchen, Liste | #307 |
 | Editor | `inlayHints`: `parameterNames`, `inferredTypes`, `endMarkers`, `endMarkerMinLines` | – | atlas.json, Editor (`atlas.inlayHints`) | nein | Kontrollkästchen, Zahlenfeld | #35 |
 | Editor | `stringLiteral`: `style`, `lineBreak`, `maxLineLength` | – | atlas.json, Editor (`atlas.stringLiteral`) | nein | Auswahl, Zahlenfeld | #312 |

@@ -21,6 +21,18 @@ uses
   Atlas.Common.JsonRpc.Statistics;
 
 type
+  /// <summary>Beobachter je Anfrage (#647, Diagnoselog). Beide Aufrufe laufen im Thread des Handlers;
+  /// Ausnahmen darin werden verschluckt.</summary>
+  IJsonRpcRequestObserver = interface
+    ['{9D41E6B2-0C7A-4F35-A8E3-6B2F5C1D7094}']
+    /// <summary>Direkt vor dem Handler.</summary>
+    procedure Started(const AMethod: string);
+    /// <summary>Nach dem Handler: AResult bei Erfolg (gehört der Antwort), sonst AError.
+    /// AQueueMs ist die Wartezeit vor dem Start, AElapsedMs die Laufzeit des Handlers.</summary>
+    procedure Finished(const AMethod: string; const AParams, AResult: TJSONValue; const AError: Exception;
+      AQueueMs, AElapsedMs: Int64);
+  end;
+
   TJsonRpcDispatcher = class
   private
     FRequestHandlers: TDictionary<string, TJsonRpcRequestHandler>;
@@ -33,6 +45,7 @@ type
     FWatchdog: IJsonRpcWatchdog;
     FOnRequestFailed: TJsonRpcRequestFailedEvent;
     FStatistics: IJsonRpcStatistics;
+    FObserver: IJsonRpcRequestObserver;
     FLastMessage: string;
     function DispatchRequest(const AId: TJSONValue; const AMethod: string; const AParams: TJSONValue): TJSONObject;
     procedure DispatchNotification(const AMethod: string; const AParams: TJSONValue);
@@ -56,6 +69,8 @@ type
     /// Benachrichtigungs-Handlern gehen an den Aufrufer.
     /// </summary>
     function DispatchMessage(const AMessage: TJSONObject): TJSONObject;
+    /// <summary>Namen aller registrierten Anfragen (für das Diagnoselog, #647).</summary>
+    function Methods: TArray<string>;
     /// <summary>Optionale Prüfung vor jeder Verteilung, z. B. für den Lebenszyklus des Servers.</summary>
     property Guard: TJsonRpcGuard read FGuard write FGuard;
     /// <summary>Führt nebenläufige Anfragen aus. Wirkt nur zusammen mit Responder.</summary>
@@ -75,6 +90,8 @@ type
     property LastMessage: string read FLastMessage;
     /// <summary>Optional: misst die Antwortzeit jeder Anfrage (#28).</summary>
     property Statistics: IJsonRpcStatistics read FStatistics write FStatistics;
+    /// <summary>Optional: sieht jede Anfrage mit Ergebnis und Wartezeit (#647).</summary>
+    property Observer: IJsonRpcRequestObserver read FObserver write FObserver;
   end;
 
 implementation
@@ -103,22 +120,49 @@ begin
     end;
 end;
 
+procedure ObserveStarted(const AObserver: IJsonRpcRequestObserver; const AMethod: string);
+begin
+  if AObserver <> nil then
+    try
+      AObserver.Started(AMethod);
+    except
+      // Das Diagnoselog darf keine Anfrage verhindern.
+    end;
+end;
+
+procedure ObserveFinished(const AObserver: IJsonRpcRequestObserver; const AMethod: string;
+  const AParams, AResult: TJSONValue; const AError: Exception; AQueueMs, AElapsedMs: Int64);
+begin
+  if AObserver <> nil then
+    try
+      AObserver.Finished(AMethod, AParams, AResult, AError, AQueueMs, AElapsedMs);
+    except
+      // Das Diagnoselog darf keine Antwort verhindern.
+    end;
+end;
+
 function RunConcurrent(const AId, AParams: TJSONValue; const AMethod: string;
   const AHandler: TJsonRpcConcurrentRequestHandler; const AToken: IJsonRpcCancellationToken;
-  const AOnFailed: TJsonRpcRequestFailedEvent; const AStatistics: IJsonRpcStatistics): TJSONObject;
+  const AOnFailed: TJsonRpcRequestFailedEvent; const AStatistics: IJsonRpcStatistics;
+  const AObserver: IJsonRpcRequestObserver; AQueueMs: Int64): TJSONObject;
 var
   Watch: TStopwatch;
   Failed: Boolean;
+  Value: TJSONValue;
 begin
   Watch := TStopwatch.StartNew;
   Failed := False;
+  ObserveStarted(AObserver, AMethod);
   try
     AToken.ThrowIfCancellationRequested;
-    Result := TJsonRpcMessages.Response(AId, AHandler(AParams, AToken));
+    Value := AHandler(AParams, AToken);
+    Result := TJsonRpcMessages.Response(AId, Value);
+    ObserveFinished(AObserver, AMethod, AParams, Value, nil, AQueueMs, Watch.ElapsedMilliseconds);
   except
     on E: Exception do
     begin
       Failed := True;
+      ObserveFinished(AObserver, AMethod, AParams, nil, E, AQueueMs, Watch.ElapsedMilliseconds);
       NotifyFailed(AOnFailed, AMethod, AParams, E);
       Result := ErrorResponse(AId, E);
     end;
@@ -134,10 +178,12 @@ procedure ScheduleConcurrent(const AScheduler: TJsonRpcScheduler; const ARespond
   const APending: IJsonRpcPendingRequests; const AHandler: TJsonRpcConcurrentRequestHandler;
   const AId, AParams: TJSONValue; const AToken: IJsonRpcCancellationToken; const AMethod: string;
   const AWatchdog: IJsonRpcWatchdog; const AOnFailed: TJsonRpcRequestFailedEvent;
-  const AStatistics: IJsonRpcStatistics);
+  const AStatistics: IJsonRpcStatistics; const AObserver: IJsonRpcRequestObserver);
 var
   Method: string;
   Statistics: IJsonRpcStatistics;
+  Observer: IJsonRpcRequestObserver;
+  Queued: TStopwatch;
   Watchdog: IJsonRpcWatchdog;
   OnFailed: TJsonRpcRequestFailedEvent;
   Id: TJSONValue;
@@ -155,6 +201,8 @@ begin
   Watchdog := AWatchdog;
   OnFailed := AOnFailed;
   Statistics := AStatistics;
+  Observer := AObserver;
+  Queued := TStopwatch.StartNew;
   Id := TJSONValue(AId.Clone);
   Params := nil;
   if AParams <> nil then
@@ -173,7 +221,8 @@ begin
           if Watchdog <> nil then
             Ticket := Watchdog.Watch(Id, Method);
           try
-            Response := RunConcurrent(Id, Params, Method, Handler, Token, OnFailed, Statistics);
+            Response := RunConcurrent(Id, Params, Method, Handler, Token, OnFailed, Statistics, Observer,
+              Queued.ElapsedMilliseconds);
           finally
             if Watchdog <> nil then
               Watchdog.Unwatch(Ticket);
@@ -277,6 +326,11 @@ begin
     Result := DispatchRequest(Id, MethodValue.Value, Params);
 end;
 
+function TJsonRpcDispatcher.Methods: TArray<string>;
+begin
+  Result := FRequestHandlers.Keys.ToArray + FConcurrentHandlers.Keys.ToArray;
+end;
+
 function TJsonRpcDispatcher.DispatchRequest(const AId: TJSONValue; const AMethod: string;
   const AParams: TJSONValue): TJSONObject;
 var
@@ -287,6 +341,7 @@ var
   Ticket: Int64;
   Watch: TStopwatch;
   Measured: Boolean;
+  Value: TJSONValue;
 begin
   Token := FPending.Acquire(AId);
   Scheduled := False;
@@ -302,14 +357,15 @@ begin
         if Assigned(FScheduler) and Assigned(FResponder) then
         begin
           ScheduleConcurrent(FScheduler, FResponder, FPending, ConcurrentHandler, AId, AParams, Token, AMethod,
-            FWatchdog, FOnRequestFailed, FStatistics);
+            FWatchdog, FOnRequestFailed, FStatistics, FObserver);
           Scheduled := True;
           Exit(nil);
         end;
         // Ohne Scheduler läuft die Anfrage hier; auch dann gilt das Zeitlimit.
         if FWatchdog <> nil then
           Ticket := FWatchdog.Watch(AId, AMethod);
-        Exit(RunConcurrent(AId, AParams, AMethod, ConcurrentHandler, Token, FOnRequestFailed, FStatistics));
+        Exit(RunConcurrent(AId, AParams, AMethod, ConcurrentHandler, Token, FOnRequestFailed, FStatistics,
+          FObserver, 0));
       end;
       if not FRequestHandlers.TryGetValue(AMethod, Handler) then
         raise EJsonRpcError.Create(TJsonRpcErrorCode.MethodNotFound, 'Methode nicht unterstützt: ' + AMethod);
@@ -318,12 +374,17 @@ begin
       if FWatchdog <> nil then
         Ticket := FWatchdog.Watch(AId, AMethod);
       Measured := True;
-      Result := TJsonRpcMessages.Response(AId, Handler(AParams));
+      ObserveStarted(FObserver, AMethod);
+      Value := Handler(AParams);
+      Result := TJsonRpcMessages.Response(AId, Value);
+      ObserveFinished(FObserver, AMethod, AParams, Value, nil, 0, Watch.ElapsedMilliseconds);
       if FStatistics <> nil then
         FStatistics.Add(AMethod, Watch.ElapsedMilliseconds, False);
     except
       on E: Exception do
       begin
+        if Measured then
+          ObserveFinished(FObserver, AMethod, AParams, nil, E, 0, Watch.ElapsedMilliseconds);
         if Measured and (FStatistics <> nil) then
           FStatistics.Add(AMethod, Watch.ElapsedMilliseconds, True);
         NotifyFailed(FOnRequestFailed, AMethod, AParams, E);

@@ -66,8 +66,10 @@ uses
   Atlas.Common.Compiler.Results,
   Atlas.Common.Lsp.WorkDoneProgress,
   Shell.CommandLine,
+  Atlas.Common.Diagnostics.Contract,
   Atlas.Windows.Process.ParentWatcher,
-  Shell.Workspace;
+  Shell.Workspace,
+  Shell.Diagnostics;
 
 type
   TServerComposition = class
@@ -98,6 +100,13 @@ type
     /// <summary>Prozessnummer des Editors aus der Befehlszeile (#283); 0 = keine.</summary>
     FClientProcessId: Cardinal;
     FParentWatcher: TParentWatcher;
+    /// <summary>Anonymisiertes Diagnoselog (#647); FDiagnosticsRef hält die Instanz am Leben.</summary>
+    FDiagnostics: TShellDiagnostics;
+    FDiagnosticsRef: IJsonRpcRequestObserver;
+    /// <summary>Grund für die Endzeile des Diagnoselogs; InputClosed, solange nichts anderes gemeldet ist.</summary>
+    FEndReason: TDiagnosticEndReason;
+    /// <summary>Zuletzt gesetztes Zeitlimit für Anfragen, für die Einordnung als timeout.</summary>
+    FRequestTimeout: Cardinal;
     FCompletion: TLspCompletion;
     FSignatureHelp: TLspSignatureHelp;
     FHierarchies: TLspHierarchies;
@@ -438,6 +447,31 @@ begin
   FSyntaxDiagnostics.RuleProvider := RuleContextFor;
   FIndex := TSymbolIndex.Create;
   FFormatting.Index := FIndex;
+  FEndReason := TDiagnosticEndReason.InputClosed;
+  FRequestTimeout := RequestTimeoutMs;
+  FDiagnostics := TShellDiagnostics.Create(TShellDiagnostics.DefaultFolder, IntToStr(GetCurrentProcessId),
+    FDocuments, FIndex);
+  FDiagnosticsRef := FDiagnostics;
+  FDiagnostics.TimeoutMs :=
+    function: Cardinal
+    begin
+      Result := FRequestTimeout;
+    end;
+  FDiagnostics.IndexLoading :=
+    function: Integer
+    var
+      Workspace: TShellWorkspace;
+    begin
+      Result := -1;
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        for Workspace in FWorkspaces do
+          Result := Max(Result, Workspace.IndexLoading);
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+    end;
+  FDispatcher.Observer := FDiagnosticsRef;
   FDefinition := TLspDefinition.Create(FDocuments, FIndex,
     function(const AUnitName: string): Boolean
     begin
@@ -1007,6 +1041,7 @@ begin
   FLifecycle.OnExit :=
     procedure
     begin
+      FEndReason := TDiagnosticEndReason.Clean;
       FConnection.Stop;
     end;
 end;
@@ -1018,6 +1053,10 @@ begin
   // Vor der Verbindung: der Wächter ruft FConnection.Stop.
   FParentWatcher.Free;
   FConnection.Free;
+  // Nach der Verbindung laufen keine Anfragen mehr, die das Diagnoselog beobachtet.
+  FDispatcher.Observer := nil;
+  FDiagnostics := nil;
+  FDiagnosticsRef := nil;
   // Laufenden Compilerlauf abwarten: Er meldet über die Syntaxprüfung.
   if FCompileThread <> nil then
   begin
@@ -1085,6 +1124,8 @@ begin
     procedure(ASettings: TServerSettings)
     begin
       FDispatcher.Watchdog.SetTimeout(ASettings.RequestTimeoutMs);
+      FRequestTimeout := ASettings.RequestTimeoutMs;
+      FDiagnostics.ApplySettings(ASettings);
     end;
   Workspace.Configuration.SetEditorSettings(FEditorSettings);
   TMonitor.Enter(FWorkspacesLock);
@@ -1477,6 +1518,7 @@ var
   Workspace: TShellWorkspace;
   Namespaces: TArray<string>;
   Namespace: string;
+  LibraryRoots: TArray<string>;
 begin
   // Neues Projekt oder neue Installation: Der Compiler bekommt eine neue Chance (#40).
   if FCompileLock <> nil then
@@ -1490,12 +1532,18 @@ begin
   end;
   // Die Features kennen eine Liste: die Namespaces aller Projekte ohne Doppelte.
   Namespaces := nil;
+  LibraryRoots := nil;
   TMonitor.Enter(FWorkspacesLock);
   try
     for Workspace in FWorkspaces do
+    begin
       for Namespace in Workspace.Namespaces do
         if IndexText(Namespace, Namespaces) < 0 then
           Namespaces := Namespaces + [Namespace];
+      // Units der Delphi-Installation erscheinen im Diagnoselog mit Namen (#647).
+      if (Workspace.BdsRoot <> '') and (IndexText(Workspace.BdsRoot, LibraryRoots) < 0) then
+        LibraryRoots := LibraryRoots + [Workspace.BdsRoot];
+    end;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
@@ -1511,6 +1559,7 @@ begin
   FInlayHints.Namespaces := Namespaces;
   FCodeLens.Namespaces := Namespaces;
   FSemanticTokens.Namespaces := Namespaces;
+  FDiagnostics.SetLibraryRoots(LibraryRoots);
   FSyntaxDiagnostics.Refresh;
 end;
 
@@ -1853,6 +1902,7 @@ begin
     procedure
     begin
       FLogger.Warning(Format('Editor-Prozess %d ist beendet; der Server beendet sich', [ProcessId]));
+      FEndReason := TDiagnosticEndReason.ParentExited;
       FConnection.Stop;
     end);
 end;
@@ -1914,14 +1964,18 @@ end;
 function TServerComposition.Run: Integer;
 begin
   FLogger.Info(Format('%s %s gestartet', [TProductVersion.Name, TProductVersion.Version]));
+  FDiagnostics.AllowMethods(FDispatcher.Methods);
+  FDiagnostics.BeginRun(TProductVersion.Version, AllocatedBytes);
   try
     FConnection.Run;
     Result := FLifecycle.ExitCode;
+    FDiagnostics.EndRun(FEndReason, Result, AllocatedBytes);
   except
     on E: Exception do
     begin
       FLogger.Error('Server abgebrochen: ' + DescribeFailure(E));
       Result := 1;
+      FDiagnostics.EndRun(TDiagnosticEndReason.Exception_, Result, AllocatedBytes, E);
     end;
   end;
   FLogger.Info(Format('Beendet mit Exit-Code %d', [Result]));

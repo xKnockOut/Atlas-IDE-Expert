@@ -243,9 +243,12 @@ uses
   Atlas.Common.Lsp.SignatureHelp,
   System.RegularExpressions,
   Atlas.Common.Editing.CommandSource,
-  Atlas.Common.Editing.PostfixTemplates;
+  Atlas.Common.Editing.PostfixTemplates,
+  Atlas.Common.Diagnostics.RequestScope;
 
 const
+  /// <summary>Art der Stelle im Diagnoselog (#647).</summary>
+  ContextCodes: array[TCompletionContextKind] of string = ('none', 'scope', 'memberAccess', 'uses');
   // CompletionItemKind
   KindMethod = 2;
   KindFunction = 3;
@@ -1282,6 +1285,13 @@ begin
   Truncated := False;
   ImportsCapped := False;
   Context := Analyze(ATree, APosition);
+  // Diagnoselog (#647): nur Art und Längen, nie die Namen selbst.
+  TRequestDiagnostics.Note('ctx', ContextCodes[Context.Kind]);
+  TRequestDiagnostics.Note('prefixLen', Length(Context.Prefix));
+  if Context.Kind = TCompletionContextKind.Member then
+    TRequestDiagnostics.Note('chainLen', Length(Context.Names))
+  else if Context.Kind = TCompletionContextKind.None then
+    TRequestDiagnostics.Reason('noContext');
   // Name der eigenen Unit für die Bereichsstufe (#488).
   OwnUnit := '';
   if ATree <> nil then
@@ -1493,7 +1503,10 @@ begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Felder "textDocument.uri" und "position" fehlen');
   if not FStore.TryGet(Uri, Document) then
+  begin
+    TRequestDiagnostics.Reason('documentNotOpen');
     Exit(TJSONNull.Create);
+  end;
   Cancellation := TRequestCancellation.Create(ACancellation);
   Disabled := nil;
   if (not Assigned(FSlashCommandsFor) or FSlashCommandsFor(Uri, Disabled)) and
@@ -1505,6 +1518,7 @@ begin
   Tree := Shared.Tree;
   ACancellation.ThrowIfCancellationRequested;
   ParseMs := Watch.ElapsedMilliseconds;
+  TRequestDiagnostics.Note('syntaxErr', Length(Tree.Diagnostics));
   Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
     Resolver.Namespaces := FNamespaces;
@@ -1553,6 +1567,10 @@ begin
     Result := TJSONObject.Create;
     TJSONObject(Result).AddPair('isIncomplete', TJSONBool.Create(Collected.Incomplete));
     TJSONObject(Result).AddPair('items', ToJson(Collected.Items, SentCount));
+    // Vorab als $/progress gesendete Einträge zählen mit (#616).
+    TRequestDiagnostics.ResultCount(SentCount + Length(Collected.Items));
+    if SentCount + Length(Collected.Items) = 0 then
+      TRequestDiagnostics.DefaultReason('noCandidates');
     if Assigned(FLog) then
       FLog(Format('completion: %d Einträge (%d vorab), unvollständig %s, Baum %d ms, gesamt %d ms',
         [SentCount + Length(Collected.Items), SentCount, BoolToStr(Collected.Incomplete, True), ParseMs,

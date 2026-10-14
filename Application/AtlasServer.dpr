@@ -10,7 +10,8 @@ uses
   Shell.Linter in 'Source\Shell\Shell.Linter.pas',
   Shell.SlashHost in 'Source\Shell\Shell.SlashHost.pas',
   Shell.VcsChanges in 'Source\Shell\Shell.VcsChanges.pas',
-  Shell.Mcp in 'Source\Shell\Shell.Mcp.pas';
+  Shell.Mcp in 'Source\Shell\Shell.Mcp.pas',
+  Shell.Diagnostics in 'Source\Shell\Shell.Diagnostics.pas';
 
 begin
   // Lecks beim Beenden melden; der Bericht geht nicht auf stdout.

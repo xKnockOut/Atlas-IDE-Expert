@@ -239,6 +239,11 @@ type
     MemoryBudgetMb: Integer;
     /// <summary>Zeitlimit für Anfragen in ms (#283); länger laufende werden abgebrochen.</summary>
     RequestTimeoutMs: Integer;
+    /// <summary>Anonymisiertes Diagnoselog (#647): schreiben, Aufbewahrung in Tagen und lokale
+    /// Zuordnung Kurz-ID → Name (nur für die eigene Analyse).</summary>
+    DiagnosticsLog: Boolean;
+    DiagnosticsLogDays: Integer;
+    DiagnosticsLogMapFile: Boolean;
     /// <summary>Protokoll (#265): Stufe (debug/info/warning/error), Logdatei und Mitschnitt.
     /// Der Server übernimmt sie nicht zur Laufzeit; der Client übergibt sie beim Start als
     /// --log-level, --log und --trace.</summary>
@@ -513,6 +518,9 @@ begin
   Result.DfmPropertyRules := nil;
   Result.MemoryBudgetMb := 0;
   Result.RequestTimeoutMs := 10000;
+  Result.DiagnosticsLog := True;
+  Result.DiagnosticsLogDays := 7;
+  Result.DiagnosticsLogMapFile := False;
   Result.LogLevel := 'info';
   Result.LogFile := '';
   Result.TraceFile := '';

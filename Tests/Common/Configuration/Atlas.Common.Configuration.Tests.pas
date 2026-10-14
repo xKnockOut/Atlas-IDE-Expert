@@ -293,6 +293,21 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Assert.AreEqual(10000, Parse('{"requestTimeoutMs": 10}', Issues).RequestTimeoutMs);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Diagnoselog (#647)
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.DiagnosticsLog);
+  Assert.AreEqual(7, Settings.DiagnosticsLogDays);
+  Assert.IsFalse(Settings.DiagnosticsLogMapFile);
+  Settings := Parse('{"diagnostics": {"log": false, "logDays": 3, "logMapFile": true}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.DiagnosticsLog);
+  Assert.AreEqual(3, Settings.DiagnosticsLogDays);
+  Assert.IsTrue(Settings.DiagnosticsLogMapFile);
+  Assert.AreEqual(7, Parse('{"diagnostics": {"logDays": 0, "x": 1}}', Issues).DiagnosticsLogDays);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{"diagnostics": {"log": false}}', '{"diagnostics": {"logDays": 2}}', Issues);
+  Assert.IsTrue(Settings.DiagnosticsLog, 'atlas.json ersetzt den ganzen Abschnitt');
+  Assert.AreEqual(2, Settings.DiagnosticsLogDays);
   // Schlüsselworthervorhebung (#307)
   Settings := Parse('{}', Issues);
   Assert.IsTrue(Settings.Highlight.BlockPairs and Settings.Highlight.Directives and Settings.Highlight.ExitPoints);
