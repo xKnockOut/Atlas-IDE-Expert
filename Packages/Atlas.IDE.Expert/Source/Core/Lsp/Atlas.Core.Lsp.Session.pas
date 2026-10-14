@@ -129,8 +129,6 @@ type
     procedure SetProjects(const AProjects: TArray<string>);
     /// <summary>Projektkontexte aus der IDE (#396). Vor Initialize nur gemerkt, danach jeder neue oder
     /// geänderte als atlas/projectContext gemeldet. Vor SetProjects aufrufen, damit ein neues Projekt
-    /// gleich mit seinem Kontext geladen wird.</summary>
-    procedure SetProjectContexts(const AContexts: TArray<TAtlasProjectContext>);
     /// gleich mit seinem Kontext geladen wird. Ergebnis: die neu gemeldeten oder für initialize
     /// gemerkten Kontexte (fürs Diagnoseprotokoll).</summary>
     function SetProjectContexts(const AContexts: TArray<TAtlasProjectContext>): TArray<TAtlasProjectContext>;
