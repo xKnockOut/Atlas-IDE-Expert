@@ -158,6 +158,9 @@ begin
     if (Result.SetOf <> '') and not ((Data.GetValue('setRange') is TJSONObject) and
       RangeFromLsp(TJSONObject(Data.GetValue('setRange')), Result.SetRange)) then
       Result.SetOf := '';
+    // case vervollständigen (#449).
+    Result.Pinned := Data.GetValue('pinned') is TJSONTrue;
+    Result.Count := Data.GetValue<Integer>('count', 0);
     Overloads := Data.GetValue('overloads');
     if Overloads is TJSONArray then
       for Value in TJSONArray(Overloads) do

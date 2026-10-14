@@ -104,6 +104,10 @@ type
     SetChecked: Boolean;
     /// <summary>Was Enter mit dem neuen Klammerinhalt ersetzt: von "[" bis hinter "]".</summary>
     SetRange: TTextRange;
+    /// <summary>Steht immer oben und passt zu jedem getippten Wort („Alle Werte einfügen“, #449).</summary>
+    Pinned: Boolean;
+    /// <summary>Zahl als Tag (fehlende Werte, #449); 0 ohne.</summary>
+    Count: Integer;
   end;
 
   /// <summary>Postfix-Vorlagen (#188) je Dokument.</summary>
@@ -249,6 +253,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Lsp.CompilerDirectives,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Pascal.XmlDoc,
@@ -1458,7 +1463,7 @@ begin
     Entry.AddPair('sortText', Format('%.5d', [AFirstSort + Index]));
     if (AItems[Index].SourceFile <> '') or (AItems[Index].Expected <> '') or
       (AItems[Index].Action <> '') or (AItems[Index].Condition <> '') or
-      (AItems[Index].Scope > 0) or (AItems[Index].Ordinal > 0) then
+      (AItems[Index].Scope > 0) or (AItems[Index].Ordinal > 0) or AItems[Index].Pinned then
     begin
       Data := TJSONObject.Create;
       if AItems[Index].SourceFile <> '' then
@@ -1499,6 +1504,11 @@ begin
         Data.AddPair('checked', TJSONBool.Create(AItems[Index].SetChecked));
         Data.AddPair('setRange', TLspPositions.RangeToJson(AItems[Index].SetRange));
       end;
+      // case vervollständigen (#449).
+      if AItems[Index].Pinned then
+        Data.AddPair('pinned', TJSONBool.Create(True));
+      if AItems[Index].Count > 0 then
+        Data.AddPair('count', TJSONNumber.Create(AItems[Index].Count));
       if Length(AItems[Index].Overloads) > 0 then
       begin
         Overloads := TJSONArray.Create;
@@ -2409,6 +2419,47 @@ begin
   end;
 end;
 
+/// <summary>„Alle Werte einfügen“ bzw. „Fehlende Werte ergänzen (n)“ am Anfang eines case-Zweigs (#449).</summary>
+function CaseItem(const AEnum: TEnumType; const AText: string; const ATokens: TArray<TPascalToken>;
+  const APosition: TTextPosition; out AItem: TCompletionItem): Boolean;
+var
+  Slot: TCaseBranchSlot;
+  Missing: TArray<string>;
+  Prefix, LineBreak, EndText: string;
+begin
+  AItem := Default(TCompletionItem);
+  Result := False;
+  if not TCaseCompletion.BranchSlot(AText, ATokens, APosition, Slot) or
+    not TCaseCompletion.Missing(AEnum.Values, Slot.Labels, Missing) or (Missing = nil) then
+    Exit;
+  if Pos(#13#10, AText) > 0 then
+    LineBreak := #13#10
+  else
+    LineBreak := #10;
+  Prefix := '';
+  if AEnum.Scoped then
+    Prefix := AEnum.Name + '.';
+  if Slot.Labels = nil then
+  begin
+    AItem.Name := 'Alle Werte einfügen';
+    AItem.Count := Length(Missing);
+  end
+  else
+    AItem.Name := Format('Fehlende Werte ergänzen (%d)', [Length(Missing)]);
+  AItem.Kind := KindSnippet;
+  AItem.Detail := AEnum.Name;
+  AItem.Fits := True;
+  AItem.Pinned := True;
+  // Erzeugt Code: Atlas wertet die Zusatzänderung ("end;") nicht als uses-Ergänzung.
+  AItem.Action := 'case';
+  AItem.HasTextEdit := True;
+  AItem.TextEdit := TRuleEdit.Create(Slot.EditRange, TCaseCompletion.BranchesText(Slot, Missing, Prefix, LineBreak));
+  EndText := TCaseCompletion.EndText(Slot, LineBreak);
+  if EndText <> '' then
+    AItem.AdditionalEdits := [TRuleEdit.Create(TTextRange.Create(Slot.EndInsert, Slot.EndInsert), EndText)];
+  Result := True;
+end;
+
 class function TLspCompletion.EnumItems(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const AText, AFileName: string; const APosition: TTextPosition; const AReadText: TCompletionReadText;
   AMatching: TCompletionMatching; out AItems: TArray<TCompletionItem>; out ASetMode: Boolean): Boolean;
@@ -2472,6 +2523,12 @@ begin
   TypeInfo := TypeAt(AResolver, AIndex, ATree, AFileName, Context.Offset, Expected);
   if not EnumOf(AResolver, AIndex, ATree, AText, AFileName, TypeInfo, AReadText, False, Enum) then
     Exit;
+  // Am Anfang eines case-Zweigs (#449): fehlende Zweige auf einmal, als erster Eintrag.
+  if CaseItem(Enum, AText, ATree.Tokens, APosition, Item) then
+  begin
+    Item.Expected := Expected;
+    AItems := AItems + [Item];
+  end;
   for Index := 0 to High(Enum.Values) do
     if MatchScore(Enum.Values[Index], Context.Prefix, AMatching) <> TFuzzyMatch.NoMatch then
     begin

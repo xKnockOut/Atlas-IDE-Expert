@@ -284,6 +284,7 @@ uses
   Atlas.Common.Rules.Builtin.DataBinding.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DataBinding.Tests.pas',
   Atlas.Common.Rules.Builtin.DfmProperties.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DfmProperties.Tests.pas',
   Atlas.Common.Editing.PostfixTemplates.Tests in 'Common\Editing\Atlas.Common.Editing.PostfixTemplates.Tests.pas',
+  Atlas.Common.Editing.CaseCompletion.Tests in 'Common\Editing\Atlas.Common.Editing.CaseCompletion.Tests.pas',
   Atlas.Common.Lsp.Completion.Postfix.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Postfix.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}
