@@ -20,6 +20,9 @@
 // sonst Projektordner) werden beobachtet; gesammelte Änderungen gehen bei der nächsten
 // Anfrage als workspace/didChangeWatchedFiles an den Server (die Probleme-Prüfung
 // fragt alle 250 ms).
+// Projektkontext (#396): Konfiguration, Plattform und Optionen der Projekte
+// der Gruppe gehen in initialize mit; Änderungen (Debug/Release, Win32/Win64,
+// geänderte Optionen) prüft die Sitzung höchstens einmal je Sekunde.
 
 interface
 
@@ -49,6 +52,8 @@ type
     FServerFound: Boolean;
     // Zuletzt geprüfte Projektgruppe (#648).
     FProjectsChecked: Cardinal;
+    /// <summary>Zuletzt geprüfter Projektkontext (#396).</summary>
+    FContextsChecked: Cardinal;
     /// <summary>Änderungen außerhalb der IDE (#395).</summary>
     FFileChanges: TAtlasWatchedChanges;
     FFolderWatcher: TAtlasFolderWatcher;
@@ -63,6 +68,8 @@ type
     /// <summary>Projekte der geöffneten Gruppe, aktives zuerst; leer ohne Gruppe (#648).</summary>
     class function GroupProjects: TArray<string>; static;
     procedure RefreshProjects;
+    /// <summary>Meldet geänderte Projektkontexte (#396); höchstens einmal je Sekunde (Hauptthread).</summary>
+    procedure RefreshContexts;
     /// <summary>Beobachtet die Ordner dieser Projekte (#395).</summary>
     procedure WatchProjects(const AProjects: TArray<string>);
     /// <summary>Gesammelte Änderungen außerhalb der IDE an den Server (Hauptthread, #395).</summary>
@@ -144,7 +151,8 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Problems.Contract,
   Winapi.Windows,
-  Atlas.IDE.Editor.Buffer;
+  Atlas.IDE.Editor.Buffer,
+  Atlas.IDE.Projects.Context;
 
 const
   RegistryKey = 'Software\Atlas\IdePlugin';
@@ -342,6 +350,7 @@ var
 begin
   if (FServer <> nil) and FServer.Running and (FSession <> nil) and FSession.Initialized then
   begin
+    RefreshContexts;
     RefreshProjects;
     FlushFileChanges;
     Exit(True);
@@ -362,6 +371,8 @@ begin
   try
     FServer := TLspServerProcess.Create(Path, Arguments);
     FSession := TLspSession.Create(FServer.Client);
+    FContextsChecked := 0;
+    RefreshContexts;
     Projects := GroupProjects;
     FSession.SetProjects(Projects);
     WatchProjects(Projects);
@@ -428,6 +439,21 @@ begin
   except
     on E: Exception do
       Diagnose('Projektgruppe nicht gemeldet: ' + E.Message);
+  end;
+end;
+
+procedure TAtlasCodeInsightManager.RefreshContexts;
+begin
+  // Open Tools API nur im Hauptthread.
+  if (GetCurrentThreadId <> MainThreadID) or
+    ((FContextsChecked <> 0) and (GetTickCount - FContextsChecked < 1000)) then
+    Exit;
+  FContextsChecked := GetTickCount;
+  try
+    FSession.SetProjectContexts(TAtlasIdeProjectContext.Group);
+  except
+    on E: Exception do
+      Diagnose('Projektkontext nicht gemeldet: ' + E.Message);
   end;
 end;
 

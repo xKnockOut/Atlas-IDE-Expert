@@ -281,6 +281,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Files.WatchedChanges.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.TextFile.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Files.TextFile.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Projects\Atlas.Core.Projects.Context.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Context.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Commands\Atlas.Core.Commands.Palette.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.Palette.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Pairs.pas"/>
@@ -292,6 +294,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Messages.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.Messages.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IdeBuild.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IdeProject.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.CheckOnSave.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.CheckOnSave.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.BuildTools.Tests.pas"/>

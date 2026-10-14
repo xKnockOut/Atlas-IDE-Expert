@@ -17,6 +17,9 @@
 // schickt sie sofort wieder als didOpen.
 // Änderungen außerhalb der IDE (#395): FilesChanged meldet sie als
 // workspace/didChangeWatchedFiles.
+// Projektkontext (#396): SetProjectContexts vor Initialize schickt die
+// Kontexte in initializationOptions.projectContexts, danach jeden geänderten
+// als atlas/projectContext.
 
 interface
 
@@ -28,7 +31,8 @@ uses
   Atlas.Core.Lsp.Progress,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Problems.Contract,
-  Atlas.Core.Files.WatchedChanges;
+  Atlas.Core.Files.WatchedChanges,
+  Atlas.Core.Projects.Context;
 
 type
   TLspLocation = record
@@ -90,6 +94,10 @@ type
     FDocuments: TDictionary<string, TDocumentState>;
     FInitialized: Boolean;
     FProjects: TArray<string>;
+    /// <summary>Projektkontexte für initialize (#396).</summary>
+    FContexts: TArray<TAtlasProjectContext>;
+    /// <summary>Zuletzt gemeldeter Schlüssel je Projekt (#396).</summary>
+    FSentContexts: TDictionary<string, string>;
     function PositionParams(const AFileName: string; ALine, ACharacter: Integer): TJSONObject;
   public
     /// <summary>AClient gehört weiter dem Aufrufer.</summary>
@@ -108,6 +116,10 @@ type
     /// <summary>Projekte der Gruppe, aktives zuerst. Vor Initialize nur gemerkt, danach als
     /// didChangeWorkspaceFolders gemeldet, falls sich etwas geändert hat (#648).</summary>
     procedure SetProjects(const AProjects: TArray<string>);
+    /// <summary>Projektkontexte aus der IDE (#396). Vor Initialize nur gemerkt, danach jeder neue oder
+    /// geänderte als atlas/projectContext gemeldet. Vor SetProjects aufrufen, damit ein neues Projekt
+    /// gleich mit seinem Kontext geladen wird.</summary>
+    procedure SetProjectContexts(const AContexts: TArray<TAtlasProjectContext>);
     procedure Initialize;
     /// <summary>Schickt AText, falls neu oder geändert.</summary>
     procedure Sync(const AFileName, AText: string);
@@ -216,12 +228,14 @@ begin
   FClient := AClient;
   FTimeoutMs := ATimeoutMs;
   FDocuments := TDictionary<string, TDocumentState>.Create;
+  FSentContexts := TDictionary<string, string>.Create;
   FRefresh := TLspSignal.Create;
   FProgress := TLspProgress.Create;
 end;
 
 destructor TLspSession.Destroy;
 begin
+  FSentContexts.Free;
   FDocuments.Free;
   inherited;
 end;
@@ -343,7 +357,8 @@ end;
 procedure TLspSession.Initialize;
 var
   Params, Capabilities, TextDocument, Hover: TJSONObject;
-  Formats: TJSONArray;
+  Formats, Contexts: TJSONArray;
+  Context: TAtlasProjectContext;
   Response: TJSONValue;
   Refresh: ILspSignal;
   Progress: ILspProgress;
@@ -373,6 +388,17 @@ begin
   Params.AddPair('capabilities', Capabilities);
   if Length(FProjects) > 0 then
     Params.AddPair('workspaceFolders', ProjectFolders(FProjects));
+  // Vor dem ersten Laden der Projekte, sonst indiziert der Server sie zweimal (#396).
+  if Length(FContexts) > 0 then
+  begin
+    Contexts := TJSONArray.Create;
+    for Context in FContexts do
+    begin
+      Contexts.AddElement(Context.ToJson);
+      FSentContexts.AddOrSetValue(AnsiUpperCase(Context.Project), Context.Key);
+    end;
+    Params.AddPair('initializationOptions', TJSONObject.Create(TJSONPair.Create('projectContexts', Contexts)));
+  end;
   // Nur den Zähler einfangen, nicht die Sitzung: Der Lese-Thread kann die Sitzung überleben.
   Refresh := FRefresh;
   Progress := FProgress;
@@ -908,6 +934,24 @@ begin
     Exit;
   FClient.Notify('workspace/didChangeWorkspaceFolders', TJSONObject.Create(TJSONPair.Create('event',
     TJSONObject.Create.AddPair('added', ProjectFolders(Added)).AddPair('removed', ProjectFolders(Removed)))));
+end;
+
+procedure TLspSession.SetProjectContexts(const AContexts: TArray<TAtlasProjectContext>);
+var
+  Context: TAtlasProjectContext;
+  Known: string;
+begin
+  if not FInitialized then
+  begin
+    FContexts := AContexts;
+    Exit;
+  end;
+  for Context in AContexts do
+    if not FSentContexts.TryGetValue(AnsiUpperCase(Context.Project), Known) or (Known <> Context.Key) then
+    begin
+      FSentContexts.AddOrSetValue(AnsiUpperCase(Context.Project), Context.Key);
+      FClient.Notify('atlas/projectContext', Context.ToJson);
+    end;
 end;
 
 end.

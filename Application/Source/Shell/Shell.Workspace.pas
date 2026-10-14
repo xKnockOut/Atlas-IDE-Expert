@@ -19,6 +19,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.Configuration,
+  Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Lsp.WorkDoneProgress,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.UnitResolver,
@@ -74,6 +75,8 @@ type
     FBuildConfig: string;
     FBuildPlatform: string;
     FOnProjectLoaded: TProc;
+    /// <summary>Projektkontexte aus der IDE (#396); nil ohne Plugin. Gehört der Komposition.</summary>
+    FIdeProjects: TLspIdeProject;
     FOnSettingsChanged: TProc<TServerSettings>;
     FBaseline: IRuleBaseline;
     FLastIndexMs: Int64;
@@ -153,6 +156,8 @@ type
     property Priority: Integer read FPriority write FPriority;
     property Scheduler: TIndexScheduler read FScheduler write FScheduler;
     property Deferred: Boolean read FDeferred write FDeferred;
+    /// <summary>Vor Load setzen (#396): Was die IDE für das Projekt meldet, hat Vorrang vor der .dproj.</summary>
+    property IdeProjects: TLspIdeProject read FIdeProjects write FIdeProjects;
     /// <summary>Eintrag des Clients, aus dem der Arbeitsbereich stammt (TWorkspaceFolder.Key); zum Entfernen.</summary>
     property Origin: string read FOrigin write FOrigin;
   end;
@@ -624,6 +629,9 @@ var
   Excluded: TIndexExcluded;
   Exclude, Files, SearchFiles, LibraryFiles: TArray<string>;
   FileName: string;
+  Context: TIdeProjectContext;
+  HasContext: Boolean;
+  CompilerLibraryPaths: TArray<string>;
 begin
   // Mit index.projectGroup = false nur das Projekt der geöffneten Datei (#648).
   if FDeferred and not FActivated and not ASettings.IndexProjectGroup then
@@ -635,6 +643,9 @@ begin
   ProjectFile := FindProjectFile(ASettings);
   if ProjectFile = '' then
     Exit;
+  // In der IDE bestimmt die IDE Konfiguration, Plattform, Optionen und Delphi-Version (#396).
+  Context := Default(TIdeProjectContext);
+  HasContext := (FIdeProjects <> nil) and FIdeProjects.Find(ProjectFile, Context);
   // Konfiguration vor ProjectVersion der .dproj vor neuester Installation (#47).
   try
     ProjectVersion := TDelphiVersions.ProjectVersionOf(TFile.ReadAllText(ProjectFile));
@@ -643,7 +654,10 @@ begin
       ProjectVersion := '';
   end;
   try
-    Version := TDelphiVersions.Choose(ASettings.DelphiVersion, ProjectVersion, TDelphiInstallation.Versions);
+    if HasContext and (Context.BdsVersion <> '') and (IndexText(Context.BdsVersion, TDelphiInstallation.Versions) >= 0) then
+      Version := Context.BdsVersion
+    else
+      Version := TDelphiVersions.Choose(ASettings.DelphiVersion, ProjectVersion, TDelphiInstallation.Versions);
     if Version <> '' then
     begin
       Installation := TDelphiInstallation.Create(Version);
@@ -677,6 +691,10 @@ begin
   finally
     TMonitor.Exit(FLock);
   end;
+  if HasContext and (Context.Configuration <> '') then
+    Options.Config := Context.Configuration;
+  if HasContext and (Context.Platform <> '') then
+    Options.Platform := Context.Platform;
   Options.FileExists := FileExistsFunc;
   if Installation <> nil then
     Options.Variables := Installation.Variables;
@@ -689,6 +707,26 @@ begin
       Exit;
     end;
   end;
+  CompilerLibraryPaths := nil;
+  if Installation <> nil then
+    CompilerLibraryPaths := Installation.LibraryPaths(Project.Platform);
+  if HasContext then
+  begin
+    if Installation <> nil then
+    begin
+      Context.ApplyTo(Project, Installation.Variables);
+      if Length(Context.LibraryPaths) > 0 then
+        CompilerLibraryPaths := Context.ExpandedLibraryPaths(Project, Installation.Variables);
+    end
+    else
+    begin
+      Context.ApplyTo(Project, nil);
+      if Length(Context.LibraryPaths) > 0 then
+        CompilerLibraryPaths := Context.ExpandedLibraryPaths(Project, nil);
+    end;
+    FLogger.Info(Format('%s: Projektkontext aus der IDE (%s, %s, %d Symbole, %d Suchpfade)',
+      [FName, Project.Config, Project.Platform, Length(Project.Defines), Length(Project.SearchPaths)]));
+  end;
   TMonitor.Enter(FLock);
   try
     FProject := Project;
@@ -697,7 +735,7 @@ begin
     begin
       FDelphiVersion := Version;
       FBdsRoot := TCompilerCommandLine.BdsRoot(Installation.Variables);
-      FCompilerLibraryPaths := Installation.LibraryPaths(Project.Platform);
+      FCompilerLibraryPaths := CompilerLibraryPaths;
     end
     else
     begin
@@ -710,7 +748,7 @@ begin
   end;
   Signature := TIndexProjectFiles.Signature(Project, Version);
   if Installation <> nil then
-    LibraryPaths := Installation.LibraryPaths(Project.Platform) + Installation.BrowsingPaths(Project.Platform)
+    LibraryPaths := CompilerLibraryPaths + Installation.BrowsingPaths(Project.Platform)
   else
     LibraryPaths := nil;
   // Alle Units der Such- und Bibliothekspfade (#648), nicht nur die über uses erreichbaren.
@@ -763,7 +801,7 @@ begin
   Request.Defines := TIndexProjectFiles.Defines(Project, Version);
   // $I-Dateien wie beim Compiler: Projekt-Suchpfade, dann Bibliothekspfade (#264).
   if Installation <> nil then
-    Request.IncludePaths := Project.SearchPaths + Installation.LibraryPaths(Project.Platform)
+    Request.IncludePaths := Project.SearchPaths + CompilerLibraryPaths
   else
     Request.IncludePaths := Project.SearchPaths;
   Request.ResolveUnit :=

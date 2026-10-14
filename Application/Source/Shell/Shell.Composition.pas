@@ -55,6 +55,7 @@ uses
   Atlas.Common.Lsp.WatchedFiles,
   Atlas.Common.Lsp.IndexRefresh,
   Atlas.Common.Lsp.IdeBuild,
+  Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Mcp.BuildTools,
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Lsp.WorkspaceFolders,
@@ -125,6 +126,8 @@ type
     FIndexRefresh: TLspIndexRefresh;
     /// <summary>Build-Ergebnisse und Compilermeldungen aus der IDE (#528).</summary>
     FIdeBuild: TLspIdeBuild;
+    /// <summary>Projektkontext aus der IDE (#396).</summary>
+    FIdeProject: TLspIdeProject;
     FWorkspaceFolders: TLspWorkspaceFolders;
     /// <summary>Für atlas.json außerhalb aller Ordner: nur Fehlermeldungen.</summary>
     FLooseConfiguration: TLspConfiguration;
@@ -1015,6 +1018,31 @@ begin
       end;
     end;
   FIdeBuild.Attach(FDispatcher);
+  // Konfiguration, Plattform und Optionen aus der IDE (#396): betroffene Projekte neu laden.
+  FIdeProject := TLspIdeProject.Create;
+  FIdeProject.OnChanged :=
+    procedure(const AContext: TIdeProjectContext)
+    var
+      Workspace: TShellWorkspace;
+      Affected: TArray<TShellWorkspace>;
+      Project: TProjectInfo;
+    begin
+      Affected := nil;
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        for Workspace in FWorkspaces do
+          if SameText(Workspace.ProjectFile, AContext.Project) or
+            (Workspace.Project(Project) and SameText(Project.FileName, AContext.Project)) then
+            Affected := Affected + [Workspace];
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+      FLogger.Info(Format('Projektkontext aus der IDE: %s (%s, %s)',
+        [ExtractFileName(AContext.Project), AContext.Configuration, AContext.Platform]));
+      for Workspace in Affected do
+        Workspace.Reload;
+    end;
+  FIdeProject.Attach(FDispatcher);
   FWorkspaceFolders := TLspWorkspaceFolders.Create;
   FWorkspaceFolders.OnChanged :=
     procedure(const AAdded, ARemoved: TArray<TWorkspaceFolder>)
@@ -1036,6 +1064,8 @@ begin
       WatchParent(FLifecycle.InitializeParams);
       FHover.Markdown := TLspHover.ClientSupportsMarkdown(FLifecycle.InitializeParams);
       Folders := TLspWorkspaceFolders.FromInitialize(FLifecycle.InitializeParams);
+      // Vor dem ersten Laden, damit die Projekte nicht zweimal indiziert werden (#396).
+      FIdeProject.LoadInitialize(FLifecycle.InitializeParams);
       // Meldet der Client nur Projektdateien (IDE-Plugin, #648), bekommen Dateien außerhalb dieser
       // Projekte weiter einen abgeleiteten Arbeitsbereich.
       FDeriveWorkspaces := True;
@@ -1119,6 +1149,7 @@ begin
   FCompilerProcess := nil;
   FWatchedFiles.Free;
   FIdeBuild.Free;
+  FIdeProject.Free;
   FTextDocumentSync.Free;
   FDocuments := nil;
   FLifecycle.Free;
@@ -1221,6 +1252,7 @@ begin
   Inc(FWorkspacePriority);
   Workspace.Scheduler := FIndexScheduler;
   Workspace.Deferred := ADeferred;
+  Workspace.IdeProjects := FIdeProject;
   Workspace.Origin := AOrigin;
   Workspace.OnProjectLoaded := ProjectLoaded;
   // Das Zeitlimit gilt serverweit; bei mehreren Ordnern das zuletzt gelesene.
