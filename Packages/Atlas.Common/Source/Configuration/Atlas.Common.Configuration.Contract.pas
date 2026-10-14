@@ -200,7 +200,17 @@ type
     FreeStyle: TCompletionFreeStyle;
     /// <summary>Schlüsselwörter passend zur Stelle vorschlagen (#31).</summary>
     Keywords: Boolean;
+    /// <summary>Postfix-Vorlagen (.for, .notnil …) hinter Ausdrücken anbieten (#188).</summary>
+    PostfixTemplates: Boolean;
     class function Default: TCompletionSettings; static;
+  end;
+
+  /// <summary>Gemeinsame Einstellungen für Code, den Atlas erzeugt (#50, #188).</summary>
+  TRefactoringSettings = record
+    /// <summary>Inline-Variablen (var X := …) erzeugen, wenn die Sprachversion sie kennt; sonst Eintrag im
+    /// var-Abschnitt.</summary>
+    InlineVar: Boolean;
+    class function Default: TRefactoringSettings; static;
   end;
 
   TServerSettings = record
@@ -246,6 +256,7 @@ type
     Highlight: THighlightSettings;
     Compiler: TCompilerSettings;
     Completion: TCompletionSettings;
+    Refactoring: TRefactoringSettings;
     /// <summary>Schnellbefehl "/uses Unit" nach Enter auswerten (#254); false wirkt wie "uses" in
     /// SlashCommandsDisabled.</summary>
     UsesCommand: Boolean;
@@ -532,6 +543,13 @@ begin
   Result.OnSave := True;
 end;
 
+{ TRefactoringSettings }
+
+class function TRefactoringSettings.Default: TRefactoringSettings;
+begin
+  Result.InlineVar := True;
+end;
+
 { TCompletionSettings }
 
 class function TCompletionSettings.Default: TCompletionSettings;
@@ -542,6 +560,7 @@ begin
   Result.OfferTryFinally := True;
   Result.FreeStyle := TCompletionFreeStyle.Free;
   Result.Keywords := True;
+  Result.PostfixTemplates := True;
 end;
 
 { TServerSettings }
@@ -571,6 +590,7 @@ begin
   Result.Highlight := THighlightSettings.Default;
   Result.Compiler := TCompilerSettings.Default;
   Result.Completion := TCompletionSettings.Default;
+  Result.Refactoring := TRefactoringSettings.Default;
   Result.UsesCommand := True;
   Result.SlashCommands := True;
   Result.SlashCommandsDisabled := nil;

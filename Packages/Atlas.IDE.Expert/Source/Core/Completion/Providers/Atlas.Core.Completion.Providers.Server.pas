@@ -55,7 +55,7 @@ type
     class function ItemFromLsp(AItem: TJSONObject; ARank: Integer): TAtlasCompletionItem; static;
     /// <summary>Antwort auf textDocument/completion: CompletionList, CompletionItem[] oder null.</summary>
     class function ItemsFromLsp(AResponse: TJSONValue; AFirstRank: Integer = 0): TAtlasCompletionItems; static;
-    /// <summary>AItems ohne Code-Vorlagen des Servers (Einträge mit Snippet, #51).</summary>
+    /// <summary>AItems ohne Code-Vorlagen des Servers (Einträge mit Snippet, #51); Postfix-Vorlagen bleiben.</summary>
     class function WithoutSnippets(const AItems: TAtlasCompletionItems): TAtlasCompletionItems; static;
     /// <summary>Details aus der Antwort auf completionItem/resolve (data.atlas, sonst detail/documentation).</summary>
     class function DetailsFromLsp(AResponse: TJSONValue): TAtlasItemDetails; static;
@@ -186,6 +186,14 @@ begin
     Result.Fits := Data.GetValue('fits') is TJSONTrue;
     // Neue Methode (#444) und Deklarationen unbekannter Namen (#471) erzeugen Code und stehen am Ende.
     Result.IsAction := MatchText(Data.GetValue<string>('action', ''), ['create', 'declare']);
+    // Postfix-Vorlagen (#188): Der Server filtert über "Ausdruck.Kürzel"; getippt ist hier nur das Wort hinter
+    // dem Punkt, also gilt der Teil nach dem letzten Punkt.
+    Result.Postfix := Data.GetValue<string>('action', '') = 'postfix';
+    if Result.Postfix then
+    begin
+      Result.FilterText := AItem.GetValue<string>('filterText', Result.Name);
+      Result.FilterText := Copy(Result.FilterText, LastDelimiter('.', Result.FilterText) + 1, MaxInt);
+    end;
     Result.Unknown := Data.GetValue<string>('unknown', '');
     // Aufzählungen und Mengen (#448).
     Result.Ordinal := Data.GetValue<Integer>('ordinal', 0);
@@ -268,8 +276,9 @@ var
   Item: TAtlasCompletionItem;
 begin
   Result := nil;
+  // Postfix-Vorlagen (#188) haben ihren eigenen Schalter completion.postfixTemplates.
   for Item in AItems do
-    if Item.Snippet = '' then
+    if (Item.Snippet = '') or Item.Postfix then
       Result := Result + [Item];
 end;
 

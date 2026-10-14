@@ -122,6 +122,9 @@ type
     Fits: Boolean;
     /// <summary>Eintrag erzeugt Code („Neue Methode …“, #444): in Akzentfarbe, immer zuletzt.</summary>
     IsAction: Boolean;
+    /// <summary>Postfix-Vorlage des Servers (#188): steht hinter allen Mitgliedern, Marke „Postfix“; gefiltert wird
+    /// über FilterText (Kürzel).</summary>
+    Postfix: Boolean;
     /// <summary>Wert einer Aufzählung (#448): Stelle in der Deklaration ab 1, 0 sonst. Ohne Getipptes stehen die
     /// Werte in dieser Reihenfolge vor den übrigen passenden Einträgen.</summary>
     Ordinal: Integer;

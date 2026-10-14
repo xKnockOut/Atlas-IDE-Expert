@@ -210,12 +210,23 @@ begin
   Response := TJSONObject.ParseJSONValue(
     '{"isIncomplete":false,"items":[{"label":"for","kind":15,"filterText":"Liste.for",' +
     '"textEdit":{"range":{"start":{"line":7,"character":2},"end":{"line":7,"character":10}},' +
-    '"newText":"for var Item in Liste do\n    "}},{"label":"Count","kind":10}]}');
+    '"newText":"for var Item in Liste do\n    "},"data":{"action":"postfix"}},{"label":"Count","kind":10},' +
+    '{"label":"notnil","kind":15,"filterText":"Wert.notnil","insertTextFormat":2,' +
+    '"textEdit":{"range":{"start":{"line":7,"character":2},"end":{"line":7,"character":13}},' +
+    '"newText":"if Assigned(Wert) then\n    $0"},"data":{"action":"postfix"}}]}');
   try
     Items := TAtlasServerCompletionProvider.ItemsFromLsp(Response);
   finally
     Response.Free;
   end;
+  // Gefiltert wird über das Kürzel hinter dem Punkt.
+  Assert.IsTrue(Items[0].Postfix);
+  Assert.AreEqual('for', Items[0].FilterText);
+  Assert.IsFalse(Items[1].Postfix);
+  Assert.AreEqual('notnil', Items[2].FilterText);
+  Assert.AreEqual('if Assigned(Wert) then'#10'    $0', Items[2].Snippet);
+  // completion.snippets aus lässt Postfix-Vorlagen stehen; sie haben einen eigenen Schalter.
+  Assert.AreEqual(3, Integer(Length(TAtlasServerCompletionProvider.WithoutSnippets(Items))));
   Assert.AreEqual(Ord(TAtlasItemKind.Snippet), Ord(Items[0].Kind));
   Assert.IsTrue(Items[0].HasTextEdit);
   Assert.AreEqual(7, Items[0].TextEdit.StartLine);

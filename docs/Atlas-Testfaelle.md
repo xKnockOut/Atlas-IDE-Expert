@@ -181,6 +181,16 @@ Schreibweise: `|` steht für die Cursorposition.
 | PF4 | `S.fmt` bei einem String | `Format(S, [])` |
 | PF5 | `Zahl.` (Integer) | keine Postfix-Einträge (Typ passt nicht) |
 | PF6 | Projekt mit `delphiVersion` vor 10.3, `Liste.for` | klassische Schleife, `Item` im `var`-Abschnitt der Routine |
+| PF7 | `FKunde.notnil` + Enter | `if Assigned(FKunde) then`, Cursor eingerückt in der nächsten Zeile |
+| PF8 | `FKunde.nil`, `FKunde.free` | `if not Assigned(FKunde) then` bzw. `FreeAndNil(FKunde);` |
+| PF9 | `Fertig.not` rechts von `:=`, `Fertig.if` am Zeilenanfang (Boolean) | `not Fertig` bzw. `if Fertig then` |
+| PF10 | `TStringList.Create.try` | `var StringList := TStringList.Create; try … finally StringList.Free; end;`, Name als Platzhalter markiert; Umbenennen ändert auch `.Free` |
+| PF11 | `Liste.var`, in einer Funktion `Wert.exit` | `var StringList := Liste;` bzw. `Exit(Wert);`; in einer Prozedur kein `exit` |
+| PF12 | `GetKunde(1).notnil`, `TKunde(Obj).free` | Ausdruck samt Aufruf bzw. Typumwandlung wird umschlossen |
+| PF13 | `FKunde.nn` tippen | `notnil` in der Liste (Filter über das Kürzel), Marke „Postfix“, hinter allen Mitgliedern |
+| PF14 | Eigene Vorlage mit `postfix: true` und `type: TKunde` anlegen, `FKunde.` und `Liste.` | Vorlage nur bei `FKunde` (auch bei Nachfahren von TKunde), `$expr` durch den Ausdruck ersetzt |
+| PF15 | `"refactoring": {"inlineVar": false}` in der `atlas.json`, `Liste.var` | `StringList := Liste;` und `StringList: TStringList;` im `var`-Abschnitt |
+| PF16 | `"completion": {"postfixTemplates": false}` | keine Postfix-Einträge; mit Snippets aus, aber Postfix an, erscheinen sie weiter |
 
 ## Methoden überschreiben (#443)
 

@@ -210,6 +210,9 @@ begin
           Result := Ord(Items[B].Pinned and NoPattern) - Ord(Items[A].Pinned and NoPattern);
         if Result = 0 then
           Result := Ord(Items[A].IsAction) - Ord(Items[B].IsAction);
+        // Echte Mitglieder immer vor Postfix-Vorlagen (#188).
+        if Result = 0 then
+          Result := Ord(Items[A].Postfix) - Ord(Items[B].Postfix);
         // In der aktiven Konfiguration nicht vorhanden: ans Ende (#476).
         if Result = 0 then
           Result := Ord(Items[A].Unavailable) - Ord(Items[B].Unavailable);

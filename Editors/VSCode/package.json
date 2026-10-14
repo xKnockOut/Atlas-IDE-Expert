@@ -167,6 +167,11 @@
           "default": {},
           "markdownDescription": "Code-Vervollständigung. atlas.json im Projekt hat Vorrang."
         },
+        "atlas.refactoring": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Code, den Atlas erzeugt. atlas.json im Projekt hat Vorrang."
+        },
         "atlas.usesCommand": {
           "type": "boolean",
           "default": true,

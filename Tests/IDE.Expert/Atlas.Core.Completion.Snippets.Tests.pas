@@ -32,6 +32,12 @@ type
     [Test]
     procedure FormatRoundTrips;
     [Test]
+    procedure ParsesPostfixSnippets;
+    [Test]
+    procedure SendsPostfixSnippetsToServer;
+    [Test]
+    procedure TagsPostfixItems;
+    [Test]
     procedure ConvertsServerSnippets;
   end;
 
@@ -99,6 +105,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.IOUtils,
+  System.JSON,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Core.Completion.Contract,
@@ -549,6 +556,93 @@ begin
   Assert.AreEqual(Snippet.Body, Parsed.Body);
   Assert.AreEqual('forl.atlas-snippet', TAtlasSnippets.FileNameFor('forl'));
   Assert.AreEqual('a_b.atlas-snippet', TAtlasSnippets.FileNameFor('a\b'));
+end;
+
+procedure TAtlasSnippetsTests.ParsesPostfixSnippets;
+var
+  Snippet, Parsed: TAtlasSnippet;
+  Error: string;
+begin
+  // Eigene Postfix-Vorlage (#188): Kopfzeilen postfix und type.
+  Assert.IsTrue(TAtlasSnippets.Parse('name: Protokoll'#10'prefix: log'#10'postfix: true'#10'type: class'#10'---'#10 +
+    'Log($expr);', 'log.atlas-snippet', Snippet, Error), Error);
+  Assert.IsTrue(Snippet.Postfix);
+  Assert.AreEqual('class', Snippet.TypeCondition);
+  Assert.AreEqual('Log($expr);', Snippet.Body);
+  // Ohne Kopfzeile: gewöhnliche Vorlage.
+  Assert.IsTrue(TAtlasSnippets.Parse('prefix: x'#10'---'#10'X;', '', Parsed, Error), Error);
+  Assert.IsFalse(Parsed.Postfix);
+  Assert.IsFalse(TAtlasSnippets.Parse('prefix: x'#10'postfix: ja'#10'---'#10'X;', '', Parsed, Error));
+  Assert.Contains(Error, 'postfix');
+  // Schreiben und wieder lesen.
+  Assert.IsTrue(TAtlasSnippets.Parse(TAtlasSnippets.ToFileText(Snippet), 'log.atlas-snippet', Parsed, Error), Error);
+  Assert.IsTrue(Parsed.Postfix);
+  Assert.AreEqual('class', Parsed.TypeCondition);
+  Snippet.TypeCondition := '';
+  Assert.IsFalse(TAtlasSnippets.ToFileText(Snippet).Contains('type:'));
+  Snippet.Postfix := False;
+  Assert.IsFalse(TAtlasSnippets.ToFileText(Snippet).Contains('postfix:'));
+end;
+
+procedure TAtlasSnippetsTests.SendsPostfixSnippetsToServer;
+var
+  List: TAtlasSnippetList;
+  Params: TJSONObject;
+  Templates: TJSONArray;
+begin
+  SetLength(List, 3);
+  List[0].Name := 'Schleife';
+  List[0].Prefix := 'forl';
+  List[0].Body := 'for ${1:I} := 0 to 9 do';
+  List[1].Name := 'Protokoll';
+  List[1].Prefix := 'log';
+  List[1].Body := 'Log($expr);';
+  List[1].Postfix := True;
+  List[1].TypeCondition := 'TKunde';
+  List[2].Name := 'Prüfen';
+  List[2].Prefix := 'chk';
+  List[2].Description := 'Prüft den Wert';
+  List[2].Body := 'Pruefe($expr);';
+  List[2].Postfix := True;
+  Assert.AreEqual(2, Integer(Length(TAtlasSnippets.Postfixes(List))));
+  Assert.AreEqual(1, Integer(Length(TAtlasSnippets.WithoutPostfix(List))));
+  Assert.AreEqual('forl', TAtlasSnippets.WithoutPostfix(List)[0].Prefix);
+  Params := TAtlasSnippets.PostfixParams(List);
+  try
+    Templates := Params.GetValue('templates') as TJSONArray;
+    Assert.AreEqual(2, Templates.Count);
+    Assert.AreEqual('log', Templates.Items[0].GetValue<string>('key'));
+    // Ohne Beschreibung gilt der Name.
+    Assert.AreEqual('Protokoll', Templates.Items[0].GetValue<string>('description'));
+    Assert.AreEqual('Log($expr);', Templates.Items[0].GetValue<string>('body'));
+    Assert.AreEqual('TKunde', Templates.Items[0].GetValue<string>('type'));
+    Assert.AreEqual('Prüft den Wert', Templates.Items[1].GetValue<string>('description'));
+    Assert.IsNull(TJSONObject(Templates.Items[1]).GetValue('type'));
+  finally
+    Params.Free;
+  end;
+  // Ohne Postfix-Vorlagen eine leere Liste: Der Server vergisst die früheren.
+  Params := TAtlasSnippets.PostfixParams(TAtlasSnippets.WithoutPostfix(List));
+  try
+    Assert.AreEqual(0, (Params.GetValue('templates') as TJSONArray).Count);
+  finally
+    Params.Free;
+  end;
+end;
+
+procedure TAtlasSnippetsTests.TagsPostfixItems;
+var
+  Item: TAtlasCompletionItem;
+  Tags: TAtlasTags;
+begin
+  Item := Default(TAtlasCompletionItem);
+  Item.Name := 'notnil';
+  Item.Kind := TAtlasItemKind.Snippet;
+  Item.Snippet := 'if Assigned(X) then'#10'  $0';
+  Item.Postfix := True;
+  Tags := TAtlasItemPresentation.Tags(Item);
+  Assert.AreEqual(1, Integer(Length(Tags)));
+  Assert.AreEqual('Postfix', Tags[0].Text);
 end;
 
 { TAtlasSnippetCatalogTests }

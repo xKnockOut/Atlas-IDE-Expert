@@ -168,7 +168,8 @@
   - Der Branch `feature/309-eigenschaftsregeln` bleibt als Vorlage stehen.
 - **#188 Postfix-Vorlagen (Server `9f6d527c`, Plugin `6bba6ffb`):**
   - Das Plugin ersetzt bei Einträgen mit `textEdit` ab dessen Anfang.
-  - Offen: Platzhalter-Modus (#51) und die manuelle Prüfung PF1–PF6.
+  - Vollständig nach ARG-053: 13 Vorlagen (`for`, `forin`, `tryf`, `ifa`, `notnil`, `nil`, `not`, `if`, `fmt`, `free`, `try`, `var`, `exit`), Aufrufe und Typumwandlungen vor dem Punkt, Platzhalter und Cursor in der Folgezeile, eigene Vorlagen (`postfix: true`, `type:`) über `atlas/postfixTemplates`, Einstellungen `completion.postfixTemplates` und `refactoring.inlineVar`, Filter über das Kürzel, Marke „Postfix“, hinter den Mitgliedern.
+  - Offen: nur die manuelle Prüfung PF1–PF16 in der IDE.
 - **Farbfehler im Editor behoben (`d93a834f`):** Klammerfarben (#514) und Vorschau (#434) ließen ihre Textfarbe im DC stehen; beim Neuzeichnen einzelner Bereiche wurden Teile von Bezeichnern in Paarfarbe gezeichnet. Jetzt direkt im DC zwischen SaveDC/RestoreDC.
 - **Klammerfarben, zweiter Teil (`f8125482`):** Die IDE meldet beim Neuzeichnen von Teilbereichen nicht immer die Zeile des Laufs. Eingefärbt wird nur, wenn der Lauf an seiner Spalte in der analysierten Zeile steht (`TAtlasPairs.DisplayLine/RunMatches`).
 - **Blocklinien (`e8e021d0`):** Atlas zeichnet Blocklinien in den Paarfarben (`Atlas.Core.Editor.Guides`, PaintLine in `Atlas.IDE.Editor.Pairs`) und schaltet die Strukturhervorhebung der IDE per Registry ab (`Atlas.IDE.Editor.Structure`, Merker `IdeStructureDisabled` unter `HKCU\Software\Atlas\IdePlugin`). Die IDE schreibt den Schalter beim Beenden nicht zurück (geprüft). Testfälle KP9–KP13.

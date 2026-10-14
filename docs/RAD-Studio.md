@@ -96,6 +96,37 @@ Vom Server kommen zusätzlich Vorlagen, die die Klasse kennen. Sie erscheinen nu
 
 Der Setter sieht überall gleich aus, ob er aus `prop`, `changed`, `propset`, `/prop` oder `/changed` kommt: bei Controls mit `Invalidate`, sonst mit `Changed` bzw. `DoChange`, wenn die Klasse eine davon hat. Mit „Code-Vorlagen (Snippets) in der Liste anbieten“ aus fehlen auch diese Vorlagen.
 
+Postfix-Vorlagen (#188): Hinter einem Ausdruck und Punkt bietet die Liste Vorlagen an, die den Ausdruck umformen; sie tragen die Marke „Postfix“ und stehen hinter allen echten Mitgliedern. Gefiltert wird über das Kürzel, `FKunde.nn` findet also `notnil`. Angeboten wird nur, was zum Typ passt:
+
+| Kürzel | Ergebnis | Typ |
+|---|---|---|
+| `for`, `forin` | `for var Item in Liste do` | Array, Menge, Typ mit `GetEnumerator` |
+| `tryf` | `try … finally Obj.Free; end;` | Klasse |
+| `ifa`, `notnil` | `if Assigned(X) then` | Klasse, Interface, Zeiger |
+| `nil` | `if not Assigned(X) then` | Klasse, Interface, Zeiger |
+| `not` | `not B` | Boolean |
+| `if` | `if B then` | Boolean |
+| `fmt` | `Format(S, [])` | String |
+| `free` | `FreeAndNil(Obj);` | Klasse |
+| `try` | `var Foo := TFoo.Create; try … finally Foo.Free; end;` | Konstruktoraufruf |
+| `var` | `var Name := X;` | jeder Ausdruck |
+| `exit` | `Exit(X);` | in einer Funktion |
+
+Anweisungen (alles außer `not` und `fmt`) gibt es nur, wenn der Ausdruck die Zeile beginnt. Der Ausdruck reicht bis zum Anfang der Anweisung, auch über Aufrufe und Typumwandlungen (`GetKunde(1).notnil`, `TFoo(Obj).free`), nicht über Zeilen hinweg. Nach einem Kopf wie `if … then` steht der Cursor eingerückt in der Folgezeile; Variablennamen (`Item`, `Foo`) sind Platzhalter wie bei den Code-Vorlagen. Ohne Inline-Variablen (Delphi vor 10.3 oder `refactoring.inlineVar` aus) entstehen `for Item in Liste do` und `Foo := …;` mit Eintrag im `var`-Abschnitt der Routine; dann nur, wenn der Typ bekannt ist.
+
+Eigene Postfix-Vorlagen sind `*.atlas-snippet`-Dateien mit zwei weiteren Kopfzeilen; `$expr` steht für den Ausdruck:
+
+```
+name: Protokollieren
+prefix: log
+postfix: true
+type: class
+---
+Log.Debug('%s', [$expr.ClassName]);$0
+```
+
+`type:` ist ein Merkmal (`any`, `reference`, `class`, `string`, `boolean`, `enumerable`, `constructor`, `function`) oder ein Typname; dann passt der Typ selbst und jeder Nachfahr. Ohne `type:` passt jeder Ausdruck. Abschalten mit `completion.postfixTemplates` in der `atlas.json` (*Tools › Optionen › Drittanbieter › Atlas*, Seite Vervollständigung); „Code-Vorlagen (Snippets) in der Liste anbieten“ betrifft die Postfix-Vorlagen nicht.
+
 Rangfolge ohne Präfix (#488): Die Vervollständigung zeigt zuerst lokale Variablen und Konstanten (auch Inline-Variablen oberhalb des Carets), dann Parameter, Mitglieder von `Self`, Bezeichner der eigenen Unit und zuletzt die der Units aus `uses`; vorrangig bleiben Präfix-Güte und erwarteter Typ, danach zählen Bereich, Gelerntes und Alphabet. Ein Tag nennt die Herkunft („lokal“, „Parameter“, „Feld“, „Eigenschaft“, die Klasse einer Methode, „Unit“ oder den Namen der fremden Unit). Verdeckt ein Name eine gleichnamige Deklaration weiter außen, erscheint er nur einmal mit der nächsten Bedeutung, und das Detailpanel nennt die verdeckte.
 Tippfehler (#485): Findet die Vervollständigung weniger als drei Treffer, zeigt sie darunter „Meintest du“ mit bis zu fünf ähnlichen Namen (`Lenght` → `Length`; vertauschte, fehlende oder zusätzliche Buchstaben, ab drei getippten Zeichen). Gibt es nur solche Vorschläge, nennt die Fußzeile „Keine Treffer für ‚Lenght‘“. Übernommen werden sie nur mit Enter oder Tab, ein `;` oder `(` fügt nur das Zeichen ein.
 Inaktive `{$IFDEF}`-Zweige zeichnet Atlas abgeschwächt (#615), ganze Zeilen und Teile von Zeilen wie `{$IFDEF X} a {$ENDIF}`; die Direktiven bleiben normal. Über einem ausgegrauten Bereich nennt der Tooltip den Grund, etwa „Inaktiv: Bedingung WIN64 nicht erfüllt (Zielplattform Win32 · Debug)“. Wechselt man in der Projektverwaltung Konfiguration oder Zielplattform oder ändert die Defines in den Projektoptionen (auch ungespeichert), meldet das Plugin das dem Server (`atlas.server.selectBuild` mit `defines`); nach dem Neuladen des Projekts stimmt die Darstellung wieder. Das Abblenden hängt nicht an „Probleme anzeigen“: Es holt die Diagnosen der geöffneten Datei auch dann, ohne Wellenlinien und Meldungsliste. Abschalten unter *Tools › Optionen › Drittanbieter › Atlas* oder im Menü Atlas (Registry `InactiveDim`).

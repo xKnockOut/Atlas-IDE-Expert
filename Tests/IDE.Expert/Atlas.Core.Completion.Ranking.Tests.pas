@@ -24,6 +24,8 @@ type
     [Test]
     procedure ServerGroupHeaderAndActionLast;
     [Test]
+    procedure PostfixAfterMembers;
+    [Test]
     procedure FormComponentsComeFirst;
     [Test]
     procedure SenderItemsGetHeaderAndTag;
@@ -273,6 +275,20 @@ begin
   Options.Chip := TAtlasChip.Properties;
   Assert.AreEqual('Count,Capacity', Names(Items, TAtlasRanking.Order(Items, '', Options)));
   Assert.AreEqual(1, TAtlasRanking.ChipCounts(Items, 'cou')[TAtlasChip.Properties]);
+end;
+
+procedure TAtlasRankingTests.PostfixAfterMembers;
+var
+  Items: TAtlasCompletionItems;
+begin
+  // Postfix-Vorlagen (#188) stehen hinter allen echten Mitgliedern, auch wenn sie genauer passen.
+  Items := [Member('tryf', '', 0, 0, TAtlasItemKind.Snippet), Member('tryfNext', '', 0, 1),
+    Member('TryFoo', '', 0, 2)];
+  Items[0].Postfix := True;
+  Items[0].FilterText := 'tryf';
+  Assert.AreEqual('tryfNext,TryFoo,tryf', Names(Items, TAtlasRanking.Order(Items, 'tryf',
+    TAtlasRankOptions.Defaults)));
+  Assert.AreEqual('tryfNext,TryFoo,tryf', Names(Items, TAtlasRanking.Order(Items, '', TAtlasRankOptions.Defaults)));
 end;
 
 procedure TAtlasRankingTests.ServerGroupHeaderAndActionLast;
