@@ -14,6 +14,8 @@
 // Plugin, sonst ..\..\..\Win64\Debug\Bin\ (Ausgabeordner des Repos).
 // Diagnose = 1 (DWORD) im selben Schlüssel protokolliert die Aufrufe der IDE
 // in Atlas.IDE.Expert.log neben dem Plugin.
+// Projektgruppe (#648): Die Sitzung meldet dem Server alle Projekte der Gruppe,
+// das aktive zuerst; Änderungen der Gruppe prüft sie höchstens alle zwei Sekunden.
 
 interface
 
@@ -39,6 +41,8 @@ type
     // Ob AtlasServer.exe da ist, höchstens alle paar Sekunden neu geprüft.
     FServerChecked: Cardinal;
     FServerFound: Boolean;
+    // Zuletzt geprüfte Projektgruppe (#648).
+    FProjectsChecked: Cardinal;
     FDiagnose: Boolean;
     FCompletion: TAtlasEditorCompletion;
     FSignature: TAtlasEditorSignature;
@@ -47,6 +51,9 @@ type
     /// <summary>Probleme im Editor (#398).</summary>
     FProblems: TAtlasProblemsController;
     function EnsureSession: Boolean;
+    /// <summary>Projekte der geöffneten Gruppe, aktives zuerst; leer ohne Gruppe (#648).</summary>
+    class function GroupProjects: TArray<string>; static;
+    procedure RefreshProjects;
     procedure StopSession;
     procedure ReportError(const AMessage: string);
     procedure Diagnose(const AMessage: string);
@@ -312,7 +319,10 @@ var
   Path, Arguments: string;
 begin
   if (FServer <> nil) and FServer.Running and (FSession <> nil) and FSession.Initialized then
+  begin
+    RefreshProjects;
     Exit(True);
+  end;
   StopSession;
   Path := ServerPath(Arguments);
   Diagnose('Starte Server: ' + Path);
@@ -324,6 +334,8 @@ begin
   try
     FServer := TLspServerProcess.Create(Path, Arguments);
     FSession := TLspSession.Create(FServer.Client);
+    FSession.SetProjects(GroupProjects);
+    FProjectsChecked := GetTickCount;
     FSession.Initialize;
     FLastError := '';
     Result := True;
@@ -334,6 +346,49 @@ begin
       StopSession;
       Result := False;
     end;
+  end;
+end;
+
+class function TAtlasCodeInsightManager.GroupProjects: TArray<string>;
+var
+  Modules: IOTAModuleServices;
+  Group: IOTAProjectGroup;
+  Active: IOTAProject;
+  Index: Integer;
+  FileName: string;
+begin
+  Result := nil;
+  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+    Exit;
+  Group := Modules.MainProjectGroup;
+  if Group = nil then
+    Exit;
+  Active := Group.ActiveProject;
+  if (Active <> nil) and SameText(ExtractFileExt(Active.FileName), '.dproj') and FileExists(Active.FileName) then
+    Result := [Active.FileName];
+  for Index := 0 to Group.ProjectCount - 1 do
+  begin
+    FileName := Group.Projects[Index].FileName;
+    // Nur gespeicherte Delphi-Projekte; neue, noch namenlose Projekte haben keinen Ordner.
+    if not SameText(ExtractFileExt(FileName), '.dproj') or not FileExists(FileName) then
+      Continue;
+    if (Active <> nil) and SameText(FileName, Active.FileName) then
+      Continue;
+    Result := Result + [FileName];
+  end;
+end;
+
+procedure TAtlasCodeInsightManager.RefreshProjects;
+begin
+  // Open Tools API nur im Hauptthread.
+  if (GetCurrentThreadId <> MainThreadID) or (GetTickCount - FProjectsChecked < 2000) then
+    Exit;
+  FProjectsChecked := GetTickCount;
+  try
+    FSession.SetProjects(GroupProjects);
+  except
+    on E: Exception do
+      Diagnose('Projektgruppe nicht gemeldet: ' + E.Message);
   end;
 end;
 

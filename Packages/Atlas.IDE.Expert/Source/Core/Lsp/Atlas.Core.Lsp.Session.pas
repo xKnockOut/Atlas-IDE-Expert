@@ -9,6 +9,9 @@
 // Diagnosen (#398) holt das Plugin selbst (Pull: textDocument/diagnostic und
 // workspace/diagnostic); eine Anfrage workspace/diagnostic/refresh des Servers
 // zählt RefreshCount hoch.
+// Projektgruppe (#648): SetProjects vor Initialize schickt die Projekte als
+// workspaceFolders (uri ist die .dproj, aktives Projekt zuerst); danach meldet
+// es Änderungen als workspace/didChangeWorkspaceFolders.
 
 interface
 
@@ -74,6 +77,7 @@ type
     FTimeoutMs: Cardinal;
     FDocuments: TDictionary<string, TDocumentState>;
     FInitialized: Boolean;
+    FProjects: TArray<string>;
     function PositionParams(const AFileName: string; ALine, ACharacter: Integer): TJSONObject;
   public
     /// <summary>AClient gehört weiter dem Aufrufer.</summary>
@@ -85,6 +89,13 @@ type
     class function HoverText(const AHover: TJSONValue): string; static;
     /// <summary>Zeichenindex (0-basiert) zur Editorspalte (1-basiert); Tabs springen zur nächsten Tabulatorposition.</summary>
     class function ColumnToIndex(const ALine: string; AColumn, ATabWidth: Integer): Integer; static;
+    /// <summary>workspaceFolders-Einträge zu Projektdateien: uri der Datei, Name ohne Endung (#648).</summary>
+    class function ProjectFolders(const AProjects: TArray<string>): TJSONArray; static;
+    /// <summary>Hinzugekommene und weggefallene Projekte, Groß- und Kleinschreibung egal (#648).</summary>
+    class procedure ProjectChanges(const AOld, ANew: TArray<string>; out AAdded, ARemoved: TArray<string>); static;
+    /// <summary>Projekte der Gruppe, aktives zuerst. Vor Initialize nur gemerkt, danach als
+    /// didChangeWorkspaceFolders gemeldet, falls sich etwas geändert hat (#648).</summary>
+    procedure SetProjects(const AProjects: TArray<string>);
     procedure Initialize;
     /// <summary>Schickt AText, falls neu oder geändert.</summary>
     procedure Sync(const AFileName, AText: string);
@@ -324,12 +335,15 @@ begin
   Capabilities := TJSONObject.Create;
   Capabilities.AddPair('textDocument', TextDocument);
   Capabilities.AddPair('workspace', TJSONObject.Create(TJSONPair.Create('diagnostics',
-    TJSONObject.Create(TJSONPair.Create('refreshSupport', TJSONBool.Create(True))))));
+    TJSONObject.Create(TJSONPair.Create('refreshSupport', TJSONBool.Create(True)))))
+    .AddPair('workspaceFolders', TJSONBool.Create(True)));
   Params := TJSONObject.Create;
   Params.AddPair('processId', TJSONNull.Create);
   Params.AddPair('rootUri', TJSONNull.Create);
   Params.AddPair('clientInfo', TJSONObject.Create(TJSONPair.Create('name', 'Atlas IDE Expert')));
   Params.AddPair('capabilities', Capabilities);
+  if Length(FProjects) > 0 then
+    Params.AddPair('workspaceFolders', ProjectFolders(FProjects));
   // Nur den Zähler einfangen, nicht die Sitzung: Der Lese-Thread kann die Sitzung überleben.
   Refresh := FRefresh;
   Progress := FProgress;
@@ -341,7 +355,8 @@ begin
       else if AMethod = '$/progress' then
         Progress.Handle(AParams);
     end;
-  // Ohne Arbeitsbereich leitet der Server ihn aus den geöffneten Dateien ab.
+  // Ohne Arbeitsbereich leitet der Server ihn aus den geöffneten Dateien ab, ebenso für Dateien
+  // außerhalb der gemeldeten Projekte.
   Response := FClient.Request('initialize', Params, 15000);
   Response.Free;
   FClient.Notify('initialized', TJSONObject.Create);
@@ -712,6 +727,57 @@ end;
 procedure TLspSession.Notify(const AMethod: string; AParams: TJSONObject);
 begin
   FClient.Notify(AMethod, AParams);
+end;
+
+class function TLspSession.ProjectFolders(const AProjects: TArray<string>): TJSONArray;
+var
+  Project: string;
+begin
+  Result := TJSONArray.Create;
+  for Project in AProjects do
+    Result.AddElement(TJSONObject.Create.AddPair('uri', PathToUri(Project))
+      .AddPair('name', ChangeFileExt(ExtractFileName(Project), '')));
+end;
+
+function ContainsText_(const AValues: TArray<string>; const AValue: string): Boolean;
+var
+  Value: string;
+begin
+  for Value in AValues do
+    if SameText(Value, AValue) then
+      Exit(True);
+  Result := False;
+end;
+
+class procedure TLspSession.ProjectChanges(const AOld, ANew: TArray<string>; out AAdded, ARemoved: TArray<string>);
+var
+  Project: string;
+begin
+  AAdded := nil;
+  ARemoved := nil;
+  for Project in ANew do
+    if not ContainsText_(AOld, Project) and not ContainsText_(AAdded, Project) then
+      AAdded := AAdded + [Project];
+  for Project in AOld do
+    if not ContainsText_(ANew, Project) and not ContainsText_(ARemoved, Project) then
+      ARemoved := ARemoved + [Project];
+end;
+
+procedure TLspSession.SetProjects(const AProjects: TArray<string>);
+var
+  Added, Removed: TArray<string>;
+begin
+  if not FInitialized then
+  begin
+    FProjects := AProjects;
+    Exit;
+  end;
+  ProjectChanges(FProjects, AProjects, Added, Removed);
+  FProjects := AProjects;
+  if (Length(Added) = 0) and (Length(Removed) = 0) then
+    Exit;
+  FClient.Notify('workspace/didChangeWorkspaceFolders', TJSONObject.Create(TJSONPair.Create('event',
+    TJSONObject.Create.AddPair('added', ProjectFolders(Added)).AddPair('removed', ProjectFolders(Removed)))));
 end;
 
 end.

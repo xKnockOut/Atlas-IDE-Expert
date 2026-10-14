@@ -234,7 +234,7 @@
 
 ## Critical-Issues (14.10.2026, Branch `claude/critical-issues-ygbl9i` von main)
 
-- Offen mit priority:critical: nur #616, #617, #647. Alle drei bleiben offen: nicht in main, nicht gebaut, nicht gemessen.
+- Offen mit priority:critical: #616, #617, #647, #648. Alle bleiben offen: nicht in main, nicht gebaut, nicht gemessen.
 - **#617 Schritt 4, Binärformat** (6e373cb): Cache-Format 11 (Magie `ATLASIDX`) mit String-Tabelle und Varints; `TIndexCache.ReadEntries` liest nur die Köpfe, `Expand` dekodiert die Symbole einer Unit erst, wenn der Builder sie übernimmt. Dazu kommen `IIndexFileSystem.ReadBytes`/`WriteBytes`. FPC-Messung mit synthetischen Daten (1569 Units, 575.823 Symbole): Schreiben 990 ms, 16 MB; Köpfe 3 ms; alles dekodieren 399 ms. Die Reihenfolge „eigenes Projekt zuerst, Bibliothek danach im Hintergrund“ besteht schon: `Build` erst die Projektdateien, dann `IndexReferenced`, alles im Index-Thread. Offen: Messung bei Marco.
 - **#647 Diagnoselog** (9d9aaca):
   - Common: `Atlas.Common.Diagnostics.Contract`, `Anonymizer` (Kurz-IDs, Filter, `StackFrame`), `RequestScope` (threadvar, Grundcodes), `Providers.Log` (Puffer bis `Configure`), `Adapters.LogFolder` (`diag-JJJJMMTT-<pid>.log`, Laufmarken `run-<pid>.open`).
@@ -246,4 +246,12 @@
   - Tests: `Atlas.Common.Diagnostics.Tests`, `Shell.Diagnostics.Tests` (Markertest über Log, Vorschau und ZIP).
   - Weil der Filter „/“ verwirft, steht im Log „line N of M“ statt „N/M“, und die LSP-Methodennamen sind freigegeben (`AllowMethods`).
   - Offen: Delphi-Build mit 0/0/0, Testlauf, Test in der IDE. Ein PR ist noch nicht angelegt (öffentlicher Schritt, erst nach Rückfrage).
+- **#648 Projektgruppe, Suchpfade, Bibliothek** (neu angelegt auf Marcos Wunsch; #619 als darin aufgegangen geschlossen, die vier Schalter in #227 eingetragen, beides nach Marcos Zustimmung):
+  - Einstellungen `index.projectGroup`, `index.searchPaths`, `index.libraryPaths` (Vorgabe an) und `index.exclude` (Glob gegen den vollen Pfad), Seite „Speicher“.
+  - Common: `Atlas.Common.Projects.GroupReader` (Projekte einer `.groupproj`), `Atlas.Common.Index.Scheduler` (ein Aufbau zur Zeit; erst alle Projektdateien, dann Suchpfade, dann Bibliothek; aktives Projekt zuerst), `TIndexProjectFiles.PathFiles`, `TIndexBuilder.Build` mit drei Listen und `IIndexTurn`. Suchpfad-Units zählen zum Projekt, Bibliotheks-Units als Bibliothek.
+  - `TWorkspaceFolder.ProjectFile` und `Key`: Ein workspaceFolders-Eintrag darf eine `.dproj` oder `.groupproj` sein.
+  - Server: je Projekt ein Arbeitsbereich mit fester Projektdatei (`AddProjectWorkspace`), `Origin` zum Entfernen, `WorkspaceOf` zuerst über `ContainsFile`. Mit `index.projectGroup = false` warten die übrigen Projekte, bis eine ihrer Dateien geöffnet wird (`Activate`). Meldet der Client nur Projektdateien, werden Arbeitsbereiche für fremde Dateien weiter abgeleitet.
+  - Plugin: `TLspSession.SetProjects` schickt die Projekte der `MainProjectGroup` (aktives zuerst) in `initialize` und später als `didChangeWorkspaceFolders`; der Manager prüft die Gruppe höchstens alle 2 s im Hauptthread.
+  - Tests: GroupReader, PathFiles, Scheduler, Build-Stufen, workspaceFolders mit Projektdateien, ProjectChanges.
+  - Offen: Delphi-Build mit 0/0/0, Testlauf, Messung mit einer echten Gruppe (Zeit und Speicher, wenn die ganze Bibliothek indiziert wird).
 

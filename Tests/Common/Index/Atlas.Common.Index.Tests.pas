@@ -120,6 +120,15 @@ type
     procedure ServiceSharesLibraryCache;
     [Test]
     procedure ReadOnlyServiceStopsWaitingAfterLimit;
+    [Test]
+    procedure IndexesSearchAndLibraryStages;
+  end;
+
+  [TestFixture]
+  TIndexSchedulerTests = class
+  public
+    [Test]
+    procedure OrdersByStageThenPriority;
   end;
 
   [TestFixture]
@@ -129,6 +138,8 @@ type
     procedure ListsMainSourceAndUnitsOnce;
     [Test]
     procedure CombinesDefinesWithPlatformSymbols;
+    [Test]
+    procedure ListsPathUnitsOnceWithoutExcluded;
   end;
 
 implementation
@@ -144,6 +155,7 @@ uses
   Atlas.Common.Index.Cache,
   Atlas.Common.Index.Builder,
   Atlas.Common.Index.Service,
+  Atlas.Common.Index.Scheduler,
   Atlas.Common.Index.ProjectFiles;
 
 const
@@ -717,6 +729,27 @@ begin
   Assert.IsFalse(FIndex.FindUnit('F', U));
 end;
 
+procedure TIndexBuilderTests.IndexesSearchAndLibraryStages;
+var
+  Builder: TIndexBuilder;
+  BuildResult: TIndexBuildResult;
+  U: TUnitIndex;
+begin
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  try
+    // F nur über den Suchpfad, E nur über den Bibliothekspfad; B kam schon über uses und wird nicht neu gelesen.
+    BuildResult := Builder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], ['C:\Lib\F.pas'], ['C:\Lib\E.pas', 'C:\Lib\B.pas'],
+      nil, nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Assert.AreEqual(7, BuildResult.Parsed);
+  Assert.IsTrue(FIndex.FindUnit('F', U));
+  Assert.IsFalse(U.Library_, 'Suchpfad-Units gehören zum Projekt');
+  Assert.IsTrue(FIndex.FindUnit('E', U));
+  Assert.IsTrue(U.Library_, 'Bibliotheks-Units sind Bibliothek');
+end;
+
 procedure TIndexBuilderTests.ReusesCacheWithoutReading;
 var
   Builder: TIndexBuilder;
@@ -1224,6 +1257,71 @@ begin
   Assert.AreEqual('C:\P\A.pas', Files[1]);
 end;
 
+procedure TIndexProjectFilesTests.ListsPathUnitsOnceWithoutExcluded;
+var
+  Listed: string;
+  Files: TArray<string>;
+begin
+  Listed := '';
+  Files := TIndexProjectFiles.PathFiles(['C:\A', 'c:\a\', ' C:\B ', ''],
+    function(const AFolder: string): TArray<string>
+    begin
+      Listed := Listed + AFolder + ';';
+      if SameText(AFolder, 'C:\A') then
+        Result := ['C:\A\Z.pas', 'C:\A\Y.pas']
+      else
+        Result := ['C:\B\W.pas', 'C:\B\Demos\X.pas', 'c:\a\y.pas'];
+    end,
+    function(const AFileName: string): Boolean
+    begin
+      Result := Pos('\DEMOS\', AnsiUpperCase(AFileName)) > 0;
+    end, ['C:\A\Z.pas']);
+  // Jeder Ordner einmal; Z steht schon im Projekt, X ist ausgeschlossen, Y doppelt.
+  Assert.AreEqual('C:\A;C:\B;', Listed);
+  Assert.AreEqual(2, Integer(Length(Files)));
+  Assert.AreEqual('C:\A\Y.pas', Files[0]);
+  Assert.AreEqual('C:\B\W.pas', Files[1]);
+end;
+
+{ TIndexSchedulerTests }
+
+procedure TIndexSchedulerTests.OrdersByStageThenPriority;
+var
+  Scheduler: TIndexScheduler;
+  Active, Other: IIndexTurn;
+  Cancelled: TIndexCancelled;
+begin
+  Cancelled :=
+    function: Boolean
+    begin
+      Result := True;
+    end;
+  Scheduler := TIndexScheduler.Create;
+  try
+    Other := Scheduler.Register(1);
+    Active := Scheduler.Register(0);
+    Assert.AreEqual(2, Scheduler.Count);
+    // Das aktive Projekt (Priorität 0) kommt in derselben Stufe zuerst.
+    Assert.IsFalse(Other.Enter(TIndexStage.Project, Cancelled));
+    Assert.IsTrue(Active.Enter(TIndexStage.Project, Cancelled));
+    Assert.IsFalse(Other.Enter(TIndexStage.Project, Cancelled), 'Läuft ein Aufbau, warten die anderen');
+    Active.Leave;
+    // Die Projektdateien des anderen Projekts kommen vor den Suchpfaden des aktiven.
+    Assert.IsFalse(Active.Enter(TIndexStage.SearchPaths, Cancelled));
+    Assert.IsTrue(Other.Enter(TIndexStage.Project, Cancelled));
+    Other.Leave;
+    Assert.IsTrue(Active.Enter(TIndexStage.SearchPaths, Cancelled));
+    Active.Leave;
+    Active := nil;
+    Assert.AreEqual(1, Scheduler.Count, 'Freigabe meldet ab');
+    Assert.IsTrue(Other.Enter(TIndexStage.Library_, Cancelled));
+    Other.Leave;
+    Other := nil;
+  finally
+    Scheduler.Free;
+  end;
+end;
+
 procedure TIndexProjectFilesTests.CombinesDefinesWithPlatformSymbols;
 var
   Project: TProjectInfo;
@@ -1278,5 +1376,6 @@ initialization
   TDUnitX.RegisterTestFixture(TIndexCacheTests);
   TDUnitX.RegisterTestFixture(TIndexBuilderTests);
   TDUnitX.RegisterTestFixture(TIndexProjectFilesTests);
+  TDUnitX.RegisterTestFixture(TIndexSchedulerTests);
 
 end.

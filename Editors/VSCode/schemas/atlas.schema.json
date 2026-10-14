@@ -393,6 +393,38 @@
       "x-control": "Zahlenfeld (MB)",
       "x-issue": "#185"
     },
+    "index": {
+      "type": "object",
+      "description": "Umfang des Symbolindex. Standard: alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und alle Units der Bibliotheks- und Suchpfade der Delphi-Installation, auch wenn keine Unit sie einbindet. Reihenfolge: aktives Projekt, übrige Projekte, Suchpfade, Bibliothek; alles im Hintergrund, die Bibliothek aus dem gemeinsamen Cache.",
+      "additionalProperties": false,
+      "properties": {
+        "projectGroup": {
+          "type": "boolean",
+          "default": true,
+          "description": "Alle Projekte der Projektgruppe indizieren; aus = nur das Projekt der geöffneten Datei."
+        },
+        "searchPaths": {
+          "type": "boolean",
+          "default": true,
+          "description": "Alle Units der Projekt-Suchpfade indizieren; aus = nur über uses erreichbare."
+        },
+        "libraryPaths": {
+          "type": "boolean",
+          "default": true,
+          "description": "Alle Units der Bibliotheks- und Suchpfade der Installation indizieren (RTL, VCL, Komponenten); aus = nur über uses erreichbare."
+        },
+        "exclude": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Ordner oder Dateien, die nicht indiziert werden (Glob-Muster gegen den vollen Pfad: *, **, ?).",
+          "examples": [["**/Demos/**", "**/Samples/**"]]
+        }
+      },
+      "x-page": "Speicher",
+      "x-control": "Kontrollkästchen, Liste mit Hinzufügen/Entfernen",
+      "x-issue": "#648"
+    },
     "requestTimeoutMs": {
       "type": "integer",
       "minimum": 1000,

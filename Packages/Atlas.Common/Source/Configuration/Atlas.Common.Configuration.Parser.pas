@@ -68,6 +68,7 @@ type
     procedure ReadCompiler(ANode: TJsonNode);
     procedure ReadCompletion(ANode: TJsonNode);
     procedure ReadDiagnostics(ANode: TJsonNode);
+    procedure ReadIndex(ANode: TJsonNode);
     procedure ReadFormat(ANode: TJsonNode);
     function ExpectBoolean(ANode: TJsonNode; const AName: string; var AValue: Boolean): Boolean;
     /// <summary>Wurzel oder nil nach gemeldetem Syntaxfehler.</summary>
@@ -858,6 +859,43 @@ begin
   end;
 end;
 
+procedure TValidator.ReadIndex(ANode: TJsonNode);
+var
+  Index, Item: Integer;
+  Key, Value: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"index" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if Key = 'projectGroup' then
+      ExpectBoolean(ANode[Index], Key, FSettings.IndexProjectGroup)
+    else if Key = 'searchPaths' then
+      ExpectBoolean(ANode[Index], Key, FSettings.IndexSearchPaths)
+    else if Key = 'libraryPaths' then
+      ExpectBoolean(ANode[Index], Key, FSettings.IndexLibraryPaths)
+    else if Key = 'exclude' then
+    begin
+      if ANode[Index].Kind <> TJsonKind.Array_ then
+      begin
+        ReportNode(ANode[Index], '"index.exclude" muss eine Liste von Mustern sein');
+        Continue;
+      end;
+      FSettings.IndexExclude := nil;
+      for Item := 0 to ANode[Index].Count - 1 do
+        if ExpectString(ANode[Index][Item], 'index.exclude', Value) then
+          FSettings.IndexExclude := FSettings.IndexExclude + [Value];
+    end
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "index.%s"', [Key]), False);
+  end;
+end;
+
 procedure TValidator.ReadFormat(ANode: TJsonNode);
 var
   Index, Size: Integer;
@@ -1053,6 +1091,8 @@ begin
         ReadCompletion(Value)
       else if Key = 'diagnostics' then
         ReadDiagnostics(Value)
+      else if Key = 'index' then
+        ReadIndex(Value)
       else if Key = 'usesCommand' then
         ExpectBoolean(Value, Key, FSettings.UsesCommand)
       else if Key = 'slashCommands' then
@@ -1288,6 +1328,13 @@ begin
       Result.DiagnosticsLog := FileSettings.DiagnosticsLog;
       Result.DiagnosticsLogDays := FileSettings.DiagnosticsLogDays;
       Result.DiagnosticsLogMapFile := FileSettings.DiagnosticsLogMapFile;
+    end
+    else if Key = 'index' then
+    begin
+      Result.IndexProjectGroup := FileSettings.IndexProjectGroup;
+      Result.IndexSearchPaths := FileSettings.IndexSearchPaths;
+      Result.IndexLibraryPaths := FileSettings.IndexLibraryPaths;
+      Result.IndexExclude := FileSettings.IndexExclude;
     end
     else if Key = 'usesCommand' then
       Result.UsesCommand := FileSettings.UsesCommand

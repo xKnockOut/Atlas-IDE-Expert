@@ -40,6 +40,8 @@ type
     procedure ClosesSyncedDocumentsAndListsThem;
     [Test]
     procedure InitializeAnnouncesPullDiagnosticsAndCountsRefresh;
+    [Test]
+    procedure ReportsProjectGroupChanges;
   end;
 
   [TestFixture]
@@ -489,6 +491,30 @@ begin
     Session.Free;
     Client.Free;
   end;
+end;
+
+procedure TLspSessionTests.ReportsProjectGroupChanges;
+var
+  Folders: TJSONArray;
+  Added, Removed: TArray<string>;
+begin
+  Folders := TLspSession.ProjectFolders(['C:\Gruppe\App\App.dproj']);
+  try
+    Assert.AreEqual(1, Folders.Count);
+    Assert.AreEqual(TLspSession.PathToUri('C:\Gruppe\App\App.dproj'), Folders.Items[0].GetValue<string>('uri'));
+    Assert.AreEqual('App', Folders.Items[0].GetValue<string>('name'));
+  finally
+    Folders.Free;
+  end;
+  // Groß- und Kleinschreibung zählt nicht; Doppelte nur einmal.
+  TLspSession.ProjectChanges(['C:\G\A.dproj', 'C:\G\B.dproj'], ['c:\g\a.dproj', 'C:\G\C.dproj', 'C:\G\C.dproj'],
+    Added, Removed);
+  Assert.AreEqual<NativeInt>(1, Length(Added));
+  Assert.AreEqual('C:\G\C.dproj', Added[0]);
+  Assert.AreEqual<NativeInt>(1, Length(Removed));
+  Assert.AreEqual('C:\G\B.dproj', Removed[0]);
+  TLspSession.ProjectChanges(['C:\G\A.dproj'], ['C:\G\A.dproj'], Added, Removed);
+  Assert.AreEqual<NativeInt>(0, Length(Added) + Length(Removed));
 end;
 
 { TLspServerProcessTests }
