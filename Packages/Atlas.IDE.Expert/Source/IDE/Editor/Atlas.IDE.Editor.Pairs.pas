@@ -412,6 +412,9 @@ begin
         Cell := Context.EditorState.GetCharacterPosPx(Guide.Column, Context.EditorLineNum);
         Tick := Max(3, Cell.Width div 2);
         X := Cell.Left - Max(2, Cell.Width div 3) - (Width - 1) div 2;
+        // Blöcke ab Spalte 1 (procedure … end): Linie an den Rand des Codebereichs statt abgeschnitten davor.
+        if (Code.Right > Code.Left) and (X < Code.Left + Width div 2 + 1) then
+          X := Code.Left + Width div 2 + 1;
         Top := Rect.Top;
         Bottom := Rect.Bottom;
         if Guide.Part = gpFirst then
