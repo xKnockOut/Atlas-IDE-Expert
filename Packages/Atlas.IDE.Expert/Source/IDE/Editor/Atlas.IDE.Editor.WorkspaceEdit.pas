@@ -7,6 +7,9 @@
 //   - Nicht geöffnete Dateien: nach der Einstellung „Für Änderungen öffnen“
 //     im Editor öffnen (Vorgabe) oder direkt auf die Platte schreiben, in
 //     ihrer bisherigen Kodierung (TAtlasTextFile).
+//   - Projektdateien (.dproj, .groupproj, etwa von /define): nie als Text
+//     öffnen, sondern auf die Platte schreiben und das geladene Projekt neu
+//     laden. Hat es ungespeicherte Änderungen, ändert Atlas nichts.
 // Erst werden alle Dateien geprüft (Puffer vorhanden, Positionen gültig,
 // keine Überlappung); schlägt eine Prüfung fehl, ändert Atlas nichts.
 // Nur im Hauptthread aufrufen.
@@ -32,9 +35,13 @@ type
   private
     class procedure WriteBuffer(const ABuffer: IOTAEditBuffer; const AText: string;
       const ARanges: TArray<TLspTextRange>); static;
+    class function ProjectModule(const AFileName: string): IOTAModule; static;
+    class function ProjectModified(const AModule: IOTAModule): Boolean; static;
   public
     /// <summary>Puffer der IDE zu einer Datei, auch wenn sie nicht vorn liegt; nil, wenn sie nicht offen ist.</summary>
     class function BufferOf(const AFileName: string): IOTAEditBuffer; static;
+    /// <summary>.dproj oder .groupproj?</summary>
+    class function IsProjectFile(const AFileName: string): Boolean; static;
     /// <summary>Wendet AEdit an. AOpenUnopened: nicht geöffnete Dateien im Editor öffnen,
     /// sonst auf die Platte schreiben.</summary>
     class function Apply(const AEdit: TLspWorkspaceEdit; AOpenUnopened: Boolean): TAtlasWorkspaceEditResult; static;
@@ -53,7 +60,39 @@ type
     Text: string;
     Disk: TAtlasTextFileContent;
     Ranges: TArray<TLspTextRange>;
+    /// <summary>Geladenes Projekt zur Projektdatei; nach dem Schreiben neu laden.</summary>
+    Project: IOTAModule;
   end;
+
+class function TAtlasIdeWorkspaceEdit.IsProjectFile(const AFileName: string): Boolean;
+begin
+  Result := SameText(ExtractFileExt(AFileName), '.dproj') or SameText(ExtractFileExt(AFileName), '.groupproj');
+end;
+
+class function TAtlasIdeWorkspaceEdit.ProjectModule(const AFileName: string): IOTAModule;
+var
+  Services: IOTAModuleServices;
+  Index: Integer;
+begin
+  Result := nil;
+  if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+    Exit;
+  for Index := 0 to Services.ModuleCount - 1 do
+    if SameText(Services.Modules[Index].FileName, AFileName) then
+      Exit(Services.Modules[Index]);
+end;
+
+class function TAtlasIdeWorkspaceEdit.ProjectModified(const AModule: IOTAModule): Boolean;
+var
+  Project: IOTAProject;
+  Index: Integer;
+begin
+  Result := Supports(AModule, IOTAProject, Project) and (Project.ProjectOptions <> nil) and
+    Project.ProjectOptions.ModifiedState;
+  for Index := 0 to AModule.ModuleFileCount - 1 do
+    if AModule.ModuleFileEditors[Index].Modified then
+      Result := True;
+end;
 
 class function TAtlasIdeWorkspaceEdit.BufferOf(const AFileName: string): IOTAEditBuffer;
 var
@@ -114,11 +153,21 @@ begin
   begin
     Plan := Default(TPlannedFile);
     Plan.FileName := FileEdits.FileName;
-    Plan.Buffer := BufferOf(FileEdits.FileName);
-    if (Plan.Buffer = nil) and AOpenUnopened and FileExists(FileEdits.FileName) and
-      Supports(BorlandIDEServices, IOTAActionServices, Actions) and Actions.OpenFile(FileEdits.FileName) then
-      Plan.Buffer := BufferOf(FileEdits.FileName);
     try
+      if IsProjectFile(FileEdits.FileName) then
+      begin
+        // Projektdatei: nie als Text öffnen; ungespeicherte Projektänderungen nicht verwerfen.
+        Plan.Project := ProjectModule(FileEdits.FileName);
+        if (Plan.Project <> nil) and ProjectModified(Plan.Project) then
+          raise ELspEditError.Create('Projekt hat ungespeicherte Änderungen; bitte erst speichern');
+      end
+      else
+      begin
+        Plan.Buffer := BufferOf(FileEdits.FileName);
+        if (Plan.Buffer = nil) and AOpenUnopened and FileExists(FileEdits.FileName) and
+          Supports(BorlandIDEServices, IOTAActionServices, Actions) and Actions.OpenFile(FileEdits.FileName) then
+          Plan.Buffer := BufferOf(FileEdits.FileName);
+      end;
       if Plan.Buffer <> nil then
       begin
         if Plan.Buffer.IsReadOnly then
@@ -153,6 +202,9 @@ begin
       begin
         TAtlasTextFile.Save(Plan.FileName, Plan.Disk);
         Inc(Result.Written);
+        // Geladenes Projekt neu einlesen, sonst schreibt die IDE beim Speichern ihren alten Stand zurück.
+        if (Plan.Project <> nil) and Supports(BorlandIDEServices, IOTAActionServices, Actions) then
+          Actions.ReloadFile(Plan.FileName);
       end;
     except
       on E: Exception do
