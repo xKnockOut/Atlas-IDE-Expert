@@ -60,6 +60,9 @@ type
     class function ItemCount(const AOrder: TArray<Integer>): Integer; static;
     /// <summary>Überschrift statt Eintrag (Header, TypoHeader)?</summary>
     class function IsHeader(AValue: Integer): Boolean; static;
+    /// <summary>Nur „Meintest du“-Einträge, kein regulärer Treffer (#485): Die Fußzeile nennt dann
+    /// „Keine Treffer für ‚…‘“.</summary>
+    class function OnlyTypos(const AOrder: TArray<Integer>): Boolean; static;
   end;
 
 implementation
@@ -325,6 +328,11 @@ end;
 class function TAtlasRanking.IsHeader(AValue: Integer): Boolean;
 begin
   Result := AValue < 0;
+end;
+
+class function TAtlasRanking.OnlyTypos(const AOrder: TArray<Integer>): Boolean;
+begin
+  Result := (Length(AOrder) > 1) and (AOrder[0] = TypoHeader);
 end;
 
 end.

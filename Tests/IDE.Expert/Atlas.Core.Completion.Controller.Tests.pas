@@ -37,6 +37,8 @@ type
     [Test]
     procedure CommitCharacterOnlyForClearMatch;
     [Test]
+    procedure TypoSuggestionsTakeOnlyEnter;
+    [Test]
     procedure ItemsAfterCloseAreDropped;
     [Test]
     procedure TruncatedListIsRequeried;
@@ -442,6 +444,45 @@ begin
     Controller.Free;
   end;
 end;
+procedure TAtlasCompletionControllerTests.TypoSuggestionsTakeOnlyEnter;
+var
+  View: TFakeView;
+  ViewRef: IAtlasCompletionView;
+  Controller: TAtlasCompletionController;
+  Committed: string;
+begin
+  // #485, Abnahme: "Lenght" zeigt Length unter „Meintest du“ statt des leeren Zustands; ";" übernimmt
+  // nichts, Enter übernimmt.
+  View := TFakeView.Create;
+  ViewRef := View;
+  Controller := TAtlasCompletionController.Create(
+    TAtlasFixedCompletionProvider.Create([Item('Length'), Item('Low'), Item('High')])
+      as IAtlasCompletionProvider, ViewRef);
+  try
+    Committed := '';
+    Controller.OnCommit :=
+      procedure(const AItem: TAtlasCompletionItem)
+      begin
+        Committed := AItem.Name;
+      end;
+    Controller.Start(Context(''));
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    Controller.UpdatePrefix('Lenght');
+    Assert.IsFalse(View.Empty, 'Vorschläge statt des Hinweistexts');
+    Assert.AreEqual('#,Length', View.Names);
+    Assert.AreEqual(1, View.Selected, 'Überschrift wird übersprungen');
+    Assert.IsFalse(Controller.CanCommitOnCharacter, '";" fügt nur das Zeichen ein');
+    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Accept));
+    Assert.AreEqual('Length', Committed);
+  finally
+    Controller.Free;
+  end;
+end;
+
 procedure TAtlasCompletionControllerTests.ItemsAfterCloseAreDropped;
 var
   View: TFakeView;
