@@ -118,7 +118,7 @@
 - `main` auf GitHub = `d21b4d2`: Atlas-Vervollständigungsserie, #500, #527, #501, #536, #502, #514, #528, #548, #556, #99, #48 und der Merge von `claude/project-thread-ppmemb` (Leck-Monitor). Gruppe 0/0/0, 1111 Tests ohne Lecks.
 - **Gelöscht** (Sicherung aller Stände mit Commit in `C:\Projekte\BetterDelphiLSP\branch-sicherung-2026-10-10.txt`): 124 vollständig gemergte Branches (65 remote, 59 lokal), die Doku-Branches `claude/project-thread-1qlm6n`, `-pjsmb5`, `-mhrxdt`, der gemergte `-ppmemb`, 38 Ketten-Branches mit Inhalt per Squash in `main` und 7 mit geschlossenem Issue (#86, #111, #115, #179, #181, #271, #308).
 - **Übrig: 48 Ketten-Branches** (Index 98 ff. hinter `122-binaere-dfm`), alle mit offenem Issue und Code, der nicht in `main` ist; noch mit Namen vor der Umbenennung. Reihenfolge der Kette: 123 → 126 → 149 → 151 → 261 → 270 → 281 → 282 → 293 … 299 → 304 → 309 → 319 → 152 → 56 → 128 → 120 → 313 → 312 → 187 → 153 → 153-typen → 277 → 278 → 157 → 188 → 276 → 300 → 303-ausdruck → 301 → 302 → 306 → 320 … 323 → 303-modern → 119 → 88 → 89 → 104 → 114 → 87. Nachbauen mit dem Verfahren aus `chainrun2.ps1` (Umbenennen, 3-Wege-Cherry-Pick, Listenkonflikte selbst lösen), Branch nach Übernahme löschen. Achtung: #261 überschneidet sich mit #527/#528/#548, #188 mit der umgebauten Vervollständigung.
-- **Issues:** 77 umgesetzte geschlossen (mit Commit im Kommentar). Bewusst offen: #48 (Abnahme mit Claude Code), #62 und #100 (nur teilweise), #102 (Teil 1), #227 (nur Vervollständigung), #99 (schreibende Werkzeuge), #414 (Hint schließt beim Scrollen statt mitzuwandern), #433, #447, #528/#548 (Error Insight, projektweite Liste), #536 (Sammeldialog, Vergleichen).
+- **Issues:** 77 umgesetzte geschlossen (mit Commit im Kommentar). Bewusst offen: #48 (Abnahme mit Claude Code), #62 und #100 (nur teilweise), #102 (Teil 1), #227 (nur Vervollständigung), #99 (schreibende Werkzeuge), #433, #447, #528/#548 (Error Insight, projektweite Liste), #536 (Sammeldialog, Vergleichen).
 - Testfälle der umgesetzten Plugin-Issues: `docs/Atlas-Testfaelle.md`.
 
 ## Nachbau der Ketten-Branches (Stand 10.10.2026, 18:20, angehalten)
@@ -185,7 +185,7 @@
 - **Achtung:** In `Atlas.Common.Compiler.OutputParser.pas` stehen Testzeilen des Users (verschachtelte begin/end); nicht committen.
 - **Neu in `update-plugin.ps1`:** sichert `.dproj`/`.dpk` vor dem Bau und schreibt sie danach zurück.
 - **Weiter:**
-  - Reste der Serie: #528/#548, #536, #414, #443, #433, #447, #227, #99, #48, #102.
+  - Reste der Serie: #528/#548, #536, #443, #433, #447, #227, #99, #48, #102.
   - Danach weitere Issues nach Priorität.
 
 ## Stand 11.10.2026 (Nachtrag)
@@ -193,7 +193,7 @@
 - MCP: explain_finding, rename_symbol, apply_code_action; CheckOnSave über die IDE standardmäßig aus, Plugin schickt didSave, Server prüft mit dcc (54bf7479).
 - Regel `unresolved-identifier` (fc636997).
 - #536: Sammeldialog entfernt, Unterschied im Meldungsfenster (ea0b4a25, geschlossen).
-- #414: Hint/Popup schließen bei Größenänderung, Hint wandert beim Scrollen mit, Tooltip schließt bei Fokus-/Tabwechsel (3d6a38b8); Abnahme SL1–SL9 offen.
+- #414: Hint/Popup schließen bei Größenänderung, Hint wandert beim Scrollen mit, Tooltip schließt bei Fokus-/Tabwechsel (3d6a38b8). Vollständig auf `feature/414-schliessen`: Regeln in `Atlas.Core.Editor.CloseRules` (getestet), Esc sperrt das automatische Öffnen im selben Wort, Hint-Sichtbarkeit nach der Klammerzeile; Abnahme SL1–SL14 in der IDE offen.
 - #443 war schon erledigt (450ac5b7).
 - #433: Einstellung „Schreibweise beim Übernehmen korrigieren“ (b853a445); Abnahme offen.
 - #447: UI-Automation + Ansagen für Popup, Hint, Tooltip (e5208869); Abnahme mit Narrator offen.

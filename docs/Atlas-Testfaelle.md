@@ -457,14 +457,21 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 | Nr. | Schritte | Erwartet |
 |---|---|---|
 | SL1 | Popup und Parameter-Hint offen (z. B. `Foo(` und Strg+Leer), Esc | Erst schließt das Popup, beim zweiten Esc der Hint |
-| SL2 | Popup mit Esc schließen, im selben Wort weitertippen | Popup bleibt zu; Strg+Leer öffnet es wieder |
+| SL2 | Popup mit Esc schließen, im selben Wort weitertippen (auch mit automatischer Vervollständigung der IDE) | Popup bleibt zu; Strg+Leer öffnet es wieder; im nächsten Wort (nach `.`) öffnet es wieder automatisch |
 | SL3 | Popup offen, mit dem Mausrad scrollen | Popup schließt |
 | SL4 | Parameter-Hint offen, ein paar Zeilen scrollen | Hint wandert mit der Zeile; scrollt die Zeile aus dem Bild, schließt er |
-| SL5 | Popup bzw. Hint offen, Editor in der Größe ändern (Fenster, Splitter, angedockte Fenster) | Fenster schließt |
+| SL5 | Popup, Hint bzw. Tooltip offen, Editor in der Größe ändern (Fenster, Splitter, angedockte Fenster) | Fenster schließt |
 | SL6 | Popup, Hint oder Tooltip offen, anderen Editor-Tab wählen | Fenster schließt |
 | SL7 | Tooltip offen, in den Objektinspektor oder die Projektverwaltung klicken | Tooltip schließt (angeheftet bleibt er, bis Esc oder Klick in den Editor) |
 | SL8 | Popup, Hint oder Tooltip offen, Alt+Tab in ein anderes Programm | Kein Atlas-Fenster mehr sichtbar |
 | SL9 | Maus vom Bezeichner wegbewegen (nicht in den Tooltip) | Tooltip schließt nach etwa 300 ms; in den Tooltip hinein bleibt er |
+| SL10 | Popup offen, Cursor mit ← vor den Wortanfang, mit ↑ in eine andere Zeile, oder ein Leerzeichen tippen | Popup schließt jeweils (`(`, `;`, `.` bei klarem Treffer übernehmen stattdessen) |
+| SL11 | Parameter-Hint offen, `)` tippen oder hinter die Klammer klicken | Hint schließt |
+| SL12 | Popup bzw. Hint offen, in den Objektinspektor oder die Projektverwaltung klicken | Fenster schließt |
+| SL13 | Tooltip (nicht angeheftet) offen, Esc | Tooltip schließt, Esc erreicht den Editor nicht |
+| SL14 | Mehrzeiliger Aufruf `Foo(` in Zeile 1, Argumente bis Zeile 5, Hint offen; so scrollen, dass Zeile 1 aus dem Bild ist, der Caret aber nicht | Hint schließt (er hängt an der Klammerzeile); solange diese sichtbar ist, wandert er mit |
+
+Automatisch geprüft: `Atlas.Core.Editor.CloseRules.Tests` (jede Zeile der Tabelle für Popup, Hint und Tooltip) und `EscapeBlocksAutomaticReopenInSameWord` in `Atlas.Core.Completion.Controller.Tests`.
 
 ## Extern geänderte Dateien (#536)
 

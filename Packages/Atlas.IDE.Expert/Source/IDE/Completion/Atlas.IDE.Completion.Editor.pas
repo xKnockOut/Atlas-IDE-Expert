@@ -38,6 +38,7 @@ uses
   Atlas.Core.Completion.Providers.Server,
   Atlas.Core.Completion.Providers.Snippets,
   Atlas.Core.Completion.Parentheses,
+  Atlas.Core.Editor.CloseRules,
   Atlas.IDE.Completion.Preview,
   Atlas.IDE.Completion.Placeholders,
   Atlas.UI.Completion.Popup,
@@ -82,9 +83,8 @@ type
     FEditorWindow: HWND;
     FLine: Integer;
     FWordStart: Integer;
-    FTopRow: Integer;
-    // Größe des Editors beim Öffnen; ändert sie sich, schließt das Popup (#414).
-    FEditorSize: TPoint;
+    // Fenster beim Öffnen (Fokus, oberste Zeile, Größe); TAtlasCloseRules vergleicht damit (#414).
+    FOpened: TAtlasEditorWindowState;
     // Commit über ein Zeichen: Ende des Worts und Bytes des stehen bleibenden Zeichens.
     FCommitEnd: Integer;
     FCommitSuffixBytes: Integer;
@@ -205,6 +205,21 @@ begin
     Result := Point(Area.Width, Area.Height)
   else
     Result := Point(0, 0);
+end;
+
+/// <summary>Zustand für TAtlasCloseRules (#414); AWindow ist das Editorfenster mit dem Caret.</summary>
+function WindowState(const AView: IOTAEditView; AWindow: HWND; AFocus: HWND): TAtlasEditorWindowState;
+begin
+  Result := Default(TAtlasEditorWindowState);
+  Result.AppActive := Application.Active;
+  Result.Focus := AFocus;
+  Result.Size := EditorSize(AWindow);
+  if AView = nil then
+    Exit;
+  Result.TopRow := AView.TopRow;
+  Result.Rows := AView.ViewSize.cy;
+  if AView.Buffer <> nil then
+    Result.FileName := AView.Buffer.FileName;
 end;
 
 
@@ -560,6 +575,10 @@ begin
   Context.Line := Cursor.Line - 1;
   Context.Character := Character;
   Context.Prefix := Copy(LineText, WordStart + 1, Character - WordStart);
+  Context.Automatic := AAutomatic;
+  // Mit Esc geschlossen (#414): im selben Wort nicht automatisch wieder öffnen.
+  if AAutomatic and FController.Dismissed(Context) then
+    Exit;
   if (WordStart > 0) and (LineText[WordStart] = '.') then
     Context.Kind := TAtlasContextKind.MemberAccess
   else
@@ -606,8 +625,7 @@ begin
   FEditorWindow := Window;
   FLine := Cursor.Line;
   FWordStart := WordStart;
-  FTopRow := AView.TopRow;
-  FEditorSize := EditorSize(FEditorWindow);
+  FOpened := WindowState(AView, FEditorWindow, FEditorWindow);
   // Ohne Datei- und Bezeichnernamen: Das Diagnoselog soll weitergegeben werden können (#647).
   Log(Format('Vervollständigung (%s): Zeile %d, Zeichen %d, Präfix %d Zeichen',
     [ExtractFileExt(Context.FileName), Context.Line + 1, Context.Character, Length(Context.Prefix)]));
@@ -919,40 +937,34 @@ var
   LineText, Prefix: string;
   Character, Index: Integer;
   Context: TAtlasContext;
+  Reason: TAtlasCloseReason;
 begin
   if not FController.Active or (FView = nil) then
   begin
     ActiveChanged;
     Exit;
   end;
-  // IDE inaktiv, anderes Fenster im Fokus, gescrollt: schließen (#414).
-  if not Application.Active or (GetFocus <> FEditorWindow) or (FView.TopRow <> FTopRow) or
-    (EditorSize(FEditorWindow) <> FEditorSize) then
+  // IDE inaktiv, anderes Fenster im Fokus, gescrollt, Größe geändert: schließen (#414).
+  Reason := TAtlasCloseRules.Popup(FOpened, WindowState(FView, FEditorWindow, GetFocus));
+  if Reason <> TAtlasCloseReason.None then
   begin
-    Log(Format('Vervollständigung geschlossen: aktiv %s, Fokus %s, gescrollt %s, Größe %s',
-      [BoolToStr(Application.Active, True), BoolToStr(GetFocus = FEditorWindow, True),
-       BoolToStr(FView.TopRow <> FTopRow, True), BoolToStr(EditorSize(FEditorWindow) <> FEditorSize, True)]));
+    Log('Vervollständigung geschlossen: ' + TAtlasCloseRules.Name(Reason));
     Close;
     Exit;
   end;
   Cursor := FView.CursorPos;
-  if Cursor.Line <> FLine then
+  LineText := '';
+  Character := 0;
+  if Cursor.Line = FLine then
   begin
-    Log('Vervollständigung geschlossen: andere Zeile');
-    Close;
-    Exit;
+    LineText := TAtlasEditorBuffer.LineText(FView, Cursor.Line);
+    Character := TLspSession.ColumnToIndex(LineText, Cursor.Col, TAtlasEditorBuffer.TabWidth(FView.Buffer));
   end;
-  LineText := TAtlasEditorBuffer.LineText(FView, Cursor.Line);
-  Character := TLspSession.ColumnToIndex(LineText, Cursor.Col, TAtlasEditorBuffer.TabWidth(FView.Buffer));
-  // Cursor vor dem Wortanfang oder ein Zeichen, das kein Bezeichner ist: Wort verlassen.
-  if Character < FWordStart then
+  // Andere Zeile, Cursor vor dem Wortanfang oder ein Zeichen, das kein Bezeichner ist: Wort verlassen.
+  Reason := TAtlasCloseRules.PopupWord(Cursor.Line = FLine, LineText, FWordStart, Character, Index);
+  if Reason <> TAtlasCloseReason.None then
   begin
-    Log('Vervollständigung geschlossen: Cursor vor dem Wortanfang');
-    Close;
-    Exit;
-  end;
-  for Index := FWordStart + 1 to Character do
-    if not TAtlasWord.IsIdentifierChar(LineText[Index]) then
+    if Reason = TAtlasCloseReason.NonIdentifier then
     begin
       // Commit-Zeichen direkt hinter dem Wort (#429): übernehmen, das Zeichen bleibt.
       if (Index = Character) and CharInSet(LineText[Index], ['(', ';', '.']) and
@@ -972,6 +984,10 @@ begin
       Close;
       Exit;
     end;
+    Log('Vervollständigung geschlossen: ' + TAtlasCloseRules.Name(Reason));
+    Close;
+    Exit;
+  end;
   Prefix := Copy(LineText, FWordStart + 1, Character - FWordStart);
   // Gekürzte Liste (#431) oder Wort nicht mehr Fortsetzung der Anfrage (Rücktaste, #616): lokal weiterfiltern
   // und im Hintergrund neu fragen. Sonst nur lokal; der Server wird beim Tippen nicht mehr gefragt.

@@ -31,6 +31,8 @@ type
     [Test]
     procedure EscapeClosesAndKeysPassThroughWhenClosed;
     [Test]
+    procedure EscapeBlocksAutomaticReopenInSameWord;
+    [Test]
     procedure NoMatchShowsEmptyState;
     [Test]
     procedure EmptyResultShowsEmptyStateUntilEscape;
@@ -350,6 +352,48 @@ begin
     Assert.IsFalse(Controller.Active);
     Assert.IsFalse(View.Shown);
     Assert.IsFalse(Controller.HandleKey(TAtlasNavigationKey.Accept), 'Enter nach Esc gehört dem Editor');
+  finally
+    Controller.Free;
+  end;
+end;
+
+procedure TAtlasCompletionControllerTests.EscapeBlocksAutomaticReopenInSameWord;
+var
+  View: TFakeView;
+  ViewRef: IAtlasCompletionView;
+  Controller: TAtlasCompletionController;
+  Typed: TAtlasContext;
+begin
+  // #414: Nach Esc öffnet Weitertippen im selben Wort nicht automatisch; Strg+Leer schon.
+  View := TFakeView.Create;
+  ViewRef := View;
+  Controller := TAtlasCompletionController.Create(
+    TAtlasFixedCompletionProvider.Create([Item('Add')]) as IAtlasCompletionProvider, ViewRef);
+  try
+    Controller.Start(Context('A'));
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Cancel));
+    Typed := Context('Ad');
+    Typed.Character := Typed.Character + 1;
+    Typed.Automatic := True;
+    Assert.IsTrue(Controller.Dismissed(Typed));
+    Controller.Start(Typed);
+    Assert.IsFalse(Controller.Active, 'automatisch im selben Wort: bleibt zu');
+    // Neues Wort: wieder automatisch.
+    Typed.Character := Typed.Character + 5;
+    Assert.IsFalse(Controller.Dismissed(Typed));
+    // Strg+Leer im gesperrten Wort öffnet und hebt die Sperre auf.
+    Typed := Context('Ad');
+    Typed.Character := Typed.Character + 1;
+    Controller.Start(Typed);
+    Assert.IsTrue(Controller.Active, 'Strg+Leer öffnet');
+    Controller.Close;
+    Typed.Automatic := True;
+    Assert.IsFalse(Controller.Dismissed(Typed), 'Schließen ohne Esc sperrt nicht');
   finally
     Controller.Free;
   end;
