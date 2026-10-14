@@ -13,7 +13,8 @@
        gesetzt sein, die Test-exe muss neu geschrieben sein und das logFile
        darf keine Hinweise oder Warnungen enthalten (0/0/0-Regel).
     3. Mit -Win32 zusätzlich Win32; dort darf nur Atlas.Tests scheitern
-       (DUnitX gibt es nur für Win64).
+       (DUnitX gibt es nur für Win64, ADR 0008). Die Plugin-BPL
+       Atlas.IDE.Expert.bpl muss dabei neu geschrieben sein (#78).
     4. Atlas.Tests.exe --exitbehavior:Continue mit NUnit-XML als Ergebnis.
     5. cc.ps1 quit, wiederholt, solange die IDE beschäftigt ist.
 
@@ -41,6 +42,8 @@ $ErrorActionPreference = 'Stop'
 
 $GroupProject = Join-Path $Root 'Atlas.groupproj'
 $TestExe = Join-Path $Root (Join-Path "Output/Win64/$Config/Bin" 'Atlas.Tests.exe')
+# Das IDE-Plugin gibt es nur für Win32 (ADR 0006); installiert wird diese BPL.
+$PluginBpl = Join-Path $Root (Join-Path "Output/Win32/$Config/Bpl" 'Atlas.IDE.Expert.bpl')
 # Zeilen des Build-Logs, die die 0/0/0-Regel verletzen, z. B. "[dcc64 Hinweis] X.pas(10): H2164 …".
 $HintPattern = '\[dcc\w*\s+(Hinweis|Warnung|Hint|Warning)\]'
 $ErrorPattern = '\[dcc\w*\s+(Fehler|Schwerwiegend|Error|Fatal)\]'
@@ -135,9 +138,15 @@ try {
 
     if ($Win32) {
         Write-Step 'Projektgruppe bauen (Win32, ohne Testprojekt)'
+        $started32 = Get-Date
         $build32 = Invoke-Cc @('group-build', '-Instance', "$ideId", '-Platform', 'Win32', '-Json')
         Write-Host $build32.Output
-        $problems += Test-Build (ConvertFrom-BuildOutput $build32.Output) 'Win32' (Get-Date) $true
+        $problems += Test-Build (ConvertFrom-BuildOutput $build32.Output) 'Win32' $started32 $true
+        if (-not (Test-Path $PluginBpl)) {
+            $problems += "Win32: Plugin-BPL fehlt: $PluginBpl"
+        } elseif ((Get-Item $PluginBpl).LastWriteTime -lt $started32) {
+            $problems += "Win32: Plugin-BPL wurde nicht neu geschrieben (von einer IDE geladen? ADR 0006): $PluginBpl"
+        }
     }
 
     if ($problems.Count -gt 0) {
