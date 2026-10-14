@@ -25,6 +25,13 @@ uses
   Atlas.UI.Strings;
 
 type
+  /// <summary>Zeile der Optionsseite (Beschriftung und Eingabefeld): zeichnet nichts selbst, der
+  /// Hintergrund des Reiters scheint durch.</summary>
+  TAtlasSettingsRow = class(TWinControl)
+  public
+    constructor Create(AOwner: TComponent); override;
+  end;
+
   TAtlasSettingsPage = class(TFrame)
   private
     FPages: TPageControl;
@@ -80,7 +87,7 @@ type
     /// <summary>Neuer Reiter; die folgenden Add… setzen ihre Elemente darauf.</summary>
     procedure AddSheet(AId: TAtlasTextId);
     function AddCheck(const ACaption: string): TCheckBox;
-    function AddPanel(AHeight: Integer): TPanel;
+    function AddPanel(AHeight: Integer): TWinControl;
     function AddNumber(const ACaption: string): TEdit;
     /// <summary>Tastenkürzel mit Häkchen „Vorrang“ in einer Zeile (#494).</summary>
     function AddKey(const ACaption: string; out APriority: TCheckBox): TEdit;
@@ -107,17 +114,35 @@ implementation
 
 {$R *.dfm}
 
+{ TAtlasSettingsRow }
+
+constructor TAtlasSettingsRow.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  ControlStyle := ControlStyle + [csAcceptsControls, csParentBackground] - [csOpaque];
+  ParentBackground := True;
+  ParentColor := True;
+end;
+
+const
+  // Linke Kante der Eingabefelder; Platz für die längste Beschriftung („Breite der Blocklinien …“).
+  FieldLeft = 280;
+
 { TAtlasSettingsPage }
 
 constructor TAtlasSettingsPage.Create(AOwner: TComponent);
 var
-  Panel: TPanel;
+  Panel: TWinControl;
   Title: TLabel;
 begin
   inherited Create(AOwner);
   Name := 'AtlasSettingsPage';
   Width := 480;
-  Height := 740;
+  // Die Reiter tragen den Inhalt; scrollt die Seite selbst, springt sie beim Reiterwechsel zum Fokus.
+  AutoScroll := False;
+  // Mit Reitern reicht die Höhe des längsten Reiters; höher, und die IDE scrollt ihren Bereich beim
+  // Reiterwechsel zum Fokus (die Seite „springt“).
+  Height := 420;
   Title := TLabel.Create(Self);
   Title.Parent := Self;
   Title.Align := alTop;
@@ -140,11 +165,13 @@ begin
   Title.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsServerPath);
   Title.Left := 0;
   Title.Top := 5;
+  // Pfad in eigener Zeile: Die Beschriftung ist lang, das Feld braucht die Breite.
+  Panel := AddPanel(26);
   FServerPath := TEdit.Create(Self);
   FServerPath.Parent := Panel;
-  FServerPath.Left := 180;
+  FServerPath.Left := 0;
   FServerPath.Top := 1;
-  FServerPath.Width := 250;
+  FServerPath.Width := 430;
   FServerPath.Anchors := [akLeft, akTop, akRight];
   FServerPath.OnChange := ServerPathChange;
   FServerBrowse := TButton.Create(Self);
@@ -158,7 +185,7 @@ begin
   Panel := AddPanel(18);
   FServerStatus := TLabel.Create(Self);
   FServerStatus.Parent := Panel;
-  FServerStatus.Left := 180;
+  FServerStatus.Left := 0;
   FServerStatus.Top := 0;
   FServerStatus.Font.Color := clGrayText;
   FReloadExternal := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReload));
@@ -174,7 +201,7 @@ begin
   FRowsLabel.Top := 5;
   FRows := TEdit.Create(Self);
   FRows.Parent := Panel;
-  FRows.Left := 180;
+  FRows.Left := FieldLeft;
   FRows.Top := 1;
   FRows.Width := 44;
   FRows.NumbersOnly := True;
@@ -278,22 +305,21 @@ begin
   Inc(FNextTop, 100);
 end;
 
-function TAtlasSettingsPage.AddPanel(AHeight: Integer): TPanel;
+function TAtlasSettingsPage.AddPanel(AHeight: Integer): TWinControl;
 begin
-  Result := TPanel.Create(Self);
+  // Kein TPanel: Das zeichnet im IDE-Thema einen eigenen Hintergrund (dunkle Streifen im Reiter).
+  Result := TAtlasSettingsRow.Create(Self);
   Result.Parent := FSheet;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
-  Result.BevelOuter := bvNone;
   Result.Height := AHeight;
   Result.Top := FNextTop;
   Inc(FNextTop, 100);
-  Result.ParentBackground := True;
 end;
 
 function TAtlasSettingsPage.AddKey(const ACaption: string; out APriority: TCheckBox): TEdit;
 var
-  Panel: TPanel;
+  Panel: TWinControl;
   Caption: TLabel;
 begin
   Panel := AddPanel(26);
@@ -305,12 +331,12 @@ begin
   // Als Text wie im Menü ("Strg+Umschalt+P"); leer = keine Taste.
   Result := TEdit.Create(Self);
   Result.Parent := Panel;
-  Result.Left := 180;
+  Result.Left := FieldLeft;
   Result.Top := 1;
   Result.Width := 140;
   APriority := TCheckBox.Create(Self);
   APriority.Parent := Panel;
-  APriority.Left := 330;
+  APriority.Left := FieldLeft + 150;
   APriority.Top := 3;
   APriority.Width := 220;
   APriority.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsKeyPriority);
@@ -325,7 +351,7 @@ end;
 
 function TAtlasSettingsPage.AddNumber(const ACaption: string): TEdit;
 var
-  Panel: TPanel;
+  Panel: TWinControl;
   Caption: TLabel;
 begin
   Panel := AddPanel(26);
@@ -336,7 +362,7 @@ begin
   Caption.Top := 5;
   Result := TEdit.Create(Self);
   Result.Parent := Panel;
-  Result.Left := 180;
+  Result.Left := FieldLeft;
   Result.Top := 1;
   Result.Width := 60;
   Result.NumbersOnly := True;

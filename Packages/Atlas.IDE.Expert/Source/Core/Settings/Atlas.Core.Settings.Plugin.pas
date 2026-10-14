@@ -151,7 +151,7 @@ begin
   Result.ServerPath := '';
   Result.PairGuides := True;
   Result.PairOwners := True;
-  Result.PairGuideWidth := 2;
+  Result.PairGuideWidth := 1;
   Result.Problems := True;
   Result.ProblemsList := True;
   // Die Prüfung in der IDE zeigt deren Fortschritt; Standard ist die Prüfung des Servers mit dcc (compiler.onSave).
