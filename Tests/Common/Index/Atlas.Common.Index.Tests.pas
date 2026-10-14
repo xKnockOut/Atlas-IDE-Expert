@@ -37,6 +37,8 @@ type
     [Test]
     procedure ExtractsAncestors;
     [Test]
+    procedure ForwardDeclarationGivesWayToFullType;
+    [Test]
     procedure ExtractsUsesLists;
     [Test]
     procedure MarksInterfaceSymbols;
@@ -376,6 +378,40 @@ begin
   Assert.AreEqual('IInterface', S.Ancestors[1]);
   Assert.IsTrue(FindSymbol(U, 'TBase', S));
   Assert.AreEqual<NativeInt>(0, Length(S.Ancestors));
+end;
+
+procedure TIndexExtractorTests.ForwardDeclarationGivesWayToFullType;
+var
+  U: TUnitIndex;
+  S: TIndexSymbol;
+begin
+  // Wie Data.DB: TDataSource = class; weit oben, die volle Deklaration später.
+  U := Extract('unit D;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TDataSource = class;'#10 +
+    '  TNurVorwaerts = class;'#10 +
+    '  IFeld = interface;'#10 +
+    '  TComponent = class end;'#10 +
+    '  IFeld = interface end;'#10 +
+    '  TDataSource = class(TComponent)'#10 +
+    '  type'#10 +
+    '    TInnen = class;'#10 +
+    '    TInnen = class(TComponent) end;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'end.');
+  Assert.AreEqual(1, Count(U, 'TDataSource'));
+  Assert.IsTrue(FindSymbol(U, 'TDataSource', S));
+  Assert.AreEqual(8, S.SelectionRange.StartPos.Line);
+  Assert.AreEqual<NativeInt>(1, Length(S.Ancestors));
+  Assert.AreEqual('TComponent', S.Ancestors[0]);
+  Assert.AreEqual(1, Count(U, 'IFeld'));
+  Assert.AreEqual(1, Count(U, 'TDataSource.TInnen'));
+  Assert.IsTrue(FindSymbol(U, 'TDataSource.TInnen', S));
+  Assert.AreEqual(11, S.SelectionRange.StartPos.Line);
+  // Ohne volle Deklaration bleibt die Vorwärtsdeklaration stehen.
+  Assert.AreEqual(1, Count(U, 'TNurVorwaerts'));
 end;
 
 procedure TIndexExtractorTests.ExtractsUsesLists;

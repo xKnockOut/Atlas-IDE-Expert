@@ -6,6 +6,8 @@
 // verworfen.
 //
 // Format 11 (#617, Schritt 4): binär mit String-Tabelle.
+// Format 12: gleiches Layout; nur neu einlesen, weil Vorwärtsdeklarationen
+// vollständig deklarierter Typen nicht mehr im Index stehen.
 // - Jeder Text steht genau einmal in der Tabelle; Units und Symbole
 //   verweisen per Nummer darauf. Nach dem Laden teilen sich gleiche Texte
 //   (Container, Typnamen, Dateinamen) eine Instanz, das spart Speicher.
@@ -52,7 +54,7 @@ type
 
   TIndexCache = class
   public
-    const FormatVersion = 11;
+    const FormatVersion = 12;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
     /// <summary>Liest nur die Köpfe; bei falscher Version oder fremdem Inhalt leer.</summary>
     class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; static;
