@@ -150,19 +150,30 @@ var
 begin
   // Vorgaben wie im Schema; atlas.json-Format für den Server (#652).
   Settings := TAtlasPluginSettings.Defaults;
-  Assert.AreEqual('{"index":{"projectGroup":true,"searchPaths":true,"libraryPaths":false},' +
-    '"hints":{"xmlDocFull":true,"xmlDocMaxLines":0}}', Settings.ServerSettingsJson);
+  Assert.AreEqual('{"index":{"projectGroup":true,"searchPaths":true,"libraryPaths":false,"usages":true},' +
+    '"memoryBudgetMb":256,"hints":{"xmlDocFull":true,"xmlDocMaxLines":0}}', Settings.ServerSettingsJson);
   Store := TMemoryStore.Create;
   Settings.IndexSearchPaths := False;
   Settings.IndexLibraryPaths := True;
+  Settings.IndexUsages := False;
+  Settings.MemoryBudgetMb := 512;
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
   Assert.IsTrue(Loaded.IndexProjectGroup);
   Assert.IsFalse(Loaded.IndexSearchPaths);
   Assert.IsTrue(Loaded.IndexLibraryPaths);
-  Assert.AreEqual('{"index":{"projectGroup":true,"searchPaths":false,"libraryPaths":true},' +
-    '"hints":{"xmlDocFull":true,"xmlDocMaxLines":0}}', Loaded.ServerSettingsJson);
+  Assert.IsFalse(Loaded.IndexUsages);
+  Assert.AreEqual(512, Loaded.MemoryBudgetMb);
+  Assert.AreEqual('{"index":{"projectGroup":true,"searchPaths":false,"libraryPaths":true,"usages":false},' +
+    '"memoryBudgetMb":512,"hints":{"xmlDocFull":true,"xmlDocMaxLines":0}}', Loaded.ServerSettingsJson);
+  // Speichergrenze (#492): 0 = unbegrenzt, nicht negativ, höchstens 64 GB.
+  Store.WriteInteger('MemoryBudgetMb', -5);
+  Loaded.Load(Store);
+  Assert.AreEqual(0, Loaded.MemoryBudgetMb);
+  Store.WriteInteger('MemoryBudgetMb', 999999);
+  Loaded.Load(Store);
+  Assert.AreEqual(TAtlasPluginSettings.MaxMemoryBudgetMb, Loaded.MemoryBudgetMb);
 end;
 
 procedure TAtlasPluginSettingsTests.XmlDocOptionsGoToServer;

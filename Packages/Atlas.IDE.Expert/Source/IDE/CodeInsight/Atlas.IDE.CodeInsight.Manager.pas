@@ -79,6 +79,8 @@ type
     procedure NotifyServer(const AMethod: string; AParams: TJSONObject);
     /// <summary>Fortschritt des Servers ("Index 45 %"); '' ohne Sitzung oder Vorgang. Startet keinen Server (#492).</summary>
     function ServerProgress: string;
+    /// <summary>Statusleiste während der Indizierung (#492); '' ohne Sitzung oder laufenden Aufbau.</summary>
+    function ServerIndexingText: string;
     /// <summary>Befehl an den Server (startet ihn bei Bedarf); Ergebnis gehört dem Aufrufer, nil bei Fehler.</summary>
     function ExecuteServerCommand(const ACommand: string; ATimeoutMs: Cardinal = 30000): TJSONValue;
     /// <summary>Gespeichert: didSave an den Server, falls eine Sitzung läuft (Prüfung mit dcc).</summary>
@@ -432,6 +434,14 @@ function TAtlasCodeInsightManager.ServerProgress: string;
 begin
   if (FSession <> nil) and FSession.Initialized then
     Result := FSession.ProgressText
+  else
+    Result := '';
+end;
+
+function TAtlasCodeInsightManager.ServerIndexingText: string;
+begin
+  if (FSession <> nil) and FSession.Initialized then
+    Result := FSession.IndexingText
   else
     Result := '';
 end;

@@ -19,6 +19,8 @@ type
     procedure CreatesAndRoundTripsSettings;
     [Test]
     procedure ShowsAndReenablesTrippedFeatures;
+    [Test]
+    procedure IndexSectionRoundTripsAndRunsCommands;
   end;
 
 implementation
@@ -100,6 +102,63 @@ begin
   finally
     TAtlasGuard.Fuse.ResetAll;
   end;
+end;
+
+procedure TAtlasSettingsPageTests.IndexSectionRoundTripsAndRunsCommands;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+  Confirm: Boolean;
+  Cleared: Integer;
+begin
+  // #492: Verwendungen und Speicherbudget, Kennzahlen, Neuaufbau und Löschen mit Rückfrage.
+  Settings := TAtlasPluginSettings.Defaults;
+  Settings.IndexUsages := False;
+  Settings.MemoryBudgetMb := 512;
+  Confirm := False;
+  Cleared := 0;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Assert.IsFalse(Page.IndexRebuild.Enabled or Page.IndexClear.Enabled, 'ohne Server keine Befehle');
+    Page.OnIndexMetrics :=
+      function: string
+      begin
+        Result := 'Units: 3';
+      end;
+    Page.OnIndexRebuild :=
+      function: string
+      begin
+        Result := 'wird neu aufgebaut';
+      end;
+    Page.OnIndexClear :=
+      function: string
+      begin
+        Inc(Cleared);
+        Result := 'gelöscht';
+      end;
+    Page.ConfirmClear :=
+      function: Boolean
+      begin
+        Result := Confirm;
+      end;
+    Page.LoadFrom(Settings);
+    Assert.AreEqual('Units: 3', Page.IndexInfo.Caption);
+    Assert.IsTrue(Page.IndexRebuild.Enabled and Page.IndexClear.Enabled);
+    Page.IndexRebuild.Click;
+    Assert.AreEqual('wird neu aufgebaut', Page.IndexInfo.Caption);
+    Page.IndexClear.Click;
+    Assert.AreEqual(0, Cleared, 'abgelehnt: nichts löschen');
+    Confirm := True;
+    Page.IndexClear.Click;
+    Assert.AreEqual(1, Cleared);
+    Assert.AreEqual('gelöscht', Page.IndexInfo.Caption);
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+  finally
+    Page.Free;
+  end;
+  Assert.IsFalse(Saved.IndexUsages);
+  Assert.AreEqual(512, Saved.MemoryBudgetMb);
 end;
 
 initialization

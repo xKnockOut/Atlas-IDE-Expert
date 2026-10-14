@@ -929,6 +929,37 @@ begin
       FLogger.Info(Format('Index wird für %d Ordner neu aufgebaut', [Length(Targets)]));
       Result := TJSONNull.Create;
     end);
+  FCommands.Register(ClearIndexCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    var
+      Workspace: TShellWorkspace;
+      Targets: TArray<TShellWorkspace>;
+      Before, Freed: Int64;
+      Removed: Integer;
+      Answer: TJSONObject;
+    begin
+      // „Index löschen“ (#492): alle Caches auf der Platte, auch anderer Projekte und IDE-Versionen;
+      // gesperrte Caches anderer Serverinstanzen bleiben. Danach die eigenen Ordner neu indizieren.
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Targets := FWorkspaces.ToArray;
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+      for Workspace in Targets do
+        Workspace.ReleaseCache;
+      Before := TIndexCacheDirectory.TotalSize(TIndexCacheDirectory.DefaultRoot);
+      Removed := TIndexCacheDirectory.Clear(TIndexCacheDirectory.DefaultRoot);
+      Freed := Before - TIndexCacheDirectory.TotalSize(TIndexCacheDirectory.DefaultRoot);
+      FLogger.Info(Format('Index gelöscht: %d Caches, %d KB; %d Ordner werden neu indiziert',
+        [Removed, Freed div 1024, Length(Targets)]));
+      for Workspace in Targets do
+        Workspace.Rebuild;
+      Answer := TJSONObject.Create;
+      Answer.AddPair('removed', TJSONNumber.Create(Removed));
+      Answer.AddPair('freedBytes', TJSONNumber.Create(Freed));
+      Result := Answer;
+    end);
   FCommands.Register(SelectBuildCommand,
     function(const AArguments: TJSONArray): TJSONValue
     var
@@ -1639,6 +1670,8 @@ begin
   Result.MemoryBytes := AllocatedBytes;
   Result.IndexBytes := FIndex.MemoryBytes;
   Result.CompactUnits := FIndex.CompactCount;
+  Result.OffloadedUnits := FIndex.OffloadedCount;
+  Result.DiskBytes := TIndexCacheDirectory.TotalSize(TIndexCacheDirectory.DefaultRoot);
   Result.BudgetBytes := FIndex.Budget;
   for Document in FDocuments.Documents do
     Result.DocumentBytes := Result.DocumentBytes + Length(Document.Text) * SizeOf(Char);
@@ -2297,6 +2330,7 @@ begin
   Commands.Add(CompileCommand);
   Commands.Add(SelectBuildCommand);
   Commands.Add(RebuildIndexCommand);
+  Commands.Add(ClearIndexCommand);
   Commands.Add(TQualifiedNames.Command);
   Commands.Add(TStringLiteralCommands.PlainTextCommand);
   Commands.Add(TStringLiteralCommands.ToLiteralCommand);

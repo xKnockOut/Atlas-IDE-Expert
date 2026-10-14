@@ -38,6 +38,8 @@ type
     MinCheckMax = 200;
     MaxCheckMax = 20000;
     MaxXmlDocLines = 50;
+    /// <summary>Speichergrenze des Symbolindex im Server (#492); 0 = unbegrenzt.</summary>
+    MaxMemoryBudgetMb = 65536;
   public
     /// <summary>Hauptschalter (#407): aus = eingebaute Code Insight der IDE.</summary>
     Enabled: Boolean;
@@ -103,6 +105,11 @@ type
     IndexProjectGroup: Boolean;
     IndexSearchPaths: Boolean;
     IndexLibraryPaths: Boolean;
+    /// <summary>Verwendungen der Bezeichner mit indizieren (#492, index.usages).</summary>
+    IndexUsages: Boolean;
+    /// <summary>Speichergrenze des Symbolindex in MB (#492, memoryBudgetMb); darüber lagert der Server
+    /// zuerst die Verwendungen aus. 0 = unbegrenzt.</summary>
+    MemoryBudgetMb: Integer;
     /// <summary>XMLDoc in Tooltip und Detailpanel vollständig (#654); aus = Kurzform. hints in atlas.json
     /// hat Vorrang.</summary>
     XmlDocFull: Boolean;
@@ -172,6 +179,8 @@ begin
   Result.IndexProjectGroup := True;
   Result.IndexSearchPaths := True;
   Result.IndexLibraryPaths := False;
+  Result.IndexUsages := True;
+  Result.MemoryBudgetMb := 256;
   Result.XmlDocFull := True;
   Result.XmlDocMaxLines := 0;
 end;
@@ -187,6 +196,7 @@ begin
   CheckOnSaveDelayMs := EnsureRange(CheckOnSaveDelayMs, MinCheckDelay, MaxCheckDelay);
   CheckOnSaveMaxMs := EnsureRange(CheckOnSaveMaxMs, MinCheckMax, MaxCheckMax);
   XmlDocMaxLines := EnsureRange(XmlDocMaxLines, 0, MaxXmlDocLines);
+  MemoryBudgetMb := EnsureRange(MemoryBudgetMb, 0, MaxMemoryBudgetMb);
   // TShortCut ist ein Word.
   PaletteKey := EnsureRange(PaletteKey, 0, $FFFF);
   CheckKey := EnsureRange(CheckKey, 0, $FFFF);
@@ -234,6 +244,8 @@ begin
   IndexProjectGroup := AStore.ReadInteger('IndexProjectGroup', BoolValue(Default.IndexProjectGroup)) <> 0;
   IndexSearchPaths := AStore.ReadInteger('IndexSearchPaths', BoolValue(Default.IndexSearchPaths)) <> 0;
   IndexLibraryPaths := AStore.ReadInteger('IndexLibraryPaths', BoolValue(Default.IndexLibraryPaths)) <> 0;
+  IndexUsages := AStore.ReadInteger('IndexUsages', BoolValue(Default.IndexUsages)) <> 0;
+  MemoryBudgetMb := AStore.ReadInteger('MemoryBudgetMb', Default.MemoryBudgetMb);
   XmlDocFull := AStore.ReadInteger('XmlDocFull', BoolValue(Default.XmlDocFull)) <> 0;
   XmlDocMaxLines := AStore.ReadInteger('XmlDocMaxLines', Default.XmlDocMaxLines);
   Normalize;
@@ -277,6 +289,8 @@ begin
   AStore.WriteInteger('IndexProjectGroup', BoolValue(IndexProjectGroup));
   AStore.WriteInteger('IndexSearchPaths', BoolValue(IndexSearchPaths));
   AStore.WriteInteger('IndexLibraryPaths', BoolValue(IndexLibraryPaths));
+  AStore.WriteInteger('IndexUsages', BoolValue(IndexUsages));
+  AStore.WriteInteger('MemoryBudgetMb', MemoryBudgetMb);
   AStore.WriteInteger('XmlDocFull', BoolValue(XmlDocFull));
   AStore.WriteInteger('XmlDocMaxLines', XmlDocMaxLines);
 end;
@@ -292,7 +306,9 @@ end;
 function TAtlasPluginSettings.ServerSettingsJson: string;
 begin
   Result := '{"index":{"projectGroup":' + JsonBool(IndexProjectGroup) + ',"searchPaths":' +
-    JsonBool(IndexSearchPaths) + ',"libraryPaths":' + JsonBool(IndexLibraryPaths) + '},"hints":{"xmlDocFull":' +
+    JsonBool(IndexSearchPaths) + ',"libraryPaths":' + JsonBool(IndexLibraryPaths) + ',"usages":' +
+    JsonBool(IndexUsages) + '},"memoryBudgetMb":' + IntToStr(EnsureRange(MemoryBudgetMb, 0, MaxMemoryBudgetMb)) +
+    ',"hints":{"xmlDocFull":' +
     JsonBool(XmlDocFull) + ',"xmlDocMaxLines":' + IntToStr(EnsureRange(XmlDocMaxLines, 0, MaxXmlDocLines)) + '}}';
 end;
 

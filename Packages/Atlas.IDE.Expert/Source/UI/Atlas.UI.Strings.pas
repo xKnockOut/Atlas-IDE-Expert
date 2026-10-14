@@ -44,7 +44,8 @@ type
     SettingsCompletionKey, SettingsSignatureKey, KeysTitle, KeysIntro, KeysHeaderFunction, KeysHeaderKey,
     KeysHeaderOwner, KeysHeaderChoice, KeysChoiceAtlas, KeysChoiceOther, KeysChoiceNewKey, KeysStatusFree,
     KeysStatusIdeKey, KeysStatusNone, KeysStatusAtlasWins, KeysStatusLeft, KeysForeign, KeysForeignNone, KeysInvalid,
-    SettingsProviderTimeLimit, SettingsFuseTitle, SettingsFuseNone, SettingsFuseEnableSelected, SettingsFuseEnableAll);
+    SettingsProviderTimeLimit, SettingsFuseTitle, SettingsFuseNone, SettingsFuseEnableSelected, SettingsFuseEnableAll,
+    CompletionLimited, SettingsIndexUsages, SettingsMemoryBudget, SettingsIndexTitle, SettingsIndexRefresh, SettingsIndexRebuild, SettingsIndexClear, SettingsIndexClearConfirm);
 
   TAtlasStrings = class
   private class var
@@ -163,7 +164,15 @@ const
      'Nach wiederholten Fehlern abgeschaltet:',
      'Keine Funktion abgeschaltet.',
      'Ausgewählte einschalten',
-     'Alle einschalten'),
+     'Alle einschalten',
+     'eingeschränkt (Index wird aufgebaut)',
+     'Verwendungen der Bezeichner mit indizieren',
+     'Speichergrenze des Index (MB, 0 = keine)',
+     'Symbolindex',
+     'Kennzahlen aktualisieren',
+     'Index neu aufbauen',
+     'Index löschen',
+     'Alle Index-Caches auf der Platte löschen? Der Index wird danach neu aufgebaut.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -259,7 +268,15 @@ const
      'Turned off after repeated errors:',
      'No feature turned off.',
      'Turn selected on',
-     'Turn all on'));
+     'Turn all on',
+     'limited (index is being built)',
+     'Index identifier usages',
+     'Index memory limit (MB, 0 = none)',
+     'Symbol index',
+     'Refresh figures',
+     'Rebuild index',
+     'Delete index',
+     'Delete all index caches on disk? The index is rebuilt afterwards.'));
 
 { TAtlasStrings }
 

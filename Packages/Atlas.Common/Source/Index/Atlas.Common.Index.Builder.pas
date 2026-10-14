@@ -62,10 +62,10 @@ type
     FIncludePaths: TArray<string>;
     FLibraryDefines: TArray<string>;
     FUsages: Boolean;
+    FLibraryRoots: TArray<string>;
     function WantsUsages(ALibrary: Boolean): Boolean;
     function CacheFits(const AEntry: TIndexCacheEntry; ALibrary: Boolean): Boolean;
     function FromCache(const AEntry: TIndexCacheEntry; ALibrary: Boolean; out AUnit: TUnitIndex): Boolean;
-    FLibraryRoots: TArray<string>;
     function IncludeResolver: TIncludeResolver;
     /// <summary>Symbole für AFileName: Dateien der Installation mit LibraryDefines, alle anderen mit
     /// denen des Projekts.</summary>

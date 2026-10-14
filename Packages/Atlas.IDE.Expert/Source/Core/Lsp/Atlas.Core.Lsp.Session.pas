@@ -157,6 +157,8 @@ type
     function RefreshCount: Integer;
     /// <summary>Laufende Indizierung o. Ä. des Servers ("Index 45 %"); '' ohne (#492).</summary>
     function ProgressText: string;
+    /// <summary>Statusleiste: "Atlas indiziert … (45 %)"; '' ohne laufenden Vorgang (#492).</summary>
+    function IndexingText: string;
     /// <summary>workspace/executeCommand; Ergebnis gehört dem Aufrufer (nil bei Fehler oder Zeitlimit).</summary>
     function ExecuteCommand(const ACommand: string; ATimeoutMs: Cardinal): TJSONValue; overload;
     /// <summary>Wie oben mit Argumenten; übernimmt AArguments.</summary>
@@ -649,6 +651,11 @@ end;
 function TLspSession.ProgressText: string;
 begin
   Result := FProgress.Text;
+end;
+
+function TLspSession.IndexingText: string;
+begin
+  Result := FProgress.IndexingText;
 end;
 
 function TLspSession.ExecuteCommand(const ACommand: string; ATimeoutMs: Cardinal): TJSONValue;

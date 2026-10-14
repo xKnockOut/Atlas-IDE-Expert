@@ -41,6 +41,7 @@ uses
   Atlas.IDE.Build.CheckOnSave,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Commands.MainMenu,
+  Atlas.IDE.Editor.IndexStatus,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Diagnostics.TimeLimit,
@@ -61,6 +62,7 @@ var
   CheckOnSave: TAtlasIdeCheckOnSave;
   // Hauptmenü Atlas mit Schnellschaltern und Einstellungen (#227).
   MainMenu: TAtlasMainMenu;
+  IndexStatusBar: TAtlasIndexStatusBar;
   // Eigene Tasten für Vervollständigung und Parameter-Hint (#494); ohne Einstellung keine.
   CompletionKey: TAtlasIdeKeyBinding;
   SignatureKey: TAtlasIdeKeyBinding;
@@ -396,6 +398,16 @@ begin
       begin
         GuardWarning(AText);
       end);
+  // „Atlas indiziert … (n %)“ in der Statusleiste des Editors (#492).
+  if IndexStatusBar = nil then
+    IndexStatusBar := TAtlasIndexStatusBar.Create(
+      function: string
+      begin
+        if Manager <> nil then
+          Result := Manager.ServerIndexingText
+        else
+          Result := '';
+      end);
   if DirtyExport = nil then
     DirtyExport := TAtlasDirtyExport.Create;
   // Eigene Blocklinien: Strukturhervorhebung der IDE abgleichen (#514).
@@ -423,6 +435,14 @@ begin
     procedure
     begin
       TAtlasIdeHistory.Reset;
+    end,
+    function(ACommand: string): TJSONValue
+    begin
+      // Kennzahlen, „Index neu aufbauen“ und „Index löschen“ der Einstellungsseite (#492).
+      if Manager <> nil then
+        Result := Manager.ExecuteServerCommand(ACommand)
+      else
+        Result := nil;
     end);
 end;
 
@@ -441,6 +461,7 @@ begin
   FreeAndNil(SignatureKey);
   FreeAndNil(CompletionKey);
   FreeAndNil(DirtyExport);
+  FreeAndNil(IndexStatusBar);
   FreeAndNil(MainMenu);
   FreeAndNil(Pairs);
   FreeAndNil(CheckOnSave);

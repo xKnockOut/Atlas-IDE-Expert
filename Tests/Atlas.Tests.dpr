@@ -43,6 +43,7 @@ uses
   Atlas.Common.Index.NameIndex.Tests in 'Common\Index\Atlas.Common.Index.NameIndex.Tests.pas',
   Atlas.Common.Index.CacheHousekeeping.Tests in 'Common\Index\Atlas.Common.Index.CacheHousekeeping.Tests.pas',
   Atlas.Common.Index.Memory.Tests in 'Common\Index\Atlas.Common.Index.Memory.Tests.pas',
+  Atlas.Common.Index.Content.Tests in 'Common\Index\Atlas.Common.Index.Content.Tests.pas',
   Atlas.Common.Semantics.ControlFlow.Tests in 'Common\Semantics\Atlas.Common.Semantics.ControlFlow.Tests.pas',
   Atlas.Common.Semantics.NameResolver.Tests in 'Common\Semantics\Atlas.Common.Semantics.NameResolver.Tests.pas',
   Atlas.Common.Semantics.Attributes.Tests in 'Common\Semantics\Atlas.Common.Semantics.Attributes.Tests.pas',
