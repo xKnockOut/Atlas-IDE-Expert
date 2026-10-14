@@ -33,7 +33,7 @@ type
     class function Between(const AOld, ANew: string): TLspTextChange; static;
     /// <summary>Position zum Zeichenindex (0-basiert) in AText.</summary>
     class function PositionOf(const AText: string; AOffset: Integer): TLspTextPosition; static;
-    /// <summary>Zeichenindex (0-basiert) zur Position; für Tests und Gegenproben.</summary>
+    /// <summary>Zeichenindex (0-basiert) zur Position; hinter dem Zeilenende das Zeilenende.</summary>
     class function OffsetOf(const AText: string; const APosition: TLspTextPosition): Integer; static;
   end;
 
@@ -78,7 +78,7 @@ end;
 
 class function TLspTextChanges.OffsetOf(const AText: string; const APosition: TLspTextPosition): Integer;
 var
-  Line: Integer;
+  Line, LineEnd: Integer;
 begin
   Result := 0;
   Line := 0;
@@ -94,9 +94,13 @@ begin
       Inc(Line);
     Inc(Result);
   end;
+  // Hinter dem Zeilenende zählt das Zeilenende, wie beim Server (LSP).
+  LineEnd := Result;
+  while (LineEnd < Length(AText)) and (AText[LineEnd + 1] <> #13) and (AText[LineEnd + 1] <> #10) do
+    Inc(LineEnd);
   Inc(Result, APosition.Character);
-  if Result > Length(AText) then
-    Result := Length(AText);
+  if Result > LineEnd then
+    Result := LineEnd;
 end;
 
 class function TLspTextChanges.Between(const AOld, ANew: string): TLspTextChange;

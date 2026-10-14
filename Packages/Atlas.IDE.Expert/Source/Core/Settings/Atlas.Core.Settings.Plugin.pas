@@ -75,6 +75,9 @@ type
     PairColors: Boolean;
     /// <summary>Inaktive {$IFDEF}-Zweige im Editor ausgrauen (#615).</summary>
     InactiveDim: Boolean;
+    /// <summary>Änderungen des Servers an nicht geöffneten Dateien: im Editor öffnen (an) oder
+    /// direkt auf die Platte schreiben (aus, #397).</summary>
+    OpenForEdits: Boolean;
     /// <summary>Pfad zu AtlasServer.exe; leer: neben dem Plugin bzw. Output\Win64\Debug\Bin.</summary>
     ServerPath: string;
     /// <summary>Blocklinien in den Paarfarben statt der Strukturhervorhebung der IDE (#514).</summary>
@@ -132,6 +135,7 @@ begin
   Result.ReloadExternal := True;
   Result.PairColors := True;
   Result.InactiveDim := True;
+  Result.OpenForEdits := True;
   Result.ServerPath := '';
   Result.PairGuides := True;
   Result.Problems := True;
@@ -178,6 +182,7 @@ begin
   ReloadExternal := AStore.ReadInteger('ReloadExternal', BoolValue(Default.ReloadExternal)) <> 0;
   PairColors := AStore.ReadInteger('PairColors', BoolValue(Default.PairColors)) <> 0;
   InactiveDim := AStore.ReadInteger('InactiveDim', BoolValue(Default.InactiveDim)) <> 0;
+  OpenForEdits := AStore.ReadInteger('OpenForEdits', BoolValue(Default.OpenForEdits)) <> 0;
   ServerPath := Trim(AStore.ReadString('ServerPath', Default.ServerPath));
   PairGuides := AStore.ReadInteger('PairGuides', BoolValue(Default.PairGuides)) <> 0;
   Problems := AStore.ReadInteger('Problems', BoolValue(Default.Problems)) <> 0;
@@ -211,6 +216,7 @@ begin
   AStore.WriteInteger('ReloadExternal', BoolValue(ReloadExternal));
   AStore.WriteInteger('PairColors', BoolValue(PairColors));
   AStore.WriteInteger('InactiveDim', BoolValue(InactiveDim));
+  AStore.WriteInteger('OpenForEdits', BoolValue(OpenForEdits));
   AStore.WriteString('ServerPath', Trim(ServerPath));
   AStore.WriteInteger('PairGuides', BoolValue(PairGuides));
   AStore.WriteInteger('Problems', BoolValue(Problems));
