@@ -2,7 +2,7 @@
 
 // Hover-Tooltip im Editor (#442) über die Code-Editor-API (ToolsAPI.Editor):
 //   - Mausbewegung im Editor → Bezeichner unter der Maus (Zeile, Wortgrenzen).
-//   - Nach 500 ms Verweilen auf demselben Bezeichner: textDocument/hover
+//   - Nach 500 ms Verweilen auf demselben Bezeichner: textDocument/hover (im Hintergrund; die IDE wartet nie auf den Server)
 //     (TLspSession.HoverData) und Tooltip unter dem Wort (Kurzform).
 //   - Schließen 300 ms nachdem die Maus Bezeichner und Tooltip verlassen hat;
 //     sofort bei Taste (außer Umschalt, Strg, Alt allein), Mausklick, Scrollen,
@@ -30,6 +30,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
+  System.Generics.Collections,
   Vcl.Controls,
   Vcl.ExtCtrls,
   ToolsAPI,
@@ -47,6 +48,12 @@ type
   /// <summary>Probleme an der Stelle (0-basiert, #398).</summary>
   TAtlasHoverProblemsFunc = reference to function(const AFileName: string; ALine, ACharacter: Integer):
     TArray<TAtlasProblem>;
+
+  /// <summary>Lebt der Tooltip noch? Hintergrund-Anfragen prüfen das, bevor sie ihr Ergebnis zeigen.</summary>
+  TAtlasHoverAlive = class(TInterfacedObject)
+  public
+    Alive: Boolean;
+  end;
 
   TAtlasEditorHover = class
   private type
@@ -83,6 +90,12 @@ type
     FProblemsAt: TAtlasHoverProblemsFunc;
     // Probleme an der Mausposition; nur Probleme, wenn dort kein Bezeichner steht.
     FProblems: TArray<TAtlasProblem>;
+    // Anfrage an den Server im Hintergrund: Die IDE friert nie ein, auch wenn er langsam ist.
+    // FRequest zählt die Anfragen; nur die jüngste wird angezeigt. FAlive endet mit dem Objekt.
+    FRequest: Integer;
+    FAlive: TAtlasHoverAlive;
+    FAliveRef: IInterface;
+    FWorkers: TList<TThread>;
     FMouseCharacter: Integer;
     FProblemsOnly: Boolean;
     // Bezeichner unter der Maus bzw. im offenen Tooltip.
@@ -102,6 +115,8 @@ type
     {$ENDIF}
     procedure EditorScrolled(const Editor: TWinControl; const Direction: TCodeEditorScrollDirection);
     procedure EditorResized(const Editor: TWinControl);
+    procedure ShowData(const AData: TAtlasHoverData);
+    procedure ReapWorkers(AWait: Boolean);
     procedure ShowTimerTick(Sender: TObject);
     procedure HideTimerTick(Sender: TObject);
     procedure WatchTimerTick(Sender: TObject);
@@ -207,6 +222,10 @@ begin
   FTip.OnAction := TipAction;
   FKeys := THoverKeys.Create(Self);
   FHistory := TAtlasHoverHistory.Create(Fetch);
+  FAlive := TAtlasHoverAlive.Create;
+  FAlive.Alive := True;
+  FAliveRef := FAlive;
+  FWorkers := TList<TThread>.Create;
   FShowTimer := TTimer.Create(nil);
   FShowTimer.Enabled := False;
   FShowTimer.Interval := 500;
@@ -248,6 +267,10 @@ begin
   FEvents.OnEditorScrolled := nil;
   FEvents.OnEditorResized := nil;
   FEventsRef := nil;
+  // Laufende Anfragen zeigen nichts mehr; auf sie warten, bevor die Sitzung wegfällt.
+  FAlive.Alive := False;
+  ReapWorkers(True);
+  FWorkers.Free;
   FShowTimer.Free;
   FHideTimer.Free;
   FWatchTimer.Free;
@@ -429,11 +452,28 @@ begin
   end;
 end;
 
+procedure TAtlasEditorHover.ReapWorkers(AWait: Boolean);
+var
+  Index: Integer;
+begin
+  for Index := FWorkers.Count - 1 downto 0 do
+    if AWait or FWorkers[Index].Finished then
+    begin
+      FWorkers[Index].WaitFor;
+      FWorkers[Index].Free;
+      FWorkers.Delete(Index);
+    end;
+end;
+
 procedure TAtlasEditorHover.ShowTimerTick(Sender: TObject);
 var
   Session: TLspSession;
-  Text: string;
-  Data: TAtlasHoverData;
+  Text, FileName, Key: string;
+  Line, Character, Request: Integer;
+  Owner: TAtlasEditorHover;
+  Alive: TAtlasHoverAlive;
+  AliveRef: IInterface;
+  Worker: TThread;
 begin
   // Durch die Sicherung abgeschaltet (#493).
   if TAtlasGuard.Disabled(TAtlasFeature.Hover) then
@@ -445,30 +485,57 @@ begin
     FProblems := nil;
     if Assigned(FProblemsAt) then
       FProblems := FProblemsAt(FView.Buffer.FileName, FLine - 1, FMouseCharacter);
-    Data := Default(TAtlasHoverData);
+    Session := nil;
     if not FProblemsOnly then
-    begin
       Session := CurrentSession;
-      if Session <> nil then
-      begin
-        Text := TAtlasEditorBuffer.Text(FView.Buffer);
-        Data := Session.HoverData(FView.Buffer.FileName, Text, FLine - 1, FStart);
-      end;
-    end;
-    if not Data.Found and (Length(FProblems) = 0) then
+    if Session = nil then
     begin
-      Hide;
+      ShowData(Default(TAtlasHoverData));
       Exit;
     end;
-    FHistory.Start(Data);
-    FUsagesCount := -1;
-    TAtlasIdeStyle.Apply(FTip, FWordRect);
-    FTip.ShowContent(CurrentView, FWordRect);
-    TAtlasKeyHook.Add(FKeys);
-    FShownKey := FKey;
-    FShownFocus := GetFocus;
-    FHideTimer.Enabled := False;
-    FWatchTimer.Enabled := True;
+    // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
+    Text := TAtlasEditorBuffer.Text(FView.Buffer);
+    FileName := FView.Buffer.FileName;
+    Session.Sync(FileName, Text);
+    ReapWorkers(False);
+    Inc(FRequest);
+    Request := FRequest;
+    Key := FKey;
+    Line := FLine - 1;
+    Character := FStart;
+    Owner := Self;
+    Alive := FAlive;
+    AliveRef := FAliveRef;
+    Worker := TThread.CreateAnonymousThread(
+      procedure
+      var
+        Data: TAtlasHoverData;
+        Show: TThreadProcedure;
+      begin
+        Data := Default(TAtlasHoverData);
+        try
+          Data := Session.HoverDataAt(FileName, Line, Character);
+        except
+          // Server langsam oder weg: kein Tooltip, die IDE wartet nie darauf.
+          Data := Default(TAtlasHoverData);
+        end;
+        Show :=
+          procedure
+          begin
+            // Nur die jüngste Anfrage und nur, solange die Maus noch auf demselben Wort steht.
+            if not Alive.Alive or (AliveRef = nil) or (Owner.FRequest <> Request) or (Owner.FKey <> Key) then
+              Exit;
+            TAtlasGuard.Run(TAtlasFeature.Hover,
+              procedure
+              begin
+                Owner.ShowData(Data);
+              end);
+          end;
+        TThread.Queue(nil, Show);
+      end);
+    Worker.FreeOnTerminate := False;
+    FWorkers.Add(Worker);
+    Worker.Start;
   except
     on E: Exception do
     begin
@@ -476,6 +543,26 @@ begin
       TAtlasGuard.Report(TAtlasFeature.Hover, E);
     end;
   end;
+end;
+
+procedure TAtlasEditorHover.ShowData(const AData: TAtlasHoverData);
+begin
+  if (FView = nil) or not Application.Active then
+    Exit;
+  if not AData.Found and (Length(FProblems) = 0) then
+  begin
+    Hide;
+    Exit;
+  end;
+  FHistory.Start(AData);
+  FUsagesCount := -1;
+  TAtlasIdeStyle.Apply(FTip, FWordRect);
+  FTip.ShowContent(CurrentView, FWordRect);
+  TAtlasKeyHook.Add(FKeys);
+  FShownKey := FKey;
+  FShownFocus := GetFocus;
+  FHideTimer.Enabled := False;
+  FWatchTimer.Enabled := True;
 end;
 
 procedure TAtlasEditorHover.WatchTimerTick(Sender: TObject);

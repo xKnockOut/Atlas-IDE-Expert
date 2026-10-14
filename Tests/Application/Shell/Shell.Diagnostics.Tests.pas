@@ -131,6 +131,9 @@ procedure TShellDiagnosticsTests.TearDown;
 begin
   if TDirectory.Exists(FRoot) then
     TDirectory.Delete(FRoot, True);
+  // Strings aus Setup freigeben, sonst zählt der Lecktest sie mit.
+  FRoot := '';
+  FLogFolder := '';
 end;
 
 procedure TShellDiagnosticsTests.RunSession(AEnabled: Boolean);

@@ -482,7 +482,8 @@ begin
   try
     Session.Initialize;
     Assert.Contains(Capabilities, '"diagnostic":{"dynamicRegistration":false');
-    Assert.Contains(Capabilities, '"workspace":{"diagnostics":{"refreshSupport":true}}');
+    // Seit #648 meldet der Client unter "workspace" auch workspaceFolders; geprüft wird nur refreshSupport.
+    Assert.Contains(Capabilities, '"diagnostics":{"refreshSupport":true}');
     Assert.AreEqual(0, Session.RefreshCount);
     Client.Receive(TLspClient.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}'),
       Length(TLspClient.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}')));

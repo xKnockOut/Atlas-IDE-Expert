@@ -424,7 +424,7 @@ const
     '        },',
     '        "libraryPaths": {',
     '          "type": "boolean",',
-    '          "default": true,',
+    '          "default": false,',
     '          "description": "Alle Units der Bibliotheks- und Suchpfade der Installation indizieren (RTL, VCL, Komponenten); aus = nur über uses erreichbare."',
     '        },',
     '        "exclude": {',

@@ -847,7 +847,6 @@ var
   UnitInfo: TUnitIndex;
   List: TList<TScoredItem>;
   Scored: TScoredItem;
-  Index: Integer;
   SourceFile: string;
   SourcePosition: TTextPosition;
   OwnUnit: string;
