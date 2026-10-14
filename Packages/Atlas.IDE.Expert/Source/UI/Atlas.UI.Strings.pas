@@ -56,7 +56,8 @@ type
     GuardFooterKeys,
     SettingsSnippets, PlaceholderFooter,
     SettingsIndexGroup, SettingsIndexSearch, SettingsIndexLibrary,
-    SettingsImportIdeTemplates, SnippetsOriginBuiltIn, SnippetsOriginIde, SnippetsOriginUser, SnippetsPrefix, SnippetsName, SnippetsDescription, SnippetsBody, SnippetsNew, SnippetsCopy, SnippetsDelete, SnippetsReadOnly, SnippetsInvalid, SnippetsPrefixMissing, SnippetsPrefixTwice, SnippetsBodyMissing);
+    SettingsImportIdeTemplates, SnippetsOriginBuiltIn, SnippetsOriginIde, SnippetsOriginUser, SnippetsPrefix, SnippetsName, SnippetsDescription, SnippetsBody, SnippetsNew, SnippetsCopy, SnippetsDelete, SnippetsReadOnly, SnippetsInvalid, SnippetsPrefixMissing, SnippetsPrefixTwice, SnippetsBodyMissing,
+    SnippetsPrefixInvalid, SnippetsReplaced);
 
   TAtlasStrings = class
   private class var
@@ -203,7 +204,9 @@ const
      'Code-Vorlage „%s“: %s',
      'Kürzel fehlt',
      'Kürzel kommt zweimal vor',
-     'Text fehlt'),
+     'Text fehlt',
+     'Kürzel: nur Buchstaben, Ziffern und _',
+     'ersetzt'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -331,7 +334,9 @@ const
      'Snippet "%s": %s',
      'prefix missing',
      'prefix used twice',
-     'text missing'));
+     'text missing',
+     'prefix: letters, digits and _ only',
+     'replaced'));
 
 { TAtlasStrings }
 

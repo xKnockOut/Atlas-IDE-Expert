@@ -33,6 +33,20 @@ type
     procedure FormatRoundTrips;
   end;
 
+  /// <summary>Datenmodell der Seite „Snippets“ (#51).</summary>
+  [TestFixture]
+  TAtlasSnippetCatalogTests = class
+  public
+    [Test]
+    procedure ListsAllWithOriginAndReplacement;
+    [Test]
+    procedure OnlyOwnAreEditable;
+    [Test]
+    procedure ValidatesOwnSnippets;
+    [Test]
+    procedure SavesChangedAndDeletesRemoved;
+  end;
+
   /// <summary>Live Templates der IDE (#51).</summary>
   [TestFixture]
   TAtlasLiveTemplatesTests = class
@@ -92,6 +106,7 @@ uses
   Atlas.Tests.RuleAssert,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Completion.LiveTemplates,
+  Atlas.Core.Completion.SnippetCatalog,
   Atlas.Core.Completion.Placeholders,
   Atlas.Core.Completion.Providers.Snippets;
 
@@ -516,6 +531,150 @@ begin
   Assert.AreEqual('a_b.atlas-snippet', TAtlasSnippets.FileNameFor('a\b'));
 end;
 
+{ TAtlasSnippetCatalogTests }
+
+function OwnSnippet(const APrefix, ABody: string): TAtlasSnippet;
+begin
+  Result := Default(TAtlasSnippet);
+  Result.Prefix := APrefix;
+  Result.Name := APrefix;
+  Result.Body := ABody;
+  Result.Origin := TAtlasSnippetOrigin.User;
+end;
+
+procedure TAtlasSnippetCatalogTests.ListsAllWithOriginAndReplacement;
+var
+  Catalog: TAtlasSnippetCatalog;
+  Ide: TAtlasSnippet;
+  Index: Integer;
+begin
+  Ide := OwnSnippet('forin', 'IDE;');
+  Ide.Origin := TAtlasSnippetOrigin.Ide;
+  Catalog := TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, [Ide], [OwnSnippet('tryf', 'X;')]);
+  try
+    Assert.AreEqual(Integer(Length(TAtlasSnippets.BuiltIn)) + 2, Catalog.Count);
+    Assert.IsTrue(Catalog.Entry(0).Snippet.Origin = TAtlasSnippetOrigin.User);
+    Assert.IsTrue(Catalog.Entry(1).Snippet.Origin = TAtlasSnippetOrigin.Ide);
+    Assert.IsFalse(Catalog.Replaced(0));
+    Assert.IsFalse(Catalog.Replaced(1));
+    for Index := 2 to Catalog.Count - 1 do
+      if SameText(Catalog.Entry(Index).Snippet.Prefix, 'tryf') or
+        SameText(Catalog.Entry(Index).Snippet.Prefix, 'forin') then
+        Assert.IsTrue(Catalog.Replaced(Index), Catalog.Entry(Index).Snippet.Prefix)
+      else
+        Assert.IsFalse(Catalog.Replaced(Index), Catalog.Entry(Index).Snippet.Prefix);
+  finally
+    Catalog.Free;
+  end;
+end;
+
+procedure TAtlasSnippetCatalogTests.OnlyOwnAreEditable;
+var
+  Catalog: TAtlasSnippetCatalog;
+  Changed: TAtlasSnippet;
+  Index, Last: Integer;
+begin
+  Catalog := TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, nil, nil);
+  try
+    Last := Catalog.Count - 1;
+    Assert.IsFalse(Catalog.Editable(Last));
+    Changed := Catalog.Entry(Last).Snippet;
+    Changed.Body := 'geändert';
+    Catalog.Update(Last, Changed);
+    Assert.AreNotEqual('geändert', Catalog.Entry(Last).Snippet.Body);
+    Assert.IsFalse(Catalog.Modified);
+    // Kopie als eigene: steht vorn, gleiches Kürzel, ersetzt das Original.
+    Index := Catalog.CopyAsOwn(Last);
+    Assert.AreEqual(0, Index);
+    Assert.IsTrue(Catalog.Editable(0));
+    Assert.AreEqual(Catalog.Entry(Last + 1).Snippet.Prefix, Catalog.Entry(0).Snippet.Prefix);
+    Assert.IsTrue(Catalog.Replaced(Last + 1));
+    Assert.IsTrue(Catalog.Modified);
+    // Neue eigene: freies Kürzel, hinter den eigenen.
+    Index := Catalog.AddNew;
+    Assert.AreEqual(1, Index);
+    Assert.AreEqual('neu', Catalog.Entry(1).Snippet.Prefix);
+    Assert.AreEqual('neu2', Catalog.Entry(Catalog.AddNew).Snippet.Prefix);
+    Catalog.Delete(1);
+    Assert.AreEqual('neu2', Catalog.Entry(1).Snippet.Prefix);
+  finally
+    Catalog.Free;
+  end;
+end;
+
+procedure TAtlasSnippetCatalogTests.ValidatesOwnSnippets;
+var
+  Catalog: TAtlasSnippetCatalog;
+  Problems: TArray<TAtlasSnippetProblem>;
+begin
+  Catalog := TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, nil,
+    [OwnSnippet('a', 'X;'), OwnSnippet('A', 'Y;'), OwnSnippet('', 'Z;'), OwnSnippet('b-c', ' '),
+     OwnSnippet('tryf', 'W;')]);
+  try
+    Assert.IsFalse(Catalog.Validate(Problems));
+    Assert.AreEqual(4, Integer(Length(Problems)));
+    Assert.AreEqual(1, Problems[0].Index);
+    Assert.IsTrue(Problems[0].Kind = TAtlasSnippetProblemKind.PrefixTwice);
+    Assert.IsTrue(Problems[1].Kind = TAtlasSnippetProblemKind.PrefixMissing);
+    Assert.IsTrue(Problems[2].Kind = TAtlasSnippetProblemKind.PrefixInvalid);
+    Assert.IsTrue(Problems[3].Kind = TAtlasSnippetProblemKind.BodyMissing);
+    // Gleiches Kürzel wie eine mitgelieferte ist erlaubt: die eigene ersetzt sie.
+    Assert.AreEqual(3, Problems[3].Index);
+  finally
+    Catalog.Free;
+  end;
+end;
+
+procedure TAtlasSnippetCatalogTests.SavesChangedAndDeletesRemoved;
+var
+  Folder: string;
+  Catalog: TAtlasSnippetCatalog;
+  Loaded: TAtlasSnippetList;
+  Errors: TArray<string>;
+  Changed: TAtlasSnippet;
+begin
+  Folder := TPath.Combine(TPath.GetTempPath, 'AtlasCatalog' + IntToStr(Random(1000000)));
+  try
+    Catalog := TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, nil, nil);
+    try
+      Changed := Catalog.Entry(Catalog.AddNew).Snippet;
+      Changed.Prefix := 'liste';
+      Changed.Description := 'Liste anlegen';
+      Changed.Body := '${1:L} := TStringList.Create;$0';
+      Catalog.Update(0, Changed);
+      Catalog.AddNew;
+      Catalog.Save(Folder);
+      Assert.IsFalse(Catalog.Modified);
+    finally
+      Catalog.Free;
+    end;
+    Loaded := TAtlasSnippets.LoadFolder(Folder, Errors);
+    Assert.AreEqual(0, Integer(Length(Errors)));
+    Assert.AreEqual(2, Integer(Length(Loaded)));
+    Assert.IsTrue(FileExists(TPath.Combine(Folder, 'liste.atlas-snippet')));
+    // Löschen entfernt die Datei; das Umbenennen des Kürzels behält den Dateinamen.
+    Catalog := TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, nil, Loaded);
+    try
+      Changed := Catalog.Entry(0).Snippet;
+      Changed.Prefix := 'liste2';
+      Catalog.Update(0, Changed);
+      Catalog.Delete(1);
+      Catalog.Save(Folder);
+    finally
+      Catalog.Free;
+    end;
+    Loaded := TAtlasSnippets.LoadFolder(Folder, Errors);
+    Assert.AreEqual(1, Integer(Length(Loaded)));
+    Assert.AreEqual('liste2', Loaded[0].Prefix);
+    Assert.AreEqual('Liste anlegen', Loaded[0].Description);
+    Assert.AreEqual('${1:L} := TStringList.Create;$0', Loaded[0].Body);
+    Assert.IsTrue(FileExists(TPath.Combine(Folder, 'liste.atlas-snippet')));
+  finally
+    if TDirectory.Exists(Folder) then
+      TDirectory.Delete(Folder, True);
+  end;
+end;
+
 { TAtlasLiveTemplatesTests }
 
 function LiveTemplateFolder: string;
@@ -645,6 +804,7 @@ end;
 initialization
   TDUnitX.RegisterTestFixture(TAtlasSnippetsTests);
   TDUnitX.RegisterTestFixture(TAtlasLiveTemplatesTests);
+  TDUnitX.RegisterTestFixture(TAtlasSnippetCatalogTests);
   TDUnitX.RegisterTestFixture(TAtlasPlaceholderSessionTests);
   TDUnitX.RegisterTestFixture(TAtlasSnippetProviderTests);
 
