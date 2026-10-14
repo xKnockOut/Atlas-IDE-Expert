@@ -105,6 +105,12 @@ begin
   Assert.AreEqual(200, Settings.ProviderTimeLimitMs, 'Zeitlimit für Quellen (#493)');
   Assert.AreEqual($E041, Settings.QuickToggleKey, 'Schnellschalter: Strg+Umschalt+Alt+A (#604)');
   Assert.IsFalse(Settings.QuickToggleKeyPriority);
+  // Abgesicherter Start (#722).
+  Assert.IsTrue(Settings.SafeAskAfterCrash);
+  Assert.IsTrue(Settings.SafeAutoAfterRepeatedCrash);
+  Assert.AreEqual('shift', Settings.SafeStartupKey);
+  Assert.AreEqual(10000, Settings.SafeStartupTimeoutMs);
+  Assert.AreEqual(5, Settings.SafeKeepSettingsHistory);
 end;
 
 procedure TAtlasPluginSettingsTests.SaveAndLoadRoundTrip;
@@ -128,6 +134,11 @@ begin
   Settings.ProviderTimeLimitMs := 350;
   Settings.QuickToggleKey := $6051;
   Settings.QuickToggleKeyPriority := True;
+  Settings.SafeAskAfterCrash := False;
+  Settings.SafeAutoAfterRepeatedCrash := False;
+  Settings.SafeStartupKey := 'none';
+  Settings.SafeStartupTimeoutMs := 30000;
+  Settings.SafeKeepSettingsHistory := 0;
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
@@ -146,6 +157,11 @@ begin
   Assert.AreEqual(350, Loaded.ProviderTimeLimitMs);
   Assert.AreEqual($6051, Loaded.QuickToggleKey);
   Assert.IsTrue(Loaded.QuickToggleKeyPriority);
+  Assert.IsFalse(Loaded.SafeAskAfterCrash);
+  Assert.IsFalse(Loaded.SafeAutoAfterRepeatedCrash);
+  Assert.AreEqual('none', Loaded.SafeStartupKey);
+  Assert.AreEqual(30000, Loaded.SafeStartupTimeoutMs);
+  Assert.AreEqual(0, Loaded.SafeKeepSettingsHistory);
   Assert.AreEqual('', TAtlasPluginSettings.Defaults.ServerPath, 'Standard: leer');
 end;
 
@@ -222,6 +238,9 @@ begin
   Store.WriteInteger('PanelWidth', 5000);
   Store.WriteInteger('SignatureKey', -3);
   Store.WriteInteger('ProviderTimeLimitMs', 10);
+  Store.WriteInteger('SafeStartupTimeoutMs', 5);
+  Store.WriteInteger('SafeKeepSettingsHistory', 1000);
+  Store.WriteString('SafeStartupKey', ' Alt ');
   Settings := Default(TAtlasPluginSettings);
   Settings.Load(Store);
   Assert.AreEqual(TAtlasPluginSettings.MinProviderTimeLimit, Settings.ProviderTimeLimitMs);
@@ -229,6 +248,9 @@ begin
   Assert.AreEqual(TAtlasPluginSettings.MaxVisibleRows, Settings.VisibleRows);
   Assert.AreEqual(TAtlasPluginSettings.MinListWidth, Settings.ListWidth);
   Assert.AreEqual(TAtlasPluginSettings.MaxPanelWidth, Settings.PanelWidth);
+  Assert.AreEqual(TAtlasPluginSettings.MinSafeStartupTimeout, Settings.SafeStartupTimeoutMs);
+  Assert.AreEqual(TAtlasPluginSettings.MaxSafeSettingsHistory, Settings.SafeKeepSettingsHistory);
+  Assert.AreEqual('shift', Settings.SafeStartupKey, 'unbekannte Taste: Umschalt');
 end;
 
 initialization

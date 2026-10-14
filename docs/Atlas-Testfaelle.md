@@ -357,6 +357,27 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 | QS12 | Befehlspalette: „Atlas: Klammerfarben ein/aus“, „Atlas: Alles aus für diese Sitzung“, „Atlas: Schnellschalter öffnen“ | Wie die Klicks im Fenster bzw. Fenster öffnet unten links im aktiven Fenster, wenn kein Statusfeld da ist |
 | QS13 | Menü Atlas › „Klammerfarben“ | Häkchen wie im Fenster; Umschalten wirkt wie dort |
 
+## Abgesicherter Start (#722)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AS1 | IDE mit Atlas starten, `%LOCALAPPDATA%\Atlas\Session` öffnen | Datei `session-<Prozessnummer>.json` mit Version, Startzeit, `loaded: true`, Ladezeit und aktiven Funktionen |
+| AS2 | IDE normal beenden | Die Marke ist weg; `safemode.json` hat `crashCount: 0` |
+| AS3 | IDE starten, im Taskmanager `bds.exe` beenden, IDE neu starten | Unten rechts das Fenster „Atlas: abgesicherter Start“ mit „Die letzte Sitzung wurde unerwartet beendet…“ und den Knöpfen „Abgesichert starten“, „Normal starten“, „Details“; die IDE ist währenddessen bedienbar; im Atlas-Feld eine gelbe Zeile „Abgesichert gestartet“ |
+| AS4 | Bei AS3 „Details“ | Version, Start, Ladezeit, aktive Funktionen und Fehler der abgestürzten Sitzung, darunter ihr Protokoll ohne Pfade und Namen; „Diagnoselog exportieren…“ öffnet die Vorschau aus #647 |
+| AS5 | Bei AS3 „Abgesichert starten“ | Fenster wechselt auf „Atlas läuft abgesichert…“ mit „Normal weiterarbeiten“, „Schnellschalter…“; keine Klammerfarben, Blocklinien, Unterstreichungen; Vervollständigung kommt von der IDE; Tools › Optionen › Atlas zeigt die gespeicherten Werte unverändert |
+| AS6 | Bei AS5 „Schnellschalter…“, „Klammerfarben“ anklicken | Klammerfarben erscheinen sofort, der Rest bleibt aus |
+| AS7 | Bei AS5 „Normal weiterarbeiten“ | Meldung „Atlas: abgesicherter Start beendet, alle Funktionen wieder an.“; alles wie im normalen Betrieb ohne Neustart, gelbe Zeile weg |
+| AS8 | Bei AS3 „Normal starten“ | Wie AS7 |
+| AS9 | Zweimal hintereinander (innerhalb von 10 Minuten) wie AS3 abbrechen | Beim dritten Start keine Rückfrage, Fenster „Die IDE ist zweimal kurz hintereinander abgestürzt…“, Atlas läuft abgesichert |
+| AS10 | Eine Einstellung ändern (z. B. Blocklinien aus), danach wie AS3 abbrechen, „Abgesichert starten“ | Vorschlag nennt „Blocklinien“ zuerst; Knopf „Einstellungen auf den Stand vor … zurücksetzen“ stellt den alten Wert wieder her und meldet es |
+| AS11 | Umschalt beim Start der IDE gedrückt halten, bis die Packages geladen sind | Fenster „Atlas wurde abgesichert gestartet (Taste beim Laden)…“; nur Optionsseite und Atlas-Feld, kein Menü Atlas, keine Palette, keine Vervollständigung von Atlas |
+| AS12 | `bds.exe -AtlasSafeMode` bzw. `set ATLAS_SAFE_MODE=1` und IDE starten | Wie AS11 mit „Kommandozeile bzw. ATLAS_SAFE_MODE“ |
+| AS13 | Optionen › Abgesicherter Start: Taste „Strg“; Umschalt bzw. Strg beim Start | Umschalt tut nichts, Strg wirkt wie AS11 |
+| AS14 | Optionen: Längste Ladezeit 1000, IDE mit großem Projekt neu starten (Laden dauert länger), dann noch einmal neu starten | Beim zweiten Start Rückfrage mit „Der letzte Start von Atlas dauerte länger als 1000 ms.“ |
+| AS15 | Optionen: beide Kästchen aus, Taste „keine“; AS3, AS9, AS11 wiederholen | Nie eine Rückfrage, Atlas startet immer normal |
+| AS16 | Zwei IDEs gleichzeitig starten, eine normal beenden, die andere offen lassen; dritte IDE starten | Keine Rückfrage: die laufende IDE gilt nicht als Absturz |
+
 ## Schließen der Atlas-Fenster (#414)
 
 | Nr. | Schritte | Erwartet |

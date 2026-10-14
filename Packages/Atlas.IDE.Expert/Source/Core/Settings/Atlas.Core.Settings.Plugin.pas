@@ -40,6 +40,10 @@ type
     MaxXmlDocLines = 50;
     /// <summary>Speichergrenze des Symbolindex im Server (#492); 0 = unbegrenzt.</summary>
     MaxMemoryBudgetMb = 65536;
+    /// <summary>Grenzen für safeMode.startupTimeoutMs und safeMode.keepSettingsHistory (#722).</summary>
+    MinSafeStartupTimeout = 1000;
+    MaxSafeStartupTimeout = 120000;
+    MaxSafeSettingsHistory = 50;
   public
     /// <summary>Hauptschalter (#407): aus = eingebaute Code Insight der IDE.</summary>
     Enabled: Boolean;
@@ -126,6 +130,18 @@ type
     /// bei den anderen Atlas-Tasten (#494).</summary>
     QuickToggleKey: Integer;
     QuickToggleKeyPriority: Boolean;
+    /// <summary>Abgesicherter Start (#722): nach einem Absturz fragen (safeMode.askAfterCrash).</summary>
+    SafeAskAfterCrash: Boolean;
+    /// <summary>Nach zwei Abstürzen kurz hintereinander ohne Rückfrage abgesichert
+    /// (safeMode.autoAfterRepeatedCrash).</summary>
+    SafeAutoAfterRepeatedCrash: Boolean;
+    /// <summary>Taste beim Laden für den abgesicherten Start: shift, ctrl, none (safeMode.startupKey).</summary>
+    SafeStartupKey: string;
+    /// <summary>Längste Ladezeit; länger gilt beim nächsten Start wie ein Absturz
+    /// (safeMode.startupTimeoutMs).</summary>
+    SafeStartupTimeoutMs: Integer;
+    /// <summary>Gemerkte Einstellungsstände zum Zurücksetzen (safeMode.keepSettingsHistory).</summary>
+    SafeKeepSettingsHistory: Integer;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -199,6 +215,11 @@ begin
   Result.StatusFieldSummary := True;
   Result.QuickToggleKey := $E041; // Strg+Umschalt+Alt+A
   Result.QuickToggleKeyPriority := False;
+  Result.SafeAskAfterCrash := True;
+  Result.SafeAutoAfterRepeatedCrash := True;
+  Result.SafeStartupKey := 'shift';
+  Result.SafeStartupTimeoutMs := 10000;
+  Result.SafeKeepSettingsHistory := 5;
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -219,6 +240,11 @@ begin
   CompletionKey := EnsureRange(CompletionKey, 0, $FFFF);
   SignatureKey := EnsureRange(SignatureKey, 0, $FFFF);
   QuickToggleKey := EnsureRange(QuickToggleKey, 0, $FFFF);
+  SafeStartupTimeoutMs := EnsureRange(SafeStartupTimeoutMs, MinSafeStartupTimeout, MaxSafeStartupTimeout);
+  SafeKeepSettingsHistory := EnsureRange(SafeKeepSettingsHistory, 0, MaxSafeSettingsHistory);
+  SafeStartupKey := LowerCase(Trim(SafeStartupKey));
+  if (SafeStartupKey <> 'shift') and (SafeStartupKey <> 'ctrl') and (SafeStartupKey <> 'none') then
+    SafeStartupKey := 'shift';
 end;
 
 procedure TAtlasPluginSettings.Load(const AStore: IAtlasSettingsStore);
@@ -271,6 +297,12 @@ begin
   QuickToggleKey := AStore.ReadInteger('QuickToggleKey', Default.QuickToggleKey);
   QuickToggleKeyPriority :=
     AStore.ReadInteger('QuickToggleKeyPriority', BoolValue(Default.QuickToggleKeyPriority)) <> 0;
+  SafeAskAfterCrash := AStore.ReadInteger('SafeAskAfterCrash', BoolValue(Default.SafeAskAfterCrash)) <> 0;
+  SafeAutoAfterRepeatedCrash :=
+    AStore.ReadInteger('SafeAutoAfterRepeatedCrash', BoolValue(Default.SafeAutoAfterRepeatedCrash)) <> 0;
+  SafeStartupKey := AStore.ReadString('SafeStartupKey', Default.SafeStartupKey);
+  SafeStartupTimeoutMs := AStore.ReadInteger('SafeStartupTimeoutMs', Default.SafeStartupTimeoutMs);
+  SafeKeepSettingsHistory := AStore.ReadInteger('SafeKeepSettingsHistory', Default.SafeKeepSettingsHistory);
   Normalize;
 end;
 
@@ -321,6 +353,11 @@ begin
   AStore.WriteInteger('StatusFieldSummary', BoolValue(StatusFieldSummary));
   AStore.WriteInteger('QuickToggleKey', QuickToggleKey);
   AStore.WriteInteger('QuickToggleKeyPriority', BoolValue(QuickToggleKeyPriority));
+  AStore.WriteInteger('SafeAskAfterCrash', BoolValue(SafeAskAfterCrash));
+  AStore.WriteInteger('SafeAutoAfterRepeatedCrash', BoolValue(SafeAutoAfterRepeatedCrash));
+  AStore.WriteString('SafeStartupKey', SafeStartupKey);
+  AStore.WriteInteger('SafeStartupTimeoutMs', SafeStartupTimeoutMs);
+  AStore.WriteInteger('SafeKeepSettingsHistory', SafeKeepSettingsHistory);
 end;
 
 function JsonBool(AValue: Boolean): string;

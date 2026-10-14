@@ -8,12 +8,16 @@
 // gespeicherten mit den Sitzungswerten darüber (nur für diese Sitzung, „Alles
 // aus“); Stored die gespeicherten für Optionsseite und Update. Sitzungswerte
 // landen nie in der Registry.
+// Abgesicherter Start (#722): Vor jeder gespeicherten Änderung kommt der alte
+// Stand in die Einstellungsstände (%APPDATA%\Atlas\settings-history.json),
+// höchstens safeMode.keepSettingsHistory; Restore setzt auf einen davon zurück.
 
 interface
 
 uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.History,
   Atlas.Core.Settings.QuickToggles;
 
 type
@@ -25,10 +29,13 @@ type
     FToggles: TArray<TAtlasQuickToggle>;
     FTogglesEnglish: Boolean;
     FTogglesBuilt: Boolean;
+    FHistory: TAtlasSettingsHistory;
     FOnChanged: TProc;
     FLoaded: Boolean;
     class procedure EnsureLoaded; static;
     class procedure Changed; static;
+    class function HistoryFile: string; static;
+    class procedure SaveHistory; static;
   public
     /// <summary>Wirksame Werte: gespeichert, darüber die Sitzungswerte der Schnellschalter (#604).</summary>
     class function Current: TAtlasPluginSettings; static;
@@ -43,6 +50,13 @@ type
     class function SessionFlag(const AKey: string; out AValue: Boolean): Boolean; static;
     /// <summary>Schnellschalter aus Plugin-Katalog und atlas.schema.json in der Sprache der Oberfläche.</summary>
     class function QuickToggles: TArray<TAtlasQuickToggle>; static;
+    /// <summary>Gemerkte Einstellungsstände, neuester zuerst (#722).</summary>
+    class function History: TAtlasSettingsHistory; static;
+    /// <summary>Gespeicherte Einstellungen auf Stand AIndex zurücksetzen; der jetzige Stand wird selbst
+    /// gemerkt.</summary>
+    class procedure Restore(AIndex: Integer); static;
+    /// <summary>Beim Entladen: Einstellungsstände freigeben.</summary>
+    class procedure Release; static;
     /// <summary>Für Diagnose und Tests: beim nächsten Zugriff neu lesen.</summary>
     class procedure Reload; static;
     /// <summary>Nach Update (Optionsseite, Menü Atlas): z. B. Tastenkürzel neu belegen (#494).</summary>
@@ -56,6 +70,8 @@ implementation
 
 uses
   Winapi.Windows,
+  System.IOUtils,
+  System.DateUtils,
   System.Win.Registry,
   Atlas.Core.Settings.SchemaData,
   Atlas.UI.Strings;
@@ -185,9 +201,20 @@ end;
 class procedure TAtlasIdeSettings.Update(const ASettings: TAtlasPluginSettings);
 var
   Store: IAtlasSettingsStore;
+  Next: TAtlasPluginSettings;
 begin
-  FStored := ASettings;
-  FStored.Normalize;
+  EnsureLoaded;
+  Next := ASettings;
+  Next.Normalize;
+  // Alten Stand merken (#722); Fehler beim Schreiben der Datei stören das Speichern nicht.
+  try
+    History.Push(FStored, Next, TTimeZone.Local.ToUniversalTime(Now), Next.SafeKeepSettingsHistory);
+    SaveHistory;
+  except
+    on Exception do
+      ;
+  end;
+  FStored := Next;
   FLoaded := True;
   Store := TRegistryStore.Create(True);
   FStored.Save(Store);
@@ -209,6 +236,46 @@ end;
 class function TAtlasIdeSettings.SessionFlag(const AKey: string; out AValue: Boolean): Boolean;
 begin
   Result := FSession.TryGet(AKey, AValue);
+end;
+
+class function TAtlasIdeSettings.HistoryFile: string;
+begin
+  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('APPDATA'), 'Atlas'), 'settings-history.json');
+end;
+
+class function TAtlasIdeSettings.History: TAtlasSettingsHistory;
+begin
+  if FHistory = nil then
+  begin
+    FHistory := TAtlasSettingsHistory.Create;
+    try
+      if TFile.Exists(HistoryFile) then
+        FHistory.LoadJson(TFile.ReadAllText(HistoryFile, TEncoding.UTF8));
+    except
+      // Unlesbar: ohne gemerkte Stände weiter.
+      on Exception do
+        FHistory.Clear;
+    end;
+  end;
+  Result := FHistory;
+end;
+
+class procedure TAtlasIdeSettings.SaveHistory;
+begin
+  ForceDirectories(ExtractFileDir(HistoryFile));
+  TFile.WriteAllText(HistoryFile, History.ToJson, TEncoding.UTF8);
+end;
+
+class procedure TAtlasIdeSettings.Restore(AIndex: Integer);
+begin
+  if (AIndex < 0) or (AIndex >= History.Count) then
+    Exit;
+  Update(History[AIndex].Settings);
+end;
+
+class procedure TAtlasIdeSettings.Release;
+begin
+  FreeAndNil(FHistory);
 end;
 
 class function TAtlasIdeSettings.QuickToggles: TArray<TAtlasQuickToggle>;

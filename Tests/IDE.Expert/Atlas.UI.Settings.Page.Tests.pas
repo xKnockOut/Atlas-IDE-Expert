@@ -23,6 +23,8 @@ type
     procedure IndexSectionRoundTripsAndRunsCommands;
     [Test]
     procedure StatusFieldRoundTrips;
+    [Test]
+    procedure SafeModeRoundTrips;
   end;
 
 implementation
@@ -186,6 +188,40 @@ begin
     Assert.IsTrue(Saved.StatusField);
     Assert.IsFalse(Saved.StatusFieldSummary);
     Assert.AreEqual('atlas.file, atlas.index', Saved.StatusFieldHidden);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.SafeModeRoundTrips;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  // #722: Rückfrage, ohne Rückfrage nach zwei Abstürzen, Taste, Zeitlimit, gemerkte Stände.
+  Settings := TAtlasPluginSettings.Defaults;
+  Settings.SafeAskAfterCrash := False;
+  Settings.SafeStartupKey := 'ctrl';
+  Settings.SafeStartupTimeoutMs := 20000;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.IsFalse(Page.SafeAsk.Checked);
+    Assert.IsTrue(Page.SafeAuto.Checked);
+    Assert.AreEqual(1, Page.SafeKey.ItemIndex);
+    Assert.AreEqual('20000', Page.SafeTimeout.Text);
+    Assert.AreEqual('5', Page.SafeHistory.Text);
+    Page.SafeAuto.Checked := False;
+    Page.SafeKey.ItemIndex := 2;
+    Page.SafeHistory.Text := '500';
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.SafeAskAfterCrash);
+    Assert.IsFalse(Saved.SafeAutoAfterRepeatedCrash);
+    Assert.AreEqual('none', Saved.SafeStartupKey);
+    Assert.AreEqual(20000, Saved.SafeStartupTimeoutMs);
+    // Begrenzt auf die Höchstzahl.
+    Assert.AreEqual(TAtlasPluginSettings.MaxSafeSettingsHistory, Saved.SafeKeepSettingsHistory);
   finally
     Page.Free;
   end;

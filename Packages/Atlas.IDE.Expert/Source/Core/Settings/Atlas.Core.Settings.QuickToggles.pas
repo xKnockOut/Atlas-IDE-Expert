@@ -20,7 +20,8 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Settings.Plugin;
+  Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.History;
 
 type
   TAtlasQuickToggle = record
@@ -32,6 +33,9 @@ type
     ProjectPath: string;
     /// <summary>Zeichnung im Editor: „Alles aus für diese Sitzung“ schaltet sie ab.</summary>
     Drawing: Boolean;
+    /// <summary>Feature der Absturzsicherung (#493, Name aus TAtlasFeature) für den Vorschlag nach einem
+    /// Absturz (#722); '' ohne.</summary>
+    Feature: string;
   end;
 
   TAtlasQuickToggleGroup = record
@@ -99,64 +103,6 @@ type
   end;
 
 implementation
-
-type
-  TMemoryStore = class(TInterfacedObject, IAtlasSettingsStore)
-  private
-    FIntegers: TDictionary<string, Integer>;
-    FStrings: TDictionary<string, string>;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    function ReadInteger(const AName: string; ADefault: Integer): Integer;
-    procedure WriteInteger(const AName: string; AValue: Integer);
-    function ReadString(const AName, ADefault: string): string;
-    procedure WriteString(const AName, AValue: string);
-    function HasInteger(const AName: string): Boolean;
-  end;
-
-{ TMemoryStore }
-
-constructor TMemoryStore.Create;
-begin
-  inherited Create;
-  FIntegers := TDictionary<string, Integer>.Create;
-  FStrings := TDictionary<string, string>.Create;
-end;
-
-destructor TMemoryStore.Destroy;
-begin
-  FStrings.Free;
-  FIntegers.Free;
-  inherited;
-end;
-
-function TMemoryStore.ReadInteger(const AName: string; ADefault: Integer): Integer;
-begin
-  if not FIntegers.TryGetValue(AName, Result) then
-    Result := ADefault;
-end;
-
-procedure TMemoryStore.WriteInteger(const AName: string; AValue: Integer);
-begin
-  FIntegers.AddOrSetValue(AName, AValue);
-end;
-
-function TMemoryStore.ReadString(const AName, ADefault: string): string;
-begin
-  if not FStrings.TryGetValue(AName, Result) then
-    Result := ADefault;
-end;
-
-procedure TMemoryStore.WriteString(const AName, AValue: string);
-begin
-  FStrings.AddOrSetValue(AName, AValue);
-end;
-
-function TMemoryStore.HasInteger(const AName: string): Boolean;
-begin
-  Result := FIntegers.ContainsKey(AName);
-end;
 
 function BoolJson(AValue: Boolean): string;
 begin
@@ -288,31 +234,43 @@ end;
 class function TAtlasQuickToggles.PluginCatalog: string;
 begin
   // Wie atlas.schema.json: "x-page" = Seite (Gruppe), "x-quickToggle" = erscheint als Schnellschalter,
-  // "x-caption"/"x-captionEn" = Beschriftung, "x-drawing" = Zeichnung im Editor.
+  // "x-caption"/"x-captionEn" = Beschriftung, "x-drawing" = Zeichnung im Editor, "x-feature" = Feature der
+  // Absturzsicherung (#493) für den Vorschlag nach einem Absturz (#722).
   Result :=
     '{"properties":{' +
-    '"Enabled":{"type":"boolean","default":true,"x-page":"Allgemein","x-quickToggle":true,' +
+    '"Enabled":{"type":"boolean","x-feature":"Completion",' +
+      '"default":true,"x-page":"Allgemein","x-quickToggle":true,' +
       '"x-caption":"Atlas-Code-Insight","x-captionEn":"Atlas Code Insight","x-issue":"#407"},' +
-    '"PairColors":{"type":"boolean","default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
+    '"PairColors":{"type":"boolean","x-feature":"Pairs",' +
+      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
       '"x-caption":"Klammerfarben","x-captionEn":"Bracket colors","x-issue":"#514"},' +
-    '"PairGuides":{"type":"boolean","default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
+    '"PairGuides":{"type":"boolean","x-feature":"Pairs",' +
+      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
       '"x-caption":"Blocklinien","x-captionEn":"Block guides","x-issue":"#514"},' +
-    '"InactiveDim":{"type":"boolean","default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
+    '"InactiveDim":{"type":"boolean","x-feature":"Pairs",' +
+      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
       '"x-caption":"Inaktive {$IFDEF}-Zweige ausgrauen","x-captionEn":"Dim inactive {$IFDEF} branches",' +
       '"x-issue":"#615"},' +
-    '"Problems":{"type":"boolean","default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
+    '"Problems":{"type":"boolean","x-feature":"Problems",' +
+      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
       '"x-caption":"Probleme unterstreichen","x-captionEn":"Underline problems","x-issue":"#398"},' +
-    '"HoverTooltip":{"type":"boolean","default":true,"x-page":"Hints","x-quickToggle":true,' +
+    '"HoverTooltip":{"type":"boolean","x-feature":"Hover",' +
+      '"default":true,"x-page":"Hints","x-quickToggle":true,' +
       '"x-caption":"Hover-Tooltip","x-captionEn":"Hover tooltip","x-issue":"#442"},' +
-    '"FilterChips":{"type":"boolean","default":true,"x-page":"Vervollständigung","x-quickToggle":true,' +
+    '"FilterChips":{"type":"boolean","x-feature":"Completion",' +
+      '"default":true,"x-page":"Vervollständigung","x-quickToggle":true,' +
       '"x-caption":"Filter-Chips","x-captionEn":"Filter chips","x-issue":"#422"},' +
-    '"Preview":{"type":"boolean","default":false,"x-page":"Vervollständigung","x-quickToggle":true,' +
+    '"Preview":{"type":"boolean","x-feature":"Completion",' +
+      '"default":false,"x-page":"Vervollständigung","x-quickToggle":true,' +
       '"x-caption":"Vorschau im Editor","x-captionEn":"Preview in the editor","x-issue":"#434"},' +
-    '"GroupInherited":{"type":"boolean","default":true,"x-page":"Vervollständigung","x-quickToggle":true,' +
+    '"GroupInherited":{"type":"boolean","x-feature":"Completion",' +
+      '"default":true,"x-page":"Vervollständigung","x-quickToggle":true,' +
       '"x-caption":"Geerbte Member gruppieren","x-captionEn":"Group inherited members","x-issue":"#419"},' +
-    '"Learning":{"type":"boolean","default":true,"x-page":"Vervollständigung","x-quickToggle":true,' +
+    '"Learning":{"type":"boolean","x-feature":"Completion",' +
+      '"default":true,"x-page":"Vervollständigung","x-quickToggle":true,' +
       '"x-caption":"Lernende Gewichtung","x-captionEn":"Learned ranking","x-issue":"#418"},' +
-    '"CheckOnSave":{"type":"boolean","default":false,"x-page":"Compiler","x-quickToggle":true,' +
+    '"CheckOnSave":{"type":"boolean","x-feature":"CheckOnSave",' +
+      '"default":false,"x-page":"Compiler","x-quickToggle":true,' +
       '"x-caption":"Syntaxprüfung nach dem Speichern","x-captionEn":"Syntax check after saving","x-issue":"#548"},' +
     '"StatusFieldSummary":{"type":"boolean","default":true,"x-page":"Allgemein",' +
       '"x-caption":"Kurztext im Statusfeld","x-captionEn":"Summary in the status field","x-issue":"#591"}' +
@@ -343,6 +301,7 @@ begin
       Toggle.Caption := CaptionOf(ASchema, AEnglish);
       Toggle.ProjectPath := ASchema.GetValue<string>('x-project', '');
       Toggle.Drawing := IsTrue(ASchema, 'x-drawing');
+      Toggle.Feature := ASchema.GetValue<string>('x-feature', '');
       List := List + [Toggle];
     end);
   Walk(AProjectSchema,
@@ -368,6 +327,7 @@ begin
       Toggle.Caption := CaptionOf(ASchema, AEnglish);
       Toggle.ProjectPath := APath;
       Toggle.Drawing := IsTrue(ASchema, 'x-drawing');
+      Toggle.Feature := ASchema.GetValue<string>('x-feature', '');
       List := List + [Toggle];
     end);
   // Nach Seiten ordnen, Reihenfolge der Seiten wie ihr erstes Auftreten.
@@ -419,15 +379,10 @@ end;
 class function TAtlasQuickToggles.GetFlag(const ASettings: TAtlasPluginSettings; const AKey: string;
   out AValue: Boolean): Boolean;
 var
-  Store: TMemoryStore;
-  Keep: IAtlasSettingsStore;
-  Copy_: TAtlasPluginSettings;
+  Store: IAtlasMemorySettingsStore;
 begin
   // Über Save statt eines eigenen Falls je Feld: jede neue Einstellung ist ohne Änderung hier erreichbar.
-  Store := TMemoryStore.Create;
-  Keep := Store;
-  Copy_ := ASettings;
-  Copy_.Save(Keep);
+  Store := TAtlasMemorySettingsStore.FromSettings(ASettings);
   Result := Store.HasInteger(AKey);
   AValue := Result and (Store.ReadInteger(AKey, 0) <> 0);
 end;
@@ -435,12 +390,9 @@ end;
 class function TAtlasQuickToggles.SetFlag(var ASettings: TAtlasPluginSettings; const AKey: string;
   AValue: Boolean): Boolean;
 var
-  Store: TMemoryStore;
-  Keep: IAtlasSettingsStore;
+  Store: IAtlasMemorySettingsStore;
 begin
-  Store := TMemoryStore.Create;
-  Keep := Store;
-  ASettings.Save(Keep);
+  Store := TAtlasMemorySettingsStore.FromSettings(ASettings);
   Result := Store.HasInteger(AKey);
   if not Result then
     Exit;
@@ -448,7 +400,7 @@ begin
     Store.WriteInteger(AKey, 1)
   else
     Store.WriteInteger(AKey, 0);
-  ASettings.Load(Keep);
+  ASettings.Load(Store);
 end;
 
 class function TAtlasQuickToggles.ProjectValue(AProject: TJSONObject; const APath: string;

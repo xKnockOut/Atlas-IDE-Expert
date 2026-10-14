@@ -189,6 +189,10 @@
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.QuickToggles.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.QuickToggles.pas"/>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.QuickToggles.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.History.pas"/>
+        <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.SafeMode.pas"/>
+        <DCCReference Include="Source\UI\Diagnostics\Atlas.UI.Diagnostics.SafeModeNotice.pas"/>
+        <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.SafeMode.pas"/>
         <DCCReference Include="Source\IDE\Status\Atlas.IDE.Status.Lines.pas"/>
         <DCCReference Include="Source\IDE\Status\Atlas.IDE.Status.Field.pas"/>
         <DCCReference Include="Source\IDE\Files\Atlas.IDE.Files.DirtyExport.pas"/>

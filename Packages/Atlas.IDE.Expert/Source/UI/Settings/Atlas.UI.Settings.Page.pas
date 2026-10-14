@@ -28,6 +28,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Diagnostics.SafeMode,
   Atlas.UI.Strings;
 
 type
@@ -81,6 +82,11 @@ type
     FCheckOnSave: TCheckBox;
     FCheckDelay: TEdit;
     FCheckMax: TEdit;
+    FSafeAsk: TCheckBox;
+    FSafeAuto: TCheckBox;
+    FSafeKey: TComboBox;
+    FSafeTimeout: TEdit;
+    FSafeHistory: TEdit;
     FResetHistory: TButton;
     FResetWidths: TButton;
     FHangTest: TButton;
@@ -97,6 +103,7 @@ type
     procedure FuseEnableAllClick(Sender: TObject);
     procedure AddFuseSection;
     procedure AddIndexSection;
+    procedure AddSafeSection;
     procedure IndexRefreshClick(Sender: TObject);
     procedure IndexRebuildClick(Sender: TObject);
     procedure IndexClearClick(Sender: TObject);
@@ -123,6 +130,12 @@ type
     property StatusField: TCheckBox read FStatusField;
     property StatusSummary: TCheckBox read FStatusSummary;
     property StatusHidden: TEdit read FStatusHidden;
+    /// <summary>Zum Testen: abgesicherter Start (#722).</summary>
+    property SafeAsk: TCheckBox read FSafeAsk;
+    property SafeAuto: TCheckBox read FSafeAuto;
+    property SafeKey: TComboBox read FSafeKey;
+    property SafeTimeout: TEdit read FSafeTimeout;
+    property SafeHistory: TEdit read FSafeHistory;
     /// <summary>Kennzahlen als Text; nil = nicht verfügbar.</summary>
     property OnIndexMetrics: TFunc<string> read FOnIndexMetrics write FOnIndexMetrics;
     /// <summary>„Index neu aufbauen“ bzw. „Index löschen“ ausführen; Ergebnis als Meldung.</summary>
@@ -153,7 +166,7 @@ begin
   inherited Create(AOwner);
   Name := 'AtlasSettingsPage';
   Width := 480;
-  Height := 1160;
+  Height := 1340;
   Title := TLabel.Create(Self);
   Title.Parent := Self;
   Title.Align := alTop;
@@ -243,6 +256,7 @@ begin
   FCheckOnSave := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCheckOnSave));
   FCheckDelay := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckDelay));
   FCheckMax := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckMax));
+  AddSafeSection;
   Panel := AddPanel(32);
   FResetHistory := TButton.Create(Self);
   FResetHistory.Parent := Panel;
@@ -432,6 +446,41 @@ begin
   RefreshFuse;
 end;
 
+procedure TAtlasSettingsPage.AddSafeSection;
+var
+  Panel: TPanel;
+  Caption: TLabel;
+begin
+  // Abgesicherter Start nach einem Absturz (#722).
+  Panel := AddPanel(22);
+  Caption := TLabel.Create(Self);
+  Caption.Parent := Panel;
+  Caption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsSafeTitle);
+  Caption.Font.Style := [fsBold];
+  Caption.Left := 0;
+  Caption.Top := 4;
+  FSafeAsk := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSafeAsk));
+  FSafeAuto := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSafeAuto));
+  Panel := AddPanel(26);
+  Caption := TLabel.Create(Self);
+  Caption.Parent := Panel;
+  Caption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsSafeKey);
+  Caption.Left := 0;
+  Caption.Top := 5;
+  FSafeKey := TComboBox.Create(Self);
+  FSafeKey.Parent := Panel;
+  FSafeKey.Style := csDropDownList;
+  FSafeKey.Left := 180;
+  FSafeKey.Top := 1;
+  FSafeKey.Width := 120;
+  // Reihenfolge wie TAtlasStartupKey ohne None vorn: Umschalt, Strg, keine.
+  FSafeKey.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsSafeKeyShift));
+  FSafeKey.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsSafeKeyCtrl));
+  FSafeKey.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsSafeKeyNone));
+  FSafeTimeout := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSafeTimeout));
+  FSafeHistory := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSafeHistory));
+end;
+
 function TAtlasSettingsPage.AddCheck(const ACaption: string): TCheckBox;
 begin
   Result := TCheckBox.Create(Self);
@@ -512,6 +561,18 @@ begin
   FCheckOnSave.Checked := ASettings.CheckOnSave;
   FCheckDelay.Text := IntToStr(ASettings.CheckOnSaveDelayMs);
   FCheckMax.Text := IntToStr(ASettings.CheckOnSaveMaxMs);
+  FSafeAsk.Checked := ASettings.SafeAskAfterCrash;
+  FSafeAuto.Checked := ASettings.SafeAutoAfterRepeatedCrash;
+  case TAtlasSafeMode.KeyOf(ASettings.SafeStartupKey) of
+    TAtlasStartupKey.Ctrl:
+      FSafeKey.ItemIndex := 1;
+    TAtlasStartupKey.None:
+      FSafeKey.ItemIndex := 2;
+  else
+    FSafeKey.ItemIndex := 0;
+  end;
+  FSafeTimeout.Text := IntToStr(ASettings.SafeStartupTimeoutMs);
+  FSafeHistory.Text := IntToStr(ASettings.SafeKeepSettingsHistory);
   RefreshFuse;
   RefreshIndex;
 end;
@@ -550,6 +611,18 @@ begin
   ASettings.CheckOnSave := FCheckOnSave.Checked;
   ASettings.CheckOnSaveDelayMs := StrToIntDef(FCheckDelay.Text, ASettings.CheckOnSaveDelayMs);
   ASettings.CheckOnSaveMaxMs := StrToIntDef(FCheckMax.Text, ASettings.CheckOnSaveMaxMs);
+  ASettings.SafeAskAfterCrash := FSafeAsk.Checked;
+  ASettings.SafeAutoAfterRepeatedCrash := FSafeAuto.Checked;
+  case FSafeKey.ItemIndex of
+    1:
+      ASettings.SafeStartupKey := TAtlasSafeMode.KeyText(TAtlasStartupKey.Ctrl);
+    2:
+      ASettings.SafeStartupKey := TAtlasSafeMode.KeyText(TAtlasStartupKey.None);
+  else
+    ASettings.SafeStartupKey := TAtlasSafeMode.KeyText(TAtlasStartupKey.Shift);
+  end;
+  ASettings.SafeStartupTimeoutMs := StrToIntDef(FSafeTimeout.Text, ASettings.SafeStartupTimeoutMs);
+  ASettings.SafeKeepSettingsHistory := StrToIntDef(FSafeHistory.Text, ASettings.SafeKeepSettingsHistory);
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;
