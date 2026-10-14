@@ -68,6 +68,8 @@ type
     procedure MapsIndexBackToColumn;
     [Test]
     procedure WrapsServerSettings;
+    [Test]
+    procedure ReadsShowMessageParams;
   end;
 
   [TestFixture]
@@ -915,6 +917,30 @@ begin
   finally
     Params.Free;
   end;
+end;
+
+procedure TLspSessionTests.ReadsShowMessageParams;
+var
+  Params: TJSONValue;
+  MessageType: Integer;
+  Text: string;
+begin
+  // Hinweis auf gemischte Kodierungen kommt als window/showMessage (#121).
+  Params := TJSONObject.ParseJSONValue('{"type": 2, "message": "Gemischte Kodierungen"}');
+  try
+    Assert.IsTrue(TLspSession.ShowMessageParams(Params, MessageType, Text));
+    Assert.AreEqual(2, MessageType);
+    Assert.AreEqual('Gemischte Kodierungen', Text);
+  finally
+    Params.Free;
+  end;
+  Params := TJSONObject.ParseJSONValue('{"type": 1}');
+  try
+    Assert.IsFalse(TLspSession.ShowMessageParams(Params, MessageType, Text));
+  finally
+    Params.Free;
+  end;
+  Assert.IsFalse(TLspSession.ShowMessageParams(nil, MessageType, Text));
 end;
 
 procedure TLspSessionTests.ReportsProjectGroupChanges;

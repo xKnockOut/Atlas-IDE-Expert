@@ -137,6 +137,7 @@ contains
   Atlas.Core.Files.TextDiff in 'Source\Core\Files\Atlas.Core.Files.TextDiff.pas',
   Atlas.Core.Files.WatchedChanges in 'Source\Core\Files\Atlas.Core.Files.WatchedChanges.pas',
   Atlas.Core.Files.TextFile in 'Source\Core\Files\Atlas.Core.Files.TextFile.pas',
+  Atlas.Core.Files.EncodingDefault in 'Source\Core\Files\Atlas.Core.Files.EncodingDefault.pas',
   Atlas.Core.Projects.Context in 'Source\Core\Projects\Atlas.Core.Projects.Context.pas',
   Atlas.Core.InlayHints.Store in 'Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas',
   Atlas.Core.Results.Model in 'Source\Core\Results\Atlas.Core.Results.Model.pas',

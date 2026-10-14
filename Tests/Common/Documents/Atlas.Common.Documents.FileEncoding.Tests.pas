@@ -72,6 +72,12 @@ type
     procedure DetectsBinaryForms;
     [Test]
     procedure NeverOverwritesBinaryForm;
+    [Test]
+    procedure AnsiDefaultUnitKeepsBytesOutsideEdit;
+    [Test]
+    procedure TextFormKeepsCharacterCodesAfterEdit;
+    [Test]
+    procedure SurveySkipsBinaryFormsAndNamesCodePage;
   end;
 
 implementation
@@ -425,6 +431,53 @@ begin
   end;
   Assert.IsTrue(Raised);
   Assert.IsTrue(SameBytes(Source, ReadAll(FileName)));
+end;
+
+procedure TFileEncodingDefaultTests.AnsiDefaultUnitKeepsBytesOutsideEdit;
+var
+  FileName: string;
+  Format: TFileFormat;
+  Text: string;
+begin
+  // Abnahme #121: Unit in Codepage 1250 ohne BOM ("Š" = $8A, "č" = $E8), Vorgabe 1250, Code-Aktion
+  // ersetzt "x" durch "y"; alles andere bleibt Byte für Byte gleich.
+  FileName := FFolder + 'Unit3.pas';
+  WriteBytes(FileName, Bytes([$8A, $0D, $0A, Ord('x'), $0D, $0A, $E8]));
+  TFileEncodingDefaults.SetFolder(FFolder, 1250);
+  Text := TFileEncoding.LoadFromFile(FileName, Format);
+  Assert.AreEqual(#$0160#13#10'x'#13#10#$010D, Text);
+  TFileEncoding.SaveToFile(FileName, StringReplace(Text, 'x', 'y', []), Format);
+  Assert.IsTrue(SameBytes(Bytes([$8A, $0D, $0A, Ord('y'), $0D, $0A, $E8]), ReadAll(FileName)));
+end;
+
+procedure TFileEncodingDefaultTests.TextFormKeepsCharacterCodesAfterEdit;
+const
+  Form = 'object Form1: TForm1'#13#10'  object Button1: TButton'#13#10'    Caption = ''M''#228''rz'''#13#10 +
+    '  end'#13#10'end'#13#10;
+var
+  FileName: string;
+  Format: TFileFormat;
+begin
+  // Umbenennen in einer Text-DFM: "#228" bleibt in dieser Schreibweise stehen.
+  FileName := FFolder + 'Unit4.dfm';
+  WriteBytes(FileName, TEncoding.ASCII.GetBytes(Form));
+  TFileEncoding.SaveToFile(FileName, StringReplace(TFileEncoding.LoadFromFile(FileName, Format), 'Button1',
+    'btnOk', []), Format);
+  Assert.IsTrue(SameBytes(TEncoding.ASCII.GetBytes(StringReplace(Form, 'Button1', 'btnOk', [])), ReadAll(FileName)));
+end;
+
+procedure TFileEncodingDefaultTests.SurveySkipsBinaryFormsAndNamesCodePage;
+var
+  Survey: TEncodingSurvey;
+begin
+  Survey := Default(TEncodingSurvey);
+  Survey.AnsiCodePage := 1250;
+  Survey.Add(Bytes([Ord('T'), Ord('P'), Ord('F'), Ord('0'), $E4]));
+  Assert.AreEqual(0, Survey.Ansi + Survey.Utf8 + Survey.Ascii);
+  Survey.Add(Bytes([$61, $E4]));
+  Assert.AreEqual('1 Datei in Windows-1250', Survey.Describe);
+  Survey.AnsiCodePage := TFileEncoding.Utf8CodePage;
+  Assert.AreEqual('1 Datei in Windows-1252', Survey.Describe);
 end;
 
 initialization
