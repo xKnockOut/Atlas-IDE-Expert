@@ -38,6 +38,7 @@ uses
   Atlas.IDE.Completion.Editor,
   Atlas.IDE.Signature.Editor,
   Atlas.IDE.Hover.Editor,
+  Atlas.IDE.InlayHints.Editor,
   Atlas.IDE.Problems.Controller;
 
 type
@@ -64,6 +65,8 @@ type
     FHover: TAtlasEditorHover;
     /// <summary>Probleme im Editor (#398).</summary>
     FProblems: TAtlasProblemsController;
+    /// <summary>Inlay-Hints (#401).</summary>
+    FInlayHints: TAtlasEditorInlayHints;
     function EnsureSession: Boolean;
     /// <summary>Projekte der geöffneten Gruppe, aktives zuerst; leer ohne Gruppe (#648).</summary>
     class function GroupProjects: TArray<string>; static;
@@ -218,6 +221,15 @@ begin
       else
         Result := nil;
     end);
+  // Startet keinen Server: Inlay-Hints kommen erst, wenn er ohnehin läuft.
+  FInlayHints := TAtlasEditorInlayHints.Create(
+    function: TLspSession
+    begin
+      if (FServer <> nil) and FServer.Running and (FSession <> nil) and FSession.Initialized then
+        Result := FSession
+      else
+        Result := nil;
+    end);
 end;
 
 destructor TAtlasCodeInsightManager.Destroy;
@@ -226,6 +238,7 @@ begin
   FreeAndNil(FFolderWatcher);
   FreeAndNil(FFileChanges);
   // Vor der Sitzung: wartet auf laufende Anfragen und meldet Tasten und Beobachter ab.
+  FreeAndNil(FInlayHints);
   FreeAndNil(FHover);
   FreeAndNil(FSignature);
   FreeAndNil(FCompletion);

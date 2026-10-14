@@ -218,6 +218,8 @@ uses
   Atlas.Core.Files.TextFile.Tests in 'IDE.Expert\Atlas.Core.Files.TextFile.Tests.pas',
   Atlas.Core.Projects.Context in '..\Packages\Atlas.IDE.Expert\Source\Core\Projects\Atlas.Core.Projects.Context.pas',
   Atlas.Core.Projects.Context.Tests in 'IDE.Expert\Atlas.Core.Projects.Context.Tests.pas',
+  Atlas.Core.InlayHints.Store in '..\Packages\Atlas.IDE.Expert\Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas',
+  Atlas.Core.InlayHints.Store.Tests in 'IDE.Expert\Atlas.Core.InlayHints.Store.Tests.pas',
   Atlas.Core.Commands.Palette in '..\Packages\Atlas.IDE.Expert\Source\Core\Commands\Atlas.Core.Commands.Palette.pas',
   Atlas.Core.Commands.Palette.Tests in 'IDE.Expert\Atlas.Core.Commands.Palette.Tests.pas',
   Atlas.Core.Editor.Pairs in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Pairs.pas',

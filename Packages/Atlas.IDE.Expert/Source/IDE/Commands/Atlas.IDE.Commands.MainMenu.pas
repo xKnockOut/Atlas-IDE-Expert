@@ -24,7 +24,7 @@ uses
 
 type
 {$SCOPEDENUMS ON}
-  TAtlasToggle = (Enabled, HoverTooltip, PairColors, PairGuides, Problems, InactiveDim);
+  TAtlasToggle = (Enabled, HoverTooltip, PairColors, PairGuides, Problems, InactiveDim, InlayHints);
 {$SCOPEDENUMS OFF}
 
   TAtlasMainMenu = class
@@ -89,6 +89,8 @@ begin
       Result := TAtlasStrings.Text(TAtlasTextId.MenuToggleGuides);
     TAtlasToggle.InactiveDim:
       Result := TAtlasStrings.Text(TAtlasTextId.MenuToggleInactive);
+    TAtlasToggle.InlayHints:
+      Result := TAtlasStrings.Text(TAtlasTextId.MenuToggleInlayHints);
   else
     Result := TAtlasStrings.Text(TAtlasTextId.MenuToggleProblems);
   end;
@@ -186,6 +188,8 @@ begin
       Result := ASettings.PairGuides;
     TAtlasToggle.InactiveDim:
       Result := ASettings.InactiveDim;
+    TAtlasToggle.InlayHints:
+      Result := ASettings.InlayHints;
   else
     Result := ASettings.Problems;
   end;
@@ -204,6 +208,8 @@ begin
       ASettings.PairGuides := AValue;
     TAtlasToggle.InactiveDim:
       ASettings.InactiveDim := AValue;
+    TAtlasToggle.InlayHints:
+      ASettings.InlayHints := AValue;
   else
     ASettings.Problems := AValue;
   end;

@@ -48,6 +48,7 @@ type
     FPairColors: TCheckBox;
     FInactiveDim: TCheckBox;
     FOpenForEdits: TCheckBox;
+    FInlayHints: TCheckBox;
     FPairGuides: TCheckBox;
     FProblems: TCheckBox;
     FCheckOnSave: TCheckBox;
@@ -168,6 +169,7 @@ begin
   FOpenForEdits := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOpenForEdits));
   FPairColors := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairs));
   FInactiveDim := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim));
+  FInlayHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayHints));
   FPairGuides := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuides));
   FProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblems));
   // Compilerprüfung nach dem Speichern (#548).
@@ -295,6 +297,7 @@ begin
   FOpenForEdits.Checked := ASettings.OpenForEdits;
   FPairColors.Checked := ASettings.PairColors;
   FInactiveDim.Checked := ASettings.InactiveDim;
+  FInlayHints.Checked := ASettings.InlayHints;
   FPairGuides.Checked := ASettings.PairGuides;
   FProblems.Checked := ASettings.Problems;
   FCheckOnSave.Checked := ASettings.CheckOnSave;
@@ -325,6 +328,7 @@ begin
   ASettings.OpenForEdits := FOpenForEdits.Checked;
   ASettings.PairColors := FPairColors.Checked;
   ASettings.InactiveDim := FInactiveDim.Checked;
+  ASettings.InlayHints := FInlayHints.Checked;
   ASettings.PairGuides := FPairGuides.Checked;
   ASettings.Problems := FProblems.Checked;
   ASettings.CheckOnSave := FCheckOnSave.Checked;

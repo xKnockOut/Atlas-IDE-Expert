@@ -52,6 +52,8 @@ type
     procedure PreparesAndRequestsRename;
     [Test]
     procedure SendsProjectContextsInInitializeAndOnChange;
+    [Test]
+    procedure ReadsParameterInlayHints;
   end;
 
   [TestFixture]
@@ -91,6 +93,7 @@ uses
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Files.WatchedChanges,
   Atlas.Core.Projects.Context,
+  Atlas.Core.InlayHints.Store,
   Atlas.Core.Problems.Contract;
 
 // Liest die JSON-Nachricht aus gerahmten Bytes.
@@ -662,6 +665,52 @@ begin
     finally
       Response.Free;
     end;
+  finally
+    Session.Free;
+    Client.Free;
+  end;
+end;
+
+procedure TLspSessionTests.ReadsParameterInlayHints;
+var
+  Client: TLspClient;
+  Session: TLspSession;
+  Range: string;
+  Hints: TArray<TAtlasInlayHint>;
+begin
+  Client := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    var
+      Message: TJSONObject;
+      Reply: TBytes;
+    begin
+      Message := Unframe(ABytes);
+      try
+        if Message.GetValue<string>('method', '') = 'textDocument/inlayHint' then
+        begin
+          Range := Message.GetValue<Integer>('params.range.start.line').ToString + '-' +
+            Message.GetValue<Integer>('params.range.end.line').ToString;
+          Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":[' +
+            '{"position":{"line":3,"character":9},"label":"AWert:","kind":2,"paddingRight":true},' +
+            '{"position":{"line":4,"character":2},"label":": Integer","kind":1},' +
+            '{"position":{"line":5,"character":7},"label":[{"value":"AName"},{"value":":"}],"kind":2}]}',
+            [Message.GetValue<Integer>('id')]));
+          Client.Receive(Reply, Length(Reply));
+        end;
+      finally
+        Message.Free;
+      end;
+    end);
+  Session := TLspSession.Create(Client);
+  try
+    Hints := Session.InlayHints('C:\P\A.pas', 2, 9, 1000);
+    // Bis zum Anfang der Zeile nach der letzten, damit sie ganz dabei ist.
+    Assert.AreEqual('2-10', Range);
+    Assert.AreEqual(2, Integer(Length(Hints)), 'nur Parameternamen');
+    Assert.AreEqual(3, Hints[0].Line);
+    Assert.AreEqual(9, Hints[0].Character);
+    Assert.AreEqual('AWert', Hints[0].Name);
+    Assert.AreEqual('AName', Hints[1].Name);
   finally
     Session.Free;
     Client.Free;

@@ -95,6 +95,7 @@ begin
   Assert.IsTrue(Settings.AutoParentheses);
   Assert.IsFalse(Settings.Preview, 'Vorschau standardmäßig aus (#434)');
   Assert.IsTrue(Settings.OpenForEdits, 'Nicht geöffnete Dateien öffnen (#397)');
+  Assert.IsFalse(Settings.InlayHints, 'Inlay-Hints standardmäßig aus (#401)');
 end;
 
 procedure TAtlasPluginSettingsTests.SaveAndLoadRoundTrip;
@@ -112,6 +113,7 @@ begin
   Settings.Learning := False;
   Settings.Preview := True;
   Settings.OpenForEdits := False;
+  Settings.InlayHints := True;
   Settings.ServerPath := '  D:\Atlas\AtlasServer.exe ';
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
@@ -124,6 +126,7 @@ begin
   Assert.IsFalse(Loaded.Learning);
   Assert.IsTrue(Loaded.Preview);
   Assert.IsFalse(Loaded.OpenForEdits);
+  Assert.IsTrue(Loaded.InlayHints);
   Assert.AreEqual('D:\Atlas\AtlasServer.exe', Loaded.ServerPath, 'Serverpfad ohne Leerraum');
   Assert.AreEqual('', TAtlasPluginSettings.Defaults.ServerPath, 'Standard: leer');
 end;
