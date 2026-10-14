@@ -21,6 +21,8 @@ type
     procedure CleansCaptions;
     [Test]
     procedure HistoryRoundTrip;
+    [Test]
+    procedure KeepsListOrderForCodeActions;
   end;
 
 implementation
@@ -117,6 +119,19 @@ begin
     History.Free;
     TFile.Delete(FileName);
   end;
+end;
+
+procedure TAtlasCommandPaletteTests.KeepsListOrderForCodeActions;
+var
+  Commands: TArray<TAtlasCommand>;
+begin
+  // Code-Aktionen (#399): bevorzugte zuerst, so wie der Server sie liefert.
+  Commands := [Command('0', 'try/finally ergänzen'), Command('1', 'Befund kopieren'), Command('2', 'Als Konstante')];
+  Assert.AreEqual('try/finally ergänzen|Befund kopieren|Als Konstante|',
+    Captions(Commands, TAtlasCommandPalette.Order(Commands, '', nil, True)));
+  Assert.AreEqual('Als Konstante|Befund kopieren|try/finally ergänzen|',
+    Captions(Commands, TAtlasCommandPalette.Order(Commands, '', nil)), 'ohne KeepOrder alphabetisch');
+  Assert.AreEqual('Befund kopieren|', Captions(Commands, TAtlasCommandPalette.Order(Commands, 'befund', nil, True)));
 end;
 
 initialization

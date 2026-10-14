@@ -19,6 +19,8 @@ Fehlt der Server, meldet das Plugin das im Meldungsfenster und überlässt Vervo
 
 Was Atlas selbst anzeigt, schaltet es in der IDE ab, damit nichts doppelt erscheint: Help Insight (solange der Atlas-Tooltip an ist) und die Strukturhervorhebung (solange die Atlas-Blocklinien an sind). Die IDE liest diese Schalter nur beim Start; beim ersten Start mit Atlas erscheint daher noch beides.
 
+Bedienung (#399): Das Menü *Atlas* in der Menüleiste und das Untermenü *Atlas* im Kontextmenü des Editors enthalten Code-Aktionen, Auswahl erweitern/verkleinern, Gehe zu Implementierung und Typdefinition, Referenzen und „Qualifizierten Namen kopieren“. Tastenkürzel (änderbar unter *Tools › Optionen › Drittanbieter › Atlas*): Code-Aktionen Alt+Enter, Auswahl erweitern Strg+W, verkleinern Strg+Umschalt+W, Gehe zu Implementierung Strg+Alt+I, Typdefinition ohne Vorgabe. Ist eine Taste schon von der IDE oder einer anderen Erweiterung belegt, bleibt diese Belegung und das Meldungsfenster nennt den Konflikt; der Schalter „Editor-Kürzel auch belegen …“ gibt Atlas Vorrang. Schnellbefehle (`/uses Unit`, `/try` …) werden nach Enter ausgeführt, `///` über einer Deklaration erzeugt das Kommentargerüst; beides lässt sich auf derselben Seite abschalten.
+
 Zur Fehlersuche: Wert `Diagnose` (DWORD) = `1` unter `HKCU\Software\Atlas\IdePlugin` setzen und die IDE neu starten. Das Plugin schreibt dann jeden Aufruf der IDE (Hover, Strg+Klick, Position und Ergebnis) in `Atlas.IDE.Expert.log` neben der BPL.
 
 Findet der Server keine Definition, passiert bei Strg+Klick nichts. Deklarationen in Include-Dateien (`{$I …}`) findet der Server erst mit dem Include-Resolver (#264).

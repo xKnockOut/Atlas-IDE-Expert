@@ -25,6 +25,9 @@
 // antwortet ({applied, failureReason}).
 // Ergebnisfenster (#400): Implementierungen, workspace/symbol sowie Typ- und
 // Aufrufhierarchie; der Aufrufer gleicht die Puffer vorher ab.
+// Bedienung im Editor (#399): Code-Aktionen, Befehle mit Argumenten,
+// onTypeFormatting für Schnellbefehle und ///-Gerüste, selectionRange und
+// typeDefinition; auch hier gleicht der Aufrufer vorher ab.
 
 interface
 
@@ -40,6 +43,7 @@ uses
   Atlas.Core.Projects.Context,
   Atlas.Core.InlayHints.Store,
   Atlas.Core.Results.Model,
+  Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits;
 
 type
@@ -49,6 +53,23 @@ type
     Line: Integer;
     /// <summary>0-basiert.</summary>
     Character: Integer;
+  end;
+
+  /// <summary>Code-Aktion oder Befehl aus textDocument/codeAction (#399).</summary>
+  TLspCodeAction = record
+    Title: string;
+    Kind: string;
+    Preferred: Boolean;
+    /// <summary>Grund, warum die Aktion gerade nicht geht; leer, wenn sie geht.</summary>
+    Disabled: string;
+    /// <summary>Erst Edit anwenden, dann Command ausführen (LSP).</summary>
+    Edit: TLspWorkspaceEdit;
+    /// <summary>Befehl ohne Edit oder nach dem Edit; leer ohne.</summary>
+    Command: string;
+    /// <summary>Argumente des Befehls als JSON-Array; '[]' ohne.</summary>
+    ArgumentsJson: string;
+    /// <summary>Aus einem Eintrag der Antwort: CodeAction oder Command; False bei anderem.</summary>
+    class function FromJson(const AValue: TJSONValue; out AAction: TLspCodeAction): Boolean; static;
   end;
 
   /// <summary>Teile eines Hovers für den Atlas-Tooltip (#442).</summary>
@@ -163,6 +184,21 @@ type
     /// <summary>Nächste Ebene unter AItem in Richtung ADirection (#400).</summary>
     function HierarchyChildren(ADirection: TAtlasHierarchyDirection;
       const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
+    /// <summary>Code-Aktionen für ARange (textDocument/codeAction, #399), Reihenfolge des Servers.</summary>
+    function CodeActions(const AFileName: string; const ARange: TLspRange): TArray<TLspCodeAction>;
+    /// <summary>workspace/executeCommand mit Argumenten (JSON-Array, '' = keine, #399); ELspClientError bei
+    /// Fehler oder Zeitlimit. Ergebnis gehört dem Aufrufer.</summary>
+    function RunCommand(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal): TJSONValue;
+    /// <summary>textDocument/onTypeFormatting (#399): Schnellbefehle nach Enter (ACh = #10) und
+    /// ///-Gerüste (ACh = '/'). Leer, wenn der Server nichts ändert.</summary>
+    function OnTypeFormatting(const AFileName: string; ALine, ACharacter: Integer; const ACh: string;
+      ATabSize: Integer; AInsertSpaces: Boolean; ATimeoutMs: Cardinal): TArray<TLspTextEdit>;
+    /// <summary>Umgebende Bereiche am Fundort, innen zuerst (textDocument/selectionRange, #399).</summary>
+    function SelectionRanges(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspRange>;
+    /// <summary>Typ des Symbols (textDocument/typeDefinition, #399).</summary>
+    function TypeDefinition(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspLocation>;
+    /// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert); Umkehrung von ColumnToIndex.</summary>
+    class function IndexToColumn(const ALine: string; AIndex, ATabWidth: Integer): Integer; static;
     /// <summary>Location, Location[] oder LocationLink[] einer Antwort (#400).</summary>
     class function LocationsOf(const AResponse: TJSONValue): TArray<TLspLocation>; static;
     function Definition(const AFileName, AText: string; ALine, ACharacter: Integer;
@@ -226,8 +262,7 @@ type
 implementation
 
 uses
-  System.SyncObjs,
-  Atlas.Core.Lsp.TextChanges;
+  System.SyncObjs;
 
 const
   Unreserved = ['A'..'Z', 'a'..'z', '0'..'9', '-', '.', '_', '~', '/'];
@@ -664,6 +699,186 @@ begin
   finally
     Response.Free;
   end;
+end;
+
+function RangeToJson(const ARange: TLspRange): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('start', TJSONObject.Create.AddPair('line', TJSONNumber.Create(ARange.StartPos.Line))
+    .AddPair('character', TJSONNumber.Create(ARange.StartPos.Character)));
+  Result.AddPair('end', TJSONObject.Create.AddPair('line', TJSONNumber.Create(ARange.EndPos.Line))
+    .AddPair('character', TJSONNumber.Create(ARange.EndPos.Character)));
+end;
+
+function RangeOf(const AValue: TJSONValue; out ARange: TLspRange): Boolean;
+var
+  Range: TJSONObject;
+begin
+  ARange := Default(TLspRange);
+  Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<TJSONObject>('range', Range) and
+    Range.TryGetValue<Integer>('start.line', ARange.StartPos.Line) and
+    Range.TryGetValue<Integer>('start.character', ARange.StartPos.Character) and
+    Range.TryGetValue<Integer>('end.line', ARange.EndPos.Line) and
+    Range.TryGetValue<Integer>('end.character', ARange.EndPos.Character);
+end;
+
+{ TLspCodeAction }
+
+class function TLspCodeAction.FromJson(const AValue: TJSONValue; out AAction: TLspCodeAction): Boolean;
+var
+  Item, Command: TJSONObject;
+  Arguments: TJSONArray;
+  Value: TJSONValue;
+begin
+  AAction := Default(TLspCodeAction);
+  AAction.ArgumentsJson := '[]';
+  Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<string>('title', AAction.Title);
+  if not Result then
+    Exit;
+  Item := TJSONObject(AValue);
+  // Ein Command hat "command" als String, eine CodeAction als Objekt.
+  Value := Item.GetValue('command');
+  if Value is TJSONString then
+    Command := Item
+  else if Value is TJSONObject then
+    Command := TJSONObject(Value)
+  else
+    Command := nil;
+  if Command <> nil then
+  begin
+    AAction.Command := Command.GetValue<string>('command', '');
+    if Command.TryGetValue<TJSONArray>('arguments', Arguments) then
+      AAction.ArgumentsJson := Arguments.ToJSON;
+  end;
+  if Command = Item then
+    Exit;
+  AAction.Kind := Item.GetValue<string>('kind', '');
+  AAction.Preferred := Item.GetValue<Boolean>('isPreferred', False);
+  AAction.Disabled := Item.GetValue<string>('disabled.reason', '');
+  AAction.Edit := TLspWorkspaceEdit.FromJson(Item.GetValue('edit'));
+end;
+
+function TLspSession.CodeActions(const AFileName: string; const ARange: TLspRange): TArray<TLspCodeAction>;
+var
+  Params, Context: TJSONObject;
+  Response, Item: TJSONValue;
+  Action: TLspCodeAction;
+begin
+  Result := nil;
+  Context := TJSONObject.Create;
+  // Die Befunde der Regeln ermittelt der Server selbst; 1 = ausdrücklich aufgerufen.
+  Context.AddPair('diagnostics', TJSONArray.Create);
+  Context.AddPair('triggerKind', TJSONNumber.Create(1));
+  Params := TJSONObject.Create;
+  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  Params.AddPair('range', RangeToJson(ARange));
+  Params.AddPair('context', Context);
+  Response := FClient.Request('textDocument/codeAction', Params, FTimeoutMs * 2);
+  try
+    if Response is TJSONArray then
+      for Item in TJSONArray(Response) do
+        if TLspCodeAction.FromJson(Item, Action) then
+          Result := Result + [Action];
+  finally
+    Response.Free;
+  end;
+end;
+
+function TLspSession.RunCommand(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal): TJSONValue;
+var
+  Arguments: TJSONValue;
+begin
+  Arguments := nil;
+  if Trim(AArgumentsJson) <> '' then
+    Arguments := TJSONObject.ParseJSONValue(AArgumentsJson);
+  if not (Arguments is TJSONArray) then
+  begin
+    Arguments.Free;
+    Arguments := TJSONArray.Create;
+  end;
+  Result := FClient.Request('workspace/executeCommand',
+    TJSONObject.Create.AddPair('command', ACommand).AddPair('arguments', Arguments), ATimeoutMs);
+end;
+
+function TLspSession.OnTypeFormatting(const AFileName: string; ALine, ACharacter: Integer; const ACh: string;
+  ATabSize: Integer; AInsertSpaces: Boolean; ATimeoutMs: Cardinal): TArray<TLspTextEdit>;
+var
+  Params: TJSONObject;
+  Response, Item: TJSONValue;
+  Edit: TLspTextEdit;
+begin
+  Result := nil;
+  Params := PositionParams(AFileName, ALine, ACharacter);
+  Params.AddPair('ch', ACh);
+  Params.AddPair('options', TJSONObject.Create.AddPair('tabSize', TJSONNumber.Create(ATabSize))
+    .AddPair('insertSpaces', TJSONBool.Create(AInsertSpaces)));
+  Response := FClient.Request('textDocument/onTypeFormatting', Params, ATimeoutMs);
+  try
+    if Response is TJSONArray then
+      for Item in TJSONArray(Response) do
+        if TLspTextEdit.FromJson(Item, Edit) then
+          Result := Result + [Edit];
+  finally
+    Response.Free;
+  end;
+end;
+
+function TLspSession.SelectionRanges(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspRange>;
+var
+  Params, Position: TJSONObject;
+  Positions: TJSONArray;
+  Response, Current: TJSONValue;
+  Range: TLspRange;
+begin
+  Result := nil;
+  // selectionRange will eine Liste von Positionen statt "position".
+  Position := TJSONObject.Create;
+  Position.AddPair('line', TJSONNumber.Create(ALine));
+  Position.AddPair('character', TJSONNumber.Create(ACharacter));
+  Positions := TJSONArray.Create;
+  Positions.AddElement(Position);
+  Params := TJSONObject.Create;
+  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  Params.AddPair('positions', Positions);
+  Response := FClient.Request('textDocument/selectionRange', Params, FTimeoutMs);
+  try
+    if not (Response is TJSONArray) or (TJSONArray(Response).Count = 0) then
+      Exit;
+    Current := TJSONArray(Response).Items[0];
+    while RangeOf(Current, Range) do
+    begin
+      Result := Result + [Range];
+      Current := TJSONObject(Current).GetValue('parent');
+    end;
+  finally
+    Response.Free;
+  end;
+end;
+
+function TLspSession.TypeDefinition(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspLocation>;
+var
+  Response: TJSONValue;
+begin
+  Response := FClient.Request('textDocument/typeDefinition', PositionParams(AFileName, ALine, ACharacter),
+    FTimeoutMs * 2);
+  try
+    Result := LocationsOf(Response);
+  finally
+    Response.Free;
+  end;
+end;
+
+class function TLspSession.IndexToColumn(const ALine: string; AIndex, ATabWidth: Integer): Integer;
+var
+  Index: Integer;
+begin
+  // Wie ColumnToIndex: Tabs springen zur nächsten Tabulatorposition, hinter dem Zeilenende je Zeichen eine Spalte.
+  Result := 1;
+  for Index := 1 to AIndex do
+    if (Index <= Length(ALine)) and (ALine[Index] = #9) and (ATabWidth > 0) then
+      Result := ((Result - 1) div ATabWidth + 1) * ATabWidth + 1
+    else
+      Inc(Result);
 end;
 
 function TLspSession.WorkspaceSymbols(const AQuery: string; ATimeoutMs: Cardinal): TArray<TAtlasSymbol>;

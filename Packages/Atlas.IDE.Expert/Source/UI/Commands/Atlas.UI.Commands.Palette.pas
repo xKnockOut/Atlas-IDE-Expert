@@ -41,6 +41,7 @@ type
     FOnQuery: TFunc<string, TArray<TAtlasCommand>>;
     FQueryTimer: TTimer;
     FPrompt: string;
+    FKeepOrder: Boolean;
     procedure PatternChanged;
     procedure QueryTick(Sender: TObject);
     function RowHeight: Integer;
@@ -52,6 +53,7 @@ type
     procedure DrawRow(ARow: Integer);
     procedure DrawHighlighted(const AText: string; const ARect: TRect);
     procedure FormDeactivate(Sender: TObject);
+    procedure SetKeepOrder(AValue: Boolean);
   protected
     procedure CreateParams(var Params: TCreateParams); override;
     procedure Paint; override;
@@ -72,6 +74,8 @@ type
     property OnQuery: TFunc<string, TArray<TAtlasCommand>> read FOnQuery write FOnQuery;
     /// <summary>Zeichen im leeren Eingabefeld, Standard "&gt;".</summary>
     property Prompt: string read FPrompt write FPrompt;
+    /// <summary>Reihenfolge der Einträge beibehalten statt alphabetisch (Code-Aktionen, #399); vor ShowOver setzen.</summary>
+    property KeepOrder: Boolean read FKeepOrder write SetKeepOrder;
   end;
 
 implementation
@@ -129,6 +133,12 @@ begin
   Refilter;
 end;
 
+procedure TAtlasPaletteWindow.SetKeepOrder(AValue: Boolean);
+begin
+  FKeepOrder := AValue;
+  Refilter;
+end;
+
 procedure TAtlasPaletteWindow.CreateParams(var Params: TCreateParams);
 begin
   inherited;
@@ -165,7 +175,7 @@ end;
 
 procedure TAtlasPaletteWindow.Refilter;
 begin
-  FOrder := TAtlasCommandPalette.Order(FCommands, FPattern, FHistory);
+  FOrder := TAtlasCommandPalette.Order(FCommands, FPattern, FHistory, FKeepOrder);
   FSelected := 0;
   FTop := 0;
   Invalidate;

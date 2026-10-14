@@ -96,6 +96,9 @@ begin
   Assert.IsFalse(Settings.Preview, 'Vorschau standardmäßig aus (#434)');
   Assert.IsTrue(Settings.OpenForEdits, 'Nicht geöffnete Dateien öffnen (#397)');
   Assert.IsFalse(Settings.InlayHints, 'Inlay-Hints standardmäßig aus (#401)');
+  Assert.AreEqual($800D, Settings.ActionsKey, 'Code-Aktionen: Alt+Enter (#399)');
+  Assert.AreEqual(0, Settings.TypeDefinitionKey, 'Typdefinition ohne Kürzel');
+  Assert.IsTrue(Settings.SlashCommands, 'Schnellbefehle standardmäßig an (#399)');
 end;
 
 procedure TAtlasPluginSettingsTests.SaveAndLoadRoundTrip;
@@ -114,6 +117,11 @@ begin
   Settings.Preview := True;
   Settings.OpenForEdits := False;
   Settings.InlayHints := True;
+  Settings.ActionsKey := 0;
+  Settings.ExpandKey := $4041;
+  Settings.TypeDefinitionKey := $C054;
+  Settings.EditorKeysPriority := True;
+  Settings.SlashCommands := False;
   Settings.ServerPath := '  D:\Atlas\AtlasServer.exe ';
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
@@ -127,6 +135,12 @@ begin
   Assert.IsTrue(Loaded.Preview);
   Assert.IsFalse(Loaded.OpenForEdits);
   Assert.IsTrue(Loaded.InlayHints);
+  Assert.AreEqual(0, Loaded.ActionsKey, '0 = keine Taste');
+  Assert.AreEqual($4041, Loaded.ExpandKey);
+  Assert.AreEqual($6057, Loaded.ShrinkKey);
+  Assert.AreEqual($C054, Loaded.TypeDefinitionKey);
+  Assert.IsTrue(Loaded.EditorKeysPriority);
+  Assert.IsFalse(Loaded.SlashCommands);
   Assert.AreEqual('D:\Atlas\AtlasServer.exe', Loaded.ServerPath, 'Serverpfad ohne Leerraum');
   Assert.AreEqual('', TAtlasPluginSettings.Defaults.ServerPath, 'Standard: leer');
 end;

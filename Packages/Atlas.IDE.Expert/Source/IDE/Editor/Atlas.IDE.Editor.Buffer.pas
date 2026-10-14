@@ -19,6 +19,8 @@ type
     class function LineText(const AView: IOTAEditView; ALine: Integer): string; static;
     /// <summary>Erste Tabulatorweite der Editoroptionen, sonst 8.</summary>
     class function TabWidth(const ABuffer: IOTAEditBuffer): Integer; static;
+    /// <summary>Einrückung je Ebene aus den Editoroptionen (Blockeinrückung), sonst 2 (#399).</summary>
+    class function BlockIndent(const ABuffer: IOTAEditBuffer): Integer; static;
     /// <summary>Byte-Offset im UTF-8-Puffer zu Zeile/Zeichen (0-basiert, UTF-16) in AText.</summary>
     class function ByteOffset(const AText: string; ALine, ACharacter: Integer): Integer; static;
     /// <summary>Zeichenindex (0-basiert) zu ALine/ACharacter in AText.</summary>
@@ -87,6 +89,15 @@ begin
     if Result < 1 then
       Result := 8;
   end;
+end;
+
+class function TAtlasEditorBuffer.BlockIndent(const ABuffer: IOTAEditBuffer): Integer;
+begin
+  Result := 2;
+  if ABuffer.BufferOptions <> nil then
+    Result := ABuffer.BufferOptions.BlockIndent;
+  if Result < 1 then
+    Result := 2;
 end;
 
 class function TAtlasEditorBuffer.CharOffset(const AText: string; ALine, ACharacter: Integer): Integer;

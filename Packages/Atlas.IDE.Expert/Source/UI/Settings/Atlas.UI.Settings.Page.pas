@@ -58,6 +58,13 @@ type
     FPaletteKeyPriority: TCheckBox;
     FCheckKey: TEdit;
     FCheckKeyPriority: TCheckBox;
+    FActionsKey: TEdit;
+    FExpandKey: TEdit;
+    FShrinkKey: TEdit;
+    FImplementationKey: TEdit;
+    FTypeDefinitionKey: TEdit;
+    FEditorKeysPriority: TCheckBox;
+    FSlashCommands: TCheckBox;
     FResetHistory: TButton;
     FResetWidths: TButton;
     FHangTest: TButton;
@@ -68,7 +75,9 @@ type
     function AddPanel(AHeight: Integer): TPanel;
     function AddNumber(const ACaption: string): TEdit;
     /// <summary>Tastenkürzel mit Häkchen „Vorrang“ in einer Zeile (#494).</summary>
-    function AddKey(const ACaption: string; out APriority: TCheckBox): TEdit;
+    function AddKey(const ACaption: string; out APriority: TCheckBox): TEdit; overload;
+    /// <summary>Kürzel ohne eigenen Vorrang; der gilt für die Gruppe (#399).</summary>
+    function AddKey(const ACaption: string): TEdit; overload;
     procedure ResetHistoryClick(Sender: TObject);
     procedure ResetWidthsClick(Sender: TObject);
     procedure HangTestClick(Sender: TObject);
@@ -179,6 +188,14 @@ begin
   // Tastenkürzel (#494).
   FPaletteKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsPaletteKey), FPaletteKeyPriority);
   FCheckKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsCheckKey), FCheckKeyPriority);
+  // Editorbefehle (#399): ein Vorrang für alle.
+  FActionsKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorActions));
+  FExpandKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorExpand));
+  FShrinkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorShrink));
+  FImplementationKey := AddKey(TAtlasStrings.Text(TAtlasTextId.MenuImplementations));
+  FTypeDefinitionKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTypeDefinition));
+  FEditorKeysPriority := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorKeysPriority));
+  FSlashCommands := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSlashCommands));
   Panel := AddPanel(32);
   FResetHistory := TButton.Create(Self);
   FResetHistory.Parent := Panel;
@@ -253,6 +270,24 @@ begin
   APriority.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsKeyPriority);
 end;
 
+function TAtlasSettingsPage.AddKey(const ACaption: string): TEdit;
+var
+  Panel: TPanel;
+  Caption: TLabel;
+begin
+  Panel := AddPanel(26);
+  Caption := TLabel.Create(Self);
+  Caption.Parent := Panel;
+  Caption.Caption := StringReplace(ACaption, '…', '', []);
+  Caption.Left := 0;
+  Caption.Top := 5;
+  Result := TEdit.Create(Self);
+  Result.Parent := Panel;
+  Result.Left := 180;
+  Result.Top := 1;
+  Result.Width := 140;
+end;
+
 function TAtlasSettingsPage.AddNumber(const ACaption: string): TEdit;
 var
   Panel: TPanel;
@@ -281,6 +316,13 @@ begin
   FPaletteKeyPriority.Checked := ASettings.PaletteKeyPriority;
   FCheckKey.Text := ShortCutToText(TShortCut(ASettings.CheckKey));
   FCheckKeyPriority.Checked := ASettings.CheckKeyPriority;
+  FActionsKey.Text := ShortCutToText(TShortCut(ASettings.ActionsKey));
+  FExpandKey.Text := ShortCutToText(TShortCut(ASettings.ExpandKey));
+  FShrinkKey.Text := ShortCutToText(TShortCut(ASettings.ShrinkKey));
+  FImplementationKey.Text := ShortCutToText(TShortCut(ASettings.ImplementationKey));
+  FTypeDefinitionKey.Text := ShortCutToText(TShortCut(ASettings.TypeDefinitionKey));
+  FEditorKeysPriority.Checked := ASettings.EditorKeysPriority;
+  FSlashCommands.Checked := ASettings.SlashCommands;
   ServerPathChange(nil);
   FRowsUpDown.Position := ASettings.VisibleRows;
   FPanelCollapsed.Checked := ASettings.PanelCollapsed;
@@ -313,6 +355,13 @@ begin
   ASettings.PaletteKeyPriority := FPaletteKeyPriority.Checked;
   ASettings.CheckKey := Integer(TextToShortCut(Trim(FCheckKey.Text)));
   ASettings.CheckKeyPriority := FCheckKeyPriority.Checked;
+  ASettings.ActionsKey := Integer(TextToShortCut(Trim(FActionsKey.Text)));
+  ASettings.ExpandKey := Integer(TextToShortCut(Trim(FExpandKey.Text)));
+  ASettings.ShrinkKey := Integer(TextToShortCut(Trim(FShrinkKey.Text)));
+  ASettings.ImplementationKey := Integer(TextToShortCut(Trim(FImplementationKey.Text)));
+  ASettings.TypeDefinitionKey := Integer(TextToShortCut(Trim(FTypeDefinitionKey.Text)));
+  ASettings.EditorKeysPriority := FEditorKeysPriority.Checked;
+  ASettings.SlashCommands := FSlashCommands.Checked;
   ASettings.VisibleRows := FRowsUpDown.Position;
   ASettings.PanelCollapsed := FPanelCollapsed.Checked;
   ASettings.AutoParentheses := FAutoParentheses.Checked;

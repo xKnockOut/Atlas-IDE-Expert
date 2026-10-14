@@ -14,6 +14,8 @@ An expert for RAD Studio (Delphi/Object Pascal): an IDE plugin with its own user
 - **Problems in the editor**: syntax errors, rule findings and compiler messages as squiggles, in the tooltip and as the list "Atlas-Probleme" in the message view, project-wide; marks move along while typing
 - **Compiler check after saving** and the compiler messages of the "Build" tab
 - **Bracket and block pairs** coloured by depth, with matching block lines
+- **Results window** "Atlas Results" for references (including forms), implementations, callers, calls and inheritance; workspace symbol search; preview before renaming
+- **Code actions** (Alt+Enter), expand and shrink selection (Ctrl+W, Ctrl+Shift+W), go to implementation and type definition, copy qualified name; all also in the editor context menu under *Atlas*. Slash commands such as `/uses Unit` run after Enter, `///` above a declaration creates the documentation comment
 - **Command palette** (Ctrl+Shift+P), silent reload of files changed outside the IDE, hang watchdog with log
 
 All settings are under *Tools › Options › Third Party › Atlas*, including the path to the server.
