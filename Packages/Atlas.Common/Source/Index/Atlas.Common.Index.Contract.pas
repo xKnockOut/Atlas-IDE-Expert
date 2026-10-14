@@ -63,7 +63,28 @@ type
     Condition: string;
     /// <summary>Steht in einem Zweig, der unter der aktiven Konfiguration nicht gilt (#476).</summary>
     Unavailable: Boolean;
+    /// <summary>Kopf der Deklaration als eine Zeile, z. B. "function Foo(A: Integer): string; overload;"
+    /// oder "TFoo = class(TBase)" (#492); höchstens TIndexSymbol.MaxSignature Zeichen.</summary>
+    Signature: string;
+    /// <summary>Direktiven in Kleinschreibung und Reihenfolge der Deklaration: virtual, override,
+    /// overload, static, inline, deprecated, platform … (#492).</summary>
+    Directives: TArray<string>;
+    /// <summary>XMLDoc-Kurztext: Klartext von &lt;summary&gt; aus den ///-Zeilen darüber, eine Zeile,
+    /// höchstens TIndexSymbol.MaxSummary Zeichen; '' ohne Doku (#492).</summary>
+    Summary: string;
     function QualifiedName: string;
+    /// <summary>Trägt die Direktive ADirective (ohne Groß-/Kleinschreibung)?</summary>
+    function HasDirective(const ADirective: string): Boolean;
+  public const
+    MaxSignature = 300;
+    MaxSummary = 200;
+  end;
+
+  /// <summary>Verwendungen eines Bezeichners in einer Unit (#492, für #470): alle Stellen außer der
+  /// Deklaration selbst, nach Position sortiert.</summary>
+  TIndexUsage = record
+    Name: string;
+    Positions: TArray<TTextPosition>;
   end;
 
   TUnitIndex = record
@@ -91,6 +112,15 @@ type
     /// getrennt von Symbols, damit Namensauflösung, Referenzen und Prüfregeln sie nicht sehen;
     /// nur die Vervollständigung zeigt sie abgeschwächt.</summary>
     Unavailable: TArray<TIndexSymbol>;
+    /// <summary>Verwendungen der Bezeichner (#492), nach Name sortiert; nur Projekt-Units und nur mit
+    /// index.usages.</summary>
+    Usages: TArray<TIndexUsage>;
+    /// <summary>Verwendungen wurden erfasst (auch wenn es keine gibt); ohne sie liest der Builder die
+    /// Unit neu, sobald index.usages eingeschaltet ist.</summary>
+    UsagesIndexed: Boolean;
+    /// <summary>Verwendungen liegen nur im Cache auf der Platte, weil das Speicherbudget überschritten
+    /// war (#492); TIndexService.UsagesOf lädt sie bei Bedarf.</summary>
+    UsagesOffloaded: Boolean;
     /// <summary>Datei, in der ASymbol steht: seine Include-Datei (#500), sonst FileName.</summary>
     function SymbolFile(const ASymbol: TIndexSymbol): string;
   end;
@@ -119,6 +149,8 @@ type
     function MemoryBytes: Int64;
     /// <summary>Zahl der kompakt gehaltenen Units.</summary>
     function CompactCount: Integer;
+    /// <summary>Zahl der Units, deren Verwendungen wegen des Budgets ausgelagert sind (#492).</summary>
+    function OffloadedCount: Integer;
     /// <summary>Obergrenze in Byte; 0 = unbegrenzt. Wird sie überschritten, hält der Index
     /// zuerst Bibliotheks-, dann Projekt-Units kompakt.</summary>
     procedure SetBudget(ABytes: Int64);
@@ -193,6 +225,16 @@ begin
     Result := Name
   else
     Result := Container + '.' + Name;
+end;
+
+function TIndexSymbol.HasDirective(const ADirective: string): Boolean;
+var
+  Directive: string;
+begin
+  for Directive in Directives do
+    if SameText(Directive, ADirective) then
+      Exit(True);
+  Result := False;
 end;
 
 { TUnitIndex }

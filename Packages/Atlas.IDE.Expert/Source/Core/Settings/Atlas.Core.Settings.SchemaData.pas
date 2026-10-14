@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..769] of string = (
+  Lines: array[0..774] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -403,11 +403,11 @@ const
     '    "memoryBudgetMb": {',
     '      "type": "integer",',
     '      "minimum": 0,',
-    '      "default": 0,',
-    '      "description": "Obergrenze für den Symbolindex in MB. Darüber werden zuerst Bibliotheks-Units (RTL, VCL), dann Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt.",',
+    '      "default": 256,',
+    '      "description": "Obergrenze für den Symbolindex im Arbeitsspeicher in MB. Darüber werden zuerst die Verwendungen ausgelagert (sie bleiben im Cache auf der Platte), dann Bibliotheks-Units (RTL, VC' + 'L) und zuletzt Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt.",',
     '      "x-page": "Speicher",',
     '      "x-control": "Zahlenfeld (MB)",',
-    '      "x-issue": "#185"',
+    '      "x-issue": "#185, #492"',
     '    },',
     '    "index": {',
     '      "type": "object",',
@@ -429,6 +429,11 @@ const
     '          "default": false,',
     '          "description": "Alle Units der Bibliotheks- und Suchpfade der Installation indizieren (RTL, VCL, Komponenten); aus = nur über uses erreichbare."',
     '        },',
+    '        "usages": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Verwendungen der Bezeichner in Projekt-Units mit indizieren (Verwendungsbeispiele); aus = nur Deklarationen, kleinerer Index."',
+    '        },',
     '        "exclude": {',
     '          "type": "array",',
     '          "items": { "type": "string" },',
@@ -439,7 +444,7 @@ const
     '      },',
     '      "x-page": "Speicher",',
     '      "x-control": "Kontrollkästchen, Liste mit Hinzufügen/Entfernen",',
-    '      "x-issue": "#648"',
+    '      "x-issue": "#648, #492"',
     '    },',
     '    "requestTimeoutMs": {',
     '      "type": "integer",',

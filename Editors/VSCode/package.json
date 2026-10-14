@@ -276,8 +276,8 @@
         "atlas.memoryBudgetMb": {
           "type": "integer",
           "minimum": 0,
-          "default": 0,
-          "markdownDescription": "Obergrenze für den Symbolindex in MB. Darüber werden zuerst Bibliotheks-Units (RTL, VCL), dann Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. atlas.json im Projekt hat Vorrang."
+          "default": 256,
+          "markdownDescription": "Obergrenze für den Symbolindex im Arbeitsspeicher in MB. Darüber werden zuerst die Verwendungen ausgelagert (sie bleiben im Cache auf der Platte), dann Bibliotheks-Units (RTL, VCL) und zuletzt Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. atlas.json im Projekt hat Vorrang."
         },
         "atlas.index": {
           "type": "object",

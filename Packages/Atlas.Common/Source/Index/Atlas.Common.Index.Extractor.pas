@@ -45,6 +45,12 @@ type
     function IsConstructor(ANode: TSyntaxNode): Boolean;
     procedure Add(ANode: TSyntaxNode; const AName, AContainer: string; AKind: TIndexSymbolKind;
       const AAncestors: TArray<string> = nil);
+    /// <summary>Tokens AFrom..ATo (ohne Kommentare und Compiler-Direktiven) als eine Zeile; mit
+    /// AFirstLine endet der Text am Ende der ersten Zeile außerhalb von Klammern.</summary>
+    function TokenText(AFrom, ATo: Integer; AFirstLine: Boolean): string;
+    function SignatureOf(ANode: TSyntaxNode; AKind: TIndexSymbolKind; const AName, ATypeText: string): string;
+    function DirectivesOf(ANode: TSyntaxNode; AKind: TIndexSymbolKind): TArray<string>;
+    function SummaryOf(ANode: TSyntaxNode): string;
     procedure AddNames(ANode: TSyntaxNode; const AContainer: string; AKind: TIndexSymbolKind);
     procedure AddType(ADecl: TSyntaxNode; const AContainer: string);
     procedure AddMembers(ABody: TSyntaxNode; const AContainer: string);
@@ -53,7 +59,7 @@ type
     procedure Walk(ARoot: TSyntaxNode; var AUnit: TUnitIndex);
     class function UsesOf(ASection: TSyntaxNode): TArray<string>; static;
     class function ExtractLevel(const AText, AFileName: string; const ADefines: TArray<string>;
-      const AResolver: TIncludeResolver; const AStack: TArray<string>): TUnitIndex; static;
+      const AResolver: TIncludeResolver; const AStack: TArray<string>; AUsages: Boolean): TUnitIndex; static;
     class procedure AddIncluded(ATree: TSyntaxTree; const AFileName: string; const ADefines: TArray<string>;
       const AResolver: TIncludeResolver; const AStack: TArray<string>; var AUnit: TUnitIndex); static;
   public
@@ -75,8 +81,13 @@ type
     class function Extract(ATree: TSyntaxTree; const AFileName: string): TUnitIndex; static;
     /// <summary>Parst AText mit den aktiven Symbolen ADefines und liefert den Eintrag.</summary>
     /// <summary>Mit AResolver werden $I-Dateien gelesen (#264): ihre $DEFINEs gelten, Includes listet sie auf.</summary>
+    /// <summary>Mit AUsages kommen die Verwendungen der Bezeichner dazu (#492).</summary>
     class function ExtractText(const AText, AFileName: string; const ADefines: TArray<string>;
-      const AResolver: TIncludeResolver = nil): TUnitIndex; static;
+      const AResolver: TIncludeResolver = nil; AUsages: Boolean = False): TUnitIndex; static;
+    /// <summary>Verwendungen aller Bezeichner in ATokens außer an den Deklarationsstellen von ASymbols
+    /// (#492), nach Name sortiert; Schlüsselwörter, Direktiven, Self und Result zählen nicht.</summary>
+    class function CollectUsages(const ATokens: TArray<TPascalToken>;
+      const ASymbols: TArray<TIndexSymbol>): TArray<TIndexUsage>; static;
     /// <summary>Ersetzt inaktive Zweige durch Leerzeichen; Zeilen und Spalten bleiben erhalten.</summary>
     class function BlankInactive(const AText: string; const ADefines: TArray<string>): string; overload; static;
     /// <summary>Wie oben, mit Include-Auflösung; AIncludes erhält die eingebundenen Dateien.</summary>
@@ -98,7 +109,19 @@ uses
   System.StrUtils,
   System.Math,
   System.RegularExpressions,
+  System.Generics.Defaults,
+  Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Pascal.TreeCache;
+
+const
+  // Direktiven nach Routinenköpfen und Hinweise (wie im Parser); zählen nicht als Verwendung.
+  DirectiveWords: array[0..32] of string = (
+    'abstract', 'assembler', 'cdecl', 'deprecated', 'dispid', 'dynamic', 'experimental',
+    'export', 'external', 'far', 'final', 'forward', 'inline', 'library', 'local',
+    'near', 'noreturn', 'overload', 'override', 'pascal', 'platform',
+    'register', 'reintroduce', 'safecall', 'static', 'stdcall', 'unsafe', 'varargs',
+    'virtual', 'winapi', 'delayed', 'sealed', 'nodefault');
+  HintDirectives: array[0..3] of string = ('deprecated', 'platform', 'library', 'experimental');
 
 function VisibilityOf(const AText: string): TIndexVisibility;
 var
@@ -199,6 +222,7 @@ procedure TIndexExtractor.Add(ANode: TSyntaxNode; const AName, AContainer: strin
   const AAncestors: TArray<string>);
 var
   Symbol: TIndexSymbol;
+  TypeText_: string;
 begin
   if AName = '' then
     Exit;
@@ -237,7 +261,215 @@ begin
     Symbol.IsDefault := IsDefaultProperty(ANode);
   Symbol.IsVirtual := (AKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and IsVirtualHeader(ANode);
   Symbol.FileName := '';
+  Symbol.Condition := '';
+  Symbol.Unavailable := False;
+  // Inhalt für Hover, Detailpanel und Verwendungen ohne erneutes Lesen der Datei (#492).
+  TypeText_ := '';
+  if Symbol.TypeName <> '' then
+    TypeText_ := TypeText(DeclaredTypeNode(ANode));
+  Symbol.Signature := SignatureOf(ANode, AKind, AName, TypeText_);
+  Symbol.Directives := DirectivesOf(ANode, AKind);
+  if Symbol.IsDefault and (IndexText('default', Symbol.Directives) < 0) then
+    Symbol.Directives := Symbol.Directives + ['default'];
+  Symbol.Summary := SummaryOf(ANode);
   FSymbols.Add(Symbol);
+end;
+
+function TIndexExtractor.TokenText(AFrom, ATo: Integer; AFirstLine: Boolean): string;
+const
+  NoSpaceBefore: array[0..9] of string = (';', ',', ')', ']', ':', '.', '(', '[', '^', '>');
+  NoSpaceAfter: array[0..4] of string = ('(', '[', '.', '<', '@');
+var
+  Builder: TStringBuilder;
+  Index, Depth, FirstLine: Integer;
+  Token: TPascalToken;
+  Previous: string;
+begin
+  Builder := TStringBuilder.Create;
+  try
+    Depth := 0;
+    FirstLine := -1;
+    Previous := '';
+    for Index := AFrom to ATo do
+    begin
+      if (Index < 0) or (Index >= Length(FTokens)) then
+        Continue;
+      Token := FTokens[Index];
+      if Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+        Continue;
+      if FirstLine < 0 then
+        FirstLine := Token.StartPos.Line;
+      if AFirstLine and (Depth = 0) and (Token.StartPos.Line > FirstLine) then
+        Break;
+      // ":" vor "=" (Zuweisung im Standardwert) bleibt ein Wort.
+      if (Builder.Length > 0) and (Token.Text <> '') then
+        if not ((Token.Kind = TPascalTokenKind.Symbol) and (IndexStr(Token.Text, NoSpaceBefore) >= 0)) and
+          (IndexStr(Previous, NoSpaceAfter) < 0) then
+          Builder.Append(' ');
+      // Ein Doppelpunkt trennt Name und Typ: "A: Integer".
+      Builder.Append(Token.Text);
+      if Token.Kind = TPascalTokenKind.Symbol then
+      begin
+        if (Token.Text = '(') or (Token.Text = '[') then
+          Inc(Depth)
+        else if ((Token.Text = ')') or (Token.Text = ']')) and (Depth > 0) then
+          Dec(Depth);
+      end;
+      Previous := Token.Text;
+      if Builder.Length > TIndexSymbol.MaxSignature then
+        Break;
+    end;
+    Result := Builder.ToString;
+  finally
+    Builder.Free;
+  end;
+  if Length(Result) > TIndexSymbol.MaxSignature then
+    Result := Copy(Result, 1, TIndexSymbol.MaxSignature - 1) + '…';
+end;
+
+function TIndexExtractor.SignatureOf(ANode: TSyntaxNode; AKind: TIndexSymbolKind;
+  const AName, ATypeText: string): string;
+var
+  Node: TSyntaxNode;
+  First, Last: Integer;
+begin
+  Node := ANode;
+  if (Node.Kind = TSyntaxKind.RoutineDecl) and (Node.FindChild(TSyntaxKind.RoutineHeader) <> nil) then
+    Node := Node.FindChild(TSyntaxKind.RoutineHeader);
+  case AKind of
+    TIndexSymbolKind.EnumMember:
+      Exit(AName);
+    TIndexSymbolKind.Field, TIndexSymbolKind.Variable:
+      // A, B: Integer: je Name eine eigene Signatur.
+      if ATypeText <> '' then
+        Exit(AName + ': ' + ATypeText);
+  end;
+  First := TokenIndexAt(Node.StartOffset);
+  Last := TokenIndexAt(Node.EndOffset) - 1;
+  Result := TokenText(First, Last, AKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType,
+    TIndexSymbolKind.RecordType, TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType,
+    TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias]);
+  // Ein abschließendes Semikolon gehört nicht zur Anzeige.
+  while Result.EndsWith(';') do
+    Result := Copy(Result, 1, Length(Result) - 1).TrimRight;
+end;
+
+function TIndexExtractor.DirectivesOf(ANode: TSyntaxNode; AKind: TIndexSymbolKind): TArray<string>;
+var
+  Node: TSyntaxNode;
+  Index, Last: Integer;
+  Word: string;
+
+  procedure AddWord(const AWord: string);
+  begin
+    if IndexText(AWord, Result) < 0 then
+      Result := Result + [LowerCase(AWord)];
+  end;
+
+  function IsHintAt(APos: Integer): Boolean;
+  begin
+    Result := (APos >= 0) and (APos < Length(FTokens)) and
+      (FTokens[APos].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
+      (IndexText(FTokens[APos].Text, HintDirectives) >= 0);
+  end;
+
+  function NextCode(APos: Integer): Integer;
+  begin
+    Result := APos + 1;
+    while (Result < Length(FTokens)) and (FTokens[Result].Kind in [TPascalTokenKind.Comment,
+      TPascalTokenKind.Directive]) do
+      Inc(Result);
+  end;
+
+  function EndsHint(APos: Integer): Boolean;
+  begin
+    // Hinter einem Hinweis folgt ";", "," oder der Grund als String, sonst ist es ein Bezeichner
+    // (z. B. ein Feld "platform: Integer").
+    Result := (APos >= Length(FTokens)) or FTokens[APos].IsSymbol(';') or FTokens[APos].IsSymbol(',') or
+      (FTokens[APos].Kind = TPascalTokenKind.StringLiteral) or IsHintAt(APos);
+  end;
+
+begin
+  Result := nil;
+  Node := ANode;
+  if (Node.Kind = TSyntaxKind.RoutineDecl) and (Node.FindChild(TSyntaxKind.RoutineHeader) <> nil) then
+    Node := Node.FindChild(TSyntaxKind.RoutineHeader);
+  if Node.Kind = TSyntaxKind.RoutineHeader then
+  begin
+    for Index := 0 to Node.ChildCount - 1 do
+      if Node[Index].Kind = TSyntaxKind.Directive then
+        AddWord(Node[Index].Name);
+    Exit;
+  end;
+  if AKind = TIndexSymbolKind.EnumMember then
+    Exit;
+  // Hinweise hinter der Deklaration: "X = 1 deprecated;", "end platform;", "A: Integer platform;".
+  Last := TokenIndexAt(Node.EndOffset) - 1;
+  Index := Last;
+  while (Index > 0) and ((FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive,
+    TPascalTokenKind.StringLiteral]) or FTokens[Index].IsSymbol(';')) do
+    Dec(Index);
+  while (Index > 0) and IsHintAt(Index) do
+  begin
+    Word := FTokens[Index].Text;
+    AddWord(Word);
+    Dec(Index);
+    while (Index > 0) and ((FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.StringLiteral]) or
+      FTokens[Index].IsSymbol(',')) do
+      Dec(Index);
+  end;
+  // Steht der Hinweis hinter dem Ende des Knotens, gehört er trotzdem dazu.
+  Index := Last + 1;
+  while (Index < Length(FTokens)) and (FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive,
+    TPascalTokenKind.StringLiteral]) do
+    Inc(Index);
+  while IsHintAt(Index) and EndsHint(NextCode(Index)) do
+  begin
+    AddWord(FTokens[Index].Text);
+    Index := NextCode(Index);
+    while (Index < Length(FTokens)) and ((FTokens[Index].Kind = TPascalTokenKind.StringLiteral) or
+      FTokens[Index].IsSymbol(',')) do
+      Index := NextCode(Index);
+  end;
+end;
+
+function TIndexExtractor.SummaryOf(ANode: TSyntaxNode): string;
+var
+  Index, Depth: Integer;
+  Lines: TArray<string>;
+  Text: string;
+  Doc: TXmlDoc;
+begin
+  Result := '';
+  Index := TokenIndexAt(ANode.StartOffset) - 1;
+  // Attribute zwischen Doku und Deklaration überspringen: [Weak] /// steht darüber.
+  while (Index >= 0) and FTokens[Index].IsSymbol(']') do
+  begin
+    Depth := 0;
+    repeat
+      if FTokens[Index].IsSymbol(']') then
+        Inc(Depth)
+      else if FTokens[Index].IsSymbol('[') then
+        Dec(Depth);
+      Dec(Index);
+    until (Index < 0) or (Depth = 0);
+  end;
+  Lines := nil;
+  while (Index >= 0) and (FTokens[Index].Kind = TPascalTokenKind.Comment) and
+    FTokens[Index].Text.StartsWith('///') do
+  begin
+    Lines := [Copy(FTokens[Index].Text, 4, MaxInt)] + Lines;
+    Dec(Index);
+  end;
+  if Length(Lines) = 0 then
+    Exit;
+  Doc := TXmlDoc.Parse(String.Join(#10, Lines));
+  Text := Doc.Summary;
+  // Eine Zeile, Leerraum zusammengefasst.
+  Text := TRegEx.Replace(Text, '\s+', ' ').Trim;
+  if Length(Text) > TIndexSymbol.MaxSummary then
+    Text := Copy(Text, 1, TIndexSymbol.MaxSummary - 1) + '…';
+  Result := Text;
 end;
 
 class function TIndexExtractor.DeclaredTypeNode(ANode: TSyntaxNode): TSyntaxNode;
@@ -741,9 +973,89 @@ begin
 end;
 
 class function TIndexExtractor.ExtractText(const AText, AFileName: string;
-  const ADefines: TArray<string>; const AResolver: TIncludeResolver): TUnitIndex;
+  const ADefines: TArray<string>; const AResolver: TIncludeResolver; AUsages: Boolean): TUnitIndex;
 begin
-  Result := ExtractLevel(AText, AFileName, ADefines, AResolver, [AFileName]);
+  Result := ExtractLevel(AText, AFileName, ADefines, AResolver, [AFileName], AUsages);
+end;
+
+type
+  TUsageBucket = class
+    Name: string;
+    Positions: TList<TTextPosition>;
+    constructor Create(const AName: string);
+    destructor Destroy; override;
+  end;
+
+constructor TUsageBucket.Create(const AName: string);
+begin
+  inherited Create;
+  Name := AName;
+  Positions := TList<TTextPosition>.Create;
+end;
+
+destructor TUsageBucket.Destroy;
+begin
+  Positions.Free;
+  inherited;
+end;
+
+class function TIndexExtractor.CollectUsages(const ATokens: TArray<TPascalToken>;
+  const ASymbols: TArray<TIndexSymbol>): TArray<TIndexUsage>;
+var
+  Declared: TDictionary<Int64, Boolean>;
+  Buckets: TObjectDictionary<string, TUsageBucket>;
+  Bucket: TUsageBucket;
+  Names: TArray<string>;
+  Symbol: TIndexSymbol;
+  Token: TPascalToken;
+  Name, Key: string;
+  Index: Integer;
+
+  function PositionKey(const APosition: TTextPosition): Int64;
+  begin
+    Result := (Int64(APosition.Line) shl 32) or Cardinal(APosition.Character);
+  end;
+
+begin
+  Result := nil;
+  Declared := TDictionary<Int64, Boolean>.Create;
+  Buckets := TObjectDictionary<string, TUsageBucket>.Create([doOwnsValues]);
+  try
+    // Die Deklaration selbst ist keine Verwendung; Symbole aus $I-Dateien stehen woanders.
+    for Symbol in ASymbols do
+      if Symbol.FileName = '' then
+        Declared.AddOrSetValue(PositionKey(Symbol.SelectionRange.StartPos), True);
+    for Token in ATokens do
+    begin
+      if Token.Kind <> TPascalTokenKind.Identifier then
+        Continue;
+      Name := Token.Text;
+      if Name.StartsWith('&') then
+        Name := Copy(Name, 2, MaxInt);
+      if (Name = '') or SameText(Name, 'Self') or SameText(Name, 'Result') or
+        (IndexText(Name, DirectiveWords) >= 0) or Declared.ContainsKey(PositionKey(Token.StartPos)) then
+        Continue;
+      Key := UpperCase(Name);
+      if not Buckets.TryGetValue(Key, Bucket) then
+      begin
+        Bucket := TUsageBucket.Create(Name);
+        Buckets.Add(Key, Bucket);
+      end;
+      Bucket.Positions.Add(Token.StartPos);
+    end;
+    Names := Buckets.Keys.ToArray;
+    TArray.Sort<string>(Names);
+    SetLength(Result, Length(Names));
+    for Index := 0 to High(Names) do
+    begin
+      Bucket := Buckets[Names[Index]];
+      Result[Index].Name := Bucket.Name;
+      Result[Index].Positions := Bucket.Positions.ToArray;
+    end;
+  finally
+    Buckets.Free;
+    Declared.Free;
+  end;
 end;
 
 /// <summary>Liegt APosition in ARange (Ende ausgeschlossen)?</summary>
@@ -946,7 +1258,7 @@ begin
 end;
 
 class function TIndexExtractor.ExtractLevel(const AText, AFileName: string; const ADefines: TArray<string>;
-  const AResolver: TIncludeResolver; const AStack: TArray<string>): TUnitIndex;
+  const AResolver: TIncludeResolver; const AStack: TArray<string>; AUsages: Boolean): TUnitIndex;
 var
   Tree: TSyntaxTree;
   Includes: TArray<string>;
@@ -957,6 +1269,11 @@ begin
     Result := Extract(Tree, AFileName);
     Result.Includes := Includes;
     AnnotateConditions(Result, AText, Conditionals);
+    if AUsages then
+    begin
+      Result.Usages := CollectUsages(Tree.Tokens, Result.Symbols);
+      Result.UsagesIndexed := True;
+    end;
     AddIncluded(Tree, AFileName, ADefines, AResolver, AStack, Result);
   finally
     Tree.Free;
@@ -1082,7 +1399,7 @@ begin
         IncText := Section + #10 + IncText;
         Shift := 1;
       end;
-      Included := ExtractLevel(IncText, IncFile, ADefines, AResolver, AStack + [IncFile]);
+      Included := ExtractLevel(IncText, IncFile, ADefines, AResolver, AStack + [IncFile], False);
       for Symbol in Included.Symbols do
       begin
         Copied := Symbol;

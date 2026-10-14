@@ -2,7 +2,9 @@
 
 // Inhalt des Status-Befehls "atlas.server.status" (#28): Index, Speicher,
 // letzter Indexlauf je Ordner und Antwortzeiten je Methode. Als JSON für
-// Werkzeuge und als Markdown zum Anzeigen.
+// Werkzeuge und als Markdown zum Anzeigen. Seit #492 auch die Größe der
+// Caches auf der Platte, die letzte Aktualisierung je Ordner und die Zahl der
+// Units mit ausgelagerten Verwendungen (Einstellungsseite des Plugins).
 
 interface
 
@@ -19,6 +21,14 @@ type
     Parsed: Integer;
     FromCache: Integer;
     Missing: Integer;
+    /// <summary>Letzte Änderung am Index dieses Ordners (Aufbau, Speichern, Tipp-Pause); 0 = noch keine.</summary>
+    LastUpdate: TDateTime;
+    /// <summary>Cache-Dateien des Ordners (Projekt, gemeinsame Bibliothek); '' ohne.</summary>
+    CacheFile: string;
+    LibraryCacheFile: string;
+    /// <summary>Größe der Cache-Dateien in Byte (#492).</summary>
+    CacheBytes: Int64;
+    LibraryCacheBytes: Int64;
   end;
 
   TServerStatus = record
@@ -30,6 +40,10 @@ type
     IndexBytes: Int64;
     /// <summary>Kompakt gehaltene Units.</summary>
     CompactUnits: Integer;
+    /// <summary>Units mit ausgelagerten Verwendungen (#492).</summary>
+    OffloadedUnits: Integer;
+    /// <summary>Alle Index-Caches auf der Platte in Byte, auch anderer Projekte (#492).</summary>
+    DiskBytes: Int64;
     /// <summary>Budget des Index in Byte; 0 = unbegrenzt.</summary>
     BudgetBytes: Int64;
     /// <summary>Text der geöffneten Dokumente in Byte.</summary>
@@ -43,8 +57,22 @@ type
 
 const
   StatusCommand = 'atlas.server.status';
+  /// <summary>Alle Index-Caches löschen und die Ordner neu indizieren (#492).</summary>
+  ClearIndexCommand = 'atlas.server.clearIndex';
 
 implementation
+
+uses
+  System.DateUtils;
+
+/// <summary>ISO 8601 in UTC; '' für 0.</summary>
+function DateText(AValue: TDateTime): string;
+begin
+  if AValue = 0 then
+    Result := ''
+  else
+    Result := DateToISO8601(AValue, False);
+end;
 
 function MegaBytes(ABytes: Int64): string;
 begin
@@ -68,14 +96,23 @@ begin
       Builder.Append(' von ').Append(MegaBytes(BudgetBytes));
     if CompactUnits > 0 then
       Builder.Append(Format(', %d Units kompakt', [CompactUnits]));
+    if OffloadedUnits > 0 then
+      Builder.Append(Format(', Verwendungen von %d Units ausgelagert', [OffloadedUnits]));
     Builder.Append(#10);
+    Builder.Append('- Caches auf der Platte: ').Append(MegaBytes(DiskBytes)).Append(#10);
     Builder.Append('- davon geöffnete Dokumente: ').Append(MegaBytes(DocumentBytes)).Append(#10);
     for Workspace in Workspaces do
       if Workspace.LastIndexMs < 0 then
         Builder.Append(Format('- %s: Index wird aufgebaut', [Workspace.Name])).Append(#10)
       else
+      begin
         Builder.Append(Format('- %s: letzter Indexlauf %d ms (%d neu eingelesen, %d aus dem Cache, %d fehlen)',
-          [Workspace.Name, Workspace.LastIndexMs, Workspace.Parsed, Workspace.FromCache, Workspace.Missing])).Append(#10);
+          [Workspace.Name, Workspace.LastIndexMs, Workspace.Parsed, Workspace.FromCache, Workspace.Missing]));
+        if Workspace.LastUpdate <> 0 then
+          Builder.Append(', aktualisiert ').Append(FormatDateTime('dd.mm.yyyy hh:nn:ss', Workspace.LastUpdate));
+        Builder.Append(', Cache ').Append(MegaBytes(Workspace.CacheBytes + Workspace.LibraryCacheBytes));
+        Builder.Append(#10);
+      end;
     if Length(Requests) > 0 then
     begin
       Builder.Append(#10).Append('| Methode | Anzahl | Mittel ms | Max ms | Fehler |').Append(#10);
@@ -103,6 +140,8 @@ begin
   Result.AddPair('memoryBytes', TJSONNumber.Create(MemoryBytes));
   Result.AddPair('indexBytes', TJSONNumber.Create(IndexBytes));
   Result.AddPair('compactUnits', TJSONNumber.Create(CompactUnits));
+  Result.AddPair('offloadedUnits', TJSONNumber.Create(OffloadedUnits));
+  Result.AddPair('diskBytes', TJSONNumber.Create(DiskBytes));
   Result.AddPair('budgetBytes', TJSONNumber.Create(BudgetBytes));
   Result.AddPair('documentBytes', TJSONNumber.Create(DocumentBytes));
   Items := TJSONArray.Create;
@@ -114,6 +153,9 @@ begin
     Item.AddPair('parsed', TJSONNumber.Create(Workspace.Parsed));
     Item.AddPair('fromCache', TJSONNumber.Create(Workspace.FromCache));
     Item.AddPair('missing', TJSONNumber.Create(Workspace.Missing));
+    Item.AddPair('lastUpdate', DateText(Workspace.LastUpdate));
+    Item.AddPair('cacheBytes', TJSONNumber.Create(Workspace.CacheBytes));
+    Item.AddPair('libraryCacheBytes', TJSONNumber.Create(Workspace.LibraryCacheBytes));
     Items.AddElement(Item);
   end;
   Result.AddPair('workspaces', Items);

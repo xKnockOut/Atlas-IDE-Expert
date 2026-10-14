@@ -263,6 +263,8 @@ type
     IndexProjectGroup: Boolean;
     IndexSearchPaths: Boolean;
     IndexLibraryPaths: Boolean;
+    /// <summary>Verwendungen der Bezeichner in Projekt-Units mit indizieren (#492, für #470).</summary>
+    IndexUsages: Boolean;
     /// <summary>Glob-Muster gegen den vollen Pfad ("/" oder ""), die nicht indiziert werden, z. B. **/Demos/**.</summary>
     IndexExclude: TArray<string>;
     /// <summary>Protokoll (#265): Stufe (debug/info/warning/error), Logdatei und Mitschnitt.
@@ -554,7 +556,8 @@ begin
   Result.StringLiteral := TStringLiteralSettings.Default;
   Result.MemberOrder := TMemberOrderSettings.Default;
   Result.DfmPropertyRules := nil;
-  Result.MemoryBudgetMb := 0;
+  // Wie die Vorgabe des Plugins (#492): darüber zuerst Verwendungen auslagern.
+  Result.MemoryBudgetMb := 256;
   Result.RequestTimeoutMs := 10000;
   Result.DiagnosticsLog := True;
   Result.DiagnosticsLogDays := 7;
@@ -563,6 +566,7 @@ begin
   Result.IndexSearchPaths := True;
   // Bibliothekspfade ganz zu indizieren dauert bei großen Installationen Minuten; nur auf Wunsch.
   Result.IndexLibraryPaths := False;
+  Result.IndexUsages := True;
   Result.IndexExclude := nil;
   Result.LogLevel := 'info';
   Result.LogFile := '';
