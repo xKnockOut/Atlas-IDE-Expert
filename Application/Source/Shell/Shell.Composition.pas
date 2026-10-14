@@ -1044,6 +1044,11 @@ begin
       Folder: TWorkspaceFolder;
     begin
       WatchParent(FLifecycle.InitializeParams);
+      // Einstellungen des IDE-Plugins (#652): initializationOptions.settings.atlas wie bei
+      // didChangeConfiguration, schon vor dem ersten Indexaufbau; atlas.json hat Vorrang.
+      if FLifecycle.InitializeParams <> nil then
+        FEditorSettings := TLspConfiguration.EditorSettingsFromParams(
+          FLifecycle.InitializeParams.GetValue('initializationOptions'));
       FHover.Markdown := TLspHover.ClientSupportsMarkdown(FLifecycle.InitializeParams);
       Folders := TLspWorkspaceFolders.FromInitialize(FLifecycle.InitializeParams);
       // Meldet der Client nur Projektdateien (IDE-Plugin, #648), bekommen Dateien außerhalb dieser

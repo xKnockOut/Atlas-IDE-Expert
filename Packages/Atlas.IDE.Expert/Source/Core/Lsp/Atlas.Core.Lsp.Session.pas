@@ -78,6 +78,7 @@ type
     FDocuments: TDictionary<string, TDocumentState>;
     FInitialized: Boolean;
     FProjects: TArray<string>;
+    FServerSettings: string;
     function PositionParams(const AFileName: string; ALine, ACharacter: Integer): TJSONObject;
   public
     /// <summary>AClient gehört weiter dem Aufrufer.</summary>
@@ -96,7 +97,13 @@ type
     /// <summary>Projekte der Gruppe, aktives zuerst. Vor Initialize nur gemerkt, danach als
     /// didChangeWorkspaceFolders gemeldet, falls sich etwas geändert hat (#648).</summary>
     procedure SetProjects(const AProjects: TArray<string>);
+    /// <summary>{"settings": {"atlas": AJson}} für initializationOptions und didChangeConfiguration (#652);
+    /// leeres oder ungültiges AJson ergibt ein leeres atlas-Objekt.</summary>
+    class function SettingsParams(const AJson: string): TJSONObject; static;
     procedure Initialize;
+    /// <summary>Einstellungen der Atlas-Optionen im Format von atlas.json (#652), vor Initialize setzen;
+    /// gehen als initializationOptions mit, damit schon der erste Indexaufbau sie nutzt.</summary>
+    property ServerSettings: string read FServerSettings write FServerSettings;
     /// <summary>Schickt AText, falls neu oder geändert.</summary>
     procedure Sync(const AFileName, AText: string);
     function Hover(const AFileName, AText: string; ALine, ACharacter: Integer): string;
@@ -344,6 +351,8 @@ begin
   Params.AddPair('capabilities', Capabilities);
   if Length(FProjects) > 0 then
     Params.AddPair('workspaceFolders', ProjectFolders(FProjects));
+  if FServerSettings <> '' then
+    Params.AddPair('initializationOptions', SettingsParams(FServerSettings));
   // Nur den Zähler einfangen, nicht die Sitzung: Der Lese-Thread kann die Sitzung überleben.
   Refresh := FRefresh;
   Progress := FProgress;
@@ -722,6 +731,19 @@ end;
 function TLspSession.ResolveCompletion(AItem: TJSONObject; ATimeoutMs: Cardinal): TJSONValue;
 begin
   Result := FClient.Request('completionItem/resolve', AItem, ATimeoutMs);
+end;
+
+class function TLspSession.SettingsParams(const AJson: string): TJSONObject;
+var
+  Value: TJSONValue;
+begin
+  Value := TJSONObject.ParseJSONValue(AJson);
+  if not (Value is TJSONObject) then
+  begin
+    Value.Free;
+    Value := TJSONObject.Create;
+  end;
+  Result := TJSONObject.Create(TJSONPair.Create('settings', TJSONObject.Create(TJSONPair.Create('atlas', Value))));
 end;
 
 procedure TLspSession.Notify(const AMethod: string; AParams: TJSONObject);

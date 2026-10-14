@@ -87,11 +87,18 @@ type
     CheckOnSaveDelayMs: Integer;
     /// <summary>Höchstdauer einer Prüfung; darüber nur noch von Hand (Strg+Alt+F9).</summary>
     CheckOnSaveMaxMs: Integer;
+    /// <summary>Umfang des Symbolindex für alle Projekte (#652); index in atlas.json hat Vorrang.</summary>
+    IndexProjectGroup: Boolean;
+    IndexSearchPaths: Boolean;
+    IndexLibraryPaths: Boolean;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
     procedure Load(const AStore: IAtlasSettingsStore);
     procedure Save(const AStore: IAtlasSettingsStore);
+    /// <summary>Einstellungen für den Server als JSON-Objekt im Format von atlas.json (#652); geht als
+    /// initializationOptions.settings.atlas und mit workspace/didChangeConfiguration an den Server.</summary>
+    function ServerSettingsJson: string;
   end;
 
 implementation
@@ -139,6 +146,10 @@ begin
   Result.CheckOnSave := False;
   Result.CheckOnSaveDelayMs := 2000;
   Result.CheckOnSaveMaxMs := 1500;
+  // Wie die Vorgaben im Schema (atlas.schema.json, index).
+  Result.IndexProjectGroup := True;
+  Result.IndexSearchPaths := True;
+  Result.IndexLibraryPaths := False;
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -184,6 +195,9 @@ begin
   CheckOnSave := AStore.ReadInteger('CheckOnSave', BoolValue(Default.CheckOnSave)) <> 0;
   CheckOnSaveDelayMs := AStore.ReadInteger('CheckOnSaveDelayMs', Default.CheckOnSaveDelayMs);
   CheckOnSaveMaxMs := AStore.ReadInteger('CheckOnSaveMaxMs', Default.CheckOnSaveMaxMs);
+  IndexProjectGroup := AStore.ReadInteger('IndexProjectGroup', BoolValue(Default.IndexProjectGroup)) <> 0;
+  IndexSearchPaths := AStore.ReadInteger('IndexSearchPaths', BoolValue(Default.IndexSearchPaths)) <> 0;
+  IndexLibraryPaths := AStore.ReadInteger('IndexLibraryPaths', BoolValue(Default.IndexLibraryPaths)) <> 0;
   Normalize;
 end;
 
@@ -217,6 +231,23 @@ begin
   AStore.WriteInteger('CheckOnSave', BoolValue(CheckOnSave));
   AStore.WriteInteger('CheckOnSaveDelayMs', CheckOnSaveDelayMs);
   AStore.WriteInteger('CheckOnSaveMaxMs', CheckOnSaveMaxMs);
+  AStore.WriteInteger('IndexProjectGroup', BoolValue(IndexProjectGroup));
+  AStore.WriteInteger('IndexSearchPaths', BoolValue(IndexSearchPaths));
+  AStore.WriteInteger('IndexLibraryPaths', BoolValue(IndexLibraryPaths));
+end;
+
+function JsonBool(AValue: Boolean): string;
+begin
+  if AValue then
+    Result := 'true'
+  else
+    Result := 'false';
+end;
+
+function TAtlasPluginSettings.ServerSettingsJson: string;
+begin
+  Result := '{"index":{"projectGroup":' + JsonBool(IndexProjectGroup) + ',"searchPaths":' +
+    JsonBool(IndexSearchPaths) + ',"libraryPaths":' + JsonBool(IndexLibraryPaths) + '}}';
 end;
 
 end.

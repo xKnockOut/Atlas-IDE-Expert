@@ -41,6 +41,8 @@ type
     procedure ReadsRootFromInitializeParams;
     [Test]
     procedure AppliesEditorSettingsBelowFile;
+    [Test]
+    procedure TakesIndexFromInitializationOptions;
   end;
 
 implementation
@@ -224,6 +226,27 @@ begin
   Assert.AreEqual('Win64', FConfiguration.Settings.Platform);
   Assert.AreEqual('Release', FConfiguration.Settings.Config);
   Assert.AreEqual('', TLspConfiguration.EditorSettingsFromParams(nil));
+end;
+
+procedure TLspConfigurationTests.TakesIndexFromInitializationOptions;
+var
+  Options: TJSONValue;
+begin
+  // Atlas-Optionen des IDE-Plugins (#652): gelten ohne index in atlas.json, sonst gilt die Datei.
+  Options := TJSONObject.ParseJSONValue('{"settings": {"atlas": {"index": {"libraryPaths": true, ' +
+    '"searchPaths": false}}}}');
+  try
+    FDiskText := '{"platform": "Win64"}';
+    FConfiguration.LoadWorkspace(Root);
+    FConfiguration.SetEditorSettings(TLspConfiguration.EditorSettingsFromParams(Options));
+    Assert.IsTrue(FConfiguration.Settings.IndexLibraryPaths);
+    Assert.IsFalse(FConfiguration.Settings.IndexSearchPaths);
+    FDiskText := '{"index": {"libraryPaths": false}}';
+    FConfiguration.LoadWorkspace(Root);
+    Assert.IsFalse(FConfiguration.Settings.IndexLibraryPaths);
+  finally
+    Options.Free;
+  end;
 end;
 
 initialization
