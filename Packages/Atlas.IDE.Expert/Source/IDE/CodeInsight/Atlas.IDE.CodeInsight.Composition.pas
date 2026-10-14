@@ -70,7 +70,9 @@ uses
   Atlas.IDE.Undo.Changes,
   Atlas.Core.Updates.Check,
   Atlas.Core.Updates.Adapters.HttpSource,
-  Atlas.IDE.Updates.Check;
+  Atlas.IDE.Updates.Check,
+  Atlas.IDE.Results.Window,
+  Atlas.IDE.Style.Symbol;
 
 var
   ManagerIndex: Integer = -1;
@@ -835,6 +837,17 @@ begin
   TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
   TAtlasGuard.OnWarning := GuardWarning;
   TAtlasStrings.Language := IdeLanguage;
+  // Atlas-Symbol (#751): Startbildschirm, Info-Dialog und Bildliste immer, auch abgesichert.
+  TAtlasIdeSymbol.Register;
+  TAtlasIdeSymbol.OnThemeChanged :=
+    procedure
+    begin
+      if MainMenu <> nil then
+        MainMenu.UpdateImage;
+      if StatusField <> nil then
+        StatusField.RequestRefresh;
+      TAtlasIdeResultsWindow.UpdateIcon;
+    end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
   if SafeMode = nil then
     StartSafeMode;
@@ -951,6 +964,7 @@ begin
   TAtlasOptionsRegistration.Unregister;
   TAtlasProjectSettings.Command := nil;
   TAtlasIdeHistory.Release;
+  TAtlasIdeSymbol.Unregister;
   TAtlasIdeSettings.Release;
   if (ManagerIndex >= 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
     Services.RemoveCodeInsightManager(ManagerIndex);

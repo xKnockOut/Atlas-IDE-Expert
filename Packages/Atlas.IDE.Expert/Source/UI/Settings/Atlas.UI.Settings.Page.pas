@@ -12,6 +12,7 @@
 // (Units, Deklarationen, Größe, letzte Aktualisierung), „Index neu aufbauen“ und
 // „Index löschen“. Die Seite kennt den Server nicht; die IDE-Schicht liefert
 // Texte und führt die Befehle über OnIndexMetrics, OnIndexRebuild, OnIndexClear aus.
+// Im Seitenkopf steht das Atlas-Symbol (#751) passend zu Thema und Skalierung.
 
 interface
 
@@ -30,7 +31,9 @@ uses
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.SafeMode,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.Core.Style.Symbol,
+  Atlas.UI.Style.Symbol;
 
 type
   TAtlasSettingsPage = class(TFrame)
@@ -40,6 +43,7 @@ type
     FServerBrowse: TButton;
     FServerStatus: TLabel;
     FServerVersion: TLabel;
+    FSymbol: TAtlasSymbolImage;
     FOnServerVersion: TFunc<string, string>;
     FDefaultServerPath: string;
     FRowsLabel: TLabel;
@@ -207,6 +211,7 @@ type
     property ParameterHints: TCheckBox read FParameterHints;
     property OpenDelay: TEdit read FOpenDelay;
     property AutoWidth: TCheckBox read FAutoWidth;
+    property Symbol: TAtlasSymbolImage read FSymbol;
     property ServerVersion: TLabel read FServerVersion;
   end;
 
@@ -232,10 +237,22 @@ begin
   Name := 'AtlasSettingsPage';
   Width := 480;
   Height := 2330;
+  // Kopf mit Symbol (#751) und Titel.
+  Panel := TPanel.Create(Self);
+  Panel.Parent := Self;
+  Panel.Align := alTop;
+  Panel.BevelOuter := bvNone;
+  Panel.ParentBackground := True;
+  Panel.Height := 40;
+  FSymbol := TAtlasSymbolImage.Create(Self);
+  FSymbol.Parent := Panel;
+  FSymbol.LogicalSize := TAtlasSymbol.HeaderSize;
+  FSymbol.Left := 4;
+  FSymbol.Top := 4;
   Title := TLabel.Create(Self);
-  Title.Parent := Self;
-  Title.Align := alTop;
-  Title.AlignWithMargins := True;
+  Title.Parent := Panel;
+  Title.Left := 44;
+  Title.Top := 12;
   Title.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsTitle);
   Title.Font.Style := [fsBold];
   FNextTop := 100;

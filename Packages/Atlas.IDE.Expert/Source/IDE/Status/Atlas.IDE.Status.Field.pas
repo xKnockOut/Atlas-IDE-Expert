@@ -15,6 +15,8 @@
 // - OnRefresh läuft vor jedem Zeichnen im Hauptthread (feste Zeilen nachführen).
 // - Rechtsklick auf das Feld ruft OnContext mit der linken Oberkante des Felds
 //   (Schnellschalter, #604); Anchor liefert sie für das oberste Editorfenster.
+// - Links steht das Atlas-Symbol (#751) in der Variante zum IDE-Thema und in
+//   der Größe zur Pixeldichte der Leiste, dann Punkt und Text.
 
 interface
 
@@ -105,7 +107,10 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Settings.Store,
-  Atlas.IDE.Editor.Style;
+  Atlas.IDE.Editor.Style,
+  Atlas.Core.Style.Symbol,
+  Atlas.UI.Style.Symbol,
+  Atlas.IDE.Style.Symbol;
 
 const
   WM_ATLAS_STATUS = WM_USER + 591;
@@ -360,6 +365,12 @@ begin
   SendMessage(AHook.Bar.Handle, SB_GETRECT, AHook.Panel.Index, LPARAM(@Result));
 end;
 
+/// <summary>Platz für das Symbol samt Abstand in Gerätepixeln.</summary>
+function SymbolWidth(APPI: Integer): Integer;
+begin
+  Result := TAtlasSymbol.PixelSize(TAtlasSymbol.MenuSize + 4, APPI);
+end;
+
 procedure TAtlasStatusField.Refresh;
 var
   Settings: TAtlasPluginSettings;
@@ -403,7 +414,8 @@ begin
       if Hook = nil then
         Continue;
       Hook.Bar.Canvas.Font := Hook.Bar.Font;
-      Width_ := Hook.Bar.Canvas.TextWidth(FText) + MulDiv(30, Hook.Bar.CurrentPPI, 96);
+      Width_ := Hook.Bar.Canvas.TextWidth(FText) + MulDiv(30, Hook.Bar.CurrentPPI, 96) +
+        SymbolWidth(Hook.Bar.CurrentPPI);
       // Text nur zum Erkennen und für Screenreader; gezeichnet wird in DrawPanel.
       Hook.Panel.Text := FText;
       Hook.Panel.Width := Width_;
@@ -420,7 +432,9 @@ procedure TAtlasStatusField.DrawPanel(StatusBar: TStatusBar; Panel: TStatusPanel
 var
   Hook: THook;
   Canvas: TCanvas;
-  Radius, Center: Integer;
+  Radius, Center, Left_, Pixels: Integer;
+  Symbol: TWICImage;
+  Target: TRect;
   Dot: TColor;
   Part: TRect;
   Text: string;
@@ -438,15 +452,27 @@ begin
     Canvas.Font.Color := StyleServices.GetSystemColor(clBtnText);
     Radius := MulDiv(4, StatusBar.CurrentPPI, 96);
     Center := (Rect.Top + Rect.Bottom) div 2;
+    Left_ := Rect.Left;
+    Symbol := TAtlasSymbolImages.Cached(TAtlasIdeSymbol.Current, TAtlasSymbol.MenuSize, StatusBar.CurrentPPI);
+    if Symbol <> nil then
+    begin
+      Pixels := TAtlasSymbol.PixelSize(TAtlasSymbol.MenuSize, StatusBar.CurrentPPI);
+      Target := Bounds(Left_ + 2, Center - Pixels div 2, Pixels, Pixels);
+      if Symbol.Width = Pixels then
+        Canvas.Draw(Target.Left, Target.Top, Symbol)
+      else
+        Canvas.StretchDraw(Target, Symbol);
+      Inc(Left_, SymbolWidth(StatusBar.CurrentPPI));
+    end;
     Dot := TColor(TAtlasStatusWindow.StateColor(TAtlasIdeStyle.Colors, FState));
     Canvas.Pen.Color := Dot;
     Canvas.Brush.Color := Dot;
     Canvas.Brush.Style := bsSolid;
-    Canvas.Ellipse(Rect.Left + 2 * Radius - Radius, Center - Radius, Rect.Left + 2 * Radius + Radius + 1,
+    Canvas.Ellipse(Left_ + 2 * Radius - Radius, Center - Radius, Left_ + 2 * Radius + Radius + 1,
       Center + Radius + 1);
     Canvas.Brush.Style := bsClear;
     Part := Rect;
-    Part.Left := Rect.Left + 4 * Radius + 2;
+    Part.Left := Left_ + 4 * Radius + 2;
     Text := FText;
     DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
     Canvas.Brush.Style := bsSolid;

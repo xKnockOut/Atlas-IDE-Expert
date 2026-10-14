@@ -28,6 +28,8 @@
 {$DESIGNONLY}
 {$IMPLICITBUILD ON}
 {$LIBSUFFIX AUTO}
+// Atlas-Symbol (#751): Symbole und PNG je Größe, erzeugt mit Resources\Symbol\Quellen\Erzeuge-Res.py.
+{$R 'Resources\Symbol\Atlas.Symbol.res'}
 
 // Design-Time-Package für RAD Studio (ADR 0006): meldet Atlas als
 // Code Insight-Manager für Delphi an und spricht über eine eigene LSP-Sitzung
@@ -41,6 +43,7 @@
 requires
   rtl,
   vcl,
+  vclwinx,
   designide;
 
 contains
@@ -74,11 +77,14 @@ contains
   Atlas.Core.Style.Palette in 'Source\Core\Style\Atlas.Core.Style.Palette.pas',
   Atlas.Core.Style.Syntax in 'Source\Core\Style\Atlas.Core.Style.Syntax.pas',
   Atlas.Core.Style.Scaling in 'Source\Core\Style\Atlas.Core.Style.Scaling.pas',
+  Atlas.Core.Style.Symbol in 'Source\Core\Style\Atlas.Core.Style.Symbol.pas',
+  Atlas.UI.Style.Symbol in 'Source\UI\Style\Atlas.UI.Style.Symbol.pas',
   Atlas.Core.Completion.Presentation in 'Source\Core\Completion\Atlas.Core.Completion.Presentation.pas',
   Atlas.Core.Completion.Word in 'Source\Core\Completion\Atlas.Core.Completion.Word.pas',
   Atlas.UI.Popup.Styled in 'Source\UI\Popup\Atlas.UI.Popup.Styled.pas',
   Atlas.UI.Popup.Tip in 'Source\UI\Popup\Atlas.UI.Popup.Tip.pas',
   Atlas.IDE.Editor.Style in 'Source\IDE\Editor\Atlas.IDE.Editor.Style.pas',
+  Atlas.IDE.Style.Symbol in 'Source\IDE\Style\Atlas.IDE.Style.Symbol.pas',
   Atlas.IDE.Editor.Buffer in 'Source\IDE\Editor\Atlas.IDE.Editor.Buffer.pas',
   Atlas.IDE.Editor.WorkspaceEdit in 'Source\IDE\Editor\Atlas.IDE.Editor.WorkspaceEdit.pas',
   Atlas.IDE.Projects.Context in 'Source\IDE\Projects\Atlas.IDE.Projects.Context.pas',

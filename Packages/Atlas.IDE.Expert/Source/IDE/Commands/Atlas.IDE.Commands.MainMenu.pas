@@ -19,6 +19,8 @@
 // qualifizierter Name (#399) gehen an TAtlasIdeEditorCommands.
 // Letzte Atlas-Änderung zurücknehmen bzw. wiederherstellen und die Liste
 // „Atlas-Änderungen“ (#721) gehen an TAtlasIdeUndo.
+// Das Atlas-Symbol (#751) steht am Menü und an den Einträgen für Einstellungen
+// und Optionen; UpdateImage wählt nach einem Themenwechsel die passende Variante.
 
 interface
 
@@ -40,6 +42,7 @@ type
     FRoot: TMenuItem;
     FToggles: array[TAtlasToggle] of TMenuItem;
     FEnableAll: TMenuItem;
+    FImageItems: TArray<TMenuItem>;
     FTimer: TTimer;
     FProgress: TFunc<string>;
     FCommand: TFunc<string, TJSONValue>;
@@ -74,6 +77,8 @@ type
     property OnBugReport: TProc read FOnBugReport write FOnBugReport;
     /// <summary>Name der Einstellung eines Schalters (Schlüssel im Katalog der Schnellschalter, #604).</summary>
     class function ToggleKey(AToggle: TAtlasToggle): string; static;
+    /// <summary>Atlas-Symbol (#751) für das aktive Thema an Menü und Einstellungseinträgen.</summary>
+    procedure UpdateImage;
   end;
 
 implementation
@@ -87,6 +92,7 @@ uses
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Commands.Editor,
+  Atlas.IDE.Style.Symbol,
   Atlas.Core.Results.Model,
   Atlas.Core.Lsp.Progress;
 
@@ -192,15 +198,18 @@ begin
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsMenu);
   Item.OnClick := ProjectClick;
   FRoot.Add(Item);
+  FImageItems := [FRoot, Item];
   // Globale Einstellungen des Servers für alle Projekte (#227).
   Item := TMenuItem.Create(FRoot);
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.MenuGlobalSettings);
   Item.OnClick := GlobalClick;
   FRoot.Add(Item);
+  FImageItems := FImageItems + [Item];
   Item := TMenuItem.Create(FRoot);
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.MenuOptions);
   Item.OnClick := OptionsClick;
   FRoot.Add(Item);
+  FImageItems := FImageItems + [Item];
   // Nur sichtbar, wenn die Sicherung etwas abgeschaltet hat (#493).
   FEnableAll := TMenuItem.Create(FRoot);
   FEnableAll.OnClick := EnableAllClick;
@@ -211,6 +220,7 @@ begin
     if SameText(Services.MainMenu.Items[Index].Name, ToolsMenu) then
       Position := Index + 1;
   Services.MainMenu.Items.Insert(Position, FRoot);
+  UpdateImage;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 500;
   FTimer.OnTimer := TimerTick;
@@ -219,9 +229,20 @@ end;
 destructor TAtlasMainMenu.Destroy;
 begin
   FreeAndNil(FTimer);
+  FImageItems := nil;
   // Freigeben nimmt den Eintrag auch aus dem Hauptmenü.
   FreeAndNil(FRoot);
   inherited;
+end;
+
+procedure TAtlasMainMenu.UpdateImage;
+var
+  Item: TMenuItem;
+  Image: Integer;
+begin
+  Image := TAtlasIdeSymbol.MenuImage;
+  for Item in FImageItems do
+    Item.ImageIndex := Image;
 end;
 
 class function TAtlasMainMenu.ToggleKey(AToggle: TAtlasToggle): string;
@@ -251,6 +272,8 @@ var
   Names, Name: string;
 begin
   try
+    // Falls der Themenwechsel nicht gemeldet wurde.
+    UpdateImage;
     for Toggle := Low(TAtlasToggle) to High(TAtlasToggle) do
       FToggles[Toggle].Checked := TAtlasIdeQuickToggles.Checked(ToggleKey(Toggle));
     Names := '';

@@ -65,10 +65,11 @@ $Packages = @(
         Reason           = 'frei von VCL'
     },
     @{
-        # ADR 0006: eigenständig, damit die IDE nur ein BPL laden muss.
+        # ADR 0006: eigenständig, damit die IDE nur ein BPL laden muss. vclwinx (TImageCollection,
+        # TVirtualImageList für das Atlas-Symbol, #751) gehört zur IDE und ist immer geladen.
         Name             = 'Atlas.IDE.Expert'
         Path             = 'Packages/Atlas.IDE.Expert'
-        AllowedRequires  = @('rtl', 'vcl', 'designide')
+        AllowedRequires  = @('rtl', 'vcl', 'vclwinx', 'designide')
         ForbiddenPrefix  = @('Atlas.Common', 'Atlas.Windows', 'FMX.')
         ForbiddenUnits   = @()
         Reason           = 'eigenständig ohne Atlas.Common und Atlas.Windows'

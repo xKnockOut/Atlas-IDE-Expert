@@ -4,7 +4,8 @@
 // über INTAServices.CreateDockableForm, das den Frame TAtlasResultsFrame
 // enthält. Es entsteht beim ersten Gebrauch, folgt dem IDE-Thema und lässt
 // sich wie die Fenster der IDE andocken. Beim Entladen des Packages gibt
-// Release es frei.
+// Release es frei. Das Fenster trägt das Atlas-Symbol (#751) zum IDE-Thema;
+// UpdateIcon schaltet nach einem Themenwechsel um.
 
 interface
 
@@ -37,6 +38,8 @@ type
     class procedure ShowChanges(const ATitle: string; const ASets: TArray<TAtlasChangeSet>); static;
     /// <summary>Frame, falls das Fenster schon existiert; legt nichts an und holt nichts nach vorn.</summary>
     class function ExistingFrame: TAtlasResultsFrame; static;
+    /// <summary>Fenstersymbol (#751) zum aktiven IDE-Thema.</summary>
+    class procedure UpdateIcon; static;
     /// <summary>Beim Entladen: Fenster schließen und freigeben.</summary>
     class procedure Release; static;
   end;
@@ -51,7 +54,10 @@ uses
   Vcl.ComCtrls,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Strings;
+  Vcl.Graphics,
+  Atlas.UI.Strings,
+  Atlas.UI.Style.Symbol,
+  Atlas.IDE.Style.Symbol;
 
 type
   TResultsDock = class(TInterfacedObject, INTACustomDockableForm)
@@ -221,7 +227,10 @@ begin
     Dock := TResultsDock.Create;
     Form := Services.CreateDockableForm(Dock);
     if Form <> nil then
+    begin
       Form.FreeNotification(Watch);
+      UpdateIcon;
+    end;
   end;
   if Form <> nil then
   begin
@@ -264,6 +273,21 @@ begin
   Result := nil;
   if Form <> nil then
     Result := ResultsFrame;
+end;
+
+class procedure TAtlasIdeResultsWindow.UpdateIcon;
+var
+  Icon: TIcon;
+begin
+  if Form = nil then
+    Exit;
+  Icon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
+  try
+    // Icon ist erst in TForm öffentlich.
+    TForm(Form).Icon.Assign(Icon);
+  finally
+    Icon.Free;
+  end;
 end;
 
 class procedure TAtlasIdeResultsWindow.Release;
