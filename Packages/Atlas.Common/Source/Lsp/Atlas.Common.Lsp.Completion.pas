@@ -110,6 +110,12 @@ type
     Count: Integer;
     /// <summary>Eintrag deklariert diesen unbekannten Namen (#471); Atlas zeigt die Gruppe „Name ist unbekannt“.</summary>
     Unknown: string;
+    /// <summary>Interface implementieren (#466): Eintrag der Liste mit Kontrollkästchen (SetOf = Interfaces,
+    /// SetChecked, SetRange = getipptes Wort). Atlas übernimmt die AdditionalEdits aller angehakten Einträge in
+    /// Ordinal-Reihenfolge und fasst Einfügungen an derselben Stelle zusammen.</summary>
+    Batch: Boolean;
+    /// <summary>Hinweis „3 Methoden von IExporter fehlen“ (#466): ganz oben, nie vorgewählt.</summary>
+    Hint: Boolean;
   end;
 
   /// <summary>Postfix-Vorlagen (#188) je Dokument.</summary>
@@ -131,6 +137,9 @@ type
   end;
 
   TCompletionMatchingFunc = reference to function(const AUri: string): TCompletionMatching;
+
+  /// <summary>Abschnitt für Interface-Methoden (#466) je Dokument.</summary>
+  TCompletionSectionFunc = reference to function(const AUri: string): TCompletionInterfaceSection;
 
   /// <summary>Teilergebnis einer gestaffelten Vervollständigung (#616), in Anzeigereihenfolge.</summary>
   TCompletionPartialProc = reference to procedure(const AItems: TArray<TCompletionItem>);
@@ -156,6 +165,7 @@ type
     FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
     FMatchingFor: TCompletionMatchingFunc;
+    FInterfaceSectionFor: TCompletionSectionFunc;
     FReadText: TCompletionReadText;
     FSlashCommandsFor: TSlashCommandsProvider;
     FPostfixFor: TPostfixOptionsFunc;
@@ -222,6 +232,14 @@ type
     class function DeclareItems(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AText, AFileName: string; const APosition: TTextPosition; AInlineVar: Boolean;
       const AKnown: TArray<TCompletionItem>; out AItems: TArray<TCompletionItem>): Boolean; static;
+    /// <summary>In der Deklaration einer Klasse mit Interfaces in der Vorfahrenliste (#466), wenn Methoden fehlen.
+    /// Leere Zeile bis zum Cursor: je fehlender Methode ein Eintrag mit Kontrollkästchen (Batch), ABatch True.
+    /// Angefangenes Wort: je Interface ein Hinweis „n Methoden von I fehlen“ (Hint), der alle seine fehlenden
+    /// Methoden anlegt. Deklarationen kommen in den Abschnitt ASection (mit Kommentar "{ I }"), Rümpfe wie bei
+    /// #443 ohne inherited. False außerhalb dieses Kontexts oder ohne fehlende Methoden.</summary>
+    class function InterfaceItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
+      const APosition: TTextPosition; const AReadText: TCompletionReadText; ASection: TCompletionInterfaceSection;
+      out AItems: TArray<TCompletionItem>; out ABatch: Boolean): Boolean; static;
     class function KindOf(AKind: TIndexSymbolKind): Integer; static;
     /// <summary>CompletionList des LSP. Der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const AItems: TCompletionItems): TJSONObject; overload; static;
@@ -237,6 +255,8 @@ type
     property ReadText: TCompletionReadText read FReadText write FReadText;
     /// <summary>Auswahl je Dokument; ohne Zuweisung unscharf.</summary>
     property MatchingFor: TCompletionMatchingFunc read FMatchingFor write FMatchingFor;
+    /// <summary>Abschnitt für Interface-Methoden (#466); ohne Zuweisung public.</summary>
+    property InterfaceSectionFor: TCompletionSectionFunc read FInterfaceSectionFor write FInterfaceSectionFor;
     /// <summary>Schnellbefehle nach "/" am Zeilenanfang (#293); ohne Zuweisung alle eingeschaltet.</summary>
     property SlashCommandsFor: TSlashCommandsProvider read FSlashCommandsFor write FSlashCommandsFor;
     /// <summary>Postfix-Vorlagen je Dokument (#188); ohne Zuweisung an und mit Inline-Variable.</summary>
@@ -264,6 +284,7 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Editing.DeclareUnknown,
+  Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Lsp.CompilerDirectives,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Pascal.XmlDoc,
@@ -1473,7 +1494,7 @@ begin
     Entry.AddPair('sortText', Format('%.5d', [AFirstSort + Index]));
     if (AItems[Index].SourceFile <> '') or (AItems[Index].Expected <> '') or
       (AItems[Index].Action <> '') or (AItems[Index].Condition <> '') or
-      (AItems[Index].Scope > 0) or (AItems[Index].Ordinal > 0) or AItems[Index].Pinned then
+      (AItems[Index].Scope > 0) or (AItems[Index].Ordinal > 0) or AItems[Index].Pinned or AItems[Index].Hint then
     begin
       Data := TJSONObject.Create;
       if AItems[Index].SourceFile <> '' then
@@ -1522,6 +1543,11 @@ begin
       // Unbekannter Name (#471).
       if AItems[Index].Unknown <> '' then
         Data.AddPair('unknown', AItems[Index].Unknown);
+      // Interface implementieren (#466).
+      if AItems[Index].Batch then
+        Data.AddPair('batch', TJSONBool.Create(True));
+      if AItems[Index].Hint then
+        Data.AddPair('hint', TJSONBool.Create(True));
       if Length(AItems[Index].Overloads) > 0 then
       begin
         Overloads := TJSONArray.Create;
@@ -1589,6 +1615,9 @@ var
   Position: TTextPosition;
   EnumParams: TJSONObject;
   Declares: TArray<TCompletionItem>;
+  Hints: TArray<TCompletionItem>;
+  Batch: Boolean;
+  Section: TCompletionInterfaceSection;
 begin
   Watch := TStopwatch.StartNew;
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
@@ -1623,6 +1652,21 @@ begin
     if EventItems(Resolver, Tree, Document.Text, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
       FReadText, Events) then
       Exit(ToJson(Events));
+    // Interface implementieren (#466): auf leerer Zeile der Klasse nur die fehlenden Methoden mit
+    // Kontrollkästchen; bei angefangenem Wort ein Hinweis oben in der normalen Liste.
+    if Assigned(FInterfaceSectionFor) then
+      Section := FInterfaceSectionFor(Uri)
+    else
+      Section := TCompletionInterfaceSection.Public;
+    if not InterfaceItems(Resolver, Tree, Document.Text, TDocumentUris.ToPath(Uri),
+      TLspPositions.ReadPosition(PositionValue), FReadText, Section, Hints, Batch) then
+      Hints := nil
+    else if Batch then
+    begin
+      Collected := Default(TCompletionItems);
+      Collected.Items := Hints;
+      Exit(ToJson(Collected));
+    end;
     if Assigned(FMatchingFor) then
       Matching := FMatchingFor(Uri)
     else
@@ -1696,6 +1740,7 @@ begin
     end;
     if Token = '' then
       Collected.Items := Enums + Collected.Items;
+    Collected.Items := Hints + Collected.Items;
     Result := TJSONObject.Create;
     TJSONObject(Result).AddPair('isIncomplete', TJSONBool.Create(Collected.Incomplete));
     TJSONObject(Result).AddPair('items', ToJson(Collected.Items, SentCount));
@@ -1975,36 +2020,8 @@ end;
 /// <summary>Kopf "Name(...): T" und Direktiven aus "procedure Name(...): T; virtual; overload;".</summary>
 function SplitOverrideDeclaration(const ADeclaration: string; out AIsClass: Boolean; out AKind, AHead,
   ADirectives: string): Boolean;
-var
-  Text: string;
-  Index, Depth: Integer;
 begin
-  Text := Trim(ADeclaration);
-  AIsClass := StartsText('class ', Text);
-  if AIsClass then
-    Text := TrimLeft(Copy(Text, 7, MaxInt));
-  if StartsText('procedure ', Text) then
-    AKind := 'procedure'
-  else if StartsText('function ', Text) then
-    AKind := 'function'
-  else
-    Exit(False);
-  Text := TrimLeft(Copy(Text, Length(AKind) + 1, MaxInt));
-  // Ende des Kopfs: erstes ";" außerhalb von Klammern.
-  Depth := 0;
-  for Index := 1 to Length(Text) do
-    case Text[Index] of
-      '(': Inc(Depth);
-      ')': Dec(Depth);
-      ';':
-        if Depth = 0 then
-        begin
-          AHead := Trim(Copy(Text, 1, Index - 1));
-          ADirectives := ' ' + LowerCase(Copy(Text, Index + 1, MaxInt)).Replace(';', ' ') + ' ';
-          Exit(AHead <> '');
-        end;
-    end;
-  Result := False;
+  Result := TInterfaceStubs.Split(ADeclaration, AIsClass, AKind, AHead, ADirectives);
 end;
 
 class function TLspCompletion.OverrideItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
@@ -2096,6 +2113,159 @@ begin
       Item.AdditionalEdits := [Edit];
     AItems.Items := AItems.Items + [Item];
   end;
+end;
+
+class function TLspCompletion.InterfaceItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText,
+  AFileName: string; const APosition: TTextPosition; const AReadText: TCompletionReadText;
+  ASection: TCompletionInterfaceSection; out AItems: TArray<TCompletionItem>; out ABatch: Boolean): Boolean;
+const
+  SectionNames: array[TCompletionInterfaceSection] of string = ('private', 'protected', 'public');
+var
+  Match: TMatch;
+  UnitIndex: TUnitIndex;
+  Symbol, TypeSymbol: TIndexSymbol;
+  Found, NeedHeader: Boolean;
+  Lines, SourceLines: TArray<string>;
+  TypeName, LB, Indent, Section, SourceFile, Source: string;
+  EndLine, Index, Count: Integer;
+  Missing: TArray<TResolvedSymbol>;
+  Stub: TInterfaceStub;
+  Interfaces: TArray<string>;
+  Item: TCompletionItem;
+  Edit: TRuleEdit;
+  Edits, Group: TArray<TRuleEdit>;
+  WordRange: TTextRange;
+
+  procedure AddHint(const AInterface: string);
+  var
+    Hint: TCompletionItem;
+  begin
+    if Count = 0 then
+      Exit;
+    Hint := Default(TCompletionItem);
+    if Count = 1 then
+      Hint.Name := Format('1 Methode von %s fehlt', [AInterface])
+    else
+      Hint.Name := Format('%d Methoden von %s fehlen', [Count, AInterface]);
+    Hint.Detail := 'Interface implementieren';
+    Hint.Kind := KindSnippet;
+    Hint.Hint := True;
+    Hint.Action := 'implement';
+    Hint.Container := AInterface;
+    // Das angefangene Wort verschwindet, die Methoden kommen über die weiteren Änderungen.
+    Hint.HasTextEdit := True;
+    Hint.TextEdit := TRuleEdit.Create(WordRange, '');
+    Hint.AdditionalEdits := TInterfaceStubs.Merge(Group);
+    AItems := AItems + [Hint];
+  end;
+
+begin
+  AItems := nil;
+  ABatch := False;
+  Result := False;
+  // "    |" (Strg+Leer auf leerer Zeile) bzw. "    Exp|"
+  Match := TRegEx.Match(LineBefore(AText, APosition), '^(\s*)(\w*)$');
+  if not Match.Success then
+    Exit;
+  Lines := TextLines(AText);
+  if (APosition.Line < 0) or (APosition.Line > High(Lines)) then
+    Exit;
+  ABatch := Match.Groups[2].Length = 0;
+  // Leere Zeile nur, wenn auch dahinter nichts steht; vor einer vorhandenen Deklaration bleibt Strg+Leer normal.
+  if ABatch and (Trim(Copy(Lines[APosition.Line], APosition.Character + 1, MaxInt)) <> '') then
+    Exit;
+  // Innerste Klasse, zwischen deren Kopf und "end" der Cursor steht.
+  UnitIndex := TIndexExtractor.Extract(ATree, AFileName);
+  Found := False;
+  TypeSymbol := Default(TIndexSymbol);
+  for Symbol in UnitIndex.Symbols do
+    if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Length(Symbol.Ancestors) > 1) and
+      (Symbol.Range.StartPos.Line < APosition.Line) and (Symbol.Range.EndPos.Line > APosition.Line) and
+      (not Found or (Symbol.Range.StartPos.Line >= TypeSymbol.Range.StartPos.Line)) then
+    begin
+      TypeSymbol := Symbol;
+      Found := True;
+    end;
+  if not Found then
+    Exit;
+  EndLine := TypeSymbol.Range.EndPos.Line;
+  if (EndLine > High(Lines)) or not TRegEx.IsMatch(Lines[EndLine], '^\s*end\b', [roIgnoreCase]) then
+    Exit;
+  Indent := Copy(Lines[EndLine], 1, Length(Lines[EndLine]) - Length(TrimLeft(Lines[EndLine])));
+  if TypeSymbol.Container <> '' then
+    TypeName := TypeSymbol.Container + '.' + TypeSymbol.Name
+  else
+    TypeName := TypeSymbol.Name;
+  Missing := AResolver.MissingInterfaceMembers(UnitIndex, TypeName);
+  if Length(Missing) = 0 then
+    Exit;
+  if AText.Contains(#13#10) then
+    LB := #13#10
+  else
+    LB := #10;
+  Section := SectionNames[ASection];
+  NeedHeader := TInterfaceStubs.LastSection(ATree.Tokens, TypeSymbol.Range.StartPos.Line, EndLine) <> Section;
+  WordRange := TTextRange.Create(APosition.Line, Match.Groups[1].Length, APosition.Line, APosition.Character);
+  SourceFile := '';
+  SourceLines := nil;
+  Interfaces := nil;
+  Group := nil;
+  Count := 0;
+  for Index := 0 to High(Missing) do
+  begin
+    if (SourceFile = '') or not SameText(Missing[Index].FileName, SourceFile) then
+    begin
+      SourceFile := Missing[Index].FileName;
+      if SameText(SourceFile, AFileName) then
+        Source := AText
+      else if not (Assigned(AReadText) and AReadText(SourceFile, Source)) then
+        Source := '';
+      SourceLines := TextLines(Source);
+    end;
+    if not TInterfaceStubs.Make(Missing[Index].Container, TypeName,
+      DeclarationOf(SourceLines, Missing[Index].Range), LB, Stub) then
+      Continue;
+    if (Length(Interfaces) = 0) or not SameText(Interfaces[High(Interfaces)], Stub.InterfaceName) then
+    begin
+      if not ABatch and (Length(Interfaces) > 0) then
+        AddHint(Interfaces[High(Interfaces)]);
+      Interfaces := Interfaces + [Stub.InterfaceName];
+      Group := nil;
+      Count := 0;
+    end;
+    Edits := TInterfaceStubs.ClassEdits(Stub, EndLine, Indent, Section, NeedHeader, LB);
+    if TClassCompletion.BodyEdit(ATree, AText, TypeName, Stub.Body, Edit) then
+      Edits := Edits + [Edit];
+    Group := Group + Edits;
+    Inc(Count);
+    if not ABatch then
+      Continue;
+    Item := Default(TCompletionItem);
+    Item.Name := Stub.Name;
+    Item.Kind := KindMethod;
+    Item.Detail := Stub.Declaration;
+    Item.Container := Stub.InterfaceName;
+    Item.Action := 'implement';
+    Item.Batch := True;
+    Item.Ordinal := Length(AItems) + 1;
+    Item.SetChecked := True;
+    Item.SetRange := WordRange;
+    Item.AdditionalEdits := Edits;
+    Item.SourceFile := Missing[Index].FileName;
+    Item.SourcePosition := Missing[Index].SelectionRange.StartPos;
+    AItems := AItems + [Item];
+  end;
+  if not ABatch and (Length(Interfaces) > 0) then
+    AddHint(Interfaces[High(Interfaces)]);
+  // Eine Überschrift über der ganzen Liste: „Fehlende Methoden von IExporter, IInterface“.
+  for Index := 0 to High(AItems) do
+    if AItems[Index].Batch then
+    begin
+      AItems[Index].SetOf := string.Join(', ', Interfaces);
+      AItems[Index].Expected := AItems[Index].SetOf;
+      AItems[Index].Fits := True;
+    end;
+  Result := Length(AItems) > 0;
 end;
 
 /// <summary>Typen der Parameter aus "const A, B: T; var C: U; D" in Reihenfolge; untypisiert ''.</summary>

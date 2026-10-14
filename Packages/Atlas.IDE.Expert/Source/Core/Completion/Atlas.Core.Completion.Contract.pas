@@ -130,6 +130,11 @@ type
     Count: Integer;
     /// <summary>Deklariert diesen unbekannten Namen (#471): Gruppe „Name ist unbekannt“ am Ende der Liste.</summary>
     Unknown: string;
+    /// <summary>Interface implementieren (#466): Liste mit Kontrollkästchen wie im Mengenmodus (SetOf = Interfaces,
+    /// SetRange = getipptes Wort); Enter übernimmt die AdditionalEdits aller angehakten Einträge.</summary>
+    Batch: Boolean;
+    /// <summary>Hinweis „3 Methoden von IExporter fehlen“ (#466): ganz oben, nie vorgewählt.</summary>
+    Hint: Boolean;
     /// <summary>Zahl der Überladungen samt dieser (mindestens 1).</summary>
     function OverloadCount: Integer;
   end;

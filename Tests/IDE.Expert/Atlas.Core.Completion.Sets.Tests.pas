@@ -1,7 +1,8 @@
 ﻿unit Atlas.Core.Completion.Sets.Tests;
 
 // Tests für Aufzählungen und Mengen in der Vervollständigung (#448): Rangfolge, Mengenmodus im Controller,
-// neuer Klammerinhalt und die Felder aus der Antwort des Servers. Dazu „Alle Werte einfügen“ für case (#449).
+// neuer Klammerinhalt und die Felder aus der Antwort des Servers. Dazu „Alle Werte einfügen“ für case (#449) und
+// „Interface implementieren“ (#466) mit Kontrollkästchen und Hinweis.
 
 interface
 
@@ -26,6 +27,10 @@ type
     procedure ReadsSetFieldsFromServer;
     [Test]
     procedure PinnedCaseItemComesFirst;
+    [Test]
+    procedure BatchCommitsCheckedMethods;
+    [Test]
+    procedure HintStaysOnTopWithoutSelection;
   end;
 
 implementation
@@ -343,6 +348,156 @@ begin
   Options := TAtlasRankOptions.Defaults;
   Assert.AreEqual('# Alle Werte einfügen alNone alTop alClient', Names(Items, TAtlasRanking.Order(Items, '', Options)));
   Assert.AreEqual('# alTop Alle Werte einfügen', Names(Items, TAtlasRanking.Order(Items, 'alTo', Options)));
+end;
+
+function Insert(ALine: Integer; const AText: string): TAtlasTextEdit;
+begin
+  Result := Default(TAtlasTextEdit);
+  Result.StartLine := ALine;
+  Result.EndLine := ALine;
+  Result.NewText := AText;
+end;
+
+/// <summary>Fehlende Methode wie vom Server (#466): Abschnitt, Kommentar und Deklaration vor Zeile 8, Rumpf in 12.</summary>
+function Method(const AName, AInterface: string; AOrdinal: Integer): TAtlasCompletionItem;
+begin
+  Result := Default(TAtlasCompletionItem);
+  Result.Name := AName;
+  Result.Kind := TAtlasItemKind.Method;
+  Result.Ordinal := AOrdinal;
+  Result.ExpectedType := 'IExporter, IFlush';
+  Result.Fits := True;
+  Result.SetOf := 'IExporter, IFlush';
+  Result.Checked := True;
+  Result.Batch := True;
+  Result.SetRange.StartLine := 7;
+  Result.SetRange.StartCharacter := 4;
+  Result.SetRange.EndLine := 7;
+  Result.SetRange.EndCharacter := 4;
+  Result.AdditionalEdits := [Insert(8, '  public'#10), Insert(8, '    { ' + AInterface + ' }'#10),
+    Insert(8, '    procedure ' + AName + ';'#10), Insert(12, AName + #10)];
+end;
+
+procedure TAtlasCompletionSetsTests.BatchCommitsCheckedMethods;
+var
+  View: TSetView;
+  ViewRef: IAtlasCompletionView;
+  Controller: TAtlasCompletionController;
+  Committed: TAtlasCompletionItem;
+  Context: TAtlasContext;
+  Json: TJSONObject;
+  Item: TAtlasCompletionItem;
+begin
+  View := TSetView.Create;
+  ViewRef := View;
+  Controller := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create([Method('Flush', 'IFlush', 3),
+    Method('Export', 'IExporter', 1), Method('Close', 'IExporter', 2)]) as IAtlasCompletionProvider, ViewRef);
+  try
+    Controller.OnCommit :=
+      procedure(const AItem: TAtlasCompletionItem)
+      begin
+        Committed := AItem;
+      end;
+    Context := Default(TAtlasContext);
+    Context.FileName := 'C:\P\A.pas';
+    Controller.Start(Context);
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    Assert.IsTrue(Controller.SetMode);
+    Assert.AreEqual('Export Close Flush', View.Checked);
+    // Close abwählen, dann übernehmen.
+    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Down));
+    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Toggle));
+    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Accept));
+    Assert.IsTrue(Committed.HasTextEdit);
+    Assert.AreEqual('', Committed.TextEdit.NewText);
+    Assert.AreEqual(4, Committed.TextEdit.StartCharacter);
+    Assert.AreEqual(2, Integer(Length(Committed.AdditionalEdits)));
+    Assert.AreEqual('  public'#10'    { IExporter }'#10'    procedure Export;'#10'    { IFlush }'#10'    procedure Flush;'#10,
+      Committed.AdditionalEdits[0].NewText);
+    Assert.AreEqual('Export'#10'Flush'#10, Committed.AdditionalEdits[1].NewText);
+  finally
+    Controller.Free;
+  end;
+  Json := TJSONObject.ParseJSONValue('{"label":"Export","kind":2,"data":{"expected":"IExporter","fits":true,' +
+    '"ordinal":1,"setOf":"IExporter","checked":true,"batch":true,"action":"implement","setRange":{"start":' +
+    '{"line":7,"character":4},"end":{"line":7,"character":4}}}}') as TJSONObject;
+  try
+    Item := TAtlasServerCompletionProvider.ItemFromLsp(Json, 0);
+  finally
+    Json.Free;
+  end;
+  Assert.IsTrue(Item.Batch);
+  Assert.IsFalse(Item.IsAction);
+  Assert.AreEqual('IExporter', Item.SetOf);
+end;
+
+procedure TAtlasCompletionSetsTests.HintStaysOnTopWithoutSelection;
+var
+  Json: TJSONObject;
+  Hint, Item: TAtlasCompletionItem;
+  Items: TAtlasCompletionItems;
+  View: TSetView;
+  ViewRef: IAtlasCompletionView;
+  Controller: TAtlasCompletionController;
+  Context: TAtlasContext;
+begin
+  // Der Hinweis entfernt das getippte Wort: textEdit ohne Text bleibt hier erhalten.
+  Json := TJSONObject.ParseJSONValue('{"label":"2 Methoden von IExporter fehlen","kind":15,"textEdit":{"range":' +
+    '{"start":{"line":7,"character":4},"end":{"line":7,"character":6}},"newText":""},"data":{"action":"implement",' +
+    '"hint":true,"container":"IExporter"}}') as TJSONObject;
+  try
+    Hint := TAtlasServerCompletionProvider.ItemFromLsp(Json, 0);
+  finally
+    Json.Free;
+  end;
+  Assert.IsTrue(Hint.Hint);
+  Assert.IsTrue(Hint.HasTextEdit);
+  Assert.AreEqual('', Hint.TextEdit.NewText);
+  Item := Default(TAtlasCompletionItem);
+  Item.Name := 'Exception';
+  Item.Kind := TAtlasItemKind.Class_;
+  Items := [Item, Hint];
+  Assert.AreEqual('2 Methoden von IExporter fehlen Exception',
+    Names(Items, TAtlasRanking.Order(Items, 'Ex', TAtlasRankOptions.Defaults)));
+  // Vorgewählt ist der erste Eintrag nach dem Hinweis; steht nur der Hinweis da, nichts.
+  View := TSetView.Create;
+  ViewRef := View;
+  Controller := TAtlasCompletionController.Create(
+    TAtlasFixedCompletionProvider.Create(Items) as IAtlasCompletionProvider, ViewRef);
+  try
+    Context := Default(TAtlasContext);
+    Context.FileName := 'C:\P\A.pas';
+    Context.Prefix := 'Ex';
+    Controller.Start(Context);
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    Assert.IsTrue(Controller.SelectedItem(Item));
+    Assert.AreEqual('Exception', Item.Name);
+  finally
+    Controller.Free;
+  end;
+  Controller := TAtlasCompletionController.Create(
+    TAtlasFixedCompletionProvider.Create([Hint]) as IAtlasCompletionProvider, ViewRef);
+  try
+    Context.Prefix := 'Ex';
+    Controller.Start(Context);
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    Assert.IsFalse(Controller.SelectedItem(Item), 'Hinweis nicht vorgewählt');
+    Assert.IsTrue(Controller.Passive);
+  finally
+    Controller.Free;
+  end;
 end;
 
 initialization

@@ -164,6 +164,9 @@ begin
     // case vervollständigen (#449).
     Result.Pinned := Data.GetValue('pinned') is TJSONTrue;
     Result.Count := Data.GetValue<Integer>('count', 0);
+    // Interface implementieren (#466).
+    Result.Batch := Data.GetValue('batch') is TJSONTrue;
+    Result.Hint := Data.GetValue('hint') is TJSONTrue;
     Overloads := Data.GetValue('overloads');
     if Overloads is TJSONArray then
       for Value in TJSONArray(Overloads) do
@@ -184,9 +187,10 @@ begin
         end;
   end;
   // textEdit (#188): ersetzt mehr als das getippte Wort, etwa den Ausdruck vor dem Punkt.
-  // Ein textEdit ohne Text ersetzt nichts sinnvoll; ignorieren statt den Bereich zu löschen.
+  // Ein textEdit ohne Text ersetzt nichts sinnvoll; ignorieren statt den Bereich zu löschen. Ausnahme: Der Hinweis
+  // „Methoden fehlen“ (#466) entfernt das getippte Wort, der Code kommt über die weiteren Änderungen.
   if (AItem.GetValue('textEdit') is TJSONObject) and EditFromLsp(TJSONObject(AItem.GetValue('textEdit')), Edit) and
-    (Edit.NewText <> '') then
+    ((Edit.NewText <> '') or Result.Hint) then
   begin
     Result.HasTextEdit := True;
     Result.TextEdit := Edit;

@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..745] of string = (
+  Lines: array[0..755] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -304,11 +304,21 @@ const
     '          ],',
     '          "default": "fuzzy",',
     '          "description": "Auswahl der Vorschläge: unscharf (Teilfolgen, Kürzel wie TSL für TStringList) oder nur nach Präfix, falls ein Editor nachträglich strikt filtert."',
+    '        },',
+    '        "interfaceSection": {',
+    '          "type": "string",',
+    '          "enum": [',
+    '            "private",',
+    '            "protected",',
+    '            "public"',
+    '          ],',
+    '          "default": "public",',
+    '          "description": "Abschnitt der Klasse, in den „Interface implementieren“ die Deklarationen fehlender Interface-Methoden schreibt."',
     '        }',
     '      },',
     '      "x-page": "Vervollständigung",',
     '      "x-control": "Auswahl",',
-    '      "x-issue": "#229"',
+    '      "x-issue": "#229, #466"',
     '    },',
     '    "usesCommand": {',
     '      "type": "boolean",',

@@ -169,8 +169,14 @@ type
   /// <summary>Auswahl der Vervollständigung (#229): unscharf oder nur nach Präfix.</summary>
   TCompletionMatching = (Fuzzy, Prefix);
 
+  /// <summary>Abschnitt, in den „Interface implementieren“ die Deklarationen schreibt (#466).</summary>
+  {$SCOPEDENUMS ON}
+  TCompletionInterfaceSection = (Private, Protected, Public);
+  {$SCOPEDENUMS OFF}
+
   TCompletionSettings = record
     Matching: TCompletionMatching;
+    InterfaceSection: TCompletionInterfaceSection;
     class function Default: TCompletionSettings; static;
   end;
 
@@ -488,6 +494,7 @@ end;
 class function TCompletionSettings.Default: TCompletionSettings;
 begin
   Result.Matching := TCompletionMatching.Fuzzy;
+  Result.InterfaceSection := TCompletionInterfaceSection.Public;
 end;
 
 { TServerSettings }

@@ -19,6 +19,8 @@
 //     nach "skC" den Wert übernimmt und nicht alle Zweige.
 //   - Deklarationen eines unbekannten Namens (#471) stehen als Aktionen am
 //     Ende, unter der Überschrift UnknownHeader („Name ist unbekannt“).
+//   - Hinweise „n Methoden von I fehlen“ (#466) passen immer und stehen ganz oben, auch mit Präfix; der
+//     Controller wählt sie nicht vor.
 
 interface
 
@@ -179,7 +181,7 @@ begin
     begin
       if not TAtlasRanking.Matches(Items[Index], Options.Chip) then
         Continue;
-      if Items[Index].IsAction or Items[Index].Pinned then
+      if Items[Index].IsAction or Items[Index].Pinned or Items[Index].Hint then
         Scores[Index] := 0
       else
         Scores[Index] := TAtlasCompletionMatcher.Score(APattern, NameOf(Items[Index]));
@@ -192,7 +194,9 @@ begin
     Found.Sort(TComparer<Integer>.Construct(
       function(const A, B: Integer): Integer
       begin
-        Result := Ord(Items[B].Pinned and NoPattern) - Ord(Items[A].Pinned and NoPattern);
+        Result := Ord(Items[B].Hint) - Ord(Items[A].Hint);
+        if Result = 0 then
+          Result := Ord(Items[B].Pinned and NoPattern) - Ord(Items[A].Pinned and NoPattern);
         if Result = 0 then
           Result := Ord(Items[A].IsAction) - Ord(Items[B].IsAction);
         // In der aktiven Konfiguration nicht vorhanden: ans Ende (#476).

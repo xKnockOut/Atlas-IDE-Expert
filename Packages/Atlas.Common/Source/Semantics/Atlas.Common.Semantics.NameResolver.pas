@@ -232,6 +232,11 @@ type
     /// <summary>Überschreibbare Methoden für ATypeName aus AFromUnit (#443): virtual, dynamic, abstract oder
     /// override in einem Vorfahren, im Typ selbst noch nicht deklariert; nächster Vorfahr zuerst (Depth 1).</summary>
     function OverridableMembers(const AFromUnit: TUnitIndex; const ATypeName: string): TArray<TResolvedSymbol>;
+    /// <summary>Methoden der Interfaces aus der Vorfahrenliste von ATypeName samt ihrer Vorfahren (#466), die
+    /// weder der Typ noch eine Vorfahrklasse mit gleichem Namen und gleichen Parametertypen deklariert.
+    /// Container ist das deklarierende Interface; Reihenfolge wie in der Vorfahrenliste, je Interface erst seine
+    /// Methoden, dann die seiner Vorfahren.</summary>
+    function MissingInterfaceMembers(const AFromUnit: TUnitIndex; const ATypeName: string): TArray<TResolvedSymbol>;
     /// <summary>ATypeName ist ATargetName oder stammt davon ab, beide so aufgelöst, wie sie an AOffset
     /// stünden (#417).</summary>
     function TypeDescendsFrom(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer;
@@ -2153,6 +2158,88 @@ begin
   finally
     List.Free;
     Seen.Free;
+  end;
+end;
+
+/// <summary>Name und Parametertypen ohne Unit-Präfix, für den Vergleich von Methodensignaturen (#466).</summary>
+function SignatureKey(const AName: string; const AParamTypes: TArray<string>): string;
+var
+  Index: Integer;
+  TypeText: string;
+begin
+  Result := UpperCase(AName) + '(';
+  for Index := 0 to High(AParamTypes) do
+  begin
+    TypeText := AParamTypes[Index];
+    if (Pos('<', TypeText) = 0) and (LastDelimiter('.', TypeText) > 0) then
+      TypeText := Copy(TypeText, LastDelimiter('.', TypeText) + 1, MaxInt);
+    if Index > 0 then
+      Result := Result + ';';
+    Result := Result + UpperCase(TypeText);
+  end;
+  Result := Result + ')';
+end;
+
+function TNameResolver.MissingInterfaceMembers(const AFromUnit: TUnitIndex;
+  const ATypeName: string): TArray<TResolvedSymbol>;
+var
+  Own, Current, Ancestor, Intf: TResolvedSymbol;
+  OwnerUnit, IntfUnit: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Implemented, SeenInterfaces: TDictionary<string, Boolean>;
+  List: TList<TResolvedSymbol>;
+  Depth: Integer;
+  Name, Key: string;
+begin
+  Result := nil;
+  if not ResolveTypeFrom(AFromUnit, ATypeName, Own) or not UnitOf(Own, OwnerUnit) then
+    Exit;
+  Implemented := TDictionary<string, Boolean>.Create;
+  SeenInterfaces := TDictionary<string, Boolean>.Create;
+  List := TList<TResolvedSymbol>.Create;
+  try
+    // Methoden der Klasse und ihrer Vorfahrklassen.
+    Current := Own;
+    for Depth := 0 to MaxDepth do
+    begin
+      if (Current.SymbolKind = TIndexSymbolKind.InterfaceType) or not UnitOf(Current, IntfUnit) then
+        Break;
+      for Symbol in IntfUnit.Symbols do
+        if SameText(Symbol.Container, Current.QualifiedName) and (Symbol.Kind in RoutineKinds) then
+          Implemented.AddOrSetValue(SignatureKey(Symbol.Name, Symbol.ParamTypes), True);
+      if not AncestorOf(Current, Ancestor) then
+        Break;
+      Current := Ancestor;
+    end;
+    // Interfaces der Vorfahrenliste, jeweils mit ihren Vorfahren.
+    for Name in Own.Ancestors do
+    begin
+      if not ResolveTypeText(Name, OwnerUnit, True, Intf) or (Intf.SymbolKind <> TIndexSymbolKind.InterfaceType) then
+        Continue;
+      for Depth := 0 to MaxDepth do
+      begin
+        if SeenInterfaces.ContainsKey(UpperCase(Intf.QualifiedName)) or not UnitOf(Intf, IntfUnit) then
+          Break;
+        SeenInterfaces.Add(UpperCase(Intf.QualifiedName), True);
+        for Symbol in IntfUnit.Symbols do
+          if SameText(Symbol.Container, Intf.QualifiedName) and (Symbol.Kind in RoutineKinds) then
+          begin
+            Key := SignatureKey(Symbol.Name, Symbol.ParamTypes);
+            if Implemented.ContainsKey(Key) then
+              Continue;
+            Implemented.Add(Key, True);
+            List.Add(FromSymbol(IntfUnit, Symbol));
+          end;
+        if not AncestorOf(Intf, Ancestor) or (Ancestor.SymbolKind <> TIndexSymbolKind.InterfaceType) then
+          Break;
+        Intf := Ancestor;
+      end;
+    end;
+    Result := List.ToArray;
+  finally
+    List.Free;
+    SeenInterfaces.Free;
+    Implemented.Free;
   end;
 end;
 

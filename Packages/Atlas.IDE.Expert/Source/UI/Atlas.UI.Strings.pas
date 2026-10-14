@@ -48,7 +48,8 @@ type
     EditorFailed, EditorNoActions, EditorCopied, EditorTextCopied, EditorKindFix, EditorKindRefactor, EditorKindSource,
     SettingsEditorKeysPriority, SettingsSlashCommands,
     SetFooterKeys, SetChosen, SetHeader, SetHeaderPlain,
-    UnknownHeader);
+    UnknownHeader,
+    BatchHeader);
 
   TAtlasStrings = class
   private class var
@@ -170,7 +171,8 @@ const
      '%d gewählt',
      '%s · Menge von %s',
      'Menge von %s',
-     '„%s“ ist unbekannt'),
+     '„%s“ ist unbekannt',
+     'Fehlende Methoden von %s'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -273,7 +275,8 @@ const
      '%d selected',
      '%s · set of %s',
      'Set of %s',
-     '"%s" is unknown'));
+     '"%s" is unknown',
+     'Missing methods of %s'));
 
 { TAtlasStrings }
 

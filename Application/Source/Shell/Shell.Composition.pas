@@ -568,6 +568,12 @@ begin
     begin
       Result := CompletionSettingsFor(AUri).Matching;
     end;
+  // Interface implementieren (#466): Abschnitt der neuen Deklarationen.
+  FCompletion.InterfaceSectionFor :=
+    function(const AUri: string): TCompletionInterfaceSection
+    begin
+      Result := CompletionSettingsFor(AUri).InterfaceSection;
+    end;
   FCompletion.SlashCommandsFor := SlashCommandsFor;
   // Postfix-Vorlagen (#188): for var nur, wenn die Sprachversion Inline-Variablen kennt.
   FCompletion.PostfixFor :=

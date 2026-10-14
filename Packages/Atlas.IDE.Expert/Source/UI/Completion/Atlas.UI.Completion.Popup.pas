@@ -460,7 +460,10 @@ begin
     Text := TAtlasStrings.Fmt(TAtlasTextId.UnknownHeader, [FItems[FOrder[APosition + 1]].Unknown])
   else if (APosition < High(FOrder)) and (FOrder[APosition + 1] >= 0) then
   begin
-    if FItems[FOrder[APosition + 1]].SetOf <> '' then
+    // Interface implementieren (#466): „Fehlende Methoden von IExporter, IFlush“.
+    if FItems[FOrder[APosition + 1]].Batch then
+      Text := TAtlasStrings.Fmt(TAtlasTextId.BatchHeader, [FItems[FOrder[APosition + 1]].SetOf])
+    else if FItems[FOrder[APosition + 1]].SetOf <> '' then
     begin
       // Mengenmodus (#448): „TAnchors · Menge von TAnchorKind“, bei "X in [" nur „Menge von …“.
       if FItems[FOrder[APosition + 1]].ExpectedType.StartsWith('set of ') then
@@ -1006,7 +1009,8 @@ begin
     DrawTag(Tag, X, Row);
     Dec(X, Gap);
   end;
-  FActionRow := Item.IsAction;
+  // Aktionen (#444, #471) und Hinweise (#466) in Akzentfarbe.
+  FActionRow := Item.IsAction or Item.Hint;
   DrawName(Item.Name, NameLeft, Max(NameLeft, X - Gap), Row, NameLeft + NameWidth > X - Gap);
   FActionRow := False;
   Canvas.Brush.Style := bsSolid;

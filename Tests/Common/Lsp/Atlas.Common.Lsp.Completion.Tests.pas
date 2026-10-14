@@ -82,6 +82,8 @@ type
     [Test]
     procedure OffersDeclarationsForUnknownNames;
     [Test]
+    procedure OffersMissingInterfaceMethods;
+    [Test]
     procedure GroupsByExpectedType;
   end;
 
@@ -96,7 +98,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Rules.Contract,
+  Atlas.Common.Editing.InterfaceStubs;
 
 const
   HauptFile = 'C:\P\Haupt.pas';
@@ -782,6 +785,139 @@ begin
       Edits);
     // Keine Ereignis-Zuweisung: normale Vervollständigung.
     Assert.IsFalse(TLspCompletion.EventItems(Resolver, Tree, Text, HauptFile, PositionOf(Text, 'uses Ba'), nil, Items));
+  finally
+    Resolver.Free;
+    Tree.Free;
+  end;
+end;
+
+procedure TLspCompletionTests.OffersMissingInterfaceMethods;
+const
+  UnitBasis =
+    'unit Basis;'#13#10 +
+    'interface'#13#10 +
+    'type'#13#10 +
+    '  IFlush = interface'#13#10 +
+    '    procedure Flush;'#13#10 +
+    '  end;'#13#10 +
+    '  IExporter = interface(IFlush)'#13#10 +
+    '    procedure Export(const AFileName: string);'#13#10 +
+    '    function GetName: string;'#13#10 +
+    '    procedure SetName(const AValue: string);'#13#10 +
+    '    property Name: string read GetName write SetName;'#13#10 +
+    '  end;'#13#10 +
+    '  TBasis = class(TInterfacedObject)'#13#10 +
+    '  public'#13#10 +
+    '    procedure SetName(const AValue: string);'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'end.';
+  // Zeile 7: leere Zeile in der Klasse, Zeile 8: ihr end.
+  Text =
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'uses Basis;'#13#10 +
+    'type'#13#10 +
+    '  TJsonExporter = class(TBasis, IExporter)'#13#10 +
+    '  private'#13#10 +
+    '    FText: string;'#13#10 +
+    '    '#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'end.';
+  Typed =
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'uses Basis;'#13#10 +
+    'type'#13#10 +
+    '  TJsonExporter = class(TBasis, IExporter)'#13#10 +
+    '  private'#13#10 +
+    '    FText: string;'#13#10 +
+    '    Ex'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'end.';
+var
+  Tree: TSyntaxTree;
+  Resolver: TNameResolver;
+  Items: TArray<TCompletionItem>;
+  List: TCompletionItems;
+  Edits, Merged: TArray<TRuleEdit>;
+  Item: TCompletionItem;
+  Batch: Boolean;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitBasis, 'C:\P\Basis.pas', nil));
+  Tree := TPascalParser.Parse(Text);
+  Resolver := TNameResolver.Create(FIndex);
+  try
+    // Strg+Leer auf der leeren Zeile: Liste mit Kontrollkästchen. SetName erbt die Klasse von TBasis.
+    Assert.IsTrue(TLspCompletion.InterfaceItems(Resolver, Tree, Text, HauptFile, TTextPosition.Create(7, 4),
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        AText := UnitBasis;
+        Result := SameText(AFileName, 'C:\P\Basis.pas');
+      end, TCompletionInterfaceSection.Public, Items, Batch));
+    Assert.IsTrue(Batch);
+    List.Items := Items;
+    Assert.AreEqual('Export GetName Flush', Names(List));
+    Assert.AreEqual('IExporter', Items[0].Container);
+    Assert.AreEqual('IFlush', Items[2].Container);
+    Assert.AreEqual('IExporter, IFlush', Items[0].SetOf);
+    Assert.IsTrue(Items[0].Batch and Items[0].SetChecked);
+    Assert.AreEqual(3, Items[2].Ordinal);
+    Assert.AreEqual(7, Items[0].SetRange.StartPos.Line);
+    // Alle angehakt: ein neuer public-Abschnitt vor dem end, je Interface mit Kommentar; Rümpfe in die implementation.
+    Edits := nil;
+    for Item in Items do
+      Edits := Edits + Item.AdditionalEdits;
+    Merged := TInterfaceStubs.Merge(Edits);
+    Assert.AreEqual(2, Integer(Length(Merged)));
+    Assert.AreEqual(8, Merged[0].Range.StartPos.Line);
+    Assert.AreEqual(
+      '  public'#13#10 +
+      '    { IExporter }'#13#10 +
+      '    procedure Export(const AFileName: string);'#13#10 +
+      '    function GetName: string;'#13#10 +
+      '    { IFlush }'#13#10 +
+      '    procedure Flush;'#13#10, Merged[0].NewText);
+    Assert.IsTrue(Merged[1].NewText.Contains(
+      'function TJsonExporter.GetName: string;'#13#10'begin'#13#10'  Result := Default(string);'#13#10'end;'),
+      Merged[1].NewText);
+    Assert.IsTrue(Merged[1].NewText.Contains('procedure TJsonExporter.Flush;'#13#10'begin'#13#10#13#10'end;'),
+      Merged[1].NewText);
+    Assert.IsFalse(Merged[1].NewText.Contains('inherited'), Merged[1].NewText);
+    // Abschnitt nach Einstellung: private steht schon als letzter da, also kein neuer.
+    Assert.IsTrue(TLspCompletion.InterfaceItems(Resolver, Tree, Text, HauptFile, TTextPosition.Create(7, 4),
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        AText := UnitBasis;
+        Result := True;
+      end, TCompletionInterfaceSection.Private, Items, Batch));
+    Assert.AreEqual('    { IExporter }'#13#10, Items[0].AdditionalEdits[0].NewText);
+    // Außerhalb der Klasse nichts.
+    Assert.IsFalse(TLspCompletion.InterfaceItems(Resolver, Tree, Text, HauptFile, TTextPosition.Create(2, 0), nil,
+      TCompletionInterfaceSection.Public, Items, Batch));
+  finally
+    Tree.Free;
+  end;
+  // Angefangenes Wort: je Interface ein Hinweis, der seine Methoden anlegt und das Wort entfernt.
+  Tree := TPascalParser.Parse(Typed);
+  try
+    Assert.IsTrue(TLspCompletion.InterfaceItems(Resolver, Tree, Typed, HauptFile, TTextPosition.Create(7, 6),
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        AText := UnitBasis;
+        Result := True;
+      end, TCompletionInterfaceSection.Public, Items, Batch));
+    Assert.IsFalse(Batch);
+    Assert.AreEqual(2, Integer(Length(Items)));
+    Assert.AreEqual('2 Methoden von IExporter fehlen', Items[0].Name);
+    Assert.AreEqual('1 Methode von IFlush fehlt', Items[1].Name);
+    Assert.IsTrue(Items[0].Hint and Items[0].HasTextEdit);
+    Assert.AreEqual('', Items[0].TextEdit.NewText);
+    Assert.AreEqual(4, Items[0].TextEdit.Range.StartPos.Character);
+    Assert.IsTrue(Items[0].AdditionalEdits[0].NewText.Contains('function GetName: string;'));
+    Assert.IsFalse(Items[0].AdditionalEdits[0].NewText.Contains('Flush'));
   finally
     Resolver.Free;
     Tree.Free;
