@@ -37,7 +37,10 @@ type
     FRoot: string;
     FName: string;
     FLogger: ILogger;
+    FTransport: IJsonRpcTransport;
     FIndex: ISymbolIndex;
+    /// <summary>Hinweis auf gemischte Kodierungen schon im Editor gezeigt (#121); einmal je Sitzung.</summary>
+    FEncodingsShown: Boolean;
     FConfiguration: TLspConfiguration;
     FIndexService: TIndexService;
     FProgress: TLspWorkDoneProgress;
@@ -186,8 +189,10 @@ implementation
 
 uses
   System.IOUtils,
+  System.JSON,
   System.StrUtils,
   Atlas.Common.Documents.FileEncoding,
+  Atlas.Common.JsonRpc.Messages,
   Atlas.Common.Compiler.CommandLine,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Projects.DprojReader,
@@ -212,6 +217,7 @@ begin
   FRoot := ARoot;
   FName := AName;
   FLogger := ALogger;
+  FTransport := ATransport;
   FIndex := AIndex;
   FLock := TObject.Create;
   FOwnFiles := TDictionary<string, Boolean>.Create;
@@ -608,8 +614,22 @@ end;
 procedure TShellWorkspace.ReportEncodings;
 var
   Files: TArray<string>;
-  FileName: string;
+  Seen: TDictionary<string, Boolean>;
+  FileName, Include: string;
   Survey: TEncodingSurvey;
+  UnitIndex: TUnitIndex;
+  Text: string;
+  Params: TJSONObject;
+  Notification: TJSONObject;
+
+  procedure AddFile(const AFileName: string);
+  begin
+    if Seen.ContainsKey(AnsiUpperCase(AFileName)) or not FileExists(AFileName) then
+      Exit;
+    Seen.Add(AnsiUpperCase(AFileName), True);
+    Survey.Add(TFile.ReadAllBytes(AFileName));
+  end;
+
 begin
   TMonitor.Enter(FLock);
   try
@@ -618,14 +638,43 @@ begin
     TMonitor.Exit(FLock);
   end;
   Survey := Default(TEncodingSurvey);
-  for FileName in Files do
-    if FileExists(FileName) then
-      Survey.Add(TFile.ReadAllBytes(FileName));
-  if Survey.IsMixed then
-    FLogger.Warning(Format('Gemischte Kodierungen im Projekt %s: %s. Beim Schreiben behält jede Datei ihre Kodierung.',
-      [FName, Survey.Describe]))
-  else
+  Survey.AnsiCodePage := TFileEncodingDefaults.CodePageFor(TPath.Combine(FRoot, 'x.pas'));
+  // Units, ihre Formulare und Include-Dateien (#121); binäre Formulare zählt die Erhebung nicht.
+  Seen := TDictionary<string, Boolean>.Create;
+  try
+    for FileName in Files do
+    begin
+      AddFile(FileName);
+      AddFile(ChangeFileExt(FileName, '.dfm'));
+      AddFile(ChangeFileExt(FileName, '.fmx'));
+      if FIndex.FindFile(FileName, UnitIndex) then
+        for Include in UnitIndex.Includes do
+          AddFile(Include);
+    end;
+  finally
+    Seen.Free;
+  end;
+  if not Survey.IsMixed then
+  begin
     FLogger.Debug(Format('Kodierungen im Projekt %s: %s', [FName, Survey.Describe]));
+    Exit;
+  end;
+  Text := Format('Gemischte Kodierungen im Projekt %s: %s. Beim Schreiben behält jede Datei ihre Kodierung.',
+    [FName, Survey.Describe]);
+  FLogger.Warning(Text);
+  // Das Protokoll sieht im Editor kaum jemand: einmal als Meldung zeigen.
+  if FEncodingsShown or (FTransport = nil) then
+    Exit;
+  FEncodingsShown := True;
+  Params := TJSONObject.Create;
+  Params.AddPair('type', TJSONNumber.Create(2));
+  Params.AddPair('message', Text);
+  Notification := TJsonRpcMessages.Notification('window/showMessage', Params);
+  try
+    FTransport.WriteMessage(Notification);
+  finally
+    Notification.Free;
+  end;
 end;
 
 function TShellWorkspace.FindProjectFile(const ASettings: TServerSettings): string;

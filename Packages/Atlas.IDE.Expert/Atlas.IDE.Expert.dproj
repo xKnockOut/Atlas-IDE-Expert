@@ -192,6 +192,7 @@
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.TextDiff.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.WatchedChanges.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.TextFile.pas"/>
+        <DCCReference Include="Source\Core\Files\Atlas.Core.Files.EncodingDefault.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Context.pas"/>
         <DCCReference Include="Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas"/>
         <DCCReference Include="Source\Core\Results\Atlas.Core.Results.Model.pas"/>

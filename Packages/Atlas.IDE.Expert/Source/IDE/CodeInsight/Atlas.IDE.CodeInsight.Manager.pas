@@ -84,6 +84,8 @@ type
     procedure StopSession;
     /// <summary>Nimmt workspace/applyEdit der Sitzung an (#397).</summary>
     procedure AcceptApplyEdit(ASession: TLspSession);
+    /// <summary>Warnungen und Fehler des Servers (window/showMessage) ins Meldungsfenster (#121).</summary>
+    procedure AcceptShowMessage(ASession: TLspSession);
     procedure ReportError(const AMessage: string);
     procedure Diagnose(const AMessage: string);
     function CurrentEditView: IOTAEditView;
@@ -422,6 +424,7 @@ begin
     FContextsChecked := 0;
     RefreshContexts;
     AcceptApplyEdit(FSession);
+    AcceptShowMessage(FSession);
     Projects := GroupProjects;
     FSession.SetProjects(Projects);
     WatchProjects(Projects);
@@ -508,6 +511,36 @@ begin
           Manager.Diagnose(Format('workspace/applyEdit: %d Änderungen in %d Dateien %s', [Outcome.Edits,
             Outcome.Files, Outcome.Error]));
           AReply(Outcome.Error = '', Outcome.Error);
+        end);
+    end;
+end;
+
+procedure TAtlasCodeInsightManager.AcceptShowMessage(ASession: TLspSession);
+var
+  Manager: TAtlasCodeInsightManager;
+begin
+  Manager := Self;
+  ASession.OnShowMessage :=
+    procedure(AType: Integer; const AMessage: string)
+    begin
+      // Information und Protokoll gehören ins Diagnoseprotokoll, nicht ins Meldungsfenster.
+      if AType > 2 then
+        Exit;
+      TThread.Queue(nil,
+        procedure
+        var
+          Messages: IOTAMessageServices;
+          Group: IOTAMessageGroup;
+        begin
+          if (LiveManager <> Manager) or (Manager.FSession <> ASession) then
+            Exit;
+          Manager.Diagnose('window/showMessage: ' + AMessage);
+          if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+            Exit;
+          Group := Messages.GetGroup('Atlas');
+          if Group = nil then
+            Group := Messages.AddMessageGroup('Atlas');
+          Messages.AddTitleMessage('Atlas: ' + AMessage, Group);
         end);
     end;
 end;

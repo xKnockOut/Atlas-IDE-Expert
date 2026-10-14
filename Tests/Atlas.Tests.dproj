@@ -297,7 +297,9 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.WatchedChanges.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Files.WatchedChanges.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.TextFile.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.EncodingDefault.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Files.TextFile.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Files.EncodingDefault.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Projects\Atlas.Core.Projects.Context.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Context.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas"/>
