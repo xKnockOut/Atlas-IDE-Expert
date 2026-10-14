@@ -96,6 +96,8 @@ begin
   Assert.AreEqual(320, Settings.PanelWidth);
   Assert.IsTrue(Settings.AutoParentheses);
   Assert.IsFalse(Settings.Preview, 'Vorschau standardmäßig aus (#434)');
+  Assert.IsTrue(Settings.PairOwners, 'Anweisungen mitfärben standardmäßig an (#653)');
+  Assert.AreEqual(2, Settings.PairGuideWidth, 'Blocklinien 2 px (#653)');
 end;
 
 procedure TAtlasPluginSettingsTests.SaveAndLoadRoundTrip;
@@ -113,6 +115,8 @@ begin
   Settings.Learning := False;
   Settings.Preview := True;
   Settings.ServerPath := '  D:\Atlas\AtlasServer.exe ';
+  Settings.PairOwners := False;
+  Settings.PairGuideWidth := 1;
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
@@ -123,6 +127,8 @@ begin
   Assert.IsTrue(Loaded.PanelCollapsed);
   Assert.IsFalse(Loaded.Learning);
   Assert.IsTrue(Loaded.Preview);
+  Assert.IsFalse(Loaded.PairOwners);
+  Assert.AreEqual(1, Loaded.PairGuideWidth);
   Assert.AreEqual('D:\Atlas\AtlasServer.exe', Loaded.ServerPath, 'Serverpfad ohne Leerraum');
   Assert.AreEqual('', TAtlasPluginSettings.Defaults.ServerPath, 'Standard: leer');
 end;
@@ -158,8 +164,10 @@ begin
   Store.WriteInteger('VisibleRows', 99);
   Store.WriteInteger('ListWidth', 50);
   Store.WriteInteger('PanelWidth', 5000);
+  Store.WriteInteger('PairGuideWidth', 7);
   Settings := Default(TAtlasPluginSettings);
   Settings.Load(Store);
+  Assert.AreEqual(TAtlasPluginSettings.MaxPairGuideWidth, Settings.PairGuideWidth);
   Assert.AreEqual(TAtlasPluginSettings.MaxVisibleRows, Settings.VisibleRows);
   Assert.AreEqual(TAtlasPluginSettings.MinListWidth, Settings.ListWidth);
   Assert.AreEqual(TAtlasPluginSettings.MaxPanelWidth, Settings.PanelWidth);

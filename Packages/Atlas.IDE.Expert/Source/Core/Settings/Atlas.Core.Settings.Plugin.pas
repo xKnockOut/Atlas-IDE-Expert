@@ -34,6 +34,8 @@ type
     MaxCheckDelay = 10000;
     MinCheckMax = 200;
     MaxCheckMax = 20000;
+    MinPairGuideWidth = 1;
+    MaxPairGuideWidth = 3;
   public
     /// <summary>Hauptschalter (#407): aus = eingebaute Code Insight der IDE.</summary>
     Enabled: Boolean;
@@ -79,6 +81,11 @@ type
     ServerPath: string;
     /// <summary>Blocklinien in den Paarfarben statt der Strukturhervorhebung der IDE (#514).</summary>
     PairGuides: Boolean;
+    /// <summary>Schlüsselwörter der Anweisung (if, then, else, for, do, procedure …) in der Farbe ihres
+    /// Blocks; Blocklinien beginnen an der Anweisung (#653). Wirkt nur mit PairColors.</summary>
+    PairOwners: Boolean;
+    /// <summary>Breite der Blocklinien in Pixeln bei 100 % (1–3, #653).</summary>
+    PairGuideWidth: Integer;
     /// <summary>Probleme im Editor unterstreichen und im Meldungsfenster auflisten (#398).</summary>
     Problems: Boolean;
     /// <summary>Syntaxprüfung des Compilers nach dem Speichern (#548).</summary>
@@ -141,6 +148,8 @@ begin
   Result.InactiveDim := True;
   Result.ServerPath := '';
   Result.PairGuides := True;
+  Result.PairOwners := True;
+  Result.PairGuideWidth := 2;
   Result.Problems := True;
   // Die Prüfung in der IDE zeigt deren Fortschritt; Standard ist die Prüfung des Servers mit dcc (compiler.onSave).
   Result.CheckOnSave := False;
@@ -161,6 +170,7 @@ begin
   HangThresholdMs := EnsureRange(HangThresholdMs, MinHangThreshold, MaxHangThreshold);
   CheckOnSaveDelayMs := EnsureRange(CheckOnSaveDelayMs, MinCheckDelay, MaxCheckDelay);
   CheckOnSaveMaxMs := EnsureRange(CheckOnSaveMaxMs, MinCheckMax, MaxCheckMax);
+  PairGuideWidth := EnsureRange(PairGuideWidth, MinPairGuideWidth, MaxPairGuideWidth);
 end;
 
 procedure TAtlasPluginSettings.Load(const AStore: IAtlasSettingsStore);
@@ -191,6 +201,8 @@ begin
   InactiveDim := AStore.ReadInteger('InactiveDim', BoolValue(Default.InactiveDim)) <> 0;
   ServerPath := Trim(AStore.ReadString('ServerPath', Default.ServerPath));
   PairGuides := AStore.ReadInteger('PairGuides', BoolValue(Default.PairGuides)) <> 0;
+  PairOwners := AStore.ReadInteger('PairOwners', BoolValue(Default.PairOwners)) <> 0;
+  PairGuideWidth := AStore.ReadInteger('PairGuideWidth', Default.PairGuideWidth);
   Problems := AStore.ReadInteger('Problems', BoolValue(Default.Problems)) <> 0;
   CheckOnSave := AStore.ReadInteger('CheckOnSave', BoolValue(Default.CheckOnSave)) <> 0;
   CheckOnSaveDelayMs := AStore.ReadInteger('CheckOnSaveDelayMs', Default.CheckOnSaveDelayMs);
@@ -227,6 +239,8 @@ begin
   AStore.WriteInteger('InactiveDim', BoolValue(InactiveDim));
   AStore.WriteString('ServerPath', Trim(ServerPath));
   AStore.WriteInteger('PairGuides', BoolValue(PairGuides));
+  AStore.WriteInteger('PairOwners', BoolValue(PairOwners));
+  AStore.WriteInteger('PairGuideWidth', PairGuideWidth);
   AStore.WriteInteger('Problems', BoolValue(Problems));
   AStore.WriteInteger('CheckOnSave', BoolValue(CheckOnSave));
   AStore.WriteInteger('CheckOnSaveDelayMs', CheckOnSaveDelayMs);
