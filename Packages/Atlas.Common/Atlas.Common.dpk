@@ -147,6 +147,7 @@ contains
   Atlas.Common.Editing.MemberOrder in 'Source\Editing\Atlas.Common.Editing.MemberOrder.pas',
   Atlas.Common.Editing.ProjectCommands in 'Source\Editing\Atlas.Common.Editing.ProjectCommands.pas',
   Atlas.Common.Editing.SqlText in 'Source\Editing\Atlas.Common.Editing.SqlText.pas',
+  Atlas.Common.Editing.DataFieldNames in 'Source\Editing\Atlas.Common.Editing.DataFieldNames.pas',
   Atlas.Common.Editing.DatabaseCommands in 'Source\Editing\Atlas.Common.Editing.DatabaseCommands.pas',
   Atlas.Common.Editing.Bookmarks in 'Source\Editing\Atlas.Common.Editing.Bookmarks.pas',
   Atlas.Common.Editing.DocumentationCommands in 'Source\Editing\Atlas.Common.Editing.DocumentationCommands.pas',

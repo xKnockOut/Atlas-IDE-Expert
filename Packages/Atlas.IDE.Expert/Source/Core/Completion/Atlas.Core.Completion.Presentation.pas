@@ -52,6 +52,9 @@ type
     class function MissingUnit(const AItem: TAtlasCompletionItem): string; static;
     /// <summary>1-basierte Positionen in AName, die APattern trifft; leer ohne Treffer.</summary>
     class function Highlights(const APattern, AName: string): TArray<Integer>; static;
+    /// <summary>SQL-Anweisung, aus der die Feld- oder Parameternamen der Liste stammen (#461), für die
+    /// Fußzeile; '' bei anderen Listen.</summary>
+    class function DataSource(const AItems: TAtlasCompletionItems): string; static;
   end;
 
 implementation
@@ -332,6 +335,16 @@ begin
     Exit(Range(Found, Length(APattern)));
   end;
   Result := SubsequencePositions(APattern, AName);
+end;
+
+class function TAtlasItemPresentation.DataSource(const AItems: TAtlasCompletionItems): string;
+var
+  Item: TAtlasCompletionItem;
+begin
+  for Item in AItems do
+    if Item.DataSource <> '' then
+      Exit(Item.DataSource);
+  Result := '';
 end;
 
 end.

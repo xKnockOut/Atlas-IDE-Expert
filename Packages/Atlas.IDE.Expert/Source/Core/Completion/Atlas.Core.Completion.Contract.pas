@@ -143,6 +143,10 @@ type
     Sender: string;
     /// <summary>Komponenten, denen der Ereignisbehandler zugewiesen ist: "btnSave, btnLoad".</summary>
     SenderOf: string;
+    /// <summary>Feld- oder Parametername (#461): Datenmenge, aus der er stammt; '' sonst.</summary>
+    DataSet: string;
+    /// <summary>Kurzform der SQL-Anweisung für die Fußzeile; '' ohne Anweisung.</summary>
+    DataSource: string;
     /// <summary>Zahl der Überladungen samt dieser (mindestens 1).</summary>
     function OverloadCount: Integer;
   end;

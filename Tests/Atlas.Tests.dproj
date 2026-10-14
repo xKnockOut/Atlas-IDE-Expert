@@ -189,6 +189,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.MemberOrder.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ProjectCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.SqlText.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.DataFieldNames.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DatabaseCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Bookmarks.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DocumentationCommands.Tests.pas"/>

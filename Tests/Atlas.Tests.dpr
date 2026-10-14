@@ -275,6 +275,7 @@ uses
   Atlas.Common.Editing.MemberOrder.Tests in 'Common\Editing\Atlas.Common.Editing.MemberOrder.Tests.pas',
   Atlas.Common.Editing.ProjectCommands.Tests in 'Common\Editing\Atlas.Common.Editing.ProjectCommands.Tests.pas',
   Atlas.Common.Editing.SqlText.Tests in 'Common\Editing\Atlas.Common.Editing.SqlText.Tests.pas',
+  Atlas.Common.Editing.DataFieldNames.Tests in 'Common\Editing\Atlas.Common.Editing.DataFieldNames.Tests.pas',
   Atlas.Common.Editing.DatabaseCommands.Tests in 'Common\Editing\Atlas.Common.Editing.DatabaseCommands.Tests.pas',
   Atlas.Common.Editing.Bookmarks.Tests in 'Common\Editing\Atlas.Common.Editing.Bookmarks.Tests.pas',
   Atlas.Common.Editing.DocumentationCommands.Tests in 'Common\Editing\Atlas.Common.Editing.DocumentationCommands.Tests.pas',
