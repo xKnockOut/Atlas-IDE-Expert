@@ -820,6 +820,13 @@ begin
   Request.Priority := FPriority;
   FIndexService.Scheduler := FScheduler;
   Request.Defines := TIndexProjectFiles.Defines(Project, Version);
+  // RTL, VCL und FMX einmal je Compiler und Plattform, unabhängig von Projekt und Konfiguration (#647).
+  // Nur der Ordner der Installation: Eigener Code im Bibliothekspfad wird oft mit dem Projekt übersetzt.
+  if Installation <> nil then
+  begin
+    Request.LibraryRoots := [TCompilerCommandLine.BdsRoot(Installation.Variables)];
+    Request.LibraryDefines := TIndexProjectFiles.LibraryDefines(Project, Version);
+  end;
   // $I-Dateien wie beim Compiler: Projekt-Suchpfade, dann Bibliothekspfade (#264).
   if Installation <> nil then
     Request.IncludePaths := Project.SearchPaths + Installation.LibraryPaths(Project.Platform)
@@ -832,7 +839,7 @@ begin
     end;
   CacheFile := TIndexCacheDirectory.FileFor(TIndexCacheDirectory.DefaultRoot, Signature);
   Request.CacheFile := CacheFile;
-  // RTL/VCL einmal je Compilerversion, Plattform und Defines, geteilt mit anderen Projekten (#492).
+  // RTL/VCL/FMX einmal je Compilerversion und Plattform, geteilt mit allen Projekten (#492, #647).
   Request.LibraryCacheFile := TIndexCacheDirectory.FileFor(TIndexCacheDirectory.DefaultRoot,
     TIndexProjectFiles.LibrarySignature(Project, Version));
   Request.ReadOnlyCache := not LockCache(CacheFile, Request.LibraryCacheFile);

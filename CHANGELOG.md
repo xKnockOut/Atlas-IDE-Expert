@@ -55,6 +55,7 @@ Server und Erweiterung tragen immer dieselbe Version.
 - Ein Neuaufbau des Index gab die Unit-Suche frei, während Anfragen sie über den alten Index noch nutzten; das konnte den Server abstürzen lassen (#647).
 - Die Symbolsuche über den ganzen Index (Prüfregeln für Formulare, Vererbung und Datenbindung, CodeLens, Implementierungen) hielt die Indexsperre, solange sie alle Symbole durchlief; Hover und Vervollständigung warteten in großen Projekten so bis zu Minuten. Die Suche läuft jetzt auf einem Schnappschuss ohne Sperre und ohne die Symbole zu kopieren (#647).
 - Eine fehlende Unit wurde für jeden Unit-Namespace des Projekts erneut in allen Suchpfaden gesucht, obwohl die Unit-Suche die Namespaces schon selbst durchprobiert (#647).
+- RTL, VCL und FMX werden einmal je Delphi-Version und Plattform indiziert und für alle Projekte und Konfigurationen geteilt. Vorher hing der gemeinsame Bibliotheks-Cache an den Defines des Projekts (DEBUG, eigene Symbole), sodass Debug, Release und jedes Projekt mit eigenen Defines die Bibliothek neu lasen (#647).
 - Diagnoselog: Je Anfrage `cpu` (Rechenzeit des Threads), `parallel` (was gleichzeitig lief), `treeMs` (Warten auf den Syntaxbaum) und `ensureMs` (Nachladen von Units) (#647).
 
 ## [0.1.0] - 2026-10-08

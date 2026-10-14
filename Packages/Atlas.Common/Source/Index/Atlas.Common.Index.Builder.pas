@@ -57,7 +57,12 @@ type
     FFailedUnits: TDictionary<string, Boolean>;
     FFailedLock: TObject;
     FIncludePaths: TArray<string>;
+    FLibraryDefines: TArray<string>;
+    FLibraryRoots: TArray<string>;
     function IncludeResolver: TIncludeResolver;
+    /// <summary>Symbole für AFileName: Dateien der Installation mit LibraryDefines, alle anderen mit
+    /// denen des Projekts.</summary>
+    function DefinesFor(const AFileName: string): TArray<string>;
     function IncludeStampsOf(const AIncludes: TArray<string>): TArray<Int64>;
     function IncludesUnchanged(const ACached: TUnitIndex): Boolean;
     function IndexFile(const AFileName: string; ALibrary: Boolean; var AResult: TIndexBuildResult): Boolean;
@@ -92,6 +97,14 @@ type
     function ApplyText(const AFileName, AText: string): Boolean;
     /// <summary>Suchpfade für $I nach dem Ordner der Unit (Projekt-Suchpfade, dann Bibliothekspfade).</summary>
     property IncludePaths: TArray<string> read FIncludePaths write FIncludePaths;
+    /// <summary>Ordner der Delphi-Installation (BDS-Ordner) samt Unterordnern.
+    /// Deren Units kommen als fertige DCUs; die Defines des Projekts wirken nicht auf sie. Leer = alle
+    /// Dateien mit den Defines des Projekts.</summary>
+    property LibraryRoots: TArray<string> read FLibraryRoots write FLibraryRoots;
+    /// <summary>Symbole für Dateien unter LibraryRoots: nur die des Compilers (Plattform, Version).</summary>
+    property LibraryDefines: TArray<string> read FLibraryDefines write FLibraryDefines;
+    /// <summary>Liegt AFileName unter einem der Ordner aus ARoots?</summary>
+    class function IsUnder(const AFileName: string; const ARoots: TArray<string>): Boolean; static;
   end;
 
 implementation
@@ -113,6 +126,31 @@ begin
   FCached := TDictionary<string, TIndexCacheEntry>.Create;
   FFailedUnits := TDictionary<string, Boolean>.Create;
   FFailedLock := TObject.Create;
+end;
+
+class function TIndexBuilder.IsUnder(const AFileName: string; const ARoots: TArray<string>): Boolean;
+var
+  Root: string;
+begin
+  // Windows-Pfade auch unter anderen Systemen (Tests): beide Trenner gelten.
+  for Root in ARoots do
+    if (Root <> '') and AFileName.StartsWith(Root, True) then
+    begin
+      if CharInSet(Root[Length(Root)], ['\', '/']) then
+        Exit(True);
+      if (Length(AFileName) > Length(Root)) and CharInSet(AFileName[Length(Root) + 1], ['\', '/']) then
+        Exit(True);
+    end;
+  Result := False;
+end;
+
+function TIndexBuilder.DefinesFor(const AFileName: string): TArray<string>;
+begin
+  // RTL, VCL und FMX einmal je Compiler und Plattform statt je Projekt-Defines (#647).
+  if IsUnder(AFileName, FLibraryRoots) then
+    Result := FLibraryDefines
+  else
+    Result := FDefines;
 end;
 
 destructor TIndexBuilder.Destroy;
@@ -238,7 +276,7 @@ begin
     Exit(True);
   end;
   Watch := TStopwatch.StartNew;
-  UnitIndex := TIndexExtractor.ExtractText(Text, AFileName, FDefines, IncludeResolver());
+  UnitIndex := TIndexExtractor.ExtractText(Text, AFileName, DefinesFor(AFileName), IncludeResolver());
   Inc(AResult.ParseMs, Watch.ElapsedMilliseconds);
   UnitIndex.Stamp := Stamp;
   UnitIndex.Hash := Hash;
@@ -476,7 +514,7 @@ begin
   Hash := TIndexCache.HashOf(AText);
   if Hash = Existing.Hash then
     Exit;
-  UnitIndex := TIndexExtractor.ExtractText(AText, AFileName, FDefines, IncludeResolver());
+  UnitIndex := TIndexExtractor.ExtractText(AText, AFileName, DefinesFor(AFileName), IncludeResolver());
   // Zeitstempel bleibt der der Datei: Beim Speichern liest IndexFile sie dann neu von der Platte.
   UnitIndex.Stamp := Existing.Stamp;
   UnitIndex.Hash := Hash;

@@ -129,6 +129,8 @@ type
     [Test]
     procedure SkipsUnitIndexedUnderOtherName;
     [Test]
+    procedure ReadsInstallationUnitsWithoutProjectDefines;
+    [Test]
     [IgnoreMemoryLeaks]
     procedure ServiceWritesCacheAfterProjectStage;
   end;
@@ -149,6 +151,8 @@ type
     procedure CombinesDefinesWithPlatformSymbols;
     [Test]
     procedure ListsPathUnitsOnceWithoutExcluded;
+    [Test]
+    procedure SharesLibraryAcrossProjectDefines;
   end;
 
 implementation
@@ -835,6 +839,41 @@ begin
   Assert.AreEqual(1, BuildResult.Parsed, 'nur Q2');
 end;
 
+procedure TIndexBuilderTests.ReadsInstallationUnitsWithoutProjectDefines;
+const
+  Source = 'interface'#10'{$IFDEF APP}procedure NurApp;{$ENDIF}'#10'implementation'#10'end.';
+var
+  Builder: TIndexBuilder;
+  ResolveScoped: TUnitFileResolver;
+begin
+  // RTL/VCL/FMX kommen als fertige DCUs: Projekt-Defines wirken dort nicht (#647).
+  FFiles.Put('C:\BDS\source\rtl\RtlUnit.pas', 'unit RtlUnit;'#10 + Source, 1);
+  FFiles.Put('C:\Firma\FirmaUnit.pas', 'unit FirmaUnit;'#10 + Source, 1);
+  FFiles.Put('C:\P\Haupt.pas', 'unit Haupt;'#10'interface'#10'uses RtlUnit, FirmaUnit;'#10'implementation'#10'end.', 1);
+  ResolveScoped :=
+    function(const AUnitName: string): string
+    begin
+      if SameText(AUnitName, 'RtlUnit') then
+        Result := 'C:\BDS\source\rtl\RtlUnit.pas'
+      else if SameText(AUnitName, 'FirmaUnit') then
+        Result := 'C:\Firma\FirmaUnit.pas'
+      else
+        Result := '';
+    end;
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, ['APP', 'MSWINDOWS'], ResolveScoped);
+  try
+    Builder.LibraryRoots := ['C:\BDS'];
+    Builder.LibraryDefines := ['MSWINDOWS'];
+    Builder.Build(['C:\P\Haupt.pas'], nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Assert.AreEqual<NativeInt>(1, Length(FIndex.FindSymbols('NurApp')), 'nur FirmaUnit');
+  Assert.AreEqual('FirmaUnit', FIndex.FindSymbols('NurApp')[0].UnitName);
+  Assert.IsTrue(TIndexBuilder.IsUnder('c:\bds\x.pas', ['C:\BDS\']));
+  Assert.IsFalse(TIndexBuilder.IsUnder('C:\BDS2\x.pas', ['C:\BDS']));
+end;
+
 procedure TIndexBuilderTests.ServiceWritesCacheAfterProjectStage;
 var
   Service: TIndexService;
@@ -1439,6 +1478,32 @@ begin
   finally
     Scheduler.Free;
   end;
+end;
+
+procedure TIndexProjectFilesTests.SharesLibraryAcrossProjectDefines;
+var
+  Debug, Release: TProjectInfo;
+  Define: string;
+  HasWin64: Boolean;
+begin
+  // Ein Bibliotheks-Cache für alle Projekte und Konfigurationen derselben Plattform (#647).
+  Debug := Default(TProjectInfo);
+  Debug.Platform := 'Win64';
+  Debug.Defines := ['DEBUG', 'APP'];
+  Release := Debug;
+  Release.Defines := ['RELEASE'];
+  Assert.AreEqual(TIndexProjectFiles.LibrarySignature(Debug, '37.0'),
+    TIndexProjectFiles.LibrarySignature(Release, '37.0'));
+  Release.Platform := 'Win32';
+  Assert.AreNotEqual(TIndexProjectFiles.LibrarySignature(Debug, '37.0'),
+    TIndexProjectFiles.LibrarySignature(Release, '37.0'));
+  HasWin64 := False;
+  for Define in TIndexProjectFiles.LibraryDefines(Debug, '37.0') do
+  begin
+    Assert.AreNotEqual('DEBUG', Define);
+    HasWin64 := HasWin64 or (Define = 'WIN64');
+  end;
+  Assert.IsTrue(HasWin64);
 end;
 
 procedure TIndexProjectFilesTests.CombinesDefinesWithPlatformSymbols;
