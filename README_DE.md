@@ -123,6 +123,8 @@ Werte gehen auch mit `=` (`--log=server.log`). `--stdio` und `--clientProcessId`
 | `--rules <a,b>` | nur diese Regeln, z. B. `syntax` |
 | `--units <a,b>` | nur diese Units: Name oder Glob-Muster für Pfade |
 | `--min-severity <S>` | `hint`, `info`, `warning`, `error` |
+| `--fail-on <S>` | ab welchem Treffer der Exit-Code 1 ist: `error` (Standard), `warning` oder `never`. So brechen Warnungen in Altprojekten keinen Pre-Commit-Hook ab |
+| `--source-root <Ordner>` | Wurzel der SARIF-Pfade; Standard ist die Git-Wurzel über dem Ziel, sonst der Ordner des Ziels. Pfade darunter tragen `uriBaseId` `%SRCROOT%`, Dateien außerhalb erscheinen als absoluter `file:`-URI |
 | `--profile <Name>` | Regelprofil (`standard`, `fast`, `strict`, `security`, `style` oder eigenes aus `profiles`); geht `profile` in `atlas.json` vor |
 | `--baseline <Datei>` | bekannte Treffer ausblenden; ohne Angabe gilt `atlas-baseline.json` neben `atlas.json`, falls vorhanden. Der Editor blendet sie ebenso aus |
 | `--update-baseline` | Baseline aus den aktuellen Treffern neu schreiben (verschwundene Einträge fallen heraus), Exit-Code 0 |
@@ -132,7 +134,9 @@ Werte gehen auch mit `=` (`--log=server.log`). `--stdio` und `--clientProcessId`
 | `--changed-lines` | nur Treffer in geänderten Zeilen; zusammen mit der Baseline nur neue Treffer in geänderten Zeilen |
 | `--suppression-stats` | statt der Treffer: wie oft jede Regel per `lsp-ignore` unterdrückt wird (häufigste zuerst, mit ungenutzten), als Text oder JSON; Exit-Code 0 |
 
-Exit-Code: 0 ohne Warnungen und Fehler, 1 bei Warnungen, 2 bei Fehlern, 3 bei Aufruf- oder Lesefehlern.
+Exit-Code: 1, wenn ein Treffer `--fail-on` erreicht (Standard: mindestens ein Fehler), sonst 0; 3 bei Aufruf- oder Lesefehlern. Treffer aus der Baseline zählen nie.
+
+In SARIF steht als `message.text` der englische Name der Regel aus dem Katalog, ohne Konfidenz-Zusatz. Die Konfidenz steht in `properties.confidence`, die deutsche Meldung des Treffers in `properties.detail`.
 
 In einer SVN-Arbeitskopie vergleicht `--changed` ohne Basis die Arbeitskopie mit BASE (`svn status`), `--changed <Rev>` und `--diff <Rev>` mit der Revision (`svn diff -r`); `--include-uncommitted` nimmt unversionierte Dateien dazu. Git hat Vorrang, wenn beides vorliegt.
 

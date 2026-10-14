@@ -7,6 +7,7 @@ Server und Erweiterung tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Linter: `--source-root` (Standard Git-Wurzel) für SARIF-Pfade mit `%SRCROOT%` und `originalUriBaseIds`, Dateien außerhalb als `file:`-URI; SARIF-Texte englisch ohne Konfidenz-Zusatz (Konfidenz in `properties.confidence`); `--fail-on error|warning|never` (#95).
 - Sprachmerkmale je Delphi-Version: Ziffern-Trennzeichen und Binärliterale (ab Delphi 11), `is not` und `not in` (ab Delphi 13, auch im Parser); Meldungen nennen den Produktnamen, inaktive Zweige wie `{$IF CompilerVersion >= 33}` bleiben stumm; unbekannte BDS-Nummern in `delphiVersion` erzeugen eine Konfigurationswarnung (#109).
 - Regeln `with-statement` (Hinweis) und `unreachable-code` (Warnung, erste Anweisung eines unerreichbaren Abschnitts); das Referenz-Testprojekt trennt FireDAC in das optionale Projekt `RefDaten` und wird über `Tools/Build-Referenzprojekt.ps1` für Win32 und Win64 gebaut (#94).
 - Postfix-Vorlagen in der Vervollständigung: `Liste.for`, `Obj.tryf`, `X.ifa`, `S.fmt`, nur bei passendem Typ; ohne Inline-Variablen mit Eintrag im `var`-Abschnitt (#188).
@@ -42,6 +43,9 @@ Server und Erweiterung tragen immer dieselbe Version.
 - VS-Code-Erweiterung als `.vsix`, Konfiguration für Claude Code und Neovim (#49).
 - MCP-Modus mit lesenden Werkzeugen (#48).
 - Delphi-Version je Projekt aus der ProjectVersion (#47).
+
+### Geändert
+- Linter: Exit-Code 1 nur noch, wenn ein Treffer `--fail-on` erreicht (Standard: ein Fehler), sonst 0; bisher 1 bei Warnungen und 2 bei Fehlern. 3 bleibt für Aufruf- und Lesefehler (#95).
 
 ### Behoben
 - Fehlalarme in der Problemliste zu Atlas selbst (#647): Signaturvergleich übergeht Standardwerte und andere Gruppierung der Parameter (`const A, B: string` gegen `const A: string; const B: string = ''`); `unresolved-identifier` kennt Typumwandlungen und Typhelfer eingebauter Typen (`Integer(X)`, `PChar(S)`), den Anfang qualifizierter Unit-Namen (`Winapi.Windows.X`), Felder und Methoden in Methoden innerer Klassen (`TAussen.TInnen.Lauf`), `AtomicIncrement` & Co., `MaxInt` und `HInstance`; `result-not-set` meldet keine Funktionen mehr, die Result im try-Teil eines try/finally setzen (der Weg einer Ausnahme lief nach dem finally normal weiter).

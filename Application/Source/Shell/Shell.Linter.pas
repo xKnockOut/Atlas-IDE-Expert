@@ -18,8 +18,10 @@
 // zusammen mit der Baseline zählt ein Treffer nur, wenn er in einer geänderten
 // Zeile liegt und nicht in der Baseline steht. Die Regeln prüfen jede Datei für
 // sich, deshalb ergibt die Teilmenge dieselben Treffer wie ein voller Lauf.
-// Exit-Code: 0 ohne Warnungen und Fehler, 1 Warnungen, 2 Fehler,
-// 3 Aufruf- oder Lesefehler.
+// SARIF-Pfade sind relativ zur Quellwurzel (--source-root, sonst die
+// Git-Wurzel über dem Ziel, sonst der Ordner des Ziels).
+// Exit-Code: 1, wenn ein Treffer --fail-on erreicht (Standard error: mindestens
+// ein Fehler; Baseline-Treffer zählen nie), sonst 0; 3 Aufruf- oder Lesefehler.
 
 interface
 
@@ -190,6 +192,21 @@ begin
       Result := Result + [Finding];
 end;
 
+/// <summary>--source-root, sonst die Git-Wurzel über AConfigRoot, sonst AConfigRoot.</summary>
+function SourceRootOf(const AOptions: TCommandLineOptions; const AConfigRoot: string): string;
+begin
+  if AOptions.SourceRoot <> '' then
+    Exit(ExcludeTrailingPathDelimiter(TPath.GetFullPath(AOptions.SourceRoot)));
+  Result := TFindingsOutput.FindGitRoot(AConfigRoot,
+    function(const APath: string): Boolean
+    begin
+      // .git ist ein Ordner, in Worktrees und Submodulen eine Datei.
+      Result := TDirectory.Exists(APath) or TFile.Exists(APath);
+    end);
+  if Result = '' then
+    Result := ExcludeTrailingPathDelimiter(AConfigRoot);
+end;
+
 class function TLinterShell.ClearCache: Integer;
 begin
   try
@@ -235,6 +252,11 @@ begin
   if not (TFile.Exists(AOptions.CheckTarget) or TDirectory.Exists(AOptions.CheckTarget)) then
   begin
     WriteError(Format('Ziel "%s" nicht gefunden', [AOptions.CheckTarget]));
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  if (AOptions.SourceRoot <> '') and not TDirectory.Exists(AOptions.SourceRoot) then
+  begin
+    WriteError(Format('Quellwurzel "%s" nicht gefunden', [AOptions.SourceRoot]));
     Exit(TFindingsOutput.ExitFailure);
   end;
   try
@@ -316,6 +338,7 @@ begin
         if Baseline <> nil then
           Findings := Baseline.Filter(RelativePath, Text, Findings);
         Checked.Path := RelativePath;
+        Checked.FullPath := TPath.GetFullPath(FileName);
         Checked.Findings := Filter.Apply(Findings);
         if (Git <> nil) and AOptions.ChangedLines then
           Checked.Findings := InChangedLines(Checked.Findings, Git, FileName);
@@ -337,7 +360,8 @@ begin
       if AOptions.SuppressionStats then
         Output := Stats.Render(AOptions.CheckFormat)
       else
-        Output := TFindingsOutput.Render(Files, AOptions.CheckFormat, Descriptors);
+        Output := TFindingsOutput.Render(Files, AOptions.CheckFormat, Descriptors,
+          SourceRootOf(AOptions, ConfigRoot));
     finally
       Git.Free;
       Stats.Free;
@@ -363,7 +387,7 @@ begin
     if AOptions.SuppressionStats then
       Result := TFindingsOutput.ExitClean
     else
-      Result := TFindingsOutput.ExitCode(Files);
+      Result := TFindingsOutput.ExitCode(Files, AOptions.FailOn);
   except
     on E: Exception do
     begin
