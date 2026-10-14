@@ -103,7 +103,8 @@ uses
   Atlas.Core.Signature.CallScanner,
   Atlas.Core.Lsp.Session,
   Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Style;
+  Atlas.IDE.Editor.Style,
+  Atlas.IDE.Settings.Store;
 
 /// <summary>Größe des Editorfensters (Client-Bereich); (0, 0) ohne Fenster.</summary>
 function EditorSize(AWindow: HWND): TPoint;
@@ -324,7 +325,8 @@ var
   Anchor: TRect;
 begin
   Result := False;
-  if (AView = nil) or (AView.Buffer = nil) then
+  // Parameter-Hint abgeschaltet (ARG-046): weder bei "(" und "," noch nach dem Übernehmen.
+  if (AView = nil) or (AView.Buffer = nil) or not TAtlasIdeSettings.Current.ParameterHints then
     Exit;
   Text := TAtlasEditorBuffer.Text(AView.Buffer);
   Cursor := AView.CursorPos;

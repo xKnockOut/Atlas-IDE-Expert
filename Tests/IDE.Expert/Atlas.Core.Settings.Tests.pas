@@ -21,6 +21,8 @@ type
     procedure IndexOptionsGoToServer;
     [Test]
     procedure XmlDocOptionsGoToServer;
+    [Test]
+    procedure AcceptOptionsRoundTrip;
   end;
 
 implementation
@@ -282,6 +284,37 @@ begin
   Store.WriteInteger('XmlDocMaxLines', -3);
   Loaded.Load(Store);
   Assert.AreEqual(0, Loaded.XmlDocMaxLines);
+end;
+
+procedure TAtlasPluginSettingsTests.AcceptOptionsRoundTrip;
+var
+  Store: IAtlasSettingsStore;
+  Settings, Loaded: TAtlasPluginSettings;
+begin
+  // ARG-046 (#227): Commit-Zeichen, uses, Parameter-Hint, Verzögerung bis zum Öffnen.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.CommitCharacters);
+  Assert.IsTrue(Settings.AutoUses);
+  Assert.IsTrue(Settings.ParameterHints);
+  Assert.AreEqual(150, Settings.OpenDelayMs);
+  Store := TMemoryStore.Create;
+  Settings.CommitCharacters := False;
+  Settings.AutoUses := False;
+  Settings.ParameterHints := False;
+  Settings.OpenDelayMs := 400;
+  Settings.Save(Store);
+  Loaded := Default(TAtlasPluginSettings);
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.CommitCharacters);
+  Assert.IsFalse(Loaded.AutoUses);
+  Assert.IsFalse(Loaded.ParameterHints);
+  Assert.AreEqual(400, Loaded.OpenDelayMs);
+  Store.WriteInteger('OpenDelayMs', 99999);
+  Loaded.Load(Store);
+  Assert.AreEqual(TAtlasPluginSettings.MaxOpenDelay, Loaded.OpenDelayMs);
+  Store.WriteInteger('OpenDelayMs', -1);
+  Loaded.Load(Store);
+  Assert.AreEqual(0, Loaded.OpenDelayMs);
 end;
 
 procedure TAtlasPluginSettingsTests.ClampsOutOfRangeValues;

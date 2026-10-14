@@ -39,6 +39,8 @@ type
     FServerPath: TEdit;
     FServerBrowse: TButton;
     FServerStatus: TLabel;
+    FServerVersion: TLabel;
+    FOnServerVersion: TFunc<string, string>;
     FDefaultServerPath: string;
     FRowsLabel: TLabel;
     FRows: TEdit;
@@ -46,6 +48,12 @@ type
     FPanelCollapsed: TCheckBox;
     FAutoParentheses: TCheckBox;
     FFixCase: TCheckBox;
+    // ARG-046 (#227): Commit-Zeichen, uses, Parameter-Hint, Verzögerung, automatische Breite.
+    FCommitChars: TCheckBox;
+    FAutoUses: TCheckBox;
+    FParameterHints: TCheckBox;
+    FOpenDelay: TEdit;
+    FAutoWidth: TCheckBox;
     FFilterChips: TCheckBox;
     FLearning: TCheckBox;
     FGroupInherited: TCheckBox;
@@ -140,6 +148,8 @@ type
     procedure ServerBrowseClick(Sender: TObject);
     procedure ServerPathChange(Sender: TObject);
     procedure SetDefaultServerPath(const AValue: string);
+    procedure SetOnServerVersion(const AValue: TFunc<string, string>);
+    procedure AutoWidthClick(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
     procedure LoadFrom(const ASettings: TAtlasPluginSettings);
@@ -189,6 +199,15 @@ type
     property OnResetHistory: TProc read FOnResetHistory write FOnResetHistory;
     /// <summary>Server, der bei leerem Pfad gilt (für die Anzeige „Verwendet: …“).</summary>
     property DefaultServerPath: string read FDefaultServerPath write SetDefaultServerPath;
+    /// <summary>Version des Servers unter dem Pfad als Text ('' = unbekannt); nil = keine Anzeige.</summary>
+    property OnServerVersion: TFunc<string, string> read FOnServerVersion write SetOnServerVersion;
+    /// <summary>Zum Testen: Optionen aus ARG-046.</summary>
+    property CommitChars: TCheckBox read FCommitChars;
+    property AutoUses: TCheckBox read FAutoUses;
+    property ParameterHints: TCheckBox read FParameterHints;
+    property OpenDelay: TEdit read FOpenDelay;
+    property AutoWidth: TCheckBox read FAutoWidth;
+    property ServerVersion: TLabel read FServerVersion;
   end;
 
 implementation
@@ -212,7 +231,7 @@ begin
   inherited Create(AOwner);
   Name := 'AtlasSettingsPage';
   Width := 480;
-  Height := 2170;
+  Height := 2330;
   Title := TLabel.Create(Self);
   Title.Parent := Self;
   Title.Align := alTop;
@@ -249,6 +268,12 @@ begin
   FServerStatus.Left := 180;
   FServerStatus.Top := 0;
   FServerStatus.Font.Color := clGrayText;
+  Panel := AddPanel(18);
+  FServerVersion := TLabel.Create(Self);
+  FServerVersion.Parent := Panel;
+  FServerVersion.Left := 180;
+  FServerVersion.Top := 0;
+  FServerVersion.Font.Color := clGrayText;
   Panel := AddPanel(26);
   FRowsLabel := TLabel.Create(Self);
   FRowsLabel.Parent := Panel;
@@ -266,9 +291,14 @@ begin
   FRowsUpDown.Associate := FRows;
   FRowsUpDown.Min := TAtlasPluginSettings.MinVisibleRows;
   FRowsUpDown.Max := TAtlasPluginSettings.MaxVisibleRows;
+  FAutoWidth := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsAutoWidth));
+  FAutoWidth.OnClick := AutoWidthClick;
+  FOpenDelay := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsOpenDelay));
   FPanelCollapsed := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPanelCollapsed));
   FAutoParentheses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsParentheses));
   FFixCase := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFixCase));
+  FCommitChars := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCommitChars));
+  FAutoUses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsAutoUses));
   FFilterChips := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsChips));
   FLearning := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsLearning));
   FGroupInherited := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGroupInherited));
@@ -277,6 +307,7 @@ begin
   FSnippets := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSnippets));
   FImportIdeTemplates := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsImportIdeTemplates));
   FHoverTooltip := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHover));
+  FParameterHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsParameterHints));
   // XMLDoc in Tooltip und Detailpanel (#654); hints in atlas.json hat Vorrang.
   FXmlDocFull := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocFull));
   FXmlDocMaxLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocMaxLines));
@@ -711,6 +742,13 @@ begin
   FPanelCollapsed.Checked := ASettings.PanelCollapsed;
   FAutoParentheses.Checked := ASettings.AutoParentheses;
   FFixCase.Checked := ASettings.FixCase;
+  FCommitChars.Checked := ASettings.CommitCharacters;
+  FAutoUses.Checked := ASettings.AutoUses;
+  FParameterHints.Checked := ASettings.ParameterHints;
+  FOpenDelay.Text := IntToStr(ASettings.OpenDelayMs);
+  FAutoWidth.OnClick := nil;
+  FAutoWidth.Checked := ASettings.ListWidth = 0;
+  FAutoWidth.OnClick := AutoWidthClick;
   FFilterChips.Checked := ASettings.FilterChips;
   FLearning.Checked := ASettings.Learning;
   FGroupInherited.Checked := ASettings.GroupInherited;
@@ -786,6 +824,10 @@ begin
   ASettings.PanelCollapsed := FPanelCollapsed.Checked;
   ASettings.AutoParentheses := FAutoParentheses.Checked;
   ASettings.FixCase := FFixCase.Checked;
+  ASettings.CommitCharacters := FCommitChars.Checked;
+  ASettings.AutoUses := FAutoUses.Checked;
+  ASettings.ParameterHints := FParameterHints.Checked;
+  ASettings.OpenDelayMs := StrToIntDef(FOpenDelay.Text, ASettings.OpenDelayMs);
   ASettings.FilterChips := FFilterChips.Checked;
   ASettings.Learning := FLearning.Checked;
   ASettings.GroupInherited := FGroupInherited.Checked;
@@ -848,7 +890,7 @@ end;
 
 procedure TAtlasSettingsPage.ServerPathChange(Sender: TObject);
 var
-  Path: string;
+  Path, Version: string;
 begin
   Path := Trim(FServerPath.Text);
   if Path = '' then
@@ -859,6 +901,32 @@ begin
     FServerStatus.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsServerFound, [Path])
   else
     FServerStatus.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsServerMissing, [Path]);
+  // Version des Servers (#227): aus der Datei bzw. vom laufenden Server.
+  Version := '';
+  if Assigned(FOnServerVersion) and (Path <> '') and FileExists(Path) then
+  begin
+    Version := FOnServerVersion(Path);
+    if Version = '' then
+      Version := TAtlasStrings.Text(TAtlasTextId.SettingsServerVersionUnknown)
+    else
+      Version := TAtlasStrings.Fmt(TAtlasTextId.SettingsServerVersion, [Version]);
+  end;
+  FServerVersion.Caption := Version;
+end;
+
+procedure TAtlasSettingsPage.SetOnServerVersion(const AValue: TFunc<string, string>);
+begin
+  FOnServerVersion := AValue;
+  ServerPathChange(nil);
+end;
+
+procedure TAtlasSettingsPage.AutoWidthClick(Sender: TObject);
+begin
+  // Automatisch: gezogene Breite vergessen; aus: die zuletzt gezogene bzw. die Vorgabe.
+  if FAutoWidth.Checked then
+    FWidths.ListWidth := 0
+  else if FWidths.ListWidth = 0 then
+    FWidths.ListWidth := TAtlasPluginSettings.MinListWidth + 160;
 end;
 
 procedure TAtlasSettingsPage.ServerBrowseClick(Sender: TObject);
@@ -900,6 +968,9 @@ procedure TAtlasSettingsPage.ResetWidthsClick(Sender: TObject);
 begin
   FWidths.ListWidth := TAtlasPluginSettings.Defaults.ListWidth;
   FWidths.PanelWidth := TAtlasPluginSettings.Defaults.PanelWidth;
+  FAutoWidth.OnClick := nil;
+  FAutoWidth.Checked := FWidths.ListWidth = 0;
+  FAutoWidth.OnClick := AutoWidthClick;
   FResetWidths.Enabled := False;
 end;
 

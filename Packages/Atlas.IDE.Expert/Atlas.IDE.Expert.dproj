@@ -156,6 +156,17 @@
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.SchemaData.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.ProjectDialog.pas"/>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.Project.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Layers.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Choices.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.RuleTable.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Validation.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Baseline.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.ServerPage.pas">
+            <Form>AtlasServerPage</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.ServerTool.pas"/>
         <DCCReference Include="Source\Core\Commands\Atlas.Core.Commands.KeyConflicts.pas"/>
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.Keys.pas"/>
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.MainMenu.pas"/>

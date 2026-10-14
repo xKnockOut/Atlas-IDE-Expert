@@ -568,10 +568,23 @@ Vorbereitung: Formular mit Button `btnSave` und den Methoden `FormCreate(Sender:
 | PE2 | Ohne `atlas.json`: Seite Protokoll, `logLevel` auf `debug`, OK | `atlas.json` entsteht neben der .dproj mit `"logLevel": "debug"` |
 | PE3 | `atlas.json` mit Kommentaren und unbekanntem Schlüssel; `format.indentSize` auf 4 setzen | Nur der Wert kommt dazu bzw. ändert sich; Kommentare, Reihenfolge, unbekannter Schlüssel bleiben |
 | PE4 | Bei einem gesetzten Wert „Zurücksetzen“, OK | Schlüssel samt Komma entfernt; Zustand zeigt „Standard: …“ |
-| PE5 | `rules` mit Einträgen | Als „Nur direkt in atlas.json bearbeitbar“ mit Vorschau; bleibt beim Speichern unverändert |
+| PE5 | `rules` mit Einträgen | Tabelle mit allen Regeln; ohne Änderung bleibt `rules` unverändert |
 | PE6 | Zahlenfeld mit „abc“, OK | Hinweis „keine ganze Zahl“, Dialog bleibt offen |
 | PE7 | „atlas.json öffnen“ | Dialog schließt, Datei öffnet sich im Editor |
 | PE8 | Befehlspalette: „Atlas: Atlas-Einstellungen des Projekts“ | Öffnet denselben Dialog |
 | PE9 | Menü *Atlas* öffnen | Häkchen bei den fünf Schaltern entsprechen Tools > Optionen > Atlas |
 | PE10 | *Atlas > Klammerpaare färben* abschalten, Menü erneut öffnen | Häkchen weg, Paare ungefärbt; in Tools > Optionen > Atlas ebenfalls aus |
 | PE11 | *Atlas > Optionen…* | Tools > Optionen öffnet direkt auf der Seite Atlas |
+| PE12 | *Atlas > Globale Einstellungen…*, `logLevel` auf `debug`, OK | `%APPDATA%\Atlas\settings.json` entsteht mit `"logLevel": "debug"`; Titel nennt „global“ |
+| PE13 | Danach Projekt-Einstellungen, Seite Protokoll | Zustand „global: debug“; Wert im Projekt ändern, dann „Auf global zurücksetzen“ entfernt den Schlüssel aus atlas.json |
+| PE14 | Feld `delphiVersion` | Auswahlliste der installierten Versionen („Delphi 13 (37.0)“); `config` und `platform` aus der .dproj |
+| PE15 | Seite Prüfregeln, eine Regel auf „error“, OK | Nur `"<Regel>": "error"` kommt in `rules`; bei einer Regel mit Optionen bleibt das Objekt, nur `severity` ändert sich |
+| PE16 | Unbekannte Regel in atlas.json eintragen, Dialog öffnen | Regel steht in der Tabelle; OK zeigt die Warnung des Servers und fragt nach |
+| PE17 | Server beenden, Dialog öffnen, ungültiges JSON in einem Objektfeld | Feld rot; Hinweis „nur Syntax geprüft“; OK verhindert Speichern |
+| PE18 | atlas.json in ANSI mit LF speichern, einen Wert ändern | Datei bleibt ANSI mit LF |
+| PE19 | *Tools > Optionen > Atlas > Server* | Baseline-Anzahl; „Aktualisieren“ schreibt `atlas-baseline.json`; „Löschen“ fragt und löscht |
+| PE20 | Dort „Auswerten“ | Je Regel Anzahl, ungenutzte und Dateien der Unterdrückungen |
+| PE21 | Dort „Index-Cache löschen“ | Rückfrage, danach Meldung; der Server baut den Index neu |
+| PE22 | Hauptseite: Verzögerung 1000 ms, `List.` tippen und warten | Liste öffnet nach etwa 1 s; `List.` und sofort Leerzeichen: keine Liste |
+| PE23 | „Commit-Zeichen“, „uses ergänzen“, „Parameter-Hints“ je aus | `;` übernimmt nicht; keine uses-Ergänzung; kein Hint bei `(` |
+| PE24 | „Listenbreite automatisch“ an | Liste passt sich der Breite der Einträge an |

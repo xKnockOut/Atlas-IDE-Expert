@@ -55,6 +55,10 @@ type
     /// </summary>
     class function PopupWord(ALineSame: Boolean; const ALineText: string; AWordStart, ACharacter: Integer;
       out AIndex: Integer): TAtlasCloseReason; static;
+    /// <summary>Verzögertes Öffnen der Liste (ARG-046): Nach der Wartezeit öffnet sie nur, wenn das Fenster
+    /// unverändert ist und seit dem Auslösen an ACharacterAtStart nur Bezeichnerzeichen getippt wurden.</summary>
+    class function DelayedOpen(const AOpened, ANow: TAtlasEditorWindowState; ALineSame: Boolean;
+      const ALineText: string; ACharacterAtStart, ACharacter: Integer): Boolean; static;
     /// <summary>Parameter-Hint. Gescrollt mit sichtbarer Ankerzeile (Zeile der Klammer beim Öffnen, ab 1) ist
     /// kein Grund: Der Hint wandert dann mit (AMove).</summary>
     class function Hint(const AOpened, ANow: TAtlasEditorWindowState; AAnchorLine: Integer;
@@ -112,6 +116,15 @@ begin
       Exit(TAtlasCloseReason.NonIdentifier);
     end;
   Result := TAtlasCloseReason.None;
+end;
+
+class function TAtlasCloseRules.DelayedOpen(const AOpened, ANow: TAtlasEditorWindowState; ALineSame: Boolean;
+  const ALineText: string; ACharacterAtStart, ACharacter: Integer): Boolean;
+var
+  Index: Integer;
+begin
+  Result := (Popup(AOpened, ANow) = TAtlasCloseReason.None) and
+    (PopupWord(ALineSame, ALineText, ACharacterAtStart, ACharacter, Index) = TAtlasCloseReason.None);
 end;
 
 class function TAtlasCloseRules.Hint(const AOpened, ANow: TAtlasEditorWindowState; AAnchorLine: Integer;

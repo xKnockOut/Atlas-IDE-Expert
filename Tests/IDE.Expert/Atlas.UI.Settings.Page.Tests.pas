@@ -29,6 +29,16 @@ type
     procedure SafeModeRoundTrips;
     [Test]
     procedure UndoSettingsRoundTrip;
+    [Test]
+    procedure AcceptOptionsRoundTrip;
+    [Test]
+    procedure ServerPageRunsActions;
+    [Test]
+    procedure DialogShowsOriginAndResetsToGlobal;
+    [Test]
+    procedure DialogRuleTableChangesOnlyThatRule;
+    [Test]
+    procedure DialogValidatesBeforeSaving;
   end;
 
 implementation
@@ -40,7 +50,14 @@ uses
   Atlas.Core.Completion.SnippetCatalog,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Settings.Page,
-  Atlas.UI.Settings.SnippetsPage;
+  Atlas.UI.Settings.SnippetsPage,
+  Atlas.UI.Settings.ServerPage,
+  Atlas.UI.Settings.ProjectDialog,
+  Atlas.Core.Settings.Schema,
+  Atlas.Core.Settings.SchemaData,
+  Atlas.Core.Settings.Layers,
+  Atlas.Core.Settings.Validation,
+  System.JSON;
 
 procedure TAtlasSettingsPageTests.WarmUp;
 begin
@@ -309,6 +326,193 @@ begin
     Assert.IsTrue(Pos('eigen', Page.Validate) > 0);
   finally
     Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.AcceptOptionsRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  // ARG-046 (#227): Commit-Zeichen, uses, Parameter-Hint, Verzögerung und automatische Breite.
+  Settings := TAtlasPluginSettings.Defaults;
+  Settings.CommitCharacters := False;
+  Settings.AutoUses := False;
+  Settings.ParameterHints := False;
+  Settings.OpenDelayMs := 300;
+  Settings.ListWidth := 400;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.IsFalse(Page.CommitChars.Checked);
+    Assert.IsFalse(Page.AutoUses.Checked);
+    Assert.IsFalse(Page.ParameterHints.Checked);
+    Assert.AreEqual('300', Page.OpenDelay.Text);
+    Assert.IsFalse(Page.AutoWidth.Checked);
+    Page.CommitChars.Checked := True;
+    Page.OpenDelay.Text := '0';
+    Page.AutoWidth.Checked := True;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsTrue(Saved.CommitCharacters);
+    Assert.IsFalse(Saved.AutoUses);
+    Assert.IsFalse(Saved.ParameterHints);
+    Assert.AreEqual(0, Saved.OpenDelayMs);
+    Assert.AreEqual(0, Saved.ListWidth, 'automatische Breite');
+    // Version des Servers neben dem Pfad.
+    Page.OnServerVersion :=
+      function(APath: string): string
+      begin
+        Result := '1.2.3.4';
+      end;
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.ServerPageRunsActions;
+var
+  Page: TAtlasServerPage;
+  Global, Deleted: Boolean;
+begin
+  Page := TAtlasServerPage.Create(nil);
+  try
+    // Ohne Ereignisse ist alles aus.
+    Assert.IsFalse(Page.BaselineUpdate.Enabled);
+    Assert.IsFalse(Page.CacheClear.Enabled);
+    Global := False;
+    Deleted := False;
+    Page.OnEditGlobal :=
+      procedure
+      begin
+        Global := True;
+      end;
+    Page.OnBaselineInfo :=
+      function: string
+      begin
+        Result := '5 Treffer in 2 Einträgen';
+      end;
+    Page.OnBaselineDelete :=
+      function: string
+      begin
+        Deleted := True;
+        Result := 'gelöscht';
+      end;
+    Page.OnSuppressions :=
+      function: TArray<string>
+      begin
+        Result := ['no-with: 3 (ungenutzt 1, in 2 Dateien)'];
+      end;
+    Page.OnClearCache :=
+      function: string
+      begin
+        Result := 'Cache leer';
+      end;
+    Page.Confirm :=
+      function(AQuestion: string): Boolean
+      begin
+        Result := True;
+      end;
+    Page.Refresh;
+    Assert.AreEqual('5 Treffer in 2 Einträgen', Page.BaselineInfo.Caption);
+    Page.EditGlobal.Click;
+    Assert.IsTrue(Global);
+    Page.BaselineDelete.Click;
+    Assert.IsTrue(Deleted);
+    Assert.AreEqual('gelöscht', Page.BaselineInfo.Caption);
+    Page.SuppressionsRefresh.Click;
+    Assert.AreEqual(1, Page.Suppressions.Items.Count);
+    Page.CacheClear.Click;
+    Assert.AreEqual('Cache leer', Page.CacheInfo.Caption);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.DialogShowsOriginAndResetsToGlobal;
+var
+  Model: TAtlasSettingsModel;
+  Dialog: TAtlasProjectSettingsDialog;
+begin
+  Model := TAtlasSettingsModel.Create(TAtlasSettingsSchema.Fields(AtlasSchemaJson), '{"language": "en"}',
+    '{"language": "de", "encoding": "windows-1252"}', False);
+  try
+    Dialog := TAtlasProjectSettingsDialog.CreateDialog(nil, Model, 'C:\Ptlas.json');
+    try
+      Assert.IsTrue(Dialog.SelectPage('Allgemein'));
+      Assert.IsTrue(Pos('Projekt', Dialog.StateText('language')) > 0);
+      Assert.IsTrue(Pos('windows-1252', Dialog.StateText('encoding')) > 0, 'global geerbt');
+      Model.Reset(Model.IndexOf('language'));
+      Assert.AreEqual('{}', Model.ResultText);
+    finally
+      Dialog.Free;
+    end;
+  finally
+    Model.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.DialogRuleTableChangesOnlyThatRule;
+const
+  Text = '{' + #13#10 + '  "rules": {' + #13#10 + '    "no-with": "error" // streng' + #13#10 + '  }' + #13#10 + '}';
+var
+  Model: TAtlasSettingsModel;
+  Dialog: TAtlasProjectSettingsDialog;
+  Catalog: TJSONValue;
+begin
+  Catalog := TJSONObject.ParseJSONValue('{"rules": [{"id": "no-with", "name": "Kein with", "category": "code-smell",' +
+    ' "severity": "warning"}, {"id": "empty-except", "name": "Leeres except", "category": "bug",' +
+    ' "severity": "error"}]}');
+  Model := TAtlasSettingsModel.Create(TAtlasSettingsSchema.Fields(AtlasSchemaJson), Text, '', False);
+  try
+    Dialog := TAtlasProjectSettingsDialog.CreateDialog(nil, Model, 'C:\Ptlas.json');
+    try
+      Dialog.Catalog := Catalog;
+      Assert.IsTrue(Dialog.SelectPage(Model.Fields[Model.IndexOf('rules')].Page));
+      Assert.AreEqual(2, Dialog.RuleList.Items.Count);
+      Assert.IsTrue(Dialog.SetRuleSeverity('no-with', 'off'));
+      Assert.AreEqual(StringReplace(Text, '"error"', '"off"', []), Model.ResultText);
+      Assert.IsFalse(Dialog.SetRuleSeverity('unbekannt', 'off'));
+    finally
+      Dialog.Free;
+    end;
+  finally
+    Model.Free;
+    Catalog.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.DialogValidatesBeforeSaving;
+var
+  Model: TAtlasSettingsModel;
+  Dialog: TAtlasProjectSettingsDialog;
+  Checked: Integer;
+begin
+  Model := TAtlasSettingsModel.Create(TAtlasSettingsSchema.Fields(AtlasSchemaJson), '{}', '', True);
+  try
+    Dialog := TAtlasProjectSettingsDialog.CreateDialog(nil, Model, 'C:\Users\X\settings.json');
+    try
+      Checked := 0;
+      Dialog.OnValidate :=
+        function(const AText: string; out AChecked: Boolean): TArray<TAtlasSettingIssue>
+        begin
+          Inc(Checked);
+          AChecked := True;
+          Result := nil;
+        end;
+      // Unverändert: nichts zu prüfen.
+      Assert.IsTrue(Dialog.Validate);
+      Assert.AreEqual(0, Checked);
+      Model.SetValue(Model.IndexOf('memoryBudgetMb'), '256');
+      Assert.IsTrue(Dialog.Validate);
+      Assert.AreEqual(1, Checked);
+      Dialog.ServerChecks := False;
+      Assert.IsTrue(Dialog.HintLabel.Visible, 'Hinweis: nur Syntax');
+    finally
+      Dialog.Free;
+    end;
+  finally
+    Model.Free;
   end;
 end;
 

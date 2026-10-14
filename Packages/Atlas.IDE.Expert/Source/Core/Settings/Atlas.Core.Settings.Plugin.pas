@@ -38,6 +38,8 @@ type
     MinCheckMax = 200;
     MaxCheckMax = 20000;
     MaxXmlDocLines = 50;
+    /// <summary>Verzögerung bis zum automatischen Öffnen der Liste (ARG-046, #227); 0 = sofort.</summary>
+    MaxOpenDelay = 2000;
     /// <summary>Speichergrenze des Symbolindex im Server (#492); 0 = unbegrenzt.</summary>
     MaxMemoryBudgetMb = 65536;
     /// <summary>Grenzen für safeMode.startupTimeoutMs und safeMode.keepSettingsHistory (#722).</summary>
@@ -64,6 +66,14 @@ type
     AutoParentheses: Boolean;
     /// <summary>Schreibweise des getippten Worts beim Übernehmen korrigieren (#433).</summary>
     FixCase: Boolean;
+    /// <summary>Übernehmen über "(", ";" und "." (#429).</summary>
+    CommitCharacters: Boolean;
+    /// <summary>Unit beim Übernehmen automatisch in uses eintragen (#180).</summary>
+    AutoUses: Boolean;
+    /// <summary>Parameter-Hint bei "(" und "," (#436).</summary>
+    ParameterHints: Boolean;
+    /// <summary>Millisekunden zwischen automatischem Auslösen (".") und dem Öffnen der Liste (ARG-046).</summary>
+    OpenDelayMs: Integer;
     /// <summary>Tastenkürzel der Befehlspalette und der Syntaxprüfung (TShortCut, 0 = keins, #494).</summary>
     PaletteKey: Integer;
     CheckKey: Integer;
@@ -223,6 +233,10 @@ begin
   Result.PanelCollapsed := False;
   Result.AutoParentheses := True;
   Result.FixCase := True;
+  Result.CommitCharacters := True;
+  Result.AutoUses := True;
+  Result.ParameterHints := True;
+  Result.OpenDelayMs := 150;
   Result.PaletteKey := $6050; // Strg+Umschalt+P
   Result.CheckKey := $C078; // Strg+Alt+F9
   Result.PaletteKeyPriority := False;
@@ -301,6 +315,7 @@ begin
   CheckOnSaveDelayMs := EnsureRange(CheckOnSaveDelayMs, MinCheckDelay, MaxCheckDelay);
   CheckOnSaveMaxMs := EnsureRange(CheckOnSaveMaxMs, MinCheckMax, MaxCheckMax);
   XmlDocMaxLines := EnsureRange(XmlDocMaxLines, 0, MaxXmlDocLines);
+  OpenDelayMs := EnsureRange(OpenDelayMs, 0, MaxOpenDelay);
   MemoryBudgetMb := EnsureRange(MemoryBudgetMb, 0, MaxMemoryBudgetMb);
   // TShortCut ist ein Word.
   PaletteKey := EnsureRange(PaletteKey, 0, $FFFF);
@@ -341,6 +356,10 @@ begin
   PanelCollapsed := AStore.ReadInteger('PanelCollapsed', BoolValue(Default.PanelCollapsed)) <> 0;
   AutoParentheses := AStore.ReadInteger('AutoParentheses', BoolValue(Default.AutoParentheses)) <> 0;
   FixCase := AStore.ReadInteger('FixCase', BoolValue(Default.FixCase)) <> 0;
+  CommitCharacters := AStore.ReadInteger('CommitCharacters', BoolValue(Default.CommitCharacters)) <> 0;
+  AutoUses := AStore.ReadInteger('AutoUses', BoolValue(Default.AutoUses)) <> 0;
+  ParameterHints := AStore.ReadInteger('ParameterHints', BoolValue(Default.ParameterHints)) <> 0;
+  OpenDelayMs := AStore.ReadInteger('OpenDelayMs', Default.OpenDelayMs);
   PaletteKey := AStore.ReadInteger('PaletteKey', Default.PaletteKey);
   CheckKey := AStore.ReadInteger('CheckKey', Default.CheckKey);
   PaletteKeyPriority := AStore.ReadInteger('PaletteKeyPriority', BoolValue(Default.PaletteKeyPriority)) <> 0;
@@ -419,6 +438,10 @@ begin
   AStore.WriteInteger('PanelCollapsed', BoolValue(PanelCollapsed));
   AStore.WriteInteger('AutoParentheses', BoolValue(AutoParentheses));
   AStore.WriteInteger('FixCase', BoolValue(FixCase));
+  AStore.WriteInteger('CommitCharacters', BoolValue(CommitCharacters));
+  AStore.WriteInteger('AutoUses', BoolValue(AutoUses));
+  AStore.WriteInteger('ParameterHints', BoolValue(ParameterHints));
+  AStore.WriteInteger('OpenDelayMs', OpenDelayMs);
   AStore.WriteInteger('PaletteKey', PaletteKey);
   AStore.WriteInteger('CheckKey', CheckKey);
   AStore.WriteInteger('PaletteKeyPriority', BoolValue(PaletteKeyPriority));

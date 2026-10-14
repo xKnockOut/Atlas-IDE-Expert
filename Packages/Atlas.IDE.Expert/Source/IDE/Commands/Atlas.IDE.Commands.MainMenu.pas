@@ -61,6 +61,7 @@ type
     procedure RootClick(Sender: TObject);
     procedure ToggleClick(Sender: TObject);
     procedure ProjectClick(Sender: TObject);
+    procedure GlobalClick(Sender: TObject);
     procedure OptionsClick(Sender: TObject);
   public
     /// <summary>AProgress: Fortschritt des Servers; ACommand: Serverbefehl ausführen; AMessage: Zeile in die Meldungsansicht.</summary>
@@ -190,6 +191,11 @@ begin
   Item := TMenuItem.Create(FRoot);
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsMenu);
   Item.OnClick := ProjectClick;
+  FRoot.Add(Item);
+  // Globale Einstellungen des Servers für alle Projekte (#227).
+  Item := TMenuItem.Create(FRoot);
+  Item.Caption := TAtlasStrings.Text(TAtlasTextId.MenuGlobalSettings);
+  Item.OnClick := GlobalClick;
   FRoot.Add(Item);
   Item := TMenuItem.Create(FRoot);
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.MenuOptions);
@@ -446,6 +452,16 @@ end;
 procedure TAtlasMainMenu.EnableAllClick(Sender: TObject);
 begin
   TAtlasGuard.EnableAll;
+end;
+
+procedure TAtlasMainMenu.GlobalClick(Sender: TObject);
+begin
+  try
+    TAtlasProjectSettings.ExecuteGlobal;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Settings, E);
+  end;
 end;
 
 procedure TAtlasMainMenu.ProjectClick(Sender: TObject);

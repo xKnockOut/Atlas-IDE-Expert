@@ -11,6 +11,9 @@
 // Komposition die Tasten über Settings.OnChanged neu.
 // Abschnitt Symbolindex (#492): Kennzahlen aus atlas.server.status, „Index neu
 // aufbauen“ und „Index löschen“ über die Befehle des Servers.
+// Seite „Atlas.Server“ (#227): globale und Projekt-Einstellungen des Servers im
+// Dialog, Baseline neu erzeugen oder löschen, Unterdrückungen je Regel und
+// Index-Cache löschen über AtlasServer.exe als Prozess (TAtlasServerTool).
 
 interface
 
@@ -31,6 +34,7 @@ type
 implementation
 
 uses
+  System.IOUtils,
   Atlas.Core.Diagnostics.Guard,
   Vcl.Forms,
   Vcl.Dialogs,
@@ -44,6 +48,10 @@ uses
   Atlas.Core.Lsp.Progress,
   Atlas.UI.Settings.Page,
   Atlas.UI.Settings.Keys,
+  Atlas.UI.Settings.ServerPage,
+  Atlas.Core.Settings.Baseline,
+  Atlas.IDE.Settings.Project,
+  Atlas.IDE.Settings.ServerTool,
   Atlas.UI.Strings,
   Atlas.IDE.Commands.Keys,
   Atlas.IDE.Editor.Structure,
@@ -98,8 +106,24 @@ type
     function IncludeInIDEInsight: Boolean;
   end;
 
+  /// <summary>Seite „Server“ (#227).</summary>
+  TAtlasServerOptions = class(TInterfacedObject, INTAAddInOptions)
+  private
+    FPage: TAtlasServerPage;
+  public
+    function GetArea: string;
+    function GetCaption: string;
+    function GetFrameClass: TCustomFrameClass;
+    procedure FrameCreated(AFrame: TCustomFrame);
+    procedure DialogClosed(Accepted: Boolean);
+    function ValidateContents: Boolean;
+    function GetHelpContext: Integer;
+    function IncludeInIDEInsight: Boolean;
+  end;
+
 var
   Options: INTAAddInOptions;
+  ServerOptions: INTAAddInOptions;
   SnippetOptions: INTAAddInOptions;
   KeysOptions: INTAAddInOptions;
 
@@ -140,6 +164,12 @@ procedure TAtlasAddInOptions.FrameCreated(AFrame: TCustomFrame);
 begin
   FPage := AFrame as TAtlasSettingsPage;
   FPage.DefaultServerPath := TAtlasCodeInsightManager.DefaultServerPath;
+  // Version der gewählten AtlasServer.exe (#227).
+  FPage.OnServerVersion :=
+    function(APath: string): string
+    begin
+      Result := TAtlasServerTool.FileVersion(APath);
+    end;
   FPage.OnResetHistory := FResetHistory;
   // Symbolindex (#492): vor LoadFrom, das die Kennzahlen gleich anzeigt.
   FPage.OnIndexMetrics :=
@@ -354,6 +384,185 @@ begin
   Result := True;
 end;
 
+{ TAtlasServerOptions }
+
+function ServerExe: string;
+var
+  Arguments: string;
+begin
+  Result := TAtlasCodeInsightManager.ServerPath(Arguments);
+end;
+
+/// <summary>atlas-baseline.json des aktiven Projekts (oder der alte Name, wenn nur er existiert); '' ohne Projekt.
+/// </summary>
+function BaselineFile: string;
+var
+  Folder: string;
+begin
+  Result := '';
+  if TAtlasProjectSettings.SettingsFile = '' then
+    Exit;
+  Folder := ExtractFileDir(TAtlasProjectSettings.SettingsFile);
+  Result := IncludeTrailingPathDelimiter(Folder) + TAtlasBaselineInfo.FileName;
+  if not FileExists(Result) and FileExists(IncludeTrailingPathDelimiter(Folder) + TAtlasBaselineInfo.LegacyFileName)
+  then
+    Result := IncludeTrailingPathDelimiter(Folder) + TAtlasBaselineInfo.LegacyFileName;
+end;
+
+function BaselineText: string;
+var
+  FileName: string;
+  Count, Entries: Integer;
+begin
+  FileName := BaselineFile;
+  if FileName = '' then
+    Exit(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsNoProject));
+  if not FileExists(FileName) then
+    Exit(TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineNone));
+  Count := TAtlasBaselineInfo.Count(TFile.ReadAllText(FileName, TEncoding.UTF8), Entries);
+  if Count < 0 then
+    Exit(TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineNone));
+  Result := TAtlasStrings.Fmt(TAtlasTextId.ServerPageBaselineCount, [Count, Entries]);
+end;
+
+/// <summary>AtlasServer.exe mit AArguments im Projektordner; '' bei Erfolg, sonst die Meldung.</summary>
+function RunTool(const AArguments: string; ATimeoutMs: Cardinal; out AOutput: string): string;
+var
+  Code: Cardinal;
+  Error, Folder: string;
+begin
+  Result := '';
+  Folder := ExtractFileDir(TAtlasProjectSettings.ActiveProject);
+  if not TAtlasServerTool.Run(ServerExe, AArguments, Folder, ATimeoutMs, AOutput, Code, Error) then
+    Result := TAtlasStrings.Fmt(TAtlasTextId.ServerPageToolFailed, [Error])
+  else if Code = 3 then
+    Result := TAtlasStrings.Fmt(TAtlasTextId.ServerPageToolFailed, ['Exit-Code 3']);
+end;
+
+function TAtlasServerOptions.GetArea: string;
+begin
+  Result := '';
+end;
+
+function TAtlasServerOptions.GetCaption: string;
+begin
+  // Punkt: Unterseite von „Atlas“.
+  Result := 'Atlas.' + TAtlasStrings.Text(TAtlasTextId.ServerPageTitle);
+end;
+
+function TAtlasServerOptions.GetFrameClass: TCustomFrameClass;
+begin
+  Result := TAtlasServerPage;
+end;
+
+procedure TAtlasServerOptions.FrameCreated(AFrame: TCustomFrame);
+begin
+  try
+    FPage := AFrame as TAtlasServerPage;
+    FPage.OnEditGlobal :=
+      procedure
+      begin
+        TAtlasProjectSettings.ExecuteGlobal;
+      end;
+    FPage.OnEditProject :=
+      procedure
+      begin
+        TAtlasProjectSettings.Execute;
+      end;
+    FPage.OnBaselineInfo :=
+      function: string
+      begin
+        Result := BaselineText;
+      end;
+    FPage.OnBaselineUpdate :=
+      function: string
+      var
+        Output: string;
+      begin
+        if TAtlasProjectSettings.ActiveProject = '' then
+          Exit(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsNoProject));
+        Result := RunTool('--check "' + TAtlasProjectSettings.ActiveProject + '" --update-baseline',
+          TAtlasServerTool.CheckTimeoutMs, Output);
+        if Result = '' then
+          Result := BaselineText;
+      end;
+    FPage.OnBaselineDelete :=
+      function: string
+      begin
+        if (BaselineFile <> '') and FileExists(BaselineFile) then
+          TFile.Delete(BaselineFile);
+        Result := BaselineText;
+      end;
+    FPage.OnSuppressions :=
+      function: TArray<string>
+      var
+        OutputFile, Output, Error: string;
+        Row: TAtlasSuppressionRow;
+      begin
+        Result := nil;
+        if TAtlasProjectSettings.ActiveProject = '' then
+        begin
+          Result := [TAtlasStrings.Text(TAtlasTextId.ProjectSettingsNoProject)];
+          Exit;
+        end;
+        OutputFile := TPath.GetTempFileName;
+        try
+          Error := RunTool('--check "' + TAtlasProjectSettings.ActiveProject +
+            '" --suppression-stats --format json --output "' + OutputFile + '"', TAtlasServerTool.CheckTimeoutMs,
+            Output);
+          if Error <> '' then
+          begin
+            Result := [Error];
+            Exit;
+          end;
+          for Row in TAtlasBaselineInfo.Suppressions(TFile.ReadAllText(OutputFile, TEncoding.UTF8)) do
+            Result := Result + [TAtlasStrings.Fmt(TAtlasTextId.ServerPageSuppressionRow,
+              [Row.Rule, Row.Total, Row.Unused, Row.Files])];
+          if Length(Result) = 0 then
+            Result := [TAtlasStrings.Text(TAtlasTextId.ServerPageSuppressionsNone)];
+        finally
+          if FileExists(OutputFile) then
+            TFile.Delete(OutputFile);
+        end;
+      end;
+    FPage.OnClearCache :=
+      function: string
+      var
+        Output: string;
+      begin
+        Result := RunTool('--clear-cache', TAtlasServerTool.ShortTimeoutMs, Output);
+        if Result = '' then
+          Result := Trim(Output);
+        if Result = '' then
+          Result := TAtlasStrings.Text(TAtlasTextId.ServerPageToolDone);
+      end;
+    FPage.Refresh;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Settings, E);
+  end;
+end;
+
+procedure TAtlasServerOptions.DialogClosed(Accepted: Boolean);
+begin
+  FPage := nil;
+end;
+
+function TAtlasServerOptions.ValidateContents: Boolean;
+begin
+  Result := True;
+end;
+
+function TAtlasServerOptions.GetHelpContext: Integer;
+begin
+  Result := 0;
+end;
+
+function TAtlasServerOptions.IncludeInIDEInsight: Boolean;
+begin
+  Result := True;
+end;
+
 { TAtlasOptionsRegistration }
 
 class procedure TAtlasOptionsRegistration.Register(const AResetHistory: TProc; const ACommand: TAtlasServerCommand);
@@ -368,6 +577,8 @@ begin
     Services.RegisterAddInOptions(SnippetOptions);
     KeysOptions := TAtlasKeysOptions.Create;
     Services.RegisterAddInOptions(KeysOptions);
+    ServerOptions := TAtlasServerOptions.Create;
+    Services.RegisterAddInOptions(ServerOptions);
   end;
 end;
 
@@ -381,11 +592,14 @@ begin
       Services.UnregisterAddInOptions(SnippetOptions);
     if KeysOptions <> nil then
       Services.UnregisterAddInOptions(KeysOptions);
+    if ServerOptions <> nil then
+      Services.UnregisterAddInOptions(ServerOptions);
     if Options <> nil then
       Services.UnregisterAddInOptions(Options);
   end;
   SnippetOptions := nil;
   KeysOptions := nil;
+  ServerOptions := nil;
   Options := nil;
 end;
 
