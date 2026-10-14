@@ -23,7 +23,7 @@ uses
 
 type
 {$SCOPEDENUMS ON}
-  TAtlasToggle = (Enabled, HoverTooltip, PairColors, PairGuides, Problems, InactiveDim);
+  TAtlasToggle = (Enabled, HoverTooltip, PairColors, PairGuides, PairOwners, Problems, InactiveDim);
 {$SCOPEDENUMS OFF}
 
   TAtlasMainMenu = class
@@ -82,6 +82,8 @@ begin
       Result := TAtlasStrings.Text(TAtlasTextId.MenuTogglePairs);
     TAtlasToggle.PairGuides:
       Result := TAtlasStrings.Text(TAtlasTextId.MenuToggleGuides);
+    TAtlasToggle.PairOwners:
+      Result := TAtlasStrings.Text(TAtlasTextId.MenuToggleOwners);
     TAtlasToggle.InactiveDim:
       Result := TAtlasStrings.Text(TAtlasTextId.MenuToggleInactive);
   else
@@ -174,6 +176,8 @@ begin
       Result := ASettings.PairColors;
     TAtlasToggle.PairGuides:
       Result := ASettings.PairGuides;
+    TAtlasToggle.PairOwners:
+      Result := ASettings.PairOwners;
     TAtlasToggle.InactiveDim:
       Result := ASettings.InactiveDim;
   else
@@ -192,6 +196,8 @@ begin
       ASettings.PairColors := AValue;
     TAtlasToggle.PairGuides:
       ASettings.PairGuides := AValue;
+    TAtlasToggle.PairOwners:
+      ASettings.PairOwners := AValue;
     TAtlasToggle.InactiveDim:
       ASettings.InactiveDim := AValue;
   else
@@ -210,6 +216,8 @@ begin
     Settings := TAtlasIdeSettings.Current;
     for Toggle := Low(TAtlasToggle) to High(TAtlasToggle) do
       FToggles[Toggle].Checked := Get(Settings, Toggle);
+    // Anweisungen mitfärben wirkt nur mit der Paarfärbung (#653).
+    FToggles[TAtlasToggle.PairOwners].Enabled := Settings.PairColors;
     Names := '';
     for Feature in TAtlasGuard.DisabledSet do
       if Names = '' then

@@ -48,6 +48,8 @@ type
     FPairColors: TCheckBox;
     FInactiveDim: TCheckBox;
     FPairGuides: TCheckBox;
+    FPairOwners: TCheckBox;
+    FPairGuideWidth: TEdit;
     FProblems: TCheckBox;
     FIndexGroup: TCheckBox;
     FIndexSearch: TCheckBox;
@@ -73,6 +75,7 @@ type
     procedure ResetHistoryClick(Sender: TObject);
     procedure ResetWidthsClick(Sender: TObject);
     procedure HangTestClick(Sender: TObject);
+    procedure PairColorsClick(Sender: TObject);
     procedure ServerBrowseClick(Sender: TObject);
     procedure ServerPathChange(Sender: TObject);
     procedure SetDefaultServerPath(const AValue: string);
@@ -169,6 +172,10 @@ begin
   FPairColors := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairs));
   FInactiveDim := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim));
   FPairGuides := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuides));
+  // Anweisungen mitfärben und Linienbreite (#653); wirken nur mit der Paarfärbung.
+  FPairOwners := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairOwners));
+  FPairGuideWidth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuideWidth));
+  FPairColors.OnClick := PairColorsClick;
   FProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblems));
   // Umfang des Index für alle Projekte; index in atlas.json hat Vorrang (#652).
   FIndexGroup := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexGroup));
@@ -255,6 +262,13 @@ begin
   APriority.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsKeyPriority);
 end;
 
+procedure TAtlasSettingsPage.PairColorsClick(Sender: TObject);
+begin
+  FPairOwners.Enabled := FPairColors.Checked;
+  FPairGuides.Enabled := FPairColors.Checked;
+  FPairGuideWidth.Enabled := FPairColors.Checked;
+end;
+
 function TAtlasSettingsPage.AddNumber(const ACaption: string): TEdit;
 var
   Panel: TPanel;
@@ -299,6 +313,9 @@ begin
   FPairColors.Checked := ASettings.PairColors;
   FInactiveDim.Checked := ASettings.InactiveDim;
   FPairGuides.Checked := ASettings.PairGuides;
+  FPairOwners.Checked := ASettings.PairOwners;
+  FPairGuideWidth.Text := IntToStr(ASettings.PairGuideWidth);
+  PairColorsClick(nil);
   FProblems.Checked := ASettings.Problems;
   FIndexGroup.Checked := ASettings.IndexProjectGroup;
   FIndexSearch.Checked := ASettings.IndexSearchPaths;
@@ -331,6 +348,8 @@ begin
   ASettings.PairColors := FPairColors.Checked;
   ASettings.InactiveDim := FInactiveDim.Checked;
   ASettings.PairGuides := FPairGuides.Checked;
+  ASettings.PairOwners := FPairOwners.Checked;
+  ASettings.PairGuideWidth := StrToIntDef(FPairGuideWidth.Text, ASettings.PairGuideWidth);
   ASettings.Problems := FProblems.Checked;
   ASettings.IndexProjectGroup := FIndexGroup.Checked;
   ASettings.IndexSearchPaths := FIndexSearch.Checked;
