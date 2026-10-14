@@ -205,6 +205,7 @@ uses
   Atlas.UI.Strings.Tests in 'IDE.Expert\Atlas.UI.Strings.Tests.pas',
   Atlas.Core.Completion.Providers.XmlDoc in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.XmlDoc.pas',
   Atlas.Core.Completion.Snippets in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Snippets.pas',
+  Atlas.Core.Completion.LiveTemplates in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.LiveTemplates.pas',
   Atlas.Core.Completion.Placeholders in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Placeholders.pas',
   Atlas.Core.Completion.Providers.Snippets in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.Snippets.pas',
   Atlas.Core.Completion.Snippets.Tests in 'IDE.Expert\Atlas.Core.Completion.Snippets.Tests.pas',
