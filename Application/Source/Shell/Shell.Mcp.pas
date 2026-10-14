@@ -66,7 +66,9 @@ uses
   Atlas.Windows.Console.StdStreams,
   Atlas.Windows.Process.ParentWatcher,
   Atlas.Windows.Documents.PathCanonicalizer,
-  Shell.Workspace;
+  Atlas.Common.Diagnostics.Anonymizer,
+  Shell.Workspace,
+  Shell.Diagnostics;
 
 type
   /// <summary>Nimmt die LSP-Benachrichtigungen des Arbeitsbereichs (Fortschritt,
@@ -444,13 +446,15 @@ var
   Guard: TMcpPathGuard;
   Edit: TMcpEditTools;
   Root, Warning: string;
+  Anonymizer: ILogAnonymizer;
 begin
   LoggerImpl := TLogger.Create;
   Logger := LoggerImpl;
   LoggerImpl.AddSink(TStreamLogSink.Create(TStdStreams.CreateError, True), TLogLevel.Warning);
   if AOptions.LogFile <> '' then
     try
-      LoggerImpl.AddSink(TStreamLogSink.CreateForFile(AOptions.LogFile, IntToStr(TParentWatcher.CurrentProcessId)), AOptions.LogLevel);
+      LoggerImpl.AddSink(TShellDiagnostics.LogFileSink(AOptions.LogFile, IntToStr(TParentWatcher.CurrentProcessId),
+        AOptions.LogNames, Anonymizer), AOptions.LogLevel);
     except
       on E: Exception do
         Logger.Error(Format('Logdatei "%s" kann nicht geöffnet werden: %s', [AOptions.LogFile, E.Message]));

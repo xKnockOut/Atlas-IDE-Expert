@@ -26,6 +26,8 @@ uses
 type
   /// <summary>Aktuelle Sitzung oder nil, wenn kein Server verfügbar ist. Im Hauptthread aufgerufen.</summary>
   TAtlasSessionFunc = reference to function: TLspSession;
+  /// <summary>Zeile fürs Diagnoselog des Plugins; ohne Namen aus dem Quelltext. Auch aus Hintergrund-Threads.</summary>
+  TAtlasProviderLog = reference to procedure(const AMessage: string);
 
   TAtlasServerCompletionProvider = class(TAtlasAsyncCompletionProvider, IAtlasCompletionResolver)
   public const
@@ -34,6 +36,8 @@ type
     FSession: TAtlasSessionFunc;
     FTimeoutMs: Cardinal;
     FResolveGeneration: Integer;
+    FOnLog: TAtlasProviderLog;
+    procedure Log(const AMessage: string);
   protected
     function Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean; override;
     function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
@@ -50,6 +54,8 @@ type
     class function DetailsFromLsp(AResponse: TJSONValue): TAtlasItemDetails; static;
     { IAtlasCompletionResolver }
     function Resolve(const AItem: TAtlasCompletionItem; const ACallback: TAtlasDetailsCallback): Boolean;
+    /// <summary>Warum die Liste leer bleibt (kein Server, keine Antwort) und wie lange der Server brauchte.</summary>
+    property OnLog: TAtlasProviderLog read FOnLog write FOnLog;
   end;
 
 implementation
@@ -57,6 +63,7 @@ implementation
 uses
   System.Classes,
   System.SyncObjs,
+  System.Diagnostics,
   System.Generics.Collections;
 
 { TAtlasServerCompletionProvider }
@@ -205,6 +212,12 @@ begin
   SetLength(Result, Count);
 end;
 
+procedure TAtlasServerCompletionProvider.Log(const AMessage: string);
+begin
+  if Assigned(FOnLog) then
+    FOnLog(AMessage);
+end;
+
 function TAtlasServerCompletionProvider.Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean;
 var
   Session: TLspSession;
@@ -215,7 +228,11 @@ begin
     Session := FSession();
   Result := (Session <> nil) and (AContext.FileName <> '');
   if not Result then
+  begin
+    if Session = nil then
+      Log('Vervollständigung: kein Server verbunden');
     Exit;
+  end;
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
   Session.Sync(AContext.FileName, AContext.Text);
   AData := Session;
@@ -227,10 +244,12 @@ var
   Response: TJSONValue;
   NextRank: Integer;
   Emit: TAtlasEmitProc;
+  Watch: TStopwatch;
 begin
   AIncomplete := False;
   NextRank := 0;
   Emit := AEmit;
+  Watch := TStopwatch.StartNew;
   // Teilergebnisse kommen im Lese-Thread nacheinander und alle vor der Antwort.
   Response := TLspSession(AData).Completion(AContext.FileName, AContext.Line, AContext.Character, FTimeoutMs,
     procedure(const AValue: TJSONValue)
@@ -244,6 +263,12 @@ begin
       Emit(Items);
     end);
   try
+    // Ohne Antwort bleibt die Liste leer; das Zeitlimit ist FTimeoutMs.
+    if Response = nil then
+      Log(Format('Vervollständigung: keine Antwort nach %d ms (%d Teilergebnisse)',
+        [Watch.ElapsedMilliseconds, NextRank]))
+    else
+      Log(Format('Vervollständigung: Antwort nach %d ms', [Watch.ElapsedMilliseconds]));
     if ACancelled() then
       Exit(nil);
     // CompletionList mit isIncomplete: Der Server hat gekürzt und will beim Weitertippen neu gefragt werden.

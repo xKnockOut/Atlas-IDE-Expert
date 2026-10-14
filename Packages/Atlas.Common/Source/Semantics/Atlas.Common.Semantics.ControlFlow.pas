@@ -10,10 +10,12 @@
 // Innerhalb eines try kann jede Anweisung eine Ausnahme auslösen; außerhalb
 // führen nur raise und Abort zum Knoten RaiseExit.
 //
-// Ein finally-Block wird einmal modelliert: Jeder Sprung, der ihn verlässt,
-// führt hinein, und sein Ende führt zu allen so erreichten Zielen. Der Graph
-// enthält damit eher zu viele Wege als zu wenige; Aussagen „auf jedem Weg“
-// bleiben dadurch sicher.
+// Ein finally-Block wird je Ausgang einmal modelliert: für das normale Ende
+// des try-Teils und für jedes Sprungziel (Exit, Break, Continue, Ausnahme)
+// eine eigene Kopie, deren Ende nur zu diesem Ziel führt. Früher gab es eine
+// Kopie für alle; dann lief der Weg einer Ausnahme nach dem finally normal
+// weiter, und result-not-set meldete jede Funktion, die Result im try-Teil
+// setzt (#647).
 //
 // Zuweisungen: einfache Zuweisungen an einen Bezeichner, Schleifenvariablen,
 // Inline-Variablen mit Startwert und Exit(Wert) für Result. Zuweisungen über
@@ -110,8 +112,9 @@ type
 
   TFinallyContext = class
   public
-    Entry: TJumpTarget;
+    /// <summary>Ziele der Sprünge aus dem try-Teil; Routes[I] sammelt die Quellen zu Onward[I].</summary>
     Onward: TList<TJumpTarget>;
+    Routes: TObjectList<TJumpTarget>;
     constructor Create(ADepth: Integer);
     destructor Destroy; override;
   end;
@@ -217,13 +220,13 @@ end;
 constructor TFinallyContext.Create(ADepth: Integer);
 begin
   inherited Create;
-  Entry := TJumpTarget.Create(ADepth);
   Onward := TList<TJumpTarget>.Create;
+  Routes := TObjectList<TJumpTarget>.Create;
 end;
 
 destructor TFinallyContext.Destroy;
 begin
-  Entry.Free;
+  Routes.Free;
   Onward.Free;
   inherited;
 end;
@@ -287,14 +290,19 @@ end;
 procedure TFlowBuilder.Jump(AFrom: TFlowNode; ATarget: TJumpTarget);
 var
   Context: TFinallyContext;
+  Route: Integer;
 begin
   // Verlässt der Sprung einen finally-Bereich, läuft er zuerst durch dessen finally.
   if FFinallies.Count > ATarget.Depth then
   begin
     Context := FFinallies[FFinallies.Count - 1];
-    Context.Entry.Sources.Add(AFrom);
-    if not Context.Onward.Contains(ATarget) then
+    Route := Context.Onward.IndexOf(ATarget);
+    if Route < 0 then
+    begin
       Context.Onward.Add(ATarget);
+      Route := Context.Routes.Add(TJumpTarget.Create(ATarget.Depth));
+    end;
+    Context.Routes[Route].Sources.Add(AFrom);
   end
   else
     ATarget.Sources.Add(AFrom);
@@ -493,7 +501,7 @@ var
   Handler, FinallyEntry, Node: TFlowNode;
   Body, Ends: TArray<TFlowNode>;
   Index: Integer;
-  HasHandlers, HasElse: Boolean;
+  HasHandlers, HasElse, Pass: Boolean;
   Onward: TJumpTarget;
 begin
   ExceptPart := S.FindChild(TSyntaxKind.ExceptBlock);
@@ -508,14 +516,29 @@ begin
       Body := Sequence(S, 0, APreds);
       Dec(FTryDepth);
       FFinallies.Delete(FFinallies.Count - 1);
-      FinallyEntry := NewNode(TFlowNodeKind.Join, nil);
-      LinkAll(Body, FinallyEntry);
-      Resolve(Context.Entry, FinallyEntry);
-      Ends := Sequence(FinallyPart, 0, [FinallyEntry]);
-      for Onward in Context.Onward do
-        for Node in Ends do
-          Jump(Node, Onward);
-      Result := Ends;
+      // Normales Ende des try-Teils: weiter hinter dem try.
+      Result := nil;
+      if Length(Body) > 0 then
+      begin
+        FinallyEntry := NewNode(TFlowNodeKind.Join, nil);
+        LinkAll(Body, FinallyEntry);
+        Result := Sequence(FinallyPart, 0, [FinallyEntry]);
+      end;
+      // Je Sprungziel eine eigene Kopie, die nur dorthin weiterführt. Die
+      // Wege für Ausnahmen kommen zuletzt, damit NodeOf eine Anweisung im
+      // finally zuerst auf dem normalen Weg findet.
+      for Pass := False to True do
+        for Index := 0 to Context.Onward.Count - 1 do
+        begin
+          Onward := Context.Onward[Index];
+          if FRaiseTargets.Contains(Onward) <> Pass then
+            Continue;
+          FinallyEntry := NewNode(TFlowNodeKind.Join, nil);
+          Resolve(Context.Routes[Index], FinallyEntry);
+          Ends := Sequence(FinallyPart, 0, [FinallyEntry]);
+          for Node in Ends do
+            Jump(Node, Onward);
+        end;
     finally
       Context.Free;
     end;
@@ -767,7 +790,8 @@ end;
 
 function TControlFlowGraph.UnreachableStatements: TArray<TFlowNode>;
 var
-  Node: TFlowNode;
+  Node, Other, Seen: TFlowNode;
+  Reachable, Listed: Boolean;
 begin
   Result := nil;
   if not FComplete then
@@ -775,7 +799,20 @@ begin
   for Node in FNodes do
     if (Node.Kind in [TFlowNodeKind.Statement, TFlowNodeKind.Condition]) and
       (IsReachable(Node) = TFlowAnswer.No) then
-      Result := Result + [Node];
+    begin
+      // Ein finally steht je Ausgang einmal im Graphen; unerreichbar ist es
+      // nur, wenn keine seiner Kopien erreichbar ist. Gemeldet wird es einmal.
+      Reachable := False;
+      Listed := False;
+      for Other in FNodes do
+        if (Other <> Node) and (Other.Syntax = Node.Syntax) and (IsReachable(Other) = TFlowAnswer.Yes) then
+          Reachable := True;
+      for Seen in Result do
+        if Seen.Syntax = Node.Syntax then
+          Listed := True;
+      if not Reachable and not Listed then
+        Result := Result + [Node];
+    end;
 end;
 
 function TControlFlowGraph.ReachingDefinitions(ANode: TFlowNode; const AName: string): TReachingDefinitions;

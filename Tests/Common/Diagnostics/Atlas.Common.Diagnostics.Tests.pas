@@ -49,6 +49,10 @@ type
     procedure LogFolderRemovesOldFiles;
     [Test]
     procedure DispatcherReportsRequestsToObserver;
+    [Test]
+    procedure ServerLogHidesPathsAndNames;
+    [Test]
+    procedure ServerLogKeepsLibraryUnitsAndNumbers;
   end;
 
 implementation
@@ -533,6 +537,38 @@ begin
     Dispatcher.Free;
   end;
   Ref := nil;
+end;
+
+procedure TDiagnosticLogTests.ServerLogHidesPathsAndNames;
+var
+  Anonymizer: ILogAnonymizer;
+  Line: string;
+begin
+  // Server-Log (--log) anonym (#647): Pfade, Projekt-, Unit- und Benutzernamen.
+  Anonymizer := TLogAnonymizer.Create(['mmuster']);
+  Anonymizer.AddNames(['Kundenverwaltung']);
+  Anonymizer.AddUnit('Firma.Kunden', 'C:\Projekte\Firma.Kunden.pas');
+  Line := Anonymizer.Anonymize('Symbolindex für Kundenverwaltung (Debug, Win64): Cache C:\Users\mmuster\AppData\k.idx');
+  Assert.AreEqual('Symbolindex für name#1 (Debug, Win64): Cache datei#1.idx', Line);
+  Assert.AreEqual('name#2.TKunde fehlt', Anonymizer.Anonymize('Firma.Kunden.TKunde fehlt'));
+  // Pfad mit Leerzeichen ohne Anführungszeichen: auch der Rest verschwindet.
+  Line := Anonymizer.Anonymize('Projekt C:\Work Space\Haupt.dproj nicht lesbar');
+  Assert.AreEqual(0, Pos('\', Line), Line);
+  Assert.AreEqual(0, Pos('Haupt', Line), Line);
+  Line := Anonymizer.Anonymize('didOpen file:///c%3A/Projekte/Haupt.pas von mmuster');
+  Assert.AreEqual('didOpen datei#4.pas von benutzer#1', Line);
+end;
+
+procedure TDiagnosticLogTests.ServerLogKeepsLibraryUnitsAndNumbers;
+var
+  Anonymizer: ILogAnonymizer;
+begin
+  Anonymizer := TLogAnonymizer.Create(nil);
+  Anonymizer.SetLibraryRoots(['C:\Program Files\Embarcadero\Studio\37.0']);
+  Assert.AreEqual('Unit "Vcl.Forms.pas" geladen',
+    Anonymizer.Anonymize('Unit "C:\Program Files\Embarcadero\Studio\37.0\source\vcl\Vcl.Forms.pas" geladen'));
+  Assert.AreEqual('Stufe "wert#1", Methode "textDocument/hover" nach "1234" ms',
+    Anonymizer.Anonymize('Stufe "verbose", Methode "textDocument/hover" nach "1234" ms'));
 end;
 
 initialization

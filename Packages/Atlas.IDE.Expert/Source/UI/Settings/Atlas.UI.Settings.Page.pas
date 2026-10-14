@@ -49,6 +49,9 @@ type
     FInactiveDim: TCheckBox;
     FPairGuides: TCheckBox;
     FProblems: TCheckBox;
+    FIndexGroup: TCheckBox;
+    FIndexSearch: TCheckBox;
+    FIndexLibrary: TCheckBox;
     FCheckOnSave: TCheckBox;
     FCheckDelay: TEdit;
     FCheckMax: TEdit;
@@ -97,7 +100,7 @@ begin
   inherited Create(AOwner);
   Name := 'AtlasSettingsPage';
   Width := 480;
-  Height := 660;
+  Height := 740;
   Title := TLabel.Create(Self);
   Title.Parent := Self;
   Title.Align := alTop;
@@ -167,6 +170,10 @@ begin
   FInactiveDim := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim));
   FPairGuides := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuides));
   FProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblems));
+  // Umfang des Index für alle Projekte; index in atlas.json hat Vorrang (#652).
+  FIndexGroup := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexGroup));
+  FIndexSearch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexSearch));
+  FIndexLibrary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexLibrary));
   // Compilerprüfung nach dem Speichern (#548).
   FCheckOnSave := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCheckOnSave));
   FCheckDelay := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckDelay));
@@ -293,6 +300,9 @@ begin
   FInactiveDim.Checked := ASettings.InactiveDim;
   FPairGuides.Checked := ASettings.PairGuides;
   FProblems.Checked := ASettings.Problems;
+  FIndexGroup.Checked := ASettings.IndexProjectGroup;
+  FIndexSearch.Checked := ASettings.IndexSearchPaths;
+  FIndexLibrary.Checked := ASettings.IndexLibraryPaths;
   FCheckOnSave.Checked := ASettings.CheckOnSave;
   FCheckDelay.Text := IntToStr(ASettings.CheckOnSaveDelayMs);
   FCheckMax.Text := IntToStr(ASettings.CheckOnSaveMaxMs);
@@ -322,6 +332,9 @@ begin
   ASettings.InactiveDim := FInactiveDim.Checked;
   ASettings.PairGuides := FPairGuides.Checked;
   ASettings.Problems := FProblems.Checked;
+  ASettings.IndexProjectGroup := FIndexGroup.Checked;
+  ASettings.IndexSearchPaths := FIndexSearch.Checked;
+  ASettings.IndexLibraryPaths := FIndexLibrary.Checked;
   ASettings.CheckOnSave := FCheckOnSave.Checked;
   ASettings.CheckOnSaveDelayMs := StrToIntDef(FCheckDelay.Text, ASettings.CheckOnSaveDelayMs);
   ASettings.CheckOnSaveMaxMs := StrToIntDef(FCheckMax.Text, ASettings.CheckOnSaveMaxMs);

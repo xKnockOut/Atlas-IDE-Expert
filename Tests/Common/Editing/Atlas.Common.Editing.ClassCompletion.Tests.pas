@@ -27,6 +27,8 @@ type
     procedure MatchesOverloadsByParameters;
     [Test]
     procedure NothingOutsideTypes;
+    [Test]
+    procedure IgnoresDefaultsAndGrouping;
   end;
 
 implementation
@@ -53,6 +55,55 @@ const
     'end.';                                         // 9
 
 { TClassCompletionTests }
+
+procedure TClassCompletionTests.IgnoresDefaultsAndGrouping;
+const
+  // Die Implementierung lässt Standardwerte weg und gruppiert anders (#647).
+  Text =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFoo = class'#10 +
+    '    procedure Lauf(const A: string; const B: string = ''''; C: Integer = 0);'#10 +
+    '    procedure Wert(X, Y: TArray<Integer>; Z: Integer = Ord('';''));'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TFoo.Lauf(const A, B: string; C: Integer);'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'procedure TFoo.Wert(X: TArray<Integer>; Y: TArray<Integer>; Z: Integer);'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'end.';
+  Anders =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFoo = class'#10 +
+    '    procedure Lauf(const A: string; B: Integer = 0);'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TFoo.Lauf(const A: string; B: string);'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Tree: TSyntaxTree;
+begin
+  Tree := TPascalParser.Parse(Text);
+  try
+    Assert.AreEqual(0, Integer(Length(TClassCompletion.Unmatched(Tree, Text))));
+  finally
+    Tree.Free;
+  end;
+  // Verschiedene Typen passen weiterhin nicht.
+  Tree := TPascalParser.Parse(Anders);
+  try
+    Assert.AreEqual(2, Integer(Length(TClassCompletion.Unmatched(Tree, Anders))));
+  finally
+    Tree.Free;
+  end;
+end;
 
 function TClassCompletionTests.ActionAt(const AText: string; ALine: Integer; out AAction: TCodeAction): Boolean;
 var

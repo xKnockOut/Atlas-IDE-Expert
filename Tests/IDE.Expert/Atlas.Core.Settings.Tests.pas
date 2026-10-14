@@ -17,6 +17,8 @@ type
     procedure SaveAndLoadRoundTrip;
     [Test]
     procedure ClampsOutOfRangeValues;
+    [Test]
+    procedure IndexOptionsGoToServer;
   end;
 
 implementation
@@ -123,6 +125,28 @@ begin
   Assert.IsTrue(Loaded.Preview);
   Assert.AreEqual('D:\Atlas\AtlasServer.exe', Loaded.ServerPath, 'Serverpfad ohne Leerraum');
   Assert.AreEqual('', TAtlasPluginSettings.Defaults.ServerPath, 'Standard: leer');
+end;
+
+procedure TAtlasPluginSettingsTests.IndexOptionsGoToServer;
+var
+  Store: IAtlasSettingsStore;
+  Settings, Loaded: TAtlasPluginSettings;
+begin
+  // Vorgaben wie im Schema; atlas.json-Format für den Server (#652).
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('{"index":{"projectGroup":true,"searchPaths":true,"libraryPaths":false}}',
+    Settings.ServerSettingsJson);
+  Store := TMemoryStore.Create;
+  Settings.IndexSearchPaths := False;
+  Settings.IndexLibraryPaths := True;
+  Settings.Save(Store);
+  Loaded := Default(TAtlasPluginSettings);
+  Loaded.Load(Store);
+  Assert.IsTrue(Loaded.IndexProjectGroup);
+  Assert.IsFalse(Loaded.IndexSearchPaths);
+  Assert.IsTrue(Loaded.IndexLibraryPaths);
+  Assert.AreEqual('{"index":{"projectGroup":true,"searchPaths":false,"libraryPaths":true}}',
+    Loaded.ServerSettingsJson);
 end;
 
 procedure TAtlasPluginSettingsTests.ClampsOutOfRangeValues;

@@ -297,6 +297,11 @@ begin
   FProviders := TAtlasCompletionProviders.Create;
   FProvidersRef := FProviders;
   FServerProvider := TAtlasServerCompletionProvider.Create(ASession);
+  FServerProvider.OnLog :=
+    procedure(const AMessage: string)
+    begin
+      Log(AMessage);
+    end;
   FServerProviderRef := FServerProvider;
   FProviders.Add(FServerProviderRef);
   // XMLDoc-Tags in ///-Kommentaren (#435), lokal.
@@ -478,8 +483,9 @@ begin
   FWordStart := WordStart;
   FTopRow := AView.TopRow;
   FEditorSize := EditorSize(FEditorWindow);
-  Log(Format('Vervollständigung in %s, Zeile %d, Zeichen %d, Präfix "%s"',
-    [ExtractFileName(Context.FileName), Context.Line + 1, Context.Character, Context.Prefix]));
+  // Ohne Datei- und Bezeichnernamen: Das Diagnoselog soll weitergegeben werden können (#647).
+  Log(Format('Vervollständigung (%s): Zeile %d, Zeichen %d, Präfix %d Zeichen',
+    [ExtractFileExt(Context.FileName), Context.Line + 1, Context.Character, Length(Context.Prefix)]));
   FController.Start(Context);
   ActiveChanged;
   Result := True;
@@ -716,12 +722,16 @@ begin
   if not Application.Active or (GetFocus <> FEditorWindow) or (FView.TopRow <> FTopRow) or
     (EditorSize(FEditorWindow) <> FEditorSize) then
   begin
+    Log(Format('Vervollständigung geschlossen: aktiv %s, Fokus %s, gescrollt %s, Größe %s',
+      [BoolToStr(Application.Active, True), BoolToStr(GetFocus = FEditorWindow, True),
+       BoolToStr(FView.TopRow <> FTopRow, True), BoolToStr(EditorSize(FEditorWindow) <> FEditorSize, True)]));
     Close;
     Exit;
   end;
   Cursor := FView.CursorPos;
   if Cursor.Line <> FLine then
   begin
+    Log('Vervollständigung geschlossen: andere Zeile');
     Close;
     Exit;
   end;
@@ -730,6 +740,7 @@ begin
   // Cursor vor dem Wortanfang oder ein Zeichen, das kein Bezeichner ist: Wort verlassen.
   if Character < FWordStart then
   begin
+    Log('Vervollständigung geschlossen: Cursor vor dem Wortanfang');
     Close;
     Exit;
   end;
@@ -750,6 +761,7 @@ begin
         ActiveChanged;
         Exit;
       end;
+      Log(Format('Vervollständigung geschlossen: Zeichen #%d getippt', [Ord(LineText[Index])]));
       Close;
       Exit;
     end;
@@ -857,8 +869,8 @@ begin
     CursorByte := -1;
     for Edit in Edits do
     begin
-      Log(Format('  Änderung Byte %d bis %d (Wortanfang %d, Zeile %d, Ende %d): "%s"',
-        [Edit.Start, Edit.Stop, FWordStart, Cursor.Line, Character, Edit.Text]));
+      Log(Format('  Änderung Byte %d bis %d (Wortanfang %d, Zeile %d, Ende %d): %d Zeichen',
+        [Edit.Start, Edit.Stop, FWordStart, Cursor.Line, Character, Length(Edit.Text)]));
       Writer.CopyTo(Edit.Start);
       Writer.DeleteTo(Edit.Stop);
       Writer.Insert(PAnsiChar(UTF8Encode(Edit.Text)));
@@ -900,7 +912,7 @@ begin
             FOnOpenSignature();
         end);
   end;
-  Log(Format('Übernommen: %s (%d weitere Änderungen)', [AItem.Name, Length(AItem.AdditionalEdits)]));
+  Log(Format('Übernommen: %d Zeichen (%d weitere Änderungen)', [Length(AItem.Name), Length(AItem.AdditionalEdits)]));
   ActiveChanged;
 end;
 

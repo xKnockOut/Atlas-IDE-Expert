@@ -17,9 +17,11 @@ Es gibt zwei Wege:
 
 Fehlt der Server, meldet das Plugin das im Meldungsfenster und überlässt Vervollständigung und Hinweise der eingebauten Code Insight. Stürzt der Server ab, startet es ihn bei der nächsten Anfrage neu.
 
+Den Umfang des Index stellt *Tools › Optionen › Drittanbieter › Atlas* für alle Projekte ein (#652): alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und alle Units der Delphi-Bibliothek. Das Plugin gibt die Werte beim Start und nach jeder Änderung an den Server weiter. Steht `index` in der `atlas.json` eines Projekts, gilt dort die Datei. RTL, VCL und FMX liest der Server einmal je Delphi-Version und Plattform, unabhängig von den Defines des Projekts.
+
 Was Atlas selbst anzeigt, schaltet es in der IDE ab, damit nichts doppelt erscheint: Help Insight (solange der Atlas-Tooltip an ist) und die Strukturhervorhebung (solange die Atlas-Blocklinien an sind). Die IDE liest diese Schalter nur beim Start; beim ersten Start mit Atlas erscheint daher noch beides.
 
-Zur Fehlersuche: Wert `Diagnose` (DWORD) = `1` unter `HKCU\Software\Atlas\IdePlugin` setzen und die IDE neu starten. Das Plugin schreibt dann jeden Aufruf der IDE (Hover, Strg+Klick, Position und Ergebnis) in `Atlas.IDE.Expert.log` neben der BPL.
+Zur Fehlersuche: Wert `Diagnose` (DWORD) = `1` unter `HKCU\Software\Atlas\IdePlugin` setzen und die IDE neu starten. Das Plugin schreibt dann jeden Aufruf der IDE (Hover, Strg+Klick, Position und Ergebnis) in `Atlas.IDE.Expert.log` neben der BPL. Die Datei enthält keine Pfade, Datei- oder Bezeichnernamen (nur Endungen, Positionen und Längen) und darf weitergegeben werden. Für die Vervollständigung steht dort auch, wie lange der Server brauchte, ob er nicht antwortete und warum das Popup schloss.
 
 Findet der Server keine Definition, passiert bei Strg+Klick nichts. Deklarationen in Include-Dateien (`{$I …}`) findet der Server erst mit dem Include-Resolver (#264).
 
@@ -42,7 +44,7 @@ RAD Studio 13 kann fremde Sprachserver (LSP) über stdio einbinden. So ersetzt d
 |---|---|
 | Name | `Atlas` |
 | Ausführbare Datei | Pfad zu `AtlasServer.exe` |
-| Befehlszeilenparameter | leer, oder zur Fehlersuche `--log C:\Temp\atlas.log --log-level debug` |
+| Befehlszeilenparameter | leer, oder zur Fehlersuche `--log C:\Temp\atlas.log --log-level debug` (anonymisiert: Pfade und Namen als `datei#N`/`name#N`; `--log-names` schreibt sie im Klartext) |
 | Sprachbezeichner | beliebig (siehe Schritt 2) |
 | Timeout | `15000` |
 | InitializationOptions | `{}` |

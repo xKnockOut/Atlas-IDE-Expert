@@ -78,6 +78,11 @@ type
     FBuildPlatform: string;
     FOnProjectLoaded: TProc;
     FOnIndexFinished: TProc;
+    FOnProjectReady: TProc;
+    FOnIndexEvent: TProc<string>;
+    FOnNames: TProc<TArray<string>>;
+    /// <summary>Ein Aufbau läuft und hat die Projektstufe noch nicht hinter sich.</summary>
+    FProjectPending: Boolean;
     FOnSettingsChanged: TProc<TServerSettings>;
     FBaseline: IRuleBaseline;
     FLastIndexMs: Int64;
@@ -91,6 +96,7 @@ type
     function LockCache(const ACacheFile, ALibraryCacheFile: string): Boolean;
     /// <summary>Weist auf gemischte Kodierungen der Projektdateien hin (Index-Thread).</summary>
     procedure ReportEncodings;
+    procedure IndexEvent(const AText: string);
     procedure StartIndex(const ASettings: TServerSettings);
     function FindProjectFile(const ASettings: TServerSettings): string;
     function GetNamespaces: TArray<string>;
@@ -147,6 +153,14 @@ type
     property OnProjectLoaded: TProc read FOnProjectLoaded write FOnProjectLoaded;
     /// <summary>Nach einem vollständigen (nicht abgebrochenen) Indexaufbau; im Index-Thread.</summary>
     property OnIndexFinished: TProc read FOnIndexFinished write FOnIndexFinished;
+    /// <summary>Projektstufe des Aufbaus fertig (Projektdateien und über uses erreichbare Units); im Index-Thread.</summary>
+    property OnProjectReady: TProc read FOnProjectReady write FOnProjectReady;
+    /// <summary>Zeile fürs Diagnoselog (#647), nur Zahlen und feste Wörter; im Index- oder Nachrichten-Thread.</summary>
+    property OnIndexEvent: TProc<string> read FOnIndexEvent write FOnIndexEvent;
+    /// <summary>Projekt- und Unit-Namen nach dem Lesen der .dproj, damit das Server-Log sie verbirgt (#647).</summary>
+    property OnNames: TProc<TArray<string>> read FOnNames write FOnNames;
+    /// <summary>True, solange ein Aufbau die Projektstufe noch nicht hinter sich hat. Threadsicher.</summary>
+    property ProjectPending: Boolean read FProjectPending;
     /// <summary>Nach dem Lesen der Einstellungen, für serverweite Werte wie das Zeitlimit (#283).</summary>
     property OnSettingsChanged: TProc<TServerSettings> read FOnSettingsChanged write FOnSettingsChanged;
     /// <summary>True, wenn AFileName zum Projekt gehört (DCCReference, Hauptdatei oder Suchpfad-Unit). Threadsicher.</summary>
@@ -223,9 +237,24 @@ begin
   FIndexService := TIndexService.Create(FIndex, TDiskIndexFileSystem.Create);
   FProgress := TLspWorkDoneProgress.Create(ATransport, AProgressToken);
   FIndexService.OnProgress := FProgress.AsIndexProgress();
+  FIndexService.OnProjectReady :=
+    procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
+    begin
+      FProjectPending := False;
+      IndexEvent(Format('index project#%d projectStage %d ms parsed %d cached %d missing %d',
+        [FPriority, AElapsedMs, AResult.Parsed, AResult.FromCache, AResult.Missing]));
+      if Assigned(FOnProjectReady) then
+        FOnProjectReady();
+    end;
   FIndexService.OnFinished :=
     procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
     begin
+      // Abgebrochen (Neustart): Der neue Aufbau hat FProjectPending schon wieder gesetzt.
+      if not AResult.Cancelled then
+        FProjectPending := False;
+      IndexEvent(Format('index project#%d done %d ms parsed %d cached %d missing %d units %d resolve %d ms parse %d ms%s',
+        [FPriority, AElapsedMs, AResult.Parsed, AResult.FromCache, AResult.Missing, FIndex.UnitCount,
+         AResult.ResolveMs, AResult.ParseMs, IfThen(AResult.Cancelled, ' cancelled', '')]));
       if not AResult.Cancelled then
       begin
         TMonitor.Enter(FLock);
@@ -266,6 +295,12 @@ begin
   FIndex := nil;
   FLogger := nil;
   inherited;
+end;
+
+procedure TShellWorkspace.IndexEvent(const AText: string);
+begin
+  if Assigned(FOnIndexEvent) then
+    FOnIndexEvent(AText);
 end;
 
 procedure TShellWorkspace.Load;
@@ -636,6 +671,8 @@ var
   Excluded: TIndexExcluded;
   Exclude, Files, SearchFiles, LibraryFiles: TArray<string>;
   FileName: string;
+  Names: TArray<string>;
+  ProjectUnit: TProjectUnit;
 begin
   // Mit index.projectGroup = false nur das Projekt der geöffneten Datei (#648).
   if FDeferred and not FActivated and not ASettings.IndexProjectGroup then
@@ -700,6 +737,14 @@ begin
       FLogger.Error(Format('Projekt %s nicht lesbar: %s', [ProjectFile, E.Message]));
       Exit;
     end;
+  end;
+  if Assigned(FOnNames) then
+  begin
+    Names := [ChangeFileExt(ExtractFileName(Project.FileName), ''),
+      ChangeFileExt(ExtractFileName(Project.MainSource), '')];
+    for ProjectUnit in Project.Units do
+      Names := Names + [ProjectUnit.Name];
+    FOnNames(Names);
   end;
   TMonitor.Enter(FLock);
   try
@@ -775,6 +820,13 @@ begin
   Request.Priority := FPriority;
   FIndexService.Scheduler := FScheduler;
   Request.Defines := TIndexProjectFiles.Defines(Project, Version);
+  // RTL, VCL und FMX einmal je Compiler und Plattform, unabhängig von Projekt und Konfiguration (#647).
+  // Nur der Ordner der Installation: Eigener Code im Bibliothekspfad wird oft mit dem Projekt übersetzt.
+  if Installation <> nil then
+  begin
+    Request.LibraryRoots := [TCompilerCommandLine.BdsRoot(Installation.Variables)];
+    Request.LibraryDefines := TIndexProjectFiles.LibraryDefines(Project, Version);
+  end;
   // $I-Dateien wie beim Compiler: Projekt-Suchpfade, dann Bibliothekspfade (#264).
   if Installation <> nil then
     Request.IncludePaths := Project.SearchPaths + Installation.LibraryPaths(Project.Platform)
@@ -787,7 +839,7 @@ begin
     end;
   CacheFile := TIndexCacheDirectory.FileFor(TIndexCacheDirectory.DefaultRoot, Signature);
   Request.CacheFile := CacheFile;
-  // RTL/VCL einmal je Compilerversion, Plattform und Defines, geteilt mit anderen Projekten (#492).
+  // RTL/VCL/FMX einmal je Compilerversion und Plattform, geteilt mit allen Projekten (#492, #647).
   Request.LibraryCacheFile := TIndexCacheDirectory.FileFor(TIndexCacheDirectory.DefaultRoot,
     TIndexProjectFiles.LibrarySignature(Project, Version));
   Request.ReadOnlyCache := not LockCache(CacheFile, Request.LibraryCacheFile);
@@ -834,6 +886,10 @@ begin
   FLogger.Info(Format('Symbolindex für %s (%s, %s): %d Projektdateien, %d Units der Suchpfade, %d der Bibliothek, Cache %s',
     [ProjectFile, Project.Config, Project.Platform, Length(Request.Files), Length(Request.SearchFiles),
      Length(Request.LibraryFiles), CacheFile]));
+  IndexEvent(Format('index project#%d start files %d search %d library %d cache %s',
+    [FPriority, Length(Request.Files), Length(Request.SearchFiles), Length(Request.LibraryFiles),
+     IfThen(Request.ReadOnlyCache, 'readOnly', 'write')]));
+  FProjectPending := True;
   FIndexService.Start(Request);
   if Assigned(FOnProjectLoaded) then
     FOnProjectLoaded();
