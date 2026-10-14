@@ -29,6 +29,9 @@ type
   private
     FPages: TPageControl;
     FSheet: TTabSheet;
+    // Reiter hängen erst mit dem Fensterhandle am PageControl (CreateWnd): Die IDE und die Tests
+    // erzeugen die Seite, bevor sie ein übergeordnetes Fenster hat.
+    FSheets: TArray<TTabSheet>;
     FEnabled: TCheckBox;
     FServerPath: TEdit;
     FServerBrowse: TButton;
@@ -71,6 +74,9 @@ type
     FWidths: TAtlasPluginSettings;
     FNextTop: Integer;
     FOnResetHistory: TProc;
+  protected
+    procedure CreateWnd; override;
+  private
     /// <summary>Neuer Reiter; die folgenden Add… setzen ihre Elemente darauf.</summary>
     procedure AddSheet(AId: TAtlasTextId);
     function AddCheck(const ACaption: string): TCheckBox;
@@ -238,15 +244,26 @@ begin
   FHangTest.Top := 3;
   FHangTest.Width := 150;
   FHangTest.OnClick := HangTestClick;
-  FPages.ActivePageIndex := 0;
 end;
 
 procedure TAtlasSettingsPage.AddSheet(AId: TAtlasTextId);
 begin
   FSheet := TTabSheet.Create(Self);
-  FSheet.PageControl := FPages;
   FSheet.Caption := TAtlasStrings.Text(AId);
+  FSheets := FSheets + [FSheet];
   FNextTop := 100;
+end;
+
+procedure TAtlasSettingsPage.CreateWnd;
+var
+  Sheet: TTabSheet;
+begin
+  inherited CreateWnd;
+  for Sheet in FSheets do
+    if Sheet.PageControl = nil then
+      Sheet.PageControl := FPages;
+  if FPages.PageCount > 0 then
+    FPages.ActivePageIndex := 0;
 end;
 
 function TAtlasSettingsPage.AddCheck(const ACaption: string): TCheckBox;
