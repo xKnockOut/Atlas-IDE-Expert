@@ -250,6 +250,9 @@ type
     /// <summary>Ist AName der Anfang eines Unit-Namens im Bereich (Atlas in Atlas.Core.Foo.Bar, Winapi in
     /// Winapi.Windows.TextOut)? Nach PinTree bzw. Resolve gültig.</summary>
     function IsUnitPrefix(const AName: string): Boolean;
+    /// <summary>Bricht die Vorfahrenkette der umgebenden Klasse an einem unbekannten Typ ab (Unit nicht im
+    /// Index)? Dann kann ein Name geerbt sein (ClientWidth aus TControl). Nach PinTree bzw. Resolve gültig.</summary>
+    function HasUnknownAncestor: Boolean;
     /// <summary>Eingebauter Typ ohne Deklaration im Index (string, Integer, PChar …).</summary>
     class function IsBuiltinTypeName(const AName: string): Boolean; static;
     /// <summary>Vorfilter für ScopeCandidates und MemberCandidates (#616): Symbole aus dem Index, deren Name
@@ -1393,6 +1396,27 @@ end;
 class function TNameResolver.IsBuiltinTypeName(const AName: string): Boolean;
 begin
   Result := IsBuiltinName(AName) or MatchText(AName, ['PChar', 'PAnsiChar', 'PWideChar', 'OleVariant']);
+end;
+
+function TNameResolver.HasUnknownAncestor: Boolean;
+var
+  Current, Next, Ancestor: TResolvedSymbol;
+  Depth: Integer;
+begin
+  for Current in MethodClasses do
+  begin
+    Next := Current;
+    for Depth := 0 to MaxDepth do
+    begin
+      if (Length(Next.Ancestors) = 0) or SameText(Next.Ancestors[0], 'TObject') or
+        SameText(Next.Ancestors[0], 'System.TObject') then
+        Break;
+      if not AncestorOf(Next, Ancestor) then
+        Exit(True);
+      Next := Ancestor;
+    end;
+  end;
+  Result := False;
 end;
 
 function TNameResolver.IsUnitPrefix(const AName: string): Boolean;

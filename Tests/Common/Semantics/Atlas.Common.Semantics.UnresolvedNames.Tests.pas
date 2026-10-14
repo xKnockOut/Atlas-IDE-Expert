@@ -33,6 +33,8 @@ type
     procedure RuleReportsInEditorOnlyWithIndex;
     [Test]
     procedure KnowsCastsUnitPrefixesAndNestedTypes;
+    [Test]
+    procedure SkipsNamesWithUnknownAncestor;
   end;
 
 implementation
@@ -228,6 +230,34 @@ begin
     '  Werk.Hilfe.Hilf;'#10 +
     'end;'#10 +
     'end.'));
+end;
+
+procedure TUnresolvedNamesTests.SkipsNamesWithUnknownAncestor;
+const
+  Text =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFenster = class(TFremd)'#10 +
+    '    procedure Male;'#10 +
+    '  end;'#10 +
+    '  TEigen = class'#10 +
+    '    procedure Male;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'uses Basis;'#10 +
+    'procedure TFenster.Male;'#10 +
+    'begin'#10 +
+    '  Melde(ClientWidth);'#10 +
+    'end;'#10 +
+    'procedure TEigen.Male;'#10 +
+    'begin'#10 +
+    '  Melde(ClientWidth);'#10 +
+    'end;'#10 +
+    'end.';
+begin
+  // TFremd steht nicht im Index: ClientWidth kann geerbt sein (#647). In TEigen ist es sicher unbekannt.
+  Assert.AreEqual('ClientWidth@17:8;', Names(Text));
 end;
 
 procedure TUnresolvedNamesTests.NeedsSystemUnit;
