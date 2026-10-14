@@ -56,6 +56,12 @@ type
     /// <summary>Kürzel auch belegen, wenn die IDE oder eine andere Erweiterung es schon nutzt.</summary>
     PaletteKeyPriority: Boolean;
     CheckKeyPriority: Boolean;
+    /// <summary>Eigene Tasten für Vervollständigung und Parameter-Hint (#494), 0 = die Taste der IDE
+    /// (Strg+Leer bzw. Strg+Umschalt+Leer über Code Insight); sonst belegt Atlas sie zusätzlich.</summary>
+    CompletionKey: Integer;
+    SignatureKey: Integer;
+    CompletionKeyPriority: Boolean;
+    SignatureKeyPriority: Boolean;
     /// <summary>Filter-Chips über der Liste (#422).</summary>
     FilterChips: Boolean;
     /// <summary>Lernende Gewichtung (#418).</summary>
@@ -135,6 +141,10 @@ begin
   Result.CheckKey := $C078; // Strg+Alt+F9
   Result.PaletteKeyPriority := False;
   Result.CheckKeyPriority := False;
+  Result.CompletionKey := 0;
+  Result.SignatureKey := 0;
+  Result.CompletionKeyPriority := False;
+  Result.SignatureKeyPriority := False;
   Result.FilterChips := True;
   Result.Learning := True;
   Result.GroupInherited := True;
@@ -170,6 +180,11 @@ begin
   CheckOnSaveDelayMs := EnsureRange(CheckOnSaveDelayMs, MinCheckDelay, MaxCheckDelay);
   CheckOnSaveMaxMs := EnsureRange(CheckOnSaveMaxMs, MinCheckMax, MaxCheckMax);
   XmlDocMaxLines := EnsureRange(XmlDocMaxLines, 0, MaxXmlDocLines);
+  // TShortCut ist ein Word.
+  PaletteKey := EnsureRange(PaletteKey, 0, $FFFF);
+  CheckKey := EnsureRange(CheckKey, 0, $FFFF);
+  CompletionKey := EnsureRange(CompletionKey, 0, $FFFF);
+  SignatureKey := EnsureRange(SignatureKey, 0, $FFFF);
 end;
 
 procedure TAtlasPluginSettings.Load(const AStore: IAtlasSettingsStore);
@@ -188,6 +203,10 @@ begin
   CheckKey := AStore.ReadInteger('CheckKey', Default.CheckKey);
   PaletteKeyPriority := AStore.ReadInteger('PaletteKeyPriority', BoolValue(Default.PaletteKeyPriority)) <> 0;
   CheckKeyPriority := AStore.ReadInteger('CheckKeyPriority', BoolValue(Default.CheckKeyPriority)) <> 0;
+  CompletionKey := AStore.ReadInteger('CompletionKey', Default.CompletionKey);
+  SignatureKey := AStore.ReadInteger('SignatureKey', Default.SignatureKey);
+  CompletionKeyPriority := AStore.ReadInteger('CompletionKeyPriority', BoolValue(Default.CompletionKeyPriority)) <> 0;
+  SignatureKeyPriority := AStore.ReadInteger('SignatureKeyPriority', BoolValue(Default.SignatureKeyPriority)) <> 0;
   FilterChips := AStore.ReadInteger('FilterChips', BoolValue(Default.FilterChips)) <> 0;
   Learning := AStore.ReadInteger('Learning', BoolValue(Default.Learning)) <> 0;
   GroupInherited := AStore.ReadInteger('GroupInherited', BoolValue(Default.GroupInherited)) <> 0;
@@ -226,6 +245,10 @@ begin
   AStore.WriteInteger('CheckKey', CheckKey);
   AStore.WriteInteger('PaletteKeyPriority', BoolValue(PaletteKeyPriority));
   AStore.WriteInteger('CheckKeyPriority', BoolValue(CheckKeyPriority));
+  AStore.WriteInteger('CompletionKey', CompletionKey);
+  AStore.WriteInteger('SignatureKey', SignatureKey);
+  AStore.WriteInteger('CompletionKeyPriority', BoolValue(CompletionKeyPriority));
+  AStore.WriteInteger('SignatureKeyPriority', BoolValue(SignatureKeyPriority));
   AStore.WriteInteger('FilterChips', BoolValue(FilterChips));
   AStore.WriteInteger('Learning', BoolValue(Learning));
   AStore.WriteInteger('GroupInherited', BoolValue(GroupInherited));

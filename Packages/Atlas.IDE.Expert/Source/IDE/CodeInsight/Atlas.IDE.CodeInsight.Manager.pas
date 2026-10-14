@@ -87,6 +87,9 @@ type
     procedure Log(const AMessage: string);
     /// <summary>Zeile im Protokoll unabhängig von Diagnose, z. B. Hänger (#501).</summary>
     procedure Report(const AMessage: string);
+    /// <summary>Vervollständigung bzw. Parameter-Hint über eine eigene Taste von Atlas öffnen (#494).</summary>
+    procedure OpenCompletion;
+    procedure OpenSignature;
     { IOTACodeInsightManager100 }
     function GetName: string;
     function GetIDString: string;
@@ -786,6 +789,32 @@ begin
   // False: Die IDE zeigt keine eigene Parameterhilfe; unser Hint übernimmt (#436).
   Result := False;
   Diagnose(Format('InvokeParameterCodeInsight(%d)', [Ord(HowInvoked)]));
+  try
+    Signature.Invoke(CurrentEditView);
+  except
+    on E: Exception do
+      ReportError('Parameterhilfe: ' + E.Message);
+  end;
+end;
+
+procedure TAtlasCodeInsightManager.OpenCompletion;
+begin
+  if not FEnabled or TAtlasGuard.Disabled(TAtlasFeature.Completion) or not ServerAvailable then
+    Exit;
+  Diagnose('Vervollständigung über eigene Taste');
+  try
+    Completion.Invoke(CurrentEditView);
+  except
+    on E: Exception do
+      ReportError('Vervollständigung: ' + E.Message);
+  end;
+end;
+
+procedure TAtlasCodeInsightManager.OpenSignature;
+begin
+  if not FEnabled or TAtlasGuard.Disabled(TAtlasFeature.Signature) or not ServerAvailable then
+    Exit;
+  Diagnose('Parameterhilfe über eigene Taste');
   try
     Signature.Invoke(CurrentEditView);
   except

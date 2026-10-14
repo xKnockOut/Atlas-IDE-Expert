@@ -5,6 +5,8 @@
 // untereinander, die IDE skaliert sie mit dem Dialog. Die DFM ist leer;
 // TCustomFrame.Create verlangt für abgeleitete Frames eine Ressource. Laden und Speichern über
 // TAtlasPluginSettings; die IDE-Schicht liest und schreibt die Registry.
+// Die Tastenkürzel stehen auf der eigenen Seite „Tastenkonflikte“
+// (Atlas.UI.Settings.Keys, #494).
 
 interface
 
@@ -18,7 +20,6 @@ uses
   Vcl.ExtCtrls,
   Vcl.Forms,
   Vcl.Dialogs,
-  Vcl.Menus,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.UI.Strings;
@@ -57,10 +58,6 @@ type
     FCheckOnSave: TCheckBox;
     FCheckDelay: TEdit;
     FCheckMax: TEdit;
-    FPaletteKey: TEdit;
-    FPaletteKeyPriority: TCheckBox;
-    FCheckKey: TEdit;
-    FCheckKeyPriority: TCheckBox;
     FResetHistory: TButton;
     FResetWidths: TButton;
     FHangTest: TButton;
@@ -70,8 +67,6 @@ type
     function AddCheck(const ACaption: string): TCheckBox;
     function AddPanel(AHeight: Integer): TPanel;
     function AddNumber(const ACaption: string): TEdit;
-    /// <summary>Tastenkürzel mit Häkchen „Vorrang“ in einer Zeile (#494).</summary>
-    function AddKey(const ACaption: string; out APriority: TCheckBox): TEdit;
     procedure ResetHistoryClick(Sender: TObject);
     procedure ResetWidthsClick(Sender: TObject);
     procedure HangTestClick(Sender: TObject);
@@ -102,7 +97,7 @@ begin
   inherited Create(AOwner);
   Name := 'AtlasSettingsPage';
   Width := 480;
-  Height := 790;
+  Height := 738;
   Title := TLabel.Create(Self);
   Title.Parent := Self;
   Title.Align := alTop;
@@ -183,9 +178,6 @@ begin
   FCheckOnSave := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCheckOnSave));
   FCheckDelay := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckDelay));
   FCheckMax := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckMax));
-  // Tastenkürzel (#494).
-  FPaletteKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsPaletteKey), FPaletteKeyPriority);
-  FCheckKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsCheckKey), FCheckKeyPriority);
   Panel := AddPanel(32);
   FResetHistory := TButton.Create(Self);
   FResetHistory.Parent := Panel;
@@ -235,31 +227,6 @@ begin
   Result.ParentBackground := True;
 end;
 
-function TAtlasSettingsPage.AddKey(const ACaption: string; out APriority: TCheckBox): TEdit;
-var
-  Panel: TPanel;
-  Caption: TLabel;
-begin
-  Panel := AddPanel(26);
-  Caption := TLabel.Create(Self);
-  Caption.Parent := Panel;
-  Caption.Caption := ACaption;
-  Caption.Left := 0;
-  Caption.Top := 5;
-  // Als Text wie im Menü ("Strg+Umschalt+P"); leer = keine Taste.
-  Result := TEdit.Create(Self);
-  Result.Parent := Panel;
-  Result.Left := 180;
-  Result.Top := 1;
-  Result.Width := 140;
-  APriority := TCheckBox.Create(Self);
-  APriority.Parent := Panel;
-  APriority.Left := 330;
-  APriority.Top := 3;
-  APriority.Width := 220;
-  APriority.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsKeyPriority);
-end;
-
 function TAtlasSettingsPage.AddNumber(const ACaption: string): TEdit;
 var
   Panel: TPanel;
@@ -284,10 +251,6 @@ begin
   FWidths := ASettings;
   FEnabled.Checked := ASettings.Enabled;
   FServerPath.Text := ASettings.ServerPath;
-  FPaletteKey.Text := ShortCutToText(TShortCut(ASettings.PaletteKey));
-  FPaletteKeyPriority.Checked := ASettings.PaletteKeyPriority;
-  FCheckKey.Text := ShortCutToText(TShortCut(ASettings.CheckKey));
-  FCheckKeyPriority.Checked := ASettings.CheckKeyPriority;
   ServerPathChange(nil);
   FRowsUpDown.Position := ASettings.VisibleRows;
   FPanelCollapsed.Checked := ASettings.PanelCollapsed;
@@ -319,10 +282,6 @@ procedure TAtlasSettingsPage.SaveTo(var ASettings: TAtlasPluginSettings);
 begin
   ASettings.Enabled := FEnabled.Checked;
   ASettings.ServerPath := Trim(FServerPath.Text);
-  ASettings.PaletteKey := Integer(TextToShortCut(Trim(FPaletteKey.Text)));
-  ASettings.PaletteKeyPriority := FPaletteKeyPriority.Checked;
-  ASettings.CheckKey := Integer(TextToShortCut(Trim(FCheckKey.Text)));
-  ASettings.CheckKeyPriority := FCheckKeyPriority.Checked;
   ASettings.VisibleRows := FRowsUpDown.Position;
   ASettings.PanelCollapsed := FPanelCollapsed.Checked;
   ASettings.AutoParentheses := FAutoParentheses.Checked;
