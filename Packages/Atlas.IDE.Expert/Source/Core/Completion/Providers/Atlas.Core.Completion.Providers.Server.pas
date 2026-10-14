@@ -156,6 +156,13 @@ begin
     Result.Condition := Data.GetValue<string>('condition', '');
     Result.Unavailable := Data.GetValue('unavailable') is TJSONTrue;
     Result.Scope := Data.GetValue<Integer>('scope', 0);
+    // Herkunft aus einer anderen Unit und verdeckte Deklarationen (#488).
+    Result.DeclaringUnit := Data.GetValue<string>('unit', '');
+    Value := Data.GetValue('hides');
+    if Value is TJSONArray then
+      for Value in TJSONArray(Data.GetValue('hides')) do
+        if Value is TJSONString then
+          Result.Hides := Result.Hides + [TJSONString(Value).Value];
     Result.HasParameters := Data.GetValue('parameters') is TJSONTrue;
     Result.ExpectedType := Data.GetValue<string>('expected', '');
     Result.Fits := Data.GetValue('fits') is TJSONTrue;
@@ -377,10 +384,12 @@ var
   Provider: TAtlasServerCompletionProvider;
   Callback: TAtlasDetailsCallback;
   Item: TJSONObject;
+  Hides: TArray<string>;
 begin
   Result := False;
   if AItem.ResolveData = '' then
     Exit;
+  Hides := AItem.Hides;
   Session := nil;
   if Assigned(FSession) then
     Session := FSession();
@@ -412,6 +421,7 @@ begin
       finally
         Response.Free;
       end;
+      Details.Hides := Hides;
       TThread.Queue(nil,
         procedure
         begin

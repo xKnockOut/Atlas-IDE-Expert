@@ -16,6 +16,8 @@ type
     [Test]
     procedure ReadsTextEditOfPostfixItems;
     [Test]
+    procedure ReadsScopeUnitAndHiddenNames;
+    [Test]
     procedure ReadsItemArrayAndNull;
     [Test]
     procedure PartialItemsContinueRank;
@@ -217,6 +219,30 @@ begin
   Assert.AreEqual(10, Items[0].TextEdit.EndCharacter);
   Assert.AreEqual('for var Item in Liste do'#10'    ', Items[0].TextEdit.NewText);
   Assert.IsFalse(Items[1].HasTextEdit);
+end;
+
+procedure TAtlasCompletionProviderTests.ReadsScopeUnitAndHiddenNames;
+var
+  Response: TJSONValue;
+  Items: TAtlasCompletionItems;
+begin
+  // #488: Bereichsstufe, Unit bei Stufe 5 und verdeckte Deklarationen.
+  Response := TJSONObject.ParseJSONValue(
+    '{"isIncomplete":false,"items":[' +
+    '{"label":"Name","kind":6,"data":{"scope":1,"hides":["Feld TFoo.Name","Werkzeug.Name"]}},' +
+    '{"label":"Rechne","kind":3,"data":{"scope":5,"unit":"Werkzeug"}}]}');
+  try
+    Items := TAtlasServerCompletionProvider.ItemsFromLsp(Response);
+  finally
+    Response.Free;
+  end;
+  Assert.AreEqual(1, Items[0].Scope);
+  Assert.AreEqual(2, Integer(Length(Items[0].Hides)));
+  Assert.AreEqual('Feld TFoo.Name', Items[0].Hides[0]);
+  Assert.AreEqual('Werkzeug.Name', Items[0].Hides[1]);
+  Assert.AreEqual(5, Items[1].Scope);
+  Assert.AreEqual('Werkzeug', Items[1].DeclaringUnit);
+  Assert.AreEqual(0, Integer(Length(Items[1].Hides)));
 end;
 
 procedure TAtlasCompletionProviderTests.MapsLspCompletionList;

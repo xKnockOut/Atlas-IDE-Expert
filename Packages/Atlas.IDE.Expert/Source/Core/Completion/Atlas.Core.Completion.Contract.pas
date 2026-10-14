@@ -101,6 +101,9 @@ type
     /// <summary>Gültigkeitsbereich (#488): 1 lokal, 2 Parameter, 3 Mitglied von Self, 4 eigene Unit,
     /// 5 andere Unit; 0 ohne Angabe.</summary>
     Scope: Integer;
+    /// <summary>Verdeckte gleichnamige Deklarationen weiter außen (#488), z. B. "Feld TKunde.Total";
+    /// das Detailpanel nennt sie.</summary>
+    Hides: TArray<string>;
     /// <summary>ResolveData der weiteren Überladungen (#425); die erste ist ResolveData.</summary>
     OverloadData: TArray<string>;
     /// <summary>Routine mit Parametern (#430): beim Übernehmen Klammern ergänzen.</summary>
@@ -145,6 +148,8 @@ type
     Doc: TAtlasDoc;
     /// <summary>Anzeige laut Server (data.atlas.xmlDoc); Known = False ohne Angabe.</summary>
     Display: TAtlasDocDisplay;
+    /// <summary>Vom gewählten Eintrag verdeckte Deklarationen (#488).</summary>
+    Hides: TArray<string>;
     function IsEmpty: Boolean;
   end;
 

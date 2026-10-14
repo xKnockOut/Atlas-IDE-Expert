@@ -82,6 +82,9 @@ type
     TypeName: string;
     Ancestors: TArray<string>;
     IsParameter: Boolean;
+    /// <summary>Gleichnamige Deklarationen weiter außen, die dieser Eintrag verdeckt (#488), als Text wie
+    /// "Feld TKunde.Total"; nur bei Kandidaten für die Vervollständigung.</summary>
+    Hides: TArray<string>;
     /// <summary>Wie im Index (#263).</summary>
     TypeArgs: string;
     AncestorArgs: string;
@@ -225,6 +228,13 @@ type
     /// <summary>Zweiter Teil (#616): Units aus uses und System, ohne Namen, die der erste Teil schon brachte.
     /// Leer ohne vorheriges OwnScopeCandidates.</summary>
     function UsedScopeCandidates: TArray<TResolvedSymbol>;
+    /// <summary>Deklarationen aus den Units in uses und System, die NameFilter durchlässt, auch wenn der erste
+    /// Teil sie schon verdeckt (#488); ändert den Stand für UsedScopeCandidates nicht. Leer ohne vorheriges
+    /// OwnScopeCandidates.</summary>
+    function UsedScopeShadows: TArray<TResolvedSymbol>;
+    /// <summary>Kurzer Text zu einer verdeckten Deklaration (#488): "lokale Variable X", "Parameter X",
+    /// "Feld TKunde.X", "Eigenschaft TKunde.X", "Methode TKunde.X", "Kunde.X".</summary>
+    class function ShadowText(const ASymbol: TResolvedSymbol): string; static;
     /// <summary>Mitglieder hinter A.B. (samt geerbter) bzw. interface-Symbole, wenn die Kette eine Unit ist.</summary>
     function MemberCandidates(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
       AOffset: Integer): TArray<TResolvedSymbol>;
@@ -1908,6 +1918,42 @@ begin
   FInImplementation := (Section = nil) or not Contains(Section, AOffset);
 end;
 
+/// <summary>AOuter ist eine andere Deklaration als ANear, nicht deren Rumpf in implementation (#488).</summary>
+function IsOtherDeclaration(const ANear, AOuter: TResolvedSymbol): Boolean;
+begin
+  if (ANear.Kind = TResolvedKind.Local) and (AOuter.Kind = TResolvedKind.Local) then
+    Result := not (ANear.SelectionRange.StartPos = AOuter.SelectionRange.StartPos)
+  else
+    Result := (ANear.Kind <> AOuter.Kind) or not SameText(ANear.Container, AOuter.Container) or
+      not SameText(ANear.FileName, AOuter.FileName);
+end;
+
+class function TNameResolver.ShadowText(const ASymbol: TResolvedSymbol): string;
+begin
+  if ASymbol.Kind = TResolvedKind.Local then
+  begin
+    if ASymbol.IsParameter then
+      Result := 'Parameter ' + ASymbol.Name
+    else
+      Result := 'lokale Variable ' + ASymbol.Name;
+  end
+  else if ASymbol.Container <> '' then
+  begin
+    case ASymbol.SymbolKind of
+      TIndexSymbolKind.Field: Result := 'Feld ';
+      TIndexSymbolKind.Property_: Result := 'Eigenschaft ';
+      TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_: Result := 'Methode ';
+    else
+      Result := '';
+    end;
+    Result := Result + ASymbol.Container + '.' + ASymbol.Name;
+  end
+  else if ASymbol.UnitName <> '' then
+    Result := ASymbol.UnitName + '.' + ASymbol.Name
+  else
+    Result := ASymbol.Name;
+end;
+
 procedure TNameResolver.AddCandidate(AList: TList<TResolvedSymbol>; ASeen: TDictionary<string, Boolean>;
   const ASymbol: TResolvedSymbol);
 var
@@ -1936,6 +1982,15 @@ begin
           Existing := AList[Index];
           Existing.Overloads := Existing.Overloads + [ASymbol.SelectionRange];
           Existing.VariantParams := Existing.VariantParams + [Params];
+          AList[Index] := Existing;
+        end
+        else if IsOtherDeclaration(AList[Index], ASymbol) then
+        begin
+          // Verdeckt (#488): Das Detailpanel nennt die Deklaration weiter außen.
+          Existing := AList[Index];
+          Params := ShadowText(ASymbol);
+          if not MatchText(Params, Existing.Hides) then
+            Existing.Hides := Existing.Hides + [Params];
           AList[Index] := Existing;
         end;
         Break;
@@ -2097,7 +2152,9 @@ begin
   try
     for Routine in EnclosingRoutines do
     begin
+      // Lokale Namen vor den Parametern (#488): Stufe 1 vor Stufe 2.
       CollectInlineVars(Routine, List, FScopeSeen);
+      CollectDeclarations(Routine, List, FScopeSeen);
       Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
       if Header <> nil then
       begin
@@ -2116,7 +2173,6 @@ begin
           AddCandidate(List, FScopeSeen, ResultSymbol);
         end;
       end;
-      CollectDeclarations(Routine, List, FScopeSeen);
     end;
     if MethodClass(ClassType) then
     begin
@@ -2158,6 +2214,29 @@ begin
   finally
     List.Free;
     FScopeSeen.Clear;
+  end;
+end;
+
+function TNameResolver.UsedScopeShadows: TArray<TResolvedSymbol>;
+var
+  List: TList<TResolvedSymbol>;
+  Seen: TDictionary<string, Boolean>;
+  UnitName: string;
+  Used: TUnitIndex;
+begin
+  Result := nil;
+  if not FScopeOpen then
+    Exit;
+  List := TList<TResolvedSymbol>.Create;
+  Seen := TDictionary<string, Boolean>.Create;
+  try
+    for UnitName in ScopeUnits(FScopeUnit, FScopeInImplementation) do
+      if FindUnit(UnitName, Used) then
+        CollectUnit(Used, True, List, Seen);
+    Result := List.ToArray;
+  finally
+    Seen.Free;
+    List.Free;
   end;
 end;
 

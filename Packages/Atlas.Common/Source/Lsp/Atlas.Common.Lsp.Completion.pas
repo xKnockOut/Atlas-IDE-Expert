@@ -91,6 +91,10 @@ type
     /// <summary>Gültigkeitsbereich ohne Punkt davor (#488): 1 lokal, 2 Parameter, 3 Mitglied von Self,
     /// 4 eigene Unit, 5 andere Unit; 0 = keine Angabe (nach einem Punkt, Schlüsselwörter …).</summary>
     Scope: Integer;
+    /// <summary>Unit der Deklaration bei Scope 5 (#488): Atlas zeigt sie als Tag.</summary>
+    UnitName: string;
+    /// <summary>Verdeckte gleichnamige Deklarationen weiter außen (#488), z. B. "Feld TKunde.Total".</summary>
+    Hides: TArray<string>;
     /// <summary>Eintrag erzeugt Code statt nur einen Namen: 'override' (#443), 'create' (neue Methode, #444);
     /// Atlas wertet AdditionalEdits dann nicht als uses-Ergänzung.</summary>
     Action: string;
@@ -982,7 +986,11 @@ var
       else if (OwnUnit <> '') and SameText(Member.UnitName, OwnUnit) then
         Scored.Item.Scope := 4
       else
+      begin
         Scored.Item.Scope := 5;
+        Scored.Item.UnitName := Member.UnitName;
+      end;
+    Scored.Item.Hides := Member.Hides;
     for Params in Member.VariantParams do
       if Params <> '' then
         Scored.Item.HasParameters := True;
@@ -1262,6 +1270,49 @@ var
       AResolver.NameFilter := nil;
   end;
 
+  /// <summary>Namen des eigenen Bereichs, die gleichnamige Deklarationen aus uses verdecken (#488): vor dem
+  /// Senden der ersten Stufe vermerken, die zweite bringt diese Namen nicht mehr.</summary>
+  procedure MarkUsedShadows;
+  var
+    Names: TDictionary<string, Integer>;
+    Shadows: TArray<TResolvedSymbol>;
+    Shadow: TResolvedSymbol;
+    Index: Integer;
+    Text: string;
+  begin
+    Names := TDictionary<string, Integer>.Create;
+    try
+      for Index := 0 to List.Count - 1 do
+        if (List[Index].Item.Scope >= 1) and (List[Index].Item.Scope <= 4) then
+          Names.AddOrSetValue(UpperCase(List[Index].Item.Name), Index);
+      if Names.Count = 0 then
+        Exit;
+      AResolver.NameFilter :=
+        function(const AName: string): Boolean
+        begin
+          Result := Names.ContainsKey(UpperCase(AName));
+        end;
+      try
+        Shadows := AResolver.UsedScopeShadows;
+      finally
+        AResolver.NameFilter := nil;
+      end;
+      for Shadow in Shadows do
+        if Names.TryGetValue(UpperCase(Shadow.Name), Index) then
+        begin
+          Scored := List[Index];
+          Text := TNameResolver.ShadowText(Shadow);
+          if not MatchText(Text, Scored.Item.Hides) then
+          begin
+            Scored.Item.Hides := Scored.Item.Hides + [Text];
+            List[Index] := Scored;
+          end;
+        end;
+    finally
+      Names.Free;
+    end;
+  end;
+
   procedure AddCandidates(const ACandidates: TArray<TResolvedSymbol>);
   var
     Candidate: TResolvedSymbol;
@@ -1347,6 +1398,7 @@ begin
               SetNameFilter(False);
             end;
             AddCandidates(Candidates);
+            MarkUsedShadows;
             SendStage;
             SetNameFilter(True);
             try
@@ -1398,6 +1450,7 @@ var
   Edit: TRuleEdit;
   Index: Integer;
   Position: TTextPosition;
+  Text: string;
 begin
   Result := TJSONArray.Create;
   for Index := 0 to High(AItems) do
@@ -1467,6 +1520,15 @@ begin
         Data.AddPair('unavailable', TJSONBool.Create(True));
       if AItems[Index].Scope > 0 then
         Data.AddPair('scope', TJSONNumber.Create(AItems[Index].Scope));
+      if AItems[Index].UnitName <> '' then
+        Data.AddPair('unit', AItems[Index].UnitName);
+      if Length(AItems[Index].Hides) > 0 then
+      begin
+        Overloads := TJSONArray.Create;
+        Data.AddPair('hides', Overloads);
+        for Text in AItems[Index].Hides do
+          Overloads.Add(Text);
+      end;
       if Length(AItems[Index].Overloads) > 0 then
       begin
         Overloads := TJSONArray.Create;

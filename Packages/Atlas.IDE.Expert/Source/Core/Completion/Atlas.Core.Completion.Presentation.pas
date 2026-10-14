@@ -279,8 +279,14 @@ begin
       if AItem.Kind = TAtlasItemKind.Property_ then
         Result := Result + [MakeTag('Eigenschaft', TAtlasTagKind.Neutral)]
       else if AItem.Kind = TAtlasItemKind.Field then
-        Result := Result + [MakeTag('Feld', TAtlasTagKind.Neutral)];
+        Result := Result + [MakeTag('Feld', TAtlasTagKind.Neutral)]
+      else if AItem.DeclaringClass <> '' then
+        // Methoden von Self: die Klasse, die sie deklariert.
+        Result := Result + [MakeTag(AItem.DeclaringClass, TAtlasTagKind.Neutral)];
     4: Result := Result + [MakeTag('Unit', TAtlasTagKind.Neutral)];
+    5:
+      if AItem.DeclaringUnit <> '' then
+        Result := Result + [MakeTag(AItem.DeclaringUnit, TAtlasTagKind.Neutral)];
   end;
   // Bedingte Deklarationen (#476): "nur WIN64"; in der aktiven Konfiguration nicht vorhanden als Warnung.
   if SameText(AItem.Condition, 'platform') then
