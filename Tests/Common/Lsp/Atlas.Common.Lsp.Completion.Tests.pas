@@ -90,6 +90,8 @@ type
     [Test]
     procedure OffersDataFieldNames;
     [Test]
+    procedure OffersGenericInterfaceMethods;
+    [Test]
     procedure GroupsByExpectedType;
   end;
 
@@ -791,6 +793,72 @@ begin
       Edits);
     // Keine Ereignis-Zuweisung: normale Vervollständigung.
     Assert.IsFalse(TLspCompletion.EventItems(Resolver, Tree, Text, HauptFile, PositionOf(Text, 'uses Ba'), nil, Items));
+  finally
+    Resolver.Free;
+    Tree.Free;
+  end;
+end;
+
+procedure TLspCompletionTests.OffersGenericInterfaceMethods;
+const
+  UnitListen =
+    'unit Listen;'#13#10 +
+    'interface'#13#10 +
+    'type'#13#10 +
+    '  IVergleich<T> = interface'#13#10 +
+    '    function Compare(const Left, Right: T): Integer;'#13#10 +
+    '  end;'#13#10 +
+    '  IListe<T> = interface(IVergleich<T>)'#13#10 +
+    '    procedure Add(const AItem: T);'#13#10 +
+    '    function Items: TArray<T>;'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'end.';
+  // Zeile 8: leere Zeile in der Klasse, Zeile 9: ihr end. Compare ist schon da (mit eingesetztem Typ).
+  Text =
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'uses Listen;'#13#10 +
+    'type'#13#10 +
+    '  TKunde = class'#13#10 +
+    '  end;'#13#10 +
+    '  TKundenListe = class(TInterfacedObject, IListe<TKunde>)'#13#10 +
+    '    function Compare(const Left, Right: TKunde): Integer;'#13#10 +
+    '    '#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'end.';
+var
+  Tree: TSyntaxTree;
+  Resolver: TNameResolver;
+  Items: TArray<TCompletionItem>;
+  List: TCompletionItems;
+  Edits, Merged: TArray<TRuleEdit>;
+  Item: TCompletionItem;
+  Batch: Boolean;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitListen, 'C:\P\Listen.pas', nil));
+  Tree := TPascalParser.Parse(Text);
+  Resolver := TNameResolver.Create(FIndex);
+  try
+    Assert.IsTrue(TLspCompletion.InterfaceItems(Resolver, Tree, Text, HauptFile, TTextPosition.Create(8, 4),
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        AText := UnitListen;
+        Result := SameText(AFileName, 'C:\P\Listen.pas');
+      end, TCompletionInterfaceSection.Public, Items, Batch));
+    List.Items := Items;
+    Assert.AreEqual('Add Items', Names(List));
+    Assert.AreEqual('IListe<TKunde>', Items[0].Container);
+    Assert.Contains(Items[0].Detail, 'procedure Add(const AItem: TKunde)');
+    Assert.Contains(Items[1].Detail, 'function Items: TArray<TKunde>');
+    Edits := nil;
+    for Item in Items do
+      Edits := Edits + Item.AdditionalEdits;
+    Merged := TInterfaceStubs.Merge(Edits);
+    Assert.IsTrue(Merged[0].NewText.Contains('{ IListe<TKunde> }'), Merged[0].NewText);
+    Assert.IsTrue(Merged[1].NewText.Contains('procedure TKundenListe.Add(const AItem: TKunde);'), Merged[1].NewText);
+    Assert.IsTrue(Merged[1].NewText.Contains('Result := Default(TArray<TKunde>);'), Merged[1].NewText);
   finally
     Resolver.Free;
     Tree.Free;
