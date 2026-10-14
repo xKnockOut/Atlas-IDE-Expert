@@ -89,6 +89,15 @@ Schreibweise: `|` steht für die Cursorposition.
 | B5 | Doppelklick auf das Punktmuster | Automatische Breite der Liste, Panel wieder 320 px |
 | B6 | Tools › Optionen › Atlas › „Breiten zurücksetzen“, OK | Wie B5 |
 
+## Code Insight-Manager (#175)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CI1 | Kurzanleitung aus `docs/Installation.md` befolgen (ohne Plugin), IDE starten, `.pas` eines Projekts öffnen | Syntaxfehler unterstrichen, Hover zeigt Klartext ohne Markdown-Zeichen, Gliederung gefüllt |
+| CI2 | Strg+Leer in einer Methode, Eintrag wählen | Liste kommt, Doku im Klartext, kein `MethodNotFound` im Log |
+| CI3 | Mit `--log` zweimal das Projekt wechseln, Log ansehen | Je Wechsel ein neuer Start; ab dem zweiten Start „N frühere Serverläufe ohne Endzeile (von der IDE beendet oder abgestürzt)“, kein „Server abgebrochen“ |
+| CI4 | IDE schließen, Log ansehen | Endet mit „Verbindung beendet: …“ und „Beendet mit Exit-Code“ oder ohne Endzeile; dann meldet der nächste Start den Lauf |
+
 ## Vervollständigung: Kontexte (#31)
 
 | Nr. | Schritte | Erwartet |

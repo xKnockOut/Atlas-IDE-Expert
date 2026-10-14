@@ -2517,15 +2517,23 @@ begin
 end;
 
 function TServerComposition.Run: Integer;
+var
+  Previous: Integer;
 begin
   FLogger.Info(Format('%s %s gestartet', [TProductVersion.Name, TProductVersion.Version]));
   FDiagnostics.AllowMethods(FDispatcher.Methods);
-  FDiagnostics.BeginRun(TProductVersion.Version, AllocatedBytes);
+  Previous := FDiagnostics.BeginRun(TProductVersion.Version, AllocatedBytes);
+  // Neustarts erklären (#175): Die IDE beendet ihren Server hart (Projektwechsel, IDE geschlossen);
+  // dann fehlt dessen Endzeile, und der nächste Start meldet das hier.
+  if Previous > 0 then
+    FLogger.Info(Format('%d frühere Serverläufe ohne Endzeile (von der IDE beendet oder abgestürzt)',
+      [Previous]));
   // Endzeile, sobald die Eingabe endet: Das Plugin beendet den Prozess nach 2 s, auch wenn noch
   // Anfragen laufen; sonst meldete der nächste Lauf einen Absturz (#647).
   FConnection.OnLoopEnded :=
     procedure
     begin
+      FLogger.Info('Verbindung beendet: ' + TShellDiagnostics.EndReasonText(FEndReason));
       FDiagnostics.EndRun(FEndReason, FLifecycle.ExitCode, AllocatedBytes);
     end;
   try

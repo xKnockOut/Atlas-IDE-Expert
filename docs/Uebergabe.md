@@ -32,7 +32,7 @@
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
 ## RAD Studio als LSP-Client (#175)
-- **Anleitung:** `docs/RAD-Studio.md`. Wird mit #84 in `docs/Installation.md` verlinkt.
+- **Anleitung:** `docs/RAD-Studio.md`, Kurzanleitung in `docs/Installation.md` (Abschnitt „Ohne Plugin: Code Insight-Manager“).
 - **Eintrag in RAD Studio:**
   - Registry `HKCU\Software\Embarcadero\BDS\37.0\LSP\UserDefined\Atlas` mit `LanguageId = Delphi`.
   - Die IDE hält die Werte im Speicher und schreibt sie beim Beenden zurück. Änderungen deshalb im Dialog *Code Insight-Manager > Bearbeiten* machen, nicht in der Registry.

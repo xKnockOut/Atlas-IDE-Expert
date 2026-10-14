@@ -8,7 +8,7 @@
 //   Exception Klasse und Aufrufstapel (Adressen und Atlas-eigene Routinen aus
 //   der Map-Datei, ohne Dateinamen).
 // - Läufe, die ohne Endzeile aufhörten (Prozess von der IDE beendet oder
-//   abgestürzt), meldet der nächste Start.
+//   abgestürzt), meldet der nächste Start; im Server-Log ebenso (#175).
 // Ordner: %LOCALAPPDATA%\Atlas\Logs\Diagnose, eine Datei je Tag und Prozess.
 
 interface
@@ -64,8 +64,10 @@ type
     procedure Started(const AMethod: string);
     procedure Finished(const AMethod: string; const AParams, AResult: TJSONValue; const AError: Exception;
       AQueueMs, AElapsedMs: Int64);
-    /// <summary>Startzeile und Meldung früherer Läufe ohne Ende.</summary>
-    procedure BeginRun(const AVersion: string; AMemoryBytes: Int64);
+    /// <summary>Startzeile und Meldung früherer Läufe ohne Ende; liefert deren Zahl.</summary>
+    function BeginRun(const AVersion: string; AMemoryBytes: Int64): Integer;
+    /// <summary>Lesbarer Grund für das Server-Log, z. B. „Eingabe geschlossen ohne exit“ (#175).</summary>
+    class function EndReasonText(AReason: TDiagnosticEndReason): string; static;
     /// <summary>Endzeile; AError nur bei einer unbehandelten Exception. Nur der erste Aufruf zählt.</summary>
     procedure EndRun(AReason: TDiagnosticEndReason; AExitCode: Integer; AMemoryBytes: Int64;
       const AError: Exception = nil);
@@ -173,17 +175,32 @@ begin
     FFolder.Cleanup(ASettings.DiagnosticsLogDays);
 end;
 
-procedure TShellDiagnostics.BeginRun(const AVersion: string; AMemoryBytes: Int64);
+function TShellDiagnostics.BeginRun(const AVersion: string; AMemoryBytes: Int64): Integer;
 var
   Process: TDiagnosticProcess;
   Previous, Index: Integer;
 begin
   Previous := FFolder.BeginRun;
+  Result := Previous;
   Process.MemoryBytes := AMemoryBytes;
   Process.Threads := TProcessInfo.ThreadCount;
   FLog.LogStart(AVersion, Process);
   for Index := 1 to Previous do
     FLog.LogEvent('previous run ended without end line (process terminated or crashed)');
+end;
+
+class function TShellDiagnostics.EndReasonText(AReason: TDiagnosticEndReason): string;
+begin
+  case AReason of
+    TDiagnosticEndReason.Clean:
+      Result := 'shutdown und exit vom Client';
+    TDiagnosticEndReason.InputClosed:
+      Result := 'Eingabe geschlossen ohne exit (IDE hat die Verbindung getrennt)';
+    TDiagnosticEndReason.ParentExited:
+      Result := 'Editor-Prozess beendet';
+  else
+    Result := 'unbehandelte Exception';
+  end;
 end;
 
 procedure TShellDiagnostics.EndRun(AReason: TDiagnosticEndReason; AExitCode: Integer; AMemoryBytes: Int64;

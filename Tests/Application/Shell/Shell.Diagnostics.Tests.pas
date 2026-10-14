@@ -36,6 +36,10 @@ type
     procedure DisabledLogWritesNothing;
     [Test]
     procedure FirstRunEndWins;
+    [Test]
+    procedure PreviousRunsWithoutEndAreCounted;
+    [Test]
+    procedure EveryEndReasonHasText;
   end;
 
 implementation
@@ -314,6 +318,39 @@ begin
   Assert.Contains(Text, 'run end reason inputClosed exit 0');
   Assert.DoesNotContain(Text, 'parentExited');
   Assert.AreEqual<NativeInt>(0, Length(TDirectory.GetFiles(FLogFolder, 'run-*.open')));
+end;
+
+procedure TShellDiagnosticsTests.PreviousRunsWithoutEndAreCounted;
+var
+  Diagnostics: TShellDiagnostics;
+  Ref: IJsonRpcRequestObserver;
+  Store: IDocumentStore;
+  Index: ISymbolIndex;
+begin
+  // Zwei liegen gebliebene Marken: Die IDE hat zwei Server hart beendet (#175).
+  TFile.WriteAllText(TPath.Combine(FLogFolder, 'run-alt1.open'), '');
+  TFile.WriteAllText(TPath.Combine(FLogFolder, 'run-alt2.open'), '');
+  Store := TDocumentStore.Create;
+  Index := TSymbolIndex.Create;
+  Diagnostics := TShellDiagnostics.Create(FLogFolder, 'test', Store, Index);
+  Ref := Diagnostics;
+  Assert.AreEqual(2, Diagnostics.BeginRun('1.0.0', 1024 * 1024));
+  Diagnostics.EndRun(TDiagnosticEndReason.Clean, 0, 1024 * 1024);
+  Ref := nil;
+  Assert.AreEqual<NativeInt>(0, Length(TDirectory.GetFiles(FLogFolder, 'run-*.open')));
+end;
+
+procedure TShellDiagnosticsTests.EveryEndReasonHasText;
+var
+  Reason, Other: TDiagnosticEndReason;
+begin
+  for Reason := Low(TDiagnosticEndReason) to High(TDiagnosticEndReason) do
+  begin
+    Assert.AreNotEqual('', TShellDiagnostics.EndReasonText(Reason));
+    for Other := Succ(Reason) to High(TDiagnosticEndReason) do
+      Assert.AreNotEqual(TShellDiagnostics.EndReasonText(Reason), TShellDiagnostics.EndReasonText(Other));
+  end;
+  Assert.Contains(TShellDiagnostics.EndReasonText(TDiagnosticEndReason.InputClosed), 'ohne exit');
 end;
 
 initialization
