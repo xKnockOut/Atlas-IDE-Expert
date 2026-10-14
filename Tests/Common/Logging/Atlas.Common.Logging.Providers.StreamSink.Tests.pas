@@ -13,6 +13,8 @@ type
     procedure WritesOneUtf8LinePerEntry;
     [Test]
     procedure FileSinkAppendsToExistingFile;
+    [Test]
+    procedure TransformSinkRewritesText;
   end;
 
 implementation
@@ -22,7 +24,8 @@ uses
   System.Classes,
   System.IOUtils,
   Atlas.Common.Logging.Contract,
-  Atlas.Common.Logging.Providers.StreamSink;
+  Atlas.Common.Logging.Providers.StreamSink,
+  Atlas.Common.Logging.Providers.TransformSink;
 
 { TStreamLogSinkTests }
 
@@ -71,6 +74,30 @@ begin
     if TFile.Exists(FileName) then
       TFile.Delete(FileName);
   end;
+end;
+
+procedure TStreamLogSinkTests.TransformSinkRewritesText;
+var
+  Stream: TBytesStream;
+  Sink: ILogSink;
+  Text: string;
+begin
+  Stream := TBytesStream.Create;
+  try
+    Sink := TTransformLogSink.Create(TStreamLogSink.Create(Stream, False),
+      function(const AText: string): string
+      begin
+        Result := StringReplace(AText, 'geheim', 'name#1', [rfReplaceAll]);
+      end);
+    Sink.Write(TLogEntry.Create(Now, TLogLevel.Warning, 'Projekt geheim'));
+    Sink := nil;
+    Text := TEncoding.UTF8.GetString(Stream.Bytes, 0, Stream.Size);
+  finally
+    Stream.Free;
+  end;
+  Assert.Contains(Text, 'Projekt name#1');
+  Assert.DoesNotContain(Text, 'geheim');
+  Assert.Contains(Text, '[WARN');
 end;
 
 initialization

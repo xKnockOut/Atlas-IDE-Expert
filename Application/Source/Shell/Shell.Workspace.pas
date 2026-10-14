@@ -80,6 +80,7 @@ type
     FOnIndexFinished: TProc;
     FOnProjectReady: TProc;
     FOnIndexEvent: TProc<string>;
+    FOnNames: TProc<TArray<string>>;
     /// <summary>Ein Aufbau läuft und hat die Projektstufe noch nicht hinter sich.</summary>
     FProjectPending: Boolean;
     FOnSettingsChanged: TProc<TServerSettings>;
@@ -156,6 +157,8 @@ type
     property OnProjectReady: TProc read FOnProjectReady write FOnProjectReady;
     /// <summary>Zeile fürs Diagnoselog (#647), nur Zahlen und feste Wörter; im Index- oder Nachrichten-Thread.</summary>
     property OnIndexEvent: TProc<string> read FOnIndexEvent write FOnIndexEvent;
+    /// <summary>Projekt- und Unit-Namen nach dem Lesen der .dproj, damit das Server-Log sie verbirgt (#647).</summary>
+    property OnNames: TProc<TArray<string>> read FOnNames write FOnNames;
     /// <summary>True, solange ein Aufbau die Projektstufe noch nicht hinter sich hat. Threadsicher.</summary>
     property ProjectPending: Boolean read FProjectPending;
     /// <summary>Nach dem Lesen der Einstellungen, für serverweite Werte wie das Zeitlimit (#283).</summary>
@@ -249,9 +252,9 @@ begin
       // Abgebrochen (Neustart): Der neue Aufbau hat FProjectPending schon wieder gesetzt.
       if not AResult.Cancelled then
         FProjectPending := False;
-      IndexEvent(Format('index project#%d done %d ms parsed %d cached %d missing %d units %d%s',
+      IndexEvent(Format('index project#%d done %d ms parsed %d cached %d missing %d units %d resolve %d ms parse %d ms%s',
         [FPriority, AElapsedMs, AResult.Parsed, AResult.FromCache, AResult.Missing, FIndex.UnitCount,
-         IfThen(AResult.Cancelled, ' cancelled', '')]));
+         AResult.ResolveMs, AResult.ParseMs, IfThen(AResult.Cancelled, ' cancelled', '')]));
       if not AResult.Cancelled then
       begin
         TMonitor.Enter(FLock);
@@ -668,6 +671,8 @@ var
   Excluded: TIndexExcluded;
   Exclude, Files, SearchFiles, LibraryFiles: TArray<string>;
   FileName: string;
+  Names: TArray<string>;
+  ProjectUnit: TProjectUnit;
 begin
   // Mit index.projectGroup = false nur das Projekt der geöffneten Datei (#648).
   if FDeferred and not FActivated and not ASettings.IndexProjectGroup then
@@ -732,6 +737,14 @@ begin
       FLogger.Error(Format('Projekt %s nicht lesbar: %s', [ProjectFile, E.Message]));
       Exit;
     end;
+  end;
+  if Assigned(FOnNames) then
+  begin
+    Names := [ChangeFileExt(ExtractFileName(Project.FileName), ''),
+      ChangeFileExt(ExtractFileName(Project.MainSource), '')];
+    for ProjectUnit in Project.Units do
+      Names := Names + [ProjectUnit.Name];
+    FOnNames(Names);
   end;
   TMonitor.Enter(FLock);
   try

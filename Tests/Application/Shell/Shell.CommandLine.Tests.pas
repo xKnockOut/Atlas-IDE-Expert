@@ -76,6 +76,9 @@ begin
   Assert.AreEqual('C:\Logs\server.log', Options.LogFile);
   Assert.AreEqual('C:\Logs\trace.txt', Options.TraceFile);
   Assert.IsTrue(Options.LogLevel = TLogLevel.Debug);
+  Assert.IsFalse(Options.LogNames, 'anonym ist Vorgabe');
+  Options := TCommandLineOptions.Parse(['--log-names']);
+  Assert.IsTrue(Options.LogNames);
   Assert.AreEqual<NativeInt>(0, Length(Options.Warnings));
 end;
 

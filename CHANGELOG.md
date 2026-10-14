@@ -47,7 +47,10 @@ Server und Erweiterung tragen immer dieselbe Version.
 - Diagnoselog: Die Endzeile entsteht, sobald die IDE die Verbindung schließt; ein Lauf, den das Plugin nach 2 s beendet, galt sonst als abgestürzt (#647).
 - In einer Projektgruppe wurde der Index-Cache erst geschrieben, wenn alle Projekte samt Bibliothek fertig waren; wer die IDE vorher schloss, begann beim nächsten Start von vorn. Jetzt schreibt jedes Projekt seinen Cache schon nach den eigenen Dateien (#647).
 - Die Probleme der Projektdateien starten, sobald jedes Projekt seine eigenen Dateien indiziert hat, und warten nicht mehr auf Suchpfade und Bibliothek. Die Neuprüfung nach Indexstufen ist auf eine je 2 s gebündelt; vorher prüfte jedes fertige Projekt große offene Dateien erneut (#647).
-- Diagnoselog: Zeilen `index project#N start/projectStage/done` mit Dateizahlen, Zeiten und Cache-Treffern (#647).
+- Das Server-Log (`--log`) ist anonym: Pfade werden zu `datei#N`, Projekt-, Unit- und Benutzernamen zu `name#N` bzw. `benutzer#N`, Text in Anführungszeichen zu `wert#N`; Units der Delphi-Installation behalten ihren Namen. `--log-names` schreibt wie bisher im Klartext (#647).
+- Kommandozeile: `-log` und `–log` (Gedankenstrich) gelten als `--log`; vorher ignorierte der Server sie still (#647).
+- In einer Projektgruppe las jedes Projekt die über uses ohne Namespace erreichten Units (`Forms` statt `Vcl.Forms`) erneut ein, obwohl ein anderes Projekt sie schon indiziert hatte (#647).
+- Diagnoselog: Zeilen `index project#N start/projectStage/done` mit Dateizahlen, Zeiten und Cache-Treffern sowie der Zeit für das Suchen der Unit-Dateien und das Parsen (#647).
 - Ein Neuaufbau des Index gab die Unit-Suche frei, während Anfragen sie über den alten Index noch nutzten; das konnte den Server abstürzen lassen (#647).
 
 ## [0.1.0] - 2026-10-08

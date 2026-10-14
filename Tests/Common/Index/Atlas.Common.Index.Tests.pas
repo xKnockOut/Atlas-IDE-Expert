@@ -125,6 +125,8 @@ type
     [Test]
     procedure ReportsProjectStageBeforeSearchPaths;
     [Test]
+    procedure SkipsUnitIndexedUnderOtherName;
+    [Test]
     [IgnoreMemoryLeaks]
     procedure ServiceWritesCacheAfterProjectStage;
   end;
@@ -778,6 +780,41 @@ begin
   // P, A, B, C, D: Projektdateien und über uses erreichbare Units (#647).
   Assert.AreEqual(5, StageParsed);
   Assert.IsFalse(HadSearchUnit, 'Suchpfade kommen erst nach der Projektstufe');
+end;
+
+procedure TIndexBuilderTests.SkipsUnitIndexedUnderOtherName;
+var
+  Builder: TIndexBuilder;
+  BuildResult: TIndexBuildResult;
+  ResolveScoped: TUnitFileResolver;
+begin
+  // "uses Forms" findet Vcl.Forms; im Index steht sie unter "Vcl.Forms" (#647).
+  FFiles.Put('C:\Lib\Vcl.Forms.pas', 'unit Vcl.Forms;'#10'interface'#10'implementation'#10'end.', 1);
+  FFiles.Put('C:\Q\Q1.pas', 'unit Q1;'#10'interface'#10'uses Forms;'#10'implementation'#10'end.', 1);
+  FFiles.Put('C:\Q\Q2.pas', 'unit Q2;'#10'interface'#10'uses Forms;'#10'implementation'#10'end.', 1);
+  ResolveScoped :=
+    function(const AUnitName: string): string
+    begin
+      if SameText(AUnitName, 'Forms') then
+        Result := 'C:\Lib\Vcl.Forms.pas'
+      else
+        Result := '';
+    end;
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, ResolveScoped);
+  try
+    BuildResult := Builder.Build(['C:\Q\Q1.pas'], nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Assert.AreEqual(2, BuildResult.Parsed);
+  // Zweites Projekt mit demselben Index: Vcl.Forms ist schon da.
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, ResolveScoped);
+  try
+    BuildResult := Builder.Build(['C:\Q\Q2.pas'], nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Assert.AreEqual(1, BuildResult.Parsed, 'nur Q2');
 end;
 
 procedure TIndexBuilderTests.ServiceWritesCacheAfterProjectStage;

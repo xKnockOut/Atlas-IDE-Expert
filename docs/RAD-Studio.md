@@ -42,7 +42,7 @@ RAD Studio 13 kann fremde Sprachserver (LSP) über stdio einbinden. So ersetzt d
 |---|---|
 | Name | `Atlas` |
 | Ausführbare Datei | Pfad zu `AtlasServer.exe` |
-| Befehlszeilenparameter | leer, oder zur Fehlersuche `--log C:\Temp\atlas.log --log-level debug` |
+| Befehlszeilenparameter | leer, oder zur Fehlersuche `--log C:\Temp\atlas.log --log-level debug` (anonymisiert: Pfade und Namen als `datei#N`/`name#N`; `--log-names` schreibt sie im Klartext) |
 | Sprachbezeichner | beliebig (siehe Schritt 2) |
 | Timeout | `15000` |
 | InitializationOptions | `{}` |

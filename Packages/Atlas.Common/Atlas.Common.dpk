@@ -41,6 +41,7 @@ contains
   Atlas.Common.Logging.Providers.Logger in 'Source\Logging\Providers\Atlas.Common.Logging.Providers.Logger.pas',
   Atlas.Common.Logging.Providers.RotatingFileStream in 'Source\Logging\Providers\Atlas.Common.Logging.Providers.RotatingFileStream.pas',
   Atlas.Common.Logging.Providers.StreamSink in 'Source\Logging\Providers\Atlas.Common.Logging.Providers.StreamSink.pas',
+  Atlas.Common.Logging.Providers.TransformSink in 'Source\Logging\Providers\Atlas.Common.Logging.Providers.TransformSink.pas',
   Atlas.Common.JsonRpc.Contract in 'Source\JsonRpc\Atlas.Common.JsonRpc.Contract.pas',
   Atlas.Common.JsonRpc.Messages in 'Source\JsonRpc\Atlas.Common.JsonRpc.Messages.pas',
   Atlas.Common.JsonRpc.StreamTransport in 'Source\JsonRpc\Atlas.Common.JsonRpc.StreamTransport.pas',
