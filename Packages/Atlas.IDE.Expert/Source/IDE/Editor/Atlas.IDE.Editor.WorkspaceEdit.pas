@@ -6,13 +6,15 @@
 //     also ein Rückgängig-Schritt je Datei.
 //   - Nicht geöffnete Dateien: nach der Einstellung „Für Änderungen öffnen“
 //     im Editor öffnen (Vorgabe) oder direkt auf die Platte schreiben, in
-//     ihrer bisherigen Kodierung (TAtlasTextFile).
+//     ihrer bisherigen Kodierung (TAtlasTextFile, Vorgabe "encoding" aus
+//     atlas.json über TAtlasEncodingDefault, #121).
 //   - Formulare, die im Designer offen sind (#402): nie auf die Platte, sonst
 //     überschreibt der Designer die Änderung beim Speichern. Geänderte
 //     Ereignis-Zuordnungen setzt TAtlasIdeForms im Designer, und zwar nach den
 //     Units, damit die umbenannten Handler dort schon stehen; andere
 //     Änderungen an offenen Formularen lehnt Atlas ab. Nicht geöffnete
-//     Formulare öffnet Atlas nicht, sondern schreibt die Datei.
+//     Formulare öffnet Atlas nicht, sondern schreibt die Datei; ein binär
+//     gespeichertes Formular lehnt es ab (#121).
 // Erst werden alle Dateien geprüft (Puffer vorhanden, Positionen gültig,
 // keine Überlappung); schlägt eine Prüfung fehl, ändert Atlas nichts.
 // Nur im Hauptthread aufrufen.
@@ -52,6 +54,7 @@ implementation
 
 uses
   Atlas.Core.Files.TextFile,
+  Atlas.Core.Files.EncodingDefault,
   Atlas.Core.Forms.Changes,
   Atlas.IDE.Editor.Buffer,
   Atlas.IDE.Forms.Designer;
@@ -86,7 +89,7 @@ begin
     Exit;
   try
     if FileExists(AFileName) then
-      Result := TAtlasTextFile.Load(AFileName).Text;
+      Result := TAtlasTextFile.Load(AFileName, TAtlasEncodingDefault.CodePageFor(AFileName)).Text;
   except
     on Exception do
       Result := '';
@@ -183,7 +186,8 @@ begin
       begin
         if not FileExists(FileEdits.FileName) then
           raise ELspEditError.Create('Datei nicht gefunden');
-        Plan.Disk := TAtlasTextFile.Load(FileEdits.FileName);
+        // Vorgabe-Kodierung aus atlas.json wie beim Server (#121); binäre Formulare brechen hier ab.
+        Plan.Disk := TAtlasTextFile.Load(FileEdits.FileName, TAtlasEncodingDefault.CodePageFor(FileEdits.FileName));
         Plan.Disk.Text := TLspEdits.Apply(Plan.Disk.Text, FileEdits.Edits);
       end;
     except
