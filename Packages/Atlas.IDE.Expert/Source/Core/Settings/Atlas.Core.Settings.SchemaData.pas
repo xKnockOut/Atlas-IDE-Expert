@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..778] of string = (
+  Lines: array[0..791] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -44,6 +44,19 @@ const
     '      "x-page": "Allgemein",',
     '      "x-control": "Auswahl",',
     '      "x-issue": "#24"',
+    '    },',
+    '    "encoding": {',
+    '      "type": "string",',
+    '      "default": "utf-8",',
+    '      "examples": [',
+    '        "utf-8",',
+    '        "windows-1252",',
+    '        "windows-1250"',
+    '      ],',
+    '      "description": "Vorgabe-Kodierung für Dateien ohne BOM, wenn die Erkennung nicht entscheidet (reines ASCII, ungültiges UTF-8): \"utf-8\" oder eine ANSI-Codepage wie \"windows-1250\". Binäre Form' + 'ulare werden nie geändert.",',
+    '      "x-page": "Allgemein",',
+    '      "x-control": "Auswahl",',
+    '      "x-issue": "#121"',
     '    },',
     '    "project": {',
     '      "type": "string",',

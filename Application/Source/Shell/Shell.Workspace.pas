@@ -233,6 +233,9 @@ begin
     begin
       FLogger.Info(Format('Einstellungen für %s: Delphi %s, Projekt %s, %d Regeleinstellungen, %d Ausschlüsse',
         [FName, ASettings.DelphiVersion, ASettings.Project, Length(ASettings.Rules), Length(ASettings.Exclude)]));
+      // Vorgabe-Kodierung (#121) gilt für alle Lese- und Schreibpfade unter diesem Ordner.
+      if FRoot <> '' then
+        TFileEncodingDefaults.SetFolder(FRoot, ASettings.DefaultEncoding);
       // Der Index ist gemeinsam; bei mehreren Ordnern gilt das zuletzt gelesene Budget.
       FIndex.SetBudget(Int64(ASettings.MemoryBudgetMb) * 1024 * 1024);
       if Assigned(FOnSettingsChanged) then
@@ -289,6 +292,8 @@ end;
 
 destructor TShellWorkspace.Destroy;
 begin
+  if FRoot <> '' then
+    TFileEncodingDefaults.RemoveFolder(FRoot);
   FIndexService.Free;
   FCacheLock.Free;
   FProgress.Free;

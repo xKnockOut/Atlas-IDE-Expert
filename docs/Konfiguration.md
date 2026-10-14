@@ -12,6 +12,7 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 |---|---|---|---|---|
 | `delphiVersion` | string | – | z. B. `"37.0"`, `"23.0"` | Delphi-Version als Produktnummer ("13", "12", "10.4") oder wie in der Registry ("37.0" für Delphi 13, "23.0" für Delphi 12). Leer: neueste installierte Version. |
 | `language` | string | `"de"` | `"de"`, `"en"` | Sprache der Meldungen. |
+| `encoding` | string | `"utf-8"` | z. B. `"utf-8"`, `"windows-1252"`, `"windows-1250"` | Vorgabe-Kodierung für Dateien ohne BOM, wenn die Erkennung nicht entscheidet (reines ASCII, ungültiges UTF-8): "utf-8" oder eine ANSI-Codepage wie "windows-1250". Binäre Formulare werden nie geändert. |
 | `project` | string | – |  | Projektdatei (.dproj) relativ zu diesem Ordner. Leer: automatisch suchen. |
 | `config` | string | – | z. B. `"Debug"`, `"Release"` | Build-Konfiguration, z. B. Debug oder Release. |
 | `platform` | string | – | z. B. `"Win32"`, `"Win64"` | Zielplattform. |

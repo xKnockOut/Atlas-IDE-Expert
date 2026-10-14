@@ -31,6 +31,19 @@
       "x-control": "Auswahl",
       "x-issue": "#24"
     },
+    "encoding": {
+      "type": "string",
+      "default": "utf-8",
+      "examples": [
+        "utf-8",
+        "windows-1252",
+        "windows-1250"
+      ],
+      "description": "Vorgabe-Kodierung für Dateien ohne BOM, wenn die Erkennung nicht entscheidet (reines ASCII, ungültiges UTF-8): \"utf-8\" oder eine ANSI-Codepage wie \"windows-1250\". Binäre Formulare werden nie geändert.",
+      "x-page": "Allgemein",
+      "x-control": "Auswahl",
+      "x-issue": "#121"
+    },
     "project": {
       "type": "string",
       "description": "Projektdatei (.dproj) relativ zu diesem Ordner. Leer: automatisch suchen.",

@@ -43,6 +43,8 @@ type
     procedure MergesRulesPerId;
     [Test]
     procedure EditorOrFileAlone;
+    [Test]
+    procedure ReadsDefaultEncoding;
   end;
 
   [TestFixture]
@@ -116,6 +118,23 @@ begin
   // Meldungen gelten nur der Datei.
   TConfigurationParser.ParseLayered('{"language": "fr"}', '{"language": "xx"}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
+procedure TConfigurationParserTests.ReadsDefaultEncoding;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Assert.AreEqual(65001, Parse('{}', Issues).DefaultEncoding);
+  Assert.AreEqual(1250, Parse('{"encoding": "windows-1250"}', Issues).DefaultEncoding);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual(65001, Parse('{"encoding": "utf-8"}', Issues).DefaultEncoding);
+  // Unbekannte Kodierung: Meldung, es bleibt UTF-8.
+  Assert.AreEqual(65001, Parse('{"encoding": "klingonisch"}', Issues).DefaultEncoding);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // atlas.json hat Vorrang vor dem Editor.
+  Assert.AreEqual(1252, TConfigurationParser.ParseLayered('{"encoding": "1250"}', '{"encoding": "cp1252"}',
+    Issues).DefaultEncoding);
+  Assert.AreEqual(1250, TConfigurationParser.ParseLayered('{"encoding": "1250"}', '{}', Issues).DefaultEncoding);
 end;
 
 procedure TConfigurationParserTests.ReadsAllSettings;
