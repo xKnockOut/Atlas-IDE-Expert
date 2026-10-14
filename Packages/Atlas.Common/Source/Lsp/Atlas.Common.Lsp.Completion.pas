@@ -271,13 +271,15 @@ type
     /// Unit (#461): die Namen aus der Formulardatei (persistente Felder, Spalten der SQL-Anweisung,
     /// Platzhalter, Params). Jeder Eintrag ersetzt den ganzen String-Inhalt. True auch ohne Namen, denn im
     /// String gibt es sonst nichts vorzuschlagen.</summary>
-    class function DataNameItems(const AText, AFileName: string; const APosition: TTextPosition;
+    class function DataNameItems(const AIndex: ISymbolIndex; const AText, AFileName: string; const APosition: TTextPosition;
       const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean; static;
     /// <summary>Freigabe absichern (#489): Nach "Liste := TStringList.Create;" in Zeile APosition.Line „Mit
     /// try…finally absichern“ und, wenn danach noch Zeilen bis zum Routinenende folgen, dieselbe Absicherung bis
-    /// dorthin. False, wenn die Anweisung nicht passt (TGuardFree.Check).</summary>
+    /// dorthin. False, wenn die Anweisung nicht passt (TGuardFree.Check). ANewLine: Ausgelöst durch Enter am
+    /// Zeilenende; die Anweisung steht dann in der Zeile davor, und die leere Zeile des Cursors wird ersetzt.</summary>
     class function GuardItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
-      const APosition: TTextPosition; AStyle: TCompletionFreeStyle; out AItems: TCompletionItems): Boolean; static;
+      const APosition: TTextPosition; AStyle: TCompletionFreeStyle; ANewLine: Boolean;
+      out AItems: TCompletionItems): Boolean; static;
     /// <summary>"Sender." in einem Ereignisbehandler mit "Sender: TObject" (#480): Ist die Methode im Formular
     /// Komponenten zugewiesen, die Mitglieder des nächsten gemeinsamen Vorfahren ihrer Typen. Jeder Eintrag
     /// ersetzt "Sender.Na" (TextEdit) durch die Umwandlung nach ACast und den Namen. False ohne Zuweisung im
@@ -1783,7 +1785,7 @@ begin
   if DirectiveItems(Document.Text, TLspPositions.ReadPosition(PositionValue), Directives) then
     Exit(ToJson(Directives));
   // Feld- und Parameternamen im String-Literal (#461).
-  if DataNameItems(Document.Text, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue), FReadText,
+  if DataNameItems(FIndex, Document.Text, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue), FReadText,
     Directives) then
     Exit(ToJson(Directives));
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
@@ -1799,13 +1801,13 @@ begin
       Settings := FSettingsFor(Uri)
     else
       Settings := TCompletionSettings.Default;
-    // Freigabe absichern (#489): Das Plugin fragt nach dem ";" hinter einem übernommenen Konstruktor mit diesem
-    // Auslöser; dann gibt es nur dieses Angebot oder nichts.
+    // Freigabe absichern (#489): Das Plugin fragt nach dem ";" bzw. dem Zeilenende (#10) hinter einem übernommenen
+    // Konstruktor mit diesem Auslöser; dann gibt es nur dieses Angebot oder nichts.
     if TJSONObject(AParams).TryGetValue<string>('context.triggerCharacter', GuardTrigger) and
-      (GuardTrigger = ';') then
+      ((GuardTrigger = ';') or (GuardTrigger = #10)) then
     begin
       if not (Settings.OfferTryFinally and GuardItems(Resolver, Tree, Document.Text, TDocumentUris.ToPath(Uri),
-        TLspPositions.ReadPosition(PositionValue), Settings.FreeStyle, Senders)) then
+        TLspPositions.ReadPosition(PositionValue), Settings.FreeStyle, GuardTrigger = #10, Senders)) then
         Senders := Default(TCompletionItems);
       Exit(ToJson(Senders));
     end;
@@ -1978,6 +1980,81 @@ begin
     Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);
   if Length(Result) > MaxLength then
     Result := Copy(Result, 1, MaxLength) + ' …';
+end;
+
+/// <summary>Vorfahrenliste der Klasse ab Zeile AStartLine wie im Quelltext, samt Typargumenten
+/// ("TInterfacedObject", "IComparer<TKunde>"); nil, wenn kein "class(" folgt (#466).</summary>
+function HeaderAncestors(const ALines: TArray<string>; AStartLine: Integer): TArray<string>;
+var
+  Text, Part: string;
+  Line, Index, Depth: Integer;
+  Match: TMatch;
+begin
+  Result := nil;
+  Text := '';
+  for Line := AStartLine to Min(AStartLine + 5, High(ALines)) do
+    Text := Text + ' ' + ALines[Line];
+  Match := TRegEx.Match(Text, '=\s*class\s*(?:sealed\s*|abstract\s*)?\(', [roIgnoreCase]);
+  if not Match.Success then
+    Exit;
+  Depth := 0;
+  Part := '';
+  for Index := Match.Index + Match.Length to Length(Text) do
+  begin
+    case Text[Index] of
+      '(', '<':
+        Inc(Depth);
+      ')', '>':
+        begin
+          if Depth = 0 then
+          begin
+            if Trim(Part) <> '' then
+              Result := Result + [StringReplace(Trim(Part), ' ', '', [rfReplaceAll])];
+            Exit;
+          end;
+          Dec(Depth);
+        end;
+      ',':
+        if Depth = 0 then
+        begin
+          Result := Result + [StringReplace(Trim(Part), ' ', '', [rfReplaceAll])];
+          Part := '';
+          Continue;
+        end;
+    end;
+    Part := Part + Text[Index];
+  end;
+  Result := nil;
+end;
+
+/// <summary>Setzt Bindungen "T=TKunde" wortweise in AText ein (#466).</summary>
+function SubstituteWords(const AText: string; const ABindings: TArray<string>): string;
+var
+  Binding: string;
+  Equal: Integer;
+begin
+  Result := AText;
+  for Binding in ABindings do
+  begin
+    Equal := Pos('=', Binding);
+    Result := TRegEx.Replace(Result, '(?<![\w.])' + TRegEx.Escape(Copy(Binding, 1, Equal - 1)) + '(?![\w])',
+      Copy(Binding, Equal + 1, MaxInt).Replace('$', '$$'));
+  end;
+end;
+
+/// <summary>"IComparer<TKunde>" aus Container und Bindungen; ohne Bindungen der Container.</summary>
+function GenericName(const AContainer: string; const ABindings: TArray<string>): string;
+var
+  Binding: string;
+  Values: TArray<string>;
+begin
+  Result := AContainer;
+  if Length(ABindings) = 0 then
+    Exit;
+  Values := nil;
+  for Binding in ABindings do
+    Values := Values + [Copy(Binding, Pos('=', Binding) + 1, MaxInt)];
+  Result := Result + '<' + string.Join(', ', Values) + '>';
 end;
 
 /// <summary>Direktiven einer Deklaration (virtual, override, deprecated ...); ADeprecated: Text
@@ -2368,7 +2445,9 @@ begin
     TypeName := TypeSymbol.Container + '.' + TypeSymbol.Name
   else
     TypeName := TypeSymbol.Name;
-  Missing := AResolver.MissingInterfaceMembers(UnitIndex, TypeName);
+  // Vorfahrenliste aus dem Quelltext: Der Index kennt die Typargumente nur beim ersten Vorfahren.
+  Missing := AResolver.MissingInterfaceMembers(UnitIndex, TypeName,
+    HeaderAncestors(Lines, TypeSymbol.Range.StartPos.Line));
   if Length(Missing) = 0 then
     Exit;
   if AText.Contains(#13#10) then
@@ -2394,8 +2473,9 @@ begin
         Source := '';
       SourceLines := TextLines(Source);
     end;
-    if not TInterfaceStubs.Make(Missing[Index].Container, TypeName,
-      DeclarationOf(SourceLines, Missing[Index].Range), LB, Stub) then
+    // Generische Interfaces: Typargumente in die Deklaration einsetzen (IComparer<TKunde>: T → TKunde).
+    if not TInterfaceStubs.Make(GenericName(Missing[Index].Container, Missing[Index].Bindings), TypeName,
+      SubstituteWords(DeclarationOf(SourceLines, Missing[Index].Range), Missing[Index].Bindings), LB, Stub) then
       Continue;
     if (Length(Interfaces) = 0) or not SameText(Interfaces[High(Interfaces)], Stub.InterfaceName) then
     begin
@@ -2759,12 +2839,12 @@ begin
   Result := True;
 end;
 
-class function TLspCompletion.DataNameItems(const AText, AFileName: string; const APosition: TTextPosition;
-  const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean;
+class function TLspCompletion.DataNameItems(const AIndex: ISymbolIndex; const AText, AFileName: string;
+  const APosition: TTextPosition; const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean;
 var
   Lines: TArray<string>;
   Call: TDataNameCall;
-  FormFile, FormText, Sql, Source: string;
+  Sql, Source: string;
   Names: TArray<TDataName>;
   Name: TDataName;
   Found: Boolean;
@@ -2780,15 +2860,11 @@ begin
   if not Assigned(AReadText) then
     Exit;
   // Nur aus der Formulardatei: Ohne Designer-Informationen kein geratener Vorschlag.
-  Names := nil;
-  Sql := '';
-  for FormFile in TFormFiles.FormFiles(AFileName, AText) do
-    if AReadText(FormFile, FormText) then
+  Names := TDataFieldNames.Lookup(AText, AFileName, Call, AIndex,
+    function(const AName: string; out AContent: string): Boolean
     begin
-      Names := TDataFieldNames.FromForm(FormText, Call.DataSet, Call.Kind, Sql, Found);
-      if Found then
-        Break;
-    end;
+      Result := AReadText(AName, AContent);
+    end, Sql, Found);
   Source := TDataFieldNames.ShortSql(Sql);
   Range := TTextRange.Create(APosition.Line, Call.ContentStart, APosition.Line, Call.ContentEnd);
   for Name in Names do
@@ -2803,24 +2879,36 @@ begin
     // Schreibweise wie in der Quelle; ersetzt den ganzen Inhalt zwischen den Anführungszeichen.
     Item.HasTextEdit := True;
     Item.TextEdit := TRuleEdit.Create(Range, StringReplace(Name.Name, '''', '''''', [rfReplaceAll]));
-    Item.DataSet := Call.DataSet;
+    Item.DataSet := Call.DisplayName;
     Item.DataSource := Source;
     AItems.Items := AItems.Items + [Item];
   end;
 end;
 
 class function TLspCompletion.GuardItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText,
-  AFileName: string; const APosition: TTextPosition; AStyle: TCompletionFreeStyle;
+  AFileName: string; const APosition: TTextPosition; AStyle: TCompletionFreeStyle; ANewLine: Boolean;
   out AItems: TCompletionItems): Boolean;
 var
   UnitIndex: TUnitIndex;
   Offer: TGuardOffer;
   Item: TCompletionItem;
+  Lines: TArray<string>;
+  Line: Integer;
 begin
   AItems := Default(TCompletionItems);
+  Result := False;
+  Line := APosition.Line;
+  // Enter am Zeilenende: Anweisung in der Zeile davor, die Zeile des Cursors ist leer.
+  if ANewLine then
+  begin
+    Lines := TextLines(AText);
+    Line := APosition.Line - 1;
+    if (Line < 0) or (APosition.Line > High(Lines)) or (Trim(Lines[APosition.Line]) <> '') then
+      Exit;
+  end;
   UnitIndex := TIndexExtractor.Extract(ATree, AFileName);
   // Art des erzeugten Typs: Record oder Interface schließen aus, TComponent-Nachfahren prüfen den Owner.
-  Result := TGuardFree.Check(ATree, AText, APosition.Line,
+  Result := TGuardFree.Check(ATree, AText, Line,
     function(const ATypeName: string): TGuardTypeKind
     var
       Symbol: TResolvedSymbol;
@@ -2836,6 +2924,8 @@ begin
     end, Offer);
   if not Result then
     Exit;
+  if ANewLine then
+    Offer.BlankLine := APosition.Line;
   Item := Default(TCompletionItem);
   Item.Kind := KindSnippet;
   Item.HasTextEdit := True;
