@@ -36,7 +36,9 @@ type
     MenuIndexStatus, MenuIndexRebuild, MenuIndexRebuilding, MenuIndexNoServer,
     SettingsPaletteKey, SettingsCheckKey, SettingsKeyPriority, KeyConflict, ForeignCompletion,
     SettingsInactiveDim, MenuToggleInactive, DidYouMean,
-    DiagExportMenu, DiagExportTitle, DiagExportHint, DiagExportSave, DiagExportFilter, DiagExportEmpty, DiagExportDone);
+    DiagExportMenu, DiagExportTitle, DiagExportHint, DiagExportSave, DiagExportFilter, DiagExportEmpty, DiagExportDone,
+    RenameMenu, RenameTitle, RenamePrompt, RenameNothing, RenameFailed, RenameDone, EditWritten, EditFailed,
+    EditUnsupported, SettingsOpenForEdits);
 
   TAtlasStrings = class
   private class var
@@ -108,7 +110,14 @@ const
      'Genau diese Zeilen kommen in die ZIP-Datei (Logs der letzten %d Tage). Pfade, Projekt- und Bezeichnernamen ' +
        'sind durch Kurz-IDs ersetzt; die Zuordnung ID → Name wird nie mitgegeben.',
      'Speichern…', 'ZIP-Dateien (*.zip)|*.zip', 'Atlas: Keine Diagnoselogs der letzten %d Tage gefunden.',
-     'Atlas: Diagnoselog gespeichert: %s'),
+     'Atlas: Diagnoselog gespeichert: %s',
+     'Symbol umbenennen…', 'Atlas: Umbenennen', 'Neuer Name für „%s“:',
+     'Atlas: An dieser Stelle lässt sich nichts umbenennen.', 'Atlas: Umbenennen nicht möglich: %s',
+     'Atlas: „%s“ in „%s“ umbenannt: %d Stellen in %d Dateien.',
+     'Atlas: %d nicht geöffnete Dateien direkt auf der Platte geändert.',
+     'Atlas: Änderungen nicht (vollständig) übernommen: %s',
+     'Atlas: %d Dateioperationen (anlegen, umbenennen, löschen) nicht ausgeführt.',
+     'Nicht geöffnete Dateien für Änderungen öffnen (aus: direkt auf die Platte schreiben)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -161,7 +170,14 @@ const
      'Exactly these lines go into the ZIP file (logs of the last %d days). Paths, project and identifier names ' +
        'are replaced by short IDs; the mapping ID → name is never included.',
      'Save…', 'ZIP files (*.zip)|*.zip', 'Atlas: no diagnostic logs found for the last %d days.',
-     'Atlas: diagnostic log saved: %s'));
+     'Atlas: diagnostic log saved: %s',
+     'Rename symbol…', 'Atlas: Rename', 'New name for “%s”:',
+     'Atlas: nothing to rename here.', 'Atlas: cannot rename: %s',
+     'Atlas: renamed “%s” to “%s”: %d places in %d files.',
+     'Atlas: %d files that were not open changed on disk.',
+     'Atlas: changes not (fully) applied: %s',
+     'Atlas: %d file operations (create, rename, delete) not performed.',
+     'Open files for changes (off: write files that are not open directly to disk)'));
 
 { TAtlasStrings }
 

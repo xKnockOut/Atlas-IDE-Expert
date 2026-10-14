@@ -48,6 +48,8 @@ type
     procedure SendsOnlyTheChangedRange;
     [Test]
     procedure ReportsWatchedFilesExceptSyncedChanges;
+    [Test]
+    procedure PreparesAndRequestsRename;
   end;
 
   [TestFixture]
@@ -602,6 +604,64 @@ begin
     Session.Free;
     Client.Free;
     Messages.Free;
+  end;
+end;
+
+procedure TLspSessionTests.PreparesAndRequestsRename;
+var
+  Client: TLspClient;
+  Session: TLspSession;
+  PrepareReply, NewName: string;
+  Placeholder: string;
+  Response: TJSONValue;
+begin
+  Client := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    var
+      Message: TJSONObject;
+      Method, Answer: string;
+      Reply: TBytes;
+    begin
+      Message := Unframe(ABytes);
+      try
+        Method := Message.GetValue<string>('method', '');
+        if Method = 'textDocument/prepareRename' then
+          Answer := PrepareReply
+        else if Method = 'textDocument/rename' then
+        begin
+          NewName := Message.GetValue<string>('params.newName');
+          Answer := '{"changes":{}}';
+        end
+        else
+          Exit;
+        Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":%s}',
+          [Message.GetValue<Integer>('id'), Answer]));
+        Client.Receive(Reply, Length(Reply));
+      finally
+        Message.Free;
+      end;
+    end);
+  Session := TLspSession.Create(Client);
+  try
+    PrepareReply := '{"range":{"start":{"line":0,"character":5},"end":{"line":0,"character":8}},"placeholder":"Alt"}';
+    Assert.IsTrue(Session.PrepareRename('C:\P\A.pas', 'unit Foo;', 0, 6, Placeholder));
+    Assert.AreEqual('Alt', Placeholder);
+    // Nur ein Bereich: Der Name kommt aus dem Text.
+    PrepareReply := '{"start":{"line":0,"character":5},"end":{"line":0,"character":8}}';
+    Assert.IsTrue(Session.PrepareRename('C:\P\A.pas', 'unit Foo;', 0, 6, Placeholder));
+    Assert.AreEqual('Foo', Placeholder);
+    PrepareReply := 'null';
+    Assert.IsFalse(Session.PrepareRename('C:\P\A.pas', 'unit Foo;', 0, 0, Placeholder));
+    Response := Session.Rename('C:\P\A.pas', 0, 6, 'Neu', 1000);
+    try
+      Assert.AreEqual('Neu', NewName);
+      Assert.IsTrue(Response is TJSONObject);
+    finally
+      Response.Free;
+    end;
+  finally
+    Session.Free;
+    Client.Free;
   end;
 end;
 

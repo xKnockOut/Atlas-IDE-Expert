@@ -39,6 +39,7 @@ uses
   Atlas.IDE.Build.CheckOnSave,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Commands.MainMenu,
+  Atlas.IDE.Editor.Rename,
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Commands.Keys;
 
@@ -111,6 +112,18 @@ begin
   Messages.AddTitleMessage(AText, Group);
 end;
 
+/// <summary>„Symbol umbenennen…“ (#397) aus Menü und Palette.</summary>
+procedure RenameSymbol;
+begin
+  if Manager = nil then
+    Exit;
+  TAtlasIdeRename.Execute(Manager.ActiveSession, TAtlasIdeSettings.Current.OpenForEdits,
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
+end;
+
 procedure RegisterPalette;
 begin
   Palette := TAtlasIdePalette.Create;
@@ -121,6 +134,11 @@ begin
     begin
       if Supports(BorlandIDEServices, IOTAActionServices, Actions) and FileExists(TAtlasCodeInsightManager.DiagnoseLog) then
         Actions.OpenFile(TAtlasCodeInsightManager.DiagnoseLog);
+    end);
+  Palette.RegisterCommand('Atlas.Rename', TAtlasStrings.Text(TAtlasTextId.RenameMenu), '',
+    procedure
+    begin
+      RenameSymbol;
     end);
   Palette.RegisterCommand('Atlas.ResetHistory', TAtlasStrings.Text(TAtlasTextId.PaletteResetHistory), '',
     procedure
@@ -342,6 +360,8 @@ begin
       begin
         GuardWarning(AText);
       end);
+  if MainMenu <> nil then
+    MainMenu.OnRename := RenameSymbol;
   if DirtyExport = nil then
     DirtyExport := TAtlasDirtyExport.Create;
   // Eigene Blocklinien: Strukturhervorhebung der IDE abgleichen (#514).

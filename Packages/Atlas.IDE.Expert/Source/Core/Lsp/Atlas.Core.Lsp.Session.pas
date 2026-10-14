@@ -135,6 +135,13 @@ type
       const AOnPartial: TLspPartialProc): TJSONValue; overload;
     /// <summary>textDocument/signatureHelp ohne Abgleich, wie Completion.</summary>
     function SignatureHelp(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
+    /// <summary>textDocument/prepareRename (#397): Lässt sich hier umbenennen? APlaceholder ist der
+    /// bisherige Name (aus placeholder, sonst aus dem Bereich in AText).</summary>
+    function PrepareRename(const AFileName, AText: string; ALine, ACharacter: Integer;
+      out APlaceholder: string): Boolean;
+    /// <summary>textDocument/rename (#397): WorkspaceEdit des Servers, gehört dem Aufrufer; nil ohne.</summary>
+    function Rename(const AFileName: string; ALine, ACharacter: Integer; const ANewName: string;
+      ATimeoutMs: Cardinal): TJSONValue;
     /// <summary>completionItem/resolve für AItem (wird übernommen); threadsicher wie Completion.</summary>
     function ResolveCompletion(AItem: TJSONObject; ATimeoutMs: Cardinal): TJSONValue;
     /// <summary>Benachrichtigung ohne Antwort, z. B. atlas/compileStarted (#527); übernimmt AParams.</summary>
@@ -777,6 +784,50 @@ begin
   finally
     Response.Free;
   end;
+end;
+
+function TLspSession.PrepareRename(const AFileName, AText: string; ALine, ACharacter: Integer;
+  out APlaceholder: string): Boolean;
+var
+  Response: TJSONValue;
+  Range: TJSONObject;
+  Position: TLspTextPosition;
+  StartOffset, EndOffset: Integer;
+begin
+  APlaceholder := '';
+  Sync(AFileName, AText);
+  Response := FClient.Request('textDocument/prepareRename', PositionParams(AFileName, ALine, ACharacter), FTimeoutMs);
+  try
+    // Range, {range, placeholder} oder {defaultBehavior}; null heißt: hier nicht.
+    if not (Response is TJSONObject) then
+      Exit(False);
+    if TJSONObject(Response).TryGetValue<string>('placeholder', APlaceholder) then
+      Exit(True);
+    if not TJSONObject(Response).TryGetValue<TJSONObject>('range', Range) then
+      Range := TJSONObject(Response);
+    if Range.TryGetValue<Integer>('start.line', Position.Line) and
+      Range.TryGetValue<Integer>('start.character', Position.Character) then
+    begin
+      StartOffset := TLspTextChanges.OffsetOf(AText, Position);
+      Position.Line := Range.GetValue<Integer>('end.line', Position.Line);
+      Position.Character := Range.GetValue<Integer>('end.character', Position.Character);
+      EndOffset := TLspTextChanges.OffsetOf(AText, Position);
+      APlaceholder := Copy(AText, StartOffset + 1, EndOffset - StartOffset);
+    end;
+    Result := True;
+  finally
+    Response.Free;
+  end;
+end;
+
+function TLspSession.Rename(const AFileName: string; ALine, ACharacter: Integer; const ANewName: string;
+  ATimeoutMs: Cardinal): TJSONValue;
+var
+  Params: TJSONObject;
+begin
+  Params := PositionParams(AFileName, ALine, ACharacter);
+  Params.AddPair('newName', ANewName);
+  Result := FClient.Request('textDocument/rename', Params, ATimeoutMs);
 end;
 
 function TLspSession.Completion(const AFileName: string; ALine, ACharacter: Integer;

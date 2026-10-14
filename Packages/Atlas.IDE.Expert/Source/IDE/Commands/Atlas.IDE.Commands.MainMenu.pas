@@ -10,6 +10,7 @@
 // ("Atlas – Index 45 %"); „Index-Status“ schreibt die Kennzahlen in die
 // Meldungsansicht, „Index neu aufbauen“ liest alles ohne Cache neu ein.
 // „Diagnoselog exportieren…“ (#647) packt das anonymisierte Log in eine ZIP.
+// „Symbol umbenennen…“ (#397) ruft OnRename auf.
 
 interface
 
@@ -36,6 +37,8 @@ type
     FCommand: TFunc<string, TJSONValue>;
     FMessage: TProc<string>;
     FShownProgress: string;
+    FOnRename: TProc;
+    procedure RenameClick(Sender: TObject);
     procedure EnableAllClick(Sender: TObject);
     procedure TimerTick(Sender: TObject);
     procedure IndexStatusClick(Sender: TObject);
@@ -53,6 +56,8 @@ type
     /// <summary>Wert eines Schalters in ASettings.</summary>
     class function Get(const ASettings: TAtlasPluginSettings; AToggle: TAtlasToggle): Boolean; static;
     class procedure Put(var ASettings: TAtlasPluginSettings; AToggle: TAtlasToggle; AValue: Boolean); static;
+    /// <summary>„Symbol umbenennen…“ (#397).</summary>
+    property OnRename: TProc read FOnRename write FOnRename;
   end;
 
 implementation
@@ -118,6 +123,11 @@ begin
     FRoot.Add(Item);
     FToggles[Toggle] := Item;
   end;
+  FRoot.Add(NewLine);
+  Item := TMenuItem.Create(FRoot);
+  Item.Caption := TAtlasStrings.Text(TAtlasTextId.RenameMenu);
+  Item.OnClick := RenameClick;
+  FRoot.Add(Item);
   FRoot.Add(NewLine);
   Item := TMenuItem.Create(FRoot);
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.MenuIndexStatus);
@@ -314,6 +324,16 @@ begin
     begin
       TAtlasIdeDiagnosticExport.Execute(FMessage);
     end);
+end;
+
+procedure TAtlasMainMenu.RenameClick(Sender: TObject);
+begin
+  if Assigned(FOnRename) then
+    TAtlasGuard.Run(TAtlasFeature.Menu,
+      procedure
+      begin
+        FOnRename();
+      end);
 end;
 
 procedure TAtlasMainMenu.EnableAllClick(Sender: TObject);

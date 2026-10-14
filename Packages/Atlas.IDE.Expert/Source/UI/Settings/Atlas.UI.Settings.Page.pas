@@ -47,6 +47,7 @@ type
     FReloadExternal: TCheckBox;
     FPairColors: TCheckBox;
     FInactiveDim: TCheckBox;
+    FOpenForEdits: TCheckBox;
     FPairGuides: TCheckBox;
     FProblems: TCheckBox;
     FCheckOnSave: TCheckBox;
@@ -163,6 +164,8 @@ begin
   FHangThreshold := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHangThreshold));
   FHangHint := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHangHint));
   FReloadExternal := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReload));
+  // Änderungen des Servers an nicht geöffneten Dateien (#397).
+  FOpenForEdits := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOpenForEdits));
   FPairColors := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairs));
   FInactiveDim := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim));
   FPairGuides := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuides));
@@ -289,6 +292,7 @@ begin
   FHangThreshold.Text := IntToStr(ASettings.HangThresholdMs);
   FHangHint.Checked := ASettings.HangHint;
   FReloadExternal.Checked := ASettings.ReloadExternal;
+  FOpenForEdits.Checked := ASettings.OpenForEdits;
   FPairColors.Checked := ASettings.PairColors;
   FInactiveDim.Checked := ASettings.InactiveDim;
   FPairGuides.Checked := ASettings.PairGuides;
@@ -318,6 +322,7 @@ begin
   ASettings.HangThresholdMs := StrToIntDef(FHangThreshold.Text, ASettings.HangThresholdMs);
   ASettings.HangHint := FHangHint.Checked;
   ASettings.ReloadExternal := FReloadExternal.Checked;
+  ASettings.OpenForEdits := FOpenForEdits.Checked;
   ASettings.PairColors := FPairColors.Checked;
   ASettings.InactiveDim := FInactiveDim.Checked;
   ASettings.PairGuides := FPairGuides.Checked;
