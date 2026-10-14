@@ -76,9 +76,14 @@ type
     FProgress: ILspProgress;
     FTimeoutMs: Cardinal;
     FDocuments: TDictionary<string, TDocumentState>;
+    // Schützt FDocuments samt Reihenfolge der didOpen/didChange (#493): Sync läuft auch aus
+    // Hintergrund-Threads (Zeitlimit für Quellen).
+    FDocLock: TObject;
     FInitialized: Boolean;
     FProjects: TArray<string>;
     FServerSettings: string;
+    procedure SyncLocked(const AFileName, AText: string);
+    procedure CloseLocked(const AFileName: string);
     function PositionParams(const AFileName: string; ALine, ACharacter: Integer): TJSONObject;
   public
     /// <summary>AClient gehört weiter dem Aufrufer.</summary>
@@ -197,6 +202,7 @@ begin
   FClient := AClient;
   FTimeoutMs := ATimeoutMs;
   FDocuments := TDictionary<string, TDocumentState>.Create;
+  FDocLock := TObject.Create;
   FRefresh := TLspSignal.Create;
   FProgress := TLspProgress.Create;
 end;
@@ -204,6 +210,7 @@ end;
 destructor TLspSession.Destroy;
 begin
   FDocuments.Free;
+  FDocLock.Free;
   inherited;
 end;
 
@@ -376,6 +383,16 @@ begin
 end;
 
 procedure TLspSession.Sync(const AFileName, AText: string);
+begin
+  TMonitor.Enter(FDocLock);
+  try
+    SyncLocked(AFileName, AText);
+  finally
+    TMonitor.Exit(FDocLock);
+  end;
+end;
+
+procedure TLspSession.SyncLocked(const AFileName, AText: string);
 var
   State: TDocumentState;
   Key: string;
@@ -562,6 +579,16 @@ begin
 end;
 
 procedure TLspSession.Close(const AFileName: string);
+begin
+  TMonitor.Enter(FDocLock);
+  try
+    CloseLocked(AFileName);
+  finally
+    TMonitor.Exit(FDocLock);
+  end;
+end;
+
+procedure TLspSession.CloseLocked(const AFileName: string);
 var
   Key: string;
 begin
@@ -574,8 +601,16 @@ begin
 end;
 
 procedure TLspSession.Saved(const AFileName: string);
+var
+  Known: Boolean;
 begin
-  if not FDocuments.ContainsKey(AnsiLowerCase(AFileName)) then
+  TMonitor.Enter(FDocLock);
+  try
+    Known := FDocuments.ContainsKey(AnsiLowerCase(AFileName));
+  finally
+    TMonitor.Exit(FDocLock);
+  end;
+  if not Known then
     Exit;
   FClient.Notify('textDocument/didSave', TJSONObject.Create(TJSONPair.Create('textDocument',
     TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))))));
@@ -586,15 +621,25 @@ var
   State: TDocumentState;
 begin
   Result := nil;
-  for State in FDocuments.Values do
-    Result := Result + [State.FileName];
+  TMonitor.Enter(FDocLock);
+  try
+    for State in FDocuments.Values do
+      Result := Result + [State.FileName];
+  finally
+    TMonitor.Exit(FDocLock);
+  end;
 end;
 
 function TLspSession.SyncedText(const AFileName: string; out AText: string): Boolean;
 var
   State: TDocumentState;
 begin
-  Result := FDocuments.TryGetValue(AnsiLowerCase(AFileName), State);
+  TMonitor.Enter(FDocLock);
+  try
+    Result := FDocuments.TryGetValue(AnsiLowerCase(AFileName), State);
+  finally
+    TMonitor.Exit(FDocLock);
+  end;
   if Result then
     AText := State.Text
   else

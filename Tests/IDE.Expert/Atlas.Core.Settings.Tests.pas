@@ -102,6 +102,7 @@ begin
   Assert.AreEqual(0, Settings.CompletionKey);
   Assert.AreEqual(0, Settings.SignatureKey);
   Assert.IsFalse(Settings.SignatureKeyPriority);
+  Assert.AreEqual(200, Settings.ProviderTimeLimitMs, 'Zeitlimit für Quellen (#493)');
 end;
 
 procedure TAtlasPluginSettingsTests.SaveAndLoadRoundTrip;
@@ -122,6 +123,7 @@ begin
   Settings.SignatureKey := $6048; // Strg+Umschalt+H
   Settings.SignatureKeyPriority := True;
   Settings.CompletionKey := $4020; // Strg+Leer
+  Settings.ProviderTimeLimitMs := 350;
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
@@ -137,6 +139,7 @@ begin
   Assert.IsTrue(Loaded.SignatureKeyPriority);
   Assert.AreEqual($4020, Loaded.CompletionKey);
   Assert.IsFalse(Loaded.CompletionKeyPriority);
+  Assert.AreEqual(350, Loaded.ProviderTimeLimitMs);
   Assert.AreEqual('', TAtlasPluginSettings.Defaults.ServerPath, 'Standard: leer');
 end;
 
@@ -201,8 +204,10 @@ begin
   Store.WriteInteger('ListWidth', 50);
   Store.WriteInteger('PanelWidth', 5000);
   Store.WriteInteger('SignatureKey', -3);
+  Store.WriteInteger('ProviderTimeLimitMs', 10);
   Settings := Default(TAtlasPluginSettings);
   Settings.Load(Store);
+  Assert.AreEqual(TAtlasPluginSettings.MinProviderTimeLimit, Settings.ProviderTimeLimitMs);
   Assert.AreEqual(0, Settings.SignatureKey, 'kein gültiges Kürzel');
   Assert.AreEqual(TAtlasPluginSettings.MaxVisibleRows, Settings.VisibleRows);
   Assert.AreEqual(TAtlasPluginSettings.MinListWidth, Settings.ListWidth);

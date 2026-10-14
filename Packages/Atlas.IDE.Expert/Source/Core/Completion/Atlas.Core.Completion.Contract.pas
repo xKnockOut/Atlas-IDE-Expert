@@ -176,6 +176,12 @@ type
     procedure Cancel;
   end;
 
+  /// <summary>Quelle mit Namen (#493): Die Sicherung zählt ihre Fehler getrennt und schaltet nur sie ab.</summary>
+  IAtlasNamedProvider = interface
+    ['{4E7B2C19-8D3A-4F6E-B1C5-9A0D7E3F2B68}']
+    function ProviderName: string;
+  end;
+
 implementation
 
 { TAtlasCompletionItem }

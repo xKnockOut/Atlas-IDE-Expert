@@ -204,7 +204,7 @@ var
   Toggle: TAtlasToggle;
   Settings: TAtlasPluginSettings;
   Feature: TAtlasFeature;
-  Names: string;
+  Names, Name: string;
 begin
   try
     Settings := TAtlasIdeSettings.Current;
@@ -216,6 +216,12 @@ begin
         Names := TAtlasGuard.FeatureName(Feature)
       else
         Names := Names + ', ' + TAtlasGuard.FeatureName(Feature);
+    // Auch einzeln abgeschaltete Quellen (#493).
+    for Name in TAtlasGuard.DisabledProviders do
+      if Names = '' then
+        Names := Name
+      else
+        Names := Names + ', ' + Name;
     FEnableAll.Visible := Names <> '';
     FEnableAll.Caption := TAtlasStrings.Fmt(TAtlasTextId.MenuEnableAll, [Names]);
   except

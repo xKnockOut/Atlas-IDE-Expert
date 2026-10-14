@@ -42,6 +42,8 @@ uses
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Commands.MainMenu,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Core.Diagnostics.TimeLimit,
   Atlas.IDE.Commands.Keys;
 
 var
@@ -305,6 +307,9 @@ var
   LoadedAt: Int64;
 begin
   LoadedAt := TAtlasWatchdog.Timestamp;
+  // Abbruchsignal eines früheren Entladens in derselben Sitzung zurücknehmen (#493).
+  TAtlasShutdown.Reset;
+  TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
   TAtlasGuard.OnWarning := GuardWarning;
   TAtlasStrings.Language := IdeLanguage;
   if (ManagerIndex < 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
@@ -329,6 +334,7 @@ begin
     Pairs := TAtlasEditorPairs.Create;
   if CompletionKey = nil then
     CompletionKey := TAtlasIdeKeyBinding.Create('Atlas.Completion', 'Atlas-Vervollständigung',
+      TAtlasFeature.Completion,
       procedure
       begin
         if Manager <> nil then
@@ -336,6 +342,7 @@ begin
       end);
   if SignatureKey = nil then
     SignatureKey := TAtlasIdeKeyBinding.Create('Atlas.Signature', 'Atlas-Parameter-Hint',
+      TAtlasFeature.Signature,
       procedure
       begin
         if Manager <> nil then
@@ -347,6 +354,7 @@ begin
     procedure
     begin
       RebindKeys;
+      TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
       // Index-Optionen an den laufenden Server; er baut neu auf, wenn sich der Umfang ändert (#652).
       if Manager <> nil then
         Manager.NotifyServer('workspace/didChangeConfiguration',
@@ -365,12 +373,8 @@ begin
   TAtlasIdeKeys.WatchPackages(
     procedure
     begin
-      TAtlasGuard.Run(TAtlasFeature.Settings,
-        procedure
-        begin
-          RebindKeys;
-          TAtlasIdeKeys.ReportForeignCompletion;
-        end);
+      RebindKeys;
+      TAtlasIdeKeys.ReportForeignCompletion;
     end);
   if MainMenu = nil then
     MainMenu := TAtlasMainMenu.Create(
@@ -425,7 +429,12 @@ end;
 procedure Unregister;
 var
   Services: IOTACodeInsightServices;
+  StartedAt: UInt64;
+  Stopped: Boolean;
 begin
+  // Zuerst das gemeinsame Abbruchsignal: Jeder Hintergrund-Thread hört auf zu warten (#493).
+  StartedAt := TThread.GetTickCount64;
+  TAtlasShutdown.Signal;
   TAtlasGuard.OnWarning := nil;
   TAtlasIdeSettings.OnChanged := nil;
   TAtlasIdeKeys.UnwatchPackages;
@@ -445,6 +454,9 @@ begin
     Services.RemoveCodeInsightManager(ManagerIndex);
   ManagerIndex := -1;
   Manager := nil;
+  Stopped := TAtlasTimeLimit.StopAll(TAtlasShutdown.StopMs);
+  TAtlasGuard.Log(Format('Atlas entladen in %d ms; Hintergrund-Threads beendet: %s',
+    [TThread.GetTickCount64 - StartedAt, BoolToStr(Stopped, True)]));
 end;
 
 initialization

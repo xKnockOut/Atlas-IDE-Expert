@@ -40,7 +40,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Diagnostics.Shutdown;
 
 // Eigene Deklaration (Vista und neuer), unabhängig von der Delphi-Version.
 function CancelSynchronousIoOf(AThread: THandle): BOOL; stdcall; external kernel32 name 'CancelSynchronousIo';
@@ -226,17 +227,29 @@ begin
 end;
 
 destructor TLspServerProcess.Destroy;
+var
+  WriterMs, CancelMs, ProcessMs: Cardinal;
 begin
+  WriterMs := 1000;
+  CancelMs := 500;
+  ProcessMs := 2000;
+  // Beim Entladen bzw. Schließen der IDE (#493): alles zusammen unter TAtlasShutdown.StopMs.
+  if TAtlasShutdown.Signalled then
+  begin
+    WriterMs := 300;
+    CancelMs := 150;
+    ProcessMs := 400;
+  end;
   if FClient <> nil then
     FClient.Close;
   // Schreib-Thread beenden; hängt er an einem Server, der nicht liest, den Server beenden.
   if FWriter <> nil then
   begin
     FWriter.Terminate;
-    if WaitForSingleObject(FWriter.Handle, 1000) <> WAIT_OBJECT_0 then
+    if WaitForSingleObject(FWriter.Handle, WriterMs) <> WAIT_OBJECT_0 then
     begin
       CancelSynchronousIoOf(FWriter.Handle);
-      if (FProcess <> 0) and (WaitForSingleObject(FWriter.Handle, 500) <> WAIT_OBJECT_0) then
+      if (FProcess <> 0) and (WaitForSingleObject(FWriter.Handle, CancelMs) <> WAIT_OBJECT_0) then
         TerminateProcess(FProcess, 1);
     end;
     FWriter.WaitFor;
@@ -247,7 +260,7 @@ begin
     CloseHandle(FInputWrite);
   if FProcess <> 0 then
   begin
-    if WaitForSingleObject(FProcess, 2000) <> WAIT_OBJECT_0 then
+    if WaitForSingleObject(FProcess, ProcessMs) <> WAIT_OBJECT_0 then
       TerminateProcess(FProcess, 1);
     CloseHandle(FProcess);
   end;

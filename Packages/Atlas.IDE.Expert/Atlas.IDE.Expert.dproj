@@ -162,6 +162,9 @@
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.Events.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.Notifier.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Guard.pas"/>
+        <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Shutdown.pas"/>
+        <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.TimeLimit.pas"/>
+        <DCCReference Include="Source\Core\Product\Atlas.Core.Product.Version.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Hangs.pas"/>
         <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.Watchdog.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Export.pas"/>
