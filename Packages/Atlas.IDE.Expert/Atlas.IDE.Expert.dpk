@@ -27,10 +27,14 @@
 {$DESCRIPTION 'Atlas IDE Expert (Code Insight-Manager)'}
 {$DESIGNONLY}
 {$IMPLICITBUILD ON}
+{$LIBSUFFIX AUTO}
 
 // Design-Time-Package für RAD Studio (ADR 0006): meldet Atlas als
 // Code Insight-Manager für Delphi an und spricht über eine eigene LSP-Sitzung
-// mit dem Server. Nur Win32, weil die IDE (bds.exe) 32-Bit ist.
+// mit dem Server. Win32 für die klassische IDE, Win64 für die 64-Bit-IDE
+// (ADR 0008, #281). LIBSUFFIX AUTO hängt die Package-Version an
+// (Atlas.IDE.Expert290.bpl für Delphi 12, …370.bpl für Delphi 13), damit die
+// BPLs beider IDE-Versionen nebeneinander liegen können.
 // Bewusst ohne Atlas.Common/Atlas.Windows: ein einzelnes Package, das die IDE
 // ohne weitere BPLs laden kann.
 

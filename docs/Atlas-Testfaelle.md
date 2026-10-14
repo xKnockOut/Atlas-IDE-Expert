@@ -1,6 +1,8 @@
 ﻿# Atlas: Testfälle in der IDE
 
-Manuelle Prüfung des IDE-Plugins `Atlas.IDE.Expert` in RAD Studio, gegliedert nach Issues. Voraussetzung: Plugin installiert (`Output\Win32\Debug\Bpl\Atlas.IDE.Expert.bpl`), Code Insight-Manager „Atlas IDE Expert“ aktiv, ein Delphi-Projekt mit einer VCL-Unit geöffnet. Für Fehlersuche `Diagnose` = 1 unter `HKCU\Software\Atlas\IdePlugin` setzen; das Protokoll `Atlas.IDE.Expert.log` liegt neben der BPL.
+Bei Delphi 12 heißen BPL und Protokoll `…290.bpl` und `…290.log` statt `…370`.
+
+Manuelle Prüfung des IDE-Plugins `Atlas.IDE.Expert` in RAD Studio, gegliedert nach Issues. Voraussetzung: Plugin installiert (`Output\Win32\Debug\Bpl\Atlas.IDE.Expert370.bpl`), Code Insight-Manager „Atlas IDE Expert“ aktiv, ein Delphi-Projekt mit einer VCL-Unit geöffnet. Für Fehlersuche `Diagnose` = 1 unter `HKCU\Software\Atlas\IdePlugin` setzen; das Protokoll `Atlas.IDE.Expert370.log` liegt neben der BPL.
 
 Schreibweise: `|` steht für die Cursorposition.
 
@@ -213,7 +215,7 @@ Noch offen: Anzeige in Error Insight und in einer projektweiten Liste (#398), Mi
 
 ## Compile-Ereignisse (#527)
 
-Vorbereitung: Diagnoseprotokoll an (`HKCU\Software\Atlas\IdePlugin`, DWORD `Diagnose` = 1), IDE neu starten; Protokoll `Atlas.IDE.Expert.log` neben dem Plugin.
+Vorbereitung: Diagnoseprotokoll an (`HKCU\Software\Atlas\IdePlugin`, DWORD `Diagnose` = 1), IDE neu starten; Protokoll `Atlas.IDE.Expert370.log` neben dem Plugin.
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
@@ -272,7 +274,7 @@ Blocklinien zeichnet Atlas selbst (Einstellung „Blocklinien in den Paarfarben�
 | BP3 | Enter | Befehl läuft (Projekt wird erzeugt); Palette ist zu |
 | BP4 | Strg+Umschalt+P erneut, nichts tippen | Der eben ausgeführte Befehl steht oben |
 | BP5 | `atlas` tippen | Atlas-Befehle („Atlas: Protokoll öffnen“, „Atlas: Verlauf … zurücksetzen“, „Atlas: Wächter testen (1 s)“) gemeinsam mit IDE-Aktionen |
-| BP6 | „Atlas: Protokoll öffnen“ | `Atlas.IDE.Expert.log` öffnet sich im Editor |
+| BP6 | „Atlas: Protokoll öffnen“ | `Atlas.IDE.Expert370.log` öffnet sich im Editor |
 | BP7 | Esc bzw. Klick neben die Palette | Palette schließt, nichts wird ausgeführt |
 | BP8 | ↑/↓, Bild↑/↓, Mausrad, Klick auf eine Zeile | Auswahl bewegt sich, Klick führt aus |
 | BP9 | Rücktaste, Strg+Rücktaste | Ein Zeichen bzw. ganze Eingabe gelöscht |
@@ -309,11 +311,11 @@ Protokoll: jede erkannte Änderung als Zeile „Extern geändert: … (neu laden
 
 ## Einfrier-Wächter (#501)
 
-Protokoll: `Atlas.IDE.Expert.log` neben dem Plugin (Hänger stehen dort immer, auch ohne `Diagnose`).
+Protokoll: `Atlas.IDE.Expert370.log` neben dem Plugin (Hänger stehen dort immer, auch ohne `Diagnose`).
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| W1 | Tools › Optionen › Atlas › „Wächter testen (1 s)“ | IDE steht 1 s; danach im Protokoll „Hänger ~1000 ms um …; Atlas: Wächter-Test, … ms; Fenster: Optionen“, darunter Zeilen `Modul+Offset` (u. a. `Atlas.IDE.Expert.bpl`, `kernel*.dll`) und „Sitzung: 1 Hänger …“ |
+| W1 | Tools › Optionen › Atlas › „Wächter testen (1 s)“ | IDE steht 1 s; danach im Protokoll „Hänger ~1000 ms um …; Atlas: Wächter-Test, … ms; Fenster: Optionen“, darunter Zeilen `Modul+Offset` (u. a. `Atlas.IDE.Expert370.bpl`, `kernel*.dll`) und „Sitzung: 1 Hänger …“ |
 | W2 | Normal arbeiten ohne Hänger | Keine Hänger-Zeilen im Protokoll |
 | W3 | Schwelle auf 2000 setzen, W1 wiederholen | Kein Eintrag (1 s liegt unter der Schwelle) |
 | W4 | Schwelle 500, „Hinweis im Meldungsfenster …“ an; einen Hänger über 2 s erzeugen (z. B. großes Projekt öffnen) | Zeile „Atlas: Die IDE hat n ms nicht reagiert“ in der Gruppe „Atlas“ des Meldungsfensters, kein Dialog |

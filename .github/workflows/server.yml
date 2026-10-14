@@ -79,9 +79,16 @@ jobs:
         with:
           name: dunitx-ergebnisse
           path: dunitx-ergebnisse.xml
-      - name: Plugin-BPL ablegen (Win32)
+      # Dateiname je IDE-Version (LIBSUFFIX AUTO), z. B. Atlas.IDE.Expert370.bpl (#281).
+      - name: Plugin-BPL ablegen (Win32, klassische IDE)
         uses: actions/upload-artifact@v4
         with:
           name: atlas-ide-expert-win32
-          path: Output/Win32/Debug/Bpl/Atlas.IDE.Expert.bpl
+          path: Output/Win32/Debug/Bpl/Atlas.IDE.Expert*.bpl
+          if-no-files-found: error
+      - name: Plugin-BPL ablegen (Win64, 64-Bit-IDE)
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-ide-expert-win64
+          path: Output/Win64/Debug/Bpl/Atlas.IDE.Expert*.bpl
           if-no-files-found: error
