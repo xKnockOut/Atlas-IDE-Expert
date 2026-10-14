@@ -128,8 +128,9 @@ type
     procedure SetProjects(const AProjects: TArray<string>);
     /// <summary>Projektkontexte aus der IDE (#396). Vor Initialize nur gemerkt, danach jeder neue oder
     /// geänderte als atlas/projectContext gemeldet. Vor SetProjects aufrufen, damit ein neues Projekt
-    /// gleich mit seinem Kontext geladen wird.</summary>
-    procedure SetProjectContexts(const AContexts: TArray<TAtlasProjectContext>);
+    /// gleich mit seinem Kontext geladen wird. Ergebnis: die neu gemeldeten oder für initialize
+    /// gemerkten Kontexte (fürs Diagnoseprotokoll).</summary>
+    function SetProjectContexts(const AContexts: TArray<TAtlasProjectContext>): TArray<TAtlasProjectContext>;
     procedure Initialize;
     /// <summary>Vor Initialize setzen (#397): workspace/applyEdit des Servers annehmen.</summary>
     property OnApplyEdit: TLspApplyEditProc read FOnApplyEdit write FOnApplyEdit;
@@ -980,21 +981,24 @@ begin
     TJSONObject.Create.AddPair('added', ProjectFolders(Added)).AddPair('removed', ProjectFolders(Removed)))));
 end;
 
-procedure TLspSession.SetProjectContexts(const AContexts: TArray<TAtlasProjectContext>);
+function TLspSession.SetProjectContexts(const AContexts: TArray<TAtlasProjectContext>):
+  TArray<TAtlasProjectContext>;
 var
   Context: TAtlasProjectContext;
   Known: string;
 begin
+  Result := nil;
   if not FInitialized then
   begin
     FContexts := AContexts;
-    Exit;
+    Exit(AContexts);
   end;
   for Context in AContexts do
     if not FSentContexts.TryGetValue(AnsiUpperCase(Context.Project), Known) or (Known <> Context.Key) then
     begin
       FSentContexts.AddOrSetValue(AnsiUpperCase(Context.Project), Context.Key);
       FClient.Notify('atlas/projectContext', Context.ToJson);
+      Result := Result + [Context];
     end;
 end;
 
