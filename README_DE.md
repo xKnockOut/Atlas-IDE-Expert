@@ -94,9 +94,11 @@ pwsh Tools/Check-ConsoleOutput.ps1         # kein Write/Writeln auf stdout
 
 ## CI
 
-- `vscode-erweiterung.yml`: Typprüfung, Build und `.vsix` als Artefakt auf einem gehosteten Ubuntu-Runner.
-- `server.yml`: Build der Projektgruppe über das IDE-Plugin `cc.ps1` (RAD Studio Starter hat kein msbuild) und DUnitX-Tests auf einem selbst gehosteten Windows-Runner (Labels `self-hosted`, `windows`, `delphi`, im angemeldeten Benutzerkontext). Läuft nur mit Repository-Variable `DELPHI_RUNNER=true`; `CC_SCRIPT` überschreibt den Pfad zu `cc.ps1`. Ergebnisse als Check „DUnitX-Ergebnisse“ im Pull Request.
-- `package-dependencies.yml`: Package-Abhängigkeiten und stdout-Regel.
+- `server.yml`: Build der Projektgruppe über das IDE-Plugin `cc.ps1` (RAD Studio Starter hat kein msbuild, ADR 0007) für Win64 und Win32, samt Plugin-BPL `Atlas.IDE.Expert.bpl` (Win32, als Artefakt abgelegt), und DUnitX-Tests (nur Win64, ADR 0008). Ergebnisse als Check „DUnitX-Ergebnisse“ im Pull Request.
+  - Der Job braucht einen selbst gehosteten Windows-Runner (Labels `self-hosted`, `windows`, `delphi`) auf dem Arbeitsrechner des Entwicklers. Er läuft im angemeldeten Benutzerkontext und nicht als Dienst, weil `cc.ps1` eine IDE startet, und nur, solange dieser Rechner eingeschaltet ist. Jeder Job startet eine eigene Scratch-IDE.
+  - Er läuft nur mit der Repository-Variablen `DELPHI_RUNNER=true`; sonst meldet der Job „uebersprungen“ das in der Zusammenfassung des Laufs. `CC_SCRIPT` überschreibt den Pfad zu `cc.ps1`.
+  - Ein neuer Push auf denselben Branch bricht den laufenden Build ab (`concurrency`).
+- `package-dependencies.yml`: Package-Abhängigkeiten, stdout-Regel, Delphi-12-Verträglichkeit, Regelkatalog, Konfigurationsdoku und keine Embarcadero-Quellen in `Tests/`.
 
 ## Kommandozeile
 

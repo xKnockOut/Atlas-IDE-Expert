@@ -94,9 +94,11 @@ pwsh Tools/Check-ConsoleOutput.ps1         # no Write/Writeln to stdout
 
 ## CI
 
-- `vscode-erweiterung.yml`: type check, build and `.vsix` as artifact on a hosted Ubuntu runner.
-- `server.yml`: build of the project group via the IDE plugin `cc.ps1` (RAD Studio Starter has no msbuild) and DUnitX tests on a self-hosted Windows runner (labels `self-hosted`, `windows`, `delphi`, in the signed-in user context). Runs only with the repository variable `DELPHI_RUNNER=true`; `CC_SCRIPT` overrides the path to `cc.ps1`. Results as the check "DUnitX-Ergebnisse" in pull requests.
-- `package-dependencies.yml`: package dependencies and the stdout rule.
+- `server.yml`: build of the project group via the IDE plugin `cc.ps1` (RAD Studio Starter has no msbuild, ADR 0007) for Win64 and Win32, including the plugin BPL `Atlas.IDE.Expert.bpl` (Win32, kept as an artifact), and DUnitX tests (Win64 only, ADR 0008). Results as the check "DUnitX-Ergebnisse" in pull requests.
+  - The job needs a self-hosted Windows runner (labels `self-hosted`, `windows`, `delphi`) on the developer's workstation. It runs in the signed-in user context, not as a service, because `cc.ps1` starts an IDE, and only while that machine is switched on. Every job starts its own scratch IDE.
+  - It runs only with the repository variable `DELPHI_RUNNER=true`; otherwise the job "uebersprungen" says so in the run summary. `CC_SCRIPT` overrides the path to `cc.ps1`.
+  - A new push to the same branch cancels the running build (`concurrency`).
+- `package-dependencies.yml`: package dependencies, the stdout rule, Delphi 12 compatibility, rule catalog, configuration docs and no Embarcadero sources in `Tests/`.
 
 ## Command line
 
