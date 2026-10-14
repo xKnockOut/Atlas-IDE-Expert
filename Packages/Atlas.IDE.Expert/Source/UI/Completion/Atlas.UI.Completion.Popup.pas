@@ -460,8 +460,11 @@ begin
     Text := TAtlasStrings.Fmt(TAtlasTextId.UnknownHeader, [FItems[FOrder[APosition + 1]].Unknown])
   else if (APosition < High(FOrder)) and (FOrder[APosition + 1] >= 0) then
   begin
+    // Komponenten aus dem Formular (#455): „Formular frmMain“.
+    if FItems[FOrder[APosition + 1]].Form <> '' then
+      Text := TAtlasStrings.Fmt(TAtlasTextId.FormHeader, [FItems[FOrder[APosition + 1]].Form])
     // Interface implementieren (#466): „Fehlende Methoden von IExporter, IFlush“.
-    if FItems[FOrder[APosition + 1]].Batch then
+    else if FItems[FOrder[APosition + 1]].Batch then
       Text := TAtlasStrings.Fmt(TAtlasTextId.BatchHeader, [FItems[FOrder[APosition + 1]].SetOf])
     else if FItems[FOrder[APosition + 1]].SetOf <> '' then
     begin
@@ -479,6 +482,9 @@ begin
       else
         Text := TAtlasStrings.Text(TAtlasTextId.OtherGroup);
     end
+    // Direkt nach den Komponenten des Formulars (#455) beginnt die übrige Liste.
+    else if (APosition > 0) and (FOrder[APosition - 1] >= 0) and (FItems[FOrder[APosition - 1]].Form <> '') then
+      Text := TAtlasStrings.Text(TAtlasTextId.OtherGroup)
     else if FItems[FOrder[APosition + 1]].DeclaringClass <> '' then
       Text := TAtlasStrings.Fmt(TAtlasTextId.InheritedFrom, [FItems[FOrder[APosition + 1]].DeclaringClass]);
   end;

@@ -49,7 +49,8 @@ type
     SettingsEditorKeysPriority, SettingsSlashCommands,
     SetFooterKeys, SetChosen, SetHeader, SetHeaderPlain,
     UnknownHeader,
-    BatchHeader);
+    BatchHeader,
+    FormHeader);
 
   TAtlasStrings = class
   private class var
@@ -172,7 +173,8 @@ const
      '%s · Menge von %s',
      'Menge von %s',
      '„%s“ ist unbekannt',
-     'Fehlende Methoden von %s'),
+     'Fehlende Methoden von %s',
+     'Formular %s'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -276,7 +278,8 @@ const
      '%s · set of %s',
      'Set of %s',
      '"%s" is unknown',
-     'Missing methods of %s'));
+     'Missing methods of %s',
+     'Form %s'));
 
 { TAtlasStrings }
 
