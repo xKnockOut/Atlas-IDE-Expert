@@ -16,6 +16,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
@@ -39,11 +40,14 @@ type
     FLock: TObject;
     FLibraryGeneration: Int64;
     FLibraryCount: Integer;
+    /// <summary>Laufende Anfragen je Kurzname (hover, diagnostic, wsDiagnostic); unter FLock.</summary>
+    FRunning: TDictionary<string, Integer>;
     FMapFile: Boolean;
     FIndexLoading: TFunc<Integer>;
     FTimeoutMs: TFunc<Cardinal>;
     /// <summary>Endzeile geschrieben; danach keine Zeilen mehr.</summary>
     FEnded: Boolean;
+    class function ShortMethod(const AMethod: string): string; static;
     function LibraryCount: Integer;
     procedure DescribeDocument(const AParams: TJSONValue; var ARequest: TDiagnosticRequest);
     class function CountOf(const AResult: TJSONValue): Integer; static;
@@ -82,12 +86,17 @@ implementation
 uses
   System.IOUtils,
   System.Hash,
+  System.StrUtils,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Logging.Providers.StreamSink,
   Atlas.Common.Logging.Providers.TransformSink,
   Atlas.Windows.Diagnostics.ProcessInfo;
+
+threadvar
+  /// <summary>Rechenzeit des Handler-Threads beim Start der Anfrage.</summary>
+  StartCpuMs: Int64;
 
 { TShellDiagnostics }
 
@@ -96,6 +105,7 @@ constructor TShellDiagnostics.Create(const AFolder, ATag: string; const ADocumen
 begin
   inherited Create;
   FLock := TObject.Create;
+  FRunning := TDictionary<string, Integer>.Create;
   FFolder := TDiagnosticLogFolder.Create(AFolder, ATag);
   FWriter := FFolder;
   FLogImpl := TDiagnosticLog.Create(FWriter, TDiagnosticFilter.Create(TProcessInfo.IdentityNames));
@@ -112,6 +122,7 @@ begin
   FLog := nil;
   FWriter := nil;
   FIds.Free;
+  FRunning.Free;
   FLock.Free;
   inherited;
 end;
@@ -279,9 +290,34 @@ begin
   Result := 1;
 end;
 
+class function TShellDiagnostics.ShortMethod(const AMethod: string): string;
+var
+  Slash: Integer;
+begin
+  // Ohne "/": Der Filter des Diagnoselogs verwirft Zeilen mit Schrägstrich.
+  Slash := LastDelimiter('/', AMethod);
+  Result := Copy(AMethod, Slash + 1, MaxInt);
+  if StartsText('workspace/', AMethod) and (Result <> '') then
+    Result := 'ws' + UpperCase(Result[1]) + Copy(Result, 2, MaxInt);
+end;
+
 procedure TShellDiagnostics.Started(const AMethod: string);
+var
+  Name: string;
+  Count: Integer;
 begin
   TRequestDiagnostics.Open;
+  StartCpuMs := TProcessInfo.ThreadCpuMs;
+  Name := ShortMethod(AMethod);
+  TMonitor.Enter(FLock);
+  try
+    if FRunning.TryGetValue(Name, Count) then
+      FRunning[Name] := Count + 1
+    else
+      FRunning.Add(Name, 1);
+  finally
+    TMonitor.Exit(FLock);
+  end;
 end;
 
 procedure TShellDiagnostics.Finished(const AMethod: string; const AParams, AResult: TJSONValue;
@@ -290,8 +326,39 @@ var
   Notes: TRequestNotes;
   Request: TDiagnosticRequest;
   Timeout: Cardinal;
+  CpuMs: Int64;
+  Name, Parallel: string;
+  Count: Integer;
+  Pair: TPair<string, Integer>;
 begin
   Notes := TRequestDiagnostics.Close;
+  // Rechenzeit gegen Laufzeit (#647): cpu weit unter ms heißt Warten (Sperre, volle CPU), nicht Rechnen.
+  CpuMs := TProcessInfo.ThreadCpuMs;
+  if (CpuMs >= 0) and (StartCpuMs >= 0) then
+    Notes.Notes := Notes.Notes + ['cpu=' + IntToStr(CpuMs - StartCpuMs)];
+  Name := ShortMethod(AMethod);
+  Parallel := '';
+  TMonitor.Enter(FLock);
+  try
+    if FRunning.TryGetValue(Name, Count) then
+    begin
+      if Count <= 1 then
+        FRunning.Remove(Name)
+      else
+        FRunning[Name] := Count - 1;
+    end;
+    // Was beim Ende dieser Anfrage noch läuft.
+    for Pair in FRunning do
+    begin
+      if Parallel <> '' then
+        Parallel := Parallel + ',';
+      Parallel := Parallel + Pair.Key + IntToStr(Pair.Value);
+    end;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  if Parallel <> '' then
+    Notes.Notes := Notes.Notes + ['parallel=' + Parallel];
   if FEnded or not FLog.Enabled then
     Exit;
   Request := Default(TDiagnosticRequest);

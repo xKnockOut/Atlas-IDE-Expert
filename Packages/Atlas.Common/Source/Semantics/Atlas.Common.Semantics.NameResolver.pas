@@ -134,6 +134,8 @@ type
     FHelpers: TDictionary<string, TResolvedSymbol>;
     // Units, die in diesem Resolver schon nicht gefunden wurden: nicht erneut suchen.
     FMissingUnits: TDictionary<string, Boolean>;
+    // Zeit im Nachladen (EnsureUnit) für das Diagnoselog (#647).
+    FEnsureMs: Int64;
     FClassState: Integer;
     FClass: TResolvedSymbol;
     FInferDepth: Integer;
@@ -252,6 +254,7 @@ implementation
 uses
   System.StrUtils,
   System.Math,
+  System.Diagnostics,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Semantics.Attributes;
@@ -540,6 +543,7 @@ end;
 function TNameResolver.FindUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
 var
   Namespace, Key: string;
+  Watch: TStopwatch;
 begin
   if SameText(AName, FCurrent.UnitName) then
   begin
@@ -558,11 +562,23 @@ begin
   Key := UpperCase(AName);
   if (FMissingUnits <> nil) and FMissingUnits.ContainsKey(Key) then
     Exit(False);
-  if FEnsureUnit(AName) and FIndex.FindUnit(AName, AUnit) then
-    Exit(True);
-  for Namespace in FNamespaces do
-    if FEnsureUnit(Namespace + '.' + AName) and FIndex.FindUnit(Namespace + '.' + AName, AUnit) then
-      Exit(True);
+  Watch := TStopwatch.StartNew;
+  try
+    // Der Unit-Resolver probiert die Namespaces selbst (SysUtils → System.SysUtils). Findet er AName
+    // nicht, findet er auch Namespace.AName nicht; ein Suchlauf je Namespace kostete bei einer
+    // fehlenden Unit ein Vielfaches (#647).
+    if FEnsureUnit(AName) then
+    begin
+      if FIndex.FindUnit(AName, AUnit) then
+        Exit(True);
+      for Namespace in FNamespaces do
+        if FIndex.FindUnit(Namespace + '.' + AName, AUnit) then
+          Exit(True);
+    end;
+  finally
+    Inc(FEnsureMs, Watch.ElapsedMilliseconds);
+    TRequestDiagnostics.Note('ensureMs', Integer(FEnsureMs));
+  end;
   // Diagnoselog (#647): Unit weder im Index noch über die Suchpfade gefunden; je Unit einmal.
   if FMissingUnits = nil then
     FMissingUnits := TDictionary<string, Boolean>.Create;

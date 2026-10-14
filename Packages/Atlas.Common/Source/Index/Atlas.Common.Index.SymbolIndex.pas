@@ -18,6 +18,9 @@ uses
   Atlas.Common.Index.Memory;
 
 type
+  /// <summary>Filter für Locations; const, damit nicht jedes Symbol kopiert wird.</summary>
+  TIndexSymbolFilter = reference to function(const ASymbol: TIndexSymbol): Boolean;
+
   TSymbolIndex = class(TInterfacedObject, ISymbolIndex)
   private
     FLock: TCriticalSection;
@@ -33,7 +36,7 @@ type
     FGeneration: Int64;
     procedure AddLocked(const AKey: string; const AUnit: TUnitIndex);
     procedure ShrinkLocked;
-    function Locations(const AFilter: TFunc<TIndexSymbol, Boolean>): TArray<TSymbolLocation>;
+    function Locations(const AFilter: TIndexSymbolFilter): TArray<TSymbolLocation>;
     procedure RemoveFileLocked(const AFileKey: string);
   public
     constructor Create;
@@ -138,6 +141,9 @@ var
   Existing: TUnitIndex;
 begin
   // Erst Bibliotheken, dann Projekt-Units; jeweils nur bis das Budget wieder reicht.
+  // Ohne Überschreitung nichts kopieren: AddUnit ruft das bei jeder Unit auf.
+  if (FBudget <= 0) or (FBytes <= FBudget) or (FCompactCount >= FFiles.Count) then
+    Exit;
   for Pass := 0 to 1 do
   begin
     Keys := FFiles.Keys.ToArray;
@@ -208,29 +214,29 @@ begin
   end;
 end;
 
-function TSymbolIndex.Locations(const AFilter: TFunc<TIndexSymbol, Boolean>): TArray<TSymbolLocation>;
+function TSymbolIndex.Locations(const AFilter: TIndexSymbolFilter): TArray<TSymbolLocation>;
 var
   Found: TList<TSymbolLocation>;
-  UnitIndex: TUnitIndex;
-  Symbol: TIndexSymbol;
+  Snapshot: TArray<TUnitIndex>;
+  UnitPos, SymbolPos: Integer;
   Location: TSymbolLocation;
 begin
+  // Nur den Schnappschuss unter der Sperre nehmen (#647): Der Durchlauf über alle
+  // Symbole (große Projekte über 500.000) hielt sonst FindUnit und FindFile jeder
+  // anderen Anfrage auf, solange Prüfregeln FindSymbols aufrufen. Zugriff über den
+  // Index statt for-in, damit die Symbol-Records nicht kopiert werden.
+  Snapshot := Units;
   Found := TList<TSymbolLocation>.Create;
   try
-    FLock.Enter;
-    try
-      for UnitIndex in FFiles.Values do
-        for Symbol in UnitIndex.Symbols do
-          if AFilter(Symbol) then
-          begin
-            Location.UnitName := UnitIndex.UnitName;
-            Location.FileName := UnitIndex.SymbolFile(Symbol);
-            Location.Symbol := Symbol;
-            Found.Add(Location);
-          end;
-    finally
-      FLock.Leave;
-    end;
+    for UnitPos := 0 to High(Snapshot) do
+      for SymbolPos := 0 to High(Snapshot[UnitPos].Symbols) do
+        if AFilter(Snapshot[UnitPos].Symbols[SymbolPos]) then
+        begin
+          Location.UnitName := Snapshot[UnitPos].UnitName;
+          Location.FileName := Snapshot[UnitPos].SymbolFile(Snapshot[UnitPos].Symbols[SymbolPos]);
+          Location.Symbol := Snapshot[UnitPos].Symbols[SymbolPos];
+          Found.Add(Location);
+        end;
     Result := Found.ToArray;
   finally
     Found.Free;
@@ -243,9 +249,10 @@ var
 begin
   Name := AName;
   Result := Locations(
-    function(ASymbol: TIndexSymbol): Boolean
+    function(const ASymbol: TIndexSymbol): Boolean
     begin
-      Result := SameText(ASymbol.Name, Name);
+      // Länge zuerst: trennt fast alle Symbole ohne Zeichenvergleich aus.
+      Result := (Length(ASymbol.Name) = Length(Name)) and SameText(ASymbol.Name, Name);
     end);
 end;
 
@@ -255,7 +262,7 @@ var
 begin
   Name := LastPart(ATypeName);
   Result := Locations(
-    function(ASymbol: TIndexSymbol): Boolean
+    function(const ASymbol: TIndexSymbol): Boolean
     var
       Ancestor: string;
     begin

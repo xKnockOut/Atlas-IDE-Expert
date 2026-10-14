@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 Alle nennenswerten Änderungen an Atlas (Server und VS-Code-Erweiterung).
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionen nach [SemVer](https://semver.org/lang/de/).
@@ -53,6 +53,9 @@ Server und Erweiterung tragen immer dieselbe Version.
 - In einer Projektgruppe las jedes Projekt die über uses ohne Namespace erreichten Units (`Forms` statt `Vcl.Forms`) erneut ein, obwohl ein anderes Projekt sie schon indiziert hatte (#647).
 - Diagnoselog: Zeilen `index project#N start/projectStage/done` mit Dateizahlen, Zeiten und Cache-Treffern sowie der Zeit für das Suchen der Unit-Dateien und das Parsen (#647).
 - Ein Neuaufbau des Index gab die Unit-Suche frei, während Anfragen sie über den alten Index noch nutzten; das konnte den Server abstürzen lassen (#647).
+- Die Symbolsuche über den ganzen Index (Prüfregeln für Formulare, Vererbung und Datenbindung, CodeLens, Implementierungen) hielt die Indexsperre, solange sie alle Symbole durchlief; Hover und Vervollständigung warteten in großen Projekten so bis zu Minuten. Die Suche läuft jetzt auf einem Schnappschuss ohne Sperre und ohne die Symbole zu kopieren (#647).
+- Eine fehlende Unit wurde für jeden Unit-Namespace des Projekts erneut in allen Suchpfaden gesucht, obwohl die Unit-Suche die Namespaces schon selbst durchprobiert (#647).
+- Diagnoselog: Je Anfrage `cpu` (Rechenzeit des Threads), `parallel` (was gleichzeitig lief), `treeMs` (Warten auf den Syntaxbaum) und `ensureMs` (Nachladen von Units) (#647).
 
 ## [0.1.0] - 2026-10-08
 

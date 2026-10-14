@@ -1517,6 +1517,7 @@ begin
   Tree := Shared.Tree;
   ACancellation.ThrowIfCancellationRequested;
   ParseMs := Watch.ElapsedMilliseconds;
+  TRequestDiagnostics.Note('treeMs', Integer(ParseMs));
   TRequestDiagnostics.Note('syntaxErr', Length(Tree.Diagnostics));
   Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
