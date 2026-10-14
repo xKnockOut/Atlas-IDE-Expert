@@ -20,6 +20,7 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.Guard,
+  System.Classes,
   Vcl.Forms,
   ToolsAPI,
   Atlas.Core.Settings.Plugin,
@@ -90,8 +91,20 @@ begin
       Settings := TAtlasIdeSettings.Current;
       FPage.SaveTo(Settings);
       TAtlasIdeSettings.Update(Settings);
-      TAtlasIdeStructureSwitch.Sync;
     end;
+    // Strukturhervorhebung und Help Insight der IDE erst nach dem Dialog abgleichen: Mit OK
+    // schreibt die IDE danach ihre Editoroptionen aus dem Speicher zurück, auch die Schalter,
+    // die Atlas abgeschaltet hatte. Sonst zeigt sie ab dem nächsten Start wieder beide Tooltips.
+    if Accepted then
+      TThread.ForceQueue(nil,
+        procedure
+        begin
+          TAtlasGuard.Run(TAtlasFeature.Settings,
+            procedure
+            begin
+              TAtlasIdeStructureSwitch.Sync;
+            end);
+        end);
     FPage := nil;
   except
     on E: Exception do
