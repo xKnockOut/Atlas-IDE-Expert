@@ -12,6 +12,11 @@ claude mcp add delphi -- AtlasServer.exe --mcp --root C:\Projekte\App
 aktuelle Verzeichnis. `--log <Datei>` schreibt ein Protokoll, stdout gehört allein
 dem Protokoll.
 
+Liegt in `--root` genau eine `.groupproj`, indiziert der Server zusätzlich alle
+übrigen Projekte der Gruppe in denselben Index (`index.projectGroup`, Standard an).
+So findet er auch Units, die nur ein anderes Projekt der Gruppe enthält, wenn
+`project` in `atlas.json` auf ein einzelnes Projekt zeigt.
+
 Pfadparameter (#99): relativ zu `--root` oder absolut; sie werden normalisiert
 (`..`, Junctions, Symlinks, subst-Laufwerke aufgelöst) und nur im Arbeitsordner
 sowie in den Such- und Bibliothekspfaden des Projekts angenommen. Alles andere
