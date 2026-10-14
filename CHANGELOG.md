@@ -7,6 +7,7 @@ Server und Erweiterung tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Kontrollfluss (#143): Übergabe an var-/out-Parameter oder an Routinen mit unbekannter Signatur (`TryGetValue(K, Result)`, `SetLength`, `FillChar`), `@X`/`Addr(X)`, Teilzuweisungen (`X.Feld := …`, `X[I] := …`), Methodenaufrufe auf X, `with X` und anonyme Methoden ergeben `Unknown` statt einer Vermutung; Signaturen aus derselben Datei (Parameter tragen jetzt ihren Modifizierer im Syntaxbaum) und der Standardroutinen; neue Abfrage `MayReadBeforeWrite`; Syntaxfehler irgendwo in der Routine ergeben `Unknown`.
 - Linter: `--source-root` (Standard Git-Wurzel) für SARIF-Pfade mit `%SRCROOT%` und `originalUriBaseIds`, Dateien außerhalb als `file:`-URI; SARIF-Texte englisch ohne Konfidenz-Zusatz (Konfidenz in `properties.confidence`); `--fail-on error|warning|never` (#95).
 - Sprachmerkmale je Delphi-Version: Ziffern-Trennzeichen und Binärliterale (ab Delphi 11), `is not` und `not in` (ab Delphi 13, auch im Parser); Meldungen nennen den Produktnamen, inaktive Zweige wie `{$IF CompilerVersion >= 33}` bleiben stumm; unbekannte BDS-Nummern in `delphiVersion` erzeugen eine Konfigurationswarnung (#109).
 - Regeln `with-statement` (Hinweis) und `unreachable-code` (Warnung, erste Anweisung eines unerreichbaren Abschnitts); das Referenz-Testprojekt trennt FireDAC in das optionale Projekt `RefDaten` und wird über `Tools/Build-Referenzprojekt.ps1` für Win32 und Win64 gebaut (#94).
@@ -49,6 +50,7 @@ Server und Erweiterung tragen immer dieselbe Version.
 - Linter: Exit-Code 1 nur noch, wenn ein Treffer `--fail-on` erreicht (Standard: ein Fehler), sonst 0; bisher 1 bei Warnungen und 2 bei Fehlern. 3 bleibt für Aufruf- und Lesefehler (#95).
 
 ### Behoben
+- Dominanz: Unerreichbarer Code nach `Exit` hob die Dominanz für gemeinsame Nachfolger auf (#143).
 - Fehlalarme in der Problemliste zu Atlas selbst (#647): Signaturvergleich übergeht Standardwerte und andere Gruppierung der Parameter (`const A, B: string` gegen `const A: string; const B: string = ''`); `unresolved-identifier` kennt Typumwandlungen und Typhelfer eingebauter Typen (`Integer(X)`, `PChar(S)`), den Anfang qualifizierter Unit-Namen (`Winapi.Windows.X`), Felder und Methoden in Methoden innerer Klassen (`TAussen.TInnen.Lauf`), `AtomicIncrement` & Co., `MaxInt` und `HInstance`; `result-not-set` meldet keine Funktionen mehr, die Result im try-Teil eines try/finally setzen (der Weg einer Ausnahme lief nach dem finally normal weiter).
 - Hover, Diagnosen und Befehle warteten bei fehlenden Units minutenlang: Das Nachladen einer Unit hielt eine serverweite Sperre, und Ausdrücke wie `Form1.Edit1.Text` durchsuchten für jedes Präfix die Suchpfade aller Projekte. Nachgeladen wird jetzt ohne die Sperre, nur für Units aus `uses` und je Anfrage einmal (#647).
 - Probleme der nicht geöffneten Projektdateien werden erst nach dem Indexaufbau geprüft und danach neu bewertet; vorher liefen sie dauernd mit und meldeten fehlende Units, die nur noch nicht indiziert waren (#647).

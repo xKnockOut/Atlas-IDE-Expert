@@ -192,12 +192,15 @@ var
   Routines: TArray<TSyntaxNode>;
   Routine, Header, Block: TSyntaxNode;
   Graph: TControlFlowGraph;
+  Lookup: TFlowSignatureLookup;
   Name: string;
 begin
   if AContext.Tree = nil then
     Exit;
   Routines := nil;
   CollectRoutines(AContext.Tree.Root, Routines);
+  // Signaturen der Datei einmal je Prüfung lesen, nicht je Routine (#143).
+  Lookup := TFlowSignatures.FromTree(AContext.Tree.Root);
   for Routine in Routines do
   begin
     Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
@@ -208,7 +211,7 @@ begin
     Name := ShortName(Routine.Name);
     if HasOpaqueUse(Block, 'Result') or HasOpaqueUse(Block, Name) or ContainsKind(Block, TSyntaxKind.InheritedExpr) then
       Continue;
-    Graph := TControlFlowGraph.Build(Routine);
+    Graph := TControlFlowGraph.Build(Routine, Lookup);
     try
       // Alte Schreibweise: Zuweisung an den Funktionsnamen setzt ebenfalls das Ergebnis.
       if (Graph.MayEndWithout('Result') = TFlowAnswer.Yes) and (Graph.MayEndWithout(Name) = TFlowAnswer.Yes) then
@@ -234,6 +237,7 @@ var
   Routines: TArray<TSyntaxNode>;
   Routine, Block, Section, Decl, TypeNode: TSyntaxNode;
   Graph: TControlFlowGraph;
+  Lookup: TFlowSignatureLookup;
   Index, Inner: Integer;
   Name, TypeName: string;
   Confidence: TRuleConfidence;
@@ -279,6 +283,8 @@ begin
     Exit;
   Routines := nil;
   CollectRoutines(AContext.Tree.Root, Routines);
+  // Signaturen der Datei einmal je Prüfung lesen, nicht je Routine (#143).
+  Lookup := TFlowSignatures.FromTree(AContext.Tree.Root);
   for Routine in Routines do
   begin
     Block := Routine.FindChild(TSyntaxKind.Block);
@@ -309,7 +315,7 @@ begin
             if HasOpaqueUse(Block, Name.Trim) then
               Continue;
             if Graph = nil then
-              Graph := TControlFlowGraph.Build(Routine);
+              Graph := TControlFlowGraph.Build(Routine, Lookup);
             if not Graph.Complete then
               Break;
             Reported := False;
@@ -358,6 +364,7 @@ var
   Dead: TArray<TSyntaxNode>;
   Routine: TSyntaxNode;
   Graph: TControlFlowGraph;
+  Lookup: TFlowSignatureLookup;
   Unreachable: TArray<TFlowNode>;
   Node: TFlowNode;
 
@@ -415,9 +422,11 @@ begin
     Exit;
   Routines := nil;
   CollectRoutines(AContext.Tree.Root, Routines);
+  // Signaturen der Datei einmal je Prüfung lesen, nicht je Routine (#143).
+  Lookup := TFlowSignatures.FromTree(AContext.Tree.Root);
   for Routine in Routines do
   begin
-    Graph := TControlFlowGraph.Build(Routine);
+    Graph := TControlFlowGraph.Build(Routine, Lookup);
     try
       if not Graph.Complete then
         Continue;

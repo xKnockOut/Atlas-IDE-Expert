@@ -705,6 +705,7 @@ var
   Routine, Section, Decl: TSyntaxNode;
   Info: TRoutineInfo;
   Graph: TControlFlowGraph;
+  Lookup: TFlowSignatureLookup;
   Patterns, Names: TArray<string>;
   Index, Inner: Integer;
   Name: string;
@@ -773,7 +774,7 @@ var
     if Writes.Count = 0 then
       Exit;
     if Graph = nil then
-      Graph := TControlFlowGraph.Build(Routine);
+      Graph := TControlFlowGraph.Build(Routine, Lookup);
     if not Graph.Complete then
       Exit;
     for Write in Writes do
@@ -803,6 +804,8 @@ begin
   Patterns := IgnorePatterns(AContext.Options);
   Routines := nil;
   CollectRoutines(AContext.Tree.Root, Routines);
+  // Signaturen der Datei einmal je Prüfung lesen, nicht je Routine (#143).
+  Lookup := TFlowSignatures.FromTree(AContext.Tree.Root);
   Writes := TList<TSyntaxNode>.Create;
   Reads := TList<TSyntaxNode>.Create;
   try
