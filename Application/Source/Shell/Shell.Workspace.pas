@@ -106,6 +106,10 @@ type
     function Project(out AProject: TProjectInfo): Boolean;
     /// <summary>Für das Projekt gewählte Delphi-Version (z. B. "23.0", #47); '' ohne Installation. Threadsicher.</summary>
     function DelphiVersion: string;
+    /// <summary>Ordner der Delphi-Installation ($(BDS)); '' ohne Installation. Threadsicher.</summary>
+    function BdsRoot: string;
+    /// <summary>Fortschritt des laufenden Indexaufbaus in Prozent; -1, wenn keiner läuft (#647).</summary>
+    function IndexLoading: Integer;
     /// <summary>Letzter Indexlauf für den Status-Befehl (#28). Threadsicher.</summary>
     function IndexStatus: TWorkspaceStatus;
     property Root: string read FRoot;
@@ -326,6 +330,24 @@ begin
   finally
     TMonitor.Exit(FLock);
   end;
+end;
+
+function TShellWorkspace.BdsRoot: string;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FBdsRoot;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+function TShellWorkspace.IndexLoading: Integer;
+begin
+  if FProgress.Active then
+    Result := FProgress.Percent
+  else
+    Result := -1;
 end;
 
 function TShellWorkspace.Project(out AProject: TProjectInfo): Boolean;

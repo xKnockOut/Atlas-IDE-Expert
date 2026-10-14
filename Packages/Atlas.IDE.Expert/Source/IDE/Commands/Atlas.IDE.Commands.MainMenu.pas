@@ -9,6 +9,7 @@
 // Index des Servers (#492): Der Titel zeigt eine laufende Indizierung
 // ("Atlas – Index 45 %"); „Index-Status“ schreibt die Kennzahlen in die
 // Meldungsansicht, „Index neu aufbauen“ liest alles ohne Cache neu ein.
+// „Diagnoselog exportieren…“ (#647) packt das anonymisierte Log in eine ZIP.
 
 interface
 
@@ -39,6 +40,7 @@ type
     procedure TimerTick(Sender: TObject);
     procedure IndexStatusClick(Sender: TObject);
     procedure IndexRebuildClick(Sender: TObject);
+    procedure DiagnosticExportClick(Sender: TObject);
     procedure RootClick(Sender: TObject);
     procedure ToggleClick(Sender: TObject);
     procedure ProjectClick(Sender: TObject);
@@ -62,6 +64,7 @@ uses
   Atlas.IDE.Settings.Store,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Editor.Structure,
+  Atlas.IDE.Diagnostics.Export,
   Atlas.Core.Lsp.Progress;
 
 const
@@ -123,6 +126,10 @@ begin
   Item := TMenuItem.Create(FRoot);
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.MenuIndexRebuild);
   Item.OnClick := IndexRebuildClick;
+  FRoot.Add(Item);
+  Item := TMenuItem.Create(FRoot);
+  Item.Caption := TAtlasStrings.Text(TAtlasTextId.DiagExportMenu);
+  Item.OnClick := DiagnosticExportClick;
   FRoot.Add(Item);
   FRoot.Add(NewLine);
   Item := TMenuItem.Create(FRoot);
@@ -297,6 +304,15 @@ begin
       finally
         Answer.Free;
       end;
+    end);
+end;
+
+procedure TAtlasMainMenu.DiagnosticExportClick(Sender: TObject);
+begin
+  TAtlasGuard.Run(TAtlasFeature.Menu,
+    procedure
+    begin
+      TAtlasIdeDiagnosticExport.Execute(FMessage);
     end);
 end;
 

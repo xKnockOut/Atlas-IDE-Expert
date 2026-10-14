@@ -72,6 +72,7 @@
         <DCCReference Include="Windows\Projects\Atlas.Windows.Projects.DelphiInstallation.Tests.pas"/>
         <DCCReference Include="Common\Compiler\Atlas.Common.Compiler.Tests.pas"/>
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.MapFile.Tests.pas"/>
+        <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.Tests.pas"/>
         <DCCReference Include="Windows\Compiler\Atlas.Windows.Compiler.Adapters.ProcessRunner.Tests.pas"/>
         <DCCReference Include="Common\Documents\Atlas.Common.Documents.Providers.DocumentStore.Tests.pas"/>
         <DCCReference Include="Common\Documents\Atlas.Common.Documents.Uris.Tests.pas"/>
@@ -248,6 +249,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.Schema.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.SchemaData.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Guard.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Export.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.Progress.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Commands\Atlas.Core.Commands.KeyConflicts.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.KeyConflicts.Tests.pas"/>
@@ -289,9 +291,11 @@
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.Paths.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Workspace.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Diagnostics.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.Freshness.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.EditTools.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Diagnostics.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

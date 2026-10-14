@@ -22,6 +22,7 @@ type
     FLock: TObject;
     FLastReport: TStopwatch;
     FActive: Boolean;
+    FPercent: Integer;
     procedure SendProgress(const AKind, ATitleOrMessage: string; APercent: Integer);
   public
     const MinReportIntervalMs = 200;
@@ -34,6 +35,8 @@ type
     /// <summary>Adapter für den Symbolindex.</summary>
     function AsIndexProgress: TIndexProgressEvent;
     property Active: Boolean read FActive;
+    /// <summary>Zuletzt gemeldeter Fortschritt, auch wenn die Meldung gedrosselt wurde (#647); -1 ohne.</summary>
+    property Percent: Integer read FPercent;
   end;
 
 implementation
@@ -105,6 +108,7 @@ begin
     end;
     SendProgress('begin', ATitle, 0);
     FActive := True;
+    FPercent := 0;
     FLastReport := TStopwatch.StartNew;
   finally
     TMonitor.Exit(FLock);
@@ -115,6 +119,8 @@ procedure TLspWorkDoneProgress.Report(const AMessage: string; APercent: Integer)
 begin
   TMonitor.Enter(FLock);
   try
+    if FActive and (APercent >= 0) then
+      FPercent := APercent;
     if not FActive or (FLastReport.ElapsedMilliseconds < MinReportIntervalMs) then
       Exit;
     SendProgress('report', AMessage, APercent);

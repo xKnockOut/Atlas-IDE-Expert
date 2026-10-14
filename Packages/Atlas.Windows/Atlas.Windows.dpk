@@ -40,6 +40,7 @@ contains
   Atlas.Windows.Diagnostics.DebugOutput in 'Source\Diagnostics\Atlas.Windows.Diagnostics.DebugOutput.pas',
   Atlas.Windows.Diagnostics.Adapters.DebugOutputSink in 'Source\Diagnostics\Atlas.Windows.Diagnostics.Adapters.DebugOutputSink.pas',
   Atlas.Windows.Diagnostics.StackTrace in 'Source\Diagnostics\Atlas.Windows.Diagnostics.StackTrace.pas',
+  Atlas.Windows.Diagnostics.ProcessInfo in 'Source\Diagnostics\Atlas.Windows.Diagnostics.ProcessInfo.pas',
   Atlas.Windows.Process.ParentWatcher in 'Source\Process\Atlas.Windows.Process.ParentWatcher.pas',
   Atlas.Windows.Projects.DelphiInstallation in 'Source\Projects\Atlas.Windows.Projects.DelphiInstallation.pas',
   Atlas.Windows.Compiler.Adapters.ProcessRunner in 'Source\Compiler\Atlas.Windows.Compiler.Adapters.ProcessRunner.pas',

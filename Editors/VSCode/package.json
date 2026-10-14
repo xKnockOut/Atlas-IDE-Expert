@@ -285,6 +285,11 @@
           "default": 10000,
           "markdownDescription": "Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet. atlas.json im Projekt hat Vorrang."
         },
+        "atlas.diagnostics": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Anonymisiertes Diagnoselog des Servers (je Anfrage Dauer, Ergebnis und Grundcode, je Lauf Start und Ende mit Grund). Es enthält keine Pfade, keine Projekt-, Unit- oder Bezeichnernamen und keinen Quelltext und lässt sich über „Diagnoselog exportieren“ weitergeben. atlas.json im Projekt hat Vorrang."
+        },
         "atlas.highlight": {
           "type": "object",
           "default": {},

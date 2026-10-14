@@ -67,6 +67,7 @@ type
     procedure ReadHighlight(ANode: TJsonNode);
     procedure ReadCompiler(ANode: TJsonNode);
     procedure ReadCompletion(ANode: TJsonNode);
+    procedure ReadDiagnostics(ANode: TJsonNode);
     procedure ReadFormat(ANode: TJsonNode);
     function ExpectBoolean(ANode: TJsonNode; const AName: string; var AValue: Boolean): Boolean;
     /// <summary>Wurzel oder nil nach gemeldetem Syntaxfehler.</summary>
@@ -826,6 +827,37 @@ begin
   end;
 end;
 
+procedure TValidator.ReadDiagnostics(ANode: TJsonNode);
+var
+  Index, Days: Integer;
+  Key: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"diagnostics" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if Key = 'log' then
+      ExpectBoolean(ANode[Index], Key, FSettings.DiagnosticsLog)
+    else if Key = 'logDays' then
+    begin
+      if (ANode[Index].Kind = TJsonKind.Number) and TryStrToInt(ANode[Index].Value, Days) and (Days >= 1) and
+        (Days <= 365) then
+        FSettings.DiagnosticsLogDays := Days
+      else
+        ReportNode(ANode[Index], '"diagnostics.logDays" muss eine ganze Zahl von 1 bis 365 sein');
+    end
+    else if Key = 'logMapFile' then
+      ExpectBoolean(ANode[Index], Key, FSettings.DiagnosticsLogMapFile)
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "diagnostics.%s"', [Key]), False);
+  end;
+end;
+
 procedure TValidator.ReadFormat(ANode: TJsonNode);
 var
   Index, Size: Integer;
@@ -1019,6 +1051,8 @@ begin
         ReadCompiler(Value)
       else if Key = 'completion' then
         ReadCompletion(Value)
+      else if Key = 'diagnostics' then
+        ReadDiagnostics(Value)
       else if Key = 'usesCommand' then
         ExpectBoolean(Value, Key, FSettings.UsesCommand)
       else if Key = 'slashCommands' then
@@ -1249,6 +1283,12 @@ begin
       Result.Compiler := FileSettings.Compiler
     else if Key = 'completion' then
       Result.Completion := FileSettings.Completion
+    else if Key = 'diagnostics' then
+    begin
+      Result.DiagnosticsLog := FileSettings.DiagnosticsLog;
+      Result.DiagnosticsLogDays := FileSettings.DiagnosticsLogDays;
+      Result.DiagnosticsLogMapFile := FileSettings.DiagnosticsLogMapFile;
+    end
     else if Key = 'usesCommand' then
       Result.UsesCommand := FileSettings.UsesCommand
     else if Key = 'slashCommands' then

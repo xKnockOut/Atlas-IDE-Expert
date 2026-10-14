@@ -134,6 +134,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.Attributes,
   Atlas.Common.Index.Extractor,
+  Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Lsp.Internals.Cancellation;
 
 function SplitLines(const AText: string): TArray<string>;
@@ -501,12 +502,18 @@ begin
       begin
         Result.Declaration := Token.Text;
         Result.Value := THoverValues.FormatNumber(Number);
-      end;
+      end
+      else
+        TRequestDiagnostics.Reason('numberUnparsed');
       Exit;
     end;
   Targets := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
   if Length(Targets) = 0 then
+  begin
+    // Grundcodes für das Diagnoselog (#647).
+    TRequestDiagnostics.Reason('noTarget');
     Exit;
+  end;
   Start := Targets[0].Range.StartPos;
   // Unit-Namen: Ziel ist der Dateianfang. Vor dem Lesen der Datei prüfen,
   // denn dafür wird ihr Text nicht gebraucht.
@@ -524,10 +531,16 @@ begin
   if SameText(Targets[0].FileName, AFileName) then
     Text := ATreeText
   else if not (Assigned(AReadText) and AReadText(Targets[0].FileName, Text)) then
+  begin
+    TRequestDiagnostics.Reason('declarationUnreadable');
     Exit;
+  end;
   Lines := SplitLines(Text);
   if (Start.Line < 0) or (Start.Line > High(Lines)) then
+  begin
+    TRequestDiagnostics.Reason('declarationOutOfRange');
     Exit;
+  end;
   Result.Declaration := TrimRight(Copy(Lines[Start.Line], Start.Character + 1, MaxInt));
   Result.Documentation := DocumentationAbove(Lines, Start.Line);
   Result.Deprecation := THoverValues.Deprecation(DeclarationText(Lines, Targets[0].Range));
@@ -540,7 +553,10 @@ begin
     if SameText(Targets[0].FileName, AFileName) then
       OwnerUnit := TIndexExtractor.Extract(ATree, AFileName)
     else
+    begin
+      TRequestDiagnostics.Reason('unitNotIndexed');
       Exit;
+    end;
   if not SameText(Targets[0].FileName, OwnerUnit.FileName) then
     Result.UnitName := OwnerUnit.UnitName + ' (' + ExtractFileName(Targets[0].FileName) + ')'
   else if not SameText(Targets[0].FileName, AFileName) then
@@ -659,8 +675,12 @@ begin
     Tree := OwnTree;
   end
   else
+  begin
+    TRequestDiagnostics.Reason('documentNotOpen');
     Exit(TJSONNull.Create);
+  end;
   try
+    TRequestDiagnostics.Note('syntaxErr', Length(Tree.Diagnostics));
     if Assigned(FVersionProvider) then
       DelphiVersion := FVersionProvider(Uri)
     else
@@ -689,7 +709,10 @@ begin
       // Seltene Schlüsselwörter und Direktiven (#187), wenn kein Symbol so heißt.
       if not TKeywordReference.HoverAt(Text, TLspPositions.ReadPosition(PositionValue), DelphiVersion,
         Markdown) then
+      begin
+        TRequestDiagnostics.DefaultReason('noSymbol');
         Exit(TJSONNull.Create);
+      end;
       Contents := TJSONObject.Create;
       Contents.AddPair('kind', 'markdown');
       Contents.AddPair('value', Markdown);

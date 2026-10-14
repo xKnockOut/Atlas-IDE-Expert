@@ -103,6 +103,11 @@
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.CommandLine.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.Results.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.MapFile.pas"/>
+        <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.Contract.pas"/>
+        <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.Anonymizer.pas"/>
+        <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.RequestScope.pas"/>
+        <DCCReference Include="Source\Diagnostics\Providers\Atlas.Common.Diagnostics.Providers.Log.pas"/>
+        <DCCReference Include="Source\Diagnostics\Adapters\Atlas.Common.Diagnostics.Adapters.LogFolder.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Contract.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.SymbolIndex.pas"/>

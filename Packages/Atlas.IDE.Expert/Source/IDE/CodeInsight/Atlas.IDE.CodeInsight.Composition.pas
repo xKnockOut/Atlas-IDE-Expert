@@ -30,6 +30,7 @@ uses
   Atlas.Core.Diagnostics.Hangs,
   Atlas.IDE.Settings.Store,
   Atlas.IDE.Diagnostics.Watchdog,
+  Atlas.IDE.Diagnostics.Export,
   Atlas.IDE.Files.Reloader,
   Atlas.IDE.Commands.Palette,
   Atlas.IDE.Editor.Pairs,
@@ -131,6 +132,15 @@ begin
     begin
       if CheckOnSave <> nil then
         CheckOnSave.CheckNow;
+    end);
+  Palette.RegisterCommand('Atlas.ExportDiagnostics', TAtlasStrings.Text(TAtlasTextId.DiagExportMenu), '',
+    procedure
+    begin
+      TAtlasIdeDiagnosticExport.Execute(
+        procedure(AText: string)
+        begin
+          GuardWarning(AText);
+        end);
     end);
   Palette.RegisterCommand('Atlas.ProjectSettings', TAtlasStrings.Text(TAtlasTextId.ProjectSettingsTitle), '',
     procedure

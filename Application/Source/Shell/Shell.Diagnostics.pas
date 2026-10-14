@@ -1,0 +1,309 @@
+﻿unit Shell.Diagnostics;
+
+// Host-Rolle Shell: Anbindung des anonymisierten Diagnoselogs (#647).
+// - Beobachter des Dispatchers: je Anfrage Dauer, Wartezeit, Ergebnis mit
+//   Grundcode, Dokument als Kurz-ID mit Version, Länge und Prüfsumme, Position
+//   als Zahlen und Zustand des Index.
+// - Start und Ende des Serverlaufs mit Grund, Speicher und Threads; bei einer
+//   Exception Klasse und Aufrufstapel (Adressen und Atlas-eigene Routinen aus
+//   der Map-Datei, ohne Dateinamen).
+// - Läufe, die ohne Endzeile aufhörten (Prozess von der IDE beendet oder
+//   abgestürzt), meldet der nächste Start.
+// Ordner: %LOCALAPPDATA%\Atlas\Logs\Diagnose, eine Datei je Tag und Prozess.
+
+interface
+
+uses
+  System.SysUtils,
+  System.JSON,
+  Atlas.Common.JsonRpc.Dispatcher,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Diagnostics.Contract,
+  Atlas.Common.Diagnostics.Anonymizer,
+  Atlas.Common.Diagnostics.Providers.Log,
+  Atlas.Common.Diagnostics.Adapters.LogFolder;
+
+type
+  TShellDiagnostics = class(TInterfacedObject, IJsonRpcRequestObserver)
+  private
+    FLogImpl: TDiagnosticLog;
+    FLog: IDiagnosticLog;
+    FFolder: TDiagnosticLogFolder;
+    FWriter: IDiagnosticWriter;
+    FIds: TDiagnosticIds;
+    FDocuments: IDocumentStore;
+    FIndex: ISymbolIndex;
+    FLock: TObject;
+    FLibraryGeneration: Int64;
+    FLibraryCount: Integer;
+    FMapFile: Boolean;
+    FIndexLoading: TFunc<Integer>;
+    FTimeoutMs: TFunc<Cardinal>;
+    function LibraryCount: Integer;
+    procedure DescribeDocument(const AParams: TJSONValue; var ARequest: TDiagnosticRequest);
+    class function CountOf(const AResult: TJSONValue): Integer; static;
+  public
+    /// <summary>AFolder: Ordner der Tagesdateien; ATag unterscheidet die Prozesse.</summary>
+    constructor Create(const AFolder, ATag: string; const ADocuments: IDocumentStore; const AIndex: ISymbolIndex);
+    destructor Destroy; override;
+    class function DefaultFolder: string; static;
+    { IJsonRpcRequestObserver }
+    procedure Started(const AMethod: string);
+    procedure Finished(const AMethod: string; const AParams, AResult: TJSONValue; const AError: Exception;
+      AQueueMs, AElapsedMs: Int64);
+    /// <summary>Startzeile und Meldung früherer Läufe ohne Ende.</summary>
+    procedure BeginRun(const AVersion: string; AMemoryBytes: Int64);
+    /// <summary>Endzeile; AError nur bei einer unbehandelten Exception.</summary>
+    procedure EndRun(AReason: TDiagnosticEndReason; AExitCode: Integer; AMemoryBytes: Int64;
+      const AError: Exception = nil);
+    procedure ApplySettings(const ASettings: TServerSettings);
+    /// <summary>Feste Methodennamen, die "/" enthalten dürfen.</summary>
+    procedure AllowMethods(const AMethods: TArray<string>);
+    /// <summary>Ordner der Delphi-Installation: Units darunter erscheinen mit Namen.</summary>
+    procedure SetLibraryRoots(const ARoots: TArray<string>);
+    property Log: IDiagnosticLog read FLog;
+    /// <summary>Fortschritt des Indexaufbaus in Prozent, -1 ohne Aufbau.</summary>
+    property IndexLoading: TFunc<Integer> read FIndexLoading write FIndexLoading;
+    /// <summary>Zeitlimit für Anfragen; abgebrochene Anfragen ab dieser Dauer gelten als timeout.</summary>
+    property TimeoutMs: TFunc<Cardinal> read FTimeoutMs write FTimeoutMs;
+  end;
+
+implementation
+
+uses
+  System.IOUtils,
+  System.Hash,
+  Atlas.Common.JsonRpc.Contract,
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Diagnostics.RequestScope,
+  Atlas.Windows.Diagnostics.ProcessInfo;
+
+{ TShellDiagnostics }
+
+constructor TShellDiagnostics.Create(const AFolder, ATag: string; const ADocuments: IDocumentStore;
+  const AIndex: ISymbolIndex);
+begin
+  inherited Create;
+  FLock := TObject.Create;
+  FFolder := TDiagnosticLogFolder.Create(AFolder, ATag);
+  FWriter := FFolder;
+  FLogImpl := TDiagnosticLog.Create(FWriter, TDiagnosticFilter.Create(TProcessInfo.IdentityNames));
+  FLog := FLogImpl;
+  FIds := TDiagnosticIds.Create;
+  FDocuments := ADocuments;
+  FIndex := AIndex;
+  FLibraryGeneration := -1;
+end;
+
+destructor TShellDiagnostics.Destroy;
+begin
+  FLogImpl.Flush;
+  FLog := nil;
+  FWriter := nil;
+  FIds.Free;
+  FLock.Free;
+  inherited;
+end;
+
+class function TShellDiagnostics.DefaultFolder: string;
+begin
+  Result := TPath.Combine(TPath.Combine(TPath.Combine(TPath.GetCachePath, 'Atlas'), 'Logs'), 'Diagnose');
+end;
+
+procedure TShellDiagnostics.AllowMethods(const AMethods: TArray<string>);
+begin
+  // Nur beim Start gesetzt, bevor Anfragen laufen.
+  FLogImpl.Filter.Allowed := AMethods;
+end;
+
+procedure TShellDiagnostics.SetLibraryRoots(const ARoots: TArray<string>);
+begin
+  FIds.SetLibraryRoots(ARoots);
+end;
+
+procedure TShellDiagnostics.ApplySettings(const ASettings: TServerSettings);
+begin
+  FMapFile := ASettings.DiagnosticsLogMapFile;
+  FFolder.RetentionDays := ASettings.DiagnosticsLogDays;
+  FLog.Configure(ASettings.DiagnosticsLog);
+  if ASettings.DiagnosticsLog then
+    FFolder.Cleanup(ASettings.DiagnosticsLogDays);
+end;
+
+procedure TShellDiagnostics.BeginRun(const AVersion: string; AMemoryBytes: Int64);
+var
+  Process: TDiagnosticProcess;
+  Previous, Index: Integer;
+begin
+  Previous := FFolder.BeginRun;
+  Process.MemoryBytes := AMemoryBytes;
+  Process.Threads := TProcessInfo.ThreadCount;
+  FLog.LogStart(AVersion, Process);
+  for Index := 1 to Previous do
+    FLog.LogEvent('previous run ended without end line (process terminated or crashed)');
+end;
+
+procedure TShellDiagnostics.EndRun(AReason: TDiagnosticEndReason; AExitCode: Integer; AMemoryBytes: Int64;
+  const AError: Exception);
+var
+  Process: TDiagnosticProcess;
+  ErrorClass, Stack: string;
+begin
+  Process.MemoryBytes := AMemoryBytes;
+  Process.Threads := TProcessInfo.ThreadCount;
+  ErrorClass := '';
+  Stack := '';
+  if AError <> nil then
+  begin
+    // Nur Klasse und Aufrufstapel: Die Meldung kann Pfade oder Namen aus dem Projekt enthalten.
+    ErrorClass := AError.ClassName;
+    Stack := AError.StackTrace;
+  end;
+  FLog.LogEnd(AReason, AExitCode, Process, ErrorClass, Stack);
+  FLogImpl.Flush;
+  if FMapFile and FLog.Enabled then
+    FFolder.WriteMap(FIds.MapLines);
+  FFolder.EndRun;
+end;
+
+function TShellDiagnostics.LibraryCount: Integer;
+var
+  Generation: Int64;
+  UnitIndex: TUnitIndex;
+  Count: Integer;
+begin
+  // Teuer bei vielen Units; nur neu zählen, wenn sich der Index geändert hat.
+  Generation := FIndex.Generation;
+  TMonitor.Enter(FLock);
+  try
+    if Generation = FLibraryGeneration then
+      Exit(FLibraryCount);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  Count := 0;
+  for UnitIndex in FIndex.Units do
+    if UnitIndex.Library_ then
+      Inc(Count);
+  TMonitor.Enter(FLock);
+  try
+    FLibraryGeneration := Generation;
+    FLibraryCount := Count;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  Result := Count;
+end;
+
+procedure TShellDiagnostics.DescribeDocument(const AParams: TJSONValue; var ARequest: TDiagnosticRequest);
+var
+  Uri: string;
+  Line, Character: Integer;
+  Document: ITextDocument;
+  Text: string;
+begin
+  if not (AParams is TJSONObject) then
+    Exit;
+  if TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) then
+  begin
+    ARequest.Document := FIds.IdOf(TDiagnosticIdKind.Document, TDocumentUris.ToPath(Uri));
+    ARequest.Version := -1;
+    if (FDocuments <> nil) and FDocuments.TryGet(Uri, Document) then
+    begin
+      Text := Document.Text;
+      ARequest.Version := Document.Version;
+      ARequest.Length_ := Length(Text);
+      ARequest.Checksum := IntToHex(Cardinal(THashFNV1a32.GetHashValue(Text)), 8);
+      ARequest.LineCount := Document.LineCount;
+    end;
+  end;
+  if TJSONObject(AParams).TryGetValue<Integer>('position.line', Line) and
+    TJSONObject(AParams).TryGetValue<Integer>('position.character', Character) then
+  begin
+    ARequest.Line := Line;
+    ARequest.Column := Character;
+  end;
+end;
+
+class function TShellDiagnostics.CountOf(const AResult: TJSONValue): Integer;
+var
+  Items: TJSONValue;
+begin
+  if (AResult = nil) or (AResult is TJSONNull) then
+    Exit(0);
+  if AResult is TJSONArray then
+    Exit(TJSONArray(AResult).Count);
+  if AResult is TJSONObject then
+  begin
+    Items := TJSONObject(AResult).GetValue('items');
+    if Items is TJSONArray then
+      Exit(TJSONArray(Items).Count);
+  end;
+  Result := 1;
+end;
+
+procedure TShellDiagnostics.Started(const AMethod: string);
+begin
+  TRequestDiagnostics.Open;
+end;
+
+procedure TShellDiagnostics.Finished(const AMethod: string; const AParams, AResult: TJSONValue;
+  const AError: Exception; AQueueMs, AElapsedMs: Int64);
+var
+  Notes: TRequestNotes;
+  Request: TDiagnosticRequest;
+  Timeout: Cardinal;
+begin
+  Notes := TRequestDiagnostics.Close;
+  if not FLog.Enabled then
+    Exit;
+  Request := Default(TDiagnosticRequest);
+  Request.Time := Now;
+  Request.Method := AMethod;
+  Request.ElapsedMs := AElapsedMs;
+  Request.QueueMs := AQueueMs;
+  Request.Line := -1;
+  Request.Notes := Notes.Notes;
+  Request.Resolve := Notes.Resolve;
+  Request.Reason := Notes.Reason;
+  if AError is EJsonRpcRequestCancelled then
+  begin
+    Timeout := 0;
+    if Assigned(FTimeoutMs) then
+      Timeout := FTimeoutMs();
+    // Der Wächter bricht nach dem Zeitlimit ab; früher abgebrochen hat der Client oder eine Änderung.
+    if (Timeout > 0) and (AQueueMs + AElapsedMs >= Int64(Timeout) - 50) then
+      Request.Outcome := TDiagnosticOutcome.Timeout
+    else
+      Request.Outcome := TDiagnosticOutcome.Cancelled;
+  end
+  else if AError <> nil then
+  begin
+    Request.Outcome := TDiagnosticOutcome.Error;
+    Request.Reason := AError.ClassName;
+  end
+  else
+  begin
+    Request.Count := Notes.Count;
+    if Request.Count < 0 then
+      Request.Count := CountOf(AResult);
+    if Request.Count > 0 then
+      Request.Outcome := TDiagnosticOutcome.Ok
+    else
+      Request.Outcome := TDiagnosticOutcome.Empty;
+  end;
+  DescribeDocument(AParams, Request);
+  if FIndex <> nil then
+  begin
+    Request.IndexUnits := FIndex.UnitCount;
+    Request.IndexLibrary := LibraryCount;
+  end;
+  Request.IndexLoading := -1;
+  if Assigned(FIndexLoading) then
+    Request.IndexLoading := FIndexLoading();
+  FLog.LogRequest(Request);
+end;
+
+end.

@@ -249,6 +249,7 @@ uses
   System.StrUtils,
   System.Math,
   Atlas.Common.Index.Extractor,
+  Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Semantics.Attributes;
 
 const
@@ -549,6 +550,12 @@ begin
     if FIndex.FindUnit(Namespace + '.' + AName, AUnit) or
       (Assigned(FEnsureUnit) and FEnsureUnit(Namespace + '.' + AName) and FIndex.FindUnit(Namespace + '.' + AName, AUnit)) then
       Exit(True);
+  // Diagnoselog (#647): Unit weder im Index noch über die Suchpfade gefunden.
+  if Assigned(FEnsureUnit) then
+  begin
+    TRequestDiagnostics.Increment('missingUnits');
+    TRequestDiagnostics.ResolveFailed('unitNotFound');
+  end;
   Result := False;
 end;
 

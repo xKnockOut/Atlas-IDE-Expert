@@ -402,6 +402,33 @@
       "x-control": "Zahlenfeld (ms)",
       "x-issue": "#283"
     },
+    "diagnostics": {
+      "type": "object",
+      "description": "Anonymisiertes Diagnoselog des Servers (je Anfrage Dauer, Ergebnis und Grundcode, je Lauf Start und Ende mit Grund). Es enthält keine Pfade, keine Projekt-, Unit- oder Bezeichnernamen und keinen Quelltext und lässt sich über „Diagnoselog exportieren“ weitergeben.",
+      "additionalProperties": false,
+      "properties": {
+        "log": {
+          "type": "boolean",
+          "default": true,
+          "description": "Anonymisiertes Diagnoselog schreiben (%LOCALAPPDATA%\\Atlas\\Logs\\Diagnose)."
+        },
+        "logDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365,
+          "default": 7,
+          "description": "Aufbewahrung des Diagnoselogs in Tagen."
+        },
+        "logMapFile": {
+          "type": "boolean",
+          "default": false,
+          "description": "Zuordnung Kurz-ID (doc#4) → Pfad lokal speichern, nur für die eigene Analyse. Der Export nimmt sie nie mit."
+        }
+      },
+      "x-page": "Robustheit",
+      "x-control": "Kontrollkästchen, Zahlenfeld (Tage)",
+      "x-issue": "#647"
+    },
     "highlight": {
       "type": "object",
       "description": "Zusammengehörige Schlüsselwörter hervorheben, wenn der Cursor auf einem steht.",
