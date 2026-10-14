@@ -53,6 +53,8 @@ type
     [Test]
     procedure SendsProjectContextsInInitializeAndOnChange;
     [Test]
+    procedure AcceptsApplyEditAndRepliesLater;
+    [Test]
     procedure ReadsParameterInlayHints;
   end;
 
@@ -91,6 +93,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Lsp.Adapters.ServerProcess,
   Atlas.Core.Lsp.TextChanges,
+  Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Files.WatchedChanges,
   Atlas.Core.Projects.Context,
   Atlas.Core.InlayHints.Store,
@@ -717,6 +720,70 @@ begin
   end;
 end;
 
+procedure TLspSessionTests.AcceptsApplyEditAndRepliesLater;
+var
+  Client: TLspClient;
+  Session: TLspSession;
+  Sent: TList<string>;
+  Announced: Boolean;
+  Received: TLspWorkspaceEdit;
+  Reply: TLspApplyEditReply;
+  Incoming: TBytes;
+begin
+  Sent := TList<string>.Create;
+  Announced := False;
+  Client := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    var
+      Message: TJSONObject;
+      Answer: TBytes;
+    begin
+      Message := Unframe(ABytes);
+      try
+        if Message.GetValue<string>('method', '') = 'initialize' then
+        begin
+          Announced := Message.GetValue<Boolean>('params.capabilities.workspace.applyEdit', False);
+          Answer := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
+            [Message.GetValue<Integer>('id')]));
+          Client.Receive(Answer, Length(Answer));
+        end
+        else if Message.GetValue('method') = nil then
+          Sent.Add(Message.ToJSON);
+      finally
+        Message.Free;
+      end;
+    end);
+  Session := TLspSession.Create(Client);
+  try
+    Session.OnApplyEdit :=
+      procedure(const AEdit: TLspWorkspaceEdit; const AReply: TLspApplyEditReply)
+      begin
+        Received := AEdit;
+        Reply := AReply;
+      end;
+    Session.Initialize;
+    Assert.IsTrue(Announced, 'applyEdit angekündigt');
+    Incoming := TLspClient.Frame('{"jsonrpc":"2.0","id":7,"method":"workspace/applyEdit","params":{"edit":' +
+      '{"changes":{"file:///c%3A/p/a.pas":[{"range":{"start":{"line":0,"character":0},' +
+      '"end":{"line":0,"character":1}},"newText":"b"}]}}}}');
+    Client.Receive(Incoming, Length(Incoming));
+    // Noch keine Antwort: Die kommt erst, wenn die Änderung im Hauptthread übernommen ist.
+    Assert.AreEqual(0, Integer(Sent.Count));
+    Assert.AreEqual(1, Received.EditCount);
+    Reply(False, 'gesperrt');
+    Assert.AreEqual(1, Integer(Sent.Count));
+    Assert.AreEqual('{"jsonrpc":"2.0","id":7,"result":{"applied":false,"failureReason":"gesperrt"}}', Sent[0]);
+    // Andere Anfragen weiter mit null.
+    Incoming := TLspClient.Frame('{"jsonrpc":"2.0","id":8,"method":"window/workDoneProgress/create","params":{}}');
+    Client.Receive(Incoming, Length(Incoming));
+    Assert.AreEqual('{"jsonrpc":"2.0","id":8,"result":null}', Sent[1]);
+  finally
+    Session.Free;
+    Client.Free;
+    Sent.Free;
+  end;
+end;
+
 procedure TLspSessionTests.SendsProjectContextsInInitializeAndOnChange;
 var
   Client: TLspClient;
@@ -756,16 +823,16 @@ begin
     Context.Configuration := 'Debug';
     Context.Platform := 'Win32';
     Context.Defines := ['DEBUG'];
-    Session.SetProjectContexts([Context]);
+    Assert.AreEqual(1, Integer(Length(Session.SetProjectContexts([Context]))), 'für initialize gemerkt');
     Session.Initialize;
     Assert.Contains(Initial, '"configuration":"Debug"');
     Assert.Contains(Initial, '"defines":["DEBUG"]');
     // Unverändert: nichts zu melden.
-    Session.SetProjectContexts([Context]);
+    Assert.AreEqual(0, Integer(Length(Session.SetProjectContexts([Context]))));
     Assert.AreEqual(0, Integer(Sent.Count));
     Context.Configuration := 'Release';
     Context.Platform := 'Win64';
-    Session.SetProjectContexts([Context]);
+    Assert.AreEqual(1, Integer(Length(Session.SetProjectContexts([Context]))), 'neu gemeldet');
     Session.SetProjectContexts([Context]);
     Assert.AreEqual(1, Integer(Sent.Count));
     Assert.AreEqual('Release/Win64', Sent[0]);

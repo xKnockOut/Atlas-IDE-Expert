@@ -176,11 +176,13 @@
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Pairs.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Structure.pas"/>
         <DCCReference Include="Source\IDE\Files\Atlas.IDE.Files.DirtyExport.pas"/>
+        <DCCReference Include="Source\IDE\Files\Atlas.IDE.Files.EditInbox.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.TextDiff.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.WatchedChanges.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.TextFile.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Context.pas"/>
         <DCCReference Include="Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas"/>
+        <DCCReference Include="Source\Core\Files\Atlas.Core.Files.EditInbox.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.Adapters.FolderWatcher.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Painter.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.MessageList.pas"/>

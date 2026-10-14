@@ -38,7 +38,8 @@ type
     SettingsInactiveDim, MenuToggleInactive, DidYouMean,
     DiagExportMenu, DiagExportTitle, DiagExportHint, DiagExportSave, DiagExportFilter, DiagExportEmpty, DiagExportDone,
     RenameMenu, RenameTitle, RenamePrompt, RenameNothing, RenameFailed, RenameDone, EditWritten, EditFailed,
-    EditUnsupported, SettingsOpenForEdits, SettingsInlayHints, MenuToggleInlayHints);
+    EditUnsupported, SettingsOpenForEdits, SettingsInlayHints, MenuToggleInlayHints,
+    McpEditApplied);
 
   TAtlasStrings = class
   private class var
@@ -118,7 +119,8 @@ const
      'Atlas: Änderungen nicht (vollständig) übernommen: %s',
      'Atlas: %d Dateioperationen (anlegen, umbenennen, löschen) nicht ausgeführt.',
      'Nicht geöffnete Dateien für Änderungen öffnen (aus: direkt auf die Platte schreiben)',
-     'Parameternamen vor Literalen am Zeilenende zeigen (Inlay-Hints)', 'Inlay-Hints'),
+     'Parameternamen vor Literalen am Zeilenende zeigen (Inlay-Hints)', 'Inlay-Hints',
+     'Atlas: MCP-Änderung in %s übernommen (Strg+Z macht sie rückgängig).'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -179,7 +181,8 @@ const
      'Atlas: changes not (fully) applied: %s',
      'Atlas: %d file operations (create, rename, delete) not performed.',
      'Open files for changes (off: write files that are not open directly to disk)',
-     'Show parameter names of literals at the end of the line (inlay hints)', 'Inlay hints'));
+     'Show parameter names of literals at the end of the line (inlay hints)', 'Inlay hints',
+     'Atlas: MCP change applied to %s (Ctrl+Z undoes it).'));
 
 { TAtlasStrings }
 

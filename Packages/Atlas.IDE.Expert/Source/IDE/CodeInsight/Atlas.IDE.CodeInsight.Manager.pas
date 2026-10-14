@@ -23,6 +23,10 @@
 // Projektkontext (#396): Konfiguration, Plattform und Optionen der Projekte
 // der Gruppe gehen in initialize mit; Änderungen (Debug/Release, Win32/Win64,
 // geänderte Optionen) prüft die Sitzung höchstens einmal je Sekunde.
+// workspace/applyEdit (#397): Änderungen, die der Server von sich aus schickt,
+// übernimmt der Hauptthread in die Puffer (TAtlasIdeWorkspaceEdit), danach
+// geht die Antwort an den Server. Wartet der Hauptthread gerade selbst auf
+// eine Antwort des Servers, kommt die Änderung erst nach deren Zeitlimit dran.
 
 interface
 
@@ -78,6 +82,8 @@ type
     /// <summary>Gesammelte Änderungen außerhalb der IDE an den Server (Hauptthread, #395).</summary>
     procedure FlushFileChanges;
     procedure StopSession;
+    /// <summary>Nimmt workspace/applyEdit der Sitzung an (#397).</summary>
+    procedure AcceptApplyEdit(ASession: TLspSession);
     procedure ReportError(const AMessage: string);
     procedure Diagnose(const AMessage: string);
     function CurrentEditView: IOTAEditView;
@@ -155,7 +161,14 @@ uses
   Atlas.Core.Problems.Contract,
   Winapi.Windows,
   Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Projects.Context;
+  Atlas.Core.Projects.Context,
+  Atlas.IDE.Projects.Context,
+  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.IDE.Editor.WorkspaceEdit;
+
+var
+  /// <summary>Lebender Manager; nach dem Freigeben nil, damit späte applyEdit-Aufrufe nichts mehr tun.</summary>
+  LiveManager: TObject;
 
 const
   RegistryKey = 'Software\Atlas\IdePlugin';
@@ -183,6 +196,7 @@ end;
 constructor TAtlasCodeInsightManager.Create;
 begin
   inherited Create;
+  LiveManager := Self;
   FEnabled := True;
   FDiagnose := DiagnoseEnabled;
   Diagnose('Plugin geladen: ' + GetModuleName(HInstance));
@@ -234,6 +248,8 @@ end;
 
 destructor TAtlasCodeInsightManager.Destroy;
 begin
+  if LiveManager = Self then
+    LiveManager := nil;
   // Hält die Beobachter-Threads an; erst danach darf der Sammler weg.
   FreeAndNil(FFolderWatcher);
   FreeAndNil(FFileChanges);
@@ -386,6 +402,7 @@ begin
     FSession := TLspSession.Create(FServer.Client);
     FContextsChecked := 0;
     RefreshContexts;
+    AcceptApplyEdit(FSession);
     Projects := GroupProjects;
     FSession.SetProjects(Projects);
     WatchProjects(Projects);
@@ -437,6 +454,44 @@ begin
   end;
 end;
 
+procedure TAtlasCodeInsightManager.AcceptApplyEdit(ASession: TLspSession);
+var
+  Manager: TAtlasCodeInsightManager;
+begin
+  Manager := Self;
+  ASession.OnApplyEdit :=
+    procedure(const AEdit: TLspWorkspaceEdit; const AReply: TLspApplyEditReply)
+    begin
+      // Lese-Thread: Open Tools API nur im Hauptthread.
+      TThread.Queue(nil,
+        procedure
+        var
+          Outcome: TAtlasWorkspaceEditResult;
+        begin
+          // Manager weg oder neue Sitzung: Die alte Verbindung gibt es nicht mehr.
+          if (LiveManager <> Manager) or (Manager.FSession <> ASession) then
+            Exit;
+          if AEdit.Unsupported > 0 then
+          begin
+            AReply(False, 'Dateioperationen (anlegen, umbenennen, löschen) werden nicht unterstützt.');
+            Exit;
+          end;
+          try
+            Outcome := TAtlasIdeWorkspaceEdit.Apply(AEdit, TAtlasIdeSettings.Current.OpenForEdits);
+          except
+            on E: Exception do
+            begin
+              AReply(False, E.Message);
+              Exit;
+            end;
+          end;
+          Manager.Diagnose(Format('workspace/applyEdit: %d Änderungen in %d Dateien %s', [Outcome.Edits,
+            Outcome.Files, Outcome.Error]));
+          AReply(Outcome.Error = '', Outcome.Error);
+        end);
+    end;
+end;
+
 procedure TAtlasCodeInsightManager.RefreshProjects;
 var
   Projects: TArray<string>;
@@ -456,6 +511,8 @@ begin
 end;
 
 procedure TAtlasCodeInsightManager.RefreshContexts;
+var
+  Context: TAtlasProjectContext;
 begin
   // Open Tools API nur im Hauptthread.
   if (GetCurrentThreadId <> MainThreadID) or
@@ -463,7 +520,9 @@ begin
     Exit;
   FContextsChecked := GetTickCount;
   try
-    FSession.SetProjectContexts(TAtlasIdeProjectContext.Group);
+    // Mit Diagnose=1 prüfbar, ob die geerbten Optionen ankommen (#396).
+    for Context in FSession.SetProjectContexts(TAtlasIdeProjectContext.Group) do
+      Diagnose('Projektkontext: ' + Context.Describe);
   except
     on E: Exception do
       Diagnose('Projektkontext nicht gemeldet: ' + E.Message);

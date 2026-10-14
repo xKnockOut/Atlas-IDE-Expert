@@ -5,6 +5,8 @@
 // aller offenen Module und schreibt sie bei Änderung nach
 // %LOCALAPPDATA%\Atlas\editor-dirty-<pid>.json ({"pid": …, "files": [...]}).
 // Der MCP-Server bricht Schreibaufrufe ab, die eine dieser Dateien betreffen.
+// Unter "open" stehen alle im Editor offenen Dateien: Diese ändert der
+// MCP-Server über den Eingang des Plugins statt auf der Platte (#397).
 // Beim Beenden löscht das Plugin seine Datei; Dateien beendeter Prozesse
 // übergeht der Server.
 
@@ -27,6 +29,8 @@ type
     destructor Destroy; override;
     /// <summary>Geänderte, nicht gespeicherte Dateien aller offenen Module.</summary>
     class function ModifiedFiles: TArray<string>; static;
+    /// <summary>Alle Dateien offener Module mit Editorpuffer (#397).</summary>
+    class function OpenFiles: TArray<string>; static;
   end;
 
 implementation
@@ -84,20 +88,47 @@ begin
   end;
 end;
 
+class function TAtlasDirtyExport.OpenFiles: TArray<string>;
+var
+  Modules: IOTAModuleServices;
+  Module: IOTAModule;
+  Index, FileIndex: Integer;
+  Editor: IOTAEditor;
+  Buffer: IOTAEditBuffer;
+begin
+  Result := nil;
+  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+    Exit;
+  for Index := 0 to Modules.ModuleCount - 1 do
+  begin
+    Module := Modules.Modules[Index];
+    for FileIndex := 0 to Module.ModuleFileCount - 1 do
+    begin
+      Editor := Module.ModuleFileEditors[FileIndex];
+      if (Editor <> nil) and (Editor.FileName <> '') and Supports(Editor, IOTAEditBuffer, Buffer) then
+        Result := Result + [Editor.FileName];
+    end;
+  end;
+end;
+
 procedure TAtlasDirtyExport.Tick(Sender: TObject);
 var
   Json: TJSONObject;
-  Files: TJSONArray;
+  Files, Open: TJSONArray;
   Name, Text: string;
 begin
   try
     Files := TJSONArray.Create;
     for Name in ModifiedFiles do
       Files.Add(Name);
+    Open := TJSONArray.Create;
+    for Name in OpenFiles do
+      Open.Add(Name);
     Json := TJSONObject.Create;
     try
       Json.AddPair('pid', TJSONNumber.Create(GetCurrentProcessId));
       Json.AddPair('files', Files);
+      Json.AddPair('open', Open);
       Text := Json.ToJSON;
     finally
       Json.Free;
