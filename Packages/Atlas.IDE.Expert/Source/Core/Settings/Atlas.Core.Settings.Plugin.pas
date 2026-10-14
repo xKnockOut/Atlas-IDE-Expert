@@ -30,6 +30,9 @@ type
     MaxPanelWidth = 600;
     MinHangThreshold = 100;
     MaxHangThreshold = 10000;
+    /// <summary>Wie TAtlasTimeLimit.MinMs/MaxMs (#493).</summary>
+    MinProviderTimeLimit = 50;
+    MaxProviderTimeLimit = 5000;
     MinCheckDelay = 500;
     MaxCheckDelay = 10000;
     MinCheckMax = 200;
@@ -74,6 +77,8 @@ type
     HoverTooltip: Boolean;
     /// <summary>Ab so vielen Millisekunden ohne Antwort gilt die IDE als hängend (#501).</summary>
     HangThresholdMs: Integer;
+    /// <summary>Zeitlimit für Aufrufe von Datenquellen aus dem Hauptthread (#493); länger gilt als Fehler.</summary>
+    ProviderTimeLimitMs: Integer;
     /// <summary>Hinweis im Meldungsfenster nach langen Hängern (ab 2 s, #501).</summary>
     HangHint: Boolean;
     /// <summary>Extern geänderte Dateien ohne eigene Änderungen still neu laden (#536).</summary>
@@ -151,6 +156,7 @@ begin
   Result.Preview := False;
   Result.HoverTooltip := True;
   Result.HangThresholdMs := 500;
+  Result.ProviderTimeLimitMs := 200;
   Result.HangHint := True;
   Result.ReloadExternal := True;
   Result.PairColors := True;
@@ -177,6 +183,7 @@ begin
     ListWidth := EnsureRange(ListWidth, MinListWidth, MaxListWidth);
   PanelWidth := EnsureRange(PanelWidth, MinPanelWidth, MaxPanelWidth);
   HangThresholdMs := EnsureRange(HangThresholdMs, MinHangThreshold, MaxHangThreshold);
+  ProviderTimeLimitMs := EnsureRange(ProviderTimeLimitMs, MinProviderTimeLimit, MaxProviderTimeLimit);
   CheckOnSaveDelayMs := EnsureRange(CheckOnSaveDelayMs, MinCheckDelay, MaxCheckDelay);
   CheckOnSaveMaxMs := EnsureRange(CheckOnSaveMaxMs, MinCheckMax, MaxCheckMax);
   XmlDocMaxLines := EnsureRange(XmlDocMaxLines, 0, MaxXmlDocLines);
@@ -213,6 +220,7 @@ begin
   Preview := AStore.ReadInteger('Preview', BoolValue(Default.Preview)) <> 0;
   HoverTooltip := AStore.ReadInteger('HoverTooltip', BoolValue(Default.HoverTooltip)) <> 0;
   HangThresholdMs := AStore.ReadInteger('HangThresholdMs', Default.HangThresholdMs);
+  ProviderTimeLimitMs := AStore.ReadInteger('ProviderTimeLimitMs', Default.ProviderTimeLimitMs);
   HangHint := AStore.ReadInteger('HangHint', BoolValue(Default.HangHint)) <> 0;
   ReloadExternal := AStore.ReadInteger('ReloadExternal', BoolValue(Default.ReloadExternal)) <> 0;
   PairColors := AStore.ReadInteger('PairColors', BoolValue(Default.PairColors)) <> 0;
@@ -255,6 +263,7 @@ begin
   AStore.WriteInteger('Preview', BoolValue(Preview));
   AStore.WriteInteger('HoverTooltip', BoolValue(HoverTooltip));
   AStore.WriteInteger('HangThresholdMs', HangThresholdMs);
+  AStore.WriteInteger('ProviderTimeLimitMs', ProviderTimeLimitMs);
   AStore.WriteInteger('HangHint', BoolValue(HangHint));
   AStore.WriteInteger('ReloadExternal', BoolValue(ReloadExternal));
   AStore.WriteInteger('PairColors', BoolValue(PairColors));

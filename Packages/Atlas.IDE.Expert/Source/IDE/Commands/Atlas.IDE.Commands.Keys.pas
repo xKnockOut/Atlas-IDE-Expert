@@ -14,7 +14,8 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  ToolsAPI;
+  ToolsAPI,
+  Atlas.Core.Diagnostics.Guard;
 
 type
   /// <summary>Eine Taste von Atlas für eine Aktion; Rebind belegt sie nach den Regeln von #494.</summary>
@@ -34,13 +35,15 @@ type
     FName: string;
     FDisplayName: string;
     FAction: TProc;
+    FFeature: TAtlasFeature;
     FBinding: TBinding;
     // Hält das Binding am Leben: Abmelden gibt die Referenz der IDE frei.
     FBindingRef: IOTAKeyboardBinding;
     FIndex: Integer;
     FKey: Word;
   public
-    constructor Create(const AName, ADisplayName: string; const AAction: TProc);
+    /// <summary>AFeature: Fehler in AAction zählt die Sicherung dieses Features (#493).</summary>
+    constructor Create(const AName, ADisplayName: string; AFeature: TAtlasFeature; const AAction: TProc);
     destructor Destroy; override;
     /// <summary>AKey (0 = keine) belegen, bei fremder Belegung nur mit APriority; AWhat für die Meldung.</summary>
     procedure Rebind(AKey: Word; APriority: Boolean; const AWhat: string);
@@ -126,19 +129,18 @@ procedure TAtlasIdeKeyBinding.TBinding.Execute(const Context: IOTAKeyContext; Ke
 begin
   BindingResult := krHandled;
   if (FOwner <> nil) and Assigned(FOwner.FAction) then
-    try
-      FOwner.FAction();
-    except
-      // Keine Exception an die IDE (#493).
-    end;
+    // Keine Exception an die IDE (#493).
+    TAtlasGuard.Run(FOwner.FFeature, FOwner.FAction);
 end;
 
 { TAtlasIdeKeyBinding }
 
-constructor TAtlasIdeKeyBinding.Create(const AName, ADisplayName: string; const AAction: TProc);
+constructor TAtlasIdeKeyBinding.Create(const AName, ADisplayName: string; AFeature: TAtlasFeature;
+  const AAction: TProc);
 begin
   inherited Create;
   FName := AName;
+  FFeature := AFeature;
   FDisplayName := ADisplayName;
   FAction := AAction;
   FIndex := -1;
@@ -186,11 +188,8 @@ begin
   TThread.ForceQueue(nil,
     procedure
     begin
-      try
-        Changed();
-      except
-        // Keine Exception an die IDE (#493).
-      end;
+      // Keine Exception an die IDE (#493).
+      TAtlasGuard.Run(TAtlasFeature.Settings, Changed);
     end);
 end;
 

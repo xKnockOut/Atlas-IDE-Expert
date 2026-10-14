@@ -32,6 +32,8 @@ type
   TAtlasServerCompletionProvider = class(TAtlasAsyncCompletionProvider, IAtlasCompletionResolver)
   public const
     DefaultTimeoutMs = 2000;
+    /// <summary>Name für die Sicherung je Quelle (#493).</summary>
+    ProviderTitle = 'Vervollständigung (Server)';
   private
     FSession: TAtlasSessionFunc;
     FTimeoutMs: Cardinal;
@@ -39,6 +41,8 @@ type
     FOnLog: TAtlasProviderLog;
     procedure Log(const AMessage: string);
   protected
+    /// <summary>Server weg oder Zeitlimit des Servers zählt nicht als Fehler der Quelle (#393 startet neu).</summary>
+    function IsFailure(E: Exception): Boolean; override;
     function Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean; override;
     function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
       const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems; override;
@@ -65,15 +69,22 @@ uses
   System.SyncObjs,
   System.Diagnostics,
   System.Generics.Collections,
-  Atlas.Core.Documentation.Contract;
+  Atlas.Core.Documentation.Contract,
+  Atlas.Core.Lsp.Client;
 
 { TAtlasServerCompletionProvider }
 
 constructor TAtlasServerCompletionProvider.Create(const ASession: TAtlasSessionFunc; ATimeoutMs: Cardinal);
 begin
   inherited Create;
+  Name := ProviderTitle;
   FSession := ASession;
   FTimeoutMs := ATimeoutMs;
+end;
+
+function TAtlasServerCompletionProvider.IsFailure(E: Exception): Boolean;
+begin
+  Result := inherited IsFailure(E) and not (E is ELspClientError);
 end;
 
 class function TAtlasServerCompletionProvider.KindOf(ALspKind: Integer): TAtlasItemKind;

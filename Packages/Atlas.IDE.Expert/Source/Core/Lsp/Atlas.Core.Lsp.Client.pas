@@ -10,6 +10,8 @@
 // OnServerMessage (im Lese-Thread, z. B. workspace/diagnostic/refresh, #398).
 // Teilergebnisse (#616): Request mit AOnPartial schickt einen partialResultToken mit; $/progress zu diesem
 // Token geht an AOnPartial (im Lese-Thread, vor der Antwort), nicht an OnServerMessage.
+// Das Warten auf eine Antwort endet auch beim gemeinsamen Abbruchsignal
+// (TAtlasShutdown, #493), damit beim Entladen kein Thread im Zeitlimit hängt.
 
 interface
 
@@ -80,6 +82,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Core.Diagnostics.Shutdown;
 
 const
   HeaderEnd: array[0..3] of Byte = (13, 10, 13, 10);
@@ -169,8 +174,14 @@ begin
     end;
     try
       SendText(Text);
-      if Pending.Done.WaitFor(ATimeoutMs) <> wrSignaled then
+      case TAtlasShutdown.WaitFor(Pending.Done, ATimeoutMs) of
+        wrSignaled:
+          ;
+        wrAbandoned:
+          raise ELspClientError.CreateFmt('Keine Antwort auf %s: Atlas wird beendet', [AMethod]);
+      else
         raise ELspClientError.CreateFmt('Keine Antwort auf %s innerhalb von %d ms', [AMethod, ATimeoutMs]);
+      end;
     finally
       TMonitor.Enter(FLock);
       try

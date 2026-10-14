@@ -34,6 +34,7 @@ constructor TAtlasFixedCompletionProvider.Create(const AItems: TAtlasCompletionI
   AIncomplete: Boolean);
 begin
   inherited Create;
+  Name := 'Vervollständigung (fest)';
   FItems := AItems;
   FDelayMs := ADelayMs;
   FIncomplete := AIncomplete;

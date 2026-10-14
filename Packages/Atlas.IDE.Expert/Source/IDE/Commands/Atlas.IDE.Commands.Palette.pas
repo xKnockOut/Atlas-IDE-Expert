@@ -59,6 +59,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   System.IOUtils,
   System.Types,
   System.Actions,
@@ -102,6 +103,8 @@ begin
       FOwner.Show;
     except
       // Keine Exception an die IDE (#493).
+      on E: Exception do
+        TAtlasGuard.Report(TAtlasFeature.Palette, E);
     end;
 end;
 

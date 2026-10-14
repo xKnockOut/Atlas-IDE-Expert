@@ -43,7 +43,8 @@ type
     InactiveCondition, InactiveTarget, InactiveRegion, ProblemsSourceInactive,
     SettingsCompletionKey, SettingsSignatureKey, KeysTitle, KeysIntro, KeysHeaderFunction, KeysHeaderKey,
     KeysHeaderOwner, KeysHeaderChoice, KeysChoiceAtlas, KeysChoiceOther, KeysChoiceNewKey, KeysStatusFree,
-    KeysStatusIdeKey, KeysStatusNone, KeysStatusAtlasWins, KeysStatusLeft, KeysForeign, KeysForeignNone, KeysInvalid);
+    KeysStatusIdeKey, KeysStatusNone, KeysStatusAtlasWins, KeysStatusLeft, KeysForeign, KeysForeignNone, KeysInvalid,
+    SettingsProviderTimeLimit, SettingsFuseTitle, SettingsFuseNone, SettingsFuseEnableSelected, SettingsFuseEnableAll);
 
   TAtlasStrings = class
   private class var
@@ -157,7 +158,12 @@ const
        'abschalten (Atlas: Menü Atlas > Code Insight von Atlas). Atlas ändert fremde Erweiterungen ' +
        'nicht.',
      'Keine Erweiterung mit eigener Vervollständigung erkannt.',
-     'Unbekannte Taste: %s'),
+     'Unbekannte Taste: %s',
+     'Zeitlimit für Datenquellen (ms):',
+     'Nach wiederholten Fehlern abgeschaltet:',
+     'Keine Funktion abgeschaltet.',
+     'Ausgewählte einschalten',
+     'Alle einschalten'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -248,7 +254,12 @@ const
      'Extensions with their own code completion: %s. Running both interferes; switch one off (Atlas: ' +
        'menu Atlas > Atlas Code Insight). Atlas does not change other extensions.',
      'No extension with its own code completion detected.',
-     'Unknown key: %s'));
+     'Unknown key: %s',
+     'Time limit for data sources (ms):',
+     'Turned off after repeated errors:',
+     'No feature turned off.',
+     'Turn selected on',
+     'Turn all on'));
 
 { TAtlasStrings }
 

@@ -6,7 +6,8 @@
 // TCustomFrame.Create verlangt für abgeleitete Frames eine Ressource. Laden und Speichern über
 // TAtlasPluginSettings; die IDE-Schicht liest und schreibt die Registry.
 // Die Tastenkürzel stehen auf der eigenen Seite „Tastenkonflikte“
-// (Atlas.UI.Settings.Keys, #494).
+// (Atlas.UI.Settings.Keys, #494). Unten zeigt die Seite, was die Sicherung
+// nach wiederholten Fehlern abgeschaltet hat, und schaltet es wieder ein (#493).
 
 interface
 
@@ -22,6 +23,7 @@ uses
   Vcl.Dialogs,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Hangs,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings;
 
 type
@@ -47,6 +49,10 @@ type
     FXmlDocMaxLines: TEdit;
     FHangThreshold: TEdit;
     FHangHint: TCheckBox;
+    FProviderTimeLimit: TEdit;
+    FFuseList: TListBox;
+    FFuseEnableSelected: TButton;
+    FFuseEnableAll: TButton;
     FReloadExternal: TCheckBox;
     FPairColors: TCheckBox;
     FInactiveDim: TCheckBox;
@@ -70,6 +76,9 @@ type
     procedure ResetHistoryClick(Sender: TObject);
     procedure ResetWidthsClick(Sender: TObject);
     procedure HangTestClick(Sender: TObject);
+    procedure FuseEnableSelectedClick(Sender: TObject);
+    procedure FuseEnableAllClick(Sender: TObject);
+    procedure AddFuseSection;
     procedure ServerBrowseClick(Sender: TObject);
     procedure ServerPathChange(Sender: TObject);
     procedure SetDefaultServerPath(const AValue: string);
@@ -77,6 +86,12 @@ type
     constructor Create(AOwner: TComponent); override;
     procedure LoadFrom(const ASettings: TAtlasPluginSettings);
     procedure SaveTo(var ASettings: TAtlasPluginSettings);
+    /// <summary>Liste der abgeschalteten Features und Quellen neu lesen (#493).</summary>
+    procedure RefreshFuse;
+    /// <summary>Zum Testen: Liste und Schaltflächen der Sicherung.</summary>
+    property FuseList: TListBox read FFuseList;
+    property FuseEnableSelected: TButton read FFuseEnableSelected;
+    property FuseEnableAll: TButton read FFuseEnableAll;
     /// <summary>„Verlauf zurücksetzen“ der lernenden Gewichtung (#418).</summary>
     property OnResetHistory: TProc read FOnResetHistory write FOnResetHistory;
     /// <summary>Server, der bei leerem Pfad gilt (für die Anzeige „Verwendet: …“).</summary>
@@ -97,7 +112,7 @@ begin
   inherited Create(AOwner);
   Name := 'AtlasSettingsPage';
   Width := 480;
-  Height := 738;
+  Height := 900;
   Title := TLabel.Create(Self);
   Title.Parent := Self;
   Title.Align := alTop;
@@ -165,6 +180,8 @@ begin
   // Einfrier-Wächter (#501).
   FHangThreshold := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHangThreshold));
   FHangHint := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHangHint));
+  // Blockierschutz für Datenquellen (#493).
+  FProviderTimeLimit := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsProviderTimeLimit));
   FReloadExternal := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReload));
   FPairColors := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairs));
   FInactiveDim := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim));
@@ -200,6 +217,89 @@ begin
   FHangTest.Top := 3;
   FHangTest.Width := 150;
   FHangTest.OnClick := HangTestClick;
+  AddFuseSection;
+  RefreshFuse;
+end;
+
+procedure TAtlasSettingsPage.AddFuseSection;
+var
+  Panel: TPanel;
+  Title: TLabel;
+begin
+  Panel := AddPanel(20);
+  Title := TLabel.Create(Self);
+  Title.Parent := Panel;
+  Title.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFuseTitle);
+  Title.Left := 0;
+  Title.Top := 3;
+  Panel := AddPanel(64);
+  FFuseList := TListBox.Create(Self);
+  FFuseList.Parent := Panel;
+  FFuseList.Align := alClient;
+  FFuseList.MultiSelect := True;
+  Panel := AddPanel(32);
+  FFuseEnableSelected := TButton.Create(Self);
+  FFuseEnableSelected.Parent := Panel;
+  FFuseEnableSelected.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFuseEnableSelected);
+  FFuseEnableSelected.Left := 0;
+  FFuseEnableSelected.Top := 3;
+  FFuseEnableSelected.Width := 150;
+  FFuseEnableSelected.OnClick := FuseEnableSelectedClick;
+  FFuseEnableAll := TButton.Create(Self);
+  FFuseEnableAll.Parent := Panel;
+  FFuseEnableAll.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFuseEnableAll);
+  FFuseEnableAll.Left := 160;
+  FFuseEnableAll.Top := 3;
+  FFuseEnableAll.Width := 150;
+  FFuseEnableAll.OnClick := FuseEnableAllClick;
+end;
+
+procedure TAtlasSettingsPage.RefreshFuse;
+var
+  Feature: TAtlasFeature;
+  Name: string;
+  Any: Boolean;
+begin
+  FFuseList.Items.BeginUpdate;
+  try
+    FFuseList.Items.Clear;
+    // Objects: Feature + 1; nil bei einer Quelle (Name im Text).
+    for Feature in TAtlasGuard.DisabledSet do
+      FFuseList.Items.AddObject(TAtlasGuard.FeatureName(Feature), TObject(NativeInt(Ord(Feature) + 1)));
+    for Name in TAtlasGuard.DisabledProviders do
+      FFuseList.Items.AddObject(Name, nil);
+    Any := FFuseList.Items.Count > 0;
+    if not Any then
+      FFuseList.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsFuseNone));
+  finally
+    FFuseList.Items.EndUpdate;
+  end;
+  FFuseList.Enabled := Any;
+  FFuseEnableSelected.Enabled := Any;
+  FFuseEnableAll.Enabled := Any;
+end;
+
+procedure TAtlasSettingsPage.FuseEnableSelectedClick(Sender: TObject);
+var
+  Index: Integer;
+  Tag: NativeInt;
+begin
+  for Index := 0 to FFuseList.Items.Count - 1 do
+    if FFuseList.Selected[Index] then
+    begin
+      Tag := NativeInt(FFuseList.Items.Objects[Index]);
+      if Tag > 0 then
+        TAtlasGuard.Enable(TAtlasFeature(Tag - 1))
+      else
+        TAtlasGuard.EnableProvider(FFuseList.Items[Index]);
+    end;
+  RefreshFuse;
+end;
+
+procedure TAtlasSettingsPage.FuseEnableAllClick(Sender: TObject);
+begin
+  TAtlasGuard.EnableAll;
+  RefreshFuse;
 end;
 
 function TAtlasSettingsPage.AddCheck(const ACaption: string): TCheckBox;
@@ -264,6 +364,7 @@ begin
   FXmlDocFull.Checked := ASettings.XmlDocFull;
   FXmlDocMaxLines.Text := IntToStr(ASettings.XmlDocMaxLines);
   FHangThreshold.Text := IntToStr(ASettings.HangThresholdMs);
+  FProviderTimeLimit.Text := IntToStr(ASettings.ProviderTimeLimitMs);
   FHangHint.Checked := ASettings.HangHint;
   FReloadExternal.Checked := ASettings.ReloadExternal;
   FPairColors.Checked := ASettings.PairColors;
@@ -276,6 +377,7 @@ begin
   FCheckOnSave.Checked := ASettings.CheckOnSave;
   FCheckDelay.Text := IntToStr(ASettings.CheckOnSaveDelayMs);
   FCheckMax.Text := IntToStr(ASettings.CheckOnSaveMaxMs);
+  RefreshFuse;
 end;
 
 procedure TAtlasSettingsPage.SaveTo(var ASettings: TAtlasPluginSettings);
@@ -294,6 +396,7 @@ begin
   ASettings.XmlDocFull := FXmlDocFull.Checked;
   ASettings.XmlDocMaxLines := StrToIntDef(FXmlDocMaxLines.Text, ASettings.XmlDocMaxLines);
   ASettings.HangThresholdMs := StrToIntDef(FHangThreshold.Text, ASettings.HangThresholdMs);
+  ASettings.ProviderTimeLimitMs := StrToIntDef(FProviderTimeLimit.Text, ASettings.ProviderTimeLimitMs);
   ASettings.HangHint := FHangHint.Checked;
   ASettings.ReloadExternal := FReloadExternal.Checked;
   ASettings.PairColors := FPairColors.Checked;
