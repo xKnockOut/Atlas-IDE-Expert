@@ -81,6 +81,10 @@ type
     class function Expand(const ABody, AIndent, ALineBreak: string): TAtlasSnippetExpansion; static;
     /// <summary>Klartext ohne Platzhalter, Zeilen mit #10; für Vorschau und Detailpanel.</summary>
     class function PlainText(const ABody: string): string; static;
+    /// <summary>Snippet des Servers (LSP-Syntax, insertTextFormat 2) im eigenen Format: \$ wird zu $$, $1 zu ${1},
+    /// Auswahl ${1|a,b|} zu ${1:a}; verschachtelte Platzhalter und ${NAME:…} werden zu ihrem Vorgabetext, "$" vor
+    /// einem Buchstaben bleibt Text.</summary>
+    class function FromLsp(const AText: string): string; static;
     /// <summary>Einrückung am Anfang von ALine (Leerzeichen und Tabs).</summary>
     class function IndentOf(const ALine: string): string; static;
     /// <summary>Stand des Ordners (Namen, Größen, Zeitstempel der Vorlagendateien); ändert sich, sobald eine
@@ -347,9 +351,10 @@ begin
       '${1:TMyRecord} = record'#10'  ${2:Value}: ${3:Integer};$0'#10'end;'),
     Snippet('prop', 'Property mit Feld und Setter', 'Deklaration in der Klasse; den Setter legt propset an.',
       'property ${1:Value}: ${2:Integer} read F${1} write Set${1};$0'),
+    // Gleiche Form wie /prop, /changed und die Vorlage „changed“ des Servers (TSetterGenerator).
     Snippet('propset', 'Setter mit Prüfung auf Änderung', 'Setzt das Feld nur bei Änderung und zeichnet neu.',
-      'procedure ${1:TMyControl}.Set${2:Value}(const AValue: ${3:Integer});'#10'begin'#10 +
-      '  if F${2} = AValue then'#10'    Exit;'#10'  F${2} := AValue;'#10'  Invalidate;$0'#10'end;'),
+      'procedure ${1:TMyControl}.Set${2:Value}(const Value: ${3:Integer});'#10'begin'#10 +
+      '  if F${2} <> Value then'#10'  begin'#10'    F${2} := Value;'#10'    Invalidate;$0'#10'  end;'#10'end;'),
     Snippet('comp', 'Komponentengerüst', 'Komponente mit published-Abschnitt; die Registrierung legt reg an.',
       '${1:TMyControl} = class(${2:TCustomControl})'#10'protected'#10'  procedure Paint; override;'#10 +
       'public'#10'  constructor Create(AOwner: TComponent); override;'#10'published'#10'  $0'#10'end;'),
@@ -428,6 +433,110 @@ begin
     else
       Text := Text + Indented(Parts[Index].Text);
   Result.Text := Text;
+end;
+
+/// <summary>Liest ab AIndex Klartext bis zum passenden "}" bzw. Textende (verschachtelte Platzhalter und Variablen
+/// werden zu ihrer Vorgabe). Mit ATop entsteht das eigene Format ($$, ${n}, ${n:Vorgabe}).</summary>
+function ConvertLsp(const AText: string; var AIndex: Integer; ATop: Boolean): string;
+var
+  Start: Integer;
+  Number, Default: string;
+begin
+  Result := '';
+  while AIndex <= Length(AText) do
+  begin
+    case AText[AIndex] of
+      '\':
+        begin
+          if (AIndex < Length(AText)) and CharInSet(AText[AIndex + 1], ['\', '$', '}', ',', '|']) then
+          begin
+            if ATop and (AText[AIndex + 1] = '$') then
+              Result := Result + '$$'
+            else
+              Result := Result + AText[AIndex + 1];
+            Inc(AIndex, 2);
+          end
+          else
+          begin
+            Result := Result + '\';
+            Inc(AIndex);
+          end;
+          Continue;
+        end;
+      '}':
+        if not ATop then
+        begin
+          Inc(AIndex);
+          Exit;
+        end;
+      '$':
+        // $1, ${1}, ${1:Vorgabe}, ${1|a,b|}, ${NAME:Vorgabe}; "$" vor einem Buchstaben bleibt Text ($FF).
+        if (AIndex < Length(AText)) and (IsDigit(AText[AIndex + 1]) or (AText[AIndex + 1] = '{')) then
+        begin
+          Inc(AIndex);
+          if AText[AIndex] = '{' then
+            Inc(AIndex);
+          Start := AIndex;
+          while (AIndex <= Length(AText)) and IsWordChar(AText[AIndex]) do
+            Inc(AIndex);
+          Number := Copy(AText, Start, AIndex - Start);
+          Default := '';
+          if AText[Start - 1] = '{' then
+          begin
+            if (AIndex <= Length(AText)) and (AText[AIndex] = ':') then
+            begin
+              Inc(AIndex);
+              Default := ConvertLsp(AText, AIndex, False);
+            end
+            else if (AIndex <= Length(AText)) and (AText[AIndex] = '|') then
+            begin
+              // Auswahl: die erste Möglichkeit als Vorgabe.
+              Inc(AIndex);
+              Start := AIndex;
+              while (AIndex <= Length(AText)) and not CharInSet(AText[AIndex], [',', '|']) do
+                Inc(AIndex);
+              Default := Copy(AText, Start, AIndex - Start);
+              while (AIndex <= Length(AText)) and (AText[AIndex] <> '}') do
+                Inc(AIndex);
+              Inc(AIndex);
+            end
+            else
+            begin
+              while (AIndex <= Length(AText)) and (AText[AIndex] <> '}') do
+                Inc(AIndex);
+              Inc(AIndex);
+            end;
+          end;
+          // Tabstopp nur auf oberster Ebene und mit Nummer; Variablen werden zu ihrer Vorgabe.
+          if ATop and (Number <> '') and IsDigit(Number[1]) then
+          begin
+            if (Default = '') and (Number = '0') then
+              Result := Result + '$0'
+            else if Default = '' then
+              Result := Result + '${' + Number + '}'
+            else
+              Result := Result + '${' + Number + ':' + Default + '}';
+          end
+          else
+            Result := Result + Default;
+          Continue;
+        end;
+    end;
+    // Ein "$" ohne Platzhalter bleibt Text.
+    if ATop and (AText[AIndex] = '$') then
+      Result := Result + '$$'
+    else
+      Result := Result + AText[AIndex];
+    Inc(AIndex);
+  end;
+end;
+
+class function TAtlasSnippets.FromLsp(const AText: string): string;
+var
+  Index: Integer;
+begin
+  Index := 1;
+  Result := ConvertLsp(NormalizeBreaks(AText), Index, True);
 end;
 
 class function TAtlasSnippets.PlainText(const ABody: string): string;

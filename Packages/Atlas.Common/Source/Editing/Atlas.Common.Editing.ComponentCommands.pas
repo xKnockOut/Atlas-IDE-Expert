@@ -27,98 +27,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.ClassCommands,
+  Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource;
-
-type
-  TKinds = set of TIndexSymbolKind;
-
-const
-  ComponentRoots: array[0..13] of string = ('TComponent', 'TControl', 'TWinControl', 'TCustomControl',
-    'TGraphicControl', 'TForm', 'TCustomForm', 'TFrame', 'TCustomFrame', 'TDataModule', 'TDataSet', 'TCustomPanel',
-    'TPanel', 'TCustomConnection');
-  ControlRoots: array[0..9] of string = ('TControl', 'TWinControl', 'TCustomControl', 'TGraphicControl', 'TForm',
-    'TCustomForm', 'TFrame', 'TCustomFrame', 'TCustomPanel', 'TPanel');
-
-/// <summary>Vorfahren von AClassName, soweit Unit und Index sie kennen; der erste ist der direkte.</summary>
-function Ancestors(ASource: TCommandSource; const AIndex: ISymbolIndex; const AClassName: string): TArray<string>;
-var
-  Name, Next: string;
-  Symbol: TIndexSymbol;
-  Location: TSymbolLocation;
-  Depth: Integer;
-  Found: Boolean;
-begin
-  Result := nil;
-  Name := AClassName;
-  for Depth := 1 to 32 do
-  begin
-    Next := '';
-    Found := False;
-    for Symbol in ASource.UnitIndex.Symbols do
-      if (Symbol.Kind = TIndexSymbolKind.ClassType) and SameText(Symbol.Name, Name) and (Symbol.Container = '') then
-      begin
-        Found := True;
-        if Length(Symbol.Ancestors) > 0 then
-          Next := Symbol.Ancestors[0];
-        Break;
-      end;
-    if not Found and (AIndex <> nil) then
-      for Location in AIndex.FindSymbols(Name) do
-        if Location.Symbol.Kind = TIndexSymbolKind.ClassType then
-        begin
-          if Length(Location.Symbol.Ancestors) > 0 then
-            Next := Location.Symbol.Ancestors[0];
-          Break;
-        end;
-    if (Next = '') or (IndexText(Next, Result) >= 0) then
-      Exit;
-    Result := Result + [Next];
-    Name := Next;
-  end;
-end;
-
-function DescendsFrom(const AChain: TArray<string>; const ARoots: array of string): Boolean;
-var
-  Name: string;
-begin
-  for Name in AChain do
-    if MatchText(Name, ARoots) then
-      Exit(True);
-  Result := False;
-end;
-
-/// <summary>Mitglied AName der Klasse AClass in der Unit (Feld, Property, Methode).</summary>
-function FindMember(ASource: TCommandSource; const AClass: TIndexSymbol; const AName: string;
-  AKinds: TKinds; out AMember: TIndexSymbol): Boolean;
-var
-  Symbol: TIndexSymbol;
-begin
-  for Symbol in ASource.UnitIndex.Symbols do
-    if (Symbol.Kind in AKinds) and SameText(Symbol.Name, AName) and SameText(Symbol.Container, AClass.Name) and
-      (Symbol.Range.StartPos.Line >= AClass.Range.StartPos.Line) and
-      (Symbol.Range.EndPos.Line <= AClass.Range.EndPos.Line) then
-    begin
-      AMember := Symbol;
-      Exit(True);
-    end;
-  Result := False;
-end;
-
-/// <summary>Rumpf TKlasse.AName in der implementation; nil ohne.</summary>
-function FindBody(ASource: TCommandSource; const AClassName, AName: string): TSyntaxNode;
-var
-  Section: TSyntaxNode;
-  Index: Integer;
-begin
-  Result := nil;
-  Section := ASource.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
-  if Section = nil then
-    Exit;
-  for Index := 0 to Section.ChildCount - 1 do
-    if (Section[Index].Kind = TSyntaxKind.RoutineDecl) and SameText(Section[Index].Name, AClassName + '.' + AName) and
-      (Section[Index].FindChild(TSyntaxKind.Block) <> nil) then
-      Exit(Section[Index]);
-end;
 
 /// <summary>Abschnitte vor "end" der Klasse: Feld in private (vorhandener Abschnitt oder neuer), dann AMore.</summary>
 function AddToClass(ASource: TCommandSource; const AClass: TIndexSymbol; const AField: string;
@@ -251,23 +161,10 @@ end;
 
 { /changed }
 
-/// <summary>Wort hinter AKeyword (read/write) in der Property-Deklaration; '' ohne.</summary>
-function Accessor(const ADeclaration, AKeyword: string): string;
-var
-  Words: TArray<string>;
-  Index: Integer;
-begin
-  Words := ADeclaration.Replace(';', ' ').Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
-  for Index := 0 to High(Words) - 1 do
-    if SameText(Words[Index], AKeyword) then
-      Exit(Words[Index + 1]);
-  Result := '';
-end;
-
 function ExecuteChanged(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
-  ClassSymbol, Prop, Member: TIndexSymbol;
+  ClassSymbol, Prop: TIndexSymbol;
   Name, Declaration, Field, Writer, Call, Value, Indent, LB, Body, NewDeclaration: string;
   Routine, Block: TSyntaxNode;
   Signature: string;
@@ -287,13 +184,10 @@ begin
     if Field = '' then
       Field := 'F' + Name;
     Writer := Accessor(Declaration, 'write');
-    // Benachrichtigung: Invalidate bei Controls, sonst eine vorhandene Changed- bzw. DoChange-Methode.
-    if DescendsFrom(Ancestors(Source, AContext.Index, ClassSymbol.Name), ControlRoots) then
-      Call := 'Invalidate'
-    else if FindMember(Source, ClassSymbol, 'DoChange', [TIndexSymbolKind.Method], Member) and
-      not FindMember(Source, ClassSymbol, 'Changed', [TIndexSymbolKind.Method], Member) then
-      Call := 'DoChange'
-    else
+    // Benachrichtigung: Invalidate bei Controls, sonst eine vorhandene Changed- bzw. DoChange-Methode; der Befehl
+    // heißt "changed", deshalb ohne beide Changed.
+    Call := TSetterGenerator.NotifyCall(Source, AContext.Index, ClassSymbol);
+    if Call = '' then
       Call := 'Changed';
     LB := Source.LineBreak;
     Value := 'Value';
@@ -307,8 +201,7 @@ begin
       if ParameterNames(Signature) <> '' then
         Value := ParameterNames(Signature);
     end;
-    Body := 'begin' + LB + Format('  if %s <> %s then', [Field, Value]) + LB + '  begin' + LB +
-      Format('    %s := %s;', [Field, Value]) + LB + Format('    %s;', [Call]) + LB + '  end;' + LB + 'end;';
+    Body := TSetterGenerator.Body(Field, Value, Call, LB);
     if Routine <> nil then
     begin
       Block := Routine.FindChild(TSyntaxKind.Block);
@@ -368,12 +261,6 @@ begin
 end;
 
 { /notification }
-
-function IsComponentType(ASource: TCommandSource; const AIndex: ISymbolIndex; const ATypeName: string): Boolean;
-begin
-  Result := MatchText(ATypeName, ComponentRoots) or
-    DescendsFrom(Ancestors(ASource, AIndex, ATypeName), ComponentRoots);
-end;
 
 function ExecuteNotification(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>;
   out AReason: string): Boolean;

@@ -29,6 +29,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource;
 
 { /var und /const }
@@ -191,8 +192,9 @@ begin
     AEdits := AEdits + [Source.BeforeLine(EndLine, Body)];
     if not ReadOnly then
     begin
-      Body := Format('procedure %s.%s(const Value: %s);', [ClassSymbol.Name, Setter, TypeName]) + LB + 'begin' + LB +
-        Format('  %s := Value;', [Field]) + LB + 'end;';
+      // Derselbe Setter wie bei /changed und der Code-Vorlage (#51): nur bei Änderung, mit Benachrichtigung.
+      Body := Format('procedure %s.%s(const Value: %s);', [ClassSymbol.Name, Setter, TypeName]) + LB +
+        TSetterGenerator.Body(Field, 'Value', TSetterGenerator.NotifyCall(Source, AContext.Index, ClassSymbol), LB);
       AEdits := AEdits + [Source.AddBody(ClassSymbol.Name, Body)];
     end;
     AEdits := AEdits + [Source.RemoveCommand];

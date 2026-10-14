@@ -58,6 +58,21 @@ end;
 
 `${1:Name}` ist ein Platzhalter mit Vorgabe, `${2}` einer ohne, `$0` die Endposition; `$FF` und andere Hexzahlen bleiben Text. Abschalten unter *Tools › Optionen › Drittanbieter › Atlas* („Code-Vorlagen (Snippets) in der Liste anbieten“, Registry-Wert `Snippets`).
 
+`$$` steht für ein `$` im Text. Einsetzen und Ausfüllen sind zusammen ein Undo-Schritt: Strg+Z nach dem Beenden nimmt die ganze Vorlage zurück.
+
+Die Live Templates der IDE (`*.xml` unter `%APPDATA%\Embarcadero\BDS\<Version>\code_templates`) erscheinen ebenfalls in der Liste; Punkte werden zu Platzhaltern, `|end|` zur Endposition, Skripte entfallen. Abschalten mit „Live Templates der IDE als Code-Vorlagen einlesen“ (Registry-Wert `ImportIdeTemplates`). Bei gleichem Kürzel gilt: eigene Vorlage vor IDE-Vorlage vor mitgelieferter.
+
+Eigene Vorlagen lassen sich unter *Tools › Optionen › Drittanbieter › Atlas.Snippets* bearbeiten: Die Liste zeigt alle Vorlagen mit Herkunft; „Neu“ legt eine eigene an, „Als eigene kopieren“ macht aus einer mitgelieferten oder IDE-Vorlage eine eigene, die sie ersetzt, „Löschen“ entfernt eine eigene. Kürzel müssen eindeutig sein; „OK“ speichert die Dateien in `%APPDATA%\Atlas\Snippets`.
+
+Vom Server kommen zusätzlich Vorlagen, die die Klasse kennen. Sie erscheinen nur, wenn in der Zeile außer dem getippten Wort nichts steht:
+
+- `prop` in einer Klassendeklaration, je Feld `FName` ohne Property: setzt `property Name: Typ read FName write SetName;` ein, deklariert `SetName` im private-Abschnitt und legt den Rumpf an.
+- `changed` im leeren Rumpf eines Setters: `if FName <> Value then begin FName := Value; Invalidate; end;`.
+- `create` im Konstruktor: erzeugt die noch nicht erzeugten Objektfelder (Komponenten mit `Self` als Owner), davor `inherited;`, falls es fehlt.
+- `free` im Destruktor: gibt die im Konstruktor erzeugten Felder in umgekehrter Reihenfolge mit `FreeAndNil` frei.
+
+Der Setter sieht überall gleich aus, ob er aus `prop`, `changed`, `propset`, `/prop` oder `/changed` kommt: bei Controls mit `Invalidate`, sonst mit `Changed` bzw. `DoChange`, wenn die Klasse eine davon hat. Mit „Code-Vorlagen (Snippets) in der Liste anbieten“ aus fehlen auch diese Vorlagen.
+
 Zur Fehlersuche: Wert `Diagnose` (DWORD) = `1` unter `HKCU\Software\Atlas\IdePlugin` setzen und die IDE neu starten. Das Plugin schreibt dann jeden Aufruf der IDE (Hover, Strg+Klick, Position und Ergebnis) in `Atlas.IDE.Expert.log` neben der BPL. Die Datei enthält keine Pfade, Datei- oder Bezeichnernamen (nur Endungen, Positionen und Längen) und darf weitergegeben werden. Für die Vervollständigung steht dort auch, wie lange der Server brauchte, ob er nicht antwortete und warum das Popup schloss.
 
 Findet der Server keine Definition, passiert bei Strg+Klick nichts. Deklarationen in Include-Dateien (`{$I …}`) findet der Server erst mit dem Include-Resolver (#264).

@@ -158,6 +158,8 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Bookmarks.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DocumentationCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ComponentCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ClassMembers.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ContextSnippets.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.WinApiCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TaskCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.RecordCommands.pas"/>

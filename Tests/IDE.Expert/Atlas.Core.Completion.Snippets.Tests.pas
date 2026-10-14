@@ -31,6 +31,8 @@ type
     procedure SetterSnippetKeepsInvalidateRuleSilent;
     [Test]
     procedure FormatRoundTrips;
+    [Test]
+    procedure ConvertsServerSnippets;
   end;
 
   /// <summary>Datenmodell der Seite „Snippets“ (#51).</summary>
@@ -484,6 +486,24 @@ begin
   Assert.AreEqual('Snippet', Tags[0].Text);
 end;
 
+procedure TAtlasSnippetsTests.ConvertsServerSnippets;
+var
+  Expansion: TAtlasSnippetExpansion;
+begin
+  // LSP-Syntax des Servers (#51) im eigenen Format.
+  Assert.AreEqual('property ${1:Farbe}: TColor;$0', TAtlasSnippets.FromLsp('property ${1:Farbe}: TColor;$0'));
+  Assert.AreEqual('X := $$FF; a}b\c', TAtlasSnippets.FromLsp('X := \$FF; a\}b\\c'));
+  Assert.AreEqual('${1} ${2:ja}', TAtlasSnippets.FromLsp('$1 ${2|ja,nein|}'));
+  Assert.AreEqual('${1:Liste.Free} $$FF', TAtlasSnippets.FromLsp('${1:${2:Liste}.Free} ${TM_SELECTED_TEXT}$FF'));
+  Assert.AreEqual('a$$b', TAtlasSnippets.FromLsp('a$b'));
+  // Eingesetzt: Platzhalter und Endposition wie bei den eigenen Vorlagen, Hexzahl als Text.
+  Expansion := TAtlasSnippets.Expand(TAtlasSnippets.FromLsp('if F <> \$FF then'#10'  ${1:Invalidate};$0'), '  ',
+    #10);
+  Assert.AreEqual('if F <> $FF then'#10'    Invalidate;', Expansion.Text);
+  Assert.AreEqual(2, Integer(Length(Expansion.Stops)));
+  Assert.AreEqual(1, Expansion.Stops[0].Number);
+end;
+
 procedure TAtlasSnippetsTests.DoubleDollarIsText;
 var
   Expansion: TAtlasSnippetExpansion;
@@ -497,7 +517,7 @@ end;
 procedure TAtlasSnippetsTests.SetterSnippetKeepsInvalidateRuleSilent;
 const
   Head = 'unit U;'#10'interface'#10'type'#10'  TMyControl = class(TCustomControl)'#10'  private'#10 +
-    '    FValue: Integer;'#10'    procedure SetValue(const AValue: Integer);'#10'  protected'#10 +
+    '    FValue: Integer;'#10'    procedure SetValue(const Value: Integer);'#10'  protected'#10 +
     '    procedure Paint; override;'#10'  published'#10'    property Value: Integer read FValue write SetValue;'#10 +
     '  end;'#10'implementation'#10'procedure TMyControl.Paint;'#10'begin'#10'  inherited;'#10 +
     '  Canvas.TextOut(0, 0, IntToStr(FValue));'#10'end;'#10;
@@ -506,7 +526,7 @@ var
 begin
   // Gegenprobe: ohne Invalidate meldet die Regel (#55).
   TRuleAssert.Reports(TComponentSetterWithoutInvalidateRule.Create, Head +
-    'procedure TMyControl.SetValue(const AValue: Integer);'#10'begin'#10'  FValue := AValue;'#10'end;'#10'end.');
+    'procedure TMyControl.SetValue(const Value: Integer);'#10'begin'#10'  FValue := Value;'#10'end;'#10'end.');
   Assert.IsTrue(Find(TAtlasSnippets.BuiltIn, 'propset', Snippet));
   TRuleAssert.Silent(TComponentSetterWithoutInvalidateRule.Create,
     Head + TAtlasSnippets.Expand(Snippet.Body, '', #10).Text + #10'end.');

@@ -37,6 +37,7 @@ type
     FTimeoutMs: Cardinal;
     FResolveGeneration: Integer;
     FOnLog: TAtlasProviderLog;
+    FSnippets: Boolean;
     procedure Log(const AMessage: string);
   protected
     function Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean; override;
@@ -50,12 +51,16 @@ type
     class function ItemFromLsp(AItem: TJSONObject; ARank: Integer): TAtlasCompletionItem; static;
     /// <summary>Antwort auf textDocument/completion: CompletionList, CompletionItem[] oder null.</summary>
     class function ItemsFromLsp(AResponse: TJSONValue; AFirstRank: Integer = 0): TAtlasCompletionItems; static;
+    /// <summary>AItems ohne Code-Vorlagen des Servers (Einträge mit Snippet, #51).</summary>
+    class function WithoutSnippets(const AItems: TAtlasCompletionItems): TAtlasCompletionItems; static;
     /// <summary>Details aus der Antwort auf completionItem/resolve (data.atlas, sonst detail/documentation).</summary>
     class function DetailsFromLsp(AResponse: TJSONValue): TAtlasItemDetails; static;
     { IAtlasCompletionResolver }
     function Resolve(const AItem: TAtlasCompletionItem; const ACallback: TAtlasDetailsCallback): Boolean;
     /// <summary>Warum die Liste leer bleibt (kein Server, keine Antwort) und wie lange der Server brauchte.</summary>
     property OnLog: TAtlasProviderLog read FOnLog write FOnLog;
+    /// <summary>Kontextabhängige Code-Vorlagen des Servers anbieten (#51, completion.snippets); Vorgabe an.</summary>
+    property Snippets: Boolean read FSnippets write FSnippets;
   end;
 
 implementation
@@ -65,7 +70,8 @@ uses
   System.Classes,
   System.SyncObjs,
   System.Diagnostics,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Completion.Snippets;
 
 { TAtlasServerCompletionProvider }
 
@@ -74,6 +80,7 @@ begin
   inherited Create;
   FSession := ASession;
   FTimeoutMs := ATimeoutMs;
+  FSnippets := True;
 end;
 
 class function TAtlasServerCompletionProvider.KindOf(ALspKind: Integer): TAtlasItemKind;
@@ -223,6 +230,28 @@ begin
   // #443, #444) ergänzen Code statt uses.
   Result.UnitUsed := (Length(Result.AdditionalEdits) = 0) or
     ((AItem.GetValue('data') is TJSONObject) and (TJSONObject(AItem.GetValue('data')).GetValue('action') <> nil));
+  // Kontextabhängige Code-Vorlage des Servers (#51): Platzhalter-Modus wie bei den eigenen Vorlagen.
+  if (AItem.GetValue('insertTextFormat') is TJSONNumber) and
+    (TJSONNumber(AItem.GetValue('insertTextFormat')).AsInt = 2) then
+  begin
+    if Result.HasTextEdit then
+      Result.Snippet := TAtlasSnippets.FromLsp(Result.TextEdit.NewText)
+    else if Result.InsertText <> '' then
+      Result.Snippet := TAtlasSnippets.FromLsp(Result.InsertText)
+    else
+      Result.Snippet := TAtlasSnippets.FromLsp(Result.Name);
+  end;
+end;
+
+class function TAtlasServerCompletionProvider.WithoutSnippets(
+  const AItems: TAtlasCompletionItems): TAtlasCompletionItems;
+var
+  Item: TAtlasCompletionItem;
+begin
+  Result := nil;
+  for Item in AItems do
+    if Item.Snippet = '' then
+      Result := Result + [Item];
 end;
 
 class function TAtlasServerCompletionProvider.ItemsFromLsp(AResponse: TJSONValue;
@@ -283,10 +312,12 @@ var
   NextRank: Integer;
   Emit: TAtlasEmitProc;
   Watch: TStopwatch;
+  Snippets: Boolean;
 begin
   AIncomplete := False;
   NextRank := 0;
   Emit := AEmit;
+  Snippets := FSnippets;
   Watch := TStopwatch.StartNew;
   // Teilergebnisse kommen im Lese-Thread nacheinander und alle vor der Antwort.
   Response := TLspSession(AData).Completion(AContext.FileName, AContext.Line, AContext.Character, FTimeoutMs,
@@ -299,6 +330,9 @@ begin
         Exit;
       Items := ItemsFromLsp(AValue, NextRank);
       Inc(NextRank, TJSONArray(AValue).Count);
+      // completion.snippets aus (#51): wie ohne die Funktion.
+      if not Snippets then
+        Items := WithoutSnippets(Items);
       Emit(Items);
     end);
   try
@@ -315,6 +349,8 @@ begin
     AIncomplete := (Response is TJSONObject) and (TJSONObject(Response).GetValue('isIncomplete') is TJSONBool) and
       TJSONBool(TJSONObject(Response).GetValue('isIncomplete')).AsBoolean;
     Result := ItemsFromLsp(Response, NextRank);
+    if not Snippets then
+      Result := WithoutSnippets(Result);
   finally
     Response.Free;
   end;
