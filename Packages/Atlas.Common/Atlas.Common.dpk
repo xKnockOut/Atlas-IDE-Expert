@@ -212,6 +212,7 @@ contains
   Atlas.Common.Lsp.WatchedFiles in 'Source\Lsp\Atlas.Common.Lsp.WatchedFiles.pas',
   Atlas.Common.Lsp.IndexRefresh in 'Source\Lsp\Atlas.Common.Lsp.IndexRefresh.pas',
   Atlas.Common.Lsp.IdeBuild in 'Source\Lsp\Atlas.Common.Lsp.IdeBuild.pas',
+  Atlas.Common.Lsp.IdeProject in 'Source\Lsp\Atlas.Common.Lsp.IdeProject.pas',
   Atlas.Common.Mcp.BuildTools in 'Source\Mcp\Atlas.Common.Mcp.BuildTools.pas',
   Atlas.Common.Mcp.Paths in 'Source\Mcp\Atlas.Common.Mcp.Paths.pas',
   Atlas.Common.Mcp.Freshness in 'Source\Mcp\Atlas.Common.Mcp.Freshness.pas',

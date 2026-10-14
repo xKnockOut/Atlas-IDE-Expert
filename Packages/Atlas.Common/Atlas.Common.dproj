@@ -271,6 +271,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WatchedFiles.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IndexRefresh.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeBuild.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeProject.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.BuildTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Paths.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Freshness.pas"/>

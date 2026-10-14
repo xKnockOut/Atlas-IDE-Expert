@@ -50,6 +50,8 @@ type
     procedure ReportsWatchedFilesExceptSyncedChanges;
     [Test]
     procedure PreparesAndRequestsRename;
+    [Test]
+    procedure SendsProjectContextsInInitializeAndOnChange;
   end;
 
   [TestFixture]
@@ -88,6 +90,7 @@ uses
   Atlas.Core.Lsp.Adapters.ServerProcess,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Files.WatchedChanges,
+  Atlas.Core.Projects.Context,
   Atlas.Core.Problems.Contract;
 
 // Liest die JSON-Nachricht aus gerahmten Bytes.
@@ -662,6 +665,65 @@ begin
   finally
     Session.Free;
     Client.Free;
+  end;
+end;
+
+procedure TLspSessionTests.SendsProjectContextsInInitializeAndOnChange;
+var
+  Client: TLspClient;
+  Session: TLspSession;
+  Initial: string;
+  Sent: TList<string>;
+  Context: TAtlasProjectContext;
+begin
+  Sent := TList<string>.Create;
+  Client := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    var
+      Message: TJSONObject;
+      Contexts: TJSONArray;
+      Reply: TBytes;
+    begin
+      Message := Unframe(ABytes);
+      try
+        if Message.GetValue<string>('method', '') = 'initialize' then
+        begin
+          if Message.TryGetValue<TJSONArray>('params.initializationOptions.projectContexts', Contexts) then
+            Initial := Contexts.ToJSON;
+          Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
+            [Message.GetValue<Integer>('id')]));
+          Client.Receive(Reply, Length(Reply));
+        end
+        else if Message.GetValue<string>('method', '') = 'atlas/projectContext' then
+          Sent.Add(Message.GetValue<string>('params.configuration') + '/' + Message.GetValue<string>('params.platform'));
+      finally
+        Message.Free;
+      end;
+    end);
+  Session := TLspSession.Create(Client);
+  try
+    Context := Default(TAtlasProjectContext);
+    Context.Project := 'C:\P\A.dproj';
+    Context.Configuration := 'Debug';
+    Context.Platform := 'Win32';
+    Context.Defines := ['DEBUG'];
+    Session.SetProjectContexts([Context]);
+    Session.Initialize;
+    Assert.Contains(Initial, '"configuration":"Debug"');
+    Assert.Contains(Initial, '"defines":["DEBUG"]');
+    // Unverändert: nichts zu melden.
+    Session.SetProjectContexts([Context]);
+    Assert.AreEqual(0, Integer(Sent.Count));
+    Context.Configuration := 'Release';
+    Context.Platform := 'Win64';
+    Session.SetProjectContexts([Context]);
+    Session.SetProjectContexts([Context]);
+    Assert.AreEqual(1, Integer(Sent.Count));
+    Assert.AreEqual('Release/Win64', Sent[0]);
+  finally
+    Session.Free;
+    Client.Free;
+    Sent.Free;
   end;
 end;
 
