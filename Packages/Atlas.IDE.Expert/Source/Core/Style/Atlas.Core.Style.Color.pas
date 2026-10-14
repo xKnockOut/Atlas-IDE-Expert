@@ -3,7 +3,8 @@
 // Farbmathematik von Atlas (#411), ohne VCL: Farben im Format von TColor
 // ($00BBGGRR), damit die Oberfläche sie direkt verwenden kann. Mischen wie
 // eine halbtransparente Fläche, HSL zum Aufhellen und Abdunkeln, relative
-// Leuchtdichte und Kontrastverhältnis nach WCAG 2.1.
+// Leuchtdichte und Kontrastverhältnis nach WCAG 2.1, Farbabstand ΔE2000 in
+// CIELAB (D65) für die Paarfarben (#653).
 
 interface
 
@@ -23,6 +24,14 @@ type
     L: Double;
     class function FromColor(AColor: TAtlasColor): TAtlasHSL; static;
     function ToColor: TAtlasColor;
+  end;
+
+  /// <summary>Farbe in CIELAB (D65).</summary>
+  TAtlasLab = record
+    L: Double;
+    A: Double;
+    B: Double;
+    class function Create(AL, AA, AB: Double): TAtlasLab; static;
   end;
 
   TAtlasColorMath = class
@@ -45,6 +54,11 @@ type
     class function Contrast(A, B: TAtlasColor): Double; static;
     /// <summary>Dunkle Fläche: Leuchtdichte unter der Mitte zwischen Schwarz und Weiß.</summary>
     class function IsDark(AColor: TAtlasColor): Boolean; static;
+    /// <summary>sRGB nach CIELAB (D65).</summary>
+    class function ToLab(AColor: TAtlasColor): TAtlasLab; static;
+    /// <summary>Farbabstand nach CIEDE2000 (kL = kC = kH = 1).</summary>
+    class function DeltaE2000(const A, B: TAtlasLab): Double; overload; static;
+    class function DeltaE2000(A, B: TAtlasColor): Double; overload; static;
   end;
 
 implementation
@@ -191,6 +205,111 @@ begin
   LumA := Luminance(A);
   LumB := Luminance(B);
   Result := (Max(LumA, LumB) + 0.05) / (Min(LumA, LumB) + 0.05);
+end;
+
+class function TAtlasLab.Create(AL, AA, AB: Double): TAtlasLab;
+begin
+  Result.L := AL;
+  Result.A := AA;
+  Result.B := AB;
+end;
+
+class function TAtlasColorMath.ToLab(AColor: TAtlasColor): TAtlasLab;
+
+  function Linear(AValue: Byte): Double;
+  var
+    Value: Double;
+  begin
+    Value := AValue / 255;
+    if Value <= 0.04045 then
+      Result := Value / 12.92
+    else
+      Result := Power((Value + 0.055) / 1.055, 2.4);
+  end;
+
+  function F(AValue: Double): Double;
+  begin
+    if AValue > 216 / 24389 then
+      Result := Power(AValue, 1 / 3)
+    else
+      Result := (24389 / 27 * AValue + 16) / 116;
+  end;
+
+var
+  R, G, B, X, Y, Z: Double;
+begin
+  R := Linear(Red(AColor));
+  G := Linear(Green(AColor));
+  B := Linear(Blue(AColor));
+  X := F((0.4124 * R + 0.3576 * G + 0.1805 * B) / 0.95047);
+  Y := F(0.2126 * R + 0.7152 * G + 0.0722 * B);
+  Z := F((0.0193 * R + 0.1192 * G + 0.9505 * B) / 1.08883);
+  Result := TAtlasLab.Create(116 * Y - 16, 500 * (X - Y), 200 * (Y - Z));
+end;
+
+class function TAtlasColorMath.DeltaE2000(const A, B: TAtlasLab): Double;
+const
+  Pow25 = 6103515625.0; // 25^7
+var
+  C1, C2, CMean, G, A1, A2, C1p, C2p, H1p, H2p, DLp, DCp, DHp, DeltaHue, LMean, CpMean, HpMean, T, DTheta, Rc,
+    Sl, Sc, Sh, Rt: Double;
+
+  function Hue(AB, AA: Double): Double;
+  begin
+    if (AA = 0) and (AB = 0) then
+      Exit(0);
+    Result := RadToDeg(ArcTan2(AB, AA));
+    if Result < 0 then
+      Result := Result + 360;
+  end;
+
+begin
+  C1 := Sqrt(Sqr(A.A) + Sqr(A.B));
+  C2 := Sqrt(Sqr(B.A) + Sqr(B.B));
+  CMean := (C1 + C2) / 2;
+  G := 0.5 * (1 - Sqrt(Power(CMean, 7) / (Power(CMean, 7) + Pow25)));
+  A1 := (1 + G) * A.A;
+  A2 := (1 + G) * B.A;
+  C1p := Sqrt(Sqr(A1) + Sqr(A.B));
+  C2p := Sqrt(Sqr(A2) + Sqr(B.B));
+  H1p := Hue(A.B, A1);
+  H2p := Hue(B.B, A2);
+  DLp := B.L - A.L;
+  DCp := C2p - C1p;
+  DeltaHue := 0;
+  if C1p * C2p <> 0 then
+  begin
+    DeltaHue := H2p - H1p;
+    if DeltaHue > 180 then
+      DeltaHue := DeltaHue - 360
+    else if DeltaHue < -180 then
+      DeltaHue := DeltaHue + 360;
+  end;
+  DHp := 2 * Sqrt(C1p * C2p) * Sin(DegToRad(DeltaHue / 2));
+  LMean := (A.L + B.L) / 2;
+  CpMean := (C1p + C2p) / 2;
+  if C1p * C2p = 0 then
+    HpMean := H1p + H2p
+  else if Abs(H1p - H2p) <= 180 then
+    HpMean := (H1p + H2p) / 2
+  else if H1p + H2p < 360 then
+    HpMean := (H1p + H2p + 360) / 2
+  else
+    HpMean := (H1p + H2p - 360) / 2;
+  T := 1 - 0.17 * Cos(DegToRad(HpMean - 30)) + 0.24 * Cos(DegToRad(2 * HpMean)) +
+    0.32 * Cos(DegToRad(3 * HpMean + 6)) - 0.20 * Cos(DegToRad(4 * HpMean - 63));
+  DTheta := 30 * Exp(-Sqr((HpMean - 275) / 25));
+  Rc := 2 * Sqrt(Power(CpMean, 7) / (Power(CpMean, 7) + Pow25));
+  Sl := 1 + 0.015 * Sqr(LMean - 50) / Sqrt(20 + Sqr(LMean - 50));
+  Sc := 1 + 0.045 * CpMean;
+  Sh := 1 + 0.015 * CpMean * T;
+  Rt := -Sin(DegToRad(2 * DTheta)) * Rc;
+  Result := Sqrt(Sqr(DLp / Sl) + Sqr(DCp / Sc) + Sqr(DHp / Sh) + Rt * (DCp / Sc) * (DHp / Sh));
+end;
+
+class function TAtlasColorMath.DeltaE2000(A, B: TAtlasColor): Double;
+begin
+  Result := DeltaE2000(ToLab(A), ToLab(B));
 end;
 
 class function TAtlasColorMath.IsDark(AColor: TAtlasColor): Boolean;

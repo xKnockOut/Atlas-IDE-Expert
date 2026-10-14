@@ -103,11 +103,14 @@ begin
   Result.Badges[TAtlasBadgeKind.Snippet] := Badge('#ECEFF3', '#3E4756');
   Result.Badges[TAtlasBadgeKind.Keyword] := Badge('#ECEFF3', '#3E4756');
   Result.Badges[TAtlasBadgeKind.XmlDoc] := Badge('#ECEFF3', '#3E4756');
-  Result.Pairs[0] := Hex('#0D5EAF');
-  Result.Pairs[1] := Hex('#7B3FB0');
-  Result.Pairs[2] := Hex('#9A5B00');
-  Result.Pairs[3] := Hex('#1E6B3A');
-  Result.Pairs[4] := Hex('#B0306A');
+  // Kräftig und gesättigt (#653): vom schwarzen bzw. dunkelblauen Text der Schlüsselwörter klar
+  // verschieden (ΔE2000 ≥ 30), untereinander ≥ 30, gegen Weiß ≥ 4,5 : 1. Tiefe 0 nicht blau, weil
+  // die IDE Schlüsselwörter im hellen Schema dunkelblau zeichnet; kein Rot neben der Fehlerfarbe.
+  Result.Pairs[0] := Hex('#C000E0');
+  Result.Pairs[1] := Hex('#008700');
+  Result.Pairs[2] := Hex('#0071E3');
+  Result.Pairs[3] := Hex('#9E6900');
+  Result.Pairs[4] := Hex('#007C8A');
 end;
 
 class function TAtlasColors.Dark: TAtlasColors;
@@ -144,11 +147,13 @@ begin
   Result.Badges[TAtlasBadgeKind.Snippet] := Badge('#272D36', '#B9C1CC');
   Result.Badges[TAtlasBadgeKind.Keyword] := Badge('#272D36', '#B9C1CC');
   Result.Badges[TAtlasBadgeKind.XmlDoc] := Badge('#272D36', '#B9C1CC');
-  Result.Pairs[0] := Hex('#7FB0EE');
-  Result.Pairs[1] := Hex('#C79BF2');
-  Result.Pairs[2] := Hex('#F0C06A');
-  Result.Pairs[3] := Hex('#7FD39A');
-  Result.Pairs[4] := Hex('#F28DB6');
+  // #653: Die bisherigen Pastelltöne lagen zu nah am hellen Text (Kontrast unter 1,8 : 1 und
+  // ΔE2000 unter 30); dieselben Farbtöne wie hell, gesättigt und mittelhell.
+  Result.Pairs[0] := Hex('#E250FF');
+  Result.Pairs[1] := Hex('#24AA24');
+  Result.Pairs[2] := Hex('#3C94FF');
+  Result.Pairs[3] := Hex('#D47F00');
+  Result.Pairs[4] := Hex('#00A4A4');
 end;
 
 class function TAtlasColors.ForBackground(ABackground: TAtlasColor): TAtlasColors;

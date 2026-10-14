@@ -8,6 +8,9 @@
 // zeichnet, schaltet Atlas sie ab, solange die eigenen Linien an sind, und
 // stellt sie wieder her, wenn sie aus sind. Die IDE liest den Schalter nur
 // beim Start.
+// Mit Besitzern (#653): Steht der Öffner allein am Zeilenanfang unter seiner
+// Anweisung (if … then / begin), beginnt die Linie samt Haken an der Zeile der
+// Anweisung und steht vor deren Einzug.
 
 interface
 
@@ -36,7 +39,10 @@ type
     class function Compute(const AText: string; ATabWidth: Integer): TArray<TAtlasGuide>; static;
     /// <summary>Wie Compute aus schon analysierten Blöcken; ALines sind die Zeilen des Texts (an #10 getrennt).</summary>
     class function FromBlocks(const ALines: TArray<string>; const ABlocks: TArray<TAtlasPairBlock>;
-      ATabWidth: Integer): TArray<TAtlasGuide>; static;
+      ATabWidth: Integer; AOwners: Boolean = False): TArray<TAtlasGuide>; static;
+    /// <summary>Stiftbreite in Pixeln: AWidth (1–3, bei 100 %) skaliert mit der Zeilenhöhe
+    /// gegenüber ABaseCellHeight (Zeilenhöhe bei 100 %).</summary>
+    class function PenWidth(AWidth, ACellHeight, ABaseCellHeight: Integer): Integer; static;
     /// <summary>Neuer Zustand der IDE-Strukturhervorhebung: aus bei eigenen Linien,
     /// sonst wieder an, wenn Atlas sie abgeschaltet hatte.</summary>
     class function Switch(const AState: TAtlasIdeStructure; AOwnGuides: Boolean): TAtlasIdeStructure; static;
@@ -59,29 +65,42 @@ begin
 end;
 
 class function TAtlasGuides.FromBlocks(const ALines: TArray<string>; const ABlocks: TArray<TAtlasPairBlock>;
-  ATabWidth: Integer): TArray<TAtlasGuide>;
+  ATabWidth: Integer; AOwners: Boolean): TArray<TAtlasGuide>;
 var
   Block: TAtlasPairBlock;
   Guide: TAtlasGuide;
   Display: string;
-  Indent: Integer;
+  Indent, First: Integer;
 begin
   Result := nil;
   for Block in ABlocks do
   begin
     if (Block.CloseLine <= Block.OpenLine) or (Block.CloseLine > High(ALines)) then
       Continue;
-    Display := TAtlasPairs.DisplayLine(ALines[Block.OpenLine], ATabWidth);
+    First := Block.OpenLine;
+    // Öffner allein am Zeilenanfang unter seiner Anweisung: Linie ab der Anweisung.
+    if AOwners and (Block.OwnerLine < Block.OpenLine) and (Block.OwnerLine >= 0) and
+      (Trim(Copy(ALines[Block.OpenLine], 1, Block.OpenCharacter)) = '') then
+      First := Block.OwnerLine;
+    Display := TAtlasPairs.DisplayLine(ALines[First], ATabWidth);
     Indent := 1;
     while (Indent <= Length(Display)) and (Display[Indent] = ' ') do
       Inc(Indent);
-    Guide.FirstLine := Block.OpenLine;
+    Guide.FirstLine := First;
     Guide.LastLine := Block.CloseLine;
     Guide.Column := Min(Indent, Length(TAtlasPairs.DisplayLine(Copy(ALines[Block.CloseLine], 1,
       Block.CloseCharacter), ATabWidth)) + 1);
     Guide.Depth := Block.Depth;
     Result := Result + [Guide];
   end;
+end;
+
+class function TAtlasGuides.PenWidth(AWidth, ACellHeight, ABaseCellHeight: Integer): Integer;
+begin
+  AWidth := EnsureRange(AWidth, 1, 3);
+  if (ACellHeight <= 0) or (ABaseCellHeight <= 0) then
+    Exit(AWidth);
+  Result := Max(1, Round(AWidth * ACellHeight / ABaseCellHeight));
 end;
 
 class function TAtlasGuides.Switch(const AState: TAtlasIdeStructure; AOwnGuides: Boolean): TAtlasIdeStructure;

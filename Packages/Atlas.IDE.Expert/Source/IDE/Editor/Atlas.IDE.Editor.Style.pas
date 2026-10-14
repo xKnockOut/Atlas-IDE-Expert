@@ -22,6 +22,8 @@ type
     /// <summary>Farben, Editorschrift und Skalierung auf AWindow übertragen. ACaret: Caret-Rechteck in
     /// Bildschirmkoordinaten (Monitor und Zoom). Liefert eine Zeile für das Diagnoseprotokoll.</summary>
     class function Apply(AWindow: TAtlasPopupWindow; const ACaret: TRect): string; static;
+    /// <summary>Texthöhe der Editorschrift bei 96 dpi ohne Zoom (Bezug für Linienbreiten, #653).</summary>
+    class function BaseTextHeight: Integer; static;
   end;
 
 implementation
@@ -79,6 +81,16 @@ begin
     Result := TAtlasColors.Light
   else
     Result := TAtlasColors.Dark;
+end;
+
+class function TAtlasIdeStyle.BaseTextHeight: Integer;
+var
+  Editor: IOTAEditorServices;
+begin
+  if Supports(BorlandIDEServices, IOTAEditorServices, Editor) and (Editor.EditOptions <> nil) then
+    Result := TextHeightAt(Editor.EditOptions.FontName, Editor.EditOptions.FontSize, 96)
+  else
+    Result := 16;
 end;
 
 class function TAtlasIdeStyle.Apply(AWindow: TAtlasPopupWindow; const ACaret: TRect): string;
