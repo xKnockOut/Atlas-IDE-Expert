@@ -7,7 +7,7 @@ Es gibt zwei Wege:
 
 ## IDE-Plugin
 
-1. Das Package `Packages\Atlas.IDE.Expert\Atlas.IDE.Expert.dproj` (in der Projektgruppe enthalten) für **Win32** bauen (die IDE ist 32-Bit). Ergebnis: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert.bpl`. Ist das Plugin installiert, sperrt die IDE diese BPL; zum Neubauen das Package vorher entladen.
+1. Das Package `Packages\Atlas.IDE.Expert\Atlas.IDE.Expert.dproj` (in der Projektgruppe enthalten) mit der Delphi-Version bauen, in der es laufen soll: für die klassische IDE **Win32**, für die 64-Bit-IDE (ab Delphi 12.3) **Win64**. Ergebnis: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert370.bpl` bzw. `Output\Win64\…`; die Zahl ist die Package-Version (`370` Delphi 13, `290` Delphi 12). Ist das Plugin installiert, sperrt die IDE diese BPL; zum Neubauen das Package vorher entladen.
 2. In RAD Studio: *Komponente > Packages installieren > Hinzufügen*, die BPL auswählen.
 3. Den Server (`AtlasServer.exe`) mit bauen: Common, Windows und Server für dieselbe Plattform (Win64 empfohlen). Der Server ist ein eigenes Programm und hängt nicht von der Delphi-Version ab.
 4. Den Server findet das Plugin in dieser Reihenfolge:
@@ -23,11 +23,28 @@ Was Atlas selbst anzeigt, schaltet es in der IDE ab, damit nichts doppelt ersche
 
 Liegt unter der Maus ein Problem, zeigt der Tooltip es oben an; bei Regeltreffern steht darunter die Konfidenz (hoch, mittel, niedrig) als eigene Zeile (#144).
 
-Zur Fehlersuche: Wert `Diagnose` (DWORD) = `1` unter `HKCU\Software\Atlas\IdePlugin` setzen und die IDE neu starten. Das Plugin schreibt dann jeden Aufruf der IDE (Hover, Strg+Klick, Position und Ergebnis) in `Atlas.IDE.Expert.log` neben der BPL. Die Datei enthält keine Pfade, Datei- oder Bezeichnernamen (nur Endungen, Positionen und Längen) und darf weitergegeben werden. Für die Vervollständigung steht dort auch, wie lange der Server brauchte, ob er nicht antwortete und warum das Popup schloss.
+Zur Fehlersuche: Wert `Diagnose` (DWORD) = `1` unter `HKCU\Software\Atlas\IdePlugin` setzen und die IDE neu starten. Das Plugin schreibt dann jeden Aufruf der IDE (Hover, Strg+Klick, Position und Ergebnis) in eine Datei neben der BPL, die wie sie heißt, z. B. `Atlas.IDE.Expert370.log`. Die Datei enthält keine Pfade, Datei- oder Bezeichnernamen (nur Endungen, Positionen und Längen) und darf weitergegeben werden. Für die Vervollständigung steht dort auch, wie lange der Server brauchte, ob er nicht antwortete und warum das Popup schloss.
 
 Findet der Server keine Definition, passiert bei Strg+Klick nichts. Deklarationen in Include-Dateien (`{$I …}`) findet der Server erst mit dem Include-Resolver (#264).
 
 Unter Delphi 12 schließt der Tooltip über den Tastatur-Hook von Atlas, weil der Code-Editor dort keine Tastatur-Ereignisse meldet; sonst verhält sich das Plugin wie unter Delphi 13.
+
+### Ungeprüft
+
+Gebaut und geprüft wird bisher nur mit RAD Studio 13 in der 32-Bit-IDE (#281). Ohne Delphi-12-Installation und ohne 64-Bit-IDE sind diese Punkte offen:
+
+| Punkt | Stand |
+|---|---|
+| Bau mit Delphi 12 (Compilerversion 36.0, `CompilerVersion < 37.0`-Zweige) | Der Delphi-12-Zweig im Tooltip wurde nur mit umgedrehter Bedingung in Delphi 13 übersetzt |
+| `.dproj` mit `ProjectVersion` 20.3 in Delphi 12 öffnen | angenommen: Delphi 12 öffnet sie und schreibt beim Speichern seine Version |
+| `{$LIBSUFFIX AUTO}` ergibt `…290.bpl` unter Delphi 12 | aus der Dokumentation, nicht beobachtet |
+| Registry `HKCU\Software\Embarcadero\BDS\23.0` (Code Insight-Manager, Help Insight, Strukturhervorhebung) | Das Plugin liest den Schlüssel über `GetBaseRegistryKey`, nicht fest verdrahtet |
+| DUnitX-Pfad unter Delphi 12 | ungeprüft; die Tests laufen nur mit Delphi 13 |
+| Win64-Bau des Plugins und Lauf in der 64-Bit-IDE | ungeprüft; braucht `designide` für Win64 |
+| Lesen des Build-Reiters per RTTI (#528) | an IDE-Interna gebunden, meldet bei Abweichung „nicht lesbar“ |
+| Windows 10 und 11 | kein dokumentierter Test auf beiden |
+
+`pwsh Tools/Check-Delphi12.ps1` prüft automatisch Sprachmerkmale von Delphi 13, die `ProjectVersion` und Code mit fester Zeigergröße.
 
 ## Eingebauter LSP-Client
 

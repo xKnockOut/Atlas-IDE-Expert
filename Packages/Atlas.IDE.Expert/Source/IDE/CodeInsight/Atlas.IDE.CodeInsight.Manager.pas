@@ -13,7 +13,7 @@
 // HKCU\Software\BetterDelphiLSP\IdePlugin (#403). Ohne Eintrag: AtlasServer.exe neben dem
 // Plugin, sonst ..\..\..\Win64\Debug\Bin\ (Ausgabeordner des Repos).
 // Diagnose = 1 (DWORD) im selben Schlüssel protokolliert die Aufrufe der IDE
-// in Atlas.IDE.Expert.log neben dem Plugin.
+// in Atlas.IDE.Expert<Version>.log neben dem Plugin (Name wie die BPL).
 // Projektgruppe (#648): Die Sitzung meldet dem Server alle Projekte der Gruppe,
 // das aktive zuerst; Änderungen der Gruppe prüft sie höchstens alle zwei Sekunden.
 

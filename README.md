@@ -24,12 +24,20 @@ All settings are under *Tools › Options › Third Party › Atlas*, including 
 
 1. Clone the repository and open `Atlas.groupproj` in RAD Studio.
 2. Build `Atlas.Common`, `Atlas.Windows` and `AtlasServer` for **Win64** (all three for the same platform). Result: `Output\Win64\Debug\Bin\AtlasServer.exe`. Alternatively take `AtlasServer.exe` from a [release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases); the server does not depend on the Delphi version.
-3. Build `Atlas.IDE.Expert` for **Win32**, with the Delphi version the plugin is meant to run in. Result: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert.bpl`.
+3. Build `Atlas.IDE.Expert` with the Delphi version the plugin is meant to run in: **Win32** for the classic IDE, **Win64** for the 64-bit IDE. Result: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert370.bpl` (Delphi 13; Delphi 12: `…290.bpl`, 64-bit IDE: `Output\Win64\…`).
 4. *Component › Install Packages › Add* and select the BPL.
 5. If the server is neither in `Output\…\Bin` nor next to the BPL: *Tools › Options › Third Party › Atlas*, field "Atlas-Server". The page shows whether the server is found.
 6. Restart Delphi once: Atlas switches off the IDE's Help Insight and structural highlighting so nothing appears twice; the IDE reads these switches only at startup.
 
 Details and troubleshooting (German): [docs/RAD-Studio.md](docs/RAD-Studio.md).
+
+### Supported versions
+
+- RAD Studio or Delphi **13 Florence** and **12 Athens** (12.0 or later). The plugin is built with exactly the version it runs in; the BPL carries the package version in its name (`370` for Delphi 13, `290` for Delphi 12) so both can sit side by side.
+- Classic 32-bit IDE (Win32 BPL) and the 64-bit IDE from Delphi 12.3 (Win64 BPL).
+- Windows 10 and 11.
+
+So far it is built and checked only with RAD Studio 13 in the 32-bit IDE. What remains unchecked without a Delphi 12 installation and the 64-bit IDE is listed in [docs/RAD-Studio.md](docs/RAD-Studio.md#ungeprüft).
 
 ### Other editors and without an editor
 
@@ -94,7 +102,7 @@ pwsh Tools/Check-ConsoleOutput.ps1         # no Write/Writeln to stdout
 
 ## CI
 
-- `server.yml`: build of the project group via the IDE plugin `cc.ps1` (RAD Studio Starter has no msbuild, ADR 0007) for Win64 and Win32, including the plugin BPL `Atlas.IDE.Expert.bpl` (Win32, kept as an artifact), and DUnitX tests (Win64 only, ADR 0008). Results as the check "DUnitX-Ergebnisse" in pull requests.
+- `server.yml`: build of the project group via the IDE plugin `cc.ps1` (RAD Studio Starter has no msbuild, ADR 0007) for Win64 and Win32, including the plugin BPLs `Atlas.IDE.Expert370.bpl` for the classic and the 64-bit IDE (Win32 and Win64, kept as artifacts), and DUnitX tests (Win64 only, ADR 0008). Results as the check "DUnitX-Ergebnisse" in pull requests.
   - The job needs a self-hosted Windows runner (labels `self-hosted`, `windows`, `delphi`) on the developer's workstation. It runs in the signed-in user context, not as a service, because `cc.ps1` starts an IDE, and only while that machine is switched on. Every job starts its own scratch IDE.
   - It runs only with the repository variable `DELPHI_RUNNER=true`; otherwise the job "uebersprungen" says so in the run summary. `CC_SCRIPT` overrides the path to `cc.ps1`.
   - A new push to the same branch cancels the running build (`concurrency`).
