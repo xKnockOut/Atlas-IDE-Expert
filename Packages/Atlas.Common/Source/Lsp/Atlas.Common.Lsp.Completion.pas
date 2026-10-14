@@ -108,6 +108,8 @@ type
     Pinned: Boolean;
     /// <summary>Zahl als Tag (fehlende Werte, #449); 0 ohne.</summary>
     Count: Integer;
+    /// <summary>Eintrag deklariert diesen unbekannten Namen (#471); Atlas zeigt die Gruppe „Name ist unbekannt“.</summary>
+    Unknown: string;
   end;
 
   /// <summary>Postfix-Vorlagen (#188) je Dokument.</summary>
@@ -213,6 +215,13 @@ type
     class function EnumItems(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AText, AFileName: string; const APosition: TTextPosition; const AReadText: TCompletionReadText;
       AMatching: TCompletionMatching; out AItems: TArray<TCompletionItem>; out ASetMode: Boolean): Boolean; static;
+    /// <summary>Unbekannter Name am Cursor im Rumpf einer Routine (#471): lokale Variable (mit AInlineVar auch als
+    /// Inline-var), Feld der Klasse (F-Konvention, die Verwendung wird umbenannt) und, wenn der Name als Wert
+    /// dient, Konstante in der implementation. Typ aus der rechten Seite einer Zuweisung, sonst aus dem
+    /// erwarteten Typ, sonst ein Platzhalter. False, wenn der Name bekannt ist oder in AKnown genau vorkommt.</summary>
+    class function DeclareItems(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AText, AFileName: string; const APosition: TTextPosition; AInlineVar: Boolean;
+      const AKnown: TArray<TCompletionItem>; out AItems: TArray<TCompletionItem>): Boolean; static;
     class function KindOf(AKind: TIndexSymbolKind): Integer; static;
     /// <summary>CompletionList des LSP. Der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const AItems: TCompletionItems): TJSONObject; overload; static;
@@ -254,6 +263,7 @@ uses
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.CaseCompletion,
+  Atlas.Common.Editing.DeclareUnknown,
   Atlas.Common.Lsp.CompilerDirectives,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Pascal.XmlDoc,
@@ -1509,6 +1519,9 @@ begin
         Data.AddPair('pinned', TJSONBool.Create(True));
       if AItems[Index].Count > 0 then
         Data.AddPair('count', TJSONNumber.Create(AItems[Index].Count));
+      // Unbekannter Name (#471).
+      if AItems[Index].Unknown <> '' then
+        Data.AddPair('unknown', AItems[Index].Unknown);
       if Length(AItems[Index].Overloads) > 0 then
       begin
         Overloads := TJSONArray.Create;
@@ -1575,6 +1588,7 @@ var
   Trigger: string;
   Position: TTextPosition;
   EnumParams: TJSONObject;
+  Declares: TArray<TCompletionItem>;
 begin
   Watch := TStopwatch.StartNew;
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
@@ -1673,6 +1687,13 @@ begin
     Collected := Collect(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), Document.Text,
       TLspPositions.ReadPosition(PositionValue), Matching, Postfix, Partial);
     Collected.Items := WithoutNames(Collected.Items, Enums);
+    // Unbekannter Name (#471): Deklarieren am Ende. Die Einträge hängen am getippten Namen, deshalb neu fragen.
+    if DeclareItems(Resolver, FIndex, Tree, Document.Text, TDocumentUris.ToPath(Uri), Position, Postfix.InlineVar,
+      Enums + Collected.Items, Declares) then
+    begin
+      Collected.Items := Collected.Items + Declares;
+      Collected.Incomplete := True;
+    end;
     if Token = '' then
       Collected.Items := Enums + Collected.Items;
     Result := TJSONObject.Create;
@@ -2458,6 +2479,187 @@ begin
   if EndText <> '' then
     AItem.AdditionalEdits := [TRuleEdit.Create(TTextRange.Create(Slot.EndInsert, Slot.EndInsert), EndText)];
   Result := True;
+end;
+
+/// <summary>Typ eines aufgelösten Ausdrucksteils: Konstruktor → Klasse, Typumwandlung → Typ, sonst sein Typ.</summary>
+function TypeOfResolved(const ASymbol: TResolvedSymbol): string;
+begin
+  Result := '';
+  if not ASymbol.Found or (ASymbol.Kind = TResolvedKind.UnitName) then
+    Exit;
+  if ASymbol.SymbolKind = TIndexSymbolKind.Constructor_ then
+    Result := ASymbol.Container
+  else if ASymbol.IsType then
+    Result := ASymbol.Name
+  else if ASymbol.TypeName <> '' then
+    Result := ASymbol.TypeName
+  else if ASymbol.SymbolKind = TIndexSymbolKind.EnumMember then
+    Result := ASymbol.Container;
+end;
+
+/// <summary>uses-Eintrag für ATypeName (#180), wenn der Typ an AOffset nicht sichtbar ist und der Index ihn
+/// in einer anderen Unit kennt; leer sonst.</summary>
+function TypeUnitEdits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName, ATypeName, ALineBreak: string; AOffset: Integer): TArray<TRuleEdit>;
+var
+  Location: TSymbolLocation;
+  Edit: TRuleEdit;
+begin
+  Result := nil;
+  if (AIndex = nil) or (ATypeName = '') or (Pos('<', ATypeName) > 0) or (Pos('.', ATypeName) > 0) or
+    (Pos('{', ATypeName) > 0) or AResolver.ResolveChain(ATree, AFileName, [ATypeName], AOffset).Found then
+    Exit;
+  for Location in AIndex.FindSymbols(ATypeName) do
+    if (Location.Symbol.Container = '') and (Location.Symbol.Kind in [TIndexSymbolKind.ClassType,
+      TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType, TIndexSymbolKind.InterfaceType,
+      TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias]) and not SameText(Location.UnitName, 'System') and
+      not SameText(Location.UnitName, TUsesClauses.OwnName(ATree.Tokens)) and
+      not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ATree.Tokens), Location.UnitName, AResolver.Namespaces) and
+      TUsesClauses.AddUnit(ATree.Tokens, AOffset, Location.UnitName, ALineBreak, Edit) then
+      Exit([Edit]);
+end;
+
+class function TLspCompletion.DeclareItems(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AText, AFileName: string; const APosition: TTextPosition; AInlineVar: Boolean;
+  const AKnown: TArray<TCompletionItem>; out AItems: TArray<TCompletionItem>): Boolean;
+var
+  Slot: TUnknownSlot;
+  Known: TCompletionItem;
+  TypeName, DeclType, Field, LineText: string;
+  TermFirst, TermLast, NameToken, Line, Index: Integer;
+  Slash: TSlashContext;
+  Source: TCommandSource;
+  Routine, Section, Node: TSyntaxNode;
+  ClassSymbol, Symbol: TIndexSymbol;
+  Fields: TArray<string>;
+  Item, Base: TCompletionItem;
+  Edit: TRuleEdit;
+  Lines: TArray<string>;
+begin
+  AItems := nil;
+  Result := False;
+  if (ATree = nil) or not TDeclareUnknown.Slot(ATree.Tokens, APosition, Slot) then
+    Exit;
+  // Bekannt: ein Eintrag passt genau oder die Namensauflösung findet ihn.
+  for Known in AKnown do
+    if SameText(Known.Name, Slot.Name) then
+      Exit;
+  if AResolver.Resolve(ATree, AFileName, Slot.NameRange.StartPos).Found then
+    Exit;
+  // Typ: rechte Seite der Zuweisung, sonst der erwartete Typ (Argument, Wert einer Zuweisung).
+  TypeName := '';
+  if Slot.AssignTarget then
+  begin
+    TypeName := TDeclareUnknown.Shape(ATree.Tokens, Slot.ValueFirst, Slot.ValueLast, TermFirst, TermLast);
+    if (TypeName = '') and (TermFirst >= 0) and (TermFirst = TermLast) then
+      TypeName := TDeclareUnknown.LiteralType(ATree.Tokens[TermFirst]);
+    if (TypeName = '') and (TermFirst >= 0) then
+    begin
+      NameToken := TDeclareUnknown.TermName(ATree.Tokens, TermFirst, TermLast);
+      if NameToken >= 0 then
+        TypeName := TypeOfResolved(AResolver.Resolve(ATree, AFileName, ATree.Tokens[NameToken].StartPos));
+    end;
+  end
+  else
+    TypeName := ExpectedType(AResolver, ATree, AFileName, APosition);
+  DeclType := TypeName;
+  if DeclType = '' then
+    DeclType := TDeclareUnknown.TypePlaceholder;
+  Lines := TextLines(AText);
+  LineText := '';
+  if APosition.Line <= High(Lines) then
+    LineText := Lines[APosition.Line];
+  Slash := Default(TSlashContext);
+  Slash.Text := AText;
+  Slash.Line := APosition.Line;
+  Slash.LineText := LineText;
+  Source := TCommandSource.Create(Slash);
+  try
+    // Nur im Rumpf einer Routine: dort sind Variablen, Felder und Konstanten Deklarationen wert.
+    Routine := Source.RoutineAt;
+    if Routine = nil then
+      Exit;
+    Base := Default(TCompletionItem);
+    Base.Action := 'declare';
+    Base.Unknown := Slot.Name;
+    Base.HasTextEdit := True;
+    // Lokale Variable im var-Abschnitt; der Cursor bleibt im Namen.
+    Item := Base;
+    Item.Name := 'Lokale Variable anlegen';
+    Item.Kind := KindVariable;
+    Item.Detail := Format('%s: %s', [Slot.Name, DeclType]);
+    Item.TextEdit := TRuleEdit.Create(Slot.NameRange, TDeclareUnknown.WithCaret(Slot.Name, Slot.CursorOffset));
+    Item.AdditionalEdits := [AddLocal(Source, Routine, TSyntaxKind.VarSection, 'var',
+      Format('%s: %s;', [Slot.Name, DeclType]))] + TypeUnitEdits(AResolver, AIndex, ATree, AFileName, TypeName,
+      Source.LineBreak, Routine.StartOffset);
+    AItems := AItems + [Item];
+    // Inline-Variable an der Stelle (ab Delphi 10.3): Den Typ leitet der Compiler ab.
+    if AInlineVar and Slot.InlineAllowed then
+    begin
+      Item := Base;
+      Item.Name := 'Inline-Variable anlegen';
+      Item.Kind := KindVariable;
+      Item.Detail := Format('var %s := …', [Slot.Name]);
+      Item.TextEdit := TRuleEdit.Create(Slot.NameRange, TDeclareUnknown.WithCaret('var ' + Slot.Name,
+        Slot.CursorOffset + 4));
+      AItems := AItems + [Item];
+    end;
+    // Feld im private-Abschnitt der Klasse, wenn die Routine eine ihrer Methoden ist.
+    if (Pos('.', Routine.Name) > 0) and Source.ClassAt(ClassSymbol) then
+    begin
+      Fields := nil;
+      for Symbol in Source.UnitIndex.Symbols do
+        if (Symbol.Kind = TIndexSymbolKind.Field) and (SameText(Symbol.Container, ClassSymbol.QualifiedName) or
+          SameText(Symbol.Container, ClassSymbol.Name)) then
+          Fields := Fields + [Symbol.Name];
+      Field := TDeclareUnknown.FieldName(Slot.Name, TDeclareUnknown.UsesFieldPrefix(Fields));
+      if not MatchText(Field, Fields) then
+      begin
+        Item := Base;
+        Item.Name := Format('Feld %s anlegen', [Field]);
+        Item.Kind := KindField;
+        Item.Detail := Format('%s: %s', [Field, DeclType]);
+        // Die Verwendung heißt danach wie das Feld; der Cursor bleibt an derselben Stelle im Namen.
+        Item.TextEdit := TRuleEdit.Create(Slot.NameRange, TDeclareUnknown.WithCaret(Field,
+          Slot.CursorOffset + Length(Field) - Length(Slot.Name)));
+        Line := Source.PrivateLine(ClassSymbol);
+        if Line >= 0 then
+          Edit := Source.AfterLine(Line, Source.Indent(Line) + '  ' + Format('%s: %s;', [Field, DeclType]))
+        else
+          Edit := Source.BeforeLine(ClassSymbol.Range.EndPos.Line, Source.Indent(ClassSymbol.Range.EndPos.Line) +
+            'private' + Source.LineBreak + Source.Indent(ClassSymbol.Range.EndPos.Line) + '  ' +
+            Format('%s: %s;', [Field, DeclType]));
+        Item.AdditionalEdits := [Edit] + TypeUnitEdits(AResolver, AIndex, ATree, AFileName, TypeName,
+          Source.LineBreak, Source.Offset(ClassSymbol.Range.StartPos.Line));
+        AItems := AItems + [Item];
+      end;
+    end;
+    // Konstante in der implementation, wenn der Name als Wert dient; der Wert ist ein Platzhalter.
+    if not Slot.AssignTarget and (Source.ImplementationStart >= 0) then
+    begin
+      Item := Base;
+      Item.Name := 'Konstante anlegen';
+      Item.Kind := KindConstant;
+      Item.Detail := Format('%s = %s;', [Slot.Name, TDeclareUnknown.DefaultValue(TypeName)]);
+      Item.TextEdit := TRuleEdit.Create(Slot.NameRange, TDeclareUnknown.WithCaret(Slot.Name, Slot.CursorOffset));
+      Section := Source.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
+      Node := nil;
+      if Section <> nil then
+        for Index := 0 to Section.ChildCount - 1 do
+          if (Section[Index].Kind = TSyntaxKind.ConstSection) and (Node = nil) then
+            Node := Section[Index];
+      if Node <> nil then
+        Edit := Source.AfterLine(Node.EndPos.Line, '  ' + Item.Detail)
+      else
+        Edit := Source.AfterLine(Source.ImplementationStart, Source.LineBreak + 'const' + Source.LineBreak + '  ' +
+          Item.Detail);
+      Item.AdditionalEdits := [Edit];
+      AItems := AItems + [Item];
+    end;
+  finally
+    Source.Free;
+  end;
+  Result := AItems <> nil;
 end;
 
 class function TLspCompletion.EnumItems(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;

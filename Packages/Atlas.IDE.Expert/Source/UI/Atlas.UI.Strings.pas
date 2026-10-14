@@ -47,7 +47,8 @@ type
     EditorActions, EditorExpand, EditorShrink, EditorTypeDefinition, EditorCopyQualified, EditorCopyQualifiedParams,
     EditorFailed, EditorNoActions, EditorCopied, EditorTextCopied, EditorKindFix, EditorKindRefactor, EditorKindSource,
     SettingsEditorKeysPriority, SettingsSlashCommands,
-    SetFooterKeys, SetChosen, SetHeader, SetHeaderPlain);
+    SetFooterKeys, SetChosen, SetHeader, SetHeaderPlain,
+    UnknownHeader);
 
   TAtlasStrings = class
   private class var
@@ -168,7 +169,8 @@ const
      'Leertaste wählen · Enter einfügen · Esc verwerfen',
      '%d gewählt',
      '%s · Menge von %s',
-     'Menge von %s'),
+     'Menge von %s',
+     '„%s“ ist unbekannt'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -270,7 +272,8 @@ const
      'Space selects · Enter inserts · Esc discards',
      '%d selected',
      '%s · set of %s',
-     'Set of %s'));
+     'Set of %s',
+     '"%s" is unknown'));
 
 { TAtlasStrings }
 

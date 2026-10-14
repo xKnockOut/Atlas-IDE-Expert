@@ -80,6 +80,8 @@ type
     [Test]
     procedure OffersMissingCaseBranches;
     [Test]
+    procedure OffersDeclarationsForUnknownNames;
+    [Test]
     procedure GroupsByExpectedType;
   end;
 
@@ -780,6 +782,95 @@ begin
       Edits);
     // Keine Ereignis-Zuweisung: normale Vervollständigung.
     Assert.IsFalse(TLspCompletion.EventItems(Resolver, Tree, Text, HauptFile, PositionOf(Text, 'uses Ba'), nil, Items));
+  finally
+    Resolver.Free;
+    Tree.Free;
+  end;
+end;
+
+procedure TLspCompletionTests.OffersDeclarationsForUnknownNames;
+const
+  Text =
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'type'#13#10 +
+    '  TLines = class'#13#10 +
+    '    Count: Integer;'#13#10 +
+    '  end;'#13#10 +
+    '  TRechner = class'#13#10 +
+    '  private'#13#10 +
+    '    FLines: TLines;'#13#10 +
+    '  public'#13#10 +
+    '    procedure Summe(Extra: TLines);'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'procedure Zeige(N: Integer);'#13#10 +
+    'begin'#13#10 +
+    'end;'#13#10 +
+    'procedure TRechner.Summe(Extra: TLines);'#13#10 +
+    'begin'#13#10 +
+    '  TotalCount := FLines.Count + Extra.Count;'#13#10 +
+    '  Zeige(Anzahl);'#13#10 +
+    '  FLines := nil;'#13#10 +
+    'end;'#13#10 +
+    'end.';
+var
+  Tree: TSyntaxTree;
+  Resolver: TNameResolver;
+  Items: TArray<TCompletionItem>;
+
+  function Named(const AName: string): TCompletionItem;
+  var
+    Item: TCompletionItem;
+  begin
+    for Item in Items do
+      if Item.Name = AName then
+        Exit(Item);
+    raise Exception.CreateFmt('Eintrag "%s" fehlt', [AName]);
+  end;
+
+var
+  Item: TCompletionItem;
+begin
+  Tree := TPascalParser.Parse(Text);
+  Resolver := TNameResolver.Create(FIndex);
+  try
+    // Ziel einer Zuweisung: Typ aus der rechten Seite.
+    Assert.IsTrue(TLspCompletion.DeclareItems(Resolver, FIndex, Tree, Text, HauptFile,
+      PositionOf(Text, '  TotalCount'), True, nil, Items));
+    Item := Named('Lokale Variable anlegen');
+    Assert.AreEqual('TotalCount: Integer', Item.Detail);
+    Assert.AreEqual('declare', Item.Action);
+    Assert.AreEqual('TotalCount', Item.Unknown);
+    // Die Verwendung bleibt, der Cursor auch; var vor begin.
+    Assert.AreEqual('TotalCount$0', Item.TextEdit.NewText);
+    Assert.AreEqual(1, Integer(Length(Item.AdditionalEdits)));
+    Assert.AreEqual('var'#13#10'  TotalCount: Integer;'#13#10, Item.AdditionalEdits[0].NewText);
+    Assert.AreEqual(17, Item.AdditionalEdits[0].Range.StartPos.Line);
+    Assert.AreEqual('var TotalCount$0', Named('Inline-Variable anlegen').TextEdit.NewText);
+    // Feld mit F-Konvention: im private-Abschnitt, die Verwendung heißt danach FTotalCount.
+    Item := Named('Feld FTotalCount anlegen');
+    Assert.AreEqual('FTotalCount$0', Item.TextEdit.NewText);
+    Assert.AreEqual(7, Item.AdditionalEdits[0].Range.StartPos.Line);
+    Assert.AreEqual(#13#10'    FTotalCount: Integer;', Item.AdditionalEdits[0].NewText);
+    // Keine Konstante als Ziel einer Zuweisung.
+    for Item in Items do
+      Assert.AreNotEqual('Konstante anlegen', Item.Name);
+    // Als Argument: Typ des Parameters, auch als Konstante in der implementation.
+    Assert.IsTrue(TLspCompletion.DeclareItems(Resolver, FIndex, Tree, Text, HauptFile,
+      PositionOf(Text, 'Zeige(Anzahl'), False, nil, Items));
+    Assert.AreEqual('Anzahl: Integer', Named('Lokale Variable anlegen').Detail);
+    Item := Named('Konstante anlegen');
+    Assert.AreEqual('Anzahl = 0;', Item.Detail);
+    Assert.AreEqual(12, Item.AdditionalEdits[0].Range.StartPos.Line);
+    // Bekannte Namen und genaue Treffer: nichts.
+    Assert.IsFalse(TLspCompletion.DeclareItems(Resolver, FIndex, Tree, Text, HauptFile,
+      PositionOf(Text, 'Zeige(Anzahl);'#13#10'  FLines'), True, nil, Items));
+    SetLength(Items, 1);
+    Items[0] := Default(TCompletionItem);
+    Items[0].Name := 'Anzahl';
+    Assert.IsFalse(TLspCompletion.DeclareItems(Resolver, FIndex, Tree, Text, HauptFile,
+      PositionOf(Text, 'Zeige(Anzahl'), True, Items, Items));
   finally
     Resolver.Free;
     Tree.Free;
