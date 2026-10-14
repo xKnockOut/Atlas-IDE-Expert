@@ -92,6 +92,8 @@ type
     [Test]
     procedure OffersTryFinallyAfterConstructor;
     [Test]
+    procedure OffersGenericInterfaceMethods;
+    [Test]
     procedure GroupsByExpectedType;
   end;
 
@@ -793,6 +795,72 @@ begin
       Edits);
     // Keine Ereignis-Zuweisung: normale Vervollständigung.
     Assert.IsFalse(TLspCompletion.EventItems(Resolver, Tree, Text, HauptFile, PositionOf(Text, 'uses Ba'), nil, Items));
+  finally
+    Resolver.Free;
+    Tree.Free;
+  end;
+end;
+
+procedure TLspCompletionTests.OffersGenericInterfaceMethods;
+const
+  UnitListen =
+    'unit Listen;'#13#10 +
+    'interface'#13#10 +
+    'type'#13#10 +
+    '  IVergleich<T> = interface'#13#10 +
+    '    function Compare(const Left, Right: T): Integer;'#13#10 +
+    '  end;'#13#10 +
+    '  IListe<T> = interface(IVergleich<T>)'#13#10 +
+    '    procedure Add(const AItem: T);'#13#10 +
+    '    function Items: TArray<T>;'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'end.';
+  // Zeile 8: leere Zeile in der Klasse, Zeile 9: ihr end. Compare ist schon da (mit eingesetztem Typ).
+  Text =
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'uses Listen;'#13#10 +
+    'type'#13#10 +
+    '  TKunde = class'#13#10 +
+    '  end;'#13#10 +
+    '  TKundenListe = class(TInterfacedObject, IListe<TKunde>)'#13#10 +
+    '    function Compare(const Left, Right: TKunde): Integer;'#13#10 +
+    '    '#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'end.';
+var
+  Tree: TSyntaxTree;
+  Resolver: TNameResolver;
+  Items: TArray<TCompletionItem>;
+  List: TCompletionItems;
+  Edits, Merged: TArray<TRuleEdit>;
+  Item: TCompletionItem;
+  Batch: Boolean;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitListen, 'C:\P\Listen.pas', nil));
+  Tree := TPascalParser.Parse(Text);
+  Resolver := TNameResolver.Create(FIndex);
+  try
+    Assert.IsTrue(TLspCompletion.InterfaceItems(Resolver, Tree, Text, HauptFile, TTextPosition.Create(8, 4),
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        AText := UnitListen;
+        Result := SameText(AFileName, 'C:\P\Listen.pas');
+      end, TCompletionInterfaceSection.Public, Items, Batch));
+    List.Items := Items;
+    Assert.AreEqual('Add Items', Names(List));
+    Assert.AreEqual('IListe<TKunde>', Items[0].Container);
+    Assert.Contains(Items[0].Detail, 'procedure Add(const AItem: TKunde)');
+    Assert.Contains(Items[1].Detail, 'function Items: TArray<TKunde>');
+    Edits := nil;
+    for Item in Items do
+      Edits := Edits + Item.AdditionalEdits;
+    Merged := TInterfaceStubs.Merge(Edits);
+    Assert.IsTrue(Merged[0].NewText.Contains('{ IListe<TKunde> }'), Merged[0].NewText);
+    Assert.IsTrue(Merged[1].NewText.Contains('procedure TKundenListe.Add(const AItem: TKunde);'), Merged[1].NewText);
+    Assert.IsTrue(Merged[1].NewText.Contains('Result := Default(TArray<TKunde>);'), Merged[1].NewText);
   finally
     Resolver.Free;
     Tree.Free;
@@ -1538,7 +1606,7 @@ const
 
   function Items(const ALine: string; ACharacter: Integer; out AItems: TCompletionItems): Boolean;
   begin
-    Result := TLspCompletion.DataNameItems('unit Haupt;'#13#10'{$R *.dfm}'#13#10 + ALine + #13#10, HauptFile,
+    Result := TLspCompletion.DataNameItems(nil, 'unit Haupt;'#13#10'{$R *.dfm}'#13#10 + ALine + #13#10, HauptFile,
       TTextPosition.Create(2, ACharacter),
       function(const AFileName: string; out AText: string): Boolean
       begin
@@ -1610,7 +1678,28 @@ const
     Resolver := TNameResolver.Create(FIndex);
     try
       Result := TLspCompletion.GuardItems(Resolver, Tree, Text, HauptFile, TTextPosition.Create(8,
-        2 + Length(AStatement)), AStyle, AItems);
+        2 + Length(AStatement)), AStyle, False, AItems);
+    finally
+      Resolver.Free;
+      Tree.Free;
+    end;
+  end;
+
+  /// <summary>Wie Guards, aber nach Enter am Zeilenende: Zeile 9 enthält ALine, der Cursor steht dort.</summary>
+  function GuardsAfterEnter(const AStatement, ALine: string; out AItems: TCompletionItems): Boolean;
+  var
+    Text: string;
+    Tree: TSyntaxTree;
+    Resolver: TNameResolver;
+  begin
+    Text := 'unit Haupt;'#13#10'interface'#13#10'implementation'#13#10'uses Teile;'#13#10 +
+      'procedure Laden;'#13#10'var'#13#10'  List: TStringList;'#13#10'begin'#13#10'  ' + AStatement + #13#10 +
+      ALine + #13#10'end;'#13#10'end.';
+    Tree := TPascalParser.Parse(Text);
+    Resolver := TNameResolver.Create(FIndex);
+    try
+      Result := TLspCompletion.GuardItems(Resolver, Tree, Text, HauptFile, TTextPosition.Create(9, Length(ALine)),
+        TCompletionFreeStyle.Free, True, AItems);
     finally
       Resolver.Free;
       Tree.Free;
@@ -1645,6 +1734,15 @@ begin
   Assert.IsFalse(Guards('Timer: TTimer;', 'Timer := TTimer.Create(pnlOben);', '', TCompletionFreeStyle.Free, Items));
   Assert.IsTrue(Guards('Timer: TTimer;', 'Timer := TTimer.Create(nil);', '', TCompletionFreeStyle.Free, Items));
   Assert.IsFalse(Guards('P: TPunkt;', 'P := TPunkt.Create;', '', TCompletionFreeStyle.Free, Items));
+  // Enter am Zeilenende ohne ";": Das ";" kommt dazu, die leere Zeile wird ersetzt.
+  Assert.IsTrue(GuardsAfterEnter('List := TStringList.Create', '  ', Items));
+  Assert.AreEqual(1, Integer(Length(Items.Items)));
+  Assert.IsTrue(Items.Items[0].TextEdit.NewText.StartsWith(';'#13#10'  try'), Items.Items[0].TextEdit.NewText);
+  Assert.AreEqual(8, Items.Items[0].TextEdit.Range.StartPos.Line);
+  Assert.AreEqual(9, Items.Items[0].TextEdit.Range.EndPos.Line);
+  // Mit ";" ebenso; Inhalt in der Zeile des Cursors: nichts.
+  Assert.IsTrue(GuardsAfterEnter('List := TStringList.Create;', '', Items));
+  Assert.IsFalse(GuardsAfterEnter('List := TStringList.Create', '  List', Items));
 end;
 
 end.
