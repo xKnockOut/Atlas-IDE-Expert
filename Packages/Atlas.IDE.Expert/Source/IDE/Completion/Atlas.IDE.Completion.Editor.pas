@@ -1062,7 +1062,7 @@ begin
   Writer.Insert(PAnsiChar(UTF8Encode(Expansion.Text)));
   Writer := nil;
   Document := TAtlasEditorBuffer.Text(AView.Buffer);
-  FPlaceholders.Start(AView, Document, TAtlasEditorBuffer.CharOffset(Document, ALine - 1, FWordStart), Expansion);
+  FPlaceholders.Start(AView, AText, Document, TAtlasEditorBuffer.CharOffset(Document, ALine - 1, FWordStart), Expansion);
   Log(Format('Code-Vorlage eingesetzt: %d Platzhalter', [Integer(Length(Expansion.Stops))]));
 end;
 
