@@ -115,6 +115,12 @@ begin
     Events := Events + ['done ' + AMethod + ' ' + Notes.Reason];
 end;
 
+/// <summary>Über eine Interface-Variable, nicht TMemoryWriter.Create direkt an den const-Parameter.</summary>
+function NewWriter(ALines: TStrings): IDiagnosticWriter;
+begin
+  Result := TMemoryWriter.Create(ALines);
+end;
+
 function NewFolder: string;
 begin
   Result := TPath.Combine(TPath.GetTempPath, 'atlas-diag-' + TGUID.NewGuid.ToString.Substring(1, 8));
@@ -301,7 +307,7 @@ var
 begin
   Lines := TStringList.Create;
   try
-    Log := TDiagnosticLog.Create(TMemoryWriter.Create(Lines), TDiagnosticFilter.Create(nil));
+    Log := TDiagnosticLog.Create(NewWriter(Lines), TDiagnosticFilter.Create(nil));
     Log.LogEvent('first');
     Assert.AreEqual(0, Lines.Count);
     Log.Configure(True);
@@ -322,7 +328,7 @@ var
 begin
   Lines := TStringList.Create;
   try
-    Log := TDiagnosticLog.Create(TMemoryWriter.Create(Lines), TDiagnosticFilter.Create(nil));
+    Log := TDiagnosticLog.Create(NewWriter(Lines), TDiagnosticFilter.Create(nil));
     Process := Default(TDiagnosticProcess);
     Log.LogStart('1.0', Process);
     Log.Configure(False);
@@ -345,7 +351,7 @@ var
 begin
   Lines := TStringList.Create;
   try
-    Log := TDiagnosticLog.Create(TMemoryWriter.Create(Lines), TDiagnosticFilter.Create(nil));
+    Log := TDiagnosticLog.Create(NewWriter(Lines), TDiagnosticFilter.Create(nil));
     Ref := Log;
     Log.Configure(True);
     Process.MemoryBytes := 50 * 1024 * 1024;
@@ -375,7 +381,7 @@ var
 begin
   Lines := TStringList.Create;
   try
-    Log := TDiagnosticLog.Create(TMemoryWriter.Create(Lines), TDiagnosticFilter.Create(nil));
+    Log := TDiagnosticLog.Create(NewWriter(Lines), TDiagnosticFilter.Create(nil));
     Log.Configure(True);
     Log.LogEvent('opened C:\Kunde\Haupt.pas');
     Log.LogEvent('opened doc#1');
@@ -401,7 +407,7 @@ var
 begin
   Lines := TStringList.Create;
   try
-    Log := TDiagnosticLog.Create(TMemoryWriter.Create(Lines), TDiagnosticFilter.Create(['MaxMuster', 'RECHNER-07']));
+    Log := TDiagnosticLog.Create(NewWriter(Lines), TDiagnosticFilter.Create(['MaxMuster', 'RECHNER-07']));
     Ref := Log;
     Log.Filter.Allowed := ['textDocument/completion'];
     Log.Configure(True);
