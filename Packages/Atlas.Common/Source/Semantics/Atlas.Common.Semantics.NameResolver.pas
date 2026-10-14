@@ -251,6 +251,15 @@ type
     /// <summary>Überschreibbare Methoden für ATypeName aus AFromUnit (#443): virtual, dynamic, abstract oder
     /// override in einem Vorfahren, im Typ selbst noch nicht deklariert; nächster Vorfahr zuerst (Depth 1).</summary>
     function OverridableMembers(const AFromUnit: TUnitIndex; const ATypeName: string): TArray<TResolvedSymbol>;
+    /// <summary>Nach "inherited " (#31): Methoden und Konstruktoren der Vorfahren der Klasse, in deren Methode
+    /// AOffset liegt, sichtbar wie aus dieser Methode; Depth 1 = direkter Vorfahr. Leer außerhalb einer
+    /// Methode.</summary>
+    function InheritedCandidates(ATree: TSyntaxTree; const AFileName: string;
+      AOffset: Integer): TArray<TResolvedSymbol>;
+    /// <summary>Felder und Methoden für read/write einer Property (#31): die des Typs ATypeName aus AFromUnit
+    /// in jeder Sichtbarkeit (Depth 0), dann die der Vorfahren ohne strict private und ohne private aus anderen
+    /// Units; gleichnamige weiter oben verdecken die der Vorfahren.</summary>
+    function AccessorCandidates(const AFromUnit: TUnitIndex; const ATypeName: string): TArray<TResolvedSymbol>;
     /// <summary>Methoden der Interfaces aus der Vorfahrenliste von ATypeName samt ihrer Vorfahren (#466), die
     /// weder der Typ noch eine Vorfahrklasse mit gleichem Namen und gleichen Parametertypen deklariert.
     /// Container ist das deklarierende Interface; Reihenfolge wie in der Vorfahrenliste, je Interface erst seine
@@ -2381,6 +2390,80 @@ end;
 function TNameResolver.DeclaringUnit(const AResolved: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
 begin
   Result := UnitOf(AResolved, AUnit);
+end;
+
+function TNameResolver.InheritedCandidates(ATree: TSyntaxTree; const AFileName: string;
+  AOffset: Integer): TArray<TResolvedSymbol>;
+var
+  Current, Ancestor, Candidate: TResolvedSymbol;
+  List: TList<TResolvedSymbol>;
+  Seen: TDictionary<string, Boolean>;
+begin
+  Result := nil;
+  if ATree = nil then
+    Exit;
+  Prepare(ATree, AFileName, AOffset);
+  if not MethodClass(Current) or not AncestorOf(Current, Ancestor) then
+    Exit;
+  List := TList<TResolvedSymbol>.Create;
+  Seen := TDictionary<string, Boolean>.Create;
+  try
+    // Wie Mitglieder des Vorfahren, gesehen aus der eigenen Methode (protected sichtbar).
+    CollectMembers(Ancestor, List, Seen);
+    for Candidate in List do
+      if Candidate.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_] then
+        Result := Result + [MemberOf(Candidate, Candidate.Depth + 1, Candidate.IsHelper)];
+  finally
+    Seen.Free;
+    List.Free;
+  end;
+end;
+
+function TNameResolver.AccessorCandidates(const AFromUnit: TUnitIndex;
+  const ATypeName: string): TArray<TResolvedSymbol>;
+var
+  Own, Current, Ancestor, Candidate: TResolvedSymbol;
+  OwnerUnit: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Seen: TDictionary<string, Boolean>;
+  Depth: Integer;
+begin
+  Result := nil;
+  Seen := TDictionary<string, Boolean>.Create;
+  try
+    // Eigener Typ aus dem aktuellen Stand der Datei: jede Sichtbarkeit.
+    for Symbol in AFromUnit.Symbols do
+      if SameText(Symbol.Container, ATypeName) and
+        (Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Method]) and
+        not Seen.ContainsKey(UpperCase(Symbol.Name)) then
+      begin
+        Seen.Add(UpperCase(Symbol.Name), True);
+        Result := Result + [FromSymbol(AFromUnit, Symbol)];
+      end;
+    if not ResolveTypeFrom(AFromUnit, ATypeName, Own) then
+      Exit;
+    Current := Own;
+    for Depth := 1 to MaxDepth do
+    begin
+      if not AncestorOf(Current, Ancestor) or not UnitOf(Ancestor, OwnerUnit) then
+        Break;
+      for Symbol in OwnerUnit.Symbols do
+        if SameText(Symbol.Container, Ancestor.QualifiedName) and
+          (Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Method]) and
+          (Symbol.Visibility <> TIndexVisibility.StrictPrivate) and
+          ((Symbol.Visibility <> TIndexVisibility.Private) or SameText(OwnerUnit.FileName, AFromUnit.FileName)) and
+          not Seen.ContainsKey(UpperCase(Symbol.Name)) then
+        begin
+          Seen.Add(UpperCase(Symbol.Name), True);
+          Candidate := FromSymbol(OwnerUnit, Symbol);
+          Candidate.Depth := Depth;
+          Result := Result + [Candidate];
+        end;
+      Current := Ancestor;
+    end;
+  finally
+    Seen.Free;
+  end;
 end;
 
 function TNameResolver.OverridableMembers(const AFromUnit: TUnitIndex; const ATypeName: string): TArray<TResolvedSymbol>;

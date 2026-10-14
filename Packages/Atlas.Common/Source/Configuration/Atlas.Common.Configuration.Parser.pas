@@ -880,6 +880,8 @@ begin
     end
     else if Key = 'offerTryFinally' then
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.OfferTryFinally)
+    else if Key = 'keywords' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.Keywords)
     else if Key = 'freeStyle' then
     begin
       if ExpectString(ANode[Index], Key, Text) then

@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..824] of string = (
+  Lines: array[0..829] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -352,11 +352,16 @@ const
     '          ],',
     '          "default": "free",',
     '          "description": "Freigabe im finally von „Freigabe absichern“: \"free\" schreibt Liste.Free, \"freeAndNil\" schreibt FreeAndNil(Liste)."',
+    '        },',
+    '        "keywords": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Schlüsselwörter passend zur Stelle vorschlagen (in Anweisungen begin, try …, im Klassenrumpf property, private …, nach \":\" string, array …), sobald ein Zeichen getippt ist.' + '"',
     '        }',
     '      },',
     '      "x-page": "Vervollständigung",',
     '      "x-control": "Auswahl",',
-    '      "x-issue": "#229, #466, #480, #489"',
+    '      "x-issue": "#31, #229, #466, #480, #489"',
     '    },',
     '    "usesCommand": {',
     '      "type": "boolean",',

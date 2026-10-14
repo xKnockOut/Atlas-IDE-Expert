@@ -85,6 +85,12 @@ export function samplePositions(text, count) {
   return Array.from({ length: count }, (_, i) => candidates[Math.floor(i * step)]);
 }
 
+/// Positionen für die Vervollständigung (#31): zwei getippte Zeichen, damit wie im Editor auch Symbole
+/// aus nicht eingebundenen Units (#180) und die unscharfe Auswahl (#229) mitlaufen.
+export function completionPositions(positions) {
+  return positions.map((p) => (p.name.length >= 2 ? { ...p, character: p.character + 1 } : p));
+}
+
 export function toMarkdown(report, comparison, misses) {
   const out = [];
   out.push(`# Benchmark ${report.version ?? ''}`.trim(), '');

@@ -89,6 +89,23 @@ Schreibweise: `|` steht für die Cursorposition.
 | B5 | Doppelklick auf das Punktmuster | Automatische Breite der Liste, Panel wieder 320 px |
 | B6 | Tools › Optionen › Atlas › „Breiten zurücksetzen“, OK | Wie B5 |
 
+## Vervollständigung: Kontexte (#31)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VK1 | In einer Methode von `TForm1` `inherited ` tippen, Strg+Leer | Nur Methoden der Vorfahren (z. B. `FormCreate` nicht, `Loaded`, `Create` ja), keine lokalen Variablen |
+| VK2 | In einer Routine ohne Klasse `inherited `, Strg+Leer | Leere Liste |
+| VK3 | `TNeu = class(` und Strg+Leer | Nur Typen; keine Routinen, Variablen oder Schlüsselwörter |
+| VK4 | Im var-Abschnitt `Liste: Str` | `string` und Typen wie `TStringList`, keine Variablen |
+| VK5 | `if Sender is not ` (Delphi 13) | Nur Typen; `if 1 not in ` zeigt dagegen Variablen und Konstanten |
+| VK6 | `property Wert: Integer read ` im Klassenrumpf | Nur Integer-Felder und Funktionen mit Ergebnis Integer; bei `write ` nur Prozeduren mit einem Integer-Parameter |
+| VK7 | `override ` am Zeilenanfang im Klassenrumpf, Eintrag wählen | Zeile wird zu `procedure Name; override;`, Rumpf mit `inherited` steht im implementation-Teil |
+| VK8 | In einer Anweisung `beg`, im Klassenrumpf `prop`, im Deklarationsteil `proc` | `begin` bzw. `property` bzw. `procedure` in der Liste; `try` erscheint im Klassenrumpf nicht |
+| VK9 | `"completion": {"keywords": false}` in atlas.json, erneut `beg` | Kein `begin` mehr |
+| VK10 | Variable einer Klasse aus einer anderen Unit, `Variable.` | Keine `private`- und `strict private`-Mitglieder, `protected` nur in Methoden von Nachfahren |
+| VK11 | In einem mehrzeiligen String `'''` (Delphi 12) Strg+Leer | Kein Popup |
+| VK12 | Benchmark: `node Tools/Benchmark/bench.mjs --corpus Tests/Referenzprojekt` | Zeile „completion“ mit n ≥ 100 und p95 unter 100 ms |
+
 ## Übernehmen
 
 | Nr. | Schritte | Erwartet |

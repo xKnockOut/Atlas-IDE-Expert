@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { percentile, summarize, checkTargets, compare, samplePositions, toMarkdown } from './lib.mjs';
+import { percentile, summarize, checkTargets, compare, samplePositions, completionPositions, toMarkdown } from './lib.mjs';
 
 test('percentile und summarize', () => {
   const v = [5, 1, 4, 2, 3, 6, 7, 8, 9, 10];
@@ -42,4 +42,10 @@ test('toMarkdown bewertet', () => {
     compare({ definition: { p95: 70 } }, null), checkTargets({ definition: { p95: 70 } }));
   assert.match(md, /\| definition \| 50 \| 1 \| 70 \| 80 \| 3 \| – \| Ziel verfehlt \|/);
   assert.match(md, /\| hover \| 100 .* nicht gemessen \|/);
+});
+
+test('completionPositions setzt den Cursor hinter zwei Zeichen', () => {
+  const moved = completionPositions([{ line: 1, character: 3, name: 'Writeln' }, { line: 2, character: 5, name: 'I' }]);
+  assert.equal(moved[0].character, 4);
+  assert.equal(moved[1].character, 5);
 });
