@@ -1136,7 +1136,10 @@ var
 begin
   Result := nil;
   if SameText(ExtractFileExt(AFolder.ProjectFile), '.dproj') then
-    Exit([AFolder.ProjectFile]);
+  begin
+    Result := [AFolder.ProjectFile];
+    Exit;
+  end;
   GroupFile := '';
   if SameText(ExtractFileExt(AFolder.ProjectFile), '.groupproj') then
     GroupFile := AFolder.ProjectFile

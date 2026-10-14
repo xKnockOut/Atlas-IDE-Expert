@@ -57,6 +57,9 @@ type
 
 implementation
 
+uses
+  Atlas.Common.Index.NameIndex;
+
 var
   // Jeder Index beginnt mit eigener Generation, damit ein neuer Index an derselben Adresse
   // nie für den alten gehalten wird (#617).
@@ -90,6 +93,8 @@ end;
 
 destructor TSymbolIndex.Destroy;
 begin
+  // Namensindex der Import-Vorschläge (#617) hält sonst unsere Units fest.
+  TImportNames.Forget(Self);
   FPool.Free;
   FUnitFiles.Free;
   FFiles.Free;

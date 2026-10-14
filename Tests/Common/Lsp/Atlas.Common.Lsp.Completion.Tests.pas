@@ -332,7 +332,7 @@ begin
     FIndex.AddUnit(Lib);
   end;
   Items := ItemsAt(WithCode('  TTest'), '  TTest', TCompletionMatching.Fuzzy);
-  Assert.AreEqual(TLspCompletion.MaxImportItems, Length(Items.Items));
+  Assert.AreEqual(Integer(TLspCompletion.MaxImportItems), Integer(Length(Items.Items)));
   Assert.IsTrue(Items.Incomplete);
 end;
 
@@ -372,6 +372,7 @@ var
   Stages: TList<string>;
   Items: TCompletionItems;
   Postfix: TPostfixOptions;
+  Partial: TCompletionPartialProc;
 begin
   Text := WithCode('  ');
   Tree := TPascalParser.Parse(Text);
@@ -379,17 +380,18 @@ begin
   try
     Postfix := TPostfixOptions.Default;
     Postfix.Enabled := False;
-    Items := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, Text, PositionOf(Text, #10'begin'#10'  '),
-      TCompletionMatching.Fuzzy, Postfix,
+    Partial :=
       procedure(const AItems: TArray<TCompletionItem>)
       var
         Part: TCompletionItems;
       begin
         Part.Items := AItems;
         Stages.Add(Names(Part));
-      end);
+      end;
+    Items := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, Text, PositionOf(Text, #10'begin'#10'  '),
+      TCompletionMatching.Fuzzy, Postfix, Partial);
     // Erst lokal, Self und eigene Unit, dann die Units aus uses; die Antwort bringt den (leeren) Rest.
-    Assert.AreEqual(2, Stages.Count);
+    Assert.AreEqual(2, Integer(Stages.Count));
     Assert.AreEqual('Anzahl Wert Self Name Bar Zaehler Melde TFoo', Stages[0]);
     Assert.AreEqual('TBasis Rechne', Stages[1]);
     Assert.AreEqual('', Names(Items));
@@ -407,6 +409,7 @@ var
   Sent: string;
   Items: TCompletionItems;
   Postfix: TPostfixOptions;
+  Partial: TCompletionPartialProc;
 begin
   // Gleichnamiges aus nicht eingebundenen Units kommt nicht doppelt, auch wenn der eingebundene Name schon
   // in einem Teilergebnis stand.
@@ -419,15 +422,16 @@ begin
     Postfix := TPostfixOptions.Default;
     Postfix.Enabled := False;
     Sent := '';
-    Items := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, Text, PositionOf(Text, '  Rech'),
-      TCompletionMatching.Fuzzy, Postfix,
+    Partial :=
       procedure(const AItems: TArray<TCompletionItem>)
       var
         Part: TCompletionItems;
       begin
         Part.Items := AItems;
         Sent := Sent + Names(Part) + '|';
-      end);
+      end;
+    Items := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, Text, PositionOf(Text, '  Rech'),
+      TCompletionMatching.Fuzzy, Postfix, Partial);
     Assert.AreEqual('Rechne|', Sent);
     Assert.AreEqual('Rechenweg', Names(Items));
     Assert.AreEqual('Extra (uses ergänzen)', Items.Items[0].Detail);

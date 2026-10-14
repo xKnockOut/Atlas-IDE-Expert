@@ -57,6 +57,9 @@ type
   public
     /// <summary>Aktueller Namensindex zu AIndex; threadsicher.</summary>
     class function Current(const AIndex: ISymbolIndex): TImportNameIndex; static;
+    /// <summary>AOwner (der Symbolindex als Objekt) wird freigegeben: seinen Schnappschuss verwerfen,
+    /// sonst hielte der Cache dessen Units über das Ende hinaus fest.</summary>
+    class procedure Forget(AOwner: TObject); static;
   end;
 
 implementation
@@ -144,14 +147,14 @@ var
 begin
   TMonitor.Enter(CacheLock);
   try
-    Fresh := (CacheOwner = Pointer(AIndex)) and (CacheNames.Generation = AIndex.Generation);
-    if not Fresh and (CacheOwner = Pointer(AIndex)) and (CacheNames.Count >= LargeCount) and
+    Fresh := (CacheOwner = Pointer(AIndex as TObject)) and (CacheNames.Generation = AIndex.Generation);
+    if not Fresh and (CacheOwner = Pointer(AIndex as TObject)) and (CacheNames.Count >= LargeCount) and
       (CacheWatch.ElapsedMilliseconds < RebuildMs) then
       Fresh := True;
     if not Fresh then
     begin
       CacheNames := TImportNameIndex.Build(AIndex);
-      CacheOwner := Pointer(AIndex);
+      CacheOwner := Pointer(AIndex as TObject);
       CacheWatch := TStopwatch.StartNew;
     end;
     Result := CacheNames;
@@ -160,8 +163,25 @@ begin
   end;
 end;
 
+class procedure TImportNames.Forget(AOwner: TObject);
+begin
+  TMonitor.Enter(CacheLock);
+  try
+    if CacheOwner = Pointer(AOwner) then
+    begin
+      CacheNames := Default(TImportNameIndex);
+      CacheOwner := nil;
+    end;
+  finally
+    TMonitor.Exit(CacheLock);
+  end;
+end;
+
 initialization
   CacheLock := TObject.Create;
+  // Monitor gleich anlegen: Sonst entsteht er beim ersten Zugriff (oft in einem Test) und gilt dort als Leck.
+  TMonitor.Enter(CacheLock);
+  TMonitor.Exit(CacheLock);
 
 finalization
   CacheNames := Default(TImportNameIndex);

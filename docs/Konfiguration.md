@@ -70,7 +70,7 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 |---|---|---|---|---|
 | `index.projectGroup` | boolean | `true` |  | Alle Projekte der Projektgruppe indizieren; aus = nur das Projekt der geöffneten Datei. |
 | `index.searchPaths` | boolean | `true` |  | Alle Units der Projekt-Suchpfade indizieren; aus = nur über uses erreichbare. |
-| `index.libraryPaths` | boolean | `true` |  | Alle Units der Bibliotheks- und Suchpfade der Installation indizieren (RTL, VCL, Komponenten); aus = nur über uses erreichbare. |
+| `index.libraryPaths` | boolean | `false` |  | Alle Units der Bibliotheks- und Suchpfade der Installation indizieren (RTL, VCL, Komponenten); aus = nur über uses erreichbare. |
 | `index.exclude` | array<string> | `` | z. B. `["**/Demos/**","**/Samples/**"]` | Ordner oder Dateien, die nicht indiziert werden (Glob-Muster gegen den vollen Pfad: *, **, ?). |
 
 ## diagnostics

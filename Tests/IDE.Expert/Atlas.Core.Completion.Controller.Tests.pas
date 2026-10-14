@@ -533,7 +533,8 @@ begin
     Assert.IsTrue(Controller.NeedsQuery('xb'));
     Controller.UpdatePrefix('ab1');
     Assert.AreEqual(1, Provider.Queries);
-    Assert.AreEqual('ab1', View.Names);
+    // Lokal gefiltert; ab2 steht als Tippfehler-Kandidat unter „Meintest du“ (#485, # = Überschrift).
+    Assert.AreEqual('ab1,#,ab2', View.Names);
     Controller.Close;
     Assert.IsFalse(Controller.NeedsQuery('a'), 'geschlossen');
   finally

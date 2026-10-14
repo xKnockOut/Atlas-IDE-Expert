@@ -251,14 +251,14 @@ type
     IndexLibraryPaths: Boolean;
     /// <summary>Glob-Muster gegen den vollen Pfad ("/" oder ""), die nicht indiziert werden, z. B. **/Demos/**.</summary>
     IndexExclude: TArray<string>;
-    /// <summary>True, wenn AFileName unter ein Muster aus IndexExclude fällt.</summary>
-    function IsIndexExcluded(const AFileName: string): Boolean;
     /// <summary>Protokoll (#265): Stufe (debug/info/warning/error), Logdatei und Mitschnitt.
     /// Der Server übernimmt sie nicht zur Laufzeit; der Client übergibt sie beim Start als
     /// --log-level, --log und --trace.</summary>
     LogLevel: string;
     LogFile: string;
     TraceFile: string;
+    /// <summary>True, wenn AFileName unter ein Muster aus IndexExclude fällt.</summary>
+    function IsIndexExcluded(const AFileName: string): Boolean;
     /// <summary>Vorgaben, wenn keine Konfigurationsdatei existiert.</summary>
     class function Default: TServerSettings; static;
     /// <summary>Schweregrad aus der Konfiguration oder ADefault.</summary>
@@ -532,7 +532,8 @@ begin
   Result.DiagnosticsLogMapFile := False;
   Result.IndexProjectGroup := True;
   Result.IndexSearchPaths := True;
-  Result.IndexLibraryPaths := True;
+  // Bibliothekspfade ganz zu indizieren dauert bei großen Installationen Minuten; nur auf Wunsch.
+  Result.IndexLibraryPaths := False;
   Result.IndexExclude := nil;
   Result.LogLevel := 'info';
   Result.LogFile := '';
