@@ -82,6 +82,7 @@ type
     FEmptyTotal: Integer;
     FShowingEmpty: Boolean;
     FDetailView: TAtlasDetailView;
+    FTarget: string;
     /// <summary>Panelbereich in dieser Sitzung belegt.</summary>
     FPanelShown: Boolean;
     /// <summary>Panel links der Liste (rechts kein Platz).</summary>
@@ -124,6 +125,8 @@ type
     procedure DrawHeader(ARow, APosition: Integer);
     /// <summary>Rechts in der Fußzeile: „3 von 84“ bzw. mit erwartetem Typ „3 passend · 84 gesamt“ (#417).</summary>
     function CountText: string;
+    /// <summary>Links in der Fußzeile: die Tasten, oder das Ziel, sobald Einträge an Bedingungen hängen (#476).</summary>
+    function FooterLeftText: string;
     function ListWidth: Integer;
     function Collapsed: Boolean;
     function HitArea(AX, AY: Integer): TAtlasHitArea;
@@ -204,6 +207,8 @@ type
     property OnOverload: TAtlasOverloadEvent read FOnOverload write FOnOverload;
     /// <summary>Geerbte Member abgeschwächt zeichnen (#419).</summary>
     property DimInherited: Boolean read FDimInherited write FDimInherited;
+    /// <summary>Aktives Ziel („Win32 · Debug“) für die Fußzeile (#476); '' = keins bekannt.</summary>
+    property Target: string read FTarget write FTarget;
   end;
 
 implementation
@@ -418,6 +423,18 @@ begin
   end;
   Canvas.Brush.Style := bsSolid;
   Canvas.Font := Font;
+end;
+
+function TAtlasCompletionPopup.FooterLeftText: string;
+var
+  Index: Integer;
+begin
+  Result := TAtlasStrings.Text(TAtlasTextId.FooterKeys);
+  if FTarget = '' then
+    Exit;
+  for Index in FOrder do
+    if (Index >= 0) and (FItems[Index].Condition <> '') then
+      Exit(TAtlasStrings.Fmt(TAtlasTextId.TargetFooter, [FTarget]));
 end;
 
 function TAtlasCompletionPopup.CountText: string;
@@ -998,7 +1015,7 @@ begin
         else
           DrawRow(Row, FTop + Row);
     DrawScrollBar;
-    DrawFooter(TAtlasStrings.Text(TAtlasTextId.FooterKeys), CountText);
+    DrawFooter(FooterLeftText, CountText);
   end;
   if FPanelShown then
     PaintPanel;
