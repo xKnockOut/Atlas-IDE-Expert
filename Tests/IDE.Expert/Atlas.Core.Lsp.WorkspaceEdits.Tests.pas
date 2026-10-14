@@ -14,7 +14,9 @@ type
     [Test]
     procedure ReadsChangesPerFile;
     [Test]
-    procedure PrefersDocumentChangesAndCountsFileOperations;
+    procedure PrefersDocumentChangesAndReadsFileOperations;
+    [Test]
+    procedure ReadsFileOperationOptionsAndCountsUnknown;
     [Test]
     procedure AppliesSeveralEditsAgainstTheOriginalText;
     [Test]
@@ -74,7 +76,7 @@ begin
   Assert.IsTrue(Parse('{"changes":{}}').IsEmpty);
 end;
 
-procedure TLspWorkspaceEditTests.PrefersDocumentChangesAndCountsFileOperations;
+procedure TLspWorkspaceEditTests.PrefersDocumentChangesAndReadsFileOperations;
 var
   Edit: TLspWorkspaceEdit;
 begin
@@ -88,7 +90,41 @@ begin
   Assert.AreEqual(1, Integer(Length(Edit.Files)));
   Assert.AreEqual('c:\p\a.pas', Edit.Files[0].FileName);
   Assert.AreEqual('b', Edit.Files[0].Edits[0].NewText);
-  Assert.AreEqual(2, Edit.Unsupported);
+  // #721: Dateioperationen in der Reihenfolge des Servers.
+  Assert.AreEqual(0, Edit.Unsupported);
+  Assert.AreEqual(2, Integer(Length(Edit.Operations)));
+  Assert.IsTrue(Edit.Operations[0].Kind = TLspFileOperationKind.Rename);
+  Assert.AreEqual('c:\p\a.pas', Edit.Operations[0].FileName);
+  Assert.AreEqual('c:\p\b.pas', Edit.Operations[0].NewFileName);
+  Assert.IsTrue(Edit.Operations[1].Kind = TLspFileOperationKind.Create);
+  Assert.AreEqual('c:\p\c.pas', Edit.Operations[1].FileName);
+  Assert.IsFalse(Edit.IsEmpty);
+end;
+
+procedure TLspWorkspaceEditTests.ReadsFileOperationOptionsAndCountsUnknown;
+var
+  Edit: TLspWorkspaceEdit;
+begin
+  Edit := Parse('{"documentChanges":[' +
+    '{"kind":"create","uri":"file:///c%3A/p/c.pas","options":{"overwrite":true,"ignoreIfExists":true}},' +
+    '{"kind":"delete","uri":"file:///c%3A/p/d.pas","options":{"ignoreIfNotExists":true,"recursive":true}},' +
+    '{"kind":"rename","oldUri":"file:///c%3A/p/e.pas","newUri":"file:///c%3A/p/f.pas",' +
+    '"options":{"ignoreIfExists":true}},' +
+    '{"kind":"copy","uri":"file:///c%3A/p/g.pas"},' +
+    '{"kind":"rename","oldUri":"file:///c%3A/p/h.pas"},' +
+    '{"kind":"delete"}]}');
+  Assert.AreEqual(3, Integer(Length(Edit.Operations)));
+  Assert.AreEqual(3, Edit.Unsupported);
+  // overwrite gewinnt über ignoreIfExists.
+  Assert.IsTrue(Edit.Operations[0].Overwrite);
+  Assert.IsFalse(Edit.Operations[0].IgnoreIfExists);
+  Assert.IsTrue(Edit.Operations[1].Kind = TLspFileOperationKind.Delete);
+  Assert.IsTrue(Edit.Operations[1].IgnoreIfNotExists);
+  Assert.IsTrue(Edit.Operations[1].Recursive);
+  Assert.IsTrue(Edit.Operations[2].IgnoreIfExists);
+  Assert.IsFalse(Edit.Operations[2].Overwrite);
+  Assert.AreEqual(0, Edit.EditCount);
+  Assert.IsFalse(Edit.IsEmpty);
 end;
 
 procedure TLspWorkspaceEditTests.AppliesSeveralEditsAgainstTheOriginalText;

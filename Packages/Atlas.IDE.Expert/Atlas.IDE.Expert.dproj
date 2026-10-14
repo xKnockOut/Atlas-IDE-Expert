@@ -211,6 +211,15 @@
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.SafeMode.pas"/>
         <DCCReference Include="Source\UI\Diagnostics\Atlas.UI.Diagnostics.SafeModeNotice.pas"/>
         <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.SafeMode.pas"/>
+        <DCCReference Include="Source\Core\Undo\Atlas.Core.Undo.LinePatch.pas"/>
+        <DCCReference Include="Source\Core\Undo\Atlas.Core.Undo.Contract.pas"/>
+        <DCCReference Include="Source\Core\Undo\Atlas.Core.Undo.Journal.pas"/>
+        <DCCReference Include="Source\Core\Undo\Atlas.Core.Undo.Adapters.FileStore.pas"/>
+        <DCCReference Include="Source\Core\Undo\Atlas.Core.Undo.Adapters.DiskTarget.pas"/>
+        <DCCReference Include="Source\UI\Undo\Atlas.UI.Undo.Messages.pas"/>
+        <DCCReference Include="Source\UI\Undo\Atlas.UI.Undo.DiffView.pas"/>
+        <DCCReference Include="Source\IDE\Undo\Atlas.IDE.Undo.Target.pas"/>
+        <DCCReference Include="Source\IDE\Undo\Atlas.IDE.Undo.Changes.pas"/>
         <DCCReference Include="Source\IDE\Status\Atlas.IDE.Status.Lines.pas"/>
         <DCCReference Include="Source\IDE\Status\Atlas.IDE.Status.Field.pas"/>
         <DCCReference Include="Source\IDE\Files\Atlas.IDE.Files.DirtyExport.pas"/>

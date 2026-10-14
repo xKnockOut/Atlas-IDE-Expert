@@ -118,6 +118,15 @@ begin
   Assert.AreEqual('shift', Settings.SafeStartupKey);
   Assert.AreEqual(10000, Settings.SafeStartupTimeoutMs);
   Assert.AreEqual(5, Settings.SafeKeepSettingsHistory);
+  // Dateiübergreifendes Zurücknehmen (#721).
+  Assert.IsTrue(Settings.UndoMultiFile);
+  Assert.AreEqual(20, Settings.UndoMultiFileDepth);
+  Assert.IsTrue(Settings.UndoMultiFilePersist);
+  Assert.AreEqual(50, Settings.UndoMultiFileMaxSizeMb);
+  Assert.AreEqual('partial', Settings.UndoMultiFileOnConflict);
+  Assert.AreEqual('recycleBin', Settings.UndoMultiFileNewFiles);
+  Assert.AreEqual($C05A, Settings.UndoKey, 'Strg+Alt+Z');
+  Assert.AreEqual($E05A, Settings.RedoKey, 'Strg+Alt+Umschalt+Z');
 end;
 
 procedure TAtlasPluginSettingsTests.SaveAndLoadRoundTrip;
@@ -155,6 +164,14 @@ begin
   Settings.SafeStartupKey := 'none';
   Settings.SafeStartupTimeoutMs := 30000;
   Settings.SafeKeepSettingsHistory := 0;
+  Settings.UndoMultiFile := False;
+  Settings.UndoMultiFileDepth := 7;
+  Settings.UndoMultiFilePersist := False;
+  Settings.UndoMultiFileMaxSizeMb := 3;
+  Settings.UndoMultiFileOnConflict := 'abort';
+  Settings.UndoMultiFileNewFiles := 'keep';
+  Settings.UndoKey := 0;
+  Settings.RedoKey := $C059;
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
@@ -188,6 +205,14 @@ begin
   Assert.AreEqual('none', Loaded.SafeStartupKey);
   Assert.AreEqual(30000, Loaded.SafeStartupTimeoutMs);
   Assert.AreEqual(0, Loaded.SafeKeepSettingsHistory);
+  Assert.IsFalse(Loaded.UndoMultiFile);
+  Assert.AreEqual(7, Loaded.UndoMultiFileDepth);
+  Assert.IsFalse(Loaded.UndoMultiFilePersist);
+  Assert.AreEqual(3, Loaded.UndoMultiFileMaxSizeMb);
+  Assert.AreEqual('abort', Loaded.UndoMultiFileOnConflict);
+  Assert.AreEqual('keep', Loaded.UndoMultiFileNewFiles);
+  Assert.AreEqual(0, Loaded.UndoKey);
+  Assert.AreEqual($C059, Loaded.RedoKey);
   Assert.AreEqual('', TAtlasPluginSettings.Defaults.ServerPath, 'Standard: leer');
 end;
 
@@ -267,6 +292,10 @@ begin
   Store.WriteInteger('SafeStartupTimeoutMs', 5);
   Store.WriteInteger('SafeKeepSettingsHistory', 1000);
   Store.WriteString('SafeStartupKey', ' Alt ');
+  Store.WriteInteger('UndoMultiFileDepth', 0);
+  Store.WriteInteger('UndoMultiFileMaxSizeMb', 100000);
+  Store.WriteString('UndoMultiFileOnConflict', ' ABORT ');
+  Store.WriteString('UndoMultiFileNewFiles', 'irgendwas');
   Settings := Default(TAtlasPluginSettings);
   Settings.Load(Store);
   Assert.AreEqual(TAtlasPluginSettings.MinProviderTimeLimit, Settings.ProviderTimeLimitMs);
@@ -277,6 +306,10 @@ begin
   Assert.AreEqual(TAtlasPluginSettings.MinSafeStartupTimeout, Settings.SafeStartupTimeoutMs);
   Assert.AreEqual(TAtlasPluginSettings.MaxSafeSettingsHistory, Settings.SafeKeepSettingsHistory);
   Assert.AreEqual('shift', Settings.SafeStartupKey, 'unbekannte Taste: Umschalt');
+  Assert.AreEqual(TAtlasPluginSettings.MinUndoDepth, Settings.UndoMultiFileDepth);
+  Assert.AreEqual(TAtlasPluginSettings.MaxUndoMaxSizeMb, Settings.UndoMultiFileMaxSizeMb);
+  Assert.AreEqual('abort', Settings.UndoMultiFileOnConflict);
+  Assert.AreEqual('recycleBin', Settings.UndoMultiFileNewFiles, 'unbekannt: Papierkorb');
 end;
 
 initialization

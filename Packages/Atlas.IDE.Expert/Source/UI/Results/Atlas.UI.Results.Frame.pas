@@ -4,7 +4,10 @@
 // ein Baum. Fundstellen (Referenzen, Implementierungen) stehen nach Unit
 // gruppiert, je Zeile „Zeile: Text“; Hierarchien (Aufrufer, Aufrufe,
 // Vorfahren, Nachfahren) laden ihre nächste Ebene erst beim Aufklappen über
-// OnExpand. Doppelklick oder Enter springt über OnOpen zur Stelle. Die DFM
+// OnExpand. Doppelklick oder Enter springt über OnOpen zur Stelle. Die Liste
+// „Atlas-Änderungen“ (#721) zeigt die Sätze des Änderungsprotokolls mit ihren
+// Dateien; Doppelklick oder Enter zeigt den Unterschied (OnChangeDiff), das
+// Kontextmenü nimmt einen Satz zurück oder stellt ihn wieder her. Die DFM
 // ist leer, weil TCustomFrame.Create für abgeleitete Frames eine Ressource
 // verlangt; aufgebaut wird im Code. Die IDE-Schicht bettet den Frame in ein
 // andockbares Fenster ein.
@@ -20,17 +23,23 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Vcl.Forms,
-  Atlas.Core.Results.Model;
+  Vcl.Menus,
+  Atlas.Core.Results.Model,
+  Atlas.Core.Undo.Contract;
 
 type
   TAtlasResultsOpen = reference to procedure(const AFileName: string; ALine, ACharacter: Integer);
   TAtlasHierarchyExpand = reference to function(ADirection: TAtlasHierarchyDirection;
     const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
+  /// <summary>Satz (#721) zurücknehmen bzw. wiederherstellen.</summary>
+  TAtlasChangeSetAction = reference to procedure(ASetId: Integer);
+  /// <summary>Unterschied eines Satzes zeigen; AFileName = '' für alle Dateien.</summary>
+  TAtlasChangeDiff = reference to procedure(ASetId: Integer; const AFileName: string);
 
   TAtlasResultsFrame = class(TFrame)
   private type
 {$SCOPEDENUMS ON}
-    TNodeKind = (Group, Entry, Hierarchy, Placeholder);
+    TNodeKind = (Group, Entry, Hierarchy, Placeholder, ChangeSet, ChangeFile);
 {$SCOPEDENUMS OFF}
     TNodeData = record
       Kind: TNodeKind;
@@ -39,6 +48,9 @@ type
       Character: Integer;
       Item: TAtlasHierarchyItem;
       Loaded: Boolean;
+      /// <summary>Kennung des Satzes (#721) und sein Zustand.</summary>
+      SetId: Integer;
+      State: TAtlasChangeSetState;
     end;
   private
     FTitle: TLabel;
@@ -47,6 +59,14 @@ type
     FDirection: TAtlasHierarchyDirection;
     FOnOpen: TAtlasResultsOpen;
     FOnExpand: TAtlasHierarchyExpand;
+    FMenu: TPopupMenu;
+    FUndoItem: TMenuItem;
+    FRedoItem: TMenuItem;
+    FDiffItem: TMenuItem;
+    FShowsChanges: Boolean;
+    FOnChangeUndo: TAtlasChangeSetAction;
+    FOnChangeRedo: TAtlasChangeSetAction;
+    FOnChangeDiff: TAtlasChangeDiff;
     function AddNode(AParent: TTreeNode; const AText: string; const AData: TNodeData): TTreeNode;
     function DataOf(ANode: TTreeNode): TNodeData;
     procedure AddHierarchy(AParent: TTreeNode; const AItems: TArray<TAtlasHierarchyItem>);
@@ -55,6 +75,11 @@ type
     procedure TreeDblClick(Sender: TObject);
     procedure TreeKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure TreeExpanding(Sender: TObject; Node: TTreeNode; var AllowExpansion: Boolean);
+    function SelectedSet: TNodeData;
+    procedure MenuPopup(Sender: TObject);
+    procedure UndoClick(Sender: TObject);
+    procedure RedoClick(Sender: TObject);
+    procedure DiffClick(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -63,6 +88,15 @@ type
     /// <summary>Wurzeln einer Hierarchie; die erste Ebene wird gleich geladen.</summary>
     procedure ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;
       const ARoots: TArray<TAtlasHierarchyItem>);
+    /// <summary>Liste „Atlas-Änderungen“ (#721): neueste Sätze zuerst, je Satz seine Dateien (zugeklappt).
+    /// AKeepSelection: den bisher gewählten Satz wieder wählen (nach Zurücknehmen).</summary>
+    procedure ShowChanges(const ATitle: string; const ASets: TArray<TAtlasChangeSet>; ANow: TDateTime;
+      AKeepSelection: Boolean);
+    /// <summary>Unterschied, Zurücknehmen und Wiederherstellen für den gewählten Satz
+    /// bzw. die gewählte Datei.</summary>
+    procedure ShowSelectedDiff;
+    procedure UndoSelected;
+    procedure RedoSelected;
     /// <summary>Text einer Fundstelle: "12: Kunde.Laden;" bzw. mit Vorschau "alt  →  neu".</summary>
     class function EntryText(const AEntry: TAtlasResultEntry): string; static;
     /// <summary>Text eines Hierarchie-Eintrags: "Laden · TKunde  (Kunden.pas:12)".</summary>
@@ -70,12 +104,20 @@ type
     property Tree: TTreeView read FTree;
     property OnOpen: TAtlasResultsOpen read FOnOpen write FOnOpen;
     property OnExpand: TAtlasHierarchyExpand read FOnExpand write FOnExpand;
+    property Menu: TPopupMenu read FMenu;
+    /// <summary>Zeigt gerade die Liste „Atlas-Änderungen“.</summary>
+    property ShowsChanges: Boolean read FShowsChanges;
+    property OnChangeUndo: TAtlasChangeSetAction read FOnChangeUndo write FOnChangeUndo;
+    property OnChangeRedo: TAtlasChangeSetAction read FOnChangeRedo write FOnChangeRedo;
+    property OnChangeDiff: TAtlasChangeDiff read FOnChangeDiff write FOnChangeDiff;
   end;
 
 implementation
 
 uses
-  Winapi.Windows;
+  Winapi.Windows,
+  Atlas.UI.Strings,
+  Atlas.UI.Undo.Messages;
 
 {$R *.dfm}
 
@@ -102,6 +144,22 @@ begin
   FTree.OnDblClick := TreeDblClick;
   FTree.OnKeyDown := TreeKeyDown;
   FTree.OnExpanding := TreeExpanding;
+  // Kontextmenü der Liste „Atlas-Änderungen“ (#721); in anderen Listen ohne Einträge.
+  FMenu := TPopupMenu.Create(Self);
+  FMenu.OnPopup := MenuPopup;
+  FUndoItem := TMenuItem.Create(FMenu);
+  FUndoItem.Caption := TAtlasStrings.Text(TAtlasTextId.UndoActionUndo);
+  FUndoItem.OnClick := UndoClick;
+  FMenu.Items.Add(FUndoItem);
+  FRedoItem := TMenuItem.Create(FMenu);
+  FRedoItem.Caption := TAtlasStrings.Text(TAtlasTextId.UndoActionRedo);
+  FRedoItem.OnClick := RedoClick;
+  FMenu.Items.Add(FRedoItem);
+  FDiffItem := TMenuItem.Create(FMenu);
+  FDiffItem.Caption := TAtlasStrings.Text(TAtlasTextId.UndoActionDiff);
+  FDiffItem.OnClick := DiffClick;
+  FMenu.Items.Add(FDiffItem);
+  FTree.PopupMenu := FMenu;
 end;
 
 destructor TAtlasResultsFrame.Destroy;
@@ -148,6 +206,7 @@ end;
 
 procedure TAtlasResultsFrame.Clear(const ATitle: string);
 begin
+  FShowsChanges := False;
   FTitle.Caption := ATitle;
   FTree.Items.BeginUpdate;
   try
@@ -264,11 +323,121 @@ begin
   AllowExpansion := Node.HasChildren;
 end;
 
+procedure TAtlasResultsFrame.ShowChanges(const ATitle: string; const ASets: TArray<TAtlasChangeSet>; ANow: TDateTime;
+  AKeepSelection: Boolean);
+var
+  ChangeSet: TAtlasChangeSet;
+  Change: TAtlasFileChange;
+  Data: TNodeData;
+  SetNode, Selected: TTreeNode;
+  PreviousId: Integer;
+begin
+  PreviousId := 0;
+  if AKeepSelection and FShowsChanges then
+    PreviousId := SelectedSet.SetId;
+  Clear(ATitle);
+  FShowsChanges := True;
+  Selected := nil;
+  FTree.Items.BeginUpdate;
+  try
+    for ChangeSet in ASets do
+    begin
+      Data := Default(TNodeData);
+      Data.Kind := TNodeKind.ChangeSet;
+      Data.SetId := ChangeSet.Id;
+      Data.State := ChangeSet.State;
+      SetNode := AddNode(nil, TAtlasUndoMessages.SetCaption(ChangeSet, ANow), Data);
+      if ChangeSet.Id = PreviousId then
+        Selected := SetNode;
+      for Change in ChangeSet.Files do
+      begin
+        Data.Kind := TNodeKind.ChangeFile;
+        Data.FileName := Change.FileName;
+        AddNode(SetNode, TAtlasUndoMessages.FileCaption(Change), Data);
+      end;
+    end;
+  finally
+    FTree.Items.EndUpdate;
+  end;
+  if Selected <> nil then
+    FTree.Selected := Selected
+  else if FTree.Items.Count > 0 then
+    FTree.Selected := FTree.Items[0];
+end;
+
+function TAtlasResultsFrame.SelectedSet: TNodeData;
+begin
+  Result := DataOf(FTree.Selected);
+  if not (Result.Kind in [TNodeKind.ChangeSet, TNodeKind.ChangeFile]) then
+    Result := Default(TNodeData);
+end;
+
+procedure TAtlasResultsFrame.MenuPopup(Sender: TObject);
+var
+  Data: TNodeData;
+begin
+  Data := SelectedSet;
+  FUndoItem.Visible := FShowsChanges;
+  FRedoItem.Visible := FShowsChanges;
+  FDiffItem.Visible := FShowsChanges;
+  FUndoItem.Enabled := (Data.SetId > 0) and (Data.State <> TAtlasChangeSetState.Undone);
+  FRedoItem.Enabled := (Data.SetId > 0) and (Data.State <> TAtlasChangeSetState.Applied);
+  FDiffItem.Enabled := Data.SetId > 0;
+end;
+
+procedure TAtlasResultsFrame.ShowSelectedDiff;
+var
+  Data: TNodeData;
+begin
+  Data := SelectedSet;
+  if (Data.SetId > 0) and Assigned(FOnChangeDiff) then
+    FOnChangeDiff(Data.SetId, Data.FileName);
+end;
+
+procedure TAtlasResultsFrame.UndoSelected;
+var
+  Data: TNodeData;
+begin
+  Data := SelectedSet;
+  if (Data.SetId > 0) and Assigned(FOnChangeUndo) then
+    FOnChangeUndo(Data.SetId);
+end;
+
+procedure TAtlasResultsFrame.RedoSelected;
+var
+  Data: TNodeData;
+begin
+  Data := SelectedSet;
+  if (Data.SetId > 0) and Assigned(FOnChangeRedo) then
+    FOnChangeRedo(Data.SetId);
+end;
+
+procedure TAtlasResultsFrame.UndoClick(Sender: TObject);
+begin
+  UndoSelected;
+end;
+
+procedure TAtlasResultsFrame.RedoClick(Sender: TObject);
+begin
+  RedoSelected;
+end;
+
+procedure TAtlasResultsFrame.DiffClick(Sender: TObject);
+begin
+  ShowSelectedDiff;
+end;
+
 procedure TAtlasResultsFrame.OpenSelected;
 var
   Data: TNodeData;
 begin
   Data := DataOf(FTree.Selected);
+  // Atlas-Änderungen (#721): Doppelklick zeigt den Unterschied.
+  if Data.Kind in [TNodeKind.ChangeSet, TNodeKind.ChangeFile] then
+  begin
+    ShowSelectedDiff;
+    Exit;
+  end;
   if (Data.Kind in [TNodeKind.Entry, TNodeKind.Hierarchy]) and (Data.FileName <> '') and Assigned(FOnOpen) then
     FOnOpen(Data.FileName, Data.Line, Data.Character);
 end;

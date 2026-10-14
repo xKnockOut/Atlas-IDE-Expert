@@ -341,6 +341,16 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.SafeMode.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Diagnostics\Atlas.UI.Diagnostics.SafeModeNotice.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Diagnostics.SafeModeNotice.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Undo\Atlas.Core.Undo.LinePatch.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Undo\Atlas.Core.Undo.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Undo\Atlas.Core.Undo.Journal.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Undo\Atlas.Core.Undo.Adapters.FileStore.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Undo\Atlas.Core.Undo.Adapters.DiskTarget.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Undo.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Undo\Atlas.UI.Undo.Messages.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Undo\Atlas.UI.Undo.DiffView.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Results\Atlas.UI.Results.Frame.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Undo.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Commands\Atlas.Core.Commands.Palette.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.Palette.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Pairs.pas"/>

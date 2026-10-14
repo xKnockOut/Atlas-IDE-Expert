@@ -17,6 +17,8 @@
 // Ergebnisfenster (#400).
 // Code-Aktionen, Auswahl erweitern/verkleinern, Typdefinition und
 // qualifizierter Name (#399) gehen an TAtlasIdeEditorCommands.
+// Letzte Atlas-Änderung zurücknehmen bzw. wiederherstellen und die Liste
+// „Atlas-Änderungen“ (#721) gehen an TAtlasIdeUndo.
 
 interface
 
@@ -47,6 +49,7 @@ type
     procedure RenameClick(Sender: TObject);
     procedure ResultsClick(Sender: TObject);
     procedure EditorClick(Sender: TObject);
+    procedure UndoClick(Sender: TObject);
     function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
     procedure EnableAllClick(Sender: TObject);
     procedure TimerTick(Sender: TObject);
@@ -77,6 +80,7 @@ uses
   Atlas.IDE.Settings.QuickToggles,
   Atlas.IDE.Diagnostics.Export,
   Atlas.IDE.Results.Commands,
+  Atlas.IDE.Undo.Changes,
   Atlas.IDE.Commands.Editor,
   Atlas.Core.Results.Model,
   Atlas.Core.Lsp.Progress;
@@ -156,6 +160,11 @@ begin
   AddItem(TAtlasTextId.MenuSupertypes, 5, ResultsClick);
   AddItem(TAtlasTextId.MenuSubtypes, 6, ResultsClick);
   AddItem(TAtlasTextId.MenuResultsWindow, 7, ResultsClick);
+  FRoot.Add(NewLine);
+  // Atlas-Änderungen über mehrere Dateien (#721); Tag wählt den Befehl in UndoClick.
+  AddItem(TAtlasTextId.UndoMenu, 0, UndoClick);
+  AddItem(TAtlasTextId.RedoMenu, 1, UndoClick);
+  AddItem(TAtlasTextId.UndoListMenu, 2, UndoClick);
   FRoot.Add(NewLine);
   Item := TMenuItem.Create(FRoot);
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.MenuIndexStatus);
@@ -395,6 +404,23 @@ begin
         4: TAtlasIdeEditorCommands.CopyQualifiedName(False);
       else
         TAtlasIdeEditorCommands.CopyQualifiedName(True);
+      end;
+    end);
+end;
+
+procedure TAtlasMainMenu.UndoClick(Sender: TObject);
+var
+  Command: Integer;
+begin
+  Command := TMenuItem(Sender).Tag;
+  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+    procedure
+    begin
+      case Command of
+        0: TAtlasIdeUndo.UndoLast;
+        1: TAtlasIdeUndo.RedoLast;
+      else
+        TAtlasIdeUndo.ShowList;
       end;
     end);
 end;

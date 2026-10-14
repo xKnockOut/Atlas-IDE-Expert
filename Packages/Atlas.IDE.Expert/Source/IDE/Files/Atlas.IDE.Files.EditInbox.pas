@@ -142,7 +142,7 @@ begin
   Edit.Files := [Default(TLspFileEdits)];
   Edit.Files[0].FileName := Request.FileName;
   Edit.Files[0].Edits := [TextEdit];
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, False);
+  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, False, TAtlasStrings.Text(TAtlasTextId.UndoActionMcp));
   if Outcome.Error <> '' then
   begin
     TAtlasEditInbox.Answer(FFolder, Request, False, False, Outcome.Error);

@@ -44,6 +44,11 @@ type
     MinSafeStartupTimeout = 1000;
     MaxSafeStartupTimeout = 120000;
     MaxSafeSettingsHistory = 50;
+    /// <summary>Grenzen für undo.multiFile.depth und undo.multiFile.maxSizeMb (#721).</summary>
+    MinUndoDepth = 1;
+    MaxUndoDepth = 200;
+    MinUndoMaxSizeMb = 1;
+    MaxUndoMaxSizeMb = 1024;
   public
     /// <summary>Hauptschalter (#407): aus = eingebaute Code Insight der IDE.</summary>
     Enabled: Boolean;
@@ -162,6 +167,22 @@ type
     SafeStartupTimeoutMs: Integer;
     /// <summary>Gemerkte Einstellungsstände zum Zurücksetzen (safeMode.keepSettingsHistory).</summary>
     SafeKeepSettingsHistory: Integer;
+    /// <summary>Dateiübergreifendes Zurücknehmen von Atlas-Änderungen (#721, undo.multiFile).</summary>
+    UndoMultiFile: Boolean;
+    /// <summary>Anzahl gemerkter Änderungssätze (undo.multiFile.depth).</summary>
+    UndoMultiFileDepth: Integer;
+    /// <summary>Protokoll über einen IDE-Neustart hinweg sichern (undo.multiFile.persist).</summary>
+    UndoMultiFilePersist: Boolean;
+    /// <summary>Größte Größe des gesicherten Protokolls in MB (undo.multiFile.maxSizeMb).</summary>
+    UndoMultiFileMaxSizeMb: Integer;
+    /// <summary>partial oder abort (undo.multiFile.onConflict).</summary>
+    UndoMultiFileOnConflict: string;
+    /// <summary>recycleBin, delete oder keep (undo.multiFile.newFiles).</summary>
+    UndoMultiFileNewFiles: string;
+    /// <summary>Tastenkürzel „Letzte Atlas-Änderung zurücknehmen“ und „… wiederherstellen“ (#721, wie die
+    /// Editor-Kürzel aus #399 änderbar, TShortCut, 0 = keins).</summary>
+    UndoKey: Integer;
+    RedoKey: Integer;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -251,6 +272,14 @@ begin
   Result.SafeStartupKey := 'shift';
   Result.SafeStartupTimeoutMs := 10000;
   Result.SafeKeepSettingsHistory := 5;
+  Result.UndoMultiFile := True;
+  Result.UndoMultiFileDepth := 20;
+  Result.UndoMultiFilePersist := True;
+  Result.UndoMultiFileMaxSizeMb := 50;
+  Result.UndoMultiFileOnConflict := 'partial';
+  Result.UndoMultiFileNewFiles := 'recycleBin';
+  Result.UndoKey := $C05A; // Strg+Alt+Z
+  Result.RedoKey := $E05A; // Strg+Alt+Umschalt+Z
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -276,6 +305,20 @@ begin
   SafeStartupKey := LowerCase(Trim(SafeStartupKey));
   if (SafeStartupKey <> 'shift') and (SafeStartupKey <> 'ctrl') and (SafeStartupKey <> 'none') then
     SafeStartupKey := 'shift';
+  UndoMultiFileDepth := EnsureRange(UndoMultiFileDepth, MinUndoDepth, MaxUndoDepth);
+  UndoMultiFileMaxSizeMb := EnsureRange(UndoMultiFileMaxSizeMb, MinUndoMaxSizeMb, MaxUndoMaxSizeMb);
+  if SameText(Trim(UndoMultiFileOnConflict), 'abort') then
+    UndoMultiFileOnConflict := 'abort'
+  else
+    UndoMultiFileOnConflict := 'partial';
+  if SameText(Trim(UndoMultiFileNewFiles), 'delete') then
+    UndoMultiFileNewFiles := 'delete'
+  else if SameText(Trim(UndoMultiFileNewFiles), 'keep') then
+    UndoMultiFileNewFiles := 'keep'
+  else
+    UndoMultiFileNewFiles := 'recycleBin';
+  UndoKey := EnsureRange(UndoKey, 0, $FFFF);
+  RedoKey := EnsureRange(RedoKey, 0, $FFFF);
 end;
 
 procedure TAtlasPluginSettings.Load(const AStore: IAtlasSettingsStore);
@@ -345,6 +388,14 @@ begin
   SafeStartupKey := AStore.ReadString('SafeStartupKey', Default.SafeStartupKey);
   SafeStartupTimeoutMs := AStore.ReadInteger('SafeStartupTimeoutMs', Default.SafeStartupTimeoutMs);
   SafeKeepSettingsHistory := AStore.ReadInteger('SafeKeepSettingsHistory', Default.SafeKeepSettingsHistory);
+  UndoMultiFile := AStore.ReadInteger('UndoMultiFile', BoolValue(Default.UndoMultiFile)) <> 0;
+  UndoMultiFileDepth := AStore.ReadInteger('UndoMultiFileDepth', Default.UndoMultiFileDepth);
+  UndoMultiFilePersist := AStore.ReadInteger('UndoMultiFilePersist', BoolValue(Default.UndoMultiFilePersist)) <> 0;
+  UndoMultiFileMaxSizeMb := AStore.ReadInteger('UndoMultiFileMaxSizeMb', Default.UndoMultiFileMaxSizeMb);
+  UndoMultiFileOnConflict := AStore.ReadString('UndoMultiFileOnConflict', Default.UndoMultiFileOnConflict);
+  UndoMultiFileNewFiles := AStore.ReadString('UndoMultiFileNewFiles', Default.UndoMultiFileNewFiles);
+  UndoKey := AStore.ReadInteger('UndoKey', Default.UndoKey);
+  RedoKey := AStore.ReadInteger('RedoKey', Default.RedoKey);
   Normalize;
 end;
 
@@ -411,6 +462,14 @@ begin
   AStore.WriteString('SafeStartupKey', SafeStartupKey);
   AStore.WriteInteger('SafeStartupTimeoutMs', SafeStartupTimeoutMs);
   AStore.WriteInteger('SafeKeepSettingsHistory', SafeKeepSettingsHistory);
+  AStore.WriteInteger('UndoMultiFile', BoolValue(UndoMultiFile));
+  AStore.WriteInteger('UndoMultiFileDepth', UndoMultiFileDepth);
+  AStore.WriteInteger('UndoMultiFilePersist', BoolValue(UndoMultiFilePersist));
+  AStore.WriteInteger('UndoMultiFileMaxSizeMb', UndoMultiFileMaxSizeMb);
+  AStore.WriteString('UndoMultiFileOnConflict', UndoMultiFileOnConflict);
+  AStore.WriteString('UndoMultiFileNewFiles', UndoMultiFileNewFiles);
+  AStore.WriteInteger('UndoKey', UndoKey);
+  AStore.WriteInteger('RedoKey', RedoKey);
 end;
 
 function JsonBool(AValue: Boolean): string;

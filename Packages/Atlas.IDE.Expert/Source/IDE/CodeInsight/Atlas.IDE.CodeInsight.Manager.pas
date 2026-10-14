@@ -200,6 +200,7 @@ uses
   Atlas.Core.Projects.Context,
   Atlas.IDE.Projects.Context,
   Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.UI.Strings,
   Atlas.IDE.Editor.WorkspaceEdit;
 
 var
@@ -636,7 +637,8 @@ begin
             Exit;
           end;
           try
-            Outcome := TAtlasIdeWorkspaceEdit.Apply(AEdit, TAtlasIdeSettings.Current.OpenForEdits);
+            Outcome := TAtlasIdeWorkspaceEdit.Apply(AEdit, TAtlasIdeSettings.Current.OpenForEdits,
+              TAtlasStrings.Text(TAtlasTextId.UndoActionServer));
           except
             on E: Exception do
             begin

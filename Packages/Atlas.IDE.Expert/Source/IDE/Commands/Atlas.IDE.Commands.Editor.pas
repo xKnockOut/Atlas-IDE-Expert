@@ -95,7 +95,8 @@ uses
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Hover.Editor,
   Atlas.IDE.Results.Commands,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Undo.Changes;
 
 const
   // Code-Aktionen und Befehle des Servers; Befehle können projektweit arbeiten.
@@ -252,6 +253,26 @@ begin
     procedure
     begin
       CopyQualifiedName(True);
+    end);
+  // Atlas-Änderungen über mehrere Dateien (#721).
+  FContextMenu.Add('-', nil, nil);
+  FContextMenu.Add(TAtlasStrings.Text(TAtlasTextId.UndoMenu),
+    function: Integer
+    begin
+      Result := TAtlasIdeSettings.Current.UndoKey;
+    end,
+    procedure
+    begin
+      TAtlasIdeUndo.UndoLast;
+    end);
+  FContextMenu.Add(TAtlasStrings.Text(TAtlasTextId.RedoMenu),
+    function: Integer
+    begin
+      Result := TAtlasIdeSettings.Current.RedoKey;
+    end,
+    procedure
+    begin
+      TAtlasIdeUndo.RedoLast;
     end);
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
   begin
@@ -592,7 +613,7 @@ begin
   // LSP: erst die Änderung, dann der Befehl.
   if not AAction.Edit.IsEmpty then
   begin
-    Outcome := TAtlasIdeWorkspaceEdit.Apply(AAction.Edit, TAtlasIdeSettings.Current.OpenForEdits);
+    Outcome := TAtlasIdeWorkspaceEdit.Apply(AAction.Edit, TAtlasIdeSettings.Current.OpenForEdits, AAction.Title);
     if Outcome.Error <> '' then
     begin
       Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
@@ -732,7 +753,7 @@ begin
   Edit.Files := [Default(TLspFileEdits)];
   Edit.Files[0].FileName := FileName;
   Edit.Files[0].Edits := Edits;
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, False);
+  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, False, TAtlasStrings.Text(TAtlasTextId.UndoActionSlash));
   if Outcome.Error <> '' then
   begin
     Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));

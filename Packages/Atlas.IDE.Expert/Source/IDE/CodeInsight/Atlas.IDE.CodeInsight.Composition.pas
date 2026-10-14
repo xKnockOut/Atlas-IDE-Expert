@@ -5,7 +5,8 @@
 // extern geänderter Dateien (#536), die Befehlspalette (#502), die farbigen
 // Klammerpaare (#514), das Ergebnisfenster (#400), die Editorbefehle samt
 // Tastenkürzeln und Kontextmenü (#399), den Abgleich offener Formulare (#402),
-// das Atlas-Statusfeld (#591) und die Schnellschalter (#604) beim Laden des
+// das Atlas-Statusfeld (#591), die Schnellschalter (#604) und das
+// dateiübergreifende Zurücknehmen von Atlas-Änderungen (#721) beim Laden des
 // Packages an und beim Entladen in umgekehrter Reihenfolge wieder ab
 // (ADR 0006). Zuerst entscheidet der abgesicherte Start
 // (#722), was angemeldet wird; RegisterFeatures holt den Rest nach, sobald
@@ -64,7 +65,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Diagnostics.TimeLimit,
-  Atlas.IDE.Commands.Keys;
+  Atlas.IDE.Commands.Keys,
+  Atlas.IDE.Undo.Changes;
 
 var
   ManagerIndex: Integer = -1;
@@ -249,6 +251,22 @@ begin
     procedure
     begin
       TAtlasIdeResults.ShowWindow;
+    end);
+  // Atlas-Änderungen über mehrere Dateien (#721).
+  Palette.RegisterCommand('Atlas.UndoChange', TAtlasStrings.Text(TAtlasTextId.UndoMenu), '',
+    procedure
+    begin
+      TAtlasIdeUndo.UndoLast;
+    end);
+  Palette.RegisterCommand('Atlas.RedoChange', TAtlasStrings.Text(TAtlasTextId.RedoMenu), '',
+    procedure
+    begin
+      TAtlasIdeUndo.RedoLast;
+    end);
+  Palette.RegisterCommand('Atlas.ChangeList', TAtlasStrings.Text(TAtlasTextId.UndoListMenu), '',
+    procedure
+    begin
+      TAtlasIdeUndo.ShowList;
     end);
   // Editorbefehle (#399).
   Palette.RegisterCommand('Atlas.CodeActions', TAtlasStrings.Text(TAtlasTextId.EditorActions), '',
@@ -616,6 +634,17 @@ begin
         GuardWarning(AText);
       end);
   end;
+  // Änderungsprotokoll vor den Tasten: Strg+Alt+Z braucht es (#721).
+  if Basic and (TAtlasIdeUndo.Journal = nil) then
+    TAtlasIdeUndo.Start(
+      procedure(AText: string)
+      begin
+        GuardWarning(AText);
+      end,
+      procedure(AText: string)
+      begin
+        TAtlasGuard.Log(AText);
+      end);
   if Basic and (EditorKeys = nil) then
     EditorKeys := TAtlasIdeEditorKeys.Create;
   // Designer-Notifier nur im normalen Betrieb (#722).
@@ -768,6 +797,8 @@ begin
       RegisterFeatures;
       if SafeMode <> nil then
         SafeMode.UpdateFeatures;
+      // undo.multiFile* (#721).
+      TAtlasIdeUndo.ApplySettings;
       TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
       // Index-Optionen an den laufenden Server; er baut neu auf, wenn sich der Umfang ändert (#652).
       if Manager <> nil then
@@ -828,6 +859,7 @@ begin
   FreeAndNil(MainMenu);
   FreeAndNil(Forms);
   FreeAndNil(EditorKeys);
+  TAtlasIdeUndo.Stop;
   if CommandsInstalled then
   begin
     TAtlasIdeEditorCommands.Uninstall;

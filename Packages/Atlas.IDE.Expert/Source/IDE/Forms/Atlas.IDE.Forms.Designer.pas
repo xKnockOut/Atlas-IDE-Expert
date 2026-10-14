@@ -72,6 +72,9 @@ type
     class procedure SyncNow(ASession: TLspSession); static;
     /// <summary>Zuletzt an den Server geschickter Text eines offenen Formulars.</summary>
     class function SentText(const AFileName: string; out AText: string): Boolean; static;
+    /// <summary>Aktueller Stand eines offenen Formulars im Designer als Text, wie er an den Server ginge
+    /// (#721); False, wenn es nicht offen ist.</summary>
+    class function CurrentText(const AFileName: string; out AText: string): Boolean; static;
     /// <summary>Ist AFileName (.dfm/.fmx) gerade im Designer offen?</summary>
     class function IsOpen(const AFileName: string): Boolean; static;
     /// <summary>Lassen sich AEdits im offenen Formular ausführen? '' und AChanges, sonst der Grund.</summary>
@@ -346,6 +349,12 @@ class function TAtlasIdeForms.SentText(const AFileName: string; out AText: strin
 begin
   AText := '';
   Result := (FCurrent <> nil) and FCurrent.FTexts.TryGetValue(Key(AFileName), AText);
+end;
+
+class function TAtlasIdeForms.CurrentText(const AFileName: string; out AText: string): Boolean;
+begin
+  AText := TextOf(EditorOf(AFileName));
+  Result := AText <> '';
 end;
 
 class function TAtlasIdeForms.IsOpen(const AFileName: string): Boolean;
