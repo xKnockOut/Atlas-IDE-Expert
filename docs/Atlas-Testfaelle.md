@@ -281,6 +281,48 @@ Blocklinien zeichnet Atlas selbst (Einstellung „Blocklinien in den Paarfarben�
 
 Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komponenten, kennt aber keine Atlas-Befehle und keinen Verlauf. Strg+Umschalt+P ist in der IDE „Tastenmakro abspielen“; die Palette übernimmt das Kürzel. Noch offen: Strg+Enter (Kürzel zuweisen).
 
+## Code Insight aus dem Server (#394)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CI1 | *Tools › Optionen › Editor › Sprache › Code Insight*: Manager „Atlas IDE Expert“ für Delphi aktiv; IDE neu starten | Meldungsansicht ohne Fehler; Protokoll nennt den gestarteten `AtlasServer.exe` |
+| CI2 | Maus über einen Bezeichner aus der eigenen Unit und einen aus der RTL (`TStringList`) | Atlas-Tooltip mit Deklaration, Unit und XMLDoc; kein Help-Insight-Fenster der IDE daneben |
+| CI3 | In einer Methode Strg+Leer ohne Präfix | Atlas-Popup mit lokalen Namen, Parametern, Feldern, Unit- und uses-Bezeichnern; die eingebaute Liste der IDE erscheint nicht |
+| CI4 | `TStringList` in einer Unit ohne `System.Classes` tippen, Strg+Leer, Enter | Eintrag mit Tag „+ System.Classes“; nach Enter steht `System.Classes` in der uses-Liste, ein Rückgängig nimmt beides zurück |
+| CI5 | `Format(` tippen | Atlas-Parameter-Hint mit aktivem ersten Parameter; nach `, ` wechselt der aktive Parameter |
+| CI6 | Überladene Routine (`IntToStr(`) | Hint zeigt die Zahl der Überladungen; ↑/↓ blättert durch sie |
+| CI7 | `AtlasServer.exe` umbenennen, IDE neu starten, Strg+Leer | Meldungsfenster nennt den nicht gefundenen Server; Vervollständigung und Hinweise der eingebauten Code Insight funktionieren |
+| CI8 | Server im Task-Manager beenden, danach Strg+Leer | Atlas startet den Server neu, die Liste erscheint (ggf. „eingeschränkt“, solange er indiziert) |
+
+## Symbolindex (#492)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SX1 | Projekt öffnen, das noch nie indiziert war | Statuszeile des Editors zeigt „Atlas indiziert … (n %)“, die Vervollständigung vermerkt „eingeschränkt“; nach dem Aufbau verschwindet das Feld |
+| SX2 | IDE schließen und wieder öffnen | Index kommt aus dem Cache (Protokoll: „aus dem Cache“), bei 1000 Units in unter 3 s |
+| SX3 | `%LOCALAPPDATA%\Atlas\Index\<Version>\<Hash>\index.atlasidx` mit einem Hex-Editor verändern, IDE neu starten | Kein Fehlerdialog; Server-Protokoll „Index-Cache verworfen (Prüfsumme stimmt nicht)“, der Index wird neu aufgebaut |
+| SX4 | Neue Funktion im interface einer Unit deklarieren, speichern, in einer anderen Unit Strg+Leer | Die Funktion ist nach höchstens 1 s in der Liste |
+| SX5 | *Tools › Optionen › Drittanbieter › Atlas*, Abschnitt „Symbolindex“ | Units, Deklarationen, Speicher von Grenze, Größe auf der Platte, letzte Aktualisierung |
+| SX6 | „Index löschen“, Rückfrage mit Nein, dann mit Ja | Nein: nichts passiert; Ja: Meldung „Index gelöscht: n Caches, … frei“, danach SX1 |
+| SX7 | „Speichergrenze des Index“ auf 32 MB, großes Projekt öffnen | Kennzahlen: „Verwendungen von n Units ausgelagert“; Vervollständigung funktioniert weiter |
+
+## Rangfolge nach Gültigkeitsbereich (#488)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RB1 | In `function TKasse.Calc(ACustomer: Integer)` mit `var Total` bei `Total := |` Strg+Leer | Reihenfolge `Total` („lokal“), `ACustomer` („Parameter“), `FDiscount` („Feld“) |
+| RB2 | Inline-Variable `var Unten := 1;` unterhalb des Carets | `Unten` erscheint nicht |
+| RB3 | Lokale Variable `Name`, die das Feld `Name` der Klasse verdeckt | `Name` einmal mit „lokal“; das Detailpanel nennt „Verdeckt: Feld TKlasse.Name“ |
+| RB4 | Methode von `Self` und Routine aus einer uses-Unit in der Liste | Tag mit der Klasse bzw. dem Namen der Unit |
+
+## Tippfehler (#485)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TF1 | `Lenght|` und Strg+Leer | „Meintest du“ mit `Length`; Fußzeile „Keine Treffer für ‚Lenght‘“ |
+| TF2 | Wie TF1, dann `;` | Nur `;` wird eingefügt, nichts übernommen |
+| TF3 | Wie TF1, dann Enter | `Length` wird übernommen |
+
 ## Schließen der Atlas-Fenster (#414)
 
 | Nr. | Schritte | Erwartet |
