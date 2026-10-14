@@ -6,7 +6,10 @@
 // Dateibeobachter für Quelltexte und Projektdateien an, sofern der Client
 // das dynamisch unterstützt. Eingehende Änderungen werden in Pfade
 // übersetzt und über OnChanged weitergegeben; die Komposition aktualisiert
-// damit den Index oder lädt bei Projektdateien das Projekt neu.
+// damit den Index oder lädt bei Projektdateien das Projekt neu. Dazu gehören
+// atlas.json und die globale Benutzerdatei (#227); für Clients ohne Beobachter
+// (RAD-Studio-IDE) beobachtet der Server sie selbst und stellt die Änderungen
+// als Notification (Notification) in die eigene Nachrichtenschleife.
 
 interface
 
@@ -24,7 +27,7 @@ type
   public const
     Method = 'workspace/didChangeWatchedFiles';
     RegisterMethod = 'client/registerCapability';
-    GlobPattern = '**/*.{pas,inc,dpr,dpk,dfm,dproj,groupproj}';
+    GlobPattern = '**/*.{pas,inc,dpr,dpk,dfm,dproj,groupproj,json}';
   private
     FTransport: IJsonRpcTransport;
     FOnChanged: TWatchedFilesEvent;
@@ -42,6 +45,9 @@ type
     class function ParseChanges(const AParams: TJSONValue): TArray<TFileChange>; static;
     /// <summary>Projekt- oder Gruppendatei (.dproj, .dpk, .groupproj).</summary>
     class function IsProjectFile(const AFileName: string): Boolean; static;
+    /// <summary>Notification workspace/didChangeWatchedFiles mit AFiles als geändert (Typ 2). Der Aufrufer
+    /// übernimmt das Objekt.</summary>
+    class function Notification(const AFiles: TArray<string>): TJSONObject; static;
     property OnChanged: TWatchedFilesEvent read FOnChanged write FOnChanged;
   end;
 
@@ -145,6 +151,29 @@ var
 begin
   Extension := LowerCase(ExtractFileExt(AFileName));
   Result := (Extension = '.dproj') or (Extension = '.dpk') or (Extension = '.groupproj');
+end;
+
+class function TLspWatchedFiles.Notification(const AFiles: TArray<string>): TJSONObject;
+var
+  Changes: TJSONArray;
+  Change, Params: TJSONObject;
+  FileName: string;
+begin
+  Changes := TJSONArray.Create;
+  for FileName in AFiles do
+  begin
+    // Auch neu angelegte oder gelöschte Dateien als „geändert“: Der Empfänger liest sie neu ein.
+    Change := TJSONObject.Create;
+    Change.AddPair('uri', TDocumentUris.FromPath(FileName));
+    Change.AddPair('type', TJSONNumber.Create(2));
+    Changes.AddElement(Change);
+  end;
+  Params := TJSONObject.Create;
+  Params.AddPair('changes', Changes);
+  Result := TJSONObject.Create;
+  Result.AddPair('jsonrpc', '2.0');
+  Result.AddPair('method', Method);
+  Result.AddPair('params', Params);
 end;
 
 procedure TLspWatchedFiles.HandleChanged(const AParams: TJSONValue);

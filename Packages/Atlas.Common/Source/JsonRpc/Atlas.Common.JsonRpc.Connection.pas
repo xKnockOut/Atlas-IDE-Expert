@@ -55,6 +55,10 @@ type
     procedure Run;
     /// <summary>Beendet die Schleife nach der aktuellen Nachricht. Threadsicher.</summary>
     procedure Stop;
+    /// <summary>Stellt eine eigene Nachricht in die Schleife, z. B. eine Dateiänderung aus einem Beobachter-Thread
+    /// (#227): Sie läuft im Thread der Schleife vor den noch nicht verarbeiteten Nachrichten des Clients.
+    /// Übernimmt AMessage; ohne laufende Schleife False und AMessage wird freigegeben. Threadsicher.</summary>
+    function Post(AMessage: TJSONObject): Boolean;
     property Stopped: Boolean read FStopped;
     /// <summary>Wird aus der Schleife und aus Worker-Threads aufgerufen.</summary>
     property OnError: TJsonRpcErrorEvent read FOnError write FOnError;
@@ -97,6 +101,8 @@ type
     ['{C1F5A8E2-4B7D-4D39-A6E0-8F3B2C9D5E14}']
     /// <summary>Stellt ein Element ein; nach Close wird es verworfen.</summary>
     procedure Put(const AItem: TJsonRpcInboxItem);
+    /// <summary>Wie Put, aber vor allen Elementen aus Put; untereinander in Reihenfolge. False nach Close.</summary>
+    function PutFirst(const AItem: TJsonRpcInboxItem): Boolean;
     /// <summary>Wartet auf das nächste Element.</summary>
     function Take: TJsonRpcInboxItem;
     /// <summary>Verwirft wartende und künftige Elemente.</summary>
@@ -109,12 +115,15 @@ type
   TJsonRpcInbox = class(TInterfacedObject, IJsonRpcInbox)
   private
     FQueue: TQueue<TJsonRpcInboxItem>;
+    // Eigene Nachrichten (Post); unter dem Monitor von FQueue.
+    FFirst: TQueue<TJsonRpcInboxItem>;
     FClosed: Boolean;
     FReaderDone: TLightweightEvent;
   public
     constructor Create;
     destructor Destroy; override;
     procedure Put(const AItem: TJsonRpcInboxItem);
+    function PutFirst(const AItem: TJsonRpcInboxItem): Boolean;
     function Take: TJsonRpcInboxItem;
     procedure Close;
     function IsClosed: Boolean;
@@ -142,6 +151,7 @@ constructor TJsonRpcInbox.Create;
 begin
   inherited Create;
   FQueue := TQueue<TJsonRpcInboxItem>.Create;
+  FFirst := TQueue<TJsonRpcInboxItem>.Create;
   FReaderDone := TLightweightEvent.Create(False);
 end;
 
@@ -149,6 +159,7 @@ destructor TJsonRpcInbox.Destroy;
 begin
   Close;
   FReaderDone.Free;
+  FFirst.Free;
   FQueue.Free;
   inherited;
 end;
@@ -172,13 +183,35 @@ begin
   Item.Release;
 end;
 
+function TJsonRpcInbox.PutFirst(const AItem: TJsonRpcInboxItem): Boolean;
+var
+  Item: TJsonRpcInboxItem;
+begin
+  Item := AItem;
+  TMonitor.Enter(FQueue);
+  try
+    Result := not FClosed;
+    if Result then
+    begin
+      FFirst.Enqueue(Item);
+      TMonitor.Pulse(FQueue);
+      Exit;
+    end;
+  finally
+    TMonitor.Exit(FQueue);
+  end;
+  Item.Release;
+end;
+
 function TJsonRpcInbox.Take: TJsonRpcInboxItem;
 begin
   TMonitor.Enter(FQueue);
   try
-    while (FQueue.Count = 0) and not FClosed do
+    while (FQueue.Count = 0) and (FFirst.Count = 0) and not FClosed do
       TMonitor.Wait(FQueue, WaitForever);
-    if FQueue.Count > 0 then
+    if FFirst.Count > 0 then
+      Result := FFirst.Dequeue
+    else if FQueue.Count > 0 then
       Result := FQueue.Dequeue
     else
       Result := InboxItem(ikClosed);
@@ -194,6 +227,11 @@ begin
   TMonitor.Enter(FQueue);
   try
     FClosed := True;
+    while FFirst.Count > 0 do
+    begin
+      Item := FFirst.Dequeue;
+      Item.Release;
+    end;
     while FQueue.Count > 0 do
     begin
       Item := FQueue.Dequeue;
@@ -463,6 +501,22 @@ begin
 
   if Failure <> nil then
     raise Failure;
+end;
+
+function TJsonRpcConnection.Post(AMessage: TJSONObject): Boolean;
+var
+  Inbox: IJsonRpcInbox;
+  Item: TJsonRpcInboxItem;
+begin
+  Item := InboxItem(ikMessage);
+  Item.Message := AMessage;
+  if Supports(FInbox, IJsonRpcInbox, Inbox) then
+    Result := Inbox.PutFirst(Item)
+  else
+  begin
+    Item.Release;
+    Result := False;
+  end;
 end;
 
 procedure TJsonRpcConnection.Stop;
