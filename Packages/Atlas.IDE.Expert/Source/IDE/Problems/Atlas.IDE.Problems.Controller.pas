@@ -96,6 +96,7 @@ type
     DocumentTimeoutMs = 8000;
     /// <summary>Länger als Zeitbudget (3 s) und Long-Polling (5 s) des Servers.</summary>
     WorkspaceTimeoutMs = 15000;
+    WorkspaceRetryMs = 15000;
   private
     FSession: TAtlasProblemsSessionFunc;
     FLog: TAtlasProblemsLogProc;
@@ -117,6 +118,8 @@ type
     FRefreshSeen: Integer;
     FPaintedVersion: Integer;
     FListedVersion: Integer;
+    // Stand des Schalters ProblemsList beim letzten Aufbau der Liste.
+    FListShown: Boolean;
     FListDue: Cardinal;
     FClosedCheckAt: Cardinal;
     // Nach gescheitertem Serverstart erst später wieder versuchen.
@@ -340,7 +343,8 @@ begin
       begin
         if not Terminated then
           LogLater('Probleme (Projekt): ' + E.Message);
-        FStop.WaitFor(3000);
+        // Nach einem Fehler oder einer Zeitüberschreitung länger warten: Der Server ist ausgelastet.
+        FStop.WaitFor(WorkspaceRetryMs);
       end;
     end;
   end;
@@ -634,6 +638,8 @@ begin
 end;
 
 procedure TAtlasProblemsController.Publish;
+var
+  Show: Boolean;
 begin
   if FStore.Version <> FPaintedVersion then
   begin
@@ -641,10 +647,12 @@ begin
     TAtlasProblemsPainter.Invalidate;
     FListDue := GetTickCount + 800;
   end;
-  if (FListedVersion <> FStore.Version) and (GetTickCount >= FListDue) then
+  Show := Active and TAtlasIdeSettings.Current.ProblemsList;
+  if (Show <> FListShown) or ((FListedVersion <> FStore.Version) and (GetTickCount >= FListDue)) then
   begin
     FListedVersion := FStore.Version;
-    if ShowProblems then
+    FListShown := Show;
+    if Show then
       FList.Update(FStore)
     else
       FList.Clear;

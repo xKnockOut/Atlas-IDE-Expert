@@ -131,6 +131,10 @@ begin
   Assert.AreEqual($E05A, Settings.RedoKey, 'Strg+Alt+Umschalt+Z');
   Assert.IsFalse(Settings.UpdatesCheck, 'Update-Prüfung nur nach Zustimmung');
   Assert.IsTrue(Settings.BugReportAnonymize, 'Fehlerbericht anonymisiert');
+  Assert.IsTrue(Settings.PairOwners, 'Anweisungen mitfärben standardmäßig an (#653)');
+  Assert.AreEqual(1, Settings.PairGuideWidth, 'Blocklinien 1 px');
+  Assert.AreEqual(75, Settings.PairGuideOpacity, 'Blocklinien 75 % Deckkraft');
+  Assert.IsTrue(Settings.ProblemsList, 'Liste „Atlas-Probleme“ standardmäßig an');
 end;
 
 procedure TAtlasPluginSettingsTests.SaveAndLoadRoundTrip;
@@ -178,6 +182,11 @@ begin
   Settings.RedoKey := $C059;
   Settings.UpdatesCheck := True;
   Settings.BugReportAnonymize := False;
+  Settings.ProblemsList := False;
+  Settings.PairOwners := False;
+  Settings.PairGuideWidth := 3;
+  Settings.PairGuideOpacity := 80;
+  Settings.PairColorsDark := '#112233, #445566,#778899,#aabbcc,#DDEEFF';
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
@@ -198,6 +207,12 @@ begin
   Assert.IsFalse(Loaded.SlashCommands);
   Assert.IsFalse(Loaded.Snippets);
   Assert.IsFalse(Loaded.ImportIdeTemplates);
+  Assert.IsFalse(Loaded.PairOwners);
+  Assert.AreEqual(3, Loaded.PairGuideWidth);
+  Assert.AreEqual(80, Loaded.PairGuideOpacity);
+  Assert.AreEqual('#112233,#445566,#778899,#AABBCC,#DDEEFF', Loaded.PairColorsDark, 'einheitlich geschrieben');
+  Assert.IsFalse(Loaded.ProblemsList, 'Liste „Atlas-Probleme“ abgeschaltet');
+  Assert.IsTrue(Loaded.Problems, 'Wellenlinien bleiben an');
   Assert.AreEqual('D:\Atlas\AtlasServer.exe', Loaded.ServerPath, 'Serverpfad ohne Leerraum');
   Assert.AreEqual($6048, Loaded.SignatureKey);
   Assert.IsTrue(Loaded.SignatureKeyPriority);
@@ -339,6 +354,14 @@ begin
   Settings.Load(Store);
   Assert.AreEqual(TAtlasPluginSettings.MinProviderTimeLimit, Settings.ProviderTimeLimitMs);
   Assert.AreEqual(0, Settings.SignatureKey, 'kein gültiges Kürzel');
+  Store.WriteInteger('PairGuideWidth', 7);
+  Store.WriteInteger('PairGuideOpacity', 0);
+  Store.WriteString('PairColorsLight', '#123456,blau');
+  Settings := Default(TAtlasPluginSettings);
+  Settings.Load(Store);
+  Assert.AreEqual(TAtlasPluginSettings.MaxPairGuideWidth, Settings.PairGuideWidth);
+  Assert.AreEqual(TAtlasPluginSettings.MinPairGuideOpacity, Settings.PairGuideOpacity);
+  Assert.AreEqual('', Settings.PairColorsLight, 'ungültige Farben = Standard');
   Assert.AreEqual(TAtlasPluginSettings.MaxVisibleRows, Settings.VisibleRows);
   Assert.AreEqual(TAtlasPluginSettings.MinListWidth, Settings.ListWidth);
   Assert.AreEqual(TAtlasPluginSettings.MaxPanelWidth, Settings.PanelWidth);

@@ -84,6 +84,9 @@ type
     procedure AppliesNamespacePrefixes;
     [Test]
     procedure ReturnsEmptyWhenNotFound;
+    /// <summary>Mit Ordnerlisten gleiches Ergebnis, jeder Ordner nur einmal gelesen (CPU beim Start).</summary>
+    [Test]
+    procedure ListsEachDirectoryOnce;
   end;
 
 implementation
@@ -486,6 +489,42 @@ begin
     Assert.AreEqual('C:\Studio\37.0\source\rtl\sys\System.SysUtils.pas', Resolver.Resolve('System.SysUtils'));
   finally
     Resolver.Free;
+  end;
+end;
+
+procedure TUnitResolverTests.ListsEachDirectoryOnce;
+var
+  Resolver: TUnitResolver;
+  Listed: TDictionary<string, Integer>;
+  Count: Integer;
+begin
+  Listed := TDictionary<string, Integer>.Create;
+  Resolver := ResolverFor([]);
+  try
+    Resolver.ListUnits :=
+      function(AFolder: string): TArray<string>
+      var
+        Known: Integer;
+      begin
+        if not Listed.TryGetValue(LowerCase(AFolder), Known) then
+          Known := 0;
+        Listed.AddOrSetValue(LowerCase(AFolder), Known + 1);
+        if SameText(AFolder, 'C:\Studio\37.0\source\rtl\sys') then
+          Result := ['C:\Studio\37.0\source\rtl\sys\System.SysUtils.pas']
+        else if SameText(AFolder, 'C:\Other') then
+          Result := ['C:\Other\Helper.pas']
+        else
+          Result := nil;
+      end;
+    Assert.AreEqual('C:\Studio\37.0\source\rtl\sys\System.SysUtils.pas', Resolver.Resolve('SysUtils'));
+    Assert.AreEqual('C:\Studio\37.0\source\rtl\sys\System.SysUtils.pas', Resolver.Resolve('System.SysUtils'));
+    Assert.AreEqual('C:\Other\Helper.pas', Resolver.Resolve('Helper', 'C:\Other'));
+    Assert.AreEqual('', Resolver.Resolve('Missing'));
+    for Count in Listed.Values do
+      Assert.AreEqual(1, Count, 'jeder Ordner einmal');
+  finally
+    Resolver.Free;
+    Listed.Free;
   end;
 end;
 

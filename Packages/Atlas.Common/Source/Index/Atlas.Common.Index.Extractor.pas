@@ -16,6 +16,10 @@
 // nicht selbst mit einem Abschnitt, wird das Schlüsselwort vorangestellt.
 // Zyklen und zu tiefe Verschachtelung überspringt der Extractor; die
 // Diagnose dazu kommt aus dem Präprozessor.
+//
+// Vorwärtsdeklarationen (TFoo = class;) erscheinen nur, wenn die Unit den Typ
+// nicht vollständig deklariert. Sonst fänden Hover, Vererbungskette und
+// Gehe zu Definition die Vorwärtsdeklaration (ohne Vorfahren) statt des Typs.
 
 interface
 
@@ -37,6 +41,9 @@ type
     FVisibility: TIndexVisibility;
     // Typargumente des Vorfahren für den nächsten Add aus AddType.
     FAncestorArgs: string;
+    // Der nächste Add aus AddType ist eine Vorwärtsdeklaration; FForwards hält deren Nummern in FSymbols.
+    FForward: Boolean;
+    FForwards: TList<Integer>;
     function IsDefaultProperty(ANode: TSyntaxNode): Boolean;
     /// <summary>Methodenkopf mit virtual, dynamic, abstract oder override?</summary>
     class function IsVirtualHeader(ANode: TSyntaxNode): Boolean; static;
@@ -56,6 +63,8 @@ type
     procedure AddMembers(ABody: TSyntaxNode; const AContainer: string);
     procedure AddDeclarations(ANode: TSyntaxNode);
     procedure AddRoutine(ANode: TSyntaxNode);
+    /// <summary>Vorwärtsdeklarationen entfernen, deren Typ in der Unit vollständig deklariert ist.</summary>
+    procedure DropForwards;
     procedure Walk(ARoot: TSyntaxNode; var AUnit: TUnitIndex);
     class function UsesOf(ASection: TSyntaxNode): TArray<string>; static;
     class function ExtractLevel(const AText, AFileName: string; const ADefines: TArray<string>;
@@ -165,10 +174,12 @@ begin
   inherited Create;
   FTokens := ATokens;
   FSymbols := TList<TIndexSymbol>.Create;
+  FForwards := TList<Integer>.Create;
 end;
 
 destructor TIndexExtractor.Destroy;
 begin
+  FForwards.Free;
   FSymbols.Free;
   inherited;
 end;
@@ -261,6 +272,8 @@ begin
     Symbol.IsDefault := IsDefaultProperty(ANode);
   Symbol.IsVirtual := (AKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and IsVirtualHeader(ANode);
   Symbol.FileName := '';
+  if FForward then
+    FForwards.Add(FSymbols.Count);
   Symbol.Condition := '';
   Symbol.Unavailable := False;
   // Inhalt für Hover, Detailpanel und Verwendungen ohne erneutes Lesen der Datei (#492).
@@ -722,10 +735,12 @@ begin
           end;
     end;
     FAncestorArgs := AncestorArgs;
+    FForward := (Body <> nil) and (Body.Kind = TSyntaxKind.ForwardType);
     try
       Add(ADecl, ADecl.Name, AContainer, Kind, Ancestors.ToArray);
     finally
       FAncestorArgs := '';
+      FForward := False;
     end;
   finally
     Ancestors.Free;
@@ -830,6 +845,31 @@ begin
   end;
 end;
 
+procedure TIndexExtractor.DropForwards;
+var
+  Index: Integer;
+  Forwards: TArray<Boolean>;
+  Full: TDictionary<string, Boolean>;
+begin
+  if FForwards.Count = 0 then
+    Exit;
+  SetLength(Forwards, FSymbols.Count);
+  for Index in FForwards do
+    Forwards[Index] := True;
+  Full := TDictionary<string, Boolean>.Create;
+  try
+    for Index := 0 to FSymbols.Count - 1 do
+      if not Forwards[Index] then
+        Full.AddOrSetValue(UpperCase(FSymbols[Index].QualifiedName), True);
+    for Index := FForwards.Count - 1 downto 0 do
+      if Full.ContainsKey(UpperCase(FSymbols[FForwards[Index]].QualifiedName)) then
+        FSymbols.Delete(FForwards[Index]);
+  finally
+    Full.Free;
+  end;
+  FForwards.Clear;
+end;
+
 procedure TIndexExtractor.Walk(ARoot: TSyntaxNode; var AUnit: TUnitIndex);
 var
   Index: Integer;
@@ -866,6 +906,7 @@ begin
     FInInterface := False;
     AddDeclarations(ARoot);
   end;
+  DropForwards;
   AUnit.Symbols := FSymbols.ToArray;
 end;
 
@@ -1074,7 +1115,7 @@ var
   Index, LineIndex, Best, ImplementationLine, Indent: Integer;
   Conditional: TConditionalRange;
   Symbol: TIndexSymbol;
-  Section, Line, Code, Keyword: string;
+  Section, Line, Code, Keyword, Owner: string;
   Match: TMatch;
   Known: TDictionary<string, Boolean>;
   // Abschnitt (type/const/var …) am Anfang jeder Zeile; einmal für die ganze Datei bestimmt.
@@ -1088,16 +1129,22 @@ var
   end;
 
   procedure AddUnavailable(const AName: string; AKind: TIndexSymbolKind; ALine, AColumn: Integer;
-    const ACondition: string);
+    const ACondition: string; const AContainer: string = '');
   var
     Item: TIndexSymbol;
+    Key: string;
   begin
-    if Known.ContainsKey(UpperCase(AName)) then
+    // Mitglieder je Typ: gleichnamige Mitglieder anderer Typen sind etwas anderes.
+    Key := UpperCase(AName);
+    if AContainer <> '' then
+      Key := UpperCase(AContainer) + '.' + Key;
+    if Known.ContainsKey(Key) then
       Exit;
-    Known.Add(UpperCase(AName), True);
+    Known.Add(Key, True);
     Item := Default(TIndexSymbol);
     Item.Name := AName;
     Item.Kind := AKind;
+    Item.Container := AContainer;
     Item.Range := TTextRange.Create(TTextPosition.Create(ALine, 0), TTextPosition.Create(ALine, Length(Lines[ALine])));
     Item.SelectionRange := TTextRange.Create(TTextPosition.Create(ALine, AColumn),
       TTextPosition.Create(ALine, AColumn + Length(AName)));
@@ -1106,6 +1153,68 @@ var
     Item.Condition := ACondition;
     Item.Unavailable := True;
     AUnit.Unavailable := AUnit.Unavailable + [Item];
+  end;
+
+  // Innerster Klassen-, Record- oder Interface-Typ, in dessen Rumpf ALine liegt; '' = keiner.
+  function OwnerOf(ALine: Integer): string;
+  var
+    Candidate: TIndexSymbol;
+    Best: TTextRange;
+  begin
+    Result := '';
+    for Candidate in AUnit.Symbols do
+      if (Candidate.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+        TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType]) and (Candidate.FileName = '') and
+        (Candidate.Range.StartPos.Line < ALine) and (Candidate.Range.EndPos.Line >= ALine) then
+        if (Result = '') or (Candidate.Range.StartPos.Line >= Best.StartPos.Line) then
+        begin
+          Result := Candidate.QualifiedName;
+          Best := Candidate.Range;
+        end;
+  end;
+
+  // Mitglied in einem nicht geltenden Zweig innerhalb eines Typrumpfs (#476): Methoden, Properties, Felder.
+  procedure AddMember(const ACode: string; ALine: Integer; const AOwner, ACondition: string);
+  var
+    Found: TMatch;
+    Words: string;
+    Kind: TIndexSymbolKind;
+    Name: string;
+    Column: Integer;
+  begin
+    Found := TRegEx.Match(ACode,
+      '^\s*(class\s+)?(procedure|function|constructor|destructor|operator)\s+([A-Za-z_]\w*)', [roIgnoreCase]);
+    if Found.Success then
+    begin
+      Words := LowerCase(Found.Groups[2].Value);
+      if Words = 'constructor' then
+        Kind := TIndexSymbolKind.Constructor_
+      else
+        Kind := TIndexSymbolKind.Method;
+      AddUnavailable(Found.Groups[3].Value, Kind, ALine, Found.Groups[3].Index - 1, ACondition, AOwner);
+      Exit;
+    end;
+    Found := TRegEx.Match(ACode, '^\s*(class\s+)?property\s+([A-Za-z_]\w*)', [roIgnoreCase]);
+    if Found.Success then
+    begin
+      AddUnavailable(Found.Groups[2].Value, TIndexSymbolKind.Property_, ALine, Found.Groups[2].Index - 1,
+        ACondition, AOwner);
+      Exit;
+    end;
+    // Felder "A, B: Integer;" (auch nach "class var" / "var"); Schlüsselwörter sind keine Felder.
+    Found := TRegEx.Match(ACode, '^\s*((class\s+)?var\s+)?([A-Za-z_]\w*(\s*,\s*[A-Za-z_]\w*)*)\s*:[^=]',
+      [roIgnoreCase]);
+    if not Found.Success then
+      Exit;
+    Column := Found.Groups[3].Index - 1;
+    for Name in Found.Groups[3].Value.Split([',']) do
+    begin
+      Words := Trim(Name);
+      if MatchText(Words, ['private', 'protected', 'public', 'published', 'strict', 'case', 'end']) then
+        Continue;
+      AddUnavailable(Words, TIndexSymbolKind.Field, ALine, Column + Pos(Words, Found.Groups[3].Value) - 1,
+        ACondition, AOwner);
+    end;
   end;
 
   procedure AddType(const AMatch: TMatch; ALine: Integer; const ACondition: string);
@@ -1188,7 +1297,9 @@ begin
     // Was in geltenden Zweigen schon deklariert ist, nicht noch einmal (IFDEF WIN32 ... ELSE ... gleicher Name).
     for Symbol in AUnit.Symbols do
       if Symbol.Container = '' then
-        Known.AddOrSetValue(UpperCase(Symbol.Name), True);
+        Known.AddOrSetValue(UpperCase(Symbol.Name), True)
+      else
+        Known.AddOrSetValue(UpperCase(Symbol.Container) + '.' + UpperCase(Symbol.Name), True);
     for Conditional in AConditionals do
     begin
       if Conditional.Active then
@@ -1198,9 +1309,36 @@ begin
         Section := Sections[Conditional.Range.StartPos.Line + 1]
       else
         Section := '';
-      // Lange Zweige (ganze Implementierungen) im implementation-Teil interessieren nicht.
+      // Im implementation-Teil nur Routinen der Unit (eigene Unit, z. B. "procedure ApplyAppIcon;" unter
+      // {$IFDEF FPC}): ein billiger Vergleich am Zeilenanfang je Zeile, denn lange Zweige mit ganzen
+      // Implementierungen (System.pas) sollen nichts kosten. Methodenrümpfe "TFoo.Bar" zählen nicht.
       if (ImplementationLine >= 0) and (Conditional.Range.StartPos.Line > ImplementationLine) then
+      begin
+        for LineIndex := Conditional.Range.StartPos.Line + 1 to Min(Conditional.Range.EndPos.Line, High(Lines)) do
+        begin
+          Line := Lines[LineIndex];
+          if not (StartsText('procedure ', Line) or StartsText('function ', Line)) then
+            Continue;
+          Match := TRegEx.Match(Line, '^(procedure|function)\s+([A-Za-z_]\w*)\s*[(:;]', [roIgnoreCase]);
+          if Match.Success then
+            AddUnavailable(Match.Groups[2].Value, TIndexSymbolKind.Routine, LineIndex, Match.Groups[2].Index - 1,
+              Conditional.Condition);
+        end;
         Continue;
+      end;
+      // Zweig im Rumpf einer Klasse, eines Records oder Interfaces: Mitglieder dieses Typs.
+      Owner := OwnerOf(Conditional.Range.StartPos.Line);
+      if Owner <> '' then
+      begin
+        for LineIndex := Conditional.Range.StartPos.Line + 1 to Min(Conditional.Range.EndPos.Line, High(Lines)) do
+        begin
+          Code := Lines[LineIndex];
+          if Pos('//', Code) > 0 then
+            Code := Copy(Code, 1, Pos('//', Code) - 1);
+          AddMember(Code, LineIndex, Owner, Conditional.Condition);
+        end;
+        Continue;
+      end;
       for LineIndex := Conditional.Range.StartPos.Line + 1 to Min(Conditional.Range.EndPos.Line, High(Lines)) do
       begin
         Line := Lines[LineIndex];

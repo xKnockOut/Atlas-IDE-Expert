@@ -523,4 +523,8 @@ begin
   end;
 end;
 
+initialization
+  // TNetEncoding.URL entsteht sonst beim ersten Dekodieren (oft in einem Test) und zählt dort als Leck.
+  TNetEncoding.URL.Decode('');
+
 end.

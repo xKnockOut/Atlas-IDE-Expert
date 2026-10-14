@@ -37,6 +37,8 @@ type
     [Test]
     procedure ExtractsAncestors;
     [Test]
+    procedure ForwardDeclarationGivesWayToFullType;
+    [Test]
     procedure ExtractsUsesLists;
     [Test]
     procedure MarksInterfaceSymbols;
@@ -46,6 +48,12 @@ type
     procedure ExtractsProgramDeclarations;
     [Test]
     procedure RecordsConditionsAndUnavailableDeclarations;
+    /// <summary>Mitglieder in bedingten Teilen eines Klassenrumpfs (#476).</summary>
+    [Test]
+    procedure RecordsConditionsOfMembers;
+    /// <summary>Routinen nur im implementation-Teil unter einem nicht geltenden Zweig (#476).</summary>
+    [Test]
+    procedure RecordsUnavailableImplementationRoutines;
   end;
 
   [TestFixture]
@@ -379,6 +387,40 @@ begin
   Assert.AreEqual<NativeInt>(0, Length(S.Ancestors));
 end;
 
+procedure TIndexExtractorTests.ForwardDeclarationGivesWayToFullType;
+var
+  U: TUnitIndex;
+  S: TIndexSymbol;
+begin
+  // Wie Data.DB: TDataSource = class; weit oben, die volle Deklaration später.
+  U := Extract('unit D;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TDataSource = class;'#10 +
+    '  TNurVorwaerts = class;'#10 +
+    '  IFeld = interface;'#10 +
+    '  TComponent = class end;'#10 +
+    '  IFeld = interface end;'#10 +
+    '  TDataSource = class(TComponent)'#10 +
+    '  type'#10 +
+    '    TInnen = class;'#10 +
+    '    TInnen = class(TComponent) end;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'end.');
+  Assert.AreEqual(1, Count(U, 'TDataSource'));
+  Assert.IsTrue(FindSymbol(U, 'TDataSource', S));
+  Assert.AreEqual(8, S.SelectionRange.StartPos.Line);
+  Assert.AreEqual<NativeInt>(1, Length(S.Ancestors));
+  Assert.AreEqual('TComponent', S.Ancestors[0]);
+  Assert.AreEqual(1, Count(U, 'IFeld'));
+  Assert.AreEqual(1, Count(U, 'TDataSource.TInnen'));
+  Assert.IsTrue(FindSymbol(U, 'TDataSource.TInnen', S));
+  Assert.AreEqual(11, S.SelectionRange.StartPos.Line);
+  // Ohne volle Deklaration bleibt die Vorwärtsdeklaration stehen.
+  Assert.AreEqual(1, Count(U, 'TNurVorwaerts'));
+end;
+
 procedure TIndexExtractorTests.ExtractsUsesLists;
 var
   U: TUnitIndex;
@@ -474,6 +516,84 @@ begin
   Assert.AreEqual('TNur64=WIN64;', Missing);
   Assert.IsTrue(U.Unavailable[0].InInterface);
   Assert.IsTrue(U.Unavailable[0].Kind = TIndexSymbolKind.ClassType);
+end;
+
+procedure TIndexExtractorTests.RecordsConditionsOfMembers;
+const
+  Source =
+    'unit Mitglieder;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TGeraet = class'#10 +
+    '  public'#10 +
+    '{$IFDEF WIN64}'#10 +
+    '    FHandle64, FExtra: Int64;'#10 +
+    '    procedure Nur64;'#10 +
+    '    property Groesse64: Int64 read FHandle64;'#10 +
+    '{$ELSE}'#10 +
+    '    FHandle32: Integer;'#10 +
+    '    function Nur32: Integer;'#10 +
+    '{$ENDIF}'#10 +
+    '    procedure Immer;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TGeraet.Nur32; begin end;'#10 +
+    'procedure TGeraet.Immer; begin end;'#10 +
+    'end.';
+var
+  U: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Conditions, Missing: string;
+begin
+  U := TIndexExtractor.ExtractText(Source, 'C:\P\Mitglieder.pas', ['WIN32', 'MSWINDOWS']);
+  Conditions := '';
+  for Symbol in U.Symbols do
+    if Symbol.Container = 'TGeraet' then
+      Conditions := Conditions + Symbol.Name + '=' + Symbol.Condition + ';';
+  Assert.Contains(Conditions, 'FHandle32=not WIN64;');
+  Assert.Contains(Conditions, 'Nur32=not WIN64;');
+  Assert.Contains(Conditions, 'Immer=;');
+  Missing := '';
+  for Symbol in U.Unavailable do
+    Missing := Missing + Symbol.Container + '.' + Symbol.Name + '=' + Symbol.Condition + ';';
+  Assert.AreEqual('TGeraet.FHandle64=WIN64;TGeraet.FExtra=WIN64;TGeraet.Nur64=WIN64;TGeraet.Groesse64=WIN64;',
+    Missing);
+  Assert.IsTrue(U.Unavailable[0].Kind = TIndexSymbolKind.Field);
+  Assert.IsTrue(U.Unavailable[2].Kind = TIndexSymbolKind.Method);
+  Assert.IsTrue(U.Unavailable[3].Kind = TIndexSymbolKind.Property_);
+  Assert.AreEqual(15, U.Unavailable[1].SelectionRange.StartPos.Character, 'Spalte des zweiten Felds');
+end;
+
+procedure TIndexExtractorTests.RecordsUnavailableImplementationRoutines;
+const
+  Source =
+    'unit Start;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    '{$IFDEF FPC}'#10 +
+    'procedure ApplyAppIcon;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'procedure TFoo.Bar;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    '{$ENDIF}'#10 +
+    'procedure Immer;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'end.';
+var
+  U: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Missing: string;
+begin
+  U := TIndexExtractor.ExtractText(Source, 'C:\P\Start.pas', ['WIN32', 'MSWINDOWS']);
+  Missing := '';
+  for Symbol in U.Unavailable do
+    Missing := Missing + Symbol.Name + '=' + Symbol.Condition + ';';
+  Assert.AreEqual('ApplyAppIcon=FPC;', Missing);
+  Assert.IsFalse(U.Unavailable[0].InInterface);
+  Assert.IsTrue(U.Unavailable[0].Kind = TIndexSymbolKind.Routine);
 end;
 
 procedure TIndexExtractorTests.ExtractsProgramDeclarations;

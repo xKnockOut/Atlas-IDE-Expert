@@ -2,17 +2,16 @@ name: Release
 
 # Veröffentlicht eine Version (#83), ausgelöst durch ein Tag v<SemVer>, z. B. v0.2.0.
 #
-# 1. Prüft, dass Tag, TProductVersion und package.json dieselbe Version tragen.
+# 1. Prüft, dass Tag, TProductVersion und Claude-Code-Plugin dieselbe Version tragen.
 # 2. Baut den Server (Win64 Release) auf dem selbst gehosteten Delphi-Runner,
 #    sofern DELPHI_RUNNER = 'true'; signiert ihn, wenn SIGN_CERT_BASE64 und
 #    SIGN_CERT_PASSWORD gesetzt sind.
 #    Baut außerdem Plugin (Win32 und Win64) und Installer (#495) und packt sie
 #    mit dem Server in atlas-ide-expert-<Version>.zip.
-# 3. Packt die .vsix mit der EXE unter server/.
-# 4. Legt ein GitHub Release mit EXE, ZIP, .vsix, der Versionsdatei
+# 3. Packt das Claude-Code-Plugin mit der EXE.
+# 4. Legt ein GitHub Release mit EXE, ZIP, Plugin, der Versionsdatei
 #    atlas-version.json (Update-Prüfung des Plugins, #495) und dem Abschnitt aus
 #    CHANGELOG.md an.
-# 5. Veröffentlicht optional im VS Code Marketplace (VSCE_PAT) und auf Open VSX (OVSX_PAT).
 
 on:
   push:
@@ -126,36 +125,23 @@ jobs:
 
   release:
     needs: [version, server]
-    # Auch ohne Delphi-Runner: dann enthält das Release nur die .vsix ohne EXE.
+    # Auch ohne Delphi-Runner: dann enthält das Release nur die Changelog-Notizen.
     if: always() && needs.version.result == 'success' && needs.server.result != 'failure'
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.version.outputs.version }}
-      HAS_VSCE: ${{ secrets.VSCE_PAT != '' }}
-      HAS_OVSX: ${{ secrets.OVSX_PAT != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         if: needs.server.result == 'success'
         with:
           name: server
-          path: Editors/VSCode/server
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: Editors/VSCode/package-lock.json
-      - name: .vsix packen
-        working-directory: Editors/VSCode
-        run: |
-          npm ci
-          cp ../../THIRD-PARTY-NOTICES.md .
-          npx vsce package -o "atlas-$VERSION.vsix"
+          path: server
       - name: Claude-Code-Plugin mit EXE packen (#101)
         if: needs.server.result == 'success'
         run: |
           mkdir -p plugin && cp -r Editors/ClaudeCode/atlas plugin/atlas
-          mkdir -p plugin/atlas/bin && cp Editors/VSCode/server/AtlasServer.exe plugin/atlas/bin/
+          mkdir -p plugin/atlas/bin && cp server/AtlasServer.exe plugin/atlas/bin/
           # Mitgelieferte EXE statt PATH.
           sed -i 's#"AtlasServer.exe"#"${CLAUDE_PLUGIN_ROOT}/bin/AtlasServer.exe"#' plugin/atlas/.lsp.json plugin/atlas/.mcp.json
           (cd plugin && zip -r "../atlas-claude-plugin-$VERSION.zip" atlas)
@@ -176,22 +162,9 @@ jobs:
           body_path: release-notes.md
           prerelease: ${{ startsWith(env.VERSION, '0.') || contains(env.VERSION, '-') }}
           files: |
-            Editors/VSCode/atlas-${{ env.VERSION }}.vsix
             atlas-claude-plugin-${{ env.VERSION }}.zip
-            Editors/VSCode/server/AtlasServer.exe
-            Editors/VSCode/server/Atlas.map
-            Editors/VSCode/server/atlas-ide-expert-${{ env.VERSION }}.zip
+            server/AtlasServer.exe
+            server/Atlas.map
+            server/atlas-ide-expert-${{ env.VERSION }}.zip
             atlas-version.json
           fail_on_unmatched_files: false
-      - name: VS Code Marketplace (optional)
-        if: env.HAS_VSCE == 'true'
-        working-directory: Editors/VSCode
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: npx vsce publish --packagePath "atlas-$VERSION.vsix"
-      - name: Open VSX (optional)
-        if: env.HAS_OVSX == 'true'
-        working-directory: Editors/VSCode
-        env:
-          OVSX_PAT: ${{ secrets.OVSX_PAT }}
-        run: npx --yes ovsx@0.10.1 publish "atlas-$VERSION.vsix" -p "$OVSX_PAT"

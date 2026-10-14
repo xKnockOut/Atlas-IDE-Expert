@@ -9,6 +9,8 @@ Atlas ist eine einzelne Datei, `AtlasServer.exe` (Windows, Win64). Sie spricht L
 
 ## RAD Studio (Installer)
 
+Das Plugin `Atlas.IDE.Expert` bindet den Server in die IDE ein: [RAD-Studio.md](RAD-Studio.md).
+
 Für das IDE-Plugin (#495) enthält jedes Release `atlas-ide-expert-<Version>.zip`:
 
 ```
@@ -42,31 +44,6 @@ Wer nur den Server ohne Plugin nutzen will, trägt ihn im eingebauten LSP-Client
 
 Dann laufen Syntaxfehler, Hover (als Klartext), Gliederung und Vervollständigung über Atlas. Häufige Serverstarts im Log sind normal: Die IDE startet ihren Server je IDE und bei jedem Projektwechsel neu und beendet ihn hart; der nächste Start meldet das im Log.
 
-## VS Code
-
-Die Erweiterung `atlas-<Version>.vsix` aus dem Release enthält den Server schon:
-
-```
-code --install-extension atlas-0.1.0.vsix
-```
-
-Sie startet, sobald ein Ordner mit `.dproj` oder `atlas.json` geöffnet wird. Einstellungen und Befehle: [Editors/VSCode/README.md](../Editors/VSCode/README.md).
-
-### Beim Speichern aufräumen
-
-In der `settings.json` von VS Code:
-
-```json
-"[objectpascal]": {
-  "editor.codeActionsOnSave": {
-    "source.organizeImports": "explicit",
-    "source.fixAll": "explicit"
-  }
-}
-```
-
-`source.organizeImports` entfernt doppelte Einträge in den uses-Listen; mit `"sortUses": true` in `atlas.json` werden sie zusätzlich sortiert. `source.fixAll` wendet alle Korrekturen an, die ihre Regel als sicher markiert, z. B. das Entfernen ungenutzter `lsp-ignore`-Kommentare.
-
 ## Claude Code
 
 Als MCP-Server (Index-Werkzeuge für den Agenten):
@@ -76,36 +53,6 @@ claude mcp add delphi -- AtlasServer.exe --mcp --root C:\Projekte\App
 ```
 
 Mit Diagnosen und Navigation als Plugin: [Editors/ClaudeCode/README.md](../Editors/ClaudeCode/README.md). Werkzeuge: [MCP.md](MCP.md).
-
-## Neovim
-
-Ab Neovim 0.11: [Editors/Neovim/README.md](../Editors/Neovim/README.md).
-
-## Andere Editoren
-
-Jeder LSP-Client funktioniert mit diesen Angaben:
-
-| Angabe | Wert |
-|---|---|
-| Befehl | `AtlasServer.exe` (optional `--log <Datei> --log-level debug`) |
-| Transport | stdio |
-| Dateitypen | `.pas`, `.dpr`, `.dpk`, `.inc`, `.dfm` |
-| Sprach-ID | beliebig, üblich `delphi` oder `objectpascal` |
-| Wurzel | Ordner mit `.dproj`, `atlas.json` oder `.git` |
-
-Beispiel für Helix (`languages.toml`):
-
-```toml
-[language-server.atlas]
-command = "AtlasServer.exe"
-
-[[language]]
-name = "delphi"
-scope = "source.pascal"
-file-types = ["pas", "dpr", "dpk", "inc"]
-roots = [".dproj", "atlas.json"]
-language-servers = ["atlas"]
-```
 
 ## Ohne Editor (CI)
 

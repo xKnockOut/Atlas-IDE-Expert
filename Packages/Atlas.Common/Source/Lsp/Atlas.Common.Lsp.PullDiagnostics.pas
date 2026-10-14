@@ -18,6 +18,12 @@
 // nichts (#647): Die Befunde wären voller nicht gefundener Units, kosteten
 // pro Datei Hunderte Millisekunden und blieben nach dem Aufbau stehen, weil
 // sich ihre Ergebnis-Id nicht ändert. Nach dem Aufbau ruft der Server Changed.
+//
+// CPU-Last: Es prüft immer nur eine workspace/diagnostic-Anfrage. Kommt eine
+// zweite, während die erste läuft (Client hat nach einer Zeitüberschreitung neu
+// gefragt), wartet sie nur auf eine Änderung und antwortet leer. Befunde einer
+// Datei bleiben je Ergebnis-Id gespeichert: Fragt der Client dieselbe Datei im
+// selben Stand erneut ohne previousResultId, wird nicht neu geprüft.
 
 interface
 
@@ -52,6 +58,10 @@ type
     /// <summary>Grundcodes leerer Antworten im Diagnoselog (#647).</summary>
     ReasonIndexLoading = 'indexLoading';
     ReasonNoChanges = 'noChanges';
+    /// <summary>Eine andere workspace/diagnostic-Anfrage prüft gerade.</summary>
+    ReasonWorkspaceBusy = 'workspaceBusy';
+    /// <summary>Höchstzahl gespeicherter Dateibefunde, danach wird der Speicher geleert.</summary>
+    MaxCachedReports = 500;
   private
     FStore: IDocumentStore;
     FDiagnostics: TLspSyntaxDiagnostics;
@@ -66,7 +76,18 @@ type
     FBudgetMs: Cardinal;
     FWaitMs: Cardinal;
     FBusy: TPullBusy;
+    // 1, solange eine workspace/diagnostic-Anfrage prüft.
+    FWorkspaceActive: Integer;
+    // Befunde je Datei: Uri -> (Ergebnis-Id, Befunde). Unter FCacheLock.
+    FCache: TObjectDictionary<string, TJSONArray>;
+    FCacheIds: TDictionary<string, string>;
+    FCacheLock: TObject;
+    FComputed: Integer;
     function IsBusy: Boolean;
+    /// <summary>Befunde zu ADocument im Stand AResultId, aus dem Speicher oder neu berechnet.</summary>
+    function CachedDiagnose(const AUri, AResultId: string; const ADocument: ITextDocument): TJSONArray;
+    /// <summary>Wartet ohne zu prüfen bis WaitMs auf eine Änderung (zweite gleichzeitige Anfrage).</summary>
+    procedure WaitForChange(const ACancellation: IJsonRpcCancellationToken);
     function HandleDocument(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function CollectWorkspace(const APrevious: TDictionary<string, string>;
       const ACancellation: IJsonRpcCancellationToken; out AComplete: Boolean): TJSONArray;
@@ -93,6 +114,8 @@ type
     property WaitMs: Cardinal read FWaitMs write FWaitMs;
     /// <summary>Ohne Provider gilt der Index als fertig.</summary>
     property Busy: TPullBusy read FBusy write FBusy;
+    /// <summary>Anzahl tatsächlich berechneter Dateibefunde (für Tests und das Diagnoselog).</summary>
+    property Computed: Integer read FComputed;
   end;
 
 implementation
@@ -120,10 +143,16 @@ begin
   FChanged := TEvent.Create(nil, False, False, '');
   FBudgetMs := DefaultBudgetMs;
   FWaitMs := DefaultWaitMs;
+  FCache := TObjectDictionary<string, TJSONArray>.Create([doOwnsValues]);
+  FCacheIds := TDictionary<string, string>.Create;
+  FCacheLock := TObject.Create;
 end;
 
 destructor TLspPullDiagnostics.Destroy;
 begin
+  FCacheLock.Free;
+  FCacheIds.Free;
+  FCache.Free;
   FChanged.Free;
   inherited;
 end;
@@ -194,6 +223,55 @@ begin
   end;
 end;
 
+function TLspPullDiagnostics.CachedDiagnose(const AUri, AResultId: string;
+  const ADocument: ITextDocument): TJSONArray;
+var
+  Known: string;
+  Items: TJSONArray;
+begin
+  if AResultId <> '' then
+  begin
+    TMonitor.Enter(FCacheLock);
+    try
+      if FCacheIds.TryGetValue(AUri, Known) and (Known = AResultId) and FCache.TryGetValue(AUri, Items) then
+        Exit(Items.Clone as TJSONArray);
+    finally
+      TMonitor.Exit(FCacheLock);
+    end;
+  end;
+  Result := Diagnose(FDiagnostics, ADocument);
+  TInterlocked.Increment(FComputed);
+  if AResultId = '' then
+    Exit;
+  TMonitor.Enter(FCacheLock);
+  try
+    if FCache.Count >= MaxCachedReports then
+    begin
+      FCache.Clear;
+      FCacheIds.Clear;
+    end;
+    FCache.AddOrSetValue(AUri, Result.Clone as TJSONArray);
+    FCacheIds.AddOrSetValue(AUri, AResultId);
+  finally
+    TMonitor.Exit(FCacheLock);
+  end;
+end;
+
+procedure TLspPullDiagnostics.WaitForChange(const ACancellation: IJsonRpcCancellationToken);
+var
+  Generation: Integer;
+  Waited: Cardinal;
+begin
+  Generation := FGeneration;
+  Waited := 0;
+  while (Waited < FWaitMs) and (FGeneration = Generation) and (FWorkspaceActive <> 0) and
+    not ACancellation.IsCancellationRequested do
+  begin
+    Sleep(100);
+    Inc(Waited, 100);
+  end;
+end;
+
 function TLspPullDiagnostics.DocumentReport(const AUri, APreviousResultId: string): TJSONObject;
 var
   Document: ITextDocument;
@@ -226,7 +304,7 @@ begin
   if Document = nil then
     Result.AddPair('items', TJSONArray.Create)
   else
-    Result.AddPair('items', Diagnose(FDiagnostics, Document));
+    Result.AddPair('items', CachedDiagnose(AUri, ResultId, Document));
 end;
 
 function TLspPullDiagnostics.HandleDocument(const AParams: TJSONValue;
@@ -283,7 +361,7 @@ begin
       Report.AddPair('version', TJSONNull.Create);
       Report.AddPair('kind', 'full');
       Report.AddPair('resultId', ResultId);
-      Report.AddPair('items', Diagnose(FDiagnostics, Disk));
+      Report.AddPair('items', CachedDiagnose(Uri, ResultId, Disk));
       Result.AddElement(Report);
       APrevious.AddOrSetValue(Uri, ResultId);
     end;
@@ -306,6 +384,15 @@ var
   Waited: Cardinal;
   Generation: Integer;
 begin
+  // Nur eine Anfrage prüft; eine zweite wartet bloß auf eine Änderung und antwortet leer.
+  if TInterlocked.CompareExchange(FWorkspaceActive, 1, 0) <> 0 then
+  begin
+    WaitForChange(ACancellation);
+    TRequestDiagnostics.Reason(ReasonWorkspaceBusy);
+    Result := TJSONObject.Create;
+    TJSONObject(Result).AddPair('items', TJSONArray.Create);
+    Exit;
+  end;
   Previous := TDictionary<string, string>.Create;
   try
     if (AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<TJSONArray>('previousResultIds', PreviousIds) then
@@ -348,6 +435,7 @@ begin
     TJSONObject(Result).AddPair('items', Items);
   finally
     Previous.Free;
+    TInterlocked.Exchange(FWorkspaceActive, 0);
   end;
 end;
 

@@ -21,6 +21,9 @@ type
     Text: TAtlasColor;
   end;
 
+  /// <summary>Farben der Klammer- und Blockpaare je Tiefe, zyklisch (#514).</summary>
+  TAtlasPairColors = array[0..4] of TAtlasColor;
+
   TAtlasColors = record
     IsDark: Boolean;
     /// <summary>Fläche der Fenster.</summary>
@@ -48,7 +51,12 @@ type
     ErrorSoft: TAtlasColor;
     Badges: array[TAtlasBadgeKind] of TAtlasBadgeColors;
     /// <summary>Klammer- und Blockpaare je Tiefe, zyklisch (#514).</summary>
-    Pairs: array[0..4] of TAtlasColor;
+    Pairs: TAtlasPairColors;
+    /// <summary>Eigene Paarfarben aus den Einstellungen: leer oder ungültig = Palette.</summary>
+    function WithPairs(const ACustom: string): TAtlasColors;
+    /// <summary>„#RRGGBB,…“ mit genau fünf Farben in Reihenfolge der Tiefe.</summary>
+    class function ParsePairs(const AText: string; out APairs: TAtlasPairColors): Boolean; static;
+    class function PairsText(const APairs: TAtlasPairColors): string; static;
     class function Light: TAtlasColors; static;
     class function Dark: TAtlasColors; static;
     /// <summary>Light oder Dark, je nachdem ob ABackground (Fensterfarbe der IDE) dunkel ist.</summary>
@@ -56,6 +64,9 @@ type
   end;
 
 implementation
+
+uses
+  System.SysUtils;
 
 function Hex(const AHex: string): TAtlasColor;
 begin
@@ -103,11 +114,15 @@ begin
   Result.Badges[TAtlasBadgeKind.Snippet] := Badge('#ECEFF3', '#3E4756');
   Result.Badges[TAtlasBadgeKind.Keyword] := Badge('#ECEFF3', '#3E4756');
   Result.Badges[TAtlasBadgeKind.XmlDoc] := Badge('#ECEFF3', '#3E4756');
-  Result.Pairs[0] := Hex('#0D5EAF');
-  Result.Pairs[1] := Hex('#7B3FB0');
-  Result.Pairs[2] := Hex('#9A5B00');
-  Result.Pairs[3] := Hex('#1E6B3A');
-  Result.Pairs[4] := Hex('#B0306A');
+  // Kräftig und gesättigt (#653): vom schwarzen bzw. dunkelblauen Text der Schlüsselwörter klar
+  // verschieden (ΔE2000 ≥ 30), untereinander ≥ 30, gegen Weiß ≥ 4,5 : 1. Tiefe 0 nicht blau, weil
+  // die IDE Schlüsselwörter im hellen Schema dunkelblau zeichnet; kein Rot neben der Fehlerfarbe.
+  // Reihenfolge beginnt bei Blau; zyklisch wie zuvor, damit Nachbarn unterscheidbar bleiben.
+  Result.Pairs[0] := Hex('#0071E3');
+  Result.Pairs[1] := Hex('#EE0000');
+  Result.Pairs[2] := Hex('#007C8A');
+  Result.Pairs[3] := Hex('#C000E0');
+  Result.Pairs[4] := Hex('#008700');
 end;
 
 class function TAtlasColors.Dark: TAtlasColors;
@@ -144,11 +159,55 @@ begin
   Result.Badges[TAtlasBadgeKind.Snippet] := Badge('#272D36', '#B9C1CC');
   Result.Badges[TAtlasBadgeKind.Keyword] := Badge('#272D36', '#B9C1CC');
   Result.Badges[TAtlasBadgeKind.XmlDoc] := Badge('#272D36', '#B9C1CC');
-  Result.Pairs[0] := Hex('#7FB0EE');
-  Result.Pairs[1] := Hex('#C79BF2');
-  Result.Pairs[2] := Hex('#F0C06A');
-  Result.Pairs[3] := Hex('#7FD39A');
-  Result.Pairs[4] := Hex('#F28DB6');
+  // #653: Die bisherigen Pastelltöne lagen zu nah am hellen Text (Kontrast unter 1,8 : 1 und
+  // ΔE2000 unter 30); dieselben Farbtöne wie hell, gesättigt und mittelhell.
+  // Reihenfolge beginnt bei Blau; zyklisch wie zuvor, damit Nachbarn unterscheidbar bleiben.
+  Result.Pairs[0] := Hex('#3C94FF');
+  Result.Pairs[1] := Hex('#F67676');
+  Result.Pairs[2] := Hex('#00A4A4');
+  Result.Pairs[3] := Hex('#E250FF');
+  Result.Pairs[4] := Hex('#24AA24');
+end;
+
+function TAtlasColors.WithPairs(const ACustom: string): TAtlasColors;
+var
+  Custom: TAtlasPairColors;
+begin
+  Result := Self;
+  if ParsePairs(ACustom, Custom) then
+    Result.Pairs := Custom;
+end;
+
+class function TAtlasColors.ParsePairs(const AText: string; out APairs: TAtlasPairColors): Boolean;
+var
+  Parts: TArray<string>;
+  Index: Integer;
+begin
+  Result := False;
+  Parts := AText.Split([',']);
+  if Length(Parts) <> Length(APairs) then
+    Exit;
+  try
+    for Index := 0 to High(Parts) do
+      APairs[Index] := Hex(Trim(Parts[Index]));
+  except
+    on EConvertError do
+      Exit;
+  end;
+  Result := True;
+end;
+
+class function TAtlasColors.PairsText(const APairs: TAtlasPairColors): string;
+var
+  Index: Integer;
+begin
+  Result := '';
+  for Index := 0 to High(APairs) do
+  begin
+    if Index > 0 then
+      Result := Result + ',';
+    Result := Result + TAtlasColorMath.ToHex(APairs[Index]);
+  end;
 end;
 
 class function TAtlasColors.ForBackground(ABackground: TAtlasColor): TAtlasColors;

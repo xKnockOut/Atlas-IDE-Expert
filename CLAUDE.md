@@ -8,4 +8,4 @@
 - Niemals auf stdout schreiben außer über die Protokollschicht. Diagnose über `ILogger`; `pwsh Tools/Check-ConsoleOutput.ps1` prüft das.
 - Der Quelltext muss auch mit Delphi 12 übersetzen: kein Bedingungsausdruck `if … then … else`, kein `is not`, kein `not in`. `pwsh Tools/Check-Delphi12.ps1` prüft das.
 - Jede Prüfregel und jede Kernfunktion bekommt DUnitX-Tests in `Tests/`.
-- Neue Einstellung: Schema `Editors/VSCode/schemas/atlas.schema.json` (mit `x-page`, `x-control`, `x-issue`), Parser, Test; dann `pwsh Tools/Update-ConfigDoc.ps1` ausführen. Es erzeugt Konfiguration.md, Einstellungen.md und die VS-Code-Settings und prüft den Parser.
+- Neue Einstellung: Schema `schemas/atlas.schema.json` (mit `x-page`, `x-control`, `x-issue`), Parser, Test; dann `pwsh Tools/Update-ConfigDoc.ps1` ausführen. Es erzeugt Konfiguration.md, Einstellungen.md und die Schema-Unit des Plugins und prüft den Parser.

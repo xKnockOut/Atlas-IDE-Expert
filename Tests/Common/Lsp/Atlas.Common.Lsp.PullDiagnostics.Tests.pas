@@ -25,6 +25,12 @@ type
     procedure WorkspaceWaitsWhileIndexLoads;
     [Test]
     procedure WorkspaceStartsWhenIndexFinishes;
+    /// <summary>Gleiche Datei im gleichen Stand ohne previousResultId: nicht neu prüfen.</summary>
+    [Test]
+    procedure ReusesReportForSameState;
+    /// <summary>Eine zweite gleichzeitige workspace/diagnostic-Anfrage prüft nicht noch einmal.</summary>
+    [Test]
+    procedure SecondWorkspaceRequestDoesNotCollect;
   end;
 
 implementation
@@ -280,6 +286,74 @@ begin
       Assert.AreEqual(1, (Result_ as TJSONObject).GetValue<TJSONArray>('items').Count);
     finally
       Result_.Free;
+    end;
+  finally
+    Fixture.Done;
+  end;
+end;
+
+procedure TLspPullDiagnosticsTests.ReusesReportForSameState;
+var
+  Fixture: TFixture;
+  First, Second: TJSONObject;
+begin
+  Fixture.Init;
+  try
+    First := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(ClosedFile), '');
+    Second := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(ClosedFile), '');
+    try
+      Assert.AreEqual(1, Fixture.Pull.Computed, 'einmal geprüft');
+      Assert.AreEqual('full', Second.GetValue<string>('kind'));
+      Assert.AreEqual(First.GetValue<TJSONArray>('items').ToJSON, Second.GetValue<TJSONArray>('items').ToJSON);
+      // Neue Generation: wieder prüfen.
+      Fixture.Pull.Changed;
+      Second.Free;
+      Second := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(ClosedFile), '');
+      Assert.AreEqual(2, Fixture.Pull.Computed, 'nach Changed neu geprüft');
+    finally
+      Second.Free;
+      First.Free;
+    end;
+  finally
+    Fixture.Done;
+  end;
+end;
+
+procedure TLspPullDiagnosticsTests.SecondWorkspaceRequestDoesNotCollect;
+var
+  Fixture: TFixture;
+  Outer, Inner: TJSONValue;
+  InnerCount, Calls: Integer;
+  Pull: TLspPullDiagnostics;
+begin
+  Fixture.Init;
+  try
+    Calls := 0;
+    InnerCount := -1;
+    Pull := Fixture.Pull;
+    // Die erste Anfrage fragt Busy, während sie den Platz hält: Darin kommt die zweite.
+    Pull.Busy :=
+      function: Boolean
+      begin
+        Inc(Calls);
+        if Calls = 1 then
+        begin
+          Inner := Pull.WorkspaceReport(nil, Token);
+          try
+            InnerCount := (Inner as TJSONObject).GetValue<TJSONArray>('items').Count;
+          finally
+            Inner.Free;
+          end;
+        end;
+        Result := False;
+      end;
+    Outer := Pull.WorkspaceReport(nil, Token);
+    try
+      Assert.AreEqual(0, InnerCount, 'zweite Anfrage leer');
+      Assert.AreEqual(1, Calls, 'zweite Anfrage fragt den Index nicht');
+      Assert.AreEqual(1, (Outer as TJSONObject).GetValue<TJSONArray>('items').Count, 'erste prüft');
+    finally
+      Outer.Free;
     end;
   finally
     Fixture.Done;

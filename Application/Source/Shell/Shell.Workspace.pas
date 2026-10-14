@@ -221,6 +221,71 @@ uses
   Atlas.Common.Index.CacheHousekeeping,
   Atlas.Windows.Projects.DelphiInstallation;
 
+type
+  /// <summary>.pas-Dateien je Ordner, geteilt von allen Projekten des Servers. Neu gelesen, wenn sich
+  /// der Ordner geändert hat (Datei hinzugefügt oder entfernt).</summary>
+  TSharedUnitListings = class
+  private type
+    TListing = record
+      Stamp: TDateTime;
+      Files: TArray<string>;
+    end;
+  private
+    class var FLock: TObject;
+    class var FListings: TDictionary<string, TListing>;
+  public
+    class constructor Create;
+    class destructor Destroy;
+    class function List(AFolder: string): TArray<string>; static;
+  end;
+
+class constructor TSharedUnitListings.Create;
+begin
+  FLock := TObject.Create;
+  FListings := TDictionary<string, TListing>.Create;
+end;
+
+class destructor TSharedUnitListings.Destroy;
+begin
+  FListings.Free;
+  FLock.Free;
+end;
+
+class function TSharedUnitListings.List(AFolder: string): TArray<string>;
+var
+  Key: string;
+  Listing: TListing;
+  Stamp: TDateTime;
+begin
+  Result := nil;
+  try
+    if not TDirectory.Exists(AFolder) then
+      Exit;
+    Stamp := TDirectory.GetLastWriteTime(AFolder);
+    Key := AnsiLowerCase(ExcludeTrailingPathDelimiter(AFolder));
+    TMonitor.Enter(FLock);
+    try
+      if FListings.TryGetValue(Key, Listing) and (Listing.Stamp = Stamp) then
+        Exit(Listing.Files);
+    finally
+      TMonitor.Exit(FLock);
+    end;
+    Listing.Stamp := Stamp;
+    Listing.Files := TDirectory.GetFiles(AFolder, '*.pas');
+    TMonitor.Enter(FLock);
+    try
+      FListings.AddOrSetValue(Key, Listing);
+    finally
+      TMonitor.Exit(FLock);
+    end;
+    Result := Listing.Files;
+  except
+    // Nicht lesbare Ordner (Rechte, Netzlaufwerk) tragen nichts bei.
+    on Exception do
+      Result := nil;
+  end;
+end;
+
 const
   /// <summary>So lange wartet ein lesender Prozess höchstens auf den Cache des schreibenden (#62).</summary>
   CacheWaitMs = 120000;
@@ -988,6 +1053,8 @@ begin
   FSignature := State;
   FIndexService.Stop;
   Resolver := TUnitResolver.Create(Project, LibraryPaths, FileExistsFunc);
+  // Ordner einmal auflisten, über alle Projekte geteilt (CPU beim Start).
+  Resolver.ListUnits := TSharedUnitListings.List;
   // Nicht freigeben: Anfragen können den alten Builder noch nutzen (EnsureUnit ohne Sperre, #647).
   if FUnitResolver <> nil then
     FRetiredResolvers.Add(FUnitResolver);

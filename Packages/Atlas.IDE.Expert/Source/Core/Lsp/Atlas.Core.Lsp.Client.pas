@@ -69,6 +69,8 @@ type
     FTimeCount: Integer;
     FTimeNext: Integer;
     procedure SendText(const AText: string);
+    /// <summary>$/cancelRequest für eine Anfrage, auf die der Client nicht mehr wartet.</summary>
+    procedure CancelOnServer(AId: Integer);
     procedure HandleMessage(const AText: string);
     /// <summary>$/progress zu einem Token aus Request mit Teilergebnissen; False, wenn es keines ist.</summary>
     function HandlePartial(AMessage: TJSONObject): Boolean;
@@ -216,6 +218,8 @@ begin
       else
         begin
           AddResponseTime(ATimeoutMs);
+          // Sonst rechnet der Server weiter, während schon die nächste Anfrage kommt (CPU-Last).
+          CancelOnServer(Id);
           raise ELspClientError.CreateFmt('Keine Antwort auf %s innerhalb von %d ms', [AMethod, ATimeoutMs]);
         end;
       end;
@@ -281,6 +285,17 @@ begin
   end;
   if not FClosed then
     SendText(Text);
+end;
+
+procedure TLspClient.CancelOnServer(AId: Integer);
+begin
+  try
+    Notify('$/cancelRequest', TJSONObject.Create.AddPair('id', TJSONNumber.Create(AId)));
+  except
+    // Abbruch ist ein Hinweis an den Server; scheitert das Senden, bleibt es bei der Zeitüberschreitung.
+    on Exception do
+      ;
+  end;
 end;
 
 function TLspClient.HandlePartial(AMessage: TJSONObject): Boolean;

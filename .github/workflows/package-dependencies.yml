@@ -30,6 +30,12 @@ jobs:
         run: ./Tools/Update-ConfigDoc.ps1 -Check
       - name: Benchmark-Hilfsfunktionen testen
         run: node --test Tools/Benchmark/lib.test.mjs
-      - name: Versionen von Server und Erweiterung gleich
+      - name: Versionen von Server und Claude-Code-Plugin gleich
         shell: pwsh
         run: ./Tools/Check-Version.ps1
+      - name: Keine Embarcadero-Quellen in Tests (#77)
+        shell: pwsh
+        run: ./Tools/Check-NoEmbarcaderoSources.ps1
+      - name: Drittanbieter-Hinweise aktuell (#77)
+        shell: pwsh
+        run: ./Tools/Update-ThirdPartyNotices.ps1 -Check

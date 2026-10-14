@@ -2,7 +2,7 @@
 
 Alle nennenswerten Änderungen an Atlas (Server und VS-Code-Erweiterung).
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionen nach [SemVer](https://semver.org/lang/de/).
-Server und Erweiterung tragen immer dieselbe Version.
+Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
@@ -71,6 +71,7 @@ Server und Erweiterung tragen immer dieselbe Version.
 
 ### Behoben
 - Dominanz: Unerreichbarer Code nach `Exit` hob die Dominanz für gemeinsame Nachfolger auf (#143).
+- Weitere Fehlalarme in der Problemliste (#647): `TMonitor.Exit(FLock)` und andere Methoden namens Exit, Break, Abort oder Halt galten im Kontrollfluss als Sprung, danach war alles „unerreichbar“ und `unused-assignment` meldete Werte, die hinter dem try gelesen werden; `float-equality` übergeht TDateTime, TDate und TTime (Zeitstempel werden absichtlich exakt verglichen); `component-fixed-pixels` erkennt eigene Skalierhelfer (`Scale(3)`); `unresolved-identifier` meldet nichts in Methoden einer Klasse, deren Vorfahrenkette an einem unbekannten Typ abbricht.
 - Fehlalarme in der Problemliste zu Atlas selbst (#647): Signaturvergleich übergeht Standardwerte und andere Gruppierung der Parameter (`const A, B: string` gegen `const A: string; const B: string = ''`); `unresolved-identifier` kennt Typumwandlungen und Typhelfer eingebauter Typen (`Integer(X)`, `PChar(S)`), den Anfang qualifizierter Unit-Namen (`Winapi.Windows.X`), Felder und Methoden in Methoden innerer Klassen (`TAussen.TInnen.Lauf`), `AtomicIncrement` & Co., `MaxInt` und `HInstance`; `result-not-set` meldet keine Funktionen mehr, die Result im try-Teil eines try/finally setzen (der Weg einer Ausnahme lief nach dem finally normal weiter).
 - Hover, Diagnosen und Befehle warteten bei fehlenden Units minutenlang: Das Nachladen einer Unit hielt eine serverweite Sperre, und Ausdrücke wie `Form1.Edit1.Text` durchsuchten für jedes Präfix die Suchpfade aller Projekte. Nachgeladen wird jetzt ohne die Sperre, nur für Units aus `uses` und je Anfrage einmal (#647).
 - Probleme der nicht geöffneten Projektdateien werden erst nach dem Indexaufbau geprüft und danach neu bewertet; vorher liefen sie dauernd mit und meldeten fehlende Units, die nur noch nicht indiziert waren (#647).
@@ -88,6 +89,8 @@ Server und Erweiterung tragen immer dieselbe Version.
 - Die Index-Optionen (Projektgruppe, Suchpfade, Bibliothek) stehen in *Tools › Optionen › Atlas* und gelten für alle Projekte; eine `atlas.json` mit `index` hat weiter Vorrang. Der Server übernimmt `initializationOptions.settings.atlas` wie die Editor-Einstellungen (#652).
 - RTL, VCL und FMX werden einmal je Delphi-Version und Plattform indiziert und für alle Projekte und Konfigurationen geteilt. Vorher hing der gemeinsame Bibliotheks-Cache an den Defines des Projekts (DEBUG, eigene Symbole), sodass Debug, Release und jedes Projekt mit eigenen Defines die Bibliothek neu lasen (#647).
 - Diagnoselog: Je Anfrage `cpu` (Rechenzeit des Threads), `parallel` (was gleichzeitig lief), `treeMs` (Warten auf den Syntaxbaum) und `ensureMs` (Nachladen von Units) (#647).
+### Entfernt
+- VS-Code-Erweiterung und Neovim-Konfiguration samt Workflow, Release-Schritten (`.vsix`, Marketplace, Open VSX) und `Tools/Package-VSCode.ps1`; Atlas konzentriert sich auf das Delphi-Plugin. Das Schema von `atlas.json` liegt jetzt unter `schemas/atlas.schema.json`.
 
 ## [0.1.0] - 2026-10-08
 
