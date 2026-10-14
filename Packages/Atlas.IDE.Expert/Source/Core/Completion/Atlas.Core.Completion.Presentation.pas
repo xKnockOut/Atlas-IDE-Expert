@@ -6,7 +6,8 @@
 //   - Detail: gedämpfter Text rechts (Typ, Klasse, Unit-Datei).
 //   - Tags: "+ Unit" für Einträge aus nicht eingebundenen Units (#180),
 //     "deprecated", "constructor"/"destructor", "+2" bei drei Überladungen
-//     (#425), "Helper" (#456), "zuletzt"/"häufig" (#418).
+//     (#425), "Helper" (#456), "zuletzt"/"häufig" (#418), Anzahl fehlender
+//     Werte bei „Alle Werte einfügen“ (#449).
 //   - Geerbte Member (#419): Detail beginnt mit der deklarierenden Klasse.
 //   - Treffer: Positionen der getippten Zeichen im Namen zum Hervorheben,
 //     nach denselben Regeln wie TAtlasCompletionMatcher.
@@ -261,6 +262,8 @@ var
   Directive, MissingName: string;
 begin
   Result := nil;
+  if AItem.Count > 0 then
+    Result := Result + [MakeTag(IntToStr(AItem.Count), TAtlasTagKind.Accent)];
   MissingName := MissingUnit(AItem);
   if MissingName <> '' then
     Result := Result + [MakeTag('+ ' + MissingName, TAtlasTagKind.Add)];

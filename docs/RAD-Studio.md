@@ -25,6 +25,8 @@ Formular-Designer (#402): Ein im Designer geöffnetes Formular schickt Atlas etw
 
 Aufzählungen und Mengen (#448): Erwartet die Stelle einen Aufzählungstyp (nach `:=`, `=`, `<>` oder in einem `case`-Zweig), stehen dessen Werte oben in der Liste, bei `{$SCOPEDENUMS ON}` als `Typ.Wert`. Nach `[` an einer Mengen-Stelle öffnet sich die Liste von selbst und zeigt nur die Elemente mit Häkchen; vorhandene sind schon abgehakt. Leertaste hakt ab, Enter ersetzt die ganze Menge, Esc lässt sie unverändert.
 
+case-Anweisungen (#449): Am Anfang eines Zweigs (nach `case Shape.Kind of` oder nach dem `;` eines Zweigs) steht oben „Alle Werte einfügen“ mit der Zahl der Werte, in einer case-Anweisung mit Zweigen „Fehlende Werte ergänzen (n)“. Atlas schreibt je fehlendem Wert eine Zeile `Wert: ;` in Deklarationsreihenfolge, ergänzt ein fehlendes `end;` und setzt den Cursor vor das `;` des ersten neuen Zweigs. Bereiche (`skCircle..skRect`) und Listen zählen als vorhanden. Ein Rückgängig entfernt alles. Mit getipptem Präfix steht der Eintrag hinter den passenden Werten.
+
 Zur Fehlersuche: Wert `Diagnose` (DWORD) = `1` unter `HKCU\Software\Atlas\IdePlugin` setzen und die IDE neu starten. Das Plugin schreibt dann jeden Aufruf der IDE (Hover, Strg+Klick, Position und Ergebnis) in `Atlas.IDE.Expert.log` neben der BPL.
 
 Findet der Server keine Definition, passiert bei Strg+Klick nichts. Deklarationen in Include-Dateien (`{$I …}`) findet der Server erst mit dem Include-Resolver (#264).

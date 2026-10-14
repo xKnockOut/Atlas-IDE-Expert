@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Completion.Sets.Tests;
 
 // Tests für Aufzählungen und Mengen in der Vervollständigung (#448): Rangfolge, Mengenmodus im Controller,
-// neuer Klammerinhalt und die Felder aus der Antwort des Servers.
+// neuer Klammerinhalt und die Felder aus der Antwort des Servers. Dazu „Alle Werte einfügen“ für case (#449).
 
 interface
 
@@ -24,6 +24,8 @@ type
     procedure BracketTriggerWithoutSetClosesQuietly;
     [Test]
     procedure ReadsSetFieldsFromServer;
+    [Test]
+    procedure PinnedCaseItemComesFirst;
   end;
 
 implementation
@@ -36,6 +38,7 @@ uses
   Atlas.Core.Completion.Controller,
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Sets,
+  Atlas.Core.Completion.Presentation,
   Atlas.Core.Completion.Providers.Fixed,
   Atlas.Core.Completion.Providers.Server;
 
@@ -311,6 +314,35 @@ begin
     Json.Free;
   end;
   Assert.AreEqual('', Item.SetOf);
+end;
+
+procedure TAtlasCompletionSetsTests.PinnedCaseItemComesFirst;
+var
+  Json: TJSONObject;
+  Pinned: TAtlasCompletionItem;
+  Items: TAtlasCompletionItems;
+  Options: TAtlasRankOptions;
+  Tags: TAtlasTags;
+begin
+  Json := TJSONObject.ParseJSONValue('{"label":"Alle Werte einfügen","kind":15,"textEdit":{"range":{"start":' +
+    '{"line":10,"character":20},"end":{"line":11,"character":4}},"newText":"\n    alNone: $0;"},' +
+    '"data":{"expected":"TAlign","fits":true,"action":"case","pinned":true,"count":3}}') as TJSONObject;
+  try
+    Pinned := TAtlasServerCompletionProvider.ItemFromLsp(Json, 0);
+  finally
+    Json.Free;
+  end;
+  Assert.IsTrue(Pinned.Pinned);
+  Assert.AreEqual(3, Pinned.Count);
+  Assert.IsTrue(Pinned.HasTextEdit);
+  Assert.IsFalse(Pinned.IsAction, 'kein „Neue Methode …“');
+  Tags := TAtlasItemPresentation.Tags(Pinned);
+  Assert.AreEqual('3', Tags[0].Text);
+  // Ohne Getipptes ganz oben, vor den Werten; mit Getipptem hinter den Treffern, aber sichtbar.
+  Items := [Value('alClient', 3), Pinned, Value('alNone', 1), Value('alTop', 2)];
+  Options := TAtlasRankOptions.Defaults;
+  Assert.AreEqual('# Alle Werte einfügen alNone alTop alClient', Names(Items, TAtlasRanking.Order(Items, '', Options)));
+  Assert.AreEqual('# alTop Alle Werte einfügen', Names(Items, TAtlasRanking.Order(Items, 'alTo', Options)));
 end;
 
 initialization

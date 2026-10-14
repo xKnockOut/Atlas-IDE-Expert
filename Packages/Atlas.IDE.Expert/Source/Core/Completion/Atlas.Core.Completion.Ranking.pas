@@ -14,6 +14,9 @@
 //   - Werte einer erwarteten Aufzählung (#448) stehen in der passenden Gruppe
 //     zuerst, ohne Präfix in Deklarationsreihenfolge (Ordinal), auch vor
 //     Gelerntem.
+//   - Angeheftete Einträge („Alle Werte einfügen“, #449) passen immer. Ohne
+//     Präfix stehen sie ganz oben; mit Präfix hinter den Treffern, damit Enter
+//     nach "skC" den Wert übernimmt und nicht alle Zweige.
 
 interface
 
@@ -172,7 +175,7 @@ begin
     begin
       if not TAtlasRanking.Matches(Items[Index], Options.Chip) then
         Continue;
-      if Items[Index].IsAction then
+      if Items[Index].IsAction or Items[Index].Pinned then
         Scores[Index] := 0
       else
         Scores[Index] := TAtlasCompletionMatcher.Score(APattern, NameOf(Items[Index]));
@@ -185,7 +188,9 @@ begin
     Found.Sort(TComparer<Integer>.Construct(
       function(const A, B: Integer): Integer
       begin
-        Result := Ord(Items[A].IsAction) - Ord(Items[B].IsAction);
+        Result := Ord(Items[B].Pinned and NoPattern) - Ord(Items[A].Pinned and NoPattern);
+        if Result = 0 then
+          Result := Ord(Items[A].IsAction) - Ord(Items[B].IsAction);
         // In der aktiven Konfiguration nicht vorhanden: ans Ende (#476).
         if Result = 0 then
           Result := Ord(Items[A].Unavailable) - Ord(Items[B].Unavailable);

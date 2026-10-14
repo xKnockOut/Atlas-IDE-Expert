@@ -78,6 +78,8 @@ type
     [Test]
     procedure OffersEnumValuesAndSetValues;
     [Test]
+    procedure OffersMissingCaseBranches;
+    [Test]
     procedure GroupsByExpectedType;
   end;
 
@@ -784,6 +786,81 @@ begin
   end;
 end;
 
+procedure TLspCompletionTests.OffersMissingCaseBranches;
+const
+  Text =
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'type'#13#10 +
+    '  TShapeKind = (skCircle, skLine, skRect, skTriangle);'#13#10 +
+    '  TShape = class'#13#10 +
+    '    Kind: TShapeKind;'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'procedure Ergaenzen(Shape: TShape);'#13#10 +
+    'begin'#13#10 +
+    '  case Shape.Kind of'#13#10 +
+    '    skCircle: Zeichne;'#13#10 +
+    '    sk'#13#10 +
+    '  end;'#13#10 +
+    'end;'#13#10 +
+    'procedure Vollstaendig(Shape: TShape);'#13#10 +
+    'begin'#13#10 +
+    '  case Shape.Kind of'#13#10 +
+    '    skCircle..skRect, skTriangle: ;'#13#10 +
+    '    '#13#10 +
+    '  end;'#13#10 +
+    'end;'#13#10 +
+    // Zuletzt: Ohne end der case-Anweisung liest der Parser den Rest als ihren Teil.
+    'procedure Neu(S: TShape);'#13#10 +
+    'begin'#13#10 +
+    '  case S.Kind of'#13#10 +
+    '    '#13#10 +
+    'end;'#13#10 +
+    'end.';
+var
+  Tree: TSyntaxTree;
+  Resolver: TNameResolver;
+  Items: TArray<TCompletionItem>;
+  SetMode: Boolean;
+  Position: TTextPosition;
+begin
+  Tree := TPascalParser.Parse(Text);
+  Resolver := TNameResolver.Create(FIndex);
+  try
+    // Ohne Zweige: „Alle Werte einfügen“ zuerst, mit Anzahl; alle vier Zweige und das fehlende end.
+    Position := PositionOf(Text, 'case S.Kind of'#13#10'    ');
+    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile, Position, nil,
+      TCompletionMatching.Fuzzy, Items, SetMode));
+    Assert.AreEqual('Alle Werte einfügen', Items[0].Name);
+    Assert.IsTrue(Items[0].Pinned);
+    Assert.AreEqual(4, Items[0].Count);
+    Assert.IsTrue(Items[0].HasTextEdit);
+    Assert.AreEqual(#13#10'    skCircle: $0;'#13#10'    skLine: ;'#13#10'    skRect: ;'#13#10'    skTriangle: ;' +
+      #13#10'  end;', Items[0].TextEdit.NewText);
+    // Ersetzt wird ab dem "of" bis zum Cursor (der Leerraum der Zeile).
+    Assert.AreEqual(24, Items[0].TextEdit.Range.StartPos.Line);
+    Assert.AreEqual(16, Items[0].TextEdit.Range.StartPos.Character);
+    Assert.AreEqual(Position.Line, Items[0].TextEdit.Range.EndPos.Line);
+    Assert.AreEqual(Position.Character, Items[0].TextEdit.Range.EndPos.Character);
+    Assert.AreEqual('skCircle', Items[1].Name, 'darunter die einzelnen Werte');
+    // Mit Zweig skCircle: nur die drei übrigen, end ist vorhanden.
+    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile,
+      PositionOf(Text, 'skCircle: Zeichne;'#13#10'    sk'), nil, TCompletionMatching.Fuzzy, Items, SetMode));
+    Assert.AreEqual('Fehlende Werte ergänzen (3)', Items[0].Name);
+    Assert.AreEqual(0, Items[0].Count);
+    Assert.AreEqual(#13#10'    skLine: $0;'#13#10'    skRect: ;'#13#10'    skTriangle: ;', Items[0].TextEdit.NewText);
+    // Bereiche und Listen zählen als vorhanden: nichts mehr zu ergänzen.
+    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile,
+      PositionOf(Text, 'skTriangle: ;'#13#10'    '), nil, TCompletionMatching.Fuzzy, Items, SetMode));
+    Assert.AreEqual('skCircle', Items[0].Name);
+    Assert.IsFalse(Items[0].Pinned);
+  finally
+    Resolver.Free;
+    Tree.Free;
+  end;
+end;
+
 procedure TLspCompletionTests.OffersEnumValuesAndSetValues;
 const
   TypenFile = 'C:\P\Typen.pas';
@@ -869,7 +946,9 @@ begin
     // case-Zweig.
     Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile,
       PositionOf(Text, 'skCircle: ;'#13#10'    '), Reader, TCompletionMatching.Fuzzy, Items, SetMode));
-    Assert.AreEqual('skCircle skRect skLine skTriangle', Joined);
+    Assert.AreEqual('Fehlende Werte ergänzen (3) skCircle skRect skLine skTriangle', Joined);
+    Assert.AreEqual(#13#10'    TShapeKind.skRect: $0;'#13#10'    TShapeKind.skLine: ;'#13#10'    TShapeKind.skTriangle: ;',
+      Items[0].TextEdit.NewText, 'Scoped Enum mit Typpräfix (#449)');
     // Menge: alle Werte des Elementtyps, akLeft angehakt, Enter ersetzt die ganze Klammer.
     Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile,
       PositionOf(Text, 'C.Anchors := [akLeft, '), Reader, TCompletionMatching.Fuzzy, Items, SetMode));

@@ -124,6 +124,10 @@ type
     Checked: Boolean;
     /// <summary>Im Mengenmodus: was Enter ersetzt, von "[" bis hinter "]" (NewText leer).</summary>
     SetRange: TAtlasTextEdit;
+    /// <summary>Steht immer oben und passt zu jedem getippten Wort („Alle Werte einfügen“, #449).</summary>
+    Pinned: Boolean;
+    /// <summary>Zahl als Tag, etwa die fehlenden Werte (#449); 0 ohne.</summary>
+    Count: Integer;
     /// <summary>Zahl der Überladungen samt dieser (mindestens 1).</summary>
     function OverloadCount: Integer;
   end;
