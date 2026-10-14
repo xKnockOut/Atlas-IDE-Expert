@@ -67,6 +67,9 @@ type
   public const
     /// <summary>Verzögerung nach dem letzten Tastendruck; mit Parsen bleibt es unter 200 ms.</summary>
     DefaultDelayMs = 100;
+    /// <summary>Bündelt RefreshLater: In einer Projektgruppe melden sich viele Indexstufen kurz
+    /// hintereinander, und jede Neuprüfung holt alle offenen Dokumente neu (#647).</summary>
+    RefreshDelayMs = 2000;
     Source = 'Atlas';
     CompilerSource = 'dcc';
     InactiveMessage = 'Inaktiver Bereich (bedingte Kompilierung)';
@@ -74,6 +77,7 @@ type
     FStore: IDocumentStore;
     FTransport: IJsonRpcTransport;
     FDebouncer: TDebouncer;
+    FRefreshDebouncer: TDebouncer;
     /// <summary>Hält Prüfen und Senden zusammen, damit nach dem Schließen nichts Veraltetes mehr kommt.</summary>
     FSendLock: TObject;
     FDefinesLock: TObject;
@@ -129,6 +133,9 @@ type
     function Compute(const ADocument: ITextDocument): TJSONObject;
     /// <summary>Prüft alle geöffneten Dokumente neu, z. B. nach geänderten Symbolen.</summary>
     procedure Refresh;
+    /// <summary>Wie Refresh, aber gebündelt: Mehrere Aufrufe innerhalb von RefreshDelayMs
+    /// lösen eine Neuprüfung aus. Bei ADelayMs = 0 im Konstruktor sofort.</summary>
+    procedure RefreshLater;
     /// <summary>Meldet die Compilermeldungen zu AFileNames neu: geöffnete Dokumente
     /// werden neu geprüft, für andere gehen nur die Compilermeldungen hinaus.</summary>
     procedure RefreshFiles(const AFileNames: TArray<string>);
@@ -195,10 +202,16 @@ begin
   FSendLock := TObject.Create;
   FDefinesLock := TObject.Create;
   FDebouncer := TDebouncer.Create(ADelayMs);
+  if ADelayMs = 0 then
+    FRefreshDebouncer := TDebouncer.Create(0)
+  else
+    FRefreshDebouncer := TDebouncer.Create(RefreshDelayMs);
 end;
 
 destructor TLspSyntaxDiagnostics.Destroy;
 begin
+  // Zuerst: Eine gebündelte Neuprüfung plant über FDebouncer neu.
+  FRefreshDebouncer.Free;
   FDebouncer.Free;
   FSendLock.Free;
   FDefinesLock.Free;
@@ -218,6 +231,7 @@ end;
 procedure TLspSyntaxDiagnostics.SetOnError(const AValue: TProc<Exception>);
 begin
   FDebouncer.OnError := AValue;
+  FRefreshDebouncer.OnError := AValue;
 end;
 
 function TLspSyntaxDiagnostics.CurrentDefines(const AUri: string; out ADefines: TArray<string>): Boolean;
@@ -455,6 +469,15 @@ begin
   for Document in FStore.Documents do
     if not SameText(ExtractFileExt(Document.Uri), '.json') then
       ScheduleParse(Document);
+end;
+
+procedure TLspSyntaxDiagnostics.RefreshLater;
+begin
+  FRefreshDebouncer.Schedule('refresh',
+    procedure
+    begin
+      Refresh;
+    end);
 end;
 
 procedure TLspSyntaxDiagnostics.HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
