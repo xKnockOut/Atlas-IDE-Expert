@@ -76,6 +76,8 @@ type
     [Test]
     procedure OffersMatchingHandlersAndNewMethodForEvents;
     [Test]
+    procedure OffersEnumValuesAndSetValues;
+    [Test]
     procedure GroupsByExpectedType;
   end;
 
@@ -776,6 +778,120 @@ begin
       Edits);
     // Keine Ereignis-Zuweisung: normale Vervollständigung.
     Assert.IsFalse(TLspCompletion.EventItems(Resolver, Tree, Text, HauptFile, PositionOf(Text, 'uses Ba'), nil, Items));
+  finally
+    Resolver.Free;
+    Tree.Free;
+  end;
+end;
+
+procedure TLspCompletionTests.OffersEnumValuesAndSetValues;
+const
+  TypenFile = 'C:\P\Typen.pas';
+  UnitTypen =
+    'unit Typen;'#13#10 +
+    'interface'#13#10 +
+    'type'#13#10 +
+    '  TAlign = (alNone, alTop,'#13#10 +
+    '    alClient);'#13#10 +
+    '{$SCOPEDENUMS ON}'#13#10 +
+    '  TShapeKind = (skCircle, skRect, skLine, skTriangle);'#13#10 +
+    '{$SCOPEDENUMS OFF}'#13#10 +
+    '  TAnchorKind = (akLeft, akTop, akRight, akBottom);'#13#10 +
+    '  TAnchors = set of TAnchorKind;'#13#10 +
+    '  TControl = class'#13#10 +
+    '    Align: TAlign;'#13#10 +
+    '    Anchors: TAnchors;'#13#10 +
+    '    Kind: TShapeKind;'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'end.';
+  Text =
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'uses Typen;'#13#10 +
+    'implementation'#13#10 +
+    'procedure Setze(C: TControl; List: TArray<Integer>);'#13#10 +
+    'begin'#13#10 +
+    '  C.Align := ;'#13#10 +
+    '  if C.Kind = sk then;'#13#10 +
+    '  case C.Kind of'#13#10 +
+    '    TShapeKind.skCircle: ;'#13#10 +
+    '    '#13#10 +
+    '  end;'#13#10 +
+    '  C.Anchors := [akLeft, ];'#13#10 +
+    '  if C.Kind in [] then;'#13#10 +
+    '  List[0] := List[];'#13#10 +
+    'end;'#13#10 +
+    'end.';
+var
+  Tree: TSyntaxTree;
+  Resolver: TNameResolver;
+  Items: TArray<TCompletionItem>;
+  SetMode: Boolean;
+  Reader: TCompletionReadText;
+
+  function Joined: string;
+  var
+    Item: TCompletionItem;
+  begin
+    Result := '';
+    for Item in Items do
+      Result := Result + ' ' + Item.Name;
+    Result := Result.Trim;
+  end;
+
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitTypen, TypenFile, nil));
+  Reader :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      AText := UnitTypen;
+      Result := SameText(AFileName, TypenFile);
+    end;
+  Tree := TPascalParser.Parse(Text);
+  Resolver := TNameResolver.Create(FIndex);
+  try
+    // Zuweisung: Werte in Deklarationsreihenfolge, auch über mehrere Zeilen.
+    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, 'C.Align := '),
+      Reader, TCompletionMatching.Fuzzy, Items, SetMode));
+    Assert.IsFalse(SetMode);
+    Assert.AreEqual('alNone alTop alClient', Joined);
+    Assert.AreEqual(3, Items[2].Ordinal);
+    Assert.AreEqual('TAlign', Items[0].Expected);
+    Assert.IsTrue(Items[0].Fits);
+    Assert.AreEqual('', Items[0].InsertText);
+    Assert.AreEqual(TypenFile, Items[0].SourceFile, 'Position für completionItem/resolve');
+    // Vergleich mit Scoped Enum: Typpräfix beim Einfügen, gefiltert nach dem Getippten.
+    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, 'C.Kind = sk'),
+      Reader, TCompletionMatching.Fuzzy, Items, SetMode));
+    Assert.AreEqual(4, Integer(Length(Items)));
+    Assert.AreEqual('TShapeKind.skCircle', Items[0].InsertText);
+    // case-Zweig.
+    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile,
+      PositionOf(Text, 'skCircle: ;'#13#10'    '), Reader, TCompletionMatching.Fuzzy, Items, SetMode));
+    Assert.AreEqual('skCircle skRect skLine skTriangle', Joined);
+    // Menge: alle Werte des Elementtyps, akLeft angehakt, Enter ersetzt die ganze Klammer.
+    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile,
+      PositionOf(Text, 'C.Anchors := [akLeft, '), Reader, TCompletionMatching.Fuzzy, Items, SetMode));
+    Assert.IsTrue(SetMode);
+    Assert.AreEqual('akLeft akTop akRight akBottom', Joined);
+    Assert.IsTrue(Items[0].SetChecked);
+    Assert.IsFalse(Items[1].SetChecked);
+    Assert.AreEqual('TAnchorKind', Items[0].SetOf);
+    Assert.AreEqual('TAnchors', Items[0].Expected);
+    Assert.AreEqual(12, Items[0].SetRange.StartPos.Line);
+    Assert.AreEqual(15, Items[0].SetRange.StartPos.Character);
+    Assert.AreEqual(25, Items[0].SetRange.EndPos.Character);
+    // "in": Elementtyp aus der linken Seite.
+    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, 'C.Kind in ['),
+      Reader, TCompletionMatching.Fuzzy, Items, SetMode));
+    Assert.IsTrue(SetMode);
+    Assert.AreEqual('set of TShapeKind', Items[0].Expected);
+    Assert.AreEqual('TShapeKind.skCircle', Items[0].InsertText);
+    // Index statt Menge.
+    Assert.IsFalse(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, ':= List['),
+      Reader, TCompletionMatching.Fuzzy, Items, SetMode));
+    Assert.IsFalse(SetMode);
   finally
     Resolver.Free;
     Tree.Free;

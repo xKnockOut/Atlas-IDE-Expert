@@ -103,6 +103,16 @@ begin
     AEdit.TryGetValue<string>('newText', AResult.NewText);
 end;
 
+/// <summary>LSP-Range ohne Text (#448).</summary>
+function RangeFromLsp(ARange: TJSONObject; out AResult: TAtlasTextEdit): Boolean;
+begin
+  AResult := Default(TAtlasTextEdit);
+  Result := ARange.TryGetValue<Integer>('start.line', AResult.StartLine) and
+    ARange.TryGetValue<Integer>('start.character', AResult.StartCharacter) and
+    ARange.TryGetValue<Integer>('end.line', AResult.EndLine) and
+    ARange.TryGetValue<Integer>('end.character', AResult.EndCharacter);
+end;
+
 class function TAtlasServerCompletionProvider.ItemFromLsp(AItem: TJSONObject; ARank: Integer): TAtlasCompletionItem;
 var
   Documentation, Edits, Value, Overloads: TJSONValue;
@@ -141,6 +151,13 @@ begin
     Result.ExpectedType := Data.GetValue<string>('expected', '');
     Result.Fits := Data.GetValue('fits') is TJSONTrue;
     Result.IsAction := Data.GetValue<string>('action', '') = 'create';
+    // Aufzählungen und Mengen (#448).
+    Result.Ordinal := Data.GetValue<Integer>('ordinal', 0);
+    Result.SetOf := Data.GetValue<string>('setOf', '');
+    Result.Checked := Data.GetValue('checked') is TJSONTrue;
+    if (Result.SetOf <> '') and not ((Data.GetValue('setRange') is TJSONObject) and
+      RangeFromLsp(TJSONObject(Data.GetValue('setRange')), Result.SetRange)) then
+      Result.SetOf := '';
     Overloads := Data.GetValue('overloads');
     if Overloads is TJSONArray then
       for Value in TJSONArray(Overloads) do
@@ -233,6 +250,7 @@ begin
   Emit := AEmit;
   // Teilergebnisse kommen im Lese-Thread nacheinander und alle vor der Antwort.
   Response := TLspSession(AData).Completion(AContext.FileName, AContext.Line, AContext.Character, FTimeoutMs,
+    AContext.Trigger,
     procedure(const AValue: TJSONValue)
     var
       Items: TAtlasCompletionItems;

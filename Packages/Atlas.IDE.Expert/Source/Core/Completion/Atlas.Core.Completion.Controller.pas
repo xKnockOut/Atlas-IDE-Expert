@@ -21,6 +21,10 @@
 // Rangfolge über TAtlasRanking: Lernzuschlag (#418, Usage), Gruppen geerbter
 // Member mit Überschriften (#419; Header in der Reihenfolge, die Auswahl
 // überspringt sie), Filter-Chips (#422).
+//
+// Mengenmodus (#448, TAtlasCompletionSets): Toggle (Leertaste) hakt den gewählten Wert an oder ab, Accept
+// übernimmt die ganze Klammer. Hat niemand umgeschaltet, nimmt Enter den gewählten Wert dazu. Nach "[" geöffnet
+// (Trigger) und ohne Einträge schließt die Liste still, statt den leeren Zustand zu zeigen.
 
 interface
 
@@ -34,7 +38,7 @@ uses
 {$SCOPEDENUMS ON}
 
 type
-  TAtlasNavigationKey = (Up, Down, PageUp, PageDown, First, Last, Accept, Cancel);
+  TAtlasNavigationKey = (Up, Down, PageUp, PageDown, First, Last, Accept, Cancel, Toggle);
 
   /// <summary>Anzeige der Liste; umgesetzt vom Popup (Atlas.UI) bzw. von Tests.</summary>
   IAtlasCompletionView = interface
@@ -97,6 +101,12 @@ type
     FChipsEnabled: Boolean;
     FChip: TAtlasChip;
     FUsage: TAtlasUsage;
+    /// <summary>Zeichen, nach dem automatisch geöffnet wurde (#448).</summary>
+    FTrigger: string;
+    /// <summary>Im Mengenmodus schon umgeschaltet.</summary>
+    FToggled: Boolean;
+    procedure ToggleSelected;
+    procedure CommitSet;
     procedure ShowChips;
     function FirstItemFrom(APosition, ADirection: Integer): Integer;
     procedure ItemsArrived(AGeneration: Integer; const AItems: TAtlasCompletionItems);
@@ -129,6 +139,8 @@ type
     /// <summary>Für APrefix neu fragen statt lokal filtern (#616): Liste gekürzt, oder APrefix beginnt nicht
     /// mit dem Präfix der Anfrage (der Server hat nach diesem gefiltert).</summary>
     function NeedsQuery(const APrefix: string): Boolean;
+    /// <summary>Mengenmodus (#448): Kontrollkästchen statt einfacher Auswahl.</summary>
+    function SetMode: Boolean;
     property Active: Boolean read FActive;
     property Loading: Boolean read FLoading;
     /// <summary>Liste ist offen und hat Treffer.</summary>
@@ -159,7 +171,8 @@ implementation
 uses
   Atlas.Core.Diagnostics.Guard,
   System.Math,
-  Atlas.Core.Completion.Matching;
+  Atlas.Core.Completion.Matching,
+  Atlas.Core.Completion.Sets;
 
 { TAtlasCompletionController.TControllerSink }
 
@@ -331,6 +344,8 @@ begin
   FLoading := True;
   FChip := TAtlasChip.All;
   FPrefix := AContext.Prefix;
+  FTrigger := AContext.Trigger;
+  FToggled := False;
   FItems := nil;
   FOrder := nil;
   FSelected := -1;
@@ -444,6 +459,12 @@ begin
     FReplace := False;
     FItems := nil;
   end;
+  // Automatisch nach "[" geöffnet, aber keine Menge (#448): still schließen.
+  if (Length(FItems) = 0) and (FTrigger <> '') then
+  begin
+    Close;
+    Exit;
+  end;
   // Nichts gefunden: leerer Zustand statt kommentarlos zu verschwinden (#423).
   if Length(FItems) = 0 then
     Refresh(False);
@@ -546,10 +567,49 @@ begin
     TAtlasNavigationKey.Last:
       MoveSelection(High(FOrder), -1);
     TAtlasNavigationKey.Accept:
-      CommitSelected;
+      if SetMode then
+        CommitSet
+      else
+        CommitSelected;
     TAtlasNavigationKey.Cancel:
       Close;
+    TAtlasNavigationKey.Toggle:
+      if SetMode then
+        ToggleSelected
+      else
+        Result := False;
   end;
+end;
+
+function TAtlasCompletionController.SetMode: Boolean;
+begin
+  Result := FActive and TAtlasCompletionSets.Active(FItems);
+end;
+
+procedure TAtlasCompletionController.ToggleSelected;
+var
+  Index: Integer;
+begin
+  if (FSelected < 0) or (FSelected > High(FOrder)) or TAtlasRanking.IsHeader(FOrder[FSelected]) then
+    Exit;
+  Index := FOrder[FSelected];
+  FItems[Index].Checked := not FItems[Index].Checked;
+  FToggled := True;
+  FView.ShowList(FItems, FOrder, FSelected, FPrefix);
+end;
+
+procedure TAtlasCompletionController.CommitSet;
+var
+  Item: TAtlasCompletionItem;
+begin
+  // Ohne Leertaste: Enter übernimmt den gewählten Wert zusätzlich zu den vorhandenen.
+  if not FToggled and (FSelected >= 0) and (FSelected <= High(FOrder)) and
+    not TAtlasRanking.IsHeader(FOrder[FSelected]) then
+    FItems[FOrder[FSelected]].Checked := True;
+  Item := TAtlasCompletionSets.CommitItem(FItems);
+  Close;
+  if Assigned(FOnCommit) then
+    FOnCommit(Item);
 end;
 
 procedure TAtlasCompletionController.Select(APosition: Integer);

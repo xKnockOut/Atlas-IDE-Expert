@@ -792,8 +792,9 @@ begin
   try
     // #0 Vervollständigung (Strg+Leer), "." Vervollständigung nach Punkt, #2 Browse
     // (Strg+Klick), #3 Symbolhinweis; #1 Parameterhilfe (Strg+Umschalt+Leer), "(" und ",".
-    // "<" nur für XMLDoc-Tags in ///-Kommentaren (#435), siehe GetCodeInsightType.
-    Allow := CharInSet(Key, [#0, '.', #1, '(', ',', #2, #3, '<']);
+    // "<" nur für XMLDoc-Tags in ///-Kommentaren (#435), siehe GetCodeInsightType. "[" für Mengen (#448): Der
+    // Server liefert nur in einem Mengenkonstruktor etwas, sonst bleibt das Popup zu.
+    Allow := CharInSet(Key, [#0, '.', #1, '(', ',', #2, #3, '<', '[']);
     Diagnose(Format('AllowCodeInsight(#%d) = %s', [Ord(Key), BoolToStr(Allow, True)]));
   except
     on E: Exception do
@@ -904,7 +905,7 @@ begin
           CodeInsightType := citParameterCodeInsight;
           InvokeType := itTimer;
         end;
-      '<':
+      '<', '[':
         begin
           CodeInsightType := citCodeInsight;
           InvokeType := itTimer;
@@ -937,7 +938,7 @@ begin
   Result := False;
   Diagnose(Format('InvokeCodeCompletion(%d, "%s")', [Ord(HowInvoked), Str]));
   try
-    Completion.Invoke(CurrentEditView);
+    Completion.Invoke(CurrentEditView, HowInvoked <> itManual);
   except
     on E: Exception do
       ReportError('Vervollständigung: ' + E.Message);

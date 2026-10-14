@@ -46,7 +46,8 @@ type
     RenamePreviewTitle, RenamePreviewHint, RenamePreviewApply, RenamePreviewCancel,
     EditorActions, EditorExpand, EditorShrink, EditorTypeDefinition, EditorCopyQualified, EditorCopyQualifiedParams,
     EditorFailed, EditorNoActions, EditorCopied, EditorTextCopied, EditorKindFix, EditorKindRefactor, EditorKindSource,
-    SettingsEditorKeysPriority, SettingsSlashCommands);
+    SettingsEditorKeysPriority, SettingsSlashCommands,
+    SetFooterKeys, SetChosen, SetHeader, SetHeaderPlain);
 
   TAtlasStrings = class
   private class var
@@ -163,7 +164,11 @@ const
      'Umbau',
      'Quelltext',
      'Editor-Kürzel auch belegen, wenn die Taste schon vergeben ist',
-     'Schnellbefehle mit / nach Enter und ///-Gerüste'),
+     'Schnellbefehle mit / nach Enter und ///-Gerüste',
+     'Leertaste wählen · Enter einfügen · Esc verwerfen',
+     '%d gewählt',
+     '%s · Menge von %s',
+     'Menge von %s'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -261,7 +266,11 @@ const
      'Refactoring',
      'Source',
      'Bind editor keys even if they are already taken',
-     'Slash commands after Enter and /// scaffolds'));
+     'Slash commands after Enter and /// scaffolds',
+     'Space selects · Enter inserts · Esc discards',
+     '%d selected',
+     '%s · set of %s',
+     'Set of %s'));
 
 { TAtlasStrings }
 

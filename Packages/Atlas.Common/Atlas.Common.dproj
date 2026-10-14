@@ -208,6 +208,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.References.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Rename.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionEnums.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SignatureHelp.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hierarchies.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Implementations.pas"/>

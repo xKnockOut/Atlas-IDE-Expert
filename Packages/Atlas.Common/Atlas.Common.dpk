@@ -107,6 +107,7 @@ contains
   Atlas.Common.Lsp.References in 'Source\Lsp\Atlas.Common.Lsp.References.pas',
   Atlas.Common.Lsp.Rename in 'Source\Lsp\Atlas.Common.Lsp.Rename.pas',
   Atlas.Common.Lsp.Completion in 'Source\Lsp\Atlas.Common.Lsp.Completion.pas',
+  Atlas.Common.Lsp.CompletionEnums in 'Source\Lsp\Atlas.Common.Lsp.CompletionEnums.pas',
   Atlas.Common.Lsp.SignatureHelp in 'Source\Lsp\Atlas.Common.Lsp.SignatureHelp.pas',
   Atlas.Common.Lsp.Hierarchies in 'Source\Lsp\Atlas.Common.Lsp.Hierarchies.pas',
   Atlas.Common.Lsp.Implementations in 'Source\Lsp\Atlas.Common.Lsp.Implementations.pas',

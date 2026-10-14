@@ -96,8 +96,10 @@ type
     property OnOpenSignature: TProc read FOnOpenSignature write FOnOpenSignature;
     constructor Create(const ASession: TAtlasSessionFunc; const ALog: TAtlasLogProc);
     destructor Destroy; override;
-    /// <summary>Öffnet die Vervollständigung an der Cursorstelle von AView; False, wenn nicht möglich.</summary>
-    function Invoke(const AView: IOTAEditView): Boolean;
+    /// <summary>Öffnet die Vervollständigung an der Cursorstelle von AView; False, wenn nicht möglich.
+    /// AAutomatic: von der IDE nach einem Zeichen ausgelöst, nicht über Strg+Leer. Steht dann "[" vor dem
+    /// Cursor, fragt Atlas nur nach Mengenwerten (#448).</summary>
+    function Invoke(const AView: IOTAEditView; AAutomatic: Boolean = False): Boolean;
     procedure Close;
     /// <summary>Taste aus dem Tastatur-Hook; True, wenn verbraucht.</summary>
     function HandleKey(AKey: TAtlasNavigationKey): Boolean;
@@ -194,6 +196,8 @@ begin
     VK_END: ANavigation := TAtlasNavigationKey.Last;
     VK_RETURN, VK_TAB: ANavigation := TAtlasNavigationKey.Accept;
     VK_ESCAPE: ANavigation := TAtlasNavigationKey.Cancel;
+    // Mengenmodus (#448): anhaken; sonst gehört die Leertaste dem Editor (WantsKey).
+    VK_SPACE: ANavigation := TAtlasNavigationKey.Toggle;
   else
     Result := False;
   end;
@@ -424,7 +428,7 @@ begin
   MapWindowPoints(AWindow, 0, ARect, 2);
 end;
 
-function TAtlasEditorCompletion.Invoke(const AView: IOTAEditView): Boolean;
+function TAtlasEditorCompletion.Invoke(const AView: IOTAEditView; AAutomatic: Boolean): Boolean;
 var
   Context: TAtlasContext;
   LineText: string;
@@ -455,6 +459,9 @@ begin
     Context.Kind := TAtlasContextKind.MemberAccess
   else
     Context.Kind := TAtlasContextKind.Identifier;
+  // Nach "[" automatisch geöffnet (#448): nur ein Mengenkonstruktor bekommt eine Liste.
+  if AAutomatic and (Character > 0) and (Character <= Length(LineText)) and (LineText[Character] = '[') then
+    Context.Trigger := '[';
   ApplyStyle(Anchor);
   FPopup.VisibleRows := TAtlasIdeSettings.Current.VisibleRows;
   FPopup.ManualListWidth := TAtlasIdeSettings.Current.ListWidth;
@@ -522,8 +529,11 @@ end;
 
 function TAtlasEditorCompletion.WantsKey(AKey: TAtlasNavigationKey): Boolean;
 begin
-  // Liste offen: alle Navigationstasten. Leerer Zustand (#423): nur Esc.
-  Result := FController.Visible or (FController.Empty and (AKey = TAtlasNavigationKey.Cancel));
+  // Liste offen: alle Navigationstasten, die Leertaste nur im Mengenmodus (#448). Leerer Zustand (#423): nur Esc.
+  if AKey = TAtlasNavigationKey.Toggle then
+    Result := FController.Visible and FController.SetMode
+  else
+    Result := FController.Visible or (FController.Empty and (AKey = TAtlasNavigationKey.Cancel));
 end;
 
 function TAtlasEditorCompletion.WantsCommand(AKey: Word; AShift: TShiftState): Boolean;
@@ -834,6 +844,10 @@ begin
     else
       Edit.Start := TAtlasEditorBuffer.ByteOffset(Text, Cursor.Line - 1, FWordStart);
     Edit.Stop := TAtlasEditorBuffer.ByteOffset(Text, Cursor.Line - 1, Character);
+    // Reicht der textEdit über das Wort hinaus (Mengenklammer bis "]", #448), bis zu seinem Ende ersetzen.
+    if AItem.HasTextEdit then
+      Edit.Stop := Max(Edit.Stop, TAtlasEditorBuffer.ByteOffset(Text, AItem.TextEdit.EndLine,
+        AItem.TextEdit.EndCharacter));
     Edit.Text := NewText;
     Edit.IsWord := True;
     Edits.Add(Edit);
