@@ -997,9 +997,23 @@ begin
         Section := Sections[Conditional.Range.StartPos.Line + 1]
       else
         Section := '';
-      // Lange Zweige (ganze Implementierungen) im implementation-Teil interessieren nicht.
+      // Im implementation-Teil nur Routinen der Unit (eigene Unit, z. B. "procedure ApplyAppIcon;" unter
+      // {$IFDEF FPC}): ein billiger Vergleich am Zeilenanfang je Zeile, denn lange Zweige mit ganzen
+      // Implementierungen (System.pas) sollen nichts kosten. Methodenrümpfe "TFoo.Bar" zählen nicht.
       if (ImplementationLine >= 0) and (Conditional.Range.StartPos.Line > ImplementationLine) then
+      begin
+        for LineIndex := Conditional.Range.StartPos.Line + 1 to Min(Conditional.Range.EndPos.Line, High(Lines)) do
+        begin
+          Line := Lines[LineIndex];
+          if not (StartsText('procedure ', Line) or StartsText('function ', Line)) then
+            Continue;
+          Match := TRegEx.Match(Line, '^(procedure|function)\s+([A-Za-z_]\w*)\s*[(:;]', [roIgnoreCase]);
+          if Match.Success then
+            AddUnavailable(Match.Groups[2].Value, TIndexSymbolKind.Routine, LineIndex, Match.Groups[2].Index - 1,
+              Conditional.Condition);
+        end;
         Continue;
+      end;
       // Zweig im Rumpf einer Klasse, eines Records oder Interfaces: Mitglieder dieses Typs.
       Owner := OwnerOf(Conditional.Range.StartPos.Line);
       if Owner <> '' then
