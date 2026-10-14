@@ -198,6 +198,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.RecordCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.PostfixTemplates.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CaseCompletion.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.DeclareUnknown.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Postfix.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DataBinding.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DfmProperties.Tests.pas"/>
@@ -264,6 +265,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Ranking.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Sets.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Sets.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Declare.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Usage.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Ranking.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Atlas.UI.Strings.pas"/>

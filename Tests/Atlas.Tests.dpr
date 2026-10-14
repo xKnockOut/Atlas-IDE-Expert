@@ -198,6 +198,7 @@ uses
   Atlas.Core.Completion.Ranking in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Ranking.pas',
   Atlas.Core.Completion.Sets in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Sets.pas',
   Atlas.Core.Completion.Sets.Tests in 'IDE.Expert\Atlas.Core.Completion.Sets.Tests.pas',
+  Atlas.Core.Completion.Declare.Tests in 'IDE.Expert\Atlas.Core.Completion.Declare.Tests.pas',
   Atlas.Core.Completion.Usage in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Usage.pas',
   Atlas.Core.Completion.Ranking.Tests in 'IDE.Expert\Atlas.Core.Completion.Ranking.Tests.pas',
   Atlas.UI.Strings in '..\Packages\Atlas.IDE.Expert\Source\UI\Atlas.UI.Strings.pas',
@@ -285,6 +286,7 @@ uses
   Atlas.Common.Rules.Builtin.DfmProperties.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DfmProperties.Tests.pas',
   Atlas.Common.Editing.PostfixTemplates.Tests in 'Common\Editing\Atlas.Common.Editing.PostfixTemplates.Tests.pas',
   Atlas.Common.Editing.CaseCompletion.Tests in 'Common\Editing\Atlas.Common.Editing.CaseCompletion.Tests.pas',
+  Atlas.Common.Editing.DeclareUnknown.Tests in 'Common\Editing\Atlas.Common.Editing.DeclareUnknown.Tests.pas',
   Atlas.Common.Lsp.Completion.Postfix.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Postfix.Tests.pas';
 
 {$IFNDEF TESTINSIGHT}

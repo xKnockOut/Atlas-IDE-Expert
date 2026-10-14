@@ -454,6 +454,10 @@ begin
   // Tippfehler-Treffer (#485).
   if FOrder[APosition] = TAtlasRanking.TypoHeader then
     Text := TAtlasStrings.Text(TAtlasTextId.DidYouMean)
+  // Unbekannter Name (#471): „TotalCount ist unbekannt“.
+  else if (FOrder[APosition] = TAtlasRanking.UnknownHeader) and (APosition < High(FOrder)) and
+    (FOrder[APosition + 1] >= 0) then
+    Text := TAtlasStrings.Fmt(TAtlasTextId.UnknownHeader, [FItems[FOrder[APosition + 1]].Unknown])
   else if (APosition < High(FOrder)) and (FOrder[APosition + 1] >= 0) then
   begin
     if FItems[FOrder[APosition + 1]].SetOf <> '' then

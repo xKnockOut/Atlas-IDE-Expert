@@ -17,6 +17,8 @@
 //   - Angeheftete Einträge („Alle Werte einfügen“, #449) passen immer. Ohne
 //     Präfix stehen sie ganz oben; mit Präfix hinter den Treffern, damit Enter
 //     nach "skC" den Wert übernimmt und nicht alle Zweige.
+//   - Deklarationen eines unbekannten Namens (#471) stehen als Aktionen am
+//     Ende, unter der Überschrift UnknownHeader („Name ist unbekannt“).
 
 interface
 
@@ -47,6 +49,8 @@ type
     Header = -1;
     /// <summary>Überschrift „Meintest du“ vor den Tippfehler-Treffern (#485).</summary>
     TypoHeader = -2;
+    /// <summary>Überschrift „Name ist unbekannt“ vor den Deklarationen (#471).</summary>
+    UnknownHeader = -3;
     /// <summary>Höchstens so viele Tippfehler-Treffer; nur bei weniger regulären als MinRegular.</summary>
     MaxTypos = 5;
     MinRegular = 3;
@@ -149,7 +153,7 @@ var
   Items: TAtlasCompletionItems;
   Scores, Boosts: TArray<Integer>;
   Found, Ordered: TList<Integer>;
-  Index, Position, Depth: Integer;
+  Index, Position, Depth, Unknown: Integer;
   Grouped, AnyFits, NoPattern: Boolean;
   Container: string;
   Group: Integer;
@@ -241,7 +245,12 @@ begin
     begin
       Index := Found[Position];
       // Überschrift je Gruppe zum erwarteten Typ (#417), sonst vor jeder Gruppe geerbter Member (#419).
-      if AnyFits and (Items[Index].ExpectedType <> '') and not Items[Index].IsAction then
+      if Items[Index].Unknown <> '' then
+      begin
+        if (Position = 0) or (Items[Found[Position - 1]].Unknown = '') then
+          Ordered.Add(UnknownHeader);
+      end
+      else if AnyFits and (Items[Index].ExpectedType <> '') and not Items[Index].IsAction then
       begin
         if GroupOf(Items[Index], AnyFits) <> Group then
           Ordered.Add(Header);
@@ -255,9 +264,14 @@ begin
       Ordered.Add(Index);
     end;
     Result := Ordered.ToArray;
-    // Tippfehler (#485): wenig reguläre Treffer, dann bis zu MaxTypos ähnliche Namen unter „Meintest du“.
-    if (ItemCount(Result) < MinRegular) and (TAtlasCompletionMatcher.TypoLimit(APattern) > 0) then
-      Result := Result + Typos(Items, APattern, Options, Scores, Boosts);
+    // Tippfehler (#485): wenig reguläre Treffer, dann bis zu MaxTypos ähnliche Namen unter „Meintest du“, vor
+    // der Gruppe des unbekannten Namens (#471), die nicht als Treffer zählt.
+    Unknown := Ordered.IndexOf(UnknownHeader);
+    if Unknown < 0 then
+      Unknown := Ordered.Count;
+    if (ItemCount(Copy(Result, 0, Unknown)) < MinRegular) and (TAtlasCompletionMatcher.TypoLimit(APattern) > 0) then
+      Result := Copy(Result, 0, Unknown) + Typos(Items, APattern, Options, Scores, Boosts) +
+        Copy(Result, Unknown, MaxInt);
   finally
     Ordered.Free;
     Found.Free;

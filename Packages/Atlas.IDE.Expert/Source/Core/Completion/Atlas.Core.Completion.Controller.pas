@@ -25,6 +25,10 @@
 // Mengenmodus (#448, TAtlasCompletionSets): Toggle (Leertaste) hakt den gewählten Wert an oder ab, Accept
 // übernimmt die ganze Klammer. Hat niemand umgeschaltet, nimmt Enter den gewählten Wert dazu. Nach "[" geöffnet
 // (Trigger) und ohne Einträge schließt die Liste still, statt den leeren Zustand zu zeigen.
+//
+// Unbekannter Name (#471): Stehen nur Deklarationen in der Liste, ist nichts gewählt (Passive). Enter gehört dann
+// dem Editor und schließt die Liste, damit ein neuer Name nicht ungefragt deklariert wird; eine Pfeiltaste wählt
+// die erste Deklaration.
 
 interface
 
@@ -93,6 +97,8 @@ type
     /// <summary>Präfix, mit dem die aktuelle Liste angefragt wurde (#616).</summary>
     FQueryPrefix: string;
     FEmpty: Boolean;
+    /// <summary>Nur Deklarationen eines unbekannten Namens, noch keine gewählt (#471).</summary>
+    FPassive: Boolean;
     FIncomplete: Boolean;
     /// <summary>Die nächsten Einträge ersetzen die Liste (laufendes Requery).</summary>
     FReplace: Boolean;
@@ -147,6 +153,9 @@ type
     property Visible: Boolean read GetVisible;
     /// <summary>Leerer Zustand wird gezeigt (#423).</summary>
     property Empty: Boolean read FEmpty;
+    /// <summary>Nichts gewählt, weil nur Deklarationen eines unbekannten Namens passen (#471); Enter gehört dem
+    /// Editor.</summary>
+    property Passive: Boolean read FPassive;
     /// <summary>Die Quelle hat gekürzt; beim Weitertippen Requery statt UpdatePrefix.</summary>
     property Incomplete: Boolean read FIncomplete;
     property Prefix: string read FPrefix;
@@ -411,6 +420,7 @@ begin
   FOrder := nil;
   FSelected := -1;
   FEmpty := False;
+  FPassive := False;
   FView.HideList;
 end;
 
@@ -478,7 +488,7 @@ var
   Items: TAtlasCompletionItems;
 begin
   SelectedIndex := -1;
-  if AKeepSelection and (FSelected >= 0) and (FSelected < Length(FOrder)) then
+  if AKeepSelection and not FPassive and (FSelected >= 0) and (FSelected < Length(FOrder)) then
     SelectedIndex := FOrder[FSelected];
   Options := TAtlasRankOptions.Defaults;
   Options.GroupInherited := FGroupInherited;
@@ -505,7 +515,12 @@ begin
         Break;
       end;
   FEmpty := False;
-  if FSelected >= 0 then
+  // Nur Deklarationen (#471): sichtbar, aber nicht gewählt, solange niemand eine Pfeiltaste drückt.
+  FPassive := (FSelected >= 0) and (FItems[FOrder[FSelected]].Unknown <> '') and
+    ((SelectedIndex < 0) or (FOrder[FSelected] <> SelectedIndex));
+  if FPassive then
+    FView.ShowList(FItems, FOrder, -1, FPrefix)
+  else if FSelected >= 0 then
     FView.ShowList(FItems, FOrder, FSelected, FPrefix)
   else
   begin
@@ -531,6 +546,13 @@ end;
 
 procedure TAtlasCompletionController.MoveSelection(APosition: Integer; ADirection: Integer);
 begin
+  // Erste Pfeiltaste ohne Auswahl (#471): die erste Deklaration wählen.
+  if FPassive then
+  begin
+    FPassive := False;
+    FView.ShowList(FItems, FOrder, FSelected, FPrefix);
+    Exit;
+  end;
   // Überschriften (#419) werden übersprungen.
   APosition := FirstItemFrom(EnsureRange(APosition, 0, High(FOrder)), ADirection);
   if (APosition < 0) or (APosition = FSelected) then
@@ -567,7 +589,12 @@ begin
     TAtlasNavigationKey.Last:
       MoveSelection(High(FOrder), -1);
     TAtlasNavigationKey.Accept:
-      if SetMode then
+      if FPassive then
+      begin
+        Close;
+        Result := False;
+      end
+      else if SetMode then
         CommitSet
       else
         CommitSelected;
@@ -620,7 +647,7 @@ end;
 
 function TAtlasCompletionController.SelectedItem(out AItem: TAtlasCompletionItem): Boolean;
 begin
-  Result := GetVisible and (FSelected >= 0) and (FSelected < Length(FOrder));
+  Result := GetVisible and not FPassive and (FSelected >= 0) and (FSelected < Length(FOrder));
   if Result then
     AItem := FItems[FOrder[FSelected]]
   else

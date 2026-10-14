@@ -55,6 +55,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   System.Classes,
   System.SyncObjs,
   System.Generics.Collections;
@@ -150,7 +151,9 @@ begin
     Result.HasParameters := Data.GetValue('parameters') is TJSONTrue;
     Result.ExpectedType := Data.GetValue<string>('expected', '');
     Result.Fits := Data.GetValue('fits') is TJSONTrue;
-    Result.IsAction := Data.GetValue<string>('action', '') = 'create';
+    // Neue Methode (#444) und Deklarationen unbekannter Namen (#471) erzeugen Code und stehen am Ende.
+    Result.IsAction := MatchText(Data.GetValue<string>('action', ''), ['create', 'declare']);
+    Result.Unknown := Data.GetValue<string>('unknown', '');
     // Aufzählungen und Mengen (#448).
     Result.Ordinal := Data.GetValue<Integer>('ordinal', 0);
     Result.SetOf := Data.GetValue<string>('setOf', '');

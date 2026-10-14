@@ -128,6 +128,8 @@ type
     Pinned: Boolean;
     /// <summary>Zahl als Tag, etwa die fehlenden Werte (#449); 0 ohne.</summary>
     Count: Integer;
+    /// <summary>Deklariert diesen unbekannten Namen (#471): Gruppe „Name ist unbekannt“ am Ende der Liste.</summary>
+    Unknown: string;
     /// <summary>Zahl der Überladungen samt dieser (mindestens 1).</summary>
     function OverloadCount: Integer;
   end;

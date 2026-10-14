@@ -532,6 +532,12 @@ begin
   // Liste offen: alle Navigationstasten, die Leertaste nur im Mengenmodus (#448). Leerer Zustand (#423): nur Esc.
   if AKey = TAtlasNavigationKey.Toggle then
     Result := FController.Visible and FController.SetMode
+  // Nur Deklarationen eines unbekannten Namens, nichts gewählt (#471): Enter gehört dem Editor.
+  else if (AKey = TAtlasNavigationKey.Accept) and FController.Passive then
+  begin
+    FController.Close;
+    Result := False;
+  end
   else
     Result := FController.Visible or (FController.Empty and (AKey = TAtlasNavigationKey.Cancel));
 end;
