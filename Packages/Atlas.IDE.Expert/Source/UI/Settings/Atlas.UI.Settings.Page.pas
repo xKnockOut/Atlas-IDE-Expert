@@ -49,6 +49,7 @@ type
     FInactiveDim: TCheckBox;
     FPairGuides: TCheckBox;
     FProblems: TCheckBox;
+    FProblemsList: TCheckBox;
     FCheckOnSave: TCheckBox;
     FCheckDelay: TEdit;
     FCheckMax: TEdit;
@@ -167,6 +168,7 @@ begin
   FInactiveDim := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim));
   FPairGuides := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuides));
   FProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblems));
+  FProblemsList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsList));
   // Compilerprüfung nach dem Speichern (#548).
   FCheckOnSave := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCheckOnSave));
   FCheckDelay := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckDelay));
@@ -293,6 +295,7 @@ begin
   FInactiveDim.Checked := ASettings.InactiveDim;
   FPairGuides.Checked := ASettings.PairGuides;
   FProblems.Checked := ASettings.Problems;
+  FProblemsList.Checked := ASettings.ProblemsList;
   FCheckOnSave.Checked := ASettings.CheckOnSave;
   FCheckDelay.Text := IntToStr(ASettings.CheckOnSaveDelayMs);
   FCheckMax.Text := IntToStr(ASettings.CheckOnSaveMaxMs);
@@ -322,6 +325,7 @@ begin
   ASettings.InactiveDim := FInactiveDim.Checked;
   ASettings.PairGuides := FPairGuides.Checked;
   ASettings.Problems := FProblems.Checked;
+  ASettings.ProblemsList := FProblemsList.Checked;
   ASettings.CheckOnSave := FCheckOnSave.Checked;
   ASettings.CheckOnSaveDelayMs := StrToIntDef(FCheckDelay.Text, ASettings.CheckOnSaveDelayMs);
   ASettings.CheckOnSaveMaxMs := StrToIntDef(FCheckMax.Text, ASettings.CheckOnSaveMaxMs);

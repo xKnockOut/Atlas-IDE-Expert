@@ -4,7 +4,8 @@
 // je Problem eine Zeile mit Datei, Zeile und Spalte (Doppelklick springt hin).
 // Compilermeldungen stehen schon im Reiter „Build“ und fehlen hier. Neu
 // aufgebaut wird nur, wenn sich der Inhalt geändert hat; höchstens MaxEntries
-// Zeilen. Die Gruppe wird nicht nach vorn geholt.
+// Zeilen. Die Gruppe wird nicht nach vorn geholt. Ist die Liste abgeschaltet
+// (Problems oder ProblemsList aus), verschwindet der Reiter ganz.
 
 interface
 
@@ -22,7 +23,7 @@ type
   public
     /// <summary>Gruppe nach AStore aufbauen, falls sich etwas geändert hat.</summary>
     procedure Update(AStore: TAtlasProblemStore);
-    /// <summary>Gruppe leeren.</summary>
+    /// <summary>Gruppe entfernen (Liste abgeschaltet).</summary>
     procedure Clear;
   end;
 
@@ -125,7 +126,7 @@ begin
     Exit;
   Target := Group(Messages, False);
   if Target <> nil then
-    Messages.ClearMessageGroup(Target);
+    Messages.RemoveMessageGroup(Target);
 end;
 
 end.
