@@ -30,7 +30,7 @@
         <DCCReference Include="Source\Ref.Formulare.Suchrahmen.pas"/>
         <DCCReference Include="Source\Ref.Formulare.Haupt.pas"/>
         <DCCReference Include="Source\Ref.Sprache.Merkmale.pas"/>
-        <DCCReference Include="Source\Ref.Daten.Kunden.pas"/>
+        <DCCReference Include="Source\Ref.Daten.Suche.pas"/>
         <DCCReference Include="Source\Ref.Pruefung.Verstoesse.pas"/>
         <DCCReference Include="Source\Ref.Daten.Auftraege.pas"/>
         <DCCReference Include="Source\Ref.Daten.Verwendung.pas"/>

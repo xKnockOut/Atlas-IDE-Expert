@@ -156,6 +156,15 @@ begin
     '      "good": "var I: Integer;\nbegin\n  I := 0;\n  if Ok then\n    I := 1;\n  Writeln(I);\nend;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "unreachable-code",' + #10 +
+    '      "name": "Unreachable code",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "A statement after Exit, raise, Abort, Halt, Break, Continue or goto is never executed. Usually a leftover or a misplaced jump. Only the first statement of an unreachable section ' + 'is reported.",' + #10 +
+    '      "bad": "procedure Save;\nbegin\n  Exit;\n  Store;\nend;",' + #10 +
+    '      "good": "procedure Save;\nbegin\n  if not Ready then\n    Exit;\n  Store;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "unused-local",' + #10 +
     '      "name": "Unused local variable",' + #10 +
     '      "category": "code-smell",' + #10 +
@@ -714,6 +723,15 @@ begin
     '      "good": "if Done then\n  Exit;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "with-statement",' + #10 +
+    '      "name": "with statement",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "Inside a with block it is unclear which object an identifier belongs to, and a new member of the with object silently changes the meaning. Write the expression out or use a local' + ' variable.",' + #10 +
+    '      "bad": "with Customer do\n  Name := Edit.Text;",' + #10 +
+    '      "good": "Customer.Name := Edit.Text;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "component-palette-icon",' + #10 +
     '      "name": "Registered component without palette icon",' + #10 +
     '      "category": "code-smell",' + #10 +
@@ -816,6 +834,11 @@ begin
     '      "id": "possibly-uninitialized",' + #10 +
     '      "name": "Variable eventuell nicht initialisiert",' + #10 +
     '      "description": "Eine lokale Variable wird auf einem Pfad gelesen, auf dem ihr nie ein Wert zugewiesen wurde."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unreachable-code",' + #10 +
+    '      "name": "Unerreichbarer Code",' + #10 +
+    '      "description": "Eine Anweisung nach Exit, raise, Abort, Halt, Break, Continue oder goto wird nie ausgeführt. Meist ein Rest oder ein falsch gesetzter Sprung. Gemeldet wird nur die erste Anweisun' + 'g eines unerreichbaren Abschnitts."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "unused-local",' + #10 +
@@ -1126,6 +1149,11 @@ begin
     '      "id": "redundant-begin-end",' + #10 +
     '      "name": "begin … end um eine einzelne Anweisung",' + #10 +
     '      "description": "Ein begin … end-Block mit genau einer Anweisung kann entfallen. Standardmäßig aus."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "with-statement",' + #10 +
+    '      "name": "with-Anweisung",' + #10 +
+    '      "description": "In einem with-Block ist unklar, zu welchem Objekt ein Bezeichner gehört, und ein neues Mitglied des with-Objekts ändert still die Bedeutung. Den Ausdruck ausschreiben oder eine l' + 'okale Variable verwenden."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "component-palette-icon",' + #10 +

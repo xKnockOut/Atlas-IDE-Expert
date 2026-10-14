@@ -6,6 +6,7 @@
 //   raise-in-finally         raise in einem finally-Block überdeckt die laufende Ausnahme
 //   redundant-parens         Klammern um die ganze Bedingung bzw. rechte Seite (Standard aus)
 //   redundant-begin-end      begin/end um eine einzelne Anweisung (Standard aus)
+//   with-statement           with verdeckt, zu welchem Objekt ein Bezeichner gehört (#94)
 // Exit, Break und Continue aus einem finally-Block lehnt der Compiler selbst ab;
 // dafür gibt es keine eigene Regel.
 
@@ -41,6 +42,12 @@ type
   end;
 
   TRedundantBeginEndRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TWithStatementRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -492,6 +499,36 @@ begin
     VisitBlocks(AContext.Tree.Root, AContext.Tree.Tokens, AReport);
 end;
 
+{ TWithStatementRule }
+
+function TWithStatementRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('with-statement', TRuleSeverity.Hint, 'with-Anweisung');
+end;
+
+procedure VisitWith(ANode: TSyntaxNode; const ATokens: TTokens; const AReport: IRuleReport);
+var
+  Index, Keyword: Integer;
+begin
+  if ANode.Kind = TSyntaxKind.WithStatement then
+  begin
+    // Gemeldet wird das Schlüsselwort; die Aktion "with auflösen" liefert #50.
+    Keyword := TokenIndexAt(ATokens, ANode.StartPos);
+    if (Keyword >= 0) and ATokens[Keyword].IsKeyword('with') then
+      AReport.Add(RangeOf(ATokens, Keyword, Keyword),
+        'with verdeckt, zu welchem Objekt ein Bezeichner gehört; besser den Ausdruck ausschreiben',
+        TRuleConfidence.High);
+  end;
+  for Index := 0 to ANode.ChildCount - 1 do
+    VisitWith(ANode[Index], ATokens, AReport);
+end;
+
+procedure TWithStatementRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  if (AContext.Tree <> nil) and (AContext.Tree.Root <> nil) then
+    VisitWith(AContext.Tree.Root, AContext.Tree.Tokens, AReport);
+end;
+
 procedure RegisterStyleRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TBoolCompareRule.Create);
@@ -499,6 +536,7 @@ begin
   ARegistry.Register(TRaiseInFinallyRule.Create);
   ARegistry.Register(TRedundantParensRule.Create);
   ARegistry.Register(TRedundantBeginEndRule.Create);
+  ARegistry.Register(TWithStatementRule.Create);
 end;
 
 end.

@@ -21,6 +21,8 @@ type
     [Test]
     procedure PlannedIdsSkipComments;
     [Test]
+    procedure PlannedIdsNeedIssue;
+    [Test]
     procedure CompareFindsMissingAndFalseAlarms;
     [Test]
     procedure CompareSkipsPlannedAndRejectsUnknown;
@@ -76,6 +78,18 @@ begin
   Assert.AreEqual(2, Integer(Length(Ids)));
   Assert.AreEqual('empty-except', Ids[0]);
   Assert.AreEqual('with-statement', Ids[1]);
+end;
+
+procedure TGoldenCorpusTests.PlannedIdsNeedIssue;
+var
+  Ids: TArray<string>;
+begin
+  Ids := TGoldenCorpus.PlannedWithoutIssue('# Kopf #1'#10'possible-leak  # #56'#10'with-statement  # noch offen'#10 +
+    'unreachable-code'#10'format-args # #'#10);
+  Assert.AreEqual(3, Integer(Length(Ids)));
+  Assert.AreEqual('with-statement', Ids[0]);
+  Assert.AreEqual('unreachable-code', Ids[1]);
+  Assert.AreEqual('format-args', Ids[2]);
 end;
 
 procedure TGoldenCorpusTests.CompareFindsMissingAndFalseAlarms;
@@ -209,9 +223,12 @@ begin
   Known := [SyntaxRuleId];
   for Rule in Rules do
     Known := Known + [Rule.Descriptor.Id];
-  Planned := TGoldenCorpus.PlannedIds(TFile.ReadAllText(TPath.Combine(Folder, 'geplante-regeln.txt'),
-    TEncoding.UTF8));
+  Text := TFile.ReadAllText(TPath.Combine(Folder, 'geplante-regeln.txt'), TEncoding.UTF8);
+  Planned := TGoldenCorpus.PlannedIds(Text);
+  // Jede geplante ID gehört zu einem offenen Issue (#94).
   Problems := '';
+  for Line in TGoldenCorpus.PlannedWithoutIssue(Text) do
+    Problems := Problems + sLineBreak + Line + ' in geplante-regeln.txt nennt kein Issue';
   Texts := nil;
   Markers := 0;
   for FileName in TDirectory.GetFiles(TPath.Combine(Folder, 'Source'), '*.pas') do

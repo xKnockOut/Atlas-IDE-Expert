@@ -7,6 +7,7 @@ Server und Erweiterung tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Regeln `with-statement` (Hinweis) und `unreachable-code` (Warnung, erste Anweisung eines unerreichbaren Abschnitts); das Referenz-Testprojekt trennt FireDAC in das optionale Projekt `RefDaten` und wird über `Tools/Build-Referenzprojekt.ps1` für Win32 und Win64 gebaut (#94).
 - Postfix-Vorlagen in der Vervollständigung: `Liste.for`, `Obj.tryf`, `X.ifa`, `S.fmt`, nur bei passendem Typ; ohne Inline-Variablen mit Eintrag im `var`-Abschnitt (#188).
 - Schnellbefehle für Windows-API und DLLs: `/external`, `/exports` (nur in einer library), `/oscheck` und `/olecheck` (#321).
 - Schnellbefehle für Tasks: `/task` (VCL-Zeilen am Ende in TThread.Queue), `/parallel` (TParallel.For mit Prüfung auf Break, äußere Variablen und VCL), `/future` und `/atomic` (#322).

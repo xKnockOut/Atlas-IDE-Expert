@@ -1,0 +1,68 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{6BE89D6A-C5E5-49D0-86F4-7754496BBD27}</ProjectGuid>
+        <MainSource>RefDaten.dpr</MainSource>
+        <ProjectVersion>20.3</ProjectVersion>
+        <FrameworkType>VCL</FrameworkType>
+        <AppType>Application</AppType>
+        <Base>True</Base>
+        <Config Condition="'$(Config)'==''">Debug</Config>
+        <Platform Condition="'$(Platform)'==''">Win32</Platform>
+        <TargetedPlatforms>3</TargetedPlatforms>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Base)'!=''">
+        <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;$(DCC_Namespace)</DCC_Namespace>
+        <DCC_DcuOutput>.\Output\$(Platform)\$(Config)\Dcu</DCC_DcuOutput>
+        <DCC_ExeOutput>.\Output\$(Platform)\$(Config)\Bin</DCC_ExeOutput>
+        <DCC_BplOutput>.\Output\$(Platform)\$(Config)\Bin</DCC_BplOutput>
+        <DCC_DcpOutput>.\Output\$(Platform)\$(Config)\Dcp</DCC_DcpOutput>
+    </PropertyGroup>
+    <ItemGroup>
+        <DelphiCompile Include="$(MainSource)">
+            <MainSource>MainSource</MainSource>
+        </DelphiCompile>
+        <DCCReference Include="Source\Ref.Komponenten.Anzeige.pas"/>
+        <DCCReference Include="Source\Ref.Formulare.Basis.pas"/>
+        <DCCReference Include="Source\Ref.Formulare.Detail.pas"/>
+        <DCCReference Include="Source\Ref.Formulare.Suchrahmen.pas"/>
+        <DCCReference Include="Source\Ref.Formulare.Haupt.pas"/>
+        <DCCReference Include="Source\Ref.Sprache.Merkmale.pas"/>
+        <DCCReference Include="Source\Ref.Daten.Suche.pas"/>
+        <DCCReference Include="Source\Ref.Pruefung.Verstoesse.pas"/>
+        <DCCReference Include="Source\Ref.Daten.Auftraege.pas"/>
+        <DCCReference Include="Source\Ref.Daten.Verwendung.pas"/>
+        <DCCReference Include="Source\Ref.Daten.Kunden.pas"/>
+        <DCCReference Include="Source\Ref.Pruefung.Datenbank.pas"/>
+        <BuildConfiguration Include="Base">
+            <Key>Base</Key>
+        </BuildConfiguration>
+        <BuildConfiguration Include="Debug">
+            <Key>Cfg_1</Key>
+            <CfgParent>Base</CfgParent>
+        </BuildConfiguration>
+        <BuildConfiguration Include="Release">
+            <Key>Cfg_2</Key>
+            <CfgParent>Base</CfgParent>
+        </BuildConfiguration>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Delphi.Personality.12</Borland.Personality>
+        <Borland.ProjectType>Application</Borland.ProjectType>
+        <BorlandProject>
+            <Delphi.Personality>
+                <Source>
+                    <Source Name="MainSource">RefDaten.dpr</Source>
+                </Source>
+            </Delphi.Personality>
+            <Platforms>
+                <Platform value="Win32">True</Platform>
+                <Platform value="Win64">True</Platform>
+            </Platforms>
+        </BorlandProject>
+        <ProjectFileVersion>12</ProjectFileVersion>
+    </ProjectExtensions>
+    <Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
+</Project>

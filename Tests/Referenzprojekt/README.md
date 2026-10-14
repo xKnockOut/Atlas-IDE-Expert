@@ -8,19 +8,24 @@ Projektgruppe des Servers und wird von dessen Build nicht übersetzt.
 
 | Datei | Zweck |
 |---|---|
-| `RefGruppe.groupproj` | Projektgruppe mit allen drei Projekten |
+| `RefGruppe.groupproj` | Projektgruppe mit den drei Pflichtprojekten |
 | `RefRuntime.dpk` | Runtime-Package mit der Komponente |
 | `RefDesign.dpk` | Design-Time-Package, registriert die Komponente |
-| `RefApp.dpr` | VCL-Anwendung mit Formularen, Frame und Datenbankzugriff |
+| `RefApp.dpr` | VCL-Anwendung mit Formularen und Frame, ohne Datenbank-Units |
+| `RefDaten.dpr` | Optional: RefApp plus FireDAC-Zugriffe, nicht in `RefGruppe` |
+| `erwartete-meldungen.txt` | Gewollte Hinweise und Warnungen beim Übersetzen |
+| `geplante-regeln.txt` | Marker-IDs ohne Regel, je mit zuständigem Issue |
 | `Source/Ref.Komponenten.Anzeige.pas` | Komponente mit `published`-Properties samt `default`, `Notification`, `Paint` |
 | `Source/Ref.Komponenten.Registrierung.pas` | `Register` für das Design-Time-Package |
-| `Source/Ref.Formulare.Haupt.pas/.dfm` | Hauptformular |
+| `Source/Ref.Formulare.Haupt.pas/.dfm` | Hauptformular mit Kundenliste |
 | `Source/Ref.Formulare.Detail.pas/.dfm` | Von `TBasisFormular` geerbtes Formular (`inherited` in der DFM) |
 | `Source/Ref.Formulare.Basis.pas/.dfm` | Basisformular |
 | `Source/Ref.Formulare.Suchrahmen.pas/.dfm` | Frame |
 | `Source/Ref.Sprache.Merkmale.pas` | Generics, Interfaces, Class Helper, anonyme Methoden, Inline-Variablen, `{$IFDEF WIN32/WIN64}` |
-| `Source/Ref.Daten.Kunden.pas` | FireDAC-Zugriffe für die Framework-Profile |
+| `Source/Ref.Daten.Suche.pas` | Kundensuche ohne Datenbank; RefDaten meldet die FireDAC-Suche an |
+| `Source/Ref.Daten.Kunden.pas` | FireDAC-Zugriffe für die Framework-Profile (nur RefDaten) |
 | `Source/Ref.Pruefung.Verstoesse.pas` | Bewusst eingebaute Regelverstöße |
+| `Source/Ref.Pruefung.Datenbank.pas` | Bewusst eingebaute Verstöße mit FireDAC (nur RefDaten) |
 | `Source/Ref.Daten.Auftraege.pas` mit `.inc`, `.Rumpf.inc` | Deklarationen und Rümpfe aus Include-Dateien (#500) |
 | `Source/Ref.Daten.Verwendung.pas` | Nutzt die Typen aus der Include-Datei aus einer anderen Unit (#500) |
 
@@ -37,6 +42,24 @@ wird. Mehrere Regeln werden mit Komma getrennt. Zeilen mit
 `// KEIN-TREFFER: <regel-id>` sind Gegenbeispiele, auf denen die Regel
 nicht anschlagen darf. Ein Werkzeug für #152 kann so Treffer und
 Fehlalarme zählen, ohne Zeilennummern zu pflegen.
+
+## Marker-IDs und zuständige Regeln
+
+| Marker-ID | Stand |
+|---|---|
+| `result-not-set` | Regel im Katalog (#269) |
+| `unused-local` | Regel im Katalog (#91) |
+| `empty-except` | Regel im Katalog (#56) |
+| `for-high-to-low` | Regel im Katalog |
+| `self-assignment` | Regel im Katalog |
+| `security-sql-injection` | Regel im Katalog (#270), in `Ref.Pruefung.Datenbank` |
+| `with-statement` | Regel im Katalog (#94) |
+| `unreachable-code` | Regel im Katalog (#94) |
+| `possible-leak` | geplant, `geplante-regeln.txt`, Issue #56 |
+
+Jede ID steht im Regelkatalog oder in `geplante-regeln.txt` mit dem
+offenen Issue, das sie in den Katalog übernimmt. Eine ID ohne Issue lässt
+den Golden-Korpus-Test fehlschlagen.
 
 ## Regelqualität (#152)
 
@@ -59,8 +82,39 @@ Die Bewertung ist `richtig` oder `falsch`.
 ## Öffnen
 
 `RefGruppe.groupproj` in RAD Studio öffnen. Die `.dproj`-Dateien sind
-bewusst minimal; die IDE ergänzt sie beim ersten Speichern.
+bewusst minimal. Sie werden einmal in der IDE gespeichert und so
+eingecheckt; danach dürfen Öffnen und Speichern sie nicht mehr ändern.
 
-Die eingebauten Verstöße erzeugen beim Übersetzen absichtlich Hinweise
-(z. B. H2164 für die ungenutzte Variable). Die Regel „0 Hinweise“ gilt
-für den Server, nicht für dieses Projekt.
+## Bauen
+
+```powershell
+pwsh Tools/Build-Referenzprojekt.ps1            # RefGruppe, Win32 und Win64
+pwsh Tools/Build-Referenzprojekt.ps1 -MitDaten  # zusätzlich RefDaten (FireDAC)
+pwsh Tools/Build-Referenzprojekt.ps1 -Platforms Win32
+```
+
+Das Skript baut wie `Tools/Build-Test.ps1` (#260) über cc.ps1 in einer
+eigenen Scratch-IDE. Es scheitert,
+
+- wenn ein Build fehlschlägt,
+- wenn ein Hinweis oder eine Warnung kommt, die nicht in
+  `erwartete-meldungen.txt` steht, oder eine Zeile daraus je Plattform
+  nicht genau einmal kommt,
+- wenn die IDE eine `.dproj`- oder `.groupproj`-Datei geändert hat.
+
+Die eingebauten Verstöße erzeugen absichtlich Meldungen (W1035 für
+`OhneErgebnis`, H2164 für `Unbenutzt`). Die Regel „0 Hinweise“ gilt für
+Atlas, nicht für dieses Projekt.
+
+Delphi 12 (#281): sobald verfügbar, dasselbe Skript mit der IDE von
+Delphi 12 ausführen; `-CcStartArguments` reicht dafür Argumente an
+`cc.ps1 start` weiter.
+
+## FireDAC
+
+FireDAC gehört nicht zu jeder Edition von RAD Studio. Alles, was FireDAC
+braucht, steht deshalb im optionalen Projekt `RefDaten`, das nicht zum
+Pflicht-Build gehört: `Ref.Daten.Kunden` und `Ref.Pruefung.Datenbank`.
+`RefApp` sucht über `TKundenSuche` (`Ref.Daten.Suche`); ohne `RefDaten`
+bleibt die Liste leer. Die Prüfregeln sehen beide Units trotzdem, weil der
+Golden-Korpus-Test alle Units unter `Source` prüft.

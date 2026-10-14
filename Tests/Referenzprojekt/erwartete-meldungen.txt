@@ -1,0 +1,11 @@
+# Gewollte Hinweise und Warnungen beim Übersetzen des Referenzprojekts (#94).
+# Sie stammen aus den bewusst eingebauten Verstößen in Ref.Pruefung.Verstoesse;
+# die Regel "0 Hinweise" gilt für Atlas, nicht für dieses Projekt.
+#
+# Spalten: Datei, Code, Bezeichner, der in der Meldung in Hochkommas steht.
+# Tools/Build-Referenzprojekt.ps1 vergleicht das Build-Log je Plattform (Win32,
+# Win64) damit: Jede Zeile muss genau einmal vorkommen, jede andere Meldung
+# lässt den Build scheitern. Ändert sich ein Verstoß, diese Liste mit anpassen.
+
+Ref.Pruefung.Verstoesse.pas  W1035  OhneErgebnis   # Rückgabewert könnte undefiniert sein (result-not-set)
+Ref.Pruefung.Verstoesse.pas  H2164  Unbenutzt      # Variable deklariert, aber nie verwendet (unused-local)

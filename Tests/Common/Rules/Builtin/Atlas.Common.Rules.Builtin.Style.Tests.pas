@@ -35,6 +35,10 @@ type
     procedure RedundantBeginEndFix;
     [Test]
     procedure RedundantBeginEndKeepsDanglingElse;
+    [Test]
+    procedure WithStatementReported;
+    [Test]
+    procedure WithoutWithSilent;
   end;
 
 implementation
@@ -202,6 +206,25 @@ begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRedundantBeginEndRule.Create, InRoutine('  X: Integer;',
     '  if A then begin if B then X := 1; end else X := 2;'#10 +
     '  for X := 1 to 2 do begin Save; Load; end;'), BeginEndOn))));
+end;
+
+procedure TStyleRulesTests.WithStatementReported;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Verschachtelt: jedes with einzeln, markiert ist das Schlüsselwort.
+  Findings := TRuleAssert.Findings(TWithStatementRule.Create, InRoutine('  P: TPoint;',
+    '  with P do'#10'    with Q, R do'#10'      X := Y;'));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(6, Findings[0].Range.EndPos.Character);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+end;
+
+procedure TStyleRulesTests.WithoutWithSilent;
+begin
+  TRuleAssert.Silent(TWithStatementRule.Create, InRoutine('  P: TPoint;', '  P.X := P.Y; // with P do'));
 end;
 
 initialization
