@@ -774,16 +774,16 @@ begin
     Context.Configuration := 'Debug';
     Context.Platform := 'Win32';
     Context.Defines := ['DEBUG'];
-    Session.SetProjectContexts([Context]);
+    Assert.AreEqual(1, Integer(Length(Session.SetProjectContexts([Context]))), 'für initialize gemerkt');
     Session.Initialize;
     Assert.Contains(Initial, '"configuration":"Debug"');
     Assert.Contains(Initial, '"defines":["DEBUG"]');
     // Unverändert: nichts zu melden.
-    Session.SetProjectContexts([Context]);
+    Assert.AreEqual(0, Integer(Length(Session.SetProjectContexts([Context]))));
     Assert.AreEqual(0, Integer(Sent.Count));
     Context.Configuration := 'Release';
     Context.Platform := 'Win64';
-    Session.SetProjectContexts([Context]);
+    Assert.AreEqual(1, Integer(Length(Session.SetProjectContexts([Context]))), 'neu gemeldet');
     Session.SetProjectContexts([Context]);
     Assert.AreEqual(1, Integer(Sent.Count));
     Assert.AreEqual('Release/Win64', Sent[0]);

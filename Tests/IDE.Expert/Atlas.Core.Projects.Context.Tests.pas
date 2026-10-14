@@ -19,6 +19,10 @@ type
     procedure KeyChangesWithEveryField;
     [Test]
     procedure WritesJson;
+    [Test]
+    procedure InheritsReferencedParentValues;
+    [Test]
+    procedure DescribesForTheLog;
   end;
 
 implementation
@@ -97,6 +101,30 @@ begin
   finally
     Json.Free;
   end;
+end;
+
+procedure TAtlasProjectContextTests.InheritsReferencedParentValues;
+begin
+  Assert.AreEqual('DEBUG;FRAMEWORK_VCL;MSWINDOWS',
+    TAtlasProjectContext.Inherit('DEBUG;$(DCC_Define)', 'DCC_Define', 'FRAMEWORK_VCL;MSWINDOWS'));
+  // Groß-/Kleinschreibung wie bei MSBuild egal; leere Elternliste hinterlässt keinen leeren Eintrag.
+  Assert.AreEqual('DEBUG', TAtlasProjectContext.Inherit('DEBUG;$(dcc_define)', 'DCC_Define', ''));
+  // Ohne Verweis ersetzt der eigene Wert den geerbten.
+  Assert.AreEqual('RELEASE', TAtlasProjectContext.Inherit('RELEASE', 'DCC_Define', 'DEBUG'));
+  Assert.IsTrue(TAtlasProjectContext.RefersToItself('..\Lib;$(DCC_UnitSearchPath)', 'DCC_UnitSearchPath'));
+  Assert.IsFalse(TAtlasProjectContext.RefersToItself('$(BDS)\Lib', 'DCC_UnitSearchPath'));
+end;
+
+procedure TAtlasProjectContextTests.DescribesForTheLog;
+var
+  Context: TAtlasProjectContext;
+begin
+  Context := Sample;
+  Context.Source := TAtlasProjectContext.SourceConfiguration;
+  Assert.AreEqual('A.dproj Debug/Win32 (Konfiguration, BDS 23.0): Defines DEBUG; 1 Suchpfade, 2 Namespaces, ' +
+    '0 Bibliothekspfade', Context.Describe);
+  // Die Herkunft gehört nur ins Protokoll: Der Server bekommt deshalb nichts Neues.
+  Assert.AreEqual(Sample.Key, Context.Key);
 end;
 
 initialization

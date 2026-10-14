@@ -158,6 +158,7 @@ uses
   Atlas.Core.Problems.Contract,
   Winapi.Windows,
   Atlas.IDE.Editor.Buffer,
+  Atlas.Core.Projects.Context,
   Atlas.IDE.Projects.Context,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.IDE.Editor.WorkspaceEdit;
@@ -497,6 +498,8 @@ begin
 end;
 
 procedure TAtlasCodeInsightManager.RefreshContexts;
+var
+  Context: TAtlasProjectContext;
 begin
   // Open Tools API nur im Hauptthread.
   if (GetCurrentThreadId <> MainThreadID) or
@@ -504,7 +507,9 @@ begin
     Exit;
   FContextsChecked := GetTickCount;
   try
-    FSession.SetProjectContexts(TAtlasIdeProjectContext.Group);
+    // Mit Diagnose=1 prüfbar, ob die geerbten Optionen ankommen (#396).
+    for Context in FSession.SetProjectContexts(TAtlasIdeProjectContext.Group) do
+      Diagnose('Projektkontext: ' + Context.Describe);
   except
     on E: Exception do
       Diagnose('Projektkontext nicht gemeldet: ' + E.Message);

@@ -6,6 +6,13 @@
 // Werten, auch ungespeicherte Änderungen), Bibliothekspfade aus den
 // Bibliotheksoptionen der laufenden IDE (auch mit eigenem Profil -r) und ihre
 // Version. Nur im Hauptthread aufrufen.
+//
+// Ob GetValue(…, True) die geerbten Werte wirklich einsetzt, ist nur in der
+// IDE prüfbar. Deshalb: Steht danach noch $(DCC_Define) im Wert, setzt das
+// Plugin die Elternkonfigurationen selbst ein; fehlt die
+// Konfigurationsschnittstelle oder wirft sie, gelten die Projektoptionen
+// (IOTAProjectOptions.Values). Welcher Weg galt, steht in Source und mit
+// Diagnose=1 im Protokoll.
 
 interface
 
@@ -26,6 +33,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Variants,
   System.Win.Registry,
   Winapi.Windows;
 
@@ -44,6 +52,63 @@ begin
   Platformed := Result.PlatformConfiguration[APlatform];
   if Platformed <> nil then
     Result := Platformed;
+end;
+
+/// <summary>Wert mit geerbten Werten; AResolved wird True, wenn das Plugin $(AName) selbst einsetzen musste.</summary>
+function ConfigValue(const ABuild: IOTABuildConfiguration; const AName: string; ADepth: Integer;
+  var AResolved: Boolean): string;
+var
+  Parent: IOTABuildConfiguration;
+begin
+  Result := ABuild.GetValue(AName, True);
+  if not TAtlasProjectContext.RefersToItself(Result, AName) then
+    Exit;
+  Parent := ABuild.Parent;
+  if (Parent = nil) or (ADepth > 8) then
+    Result := TAtlasProjectContext.Inherit(Result, AName, '')
+  else
+    Result := TAtlasProjectContext.Inherit(Result, AName, ConfigValue(Parent, AName, ADepth + 1, AResolved));
+  AResolved := True;
+end;
+
+function OptionValue(const AProject: IOTAProject; const AName: string): string;
+begin
+  try
+    Result := TAtlasProjectContext.Inherit(VarToStr(AProject.ProjectOptions.Values[AName]), AName, '');
+  except
+    on Exception do
+      Result := '';
+  end;
+end;
+
+procedure ReadOptions(const AProject: IOTAProject; var AContext: TAtlasProjectContext);
+var
+  Build: IOTABuildConfiguration;
+  Resolved: Boolean;
+begin
+  Resolved := False;
+  try
+    Build := BuildConfiguration(AProject, AContext.Platform);
+    if Build <> nil then
+    begin
+      AContext.Defines := TAtlasProjectContext.List(ConfigValue(Build, 'DCC_Define', 0, Resolved));
+      AContext.SearchPaths := TAtlasProjectContext.List(ConfigValue(Build, 'DCC_UnitSearchPath', 0, Resolved));
+      AContext.Namespaces := TAtlasProjectContext.List(ConfigValue(Build, 'DCC_Namespace', 0, Resolved));
+      AContext.Source := TAtlasProjectContext.SourceConfiguration;
+      if Resolved then
+        AContext.Source := TAtlasProjectContext.SourceResolved;
+      Exit;
+    end;
+  except
+    on Exception do
+      ; // Ersatzweg unten.
+  end;
+  if AProject.ProjectOptions = nil then
+    Exit;
+  AContext.Defines := TAtlasProjectContext.List(OptionValue(AProject, 'DCC_Define'));
+  AContext.SearchPaths := TAtlasProjectContext.List(OptionValue(AProject, 'DCC_UnitSearchPath'));
+  AContext.Namespaces := TAtlasProjectContext.List(OptionValue(AProject, 'DCC_Namespace'));
+  AContext.Source := TAtlasProjectContext.SourceOptions;
 end;
 
 function LibraryPaths(const ABaseKey, APlatform: string): TArray<string>;
@@ -74,7 +139,6 @@ end;
 
 class function TAtlasIdeProjectContext.Read(const AProject: IOTAProject): TAtlasProjectContext;
 var
-  Build: IOTABuildConfiguration;
   BaseKey: string;
 begin
   Result := Default(TAtlasProjectContext);
@@ -86,13 +150,7 @@ begin
   Result.Platform := AProject.CurrentPlatform;
   BaseKey := BaseRegistryKey;
   Result.BdsVersion := TAtlasProjectContext.VersionOfRegistryKey(BaseKey);
-  Build := BuildConfiguration(AProject, Result.Platform);
-  if Build <> nil then
-  begin
-    Result.Defines := TAtlasProjectContext.List(Build.GetValue('DCC_Define', True));
-    Result.SearchPaths := TAtlasProjectContext.List(Build.GetValue('DCC_UnitSearchPath', True));
-    Result.Namespaces := TAtlasProjectContext.List(Build.GetValue('DCC_Namespace', True));
-  end;
+  ReadOptions(AProject, Result);
   Result.LibraryPaths := LibraryPaths(BaseKey, Result.Platform);
 end;
 
