@@ -3,7 +3,8 @@
 // Meldet den Code Insight-Manager, die Optionsseite "Atlas" (#227), die
 // Compile-Ereignisse (#527), den Einfrier-Wächter (#501), das Neuladen
 // extern geänderter Dateien (#536), die Befehlspalette (#502), die farbigen
-// Klammerpaare (#514) und das Atlas-Statusfeld (#591) beim Laden des
+// Klammerpaare (#514), das Atlas-Statusfeld (#591) und die Schnellschalter
+// (#604) beim Laden des
 // Packages an und beim Entladen in umgekehrter Reihenfolge wieder ab (ADR 0006).
 
 interface
@@ -16,6 +17,7 @@ uses
   Winapi.Windows,
   System.SysUtils,
   System.Classes,
+  System.Types,
   System.Win.Registry,
   System.JSON,
   ToolsAPI,
@@ -45,6 +47,7 @@ uses
   Atlas.Core.Status.Lines,
   Atlas.IDE.Status.Field,
   Atlas.IDE.Status.Lines,
+  Atlas.IDE.Settings.QuickToggles,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Diagnostics.TimeLimit,
@@ -71,6 +74,8 @@ var
   // Eigene Tasten für Vervollständigung und Parameter-Hint (#494); ohne Einstellung keine.
   CompletionKey: TAtlasIdeKeyBinding;
   SignatureKey: TAtlasIdeKeyBinding;
+  // Schnellschalter mit Fenster, Taste und Befehlen in der Palette (#604).
+  QuickToggles: TAtlasIdeQuickToggles;
 
 const
   // Ab dieser Dauer ein Hinweis im Meldungsfenster (#501).
@@ -92,6 +97,8 @@ begin
   if SignatureKey <> nil then
     SignatureKey.Rebind(Word(Settings.SignatureKey), Settings.SignatureKeyPriority,
       TAtlasStrings.Text(TAtlasTextId.SettingsSignatureKey));
+  if QuickToggles <> nil then
+    QuickToggles.Rebind;
 end;
 
 procedure ReportHang(const AHang: TAtlasHang);
@@ -233,6 +240,13 @@ begin
         StatusLines.Refresh;
     end;
   StatusField.OnOpenLog := OpenLog;
+  // Rechtsklick auf das Feld: Schnellschalter (#604).
+  StatusField.OnContext :=
+    procedure(APoint: TPoint)
+    begin
+      if QuickToggles <> nil then
+        QuickToggles.Show(APoint);
+    end;
   StatusField.OnRestart :=
     procedure
     begin
@@ -424,6 +438,18 @@ begin
         if Manager <> nil then
           Manager.OpenSignature;
       end);
+  if QuickToggles = nil then
+  begin
+    QuickToggles := TAtlasIdeQuickToggles.Create(nil);
+    QuickToggles.OnAnchor :=
+      function: TPoint
+      begin
+        if (StatusField = nil) or not StatusField.Anchor(Result) then
+          Result := Point(MaxInt, MaxInt);
+      end;
+    if Palette <> nil then
+      QuickToggles.RegisterCommands(Palette);
+  end;
   RebindKeys;
   // Geänderte Tastenkürzel sofort neu belegen; fremde Vervollständigung melden (#494).
   TAtlasIdeSettings.OnChanged :=
@@ -530,6 +556,7 @@ begin
   TAtlasGuard.OnWarning := nil;
   TAtlasIdeSettings.OnChanged := nil;
   TAtlasIdeKeys.UnwatchPackages;
+  FreeAndNil(QuickToggles);
   FreeAndNil(SignatureKey);
   FreeAndNil(CompletionKey);
   FreeAndNil(DirtyExport);

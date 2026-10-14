@@ -5,11 +5,14 @@
 // Werte (TAtlasJsonText); Kommentare, unbekannte Schlüssel und Reihenfolge
 // bleiben. Die Datei behält ihr BOM; neue Dateien entstehen ohne BOM wie bei
 // VS Code. Der Server liest die Datei über den Dateibeobachter neu ein.
+// Die Schnellschalter (#604) lesen und setzen einzelne Werte über
+// ReadProject und WriteValue.
 
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  System.JSON;
 
 type
   TAtlasProjectSettings = class
@@ -18,6 +21,14 @@ type
     class function SettingsFile: string; static;
     /// <summary>Dialog zeigen und Änderungen schreiben.</summary>
     class procedure Execute; static;
+    /// <summary>Inhalt der Datei als Text (ohne BOM); '' wenn es sie nicht gibt.</summary>
+    class function ReadText(const AFileName: string; out AHasBom: Boolean): string; static;
+    /// <summary>atlas.json des aktiven Projekts als Objekt; nil ohne Projekt, ohne Datei oder bei ungültigem
+    /// Inhalt. Der Aufrufer gibt es frei.</summary>
+    class function ReadProject: TJSONObject; static;
+    /// <summary>Setzt APath in atlas.json des aktiven Projekts auf AJson; Kommentare, Reihenfolge und BOM
+    /// bleiben. False ohne Projekt.</summary>
+    class function WriteValue(const APath, AJson: string): Boolean; static;
   end;
 
 implementation
@@ -25,7 +36,6 @@ implementation
 uses
   Winapi.Windows,
   System.IOUtils,
-  System.JSON,
   System.Generics.Collections,
   Vcl.Forms,
   Vcl.Controls,
@@ -51,6 +61,49 @@ begin
     Result := TPath.Combine(ExtractFileDir(Project.FileName), 'atlas.json');
 end;
 
+class function TAtlasProjectSettings.ReadText(const AFileName: string; out AHasBom: Boolean): string;
+var
+  Bytes: TBytes;
+begin
+  Result := '';
+  AHasBom := False;
+  if (AFileName = '') or not TFile.Exists(AFileName) then
+    Exit;
+  Bytes := TFile.ReadAllBytes(AFileName);
+  AHasBom := (Length(Bytes) >= 3) and (Bytes[0] = $EF) and (Bytes[1] = $BB) and (Bytes[2] = $BF);
+  if AHasBom then
+    Result := TEncoding.UTF8.GetString(Bytes, 3, Length(Bytes) - 3)
+  else
+    Result := TEncoding.UTF8.GetString(Bytes);
+end;
+
+class function TAtlasProjectSettings.ReadProject: TJSONObject;
+var
+  HasBom: Boolean;
+begin
+  Result := TAtlasJsonText.Parse(ReadText(SettingsFile, HasBom));
+end;
+
+class function TAtlasProjectSettings.WriteValue(const APath, AJson: string): Boolean;
+var
+  FileName, Text, NewText: string;
+  HasBom: Boolean;
+  Bytes: TBytes;
+begin
+  FileName := SettingsFile;
+  Result := FileName <> '';
+  if not Result then
+    Exit;
+  Text := ReadText(FileName, HasBom);
+  NewText := TAtlasJsonText.SetValue(Text, APath, AJson);
+  if NewText = Text then
+    Exit;
+  Bytes := TEncoding.UTF8.GetBytes(NewText);
+  if HasBom then
+    Bytes := TEncoding.UTF8.GetPreamble + Bytes;
+  TFile.WriteAllBytes(FileName, Bytes);
+end;
+
 class procedure TAtlasProjectSettings.Execute;
 var
   FileName, Text, NewText: string;
@@ -69,17 +122,7 @@ begin
       PChar(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsTitle)), MB_ICONINFORMATION or MB_OK);
     Exit;
   end;
-  Text := '';
-  HasBom := False;
-  if TFile.Exists(FileName) then
-  begin
-    Bytes := TFile.ReadAllBytes(FileName);
-    HasBom := (Length(Bytes) >= 3) and (Bytes[0] = $EF) and (Bytes[1] = $BB) and (Bytes[2] = $BF);
-    if HasBom then
-      Text := TEncoding.UTF8.GetString(Bytes, 3, Length(Bytes) - 3)
-    else
-      Text := TEncoding.UTF8.GetString(Bytes);
-  end;
+  Text := ReadText(FileName, HasBom);
   Root := TAtlasJsonText.Parse(Text);
   try
     if (Root = nil) and (Trim(Text) <> '') then

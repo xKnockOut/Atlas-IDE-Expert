@@ -47,7 +47,10 @@ type
     SettingsProviderTimeLimit, SettingsFuseTitle, SettingsFuseNone, SettingsFuseEnableSelected, SettingsFuseEnableAll,
     CompletionLimited, SettingsIndexUsages, SettingsMemoryBudget, SettingsIndexTitle, SettingsIndexRefresh, SettingsIndexRebuild, SettingsIndexClear, SettingsIndexClearConfirm,
     HidesDeclaration,
-    StatusOpenLog, StatusRestartServer, SettingsStatusField, SettingsStatusSummary, SettingsStatusHidden);
+    StatusOpenLog, StatusRestartServer, SettingsStatusField, SettingsStatusSummary, SettingsStatusHidden,
+    QuickTogglesTitle, QuickTogglesAllOff, QuickTogglesAllOn, QuickTogglesProject, QuickTogglesSession,
+    QuickTogglesAllOffActive, QuickToggleAskText, QuickToggleAskSession, QuickToggleAskProject, QuickTogglePalette,
+    QuickTogglePaletteHint, QuickTogglePaletteOpen, SettingsQuickToggleKey, QuickToggleWriteFailed);
 
   TAtlasStrings = class
   private class var
@@ -180,7 +183,21 @@ const
      'Server neu starten',
      'Atlas-Feld in der Statusleiste des Editors',
      'Kurztext neben „Atlas“ zeigen',
-     'Ausgeblendete Zeilen (Kennungen):'),
+     'Ausgeblendete Zeilen (Kennungen):',
+     'Schnellschalter',
+     'Alles aus für diese Sitzung',
+     'Alles wieder an',
+     'Projekt',
+     'Sitzung',
+     'Zeichnungen für diese Sitzung aus',
+     '„%s“ ist in atlas.json des Projekts gesetzt. Wo soll die Änderung gelten?',
+     'Nur für diese Sitzung',
+     'Im Projekt (atlas.json)',
+     '%s ein/aus',
+     'Schnellschalter wie im Fenster über dem Statusfeld',
+     'Schnellschalter öffnen',
+     'Schnellschalter',
+     'atlas.json konnte nicht geschrieben werden: %s'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -290,7 +307,21 @@ const
      'Restart server',
      'Atlas field in the editor status bar',
      'Show short text next to "Atlas"',
-     'Hidden lines (ids):'));
+     'Hidden lines (ids):',
+     'Quick switches',
+     'All off for this session',
+     'Turn everything back on',
+     'Project',
+     'Session',
+     'Drawings off for this session',
+     '"%s" is set in the project''s atlas.json. Where should the change apply?',
+     'For this session only',
+     'In the project (atlas.json)',
+     '%s on/off',
+     'Quick switch as in the window above the status field',
+     'Open quick switches',
+     'Quick switches',
+     'Could not write atlas.json: %s'));
 
 { TAtlasStrings }
 
