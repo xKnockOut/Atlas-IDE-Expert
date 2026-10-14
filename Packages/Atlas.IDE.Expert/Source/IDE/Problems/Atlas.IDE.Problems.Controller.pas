@@ -435,6 +435,9 @@ procedure TAtlasProblemsController.EnsureWorkers(ASession: TLspSession);
 begin
   if (FWorkerSession <> nil) and (FWorkerSession <> ASession) then
     StopWorkers(False);
+  // Neue Sitzung, etwa nach einem Serverneustart (#393): Diagnosen aller Dateien neu holen.
+  if FWorkerSession <> ASession then
+    FPulled.Clear;
   if FDocuments = nil then
     FDocuments := TDocumentWorker.Create(ASession, DeliverDocument, FLog);
   if FWorkspace = nil then

@@ -317,12 +317,18 @@ end;
 function TAtlasCodeInsightManager.EnsureSession: Boolean;
 var
   Path, Arguments: string;
+  Documents: TArray<TLspOpenDocument>;
 begin
   if (FServer <> nil) and FServer.Running and (FSession <> nil) and FSession.Initialized then
   begin
     RefreshProjects;
     Exit(True);
   end;
+  // Abgestürzter oder hängender Server: Was die alte Sitzung abgeglichen hatte, bekommt
+  // der neue Server sofort wieder, nicht erst bei der nächsten Anfrage je Datei (#393).
+  Documents := nil;
+  if FSession <> nil then
+    Documents := FSession.OpenDocuments;
   StopSession;
   Path := ServerPath(Arguments);
   Diagnose('Starte Server: ' + Path);
@@ -337,6 +343,11 @@ begin
     FSession.SetProjects(GroupProjects);
     FProjectsChecked := GetTickCount;
     FSession.Initialize;
+    if Documents <> nil then
+    begin
+      FSession.Reopen(Documents);
+      Diagnose(Format('Nach Neustart erneut geöffnet: %d Dateien', [Length(Documents)]));
+    end;
     FLastError := '';
     Result := True;
   except

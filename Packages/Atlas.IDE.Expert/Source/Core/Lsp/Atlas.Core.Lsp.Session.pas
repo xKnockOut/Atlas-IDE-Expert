@@ -12,6 +12,8 @@
 // Projektgruppe (#648): SetProjects vor Initialize schickt die Projekte als
 // workspaceFolders (uri ist die .dproj, aktives Projekt zuerst); danach meldet
 // es Änderungen als workspace/didChangeWorkspaceFolders.
+// Serverneustart (#393): OpenDocuments der alten Sitzung, Reopen in der neuen
+// schickt sie sofort wieder als didOpen.
 
 interface
 
@@ -61,6 +63,12 @@ type
     ['{6B0C1E57-3A44-4E0B-9A63-2F7A5C0D8E11}']
     function Count: Integer;
     procedure Signal;
+  end;
+
+  /// <summary>Abgeglichenes Dokument mit dem zuletzt geschickten Text (#393).</summary>
+  TLspOpenDocument = record
+    FileName: string;
+    Text: string;
   end;
 
   TLspSession = class
@@ -141,6 +149,12 @@ type
     function SyncedFiles: TArray<string>;
     /// <summary>Zuletzt geschickter Text einer Datei (Hauptthread).</summary>
     function SyncedText(const AFileName: string; out AText: string): Boolean;
+    /// <summary>Alle abgeglichenen Dokumente mit Text, etwa um sie nach einem Serverneustart
+    /// erneut zu öffnen (#393). Hauptthread.</summary>
+    function OpenDocuments: TArray<TLspOpenDocument>;
+    /// <summary>Öffnet die Dokumente einer früheren Sitzung (didOpen, Version 1); schon
+    /// abgeglichene bleiben unverändert. Erst nach Initialize aufrufen (#393).</summary>
+    procedure Reopen(const ADocuments: TArray<TLspOpenDocument>);
     /// <summary>Anzahl der workspace/diagnostic/refresh-Anfragen des Servers.</summary>
     function RefreshCount: Integer;
     /// <summary>Laufende Indizierung o. Ä. des Servers ("Index 45 %"); '' ohne (#492).</summary>
@@ -587,6 +601,29 @@ begin
     AText := State.Text
   else
     AText := '';
+end;
+
+function TLspSession.OpenDocuments: TArray<TLspOpenDocument>;
+var
+  State: TDocumentState;
+  Document: TLspOpenDocument;
+begin
+  Result := nil;
+  for State in FDocuments.Values do
+  begin
+    Document.FileName := State.FileName;
+    Document.Text := State.Text;
+    Result := Result + [Document];
+  end;
+end;
+
+procedure TLspSession.Reopen(const ADocuments: TArray<TLspOpenDocument>);
+var
+  Document: TLspOpenDocument;
+begin
+  for Document in ADocuments do
+    if not FDocuments.ContainsKey(AnsiLowerCase(Document.FileName)) then
+      Sync(Document.FileName, Document.Text);
 end;
 
 function TLspSession.ProgressText: string;
