@@ -50,6 +50,8 @@ type
     class function DisplayLine(const ALine: string; ATabWidth: Integer): string; static;
     /// <summary>True, wenn der Textlauf ARun ab der 1-basierten Spalte AColumn in ADisplayLine steht.</summary>
     class function RunMatches(const ADisplayLine, ARun: string; AColumn: Integer): Boolean; static;
+    /// <summary>Zeichenindex (0-basiert) in ALine als 1-basierte Editorspalte, Tabs aufgelöst.</summary>
+    class function ColumnOf(const ALine: string; ACharacter, ATabWidth: Integer): Integer; static;
   end;
 
 implementation
@@ -201,6 +203,18 @@ end;
 class function TAtlasPairs.RunMatches(const ADisplayLine, ARun: string; AColumn: Integer): Boolean;
 begin
   Result := (ARun <> '') and (AColumn >= 1) and (Copy(ADisplayLine, AColumn, Length(ARun)) = ARun);
+end;
+
+class function TAtlasPairs.ColumnOf(const ALine: string; ACharacter, ATabWidth: Integer): Integer;
+var
+  Index: Integer;
+begin
+  Result := 1;
+  for Index := 1 to ACharacter do
+    if (Index <= Length(ALine)) and (ALine[Index] = #9) and (ATabWidth > 0) then
+      Result := ((Result - 1) div ATabWidth + 1) * ATabWidth + 1
+    else
+      Inc(Result);
 end;
 
 class function TAtlasPairs.Analyze(const AText: string): TArray<TAtlasPairToken>;

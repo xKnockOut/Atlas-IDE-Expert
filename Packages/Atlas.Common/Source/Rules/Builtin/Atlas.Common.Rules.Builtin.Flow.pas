@@ -4,6 +4,9 @@
 //   result-not-set            Funktion kann enden, ohne Result zu setzen (wie W1035)
 //   possibly-uninitialized    lokale Variable wird möglicherweise vor der ersten
 //                             Zuweisung gelesen (wie W1036)
+//   unreachable-code          Anweisung nach Exit, raise, Abort, goto … wird nie
+//                             ausgeführt (#94); gemeldet wird nur die erste
+//                             Anweisung eines unerreichbaren Abschnitts
 //
 // Was der Graph nicht sieht, macht die Variable "unbekannt" und erzeugt keinen
 // Treffer: Übergabe als Argument (var/out-Parameter, SetLength, FillChar,
@@ -33,6 +36,12 @@ type
   end;
 
   TPossiblyUninitializedRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TUnreachableCodeRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -183,12 +192,15 @@ var
   Routines: TArray<TSyntaxNode>;
   Routine, Header, Block: TSyntaxNode;
   Graph: TControlFlowGraph;
+  Lookup: TFlowSignatureLookup;
   Name: string;
 begin
   if AContext.Tree = nil then
     Exit;
   Routines := nil;
   CollectRoutines(AContext.Tree.Root, Routines);
+  // Signaturen der Datei einmal je Prüfung lesen, nicht je Routine (#143).
+  Lookup := TFlowSignatures.FromTree(AContext.Tree.Root);
   for Routine in Routines do
   begin
     Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
@@ -199,7 +211,7 @@ begin
     Name := ShortName(Routine.Name);
     if HasOpaqueUse(Block, 'Result') or HasOpaqueUse(Block, Name) or ContainsKind(Block, TSyntaxKind.InheritedExpr) then
       Continue;
-    Graph := TControlFlowGraph.Build(Routine);
+    Graph := TControlFlowGraph.Build(Routine, Lookup);
     try
       // Alte Schreibweise: Zuweisung an den Funktionsnamen setzt ebenfalls das Ergebnis.
       if (Graph.MayEndWithout('Result') = TFlowAnswer.Yes) and (Graph.MayEndWithout(Name) = TFlowAnswer.Yes) then
@@ -225,6 +237,7 @@ var
   Routines: TArray<TSyntaxNode>;
   Routine, Block, Section, Decl, TypeNode: TSyntaxNode;
   Graph: TControlFlowGraph;
+  Lookup: TFlowSignatureLookup;
   Index, Inner: Integer;
   Name, TypeName: string;
   Confidence: TRuleConfidence;
@@ -270,6 +283,8 @@ begin
     Exit;
   Routines := nil;
   CollectRoutines(AContext.Tree.Root, Routines);
+  // Signaturen der Datei einmal je Prüfung lesen, nicht je Routine (#143).
+  Lookup := TFlowSignatures.FromTree(AContext.Tree.Root);
   for Routine in Routines do
   begin
     Block := Routine.FindChild(TSyntaxKind.Block);
@@ -300,7 +315,7 @@ begin
             if HasOpaqueUse(Block, Name.Trim) then
               Continue;
             if Graph = nil then
-              Graph := TControlFlowGraph.Build(Routine);
+              Graph := TControlFlowGraph.Build(Routine, Lookup);
             if not Graph.Complete then
               Break;
             Reported := False;
@@ -314,10 +329,127 @@ begin
   end;
 end;
 
+{ TUnreachableCodeRule }
+
+function TUnreachableCodeRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('unreachable-code', TRuleSeverity.Warning, 'Anweisung wird nie ausgeführt');
+end;
+
+/// <summary>Bereich der ersten Zeile von ANode; mehrzeilige Anweisungen werden nicht ganz markiert.</summary>
+function FirstLineRange(const AContext: TRuleContext; ANode: TSyntaxNode): TTextRange;
+var
+  Token: TPascalToken;
+  Last: TTextPosition;
+begin
+  Last := ANode.EndPos;
+  if Last.Line <> ANode.StartPos.Line then
+  begin
+    Last := ANode.StartPos;
+    for Token in AContext.Tree.Tokens do
+    begin
+      if Token.Offset >= ANode.EndOffset then
+        Break;
+      if (Token.Offset >= ANode.StartOffset) and (Token.StartPos.Line = ANode.StartPos.Line) and
+        (Token.Kind <> TPascalTokenKind.Comment) then
+        Last := Token.EndPos;
+    end;
+  end;
+  Result := TTextRange.Create(ANode.StartPos, Last);
+end;
+
+procedure TUnreachableCodeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Routines: TArray<TSyntaxNode>;
+  Dead: TArray<TSyntaxNode>;
+  Routine: TSyntaxNode;
+  Graph: TControlFlowGraph;
+  Lookup: TFlowSignatureLookup;
+  Unreachable: TArray<TFlowNode>;
+  Node: TFlowNode;
+
+  function IsDead(ANode: TSyntaxNode): Boolean;
+  var
+    Item: TSyntaxNode;
+  begin
+    for Item in Dead do
+      if Item = ANode then
+        Exit(True);
+    Result := False;
+  end;
+
+  function HasDead(ANode: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+  begin
+    if IsDead(ANode) then
+      Exit(True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      if HasDead(ANode[Index]) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Erste Anweisung eines unerreichbaren Abschnitts: nicht in einer anderen
+  // unerreichbaren Anweisung enthalten, und davor steht (auf der ersten Ebene,
+  // die einen Vorgänger hat) erreichbarer Code.
+  function StartsDeadRun(AStatement: TSyntaxNode): Boolean;
+  var
+    Current, Parent: TSyntaxNode;
+    Index: Integer;
+  begin
+    Current := AStatement.Parent;
+    while (Current <> nil) and (Current <> Routine) do
+    begin
+      if IsDead(Current) then
+        Exit(False);
+      Current := Current.Parent;
+    end;
+    Current := AStatement;
+    while (Current <> Routine) and (Current.Parent <> nil) do
+    begin
+      Parent := Current.Parent;
+      for Index := 1 to Parent.ChildCount - 1 do
+        if Parent[Index] = Current then
+          Exit(not HasDead(Parent[Index - 1]));
+      Current := Parent;
+    end;
+    Result := True;
+  end;
+
+begin
+  if AContext.Tree = nil then
+    Exit;
+  Routines := nil;
+  CollectRoutines(AContext.Tree.Root, Routines);
+  // Signaturen der Datei einmal je Prüfung lesen, nicht je Routine (#143).
+  Lookup := TFlowSignatures.FromTree(AContext.Tree.Root);
+  for Routine in Routines do
+  begin
+    Graph := TControlFlowGraph.Build(Routine, Lookup);
+    try
+      if not Graph.Complete then
+        Continue;
+      Unreachable := Graph.UnreachableStatements;
+      Dead := nil;
+      for Node in Unreachable do
+        if Node.Syntax <> nil then
+          Dead := Dead + [Node.Syntax];
+      for Node in Unreachable do
+        if (Node.Syntax <> nil) and StartsDeadRun(Node.Syntax) then
+          AReport.Add(FirstLineRange(AContext, Node.Syntax), 'Diese Anweisung wird nie ausgeführt',
+            TRuleConfidence.High);
+    finally
+      Graph.Free;
+    end;
+  end;
+end;
+
 procedure RegisterFlowRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TResultNotSetRule.Create);
   ARegistry.Register(TPossiblyUninitializedRule.Create);
+  ARegistry.Register(TUnreachableCodeRule.Create);
 end;
 
 end.

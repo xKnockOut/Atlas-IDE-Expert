@@ -14,6 +14,13 @@
 // alten Builder erst frei, wenn ihn niemand mehr nutzt. So warten Hover und
 // Vervollständigung nicht hintereinander auf das Parsen anderer Anfragen.
 //
+// Ein beschädigter Cache (falsche Prüfsumme, abgeschnitten, andere
+// Formatversion, #492) wird nur über OnCacheRejected gemeldet; der Aufbau
+// liest dann alles neu und schreibt den Cache wieder, ohne Meldung an den
+// Benutzer. UsagesOf liefert die Verwendungen einer Unit auch dann, wenn sie
+// wegen des Speicherbudgets ausgelagert sind: aus dem Cache, sonst aus der
+// Datei.
+//
 // Stufen (#648): Projektdateien, dann alle Units der Suchpfade, dann die
 // Bibliothek. Mit einem gemeinsamen TIndexScheduler laufen die Aufbauten
 // mehrerer Projekte nacheinander und stufenweise.
@@ -57,7 +64,12 @@ type
     CacheBusy: TFunc<Boolean>;
     /// <summary>Höchstens so lange auf die andere Instanz warten, in ms.</summary>
     CacheWaitMs: Integer;
+    /// <summary>Verwendungen der Bezeichner in Projekt-Units erfassen (#492, index.usages).</summary>
+    Usages: Boolean;
   end;
+
+  /// <summary>Cache-Datei verworfen; AReason z. B. "Prüfsumme stimmt nicht" (#492).</summary>
+  TIndexCacheRejectedEvent = reference to procedure(const AFileName, AReason: string);
 
   TIndexFinishedEvent = reference to procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64);
   TIndexErrorEvent = reference to procedure(const AError: Exception);
@@ -79,7 +91,11 @@ type
     FOnProjectReady: TIndexFinishedEvent;
     FOnError: TIndexErrorEvent;
     FScheduler: TIndexScheduler;
+    FOnCacheRejected: TIndexCacheRejectedEvent;
+    /// <summary>Cache-Datei des letzten Aufbaus; nur unter FLock.</summary>
+    FCacheFile: string;
     procedure Run(const ARequest: TIndexRequest);
+    function ReadCache(const AFileName: string): TArray<TIndexCacheEntry>;
     /// <summary>Schreibt Projekt- und Bibliotheks-Cache; AParsed = seit dem letzten Schreiben neu gelesene Units.</summary>
     procedure WriteCaches(const ARequest: TIndexRequest; const ACached, ALibraryCached: TArray<TIndexCacheEntry>;
       AParsed: Integer);
@@ -102,7 +118,11 @@ type
     function ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
     /// <summary>Ungespeicherter Text einer Unit nach der Tipp-Pause (#492).</summary>
     function ApplyText(const AFileName, AText: string): Boolean;
+    /// <summary>Verwendungen der Bezeichner in AFileName (#492): aus dem Speicher, bei ausgelagerten aus dem
+    /// Cache, sonst frisch aus der Datei. False, wenn die Unit nicht im Index ist oder keine erfasst wurden.</summary>
+    function UsagesOf(const AFileName: string; out AUsages: TArray<TIndexUsage>): Boolean;
     property Index: ISymbolIndex read FIndex;
+    property OnCacheRejected: TIndexCacheRejectedEvent read FOnCacheRejected write FOnCacheRejected;
     property OnProgress: TIndexProgressEvent read FOnProgress write FOnProgress;
     property OnFinished: TIndexFinishedEvent read FOnFinished write FOnFinished;
     /// <summary>Projektstufe fertig (Projektdateien und über uses erreichbare Units), Cache geschrieben;
@@ -242,11 +262,23 @@ begin
     FFileSystem.WriteBytes(ARequest.LibraryCacheFile, TIndexCache.Serialize(LibraryUnits));
 end;
 
+function TIndexService.ReadCache(const AFileName: string): TArray<TIndexCacheEntry>;
+var
+  Data: TBytes;
+  Reason: string;
+begin
+  Result := nil;
+  if (AFileName = '') or not FFileSystem.ReadBytes(AFileName, Data) then
+    Exit;
+  Result := TIndexCache.ReadEntries(Data, Reason);
+  if (Reason <> '') and Assigned(FOnCacheRejected) then
+    FOnCacheRejected(AFileName, Reason);
+end;
+
 procedure TIndexService.Run(const ARequest: TIndexRequest);
 var
   Builder: TIndexBuilder;
   Cached, LibraryCached: TArray<TIndexCacheEntry>;
-  Data: TBytes;
   Watch: TStopwatch;
   BuildResult: TIndexBuildResult;
   Turn: IIndexTurn;
@@ -261,15 +293,19 @@ begin
     Builder.IncludePaths := ARequest.IncludePaths;
     Builder.LibraryRoots := ARequest.LibraryRoots;
     Builder.LibraryDefines := ARequest.LibraryDefines;
+    Builder.Usages := ARequest.Usages;
     WaitForOtherWriter(ARequest);
-    Cached := nil;
-    LibraryCached := nil;
+    TMonitor.Enter(FLock);
+    try
+      FCacheFile := ARequest.CacheFile;
+    finally
+      TMonitor.Exit(FLock);
+    end;
     // Nur die Köpfe lesen; die Symbole dekodiert der Builder je Unit, wenn er sie übernimmt (#617).
-    if (ARequest.CacheFile <> '') and FFileSystem.ReadBytes(ARequest.CacheFile, Data) then
-      Cached := TIndexCache.ReadEntries(Data);
+    // Ein beschädigter Cache liefert nichts: Dann liest der Aufbau alles neu (#492).
+    Cached := ReadCache(ARequest.CacheFile);
     // Bibliothek aus dem gemeinsamen Cache; Einträge im Projekt-Cache (ältere Stände) gelten weiter.
-    if (ARequest.LibraryCacheFile <> '') and FFileSystem.ReadBytes(ARequest.LibraryCacheFile, Data) then
-      LibraryCached := TIndexCache.ReadEntries(Data);
+    LibraryCached := ReadCache(ARequest.LibraryCacheFile);
     Builder.UseCache(LibraryCached + Cached);
     // Erst mit gefülltem Cache veröffentlichen; bis dahin bedient der alte Builder EnsureUnit.
     ReplaceBuilder(Builder);
@@ -417,6 +453,43 @@ begin
     finally
       TMonitor.Exit(FApplyLock);
     end;
+  finally
+    ReleaseBuilder;
+  end;
+end;
+
+function TIndexService.UsagesOf(const AFileName: string; out AUsages: TArray<TIndexUsage>): Boolean;
+var
+  Existing: TUnitIndex;
+  CacheFile: string;
+  Entry: TIndexCacheEntry;
+  Builder: TIndexBuilder;
+begin
+  AUsages := nil;
+  if not FIndex.FindFile(AFileName, Existing) or not Existing.UsagesIndexed then
+    Exit(False);
+  if not Existing.UsagesOffloaded then
+  begin
+    AUsages := Existing.Usages;
+    Exit(True);
+  end;
+  // Ausgelagert: aus dem Cache, wenn er denselben Stand der Unit hat.
+  TMonitor.Enter(FLock);
+  try
+    CacheFile := FCacheFile;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  for Entry in ReadCache(CacheFile) do
+    if SameText(Entry.Header.FileName, AFileName) and (Entry.Header.Hash = Existing.Hash) and
+      Entry.Header.UsagesIndexed then
+      Exit(TIndexCache.ExpandUsages(Entry, AUsages));
+  // Noch nicht geschrieben (neu eingelesen): aus der Datei.
+  Builder := AcquireBuilder;
+  if Builder = nil then
+    Exit(False);
+  try
+    Result := Builder.ReadUsages(AFileName, AUsages);
   finally
     ReleaseBuilder;
   end;

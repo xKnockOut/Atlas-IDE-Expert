@@ -16,6 +16,8 @@ type
     [Test]
     procedure ReadsTextEditOfPostfixItems;
     [Test]
+    procedure ReadsScopeUnitAndHiddenNames;
+    [Test]
     procedure ReadsItemArrayAndNull;
     [Test]
     procedure PartialItemsContinueRank;
@@ -223,6 +225,30 @@ begin
   Assert.IsFalse(Items[1].HasTextEdit);
 end;
 
+procedure TAtlasCompletionProviderTests.ReadsScopeUnitAndHiddenNames;
+var
+  Response: TJSONValue;
+  Items: TAtlasCompletionItems;
+begin
+  // #488: Bereichsstufe, Unit bei Stufe 5 und verdeckte Deklarationen.
+  Response := TJSONObject.ParseJSONValue(
+    '{"isIncomplete":false,"items":[' +
+    '{"label":"Name","kind":6,"data":{"scope":1,"hides":["Feld TFoo.Name","Werkzeug.Name"]}},' +
+    '{"label":"Rechne","kind":3,"data":{"scope":5,"unit":"Werkzeug"}}]}');
+  try
+    Items := TAtlasServerCompletionProvider.ItemsFromLsp(Response);
+  finally
+    Response.Free;
+  end;
+  Assert.AreEqual(1, Items[0].Scope);
+  Assert.AreEqual(2, Integer(Length(Items[0].Hides)));
+  Assert.AreEqual('Feld TFoo.Name', Items[0].Hides[0]);
+  Assert.AreEqual('Werkzeug.Name', Items[0].Hides[1]);
+  Assert.AreEqual(5, Items[1].Scope);
+  Assert.AreEqual('Werkzeug', Items[1].DeclaringUnit);
+  Assert.AreEqual(0, Integer(Length(Items[1].Hides)));
+end;
+
 procedure TAtlasCompletionProviderTests.MapsLspCompletionList;
 var
   Response: TJSONValue;
@@ -344,7 +370,10 @@ begin
     '"declaration":"function Add(const S: string): Integer; virtual;","unit":"Liste","container":"TListe",' +
     '"visibility":"public","directives":["virtual","deprecated"],"deprecated":"Neu verwenden",' +
     '"summary":"Hängt S an.","returns":"Index.","params":[{"name":"S","text":"Der Text."}],' +
-    '"exceptions":[{"name":"EListError","text":"Voll."}]}}}');
+    '"exceptions":[{"name":"EListError","text":"Voll."}],' +
+    '"documentation":{"sections":[{"kind":"summary","runs":[{"kind":"text","text":"Hängt "},' +
+    '{"kind":"paramref","text":"S"},{"kind":"text","text":" an."}]}]},' +
+    '"xmlDoc":{"full":true,"maxLines":20}}}}');
   try
     Details := TAtlasServerCompletionProvider.DetailsFromLsp(Response);
   finally
@@ -361,6 +390,11 @@ begin
   Assert.AreEqual('Index.', Details.Returns);
   Assert.AreEqual('Der Text.', Details.Params[0].Text);
   Assert.AreEqual('EListError', Details.Exceptions[0].Name);
+  // Vollständige XMLDoc und Anzeige (#654).
+  Assert.AreEqual(1, Integer(Length(Details.Doc.Sections)));
+  Assert.AreEqual('Hängt S an.', Details.Doc.Sections[0].Text);
+  Assert.IsTrue(Details.Display.Known);
+  Assert.AreEqual(20, Details.Display.MaxLines);
   // Andere Server: detail und documentation.
   Response := TJSONObject.ParseJSONValue('{"label":"X","detail":"X: Integer","documentation":{"value":"Doku"}}');
   try
@@ -371,6 +405,8 @@ begin
   Assert.AreEqual('X: Integer', Details.Declaration);
   Assert.AreEqual('Doku', Details.Summary);
   Assert.IsFalse(Details.IsDeprecated);
+  Assert.IsTrue(Details.Doc.IsEmpty);
+  Assert.IsFalse(Details.Display.Known);
 end;
 
 procedure TAtlasCompletionProviderTests.MergesProvidersAndCompletesOnce;
@@ -662,9 +698,12 @@ begin
   Assert.AreEqual(TAtlasRanking.TypoHeader, Order[0], 'keine regulären Treffer: gleich „Meintest du“');
   Assert.AreEqual('Length', Items[Order[1]].Name);
   Assert.AreEqual(2, TAtlasRanking.ItemCount(Order), 'Length und Lengthy (Anfang), nicht Low');
+  Assert.IsTrue(TAtlasRanking.OnlyTypos(Order), 'Fußzeile: Keine Treffer für „Lenght“');
   // Mit genug regulären Treffern keine Tippfehler-Gruppe.
   Order := TAtlasRanking.Order(Items, 'L', TAtlasRankOptions.Defaults);
   Assert.IsFalse(TAtlasRanking.IsHeader(Order[0]));
+  Assert.IsFalse(TAtlasRanking.OnlyTypos(Order));
+  Assert.IsFalse(TAtlasRanking.OnlyTypos([TAtlasRanking.TypoHeader]));
 end;
 
 procedure TAtlasMatchingBudgetTests.AnnouncementNamesKindPositionAndDetail;

@@ -27,6 +27,11 @@ type
   end;
 
   TAtlasXmlDocCompletionProvider = class(TAtlasAsyncCompletionProvider)
+  public const
+    /// <summary>Name für die Sicherung je Quelle (#493).</summary>
+    ProviderTitle = 'Vervollständigung (XMLDoc)';
+  public
+    constructor Create;
   protected
     function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
       const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems; override;
@@ -156,6 +161,12 @@ begin
 end;
 
 { TAtlasXmlDocCompletionProvider }
+
+constructor TAtlasXmlDocCompletionProvider.Create;
+begin
+  inherited Create;
+  Name := ProviderTitle;
+end;
 
 function TAtlasXmlDocCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
   const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems;

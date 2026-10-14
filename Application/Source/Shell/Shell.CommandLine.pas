@@ -13,6 +13,8 @@
 //   --rules <a,b>         nur diese Regeln
 //   --units <a,b>         nur diese Units (Name oder Glob-Muster für Pfade)
 //   --min-severity <S>    hint, info, warning, error
+//   --fail-on <S>         error (Standard), warning, never: ab welchem Treffer Exit-Code 1
+//   --source-root <Ordner> Wurzel der SARIF-Pfade (Standard: Git-Wurzel, sonst Ordner des Ziels)
 //   --profile <Name>      Regelprofil (#146), vor "profile" aus atlas.json
 //   --changed [<Basis>]   nur Dateien, die sich gegenüber der Merge-Base mit <Basis>
 //                         (Standard main) geändert haben (Git, #157)
@@ -53,6 +55,10 @@ type
     RuleFilter: TArray<string>;
     UnitFilter: TArray<string>;
     MinSeverity: TRuleSeverity;
+    /// <summary>Ab welchem Schweregrad Exit-Code 1 (#95); Standard Error.</summary>
+    FailOn: TFailOn;
+    /// <summary>Quellwurzel für SARIF-Pfade (#95); '' = Git-Wurzel, sonst Ordner des Ziels.</summary>
+    SourceRoot: string;
     /// <summary>Regelprofil für --check (#146); '' = aus atlas.json.</summary>
     Profile: string;
     /// <summary>Statt der Treffer die Unterdrückungen je Regel ausgeben (#147).</summary>
@@ -155,11 +161,13 @@ var
 var
   Level: TLogLevel;
   CheckFormat: TFindingsFormat;
+  FailOn: TFailOn;
   Severity: TRuleSeverity;
   ProcessId: Cardinal;
 begin
   Result := Default(TCommandLineOptions);
   Result.LogLevel := DefaultLogLevel;
+  Result.FailOn := TFailOn.Error;
 
   Index := Low(AArgs);
   while Index <= High(AArgs) do
@@ -233,6 +241,19 @@ begin
           Result.MinSeverity := Severity
         else
           AddWarning(Format('Unbekannter Schweregrad "%s", gemeldet wird alles', [Value]));
+    end
+    else if Name = '--fail-on' then
+    begin
+      if TakeValue then
+        if TFindingsOutput.TryParseFailOn(Value, FailOn) then
+          Result.FailOn := FailOn
+        else
+          AddWarning(Format('Unbekannter Wert "%s" für --fail-on, verwendet wird error', [Value]));
+    end
+    else if Name = '--source-root' then
+    begin
+      if TakeValue then
+        Result.SourceRoot := Value;
     end
     else if Name = '--profile' then
     begin

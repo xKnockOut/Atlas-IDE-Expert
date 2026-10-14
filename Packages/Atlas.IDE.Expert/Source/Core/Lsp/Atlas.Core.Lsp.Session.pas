@@ -129,6 +129,9 @@ type
     FProgress: ILspProgress;
     FTimeoutMs: Cardinal;
     FDocuments: TDictionary<string, TDocumentState>;
+    // Schützt FDocuments samt Reihenfolge der didOpen/didChange (#493): Sync läuft auch aus
+    // Hintergrund-Threads (Zeitlimit für Quellen).
+    FDocLock: TObject;
     FInitialized: Boolean;
     FProjects: TArray<string>;
     /// <summary>Projektkontexte für initialize (#396).</summary>
@@ -138,6 +141,9 @@ type
     FOnApplyEdit: TLspApplyEditProc;
     FOnShowMessage: TLspShowMessageProc;
     FServerSettings: string;
+    FServerVersion: string;
+    procedure SyncLocked(const AFileName, AText: string);
+    procedure CloseLocked(const AFileName: string);
     function PositionParams(const AFileName: string; ALine, ACharacter: Integer): TJSONObject;
   public
     /// <summary>AClient gehört weiter dem Aufrufer.</summary>
@@ -271,8 +277,19 @@ type
     function RefreshCount: Integer;
     /// <summary>Laufende Indizierung o. Ä. des Servers ("Index 45 %"); '' ohne (#492).</summary>
     function ProgressText: string;
+    /// <summary>Statusleiste: "Atlas indiziert … (45 %)"; '' ohne laufenden Vorgang (#492).</summary>
+    function IndexingText: string;
+    /// <summary>Läuft eine Indizierung? APercent = Fortschritt, -1 = unbekannt (#591).</summary>
+    function Indexing(out APercent: Integer): Boolean;
+    /// <summary>Beobachter für $/progress, im Lese-Thread (#591).</summary>
+    procedure SetOnProgress(const AProc: TProc);
+    /// <summary>Version aus serverInfo der Antwort auf initialize; '' = unbekannt (#591).</summary>
+    property ServerVersion: string read FServerVersion;
     /// <summary>workspace/executeCommand; Ergebnis gehört dem Aufrufer (nil bei Fehler oder Zeitlimit).</summary>
-    function ExecuteCommand(const ACommand: string; ATimeoutMs: Cardinal): TJSONValue;
+    function ExecuteCommand(const ACommand: string; ATimeoutMs: Cardinal): TJSONValue; overload;
+    /// <summary>Wie oben mit Argumenten; übernimmt AArguments.</summary>
+    function ExecuteCommand(const ACommand: string; AArguments: TJSONArray; ATimeoutMs: Cardinal): TJSONValue;
+      overload;
     property Initialized: Boolean read FInitialized;
   end;
 
@@ -314,6 +331,7 @@ begin
   FTimeoutMs := ATimeoutMs;
   FDocuments := TDictionary<string, TDocumentState>.Create;
   FSentContexts := TDictionary<string, string>.Create;
+  FDocLock := TObject.Create;
   FRefresh := TLspSignal.Create;
   FProgress := TLspProgress.Create;
 end;
@@ -322,6 +340,7 @@ destructor TLspSession.Destroy;
 begin
   FSentContexts.Free;
   FDocuments.Free;
+  FDocLock.Free;
   inherited;
 end;
 
@@ -559,12 +578,27 @@ begin
   // Ohne Arbeitsbereich leitet der Server ihn aus den geöffneten Dateien ab, ebenso für Dateien
   // außerhalb der gemeldeten Projekte.
   Response := FClient.Request('initialize', Params, 15000);
-  Response.Free;
+  try
+    if Response is TJSONObject then
+      FServerVersion := TJSONObject(Response).GetValue<string>('serverInfo.version', '');
+  finally
+    Response.Free;
+  end;
   FClient.Notify('initialized', TJSONObject.Create);
   FInitialized := True;
 end;
 
 procedure TLspSession.Sync(const AFileName, AText: string);
+begin
+  TMonitor.Enter(FDocLock);
+  try
+    SyncLocked(AFileName, AText);
+  finally
+    TMonitor.Exit(FDocLock);
+  end;
+end;
+
+procedure TLspSession.SyncLocked(const AFileName, AText: string);
 var
   State: TDocumentState;
   Key: string;
@@ -1149,6 +1183,16 @@ begin
 end;
 
 procedure TLspSession.Close(const AFileName: string);
+begin
+  TMonitor.Enter(FDocLock);
+  try
+    CloseLocked(AFileName);
+  finally
+    TMonitor.Exit(FDocLock);
+  end;
+end;
+
+procedure TLspSession.CloseLocked(const AFileName: string);
 var
   Key: string;
 begin
@@ -1161,8 +1205,16 @@ begin
 end;
 
 procedure TLspSession.Saved(const AFileName: string);
+var
+  Known: Boolean;
 begin
-  if not FDocuments.ContainsKey(AnsiLowerCase(AFileName)) then
+  TMonitor.Enter(FDocLock);
+  try
+    Known := FDocuments.ContainsKey(AnsiLowerCase(AFileName));
+  finally
+    TMonitor.Exit(FDocLock);
+  end;
+  if not Known then
     Exit;
   FClient.Notify('textDocument/didSave', TJSONObject.Create(TJSONPair.Create('textDocument',
     TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))))));
@@ -1173,15 +1225,25 @@ var
   State: TDocumentState;
 begin
   Result := nil;
-  for State in FDocuments.Values do
-    Result := Result + [State.FileName];
+  TMonitor.Enter(FDocLock);
+  try
+    for State in FDocuments.Values do
+      Result := Result + [State.FileName];
+  finally
+    TMonitor.Exit(FDocLock);
+  end;
 end;
 
 function TLspSession.SyncedText(const AFileName: string; out AText: string): Boolean;
 var
   State: TDocumentState;
 begin
-  Result := FDocuments.TryGetValue(AnsiLowerCase(AFileName), State);
+  TMonitor.Enter(FDocLock);
+  try
+    Result := FDocuments.TryGetValue(AnsiLowerCase(AFileName), State);
+  finally
+    TMonitor.Exit(FDocLock);
+  end;
   if Result then
     AText := State.Text
   else
@@ -1240,11 +1302,31 @@ begin
   Result := FProgress.Text;
 end;
 
+function TLspSession.IndexingText: string;
+begin
+  Result := FProgress.IndexingText;
+end;
+
+function TLspSession.Indexing(out APercent: Integer): Boolean;
+begin
+  Result := FProgress.Active(APercent);
+end;
+
+procedure TLspSession.SetOnProgress(const AProc: TProc);
+begin
+  FProgress.SetOnChanged(AProc);
+end;
+
 function TLspSession.ExecuteCommand(const ACommand: string; ATimeoutMs: Cardinal): TJSONValue;
+begin
+  Result := ExecuteCommand(ACommand, TJSONArray.Create, ATimeoutMs);
+end;
+
+function TLspSession.ExecuteCommand(const ACommand: string; AArguments: TJSONArray; ATimeoutMs: Cardinal): TJSONValue;
 begin
   try
     Result := FClient.Request('workspace/executeCommand',
-      TJSONObject.Create.AddPair('command', ACommand).AddPair('arguments', TJSONArray.Create), ATimeoutMs);
+      TJSONObject.Create.AddPair('command', ACommand).AddPair('arguments', AArguments), ATimeoutMs);
   except
     Result := nil;
   end;
@@ -1296,7 +1378,10 @@ begin
   begin
     Result.Declaration := TJSONObject(Parts).GetValue<string>('declaration', '');
     Result.UnitName := TJSONObject(Parts).GetValue<string>('unit', '');
-    Result.Documentation := TJSONObject(Parts).GetValue<string>('documentation', '');
+    // Seit #654 ist "documentation" strukturiert; der Klartext steht in "documentationText".
+    if not TJSONObject(Parts).TryGetValue<string>('documentationText', Result.Documentation) and
+      (TJSONObject(Parts).GetValue('documentation') is TJSONString) then
+      Result.Documentation := TJSONObject(Parts).GetValue('documentation').Value;
     Result.Value := TJSONObject(Parts).GetValue<string>('value', '');
     Result.Deprecation := TJSONObject(Parts).GetValue<string>('deprecation', '');
     Exit;

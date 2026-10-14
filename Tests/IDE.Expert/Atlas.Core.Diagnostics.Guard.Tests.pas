@@ -27,6 +27,10 @@ type
     procedure TrippedFeatureIsSkippedOthersRun;
     [Test]
     procedure LogRotatesAtLimit;
+    [Test]
+    procedure ProviderFuseTripsOnlyThatProvider;
+    [Test]
+    procedure LogLineIsShortSingleLineWithVersion;
   end;
 
 implementation
@@ -35,6 +39,7 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.DateUtils,
+  Atlas.Core.Product.Version,
   Atlas.Core.Diagnostics.Guard;
 
 procedure TAtlasGuardTests.Setup;
@@ -172,6 +177,63 @@ begin
   finally
     Log.Free;
   end;
+end;
+
+procedure TAtlasGuardTests.ProviderFuseTripsOnlyThatProvider;
+var
+  Index, Calls: Integer;
+  Warning: string;
+begin
+  TAtlasGuard.OnWarning :=
+    procedure(const AText: string)
+    begin
+      Warning := AText;
+    end;
+  for Index := 1 to 2 do
+    TAtlasGuard.ReportProvider('SQL', 'kaputt');
+  Assert.IsFalse(TAtlasGuard.ProviderDisabled('SQL'));
+  Assert.AreEqual('', Warning, 'noch keine Warnung');
+  TAtlasGuard.ReportProvider('SQL', 'kaputt');
+  Assert.IsTrue(TAtlasGuard.ProviderDisabled('SQL'));
+  Assert.IsTrue(TAtlasGuard.ProviderDisabled('sql'));
+  Assert.Contains(Warning, '„SQL“');
+  Assert.Contains(Warning, 'Tools > Optionen > Drittanbieter > Atlas');
+  Assert.AreEqual(1, Integer(Length(TAtlasGuard.DisabledProviders)));
+  Assert.AreEqual('SQL', TAtlasGuard.DisabledProviders[0]);
+  Assert.IsFalse(TAtlasGuard.ProviderDisabled('Server'));
+  Assert.IsTrue(TAtlasGuard.DisabledSet = [], 'Features bleiben an');
+  Calls := 0;
+  Assert.IsFalse(TAtlasGuard.RunProvider('SQL',
+    procedure
+    begin
+      Inc(Calls);
+    end));
+  Assert.IsTrue(TAtlasGuard.RunProvider('Server',
+    procedure
+    begin
+      Inc(Calls);
+    end));
+  Assert.AreEqual(1, Calls);
+  TAtlasGuard.EnableAll;
+  Assert.IsFalse(TAtlasGuard.ProviderDisabled('SQL'));
+end;
+
+procedure TAtlasGuardTests.LogLineIsShortSingleLineWithVersion;
+var
+  Text: string;
+begin
+  TAtlasGuard.Run(TAtlasFeature.Hover,
+    procedure
+    begin
+      raise EInvalidOpException.Create('Zeile 1' + sLineBreak + 'procedure Geheim;' + sLineBreak +
+        StringOfChar('x', 1000));
+    end);
+  Text := TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8);
+  Assert.Contains(Text, 'Atlas ' + TAtlasPluginVersion.Version);
+  Assert.Contains(Text, 'Fehler in Tooltip: EInvalidOpException: Zeile 1 procedure Geheim;');
+  Assert.IsFalse(Text.Contains(StringOfChar('x', TAtlasGuard.MaxMessageLength)), 'Meldung gekürzt');
+  Assert.AreEqual(1, Integer(Length(Text.Trim.Split([sLineBreak]))), 'eine Zeile ohne Stack-Trace-Anbieter');
+  Assert.AreEqual('a b', TAtlasGuard.SafeMessage(' a'#13#10'b '));
 end;
 
 initialization

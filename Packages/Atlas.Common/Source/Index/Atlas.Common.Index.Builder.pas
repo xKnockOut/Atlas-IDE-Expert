@@ -19,6 +19,9 @@
 //   Include-Datei liest alle Units neu ein, die sie einbinden.
 // - Aus dem Cache kommen zunächst nur die Köpfe; die Symbole einer Unit
 //   dekodiert der Builder erst, wenn er die Unit übernimmt (#617).
+// - Mit Usages (#492, index.usages) erfasst der Builder in Projekt-Units auch
+//   die Verwendungen der Bezeichner. Ein Cache-Eintrag ohne sie gilt dann als
+//   veraltet; ohne Usages bleiben Verwendungen aus dem Cache weg.
 // - Läuft im aufrufenden Thread; den Hintergrund-Thread stellt die
 //   Komposition bereit.
 
@@ -58,7 +61,11 @@ type
     FFailedLock: TObject;
     FIncludePaths: TArray<string>;
     FLibraryDefines: TArray<string>;
+    FUsages: Boolean;
     FLibraryRoots: TArray<string>;
+    function WantsUsages(ALibrary: Boolean): Boolean;
+    function CacheFits(const AEntry: TIndexCacheEntry; ALibrary: Boolean): Boolean;
+    function FromCache(const AEntry: TIndexCacheEntry; ALibrary: Boolean; out AUnit: TUnitIndex): Boolean;
     function IncludeResolver: TIncludeResolver;
     /// <summary>Symbole für AFileName: Dateien der Installation mit LibraryDefines, alle anderen mit
     /// denen des Projekts.</summary>
@@ -97,6 +104,10 @@ type
     function ApplyText(const AFileName, AText: string): Boolean;
     /// <summary>Suchpfade für $I nach dem Ordner der Unit (Projekt-Suchpfade, dann Bibliothekspfade).</summary>
     property IncludePaths: TArray<string> read FIncludePaths write FIncludePaths;
+    /// <summary>Verwendungen der Bezeichner in Projekt-Units erfassen (#492); Standard aus.</summary>
+    property Usages: Boolean read FUsages write FUsages;
+    /// <summary>Verwendungen einer Unit frisch aus der Datei (ausgelagert und nicht im Cache).</summary>
+    function ReadUsages(const AFileName: string; out AUsages: TArray<TIndexUsage>): Boolean;
     /// <summary>Ordner der Delphi-Installation (BDS-Ordner) samt Unterordnern.
     /// Deren Units kommen als fertige DCUs; die Defines des Projekts wirken nicht auf sie. Leer = alle
     /// Dateien mit den Defines des Projekts.</summary>
@@ -233,6 +244,39 @@ begin
   Result := True;
 end;
 
+function TIndexBuilder.WantsUsages(ALibrary: Boolean): Boolean;
+begin
+  Result := FUsages and not ALibrary;
+end;
+
+function TIndexBuilder.CacheFits(const AEntry: TIndexCacheEntry; ALibrary: Boolean): Boolean;
+begin
+  // Mit Includes kann sich das Ergebnis ändern, ohne dass die Unit sich ändert; ohne erfasste
+  // Verwendungen taugt der Eintrag nicht, sobald sie gebraucht werden.
+  Result := IncludesUnchanged(AEntry.Header) and (AEntry.Header.UsagesIndexed or not WantsUsages(ALibrary));
+end;
+
+function TIndexBuilder.FromCache(const AEntry: TIndexCacheEntry; ALibrary: Boolean; out AUnit: TUnitIndex): Boolean;
+begin
+  Result := TIndexCache.Expand(AEntry, AUnit, WantsUsages(ALibrary));
+  if Result and not WantsUsages(ALibrary) then
+  begin
+    AUnit.Usages := nil;
+    AUnit.UsagesIndexed := False;
+    AUnit.UsagesOffloaded := False;
+  end;
+end;
+
+function TIndexBuilder.ReadUsages(const AFileName: string; out AUsages: TArray<TIndexUsage>): Boolean;
+var
+  Text: string;
+begin
+  AUsages := nil;
+  Result := FFileSystem.ReadText(AFileName, Text);
+  if Result then
+    AUsages := TIndexExtractor.ExtractText(Text, AFileName, DefinesFor(AFileName), IncludeResolver(), True).Usages;
+end;
+
 function TIndexBuilder.IndexFile(const AFileName: string; ALibrary: Boolean;
   var AResult: TIndexBuildResult): Boolean;
 var
@@ -249,12 +293,11 @@ begin
     Exit(False);
   end;
   HasCache := FCached.TryGetValue(AnsiUpperCase(AFileName), Entry);
-  // Mit Includes kann sich das Ergebnis ändern, ohne dass die Unit sich ändert.
-  if HasCache and not IncludesUnchanged(Entry.Header) then
+  if HasCache and not CacheFits(Entry, ALibrary) then
     HasCache := False;
   // Zeitstempel oder Inhalt passen: erst jetzt die Symbole dekodieren; ein beschädigter Block
   // zählt wie ein fehlender Cache-Eintrag.
-  if HasCache and (Entry.Header.Stamp = Stamp) and TIndexCache.Expand(Entry, Cached) then
+  if HasCache and (Entry.Header.Stamp = Stamp) and FromCache(Entry, ALibrary, Cached) then
   begin
     Cached.Library_ := ALibrary;
     FIndex.AddUnit(Cached);
@@ -267,7 +310,7 @@ begin
     Exit(False);
   end;
   Hash := TIndexCache.HashOf(Text);
-  if HasCache and (Entry.Header.Hash = Hash) and TIndexCache.Expand(Entry, Cached) then
+  if HasCache and (Entry.Header.Hash = Hash) and FromCache(Entry, ALibrary, Cached) then
   begin
     Cached.Stamp := Stamp;
     Cached.Library_ := ALibrary;
@@ -276,7 +319,8 @@ begin
     Exit(True);
   end;
   Watch := TStopwatch.StartNew;
-  UnitIndex := TIndexExtractor.ExtractText(Text, AFileName, DefinesFor(AFileName), IncludeResolver());
+  UnitIndex := TIndexExtractor.ExtractText(Text, AFileName, DefinesFor(AFileName), IncludeResolver(),
+    WantsUsages(ALibrary));
   Inc(AResult.ParseMs, Watch.ElapsedMilliseconds);
   UnitIndex.Stamp := Stamp;
   UnitIndex.Hash := Hash;
@@ -514,7 +558,8 @@ begin
   Hash := TIndexCache.HashOf(AText);
   if Hash = Existing.Hash then
     Exit;
-  UnitIndex := TIndexExtractor.ExtractText(AText, AFileName, DefinesFor(AFileName), IncludeResolver());
+  UnitIndex := TIndexExtractor.ExtractText(AText, AFileName, DefinesFor(AFileName), IncludeResolver(),
+    WantsUsages(Existing.Library_));
   // Zeitstempel bleibt der der Datei: Beim Speichern liest IndexFile sie dann neu von der Platte.
   UnitIndex.Stamp := Existing.Stamp;
   UnitIndex.Hash := Hash;

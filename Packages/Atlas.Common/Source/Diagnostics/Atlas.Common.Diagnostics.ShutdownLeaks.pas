@@ -113,7 +113,7 @@ begin
     Exit;
   try
     // Reines ASCII: passt zu jeder Kodierung der Logdatei.
-    Writeln(Log, FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz', Now) + ' [WARN] ' + AText);
+    Writeln(Log, FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz', Now) + ' [WARN] ' + AText); // console-ok: Logdatei
   finally
     CloseFile(Log);
   end;

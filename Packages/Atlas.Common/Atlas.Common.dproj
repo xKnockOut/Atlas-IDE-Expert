@@ -272,6 +272,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PublishedMembers.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hover.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.HoverTypes.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Documentation.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.HoverValues.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.LinkedEditing.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Formatting.pas"/>

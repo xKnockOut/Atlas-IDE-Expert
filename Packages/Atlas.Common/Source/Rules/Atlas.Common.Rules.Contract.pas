@@ -59,8 +59,6 @@ type
     Severity: TRuleSeverity;
     Confidence: TRuleConfidence;
     Fixes: TArray<TRuleFix>;
-    /// <summary>Meldung mit Konfidenz-Zusatz unterhalb von High, für Hover und Kommandozeile.</summary>
-    function DisplayMessage: string;
   end;
 
   /// <summary>Alles, was eine Regel über die geprüfte Datei wissen darf.</summary>
@@ -117,6 +115,12 @@ type
 
 /// <summary>Kennwort der Konfidenz: "hoch", "mittel", "niedrig".</summary>
 function ConfidenceText(AConfidence: TRuleConfidence): string;
+/// <summary>
+///   Kennung der Konfidenz für Maschinen: "high", "medium", "low". Steht als
+///   eigenes Feld neben der Meldung (LSP data.confidence, JSON, SARIF), nie im
+///   Meldungstext (#144).
+/// </summary>
+function ConfidenceName(AConfidence: TRuleConfidence): string;
 
 implementation
 
@@ -132,6 +136,18 @@ begin
   end;
 end;
 
+function ConfidenceName(AConfidence: TRuleConfidence): string;
+begin
+  case AConfidence of
+    TRuleConfidence.Low:
+      Result := 'low';
+    TRuleConfidence.Medium:
+      Result := 'medium';
+  else
+    Result := 'high';
+  end;
+end;
+
 { TRuleDescriptor }
 
 constructor TRuleDescriptor.Create(const AId: string; ADefaultSeverity: TRuleSeverity; const ADescription: string;
@@ -141,16 +157,6 @@ begin
   DefaultSeverity := ADefaultSeverity;
   Description := ADescription;
   Experimental := AExperimental;
-end;
-
-{ TRuleFinding }
-
-function TRuleFinding.DisplayMessage: string;
-begin
-  if Confidence = TRuleConfidence.High then
-    Result := Message
-  else
-    Result := Message + ' (Konfidenz: ' + ConfidenceText(Confidence) + ')';
 end;
 
 { TRuleEdit }

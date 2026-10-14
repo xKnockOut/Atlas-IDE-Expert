@@ -13,13 +13,13 @@ object HauptFormular: THauptFormular
     Align = alTop
     TabOrder = 0
   end
-  object KundenGrid: TDBGrid
+  object KundenListe: TListBox
     Left = 0
     Top = 33
     Width = 600
     Height = 326
     Align = alClient
-    DataSource = KundenQuelle
+    ItemHeight = 15
     TabOrder = 1
   end
   object DetailButton: TButton
@@ -30,9 +30,5 @@ object HauptFormular: THauptFormular
     Caption = 'Detail'
     TabOrder = 2
     OnClick = DetailButtonClick
-  end
-  object KundenQuelle: TDataSource
-    Left = 520
-    Top = 360
   end
 end

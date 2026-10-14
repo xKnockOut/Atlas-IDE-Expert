@@ -1152,15 +1152,16 @@ begin
     Builder.Free;
   end;
   Data := TIndexCache.Serialize(FIndex.Units);
-  // Den Symbolblock von F beschädigen; die Köpfe bleiben lesbar.
-  for Entry in TIndexCache.ReadEntries(Data) do
-    if SameText(Entry.Header.UnitName, 'F') then
-    begin
-      Data[Entry.SymbolOffset] := $FF;
-      Data[Entry.SymbolOffset + 1] := $7F;
-    end;
   Entries := TIndexCache.ReadEntries(Data);
   Assert.AreEqual<NativeInt>(6, Length(Entries));
+  // Den Symbolblock von F nach dem Lesen der Köpfe beschädigen (in der Datei fiele das schon an der
+  // Prüfsumme auf, #492); die Einträge teilen sich die Daten.
+  for Entry in Entries do
+    if SameText(Entry.Header.UnitName, 'F') then
+    begin
+      Entry.Data[Entry.SymbolOffset] := $FF;
+      Entry.Data[Entry.SymbolOffset + 1] := $7F;
+    end;
   FIndex := TSymbolIndex.Create;
   FFiles.Reads := 0;
   Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);

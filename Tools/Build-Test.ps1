@@ -10,10 +10,14 @@
        gelesen und muss zu einem neuen Prozess gehören. Jeder weitere Aufruf
        nutzt -Instance <pid>, eine schon laufende IDE bleibt unberührt.
     2. cc.ps1 group-build -Platform Win64 -Json: ok und outputWritten müssen
-       gesetzt sein, die Test-exe muss neu geschrieben sein und das logFile
-       darf keine Hinweise oder Warnungen enthalten (0/0/0-Regel).
+       gesetzt sein, die Test-exe und die Win64-Plugin-BPL für die 64-Bit-IDE
+       müssen neu geschrieben sein und das logFile darf keine Hinweise oder
+       Warnungen enthalten (0/0/0-Regel).
     3. Mit -Win32 zusätzlich Win32; dort darf nur Atlas.Tests scheitern
-       (DUnitX gibt es nur für Win64).
+       (DUnitX gibt es nur für Win64, ADR 0008). Die Plugin-BPL für die
+       klassische IDE muss dabei neu geschrieben sein (#78). Die BPL heißt
+       wegen LIBSUFFIX AUTO je IDE-Version anders, z. B.
+       Atlas.IDE.Expert370.bpl (#281).
     4. Atlas.Tests.exe --exitbehavior:Continue mit NUnit-XML als Ergebnis.
     5. cc.ps1 quit, wiederholt, solange die IDE beschäftigt ist.
 
@@ -41,12 +45,29 @@ $ErrorActionPreference = 'Stop'
 
 $GroupProject = Join-Path $Root 'Atlas.groupproj'
 $TestExe = Join-Path $Root (Join-Path "Output/Win64/$Config/Bin" 'Atlas.Tests.exe')
+# Plugin-BPL für die klassische (Win32) und die 64-Bit-IDE (Win64), ADR 0008.
+# LIBSUFFIX AUTO hängt die Package-Version an: Atlas.IDE.Expert290.bpl (Delphi 12), …370.bpl (Delphi 13).
+$PluginBplPattern = 'Atlas.IDE.Expert*.bpl'
 # Zeilen des Build-Logs, die die 0/0/0-Regel verletzen, z. B. "[dcc64 Hinweis] X.pas(10): H2164 …".
 $HintPattern = '\[dcc\w*\s+(Hinweis|Warnung|Hint|Warning)\]'
 $ErrorPattern = '\[dcc\w*\s+(Fehler|Schwerwiegend|Error|Fatal)\]'
 
 function Write-Step([string] $Text) {
     Write-Host "== $Text"
+}
+
+# Prüft, dass die Plugin-BPL der Plattform seit $Started neu geschrieben wurde.
+function Test-PluginBpl([string] $Platform, [datetime] $Started) {
+    $dir = Join-Path $Root "Output/$Platform/$Config/Bpl"
+    $bpl = @(Get-ChildItem -Path $dir -Filter $PluginBplPattern -File -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending) | Select-Object -First 1
+    if ($null -eq $bpl) {
+        return "${Platform}: Plugin-BPL fehlt: $dir\$PluginBplPattern"
+    }
+    if ($bpl.LastWriteTime -lt $Started) {
+        return "${Platform}: Plugin-BPL wurde nicht neu geschrieben (von einer IDE geladen? ADR 0006): $($bpl.FullName)"
+    }
+    return $null
 }
 
 function Get-IdeProcessIds {
@@ -132,12 +153,17 @@ try {
     } elseif ((Get-Item $TestExe).LastWriteTime -lt $started) {
         $problems += "Win64: Test-exe wurde nicht neu geschrieben: $TestExe"
     }
+    $pluginProblem = Test-PluginBpl 'Win64' $started
+    if ($pluginProblem) { $problems += $pluginProblem }
 
     if ($Win32) {
         Write-Step 'Projektgruppe bauen (Win32, ohne Testprojekt)'
+        $started32 = Get-Date
         $build32 = Invoke-Cc @('group-build', '-Instance', "$ideId", '-Platform', 'Win32', '-Json')
         Write-Host $build32.Output
-        $problems += Test-Build (ConvertFrom-BuildOutput $build32.Output) 'Win32' (Get-Date) $true
+        $problems += Test-Build (ConvertFrom-BuildOutput $build32.Output) 'Win32' $started32 $true
+        $pluginProblem = Test-PluginBpl 'Win32' $started32
+        if ($pluginProblem) { $problems += $pluginProblem }
     }
 
     if ($problems.Count -gt 0) {

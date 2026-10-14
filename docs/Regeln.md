@@ -19,6 +19,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`thread-resume-suspend`](#thread-resume-suspend) | Veraltetes TThread.Resume/Suspend | Code Smell | Warnung |
 | [`result-not-set`](#result-not-set) | Funktionsergebnis eventuell nicht gesetzt | Bug | Warnung |
 | [`possibly-uninitialized`](#possibly-uninitialized) | Variable eventuell nicht initialisiert | Bug | Warnung |
+| [`unreachable-code`](#unreachable-code) | Unerreichbarer Code | Bug | Warnung |
 | [`unused-local`](#unused-local) | Ungenutzte lokale Variable | Code Smell | Hinweis |
 | [`unused-parameter`](#unused-parameter) | Ungenutzter Parameter | Code Smell | Hinweis |
 | [`unused-assignment`](#unused-assignment) | Zugewiesener Wert ungenutzt | Code Smell | Hinweis |
@@ -81,6 +82,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`raise-in-finally`](#raise-in-finally) | raise in einem finally-Block | Bug | Warnung |
 | [`redundant-parens`](#redundant-parens) | Überflüssige Klammern | Code Smell | Hinweis |
 | [`redundant-begin-end`](#redundant-begin-end) | begin … end um eine einzelne Anweisung | Code Smell | Hinweis |
+| [`with-statement`](#with-statement) | with-Anweisung | Code Smell | Hinweis |
 | [`component-palette-icon`](#component-palette-icon) | Registrierte Komponente ohne Palettensymbol | Code Smell | Hinweis |
 | [`unresolved-identifier`](#unresolved-identifier) | Nicht deklarierter Bezeichner | Bug | Warnung |
 
@@ -425,6 +427,34 @@ begin
   if Ok then
     I := 1;
   Writeln(I);
+end;
+```
+
+<a id="unreachable-code"></a>
+## unreachable-code
+
+**Unerreichbarer Code** · Bug · Warnung
+
+Eine Anweisung nach Exit, raise, Abort, Halt, Break, Continue oder goto wird nie ausgeführt. Meist ein Rest oder ein falsch gesetzter Sprung. Gemeldet wird nur die erste Anweisung eines unerreichbaren Abschnitts.
+
+Mit Treffer:
+
+```pascal
+procedure Save;
+begin
+  Exit;
+  Store;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure Save;
+begin
+  if not Ready then
+    Exit;
+  Store;
 end;
 ```
 
@@ -1822,6 +1852,26 @@ Richtig:
 ```pascal
 if Done then
   Exit;
+```
+
+<a id="with-statement"></a>
+## with-statement
+
+**with-Anweisung** · Code Smell · Hinweis
+
+In einem with-Block ist unklar, zu welchem Objekt ein Bezeichner gehört, und ein neues Mitglied des with-Objekts ändert still die Bedeutung. Den Ausdruck ausschreiben oder eine lokale Variable verwenden.
+
+Mit Treffer:
+
+```pascal
+with Customer do
+  Name := Edit.Text;
+```
+
+Richtig:
+
+```pascal
+Customer.Name := Edit.Text;
 ```
 
 <a id="component-palette-icon"></a>

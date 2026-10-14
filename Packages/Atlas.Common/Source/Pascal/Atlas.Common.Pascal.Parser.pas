@@ -994,7 +994,17 @@ begin
     // Modifizierer: const, var, out, constref
     if IsKw(['const', 'var']) or ((IsIdentText('out') or IsIdentText('constref')) and
       (PeekToken(1).Kind = TPascalTokenKind.Identifier)) then
+    begin
+      if IsKw('const') then
+        Param.Modifier := TParameterModifier.ConstParam
+      else if IsKw('var') then
+        Param.Modifier := TParameterModifier.VarParam
+      else if IsIdentText('out') then
+        Param.Modifier := TParameterModifier.OutParam
+      else
+        Param.Modifier := TParameterModifier.ConstRefParam;
       Advance;
+    end;
     ParseAttributes(Param);
     Names := ExpectIdent;
     while AcceptSym(',') do
@@ -1992,14 +2002,24 @@ var
   Start: Integer;
   Op: string;
 begin
-  // Vergleich: = <> < > <= >= in is
+  // Vergleich: = <> < > <= >= in is, ab Delphi 13 auch "is not" und "not in" (#109)
   Start := NodeStart;
   Result := ParseSimpleExpression;
   while (not AtEnd and (Current.Kind = TPascalTokenKind.Symbol) and InWords(Current.Text, RelationalOperators)) or
-    IsKw(['in', 'is']) do
+    IsKw(['in', 'is']) or (IsKw('not') and PeekIsKw(1, 'in')) do
   begin
     Op := LowerCase(Current.Text);
     Advance;
+    if (Op = 'is') and IsKw('not') then
+    begin
+      Op := 'is not';
+      Advance;
+    end
+    else if Op = 'not' then
+    begin
+      Op := 'not in';
+      Advance;
+    end;
     Result := Binary(Op, Result, ParseSimpleExpression, Start);
   end;
   if AParent <> nil then

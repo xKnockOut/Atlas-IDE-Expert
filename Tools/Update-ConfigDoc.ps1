@@ -12,6 +12,8 @@
       trace.server) bleiben, wie sie sind.
     - docs/Einstellungen.md: Tabelle für das Einstellungs-Plugin (#227) aus den
       Angaben x-page, x-control, x-issue, x-commandLine und x-restart.
+      x-quickToggle (mit x-plugin, x-caption, x-captionEn) an einer booleschen
+      Einstellung macht sie zum Schnellschalter im Plugin (#604).
     - Wächter: Die Schlüssel in Atlas.Common.Configuration.Parser müssen genau
       denen im Schema entsprechen (Validierung und Schichtung).
 
@@ -171,7 +173,10 @@ foreach ($Name in $Schema['properties'].Keys) {
 [void]$Table.AppendLine('| Allgemein | Pfad zu `AtlasServer.exe` | – | VS Code (`atlas.serverPath`) | ja | Datei wählen, Version anzeigen | #12, #49 |')
 [void]$Table.AppendLine('| Baseline | `atlas-baseline.json` | – | Datei, `--baseline`, `--update-baseline` | nein | Anzahl Einträge, „Baseline neu erzeugen“, „Baseline löschen“ | #97 |')
 [void]$Table.AppendLine('| Baseline | Unterdrückungen `lsp-ignore` | – | `--suppression-stats` | nein | Übersicht je Regel (nur Anzeige) | #147 |')
-[void]$Table.AppendLine('| Speicher | Index-Cache löschen | – | `--clear-cache`, Befehl `atlas.server.rebuildIndex` | nein | Knopf „Index-Cache löschen“ | #184 |')
+[void]$Table.AppendLine('| Speicher | Index-Cache löschen | – | `--clear-cache`, Befehl `atlas.server.clearIndex` (löschen und neu indizieren), `atlas.server.rebuildIndex` (nur neu indizieren) | nein | Knöpfe „Index löschen“ und „Index neu aufbauen“ | #184, #492 |')
+[void]$Table.AppendLine('| Allgemein | Atlas-Feld in der Statusleiste (`statusField.enabled`), Kurztext (`statusField.showSummary`), ausgeblendete Zeilen (`statusField.hidden`) | an, an, – | Plugin (Registry `StatusField`, `StatusFieldSummary`, `StatusFieldHidden`) | nein | Kontrollkästchen, Kontrollkästchen, Textfeld mit Kennungen | #591 |')
+[void]$Table.AppendLine('| Allgemein | Schnellschalter (#604): Fenster über dem Statusfeld (Rechtsklick) und Tastenkürzel; Schalter = jede boolesche Einstellung mit `x-quickToggle` (Plugin-Katalog und `atlas.schema.json`) | Strg+Umschalt+Alt+A | Plugin (Registry `QuickToggleKey`, `QuickToggleKeyPriority`) | nein | Taste auf der Seite „Tastenkonflikte“; „Alles aus für diese Sitzung“ ändert keine Einstellung | #604 |')
+[void]$Table.AppendLine('| Allgemein | Abgesicherter Start nach einem Absturz: Rückfrage (`safeMode.askAfterCrash`), ohne Rückfrage nach zwei Abstürzen (`safeMode.autoAfterRepeatedCrash`), Taste beim Laden (`safeMode.startupKey`: shift, ctrl, none), längste Ladezeit (`safeMode.startupTimeoutMs`), gemerkte Einstellungsstände (`safeMode.keepSettingsHistory`) | an, an, shift, 10000, 5 | Plugin (Registry `SafeAskAfterCrash`, `SafeAutoAfterRepeatedCrash`, `SafeStartupKey`, `SafeStartupTimeoutMs`, `SafeKeepSettingsHistory`); Kommandozeile `-AtlasSafeMode`, Umgebungsvariable `ATLAS_SAFE_MODE=1` | nein | Kontrollkästchen, Kontrollkästchen, Auswahl, Zahl (1000–120000), Zahl (0–50) | #722 |')
 $TableText = $Table.ToString().Replace("`r`n", "`n")
 
 # --- Wächter: Schlüssel im Parser ---

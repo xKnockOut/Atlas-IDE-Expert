@@ -70,6 +70,19 @@ type
     class function Default: TInlayHintSettings; static;
   end;
 
+  /// <summary>Anzeige von XMLDoc in Hover und Detailpanel des Plugins (#654). Der Server bereitet die Doku
+  /// immer vollständig auf und gibt die Werte nur weiter.</summary>
+  THintSettings = record
+  public const
+    MaxXmlDocLines = 50;
+  public
+    /// <summary>XMLDoc vollständig und formatiert; aus = Kurzform (summary 4, remarks 3 Zeilen).</summary>
+    XmlDocFull: Boolean;
+    /// <summary>Doku-Zeilen, ab denen der Inhalt scrollt; 0 = unbegrenzt.</summary>
+    XmlDocMaxLines: Integer;
+    class function Default: THintSettings; static;
+  end;
+
   /// <summary>Hervorheben zusammengehöriger Schlüsselwörter (#307).</summary>
   THighlightSettings = record
     /// <summary>Blockpaare (begin/end, try/finally …) und Routinen.</summary>
@@ -227,6 +240,7 @@ type
     /// <summary>Ausgewerteter Block "format" (#43).</summary>
     Formatting: TFormatStyle;
     InlayHints: TInlayHintSettings;
+    Hints: THintSettings;
     Highlight: THighlightSettings;
     Compiler: TCompilerSettings;
     Completion: TCompletionSettings;
@@ -266,6 +280,8 @@ type
     IndexProjectGroup: Boolean;
     IndexSearchPaths: Boolean;
     IndexLibraryPaths: Boolean;
+    /// <summary>Verwendungen der Bezeichner in Projekt-Units mit indizieren (#492, für #470).</summary>
+    IndexUsages: Boolean;
     /// <summary>Glob-Muster gegen den vollen Pfad ("/" oder ""), die nicht indiziert werden, z. B. **/Demos/**.</summary>
     IndexExclude: TArray<string>;
     /// <summary>Protokoll (#265): Stufe (debug/info/warning/error), Logdatei und Mitschnitt.
@@ -354,8 +370,14 @@ begin
   Text := Trim(AText);
   if not TryStrToFloat(Text, Value, TFormatSettings.Invariant) or (Value <= 0) then
     Exit;
+  // BDS-Nummern nur bekannter Versionen: 14.0 (XE6) bis 23.0 (Delphi 12) und 37.0 (Delphi 13).
+  // Andere Werte wie "99" sind ein Tippfehler und erzeugen eine Konfigurationswarnung (#109).
   if Value >= 14 then
-    Exit(Text);
+  begin
+    if ((Trunc(Value) >= 14) and (Trunc(Value) <= 23)) or (Trunc(Value) = 37) then
+      Result := Text;
+    Exit;
+  end;
   // "12.0", "12.3" usw. meinen Delphi 12; nur bei 10 zählt die Nachkommastelle.
   if Trunc(Value) <> 10 then
     Text := IntToStr(Trunc(Value))
@@ -468,6 +490,14 @@ begin
   Result.SortPublished := False;
 end;
 
+{ THintSettings }
+
+class function THintSettings.Default: THintSettings;
+begin
+  Result.XmlDocFull := True;
+  Result.XmlDocMaxLines := 0;
+end;
+
 { THighlightSettings }
 
 class function THighlightSettings.Default: THighlightSettings;
@@ -534,6 +564,7 @@ begin
   Result.Format := '';
   Result.Formatting := TFormatStyle.Default;
   Result.InlayHints := TInlayHintSettings.Default;
+  Result.Hints := THintSettings.Default;
   Result.Highlight := THighlightSettings.Default;
   Result.Compiler := TCompilerSettings.Default;
   Result.Completion := TCompletionSettings.Default;
@@ -547,7 +578,8 @@ begin
   Result.StringLiteral := TStringLiteralSettings.Default;
   Result.MemberOrder := TMemberOrderSettings.Default;
   Result.DfmPropertyRules := nil;
-  Result.MemoryBudgetMb := 0;
+  // Wie die Vorgabe des Plugins (#492): darüber zuerst Verwendungen auslagern.
+  Result.MemoryBudgetMb := 256;
   Result.RequestTimeoutMs := 10000;
   Result.DiagnosticsLog := True;
   Result.DiagnosticsLogDays := 7;
@@ -556,6 +588,7 @@ begin
   Result.IndexSearchPaths := True;
   // Bibliothekspfade ganz zu indizieren dauert bei großen Installationen Minuten; nur auf Wunsch.
   Result.IndexLibraryPaths := False;
+  Result.IndexUsages := True;
   Result.IndexExclude := nil;
   Result.LogLevel := 'info';
   Result.LogFile := '';

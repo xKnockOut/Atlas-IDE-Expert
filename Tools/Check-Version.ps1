@@ -3,7 +3,8 @@
     Prüft, dass Server und VS-Code-Erweiterung dieselbe SemVer-Version tragen (#83).
 
 .DESCRIPTION
-    Quellen: TProductVersion.Version in Atlas.Common.Product.Version.pas und
+    Quellen: TProductVersion.Version in Atlas.Common.Product.Version.pas,
+    TAtlasPluginVersion.Version in Atlas.Core.Product.Version.pas (IDE-Plugin) und
     "version" in Editors/VSCode/package.json. Mit -Expected (z. B. aus dem
     Release-Tag) muss auch diese übereinstimmen. CHANGELOG.md braucht einen
     Abschnitt "## [<Version>]".
@@ -25,6 +26,8 @@ $ErrorActionPreference = 'Stop'
 $SemVer = '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$'
 $Unit = Join-Path $Root 'Packages/Atlas.Common/Source/Product/Atlas.Common.Product.Version.pas'
 $Server = [regex]::Match((Get-Content -Raw $Unit), "Version\s*=\s*'([^']+)'").Groups[1].Value
+$PluginUnit = Join-Path $Root 'Packages/Atlas.IDE.Expert/Source/Core/Product/Atlas.Core.Product.Version.pas'
+$IdePlugin = [regex]::Match((Get-Content -Raw $PluginUnit), "Version\s*=\s*'([^']+)'").Groups[1].Value
 $Extension = (Get-Content -Raw (Join-Path $Root 'Editors/VSCode/package.json') | ConvertFrom-Json).version
 $Changelog = Get-Content -Raw (Join-Path $Root 'CHANGELOG.md')
 $Plugin = (Get-Content -Raw (Join-Path $Root 'Editors/ClaudeCode/atlas/.claude-plugin/plugin.json') | ConvertFrom-Json).version
@@ -32,6 +35,7 @@ $Marketplace = (Get-Content -Raw (Join-Path $Root '.claude-plugin/marketplace.js
 
 $Errors = @()
 if ($Server -notmatch $SemVer) { $Errors += "Server-Version '$Server' ist keine SemVer-Version" }
+if ($Server -ne $IdePlugin) { $Errors += "Server $Server und IDE-Plugin $IdePlugin weichen ab" }
 if ($Server -ne $Extension) { $Errors += "Server $Server und Erweiterung $Extension weichen ab" }
 if ($Server -ne $Plugin) { $Errors += "Server $Server und Claude-Code-Plugin $Plugin weichen ab" }
 if ($Server -ne $Marketplace) { $Errors += "Server $Server und Marketplace-Eintrag $Marketplace weichen ab" }

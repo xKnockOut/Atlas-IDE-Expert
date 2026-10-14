@@ -1,6 +1,8 @@
 ﻿# Atlas: Testfälle in der IDE
 
-Manuelle Prüfung des IDE-Plugins `Atlas.IDE.Expert` in RAD Studio, gegliedert nach Issues. Voraussetzung: Plugin installiert (`Output\Win32\Debug\Bpl\Atlas.IDE.Expert.bpl`), Code Insight-Manager „Atlas IDE Expert“ aktiv, ein Delphi-Projekt mit einer VCL-Unit geöffnet. Für Fehlersuche `Diagnose` = 1 unter `HKCU\Software\Atlas\IdePlugin` setzen; das Protokoll `Atlas.IDE.Expert.log` liegt neben der BPL.
+Bei Delphi 12 heißen BPL und Protokoll `…290.bpl` und `…290.log` statt `…370`.
+
+Manuelle Prüfung des IDE-Plugins `Atlas.IDE.Expert` in RAD Studio, gegliedert nach Issues. Voraussetzung: Plugin installiert (`Output\Win32\Debug\Bpl\Atlas.IDE.Expert370.bpl`), Code Insight-Manager „Atlas IDE Expert“ aktiv, ein Delphi-Projekt mit einer VCL-Unit geöffnet. Für Fehlersuche `Diagnose` = 1 unter `HKCU\Software\Atlas\IdePlugin` setzen; das Protokoll `Atlas.IDE.Expert370.log` liegt neben der BPL.
 
 Schreibweise: `|` steht für die Cursorposition.
 
@@ -213,7 +215,7 @@ Noch offen: Anzeige in Error Insight und in einer projektweiten Liste (#398), Mi
 
 ## Compile-Ereignisse (#527)
 
-Vorbereitung: Diagnoseprotokoll an (`HKCU\Software\Atlas\IdePlugin`, DWORD `Diagnose` = 1), IDE neu starten; Protokoll `Atlas.IDE.Expert.log` neben dem Plugin.
+Vorbereitung: Diagnoseprotokoll an (`HKCU\Software\Atlas\IdePlugin`, DWORD `Diagnose` = 1), IDE neu starten; Protokoll `Atlas.IDE.Expert370.log` neben dem Plugin.
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
@@ -272,12 +274,109 @@ Blocklinien zeichnet Atlas selbst (Einstellung „Blocklinien in den Paarfarben�
 | BP3 | Enter | Befehl läuft (Projekt wird erzeugt); Palette ist zu |
 | BP4 | Strg+Umschalt+P erneut, nichts tippen | Der eben ausgeführte Befehl steht oben |
 | BP5 | `atlas` tippen | Atlas-Befehle („Atlas: Protokoll öffnen“, „Atlas: Verlauf … zurücksetzen“, „Atlas: Wächter testen (1 s)“) gemeinsam mit IDE-Aktionen |
-| BP6 | „Atlas: Protokoll öffnen“ | `Atlas.IDE.Expert.log` öffnet sich im Editor |
+| BP6 | „Atlas: Protokoll öffnen“ | `Atlas.IDE.Expert370.log` öffnet sich im Editor |
 | BP7 | Esc bzw. Klick neben die Palette | Palette schließt, nichts wird ausgeführt |
 | BP8 | ↑/↓, Bild↑/↓, Mausrad, Klick auf eine Zeile | Auswahl bewegt sich, Klick führt aus |
 | BP9 | Rücktaste, Strg+Rücktaste | Ein Zeichen bzw. ganze Eingabe gelöscht |
 
 Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komponenten, kennt aber keine Atlas-Befehle und keinen Verlauf. Strg+Umschalt+P ist in der IDE „Tastenmakro abspielen“; die Palette übernimmt das Kürzel. Noch offen: Strg+Enter (Kürzel zuweisen).
+
+## Code Insight aus dem Server (#394)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CI1 | *Tools › Optionen › Editor › Sprache › Code Insight*: Manager „Atlas IDE Expert“ für Delphi aktiv; IDE neu starten | Meldungsansicht ohne Fehler; Protokoll nennt den gestarteten `AtlasServer.exe` |
+| CI2 | Maus über einen Bezeichner aus der eigenen Unit und einen aus der RTL (`TStringList`) | Atlas-Tooltip mit Deklaration, Unit und XMLDoc; kein Help-Insight-Fenster der IDE daneben |
+| CI3 | In einer Methode Strg+Leer ohne Präfix | Atlas-Popup mit lokalen Namen, Parametern, Feldern, Unit- und uses-Bezeichnern; die eingebaute Liste der IDE erscheint nicht |
+| CI4 | `TStringList` in einer Unit ohne `System.Classes` tippen, Strg+Leer, Enter | Eintrag mit Tag „+ System.Classes“; nach Enter steht `System.Classes` in der uses-Liste, ein Rückgängig nimmt beides zurück |
+| CI5 | `Format(` tippen | Atlas-Parameter-Hint mit aktivem ersten Parameter; nach `, ` wechselt der aktive Parameter |
+| CI6 | Überladene Routine (`IntToStr(`) | Hint zeigt die Zahl der Überladungen; ↑/↓ blättert durch sie |
+| CI7 | `AtlasServer.exe` umbenennen, IDE neu starten, Strg+Leer | Meldungsfenster nennt den nicht gefundenen Server; Vervollständigung und Hinweise der eingebauten Code Insight funktionieren |
+| CI8 | Server im Task-Manager beenden, danach Strg+Leer | Atlas startet den Server neu, die Liste erscheint (ggf. „eingeschränkt“, solange er indiziert) |
+
+## Symbolindex (#492)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SX1 | Projekt öffnen, das noch nie indiziert war | Das Atlas-Feld der Statuszeile ist gelb mit „Atlas · Index n %“ (#591), die Vervollständigung vermerkt „eingeschränkt“; nach dem Aufbau wird das Feld grün |
+| SX2 | IDE schließen und wieder öffnen | Index kommt aus dem Cache (Protokoll: „aus dem Cache“), bei 1000 Units in unter 3 s |
+| SX3 | `%LOCALAPPDATA%\Atlas\Index\<Version>\<Hash>\index.atlasidx` mit einem Hex-Editor verändern, IDE neu starten | Kein Fehlerdialog; Server-Protokoll „Index-Cache verworfen (Prüfsumme stimmt nicht)“, der Index wird neu aufgebaut |
+| SX4 | Neue Funktion im interface einer Unit deklarieren, speichern, in einer anderen Unit Strg+Leer | Die Funktion ist nach höchstens 1 s in der Liste |
+| SX5 | *Tools › Optionen › Drittanbieter › Atlas*, Abschnitt „Symbolindex“ | Units, Deklarationen, Speicher von Grenze, Größe auf der Platte, letzte Aktualisierung |
+| SX6 | „Index löschen“, Rückfrage mit Nein, dann mit Ja | Nein: nichts passiert; Ja: Meldung „Index gelöscht: n Caches, … frei“, danach SX1 |
+| SX7 | „Speichergrenze des Index“ auf 32 MB, großes Projekt öffnen | Kennzahlen: „Verwendungen von n Units ausgelagert“; Vervollständigung funktioniert weiter |
+
+## Rangfolge nach Gültigkeitsbereich (#488)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RB1 | In `function TKasse.Calc(ACustomer: Integer)` mit `var Total` bei `Total := |` Strg+Leer | Reihenfolge `Total` („lokal“), `ACustomer` („Parameter“), `FDiscount` („Feld“) |
+| RB2 | Inline-Variable `var Unten := 1;` unterhalb des Carets | `Unten` erscheint nicht |
+| RB3 | Lokale Variable `Name`, die das Feld `Name` der Klasse verdeckt | `Name` einmal mit „lokal“; das Detailpanel nennt „Verdeckt: Feld TKlasse.Name“ |
+| RB4 | Methode von `Self` und Routine aus einer uses-Unit in der Liste | Tag mit der Klasse bzw. dem Namen der Unit |
+
+## Tippfehler (#485)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TF1 | `Lenght|` und Strg+Leer | „Meintest du“ mit `Length`; Fußzeile „Keine Treffer für ‚Lenght‘“ |
+| TF2 | Wie TF1, dann `;` | Nur `;` wird eingefügt, nichts übernommen |
+| TF3 | Wie TF1, dann Enter | `Length` wird übernommen |
+
+## Atlas-Statusfeld (#591)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SF1 | IDE starten, Projekt öffnen, Unit öffnen | Rechts in der Statusleiste des Editors „Atlas“ mit Punkt; gelb mit „Atlas · Index n %“, solange der Index aufgebaut wird, danach grün |
+| SF2 | Maus über das Feld | Tooltip mit den Zeilen, die nicht grün sind; alles grün: „Atlas: alles in Ordnung“ |
+| SF3 | Klick auf das Feld | Fenster über dem Feld mit „Server: läuft, n ms im Mittel der letzten 50 Anfragen, Version …“, „Index: n Units“, „Datei X.pas: …“ und den Knöpfen „Protokoll öffnen“, „Server neu starten“; Esc oder Klick daneben schließt |
+| SF4 | `AtlasServer.exe` im Task-Manager beenden | Feld innerhalb von 2 s rot („Atlas · Server gestoppt“) |
+| SF5 | Feld anklicken, „Server neu starten“ | Feld erst gelb, dann grün |
+| SF6 | Datei mit UTF-8 ohne BOM und LF öffnen, Feld anklicken | Zeile „Datei …: UTF-8 ohne BOM, LF“ |
+| SF7 | Zeile „Datei“ anklicken, „UTF-8 mit BOM, CRLF“ wählen, speichern | Datei ist als geändert markiert; nach dem Speichern hat sie BOM und CRLF (Hex-Editor), die IDE fragt nicht nach Neuladen, Meldung „… gespeichert als UTF-8 mit BOM, CRLF“ |
+| SF8 | Optionen: „Atlas-Feld in der Statusleiste“ aus, dann an | Feld verschwindet sofort und erscheint wieder |
+| SF9 | Optionen: „Kurztext neben „Atlas“ zeigen“ aus; „Ausgeblendete Zeilen“ = `atlas.file` | Feld zeigt nur „Atlas“; im Fenster fehlt die Zeile „Datei“ |
+| SF10 | Zweites Editorfenster öffnen (Ansicht › Neues Editorfenster) | Auch dort ein Atlas-Feld |
+| SF11 | Package entladen | Felder verschwinden, die Statusleisten verhalten sich wie ohne Atlas |
+
+## Schnellschalter (#604)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| QS1 | Rechtsklick auf das Atlas-Feld in der Statusleiste | Fenster „Atlas · Schnellschalter“ über dem Feld, Schalter nach Seiten gruppiert (Allgemein, Editor, Hints, Vervollständigung, Compiler), u. a. „Klammerfarben“, „Blocklinien“, „XMLDoc vollständig“ |
+| QS2 | Strg+Umschalt+Alt+A im Editor | Dasselbe Fenster; zweimal drücken schließt es; Esc oder ein Klick daneben schließt es ebenfalls |
+| QS3 | Tools › Optionen › Atlas › Tastenkonflikte: Taste „Schnellschalter“ auf Strg+Umschalt+Q ändern | Neue Taste öffnet das Fenster sofort, die alte nicht mehr |
+| QS4 | Im Fenster „Klammerfarben“ anklicken | Farbige Klammerpaare verschwinden sofort, das Fenster bleibt offen und zeigt das Kästchen leer; Tools › Optionen › Atlas zeigt „Klammerfarben“ aus |
+| QS5 | IDE neu starten | Klammerfarben bleiben aus; erneut anklicken schaltet sie wieder an |
+| QS6 | „Blocklinien“ mit ↑/↓ wählen, Leertaste | Blocklinien aus bzw. an, Strukturhervorhebung der IDE entsprechend an bzw. aus |
+| QS7 | „Alles aus für diese Sitzung“ | Klammerfarben, Blocklinien, ausgegraute {$IFDEF}-Zweige und Unterstreichungen verschwinden; Kopf zeigt „Zeichnungen für diese Sitzung aus“, Knopf heißt „Alles wieder an“; Tools › Optionen › Atlas zeigt unverändert die alten Werte |
+| QS8 | „Alles wieder an“ | Alle Zeichnungen wie vorher; nach einem IDE-Neustart ohne erneuten Klick ist ohnehin alles wieder an |
+| QS9 | atlas.json mit `"hints": { "xmlDocFull": false }`, Fenster öffnen | „XMLDoc vollständig“ ist aus und trägt rechts „Projekt“ |
+| QS10 | „XMLDoc vollständig“ anklicken, „Nur für diese Sitzung“ | Tooltip und Detailpanel zeigen die volle Doku; der Schalter trägt „Sitzung“; atlas.json und Optionen unverändert |
+| QS11 | Schalter erneut anklicken, dann wie QS9 mit „Im Projekt (atlas.json)“ | atlas.json enthält `"xmlDocFull": true`, Kommentare und Reihenfolge bleiben; Optionsseite unverändert |
+| QS12 | Befehlspalette: „Atlas: Klammerfarben ein/aus“, „Atlas: Alles aus für diese Sitzung“, „Atlas: Schnellschalter öffnen“ | Wie die Klicks im Fenster bzw. Fenster öffnet unten links im aktiven Fenster, wenn kein Statusfeld da ist |
+| QS13 | Menü Atlas › „Klammerfarben“ | Häkchen wie im Fenster; Umschalten wirkt wie dort |
+
+## Abgesicherter Start (#722)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AS1 | IDE mit Atlas starten, `%LOCALAPPDATA%\Atlas\Session` öffnen | Datei `session-<Prozessnummer>.json` mit Version, Startzeit, `loaded: true`, Ladezeit und aktiven Funktionen |
+| AS2 | IDE normal beenden | Die Marke ist weg; `safemode.json` hat `crashCount: 0` |
+| AS3 | IDE starten, im Taskmanager `bds.exe` beenden, IDE neu starten | Unten rechts das Fenster „Atlas: abgesicherter Start“ mit „Die letzte Sitzung wurde unerwartet beendet…“ und den Knöpfen „Abgesichert starten“, „Normal starten“, „Details“; die IDE ist währenddessen bedienbar; im Atlas-Feld eine gelbe Zeile „Abgesichert gestartet“ |
+| AS4 | Bei AS3 „Details“ | Version, Start, Ladezeit, aktive Funktionen und Fehler der abgestürzten Sitzung, darunter ihr Protokoll ohne Pfade und Namen; „Diagnoselog exportieren…“ öffnet die Vorschau aus #647 |
+| AS5 | Bei AS3 „Abgesichert starten“ | Fenster wechselt auf „Atlas läuft abgesichert…“ mit „Normal weiterarbeiten“, „Schnellschalter…“; keine Klammerfarben, Blocklinien, Unterstreichungen; Vervollständigung kommt von der IDE; Tools › Optionen › Atlas zeigt die gespeicherten Werte unverändert |
+| AS6 | Bei AS5 „Schnellschalter…“, „Klammerfarben“ anklicken | Klammerfarben erscheinen sofort, der Rest bleibt aus |
+| AS7 | Bei AS5 „Normal weiterarbeiten“ | Meldung „Atlas: abgesicherter Start beendet, alle Funktionen wieder an.“; alles wie im normalen Betrieb ohne Neustart, gelbe Zeile weg |
+| AS8 | Bei AS3 „Normal starten“ | Wie AS7 |
+| AS9 | Zweimal hintereinander (innerhalb von 10 Minuten) wie AS3 abbrechen | Beim dritten Start keine Rückfrage, Fenster „Die IDE ist zweimal kurz hintereinander abgestürzt…“, Atlas läuft abgesichert |
+| AS10 | Eine Einstellung ändern (z. B. Blocklinien aus), danach wie AS3 abbrechen, „Abgesichert starten“ | Vorschlag nennt „Blocklinien“ zuerst; Knopf „Einstellungen auf den Stand vor … zurücksetzen“ stellt den alten Wert wieder her und meldet es |
+| AS11 | Umschalt beim Start der IDE gedrückt halten, bis die Packages geladen sind | Fenster „Atlas wurde abgesichert gestartet (Taste beim Laden)…“; nur Optionsseite und Atlas-Feld, kein Menü Atlas, keine Palette, keine Vervollständigung von Atlas |
+| AS12 | `bds.exe -AtlasSafeMode` bzw. `set ATLAS_SAFE_MODE=1` und IDE starten | Wie AS11 mit „Kommandozeile bzw. ATLAS_SAFE_MODE“ |
+| AS13 | Optionen › Abgesicherter Start: Taste „Strg“; Umschalt bzw. Strg beim Start | Umschalt tut nichts, Strg wirkt wie AS11 |
+| AS14 | Optionen: Längste Ladezeit 1000, IDE mit großem Projekt neu starten (Laden dauert länger), dann noch einmal neu starten | Beim zweiten Start Rückfrage mit „Der letzte Start von Atlas dauerte länger als 1000 ms.“ |
+| AS15 | Optionen: beide Kästchen aus, Taste „keine“; AS3, AS9, AS11 wiederholen | Nie eine Rückfrage, Atlas startet immer normal |
+| AS16 | Zwei IDEs gleichzeitig starten, eine normal beenden, die andere offen lassen; dritte IDE starten | Keine Rückfrage: die laufende IDE gilt nicht als Absturz |
 
 ## Schließen der Atlas-Fenster (#414)
 
@@ -309,11 +408,11 @@ Protokoll: jede erkannte Änderung als Zeile „Extern geändert: … (neu laden
 
 ## Einfrier-Wächter (#501)
 
-Protokoll: `Atlas.IDE.Expert.log` neben dem Plugin (Hänger stehen dort immer, auch ohne `Diagnose`).
+Protokoll: `Atlas.IDE.Expert370.log` neben dem Plugin (Hänger stehen dort immer, auch ohne `Diagnose`).
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| W1 | Tools › Optionen › Atlas › „Wächter testen (1 s)“ | IDE steht 1 s; danach im Protokoll „Hänger ~1000 ms um …; Atlas: Wächter-Test, … ms; Fenster: Optionen“, darunter Zeilen `Modul+Offset` (u. a. `Atlas.IDE.Expert.bpl`, `kernel*.dll`) und „Sitzung: 1 Hänger …“ |
+| W1 | Tools › Optionen › Atlas › „Wächter testen (1 s)“ | IDE steht 1 s; danach im Protokoll „Hänger ~1000 ms um …; Atlas: Wächter-Test, … ms; Fenster: Optionen“, darunter Zeilen `Modul+Offset` (u. a. `Atlas.IDE.Expert370.bpl`, `kernel*.dll`) und „Sitzung: 1 Hänger …“ |
 | W2 | Normal arbeiten ohne Hänger | Keine Hänger-Zeilen im Protokoll |
 | W3 | Schwelle auf 2000 setzen, W1 wiederholen | Kein Eintrag (1 s liegt unter der Schwelle) |
 | W4 | Schwelle 500, „Hinweis im Meldungsfenster …“ an; einen Hänger über 2 s erzeugen (z. B. großes Projekt öffnen) | Zeile „Atlas: Die IDE hat n ms nicht reagiert“ in der Gruppe „Atlas“ des Meldungsfensters, kein Dialog |

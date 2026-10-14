@@ -98,7 +98,7 @@
         "atlas.rules": {
           "type": "object",
           "default": {},
-          "markdownDescription": "Prüfregeln einzeln einstellen: Regel-ID → Schweregrad oder Objekt mit \"severity\" und Optionen. atlas.json im Projekt hat Vorrang."
+          "markdownDescription": "Prüfregeln einzeln einstellen: Regel-ID → Schweregrad oder Objekt mit \"severity\" und Optionen. Die Konfidenz eines Treffers begrenzt den Schweregrad auch hier: Bei mittlerer Konfidenz bleibt ein Treffer höchstens eine Warnung, bei niedriger höchstens ein Hinweis, auch mit \"error\". atlas.json im Projekt hat Vorrang."
         },
         "atlas.profile": {
           "type": [
@@ -281,8 +281,8 @@
         "atlas.memoryBudgetMb": {
           "type": "integer",
           "minimum": 0,
-          "default": 0,
-          "markdownDescription": "Obergrenze für den Symbolindex in MB. Darüber werden zuerst Bibliotheks-Units (RTL, VCL), dann Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. atlas.json im Projekt hat Vorrang."
+          "default": 256,
+          "markdownDescription": "Obergrenze für den Symbolindex im Arbeitsspeicher in MB. Darüber werden zuerst die Verwendungen ausgelagert (sie bleiben im Cache auf der Platte), dann Bibliotheks-Units (RTL, VCL) und zuletzt Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. atlas.json im Projekt hat Vorrang."
         },
         "atlas.index": {
           "type": "object",
@@ -309,6 +309,11 @@
           "type": "object",
           "default": {},
           "markdownDescription": "Inlay Hints im Editor. atlas.json im Projekt hat Vorrang."
+        },
+        "atlas.hints": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Anzeige von XMLDoc-Kommentaren (///) im Hover-Tooltip und im Detailpanel der Vervollständigung des IDE-Plugins. Der Server bereitet die Doku immer vollständig auf; die Werte steuern nur die Anzeige. Ohne Angabe gelten die Werte aus Tools › Optionen › Drittanbieter › Atlas. atlas.json im Projekt hat Vorrang."
         },
         "atlas.stringLiteral": {
           "type": "object",

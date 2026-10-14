@@ -17,6 +17,12 @@ type
     [Test]
     procedure LinesBetweenDirectivesAreInactive;
     [Test]
+    procedure InactiveSpansCoverPartsOfLines;
+    [Test]
+    procedure InactiveAtExcludesDirectives;
+    [Test]
+    procedure ReadsInactiveConditionAndBuildsHint;
+    [Test]
     procedure ContainsTreatsEmptyRangeAsOneCharacter;
     [Test]
     procedure ReadsDiagnosticReports;
@@ -59,7 +65,8 @@ var
 begin
   Items := TJSONObject.ParseJSONValue('[' +
     '{"range":{"start":{"line":3,"character":2},"end":{"line":3,"character":9}},"severity":2,' +
-    '"code":"unused-variable","source":"Atlas","message":"Variable X wird nicht verwendet"},' +
+    '"code":"unused-variable","source":"Atlas","message":"Variable X wird nicht verwendet",' +
+    '"data":{"confidence":"medium"}},' +
     '{"range":{"start":{"line":5,"character":0},"end":{"line":5,"character":1}},"severity":1,' +
     '"code":"E2003","source":"dcc","message":"Undeklarierter Bezeichner"},' +
     '{"range":{"start":{"line":7,"character":0},"end":{"line":9,"character":0}},"severity":4,' +
@@ -77,6 +84,8 @@ begin
   Assert.IsTrue(Problems[0].Severity = TAtlasProblemSeverity.Warning);
   Assert.AreEqual('Variable X wird nicht verwendet (unused-variable)', Problems[0].Caption);
   Assert.IsFalse(Problems[0].IsCompiler);
+  Assert.AreEqual('medium', Problems[0].Confidence);
+  Assert.AreEqual('', Problems[1].Confidence);
   Assert.IsTrue(Problems[1].IsCompiler);
   Assert.IsTrue(Problems[1].Severity = TAtlasProblemSeverity.Error);
   Assert.IsTrue(Problems[2].Unnecessary);
@@ -219,6 +228,100 @@ begin
   finally
     Store.Free;
   end;
+end;
+
+procedure TAtlasProblemsTests.InactiveSpansCoverPartsOfLines;
+var
+  Store: TAtlasProblemStore;
+  OneLine, Block: TAtlasProblem;
+  Spans: TArray<TAtlasColumnSpan>;
+begin
+  // Zweig innerhalb einer Zeile (#615): "x := 1; {$IFDEF X} a := 2; {$ENDIF} y;"
+  OneLine := Problem(0, 18, 'inaktiv');
+  OneLine.EndCharacter := 27;
+  OneLine.Unnecessary := True;
+  // Über mehrere Zeilen, beginnt hinter der Direktive und endet vor eingerücktem {$ENDIF}.
+  Block := Problem(1, 10, 'inaktiv');
+  Block.EndLine := 3;
+  Block.EndCharacter := 2;
+  Block.Unnecessary := True;
+  Store := TAtlasProblemStore.Create;
+  try
+    Store.Update('C:\P\C.pas', 'x := 1; {$IFDEF X} a := 2; {$ENDIF} y;'#10'{$IFDEF A} x'#10'y'#10'  {$ENDIF}', True,
+      [OneLine, Block], '1', True);
+    Spans := Store.InactiveSpans('C:\P\C.pas', 0, 4);
+    Assert.AreEqual(1, Integer(Length(Spans)));
+    Assert.AreEqual(19, Spans[0].First);
+    Assert.AreEqual(27, Spans[0].Last);
+    Assert.IsFalse(TAtlasColumnSpan.Contains(Spans, 18), 'Direktive bleibt normal');
+    Assert.IsTrue(TAtlasColumnSpan.Covers(Spans, 20, 6));
+    Assert.IsFalse(TAtlasColumnSpan.Covers(Spans, 26, 3));
+    Spans := Store.InactiveSpans('C:\P\C.pas', 1, 4);
+    Assert.AreEqual(11, Spans[0].First);
+    Assert.AreEqual(12, Spans[0].Last);
+    Spans := Store.InactiveSpans('C:\P\C.pas', 2, 4);
+    Assert.AreEqual(1, Spans[0].First);
+    Assert.AreEqual(MaxInt, Spans[0].Last);
+    Spans := Store.InactiveSpans('C:\P\C.pas', 3, 4);
+    Assert.AreEqual(1, Spans[0].First);
+    Assert.AreEqual(2, Spans[0].Last);
+    Assert.AreEqual(0, Integer(Length(Store.InactiveSpans('C:\P\Fremd.pas', 2, 4))));
+    // Nach einer Änderung in der ersten Zeile: dort nichts mehr, bis neue Diagnosen kommen.
+    Store.Edit('C:\P\C.pas', 'x := 1; {$IFDEF X} b := 2; {$ENDIF} y;'#10'{$IFDEF A} x'#10'y'#10'  {$ENDIF}');
+    Assert.AreEqual(0, Integer(Length(Store.InactiveSpans('C:\P\C.pas', 0, 4))));
+    Assert.AreEqual(1, Integer(Length(Store.InactiveSpans('C:\P\C.pas', 2, 4))));
+  finally
+    Store.Free;
+  end;
+end;
+
+procedure TAtlasProblemsTests.InactiveAtExcludesDirectives;
+var
+  Store: TAtlasProblemStore;
+  Block: TAtlasProblem;
+begin
+  Block := Problem(1, 10, 'inaktiv');
+  Block.EndLine := 3;
+  Block.EndCharacter := 2;
+  Block.Unnecessary := True;
+  Store := TAtlasProblemStore.Create;
+  try
+    Store.Update('C:\P\C.pas', 'type'#10'{$IFDEF A} x'#10'y'#10'  {$ENDIF}', True, [Block, Problem(2, 0, 'echt')], '1', True);
+    Assert.AreEqual(0, Integer(Length(Store.InactiveAt('C:\P\C.pas', 1, 9))), 'in der Direktive');
+    Assert.AreEqual(1, Integer(Length(Store.InactiveAt('C:\P\C.pas', 1, 11))));
+    Assert.AreEqual(1, Integer(Length(Store.InactiveAt('C:\P\C.pas', 2, 0))), 'nur der Bereich, kein Problem');
+    Assert.AreEqual(1, Integer(Length(Store.InactiveAt('C:\P\C.pas', 3, 1))));
+    Assert.AreEqual(0, Integer(Length(Store.InactiveAt('C:\P\C.pas', 3, 2))), 'Anfang von $ENDIF');
+  finally
+    Store.Free;
+  end;
+end;
+
+procedure TAtlasProblemsTests.ReadsInactiveConditionAndBuildsHint;
+var
+  Item: TJSONObject;
+  Inactive: TAtlasProblem;
+begin
+  Item := TJSONObject.ParseJSONValue('{"range":{"start":{"line":2,"character":0},"end":{"line":4,"character":0}},' +
+    '"severity":4,"tags":[1],"source":"Atlas","message":"Inaktiv: Bedingung WIN64 nicht erfüllt",' +
+    '"data":{"inactive":{"condition":"WIN64","platform":"Win32","config":"Debug"}}}') as TJSONObject;
+  try
+    Inactive := TAtlasProblem.FromJson(Item);
+  finally
+    Item.Free;
+  end;
+  Assert.IsTrue(Inactive.Unnecessary);
+  Assert.AreEqual('WIN64', Inactive.InactiveCondition);
+  Assert.AreEqual('Win32', Inactive.InactivePlatform);
+  Assert.AreEqual('Debug', Inactive.InactiveConfig);
+  Assert.AreEqual('Inactive: condition WIN64 not met (target platform Win32 · Debug)',
+    Inactive.InactiveHint('Inactive: condition %s not met', ' (target platform %s · %s)', 'x'));
+  Inactive.InactiveConfig := '';
+  Assert.AreEqual('C WIN64 (Win32 · ?)', Inactive.InactiveHint('C %s', ' (%s · %s)', 'x'));
+  Inactive.InactivePlatform := '';
+  Assert.AreEqual('C WIN64', Inactive.InactiveHint('C %s', ' (%s · %s)', 'x'));
+  Inactive.InactiveCondition := '';
+  Assert.AreEqual('Inaktiver Bereich', Inactive.InactiveHint('C %s', ' (%s · %s)', 'Inaktiver Bereich'));
 end;
 
 procedure TAtlasProblemsTests.ForFileHidesInactiveRangesAndDuplicatesAndSorts;

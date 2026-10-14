@@ -5,6 +5,13 @@
 // untereinander, die IDE skaliert sie mit dem Dialog. Die DFM ist leer;
 // TCustomFrame.Create verlangt für abgeleitete Frames eine Ressource. Laden und Speichern über
 // TAtlasPluginSettings; die IDE-Schicht liest und schreibt die Registry.
+// Die Tastenkürzel stehen auf der eigenen Seite „Tastenkonflikte“
+// (Atlas.UI.Settings.Keys, #494). Unten zeigt die Seite, was die Sicherung
+// nach wiederholten Fehlern abgeschaltet hat, und schaltet es wieder ein (#493).
+// Abschnitt Symbolindex (#492): Verwendungen an/aus, Speichergrenze, Kennzahlen
+// (Units, Deklarationen, Größe, letzte Aktualisierung), „Index neu aufbauen“ und
+// „Index löschen“. Die Seite kennt den Server nicht; die IDE-Schicht liefert
+// Texte und führt die Befehle über OnIndexMetrics, OnIndexRebuild, OnIndexClear aus.
 
 interface
 
@@ -21,6 +28,8 @@ uses
   Vcl.Menus,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Hangs,
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Diagnostics.SafeMode,
   Atlas.UI.Strings;
 
 type
@@ -42,8 +51,14 @@ type
     FGroupInherited: TCheckBox;
     FPreview: TCheckBox;
     FHoverTooltip: TCheckBox;
+    FXmlDocFull: TCheckBox;
+    FXmlDocMaxLines: TEdit;
     FHangThreshold: TEdit;
     FHangHint: TCheckBox;
+    FProviderTimeLimit: TEdit;
+    FFuseList: TListBox;
+    FFuseEnableSelected: TButton;
+    FFuseEnableAll: TButton;
     FReloadExternal: TCheckBox;
     FPairColors: TCheckBox;
     FInactiveDim: TCheckBox;
@@ -51,16 +66,25 @@ type
     FInlayHints: TCheckBox;
     FPairGuides: TCheckBox;
     FProblems: TCheckBox;
+    FStatusField: TCheckBox;
+    FStatusSummary: TCheckBox;
+    FStatusHidden: TEdit;
     FIndexGroup: TCheckBox;
     FIndexSearch: TCheckBox;
     FIndexLibrary: TCheckBox;
+    FIndexUsages: TCheckBox;
+    FMemoryBudget: TEdit;
+    FIndexInfo: TLabel;
+    FIndexRefresh: TButton;
+    FIndexRebuild: TButton;
+    FIndexClear: TButton;
+    FOnIndexMetrics: TFunc<string>;
+    FOnIndexRebuild: TFunc<string>;
+    FOnIndexClear: TFunc<string>;
+    FConfirmClear: TFunc<Boolean>;
     FCheckOnSave: TCheckBox;
     FCheckDelay: TEdit;
     FCheckMax: TEdit;
-    FPaletteKey: TEdit;
-    FPaletteKeyPriority: TCheckBox;
-    FCheckKey: TEdit;
-    FCheckKeyPriority: TCheckBox;
     FActionsKey: TEdit;
     FExpandKey: TEdit;
     FShrinkKey: TEdit;
@@ -70,6 +94,11 @@ type
     FSlashCommands: TCheckBox;
     FSnippets: TCheckBox;
     FImportIdeTemplates: TCheckBox;
+    FSafeAsk: TCheckBox;
+    FSafeAuto: TCheckBox;
+    FSafeKey: TComboBox;
+    FSafeTimeout: TEdit;
+    FSafeHistory: TEdit;
     FResetHistory: TButton;
     FResetWidths: TButton;
     FHangTest: TButton;
@@ -79,13 +108,20 @@ type
     function AddCheck(const ACaption: string): TCheckBox;
     function AddPanel(AHeight: Integer): TPanel;
     function AddNumber(const ACaption: string): TEdit;
-    /// <summary>Tastenkürzel mit Häkchen „Vorrang“ in einer Zeile (#494).</summary>
-    function AddKey(const ACaption: string; out APriority: TCheckBox): TEdit; overload;
-    /// <summary>Kürzel ohne eigenen Vorrang; der gilt für die Gruppe (#399).</summary>
-    function AddKey(const ACaption: string): TEdit; overload;
+    /// <summary>Kürzel ohne eigenen Vorrang; der gilt für die Gruppe (#399). Palette und Prüfung stehen auf der
+    /// Seite „Tastenkonflikte“ (#494).</summary>
+    function AddKey(const ACaption: string): TEdit;
     procedure ResetHistoryClick(Sender: TObject);
     procedure ResetWidthsClick(Sender: TObject);
     procedure HangTestClick(Sender: TObject);
+    procedure FuseEnableSelectedClick(Sender: TObject);
+    procedure FuseEnableAllClick(Sender: TObject);
+    procedure AddFuseSection;
+    procedure AddIndexSection;
+    procedure AddSafeSection;
+    procedure IndexRefreshClick(Sender: TObject);
+    procedure IndexRebuildClick(Sender: TObject);
+    procedure IndexClearClick(Sender: TObject);
     procedure ServerBrowseClick(Sender: TObject);
     procedure ServerPathChange(Sender: TObject);
     procedure SetDefaultServerPath(const AValue: string);
@@ -93,6 +129,35 @@ type
     constructor Create(AOwner: TComponent); override;
     procedure LoadFrom(const ASettings: TAtlasPluginSettings);
     procedure SaveTo(var ASettings: TAtlasPluginSettings);
+    /// <summary>Liste der abgeschalteten Features und Quellen neu lesen (#493).</summary>
+    procedure RefreshFuse;
+    /// <summary>Zum Testen: Liste und Schaltflächen der Sicherung.</summary>
+    property FuseList: TListBox read FFuseList;
+    property FuseEnableSelected: TButton read FFuseEnableSelected;
+    property FuseEnableAll: TButton read FFuseEnableAll;
+    /// <summary>Kennzahlen des Index neu holen und anzeigen (#492).</summary>
+    procedure RefreshIndex;
+    /// <summary>Zum Testen: Kennzahlen und Schaltflächen des Index.</summary>
+    property IndexInfo: TLabel read FIndexInfo;
+    property IndexRebuild: TButton read FIndexRebuild;
+    property IndexClear: TButton read FIndexClear;
+    /// <summary>Zum Testen: Einstellungen des Statusfelds (#591).</summary>
+    property StatusField: TCheckBox read FStatusField;
+    property StatusSummary: TCheckBox read FStatusSummary;
+    property StatusHidden: TEdit read FStatusHidden;
+    /// <summary>Zum Testen: abgesicherter Start (#722).</summary>
+    property SafeAsk: TCheckBox read FSafeAsk;
+    property SafeAuto: TCheckBox read FSafeAuto;
+    property SafeKey: TComboBox read FSafeKey;
+    property SafeTimeout: TEdit read FSafeTimeout;
+    property SafeHistory: TEdit read FSafeHistory;
+    /// <summary>Kennzahlen als Text; nil = nicht verfügbar.</summary>
+    property OnIndexMetrics: TFunc<string> read FOnIndexMetrics write FOnIndexMetrics;
+    /// <summary>„Index neu aufbauen“ bzw. „Index löschen“ ausführen; Ergebnis als Meldung.</summary>
+    property OnIndexRebuild: TFunc<string> read FOnIndexRebuild write FOnIndexRebuild;
+    property OnIndexClear: TFunc<string> read FOnIndexClear write FOnIndexClear;
+    /// <summary>Rückfrage vor dem Löschen; Standard: Dialog mit Ja/Nein.</summary>
+    property ConfirmClear: TFunc<Boolean> read FConfirmClear write FConfirmClear;
     /// <summary>„Verlauf zurücksetzen“ der lernenden Gewichtung (#418).</summary>
     property OnResetHistory: TProc read FOnResetHistory write FOnResetHistory;
     /// <summary>Server, der bei leerem Pfad gilt (für die Anzeige „Verwendet: …“).</summary>
@@ -102,6 +167,9 @@ type
 implementation
 
 {$R *.dfm}
+
+uses
+  System.UITypes;
 
 { TAtlasSettingsPage }
 
@@ -113,7 +181,7 @@ begin
   inherited Create(AOwner);
   Name := 'AtlasSettingsPage';
   Width := 480;
-  Height := 740;
+  Height := 1700;
   Title := TLabel.Create(Self);
   Title.Parent := Self;
   Title.Align := alTop;
@@ -178,9 +246,14 @@ begin
   FSnippets := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSnippets));
   FImportIdeTemplates := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsImportIdeTemplates));
   FHoverTooltip := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHover));
+  // XMLDoc in Tooltip und Detailpanel (#654); hints in atlas.json hat Vorrang.
+  FXmlDocFull := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocFull));
+  FXmlDocMaxLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocMaxLines));
   // Einfrier-Wächter (#501).
   FHangThreshold := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHangThreshold));
   FHangHint := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHangHint));
+  // Blockierschutz für Datenquellen (#493).
+  FProviderTimeLimit := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsProviderTimeLimit));
   FReloadExternal := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReload));
   // Änderungen des Servers an nicht geöffneten Dateien (#397).
   FOpenForEdits := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOpenForEdits));
@@ -189,17 +262,21 @@ begin
   FInlayHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayHints));
   FPairGuides := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuides));
   FProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblems));
+  // Atlas-Statusfeld (#591).
+  FStatusField := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStatusField));
+  FStatusSummary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStatusSummary));
+  FStatusHidden := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStatusHidden));
+  FStatusHidden.NumbersOnly := False;
+  FStatusHidden.Width := 300;
   // Umfang des Index für alle Projekte; index in atlas.json hat Vorrang (#652).
   FIndexGroup := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexGroup));
   FIndexSearch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexSearch));
   FIndexLibrary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexLibrary));
+  AddIndexSection;
   // Compilerprüfung nach dem Speichern (#548).
   FCheckOnSave := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCheckOnSave));
   FCheckDelay := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckDelay));
   FCheckMax := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckMax));
-  // Tastenkürzel (#494).
-  FPaletteKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsPaletteKey), FPaletteKeyPriority);
-  FCheckKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsCheckKey), FCheckKeyPriority);
   // Editorbefehle (#399): ein Vorrang für alle.
   FActionsKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorActions));
   FExpandKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorExpand));
@@ -208,6 +285,7 @@ begin
   FTypeDefinitionKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTypeDefinition));
   FEditorKeysPriority := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorKeysPriority));
   FSlashCommands := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSlashCommands));
+  AddSafeSection;
   Panel := AddPanel(32);
   FResetHistory := TButton.Create(Self);
   FResetHistory.Parent := Panel;
@@ -230,6 +308,206 @@ begin
   FHangTest.Top := 3;
   FHangTest.Width := 150;
   FHangTest.OnClick := HangTestClick;
+  AddFuseSection;
+  RefreshFuse;
+end;
+
+procedure TAtlasSettingsPage.AddIndexSection;
+var
+  Panel: TPanel;
+  Title: TLabel;
+begin
+  // Symbolindex (#492): Verwendungen, Speichergrenze, Kennzahlen und Verwaltung.
+  Panel := AddPanel(20);
+  Title := TLabel.Create(Self);
+  Title.Parent := Panel;
+  Title.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIndexTitle);
+  Title.Left := 0;
+  Title.Top := 3;
+  FIndexUsages := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexUsages));
+  FMemoryBudget := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsMemoryBudget));
+  Panel := AddPanel(66);
+  FIndexInfo := TLabel.Create(Self);
+  FIndexInfo.Parent := Panel;
+  FIndexInfo.Left := 0;
+  FIndexInfo.Top := 2;
+  FIndexInfo.Font.Color := clGrayText;
+  Panel := AddPanel(32);
+  FIndexRefresh := TButton.Create(Self);
+  FIndexRefresh.Parent := Panel;
+  FIndexRefresh.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIndexRefresh);
+  FIndexRefresh.Left := 0;
+  FIndexRefresh.Top := 3;
+  FIndexRefresh.Width := 150;
+  FIndexRefresh.OnClick := IndexRefreshClick;
+  FIndexRebuild := TButton.Create(Self);
+  FIndexRebuild.Parent := Panel;
+  FIndexRebuild.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIndexRebuild);
+  FIndexRebuild.Left := 160;
+  FIndexRebuild.Top := 3;
+  FIndexRebuild.Width := 150;
+  FIndexRebuild.OnClick := IndexRebuildClick;
+  FIndexClear := TButton.Create(Self);
+  FIndexClear.Parent := Panel;
+  FIndexClear.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIndexClear);
+  FIndexClear.Left := 320;
+  FIndexClear.Top := 3;
+  FIndexClear.Width := 150;
+  FIndexClear.OnClick := IndexClearClick;
+  // Ohne Server (Ereignisse nicht gesetzt) sind die Befehle aus.
+  RefreshIndex;
+end;
+
+procedure TAtlasSettingsPage.RefreshIndex;
+begin
+  if Assigned(FOnIndexMetrics) then
+    FIndexInfo.Caption := FOnIndexMetrics()
+  else
+    FIndexInfo.Caption := '';
+  FIndexRebuild.Enabled := Assigned(FOnIndexRebuild);
+  FIndexClear.Enabled := Assigned(FOnIndexClear);
+end;
+
+procedure TAtlasSettingsPage.IndexRefreshClick(Sender: TObject);
+begin
+  RefreshIndex;
+end;
+
+procedure TAtlasSettingsPage.IndexRebuildClick(Sender: TObject);
+begin
+  if Assigned(FOnIndexRebuild) then
+    FIndexInfo.Caption := FOnIndexRebuild();
+end;
+
+procedure TAtlasSettingsPage.IndexClearClick(Sender: TObject);
+var
+  Confirmed: Boolean;
+begin
+  if not Assigned(FOnIndexClear) then
+    Exit;
+  if Assigned(FConfirmClear) then
+    Confirmed := FConfirmClear()
+  else
+    Confirmed := MessageDlg(TAtlasStrings.Text(TAtlasTextId.SettingsIndexClearConfirm), mtConfirmation,
+      [mbYes, mbNo], 0) = mrYes;
+  if Confirmed then
+    FIndexInfo.Caption := FOnIndexClear();
+end;
+
+procedure TAtlasSettingsPage.AddFuseSection;
+var
+  Panel: TPanel;
+  Title: TLabel;
+begin
+  Panel := AddPanel(20);
+  Title := TLabel.Create(Self);
+  Title.Parent := Panel;
+  Title.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFuseTitle);
+  Title.Left := 0;
+  Title.Top := 3;
+  Panel := AddPanel(64);
+  FFuseList := TListBox.Create(Self);
+  FFuseList.Parent := Panel;
+  FFuseList.Align := alClient;
+  FFuseList.MultiSelect := True;
+  Panel := AddPanel(32);
+  FFuseEnableSelected := TButton.Create(Self);
+  FFuseEnableSelected.Parent := Panel;
+  FFuseEnableSelected.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFuseEnableSelected);
+  FFuseEnableSelected.Left := 0;
+  FFuseEnableSelected.Top := 3;
+  FFuseEnableSelected.Width := 150;
+  FFuseEnableSelected.OnClick := FuseEnableSelectedClick;
+  FFuseEnableAll := TButton.Create(Self);
+  FFuseEnableAll.Parent := Panel;
+  FFuseEnableAll.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFuseEnableAll);
+  FFuseEnableAll.Left := 160;
+  FFuseEnableAll.Top := 3;
+  FFuseEnableAll.Width := 150;
+  FFuseEnableAll.OnClick := FuseEnableAllClick;
+end;
+
+procedure TAtlasSettingsPage.RefreshFuse;
+var
+  Feature: TAtlasFeature;
+  Name: string;
+  Any: Boolean;
+begin
+  FFuseList.Items.BeginUpdate;
+  try
+    FFuseList.Items.Clear;
+    // Objects: Feature + 1; nil bei einer Quelle (Name im Text).
+    for Feature in TAtlasGuard.DisabledSet do
+      FFuseList.Items.AddObject(TAtlasGuard.FeatureName(Feature), TObject(NativeInt(Ord(Feature) + 1)));
+    for Name in TAtlasGuard.DisabledProviders do
+      FFuseList.Items.AddObject(Name, nil);
+    Any := FFuseList.Items.Count > 0;
+    if not Any then
+      FFuseList.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsFuseNone));
+  finally
+    FFuseList.Items.EndUpdate;
+  end;
+  FFuseList.Enabled := Any;
+  FFuseEnableSelected.Enabled := Any;
+  FFuseEnableAll.Enabled := Any;
+end;
+
+procedure TAtlasSettingsPage.FuseEnableSelectedClick(Sender: TObject);
+var
+  Index: Integer;
+  Tag: NativeInt;
+begin
+  for Index := 0 to FFuseList.Items.Count - 1 do
+    if FFuseList.Selected[Index] then
+    begin
+      Tag := NativeInt(FFuseList.Items.Objects[Index]);
+      if Tag > 0 then
+        TAtlasGuard.Enable(TAtlasFeature(Tag - 1))
+      else
+        TAtlasGuard.EnableProvider(FFuseList.Items[Index]);
+    end;
+  RefreshFuse;
+end;
+
+procedure TAtlasSettingsPage.FuseEnableAllClick(Sender: TObject);
+begin
+  TAtlasGuard.EnableAll;
+  RefreshFuse;
+end;
+
+procedure TAtlasSettingsPage.AddSafeSection;
+var
+  Panel: TPanel;
+  Caption: TLabel;
+begin
+  // Abgesicherter Start nach einem Absturz (#722).
+  Panel := AddPanel(22);
+  Caption := TLabel.Create(Self);
+  Caption.Parent := Panel;
+  Caption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsSafeTitle);
+  Caption.Font.Style := [fsBold];
+  Caption.Left := 0;
+  Caption.Top := 4;
+  FSafeAsk := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSafeAsk));
+  FSafeAuto := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSafeAuto));
+  Panel := AddPanel(26);
+  Caption := TLabel.Create(Self);
+  Caption.Parent := Panel;
+  Caption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsSafeKey);
+  Caption.Left := 0;
+  Caption.Top := 5;
+  FSafeKey := TComboBox.Create(Self);
+  FSafeKey.Parent := Panel;
+  FSafeKey.Style := csDropDownList;
+  FSafeKey.Left := 180;
+  FSafeKey.Top := 1;
+  FSafeKey.Width := 120;
+  // Reihenfolge wie TAtlasStartupKey ohne None vorn: Umschalt, Strg, keine.
+  FSafeKey.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsSafeKeyShift));
+  FSafeKey.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsSafeKeyCtrl));
+  FSafeKey.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsSafeKeyNone));
+  FSafeTimeout := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSafeTimeout));
+  FSafeHistory := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSafeHistory));
 end;
 
 function TAtlasSettingsPage.AddCheck(const ACaption: string): TCheckBox;
@@ -255,31 +533,6 @@ begin
   Result.Top := FNextTop;
   Inc(FNextTop, 100);
   Result.ParentBackground := True;
-end;
-
-function TAtlasSettingsPage.AddKey(const ACaption: string; out APriority: TCheckBox): TEdit;
-var
-  Panel: TPanel;
-  Caption: TLabel;
-begin
-  Panel := AddPanel(26);
-  Caption := TLabel.Create(Self);
-  Caption.Parent := Panel;
-  Caption.Caption := ACaption;
-  Caption.Left := 0;
-  Caption.Top := 5;
-  // Als Text wie im Menü ("Strg+Umschalt+P"); leer = keine Taste.
-  Result := TEdit.Create(Self);
-  Result.Parent := Panel;
-  Result.Left := 180;
-  Result.Top := 1;
-  Result.Width := 140;
-  APriority := TCheckBox.Create(Self);
-  APriority.Parent := Panel;
-  APriority.Left := 330;
-  APriority.Top := 3;
-  APriority.Width := 220;
-  APriority.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsKeyPriority);
 end;
 
 function TAtlasSettingsPage.AddKey(const ACaption: string): TEdit;
@@ -324,10 +577,6 @@ begin
   FWidths := ASettings;
   FEnabled.Checked := ASettings.Enabled;
   FServerPath.Text := ASettings.ServerPath;
-  FPaletteKey.Text := ShortCutToText(TShortCut(ASettings.PaletteKey));
-  FPaletteKeyPriority.Checked := ASettings.PaletteKeyPriority;
-  FCheckKey.Text := ShortCutToText(TShortCut(ASettings.CheckKey));
-  FCheckKeyPriority.Checked := ASettings.CheckKeyPriority;
   FActionsKey.Text := ShortCutToText(TShortCut(ASettings.ActionsKey));
   FExpandKey.Text := ShortCutToText(TShortCut(ASettings.ExpandKey));
   FShrinkKey.Text := ShortCutToText(TShortCut(ASettings.ShrinkKey));
@@ -347,7 +596,10 @@ begin
   FSnippets.Checked := ASettings.Snippets;
   FImportIdeTemplates.Checked := ASettings.ImportIdeTemplates;
   FHoverTooltip.Checked := ASettings.HoverTooltip;
+  FXmlDocFull.Checked := ASettings.XmlDocFull;
+  FXmlDocMaxLines.Text := IntToStr(ASettings.XmlDocMaxLines);
   FHangThreshold.Text := IntToStr(ASettings.HangThresholdMs);
+  FProviderTimeLimit.Text := IntToStr(ASettings.ProviderTimeLimitMs);
   FHangHint.Checked := ASettings.HangHint;
   FReloadExternal.Checked := ASettings.ReloadExternal;
   FOpenForEdits.Checked := ASettings.OpenForEdits;
@@ -356,22 +608,37 @@ begin
   FInlayHints.Checked := ASettings.InlayHints;
   FPairGuides.Checked := ASettings.PairGuides;
   FProblems.Checked := ASettings.Problems;
+  FStatusField.Checked := ASettings.StatusField;
+  FStatusSummary.Checked := ASettings.StatusFieldSummary;
+  FStatusHidden.Text := ASettings.StatusFieldHidden;
   FIndexGroup.Checked := ASettings.IndexProjectGroup;
   FIndexSearch.Checked := ASettings.IndexSearchPaths;
   FIndexLibrary.Checked := ASettings.IndexLibraryPaths;
+  FIndexUsages.Checked := ASettings.IndexUsages;
+  FMemoryBudget.Text := IntToStr(ASettings.MemoryBudgetMb);
   FCheckOnSave.Checked := ASettings.CheckOnSave;
   FCheckDelay.Text := IntToStr(ASettings.CheckOnSaveDelayMs);
   FCheckMax.Text := IntToStr(ASettings.CheckOnSaveMaxMs);
+  FSafeAsk.Checked := ASettings.SafeAskAfterCrash;
+  FSafeAuto.Checked := ASettings.SafeAutoAfterRepeatedCrash;
+  case TAtlasSafeMode.KeyOf(ASettings.SafeStartupKey) of
+    TAtlasStartupKey.Ctrl:
+      FSafeKey.ItemIndex := 1;
+    TAtlasStartupKey.None:
+      FSafeKey.ItemIndex := 2;
+  else
+    FSafeKey.ItemIndex := 0;
+  end;
+  FSafeTimeout.Text := IntToStr(ASettings.SafeStartupTimeoutMs);
+  FSafeHistory.Text := IntToStr(ASettings.SafeKeepSettingsHistory);
+  RefreshFuse;
+  RefreshIndex;
 end;
 
 procedure TAtlasSettingsPage.SaveTo(var ASettings: TAtlasPluginSettings);
 begin
   ASettings.Enabled := FEnabled.Checked;
   ASettings.ServerPath := Trim(FServerPath.Text);
-  ASettings.PaletteKey := Integer(TextToShortCut(Trim(FPaletteKey.Text)));
-  ASettings.PaletteKeyPriority := FPaletteKeyPriority.Checked;
-  ASettings.CheckKey := Integer(TextToShortCut(Trim(FCheckKey.Text)));
-  ASettings.CheckKeyPriority := FCheckKeyPriority.Checked;
   ASettings.ActionsKey := Integer(TextToShortCut(Trim(FActionsKey.Text)));
   ASettings.ExpandKey := Integer(TextToShortCut(Trim(FExpandKey.Text)));
   ASettings.ShrinkKey := Integer(TextToShortCut(Trim(FShrinkKey.Text)));
@@ -390,7 +657,10 @@ begin
   ASettings.Snippets := FSnippets.Checked;
   ASettings.ImportIdeTemplates := FImportIdeTemplates.Checked;
   ASettings.HoverTooltip := FHoverTooltip.Checked;
+  ASettings.XmlDocFull := FXmlDocFull.Checked;
+  ASettings.XmlDocMaxLines := StrToIntDef(FXmlDocMaxLines.Text, ASettings.XmlDocMaxLines);
   ASettings.HangThresholdMs := StrToIntDef(FHangThreshold.Text, ASettings.HangThresholdMs);
+  ASettings.ProviderTimeLimitMs := StrToIntDef(FProviderTimeLimit.Text, ASettings.ProviderTimeLimitMs);
   ASettings.HangHint := FHangHint.Checked;
   ASettings.ReloadExternal := FReloadExternal.Checked;
   ASettings.OpenForEdits := FOpenForEdits.Checked;
@@ -399,12 +669,29 @@ begin
   ASettings.InlayHints := FInlayHints.Checked;
   ASettings.PairGuides := FPairGuides.Checked;
   ASettings.Problems := FProblems.Checked;
+  ASettings.StatusField := FStatusField.Checked;
+  ASettings.StatusFieldSummary := FStatusSummary.Checked;
+  ASettings.StatusFieldHidden := Trim(FStatusHidden.Text);
   ASettings.IndexProjectGroup := FIndexGroup.Checked;
   ASettings.IndexSearchPaths := FIndexSearch.Checked;
   ASettings.IndexLibraryPaths := FIndexLibrary.Checked;
+  ASettings.IndexUsages := FIndexUsages.Checked;
+  ASettings.MemoryBudgetMb := StrToIntDef(FMemoryBudget.Text, ASettings.MemoryBudgetMb);
   ASettings.CheckOnSave := FCheckOnSave.Checked;
   ASettings.CheckOnSaveDelayMs := StrToIntDef(FCheckDelay.Text, ASettings.CheckOnSaveDelayMs);
   ASettings.CheckOnSaveMaxMs := StrToIntDef(FCheckMax.Text, ASettings.CheckOnSaveMaxMs);
+  ASettings.SafeAskAfterCrash := FSafeAsk.Checked;
+  ASettings.SafeAutoAfterRepeatedCrash := FSafeAuto.Checked;
+  case FSafeKey.ItemIndex of
+    1:
+      ASettings.SafeStartupKey := TAtlasSafeMode.KeyText(TAtlasStartupKey.Ctrl);
+    2:
+      ASettings.SafeStartupKey := TAtlasSafeMode.KeyText(TAtlasStartupKey.None);
+  else
+    ASettings.SafeStartupKey := TAtlasSafeMode.KeyText(TAtlasStartupKey.Shift);
+  end;
+  ASettings.SafeStartupTimeoutMs := StrToIntDef(FSafeTimeout.Text, ASettings.SafeStartupTimeoutMs);
+  ASettings.SafeKeepSettingsHistory := StrToIntDef(FSafeHistory.Text, ASettings.SafeKeepSettingsHistory);
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;

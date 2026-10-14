@@ -39,6 +39,24 @@ type
     procedure AsmGivesUnknown;
     [Test]
     procedure ExceptionPathThroughFinallyDoesNotEndNormally;
+    [Test]
+    procedure ReachingDefinitionsWithoutEntryPath;
+    [Test]
+    procedure MayReadBeforeWriteFindsEarlyRead;
+    [Test]
+    procedure MayReadBeforeWriteSilentAfterAssignment;
+    [Test]
+    procedure SyntaxErrorGivesUnknown;
+    [Test]
+    procedure UncertainChangeGivesUnknown;
+    [Test]
+    procedure KnownConstParameterKeepsAnswer;
+    [Test]
+    procedure KnownVarAndOutParameterGiveUnknown;
+    [Test]
+    procedure AssignmentAfterUncertainChangeGivesNo;
+    [Test]
+    procedure ValueArgumentIsRead;
   end;
 
 implementation
@@ -100,6 +118,31 @@ begin
     'function F(X: Integer): Integer;'#13#10'label L1;'#13#10'var I, Y: Integer;'#13#10 +
     'begin'#13#10 + ABody + #13#10'end;'#13#10'end.');
   Result.Graph := TControlFlowGraph.Build(FindKind(Result.Tree.Root, TSyntaxKind.RoutineDecl));
+end;
+
+function FindRoutine(ANode: TSyntaxNode; const AName: string): TSyntaxNode;
+var
+  Index: Integer;
+begin
+  if (ANode.Kind = TSyntaxKind.RoutineDecl) and SameText(ANode.Name, AName) then
+    Exit(ANode);
+  for Index := 0 to ANode.ChildCount - 1 do
+  begin
+    Result := FindRoutine(ANode.Children[Index], AName);
+    if Result <> nil then
+      Exit;
+  end;
+  Result := nil;
+end;
+
+/// <summary>Wie Flow, mit weiteren Routinen der Unit vor F (für bekannte Signaturen, #143).</summary>
+function FlowWith(const ADeclarations, ABody: string): TFlowFixture;
+begin
+  Result.Tree := TPascalParser.Parse(
+    'unit A;'#13#10'interface'#13#10'implementation'#13#10 + ADeclarations + #13#10 +
+    'function F(X: Integer): Integer;'#13#10'var I, Y: Integer;'#13#10 +
+    'begin'#13#10 + ABody + #13#10'end;'#13#10'end.');
+  Result.Graph := TControlFlowGraph.Build(FindRoutine(Result.Tree.Root, 'F'));
 end;
 
 function NodeNamed(const AFixture: TFlowFixture; const AName: string): TFlowNode;
@@ -297,6 +340,187 @@ begin
   try
     Assert.AreEqual(1, Integer(Length(F.Graph.UnreachableStatements)));
     Assert.IsTrue(F.Graph.UnreachableStatements[0] = NodeNamed(F, 'Dead'));
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TControlFlowTests.ReachingDefinitionsWithoutEntryPath;
+var
+  F: TFlowFixture;
+  Defs: TReachingDefinitions;
+begin
+  F := Flow('  Y := 1;'#13#10'  if X > 0 then Y := 2;'#13#10'  Use;');
+  try
+    Defs := F.Graph.ReachingDefinitions(NodeNamed(F, 'Use'), 'Y');
+    Assert.AreEqual(2, Integer(Length(Defs.Definitions)));
+    Assert.IsFalse(Defs.FromEntry);
+    Assert.IsFalse(Defs.MaybeFromEntry);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TControlFlowTests.MayReadBeforeWriteFindsEarlyRead;
+var
+  F: TFlowFixture;
+begin
+  F := Flow('  if X > 0 then Y := 1;'#13#10'  Result := Y;');
+  try
+    Assert.IsTrue(F.Graph.MayReadBeforeWrite('Y') = TFlowAnswer.Yes);
+    Assert.IsTrue(F.Graph.MayReadBeforeWrite(NodeNamed(F, 'Result'), 'Y') = TFlowAnswer.Yes);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TControlFlowTests.MayReadBeforeWriteSilentAfterAssignment;
+var
+  F: TFlowFixture;
+begin
+  F := Flow('  Y := X;'#13#10'  if X > 0 then Y := 2;'#13#10'  Result := Y;');
+  try
+    Assert.IsTrue(F.Graph.MayReadBeforeWrite('Y') = TFlowAnswer.No);
+    Assert.IsTrue(F.Graph.MayReadBeforeWrite(NodeNamed(F, 'Result'), 'Y') = TFlowAnswer.No);
+    // X ist Parameter und hat keine Zuweisung: aus Sicht der Routine vom Anfang an gelesen.
+    Assert.IsTrue(F.Graph.MayReadBeforeWrite('X') = TFlowAnswer.Yes);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TControlFlowTests.SyntaxErrorGivesUnknown;
+var
+  F: TFlowFixture;
+begin
+  F := Flow('  if X > 0 then Result := 1;'#13#10'  Y := ) 2;');
+  try
+    Assert.IsFalse(F.Graph.Complete);
+    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Unknown);
+    Assert.IsTrue(F.Graph.MayReadBeforeWrite('Y') = TFlowAnswer.Unknown);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TControlFlowTests.UncertainChangeGivesUnknown;
+const
+  // var-/out-Argument mit unbekannter oder bekannter Signatur, Adresse, Teilzuweisung (#143).
+  Statements: array[0..9] of string = ('Dict.TryGetValue(X, Result);', 'TryGetValue(X, Result);',
+    'SetLength(Result, X);', 'FillChar(Result, SizeOf(Result), 0);', 'P := @Result;', 'P := Addr(Result);',
+    'Result.Feld := 1;', 'Result[0] := 1;', 'Result.Init(X);', 'with Result do Feld := 1;');
+var
+  F: TFlowFixture;
+  Defs: TReachingDefinitions;
+  Statement: string;
+begin
+  for Statement in Statements do
+  begin
+    F := Flow('  ' + Statement);
+    try
+      Assert.IsTrue(F.Graph.Complete, Statement);
+      Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Unknown, Statement);
+      Defs := F.Graph.ReachingDefinitions(F.Graph.ExitNode, 'Result');
+      Assert.IsFalse(Defs.FromEntry, Statement);
+      Assert.IsTrue(Defs.MaybeFromEntry, Statement);
+      Assert.AreEqual(1, Integer(Length(Defs.Uncertain)), Statement);
+    finally
+      F.Free;
+    end;
+  end;
+end;
+
+procedure TControlFlowTests.KnownConstParameterKeepsAnswer;
+var
+  F: TFlowFixture;
+begin
+  F := FlowWith('procedure Show(const V: Integer; W: Integer);'#13#10'begin'#13#10'end;',
+    '  Show(Result, Result);');
+  try
+    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Yes);
+    Assert.IsTrue(F.Graph.MayReadBeforeWrite('Result') = TFlowAnswer.Yes);
+  finally
+    F.Free;
+  end;
+  // Standardroutinen mit Wertparametern ebenso.
+  F := Flow('  Writeln(IntToStr(Result));');
+  try
+    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Yes);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TControlFlowTests.KnownVarAndOutParameterGiveUnknown;
+var
+  F: TFlowFixture;
+begin
+  F := FlowWith('procedure Fill(var V: Integer);'#13#10'begin'#13#10'end;',
+    '  Fill(Result);');
+  try
+    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Unknown);
+    Assert.IsTrue(F.Graph.MayReadBeforeWrite('Result') = TFlowAnswer.Unknown);
+  finally
+    F.Free;
+  end;
+  F := FlowWith('procedure Take(out V: Integer);'#13#10'begin'#13#10'end;',
+    '  Take(Result);');
+  try
+    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Unknown);
+    // out liest nicht.
+    Assert.IsTrue(F.Graph.MayReadBeforeWrite('Result') = TFlowAnswer.No);
+  finally
+    F.Free;
+  end;
+  // Überladungen mit unterschiedlicher Übergabe: unbekannt.
+  F := FlowWith('procedure Show(const V: Integer); overload;'#13#10'begin'#13#10'end;'#13#10 +
+    'procedure Show(var V: Integer); overload;'#13#10'begin'#13#10'end;', '  Show(Result);');
+  try
+    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Unknown);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TControlFlowTests.AssignmentAfterUncertainChangeGivesNo;
+var
+  F: TFlowFixture;
+begin
+  F := Flow('  SetLength(Result, X);'#13#10'  Result := 1;');
+  try
+    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.No);
+  finally
+    F.Free;
+  end;
+  // Ein Weg ohne unsichere Änderung bleibt Yes.
+  F := Flow('  if X > 0 then SetLength(Result, X);');
+  try
+    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Yes);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TControlFlowTests.ValueArgumentIsRead;
+var
+  F: TFlowFixture;
+  Node: TFlowNode;
+begin
+  F := Flow('  Use(Y + 1, Dict.Items[I]);');
+  try
+    Node := NodeNamed(F, 'Use');
+    Assert.IsTrue(Node.ReadsName('Y'));
+    Assert.IsTrue(Node.ReadsName('I'), 'Index in einer Kette wird gelesen');
+    Assert.IsTrue(Node.TouchesName('Dict'), 'unbekannte Signatur');
+    Assert.IsFalse(Node.TouchesName('Y'), 'Ausdruck kann nicht var-Argument sein');
+  finally
+    F.Free;
+  end;
+  // Eine anonyme Methode kann Y später ändern.
+  F := Flow('  Y := 1;'#13#10'  Proc := procedure begin Y := 2; end;'#13#10'  Use(Y);');
+  try
+    Assert.IsTrue(NodeNamed(F, 'Proc').TouchesName('Y'));
+    Assert.AreEqual(1, Integer(Length(F.Graph.ReachingDefinitions(NodeNamed(F, 'Use'), 'Y').Uncertain)));
   finally
     F.Free;
   end;

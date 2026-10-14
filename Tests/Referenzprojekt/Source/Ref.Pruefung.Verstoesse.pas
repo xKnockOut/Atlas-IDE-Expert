@@ -2,15 +2,17 @@
 
 // Bewusst eingebaute Regelverstöße. Jede Zeile mit "// ERWARTET: <regel>"
 // muss genau diesen Treffer liefern, Zeilen mit "// KEIN-TREFFER: <regel>"
-// dürfen ihn nicht liefern. Siehe README.md.
+// dürfen ihn nicht liefern. Siehe README.md. Die Verstöße mit FireDAC stehen
+// in Ref.Pruefung.Datenbank (nur im optionalen Projekt RefDaten).
+//
+// Einige Verstöße erzeugen beim Übersetzen gewollt Hinweise oder Warnungen;
+// die Liste steht in erwartete-meldungen.txt.
 
 interface
 
 uses
   System.SysUtils,
-  System.Classes,
-  Data.DB,
-  FireDAC.Comp.Client;
+  System.Classes;
 
 type
   TPunkt = record
@@ -24,8 +26,6 @@ procedure Leck;
 procedure KeinLeck;
 procedure LeererExceptBlock;
 procedure Unerreichbar;
-procedure SqlVerkettet(AAbfrage: TFDQuery; const AName: string);
-procedure SqlMitParameter(AAbfrage: TFDQuery; const AName: string);
 
 implementation
 
@@ -96,19 +96,6 @@ end;
 procedure NameUebernehmen(var AName: string);
 begin
   AName := AName; // ERWARTET: self-assignment
-end;
-
-procedure SqlVerkettet(AAbfrage: TFDQuery; const AName: string);
-begin
-  AAbfrage.SQL.Text := 'SELECT * FROM Kunden WHERE Name = ''' + AName + ''''; // ERWARTET: security-sql-injection
-  AAbfrage.Open;
-end;
-
-procedure SqlMitParameter(AAbfrage: TFDQuery; const AName: string);
-begin
-  AAbfrage.SQL.Text := 'SELECT * FROM Kunden WHERE Name = :Name'; // KEIN-TREFFER: security-sql-injection
-  AAbfrage.ParamByName('Name').AsString := AName;
-  AAbfrage.Open;
 end;
 
 end.

@@ -76,6 +76,9 @@ type
     class function ItemCount(const AOrder: TArray<Integer>): Integer; static;
     /// <summary>Überschrift statt Eintrag (Header, TypoHeader)?</summary>
     class function IsHeader(AValue: Integer): Boolean; static;
+    /// <summary>Nur „Meintest du“-Einträge, kein regulärer Treffer (#485): Die Fußzeile nennt dann
+    /// „Keine Treffer für ‚…‘“.</summary>
+    class function OnlyTypos(const AOrder: TArray<Integer>): Boolean; static;
   end;
 
 implementation
@@ -131,7 +134,6 @@ begin
     Result := AItem.Name;
 end;
 
-/// <summary>0 = passt zum erwarteten Typ, 1 = übrige, 2 = ohne erwarteten Typ.</summary>
 /// <summary>Bereichsstufe zum Sortieren (#488): ohne Angabe hinter allen Stufen.</summary>
 function ScopeRank(const AItem: TAtlasCompletionItem): Integer;
 begin
@@ -141,6 +143,7 @@ begin
     Result := 9;
 end;
 
+/// <summary>0 = passt zum erwarteten Typ, 1 = übrige, 2 = ohne erwarteten Typ.</summary>
 function GroupOf(const AItem: TAtlasCompletionItem; AAnyFits: Boolean): Integer;
 begin
   // Gruppen nur, wenn etwas passt: Teilergebnisse (#616) behalten den erwarteten Typ, auch wenn erst ein
@@ -375,6 +378,11 @@ end;
 class function TAtlasRanking.IsHeader(AValue: Integer): Boolean;
 begin
   Result := AValue < 0;
+end;
+
+class function TAtlasRanking.OnlyTypos(const AOrder: TArray<Integer>): Boolean;
+begin
+  Result := (Length(AOrder) > 1) and (AOrder[0] = TypoHeader);
 end;
 
 end.

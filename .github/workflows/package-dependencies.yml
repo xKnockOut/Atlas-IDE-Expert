@@ -16,6 +16,9 @@ jobs:
       - name: Keine Ausgaben auf stdout
         shell: pwsh
         run: ./Tools/Check-ConsoleOutput.ps1
+      - name: Keine Embarcadero-Quellen in Tests (#77)
+        shell: pwsh
+        run: ./Tools/Check-NoEmbarcaderoSources.ps1
       - name: Mit Delphi 12 verträglich
         shell: pwsh
         run: ./Tools/Check-Delphi12.ps1

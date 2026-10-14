@@ -395,6 +395,14 @@ begin
   finally
     Hover.Free;
   end;
+  // Seit #654: documentation strukturiert, Klartext in documentationText.
+  Hover := TJSONObject.ParseJSONValue('{"contents":"x","atlas":{"declaration":"procedure BeginUpdate;",' +
+    '"documentation":{"sections":[]},"documentationText":"Unterdrückt das Neuzeichnen."}}');
+  try
+    Assert.AreEqual('Unterdrückt das Neuzeichnen.', TLspHoverParts.FromHover(Hover).Documentation);
+  finally
+    Hover.Free;
+  end;
   // Ältere Server: erster Absatz Deklaration, Rest Doku.
   Hover := TJSONObject.ParseJSONValue('{"contents":"function Max(A, B: Integer): Integer;\n\nGrößerer Wert."}');
   try

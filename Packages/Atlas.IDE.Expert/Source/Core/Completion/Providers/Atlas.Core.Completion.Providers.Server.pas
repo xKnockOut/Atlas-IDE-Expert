@@ -32,6 +32,8 @@ type
   TAtlasServerCompletionProvider = class(TAtlasAsyncCompletionProvider, IAtlasCompletionResolver)
   public const
     DefaultTimeoutMs = 2000;
+    /// <summary>Name für die Sicherung je Quelle (#493).</summary>
+    ProviderTitle = 'Vervollständigung (Server)';
   private
     FSession: TAtlasSessionFunc;
     FTimeoutMs: Cardinal;
@@ -40,6 +42,8 @@ type
     FSnippets: Boolean;
     procedure Log(const AMessage: string);
   protected
+    /// <summary>Server weg oder Zeitlimit des Servers zählt nicht als Fehler der Quelle (#393 startet neu).</summary>
+    function IsFailure(E: Exception): Boolean; override;
     function Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean; override;
     function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
       const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems; override;
@@ -71,16 +75,24 @@ uses
   System.SyncObjs,
   System.Diagnostics,
   System.Generics.Collections,
-  Atlas.Core.Completion.Snippets;
+  Atlas.Core.Completion.Snippets,
+  Atlas.Core.Documentation.Contract,
+  Atlas.Core.Lsp.Client;
 
 { TAtlasServerCompletionProvider }
 
 constructor TAtlasServerCompletionProvider.Create(const ASession: TAtlasSessionFunc; ATimeoutMs: Cardinal);
 begin
   inherited Create;
+  Name := ProviderTitle;
   FSession := ASession;
   FTimeoutMs := ATimeoutMs;
   FSnippets := True;
+end;
+
+function TAtlasServerCompletionProvider.IsFailure(E: Exception): Boolean;
+begin
+  Result := inherited IsFailure(E) and not (E is ELspClientError);
 end;
 
 class function TAtlasServerCompletionProvider.KindOf(ALspKind: Integer): TAtlasItemKind;
@@ -162,6 +174,13 @@ begin
     Result.Condition := Data.GetValue<string>('condition', '');
     Result.Unavailable := Data.GetValue('unavailable') is TJSONTrue;
     Result.Scope := Data.GetValue<Integer>('scope', 0);
+    // Herkunft aus einer anderen Unit und verdeckte Deklarationen (#488).
+    Result.DeclaringUnit := Data.GetValue<string>('unit', '');
+    Value := Data.GetValue('hides');
+    if Value is TJSONArray then
+      for Value in TJSONArray(Data.GetValue('hides')) do
+        if Value is TJSONString then
+          Result.Hides := Result.Hides + [TJSONString(Value).Value];
     Result.HasParameters := Data.GetValue('parameters') is TJSONTrue;
     Result.ExpectedType := Data.GetValue<string>('expected', '');
     Result.Fits := Data.GetValue('fits') is TJSONTrue;
@@ -410,6 +429,9 @@ begin
     Result.Remarks := StringOf(TJSONObject(Atlas), 'remarks');
     Result.Params := EntriesOf(TJSONObject(Atlas), 'params');
     Result.Exceptions := EntriesOf(TJSONObject(Atlas), 'exceptions');
+    Result.Doc := TAtlasDoc.FromJson(TJSONObject(Atlas).GetValue('documentation'));
+    Result.Display := TAtlasDocDisplay.FromJson(TJSONObject(Atlas).GetValue('xmlDoc'),
+      TAtlasDocDisplay.Create(True, 0));
     Directives := TJSONObject(Atlas).GetValue('directives');
     if Directives is TJSONArray then
       for Item in TJSONArray(Directives) do
@@ -437,10 +459,12 @@ var
   Provider: TAtlasServerCompletionProvider;
   Callback: TAtlasDetailsCallback;
   Item: TJSONObject;
+  Hides: TArray<string>;
 begin
   Result := False;
   if AItem.ResolveData = '' then
     Exit;
+  Hides := AItem.Hides;
   Session := nil;
   if Assigned(FSession) then
     Session := FSession();
@@ -472,6 +496,7 @@ begin
       finally
         Response.Free;
       end;
+      Details.Hides := Hides;
       TThread.Queue(nil,
         procedure
         begin

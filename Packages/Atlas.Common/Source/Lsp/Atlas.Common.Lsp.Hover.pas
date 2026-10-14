@@ -4,8 +4,10 @@
 // Symbols unter dem Cursor als Markdown.
 //
 // Die Deklaration ist die erste Zeile der Fundstelle ab ihrem Anfang. Der
-// Dokumentationskommentar sind die ///-Zeilen direkt darüber; XML-Tags wie
-// <summary> entfallen, <param name="X"> wird zu "X:". Bei Methoden mit
+// Dokumentationskommentar sind die ///-Zeilen direkt darüber, zerlegt von
+// TXmlDoc samt <inheritdoc/> (TLspDocumentation, #654): als Markdown in
+// contents, als Klartext für Clients ohne Markdown und strukturiert mit den
+// Fundorten der cref-Verweise in atlas.documentation. Bei Methoden mit
 // getrennter Implementierung gilt die Deklaration (TLspDefinition).
 // Bei Klassen folgen die published-Properties und Ereignisse samt geerbter
 // (TPublishedMembers). Auf einem Attribut (#119) zusätzlich die Konstruktoren
@@ -35,17 +37,24 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Pascal.XmlDoc,
+  Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.HoverTypes;
 
 type
   /// <summary>Liefert den Text einer Datei; False, wenn sie nicht lesbar ist.</summary>
-  THoverReadText = reference to function(const AFileName: string; out AText: string): Boolean;
+  THoverReadText = TDocReadText;
   /// <summary>Delphi-Version des Dokuments AUri (z. B. "23.0"); '' = unbekannt.</summary>
   THoverVersionProvider = reference to function(const AUri: string): string;
 
   THoverInfo = record
     Declaration: string;
+    /// <summary>Dokumentation als Markdown (bei Unit-Namen der Dateiname).</summary>
     Documentation: string;
+    /// <summary>XMLDoc der Deklaration samt inheritdoc (#654); leer ohne Kommentar.</summary>
+    Doc: TXmlDoc;
+    /// <summary>Fundorte der cref-Verweise in Doc.</summary>
+    DocTargets: TArray<TDocTarget>;
     /// <summary>Unit der Deklaration, wenn sie nicht die aktuelle ist.</summary>
     UnitName: string;
     /// <summary>Markdown mit published-Properties und Ereignissen bei Klassen; sonst ''.</summary>
@@ -94,6 +103,7 @@ type
     FReadText: THoverReadText;
     FNamespaces: TArray<string>;
     FVersionProvider: THoverVersionProvider;
+    FHintsFor: TDocHintsProvider;
     FMarkdown: Boolean;
     function HandleHover(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
@@ -104,8 +114,6 @@ type
     class function InfoAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const ATreeText, AFileName: string; const APosition: TTextPosition;
       const AReadText: THoverReadText; const ADelphiVersion: string = ''): THoverInfo; static;
-    /// <summary>Dokumentationskommentar über ALine als Markdown; '' ohne Kommentar.</summary>
-    class function DocumentationAbove(const ALines: TArray<string>; ALine: Integer): string; static;
     /// <summary>False, wenn der Client in initialize nur Klartext für Hover meldet.</summary>
     class function ClientSupportsMarkdown(const AInitializeParams: TJSONObject): Boolean; static;
     /// <summary>„Feld nicht gefunden in qryOrders“ (#461), wenn APosition im Namen eines FieldByName-, FindField-
@@ -113,13 +121,16 @@ type
     /// </summary>
     class function DataNameHint(const AIndex: ISymbolIndex; const AText, AFileName: string; const APosition: TTextPosition;
       const AReadText: THoverReadText; out AHint: string): Boolean; static;
-    /// <summary>Teile des Hovers für den Atlas-Tooltip (#442), Doku und Hinweis als Klartext.</summary>
+    /// <summary>Teile des Hovers für den Atlas-Tooltip (#442): Doku strukturiert in documentation (#654) und
+    /// als Klartext in documentationText, Hinweis als Klartext.</summary>
     class function AtlasJson(const AInfo: THoverInfo): TJSONObject; static;
     /// <summary>Antwort als Markdown (Vorgabe) oder als Klartext.</summary>
     property Markdown: Boolean read FMarkdown write FMarkdown;
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
     /// <summary>Für den Release-Namen der DocWiki-Links; ohne Provider gilt die neueste Version.</summary>
     property VersionProvider: THoverVersionProvider read FVersionProvider write FVersionProvider;
+    /// <summary>Anzeige von XMLDoc (#654) als atlas.xmlDoc; ohne Provider fehlt das Feld.</summary>
+    property HintsFor: TDocHintsProvider read FHintsFor write FHintsFor;
   end;
 
 implementation
@@ -150,59 +161,8 @@ uses
   Atlas.Common.Editing.DataFieldNames;
 
 function SplitLines(const AText: string): TArray<string>;
-var
-  Index, Start: Integer;
-  Line: string;
 begin
-  Result := nil;
-  Start := 1;
-  for Index := 1 to Length(AText) + 1 do
-    if (Index > Length(AText)) or (AText[Index] = #10) then
-    begin
-      Line := Copy(AText, Start, Index - Start);
-      if (Line <> '') and (Line[Length(Line)] = #13) then
-        SetLength(Line, Length(Line) - 1);
-      Result := Result + [Line];
-      Start := Index + 1;
-    end;
-end;
-
-// Entfernt XML-Tags; <param name="X"> wird zu "X:".
-function StripTags(const ALine: string): string;
-var
-  Index, Close: Integer;
-  Tag, Name: string;
-  Quote: Integer;
-begin
-  Result := '';
-  Index := 1;
-  while Index <= Length(ALine) do
-  begin
-    if ALine[Index] = '<' then
-    begin
-      Close := PosEx('>', ALine, Index);
-      if Close = 0 then
-      begin
-        Result := Result + Copy(ALine, Index, MaxInt);
-        Break;
-      end;
-      Tag := Copy(ALine, Index + 1, Close - Index - 1);
-      if StartsText('param ', Tag) or StartsText('typeparam ', Tag) then
-      begin
-        Quote := Pos('"', Tag);
-        Name := Copy(Tag, Quote + 1, MaxInt);
-        Name := Copy(Name, 1, Pos('"', Name) - 1);
-        if Name <> '' then
-          Result := Result + '*' + Name + '*: ';
-      end;
-      Index := Close + 1;
-    end
-    else
-    begin
-      Result := Result + ALine[Index];
-      Inc(Index);
-    end;
-  end;
+  Result := TLspDocumentation.SplitLines(AText);
 end;
 
 function ComparePositions(const A, B: TTextPosition): Integer;
@@ -279,8 +239,14 @@ begin
   Result.AddPair('declaration', AInfo.Declaration);
   if AInfo.UnitName <> '' then
     Result.AddPair('unit', AInfo.UnitName);
-  if AInfo.Documentation <> '' then
-    Result.AddPair('documentation', StripMarkdown(AInfo.Documentation));
+  // Strukturiert für die volle Anzeige, Klartext für die Kurzform (#654).
+  if not AInfo.Doc.IsEmpty then
+  begin
+    Result.AddPair('documentation', TLspDocumentation.ToJson(AInfo.Doc, AInfo.DocTargets));
+    Result.AddPair('documentationText', AInfo.Doc.ToPlainText);
+  end
+  else if AInfo.Documentation <> '' then
+    Result.AddPair('documentationText', StripMarkdown(AInfo.Documentation));
   if AInfo.Value <> '' then
     Result.AddPair('value', AInfo.Value);
   if AInfo.Deprecation <> '' then
@@ -356,7 +322,9 @@ begin
     Result := Result + #10#10 + StripMarkdown(Deprecation);
   if Value <> '' then
     Result := Result + #10#10 + 'Wert: ' + Value;
-  if Documentation <> '' then
+  if not Doc.IsEmpty then
+    Result := Result + #10#10 + Doc.ToPlainText
+  else if Documentation <> '' then
     Result := Result + #10#10 + StripMarkdown(Documentation);
   if UnitName <> '' then
     Result := Result + #10#10 + 'Unit ' + UnitName;
@@ -384,34 +352,6 @@ end;
 procedure TLspHover.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(Method, HandleHover);
-end;
-
-class function TLspHover.DocumentationAbove(const ALines: TArray<string>; ALine: Integer): string;
-var
-  Index: Integer;
-  Line: string;
-  Parts: TArray<string>;
-begin
-  Parts := nil;
-  Index := ALine - 1;
-  while (Index >= 0) and (Index <= High(ALines)) and StartsStr('///', TrimLeft(ALines[Index])) do
-  begin
-    Line := Trim(StripTags(Copy(TrimLeft(ALines[Index]), 4, MaxInt)));
-    if Line <> '' then
-      Parts := [Line] + Parts;
-    Dec(Index);
-  end;
-  Result := '';
-  for Line in Parts do
-  begin
-    if Result <> '' then
-      // Zeilen mit *Name*: (Parameter) als eigene Absätze, sonst Fließtext.
-      if StartsStr('*', Line) then
-        Result := Result + #10#10
-      else
-        Result := Result + ' ';
-    Result := Result + Line;
-  end;
 end;
 
 class function TLspHover.ClientSupportsMarkdown(const AInitializeParams: TJSONObject): Boolean;
@@ -500,9 +440,9 @@ var
   Token: TPascalToken;
   Number: Int64;
   Use: TAttributeUse;
-  SelfName, ChainName: string;
+  SelfName, ChainName, DocContainer: string;
   TypeSymbol: Boolean;
-  Resolved: TResolvedSymbol;
+  Resolved, DocSymbol: TResolvedSymbol;
 begin
   Result := Default(THoverInfo);
   // Zahlenliteral unter dem Cursor: Schreibweisen statt Deklaration.
@@ -554,7 +494,8 @@ begin
     Exit;
   end;
   Result.Declaration := TrimRight(Copy(Lines[Start.Line], Start.Character + 1, MaxInt));
-  Result.Documentation := DocumentationAbove(Lines, Start.Line);
+  Result.Doc := TXmlDoc.Parse(TXmlDoc.CommentAbove(Lines, Start.Line));
+  Result.Documentation := Result.Doc.ToMarkdown;
   Result.Deprecation := THoverValues.Deprecation(DeclarationText(Lines, Targets[0].Range));
   Result.FileName := Targets[0].FileName;
   Result.Line := Targets[0].SelectionRange.StartPos.Line;
@@ -575,11 +516,17 @@ begin
     Result.UnitName := OwnerUnit.UnitName;
   SelfName := '';
   TypeSymbol := False;
+  DocSymbol := Default(TResolvedSymbol);
+  DocContainer := '';
   for Symbol in OwnerUnit.Symbols do
     if (Symbol.SelectionRange.StartPos = Targets[0].SelectionRange.StartPos) and
       SameText(OwnerUnit.SymbolFile(Symbol), Targets[0].FileName) then
     begin
       SelfName := Symbol.Name;
+      DocSymbol := AResolver.SymbolFrom(OwnerUnit, Symbol);
+      DocContainer := Symbol.Container;
+      if DocContainer = '' then
+        DocContainer := Symbol.Name;
       Result.Kind := TLspHoverTypes.KindOf(Symbol.Kind, Result.Declaration);
       TypeSymbol := (Symbol.Container = '') and (Symbol.Kind in [TIndexSymbolKind.ClassType,
         TIndexSymbolKind.ObjectType, TIndexSymbolKind.InterfaceType]);
@@ -595,6 +542,14 @@ begin
           AFileName, ATreeText, AReadText);
       Break;
     end;
+  // XMLDoc mit <inheritdoc/> und den Fundorten der cref-Verweise (#654).
+  if Result.Doc.InheritDoc then
+  begin
+    Result.Doc := TLspDocumentation.Load(AResolver, DocSymbol, Lines, Start.Line,
+      TLspDocumentation.Reader(AFileName, ATreeText, AReadText));
+    Result.Documentation := Result.Doc.ToMarkdown;
+  end;
+  Result.DocTargets := TLspDocumentation.Targets(AResolver, OwnerUnit, DocContainer, Result.Doc);
   // Typen in der Deklaration und Vererbungskette für den Atlas-Tooltip (#588).
   Result.Origin := TLspHoverTypes.Origin(OwnerUnit.UnitName);
   Result.Links := TLspHoverTypes.Links(AResolver, OwnerUnit, Result.Declaration, SelfName);
@@ -695,7 +650,7 @@ var
   Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Info: THoverInfo;
-  Contents: TJSONObject;
+  Contents, Atlas: TJSONObject;
   DelphiVersion, Markdown: string;
   Watch: TStopwatch;
 begin
@@ -792,7 +747,10 @@ begin
       // nicht als Tooltip an; dafür braucht es ein IDE-Plugin (#175).
       TJSONObject(Result).AddPair('contents', Info.ToPlainText);
     // Für den Atlas-Tooltip (#442, #588) die Teile einzeln; andere Clients ignorieren das Feld.
-    TJSONObject(Result).AddPair('atlas', AtlasJson(Info));
+    Atlas := AtlasJson(Info);
+    if Assigned(FHintsFor) then
+      Atlas.AddPair('xmlDoc', TLspDocumentation.HintsJson(FHintsFor(Uri)));
+    TJSONObject(Result).AddPair('atlas', Atlas);
   finally
     OwnTree.Free;
   end;

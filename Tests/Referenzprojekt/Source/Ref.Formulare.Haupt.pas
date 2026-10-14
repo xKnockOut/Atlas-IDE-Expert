@@ -7,17 +7,12 @@ uses
   Vcl.Forms,
   Vcl.Controls,
   Vcl.StdCtrls,
-  Vcl.ExtCtrls,
-  Vcl.Grids,
-  Vcl.DBGrids,
-  Data.DB,
   Ref.Formulare.Suchrahmen;
 
 type
   THauptFormular = class(TForm)
     Suche: TSuchrahmen;
-    KundenGrid: TDBGrid;
-    KundenQuelle: TDataSource;
+    KundenListe: TListBox;
     DetailButton: TButton;
     procedure FormCreate(Sender: TObject);
     procedure DetailButtonClick(Sender: TObject);
@@ -31,7 +26,7 @@ var
 implementation
 
 uses
-  Ref.Daten.Kunden,
+  Ref.Daten.Suche,
   Ref.Formulare.Detail;
 
 {$R *.dfm}
@@ -43,7 +38,15 @@ end;
 
 procedure THauptFormular.SucheAusfuehren(Sender: TObject);
 begin
-  KundenQuelle.DataSet := TKundenDaten.Instanz.Suchen(Suche.SuchEdit.Text);
+  // Ohne Datenbank (RefApp) bleibt die Liste leer; RefDaten meldet die Suche über FireDAC an.
+  KundenListe.Items.BeginUpdate;
+  try
+    KundenListe.Items.Clear;
+    for var Kunde in TKundenSuche.Suchen(Suche.SuchEdit.Text) do
+      KundenListe.Items.Add(Kunde);
+  finally
+    KundenListe.Items.EndUpdate;
+  end;
 end;
 
 procedure THauptFormular.DetailButtonClick(Sender: TObject);

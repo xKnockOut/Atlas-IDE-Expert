@@ -27,12 +27,20 @@ Installation und Einstellungen: [docs/RAD-Studio.md](docs/RAD-Studio.md). Alle E
 
 1. Repository klonen und `Atlas.groupproj` in RAD Studio öffnen.
 2. `Atlas.Common`, `Atlas.Windows` und `AtlasServer` für **Win64** erzeugen (alle drei für dieselbe Plattform). Ergebnis: `Output\Win64\Debug\Bin\AtlasServer.exe`. Alternativ `AtlasServer.exe` aus einem [Release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) nehmen; der Server hängt nicht von der Delphi-Version ab.
-3. `Atlas.IDE.Expert` für **Win32** erzeugen, und zwar mit der Delphi-Version, in der das Plugin laufen soll. Ergebnis: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert.bpl`.
+3. `Atlas.IDE.Expert` mit der Delphi-Version erzeugen, in der das Plugin laufen soll: für die klassische IDE **Win32**, für die 64-Bit-IDE **Win64**. Ergebnis: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert370.bpl` (Delphi 13; Delphi 12: `…290.bpl`, 64-Bit-IDE: `Output\Win64\…`).
 4. *Komponente › Packages installieren › Hinzufügen* und die BPL auswählen.
 5. Liegt der Server nicht unter `Output\…\Bin` oder neben der BPL: *Tools › Optionen › Drittanbieter › Atlas*, Feld „Atlas-Server“. Die Seite zeigt an, ob der Server gefunden wird.
 6. Delphi einmal neu starten: Atlas schaltet Help Insight und die Strukturhervorhebung der IDE ab, damit nichts doppelt erscheint; die IDE liest diese Schalter nur beim Start.
 
 Einzelheiten und Fehlersuche: [docs/RAD-Studio.md](docs/RAD-Studio.md).
+
+### Unterstützte Versionen
+
+- RAD Studio bzw. Delphi **13 Florence** und **12 Athens** (ab 12.0). Das Plugin wird mit genau der Version gebaut, in der es läuft; die BPL trägt die Package-Version im Namen (`370` für Delphi 13, `290` für Delphi 12), damit beide nebeneinander liegen können.
+- Klassische 32-Bit-IDE (BPL für Win32) und 64-Bit-IDE ab Delphi 12.3 (BPL für Win64).
+- Windows 10 und 11.
+
+Gebaut und geprüft wird bisher nur mit RAD Studio 13 in der 32-Bit-IDE. Was ohne Delphi-12-Installation und 64-Bit-IDE noch ungeprüft ist, steht in [docs/RAD-Studio.md](docs/RAD-Studio.md#ungeprüft).
 
 ### Andere Editoren und ohne Editor
 
@@ -97,9 +105,11 @@ pwsh Tools/Check-ConsoleOutput.ps1         # kein Write/Writeln auf stdout
 
 ## CI
 
-- `vscode-erweiterung.yml`: Typprüfung, Build und `.vsix` als Artefakt auf einem gehosteten Ubuntu-Runner.
-- `server.yml`: Build der Projektgruppe über das IDE-Plugin `cc.ps1` (RAD Studio Starter hat kein msbuild) und DUnitX-Tests auf einem selbst gehosteten Windows-Runner (Labels `self-hosted`, `windows`, `delphi`, im angemeldeten Benutzerkontext). Läuft nur mit Repository-Variable `DELPHI_RUNNER=true`; `CC_SCRIPT` überschreibt den Pfad zu `cc.ps1`. Ergebnisse als Check „DUnitX-Ergebnisse“ im Pull Request.
-- `package-dependencies.yml`: Package-Abhängigkeiten und stdout-Regel.
+- `server.yml`: Build der Projektgruppe über das IDE-Plugin `cc.ps1` (RAD Studio Starter hat kein msbuild, ADR 0007) für Win64 und Win32, samt Plugin-BPLs `Atlas.IDE.Expert370.bpl` für die klassische und die 64-Bit-IDE (Win32 und Win64, als Artefakte abgelegt), und DUnitX-Tests (nur Win64, ADR 0008). Ergebnisse als Check „DUnitX-Ergebnisse“ im Pull Request.
+  - Der Job braucht einen selbst gehosteten Windows-Runner (Labels `self-hosted`, `windows`, `delphi`) auf dem Arbeitsrechner des Entwicklers. Er läuft im angemeldeten Benutzerkontext und nicht als Dienst, weil `cc.ps1` eine IDE startet, und nur, solange dieser Rechner eingeschaltet ist. Jeder Job startet eine eigene Scratch-IDE.
+  - Er läuft nur mit der Repository-Variablen `DELPHI_RUNNER=true`; sonst meldet der Job „uebersprungen“ das in der Zusammenfassung des Laufs. `CC_SCRIPT` überschreibt den Pfad zu `cc.ps1`.
+  - Ein neuer Push auf denselben Branch bricht den laufenden Build ab (`concurrency`).
+- `package-dependencies.yml`: Package-Abhängigkeiten, stdout-Regel, Delphi-12-Verträglichkeit, Regelkatalog, Konfigurationsdoku und keine Embarcadero-Quellen in `Tests/`.
 
 ## Kommandozeile
 
@@ -124,6 +134,8 @@ Werte gehen auch mit `=` (`--log=server.log`). `--stdio` und `--clientProcessId`
 | `--rules <a,b>` | nur diese Regeln, z. B. `syntax` |
 | `--units <a,b>` | nur diese Units: Name oder Glob-Muster für Pfade |
 | `--min-severity <S>` | `hint`, `info`, `warning`, `error` |
+| `--fail-on <S>` | ab welchem Treffer der Exit-Code 1 ist: `error` (Standard), `warning` oder `never`. So brechen Warnungen in Altprojekten keinen Pre-Commit-Hook ab |
+| `--source-root <Ordner>` | Wurzel der SARIF-Pfade; Standard ist die Git-Wurzel über dem Ziel, sonst der Ordner des Ziels. Pfade darunter tragen `uriBaseId` `%SRCROOT%`, Dateien außerhalb erscheinen als absoluter `file:`-URI |
 | `--profile <Name>` | Regelprofil (`standard`, `fast`, `strict`, `security`, `style` oder eigenes aus `profiles`); geht `profile` in `atlas.json` vor |
 | `--baseline <Datei>` | bekannte Treffer ausblenden; ohne Angabe gilt `atlas-baseline.json` neben `atlas.json`, falls vorhanden. Der Editor blendet sie ebenso aus |
 | `--update-baseline` | Baseline aus den aktuellen Treffern neu schreiben (verschwundene Einträge fallen heraus), Exit-Code 0 |
@@ -133,7 +145,11 @@ Werte gehen auch mit `=` (`--log=server.log`). `--stdio` und `--clientProcessId`
 | `--changed-lines` | nur Treffer in geänderten Zeilen; zusammen mit der Baseline nur neue Treffer in geänderten Zeilen |
 | `--suppression-stats` | statt der Treffer: wie oft jede Regel per `lsp-ignore` unterdrückt wird (häufigste zuerst, mit ungenutzten), als Text oder JSON; Exit-Code 0 |
 
-Exit-Code: 0 ohne Warnungen und Fehler, 1 bei Warnungen, 2 bei Fehlern, 3 bei Aufruf- oder Lesefehlern.
+Exit-Code: 1, wenn ein Treffer `--fail-on` erreicht (Standard: mindestens ein Fehler), sonst 0; 3 bei Aufruf- oder Lesefehlern. Treffer aus der Baseline zählen nie.
+
+In SARIF steht als `message.text` der englische Name der Regel aus dem Katalog, ohne Konfidenz-Zusatz. Die Konfidenz steht in `properties.confidence`, die deutsche Meldung des Treffers in `properties.detail`.
+
+Jeder Regeltreffer hat eine Konfidenz (hoch, mittel, niedrig). Sie begrenzt den Schweregrad, auch wenn `rules` ihn höher einstellt: mittlere Konfidenz höchstens Warnung, niedrige höchstens Hinweis. Treffer unter `minConfidence` (Standard `medium`) bleiben aus. Die Konfidenz steht nie im Meldungstext, sondern als eigene Spalte in der Textausgabe (`[Konfidenz mittel]`), in JSON als `confidence`, im LSP als `data.confidence` und im Tooltip des Plugins als eigene Zeile.
 
 In einer SVN-Arbeitskopie vergleicht `--changed` ohne Basis die Arbeitskopie mit BASE (`svn status`), `--changed <Rev>` und `--diff <Rev>` mit der Revision (`svn diff -r`); `--include-uncommitted` nimmt unversionierte Dateien dazu. Git hat Vorrang, wenn beides vorliegt.
 
