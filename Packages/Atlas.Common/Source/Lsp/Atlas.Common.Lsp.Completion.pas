@@ -131,6 +131,9 @@ type
     DataSource: string;
     /// <summary>Freigabe absichern (#489): 'newLine' oder 'routineEnd'; '' sonst. Weitertippen verwirft.</summary>
     Guard: string;
+    /// <summary>InsertText bzw. TextEdit.NewText ist ein LSP-Snippet mit Platzhaltern (#51); dann
+    /// insertTextFormat = 2. Nur an Clients mit snippetSupport.</summary>
+    Snippet: Boolean;
   end;
 
   /// <summary>Postfix-Vorlagen (#188) je Dokument.</summary>
@@ -186,6 +189,7 @@ type
     FPostfixFor: TPostfixOptionsFunc;
     FNotify: TCompletionNotifyProc;
     FLog: TCompletionLogProc;
+    FSnippetSupport: Boolean;
     // Zuletzt für completionItem/resolve gelesene Datei (#616): Beim Blättern in der Liste fragt Atlas oft
     // nacheinander Symbole derselben großen Bibliotheks-Unit nach.
     FCacheLock: TObject;
@@ -282,6 +286,13 @@ type
       const AText, AFileName: string; const APosition: TTextPosition; const AReadText: TCompletionReadText;
       AMatching: TCompletionMatching; ACast: TCompletionSenderCast; out AItems: TCompletionItems): Boolean; static;
     class function KindOf(AKind: TIndexSymbolKind): Integer; static;
+    /// <summary>Kontextabhängige Code-Vorlagen (#51) für die Zeile von APosition: prop, changed, create, free.
+    /// Mit ASnippetSupport als LSP-Snippet, sonst als Klartext ohne Platzhalter.</summary>
+    class function ContextItems(const AIndex: ISymbolIndex; const ANamespaces: TArray<string>; const AText: string;
+      const APosition: TTextPosition; AMatching: TCompletionMatching;
+      ASnippetSupport: Boolean): TArray<TCompletionItem>; static;
+    /// <summary>Meldet der Client textDocument.completion.completionItem.snippetSupport?</summary>
+    class function ClientSupportsSnippets(const AInitializeParams: TJSONObject): Boolean; static;
     /// <summary>CompletionList des LSP. Der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const AItems: TCompletionItems): TJSONObject; overload; static;
     /// <summary>CompletionItem[]; AFirstSort: sortText des ersten Eintrags (bei Teilergebnissen fortlaufend).</summary>
@@ -307,6 +318,8 @@ type
     property Notify: TCompletionNotifyProc read FNotify write FNotify;
     /// <summary>Zeiten je Anfrage (#616); ohne Zuweisung keine Messung.</summary>
     property Log: TCompletionLogProc read FLog write FLog;
+    /// <summary>Client versteht Snippets (#51); sonst gehen Vorlagen als Klartext. Aus initialize.</summary>
+    property SnippetSupport: Boolean read FSnippetSupport write FSnippetSupport;
   end;
 
 implementation
@@ -343,7 +356,8 @@ uses
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Lsp.CompletionEnums,
   Atlas.Common.Editing.DataFieldNames,
-  Atlas.Common.Editing.GuardFree;
+  Atlas.Common.Editing.GuardFree,
+  Atlas.Common.Editing.ContextSnippets;
 
 const
   /// <summary>Art der Stelle im Diagnoselog (#647).</summary>
@@ -891,6 +905,62 @@ begin
   Result := Lines[ALine];
   if Result.EndsWith(#13) then
     SetLength(Result, Length(Result) - 1);
+end;
+
+class function TLspCompletion.ClientSupportsSnippets(const AInitializeParams: TJSONObject): Boolean;
+var
+  Value: Boolean;
+begin
+  Result := (AInitializeParams <> nil) and AInitializeParams.TryGetValue<Boolean>(
+    'capabilities.textDocument.completion.completionItem.snippetSupport', Value) and Value;
+end;
+
+class function TLspCompletion.ContextItems(const AIndex: ISymbolIndex; const ANamespaces: TArray<string>;
+  const AText: string; const APosition: TTextPosition; AMatching: TCompletionMatching;
+  ASnippetSupport: Boolean): TArray<TCompletionItem>;
+var
+  Slash: TSlashContext;
+  Snippet: TContextSnippet;
+  Item: TCompletionItem;
+  LineText, Word: string;
+  Start: Integer;
+begin
+  Result := nil;
+  LineText := LineOf(AText, APosition.Line);
+  // Getipptes Wort vor dem Cursor; TContextSnippets prüft, dass sonst nichts in der Zeile steht.
+  Start := Min(APosition.Character, Length(LineText));
+  while (Start > 0) and CharInSet(LineText[Start], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+    Dec(Start);
+  Word := Copy(LineText, Start + 1, APosition.Character - Start);
+  Slash := Default(TSlashContext);
+  Slash.Text := AText;
+  Slash.Line := APosition.Line;
+  Slash.LineText := LineText;
+  Slash.Index := AIndex;
+  Slash.Namespaces := ANamespaces;
+  for Snippet in TContextSnippets.At(Slash, APosition.Character) do
+  begin
+    if (MatchScore(Snippet.Prefix, Word, AMatching) = TFuzzyMatch.NoMatch) and
+      (MatchScore(Snippet.Name, Word, AMatching) = TFuzzyMatch.NoMatch) then
+      Continue;
+    Item := Default(TCompletionItem);
+    Item.Name := Snippet.Name;
+    Item.Detail := Snippet.Description;
+    Item.Kind := KindSnippet;
+    Item.FilterText := Snippet.Prefix;
+    Item.HasTextEdit := True;
+    Item.Snippet := ASnippetSupport;
+    if ASnippetSupport then
+      Item.TextEdit := TRuleEdit.Create(TTextRange.Create(APosition.Line, Start, APosition.Line,
+        APosition.Character), Snippet.Text)
+    else
+      Item.TextEdit := TRuleEdit.Create(TTextRange.Create(APosition.Line, Start, APosition.Line,
+        APosition.Character), TContextSnippets.ToPlain(Snippet.Text));
+    Item.AdditionalEdits := Snippet.AdditionalEdits;
+    // Atlas wertet die weiteren Änderungen dann nicht als uses-Ergänzung.
+    Item.Action := 'snippet';
+    Result := Result + [Item];
+  end;
 end;
 
 /// <summary>Was über den Typ der Kette bekannt ist; False, wenn er unbekannt ist oder kein Wert vorliegt.</summary>
@@ -1525,6 +1595,9 @@ begin
     end
     else if AItems[Index].InsertText <> '' then
       Entry.AddPair('insertText', AItems[Index].InsertText);
+    // Code-Vorlagen mit Platzhaltern (#51): InsertTextFormat.Snippet.
+    if AItems[Index].Snippet then
+      Entry.AddPair('insertTextFormat', TJSONNumber.Create(2));
     if Length(AItems[Index].AdditionalEdits) > 0 then
     begin
       Edits := TJSONArray.Create;
@@ -1827,6 +1900,9 @@ begin
     Collected := Collect(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), Document.Text,
       TLspPositions.ReadPosition(PositionValue), Matching, Postfix, Partial);
     Collected.Items := WithoutNames(Collected.Items, Enums);
+    // Kontextabhängige Code-Vorlagen (#51) am Ende der Liste.
+    Collected.Items := Collected.Items + ContextItems(FIndex, FNamespaces, Document.Text, Position, Matching,
+      FSnippetSupport);
     // Unbekannter Name (#471): Deklarieren am Ende. Die Einträge hängen am getippten Namen, deshalb neu fragen.
     if DeclareItems(Resolver, FIndex, Tree, Document.Text, TDocumentUris.ToPath(Uri), Position, Postfix.InlineVar,
       Enums + Collected.Items, Declares) then
