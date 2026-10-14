@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Testdaten (#51): Live Templates im Format von Delphi 12 (code_templates). -->
+<codetemplate	xmlns="http://schemas.borland.com/Delphi/2005/codetemplates"
+				version="1.0.0">
+	<template name="forb" invoke="auto">
+		<description>
+			for statement
+		</description>
+		<author>
+			Embarcadero
+		</author>
+		<point name="ident">
+			<script language="Delphi">
+				InvokeCodeCompletion;
+			</script>
+			<text>
+				I
+			</text>
+			<hint>
+				collection to iterate
+			</hint>
+		</point>
+		<point name="from">
+			<text>
+				0
+			</text>
+			<hint>
+				starting value
+			</hint>
+		</point>
+		<point name="to">
+			<text>
+				List.Count - 1
+			</text>
+			<hint>
+				ending value
+			</hint>
+		</point>
+		<code language="Delphi" context="methodbody" delimiter="|"><![CDATA[for |ident| := |from| to |to| do
+begin
+|selected||*||end|
+end;
+]]>
+		</code>
+	</template>
+	<template name="atlasmask" invoke="manual">
+		<description>Maske &amp; Wert</description>
+		<point name="value" editable="false">
+			<text>Flags</text>
+		</point>
+		<code language="Delphi" delimiter="|"><![CDATA[if |value| and $1 <> 0 then |end|;]]></code>
+	</template>
+	<template name="cppfor" invoke="auto">
+		<description>C++ only</description>
+		<code language="C++"><![CDATA[for (int i = 0; i < n; i++) {}]]></code>
+	</template>
+</codetemplate>

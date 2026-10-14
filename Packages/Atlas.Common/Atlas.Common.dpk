@@ -155,6 +155,8 @@ contains
   Atlas.Common.Editing.Bookmarks in 'Source\Editing\Atlas.Common.Editing.Bookmarks.pas',
   Atlas.Common.Editing.DocumentationCommands in 'Source\Editing\Atlas.Common.Editing.DocumentationCommands.pas',
   Atlas.Common.Editing.ComponentCommands in 'Source\Editing\Atlas.Common.Editing.ComponentCommands.pas',
+  Atlas.Common.Editing.ClassMembers in 'Source\Editing\Atlas.Common.Editing.ClassMembers.pas',
+  Atlas.Common.Editing.ContextSnippets in 'Source\Editing\Atlas.Common.Editing.ContextSnippets.pas',
   Atlas.Common.Editing.WinApiCommands in 'Source\Editing\Atlas.Common.Editing.WinApiCommands.pas',
   Atlas.Common.Editing.TaskCommands in 'Source\Editing\Atlas.Common.Editing.TaskCommands.pas',
   Atlas.Common.Editing.RecordCommands in 'Source\Editing\Atlas.Common.Editing.RecordCommands.pas',

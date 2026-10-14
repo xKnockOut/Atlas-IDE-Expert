@@ -105,6 +105,8 @@ type
     SlashCommands: Boolean;
     /// <summary>Code-Vorlagen in der Vervollständigung (#51, completion.snippets).</summary>
     Snippets: Boolean;
+    /// <summary>Live Templates der IDE als Code-Vorlagen einlesen (#51, completion.importIdeTemplates).</summary>
+    ImportIdeTemplates: Boolean;
     /// <summary>Umfang des Symbolindex für alle Projekte (#652); index in atlas.json hat Vorrang.</summary>
     IndexProjectGroup: Boolean;
     IndexSearchPaths: Boolean;
@@ -174,6 +176,7 @@ begin
   Result.EditorKeysPriority := False;
   Result.SlashCommands := True;
   Result.Snippets := True;
+  Result.ImportIdeTemplates := True;
   // Wie die Vorgaben im Schema (atlas.schema.json, index).
   Result.IndexProjectGroup := True;
   Result.IndexSearchPaths := True;
@@ -233,6 +236,7 @@ begin
   EditorKeysPriority := AStore.ReadInteger('EditorKeysPriority', BoolValue(Default.EditorKeysPriority)) <> 0;
   SlashCommands := AStore.ReadInteger('SlashCommands', BoolValue(Default.SlashCommands)) <> 0;
   Snippets := AStore.ReadInteger('Snippets', BoolValue(Default.Snippets)) <> 0;
+  ImportIdeTemplates := AStore.ReadInteger('ImportIdeTemplates', BoolValue(Default.ImportIdeTemplates)) <> 0;
   IndexProjectGroup := AStore.ReadInteger('IndexProjectGroup', BoolValue(Default.IndexProjectGroup)) <> 0;
   IndexSearchPaths := AStore.ReadInteger('IndexSearchPaths', BoolValue(Default.IndexSearchPaths)) <> 0;
   IndexLibraryPaths := AStore.ReadInteger('IndexLibraryPaths', BoolValue(Default.IndexLibraryPaths)) <> 0;
@@ -279,6 +283,7 @@ begin
   AStore.WriteInteger('EditorKeysPriority', BoolValue(EditorKeysPriority));
   AStore.WriteInteger('SlashCommands', BoolValue(SlashCommands));
   AStore.WriteInteger('Snippets', BoolValue(Snippets));
+  AStore.WriteInteger('ImportIdeTemplates', BoolValue(ImportIdeTemplates));
   AStore.WriteInteger('IndexProjectGroup', BoolValue(IndexProjectGroup));
   AStore.WriteInteger('IndexSearchPaths', BoolValue(IndexSearchPaths));
   AStore.WriteInteger('IndexLibraryPaths', BoolValue(IndexLibraryPaths));
