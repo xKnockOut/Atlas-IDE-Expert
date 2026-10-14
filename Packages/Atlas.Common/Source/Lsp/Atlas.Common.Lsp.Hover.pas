@@ -27,6 +27,7 @@ interface
 
 uses
   System.SysUtils,
+  System.Diagnostics,
   System.JSON,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
@@ -699,6 +700,7 @@ var
   Info: THoverInfo;
   Contents: TJSONObject;
   DelphiVersion, Markdown: string;
+  Watch: TStopwatch;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
@@ -710,7 +712,10 @@ begin
   if FStore.TryGet(Uri, Document) then
   begin
     Text := Document.Text;
+    // Wartet, wenn ein anderer Thread dieselbe Version gerade parst (#647).
+    Watch := TStopwatch.StartNew;
     Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+    TRequestDiagnostics.Note('treeMs', Integer(Watch.ElapsedMilliseconds));
     Tree := Shared.Tree;
   end
   // Nicht geöffnete Datei (Typ aus dem Atlas-Tooltip angeklickt, #588): selbst lesen.

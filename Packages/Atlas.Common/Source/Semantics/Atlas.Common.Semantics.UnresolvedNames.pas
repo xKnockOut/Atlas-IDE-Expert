@@ -40,12 +40,17 @@ type
 implementation
 
 const
-  Intrinsics: array[0..55] of string = (
-    'Abs', 'Addr', 'Assert', 'Assigned', 'Break', 'Chr', 'Concat', 'Continue', 'Copy', 'Dec', 'Default',
+  Intrinsics: array[0..62] of string = (
+    'Abs', 'Addr', 'Assert', 'Assigned', 'AtomicCmpExchange', 'AtomicDecrement', 'AtomicExchange',
+    'AtomicIncrement', 'Break', 'Chr', 'Concat', 'Continue', 'Copy', 'Dec', 'Default',
     'Delete', 'Dispose', 'Exclude', 'Exit', 'False', 'FillChar', 'Finalize', 'GetTypeKind', 'Halt', 'HasWeakRef',
     'Hi', 'High', 'Inc', 'Include', 'Initialize', 'Insert', 'IsConstValue', 'IsManagedType', 'Length', 'Lo', 'Low',
     'Move', 'New', 'nil', 'Odd', 'Ord', 'Pred', 'Ptr', 'Read', 'ReadLn', 'Result', 'Round', 'Self', 'SetLength',
-    'SetString', 'SizeOf', 'Slice', 'Str', 'Succ', 'Swap', 'True', 'Trunc', 'TypeInfo', 'Write', 'WriteLn');
+    'SetString', 'SizeOf', 'Slice', 'Str', 'Succ', 'Swap', 'True', 'Trunc', 'TypeInfo', 'Write', 'WriteLn',
+    // Konstanten aus System.pas, die im Index fehlen können (Ursache nicht geprüft, #647).
+    'MaxInt', 'MaxLongint',
+    // Aus SysInit, das der Compiler immer einbindet.
+    'HInstance');
 
 class function TUnresolvedNames.IsIntrinsic(const AName: string): Boolean;
 var
@@ -108,11 +113,15 @@ var
     else if ANode.Kind in [TSyntaxKind.VarSection, TSyntaxKind.ConstSection, TSyntaxKind.TypeSection,
       TSyntaxKind.RoutineHeader, TSyntaxKind.Parameters, TSyntaxKind.GenericArgs] then
       AInStatements := False;
+    // Typumwandlungen und Typhelfer (Integer(X), string.Join) sowie der Anfang eines Unit-Namens
+    // (Winapi in Winapi.Windows.TextOut) sind keine fehlenden Bezeichner (#647).
     if AInStatements and (ANode.Kind = TSyntaxKind.Identifier) and (ANode.Name <> '') and
-      not IsIntrinsic(ANode.Name) and not IsDeclared(ANode.Name) then
+      not IsIntrinsic(ANode.Name) and not IsDeclared(ANode.Name) and
+      not TNameResolver.IsBuiltinTypeName(ANode.Name) then
     begin
+      // IsUnitPrefix erst danach: ResolveChain legt die Unit und den Abschnitt fest.
       Resolved := AResolver.ResolveChain(ATree, AFileName, [ANode.Name], ANode.StartOffset);
-      if not Resolved.Found then
+      if not Resolved.Found and not AResolver.IsUnitPrefix(ANode.Name) then
       begin
         Item.Name := ANode.Name;
         Item.Range := TTextRange.Create(ANode.StartPos, ANode.EndPos);

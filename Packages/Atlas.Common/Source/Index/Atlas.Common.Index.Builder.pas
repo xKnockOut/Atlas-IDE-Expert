@@ -26,6 +26,7 @@ interface
 
 uses
   System.SysUtils,
+  System.Diagnostics,
   System.Generics.Collections,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Index.Contract,
@@ -36,8 +37,14 @@ type
     Parsed: Integer;
     FromCache: Integer;
     Missing: Integer;
+    /// <summary>Zeit für das Suchen der Unit-Dateien (uses) und für das Parsen, fürs Diagnoselog (#647).</summary>
+    ResolveMs: Int64;
+    ParseMs: Int64;
     Cancelled: Boolean;
   end;
+
+  /// <summary>Eine Stufe des Aufbaus ist fertig; APartial ist der Stand bis dahin.</summary>
+  TIndexStageDone = reference to procedure(const APartial: TIndexBuildResult);
 
   TIndexBuilder = class
   private
@@ -50,7 +57,12 @@ type
     FFailedUnits: TDictionary<string, Boolean>;
     FFailedLock: TObject;
     FIncludePaths: TArray<string>;
+    FLibraryDefines: TArray<string>;
+    FLibraryRoots: TArray<string>;
     function IncludeResolver: TIncludeResolver;
+    /// <summary>Symbole für AFileName: Dateien der Installation mit LibraryDefines, alle anderen mit
+    /// denen des Projekts.</summary>
+    function DefinesFor(const AFileName: string): TArray<string>;
     function IncludeStampsOf(const AIncludes: TArray<string>): TArray<Int64>;
     function IncludesUnchanged(const ACached: TUnitIndex): Boolean;
     function IndexFile(const AFileName: string; ALibrary: Boolean; var AResult: TIndexBuildResult): Boolean;
@@ -71,9 +83,11 @@ type
     function Build(const AFiles: TArray<string>; const AProgress: TIndexProgressEvent;
       const ACancelled: TIndexCancelled): TIndexBuildResult; overload;
     /// <summary>Aufbau in Stufen (#648): AFiles samt über uses erreichbarer Units, dann ASearchFiles (Projekt),
-    /// dann ALibraryFiles (Bibliothek). ATurn ordnet die Stufen mehrerer Aufbauten; nil = ohne Warten.</summary>
+    /// dann ALibraryFiles (Bibliothek). ATurn ordnet die Stufen mehrerer Aufbauten; nil = ohne Warten.
+    /// AProjectDone läuft nach der Projektstufe (Projektdateien und über uses erreichbare Units).</summary>
     function Build(const AFiles, ASearchFiles, ALibraryFiles: TArray<string>; const AProgress: TIndexProgressEvent;
-      const ACancelled: TIndexCancelled; const ATurn: IIndexTurn): TIndexBuildResult; overload;
+      const ACancelled: TIndexCancelled; const ATurn: IIndexTurn;
+      const AProjectDone: TIndexStageDone = nil): TIndexBuildResult; overload;
     /// <summary>Indiziert die Unit, falls noch nicht vorhanden. False, wenn sie nicht gefunden wird.</summary>
     function EnsureUnit(const AUnitName: string): Boolean;
     /// <summary>Übernimmt Dateiänderungen; liefert die Zahl geänderter Units.</summary>
@@ -83,6 +97,14 @@ type
     function ApplyText(const AFileName, AText: string): Boolean;
     /// <summary>Suchpfade für $I nach dem Ordner der Unit (Projekt-Suchpfade, dann Bibliothekspfade).</summary>
     property IncludePaths: TArray<string> read FIncludePaths write FIncludePaths;
+    /// <summary>Ordner der Delphi-Installation (BDS-Ordner) samt Unterordnern.
+    /// Deren Units kommen als fertige DCUs; die Defines des Projekts wirken nicht auf sie. Leer = alle
+    /// Dateien mit den Defines des Projekts.</summary>
+    property LibraryRoots: TArray<string> read FLibraryRoots write FLibraryRoots;
+    /// <summary>Symbole für Dateien unter LibraryRoots: nur die des Compilers (Plattform, Version).</summary>
+    property LibraryDefines: TArray<string> read FLibraryDefines write FLibraryDefines;
+    /// <summary>Liegt AFileName unter einem der Ordner aus ARoots?</summary>
+    class function IsUnder(const AFileName: string; const ARoots: TArray<string>): Boolean; static;
   end;
 
 implementation
@@ -104,6 +126,31 @@ begin
   FCached := TDictionary<string, TIndexCacheEntry>.Create;
   FFailedUnits := TDictionary<string, Boolean>.Create;
   FFailedLock := TObject.Create;
+end;
+
+class function TIndexBuilder.IsUnder(const AFileName: string; const ARoots: TArray<string>): Boolean;
+var
+  Root: string;
+begin
+  // Windows-Pfade auch unter anderen Systemen (Tests): beide Trenner gelten.
+  for Root in ARoots do
+    if (Root <> '') and AFileName.StartsWith(Root, True) then
+    begin
+      if CharInSet(Root[Length(Root)], ['\', '/']) then
+        Exit(True);
+      if (Length(AFileName) > Length(Root)) and CharInSet(AFileName[Length(Root) + 1], ['\', '/']) then
+        Exit(True);
+    end;
+  Result := False;
+end;
+
+function TIndexBuilder.DefinesFor(const AFileName: string): TArray<string>;
+begin
+  // RTL, VCL und FMX einmal je Compiler und Plattform statt je Projekt-Defines (#647).
+  if IsUnder(AFileName, FLibraryRoots) then
+    Result := FLibraryDefines
+  else
+    Result := FDefines;
 end;
 
 destructor TIndexBuilder.Destroy;
@@ -194,6 +241,7 @@ var
   Entry: TIndexCacheEntry;
   Cached, UnitIndex: TUnitIndex;
   HasCache: Boolean;
+  Watch: TStopwatch;
 begin
   if not FFileSystem.FileStamp(AFileName, Stamp) then
   begin
@@ -227,7 +275,9 @@ begin
     Inc(AResult.FromCache);
     Exit(True);
   end;
-  UnitIndex := TIndexExtractor.ExtractText(Text, AFileName, FDefines, IncludeResolver());
+  Watch := TStopwatch.StartNew;
+  UnitIndex := TIndexExtractor.ExtractText(Text, AFileName, DefinesFor(AFileName), IncludeResolver());
+  Inc(AResult.ParseMs, Watch.ElapsedMilliseconds);
   UnitIndex.Stamp := Stamp;
   UnitIndex.Hash := Hash;
   UnitIndex.IncludeStamps := IncludeStampsOf(UnitIndex.Includes);
@@ -245,6 +295,8 @@ var
   UnitIndex: TUnitIndex;
   Name, UsedName, FileName: string;
   Existing: TUnitIndex;
+  Stamp: Int64;
+  Watch: TStopwatch;
 begin
   if not Assigned(FResolveUnit) then
     Exit;
@@ -272,9 +324,20 @@ begin
       Seen.Add(UpperCase(Name), True);
       if FIndex.FindUnit(Name, Existing) then
         Continue;
+      Watch := TStopwatch.StartNew;
       FileName := FResolveUnit(Name);
+      Inc(AResult.ResolveMs, Watch.ElapsedMilliseconds);
       if FileName = '' then
         Continue;
+      // Unter anderem Namen schon im Index, z. B. "Forms" als Vcl.Forms aus einem anderen Projekt
+      // der Gruppe: nicht neu einlesen. Sonst las jedes Projekt dieselben Units erneut (#647).
+      if FIndex.FindFile(FileName, Existing) and FFileSystem.FileStamp(FileName, Stamp) and
+        (Stamp = Existing.Stamp) then
+      begin
+        for UsedName in Existing.InterfaceUses do
+          Pending.Enqueue(UsedName);
+        Continue;
+      end;
       if Assigned(AProgress) then
         AProgress(TIndexProgressKind.Report, Name, -1);
       if IndexFile(FileName, True, AResult) and FIndex.FindFile(FileName, UnitIndex) then
@@ -319,7 +382,8 @@ begin
 end;
 
 function TIndexBuilder.Build(const AFiles, ASearchFiles, ALibraryFiles: TArray<string>;
-  const AProgress: TIndexProgressEvent; const ACancelled: TIndexCancelled; const ATurn: IIndexTurn): TIndexBuildResult;
+  const AProgress: TIndexProgressEvent; const ACancelled: TIndexCancelled; const ATurn: IIndexTurn;
+  const AProjectDone: TIndexStageDone): TIndexBuildResult;
 var
   Index, Total: Integer;
 
@@ -365,6 +429,8 @@ begin
     end;
     if Result.Cancelled then
       Exit;
+    if Assigned(AProjectDone) then
+      AProjectDone(Result);
     if Length(ASearchFiles) > 0 then
     begin
       if not Enter(TIndexStage.SearchPaths) then
@@ -448,7 +514,7 @@ begin
   Hash := TIndexCache.HashOf(AText);
   if Hash = Existing.Hash then
     Exit;
-  UnitIndex := TIndexExtractor.ExtractText(AText, AFileName, FDefines, IncludeResolver());
+  UnitIndex := TIndexExtractor.ExtractText(AText, AFileName, DefinesFor(AFileName), IncludeResolver());
   // Zeitstempel bleibt der der Datei: Beim Speichern liest IndexFile sie dann neu von der Platte.
   UnitIndex.Stamp := Existing.Stamp;
   UnitIndex.Hash := Hash;

@@ -31,6 +31,8 @@ type
     procedure NeedsSystemUnit;
     [Test]
     procedure RuleReportsInEditorOnlyWithIndex;
+    [Test]
+    procedure KnowsCastsUnitPrefixesAndNestedTypes;
   end;
 
 implementation
@@ -186,6 +188,44 @@ begin
     '    on E: Exception do'#10 +
     '      raise E;'#10 +
     '  end;'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.KnowsCastsUnitPrefixesAndNestedTypes;
+begin
+  // Fehlalarme aus der Problemliste zu Atlas selbst (#647).
+  FIndex.AddUnit(TIndexExtractor.ExtractText(
+    'unit Werk.Hilfe;'#10 +
+    'interface'#10 +
+    'procedure Hilf;'#10 +
+    'implementation'#10 +
+    'procedure Hilf;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'end.', 'C:\P\Werk.Hilfe.pas', nil));
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TAussen = class'#10 +
+    '  type'#10 +
+    '    TInnen = class'#10 +
+    '    private'#10 +
+    '      FWert: Integer;'#10 +
+    '      procedure Lauf;'#10 +
+    '    end;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'uses Werk.Hilfe;'#10 +
+    'procedure TAussen.TInnen.Lauf;'#10 +
+    'var'#10 +
+    '  P: PChar;'#10 +
+    'begin'#10 +
+    '  FWert := Integer(MaxInt);'#10 +
+    '  P := PChar(''x'');'#10 +
+    '  AtomicIncrement(FWert);'#10 +
+    '  Werk.Hilfe.Hilf;'#10 +
     'end;'#10 +
     'end.'));
 end;

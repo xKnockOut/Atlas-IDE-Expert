@@ -57,6 +57,8 @@ type
     procedure ReplacesUnitOfSameFile;
     [Test]
     procedure FindsDescendants;
+    [Test]
+    procedure FindSymbolsMatchesWholeNamesOnly;
   end;
 
   [TestFixture]
@@ -122,6 +124,15 @@ type
     procedure ReadOnlyServiceStopsWaitingAfterLimit;
     [Test]
     procedure IndexesSearchAndLibraryStages;
+    [Test]
+    procedure ReportsProjectStageBeforeSearchPaths;
+    [Test]
+    procedure SkipsUnitIndexedUnderOtherName;
+    [Test]
+    procedure ReadsInstallationUnitsWithoutProjectDefines;
+    [Test]
+    [IgnoreMemoryLeaks]
+    procedure ServiceWritesCacheAfterProjectStage;
   end;
 
   [TestFixture]
@@ -140,6 +151,8 @@ type
     procedure CombinesDefinesWithPlatformSymbols;
     [Test]
     procedure ListsPathUnitsOnceWithoutExcluded;
+    [Test]
+    procedure SharesLibraryAcrossProjectDefines;
   end;
 
 implementation
@@ -528,6 +541,22 @@ begin
   Assert.AreEqual<NativeInt>(1, Length(Index.Descendants('TList')));
 end;
 
+procedure TSymbolIndexTests.FindSymbolsMatchesWholeNamesOnly;
+var
+  Index: ISymbolIndex;
+  Found: TArray<TSymbolLocation>;
+begin
+  // Vorprüfung über die Länge (#647): gleich lange und längere Namen dürfen nicht treffen.
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['TFooBar', 'TFoo', 'TFo']));
+  Index.AddUnit(MakeUnit('B', 'C:\B.pas', ['TBaz', 'TFOO']));
+  Found := Index.FindSymbols('tfoo');
+  Assert.AreEqual<NativeInt>(2, Length(Found));
+  Assert.IsTrue(SameText('TFoo', Found[0].Symbol.Name));
+  Assert.IsTrue(SameText('TFoo', Found[1].Symbol.Name));
+  Assert.AreEqual<NativeInt>(0, Length(Index.FindSymbols('TFooB')));
+end;
+
 { TIndexCacheTests }
 
 procedure TIndexCacheTests.RoundTripsUnits;
@@ -748,6 +777,135 @@ begin
   Assert.IsFalse(U.Library_, 'Suchpfad-Units gehören zum Projekt');
   Assert.IsTrue(FIndex.FindUnit('E', U));
   Assert.IsTrue(U.Library_, 'Bibliotheks-Units sind Bibliothek');
+end;
+
+procedure TIndexBuilderTests.ReportsProjectStageBeforeSearchPaths;
+var
+  Builder: TIndexBuilder;
+  StageParsed: Integer;
+  HadSearchUnit: Boolean;
+  U: TUnitIndex;
+begin
+  StageParsed := -1;
+  HadSearchUnit := True;
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  try
+    Builder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], ['C:\Lib\F.pas'], ['C:\Lib\E.pas'], nil, nil, nil,
+      procedure(const APartial: TIndexBuildResult)
+      begin
+        StageParsed := APartial.Parsed;
+        HadSearchUnit := FIndex.FindUnit('F', U);
+      end);
+  finally
+    Builder.Free;
+  end;
+  // P, A, B, C, D: Projektdateien und über uses erreichbare Units (#647).
+  Assert.AreEqual(5, StageParsed);
+  Assert.IsFalse(HadSearchUnit, 'Suchpfade kommen erst nach der Projektstufe');
+end;
+
+procedure TIndexBuilderTests.SkipsUnitIndexedUnderOtherName;
+var
+  Builder: TIndexBuilder;
+  BuildResult: TIndexBuildResult;
+  ResolveScoped: TUnitFileResolver;
+begin
+  // "uses Forms" findet Vcl.Forms; im Index steht sie unter "Vcl.Forms" (#647).
+  FFiles.Put('C:\Lib\Vcl.Forms.pas', 'unit Vcl.Forms;'#10'interface'#10'implementation'#10'end.', 1);
+  FFiles.Put('C:\Q\Q1.pas', 'unit Q1;'#10'interface'#10'uses Forms;'#10'implementation'#10'end.', 1);
+  FFiles.Put('C:\Q\Q2.pas', 'unit Q2;'#10'interface'#10'uses Forms;'#10'implementation'#10'end.', 1);
+  ResolveScoped :=
+    function(const AUnitName: string): string
+    begin
+      if SameText(AUnitName, 'Forms') then
+        Result := 'C:\Lib\Vcl.Forms.pas'
+      else
+        Result := '';
+    end;
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, ResolveScoped);
+  try
+    BuildResult := Builder.Build(['C:\Q\Q1.pas'], nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Assert.AreEqual(2, BuildResult.Parsed);
+  // Zweites Projekt mit demselben Index: Vcl.Forms ist schon da.
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, ResolveScoped);
+  try
+    BuildResult := Builder.Build(['C:\Q\Q2.pas'], nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Assert.AreEqual(1, BuildResult.Parsed, 'nur Q2');
+end;
+
+procedure TIndexBuilderTests.ReadsInstallationUnitsWithoutProjectDefines;
+const
+  Source = 'interface'#10'{$IFDEF APP}procedure NurApp;{$ENDIF}'#10'implementation'#10'end.';
+var
+  Builder: TIndexBuilder;
+  ResolveScoped: TUnitFileResolver;
+begin
+  // RTL/VCL/FMX kommen als fertige DCUs: Projekt-Defines wirken dort nicht (#647).
+  FFiles.Put('C:\BDS\source\rtl\RtlUnit.pas', 'unit RtlUnit;'#10 + Source, 1);
+  FFiles.Put('C:\Firma\FirmaUnit.pas', 'unit FirmaUnit;'#10 + Source, 1);
+  FFiles.Put('C:\P\Haupt.pas', 'unit Haupt;'#10'interface'#10'uses RtlUnit, FirmaUnit;'#10'implementation'#10'end.', 1);
+  ResolveScoped :=
+    function(const AUnitName: string): string
+    begin
+      if SameText(AUnitName, 'RtlUnit') then
+        Result := 'C:\BDS\source\rtl\RtlUnit.pas'
+      else if SameText(AUnitName, 'FirmaUnit') then
+        Result := 'C:\Firma\FirmaUnit.pas'
+      else
+        Result := '';
+    end;
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, ['APP', 'MSWINDOWS'], ResolveScoped);
+  try
+    Builder.LibraryRoots := ['C:\BDS'];
+    Builder.LibraryDefines := ['MSWINDOWS'];
+    Builder.Build(['C:\P\Haupt.pas'], nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Assert.AreEqual<NativeInt>(1, Length(FIndex.FindSymbols('NurApp')), 'nur FirmaUnit');
+  Assert.AreEqual('FirmaUnit', FIndex.FindSymbols('NurApp')[0].UnitName);
+  Assert.IsTrue(TIndexBuilder.IsUnder('c:\bds\x.pas', ['C:\BDS\']));
+  Assert.IsFalse(TIndexBuilder.IsUnder('C:\BDS2\x.pas', ['C:\BDS']));
+end;
+
+procedure TIndexBuilderTests.ServiceWritesCacheAfterProjectStage;
+var
+  Service: TIndexService;
+  Request: TIndexRequest;
+  StageUnits: NativeInt;
+  Data: TBytes;
+begin
+  StageUnits := -1;
+  Service := TIndexService.Create(FIndex, FFileSystem);
+  try
+    Service.OnProjectReady :=
+      procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
+      var
+        StageData: TBytes;
+      begin
+        // In einer Projektgruppe endet der ganze Aufbau erst spät; der Cache muss vorher stehen (#647).
+        if FFileSystem.ReadBytes('C:\Cache\index.json', StageData) then
+          StageUnits := Length(TIndexCache.Deserialize(StageData));
+      end;
+    Request := Default(TIndexRequest);
+    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    Request.SearchFiles := ['C:\Lib\F.pas'];
+    Request.ResolveUnit := Resolve;
+    Request.CacheFile := 'C:\Cache\index.json';
+    Service.Start(Request);
+    Service.WaitFor;
+  finally
+    Service.Free;
+  end;
+  Assert.AreEqual<NativeInt>(5, StageUnits);
+  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\index.json', Data));
+  Assert.AreEqual<NativeInt>(6, Length(TIndexCache.Deserialize(Data)), 'am Ende mit Suchpfad-Unit');
 end;
 
 procedure TIndexBuilderTests.ReusesCacheWithoutReading;
@@ -1320,6 +1478,32 @@ begin
   finally
     Scheduler.Free;
   end;
+end;
+
+procedure TIndexProjectFilesTests.SharesLibraryAcrossProjectDefines;
+var
+  Debug, Release: TProjectInfo;
+  Define: string;
+  HasWin64: Boolean;
+begin
+  // Ein Bibliotheks-Cache für alle Projekte und Konfigurationen derselben Plattform (#647).
+  Debug := Default(TProjectInfo);
+  Debug.Platform := 'Win64';
+  Debug.Defines := ['DEBUG', 'APP'];
+  Release := Debug;
+  Release.Defines := ['RELEASE'];
+  Assert.AreEqual(TIndexProjectFiles.LibrarySignature(Debug, '37.0'),
+    TIndexProjectFiles.LibrarySignature(Release, '37.0'));
+  Release.Platform := 'Win32';
+  Assert.AreNotEqual(TIndexProjectFiles.LibrarySignature(Debug, '37.0'),
+    TIndexProjectFiles.LibrarySignature(Release, '37.0'));
+  HasWin64 := False;
+  for Define in TIndexProjectFiles.LibraryDefines(Debug, '37.0') do
+  begin
+    Assert.AreNotEqual('DEBUG', Define);
+    HasWin64 := HasWin64 or (Define = 'WIN64');
+  end;
+  Assert.IsTrue(HasWin64);
 end;
 
 procedure TIndexProjectFilesTests.CombinesDefinesWithPlatformSymbols;

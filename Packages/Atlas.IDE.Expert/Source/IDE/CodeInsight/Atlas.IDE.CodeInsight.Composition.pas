@@ -25,6 +25,7 @@ uses
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
   Atlas.IDE.CodeInsight.Manager,
+  Atlas.Core.Lsp.Session,
   Atlas.IDE.Settings.Options,
   Atlas.IDE.Completion.History,
   Atlas.IDE.Build.Notifier,
@@ -457,6 +458,10 @@ begin
         CheckOnSave.Rebind;
       if EditorKeys <> nil then
         EditorKeys.Rebind;
+      // Index-Optionen an den laufenden Server; er baut neu auf, wenn sich der Umfang ändert (#652).
+      if Manager <> nil then
+        Manager.NotifyServer('workspace/didChangeConfiguration',
+          TLspSession.SettingsParams(TAtlasIdeSettings.Current.ServerSettingsJson));
     end;
   TThread.ForceQueue(nil,
     procedure

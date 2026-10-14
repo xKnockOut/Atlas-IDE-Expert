@@ -13,6 +13,11 @@
 // workspace/diagnostic arbeitet pro Anfrage höchstens BudgetMs und liefert den
 // Rest bei der nächsten Anfrage. Gibt es nichts Neues, wartet die Anfrage bis
 // WaitMs auf eine Änderung (Long-Polling), damit der Client nicht ständig fragt.
+//
+// Solange der Symbolindex aufgebaut wird (Busy), prüft workspace/diagnostic
+// nichts (#647): Die Befunde wären voller nicht gefundener Units, kosteten
+// pro Datei Hunderte Millisekunden und blieben nach dem Aufbau stehen, weil
+// sich ihre Ergebnis-Id nicht ändert. Nach dem Aufbau ruft der Server Changed.
 
 interface
 
@@ -33,6 +38,8 @@ type
   TPullFileStamp = reference to function(const AFileName: string; out AStamp: Int64): Boolean;
   /// <summary>Text einer Datei von der Platte.</summary>
   TPullReadText = reference to function(const AFileName: string; out AText: string): Boolean;
+  /// <summary>True, solange der Symbolindex aufgebaut wird.</summary>
+  TPullBusy = reference to function: Boolean;
 
   TLspPullDiagnostics = class
   public const
@@ -41,7 +48,10 @@ type
     RefreshMethod = 'workspace/diagnostic/refresh';
     Identifier = 'atlas';
     DefaultBudgetMs = 3000;
-    DefaultWaitMs = 5000;
+    DefaultWaitMs = 10000;
+    /// <summary>Grundcodes leerer Antworten im Diagnoselog (#647).</summary>
+    ReasonIndexLoading = 'indexLoading';
+    ReasonNoChanges = 'noChanges';
   private
     FStore: IDocumentStore;
     FDiagnostics: TLspSyntaxDiagnostics;
@@ -55,6 +65,8 @@ type
     FRefreshCounter: Integer;
     FBudgetMs: Cardinal;
     FWaitMs: Cardinal;
+    FBusy: TPullBusy;
+    function IsBusy: Boolean;
     function HandleDocument(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function CollectWorkspace(const APrevious: TDictionary<string, string>;
       const ACancellation: IJsonRpcCancellationToken; out AComplete: Boolean): TJSONArray;
@@ -79,12 +91,15 @@ type
     property RefreshSupport: Boolean read FRefreshSupport write FRefreshSupport;
     property BudgetMs: Cardinal read FBudgetMs write FBudgetMs;
     property WaitMs: Cardinal read FWaitMs write FWaitMs;
+    /// <summary>Ohne Provider gilt der Index als fertig.</summary>
+    property Busy: TPullBusy read FBusy write FBusy;
   end;
 
 implementation
 
 uses
   System.Diagnostics,
+  Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.TextDocument;
 
@@ -111,6 +126,11 @@ destructor TLspPullDiagnostics.Destroy;
 begin
   FChanged.Free;
   inherited;
+end;
+
+function TLspPullDiagnostics.IsBusy: Boolean;
+begin
+  Result := Assigned(FBusy) and FBusy();
 end;
 
 procedure TLspPullDiagnostics.Attach(ADispatcher: TJsonRpcDispatcher);
@@ -282,6 +302,7 @@ var
   Uri, Value: string;
   Items: TJSONArray;
   Complete: Boolean;
+  Pending: Boolean;
   Waited: Cardinal;
   Generation: Integer;
 begin
@@ -292,19 +313,36 @@ begin
         if Entry.TryGetValue<string>('uri', Uri) and Entry.TryGetValue<string>('value', Value) then
           Previous.AddOrSetValue(Uri, Value);
     Generation := FGeneration;
-    Items := CollectWorkspace(Previous, ACancellation, Complete);
+    // Während des Indexaufbaus nichts prüfen, sondern warten, bis er fertig ist.
+    Pending := IsBusy;
+    Complete := True;
+    if Pending then
+      Items := TJSONArray.Create
+    else
+      Items := CollectWorkspace(Previous, ACancellation, Complete);
     // Nichts Neues: auf eine Änderung warten, statt sofort leer zu antworten.
     Waited := 0;
     while (Items.Count = 0) and Complete and (Waited < FWaitMs) and not ACancellation.IsCancellationRequested do
     begin
       FChanged.WaitFor(100);
-      if FGeneration <> Generation then
+      if (FGeneration <> Generation) or (Pending and not IsBusy) then
       begin
-        Items.Free;
         Generation := FGeneration;
-        Items := CollectWorkspace(Previous, ACancellation, Complete);
+        Pending := IsBusy;
+        if not Pending then
+        begin
+          Items.Free;
+          Items := CollectWorkspace(Previous, ACancellation, Complete);
+        end;
       end;
       Inc(Waited, 100);
+    end;
+    if Items.Count = 0 then
+    begin
+      if Pending then
+        TRequestDiagnostics.Reason(ReasonIndexLoading)
+      else
+        TRequestDiagnostics.DefaultReason(ReasonNoChanges);
     end;
     Result := TJSONObject.Create;
     TJSONObject(Result).AddPair('items', Items);

@@ -12,6 +12,9 @@ type
     class function ThreadCount: Integer; static;
     /// <summary>Benutzer- und Rechnername; der Filter des Diagnoselogs verwirft Zeilen, die sie enthalten.</summary>
     class function IdentityNames: TArray<string>; static;
+    /// <summary>Rechenzeit (Kernel und Benutzer) des aufrufenden Threads in ms; -1, wenn die Abfrage scheitert.
+    /// Liegt sie weit unter der Laufzeit einer Anfrage, hat der Thread gewartet (#647).</summary>
+    class function ThreadCpuMs: Int64; static;
   end;
 
 implementation
@@ -42,6 +45,17 @@ begin
   finally
     CloseHandle(Snapshot);
   end;
+end;
+
+class function TProcessInfo.ThreadCpuMs: Int64;
+var
+  Creation, Exited, Kernel, User: TFileTime;
+begin
+  if not GetThreadTimes(GetCurrentThread, Creation, Exited, Kernel, User) then
+    Exit(-1);
+  // FILETIME zählt in 100 ns.
+  Result := (Int64(Kernel.dwHighDateTime) shl 32 + Kernel.dwLowDateTime +
+    Int64(User.dwHighDateTime) shl 32 + User.dwLowDateTime) div 10000;
 end;
 
 class function TProcessInfo.IdentityNames: TArray<string>;

@@ -43,6 +43,8 @@ type
   public
     LogFile: string;
     LogLevel: TLogLevel;
+    /// <summary>--log-names: Server-Log mit Pfaden und Namen statt anonymisiert (#647).</summary>
+    LogNames: Boolean;
     TraceFile: string;
     /// <summary>Ziel des Linter-Modus; '' = Server-Modus.</summary>
     CheckTarget: string;
@@ -112,6 +114,16 @@ begin
     Result := False;
 end;
 
+/// <summary>"-log" und "–log" (Gedankenstrich, z. B. aus Word oder Chat kopiert) gelten als "--log" (#647).</summary>
+function NormalizeDashes(const AArg: string): string;
+begin
+  Result := AArg;
+  if (Result <> '') and ((Result[1] = #$2013) or (Result[1] = #$2014)) then
+    Result := '--' + Result.Substring(1)
+  else if (Length(Result) > 1) and (Result[1] = '-') and CharInSet(Result[2], ['A'..'Z', 'a'..'z']) then
+    Result := '-' + Result;
+end;
+
 class function TCommandLineOptions.Parse(const AArgs: TArray<string>): TCommandLineOptions;
 var
   Index: Integer;
@@ -152,7 +164,7 @@ begin
   Index := Low(AArgs);
   while Index <= High(AArgs) do
   begin
-    Arg := AArgs[Index];
+    Arg := NormalizeDashes(AArgs[Index]);
     Separator := Arg.IndexOf('=');
     HasValue := Separator > 0;
     if HasValue then
@@ -179,6 +191,8 @@ begin
         else
           AddWarning(Format('Unbekannte Log-Stufe "%s", verwendet wird info', [Value]));
     end
+    else if Name = '--log-names' then
+      Result.LogNames := True
     else if Name = '--trace' then
     begin
       if TakeValue then

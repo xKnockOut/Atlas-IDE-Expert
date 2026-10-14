@@ -9,6 +9,11 @@
 // - TDiagnosticFilter prüft jede Zeile vor dem Schreiben. Laufwerksbuchstaben,
 //   "\", "/", Dateiendungen von Delphi-Quellen, "@", Benutzer- und Rechnername
 //   verwerfen die Zeile; gezählt wird, wie viele verworfen wurden.
+// - TLogAnonymizer schreibt Zeilen des Server-Logs (--log) um, statt sie zu
+//   verwerfen: Pfade werden zu datei#N, Namen aus Projekten und
+//   Arbeitsbereichen zu name#N, Text in Anführungszeichen zu wert#N, Benutzer-
+//   und Rechnername zu benutzer#N. Dateien unter den Bibliothekspfaden der
+//   Delphi-Installation behalten ihren Namen. Die Nummern gelten für einen Lauf.
 
 interface
 
@@ -42,6 +47,40 @@ type
     procedure SetLibraryRoots(const ARoots: TArray<string>);
   end;
 
+  /// <summary>Anonymisiert Zeilen des Server-Logs (#647). Threadsicher.</summary>
+  ILogAnonymizer = interface
+    ['{6C2F4E81-3B7A-4D59-A1E6-9F0B3C7D2E14}']
+    function Anonymize(const AText: string): string;
+    /// <summary>Namen, die nie im Klartext erscheinen dürfen (Projekte, Ordner, Units des Projekts).</summary>
+    procedure AddNames(const ANames: TArray<string>);
+    /// <summary>Wie AddNames, aber nicht für Units unter einem Bibliothekspfad.</summary>
+    procedure AddUnit(const AUnitName, AFileName: string);
+    procedure SetLibraryRoots(const ARoots: TArray<string>);
+  end;
+
+  TLogAnonymizer = class(TInterfacedObject, ILogAnonymizer)
+  private
+    FLock: TObject;
+    FIds: TDiagnosticIds;
+    FPaths: TDictionary<string, Integer>;
+    FNames: TDictionary<string, Integer>;
+    FValues: TDictionary<string, Integer>;
+    FIdentity: TArray<string>;
+    function NameLabel(const AName: string): string;
+    function PathLabel(const APath: string): string;
+    function QuotedLabel(const AInner: string): string;
+    function WordLabel(const AWord: string): string;
+    procedure AddNameLocked(const AName: string);
+  public
+    /// <summary>AIdentity: Benutzer- und Rechnername u. ä.; Einträge unter drei Zeichen zählen nicht.</summary>
+    constructor Create(const AIdentity: TArray<string>);
+    destructor Destroy; override;
+    function Anonymize(const AText: string): string;
+    procedure AddNames(const ANames: TArray<string>);
+    procedure AddUnit(const AUnitName, AFileName: string);
+    procedure SetLibraryRoots(const ARoots: TArray<string>);
+  end;
+
   TDiagnosticFilter = class
   private
     FForbidden: TArray<string>;
@@ -64,6 +103,8 @@ type
 implementation
 
 uses
+  System.StrUtils,
+  System.NetEncoding,
   System.RegularExpressions;
 
 const
@@ -254,6 +295,232 @@ end;
 class function TDiagnosticFilter.StackFrame(const AFrame: string): string;
 begin
   Result := TRegEx.Replace(Trim(AFrame), '\s*\([^()]*:(\d+)\)', ' line $1');
+end;
+
+{ TLogAnonymizer }
+
+const
+  QuotedPattern = '"[^"\r\n]*"|''[^''\r\n]*''|„[^“”\r\n]*[“”]';
+  PathPattern = 'file:[^\s"''<>]+|(?:\b[A-Za-z]:|\\\\)[\\/][^\s"''<>|,;()\[\]]*';
+  // Rest eines Pfads mit Leerzeichen: jedes Wort mit "\".
+  BackslashPattern = '[^\s"''<>]*\\[^\s"''<>]*';
+  WordPattern = '[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*';
+  // Bleibt stehen: Zahlen, Zeiten, Größen.
+  NumberPattern = '^[0-9.,:%+\s-]*$';
+  // LSP-Methoden wie textDocument/hover oder $/progress.
+  MethodPattern = '^\$?[A-Za-z]*(/[A-Za-z$]+)+$';
+
+type
+  TMatchMap = reference to function(const AMatch: string): string;
+
+function ReplaceMatches(const AText, APattern: string; const AMap: TMatchMap): string;
+var
+  Match: TMatch;
+  Last: Integer;
+begin
+  Result := '';
+  Last := 1;
+  for Match in TRegEx.Matches(AText, APattern) do
+  begin
+    Result := Result + Copy(AText, Last, Match.Index - Last) + AMap(Match.Value);
+    Last := Match.Index + Match.Length;
+  end;
+  Result := Result + Copy(AText, Last, MaxInt);
+end;
+
+function LooksLikePath(const AText: string): Boolean;
+begin
+  Result := (Pos('\', AText) > 0) or StartsText('file:', AText) or TRegEx.IsMatch(AText, '^[A-Za-z]:[\\/]');
+end;
+
+constructor TLogAnonymizer.Create(const AIdentity: TArray<string>);
+var
+  Value: string;
+begin
+  inherited Create;
+  FLock := TObject.Create;
+  FIds := TDiagnosticIds.Create;
+  FPaths := TDictionary<string, Integer>.Create;
+  FNames := TDictionary<string, Integer>.Create;
+  FValues := TDictionary<string, Integer>.Create;
+  FIdentity := nil;
+  for Value in AIdentity do
+    if Length(Trim(Value)) >= 3 then
+      FIdentity := FIdentity + [Trim(Value)];
+end;
+
+destructor TLogAnonymizer.Destroy;
+begin
+  FValues.Free;
+  FNames.Free;
+  FPaths.Free;
+  FIds.Free;
+  FLock.Free;
+  inherited;
+end;
+
+procedure TLogAnonymizer.AddNameLocked(const AName: string);
+var
+  Key: string;
+begin
+  Key := AnsiLowerCase(Trim(AName));
+  // Kurze Namen wie "A" oder "UI" kämen sonst in jedem Satz vor.
+  if (Length(Key) < 3) or FNames.ContainsKey(Key) then
+    Exit;
+  FNames.Add(Key, FNames.Count + 1);
+end;
+
+procedure TLogAnonymizer.AddNames(const ANames: TArray<string>);
+var
+  Name: string;
+begin
+  TMonitor.Enter(FLock);
+  try
+    for Name in ANames do
+      AddNameLocked(Name);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TLogAnonymizer.AddUnit(const AUnitName, AFileName: string);
+begin
+  if (AFileName <> '') and FIds.IsLibraryFile(AFileName) then
+    Exit;
+  AddNames([AUnitName]);
+end;
+
+procedure TLogAnonymizer.SetLibraryRoots(const ARoots: TArray<string>);
+begin
+  FIds.SetLibraryRoots(ARoots);
+end;
+
+function TLogAnonymizer.NameLabel(const AName: string): string;
+var
+  Number: Integer;
+begin
+  if FNames.TryGetValue(AnsiLowerCase(AName), Number) then
+    Result := 'name#' + IntToStr(Number)
+  else
+    Result := '';
+end;
+
+function TLogAnonymizer.PathLabel(const APath: string): string;
+var
+  Path, Key, Extension: string;
+  Number: Integer;
+begin
+  Path := APath;
+  if StartsText('file:', Path) then
+  begin
+    Path := TNetEncoding.URL.Decode(Copy(Path, 6, MaxInt));
+    while StartsStr('/', Path) do
+      Delete(Path, 1, 1);
+    Path := Path.Replace('/', '\');
+  end;
+  if FIds.IsLibraryFile(Path) then
+    Exit(ExtractFileName(Path));
+  // Der Dateiname ist oft ein Unit- oder Projektname: auch im übrigen Text verbergen.
+  AddNameLocked(ChangeFileExt(ExtractFileName(Path), ''));
+  Key := AnsiUpperCase(Path.Replace('/', '\'));
+  if not FPaths.TryGetValue(Key, Number) then
+  begin
+    Number := FPaths.Count + 1;
+    FPaths.Add(Key, Number);
+  end;
+  Extension := AnsiLowerCase(ExtractFileExt(Path));
+  if not TRegEx.IsMatch(Extension, '^\.[a-z0-9]{1,8}$') then
+    Extension := '';
+  Result := 'datei#' + IntToStr(Number) + Extension;
+end;
+
+function TLogAnonymizer.QuotedLabel(const AInner: string): string;
+var
+  Number: Integer;
+begin
+  if TRegEx.IsMatch(AInner, NumberPattern) or TRegEx.IsMatch(AInner, MethodPattern) then
+    Exit(AInner);
+  if LooksLikePath(AInner) then
+    Exit(PathLabel(AInner));
+  Result := NameLabel(Trim(AInner));
+  if Result <> '' then
+    Exit;
+  if not FValues.TryGetValue(AInner, Number) then
+  begin
+    Number := FValues.Count + 1;
+    FValues.Add(AInner, Number);
+  end;
+  Result := 'wert#' + IntToStr(Number);
+end;
+
+function TLogAnonymizer.WordLabel(const AWord: string): string;
+var
+  Parts: TArray<string>;
+  Count, Index, First: Integer;
+  Part: string;
+begin
+  Parts := AWord.Split(['.']);
+  // Längster bekannter Anfang: "Firma.Kunden.TKunde" mit der Unit "Firma.Kunden" wird "name#3.TKunde".
+  Result := '';
+  First := 0;
+  for Count := Length(Parts) downto 1 do
+  begin
+    Result := NameLabel(string.Join('.', Copy(Parts, 0, Count)));
+    if Result <> '' then
+    begin
+      First := Count;
+      Break;
+    end;
+  end;
+  // Die übrigen Teile einzeln, z. B. der Projektname "Kunden".
+  for Index := First to High(Parts) do
+  begin
+    Part := NameLabel(Parts[Index]);
+    if Part = '' then
+      Part := Parts[Index];
+    if Result = '' then
+      Result := Part
+    else
+      Result := Result + '.' + Part;
+  end;
+end;
+
+function TLogAnonymizer.Anonymize(const AText: string): string;
+var
+  Index: Integer;
+begin
+  Result := AText;
+  TMonitor.Enter(FLock);
+  try
+    for Index := 0 to High(FIdentity) do
+      Result := StringReplace(Result, FIdentity[Index], 'benutzer#' + IntToStr(Index + 1),
+        [rfReplaceAll, rfIgnoreCase]);
+    Result := ReplaceMatches(Result, QuotedPattern,
+      function(const AMatch: string): string
+      var
+        Inner: string;
+      begin
+        Inner := Copy(AMatch, 2, Length(AMatch) - 2);
+        Result := AMatch[1] + QuotedLabel(Inner) + AMatch[Length(AMatch)];
+      end);
+    Result := ReplaceMatches(Result, PathPattern,
+      function(const AMatch: string): string
+      begin
+        Result := PathLabel(AMatch);
+      end);
+    Result := ReplaceMatches(Result, BackslashPattern,
+      function(const AMatch: string): string
+      begin
+        Result := PathLabel(AMatch);
+      end);
+    Result := ReplaceMatches(Result, WordPattern,
+      function(const AMatch: string): string
+      begin
+        Result := WordLabel(AMatch);
+      end);
+  finally
+    TMonitor.Exit(FLock);
+  end;
 end;
 
 end.

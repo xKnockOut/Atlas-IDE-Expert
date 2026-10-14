@@ -37,6 +37,8 @@ type
     procedure ReachingDefinitionsInLoop;
     [Test]
     procedure AsmGivesUnknown;
+    [Test]
+    procedure ExceptionPathThroughFinallyDoesNotEndNormally;
   end;
 
 implementation
@@ -272,6 +274,29 @@ begin
     Defs := F.Graph.ReachingDefinitions(NodeNamed(F, 'Use'), 'Y');
     Assert.AreEqual(1, Integer(Length(Defs.Definitions)));
     Assert.IsTrue(Defs.FromEntry);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TControlFlowTests.ExceptionPathThroughFinallyDoesNotEndNormally;
+var
+  F: TFlowFixture;
+begin
+  // Eine Ausnahme vor "Result := 1" läuft durch finally und verlässt die Routine;
+  // sie endet nicht normal ohne Result (#647).
+  F := Flow('  try'#13#10'    Work;'#13#10'    Result := 1;'#13#10'  finally'#13#10'    Cleanup;'#13#10'  end;');
+  try
+    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.No);
+    Assert.IsTrue(F.Graph.IsReachable(F.Graph.RaiseExit) = TFlowAnswer.Yes);
+  finally
+    F.Free;
+  end;
+  // Das finally steht je Ausgang einmal im Graphen, gilt aber nur einmal als erreichbar.
+  F := Flow('  try'#13#10'    Exit;'#13#10'  finally'#13#10'    Cleanup;'#13#10'  end;'#13#10'  Dead;');
+  try
+    Assert.AreEqual(1, Integer(Length(F.Graph.UnreachableStatements)));
+    Assert.IsTrue(F.Graph.UnreachableStatements[0] = NodeNamed(F, 'Dead'));
   finally
     F.Free;
   end;
