@@ -21,6 +21,9 @@ type
     Text: TAtlasColor;
   end;
 
+  /// <summary>Farben der Klammer- und Blockpaare je Tiefe, zyklisch (#514).</summary>
+  TAtlasPairColors = array[0..4] of TAtlasColor;
+
   TAtlasColors = record
     IsDark: Boolean;
     /// <summary>Fläche der Fenster.</summary>
@@ -48,7 +51,12 @@ type
     ErrorSoft: TAtlasColor;
     Badges: array[TAtlasBadgeKind] of TAtlasBadgeColors;
     /// <summary>Klammer- und Blockpaare je Tiefe, zyklisch (#514).</summary>
-    Pairs: array[0..4] of TAtlasColor;
+    Pairs: TAtlasPairColors;
+    /// <summary>Eigene Paarfarben aus den Einstellungen: leer oder ungültig = Palette.</summary>
+    function WithPairs(const ACustom: string): TAtlasColors;
+    /// <summary>„#RRGGBB,…“ mit genau fünf Farben in Reihenfolge der Tiefe.</summary>
+    class function ParsePairs(const AText: string; out APairs: TAtlasPairColors): Boolean; static;
+    class function PairsText(const APairs: TAtlasPairColors): string; static;
     class function Light: TAtlasColors; static;
     class function Dark: TAtlasColors; static;
     /// <summary>Light oder Dark, je nachdem ob ABackground (Fensterfarbe der IDE) dunkel ist.</summary>
@@ -56,6 +64,9 @@ type
   end;
 
 implementation
+
+uses
+  System.SysUtils;
 
 function Hex(const AHex: string): TAtlasColor;
 begin
@@ -156,6 +167,47 @@ begin
   Result.Pairs[2] := Hex('#00A4A4');
   Result.Pairs[3] := Hex('#E250FF');
   Result.Pairs[4] := Hex('#24AA24');
+end;
+
+function TAtlasColors.WithPairs(const ACustom: string): TAtlasColors;
+var
+  Custom: TAtlasPairColors;
+begin
+  Result := Self;
+  if ParsePairs(ACustom, Custom) then
+    Result.Pairs := Custom;
+end;
+
+class function TAtlasColors.ParsePairs(const AText: string; out APairs: TAtlasPairColors): Boolean;
+var
+  Parts: TArray<string>;
+  Index: Integer;
+begin
+  Result := False;
+  Parts := AText.Split([',']);
+  if Length(Parts) <> Length(APairs) then
+    Exit;
+  try
+    for Index := 0 to High(Parts) do
+      APairs[Index] := Hex(Trim(Parts[Index]));
+  except
+    on EConvertError do
+      Exit;
+  end;
+  Result := True;
+end;
+
+class function TAtlasColors.PairsText(const APairs: TAtlasPairColors): string;
+var
+  Index: Integer;
+begin
+  Result := '';
+  for Index := 0 to High(APairs) do
+  begin
+    if Index > 0 then
+      Result := Result + ',';
+    Result := Result + TAtlasColorMath.ToHex(APairs[Index]);
+  end;
 end;
 
 class function TAtlasColors.ForBackground(ABackground: TAtlasColor): TAtlasColors;
