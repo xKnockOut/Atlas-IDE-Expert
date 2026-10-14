@@ -343,11 +343,31 @@
           "type": "boolean",
           "default": true,
           "description": "Schlüsselwörter passend zur Stelle vorschlagen (in Anweisungen begin, try …, im Klassenrumpf property, private …, nach \":\" string, array …), sobald ein Zeichen getippt ist."
+        },
+        "postfixTemplates": {
+          "type": "boolean",
+          "default": true,
+          "description": "Postfix-Vorlagen hinter einem Ausdruck anbieten: Liste.for wird zu for var Item in Liste do, FKunde.notnil zu if Assigned(FKunde) then, dazu tryf, ifa, fmt, nil, not, if, forin, free, try, var, exit und eigene Vorlagen mit \"postfix: true\"."
         }
       },
       "x-page": "Vervollständigung",
       "x-control": "Auswahl",
-      "x-issue": "#31, #229, #466, #480, #489"
+      "x-issue": "#31, #188, #229, #466, #480, #489"
+    },
+    "refactoring": {
+      "type": "object",
+      "description": "Code, den Atlas erzeugt.",
+      "additionalProperties": false,
+      "properties": {
+        "inlineVar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Inline-Variablen (for var Item in …, var Name := …) erzeugen, wenn die Delphi-Version sie kennt (ab 10.3). Aus: Atlas trägt die Variable in den var-Abschnitt der Routine ein."
+        }
+      },
+      "x-page": "Vervollständigung",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#50, #188"
     },
     "usesCommand": {
       "type": "boolean",

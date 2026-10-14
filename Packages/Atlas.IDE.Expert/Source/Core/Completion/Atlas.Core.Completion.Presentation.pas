@@ -308,8 +308,10 @@ begin
     Result := Result + [MakeTag('+' + IntToStr(AItem.OverloadCount - 1), TAtlasTagKind.Neutral)];
   if AItem.IsHelper then
     Result := Result + [MakeTag('Helper', TAtlasTagKind.Accent)];
-  // Code-Vorlagen (#51).
-  if AItem.Snippet <> '' then
+  // Postfix-Vorlagen (#188) und Code-Vorlagen (#51).
+  if AItem.Postfix then
+    Result := Result + [MakeTag('Postfix', TAtlasTagKind.Neutral)]
+  else if AItem.Snippet <> '' then
     Result := Result + [MakeTag('Snippet', TAtlasTagKind.Neutral)];
   // Sender mit Typumwandlung (#480).
   if AItem.Sender <> '' then

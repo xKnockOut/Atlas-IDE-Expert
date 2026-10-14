@@ -38,7 +38,9 @@ uses
   Atlas.Core.Completion.Providers.Server,
   Atlas.Core.Completion.Providers.Snippets,
   Atlas.Core.Completion.Parentheses,
+  Atlas.Core.Completion.Snippets,
   Atlas.Core.Editor.CloseRules,
+  Atlas.Core.Lsp.Session,
   Atlas.IDE.Completion.Preview,
   Atlas.IDE.Completion.Placeholders,
   Atlas.UI.Completion.Popup,
@@ -58,6 +60,10 @@ type
     // Code-Vorlagen (#51): Quelle, Stand des Ordners, letzte Prüfung, Platzhalter-Modus.
     FSnippetProvider: TAtlasSnippetCompletionProvider;
     FSnippetProviderRef: IAtlasCompletionProvider;
+    // Eigene Postfix-Vorlagen (#188): gehen an den Server, neu nach Änderung, neuem Server oder einer Minute.
+    FPostfixSnippets: TAtlasSnippetList;
+    FPostfixSession: TLspSession;
+    FPostfixSent: UInt64;
     FSnippetStamp: string;
     FSnippetChecked: UInt64;
     FPlaceholders: TAtlasEditorPlaceholders;
@@ -102,6 +108,8 @@ type
       ALineText: string; ALine, AEnd: Integer);
     /// <summary>Eigene Vorlagen neu lesen, wenn sich der Ordner geändert hat (höchstens alle 3 s).</summary>
     procedure RefreshSnippets;
+    /// <summary>Eigene Postfix-Vorlagen (#188) an den Server schicken (atlas/postfixTemplates).</summary>
+    procedure SendPostfixTemplates;
     procedure ApplyStyle(const ACaret: TRect);
     function CaretRect(out AWindow: HWND; out ARect: TRect): Boolean;
     procedure ActiveChanged;
@@ -166,11 +174,9 @@ uses
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Documentation.Layout,
   Atlas.IDE.Hover.Editor,
-  Atlas.Core.Lsp.Session,
   Atlas.Core.Completion.Word,
   Atlas.Core.Completion.Matching,
   Atlas.Core.Completion.Providers.XmlDoc,
-  Atlas.Core.Completion.Snippets,
   Atlas.Core.Completion.LiveTemplates,
   Atlas.Core.Projects.Context,
   Atlas.Core.Completion.Preview,
@@ -611,8 +617,10 @@ begin
   FSnippetProvider.Enabled := TAtlasIdeSettings.Current.Snippets;
   // Kontextabhängige Vorlagen des Servers (#51) hängen an derselben Einstellung.
   FServerProvider.Snippets := TAtlasIdeSettings.Current.Snippets;
-  if FSnippetProvider.Enabled then
-    RefreshSnippets;
+  // Eigene Vorlagen auch ohne Code-Vorlagen in der Liste lesen: Postfix-Vorlagen (#188) hängen an
+  // completion.postfixTemplates.
+  RefreshSnippets;
+  SendPostfixTemplates;
   if TAtlasIdeSettings.Current.Learning then
     FController.Usage := TAtlasIdeHistory.Instance
   else
@@ -668,12 +676,33 @@ begin
     Exit;
   FSnippetStamp := Stamp;
   Own := TAtlasSnippets.LoadFolder(Folder, Errors);
+  // Postfix-Vorlagen (#188) bietet der Server hinter Ausdrücken an, nicht die Liste am Anweisungsanfang.
+  FPostfixSnippets := TAtlasSnippets.Postfixes(Own);
+  FPostfixSession := nil;
+  Own := TAtlasSnippets.WithoutPostfix(Own);
   Ide := TAtlasLiveTemplates.LoadFolder(IdeFolder, Stats);
   // Ohne Datei- und Ordnernamen: Das Diagnoselog nennt keine Namen (#647).
   Log(Format('Code-Vorlagen: %d eigene, %d fehlerhafte übersprungen; %d aus der IDE, %d übersprungen, ' +
     '%d Skripte entfallen', [Integer(Length(Own)), Integer(Length(Errors)), Stats.Templates, Stats.Skipped,
     Stats.Scripts]));
   FSnippetProvider.SetSnippets(TAtlasSnippets.Merge(TAtlasSnippets.Merge(TAtlasSnippets.BuiltIn, Ide), Own));
+end;
+
+procedure TAtlasEditorCompletion.SendPostfixTemplates;
+var
+  Session: TLspSession;
+begin
+  if not Assigned(FSession) then
+    Exit;
+  Session := FSession();
+  if (Session = nil) or not Session.Initialized then
+    Exit;
+  if (Session = FPostfixSession) and (TThread.GetTickCount64 - FPostfixSent < 60000) then
+    Exit;
+  FPostfixSession := Session;
+  FPostfixSent := TThread.GetTickCount64;
+  // Auch eine leere Liste: Gelöschte Vorlagen verschwinden beim Server.
+  Session.Notify('atlas/postfixTemplates', TAtlasSnippets.PostfixParams(FPostfixSnippets));
 end;
 
 class function TAtlasEditorCompletion.IdeTemplateFolder: string;

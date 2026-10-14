@@ -5,7 +5,11 @@
 //
 // Dateiformat: Kopfzeilen "Schlüssel: Wert" (name, prefix, description), dann
 // eine Zeile "---" und der Text der Vorlage. Zeilen mit "#" im Kopf sind
-// Kommentare. Platzhalter im Text:
+// Kommentare. Postfix-Vorlagen (#188) haben dazu "postfix: true" und optional
+// "type: …" (Merkmal wie class, string, boolean, enumerable, reference,
+// constructor, function, any oder ein Typname); im Text steht $expr für den
+// Ausdruck vor dem Punkt. Sie erscheinen nicht am Anweisungsanfang, sondern
+// gehen an den Server, der sie hinter passenden Ausdrücken anbietet. Platzhalter im Text:
 //   ${1:List}  Platzhalter 1 mit Vorgabetext
 //   ${2}       Platzhalter 2 ohne Vorgabe
 //   $0, ${0}   Cursor nach dem letzten Platzhalter
@@ -18,7 +22,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  System.JSON;
 
 {$SCOPEDENUMS ON}
 
@@ -37,6 +42,10 @@ type
     Origin: TAtlasSnippetOrigin;
     /// <summary>Datei einer eigenen Vorlage; '' bei mitgelieferten.</summary>
     FileName: string;
+    /// <summary>Postfix-Vorlage (#188): Kürzel hinter "Ausdruck."; $expr im Text steht für den Ausdruck.</summary>
+    Postfix: Boolean;
+    /// <summary>Bedingung einer Postfix-Vorlage: Merkmal oder Typname; '' = jeder Ausdruck.</summary>
+    TypeCondition: string;
   end;
 
   TAtlasSnippetList = TArray<TAtlasSnippet>;
@@ -92,6 +101,12 @@ type
     class function FolderStamp(const APath: string): string; static;
     /// <summary>Alle *.atlas-snippet in APath; Fehler je Datei in AErrors ("Datei: Meldung").</summary>
     class function LoadFolder(const APath: string; out AErrors: TArray<string>): TAtlasSnippetList; static;
+    /// <summary>Nur die Postfix-Vorlagen (#188) bzw. alle anderen.</summary>
+    class function Postfixes(const AList: TAtlasSnippetList): TAtlasSnippetList; static;
+    class function WithoutPostfix(const AList: TAtlasSnippetList): TAtlasSnippetList; static;
+    /// <summary>Parameter für atlas/postfixTemplates: {"templates": [{"key", "description", "body", "type"}]}.
+    /// Gehört dem Aufrufer.</summary>
+    class function PostfixParams(const AList: TAtlasSnippetList): TJSONObject; static;
   end;
 
 implementation
@@ -252,9 +267,21 @@ begin
       ASnippet.Prefix := Value
     else if Key = 'description' then
       ASnippet.Description := Value
+    else if Key = 'postfix' then
+    begin
+      if SameText(Value, 'true') then
+        ASnippet.Postfix := True
+      else if not SameText(Value, 'false') then
+      begin
+        AError := Format('Zeile %d: "postfix" ist true oder false', [Index + 1]);
+        Exit;
+      end;
+    end
+    else if Key = 'type' then
+      ASnippet.TypeCondition := Value
     else
     begin
-      AError := Format('Zeile %d: unbekannter Schlüssel "%s" (erlaubt: name, prefix, description)',
+      AError := Format('Zeile %d: unbekannter Schlüssel "%s" (erlaubt: name, prefix, description, postfix, type)',
         [Index + 1, Key]);
       Exit;
     end;
@@ -305,7 +332,14 @@ class function TAtlasSnippets.ToFileText(const ASnippet: TAtlasSnippet): string;
 
 begin
   Result := 'name: ' + OneLine(ASnippet.Name) + #10 + 'prefix: ' + OneLine(ASnippet.Prefix) + #10 +
-    'description: ' + OneLine(ASnippet.Description) + #10 + '---' + #10 + NormalizeBreaks(ASnippet.Body) + #10;
+    'description: ' + OneLine(ASnippet.Description) + #10;
+  if ASnippet.Postfix then
+  begin
+    Result := Result + 'postfix: true' + #10;
+    if ASnippet.TypeCondition <> '' then
+      Result := Result + 'type: ' + OneLine(ASnippet.TypeCondition) + #10;
+  end;
+  Result := Result + '---' + #10 + NormalizeBreaks(ASnippet.Body) + #10;
 end;
 
 class function TAtlasSnippets.FileNameFor(const APrefix: string): string;
@@ -386,6 +420,51 @@ begin
         Replaced := True;
     if not Replaced then
       Result := Result + [Own];
+  end;
+end;
+
+class function TAtlasSnippets.Postfixes(const AList: TAtlasSnippetList): TAtlasSnippetList;
+var
+  Item: TAtlasSnippet;
+begin
+  Result := nil;
+  for Item in AList do
+    if Item.Postfix then
+      Result := Result + [Item];
+end;
+
+class function TAtlasSnippets.WithoutPostfix(const AList: TAtlasSnippetList): TAtlasSnippetList;
+var
+  Item: TAtlasSnippet;
+begin
+  Result := nil;
+  for Item in AList do
+    if not Item.Postfix then
+      Result := Result + [Item];
+end;
+
+class function TAtlasSnippets.PostfixParams(const AList: TAtlasSnippetList): TJSONObject;
+var
+  Templates: TJSONArray;
+  Item: TAtlasSnippet;
+  Entry: TJSONObject;
+  Description: string;
+begin
+  Result := TJSONObject.Create;
+  Templates := TJSONArray.Create;
+  Result.AddPair('templates', Templates);
+  for Item in Postfixes(AList) do
+  begin
+    Description := Item.Description;
+    if Description = '' then
+      Description := Item.Name;
+    Entry := TJSONObject.Create;
+    Entry.AddPair('key', Item.Prefix);
+    Entry.AddPair('description', Description);
+    Entry.AddPair('body', Item.Body);
+    if Item.TypeCondition <> '' then
+      Entry.AddPair('type', Item.TypeCondition);
+    Templates.AddElement(Entry);
   end;
 end;
 

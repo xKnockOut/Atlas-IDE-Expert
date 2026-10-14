@@ -206,6 +206,7 @@ type
     function SlashCommandsFor(const AUri: string; out ADisabled: TArray<string>): Boolean;
     function InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
     function HintSettingsFor(const AUri: string): THintSettings;
+    function RefactoringSettingsFor(const AUri: string): TRefactoringSettings;
     function CompletionSettingsFor(const AUri: string): TCompletionSettings;
     /// <summary>"stringLiteral" für AUri; AMultiline nach Stil und Delphi-Version (#312).</summary>
     function StringLiteralFor(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings;
@@ -626,12 +627,15 @@ begin
       Result := CompletionSettingsFor(AUri);
     end;
   FCompletion.SlashCommandsFor := SlashCommandsFor;
-  // Postfix-Vorlagen (#188): for var nur, wenn die Sprachversion Inline-Variablen kennt.
+  // Postfix-Vorlagen (#188): abschaltbar mit completion.postfixTemplates; for var und var Name := nur, wenn die
+  // Sprachversion Inline-Variablen kennt und refactoring.inlineVar sie nicht abschaltet.
   FCompletion.PostfixFor :=
     function(const AUri: string): TPostfixOptions
     begin
       Result := TPostfixOptions.Default;
-      Result.InlineVar := TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, DelphiVersionFor(AUri));
+      Result.Enabled := CompletionSettingsFor(AUri).PostfixTemplates;
+      Result.InlineVar := RefactoringSettingsFor(AUri).InlineVar and
+        TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, DelphiVersionFor(AUri));
     end;
   // Für completionItem/resolve (Detailpanel von Atlas, #405); Anzeige von XMLDoc (#654).
   FCompletion.HintsFor := HintSettingsFor;
@@ -1913,6 +1917,24 @@ begin
       Result := TCompletionSettings.Default
     else
       Result := Workspace.Configuration.Settings.Completion;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+function TServerComposition.RefactoringSettingsFor(const AUri: string): TRefactoringSettings;
+var
+  Workspace: TShellWorkspace;
+begin
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+    if (Workspace = nil) and (FWorkspaces.Count = 1) then
+      Workspace := FWorkspaces[0];
+    if Workspace = nil then
+      Result := TRefactoringSettings.Default
+    else
+      Result := Workspace.Configuration.Settings.Refactoring;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;

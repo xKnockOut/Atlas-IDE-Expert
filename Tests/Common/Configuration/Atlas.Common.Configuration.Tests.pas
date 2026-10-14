@@ -329,6 +329,14 @@ begin
   Assert.IsTrue(Parse('{}', Issues).Completion.Keywords);
   Assert.IsFalse(Parse('{"completion": {"keywords": false}}', Issues).Completion.Keywords);
   Assert.AreEqual(0, Integer(Length(Issues)));
+  // Postfix-Vorlagen und Inline-Variablen (#188)
+  Assert.IsTrue(Parse('{}', Issues).Completion.PostfixTemplates);
+  Assert.IsFalse(Parse('{"completion": {"postfixTemplates": false}}', Issues).Completion.PostfixTemplates);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.InlineVar);
+  Assert.IsFalse(Parse('{"refactoring": {"inlineVar": false}}', Issues).Refactoring.InlineVar);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"refactoring": {"inline": false}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Speicherbudget (#185)
   Assert.AreEqual(256, Parse('{}', Issues).MemoryBudgetMb, 'Vorgabe 256 MB (#492)');
   Assert.AreEqual(0, Parse('{"memoryBudgetMb": 0}', Issues).MemoryBudgetMb, '0 = unbegrenzt');

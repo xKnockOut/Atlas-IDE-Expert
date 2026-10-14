@@ -67,6 +67,7 @@ type
     procedure ReadDfmPropertyRules(ANode: TJsonNode);
     function ReadDfmPropertyRule(ANode: TJsonNode; out ARule: TDfmPropertyRule): Boolean;
     procedure ReadHighlight(ANode: TJsonNode);
+    procedure ReadRefactoring(ANode: TJsonNode);
     procedure ReadCompiler(ANode: TJsonNode);
     procedure ReadCompletion(ANode: TJsonNode);
     procedure ReadDiagnostics(ANode: TJsonNode);
@@ -812,6 +813,27 @@ begin
   end;
 end;
 
+procedure TValidator.ReadRefactoring(ANode: TJsonNode);
+var
+  Index: Integer;
+  Key: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"refactoring" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if Key = 'inlineVar' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InlineVar)
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);
+  end;
+end;
+
 procedure TValidator.ReadCompiler(ANode: TJsonNode);
 var
   Index: Integer;
@@ -882,6 +904,8 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.OfferTryFinally)
     else if Key = 'keywords' then
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.Keywords)
+    else if Key = 'postfixTemplates' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.PostfixTemplates)
     else if Key = 'freeStyle' then
     begin
       if ExpectString(ANode[Index], Key, Text) then
@@ -1172,6 +1196,8 @@ begin
         ReadCompiler(Value)
       else if Key = 'completion' then
         ReadCompletion(Value)
+      else if Key = 'refactoring' then
+        ReadRefactoring(Value)
       else if Key = 'diagnostics' then
         ReadDiagnostics(Value)
       else if Key = 'index' then
@@ -1410,6 +1436,8 @@ begin
       Result.Compiler := FileSettings.Compiler
     else if Key = 'completion' then
       Result.Completion := FileSettings.Completion
+    else if Key = 'refactoring' then
+      Result.Refactoring := FileSettings.Refactoring
     else if Key = 'diagnostics' then
     begin
       Result.DiagnosticsLog := FileSettings.DiagnosticsLog;

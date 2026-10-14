@@ -47,6 +47,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.SlashCommands,
+  Atlas.Common.Editing.PostfixTemplates,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Documentation;
 
@@ -68,6 +69,8 @@ type
     /// <summary>Bei Member: Anfang der Kette und Position des Punkts.</summary>
     ChainStart: TTextPosition;
     DotPos: TTextPosition;
+    /// <summary>Bei Member: Das letzte Glied steht mit Klammern da, Foo(1). oder TFoo(X). (#188).</summary>
+    Called: Boolean;
     /// <summary>Bei Scope: nur Typen bzw. nur Methoden der Vorfahren (#31).</summary>
     Filter: TCompletionFilter;
     /// <summary>Bei Filter Types: auch Typ-Schlüsselwörter wie string und array (nach ":").</summary>
@@ -164,8 +167,13 @@ type
   /// <summary>Postfix-Vorlagen (#188) je Dokument.</summary>
   TPostfixOptions = record
     Enabled: Boolean;
-    /// <summary>for var Item in … (ab Delphi 10.3); sonst Eintrag im var-Abschnitt.</summary>
+    /// <summary>for var Item in … (ab Delphi 10.3 und refactoring.inlineVar); sonst Eintrag im var-Abschnitt.
+    /// </summary>
     InlineVar: Boolean;
+    /// <summary>Als LSP-Snippet mit Platzhaltern und Endposition (snippetSupport des Clients).</summary>
+    Snippet: Boolean;
+    /// <summary>Eigene Vorlagen des Plugins (atlas/postfixTemplates).</summary>
+    Custom: TArray<TPostfixTemplate>;
     class function Default: TPostfixOptions; static;
   end;
 
@@ -197,6 +205,8 @@ type
   public const
     Method = 'textDocument/completion';
     ResolveMethod = 'completionItem/resolve';
+    /// <summary>Eigene Postfix-Vorlagen vom Plugin (#188).</summary>
+    PostfixTemplatesMethod = 'atlas/postfixTemplates';
     MaxItems = 1000;
     /// <summary>Höchstzahl der Vorschläge aus nicht eingebundenen Units.</summary>
     MaxImportItems = 200;
@@ -217,12 +227,15 @@ type
     FLog: TCompletionLogProc;
     FSnippetSupport: Boolean;
     FDocumentationMarkdown: Boolean;
+    // Eigene Postfix-Vorlagen (#188); unter FCacheLock.
+    FCustomPostfix: TArray<TPostfixTemplate>;
     // Zuletzt für completionItem/resolve gelesene Datei (#616): Beim Blättern in der Liste fragt Atlas oft
     // nacheinander Symbole derselben großen Bibliotheks-Unit nach.
     FCacheLock: TObject;
     FCacheFile: string;
     FCacheStamp: TDateTime;
     FCacheText: string;
+    procedure HandlePostfixTemplates(const AParams: TJSONValue);
     function ReadCached(const AFileName: string; out AText: string): Boolean;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleResolve(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -368,6 +381,11 @@ type
     property SnippetSupport: Boolean read FSnippetSupport write FSnippetSupport;
     /// <summary>Doku in completionItem/resolve als Markdown statt Klartext (#31). Aus initialize.</summary>
     property DocumentationMarkdown: Boolean read FDocumentationMarkdown write FDocumentationMarkdown;
+    /// <summary>Eigene Postfix-Vorlagen (#188): {"templates": [{"key", "description", "body", "type"}]}.</summary>
+    class function ParsePostfixTemplates(const AParams: TJSONValue): TArray<TPostfixTemplate>; static;
+    /// <summary>Setzt die eigenen Postfix-Vorlagen; sonst über atlas/postfixTemplates.</summary>
+    procedure SetCustomPostfix(const ATemplates: TArray<TPostfixTemplate>);
+    function CustomPostfix: TArray<TPostfixTemplate>;
   end;
 
 implementation
@@ -400,7 +418,6 @@ uses
   Atlas.Common.Lsp.SignatureHelp,
   System.RegularExpressions,
   Atlas.Common.Editing.CommandSource,
-  Atlas.Common.Editing.PostfixTemplates,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Lsp.CompletionEnums,
   Atlas.Common.Editing.DataFieldNames,
@@ -544,6 +561,30 @@ begin
     Dec(Result);
 end;
 
+/// <summary>Index der öffnenden Klammer zu ")" an AIndex; -1, wenn sie fehlt.</summary>
+function OpeningParen(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+var
+  Depth: Integer;
+begin
+  Depth := 0;
+  Result := AIndex;
+  while Result >= 0 do
+  begin
+    if ATokens[Result].IsSymbol(')') then
+      Inc(Depth)
+    else if ATokens[Result].IsSymbol('(') then
+    begin
+      Dec(Depth);
+      if Depth = 0 then
+        Exit;
+    end
+    else if ATokens[Result].IsSymbol(';') or ATokens[Result].IsKeyword('begin') then
+      Break;
+    Dec(Result);
+  end;
+  Result := -1;
+end;
+
 function InUsesClause(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 var
   Token: TPascalToken;
@@ -617,6 +658,59 @@ procedure TLspCompletion.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(Method, Handle);
   ADispatcher.RegisterConcurrentRequest(ResolveMethod, HandleResolve);
+  ADispatcher.RegisterNotification(PostfixTemplatesMethod, HandlePostfixTemplates);
+end;
+
+class function TLspCompletion.ParsePostfixTemplates(const AParams: TJSONValue): TArray<TPostfixTemplate>;
+var
+  Templates, Value: TJSONValue;
+  Item: TJSONObject;
+  Key, Body: string;
+begin
+  Result := nil;
+  if not (AParams is TJSONObject) then
+    Exit;
+  Templates := TJSONObject(AParams).GetValue('templates');
+  if not (Templates is TJSONArray) then
+    Exit;
+  for Value in TJSONArray(Templates) do
+  begin
+    if not (Value is TJSONObject) then
+      Continue;
+    Item := TJSONObject(Value);
+    Key := Item.GetValue<string>('key', '');
+    Body := Item.GetValue<string>('body', '');
+    // Nur Kürzel aus Buchstaben, Ziffern und _; sie stehen hinter einem Punkt.
+    if (Key = '') or (Body = '') or not IsValidIdent(Key) then
+      Continue;
+    Result := Result + [TPostfixTemplate.Custom(Key, Item.GetValue<string>('description', ''), Body,
+      Item.GetValue<string>('type', ''))];
+  end;
+end;
+
+procedure TLspCompletion.HandlePostfixTemplates(const AParams: TJSONValue);
+begin
+  SetCustomPostfix(ParsePostfixTemplates(AParams));
+end;
+
+procedure TLspCompletion.SetCustomPostfix(const ATemplates: TArray<TPostfixTemplate>);
+begin
+  TMonitor.Enter(FCacheLock);
+  try
+    FCustomPostfix := ATemplates;
+  finally
+    TMonitor.Exit(FCacheLock);
+  end;
+end;
+
+function TLspCompletion.CustomPostfix: TArray<TPostfixTemplate>;
+begin
+  TMonitor.Enter(FCacheLock);
+  try
+    Result := FCustomPostfix;
+  finally
+    TMonitor.Exit(FCacheLock);
+  end;
 end;
 
 class function TLspCompletion.Capability: TJSONObject;
@@ -779,8 +873,23 @@ begin
     Names := TList<string>.Create;
     try
       Index := PreviousIndex(Tokens, Last);
-      while (Index >= 0) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) do
+      while Index >= 0 do
       begin
+        // Foo(1). oder TFoo(X).: Klammern überspringen, das Glied davor ist ein Aufruf bzw. eine
+        // Typumwandlung (#188).
+        if Tokens[Index].IsSymbol(')') then
+        begin
+          Index := OpeningParen(Tokens, Index);
+          if Index < 0 then
+            Exit;
+          Index := PreviousIndex(Tokens, Index);
+          if (Index < 0) or (Tokens[Index].Kind <> TPascalTokenKind.Identifier) then
+            Exit;
+          if Names.Count = 0 then
+            Result.Called := True;
+        end;
+        if Tokens[Index].Kind <> TPascalTokenKind.Identifier then
+          Break;
         Names.Insert(0, CleanName(Tokens[Index].Text));
         Result.ChainStart := Tokens[Index].StartPos;
         Index := PreviousIndex(Tokens, Index);
@@ -789,7 +898,7 @@ begin
         else
           Break;
       end;
-      // Foo(1). oder 1.: nicht auflösbar.
+      // 1. oder "a".: nicht auflösbar.
       if (Names.Count = 0) or (Index >= 0) and Tokens[Index].IsSymbol('.') then
         Exit;
       if InUsesClause(Tokens, Last) then
@@ -1051,6 +1160,7 @@ end;
 
 class function TPostfixOptions.Default: TPostfixOptions;
 begin
+  Result := System.Default(TPostfixOptions);
   Result.Enabled := True;
   Result.InlineVar := True;
 end;
@@ -1183,6 +1293,45 @@ begin
   end;
 end;
 
+/// <summary>Steht AOffset in einer Funktion (Exit mit Wert erlaubt, #188)? Innerste Routine mit Kopf "function",
+/// "class function" oder "operator".</summary>
+function InFunctionAt(ATree: TSyntaxTree; const AText: string; AOffset: Integer): Boolean;
+
+  function Innermost(ANode: TSyntaxNode): TSyntaxNode;
+  var
+    Index: Integer;
+    Child: TSyntaxNode;
+  begin
+    Result := nil;
+    for Index := 0 to ANode.ChildCount - 1 do
+    begin
+      Child := ANode[Index];
+      if (Child.StartOffset <= AOffset) and (AOffset <= Child.EndOffset) then
+      begin
+        Result := Innermost(Child);
+        if (Result = nil) and (Child.Kind = TSyntaxKind.RoutineDecl) then
+          Result := Child;
+        Exit;
+      end;
+    end;
+  end;
+
+var
+  Routine: TSyntaxNode;
+  Head: string;
+begin
+  Result := False;
+  if (ATree = nil) or (ATree.Root = nil) then
+    Exit;
+  Routine := Innermost(ATree.Root);
+  if Routine = nil then
+    Exit;
+  Head := LowerCase(TrimLeft(Copy(AText, Routine.StartOffset + 1, 40)));
+  if StartsStr('class ', Head) then
+    Head := TrimLeft(Copy(Head, Length('class ') + 1, MaxInt));
+  Result := StartsStr('function', Head) or StartsStr('operator', Head);
+end;
+
 /// <summary>Was über den Typ der Kette bekannt ist; False, wenn er unbekannt ist oder kein Wert vorliegt.</summary>
 function PostfixTraits(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const AContext: TCompletionContext; const AMembers: TArray<TResolvedSymbol>; out ATraits: TPostfixTraits): Boolean;
@@ -1192,13 +1341,27 @@ var
   OwnerType: string;
 begin
   ATraits := Default(TPostfixTraits);
+  // Ein Typ ist kein Wert, außer als Typumwandlung TFoo(X) (#188).
   if not AResolver.ChainType(ATree, AFileName, AContext.Names, AContext.Offset, Owner, TypeInfo, TypeFound) or
-    (Owner.Kind = TResolvedKind.UnitName) or Owner.IsType then
+    (Owner.Kind = TResolvedKind.UnitName) or (Owner.IsType and not AContext.Called) then
     Exit(False);
   // Typargumente stehen getrennt: TArray mit TypeArgs Integer.
-  OwnerType := Owner.TypeName;
+  if Owner.IsType then
+    OwnerType := Owner.Name
+  else
+    OwnerType := Owner.TypeName;
   if Owner.TypeArgs <> '' then
     OwnerType := OwnerType + '<' + Owner.TypeArgs + '>';
+  // Typ für eine Deklaration im var-Abschnitt; TFoo.Create liefert ein TFoo.
+  if Owner.SymbolKind = TIndexSymbolKind.Constructor_ then
+  begin
+    ATraits.IsConstructorCall := True;
+    ATraits.TypeName := Owner.Container;
+  end
+  else if OwnerType <> '' then
+    ATraits.TypeName := OwnerType
+  else if TypeFound then
+    ATraits.TypeName := TypeInfo.Name;
   ATraits.ElementType := TPostfixTemplates.ElementOf(OwnerType);
   if (ATraits.ElementType = '') and TypeFound then
     ATraits.ElementType := TPostfixTemplates.ElementOf(TypeInfo.TypeName);
@@ -1218,6 +1381,8 @@ begin
       end;
   ATraits.IsString := TPostfixTemplates.IsStringType(Owner.TypeName) or
     (TypeFound and TypeInfo.Builtin and TPostfixTemplates.IsStringType(TypeInfo.Name));
+  ATraits.IsBoolean := TPostfixTemplates.IsBooleanType(Owner.TypeName) or
+    (TypeFound and TypeInfo.Builtin and TPostfixTemplates.IsBooleanType(TypeInfo.Name));
   ATraits.IsClass := TypeFound and not TypeInfo.Builtin and (TypeInfo.SymbolKind = TIndexSymbolKind.ClassType);
   ATraits.IsReference := ATraits.IsClass or
     (TypeFound and not TypeInfo.Builtin and (TypeInfo.SymbolKind = TIndexSymbolKind.InterfaceType)) or
@@ -1285,39 +1450,63 @@ var
     Traits: TPostfixTraits;
     Template: TPostfixTemplate;
     Item: TCompletionItem;
-    LineText, Before, Expr, LineBreak: string;
+    Expansion: TPostfixExpansion;
+    LineText, Before, Indent, Expr, LineBreak: string;
     Slash: TSlashContext;
     Source: TCommandSource;
     Routine: TSyntaxNode;
+    Descends: TFunc<string, Boolean>;
+    Resolver: TNameResolver;
+    Tree: TSyntaxTree;
+    FileName, TypeName: string;
+    Offset: Integer;
   begin
     // Nur einzeilige Ausdrücke; der Typ muss bekannt sein.
     if (Context.ChainStart.Line <> APosition.Line) or (Context.DotPos.Line <> APosition.Line) or
       not PostfixTraits(AResolver, ATree, AFileName, Context, Candidates, Traits) then
       Exit;
+    Traits.InFunction := InFunctionAt(ATree, AText, Context.Offset);
     LineText := LineOf(AText, APosition.Line);
     Before := Copy(LineText, 1, Context.ChainStart.Character);
+    Indent := Copy(LineText, 1, Length(LineText) - Length(TrimLeft(LineText)));
     Expr := Copy(LineText, Context.ChainStart.Character + 1, Context.DotPos.Character - Context.ChainStart.Character);
     if Pos(#13#10, AText) > 0 then
       LineBreak := #13#10
     else
       LineBreak := #10;
-    for Template in TPostfixTemplates.Templates do
+    // Eigene Vorlagen mit Typname als Bedingung: der Typ selbst oder ein Nachfahr. Anonyme Methoden fangen nur
+    // eigene Variablen ein, nicht die der umgebenden Routine.
+    Resolver := AResolver;
+    Tree := ATree;
+    FileName := AFileName;
+    Offset := Context.Offset;
+    TypeName := Traits.TypeName;
+    Descends :=
+      function(ATypeName: string): Boolean
+      begin
+        Result := Resolver.TypeDescendsFrom(Tree, FileName, Offset, TypeName, ATypeName);
+      end;
+    for Template in TPostfixTemplates.Templates + APostfix.Custom do
     begin
-      if not TPostfixTemplates.Applies(Template.Key, Traits, APostfix.InlineVar) or
+      if not TPostfixTemplates.Applies(Template, Traits, APostfix.InlineVar, Descends) or
         (Template.Statement and (Trim(Before) <> '')) or
         (MatchScore(Template.Key, Context.Prefix, AMatching) = TFuzzyMatch.NoMatch) then
         Continue;
+      Expansion := TPostfixTemplates.Expand(Template, Expr, Indent, LineBreak, Traits, APostfix.InlineVar,
+        APostfix.Snippet);
       Item := Default(TCompletionItem);
       Item.Name := Template.Key;
       Item.Detail := Template.Description;
       Item.Kind := KindSnippet;
+      // Der Editor filtert über "Ausdruck.Kürzel"; Atlas kennzeichnet den Eintrag als Postfix.
       Item.FilterText := Expr + '.' + Template.Key;
+      Item.Action := 'postfix';
+      Item.Snippet := APostfix.Snippet;
       Item.HasTextEdit := True;
-      Item.TextEdit := TRuleEdit.Create(TTextRange.Create(Context.ChainStart, APosition),
-        TPostfixTemplates.Expand(Template.Key, Expr, Before, LineBreak, APostfix.InlineVar));
-      if SameText(Template.Key, 'for') and not APostfix.InlineVar then
+      Item.TextEdit := TRuleEdit.Create(TTextRange.Create(Context.ChainStart, APosition), Expansion.Text);
+      if Expansion.Declaration <> '' then
       begin
-        // Klassische Schleife: Item in den var-Abschnitt der Routine.
+        // Ohne Inline-Variable: Deklaration in den var-Abschnitt der Routine.
         Slash := Default(TSlashContext);
         Slash.Text := AText;
         Slash.Line := APosition.Line;
@@ -1327,8 +1516,7 @@ var
           Routine := Source.RoutineAt;
           if Routine = nil then
             Continue;
-          Item.AdditionalEdits := [AddLocal(Source, Routine, TSyntaxKind.VarSection, 'var',
-            TPostfixTemplates.ClassicDeclaration(Traits))];
+          Item.AdditionalEdits := [AddLocal(Source, Routine, TSyntaxKind.VarSection, 'var', Expansion.Declaration)];
         finally
           Source.Free;
         end;
@@ -2192,6 +2380,8 @@ begin
       Postfix := FPostfixFor(Uri)
     else
       Postfix := TPostfixOptions.Default;
+    Postfix.Snippet := FSnippetSupport;
+    Postfix.Custom := CustomPostfix;
     // Gestaffelt (#616), wenn der Client einen partialResultToken mitschickt: Teilergebnisse als $/progress
     // mit CompletionItem[], der Rest in der Antwort. Zwischen den Stufen bricht eine veraltete Anfrage ab.
     Token := '';
