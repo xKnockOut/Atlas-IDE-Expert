@@ -63,6 +63,9 @@ uses
   Atlas.Common.Lsp.IdeBuild,
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Rules.Builtin,
+  Atlas.Common.Projects.Contract,
+  Atlas.Common.Projects.GroupReader,
+  System.Generics.Collections,
   Atlas.Windows.Console.StdStreams,
   Atlas.Windows.Process.ParentWatcher,
   Atlas.Windows.Documents.PathCanonicalizer,
@@ -430,6 +433,27 @@ begin
     Server.Free;
   end;
 end;
+// Projekte der einzigen .groupproj im Ordner (wie der LSP-Server ohne IDE, #648); sonst leer.
+function GroupProjects(const ARoot: string; const ALogger: ILogger): TArray<string>;
+var
+  Groups: TArray<string>;
+begin
+  Result := nil;
+  try
+    Groups := TDirectory.GetFiles(ARoot, '*.groupproj');
+    if Length(Groups) <> 1 then
+      Exit;
+    Result := TGroupProjReader.Load(Groups[0]);
+    ALogger.Info(Format('Projektgruppe %s: %d Projekte', [Groups[0], Length(Result)]));
+  except
+    on E: Exception do
+    begin
+      ALogger.Warning('Projektgruppe nicht lesbar: ' + E.Message);
+      Result := nil;
+    end;
+  end;
+end;
+
 class function TMcpShell.Run(const AOptions: TCommandLineOptions): Integer;
 var
   LoggerImpl: TLogger;
@@ -447,7 +471,15 @@ var
   Edit: TMcpEditTools;
   Root, Warning: string;
   Anonymizer: ILogAnonymizer;
+  // Weitere Projekte der Gruppe, gleicher Index wie Workspace (Plugin-Units hinter dem Testprojekt).
+  Others: TObjectList<TShellWorkspace>;
+  Other: TShellWorkspace;
+  Main: TProjectInfo;
+  ProjectFile: string;
+  AllFiles: TFunc<TArray<string>>;
+  EnsureAny: TFunc<string, Boolean>;
 begin
+  Others := TObjectList<TShellWorkspace>.Create(True);
   LoggerImpl := TLogger.Create;
   Logger := LoggerImpl;
   LoggerImpl.AddSink(TStreamLogSink.Create(TStdStreams.CreateError, True), TLogLevel.Warning);
@@ -478,6 +510,25 @@ begin
   Silent := TSilentTransport.Create;
   Workspace := TShellWorkspace.Create(Root, ExtractFileName(Root), Store, Silent, Logger, Index,
     'atlas-mcp-index');
+  AllFiles :=
+    function: TArray<string>
+    var
+      Item: TShellWorkspace;
+    begin
+      Result := Workspace.ProjectFiles;
+      for Item in Others do
+        Result := Result + Item.ProjectFiles;
+    end;
+  EnsureAny :=
+    function(AUnitName: string): Boolean
+    var
+      Item: TShellWorkspace;
+    begin
+      Result := Workspace.EnsureUnit(AUnitName);
+      for Item in Others do
+        if not Result then
+          Result := Item.EnsureUnit(AUnitName);
+    end;
   Tools := TMcpIndexTools.Create(Index, ReadSourceText);
   // Package einer Unit: .dpk unter dem Projektordner, deren contains sie führt.
   Tools.PackageOf :=
@@ -493,11 +544,11 @@ begin
   Code := TMcpCodeTools.Create(Index, ReadSourceText,
     function: TArray<string>
     begin
-      Result := Workspace.ProjectFiles;
+      Result := AllFiles();
     end,
     function(const AUnitName: string): Boolean
     begin
-      Result := Workspace.EnsureUnit(AUnitName);
+      Result := EnsureAny(AUnitName);
     end);
   // Pfadregeln (#99): Arbeitsordner und Include-Pfade, Verknüpfungen aufgelöst.
   Guard := TMcpPathGuard.Create(Root,
@@ -512,11 +563,11 @@ begin
   Edit := TMcpEditTools.Create(Index, ReadSourceText, WriteSourceText,
     function: TArray<string>
     begin
-      Result := Workspace.ProjectFiles;
+      Result := AllFiles();
     end,
     function(const AUnitName: string): Boolean
     begin
-      Result := Workspace.EnsureUnit(AUnitName);
+      Result := EnsureAny(AUnitName);
     end);
   Edit.DirtyFiles := EditorDirtyFiles;
   Edit.Audit :=
@@ -563,7 +614,7 @@ begin
       var
         Changes: TArray<TFileChange>;
       begin
-        Changes := TMcpFreshness.Changes(Index, TDiskIndexFileSystem.Create, Workspace.ProjectFiles);
+        Changes := TMcpFreshness.Changes(Index, TDiskIndexFileSystem.Create, AllFiles());
         if Length(Changes) > 0 then
           Logger.Info(Format('%d geänderte Dateien nachgeladen, %d Units aktualisiert',
             [Length(Changes), Workspace.ApplyChanges(Changes)]));
@@ -576,6 +627,19 @@ begin
       end;
     Logger.Info(Format('%s %s im MCP-Modus für %s', [TProductVersion.Name, TProductVersion.Version, Root]));
     Workspace.Load;
+    // Übrige Projekte der Gruppe (index.projectGroup, Standard an): Sonst fehlen z. B. Units, die nur
+    // ein Package enthält, wenn atlas.json auf ein anderes Projekt zeigt.
+    if Workspace.Configuration.Settings.IndexProjectGroup then
+      for ProjectFile in GroupProjects(Root, Logger) do
+      begin
+        if Workspace.Project(Main) and SameText(Main.FileName, ProjectFile) then
+          Continue;
+        Other := TShellWorkspace.Create(ExtractFileDir(ProjectFile), ChangeFileExt(ExtractFileName(ProjectFile), ''),
+          Store, Silent, Logger, Index, Format('atlas-mcp-index-%d', [Others.Count + 1]));
+        Other.ProjectFile := ProjectFile;
+        Others.Add(Other);
+        Other.Load;
+      end;
     try
       Connection.Run;
       Result := 0;
@@ -586,8 +650,11 @@ begin
         Result := 1;
       end;
     end;
+    for Other in Others do
+      Other.Stop;
     Workspace.Stop;
   finally
+    Others.Free;
     Connection.Free;
     Dispatcher.Free;
     Server.Free;
