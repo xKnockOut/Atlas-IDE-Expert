@@ -315,6 +315,9 @@ begin
     else
       Text := FDetails.Container;
   Block(Text, AColors.Muted, []);
+  // Verdeckte Deklarationen weiter außen (#488).
+  for Text in FDetails.Hides do
+    Block(TAtlasStrings.Fmt(TAtlasTextId.HidesDeclaration, [Text]), AColors.Muted, [fsItalic]);
   // 4.–6. Veraltung und XMLDoc; ohne Inhalt keine Trennlinie und keine leeren Abschnitte.
   Doc := DocOf(FDetails);
   if FDetails.IsDeprecated or not Doc.IsEmpty then

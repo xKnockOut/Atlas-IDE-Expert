@@ -115,7 +115,6 @@ begin
     Result := AItem.Name;
 end;
 
-/// <summary>0 = passt zum erwarteten Typ, 1 = übrige, 2 = ohne erwarteten Typ.</summary>
 /// <summary>Bereichsstufe zum Sortieren (#488): ohne Angabe hinter allen Stufen.</summary>
 function ScopeRank(const AItem: TAtlasCompletionItem): Integer;
 begin
@@ -125,6 +124,7 @@ begin
     Result := 9;
 end;
 
+/// <summary>0 = passt zum erwarteten Typ, 1 = übrige, 2 = ohne erwarteten Typ.</summary>
 function GroupOf(const AItem: TAtlasCompletionItem; AAnyFits: Boolean): Integer;
 begin
   // Gruppen nur, wenn etwas passt: Teilergebnisse (#616) behalten den erwarteten Typ, auch wenn erst ein

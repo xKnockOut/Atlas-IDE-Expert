@@ -14,6 +14,8 @@ type
     [Test]
     procedure GroupsInheritedMembersWithHeaders;
     [Test]
+    procedure ScopeOrdersAfterExpectedTypeBeforeBoost;
+    [Test]
     procedure PrefixLiftsInheritedMatchWithoutHeaders;
     [Test]
     procedure BoostReordersButNeverBeatsBetterMatch;
@@ -181,6 +183,43 @@ begin
   Assert.AreEqual('AssignTo,Assign', Names(Items, TAtlasRanking.Order(Items, 'Ass', Options)));
   // Ohne eigenen Treffer: das geerbte Assign zuerst, ohne Überschrift.
   Assert.AreEqual('Assign', Names(StringsItems, TAtlasRanking.Order(StringsItems, 'Ass', Options)));
+end;
+
+procedure TAtlasRankingTests.ScopeOrdersAfterExpectedTypeBeforeBoost;
+
+  function Scoped(const AName: string; AScope: Integer): TAtlasCompletionItem;
+  begin
+    Result := Member(AName, '', 0, 0, TAtlasItemKind.Variable);
+    Result.Scope := AScope;
+  end;
+
+var
+  Options: TAtlasRankOptions;
+  Items: TAtlasCompletionItems;
+begin
+  // #488: Präfix-Güte → erwarteter Typ → Bereich → Lerngewicht → Name.
+  Items := [Scoped('FDiscount', 3), Scoped('ACustomer', 2), Scoped('Total', 1), Scoped('Format', 5),
+    Scoped('TKasse', 4)];
+  Options := TAtlasRankOptions.Defaults;
+  Options.Boost :=
+    function(AIndex: Integer): Integer
+    begin
+      // FDiscount ist gelernt, schlägt aber keinen näheren Bereich.
+      if AIndex = 0 then
+        Result := 99
+      else
+        Result := 0;
+    end;
+  Assert.AreEqual('Total,ACustomer,FDiscount,TKasse,Format', Names(Items, TAtlasRanking.Order(Items, '', Options)));
+  // Erwarteter Typ vor Bereich: Nur ACustomer passt.
+  Items[1].ExpectedType := 'Integer';
+  Items[1].Fits := True;
+  Items[2].ExpectedType := 'Integer';
+  Assert.AreEqual('#,ACustomer,#,Total,FDiscount,TKasse,Format',
+    Names(Items, TAtlasRanking.Order(Items, '', Options)));
+  // Mit Präfix: bessere Güte vor Bereich, bei gleicher Güte der nähere Bereich.
+  Items := [Scoped('Totalbetrag', 5), Scoped('Total', 4), Scoped('TotalLokal', 1)];
+  Assert.AreEqual('Total,TotalLokal,Totalbetrag', Names(Items, TAtlasRanking.Order(Items, 'Total', Options)));
 end;
 
 procedure TAtlasRankingTests.BoostReordersButNeverBeatsBetterMatch;

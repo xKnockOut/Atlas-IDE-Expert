@@ -82,6 +82,8 @@ type
     [Test]
     procedure DeprecatedAndConstructorTags;
     [Test]
+    procedure ScopeTagsNameOrigin;
+    [Test]
     procedure HighlightsPrefixWordStartsSubstringSubsequence;
     [Test]
     procedure NoHighlightsWithoutMatch;
@@ -454,6 +456,37 @@ begin
   Assert.AreEqual('constructor', Tags[0].Text);
   Assert.AreEqual('deprecated', Tags[1].Text);
   Assert.IsTrue(Tags[1].Kind = TAtlasTagKind.Warn);
+end;
+
+procedure TAtlasPresentationTests.ScopeTagsNameOrigin;
+
+  function TagOf(const AName: string; AKind: TAtlasItemKind; AScope: Integer; const AClass: string = '';
+    const AUnit: string = ''): string;
+  var
+    Entry: TAtlasCompletionItem;
+    Tags: TAtlasTags;
+  begin
+    Entry := Item(AName, AKind);
+    Entry.Scope := AScope;
+    Entry.DeclaringClass := AClass;
+    Entry.DeclaringUnit := AUnit;
+    Tags := TAtlasItemPresentation.Tags(Entry);
+    if Length(Tags) = 0 then
+      Exit('');
+    Result := Tags[0].Text;
+  end;
+
+begin
+  // #488: woher ein Name ohne Punkt davor stammt.
+  Assert.AreEqual('lokal', TagOf('Total', TAtlasItemKind.Variable, 1));
+  Assert.AreEqual('Parameter', TagOf('ACustomer', TAtlasItemKind.Variable, 2));
+  Assert.AreEqual('Feld', TagOf('FDiscount', TAtlasItemKind.Field, 3, 'TKasse'));
+  Assert.AreEqual('Eigenschaft', TagOf('Discount', TAtlasItemKind.Property_, 3, 'TKasse'));
+  Assert.AreEqual('TKasse', TagOf('Calc', TAtlasItemKind.Method, 3, 'TKasse'));
+  Assert.AreEqual('Unit', TagOf('TKasse', TAtlasItemKind.Class_, 4));
+  Assert.AreEqual('System.SysUtils', TagOf('Format', TAtlasItemKind.Method, 5, '', 'System.SysUtils'));
+  // Nach einem Punkt keine Herkunft.
+  Assert.AreEqual('', TagOf('Count', TAtlasItemKind.Property_, 0, 'TStrings'));
 end;
 
 procedure TAtlasPresentationTests.HighlightsPrefixWordStartsSubstringSubsequence;
