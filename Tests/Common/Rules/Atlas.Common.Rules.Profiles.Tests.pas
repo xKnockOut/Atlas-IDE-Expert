@@ -184,8 +184,8 @@ const
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
     'security-tls-verification-disabled,security-weak-crypto,self-assignment,sizeof-pointer,' +
     'slash-command,synchronize-in-destructor,thread-free-with-free-on-terminate,thread-resume-suspend,' +
-    'thread-use-after-free-on-terminate,thread-vcl-access,unresolved-identifier,unused-assignment,' +
-    'unused-local,unused-parameter,virtual-instead-of-override';
+    'thread-use-after-free-on-terminate,thread-vcl-access,unreachable-code,unresolved-identifier,' +
+    'unused-assignment,unused-local,unused-parameter,virtual-instead-of-override,with-statement';
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
   // strict schaltet experimentelle Regeln ein (#146): security-path-traversal (#149), file-header und
@@ -204,7 +204,7 @@ begin
     'possibly-uninitialized,raise-in-finally,result-not-set,security-command-injection,' +
     'security-sql-injection,security-tls-verification-disabled,self-assignment,sizeof-pointer,' +
     'synchronize-in-destructor,thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,' +
-    'thread-vcl-access,unresolved-identifier,virtual-instead-of-override',
+    'thread-vcl-access,unreachable-code,unresolved-identifier,virtual-instead-of-override',
     ActiveRules('fast'));
   Assert.AreEqual('bidi-control,confusable-identifier,invisible-char,security-command-injection,security-insecure-http,' +
     'security-insecure-random,security-sql-injection,security-tls-verification-disabled,' +
@@ -214,7 +214,7 @@ begin
     'component-setter-without-invalidate,dfm-property,empty-except,forbidden-uses,' +
     'foreign-form-control-access,format-without-settings,generic-exception-raised,' +
     'redundant-assigned-free,slash-command,thread-resume-suspend,unused-assignment,unused-local,' +
-    'unused-parameter',
+    'unused-parameter,with-statement',
     ActiveRules('style'));
 end;
 

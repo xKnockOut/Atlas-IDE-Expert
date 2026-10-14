@@ -19,6 +19,7 @@
   5. Tests mit `Output\Win64\Debug\Bin\Atlas.Tests.exe --exitbehavior:Continue` laufen lassen.
   6. `quit -Instance <pid>` so lange wiederholen, bis der Prozess beendet ist.
 - Den ganzen Ablauf samt 0/0/0-Prüfung und Tests erledigt `pwsh Tools/Build-Test.ps1` (Optionen: `-Win32`, `-SkipTests`, `-CcScript`). Exit-Code 0 = grün, 1 = Build-Fehler/Hinweis/Warnung, 2 = Tests rot, 3 = Umgebungsfehler. Der CI-Job in `.github/workflows/server.yml` ruft dasselbe Skript auf.
+- Das Referenz-Testprojekt (#94) baut `pwsh Tools/Build-Referenzprojekt.ps1` für Win32 und Win64 (`-MitDaten` zusätzlich das optionale FireDAC-Projekt `RefDaten`). Hinweise und Warnungen müssen genau `Tests/Referenzprojekt/erwartete-meldungen.txt` entsprechen; geänderte `.dproj`-Dateien lassen es scheitern. Die minimalen `.dproj`-Dateien einmal in der IDE speichern und einchecken.
 - **Niemals `quit` oder einen Build ohne geprüfte `-Instance`.** Ein Agent für XML-Inspector nutzt dasselbe Plugin und lädt seine Projekte in freie IDEs. Erkennbar an einer veränderten `.groupproj`. Dann die Änderung verwerfen und mit neuer IDE wiederholen.
 - **Fehlertexte nicht lesbar:** Das Plugin kann die Fehlertexte oft nicht lesen. Dann ist `ok=False` bei 0/0/0, im Log steht nur „Misslungen“. Die Ursache im Code suchen.
 - **Häufige Fehlerursachen:**
