@@ -10,6 +10,10 @@
 // Unit-Namespace als Präfix (SysUtils → System.SysUtils). Ergebnisse werden
 // zwischengespeichert; Invalidate leert den Speicher, z. B. nach
 // Dateiänderungen. Die Klasse ist threadsicher.
+//
+// Mit ListUnits wird jeder Ordner einmal aufgelistet statt für jeden Namen und
+// Namespace einzeln nach Dateien zu fragen: Bei Hunderten Suchordnern kostete
+// das Auflösen beim Start sonst über 10 s je Projekt.
 
 interface
 
@@ -26,6 +30,11 @@ type
     FFileExists: TFunc<string, Boolean>;
     FCache: TDictionary<string, string>;
     FLock: TObject;
+    FListUnits: TFunc<string, TArray<string>>;
+    // Ordner (klein) -> Dateiname ohne Endung (klein) -> Pfad. Unter FLock.
+    FListings: TObjectDictionary<string, TDictionary<string, string>>;
+    /// <summary>Pfad von AName.pas in ADirectory, über die Auflistung oder FFileExists.</summary>
+    function FileIn(const ADirectory, AName: string; out APath: string): Boolean;
     function Candidates(const AUnitName: string): TArray<string>;
     function Search(const AUnitName, AFromDirectory: string): string;
   public
@@ -39,6 +48,9 @@ type
     /// <summary>Absoluter Pfad der .pas-Datei oder '' wenn nicht gefunden.</summary>
     function Resolve(const AUnitName: string; const AFromDirectory: string = ''): string;
     procedure Invalidate;
+    /// <summary>Optional: alle .pas-Dateien eines Ordners (vollständige Pfade). Gesetzt, ersetzt es
+    /// die Einzelabfragen per FileExists.</summary>
+    property ListUnits: TFunc<string, TArray<string>> read FListUnits write FListUnits;
   end;
 
 implementation
@@ -59,6 +71,7 @@ begin
   FFileExists := AFileExists;
   FCache := TDictionary<string, string>.Create;
   FLock := TObject.Create;
+  FListings := TObjectDictionary<string, TDictionary<string, string>>.Create([doOwnsValues]);
   Directories := TList<string>.Create;
   try
     if AProject.FileName <> '' then
@@ -75,6 +88,7 @@ end;
 
 destructor TUnitResolver.Destroy;
 begin
+  FListings.Free;
   FLock.Free;
   FCache.Free;
   inherited;
@@ -96,6 +110,32 @@ begin
   end;
 end;
 
+function TUnitResolver.FileIn(const ADirectory, AName: string; out APath: string): Boolean;
+var
+  Key, FileName: string;
+  Listing: TDictionary<string, string>;
+begin
+  if not Assigned(FListUnits) then
+  begin
+    APath := TProjectPaths.Combine(ADirectory, AName + '.pas');
+    Exit(FFileExists(APath));
+  end;
+  Key := LowerCase(ExcludeTrailingPathDelimiter(ADirectory));
+  TMonitor.Enter(FLock);
+  try
+    if not FListings.TryGetValue(Key, Listing) then
+    begin
+      Listing := TDictionary<string, string>.Create;
+      for FileName in FListUnits(ADirectory) do
+        Listing.AddOrSetValue(LowerCase(ChangeFileExt(ExtractFileName(FileName), '')), FileName);
+      FListings.Add(Key, Listing);
+    end;
+    Result := Listing.TryGetValue(LowerCase(AName), APath);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
 function TUnitResolver.Search(const AUnitName, AFromDirectory: string): string;
 var
   ProjectUnit: TProjectUnit;
@@ -111,18 +151,12 @@ begin
         Exit(ProjectUnit.FileName);
   if AFromDirectory <> '' then
     for Name in Names do
-    begin
-      Candidate := TProjectPaths.Combine(AFromDirectory, Name + '.pas');
-      if FFileExists(Candidate) then
+      if FileIn(AFromDirectory, Name, Candidate) then
         Exit(Candidate);
-    end;
   for Directory in FDirectories do
     for Name in Names do
-    begin
-      Candidate := TProjectPaths.Combine(Directory, Name + '.pas');
-      if FFileExists(Candidate) then
+      if FileIn(Directory, Name, Candidate) then
         Exit(Candidate);
-    end;
   Result := '';
 end;
 
@@ -154,6 +188,7 @@ begin
   TMonitor.Enter(FLock);
   try
     FCache.Clear;
+    FListings.Clear;
   finally
     TMonitor.Exit(FLock);
   end;
