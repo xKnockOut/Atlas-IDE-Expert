@@ -241,9 +241,13 @@ begin
   Block(Text, AColors.Muted, []);
   // 4.–7. Beschreibung und XMLDoc; ohne Inhalt keine Trennlinie und keine leeren Abschnitte.
   if FDetails.IsDeprecated or (FDetails.Summary <> '') or (FDetails.Returns <> '') or
-    (Length(FDetails.Params) > 0) or (Length(FDetails.Exceptions) > 0) or (FDetails.Remarks <> '') then
+    (Length(FDetails.Params) > 0) or (Length(FDetails.Exceptions) > 0) or (FDetails.Remarks <> '') or
+    (FDetails.Availability <> '') then
   begin
     Separator;
+    // Im aktiven Ziel nicht deklariert (#476): zuerst, in Warnfarbe.
+    if FDetails.Availability <> '' then
+      Block(FDetails.Availability, AColors.Warn, []);
     if FDetails.IsDeprecated then
       if FDetails.DeprecatedText <> '' then
         Block(TAtlasStrings.Fmt(TAtlasTextId.DeprecatedWith, [FDetails.DeprecatedText]), AColors.Warn, [])

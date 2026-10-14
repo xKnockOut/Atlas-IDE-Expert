@@ -43,7 +43,7 @@ type
     SettingsTabGeneral, SettingsTabCompletion, SettingsTabEditor, SettingsTabIndex, SettingsTabCompiler,
     SettingsTabRobustness, SettingsPairGuideOpacity,
     SettingsTabColors, SettingsPairColorsLight, SettingsPairColorsDark, SettingsPairColorsReset,
-    SettingsPairColorsHint);
+    SettingsPairColorsHint, TargetFooter, UnavailableHint);
 
   TAtlasStrings = class
   private class var
@@ -124,7 +124,9 @@ const
      'Allgemein', 'Vervollständigung', 'Editor', 'Index', 'Compiler', 'Robustheit',
      'Deckkraft der Blocklinien (%)',
      'Farben', 'Paarfarben im hellen Thema', 'Paarfarben im dunklen Thema', 'Standardfarben',
-     'Farbe anklicken zum Ändern; die Reihenfolge gilt von außen nach innen.'),
+     'Farbe anklicken zum Ändern; die Reihenfolge gilt von außen nach innen.',
+     'Ziel: %s', 'Nicht verfügbar: Die Bedingung „%s“ ist für %s nicht erfüllt. Es gelten die Symbole der Plattform ' +
+     'und des Compilers sowie die Bedingungen aus den Projektoptionen der aktiven Konfiguration (z. B. DEBUG).'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -186,7 +188,9 @@ const
      'General', 'Completion', 'Editor', 'Index', 'Compiler', 'Robustness',
      'Opacity of block guides (%)',
      'Colours', 'Pair colours (light theme)', 'Pair colours (dark theme)', 'Default colours',
-     'Click a colour to change it; the order runs from outermost to innermost.'));
+     'Click a colour to change it; the order runs from outermost to innermost.',
+     'Target: %s', 'Not available: the condition “%s” is not met for %s. The symbols of the platform ' +
+     'and compiler and the conditionals from the project options of the active configuration (e.g. DEBUG) apply.'));
 
 { TAtlasStrings }
 

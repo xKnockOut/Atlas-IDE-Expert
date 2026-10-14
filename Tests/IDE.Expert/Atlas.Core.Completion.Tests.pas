@@ -42,6 +42,14 @@ type
 
   /// <summary>XMLDoc-Tags in ///-Kommentaren (#435).</summary>
   [TestFixture]
+  TAtlasItemDetailsTests = class
+  public
+    /// <summary>Ein Hinweis zur Verfügbarkeit allein füllt das Panel (#476).</summary>
+    [Test]
+    procedure AvailabilityAloneIsNotEmpty;
+  end;
+
+  [TestFixture]
   TAtlasXmlDocTests = class
   public
     [Test]
@@ -425,6 +433,16 @@ end;
 
 { TAtlasServerCompletionTests }
 
+procedure TAtlasItemDetailsTests.AvailabilityAloneIsNotEmpty;
+var
+  Details: TAtlasItemDetails;
+begin
+  Details := Default(TAtlasItemDetails);
+  Assert.IsTrue(Details.IsEmpty);
+  Details.Availability := 'Nicht verfügbar: Die Bedingung „WIN64“ ist für Win32 · Debug nicht erfüllt.';
+  Assert.IsFalse(Details.IsEmpty);
+end;
+
 procedure TAtlasServerCompletionTests.CompletesMembersFromServer;
 const
   UnitText =
@@ -647,6 +665,7 @@ end;
 initialization
   TDUnitX.RegisterTestFixture(TAtlasCompletionProviderTests);
   TDUnitX.RegisterTestFixture(TAtlasServerCompletionTests);
+  TDUnitX.RegisterTestFixture(TAtlasItemDetailsTests);
   TDUnitX.RegisterTestFixture(TAtlasXmlDocTests);
   TDUnitX.RegisterTestFixture(TAtlasMatchingBudgetTests);
   TDUnitX.RegisterTestFixture(TAtlasWordTests);

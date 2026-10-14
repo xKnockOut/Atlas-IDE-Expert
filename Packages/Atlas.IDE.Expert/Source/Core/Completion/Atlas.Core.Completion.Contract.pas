@@ -140,6 +140,8 @@ type
     Remarks: string;
     Params: TArray<TAtlasDocEntry>;
     Exceptions: TArray<TAtlasDocEntry>;
+    /// <summary>Warum der Eintrag im aktiven Ziel fehlt (#476); '' = verfügbar.</summary>
+    Availability: string;
     function IsEmpty: Boolean;
   end;
 
@@ -184,7 +186,7 @@ end;
 
 function TAtlasItemDetails.IsEmpty: Boolean;
 begin
-  Result := (Declaration = '') and (Summary = '') and (UnitName = '');
+  Result := (Declaration = '') and (Summary = '') and (UnitName = '') and (Availability = '');
 end;
 
 end.
