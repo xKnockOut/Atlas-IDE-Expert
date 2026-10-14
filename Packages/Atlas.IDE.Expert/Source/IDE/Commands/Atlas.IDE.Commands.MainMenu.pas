@@ -46,6 +46,7 @@ type
     FMessage: TProc<string>;
     FShownProgress: string;
     FOnRename: TProc;
+    FOnBugReport: TProc;
     procedure RenameClick(Sender: TObject);
     procedure ResultsClick(Sender: TObject);
     procedure EditorClick(Sender: TObject);
@@ -56,6 +57,7 @@ type
     procedure IndexStatusClick(Sender: TObject);
     procedure IndexRebuildClick(Sender: TObject);
     procedure DiagnosticExportClick(Sender: TObject);
+    procedure BugReportClick(Sender: TObject);
     procedure RootClick(Sender: TObject);
     procedure ToggleClick(Sender: TObject);
     procedure ProjectClick(Sender: TObject);
@@ -67,6 +69,8 @@ type
     destructor Destroy; override;
     /// <summary>„Symbol umbenennen…“ (#397).</summary>
     property OnRename: TProc read FOnRename write FOnRename;
+    /// <summary>„Fehlerbericht erstellen…“ (#108).</summary>
+    property OnBugReport: TProc read FOnBugReport write FOnBugReport;
     /// <summary>Name der Einstellung eines Schalters (Schlüssel im Katalog der Schnellschalter, #604).</summary>
     class function ToggleKey(AToggle: TAtlasToggle): string; static;
   end;
@@ -177,6 +181,10 @@ begin
   Item := TMenuItem.Create(FRoot);
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.DiagExportMenu);
   Item.OnClick := DiagnosticExportClick;
+  FRoot.Add(Item);
+  Item := TMenuItem.Create(FRoot);
+  Item.Caption := TAtlasStrings.Text(TAtlasTextId.BugReportMenu);
+  Item.OnClick := BugReportClick;
   FRoot.Add(Item);
   FRoot.Add(NewLine);
   Item := TMenuItem.Create(FRoot);
@@ -345,6 +353,16 @@ begin
     begin
       TAtlasIdeDiagnosticExport.Execute(FMessage);
     end);
+end;
+
+procedure TAtlasMainMenu.BugReportClick(Sender: TObject);
+begin
+  if Assigned(FOnBugReport) then
+    TAtlasGuard.Run(TAtlasFeature.Menu,
+      procedure
+      begin
+        FOnBugReport();
+      end);
 end;
 
 procedure TAtlasMainMenu.RenameClick(Sender: TObject);

@@ -103,9 +103,13 @@ begin
     Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsVersion, [TAtlasPluginVersion.Version,
       TAtlasUpdates.IdeVersion]), Page.VersionLabel.Caption);
     Page.UpdatesCheck.Checked := True;
+    // Fehlerbericht (#108): anonymisiert als Vorgabe, abschaltbar.
+    Assert.IsTrue(Page.BugReportAnonymize.Checked);
+    Page.BugReportAnonymize.Checked := False;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsTrue(Saved.UpdatesCheck);
+    Assert.IsFalse(Saved.BugReportAnonymize);
   finally
     Page.Free;
   end;

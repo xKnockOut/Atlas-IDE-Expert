@@ -97,6 +97,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DocWiki.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompilerDirectives.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Status.Tests.pas"/>
+        <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.BugReport.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.QualifiedNames.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WinApiDocs.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.KeywordReference.Tests.pas"/>
@@ -268,6 +269,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.TimeLimit.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Product\Atlas.Core.Product.Version.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Export.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.BugReport.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.BugReport.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.Progress.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Commands\Atlas.Core.Commands.KeyConflicts.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.KeyConflicts.Tests.pas"/>

@@ -84,7 +84,9 @@ type
     SettingsUndoMaxSize, SettingsUndoOnConflict, SettingsUndoPartial, SettingsUndoAbort, SettingsUndoNewFiles,
     SettingsUndoRecycle, SettingsUndoDelete, SettingsUndoKeep, UndoSetCaption, UndoClose,
     UpdatesConsentTitle, UpdatesConsentText, UpdatesConsentYes, UpdatesConsentNo, UpdatesAvailable,
-    SettingsUpdatesTitle, SettingsUpdatesCheck, SettingsVersion);
+    SettingsUpdatesTitle, SettingsUpdatesCheck, SettingsVersion,
+    BugReportMenu, BugReportTitle, BugReportHint, BugReportAnonymized, BugReportPlain, BugReportNoServer,
+    BugReportDone, BugReportFilter, SettingsBugReportTitle, SettingsBugReportAnonymize);
 
   TAtlasStrings = class
   private class var
@@ -391,7 +393,17 @@ const
      'Atlas %s ist verfügbar (installiert: %s). Änderungen: %s',
      'Updates',
      'Einmal täglich nach neuen Versionen sehen (überträgt nur Atlas- und IDE-Version)',
-     'Installiert: Atlas %s (IDE %s)'),
+     'Installiert: Atlas %s (IDE %s)',
+     'Fehlerbericht erstellen…',
+     'Atlas: Fehlerbericht',
+     'Der Bericht enthält Versionen, Einstellungen, Protokollauszüge und die letzten Anfragen an den Server, keinen Quelltext. %s Bitte vor dem Weitergeben durchsehen; ein Issue legst du unter %s an.',
+     'Pfade, Benutzername und Bezeichner sind ersetzt.',
+     'Pfade und Bezeichner stehen im Klartext (Optionen › Fehlerbericht).',
+     'Der Server läuft nicht; der Bericht enthält nur den Teil des Plugins.',
+     'Fehlerbericht gespeichert: %s – Issue anlegen: %s',
+     'Markdown (*.md)|*.md',
+     'Fehlerbericht',
+     'Fehlerbericht anonymisieren (Pfade, Benutzername und Bezeichner ersetzen)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -675,7 +687,17 @@ const
      'Atlas %s is available (installed: %s). Changes: %s',
      'Updates',
      'Check for new versions once a day (sends only the Atlas and IDE version)',
-     'Installed: Atlas %s (IDE %s)'));
+     'Installed: Atlas %s (IDE %s)',
+     'Create bug report…',
+     'Atlas: bug report',
+     'The report contains versions, settings, log excerpts and the latest requests to the server, no source code. %s Please review it before sharing; create an issue at %s.',
+     'Paths, user name and identifiers are replaced.',
+     'Paths and identifiers are in plain text (Options › Bug report).',
+     'The server is not running; the report contains only the plugin part.',
+     'Bug report saved: %s – create an issue: %s',
+     'Markdown (*.md)|*.md',
+     'Bug report',
+     'Anonymize bug reports (replace paths, user name and identifiers)'));
 
 { TAtlasStrings }
 

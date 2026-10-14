@@ -79,6 +79,12 @@ type
     /// <summary>Aktuelle Einstellungen (Kopie, threadsicher).</summary>
     property Settings: TServerSettings read GetSettings;
     property RootPath: string read FRootPath;
+    /// <summary>Gelesene Datei (atlas.json oder die frühere), '' ohne; für den Fehlerbericht (#108).</summary>
+    property FileName: string read FFileName;
+    /// <summary>Text der Datei bzw. des Editor-Abschnitts, aus dem Settings entsteht; nur im Thread der
+    /// Nachrichtenschleife lesen.</summary>
+    property FileText: string read FFileText;
+    property EditorText: string read FEditorText;
     /// <summary>Wird nach jeder Übernahme neuer Einstellungen aufgerufen.</summary>
     property OnChanged: TConfigurationChangedEvent read FOnChanged write FOnChanged;
   end;

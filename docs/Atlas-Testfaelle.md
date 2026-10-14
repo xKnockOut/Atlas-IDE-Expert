@@ -413,6 +413,19 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 | UP5 | Optionen: „Einmal täglich nach neuen Versionen sehen“ aus, IDE neu starten | Kein Fenster, keine Abfrage, keine Meldung; Atlas verhält sich wie ohne die Funktion |
 | UP6 | Optionen › Abschnitt „Updates“; Diagnoseexport erstellen | Abschnitt zeigt „Installiert: Atlas <Version> (IDE <Version>)“; ZIP enthält `atlas-info.txt` mit Atlas-, IDE-Version und Plattform |
 
+## Fehlerbericht (#108)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BR1 | Projekt offen, *Atlas › Fehlerbericht erstellen…* | Vorschau mit Abschnitten Plugin, Version, Wirksame Konfiguration, Letzte Anfragen, Protokoll; nach OK und Speicherort `.md`-Datei mit genau diesem Text, Meldungsansicht nennt Datei und Issue-Link |
+| BR2 | Bericht mit Anonymisierung (Vorgabe) | Kein Projektpfad, kein Benutzername; stattdessen `<ws>`, `<pfad>`, `<benutzer>`; Zeichenketten im Protokoll als `<wert>` |
+| BR3 | Optionen › Abschnitt „Fehlerbericht“: „Fehlerbericht anonymisieren …“ aus, erneut erstellen | Pfade erscheinen im Klartext |
+| BR4 | Datei mit Text öffnen und ändern, Bericht erstellen | Kein Quelltext der Datei im Bericht; Tabelle „Letzte Anfragen“ nennt nur Methoden wie `textDocument/didChange` mit Dauer |
+| BR5 | Server über das Statusfeld stoppen, Bericht erstellen | Plugin-Teil vollständig, Abschnitt „Server“ meldet, dass der Server nicht lief |
+| BR6 | Befehlspalette „Atlas: Fehlerbericht erstellen“; Fenster des abgesicherten Starts › „Fehlerbericht…“ | Derselbe Ablauf wie BR1 |
+| BR7 | Auf GitHub „New issue“ | Auswahl „Fehler“, „Fehlalarm einer Regel“, „Funktionswunsch“; leeres Issue nicht möglich |
+| BR8 | „Fehlalarm einer Regel“ ohne Regel-ID absenden | GitHub verlangt Regel-ID, Konfidenz, Codeausschnitt und Erwartung |
+
 ## Schließen der Atlas-Fenster (#414)
 
 | Nr. | Schritte | Erwartet |

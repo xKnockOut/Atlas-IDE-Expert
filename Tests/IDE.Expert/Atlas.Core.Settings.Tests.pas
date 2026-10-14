@@ -128,6 +128,7 @@ begin
   Assert.AreEqual($C05A, Settings.UndoKey, 'Strg+Alt+Z');
   Assert.AreEqual($E05A, Settings.RedoKey, 'Strg+Alt+Umschalt+Z');
   Assert.IsFalse(Settings.UpdatesCheck, 'Update-Prüfung nur nach Zustimmung');
+  Assert.IsTrue(Settings.BugReportAnonymize, 'Fehlerbericht anonymisiert');
 end;
 
 procedure TAtlasPluginSettingsTests.SaveAndLoadRoundTrip;
@@ -174,6 +175,7 @@ begin
   Settings.UndoKey := 0;
   Settings.RedoKey := $C059;
   Settings.UpdatesCheck := True;
+  Settings.BugReportAnonymize := False;
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
@@ -216,6 +218,7 @@ begin
   Assert.AreEqual(0, Loaded.UndoKey);
   Assert.AreEqual($C059, Loaded.RedoKey);
   Assert.IsTrue(Loaded.UpdatesCheck);
+  Assert.IsFalse(Loaded.BugReportAnonymize);
   Assert.AreEqual('', TAtlasPluginSettings.Defaults.ServerPath, 'Standard: leer');
 end;
 

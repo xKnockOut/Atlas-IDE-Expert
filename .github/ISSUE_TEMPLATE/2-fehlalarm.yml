@@ -1,0 +1,44 @@
+name: Fehlalarm einer Prüfregel
+description: Eine Prüfregel meldet etwas, das kein Problem ist, oder übersieht eins.
+title: "Fehlalarm: "
+labels: ["fehlalarm"]
+body:
+  - type: input
+    id: rule
+    attributes:
+      label: Regel-ID
+      description: Steht in der Meldung, z. B. `unused-variable`.
+      placeholder: "unused-variable"
+    validations:
+      required: true
+  - type: dropdown
+    id: confidence
+    attributes:
+      label: Angezeigte Konfidenz
+      description: Steht im Tooltip bzw. in der Meldungsliste (#144).
+      options:
+        - hoch
+        - mittel
+        - niedrig
+    validations:
+      required: true
+  - type: textarea
+    id: code
+    attributes:
+      label: Minimaler Code-Ausschnitt
+      description: Möglichst kurz und ohne vertrauliche Namen; er sollte die Meldung allein auslösen.
+      render: pascal
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Erwartetes Ergebnis
+      description: Keine Meldung, eine andere Meldung oder eine andere Stelle?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Atlas-Version
+      placeholder: "0.1.0"
