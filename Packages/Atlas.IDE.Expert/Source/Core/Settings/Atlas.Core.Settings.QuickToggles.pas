@@ -247,6 +247,9 @@ begin
     '"PairGuides":{"type":"boolean","x-feature":"Pairs",' +
       '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
       '"x-caption":"Blocklinien","x-captionEn":"Block guides","x-issue":"#514"},' +
+    '"PairOwners":{"type":"boolean","x-feature":"Pairs",' +
+      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
+      '"x-caption":"Anweisungen mitfärben","x-captionEn":"Colour statements","x-issue":"#653"},' +
     '"InactiveDim":{"type":"boolean","x-feature":"Pairs",' +
       '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
       '"x-caption":"Inaktive {$IFDEF}-Zweige ausgrauen","x-captionEn":"Dim inactive {$IFDEF} branches",' +

@@ -42,18 +42,16 @@ Einzelheiten und Fehlersuche: [docs/RAD-Studio.md](docs/RAD-Studio.md).
 
 Gebaut und geprüft wird bisher nur mit RAD Studio 13 in der 32-Bit-IDE. Was ohne Delphi-12-Installation und 64-Bit-IDE noch ungeprüft ist, steht in [docs/RAD-Studio.md](docs/RAD-Studio.md#ungeprüft).
 
-### Andere Editoren und ohne Editor
+### Claude Code und ohne Editor
 
-- **VS Code:** Erweiterung `atlas-<Version>.vsix` (enthält den Server), siehe [Editors/VSCode](Editors/VSCode/README.md)
 - **Claude Code:** MCP-Werkzeuge und LSP als Plugin, siehe [Editors/ClaudeCode](Editors/ClaudeCode/README.md)
-- **Neovim:** siehe [Editors/Neovim](Editors/Neovim/README.md)
 - **CI und Kommandozeile:** `AtlasServer.exe --check`, siehe [Linter-Modus](#linter-modus)
 
 Ausführlich: [docs/Installation.md](docs/Installation.md).
 
 ## Benutzerdokumentation
 
-- [Installation](docs/Installation.md) für VS Code, Claude Code, Neovim und andere Editoren
+- [Installation](docs/Installation.md) für RAD Studio, Claude Code und die Kommandozeile
 - [Konfiguration](docs/Konfiguration.md) von `atlas.json` (erzeugt aus dem JSON-Schema mit `pwsh Tools/Update-ConfigDoc.ps1`)
 - [Prüfregeln](docs/Regeln.md)
 - [MCP-Werkzeuge](docs/MCP.md)
@@ -167,4 +165,4 @@ Der Server spricht LSP über stdin/stdout. Jede zusätzliche Ausgabe auf stdout 
 
 Atlas steht unter der MIT-Lizenz (`LICENSE`); Drittanbieter-Komponenten mit Lizenztexten stehen in `THIRD-PARTY-NOTICES.md` (erzeugt von `Tools/Update-ThirdPartyNotices.ps1`).
 
-Cache und Benchmark-Korpus bleiben lokal, VCL-Quellen werden nie eingecheckt. Der Index-Cache liegt unter `%LOCALAPPDATA%\Atlas`; RTL- und VCL-Quellen liest der Server nur aus der lokalen Delphi-Installation. `Tools/Check-NoEmbarcaderoSources.ps1` prüft in der CI, dass `Tests/` und die `.vsix` keine Datei mit Embarcadero-Copyright-Kopf enthalten.
+Cache und Benchmark-Korpus bleiben lokal, VCL-Quellen werden nie eingecheckt. Der Index-Cache liegt unter `%LOCALAPPDATA%\Atlas`; RTL- und VCL-Quellen liest der Server nur aus der lokalen Delphi-Installation. `Tools/Check-NoEmbarcaderoSources.ps1` prüft in der CI, dass `Tests/` keine Datei mit Embarcadero-Copyright-Kopf enthalten.

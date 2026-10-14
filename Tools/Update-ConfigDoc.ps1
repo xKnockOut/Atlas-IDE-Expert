@@ -1,15 +1,12 @@
 ﻿<#
 .SYNOPSIS
-    Erzeugt aus dem JSON-Schema von atlas.json die Doku, die VS-Code-Settings
-    und die Einstellungstabelle und prüft den Parser dagegen.
+    Erzeugt aus dem JSON-Schema von atlas.json die Doku, die Einstellungstabelle
+    und die Schema-Unit des Plugins und prüft den Parser dagegen.
 
 .DESCRIPTION
-    Einzige Quelle ist Editors/VSCode/schemas/atlas.schema.json (#265):
+    Einzige Quelle ist schemas/atlas.schema.json (#265):
     - docs/Konfiguration.md: jeder Schlüssel mit Typ, Standardwert, erlaubten
       Werten und Beschreibung; verschachtelte Objekte als eigener Abschnitt.
-    - Editors/VSCode/package.json: contributes.configuration, je Schlüssel
-      atlas.<Schlüssel>. Reine Client-Einstellungen (serverPath,
-      trace.server) bleiben, wie sie sind.
     - docs/Einstellungen.md: Tabelle für das Einstellungs-Plugin (#227) aus den
       Angaben x-page, x-control, x-issue, x-commandLine und x-restart.
       x-quickToggle (mit x-plugin, x-caption, x-captionEn) an einer booleschen
@@ -36,9 +33,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$SchemaPath = Join-Path $Root 'Editors/VSCode/schemas/atlas.schema.json'
+$SchemaPath = Join-Path $Root 'schemas/atlas.schema.json'
 $DocPath = Join-Path $Root 'docs/Konfiguration.md'
-$PackagePath = Join-Path $Root 'Editors/VSCode/package.json'
 $TablePath = Join-Path $Root 'docs/Einstellungen.md'
 $ParserPath = Join-Path $Root 'Packages/Atlas.Common/Source/Configuration/Atlas.Common.Configuration.Parser.pas'
 $Utf8 = New-Object System.Text.UTF8Encoding($false)
@@ -76,7 +72,7 @@ function Write-Table([System.Text.StringBuilder] $Out, [hashtable] $Properties, 
 $Out = New-Object System.Text.StringBuilder
 [void]$Out.AppendLine('# Konfiguration: atlas.json')
 [void]$Out.AppendLine()
-[void]$Out.AppendLine('<!-- Erzeugt von Tools/Update-ConfigDoc.ps1 aus Editors/VSCode/schemas/atlas.schema.json. Nicht von Hand bearbeiten. -->')
+[void]$Out.AppendLine('<!-- Erzeugt von Tools/Update-ConfigDoc.ps1 aus schemas/atlas.schema.json. Nicht von Hand bearbeiten. -->')
 [void]$Out.AppendLine()
 [void]$Out.AppendLine((Escape $Schema['description']))
 [void]$Out.AppendLine()
@@ -99,7 +95,7 @@ foreach ($Name in $Schema['properties'].Keys) {
 [void]$Out.AppendLine()
 [void]$Out.AppendLine('```json')
 [void]$Out.AppendLine('{')
-[void]$Out.AppendLine('  "$schema": "https://raw.githubusercontent.com/xKnockOut/Atlas/main/Editors/VSCode/schemas/atlas.schema.json",')
+[void]$Out.AppendLine('  "$schema": "https://raw.githubusercontent.com/xKnockOut/Atlas/main/schemas/atlas.schema.json",')
 [void]$Out.AppendLine('  "project": "App.dproj",')
 [void]$Out.AppendLine('  "config": "Debug",')
 [void]$Out.AppendLine('  "platform": "Win64",')
@@ -109,47 +105,11 @@ foreach ($Name in $Schema['properties'].Keys) {
 [void]$Out.AppendLine('```')
 $Text = $Out.ToString().Replace("`r`n", "`n")
 
-# --- VS-Code-Settings (package.json) ---
-$Section = 'atlas'
-$ClientOnly = @('serverPath', 'trace.server')
-$Package = Get-Content -Raw -Encoding utf8 $PackagePath | ConvertFrom-Json -AsHashtable
-$OldSettings = $Package['contributes']['configuration']['properties']
-$NewSettings = [ordered]@{}
-function Add-ClientSetting([string] $Name) {
-    $Key = "$Section.$Name"
-    if ($OldSettings.Contains($Key)) { $NewSettings[$Key] = $OldSettings[$Key] }
-}
-Add-ClientSetting 'serverPath'
-foreach ($Name in $Schema['properties'].Keys) {
-    if ($Name -eq '$schema') { continue }
-    $P = $Schema['properties'][$Name]
-    $Entry = [ordered]@{}
-    # Ohne type (etwa oneOf aus Text und Objekt) die Typen der Varianten.
-    $Type = if (Has $P 'type') { $P['type'] }
-            elseif (Has $P 'oneOf') { @($P['oneOf'] | ForEach-Object { $_['type'] }) }
-            else { 'object' }
-    $Entry['type'] = $Type
-    if (Has $P 'enum') { $Entry['enum'] = $P['enum'] }
-    if (Has $P 'items') { $Entry['items'] = $P['items'] }
-    foreach ($Limit in 'minimum', 'maximum') { if (Has $P $Limit) { $Entry[$Limit] = $P[$Limit] } }
-    $Entry['default'] = if ($P.ContainsKey('default')) { $P['default'] }
-                        elseif ($Type -eq 'string') { '' }
-                        elseif ($Type -eq 'array') { ,@() }
-                        else { [ordered]@{} }
-    $Description = if (Has $P 'description') { $P['description'] } else { '' }
-    if (-not (Has $P 'x-commandLine')) { $Description = ($Description + ' atlas.json im Projekt hat Vorrang.').Trim() }
-    $Entry['markdownDescription'] = $Description
-    $NewSettings["$Section.$Name"] = $Entry
-}
-foreach ($Name in $ClientOnly) { if ($Name -ne 'serverPath') { Add-ClientSetting $Name } }
-$Package['contributes']['configuration']['properties'] = $NewSettings
-$PackageText = ($Package | ConvertTo-Json -Depth 32).Replace("`r`n", "`n") + "`n"
-
 # --- Einstellungstabelle für das Plugin (#227) ---
 $Table = New-Object System.Text.StringBuilder
 [void]$Table.AppendLine('# Einstellungen')
 [void]$Table.AppendLine()
-[void]$Table.AppendLine('<!-- Erzeugt von Tools/Update-ConfigDoc.ps1 aus Editors/VSCode/schemas/atlas.schema.json. Nicht von Hand bearbeiten. -->')
+[void]$Table.AppendLine('<!-- Erzeugt von Tools/Update-ConfigDoc.ps1 aus schemas/atlas.schema.json. Nicht von Hand bearbeiten. -->')
 [void]$Table.AppendLine()
 [void]$Table.AppendLine('Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Einzelheiten zu Werten und Bedeutung stehen in [Konfiguration.md](Konfiguration.md).')
 [void]$Table.AppendLine()
@@ -170,7 +130,7 @@ foreach ($Name in $Schema['properties'].Keys) {
     [void]$Table.AppendLine("| $Page | $Setting | $Default | $Source | $Restart | $(Escape $Control) | $Issue |")
 }
 # Was kein Schlüssel in atlas.json ist, aber im Plugin erscheint.
-[void]$Table.AppendLine('| Allgemein | Pfad zu `AtlasServer.exe` | – | VS Code (`atlas.serverPath`) | ja | Datei wählen, Version anzeigen | #12, #49 |')
+[void]$Table.AppendLine('| Allgemein | Pfad zu `AtlasServer.exe` | – | Plugin (Registry `ServerPath`) | ja | Datei wählen, Version anzeigen | #12 |')
 [void]$Table.AppendLine('| Baseline | `atlas-baseline.json` | – | Datei, `--baseline`, `--update-baseline` | nein | Anzahl Einträge, „Baseline neu erzeugen“, „Baseline löschen“ | #97 |')
 [void]$Table.AppendLine('| Baseline | Unterdrückungen `lsp-ignore` | – | `--suppression-stats` | nein | Übersicht je Regel (nur Anzeige) | #147 |')
 [void]$Table.AppendLine('| Speicher | Index-Cache löschen | – | `--clear-cache`, Befehl `atlas.server.clearIndex` (löschen und neu indizieren), `atlas.server.rebuildIndex` (nur neu indizieren) | nein | Knöpfe „Index löschen“ und „Index neu aufbauen“ | #184, #492 |')
@@ -211,7 +171,6 @@ foreach ($Name in $SchemaKeys) {
 # --- Schreiben oder prüfen ---
 $Targets = @(
     @{ Path = $DocPath; Text = $Text; Name = 'docs/Konfiguration.md' },
-    @{ Path = $PackagePath; Text = $PackageText; Name = 'Editors/VSCode/package.json' },
     @{ Path = $TablePath; Text = $TableText; Name = 'docs/Einstellungen.md' }
 )
 foreach ($Target in $Targets) {
@@ -229,7 +188,7 @@ $SchemaLines = [IO.File]::ReadAllText($SchemaPath, $Utf8).TrimStart([char]0xFEFF
 $Unit = New-Object System.Text.StringBuilder
 foreach ($Line in @(
     'unit Atlas.Core.Settings.SchemaData;', '',
-    '// Erzeugt von Tools/Update-ConfigDoc.ps1 aus Editors/VSCode/schemas/atlas.schema.json;',
+    '// Erzeugt von Tools/Update-ConfigDoc.ps1 aus schemas/atlas.schema.json;',
     '// nicht von Hand ändern. JSON-Schema von atlas.json für den Einstellungsdialog (#227).', '',
     'interface', '', '/// <summary>Inhalt von atlas.schema.json.</summary>', 'function AtlasSchemaJson: string;', '',
     'implementation', '', 'const', "  Lines: array[0..$($SchemaLines.Count - 1)] of string = (")) { [void]$Unit.Append($Line + "`r`n") }
@@ -257,5 +216,5 @@ if ($Problems.Count -gt 0) {
     foreach ($Problem in $Problems) { Write-Error $Problem -ErrorAction Continue }
     exit 1
 }
-Write-Host 'Schema, Parser, package.json und Doku stimmen überein.'
+Write-Host 'Schema, Parser, Schema-Unit und Doku stimmen überein.'
 exit 0

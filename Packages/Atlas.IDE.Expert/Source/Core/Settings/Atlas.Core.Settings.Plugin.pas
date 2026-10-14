@@ -8,7 +8,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Style.Palette;
 
 type
   /// <summary>Ablage für Einstellungen; Werte als ganze Zahlen (Wahrheitswerte 0/1).</summary>
@@ -51,6 +52,10 @@ type
     MaxUndoDepth = 200;
     MinUndoMaxSizeMb = 1;
     MaxUndoMaxSizeMb = 1024;
+    MinPairGuideWidth = 1;
+    MaxPairGuideWidth = 3;
+    MinPairGuideOpacity = 10;
+    MaxPairGuideOpacity = 100;
   public
     /// <summary>Hauptschalter (#407): aus = eingebaute Code Insight der IDE.</summary>
     Enabled: Boolean;
@@ -117,8 +122,20 @@ type
     ServerPath: string;
     /// <summary>Blocklinien in den Paarfarben statt der Strukturhervorhebung der IDE (#514).</summary>
     PairGuides: Boolean;
+    /// <summary>Schlüsselwörter der Anweisung (if, then, else, for, do, procedure …) in der Farbe ihres
+    /// Blocks; Blocklinien beginnen an der Anweisung (#653). Wirkt nur mit PairColors.</summary>
+    PairOwners: Boolean;
+    /// <summary>Breite der Blocklinien in Pixeln bei 100 % (1–3, #653).</summary>
+    PairGuideWidth: Integer;
+    /// <summary>Deckkraft der Blocklinien in Prozent; der Rest ist Hintergrund.</summary>
+    PairGuideOpacity: Integer;
+    /// <summary>Eigene Paarfarben je Thema („#RRGGBB,…“, fünf Stück); leer = Standardpalette.</summary>
+    PairColorsLight: string;
+    PairColorsDark: string;
     /// <summary>Probleme im Editor unterstreichen und im Meldungsfenster auflisten (#398).</summary>
     Problems: Boolean;
+    /// <summary>Probleme zusätzlich im Meldungsfenster auflisten (Gruppe „Atlas-Probleme“); nur mit Problems.</summary>
+    ProblemsList: Boolean;
     /// <summary>Syntaxprüfung des Compilers nach dem Speichern (#548).</summary>
     CheckOnSave: Boolean;
     /// <summary>Wartezeit nach dem letzten Speichern.</summary>
@@ -214,6 +231,17 @@ implementation
 uses
   System.Math;
 
+// Eigene Paarfarben einheitlich schreiben; ungültig = leer (Standardpalette).
+function NormalPairs(const AText: string): string;
+var
+  Pairs: TAtlasPairColors;
+begin
+  if TAtlasColors.ParsePairs(AText, Pairs) then
+    Result := TAtlasColors.PairsText(Pairs)
+  else
+    Result := '';
+end;
+
 function BoolValue(AValue: Boolean): Integer;
 begin
   if AValue then
@@ -260,7 +288,13 @@ begin
   Result.InlayHints := False;
   Result.ServerPath := '';
   Result.PairGuides := True;
+  Result.PairOwners := True;
+  Result.PairGuideWidth := 1;
+  Result.PairGuideOpacity := 75;
+  Result.PairColorsLight := '';
+  Result.PairColorsDark := '';
   Result.Problems := True;
+  Result.ProblemsList := True;
   // Die Prüfung in der IDE zeigt deren Fortschritt; Standard ist die Prüfung des Servers mit dcc (compiler.onSave).
   Result.CheckOnSave := False;
   Result.CheckOnSaveDelayMs := 2000;
@@ -342,6 +376,10 @@ begin
     UndoMultiFileNewFiles := 'recycleBin';
   UndoKey := EnsureRange(UndoKey, 0, $FFFF);
   RedoKey := EnsureRange(RedoKey, 0, $FFFF);
+  PairGuideWidth := EnsureRange(PairGuideWidth, MinPairGuideWidth, MaxPairGuideWidth);
+  PairGuideOpacity := EnsureRange(PairGuideOpacity, MinPairGuideOpacity, MaxPairGuideOpacity);
+  PairColorsLight := NormalPairs(PairColorsLight);
+  PairColorsDark := NormalPairs(PairColorsDark);
 end;
 
 procedure TAtlasPluginSettings.Load(const AStore: IAtlasSettingsStore);
@@ -383,7 +421,13 @@ begin
   InlayHints := AStore.ReadInteger('InlayHints', BoolValue(Default.InlayHints)) <> 0;
   ServerPath := Trim(AStore.ReadString('ServerPath', Default.ServerPath));
   PairGuides := AStore.ReadInteger('PairGuides', BoolValue(Default.PairGuides)) <> 0;
+  PairOwners := AStore.ReadInteger('PairOwners', BoolValue(Default.PairOwners)) <> 0;
+  PairGuideWidth := AStore.ReadInteger('PairGuideWidth', Default.PairGuideWidth);
+  PairGuideOpacity := AStore.ReadInteger('PairGuideOpacity', Default.PairGuideOpacity);
+  PairColorsLight := AStore.ReadString('PairColorsLight', Default.PairColorsLight);
+  PairColorsDark := AStore.ReadString('PairColorsDark', Default.PairColorsDark);
   Problems := AStore.ReadInteger('Problems', BoolValue(Default.Problems)) <> 0;
+  ProblemsList := AStore.ReadInteger('ProblemsList', BoolValue(Default.ProblemsList)) <> 0;
   CheckOnSave := AStore.ReadInteger('CheckOnSave', BoolValue(Default.CheckOnSave)) <> 0;
   CheckOnSaveDelayMs := AStore.ReadInteger('CheckOnSaveDelayMs', Default.CheckOnSaveDelayMs);
   CheckOnSaveMaxMs := AStore.ReadInteger('CheckOnSaveMaxMs', Default.CheckOnSaveMaxMs);
@@ -465,7 +509,13 @@ begin
   AStore.WriteInteger('InlayHints', BoolValue(InlayHints));
   AStore.WriteString('ServerPath', Trim(ServerPath));
   AStore.WriteInteger('PairGuides', BoolValue(PairGuides));
+  AStore.WriteInteger('PairOwners', BoolValue(PairOwners));
+  AStore.WriteInteger('PairGuideWidth', PairGuideWidth);
+  AStore.WriteInteger('PairGuideOpacity', PairGuideOpacity);
+  AStore.WriteString('PairColorsLight', PairColorsLight);
+  AStore.WriteString('PairColorsDark', PairColorsDark);
   AStore.WriteInteger('Problems', BoolValue(Problems));
+  AStore.WriteInteger('ProblemsList', BoolValue(ProblemsList));
   AStore.WriteInteger('CheckOnSave', BoolValue(CheckOnSave));
   AStore.WriteInteger('CheckOnSaveDelayMs', CheckOnSaveDelayMs);
   AStore.WriteInteger('CheckOnSaveMaxMs', CheckOnSaveMaxMs);

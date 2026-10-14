@@ -19,7 +19,9 @@
 //     angezeigten Typ.
 // Probleme (#398): Liegt unter der Maus ein Problem, zeigt der Tooltip es oben
 // an, auch ohne Bezeichner (dann nur das Problem).
-// Die IDE zeigt dann keinen eigenen Tooltip: GetHintText liefert '' (Manager).
+// Die IDE zeigt dann keinen eigenen Tooltip: GetHintText und GetHelpInsightHtml
+// liefern '' (Manager). Bedient Atlas die Datei nicht (Hauptschalter, Server
+// fehlt, Sicherung), übernimmt die IDE und der Atlas-Tooltip bleibt zu.
 // Delphi 12 (#281): Tastatur-Ereignisse des Code-Editors gibt es erst ab
 // Delphi 13 (INTACodeEditorEvents370). Dort schließt der Tooltip über den
 // Tastatur-Hook, solange er sichtbar ist.
@@ -49,6 +51,8 @@ type
   /// <summary>Probleme an der Stelle (0-basiert, #398).</summary>
   TAtlasHoverProblemsFunc = reference to function(const AFileName: string; ALine, ACharacter: Integer):
     TArray<TAtlasProblem>;
+  /// <summary>Bedient Atlas die Datei? Sonst zeigt die IDE ihren eigenen Tooltip.</summary>
+  TAtlasHoverHandlesFunc = reference to function(const AFileName: string): Boolean;
 
   /// <summary>Lebt der Tooltip noch? Hintergrund-Anfragen prüfen das, bevor sie ihr Ergebnis zeigen.</summary>
   TAtlasHoverAlive = class(TInterfacedObject)
@@ -89,6 +93,7 @@ type
     FSession: TAtlasHoverSessionFunc;
     FLog: TAtlasHoverLogFunc;
     FProblemsAt: TAtlasHoverProblemsFunc;
+    FHandles: TAtlasHoverHandlesFunc;
     // Probleme an der Mausposition; nur Probleme, wenn dort kein Bezeichner steht.
     FProblems: TArray<TAtlasProblem>;
     // Anfrage an den Server im Hintergrund: Die IDE friert nie ein, auch wenn er langsam ist.
@@ -139,9 +144,10 @@ type
     function WantsKey(AKey: Word; AShift: TShiftState): Boolean;
     procedure HandleKey(AKey: Word; AShift: TShiftState);
     procedure Log(const AMessage: string);
+    function Handles(const AFileName: string): Boolean;
   public
     constructor Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc;
-      const AProblemsAt: TAtlasHoverProblemsFunc = nil);
+      const AProblemsAt: TAtlasHoverProblemsFunc = nil; const AHandles: TAtlasHoverHandlesFunc = nil);
     destructor Destroy; override;
     procedure Hide;
     /// <summary>Öffnet AFileName im Editor und setzt den Cursor (0-basiert).</summary>
@@ -212,7 +218,7 @@ end;
 { TAtlasEditorHover }
 
 constructor TAtlasEditorHover.Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc;
-  const AProblemsAt: TAtlasHoverProblemsFunc);
+  const AProblemsAt: TAtlasHoverProblemsFunc; const AHandles: TAtlasHoverHandlesFunc);
 var
   Services: INTACodeEditorServices;
 begin
@@ -220,6 +226,7 @@ begin
   FSession := ASession;
   FLog := ALog;
   FProblemsAt := AProblemsAt;
+  FHandles := AHandles;
   FIndex := -1;
   FUsagesCount := -1;
   FTip := TAtlasHoverTip.Create(nil);
@@ -292,6 +299,11 @@ procedure TAtlasEditorHover.Log(const AMessage: string);
 begin
   if Assigned(FLog) then
     FLog(AMessage);
+end;
+
+function TAtlasEditorHover.Handles(const AFileName: string): Boolean;
+begin
+  Result := not Assigned(FHandles) or FHandles(AFileName);
 end;
 
 function TAtlasEditorHover.CurrentSession: TLspSession;
@@ -397,7 +409,8 @@ begin
     begin
       View := State.View;
       Line := State.LineState[VisibleLine].LogicalLineNum;
-      if (View <> nil) and (View.Buffer <> nil) and (Line > 0) then
+      // Nur, wo Atlas die Code Insight übernimmt; sonst zeigt die IDE ihren Tooltip, und es wären zwei.
+      if (View <> nil) and (View.Buffer <> nil) and (Line > 0) and Handles(View.Buffer.FileName) then
       begin
         Text := TAtlasEditorBuffer.LineText(View, Line);
         Index := TLspSession.ColumnToIndex(Text, Column, TAtlasEditorBuffer.TabWidth(View.Buffer));

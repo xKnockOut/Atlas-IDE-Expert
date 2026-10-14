@@ -34,7 +34,7 @@ uses
 
 type
 {$SCOPEDENUMS ON}
-  TAtlasToggle = (Enabled, HoverTooltip, PairColors, PairGuides, Problems, InactiveDim, InlayHints);
+  TAtlasToggle = (Enabled, HoverTooltip, PairColors, PairGuides, PairOwners, Problems, InactiveDim, InlayHints);
 {$SCOPEDENUMS OFF}
 
   TAtlasMainMenu = class
@@ -111,6 +111,8 @@ begin
       Result := TAtlasStrings.Text(TAtlasTextId.MenuTogglePairs);
     TAtlasToggle.PairGuides:
       Result := TAtlasStrings.Text(TAtlasTextId.MenuToggleGuides);
+    TAtlasToggle.PairOwners:
+      Result := TAtlasStrings.Text(TAtlasTextId.MenuToggleOwners);
     TAtlasToggle.InactiveDim:
       Result := TAtlasStrings.Text(TAtlasTextId.MenuToggleInactive);
     TAtlasToggle.InlayHints:
@@ -256,6 +258,8 @@ begin
       Result := 'PairColors';
     TAtlasToggle.PairGuides:
       Result := 'PairGuides';
+    TAtlasToggle.PairOwners:
+      Result := 'PairOwners';
     TAtlasToggle.InactiveDim:
       Result := 'InactiveDim';
     TAtlasToggle.InlayHints:
@@ -276,6 +280,8 @@ begin
     UpdateImage;
     for Toggle := Low(TAtlasToggle) to High(TAtlasToggle) do
       FToggles[Toggle].Checked := TAtlasIdeQuickToggles.Checked(ToggleKey(Toggle));
+    // Anweisungen mitfärben wirkt nur mit der Paarfärbung (#653).
+    FToggles[TAtlasToggle.PairOwners].Enabled := TAtlasIdeQuickToggles.Checked('PairColors');
     Names := '';
     for Feature in TAtlasGuard.DisabledSet do
       if Names = '' then

@@ -53,7 +53,8 @@ Tests/
   Atlas.Tests.dpr/.dproj
   Common/  Windows/  Application/  IDE.Expert/  Setup/  (Tests je Ausgabeartefakt)
   Data/Protocol/                   aufgezeichnete Nachrichtenfolgen für Protokolltests (JSON)
-Editors/VSCode/                    minimale VS-Code-Erweiterung (TypeScript), startet den Server
+Editors/ClaudeCode/                Plugin für Claude Code (LSP und MCP)
+schemas/                           JSON-Schema von atlas.json, Quelle für Doku und Einstellungsdialog
 Tools/                             Hilfsskripte
 Output/<Plattform>/<Konfiguration>/ Build-Ausgabe (nicht versioniert): Dcu, Dcp, Bpl, Bin
 ```

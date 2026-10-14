@@ -196,7 +196,25 @@ uses
   Atlas.IDE.Signature.Editor,
   Atlas.Core.Completion.Ranking,
   Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Style;
+  Atlas.IDE.Editor.Style,
+  Atlas.UI.Strings;
+
+/// <summary>Plattform und Konfiguration des aktiven Projekts („Win32 · Debug“, #476); '' ohne Projekt.</summary>
+function ActiveTarget: string;
+var
+  Project: IOTAProject;
+begin
+  Result := '';
+  Project := GetActiveProject;
+  if Project = nil then
+    Exit;
+  Result := Project.CurrentPlatform;
+  if Project.CurrentConfiguration <> '' then
+    if Result <> '' then
+      Result := Result + ' · ' + Project.CurrentConfiguration
+    else
+      Result := Project.CurrentConfiguration;
+end;
 
 /// <summary>Anzeige der XMLDoc im Panel (#654): hints aus atlas.json meldet der Server, sonst die Optionen.</summary>
 function WithDisplay(const ADetails: TAtlasItemDetails): TAtlasItemDetails;
@@ -640,6 +658,7 @@ begin
   FPopup.DimInherited := TAtlasIdeSettings.Current.GroupInherited;
   // Während der Server indiziert, liefert er den vorhandenen Stand; die Fußzeile sagt es (#492).
   FPopup.Limited := IndexingNow;
+  FPopup.Target := ActiveTarget;
   FController.ChipsEnabled := TAtlasIdeSettings.Current.FilterChips;
   FSnippetProvider.Enabled := TAtlasIdeSettings.Current.Snippets;
   // Kontextabhängige Vorlagen des Servers (#51) hängen an derselben Einstellung.
@@ -943,8 +962,9 @@ end;
 procedure TAtlasEditorCompletion.UpdateDetails;
 var
   Item: TAtlasCompletionItem;
-  Key: string;
+  Key, Availability: string;
   Resolver: IAtlasCompletionResolver;
+  Details: TAtlasItemDetails;
 begin
   if not FController.Visible or not FController.SelectedItem(Item) then
   begin
@@ -968,14 +988,31 @@ begin
   // Überladung (#425): deren Position statt der ersten nachfragen.
   if (FOverloadIndex > 0) and (FOverloadIndex <= Length(Item.OverloadData)) then
     Item.ResolveData := Item.OverloadData[FOverloadIndex - 1];
+  // Im aktiven Ziel nicht deklariert (#476): Hinweis im Panel, auch ohne Details vom Server.
+  Availability := '';
+  if Item.Unavailable and (Item.Condition <> '') and not SameText(Item.Condition, 'platform') then
+    Availability := TAtlasStrings.Fmt(TAtlasTextId.UnavailableHint, [Item.Condition, FPopup.Target]);
   if not Supports(FServerProviderRef, IAtlasCompletionResolver, Resolver) or not Resolver.Resolve(Item,
     procedure(const ADetails: TAtlasItemDetails)
+    var
+      Shown: TAtlasItemDetails;
     begin
       // Nur zeigen, wenn noch derselbe Eintrag gewählt und die Liste offen ist.
       if (FDetailKey = Key) and FController.Visible then
-        FPopup.ShowDetails(WithDisplay(ADetails));
+      begin
+        Shown := WithDisplay(ADetails);
+        Shown.Availability := Availability;
+        FPopup.ShowDetails(Shown);
+      end;
     end) then
-    FPopup.ClearDetails;
+    if Availability <> '' then
+    begin
+      Details := Default(TAtlasItemDetails);
+      Details.Availability := Availability;
+      FPopup.ShowDetails(Details);
+    end
+    else
+      FPopup.ClearDetails;
 end;
 
 procedure TAtlasEditorCompletion.ChangeOverload(ADelta: Integer);

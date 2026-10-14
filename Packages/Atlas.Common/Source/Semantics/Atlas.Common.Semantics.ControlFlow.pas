@@ -892,13 +892,30 @@ begin
     Jump(Handler, FRaiseTargets.Last);
 end;
 
+/// <summary>Aufruf über einen einfachen Namen (Exit, Exit(1)), nicht über ein Objekt (TMonitor.Exit(FLock)).</summary>
+function IsPlainCall(S: TSyntaxNode): Boolean;
+var
+  Target: TSyntaxNode;
+begin
+  // Ohne Kinder ist es der Name allein ("Exit;").
+  if S.ChildCount = 0 then
+    Exit(True);
+  Target := S.Children[0];
+  if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount > 0) then
+    Target := Target.Children[0];
+  Result := Target.Kind = TSyntaxKind.Identifier;
+end;
+
 function TFlowBuilder.BuildCall(S: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
 var
   Node: TFlowNode;
   Name: string;
 begin
   Node := Simple(S, APreds);
-  Name := LowerCase(S.Name);
+  // Der Parser nennt TMonitor.Exit(FLock) "Exit"; nur einfache Namen sind Exit, Break, Abort usw. (#647).
+  Name := '';
+  if IsPlainCall(S) then
+    Name := LowerCase(S.Name);
   if Name = 'exit' then
   begin
     // Exit(Wert) setzt Result.

@@ -25,12 +25,16 @@ type
     procedure HslRoundTripAndLighten;
     [Test]
     procedure DetectsDarkBackgrounds;
+    [Test]
+    procedure DeltaE2000MatchesReference;
   end;
 
   [TestFixture]
   TAtlasPaletteTests = class
   private
     procedure CheckContrast(const AColors: TAtlasColors; const AMode: string);
+    procedure CheckPairs(const AColors: TAtlasColors; const AMode: string; const ABackgrounds,
+      ATexts: array of string);
   public
     [Test]
     procedure LightRolesMeetContrast;
@@ -42,6 +46,10 @@ type
     procedure BadgeKindsDifferInLightness;
     [Test]
     procedure ChoosesModeByBackground;
+    [Test]
+    procedure LightPairsStandOut;
+    [Test]
+    procedure DarkPairsStandOut;
   end;
 
   [TestFixture]
@@ -197,7 +205,67 @@ begin
   Assert.IsFalse(TAtlasColorMath.IsDark(TAtlasColorMath.FromHex('#E8E8EC')));
 end;
 
+procedure TAtlasColorTests.DeltaE2000MatchesReference;
+begin
+  // Prüfdaten von Sharma, Wu und Dalal (2005), Paare 1, 3, 7 und 17.
+  Assert.AreEqual(2.0425, TAtlasColorMath.DeltaE2000(TAtlasLab.Create(50, 2.6772, -79.7751),
+    TAtlasLab.Create(50, 0, -82.7485)), 0.0001);
+  Assert.AreEqual(1.0, TAtlasColorMath.DeltaE2000(TAtlasLab.Create(50, -1.3802, -84.2814),
+    TAtlasLab.Create(50, 0, -82.7485)), 0.0001);
+  Assert.AreEqual(1.2644, TAtlasColorMath.DeltaE2000(TAtlasLab.Create(60.2574, -34.0099, 36.2677),
+    TAtlasLab.Create(60.4626, -34.1751, 39.4387)), 0.0001);
+  Assert.AreEqual(27.1492, TAtlasColorMath.DeltaE2000(TAtlasLab.Create(50, 2.5, 0),
+    TAtlasLab.Create(73, 25, -18)), 0.0001);
+  Assert.AreEqual(100.0, TAtlasColorMath.DeltaE2000(TAtlasColorMath.FromHex('#000000'),
+    TAtlasColorMath.FromHex('#FFFFFF')), 0.01);
+end;
+
 { TAtlasPaletteTests }
+
+procedure TAtlasPaletteTests.CheckPairs(const AColors: TAtlasColors; const AMode: string; const ABackgrounds,
+  ATexts: array of string);
+var
+  Index: Integer;
+  Pair, Other: TAtlasColor;
+  Hex: string;
+  Name: string;
+
+  procedure CheckText(AText: TAtlasColor);
+  begin
+    Assert.IsTrue((TAtlasColorMath.Contrast(Pair, AText) >= 1.8) or
+      (TAtlasColorMath.DeltaE2000(Pair, AText) >= 30), Name + ' gegen Text ' + TAtlasColorMath.ToHex(AText));
+  end;
+
+begin
+  // Regeln aus #653: lesbar auf dem Hintergrund, vom normalen Text und von der Nachbartiefe verschieden.
+  for Index := 0 to High(AColors.Pairs) do
+  begin
+    Pair := AColors.Pairs[Index];
+    Name := Format('%s Paar %d (%s)', [AMode, Index, TAtlasColorMath.ToHex(Pair)]);
+    for Hex in ABackgrounds do
+      Assert.IsTrue(TAtlasColorMath.Contrast(Pair, TAtlasColorMath.FromHex(Hex)) >= 4.5,
+        Name + ' auf ' + Hex);
+    Assert.IsTrue(TAtlasColorMath.Contrast(Pair, AColors.Surface) >= 4.5, Name + ' auf Surface');
+    for Hex in ATexts do
+      CheckText(TAtlasColorMath.FromHex(Hex));
+    CheckText(AColors.Text);
+    Other := AColors.Pairs[(Index + 1) mod Length(AColors.Pairs)];
+    Assert.IsTrue(TAtlasColorMath.DeltaE2000(Pair, Other) >= 20, Name + ' gegen die nächste Tiefe');
+    // Unpaarige erkennt man am roten Grund, nicht an der Schriftfarbe: Paarfarben dürfen rot sein.
+  end;
+end;
+
+procedure TAtlasPaletteTests.LightPairsStandOut;
+begin
+  // Editor hell: weißer Hintergrund, schwarzer Text, dunkelblaue Schlüsselwörter.
+  CheckPairs(TAtlasColors.Light, 'Hell', ['#FFFFFF'], ['#000000', '#000080']);
+end;
+
+procedure TAtlasPaletteTests.DarkPairsStandOut;
+begin
+  // Editor dunkel: Hintergrund und Text des dunklen Schemas der IDE.
+  CheckPairs(TAtlasColors.Dark, 'Dunkel', ['#1E1E1E', '#2B2B2B'], ['#D4D4D4', '#FFFFFF']);
+end;
 
 procedure TAtlasPaletteTests.CheckContrast(const AColors: TAtlasColors; const AMode: string);
 

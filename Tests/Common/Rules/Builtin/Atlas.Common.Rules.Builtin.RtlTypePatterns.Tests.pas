@@ -125,6 +125,9 @@ begin
   Assert.AreEqual('not SameValue(A, 1.5)', Findings[1].Fixes[0].Edits[0].NewText);
   TRuleAssert.Silent(TFloatEqualityRule.Create, InRoutine('  A: Double;'#10'  N, M: Integer;',
     '  if A = 0 then Save;'#10'  if N = M then Save;'#10'  if A <> 0.0 then Save;'));
+  // Zeitstempel werden absichtlich exakt verglichen (#647).
+  TRuleAssert.Silent(TFloatEqualityRule.Create, InRoutine('  T, U: TDateTime;',
+    '  if T <> U then Save;'));
 end;
 
 procedure TRtlTypePatternRulesTests.ConstructorOnInstance;

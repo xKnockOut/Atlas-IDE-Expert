@@ -12,6 +12,16 @@
 // - Schließen: end (nicht repeat), until (nur repeat); finally/except
 //   bekommen die Tiefe ihres try. "end." ohne Öffner ist das Ende der Unit.
 // - Escapte Bezeichner (&begin) und Mitglieder hinter "." sind keine Schlüsselwörter.
+// Besitzer (#653): Schlüsselwörter der Anweisung, zu der ein Block gehört,
+// bekommen Tiefe und Paarstatus ihres Blocks (Owner = True):
+//   if … then begin          → if, then (davor ein else: auch else)
+//   else begin               → else
+//   for/while/with/on … do begin → for/while/with/on, do
+//   case … of                → of
+//   Rumpf einer Routine      → procedure/function/constructor/destructor/operator, davor class
+// Ohne begin (if X then Foo;) gibt es keinen Block und keine Besitzer. Routinenköpfe
+// zählen nur außerhalb von Blöcken (nicht in Klassen, nicht als Prozedurtyp nach
+// "=", ":", "to", "of"); forward/external und implementation verwerfen offene Köpfe.
 
 interface
 
@@ -28,6 +38,8 @@ type
     Depth: Integer;
     Unpaired: Boolean;
     IsWord: Boolean;
+    /// <summary>Schlüsselwort der Anweisung, zu der der Block gehört (if, then, for, procedure …, #653).</summary>
+    Owner: Boolean;
   end;
 
   /// <summary>Gepaarter Block (begin … end, repeat … until, class … end …), 0-basiert.</summary>
@@ -37,6 +49,9 @@ type
     CloseLine: Integer;
     CloseCharacter: Integer;
     Depth: Integer;
+    /// <summary>Erstes Besitzer-Schlüsselwort vor dem Öffner (if, else, for, procedure …), sonst der Öffner (#653).</summary>
+    OwnerLine: Integer;
+    OwnerCharacter: Integer;
   end;
 
   TAtlasPairs = class
@@ -72,6 +87,10 @@ type
   TOpen = record
     Word: string;
     Index: Integer;
+    /// <summary>Indizes der Besitzer in den Ergebnissen (#653).</summary>
+    Owners: TArray<Integer>;
+    OwnerLine: Integer;
+    OwnerCharacter: Integer;
   end;
 
 function Lex(const AText: string): TArray<TLexToken>;
@@ -230,7 +249,9 @@ var
   Results: TList<TAtlasPairToken>;
   Blocks, Brackets: TList<TOpen>;
   Closed: TList<TAtlasPairBlock>;
-  Index: Integer;
+  /// <summary>Token-Indizes von Routinenköpfen, deren Rumpf noch kommt (#653).</summary>
+  Headers: TList<Integer>;
+  Index, Owner: Integer;
   Token: TLexToken;
   Word, Previous, Next: string;
   Open: TOpen;
@@ -245,6 +266,7 @@ var
     Pair.Depth := ADepth;
     Pair.Unpaired := AUnpaired;
     Pair.IsWord := Tokens[AIndex].IsWord;
+    Pair.Owner := False;
     Result := Results.Add(Pair);
   end;
 
@@ -286,9 +308,11 @@ var
   begin
     Block.OpenLine := Results.List[Blocks.Last.Index].Line;
     Block.OpenCharacter := Results.List[Blocks.Last.Index].Character;
-    Blocks.Delete(Blocks.Count - 1);
     Block.CloseLine := Tokens[AIndex].Line;
     Block.CloseCharacter := Tokens[AIndex].Character;
+    Block.OwnerLine := Blocks.Last.OwnerLine;
+    Block.OwnerCharacter := Blocks.Last.OwnerCharacter;
+    Blocks.Delete(Blocks.Count - 1);
     Block.Depth := Blocks.Count;
     Closed.Add(Block);
     Emit(AIndex, Blocks.Count, False);
@@ -317,12 +341,131 @@ var
     Result := False;
   end;
 
+  /// <summary>AIndex als Besitzer des Blocks AOpen in der Tiefe ADepth (#653).</summary>
+  procedure AddOwner(var AOpen: TOpen; AIndex, ADepth: Integer);
+  var
+    Added: Integer;
+  begin
+    Added := Emit(AIndex, ADepth, False);
+    Results.List[Added].Owner := True;
+    AOpen.Owners := AOpen.Owners + [Added];
+    if (Tokens[AIndex].Line < AOpen.OwnerLine) or
+      ((Tokens[AIndex].Line = AOpen.OwnerLine) and (Tokens[AIndex].Character < AOpen.OwnerCharacter)) then
+    begin
+      AOpen.OwnerLine := Tokens[AIndex].Line;
+      AOpen.OwnerCharacter := Tokens[AIndex].Character;
+    end;
+  end;
+
+  function IsStop(const AText: string): Boolean;
+  begin
+    Result := (AText = ';') or (AText = 'begin') or (AText = 'end') or (AText = 'then') or (AText = 'do') or
+      (AText = 'else') or (AText = 'of') or (AText = 'try') or (AText = 'finally') or (AText = 'except') or
+      (AText = 'repeat') or (AText = 'until') or (AText = 'asm');
+  end;
+
+  /// <summary>Rückwärts ab AFrom das erste der Wörter AWords; -1 bei einem Ende der Anweisung davor.</summary>
+  function FindBack(AFrom: Integer; const AWords: array of string): Integer;
+  var
+    Text, Candidate: string;
+  begin
+    while AFrom >= 0 do
+    begin
+      Text := TextAt(AFrom);
+      for Candidate in AWords do
+        if Text = Candidate then
+          Exit(AFrom);
+      if IsStop(Text) then
+        Exit(-1);
+      Dec(AFrom);
+    end;
+    Result := -1;
+  end;
+
+  /// <summary>Besitzer des Öffners am Token AIndex: Anweisung davor bzw. "of" hinter case.</summary>
+  procedure AddOwners(var AOpen: TOpen; AIndex: Integer);
+  var
+    Depth, Found, Parens: Integer;
+    Before: string;
+  begin
+    Depth := Blocks.Count;
+    if AOpen.Word = 'case' then
+    begin
+      Parens := 0;
+      Found := AIndex + 1;
+      while Found <= High(Tokens) do
+      begin
+        Before := TextAt(Found);
+        if (Before = '(') or (Before = '[') then
+          Inc(Parens)
+        else if (Before = ')') or (Before = ']') then
+          Dec(Parens)
+        else if (Parens = 0) and (Before = 'of') then
+        begin
+          AddOwner(AOpen, Found, Depth);
+          Exit;
+        end
+        else if (Before = ';') or (Before = 'begin') or (Before = 'end') then
+          Exit;
+        Inc(Found);
+      end;
+      Exit;
+    end;
+    if (AOpen.Word <> 'begin') and (AOpen.Word <> 'asm') then
+      Exit;
+    Before := TextAt(AIndex - 1);
+    if Before = 'then' then
+    begin
+      Found := FindBack(AIndex - 2, ['if']);
+      if Found < 0 then
+        Exit;
+      AddOwner(AOpen, AIndex - 1, Depth);
+      AddOwner(AOpen, Found, Depth);
+      if TextAt(Found - 1) = 'else' then
+        AddOwner(AOpen, Found - 1, Depth);
+    end
+    else if Before = 'do' then
+    begin
+      Found := FindBack(AIndex - 2, ['for', 'while', 'with', 'on']);
+      if Found < 0 then
+        Exit;
+      AddOwner(AOpen, AIndex - 1, Depth);
+      AddOwner(AOpen, Found, Depth);
+    end
+    else if Before = 'else' then
+      AddOwner(AOpen, AIndex - 1, Depth)
+    else if (Depth = 0) and (Headers.Count > 0) then
+    begin
+      // Rumpf der zuletzt begonnenen Routine (lokale Routinen kommen vor dem äußeren Rumpf).
+      Found := Headers.Last;
+      Headers.Delete(Headers.Count - 1);
+      AddOwner(AOpen, Found, Depth);
+      if TextAt(Found - 1) = 'class' then
+        AddOwner(AOpen, Found - 1, Depth);
+    end;
+  end;
+
+  function IsRoutineHeader: Boolean;
+  begin
+    Result := False;
+    if Blocks.Count > 0 then
+      Exit;
+    Previous := TextAt(Index - 1);
+    if (Previous = '=') or (Previous = ':') or (Previous = 'to') or (Previous = 'of') or (Previous = '(') or
+      (Previous = ',') then
+      Exit;
+    if Word = 'operator' then
+      Exit(Previous = 'class');
+    Result := (Word = 'procedure') or (Word = 'function') or (Word = 'constructor') or (Word = 'destructor');
+  end;
+
 begin
   Tokens := Lex(AText);
   Results := TList<TAtlasPairToken>.Create;
   Blocks := TList<TOpen>.Create;
   Brackets := TList<TOpen>.Create;
   Closed := TList<TAtlasPairBlock>.Create;
+  Headers := TList<Integer>.Create;
   try
     for Index := 0 to High(Tokens) do
     begin
@@ -350,10 +493,20 @@ begin
       if Token.Plain then
         Continue;
       Word := LowerCase(Token.Text);
+      if IsRoutineHeader then
+        Headers.Add(Index)
+      else if Word = 'implementation' then
+        Headers.Clear
+      else if ((Word = 'forward') or (Word = 'external')) and (Blocks.Count = 0) and (Headers.Count > 0) then
+        Headers.Delete(Headers.Count - 1);
       if Opens then
       begin
         Open.Word := Word;
         Open.Index := Emit(Index, Blocks.Count, False);
+        Open.Owners := nil;
+        Open.OwnerLine := Token.Line;
+        Open.OwnerCharacter := Token.Character;
+        AddOwners(Open, Index);
         Blocks.Add(Open);
       end
       else if Word = 'end' then
@@ -377,7 +530,11 @@ begin
     end;
     // Offen geblieben: unpaarig.
     for Open in Blocks do
+    begin
       Results.List[Open.Index].Unpaired := True;
+      for Owner in Open.Owners do
+        Results.List[Owner].Unpaired := True;
+    end;
     for Open in Brackets do
       Results.List[Open.Index].Unpaired := True;
     Results.Sort(TComparer<TAtlasPairToken>.Construct(
@@ -390,6 +547,7 @@ begin
     Result := Results.ToArray;
     ABlocks := Closed.ToArray;
   finally
+    Headers.Free;
     Closed.Free;
     Brackets.Free;
     Blocks.Free;

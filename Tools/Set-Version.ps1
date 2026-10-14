@@ -1,9 +1,9 @@
 ﻿<#
 .SYNOPSIS
-    Setzt die Version von Server und VS-Code-Erweiterung (#83).
+    Setzt die Version von Server und Claude-Code-Plugin (#83).
 
 .DESCRIPTION
-    Schreibt die Version in TProductVersion, TAtlasPluginVersion und package.json/package-lock.json
+    Schreibt die Version in TProductVersion, TAtlasPluginVersion, plugin.json und marketplace.json
     und benennt den Abschnitt "## [Unveröffentlicht]" in CHANGELOG.md in
     "## [<Version>] - <Datum>" um, mit neuem leeren Abschnitt darüber.
     Danach committen und das Tag v<Version> pushen; den Rest erledigt
@@ -35,15 +35,6 @@ $Text = [IO.File]::ReadAllText($Unit) -replace "(Version\s*=\s*')[^']+(')", "`${
 $PluginUnit = Join-Path $Root 'Packages/Atlas.IDE.Expert/Source/Core/Product/Atlas.Core.Product.Version.pas'
 $Text = [IO.File]::ReadAllText($PluginUnit) -replace "(Version\s*=\s*')[^']+(')", "`${1}$Version`${2}"
 [IO.File]::WriteAllText($PluginUnit, $Text, $Utf8Bom)
-
-Push-Location (Join-Path $Root 'Editors/VSCode')
-try {
-    npm version $Version --no-git-tag-version --allow-same-version | Out-Null
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-}
-finally {
-    Pop-Location
-}
 
 # Claude-Code-Plugin und Marketplace-Eintrag (#101).
 foreach ($Json in @('Editors/ClaudeCode/atlas/.claude-plugin/plugin.json', '.claude-plugin/marketplace.json')) {

@@ -140,7 +140,14 @@ type
     GlobalSettingsOpenFile,
     MenuGlobalSettings,
     SymbolTitle,
-    SymbolDescription);
+    SymbolDescription,
+    SettingsPairOwners, SettingsPairGuideWidth, MenuToggleOwners,
+    SettingsProblemsList,
+    SettingsTabGeneral, SettingsTabCompletion, SettingsTabEditor, SettingsTabIndex, SettingsTabCompiler,
+    SettingsTabRobustness, SettingsPairGuideOpacity,
+    SettingsTabColors, SettingsPairColorsLight, SettingsPairColorsDark, SettingsPairColorsReset,
+    SettingsPairColorsHint, TargetFooter, UnavailableHint,
+    SettingsTabInsert, SettingsTabCommands, SettingsTabStartup, SettingsTabUndo);
 
   TAtlasStrings = class
   private class var
@@ -511,7 +518,17 @@ const
      'settings.json öffnen',
      'Globale Einstellungen (settings.json)…',
      'Atlas IDE Expert %s',
-     'Sprachserver, Prüfregeln, Vervollständigung und Refactoring für Delphi.'),
+     'Sprachserver, Prüfregeln, Vervollständigung und Refactoring für Delphi.',
+     'Anweisung mitfärben (if, then, else, for, do, procedure …); Blocklinien ab der Anweisung',
+     'Breite der Blocklinien (Pixel bei 100 %)', 'Anweisungen mitfärben',
+     'Probleme im Meldungsfenster auflisten (Reiter „Atlas-Probleme“)',
+     'Allgemein', 'Vervollständigung', 'Editor', 'Index', 'Compiler', 'Robustheit',
+     'Deckkraft der Blocklinien (%)',
+     'Farben', 'Paarfarben im hellen Thema', 'Paarfarben im dunklen Thema', 'Standardfarben',
+     'Farbe anklicken zum Ändern; die Reihenfolge gilt von außen nach innen.',
+     'Ziel: %s', 'Nicht verfügbar: Die Bedingung „%s“ ist für %s nicht erfüllt. Es gelten die Symbole der Plattform ' +
+     'und des Compilers sowie die Bedingungen aus den Projektoptionen der aktiven Konfiguration (z. B. DEBUG).',
+     'Einfügen', 'Befehle', 'Start und Updates', 'Rückgängig'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -859,7 +876,17 @@ const
      'Open settings.json',
      'Global settings (settings.json)…',
      'Atlas IDE Expert %s',
-     'Language server, code checks, completion and refactoring for Delphi.'));
+     'Language server, code checks, completion and refactoring for Delphi.',
+     'Colour the statement too (if, then, else, for, do, procedure …); block guides start at the statement',
+     'Width of block guides (pixels at 100 %)', 'Colour statements',
+     'List problems in the message view (tab “Atlas-Probleme”)',
+     'General', 'Completion', 'Editor', 'Index', 'Compiler', 'Robustness',
+     'Opacity of block guides (%)',
+     'Colours', 'Pair colours (light theme)', 'Pair colours (dark theme)', 'Default colours',
+     'Click a colour to change it; the order runs from outermost to innermost.',
+     'Target: %s', 'Not available: the condition “%s” is not met for %s. The symbols of the platform ' +
+     'and compiler and the conditionals from the project options of the active configuration (e.g. DEBUG) apply.',
+     'Insertion', 'Commands', 'Startup and updates', 'Undo'));
 
 { TAtlasStrings }
 
