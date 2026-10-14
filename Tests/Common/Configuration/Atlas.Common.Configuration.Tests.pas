@@ -10,6 +10,8 @@ type
   TConfigurationParserTests = class
   public
     [Test]
+    procedure MergesLayersPerKey;
+    [Test]
     procedure ReadsAllSettings;
     [Test]
     procedure EmptyObjectGivesDefaults;
@@ -137,6 +139,25 @@ begin
   Assert.AreEqual(1252, TConfigurationParser.ParseLayered('{"encoding": "1250"}', '{"encoding": "cp1252"}',
     Issues).DefaultEncoding);
   Assert.AreEqual(1250, TConfigurationParser.ParseLayered('{"encoding": "1250"}', '{}', Issues).DefaultEncoding);
+end;
+
+procedure TConfigurationParserTests.MergesLayersPerKey;
+var
+  Issues: TArray<TConfigurationIssue>;
+  Settings: TServerSettings;
+begin
+  // #227: globale Datei unter den Editor-Einstellungen; Objekte je Schlüssel, Listen ersetzt.
+  Assert.AreEqual('', TConfigurationParser.MergeText('', ''));
+  Assert.AreEqual('{"a": 1}', TConfigurationParser.MergeText('', '{"a": 1}'));
+  Assert.AreEqual('{"a": 1}', TConfigurationParser.MergeText('{"a": 1}', '  '));
+  Assert.AreEqual('{"a": 1}', TConfigurationParser.MergeText('{"a": 1', '{"a": 1}'));
+  Assert.AreEqual('{"b": 2, "a": 3}', TConfigurationParser.MergeText('{"a": 1, "b": 2}', '{"a": 3}'));
+  Assert.AreEqual('{"x": ["c"], "r": {"q": "error", "p": "off"}}', TConfigurationParser.MergeText(
+    '// global'#10'{"x": ["a", "b"], "r": {"p": "warning", "q": "error"}}', '{"x": ["c"], "r": {"p": "off"}}'));
+  Assert.AreEqual('{"k\"y": 1}', TConfigurationParser.MergeText('{"k\"y": 1}', '{}'));
+  Settings := TConfigurationParser.Parse(TConfigurationParser.MergeText('{"format": {"indentSize": 4, ' +
+    '"useTabs": true}}', '{"format": {"indentSize": 3}}'), Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
 end;
 
 procedure TConfigurationParserTests.ReadsAllSettings;

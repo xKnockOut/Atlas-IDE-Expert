@@ -76,6 +76,7 @@
         <DCCReference Include="Windows\Compiler\Atlas.Windows.Compiler.Adapters.ProcessRunner.Tests.pas"/>
         <DCCReference Include="Common\Documents\Atlas.Common.Documents.Providers.DocumentStore.Tests.pas"/>
         <DCCReference Include="Common\Documents\Atlas.Common.Documents.Uris.Tests.pas"/>
+        <DCCReference Include="Common\Documents\Atlas.Common.Documents.ChangeTracker.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.NameIndex.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.CacheHousekeeping.Tests.pas"/>
@@ -121,6 +122,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IndexRefresh.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WorkspaceFolders.Tests.pas"/>
         <DCCReference Include="Windows\Documents\Atlas.Windows.Documents.PathCanonicalizer.Tests.pas"/>
+        <DCCReference Include="Windows\Documents\Atlas.Windows.Documents.FileWatcher.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Lexer.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Parser.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.TreeCache.Tests.pas"/>
@@ -131,6 +133,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SyntaxDiagnostics.Tests.pas"/>
         <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Configuration.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SettingsCommands.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DocumentSymbols.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.FoldingRanges.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SelectionRanges.Tests.pas"/>

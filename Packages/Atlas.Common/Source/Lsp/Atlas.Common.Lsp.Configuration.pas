@@ -8,10 +8,14 @@
 //   publishDiagnostics gemeldet, schon beim Tippen.
 // - Ändert sich die Datei des Arbeitsbereichs im Editor, gelten die neuen
 //   Einstellungen sofort; nach dem Schließen gilt wieder der Stand auf der
-//   Platte. Änderungen außerhalb des Editors folgen mit #22.
+//   Platte. Änderungen außerhalb des Editors meldet FileChanged (Dateibeobachter
+//   des Servers bzw. didChangeWatchedFiles, #227).
 // - Einstellungen aus dem Editor kommen über workspace/didChangeConfiguration
 //   (Abschnitt "atlas"). atlas.json hat je Schlüssel Vorrang
 //   (TConfigurationParser.ParseLayered).
+// - Darunter liegt die globale Benutzerdatei (%APPDATA%\Atlas\settings.json,
+//   #227), die die Komposition über SetGlobalSettings übergibt: global <
+//   Editor < atlas.json.
 
 interface
 
@@ -47,6 +51,7 @@ type
     // Nur im Thread der Nachrichtenschleife benutzt.
     FFileText: string;
     FEditorText: string;
+    FGlobalText: string;
     procedure Recompute;
     procedure HandleDidChangeConfiguration(const AParams: TJSONValue);
     procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
@@ -67,6 +72,12 @@ type
     procedure DocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
     /// <summary>Übernimmt Editor-Einstellungen (JSON des Abschnitts, '' = keine).</summary>
     procedure SetEditorSettings(const AText: string);
+    /// <summary>Übernimmt die globale Benutzerdatei (#227, Text im Format von atlas.json, '' = keine) als
+    /// unterste Ebene.</summary>
+    procedure SetGlobalSettings(const AText: string);
+    /// <summary>Eine Datei hat sich außerhalb des Editors geändert: Ist es die Konfigurationsdatei dieses
+    /// Arbeitsbereichs und nicht im Editor geöffnet, wird sie neu gelesen (True).</summary>
+    function FileChanged(const AFileName: string): Boolean;
     /// <summary>Liest atlas.json aus ARootPath; ohne Datei gelten die Vorgaben.</summary>
     procedure LoadWorkspace(const ARootPath: string);
     /// <summary>Wurzelordner aus den initialize-Parametern (rootUri, workspaceFolders, rootPath); sonst ''.</summary>
@@ -81,10 +92,15 @@ type
     property RootPath: string read FRootPath;
     /// <summary>Gelesene Datei (atlas.json oder die frühere), '' ohne; für den Fehlerbericht (#108).</summary>
     property FileName: string read FFileName;
+    /// <summary>atlas.json und die frühere Datei des Arbeitsbereichs, auch wenn es sie nicht gibt; für den
+    /// Dateibeobachter (#227).</summary>
+    property PrimaryFileName: string read FPrimaryFileName;
+    property LegacyFileName: string read FLegacyFileName;
     /// <summary>Text der Datei bzw. des Editor-Abschnitts, aus dem Settings entsteht; nur im Thread der
     /// Nachrichtenschleife lesen.</summary>
     property FileText: string read FFileText;
     property EditorText: string read FEditorText;
+    property GlobalText: string read FGlobalText;
     /// <summary>Wird nach jeder Übernahme neuer Einstellungen aufgerufen.</summary>
     property OnChanged: TConfigurationChangedEvent read FOnChanged write FOnChanged;
   end;
@@ -140,7 +156,8 @@ var
   Ignored: TArray<TConfigurationIssue>;
 begin
   // Die Meldungen zur Datei sind schon veröffentlicht.
-  Apply(TConfigurationParser.ParseLayered(FEditorText, FFileText, Ignored));
+  Apply(TConfigurationParser.ParseLayered(TConfigurationParser.MergeText(FGlobalText, FEditorText), FFileText,
+    Ignored));
 end;
 
 procedure TLspConfiguration.HandleDidChangeConfiguration(const AParams: TJSONValue);
@@ -154,6 +171,27 @@ begin
     Exit;
   FEditorText := AText;
   Recompute;
+end;
+
+procedure TLspConfiguration.SetGlobalSettings(const AText: string);
+begin
+  if AText = FGlobalText then
+    Exit;
+  FGlobalText := AText;
+  Recompute;
+end;
+
+function TLspConfiguration.FileChanged(const AFileName: string): Boolean;
+var
+  Document: ITextDocument;
+begin
+  Result := (AFileName <> '') and (SameText(AFileName, FPrimaryFileName) or SameText(AFileName, FLegacyFileName));
+  if not Result then
+    Exit;
+  // Im Editor geöffnet: Dort gilt der Text des Editors, bis er schließt.
+  if (FFileName <> '') and FStore.TryGet(TDocumentUris.FromPath(FFileName), Document) then
+    Exit(False);
+  LoadFromDisk;
 end;
 
 procedure TLspConfiguration.DocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);

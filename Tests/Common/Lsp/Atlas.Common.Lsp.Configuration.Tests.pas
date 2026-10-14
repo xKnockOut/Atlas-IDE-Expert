@@ -43,6 +43,10 @@ type
     procedure AppliesEditorSettingsBelowFile;
     [Test]
     procedure TakesIndexFromInitializationOptions;
+    [Test]
+    procedure GlobalFileIsLowestLayer;
+    [Test]
+    procedure ReloadsChangedFileUnlessOpen;
   end;
 
 implementation
@@ -247,6 +251,50 @@ begin
   finally
     Options.Free;
   end;
+end;
+
+procedure TLspConfigurationTests.GlobalFileIsLowestLayer;
+begin
+  // #227: %APPDATA%\Atlas\settings.json unter Editor-Einstellungen und atlas.json.
+  FDiskText := '{"platform": "Win64"}';
+  FConfiguration.LoadWorkspace(Root);
+  FConfiguration.SetGlobalSettings('{"platform": "Win32", "config": "Release", "language": "en", ' +
+    '"rules": {"empty-except": "off", "with-statement": "error"}}');
+  Assert.AreEqual('Win64', FConfiguration.Settings.Platform);
+  Assert.AreEqual('Release', FConfiguration.Settings.Config);
+  Assert.AreEqual('en', FConfiguration.Settings.Language);
+  FConfiguration.SetEditorSettings('{"config": "Debug", "rules": {"empty-except": "warning"}}');
+  Assert.AreEqual('Debug', FConfiguration.Settings.Config);
+  Assert.AreEqual('en', FConfiguration.Settings.Language);
+  // Regeln je Id: die des Editors gewinnt, die übrige globale bleibt.
+  Assert.AreEqual(2, Integer(Length(FConfiguration.Settings.Rules)));
+  FConfiguration.SetGlobalSettings('');
+  Assert.AreEqual('de', FConfiguration.Settings.Language);
+  // Kaputte globale Datei: wie keine.
+  FConfiguration.SetGlobalSettings('{"language": ');
+  Assert.AreEqual('de', FConfiguration.Settings.Language);
+end;
+
+procedure TLspConfigurationTests.ReloadsChangedFileUnlessOpen;
+var
+  Before: Integer;
+begin
+  FDiskText := '{"platform": "Win64"}';
+  FConfiguration.LoadWorkspace(Root);
+  // Von außen geändert (Dialog des Plugins, #227): ohne Neustart neu gelesen.
+  FDiskText := '{"platform": "Win32"}';
+  Assert.IsTrue(FConfiguration.FileChanged(Root + '\' + ConfigurationFileName));
+  Assert.AreEqual('Win32', FConfiguration.Settings.Platform);
+  // Andere Dateien lassen die Einstellungen in Ruhe.
+  Before := FChanges;
+  Assert.IsFalse(FConfiguration.FileChanged('c:\Anderes\atlas.json'));
+  Assert.IsFalse(FConfiguration.FileChanged(''));
+  Assert.AreEqual(Before, FChanges);
+  // Im Editor geöffnet: Der Text des Editors gilt.
+  FStore.Open(ConfigUri, 'json', 1, '{"platform": "Linux64"}');
+  FDiskText := '{"platform": "Win32"}';
+  Assert.IsFalse(FConfiguration.FileChanged(Root + '\' + ConfigurationFileName));
+  Assert.AreEqual('Linux64', FConfiguration.Settings.Platform);
 end;
 
 initialization

@@ -33,6 +33,10 @@ type
     procedure KeepsOrderOfNotificationsAndRequests;
     [Test]
     procedure RaisesTransportErrorOfBrokenStream;
+    [Test]
+    procedure PostedMessageRunsBeforeRemainingInput;
+    [Test]
+    procedure PostWithoutLoopFreesMessage;
   end;
 
 implementation
@@ -356,6 +360,70 @@ begin
         RunConnectionOn(TJsonRpcTestSupport.RawInput('Content-Length: abc'#13#10#13#10'{}'), Dispatcher, nil).Free;
       end,
       EJsonRpcTransportError);
+  finally
+    Dispatcher.Free;
+  end;
+end;
+
+procedure TJsonRpcConnectionTests.PostedMessageRunsBeforeRemainingInput;
+var
+  Dispatcher: TJsonRpcDispatcher;
+  Responses: TObjectList<TJSONObject>;
+  Connection: TJsonRpcConnection;
+  Order: string;
+begin
+  // Eigene Nachrichten (#227, Dateibeobachter) laufen in der Schleife vor dem Rest der Eingabe.
+  Order := '';
+  Dispatcher := CreateEchoDispatcher;
+  try
+    Connection := nil;
+    Dispatcher.RegisterNotification('first',
+      procedure(const AParams: TJSONValue)
+      begin
+        Order := Order + 'first ';
+        Assert.IsTrue(Connection.Post(TJSONObject.ParseJSONValue(
+          '{"jsonrpc":"2.0","method":"posted","params":{"n":1}}') as TJSONObject));
+        Assert.IsTrue(Connection.Post(TJSONObject.ParseJSONValue(
+          '{"jsonrpc":"2.0","method":"posted","params":{"n":2}}') as TJSONObject));
+      end);
+    Dispatcher.RegisterNotification('posted',
+      procedure(const AParams: TJSONValue)
+      begin
+        Order := Order + 'posted' + IntToStr(AParams.GetValue<Integer>('n')) + ' ';
+      end);
+    Dispatcher.RegisterNotification('last',
+      procedure(const AParams: TJSONValue)
+      begin
+        Order := Order + 'last';
+      end);
+    Responses := RunConnection([
+      '{"jsonrpc":"2.0","method":"first"}',
+      '{"jsonrpc":"2.0","method":"last"}'], Dispatcher,
+      procedure(AConnection: TJsonRpcConnection)
+      begin
+        Connection := AConnection;
+      end);
+    Responses.Free;
+  finally
+    Dispatcher.Free;
+  end;
+  Assert.AreEqual('first posted1 posted2 last', Order);
+end;
+
+procedure TJsonRpcConnectionTests.PostWithoutLoopFreesMessage;
+var
+  Dispatcher: TJsonRpcDispatcher;
+  Connection: TJsonRpcConnection;
+begin
+  Dispatcher := TJsonRpcDispatcher.Create;
+  try
+    Connection := TJsonRpcConnection.Create(nil, Dispatcher);
+    try
+      // Ohne Run: verworfen und freigegeben (der Leck-Monitor prüft das).
+      Assert.IsFalse(Connection.Post(TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"x"}') as TJSONObject));
+    finally
+      Connection.Free;
+    end;
   finally
     Dispatcher.Free;
   end;

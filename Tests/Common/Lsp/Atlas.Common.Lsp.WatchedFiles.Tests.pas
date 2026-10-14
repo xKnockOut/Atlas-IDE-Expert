@@ -19,6 +19,8 @@ type
     procedure BuildsRegistration;
     [Test]
     procedure RecognizesProjectFiles;
+    [Test]
+    procedure BuildsNotificationForOwnWatcher;
   end;
 
 implementation
@@ -105,6 +107,25 @@ begin
   Assert.IsTrue(TLspWatchedFiles.IsProjectFile('C:\P\Paket.dpk'));
   Assert.IsTrue(TLspWatchedFiles.IsProjectFile('C:\P\Gruppe.groupproj'));
   Assert.IsFalse(TLspWatchedFiles.IsProjectFile('C:\P\Unit1.pas'));
+end;
+
+procedure TLspWatchedFilesTests.BuildsNotificationForOwnWatcher;
+var
+  Message: TJSONObject;
+  Changes: TArray<TFileChange>;
+begin
+  // Eigener Beobachter des Servers (#227): dieselbe Notification wie vom Client.
+  Message := TLspWatchedFiles.Notification(['c:\Projekt\atlas.json', 'c:\Benutzer\settings.json']);
+  try
+    Assert.AreEqual(TLspWatchedFiles.Method, Message.GetValue<string>('method'));
+    Assert.IsNull(Message.GetValue('id'));
+    Changes := TLspWatchedFiles.ParseChanges(Message.GetValue('params'));
+  finally
+    Message.Free;
+  end;
+  Assert.AreEqual(2, Integer(Length(Changes)));
+  Assert.IsTrue(SameText('c:\Projekt\atlas.json', Changes[0].FileName), Changes[0].FileName);
+  Assert.IsTrue(Changes[1].Kind = TFileChangeKind.Changed);
 end;
 
 initialization

@@ -22,6 +22,11 @@ type
     /// AIssues betreffen nur die Datei.</summary>
     class function ParseLayered(const AEditorText, AFileText: string;
       out AIssues: TArray<TConfigurationIssue>): TServerSettings; static;
+    /// <summary>Führt zwei Ebenen im Format von atlas.json zu einem JSON-Text zusammen (#227: globale
+    /// Benutzerdatei unter den Editor-Einstellungen). AUpper hat je Schlüssel Vorrang; Objekte (rules,
+    /// format …) werden je Schlüssel zusammengeführt, Listen ersetzt. Leerer oder ungültiger Text zählt als
+    /// nicht da.</summary>
+    class function MergeText(const ALower, AUpper: string): string; static;
     /// <summary>Schweregrad aus dem Text ("off", "hint", "info", "information", "warning", "error").</summary>
     class function TryParseSeverity(const AValue: string; out ASeverity: TRuleSeverity): Boolean; static;
     /// <summary>Konfidenz aus dem Text ("low", "medium", "high").</summary>
@@ -1358,6 +1363,94 @@ begin
       Result := Result + [EditorRule];
   end;
   Result := Result + AFile;
+end;
+
+function QuoteKey(const AKey: string): string;
+var
+  Ch: Char;
+begin
+  Result := '"';
+  for Ch in AKey do
+    if (Ch = '"') or (Ch = '\') then
+      Result := Result + '\' + Ch
+    else if Ord(Ch) < 32 then
+      Result := Result + Format('\u%.4x', [Ord(Ch)])
+    else
+      Result := Result + Ch;
+  Result := Result + '"';
+end;
+
+function NodeText(const AText: string; ANode: TJsonNode): string;
+begin
+  Result := Copy(AText, ANode.Start + 1, ANode.Stop - ANode.Start);
+end;
+
+function MergeObjects(const ALowerText: string; ALower: TJsonNode; const AUpperText: string;
+  AUpper: TJsonNode): string;
+var
+  Index, Other: Integer;
+  Parts: TArray<string>;
+  Found: Boolean;
+begin
+  Parts := nil;
+  for Index := 0 to ALower.Count - 1 do
+  begin
+    Found := False;
+    for Other := 0 to AUpper.Count - 1 do
+      if AUpper.Keys[Other] = ALower.Keys[Index] then
+        Found := True;
+    if not Found then
+      Parts := Parts + [QuoteKey(ALower.Keys[Index]) + ': ' + NodeText(ALowerText, ALower[Index])];
+  end;
+  for Index := 0 to AUpper.Count - 1 do
+  begin
+    Other := ALower.Count - 1;
+    while (Other >= 0) and (ALower.Keys[Other] <> AUpper.Keys[Index]) do
+      Dec(Other);
+    if (Other >= 0) and (ALower[Other].Kind = TJsonKind.Object_) and (AUpper[Index].Kind = TJsonKind.Object_) then
+      Parts := Parts + [QuoteKey(AUpper.Keys[Index]) + ': ' +
+        MergeObjects(ALowerText, ALower[Other], AUpperText, AUpper[Index])]
+    else
+      Parts := Parts + [QuoteKey(AUpper.Keys[Index]) + ': ' + NodeText(AUpperText, AUpper[Index])];
+  end;
+  Result := '{' + string.Join(', ', Parts) + '}';
+end;
+
+function ParseObject(const AText: string): TJsonNode;
+begin
+  Result := nil;
+  if Trim(AText) = '' then
+    Exit;
+  try
+    Result := TJsonTree.Parse(AText);
+  except
+    on EJsonTreeError do
+      Exit(nil);
+  end;
+  if Result.Kind <> TJsonKind.Object_ then
+    FreeAndNil(Result);
+end;
+
+class function TConfigurationParser.MergeText(const ALower, AUpper: string): string;
+var
+  Lower, Upper: TJsonNode;
+begin
+  Lower := ParseObject(ALower);
+  Upper := ParseObject(AUpper);
+  try
+    if Lower = nil then
+    begin
+      if Upper = nil then
+        Exit('');
+      Exit(AUpper);
+    end;
+    if Upper = nil then
+      Exit(ALower);
+    Result := MergeObjects(ALower, Lower, AUpper, Upper);
+  finally
+    Lower.Free;
+    Upper.Free;
+  end;
 end;
 
 class function TConfigurationParser.ParseLayered(const AEditorText, AFileText: string;

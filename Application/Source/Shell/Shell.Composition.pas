@@ -63,6 +63,7 @@ uses
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Lsp.WorkspaceFolders,
   Atlas.Common.Lsp.Configuration,
+  Atlas.Common.Lsp.SettingsCommands,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
@@ -74,6 +75,7 @@ uses
   Atlas.Common.Diagnostics.Contract,
   Atlas.Common.Index.Scheduler,
   Atlas.Windows.Process.ParentWatcher,
+  Atlas.Windows.Documents.FileWatcher,
   Shell.Workspace,
   Shell.Diagnostics;
 
@@ -153,6 +155,11 @@ type
     FIndexScheduler: TIndexScheduler;
     FWorkspacePriority: Integer;
     FEditorSettings: string;
+    // Globale Benutzerdatei (#227) als unterste Ebene; Pfad, Inhalt und der Beobachter für sie und die
+    // atlas.json aller Ordner. FGlobalSettings nur im Thread der Nachrichtenschleife.
+    FGlobalSettingsFile: string;
+    FGlobalSettings: string;
+    FFileWatcher: TFileWatcher;
     // Compiler-Anbindung (#40): höchstens ein Lauf zugleich, ein weiterer wird vorgemerkt.
     FCompilerResults: TCompilerResults;
     FCompilerProcess: ICompilerProcess;
@@ -225,6 +232,10 @@ type
     procedure HandleDidChangeConfiguration(const AParams: TJSONValue);
     /// <summary>Dateiänderungen von außen: Projektdateien laden das Projekt neu, Quelltexte aktualisieren den Index.</summary>
     procedure HandleWatchedFiles(const AChanges: TArray<TFileChange>);
+    /// <summary>Liest die globale Benutzerdatei und gibt sie allen Ordnern (#227).</summary>
+    procedure LoadGlobalSettings;
+    /// <summary>Gibt dem Dateibeobachter die globale Datei und die atlas.json aller Ordner.</summary>
+    procedure UpdateWatchedSettings;
     class function BuildCapabilities: TJSONObject; static;
     /// <summary>Fehlerbeschreibung mit letzter Nachricht und Stacktrace für das Log.</summary>
     function DescribeFailure(const AError: Exception): string;
@@ -232,6 +243,8 @@ type
     CompileCommand = 'atlas.server.compile';
     SelectBuildCommand = 'atlas.server.selectBuild';
     RebuildIndexCommand = 'atlas.server.rebuildIndex';
+    /// <summary>Globale Benutzerdatei unter %APPDATA% (#227).</summary>
+    GlobalSettingsName = 'Atlas\settings.json';
     /// <summary>Anfragen, die länger laufen, werden abgebrochen und gemeldet.</summary>
     RequestTimeoutMs = 10000;
   public
@@ -239,6 +252,8 @@ type
     destructor Destroy; override;
     /// <summary>Komposition mit stdin/stdout des Prozesses und Logging nach AOptions.</summary>
     class function CreateForStdio(const AOptions: TCommandLineOptions): TServerComposition; static;
+    /// <summary>%APPDATA%\Atlas\settings.json; '' ohne APPDATA.</summary>
+    class function GlobalSettingsPath: string; static;
     /// <summary>Verarbeitet Nachrichten bis exit oder Ende der Eingabe und liefert den Exit-Code.</summary>
     function Run: Integer;
     property Logger: ILogger read FLogger;
@@ -923,6 +938,17 @@ begin
       FLogger.Info('Status:' + sLineBreak + Status.ToMarkdown);
       Result := Status.ToJson;
     end);
+  // Einstellungsdialog des Plugins (#227): Prüfung mit dem Parser des Servers und Regelkatalog.
+  FCommands.Register(TLspSettingsCommands.CheckCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TLspSettingsCommands.Check(AArguments);
+    end);
+  FCommands.Register(TLspSettingsCommands.CatalogCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TLspSettingsCommands.Catalog(TLspSettingsCommands.CatalogEntries(AArguments), FGlobalSettingsFile);
+    end);
   FCommands.Register(TBugReport.Command,
     function(const AArguments: TJSONArray): TJSONValue
     begin
@@ -1194,8 +1220,19 @@ begin
           FDeriveWorkspaces := False;
       if Length(Folders) = 0 then
         FLogger.Info('Kein Arbeitsbereichsordner gemeldet; Ordner werden aus den geöffneten Dateien abgeleitet');
+      // Globale Benutzerdatei (#227) vor dem ersten Ordner; der Server beobachtet sie und die atlas.json
+      // selbst, weil die RAD-Studio-IDE keine Dateiänderungen meldet.
+      FGlobalSettingsFile := GlobalSettingsPath;
+      LoadGlobalSettings;
+      FFileWatcher := TFileWatcher.Create(
+        procedure(const AFiles: TArray<string>)
+        begin
+          // Im Thread der Nachrichtenschleife verarbeiten wie eine Meldung des Clients.
+          FConnection.Post(TLspWatchedFiles.Notification(AFiles));
+        end);
       for Folder in Folders do
         AddWorkspace(Folder);
+      UpdateWatchedSettings;
       FWatchedFiles.RegisterWatchers(FLifecycle.InitializeParams);
     end;
   FConnection := TJsonRpcConnection.Create(FTransport, FDispatcher);
@@ -1218,7 +1255,8 @@ var
 begin
   // Zuerst: Eine laufende Übernahme greift auf die Ordner zu.
   FreeAndNil(FIndexRefresh);
-  // Vor der Verbindung: der Wächter ruft FConnection.Stop.
+  // Vor der Verbindung: Beide Wächter rufen FConnection.
+  FreeAndNil(FFileWatcher);
   FParentWatcher.Free;
   FConnection.Free;
   // Nach der Verbindung laufen keine Anfragen mehr, die das Diagnoselog beobachtet.
@@ -1406,6 +1444,7 @@ begin
       FRequestTimeout := ASettings.RequestTimeoutMs;
       FDiagnostics.ApplySettings(ASettings);
     end;
+  Workspace.Configuration.SetGlobalSettings(FGlobalSettings);
   Workspace.Configuration.SetEditorSettings(FEditorSettings);
   TMonitor.Enter(FWorkspacesLock);
   try
@@ -1413,6 +1452,7 @@ begin
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
+  UpdateWatchedSettings;
   if AProjectFile <> '' then
     FLogger.Info('Arbeitsbereich für Projekt: ' + AProjectFile)
   else
@@ -1493,6 +1533,7 @@ begin
     end;
     Workspace.Free;
   end;
+  UpdateWatchedSettings;
   ProjectLoaded;
 end;
 
@@ -2357,6 +2398,62 @@ begin
     Workspace.Configuration.SetEditorSettings(FEditorSettings);
 end;
 
+class function TServerComposition.GlobalSettingsPath: string;
+var
+  AppData: string;
+begin
+  AppData := GetEnvironmentVariable('APPDATA');
+  if AppData = '' then
+    Exit('');
+  Result := IncludeTrailingPathDelimiter(AppData) + GlobalSettingsName;
+end;
+
+procedure TServerComposition.LoadGlobalSettings;
+var
+  Text: string;
+  FileFormat: TFileFormat;
+  Workspace: TShellWorkspace;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Text := '';
+  if (FGlobalSettingsFile <> '') and FileExists(FGlobalSettingsFile) then
+    try
+      Text := TFileEncoding.LoadFromFile(FGlobalSettingsFile, FileFormat);
+    except
+      // Gerade geschrieben oder gesperrt: Der Beobachter meldet die Datei erneut.
+      on E: Exception do
+        FLogger.Warning('Globale Einstellungen nicht lesbar: ' + E.Message);
+    end;
+  if Text = FGlobalSettings then
+    Exit;
+  FGlobalSettings := Text;
+  if Text <> '' then
+  begin
+    TConfigurationParser.Parse(Text, Issues);
+    FLogger.Info(Format('Globale Einstellungen gelesen (%d Meldungen)', [Length(Issues)]));
+  end;
+  for Workspace in FWorkspaces.ToArray do
+    Workspace.Configuration.SetGlobalSettings(FGlobalSettings);
+end;
+
+procedure TServerComposition.UpdateWatchedSettings;
+var
+  Files: TArray<string>;
+  Workspace: TShellWorkspace;
+begin
+  if FFileWatcher = nil then
+    Exit;
+  Files := [FGlobalSettingsFile];
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    for Workspace in FWorkspaces do
+      Files := Files + [Workspace.Configuration.PrimaryFileName, Workspace.Configuration.LegacyFileName];
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  FFileWatcher.SetFiles(Files);
+end;
+
 procedure TServerComposition.HandleWatchedFiles(const AChanges: TArray<TFileChange>);
 var
   Change: TFileChange;
@@ -2369,7 +2466,16 @@ begin
   Reload := TList<TShellWorkspace>.Create;
   try
     for Change in AChanges do
-      if TLspWatchedFiles.IsProjectFile(Change.FileName) then
+      if (FGlobalSettingsFile <> '') and SameText(Change.FileName, FGlobalSettingsFile) then
+        LoadGlobalSettings
+      else if IsConfigurationFileName(ExtractFileName(Change.FileName)) then
+      begin
+        // atlas.json von außen geändert (#227, etwa im Dialog des Plugins): ohne Neustart übernehmen.
+        for Workspace in FWorkspaces.ToArray do
+          if Workspace.Configuration.FileChanged(Change.FileName) then
+            FLogger.Info(Format('Einstellungen von %s neu gelesen', [Workspace.Root]));
+      end
+      else if TLspWatchedFiles.IsProjectFile(Change.FileName) then
       begin
         TMonitor.Enter(FWorkspacesLock);
         try
