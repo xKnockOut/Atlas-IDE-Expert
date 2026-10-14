@@ -16,6 +16,10 @@
 // in Atlas.IDE.Expert.log neben dem Plugin.
 // Projektgruppe (#648): Die Sitzung meldet dem Server alle Projekte der Gruppe,
 // das aktive zuerst; Änderungen der Gruppe prüft sie höchstens alle zwei Sekunden.
+// Änderungen außerhalb der IDE (#395): Die Ordner der Projekte (Git-Arbeitsverzeichnis,
+// sonst Projektordner) werden beobachtet; gesammelte Änderungen gehen bei der nächsten
+// Anfrage als workspace/didChangeWatchedFiles an den Server (die Probleme-Prüfung
+// fragt alle 250 ms).
 
 interface
 
@@ -26,6 +30,8 @@ uses
   ToolsAPI,
   Atlas.Core.Lsp.Adapters.ServerProcess,
   Atlas.Core.Lsp.Session,
+  Atlas.Core.Files.WatchedChanges,
+  Atlas.Core.Files.Adapters.FolderWatcher,
   Atlas.IDE.Completion.Editor,
   Atlas.IDE.Signature.Editor,
   Atlas.IDE.Hover.Editor,
@@ -43,6 +49,9 @@ type
     FServerFound: Boolean;
     // Zuletzt geprüfte Projektgruppe (#648).
     FProjectsChecked: Cardinal;
+    /// <summary>Änderungen außerhalb der IDE (#395).</summary>
+    FFileChanges: TAtlasWatchedChanges;
+    FFolderWatcher: TAtlasFolderWatcher;
     FDiagnose: Boolean;
     FCompletion: TAtlasEditorCompletion;
     FSignature: TAtlasEditorSignature;
@@ -54,6 +63,10 @@ type
     /// <summary>Projekte der geöffneten Gruppe, aktives zuerst; leer ohne Gruppe (#648).</summary>
     class function GroupProjects: TArray<string>; static;
     procedure RefreshProjects;
+    /// <summary>Beobachtet die Ordner dieser Projekte (#395).</summary>
+    procedure WatchProjects(const AProjects: TArray<string>);
+    /// <summary>Gesammelte Änderungen außerhalb der IDE an den Server (Hauptthread, #395).</summary>
+    procedure FlushFileChanges;
     procedure StopSession;
     procedure ReportError(const AMessage: string);
     procedure Diagnose(const AMessage: string);
@@ -160,6 +173,8 @@ begin
   FEnabled := True;
   FDiagnose := DiagnoseEnabled;
   Diagnose('Plugin geladen: ' + GetModuleName(HInstance));
+  FFileChanges := TAtlasWatchedChanges.Create;
+  FFolderWatcher := TAtlasFolderWatcher.Create(FFileChanges);
   FProblems := TAtlasProblemsController.Create(
     function(AStart: Boolean): TLspSession
     begin
@@ -197,6 +212,9 @@ end;
 
 destructor TAtlasCodeInsightManager.Destroy;
 begin
+  // Hält die Beobachter-Threads an; erst danach darf der Sammler weg.
+  FreeAndNil(FFolderWatcher);
+  FreeAndNil(FFileChanges);
   // Vor der Sitzung: wartet auf laufende Anfragen und meldet Tasten und Beobachter ab.
   FreeAndNil(FHover);
   FreeAndNil(FSignature);
@@ -318,10 +336,12 @@ function TAtlasCodeInsightManager.EnsureSession: Boolean;
 var
   Path, Arguments: string;
   Documents: TArray<TLspOpenDocument>;
+  Projects: TArray<string>;
 begin
   if (FServer <> nil) and FServer.Running and (FSession <> nil) and FSession.Initialized then
   begin
     RefreshProjects;
+    FlushFileChanges;
     Exit(True);
   end;
   // Abgestürzter oder hängender Server: Was die alte Sitzung abgeglichen hatte, bekommt
@@ -340,7 +360,9 @@ begin
   try
     FServer := TLspServerProcess.Create(Path, Arguments);
     FSession := TLspSession.Create(FServer.Client);
-    FSession.SetProjects(GroupProjects);
+    Projects := GroupProjects;
+    FSession.SetProjects(Projects);
+    WatchProjects(Projects);
     FProjectsChecked := GetTickCount;
     FSession.Initialize;
     if Documents <> nil then
@@ -390,16 +412,53 @@ begin
 end;
 
 procedure TAtlasCodeInsightManager.RefreshProjects;
+var
+  Projects: TArray<string>;
 begin
   // Open Tools API nur im Hauptthread.
   if (GetCurrentThreadId <> MainThreadID) or (GetTickCount - FProjectsChecked < 2000) then
     Exit;
   FProjectsChecked := GetTickCount;
   try
-    FSession.SetProjects(GroupProjects);
+    Projects := GroupProjects;
+    FSession.SetProjects(Projects);
+    WatchProjects(Projects);
   except
     on E: Exception do
       Diagnose('Projektgruppe nicht gemeldet: ' + E.Message);
+  end;
+end;
+
+procedure TAtlasCodeInsightManager.WatchProjects(const AProjects: TArray<string>);
+begin
+  try
+    FFolderWatcher.SetRoots(TAtlasWatchedChanges.Roots(AProjects,
+      function(const APath: string): Boolean
+      begin
+        // .git ist ein Ordner, in Worktrees und Submodulen eine Datei.
+        Result := DirectoryExists(APath) or FileExists(APath);
+      end));
+  except
+    on E: Exception do
+      Diagnose('Ordner nicht beobachtet: ' + E.Message);
+  end;
+end;
+
+procedure TAtlasCodeInsightManager.FlushFileChanges;
+var
+  Changes: TArray<TAtlasFileChange>;
+begin
+  if GetCurrentThreadId <> MainThreadID then
+    Exit;
+  Changes := FFileChanges.Take(GetTickCount);
+  if Changes = nil then
+    Exit;
+  try
+    FSession.FilesChanged(Changes);
+    Diagnose(Format('Änderungen außerhalb der IDE gemeldet: %d Dateien', [Length(Changes)]));
+  except
+    on E: Exception do
+      Diagnose('Änderungen außerhalb der IDE nicht gemeldet: ' + E.Message);
   end;
 end;
 

@@ -90,6 +90,7 @@
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Progress.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Client.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Session.pas"/>
+        <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.TextChanges.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Adapters.ServerProcess.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Contract.pas"/>
         <DCCReference Include="Source\Core\Completion\Internals\Atlas.Core.Completion.Internals.Async.pas"/>
@@ -171,6 +172,8 @@
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Structure.pas"/>
         <DCCReference Include="Source\IDE\Files\Atlas.IDE.Files.DirtyExport.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.TextDiff.pas"/>
+        <DCCReference Include="Source\Core\Files\Atlas.Core.Files.WatchedChanges.pas"/>
+        <DCCReference Include="Source\Core\Files\Atlas.Core.Files.Adapters.FolderWatcher.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Painter.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.MessageList.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Controller.pas"/>
