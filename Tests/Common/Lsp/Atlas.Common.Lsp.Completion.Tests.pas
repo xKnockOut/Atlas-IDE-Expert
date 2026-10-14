@@ -85,6 +85,7 @@ type
     procedure OffersMissingInterfaceMethods;
     [Test]
     procedure OffersFormComponentsByNameAndType;
+    [Test]
     procedure OffersGenericInterfaceMethods;
     [Test]
     procedure GroupsByExpectedType;
