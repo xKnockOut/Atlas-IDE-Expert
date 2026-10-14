@@ -4,6 +4,8 @@
 // Bezeichnern und Literalen), Bereich im Quelltext und seine Kinder.
 // Der Baum ist auch für fehlerhaften Code vollständig; übersprungene Token
 // stehen in Knoten der Art Error, Fehler in Diagnostics.
+// Parameter tragen ihren Modifizierer (const, var, out, constref) in
+// Modifier; die Datenflussanalyse braucht ihn für Aufrufe (#143).
 
 interface
 
@@ -45,9 +47,14 @@ type
     // Fehlerbehandlung
     Error);
 
+  /// <summary>Modifizierer eines Parameters; None ohne Angabe (Wertparameter).</summary>
+  TParameterModifier = (None, ConstParam, VarParam, OutParam, ConstRefParam);
+
   TSyntaxNode = class
   private
     FKind: TSyntaxKind;
+    // Steht hinter FKind in dessen Auffüllbytes und vergrößert den Knoten nicht.
+    FModifier: TParameterModifier;
     FName: string;
     FParent: TSyntaxNode;
     FChildren: TObjectList<TSyntaxNode>;
@@ -69,6 +76,8 @@ type
     /// <summary>Setzt den Bereich im Quelltext.</summary>
     procedure SetRange(const AStartPos, AEndPos: TTextPosition; AStartOffset, AEndOffset: Integer);
     property Kind: TSyntaxKind read FKind write FKind;
+    /// <summary>Nur bei Parameter: const, var, out oder constref.</summary>
+    property Modifier: TParameterModifier read FModifier write FModifier;
     /// <summary>Name bei Deklarationen, Text bei Bezeichnern, Literalen und Operatoren.</summary>
     property Name: string read FName write FName;
     property Parent: TSyntaxNode read FParent;

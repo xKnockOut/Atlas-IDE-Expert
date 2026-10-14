@@ -30,5 +30,5 @@ __recovery/
 ModelSupport_*/
 
 # Testergebnisse
-dunitx-results.xml
+dunitx-ergebnisse.xml
 benchmark/

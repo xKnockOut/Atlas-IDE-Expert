@@ -16,7 +16,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Documentation.Contract;
 
 {$SCOPEDENUMS ON}
 
@@ -103,6 +104,9 @@ type
     /// <summary>Gültigkeitsbereich (#488): 1 lokal, 2 Parameter, 3 Mitglied von Self, 4 eigene Unit,
     /// 5 andere Unit; 0 ohne Angabe.</summary>
     Scope: Integer;
+    /// <summary>Verdeckte gleichnamige Deklarationen weiter außen (#488), z. B. "Feld TKunde.Total";
+    /// das Detailpanel nennt sie.</summary>
+    Hides: TArray<string>;
     /// <summary>ResolveData der weiteren Überladungen (#425); die erste ist ResolveData.</summary>
     OverloadData: TArray<string>;
     /// <summary>Routine mit Parametern (#430): beim Übernehmen Klammern ergänzen.</summary>
@@ -180,6 +184,12 @@ type
     Remarks: string;
     Params: TArray<TAtlasDocEntry>;
     Exceptions: TArray<TAtlasDocEntry>;
+    /// <summary>Vollständige XMLDoc (#654); leer bei fremden Servern (dann gelten Summary bis Exceptions).</summary>
+    Doc: TAtlasDoc;
+    /// <summary>Anzeige laut Server (data.atlas.xmlDoc); Known = False ohne Angabe.</summary>
+    Display: TAtlasDocDisplay;
+    /// <summary>Vom gewählten Eintrag verdeckte Deklarationen (#488).</summary>
+    Hides: TArray<string>;
     function IsEmpty: Boolean;
   end;
 
@@ -209,6 +219,12 @@ type
     procedure Query(const AContext: TAtlasContext; const ASink: IAtlasCompletionSink);
     /// <summary>Bricht den laufenden Query ab; seine Senke wird nicht mehr aufgerufen.</summary>
     procedure Cancel;
+  end;
+
+  /// <summary>Quelle mit Namen (#493): Die Sicherung zählt ihre Fehler getrennt und schaltet nur sie ab.</summary>
+  IAtlasNamedProvider = interface
+    ['{4E7B2C19-8D3A-4F6E-B1C5-9A0D7E3F2B68}']
+    function ProviderName: string;
   end;
 
 implementation

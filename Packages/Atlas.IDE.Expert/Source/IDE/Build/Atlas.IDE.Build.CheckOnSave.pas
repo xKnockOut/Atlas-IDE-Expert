@@ -325,6 +325,8 @@ begin
       Run(FCore.Take, False);
   except
     // Keine Exception an die IDE (#493).
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.CheckOnSave, E);
   end;
 end;
 

@@ -105,6 +105,8 @@ begin
     end;
   except
     // Keine Exception an die IDE (#493); die Taste geht dann an den Editor.
+    on E: Exception do
+      TAtlasGuard.Log('Tastatur-Hook: ' + E.ClassName + ': ' + TAtlasGuard.SafeMessage(E.Message));
   end;
   Result := CallNextHookEx(Hook, Code, WParam, LParam);
 end;

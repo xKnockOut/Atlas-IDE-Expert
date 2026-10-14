@@ -196,6 +196,8 @@ begin
   try
     FOwner.Close;
   except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Signature, E);
   end;
 end;
 
@@ -204,6 +206,8 @@ begin
   try
     FOwner.EditorModified(EditView);
   except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Signature, E);
   end;
 end;
 

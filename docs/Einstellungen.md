@@ -25,12 +25,13 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Eingabehilfen | `sortUses` | `false` | atlas.json, Editor (`atlas.sortUses`) | nein | Auswahl | #182, #284 |
 | Eingabehilfen | `usesKeep` | `` | atlas.json, Editor (`atlas.usesKeep`) | nein | Liste | #284 |
 | Prüfregeln | `dfmPropertyRules` | `` | atlas.json, Editor (`atlas.dfmPropertyRules`) | nein | Eigener Editor (Klasse und Property aus dem Index) | #309 |
-| Speicher | `memoryBudgetMb` | `0` | atlas.json, Editor (`atlas.memoryBudgetMb`) | nein | Zahlenfeld (MB) | #185 |
-| Speicher | `index`: `projectGroup`, `searchPaths`, `libraryPaths`, `exclude` | – | atlas.json, Editor (`atlas.index`) | nein | Kontrollkästchen, Liste mit Hinzufügen/Entfernen | #648 |
+| Speicher | `memoryBudgetMb` | `256` | atlas.json, Editor (`atlas.memoryBudgetMb`) | nein | Zahlenfeld (MB) | #185, #492 |
+| Speicher | `index`: `projectGroup`, `searchPaths`, `libraryPaths`, `usages`, `exclude` | – | atlas.json, Editor (`atlas.index`) | nein | Kontrollkästchen, Liste mit Hinzufügen/Entfernen | #648, #492 |
 | Robustheit | `requestTimeoutMs` | `10000` | atlas.json, Editor (`atlas.requestTimeoutMs`) | nein | Zahlenfeld (ms) | #283 |
 | Robustheit | `diagnostics`: `log`, `logDays`, `logMapFile` | – | atlas.json, Editor (`atlas.diagnostics`) | nein | Kontrollkästchen, Zahlenfeld (Tage) | #647 |
 | Editor | `highlight`: `blockPairs`, `directives`, `exitPoints`, `exitKeywords` | – | atlas.json, Editor (`atlas.highlight`) | nein | Kontrollkästchen, Liste | #307 |
 | Editor | `inlayHints`: `parameterNames`, `inferredTypes`, `endMarkers`, `endMarkerMinLines` | – | atlas.json, Editor (`atlas.inlayHints`) | nein | Kontrollkästchen, Zahlenfeld | #35 |
+| Hints | `hints`: `xmlDocFull`, `xmlDocMaxLines` | – | atlas.json, Editor (`atlas.hints`) | nein | Kontrollkästchen, Zahlenfeld | #654 |
 | Editor | `stringLiteral`: `style`, `lineBreak`, `maxLineLength` | – | atlas.json, Editor (`atlas.stringLiteral`) | nein | Auswahl, Zahlenfeld | #312 |
 | Editor | `memberOrder`: `sections`, `members`, `sortFields`, `sortPublished` | – | atlas.json, Editor (`atlas.memberOrder`) | nein | Liste, Kontrollkästchen | #89 |
 | Prüfregeln | `minConfidence` | `"medium"` | atlas.json, Editor (`atlas.minConfidence`) | nein | Auswahl | #144 |
@@ -43,4 +44,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Allgemein | Pfad zu `AtlasServer.exe` | – | VS Code (`atlas.serverPath`) | ja | Datei wählen, Version anzeigen | #12, #49 |
 | Baseline | `atlas-baseline.json` | – | Datei, `--baseline`, `--update-baseline` | nein | Anzahl Einträge, „Baseline neu erzeugen“, „Baseline löschen“ | #97 |
 | Baseline | Unterdrückungen `lsp-ignore` | – | `--suppression-stats` | nein | Übersicht je Regel (nur Anzeige) | #147 |
-| Speicher | Index-Cache löschen | – | `--clear-cache`, Befehl `atlas.server.rebuildIndex` | nein | Knopf „Index-Cache löschen“ | #184 |
+| Speicher | Index-Cache löschen | – | `--clear-cache`, Befehl `atlas.server.clearIndex` (löschen und neu indizieren), `atlas.server.rebuildIndex` (nur neu indizieren) | nein | Knöpfe „Index löschen“ und „Index neu aufbauen“ | #184, #492 |
+| Allgemein | Atlas-Feld in der Statusleiste (`statusField.enabled`), Kurztext (`statusField.showSummary`), ausgeblendete Zeilen (`statusField.hidden`) | an, an, – | Plugin (Registry `StatusField`, `StatusFieldSummary`, `StatusFieldHidden`) | nein | Kontrollkästchen, Kontrollkästchen, Textfeld mit Kennungen | #591 |
+| Allgemein | Schnellschalter (#604): Fenster über dem Statusfeld (Rechtsklick) und Tastenkürzel; Schalter = jede boolesche Einstellung mit `x-quickToggle` (Plugin-Katalog und `atlas.schema.json`) | Strg+Umschalt+Alt+A | Plugin (Registry `QuickToggleKey`, `QuickToggleKeyPriority`) | nein | Taste auf der Seite „Tastenkonflikte“; „Alles aus für diese Sitzung“ ändert keine Einstellung | #604 |
+| Allgemein | Abgesicherter Start nach einem Absturz: Rückfrage (`safeMode.askAfterCrash`), ohne Rückfrage nach zwei Abstürzen (`safeMode.autoAfterRepeatedCrash`), Taste beim Laden (`safeMode.startupKey`: shift, ctrl, none), längste Ladezeit (`safeMode.startupTimeoutMs`), gemerkte Einstellungsstände (`safeMode.keepSettingsHistory`) | an, an, shift, 10000, 5 | Plugin (Registry `SafeAskAfterCrash`, `SafeAutoAfterRepeatedCrash`, `SafeStartupKey`, `SafeStartupTimeoutMs`, `SafeKeepSettingsHistory`); Kommandozeile `-AtlasSafeMode`, Umgebungsvariable `ATLAS_SAFE_MODE=1` | nein | Kontrollkästchen, Kontrollkästchen, Auswahl, Zahl (1000–120000), Zahl (0–50) | #722 |

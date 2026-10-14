@@ -37,7 +37,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.SlashCommands,
-  Atlas.Common.Semantics.NameResolver;
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Lsp.Documentation;
 
 type
   TCompletionContextKind = (None, Scope, Member, UsesClause);
@@ -90,6 +91,10 @@ type
     /// <summary>Gültigkeitsbereich ohne Punkt davor (#488): 1 lokal, 2 Parameter, 3 Mitglied von Self,
     /// 4 eigene Unit, 5 andere Unit; 0 = keine Angabe (nach einem Punkt, Schlüsselwörter …).</summary>
     Scope: Integer;
+    /// <summary>Unit der Deklaration bei Scope 5 (#488): Atlas zeigt sie als Tag.</summary>
+    UnitName: string;
+    /// <summary>Verdeckte gleichnamige Deklarationen weiter außen (#488), z. B. "Feld TKunde.Total".</summary>
+    Hides: TArray<string>;
     /// <summary>Eintrag erzeugt Code statt nur einen Namen: 'override' (#443), 'create' (neue Methode, #444);
     /// Atlas wertet AdditionalEdits dann nicht als uses-Ergänzung.</summary>
     Action: string;
@@ -146,7 +151,7 @@ type
 
   TPostfixOptionsFunc = reference to function(const AUri: string): TPostfixOptions;
 
-  TCompletionReadText = reference to function(const AFileName: string; out AText: string): Boolean;
+  TCompletionReadText = TDocReadText;
 
   TCompletionItems = record
     Items: TArray<TCompletionItem>;
@@ -187,6 +192,7 @@ type
     FReadText: TCompletionReadText;
     FSlashCommandsFor: TSlashCommandsProvider;
     FPostfixFor: TPostfixOptionsFunc;
+    FHintsFor: TDocHintsProvider;
     FNotify: TCompletionNotifyProc;
     FLog: TCompletionLogProc;
     FSnippetSupport: Boolean;
@@ -301,9 +307,11 @@ type
     class function ToJson(const AItems: TArray<TCompletionItem>; AFirstSort: Integer): TJSONArray; overload; static;
     /// <summary>Details zur Deklaration an APosition (Namensposition) in AText für das Detailpanel
     /// von Atlas (#405, #424): declaration, unit, container, visibility, directives, deprecated,
-    /// summary, params, returns, exceptions, remarks. Der Aufrufer übernimmt das Objekt.</summary>
+    /// summary, params, returns, exceptions, remarks als Klartext, dazu documentation strukturiert
+    /// samt Fundorten der Verweise und documentationText (#654). AReadText liest andere Dateien
+    /// für &lt;inheritdoc/&gt;. Der Aufrufer übernimmt das Objekt.</summary>
     class function Details(const AIndex: ISymbolIndex; const AFileName, AText: string;
-      const APosition: TTextPosition): TJSONObject; static;
+      const APosition: TTextPosition; const AReadText: TCompletionReadText = nil): TJSONObject; static;
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
     /// <summary>Liest Dateien für completionItem/resolve; ohne Zuweisung keine Details.</summary>
     property ReadText: TCompletionReadText read FReadText write FReadText;
@@ -316,6 +324,8 @@ type
     property SlashCommandsFor: TSlashCommandsProvider read FSlashCommandsFor write FSlashCommandsFor;
     /// <summary>Postfix-Vorlagen je Dokument (#188); ohne Zuweisung an und mit Inline-Variable.</summary>
     property PostfixFor: TPostfixOptionsFunc read FPostfixFor write FPostfixFor;
+    /// <summary>Anzeige von XMLDoc (#654) als data.atlas.xmlDoc; ohne Zuweisung fehlt das Feld.</summary>
+    property HintsFor: TDocHintsProvider read FHintsFor write FHintsFor;
     /// <summary>Für Teilergebnisse über $/progress (#616); ohne Zuweisung kommt alles in der Antwort.</summary>
     property Notify: TCompletionNotifyProc read FNotify write FNotify;
     /// <summary>Zeiten je Anfrage (#616); ohne Zuweisung keine Messung.</summary>
@@ -1160,7 +1170,11 @@ var
       else if (OwnUnit <> '') and SameText(Member.UnitName, OwnUnit) then
         Scored.Item.Scope := 4
       else
+      begin
         Scored.Item.Scope := 5;
+        Scored.Item.UnitName := Member.UnitName;
+      end;
+    Scored.Item.Hides := Member.Hides;
     for Params in Member.VariantParams do
       if Params <> '' then
         Scored.Item.HasParameters := True;
@@ -1440,6 +1454,49 @@ var
       AResolver.NameFilter := nil;
   end;
 
+  /// <summary>Namen des eigenen Bereichs, die gleichnamige Deklarationen aus uses verdecken (#488): vor dem
+  /// Senden der ersten Stufe vermerken, die zweite bringt diese Namen nicht mehr.</summary>
+  procedure MarkUsedShadows;
+  var
+    Names: TDictionary<string, Integer>;
+    Shadows: TArray<TResolvedSymbol>;
+    Shadow: TResolvedSymbol;
+    Index: Integer;
+    Text: string;
+  begin
+    Names := TDictionary<string, Integer>.Create;
+    try
+      for Index := 0 to List.Count - 1 do
+        if (List[Index].Item.Scope >= 1) and (List[Index].Item.Scope <= 4) then
+          Names.AddOrSetValue(UpperCase(List[Index].Item.Name), Index);
+      if Names.Count = 0 then
+        Exit;
+      AResolver.NameFilter :=
+        function(const AName: string): Boolean
+        begin
+          Result := Names.ContainsKey(UpperCase(AName));
+        end;
+      try
+        Shadows := AResolver.UsedScopeShadows;
+      finally
+        AResolver.NameFilter := nil;
+      end;
+      for Shadow in Shadows do
+        if Names.TryGetValue(UpperCase(Shadow.Name), Index) then
+        begin
+          Scored := List[Index];
+          Text := TNameResolver.ShadowText(Shadow);
+          if not MatchText(Text, Scored.Item.Hides) then
+          begin
+            Scored.Item.Hides := Scored.Item.Hides + [Text];
+            List[Index] := Scored;
+          end;
+        end;
+    finally
+      Names.Free;
+    end;
+  end;
+
   procedure AddCandidates(const ACandidates: TArray<TResolvedSymbol>);
   var
     Candidate: TResolvedSymbol;
@@ -1525,6 +1582,7 @@ begin
               SetNameFilter(False);
             end;
             AddCandidates(Candidates);
+            MarkUsedShadows;
             SendStage;
             SetNameFilter(True);
             try
@@ -1576,6 +1634,7 @@ var
   Edit: TRuleEdit;
   Index: Integer;
   Position: TTextPosition;
+  Text: string;
 begin
   Result := TJSONArray.Create;
   for Index := 0 to High(AItems) do
@@ -1693,6 +1752,15 @@ begin
       // Freigabe absichern (#489).
       if AItems[Index].Guard <> '' then
         Data.AddPair('guard', AItems[Index].Guard);
+      if AItems[Index].UnitName <> '' then
+        Data.AddPair('unit', AItems[Index].UnitName);
+      if Length(AItems[Index].Hides) > 0 then
+      begin
+        Overloads := TJSONArray.Create;
+        Data.AddPair('hides', Overloads);
+        for Text in AItems[Index].Hides do
+          Overloads.Add(Text);
+      end;
       if Length(AItems[Index].Overloads) > 0 then
       begin
         Overloads := TJSONArray.Create;
@@ -2116,7 +2184,7 @@ begin
 end;
 
 class function TLspCompletion.Details(const AIndex: ISymbolIndex; const AFileName, AText: string;
-  const APosition: TTextPosition): TJSONObject;
+  const APosition: TTextPosition; const AReadText: TCompletionReadText): TJSONObject;
 var
   Lines: TArray<string>;
   UnitInfo: TUnitIndex;
@@ -2130,6 +2198,8 @@ var
   List: TJSONArray;
   Item: TJSONObject;
   Range: TTextRange;
+  Resolver: TNameResolver;
+  Container: string;
 begin
   Result := TJSONObject.Create;
   Lines := TextLines(AText);
@@ -2175,7 +2245,32 @@ begin
   end;
   if IsDeprecated then
     Result.AddPair('deprecated', Deprecated);
-  Doc := TXmlDoc.Parse(TXmlDoc.CommentAbove(Lines, Range.StartPos.Line));
+  // XMLDoc wie im Hover (#654): mit <inheritdoc/> und den Fundorten der cref-Verweise.
+  Resolver := TNameResolver.Create(AIndex);
+  try
+    if Found then
+      Doc := TLspDocumentation.Load(Resolver, Resolver.SymbolFrom(UnitInfo, Symbol), Lines, Range.StartPos.Line,
+        TLspDocumentation.Reader(AFileName, AText, AReadText))
+    else
+      Doc := TXmlDoc.Parse(TXmlDoc.CommentAbove(Lines, Range.StartPos.Line));
+    if not Doc.IsEmpty then
+    begin
+      Container := '';
+      if Found then
+      begin
+        Container := Symbol.Container;
+        if Container = '' then
+          Container := Symbol.Name;
+        Result.AddPair('documentation', TLspDocumentation.ToJson(Doc,
+          TLspDocumentation.Targets(Resolver, UnitInfo, Container, Doc)));
+      end
+      else
+        Result.AddPair('documentation', TLspDocumentation.ToJson(Doc, nil));
+      Result.AddPair('documentationText', Doc.ToPlainText);
+    end;
+  finally
+    Resolver.Free;
+  end;
   if Doc.Summary <> '' then
     Result.AddPair('summary', Doc.Summary);
   if Doc.Returns <> '' then
@@ -2228,7 +2323,7 @@ begin
     Exit;
   if not ReadCached(FileName, Text) then
     Exit;
-  Details := TLspCompletion.Details(FIndex, FileName, Text, Position);
+  Details := TLspCompletion.Details(FIndex, FileName, Text, Position, ReadCached);
   // Für Atlas (Detailpanel) strukturiert in data.atlas; für andere Clients detail und documentation.
   if Details.TryGetValue<string>('declaration', Text) then
   begin
@@ -2237,6 +2332,8 @@ begin
   end;
   if Details.TryGetValue<string>('summary', Summary) then
     Item.AddPair('documentation', Summary);
+  if Assigned(FHintsFor) then
+    Details.AddPair('xmlDoc', TLspDocumentation.HintsJson(FHintsFor(TDocumentUris.FromPath(FileName))));
   Data.AddPair('atlas', Details);
 end;
 

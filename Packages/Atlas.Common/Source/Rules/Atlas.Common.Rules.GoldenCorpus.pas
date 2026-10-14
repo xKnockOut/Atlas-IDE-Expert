@@ -5,7 +5,8 @@
 //   // ERWARTET: regel-a, regel-b   diese Treffer müssen auf der Zeile kommen
 //   // KEIN-TREFFER: regel-a        dieser Treffer darf hier nicht kommen
 // Compare gleicht die Markierungen mit den Treffern ab. Regel-IDs, die weder
-// eine Regel noch geplant sind, gelten als Fehler. Dazu Fehlalarmquoten aus
+// eine Regel noch geplant sind, gelten als Fehler; jede geplante ID nennt das
+// offene Issue, das sie umsetzt (#94). Dazu Fehlalarmquoten aus
 // den manuellen Bewertungen (bewertungen.csv) und die Laufzeit je Regel.
 
 interface
@@ -62,6 +63,8 @@ type
     class function Markers(const AText: string): TArray<TGoldenMarker>; static;
     /// <summary>Geplante Regel-IDs aus einer Liste "regel-id  # Bemerkung"; leere Zeilen und # werden übersprungen.</summary>
     class function PlannedIds(const AText: string): TArray<string>; static;
+    /// <summary>Geplante Regel-IDs, deren Bemerkung kein Issue (#Nummer) nennt.</summary>
+    class function PlannedWithoutIssue(const AText: string): TArray<string>; static;
     /// <summary>Gleicht die Markierungen von AFileName mit AFindings ab.</summary>
     class function Compare(const AFileName: string; const AMarkers: TArray<TGoldenMarker>;
       const AFindings: TArray<TRuleFinding>; const AKnownIds, APlannedIds: TArray<string>): TGoldenResult; static;
@@ -178,6 +181,35 @@ begin
       Id := Copy(Id, 1, Pos('#', Id) - 1);
     Id := Trim(Id);
     if Id <> '' then
+      Result := Result + [Id];
+  end;
+end;
+
+class function TGoldenCorpus.PlannedWithoutIssue(const AText: string): TArray<string>;
+var
+  Line, Id, Note: string;
+  Index: Integer;
+  HasIssue: Boolean;
+begin
+  Result := nil;
+  for Line in SplitLines(AText) do
+  begin
+    Id := Line;
+    Note := '';
+    if Pos('#', Id) > 0 then
+    begin
+      Note := Copy(Id, Pos('#', Id) + 1, MaxInt);
+      Id := Copy(Id, 1, Pos('#', Id) - 1);
+    end;
+    Id := Trim(Id);
+    if Id = '' then
+      Continue;
+    // Gesucht ist "#" mit mindestens einer Ziffer dahinter, z. B. "# #56".
+    HasIssue := False;
+    for Index := 1 to Length(Note) - 1 do
+      if (Note[Index] = '#') and CharInSet(Note[Index + 1], ['0'..'9']) then
+        HasIssue := True;
+    if not HasIssue then
       Result := Result + [Id];
   end;
 end;

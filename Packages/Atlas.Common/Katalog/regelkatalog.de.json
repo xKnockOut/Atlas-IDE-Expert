@@ -76,6 +76,11 @@
       "description": "Eine lokale Variable wird auf einem Pfad gelesen, auf dem ihr nie ein Wert zugewiesen wurde."
     },
     {
+      "id": "unreachable-code",
+      "name": "Unerreichbarer Code",
+      "description": "Eine Anweisung nach Exit, raise, Abort, Halt, Break, Continue oder goto wird nie ausgeführt. Meist ein Rest oder ein falsch gesetzter Sprung. Gemeldet wird nur die erste Anweisung eines unerreichbaren Abschnitts."
+    },
+    {
       "id": "unused-local",
       "name": "Ungenutzte lokale Variable",
       "description": "Eine lokale Variable ist deklariert, wird aber nie verwendet. Wie Compilerhinweis H2164, aber schon beim Tippen."
@@ -384,6 +389,11 @@
       "id": "redundant-begin-end",
       "name": "begin … end um eine einzelne Anweisung",
       "description": "Ein begin … end-Block mit genau einer Anweisung kann entfallen. Standardmäßig aus."
+    },
+    {
+      "id": "with-statement",
+      "name": "with-Anweisung",
+      "description": "In einem with-Block ist unklar, zu welchem Objekt ein Bezeichner gehört, und ein neues Mitglied des with-Objekts ändert still die Bedeutung. Den Ausdruck ausschreiben oder eine lokale Variable verwenden."
     },
     {
       "id": "component-palette-icon",

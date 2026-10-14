@@ -49,6 +49,7 @@ type
 
   TAtlasEditorCompletion = class
   private
+    FSession: TAtlasSessionFunc;
     FProviders: TAtlasCompletionProviders;
     FProvidersRef: IAtlasCompletionProvider;
     FServerProvider: TAtlasServerCompletionProvider;
@@ -113,6 +114,8 @@ type
     procedure RemoveKeyHook;
     /// <summary>Gehört die Taste gerade dem Popup?</summary>
     function WantsKey(AKey: TAtlasNavigationKey): Boolean;
+    /// <summary>Indiziert der Server gerade (#492)?</summary>
+    function IndexingNow: Boolean;
   public
     /// <summary>Nach dem Übernehmen mit Klammern den Parameter-Hint öffnen (#430).</summary>
     property OnOpenSignature: TProc read FOnOpenSignature write FOnOpenSignature;
@@ -156,7 +159,13 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Vcl.Forms,
+  Vcl.Clipbrd,
+  Winapi.ShellAPI,
+  System.StrUtils,
   DockForm,
+  Atlas.Core.Documentation.Contract,
+  Atlas.Core.Documentation.Layout,
+  Atlas.IDE.Hover.Editor,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Completion.Word,
   Atlas.Core.Completion.Matching,
@@ -172,6 +181,20 @@ uses
   Atlas.Core.Completion.Ranking,
   Atlas.IDE.Editor.Buffer,
   Atlas.IDE.Editor.Style;
+
+/// <summary>Anzeige der XMLDoc im Panel (#654): hints aus atlas.json meldet der Server, sonst die Optionen.</summary>
+function WithDisplay(const ADetails: TAtlasItemDetails): TAtlasItemDetails;
+var
+  Full: Boolean;
+begin
+  Result := ADetails;
+  if not Result.Display.Known then
+    Result.Display := TAtlasDocDisplay.Create(TAtlasIdeSettings.Current.XmlDocFull,
+      TAtlasIdeSettings.Current.XmlDocMaxLines);
+  // Schnellschalter nur für diese Sitzung (#604) gilt auch über dem Wert aus atlas.json.
+  if TAtlasIdeSettings.SessionFlag('XmlDocFull', Full) then
+    Result.Display.Full := Full;
+end;
 
 /// <summary>Größe des Editorfensters (Client-Bereich); (0, 0) ohne Fenster.</summary>
 function EditorSize(AWindow: HWND): TPoint;
@@ -301,6 +324,8 @@ begin
   try
     FOwner.ViewChanged;
   except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Completion, E);
   end;
 end;
 
@@ -309,6 +334,8 @@ begin
   try
     FOwner.EditorModified(EditView);
   except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Completion, E);
   end;
 end;
 
@@ -332,6 +359,7 @@ var
   Notifier: INTAEditServicesNotifier;
 begin
   inherited Create;
+  FSession := ASession;
   FLog := ALog;
   FNotifierIndex := -1;
   FCommitEnd := -1;
@@ -373,6 +401,22 @@ begin
     begin
       ChangeOverload(ADelta);
     end;
+  // XMLDoc im Panel (#654): Links im Browser, Verweise mit Strg+Klick zur Deklaration.
+  FPopup.OnDocLink :=
+    procedure(const ALink: TAtlasDocLink; AControl: Boolean)
+    begin
+      if ALink.Kind = TAtlasDocLinkKind.Url then
+      begin
+        if StartsText('http://', ALink.Url) or StartsText('https://', ALink.Url) or
+          StartsText('mailto:', ALink.Url) then
+          ShellExecute(0, 'open', PChar(ALink.Url), nil, nil, SW_SHOWNORMAL);
+      end
+      else if AControl and ALink.Target.HasLocation then
+      begin
+        Close;
+        TAtlasEditorHover.GoToLocation(ALink.Target.FileName, ALink.Target.Line, ALink.Target.Character);
+      end;
+    end;
   FPopup.OnChip :=
     procedure(AChip: TAtlasChip)
     begin
@@ -390,7 +434,7 @@ begin
     var
       Settings: TAtlasPluginSettings;
     begin
-      Settings := TAtlasIdeSettings.Current;
+      Settings := TAtlasIdeSettings.Stored;
       Settings.ListWidth := AListWidth;
       Settings.PanelWidth := APanelWidth;
       TAtlasIdeSettings.Update(Settings);
@@ -400,7 +444,7 @@ begin
     var
       Settings: TAtlasPluginSettings;
     begin
-      Settings := TAtlasIdeSettings.Current;
+      Settings := TAtlasIdeSettings.Stored;
       Settings.PanelCollapsed := ACollapsed;
       TAtlasIdeSettings.Update(Settings);
     end;
@@ -449,6 +493,17 @@ begin
   Close;
   FServerProvider.Shutdown;
   FSnippetProvider.Shutdown;
+end;
+
+function TAtlasEditorCompletion.IndexingNow: Boolean;
+var
+  Session: TLspSession;
+begin
+  Result := False;
+  if not Assigned(FSession) then
+    Exit;
+  Session := FSession();
+  Result := (Session <> nil) and (Session.IndexingText <> '');
 end;
 
 function TAtlasEditorCompletion.Visible: Boolean;
@@ -531,6 +586,8 @@ begin
   // Gruppen geerbter Member (#419), Chips (#422), lernende Gewichtung (#418).
   FController.GroupInherited := TAtlasIdeSettings.Current.GroupInherited;
   FPopup.DimInherited := TAtlasIdeSettings.Current.GroupInherited;
+  // Während der Server indiziert, liefert er den vorhandenen Stand; die Fußzeile sagt es (#492).
+  FPopup.Limited := IndexingNow;
   FController.ChipsEnabled := TAtlasIdeSettings.Current.FilterChips;
   FSnippetProvider.Enabled := TAtlasIdeSettings.Current.Snippets;
   // Kontextabhängige Vorlagen des Servers (#51) hängen an derselben Einstellung.
@@ -663,8 +720,9 @@ function TAtlasEditorCompletion.WantsCommand(AKey: Word; AShift: TShiftState): B
 var
   Item: TAtlasCompletionItem;
 begin
-  // Strg+Q Panel (#428), Alt+1 … Alt+6 Chips (#422).
+  // Strg+Q Panel (#428), Alt+1 … Alt+6 Chips (#422), Strg+C mit markierter Doku im Panel (#654).
   Result := FController.Visible and (((AKey = Ord('Q')) and (AShift = [ssCtrl])) or
+    ((AKey = Ord('C')) and (AShift = [ssCtrl]) and (FPopup.SelectedDocText <> '')) or
     (((AKey = VK_UP) or (AKey = VK_DOWN)) and (AShift = [ssAlt]) and FController.SelectedItem(Item) and
       (Item.OverloadCount > 1)) or
     (FController.ChipsEnabled and (AKey >= Ord('1')) and (AKey <= Ord('6')) and (AShift = [ssAlt])));
@@ -674,6 +732,8 @@ procedure TAtlasEditorCompletion.HandleCommand(AKey: Word; AShift: TShiftState);
 begin
   if (AKey = Ord('Q')) and (AShift = [ssCtrl]) then
     FPopup.TogglePanel
+  else if (AKey = Ord('C')) and (AShift = [ssCtrl]) then
+    Clipboard.AsText := FPopup.SelectedDocText
   else if (AKey = VK_UP) and (AShift = [ssAlt]) then
     ChangeOverload(-1)
   else if (AKey = VK_DOWN) and (AShift = [ssAlt]) then
@@ -796,7 +856,7 @@ begin
     begin
       // Nur zeigen, wenn noch derselbe Eintrag gewählt und die Liste offen ist.
       if (FDetailKey = Key) and FController.Visible then
-        FPopup.ShowDetails(ADetails);
+        FPopup.ShowDetails(WithDisplay(ADetails));
     end) then
     FPopup.ClearDetails;
 end;

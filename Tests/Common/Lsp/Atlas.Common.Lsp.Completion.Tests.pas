@@ -30,6 +30,12 @@ type
     [Test]
     procedure ItemsCarryTheirScope;
     [Test]
+    procedure NearestScopeComesFirstWithoutPrefix;
+    [Test]
+    procedure InlineVarBelowCaretIsNotOffered;
+    [Test]
+    procedure HiddenNamesAppearOnceWithHint;
+    [Test]
     procedure ImportsKnowParameters;
     [Test]
     procedure ProjectImportsComeBeforeLibraryLimit;
@@ -219,7 +225,7 @@ end;
 procedure TLspCompletionTests.ScopeListsLocalsMembersAndUsedUnits;
 begin
   // Nächster Gültigkeitsbereich zuerst; Versteckt steht nur in implementation von Werkzeug.
-  Assert.AreEqual('Anzahl Wert Self Name Bar Zaehler Melde TFoo TBasis Rechne',
+  Assert.AreEqual('Wert Anzahl Self Name Bar Zaehler Melde TFoo TBasis Rechne',
     Names(ItemsAt(WithCode('  '), #10'begin'#10'  ')));
 end;
 
@@ -300,7 +306,7 @@ begin
   Items := ItemsAt(WithCode('  me'), '  me', TCompletionMatching.Fuzzy);
   Assert.AreEqual('Melde', Items.Items[0].Name, Names(Items));
   // Ohne Eingabe bleibt die Reihenfolge der Gültigkeitsbereiche.
-  Assert.AreEqual('Anzahl Wert Self Name Bar Zaehler Melde TFoo TBasis Rechne',
+  Assert.AreEqual('Wert Anzahl Self Name Bar Zaehler Melde TFoo TBasis Rechne',
     Names(ItemsAt(WithCode('  '), #10'begin'#10'  ', TCompletionMatching.Fuzzy)));
 end;
 
@@ -378,7 +384,7 @@ begin
     finally
       FResolver.NameFilter := nil;
     end;
-    Assert.AreEqual('Anzahl Wert Self Melde Rechne', Found.Trim);
+    Assert.AreEqual('Wert Anzahl Self Melde Rechne', Found.Trim);
   finally
     Tree.Free;
   end;
@@ -411,7 +417,7 @@ begin
       TCompletionMatching.Fuzzy, Postfix, Partial);
     // Erst lokal, Self und eigene Unit, dann die Units aus uses; die Antwort bringt den (leeren) Rest.
     Assert.AreEqual(2, Integer(Stages.Count));
-    Assert.AreEqual('Anzahl Wert Self Name Bar Zaehler Melde TFoo', Stages[0]);
+    Assert.AreEqual('Wert Anzahl Self Name Bar Zaehler Melde TFoo', Stages[0]);
     Assert.AreEqual('TBasis Rechne', Stages[1]);
     Assert.AreEqual('', Names(Items));
     Assert.IsTrue(Items.Incomplete, 'ohne Eingabe fehlen noch die Importe');
@@ -574,6 +580,108 @@ begin
   Assert.Contains(Scopes, 'Name=3;');
   Assert.Contains(Scopes, 'TFoo=4;');
   Assert.Contains(Scopes, 'Rechne=5;');
+end;
+
+function FindItem(const AItems: TCompletionItems; const AName: string; out AItem: TCompletionItem): Integer;
+var
+  Index: Integer;
+begin
+  Result := 0;
+  for Index := 0 to High(AItems.Items) do
+    if SameText(AItems.Items[Index].Name, AName) then
+    begin
+      if Result = 0 then
+        AItem := AItems.Items[Index];
+      Inc(Result);
+    end;
+end;
+
+function IndexOfItem(const AItems: TCompletionItems; const AName: string): Integer;
+begin
+  for Result := 0 to High(AItems.Items) do
+    if SameText(AItems.Items[Result].Name, AName) then
+      Exit;
+  Result := -1;
+end;
+
+procedure TLspCompletionTests.NearestScopeComesFirstWithoutPrefix;
+const
+  Text =
+    'unit Kasse;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TKasse = class'#10 +
+    '    FDiscount: Integer;'#10 +
+    '    function Calc(ACustomer: Integer): Integer;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'function TKasse.Calc(ACustomer: Integer): Integer;'#10 +
+    'var'#10 +
+    '  Total: Integer;'#10 +
+    'begin'#10 +
+    '  Total := '#10 +
+    'end;'#10 +
+    'end.';
+var
+  Items: TCompletionItems;
+  TotalAt, CustomerAt, DiscountAt: Integer;
+begin
+  // #488, Abnahme: ohne Präfix lokal vor Parameter vor Feld.
+  Items := ItemsAt(Text, 'Total := ');
+  TotalAt := IndexOfItem(Items, 'Total');
+  CustomerAt := IndexOfItem(Items, 'ACustomer');
+  DiscountAt := IndexOfItem(Items, 'FDiscount');
+  Assert.IsTrue(TotalAt >= 0, Names(Items));
+  Assert.IsTrue(TotalAt < CustomerAt, Names(Items));
+  Assert.IsTrue(CustomerAt < DiscountAt, Names(Items));
+end;
+
+procedure TLspCompletionTests.InlineVarBelowCaretIsNotOffered;
+var
+  Items: TCompletionItems;
+  Item: TCompletionItem;
+  Text: string;
+begin
+  // #488: Inline-Variablen oberhalb des Carets ja, unterhalb nicht.
+  Text := WithCode('  var Oben := 1;'#10'  Ziel := '#10'  var Unten := 2;');
+  Items := ItemsAt(Text, 'Ziel := ');
+  Assert.AreEqual(1, FindItem(Items, 'Oben', Item), Names(Items));
+  Assert.AreEqual(1, Item.Scope);
+  Assert.AreEqual(0, FindItem(Items, 'Unten', Item), Names(Items));
+end;
+
+procedure TLspCompletionTests.HiddenNamesAppearOnceWithHint;
+var
+  Items: TCompletionItems;
+  Item: TCompletionItem;
+  Text: string;
+  Json: TJSONObject;
+begin
+  // #488, Abnahme: Ein lokaler Name verdeckt das Feld Name und die Routine Rechne aus Werkzeug; beide
+  // erscheinen einmal als „lokal“, das Detailpanel nennt die verdeckte Deklaration.
+  Text := StringReplace(WithCode('  Ziel := '), '  Wert: TFoo;', '  Wert: TFoo;'#10'  Name: string;'#10 +
+    '  Rechne: Integer;', []);
+  Items := ItemsAt(Text, 'Ziel := ');
+  Assert.AreEqual(1, FindItem(Items, 'Name', Item), Names(Items));
+  Assert.AreEqual(1, Item.Scope);
+  Assert.AreEqual<NativeInt>(1, Length(Item.Hides));
+  Assert.AreEqual('Feld TFoo.Name', Item.Hides[0]);
+  Assert.AreEqual(1, FindItem(Items, 'Rechne', Item), Names(Items));
+  Assert.AreEqual(1, Item.Scope);
+  Assert.AreEqual<NativeInt>(1, Length(Item.Hides));
+  Assert.AreEqual('Werkzeug.Rechne', Item.Hides[0]);
+  // Nicht verdeckt: keine Angabe; aus einer anderen Unit: deren Name für das Tag.
+  Assert.AreEqual(1, FindItem(Items, 'TBasis', Item), Names(Items));
+  Assert.AreEqual<NativeInt>(0, Length(Item.Hides));
+  Assert.AreEqual(5, Item.Scope);
+  Assert.AreEqual('Werkzeug', Item.UnitName);
+  Json := TLspCompletion.ToJson(Items);
+  try
+    Assert.Contains(Json.ToJSON, '"hides":["Feld TFoo.Name"]');
+    Assert.Contains(Json.ToJSON, '"unit":"Werkzeug"');
+  finally
+    Json.Free;
+  end;
 end;
 
 procedure TLspCompletionTests.PlainItemsHaveNoTextEdit;
@@ -1254,6 +1362,7 @@ var
   Tree: TSyntaxTree;
   Resolver: TNameResolver;
   Items: TArray<TCompletionItem>;
+  Known: TArray<TCompletionItem>;
 
   function Named(const AName: string): TCompletionItem;
   var
@@ -1302,11 +1411,12 @@ begin
     // Bekannte Namen und genaue Treffer: nichts.
     Assert.IsFalse(TLspCompletion.DeclareItems(Resolver, FIndex, Tree, Text, HauptFile,
       PositionOf(Text, 'Zeige(Anzahl);'#13#10'  FLines'), True, nil, Items));
-    SetLength(Items, 1);
-    Items[0] := Default(TCompletionItem);
-    Items[0].Name := 'Anzahl';
+    // Eigene Variable für die bekannten Einträge: Ein out-Parameter leert sein Ziel vor dem Aufruf.
+    SetLength(Known, 1);
+    Known[0] := Default(TCompletionItem);
+    Known[0].Name := 'Anzahl';
     Assert.IsFalse(TLspCompletion.DeclareItems(Resolver, FIndex, Tree, Text, HauptFile,
-      PositionOf(Text, 'Zeige(Anzahl'), True, Items, Items));
+      PositionOf(Text, 'Zeige(Anzahl'), True, Known, Items));
   finally
     Resolver.Free;
     Tree.Free;
@@ -1588,9 +1698,6 @@ begin
   Assert.AreEqual('', Check('L.', '', ''));
 end;
 
-initialization
-  TDUnitX.RegisterTestFixture(TLspCompletionTests);
-
 procedure TLspCompletionTests.OffersDataFieldNames;
 const
   FormText =
@@ -1744,5 +1851,8 @@ begin
   Assert.IsTrue(GuardsAfterEnter('List := TStringList.Create;', '', Items));
   Assert.IsFalse(GuardsAfterEnter('List := TStringList.Create', '  List', Items));
 end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TLspCompletionTests);
 
 end.

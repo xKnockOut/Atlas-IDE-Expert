@@ -11,10 +11,11 @@
 // Linien der Blöcke über mehrere Zeilen in den Paarfarben, mit Haken an Öffner
 // und Schließer; die Strukturhervorhebung der IDE ist dann aus
 // (Atlas.IDE.Editor.Structure).
-// Inaktive {$IFDEF}-Zweige (#615): Zeilen darin zeichnet Atlas in einer
-// Farbe zwischen Text und Hintergrund; die Bereiche liefert der Server mit den
-// Diagnosen (Tag Unnecessary). Hier statt in einem eigenen Notifier, damit
-// nicht zwei Zeichner denselben Lauf übermalen.
+// Inaktive {$IFDEF}-Zweige (#615): Text darin zeichnet Atlas in einer
+// Farbe zwischen Text und Hintergrund, ganze Zeilen und Teile von Zeilen
+// ({$IFDEF X} a {$ENDIF}); die Direktiven selbst bleiben normal. Die Bereiche
+// liefert der Server mit den Diagnosen (Tag Unnecessary). Hier statt in einem
+// eigenen Notifier, damit nicht zwei Zeichner denselben Lauf übermalen.
 
 interface
 
@@ -28,7 +29,8 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Editor.Pairs,
-  Atlas.Core.Editor.Guides;
+  Atlas.Core.Editor.Guides,
+  Atlas.Core.Problems.Store;
 
 type
   TAtlasEditorPairs = class
@@ -59,6 +61,8 @@ type
     // Je 0-basierter Zeile die Blocklinien, die sie kreuzen.
     FGuides: TArray<TArray<TLineGuide>>;
     FTabWidth: Integer;
+    // Tabweite für inaktive Bereiche, je Zeichnen einmal gelesen; -1 = noch nicht.
+    FDimTabWidth: Integer;
     procedure BeginPaint(const Editor: TWinControl; const ForceFullRepaint: Boolean);
     procedure PaintText(const Rect: TRect; const ColNum: SmallInt; const Text: string;
       const SyntaxCode: TOTASyntaxCode; const Hilight, BeforeEvent: Boolean;
@@ -66,6 +70,8 @@ type
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     procedure Refresh(const Context: INTACodeEditorPaintContext);
+    /// <summary>Inaktive Spalten der Zeile des Laufs (#615); nil ohne oder bei ausgeschalteter Einstellung.</summary>
+    function InactiveSpans(const Context: INTACodeEditorPaintContext): TArray<TAtlasColumnSpan>;
     /// <summary>Lauf in einer Farbe selbst zeichnen (Hintergrund wie vorbereitet).</summary>
     class procedure PaintRun(const ARect: TRect; const AText: string; const AContext: INTACodeEditorPaintContext;
       AColor: TColor); static;
@@ -108,6 +114,7 @@ var
 begin
   inherited Create;
   FIndex := -1;
+  FDimTabWidth := -1;
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorBeginPaint := BeginPaint;
@@ -138,23 +145,11 @@ begin
     Exit;
   try
     FCheck := True;
+    FDimTabWidth := -1;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Pairs, E);
   end;
-end;
-
-/// <summary>Zeichenindex (0-basiert) in ALine als 1-basierte Editorspalte, Tabs aufgelöst.</summary>
-function ColumnOf(const ALine: string; ACharacter, ATabWidth: Integer): Integer;
-var
-  Index: Integer;
-begin
-  Result := 1;
-  for Index := 1 to ACharacter do
-    if (Index <= Length(ALine)) and (ALine[Index] = #9) and (ATabWidth > 0) then
-      Result := ((Result - 1) div ATabWidth + 1) * ATabWidth + 1
-    else
-      Inc(Result);
 end;
 
 procedure TAtlasEditorPairs.Refresh(const Context: INTACodeEditorPaintContext);
@@ -194,7 +189,8 @@ begin
     begin
       // Spalte der IDE statt Zeichenindex.
       FLines[Token.Line] := FLines[Token.Line] + [Token];
-      FLines[Token.Line][High(FLines[Token.Line])].Character := ColumnOf(Lines[Token.Line], Token.Character, TabWidth);
+      FLines[Token.Line][High(FLines[Token.Line])].Character :=
+        TAtlasPairs.ColumnOf(Lines[Token.Line], Token.Character, TabWidth);
     end;
   for Guide in TAtlasGuides.FromBlocks(Lines, Blocks, TabWidth) do
     for Line := Guide.FirstLine to Guide.LastLine do
@@ -209,6 +205,30 @@ begin
         LineGuide.Part := gpMiddle;
       FGuides[Line] := FGuides[Line] + [LineGuide];
     end;
+end;
+
+function TAtlasEditorPairs.InactiveSpans(const Context: INTACodeEditorPaintContext): TArray<TAtlasColumnSpan>;
+var
+  Settings: TAtlasPluginSettings;
+  Store: TAtlasProblemStore;
+  View: IOTAEditView;
+begin
+  Result := nil;
+  Settings := TAtlasIdeSettings.Current;
+  Store := TAtlasProblemsController.Current;
+  if not (Settings.Enabled and Settings.InactiveDim) or (Store = nil) then
+    Exit;
+  if Length(Store.Inactive(Context.FileName)) = 0 then
+    Exit;
+  if FDimTabWidth < 0 then
+  begin
+    View := Context.EditView;
+    if (View <> nil) and (View.Buffer <> nil) then
+      FDimTabWidth := TAtlasEditorBuffer.TabWidth(View.Buffer)
+    else
+      FDimTabWidth := 8;
+  end;
+  Result := Store.InactiveSpans(Context.FileName, Context.LogicalLineNum - 1, FDimTabWidth);
 end;
 
 class procedure TAtlasEditorPairs.PaintRun(const ARect: TRect; const AText: string;
@@ -250,6 +270,10 @@ var
   Found: Boolean;
   DC: HDC;
   Saved: Integer;
+  Spans: TArray<TAtlasColumnSpan>;
+  Dimmed: TArray<Boolean>;
+  Dim: TColor;
+  LineText: string;
 begin
   // Durch die Sicherung abgeschaltet (#493).
   if TAtlasGuard.Disabled(TAtlasFeature.Pairs) then
@@ -257,45 +281,64 @@ begin
   if not BeforeEvent or Hilight or (Text = '') or (Context = nil) then
     Exit;
   try
-    if TAtlasIdeSettings.Current.InactiveDim and (TAtlasProblemsController.Current <> nil) and
-      TAtlasProblemsController.Current.LineInactive(Context.FileName, Context.LogicalLineNum - 1) then
-    begin
-      PaintRun(Rect, Text, Context,
-        TColor(TAtlasColorMath.Mix(TAtlasColor(ColorToRGB(Context.Canvas.Font.Color)),
-        TAtlasColor(ColorToRGB(Context.Canvas.Brush.Color)), 0.45)));
-      AllowDefaultPainting := False;
-      Exit;
-    end;
-    if not TAtlasIdeSettings.Current.PairColors then
-      Exit;
-    if FCheck or not SameText(Context.FileName, FFileName) then
-      Refresh(Context);
     Line := Context.LogicalLineNum - 1;
-    if (Line < 0) or (Line > High(FLines)) or (Length(FLines[Line]) = 0) then
+    // Inaktive {$IFDEF}-Zweige (#615): ganze Läufe gleich, Teile zeichenweise.
+    Spans := InactiveSpans(Context);
+    if (Length(Spans) = 0) and not TAtlasIdeSettings.Current.PairColors then
       Exit;
-    // Nur einfärben, wenn der Lauf in der analysierten Zeile an dieser Stelle steht.
-    // Die IDE meldet beim Neuzeichnen von Teilbereichen nicht immer die Zeile des
-    // Laufs; sonst landeten Paarfarben mitten in Bezeichnern anderer Zeilen.
-    if (Line > High(FDisplay)) or not TAtlasPairs.RunMatches(FDisplay[Line], Text, ColNum) then
-      Exit;
-    Tokens := FLines[Line];
     Canvas := Context.Canvas;
     Original := Canvas.Font.Color;
     SetLength(CharColors, Length(Text));
+    SetLength(Dimmed, Length(Text));
     for Index := 0 to High(CharColors) do
       CharColors[Index] := Original;
-    Colors := TAtlasIdeStyle.Colors;
     Found := False;
-    for Token in Tokens do
-      for Column := Token.Character to Token.Character + Token.Length - 1 do
-        if (Column >= ColNum) and (Column < ColNum + Length(Text)) then
-        begin
-          Found := True;
-          if Token.Unpaired then
-            CharColors[Column - ColNum] := TColor(Colors.Error)
-          else
-            CharColors[Column - ColNum] := TColor(Colors.Pairs[Token.Depth mod Length(Colors.Pairs)]);
-        end;
+    if Length(Spans) > 0 then
+    begin
+      Dim := TColor(TAtlasColorMath.Mix(TAtlasColor(ColorToRGB(Canvas.Font.Color)),
+        TAtlasColor(ColorToRGB(Canvas.Brush.Color)), 0.45));
+      if TAtlasColumnSpan.Covers(Spans, ColNum, Length(Text)) then
+      begin
+        PaintRun(Rect, Text, Context, Dim);
+        AllowDefaultPainting := False;
+        Exit;
+      end;
+      // Teile einer Zeile nur, wenn der Lauf dort im Text der Diagnosen steht (wie bei den Paaren).
+      if (TAtlasProblemsController.Current <> nil) and
+        TAtlasProblemsController.Current.LineText(Context.FileName, Line, LineText) and
+        TAtlasPairs.RunMatches(TAtlasPairs.DisplayLine(LineText, FDimTabWidth), Text, ColNum) then
+        for Index := 0 to High(CharColors) do
+          if TAtlasColumnSpan.Contains(Spans, ColNum + Index) then
+          begin
+            CharColors[Index] := Dim;
+            Dimmed[Index] := True;
+            Found := True;
+          end;
+    end;
+    if TAtlasIdeSettings.Current.PairColors then
+    begin
+      if FCheck or not SameText(Context.FileName, FFileName) then
+        Refresh(Context);
+      // Nur einfärben, wenn der Lauf in der analysierten Zeile an dieser Stelle steht.
+      // Die IDE meldet beim Neuzeichnen von Teilbereichen nicht immer die Zeile des
+      // Laufs; sonst landeten Paarfarben mitten in Bezeichnern anderer Zeilen.
+      if (Line >= 0) and (Line <= High(FLines)) and (Length(FLines[Line]) > 0) and (Line <= High(FDisplay)) and
+        TAtlasPairs.RunMatches(FDisplay[Line], Text, ColNum) then
+      begin
+        Tokens := FLines[Line];
+        Colors := TAtlasIdeStyle.Colors;
+        for Token in Tokens do
+          for Column := Token.Character to Token.Character + Token.Length - 1 do
+            if (Column >= ColNum) and (Column < ColNum + Length(Text)) and not Dimmed[Column - ColNum] then
+            begin
+              Found := True;
+              if Token.Unpaired then
+                CharColors[Column - ColNum] := TColor(Colors.Error)
+              else
+                CharColors[Column - ColNum] := TColor(Colors.Pairs[Token.Depth mod Length(Colors.Pairs)]);
+            end;
+      end;
+    end;
     if not Found then
       Exit;
     // Lauf selbst zeichnen: Hintergrund wie vorbereitet, Zeichen in fester Zellbreite.

@@ -8,7 +8,7 @@ uses
   Ref.Formulare.Suchrahmen in 'Source\Ref.Formulare.Suchrahmen.pas' {Suchrahmen: TFrame},
   Ref.Formulare.Haupt in 'Source\Ref.Formulare.Haupt.pas' {HauptFormular},
   Ref.Sprache.Merkmale in 'Source\Ref.Sprache.Merkmale.pas',
-  Ref.Daten.Kunden in 'Source\Ref.Daten.Kunden.pas',
+  Ref.Daten.Suche in 'Source\Ref.Daten.Suche.pas',
   Ref.Pruefung.Verstoesse in 'Source\Ref.Pruefung.Verstoesse.pas',
   Ref.Daten.Auftraege in 'Source\Ref.Daten.Auftraege.pas',
   Ref.Daten.Verwendung in 'Source\Ref.Daten.Verwendung.pas';

@@ -33,6 +33,12 @@ type
     procedure ManagedTypeIsSilent;
     [Test]
     procedure OpaqueUseHelper;
+    [Test]
+    procedure UnreachableAfterExitReportsFirstStatement;
+    [Test]
+    procedure UnreachableInBranchAndTry;
+    [Test]
+    procedure ReachableCodeIsSilent;
   end;
 
 implementation
@@ -142,6 +148,47 @@ begin
   finally
     Tree.Free;
   end;
+end;
+
+procedure TFlowRulesTests.UnreachableAfterExitReportsFirstStatement;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Zeile 5 ist Exit; gemeldet wird nur A in Zeile 6, nicht auch B.
+  Findings := TRuleAssert.Findings(TUnreachableCodeRule.Create,
+    Routine('  Exit;'#10'  A;'#10'  if X then'#10'    B;', 'procedure P;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(6, Findings[0].Range.EndPos.Line, 'Nur die erste Zeile markieren');
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+end;
+
+procedure TFlowRulesTests.UnreachableInBranchAndTry;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TUnreachableCodeRule.Create,
+    Routine('  if X then'#10'  begin'#10'    raise E;'#10'    A;'#10'  end;'#10'  B;', 'procedure P;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
+  // Ein ganzer try-Block hinter Exit zählt als ein Abschnitt.
+  Findings := TRuleAssert.Findings(TUnreachableCodeRule.Create,
+    Routine('  Exit;'#10'  try'#10'    A;'#10'  finally'#10'    B;'#10'  end;', 'procedure P;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+end;
+
+procedure TFlowRulesTests.ReachableCodeIsSilent;
+begin
+  TRuleAssert.Silent(TUnreachableCodeRule.Create,
+    Routine('  if X then'#10'    Exit;'#10'  A;'#10'  if Y then'#10'    goto L;'#10'  B;'#10'L:'#10'  C;', 'procedure P;',
+    'label'#10'  L;'#10));
+  TRuleAssert.Silent(TUnreachableCodeRule.Create,
+    Routine('  while X do'#10'  begin'#10'    if Y then'#10'      Break;'#10'    Continue;'#10'  end;'#10'  A;',
+    'procedure P;'));
+  // asm macht den Graphen unvollständig: keine Aussage.
+  TRuleAssert.Silent(TUnreachableCodeRule.Create,
+    Routine('  Exit;'#10'  asm'#10'    nop'#10'  end;', 'procedure P;'));
 end;
 
 initialization

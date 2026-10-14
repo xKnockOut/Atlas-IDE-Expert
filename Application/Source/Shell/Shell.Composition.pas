@@ -197,6 +197,7 @@ type
     /// <summary>Schnellbefehle (#293): False = aus; ADisabled samt "uses" bei usesCommand = false.</summary>
     function SlashCommandsFor(const AUri: string; out ADisabled: TArray<string>): Boolean;
     function InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
+    function HintSettingsFor(const AUri: string): THintSettings;
     function CompletionSettingsFor(const AUri: string): TCompletionSettings;
     /// <summary>"stringLiteral" für AUri; AMultiline nach Stil und Delphi-Version (#312).</summary>
     function StringLiteralFor(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings;
@@ -246,6 +247,7 @@ uses
   System.Math,
   System.StrUtils,
   Atlas.Common.Product.Version,
+  Atlas.Common.Configuration.Parser,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Logging.Providers.StreamSink,
   Atlas.Common.JsonRpc.StreamTransport,
@@ -467,6 +469,30 @@ begin
   FDocuments.Subscribe(HandleDocumentEvent);
   FDispatcher.RegisterNotification(TLspConfiguration.DidChangeConfigurationMethod, HandleDidChangeConfiguration);
   FSyntaxDiagnostics.DefinesProvider := DefinesFor;
+  // Zielplattform und Konfiguration für den Hinweis inaktiver Zweige (#615).
+  FSyntaxDiagnostics.BuildTargetProvider :=
+    function(const AUri: string; out APlatform, AConfig: string): Boolean
+    var
+      Workspace: TShellWorkspace;
+      Project: TProjectInfo;
+    begin
+      APlatform := '';
+      AConfig := '';
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+        if (Workspace = nil) and (FWorkspaces.Count = 1) then
+          Workspace := FWorkspaces[0];
+        Result := (Workspace <> nil) and Workspace.Project(Project);
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+      if Result then
+      begin
+        APlatform := Project.Platform;
+        AConfig := Project.Config;
+      end;
+    end;
   FSyntaxDiagnostics.IncludePathsProvider :=
     function(const AUri: string): TArray<string>
     var
@@ -523,6 +549,7 @@ begin
       Result := EnsureUnit(AUnitName);
     end);
   FHover.VersionProvider := DelphiVersionFor;
+  FHover.HintsFor := HintSettingsFor;
   FHover.Attach(FDispatcher);
   FWorkspaceSymbols := TLspWorkspaceSymbols.Create(FIndex);
   FBookmarks := TBookmarkStore.Create;
@@ -598,7 +625,8 @@ begin
       Result := TPostfixOptions.Default;
       Result.InlineVar := TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, DelphiVersionFor(AUri));
     end;
-  // Für completionItem/resolve (Detailpanel von Atlas, #405).
+  // Für completionItem/resolve (Detailpanel von Atlas, #405); Anzeige von XMLDoc (#654).
+  FCompletion.HintsFor := HintSettingsFor;
   FCompletion.ReadText :=
     function(const AFileName: string; out AText: string): Boolean
     begin
@@ -916,6 +944,37 @@ begin
       FLogger.Info(Format('Index wird für %d Ordner neu aufgebaut', [Length(Targets)]));
       Result := TJSONNull.Create;
     end);
+  FCommands.Register(ClearIndexCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    var
+      Workspace: TShellWorkspace;
+      Targets: TArray<TShellWorkspace>;
+      Before, Freed: Int64;
+      Removed: Integer;
+      Answer: TJSONObject;
+    begin
+      // „Index löschen“ (#492): alle Caches auf der Platte, auch anderer Projekte und IDE-Versionen;
+      // gesperrte Caches anderer Serverinstanzen bleiben. Danach die eigenen Ordner neu indizieren.
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Targets := FWorkspaces.ToArray;
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+      for Workspace in Targets do
+        Workspace.ReleaseCache;
+      Before := TIndexCacheDirectory.TotalSize(TIndexCacheDirectory.DefaultRoot);
+      Removed := TIndexCacheDirectory.Clear(TIndexCacheDirectory.DefaultRoot);
+      Freed := Before - TIndexCacheDirectory.TotalSize(TIndexCacheDirectory.DefaultRoot);
+      FLogger.Info(Format('Index gelöscht: %d Caches, %d KB; %d Ordner werden neu indiziert',
+        [Removed, Freed div 1024, Length(Targets)]));
+      for Workspace in Targets do
+        Workspace.Rebuild;
+      Answer := TJSONObject.Create;
+      Answer.AddPair('removed', TJSONNumber.Create(Removed));
+      Answer.AddPair('freedBytes', TJSONNumber.Create(Freed));
+      Result := Answer;
+    end);
   FCommands.Register(SelectBuildCommand,
     function(const AArguments: TJSONArray): TJSONValue
     var
@@ -926,18 +985,32 @@ begin
       Project: TProjectInfo;
       Items: TJSONArray;
       Item: TJSONObject;
+      DefinesValue, Define: TJSONValue;
+      Defines: TArray<string>;
+      HasDefines: Boolean;
     begin
-      // Argument: {"config": "Release", "platform": "Win64", "uri": "…"}; alle Felder optional.
-      // Ohne Konfiguration und Plattform nur die aktuelle Auswahl je Projekt (#46).
+      // Argument: {"config": "Release", "platform": "Win64", "uri": "…", "defines": ["DEBUG"]};
+      // alle Felder optional. Ohne Konfiguration, Plattform und Symbole nur die aktuelle Auswahl
+      // je Projekt (#46). "defines" ersetzt die Symbole der .dproj (Projektoptionen der IDE, #615).
       Config := '';
       Platform := '';
       Uri := '';
+      Defines := nil;
+      HasDefines := False;
       if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONObject) then
       begin
         Options := TJSONObject(AArguments.Items[0]);
         Options.TryGetValue<string>('config', Config);
         Options.TryGetValue<string>('platform', Platform);
         Options.TryGetValue<string>('uri', Uri);
+        DefinesValue := Options.GetValue('defines');
+        if DefinesValue is TJSONArray then
+        begin
+          HasDefines := True;
+          for Define in TJSONArray(DefinesValue) do
+            if Define is TJSONString then
+              Defines := Defines + [TJSONString(Define).Value];
+        end;
       end;
       Targets := nil;
       TMonitor.Enter(FWorkspacesLock);
@@ -953,9 +1026,9 @@ begin
       finally
         TMonitor.Exit(FWorkspacesLock);
       end;
-      if (Config <> '') or (Platform <> '') then
+      if (Config <> '') or (Platform <> '') or HasDefines then
         for Workspace in Targets do
-          if Workspace.Project(Project) and not Workspace.SelectBuild(Config, Platform, Error) then
+          if Workspace.Project(Project) and not Workspace.SelectBuild(Config, Platform, Defines, HasDefines, Error) then
             raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Error);
       Items := TJSONArray.Create;
       for Workspace in Targets do
@@ -1643,6 +1716,8 @@ begin
   Result.MemoryBytes := AllocatedBytes;
   Result.IndexBytes := FIndex.MemoryBytes;
   Result.CompactUnits := FIndex.CompactCount;
+  Result.OffloadedUnits := FIndex.OffloadedCount;
+  Result.DiskBytes := TIndexCacheDirectory.TotalSize(TIndexCacheDirectory.DefaultRoot);
   Result.BudgetBytes := FIndex.Budget;
   for Document in FDocuments.Documents do
     Result.DocumentBytes := Result.DocumentBytes + Length(Document.Text) * SizeOf(Char);
@@ -1754,6 +1829,25 @@ begin
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
+end;
+
+function TServerComposition.HintSettingsFor(const AUri: string): THintSettings;
+var
+  Workspace: TShellWorkspace;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+    if (Workspace = nil) and (FWorkspaces.Count = 1) then
+      Workspace := FWorkspaces[0];
+    if Workspace <> nil then
+      Exit(Workspace.Configuration.Settings.Hints);
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  // Ohne Arbeitsbereich (z. B. RTL-Unit) gelten die Werte des Plugins.
+  Result := TConfigurationParser.ParseLayered(FEditorSettings, '', Issues).Hints;
 end;
 
 function TServerComposition.FormatStyleFor(const AUri: string): TFormatStyle;
@@ -2282,6 +2376,7 @@ begin
   Commands.Add(CompileCommand);
   Commands.Add(SelectBuildCommand);
   Commands.Add(RebuildIndexCommand);
+  Commands.Add(ClearIndexCommand);
   Commands.Add(TQualifiedNames.Command);
   Commands.Add(TStringLiteralCommands.PlainTextCommand);
   Commands.Add(TStringLiteralCommands.ToLiteralCommand);

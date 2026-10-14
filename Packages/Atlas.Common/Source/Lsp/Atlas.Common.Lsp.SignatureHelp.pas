@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Lsp.SignatureHelp;
 
 // Parameterhilfe (textDocument/signatureHelp): zeigt beim Aufruf alle Überladungen der Routine,
-// hebt den aktiven Parameter hervor und übernimmt die ///-Dokumentation samt <param>-Texten.
+// hebt den aktiven Parameter hervor und übernimmt die ///-Dokumentation samt <param>-Texten
+// (TXmlDoc mit <inheritdoc/>, #654).
 // Der Aufruf wird an den Tokens vor dem Cursor erkannt: die innerste offene Klammer hinter
 // einem Bezeichner; Kommas auf derselben Ebene zählen den aktiven Parameter.
 
@@ -89,6 +90,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
+  Atlas.Common.Pascal.XmlDoc,
+  Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.Internals.Cancellation;
 
 const
@@ -373,36 +376,31 @@ begin
   end;
 end;
 
-procedure ApplyDocumentation(var ASignature: TSignature; const ADocumentation: string);
+procedure ApplyDocumentation(var ASignature: TSignature; const ADoc: TXmlDoc);
 var
-  Part, Name, Rest, Text: string;
+  Section: TXmlDocSection;
+  Name, Text: string;
   Index: Integer;
 begin
-  // DocumentationAbove liefert <param name="X"> als eigene Absätze "*X*: …".
-  ASignature.Documentation := '';
-  for Part in ADocumentation.Split([#10#10]) do
+  // Alles außer den Parametern an die Signatur, <param> an den passenden Parameter. Klartext: Der Hint
+  // des Plugins und der Client von RAD Studio zeigen kein Markdown; Namen aus cref bleiben erhalten.
+  ASignature.Documentation := ADoc.ToPlainText(False);
+  for Section in ADoc.Sections do
   begin
-    if StartsStr('*', Part) and (PosEx('*: ', Part, 2) > 0) then
+    if Section.Kind <> TXmlDocSectionKind.Param then
+      Continue;
+    Name := Section.Name;
+    for Index := 0 to High(ASignature.Parameters) do
     begin
-      Name := Copy(Part, 2, PosEx('*: ', Part, 2) - 2);
-      Rest := Copy(Part, PosEx('*: ', Part, 2) + 3, MaxInt);
-      for Index := 0 to High(ASignature.Parameters) do
+      Text := Copy(ASignature.Text, ASignature.Parameters[Index].StartIndex + 1,
+        ASignature.Parameters[Index].EndIndex - ASignature.Parameters[Index].StartIndex);
+      if SameText(Text, Name) or StartsText(Name + ':', Text) or StartsText(Name + ' ', Text) or
+        ContainsText(Text, ' ' + Name + ':') or ContainsText(Text, ' ' + Name + ' ') or
+        StartsText(Name + ',', Text) or ContainsText(Text, ' ' + Name + ',') then
       begin
-        Text := Copy(ASignature.Text, ASignature.Parameters[Index].StartIndex + 1,
-          ASignature.Parameters[Index].EndIndex - ASignature.Parameters[Index].StartIndex);
-        if SameText(Text, Name) or StartsText(Name + ':', Text) or StartsText(Name + ' ', Text) or
-          ContainsText(Text, ' ' + Name + ':') or ContainsText(Text, ' ' + Name + ' ') then
-        begin
-          ASignature.Parameters[Index].Documentation := Rest;
-          Break;
-        end;
+        ASignature.Parameters[Index].Documentation := Section.Text;
+        Break;
       end;
-    end
-    else
-    begin
-      if ASignature.Documentation <> '' then
-        ASignature.Documentation := ASignature.Documentation + #10#10;
-      ASignature.Documentation := ASignature.Documentation + Part;
     end;
   end;
 end;
@@ -417,6 +415,7 @@ var
   Text: string;
   Lines: TArray<string>;
   Starts: TList<TTextPosition>;
+  StartSymbols: TList<TResolvedSymbol>;
   Signatures: TList<TSignature>;
   Seen: TList<string>;
   Symbol: TIndexSymbol;
@@ -425,6 +424,7 @@ var
   Signature: TSignature;
   Key: string;
   Index: Integer;
+  Reader: TDocReadText;
 begin
   Result := Default(TSignatureHelp);
   Site := CallSiteAt(ATree, APosition);
@@ -438,13 +438,18 @@ begin
   else if not (Assigned(AReadText) and AReadText(Resolved.FileName, Text)) then
     Exit;
   Lines := SplitLines(Text);
+  Reader := TLspDocumentation.Reader(AFileName, ATreeText, AReadText);
   Starts := TList<TTextPosition>.Create;
+  StartSymbols := TList<TResolvedSymbol>.Create;
   Signatures := TList<TSignature>.Create;
   Seen := TList<string>.Create;
   try
     // Überladungen: gleicher Name im selben Typ bzw. auf Unit-Ebene derselben Unit.
     if Resolved.Kind = TResolvedKind.Local then
-      Starts.Add(Resolved.Range.StartPos)
+    begin
+      Starts.Add(Resolved.Range.StartPos);
+      StartSymbols.Add(Resolved);
+    end
     else
     begin
       if SameText(Resolved.FileName, AFileName) then
@@ -461,10 +466,14 @@ begin
         if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Name, Resolved.Name) and
           SameText(Symbol.Container, Resolved.Container) and (Symbol.InInterface or not HasInterface) and
           SameText(OwnerUnit.SymbolFile(Symbol), Resolved.FileName) then
+        begin
           Starts.Add(Symbol.Range.StartPos);
+          StartSymbols.Add(AResolver.SymbolFrom(OwnerUnit, Symbol));
+        end;
     end;
-    for Start in Starts do
+    for Index := 0 to Starts.Count - 1 do
     begin
+      Start := Starts[Index];
       if (Start.Line < 0) or (Start.Line > High(Lines)) then
         Continue;
       Signature := ParseSignature(Lines, Start.Line, Start.Character);
@@ -473,13 +482,15 @@ begin
       if (Signature.Text = '') or Signature.Qualified or Seen.Contains(Key) then
         Continue;
       Seen.Add(Key);
-      ApplyDocumentation(Signature, TLspHover.DocumentationAbove(Lines, Start.Line));
+      ApplyDocumentation(Signature, TLspDocumentation.Load(AResolver, StartSymbols[Index], Lines, Start.Line,
+        Reader));
       Signatures.Add(Signature);
     end;
     Result.Signatures := Signatures.ToArray;
   finally
     Seen.Free;
     Signatures.Free;
+    StartSymbols.Free;
     Starts.Free;
   end;
   Result.ActiveParameter := Site.ActiveParameter;

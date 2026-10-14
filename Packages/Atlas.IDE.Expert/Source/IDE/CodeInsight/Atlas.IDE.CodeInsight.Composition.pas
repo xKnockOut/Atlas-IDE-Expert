@@ -4,9 +4,12 @@
 // Compile-Ereignisse (#527), den Einfrier-Wächter (#501), das Neuladen
 // extern geänderter Dateien (#536), die Befehlspalette (#502), die farbigen
 // Klammerpaare (#514), das Ergebnisfenster (#400), die Editorbefehle samt
-// Tastenkürzeln und Kontextmenü (#399) und den Abgleich offener Formulare
-// (#402) beim Laden des Packages an und beim Entladen in umgekehrter
-// Reihenfolge wieder ab (ADR 0006).
+// Tastenkürzeln und Kontextmenü (#399), den Abgleich offener Formulare (#402),
+// das Atlas-Statusfeld (#591) und die Schnellschalter (#604) beim Laden des
+// Packages an und beim Entladen in umgekehrter Reihenfolge wieder ab
+// (ADR 0006). Zuerst entscheidet der abgesicherte Start
+// (#722), was angemeldet wird; RegisterFeatures holt den Rest nach, sobald
+// ein Schnellschalter oder „Normal weiterarbeiten“ es erlaubt.
 
 interface
 
@@ -18,10 +21,12 @@ uses
   Winapi.Windows,
   System.SysUtils,
   System.Classes,
+  System.Types,
   System.Win.Registry,
   System.JSON,
   ToolsAPI,
   Atlas.UI.Strings,
+  Atlas.Core.Settings.Plugin,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
   Atlas.IDE.CodeInsight.Manager,
@@ -44,13 +49,21 @@ uses
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Commands.MainMenu,
   Atlas.IDE.Editor.Rename,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Lsp.Session,
   Atlas.Core.Results.Model,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Commands.Bindings,
   Atlas.IDE.Forms.Designer,
+  Atlas.Core.Status.Registry,
+  Atlas.Core.Status.Lines,
+  Atlas.IDE.Status.Field,
+  Atlas.IDE.Status.Lines,
+  Atlas.IDE.Settings.QuickToggles,
+  Atlas.Core.Diagnostics.SafeMode,
+  Atlas.IDE.Diagnostics.SafeMode,
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Core.Diagnostics.TimeLimit,
   Atlas.IDE.Commands.Keys;
 
 var
@@ -74,10 +87,50 @@ var
   EditorKeys: TAtlasIdeEditorKeys;
   // Offene Formulare an den Server (#402).
   Forms: TAtlasIdeForms;
+  // Ergebnisfenster (#400) und Editorbefehle (#399) angemeldet.
+  CommandsInstalled: Boolean;
+  // Atlas-Statusfeld mit Server, Index und Datei (#591).
+  StatusField: TAtlasStatusField;
+  StatusLines: TAtlasIdeStatusLines;
+  // Eigene Tasten für Vervollständigung und Parameter-Hint (#494); ohne Einstellung keine.
+  CompletionKey: TAtlasIdeKeyBinding;
+  SignatureKey: TAtlasIdeKeyBinding;
+  // Schnellschalter mit Fenster, Taste und Befehlen in der Palette (#604).
+  QuickToggles: TAtlasIdeQuickToggles;
+  // Abgesicherter Start nach einem Absturz (#722).
+  SafeMode: TAtlasIdeSafeMode;
+  // Zeitpunkt des Ladens (TAtlasWatchdog.Timestamp) für Wächter und Ladezeit.
+  LoadedAt: Int64;
+  // Laden abgeschlossen: Später angemeldete Teile messen ab dann.
+  StartupDone: Boolean;
+  // Paketbeobachtung und Meldung fremder Vervollständigung angemeldet (#494).
+  KeysWatched: Boolean;
 
 const
   // Ab dieser Dauer ein Hinweis im Meldungsfenster (#501).
   HangHintMs = 2000;
+
+/// <summary>Alle Tasten von Atlas nach den Einstellungen neu belegen; bei Konflikt nur mit Vorrang (#494).</summary>
+procedure RebindKeys;
+var
+  Settings: TAtlasPluginSettings;
+begin
+  Settings := TAtlasIdeSettings.Current;
+  if Palette <> nil then
+    Palette.Rebind;
+  if CheckOnSave <> nil then
+    CheckOnSave.Rebind;
+  if EditorKeys <> nil then
+    EditorKeys.Rebind;
+  if CompletionKey <> nil then
+    CompletionKey.Rebind(Word(Settings.CompletionKey), Settings.CompletionKeyPriority,
+      TAtlasStrings.Text(TAtlasTextId.SettingsCompletionKey));
+  if SignatureKey <> nil then
+    SignatureKey.Rebind(Word(Settings.SignatureKey), Settings.SignatureKeyPriority,
+      TAtlasStrings.Text(TAtlasTextId.SettingsSignatureKey));
+  if QuickToggles <> nil then
+    QuickToggles.Rebind;
+end;
 
 procedure ReportHang(const AHang: TAtlasHang);
 var
@@ -264,6 +317,74 @@ begin
     end);
 end;
 
+/// <summary>„Protokoll öffnen“ (#591): Diagnoseprotokoll, sonst das Protokoll der Sicherung.</summary>
+procedure OpenLog;
+var
+  Actions: IOTAActionServices;
+  FileName: string;
+begin
+  FileName := TAtlasCodeInsightManager.DiagnoseLog;
+  if not FileExists(FileName) and (TAtlasGuard.RotatingLog <> nil) then
+    FileName := TAtlasGuard.RotatingLog.FileName;
+  if FileExists(FileName) and Supports(BorlandIDEServices, IOTAActionServices, Actions) then
+    Actions.OpenFile(FileName);
+end;
+
+procedure RegisterStatusField;
+begin
+  StatusLines := TAtlasIdeStatusLines.Create(TAtlasStatusRegistry.Default,
+    function: TAtlasServerInfo
+    begin
+      if Manager <> nil then
+        Result := Manager.ServerInfo
+      else
+        Result := Default(TAtlasServerInfo);
+    end,
+    function(out APercent: Integer): Boolean
+    begin
+      APercent := -1;
+      Result := (Manager <> nil) and Manager.ServerIndexing(APercent);
+    end,
+    function(const ADone: TProc<string>): Boolean
+    begin
+      Result := (Manager <> nil) and Manager.QueryStatusAsync(ADone);
+    end,
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
+  StatusField := TAtlasStatusField.Create(TAtlasStatusRegistry.Default);
+  StatusField.OnRefresh :=
+    procedure
+    begin
+      if StatusLines <> nil then
+        StatusLines.Refresh;
+    end;
+  StatusField.OnOpenLog := OpenLog;
+  // Rechtsklick auf das Feld: Schnellschalter (#604).
+  StatusField.OnContext :=
+    procedure(APoint: TPoint)
+    begin
+      if QuickToggles <> nil then
+        QuickToggles.Show(APoint);
+    end;
+  StatusField.OnRestart :=
+    procedure
+    begin
+      if Manager <> nil then
+        Manager.RestartServer;
+    end;
+end;
+
+procedure UnregisterStatusField;
+begin
+  if Manager <> nil then
+    Manager.OnServerChanged := nil;
+  FreeAndNil(StatusField);
+  FreeAndNil(StatusLines);
+  TAtlasStatusRegistry.ReleaseDefault;
+end;
+
 procedure RegisterWatchdog(ALoadedAt: Int64);
 begin
   Hangs := TAtlasHangMonitor.Create(TAtlasIdeSettings.Current.HangThresholdMs);
@@ -383,22 +504,84 @@ begin
     Result := TAtlasLanguage.English;
 end;
 
-procedure Register;
+/// <summary>Stufe des abgesicherten Starts (#722); ohne Sicherung normal.</summary>
+function Level: TAtlasSafeLevel;
+begin
+  if SafeMode <> nil then
+    Result := SafeMode.Level
+  else
+    Result := TAtlasSafeLevel.Normal;
+end;
+
+procedure CreateReloader;
+begin
+  Reloader := TAtlasFileReloader.Create(
+    procedure(AText: string)
+    begin
+      if Manager <> nil then
+        Manager.Report(AText);
+    end);
+  // Gespeichert: Compilerprüfung vormerken (#548).
+  Reloader.OnSaved :=
+    procedure(AFileName: string)
+    begin
+      // Prüfung des Servers mit dcc (#40); die Prüfung in der IDE nur, wenn eingeschaltet (#548).
+      if Manager <> nil then
+        Manager.NotifySaved(AFileName);
+      if CheckOnSave <> nil then
+        CheckOnSave.Saved(AFileName);
+      // Gewählte Kodierung und Zeilenenden schreiben (#591).
+      if StatusLines <> nil then
+        StatusLines.Saved(AFileName);
+    end;
+end;
+
+procedure CreateMainMenu;
+begin
+  MainMenu := TAtlasMainMenu.Create(
+    function: string
+    begin
+      if Manager <> nil then
+        Result := Manager.ServerProgress
+      else
+        Result := '';
+    end,
+    function(ACommand: string): TJSONValue
+    begin
+      if Manager <> nil then
+        Result := Manager.ExecuteServerCommand(ACommand)
+      else
+        Result := nil;
+    end,
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
+end;
+
+/// <summary>Meldet an, was die Stufe des abgesicherten Starts (#722) und die Einstellungen erlauben; mehrfach
+/// aufrufbar. Normal: alles. Abgesichert: Serververbindung, Statusfeld, Einstellungen, Palette und Menü; dazu,
+/// was ein Schnellschalter wieder einschaltet. Minimal: nur Einstellungsseite und Statusfeld.</summary>
+procedure RegisterFeatures;
 var
   Services: IOTACodeInsightServices;
-  LoadedAt: Int64;
+  Settings: TAtlasPluginSettings;
+  Full, Basic: Boolean;
 begin
-  LoadedAt := TAtlasWatchdog.Timestamp;
-  TAtlasGuard.OnWarning := GuardWarning;
-  TAtlasStrings.Language := IdeLanguage;
-  if (ManagerIndex < 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
+  Settings := TAtlasIdeSettings.Current;
+  Full := Level = TAtlasSafeLevel.Normal;
+  Basic := Level <> TAtlasSafeLevel.Minimal;
+  if Basic and (ManagerIndex < 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
   begin
     Manager := TAtlasCodeInsightManager.Create;
     ManagerIndex := Services.AddCodeInsightManager(Manager);
   end;
-  if Compile = nil then
+  // Notifier und Hintergrundaufgaben nur im normalen Betrieb bzw. wenn ihr Schalter wieder an ist.
+  if (Compile = nil) and (Full or Settings.CheckOnSave) then
     RegisterCompileEvents;
-  if Watchdog = nil then
+  if (Watchdog = nil) and Full and StartupDone then
+    RegisterWatchdog(TAtlasWatchdog.Timestamp)
+  else if (Watchdog = nil) and Full then
     RegisterWatchdog(LoadedAt);
   if (CheckOnSave = nil) and (Compile <> nil) then
     CheckOnSave := TAtlasIdeCheckOnSave.Create(Compile.Events,
@@ -407,31 +590,36 @@ begin
         if Manager <> nil then
           Manager.Report(AText);
       end);
-  TAtlasIdeResults.Install(
-    function: TLspSession
-    begin
-      Result := nil;
-      if Manager <> nil then
-        Result := Manager.ActiveSession;
-    end,
-    procedure(AText: string)
-    begin
-      GuardWarning(AText);
-    end);
-  TAtlasIdeEditorCommands.Install(
-    function: TLspSession
-    begin
-      Result := nil;
-      if Manager <> nil then
-        Result := Manager.ActiveSession;
-    end,
-    procedure(AText: string)
-    begin
-      GuardWarning(AText);
-    end);
-  if EditorKeys = nil then
+  if Basic and not CommandsInstalled then
+  begin
+    CommandsInstalled := True;
+    TAtlasIdeResults.Install(
+      function: TLspSession
+      begin
+        Result := nil;
+        if Manager <> nil then
+          Result := Manager.ActiveSession;
+      end,
+      procedure(AText: string)
+      begin
+        GuardWarning(AText);
+      end);
+    TAtlasIdeEditorCommands.Install(
+      function: TLspSession
+      begin
+        Result := nil;
+        if Manager <> nil then
+          Result := Manager.ActiveSession;
+      end,
+      procedure(AText: string)
+      begin
+        GuardWarning(AText);
+      end);
+  end;
+  if Basic and (EditorKeys = nil) then
     EditorKeys := TAtlasIdeEditorKeys.Create;
-  if Forms = nil then
+  // Designer-Notifier nur im normalen Betrieb (#722).
+  if Full and (Forms = nil) then
     Forms := TAtlasIdeForms.Create(
       function: TLspSession
       begin
@@ -444,59 +632,67 @@ begin
         if Manager <> nil then
           Manager.Report(AText);
       end);
-  if Palette = nil then
+  if Basic and (Palette = nil) then
+  begin
     RegisterPalette;
-  if Pairs = nil then
+    if QuickToggles <> nil then
+      QuickToggles.RegisterCommands(Palette);
+  end;
+  // Editor-Zeichnungen.
+  if (Pairs = nil) and (Full or Settings.PairColors or Settings.PairGuides or Settings.InactiveDim) then
     Pairs := TAtlasEditorPairs.Create;
-  // Geänderte Tastenkürzel sofort neu belegen; fremde Vervollständigung melden (#494).
-  TAtlasIdeSettings.OnChanged :=
-    procedure
-    begin
-      if Palette <> nil then
-        Palette.Rebind;
-      if CheckOnSave <> nil then
-        CheckOnSave.Rebind;
-      if EditorKeys <> nil then
-        EditorKeys.Rebind;
-      // Index-Optionen an den laufenden Server; er baut neu auf, wenn sich der Umfang ändert (#652).
-      if Manager <> nil then
-        Manager.NotifyServer('workspace/didChangeConfiguration',
-          TLspSession.SettingsParams(TAtlasIdeSettings.Current.ServerSettingsJson));
-    end;
-  TThread.ForceQueue(nil,
-    procedure
-    begin
-      TAtlasGuard.Run(TAtlasFeature.Settings,
-        procedure
-        begin
-          TAtlasIdeKeys.ReportForeignCompletion;
-        end);
-    end);
-  if MainMenu = nil then
-    MainMenu := TAtlasMainMenu.Create(
-      function: string
+  if (CompletionKey = nil) and Basic and (Full or Settings.Enabled) then
+    CompletionKey := TAtlasIdeKeyBinding.Create('Atlas.Completion', 'Atlas-Vervollständigung',
+      TAtlasFeature.Completion,
+      procedure
       begin
         if Manager <> nil then
-          Result := Manager.ServerProgress
-        else
-          Result := '';
-      end,
-      function(ACommand: string): TJSONValue
-      begin
-        if Manager <> nil then
-          Result := Manager.ExecuteServerCommand(ACommand)
-        else
-          Result := nil;
-      end,
-      procedure(AText: string)
-      begin
-        GuardWarning(AText);
+          Manager.OpenCompletion;
       end);
-  if MainMenu <> nil then
+  if (SignatureKey = nil) and Basic and (Full or Settings.Enabled) then
+    SignatureKey := TAtlasIdeKeyBinding.Create('Atlas.Signature', 'Atlas-Parameter-Hint',
+      TAtlasFeature.Signature,
+      procedure
+      begin
+        if Manager <> nil then
+          Manager.OpenSignature;
+      end);
+  if Basic and not KeysWatched then
+  begin
+    KeysWatched := True;
+    TThread.ForceQueue(nil,
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.Settings,
+          procedure
+          begin
+            TAtlasIdeKeys.ReportForeignCompletion;
+          end);
+      end);
+    // Neue Packages können Tasten belegen oder eine eigene Vervollständigung mitbringen (#494).
+    TAtlasIdeKeys.WatchPackages(
+      procedure
+      begin
+        RebindKeys;
+        TAtlasIdeKeys.ReportForeignCompletion;
+      end);
+  end;
+  if Basic and (MainMenu = nil) then
+  begin
+    CreateMainMenu;
     MainMenu.OnRename := RenameSymbol;
-  if DirtyExport = nil then
+  end;
+  // Phase und Fortschritt des Servers melden sich aus jedem Thread; gezeichnet wird gesammelt.
+  if (Manager <> nil) and (StatusField <> nil) then
+    Manager.OnServerChanged :=
+      procedure
+      begin
+        if StatusField <> nil then
+          StatusField.RequestRefresh;
+      end;
+  if (DirtyExport = nil) and Full then
     DirtyExport := TAtlasDirtyExport.Create;
-  if EditInbox = nil then
+  if (EditInbox = nil) and Full then
     EditInbox := TAtlasIdeEditInbox.Create(
       procedure(const AText: string)
       begin
@@ -504,45 +700,140 @@ begin
       end);
   // Eigene Blocklinien: Strukturhervorhebung der IDE abgleichen (#514).
   TAtlasIdeStructureSwitch.Sync;
-  if Reloader = nil then
+  if (Reloader = nil) and Full then
+    CreateReloader;
+  RebindKeys;
+end;
+
+/// <summary>Hinweis des abgesicherten Starts (#722) samt Statuszeile; die Stufe bestimmt RegisterFeatures.</summary>
+procedure StartSafeMode;
+begin
+  SafeMode := TAtlasIdeSafeMode.Create(nil);
+  SafeMode.OnShowToggles :=
+    procedure
+    begin
+      if QuickToggles <> nil then
+        QuickToggles.Show;
+    end;
+  SafeMode.OnExportLog :=
+    procedure
+    begin
+      TAtlasIdeDiagnosticExport.Execute(
+        procedure(AText: string)
+        begin
+          GuardWarning(AText);
+        end);
+    end;
+  SafeMode.Start(TAtlasIdeSafeMode.DefaultFolder, TAtlasStatusRegistry.Default);
+  // Fehler je Feature (#493) in die Startmarke.
+  TAtlasGuard.OnFailure :=
+    procedure(AFeature: TAtlasFeature)
+    begin
+      if SafeMode <> nil then
+        SafeMode.RecordFailure(AFeature);
+    end;
+end;
+
+procedure Register;
+begin
+  LoadedAt := TAtlasWatchdog.Timestamp;
+  StartupDone := False;
+  // Abbruchsignal eines früheren Entladens in derselben Sitzung zurücknehmen (#493).
+  TAtlasShutdown.Reset;
+  TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
+  TAtlasGuard.OnWarning := GuardWarning;
+  TAtlasStrings.Language := IdeLanguage;
+  // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
+  if SafeMode = nil then
+    StartSafeMode;
+  // Immer: Statusfeld, Schnellschalter und Einstellungsseite.
+  if StatusField = nil then
+    RegisterStatusField;
+  if QuickToggles = nil then
   begin
-    Reloader := TAtlasFileReloader.Create(
-      procedure(AText: string)
+    QuickToggles := TAtlasIdeQuickToggles.Create(nil);
+    QuickToggles.OnAnchor :=
+      function: TPoint
       begin
-        if Manager <> nil then
-          Manager.Report(AText);
-      end);
-    // Gespeichert: Compilerprüfung vormerken (#548).
-    Reloader.OnSaved :=
-      procedure(AFileName: string)
-      begin
-        // Prüfung des Servers mit dcc (#40); die Prüfung in der IDE nur, wenn eingeschaltet (#548).
-        if Manager <> nil then
-          Manager.NotifySaved(AFileName);
-        if CheckOnSave <> nil then
-          CheckOnSave.Saved(AFileName);
+        if (StatusField = nil) or not StatusField.Anchor(Result) then
+          Result := Point(MaxInt, MaxInt);
       end;
   end;
+  RegisterFeatures;
+  // Geänderte Tastenkürzel sofort neu belegen; fremde Vervollständigung melden (#494).
+  TAtlasIdeSettings.OnChanged :=
+    procedure
+    begin
+      // Ein Schnellschalter oder „Normal weiterarbeiten“ im abgesicherten Start meldet nach (#722).
+      RegisterFeatures;
+      if SafeMode <> nil then
+        SafeMode.UpdateFeatures;
+      TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
+      // Index-Optionen an den laufenden Server; er baut neu auf, wenn sich der Umfang ändert (#652).
+      if Manager <> nil then
+        Manager.NotifyServer('workspace/didChangeConfiguration',
+          TLspSession.SettingsParams(TAtlasIdeSettings.Current.ServerSettingsJson));
+      // Statusfeld an, aus, Kurztext oder ausgeblendete Zeilen geändert (#591).
+      if StatusField <> nil then
+        StatusField.RequestRefresh;
+    end;
   TAtlasOptionsRegistration.Register(
     procedure
     begin
       TAtlasIdeHistory.Reset;
+    end,
+    function(ACommand: string): TJSONValue
+    begin
+      // Kennzahlen, „Index neu aufbauen“ und „Index löschen“ der Einstellungsseite (#492).
+      if Manager <> nil then
+        Result := Manager.ExecuteServerCommand(ACommand)
+      else
+        Result := nil;
+    end);
+  // Ladezeit bis zur freien Nachrichtenschleife: zu lange zählt beim nächsten Start wie ein Absturz (#722).
+  TThread.ForceQueue(nil,
+    procedure
+    begin
+      StartupDone := True;
+      if SafeMode <> nil then
+        SafeMode.Loaded(TAtlasWatchdog.Timestamp - LoadedAt);
     end);
 end;
 
 procedure Unregister;
 var
   Services: IOTACodeInsightServices;
+  StartedAt: UInt64;
+  Stopped: Boolean;
 begin
+  // Zuerst das gemeinsame Abbruchsignal: Jeder Hintergrund-Thread hört auf zu warten (#493).
+  StartedAt := TThread.GetTickCount64;
+  TAtlasShutdown.Signal;
   TAtlasGuard.OnWarning := nil;
+  TAtlasGuard.OnFailure := nil;
   TAtlasIdeSettings.OnChanged := nil;
+  if KeysWatched then
+    TAtlasIdeKeys.UnwatchPackages;
+  KeysWatched := False;
+  // Sauberes Ende: Startmarke löschen, Absturzzähler zurück (#722).
+  if SafeMode <> nil then
+    SafeMode.Stop;
+  FreeAndNil(SafeMode);
+  FreeAndNil(QuickToggles);
+  FreeAndNil(SignatureKey);
+  FreeAndNil(CompletionKey);
   FreeAndNil(EditInbox);
   FreeAndNil(DirtyExport);
+  UnregisterStatusField;
   FreeAndNil(MainMenu);
   FreeAndNil(Forms);
   FreeAndNil(EditorKeys);
-  TAtlasIdeEditorCommands.Uninstall;
-  TAtlasIdeResults.Uninstall;
+  if CommandsInstalled then
+  begin
+    TAtlasIdeEditorCommands.Uninstall;
+    TAtlasIdeResults.Uninstall;
+  end;
+  CommandsInstalled := False;
   FreeAndNil(Pairs);
   FreeAndNil(CheckOnSave);
   FreeAndNil(Palette);
@@ -551,10 +842,14 @@ begin
   FreeAndNil(Compile);
   TAtlasOptionsRegistration.Unregister;
   TAtlasIdeHistory.Release;
+  TAtlasIdeSettings.Release;
   if (ManagerIndex >= 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
     Services.RemoveCodeInsightManager(ManagerIndex);
   ManagerIndex := -1;
   Manager := nil;
+  Stopped := TAtlasTimeLimit.StopAll(TAtlasShutdown.StopMs);
+  TAtlasGuard.Log(Format('Atlas entladen in %d ms; Hintergrund-Threads beendet: %s',
+    [TThread.GetTickCount64 - StartedAt, BoolToStr(Stopped, True)]));
 end;
 
 initialization

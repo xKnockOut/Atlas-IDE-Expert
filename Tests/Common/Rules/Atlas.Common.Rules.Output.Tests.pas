@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Rules.Output.Tests;
 
 // Tests für den Kommandozeilen-Linter: Prüfung eines Textes, Filter,
-// Ausgabe als Text, JSON und SARIF sowie Exit-Code (#95).
+// Ausgabe als Text, JSON und SARIF, Quellwurzel für SARIF und Exit-Code
+// nach --fail-on (#95).
 
 interface
 
@@ -37,9 +38,23 @@ type
     [Test]
     procedure EscapesJsonStrings;
     [Test]
-    procedure ExitCodeFollowsHighestSeverity;
+    procedure SarifPathsRelativeToSourceRoot;
+    [Test]
+    procedure SarifMessageEnglishWithoutConfidence;
+    [Test]
+    procedure FileUriEncodesSpecialCharacters;
+    [Test]
+    procedure FindGitRootWalksUp;
+    [Test]
+    procedure ExitCodeFailOnError;
+    [Test]
+    procedure ExitCodeFailOnWarning;
+    [Test]
+    procedure ExitCodeFailOnNever;
     [Test]
     procedure ParsesFormat;
+    [Test]
+    procedure ParsesFailOn;
   end;
 
 implementation
@@ -64,9 +79,12 @@ begin
   Result.Range := TTextRange.Create(ALine, 2, ALine, 5);
 end;
 
-function MakeFile(const APath: string; const AFindings: TArray<TRuleFinding>): TCheckedFile;
+function MakeFile(const APath: string; const AFindings: TArray<TRuleFinding>;
+  const AFullPath: string = ''): TCheckedFile;
 begin
+  Result := Default(TCheckedFile);
   Result.Path := APath;
+  Result.FullPath := AFullPath;
   Result.Findings := AFindings;
 end;
 
@@ -157,7 +175,7 @@ var
 begin
   Output := TFindingsOutput.Render([MakeFile('Src\U.pas', [MakeFinding('syntax', TRuleSeverity.Error, 4)]),
     MakeFile('Src\V.pas', nil)], TFindingsFormat.Text, nil);
-  Assert.IsTrue(Pos('Src\U.pas(5,3): error syntax: Meldung', Output) = 1, Output);
+  Assert.IsTrue(Pos('Src\U.pas(5,3): error syntax [Konfidenz hoch]: Meldung', Output) = 1, Output);
   Assert.IsTrue(Pos('1 Treffer in 1 von 2 Dateien', Output) > 0, Output);
 end;
 
@@ -194,13 +212,92 @@ begin
   Assert.AreEqual('"a\"b\\c\nd\u0001"', TFindingsOutput.JsonString('a"b\c'#10'd'#1));
 end;
 
-procedure TLinterOutputTests.ExitCodeFollowsHighestSeverity;
+procedure TLinterOutputTests.SarifPathsRelativeToSourceRoot;
+var
+  Output: string;
 begin
-  Assert.AreEqual(0, TFindingsOutput.ExitCode([MakeFile('a', [MakeFinding('x', TRuleSeverity.Hint)])]));
-  Assert.AreEqual(1, TFindingsOutput.ExitCode([MakeFile('a', [MakeFinding('x', TRuleSeverity.Warning)])]));
-  Assert.AreEqual(2, TFindingsOutput.ExitCode([MakeFile('a', [MakeFinding('x', TRuleSeverity.Warning)]),
+  // .dproj in C:\Repo\App, eine Unit über den Suchpfad ..\Shared, eine außerhalb des Repositorys.
+  Output := TFindingsOutput.Render([
+    MakeFile('Main.dpr', [MakeFinding('syntax', TRuleSeverity.Error)], 'C:\Repo\App\Main.dpr'),
+    MakeFile('..\Shared\X.pas', [MakeFinding('syntax', TRuleSeverity.Error)], 'C:\Repo\Shared\X.pas'),
+    MakeFile('..\..\Fremd\Y.pas', [MakeFinding('syntax', TRuleSeverity.Error)], 'D:\Fremd\Y.pas')],
+    TFindingsFormat.Sarif, [TFileChecker.SyntaxDescriptor], 'C:\Repo');
+  Assert.IsTrue(Pos('"originalUriBaseIds":{"%SRCROOT%":{"uri":"file:///C:/Repo/"}}', Output) > 0, Output);
+  Assert.IsTrue(Pos('"artifactLocation":{"uri":"App/Main.dpr","uriBaseId":"%SRCROOT%"}', Output) > 0, Output);
+  Assert.IsTrue(Pos('"artifactLocation":{"uri":"Shared/X.pas","uriBaseId":"%SRCROOT%"}', Output) > 0, Output);
+  Assert.IsTrue(Pos('"artifactLocation":{"uri":"file:///D:/Fremd/Y.pas"}', Output) > 0, Output);
+  Assert.AreEqual(0, Pos('../', Output), Output);
+end;
+
+procedure TLinterOutputTests.SarifMessageEnglishWithoutConfidence;
+var
+  Finding: TRuleFinding;
+  Output: string;
+begin
+  Finding := MakeFinding('syntax', TRuleSeverity.Error);
+  Finding.Confidence := TRuleConfidence.Medium;
+  Output := TFindingsOutput.Render([MakeFile('U.pas', [Finding])], TFindingsFormat.Sarif,
+    [TFileChecker.SyntaxDescriptor]);
+  Assert.IsTrue(Pos('"message":{"text":"Syntax error"}', Output) > 0, Output);
+  Assert.AreEqual(0, Pos('Konfidenz', Output), Output);
+  Assert.IsTrue(Pos('"properties":{"confidence":"medium","detail":"Meldung"}', Output) > 0, Output);
+end;
+
+procedure TLinterOutputTests.FileUriEncodesSpecialCharacters;
+var
+  Relative: Boolean;
+begin
+  Assert.AreEqual('file:///C:/Mein%20Ordner/%C3%84nderung.pas',
+    TFindingsOutput.FileUri('C:\Mein Ordner\'#$00C4'nderung.pas'));
+  Assert.AreEqual('file://server/freigabe/U.pas', TFindingsOutput.FileUri('\\server\freigabe\U.pas'));
+  Assert.AreEqual('Src/A%23B.pas', TFindingsOutput.SarifUri('c:\repo\Src\A#B.pas', 'C:\Repo\', Relative));
+  Assert.IsTrue(Relative);
+  TFindingsOutput.SarifUri('C:\Repository\U.pas', 'C:\Repo', Relative);
+  Assert.IsFalse(Relative, 'Präfix ohne Trennzeichen ist kein Unterordner');
+end;
+
+procedure TLinterOutputTests.FindGitRootWalksUp;
+var
+  Repo, App: string;
+begin
+  Repo := 'R' + PathDelim + 'Repo';
+  App := Repo + PathDelim + 'App';
+  Assert.AreEqual(Repo, TFindingsOutput.FindGitRoot(App,
+    function(const APath: string): Boolean
+    begin
+      Result := APath = Repo + PathDelim + '.git';
+    end));
+  Assert.AreEqual('', TFindingsOutput.FindGitRoot(App,
+    function(const APath: string): Boolean
+    begin
+      Result := False;
+    end));
+end;
+
+procedure TLinterOutputTests.ExitCodeFailOnError;
+begin
+  Assert.AreEqual(0, TFindingsOutput.ExitCode([MakeFile('a', [MakeFinding('x', TRuleSeverity.Warning)])]));
+  Assert.AreEqual(0, TFindingsOutput.ExitCode([MakeFile('a', [MakeFinding('x', TRuleSeverity.Warning)])],
+    TFailOn.Error));
+  Assert.AreEqual(1, TFindingsOutput.ExitCode([MakeFile('a', [MakeFinding('x', TRuleSeverity.Warning)]),
     MakeFile('b', [MakeFinding('y', TRuleSeverity.Error)])]));
   Assert.AreEqual(0, TFindingsOutput.ExitCode(nil));
+end;
+
+procedure TLinterOutputTests.ExitCodeFailOnWarning;
+begin
+  Assert.AreEqual(1, TFindingsOutput.ExitCode([MakeFile('a', [MakeFinding('x', TRuleSeverity.Warning)])],
+    TFailOn.Warning));
+  Assert.AreEqual(1, TFindingsOutput.ExitCode([MakeFile('a', [MakeFinding('x', TRuleSeverity.Error)])],
+    TFailOn.Warning));
+  Assert.AreEqual(0, TFindingsOutput.ExitCode([MakeFile('a', [MakeFinding('x', TRuleSeverity.Information),
+    MakeFinding('y', TRuleSeverity.Hint)])], TFailOn.Warning));
+end;
+
+procedure TLinterOutputTests.ExitCodeFailOnNever;
+begin
+  Assert.AreEqual(0, TFindingsOutput.ExitCode([MakeFile('a', [MakeFinding('x', TRuleSeverity.Error)])],
+    TFailOn.Never));
 end;
 
 procedure TLinterOutputTests.ParsesFormat;
@@ -210,6 +307,18 @@ begin
   Assert.IsTrue(TFindingsOutput.TryParseFormat('SARIF', Format));
   Assert.AreEqual(Ord(TFindingsFormat.Sarif), Ord(Format));
   Assert.IsFalse(TFindingsOutput.TryParseFormat('xml', Format));
+end;
+
+procedure TLinterOutputTests.ParsesFailOn;
+var
+  FailOn: TFailOn;
+begin
+  Assert.IsTrue(TFindingsOutput.TryParseFailOn('Warning', FailOn));
+  Assert.AreEqual(Ord(TFailOn.Warning), Ord(FailOn));
+  Assert.IsTrue(TFindingsOutput.TryParseFailOn('never', FailOn));
+  Assert.AreEqual(Ord(TFailOn.Never), Ord(FailOn));
+  Assert.IsFalse(TFindingsOutput.TryParseFailOn('hint', FailOn));
+  Assert.AreEqual(Ord(TFailOn.Error), Ord(FailOn));
 end;
 
 initialization

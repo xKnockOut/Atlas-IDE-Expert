@@ -15,6 +15,8 @@ type
     procedure EveryTextExistsInBothLanguagesWithSamePlaceholders;
     [Test]
     procedure SwitchesLanguage;
+    [Test]
+    procedure ConfidenceLineForRuleFindings;
   end;
 
 implementation
@@ -51,6 +53,23 @@ begin
       Assert.IsTrue((German <> '') and (English <> ''), Ord(Id).ToString);
       Assert.AreEqual(Placeholders(German), Placeholders(English), German + ' / ' + English);
     end;
+  finally
+    TAtlasStrings.Language := Saved;
+  end;
+end;
+
+procedure TAtlasStringsTests.ConfidenceLineForRuleFindings;
+var
+  Saved: TAtlasLanguage;
+begin
+  Saved := TAtlasStrings.Language;
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Assert.AreEqual('Konfidenz: mittel', TAtlasStrings.Confidence('medium'));
+    Assert.AreEqual('Konfidenz: hoch', TAtlasStrings.Confidence('high'));
+    Assert.AreEqual('', TAtlasStrings.Confidence(''), 'Syntax- und Compilermeldungen ohne Konfidenz');
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    Assert.AreEqual('Confidence: low', TAtlasStrings.Confidence('low'));
   finally
     TAtlasStrings.Language := Saved;
   end;

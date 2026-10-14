@@ -63,6 +63,9 @@ type
 
 implementation
 
+uses
+  Atlas.Core.Diagnostics.Guard;
+
 const
   MessageGroup = 'Atlas';
 
@@ -96,6 +99,8 @@ begin
       FOwner.FEvents.ProjectStarted(Info);
   except
     // Keine Exception an die IDE (#493); der Compile läuft weiter.
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Build, E);
   end;
 end;
 
@@ -118,6 +123,8 @@ begin
     else if Project <> nil then
       FOwner.FEvents.ProjectFinished(Project.FileName, Succeeded);
   except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Build, E);
   end;
 end;
 
@@ -135,6 +142,8 @@ begin
     Info := FOwner.ProjectInfo(Project);
     FOwner.FEvents.ProjectStarted(Info);
   except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Build, E);
   end;
 end;
 
@@ -147,6 +156,8 @@ begin
   try
     FOwner.FEvents.ProjectFinished(Project.FileName, Result = crOTASucceeded);
   except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Build, E);
   end;
 end;
 
@@ -158,6 +169,8 @@ begin
     FOwner.FKind := TAtlasIdeCompileEvents.KindOf(Mode);
     FOwner.FEvents.GroupStarted(FOwner.FKind);
   except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Build, E);
   end;
 end;
 
@@ -169,6 +182,8 @@ begin
     FOwner.FEvents.GroupFinished(Result <> crOTAFailed);
     FOwner.FKind := TAtlasCompileKind.Make;
   except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Build, E);
   end;
 end;
 

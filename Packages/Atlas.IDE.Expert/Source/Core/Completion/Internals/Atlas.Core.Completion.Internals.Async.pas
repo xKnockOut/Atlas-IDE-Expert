@@ -6,6 +6,8 @@
 // wenn der Query noch aktuell ist. Mehrere Threads dürfen gleichzeitig laufen,
 // damit ein neuer Query nie auf einen langsamen alten warten muss. Beim
 // Freigeben wartet die Quelle auf alle Threads (Entladen des Packages, #493).
+// Fehler in Fetch und in RunInBackground zählt die Sicherung je Quelle
+// (ProviderName, #493); IsFailure nimmt erwartbare Fälle aus (Server weg).
 
 interface
 
@@ -14,7 +16,8 @@ uses
   System.Classes,
   System.SyncObjs,
   System.Generics.Collections,
-  Atlas.Core.Completion.Contract;
+  Atlas.Core.Completion.Contract,
+  Atlas.Core.Diagnostics.Guard;
 
 type
   /// <summary>True, sobald der Query abgebrochen oder durch einen neuen ersetzt ist.</summary>
@@ -29,8 +32,9 @@ type
     Alive: Boolean;
   end;
 
-  TAtlasAsyncCompletionProvider = class(TInterfacedObject, IAtlasCompletionProvider)
+  TAtlasAsyncCompletionProvider = class(TInterfacedObject, IAtlasCompletionProvider, IAtlasNamedProvider)
   private
+    FName: string;
     FToken: TAtlasAliveToken;
     FTokenRef: IInterface;
     FLock: TCriticalSection;
@@ -38,7 +42,10 @@ type
     FWorkers: TList<TThread>;
     procedure ReapWorkers;
     function IsCurrent(AGeneration: Integer): Boolean;
+    procedure Failed(E: Exception);
   protected
+    /// <summary>Zählt E als Fehler der Quelle? Standard: ja.</summary>
+    function IsFailure(E: Exception): Boolean; virtual;
     /// <summary>Im aufrufenden Thread vor dem Start; False = nichts zu tun (Complete sofort).
     /// AData geht unverändert an Fetch (nicht übernommen, muss bis zum Ende von Fetch leben).</summary>
     function Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean; virtual;
@@ -60,6 +67,10 @@ type
     { IAtlasCompletionProvider }
     procedure Query(const AContext: TAtlasContext; const ASink: IAtlasCompletionSink);
     procedure Cancel;
+    { IAtlasNamedProvider }
+    function ProviderName: string;
+    /// <summary>Name für Sicherung, Meldungen und Einstellungsseite; '' = Klassenname.</summary>
+    property Name: string read FName write FName;
   end;
 
 implementation
@@ -92,6 +103,28 @@ begin
   Result := True;
 end;
 
+function TAtlasAsyncCompletionProvider.ProviderName: string;
+begin
+  Result := FName;
+  if Result = '' then
+    Result := ClassName;
+end;
+
+function TAtlasAsyncCompletionProvider.IsFailure(E: Exception): Boolean;
+begin
+  Result := not (E is EAbort);
+end;
+
+procedure TAtlasAsyncCompletionProvider.Failed(E: Exception);
+begin
+  try
+    if IsFailure(E) then
+      TAtlasGuard.ReportProvider(ProviderName, E);
+  except
+    // Melden darf den Hintergrund-Thread nicht beenden.
+  end;
+end;
+
 function TAtlasAsyncCompletionProvider.IsCurrent(AGeneration: Integer): Boolean;
 begin
   Result := TInterlocked.CompareExchange(FGeneration, 0, 0) = AGeneration;
@@ -108,7 +141,9 @@ begin
       try
         AWork();
       except
-        // Hintergrundarbeit darf die IDE nie stören (#493).
+        // Hintergrundarbeit darf die IDE nie stören (#493); gezählt je Quelle.
+        on E: Exception do
+          Failed(E);
       end;
     end);
   Worker.FreeOnTerminate := False;
@@ -200,8 +235,12 @@ begin
               Sink.AddItems(AItems);
           end, Incomplete);
       except
-        // Server weg, Zeitlimit oder unerwartete Antwort: keine Einträge.
-        Items := nil;
+        // Server weg, Zeitlimit oder unerwartete Antwort: keine Einträge; Fehler zählt die Sicherung (#493).
+        on E: Exception do
+        begin
+          Items := nil;
+          Failed(E);
+        end;
       end;
       if IsCurrent(Generation) then
       begin

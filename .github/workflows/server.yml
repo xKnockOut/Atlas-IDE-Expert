@@ -7,7 +7,12 @@ name: Server und Tests
 # auf einem Rechner mit RAD Studio und cc.ps1, im angemeldeten Benutzerkontext
 # (nicht als Dienst), weil cc.ps1 eine IDE startet.
 # Der Job läuft nur, wenn die Repository-Variable DELPHI_RUNNER auf 'true'
-# steht. CC_SCRIPT überschreibt den Pfad zu cc.ps1.
+# steht; sonst meldet der Job "uebersprungen" das sichtbar in der
+# Zusammenfassung. CC_SCRIPT überschreibt den Pfad zu cc.ps1. Siehe ADR 0007.
+#
+# Neue Pushes auf denselben Branch brechen einen laufenden Build ab: Jeder Lauf
+# startet eine Scratch-IDE, und bei vielen gestapelten Branches wartete die
+# Schlange sonst stundenlang.
 
 on:
   push:
@@ -19,7 +24,25 @@ permissions:
   checks: write
   pull-requests: write
 
+concurrency:
+  group: server-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  uebersprungen:
+    if: vars.DELPHI_RUNNER != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Server-Job übersprungen
+        run: |
+          echo "::notice title=Server-Job übersprungen::Kein Delphi-Runner eingerichtet (Repository-Variable DELPHI_RUNNER ist nicht 'true'); Build und Tests sind nicht gelaufen."
+          {
+            echo "### Server-Job übersprungen"
+            echo
+            echo "Build, Plugin-BPL und DUnitX-Tests laufen nur auf dem selbst gehosteten Delphi-Runner."
+            echo "Die Repository-Variable \`DELPHI_RUNNER\` steht nicht auf \`true\`; dieser Lauf hat nichts davon geprüft."
+          } >> "$GITHUB_STEP_SUMMARY"
+
   build-test:
     if: vars.DELPHI_RUNNER == 'true'
     runs-on: [self-hosted, windows, delphi]
@@ -56,3 +79,16 @@ jobs:
         with:
           name: dunitx-ergebnisse
           path: dunitx-ergebnisse.xml
+      # Dateiname je IDE-Version (LIBSUFFIX AUTO), z. B. Atlas.IDE.Expert370.bpl (#281).
+      - name: Plugin-BPL ablegen (Win32, klassische IDE)
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-ide-expert-win32
+          path: Output/Win32/Debug/Bpl/Atlas.IDE.Expert*.bpl
+          if-no-files-found: error
+      - name: Plugin-BPL ablegen (Win64, 64-Bit-IDE)
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-ide-expert-win64
+          path: Output/Win64/Debug/Bpl/Atlas.IDE.Expert*.bpl
+          if-no-files-found: error

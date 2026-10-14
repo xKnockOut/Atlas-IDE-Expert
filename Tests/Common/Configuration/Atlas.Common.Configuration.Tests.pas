@@ -26,6 +26,8 @@ type
     [Test]
     procedure ReadsInlayHints;
     [Test]
+    procedure ReadsHints;
+    [Test]
     procedure ReadsMcpDisabledTools;
     [Test]
     procedure ReadsStringLiteral;
@@ -324,10 +326,11 @@ begin
   Parse('{"completion": {"freeStyle": "nil"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   // Speicherbudget (#185)
-  Assert.AreEqual(0, Parse('{}', Issues).MemoryBudgetMb);
+  Assert.AreEqual(256, Parse('{}', Issues).MemoryBudgetMb, 'Vorgabe 256 MB (#492)');
+  Assert.AreEqual(0, Parse('{"memoryBudgetMb": 0}', Issues).MemoryBudgetMb, '0 = unbegrenzt');
   Assert.AreEqual(512, Parse('{"memoryBudgetMb": 512}', Issues).MemoryBudgetMb);
   Assert.AreEqual(0, Integer(Length(Issues)));
-  Assert.AreEqual(0, Parse('{"memoryBudgetMb": -1}', Issues).MemoryBudgetMb);
+  Assert.AreEqual(256, Parse('{"memoryBudgetMb": -1}', Issues).MemoryBudgetMb);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Settings := TConfigurationParser.ParseLayered('{"memoryBudgetMb": 100}', '{"memoryBudgetMb": 200}', Issues);
   Assert.AreEqual(200, Settings.MemoryBudgetMb);
@@ -356,11 +359,15 @@ begin
   Settings := Parse('{}', Issues);
   Assert.IsTrue(Settings.IndexProjectGroup and Settings.IndexSearchPaths);
   Assert.IsFalse(Settings.IndexLibraryPaths, 'Bibliothekspfade nur auf Wunsch (Dauer)');
+  Assert.IsTrue(Settings.IndexUsages, 'Verwendungen standardmäßig an (#492)');
   Assert.AreEqual<NativeInt>(0, Length(Settings.IndexExclude));
   Settings := Parse('{"index": {"projectGroup": false, "searchPaths": false, "libraryPaths": false, ' +
-    '"exclude": ["**/Demos/**"]}}', Issues);
+    '"usages": false, "exclude": ["**/Demos/**"]}}', Issues);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Assert.IsFalse(Settings.IndexProjectGroup or Settings.IndexSearchPaths or Settings.IndexLibraryPaths);
+  Assert.IsFalse(Settings.IndexUsages);
+  Parse('{"index": {"usages": "ja"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.IsTrue(Settings.IsIndexExcluded('C:\Komponenten\Demos\Main.pas'));
   Assert.IsFalse(Settings.IsIndexExcluded('C:\Komponenten\Source\Main.pas'));
   Parse('{"index": {"exclude": "Demos", "x": true}}', Issues);
@@ -513,6 +520,35 @@ begin
   Assert.AreEqual(5, Settings.InlayHints.EndMarkerMinLines);
 end;
 
+procedure TConfigurationParserTests.ReadsHints;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Hints.XmlDocFull);
+  Assert.AreEqual(0, Settings.Hints.XmlDocMaxLines);
+  Settings := Parse('{"hints": {"xmlDocFull": false, "xmlDocMaxLines": 10}}', Issues);
+  Assert.IsFalse(Settings.Hints.XmlDocFull);
+  Assert.AreEqual(10, Settings.Hints.XmlDocMaxLines);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  // Außerhalb 0–50 bzw. falsch getypt (Fehler), unbekannter Schlüssel (Warnung); Vorgaben bleiben.
+  Settings := Parse('{"hints": {"xmlDocMaxLines": 51, "xmlDocFull": "nein", "x": 1}}', Issues);
+  Assert.AreEqual(0, Settings.Hints.XmlDocMaxLines);
+  Assert.IsTrue(Settings.Hints.XmlDocFull);
+  Assert.AreEqual(3, Integer(Length(Issues)));
+  Assert.IsTrue(Issues[0].IsError);
+  Assert.IsTrue(Issues[1].IsError);
+  Assert.IsFalse(Issues[2].IsError);
+  Settings := Parse('{"hints": {"xmlDocMaxLines": -1}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Die Datei ersetzt den Block aus dem Editor (IDE-Plugin).
+  Settings := TConfigurationParser.ParseLayered('{"hints": {"xmlDocFull": false}}',
+    '{"hints": {"xmlDocMaxLines": 5}}', Issues);
+  Assert.IsTrue(Settings.Hints.XmlDocFull);
+  Assert.AreEqual(5, Settings.Hints.XmlDocMaxLines);
+end;
+
 procedure TServerSettingsTests.RuleSeverityFallsBackToDefault;
 var
   Settings: TServerSettings;
@@ -585,6 +621,13 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Assert.AreEqual('', Parse('{"delphiVersion": "7"}', Issues).DelphiVersion);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Unbekannte BDS-Nummer (#109).
+  Assert.AreEqual('', BdsVersionOf('99'));
+  Assert.AreEqual('', BdsVersionOf('30.0'));
+  Assert.AreEqual('', Parse('{"delphiVersion": "99"}', Issues).DelphiVersion);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('19.0', Parse('{"delphiVersion": "10.2"}', Issues).DelphiVersion);
+  Assert.AreEqual(0, Integer(Length(Issues)));
 end;
 
 procedure TServerSettingsTests.ReadsSortUses;

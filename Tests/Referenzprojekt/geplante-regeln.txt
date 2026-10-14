@@ -1,6 +1,6 @@
 # Regel-IDs aus den Markierungen, die noch keine Regel haben (#152).
 # Der Golden-Korpus-Test überspringt sie mit Warnung. Eine ID, die weder hier
-# noch im Regelkatalog steht, lässt den Test fehlschlagen.
-possible-leak     # #56
-with-statement    # noch kein Issue
-unreachable-code  # noch kein Issue
+# noch im Regelkatalog steht, lässt den Test fehlschlagen. Jede ID nennt das
+# offene Issue, das sie in den Katalog übernimmt (#94); fehlt es, schlägt der
+# Test ebenfalls fehl.
+possible-leak     # #56 (flussbasiert, Stufe 3)

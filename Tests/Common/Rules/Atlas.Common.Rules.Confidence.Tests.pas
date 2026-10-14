@@ -26,7 +26,9 @@ type
     [Test]
     procedure ExperimentalRuleNeedsExplicitConfiguration;
     [Test]
-    procedure DisplayMessageShowsConfidence;
+    procedure ConfidenceNamesForTextAndMachines;
+    [Test]
+    procedure UserSeverityErrorStillCappedByConfidence;
     [Test]
     procedure ParsesMinConfidence;
     [Test]
@@ -139,16 +141,28 @@ begin
     '{ "rules": { "fixed": "warning" } }'))));
 end;
 
-procedure TRuleConfidenceTests.DisplayMessageShowsConfidence;
-var
-  Finding: TRuleFinding;
+procedure TRuleConfidenceTests.ConfidenceNamesForTextAndMachines;
 begin
-  Finding := Default(TRuleFinding);
-  Finding.Message := 'Leerer except-Block';
-  Finding.Confidence := TRuleConfidence.High;
-  Assert.AreEqual('Leerer except-Block', Finding.DisplayMessage);
-  Finding.Confidence := TRuleConfidence.Medium;
-  Assert.AreEqual('Leerer except-Block (Konfidenz: mittel)', Finding.DisplayMessage);
+  Assert.AreEqual('mittel', ConfidenceText(TRuleConfidence.Medium));
+  Assert.AreEqual('niedrig', ConfidenceText(TRuleConfidence.Low));
+  Assert.AreEqual('high', ConfidenceName(TRuleConfidence.High));
+  Assert.AreEqual('medium', ConfidenceName(TRuleConfidence.Medium));
+  Assert.AreEqual('low', ConfidenceName(TRuleConfidence.Low));
+end;
+
+procedure TRuleConfidenceTests.UserSeverityErrorStillCappedByConfidence;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Der Deckel gilt auch, wenn der Benutzer "error" einstellt.
+  Findings := TRuleAssert.Findings(TFixedRule.Create(TRuleConfidence.Medium, TRuleSeverity.Hint), Source,
+    '{ "rules": { "fixed": "error" } }');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Findings := TRuleAssert.Findings(TFixedRule.Create(TRuleConfidence.Low, TRuleSeverity.Hint), Source,
+    '{ "minConfidence": "low", "rules": { "fixed": { "severity": "error" } } }');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
 end;
 
 procedure TRuleConfidenceTests.ParsesMinConfidence;

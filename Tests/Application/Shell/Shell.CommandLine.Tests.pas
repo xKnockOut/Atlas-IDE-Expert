@@ -41,6 +41,8 @@ type
     procedure WarnsAboutInvalidLinterValues;
     [Test]
     procedure ReadsChangedArguments;
+    [Test]
+    procedure ReadsFailOnAndSourceRoot;
   end;
 
 implementation
@@ -178,6 +180,21 @@ begin
   Assert.IsTrue(Options.ClearCache);
 end;
 
+procedure TCommandLineOptionsTests.ReadsFailOnAndSourceRoot;
+var
+  Options: TCommandLineOptions;
+begin
+  Options := TCommandLineOptions.Parse(['--check', 'App\App.dproj', '--fail-on', 'warning', '--source-root=C:\Repo']);
+  Assert.AreEqual(0, Integer(Length(Options.Warnings)));
+  Assert.AreEqual(Ord(TFailOn.Warning), Ord(Options.FailOn));
+  Assert.AreEqual('C:\Repo', Options.SourceRoot);
+  Options := TCommandLineOptions.Parse(['--check', 'App.dproj']);
+  Assert.AreEqual(Ord(TFailOn.Error), Ord(Options.FailOn), 'Standard: nur Fehler');
+  Assert.AreEqual('', Options.SourceRoot);
+  Options := TCommandLineOptions.Parse(['--fail-on=never']);
+  Assert.AreEqual(Ord(TFailOn.Never), Ord(Options.FailOn));
+end;
+
 procedure TCommandLineOptionsTests.ReadsMcpArguments;
 var
   Options: TCommandLineOptions;
@@ -234,8 +251,9 @@ procedure TCommandLineOptionsTests.WarnsAboutInvalidLinterValues;
 var
   Options: TCommandLineOptions;
 begin
-  Options := TCommandLineOptions.Parse(['--format', 'xml', '--min-severity', 'off']);
-  Assert.AreEqual(2, Integer(Length(Options.Warnings)));
+  Options := TCommandLineOptions.Parse(['--format', 'xml', '--min-severity', 'off', '--fail-on', 'hint']);
+  Assert.AreEqual(3, Integer(Length(Options.Warnings)));
+  Assert.AreEqual(Ord(TFailOn.Error), Ord(Options.FailOn));
   Assert.AreEqual(Ord(TFindingsFormat.Text), Ord(Options.CheckFormat));
   Assert.AreEqual(Ord(TRuleSeverity.Default), Ord(Options.MinSeverity));
   Assert.AreEqual('', Options.CheckTarget);

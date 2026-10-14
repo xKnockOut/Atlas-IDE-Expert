@@ -50,6 +50,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
   System.IOUtils,
   Atlas.UI.Strings,
@@ -174,6 +175,8 @@ begin
         Process(FChanges.TakeBatch);
     except
       // Keine Exception an die IDE (#493); im nächsten Takt neu versuchen.
+      on E: Exception do
+        TAtlasGuard.Report(TAtlasFeature.Reloader, E);
     end;
   finally
     FBusy := False;

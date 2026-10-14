@@ -30,10 +30,20 @@ type
     MaxPanelWidth = 600;
     MinHangThreshold = 100;
     MaxHangThreshold = 10000;
+    /// <summary>Wie TAtlasTimeLimit.MinMs/MaxMs (#493).</summary>
+    MinProviderTimeLimit = 50;
+    MaxProviderTimeLimit = 5000;
     MinCheckDelay = 500;
     MaxCheckDelay = 10000;
     MinCheckMax = 200;
     MaxCheckMax = 20000;
+    MaxXmlDocLines = 50;
+    /// <summary>Speichergrenze des Symbolindex im Server (#492); 0 = unbegrenzt.</summary>
+    MaxMemoryBudgetMb = 65536;
+    /// <summary>Grenzen für safeMode.startupTimeoutMs und safeMode.keepSettingsHistory (#722).</summary>
+    MinSafeStartupTimeout = 1000;
+    MaxSafeStartupTimeout = 120000;
+    MaxSafeSettingsHistory = 50;
   public
     /// <summary>Hauptschalter (#407): aus = eingebaute Code Insight der IDE.</summary>
     Enabled: Boolean;
@@ -55,6 +65,12 @@ type
     /// <summary>Kürzel auch belegen, wenn die IDE oder eine andere Erweiterung es schon nutzt.</summary>
     PaletteKeyPriority: Boolean;
     CheckKeyPriority: Boolean;
+    /// <summary>Eigene Tasten für Vervollständigung und Parameter-Hint (#494), 0 = die Taste der IDE
+    /// (Strg+Leer bzw. Strg+Umschalt+Leer über Code Insight); sonst belegt Atlas sie zusätzlich.</summary>
+    CompletionKey: Integer;
+    SignatureKey: Integer;
+    CompletionKeyPriority: Boolean;
+    SignatureKeyPriority: Boolean;
     /// <summary>Filter-Chips über der Liste (#422).</summary>
     FilterChips: Boolean;
     /// <summary>Lernende Gewichtung (#418).</summary>
@@ -67,6 +83,8 @@ type
     HoverTooltip: Boolean;
     /// <summary>Ab so vielen Millisekunden ohne Antwort gilt die IDE als hängend (#501).</summary>
     HangThresholdMs: Integer;
+    /// <summary>Zeitlimit für Aufrufe von Datenquellen aus dem Hauptthread (#493); länger gilt als Fehler.</summary>
+    ProviderTimeLimitMs: Integer;
     /// <summary>Hinweis im Meldungsfenster nach langen Hängern (ab 2 s, #501).</summary>
     HangHint: Boolean;
     /// <summary>Extern geänderte Dateien ohne eigene Änderungen still neu laden (#536).</summary>
@@ -111,6 +129,39 @@ type
     IndexProjectGroup: Boolean;
     IndexSearchPaths: Boolean;
     IndexLibraryPaths: Boolean;
+    /// <summary>Verwendungen der Bezeichner mit indizieren (#492, index.usages).</summary>
+    IndexUsages: Boolean;
+    /// <summary>Speichergrenze des Symbolindex in MB (#492, memoryBudgetMb); darüber lagert der Server
+    /// zuerst die Verwendungen aus. 0 = unbegrenzt.</summary>
+    MemoryBudgetMb: Integer;
+    /// <summary>XMLDoc in Tooltip und Detailpanel vollständig (#654); aus = Kurzform. hints in atlas.json
+    /// hat Vorrang.</summary>
+    XmlDocFull: Boolean;
+    /// <summary>Höchstens so viele Zeilen Doku ohne Scrollen, 0 = bis zur Bildschirmhöhe (#654).</summary>
+    XmlDocMaxLines: Integer;
+    /// <summary>Atlas-Feld in der Statusleiste (#591, statusField.enabled).</summary>
+    StatusField: Boolean;
+    /// <summary>Kennungen der Zeilen, die im Fenster des Felds nicht erscheinen, durch Komma getrennt
+    /// (#591, statusField.hidden).</summary>
+    StatusFieldHidden: string;
+    /// <summary>Kurztext neben „Atlas“ (#591, statusField.showSummary).</summary>
+    StatusFieldSummary: Boolean;
+    /// <summary>Tastenkürzel für das Fenster der Schnellschalter (#604, TShortCut, 0 = keins) und Vorrang wie
+    /// bei den anderen Atlas-Tasten (#494).</summary>
+    QuickToggleKey: Integer;
+    QuickToggleKeyPriority: Boolean;
+    /// <summary>Abgesicherter Start (#722): nach einem Absturz fragen (safeMode.askAfterCrash).</summary>
+    SafeAskAfterCrash: Boolean;
+    /// <summary>Nach zwei Abstürzen kurz hintereinander ohne Rückfrage abgesichert
+    /// (safeMode.autoAfterRepeatedCrash).</summary>
+    SafeAutoAfterRepeatedCrash: Boolean;
+    /// <summary>Taste beim Laden für den abgesicherten Start: shift, ctrl, none (safeMode.startupKey).</summary>
+    SafeStartupKey: string;
+    /// <summary>Längste Ladezeit; länger gilt beim nächsten Start wie ein Absturz
+    /// (safeMode.startupTimeoutMs).</summary>
+    SafeStartupTimeoutMs: Integer;
+    /// <summary>Gemerkte Einstellungsstände zum Zurücksetzen (safeMode.keepSettingsHistory).</summary>
+    SafeKeepSettingsHistory: Integer;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -149,12 +200,17 @@ begin
   Result.CheckKey := $C078; // Strg+Alt+F9
   Result.PaletteKeyPriority := False;
   Result.CheckKeyPriority := False;
+  Result.CompletionKey := 0;
+  Result.SignatureKey := 0;
+  Result.CompletionKeyPriority := False;
+  Result.SignatureKeyPriority := False;
   Result.FilterChips := True;
   Result.Learning := True;
   Result.GroupInherited := True;
   Result.Preview := False;
   Result.HoverTooltip := True;
   Result.HangThresholdMs := 500;
+  Result.ProviderTimeLimitMs := 200;
   Result.HangHint := True;
   Result.ReloadExternal := True;
   Result.PairColors := True;
@@ -181,6 +237,20 @@ begin
   Result.IndexProjectGroup := True;
   Result.IndexSearchPaths := True;
   Result.IndexLibraryPaths := False;
+  Result.IndexUsages := True;
+  Result.MemoryBudgetMb := 256;
+  Result.XmlDocFull := True;
+  Result.XmlDocMaxLines := 0;
+  Result.StatusField := True;
+  Result.StatusFieldHidden := '';
+  Result.StatusFieldSummary := True;
+  Result.QuickToggleKey := $E041; // Strg+Umschalt+Alt+A
+  Result.QuickToggleKeyPriority := False;
+  Result.SafeAskAfterCrash := True;
+  Result.SafeAutoAfterRepeatedCrash := True;
+  Result.SafeStartupKey := 'shift';
+  Result.SafeStartupTimeoutMs := 10000;
+  Result.SafeKeepSettingsHistory := 5;
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -190,8 +260,22 @@ begin
     ListWidth := EnsureRange(ListWidth, MinListWidth, MaxListWidth);
   PanelWidth := EnsureRange(PanelWidth, MinPanelWidth, MaxPanelWidth);
   HangThresholdMs := EnsureRange(HangThresholdMs, MinHangThreshold, MaxHangThreshold);
+  ProviderTimeLimitMs := EnsureRange(ProviderTimeLimitMs, MinProviderTimeLimit, MaxProviderTimeLimit);
   CheckOnSaveDelayMs := EnsureRange(CheckOnSaveDelayMs, MinCheckDelay, MaxCheckDelay);
   CheckOnSaveMaxMs := EnsureRange(CheckOnSaveMaxMs, MinCheckMax, MaxCheckMax);
+  XmlDocMaxLines := EnsureRange(XmlDocMaxLines, 0, MaxXmlDocLines);
+  MemoryBudgetMb := EnsureRange(MemoryBudgetMb, 0, MaxMemoryBudgetMb);
+  // TShortCut ist ein Word.
+  PaletteKey := EnsureRange(PaletteKey, 0, $FFFF);
+  CheckKey := EnsureRange(CheckKey, 0, $FFFF);
+  CompletionKey := EnsureRange(CompletionKey, 0, $FFFF);
+  SignatureKey := EnsureRange(SignatureKey, 0, $FFFF);
+  QuickToggleKey := EnsureRange(QuickToggleKey, 0, $FFFF);
+  SafeStartupTimeoutMs := EnsureRange(SafeStartupTimeoutMs, MinSafeStartupTimeout, MaxSafeStartupTimeout);
+  SafeKeepSettingsHistory := EnsureRange(SafeKeepSettingsHistory, 0, MaxSafeSettingsHistory);
+  SafeStartupKey := LowerCase(Trim(SafeStartupKey));
+  if (SafeStartupKey <> 'shift') and (SafeStartupKey <> 'ctrl') and (SafeStartupKey <> 'none') then
+    SafeStartupKey := 'shift';
 end;
 
 procedure TAtlasPluginSettings.Load(const AStore: IAtlasSettingsStore);
@@ -210,12 +294,17 @@ begin
   CheckKey := AStore.ReadInteger('CheckKey', Default.CheckKey);
   PaletteKeyPriority := AStore.ReadInteger('PaletteKeyPriority', BoolValue(Default.PaletteKeyPriority)) <> 0;
   CheckKeyPriority := AStore.ReadInteger('CheckKeyPriority', BoolValue(Default.CheckKeyPriority)) <> 0;
+  CompletionKey := AStore.ReadInteger('CompletionKey', Default.CompletionKey);
+  SignatureKey := AStore.ReadInteger('SignatureKey', Default.SignatureKey);
+  CompletionKeyPriority := AStore.ReadInteger('CompletionKeyPriority', BoolValue(Default.CompletionKeyPriority)) <> 0;
+  SignatureKeyPriority := AStore.ReadInteger('SignatureKeyPriority', BoolValue(Default.SignatureKeyPriority)) <> 0;
   FilterChips := AStore.ReadInteger('FilterChips', BoolValue(Default.FilterChips)) <> 0;
   Learning := AStore.ReadInteger('Learning', BoolValue(Default.Learning)) <> 0;
   GroupInherited := AStore.ReadInteger('GroupInherited', BoolValue(Default.GroupInherited)) <> 0;
   Preview := AStore.ReadInteger('Preview', BoolValue(Default.Preview)) <> 0;
   HoverTooltip := AStore.ReadInteger('HoverTooltip', BoolValue(Default.HoverTooltip)) <> 0;
   HangThresholdMs := AStore.ReadInteger('HangThresholdMs', Default.HangThresholdMs);
+  ProviderTimeLimitMs := AStore.ReadInteger('ProviderTimeLimitMs', Default.ProviderTimeLimitMs);
   HangHint := AStore.ReadInteger('HangHint', BoolValue(Default.HangHint)) <> 0;
   ReloadExternal := AStore.ReadInteger('ReloadExternal', BoolValue(Default.ReloadExternal)) <> 0;
   PairColors := AStore.ReadInteger('PairColors', BoolValue(Default.PairColors)) <> 0;
@@ -240,6 +329,22 @@ begin
   IndexProjectGroup := AStore.ReadInteger('IndexProjectGroup', BoolValue(Default.IndexProjectGroup)) <> 0;
   IndexSearchPaths := AStore.ReadInteger('IndexSearchPaths', BoolValue(Default.IndexSearchPaths)) <> 0;
   IndexLibraryPaths := AStore.ReadInteger('IndexLibraryPaths', BoolValue(Default.IndexLibraryPaths)) <> 0;
+  IndexUsages := AStore.ReadInteger('IndexUsages', BoolValue(Default.IndexUsages)) <> 0;
+  MemoryBudgetMb := AStore.ReadInteger('MemoryBudgetMb', Default.MemoryBudgetMb);
+  XmlDocFull := AStore.ReadInteger('XmlDocFull', BoolValue(Default.XmlDocFull)) <> 0;
+  XmlDocMaxLines := AStore.ReadInteger('XmlDocMaxLines', Default.XmlDocMaxLines);
+  StatusField := AStore.ReadInteger('StatusField', BoolValue(Default.StatusField)) <> 0;
+  StatusFieldHidden := Trim(AStore.ReadString('StatusFieldHidden', Default.StatusFieldHidden));
+  StatusFieldSummary := AStore.ReadInteger('StatusFieldSummary', BoolValue(Default.StatusFieldSummary)) <> 0;
+  QuickToggleKey := AStore.ReadInteger('QuickToggleKey', Default.QuickToggleKey);
+  QuickToggleKeyPriority :=
+    AStore.ReadInteger('QuickToggleKeyPriority', BoolValue(Default.QuickToggleKeyPriority)) <> 0;
+  SafeAskAfterCrash := AStore.ReadInteger('SafeAskAfterCrash', BoolValue(Default.SafeAskAfterCrash)) <> 0;
+  SafeAutoAfterRepeatedCrash :=
+    AStore.ReadInteger('SafeAutoAfterRepeatedCrash', BoolValue(Default.SafeAutoAfterRepeatedCrash)) <> 0;
+  SafeStartupKey := AStore.ReadString('SafeStartupKey', Default.SafeStartupKey);
+  SafeStartupTimeoutMs := AStore.ReadInteger('SafeStartupTimeoutMs', Default.SafeStartupTimeoutMs);
+  SafeKeepSettingsHistory := AStore.ReadInteger('SafeKeepSettingsHistory', Default.SafeKeepSettingsHistory);
   Normalize;
 end;
 
@@ -257,12 +362,17 @@ begin
   AStore.WriteInteger('CheckKey', CheckKey);
   AStore.WriteInteger('PaletteKeyPriority', BoolValue(PaletteKeyPriority));
   AStore.WriteInteger('CheckKeyPriority', BoolValue(CheckKeyPriority));
+  AStore.WriteInteger('CompletionKey', CompletionKey);
+  AStore.WriteInteger('SignatureKey', SignatureKey);
+  AStore.WriteInteger('CompletionKeyPriority', BoolValue(CompletionKeyPriority));
+  AStore.WriteInteger('SignatureKeyPriority', BoolValue(SignatureKeyPriority));
   AStore.WriteInteger('FilterChips', BoolValue(FilterChips));
   AStore.WriteInteger('Learning', BoolValue(Learning));
   AStore.WriteInteger('GroupInherited', BoolValue(GroupInherited));
   AStore.WriteInteger('Preview', BoolValue(Preview));
   AStore.WriteInteger('HoverTooltip', BoolValue(HoverTooltip));
   AStore.WriteInteger('HangThresholdMs', HangThresholdMs);
+  AStore.WriteInteger('ProviderTimeLimitMs', ProviderTimeLimitMs);
   AStore.WriteInteger('HangHint', BoolValue(HangHint));
   AStore.WriteInteger('ReloadExternal', BoolValue(ReloadExternal));
   AStore.WriteInteger('PairColors', BoolValue(PairColors));
@@ -287,6 +397,20 @@ begin
   AStore.WriteInteger('IndexProjectGroup', BoolValue(IndexProjectGroup));
   AStore.WriteInteger('IndexSearchPaths', BoolValue(IndexSearchPaths));
   AStore.WriteInteger('IndexLibraryPaths', BoolValue(IndexLibraryPaths));
+  AStore.WriteInteger('IndexUsages', BoolValue(IndexUsages));
+  AStore.WriteInteger('MemoryBudgetMb', MemoryBudgetMb);
+  AStore.WriteInteger('XmlDocFull', BoolValue(XmlDocFull));
+  AStore.WriteInteger('XmlDocMaxLines', XmlDocMaxLines);
+  AStore.WriteInteger('StatusField', BoolValue(StatusField));
+  AStore.WriteString('StatusFieldHidden', Trim(StatusFieldHidden));
+  AStore.WriteInteger('StatusFieldSummary', BoolValue(StatusFieldSummary));
+  AStore.WriteInteger('QuickToggleKey', QuickToggleKey);
+  AStore.WriteInteger('QuickToggleKeyPriority', BoolValue(QuickToggleKeyPriority));
+  AStore.WriteInteger('SafeAskAfterCrash', BoolValue(SafeAskAfterCrash));
+  AStore.WriteInteger('SafeAutoAfterRepeatedCrash', BoolValue(SafeAutoAfterRepeatedCrash));
+  AStore.WriteString('SafeStartupKey', SafeStartupKey);
+  AStore.WriteInteger('SafeStartupTimeoutMs', SafeStartupTimeoutMs);
+  AStore.WriteInteger('SafeKeepSettingsHistory', SafeKeepSettingsHistory);
 end;
 
 function JsonBool(AValue: Boolean): string;
@@ -300,7 +424,10 @@ end;
 function TAtlasPluginSettings.ServerSettingsJson: string;
 begin
   Result := '{"index":{"projectGroup":' + JsonBool(IndexProjectGroup) + ',"searchPaths":' +
-    JsonBool(IndexSearchPaths) + ',"libraryPaths":' + JsonBool(IndexLibraryPaths) + '}}';
+    JsonBool(IndexSearchPaths) + ',"libraryPaths":' + JsonBool(IndexLibraryPaths) + ',"usages":' +
+    JsonBool(IndexUsages) + '},"memoryBudgetMb":' + IntToStr(EnsureRange(MemoryBudgetMb, 0, MaxMemoryBudgetMb)) +
+    ',"hints":{"xmlDocFull":' +
+    JsonBool(XmlDocFull) + ',"xmlDocMaxLines":' + IntToStr(EnsureRange(XmlDocMaxLines, 0, MaxXmlDocLines)) + '}}';
 end;
 
 end.

@@ -63,6 +63,10 @@ type
     [Test]
     procedure FindsInactiveRanges;
     [Test]
+    procedure InactiveRegionsNameTheirCondition;
+    [Test]
+    procedure InactiveHintNamesConditionAndTarget;
+    [Test]
     procedure AddsRuleFindingsWithCode;
     [Test]
     procedure RuleOffInSettingsAddsNothing;
@@ -446,7 +450,9 @@ begin
   Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
   try
     Assert.AreEqual(3, Item.GetValue<Integer>('severity'));
-    Assert.AreEqual('Meldung (Konfidenz: mittel)', Item.GetValue<string>('message'));
+    // Konfidenz als eigenes Feld, nicht im Meldungstext (#144).
+    Assert.AreEqual('Meldung', Item.GetValue<string>('message'));
+    Assert.AreEqual('medium', Item.GetValue<string>('data.confidence'));
     Assert.AreEqual(RuleDocumentationBaseUri + Finding.RuleId, Item.GetValue<string>('codeDescription.href'));
   finally
     Item.Free;
@@ -496,6 +502,81 @@ begin
   Ranges := TLspInactiveRegions.Ranges(Code, nil);
   Assert.AreEqual(1, Integer(Length(Ranges)));
   Assert.AreEqual(2, Ranges[0].StartPos.Line);
+end;
+
+procedure TLspSyntaxDiagnosticsTests.InactiveRegionsNameTheirCondition;
+const
+  Code =
+    'unit U;'#10 +
+    '{$IFDEF WIN64}'#10 +
+    'const A = 1;'#10 +
+    '{$ELSE}'#10 +
+    'const A = 2;'#10 +
+    '{$ENDIF}'#10 +
+    '{$IFDEF DEBUG}{$IFDEF WIN64} const B = 1; {$ENDIF}{$ENDIF}'#10 +
+    'end.';
+var
+  Regions: TArray<TLspInactiveRegion>;
+begin
+  Regions := TLspInactiveRegions.Regions(Code, ['WIN64']);
+  Assert.AreEqual(2, Integer(Length(Regions)));
+  Assert.AreEqual('not WIN64', Regions[0].Condition);
+  Assert.AreEqual('DEBUG', Regions[1].Condition);
+  Regions := TLspInactiveRegions.Regions(Code, ['DEBUG']);
+  Assert.AreEqual(2, Integer(Length(Regions)));
+  Assert.AreEqual('WIN64', Regions[0].Condition);
+  // Zweig innerhalb einer Zeile, verschachtelt (#615).
+  Assert.AreEqual('DEBUG und WIN64', Regions[1].Condition);
+  Assert.AreEqual(6, Regions[1].Range.StartPos.Line);
+  Assert.AreEqual(6, Regions[1].Range.EndPos.Line);
+  Assert.AreEqual(28, Regions[1].Range.StartPos.Character);
+end;
+
+procedure TLspSyntaxDiagnosticsTests.InactiveHintNamesConditionAndTarget;
+const
+  Code = 'unit U;'#10'interface'#10'{$IFDEF WIN64}'#10'const A = 1;'#10'{$ENDIF}'#10'implementation'#10'end.';
+var
+  Diagnostics: TLspSyntaxDiagnostics;
+  Document: ITextDocument;
+  Params: TJSONObject;
+  Item: TJSONValue;
+begin
+  Assert.AreEqual(TLspSyntaxDiagnostics.InactiveMessage, TLspSyntaxDiagnostics.InactiveMessageOf('', 'Win32', 'Debug'));
+  Assert.AreEqual('Inaktiv: Bedingung DEBUG nicht erfüllt', TLspSyntaxDiagnostics.InactiveMessageOf('DEBUG', '', ''));
+  Assert.AreEqual('Inaktiv: Bedingung DEBUG nicht erfüllt (Zielplattform Win64 · ?)',
+    TLspSyntaxDiagnostics.InactiveMessageOf('DEBUG', 'Win64', ''));
+  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, 0);
+  try
+    Diagnostics.DefinesProvider :=
+      function(const AUri: string; out ADefines: TArray<string>): Boolean
+      begin
+        ADefines := ['WIN32'];
+        Result := True;
+      end;
+    Diagnostics.BuildTargetProvider :=
+      function(const AUri: string; out APlatform, AConfig: string): Boolean
+      begin
+        APlatform := 'Win32';
+        AConfig := 'Debug';
+        Result := True;
+      end;
+    Document := FStore.Open(Uri, 'objectpascal', 1, Code);
+    Params := Diagnostics.Compute(Document);
+    try
+      Assert.AreEqual(1, Params.GetValue<TJSONArray>('diagnostics').Count);
+      Item := Params.GetValue<TJSONArray>('diagnostics').Items[0];
+      Assert.AreEqual(1, Item.GetValue<TJSONArray>('tags').Count);
+      Assert.AreEqual('Inaktiv: Bedingung WIN64 nicht erfüllt (Zielplattform Win32 · Debug)',
+        Item.GetValue<string>('message'));
+      Assert.AreEqual('WIN64', Item.GetValue<string>('data.inactive.condition'));
+      Assert.AreEqual('Win32', Item.GetValue<string>('data.inactive.platform'));
+      Assert.AreEqual('Debug', Item.GetValue<string>('data.inactive.config'));
+    finally
+      Params.Free;
+    end;
+  finally
+    Diagnostics.Free;
+  end;
 end;
 
 procedure TLspSyntaxDiagnosticsTests.AddsCompilerMessagesToOpenDocuments;

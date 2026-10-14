@@ -16,7 +16,7 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 | `project` | string | – |  | Projektdatei (.dproj) relativ zu diesem Ordner. Leer: automatisch suchen. |
 | `config` | string | – | z. B. `"Debug"`, `"Release"` | Build-Konfiguration, z. B. Debug oder Release. |
 | `platform` | string | – | z. B. `"Win32"`, `"Win64"` | Zielplattform. |
-| `rules` | object | – |  | Prüfregeln einzeln einstellen: Regel-ID → Schweregrad oder Objekt mit "severity" und Optionen. |
+| `rules` | object | – |  | Prüfregeln einzeln einstellen: Regel-ID → Schweregrad oder Objekt mit "severity" und Optionen. Die Konfidenz eines Treffers begrenzt den Schweregrad auch hier: Bei mittlerer Konfidenz bleibt ein Treffer höchstens eine Warnung, bei niedriger höchstens ein Hinweis, auch mit "error". |
 | `profile` |  | `"standard"` | z. B. `"fast"`, `"strict"` | Regelprofil: standard, fast (nur Bugs und Schwachstellen), strict (experimentelle Regeln an, minConfidence low), security, style oder ein eigenes aus "profiles". Als Objekt getrennt für Editor und Kommandozeile. |
 | `profiles` | object | – |  | Eigene Regelprofile: Name → { "extends": eingebautes oder eigenes Profil, "categories": nur diese Kategorien, "rules": Regel-ID → Schweregrad }. |
 | `overrides` | array<object> | – |  | Pfadregeln: Schweregrade für Dateien, die eines der Glob-Muster treffen, z. B. Tests oder generierten Code herabstufen. Regel-ID "*" steht für alle Regeln; spätere Einträge haben Vorrang. |
@@ -29,12 +29,13 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 | `sortUses` | boolean string | `false` | `true`, `false`, `"alphabetic"`, `"namespace"` | "uses aufräumen" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder "alphabetic" alphabetisch, "namespace" nach Namespace gruppiert (System, Vcl, ... und Units ohne Namespace zuletzt). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units. |
 | `usesKeep` | array<string> | `` |  | Units, die "ungenutzte uses entfernen" nie entfernt, zusätzlich zu allen Units mit initialization-Abschnitt. |
 | `dfmPropertyRules` | array<object> | `` |  | Eigenschaftsregeln für Formulardateien: Vorgaben für Komponenten-Properties, gemeldet als dfm-property am Feld der Komponente in der Unit. Nicht gespeicherte Properties gelten mit ihrem default-Wert. |
-| `memoryBudgetMb` | integer | `0` | 0… | Obergrenze für den Symbolindex in MB. Darüber werden zuerst Bibliotheks-Units (RTL, VCL), dann Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. |
+| `memoryBudgetMb` | integer | `256` | 0… | Obergrenze für den Symbolindex im Arbeitsspeicher in MB. Darüber werden zuerst die Verwendungen ausgelagert (sie bleiben im Cache auf der Platte), dann Bibliotheks-Units (RTL, VCL) und zuletzt Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. |
 | `index` | object | – |  | Umfang des Symbolindex. Standard: alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und alle Units der Bibliotheks- und Suchpfade der Delphi-Installation, auch wenn keine Unit sie einbindet. Reihenfolge: aktives Projekt, übrige Projekte, Suchpfade, Bibliothek; alles im Hintergrund, die Bibliothek aus dem gemeinsamen Cache. |
 | `requestTimeoutMs` | integer | `10000` | 1000… | Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet. |
 | `diagnostics` | object | – |  | Anonymisiertes Diagnoselog des Servers (je Anfrage Dauer, Ergebnis und Grundcode, je Lauf Start und Ende mit Grund). Es enthält keine Pfade, keine Projekt-, Unit- oder Bezeichnernamen und keinen Quelltext und lässt sich über „Diagnoselog exportieren“ weitergeben. |
 | `highlight` | object | – |  | Zusammengehörige Schlüsselwörter hervorheben, wenn der Cursor auf einem steht. |
 | `inlayHints` | object | – |  | Inlay Hints im Editor. |
+| `hints` | object | – |  | Anzeige von XMLDoc-Kommentaren (///) im Hover-Tooltip und im Detailpanel der Vervollständigung des IDE-Plugins. Der Server bereitet die Doku immer vollständig auf; die Werte steuern nur die Anzeige. Ohne Angabe gelten die Werte aus Tools › Optionen › Drittanbieter › Atlas. |
 | `stringLiteral` | object | – |  | Code-Aktionen „Als String-Literal“ und „Als Klartext kopieren“. |
 | `memberOrder` | object | – |  | Code-Aktion „Klassenmitglieder ordnen“: Reihenfolge der Sichtbarkeitsabschnitte und der Mitglieder darin. |
 | `minConfidence` | string | `"medium"` | `"low"`, `"medium"`, `"high"` | Regeltreffer unter dieser Konfidenz ausblenden. |
@@ -76,6 +77,7 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 | `index.projectGroup` | boolean | `true` |  | Alle Projekte der Projektgruppe indizieren; aus = nur das Projekt der geöffneten Datei. |
 | `index.searchPaths` | boolean | `true` |  | Alle Units der Projekt-Suchpfade indizieren; aus = nur über uses erreichbare. |
 | `index.libraryPaths` | boolean | `false` |  | Alle Units der Bibliotheks- und Suchpfade der Installation indizieren (RTL, VCL, Komponenten); aus = nur über uses erreichbare. |
+| `index.usages` | boolean | `true` |  | Verwendungen der Bezeichner in Projekt-Units mit indizieren (Verwendungsbeispiele); aus = nur Deklarationen, kleinerer Index. |
 | `index.exclude` | array<string> | `` | z. B. `["**/Demos/**","**/Samples/**"]` | Ordner oder Dateien, die nicht indiziert werden (Glob-Muster gegen den vollen Pfad: *, **, ?). |
 
 ## diagnostics
@@ -103,6 +105,13 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 | `inlayHints.inferredTypes` | boolean | `true` |  | Abgeleiteter Typ hinter var X := …. |
 | `inlayHints.endMarkers` | boolean | `true` |  | Hinter dem end langer Blöcke anzeigen, was dort endet. |
 | `inlayHints.endMarkerMinLines` | integer | `20` | 1… | Mindestlänge eines Blocks in Zeilen für eine Endmarkierung. |
+
+## hints
+
+| Schlüssel | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|
+| `hints.xmlDocFull` | boolean | `true` |  | XMLDoc vollständig und formatiert zeigen (alle Abschnitte, Verweise, Listen, Code). false: Kurzform wie bisher (Beschreibung auf 4 Zeilen, Bemerkungen auf 3 Zeilen gekürzt). |
+| `hints.xmlDocMaxLines` | integer | `0` | 0…50 | Höchstzahl der Doku-Zeilen, bevor der Inhalt mit dem Mausrad scrollt (0 = unbegrenzt, nur durch Bildschirm bzw. Popup begrenzt). |
 
 ## stringLiteral
 

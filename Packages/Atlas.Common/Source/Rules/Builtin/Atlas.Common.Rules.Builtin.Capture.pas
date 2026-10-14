@@ -447,6 +447,7 @@ var
   Identifiers: TList<TSyntaxNode>;
   Reported: TList<string>;
   Graph: TControlFlowGraph;
+  Lookup: TFlowSignatureLookup;
   Start: TFlowNode;
   Confidence: TRuleConfidence;
   Changes: Boolean;
@@ -458,6 +459,8 @@ begin
   Apis := DeferredApis(AContext.Options);
   Routines := nil;
   CollectRoutines(AContext.Tree.Root, Routines);
+  // Signaturen der Datei einmal je Prüfung lesen, nicht je Routine (#143).
+  Lookup := TFlowSignatures.FromTree(AContext.Tree.Root);
   Identifiers := TList<TSyntaxNode>.Create;
   Reported := TList<string>.Create;
   try
@@ -493,7 +496,7 @@ begin
             else
             begin
               if Graph = nil then
-                Graph := TControlFlowGraph.Build(Routine);
+                Graph := TControlFlowGraph.Build(Routine, Lookup);
               Start := FlowNodeOf(Graph, Method);
               Changes := Graph.Complete and (Start <> nil) and WrittenAfter(Graph, Start, Local.Name);
             end;

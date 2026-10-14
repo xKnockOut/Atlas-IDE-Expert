@@ -5,7 +5,9 @@
 // das die Seite Atlas unter Tools > Optionen öffnet. Die Schalter ändern die
 // Plugin-Einstellungen wie die Optionsseite (Speichern, Strukturhervorhebung
 // und Help Insight der IDE abgleichen); ihre Häkchen werden beim Öffnen des
-// Menüs aus den aktuellen Einstellungen gesetzt.
+// Menüs aus den aktuellen Einstellungen gesetzt. Seit #604 gehen sie über die
+// Schnellschalter: gleicher Zustand wie im Fenster (Sitzung, Projekt) und bei
+// Werten aus atlas.json dieselbe Nachfrage.
 // Index des Servers (#492): Der Titel zeigt eine laufende Indizierung
 // ("Atlas – Index 45 %"); „Index-Status“ schreibt die Kennzahlen in die
 // Meldungsansicht, „Index neu aufbauen“ liest alles ohne Cache neu ein.
@@ -24,8 +26,7 @@ uses
   System.JSON,
   Vcl.Menus,
   Vcl.ExtCtrls,
-  Atlas.UI.Strings,
-  Atlas.Core.Settings.Plugin;
+  Atlas.UI.Strings;
 
 type
 {$SCOPEDENUMS ON}
@@ -61,11 +62,10 @@ type
     constructor Create(const AProgress: TFunc<string>; const ACommand: TFunc<string, TJSONValue>;
       const AMessage: TProc<string>);
     destructor Destroy; override;
-    /// <summary>Wert eines Schalters in ASettings.</summary>
-    class function Get(const ASettings: TAtlasPluginSettings; AToggle: TAtlasToggle): Boolean; static;
-    class procedure Put(var ASettings: TAtlasPluginSettings; AToggle: TAtlasToggle; AValue: Boolean); static;
     /// <summary>„Symbol umbenennen…“ (#397).</summary>
     property OnRename: TProc read FOnRename write FOnRename;
+    /// <summary>Name der Einstellung eines Schalters (Schlüssel im Katalog der Schnellschalter, #604).</summary>
+    class function ToggleKey(AToggle: TAtlasToggle): string; static;
   end;
 
 implementation
@@ -73,9 +73,8 @@ implementation
 uses
   Atlas.Core.Diagnostics.Guard,
   ToolsAPI,
-  Atlas.IDE.Settings.Store,
   Atlas.IDE.Settings.Project,
-  Atlas.IDE.Editor.Structure,
+  Atlas.IDE.Settings.QuickToggles,
   Atlas.IDE.Diagnostics.Export,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Commands.Editor,
@@ -202,63 +201,47 @@ begin
   inherited;
 end;
 
-class function TAtlasMainMenu.Get(const ASettings: TAtlasPluginSettings; AToggle: TAtlasToggle): Boolean;
+class function TAtlasMainMenu.ToggleKey(AToggle: TAtlasToggle): string;
 begin
   case AToggle of
     TAtlasToggle.Enabled:
-      Result := ASettings.Enabled;
+      Result := 'Enabled';
     TAtlasToggle.HoverTooltip:
-      Result := ASettings.HoverTooltip;
+      Result := 'HoverTooltip';
     TAtlasToggle.PairColors:
-      Result := ASettings.PairColors;
+      Result := 'PairColors';
     TAtlasToggle.PairGuides:
-      Result := ASettings.PairGuides;
+      Result := 'PairGuides';
     TAtlasToggle.InactiveDim:
-      Result := ASettings.InactiveDim;
+      Result := 'InactiveDim';
     TAtlasToggle.InlayHints:
-      Result := ASettings.InlayHints;
+      Result := 'InlayHints';
   else
-    Result := ASettings.Problems;
-  end;
-end;
-
-class procedure TAtlasMainMenu.Put(var ASettings: TAtlasPluginSettings; AToggle: TAtlasToggle; AValue: Boolean);
-begin
-  case AToggle of
-    TAtlasToggle.Enabled:
-      ASettings.Enabled := AValue;
-    TAtlasToggle.HoverTooltip:
-      ASettings.HoverTooltip := AValue;
-    TAtlasToggle.PairColors:
-      ASettings.PairColors := AValue;
-    TAtlasToggle.PairGuides:
-      ASettings.PairGuides := AValue;
-    TAtlasToggle.InactiveDim:
-      ASettings.InactiveDim := AValue;
-    TAtlasToggle.InlayHints:
-      ASettings.InlayHints := AValue;
-  else
-    ASettings.Problems := AValue;
+    Result := 'Problems';
   end;
 end;
 
 procedure TAtlasMainMenu.RootClick(Sender: TObject);
 var
   Toggle: TAtlasToggle;
-  Settings: TAtlasPluginSettings;
   Feature: TAtlasFeature;
-  Names: string;
+  Names, Name: string;
 begin
   try
-    Settings := TAtlasIdeSettings.Current;
     for Toggle := Low(TAtlasToggle) to High(TAtlasToggle) do
-      FToggles[Toggle].Checked := Get(Settings, Toggle);
+      FToggles[Toggle].Checked := TAtlasIdeQuickToggles.Checked(ToggleKey(Toggle));
     Names := '';
     for Feature in TAtlasGuard.DisabledSet do
       if Names = '' then
         Names := TAtlasGuard.FeatureName(Feature)
       else
         Names := Names + ', ' + TAtlasGuard.FeatureName(Feature);
+    // Auch einzeln abgeschaltete Quellen (#493).
+    for Name in TAtlasGuard.DisabledProviders do
+      if Names = '' then
+        Names := Name
+      else
+        Names := Names + ', ' + Name;
     FEnableAll.Visible := Names <> '';
     FEnableAll.Caption := TAtlasStrings.Fmt(TAtlasTextId.MenuEnableAll, [Names]);
   except
@@ -270,15 +253,11 @@ end;
 procedure TAtlasMainMenu.ToggleClick(Sender: TObject);
 var
   Toggle: TAtlasToggle;
-  Settings: TAtlasPluginSettings;
 begin
   try
     Toggle := TAtlasToggle(TMenuItem(Sender).Tag);
-    Settings := TAtlasIdeSettings.Current;
-    Put(Settings, Toggle, not Get(Settings, Toggle));
-    TAtlasIdeSettings.Update(Settings);
-    // Wie beim Schließen der Optionsseite: Strukturhervorhebung und Help Insight der IDE abgleichen.
-    TAtlasIdeStructureSwitch.Sync;
+    // Speichert wie die Optionsseite, gleicht die Strukturhervorhebung ab und zeichnet neu (#604).
+    TAtlasIdeQuickToggles.Switch(ToggleKey(Toggle));
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Menu, E);
