@@ -131,6 +131,7 @@ type
     [Test]
     procedure ReadsInstallationUnitsWithoutProjectDefines;
     [Test]
+    // Der Index-Dienst arbeitet in einem eigenen Thread; dessen Verwaltungsdaten bleiben bis Programmende.
     [IgnoreMemoryLeaks]
     procedure ServiceWritesCacheAfterProjectStage;
   end;

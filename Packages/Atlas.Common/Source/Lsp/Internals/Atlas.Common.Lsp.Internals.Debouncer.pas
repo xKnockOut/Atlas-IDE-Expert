@@ -23,6 +23,8 @@ type
     FDelay: Cardinal;
     FPending: TDictionary<string, TPending>;
     FStopping: Boolean;
+    /// <summary>Eine Aktion läuft gerade (unter der Sperre von FPending).</summary>
+    FRunning: Boolean;
     FThread: TThread;
     FOnError: TProc<Exception>;
     procedure Execute;
@@ -36,6 +38,9 @@ type
     procedure Schedule(const AKey: string; const AAction: TProc);
     /// <summary>Verwirft die geplante Aktion des Schlüssels, eine laufende nicht.</summary>
     procedure Cancel(const AKey: string);
+    /// <summary>Wartet, bis nichts mehr geplant ist und keine Aktion läuft (#177: Messung erst in Ruhe).
+    /// False, wenn das nicht innerhalb von ATimeoutMs geschieht.</summary>
+    function WaitIdle(ATimeoutMs: Cardinal): Boolean;
     property Delay: Cardinal read FDelay;
     /// <summary>Wird bei Ausnahmen einer Aktion aufgerufen; der Thread läuft weiter.</summary>
     property OnError: TProc<Exception> read FOnError write FOnError;
@@ -105,6 +110,27 @@ begin
   TMonitor.Enter(FPending);
   try
     FPending.Remove(AKey);
+    TMonitor.PulseAll(FPending);
+  finally
+    TMonitor.Exit(FPending);
+  end;
+end;
+
+function TDebouncer.WaitIdle(ATimeoutMs: Cardinal): Boolean;
+var
+  Deadline, Ticks: UInt64;
+begin
+  Deadline := TThread.GetTickCount64 + ATimeoutMs;
+  TMonitor.Enter(FPending);
+  try
+    while (FPending.Count > 0) or FRunning do
+    begin
+      Ticks := TThread.GetTickCount64;
+      if Ticks >= Deadline then
+        Exit(False);
+      TMonitor.Wait(FPending, Cardinal(Deadline - Ticks));
+    end;
+    Result := True;
   finally
     TMonitor.Exit(FPending);
   end;
@@ -138,6 +164,7 @@ begin
     begin
       AAction := FPending[FirstKey].Action;
       FPending.Remove(FirstKey);
+      FRunning := True;
       Exit(True);
     end;
   end;
@@ -157,7 +184,18 @@ begin
       TMonitor.Exit(FPending);
     end;
     if Found then
+    begin
       RunAction(Action);
+      // Die Aktion samt eingefangener Variablen erst freigeben, dann Ruhe melden.
+      Action := nil;
+      TMonitor.Enter(FPending);
+      try
+        FRunning := False;
+        TMonitor.PulseAll(FPending);
+      finally
+        TMonitor.Exit(FPending);
+      end;
+    end;
   until not Found;
 end;
 
