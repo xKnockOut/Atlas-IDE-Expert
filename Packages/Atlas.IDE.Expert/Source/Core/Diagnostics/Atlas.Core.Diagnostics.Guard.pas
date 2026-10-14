@@ -88,6 +88,7 @@ type
     FFuse: TAtlasFuse;
     FLog: TAtlasRotatingLog;
     FOnWarning: TAtlasGuardMessage;
+    FOnFailure: TProc<TAtlasFeature>;
     class procedure Warn(const AText: string); static;
     class function ErrorLine(const AWhere: string; E: Exception): string; static;
   public
@@ -119,6 +120,9 @@ type
     class function SafeMessage(const AText: string): string; static;
     /// <summary>Warnungen für die Meldungsansicht (nie als Dialog).</summary>
     class property OnWarning: TAtlasGuardMessage read FOnWarning write FOnWarning;
+    /// <summary>Nach jedem gezählten Fehler eines Features, aus jedem Thread (Startmarke des abgesicherten
+    /// Starts, #722).</summary>
+    class property OnFailure: TProc<TAtlasFeature> read FOnFailure write FOnFailure;
     class property Fuse: TAtlasFuse read FFuse;
     class property RotatingLog: TAtlasRotatingLog read FLog;
   end;
@@ -438,8 +442,17 @@ begin
 end;
 
 class procedure TAtlasGuard.Report(AFeature: TAtlasFeature; E: Exception);
+var
+  Failure: TProc<TAtlasFeature>;
 begin
   Log(ErrorLine(FeatureName(AFeature), E));
+  Failure := FOnFailure;
+  if Assigned(Failure) then
+    try
+      Failure(AFeature);
+    except
+      // Die Meldung eines Fehlers darf selbst keinen auslösen.
+    end;
   if (FFuse <> nil) and FFuse.Failed(AFeature) then
     Warn(Format('Atlas: %s nach %d Fehlern in %d Minuten abgeschaltet (zuletzt: %s). ' +
       'Wieder einschalten unter Tools > Optionen > Drittanbieter > Atlas oder über Atlas > Abgeschaltete ' +
