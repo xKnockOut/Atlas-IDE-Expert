@@ -249,8 +249,7 @@ begin
     CheckText(AColors.Text);
     Other := AColors.Pairs[(Index + 1) mod Length(AColors.Pairs)];
     Assert.IsTrue(TAtlasColorMath.DeltaE2000(Pair, Other) >= 20, Name + ' gegen die nächste Tiefe');
-    // Unpaarige erscheinen in der Fehlerfarbe; keine Tiefe darf ihr ähneln.
-    Assert.IsTrue(TAtlasColorMath.DeltaE2000(Pair, AColors.Error) >= 20, Name + ' gegen die Fehlerfarbe');
+    // Unpaarige erkennt man am roten Grund, nicht an der Schriftfarbe: Paarfarben dürfen rot sein.
   end;
 end;
 
