@@ -659,7 +659,10 @@ begin
   begin
     Result.Declaration := TJSONObject(Parts).GetValue<string>('declaration', '');
     Result.UnitName := TJSONObject(Parts).GetValue<string>('unit', '');
-    Result.Documentation := TJSONObject(Parts).GetValue<string>('documentation', '');
+    // Seit #654 ist "documentation" strukturiert; der Klartext steht in "documentationText".
+    if not TJSONObject(Parts).TryGetValue<string>('documentationText', Result.Documentation) and
+      (TJSONObject(Parts).GetValue('documentation') is TJSONString) then
+      Result.Documentation := TJSONObject(Parts).GetValue('documentation').Value;
     Result.Value := TJSONObject(Parts).GetValue<string>('value', '');
     Result.Deprecation := TJSONObject(Parts).GetValue<string>('deprecation', '');
     Exit;

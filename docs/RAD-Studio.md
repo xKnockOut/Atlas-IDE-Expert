@@ -1,4 +1,4 @@
-﻿# Atlas IDE Expert in RAD Studio einbinden
+# Atlas IDE Expert in RAD Studio einbinden
 
 Es gibt zwei Wege:
 
@@ -20,6 +20,8 @@ Fehlt der Server, meldet das Plugin das im Meldungsfenster und überlässt Vervo
 Den Umfang des Index stellt *Tools › Optionen › Drittanbieter › Atlas* für alle Projekte ein (#652): alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und alle Units der Delphi-Bibliothek. Das Plugin gibt die Werte beim Start und nach jeder Änderung an den Server weiter. Steht `index` in der `atlas.json` eines Projekts, gilt dort die Datei. RTL, VCL und FMX liest der Server einmal je Delphi-Version und Plattform, unabhängig von den Defines des Projekts.
 
 Was Atlas selbst anzeigt, schaltet es in der IDE ab, damit nichts doppelt erscheint: Help Insight (solange der Atlas-Tooltip an ist) und die Strukturhervorhebung (solange die Atlas-Blocklinien an sind). Die IDE liest diese Schalter nur beim Start; beim ersten Start mit Atlas erscheint daher noch beides.
+
+XMLDoc-Kommentare (`///`) zeigen Tooltip und Detailpanel der Vervollständigung vollständig und formatiert (#654): Beschreibung, Parameter, Typparameter, Rückgabe, Wert, Exceptions, Bemerkungen, Beispiel mit Code, Listen, Tabellen und „Siehe auch“. Ist die Doku höher als der Bildschirm (bzw. das Panel höher als das Popup), scrollt nur sie mit dem Mausrad; Deklaration und Aktionsleiste bleiben stehen. Verweise (`cref`) sind unterstrichen: Klick zeigt den Typ im Tooltip, Strg+Klick springt zur Deklaration (im Detailpanel nur Strg+Klick); Links (`href`) öffnen den Browser. Doku-Text lässt sich mit der Maus markieren, Strg+C kopiert dann die Markierung statt der Deklaration. *Tools › Optionen › Drittanbieter › Atlas* schaltet die volle Anzeige ab (Registry `XmlDocFull`, aus = Kurzform: Beschreibung vier, Bemerkungen drei Zeilen) und begrenzt die Höhe (`XmlDocMaxLines`, 0 bis 50, 0 = bis zur Bildschirmhöhe). Steht `hints` in der `atlas.json` eines Projekts, gilt dort die Datei. Das Mausrad erreicht den Tooltip, solange Windows inaktive Fenster unter der Maus scrollt (Vorgabe von Windows 10 und 11).
 
 Liegt unter der Maus ein Problem, zeigt der Tooltip es oben an; bei Regeltreffern steht darunter die Konfidenz (hoch, mittel, niedrig) als eigene Zeile (#144).
 

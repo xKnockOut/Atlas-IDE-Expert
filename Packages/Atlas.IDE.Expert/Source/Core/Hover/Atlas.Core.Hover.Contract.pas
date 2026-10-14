@@ -1,7 +1,8 @@
 ﻿unit Atlas.Core.Hover.Contract;
 
 // Inhalt des Hover-Tooltips (#442, #588) aus dem Objekt "atlas" der Hover-
-// Antwort: Deklaration, Unit, Doku, Wert, Veraltung, dazu Art und Herkunft für
+// Antwort: Deklaration, Unit, Doku (Klartext und seit #654 strukturiert samt
+// Anzeige-Einstellungen), Wert, Veraltung, dazu Art und Herkunft für
 // die Kopfzeile, Fundort, Typnamen in der Deklaration als Links und die
 // Vererbungskette. Ohne "atlas" (fremder Server, Direktiven, Schlüsselwörter)
 // wird der Klartext wie bisher in Deklaration und Doku geteilt.
@@ -9,7 +10,8 @@
 interface
 
 uses
-  System.JSON;
+  System.JSON,
+  Atlas.Core.Documentation.Contract;
 
 type
   /// <summary>Typ mit Fundort (0-basiert); FileName '' ohne Fundort.</summary>
@@ -40,7 +42,12 @@ type
   public
     Declaration: string;
     UnitName: string;
+    /// <summary>Doku als Klartext (Sprachausgabe, Rückfall ohne Doc).</summary>
     Documentation: string;
+    /// <summary>Strukturierte XMLDoc (#654); leer bei fremden Servern.</summary>
+    Doc: TAtlasDoc;
+    /// <summary>Anzeige laut Server (atlas.xmlDoc); Known = False ohne Angabe.</summary>
+    Display: TAtlasDocDisplay;
     Value: string;
     Deprecation: string;
     /// <summary>class, classref, record, interface, enum, type, method … ('' unbekannt).</summary>
@@ -236,7 +243,12 @@ begin
   end;
   Result.Declaration := Atlas.GetValue<string>('declaration', '');
   Result.UnitName := Atlas.GetValue<string>('unit', '');
-  Result.Documentation := Atlas.GetValue<string>('documentation', '');
+  // Seit #654 ist "documentation" strukturiert, der Klartext steht in "documentationText".
+  if not Atlas.TryGetValue<string>('documentationText', Result.Documentation) and
+    (Atlas.GetValue('documentation') is TJSONString) then
+    Result.Documentation := Atlas.GetValue('documentation').Value;
+  Result.Doc := TAtlasDoc.FromJson(Atlas.GetValue('documentation'));
+  Result.Display := TAtlasDocDisplay.FromJson(Atlas.GetValue('xmlDoc'), TAtlasDocDisplay.Create(True, 0));
   Result.Value := Atlas.GetValue<string>('value', '');
   Result.Deprecation := Atlas.GetValue<string>('deprecation', '');
   Result.Kind := Atlas.GetValue<string>('kind', '');

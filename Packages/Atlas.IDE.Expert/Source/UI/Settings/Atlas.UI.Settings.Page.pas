@@ -42,6 +42,8 @@ type
     FGroupInherited: TCheckBox;
     FPreview: TCheckBox;
     FHoverTooltip: TCheckBox;
+    FXmlDocFull: TCheckBox;
+    FXmlDocMaxLines: TEdit;
     FHangThreshold: TEdit;
     FHangHint: TCheckBox;
     FReloadExternal: TCheckBox;
@@ -100,7 +102,7 @@ begin
   inherited Create(AOwner);
   Name := 'AtlasSettingsPage';
   Width := 480;
-  Height := 740;
+  Height := 790;
   Title := TLabel.Create(Self);
   Title.Parent := Self;
   Title.Align := alTop;
@@ -162,6 +164,9 @@ begin
   FGroupInherited := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGroupInherited));
   FPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPreview));
   FHoverTooltip := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHover));
+  // XMLDoc in Tooltip und Detailpanel (#654); hints in atlas.json hat Vorrang.
+  FXmlDocFull := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocFull));
+  FXmlDocMaxLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocMaxLines));
   // Einfrier-Wächter (#501).
   FHangThreshold := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHangThreshold));
   FHangHint := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHangHint));
@@ -293,6 +298,8 @@ begin
   FGroupInherited.Checked := ASettings.GroupInherited;
   FPreview.Checked := ASettings.Preview;
   FHoverTooltip.Checked := ASettings.HoverTooltip;
+  FXmlDocFull.Checked := ASettings.XmlDocFull;
+  FXmlDocMaxLines.Text := IntToStr(ASettings.XmlDocMaxLines);
   FHangThreshold.Text := IntToStr(ASettings.HangThresholdMs);
   FHangHint.Checked := ASettings.HangHint;
   FReloadExternal.Checked := ASettings.ReloadExternal;
@@ -325,6 +332,8 @@ begin
   ASettings.GroupInherited := FGroupInherited.Checked;
   ASettings.Preview := FPreview.Checked;
   ASettings.HoverTooltip := FHoverTooltip.Checked;
+  ASettings.XmlDocFull := FXmlDocFull.Checked;
+  ASettings.XmlDocMaxLines := StrToIntDef(FXmlDocMaxLines.Text, ASettings.XmlDocMaxLines);
   ASettings.HangThresholdMs := StrToIntDef(FHangThreshold.Text, ASettings.HangThresholdMs);
   ASettings.HangHint := FHangHint.Checked;
   ASettings.ReloadExternal := FReloadExternal.Checked;

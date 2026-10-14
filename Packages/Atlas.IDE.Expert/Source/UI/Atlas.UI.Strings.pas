@@ -38,7 +38,8 @@ type
     SettingsPaletteKey, SettingsCheckKey, SettingsKeyPriority, KeyConflict, ForeignCompletion,
     SettingsInactiveDim, MenuToggleInactive, DidYouMean,
     DiagExportMenu, DiagExportTitle, DiagExportHint, DiagExportSave, DiagExportFilter, DiagExportEmpty, DiagExportDone,
-    SettingsIndexGroup, SettingsIndexSearch, SettingsIndexLibrary);
+    SettingsIndexGroup, SettingsIndexSearch, SettingsIndexLibrary,
+    SettingsXmlDocFull, SettingsXmlDocMaxLines, DocTypeParams, DocValue, DocExample, DocSeeAlso, HoverCopySelection);
 
   TAtlasStrings = class
   private class var
@@ -115,7 +116,14 @@ const
      'Speichern…', 'ZIP-Dateien (*.zip)|*.zip', 'Atlas: Keine Diagnoselogs der letzten %d Tage gefunden.',
      'Atlas: Diagnoselog gespeichert: %s',
      'Index: alle Projekte der Projektgruppe', 'Index: alle Units der Projekt-Suchpfade',
-     'Index: alle Units der Delphi-Bibliothek (RTL, VCL, FMX, Komponenten)'),
+     'Index: alle Units der Delphi-Bibliothek (RTL, VCL, FMX, Komponenten)',
+     'XMLDoc im Tooltip vollständig zeigen (aus: Kurzform)',
+     'XMLDoc: höchstens Zeilen ohne Scrollen (0 = Bildschirm)',
+     'Typparameter',
+     'Wert',
+     'Beispiel',
+     'Siehe auch:',
+     'Markierung kopieren'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -171,7 +179,14 @@ const
      'Save…', 'ZIP files (*.zip)|*.zip', 'Atlas: no diagnostic logs found for the last %d days.',
      'Atlas: diagnostic log saved: %s',
      'Index: all projects of the project group', 'Index: all units of the project search paths',
-     'Index: all units of the Delphi library (RTL, VCL, FMX, components)'));
+     'Index: all units of the Delphi library (RTL, VCL, FMX, components)',
+     'Show full XMLDoc in tooltips (off: short form)',
+     'XMLDoc: max. lines before scrolling (0 = screen)',
+     'Type parameters',
+     'Value',
+     'Example',
+     'See also:',
+     'Copy selection'));
 
 { TAtlasStrings }
 

@@ -40,6 +40,8 @@ begin
   Settings.VisibleRows := 12;
   Settings.Preview := True;
   Settings.HoverTooltip := False;
+  Settings.XmlDocFull := False;
+  Settings.XmlDocMaxLines := 7;
   Settings.ListWidth := 333;
   Page := TAtlasSettingsPage.Create(nil);
   try
@@ -53,6 +55,8 @@ begin
   Assert.AreEqual(12, Saved.VisibleRows);
   Assert.IsTrue(Saved.Preview);
   Assert.IsFalse(Saved.HoverTooltip);
+  Assert.IsFalse(Saved.XmlDocFull);
+  Assert.AreEqual(7, Saved.XmlDocMaxLines);
   Assert.AreEqual(333, Saved.ListWidth);
 end;
 

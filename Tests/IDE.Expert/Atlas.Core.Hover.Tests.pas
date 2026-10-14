@@ -24,6 +24,8 @@ type
     procedure BadgeTitleAndLocation;
     [Test]
     procedure ClassReferenceTitleIsOwnName;
+    [Test]
+    procedure ReadsStructuredDocumentation;
   end;
 
   [TestFixture]
@@ -46,6 +48,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  Atlas.Core.Documentation.Contract,
   Atlas.Core.Hover.History;
 
 const
@@ -98,6 +101,28 @@ begin
 end;
 
 { TAtlasHoverTests }
+
+procedure TAtlasHoverTests.ReadsStructuredDocumentation;
+var
+  Data: TAtlasHoverData;
+begin
+  // #654: documentation als Abschnitte, Klartext in documentationText, Anzeige in xmlDoc.
+  Data := Parse('{"contents": "x", "atlas": {"declaration": "constructor Create(AOwner: TComponent);",' +
+    '"documentationText": "Legt an.\nAOwner: Besitzer", "documentation": {"sections": [' +
+    '{"kind": "summary", "runs": [{"kind": "text", "text": "Legt an."}]},' +
+    '{"kind": "param", "name": "AOwner", "runs": [{"kind": "text", "text": "Besitzer"}]}]},' +
+    '"xmlDoc": {"full": false, "maxLines": 8}}}');
+  Assert.AreEqual('Legt an.'#10'AOwner: Besitzer', Data.Documentation);
+  Assert.AreEqual(2, Integer(Length(Data.Doc.Sections)));
+  Assert.AreEqual('AOwner', Data.Doc.Sections[1].Name);
+  Assert.IsTrue(Data.Display.Known);
+  Assert.IsFalse(Data.Display.Full);
+  Assert.AreEqual(8, Data.Display.MaxLines);
+  // Ältere Server: documentation als Text, keine Anzeige-Angabe.
+  Data := Parse(HoverJson);
+  Assert.IsTrue(Data.Doc.IsEmpty);
+  Assert.IsFalse(Data.Display.Known);
+end;
 
 procedure TAtlasHoverTests.ReadsAtlasParts;
 var

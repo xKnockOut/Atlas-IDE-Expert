@@ -124,6 +124,8 @@ type
     procedure TipPath(Sender: TObject; AIndex: Integer);
     procedure TipBack(Sender: TObject);
     procedure TipAction(Sender: TObject; AAction: TAtlasHoverAction);
+    /// <summary>Link (href) in der XMLDoc (#654): im Browser öffnen.</summary>
+    procedure TipUrl(Sender: TObject; const AUrl: string);
     function CurrentSession: TLspSession;
     function Fetch(const ARef: TAtlasHoverTypeRef; out AData: TAtlasHoverData): Boolean;
     function CurrentView: TAtlasHoverView;
@@ -151,12 +153,14 @@ uses
   Winapi.Windows,
   Winapi.ShellAPI,
   System.IOUtils,
+  System.StrUtils,
   Vcl.Forms,
   Vcl.Clipbrd,
   Atlas.Core.Completion.Word,
   Atlas.IDE.Editor.Buffer,
   Atlas.IDE.Editor.Style,
   Atlas.IDE.Settings.Store,
+  Atlas.Core.Documentation.Contract,
   Atlas.UI.Strings;
 
 { TAtlasEditorHover.TEvents }
@@ -220,6 +224,7 @@ begin
   FTip.OnPath := TipPath;
   FTip.OnBack := TipBack;
   FTip.OnAction := TipAction;
+  FTip.OnUrl := TipUrl;
   FKeys := THoverKeys.Create(Self);
   FHistory := TAtlasHoverHistory.Create(Fetch);
   FAlive := TAtlasHoverAlive.Create;
@@ -314,6 +319,12 @@ begin
   Result.Pinned := FHistory.Pinned;
   Result.CanGoBack := FHistory.CanGoBack;
   Result.UsagesCount := FUsagesCount;
+  // Anzeige der XMLDoc (#654): hints aus atlas.json meldet der Server, sonst die Optionen des Plugins.
+  if Result.Data.Display.Known then
+    Result.Display := Result.Data.Display
+  else
+    Result.Display := TAtlasDocDisplay.Create(TAtlasIdeSettings.Current.XmlDocFull,
+      TAtlasIdeSettings.Current.XmlDocMaxLines);
   // Probleme gehören zur Stelle im Editor, nicht zu angeklickten Typen.
   if FHistory.Count <= 1 then
     Result.Problems := FProblems;
@@ -667,6 +678,18 @@ begin
   end;
 end;
 
+procedure TAtlasEditorHover.TipUrl(Sender: TObject; const AUrl: string);
+begin
+  try
+    // Nur Web- und Mail-Adressen; andere Schemata (file:, Programme) öffnet der Tooltip nicht.
+    if StartsText('http://', AUrl) or StartsText('https://', AUrl) or StartsText('mailto:', AUrl) then
+      ShellExecute(0, 'open', PChar(AUrl), nil, nil, SW_SHOWNORMAL);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Hover, E);
+  end;
+end;
+
 class procedure TAtlasEditorHover.GoToLocation(const AFileName: string; ALine, ACharacter: Integer);
 var
   Actions: IOTAActionServices;
@@ -769,7 +792,11 @@ begin
       TAtlasHoverAction.Usages:
         ShowUsages;
       TAtlasHoverAction.Copy:
-        Clipboard.AsText := Data.Declaration;
+        // Markierter Doku-Text (#654) hat Vorrang vor der Deklaration.
+        if FTip.HasSelection then
+          Clipboard.AsText := FTip.SelectedText
+        else
+          Clipboard.AsText := Data.Declaration;
       TAtlasHoverAction.Help:
         if Data.DocWiki <> '' then
           ShellExecute(0, 'open', PChar(Data.DocWiki), nil, nil, SW_SHOWNORMAL);
@@ -799,6 +826,9 @@ begin
   // Kürzel der Aktionsleiste nur, wenn der Tooltip gemeint ist: angeheftet oder mit der Maus darüber.
   ForTip := FHistory.Pinned or MouseOverTip;
   Data := FHistory.Current;
+  // Markierter Doku-Text lässt sich auch ohne Fundort kopieren (#654).
+  if ForTip and FTip.HasSelection and (AKey = Ord('C')) and (AShift = [ssCtrl]) then
+    Exit(True);
   if not ForTip or not Data.Location.HasLocation then
     Exit;
   Result := ((AKey = VK_F12) and ((AShift = []) or (AShift = [ssShift]))) or

@@ -16,7 +16,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Documentation.Contract;
 
 {$SCOPEDENUMS ON}
 
@@ -140,6 +141,10 @@ type
     Remarks: string;
     Params: TArray<TAtlasDocEntry>;
     Exceptions: TArray<TAtlasDocEntry>;
+    /// <summary>Vollständige XMLDoc (#654); leer bei fremden Servern (dann gelten Summary bis Exceptions).</summary>
+    Doc: TAtlasDoc;
+    /// <summary>Anzeige laut Server (data.atlas.xmlDoc); Known = False ohne Angabe.</summary>
+    Display: TAtlasDocDisplay;
     function IsEmpty: Boolean;
   end;
 

@@ -64,7 +64,8 @@ uses
   System.Classes,
   System.SyncObjs,
   System.Diagnostics,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Documentation.Contract;
 
 { TAtlasServerCompletionProvider }
 
@@ -335,6 +336,9 @@ begin
     Result.Remarks := StringOf(TJSONObject(Atlas), 'remarks');
     Result.Params := EntriesOf(TJSONObject(Atlas), 'params');
     Result.Exceptions := EntriesOf(TJSONObject(Atlas), 'exceptions');
+    Result.Doc := TAtlasDoc.FromJson(TJSONObject(Atlas).GetValue('documentation'));
+    Result.Display := TAtlasDocDisplay.FromJson(TJSONObject(Atlas).GetValue('xmlDoc'),
+      TAtlasDocDisplay.Create(True, 0));
     Directives := TJSONObject(Atlas).GetValue('directives');
     if Directives is TJSONArray then
       for Item in TJSONArray(Directives) do

@@ -7,7 +7,14 @@
 //   - Kopfzeile: Badge, Art und Herkunft, rechts der Fundort.
 //   - Eingefärbte Deklaration; Typnamen darin in Akzentfarbe unterstrichen
 //     und anklickbar.
-//   - Unter einer Linie: Wert, Veraltung, Beschreibung (höchstens vier Zeilen).
+//   - Unter einer Linie: Wert, Veraltung und die XMLDoc (#654) vollständig und
+//     formatiert: Parameter zweispaltig, Rückgabe, Ausnahmen, Bemerkungen,
+//     Beispiel mit Code, Listen, Tabellen. Ist sie höher als der Platz auf dem
+//     Bildschirm bzw. als hints.xmlDocMaxLines, scrollt nur sie mit dem
+//     Mausrad; Deklaration und Aktionsleiste bleiben stehen. Verweise (cref)
+//     zeigen den Typ im Tooltip, mit Strg zur Deklaration; Links öffnen den
+//     Browser. Text lässt sich markieren, Strg+C kopiert dann die Markierung.
+//     Kurzform (hints.xmlDocFull aus): Beschreibung vier, Bemerkungen drei Zeilen.
 //   - Vererbung bzw. Zieltyp auf Randfläche: Glieder als Kästchen, das
 //     angezeigte in Akzentfarbe; mehr als fünf als erste vier, „…“, letztes.
 //   - Aktionsleiste auf Randfläche am unteren Rand: Gehe zu, Verwendungen,
@@ -32,6 +39,8 @@ uses
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.History,
   Atlas.Core.Problems.Contract,
+  Atlas.Core.Documentation.Contract,
+  Atlas.UI.Documentation.View,
   Atlas.UI.Popup.Window;
 
 type
@@ -49,17 +58,19 @@ type
     UsagesCount: Integer;
     /// <summary>Probleme an der Mausposition (#398).</summary>
     Problems: TArray<TAtlasProblem>;
+    /// <summary>Anzeige der XMLDoc (#654): Angabe des Servers bzw. Einstellungen des Plugins.</summary>
+    Display: TAtlasDocDisplay;
     class function Create(const AData: TAtlasHoverData): TAtlasHoverView; static;
   end;
 
   TAtlasHoverRefEvent = procedure(Sender: TObject; const ARef: TAtlasHoverTypeRef; AControl: Boolean) of object;
   TAtlasHoverIndexEvent = procedure(Sender: TObject; AIndex: Integer) of object;
   TAtlasHoverActionEvent = procedure(Sender: TObject; AAction: TAtlasHoverAction) of object;
+  TAtlasHoverUrlEvent = procedure(Sender: TObject; const AUrl: string) of object;
 
   TAtlasHoverTip = class(TAtlasPopupWindow)
   public const
     MaxWidth = 460;
-    MaxDocumentationLines = 4;
   private type
     THitKind = (hkLink, hkAncestor, hkPath, hkBack, hkAction);
     THit = record
@@ -75,6 +86,19 @@ type
     FOnPath: TAtlasHoverIndexEvent;
     FOnBack: TNotifyEvent;
     FOnAction: TAtlasHoverActionEvent;
+    FOnUrl: TAtlasHoverUrlEvent;
+    FDoc: TAtlasDocView;
+    /// <summary>Linke obere Ecke der Doku beim letzten Zeichnen bzw. Messen.</summary>
+    FDocLeft: Integer;
+    FDocTop: Integer;
+    /// <summary>Setzt die Doku für die Fensterbreite AWidth (volle Höhe).</summary>
+    procedure PrepareDoc(AWidth: Integer);
+    /// <summary>Höhe für AWidth mit höchstens AAvailable Pixeln: begrenzt die Doku (scrollt dann).</summary>
+    function FitHeight(AWidth, AAvailable: Integer): Integer;
+    function InDoc(AX, AY: Integer): Boolean;
+    function DocLinkAt(AX, AY: Integer): Integer;
+    /// <summary>Klick in die Doku: Verweis, Link oder Beginn einer Markierung.</summary>
+    procedure DocMouseDown(Shift: TShiftState; X, Y: Integer);
     /// <summary>Zeichnet bzw. misst bei ADraw = False; liefert die Höhe und sammelt die Klickflächen.</summary>
     function Render(AWidth: Integer; ADraw: Boolean): Integer;
     function HitAt(AX, AY: Integer): Integer;
@@ -85,8 +109,16 @@ type
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    /// <summary>Markierter Text der Doku (#654); '' ohne Markierung.</summary>
+    function SelectedText: string;
+    function HasSelection: Boolean;
+    /// <summary>Scrollt die Doku um ASteps Rasterstufen des Mausrads (negativ nach oben).</summary>
+    function ScrollDoc(ASteps: Integer): Boolean;
     /// <summary>Zeigt AView unter AWord (Bildschirmrechteck des Bezeichners).</summary>
     procedure ShowContent(const AView: TAtlasHoverView; const AWord: TRect);
     /// <summary>Tauscht den Inhalt; Position bleibt, Breite und Höhe wachsen höchstens.</summary>
@@ -98,6 +130,8 @@ type
     property OnPath: TAtlasHoverIndexEvent read FOnPath write FOnPath;
     property OnBack: TNotifyEvent read FOnBack write FOnBack;
     property OnAction: TAtlasHoverActionEvent read FOnAction write FOnAction;
+    /// <summary>Klick auf einen Link (href) in der Doku.</summary>
+    property OnUrl: TAtlasHoverUrlEvent read FOnUrl write FOnUrl;
   end;
 
 implementation
@@ -107,6 +141,7 @@ uses
   System.Math,
   System.StrUtils,
   Atlas.Core.Style.Palette,
+  Atlas.Core.Documentation.Layout,
   Atlas.UI.Strings,
   Atlas.UI.Popup.Styled,
   Atlas.UI.Popup.Accessibility;
@@ -118,6 +153,7 @@ begin
   Result := Default(TAtlasHoverView);
   Result.Data := AData;
   Result.UsagesCount := -1;
+  Result.Display := TAtlasDocDisplay.Create(True, 0);
 end;
 
 { TAtlasHoverTip }
@@ -127,6 +163,117 @@ begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.Hover;
   FHot := -1;
+  FDoc := TAtlasDocView.Create;
+end;
+
+destructor TAtlasHoverTip.Destroy;
+begin
+  FDoc.Free;
+  inherited Destroy;
+end;
+
+function DocLabels: TAtlasDocLabels;
+begin
+  Result.TypeParams := TAtlasStrings.Text(TAtlasTextId.DocTypeParams);
+  Result.Value := TAtlasStrings.Text(TAtlasTextId.DocValue);
+  Result.Example := TAtlasStrings.Text(TAtlasTextId.DocExample);
+  Result.SeeAlso := TAtlasStrings.Text(TAtlasTextId.DocSeeAlso);
+end;
+
+procedure TAtlasHoverTip.PrepareDoc(AWidth: Integer);
+var
+  Doc: TAtlasDoc;
+begin
+  // Fremde Server liefern nur Klartext: als Beschreibung setzen, ohne Kürzen.
+  Doc := FView.Data.Doc;
+  if Doc.IsEmpty then
+    Doc := TAtlasDoc.FromText(FView.Data.Documentation);
+  if Doc.IsEmpty then
+  begin
+    FDoc.Clear;
+    Exit;
+  end;
+  HandleNeeded;
+  FDoc.Build(Canvas, Doc, AWidth - Scale(22), Font, UIFont, PPI, FView.Display.Full, DocLabels);
+end;
+
+function TAtlasHoverTip.FitHeight(AWidth, AAvailable: Integer): Integer;
+var
+  Natural: Integer;
+begin
+  FDoc.FitHeight(FView.Display.MaxLines, 0);
+  Natural := Render(AWidth, False);
+  if (Natural > AAvailable) and not FDoc.IsEmpty then
+  begin
+    FDoc.FitHeight(FView.Display.MaxLines, FDoc.Height - (Natural - AAvailable));
+    Natural := Render(AWidth, False);
+  end;
+  Result := Natural;
+end;
+
+function TAtlasHoverTip.InDoc(AX, AY: Integer): Boolean;
+begin
+  Result := not FDoc.IsEmpty and (AX >= FDocLeft - Scale(4)) and (AX < FDocLeft + FDoc.Width + Scale(8)) and
+    (AY >= FDocTop) and (AY < FDocTop + FDoc.Height);
+end;
+
+function TAtlasHoverTip.DocLinkAt(AX, AY: Integer): Integer;
+begin
+  Result := -1;
+  if InDoc(AX, AY) then
+    Result := FDoc.LinkAt(AX - FDocLeft, AY - FDocTop);
+end;
+
+procedure TAtlasHoverTip.DocMouseDown(Shift: TShiftState; X, Y: Integer);
+var
+  Index: Integer;
+  Link: TAtlasDocLink;
+  Ref: TAtlasHoverTypeRef;
+begin
+  Index := DocLinkAt(X, Y);
+  if Index >= 0 then
+  begin
+    Link := FDoc.Link(Index);
+    if Link.Kind = TAtlasDocLinkKind.Url then
+    begin
+      if Assigned(FOnUrl) then
+        FOnUrl(Self, Link.Url);
+    end
+    else if Assigned(FOnLink) then
+    begin
+      // Wie Typnamen der Deklaration (#588): Klick zeigt den Typ, Strg+Klick springt hin.
+      Ref := Default(TAtlasHoverTypeRef);
+      Ref.Name := Link.Target.Name;
+      Ref.UnitName := Link.Target.UnitName;
+      Ref.FileName := Link.Target.FileName;
+      Ref.Line := Link.Target.Line;
+      Ref.Character := Link.Target.Character;
+      FOnLink(Self, Ref, ssCtrl in Shift);
+    end;
+    Exit;
+  end;
+  if InDoc(X, Y) then
+    FDoc.StartSelection(Canvas, X - FDocLeft, Y - FDocTop)
+  else
+    FDoc.ClearSelection;
+  Invalidate;
+end;
+
+function TAtlasHoverTip.SelectedText: string;
+begin
+  Result := FDoc.SelectedText;
+end;
+
+function TAtlasHoverTip.HasSelection: Boolean;
+begin
+  Result := FDoc.HasSelection;
+end;
+
+function TAtlasHoverTip.ScrollDoc(ASteps: Integer): Boolean;
+begin
+  Result := FDoc.ScrollBy(ASteps * FDoc.WheelStep);
+  if Result then
+    Invalidate;
 end;
 
 class function TAtlasHoverTip.KindCaption(const AKind: string): string;
@@ -433,8 +580,12 @@ var
           else
             Caption := TAtlasStrings.Text(TAtlasTextId.HoverUsages);
           ActionItem(TAtlasStrings.Text(TAtlasTextId.HoverKeyUsages), Caption, TAtlasHoverAction.Usages, True);
-          ActionItem(TAtlasStrings.Text(TAtlasTextId.HoverKeyCopy), TAtlasStrings.Text(TAtlasTextId.HoverCopy),
-            TAtlasHoverAction.Copy, True);
+          // Mit Markierung in der Doku kopiert Strg+C diese, sonst die Deklaration.
+          if FDoc.HasSelection then
+            Caption := TAtlasStrings.Text(TAtlasTextId.HoverCopySelection)
+          else
+            Caption := TAtlasStrings.Text(TAtlasTextId.HoverCopy);
+          ActionItem(TAtlasStrings.Text(TAtlasTextId.HoverKeyCopy), Caption, TAtlasHoverAction.Copy, True);
           ActionItem('F1', TAtlasStrings.Text(TAtlasTextId.HoverHelp), TAtlasHoverAction.Help, Data.DocWiki <> '');
           EndFlow;
           Inc(Y, Scale(6));
@@ -689,18 +840,25 @@ begin
   end;
   Inc(Y, Scale(6));
   X := Left;
-  // Beschreibung unter einer Linie.
+  // Beschreibung unter einer Linie; nur die XMLDoc scrollt.
   if ((Location = '') and (Data.UnitName <> '')) or (Data.Value <> '') or (Data.Deprecation <> '') or
-    (Data.Documentation <> '') then
+    not FDoc.IsEmpty then
   begin
     HorizontalLine(Y);
     Inc(Y, Scale(7));
     if Location = '' then
       Block(Data.UnitName, Colors.Muted, 0);
     if Data.Value <> '' then
-      Block('= ' + Data.Value, Colors.Muted, 2);
-    Block(Data.Deprecation, Colors.Warn, 2);
-    Block(Data.Documentation, Colors.Text, MaxDocumentationLines);
+      Block('= ' + Data.Value, Colors.Muted, 0);
+    Block(Data.Deprecation, Colors.Warn, 0);
+    FDocLeft := Left;
+    FDocTop := Y;
+    if not FDoc.IsEmpty then
+    begin
+      if Drawing then
+        FDoc.Paint(Canvas, Colors, Left, Y);
+      Inc(Y, FDoc.Height + Scale(6));
+    end;
     Inc(Y, Scale(1));
   end;
   // Vererbung bzw. Zieltyp und Aktionsleiste auf eigener Randfläche.
@@ -725,8 +883,8 @@ begin
   Widest := Max(Widest, Canvas.TextWidth(FView.Data.UnitName));
   for Problem in FView.Problems do
     Widest := Max(Widest, Canvas.TextWidth(Problem.Caption) + Scale(9));
-  if (FView.Data.Documentation <> '') or (Length(FView.Data.Ancestors) > 0) or FView.Data.Location.HasLocation or
-    FView.Pinned then
+  if (FView.Data.Documentation <> '') or not FView.Data.Doc.IsEmpty or (Length(FView.Data.Ancestors) > 0) or
+    FView.Data.Location.HasLocation or FView.Pinned then
     Widest := Scale(MaxWidth);
   Result := EnsureRange(Widest + Scale(26), Scale(200), Scale(MaxWidth));
 end;
@@ -739,8 +897,10 @@ begin
   FView := AView;
   FHot := -1;
   Width := PreferredWidth;
-  Height := Render(Width, False);
+  PrepareDoc(Width);
   Area := WorkAreaAt(AWord.TopLeft);
+  // Höchstens so hoch wie der größere Platz unter bzw. über dem Wort; darüber scrollt die Doku.
+  Height := FitHeight(Width, Max(Area.Bottom - AWord.Bottom, AWord.Top - Area.Top) - Scale(12));
   Bounds := TRect.Create(Point(AWord.Left, AWord.Bottom + Scale(4)), Width, Height);
   if Bounds.Bottom > Area.Bottom then
     Bounds.SetLocation(Bounds.Left, AWord.Top - Height - Scale(4));
@@ -755,14 +915,17 @@ end;
 procedure TAtlasHoverTip.UpdateContent(const AView: TAtlasHoverView);
 var
   Width, Height: Integer;
-  Bounds: TRect;
+  Bounds, Area: TRect;
 begin
   if not IsShown then
     Exit;
   FView := AView;
   FHot := -1;
   Width := Max(BoundsRect.Width, PreferredWidth);
-  Height := Max(BoundsRect.Height, Render(Width, False));
+  PrepareDoc(Width);
+  Area := WorkAreaAt(BoundsRect.TopLeft);
+  Height := Max(BoundsRect.Height, FitHeight(Width, Area.Bottom - BoundsRect.Top - Scale(4)));
+  Height := Min(Height, Max(Area.Bottom - BoundsRect.Top, Scale(80)));
   Bounds := TRect.Create(BoundsRect.TopLeft, Width, Height);
   ShowAt(Bounds);
   Invalidate;
@@ -780,27 +943,59 @@ end;
 
 procedure TAtlasHoverTip.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  Hot: Integer;
+  Hot, DocHot: Integer;
 begin
   inherited;
+  // Markieren in der Doku (#654).
+  if FDoc.Selecting and (ssLeft in Shift) then
+  begin
+    FDoc.ExtendSelection(Canvas, X - FDocLeft, Y - FDocTop);
+    Invalidate;
+    Exit;
+  end;
   Hot := HitAt(X, Y);
-  if Hot >= 0 then
+  DocHot := DocLinkAt(X, Y);
+  if (Hot >= 0) or (DocHot >= 0) then
     Cursor := crHandPoint
+  else if InDoc(X, Y) then
+    Cursor := crIBeam
   else
     Cursor := crDefault;
-  if Hot <> FHot then
+  if (Hot <> FHot) or (DocHot <> FDoc.HotLink) then
   begin
     FHot := Hot;
+    FDoc.HotLink := DocHot;
     Invalidate;
   end;
+end;
+
+procedure TAtlasHoverTip.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited;
+  if FDoc.Selecting then
+  begin
+    FDoc.EndSelection;
+    Invalidate;
+  end;
+end;
+
+function TAtlasHoverTip.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
+begin
+  // Nur die Doku scrollt; Deklaration und Aktionsleiste bleiben stehen.
+  Result := True;
+  if WheelDelta > 0 then
+    ScrollDoc(-Max(1, WheelDelta div WHEEL_DELTA))
+  else if WheelDelta < 0 then
+    ScrollDoc(Max(1, -WheelDelta div WHEEL_DELTA));
 end;
 
 procedure TAtlasHoverTip.CMMouseLeave(var Message: TMessage);
 begin
   inherited;
-  if FHot >= 0 then
+  if (FHot >= 0) or (FDoc.HotLink >= 0) then
   begin
     FHot := -1;
+    FDoc.HotLink := -1;
     Invalidate;
   end;
 end;
@@ -815,7 +1010,10 @@ begin
     Exit;
   Index := HitAt(X, Y);
   if Index < 0 then
+  begin
+    DocMouseDown(Shift, X, Y);
     Exit;
+  end;
   Hit := FHits[Index];
   case Hit.Kind of
     hkLink:
