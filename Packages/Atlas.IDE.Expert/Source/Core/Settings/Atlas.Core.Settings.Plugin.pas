@@ -171,7 +171,7 @@ begin
   Result.PairGuides := True;
   Result.PairOwners := True;
   Result.PairGuideWidth := 1;
-  Result.PairGuideOpacity := 50;
+  Result.PairGuideOpacity := 75;
   Result.PairColorsLight := '';
   Result.PairColorsDark := '';
   Result.Problems := True;

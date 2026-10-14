@@ -98,7 +98,7 @@ begin
   Assert.IsFalse(Settings.Preview, 'Vorschau standardmäßig aus (#434)');
   Assert.IsTrue(Settings.PairOwners, 'Anweisungen mitfärben standardmäßig an (#653)');
   Assert.AreEqual(1, Settings.PairGuideWidth, 'Blocklinien 1 px');
-  Assert.AreEqual(50, Settings.PairGuideOpacity, 'Blocklinien 50 % Deckkraft');
+  Assert.AreEqual(75, Settings.PairGuideOpacity, 'Blocklinien 75 % Deckkraft');
   Assert.IsTrue(Settings.ProblemsList, 'Liste „Atlas-Probleme“ standardmäßig an');
 end;
 

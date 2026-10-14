@@ -119,7 +119,7 @@ begin
   // die IDE Schlüsselwörter im hellen Schema dunkelblau zeichnet; kein Rot neben der Fehlerfarbe.
   // Reihenfolge beginnt bei Blau; zyklisch wie zuvor, damit Nachbarn unterscheidbar bleiben.
   Result.Pairs[0] := Hex('#0071E3');
-  Result.Pairs[1] := Hex('#9E6900');
+  Result.Pairs[1] := Hex('#EE0000');
   Result.Pairs[2] := Hex('#007C8A');
   Result.Pairs[3] := Hex('#C000E0');
   Result.Pairs[4] := Hex('#008700');
@@ -163,7 +163,7 @@ begin
   // ΔE2000 unter 30); dieselben Farbtöne wie hell, gesättigt und mittelhell.
   // Reihenfolge beginnt bei Blau; zyklisch wie zuvor, damit Nachbarn unterscheidbar bleiben.
   Result.Pairs[0] := Hex('#3C94FF');
-  Result.Pairs[1] := Hex('#D47F00');
+  Result.Pairs[1] := Hex('#F67676');
   Result.Pairs[2] := Hex('#00A4A4');
   Result.Pairs[3] := Hex('#E250FF');
   Result.Pairs[4] := Hex('#24AA24');

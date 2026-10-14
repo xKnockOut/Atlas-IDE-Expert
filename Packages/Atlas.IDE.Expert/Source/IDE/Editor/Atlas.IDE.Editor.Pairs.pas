@@ -291,7 +291,11 @@ var
   Canvas: TCanvas;
   Original: TColor;
   CharColors: TArray<TColor>;
+  Unpaired: TArray<Boolean>;
   Found: Boolean;
+  Back: TRect;
+  Pen, Old: HGDIOBJ;
+  Brush: HBRUSH;
   DC: HDC;
   Saved: Integer;
 begin
@@ -326,6 +330,7 @@ begin
     Canvas := Context.Canvas;
     Original := Canvas.Font.Color;
     SetLength(CharColors, Length(Text));
+    SetLength(Unpaired, Length(Text));
     for Index := 0 to High(CharColors) do
       CharColors[Index] := Original;
     Colors := PaletteFor(Context);
@@ -336,7 +341,10 @@ begin
         begin
           Found := True;
           if Token.Unpaired then
-            CharColors[Column - ColNum] := TColor(Colors.Error)
+          begin
+            CharColors[Column - ColNum] := TColor(Colors.Error);
+            Unpaired[Column - ColNum] := True;
+          end
           else
             CharColors[Column - ColNum] := TColor(Colors.Pairs[Token.Depth mod Length(Colors.Pairs)]);
         end;
@@ -358,6 +366,28 @@ begin
       SetBkMode(DC, TRANSPARENT);
       for Index := 0 to High(CharColors) do
       begin
+        // Unpaarig: blassroter Grund mit roter Unterkante, unabhängig von den Paarfarben.
+        if Unpaired[Index] then
+        begin
+          Back := TRect.Create(Rect.Left + Index * Cell, Rect.Top, Rect.Left + (Index + 1) * Cell, Rect.Bottom);
+          // Fehlerfarbe zu 25 % über dem Editorhintergrund: deutlich, aber die Klammer bleibt lesbar.
+          Brush := CreateSolidBrush(ColorToRGB(TColor(TAtlasColorMath.Mix(Colors.Error,
+            TAtlasColor(ColorToRGB(Canvas.Brush.Color)), 0.25))));
+          try
+            Winapi.Windows.FillRect(DC, Back, Brush);
+          finally
+            DeleteObject(Brush);
+          end;
+          Pen := CreatePen(PS_SOLID, Max(1, Rect.Height div 8), ColorToRGB(TColor(Colors.Error)));
+          Old := SelectObject(DC, Pen);
+          try
+            MoveToEx(DC, Back.Left, Back.Bottom - Max(1, Rect.Height div 16) - 1, nil);
+            LineTo(DC, Back.Right, Back.Bottom - Max(1, Rect.Height div 16) - 1);
+          finally
+            SelectObject(DC, Old);
+            DeleteObject(Pen);
+          end;
+        end;
         SetTextColor(DC, ColorToRGB(CharColors[Index]));
         Winapi.Windows.TextOut(DC, Rect.Left + Index * Cell, Top, PChar(Text) + Index, 1);
       end;
