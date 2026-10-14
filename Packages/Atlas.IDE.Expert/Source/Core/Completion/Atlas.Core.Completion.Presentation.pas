@@ -7,7 +7,7 @@
 //   - Tags: "+ Unit" für Einträge aus nicht eingebundenen Units (#180),
 //     "deprecated", "constructor"/"destructor", "+2" bei drei Überladungen
 //     (#425), "Helper" (#456), "zuletzt"/"häufig" (#418), Anzahl fehlender
-//     Werte bei „Alle Werte einfügen“ (#449).
+//     Werte bei „Alle Werte einfügen“ (#449), "Snippet" bei Code-Vorlagen (#51).
 //   - Geerbte Member (#419): Detail beginnt mit der deklarierenden Klasse.
 //   - Treffer: Positionen der getippten Zeichen im Namen zum Hervorheben,
 //     nach denselben Regeln wie TAtlasCompletionMatcher.
@@ -302,6 +302,9 @@ begin
     Result := Result + [MakeTag('+' + IntToStr(AItem.OverloadCount - 1), TAtlasTagKind.Neutral)];
   if AItem.IsHelper then
     Result := Result + [MakeTag('Helper', TAtlasTagKind.Accent)];
+  // Code-Vorlagen (#51).
+  if AItem.Snippet <> '' then
+    Result := Result + [MakeTag('Snippet', TAtlasTagKind.Neutral)];
   // Sender mit Typumwandlung (#480).
   if AItem.Sender <> '' then
     Result := Result + [MakeTag('als ' + AItem.Sender, TAtlasTagKind.Accent)];

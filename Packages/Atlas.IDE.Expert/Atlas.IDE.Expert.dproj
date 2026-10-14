@@ -152,6 +152,10 @@
         <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.History.pas"/>
         <DCCReference Include="Source\UI\Atlas.UI.Strings.pas"/>
         <DCCReference Include="Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.XmlDoc.pas"/>
+        <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Snippets.pas"/>
+        <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Placeholders.pas"/>
+        <DCCReference Include="Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.Snippets.pas"/>
+        <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.Placeholders.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Parentheses.pas"/>
         <DCCReference Include="Source\UI\Hover\Atlas.UI.Hover.Tip.pas"/>
         <DCCReference Include="Source\IDE\Hover\Atlas.IDE.Hover.Editor.pas"/>

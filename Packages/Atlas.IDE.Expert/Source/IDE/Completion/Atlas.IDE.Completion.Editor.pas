@@ -18,6 +18,9 @@
 //     der gewählte Eintrag klar, wird er übernommen und das Zeichen bleibt stehen;
 //     sonst bleibt nur das Zeichen und das Popup schließt. Erkannt nach dem Tippen im
 //     Puffer, nicht über eine Tastenbindung: unabhängig vom Tastaturlayout.
+//   - Code-Vorlagen (#51): eigene Quelle mit den mitgelieferten Vorlagen und denen aus
+//     %APPDATA%\Atlas\Snippets (bei Änderung neu gelesen). Übernehmen setzt den Text mit der
+//     Einrückung der Zeile ein und startet den Platzhalter-Modus (Atlas.IDE.Completion.Placeholders).
 
 interface
 
@@ -32,8 +35,10 @@ uses
   Atlas.Core.Completion.Composite,
   Atlas.Core.Completion.Controller,
   Atlas.Core.Completion.Providers.Server,
+  Atlas.Core.Completion.Providers.Snippets,
   Atlas.Core.Completion.Parentheses,
   Atlas.IDE.Completion.Preview,
+  Atlas.IDE.Completion.Placeholders,
   Atlas.UI.Completion.Popup,
   Atlas.IDE.Editor.KeyHook;
 
@@ -47,6 +52,12 @@ type
     FProvidersRef: IAtlasCompletionProvider;
     FServerProvider: TAtlasServerCompletionProvider;
     FServerProviderRef: IAtlasCompletionProvider;
+    // Code-Vorlagen (#51): Quelle, Stand des Ordners, letzte Prüfung, Platzhalter-Modus.
+    FSnippetProvider: TAtlasSnippetCompletionProvider;
+    FSnippetProviderRef: IAtlasCompletionProvider;
+    FSnippetStamp: string;
+    FSnippetChecked: UInt64;
+    FPlaceholders: TAtlasEditorPlaceholders;
     FPopup: TAtlasCompletionPopup;
     // Detailpanel: Schlüssel der gewählten Einträge, Zeitpunkt der Anfrage, schon angefragt.
     FDetailKey: string;
@@ -82,6 +93,11 @@ type
     procedure Recheck;
     procedure TimerTick(Sender: TObject);
     procedure Commit(const AItem: TAtlasCompletionItem);
+    /// <summary>Setzt die Vorlage von AItem statt des Worts bis AEnd (0-basiert) ein.</summary>
+    procedure CommitSnippet(const AView: IOTAEditView; const AItem: TAtlasCompletionItem; const AText,
+      ALineText: string; ALine, AEnd: Integer);
+    /// <summary>Eigene Vorlagen neu lesen, wenn sich der Ordner geändert hat (höchstens alle 3 s).</summary>
+    procedure RefreshSnippets;
     procedure ApplyStyle(const ACaret: TRect);
     function CaretRect(out AWindow: HWND; out ARect: TRect): Boolean;
     procedure ActiveChanged;
@@ -104,6 +120,8 @@ type
     /// Cursor, fragt Atlas nur nach Mengenwerten (#448).</summary>
     function Invoke(const AView: IOTAEditView; AAutomatic: Boolean = False): Boolean;
     procedure Close;
+    /// <summary>Andere Ansicht im Editor: Popup schließen und Platzhalter-Modus beenden.</summary>
+    procedure ViewChanged;
     /// <summary>Taste aus dem Tastatur-Hook; True, wenn verbraucht.</summary>
     function HandleKey(AKey: TAtlasNavigationKey): Boolean;
     /// <summary>Befehle im offenen Popup: Strg+Q Panel ein/aus (#428), Alt+1 … Alt+6 Chips (#422).</summary>
@@ -117,6 +135,8 @@ type
     /// <summary>Wurde in der Zeile des Cursors gerade ein Konstruktor übernommen (#489)? Dann fragt ";" dort
     /// nach „Mit try…finally absichern“.</summary>
     function GuardPending(const AView: IOTAEditView): Boolean;
+    /// <summary>Ordner der eigenen Code-Vorlagen (#51): %APPDATA%\Atlas\Snippets.</summary>
+    class function SnippetFolder: string; static;
   end;
 
 implementation
@@ -133,6 +153,7 @@ uses
   Atlas.Core.Completion.Word,
   Atlas.Core.Completion.Matching,
   Atlas.Core.Completion.Providers.XmlDoc,
+  Atlas.Core.Completion.Snippets,
   Atlas.Core.Completion.Preview,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Settings.Store,
@@ -268,7 +289,7 @@ procedure TAtlasEditNotifier.EditorViewActivated(const EditWindow: INTAEditWindo
 begin
   // Tab-Wechsel schließt (#414).
   try
-    FOwner.Close;
+    FOwner.ViewChanged;
   except
   end;
 end;
@@ -311,6 +332,11 @@ begin
   FProviders.Add(FServerProviderRef);
   // XMLDoc-Tags in ///-Kommentaren (#435), lokal.
   FProviders.Add(TAtlasXmlDocCompletionProvider.Create as IAtlasCompletionProvider);
+  // Code-Vorlagen (#51), lokal; die eigenen liest RefreshSnippets beim ersten Öffnen.
+  FSnippetProvider := TAtlasSnippetCompletionProvider.Create(TAtlasSnippets.BuiltIn);
+  FSnippetProviderRef := FSnippetProvider;
+  FProviders.Add(FSnippetProviderRef);
+  FPlaceholders := TAtlasEditorPlaceholders.Create;
   FPopup := TAtlasCompletionPopup.Create(nil);
   FController := TAtlasCompletionController.Create(FProvidersRef, FPopup);
   FController.OnCommit :=
@@ -382,6 +408,7 @@ var
 begin
   // Erst abmelden, dann freigeben: Die IDE ruft sonst noch in freigegebene Objekte (#493).
   RemoveKeyHook;
+  FreeAndNil(FPlaceholders);
   FreeAndNil(FPreview);
   if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAEditorServices, Editor) then
     Editor.RemoveNotifier(FNotifierIndex);
@@ -391,6 +418,7 @@ begin
   FPopup.Free;
   FKeys.Free;
   FServerProviderRef := nil;
+  FSnippetProviderRef := nil;
   FProvidersRef := nil;
   inherited;
 end;
@@ -405,6 +433,7 @@ procedure TAtlasEditorCompletion.Shutdown;
 begin
   Close;
   FServerProvider.Shutdown;
+  FSnippetProvider.Shutdown;
 end;
 
 function TAtlasEditorCompletion.Visible: Boolean;
@@ -484,6 +513,9 @@ begin
   FController.GroupInherited := TAtlasIdeSettings.Current.GroupInherited;
   FPopup.DimInherited := TAtlasIdeSettings.Current.GroupInherited;
   FController.ChipsEnabled := TAtlasIdeSettings.Current.FilterChips;
+  FSnippetProvider.Enabled := TAtlasIdeSettings.Current.Snippets;
+  if FSnippetProvider.Enabled then
+    RefreshSnippets;
   if TAtlasIdeSettings.Current.Learning then
     FController.Usage := TAtlasIdeHistory.Instance
   else
@@ -511,6 +543,41 @@ begin
   if FPreview <> nil then
     FPreview.Clear;
   ActiveChanged;
+end;
+
+procedure TAtlasEditorCompletion.ViewChanged;
+begin
+  Close;
+  if FPlaceholders <> nil then
+    FPlaceholders.Stop;
+end;
+
+procedure TAtlasEditorCompletion.RefreshSnippets;
+var
+  Folder, Stamp, Error: string;
+  Errors: TArray<string>;
+  Own: TAtlasSnippetList;
+begin
+  if (FSnippetChecked <> 0) and (TThread.GetTickCount64 - FSnippetChecked < 3000) then
+    Exit;
+  FSnippetChecked := TThread.GetTickCount64;
+  Folder := TAtlasEditorCompletion.SnippetFolder;
+  Stamp := TAtlasSnippets.FolderStamp(Folder);
+  if Stamp = FSnippetStamp then
+    Exit;
+  FSnippetStamp := Stamp;
+  Own := TAtlasSnippets.LoadFolder(Folder, Errors);
+  for Error in Errors do
+    Log('Code-Vorlage übersprungen: ' + Error);
+  Log(Format('Code-Vorlagen: %d eigene aus %s', [Integer(Length(Own)), Folder]));
+  FSnippetProvider.SetSnippets(TAtlasSnippets.Merge(TAtlasSnippets.BuiltIn, Own));
+end;
+
+class function TAtlasEditorCompletion.SnippetFolder: string;
+begin
+  Result := GetEnvironmentVariable('APPDATA');
+  if Result <> '' then
+    Result := IncludeTrailingPathDelimiter(Result) + 'Atlas\Snippets';
 end;
 
 procedure TAtlasEditorCompletion.ActiveChanged;
@@ -590,6 +657,8 @@ var
 begin
   if FController.Active then
     Recheck;
+  if FPlaceholders <> nil then
+    FPlaceholders.EditorModified(AView);
   // ")" vor der automatischen Klammer (#430): diese überspringen.
   if FAutoParen.Active and (AView <> nil) and (AView.Buffer <> nil) then
     if AView.CursorPos.Line <> FAutoParen.Line then
@@ -831,6 +900,13 @@ begin
   else
     // Mitten im Wort: bis zu seinem Ende ersetzen, sonst bliebe der Rest stehen.
     Character := TAtlasWord.EndAfter(LineText, Character);
+  // Code-Vorlage (#51): eigener Weg mit Einrückung und Platzhaltern.
+  if AItem.Snippet <> '' then
+  begin
+    CommitSnippet(View, AItem, Text, LineText, Cursor.Line, Character);
+    ActiveChanged;
+    Exit;
+  end;
   NewText := AItem.InsertText;
   if NewText = '' then
     NewText := AItem.Name;
@@ -950,6 +1026,33 @@ begin
         end);
   end;
   ActiveChanged;
+end;
+
+procedure TAtlasEditorCompletion.CommitSnippet(const AView: IOTAEditView; const AItem: TAtlasCompletionItem;
+  const AText, ALineText: string; ALine, AEnd: Integer);
+var
+  Expansion: TAtlasSnippetExpansion;
+  LineBreak, Document: string;
+  Writer: IOTAEditWriter;
+  Start, Stop: Integer;
+begin
+  // Zeilenumbrüche wie im Puffer, Einrückung wie die aktuelle Zeile.
+  if Pos(#13#10, AText) > 0 then
+    LineBreak := #13#10
+  else
+    LineBreak := #10;
+  Expansion := TAtlasSnippets.Expand(AItem.Snippet, TAtlasSnippets.IndentOf(ALineText), LineBreak);
+  Start := TAtlasEditorBuffer.ByteOffset(AText, ALine - 1, FWordStart);
+  Stop := TAtlasEditorBuffer.ByteOffset(AText, ALine - 1, AEnd);
+  // Ein Schreiber = ein Undo-Schritt für das Einsetzen.
+  Writer := AView.Buffer.CreateUndoableWriter;
+  Writer.CopyTo(Start);
+  Writer.DeleteTo(Stop);
+  Writer.Insert(PAnsiChar(UTF8Encode(Expansion.Text)));
+  Writer := nil;
+  Document := TAtlasEditorBuffer.Text(AView.Buffer);
+  FPlaceholders.Start(AView, Document, TAtlasEditorBuffer.CharOffset(Document, ALine - 1, FWordStart), Expansion);
+  Log(Format('Code-Vorlage eingesetzt: %s (%d Platzhalter)', [AItem.Name, Integer(Length(Expansion.Stops))]));
 end;
 
 function TAtlasEditorCompletion.GuardPending(const AView: IOTAEditView): Boolean;

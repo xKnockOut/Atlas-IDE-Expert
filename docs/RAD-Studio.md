@@ -39,6 +39,23 @@ Feld- und Parameternamen (#461): In `qryOrders.FieldByName('`, `FindField('` und
 
 Freigabe absichern (#489): Nach Übernahme eines Konstruktors in `List := TStringList.Create` öffnet das `;` (auch als Commit-Zeichen) eine kleine Liste „Mit try…finally absichern“, rechts die Freigabe (`List.Free`), Fußzeile „Enter anwenden · weitertippen verwirft“. Enter setzt `try`, eine leere Zeile mit dem Cursor, `finally`, `List.Free;` und `end;` darunter, als ein Rückgängig-Schritt. Folgen bis zum Ende der Routine schon Zeilen, gibt es zusätzlich „Bis Routinenende mit try…finally absichern“. Nicht angeboten wird bei Feldern, `Result`, Interface-Variablen, Records, einem Owner (`Create(Self)`, `Create(Application)`), wenn die Variable später zurückgegeben, zugewiesen, an `Add`/`Insert` übergeben oder schon freigegeben wird, und wenn danach schon `try` steht. `completion.offerTryFinally` schaltet das Angebot ab, `completion.freeStyle` = `"freeAndNil"` schreibt `FreeAndNil(List)`.
 
+Code-Vorlagen (#51): Am Anfang einer Anweisung stehen Vorlagen mit dem Badge `sn` und der Marke „Snippet“ in der Liste: `tryf` (try…finally mit Create/Free), `trye`, `forin`, `fori`, `while`, `repeat`, `class`, `record`, `prop`, `propset` (Setter mit Prüfung auf Änderung und `Invalidate`), `comp` (Komponentengerüst) und `reg` (Register-Prozedur). Enter setzt die Vorlage mit der Einrückung der Zeile ein und markiert den ersten Platzhalter; Tippen ersetzt ihn, gleich nummerierte Platzhalter ändern sich mit. Tab springt weiter, Umschalt+Tab zurück, nach dem letzten an die Endposition; Enter springt dorthin und beendet, Esc beendet an Ort und Stelle. Der aktuelle Platzhalter ist umrahmt, verknüpfte gestrichelt, dahinter steht „Platzhalter 1 / 2 · Tab weiter · Esc fertig“. Eigene Vorlagen liegen als `*.atlas-snippet` in `%APPDATA%\Atlas\Snippets` (Atlas liest den Ordner bei Änderung neu, Fehler stehen im Diagnoseprotokoll) und ersetzen mitgelieferte mit gleichem Kürzel:
+
+```
+name: Liste anlegen
+prefix: lst
+description: TStringList mit Freigabe
+---
+${1:Items} := TStringList.Create;
+try
+  $0
+finally
+  ${1}.Free;
+end;
+```
+
+`${1:Name}` ist ein Platzhalter mit Vorgabe, `${2}` einer ohne, `$0` die Endposition; `$FF` und andere Hexzahlen bleiben Text. Abschalten unter *Tools › Optionen › Drittanbieter › Atlas* („Code-Vorlagen (Snippets) in der Liste anbieten“, Registry-Wert `Snippets`).
+
 Zur Fehlersuche: Wert `Diagnose` (DWORD) = `1` unter `HKCU\Software\Atlas\IdePlugin` setzen und die IDE neu starten. Das Plugin schreibt dann jeden Aufruf der IDE (Hover, Strg+Klick, Position und Ergebnis) in `Atlas.IDE.Expert.log` neben der BPL.
 
 Findet der Server keine Definition, passiert bei Strg+Klick nichts. Deklarationen in Include-Dateien (`{$I …}`) findet der Server erst mit dem Include-Resolver (#264).
