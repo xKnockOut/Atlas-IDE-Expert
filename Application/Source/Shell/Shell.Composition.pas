@@ -20,6 +20,7 @@ uses
   Atlas.Common.JsonRpc.Connection,
   Atlas.Common.JsonRpc.Watchdog,
   Atlas.Common.Lsp.Lifecycle,
+  Atlas.Common.Lsp.ApplyEdit,
   Atlas.Common.Lsp.TextDocumentSync,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Lsp.PullDiagnostics,
@@ -423,7 +424,12 @@ begin
       Result := Settings.SlashHeaderTemplate;
       if Result = '' then
         Result := TFileHeaderRule.Template(TRuleEngine.RuleOptions('file-header', Settings));
-    end, FTransport, FLogger);
+    end, FTransport, FLogger, FDispatcher,
+    // Die .dproj geht über das Plugin in die IDE, wenn der Client applyEdit kann (#397).
+    function: Boolean
+    begin
+      Result := TLspApplyEdit.ClientSupports(FLifecycle.InitializeParams);
+    end);
   FFormatting.Attach(FDispatcher);
   FSelectionRanges := TLspSelectionRanges.Create(FDocuments);
   FSelectionRanges.Attach(FDispatcher);
