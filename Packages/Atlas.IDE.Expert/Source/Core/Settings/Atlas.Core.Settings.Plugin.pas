@@ -8,7 +8,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Style.Palette;
 
 type
   /// <summary>Ablage für Einstellungen; Werte als ganze Zahlen (Wahrheitswerte 0/1).</summary>
@@ -90,6 +91,9 @@ type
     PairGuideWidth: Integer;
     /// <summary>Deckkraft der Blocklinien in Prozent; der Rest ist Hintergrund.</summary>
     PairGuideOpacity: Integer;
+    /// <summary>Eigene Paarfarben je Thema („#RRGGBB,…“, fünf Stück); leer = Standardpalette.</summary>
+    PairColorsLight: string;
+    PairColorsDark: string;
     /// <summary>Probleme im Editor unterstreichen und im Meldungsfenster auflisten (#398).</summary>
     Problems: Boolean;
     /// <summary>Probleme zusätzlich im Meldungsfenster auflisten (Gruppe „Atlas-Probleme“); nur mit Problems.</summary>
@@ -118,6 +122,17 @@ implementation
 
 uses
   System.Math;
+
+// Eigene Paarfarben einheitlich schreiben; ungültig = leer (Standardpalette).
+function NormalPairs(const AText: string): string;
+var
+  Pairs: TAtlasPairColors;
+begin
+  if TAtlasColors.ParsePairs(AText, Pairs) then
+    Result := TAtlasColors.PairsText(Pairs)
+  else
+    Result := '';
+end;
 
 function BoolValue(AValue: Boolean): Integer;
 begin
@@ -157,6 +172,8 @@ begin
   Result.PairOwners := True;
   Result.PairGuideWidth := 1;
   Result.PairGuideOpacity := 50;
+  Result.PairColorsLight := '';
+  Result.PairColorsDark := '';
   Result.Problems := True;
   Result.ProblemsList := True;
   // Die Prüfung in der IDE zeigt deren Fortschritt; Standard ist die Prüfung des Servers mit dcc (compiler.onSave).
@@ -180,6 +197,8 @@ begin
   CheckOnSaveMaxMs := EnsureRange(CheckOnSaveMaxMs, MinCheckMax, MaxCheckMax);
   PairGuideWidth := EnsureRange(PairGuideWidth, MinPairGuideWidth, MaxPairGuideWidth);
   PairGuideOpacity := EnsureRange(PairGuideOpacity, MinPairGuideOpacity, MaxPairGuideOpacity);
+  PairColorsLight := NormalPairs(PairColorsLight);
+  PairColorsDark := NormalPairs(PairColorsDark);
 end;
 
 procedure TAtlasPluginSettings.Load(const AStore: IAtlasSettingsStore);
@@ -213,6 +232,8 @@ begin
   PairOwners := AStore.ReadInteger('PairOwners', BoolValue(Default.PairOwners)) <> 0;
   PairGuideWidth := AStore.ReadInteger('PairGuideWidth', Default.PairGuideWidth);
   PairGuideOpacity := AStore.ReadInteger('PairGuideOpacity', Default.PairGuideOpacity);
+  PairColorsLight := AStore.ReadString('PairColorsLight', Default.PairColorsLight);
+  PairColorsDark := AStore.ReadString('PairColorsDark', Default.PairColorsDark);
   Problems := AStore.ReadInteger('Problems', BoolValue(Default.Problems)) <> 0;
   ProblemsList := AStore.ReadInteger('ProblemsList', BoolValue(Default.ProblemsList)) <> 0;
   CheckOnSave := AStore.ReadInteger('CheckOnSave', BoolValue(Default.CheckOnSave)) <> 0;
@@ -253,6 +274,8 @@ begin
   AStore.WriteInteger('PairOwners', BoolValue(PairOwners));
   AStore.WriteInteger('PairGuideWidth', PairGuideWidth);
   AStore.WriteInteger('PairGuideOpacity', PairGuideOpacity);
+  AStore.WriteString('PairColorsLight', PairColorsLight);
+  AStore.WriteString('PairColorsDark', PairColorsDark);
   AStore.WriteInteger('Problems', BoolValue(Problems));
   AStore.WriteInteger('ProblemsList', BoolValue(ProblemsList));
   AStore.WriteInteger('CheckOnSave', BoolValue(CheckOnSave));

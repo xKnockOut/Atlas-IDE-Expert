@@ -73,6 +73,7 @@ type
     // Texthöhe der Editorschrift bei 100 %, für die Linienbreite.
     FBaseTextHeight: Integer;
     function PaletteFor(const AContext: INTACodeEditorPaintContext): TAtlasColors;
+    class function WithCustomPairs(const AColors: TAtlasColors): TAtlasColors; static;
     procedure BeginPaint(const Editor: TWinControl; const ForceFullRepaint: Boolean);
     procedure PaintText(const Rect: TRect; const ColNum: SmallInt; const Text: string;
       const SyntaxCode: TOTASyntaxCode; const Hilight, BeforeEvent: Boolean;
@@ -239,6 +240,19 @@ begin
     Result := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(FBackground)))
   else
     Result := TAtlasIdeStyle.Colors;
+  Result := WithCustomPairs(Result);
+end;
+
+class function TAtlasEditorPairs.WithCustomPairs(const AColors: TAtlasColors): TAtlasColors;
+var
+  Settings: TAtlasPluginSettings;
+begin
+  // Eigene Paarfarben je Thema aus den Optionen.
+  Settings := TAtlasIdeSettings.Current;
+  if AColors.IsDark then
+    Result := AColors.WithPairs(Settings.PairColorsDark)
+  else
+    Result := AColors.WithPairs(Settings.PairColorsLight);
 end;
 
 class procedure TAtlasEditorPairs.PaintRun(const ARect: TRect; const AText: string;
@@ -401,6 +415,7 @@ begin
       Colors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(FBackground)))
     else
       Colors := TAtlasIdeStyle.Colors;
+    Colors := WithCustomPairs(Colors);
     if FBaseTextHeight <= 0 then
       FBaseTextHeight := TAtlasIdeStyle.BaseTextHeight;
     Width := TAtlasGuides.PenWidth(Settings.PairGuideWidth, Context.CellSize.cy, FBaseTextHeight);

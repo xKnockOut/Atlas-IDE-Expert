@@ -121,6 +121,7 @@ begin
   Settings.PairOwners := False;
   Settings.PairGuideWidth := 3;
   Settings.PairGuideOpacity := 80;
+  Settings.PairColorsDark := '#112233, #445566,#778899,#aabbcc,#DDEEFF';
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
@@ -134,6 +135,7 @@ begin
   Assert.IsFalse(Loaded.PairOwners);
   Assert.AreEqual(3, Loaded.PairGuideWidth);
   Assert.AreEqual(80, Loaded.PairGuideOpacity);
+  Assert.AreEqual('#112233,#445566,#778899,#AABBCC,#DDEEFF', Loaded.PairColorsDark, 'einheitlich geschrieben');
   Assert.IsFalse(Loaded.ProblemsList, 'Liste „Atlas-Probleme“ abgeschaltet');
   Assert.IsTrue(Loaded.Problems, 'Wellenlinien bleiben an');
   Assert.AreEqual('D:\Atlas\AtlasServer.exe', Loaded.ServerPath, 'Serverpfad ohne Leerraum');
@@ -173,10 +175,12 @@ begin
   Store.WriteInteger('PanelWidth', 5000);
   Store.WriteInteger('PairGuideWidth', 7);
   Store.WriteInteger('PairGuideOpacity', 0);
+  Store.WriteString('PairColorsLight', '#123456,blau');
   Settings := Default(TAtlasPluginSettings);
   Settings.Load(Store);
   Assert.AreEqual(TAtlasPluginSettings.MaxPairGuideWidth, Settings.PairGuideWidth);
   Assert.AreEqual(TAtlasPluginSettings.MinPairGuideOpacity, Settings.PairGuideOpacity);
+  Assert.AreEqual('', Settings.PairColorsLight, 'ungültige Farben = Standard');
   Assert.AreEqual(TAtlasPluginSettings.MaxVisibleRows, Settings.VisibleRows);
   Assert.AreEqual(TAtlasPluginSettings.MinListWidth, Settings.ListWidth);
   Assert.AreEqual(TAtlasPluginSettings.MaxPanelWidth, Settings.PanelWidth);

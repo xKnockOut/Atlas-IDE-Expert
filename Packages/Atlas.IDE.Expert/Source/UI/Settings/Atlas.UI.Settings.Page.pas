@@ -12,6 +12,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
+  System.UITypes,
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.StdCtrls,
@@ -20,6 +21,8 @@ uses
   Vcl.Forms,
   Vcl.Dialogs,
   Vcl.Menus,
+  Atlas.Core.Style.Color,
+  Atlas.Core.Style.Palette,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.UI.Strings;
@@ -64,6 +67,9 @@ type
     FPairOwners: TCheckBox;
     FPairGuideWidth: TEdit;
     FPairGuideOpacity: TEdit;
+    // Eigene Paarfarben je Thema, eine Fläche je Tiefe.
+    FLightSwatches: array[0..4] of TShape;
+    FDarkSwatches: array[0..4] of TShape;
     FProblems: TCheckBox;
     FIndexGroup: TCheckBox;
     FIndexSearch: TCheckBox;
@@ -96,6 +102,13 @@ type
     procedure ResetWidthsClick(Sender: TObject);
     procedure HangTestClick(Sender: TObject);
     procedure PairColorsClick(Sender: TObject);
+    /// <summary>Zeile mit Beschriftung und fünf Farbflächen.</summary>
+    procedure AddSwatches(const ACaption: string; var ASwatches: array of TShape);
+    procedure SwatchMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure ResetColorsClick(Sender: TObject);
+    class procedure ShowPairs(const ASwatches: array of TShape; const APairs: TAtlasPairColors); static;
+    /// <summary>Farben der Flächen als Einstellung; gleich der Palette = leer.</summary>
+    class function PairsSetting(const ASwatches: array of TShape; const ADefault: TAtlasPairColors): string; static;
     procedure ServerBrowseClick(Sender: TObject);
     procedure ServerPathChange(Sender: TObject);
     procedure SetDefaultServerPath(const AValue: string);
@@ -135,6 +148,7 @@ constructor TAtlasSettingsPage.Create(AOwner: TComponent);
 var
   Panel: TWinControl;
   Title: TLabel;
+  Button: TButton;
 begin
   inherited Create(AOwner);
   Name := 'AtlasSettingsPage';
@@ -261,6 +275,26 @@ begin
   FCheckMax := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckMax));
   FCheckKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsCheckKey), FCheckKeyPriority);
 
+  // Eigene Paarfarben und deren Reihenfolge je Thema.
+  AddSheet(TAtlasTextId.SettingsTabColors);
+  AddSwatches(TAtlasStrings.Text(TAtlasTextId.SettingsPairColorsLight), FLightSwatches);
+  AddSwatches(TAtlasStrings.Text(TAtlasTextId.SettingsPairColorsDark), FDarkSwatches);
+  Panel := AddPanel(22);
+  Title := TLabel.Create(Self);
+  Title.Parent := Panel;
+  Title.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsPairColorsHint);
+  Title.Left := 0;
+  Title.Top := 3;
+  Title.Font.Color := clGrayText;
+  Panel := AddPanel(32);
+  Button := TButton.Create(Self);
+  Button.Parent := Panel;
+  Button.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsPairColorsReset);
+  Button.Left := 0;
+  Button.Top := 3;
+  Button.Width := 150;
+  Button.OnClick := ResetColorsClick;
+
   AddSheet(TAtlasTextId.SettingsTabRobustness);
   // Einfrier-Wächter (#501).
   FHangThreshold := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHangThreshold));
@@ -352,6 +386,76 @@ begin
   FPairGuideOpacity.Enabled := FPairColors.Checked;
 end;
 
+procedure TAtlasSettingsPage.AddSwatches(const ACaption: string; var ASwatches: array of TShape);
+var
+  Panel: TWinControl;
+  Caption: TLabel;
+  Index: Integer;
+begin
+  Panel := AddPanel(26);
+  Caption := TLabel.Create(Self);
+  Caption.Parent := Panel;
+  Caption.Caption := ACaption;
+  Caption.Left := 0;
+  Caption.Top := 5;
+  for Index := 0 to High(ASwatches) do
+  begin
+    ASwatches[Index] := TShape.Create(Self);
+    ASwatches[Index].Parent := Panel;
+    ASwatches[Index].SetBounds(FieldLeft + Index * 34, 1, 28, 22);
+    ASwatches[Index].Pen.Color := clGray;
+    ASwatches[Index].Cursor := crHandPoint;
+    ASwatches[Index].Hint := IntToStr(Index + 1);
+    ASwatches[Index].ShowHint := True;
+    ASwatches[Index].OnMouseDown := SwatchMouseDown;
+  end;
+end;
+
+procedure TAtlasSettingsPage.SwatchMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
+  X, Y: Integer);
+var
+  Dialog: TColorDialog;
+begin
+  if Button <> mbLeft then
+    Exit;
+  Dialog := TColorDialog.Create(nil);
+  try
+    Dialog.Color := TShape(Sender).Brush.Color;
+    Dialog.Options := Dialog.Options + [cdFullOpen];
+    if Dialog.Execute then
+      TShape(Sender).Brush.Color := Dialog.Color;
+  finally
+    Dialog.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPage.ResetColorsClick(Sender: TObject);
+begin
+  ShowPairs(FLightSwatches, TAtlasColors.Light.Pairs);
+  ShowPairs(FDarkSwatches, TAtlasColors.Dark.Pairs);
+end;
+
+class procedure TAtlasSettingsPage.ShowPairs(const ASwatches: array of TShape; const APairs: TAtlasPairColors);
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(ASwatches) do
+    ASwatches[Index].Brush.Color := TColor(APairs[Index]);
+end;
+
+class function TAtlasSettingsPage.PairsSetting(const ASwatches: array of TShape;
+  const ADefault: TAtlasPairColors): string;
+var
+  Pairs: TAtlasPairColors;
+  Index: Integer;
+begin
+  for Index := 0 to High(Pairs) do
+    Pairs[Index] := TAtlasColor(ColorToRGB(ASwatches[Index].Brush.Color));
+  Result := TAtlasColors.PairsText(Pairs);
+  if Result = TAtlasColors.PairsText(ADefault) then
+    Result := '';
+end;
+
 function TAtlasSettingsPage.AddNumber(const ACaption: string): TEdit;
 var
   Panel: TWinControl;
@@ -400,6 +504,8 @@ begin
   FPairGuideWidth.Text := IntToStr(ASettings.PairGuideWidth);
   FPairGuideOpacity.Text := IntToStr(ASettings.PairGuideOpacity);
   PairColorsClick(nil);
+  ShowPairs(FLightSwatches, TAtlasColors.Light.WithPairs(ASettings.PairColorsLight).Pairs);
+  ShowPairs(FDarkSwatches, TAtlasColors.Dark.WithPairs(ASettings.PairColorsDark).Pairs);
   FProblems.Checked := ASettings.Problems;
   FIndexGroup.Checked := ASettings.IndexProjectGroup;
   FIndexSearch.Checked := ASettings.IndexSearchPaths;
@@ -436,6 +542,8 @@ begin
   ASettings.PairOwners := FPairOwners.Checked;
   ASettings.PairGuideWidth := StrToIntDef(FPairGuideWidth.Text, ASettings.PairGuideWidth);
   ASettings.PairGuideOpacity := StrToIntDef(FPairGuideOpacity.Text, ASettings.PairGuideOpacity);
+  ASettings.PairColorsLight := PairsSetting(FLightSwatches, TAtlasColors.Light.Pairs);
+  ASettings.PairColorsDark := PairsSetting(FDarkSwatches, TAtlasColors.Dark.Pairs);
   ASettings.Problems := FProblems.Checked;
   ASettings.IndexProjectGroup := FIndexGroup.Checked;
   ASettings.IndexSearchPaths := FIndexSearch.Checked;

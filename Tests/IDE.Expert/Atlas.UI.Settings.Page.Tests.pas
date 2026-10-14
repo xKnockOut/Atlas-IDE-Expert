@@ -61,9 +61,9 @@ begin
     Page := TAtlasSettingsPage.Create(Host);
     Page.Parent := Host;
     Page.HandleNeeded;
-    Assert.AreEqual(6, Page.Pages.PageCount);
+    Assert.AreEqual(7, Page.Pages.PageCount);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabGeneral), Page.Pages.Pages[0].Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabRobustness), Page.Pages.Pages[5].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabRobustness), Page.Pages.Pages[6].Caption);
     for Index := 0 to Page.Pages.PageCount - 1 do
     begin
       Sheet := Page.Pages.Pages[Index];
@@ -89,6 +89,7 @@ begin
   Settings.PairOwners := False;
   Settings.PairGuideWidth := 3;
   Settings.PairGuideOpacity := 70;
+  Settings.PairColorsLight := '#0071E3,#007C8A,#C000E0,#008700,#4040FF';
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
@@ -105,6 +106,8 @@ begin
   Assert.IsFalse(Saved.PairOwners);
   Assert.AreEqual(3, Saved.PairGuideWidth);
   Assert.AreEqual(70, Saved.PairGuideOpacity);
+  Assert.AreEqual('#0071E3,#007C8A,#C000E0,#008700,#4040FF', Saved.PairColorsLight);
+  Assert.AreEqual('', Saved.PairColorsDark, 'Standardfarben bleiben leer');
 end;
 
 initialization

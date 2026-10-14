@@ -41,7 +41,9 @@ type
     SettingsPairOwners, SettingsPairGuideWidth, MenuToggleOwners,
     SettingsProblemsList,
     SettingsTabGeneral, SettingsTabCompletion, SettingsTabEditor, SettingsTabIndex, SettingsTabCompiler,
-    SettingsTabRobustness, SettingsPairGuideOpacity);
+    SettingsTabRobustness, SettingsPairGuideOpacity,
+    SettingsTabColors, SettingsPairColorsLight, SettingsPairColorsDark, SettingsPairColorsReset,
+    SettingsPairColorsHint);
 
   TAtlasStrings = class
   private class var
@@ -120,7 +122,9 @@ const
      'Breite der Blocklinien (Pixel bei 100 %)', 'Anweisungen mitfärben',
      'Probleme im Meldungsfenster auflisten (Reiter „Atlas-Probleme“)',
      'Allgemein', 'Vervollständigung', 'Editor', 'Index', 'Compiler', 'Robustheit',
-     'Deckkraft der Blocklinien (%)'),
+     'Deckkraft der Blocklinien (%)',
+     'Farben', 'Paarfarben im hellen Thema', 'Paarfarben im dunklen Thema', 'Standardfarben',
+     'Farbe anklicken zum Ändern; die Reihenfolge gilt von außen nach innen.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -180,7 +184,9 @@ const
      'Width of block guides (pixels at 100 %)', 'Colour statements',
      'List problems in the message view (tab “Atlas-Probleme”)',
      'General', 'Completion', 'Editor', 'Index', 'Compiler', 'Robustness',
-     'Opacity of block guides (%)'));
+     'Opacity of block guides (%)',
+     'Colours', 'Pair colours (light theme)', 'Pair colours (dark theme)', 'Default colours',
+     'Click a colour to change it; the order runs from outermost to innermost.'));
 
 { TAtlasStrings }
 
