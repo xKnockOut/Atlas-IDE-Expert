@@ -2398,7 +2398,9 @@ begin
       begin
         Inc(Last, 2);
         UnitName := UnitName + '.' + Clean(Tokens[Last].Text);
-        if FindUnit(UnitName, UnitIndex) then
+        // Nur ein Versuch, ob die Teile eine Unit ergeben (TWerkzeug.Create meist nicht): ohne teures
+        // Nachladen über alle Suchpfade, außer für Units aus uses (#647).
+        if FindQualifierUnit(UnitName, UnitIndex) then
         begin
           Symbol := NoResult;
           Symbol.Kind := TResolvedKind.UnitName;

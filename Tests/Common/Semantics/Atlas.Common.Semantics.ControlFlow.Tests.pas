@@ -201,12 +201,22 @@ end;
 procedure TControlFlowTests.FinallyRunsOnExit;
 var
   F: TFlowFixture;
-  Cleanup: TFlowNode;
+  Syntax: TSyntaxNode;
+  Node: TFlowNode;
+  OnExitPath: Boolean;
 begin
   F := Flow('  try'#13#10'    Exit;'#13#10'  finally'#13#10'    Cleanup;'#13#10'  end;'#13#10'  Dead;');
   try
-    Cleanup := NodeNamed(F, 'Cleanup');
-    Assert.IsTrue(F.Graph.Dominates(Cleanup, F.Graph.ExitNode) = TFlowAnswer.Yes);
+    // Seit #647 gibt es je Ausgang eine Kopie des finally-Blocks: Eine Kopie ist erreichbar, das Ende auch,
+    // der Code hinter dem try nicht.
+    Syntax := FindStatement(F.Tree.Root, 'Cleanup');
+    OnExitPath := False;
+    for Node in F.Graph.Nodes do
+      if (Node.Syntax = Syntax) and (F.Graph.IsReachable(Node) = TFlowAnswer.Yes) then
+        OnExitPath := True;
+    Assert.IsTrue(OnExitPath, 'finally läuft');
+    Assert.IsTrue(F.Graph.IsReachable(F.Graph.ExitNode) = TFlowAnswer.Yes, 'Routine endet');
+    Assert.IsTrue(F.Graph.IsReachable(NodeNamed(F, 'Dead')) = TFlowAnswer.No, 'Exit springt');
   finally
     F.Free;
   end;
