@@ -12,6 +12,7 @@ Hier stehen Architekturentscheidungen mit Kontext, Entscheidung und Folgen. Eine
 | [0006](0006-ide-plugin.md) | IDE-Plugin als Code Insight-Manager für RAD Studio | Angenommen |
 | [0007](0007-build-ueber-cc-ps1.md) | Bauen über das IDE-Plugin cc.ps1 statt dcc und MSBuild | Angenommen |
 | [0008](0008-plattformen.md) | Plattformen Win32 und Win64, Tests nur Win64 | Angenommen |
+| [0009](0009-installer.md) | Installer als eigene VCL-Anwendung je Benutzer | Angenommen |
 
 ## Vorlage
 

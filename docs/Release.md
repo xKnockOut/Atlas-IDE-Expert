@@ -9,6 +9,8 @@ Server und VS-Code-Erweiterung tragen dieselbe [SemVer](https://semver.org/lang/
 3. Committen, mergen, dann `git tag v0.2.0` und `git push origin v0.2.0`.
 4. `.github/workflows/release.yml` prüft die Versionen, baut den Server (Win64 Release) auf dem Delphi-Runner, packt die `.vsix` mit EXE und legt das GitHub Release mit beiden Dateien und den Changelog-Notizen an. Versionen `0.x` und mit Suffix (`-beta.1`) gelten als Vorabversion.
 
+Mit Delphi-Runner baut der Workflow außerdem Plugin (Win32 und Win64) und Installer (#495) und hängt `atlas-ide-expert-<Version>.zip` an (Aufbau in [Installation.md](Installation.md#rad-studio-installer)). Dazu kommt immer `atlas-version.json` (`{"version": "…", "changes": "<Link zum Release>"}`): Die Update-Prüfung des Plugins liest sie über `releases/latest/download/atlas-version.json`. GitHub zählt Vorabversionen dabei nicht als „latest“; Versionen `0.x` melden sich also nicht als Update.
+
 Ohne Delphi-Runner (`DELPHI_RUNNER` nicht `true`) enthält das Release nur die `.vsix`; die EXE lässt sich dann von Hand anhängen.
 
 ## Optionale Geheimnisse

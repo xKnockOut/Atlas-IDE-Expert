@@ -14,6 +14,7 @@ Grundlage ist das Konzept „Rollenbasierte Kopplung und Kohäsion“ (Entwurf, 
 | `Atlas.Windows` | Platform-Package | RTL, `Winapi.*`, `System.Win.*`, `Atlas.Common` | VCL, FMX |
 | `AtlasServer` | Anwendung (Host) | beide Packages, RTL, Windows | VCL (Konsolenanwendung) |
 | `Atlas.IDE.Expert` | Design-Time-Package für RAD Studio (Win32, ADR 0006) | RTL, `Winapi.*`, `System.Win.*`, VCL, `designide` (Open Tools API) | `Atlas.Common`, `Atlas.Windows` (eigenständig, damit die IDE nur ein BPL laden muss) |
+| `AtlasSetup` | Anwendung (Installer, VCL, Win32, ADR 0009) | RTL, `Winapi.*`, `System.Win.*`, VCL, die Versionsunit des Plugins; `Setup.Core.*` nur RTL | `Atlas.Common`, `Atlas.Windows`; in `Setup.Core.*` Windows, VCL, `Setup.Adapters.*`, `Setup.Shell.*` |
 | `Atlas.Tests` | Testprojekt (DUnitX) | alles, was getestet wird | – |
 
 Abhängigkeitsrichtung:
@@ -29,7 +30,7 @@ Die Regeln für die Packages prüft `Tools/Check-PackageDependencies.ps1` (uses-
 ## Verzeichnisstruktur
 
 ```text
-Atlas.groupproj          Projektgruppe (Build-Reihenfolge: Common, Windows, Anwendung, IDE-Plugin, Tests)
+Atlas.groupproj          Projektgruppe (Build-Reihenfolge: Common, Windows, Anwendung, IDE-Plugin, Installer, Tests)
 Packages/
   Atlas.Common/
     Atlas.Common.dpk/.dproj
@@ -44,9 +45,12 @@ Application/
   AtlasServer.dpr/.dproj
   Source/
     Foundation/  Core/  Adapters/  Platform/  Features/  Shell/   (Host-Rollen, Konzept 7.2/7.3)
+Setup/
+  AtlasSetup.dpr/.dproj            Installer (#495)
+  Source/Core/  Source/Adapters/  Source/Shell/
 Tests/
   Atlas.Tests.dpr/.dproj
-  Common/  Windows/  Application/  IDE.Expert/  (Tests je Ausgabeartefakt)
+  Common/  Windows/  Application/  IDE.Expert/  Setup/  (Tests je Ausgabeartefakt)
   Data/Protocol/                   aufgezeichnete Nachrichtenfolgen für Protokolltests (JSON)
 Editors/VSCode/                    minimale VS-Code-Erweiterung (TypeScript), startet den Server
 Tools/                             Hilfsskripte
@@ -142,6 +146,8 @@ Komposition von Hand (keine Container-Bibliothek). Composition-Units tragen desh
 | `Atlas.Core.Status` / `Atlas.UI.Status` / `Atlas.IDE.Status` (Plugin) | `Contract`, `Registry`, `Lines`, `Window`, `Field` | Atlas-Statusfeld (#591): `IAtlasStatusItem` (Kennung, Text, Kurztext, Zustand neutral/grün/gelb/rot, Reihenfolge, optionale Aktion) und threadsichere `IAtlasStatusRegistry` mit Beobachtern; Gesamtzustand = schlechteste Zeile, Kurztext der wichtigsten gelben oder roten Zeile, Tooltip, ausgeblendete Kennungen; feste Zeilen Server (Phase, Antwortzeit der letzten 50 Anfragen, Version), Index (Fortschritt, Units aus `atlas.server.status` alle 5 s im Hintergrund) und Datei; Fenster mit Punkten, Zeilenaktionen und Knöpfen; selbst gezeichnetes Panel in der Statusleiste jedes Editorfensters mit verketteten Ereignissen, Neuzeichnen gesammelt höchstens alle 250 ms
 | `Atlas.Core.Settings` / `Atlas.UI.Settings` / `Atlas.IDE.Settings` (Plugin) | `QuickToggles` | Schnellschalter (#604): Liste aus dem Einstellungskatalog (jede boolesche Einstellung mit `x-quickToggle`; Plugin-Katalog im Format des JSON-Schemas und `atlas.schema.json` mit `x-plugin`), gruppiert nach `x-page`; Werte über den Namen der Einstellung (Save/Load über einen Speicher im Arbeitsspeicher); Sitzungswerte und „Alles aus“ (`x-drawing`) über den gespeicherten Werten, ohne sie zu ändern (`TAtlasIdeSettings.Current` wirksam, `Stored` für Optionsseite und Update); Projektmarkierung aus atlas.json mit Nachfrage Sitzung/Projekt; Fenster über dem Statusfeld, Tastenkürzel und Befehle in der Palette |
 | `Atlas.Core.Undo` / `Atlas.UI.Undo` / `Atlas.IDE.Undo` (Plugin) | `LinePatch`, `Contract`, `Journal`, `Adapters.FileStore`, `Adapters.DiskTarget`, `Messages`, `DiffView`, `Target`, `Changes` | Dateiübergreifendes Zurücknehmen (#721): Sätze (Aktion, Zeit, je Datei vorher/nachher mit Kodierung, angelegt/gelöscht), Journal mit Tiefe, Wiederherstellen-Stapel und zeilenweisem Dreiwege-Abgleich (ältere Sätze nur an unveränderten Stellen), Konfliktmodus und Umgang mit neuen Dateien im Core; Ziel und Sicherung als Schnittstellen im `Contract`, Adapter für Platte und JSON-Sicherung je Satz mit Größengrenze; Texte und Unterschiedsfenster in der UI-Schicht; in der IDE-Schicht schreibt `TAtlasIdeUndoTarget` in Puffer (ein Rückgängig-Schritt je Puffer), Designer, Projektdateien oder Platte, `TAtlasIdeWorkspaceEdit.Apply` meldet jede Änderung |
+| `Atlas.Core.Updates` / `Atlas.UI.Updates` / `Atlas.IDE.Updates` (Plugin) | `Contract`, `Check`, `Adapters.HttpSource`, `Consent` | Update-Prüfung (#495): `IAtlasVersionSource` im `Contract`; SemVer-Vergleich, Versionsdatei, Fälligkeit (einmal täglich), Adresse mit Atlas- und IDE-Version und Zustand im Core, HTTPS-Abfrage mit Abbruchsignal als Adapter; Zustimmungsfenster in der UI-Schicht; `TAtlasIdeUpdates` fragt beim ersten Start, prüft im Hintergrund-Thread und meldet in der Meldungsansicht |
+| `Setup.Core` / `Setup.Adapters` / `Setup.Shell` (Installer) | `Contract`, `Ides`, `Installer`, `WindowsSystem`, `Texts`, `MainForm` | Installer (#495): `ISetupSystem` (Registry, Dateien, Prozesse) im `Contract`; Katalog der Delphi-Versionen, Erkennung, Installation, Deinstallation mit Schritten im Core; Windows-Umsetzung als Adapter; Texte (de/en) und Fenster in der Shell |
 | `Atlas.Core.Diagnostics` / `Atlas.UI.Diagnostics` / `Atlas.IDE.Diagnostics` (Plugin), `Atlas.Core.Settings` | `SafeMode`, `SafeModeNotice`, `History` | Abgesicherter Start (#722): Startmarke je Prozess, Zustand zwischen den Sitzungen, Entscheidung (normal, abgesichert, minimal), Vorschlag und Protokollausschnitt ohne Windows im Core; Prozessprüfung, Taste beim Laden und Statuszeile in der IDE-Schicht; nicht modales Hinweisfenster in der UI-Schicht; Einstellungsstände zum Zurücksetzen im Core, gespeichert vom Store. Die Composition meldet über `RegisterFeatures` nur an, was die Stufe erlaubt, und holt den Rest nach, wenn ein Schnellschalter oder „Normal weiterarbeiten“ es erlaubt |
 | `Atlas.Core.Files.Format` (Plugin) | – | Kodierung (UTF-8 mit/ohne BOM, ANSI, UTF-16) und Zeilenenden (CRLF, LF, CR, gemischt) aus den Bytes erkennen, Text dazu, Umwandeln in ein gewähltes Format (#591, #121)
 | `Atlas.IDE.Editor.KeyHook` (Plugin) | – | Gemeinsamer Tastatur-Hook des Hauptthreads, nur solange ein Atlas-Fenster Tasten braucht; Clients nach Priorität (Vervollständigung vor Parameter-Hint); keine IDE-Tastaturbindung für Navigationstasten |

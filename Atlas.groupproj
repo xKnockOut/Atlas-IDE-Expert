@@ -15,6 +15,9 @@
         <Projects Include="Packages\Atlas.IDE.Expert\Atlas.IDE.Expert.dproj">
             <Dependencies/>
         </Projects>
+        <Projects Include="Setup\AtlasSetup.dproj">
+            <Dependencies/>
+        </Projects>
         <Projects Include="Tests\Atlas.Tests.dproj">
             <Dependencies>Packages\Atlas.Common\Atlas.Common.dproj;Packages\Atlas.Windows\Atlas.Windows.dproj</Dependencies>
         </Projects>
@@ -62,6 +65,15 @@
     <Target Name="Atlas_IDE_Expert:Make">
         <MSBuild Projects="Packages\Atlas.IDE.Expert\Atlas.IDE.Expert.dproj" Targets="Make"/>
     </Target>
+    <Target Name="AtlasSetup">
+        <MSBuild Projects="Setup\AtlasSetup.dproj"/>
+    </Target>
+    <Target Name="AtlasSetup:Clean">
+        <MSBuild Projects="Setup\AtlasSetup.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="AtlasSetup:Make">
+        <MSBuild Projects="Setup\AtlasSetup.dproj" Targets="Make"/>
+    </Target>
     <Target Name="Atlas_Tests">
         <MSBuild Projects="Tests\Atlas.Tests.dproj"/>
     </Target>
@@ -72,13 +84,13 @@
         <MSBuild Projects="Tests\Atlas.Tests.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="Atlas_Common;Atlas_Windows;AtlasServer;Atlas_IDE_Expert;Atlas_Tests"/>
+        <CallTarget Targets="Atlas_Common;Atlas_Windows;AtlasServer;Atlas_IDE_Expert;AtlasSetup;Atlas_Tests"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="Atlas_Common:Clean;Atlas_Windows:Clean;AtlasServer:Clean;Atlas_IDE_Expert:Clean;Atlas_Tests:Clean"/>
+        <CallTarget Targets="Atlas_Common:Clean;Atlas_Windows:Clean;AtlasServer:Clean;Atlas_IDE_Expert:Clean;AtlasSetup:Clean;Atlas_Tests:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="Atlas_Common:Make;Atlas_Windows:Make;AtlasServer:Make;Atlas_IDE_Expert:Make;Atlas_Tests:Make"/>
+        <CallTarget Targets="Atlas_Common:Make;Atlas_Windows:Make;AtlasServer:Make;Atlas_IDE_Expert:Make;AtlasSetup:Make;Atlas_Tests:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

@@ -394,6 +394,25 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 | UR10 | Optionen › Tastenkonflikte: Tasten für Zurücknehmen und Wiederherstellen ändern | Neue Tasten wirken sofort, die alten nicht mehr |
 | UR11 | Umbenennen nur in einer Datei, Strg+Alt+Z | Kein Satz (eine Datei nimmt Strg+Z zurück); Meldung „nichts zurückzunehmen“ |
 
+## Installation und Updates (#495)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IN1 | Delphi 12 installiert, `atlas-ide-expert-<Version>.zip` mit `Win32\Atlas.IDE.Expert290.bpl` entpacken, `AtlasSetup.exe` starten | Liste zeigt „Delphi 12 Athens (Win32)“ angehakt, ältere Versionen ausgegraut mit „nicht unterstützt“; kein UAC-Dialog |
+| IN2 | Nach IN1 „Installieren“, Delphi 12 starten | Protokoll: kopierte Dateien, „Registriert in Delphi 12 Athens (Win32)“, Eintrag in „Apps und Features“; Atlas ist in der IDE aktiv und findet den Server unter `%LOCALAPPDATA%\Programs\Atlas` |
+| IN3 | Delphi 13 offen lassen, installieren | Rückfrage „Bitte zuerst diese IDE schließen“ mit Wiederholen und Abbrechen; nach dem Schließen läuft die Installation durch |
+| IN4 | 64-Bit-IDE (Delphi 12.3 oder 13) vorhanden, installieren | Eigene Zeile „(Win64)“; BPL aus `Win64\` unter `Known Packages x64`; die 64-Bit-IDE lädt Atlas |
+| IN5 | Alte Hand-Installation (BPL aus dem Repo unter „Known Packages“, auch unter dem Namen Argus) vorhanden, installieren | Genau ein Atlas-Eintrag unter „Known Packages“, der auf den Programmordner zeigt |
+| IN6 | Einstellungen und Favoriten ändern, Installer einer neueren Version ausführen („Aktualisieren“) | Einstellungen, Favoriten, Snippets und `.atlas`-Dateien unverändert; der Index wird nur bei geändertem Format neu aufgebaut |
+| IN7 | „Apps und Features“ › Atlas IDE Expert › Deinstallieren, kein Kästchen | Unter `HKCU\Software\Embarcadero\BDS\*\Known Packages` (und `x64`) kein Atlas-Eintrag; Programmordner weg; `HKCU\Software\Atlas\IdePlugin`, `%APPDATA%\Atlas`, `%LOCALAPPDATA%\Atlas` bleiben |
+| IN8 | Deinstallieren mit allen drei Kästchen | Zusätzlich `HKCU\Software\Atlas`, `%APPDATA%\Atlas` (mit Snippets) und `%LOCALAPPDATA%\Atlas` entfernt |
+| UP1 | Erster Start nach der Installation, IDE ruhig lassen | Nach einigen Sekunden unten rechts das Fenster „Atlas: Updates“; bis zur Antwort keine Netzwerkverbindung (z. B. im Ressourcenmonitor) |
+| UP2 | In UP1 „Nein“, IDE neu starten | Keine Frage mehr, keine Abfrage; Optionen: „Einmal täglich nach neuen Versionen sehen“ aus |
+| UP3 | In UP1 „Ja, prüfen“ bei einer veralteten Version | Kästchen in den Optionen an; Meldungsansicht „Atlas X ist verfügbar (installiert: Y). Änderungen: <Link>“; die Abfrage enthält nur `atlas=` und `ide=` |
+| UP4 | Nach UP3 IDE am selben Tag neu starten | Keine erneute Abfrage (`%LOCALAPPDATA%\Atlas\updates.json`, `lastCheck`) |
+| UP5 | Optionen: „Einmal täglich nach neuen Versionen sehen“ aus, IDE neu starten | Kein Fenster, keine Abfrage, keine Meldung; Atlas verhält sich wie ohne die Funktion |
+| UP6 | Optionen › Abschnitt „Updates“; Diagnoseexport erstellen | Abschnitt zeigt „Installiert: Atlas <Version> (IDE <Version>)“; ZIP enthält `atlas-info.txt` mit Atlas-, IDE-Version und Plattform |
+
 ## Schließen der Atlas-Fenster (#414)
 
 | Nr. | Schritte | Erwartet |

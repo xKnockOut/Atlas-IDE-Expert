@@ -82,7 +82,9 @@ type
     UndoActionRedo, UndoActionDiff, UndoDiffTitle, UndoNoDiff, UndoActionServer, UndoActionMcp, UndoActionRename,
     UndoActionSlash, SettingsUndoTitle, SettingsUndoEnabled, SettingsUndoDepth, SettingsUndoPersist,
     SettingsUndoMaxSize, SettingsUndoOnConflict, SettingsUndoPartial, SettingsUndoAbort, SettingsUndoNewFiles,
-    SettingsUndoRecycle, SettingsUndoDelete, SettingsUndoKeep, UndoSetCaption, UndoClose);
+    SettingsUndoRecycle, SettingsUndoDelete, SettingsUndoKeep, UndoSetCaption, UndoClose,
+    UpdatesConsentTitle, UpdatesConsentText, UpdatesConsentYes, UpdatesConsentNo, UpdatesAvailable,
+    SettingsUpdatesTitle, SettingsUpdatesCheck, SettingsVersion);
 
   TAtlasStrings = class
   private class var
@@ -381,7 +383,15 @@ const
      'Löschen',
      'Behalten (nur austragen)',
      '%s · %d Dateien · %s · %s',
-     'Schließen'),
+     'Schließen',
+     'Atlas: Updates',
+     'Soll Atlas einmal täglich nachsehen, ob eine neue Version vorliegt? Übertragen werden nur die Atlas-Version und die IDE-Version, keine Projektdaten. Atlas lädt nichts herunter und installiert nichts; ändern lässt sich das unter Tools › Optionen › Atlas.',
+     'Ja, prüfen',
+     'Nein',
+     'Atlas %s ist verfügbar (installiert: %s). Änderungen: %s',
+     'Updates',
+     'Einmal täglich nach neuen Versionen sehen (überträgt nur Atlas- und IDE-Version)',
+     'Installiert: Atlas %s (IDE %s)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -657,7 +667,15 @@ const
      'Delete',
      'Keep (only remove from the project)',
      '%s · %d files · %s · %s',
-     'Close'));
+     'Close',
+     'Atlas: updates',
+     'Should Atlas check once a day whether a new version is available? Only the Atlas version and the IDE version are sent, no project data. Atlas downloads and installs nothing; change this under Tools › Options › Atlas.',
+     'Yes, check',
+     'No',
+     'Atlas %s is available (installed: %s). Changes: %s',
+     'Updates',
+     'Check for new versions once a day (sends only the Atlas and IDE version)',
+     'Installed: Atlas %s (IDE %s)'));
 
 { TAtlasStrings }
 

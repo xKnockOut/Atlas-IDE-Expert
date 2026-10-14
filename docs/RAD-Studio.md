@@ -7,12 +7,17 @@ Es gibt zwei Wege:
 
 ## IDE-Plugin
 
+**Mit dem Installer (#495):** `atlas-ide-expert-<Version>.zip` aus dem [Release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) entpacken und `AtlasSetup.exe` starten. Er zeigt jede gefundene Delphi-Version mit 32- und 64-Bit-IDE, kopiert Plugin und Server nach `%LOCALAPPDATA%\Programs\Atlas` und trägt die BPL unter „Known Packages“ der gewählten IDEs ein. Einzelheiten in [Installation.md](Installation.md#rad-studio-installer). Die Schritte unten sind der Weg ohne Installer, etwa für einen eigenen Bau.
+
+Von Hand:
+
 1. Das Package `Packages\Atlas.IDE.Expert\Atlas.IDE.Expert.dproj` (in der Projektgruppe enthalten) mit der Delphi-Version bauen, in der es laufen soll: für die klassische IDE **Win32**, für die 64-Bit-IDE (ab Delphi 12.3) **Win64**. Ergebnis: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert370.bpl` bzw. `Output\Win64\…`; die Zahl ist die Package-Version (`370` Delphi 13, `290` Delphi 12). Ist das Plugin installiert, sperrt die IDE diese BPL; zum Neubauen das Package vorher entladen.
 2. In RAD Studio: *Komponente > Packages installieren > Hinzufügen*, die BPL auswählen.
 3. Den Server (`AtlasServer.exe`) mit bauen: Common, Windows und Server für dieselbe Plattform (Win64 empfohlen). Der Server ist ein eigenes Programm und hängt nicht von der Delphi-Version ab.
 4. Den Server findet das Plugin in dieser Reihenfolge:
    - *Tools › Optionen › Drittanbieter › Atlas*, Feld „Atlas-Server“ (Registry `HKCU\Software\Atlas\IdePlugin`, Wert `ServerPath`; optional `ServerArguments`, z. B. `--log C:\Temp\atlas.log`). Darunter zeigt die Seite, welcher Server verwendet wird und ob er gefunden wurde.
    - `AtlasServer.exe` neben der BPL
+   - `AtlasServer.exe` eine Ebene über der BPL (Aufbau des Installers: `…\Atlas\Win32\Atlas.IDE.Expert370.bpl`, `…\Atlas\AtlasServer.exe`)
    - `..\..\..\Win64\Debug\Bin\AtlasServer.exe`, sonst `..\..\..\Win32\Debug\Bin\AtlasServer.exe`, im Repo also die Build-Ausgabe
 
 Fehlt der Server, meldet das Plugin das im Meldungsfenster und überlässt Vervollständigung und Hinweise der eingebauten Code Insight. Stürzt der Server ab, startet es ihn bei der nächsten Anfrage neu.
@@ -26,6 +31,8 @@ Atlas-Statusfeld (#591): Rechts in der Statusleiste jedes Editorfensters steht �
 Abgesicherter Start (#722): Wurde die letzte IDE-Sitzung mit Atlas unerwartet beendet (Absturz, Taskmanager) oder lud Atlas länger als `safeMode.startupTimeoutMs` (Registry `SafeStartupTimeoutMs`, Vorgabe 10000 ms), fragt Atlas beim nächsten Start in einem kleinen Fenster unten rechts, ohne den Start aufzuhalten: „Abgesichert starten“, „Normal starten“, „Details“. Abgesichert laufen nur Serververbindung, Statusfeld, Einstellungen, Befehlspalette und Menü; alle Schnellschalter sind für diese Sitzung aus und lassen sich einzeln wieder einschalten (Vorschlag im Fenster). „Normal weiterarbeiten“ meldet alles ohne Neustart an. Nach zwei Abstürzen in 10 Minuten startet Atlas ohne Rückfrage abgesichert. Umschalt beim Laden der Packages (Registry `SafeStartupKey`: shift, ctrl, none), der Schalter `bds.exe -AtlasSafeMode` oder `ATLAS_SAFE_MODE=1` laden nur Einstellungsseite und Statusfeld. Startmarken und Zustand liegen unter `%LOCALAPPDATA%\Atlas\Session`, die gemerkten Einstellungsstände in `%APPDATA%\Atlas\settings-history.json`. Abschalten: auf der Optionsseite *Abgesicherter Start* beide Kästchen aus und Taste „keine“.
 
 Schnellschalter (#604): Ein Rechtsklick auf das Atlas-Feld oder Strg+Umschalt+Alt+A (Registry `QuickToggleKey`, änderbar auf der Seite *Tastenkonflikte*) öffnet über dem Feld das Fenster „Atlas · Schnellschalter“. Es zeigt nach Seiten gruppiert jede boolesche Einstellung, die im Katalog `"x-quickToggle": true` trägt: die Einstellungen des Plugins (`TAtlasQuickToggles.PluginCatalog`, z. B. Klammerfarben, Blocklinien, inaktive Zweige, Probleme, Hover-Tooltip, Filter-Chips) und Schlüssel aus `atlas.schema.json` mit `x-plugin` (z. B. `hints.xmlDocFull`). Ein Klick oder die Leertaste schreibt dieselbe Einstellung wie die Optionsseite und wirkt sofort. Setzt atlas.json des aktiven Projekts den Wert, steht rechts „Projekt“, und Atlas fragt, ob die Änderung nur für diese Sitzung (dann „Sitzung“) oder im Projekt gelten soll. „Alles aus für diese Sitzung“ schaltet alle Zeichnungen im Editor ab (`x-drawing`), ohne Einstellungen zu ändern; „Alles wieder an“ stellt sie wieder her. In der Befehlspalette gibt es je Schalter „Atlas: … ein/aus“, dazu „Atlas: Alles aus für diese Sitzung“ und „Atlas: Schnellschalter öffnen“. Neue Schalter brauchen nur den Eintrag im Katalog.
+
+Update-Prüfung (#495): Beim ersten Start fragt Atlas einige Sekunden nach dem Laden in einem kleinen Fenster unten rechts, ob es auf neue Versionen prüfen soll. Ohne Zustimmung findet keine Netzwerkabfrage statt; ohne Antwort fragt Atlas beim nächsten Start wieder. Mit „Ja, prüfen“ oder dem Kästchen „Einmal täglich nach neuen Versionen sehen“ unter *Tools › Optionen › Drittanbieter › Atlas* (Abschnitt „Updates“, Registry `UpdatesCheck`, `updates.check`, Vorgabe aus) liest Atlas höchstens einmal täglich im Hintergrund die Versionsdatei `atlas-version.json` des neuesten Releases. Übertragen werden nur Atlas- und IDE-Version (`?atlas=0.1.0&ide=37.0`), keine Projektdaten. Ist eine neuere Version da, steht in der Meldungsansicht eine Zeile mit Versionsnummer und Link zu den Änderungen; heruntergeladen oder installiert wird nichts. Der Abschnitt zeigt auch die installierte Version, der Diagnoseexport enthält sie in `atlas-info.txt`. Der Zustand (gefragt, letzte Prüfung) liegt in `%LOCALAPPDATA%\Atlas\updates.json`. Aus: kein Fenster, keine Abfrage, kein Thread.
 
 Was Atlas selbst anzeigt, schaltet es in der IDE ab, damit nichts doppelt erscheint: Help Insight (solange der Atlas-Tooltip an ist) und die Strukturhervorhebung (solange die Atlas-Blocklinien an sind). Die IDE liest diese Schalter nur beim Start; beim ersten Start mit Atlas erscheint daher noch beides.
 
@@ -110,6 +117,8 @@ Gebaut und geprüft wird bisher nur mit RAD Studio 13 in der 32-Bit-IDE (#281). 
 | Registry `HKCU\Software\Embarcadero\BDS\23.0` (Code Insight-Manager, Help Insight, Strukturhervorhebung) | Das Plugin liest den Schlüssel über `GetBaseRegistryKey`, nicht fest verdrahtet |
 | DUnitX-Pfad unter Delphi 12 | ungeprüft; die Tests laufen nur mit Delphi 13 |
 | Win64-Bau des Plugins und Lauf in der 64-Bit-IDE | ungeprüft; braucht `designide` für Win64 |
+| Installer: Liste der 64-Bit-IDE unter `…\BDS\<Version>\Known Packages x64` | angenommen nach dem Aufbau der 32-Bit-Liste; beim ersten Lauf mit der 64-Bit-IDE prüfen |
+| Installer: Delphi-12-BPL im Release | der Release-Runner hat nur Delphi 13; ohne `…290.bpl` zeigt der Installer Delphi 12 als „Paket fehlt im Download“ |
 | Lesen des Build-Reiters per RTTI (#528) | an IDE-Interna gebunden, meldet bei Abweichung „nicht lesbar“ |
 | Windows 10 und 11 | kein dokumentierter Test auf beiden |
 

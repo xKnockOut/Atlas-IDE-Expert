@@ -6,3 +6,5 @@ tsconfig.json
 .vscode/**
 .gitignore
 *.vsix
+# Installationspaket des Plugins (#495) gehört nicht in die Erweiterung.
+server/*.zip

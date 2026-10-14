@@ -107,6 +107,8 @@ type
     FUndoMaxSize: TEdit;
     FUndoOnConflict: TComboBox;
     FUndoNewFiles: TComboBox;
+    FUpdatesCheck: TCheckBox;
+    FVersion: TLabel;
     FResetHistory: TButton;
     FResetWidths: TButton;
     FHangTest: TButton;
@@ -129,6 +131,7 @@ type
     procedure AddIndexSection;
     procedure AddSafeSection;
     procedure AddUndoSection;
+    procedure AddUpdatesSection;
     procedure IndexRefreshClick(Sender: TObject);
     procedure IndexRebuildClick(Sender: TObject);
     procedure IndexClearClick(Sender: TObject);
@@ -170,6 +173,8 @@ type
     property UndoNewFiles: TComboBox read FUndoNewFiles;
     property UndoKey: TEdit read FUndoKey;
     property RedoKey: TEdit read FRedoKey;
+    property UpdatesCheck: TCheckBox read FUpdatesCheck;
+    property VersionLabel: TLabel read FVersion;
     /// <summary>Kennzahlen als Text; nil = nicht verfügbar.</summary>
     property OnIndexMetrics: TFunc<string> read FOnIndexMetrics write FOnIndexMetrics;
     /// <summary>„Index neu aufbauen“ bzw. „Index löschen“ ausführen; Ergebnis als Meldung.</summary>
@@ -190,6 +195,8 @@ implementation
 uses
   System.UITypes,
   System.Math,
+  Atlas.Core.Product.Version,
+  Atlas.Core.Updates.Check,
   Atlas.Core.Undo.Contract;
 
 { TAtlasSettingsPage }
@@ -202,7 +209,7 @@ begin
   inherited Create(AOwner);
   Name := 'AtlasSettingsPage';
   Width := 480;
-  Height := 2000;
+  Height := 2100;
   Title := TLabel.Create(Self);
   Title.Parent := Self;
   Title.Align := alTop;
@@ -310,6 +317,7 @@ begin
   FSlashCommands := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSlashCommands));
   AddSafeSection;
   AddUndoSection;
+  AddUpdatesSection;
   Panel := AddPanel(32);
   FResetHistory := TButton.Create(Self);
   FResetHistory.Parent := Panel;
@@ -559,6 +567,29 @@ begin
     TAtlasStrings.Text(TAtlasTextId.SettingsUndoKeep)]);
 end;
 
+procedure TAtlasSettingsPage.AddUpdatesSection;
+var
+  Panel: TPanel;
+  Caption: TLabel;
+begin
+  // Version und Update-Prüfung (#495).
+  Panel := AddPanel(22);
+  Caption := TLabel.Create(Self);
+  Caption.Parent := Panel;
+  Caption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsUpdatesTitle);
+  Caption.Font.Style := [fsBold];
+  Caption.Left := 0;
+  Caption.Top := 4;
+  Panel := AddPanel(20);
+  FVersion := TLabel.Create(Self);
+  FVersion.Parent := Panel;
+  FVersion.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsVersion, [TAtlasPluginVersion.Version,
+    TAtlasUpdates.IdeVersion]);
+  FVersion.Left := 0;
+  FVersion.Top := 2;
+  FUpdatesCheck := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUpdatesCheck));
+end;
+
 function TAtlasSettingsPage.AddChoice(const ACaption: string; const AItems: array of string): TComboBox;
 var
   Panel: TPanel;
@@ -710,6 +741,7 @@ begin
   FUndoNewFiles.ItemIndex := Ord(TAtlasUndoNames.ParseNewFiles(ASettings.UndoMultiFileNewFiles));
   FUndoKey.Text := ShortCutToText(TShortCut(ASettings.UndoKey));
   FRedoKey.Text := ShortCutToText(TShortCut(ASettings.RedoKey));
+  FUpdatesCheck.Checked := ASettings.UpdatesCheck;
   RefreshFuse;
   RefreshIndex;
 end;
@@ -725,6 +757,7 @@ begin
   ASettings.TypeDefinitionKey := Integer(TextToShortCut(Trim(FTypeDefinitionKey.Text)));
   ASettings.UndoKey := Integer(TextToShortCut(Trim(FUndoKey.Text)));
   ASettings.RedoKey := Integer(TextToShortCut(Trim(FRedoKey.Text)));
+  ASettings.UpdatesCheck := FUpdatesCheck.Checked;
   ASettings.EditorKeysPriority := FEditorKeysPriority.Checked;
   ASettings.SlashCommands := FSlashCommands.Checked;
   ASettings.VisibleRows := FRowsUpDown.Position;
