@@ -461,7 +461,10 @@ begin
   for Index in FOrder do
     if (Index >= 0) and FItems[Index].Fits and not FItems[Index].IsAction then
       Inc(Fitting);
-  if Fitting > 0 then
+  if TAtlasRanking.OnlyTypos(FOrder) then
+    // Nur ähnliche Namen (#485): kein echter Treffer für das Getippte.
+    Result := TAtlasStrings.Fmt(TAtlasTextId.NoMatchesFor, [FPattern])
+  else if Fitting > 0 then
     Result := TAtlasStrings.Fmt(TAtlasTextId.CountFits, [Fitting, TAtlasRanking.ItemCount(FOrder)])
   else
     Result := TAtlasStrings.Fmt(TAtlasTextId.CountOf, [TAtlasRanking.ItemCount(FOrder), Length(FItems)]);

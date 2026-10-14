@@ -648,9 +648,12 @@ begin
   Assert.AreEqual(TAtlasRanking.TypoHeader, Order[0], 'keine regulären Treffer: gleich „Meintest du“');
   Assert.AreEqual('Length', Items[Order[1]].Name);
   Assert.AreEqual(2, TAtlasRanking.ItemCount(Order), 'Length und Lengthy (Anfang), nicht Low');
+  Assert.IsTrue(TAtlasRanking.OnlyTypos(Order), 'Fußzeile: Keine Treffer für „Lenght“');
   // Mit genug regulären Treffern keine Tippfehler-Gruppe.
   Order := TAtlasRanking.Order(Items, 'L', TAtlasRankOptions.Defaults);
   Assert.IsFalse(TAtlasRanking.IsHeader(Order[0]));
+  Assert.IsFalse(TAtlasRanking.OnlyTypos(Order));
+  Assert.IsFalse(TAtlasRanking.OnlyTypos([TAtlasRanking.TypoHeader]));
 end;
 
 procedure TAtlasMatchingBudgetTests.AnnouncementNamesKindPositionAndDetail;
