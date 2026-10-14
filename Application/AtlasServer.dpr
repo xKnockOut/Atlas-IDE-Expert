@@ -16,6 +16,9 @@ uses
   Shell.Mcp in 'Source\Shell\Shell.Mcp.pas',
   Shell.Diagnostics in 'Source\Shell\Shell.Diagnostics.pas';
 
+// Atlas-Symbol (#751) als Programmsymbol (MAINICON).
+{$R '..\Packages\Atlas.IDE.Expert\Resources\Symbol\Atlas.Icon.res'}
+
 // Speicherrest beim Beenden an den Debugger; die Zeile im Log (--log) schreibt
 // TShutdownLeaks selbst. Kein ReportMemoryLeaksOnShutdown: dessen Dialog
 // blockiert den unsichtbar gestarteten Server (#177).

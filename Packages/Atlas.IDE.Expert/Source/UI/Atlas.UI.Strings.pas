@@ -138,7 +138,9 @@ type
     ProjectSettingsFileFilter,
     GlobalSettingsInvalid,
     GlobalSettingsOpenFile,
-    MenuGlobalSettings);
+    MenuGlobalSettings,
+    SymbolTitle,
+    SymbolDescription);
 
   TAtlasStrings = class
   private class var
@@ -507,7 +509,9 @@ const
      'Protokolldateien (*.log;*.txt)|*.log;*.txt|Alle Dateien (*.*)|*.*',
      'settings.json ist kein gültiges JSON; bitte zuerst dort korrigieren.',
      'settings.json öffnen',
-     'Globale Einstellungen (settings.json)…'),
+     'Globale Einstellungen (settings.json)…',
+     'Atlas IDE Expert %s',
+     'Sprachserver, Prüfregeln, Vervollständigung und Refactoring für Delphi.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -853,7 +857,9 @@ const
      'Log files (*.log;*.txt)|*.log;*.txt|All files (*.*)|*.*',
      'settings.json is not valid JSON; please fix it there first.',
      'Open settings.json',
-     'Global settings (settings.json)…'));
+     'Global settings (settings.json)…',
+     'Atlas IDE Expert %s',
+     'Language server, code checks, completion and refactoring for Delphi.'));
 
 { TAtlasStrings }
 

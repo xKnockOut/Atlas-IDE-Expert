@@ -588,3 +588,15 @@ Vorbereitung: Formular mit Button `btnSave` und den Methoden `FormCreate(Sender:
 | PE22 | Hauptseite: Verzögerung 1000 ms, `List.` tippen und warten | Liste öffnet nach etwa 1 s; `List.` und sofort Leerzeichen: keine Liste |
 | PE23 | „Commit-Zeichen“, „uses ergänzen“, „Parameter-Hints“ je aus | `;` übernimmt nicht; keine uses-Ergänzung; kein Hint bei `(` |
 | PE24 | „Listenbreite automatisch“ an | Liste passt sich der Breite der Einträge an |
+
+## Atlas-Symbol (#751)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SY1 | RAD Studio 12 und 13 starten | Startbildschirm zeigt „Atlas IDE Expert <Version>“ mit Symbol |
+| SY2 | *Hilfe › Info* | Atlas mit Symbol, Version und Beschreibung |
+| SY3 | Menü *Atlas* öffnen | Symbol an „Projekt-Einstellungen“, „Globale Einstellungen“ und „Optionen…“ |
+| SY4 | Statusfeld, Optionsseite *Atlas*, Ergebnisfenster (abgedockt), Fenster der Update-Prüfung | Symbol jeweils vorhanden |
+| SY5 | SY3/SY4 bei 100, 150 und 200 % Skalierung (Monitor wechseln) | Symbol scharf und in passender Größe |
+| SY6 | *Tools › Optionen › Benutzeroberfläche › IDE-Stil* zwischen hell und dunkel wechseln | Menü, Statusfeld, Optionsseite und Ergebnisfenster wechseln ohne Neustart die Variante |
+| SY7 | Explorer: `AtlasServer.exe` und `AtlasSetup.exe`; „Apps und Features“ nach der Installation | Symbol bei beiden Dateien und beim Eintrag „Atlas“ |

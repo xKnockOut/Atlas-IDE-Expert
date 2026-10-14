@@ -30,3 +30,13 @@ Die Lücke zwischen Bahn und A ist ausgespart, also auf jedem Grund durchsichtig
 python3 Quellen/Erzeuge-Symbol.py Quellen
 python3 Quellen/Rendere-Symbol.py Quellen .
 ```
+
+## Ressourcen (#751)
+
+`Atlas.Symbol.res` (Plugin: `ATLAS_ICON_HELL`, `ATLAS_ICON_DUNKEL`, `ATLAS_<HELL|DUNKEL>_<px>` als RCDATA) und `Atlas.Icon.res` (`MAINICON` für `AtlasServer.exe` und `AtlasSetup.exe`) erzeugt ohne Ressourcencompiler:
+
+```
+python3 Quellen/Erzeuge-Res.py .
+```
+
+Nach jeder Änderung an ICO oder PNG neu erzeugen und mit einchecken.

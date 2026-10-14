@@ -16,6 +16,8 @@ __recovery/
 *.drc
 # Ressourcen, die die IDE beim Bauen erzeugt
 *.res
+# Atlas-Symbol (#751): ohne Ressourcencompiler erzeugt, siehe Resources/Symbol/Quellen/Erzeuge-Res.py
+!Packages/Atlas.IDE.Expert/Resources/Symbol/*.res
 
 # IDE- und Benutzerdateien
 *.local

@@ -15,12 +15,15 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Vcl.ExtCtrls;
+  Vcl.ExtCtrls,
+  Atlas.Core.Style.Symbol,
+  Atlas.UI.Style.Symbol;
 
 type
   TAtlasUpdateConsent = class(TForm)
   private
     FText: TLabel;
+    FSymbol: TAtlasSymbolImage;
     FYes: TButton;
     FNo: TButton;
     FDone: Boolean;
@@ -36,6 +39,7 @@ type
     /// <summary>Unten rechts in AArea (Bildschirm) zeigen, nicht modal.</summary>
     procedure ShowIn(const AArea: TRect);
     property TextLabel: TLabel read FText;
+    property Symbol: TAtlasSymbolImage read FSymbol;
     property YesButton: TButton read FYes;
     property NoButton: TButton read FNo;
     property OnYes: TProc read FOnYes write FOnYes;
@@ -67,11 +71,17 @@ begin
   ClientWidth := ScaleValue(ConsentWidth);
   OnClose := FormClose;
 
+  // Atlas-Symbol (#751) links neben dem Text.
+  FSymbol := TAtlasSymbolImage.Create(Self);
+  FSymbol.Parent := Self;
+  FSymbol.LogicalSize := TAtlasSymbol.HeaderSize;
+  FSymbol.Left := Gap;
+  FSymbol.Top := Gap;
   FText := TLabel.Create(Self);
   FText.Parent := Self;
   FText.Align := alTop;
   FText.AlignWithMargins := True;
-  FText.Margins.SetBounds(Gap, Gap, Gap, 0);
+  FText.Margins.SetBounds(2 * Gap + FSymbol.Width, Gap, Gap, 0);
   FText.WordWrap := True;
   FText.Caption := TAtlasStrings.Text(TAtlasTextId.UpdatesConsentText);
 
@@ -86,6 +96,8 @@ begin
   FYes := AddButton(Buttons, TAtlasStrings.Text(TAtlasTextId.UpdatesConsentYes), YesClick);
   FNo := AddButton(Buttons, TAtlasStrings.Text(TAtlasTextId.UpdatesConsentNo), NoClick);
   ClientHeight := Buttons.Top + Buttons.Height + Gap;
+  if ClientHeight < FSymbol.Top + FSymbol.Height + Gap then
+    ClientHeight := FSymbol.Top + FSymbol.Height + Gap;
 end;
 
 function TAtlasUpdateConsent.AddButton(AParent: TWinControl; const ACaption: string;

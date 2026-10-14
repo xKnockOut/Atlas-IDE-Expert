@@ -10,7 +10,7 @@
 // Kontextmenü nimmt einen Satz zurück oder stellt ihn wieder her. Die DFM
 // ist leer, weil TCustomFrame.Create für abgeleitete Frames eine Ressource
 // verlangt; aufgebaut wird im Code. Die IDE-Schicht bettet den Frame in ein
-// andockbares Fenster ein.
+// andockbares Fenster ein. Vor dem Titel steht das Atlas-Symbol (#751).
 
 interface
 
@@ -24,7 +24,10 @@ uses
   Vcl.ComCtrls,
   Vcl.Forms,
   Vcl.Menus,
+  Vcl.ExtCtrls,
   Atlas.Core.Results.Model,
+  Atlas.Core.Style.Symbol,
+  Atlas.UI.Style.Symbol,
   Atlas.Core.Undo.Contract;
 
 type
@@ -54,6 +57,7 @@ type
     end;
   private
     FTitle: TLabel;
+    FSymbol: TAtlasSymbolImage;
     FTree: TTreeView;
     FData: TList<TNodeData>;
     FDirection: TAtlasHierarchyDirection;
@@ -105,6 +109,7 @@ type
     property OnOpen: TAtlasResultsOpen read FOnOpen write FOnOpen;
     property OnExpand: TAtlasHierarchyExpand read FOnExpand write FOnExpand;
     property Menu: TPopupMenu read FMenu;
+    property Symbol: TAtlasSymbolImage read FSymbol;
     /// <summary>Zeigt gerade die Liste „Atlas-Änderungen“.</summary>
     property ShowsChanges: Boolean read FShowsChanges;
     property OnChangeUndo: TAtlasChangeSetAction read FOnChangeUndo write FOnChangeUndo;
@@ -124,12 +129,27 @@ uses
 { TAtlasResultsFrame }
 
 constructor TAtlasResultsFrame.Create(AOwner: TComponent);
+var
+  Header: TPanel;
 begin
   inherited Create(AOwner);
   FData := TList<TNodeData>.Create;
+  // Titelzeile: Symbol (#751) und Titel.
+  Header := TPanel.Create(Self);
+  Header.Parent := Self;
+  Header.Align := alTop;
+  Header.BevelOuter := bvNone;
+  Header.ParentBackground := True;
+  Header.Height := 22;
+  FSymbol := TAtlasSymbolImage.Create(Self);
+  FSymbol.Parent := Header;
+  FSymbol.LogicalSize := TAtlasSymbol.MenuSize;
+  FSymbol.Align := alLeft;
+  FSymbol.AlignWithMargins := True;
   FTitle := TLabel.Create(Self);
-  FTitle.Parent := Self;
-  FTitle.Align := alTop;
+  FTitle.Parent := Header;
+  FTitle.Align := alClient;
+  FTitle.Layout := tlCenter;
   FTitle.AlignWithMargins := True;
   FTitle.ShowAccelChar := False;
   FTitle.EllipsisPosition := epEndEllipsis;

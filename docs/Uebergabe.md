@@ -324,3 +324,9 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Globale Ebene `%APPDATA%\Atlas\settings.json`, Modell `TAtlasSettingsModel` (Projekt über global über Standard), Auswahllisten, Regeltabelle, Prüfung über `atlas.server.checkSettings` mit Syntax-Rückfall, Seite *Server* (Baseline, Unterdrückungen, Cache über `AtlasServer.exe`), Optionen aus ARG-046.
 - Tests in `Tests/IDE.Expert` (Plugin darf Atlas.Common nicht nutzen; das Issue nannte `Tests/Common/Configuration`). Core-Tests unter FPC grün; VCL- und IDE-Teile brauchen Marcos IDE-Build (PE12–PE24).
 - `completeBlocks` (#179) hat weder Serverlogik noch Schemaeintrag und fehlt deshalb im Dialog.
+
+## #751 Atlas-Symbol (14.10.2026, Branch `feature/751-atlas-symbol` auf `feature/227-einstellungen`)
+
+- Die Dateien aus PR #752 sind per Cherry-Pick übernommen (der PR-Branch hängt an einem neueren main). Ressourcen als `.res` im Repository, erzeugt mit `Resources/Symbol/Quellen/Erzeuge-Res.py`, weil BRCC32 keine PNG-komprimierten 256-px-Symbole kann; geprüft mit fpcres.
+- Plugin: `requires vclwinx` neu (TImageCollection/TVirtualImageList), in `Check-PackageDependencies.ps1` erlaubt. Bildliste über `INTAServices.AddImages(…, 'AtlasSymbol')`, Themenwechsel über `INTAIDEThemingServicesNotifier`.
+- Ungeprüft (IDE-Build bei Marco): Darstellung im Startbildschirm und Info-Dialog, Schärfe bei 150/200 %, Themenwechsel (SY1–SY7). Die Zeile in der Meldungsansicht zum Update hat kein Symbol (die Meldungsansicht kennt keine eigenen Bilder); das Fenster zur Update-Prüfung schon.

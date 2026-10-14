@@ -259,6 +259,9 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Palette.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Syntax.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Scaling.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Symbol.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Style\Atlas.UI.Style.Symbol.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Style.Symbol.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Presentation.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Word.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Style.Tests.pas"/>

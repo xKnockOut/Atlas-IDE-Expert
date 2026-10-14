@@ -39,6 +39,10 @@ type
     procedure DialogRuleTableChangesOnlyThatRule;
     [Test]
     procedure DialogValidatesBeforeSaving;
+    [Test]
+    procedure SymbolResourcesInAllSizes;
+    [Test]
+    procedure PageHeaderShowsSymbol;
   end;
 
 implementation
@@ -57,6 +61,10 @@ uses
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.Validation,
+  Atlas.Core.Style.Symbol,
+  Atlas.UI.Style.Symbol,
+  Vcl.Graphics,
+  Vcl.ImageCollection,
   System.JSON;
 
 procedure TAtlasSettingsPageTests.WarmUp;
@@ -513,6 +521,57 @@ begin
     end;
   finally
     Model.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.SymbolResourcesInAllSizes;
+var
+  Variant_: TAtlasSymbolVariant;
+  Index: Integer;
+  Image: TWICImage;
+  Icon: TIcon;
+  Collection: TImageCollection;
+begin
+  // #751: jede Größe beider Varianten ist als PNG eingebunden und hat genau diese Größe.
+  for Variant_ := Low(TAtlasSymbolVariant) to High(TAtlasSymbolVariant) do
+  begin
+    for Index := 0 to TAtlasSymbol.SizeCount - 1 do
+    begin
+      Image := TAtlasSymbolImages.Load(Variant_, TAtlasSymbol.Size(Index));
+      try
+        Assert.IsNotNull(Image, TAtlasSymbol.ResourceName(Variant_, TAtlasSymbol.Size(Index)));
+        Assert.AreEqual(TAtlasSymbol.Size(Index), Image.Width);
+      finally
+        Image.Free;
+      end;
+    end;
+    Icon := TAtlasSymbolImages.Icon(Variant_);
+    try
+      Assert.IsFalse(Icon.Empty, TAtlasSymbol.IconName(Variant_));
+    finally
+      Icon.Free;
+    end;
+  end;
+  Collection := TAtlasSymbolImages.Collection(nil);
+  try
+    Assert.AreEqual(2, Collection.Images.Count);
+    Assert.AreEqual(TAtlasSymbol.SizeCount, Collection.Images[1].SourceImages.Count);
+  finally
+    Collection.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.PageHeaderShowsSymbol;
+var
+  Page: TAtlasSettingsPage;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Assert.IsNotNull(Page.Symbol);
+    Assert.AreEqual(TAtlasSymbol.HeaderSize, Page.Symbol.LogicalSize);
+    Assert.AreEqual(TAtlasSymbol.PixelSize(TAtlasSymbol.HeaderSize, Page.Symbol.CurrentPPI), Page.Symbol.Width);
+  finally
+    Page.Free;
   end;
 end;
 

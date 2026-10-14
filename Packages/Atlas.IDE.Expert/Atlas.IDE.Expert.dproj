@@ -87,6 +87,7 @@
         </DelphiCompile>
         <DCCReference Include="rtl.dcp"/>
         <DCCReference Include="vcl.dcp"/>
+        <DCCReference Include="vclwinx.dcp"/>
         <DCCReference Include="designide.dcp"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Progress.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Client.pas"/>
@@ -118,11 +119,14 @@
         <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Palette.pas"/>
         <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Syntax.pas"/>
         <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Scaling.pas"/>
+        <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Symbol.pas"/>
+        <DCCReference Include="Source\UI\Style\Atlas.UI.Style.Symbol.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Presentation.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Word.pas"/>
         <DCCReference Include="Source\UI\Popup\Atlas.UI.Popup.Styled.pas"/>
         <DCCReference Include="Source\UI\Popup\Atlas.UI.Popup.Tip.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Style.pas"/>
+        <DCCReference Include="Source\IDE\Style\Atlas.IDE.Style.Symbol.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Buffer.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.WorkspaceEdit.pas"/>
         <DCCReference Include="Source\IDE\Projects\Atlas.IDE.Projects.Context.pas"/>

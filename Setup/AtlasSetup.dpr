@@ -19,6 +19,8 @@ uses
 // Manifest: ohne Administratorrechte (asInvoker, sonst hielte Windows „…Setup.exe“
 // für einen Installer und fragte nach Rechten) und mit Windows-Stil der Steuerelemente.
 {$R 'AtlasSetup.Manifest.res' 'AtlasSetup.Manifest.rc'}
+// Atlas-Symbol (#751) als Programmsymbol; der Deinstallationseintrag zeigt auf diese Exe.
+{$R '..\Packages\Atlas.IDE.Expert\Resources\Symbol\Atlas.Icon.res'}
 
 function IsUninstall: Boolean;
 var

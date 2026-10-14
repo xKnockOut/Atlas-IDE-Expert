@@ -169,6 +169,9 @@ uses
   Atlas.Core.Style.Palette in '..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Palette.pas',
   Atlas.Core.Style.Syntax in '..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Syntax.pas',
   Atlas.Core.Style.Scaling in '..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Scaling.pas',
+  Atlas.Core.Style.Symbol in '..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Symbol.pas',
+  Atlas.UI.Style.Symbol in '..\Packages\Atlas.IDE.Expert\Source\UI\Style\Atlas.UI.Style.Symbol.pas',
+  Atlas.Core.Style.Symbol.Tests in 'IDE.Expert\Atlas.Core.Style.Symbol.Tests.pas',
   Atlas.Core.Completion.Presentation in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Presentation.pas',
   Atlas.Core.Completion.Word in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Word.pas',
   Atlas.Core.Style.Tests in 'IDE.Expert\Atlas.Core.Style.Tests.pas',
@@ -369,6 +372,9 @@ uses
   Atlas.Common.Editing.InterfaceStubs.Tests in 'Common\Editing\Atlas.Common.Editing.InterfaceStubs.Tests.pas',
   Atlas.Common.Lsp.Completion.Postfix.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Postfix.Tests.pas',
   Atlas.Common.Editing.ContextSnippets.Tests in 'Common\Editing\Atlas.Common.Editing.ContextSnippets.Tests.pas';
+
+// Atlas-Symbol (#751) für die UI-Tests.
+{$R '..\Packages\Atlas.IDE.Expert\Resources\Symbol\Atlas.Symbol.res'}
 
 // Speicherrest beim Beenden in den Testbericht (Konsole) statt in einen Dialog (#177).
 procedure ReportShutdownLeak(ABytes: Int64);
