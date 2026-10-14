@@ -137,7 +137,79 @@ begin
     Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);
 end;
 
-/// <summary>Parameterliste ohne Leerzeichen in Kleinbuchstaben; '' ohne Klammern.</summary>
+/// <summary>Teile von AText an ADelimiter außerhalb von Klammern und Zeichenketten.</summary>
+function SplitTopLevel(const AText: string; ADelimiter: Char): TArray<string>;
+var
+  Index, Depth, Start: Integer;
+  Quoted: Boolean;
+begin
+  Result := nil;
+  Depth := 0;
+  Quoted := False;
+  Start := 1;
+  for Index := 1 to Length(AText) do
+    if AText[Index] = '''' then
+      Quoted := not Quoted
+    else if Quoted then
+      Continue
+    else if CharInSet(AText[Index], ['(', '[', '<']) then
+      Inc(Depth)
+    else if CharInSet(AText[Index], [')', ']', '>']) then
+      Dec(Depth)
+    else if (Depth = 0) and (AText[Index] = ADelimiter) then
+    begin
+      Result := Result + [Copy(AText, Start, Index - Start)];
+      Start := Index + 1;
+    end;
+  Result := Result + [Copy(AText, Start, MaxInt)];
+end;
+
+/// <summary>Ein Parameter je Eintrag, ohne Standardwert: Deklaration und Implementierung dürfen
+/// Parameter verschieden gruppieren (const A: string; const B: string = '' gegen const A, B: string)
+/// und die Implementierung lässt Standardwerte weg (#647).</summary>
+function NormalizedParameters(const AParameters: string): string;
+var
+  Group, Names, TypeName, Modifier, Name, First: string;
+  Parts, NameList: TArray<string>;
+  Space: Integer;
+begin
+  Result := '';
+  for Group in SplitTopLevel(AParameters, ';') do
+  begin
+    // Standardwert abschneiden: "AValue: Integer = 0".
+    Parts := SplitTopLevel(Group, '=');
+    Parts := SplitTopLevel(Parts[0], ':');
+    Names := Trim(Parts[0]);
+    if Length(Parts) > 1 then
+      TypeName := Trim(Parts[1])
+    else
+      TypeName := '';
+    if Names = '' then
+      Continue;
+    Modifier := '';
+    Space := Pos(' ', Names);
+    if Space > 0 then
+    begin
+      First := LowerCase(Copy(Names, 1, Space - 1));
+      if MatchText(First, ['const', 'var', 'out', 'constref']) then
+      begin
+        Modifier := First;
+        Names := Trim(Copy(Names, Space + 1, MaxInt));
+      end;
+    end;
+    NameList := SplitTopLevel(Names, ',');
+    for Name in NameList do
+    begin
+      if Result <> '' then
+        Result := Result + ';';
+      Result := Result + Modifier + ' ' + Trim(Name) + ':' + TypeName;
+    end;
+  end;
+  Result := LowerCase(StringReplace(Result, ' ', '', [rfReplaceAll]));
+end;
+
+/// <summary>Parameterliste ohne Leerzeichen und Standardwerte in Kleinbuchstaben, ein Parameter je
+/// Eintrag; '' ohne Klammern.</summary>
 function ParameterKey(const ASignature: string): string;
 var
   Open, Close: Integer;
@@ -146,7 +218,7 @@ begin
   Close := LastDelimiter(')', ASignature);
   if (Open = 0) or (Close < Open) then
     Exit('');
-  Result := LowerCase(StringReplace(Copy(ASignature, Open, Close - Open + 1), ' ', '', [rfReplaceAll]));
+  Result := '(' + NormalizedParameters(Copy(ASignature, Open + 1, Close - Open - 1)) + ')';
 end;
 
 function HasWord(const AText, AWord: string): Boolean;

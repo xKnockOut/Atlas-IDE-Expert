@@ -42,6 +42,7 @@ Server und Erweiterung tragen immer dieselbe Version.
 - Delphi-Version je Projekt aus der ProjectVersion (#47).
 
 ### Behoben
+- Fehlalarme in der Problemliste zu Atlas selbst (#647): Signaturvergleich übergeht Standardwerte und andere Gruppierung der Parameter (`const A, B: string` gegen `const A: string; const B: string = ''`); `unresolved-identifier` kennt Typumwandlungen und Typhelfer eingebauter Typen (`Integer(X)`, `PChar(S)`), den Anfang qualifizierter Unit-Namen (`Winapi.Windows.X`), Felder und Methoden in Methoden innerer Klassen (`TAussen.TInnen.Lauf`), `AtomicIncrement` & Co., `MaxInt` und `HInstance`; `result-not-set` meldet keine Funktionen mehr, die Result im try-Teil eines try/finally setzen (der Weg einer Ausnahme lief nach dem finally normal weiter).
 - Hover, Diagnosen und Befehle warteten bei fehlenden Units minutenlang: Das Nachladen einer Unit hielt eine serverweite Sperre, und Ausdrücke wie `Form1.Edit1.Text` durchsuchten für jedes Präfix die Suchpfade aller Projekte. Nachgeladen wird jetzt ohne die Sperre, nur für Units aus `uses` und je Anfrage einmal (#647).
 - Probleme der nicht geöffneten Projektdateien werden erst nach dem Indexaufbau geprüft und danach neu bewertet; vorher liefen sie dauernd mit und meldeten fehlende Units, die nur noch nicht indiziert waren (#647).
 - Diagnoselog: Die Endzeile entsteht, sobald die IDE die Verbindung schließt; ein Lauf, den das Plugin nach 2 s beendet, galt sonst als abgestürzt (#647).

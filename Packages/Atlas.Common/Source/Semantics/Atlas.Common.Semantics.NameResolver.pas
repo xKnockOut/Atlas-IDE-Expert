@@ -183,6 +183,9 @@ type
     function LookupInDeclarations(ANode: TSyntaxNode; const AName: string; out AResult: TResolvedSymbol): Boolean;
     function LookupInlineVars(ANode: TSyntaxNode; const AName: string; out AResult: TResolvedSymbol): Boolean;
     function MethodClass(out AType: TResolvedSymbol): Boolean;
+    /// <summary>Typ der umgebenden Methode und bei verschachtelten Typen (TAussen.TInnen.Methode) die
+    /// äußeren Typen, innerster zuerst; ihre Mitglieder sind dort ohne Präfix sichtbar.</summary>
+    function MethodClasses: TArray<TResolvedSymbol>;
     /// <summary>Unit aus dem Baum samt der Symbole ihrer $I-Dateien aus dem Index (#500).</summary>
     function TreeUnit(ATree: TSyntaxTree; const AFileName: string): TUnitIndex;
     function ResolveFirst(const ANames: TArray<string>; out AConsumed: Integer; out AResult: TResolvedSymbol): Boolean;
@@ -244,6 +247,11 @@ type
       const ATypeName, ATargetName: string): Boolean;
     /// <summary>Unit-Namespaces des Projekts (DCC_Namespace) für uses ohne Präfix.</summary>
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
+    /// <summary>Ist AName der Anfang eines Unit-Namens im Bereich (Atlas in Atlas.Core.Foo.Bar, Winapi in
+    /// Winapi.Windows.TextOut)? Nach PinTree bzw. Resolve gültig.</summary>
+    function IsUnitPrefix(const AName: string): Boolean;
+    /// <summary>Eingebauter Typ ohne Deklaration im Index (string, Integer, PChar …).</summary>
+    class function IsBuiltinTypeName(const AName: string): Boolean; static;
     /// <summary>Vorfilter für ScopeCandidates und MemberCandidates (#616): Symbole aus dem Index, deren Name
     /// nicht passt, werden nicht aufgebaut. nil = alle. Lokale Namen aus dem Baum filtert er nicht.</summary>
     property NameFilter: TCandidateNameFilter read FNameFilter write FNameFilter;
@@ -1331,12 +1339,24 @@ end;
 
 function TNameResolver.MethodClass(out AType: TResolvedSymbol): Boolean;
 var
+  Classes: TArray<TResolvedSymbol>;
+begin
+  Classes := MethodClasses;
+  Result := Length(Classes) > 0;
+  if Result then
+    AType := Classes[0];
+end;
+
+function TNameResolver.MethodClasses: TArray<TResolvedSymbol>;
+var
   Routines: TArray<TSyntaxNode>;
-  Name: string;
-  Dot: Integer;
+  Name, TypeName: string;
+  Parts: TArray<string>;
+  Dot, Index: Integer;
+  Current, Inner: TResolvedSymbol;
 begin
   // Äußerste Routine mit Punkt im Namen: procedure TFoo.Bar
-  Result := False;
+  Result := nil;
   if FTree = nil then
     Exit;
   Routines := EnclosingRoutines;
@@ -1346,13 +1366,57 @@ begin
   Dot := LastDelimiter('.', Name);
   if Dot = 0 then
     Exit;
-  Result := ResolveTypeName(Copy(Name, 1, Dot - 1), FCurrent, True, AType);
+  TypeName := Copy(Name, 1, Dot - 1);
+  // Verschachtelte Typen zuerst (procedure TAussen.TInnen.Methode): TAussen.TInnen sonst als Unit
+  // TAussen gesucht, mit Nachladen über alle Suchpfade, und die Felder blieben unaufgelöst (#647).
+  Parts := TypeName.Split(['.']);
+  if (Length(Parts) > 1) and ResolveTypeName(Parts[0], FCurrent, True, Current) then
+  begin
+    Result := [Current];
+    for Index := 1 to High(Parts) do
+    begin
+      if not FindMember(Current, Parts[Index], Inner) then
+      begin
+        Result := nil;
+        Break;
+      end;
+      Current := Inner;
+      Result := [Current] + Result;
+    end;
+    if Result <> nil then
+      Exit;
+  end;
+  if ResolveTypeName(TypeName, FCurrent, True, Current) then
+    Result := [Current];
+end;
+
+class function TNameResolver.IsBuiltinTypeName(const AName: string): Boolean;
+begin
+  Result := IsBuiltinName(AName) or MatchText(AName, ['PChar', 'PAnsiChar', 'PWideChar', 'OleVariant']);
+end;
+
+function TNameResolver.IsUnitPrefix(const AName: string): Boolean;
+var
+  UnitName, Namespace: string;
+begin
+  if StartsText(AName + '.', FCurrent.UnitName) then
+    Exit(True);
+  for UnitName in ScopeUnits(FCurrent, FInImplementation) do
+  begin
+    if StartsText(AName + '.', UnitName) then
+      Exit(True);
+    for Namespace in FNamespaces do
+      if StartsText(AName + '.', Namespace + '.' + UnitName) then
+        Exit(True);
+  end;
+  Result := False;
 end;
 
 function TNameResolver.ResolveFirst(const ANames: TArray<string>; out AConsumed: Integer;
   out AResult: TResolvedSymbol): Boolean;
 var
   ClassType: TResolvedSymbol;
+  Classes: TArray<TResolvedSymbol>;
   Count: Integer;
   UnitName: string;
   Found: TUnitIndex;
@@ -1360,15 +1424,18 @@ begin
   AConsumed := 1;
   if LookupLocal(ANames[0], AResult) then
     Exit(True);
-  if MethodClass(ClassType) then
+  Classes := MethodClasses;
+  if Length(Classes) > 0 then
   begin
     if SameText(ANames[0], 'Self') then
     begin
-      AResult := ClassType;
+      AResult := Classes[0];
       Exit(True);
     end;
-    if FindMember(ClassType, ANames[0], AResult) then
-      Exit(True);
+    // Innerster Typ zuerst, dann die äußeren (verschachtelte Typen sehen deren Mitglieder).
+    for ClassType in Classes do
+      if FindMember(ClassType, ANames[0], AResult) then
+        Exit(True);
   end;
   // Unit-Namen mit Punkten: längstes Präfix zuerst (System.SysUtils.Foo). Der
   // ganze Ausdruck zählt mit, sonst bleibt "Vcl.Werkzeug" in uses unaufgelöst.

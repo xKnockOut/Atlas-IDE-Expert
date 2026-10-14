@@ -762,6 +762,7 @@ var
   var
     Write: TSyntaxNode;
     Definition: TFlowNode;
+    Used, Defined: Boolean;
   begin
     if IsIgnored(Name, Patterns) or HasOpaqueUse(Info.Block, Name) or UsedInNested(Routine, Name, False) or
       UsedByAbsolute(AContext, Routine, Name) then
@@ -777,9 +778,19 @@ var
       Exit;
     for Write in Writes do
     begin
-      Definition := Graph.NodeOf(Write);
-      if (Definition = nil) or not SameText(Definition.Defines, Name) or
-        (Graph.IsReachable(Definition) <> TFlowAnswer.Yes) or IsRead(Definition) then
+      // Zuweisungen im finally stehen je Ausgang einmal im Graphen; gemeldet
+      // wird nur, wenn der Wert in keiner Kopie gelesen wird.
+      Defined := False;
+      Used := False;
+      for Definition in Graph.Nodes do
+        if (Definition.Syntax = Write) and SameText(Definition.Defines, Name) and
+          (Graph.IsReachable(Definition) = TFlowAnswer.Yes) then
+        begin
+          Defined := True;
+          if IsRead(Definition) then
+            Used := True;
+        end;
+      if not Defined or Used then
         Continue;
       AReport.Add(NameRange(AContext, Write, Name), Format('Der an "%s" zugewiesene Wert wird nie gelesen', [Name]),
         TRuleConfidence.High);
