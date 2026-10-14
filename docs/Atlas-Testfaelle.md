@@ -298,7 +298,7 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| SX1 | Projekt öffnen, das noch nie indiziert war | Statuszeile des Editors zeigt „Atlas indiziert … (n %)“, die Vervollständigung vermerkt „eingeschränkt“; nach dem Aufbau verschwindet das Feld |
+| SX1 | Projekt öffnen, das noch nie indiziert war | Das Atlas-Feld der Statuszeile ist gelb mit „Atlas · Index n %“ (#591), die Vervollständigung vermerkt „eingeschränkt“; nach dem Aufbau wird das Feld grün |
 | SX2 | IDE schließen und wieder öffnen | Index kommt aus dem Cache (Protokoll: „aus dem Cache“), bei 1000 Units in unter 3 s |
 | SX3 | `%LOCALAPPDATA%\Atlas\Index\<Version>\<Hash>\index.atlasidx` mit einem Hex-Editor verändern, IDE neu starten | Kein Fehlerdialog; Server-Protokoll „Index-Cache verworfen (Prüfsumme stimmt nicht)“, der Index wird neu aufgebaut |
 | SX4 | Neue Funktion im interface einer Unit deklarieren, speichern, in einer anderen Unit Strg+Leer | Die Funktion ist nach höchstens 1 s in der Liste |
@@ -322,6 +322,22 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 | TF1 | `Lenght|` und Strg+Leer | „Meintest du“ mit `Length`; Fußzeile „Keine Treffer für ‚Lenght‘“ |
 | TF2 | Wie TF1, dann `;` | Nur `;` wird eingefügt, nichts übernommen |
 | TF3 | Wie TF1, dann Enter | `Length` wird übernommen |
+
+## Atlas-Statusfeld (#591)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SF1 | IDE starten, Projekt öffnen, Unit öffnen | Rechts in der Statusleiste des Editors „Atlas“ mit Punkt; gelb mit „Atlas · Index n %“, solange der Index aufgebaut wird, danach grün |
+| SF2 | Maus über das Feld | Tooltip mit den Zeilen, die nicht grün sind; alles grün: „Atlas: alles in Ordnung“ |
+| SF3 | Klick auf das Feld | Fenster über dem Feld mit „Server: läuft, n ms im Mittel der letzten 50 Anfragen, Version …“, „Index: n Units“, „Datei X.pas: …“ und den Knöpfen „Protokoll öffnen“, „Server neu starten“; Esc oder Klick daneben schließt |
+| SF4 | `AtlasServer.exe` im Task-Manager beenden | Feld innerhalb von 2 s rot („Atlas · Server gestoppt“) |
+| SF5 | Feld anklicken, „Server neu starten“ | Feld erst gelb, dann grün |
+| SF6 | Datei mit UTF-8 ohne BOM und LF öffnen, Feld anklicken | Zeile „Datei …: UTF-8 ohne BOM, LF“ |
+| SF7 | Zeile „Datei“ anklicken, „UTF-8 mit BOM, CRLF“ wählen, speichern | Datei ist als geändert markiert; nach dem Speichern hat sie BOM und CRLF (Hex-Editor), die IDE fragt nicht nach Neuladen, Meldung „… gespeichert als UTF-8 mit BOM, CRLF“ |
+| SF8 | Optionen: „Atlas-Feld in der Statusleiste“ aus, dann an | Feld verschwindet sofort und erscheint wieder |
+| SF9 | Optionen: „Kurztext neben „Atlas“ zeigen“ aus; „Ausgeblendete Zeilen“ = `atlas.file` | Feld zeigt nur „Atlas“; im Fenster fehlt die Zeile „Datei“ |
+| SF10 | Zweites Editorfenster öffnen (Ansicht › Neues Editorfenster) | Auch dort ein Atlas-Feld |
+| SF11 | Package entladen | Felder verschwinden, die Statusleisten verhalten sich wie ohne Atlas |
 
 ## Schließen der Atlas-Fenster (#414)
 

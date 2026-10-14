@@ -284,6 +284,13 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.ExternalChanges.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Files.ExternalChanges.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.TextDiff.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Status\Atlas.Core.Status.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Status\Atlas.Core.Status.Registry.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.Format.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Status\Atlas.Core.Status.Lines.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Status.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Status\Atlas.UI.Status.Window.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Status.Window.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Commands\Atlas.Core.Commands.Palette.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.Palette.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Pairs.pas"/>

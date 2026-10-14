@@ -2,8 +2,8 @@
 
 // Meldet den Code Insight-Manager, die Optionsseite "Atlas" (#227), die
 // Compile-Ereignisse (#527), den Einfrier-Wächter (#501), das Neuladen
-// extern geänderter Dateien (#536), die Befehlspalette (#502) und die farbigen
-// Klammerpaare (#514) beim Laden des
+// extern geänderter Dateien (#536), die Befehlspalette (#502), die farbigen
+// Klammerpaare (#514) und das Atlas-Statusfeld (#591) beim Laden des
 // Packages an und beim Entladen in umgekehrter Reihenfolge wieder ab (ADR 0006).
 
 interface
@@ -41,7 +41,10 @@ uses
   Atlas.IDE.Build.CheckOnSave,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Commands.MainMenu,
-  Atlas.IDE.Editor.IndexStatus,
+  Atlas.Core.Status.Registry,
+  Atlas.Core.Status.Lines,
+  Atlas.IDE.Status.Field,
+  Atlas.IDE.Status.Lines,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Diagnostics.TimeLimit,
@@ -62,7 +65,9 @@ var
   CheckOnSave: TAtlasIdeCheckOnSave;
   // Hauptmenü Atlas mit Schnellschaltern und Einstellungen (#227).
   MainMenu: TAtlasMainMenu;
-  IndexStatusBar: TAtlasIndexStatusBar;
+  // Atlas-Statusfeld mit Server, Index und Datei (#591).
+  StatusField: TAtlasStatusField;
+  StatusLines: TAtlasIdeStatusLines;
   // Eigene Tasten für Vervollständigung und Parameter-Hint (#494); ohne Einstellung keine.
   CompletionKey: TAtlasIdeKeyBinding;
   SignatureKey: TAtlasIdeKeyBinding;
@@ -182,6 +187,75 @@ begin
       Activity := TAtlasActivity.Scope('Wächter-Test');
       Sleep(1000);
     end);
+end;
+
+/// <summary>„Protokoll öffnen“ (#591): Diagnoseprotokoll, sonst das Protokoll der Sicherung.</summary>
+procedure OpenLog;
+var
+  Actions: IOTAActionServices;
+  FileName: string;
+begin
+  FileName := TAtlasCodeInsightManager.DiagnoseLog;
+  if not FileExists(FileName) and (TAtlasGuard.RotatingLog <> nil) then
+    FileName := TAtlasGuard.RotatingLog.FileName;
+  if FileExists(FileName) and Supports(BorlandIDEServices, IOTAActionServices, Actions) then
+    Actions.OpenFile(FileName);
+end;
+
+procedure RegisterStatusField;
+begin
+  StatusLines := TAtlasIdeStatusLines.Create(TAtlasStatusRegistry.Default,
+    function: TAtlasServerInfo
+    begin
+      if Manager <> nil then
+        Result := Manager.ServerInfo
+      else
+        Result := Default(TAtlasServerInfo);
+    end,
+    function(out APercent: Integer): Boolean
+    begin
+      APercent := -1;
+      Result := (Manager <> nil) and Manager.ServerIndexing(APercent);
+    end,
+    function(const ADone: TProc<string>): Boolean
+    begin
+      Result := (Manager <> nil) and Manager.QueryStatusAsync(ADone);
+    end,
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
+  StatusField := TAtlasStatusField.Create(TAtlasStatusRegistry.Default);
+  StatusField.OnRefresh :=
+    procedure
+    begin
+      if StatusLines <> nil then
+        StatusLines.Refresh;
+    end;
+  StatusField.OnOpenLog := OpenLog;
+  StatusField.OnRestart :=
+    procedure
+    begin
+      if Manager <> nil then
+        Manager.RestartServer;
+    end;
+  // Phase und Fortschritt des Servers melden sich aus jedem Thread; gezeichnet wird gesammelt.
+  if Manager <> nil then
+    Manager.OnServerChanged :=
+      procedure
+      begin
+        if StatusField <> nil then
+          StatusField.RequestRefresh;
+      end;
+end;
+
+procedure UnregisterStatusField;
+begin
+  if Manager <> nil then
+    Manager.OnServerChanged := nil;
+  FreeAndNil(StatusField);
+  FreeAndNil(StatusLines);
+  TAtlasStatusRegistry.ReleaseDefault;
 end;
 
 procedure RegisterWatchdog(ALoadedAt: Int64);
@@ -361,6 +435,9 @@ begin
       if Manager <> nil then
         Manager.NotifyServer('workspace/didChangeConfiguration',
           TLspSession.SettingsParams(TAtlasIdeSettings.Current.ServerSettingsJson));
+      // Statusfeld an, aus, Kurztext oder ausgeblendete Zeilen geändert (#591).
+      if StatusField <> nil then
+        StatusField.RequestRefresh;
     end;
   TThread.ForceQueue(nil,
     procedure
@@ -398,16 +475,8 @@ begin
       begin
         GuardWarning(AText);
       end);
-  // „Atlas indiziert … (n %)“ in der Statusleiste des Editors (#492).
-  if IndexStatusBar = nil then
-    IndexStatusBar := TAtlasIndexStatusBar.Create(
-      function: string
-      begin
-        if Manager <> nil then
-          Result := Manager.ServerIndexingText
-        else
-          Result := '';
-      end);
+  if StatusField = nil then
+    RegisterStatusField;
   if DirtyExport = nil then
     DirtyExport := TAtlasDirtyExport.Create;
   // Eigene Blocklinien: Strukturhervorhebung der IDE abgleichen (#514).
@@ -429,6 +498,9 @@ begin
           Manager.NotifySaved(AFileName);
         if CheckOnSave <> nil then
           CheckOnSave.Saved(AFileName);
+        // Gewählte Kodierung und Zeilenenden schreiben (#591).
+        if StatusLines <> nil then
+          StatusLines.Saved(AFileName);
       end;
   end;
   TAtlasOptionsRegistration.Register(
@@ -461,7 +533,7 @@ begin
   FreeAndNil(SignatureKey);
   FreeAndNil(CompletionKey);
   FreeAndNil(DirtyExport);
-  FreeAndNil(IndexStatusBar);
+  UnregisterStatusField;
   FreeAndNil(MainMenu);
   FreeAndNil(Pairs);
   FreeAndNil(CheckOnSave);

@@ -62,6 +62,9 @@ type
     FInactiveDim: TCheckBox;
     FPairGuides: TCheckBox;
     FProblems: TCheckBox;
+    FStatusField: TCheckBox;
+    FStatusSummary: TCheckBox;
+    FStatusHidden: TEdit;
     FIndexGroup: TCheckBox;
     FIndexSearch: TCheckBox;
     FIndexLibrary: TCheckBox;
@@ -116,6 +119,10 @@ type
     property IndexInfo: TLabel read FIndexInfo;
     property IndexRebuild: TButton read FIndexRebuild;
     property IndexClear: TButton read FIndexClear;
+    /// <summary>Zum Testen: Einstellungen des Statusfelds (#591).</summary>
+    property StatusField: TCheckBox read FStatusField;
+    property StatusSummary: TCheckBox read FStatusSummary;
+    property StatusHidden: TEdit read FStatusHidden;
     /// <summary>Kennzahlen als Text; nil = nicht verfügbar.</summary>
     property OnIndexMetrics: TFunc<string> read FOnIndexMetrics write FOnIndexMetrics;
     /// <summary>„Index neu aufbauen“ bzw. „Index löschen“ ausführen; Ergebnis als Meldung.</summary>
@@ -146,7 +153,7 @@ begin
   inherited Create(AOwner);
   Name := 'AtlasSettingsPage';
   Width := 480;
-  Height := 1080;
+  Height := 1160;
   Title := TLabel.Create(Self);
   Title.Parent := Self;
   Title.Align := alTop;
@@ -221,6 +228,12 @@ begin
   FInactiveDim := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim));
   FPairGuides := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuides));
   FProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblems));
+  // Atlas-Statusfeld (#591).
+  FStatusField := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStatusField));
+  FStatusSummary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStatusSummary));
+  FStatusHidden := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStatusHidden));
+  FStatusHidden.NumbersOnly := False;
+  FStatusHidden.Width := 300;
   // Umfang des Index für alle Projekte; index in atlas.json hat Vorrang (#652).
   FIndexGroup := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexGroup));
   FIndexSearch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexSearch));
@@ -488,6 +501,9 @@ begin
   FInactiveDim.Checked := ASettings.InactiveDim;
   FPairGuides.Checked := ASettings.PairGuides;
   FProblems.Checked := ASettings.Problems;
+  FStatusField.Checked := ASettings.StatusField;
+  FStatusSummary.Checked := ASettings.StatusFieldSummary;
+  FStatusHidden.Text := ASettings.StatusFieldHidden;
   FIndexGroup.Checked := ASettings.IndexProjectGroup;
   FIndexSearch.Checked := ASettings.IndexSearchPaths;
   FIndexLibrary.Checked := ASettings.IndexLibraryPaths;
@@ -523,6 +539,9 @@ begin
   ASettings.InactiveDim := FInactiveDim.Checked;
   ASettings.PairGuides := FPairGuides.Checked;
   ASettings.Problems := FProblems.Checked;
+  ASettings.StatusField := FStatusField.Checked;
+  ASettings.StatusFieldSummary := FStatusSummary.Checked;
+  ASettings.StatusFieldHidden := Trim(FStatusHidden.Text);
   ASettings.IndexProjectGroup := FIndexGroup.Checked;
   ASettings.IndexSearchPaths := FIndexSearch.Checked;
   ASettings.IndexLibraryPaths := FIndexLibrary.Checked;

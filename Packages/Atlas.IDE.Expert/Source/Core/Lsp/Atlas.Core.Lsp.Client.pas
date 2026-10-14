@@ -12,6 +12,9 @@
 // Token geht an AOnPartial (im Lese-Thread, vor der Antwort), nicht an OnServerMessage.
 // Das Warten auf eine Antwort endet auch beim gemeinsamen Abbruchsignal
 // (TAtlasShutdown, #493), damit beim Entladen kein Thread im Zeitlimit hängt.
+// Für das Statusfeld (#591) merkt sich der Client die Antwortzeiten der
+// letzten 50 Anfragen (AverageMs) und meldet das Ende der Verbindung über
+// OnClosed (etwa wenn der Serverprozess beendet wurde).
 
 interface
 
@@ -19,6 +22,7 @@ uses
   System.SysUtils,
   System.SyncObjs,
   System.JSON,
+  System.Diagnostics,
   System.Generics.Collections;
 
 type
@@ -31,6 +35,9 @@ type
   ELspClientError = class(Exception);
 
   TLspClient = class
+  public const
+    /// <summary>So viele Antwortzeiten gehen in AverageMs ein (#591).</summary>
+    TimeSamples = 50;
   private type
     TPending = class
     public
@@ -50,6 +57,10 @@ type
     FBuffer: TBytes;
     FClosed: Boolean;
     FOnServerMessage: TLspServerMessageProc;
+    FOnClosed: TProc;
+    FTimes: array[0..TimeSamples - 1] of Int64;
+    FTimeCount: Integer;
+    FTimeNext: Integer;
     procedure SendText(const AText: string);
     procedure HandleMessage(const AText: string);
     /// <summary>$/progress zu einem Token aus Request mit Teilergebnissen; False, wenn es keines ist.</summary>
@@ -76,7 +87,14 @@ type
     procedure Receive(const ABytes: TBytes; ACount: Integer);
     /// <summary>Verbindung beendet: Wartende Anfragen schlagen fehl, neue auch.</summary>
     procedure Close;
+    /// <summary>Antwortzeit einer Anfrage merken; Request ruft das selbst (öffentlich für Tests).</summary>
+    procedure AddResponseTime(AMilliseconds: Int64);
+    /// <summary>Mittlere Antwortzeit der letzten TimeSamples Anfragen in ms; ASamples = deren Anzahl.</summary>
+    function AverageMs(out ASamples: Integer): Double;
     property Closed: Boolean read FClosed;
+    /// <summary>Einmal beim Schließen der Verbindung, im Thread des Schließenden (Lese-Thread bei
+    /// beendetem Prozess).</summary>
+    property OnClosed: TProc read FOnClosed write FOnClosed;
     /// <summary>Vor dem ersten Receive setzen.</summary>
     property OnServerMessage: TLspServerMessageProc read FOnServerMessage write FOnServerMessage;
   end;
@@ -145,6 +163,7 @@ var
   Pending: TPending;
   Id: Integer;
   Text: string;
+  Watch: TStopwatch;
 begin
   Pending := TPending.Create;
   try
@@ -173,14 +192,20 @@ begin
       Message.Free;
     end;
     try
+      Watch := TStopwatch.StartNew;
       SendText(Text);
       case TAtlasShutdown.WaitFor(Pending.Done, ATimeoutMs) of
         wrSignaled:
-          ;
+          // Beendete Verbindung ist keine Antwort und zählt nicht.
+          if not FClosed then
+            AddResponseTime(Watch.ElapsedMilliseconds);
         wrAbandoned:
           raise ELspClientError.CreateFmt('Keine Antwort auf %s: Atlas wird beendet', [AMethod]);
       else
-        raise ELspClientError.CreateFmt('Keine Antwort auf %s innerhalb von %d ms', [AMethod, ATimeoutMs]);
+        begin
+          AddResponseTime(ATimeoutMs);
+          raise ELspClientError.CreateFmt('Keine Antwort auf %s innerhalb von %d ms', [AMethod, ATimeoutMs]);
+        end;
       end;
     finally
       TMonitor.Enter(FLock);
@@ -413,18 +438,63 @@ end;
 procedure TLspClient.Close;
 var
   Pending: TPending;
+  WasOpen: Boolean;
+  Handler: TProc;
 begin
   TMonitor.Enter(FLock);
   try
+    WasOpen := not FClosed;
     FClosed := True;
     for Pending in FPending.Values do
     begin
       Pending.Error := 'Verbindung zum Server ist beendet';
       Pending.Done.SetEvent;
     end;
+    Handler := FOnClosed;
   finally
     TMonitor.Exit(FLock);
   end;
+  if WasOpen and Assigned(Handler) then
+    try
+      Handler();
+    except
+      // Ein Fehler im Empfänger darf das Schließen nicht abbrechen.
+      on Exception do
+        ;
+    end;
+end;
+
+procedure TLspClient.AddResponseTime(AMilliseconds: Int64);
+begin
+  TMonitor.Enter(FLock);
+  try
+    FTimes[FTimeNext] := AMilliseconds;
+    FTimeNext := (FTimeNext + 1) mod TimeSamples;
+    if FTimeCount < TimeSamples then
+      Inc(FTimeCount);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+function TLspClient.AverageMs(out ASamples: Integer): Double;
+var
+  Index: Integer;
+  Sum: Int64;
+begin
+  TMonitor.Enter(FLock);
+  try
+    ASamples := FTimeCount;
+    Sum := 0;
+    for Index := 0 to FTimeCount - 1 do
+      Inc(Sum, FTimes[Index]);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  if ASamples = 0 then
+    Result := 0
+  else
+    Result := Sum / ASamples;
 end;
 
 end.
