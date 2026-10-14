@@ -362,10 +362,14 @@ end;
 
 procedure TAtlasEditorPairs.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
   var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+const
+  // Pixel, die die Linie vor Spalte 1 in den Rand ragen darf.
+  GuideMargin = 4;
 var
   Settings: TAtlasPluginSettings;
   LineState: INTACodeEditorLineState;
   Line, X, Top, Bottom, Tick, Width: Integer;
+  LineColor: TAtlasColor;
   Guide: TLineGuide;
   Colors: TAtlasColors;
   Cell, Code: TRect;
@@ -404,24 +408,29 @@ begin
     DC := Context.Canvas.Handle;
     Saved := SaveDC(DC);
     try
-      // Nicht in den Rand zeichnen.
+      // Nicht in den Rand zeichnen; nur die Linie vor Spalte 1 darf ein paar Pixel hineinragen.
       if Code.Right > Code.Left then
-        IntersectClipRect(DC, Code.Left, Rect.Top, Rect.Right, Rect.Bottom);
+        IntersectClipRect(DC, Code.Left - GuideMargin, Rect.Top, Rect.Right, Rect.Bottom);
       for Guide in FGuides[Line] do
       begin
         Cell := Context.EditorState.GetCharacterPosPx(Guide.Column, Context.EditorLineNum);
         Tick := Max(3, Cell.Width div 2);
         X := Cell.Left - Max(2, Cell.Width div 3) - (Width - 1) div 2;
-        // Blöcke ab Spalte 1 (procedure … end): Linie an den Rand des Codebereichs statt abgeschnitten davor.
-        if (Code.Right > Code.Left) and (X < Code.Left + Width div 2 + 1) then
-          X := Code.Left + Width div 2 + 1;
+        // Blöcke ab Spalte 1 (procedure … end): Linie knapp links vom Text, nicht durch das erste Zeichen.
+        if (Code.Right > Code.Left) and (X < Code.Left - GuideMargin + Width div 2) then
+          X := Code.Left - GuideMargin + Width div 2;
         Top := Rect.Top;
         Bottom := Rect.Bottom;
         if Guide.Part = gpFirst then
           Top := Rect.Top + 2;
         if Guide.Part = gpLast then
           Bottom := Rect.Bottom - 3;
-        Pen := CreatePen(PS_SOLID, Width, ColorToRGB(TColor(Colors.Pairs[Guide.Depth mod Length(Colors.Pairs)])));
+        // Deckkraft: Linie mit dem Hintergrund gemischt, damit sie zurücktritt.
+        LineColor := Colors.Pairs[Guide.Depth mod Length(Colors.Pairs)];
+        if FHasBackground and (Settings.PairGuideOpacity < 100) then
+          LineColor := TAtlasColorMath.Mix(LineColor, TAtlasColor(ColorToRGB(FBackground)),
+            Settings.PairGuideOpacity / 100);
+        Pen := CreatePen(PS_SOLID, Width, ColorToRGB(TColor(LineColor)));
         Old := SelectObject(DC, Pen);
         try
           MoveToEx(DC, X, Top, nil);

@@ -41,7 +41,7 @@ type
     SettingsPairOwners, SettingsPairGuideWidth, MenuToggleOwners,
     SettingsProblemsList,
     SettingsTabGeneral, SettingsTabCompletion, SettingsTabEditor, SettingsTabIndex, SettingsTabCompiler,
-    SettingsTabRobustness);
+    SettingsTabRobustness, SettingsPairGuideOpacity);
 
   TAtlasStrings = class
   private class var
@@ -119,7 +119,8 @@ const
      'Anweisung mitfärben (if, then, else, for, do, procedure …); Blocklinien ab der Anweisung',
      'Breite der Blocklinien (Pixel bei 100 %)', 'Anweisungen mitfärben',
      'Probleme im Meldungsfenster auflisten (Reiter „Atlas-Probleme“)',
-     'Allgemein', 'Vervollständigung', 'Editor', 'Index', 'Compiler', 'Robustheit'),
+     'Allgemein', 'Vervollständigung', 'Editor', 'Index', 'Compiler', 'Robustheit',
+     'Deckkraft der Blocklinien (%)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -178,7 +179,8 @@ const
      'Colour the statement too (if, then, else, for, do, procedure …); block guides start at the statement',
      'Width of block guides (pixels at 100 %)', 'Colour statements',
      'List problems in the message view (tab “Atlas-Probleme”)',
-     'General', 'Completion', 'Editor', 'Index', 'Compiler', 'Robustness'));
+     'General', 'Completion', 'Editor', 'Index', 'Compiler', 'Robustness',
+     'Opacity of block guides (%)'));
 
 { TAtlasStrings }
 

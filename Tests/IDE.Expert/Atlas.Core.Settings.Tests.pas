@@ -98,6 +98,7 @@ begin
   Assert.IsFalse(Settings.Preview, 'Vorschau standardmäßig aus (#434)');
   Assert.IsTrue(Settings.PairOwners, 'Anweisungen mitfärben standardmäßig an (#653)');
   Assert.AreEqual(1, Settings.PairGuideWidth, 'Blocklinien 1 px');
+  Assert.AreEqual(50, Settings.PairGuideOpacity, 'Blocklinien 50 % Deckkraft');
   Assert.IsTrue(Settings.ProblemsList, 'Liste „Atlas-Probleme“ standardmäßig an');
 end;
 
@@ -119,6 +120,7 @@ begin
   Settings.ServerPath := '  D:\Atlas\AtlasServer.exe ';
   Settings.PairOwners := False;
   Settings.PairGuideWidth := 3;
+  Settings.PairGuideOpacity := 80;
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
@@ -131,6 +133,7 @@ begin
   Assert.IsTrue(Loaded.Preview);
   Assert.IsFalse(Loaded.PairOwners);
   Assert.AreEqual(3, Loaded.PairGuideWidth);
+  Assert.AreEqual(80, Loaded.PairGuideOpacity);
   Assert.IsFalse(Loaded.ProblemsList, 'Liste „Atlas-Probleme“ abgeschaltet');
   Assert.IsTrue(Loaded.Problems, 'Wellenlinien bleiben an');
   Assert.AreEqual('D:\Atlas\AtlasServer.exe', Loaded.ServerPath, 'Serverpfad ohne Leerraum');
@@ -169,9 +172,11 @@ begin
   Store.WriteInteger('ListWidth', 50);
   Store.WriteInteger('PanelWidth', 5000);
   Store.WriteInteger('PairGuideWidth', 7);
+  Store.WriteInteger('PairGuideOpacity', 0);
   Settings := Default(TAtlasPluginSettings);
   Settings.Load(Store);
   Assert.AreEqual(TAtlasPluginSettings.MaxPairGuideWidth, Settings.PairGuideWidth);
+  Assert.AreEqual(TAtlasPluginSettings.MinPairGuideOpacity, Settings.PairGuideOpacity);
   Assert.AreEqual(TAtlasPluginSettings.MaxVisibleRows, Settings.VisibleRows);
   Assert.AreEqual(TAtlasPluginSettings.MinListWidth, Settings.ListWidth);
   Assert.AreEqual(TAtlasPluginSettings.MaxPanelWidth, Settings.PanelWidth);

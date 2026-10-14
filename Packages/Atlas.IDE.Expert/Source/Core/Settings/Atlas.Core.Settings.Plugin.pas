@@ -36,6 +36,8 @@ type
     MaxCheckMax = 20000;
     MinPairGuideWidth = 1;
     MaxPairGuideWidth = 3;
+    MinPairGuideOpacity = 10;
+    MaxPairGuideOpacity = 100;
   public
     /// <summary>Hauptschalter (#407): aus = eingebaute Code Insight der IDE.</summary>
     Enabled: Boolean;
@@ -86,6 +88,8 @@ type
     PairOwners: Boolean;
     /// <summary>Breite der Blocklinien in Pixeln bei 100 % (1–3, #653).</summary>
     PairGuideWidth: Integer;
+    /// <summary>Deckkraft der Blocklinien in Prozent; der Rest ist Hintergrund.</summary>
+    PairGuideOpacity: Integer;
     /// <summary>Probleme im Editor unterstreichen und im Meldungsfenster auflisten (#398).</summary>
     Problems: Boolean;
     /// <summary>Probleme zusätzlich im Meldungsfenster auflisten (Gruppe „Atlas-Probleme“); nur mit Problems.</summary>
@@ -152,6 +156,7 @@ begin
   Result.PairGuides := True;
   Result.PairOwners := True;
   Result.PairGuideWidth := 1;
+  Result.PairGuideOpacity := 50;
   Result.Problems := True;
   Result.ProblemsList := True;
   // Die Prüfung in der IDE zeigt deren Fortschritt; Standard ist die Prüfung des Servers mit dcc (compiler.onSave).
@@ -174,6 +179,7 @@ begin
   CheckOnSaveDelayMs := EnsureRange(CheckOnSaveDelayMs, MinCheckDelay, MaxCheckDelay);
   CheckOnSaveMaxMs := EnsureRange(CheckOnSaveMaxMs, MinCheckMax, MaxCheckMax);
   PairGuideWidth := EnsureRange(PairGuideWidth, MinPairGuideWidth, MaxPairGuideWidth);
+  PairGuideOpacity := EnsureRange(PairGuideOpacity, MinPairGuideOpacity, MaxPairGuideOpacity);
 end;
 
 procedure TAtlasPluginSettings.Load(const AStore: IAtlasSettingsStore);
@@ -206,6 +212,7 @@ begin
   PairGuides := AStore.ReadInteger('PairGuides', BoolValue(Default.PairGuides)) <> 0;
   PairOwners := AStore.ReadInteger('PairOwners', BoolValue(Default.PairOwners)) <> 0;
   PairGuideWidth := AStore.ReadInteger('PairGuideWidth', Default.PairGuideWidth);
+  PairGuideOpacity := AStore.ReadInteger('PairGuideOpacity', Default.PairGuideOpacity);
   Problems := AStore.ReadInteger('Problems', BoolValue(Default.Problems)) <> 0;
   ProblemsList := AStore.ReadInteger('ProblemsList', BoolValue(Default.ProblemsList)) <> 0;
   CheckOnSave := AStore.ReadInteger('CheckOnSave', BoolValue(Default.CheckOnSave)) <> 0;
@@ -245,6 +252,7 @@ begin
   AStore.WriteInteger('PairGuides', BoolValue(PairGuides));
   AStore.WriteInteger('PairOwners', BoolValue(PairOwners));
   AStore.WriteInteger('PairGuideWidth', PairGuideWidth);
+  AStore.WriteInteger('PairGuideOpacity', PairGuideOpacity);
   AStore.WriteInteger('Problems', BoolValue(Problems));
   AStore.WriteInteger('ProblemsList', BoolValue(ProblemsList));
   AStore.WriteInteger('CheckOnSave', BoolValue(CheckOnSave));
