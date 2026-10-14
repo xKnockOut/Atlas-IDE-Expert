@@ -660,7 +660,8 @@ begin
     Item.AddPair('message', Diagnostic.Message);
     Items.AddElement(Item);
   end;
-  for Finding in TLanguageFeatures.Check(Tree, ADelphiVersion) do
+  // Merkmale in inaktiven Zweigen ({$IF CompilerVersion >= …}) sind gewollt (#109).
+  for Finding in TLanguageFeatures.Check(Tree, ADelphiVersion, AInactive) do
   begin
     Item := TJSONObject.Create;
     Item.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(Finding.StartPos, Finding.EndPos)));

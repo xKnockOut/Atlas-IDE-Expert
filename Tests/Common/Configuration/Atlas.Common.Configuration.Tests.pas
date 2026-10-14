@@ -541,6 +541,13 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Assert.AreEqual('', Parse('{"delphiVersion": "7"}', Issues).DelphiVersion);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Unbekannte BDS-Nummer (#109).
+  Assert.AreEqual('', BdsVersionOf('99'));
+  Assert.AreEqual('', BdsVersionOf('30.0'));
+  Assert.AreEqual('', Parse('{"delphiVersion": "99"}', Issues).DelphiVersion);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('19.0', Parse('{"delphiVersion": "10.2"}', Issues).DelphiVersion);
+  Assert.AreEqual(0, Integer(Length(Issues)));
 end;
 
 procedure TServerSettingsTests.ReadsSortUses;

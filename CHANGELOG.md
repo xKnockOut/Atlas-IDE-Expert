@@ -7,6 +7,7 @@ Server und Erweiterung tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Sprachmerkmale je Delphi-Version: Ziffern-Trennzeichen und Binärliterale (ab Delphi 11), `is not` und `not in` (ab Delphi 13, auch im Parser); Meldungen nennen den Produktnamen, inaktive Zweige wie `{$IF CompilerVersion >= 33}` bleiben stumm; unbekannte BDS-Nummern in `delphiVersion` erzeugen eine Konfigurationswarnung (#109).
 - Regeln `with-statement` (Hinweis) und `unreachable-code` (Warnung, erste Anweisung eines unerreichbaren Abschnitts); das Referenz-Testprojekt trennt FireDAC in das optionale Projekt `RefDaten` und wird über `Tools/Build-Referenzprojekt.ps1` für Win32 und Win64 gebaut (#94).
 - Postfix-Vorlagen in der Vervollständigung: `Liste.for`, `Obj.tryf`, `X.ifa`, `S.fmt`, nur bei passendem Typ; ohne Inline-Variablen mit Eintrag im `var`-Abschnitt (#188).
 - Schnellbefehle für Windows-API und DLLs: `/external`, `/exports` (nur in einer library), `/oscheck` und `/olecheck` (#321).
