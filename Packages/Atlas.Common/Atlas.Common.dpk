@@ -115,6 +115,7 @@ contains
   Atlas.Common.Lsp.CodeLens in 'Source\Lsp\Atlas.Common.Lsp.CodeLens.pas',
   Atlas.Common.Lsp.SemanticTokens in 'Source\Lsp\Atlas.Common.Lsp.SemanticTokens.pas',
   Atlas.Common.Lsp.Commands in 'Source\Lsp\Atlas.Common.Lsp.Commands.pas',
+  Atlas.Common.Lsp.ApplyEdit in 'Source\Lsp\Atlas.Common.Lsp.ApplyEdit.pas',
   Atlas.Common.Lsp.Status in 'Source\Lsp\Atlas.Common.Lsp.Status.pas',
   Atlas.Common.Lsp.QualifiedNames in 'Source\Lsp\Atlas.Common.Lsp.QualifiedNames.pas',
   Atlas.Common.Lsp.WinApiDocs in 'Source\Lsp\Atlas.Common.Lsp.WinApiDocs.pas',
