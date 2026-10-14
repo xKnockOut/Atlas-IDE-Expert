@@ -56,6 +56,9 @@ type
     /// <summary>Erwarteter Typ an der Stelle, '' wenn unbekannt.</summary>
     ExpectedType: string;
     Kind: TAtlasContextKind;
+    /// <summary>Automatisch nach diesem Zeichen geöffnet, '' bei Strg+Leer. Nach "[" (#448) bietet der Server nur
+    /// Mengenwerte an; ohne die bleibt das Popup zu.</summary>
+    Trigger: string;
   end;
 
   TAtlasCompletionItem = record
@@ -112,6 +115,15 @@ type
     Fits: Boolean;
     /// <summary>Eintrag erzeugt Code („Neue Methode …“, #444): in Akzentfarbe, immer zuletzt.</summary>
     IsAction: Boolean;
+    /// <summary>Wert einer Aufzählung (#448): Stelle in der Deklaration ab 1, 0 sonst. Ohne Getipptes stehen die
+    /// Werte in dieser Reihenfolge vor den übrigen passenden Einträgen.</summary>
+    Ordinal: Integer;
+    /// <summary>Mengenmodus (#448): Aufzählungstyp der Menge, '' sonst. Dann zeigt das Popup Kontrollkästchen.</summary>
+    SetOf: string;
+    /// <summary>Im Mengenmodus angehakt.</summary>
+    Checked: Boolean;
+    /// <summary>Im Mengenmodus: was Enter ersetzt, von "[" bis hinter "]" (NewText leer).</summary>
+    SetRange: TAtlasTextEdit;
     /// <summary>Zahl der Überladungen samt dieser (mindestens 1).</summary>
     function OverloadCount: Integer;
   end;

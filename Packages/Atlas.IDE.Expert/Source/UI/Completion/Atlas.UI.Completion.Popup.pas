@@ -26,6 +26,8 @@
 // Ohne Treffer zeigt es den leeren Zustand (#423). Breite und Höhe wachsen bei
 // Bedarf, schrumpfen während einer Sitzung aber nicht (#416), damit es beim
 // Filtern und Blättern nicht springt.
+// Mengenmodus (#448): Kontrollkästchen vor dem Badge, Überschrift „TAnchors ·
+// Menge von TAnchorKind“, Fußzeile mit Leertaste und „n gewählt“.
 
 interface
 
@@ -154,6 +156,7 @@ type
     function MeasureWidth: Integer;
     function TagWidth(const ATag: TAtlasTag): Integer;
     procedure DrawBadge(const ARow: TRect; const AItem: TAtlasCompletionItem; out ARight: Integer);
+    procedure DrawCheck(const ARow: TRect; AChecked: Boolean);
     procedure DrawName(const AName: string; ALeft, ARight: Integer; const ARow: TRect; ATruncated: Boolean);
     procedure DrawTag(const ATag: TAtlasTag; ALeft: Integer; const ARow: TRect);
     procedure DrawRow(ARow, APosition: Integer);
@@ -211,10 +214,13 @@ implementation
 uses
   System.Math,
   Atlas.Core.Style.Palette,
+  Atlas.Core.Completion.Sets,
   Atlas.UI.Popup.Accessibility;
 
 const
   TextFlags = DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX;
+  /// <summary>Platz für das Kontrollkästchen im Mengenmodus (#448): Rand 7, Kästchen 13, Abstand 6.</summary>
+  CheckWidth = 19;
 
 /// <summary>Text einer Marke in der Sprache der IDE (#446).</summary>
 function TagText(const ATag: TAtlasTag): string;
@@ -424,6 +430,9 @@ function TAtlasCompletionPopup.CountText: string;
 var
   Index, Fitting: Integer;
 begin
+  // Mengenmodus (#448): wie viele Werte angehakt sind.
+  if TAtlasCompletionSets.Active(FItems) then
+    Exit(TAtlasStrings.Fmt(TAtlasTextId.SetChosen, [TAtlasCompletionSets.CheckedCount(FItems)]));
   Fitting := 0;
   for Index in FOrder do
     if (Index >= 0) and FItems[Index].Fits and not FItems[Index].IsAction then
@@ -447,7 +456,16 @@ begin
     Text := TAtlasStrings.Text(TAtlasTextId.DidYouMean)
   else if (APosition < High(FOrder)) and (FOrder[APosition + 1] >= 0) then
   begin
-    if FItems[FOrder[APosition + 1]].ExpectedType <> '' then
+    if FItems[FOrder[APosition + 1]].SetOf <> '' then
+    begin
+      // Mengenmodus (#448): „TAnchors · Menge von TAnchorKind“, bei "X in [" nur „Menge von …“.
+      if FItems[FOrder[APosition + 1]].ExpectedType.StartsWith('set of ') then
+        Text := TAtlasStrings.Fmt(TAtlasTextId.SetHeaderPlain, [FItems[FOrder[APosition + 1]].SetOf])
+      else
+        Text := TAtlasStrings.Fmt(TAtlasTextId.SetHeader, [FItems[FOrder[APosition + 1]].ExpectedType,
+          FItems[FOrder[APosition + 1]].SetOf]);
+    end
+    else if FItems[FOrder[APosition + 1]].ExpectedType <> '' then
     begin
       if FItems[FOrder[APosition + 1]].Fits then
         Text := TAtlasStrings.Fmt(TAtlasTextId.FitsType, [FItems[FOrder[APosition + 1]].ExpectedType])
@@ -595,6 +613,8 @@ begin
   end;
   // Badge (7 + 24 + 9), rechter Rand der Zeile (7), Ränder und Scrollleiste.
   Inc(Widest, Scale(7 + 24 + 9 + 7) + 2 * Pad + ScrollReserve);
+  if TAtlasCompletionSets.Active(FItems) then
+    Inc(Widest, Scale(CheckWidth));
   Canvas.Font := UIFont;
   Widest := Max(Widest, Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.FooterKeys) + '    ' +
     TAtlasStrings.Fmt(TAtlasTextId.CountFits, [999, 9999])) + Scale(18));
@@ -891,6 +911,31 @@ begin
   Canvas.Font := Font;
 end;
 
+procedure TAtlasCompletionPopup.DrawCheck(const ARow: TRect; AChecked: Boolean);
+var
+  Box: TRect;
+  Size, Top: Integer;
+  Points: array[0..2] of TPoint;
+begin
+  Size := Scale(13);
+  Top := ARow.Top + (ARow.Height - Size) div 2;
+  Box := Rect(ARow.Left + Scale(7), Top, ARow.Left + Scale(7) + Size, Top + Size);
+  if not AChecked then
+  begin
+    FrameRounded(Box, Colors.Muted, 3);
+    Exit;
+  end;
+  FillRounded(Box, Colors.Accent, 3);
+  // Haken in der Flächenfarbe.
+  Points[0] := Point(Box.Left + MulDiv(Size, 3, 13), Box.Top + MulDiv(Size, 7, 13));
+  Points[1] := Point(Box.Left + MulDiv(Size, 5, 13), Box.Top + MulDiv(Size, 10, 13));
+  Points[2] := Point(Box.Left + MulDiv(Size, 10, 13), Box.Top + MulDiv(Size, 3, 13));
+  Canvas.Pen.Color := ToColor(Colors.Surface);
+  Canvas.Pen.Width := Max(1, Scale(2));
+  Canvas.Polyline(Points);
+  Canvas.Pen.Width := 1;
+end;
+
 procedure TAtlasCompletionPopup.DrawRow(ARow, APosition: Integer);
 var
   Item: TAtlasCompletionItem;
@@ -908,6 +953,12 @@ begin
   FDimRow := ((FDimInherited and (Item.Depth > 0)) or Item.Unavailable) and (APosition <> FSelected);
   if APosition = FSelected then
     FillRounded(Row, Colors.Selection, 4);
+  // Mengenmodus (#448): Kontrollkästchen vor dem Badge.
+  if Item.SetOf <> '' then
+  begin
+    DrawCheck(Row, Item.Checked);
+    Inc(Row.Left, Scale(CheckWidth));
+  end;
   DrawBadge(Row, Item, NameLeft);
   Inc(NameLeft, Scale(9));
   Right := Row.Right - Scale(7);
@@ -998,7 +1049,10 @@ begin
         else
           DrawRow(Row, FTop + Row);
     DrawScrollBar;
-    DrawFooter(TAtlasStrings.Text(TAtlasTextId.FooterKeys), CountText);
+    if TAtlasCompletionSets.Active(FItems) then
+      DrawFooter(TAtlasStrings.Text(TAtlasTextId.SetFooterKeys), CountText)
+    else
+      DrawFooter(TAtlasStrings.Text(TAtlasTextId.FooterKeys), CountText);
   end;
   if FPanelShown then
     PaintPanel;

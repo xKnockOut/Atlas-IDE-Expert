@@ -96,6 +96,14 @@ type
     /// <summary>Ersetzt TextEdit.Range statt nur den getippten Namen (Postfix-Vorlagen, #188).</summary>
     HasTextEdit: Boolean;
     TextEdit: TRuleEdit;
+    /// <summary>Wert einer Aufzählung (#448): Stelle in der Deklaration ab 1; 0 bei anderen Einträgen.</summary>
+    Ordinal: Integer;
+    /// <summary>Mengenmodus (#448): Aufzählungstyp der Menge; '' sonst. Dann gelten SetChecked und SetRange.</summary>
+    SetOf: string;
+    /// <summary>Wert steht schon in der Klammer.</summary>
+    SetChecked: Boolean;
+    /// <summary>Was Enter mit dem neuen Klammerinhalt ersetzt: von "[" bis hinter "]".</summary>
+    SetRange: TTextRange;
   end;
 
   /// <summary>Postfix-Vorlagen (#188) je Dokument.</summary>
@@ -194,6 +202,13 @@ type
     class function EventItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
       const APosition: TTextPosition; const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean;
       static;
+    /// <summary>Aufzählungen und Mengen (#448). Erwartet die Stelle einen Aufzählungstyp (Zuweisung, Parameter,
+    /// Vergleich, case-Zweig), kommen dessen Werte in Deklarationsreihenfolge (Ordinal, bei {$SCOPEDENUMS ON} mit
+    /// Typpräfix im InsertText). In einem Mengenkonstruktor ("Anchors := [akLeft, ") kommen alle Werte des
+    /// Elementtyps mit SetOf, SetChecked und SetRange; ASetMode ist dann True. False ohne Aufzählungstyp.</summary>
+    class function EnumItems(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AText, AFileName: string; const APosition: TTextPosition; const AReadText: TCompletionReadText;
+      AMatching: TCompletionMatching; out AItems: TArray<TCompletionItem>; out ASetMode: Boolean): Boolean; static;
     class function KindOf(AKind: TIndexSymbolKind): Integer; static;
     /// <summary>CompletionList des LSP. Der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const AItems: TCompletionItems): TJSONObject; overload; static;
@@ -244,7 +259,8 @@ uses
   System.RegularExpressions,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.PostfixTemplates,
-  Atlas.Common.Diagnostics.RequestScope;
+  Atlas.Common.Diagnostics.RequestScope,
+  Atlas.Common.Lsp.CompletionEnums;
 
 const
   /// <summary>Art der Stelle im Diagnoselog (#647).</summary>
@@ -686,6 +702,7 @@ var
   Names: TArray<string>;
   UnitIndex: TUnitIndex;
   Symbol: TIndexSymbol;
+  Slot: TEnumValueSlot;
 begin
   Result := '';
   if ATree = nil then
@@ -720,7 +737,19 @@ begin
     Index := PreviousIndex(Tokens, Index);
   end;
   if (Index < 0) or not Tokens[Index].IsSymbol(':=') then
+  begin
+    // Vergleich ("Shape.Kind = ") und case-Zweig (#448): Typ der Kette. Ein Typ selbst steht bei typisierten
+    // Konstanten und Standardwerten ("const C: TAlign = ", "A: TAlign = ").
+    if TCompletionEnums.ValueSlot(Tokens, APosition, Slot) then
+    begin
+      Target := AResolver.ResolveChain(ATree, AFileName, Slot.Names, Slot.Offset);
+      if Target.Found and Target.IsType then
+        Result := Target.Name
+      else if Target.Found then
+        Result := Target.TypeName;
+    end;
     Exit;
+  end;
   Last := Tokens[Index].Offset;
   Index := PreviousIndex(Tokens, Index);
   Names := nil;
@@ -1429,7 +1458,7 @@ begin
     Entry.AddPair('sortText', Format('%.5d', [AFirstSort + Index]));
     if (AItems[Index].SourceFile <> '') or (AItems[Index].Expected <> '') or
       (AItems[Index].Action <> '') or (AItems[Index].Condition <> '') or
-      (AItems[Index].Scope > 0) then
+      (AItems[Index].Scope > 0) or (AItems[Index].Ordinal > 0) then
     begin
       Data := TJSONObject.Create;
       if AItems[Index].SourceFile <> '' then
@@ -1461,6 +1490,15 @@ begin
         Data.AddPair('unavailable', TJSONBool.Create(True));
       if AItems[Index].Scope > 0 then
         Data.AddPair('scope', TJSONNumber.Create(AItems[Index].Scope));
+      // Aufzählungen und Mengen (#448).
+      if AItems[Index].Ordinal > 0 then
+        Data.AddPair('ordinal', TJSONNumber.Create(AItems[Index].Ordinal));
+      if AItems[Index].SetOf <> '' then
+      begin
+        Data.AddPair('setOf', AItems[Index].SetOf);
+        Data.AddPair('checked', TJSONBool.Create(AItems[Index].SetChecked));
+        Data.AddPair('setRange', TLspPositions.RangeToJson(AItems[Index].SetRange));
+      end;
       if Length(AItems[Index].Overloads) > 0 then
       begin
         Overloads := TJSONArray.Create;
@@ -1471,6 +1509,33 @@ begin
       end;
       Entry.AddPair('data', Data);
     end;
+  end;
+end;
+
+/// <summary>AItems ohne die Namen aus ANames (#448: Aufzählungswerte, die schon vorab kamen).</summary>
+function WithoutNames(const AItems, ANames: TArray<TCompletionItem>): TArray<TCompletionItem>;
+var
+  Names: TDictionary<string, Boolean>;
+  Item: TCompletionItem;
+  Count: Integer;
+begin
+  if Length(ANames) = 0 then
+    Exit(AItems);
+  Names := TDictionary<string, Boolean>.Create;
+  try
+    for Item in ANames do
+      Names.AddOrSetValue(LowerCase(Item.Name), True);
+    SetLength(Result, Length(AItems));
+    Count := 0;
+    for Item in AItems do
+      if not Names.ContainsKey(LowerCase(Item.Name)) then
+      begin
+        Result[Count] := Item;
+        Inc(Count);
+      end;
+    SetLength(Result, Count);
+  finally
+    Names.Free;
   end;
 end;
 
@@ -1495,6 +1560,11 @@ var
   Collected: TCompletionItems;
   Watch: TStopwatch;
   ParseMs: Int64;
+  Enums: TArray<TCompletionItem>;
+  SetMode: Boolean;
+  Trigger: string;
+  Position: TTextPosition;
+  EnumParams: TJSONObject;
 begin
   Watch := TStopwatch.StartNew;
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
@@ -1533,6 +1603,21 @@ begin
       Matching := FMatchingFor(Uri)
     else
       Matching := TCompletionMatching.Fuzzy;
+    // Aufzählungen und Mengen (#448): im Mengenkonstruktor nur dessen Werte; sonst die Werte des erwarteten
+    // Aufzählungstyps vor der übrigen Liste. Atlas fragt bei "[" mit triggerCharacter: ohne Menge nichts.
+    Position := TLspPositions.ReadPosition(PositionValue);
+    Trigger := '';
+    TJSONObject(AParams).TryGetValue<string>('context.triggerCharacter', Trigger);
+    if not EnumItems(Resolver, FIndex, Tree, Document.Text, TDocumentUris.ToPath(Uri), Position, FReadText, Matching,
+      Enums, SetMode) then
+      Enums := nil;
+    if SetMode or (Trigger = '[') then
+    begin
+      Collected := Default(TCompletionItems);
+      if SetMode then
+        Collected.Items := Enums;
+      Exit(ToJson(Collected));
+    end;
     if Assigned(FPostfixFor) then
       Postfix := FPostfixFor(Uri)
     else
@@ -1552,17 +1637,34 @@ begin
         procedure(const AItems: TArray<TCompletionItem>)
         var
           Params: TJSONObject;
+          Items: TArray<TCompletionItem>;
         begin
           Cancel.ThrowIfCancellationRequested;
+          // Die Werte der Aufzählung kamen schon vorab (#448).
+          Items := WithoutNames(AItems, Enums);
+          if Length(Items) = 0 then
+            Exit;
           Params := TJSONObject.Create;
           Params.AddPair('token', Token);
-          Params.AddPair('value', ToJson(AItems, SentCount));
-          Inc(SentCount, Length(AItems));
+          Params.AddPair('value', ToJson(Items, SentCount));
+          Inc(SentCount, Length(Items));
           Notify('$/progress', Params);
         end;
+      // Aufzählungswerte zuerst (#448).
+      if Length(Enums) > 0 then
+      begin
+        EnumParams := TJSONObject.Create;
+        EnumParams.AddPair('token', Token);
+        EnumParams.AddPair('value', ToJson(Enums, SentCount));
+        Inc(SentCount, Length(Enums));
+        Notify('$/progress', EnumParams);
+      end;
     end;
     Collected := Collect(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), Document.Text,
       TLspPositions.ReadPosition(PositionValue), Matching, Postfix, Partial);
+    Collected.Items := WithoutNames(Collected.Items, Enums);
+    if Token = '' then
+      Collected.Items := Enums + Collected.Items;
     Result := TJSONObject.Create;
     TJSONObject(Result).AddPair('isIncomplete', TJSONBool.Create(Collected.Incomplete));
     TJSONObject(Result).AddPair('items', ToJson(Collected.Items, SentCount));
@@ -2133,6 +2235,251 @@ begin
   if TClassCompletion.BodyEdit(ATree, AText, TypeName, Body, Edit) then
     Item.AdditionalEdits := Item.AdditionalEdits + [Edit];
   AItems.Items := AItems.Items + [Item];
+end;
+
+type
+  /// <summary>Aufzählungstyp mit seinen Werten (#448).</summary>
+  TEnumType = record
+    Name: string;
+    /// <summary>Mengentyp, über den er gefunden wurde ("TAnchors"); '' ohne.</summary>
+    SetName: string;
+    Values: TArray<string>;
+    /// <summary>Namenspositionen der Werte in FileName; Line -1, wenn unbekannt.</summary>
+    Positions: TArray<TTextPosition>;
+    FileName: string;
+    /// <summary>{$SCOPEDENUMS ON} an der Deklaration: Werte nur mit Typpräfix.</summary>
+    Scoped: Boolean;
+  end;
+
+/// <summary>Text von ARange, über höchstens 400 Zeilen (lange Aufzählungen stehen über viele Zeilen).</summary>
+function RangeText(const AText: string; const ARange: TTextRange): string;
+var
+  Lines: TArray<string>;
+  Line: Integer;
+begin
+  Result := '';
+  Lines := TextLines(AText);
+  for Line := Max(0, ARange.StartPos.Line) to Min(Min(ARange.EndPos.Line, ARange.StartPos.Line + 400), High(Lines)) do
+    if Line = ARange.StartPos.Line then
+      Result := Copy(Lines[Line], ARange.StartPos.Character + 1, MaxInt)
+    else
+      Result := Result + #10 + Lines[Line];
+end;
+
+/// <summary>Offset (0-basiert) von APosition in AText.</summary>
+function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
+var
+  Index, Line: Integer;
+begin
+  Line := 0;
+  Index := 1;
+  while (Line < APosition.Line) and (Index <= Length(AText)) do
+  begin
+    if AText[Index] = #10 then
+      Inc(Line);
+    Inc(Index);
+  end;
+  Result := Index - 1 + APosition.Character;
+end;
+
+/// <summary>Quelltext der Datei von ASymbol: das offene Dokument oder über AReadText.</summary>
+function SourceOf(const ASymbol: TResolvedSymbol; const AText, AFileName: string;
+  const AReadText: TCompletionReadText; out ASource: string): Boolean;
+begin
+  ASource := '';
+  if SameText(ASymbol.FileName, AFileName) then
+  begin
+    ASource := AText;
+    Exit(True);
+  end;
+  Result := (ASymbol.FileName <> '') and Assigned(AReadText) and AReadText(ASymbol.FileName, ASource);
+end;
+
+/// <summary>Index-Eintrag der Unit von ASymbol; für das offene Dokument aus dessen Baum.</summary>
+function OwnerUnit(const AIndex: ISymbolIndex; ATree: TSyntaxTree; const AFileName: string;
+  const ASymbol: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
+begin
+  if SameText(ASymbol.FileName, AFileName) then
+  begin
+    AUnit := TIndexExtractor.Extract(ATree, AFileName);
+    Exit(True);
+  end;
+  Result := (AIndex <> nil) and AIndex.FindFile(ASymbol.FileName, AUnit);
+end;
+
+/// <summary>Typ ATypeName, wie er an AOffset stünde; sonst ein gleichnamiger Typ aus dem Index.</summary>
+function TypeAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree; const AFileName: string;
+  AOffset: Integer; const ATypeName: string): TResolvedSymbol;
+var
+  Location: TSymbolLocation;
+  Owner: TUnitIndex;
+begin
+  Result := AResolver.ResolveChain(ATree, AFileName, ATypeName.Split(['.']), AOffset);
+  if (Result.Found and Result.IsType) or (AIndex = nil) or (Pos('.', ATypeName) > 0) then
+    Exit;
+  // Typ einer Eigenschaft aus einer Unit, die hier nicht eingebunden ist (TAnchors aus Vcl.Controls).
+  for Location in AIndex.FindSymbols(ATypeName) do
+    if (Location.Symbol.Container = '') and (Location.Symbol.Kind in [TIndexSymbolKind.EnumType,
+      TIndexSymbolKind.TypeAlias]) and AIndex.FindUnit(Location.UnitName, Owner) and
+      AResolver.ResolveTypeFrom(Owner, ATypeName, Result) then
+      Exit;
+end;
+
+/// <summary>Aufzählung zu AType, Aliase verfolgt; mit AAllowSet auch der Elementtyp einer Menge.</summary>
+function EnumOf(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AText, AFileName: string; AType: TResolvedSymbol; const AReadText: TCompletionReadText; AAllowSet: Boolean;
+  out AEnum: TEnumType): Boolean;
+var
+  Source, Declaration, Element, Container: string;
+  Owner: TUnitIndex;
+  Step, Index: Integer;
+  Symbol: TIndexSymbol;
+  Found: Boolean;
+begin
+  AEnum := Default(TEnumType);
+  Result := False;
+  Found := False;
+  Source := '';
+  Declaration := '';
+  for Step := 1 to 4 do
+  begin
+    // Erst die Art prüfen: Klassen und eingebaute Typen brauchen den Quelltext nicht.
+    if not AType.Found or not AType.IsType or not (AType.SymbolKind in [TIndexSymbolKind.EnumType,
+      TIndexSymbolKind.TypeAlias]) or not SourceOf(AType, AText, AFileName, AReadText, Source) then
+      Exit;
+    Declaration := RangeText(Source, AType.Range);
+    if AType.SymbolKind = TIndexSymbolKind.EnumType then
+    begin
+      Found := True;
+      Break;
+    end;
+    // Alias oder Menge: von der Unit der Deklaration aus weiter auflösen.
+    if not OwnerUnit(AIndex, ATree, AFileName, AType, Owner) then
+      Exit;
+    Element := TCompletionEnums.SetElement(Declaration);
+    if Element <> '' then
+    begin
+      if not AAllowSet or (AEnum.SetName <> '') then
+        Exit;
+      AEnum.SetName := AType.Name;
+      if not AResolver.ResolveTypeFrom(Owner, Element, AType) then
+        Exit;
+    end
+    else if (AType.TypeName = '') or not AResolver.ResolveTypeFrom(Owner, AType.TypeName, AType) then
+      Exit;
+  end;
+  if not Found then
+    Exit;
+  AEnum.Values := TCompletionEnums.EnumValues(Declaration);
+  if AEnum.Values = nil then
+    Exit;
+  AEnum.Name := AType.Name;
+  AEnum.FileName := AType.FileName;
+  AEnum.Scoped := TCompletionEnums.ScopedAt(Source, OffsetOf(Source, AType.Range.StartPos));
+  // Namenspositionen für completionItem/resolve.
+  SetLength(AEnum.Positions, Length(AEnum.Values));
+  for Index := 0 to High(AEnum.Positions) do
+    AEnum.Positions[Index] := TTextPosition.Create(-1, 0);
+  Container := AType.QualifiedName;
+  if OwnerUnit(AIndex, ATree, AFileName, AType, Owner) then
+    for Symbol in Owner.Symbols do
+      if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, Container) then
+        for Index := 0 to High(AEnum.Values) do
+          if SameText(AEnum.Values[Index], Symbol.Name) then
+            AEnum.Positions[Index] := Symbol.SelectionRange.StartPos;
+  Result := True;
+end;
+
+/// <summary>Eintrag für den Wert AIndex von AEnum.</summary>
+function EnumItem(const AEnum: TEnumType; AIndex: Integer): TCompletionItem;
+begin
+  Result := Default(TCompletionItem);
+  Result.Name := AEnum.Values[AIndex];
+  Result.Kind := KindEnumMember;
+  Result.Detail := AEnum.Name;
+  Result.Container := AEnum.Name;
+  Result.Ordinal := AIndex + 1;
+  Result.Fits := True;
+  if AEnum.Scoped then
+    Result.InsertText := AEnum.Name + '.' + AEnum.Values[AIndex];
+  if AEnum.Positions[AIndex].Line >= 0 then
+  begin
+    Result.SourceFile := AEnum.FileName;
+    Result.SourcePosition := AEnum.Positions[AIndex];
+  end;
+end;
+
+class function TLspCompletion.EnumItems(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AText, AFileName: string; const APosition: TTextPosition; const AReadText: TCompletionReadText;
+  AMatching: TCompletionMatching; out AItems: TArray<TCompletionItem>; out ASetMode: Boolean): Boolean;
+var
+  Slot: TEnumSetSlot;
+  Context: TCompletionContext;
+  Expected: string;
+  Target, TypeInfo: TResolvedSymbol;
+  Enum: TEnumType;
+  Checked: TArray<Boolean>;
+  Index: Integer;
+  Item: TCompletionItem;
+begin
+  AItems := nil;
+  ASetMode := False;
+  Result := False;
+  if ATree = nil then
+    Exit;
+  // Mengenkonstruktor: "X in [" nimmt den Typ von X, sonst gilt der erwartete Typ an der Klammer.
+  if TCompletionEnums.SetSlot(ATree.Tokens, APosition, Slot) then
+  begin
+    if Slot.ElementOf <> nil then
+    begin
+      Target := AResolver.ResolveChain(ATree, AFileName, Slot.ElementOf, Slot.Offset);
+      if not Target.Found or Target.IsType or (Target.TypeName = '') then
+        Exit;
+      TypeInfo := TypeAt(AResolver, AIndex, ATree, AFileName, Slot.Offset, Target.TypeName);
+    end
+    else
+    begin
+      Expected := ExpectedType(AResolver, ATree, AFileName, Slot.Bracket);
+      if Expected = '' then
+        Exit;
+      TypeInfo := TypeAt(AResolver, AIndex, ATree, AFileName, Slot.Offset, Expected);
+    end;
+    if not EnumOf(AResolver, AIndex, ATree, AText, AFileName, TypeInfo, AReadText, Slot.ElementOf = nil, Enum) or
+      not TCompletionEnums.Checked(Enum.Values, Slot.Present, Checked) then
+      Exit;
+    for Index := 0 to High(Enum.Values) do
+    begin
+      Item := EnumItem(Enum, Index);
+      if Enum.SetName <> '' then
+        Item.Expected := Enum.SetName
+      else
+        Item.Expected := 'set of ' + Enum.Name;
+      Item.SetOf := Enum.Name;
+      Item.SetChecked := Checked[Index];
+      Item.SetRange := Slot.EditRange;
+      AItems := AItems + [Item];
+    end;
+    ASetMode := True;
+    Exit(True);
+  end;
+  // Werte: nur ohne Punkt davor ("TAlign." zeigt die Mitglieder selbst).
+  Context := Analyze(ATree, APosition);
+  if Context.Kind <> TCompletionContextKind.Scope then
+    Exit;
+  Expected := ExpectedType(AResolver, ATree, AFileName, APosition);
+  if Expected = '' then
+    Exit;
+  TypeInfo := TypeAt(AResolver, AIndex, ATree, AFileName, Context.Offset, Expected);
+  if not EnumOf(AResolver, AIndex, ATree, AText, AFileName, TypeInfo, AReadText, False, Enum) then
+    Exit;
+  for Index := 0 to High(Enum.Values) do
+    if MatchScore(Enum.Values[Index], Context.Prefix, AMatching) <> TFuzzyMatch.NoMatch then
+    begin
+      Item := EnumItem(Enum, Index);
+      Item.Expected := Expected;
+      AItems := AItems + [Item];
+    end;
+  Result := True;
 end;
 
 end.

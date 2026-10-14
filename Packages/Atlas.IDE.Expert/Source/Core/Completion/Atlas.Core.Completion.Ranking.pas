@@ -11,6 +11,9 @@
 //   - Erwarteter Typ (#417, #444): passende Einträge oben, darunter die
 //     übrigen, je mit Überschrift, auch mit Präfix. Innerhalb der Gruppe wie
 //     oben. Aktionen („Neue Methode …“) passen immer und stehen zuletzt.
+//   - Werte einer erwarteten Aufzählung (#448) stehen in der passenden Gruppe
+//     zuerst, ohne Präfix in Deklarationsreihenfolge (Ordinal), auch vor
+//     Gelerntem.
 
 interface
 
@@ -144,7 +147,7 @@ var
   Scores, Boosts: TArray<Integer>;
   Found, Ordered: TList<Integer>;
   Index, Position, Depth: Integer;
-  Grouped, AnyFits: Boolean;
+  Grouped, AnyFits, NoPattern: Boolean;
   Container: string;
   Group: Integer;
   Options: TAtlasRankOptions;
@@ -154,6 +157,7 @@ begin
   SetLength(Scores, Length(Items));
   SetLength(Boosts, Length(Items));
   Grouped := Options.GroupInherited and (APattern = '');
+  NoPattern := APattern = '';
   AnyFits := False;
   for Index := 0 to High(Items) do
     if Items[Index].Fits then
@@ -187,6 +191,11 @@ begin
           Result := Ord(Items[A].Unavailable) - Ord(Items[B].Unavailable);
         if Result = 0 then
           Result := GroupOf(Items[A], AnyFits) - GroupOf(Items[B], AnyFits);
+        // Aufzählungswerte vor den übrigen passenden Einträgen, ohne Präfix in Deklarationsreihenfolge (#448).
+        if Result = 0 then
+          Result := Ord(Items[B].Ordinal > 0) - Ord(Items[A].Ordinal > 0);
+        if (Result = 0) and (Items[A].Ordinal > 0) and NoPattern then
+          Result := Items[A].Ordinal - Items[B].Ordinal;
         if Result <> 0 then
           Exit;
         if Grouped then

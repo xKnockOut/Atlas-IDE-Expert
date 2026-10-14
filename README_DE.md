@@ -8,7 +8,7 @@ Experte für RAD Studio (Delphi/Object Pascal): ein IDE-Plugin mit eigener Oberf
 
 `Atlas.IDE.Expert` ersetzt in RAD Studio 13 (und 12) die eingebaute Code Insight durch eigene Fenster, die der Atlas-Server mit Daten füllt:
 
-- **Vervollständigung** mit Detailpanel, Filter-Chips, unscharfer Suche, lernender Reihenfolge, Postfix-Vorlagen und Vorschau im Editor
+- **Vervollständigung** mit Detailpanel, Filter-Chips, unscharfer Suche, lernender Reihenfolge, Postfix-Vorlagen, Vorschau im Editor, Aufzählungswerten zuerst und Mengenelementen zum Abhaken
 - **Parameter-Hint** mit allen Überladungen und aktivem Parameter
 - **Hover-Tooltip** mit Deklaration, Dokumentation, anklickbaren Typen, Vererbungskette, Verlauf und Aktionen (Gehe zu, Verwendungen, Deklaration kopieren, Hilfe)
 - **Probleme im Editor**: Syntaxfehler, Regeltreffer und Compilermeldungen als Wellenlinien, im Tooltip und als Liste „Atlas-Probleme“ im Meldungsfenster, projektweit; Markierungen wandern beim Tippen mit

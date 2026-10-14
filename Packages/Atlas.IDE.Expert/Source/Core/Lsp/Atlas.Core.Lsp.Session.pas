@@ -211,9 +211,10 @@ type
     function Completion(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
       overload;
     /// <summary>Wie oben, gestaffelt (#616): AOnPartial bekommt Teilergebnisse (CompletionItem[]) im
-    /// Lese-Thread, bevor die Antwort den Rest bringt.</summary>
+    /// Lese-Thread, bevor die Antwort den Rest bringt. ATrigger: Zeichen, nach dem automatisch geöffnet wurde
+    /// (context.triggerCharacter, #448); '' bei Strg+Leer.</summary>
     function Completion(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal;
-      const AOnPartial: TLspPartialProc): TJSONValue; overload;
+      const ATrigger: string; const AOnPartial: TLspPartialProc): TJSONValue; overload;
     /// <summary>textDocument/signatureHelp ohne Abgleich, wie Completion.</summary>
     function SignatureHelp(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
     /// <summary>textDocument/prepareRename (#397): Lässt sich hier umbenennen? APlaceholder ist der
@@ -1351,10 +1352,16 @@ begin
 end;
 
 function TLspSession.Completion(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal;
-  const AOnPartial: TLspPartialProc): TJSONValue;
+  const ATrigger: string; const AOnPartial: TLspPartialProc): TJSONValue;
+var
+  Params: TJSONObject;
 begin
-  Result := FClient.Request('textDocument/completion', PositionParams(AFileName, ALine, ACharacter), ATimeoutMs,
-    AOnPartial);
+  Params := PositionParams(AFileName, ALine, ACharacter);
+  // CompletionContext: triggerKind 2 = TriggerCharacter, 1 = Invoked.
+  if ATrigger <> '' then
+    Params.AddPair('context', TJSONObject.Create.AddPair('triggerKind', TJSONNumber.Create(2))
+      .AddPair('triggerCharacter', ATrigger));
+  Result := FClient.Request('textDocument/completion', Params, ATimeoutMs, AOnPartial);
 end;
 
 function TLspSession.SignatureHelp(const AFileName: string; ALine, ACharacter: Integer;

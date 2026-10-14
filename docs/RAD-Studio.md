@@ -23,6 +23,8 @@ Bedienung (#399): Das Menü *Atlas* in der Menüleiste und das Untermenü *Atlas
 
 Formular-Designer (#402): Ein im Designer geöffnetes Formular schickt Atlas etwa eine halbe Sekunde nach jeder Änderung an den Server, auch ungespeichert. Referenzsuche, Umbenennen und Prüfungen sehen also neue Komponenten und Ereignis-Zuordnungen sofort. Wird ein Ereignis-Handler umbenannt, ändert Atlas die Unit und setzt die Zuordnung im Designer neu; das Formular ist danach geändert und wird mit der Unit gespeichert. Andere Änderungen an einem offenen Formular (etwa eine Komponente umbenennen) lehnt Atlas mit einer Meldung ab und ändert nichts; nicht geöffnete Formulare schreibt Atlas direkt in die Datei.
 
+Aufzählungen und Mengen (#448): Erwartet die Stelle einen Aufzählungstyp (nach `:=`, `=`, `<>` oder in einem `case`-Zweig), stehen dessen Werte oben in der Liste, bei `{$SCOPEDENUMS ON}` als `Typ.Wert`. Nach `[` an einer Mengen-Stelle öffnet sich die Liste von selbst und zeigt nur die Elemente mit Häkchen; vorhandene sind schon abgehakt. Leertaste hakt ab, Enter ersetzt die ganze Menge, Esc lässt sie unverändert.
+
 Zur Fehlersuche: Wert `Diagnose` (DWORD) = `1` unter `HKCU\Software\Atlas\IdePlugin` setzen und die IDE neu starten. Das Plugin schreibt dann jeden Aufruf der IDE (Hover, Strg+Klick, Position und Ergebnis) in `Atlas.IDE.Expert.log` neben der BPL.
 
 Findet der Server keine Definition, passiert bei Strg+Klick nichts. Deklarationen in Include-Dateien (`{$I …}`) findet der Server erst mit dem Include-Resolver (#264).
