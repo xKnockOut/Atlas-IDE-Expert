@@ -21,6 +21,8 @@ Den Umfang des Index stellt *Tools › Optionen › Drittanbieter › Atlas* fü
 
 Was Atlas selbst anzeigt, schaltet es in der IDE ab, damit nichts doppelt erscheint: Help Insight (solange der Atlas-Tooltip an ist) und die Strukturhervorhebung (solange die Atlas-Blocklinien an sind). Die IDE liest diese Schalter nur beim Start; beim ersten Start mit Atlas erscheint daher noch beides.
 
+Liegt unter der Maus ein Problem, zeigt der Tooltip es oben an; bei Regeltreffern steht darunter die Konfidenz (hoch, mittel, niedrig) als eigene Zeile (#144).
+
 Zur Fehlersuche: Wert `Diagnose` (DWORD) = `1` unter `HKCU\Software\Atlas\IdePlugin` setzen und die IDE neu starten. Das Plugin schreibt dann jeden Aufruf der IDE (Hover, Strg+Klick, Position und Ergebnis) in `Atlas.IDE.Expert.log` neben der BPL. Die Datei enthält keine Pfade, Datei- oder Bezeichnernamen (nur Endungen, Positionen und Längen) und darf weitergegeben werden. Für die Vervollständigung steht dort auch, wie lange der Server brauchte, ob er nicht antwortete und warum das Popup schloss.
 
 Findet der Server keine Definition, passiert bei Strg+Klick nichts. Deklarationen in Include-Dateien (`{$I …}`) findet der Server erst mit dem Include-Resolver (#264).

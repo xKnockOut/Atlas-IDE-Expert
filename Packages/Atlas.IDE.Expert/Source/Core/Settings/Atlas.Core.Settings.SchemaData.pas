@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..745] of string = (
+  Lines: array[0..747] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -76,11 +76,12 @@ const
     '    },',
     '    "rules": {',
     '      "type": "object",',
-    '      "description": "Prüfregeln einzeln einstellen: Regel-ID → Schweregrad oder Objekt mit \"severity\" und Optionen.",',
+    '      "description": "Prüfregeln einzeln einstellen: Regel-ID → Schweregrad oder Objekt mit \"severity\" und Optionen. Die Konfidenz eines Treffers begrenzt den Schweregrad auch hier: Bei mittlerer Ko' + 'nfidenz bleibt ein Treffer höchstens eine Warnung, bei niedriger höchstens ein Hinweis, auch mit \"error\".",',
     '      "additionalProperties": {',
     '        "oneOf": [',
     '          {',
     '            "type": "string",',
+    '            "description": "Schweregrad der Regel. Treffer mittlerer Konfidenz bleiben höchstens Warnung, niedriger höchstens Hinweis (#144).",',
     '            "enum": [',
     '              "off",',
     '              "hint",',
@@ -95,6 +96,7 @@ const
     '            "properties": {',
     '              "severity": {',
     '                "type": "string",',
+    '                "description": "Schweregrad der Regel. Treffer mittlerer Konfidenz bleiben höchstens Warnung, niedriger höchstens Hinweis (#144).",',
     '                "enum": [',
     '                  "off",',
     '                  "hint",',

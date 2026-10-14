@@ -108,18 +108,6 @@ begin
   end;
 end;
 
-function ConfidenceName(AConfidence: TRuleConfidence): string;
-begin
-  case AConfidence of
-    TRuleConfidence.Low:
-      Result := 'low';
-    TRuleConfidence.Medium:
-      Result := 'medium';
-  else
-    Result := 'high';
-  end;
-end;
-
 class function TFindingsOutput.JsonString(const AText: string): string;
 var
   Builder: TStringBuilder;
@@ -261,9 +249,11 @@ begin
       for Finding in CheckedFile.Findings do
       begin
         Inc(Count);
-        Builder.Append(Format('%s(%d,%d): %s %s: %s', [CheckedFile.Path, Finding.Range.StartPos.Line + 1,
-          Finding.Range.StartPos.Character + 1, TFindingsOutput.SeverityName(Finding.Severity), Finding.RuleId,
-          Finding.DisplayMessage]));
+        // Konfidenz als eigene Spalte vor der Meldung, nicht im Meldungstext (#144).
+        Builder.Append(Format('%s(%d,%d): %s %s [Konfidenz %s]: %s', [CheckedFile.Path,
+          Finding.Range.StartPos.Line + 1, Finding.Range.StartPos.Character + 1,
+          TFindingsOutput.SeverityName(Finding.Severity), Finding.RuleId, ConfidenceText(Finding.Confidence),
+          Finding.Message]));
         Builder.Append(sLineBreak);
       end;
     end;

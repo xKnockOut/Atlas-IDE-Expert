@@ -139,6 +139,8 @@ Exit code: 1 if a finding reaches `--fail-on` (default: at least one error), oth
 
 In SARIF, `message.text` is the rule's English catalog name without the confidence suffix. The confidence is in `properties.confidence`, the finding's German message in `properties.detail`.
 
+Every rule finding has a confidence (high, medium, low). It caps the severity even if `rules` sets it higher: medium confidence at most warning, low at most hint. Findings below `minConfidence` (default `medium`) are hidden. The confidence is never part of the message text; it is a separate column in the text output (`[Konfidenz mittel]`), `confidence` in JSON, `data.confidence` in LSP and its own line in the plugin's tooltip.
+
 In an SVN working copy, `--changed` without a base compares the working copy with BASE (`svn status`), `--changed <rev>` and `--diff <rev>` with the revision (`svn diff -r`); `--include-uncommitted` adds unversioned files. Git takes precedence if both are present.
 
 Examples for a pre-commit hook and a GitHub Action that check only changes are in [docs/Beispiele](docs/Beispiele).

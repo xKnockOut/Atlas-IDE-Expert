@@ -549,7 +549,8 @@ begin
     Y := NavHeight + Scale(8);
     X := Left;
   end;
-  // Probleme an der Mausposition: Farbbalken, Meldung, darunter Code und Herkunft.
+  // Probleme an der Mausposition: Farbbalken, Meldung, darunter Code und Herkunft
+  // und bei Regeltreffern die Konfidenz.
   if Length(FView.Problems) > 0 then
   begin
     for Problem in FView.Problems do
@@ -570,6 +571,14 @@ begin
         Canvas.Brush.Style := bsClear;
         Canvas.Font.Color := ToColor(Colors.Muted);
         Canvas.TextOut(Left, Y, Caption);
+      end;
+      // Konfidenz eines Regeltreffers als eigene Zeile (#144).
+      Caption := TAtlasStrings.Confidence(Problem.Confidence);
+      if Caption <> '' then
+      begin
+        Inc(Y, Canvas.TextHeight('Wg') + Scale(2));
+        if Drawing then
+          Canvas.TextOut(Left, Y, Caption);
       end;
       Inc(Y, Canvas.TextHeight('Wg') + Scale(6));
       Left := Scale(11);

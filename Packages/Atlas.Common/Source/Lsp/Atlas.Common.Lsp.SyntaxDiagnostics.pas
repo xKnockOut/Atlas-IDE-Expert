@@ -629,7 +629,9 @@ begin
   Result.AddPair('codeDescription', TJSONObject.Create(
     TJSONPair.Create('href', TRuleCatalog.HelpUri(AFinding.RuleId))));
   Result.AddPair('source', Source);
-  Result.AddPair('message', AFinding.DisplayMessage);
+  // Konfidenz als eigenes Feld, der Meldungstext bleibt unverändert (#144).
+  Result.AddPair('message', AFinding.Message);
+  Result.AddPair('data', TJSONObject.Create(TJSONPair.Create('confidence', ConfidenceName(AFinding.Confidence))));
 end;
 
 class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;

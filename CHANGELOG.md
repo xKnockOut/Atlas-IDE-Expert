@@ -45,6 +45,7 @@ Server und Erweiterung tragen immer dieselbe Version.
 - Delphi-Version je Projekt aus der ProjectVersion (#47).
 
 ### Geändert
+- Konfidenz als eigenes Feld statt Zusatz „(Konfidenz: mittel)“ im Meldungstext: LSP `data.confidence`, eigene Spalte in der Textausgabe des Linters und im MCP-Werkzeug, eigene Zeile im Tooltip des Plugins und im KI-Prompt; Schema und Doku beschreiben den Deckel bei `severity` (#144).
 - Linter: Exit-Code 1 nur noch, wenn ein Treffer `--fail-on` erreicht (Standard: ein Fehler), sonst 0; bisher 1 bei Warnungen und 2 bei Fehlern. 3 bleibt für Aufruf- und Lesefehler (#95).
 
 ### Behoben
