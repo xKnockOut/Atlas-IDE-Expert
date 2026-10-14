@@ -23,6 +23,8 @@ type
     procedure ServerGroupHeaderAndActionLast;
     [Test]
     procedure FormComponentsComeFirst;
+    [Test]
+    procedure SenderItemsGetHeaderAndTag;
   end;
 
   [TestFixture]
@@ -47,6 +49,7 @@ uses
   System.JSON,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Ranking,
+  Atlas.Core.Completion.Presentation,
   Atlas.Core.Completion.Usage,
   Atlas.Core.Completion.Controller,
   Atlas.Core.Completion.Providers.Fixed,
@@ -279,6 +282,38 @@ begin
   // Ohne Formulareinträge keine Überschrift.
   Items := Copy(Items, 0, 1);
   Assert.AreEqual('TButton', Names(Items, TAtlasRanking.Order(Items, 'button', Options)));
+end;
+
+procedure TAtlasRankingTests.SenderItemsGetHeaderAndTag;
+var
+  Json: TJSONObject;
+  Items: TAtlasCompletionItems;
+  Options: TAtlasRankOptions;
+  Tags: TAtlasTags;
+  Found: Boolean;
+  Tag: TAtlasTag;
+begin
+  // Sender mit Typumwandlung (#480): eine Überschrift über der Liste, Marke „als TButton“.
+  Json := TJSONObject.ParseJSONValue('{"label":"Caption","kind":10,"detail":"string","data":{"sender":"TButton",' +
+    '"senderOf":"btnSave, btnLoad","scope":3}}') as TJSONObject;
+  try
+    Items := [TAtlasServerCompletionProvider.ItemFromLsp(Json, 0)];
+  finally
+    Json.Free;
+  end;
+  Assert.AreEqual('TButton', Items[0].Sender);
+  Assert.AreEqual('btnSave, btnLoad', Items[0].SenderOf);
+  Options := TAtlasRankOptions.Defaults;
+  Assert.AreEqual('#,Caption', Names(Items, TAtlasRanking.Order(Items, 'Cap', Options)));
+  Tags := TAtlasItemPresentation.Tags(Items[0]);
+  Found := False;
+  for Tag in Tags do
+    if Tag.Text = 'als TButton' then
+      Found := True;
+  Assert.IsTrue(Found);
+  // Ohne Sender keine Überschrift.
+  Items[0].Sender := '';
+  Assert.AreEqual('Caption', Names(Items, TAtlasRanking.Order(Items, 'Cap', Options)));
 end;
 
 { TAtlasUsageTests }

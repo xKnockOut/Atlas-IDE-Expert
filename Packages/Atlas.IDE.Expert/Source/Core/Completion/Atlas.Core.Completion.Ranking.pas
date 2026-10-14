@@ -24,6 +24,7 @@
 //   - Komponenten aus dem Formular (#455) stehen als eigene Gruppe mit Überschrift („Formular frmMain“) vor allen
 //     übrigen Bezeichnern. Passt eine nur über ihren Typ ("button" → btnSave: TButton), hat der Server sie schon
 //     gefiltert; sie bleibt sichtbar und steht hinter den Namenstreffern.
+//   - Sender mit Typumwandlung (#480): eine Überschrift „Sender ist TButton · btnSave, btnLoad“ über der Liste.
 
 interface
 
@@ -266,6 +267,8 @@ begin
         if (Position = 0) or (Items[Found[Position - 1]].Form = '') then
           Ordered.Add(Header);
       end
+      else if (Items[Index].Sender <> '') and (Position = 0) then
+        Ordered.Add(Header)
       // Nach der Formulargruppe eine Überschrift über dem Rest („Weitere“ bzw. die Gruppe zum erwarteten Typ).
       else if (Position > 0) and (Items[Found[Position - 1]].Form <> '') then
         Ordered.Add(Header)

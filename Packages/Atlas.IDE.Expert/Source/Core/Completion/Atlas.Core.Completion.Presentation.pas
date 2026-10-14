@@ -297,6 +297,9 @@ begin
     Result := Result + [MakeTag('+' + IntToStr(AItem.OverloadCount - 1), TAtlasTagKind.Neutral)];
   if AItem.IsHelper then
     Result := Result + [MakeTag('Helper', TAtlasTagKind.Accent)];
+  // Sender mit Typumwandlung (#480).
+  if AItem.Sender <> '' then
+    Result := Result + [MakeTag('als ' + AItem.Sender, TAtlasTagKind.Accent)];
   case AItem.Usage of
     TAtlasUsageMark.Recent:
       begin

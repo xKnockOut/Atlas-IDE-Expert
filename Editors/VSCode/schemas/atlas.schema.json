@@ -300,11 +300,20 @@
           ],
           "default": "public",
           "description": "Abschnitt der Klasse, in den „Interface implementieren“ die Deklarationen fehlender Interface-Methoden schreibt."
+        },
+        "senderCast": {
+          "type": "string",
+          "enum": [
+            "as",
+            "cast"
+          ],
+          "default": "as",
+          "description": "Form der Typumwandlung, wenn nach Sender. ein Member der zugewiesenen Komponenten gewählt wird: \"as\" schreibt (Sender as TButton), \"cast\" schreibt TButton(Sender)."
         }
       },
       "x-page": "Vervollständigung",
       "x-control": "Auswahl",
-      "x-issue": "#229, #466"
+      "x-issue": "#229, #466, #480"
     },
     "usesCommand": {
       "type": "boolean",

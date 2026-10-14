@@ -139,6 +139,10 @@ type
     Form: string;
     /// <summary>Die Komponente passt nur über ihren Typ ("button" → btnSave): immer sichtbar, hinter den Namenstreffern.</summary>
     ByType: Boolean;
+    /// <summary>Sender mit Typumwandlung (#480): Typ, als der Sender gilt („als TButton“); '' sonst.</summary>
+    Sender: string;
+    /// <summary>Komponenten, denen der Ereignisbehandler zugewiesen ist: "btnSave, btnLoad".</summary>
+    SenderOf: string;
     /// <summary>Zahl der Überladungen samt dieser (mindestens 1).</summary>
     function OverloadCount: Integer;
   end;

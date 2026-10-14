@@ -460,8 +460,13 @@ begin
     Text := TAtlasStrings.Fmt(TAtlasTextId.UnknownHeader, [FItems[FOrder[APosition + 1]].Unknown])
   else if (APosition < High(FOrder)) and (FOrder[APosition + 1] >= 0) then
   begin
+    // Sender mit Typumwandlung (#480): „Sender ist TButton · btnSave, btnLoad“ über der Liste; weitere
+    // Überschriften darin sind die der geerbten Gruppen.
+    if (APosition = 0) and (FItems[FOrder[APosition + 1]].Sender <> '') then
+      Text := TAtlasStrings.Fmt(TAtlasTextId.SenderHeader, [FItems[FOrder[APosition + 1]].Sender,
+        FItems[FOrder[APosition + 1]].SenderOf])
     // Komponenten aus dem Formular (#455): „Formular frmMain“.
-    if FItems[FOrder[APosition + 1]].Form <> '' then
+    else if FItems[FOrder[APosition + 1]].Form <> '' then
       Text := TAtlasStrings.Fmt(TAtlasTextId.FormHeader, [FItems[FOrder[APosition + 1]].Form])
     // Interface implementieren (#466): „Fehlende Methoden von IExporter, IFlush“.
     else if FItems[FOrder[APosition + 1]].Batch then
