@@ -994,7 +994,17 @@ begin
     // Modifizierer: const, var, out, constref
     if IsKw(['const', 'var']) or ((IsIdentText('out') or IsIdentText('constref')) and
       (PeekToken(1).Kind = TPascalTokenKind.Identifier)) then
+    begin
+      if IsKw('const') then
+        Param.Modifier := TParameterModifier.ConstParam
+      else if IsKw('var') then
+        Param.Modifier := TParameterModifier.VarParam
+      else if IsIdentText('out') then
+        Param.Modifier := TParameterModifier.OutParam
+      else
+        Param.Modifier := TParameterModifier.ConstRefParam;
       Advance;
+    end;
     ParseAttributes(Param);
     Names := ExpectIdent;
     while AcceptSym(',') do

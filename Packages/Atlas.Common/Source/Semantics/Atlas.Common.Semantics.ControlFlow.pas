@@ -18,8 +18,20 @@
 // setzt (#647).
 //
 // Zuweisungen: einfache Zuweisungen an einen Bezeichner, Schleifenvariablen,
-// Inline-Variablen mit Startwert und Exit(Wert) für Result. Zuweisungen über
-// var/out-Parameter sind nicht erfasst.
+// Inline-Variablen mit Startwert und Exit(Wert) für Result.
+//
+// Unsichere Änderungen (#143): Übergibt eine Anweisung eine Variable an einen
+// var- oder out-Parameter oder an eine Routine mit unbekannter Signatur
+// (TryGetValue(K, Result), SetLength(Result, N), FillChar(Result, …)), nimmt
+// sie ihre Adresse (@Result, Addr(Result)), weist sie einem Teil zu
+// (Result.Feld := …, Result[I] := …), ruft eine Methode auf ihr auf, nutzt sie
+// in with oder erwähnt sie in einer anonymen Methode, "berührt" der Knoten die
+// Variable: Sie kann danach gesetzt sein oder nicht. Abfragen über Wege durch
+// einen solchen Knoten antworten Unknown statt No oder Yes. Die Signatur
+// liefert ein TFlowSignatureLookup; ohne Angabe gelten die Routinen derselben
+// Datei und die Standardroutinen, Aufrufe über Objekte (Obj.Methode) sind
+// unbekannt. Bei bekannter Signatur mit Wertparameter (ohne Modifizierer oder
+// const) bleibt die Aussage unverändert.
 //
 // Enthält die Routine asm oder Syntaxfehler, ist der Graph unvollständig;
 // die Abfragen liefern dann Unknown statt einer Vermutung.
@@ -38,12 +50,33 @@ type
 
   TFlowAnswer = (No, Yes, Unknown);
 
+  /// <summary>Wie ein Aufruf ein Argument übergibt (#143).</summary>
+  TFlowArgumentMode = (Value, Reference, Output, Unknown);
+
+  /// <summary>Übergabeart des Arguments AArgument (0-basiert) im Aufruf ACall (Knoten der Art Call).</summary>
+  TFlowSignatureLookup = reference to function(ACall: TSyntaxNode; AArgument: Integer): TFlowArgumentMode;
+
+  TFlowSignatures = class
+  public
+    /// <summary>Übergabeart bei Standardroutinen und Typumwandlungen (SetLength, FillChar, Inc, Str,
+    /// Addr, IntToStr, Integer(…)); False bei unbekanntem Namen.</summary>
+    class function TryBuiltin(const AName: string; AArgument: Integer; out AMode: TFlowArgumentMode): Boolean;
+      static;
+    /// <summary>Routinen aus dem Baum unter ARoot (Überladungen zusammengefasst), dann Standardroutinen,
+    /// sonst Unknown; Aufrufe über Objekte sind Unknown. Liest den Baum erst beim ersten Aufruf;
+    /// ARoot muss länger leben als die Funktion.</summary>
+    class function FromTree(ARoot: TSyntaxNode): TFlowSignatureLookup; static;
+  end;
+
   TFlowNode = class
   private
     FIndex: Integer;
     FKind: TFlowNodeKind;
     FSyntax: TSyntaxNode;
     FDefines: string;
+    FReads: TArray<string>;
+    FMaybeReads: TArray<string>;
+    FTouches: TArray<string>;
     FSuccessors: TList<TFlowNode>;
     FPredecessors: TList<TFlowNode>;
   public
@@ -55,6 +88,15 @@ type
     property Syntax: TSyntaxNode read FSyntax;
     /// <summary>Name der Variablen, der dieser Knoten einen Wert zuweist; sonst ''.</summary>
     property Defines: string read FDefines;
+    /// <summary>Variablen, die der Knoten sicher liest.</summary>
+    property Reads: TArray<string> read FReads;
+    /// <summary>Variablen, die der Knoten vielleicht liest (var-Argument, unbekannte Signatur, Teilzuweisung).</summary>
+    property MaybeReads: TArray<string> read FMaybeReads;
+    /// <summary>Variablen, die der Knoten vielleicht ändert, ohne sie sicher zu setzen (#143).</summary>
+    property Touches: TArray<string> read FTouches;
+    function ReadsName(const AName: string): Boolean;
+    function MaybeReadsName(const AName: string): Boolean;
+    function TouchesName(const AName: string): Boolean;
     property Successors: TList<TFlowNode> read FSuccessors;
     property Predecessors: TList<TFlowNode> read FPredecessors;
   end;
@@ -62,8 +104,12 @@ type
   TReachingDefinitions = record
     /// <summary>Zuweisungen, die den Knoten ohne erneute Zuweisung erreichen.</summary>
     Definitions: TArray<TFlowNode>;
-    /// <summary>Ein Weg vom Anfang der Routine kommt ohne Zuweisung an.</summary>
+    /// <summary>Ein Weg vom Anfang der Routine kommt ohne Zuweisung und ohne unsichere Änderung an.</summary>
     FromEntry: Boolean;
+    /// <summary>Ein Weg vom Anfang kommt ohne Zuweisung, aber über eine unsichere Änderung an.</summary>
+    MaybeFromEntry: Boolean;
+    /// <summary>Knoten mit unsicherer Änderung auf den Wegen zurück (#143).</summary>
+    Uncertain: TArray<TFlowNode>;
   end;
 
   TControlFlowGraph = class
@@ -79,8 +125,11 @@ type
     constructor Create;
     destructor Destroy; override;
     /// <summary>Baut den Graphen für eine Routine (RoutineDecl, AnonymousMethod)
-    /// oder einen Anweisungsblock. Der Syntaxbaum muss länger leben als der Graph.</summary>
-    class function Build(ARoutine: TSyntaxNode): TControlFlowGraph; static;
+    /// oder einen Anweisungsblock. Der Syntaxbaum muss länger leben als der Graph.
+    /// ALookup nennt die Übergabeart von Argumenten; nil = TFlowSignatures.FromTree
+    /// mit der Wurzel des Baums.</summary>
+    class function Build(ARoutine: TSyntaxNode; const ALookup: TFlowSignatureLookup = nil): TControlFlowGraph;
+      static;
     function NodeOf(ASyntax: TSyntaxNode): TFlowNode;
     function IsReachable(ANode: TFlowNode): TFlowAnswer;
     /// <summary>Wird A auf jedem Weg vom Anfang zu B durchlaufen?</summary>
@@ -88,8 +137,13 @@ type
     /// <summary>Anweisungen, die vom Anfang aus nicht erreichbar sind.</summary>
     function UnreachableStatements: TArray<TFlowNode>;
     function ReachingDefinitions(ANode: TFlowNode; const AName: string): TReachingDefinitions;
-    /// <summary>Kann die Routine normal enden, ohne dass AName (z. B. Result) gesetzt wurde?</summary>
+    /// <summary>Kann die Routine normal enden, ohne dass AName (z. B. Result) gesetzt wurde?
+    /// Unknown, wenn das nur über eine unsichere Änderung möglich ist.</summary>
     function MayEndWithout(const AName: string): TFlowAnswer;
+    /// <summary>Wird AName irgendwo gelesen, bevor ihm auf jedem Weg ein Wert zugewiesen wurde?</summary>
+    function MayReadBeforeWrite(const AName: string): TFlowAnswer; overload;
+    /// <summary>Kann AName beim Erreichen von ANode noch ohne Zuweisung sein?</summary>
+    function MayReadBeforeWrite(ANode: TFlowNode; const AName: string): TFlowAnswer; overload;
     property Nodes: TObjectList<TFlowNode> read FNodes;
     property Entry: TFlowNode read FEntry;
     property ExitNode: TFlowNode read FExit;
@@ -135,6 +189,8 @@ type
     FRaiseTarget: TJumpTarget;
     FLabels: TDictionary<string, TFlowNode>;
     FTryDepth: Integer;
+    FLookup: TFlowSignatureLookup;
+    procedure Analyze(ANode: TFlowNode);
     function NewNode(AKind: TFlowNodeKind; ASyntax: TSyntaxNode): TFlowNode;
     function NewTarget: TJumpTarget;
     procedure Link(AFrom, ATo: TFlowNode);
@@ -152,9 +208,27 @@ type
     function BuildTry(S: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
     function BuildCall(S: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
   public
-    constructor Create(AGraph: TControlFlowGraph);
+    constructor Create(AGraph: TControlFlowGraph; const ALookup: TFlowSignatureLookup);
     destructor Destroy; override;
     procedure Run(ARoutine: TSyntaxNode);
+  end;
+
+  /// <summary>Signaturen der Routinen einer Datei, erst bei Bedarf gelesen.</summary>
+  IFlowRoutineTable = interface
+    ['{6E1B7C2A-4F3D-4A8B-9C5E-2D7F1A3B8E64}']
+    function Find(const AName: string; AArgument: Integer; out AMode: TFlowArgumentMode): Boolean;
+  end;
+
+  TFlowRoutineTable = class(TInterfacedObject, IFlowRoutineTable)
+  private
+    FRoot: TSyntaxNode;
+    FRoutines: TDictionary<string, TArray<TFlowArgumentMode>>;
+    procedure Collect(ANode: TSyntaxNode);
+    procedure AddHeader(AHeader: TSyntaxNode);
+  public
+    constructor Create(ARoot: TSyntaxNode);
+    destructor Destroy; override;
+    function Find(const AName: string; AArgument: Integer; out AMode: TFlowArgumentMode): Boolean;
   end;
 
 function IsStatement(AKind: TSyntaxKind): Boolean;
@@ -170,6 +244,60 @@ begin
   else
     Result := False;
   end;
+end;
+
+function ContainsName(const ANames: TArray<string>; const AName: string): Boolean;
+var
+  Name: string;
+begin
+  for Name in ANames do
+    if SameText(Name, AName) then
+      Exit(True);
+  Result := False;
+end;
+
+procedure AddName(var ANames: TArray<string>; const AName: string);
+begin
+  if (AName <> '') and not ContainsName(ANames, AName) then
+    ANames := ANames + [AName];
+end;
+
+/// <summary>Bezeichner, an dem eine Kette wie X.Feld, X[I] oder X^ hängt; sonst ''.</summary>
+function RootName(ANode: TSyntaxNode): string;
+begin
+  while (ANode <> nil) and (ANode.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
+    TSyntaxKind.Dereference]) and (ANode.ChildCount > 0) do
+    ANode := ANode.Children[0];
+  if (ANode <> nil) and (ANode.Kind = TSyntaxKind.Identifier) then
+    Result := ANode.Name
+  else
+    Result := '';
+end;
+
+/// <summary>Enthält die Kette bis zum Bezeichner ein ^? Dann ändert sie nicht die Variable selbst.</summary>
+function ThroughPointer(ANode: TSyntaxNode): Boolean;
+begin
+  while (ANode <> nil) and (ANode.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
+    TSyntaxKind.Dereference]) and (ANode.ChildCount > 0) do
+  begin
+    if ANode.Kind = TSyntaxKind.Dereference then
+      Exit(True);
+    ANode := ANode.Children[0];
+  end;
+  Result := False;
+end;
+
+/// <summary>Enthält der Teilbaum einen Fehlerknoten (auch in Ausdrücken)?</summary>
+function ContainsError(ANode: TSyntaxNode): Boolean;
+var
+  Index: Integer;
+begin
+  if ANode.Kind = TSyntaxKind.Error then
+    Exit(True);
+  for Index := 0 to ANode.ChildCount - 1 do
+    if ContainsError(ANode.Children[Index]) then
+      Exit(True);
+  Result := False;
 end;
 
 function Concat(const A, B: TArray<TFlowNode>): TArray<TFlowNode>;
@@ -198,6 +326,191 @@ begin
   FSuccessors.Free;
   FPredecessors.Free;
   inherited;
+end;
+
+function TFlowNode.ReadsName(const AName: string): Boolean;
+begin
+  Result := ContainsName(FReads, AName);
+end;
+
+function TFlowNode.MaybeReadsName(const AName: string): Boolean;
+begin
+  Result := ContainsName(FMaybeReads, AName);
+end;
+
+function TFlowNode.TouchesName(const AName: string): Boolean;
+begin
+  Result := ContainsName(FTouches, AName);
+end;
+
+{ TFlowSignatures }
+
+type
+  TBuiltinSignature = record
+    Name: string;
+    /// <summary>Je Argument V (Wert), R (var), O (out); das letzte Zeichen gilt für alle weiteren.</summary>
+    Modes: string;
+  end;
+
+const
+  BuiltinSignatures: array[0..27] of TBuiltinSignature = (
+    (Name: 'SetLength'; Modes: 'RV'), (Name: 'FillChar'; Modes: 'RV'), (Name: 'Inc'; Modes: 'RV'),
+    (Name: 'Dec'; Modes: 'RV'), (Name: 'Include'; Modes: 'RV'), (Name: 'Exclude'; Modes: 'RV'),
+    (Name: 'Insert'; Modes: 'VRV'), (Name: 'Delete'; Modes: 'RV'), (Name: 'Move'; Modes: 'VRV'),
+    (Name: 'SetString'; Modes: 'RV'), (Name: 'Initialize'; Modes: 'RV'), (Name: 'Finalize'; Modes: 'RV'),
+    (Name: 'FreeAndNil'; Modes: 'R'), (Name: 'GetMem'; Modes: 'RV'), (Name: 'ReallocMem'; Modes: 'RV'),
+    (Name: 'New'; Modes: 'RV'), (Name: 'Dispose'; Modes: 'RV'), (Name: 'Addr'; Modes: 'R'),
+    (Name: 'AtomicIncrement'; Modes: 'RV'), (Name: 'AtomicDecrement'; Modes: 'RV'),
+    (Name: 'AtomicExchange'; Modes: 'RV'), (Name: 'AtomicCmpExchange'; Modes: 'RV'),
+    (Name: 'Read'; Modes: 'R'), (Name: 'ReadLn'; Modes: 'R'), (Name: 'Str'; Modes: 'VO'),
+    (Name: 'Val'; Modes: 'VO'), (Name: 'SwapEndian'; Modes: 'V'), (Name: 'Exit'; Modes: 'V'));
+
+  /// <summary>Routinen und Typumwandlungen, die alle Argumente als Wert nehmen.</summary>
+  ValueRoutines: array[0..63] of string = ('Length', 'High', 'Low', 'SizeOf', 'Assigned', 'Ord', 'Chr', 'Succ',
+    'Pred', 'Abs', 'Round', 'Trunc', 'Frac', 'Int', 'Odd', 'Sqr', 'Sqrt', 'Copy', 'Pos', 'Concat', 'IntToStr',
+    'StrToInt', 'StrToIntDef', 'FloatToStr', 'Format', 'Trim', 'UpperCase', 'LowerCase', 'SameText',
+    'CompareText', 'CompareStr', 'Write', 'WriteLn', 'ShowMessage', 'Assert', 'Halt', 'TypeInfo', 'Default',
+    'IntToHex', 'QuotedStr', 'Max', 'Min', 'BoolToStr', 'FreeMem', 'Integer', 'Cardinal', 'Byte', 'Word',
+    'Int64', 'UInt64', 'NativeInt', 'NativeUInt', 'Boolean', 'Char', 'AnsiChar', 'WideChar', 'string',
+    'Pointer', 'Double', 'Single', 'Extended', 'Currency', 'LongInt', 'TObject');
+
+class function TFlowSignatures.TryBuiltin(const AName: string; AArgument: Integer;
+  out AMode: TFlowArgumentMode): Boolean;
+var
+  Signature: TBuiltinSignature;
+  Code: Char;
+  Name: string;
+begin
+  AMode := TFlowArgumentMode.Unknown;
+  for Signature in BuiltinSignatures do
+    if SameText(Signature.Name, AName) then
+    begin
+      if AArgument < Length(Signature.Modes) then
+        Code := Signature.Modes[AArgument + 1]
+      else
+        Code := Signature.Modes[Length(Signature.Modes)];
+      case Code of
+        'R':
+          AMode := TFlowArgumentMode.Reference;
+        'O':
+          AMode := TFlowArgumentMode.Output;
+      else
+        AMode := TFlowArgumentMode.Value;
+      end;
+      Exit(True);
+    end;
+  for Name in ValueRoutines do
+    if SameText(Name, AName) then
+    begin
+      AMode := TFlowArgumentMode.Value;
+      Exit(True);
+    end;
+  Result := False;
+end;
+
+class function TFlowSignatures.FromTree(ARoot: TSyntaxNode): TFlowSignatureLookup;
+var
+  Table: IFlowRoutineTable;
+begin
+  Table := TFlowRoutineTable.Create(ARoot);
+  Result :=
+    function(ACall: TSyntaxNode; AArgument: Integer): TFlowArgumentMode
+    var
+      Callee: TSyntaxNode;
+    begin
+      Result := TFlowArgumentMode.Unknown;
+      if (ACall = nil) or (ACall.ChildCount = 0) then
+        Exit;
+      Callee := ACall.Children[0];
+      // Obj.Methode(…) oder Foo<T>(…): ohne Typauflösung unbekannt.
+      if Callee.Kind <> TSyntaxKind.Identifier then
+        Exit;
+      if not Table.Find(Callee.Name, AArgument, Result) then
+        TFlowSignatures.TryBuiltin(Callee.Name, AArgument, Result);
+    end;
+end;
+
+{ TFlowRoutineTable }
+
+constructor TFlowRoutineTable.Create(ARoot: TSyntaxNode);
+begin
+  inherited Create;
+  FRoot := ARoot;
+end;
+
+destructor TFlowRoutineTable.Destroy;
+begin
+  FRoutines.Free;
+  inherited;
+end;
+
+procedure TFlowRoutineTable.AddHeader(AHeader: TSyntaxNode);
+var
+  Params, Param: TSyntaxNode;
+  Modes, Known: TArray<TFlowArgumentMode>;
+  Mode: TFlowArgumentMode;
+  Key: string;
+  Index, Count: Integer;
+begin
+  Modes := nil;
+  Params := AHeader.FindChild(TSyntaxKind.Parameters);
+  if Params <> nil then
+    for Index := 0 to Params.ChildCount - 1 do
+    begin
+      Param := Params.Children[Index];
+      if Param.Kind <> TSyntaxKind.Parameter then
+        Continue;
+      case Param.Modifier of
+        TParameterModifier.VarParam:
+          Mode := TFlowArgumentMode.Reference;
+        TParameterModifier.OutParam:
+          Mode := TFlowArgumentMode.Output;
+      else
+        Mode := TFlowArgumentMode.Value;
+      end;
+      for Count := 1 to Length(Param.Name.Split([','])) do
+        Modes := Modes + [Mode];
+    end;
+  Key := LowerCase(Copy(AHeader.Name, LastDelimiter('.', AHeader.Name) + 1, MaxInt));
+  if Key = '' then
+    Exit;
+  // Überladungen: Wo sich die Übergabeart unterscheidet oder ein Argument fehlt, ist sie unbekannt.
+  if FRoutines.TryGetValue(Key, Known) then
+  begin
+    if Length(Known) > Length(Modes) then
+      SetLength(Modes, Length(Known));
+    for Index := 0 to High(Modes) do
+      if (Index > High(Known)) or (Known[Index] <> Modes[Index]) then
+        Modes[Index] := TFlowArgumentMode.Unknown;
+  end;
+  FRoutines.AddOrSetValue(Key, Modes);
+end;
+
+procedure TFlowRoutineTable.Collect(ANode: TSyntaxNode);
+var
+  Index: Integer;
+begin
+  if ANode.Kind = TSyntaxKind.RoutineHeader then
+    AddHeader(ANode);
+  for Index := 0 to ANode.ChildCount - 1 do
+    Collect(ANode.Children[Index]);
+end;
+
+function TFlowRoutineTable.Find(const AName: string; AArgument: Integer; out AMode: TFlowArgumentMode): Boolean;
+var
+  Modes: TArray<TFlowArgumentMode>;
+begin
+  AMode := TFlowArgumentMode.Unknown;
+  if FRoutines = nil then
+  begin
+    FRoutines := TDictionary<string, TArray<TFlowArgumentMode>>.Create;
+    if FRoot <> nil then
+      Collect(FRoot);
+  end;
+  Result := FRoutines.TryGetValue(LowerCase(AName), Modes);
+  // Mehr Argumente als Parameter: andere Überladung oder offenes Array, also unbekannt.
+  if Result and (AArgument >= 0) and (AArgument <= High(Modes)) then
+    AMode := Modes[AArgument];
 end;
 
 { TJumpTarget }
@@ -233,10 +546,11 @@ end;
 
 { TFlowBuilder }
 
-constructor TFlowBuilder.Create(AGraph: TControlFlowGraph);
+constructor TFlowBuilder.Create(AGraph: TControlFlowGraph; const ALookup: TFlowSignatureLookup);
 begin
   inherited Create;
   FGraph := AGraph;
+  FLookup := ALookup;
   FTargets := TObjectList<TJumpTarget>.Create;
   FFinallies := TObjectList<TFinallyContext>.Create(False);
   FLoops := TList<TLoopContext>.Create;
@@ -618,11 +932,163 @@ begin
     Result := [Node];
 end;
 
+procedure TFlowBuilder.Analyze(ANode: TFlowNode);
+
+  procedure Touch(const AName: string; AMaybeRead: Boolean);
+  begin
+    AddName(ANode.FTouches, AName);
+    if AMaybeRead then
+      AddName(ANode.FMaybeReads, AName);
+  end;
+
+  /// <summary>Jede Erwähnung in einer anonymen Methode: Sie kann die Variable später ändern.</summary>
+  procedure Captured(E: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if E.Kind = TSyntaxKind.Identifier then
+      Touch(E.Name, True);
+    for Index := 0 to E.ChildCount - 1 do
+      Captured(E.Children[Index]);
+  end;
+
+  /// <summary>Liest die Namen in E. Mit AChainParts nur die Teile einer Kette wie X[I].Feld
+  /// außer dem Bezeichner am Anfang (die Indizes werden gelesen).</summary>
+  procedure Visit(E: TSyntaxNode; AChainParts: Boolean);
+
+    procedure VisitArgument(ACall: TSyntaxNode; AIndex: Integer);
+    var
+      Arg: TSyntaxNode;
+      Root: string;
+      Mode: TFlowArgumentMode;
+    begin
+      Arg := ACall.Children[AIndex];
+      Root := RootName(Arg);
+      // Nur eine Variable oder ein Teil davon kann als var/out übergeben werden.
+      if (Root = '') or ThroughPointer(Arg) then
+      begin
+        Visit(Arg, False);
+        Exit;
+      end;
+      Mode := TFlowArgumentMode.Unknown;
+      if Assigned(FLookup) then
+        Mode := FLookup(ACall, AIndex - 1);
+      case Mode of
+        TFlowArgumentMode.Value:
+          Visit(Arg, False);
+        TFlowArgumentMode.Output:
+          begin
+            Touch(Root, False);
+            Visit(Arg, True);
+          end;
+      else
+        begin
+          // var oder unbekannt: kann lesen und schreiben.
+          Touch(Root, True);
+          Visit(Arg, True);
+        end;
+      end;
+    end;
+
+  var
+    Index: Integer;
+    Root: string;
+  begin
+    if AChainParts then
+    begin
+      while (E <> nil) and (E.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
+        TSyntaxKind.Dereference]) and (E.ChildCount > 0) do
+      begin
+        for Index := 1 to E.ChildCount - 1 do
+          Visit(E.Children[Index], False);
+        E := E.Children[0];
+      end;
+      Exit;
+    end;
+    case E.Kind of
+      TSyntaxKind.Identifier:
+        AddName(ANode.FReads, E.Name);
+      TSyntaxKind.TypeReference, TSyntaxKind.GenericArgs, TSyntaxKind.Literal:
+        ;
+      TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl:
+        Captured(E);
+      TSyntaxKind.AddressOf:
+        begin
+          Root := '';
+          if E.ChildCount > 0 then
+            Root := RootName(E.Children[0]);
+          if (Root <> '') and not ThroughPointer(E.Children[0]) then
+          begin
+            Touch(Root, False);
+            Visit(E.Children[0], True);
+          end
+          else
+            for Index := 0 to E.ChildCount - 1 do
+              Visit(E.Children[Index], False);
+        end;
+      TSyntaxKind.Call:
+        if E.ChildCount > 0 then
+        begin
+          Visit(E.Children[0], False);
+          // Methode auf einer Variablen (X.Clear, R.Init(…)) kann deren Teile ändern.
+          if (E.Children[0].Kind = TSyntaxKind.MemberAccess) and not ThroughPointer(E.Children[0]) then
+            Touch(RootName(E.Children[0]), True);
+          for Index := 1 to E.ChildCount - 1 do
+            VisitArgument(E, Index);
+        end;
+    else
+      for Index := 0 to E.ChildCount - 1 do
+        Visit(E.Children[Index], False);
+    end;
+  end;
+
+var
+  S, Child, Target: TSyntaxNode;
+  Index: Integer;
+  AllChildren: Boolean;
+begin
+  S := ANode.Syntax;
+  if (S = nil) or (S.Kind in [TSyntaxKind.AsmBlock, TSyntaxKind.GotoStatement, TSyntaxKind.EmptyStatement]) then
+    Exit;
+  AllChildren := (ANode.Kind = TFlowNodeKind.Statement) and (S.Kind in [TSyntaxKind.AssignStatement,
+    TSyntaxKind.CallStatement, TSyntaxKind.RaiseStatement, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst,
+    TSyntaxKind.Error]);
+  for Index := 0 to S.ChildCount - 1 do
+  begin
+    Child := S.Children[Index];
+    if not AllChildren and (IsStatement(Child.Kind) or (Child.Kind in [TSyntaxKind.CaseItem,
+      TSyntaxKind.CaseElse, TSyntaxKind.ExceptBlock, TSyntaxKind.ExceptionHandler, TSyntaxKind.FinallyBlock])) then
+      Continue;
+    if (Index = 0) and (S.Kind = TSyntaxKind.AssignStatement) then
+    begin
+      // Ziel der Zuweisung: X := … setzt X (Defines); X.Feld := … und X[I] := … ändern nur einen Teil.
+      Target := Child;
+      if Target.Kind <> TSyntaxKind.Identifier then
+        if (RootName(Target) <> '') and not ThroughPointer(Target) then
+        begin
+          Touch(RootName(Target), True);
+          Visit(Target, True);
+        end
+        else
+          Visit(Target, False);
+      Continue;
+    end;
+    Visit(Child, False);
+    // X.Methode; ohne Klammern und with X do …: Teile von X können sich ändern.
+    if ((S.Kind = TSyntaxKind.CallStatement) or (S.Kind = TSyntaxKind.WithStatement)) and
+      (Child.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Identifier, TSyntaxKind.IndexAccess]) and
+      ((S.Kind = TSyntaxKind.WithStatement) or (Child.Kind = TSyntaxKind.MemberAccess)) and
+      not ThroughPointer(Child) then
+      Touch(RootName(Child), True);
+  end;
+end;
+
 procedure TFlowBuilder.Run(ARoutine: TSyntaxNode);
 var
   Body: TSyntaxNode;
   Index: Integer;
   Ends: TArray<TFlowNode>;
+  Node: TFlowNode;
 begin
   FGraph.FEntry := NewNode(TFlowNodeKind.Entry, nil);
   FGraph.FExit := NewNode(TFlowNodeKind.Exit, nil);
@@ -646,10 +1112,15 @@ begin
     Link(FGraph.FEntry, FGraph.FExit);
     Exit;
   end;
+  // Syntaxfehler irgendwo in der Routine, auch mitten in einem Ausdruck: keine Aussage.
+  if ContainsError(Body) then
+    FGraph.FComplete := False;
   Ends := Statement(Body, [FGraph.FEntry]);
   LinkAll(Ends, FGraph.FExit);
   Resolve(FExitTarget, FGraph.FExit);
   Resolve(FRaiseTarget, FGraph.FRaiseExit);
+  for Node in FGraph.FNodes do
+    Analyze(Node);
 end;
 
 { TControlFlowGraph }
@@ -667,12 +1138,23 @@ begin
   inherited;
 end;
 
-class function TControlFlowGraph.Build(ARoutine: TSyntaxNode): TControlFlowGraph;
+class function TControlFlowGraph.Build(ARoutine: TSyntaxNode; const ALookup: TFlowSignatureLookup):
+  TControlFlowGraph;
 var
   Builder: TFlowBuilder;
+  Lookup: TFlowSignatureLookup;
+  Root: TSyntaxNode;
 begin
+  Lookup := ALookup;
+  if not Assigned(Lookup) then
+  begin
+    Root := ARoutine;
+    while Root.Parent <> nil do
+      Root := Root.Parent;
+    Lookup := TFlowSignatures.FromTree(Root);
+  end;
   Result := TControlFlowGraph.Create;
-  Builder := TFlowBuilder.Create(Result);
+  Builder := TFlowBuilder.Create(Result, Lookup);
   try
     Builder.Run(ARoutine);
   finally
@@ -729,10 +1211,16 @@ var
   Changed, Value: Boolean;
   Node, Pred: TFlowNode;
   First: Boolean;
+  Reachable: TArray<Boolean>;
 begin
   if FDominators <> nil then
     Exit;
   Count := FNodes.Count;
+  // Unerreichbare Vorgänger (Code nach Exit) zählen nicht; sonst dominierte
+  // nichts mehr den gemeinsamen Nachfolger.
+  SetLength(Reachable, Count);
+  for Node in FNodes do
+    Reachable[Node.Index] := IsReachable(Node) = TFlowAnswer.Yes;
   SetLength(FDominators, Count);
   for I := 0 to Count - 1 do
   begin
@@ -758,6 +1246,8 @@ begin
           First := True;
           for Pred in Node.Predecessors do
           begin
+            if not Reachable[Pred.Index] then
+              Continue;
             if First then
               Value := FDominators[Pred.Index][J]
             else
@@ -817,51 +1307,116 @@ end;
 
 function TControlFlowGraph.ReachingDefinitions(ANode: TFlowNode; const AName: string): TReachingDefinitions;
 var
-  Seen: TArray<Boolean>;
-  Stack: TStack<TFlowNode>;
+  // Zustand je Knoten: 0 = Weg ohne, 1 = Weg mit unsicherer Änderung dahinter.
+  Seen: array[Boolean] of TArray<Boolean>;
+  Stack: TStack<Integer>;
   Node, Pred: TFlowNode;
+  Item: Integer;
+  Touched: Boolean;
+
+  procedure Push(APred: TFlowNode; ATouched: Boolean);
+  begin
+    if not Seen[ATouched][APred.Index] then
+    begin
+      Seen[ATouched][APred.Index] := True;
+      Stack.Push(APred.Index * 2 + Ord(ATouched));
+    end;
+  end;
+
+  procedure AddUnique(var ANodes: TArray<TFlowNode>; ANew: TFlowNode);
+  var
+    Existing: TFlowNode;
+  begin
+    for Existing in ANodes do
+      if Existing = ANew then
+        Exit;
+    ANodes := ANodes + [ANew];
+  end;
+
 begin
   Result.Definitions := nil;
   Result.FromEntry := False;
-  SetLength(Seen, FNodes.Count);
-  Stack := TStack<TFlowNode>.Create;
+  Result.MaybeFromEntry := False;
+  Result.Uncertain := nil;
+  SetLength(Seen[False], FNodes.Count);
+  SetLength(Seen[True], FNodes.Count);
+  Stack := TStack<Integer>.Create;
   try
     for Pred in ANode.Predecessors do
-      if not Seen[Pred.Index] then
-      begin
-        Seen[Pred.Index] := True;
-        Stack.Push(Pred);
-      end;
+      Push(Pred, False);
     while Stack.Count > 0 do
     begin
-      Node := Stack.Pop;
+      Item := Stack.Pop;
+      Node := FNodes[Item div 2];
+      Touched := Odd(Item);
       if SameText(Node.Defines, AName) then
       begin
-        Result.Definitions := Result.Definitions + [Node];
+        AddUnique(Result.Definitions, Node);
         Continue;
       end;
       if Node = FEntry then
-        Result.FromEntry := True;
+      begin
+        if Touched then
+          Result.MaybeFromEntry := True
+        else
+          Result.FromEntry := True;
+      end;
+      if Node.TouchesName(AName) then
+      begin
+        AddUnique(Result.Uncertain, Node);
+        Touched := True;
+      end;
       for Pred in Node.Predecessors do
-        if not Seen[Pred.Index] then
-        begin
-          Seen[Pred.Index] := True;
-          Stack.Push(Pred);
-        end;
+        Push(Pred, Touched);
     end;
   finally
     Stack.Free;
   end;
 end;
 
+/// <summary>Yes über einen sicheren Weg, Unknown nur über unsichere Änderungen, sonst No.</summary>
+function AnswerOf(const ADefinitions: TReachingDefinitions): TFlowAnswer;
+begin
+  if ADefinitions.FromEntry then
+    Result := TFlowAnswer.Yes
+  else if ADefinitions.MaybeFromEntry then
+    Result := TFlowAnswer.Unknown
+  else
+    Result := TFlowAnswer.No;
+end;
+
 function TControlFlowGraph.MayEndWithout(const AName: string): TFlowAnswer;
 begin
   if not FComplete then
     Exit(TFlowAnswer.Unknown);
-  if ReachingDefinitions(FExit, AName).FromEntry then
-    Result := TFlowAnswer.Yes
-  else
-    Result := TFlowAnswer.No;
+  Result := AnswerOf(ReachingDefinitions(FExit, AName));
+end;
+
+function TControlFlowGraph.MayReadBeforeWrite(ANode: TFlowNode; const AName: string): TFlowAnswer;
+begin
+  if not FComplete then
+    Exit(TFlowAnswer.Unknown);
+  Result := AnswerOf(ReachingDefinitions(ANode, AName));
+end;
+
+function TControlFlowGraph.MayReadBeforeWrite(const AName: string): TFlowAnswer;
+var
+  Node: TFlowNode;
+  Answer: TFlowAnswer;
+begin
+  if not FComplete then
+    Exit(TFlowAnswer.Unknown);
+  Result := TFlowAnswer.No;
+  for Node in FNodes do
+    if (Node.ReadsName(AName) or Node.MaybeReadsName(AName)) and (IsReachable(Node) = TFlowAnswer.Yes) then
+    begin
+      Answer := AnswerOf(ReachingDefinitions(Node, AName));
+      // Ein Lesen, das nur vielleicht eines ist, ergibt höchstens Unknown.
+      if (Answer = TFlowAnswer.Yes) and Node.ReadsName(AName) then
+        Exit(TFlowAnswer.Yes);
+      if Answer <> TFlowAnswer.No then
+        Result := TFlowAnswer.Unknown;
+    end;
 end;
 
 end.
