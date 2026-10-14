@@ -8,6 +8,8 @@
 // Anfragen des Servers (z. B. window/workDoneProgress/create) beantwortet der
 // Client mit null; Anfragen und Benachrichtigungen gehen außerdem an
 // OnServerMessage (im Lese-Thread, z. B. workspace/diagnostic/refresh, #398).
+// Anfragen, die OnServerRequest übernimmt (z. B. workspace/applyEdit, #397),
+// beantwortet der Empfänger später selbst mit Respond.
 // Teilergebnisse (#616): Request mit AOnPartial schickt einen partialResultToken mit; $/progress zu diesem
 // Token geht an AOnPartial (im Lese-Thread, vor der Antwort), nicht an OnServerMessage.
 
@@ -25,6 +27,10 @@ type
   TLspServerMessageProc = reference to procedure(const AMethod: string; const AParams: TJSONValue);
   /// <summary>Teilergebnis zu einer Anfrage (#616); läuft im Lese-Thread, AValue gehört dem Client.</summary>
   TLspPartialProc = reference to procedure(const AValue: TJSONValue);
+  /// <summary>Anfrage des Servers (#397); läuft im Lese-Thread. True: Der Empfänger antwortet später mit
+  /// Respond(AId, …), AId gehört dann ihm. False: Der Client antwortet mit null und gibt AId frei.</summary>
+  TLspServerRequestFunc = reference to function(const AMethod: string; const AParams: TJSONValue;
+    AId: TJSONValue): Boolean;
 
   ELspClientError = class(Exception);
 
@@ -48,6 +54,7 @@ type
     FBuffer: TBytes;
     FClosed: Boolean;
     FOnServerMessage: TLspServerMessageProc;
+    FOnServerRequest: TLspServerRequestFunc;
     procedure SendText(const AText: string);
     procedure HandleMessage(const AText: string);
     /// <summary>$/progress zu einem Token aus Request mit Teilergebnissen; False, wenn es keines ist.</summary>
@@ -70,6 +77,9 @@ type
       const AOnPartial: TLspPartialProc): TJSONValue; overload;
     /// <summary>Sendet eine Benachrichtigung. Übernimmt AParams.</summary>
     procedure Notify(const AMethod: string; AParams: TJSONValue);
+    /// <summary>Antwort auf eine Anfrage des Servers, die OnServerRequest übernommen hat; übernimmt AId und
+    /// AResult (nil = null). Ohne Wirkung nach Close.</summary>
+    procedure Respond(AId, AResult: TJSONValue);
     /// <summary>Empfangene Bytes vom Server; threadsicher.</summary>
     procedure Receive(const ABytes: TBytes; ACount: Integer);
     /// <summary>Verbindung beendet: Wartende Anfragen schlagen fehl, neue auch.</summary>
@@ -77,6 +87,8 @@ type
     property Closed: Boolean read FClosed;
     /// <summary>Vor dem ersten Receive setzen.</summary>
     property OnServerMessage: TLspServerMessageProc read FOnServerMessage write FOnServerMessage;
+    /// <summary>Vor dem ersten Receive setzen.</summary>
+    property OnServerRequest: TLspServerRequestFunc read FOnServerRequest write FOnServerRequest;
   end;
 
 implementation
@@ -274,6 +286,8 @@ var
   Pending: TPending;
   Reply: TJSONObject;
   ReplyText: string;
+  IdCopy: TJSONValue;
+  Taken: Boolean;
 begin
   Value := TJSONObject.ParseJSONValue(AText);
   try
@@ -293,20 +307,33 @@ begin
           on Exception do
             ;
         end;
-      // Anfrage des Servers: mit null beantworten, damit er nicht wartet.
-      if IdValue <> nil then
+      if IdValue = nil then
+        Exit;
+      // Anfrage, die ein Empfänger selbst beantwortet.
+      if Assigned(FOnServerRequest) then
       begin
-        Reply := TJSONObject.Create;
+        IdCopy := TJSONValue(IdValue.Clone);
         try
-          Reply.AddPair('jsonrpc', '2.0');
-          Reply.AddPair('id', TJSONValue(IdValue.Clone));
-          Reply.AddPair('result', TJSONNull.Create);
-          ReplyText := Reply.ToJSON;
-        finally
-          Reply.Free;
+          Taken := FOnServerRequest(Message.GetValue<string>('method', ''), Message.GetValue('params'), IdCopy);
+        except
+          on Exception do
+            Taken := False;
         end;
-        SendText(ReplyText);
+        if Taken then
+          Exit;
+        IdCopy.Free;
       end;
+      // Sonst mit null beantworten, damit der Server nicht wartet.
+      Reply := TJSONObject.Create;
+      try
+        Reply.AddPair('jsonrpc', '2.0');
+        Reply.AddPair('id', TJSONValue(IdValue.Clone));
+        Reply.AddPair('result', TJSONNull.Create);
+        ReplyText := Reply.ToJSON;
+      finally
+        Reply.Free;
+      end;
+      SendText(ReplyText);
       Exit;
     end;
     if not (IdValue is TJSONNumber) then
@@ -331,6 +358,27 @@ begin
   finally
     Value.Free;
   end;
+end;
+
+procedure TLspClient.Respond(AId, AResult: TJSONValue);
+var
+  Reply: TJSONObject;
+  Text: string;
+begin
+  Reply := TJSONObject.Create;
+  try
+    Reply.AddPair('jsonrpc', '2.0');
+    Reply.AddPair('id', AId);
+    if AResult = nil then
+      Reply.AddPair('result', TJSONNull.Create)
+    else
+      Reply.AddPair('result', AResult);
+    Text := Reply.ToJSON;
+  finally
+    Reply.Free;
+  end;
+  if not FClosed then
+    SendText(Text);
 end;
 
 function TLspClient.TakeMessage(out AText: string): Boolean;

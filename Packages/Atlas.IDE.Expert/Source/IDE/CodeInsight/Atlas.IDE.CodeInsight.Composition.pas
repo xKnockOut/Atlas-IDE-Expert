@@ -36,6 +36,7 @@ uses
   Atlas.IDE.Editor.Pairs,
   Atlas.IDE.Editor.Structure,
   Atlas.IDE.Files.DirtyExport,
+  Atlas.IDE.Files.EditInbox,
   Atlas.IDE.Build.CheckOnSave,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Commands.MainMenu,
@@ -55,6 +56,8 @@ var
   Pairs: TAtlasEditorPairs;
   // Ungespeicherte Dateien für schreibende MCP-Werkzeuge (#61).
   DirtyExport: TAtlasDirtyExport;
+  // Schreibende MCP-Werkzeuge ändern offene Dateien über das Plugin (#397).
+  EditInbox: TAtlasIdeEditInbox;
   CheckOnSave: TAtlasIdeCheckOnSave;
   // Hauptmenü Atlas mit Schnellschaltern und Einstellungen (#227).
   MainMenu: TAtlasMainMenu;
@@ -364,6 +367,12 @@ begin
     MainMenu.OnRename := RenameSymbol;
   if DirtyExport = nil then
     DirtyExport := TAtlasDirtyExport.Create;
+  if EditInbox = nil then
+    EditInbox := TAtlasIdeEditInbox.Create(
+      procedure(const AText: string)
+      begin
+        GuardWarning(AText);
+      end);
   // Eigene Blocklinien: Strukturhervorhebung der IDE abgleichen (#514).
   TAtlasIdeStructureSwitch.Sync;
   if Reloader = nil then
@@ -398,6 +407,7 @@ var
 begin
   TAtlasGuard.OnWarning := nil;
   TAtlasIdeSettings.OnChanged := nil;
+  FreeAndNil(EditInbox);
   FreeAndNil(DirtyExport);
   FreeAndNil(MainMenu);
   FreeAndNil(Pairs);

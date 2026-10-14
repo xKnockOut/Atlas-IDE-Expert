@@ -216,6 +216,7 @@ contains
   Atlas.Common.Mcp.Paths in 'Source\Mcp\Atlas.Common.Mcp.Paths.pas',
   Atlas.Common.Mcp.Freshness in 'Source\Mcp\Atlas.Common.Mcp.Freshness.pas',
   Atlas.Common.Mcp.EditTools in 'Source\Mcp\Atlas.Common.Mcp.EditTools.pas',
+  Atlas.Common.Mcp.IdeEdits in 'Source\Mcp\Atlas.Common.Mcp.IdeEdits.pas',
   Atlas.Common.Rules.Prompt in 'Source\Rules\Atlas.Common.Rules.Prompt.pas',
   Atlas.Common.Rules.Builtin.Unresolved in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.pas',
   Atlas.Common.Rules.Conventions in 'Source\Rules\Atlas.Common.Rules.Conventions.pas',
