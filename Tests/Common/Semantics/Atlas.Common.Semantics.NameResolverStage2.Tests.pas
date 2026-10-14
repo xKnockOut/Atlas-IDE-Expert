@@ -51,6 +51,8 @@ type
     procedure ResolvesExpressionReceivers;
     [Test]
     procedure IndexKeepsSignaturesAndGenerics;
+    [Test]
+    procedure MissingMembersOfGenericInterfaces;
   end;
 
 implementation
@@ -289,6 +291,42 @@ begin
   Assert.AreEqual('TList', ResolveAt(Source, 'Count;').Container);
   // FCount ist private in einer anderen Unit.
   Assert.IsFalse(ResolveAt(Source, 'FCount').Found);
+end;
+
+procedure TNameResolverStage2Tests.MissingMembersOfGenericInterfaces;
+const
+  UnitListen =
+    'unit Listen;'#10'interface'#10'type'#10 +
+    '  IVergleich<T> = interface'#10'    function Compare(const Left, Right: T): Integer;'#10'  end;'#10 +
+    '  IListe<T> = interface(IVergleich<T>)'#10'    procedure Add(const AItem: T);'#10'  end;'#10 +
+    'implementation'#10'end.';
+  Source =
+    'unit Haupt;'#10'interface'#10'uses Listen, Kunden;'#10'type'#10 +
+    '  TMeineListe = class(TObject, IListe<TKunde>)'#10 +
+    '    function Compare(const Left, Right: TKunde): Integer;'#10'  end;'#10 +
+    'implementation'#10'end.';
+var
+  Tree: TSyntaxTree;
+  Missing: TArray<TResolvedSymbol>;
+begin
+  AddUnit('C:\P\Listen.pas', UnitListen);
+  Tree := TPascalParser.Parse(Source);
+  try
+    // Ohne Typargumente aus dem Quelltext (Index kennt nur die des ersten Vorfahren) und mit ihnen.
+    Missing := FResolver.MissingInterfaceMembers(TIndexExtractor.Extract(Tree, 'C:\P\Haupt.pas'), 'TMeineListe',
+      ['TObject', 'IListe<TKunde>']);
+    Assert.AreEqual(1, Integer(Length(Missing)));
+    Assert.AreEqual('Add', Missing[0].Name);
+    Assert.AreEqual('IListe', Missing[0].Container);
+    Assert.AreEqual(1, Integer(Length(Missing[0].Bindings)));
+    Assert.AreEqual('T=TKunde', Missing[0].Bindings[0]);
+  finally
+    Tree.Free;
+  end;
+  Assert.AreEqual('TKunde', FResolver.UnqualifyType('Kunden.TKunde'));
+  Assert.AreEqual('TList<TKunde>', FResolver.UnqualifyType('System.Generics.Collections.TList<Kunden.TKunde>'));
+  Assert.AreEqual('TOuter.TInner', FResolver.UnqualifyType('TOuter.TInner'));
+  Assert.AreEqual('TKunde', FResolver.UnqualifyType('Haupt.TKunde', 'Haupt'));
 end;
 
 procedure TNameResolverStage2Tests.BindsGenericMethodArguments;

@@ -12,11 +12,17 @@
 // Params-, Parameters- bzw. ParamData-Sammlung. Ohne Formulardatei oder ohne
 // Datenmenge darin gibt es keine Namen: Zur Laufzeit erzeugte Datenmengen
 // bekommen keinen geratenen Vorschlag.
+//
+// Datenmengen anderer Datenmodule ("DM.qryOrders"): Die globale Variable DM
+// wird im Index gesucht; die Formulardatei ihrer Unit liefert die Namen. In der
+// eigenen Unit gilt "frmOrders.qryOrders", wenn frmOrders das Wurzelobjekt der
+// eigenen Formulardatei ist.
 
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Common.Index.Contract;
 
 type
   {$SCOPEDENUMS ON}
@@ -27,6 +33,8 @@ type
   TDataNameCall = record
     /// <summary>Name der Datenmenge ohne "Self." und ohne ".Params", ".Parameters", ".ParamData", ".Fields".</summary>
     DataSet: string;
+    /// <summary>Datenmodul bzw. Formular vor der Datenmenge ("DM" bei DM.qryOrders); '' ohne.</summary>
+    Owner: string;
     Kind: TDataNameKind;
     /// <summary>FieldByName, FindField oder ParamByName wie im Quelltext.</summary>
     Method: string;
@@ -36,7 +44,11 @@ type
     ContentEnd: Integer;
     /// <summary>Inhalt des Literals, '' als ' gelesen.</summary>
     Content: string;
+    /// <summary>"DM.qryOrders" bzw. "qryOrders" für Anzeige und Hinweis.</summary>
+    function DisplayName: string;
   end;
+
+  TDataTextReader = reference to function(const AFileName: string; out AText: string): Boolean;
 
   TDataName = record
     /// <summary>Schreibweise wie in der Quelle.</summary>
@@ -48,8 +60,8 @@ type
   TDataFieldNames = class
   public
     /// <summary>Steht der Cursor (ACharacter Zeichen vor ihm, 0-basiert) im ersten Argument von FieldByName,
-    /// FindField oder ParamByName an einer Datenmenge dieser Unit? False bei Datenmengen anderer Units
-    /// ("DM.qryOrders") und ohne Datenmenge vor dem Punkt.</summary>
+    /// FindField oder ParamByName an einer Datenmenge? "DM.qryOrders" setzt Owner; längere Ketten und ein
+    /// fehlender Name vor dem Punkt liefern False.</summary>
     class function CallAt(const ALine: string; ACharacter: Integer; out ACall: TDataNameCall): Boolean; static;
     /// <summary>Spaltennamen der ersten SELECT-Liste in ASql: Aliasname, sonst der letzte Teil von
     /// "T.Spalte"; Ausdrücke ohne Alias entfallen. AStar: Die Liste enthält * oder T.*.</summary>
@@ -62,6 +74,11 @@ type
     class function ShortSql(const ASql: string; AMaxLength: Integer = 60): string; static;
     /// <summary>Steht AName (ohne Groß-/Kleinschreibung) in ANames?</summary>
     class function Contains(const ANames: TArray<TDataName>; const AName: string): Boolean; static;
+    /// <summary>Namen für ACall in der Unit AFileName mit Text AText: ohne Owner aus der eigenen
+    /// Formulardatei; mit Owner aus der eigenen, wenn ihr Wurzelobjekt so heißt, sonst aus der Formulardatei
+    /// der Unit, die die globale Variable Owner deklariert (über AIndex, nil ohne Index).</summary>
+    class function Lookup(const AText, AFileName: string; const ACall: TDataNameCall; const AIndex: ISymbolIndex;
+      const AReadText: TDataTextReader; out ASql: string; out AFound: Boolean): TArray<TDataName>; static;
   end;
 
 implementation
@@ -72,7 +89,15 @@ uses
   Atlas.Common.Editing.StringLiterals,
   Atlas.Common.Editing.SqlText,
   Atlas.Common.Dfm.Contract,
-  Atlas.Common.Dfm.Parser;
+  Atlas.Common.Dfm.Parser,
+  Atlas.Common.Dfm.FormFiles;
+
+function TDataNameCall.DisplayName: string;
+begin
+  Result := DataSet;
+  if Owner <> '' then
+    Result := Owner + '.' + DataSet;
+end;
 
 type
   {$SCOPEDENUMS ON}
@@ -312,8 +337,17 @@ begin
       SetLength(Name, Length(Name) - Length(Suffix));
       Break;
     end;
-  if (Name = '') or (Pos('.', Name) > 0) or SameText(Name, 'Self') then
+  if (Name = '') or SameText(Name, 'Self') then
     Exit;
+  // DM.qryOrders: Datenmenge eines anderen Datenmoduls; längere Ketten nicht.
+  Index := Pos('.', Name);
+  if Index > 0 then
+  begin
+    ACall.Owner := Copy(Name, 1, Index - 1);
+    Delete(Name, 1, Index);
+    if (ACall.Owner = '') or (Name = '') or (Pos('.', Name) > 0) then
+      Exit;
+  end;
   ACall.DataSet := Name;
   ACall.Method := Match.Groups[2].Value;
   if SameText(ACall.Method, 'ParamByName') then
@@ -506,6 +540,58 @@ begin
   Result := Trim(TRegEx.Replace(ASql, '\s+', ' '));
   if Length(Result) > AMaxLength then
     Result := Copy(Result, 1, AMaxLength - 1) + '…';
+end;
+
+/// <summary>Name des Wurzelobjekts der Formulardatei; '' ohne.</summary>
+function RootName(const AFormText: string): string;
+var
+  Document: TDfmDocument;
+begin
+  Result := '';
+  Document := TDfmParser.Parse(AFormText);
+  try
+    if Document.Root <> nil then
+      Result := Document.Root.Name;
+  finally
+    Document.Free;
+  end;
+end;
+
+class function TDataFieldNames.Lookup(const AText, AFileName: string; const ACall: TDataNameCall;
+  const AIndex: ISymbolIndex; const AReadText: TDataTextReader; out ASql: string; out AFound: Boolean): TArray<TDataName>;
+
+  function FromUnit(const AUnitFile, AUnitText: string; ARoot: Boolean; out ANames: TArray<TDataName>): Boolean;
+  var
+    FormFile, FormText: string;
+  begin
+    for FormFile in TFormFiles.FormFiles(AUnitFile, AUnitText) do
+      if AReadText(FormFile, FormText) and (not ARoot or SameText(RootName(FormText), ACall.Owner)) then
+      begin
+        ANames := FromForm(FormText, ACall.DataSet, ACall.Kind, ASql, AFound);
+        if AFound then
+          Exit(True);
+      end;
+    Result := False;
+  end;
+
+var
+  Location: TSymbolLocation;
+  UnitText: string;
+begin
+  Result := nil;
+  ASql := '';
+  AFound := False;
+  if not Assigned(AReadText) then
+    Exit;
+  if FromUnit(AFileName, AText, ACall.Owner <> '', Result) or (ACall.Owner = '') or (AIndex = nil) then
+    Exit;
+  // Globale Variable des Datenmoduls: Formulardatei ihrer Unit.
+  for Location in AIndex.FindSymbols(ACall.Owner) do
+    if (Location.Symbol.Kind = TIndexSymbolKind.Variable) and (Location.Symbol.Container = '') and
+      not SameText(Location.FileName, AFileName) and AReadText(Location.FileName, UnitText) and
+      FromUnit(Location.FileName, UnitText, False, Result) then
+      Exit;
+  Result := nil;
 end;
 
 class function TDataFieldNames.Contains(const ANames: TArray<TDataName>; const AName: string): Boolean;
