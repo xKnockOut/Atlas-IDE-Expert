@@ -107,6 +107,7 @@
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.MapFile.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.Contract.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.Anonymizer.pas"/>
+        <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.ShutdownLeaks.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.RequestScope.pas"/>
         <DCCReference Include="Source\Diagnostics\Providers\Atlas.Common.Diagnostics.Providers.Log.pas"/>
         <DCCReference Include="Source\Diagnostics\Adapters\Atlas.Common.Diagnostics.Adapters.LogFolder.pas"/>

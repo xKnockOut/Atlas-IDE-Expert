@@ -73,6 +73,7 @@ contains
   Atlas.Common.Diagnostics.MapFile in 'Source\Diagnostics\Atlas.Common.Diagnostics.MapFile.pas',
   Atlas.Common.Diagnostics.Contract in 'Source\Diagnostics\Atlas.Common.Diagnostics.Contract.pas',
   Atlas.Common.Diagnostics.Anonymizer in 'Source\Diagnostics\Atlas.Common.Diagnostics.Anonymizer.pas',
+  Atlas.Common.Diagnostics.ShutdownLeaks in 'Source\Diagnostics\Atlas.Common.Diagnostics.ShutdownLeaks.pas',
   Atlas.Common.Diagnostics.RequestScope in 'Source\Diagnostics\Atlas.Common.Diagnostics.RequestScope.pas',
   Atlas.Common.Diagnostics.Providers.Log in 'Source\Diagnostics\Providers\Atlas.Common.Diagnostics.Providers.Log.pas',
   Atlas.Common.Diagnostics.Adapters.LogFolder in 'Source\Diagnostics\Adapters\Atlas.Common.Diagnostics.Adapters.LogFolder.pas',

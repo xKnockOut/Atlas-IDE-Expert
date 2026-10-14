@@ -6,6 +6,8 @@
 {$STRONGLINKTYPES ON}
 
 uses
+  // Muss als erste Unit stehen: zählt den Speicherrest beim Beenden (#177).
+  Atlas.Common.Diagnostics.ShutdownLeaks,
   System.SysUtils,
   {$IFDEF TESTINSIGHT}
   TestInsight.DUnitX,
@@ -296,6 +298,12 @@ uses
   Atlas.Common.Editing.InterfaceStubs.Tests in 'Common\Editing\Atlas.Common.Editing.InterfaceStubs.Tests.pas',
   Atlas.Common.Lsp.Completion.Postfix.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Postfix.Tests.pas';
 
+// Speicherrest beim Beenden in den Testbericht (Konsole) statt in einen Dialog (#177).
+procedure ReportShutdownLeak(ABytes: Int64);
+begin
+  System.Writeln(TShutdownLeaks.Describe(ABytes));
+end;
+
 {$IFNDEF TESTINSIGHT}
 var
   Runner: ITestRunner;
@@ -305,7 +313,7 @@ var
 {$ENDIF}
 begin
   {$IFDEF DEBUG}
-  ReportMemoryLeaksOnShutdown := True;
+  TShutdownLeaks.Enable(ReportShutdownLeak);
   {$ENDIF}
   RegisterLeakMonitor;
 {$IFDEF TESTINSIGHT}
