@@ -19,6 +19,8 @@ type
     procedure WrapsNewLineOrRestOfRoutine;
     [Test]
     procedure UsesFreeAndNil;
+    [Test]
+    procedure AddsMissingSemicolonAfterEnter;
   end;
 
 implementation
@@ -145,6 +147,47 @@ begin
   Assert.IsTrue(Check(Text, 4, TGuardTypeKind.Class_, Offer));
   Assert.IsTrue(TGuardFree.Edit(Text, Offer, TGuardScope.NewLine, TCompletionFreeStyle.FreeAndNil).NewText.Contains(
     'FreeAndNil(List);'));
+end;
+
+procedure TGuardFreeTests.AddsMissingSemicolonAfterEnter;
+var
+  Text: string;
+  Offer: TGuardOffer;
+  Edit: TRuleEdit;
+begin
+  // Übernahme mit Enter am Zeilenende, dann Enter: Zeile 5 ist leer (eingerückt), das ";" fehlt.
+  Text := Source('List: TStringList;', 'List := TStringList.Create', '  '#13#10);
+  Assert.IsTrue(Check(Text, 4, TGuardTypeKind.Class_, Offer));
+  Assert.IsTrue(Offer.AddSemicolon);
+  Assert.AreEqual(28, Offer.StatementEnd);
+  Offer.BlankLine := 5;
+  Edit := TGuardFree.Edit(Text, Offer, TGuardScope.NewLine, TCompletionFreeStyle.Free);
+  Assert.AreEqual(4, Edit.Range.StartPos.Line);
+  Assert.AreEqual(28, Edit.Range.StartPos.Character);
+  Assert.AreEqual(5, Edit.Range.EndPos.Line);
+  Assert.AreEqual(2, Edit.Range.EndPos.Character);
+  Assert.AreEqual(';'#13#10'  try'#13#10'    $0'#13#10'  finally'#13#10'    List.Free;'#13#10'  end;', Edit.NewText);
+  // Argumente und Kommentar: das ";" kommt hinter die Klammer, der Kommentar bleibt.
+  Text := Source('S: TFileStream;', 'S := TFileStream.Create(Name, fmOpenRead) // lesen', '');
+  Assert.IsTrue(Check(Text, 4, TGuardTypeKind.Class_, Offer));
+  Assert.IsTrue(Offer.AddSemicolon);
+  Edit := TGuardFree.Edit(Text, Offer, TGuardScope.NewLine, TCompletionFreeStyle.Free);
+  Assert.IsTrue(Edit.NewText.StartsWith('; // lesen'#13#10'  try'), Edit.NewText);
+  // Bis zum Routinenende: die leere Zeile entfällt.
+  Text := Source('List: TStringList;', 'List := TStringList.Create', '  '#13#10'  List.Add(''a'');'#13#10);
+  Assert.IsTrue(Check(Text, 4, TGuardTypeKind.Class_, Offer));
+  Assert.IsTrue(Offer.CanEnclose);
+  Offer.BlankLine := 5;
+  Edit := TGuardFree.Edit(Text, Offer, TGuardScope.ToRoutineEnd, TCompletionFreeStyle.Free);
+  Assert.AreEqual(';'#13#10'  try'#13#10'    List.Add(''a'');$0'#13#10'  finally'#13#10'    List.Free;'#13#10 +
+    '  end;'#13#10, Edit.NewText);
+  // Die nächste Zeile setzt den Ausdruck fort: kein Angebot.
+  Assert.IsFalse(Offered('List: TStringList;', 'List := TStringList.Create', '    .Add(''a'');'#13#10));
+  Assert.IsFalse(Offered('X: TFoo;', 'X := TFoo.Create', '    (1, 2);'#13#10));
+  // Mit ";" bleibt alles wie bisher.
+  Assert.IsTrue(Check(Source('List: TStringList;', 'List := TStringList.Create; // a;b', ''), 4,
+    TGuardTypeKind.Class_, Offer));
+  Assert.IsFalse(Offer.AddSemicolon);
 end;
 
 initialization
