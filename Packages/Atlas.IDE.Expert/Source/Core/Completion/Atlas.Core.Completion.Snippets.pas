@@ -644,7 +644,7 @@ begin
   if FindFirst(IncludeTrailingPathDelimiter(APath) + '*' + FileExtension, faAnyFile, Search) = 0 then
     try
       repeat
-        Result := Result + Search.Name + '|' + IntToStr(Search.Size) + '|' + IntToStr(Search.Time) + ';';
+        Result := Result + Search.Name + '|' + IntToStr(Search.Size) + '|' + FormatDateTime('yyyymmddhhnnss', Search.TimeStamp) + ';';
       until FindNext(Search) <> 0;
     finally
       FindClose(Search);

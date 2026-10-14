@@ -117,9 +117,9 @@ begin
     '{"kind":"param","name":"AOwner","runs":[{"kind":"text","text":"Besitzer"}]},' +
     '{"kind":"exception","name":"EZeichnen","ref":{"name":"EZeichnen","file":"C:\\P\\U.pas","line":3,' +
     '"character":2},"runs":[{"kind":"text","text":"bei Fehlern"}]}]}');
-  Assert.AreEqual(3, Length(Doc.Sections));
+  Assert.AreEqual(3, Integer(Length(Doc.Sections)));
   Assert.AreEqual(Ord(TAtlasDocSectionKind.Summary), Ord(Doc.Sections[0].Kind));
-  Assert.AreEqual(4, Length(Doc.Sections[0].Runs));
+  Assert.AreEqual(4, Integer(Length(Doc.Sections[0].Runs)));
   Assert.AreEqual(Ord(TAtlasDocRunKind.Ref), Ord(Doc.Sections[0].Runs[1].Kind));
   Assert.IsTrue(Doc.Sections[0].Runs[1].Location.HasLocation);
   Assert.AreEqual('Vcl.DBGrids', Doc.Sections[0].Runs[1].Location.UnitName);
@@ -141,8 +141,8 @@ var
 begin
   Doc := DocOf('{"sections":[{"kind":"neu","runs":[]},' +
     '{"kind":"remarks","runs":[{"kind":"blink","text":"x"},{"kind":"text","text":"y"}]}]}');
-  Assert.AreEqual(1, Length(Doc.Sections));
-  Assert.AreEqual(1, Length(Doc.Sections[0].Runs));
+  Assert.AreEqual(1, Integer(Length(Doc.Sections)));
+  Assert.AreEqual(1, Integer(Length(Doc.Sections[0].Runs)));
   Assert.IsTrue(DocOf('"text"').IsEmpty);
   Assert.IsTrue(DocOf('{}').IsEmpty);
 end;
@@ -198,7 +198,7 @@ var
   Line: TAtlasDocLine;
 begin
   Result_ := Layout(Summary('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 70);
-  Assert.AreEqual(3, Length(Result_.Lines));
+  Assert.AreEqual(3, Integer(Length(Result_.Lines)));
   for Line in Result_.Lines do
     Assert.IsTrue(Line.Spans[High(Line.Spans)].Right <= 70);
   Assert.AreEqual('ABCDEFGHIJ', LineText(Result_.Lines[0]));
@@ -213,8 +213,8 @@ begin
   Result_ := Layout('{"sections":[{"kind":"summary","runs":[{"kind":"text","text":"Siehe "},' +
     '{"kind":"ref","text":"TFoo.Bar","target":"TFoo.Bar","name":"Bar","file":"C:\\U.pas","line":9,"character":4},' +
     '{"kind":"text","text":" und "},{"kind":"link","text":"Web","target":"https://example.org"}]}]}', 400);
-  Assert.AreEqual(1, Length(Result_.Lines));
-  Assert.AreEqual(2, Length(Result_.Links));
+  Assert.AreEqual(1, Integer(Length(Result_.Lines)));
+  Assert.AreEqual(2, Integer(Length(Result_.Links)));
   Span := Result_.Lines[0].Spans[1];
   Assert.AreEqual('TFoo.Bar', Span.Text);
   Assert.AreEqual(Ord(TAtlasDocFont.Mono), Ord(Span.Face.Font));
@@ -239,7 +239,7 @@ var
 begin
   Result_ := Layout('{"sections":[{"kind":"summary","runs":[{"kind":"ref","text":"TUnbekannt","target":"TUnbekannt"},' +
     '{"kind":"link","text":"leer"}]}]}', 400);
-  Assert.AreEqual(0, Length(Result_.Links));
+  Assert.AreEqual(0, Integer(Length(Result_.Links)));
   Assert.IsFalse(Result_.Lines[0].Spans[0].Underline);
   Assert.AreEqual(Ord(TAtlasDocColor.Accent), Ord(Result_.Lines[0].Spans[0].Color));
 end;
@@ -267,7 +267,7 @@ begin
   // Sehr lange Namen: Spalte höchstens ein Drittel, Text dann in der nächsten Zeile.
   Result_ := Layout('{"sections":[{"kind":"param","name":"AEinSehrSehrLangerName","runs":' +
     '[{"kind":"text","text":"Text"}]}]}', 150);
-  Assert.AreEqual(2, Length(Result_.Lines));
+  Assert.AreEqual(2, Integer(Length(Result_.Lines)));
   Assert.AreEqual(50 + Metrics.ColumnGap, Result_.Lines[1].Spans[0].Left);
 end;
 
@@ -284,7 +284,7 @@ begin
   Assert.AreEqual(Ord(TAtlasDocColor.Error), Ord(Span.Color));
   Assert.AreEqual(0, Result_.LinkAt(Span.Left + 3, Result_.Lines[0].Top + 2));
   Assert.AreEqual('EZeichnen', Result_.Links[0].Target.Name);
-  Assert.AreEqual(1, Length(Result_.Links));
+  Assert.AreEqual(1, Integer(Length(Result_.Links)));
   Assert.AreEqual(-1, Result_.Lines[1].Spans[0].Link);
 end;
 
@@ -296,7 +296,7 @@ begin
   Result_ := Layout('{"sections":[{"kind":"example","runs":[{"kind":"text","text":"So:"},' +
     '{"kind":"codeblock","text":"begin\n  X := ''a'';\nend;"}]}]}', 400);
   // Beispiel, "So:", drei Codezeilen.
-  Assert.AreEqual(5, Length(Result_.Lines));
+  Assert.AreEqual(5, Integer(Length(Result_.Lines)));
   Assert.AreEqual('Beispiel', LineText(Result_.Lines[0]));
   First := 2;
   Assert.AreEqual('begin', LineText(Result_.Lines[First]));
@@ -398,7 +398,7 @@ begin
     '{"kind":"example","runs":[{"kind":"text","text":"Beispieltext"}]}]}', 100, False);
   Assert.IsTrue(Result_.Shortened);
   // Vier Zeilen Beschreibung, Linie, drei Zeilen Bemerkungen; kein Beispiel.
-  Assert.AreEqual(8, Length(Result_.Lines));
+  Assert.AreEqual(8, Integer(Length(Result_.Lines)));
   Assert.IsTrue(LineText(Result_.Lines[3]).EndsWith(TAtlasDocLayout.Ellipsis));
   Assert.IsTrue(LineText(Result_.Lines[7]).EndsWith(TAtlasDocLayout.Ellipsis));
   Assert.IsTrue(Result_.Lines[3].Spans[High(Result_.Lines[3].Spans)].Right <= 100);
@@ -423,7 +423,7 @@ begin
   Assert.AreEqual('zwei '#13#10'drei', Result_.Selected(From, Till));
   Assert.AreEqual('zwei '#13#10'drei', Result_.Selected(Till, From));
   Assert.AreEqual(0, Result_.PositionAt(50, -5, Measure));
-  Assert.AreEqual(Length(Result_.Text), Result_.PositionAt(0, 1000, Measure));
+  Assert.AreEqual(Integer(Length(Result_.Text)), Result_.PositionAt(0, 1000, Measure));
   Assert.AreEqual(Result_.Text, Result_.Selected(0, MaxInt));
 end;
 
@@ -437,7 +437,7 @@ begin
   for Index := 1 to 200 do
     Long := Long + 'Wort ';
   Result_ := Layout(Summary(Long), 140);
-  Assert.AreEqual(50, Length(Result_.Lines));
+  Assert.AreEqual(50, Integer(Length(Result_.Lines)));
   Assert.AreEqual(50 * 16, Result_.Height);
   Assert.AreEqual(10 * 16, Result_.HeightOfLines(10));
   Assert.AreEqual(0, Pos(TAtlasDocLayout.Ellipsis, Result_.Text));
@@ -449,9 +449,9 @@ var
   Result_: TAtlasDocLayout;
 begin
   Doc := TAtlasDoc.FromText('Erste Zeile'#13#10'zweite'#10#10'Absatz'#10'  Code := 1;'#10'  Weiter;'#10);
-  Assert.AreEqual(1, Length(Doc.Sections));
+  Assert.AreEqual(1, Integer(Length(Doc.Sections)));
   Assert.AreEqual(Ord(TAtlasDocSectionKind.Summary), Ord(Doc.Sections[0].Kind));
-  Assert.AreEqual(7, Length(Doc.Sections[0].Runs));
+  Assert.AreEqual(7, Integer(Length(Doc.Sections[0].Runs)));
   Assert.AreEqual(Ord(TAtlasDocRunKind.LineBreak), Ord(Doc.Sections[0].Runs[1].Kind));
   Assert.AreEqual(Ord(TAtlasDocRunKind.Paragraph), Ord(Doc.Sections[0].Runs[3].Kind));
   Assert.AreEqual('  Code := 1;'#10'  Weiter;', Doc.Sections[0].Runs[6].Text);

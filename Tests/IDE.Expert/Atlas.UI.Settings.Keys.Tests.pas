@@ -83,11 +83,11 @@ begin
           Result := '';
       end;
     Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.KeysStatusLeft, ['IDE: Makro']), Page.StatusLabel(0).Caption);
-    Assert.AreEqual(Ord(TAtlasKeyChoice.LeaveOther), Page.ChoiceBox(0).ItemIndex);
+    Assert.AreEqual(Ord(TAtlasKeyChoice.LeaveOther), Page.ChoiceBox(0).Choice);
     Assert.IsTrue(Page.ChoiceBox(0).Enabled);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.KeysStatusFree), Page.StatusLabel(1).Caption);
     Assert.IsFalse(Page.ChoiceBox(1).Enabled, 'freie Taste: nichts zu entscheiden');
-    Page.ChoiceBox(0).ItemIndex := Ord(TAtlasKeyChoice.UseAtlas);
+    Page.ChoiceBox(0).Choice := Ord(TAtlasKeyChoice.UseAtlas);
     Page.ChoiceBox(0).OnChange(Page.ChoiceBox(0));
     Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.KeysStatusAtlasWins, ['IDE: Makro']), Page.StatusLabel(0).Caption);
     Page.KeyEdit(1).Text := 'kein Kürzel';
@@ -107,7 +107,7 @@ begin
     Page.LoadFrom(TAtlasPluginSettings.Defaults);
     Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.KeysStatusIdeKey,
       [ShortCutToText(TAtlasKeyConflicts.IdeSignatureKey)]), Page.StatusLabel(3).Caption);
-    Page.ChoiceBox(3).ItemIndex := Ord(TAtlasKeyChoice.UseAtlas);
+    Page.ChoiceBox(3).Choice := Ord(TAtlasKeyChoice.UseAtlas);
     Page.ChoiceBox(3).OnChange(Page.ChoiceBox(3));
     Assert.AreEqual(ShortCutToText(TAtlasKeyConflicts.IdeSignatureKey), Page.KeyEdit(3).Text);
     Saved := TAtlasPluginSettings.Defaults;

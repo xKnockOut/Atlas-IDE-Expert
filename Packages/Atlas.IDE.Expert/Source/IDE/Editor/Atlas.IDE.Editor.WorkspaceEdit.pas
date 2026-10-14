@@ -389,7 +389,6 @@ var
   /// <summary>Ziel existiert schon: True = ersetzen, False = Operation auslassen.</summary>
   function MayReplace(const AFileName: string; const AOperation: TLspFileOperation): Boolean;
   begin
-    Result := False;
     if AOperation.Overwrite then
       Exit(True);
     if AOperation.IgnoreIfExists then

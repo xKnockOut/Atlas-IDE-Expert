@@ -38,6 +38,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   System.JSON,

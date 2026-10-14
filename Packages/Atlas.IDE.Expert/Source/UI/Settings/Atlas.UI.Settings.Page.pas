@@ -39,6 +39,23 @@ uses
   Atlas.UI.Style.Symbol;
 
 type
+  /// <summary>Auswahlliste, die Einträge und Auswahl ohne Fensterhandle hält: Die IDE erzeugt und lädt die
+  /// Optionsseiten, bevor sie ein übergeordnetes Fenster haben; Items.Add bräuchte dann schon eins.</summary>
+  TAtlasChoiceBox = class(TComboBox)
+  private
+    FChoices: TArray<string>;
+    FChoice: Integer;
+    function GetChoice: Integer;
+    procedure SetChoice(AValue: Integer);
+  protected
+    procedure CreateWnd; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    procedure SetChoices(const AItems: array of string);
+    /// <summary>Gewählter Eintrag, -1 = keiner; gilt auch ohne Fenster.</summary>
+    property Choice: Integer read GetChoice write SetChoice;
+  end;
+
   /// <summary>Zeile der Optionsseite (Beschriftung und Eingabefeld): zeichnet nichts selbst, der
   /// Hintergrund des Reiters scheint durch.</summary>
   TAtlasSettingsRow = class(TWinControl)
@@ -132,15 +149,15 @@ type
     FImportIdeTemplates: TCheckBox;
     FSafeAsk: TCheckBox;
     FSafeAuto: TCheckBox;
-    FSafeKey: TComboBox;
+    FSafeKey: TAtlasChoiceBox;
     FSafeTimeout: TEdit;
     FSafeHistory: TEdit;
     FUndoEnabled: TCheckBox;
     FUndoDepth: TEdit;
     FUndoPersist: TCheckBox;
     FUndoMaxSize: TEdit;
-    FUndoOnConflict: TComboBox;
-    FUndoNewFiles: TComboBox;
+    FUndoOnConflict: TAtlasChoiceBox;
+    FUndoNewFiles: TAtlasChoiceBox;
     FUpdatesCheck: TCheckBox;
     FBugReportAnonymize: TCheckBox;
     FVersion: TLabel;
@@ -158,7 +175,7 @@ type
     function AddCheck(const ACaption: string): TCheckBox;
     function AddPanel(AHeight: Integer): TWinControl;
     function AddNumber(const ACaption: string): TEdit;
-    function AddChoice(const ACaption: string; const AItems: array of string): TComboBox;
+    function AddChoice(const ACaption: string; const AItems: array of string): TAtlasChoiceBox;
     /// <summary>Fett gesetzte Überschrift eines Abschnitts.</summary>
     procedure AddTitle(AId: TAtlasTextId);
     /// <summary>Kürzel ohne eigenen Vorrang; der gilt für die Gruppe (#399). Palette und Prüfung stehen auf der
@@ -216,7 +233,7 @@ type
     /// <summary>Zum Testen: abgesicherter Start (#722).</summary>
     property SafeAsk: TCheckBox read FSafeAsk;
     property SafeAuto: TCheckBox read FSafeAuto;
-    property SafeKey: TComboBox read FSafeKey;
+    property SafeKey: TAtlasChoiceBox read FSafeKey;
     property SafeTimeout: TEdit read FSafeTimeout;
     property SafeHistory: TEdit read FSafeHistory;
     /// <summary>Zum Testen: Atlas-Änderungen über mehrere Dateien (#721).</summary>
@@ -224,8 +241,8 @@ type
     property UndoDepth: TEdit read FUndoDepth;
     property UndoPersist: TCheckBox read FUndoPersist;
     property UndoMaxSize: TEdit read FUndoMaxSize;
-    property UndoOnConflict: TComboBox read FUndoOnConflict;
-    property UndoNewFiles: TComboBox read FUndoNewFiles;
+    property UndoOnConflict: TAtlasChoiceBox read FUndoOnConflict;
+    property UndoNewFiles: TAtlasChoiceBox read FUndoNewFiles;
     property UndoKey: TEdit read FUndoKey;
     property RedoKey: TEdit read FRedoKey;
     property UpdatesCheck: TCheckBox read FUpdatesCheck;
@@ -263,6 +280,56 @@ uses
   Atlas.Core.Product.Version,
   Atlas.Core.Updates.Check,
   Atlas.Core.Undo.Contract;
+
+{ TAtlasChoiceBox }
+
+constructor TAtlasChoiceBox.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  Style := csDropDownList;
+  FChoice := -1;
+end;
+
+procedure TAtlasChoiceBox.SetChoices(const AItems: array of string);
+var
+  Index: Integer;
+begin
+  SetLength(FChoices, Length(AItems));
+  for Index := 0 to High(AItems) do
+    FChoices[Index] := AItems[Index];
+  if HandleAllocated then
+  begin
+    Items.Clear;
+    for Index := 0 to High(FChoices) do
+      Items.Add(FChoices[Index]);
+    ItemIndex := FChoice;
+  end;
+end;
+
+procedure TAtlasChoiceBox.CreateWnd;
+var
+  Item: string;
+begin
+  inherited CreateWnd;
+  if Items.Count = 0 then
+    for Item in FChoices do
+      Items.Add(Item);
+  ItemIndex := FChoice;
+end;
+
+function TAtlasChoiceBox.GetChoice: Integer;
+begin
+  if HandleAllocated then
+    FChoice := ItemIndex;
+  Result := FChoice;
+end;
+
+procedure TAtlasChoiceBox.SetChoice(AValue: Integer);
+begin
+  FChoice := AValue;
+  if HandleAllocated then
+    ItemIndex := AValue;
+end;
 
 { TAtlasSettingsRow }
 
@@ -506,7 +573,6 @@ begin
 
   AddSheet(TAtlasTextId.SettingsTabUndo);
   AddUndoSection;
-  RefreshFuse;
 end;
 
 procedure TAtlasSettingsPage.AddSheet(AId: TAtlasTextId);
@@ -527,6 +593,8 @@ begin
       Sheet.PageControl := FPages;
   if FPages.PageCount > 0 then
     FPages.ActivePageIndex := 0;
+  // Die Liste der Sicherung braucht ein Fenster; vorher bleibt sie leer.
+  RefreshFuse;
 end;
 
 procedure TAtlasSettingsPage.AddTitle(AId: TAtlasTextId);
@@ -652,6 +720,9 @@ var
   Name: string;
   Any: Boolean;
 begin
+  // Ohne Fenster (IDE erzeugt die Seite vor dem Einhängen) folgt das in CreateWnd.
+  if not HandleAllocated then
+    Exit;
   FFuseList.Items.BeginUpdate;
   try
     FFuseList.Items.Clear;
@@ -709,16 +780,14 @@ begin
   Caption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsSafeKey);
   Caption.Left := 0;
   Caption.Top := 5;
-  FSafeKey := TComboBox.Create(Self);
+  FSafeKey := TAtlasChoiceBox.Create(Self);
   FSafeKey.Parent := Panel;
-  FSafeKey.Style := csDropDownList;
   FSafeKey.Left := FieldLeft;
   FSafeKey.Top := 1;
   FSafeKey.Width := 120;
   // Reihenfolge wie TAtlasStartupKey ohne None vorn: Umschalt, Strg, keine.
-  FSafeKey.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsSafeKeyShift));
-  FSafeKey.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsSafeKeyCtrl));
-  FSafeKey.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsSafeKeyNone));
+  FSafeKey.SetChoices([TAtlasStrings.Text(TAtlasTextId.SettingsSafeKeyShift),
+    TAtlasStrings.Text(TAtlasTextId.SettingsSafeKeyCtrl), TAtlasStrings.Text(TAtlasTextId.SettingsSafeKeyNone)]);
   FSafeTimeout := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSafeTimeout));
   FSafeHistory := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSafeHistory));
 end;
@@ -762,11 +831,10 @@ begin
   FBugReportAnonymize := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBugReportAnonymize));
 end;
 
-function TAtlasSettingsPage.AddChoice(const ACaption: string; const AItems: array of string): TComboBox;
+function TAtlasSettingsPage.AddChoice(const ACaption: string; const AItems: array of string): TAtlasChoiceBox;
 var
   Panel: TWinControl;
   Caption: TLabel;
-  Item: string;
 begin
   Panel := AddPanel(26);
   Caption := TLabel.Create(Self);
@@ -774,14 +842,12 @@ begin
   Caption.Caption := ACaption;
   Caption.Left := 0;
   Caption.Top := 5;
-  Result := TComboBox.Create(Self);
+  Result := TAtlasChoiceBox.Create(Self);
   Result.Parent := Panel;
-  Result.Style := csDropDownList;
   Result.Left := FieldLeft;
   Result.Top := 1;
   Result.Width := 180;
-  for Item in AItems do
-    Result.Items.Add(Item);
+  Result.SetChoices(AItems);
 end;
 
 function TAtlasSettingsPage.AddCheck(const ACaption: string): TCheckBox;
@@ -989,11 +1055,11 @@ begin
   FSafeAuto.Checked := ASettings.SafeAutoAfterRepeatedCrash;
   case TAtlasSafeMode.KeyOf(ASettings.SafeStartupKey) of
     TAtlasStartupKey.Ctrl:
-      FSafeKey.ItemIndex := 1;
+      FSafeKey.Choice := 1;
     TAtlasStartupKey.None:
-      FSafeKey.ItemIndex := 2;
+      FSafeKey.Choice := 2;
   else
-    FSafeKey.ItemIndex := 0;
+    FSafeKey.Choice := 0;
   end;
   FSafeTimeout.Text := IntToStr(ASettings.SafeStartupTimeoutMs);
   FSafeHistory.Text := IntToStr(ASettings.SafeKeepSettingsHistory);
@@ -1001,8 +1067,8 @@ begin
   FUndoDepth.Text := IntToStr(ASettings.UndoMultiFileDepth);
   FUndoPersist.Checked := ASettings.UndoMultiFilePersist;
   FUndoMaxSize.Text := IntToStr(ASettings.UndoMultiFileMaxSizeMb);
-  FUndoOnConflict.ItemIndex := Ord(TAtlasUndoNames.ParseConflictMode(ASettings.UndoMultiFileOnConflict));
-  FUndoNewFiles.ItemIndex := Ord(TAtlasUndoNames.ParseNewFiles(ASettings.UndoMultiFileNewFiles));
+  FUndoOnConflict.Choice := Ord(TAtlasUndoNames.ParseConflictMode(ASettings.UndoMultiFileOnConflict));
+  FUndoNewFiles.Choice := Ord(TAtlasUndoNames.ParseNewFiles(ASettings.UndoMultiFileNewFiles));
   FUndoKey.Text := ShortCutToText(TShortCut(ASettings.UndoKey));
   FRedoKey.Text := ShortCutToText(TShortCut(ASettings.RedoKey));
   FUpdatesCheck.Checked := ASettings.UpdatesCheck;
@@ -1072,7 +1138,7 @@ begin
   ASettings.CheckOnSaveMaxMs := StrToIntDef(FCheckMax.Text, ASettings.CheckOnSaveMaxMs);
   ASettings.SafeAskAfterCrash := FSafeAsk.Checked;
   ASettings.SafeAutoAfterRepeatedCrash := FSafeAuto.Checked;
-  case FSafeKey.ItemIndex of
+  case FSafeKey.Choice of
     1:
       ASettings.SafeStartupKey := TAtlasSafeMode.KeyText(TAtlasStartupKey.Ctrl);
     2:
@@ -1087,8 +1153,8 @@ begin
   ASettings.UndoMultiFilePersist := FUndoPersist.Checked;
   ASettings.UndoMultiFileMaxSizeMb := StrToIntDef(FUndoMaxSize.Text, ASettings.UndoMultiFileMaxSizeMb);
   ASettings.UndoMultiFileOnConflict := TAtlasUndoNames.ConflictModeName(TAtlasUndoConflictMode(
-    Max(0, FUndoOnConflict.ItemIndex)));
-  ASettings.UndoMultiFileNewFiles := TAtlasUndoNames.NewFilesName(TAtlasNewFilesMode(Max(0, FUndoNewFiles.ItemIndex)));
+    Max(0, FUndoOnConflict.Choice)));
+  ASettings.UndoMultiFileNewFiles := TAtlasUndoNames.NewFilesName(TAtlasNewFilesMode(Max(0, FUndoNewFiles.Choice)));
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;

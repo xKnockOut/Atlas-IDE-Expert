@@ -199,7 +199,7 @@ class function TAtlasResults.RenamePreview(const AEdit: TLspWorkspaceEdit; const
 var
   FileEdits: TLspFileEdits;
   FileLines: TArray<string>;
-  OnLine, InLine: TArray<TLspTextEdit>;
+  OnLine, SameLine: TArray<TLspTextEdit>;
   Edit, Shifted: TLspTextEdit;
   Changed: TList<Integer>;
   Line: Integer;
@@ -250,7 +250,7 @@ begin
         Entry.Text := Trim(Before);
         // Nur Änderungen innerhalb der Zeile lassen sich als Zeile zeigen.
         After := '';
-        InLine := nil;
+        SameLine := nil;
         for Edit in OnLine do
           if Edit.EndPos.Line <> Line then
             After := Edit.NewText
@@ -260,11 +260,11 @@ begin
             Shifted := Edit;
             Shifted.StartPos.Line := 0;
             Shifted.EndPos.Line := 0;
-            InLine := InLine + [Shifted];
+            SameLine := SameLine + [Shifted];
           end;
         if After = '' then
           try
-            After := TLspEdits.Apply(Before, InLine);
+            After := TLspEdits.Apply(Before, SameLine);
           except
             on ELspEditError do
               After := Before;

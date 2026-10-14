@@ -5,8 +5,12 @@
 // nil) aus textDocument/inlayHint. Zwischenspeicher je Datei und Textstand:
 // Ändert sich der Text, verfällt alles; geholt wird nur, was in den sichtbaren
 // Zeilen (mit Rand) noch fehlt. Der RAD-Studio-Editor kennt keinen
-// eingeschobenen Text; die Namen erscheinen deshalb in Zeilenreihenfolge
-// hinter dem Zeilenende und verschieben weder Text noch Cursor.
+// eingeschobenen Text; die Hinweise erscheinen deshalb in Zeilenreihenfolge
+// hinter dem Zeilenende und verschieben weder Text noch Cursor. Weil dort der
+// Bezug zum Argument fehlt, steht der Wert dabei („Name = 'LOCALAPPDATA'“), und
+// es bleiben nur Hinweise, die etwas sagen: nicht beim einzigen Argument eines
+// Aufrufs, nicht bei Namen wie S1, A oder X und nicht, wenn das Argument den
+// Namen schon enthält.
 
 interface
 
@@ -28,6 +32,8 @@ type
   public const
     /// <summary>Zusätzlich geholte Zeilen ober- und unterhalb des sichtbaren Bereichs.</summary>
     Margin = 20;
+    /// <summary>Längster gezeigter Wert, danach „…“.</summary>
+    MaxValueLength = 24;
   private type
     TEntry = class
       Text: string;
@@ -46,6 +52,15 @@ type
     class function SplitLines(const AText: string): TArray<string>; static;
     /// <summary>Beginnt an ACharacter (nach Leerraum) ein Literal: Zahl, String, Zeichen, True, False, nil?</summary>
     class function IsLiteralAt(const ALine: string; ACharacter: Integer): Boolean; static;
+    /// <summary>Text des Arguments ab ACharacter bis zum nächsten Komma bzw. zur schließenden Klammer
+    /// derselben Ebene, ohne Leerraum.</summary>
+    class function ArgumentAt(const ALine: string; ACharacter: Integer): string; static;
+    /// <summary>Ist das Argument ab ACharacter das einzige des Aufrufs: F(Argument)?</summary>
+    class function IsSoleArgument(const ALine: string; ACharacter: Integer): Boolean; static;
+    /// <summary>Sagt der Name nichts: ein oder zwei Zeichen oder Buchstabe mit Ziffern (S1, A, X2)?</summary>
+    class function IsVagueName(const AName: string): Boolean; static;
+    /// <summary>„Name = Wert“, lange Werte gekürzt.</summary>
+    class function LabelOf(const AName, AValue: string): string; static;
     /// <summary>Aktueller Text einer Datei; anderer Text verwirft ihre Hinweise.</summary>
     procedure SetText(const AFileName, AText: string);
     /// <summary>Fehlende Zeilen um AFirst..ALast (mit Rand); False, wenn alles da ist.</summary>
@@ -53,7 +68,7 @@ type
     /// <summary>Antwort des Servers für AFrom..ATo zu AText; verworfen, wenn sich der Text inzwischen
     /// geändert hat. Nur Parameternamen vor Literalen bleiben.</summary>
     procedure Put(const AFileName, AText: string; AFrom, ATo: Integer; const AHints: TArray<TAtlasInlayHint>);
-    /// <summary>Namen der Zeile in Reihenfolge.</summary>
+    /// <summary>Beschriftungen („Name = Wert“) der Zeile in Reihenfolge.</summary>
     function OnLine(const AFileName: string; ALine: Integer): TArray<string>;
     /// <summary>Zeile im Speicher, zum Vergleich mit dem Editor.</summary>
     function LineText(const AFileName: string; ALine: Integer; out AText: string): Boolean;
@@ -63,6 +78,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   System.Generics.Defaults;
 
 { TAtlasInlayHintStore }
@@ -212,6 +228,10 @@ begin
     if (Hint.Line < AFrom) or (Hint.Line > ATo) or (Hint.Line > High(Entry.Lines)) or (Hint.Name = '') or
       not IsLiteralAt(Entry.Lines[Hint.Line], Hint.Character) then
       Continue;
+    // Nur Hinweise, die am Zeilenende noch etwas sagen.
+    if IsVagueName(Hint.Name) or IsSoleArgument(Entry.Lines[Hint.Line], Hint.Character) or
+      ContainsText(ArgumentAt(Entry.Lines[Hint.Line], Hint.Character), Hint.Name) then
+      Continue;
     // Überlappende Abrufe liefern dieselben Hinweise noch einmal.
     Duplicate := False;
     for Known in Entry.Hints do
@@ -239,7 +259,73 @@ begin
     Exit;
   for Hint in Entry.Hints do
     if Hint.Line = ALine then
-      Result := Result + [Hint.Name];
+      Result := Result + [LabelOf(Hint.Name, ArgumentAt(Entry.Lines[ALine], Hint.Character))];
+end;
+
+class function TAtlasInlayHintStore.ArgumentAt(const ALine: string; ACharacter: Integer): string;
+var
+  Index, Depth: Integer;
+  InString: Boolean;
+begin
+  Depth := 0;
+  InString := False;
+  Index := ACharacter + 1;
+  while Index <= Length(ALine) do
+  begin
+    if InString then
+    begin
+      if ALine[Index] = '''' then
+        InString := False;
+    end
+    else if ALine[Index] = '''' then
+      InString := True
+    else if CharInSet(ALine[Index], ['(', '[']) then
+      Inc(Depth)
+    else if CharInSet(ALine[Index], [')', ']']) then
+    begin
+      if Depth = 0 then
+        Break;
+      Dec(Depth);
+    end
+    else if (ALine[Index] = ',') and (Depth = 0) then
+      Break;
+    Inc(Index);
+  end;
+  Result := Trim(Copy(ALine, ACharacter + 1, Index - ACharacter - 1));
+end;
+
+class function TAtlasInlayHintStore.IsSoleArgument(const ALine: string; ACharacter: Integer): Boolean;
+var
+  Before, After: Integer;
+begin
+  Before := ACharacter;
+  while (Before >= 1) and CharInSet(ALine[Before], [' ', #9]) do
+    Dec(Before);
+  After := ACharacter + Length(ArgumentAt(ALine, ACharacter)) + 1;
+  while (After <= Length(ALine)) and CharInSet(ALine[After], [' ', #9]) do
+    Inc(After);
+  Result := (Before >= 1) and (ALine[Before] = '(') and (After <= Length(ALine)) and (ALine[After] = ')');
+end;
+
+class function TAtlasInlayHintStore.IsVagueName(const AName: string): Boolean;
+var
+  Index: Integer;
+begin
+  Result := Length(AName) <= 2;
+  if Result or not CharInSet(AName[1], ['A'..'Z', 'a'..'z']) then
+    Exit;
+  for Index := 2 to Length(AName) do
+    if not CharInSet(AName[Index], ['0'..'9']) then
+      Exit(False);
+  Result := True;
+end;
+
+class function TAtlasInlayHintStore.LabelOf(const AName, AValue: string): string;
+begin
+  if Length(AValue) > MaxValueLength then
+    Result := AName + ' = ' + Copy(AValue, 1, MaxValueLength - 1) + '…'
+  else
+    Result := AName + ' = ' + AValue;
 end;
 
 function TAtlasInlayHintStore.LineText(const AFileName: string; ALine: Integer; out AText: string): Boolean;

@@ -20,6 +20,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.JSON,
   Atlas.Common.Rules.Catalog,
@@ -85,7 +86,7 @@ begin
   Answer := TLspSettingsCommands.Catalog(Entries, 'C:\Users\x\AppData\Roaming\Atlas\settings.json');
   try
     Rules := Answer.GetValue('rules') as TJSONArray;
-    Assert.AreEqual(Length(Entries), Rules.Count);
+    Assert.AreEqual(Integer(Length(Entries)), Rules.Count);
     Found := False;
     for Index := 0 to Rules.Count - 1 do
       if Rules.Items[Index].GetValue<string>('id') = 'syntax' then

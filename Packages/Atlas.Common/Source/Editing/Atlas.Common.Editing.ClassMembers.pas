@@ -219,7 +219,7 @@ end;
 class function TSetterGenerator.Statements(const AField, AValue, ACall: string): TArray<string>;
 begin
   if ACall = '' then
-    Exit([Format('if %s <> %s then', [AField, AValue]), Format('  %s := %s;', [AField, AValue])]);
+    begin Result := [Format('if %s <> %s then', [AField, AValue]), Format('  %s := %s;', [AField, AValue])]; Exit; end;
   Result := [Format('if %s <> %s then', [AField, AValue]), 'begin', Format('  %s := %s;', [AField, AValue]),
     Format('  %s;', [ACall]), 'end;'];
 end;

@@ -213,6 +213,8 @@ begin
   TAtlasGuard.RotatingLog.Folder := FOldFolder;
   if TDirectory.Exists(FFolder) then
     TDirectory.Delete(FFolder, True);
+  FFolder := '';
+  FOldFolder := '';
 end;
 
 procedure TAtlasTimeLimitTests.RunsAndReportsErrors;

@@ -102,6 +102,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.Classes,
   System.IOUtils,
@@ -439,7 +440,7 @@ begin
   try
     Assert.AreEqual(1, Session.Count);
     Assert.IsFalse(Session.Next);
-    Assert.AreEqual(Length('a Exit(False);'), Session.FinalOffset);
+    Assert.AreEqual(Integer(Length('a Exit(False);')), Session.FinalOffset);
   finally
     Session.Free;
   end;

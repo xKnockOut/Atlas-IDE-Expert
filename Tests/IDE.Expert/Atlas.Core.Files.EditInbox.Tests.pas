@@ -30,6 +30,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.IOUtils,
   System.JSON,
@@ -45,6 +46,7 @@ procedure TAtlasEditInboxTests.TearDown;
 begin
   if TDirectory.Exists(FFolder) then
     TDirectory.Delete(FFolder, True);
+  FFolder := '';
 end;
 
 procedure Put(const AFolder, AName, AText: string);

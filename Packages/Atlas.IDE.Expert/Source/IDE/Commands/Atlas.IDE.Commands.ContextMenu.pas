@@ -1,27 +1,28 @@
 ﻿unit Atlas.IDE.Commands.ContextMenu;
 
-// Untermenü „Atlas“ im Kontextmenü des Editors (#399). Jedes Editorfenster
-// der IDE hat ein eigenes Kontextmenü (Komponente „EditorLocalMenu“); Atlas
-// hängt sein Untermenü ein, sobald ein Editorfenster gezeigt oder eine
-// Ansicht aktiviert wird. Die Untermenüs merkt sich Atlas mit
-// FreeNotification: Schließt die IDE ein Editorfenster, gibt sie sie mit frei.
-// Beim Entladen nimmt Atlas alle wieder heraus.
+// Untermenü „Atlas“ im Kontextmenü des Editors (#399). Die IDE baut dieses
+// Menü bei jedem Öffnen aus registrierten Aktionslisten neu auf
+// (INTAEditorLocalMenu); Atlas registriert dort eine TActionList mit einer
+// Aktion „Atlas“ und den Einträgen als Untermenü (Kategorie „Atlas.Eintrag“).
+// Früher hängte Atlas eigene TMenuItem direkt in „EditorLocalMenu“ ein; beim
+// Neuaufbau meldete die IDE dann „Komponente … existiert bereits“.
 // Tastenkürzel stehen nur als Text hinter einem Tab in der Beschriftung, nicht
 // als ShortCut: Sonst würde das Kontextmenü die Taste ein zweites Mal
-// auslösen. Beim Aufklappen werden die Beschriftungen nach den aktuellen
-// Einstellungen erneuert.
+// auslösen. Die Beschriftungen entstehen beim Registrieren; kein OnUpdate:
+// Die IDE ruft es im Leerlauf auch während des Compilierens, und eine
+// geänderte Caption erreichte dort schon freigegebene Menüeinträge
+// (Zugriffsverletzung beim Erzeugen). Geänderte Tasten zeigt das Menü nach
+// einem Neustart.
 
 interface
 
 uses
   System.SysUtils,
   System.Classes,
-  System.Generics.Collections,
-  Vcl.Forms,
-  Vcl.Menus;
+  Vcl.ActnList;
 
 type
-  TAtlasIdeContextMenu = class(TComponent)
+  TAtlasIdeContextMenu = class
   private type
     TEntry = record
       Caption: string;
@@ -30,52 +31,49 @@ type
       Proc: TProc;
     end;
   private const
-    MenuName = 'EditorLocalMenu';
+    Category = 'Atlas';
+    SubCategory = 'Atlas.Eintrag';
   private
     FEntries: TArray<TEntry>;
-    FRoots: TList<TMenuItem>;
+    FActions: TActionList;
+    FRegistered: Boolean;
     function CaptionOf(AIndex: Integer): string;
-    procedure ItemClick(Sender: TObject);
-    procedure RootClick(Sender: TObject);
-  protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    procedure ItemExecute(Sender: TObject);
+    procedure RootExecute(Sender: TObject);
+    procedure Register;
   public
-    constructor Create; reintroduce;
+    constructor Create;
     destructor Destroy; override;
     /// <summary>Eintrag anhängen; ACaption '-' ist ein Trennstrich. AKey darf nil sein.</summary>
     procedure Add(const ACaption: string; const AKey: TFunc<Integer>; const AProc: TProc);
-    /// <summary>Untermenü in das Kontextmenü von AForm einhängen, falls es dort fehlt.</summary>
-    procedure Ensure(AForm: TCustomForm);
-    /// <summary>Wie Ensure für alle offenen Editorfenster.</summary>
+    /// <summary>Registriert das Untermenü bei der IDE, einmal nach allen Add.</summary>
     procedure EnsureAll;
   end;
 
 implementation
 
 uses
+  Vcl.Menus,
+  ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings;
 
 constructor TAtlasIdeContextMenu.Create;
 begin
-  inherited Create(nil);
-  FRoots := TList<TMenuItem>.Create;
+  inherited Create;
+  FActions := TActionList.Create(nil);
 end;
 
 destructor TAtlasIdeContextMenu.Destroy;
+var
+  Services: IOTAEditorServices;
 begin
-  // Freigeben nimmt das Untermenü aus dem Kontextmenü; Notification entfernt es aus der Liste.
-  while FRoots.Count > 0 do
-    FRoots.Last.Free;
-  FRoots.Free;
+  // Vor dem Entladen abmelden, sonst greift die IDE auf freigegebene Aktionen zu.
+  if FRegistered and Supports(BorlandIDEServices, IOTAEditorServices, Services) and
+    (Services.GetEditorLocalMenu <> nil) then
+    Services.GetEditorLocalMenu.UnregisterActionList(Category);
+  FActions.Free;
   inherited;
-end;
-
-procedure TAtlasIdeContextMenu.Notification(AComponent: TComponent; Operation: TOperation);
-begin
-  inherited;
-  if (Operation = opRemove) and (FRoots <> nil) and (AComponent is TMenuItem) then
-    FRoots.Remove(TMenuItem(AComponent));
 end;
 
 procedure TAtlasIdeContextMenu.Add(const ACaption: string; const AKey: TFunc<Integer>; const AProc: TProc);
@@ -100,66 +98,57 @@ begin
     Result := Result + #9 + ShortCutToText(TShortCut(Key));
 end;
 
-procedure TAtlasIdeContextMenu.Ensure(AForm: TCustomForm);
+procedure TAtlasIdeContextMenu.Register;
 var
-  Menu: TComponent;
-  Existing, Root, Item: TMenuItem;
+  Services: IOTAEditorServices;
+  Root, Item: TAction;
   Index: Integer;
 begin
-  if AForm = nil then
+  if FRegistered or not Supports(BorlandIDEServices, IOTAEditorServices, Services) or
+    (Services.GetEditorLocalMenu = nil) then
     Exit;
-  Menu := AForm.FindComponent(MenuName);
-  if not (Menu is TPopupMenu) then
-    Exit;
-  for Existing in FRoots do
-    if Existing.Parent = TPopupMenu(Menu).Items then
-      Exit;
-  Root := TMenuItem.Create(nil);
+  // Elternaktion zuerst, die Einträge direkt danach (so verlangt es INTAEditorLocalMenu).
+  Root := TAction.Create(FActions);
+  Root.ActionList := FActions;
+  Root.Category := Category;
   Root.Caption := TAtlasStrings.Text(TAtlasTextId.MenuAtlas);
-  Root.OnClick := RootClick;
+  Root.OnExecute := RootExecute;
   for Index := 0 to High(FEntries) do
   begin
-    Item := TMenuItem.Create(Root);
+    Item := TAction.Create(FActions);
+    Item.ActionList := FActions;
+    Item.Category := SubCategory;
     Item.Caption := CaptionOf(Index);
     Item.Tag := Index;
     if FEntries[Index].Caption <> '-' then
-      Item.OnClick := ItemClick;
-    Root.Add(Item);
+    begin
+      Item.OnExecute := ItemExecute;
+    end;
   end;
-  TPopupMenu(Menu).Items.Add(Root);
-  Root.FreeNotification(Self);
-  FRoots.Add(Root);
+  Services.GetEditorLocalMenu.RegisterActionList(FActions, Category, cEdMenuCatLast);
+  FRegistered := True;
 end;
 
 procedure TAtlasIdeContextMenu.EnsureAll;
-var
-  Index: Integer;
-begin
-  for Index := 0 to Screen.FormCount - 1 do
-    Ensure(Screen.Forms[Index]);
-end;
-
-procedure TAtlasIdeContextMenu.RootClick(Sender: TObject);
-var
-  Index: Integer;
-  Root: TMenuItem;
 begin
   try
-    Root := TMenuItem(Sender);
-    for Index := 0 to Root.Count - 1 do
-      if (Root.Items[Index].Tag >= 0) and (Root.Items[Index].Tag <= High(FEntries)) then
-        Root.Items[Index].Caption := CaptionOf(Root.Items[Index].Tag);
+    Register;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
   end;
 end;
 
-procedure TAtlasIdeContextMenu.ItemClick(Sender: TObject);
+procedure TAtlasIdeContextMenu.RootExecute(Sender: TObject);
+begin
+  // Nur das Untermenü; ohne Handler wäre die Aktion ausgegraut.
+end;
+
+procedure TAtlasIdeContextMenu.ItemExecute(Sender: TObject);
 var
   Index: Integer;
 begin
-  Index := TMenuItem(Sender).Tag;
+  Index := TAction(Sender).Tag;
   if (Index < 0) or (Index > High(FEntries)) or not Assigned(FEntries[Index].Proc) then
     Exit;
   TAtlasGuard.Run(TAtlasFeature.EditorCommands, FEntries[Index].Proc);

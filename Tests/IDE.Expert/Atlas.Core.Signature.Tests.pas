@@ -136,7 +136,7 @@ begin
   Assert.AreEqual(1, ScanEnd('Foo(Bar(1, 2), ').ActiveParameter, 'Innerer Aufruf ist geschlossen');
   Site := ScanEnd('Foo(1, Bar(2, ');
   Assert.AreEqual(1, Site.ActiveParameter, 'Im inneren Aufruf zählt dessen Komma');
-  Assert.AreEqual(Length('Foo(1, Bar'), Site.OpenParen);
+  Assert.AreEqual(Integer(Length('Foo(1, Bar')), Site.OpenParen);
   Assert.AreEqual(1, ScanEnd('Foo(1, (2 + 3').ActiveParameter, 'Klammer zur Gruppierung gehört zu Foo');
   Assert.AreEqual(1, ScanEnd('Foo(1, [2, 3').ActiveParameter, 'Mengen- bzw. Array-Klammern');
 end;

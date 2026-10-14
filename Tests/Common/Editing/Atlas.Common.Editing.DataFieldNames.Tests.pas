@@ -105,8 +105,8 @@ begin
   Assert.IsTrue(TDataFieldNames.CallAt(Line, Length(Line), Call));
   Assert.AreEqual('qryOrders', Call.DataSet);
   Assert.IsTrue(Call.Kind = TDataNameKind.Param);
-  Assert.AreEqual(Length(Line), Call.ContentStart);
-  Assert.AreEqual(Length(Line), Call.ContentEnd);
+  Assert.AreEqual(Integer(Length(Line)), Call.ContentStart);
+  Assert.AreEqual(Integer(Length(Line)), Call.ContentEnd);
   Line := '  if qryOrders.FindField(''NO'') = nil then';
   Assert.IsTrue(TDataFieldNames.CallAt(Line, 26, Call));
   Assert.AreEqual('FindField', Call.Method);

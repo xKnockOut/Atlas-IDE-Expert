@@ -127,7 +127,7 @@ var
 begin
   Assert.IsTrue(TCompilerDirectives.CompletionAt('{$WARN SYM', Names, IsWarning));
   Assert.IsTrue(IsWarning);
-  Assert.AreEqual(Length(TCompilerDirectives.Warnings), Length(Names));
+  Assert.AreEqual(Integer(Length(TCompilerDirectives.Warnings)), Integer(Length(Names)));
   Assert.IsTrue(MatchText('SYMBOL_PLATFORM', Names));
   // Hinter dem Bezeichner (ON/OFF) nichts mehr.
   Assert.IsFalse(TCompilerDirectives.CompletionAt('{$WARN SYMBOL_PLATFORM O', Names, IsWarning));

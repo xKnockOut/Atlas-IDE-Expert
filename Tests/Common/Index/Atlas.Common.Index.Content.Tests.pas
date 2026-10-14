@@ -45,6 +45,9 @@ type
     function Start(const AIndex: ISymbolIndex; const AFiles: TArray<string>; AUsages: Boolean): TIndexService;
     procedure Build(const AIndex: ISymbolIndex; const AFiles: TArray<string>; AUsages: Boolean);
   public
+    /// <summary>Erste Benutzung (VCL, Codepages, RTTI) ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -253,7 +256,7 @@ begin
   Changed := Copy(Data);
   Changed[8] := 11;
   Assert.AreEqual<NativeInt>(0, Length(TIndexCache.ReadEntries(Changed, Reason)));
-  Assert.AreEqual('Formatversion 11 statt 12', Reason);
+  Assert.AreEqual(Format('Formatversion 11 statt %d', [TIndexCache.FormatVersion]), Reason);
   Assert.AreEqual<NativeInt>(0, Length(TIndexCache.ReadEntries(TEncoding.UTF8.GetBytes('{"units":[]}'), Reason)));
   Assert.IsTrue(Reason.StartsWith('kein Atlas-Index'), Reason);
   Assert.AreEqual<NativeInt>(0, Length(TIndexCache.ReadEntries(nil, Reason)));
@@ -298,6 +301,16 @@ begin
 end;
 
 { TIndexServiceCacheTests }
+
+procedure TIndexServiceCacheTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    DamagedCacheIsRebuiltSilently;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TIndexServiceCacheTests.Setup;
 begin
@@ -457,12 +470,12 @@ begin
   Index := TSymbolIndex.Create;
   Service := Start(Index, [KundeFile], True);
   try
-    Assert.AreEqual(0, Length(Index.FindSymbols('NeueFunktion')));
+    Assert.AreEqual(0, Integer(Length(Index.FindSymbols('NeueFunktion'))));
     FFiles.Put(KundeFile, StringReplace(UnitKunde, 'var'#13#10, 'procedure NeueFunktion;'#13#10'var'#13#10, []), 2);
     Watch := TStopwatch.StartNew;
     Assert.AreEqual(1, Service.ApplyChanges([TFileChange.Create(KundeFile, TFileChangeKind.Changed)]));
     Watch.Stop;
-    Assert.AreEqual(1, Length(Index.FindSymbols('NeueFunktion')));
+    Assert.AreEqual(1, Integer(Length(Index.FindSymbols('NeueFunktion'))));
     Assert.IsTrue(Watch.ElapsedMilliseconds < 1000, Format('%d ms', [Watch.ElapsedMilliseconds]));
   finally
     Service.Free;

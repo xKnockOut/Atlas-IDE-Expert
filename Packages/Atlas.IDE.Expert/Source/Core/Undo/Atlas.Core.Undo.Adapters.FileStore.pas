@@ -247,11 +247,11 @@ begin
   Result := nil;
   for FileName in SetFiles do
   begin
+    // Nicht lesbare oder kaputte Datei: überspringen.
     try
       Value := TJSONObject.ParseJSONValue(TEncoding.UTF8.GetString(TFile.ReadAllBytes(FileName)));
     except
-      on Exception do
-        Value := nil;
+      Value := nil;
     end;
     try
       if FromJson(Value, ChangeSet) then

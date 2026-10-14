@@ -4079,7 +4079,7 @@ begin
       not SameText(Location.UnitName, TUsesClauses.OwnName(ATree.Tokens)) and
       not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ATree.Tokens), Location.UnitName, AResolver.Namespaces) and
       TUsesClauses.AddUnit(ATree.Tokens, AOffset, Location.UnitName, ALineBreak, Edit) then
-      Exit([Edit]);
+      begin Result := [Edit]; Exit; end;
 end;
 
 class function TLspCompletion.DeclareItems(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;

@@ -22,7 +22,8 @@ uses
   Vcl.Menus,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Settings.Page;
 
 type
   /// <summary>Wer belegt die Taste außer Atlas? '' wenn frei.</summary>
@@ -32,7 +33,7 @@ type
   private type
     TRow = record
       Key: TEdit;
-      Choice: TComboBox;
+      Choice: TAtlasChoiceBox;
       Status: TLabel;
     end;
   private
@@ -61,7 +62,7 @@ type
     property OwnerOf: TAtlasKeyOwnerFunc read FOwnerOf write SetOwnerOf;
     /// <summary>Zum Testen: Steuerelemente der Zeile AIndex.</summary>
     function KeyEdit(AIndex: Integer): TEdit;
-    function ChoiceBox(AIndex: Integer): TComboBox;
+    function ChoiceBox(AIndex: Integer): TAtlasChoiceBox;
     function StatusLabel(AIndex: Integer): TLabel;
     function ForeignLabel: TLabel;
   end;
@@ -160,18 +161,16 @@ begin
   if FEntries[AIndex].IdeKey <> 0 then
     FRows[AIndex].Key.TextHint := ShortCutToText(TShortCut(FEntries[AIndex].IdeKey));
   FRows[AIndex].Key.OnChange := KeyChange;
-  FRows[AIndex].Choice := TComboBox.Create(Self);
+  FRows[AIndex].Choice := TAtlasChoiceBox.Create(Self);
   FRows[AIndex].Choice.Parent := Panel;
-  FRows[AIndex].Choice.Style := csDropDownList;
   FRows[AIndex].Choice.Left := ChoiceLeft;
   FRows[AIndex].Choice.Top := 1;
   FRows[AIndex].Choice.Width := 180;
   FRows[AIndex].Choice.Anchors := [akLeft, akTop, akRight];
   FRows[AIndex].Choice.Tag := AIndex;
   // Reihenfolge wie TAtlasKeyChoice.
-  FRows[AIndex].Choice.Items.Add(TAtlasStrings.Text(TAtlasTextId.KeysChoiceAtlas));
-  FRows[AIndex].Choice.Items.Add(TAtlasStrings.Text(TAtlasTextId.KeysChoiceOther));
-  FRows[AIndex].Choice.Items.Add(TAtlasStrings.Text(TAtlasTextId.KeysChoiceNewKey));
+  FRows[AIndex].Choice.SetChoices([TAtlasStrings.Text(TAtlasTextId.KeysChoiceAtlas),
+    TAtlasStrings.Text(TAtlasTextId.KeysChoiceOther), TAtlasStrings.Text(TAtlasTextId.KeysChoiceNewKey)]);
   FRows[AIndex].Choice.OnChange := ChoiceChange;
   FRows[AIndex].Status := AddLabel(Panel, '', KeyLeft, 27);
   FRows[AIndex].Status.Font.Color := clGrayText;
@@ -227,7 +226,7 @@ begin
   FRows[AIndex].Status.Caption := StatusText(FEntries[AIndex], Owner);
   FUpdating := True;
   try
-    FRows[AIndex].Choice.ItemIndex := Ord(FEntries[AIndex].Choice);
+    FRows[AIndex].Choice.Choice := Ord(FEntries[AIndex].Choice);
     // Zu entscheiden gibt es nur bei einer Belegung (bzw. bei der Taste der IDE).
     FRows[AIndex].Choice.Enabled := (Status <> TAtlasKeyStatus.Free) and (Status <> TAtlasKeyStatus.NoKey);
   finally
@@ -252,10 +251,10 @@ var
   Choice: TAtlasKeyChoice;
   Key: TEdit;
 begin
-  if FUpdating or (TComboBox(Sender).ItemIndex < 0) then
+  if FUpdating or (TAtlasChoiceBox(Sender).Choice < 0) then
     Exit;
-  Index := TComboBox(Sender).Tag;
-  Choice := TAtlasKeyChoice(TComboBox(Sender).ItemIndex);
+  Index := TAtlasChoiceBox(Sender).Tag;
+  Choice := TAtlasKeyChoice(TAtlasChoiceBox(Sender).Choice);
   FEntries[Index].Choose(Choice);
   Key := FRows[Index].Key;
   FUpdating := True;
@@ -321,7 +320,7 @@ begin
   Result := FRows[AIndex].Key;
 end;
 
-function TAtlasKeysPage.ChoiceBox(AIndex: Integer): TComboBox;
+function TAtlasKeysPage.ChoiceBox(AIndex: Integer): TAtlasChoiceBox;
 begin
   Result := FRows[AIndex].Choice;
 end;

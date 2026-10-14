@@ -88,7 +88,7 @@ begin
   Edit.Files := [Default(TLspFileEdits)];
   Edit.Files[0].FileName := 'A.pas';
   // Zwei Stellen in derselben Zeile, eine weitere davor.
-  Edit.Files[0].Edits := [TextEdit(2, 12, 17, 'Kunde'), TextEdit(2, 2, 7, 'Kunde'), TextEdit(1, 4, 9, 'Kunde')];
+  Edit.Files[0].Edits := [TextEdit(2, 11, 16, 'Kunde'), TextEdit(2, 2, 7, 'Kunde'), TextEdit(1, 4, 9, 'Kunde')];
   Entries := TAtlasResults.RenamePreview(Edit,
     function(const AFileName: string): string
     begin

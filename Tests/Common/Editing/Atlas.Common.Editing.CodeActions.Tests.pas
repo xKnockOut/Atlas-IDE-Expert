@@ -124,7 +124,7 @@ begin
   Assert.AreEqual(RewriteKind, Action.Kind);
   Assert.AreEqual(1, Integer(Length(Action.Edits)));
   Assert.AreEqual(4, Action.Edits[0].Range.StartPos.Line);
-  Assert.AreEqual(Length('  L := TStringList.Create;'), Action.Edits[0].Range.StartPos.Character);
+  Assert.AreEqual(Integer(Length('  L := TStringList.Create;')), Action.Edits[0].Range.StartPos.Character);
 end;
 
 procedure TCodeActionTests.TryFinallyResultCompilesStructurally;
@@ -236,7 +236,7 @@ var
 begin
   Edit := TCodeActions.SuppressLine('begin' + LB + '  // lsp-ignore: a' + LB + '  X;' + LB + 'end;', 2, 'b');
   Assert.AreEqual(1, Edit.Range.StartPos.Line);
-  Assert.AreEqual(Length('  // lsp-ignore: a'), Edit.Range.StartPos.Character);
+  Assert.AreEqual(Integer(Length('  // lsp-ignore: a')), Edit.Range.StartPos.Character);
   Assert.AreEqual(', b', Edit.NewText);
 end;
 

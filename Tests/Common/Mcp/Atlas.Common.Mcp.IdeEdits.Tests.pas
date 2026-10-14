@@ -31,6 +31,8 @@ type
 implementation
 
 uses
+  Winapi.Windows,
+  System.Generics.Collections,
   System.SysUtils,
   System.IOUtils,
   System.JSON,
@@ -71,6 +73,7 @@ procedure TMcpIdeEditsTests.TearDown;
 begin
   if TDirectory.Exists(FInbox) then
     TDirectory.Delete(FInbox, True);
+  FInbox := '';
 end;
 
 procedure TMcpIdeEditsTests.WritesItselfWhenNobodyTakesTheRequest;

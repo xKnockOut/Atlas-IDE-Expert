@@ -263,6 +263,7 @@ procedure TAtlasUndoJournalTests.TearDown;
 begin
   if TDirectory.Exists(FFolder) then
     TDirectory.Delete(FFolder, True);
+  FFolder := '';
 end;
 
 procedure TAtlasUndoJournalTests.RecordsOnlyMultiFileActions;
@@ -396,8 +397,8 @@ begin
     Assert.IsTrue(Journal.Undo.Complete);
     // Byte für Byte wie vorher: BOM, Kodierung, Umlaute, CRLF/LF gemischt, fehlende letzte Zeilenschaltung.
     Assert.AreEqual(TEncoding.Unicode.GetString(Utf16Before), TEncoding.Unicode.GetString(TFile.ReadAllBytes(Utf16)));
-    Assert.AreEqual(Length(Utf16Before), Length(TFile.ReadAllBytes(Utf16)));
-    Assert.AreEqual(Length(AnsiBefore), Length(TFile.ReadAllBytes(Ansi)));
+    Assert.AreEqual(Integer(Length(Utf16Before)), Integer(Length(TFile.ReadAllBytes(Utf16))));
+    Assert.AreEqual(Integer(Length(AnsiBefore)), Integer(Length(TFile.ReadAllBytes(Ansi))));
     Assert.AreEqual($FC, Integer(TFile.ReadAllBytes(Ansi)[3]));
     Assert.AreEqual(TEncoding.UTF8.GetString(MixedBefore), TEncoding.UTF8.GetString(TFile.ReadAllBytes(Mixed)));
     Assert.AreEqual(TEncoding.UTF8.GetString(FormBefore), TEncoding.UTF8.GetString(TFile.ReadAllBytes(Form)));
@@ -464,7 +465,7 @@ begin
     Assert.AreEqual('Neu.pas@P.dproj', Removed[0]);
     Assert.IsTrue(TFile.Exists(OldUnit), 'gelöschte Unit wiederhergestellt');
     Assert.AreEqual('Alt.pas@P.dproj', Added[0]);
-    Assert.AreEqual(Length('unit Alt; // Grüße'), Length(TFile.ReadAllBytes(OldUnit)), 'ANSI wie vorher');
+    Assert.AreEqual(Integer(Length('unit Alt; // Grüße')), Integer(Length(TFile.ReadAllBytes(OldUnit))), 'ANSI wie vorher');
     Assert.AreEqual('uses Alt;', TEncoding.UTF8.GetString(TFile.ReadAllBytes(Dpr)));
     // Wiederherstellen: neue Unit wieder da, alte wieder weg (Papierkorb, nie liegen lassen).
     Assert.IsTrue(Journal.Redo.Complete);
@@ -477,7 +478,7 @@ begin
     Journal.Options := Options;
     Assert.IsTrue(Journal.Undo.Complete);
     Assert.IsFalse(TFile.Exists(NewUnit));
-    Assert.AreEqual(2, Recycled.Count, 'gelöscht, nicht im Papierkorb');
+    Assert.AreEqual(2, Integer(Recycled.Count), 'gelöscht, nicht im Papierkorb');
     // Behalten: aus dem Projekt ausgetragen, Datei bleibt.
     Assert.IsTrue(Journal.Redo.Complete);
     Options.NewFiles := TAtlasNewFilesMode.Keep;

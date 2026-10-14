@@ -94,8 +94,9 @@ end;
 class function TAtlasEditorBuffer.BlockIndent(const ABuffer: IOTAEditBuffer): Integer;
 begin
   Result := 2;
-  if ABuffer.BufferOptions <> nil then
-    Result := ABuffer.BufferOptions.BlockIndent;
+  // Blockeinzug steht in den Editoroptionen des Puffers, nicht in BufferOptions.
+  if ABuffer.EditOptions <> nil then
+    Result := ABuffer.EditOptions.BlockIndent;
   if Result < 1 then
     Result := 2;
 end;

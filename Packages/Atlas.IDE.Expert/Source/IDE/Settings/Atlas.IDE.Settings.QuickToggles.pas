@@ -71,6 +71,7 @@ uses
   Vcl.Dialogs,
   Vcl.Controls,
   ToolsAPI,
+  ToolsAPI.Editor,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,

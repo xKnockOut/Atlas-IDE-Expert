@@ -30,6 +30,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.IOUtils,
   System.JSON,
@@ -139,10 +140,10 @@ begin
     TEncoding.UTF8);
   try
     Lines := TAtlasBugReport.Tail(FileName, 2);
-    Assert.AreEqual(2, Length(Lines));
+    Assert.AreEqual(2, Integer(Length(Lines)));
     Assert.AreEqual('c', Lines[0]);
     Assert.AreEqual('d', Lines[1]);
-    Assert.AreEqual(0, Length(TAtlasBugReport.Tail(FileName + '.fehlt', 2)));
+    Assert.AreEqual(0, Integer(Length(TAtlasBugReport.Tail(FileName + '.fehlt', 2))));
   finally
     TFile.Delete(FileName);
   end;
