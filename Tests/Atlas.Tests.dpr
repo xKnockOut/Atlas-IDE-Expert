@@ -205,6 +205,8 @@ uses
   Atlas.Core.Completion.Preview in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Preview.pas',
   Atlas.UI.Settings.Page in '..\Packages\Atlas.IDE.Expert\Source\UI\Settings\Atlas.UI.Settings.Page.pas',
   Atlas.UI.Settings.Page.Tests in 'IDE.Expert\Atlas.UI.Settings.Page.Tests.pas',
+  Atlas.UI.Settings.Keys in '..\Packages\Atlas.IDE.Expert\Source\UI\Settings\Atlas.UI.Settings.Keys.pas',
+  Atlas.UI.Settings.Keys.Tests in 'IDE.Expert\Atlas.UI.Settings.Keys.Tests.pas',
   Atlas.Core.Build.Events in '..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Events.pas',
   Atlas.Core.Build.Events.Tests in 'IDE.Expert\Atlas.Core.Build.Events.Tests.pas',
   Atlas.Core.Diagnostics.Hangs in '..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Hangs.pas',

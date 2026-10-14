@@ -85,6 +85,7 @@ contains
   Atlas.IDE.CodeInsight.Composition in 'Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.pas',
   Atlas.Core.Settings.Plugin in 'Source\Core\Settings\Atlas.Core.Settings.Plugin.pas',
   Atlas.UI.Settings.Page in 'Source\UI\Settings\Atlas.UI.Settings.Page.pas' {AtlasSettingsPage: TFrame},
+  Atlas.UI.Settings.Keys in 'Source\UI\Settings\Atlas.UI.Settings.Keys.pas' {AtlasKeysPage: TFrame},
   Atlas.IDE.Settings.Store in 'Source\IDE\Settings\Atlas.IDE.Settings.Store.pas',
   Atlas.IDE.Settings.Options in 'Source\IDE\Settings\Atlas.IDE.Settings.Options.pas',
   Atlas.Core.Settings.JsonText in 'Source\Core\Settings\Atlas.Core.Settings.JsonText.pas',

@@ -20,6 +20,7 @@ uses
   System.JSON,
   ToolsAPI,
   Atlas.UI.Strings,
+  Atlas.Core.Settings.Plugin,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
   Atlas.IDE.CodeInsight.Manager,
@@ -58,10 +59,31 @@ var
   CheckOnSave: TAtlasIdeCheckOnSave;
   // Hauptmenü Atlas mit Schnellschaltern und Einstellungen (#227).
   MainMenu: TAtlasMainMenu;
+  // Eigene Tasten für Vervollständigung und Parameter-Hint (#494); ohne Einstellung keine.
+  CompletionKey: TAtlasIdeKeyBinding;
+  SignatureKey: TAtlasIdeKeyBinding;
 
 const
   // Ab dieser Dauer ein Hinweis im Meldungsfenster (#501).
   HangHintMs = 2000;
+
+/// <summary>Alle Tasten von Atlas nach den Einstellungen neu belegen; bei Konflikt nur mit Vorrang (#494).</summary>
+procedure RebindKeys;
+var
+  Settings: TAtlasPluginSettings;
+begin
+  Settings := TAtlasIdeSettings.Current;
+  if Palette <> nil then
+    Palette.Rebind;
+  if CheckOnSave <> nil then
+    CheckOnSave.Rebind;
+  if CompletionKey <> nil then
+    CompletionKey.Rebind(Word(Settings.CompletionKey), Settings.CompletionKeyPriority,
+      TAtlasStrings.Text(TAtlasTextId.SettingsCompletionKey));
+  if SignatureKey <> nil then
+    SignatureKey.Rebind(Word(Settings.SignatureKey), Settings.SignatureKeyPriority,
+      TAtlasStrings.Text(TAtlasTextId.SettingsSignatureKey));
+end;
 
 procedure ReportHang(const AHang: TAtlasHang);
 var
@@ -305,14 +327,26 @@ begin
     RegisterPalette;
   if Pairs = nil then
     Pairs := TAtlasEditorPairs.Create;
+  if CompletionKey = nil then
+    CompletionKey := TAtlasIdeKeyBinding.Create('Atlas.Completion', 'Atlas-Vervollständigung',
+      procedure
+      begin
+        if Manager <> nil then
+          Manager.OpenCompletion;
+      end);
+  if SignatureKey = nil then
+    SignatureKey := TAtlasIdeKeyBinding.Create('Atlas.Signature', 'Atlas-Parameter-Hint',
+      procedure
+      begin
+        if Manager <> nil then
+          Manager.OpenSignature;
+      end);
+  RebindKeys;
   // Geänderte Tastenkürzel sofort neu belegen; fremde Vervollständigung melden (#494).
   TAtlasIdeSettings.OnChanged :=
     procedure
     begin
-      if Palette <> nil then
-        Palette.Rebind;
-      if CheckOnSave <> nil then
-        CheckOnSave.Rebind;
+      RebindKeys;
       // Index-Optionen an den laufenden Server; er baut neu auf, wenn sich der Umfang ändert (#652).
       if Manager <> nil then
         Manager.NotifyServer('workspace/didChangeConfiguration',
@@ -324,6 +358,17 @@ begin
       TAtlasGuard.Run(TAtlasFeature.Settings,
         procedure
         begin
+          TAtlasIdeKeys.ReportForeignCompletion;
+        end);
+    end);
+  // Neue Packages können Tasten belegen oder eine eigene Vervollständigung mitbringen (#494).
+  TAtlasIdeKeys.WatchPackages(
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          RebindKeys;
           TAtlasIdeKeys.ReportForeignCompletion;
         end);
     end);
@@ -383,6 +428,9 @@ var
 begin
   TAtlasGuard.OnWarning := nil;
   TAtlasIdeSettings.OnChanged := nil;
+  TAtlasIdeKeys.UnwatchPackages;
+  FreeAndNil(SignatureKey);
+  FreeAndNil(CompletionKey);
   FreeAndNil(DirtyExport);
   FreeAndNil(MainMenu);
   FreeAndNil(Pairs);

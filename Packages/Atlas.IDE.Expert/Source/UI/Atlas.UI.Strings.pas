@@ -40,7 +40,10 @@ type
     DiagExportMenu, DiagExportTitle, DiagExportHint, DiagExportSave, DiagExportFilter, DiagExportEmpty, DiagExportDone,
     SettingsIndexGroup, SettingsIndexSearch, SettingsIndexLibrary,
     SettingsXmlDocFull, SettingsXmlDocMaxLines, DocTypeParams, DocValue, DocExample, DocSeeAlso, HoverCopySelection,
-    InactiveCondition, InactiveTarget, InactiveRegion, ProblemsSourceInactive);
+    InactiveCondition, InactiveTarget, InactiveRegion, ProblemsSourceInactive,
+    SettingsCompletionKey, SettingsSignatureKey, KeysTitle, KeysIntro, KeysHeaderFunction, KeysHeaderKey,
+    KeysHeaderOwner, KeysHeaderChoice, KeysChoiceAtlas, KeysChoiceOther, KeysChoiceNewKey, KeysStatusFree,
+    KeysStatusIdeKey, KeysStatusNone, KeysStatusAtlasWins, KeysStatusLeft, KeysForeign, KeysForeignNone, KeysInvalid);
 
   TAtlasStrings = class
   private class var
@@ -84,7 +87,8 @@ const
      'Vererbung', 'Zieltyp %s', 'angeheftet', 'Gehe zu %s', 'Verwendungen', 'Verwendungen (%d)', 'Deklaration kopieren', 'Hilfe', 'Atlas: %d Verwendungen von %s',
      'Klasse', 'Klassenreferenz', 'Objekttyp', 'Record', 'Interface', 'Helfer', 'Aufzählung', 'Typ', 'Methode', 'Konstruktor', 'Routine', 'Property', 'Feld', 'Variable', 'Konstante', 'Aufzählungswert', 'Umschalt+F12', 'Strg+C',
      'Blocklinien in den Paarfarben (schaltet die Strukturhervorhebung der IDE ab)',
-     'Atlas zeichnet die Blocklinien selbst und hat die Strukturhervorhebung der IDE abgeschaltet; wirkt nach dem nächsten Start von Delphi.',
+     'Atlas zeichnet die Blocklinien selbst und hat die Strukturhervorhebung der IDE abgeschaltet; ' +
+       'wirkt nach dem nächsten Start von Delphi.',
      'Atlas hat die Strukturhervorhebung der IDE wieder eingeschaltet; wirkt nach dem nächsten Start von Delphi.',
      'Probleme im Editor unterstreichen und im Meldungsfenster auflisten (Syntax, Regeln, Compiler)',
      'Atlas-Probleme', 'Atlas', 'Compiler', 'seit dem letzten Prüfen geändert', '… %d weitere Probleme',
@@ -93,7 +97,8 @@ const
      'Atlas-Server (AtlasServer.exe), leer = Standard:', 'Verwendet: %s (gefunden)',
      'Verwendet: %s (nicht gefunden; ohne Server bleibt die Code Insight der IDE aktiv)',
      'Atlas-Server|AtlasServer.exe|Programme (*.exe)|*.exe',
-     'Atlas zeigt den Tooltip selbst und hat Help Insight der IDE abgeschaltet; wirkt nach dem nächsten Start von Delphi.',
+     'Atlas zeigt den Tooltip selbst und hat Help Insight der IDE abgeschaltet; wirkt nach dem ' +
+       'nächsten Start von Delphi.',
      'Atlas hat Help Insight der IDE wieder eingeschaltet; wirkt nach dem nächsten Start von Delphi.',
      'Atlas: Unterschied in %s (- Editor, + Platte):',
      'Atlas Vervollständigung', 'Atlas Parameterhilfe', 'Atlas Tooltip', '%d von %d', 'Parameter %d: %s',
@@ -107,7 +112,7 @@ const
      'Atlas: Server nicht erreichbar.',
      'Befehlspalette:', 'Syntaxprüfung jetzt:', 'Vorrang vor anderer Belegung',
      'Atlas: %0:s ist schon belegt (%1:s); Atlas überlässt die Taste und belegt sie nicht für %2:s. ' +
-       'Andere Taste oder Vorrang unter Tools > Optionen > Atlas.',
+       'Entscheidung unter Tools > Optionen > Drittanbieter > Atlas > Tastenkonflikte.',
      'Atlas: %s bringt eine eigene Vervollständigung mit. Laufen beide, stören sie sich; ' +
        'eine davon abschalten (Atlas: Menü Atlas > Code Insight von Atlas). Atlas ändert fremde Erweiterungen nicht.',
      'Inaktive {$IFDEF}-Zweige ausgrauen', 'Inaktive {$IFDEF}-Zweige ausgrauen', 'Meintest du',
@@ -128,7 +133,31 @@ const
      'Inaktiv: Bedingung %s nicht erfüllt',
      ' (Zielplattform %s · %s)',
      'Inaktiver Bereich (bedingte Kompilierung)',
-     'Bedingte Kompilierung'),
+     'Bedingte Kompilierung',
+     'Vervollständigung:',
+     'Parameter-Hint:',
+     'Tastenkonflikte',
+     'Ist eine Taste schon belegt (IDE oder andere Erweiterung), belegt Atlas sie erst nach deiner ' +
+       'Entscheidung; bis dahin bleibt die andere Belegung aktiv. Taste als Text wie im Menü ' +
+       '(Strg+Umschalt+P), leer = keine bzw. bei Vervollständigung und Parameter-Hint die Taste der ' +
+       'IDE.',
+     'Funktion',
+     'Taste',
+     'Belegt von',
+     'Entscheidung',
+     'Atlas verwenden',
+     'Anderer Belegung überlassen',
+     'Andere Taste für Atlas',
+     'frei',
+     'Taste der IDE (%s) über Code Insight',
+     'keine Taste',
+     '%s; Atlas hat Vorrang',
+     '%s; bleibt aktiv',
+     'Erweiterungen mit eigener Vervollständigung: %s. Laufen beide, stören sie sich; eine davon ' +
+       'abschalten (Atlas: Menü Atlas > Code Insight von Atlas). Atlas ändert fremde Erweiterungen ' +
+       'nicht.',
+     'Keine Erweiterung mit eigener Vervollständigung erkannt.',
+     'Unbekannte Taste: %s'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -151,7 +180,8 @@ const
      'Inheritance', 'Target type %s', 'pinned', 'Go to %s', 'Usages', 'Usages (%d)', 'Copy declaration', 'Help', 'Atlas: %d usages of %s',
      'Class', 'Class reference', 'Object type', 'Record', 'Interface', 'Helper', 'Enumeration', 'Type', 'Method', 'Constructor', 'Routine', 'Property', 'Field', 'Variable', 'Constant', 'Enumeration value', 'Shift+F12', 'Ctrl+C',
      'Block lines in the pair colours (switches off the IDE''s structural highlighting)',
-     'Atlas draws the block lines itself and switched off the IDE''s structural highlighting; takes effect after the next start of Delphi.',
+     'Atlas draws the block lines itself and switched off the IDE''s structural highlighting; takes ' +
+       'effect after the next start of Delphi.',
      'Atlas switched the IDE''s structural highlighting back on; takes effect after the next start of Delphi.',
      'Underline problems in the editor and list them in the message view (syntax, rules, compiler)',
      'Atlas problems', 'Atlas', 'Compiler', 'changed since the last check', '… %d more problems',
@@ -160,7 +190,8 @@ const
      'Atlas server (AtlasServer.exe), empty = default:', 'In use: %s (found)',
      'In use: %s (not found; without a server the IDE''s Code Insight stays active)',
      'Atlas server|AtlasServer.exe|Programs (*.exe)|*.exe',
-     'Atlas shows the tooltip itself and switched off the IDE''s Help Insight; takes effect after the next start of Delphi.',
+     'Atlas shows the tooltip itself and switched off the IDE''s Help Insight; takes effect after ' +
+       'the next start of Delphi.',
      'Atlas switched the IDE''s Help Insight back on; takes effect after the next start of Delphi.',
      'Atlas: difference in %s (- editor, + disk):',
      'Atlas completion', 'Atlas parameter info', 'Atlas tooltip', '%d of %d', 'Parameter %d: %s',
@@ -174,7 +205,7 @@ const
      'Atlas: server not reachable.',
      'Command palette:', 'Syntax check now:', 'Take precedence over other assignment',
      'Atlas: %0:s is already assigned (%1:s); Atlas leaves the key and does not use it for %2:s. ' +
-       'Choose another key or precedence under Tools > Options > Atlas.',
+       'Decide under Tools > Options > Third Party > Atlas > Key conflicts.',
      'Atlas: %s brings its own code completion. Running both interferes; ' +
        'switch one off (Atlas: menu Atlas > Atlas Code Insight). Atlas does not change other extensions.',
      'Grey out inactive {$IFDEF} branches', 'Grey out inactive {$IFDEF} branches', 'Did you mean',
@@ -195,7 +226,29 @@ const
      'Inactive: condition %s not met',
      ' (target platform %s · %s)',
      'Inactive region (conditional compilation)',
-     'Conditional compilation'));
+     'Conditional compilation',
+     'Code completion:',
+     'Parameter hint:',
+     'Key conflicts',
+     'If a key is already assigned (IDE or another extension), Atlas uses it only after you decide; ' +
+       'until then the other assignment stays active. Key as text like in menus (Ctrl+Shift+P); empty ' +
+       '= none, or for completion and parameter hint the IDE key.',
+     'Function',
+     'Key',
+     'Assigned to',
+     'Decision',
+     'Use Atlas',
+     'Leave to other assignment',
+     'Other key for Atlas',
+     'free',
+     'IDE key (%s) via Code Insight',
+     'no key',
+     '%s; Atlas takes precedence',
+     '%s; stays active',
+     'Extensions with their own code completion: %s. Running both interferes; switch one off (Atlas: ' +
+       'menu Atlas > Atlas Code Insight). Atlas does not change other extensions.',
+     'No extension with its own code completion detected.',
+     'Unknown key: %s'));
 
 { TAtlasStrings }
 

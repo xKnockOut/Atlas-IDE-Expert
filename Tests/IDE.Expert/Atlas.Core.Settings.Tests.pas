@@ -98,6 +98,10 @@ begin
   Assert.AreEqual(320, Settings.PanelWidth);
   Assert.IsTrue(Settings.AutoParentheses);
   Assert.IsFalse(Settings.Preview, 'Vorschau standardmäßig aus (#434)');
+  // Vervollständigung und Parameter-Hint über die Tasten der IDE, ohne eigene Belegung (#494).
+  Assert.AreEqual(0, Settings.CompletionKey);
+  Assert.AreEqual(0, Settings.SignatureKey);
+  Assert.IsFalse(Settings.SignatureKeyPriority);
 end;
 
 procedure TAtlasPluginSettingsTests.SaveAndLoadRoundTrip;
@@ -115,6 +119,9 @@ begin
   Settings.Learning := False;
   Settings.Preview := True;
   Settings.ServerPath := '  D:\Atlas\AtlasServer.exe ';
+  Settings.SignatureKey := $6048; // Strg+Umschalt+H
+  Settings.SignatureKeyPriority := True;
+  Settings.CompletionKey := $4020; // Strg+Leer
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
@@ -126,6 +133,10 @@ begin
   Assert.IsFalse(Loaded.Learning);
   Assert.IsTrue(Loaded.Preview);
   Assert.AreEqual('D:\Atlas\AtlasServer.exe', Loaded.ServerPath, 'Serverpfad ohne Leerraum');
+  Assert.AreEqual($6048, Loaded.SignatureKey);
+  Assert.IsTrue(Loaded.SignatureKeyPriority);
+  Assert.AreEqual($4020, Loaded.CompletionKey);
+  Assert.IsFalse(Loaded.CompletionKeyPriority);
   Assert.AreEqual('', TAtlasPluginSettings.Defaults.ServerPath, 'Standard: leer');
 end;
 
@@ -189,8 +200,10 @@ begin
   Store.WriteInteger('VisibleRows', 99);
   Store.WriteInteger('ListWidth', 50);
   Store.WriteInteger('PanelWidth', 5000);
+  Store.WriteInteger('SignatureKey', -3);
   Settings := Default(TAtlasPluginSettings);
   Settings.Load(Store);
+  Assert.AreEqual(0, Settings.SignatureKey, 'kein gültiges Kürzel');
   Assert.AreEqual(TAtlasPluginSettings.MaxVisibleRows, Settings.VisibleRows);
   Assert.AreEqual(TAtlasPluginSettings.MinListWidth, Settings.ListWidth);
   Assert.AreEqual(TAtlasPluginSettings.MaxPanelWidth, Settings.PanelWidth);
