@@ -223,8 +223,9 @@ begin
   Assert.AreEqual(0, Pos('  public'#10'    FName: string;', Text), Text);
   Assert.IsTrue(Pos('  private'#10'    FName: string;'#10'    procedure SetName(const Value: string);'#10 +
     '  public'#10'    property Name: string read FName write SetName;'#10'  end;', Text) > 0, Text);
-  Assert.IsTrue(Pos('procedure TKunde.SetName(const Value: string);'#10'begin'#10'  FName := Value;'#10'end;',
-    Text) > 0, Text);
+  // Derselbe Setter wie /prop und die Code-Vorlage (#51); ohne Changed in TKunde nur die Prüfung.
+  Assert.IsTrue(Pos('procedure TKunde.SetName(const Value: string);'#10'begin'#10'  if FName <> Value then'#10 +
+    '    FName := Value;'#10'end;', Text) > 0, Text);
 end;
 
 procedure TTypeCommandsTests.EncapsulatePrivateFieldFails;
