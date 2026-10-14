@@ -102,7 +102,8 @@ pwsh Tools/Check-ConsoleOutput.ps1         # no Write/Writeln to stdout
 
 | Parameter | Meaning |
 |---|---|
-| `--log <file>` | log file, appended |
+| `--log <file>` | log file, appended; paths, project, unit and user names are replaced by IDs (`datei#3`, `name#2`) |
+| `--log-names` | write the log file with real paths and names (local debugging only) |
 | `--log-level <level>` | `debug`, `info` (default), `warning`, `error`; applies to the log file and `window/logMessage` |
 | `--trace <file>` | trace of all JSON messages (`-->` received, `<--` sent) |
 

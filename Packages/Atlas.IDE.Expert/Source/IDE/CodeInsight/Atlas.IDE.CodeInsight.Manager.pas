@@ -123,6 +123,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   System.IOUtils,
   System.StrUtils,
+  System.RegularExpressions,
   System.Win.Registry,
   Atlas.IDE.Settings.Store,
   Atlas.Core.Diagnostics.Hangs,
@@ -271,6 +272,18 @@ begin
     Result := ExpandFileName(PluginDir + '..\..\..\Win32\Debug\Bin\AtlasServer.exe');
 end;
 
+/// <summary>Pfade und Benutzername aus einer Zeile des Diagnoselogs (#647); Meldungen wie
+/// „Server nicht gefunden: C:\…“ dürfen so weitergegeben werden.</summary>
+function WithoutPaths(const AText: string): string;
+var
+  UserName: string;
+begin
+  Result := TRegEx.Replace(AText, '(?:\b[A-Za-z]:|\\\\)[\\/]\S*|file:\S+|\S*\\\S*', '<pfad>');
+  UserName := GetEnvironmentVariable('USERNAME');
+  if Length(UserName) >= 3 then
+    Result := StringReplace(Result, UserName, '<benutzer>', [rfReplaceAll, rfIgnoreCase]);
+end;
+
 procedure TAtlasCodeInsightManager.ReportError(const AMessage: string);
 var
   Messages: IOTAMessageServices;
@@ -289,7 +302,7 @@ begin
   if not FDiagnose then
     Exit;
   try
-    TFile.AppendAllText(DiagnoseLog, FormatDateTime('hh:nn:ss.zzz', Now) + ' ' + AMessage + sLineBreak,
+    TFile.AppendAllText(DiagnoseLog, FormatDateTime('hh:nn:ss.zzz', Now) + ' ' + WithoutPaths(AMessage) + sLineBreak,
       TEncoding.UTF8);
   except
     // Diagnose darf die IDE nie stören.
@@ -335,6 +348,7 @@ begin
     FServer := TLspServerProcess.Create(Path, Arguments);
     FSession := TLspSession.Create(FServer.Client);
     FSession.SetProjects(GroupProjects);
+    FSession.ServerSettings := TAtlasIdeSettings.Current.ServerSettingsJson;
     FProjectsChecked := GetTickCount;
     FSession.Initialize;
     FLastError := '';
@@ -494,8 +508,8 @@ begin
       Exit;
     Result := FSession.Hover(View.Buffer.FileName, Text, HintLine - 1,
       TLspSession.ColumnToIndex(Lines[HintLine - 1], HintCol, TAtlasEditorBuffer.TabWidth(View.Buffer)));
-    Diagnose(Format('Hover in %s, Zeile %d, Spalte %d (Cursor %d/%d): %s', [ExtractFileName(View.Buffer.FileName),
-      HintLine, HintCol, View.CursorPos.Line, View.CursorPos.Col, IfThen(Result = '', 'leer', Result)]));
+    Diagnose(Format('Hover (%s), Zeile %d, Spalte %d (Cursor %d/%d): %d Zeichen', [ExtractFileExt(View.Buffer.FileName),
+      HintLine, HintCol, View.CursorPos.Line, View.CursorPos.Col, Length(Result)]));
   except
     on E: Exception do
     begin
@@ -548,9 +562,9 @@ begin
       AFileName := Location.FileName;
       ALineNum := Location.Line + 1;
     end;
-    Diagnose(Format('Gehe zu Definition (Index %d) in %s, Zeile %d, Spalte %d (Zeichen %d): %s',
-      [Index, ExtractFileName(View.Buffer.FileName), Cursor.Line, Cursor.Col, Character,
-       IfThen(AFileName <> '', Format('%s, Zeile %d', [AFileName, ALineNum]), 'keine Definition')]));
+    Diagnose(Format('Gehe zu Definition (Index %d) (%s), Zeile %d, Spalte %d (Zeichen %d): %s',
+      [Index, ExtractFileExt(View.Buffer.FileName), Cursor.Line, Cursor.Col, Character,
+       IfThen(AFileName <> '', Format('%s, Zeile %d', [ExtractFileExt(AFileName), ALineNum]), 'keine Definition')]));
   except
     on E: Exception do
     begin
@@ -673,7 +687,7 @@ begin
     // Hauptschalter (#407): ausgeschaltet übernimmt die eingebaute Code Insight; ebenso ohne Server.
     Result := TAtlasIdeSettings.Current.Enabled and not TAtlasGuard.Disabled(TAtlasFeature.Completion) and ((Extension = '.pas') or (Extension = '.dpr') or
       (Extension = '.dpk') or (Extension = '.inc')) and ServerAvailable;
-    Diagnose(Format('HandlesFile(%s) = %s', [AFileName, BoolToStr(Result, True)]));
+    Diagnose(Format('HandlesFile(%s) = %s', [ExtractFileExt(AFileName), BoolToStr(Result, True)]));
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Completion, E);
@@ -751,7 +765,7 @@ begin
   Activity := TAtlasActivity.Scope('Vervollständigung öffnen');
   // False: Die IDE zeigt keine eigene Liste; unser Popup übernimmt (#407, #410).
   Result := False;
-  Diagnose(Format('InvokeCodeCompletion(%d, "%s")', [Ord(HowInvoked), Str]));
+  Diagnose(Format('InvokeCodeCompletion(%d, %d Zeichen)', [Ord(HowInvoked), Length(Str)]));
   try
     Completion.Invoke(CurrentEditView);
   except
@@ -836,7 +850,7 @@ end;
 procedure TAtlasCodeInsightManager.Report(const AMessage: string);
 begin
   try
-    TFile.AppendAllText(DiagnoseLog, FormatDateTime('hh:nn:ss.zzz', Now) + ' ' + AMessage + sLineBreak,
+    TFile.AppendAllText(DiagnoseLog, FormatDateTime('hh:nn:ss.zzz', Now) + ' ' + WithoutPaths(AMessage) + sLineBreak,
       TEncoding.UTF8);
   except
     // Protokoll ist Beiwerk; ein gesperrtes Log darf die IDE nicht stören.

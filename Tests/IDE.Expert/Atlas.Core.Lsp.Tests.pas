@@ -42,6 +42,8 @@ type
     procedure InitializeAnnouncesPullDiagnosticsAndCountsRefresh;
     [Test]
     procedure ReportsProjectGroupChanges;
+    [Test]
+    procedure WrapsServerSettings;
   end;
 
   [TestFixture]
@@ -491,6 +493,25 @@ begin
   finally
     Session.Free;
     Client.Free;
+  end;
+end;
+
+procedure TLspSessionTests.WrapsServerSettings;
+var
+  Params: TJSONObject;
+begin
+  // Wie didChangeConfiguration aus VS Code: settings.atlas (#652).
+  Params := TLspSession.SettingsParams('{"index":{"libraryPaths":true}}');
+  try
+    Assert.IsTrue(Params.GetValue<Boolean>('settings.atlas.index.libraryPaths'));
+  finally
+    Params.Free;
+  end;
+  Params := TLspSession.SettingsParams('kein JSON');
+  try
+    Assert.AreEqual('{"settings":{"atlas":{}}}', Params.ToJSON);
+  finally
+    Params.Free;
   end;
 end;
 
