@@ -367,6 +367,11 @@ begin
     begin
       TAtlasProjectSettings.Execute;
     end);
+  Palette.RegisterCommand('Atlas.GlobalSettings', TAtlasStrings.Text(TAtlasTextId.MenuGlobalSettings), '',
+    procedure
+    begin
+      TAtlasProjectSettings.ExecuteGlobal;
+    end);
   Palette.RegisterCommand('Atlas.HangTest', TAtlasStrings.Text(TAtlasTextId.SettingsHangTest), '',
     procedure
     var
@@ -869,6 +874,15 @@ begin
       if StatusField <> nil then
         StatusField.RequestRefresh;
     end;
+  // Prüfung und Regelkatalog des Einstellungsdialogs (#227): nur ein laufender Server, keiner wird gestartet.
+  TAtlasProjectSettings.Command :=
+    function(const ACommand, AArgumentsJson: string): TJSONValue
+    begin
+      if Manager <> nil then
+        Result := Manager.RunServerCommand(ACommand, AArgumentsJson, 5000)
+      else
+        Result := nil;
+    end;
   TAtlasOptionsRegistration.Register(
     procedure
     begin
@@ -935,6 +949,7 @@ begin
   UnregisterWatchdog;
   FreeAndNil(Compile);
   TAtlasOptionsRegistration.Unregister;
+  TAtlasProjectSettings.Command := nil;
   TAtlasIdeHistory.Release;
   TAtlasIdeSettings.Release;
   if (ManagerIndex >= 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then

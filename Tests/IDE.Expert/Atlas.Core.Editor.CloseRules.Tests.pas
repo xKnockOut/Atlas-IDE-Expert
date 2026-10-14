@@ -39,6 +39,8 @@ type
     procedure TypingIdentifierKeepsPopup;
     [Test]
     procedure TooltipHidesAfter300Ms;
+    [Test]
+    procedure DelayedOpenOnlyWhileTypingIdentifier;
   end;
 
 implementation
@@ -195,6 +197,26 @@ end;
 procedure TAtlasCloseRulesTests.TooltipHidesAfter300Ms;
 begin
   Assert.AreEqual(300, TAtlasCloseRules.TooltipHideDelayMs);
+end;
+
+procedure TAtlasCloseRulesTests.DelayedOpenOnlyWhileTypingIdentifier;
+var
+  Now_: TAtlasEditorWindowState;
+begin
+  // ARG-046: "List." ausgelöst an Zeichen 5, danach "Co" getippt: öffnen.
+  Assert.IsTrue(TAtlasCloseRules.DelayedOpen(Opened, Opened, True, 'List.Co', 5, 7));
+  Assert.IsTrue(TAtlasCloseRules.DelayedOpen(Opened, Opened, True, 'List.', 5, 5));
+  // Leerzeichen, ";" oder Rücktaste vor die Auslösestelle: nicht mehr öffnen.
+  Assert.IsFalse(TAtlasCloseRules.DelayedOpen(Opened, Opened, True, 'List. ', 5, 6));
+  Assert.IsFalse(TAtlasCloseRules.DelayedOpen(Opened, Opened, True, 'List', 5, 4));
+  Assert.IsFalse(TAtlasCloseRules.DelayedOpen(Opened, Opened, False, 'List.', 5, 5));
+  // Fenster gewechselt oder gescrollt.
+  Now_ := Opened;
+  Now_.TopRow := 120;
+  Assert.IsFalse(TAtlasCloseRules.DelayedOpen(Opened, Now_, True, 'List.', 5, 5));
+  Now_ := Opened;
+  Now_.Focus := 7;
+  Assert.IsFalse(TAtlasCloseRules.DelayedOpen(Opened, Now_, True, 'List.', 5, 5));
 end;
 
 initialization

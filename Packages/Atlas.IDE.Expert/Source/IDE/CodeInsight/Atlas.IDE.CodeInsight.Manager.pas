@@ -110,11 +110,13 @@ type
     function Completion: TAtlasEditorCompletion;
     function Signature: TAtlasEditorSignature;
     function SessionOrNil: TLspSession;
-    class function ServerPath(out AArguments: string): string; static;
     /// <summary>Gibt es den Server? Ohne ihn übernimmt die eingebaute Code Insight.</summary>
     function ServerAvailable: Boolean;
     class function DiagnoseEnabled: Boolean; static;
   public
+    /// <summary>Pfad zu AtlasServer.exe aus den Einstellungen, sonst DefaultServerPath; AArguments: zusätzliche
+    /// Argumente aus der Registry. Auch für die Aufrufe der Optionsseite (#227).</summary>
+    class function ServerPath(out AArguments: string): string; static;
     /// <summary>Protokolldatei neben dem Plugin.</summary>
     class function DiagnoseLog: string; static;
     /// <summary>Server ohne eingestellten Pfad: neben dem Plugin, sonst Output\Win64\Debug\Bin im Repo.</summary>

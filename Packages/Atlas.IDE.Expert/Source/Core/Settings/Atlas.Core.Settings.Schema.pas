@@ -4,8 +4,11 @@
 // Beschreibung, Art des Bedienelements und Standardwert. Objekte mit nur
 // einfachen Gliedern (compiler, format, highlight …) werden zu einzelnen
 // Feldern "objekt.glied". Was sich nicht als einfaches Feld bearbeiten lässt
-// (Regeln, Profile, Listen von Objekten), ist Complex und wird nur angezeigt.
+// (Regeln, Profile, Listen von Objekten), ist Complex: Der Dialog bearbeitet es
+// als JSON-Text, die Regeln als Tabelle aus dem Regelkatalog.
 // So erscheint jede neue Einstellung im Schema ohne weiteren Code im Dialog.
+// x-control (Bedienelement laut Issue), examples (Vorschläge für Textfelder)
+// und x-restart (wirkt erst nach Neustart) werden mitgelesen.
 
 interface
 
@@ -28,6 +31,14 @@ type
     Choices: TArray<string>;
     /// <summary>Standardwert als JSON-Text; '' ohne Angabe.</summary>
     DefaultJson: string;
+    /// <summary>x-control: gewünschtes Bedienelement, z. B. "Datei wählen", "Auswahl aus der .dproj".</summary>
+    Control: string;
+    /// <summary>examples als Anzeigetexte (Strings ohne Anführungszeichen).</summary>
+    Examples: TArray<string>;
+    /// <summary>x-restart: Die Änderung wirkt erst nach einem Neustart des Servers.</summary>
+    Restart: Boolean;
+    /// <summary>x-control verlangt eine Dateiauswahl.</summary>
+    function PicksFile: Boolean;
     /// <summary>Passt AJson (JSON-Text) zur Art des Felds? Sonst bleibt der Wert unangetastet.</summary>
     function Accepts(const AJson: string): Boolean;
   end;
@@ -127,8 +138,9 @@ begin
         Result := Value is TJSONBool;
       TAtlasSettingKind.Integer_:
         Result := Value is TJSONNumber;
+      // TJSONNumber erbt von TJSONString: Zahlen ausdrücklich ausschließen.
       TAtlasSettingKind.Text:
-        Result := Value is TJSONString;
+        Result := (Value is TJSONString) and not (Value is TJSONNumber);
       TAtlasSettingKind.Choice:
         begin
           Result := False;
@@ -141,7 +153,7 @@ begin
           Result := Value is TJSONArray;
           if Result then
             for Item in TJSONArray(Value) do
-              if not (Item is TJSONString) then
+              if not (Item is TJSONString) or (Item is TJSONNumber) then
                 Result := False;
         end;
     else
@@ -150,6 +162,11 @@ begin
   finally
     Value.Free;
   end;
+end;
+
+function TAtlasSettingField.PicksFile: Boolean;
+begin
+  Result := Pos('Datei wählen', Control) > 0;
 end;
 
 { TAtlasSettingsSchema }
@@ -164,7 +181,7 @@ var
 
   function Make(const APath, APage: string; ASchema: TJSONObject; const AFallback: string): TAtlasSettingField;
   var
-    Default_: TJSONValue;
+    Default_, Examples, Example, Restart: TJSONValue;
   begin
     Result := Default(TAtlasSettingField);
     Result.Path := APath;
@@ -176,6 +193,13 @@ var
     Default_ := ASchema.GetValue('default');
     if Default_ <> nil then
       Result.DefaultJson := Default_.ToJSON;
+    Result.Control := ASchema.GetValue<string>('x-control', '');
+    Examples := ASchema.GetValue('examples');
+    if Examples is TJSONArray then
+      for Example in TJSONArray(Examples) do
+        Result.Examples := Result.Examples + [Display(Example.ToJSON)];
+    Restart := ASchema.GetValue('x-restart');
+    Result.Restart := (Restart is TJSONBool) and TJSONBool(Restart).AsBoolean;
   end;
 
 begin

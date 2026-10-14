@@ -81,6 +81,14 @@ type
     FPreview: TAtlasEditorPreview;
     FController: TAtlasCompletionController;
     FTimer: TTimer;
+    // Verzögertes automatisches Öffnen (ARG-046): Ansicht, Zeile, Zeichen und Fenster beim Auslösen.
+    FDelayTimer: TTimer;
+    FDelayView: IOTAEditView;
+    FDelayLine: Integer;
+    FDelayCharacter: Integer;
+    FDelayWindow: HWND;
+    FDelayState: TAtlasEditorWindowState;
+    FDelayed: Boolean;
     FKeys: TAtlasKeyClient;
     FNotifierIndex: Integer;
     FLog: TAtlasLogProc;
@@ -102,6 +110,8 @@ type
     procedure Log(const AMessage: string);
     procedure Recheck;
     procedure TimerTick(Sender: TObject);
+    procedure DelayTimerTick(Sender: TObject);
+    procedure CancelDelay;
     procedure Commit(const AItem: TAtlasCompletionItem);
     /// <summary>Setzt die Vorlage von AItem statt des Worts bis AEnd (0-basiert) ein.</summary>
     procedure CommitSnippet(const AView: IOTAEditView; const AItem: TAtlasCompletionItem; const AText,
@@ -475,6 +485,9 @@ begin
   FTimer.Enabled := False;
   FTimer.Interval := 50;
   FTimer.OnTimer := TimerTick;
+  FDelayTimer := TTimer.Create(nil);
+  FDelayTimer.Enabled := False;
+  FDelayTimer.OnTimer := DelayTimerTick;
   if Supports(BorlandIDEServices, IOTAEditorServices, Editor) then
   begin
     Notifier := TAtlasEditNotifier.Create(Self);
@@ -493,6 +506,7 @@ begin
   if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAEditorServices, Editor) then
     Editor.RemoveNotifier(FNotifierIndex);
   FTimer.Free;
+  FDelayTimer.Free;
   Shutdown;
   FController.Free;
   FPopup.Free;
@@ -575,6 +589,19 @@ begin
     Log('Vervollständigung: kein Caret gefunden');
     Exit;
   end;
+  CancelDelay;
+  // Verzögerung bis zum Öffnen (ARG-046): nur beim automatischen Auslösen; DelayTimerTick ruft wieder auf.
+  if AAutomatic and not FDelayed and (TAtlasIdeSettings.Current.OpenDelayMs > 0) then
+  begin
+    FDelayView := AView;
+    FDelayLine := Cursor.Line;
+    FDelayCharacter := Character;
+    FDelayWindow := Window;
+    FDelayState := WindowState(AView, Window, Window);
+    FDelayTimer.Interval := Cardinal(TAtlasIdeSettings.Current.OpenDelayMs);
+    FDelayTimer.Enabled := True;
+    Exit(True);
+  end;
   Context := Default(TAtlasContext);
   Context.FileName := AView.Buffer.FileName;
   Context.Text := TAtlasEditorBuffer.Text(AView.Buffer);
@@ -642,8 +669,51 @@ begin
   Result := True;
 end;
 
+procedure TAtlasEditorCompletion.CancelDelay;
+begin
+  FDelayTimer.Enabled := False;
+  FDelayView := nil;
+end;
+
+procedure TAtlasEditorCompletion.DelayTimerTick(Sender: TObject);
+var
+  View: IOTAEditView;
+  LineText: string;
+  Character: Integer;
+  Same: Boolean;
+begin
+  View := FDelayView;
+  CancelDelay;
+  if (View = nil) or (View.Buffer = nil) then
+    Exit;
+  try
+    Same := View.CursorPos.Line = FDelayLine;
+    LineText := TAtlasEditorBuffer.LineText(View, View.CursorPos.Line);
+    Character := TLspSession.ColumnToIndex(LineText, View.CursorPos.Col, TAtlasEditorBuffer.TabWidth(View.Buffer));
+    if not TAtlasCloseRules.DelayedOpen(FDelayState, WindowState(View, FDelayWindow, GetFocus), Same, LineText,
+      FDelayCharacter, Character) then
+    begin
+      Log('Vervollständigung: verzögertes Öffnen verworfen');
+      Exit;
+    end;
+    FDelayed := True;
+    try
+      Invoke(View, True);
+    finally
+      FDelayed := False;
+    end;
+  except
+    on E: Exception do
+    begin
+      Log('Vervollständigung: ' + E.Message);
+      TAtlasGuard.Report(TAtlasFeature.Completion, E);
+    end;
+  end;
+end;
+
 procedure TAtlasEditorCompletion.Close;
 begin
+  CancelDelay;
   FController.Close;
   if FPreview <> nil then
     FPreview.Clear;
@@ -996,8 +1066,8 @@ begin
     if Reason = TAtlasCloseReason.NonIdentifier then
     begin
       // Commit-Zeichen direkt hinter dem Wort (#429): übernehmen, das Zeichen bleibt.
-      if (Index = Character) and CharInSet(LineText[Index], ['(', ';', '.']) and
-        FController.CanCommitOnCharacter then
+      if TAtlasIdeSettings.Current.CommitCharacters and (Index = Character) and
+        CharInSet(LineText[Index], ['(', ';', '.']) and FController.CanCommitOnCharacter then
       begin
         FCommitEnd := Character - 1;
         FCommitSuffixBytes := TEncoding.UTF8.GetByteCount(string(LineText[Index]));
@@ -1112,15 +1182,16 @@ begin
     Edit.Text := NewText;
     Edit.IsWord := True;
     Edits.Add(Edit);
-    // uses-Ergänzung u. ä. (#180).
-    for TextEdit in AItem.AdditionalEdits do
-    begin
-      Edit.Start := TAtlasEditorBuffer.ByteOffset(Text, TextEdit.StartLine, TextEdit.StartCharacter);
-      Edit.Stop := TAtlasEditorBuffer.ByteOffset(Text, TextEdit.EndLine, TextEdit.EndCharacter);
-      Edit.Text := TextEdit.NewText;
-      Edit.IsWord := False;
-      Edits.Add(Edit);
-    end;
+    // uses-Ergänzung u. ä. (#180); abschaltbar auf der Optionsseite (ARG-046).
+    if TAtlasIdeSettings.Current.AutoUses then
+      for TextEdit in AItem.AdditionalEdits do
+      begin
+        Edit.Start := TAtlasEditorBuffer.ByteOffset(Text, TextEdit.StartLine, TextEdit.StartCharacter);
+        Edit.Stop := TAtlasEditorBuffer.ByteOffset(Text, TextEdit.EndLine, TextEdit.EndCharacter);
+        Edit.Text := TextEdit.NewText;
+        Edit.IsWord := False;
+        Edits.Add(Edit);
+      end;
     Edits.Sort(TComparer<TPendingEdit>.Construct(
       function(const A, B: TPendingEdit): Integer
       begin
