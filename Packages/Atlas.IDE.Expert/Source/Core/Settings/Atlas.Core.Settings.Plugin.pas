@@ -81,6 +81,8 @@ type
     PairGuides: Boolean;
     /// <summary>Probleme im Editor unterstreichen und im Meldungsfenster auflisten (#398).</summary>
     Problems: Boolean;
+    /// <summary>Probleme zusätzlich im Meldungsfenster auflisten (Gruppe „Atlas-Probleme“); nur mit Problems.</summary>
+    ProblemsList: Boolean;
     /// <summary>Syntaxprüfung des Compilers nach dem Speichern (#548).</summary>
     CheckOnSave: Boolean;
     /// <summary>Wartezeit nach dem letzten Speichern.</summary>
@@ -135,6 +137,7 @@ begin
   Result.ServerPath := '';
   Result.PairGuides := True;
   Result.Problems := True;
+  Result.ProblemsList := True;
   // Die Prüfung in der IDE zeigt deren Fortschritt; Standard ist die Prüfung des Servers mit dcc (compiler.onSave).
   Result.CheckOnSave := False;
   Result.CheckOnSaveDelayMs := 2000;
@@ -181,6 +184,7 @@ begin
   ServerPath := Trim(AStore.ReadString('ServerPath', Default.ServerPath));
   PairGuides := AStore.ReadInteger('PairGuides', BoolValue(Default.PairGuides)) <> 0;
   Problems := AStore.ReadInteger('Problems', BoolValue(Default.Problems)) <> 0;
+  ProblemsList := AStore.ReadInteger('ProblemsList', BoolValue(Default.ProblemsList)) <> 0;
   CheckOnSave := AStore.ReadInteger('CheckOnSave', BoolValue(Default.CheckOnSave)) <> 0;
   CheckOnSaveDelayMs := AStore.ReadInteger('CheckOnSaveDelayMs', Default.CheckOnSaveDelayMs);
   CheckOnSaveMaxMs := AStore.ReadInteger('CheckOnSaveMaxMs', Default.CheckOnSaveMaxMs);
@@ -214,6 +218,7 @@ begin
   AStore.WriteString('ServerPath', Trim(ServerPath));
   AStore.WriteInteger('PairGuides', BoolValue(PairGuides));
   AStore.WriteInteger('Problems', BoolValue(Problems));
+  AStore.WriteInteger('ProblemsList', BoolValue(ProblemsList));
   AStore.WriteInteger('CheckOnSave', BoolValue(CheckOnSave));
   AStore.WriteInteger('CheckOnSaveDelayMs', CheckOnSaveDelayMs);
   AStore.WriteInteger('CheckOnSaveMaxMs', CheckOnSaveMaxMs);

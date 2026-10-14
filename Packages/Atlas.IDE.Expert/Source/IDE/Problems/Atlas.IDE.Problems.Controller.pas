@@ -111,6 +111,8 @@ type
     FRefreshSeen: Integer;
     FPaintedVersion: Integer;
     FListedVersion: Integer;
+    // Stand des Schalters ProblemsList beim letzten Aufbau der Liste.
+    FListShown: Boolean;
     FListDue: Cardinal;
     FClosedCheckAt: Cardinal;
     // Nach gescheitertem Serverstart erst später wieder versuchen.
@@ -586,6 +588,8 @@ begin
 end;
 
 procedure TAtlasProblemsController.Publish;
+var
+  Show: Boolean;
 begin
   if FStore.Version <> FPaintedVersion then
   begin
@@ -593,10 +597,12 @@ begin
     TAtlasProblemsPainter.Invalidate;
     FListDue := GetTickCount + 800;
   end;
-  if (FListedVersion <> FStore.Version) and (GetTickCount >= FListDue) then
+  Show := Active and TAtlasIdeSettings.Current.ProblemsList;
+  if (Show <> FListShown) or ((FListedVersion <> FStore.Version) and (GetTickCount >= FListDue)) then
   begin
     FListedVersion := FStore.Version;
-    if Active then
+    FListShown := Show;
+    if Show then
       FList.Update(FStore)
     else
       FList.Clear;

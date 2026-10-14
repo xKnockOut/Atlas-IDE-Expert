@@ -36,7 +36,8 @@ type
     MenuIndexStatus, MenuIndexRebuild, MenuIndexRebuilding, MenuIndexNoServer,
     SettingsPaletteKey, SettingsCheckKey, SettingsKeyPriority, KeyConflict, ForeignCompletion,
     SettingsInactiveDim, MenuToggleInactive, DidYouMean,
-    DiagExportMenu, DiagExportTitle, DiagExportHint, DiagExportSave, DiagExportFilter, DiagExportEmpty, DiagExportDone);
+    DiagExportMenu, DiagExportTitle, DiagExportHint, DiagExportSave, DiagExportFilter, DiagExportEmpty, DiagExportDone,
+    SettingsProblemsList);
 
   TAtlasStrings = class
   private class var
@@ -108,7 +109,8 @@ const
      'Genau diese Zeilen kommen in die ZIP-Datei (Logs der letzten %d Tage). Pfade, Projekt- und Bezeichnernamen ' +
        'sind durch Kurz-IDs ersetzt; die Zuordnung ID → Name wird nie mitgegeben.',
      'Speichern…', 'ZIP-Dateien (*.zip)|*.zip', 'Atlas: Keine Diagnoselogs der letzten %d Tage gefunden.',
-     'Atlas: Diagnoselog gespeichert: %s'),
+     'Atlas: Diagnoselog gespeichert: %s',
+     'Probleme im Meldungsfenster auflisten (Reiter „Atlas-Probleme“)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -161,7 +163,8 @@ const
      'Exactly these lines go into the ZIP file (logs of the last %d days). Paths, project and identifier names ' +
        'are replaced by short IDs; the mapping ID → name is never included.',
      'Save…', 'ZIP files (*.zip)|*.zip', 'Atlas: no diagnostic logs found for the last %d days.',
-     'Atlas: diagnostic log saved: %s'));
+     'Atlas: diagnostic log saved: %s',
+     'List problems in the message view (tab “Atlas-Probleme”)'));
 
 { TAtlasStrings }
 

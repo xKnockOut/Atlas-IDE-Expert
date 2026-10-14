@@ -94,6 +94,7 @@ begin
   Assert.AreEqual(320, Settings.PanelWidth);
   Assert.IsTrue(Settings.AutoParentheses);
   Assert.IsFalse(Settings.Preview, 'Vorschau standardmäßig aus (#434)');
+  Assert.IsTrue(Settings.ProblemsList, 'Liste „Atlas-Probleme“ standardmäßig an');
 end;
 
 procedure TAtlasPluginSettingsTests.SaveAndLoadRoundTrip;
@@ -110,6 +111,7 @@ begin
   Settings.PanelCollapsed := True;
   Settings.Learning := False;
   Settings.Preview := True;
+  Settings.ProblemsList := False;
   Settings.ServerPath := '  D:\Atlas\AtlasServer.exe ';
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
@@ -121,6 +123,8 @@ begin
   Assert.IsTrue(Loaded.PanelCollapsed);
   Assert.IsFalse(Loaded.Learning);
   Assert.IsTrue(Loaded.Preview);
+  Assert.IsFalse(Loaded.ProblemsList, 'Liste „Atlas-Probleme“ abgeschaltet');
+  Assert.IsTrue(Loaded.Problems, 'Wellenlinien bleiben an');
   Assert.AreEqual('D:\Atlas\AtlasServer.exe', Loaded.ServerPath, 'Serverpfad ohne Leerraum');
   Assert.AreEqual('', TAtlasPluginSettings.Defaults.ServerPath, 'Standard: leer');
 end;
