@@ -19,6 +19,8 @@ type
   TCheckedFile = record
     /// <summary>Pfad relativ zum Ordner der Konfiguration, mit "\" oder "/".</summary>
     Path: string;
+    /// <summary>Vollständiger Pfad für SARIF (#95); '' = unbekannt, dann gilt Path.</summary>
+    FullPath: string;
     Findings: TArray<TRuleFinding>;
   end;
 

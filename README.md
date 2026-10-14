@@ -124,6 +124,8 @@ Values also work with `=` (`--log=server.log`). `--stdio` and `--clientProcessId
 | `--rules <a,b>` | only these rules, e.g. `syntax` |
 | `--units <a,b>` | only these units: name or glob pattern for paths |
 | `--min-severity <s>` | `hint`, `info`, `warning`, `error` |
+| `--fail-on <s>` | which findings make the exit code 1: `error` (default), `warning` or `never`, so warnings in legacy projects do not break a pre-commit hook |
+| `--source-root <folder>` | root of the SARIF paths; defaults to the Git root above the target, otherwise the target's folder. Paths below it carry `uriBaseId` `%SRCROOT%`, files outside appear as absolute `file:` URIs |
 | `--profile <name>` | rule profile (`standard`, `fast`, `strict`, `security`, `style` or one of your own from `profiles`); overrides `profile` in `atlas.json` |
 | `--baseline <file>` | hide known findings; without it `atlas-baseline.json` next to `atlas.json` applies if present. The editor hides them as well |
 | `--update-baseline` | rewrite the baseline from the current findings (vanished entries drop out), exit code 0 |
@@ -133,7 +135,9 @@ Values also work with `=` (`--log=server.log`). `--stdio` and `--clientProcessId
 | `--changed-lines` | only findings in changed lines; together with the baseline only new findings in changed lines |
 | `--suppression-stats` | instead of findings: how often each rule is suppressed via `lsp-ignore` (most frequent first, including unused ones), as text or JSON; exit code 0 |
 
-Exit code: 0 without warnings and errors, 1 with warnings, 2 with errors, 3 for invocation or read errors.
+Exit code: 1 if a finding reaches `--fail-on` (default: at least one error), otherwise 0; 3 for invocation or read errors. Findings hidden by the baseline never count.
+
+In SARIF, `message.text` is the rule's English catalog name without the confidence suffix. The confidence is in `properties.confidence`, the finding's German message in `properties.detail`.
 
 In an SVN working copy, `--changed` without a base compares the working copy with BASE (`svn status`), `--changed <rev>` and `--diff <rev>` with the revision (`svn diff -r`); `--include-uncommitted` adds unversioned files. Git takes precedence if both are present.
 
