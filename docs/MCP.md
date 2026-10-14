@@ -30,6 +30,11 @@ ergibt einen Werkzeugfehler mit Begründung. Geschrieben wird nur im Arbeitsordn
   `%LOCALAPPDATA%\Atlas\editor-dirty-<pid>.json`), wird nichts geschrieben; scheitert das Schreiben
   einer Datei, werden die schon geschriebenen zurückgesetzt. Kodierung und Zeilenenden
   bleiben erhalten (#121).
+- Ist eine Datei in einer IDE mit Atlas-Plugin offen, schreibt der MCP-Server sie nicht selbst (#397):
+  Er legt die Änderung in den Eingang des Plugins (`%LOCALAPPDATA%\Atlas\ide-edits\<pid>\`), das sie
+  als einen Rückgängig-Schritt in den Puffer übernimmt und die Datei speichert. Die Änderung erscheint
+  sofort im Editor. Nimmt das Plugin den Auftrag nicht binnen 3 s an, schreibt der MCP-Server wie bisher
+  selbst; das Neuladen der IDE holt die Datei dann nach.
 - Jeder schreibende Aufruf steht mit Werkzeug, Parametern und geänderten Dateien im Log
   (`--log`).
 
