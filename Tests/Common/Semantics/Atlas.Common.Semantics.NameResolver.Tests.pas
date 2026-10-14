@@ -41,6 +41,8 @@ type
     [Test]
     procedure UsesNamespacesForShortUnitNames;
     [Test]
+    procedure LoadsOnlyUnitsMissingFromIndex;
+    [Test]
     procedure GivesUpOnExpressions;
     [Test]
     procedure FallsBackToSystem;
@@ -416,6 +418,42 @@ begin
   R := ResolveAt('unit Haupt; interface uses Werkzeuge; implementation procedure P; begin TWerkzeug.Create; end; end.',
     'TWerkzeug');
   Assert.AreEqual('Firma.Werkzeuge', R.UnitName);
+end;
+
+procedure TNameResolverTests.LoadsOnlyUnitsMissingFromIndex;
+const
+  Source = 'unit Haupt; interface uses Werkzeuge, Fehlt; implementation procedure P; begin TWerkzeug.Create; ' +
+    'Unbekannt; end; end.';
+var
+  Calls: TArray<string>;
+  Resolver: TNameResolver;
+  Tree: TSyntaxTree;
+  R: TResolvedSymbol;
+begin
+  // Nachladen durchsucht die Suchpfade aller Projekte (#647): nicht für Units, die der Index mit
+  // Namespace schon kennt, und eine fehlende Unit je Resolver nur einmal.
+  Calls := nil;
+  Resolver := TNameResolver.Create(FIndex,
+    function(const AUnitName: string): Boolean
+    begin
+      Calls := Calls + [AUnitName];
+      Result := False;
+    end);
+  try
+    Resolver.Namespaces := ['Firma'];
+    Tree := TPascalParser.Parse(Source);
+    try
+      R := Resolver.Resolve(Tree, 'C:\P\Haupt.pas', PositionOf(Source, 'TWerkzeug', 1));
+      Assert.AreEqual('Firma.Werkzeuge', R.UnitName);
+      R := Resolver.Resolve(Tree, 'C:\P\Haupt.pas', PositionOf(Source, 'Unbekannt', 1));
+      Assert.IsFalse(R.Found);
+    finally
+      Tree.Free;
+    end;
+  finally
+    Resolver.Free;
+  end;
+  Assert.AreEqual('Fehlt,Firma.Fehlt', string.Join(',', Calls));
 end;
 
 procedure TNameResolverTests.GivesUpOnExpressions;

@@ -255,3 +255,13 @@
   - Tests: GroupReader, PathFiles, Scheduler, Build-Stufen, workspaceFolders mit Projektdateien, ProjectChanges.
   - Offen: Delphi-Build mit 0/0/0, Testlauf, Messung mit einer echten Gruppe (Zeit und Speicher, wenn die ganze Bibliothek indiziert wird).
 
+## Diagnoselogs vom 14.10.2026 (#647, Branch `claude/diag-log-fixes-s1pg9d`)
+
+- **Befund:** Zwei Logs von Marco. Lauf 1 (ein Projekt): workspace/diagnostic prüfte während des Indexaufbaus alle Projektdateien mit je ~300 ms (Budget 3 s je Anfrage, dann sofort die nächste) und meldete fehlende Units. Lauf 2 (Projektgruppe, 2000 Units): Hover 100–500 s, workspace/diagnostic bis 116 s, executeCommand bis 79 s, Warteschlange bis 22 s; der Lauf davor endete ohne Endzeile.
+- **Ursachen (Codeanalyse, nicht gemessen):**
+  - `TServerComposition.EnsureUnit` hielt `FWorkspacesLock`, während jeder Arbeitsbereich die Unit suchte und parste. An derselben Sperre hängen Defines, Einstellungen, Regelkontext und `IndexLoading` des Diagnoselogs je Anfrage: Alles lief hintereinander.
+  - `TNameResolver.FindUnit` lud erst nach (Suchpfade aller Projekte) und prüfte die Namespace-Schreibweise im Index erst danach; Fehlschläge wurden je Aufruf wiederholt. `ResolveFirst` prüfte für jedes Präfix von `A.B.C`, ob es eine Unit ist, mit Nachladen.
+  - Workspace-Diagnosen liefen während des Aufbaus; ihre Ergebnis-Ids änderten sich danach nicht, die falschen Befunde blieben stehen.
+  - Das Plugin beendet den Server 2 s nach dem Schließen von stdin; der Server wartete bis 5 s auf laufende Anfragen und schrieb die Endzeile erst danach.
+- **Fixes:** EnsureUnit außerhalb der Sperre (Nutzerzähler je Arbeitsbereich, `RemoveWorkspace` wartet), Index zuerst und Fehlschläge je Resolver merken, Präfixe nur für Units aus uses nachladen (`FindQualifierUnit`), `TLspPullDiagnostics.Busy` (wartet während des Aufbaus, Grundcode `indexLoading`, sonst `noChanges`), `OnIndexFinished` → `Refresh`, Long-Polling 10 s, Endzeile über `TJsonRpcConnection.OnLoopEnded` (EndRun zählt nur einmal). Nebenbei: `StartIndex` gab den alten `TUnitResolver` frei, den der alte Builder bis zum Veröffentlichen des neuen noch über EnsureUnit aufruft (Zugriff auf freigegebenen Speicher, mögliche Absturzursache); jetzt in `FRetiredResolvers` bis zum Ende des Arbeitsbereichs.
+- **Offen:** Delphi-Build mit 0/0/0, Testlauf, neue Logs von Marco. Nicht angefasst: `workspace/executeCommand` läuft weiter in der Nachrichtenschleife (Neuaufbau wartet dort auf den alten Index-Thread); welche Units wirklich fehlen, zeigt das anonymisierte Log nicht.
