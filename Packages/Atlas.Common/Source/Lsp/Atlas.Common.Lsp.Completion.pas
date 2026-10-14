@@ -271,9 +271,11 @@ type
       const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean; static;
     /// <summary>Freigabe absichern (#489): Nach "Liste := TStringList.Create;" in Zeile APosition.Line „Mit
     /// try…finally absichern“ und, wenn danach noch Zeilen bis zum Routinenende folgen, dieselbe Absicherung bis
-    /// dorthin. False, wenn die Anweisung nicht passt (TGuardFree.Check).</summary>
+    /// dorthin. False, wenn die Anweisung nicht passt (TGuardFree.Check). ANewLine: Ausgelöst durch Enter am
+    /// Zeilenende; die Anweisung steht dann in der Zeile davor, und die leere Zeile des Cursors wird ersetzt.</summary>
     class function GuardItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
-      const APosition: TTextPosition; AStyle: TCompletionFreeStyle; out AItems: TCompletionItems): Boolean; static;
+      const APosition: TTextPosition; AStyle: TCompletionFreeStyle; ANewLine: Boolean;
+      out AItems: TCompletionItems): Boolean; static;
     /// <summary>"Sender." in einem Ereignisbehandler mit "Sender: TObject" (#480): Ist die Methode im Formular
     /// Komponenten zugewiesen, die Mitglieder des nächsten gemeinsamen Vorfahren ihrer Typen. Jeder Eintrag
     /// ersetzt "Sender.Na" (TextEdit) durch die Umwandlung nach ACast und den Namen. False ohne Zuweisung im
@@ -1725,13 +1727,13 @@ begin
       Settings := FSettingsFor(Uri)
     else
       Settings := TCompletionSettings.Default;
-    // Freigabe absichern (#489): Das Plugin fragt nach dem ";" hinter einem übernommenen Konstruktor mit diesem
-    // Auslöser; dann gibt es nur dieses Angebot oder nichts.
+    // Freigabe absichern (#489): Das Plugin fragt nach dem ";" bzw. dem Zeilenende (#10) hinter einem übernommenen
+    // Konstruktor mit diesem Auslöser; dann gibt es nur dieses Angebot oder nichts.
     if TJSONObject(AParams).TryGetValue<string>('context.triggerCharacter', GuardTrigger) and
-      (GuardTrigger = ';') then
+      ((GuardTrigger = ';') or (GuardTrigger = #10)) then
     begin
       if not (Settings.OfferTryFinally and GuardItems(Resolver, Tree, Document.Text, TDocumentUris.ToPath(Uri),
-        TLspPositions.ReadPosition(PositionValue), Settings.FreeStyle, Senders)) then
+        TLspPositions.ReadPosition(PositionValue), Settings.FreeStyle, GuardTrigger = #10, Senders)) then
         Senders := Default(TCompletionItems);
       Exit(ToJson(Senders));
     end;
@@ -2729,17 +2731,29 @@ begin
 end;
 
 class function TLspCompletion.GuardItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText,
-  AFileName: string; const APosition: TTextPosition; AStyle: TCompletionFreeStyle;
+  AFileName: string; const APosition: TTextPosition; AStyle: TCompletionFreeStyle; ANewLine: Boolean;
   out AItems: TCompletionItems): Boolean;
 var
   UnitIndex: TUnitIndex;
   Offer: TGuardOffer;
   Item: TCompletionItem;
+  Lines: TArray<string>;
+  Line: Integer;
 begin
   AItems := Default(TCompletionItems);
+  Result := False;
+  Line := APosition.Line;
+  // Enter am Zeilenende: Anweisung in der Zeile davor, die Zeile des Cursors ist leer.
+  if ANewLine then
+  begin
+    Lines := TextLines(AText);
+    Line := APosition.Line - 1;
+    if (Line < 0) or (APosition.Line > High(Lines)) or (Trim(Lines[APosition.Line]) <> '') then
+      Exit;
+  end;
   UnitIndex := TIndexExtractor.Extract(ATree, AFileName);
   // Art des erzeugten Typs: Record oder Interface schließen aus, TComponent-Nachfahren prüfen den Owner.
-  Result := TGuardFree.Check(ATree, AText, APosition.Line,
+  Result := TGuardFree.Check(ATree, AText, Line,
     function(const ATypeName: string): TGuardTypeKind
     var
       Symbol: TResolvedSymbol;
@@ -2755,6 +2769,8 @@ begin
     end, Offer);
   if not Result then
     Exit;
+  if ANewLine then
+    Offer.BlankLine := APosition.Line;
   Item := Default(TCompletionItem);
   Item.Kind := KindSnippet;
   Item.HasTextEdit := True;

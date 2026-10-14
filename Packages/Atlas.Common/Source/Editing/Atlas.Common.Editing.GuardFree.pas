@@ -20,6 +20,11 @@
 // Zwei Formen: nur eine neue Zeile im try (Standard) und, wenn die Anweisung
 // direkt im Rumpf der Routine steht und danach noch Zeilen folgen, alles bis
 // zum Ende der Routine im try. "$0" markiert die Cursorstelle danach.
+//
+// Angeboten wird nach dem ";" oder nach dem Zeilenende: Fehlt das ";" (Enter
+// am Zeilenende nach der Übernahme), setzt die Änderung es selbst, sofern die
+// nächste Zeile den Ausdruck nicht fortsetzt. Die leere Zeile, die das Enter
+// angelegt hat (BlankLine), ersetzt die Änderung.
 
 interface
 
@@ -50,6 +55,12 @@ type
     /// <summary>Bis zum Routinenende einschließen ist möglich: Die Anweisung steht direkt im Rumpf, dahinter
     /// folgen Zeilen mit Inhalt, und das end steht am Anfang seiner Zeile.</summary>
     CanEnclose: Boolean;
+    /// <summary>Der Anweisung fehlt das ";"; die Änderung setzt es an StatementEnd.</summary>
+    AddSemicolon: Boolean;
+    /// <summary>Spalte (0-basiert) hinter der schließenden Klammer bzw. dem Konstruktornamen.</summary>
+    StatementEnd: Integer;
+    /// <summary>Leere Zeile nach der Anweisung, die die Änderung ersetzt (Enter am Zeilenende); -1 ohne.</summary>
+    BlankLine: Integer;
   end;
 
   TGuardFree = class
@@ -228,15 +239,26 @@ var
   Index: Integer;
 begin
   AOffer := Default(TGuardOffer);
+  AOffer.BlankLine := -1;
   Result := False;
   Lines := SplitLines(AText);
   if (ATree = nil) or (ATree.Root = nil) or (ALine < 0) or (ALine > High(Lines)) then
     Exit;
-  // Einrückung, "var ", Name, ": Typ", Klasse, Konstruktor, Argumente. Leere Alternativen halten jede Gruppe belegt.
+  // Einrückung, "var ", Name, ": Typ", Klasse, Konstruktor, Argumente, ";". Leere Alternativen halten jede Gruppe
+  // belegt. Erst mit ";"; ohne dürfen die Argumente
+  // außerhalb von Strings kein ";" und kein "/" enthalten, sonst zählte ein Kommentar mit.
   Match := TRegEx.Match(Lines[ALine], '^(\s*)(var\s+|)(\w+)\s*(:[^:=]+|):=\s*([A-Za-z_][\w.]*)(<[^;()]*>|)\s*\.\s*' +
-    '(Create\w*)\s*(\(.*\)|)\s*;\s*(//.*|)$', [roIgnoreCase]);
+    '(Create\w*)\s*(\(.*\)|)\s*(;)\s*(//.*|)$', [roIgnoreCase]);
+  if not Match.Success then
+    Match := TRegEx.Match(Lines[ALine], '^(\s*)(var\s+|)(\w+)\s*(:[^:=]+|):=\s*([A-Za-z_][\w.]*)(<[^;()]*>|)\s*' +
+      '\.\s*(Create\w*)\s*(\((?:[^;/'']|''[^'']*'')*\)|)\s*()(//.*|)$', [roIgnoreCase]);
   if not Match.Success then
     Exit;
+  AOffer.AddSemicolon := Match.Groups[9].Value = '';
+  if Match.Groups[8].Value <> '' then
+    AOffer.StatementEnd := Match.Groups[8].Index + Match.Groups[8].Length - 1
+  else
+    AOffer.StatementEnd := Match.Groups[7].Index + Match.Groups[7].Length - 1;
   Name := Match.Groups[3].Value;
   if SameText(Name, 'Result') or SameText(Name, 'Self') then
     Exit;
@@ -264,13 +286,16 @@ begin
     Exit;
   if (Kind = TGuardTypeKind.Component) and (Argument <> '') and not SameText(Argument, 'nil') then
     Exit;
-  // Schon geschützt: Die nächste Zeile mit Inhalt beginnt mit try.
+  // Schon geschützt: Die nächste Zeile mit Inhalt beginnt mit try. Ohne ";" darf sie den Ausdruck nicht fortsetzen.
   for Index := ALine + 1 to High(Lines) do
   begin
     Next := Trim(Lines[Index]);
     if Next = '' then
       Continue;
     if TRegEx.IsMatch(Next, '^try\b', [roIgnoreCase]) then
+      Exit;
+    if AOffer.AddSemicolon and TRegEx.IsMatch(Next,
+      '^([.(\[^+\-*/=<>,:]|(and|or|xor|div|mod|shl|shr|as|is|in|not)\b)', [roIgnoreCase]) then
       Exit;
     Break;
   end;
@@ -305,8 +330,8 @@ class function TGuardFree.Edit(const AText: string; const AOffer: TGuardOffer; A
   AStyle: TCompletionFreeStyle): TRuleEdit;
 var
   Lines: TArray<string>;
-  LB, Indent, Release, Body: string;
-  Index, Last: Integer;
+  LB, Indent, Release, Body, Head: string;
+  Index, Last, Start, StopLine, StopCharacter: Integer;
 begin
   Lines := SplitLines(AText);
   LB := LineBreakOf(AText);
@@ -315,10 +340,27 @@ begin
     Release := 'FreeAndNil(' + AOffer.Variable + ');'
   else
     Release := AOffer.Variable + '.Free;';
+  // Fehlt das ";", beginnt die Änderung hinter der Anweisung und behält einen Kommentar dahinter.
+  Start := Length(Lines[AOffer.Line]);
+  Head := '';
+  if AOffer.AddSemicolon then
+  begin
+    Start := AOffer.StatementEnd;
+    Head := ';' + Copy(Lines[AOffer.Line], Start + 1, MaxInt);
+  end;
   if AScope = TGuardScope.NewLine then
-    Exit(TRuleEdit.Create(TTextRange.Create(AOffer.Line, Length(Lines[AOffer.Line]), AOffer.Line,
-      Length(Lines[AOffer.Line])), LB + Indent + 'try' + LB + Indent + '  $0' + LB + Indent + 'finally' + LB +
-      Indent + '  ' + Release + LB + Indent + 'end;'));
+  begin
+    // Die leere Zeile vom Enter ersetzen.
+    StopLine := AOffer.Line;
+    StopCharacter := Length(Lines[AOffer.Line]);
+    if (AOffer.BlankLine > AOffer.Line) and (AOffer.BlankLine <= High(Lines)) then
+    begin
+      StopLine := AOffer.BlankLine;
+      StopCharacter := Length(Lines[AOffer.BlankLine]);
+    end;
+    Exit(TRuleEdit.Create(TTextRange.Create(AOffer.Line, Start, StopLine, StopCharacter), Head + LB + Indent +
+      'try' + LB + Indent + '  $0' + LB + Indent + 'finally' + LB + Indent + '  ' + Release + LB + Indent + 'end;'));
+  end;
   // Bis zum Routinenende: die Zeilen dazwischen um zwei Zeichen einrücken, Cursor hinter die letzte.
   Last := AOffer.Line;
   for Index := AOffer.Line + 1 to AOffer.EndLine - 1 do
@@ -327,14 +369,16 @@ begin
   Body := '';
   for Index := AOffer.Line + 1 to AOffer.EndLine - 1 do
   begin
+    if Index = AOffer.BlankLine then
+      Continue;
     if Trim(Lines[Index]) <> '' then
       Body := Body + '  ' + Lines[Index];
     if Index = Last then
       Body := Body + '$0';
     Body := Body + LB;
   end;
-  Result := TRuleEdit.Create(TTextRange.Create(AOffer.Line, Length(Lines[AOffer.Line]), AOffer.EndLine, 0),
-    LB + Indent + 'try' + LB + Body + Indent + 'finally' + LB + Indent + '  ' + Release + LB + Indent + 'end;' + LB);
+  Result := TRuleEdit.Create(TTextRange.Create(AOffer.Line, Start, AOffer.EndLine, 0),
+    Head + LB + Indent + 'try' + LB + Body + Indent + 'finally' + LB + Indent + '  ' + Release + LB + Indent + 'end;' + LB);
 end;
 
 end.

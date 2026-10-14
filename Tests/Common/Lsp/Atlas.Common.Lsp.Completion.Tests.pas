@@ -1610,7 +1610,28 @@ const
     Resolver := TNameResolver.Create(FIndex);
     try
       Result := TLspCompletion.GuardItems(Resolver, Tree, Text, HauptFile, TTextPosition.Create(8,
-        2 + Length(AStatement)), AStyle, AItems);
+        2 + Length(AStatement)), AStyle, False, AItems);
+    finally
+      Resolver.Free;
+      Tree.Free;
+    end;
+  end;
+
+  /// <summary>Wie Guards, aber nach Enter am Zeilenende: Zeile 9 enthält ALine, der Cursor steht dort.</summary>
+  function GuardsAfterEnter(const AStatement, ALine: string; out AItems: TCompletionItems): Boolean;
+  var
+    Text: string;
+    Tree: TSyntaxTree;
+    Resolver: TNameResolver;
+  begin
+    Text := 'unit Haupt;'#13#10'interface'#13#10'implementation'#13#10'uses Teile;'#13#10 +
+      'procedure Laden;'#13#10'var'#13#10'  List: TStringList;'#13#10'begin'#13#10'  ' + AStatement + #13#10 +
+      ALine + #13#10'end;'#13#10'end.';
+    Tree := TPascalParser.Parse(Text);
+    Resolver := TNameResolver.Create(FIndex);
+    try
+      Result := TLspCompletion.GuardItems(Resolver, Tree, Text, HauptFile, TTextPosition.Create(9, Length(ALine)),
+        TCompletionFreeStyle.Free, True, AItems);
     finally
       Resolver.Free;
       Tree.Free;
@@ -1645,6 +1666,15 @@ begin
   Assert.IsFalse(Guards('Timer: TTimer;', 'Timer := TTimer.Create(pnlOben);', '', TCompletionFreeStyle.Free, Items));
   Assert.IsTrue(Guards('Timer: TTimer;', 'Timer := TTimer.Create(nil);', '', TCompletionFreeStyle.Free, Items));
   Assert.IsFalse(Guards('P: TPunkt;', 'P := TPunkt.Create;', '', TCompletionFreeStyle.Free, Items));
+  // Enter am Zeilenende ohne ";": Das ";" kommt dazu, die leere Zeile wird ersetzt.
+  Assert.IsTrue(GuardsAfterEnter('List := TStringList.Create', '  ', Items));
+  Assert.AreEqual(1, Integer(Length(Items.Items)));
+  Assert.IsTrue(Items.Items[0].TextEdit.NewText.StartsWith(';'#13#10'  try'), Items.Items[0].TextEdit.NewText);
+  Assert.AreEqual(8, Items.Items[0].TextEdit.Range.StartPos.Line);
+  Assert.AreEqual(9, Items.Items[0].TextEdit.Range.EndPos.Line);
+  // Mit ";" ebenso; Inhalt in der Zeile des Cursors: nichts.
+  Assert.IsTrue(GuardsAfterEnter('List := TStringList.Create;', '', Items));
+  Assert.IsFalse(GuardsAfterEnter('List := TStringList.Create', '  List', Items));
 end;
 
 end.
