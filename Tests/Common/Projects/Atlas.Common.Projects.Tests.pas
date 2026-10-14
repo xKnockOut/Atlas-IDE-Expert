@@ -65,6 +65,15 @@ type
   end;
 
   [TestFixture]
+  TGroupProjReaderTests = class
+  public
+    [Test]
+    procedure ListsDelphiProjectsOnce;
+    [Test]
+    procedure RejectsInvalidXml;
+  end;
+
+  [TestFixture]
   TUnitResolverTests = class
   public
     [Test]
@@ -85,6 +94,7 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Projects.DprojReader,
+  Atlas.Common.Projects.GroupReader,
   Atlas.Common.Projects.UnitResolver,
   Atlas.Common.Projects.Internals.Xml,
   Atlas.Common.Projects.Internals.MSBuild;
@@ -377,6 +387,42 @@ begin
     end, EProjectError);
 end;
 
+{ TGroupProjReaderTests }
+
+procedure TGroupProjReaderTests.ListsDelphiProjectsOnce;
+const
+  Group =
+    '<?xml version="1.0" encoding="utf-8"?>'#13#10 +
+    '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'#13#10 +
+    '  <PropertyGroup><ProjectGuid>{1}</ProjectGuid></PropertyGroup>'#13#10 +
+    '  <ItemGroup>'#13#10 +
+    '    <Projects Include="App\App.dproj"><Dependencies/></Projects>'#13#10 +
+    '    <Projects Include="..\Lib\Lib.dproj"><Dependencies/></Projects>'#13#10 +
+    '    <Projects Include="app\APP.dproj"><Dependencies/></Projects>'#13#10 +
+    '    <Projects Include="Alt\Alt.cbproj"><Dependencies/></Projects>'#13#10 +
+    '  </ItemGroup>'#13#10 +
+    '  <ItemGroup><Projects Include="Tests\Tests.dproj"/></ItemGroup>'#13#10 +
+    '</Project>';
+var
+  Projects: TArray<string>;
+begin
+  Projects := TGroupProjReader.Read('C:\Work\Gruppe\Gruppe.groupproj', Group);
+  // Doppelte Einträge zählen einmal, C++-Projekte fehlen, Reihenfolge wie in der Datei.
+  Assert.AreEqual(3, Integer(Length(Projects)));
+  Assert.AreEqual('C:\Work\Gruppe\App\App.dproj', Projects[0]);
+  Assert.AreEqual('C:\Work\Lib\Lib.dproj', Projects[1]);
+  Assert.AreEqual('C:\Work\Gruppe\Tests\Tests.dproj', Projects[2]);
+end;
+
+procedure TGroupProjReaderTests.RejectsInvalidXml;
+begin
+  Assert.WillRaise(
+    procedure
+    begin
+      TGroupProjReader.Read('C:\Work\Gruppe.groupproj', '<Project><ItemGroup></Project>');
+    end, EProjectError);
+end;
+
 { TUnitResolverTests }
 
 function ResolverFor(const AExisting: array of string): TUnitResolver;
@@ -483,6 +529,7 @@ initialization
   TDUnitX.RegisterTestFixture(TMSBuildTests);
   TDUnitX.RegisterTestFixture(TProjectPathsTests);
   TDUnitX.RegisterTestFixture(TDprojReaderTests);
+  TDUnitX.RegisterTestFixture(TGroupProjReaderTests);
   TDUnitX.RegisterTestFixture(TUnitResolverTests);
 
 end.

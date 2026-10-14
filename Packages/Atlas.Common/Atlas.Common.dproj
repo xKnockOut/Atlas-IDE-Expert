@@ -96,6 +96,7 @@
         <DCCReference Include="Source\Projects\Internals\Atlas.Common.Projects.Internals.Xml.pas"/>
         <DCCReference Include="Source\Projects\Internals\Atlas.Common.Projects.Internals.MSBuild.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.DprojReader.pas"/>
+        <DCCReference Include="Source\Projects\Atlas.Common.Projects.GroupReader.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.DprojEditor.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.UnitResolver.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.Contract.pas"/>
@@ -117,6 +118,7 @@
         <DCCReference Include="Source\Index\Atlas.Common.Index.Memory.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Builder.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.ProjectFiles.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.Scheduler.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Service.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Contract.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Registry.pas"/>

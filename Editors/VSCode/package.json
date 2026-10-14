@@ -279,6 +279,11 @@
           "default": 0,
           "markdownDescription": "Obergrenze für den Symbolindex in MB. Darüber werden zuerst Bibliotheks-Units (RTL, VCL), dann Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. atlas.json im Projekt hat Vorrang."
         },
+        "atlas.index": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Umfang des Symbolindex. Standard: alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und alle Units der Bibliotheks- und Suchpfade der Delphi-Installation, auch wenn keine Unit sie einbindet. Reihenfolge: aktives Projekt, übrige Projekte, Suchpfade, Bibliothek; alles im Hintergrund, die Bibliothek aus dem gemeinsamen Cache. atlas.json im Projekt hat Vorrang."
+        },
         "atlas.requestTimeoutMs": {
           "type": "integer",
           "minimum": 1000,

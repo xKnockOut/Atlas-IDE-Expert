@@ -57,6 +57,9 @@ type
     procedure IndexReferenced(var AResult: TIndexBuildResult; const AProgress: TIndexProgressEvent;
       const ACancelled: TIndexCancelled);
     function IsCancelled(const ACancelled: TIndexCancelled): Boolean;
+    /// <summary>Alle Units aus AFiles, die noch nicht im Index stehen (#648); False bei Abbruch.</summary>
+    function IndexAll(const AFiles: TArray<string>; ALibrary: Boolean; const ALabel: string; ADone, ATotal: Integer;
+      var AResult: TIndexBuildResult; const AProgress: TIndexProgressEvent; const ACancelled: TIndexCancelled): Boolean;
   public
     constructor Create(const AIndex: ISymbolIndex; const AFileSystem: IIndexFileSystem;
       const ADefines: TArray<string>; const AResolveUnit: TUnitFileResolver);
@@ -66,7 +69,11 @@ type
     /// <summary>Übernimmt die Köpfe eines Caches; Symbole werden erst bei Bedarf dekodiert.</summary>
     procedure UseCache(const AEntries: TArray<TIndexCacheEntry>); overload;
     function Build(const AFiles: TArray<string>; const AProgress: TIndexProgressEvent;
-      const ACancelled: TIndexCancelled): TIndexBuildResult;
+      const ACancelled: TIndexCancelled): TIndexBuildResult; overload;
+    /// <summary>Aufbau in Stufen (#648): AFiles samt über uses erreichbarer Units, dann ASearchFiles (Projekt),
+    /// dann ALibraryFiles (Bibliothek). ATurn ordnet die Stufen mehrerer Aufbauten; nil = ohne Warten.</summary>
+    function Build(const AFiles, ASearchFiles, ALibraryFiles: TArray<string>; const AProgress: TIndexProgressEvent;
+      const ACancelled: TIndexCancelled; const ATurn: IIndexTurn): TIndexBuildResult; overload;
     /// <summary>Indiziert die Unit, falls noch nicht vorhanden. False, wenn sie nicht gefunden wird.</summary>
     function EnsureUnit(const AUnitName: string): Boolean;
     /// <summary>Übernimmt Dateiänderungen; liefert die Zahl geänderter Units.</summary>
@@ -285,25 +292,110 @@ end;
 
 function TIndexBuilder.Build(const AFiles: TArray<string>; const AProgress: TIndexProgressEvent;
   const ACancelled: TIndexCancelled): TIndexBuildResult;
+begin
+  Result := Build(AFiles, nil, nil, AProgress, ACancelled, nil);
+end;
+
+function TIndexBuilder.IndexAll(const AFiles: TArray<string>; ALibrary: Boolean; const ALabel: string;
+  ADone, ATotal: Integer; var AResult: TIndexBuildResult; const AProgress: TIndexProgressEvent;
+  const ACancelled: TIndexCancelled): Boolean;
 var
   Index: Integer;
+  Existing: TUnitIndex;
+begin
+  for Index := 0 to High(AFiles) do
+  begin
+    if IsCancelled(ACancelled) then
+      Exit(False);
+    // Schon da (anderes Projekt der Gruppe, über uses erreicht): nicht noch einmal lesen.
+    if FIndex.FindFile(AFiles[Index], Existing) then
+      Continue;
+    if Assigned(AProgress) then
+      AProgress(TIndexProgressKind.Report, ALabel + ExtractFileName(AFiles[Index]),
+        ((ADone + Index) * 100) div ATotal);
+    IndexFile(AFiles[Index], ALibrary, AResult);
+  end;
+  Result := True;
+end;
+
+function TIndexBuilder.Build(const AFiles, ASearchFiles, ALibraryFiles: TArray<string>;
+  const AProgress: TIndexProgressEvent; const ACancelled: TIndexCancelled; const ATurn: IIndexTurn): TIndexBuildResult;
+var
+  Index, Total: Integer;
+
+  function Enter(AStage: TIndexStage): Boolean;
+  begin
+    Result := (ATurn = nil) or ATurn.Enter(AStage, ACancelled);
+  end;
+
+  procedure Leave;
+  begin
+    if ATurn <> nil then
+      ATurn.Leave;
+  end;
+
 begin
   Result := Default(TIndexBuildResult);
+  Total := Length(AFiles) + Length(ASearchFiles) + Length(ALibraryFiles);
+  if Total = 0 then
+    Total := 1;
   if Assigned(AProgress) then
     AProgress(TIndexProgressKind.Started, 'Symbolindex', 0);
   try
-    for Index := 0 to High(AFiles) do
+    if not Enter(TIndexStage.Project) then
     begin
-      if IsCancelled(ACancelled) then
+      Result.Cancelled := True;
+      Exit;
+    end;
+    try
+      for Index := 0 to High(AFiles) do
+      begin
+        if IsCancelled(ACancelled) then
+        begin
+          Result.Cancelled := True;
+          Exit;
+        end;
+        if Assigned(AProgress) then
+          AProgress(TIndexProgressKind.Report, AFiles[Index], (Index * 100) div Total);
+        IndexFile(AFiles[Index], False, Result);
+      end;
+      IndexReferenced(Result, AProgress, ACancelled);
+    finally
+      Leave;
+    end;
+    if Result.Cancelled then
+      Exit;
+    if Length(ASearchFiles) > 0 then
+    begin
+      if not Enter(TIndexStage.SearchPaths) then
       begin
         Result.Cancelled := True;
         Exit;
       end;
-      if Assigned(AProgress) then
-        AProgress(TIndexProgressKind.Report, AFiles[Index], (Index * 100) div Length(AFiles));
-      IndexFile(AFiles[Index], False, Result);
+      try
+        // Units der Suchpfade gehören zum Projekt, auch wenn keine sie einbindet.
+        Result.Cancelled := not IndexAll(ASearchFiles, False, 'Suchpfade: ', Length(AFiles), Total, Result,
+          AProgress, ACancelled);
+      finally
+        Leave;
+      end;
+      if Result.Cancelled then
+        Exit;
     end;
-    IndexReferenced(Result, AProgress, ACancelled);
+    if Length(ALibraryFiles) > 0 then
+    begin
+      if not Enter(TIndexStage.Library_) then
+      begin
+        Result.Cancelled := True;
+        Exit;
+      end;
+      try
+        Result.Cancelled := not IndexAll(ALibraryFiles, True, 'Bibliothek: ',
+          Length(AFiles) + Length(ASearchFiles), Total, Result, AProgress, ACancelled);
+      finally
+        Leave;
+      end;
+    end;
   finally
     if Assigned(AProgress) then
       AProgress(TIndexProgressKind.Finished,

@@ -161,6 +161,18 @@ type
   /// <summary>Abbruch des Aufbaus abfragen.</summary>
   TIndexCancelled = reference to function: Boolean;
 
+  /// <summary>Stufen des Aufbaus (#648): Projektdateien samt über uses erreichbarer Units, dann alle Units
+  /// der Projekt-Suchpfade, zuletzt alle Units der Bibliotheks- und Suchpfade der Installation.</summary>
+  TIndexStage = (Project, SearchPaths, Library_);
+
+  /// <summary>Reihenfolge mehrerer Aufbauten (Projekte einer Gruppe): Enter wartet, bis die Stufe dran ist,
+  /// und liefert False bei Abbruch; Leave gibt sie wieder frei.</summary>
+  IIndexTurn = interface
+    ['{4A7E2C91-5B38-4F06-9D1A-E3C6B8F0A217}']
+    function Enter(AStage: TIndexStage; const ACancelled: TIndexCancelled): Boolean;
+    procedure Leave;
+  end;
+
   TIndexFiles = class
   public
     /// <summary>Unit zu AFileName: die Unit dieser Datei, sonst eine Unit, die sie per $I einbindet (#500).</summary>

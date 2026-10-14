@@ -4,12 +4,16 @@
 // atlas.json, eigenem Projekt und eigenem Indexaufbau. Alle Ordner
 // schreiben in denselben Symbolindex, damit Navigation und Suche über
 // Ordnergrenzen funktionieren.
+// Projektgruppe (#648): Je Projekt der Gruppe ein Arbeitsbereich mit fest
+// vorgegebener Projektdatei (ProjectFile); mehrere können denselben Ordner
+// haben. Der gemeinsame Scheduler ordnet ihre Aufbauten.
 
 interface
 
 uses
   System.SysUtils,
   System.Classes,
+  System.Generics.Collections,
   Atlas.Common.Logging.Contract,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Contract,
@@ -22,6 +26,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Service,
   Atlas.Common.Index.Builder,
+  Atlas.Common.Index.Scheduler,
   Atlas.Common.Rules.Baseline,
   Atlas.Common.Lsp.Status;
 
@@ -44,6 +49,19 @@ type
     FNamespaces: TArray<string>;
     FSearchPaths: TArray<string>;
     FProjectFiles: TArray<string>;
+    /// <summary>Alle Units der Suchpfade im Index (#648), unter FLock.</summary>
+    FSearchFiles: TArray<string>;
+    /// <summary>Projektdateien und Suchpfad-Units in Großschreibung, für ContainsFile; unter FLock.</summary>
+    FOwnFiles: TDictionary<string, Boolean>;
+    /// <summary>Fest vorgegebene Projektdatei (Projektgruppe, #648); '' = im Ordner suchen.</summary>
+    FFixedProject: string;
+    FPriority: Integer;
+    FScheduler: TIndexScheduler;
+    /// <summary>Aus der Projektgruppe: Mit index.projectGroup = false erst indizieren, wenn eine Datei des
+    /// Projekts geöffnet wird (Activate).</summary>
+    FDeferred: Boolean;
+    FActivated: Boolean;
+    FOrigin: string;
     // Für den Compileraufruf (#40), unter FLock.
     FProject: TProjectInfo;
     FHasProject: Boolean;
@@ -125,6 +143,18 @@ type
     property OnProjectLoaded: TProc read FOnProjectLoaded write FOnProjectLoaded;
     /// <summary>Nach dem Lesen der Einstellungen, für serverweite Werte wie das Zeitlimit (#283).</summary>
     property OnSettingsChanged: TProc<TServerSettings> read FOnSettingsChanged write FOnSettingsChanged;
+    /// <summary>True, wenn AFileName zum Projekt gehört (DCCReference, Hauptdatei oder Suchpfad-Unit). Threadsicher.</summary>
+    function ContainsFile(const AFileName: string): Boolean;
+    /// <summary>Projekt aus der Gruppe, das mit index.projectGroup = false noch wartet: jetzt indizieren.</summary>
+    procedure Activate;
+    /// <summary>Vor Load setzen (#648): feste Projektdatei, Reihenfolge, gemeinsamer Scheduler und ob das
+    /// Projekt nur aus der Gruppe stammt.</summary>
+    property ProjectFile: string read FFixedProject write FFixedProject;
+    property Priority: Integer read FPriority write FPriority;
+    property Scheduler: TIndexScheduler read FScheduler write FScheduler;
+    property Deferred: Boolean read FDeferred write FDeferred;
+    /// <summary>Eintrag des Clients, aus dem der Arbeitsbereich stammt (TWorkspaceFolder.Key); zum Entfernen.</summary>
+    property Origin: string read FOrigin write FOrigin;
   end;
 
 implementation
@@ -159,6 +189,7 @@ begin
   FLogger := ALogger;
   FIndex := AIndex;
   FLock := TObject.Create;
+  FOwnFiles := TDictionary<string, Boolean>.Create;
   FLastIndexMs := -1;
   FConfiguration := TLspConfiguration.Create(AStore, ATransport,
     function(const AFileName: string; out AText: string): Boolean
@@ -218,6 +249,7 @@ begin
   FProgress.Free;
   FUnitResolver.Free;
   FConfiguration.Free;
+  FOwnFiles.Free;
   FLock.Free;
   FIndex := nil;
   FLogger := nil;
@@ -244,6 +276,28 @@ end;
 procedure TShellWorkspace.Stop;
 begin
   FIndexService.Stop;
+end;
+
+procedure TShellWorkspace.Activate;
+begin
+  if not FDeferred or FActivated then
+    Exit;
+  FActivated := True;
+  // Mit index.projectGroup = true ist der Arbeitsbereich schon indiziert.
+  if Configuration.Settings.IndexProjectGroup then
+    Exit;
+  FLogger.Info(Format('%s: Datei des Projekts geöffnet, Index wird aufgebaut', [FName]));
+  Reload;
+end;
+
+function TShellWorkspace.ContainsFile(const AFileName: string): Boolean;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FOwnFiles.ContainsKey(AnsiUpperCase(AFileName));
+  finally
+    TMonitor.Exit(FLock);
+  end;
 end;
 
 function TShellWorkspace.EnsureUnit(const AUnitName: string): Boolean;
@@ -522,6 +576,15 @@ var
   Candidates: TArray<string>;
 begin
   Result := '';
+  // Aus der Projektgruppe (#648): Die Datei ist vorgegeben, auch wenn mehrere im Ordner liegen.
+  if FFixedProject <> '' then
+  begin
+    if FileExists(FFixedProject) then
+      Result := FFixedProject
+    else
+      FLogger.Warning('Projektdatei nicht gefunden: ' + FFixedProject);
+    Exit;
+  end;
   if ASettings.Project <> '' then
   begin
     if TProjectPaths.IsAbsolute(ASettings.Project) then
@@ -557,7 +620,18 @@ var
   Resolver: TUnitResolver;
   FileExistsFunc: TFunc<string, Boolean>;
   ProjectVersion, Version: string;
+  ListUnits: TIndexListUnits;
+  Excluded: TIndexExcluded;
+  Exclude, Files, SearchFiles, LibraryFiles: TArray<string>;
+  FileName: string;
 begin
+  // Mit index.projectGroup = false nur das Projekt der geöffneten Datei (#648).
+  if FDeferred and not FActivated and not ASettings.IndexProjectGroup then
+  begin
+    FLogger.Info(Format('%s: index.projectGroup ist aus; indiziert wird, sobald eine Datei des Projekts offen ist',
+      [FName]));
+    Exit;
+  end;
   ProjectFile := FindProjectFile(ASettings);
   if ProjectFile = '' then
     Exit;
@@ -635,20 +709,57 @@ begin
     TMonitor.Exit(FLock);
   end;
   Signature := TIndexProjectFiles.Signature(Project, Version);
-  // Neu indexieren, wenn sich Schlüssel oder Unit-Liste ändern; der Cache hängt nur am Schlüssel.
-  State := Signature + '#' + AnsiUpperCase(String.Join(';', TIndexProjectFiles.Files(Project)));
-  if State = FSignature then
-    Exit;
-  FSignature := State;
-  FIndexService.Stop;
   if Installation <> nil then
     LibraryPaths := Installation.LibraryPaths(Project.Platform) + Installation.BrowsingPaths(Project.Platform)
   else
     LibraryPaths := nil;
+  // Alle Units der Such- und Bibliothekspfade (#648), nicht nur die über uses erreichbaren.
+  ListUnits :=
+    function(const AFolder: string): TArray<string>
+    begin
+      Result := nil;
+      try
+        if TDirectory.Exists(AFolder) then
+          Result := TDirectory.GetFiles(AFolder, '*.pas');
+      except
+        // Nicht lesbare Ordner (Rechte, Netzlaufwerk) tragen nichts bei.
+        on Exception do
+          Result := nil;
+      end;
+    end;
+  Exclude := ASettings.IndexExclude;
+  Excluded :=
+    function(const AFileName: string): Boolean
+    var
+      Pattern: string;
+    begin
+      for Pattern in Exclude do
+        if MatchesGlob(Pattern, AFileName) then
+          Exit(True);
+      Result := False;
+    end;
+  Files := TIndexProjectFiles.Files(Project);
+  SearchFiles := nil;
+  if ASettings.IndexSearchPaths then
+    SearchFiles := TIndexProjectFiles.PathFiles(Project.SearchPaths, ListUnits, Excluded, Files);
+  LibraryFiles := nil;
+  if ASettings.IndexLibraryPaths then
+    LibraryFiles := TIndexProjectFiles.PathFiles(LibraryPaths, ListUnits, Excluded, Files + SearchFiles);
+  // Neu indexieren, wenn sich Schlüssel oder Unit-Listen ändern; der Cache hängt nur am Schlüssel.
+  State := Signature + '#' + AnsiUpperCase(String.Join(';', Files)) + '#' +
+    AnsiUpperCase(String.Join(';', SearchFiles)) + '#' + AnsiUpperCase(String.Join(';', LibraryFiles));
+  if State = FSignature then
+    Exit;
+  FSignature := State;
+  FIndexService.Stop;
   Resolver := TUnitResolver.Create(Project, LibraryPaths, FileExistsFunc);
   FUnitResolver.Free;
   FUnitResolver := Resolver;
-  Request.Files := TIndexProjectFiles.Files(Project);
+  Request.Files := Files;
+  Request.SearchFiles := SearchFiles;
+  Request.LibraryFiles := LibraryFiles;
+  Request.Priority := FPriority;
+  FIndexService.Scheduler := FScheduler;
   Request.Defines := TIndexProjectFiles.Defines(Project, Version);
   // $I-Dateien wie beim Compiler: Projekt-Suchpfade, dann Bibliothekspfade (#264).
   if Installation <> nil then
@@ -699,11 +810,16 @@ begin
     FNamespaces := Project.Namespaces;
     FSearchPaths := Project.SearchPaths;
     FProjectFiles := Request.Files;
+    FSearchFiles := Request.SearchFiles;
+    FOwnFiles.Clear;
+    for FileName in Request.Files + Request.SearchFiles do
+      FOwnFiles.AddOrSetValue(AnsiUpperCase(FileName), True);
   finally
     TMonitor.Exit(FLock);
   end;
-  FLogger.Info(Format('Symbolindex für %s (%s, %s): %d Projektdateien, Cache %s',
-    [ProjectFile, Project.Config, Project.Platform, Length(Request.Files), CacheFile]));
+  FLogger.Info(Format('Symbolindex für %s (%s, %s): %d Projektdateien, %d Units der Suchpfade, %d der Bibliothek, Cache %s',
+    [ProjectFile, Project.Config, Project.Platform, Length(Request.Files), Length(Request.SearchFiles),
+     Length(Request.LibraryFiles), CacheFile]));
   FIndexService.Start(Request);
   if Assigned(FOnProjectLoaded) then
     FOnProjectLoaded();

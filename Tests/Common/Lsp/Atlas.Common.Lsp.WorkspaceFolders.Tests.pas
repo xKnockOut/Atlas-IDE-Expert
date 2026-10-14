@@ -23,6 +23,8 @@ type
     procedure IgnoresDriveRoots;
     [Test]
     procedure FindsNearestProjectFolder;
+    [Test]
+    procedure ReadsProjectFileEntries;
   end;
 
 implementation
@@ -155,6 +157,36 @@ begin
       Result := False;
     end));
   Assert.AreEqual('C:\Lose;', Asked);
+end;
+
+procedure TLspWorkspaceFoldersTests.ReadsProjectFileEntries;
+var
+  Params: TJSONObject;
+  Folders: TArray<TWorkspaceFolder>;
+begin
+  // Das IDE-Plugin meldet die Projekte der Gruppe als Projektdateien (#648).
+  Params := ParseObject('{"workspaceFolders": [' +
+    '{"uri": "file:///c%3A/Gruppe/App/App.dproj", "name": "App"}, ' +
+    '{"uri": "file:///c%3A/Gruppe/App/Tool.dproj"}, ' +
+    '{"uri": "file:///c%3A/Gruppe/Gruppe.groupproj"}, ' +
+    '{"uri": "file:///c%3A/Gruppe/Lib"}]}');
+  try
+    Folders := TLspWorkspaceFolders.FromInitialize(Params);
+  finally
+    Params.Free;
+  end;
+  Assert.AreEqual(4, Integer(Length(Folders)));
+  Assert.IsTrue(SameText('C:\Gruppe\App', Folders[0].Path), Folders[0].Path);
+  Assert.IsTrue(SameText('C:\Gruppe\App\App.dproj', Folders[0].ProjectFile), Folders[0].ProjectFile);
+  Assert.AreEqual('App', Folders[0].Name);
+  // Zwei Projekte im selben Ordner bleiben getrennt: Der Schlüssel ist die Projektdatei.
+  Assert.AreEqual('Tool', Folders[1].Name);
+  Assert.AreNotEqual(Folders[0].Key, Folders[1].Key);
+  Assert.IsTrue(SameText('C:\Gruppe\Gruppe.groupproj', Folders[2].ProjectFile), Folders[2].ProjectFile);
+  Assert.AreEqual('', Folders[3].ProjectFile);
+  Assert.AreEqual(TWorkspaceFolder.Create('C:\Gruppe\Lib\', '').Key, Folders[3].Key);
+  Assert.IsTrue(TLspWorkspaceFolders.IsProjectFile('C:\X\A.DPROJ'));
+  Assert.IsFalse(TLspWorkspaceFolders.IsProjectFile('C:\X\A.dpr'));
 end;
 
 initialization

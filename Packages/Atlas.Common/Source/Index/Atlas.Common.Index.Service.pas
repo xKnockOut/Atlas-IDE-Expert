@@ -13,6 +13,10 @@
 // Zugriff auf den Builder und zählt seine Nutzer. Ein neuer Aufbau gibt den
 // alten Builder erst frei, wenn ihn niemand mehr nutzt. So warten Hover und
 // Vervollständigung nicht hintereinander auf das Parsen anderer Anfragen.
+//
+// Stufen (#648): Projektdateien, dann alle Units der Suchpfade, dann die
+// Bibliothek. Mit einem gemeinsamen TIndexScheduler laufen die Aufbauten
+// mehrerer Projekte nacheinander und stufenweise.
 
 interface
 
@@ -20,12 +24,19 @@ uses
   System.SysUtils,
   System.Classes,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Index.Builder;
+  Atlas.Common.Index.Builder,
+  Atlas.Common.Index.Scheduler;
 
 type
   TIndexRequest = record
     /// <summary>Projektdateien in Reihenfolge (Hauptdatei, Units).</summary>
     Files: TArray<string>;
+    /// <summary>Alle Units der Projekt-Suchpfade (#648); gehören zum Projekt-Cache.</summary>
+    SearchFiles: TArray<string>;
+    /// <summary>Alle Units der Bibliotheks- und Suchpfade der Installation (#648); Bibliothek.</summary>
+    LibraryFiles: TArray<string>;
+    /// <summary>Reihenfolge unter mehreren Projekten; kleiner = früher (aktives Projekt 0).</summary>
+    Priority: Integer;
     Defines: TArray<string>;
     ResolveUnit: TUnitFileResolver;
     /// <summary>Suchpfade für $I-Dateien (#264).</summary>
@@ -61,6 +72,7 @@ type
     FOnProgress: TIndexProgressEvent;
     FOnFinished: TIndexFinishedEvent;
     FOnError: TIndexErrorEvent;
+    FScheduler: TIndexScheduler;
     procedure Run(const ARequest: TIndexRequest);
     procedure WaitForOtherWriter(const ARequest: TIndexRequest);
     function AcquireBuilder: TIndexBuilder;
@@ -85,6 +97,8 @@ type
     property OnProgress: TIndexProgressEvent read FOnProgress write FOnProgress;
     property OnFinished: TIndexFinishedEvent read FOnFinished write FOnFinished;
     property OnError: TIndexErrorEvent read FOnError write FOnError;
+    /// <summary>Gemeinsam für alle Projekte (#648); gehört dem Aufrufer, nil = ohne Reihenfolge.</summary>
+    property Scheduler: TIndexScheduler read FScheduler write FScheduler;
   end;
 
 implementation
@@ -164,6 +178,9 @@ var
   UnitIndex: TUnitIndex;
   Current: TDictionary<string, Boolean>;
   LibraryChanged: Boolean;
+  Turn: IIndexTurn;
+  Own: TDictionary<string, Boolean>;
+  FileName: string;
 begin
   try
     Watch := TStopwatch.StartNew;
@@ -181,11 +198,16 @@ begin
     Builder.UseCache(LibraryCached + Cached);
     // Erst mit gefülltem Cache veröffentlichen; bis dahin bedient der alte Builder EnsureUnit.
     ReplaceBuilder(Builder);
-    BuildResult := Builder.Build(ARequest.Files, FOnProgress,
+    Turn := nil;
+    if FScheduler <> nil then
+      Turn := FScheduler.Register(ARequest.Priority);
+    BuildResult := Builder.Build(ARequest.Files, ARequest.SearchFiles, ARequest.LibraryFiles, FOnProgress,
       function: Boolean
       begin
         Result := FCancelled;
-      end);
+      end, Turn);
+    // Abmelden vor dem Schreiben des Caches: Das nächste Projekt muss darauf nicht warten.
+    Turn := nil;
     if not BuildResult.Cancelled and (ARequest.CacheFile <> '') and not ARequest.ReadOnlyCache then
     begin
       if ARequest.LibraryCacheFile = '' then
@@ -198,11 +220,19 @@ begin
         // Getrennt schreiben: Projekt-Units ins Projekt, Bibliothek in den gemeinsamen Cache.
         ProjectUnits := nil;
         LibraryUnits := nil;
-        for UnitIndex in FIndex.Units do
-          if UnitIndex.Library_ then
-            LibraryUnits := LibraryUnits + [UnitIndex]
-          else
-            ProjectUnits := ProjectUnits + [UnitIndex];
+        // Der Index ist mit anderen Projekten geteilt: in den Projekt-Cache nur die eigenen Units.
+        Own := TDictionary<string, Boolean>.Create;
+        try
+          for FileName in ARequest.Files + ARequest.SearchFiles do
+            Own.AddOrSetValue(AnsiUpperCase(FileName), True);
+          for UnitIndex in FIndex.Units do
+            if UnitIndex.Library_ then
+              LibraryUnits := LibraryUnits + [UnitIndex]
+            else if Own.ContainsKey(AnsiUpperCase(UnitIndex.FileName)) then
+              ProjectUnits := ProjectUnits + [UnitIndex];
+        finally
+          Own.Free;
+        end;
         if (BuildResult.Parsed > 0) or (Length(Cached) <> Length(ProjectUnits)) then
           FFileSystem.WriteBytes(ARequest.CacheFile, TIndexCache.Serialize(ProjectUnits));
         // Units anderer Projekte im gemeinsamen Cache behalten; neu sind nur die fehlenden.

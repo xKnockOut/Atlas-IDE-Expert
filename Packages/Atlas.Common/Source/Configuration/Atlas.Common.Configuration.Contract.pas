@@ -244,6 +244,15 @@ type
     DiagnosticsLog: Boolean;
     DiagnosticsLogDays: Integer;
     DiagnosticsLogMapFile: Boolean;
+    /// <summary>Umfang des Index (#648): alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und
+    /// der Bibliotheks- und Suchpfade der Installation; False = nur über uses erreichbare (bisher).</summary>
+    IndexProjectGroup: Boolean;
+    IndexSearchPaths: Boolean;
+    IndexLibraryPaths: Boolean;
+    /// <summary>Glob-Muster gegen den vollen Pfad ("/" oder ""), die nicht indiziert werden, z. B. **/Demos/**.</summary>
+    IndexExclude: TArray<string>;
+    /// <summary>True, wenn AFileName unter ein Muster aus IndexExclude fällt.</summary>
+    function IsIndexExcluded(const AFileName: string): Boolean;
     /// <summary>Protokoll (#265): Stufe (debug/info/warning/error), Logdatei und Mitschnitt.
     /// Der Server übernimmt sie nicht zur Laufzeit; der Client übergibt sie beim Start als
     /// --log-level, --log und --trace.</summary>
@@ -521,6 +530,10 @@ begin
   Result.DiagnosticsLog := True;
   Result.DiagnosticsLogDays := 7;
   Result.DiagnosticsLogMapFile := False;
+  Result.IndexProjectGroup := True;
+  Result.IndexSearchPaths := True;
+  Result.IndexLibraryPaths := True;
+  Result.IndexExclude := nil;
   Result.LogLevel := 'info';
   Result.LogFile := '';
   Result.TraceFile := '';
@@ -575,6 +588,16 @@ begin
     if SameText(Name, AName) then
       Exit(True);
   Result := TryFindProfile(AName, Profile);
+end;
+
+function TServerSettings.IsIndexExcluded(const AFileName: string): Boolean;
+var
+  Pattern: string;
+begin
+  for Pattern in IndexExclude do
+    if MatchesGlob(Pattern, AFileName) then
+      Exit(True);
+  Result := False;
 end;
 
 function TServerSettings.IsExcluded(const ARelativePath: string): Boolean;

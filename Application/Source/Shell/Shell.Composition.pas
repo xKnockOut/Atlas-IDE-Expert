@@ -67,6 +67,7 @@ uses
   Atlas.Common.Lsp.WorkDoneProgress,
   Shell.CommandLine,
   Atlas.Common.Diagnostics.Contract,
+  Atlas.Common.Index.Scheduler,
   Atlas.Windows.Process.ParentWatcher,
   Shell.Workspace,
   Shell.Diagnostics;
@@ -134,6 +135,9 @@ type
     FWorkspaces: TObjectList<TShellWorkspace>;
     FWorkspacesLock: TObject;
     FWorkspaceCounter: Integer;
+    /// <summary>Reihenfolge der Indexaufbauten aller Projekte (#648); kleiner = früher.</summary>
+    FIndexScheduler: TIndexScheduler;
+    FWorkspacePriority: Integer;
     FEditorSettings: string;
     // Compiler-Anbindung (#40): höchstens ein Lauf zugleich, ein weiterer wird vorgemerkt.
     FCompilerResults: TCompilerResults;
@@ -153,6 +157,11 @@ type
     /// <summary>Überwacht den Editor-Prozess aus initialize oder der Befehlszeile.</summary>
     procedure WatchParent(const AInitializeParams: TJSONObject);
     procedure AddWorkspace(const AFolder: TWorkspaceFolder);
+    /// <summary>Ein Arbeitsbereich; AProjectFile '' = Projekt im Ordner suchen (#648).</summary>
+    procedure AddProjectWorkspace(const ARoot, AName, AProjectFile, AOrigin: string; ADeferred: Boolean);
+    /// <summary>Projekte zum Eintrag (#648): die genannte .dproj, die Projekte der genannten .groupproj oder
+    /// der einzigen .groupproj eines Ordners ohne eindeutige .dproj; leer = bisheriges Verhalten.</summary>
+    function ProjectsOf(const AFolder: TWorkspaceFolder): TArray<string>;
     /// <summary>Legt zur Datei den Ordner mit der nächsten Projektdatei an, falls sie in keinem Ordner liegt.</summary>
     procedure DeriveWorkspace(const AFileName: string);
     procedure RemoveWorkspace(const AFolder: TWorkspaceFolder);
@@ -247,6 +256,7 @@ uses
   Atlas.Common.Logging.Providers.RotatingFileStream,
   Atlas.Windows.Editing.SystemColors,
   Atlas.Common.Projects.Contract,
+  Atlas.Common.Projects.GroupReader,
   Atlas.Common.JsonRpc.Messages;
 
 function StringsToJson(const AValues: TArray<string>): TJSONArray;
@@ -419,6 +429,7 @@ begin
   FSelectionRanges.Attach(FDispatcher);
   FWorkspaces := TObjectList<TShellWorkspace>.Create(True);
   FWorkspacesLock := TObject.Create;
+  FIndexScheduler := TIndexScheduler.Create;
   FLooseConfiguration := TLspConfiguration.Create(FDocuments, FTransport,
     function(const AFileName: string; out AText: string): Boolean
     begin
@@ -1025,8 +1036,13 @@ begin
       WatchParent(FLifecycle.InitializeParams);
       FHover.Markdown := TLspHover.ClientSupportsMarkdown(FLifecycle.InitializeParams);
       Folders := TLspWorkspaceFolders.FromInitialize(FLifecycle.InitializeParams);
-      FDeriveWorkspaces := Length(Folders) = 0;
-      if FDeriveWorkspaces then
+      // Meldet der Client nur Projektdateien (IDE-Plugin, #648), bekommen Dateien außerhalb dieser
+      // Projekte weiter einen abgeleiteten Arbeitsbereich.
+      FDeriveWorkspaces := True;
+      for Folder in Folders do
+        if Folder.ProjectFile = '' then
+          FDeriveWorkspaces := False;
+      if Length(Folders) = 0 then
         FLogger.Info('Kein Arbeitsbereichsordner gemeldet; Ordner werden aus den geöffneten Dateien abgeleitet');
       for Folder in Folders do
         AddWorkspace(Folder);
@@ -1069,6 +1085,8 @@ begin
   // Ordner vor dem Index: ihre Index-Threads laufen noch.
   FWorkspaces.Free;
   FWorkspacesLock.Free;
+  // Nach den Ordnern: Ihre Index-Threads sind beendet und abgemeldet.
+  FIndexScheduler.Free;
   FLooseConfiguration.Free;
   FWorkspaceFolders.Free;
   FIndex := nil;
@@ -1111,13 +1129,96 @@ begin
   inherited;
 end;
 
+function TServerComposition.ProjectsOf(const AFolder: TWorkspaceFolder): TArray<string>;
+var
+  GroupFile: string;
+  Groups: TArray<string>;
+begin
+  Result := nil;
+  if SameText(ExtractFileExt(AFolder.ProjectFile), '.dproj') then
+    Exit([AFolder.ProjectFile]);
+  GroupFile := '';
+  if SameText(ExtractFileExt(AFolder.ProjectFile), '.groupproj') then
+    GroupFile := AFolder.ProjectFile
+  else
+    try
+      // Genau eine .dproj im Ordner: wie bisher dieses Projekt (oder "project" aus atlas.json).
+      if Length(TDirectory.GetFiles(AFolder.Path, '*.dproj')) <> 1 then
+      begin
+        Groups := TDirectory.GetFiles(AFolder.Path, '*.groupproj');
+        if Length(Groups) = 1 then
+          GroupFile := Groups[0];
+      end;
+    except
+      // Nicht lesbare Ordner haben keine Gruppe.
+      on Exception do
+        GroupFile := '';
+    end;
+  if GroupFile = '' then
+    Exit;
+  try
+    Result := TGroupProjReader.Load(GroupFile);
+    FLogger.Info(Format('Projektgruppe %s: %d Projekte', [GroupFile, Length(Result)]));
+  except
+    on E: Exception do
+    begin
+      FLogger.Warning(Format('Projektgruppe %s nicht lesbar: %s', [GroupFile, E.Message]));
+      Result := nil;
+    end;
+  end;
+end;
+
 procedure TServerComposition.AddWorkspace(const AFolder: TWorkspaceFolder);
 var
-  Workspace: TShellWorkspace;
+  Projects: TArray<string>;
+  Index: Integer;
+  HasOthers: Boolean;
 begin
+  Projects := ProjectsOf(AFolder);
+  if Length(Projects) = 0 then
+  begin
+    AddProjectWorkspace(AFolder.Path, AFolder.Name, '', AFolder.Key, False);
+    Exit;
+  end;
+  // Projektgruppe (#648): Das erste Projekt ist das aktive (das Plugin meldet es zuerst). Die übrigen
+  // warten mit index.projectGroup = false, bis eine ihrer Dateien geöffnet wird.
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    HasOthers := FWorkspaces.Count > 0;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  for Index := 0 to High(Projects) do
+    AddProjectWorkspace(ExtractFileDir(Projects[Index]), ChangeFileExt(ExtractFileName(Projects[Index]), ''),
+      Projects[Index], AFolder.Key, HasOthers or (Index > 0));
+end;
+
+procedure TServerComposition.AddProjectWorkspace(const ARoot, AName, AProjectFile, AOrigin: string;
+  ADeferred: Boolean);
+var
+  Workspace: TShellWorkspace;
+  Existing: TShellWorkspace;
+begin
+  if AProjectFile <> '' then
+  begin
+    TMonitor.Enter(FWorkspacesLock);
+    try
+      for Existing in FWorkspaces do
+        if SameText(Existing.ProjectFile, AProjectFile) then
+          Exit;
+    finally
+      TMonitor.Exit(FWorkspacesLock);
+    end;
+  end;
   Inc(FWorkspaceCounter);
-  Workspace := TShellWorkspace.Create(AFolder.Path, AFolder.Name, FDocuments, FTransport, FLogger, FIndex,
+  Workspace := TShellWorkspace.Create(ARoot, AName, FDocuments, FTransport, FLogger, FIndex,
     Format('atlas-index-%d', [FWorkspaceCounter]));
+  Workspace.ProjectFile := AProjectFile;
+  Workspace.Priority := FWorkspacePriority;
+  Inc(FWorkspacePriority);
+  Workspace.Scheduler := FIndexScheduler;
+  Workspace.Deferred := ADeferred;
+  Workspace.Origin := AOrigin;
   Workspace.OnProjectLoaded := ProjectLoaded;
   // Das Zeitlimit gilt serverweit; bei mehreren Ordnern das zuletzt gelesene.
   Workspace.OnSettingsChanged :=
@@ -1134,37 +1235,75 @@ begin
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
-  FLogger.Info('Arbeitsbereichsordner: ' + AFolder.Path);
+  if AProjectFile <> '' then
+    FLogger.Info('Arbeitsbereich für Projekt: ' + AProjectFile)
+  else
+    FLogger.Info('Arbeitsbereichsordner: ' + ARoot);
   Workspace.Load;
+end;
+
+// Gehört AFileName zu AWorkspace? Mit fester Projektdatei nur die Projekt- und Suchpfad-Units,
+// sonst alles unter dem Ordner.
+function OwnsFile(AWorkspace: TShellWorkspace; const AFileName: string): Boolean;
+begin
+  Result := AWorkspace.ContainsFile(AFileName);
+  if not Result and (AWorkspace.ProjectFile = '') then
+    Result := TLspWorkspaceFolders.FolderOf([TWorkspaceFolder.Create(AWorkspace.Root, '')], AFileName) = 0;
 end;
 
 procedure TServerComposition.RemoveWorkspace(const AFolder: TWorkspaceFolder);
 var
   Index: Integer;
+  Removed: TArray<TShellWorkspace>;
+  Remaining: TArray<TShellWorkspace>;
   Workspace: TShellWorkspace;
   UnitIndex: TUnitIndex;
+  Owned: Boolean;
+  Shared: Boolean;
 begin
-  Workspace := nil;
+  // Ein Eintrag (Ordner, .dproj oder .groupproj) kann mehrere Arbeitsbereiche erzeugt haben (#648).
+  Removed := nil;
   TMonitor.Enter(FWorkspacesLock);
   try
     for Index := FWorkspaces.Count - 1 downto 0 do
-      if SameText(ExcludeTrailingPathDelimiter(FWorkspaces[Index].Root), ExcludeTrailingPathDelimiter(AFolder.Path)) then
-      begin
-        Workspace := FWorkspaces.Extract(FWorkspaces[Index]);
-        Break;
-      end;
+      if SameText(FWorkspaces[Index].Origin, AFolder.Key) then
+        Removed := Removed + [FWorkspaces.Extract(FWorkspaces[Index])];
+    Remaining := FWorkspaces.ToArray;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
-  if Workspace = nil then
+  if Length(Removed) = 0 then
     Exit;
-  FLogger.Info('Arbeitsbereichsordner entfernt: ' + AFolder.Path);
-  Workspace.Stop;
-  // Projektdateien des Ordners verlassen den Index; geteilte Bibliotheks-Units bleiben.
+  FLogger.Info(Format('Arbeitsbereich entfernt: %s (%d Projekte)', [AFolder.Path, Length(Removed)]));
+  for Workspace in Removed do
+    Workspace.Stop;
+  // Units der entfernten Projekte verlassen den Index, sofern kein verbleibendes Projekt sie enthält;
+  // geteilte Bibliotheks-Units bleiben.
   for UnitIndex in FIndex.Units do
-    if TLspWorkspaceFolders.FolderOf([TWorkspaceFolder.Create(Workspace.Root, '')], UnitIndex.FileName) = 0 then
+  begin
+    if UnitIndex.Library_ then
+      Continue;
+    Owned := False;
+    for Workspace in Removed do
+      if OwnsFile(Workspace, UnitIndex.FileName) then
+      begin
+        Owned := True;
+        Break;
+      end;
+    if not Owned then
+      Continue;
+    Shared := False;
+    for Workspace in Remaining do
+      if OwnsFile(Workspace, UnitIndex.FileName) then
+      begin
+        Shared := True;
+        Break;
+      end;
+    if not Shared then
       FIndex.RemoveFile(UnitIndex.FileName);
-  Workspace.Free;
+  end;
+  for Workspace in Removed do
+    Workspace.Free;
   ProjectLoaded;
 end;
 
@@ -1204,6 +1343,10 @@ var
   Workspace: TShellWorkspace;
   Index: Integer;
 begin
+  // Zuerst das Projekt, das die Datei enthält (#648); mehrere Projekte können im selben Ordner liegen.
+  for Workspace in FWorkspaces do
+    if Workspace.ContainsFile(AFileName) then
+      Exit(Workspace);
   Folders := nil;
   for Workspace in FWorkspaces do
     Folders := Folders + [TWorkspaceFolder.Create(Workspace.Root, Workspace.Name)];
@@ -1582,6 +1725,19 @@ begin
     end;
   if FDeriveWorkspaces and (AKind = TDocumentEventKind.Opened) and StartsText('file:', ADocument.Uri) then
     DeriveWorkspace(TDocumentUris.ToPath(ADocument.Uri));
+  // Zurückgestelltes Projekt der Gruppe (index.projectGroup = false): jetzt indizieren (#648).
+  if (AKind = TDocumentEventKind.Opened) and StartsText('file:', ADocument.Uri) then
+  begin
+    TMonitor.Enter(FWorkspacesLock);
+    try
+      Workspace := WorkspaceOf(TDocumentUris.ToPath(ADocument.Uri));
+    finally
+      TMonitor.Exit(FWorkspacesLock);
+    end;
+    // Nur der Thread der Nachrichtenschleife entfernt Arbeitsbereiche; Workspace bleibt gültig.
+    if (Workspace <> nil) and Workspace.Deferred then
+      Workspace.Activate;
+  end;
   // Nach dem Speichern einer Quelldatei kompilieren (#40), abschaltbar über compiler.onSave.
   if (AKind = TDocumentEventKind.Saved) and MatchText(ExtractFileExt(TDocumentUris.ToPath(ADocument.Uri)),
     ['.pas', '.dpr', '.dpk', '.inc']) then

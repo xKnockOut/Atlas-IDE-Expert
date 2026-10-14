@@ -308,6 +308,20 @@ begin
   Settings := TConfigurationParser.ParseLayered('{"diagnostics": {"log": false}}', '{"diagnostics": {"logDays": 2}}', Issues);
   Assert.IsTrue(Settings.DiagnosticsLog, 'atlas.json ersetzt den ganzen Abschnitt');
   Assert.AreEqual(2, Settings.DiagnosticsLogDays);
+  // Umfang des Index (#648)
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.IndexProjectGroup and Settings.IndexSearchPaths and Settings.IndexLibraryPaths);
+  Assert.AreEqual<NativeInt>(0, Length(Settings.IndexExclude));
+  Settings := Parse('{"index": {"projectGroup": false, "searchPaths": false, "libraryPaths": false, ' +
+    '"exclude": ["**/Demos/**"]}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.IndexProjectGroup or Settings.IndexSearchPaths or Settings.IndexLibraryPaths);
+  Assert.IsTrue(Settings.IsIndexExcluded('C:\Komponenten\Demos\Main.pas'));
+  Assert.IsFalse(Settings.IsIndexExcluded('C:\Komponenten\Source\Main.pas'));
+  Parse('{"index": {"exclude": "Demos", "x": true}}', Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{"index": {"libraryPaths": false}}', '{"index": {"exclude": []}}', Issues);
+  Assert.IsTrue(Settings.IndexLibraryPaths, 'atlas.json ersetzt den ganzen Abschnitt');
   // Schlüsselworthervorhebung (#307)
   Settings := Parse('{}', Issues);
   Assert.IsTrue(Settings.Highlight.BlockPairs and Settings.Highlight.Directives and Settings.Highlight.ExitPoints);

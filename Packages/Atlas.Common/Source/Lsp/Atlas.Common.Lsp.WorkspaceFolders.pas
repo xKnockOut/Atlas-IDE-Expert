@@ -11,6 +11,10 @@
 // rootUri "file:///" und keine workspaceFolders. Laufwerkswurzeln und "/"
 // gelten deshalb nicht als Ordner; der Server leitet ihn dann aus der
 // geöffneten Datei ab (ProjectFolderFor, #175).
+//
+// Projektgruppen (#648): Das Atlas-Plugin meldet die Projekte der Gruppe als
+// Einträge, deren uri auf die .dproj (oder .groupproj) zeigt. Path ist dann
+// der Ordner der Datei, ProjectFile die Datei selbst.
 
 interface
 
@@ -24,7 +28,11 @@ type
   TWorkspaceFolder = record
     Path: string;
     Name: string;
-    constructor Create(const APath, AName: string);
+    /// <summary>Projekt- oder Gruppendatei, wenn der Eintrag eine Datei nennt (#648); sonst ''.</summary>
+    ProjectFile: string;
+    constructor Create(const APath, AName: string; const AProjectFile: string = '');
+    /// <summary>Schlüssel zum Wiederfinden beim Entfernen: die Datei, sonst der Ordner.</summary>
+    function Key: string;
   end;
 
   TWorkspaceFoldersChangedEvent = reference to procedure(const AAdded, ARemoved: TArray<TWorkspaceFolder>);
@@ -45,6 +53,8 @@ type
     class procedure ParseChange(const AParams: TJSONValue; out AAdded, ARemoved: TArray<TWorkspaceFolder>); static;
     /// <summary>Index des innersten Ordners, der AFileName enthält; -1 wenn keiner.</summary>
     class function FolderOf(const AFolders: TArray<TWorkspaceFolder>; const AFileName: string): Integer; static;
+    /// <summary>True für Dateinamen mit .dproj oder .groupproj (Einträge des Plugins, #648).</summary>
+    class function IsProjectFile(const APath: string): Boolean; static;
     /// <summary>False für '', "/" und Laufwerkswurzeln: Dort zu indizieren hieße, die ganze Platte zu lesen.</summary>
     class function IsUsableRoot(const APath: string): Boolean; static;
     /// <summary>Nächster Ordner ab dem Ordner von AFileName aufwärts, für den AHasProjectFile
@@ -63,7 +73,7 @@ uses
 function ReadFolders(const AValue: TJSONValue): TArray<TWorkspaceFolder>;
 var
   Item: TJSONValue;
-  Uri, Name, Path: string;
+  Uri, Name, Path, ProjectFile: string;
 begin
   Result := nil;
   if not (AValue is TJSONArray) then
@@ -73,11 +83,22 @@ begin
     if not Item.TryGetValue<string>('uri', Uri) then
       Continue;
     Path := TDocumentUris.ToPath(Uri);
+    ProjectFile := '';
+    if TLspWorkspaceFolders.IsProjectFile(Path) then
+    begin
+      ProjectFile := Path;
+      Path := ExtractFileDir(ProjectFile);
+    end;
     if not TLspWorkspaceFolders.IsUsableRoot(Path) then
       Continue;
     if not Item.TryGetValue<string>('name', Name) then
-      Name := ExtractFileName(ExcludeTrailingPathDelimiter(Path));
-    Result := Result + [TWorkspaceFolder.Create(Path, Name)];
+    begin
+      if ProjectFile <> '' then
+        Name := ChangeFileExt(ExtractFileName(ProjectFile), '')
+      else
+        Name := ExtractFileName(ExcludeTrailingPathDelimiter(Path));
+    end;
+    Result := Result + [TWorkspaceFolder.Create(Path, Name, ProjectFile)];
   end;
 end;
 
@@ -90,10 +111,19 @@ end;
 
 { TWorkspaceFolder }
 
-constructor TWorkspaceFolder.Create(const APath, AName: string);
+constructor TWorkspaceFolder.Create(const APath, AName, AProjectFile: string);
 begin
   Path := APath;
   Name := AName;
+  ProjectFile := AProjectFile;
+end;
+
+function TWorkspaceFolder.Key: string;
+begin
+  if ProjectFile <> '' then
+    Result := AnsiUpperCase(ProjectFile)
+  else
+    Result := AnsiUpperCase(ExcludeTrailingPathDelimiter(StringReplace(Path, '/', '\', [rfReplaceAll])));
 end;
 
 { TLspWorkspaceFolders }
@@ -163,6 +193,11 @@ begin
       BestLength := Length(Folder);
     end;
   end;
+end;
+
+class function TLspWorkspaceFolders.IsProjectFile(const APath: string): Boolean;
+begin
+  Result := SameText(ExtractFileExt(APath), '.dproj') or SameText(ExtractFileExt(APath), '.groupproj');
 end;
 
 class function TLspWorkspaceFolders.IsUsableRoot(const APath: string): Boolean;
