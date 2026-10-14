@@ -17,13 +17,18 @@ type
     procedure WarmUp;
     [Test]
     procedure CreatesAndRoundTripsSettings;
+    [Test]
+    procedure SnippetsPageShowsCatalogAndValidates;
   end;
 
 implementation
 
 uses
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Settings.Page;
+  Atlas.Core.Completion.Snippets,
+  Atlas.Core.Completion.SnippetCatalog,
+  Atlas.UI.Settings.Page,
+  Atlas.UI.Settings.SnippetsPage;
 
 procedure TAtlasSettingsPageTests.WarmUp;
 begin
@@ -67,6 +72,28 @@ begin
   Assert.IsFalse(Saved.SlashCommands);
   Assert.IsFalse(Saved.Snippets);
   Assert.IsFalse(Saved.ImportIdeTemplates);
+end;
+
+procedure TAtlasSettingsPageTests.SnippetsPageShowsCatalogAndValidates;
+var
+  Page: TAtlasSnippetsPage;
+  Own: TAtlasSnippet;
+begin
+  Own := Default(TAtlasSnippet);
+  Own.Prefix := 'eigen';
+  Own.Body := 'X;';
+  Own.Origin := TAtlasSnippetOrigin.User;
+  Page := TAtlasSnippetsPage.Create(nil);
+  try
+    Page.Load(TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, nil, [Own]));
+    Assert.AreEqual(Integer(Length(TAtlasSnippets.BuiltIn)) + 1, Page.Catalog.Count);
+    Assert.AreEqual('', Page.Validate);
+    // Zweite eigene mit demselben Kürzel: Meldung nennt das Kürzel.
+    Page.Catalog.Update(Page.Catalog.AddNew, Own);
+    Assert.IsTrue(Pos('eigen', Page.Validate) > 0);
+  finally
+    Page.Free;
+  end;
 end;
 
 initialization

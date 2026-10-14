@@ -136,6 +136,11 @@
             <FormType>dfm</FormType>
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.SnippetsPage.pas">
+            <Form>AtlasSnippetsPage</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.Store.pas"/>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.Options.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.JsonText.pas"/>
@@ -154,6 +159,7 @@
         <DCCReference Include="Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.XmlDoc.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Snippets.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.LiveTemplates.pas"/>
+        <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.SnippetCatalog.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Placeholders.pas"/>
         <DCCReference Include="Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.Snippets.pas"/>
         <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.Placeholders.pas"/>
