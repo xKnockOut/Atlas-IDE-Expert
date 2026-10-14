@@ -267,7 +267,7 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
   - WorkspaceEdits lesen und anwenden (`Atlas.Core.Lsp.WorkspaceEdits`). Die Änderungen landen in den IDE-Puffern, je Datei als ein Rückgängig-Schritt (`Atlas.IDE.Editor.WorkspaceEdit`).
   - Nicht geöffnete Dateien werden geöffnet (Einstellung `OpenForEdits`) oder in ihrer Kodierung auf die Platte geschrieben (`Atlas.Core.Files.TextFile`).
   - Erster Nutzer ist „Symbol umbenennen…“ (Menü Atlas, Palette).
-  - `workspace/applyEdit` des Servers: Das Plugin kündigt die Fähigkeit an, wendet die Änderung im Hauptthread an und antwortet mit `applied`/`failureReason` (`TLspClient.OnServerRequest`, `TLspSession.OnApplyEdit`). Der Server sendet es bisher nicht.
+  - `workspace/applyEdit` des Servers: Das Plugin kündigt die Fähigkeit an, wendet die Änderung im Hauptthread an und antwortet mit `applied`/`failureReason` (`TLspClient.OnServerRequest`, `TLspSession.OnApplyEdit`). Der Server sendet es für Schrägstrich-Befehle wie `/define` (`TLspApplyEdit`, `TJsonRpcDispatcher.ExpectResponse`), wenn der Client die Fähigkeit meldet; sonst schreibt er selbst. Projektdateien lädt das Plugin danach mit `ReloadFile` neu.
   - MCP bei laufender IDE: `editor-dirty-<pid>.json` listet unter `open` die offenen Dateien. Für eine offene Datei legt der MCP-Server einen Auftrag in `%LOCALAPPDATA%\Atlas\ide-edits\<pid>\` (`Atlas.Common.Mcp.IdeEdits`). Das Plugin übernimmt ihn per Umbenennen, ändert den Puffer als einen Rückgängig-Schritt und speichert, wenn die Datei vorher gespeichert war (`Atlas.Core.Files.EditInbox`, `Atlas.IDE.Files.EditInbox`). Nimmt es ihn nicht binnen 3 s an, schreibt der MCP-Server selbst.
   - DFM bleibt bei #402.
 - `feature/396-projektkontext` (fd1dafe, 02b8943):
