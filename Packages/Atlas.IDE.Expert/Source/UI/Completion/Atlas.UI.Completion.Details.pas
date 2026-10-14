@@ -7,9 +7,13 @@
 //   2. Deklaration in der Editorschrift, eingefärbt, umbrechend
 //   3. Unit · Klasse, gedämpft
 //   4. Trennlinie
-//   5. Beschreibung (<summary>), bei deprecated "Veraltet: …" in Warnfarbe
-//   6. Parameter (Name in Akzentfarbe), Rückgabe (→) und Exceptions (!), zweispaltig
-//   7. Bemerkungen (<remarks>), höchstens drei Zeilen
+//   5. bei deprecated "Veraltet: …" in Warnfarbe
+//   6. XMLDoc vollständig und formatiert (#654) wie im Hover-Tooltip:
+//      Beschreibung, Parameter (Name in Akzentfarbe), Typparameter, Rückgabe
+//      (→), Wert, Exceptions (!), Bemerkungen, Beispiel, Siehe auch. Ist das
+//      Panel höher als das Popup, scrollt nur die Doku mit dem Mausrad. Text
+//      lässt sich markieren; Verweise mit Strg+Klick und Links sind anklickbar.
+//      Kurzform (hints.xmlDocFull aus): Beschreibung vier, Bemerkungen drei Zeilen.
 // Bei Überladungen (#425) steht oben "Überladung ‹ 2 / 3 ›"; die Pfeile sind
 // klickbar. Leere Abschnitte entfallen. Ohne Details (z. B. Schlüsselwort) steht
 // ein gedämpfter Hinweis, damit das Popup beim Blättern nicht schmaler wird.
@@ -23,7 +27,9 @@ uses
   Vcl.Graphics,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Completion.Contract;
+  Atlas.Core.Completion.Contract,
+  Atlas.Core.Documentation.Contract,
+  Atlas.UI.Documentation.View;
 
 type
   TAtlasDetailView = class
@@ -35,12 +41,33 @@ type
     FOverloadCount: Integer;
     FPreviousRect: TRect;
     FNextRect: TRect;
+    FDoc: TAtlasDocView;
+    /// <summary>Doku für diese Breite gesetzt (0 = neu setzen).</summary>
+    FDocWidth: Integer;
+    FDocLeft: Integer;
+    FDocTop: Integer;
+    FMaxHeight: Integer;
+    procedure SetDetails(const AValue: TAtlasItemDetails);
   public
+    constructor Create;
+    destructor Destroy; override;
+    /// <summary>Doku der Details; bei fremden Servern aus Summary, Params, Returns, Exceptions, Remarks.</summary>
+    class function DocOf(const ADetails: TAtlasItemDetails): TAtlasDoc; static;
+    /// <summary>Doku in Fensterkoordinaten unter (AX, AY)?</summary>
+    function InDoc(AX, AY: Integer): Boolean;
+    /// <summary>Link der Doku unter (AX, AY) in Fensterkoordinaten; -1 ohne.</summary>
+    function DocLinkAt(AX, AY: Integer): Integer;
+    function ScrollDoc(ASteps: Integer): Boolean;
+    property Doc: TAtlasDocView read FDoc;
+    property DocLeft: Integer read FDocLeft;
+    property DocTop: Integer read FDocTop;
+    /// <summary>Höchste Höhe des Panels; darüber scrollt die Doku (0 = unbegrenzt).</summary>
+    property MaxHeight: Integer read FMaxHeight write FMaxHeight;
     /// <summary>Zeichnet (ADraw) bzw. misst den Inhalt in ABounds; liefert die benötigte Höhe.
     /// APPI: Pixel je Zoll des Fensters; AFont: Editorschrift; AUIFont: Beschriftungen.</summary>
     function Render(ACanvas: TCanvas; const AColors: TAtlasColors; AFont, AUIFont: TFont; const ABounds: TRect;
       APPI: Integer; ADraw: Boolean): Integer;
-    property Details: TAtlasItemDetails read FDetails write FDetails;
+    property Details: TAtlasItemDetails read FDetails write SetDetails;
     /// <summary>Gezeigte Überladung (0-basiert) und Anzahl; Anzahl 1 = keine Kopfzeile.</summary>
     property OverloadIndex: Integer read FOverloadIndex write FOverloadIndex;
     property OverloadCount: Integer read FOverloadCount write FOverloadCount;
@@ -55,16 +82,91 @@ uses
   System.Math,
   Atlas.UI.Popup.Window,
   Atlas.UI.Popup.Styled,
+  Atlas.Core.Documentation.Layout,
   Atlas.UI.Strings;
 
 { TAtlasDetailView }
 
+constructor TAtlasDetailView.Create;
+begin
+  inherited Create;
+  FDoc := TAtlasDocView.Create;
+end;
+
+destructor TAtlasDetailView.Destroy;
+begin
+  FDoc.Free;
+  inherited Destroy;
+end;
+
+procedure TAtlasDetailView.SetDetails(const AValue: TAtlasItemDetails);
+begin
+  FDetails := AValue;
+  FDocWidth := 0;
+end;
+
+class function TAtlasDetailView.DocOf(const ADetails: TAtlasItemDetails): TAtlasDoc;
+
+  procedure Add(AKind: TAtlasDocSectionKind; const AName, AText: string);
+  var
+    Section: TAtlasDocSection;
+  begin
+    if Trim(AText) = '' then
+      Exit;
+    Section := Default(TAtlasDocSection);
+    Section.Kind := AKind;
+    Section.Name := AName;
+    Section.Runs := TAtlasDoc.FromText(AText).Sections[0].Runs;
+    Result.Sections := Result.Sections + [Section];
+  end;
+
+var
+  Entry: TAtlasDocEntry;
+begin
+  Result := ADetails.Doc;
+  if not Result.IsEmpty then
+    Exit;
+  Add(TAtlasDocSectionKind.Summary, '', ADetails.Summary);
+  for Entry in ADetails.Params do
+    Add(TAtlasDocSectionKind.Param, Entry.Name, Entry.Text);
+  Add(TAtlasDocSectionKind.Returns, '', ADetails.Returns);
+  for Entry in ADetails.Exceptions do
+    Add(TAtlasDocSectionKind.Exception, Entry.Name, Entry.Text);
+  Add(TAtlasDocSectionKind.Remarks, '', ADetails.Remarks);
+end;
+
+function TAtlasDetailView.InDoc(AX, AY: Integer): Boolean;
+begin
+  Result := not FDoc.IsEmpty and (AX >= FDocLeft) and (AX < FDocLeft + FDoc.Width) and (AY >= FDocTop) and
+    (AY < FDocTop + FDoc.Height);
+end;
+
+function TAtlasDetailView.DocLinkAt(AX, AY: Integer): Integer;
+begin
+  Result := -1;
+  if InDoc(AX, AY) then
+    Result := FDoc.LinkAt(AX - FDocLeft, AY - FDocTop);
+end;
+
+function TAtlasDetailView.ScrollDoc(ASteps: Integer): Boolean;
+begin
+  Result := FDoc.ScrollBy(ASteps * FDoc.WheelStep);
+end;
+
+function DocLabels: TAtlasDocLabels;
+begin
+  Result.TypeParams := TAtlasStrings.Text(TAtlasTextId.DocTypeParams);
+  Result.Value := TAtlasStrings.Text(TAtlasTextId.DocValue);
+  Result.Example := TAtlasStrings.Text(TAtlasTextId.DocExample);
+  Result.SeeAlso := TAtlasStrings.Text(TAtlasTextId.DocSeeAlso);
+end;
+
 function TAtlasDetailView.Render(ACanvas: TCanvas; const AColors: TAtlasColors; AFont, AUIFont: TFont;
   const ABounds: TRect; APPI: Integer; ADraw: Boolean): Integer;
 var
-  Left, Y, Right, NameWidth, ExceptionWidth, TagX, TagHeight, LineHeight: Integer;
-  Entry: TAtlasDocEntry;
+  Left, Y, Right, TagX, TagHeight, LineHeight, Fixed: Integer;
   Text, Tag: string;
+  Doc: TAtlasDoc;
   Declaration: TAtlasStyledText;
   Lines: TArray<TPoint>;
   Line, X: Integer;
@@ -103,32 +205,6 @@ var
       DrawText(ACanvas.Handle, PChar(AText), -1, Area, DT_WORDBREAK or DT_NOPREFIX or DT_END_ELLIPSIS);
     Y := Area.Bottom + Scale(6);
     ACanvas.Font.Style := [];
-  end;
-
-  /// <summary>Name links in der Editorschrift (AColor, halbfett), Text rechts umbrechend.</summary>
-  procedure Entry2(const AName, AText: string; AColor: TAtlasColor; ANameWidth: Integer);
-  var
-    Area: TRect;
-    Bottom: Integer;
-  begin
-    ACanvas.Font := AFont;
-    ACanvas.Font.Style := [fsBold];
-    ACanvas.Font.Color := ToColor(AColor);
-    ACanvas.Brush.Style := bsClear;
-    Area := Rect(Left, Y, Left + ANameWidth, Y + ACanvas.TextHeight('Wg'));
-    Bottom := Area.Bottom;
-    if ADraw then
-      DrawText(ACanvas.Handle, PChar(AName), -1, Area, DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
-    ACanvas.Font := AUIFont;
-    ACanvas.Font.Color := ToColor(AColors.Muted);
-    Area := Rect(Left + ANameWidth + Scale(8), Y, Right, Y);
-    DrawText(ACanvas.Handle, PChar(AText), -1, Area, DT_WORDBREAK or DT_NOPREFIX or DT_CALCRECT);
-    Area.Right := Right;
-    // Grundlinien angleichen: die UI-Schrift ist etwas kleiner als die Editorschrift.
-    OffsetRect(Area, 0, Max(0, (Bottom - Y - ACanvas.TextHeight('Wg')) div 2));
-    if ADraw then
-      DrawText(ACanvas.Handle, PChar(AText), -1, Area, DT_WORDBREAK or DT_NOPREFIX);
-    Y := Max(Bottom, Area.Bottom) + Scale(3);
   end;
 
   procedure Separator;
@@ -239,9 +315,9 @@ begin
     else
       Text := FDetails.Container;
   Block(Text, AColors.Muted, []);
-  // 4.–7. Beschreibung und XMLDoc; ohne Inhalt keine Trennlinie und keine leeren Abschnitte.
-  if FDetails.IsDeprecated or (FDetails.Summary <> '') or (FDetails.Returns <> '') or
-    (Length(FDetails.Params) > 0) or (Length(FDetails.Exceptions) > 0) or (FDetails.Remarks <> '') then
+  // 4.–6. Veraltung und XMLDoc; ohne Inhalt keine Trennlinie und keine leeren Abschnitte.
+  Doc := DocOf(FDetails);
+  if FDetails.IsDeprecated or not Doc.IsEmpty then
   begin
     Separator;
     if FDetails.IsDeprecated then
@@ -249,33 +325,30 @@ begin
         Block(TAtlasStrings.Fmt(TAtlasTextId.DeprecatedWith, [FDetails.DeprecatedText]), AColors.Warn, [])
       else
         Block(TAtlasStrings.Text(TAtlasTextId.DeprecatedPlain), AColors.Warn, []);
-    Block(FDetails.Summary, AColors.Text, []);
-    ACanvas.Font := AFont;
-    ACanvas.Font.Style := [fsBold];
-    NameWidth := 0;
-    for Entry in FDetails.Params do
-      NameWidth := Max(NameWidth, ACanvas.TextWidth(Entry.Name));
-    if FDetails.Returns <> '' then
-      NameWidth := Max(NameWidth, ACanvas.TextWidth('→'));
-    NameWidth := Min(NameWidth, (Right - Left) div 3);
-    // Exceptions eigene Spalte: lange Klassennamen sollen die Parameter nicht auseinanderziehen.
-    ExceptionWidth := 0;
-    for Entry in FDetails.Exceptions do
-      ExceptionWidth := Max(ExceptionWidth, ACanvas.TextWidth('! ' + Entry.Name));
-    ExceptionWidth := Min(ExceptionWidth, (Right - Left) div 2);
-    ACanvas.Font.Style := [];
-    for Entry in FDetails.Params do
-      Entry2(Entry.Name, Entry.Text, AColors.Accent, NameWidth);
-    if FDetails.Returns <> '' then
-      Entry2('→', FDetails.Returns, AColors.Accent, NameWidth);
-    for Entry in FDetails.Exceptions do
-      Entry2('! ' + Entry.Name, Entry.Text, AColors.Error, ExceptionWidth);
-    if FDetails.Remarks <> '' then
+    if Doc.IsEmpty then
+      FDoc.Clear
+    else
     begin
-      Separator;
-      Block(FDetails.Remarks, AColors.Muted, [], 3);
+      if FDocWidth <> Right - Left then
+      begin
+        FDoc.Build(ACanvas, Doc, Right - Left, AFont, AUIFont, APPI, FDetails.Display.Full, DocLabels);
+        FDocWidth := Right - Left;
+      end;
+      // Höher als erlaubt: nur die Doku scrollt, Kopf und Deklaration bleiben.
+      Fixed := Y - ABounds.Top + Scale(5);
+      if FMaxHeight > 0 then
+        FDoc.FitHeight(FDetails.Display.MaxLines, FMaxHeight - Fixed)
+      else
+        FDoc.FitHeight(FDetails.Display.MaxLines, 0);
+      FDocLeft := Left;
+      FDocTop := Y;
+      if ADraw then
+        FDoc.Paint(ACanvas, AColors, Left, Y);
+      Inc(Y, FDoc.Height);
     end;
-  end;
+  end
+  else
+    FDoc.Clear;
   ACanvas.Brush.Style := bsSolid;
   Result := Y - ABounds.Top + Scale(5);
 end;

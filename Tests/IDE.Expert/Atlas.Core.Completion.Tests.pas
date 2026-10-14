@@ -306,7 +306,10 @@ begin
     '"declaration":"function Add(const S: string): Integer; virtual;","unit":"Liste","container":"TListe",' +
     '"visibility":"public","directives":["virtual","deprecated"],"deprecated":"Neu verwenden",' +
     '"summary":"Hängt S an.","returns":"Index.","params":[{"name":"S","text":"Der Text."}],' +
-    '"exceptions":[{"name":"EListError","text":"Voll."}]}}}');
+    '"exceptions":[{"name":"EListError","text":"Voll."}],' +
+    '"documentation":{"sections":[{"kind":"summary","runs":[{"kind":"text","text":"Hängt "},' +
+    '{"kind":"paramref","text":"S"},{"kind":"text","text":" an."}]}]},' +
+    '"xmlDoc":{"full":true,"maxLines":20}}}}');
   try
     Details := TAtlasServerCompletionProvider.DetailsFromLsp(Response);
   finally
@@ -323,6 +326,11 @@ begin
   Assert.AreEqual('Index.', Details.Returns);
   Assert.AreEqual('Der Text.', Details.Params[0].Text);
   Assert.AreEqual('EListError', Details.Exceptions[0].Name);
+  // Vollständige XMLDoc und Anzeige (#654).
+  Assert.AreEqual(1, Integer(Length(Details.Doc.Sections)));
+  Assert.AreEqual('Hängt S an.', Details.Doc.Sections[0].Text);
+  Assert.IsTrue(Details.Display.Known);
+  Assert.AreEqual(20, Details.Display.MaxLines);
   // Andere Server: detail und documentation.
   Response := TJSONObject.ParseJSONValue('{"label":"X","detail":"X: Integer","documentation":{"value":"Doku"}}');
   try
@@ -333,6 +341,8 @@ begin
   Assert.AreEqual('X: Integer', Details.Declaration);
   Assert.AreEqual('Doku', Details.Summary);
   Assert.IsFalse(Details.IsDeprecated);
+  Assert.IsTrue(Details.Doc.IsEmpty);
+  Assert.IsFalse(Details.Display.Known);
 end;
 
 procedure TAtlasCompletionProviderTests.MergesProvidersAndCompletesOnce;

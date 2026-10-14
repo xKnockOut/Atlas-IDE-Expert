@@ -19,6 +19,8 @@ type
     procedure ClampsOutOfRangeValues;
     [Test]
     procedure IndexOptionsGoToServer;
+    [Test]
+    procedure XmlDocOptionsGoToServer;
   end;
 
 implementation
@@ -134,8 +136,8 @@ var
 begin
   // Vorgaben wie im Schema; atlas.json-Format für den Server (#652).
   Settings := TAtlasPluginSettings.Defaults;
-  Assert.AreEqual('{"index":{"projectGroup":true,"searchPaths":true,"libraryPaths":false}}',
-    Settings.ServerSettingsJson);
+  Assert.AreEqual('{"index":{"projectGroup":true,"searchPaths":true,"libraryPaths":false},' +
+    '"hints":{"xmlDocFull":true,"xmlDocMaxLines":0}}', Settings.ServerSettingsJson);
   Store := TMemoryStore.Create;
   Settings.IndexSearchPaths := False;
   Settings.IndexLibraryPaths := True;
@@ -145,8 +147,37 @@ begin
   Assert.IsTrue(Loaded.IndexProjectGroup);
   Assert.IsFalse(Loaded.IndexSearchPaths);
   Assert.IsTrue(Loaded.IndexLibraryPaths);
-  Assert.AreEqual('{"index":{"projectGroup":true,"searchPaths":false,"libraryPaths":true}}',
-    Loaded.ServerSettingsJson);
+  Assert.AreEqual('{"index":{"projectGroup":true,"searchPaths":false,"libraryPaths":true},' +
+    '"hints":{"xmlDocFull":true,"xmlDocMaxLines":0}}', Loaded.ServerSettingsJson);
+end;
+
+procedure TAtlasPluginSettingsTests.XmlDocOptionsGoToServer;
+var
+  Store: IAtlasSettingsStore;
+  Settings, Loaded: TAtlasPluginSettings;
+begin
+  // #654: Registry XmlDocFull/XmlDocMaxLines, an den Server als hints.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.XmlDocFull);
+  Assert.AreEqual(0, Settings.XmlDocMaxLines);
+  Store := TMemoryStore.Create;
+  Settings.XmlDocFull := False;
+  Settings.XmlDocMaxLines := 12;
+  Settings.Save(Store);
+  Assert.AreEqual(0, Store.ReadInteger('XmlDocFull', 1));
+  Assert.AreEqual(12, Store.ReadInteger('XmlDocMaxLines', 0));
+  Loaded := Default(TAtlasPluginSettings);
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.XmlDocFull);
+  Assert.AreEqual(12, Loaded.XmlDocMaxLines);
+  Assert.IsTrue(Pos('"hints":{"xmlDocFull":false,"xmlDocMaxLines":12}', Loaded.ServerSettingsJson) > 0);
+  // Grenzen 0..50.
+  Store.WriteInteger('XmlDocMaxLines', 99);
+  Loaded.Load(Store);
+  Assert.AreEqual(TAtlasPluginSettings.MaxXmlDocLines, Loaded.XmlDocMaxLines);
+  Store.WriteInteger('XmlDocMaxLines', -3);
+  Loaded.Load(Store);
+  Assert.AreEqual(0, Loaded.XmlDocMaxLines);
 end;
 
 procedure TAtlasPluginSettingsTests.ClampsOutOfRangeValues;

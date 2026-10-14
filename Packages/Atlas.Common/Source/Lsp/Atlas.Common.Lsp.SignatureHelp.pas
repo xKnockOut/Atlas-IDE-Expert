@@ -382,8 +382,9 @@ var
   Name, Text: string;
   Index: Integer;
 begin
-  // Alles außer den Parametern an die Signatur, <param> an den passenden Parameter.
-  ASignature.Documentation := ADoc.ToMarkdown(False);
+  // Alles außer den Parametern an die Signatur, <param> an den passenden Parameter. Klartext: Der Hint
+  // des Plugins und der Client von RAD Studio zeigen kein Markdown; Namen aus cref bleiben erhalten.
+  ASignature.Documentation := ADoc.ToPlainText(False);
   for Section in ADoc.Sections do
   begin
     if Section.Kind <> TXmlDocSectionKind.Param then

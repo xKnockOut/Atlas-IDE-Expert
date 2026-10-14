@@ -34,6 +34,7 @@ type
     MaxCheckDelay = 10000;
     MinCheckMax = 200;
     MaxCheckMax = 20000;
+    MaxXmlDocLines = 50;
   public
     /// <summary>Hauptschalter (#407): aus = eingebaute Code Insight der IDE.</summary>
     Enabled: Boolean;
@@ -91,6 +92,11 @@ type
     IndexProjectGroup: Boolean;
     IndexSearchPaths: Boolean;
     IndexLibraryPaths: Boolean;
+    /// <summary>XMLDoc in Tooltip und Detailpanel vollständig (#654); aus = Kurzform. hints in atlas.json
+    /// hat Vorrang.</summary>
+    XmlDocFull: Boolean;
+    /// <summary>Höchstens so viele Zeilen Doku ohne Scrollen, 0 = bis zur Bildschirmhöhe (#654).</summary>
+    XmlDocMaxLines: Integer;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -150,6 +156,8 @@ begin
   Result.IndexProjectGroup := True;
   Result.IndexSearchPaths := True;
   Result.IndexLibraryPaths := False;
+  Result.XmlDocFull := True;
+  Result.XmlDocMaxLines := 0;
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -161,6 +169,7 @@ begin
   HangThresholdMs := EnsureRange(HangThresholdMs, MinHangThreshold, MaxHangThreshold);
   CheckOnSaveDelayMs := EnsureRange(CheckOnSaveDelayMs, MinCheckDelay, MaxCheckDelay);
   CheckOnSaveMaxMs := EnsureRange(CheckOnSaveMaxMs, MinCheckMax, MaxCheckMax);
+  XmlDocMaxLines := EnsureRange(XmlDocMaxLines, 0, MaxXmlDocLines);
 end;
 
 procedure TAtlasPluginSettings.Load(const AStore: IAtlasSettingsStore);
@@ -198,6 +207,8 @@ begin
   IndexProjectGroup := AStore.ReadInteger('IndexProjectGroup', BoolValue(Default.IndexProjectGroup)) <> 0;
   IndexSearchPaths := AStore.ReadInteger('IndexSearchPaths', BoolValue(Default.IndexSearchPaths)) <> 0;
   IndexLibraryPaths := AStore.ReadInteger('IndexLibraryPaths', BoolValue(Default.IndexLibraryPaths)) <> 0;
+  XmlDocFull := AStore.ReadInteger('XmlDocFull', BoolValue(Default.XmlDocFull)) <> 0;
+  XmlDocMaxLines := AStore.ReadInteger('XmlDocMaxLines', Default.XmlDocMaxLines);
   Normalize;
 end;
 
@@ -234,6 +245,8 @@ begin
   AStore.WriteInteger('IndexProjectGroup', BoolValue(IndexProjectGroup));
   AStore.WriteInteger('IndexSearchPaths', BoolValue(IndexSearchPaths));
   AStore.WriteInteger('IndexLibraryPaths', BoolValue(IndexLibraryPaths));
+  AStore.WriteInteger('XmlDocFull', BoolValue(XmlDocFull));
+  AStore.WriteInteger('XmlDocMaxLines', XmlDocMaxLines);
 end;
 
 function JsonBool(AValue: Boolean): string;
@@ -247,7 +260,8 @@ end;
 function TAtlasPluginSettings.ServerSettingsJson: string;
 begin
   Result := '{"index":{"projectGroup":' + JsonBool(IndexProjectGroup) + ',"searchPaths":' +
-    JsonBool(IndexSearchPaths) + ',"libraryPaths":' + JsonBool(IndexLibraryPaths) + '}}';
+    JsonBool(IndexSearchPaths) + ',"libraryPaths":' + JsonBool(IndexLibraryPaths) + '},"hints":{"xmlDocFull":' +
+    JsonBool(XmlDocFull) + ',"xmlDocMaxLines":' + IntToStr(EnsureRange(XmlDocMaxLines, 0, MaxXmlDocLines)) + '}}';
 end;
 
 end.

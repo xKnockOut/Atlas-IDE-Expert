@@ -46,6 +46,7 @@ uses
   Atlas.UI.Popup.Window,
   Atlas.UI.Popup.Tip,
   Atlas.UI.Strings,
+  Atlas.Core.Documentation.Layout,
   Atlas.UI.Completion.Details;
 
 type
@@ -57,6 +58,8 @@ type
 {$SCOPEDENUMS ON}
   TAtlasChipEvent = reference to procedure(AChip: TAtlasChip);
   TAtlasOverloadEvent = reference to procedure(ADelta: Integer);
+  /// <summary>Klick auf einen Verweis bzw. Link der XMLDoc im Panel (#654); AControl bei Strg+Klick.</summary>
+  TAtlasDocLinkEvent = reference to procedure(const ALink: TAtlasDocLink; AControl: Boolean);
   TAtlasDragKind = (None, ListWidth, PanelWidth);
   TAtlasHitArea = (None, Splitter, Edge, Grip, PanelBar);
 {$SCOPEDENUMS OFF}
@@ -112,6 +115,7 @@ type
     FChipKinds: TArray<TAtlasChip>;
     FOnChip: TAtlasChipEvent;
     FOnOverload: TAtlasOverloadEvent;
+    FOnDocLink: TAtlasDocLinkEvent;
     FDimInherited: Boolean;
     FDimRow: Boolean;
     // Zeile einer Aktion („Neue Methode …“, #444): Name in Akzentfarbe.
@@ -140,6 +144,9 @@ type
     function ListHeight: Integer;
     function PanelHeight: Integer;
     function PanelRect: TRect;
+    /// <summary>Höchste Höhe des Panels: größerer Platz unter bzw. über dem Wort, mindestens die Liste.</summary>
+    function PanelCap: Integer;
+    function DocActive: Boolean;
     procedure Relayout;
     function Pad: Integer;
     function RowHeight: Integer;
@@ -180,6 +187,8 @@ type
     procedure TogglePanel;
     /// <summary>Gezeigte Überladung im Panel (#425); ACount 1 = keine Kopfzeile.</summary>
     procedure SetOverload(AIndex, ACount: Integer);
+    /// <summary>Im Panel markierter Doku-Text (#654); '' ohne Markierung.</summary>
+    function SelectedDocText: string;
     { IAtlasCompletionView }
     procedure ShowList(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>; ASelected: Integer;
       const APattern: string);
@@ -202,6 +211,7 @@ type
     property OnChip: TAtlasChipEvent read FOnChip write FOnChip;
     /// <summary>Klick auf ‹ bzw. › im Panel (#425).</summary>
     property OnOverload: TAtlasOverloadEvent read FOnOverload write FOnOverload;
+    property OnDocLink: TAtlasDocLinkEvent read FOnDocLink write FOnDocLink;
     /// <summary>Geerbte Member abgeschwächt zeichnen (#419).</summary>
     property DimInherited: Boolean read FDimInherited write FDimInherited;
   end;
@@ -304,6 +314,7 @@ function TAtlasCompletionPopup.PanelHeight: Integer;
 begin
   if not FPanelShown or Collapsed then
     Exit(0);
+  FDetailView.MaxHeight := PanelCap;
   Result := FDetailView.Render(Canvas, Colors, Font, UIFont, Rect(0, 0, PanelWidth, 0), PPI, False);
   Canvas.Font := Font;
 end;
@@ -314,6 +325,24 @@ begin
     Result := Rect(0, 0, PanelWidth, ClientHeight)
   else
     Result := Rect(ListRight, 0, ListRight + PanelWidth, ClientHeight);
+end;
+
+function TAtlasCompletionPopup.PanelCap: Integer;
+var
+  Area: TRect;
+begin
+  Area := WorkAreaAt(FAnchor.TopLeft);
+  Result := Max(ListHeight, Max(Area.Bottom - FAnchor.Bottom, FAnchor.Top - Area.Top) - Scale(8));
+end;
+
+function TAtlasCompletionPopup.DocActive: Boolean;
+begin
+  Result := FPanelShown and not Collapsed and not FDetailView.Doc.IsEmpty;
+end;
+
+function TAtlasCompletionPopup.SelectedDocText: string;
+begin
+  Result := FDetailView.Doc.SelectedText;
 end;
 
 procedure TAtlasCompletionPopup.Relayout;
@@ -1041,7 +1070,11 @@ begin
     Canvas.Font.Style := [];
   end
   else
+  begin
+    // Höher als das Popup: nur die Doku scrollt (#654).
+    FDetailView.MaxHeight := ClientHeight;
     FDetailView.Render(Canvas, Colors, Font, UIFont, Panel, PPI, True);
+  end;
   Canvas.Font := Font;
   Canvas.Brush.Style := bsSolid;
 end;
@@ -1110,6 +1143,28 @@ begin
       FOnOverload(1);
       Exit;
     end;
+  // XMLDoc im Panel (#654): Verweis bzw. Link, sonst Beginn einer Markierung.
+  if DocActive then
+  begin
+    Index := FDetailView.DocLinkAt(X, Y);
+    if Index >= 0 then
+    begin
+      if Assigned(FOnDocLink) then
+        FOnDocLink(FDetailView.Doc.Link(Index), ssCtrl in Shift);
+      Exit;
+    end;
+    if FDetailView.InDoc(X, Y) then
+    begin
+      FDetailView.Doc.StartSelection(Canvas, X - FDetailView.DocLeft, Y - FDetailView.DocTop);
+      Invalidate;
+      Exit;
+    end;
+    if FDetailView.Doc.HasSelection then
+    begin
+      FDetailView.Doc.ClearSelection;
+      Invalidate;
+    end;
+  end;
   // Klick auf einen Chip (#422).
   for Index := 0 to High(FChipRects) do
     if PtInRect(FChipRects[Index], Point(X, Y)) then
@@ -1161,12 +1216,29 @@ begin
     Invalidate;
     Exit;
   end;
+  // Markieren in der Doku (#654).
+  if FDetailView.Doc.Selecting and (ssLeft in Shift) then
+  begin
+    FDetailView.Doc.ExtendSelection(Canvas, X - FDetailView.DocLeft, Y - FDetailView.DocTop);
+    Invalidate;
+    Exit;
+  end;
   case HitArea(X, Y) of
     TAtlasHitArea.Splitter: Cursor := crHSplit;
     TAtlasHitArea.Edge, TAtlasHitArea.Grip: Cursor := crSizeWE;
     TAtlasHitArea.PanelBar: Cursor := crHandPoint;
   else
-    Cursor := crDefault;
+    if DocActive and (FDetailView.DocLinkAt(X, Y) >= 0) then
+      Cursor := crHandPoint
+    else if DocActive and FDetailView.InDoc(X, Y) then
+      Cursor := crIBeam
+    else
+      Cursor := crDefault;
+  end;
+  if DocActive and (FDetailView.DocLinkAt(X, Y) <> FDetailView.Doc.HotLink) then
+  begin
+    FDetailView.Doc.HotLink := FDetailView.DocLinkAt(X, Y);
+    Invalidate;
   end;
   Position := RowAt(X, Y);
   if Position = FHoverPosition then
@@ -1179,6 +1251,11 @@ end;
 procedure TAtlasCompletionPopup.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   inherited;
+  if FDetailView.Doc.Selecting then
+  begin
+    FDetailView.Doc.EndSelection;
+    Invalidate;
+  end;
   if FDrag = TAtlasDragKind.None then
     Exit;
   FDrag := TAtlasDragKind.None;
@@ -1281,6 +1358,16 @@ function TAtlasCompletionPopup.DoMouseWheel(Shift: TShiftState; WheelDelta: Inte
 begin
   Result := True;
   HideTip;
+  // Über dem Panel scrollt die Doku, wenn sie höher als das Popup ist (#654).
+  if DocActive and FDetailView.Doc.CanScroll and PtInRect(PanelRect, ScreenToClient(MousePos)) then
+  begin
+    if WheelDelta > 0 then
+      FDetailView.ScrollDoc(-Max(1, WheelDelta div WHEEL_DELTA))
+    else
+      FDetailView.ScrollDoc(Max(1, -WheelDelta div WHEEL_DELTA));
+    Invalidate;
+    Exit;
+  end;
   if WheelDelta > 0 then
     FTop := Max(0, FTop - 3)
   else
