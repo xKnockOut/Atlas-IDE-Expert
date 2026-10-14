@@ -90,6 +90,7 @@ type
     DocumentTimeoutMs = 8000;
     /// <summary>Länger als Zeitbudget (3 s) und Long-Polling (5 s) des Servers.</summary>
     WorkspaceTimeoutMs = 15000;
+    WorkspaceRetryMs = 15000;
   private
     FSession: TAtlasProblemsSessionFunc;
     FLog: TAtlasProblemsLogProc;
@@ -330,7 +331,8 @@ begin
       begin
         if not Terminated then
           LogLater('Probleme (Projekt): ' + E.Message);
-        FStop.WaitFor(3000);
+        // Nach einem Fehler oder einer Zeitüberschreitung länger warten: Der Server ist ausgelastet.
+        FStop.WaitFor(WorkspaceRetryMs);
       end;
     end;
   end;
