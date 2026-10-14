@@ -132,10 +132,14 @@ type
     // Je Baum: Helfer je Typname und die Klasse der umgebenden Methode.
     FHelperTree: TSyntaxTree;
     FHelpers: TDictionary<string, TResolvedSymbol>;
+    // Units, die in diesem Resolver schon nicht gefunden wurden: nicht erneut suchen.
+    FMissingUnits: TDictionary<string, Boolean>;
     FClassState: Integer;
     FClass: TResolvedSymbol;
     FInferDepth: Integer;
     function FindUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
+    /// <summary>Unit als Qualifizierer in einem Ausdruck (A.B.C): nachgeladen nur, wenn sie in uses steht.</summary>
+    function FindQualifierUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
     function UnitOf(const AResolved: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
     function ScopeUnits(const AUnit: TUnitIndex; AWithImplementation: Boolean): TArray<string>;
     function FromSymbol(const AUnit: TUnitIndex; const ASymbol: TIndexSymbol): TResolvedSymbol;
@@ -528,13 +532,14 @@ end;
 destructor TNameResolver.Destroy;
 begin
   FScopeSeen.Free;
+  FMissingUnits.Free;
   FHelpers.Free;
   inherited;
 end;
 
 function TNameResolver.FindUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
 var
-  Namespace: string;
+  Namespace, Key: string;
 begin
   if SameText(AName, FCurrent.UnitName) then
   begin
@@ -543,19 +548,54 @@ begin
   end;
   if FIndex.FindUnit(AName, AUnit) then
     Exit(True);
-  if Assigned(FEnsureUnit) and FEnsureUnit(AName) and FIndex.FindUnit(AName, AUnit) then
-    Exit(True);
-  // uses SysUtils mit Namespace System → System.SysUtils
+  // Erst alle Schreibweisen im Index (uses SysUtils mit Namespace System → System.SysUtils), dann
+  // erst nachladen: EnsureUnit durchsucht die Suchpfade aller Projekte und ist viel teurer (#647).
   for Namespace in FNamespaces do
-    if FIndex.FindUnit(Namespace + '.' + AName, AUnit) or
-      (Assigned(FEnsureUnit) and FEnsureUnit(Namespace + '.' + AName) and FIndex.FindUnit(Namespace + '.' + AName, AUnit)) then
+    if FIndex.FindUnit(Namespace + '.' + AName, AUnit) then
       Exit(True);
-  // Diagnoselog (#647): Unit weder im Index noch über die Suchpfade gefunden.
-  if Assigned(FEnsureUnit) then
+  if not Assigned(FEnsureUnit) then
+    Exit(False);
+  Key := UpperCase(AName);
+  if (FMissingUnits <> nil) and FMissingUnits.ContainsKey(Key) then
+    Exit(False);
+  if FEnsureUnit(AName) and FIndex.FindUnit(AName, AUnit) then
+    Exit(True);
+  for Namespace in FNamespaces do
+    if FEnsureUnit(Namespace + '.' + AName) and FIndex.FindUnit(Namespace + '.' + AName, AUnit) then
+      Exit(True);
+  // Diagnoselog (#647): Unit weder im Index noch über die Suchpfade gefunden; je Unit einmal.
+  if FMissingUnits = nil then
+    FMissingUnits := TDictionary<string, Boolean>.Create;
+  FMissingUnits.Add(Key, True);
+  TRequestDiagnostics.Increment('missingUnits');
+  TRequestDiagnostics.ResolveFailed('unitNotFound');
+  Result := False;
+end;
+
+function TNameResolver.FindQualifierUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
+var
+  Used, Namespace: string;
+begin
+  // Jeder Ausdruck wie Form1.Edit1.Text prüft, ob ein Präfix eine Unit ist. Nachladen durchsucht die
+  // Suchpfade aller Projekte; das lohnt nur für Units aus uses, alle anderen nur aus dem Index (#647).
+  for Used in ScopeUnits(FCurrent, FInImplementation) do
   begin
-    TRequestDiagnostics.Increment('missingUnits');
-    TRequestDiagnostics.ResolveFailed('unitNotFound');
+    if SameText(Used, AName) then
+      Exit(FindUnit(AName, AUnit));
+    for Namespace in FNamespaces do
+      if SameText(Namespace + '.' + Used, AName) then
+        Exit(FindUnit(AName, AUnit));
   end;
+  if SameText(AName, FCurrent.UnitName) then
+  begin
+    AUnit := FCurrent;
+    Exit(True);
+  end;
+  if FIndex.FindUnit(AName, AUnit) then
+    Exit(True);
+  for Namespace in FNamespaces do
+    if FIndex.FindUnit(Namespace + '.' + AName, AUnit) then
+      Exit(True);
   Result := False;
 end;
 
@@ -1319,7 +1359,7 @@ begin
   for Count := Length(ANames) downto 2 do
   begin
     UnitName := string.Join('.', Copy(ANames, 0, Count));
-    if FindUnit(UnitName, Found) then
+    if FindQualifierUnit(UnitName, Found) then
     begin
       AConsumed := Count;
       AResult := NoResult;
@@ -1332,7 +1372,7 @@ begin
   end;
   if LookupGlobal(FCurrent, ANames[0], FInImplementation, False, AResult) then
     Exit(True);
-  if FindUnit(ANames[0], Found) then
+  if FindQualifierUnit(ANames[0], Found) then
   begin
     AResult := NoResult;
     AResult.Kind := TResolvedKind.UnitName;

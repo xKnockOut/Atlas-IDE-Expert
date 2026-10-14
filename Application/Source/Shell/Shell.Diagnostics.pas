@@ -41,6 +41,8 @@ type
     FMapFile: Boolean;
     FIndexLoading: TFunc<Integer>;
     FTimeoutMs: TFunc<Cardinal>;
+    /// <summary>Endzeile geschrieben; danach keine Zeilen mehr.</summary>
+    FEnded: Boolean;
     function LibraryCount: Integer;
     procedure DescribeDocument(const AParams: TJSONValue; var ARequest: TDiagnosticRequest);
     class function CountOf(const AResult: TJSONValue): Integer; static;
@@ -55,7 +57,7 @@ type
       AQueueMs, AElapsedMs: Int64);
     /// <summary>Startzeile und Meldung früherer Läufe ohne Ende.</summary>
     procedure BeginRun(const AVersion: string; AMemoryBytes: Int64);
-    /// <summary>Endzeile; AError nur bei einer unbehandelten Exception.</summary>
+    /// <summary>Endzeile; AError nur bei einer unbehandelten Exception. Nur der erste Aufruf zählt.</summary>
     procedure EndRun(AReason: TDiagnosticEndReason; AExitCode: Integer; AMemoryBytes: Int64;
       const AError: Exception = nil);
     procedure ApplySettings(const ASettings: TServerSettings);
@@ -151,6 +153,11 @@ var
   Process: TDiagnosticProcess;
   ErrorClass, Stack: string;
 begin
+  // Die Endzeile kommt schon, wenn die Eingabe endet (#647): Das Plugin wartet danach nur kurz und
+  // beendet den Prozess, solange noch Anfragen laufen. Der spätere Aufruf aus Run zählt dann nicht.
+  if FEnded then
+    Exit;
+  FEnded := True;
   Process.MemoryBytes := AMemoryBytes;
   Process.Threads := TProcessInfo.ThreadCount;
   ErrorClass := '';
@@ -257,7 +264,7 @@ var
   Timeout: Cardinal;
 begin
   Notes := TRequestDiagnostics.Close;
-  if not FLog.Enabled then
+  if FEnded or not FLog.Enabled then
     Exit;
   Request := Default(TDiagnosticRequest);
   Request.Time := Now;

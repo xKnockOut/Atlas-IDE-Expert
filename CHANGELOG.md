@@ -41,6 +41,12 @@ Server und Erweiterung tragen immer dieselbe Version.
 - MCP-Modus mit lesenden Werkzeugen (#48).
 - Delphi-Version je Projekt aus der ProjectVersion (#47).
 
+### Behoben
+- Hover, Diagnosen und Befehle warteten bei fehlenden Units minutenlang: Das Nachladen einer Unit hielt eine serverweite Sperre, und Ausdrücke wie `Form1.Edit1.Text` durchsuchten für jedes Präfix die Suchpfade aller Projekte. Nachgeladen wird jetzt ohne die Sperre, nur für Units aus `uses` und je Anfrage einmal (#647).
+- Probleme der nicht geöffneten Projektdateien werden erst nach dem Indexaufbau geprüft und danach neu bewertet; vorher liefen sie dauernd mit und meldeten fehlende Units, die nur noch nicht indiziert waren (#647).
+- Diagnoselog: Die Endzeile entsteht, sobald die IDE die Verbindung schließt; ein Lauf, den das Plugin nach 2 s beendet, galt sonst als abgestürzt (#647).
+- Ein Neuaufbau des Index gab die Unit-Suche frei, während Anfragen sie über den alten Index noch nutzten; das konnte den Server abstürzen lassen (#647).
+
 ## [0.1.0] - 2026-10-08
 
 ### Neu
