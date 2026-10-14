@@ -86,6 +86,8 @@ type
     [Test]
     procedure OffersFormComponentsByNameAndType;
     [Test]
+    procedure CastsSenderToAssignedComponents;
+    [Test]
     procedure GroupsByExpectedType;
   end;
 
@@ -1055,6 +1057,99 @@ begin
   Assert.AreEqual('btnSave* btnLoad*', Joined(Items));
   // Außerhalb der Methoden des Formulars nichts.
   Assert.IsFalse(Components('', False, Items));
+end;
+
+procedure TLspCompletionTests.CastsSenderToAssignedComponents;
+const
+  UnitSteuer =
+    'unit Steuer;'#13#10 +
+    'interface'#13#10 +
+    'type'#13#10 +
+    '  TControl = class'#13#10 +
+    '  public'#13#10 +
+    '    Caption: string;'#13#10 +
+    '  end;'#13#10 +
+    '  TButton = class(TControl)'#13#10 +
+    '  public'#13#10 +
+    '    procedure Click;'#13#10 +
+    '  end;'#13#10 +
+    '  TBitBtn = class(TButton)'#13#10 +
+    '  end;'#13#10 +
+    '  TForm = class(TControl)'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'procedure TButton.Click;'#13#10 +
+    'begin'#13#10 +
+    'end;'#13#10 +
+    'end.';
+  FormText =
+    'object frmMain: TfrmMain'#13#10 +
+    '  object btnSave: TButton'#13#10 +
+    '    OnClick = btnAnyClick'#13#10 +
+    '  end'#13#10 +
+    '  object btnLoad: TBitBtn'#13#10 +
+    '    OnClick = btnAnyClick'#13#10 +
+    '  end'#13#10 +
+    'end';
+  // Zeile 14: "  Sender.Cap" in btnAnyClick, Zeile 18: "  Sender." in Frei (keinem Ereignis zugewiesen).
+  Text =
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'uses Steuer;'#13#10 +
+    'type'#13#10 +
+    '  TfrmMain = class(TForm)'#13#10 +
+    '    btnSave: TButton;'#13#10 +
+    '    btnLoad: TBitBtn;'#13#10 +
+    '    procedure btnAnyClick(Sender: TObject);'#13#10 +
+    '    procedure Frei(Sender: TObject);'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    '{$R *.dfm}'#13#10 +
+    'procedure TfrmMain.btnAnyClick(Sender: TObject);'#13#10 +
+    'begin'#13#10 +
+    '  Sender.Cap'#13#10 +
+    'end;'#13#10 +
+    'procedure TfrmMain.Frei(Sender: TObject);'#13#10 +
+    'begin'#13#10 +
+    '  Sender.'#13#10 +
+    'end;'#13#10 +
+    'end.';
+var
+  Tree: TSyntaxTree;
+  Resolver: TNameResolver;
+  Items: TCompletionItems;
+  ReadForm: TCompletionReadText;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitSteuer, 'C:\P\Steuer.pas', nil));
+  ReadForm :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      AText := FormText;
+      Result := SameText(ExtractFileExt(AFileName), '.dfm');
+    end;
+  Tree := TPascalParser.Parse(Text);
+  Resolver := TNameResolver.Create(FIndex);
+  try
+    // btnSave (TButton) und btnLoad (TBitBtn): gemeinsamer Vorfahr TButton.
+    Assert.IsTrue(TLspCompletion.SenderItems(Resolver, FIndex, Tree, Text, HauptFile, TTextPosition.Create(14, 12),
+      ReadForm, TCompletionMatching.Fuzzy, TCompletionSenderCast.AsOperator, Items));
+    Assert.AreEqual('Caption', Names(Items));
+    Assert.AreEqual('TButton', Items.Items[0].Sender);
+    Assert.AreEqual('btnSave, btnLoad', Items.Items[0].SenderOf);
+    Assert.IsTrue(Items.Items[0].HasTextEdit);
+    Assert.AreEqual('(Sender as TButton).Caption', Items.Items[0].TextEdit.NewText);
+    Assert.AreEqual(2, Items.Items[0].TextEdit.Range.StartPos.Character);
+    Assert.AreEqual(12, Items.Items[0].TextEdit.Range.EndPos.Character);
+    Assert.IsTrue(TLspCompletion.SenderItems(Resolver, FIndex, Tree, Text, HauptFile, TTextPosition.Create(14, 12),
+      ReadForm, TCompletionMatching.Fuzzy, TCompletionSenderCast.HardCast, Items));
+    Assert.AreEqual('TButton(Sender).Caption', Items.Items[0].TextEdit.NewText);
+    // Ohne Zuweisung im Formular bleibt es bei den Mitgliedern von TObject.
+    Assert.IsFalse(TLspCompletion.SenderItems(Resolver, FIndex, Tree, Text, HauptFile, TTextPosition.Create(18, 9),
+      ReadForm, TCompletionMatching.Fuzzy, TCompletionSenderCast.AsOperator, Items));
+  finally
+    Resolver.Free;
+    Tree.Free;
+  end;
 end;
 
 procedure TLspCompletionTests.OffersDeclarationsForUnknownNames;

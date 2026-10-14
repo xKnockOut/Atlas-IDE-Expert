@@ -172,11 +172,14 @@ type
   /// <summary>Abschnitt, in den „Interface implementieren“ die Deklarationen schreibt (#466).</summary>
   {$SCOPEDENUMS ON}
   TCompletionInterfaceSection = (Private, Protected, Public);
+  /// <summary>Typumwandlung von Sender (#480): "(Sender as TButton)" oder "TButton(Sender)".</summary>
+  TCompletionSenderCast = (AsOperator, HardCast);
   {$SCOPEDENUMS OFF}
 
   TCompletionSettings = record
     Matching: TCompletionMatching;
     InterfaceSection: TCompletionInterfaceSection;
+    SenderCast: TCompletionSenderCast;
     class function Default: TCompletionSettings; static;
   end;
 
@@ -495,6 +498,7 @@ class function TCompletionSettings.Default: TCompletionSettings;
 begin
   Result.Matching := TCompletionMatching.Fuzzy;
   Result.InterfaceSection := TCompletionInterfaceSection.Public;
+  Result.SenderCast := TCompletionSenderCast.AsOperator;
 end;
 
 { TServerSettings }

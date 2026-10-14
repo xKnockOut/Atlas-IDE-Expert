@@ -170,6 +170,9 @@ begin
     // Komponenten aus dem Formular (#455).
     Result.Form := Data.GetValue<string>('form', '');
     Result.ByType := Data.GetValue('byType') is TJSONTrue;
+    // Sender mit Typumwandlung (#480).
+    Result.Sender := Data.GetValue<string>('sender', '');
+    Result.SenderOf := Data.GetValue<string>('senderOf', '');
     Overloads := Data.GetValue('overloads');
     if Overloads is TJSONArray then
       for Value in TJSONArray(Overloads) do

@@ -287,6 +287,14 @@ begin
   Assert.IsTrue(Parse('{"completion": {"interfaceSection": "strict"}}', Issues).Completion.InterfaceSection =
     TCompletionInterfaceSection.Public);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Typumwandlung von Sender (#480)
+  Assert.IsTrue(Parse('{}', Issues).Completion.SenderCast = TCompletionSenderCast.AsOperator);
+  Assert.IsTrue(Parse('{"completion": {"senderCast": "cast"}}', Issues).Completion.SenderCast =
+    TCompletionSenderCast.HardCast);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsTrue(Parse('{"completion": {"senderCast": "hart"}}', Issues).Completion.SenderCast =
+    TCompletionSenderCast.AsOperator);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Speicherbudget (#185)
   Assert.AreEqual(0, Parse('{}', Issues).MemoryBudgetMb);
   Assert.AreEqual(512, Parse('{"memoryBudgetMb": 512}', Issues).MemoryBudgetMb);

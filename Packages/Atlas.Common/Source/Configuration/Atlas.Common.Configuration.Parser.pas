@@ -834,6 +834,16 @@ begin
         else
           ReportNode(ANode[Index], 'Erlaubt sind "private", "protected" und "public"');
     end
+    else if Key = 'senderCast' then
+    begin
+      if ExpectString(ANode[Index], Key, Text) then
+        if Text = 'as' then
+          FSettings.Completion.SenderCast := TCompletionSenderCast.AsOperator
+        else if Text = 'cast' then
+          FSettings.Completion.SenderCast := TCompletionSenderCast.HardCast
+        else
+          ReportNode(ANode[Index], 'Erlaubt sind "as" und "cast"');
+    end
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "completion.%s"', [Key]), False);

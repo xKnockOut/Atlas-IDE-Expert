@@ -120,6 +120,11 @@ type
     Form: string;
     /// <summary>Komponente passt nur über ihren Typ ("button" → btnSave: TButton), nicht über den Namen.</summary>
     ByType: Boolean;
+    /// <summary>Sender mit Typumwandlung (#480): Typ, als der Sender gilt; '' sonst. Dann ersetzt TextEdit
+    /// "Sender.Na" durch "(Sender as TButton).Name".</summary>
+    Sender: string;
+    /// <summary>Komponenten, denen die Methode im Designer zugewiesen ist: "btnSave, btnLoad".</summary>
+    SenderOf: string;
   end;
 
   /// <summary>Postfix-Vorlagen (#188) je Dokument.</summary>
@@ -142,8 +147,8 @@ type
 
   TCompletionMatchingFunc = reference to function(const AUri: string): TCompletionMatching;
 
-  /// <summary>Abschnitt für Interface-Methoden (#466) je Dokument.</summary>
-  TCompletionSectionFunc = reference to function(const AUri: string): TCompletionInterfaceSection;
+  /// <summary>Einstellungen der Vervollständigung je Dokument (#466, #480).</summary>
+  TCompletionSettingsFunc = reference to function(const AUri: string): TCompletionSettings;
 
   /// <summary>Teilergebnis einer gestaffelten Vervollständigung (#616), in Anzeigereihenfolge.</summary>
   TCompletionPartialProc = reference to procedure(const AItems: TArray<TCompletionItem>);
@@ -169,7 +174,7 @@ type
     FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
     FMatchingFor: TCompletionMatchingFunc;
-    FInterfaceSectionFor: TCompletionSectionFunc;
+    FSettingsFor: TCompletionSettingsFunc;
     FReadText: TCompletionReadText;
     FSlashCommandsFor: TSlashCommandsProvider;
     FPostfixFor: TPostfixOptionsFunc;
@@ -252,6 +257,13 @@ type
     class function ComponentItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
       const APosition: TTextPosition; const AReadText: TCompletionReadText; AMatching: TCompletionMatching;
       out AItems: TArray<TCompletionItem>): Boolean; static;
+    /// <summary>"Sender." in einem Ereignisbehandler mit "Sender: TObject" (#480): Ist die Methode im Formular
+    /// Komponenten zugewiesen, die Mitglieder des nächsten gemeinsamen Vorfahren ihrer Typen. Jeder Eintrag
+    /// ersetzt "Sender.Na" (TextEdit) durch die Umwandlung nach ACast und den Namen. False ohne Zuweisung im
+    /// Formular, bei bereits umgewandeltem Sender oder wenn der gemeinsame Typ TObject ist.</summary>
+    class function SenderItems(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AText, AFileName: string; const APosition: TTextPosition; const AReadText: TCompletionReadText;
+      AMatching: TCompletionMatching; ACast: TCompletionSenderCast; out AItems: TCompletionItems): Boolean; static;
     class function KindOf(AKind: TIndexSymbolKind): Integer; static;
     /// <summary>CompletionList des LSP. Der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const AItems: TCompletionItems): TJSONObject; overload; static;
@@ -267,8 +279,9 @@ type
     property ReadText: TCompletionReadText read FReadText write FReadText;
     /// <summary>Auswahl je Dokument; ohne Zuweisung unscharf.</summary>
     property MatchingFor: TCompletionMatchingFunc read FMatchingFor write FMatchingFor;
-    /// <summary>Abschnitt für Interface-Methoden (#466); ohne Zuweisung public.</summary>
-    property InterfaceSectionFor: TCompletionSectionFunc read FInterfaceSectionFor write FInterfaceSectionFor;
+    /// <summary>Abschnitt für Interface-Methoden (#466), Typumwandlung von Sender (#480); ohne Zuweisung die
+    /// Standardwerte.</summary>
+    property SettingsFor: TCompletionSettingsFunc read FSettingsFor write FSettingsFor;
     /// <summary>Schnellbefehle nach "/" am Zeilenanfang (#293); ohne Zuweisung alle eingeschaltet.</summary>
     property SlashCommandsFor: TSlashCommandsProvider read FSlashCommandsFor write FSlashCommandsFor;
     /// <summary>Postfix-Vorlagen je Dokument (#188); ohne Zuweisung an und mit Inline-Variable.</summary>
@@ -1510,7 +1523,7 @@ begin
     if (AItems[Index].SourceFile <> '') or (AItems[Index].Expected <> '') or
       (AItems[Index].Action <> '') or (AItems[Index].Condition <> '') or
       (AItems[Index].Scope > 0) or (AItems[Index].Ordinal > 0) or AItems[Index].Pinned or AItems[Index].Hint or
-      (AItems[Index].Form <> '') then
+      (AItems[Index].Form <> '') or (AItems[Index].Sender <> '') then
     begin
       Data := TJSONObject.Create;
       if AItems[Index].SourceFile <> '' then
@@ -1569,6 +1582,12 @@ begin
         Data.AddPair('form', AItems[Index].Form);
       if AItems[Index].ByType then
         Data.AddPair('byType', TJSONBool.Create(True));
+      // Sender mit Typumwandlung (#480).
+      if AItems[Index].Sender <> '' then
+      begin
+        Data.AddPair('sender', AItems[Index].Sender);
+        Data.AddPair('senderOf', AItems[Index].SenderOf);
+      end;
       if Length(AItems[Index].Overloads) > 0 then
       begin
         Overloads := TJSONArray.Create;
@@ -1638,8 +1657,9 @@ var
   Declares: TArray<TCompletionItem>;
   Hints: TArray<TCompletionItem>;
   Components: TArray<TCompletionItem>;
+  Senders: TCompletionItems;
   Batch: Boolean;
-  Section: TCompletionInterfaceSection;
+  Settings: TCompletionSettings;
 begin
   Watch := TStopwatch.StartNew;
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
@@ -1676,12 +1696,12 @@ begin
       Exit(ToJson(Events));
     // Interface implementieren (#466): auf leerer Zeile der Klasse nur die fehlenden Methoden mit
     // Kontrollkästchen; bei angefangenem Wort ein Hinweis oben in der normalen Liste.
-    if Assigned(FInterfaceSectionFor) then
-      Section := FInterfaceSectionFor(Uri)
+    if Assigned(FSettingsFor) then
+      Settings := FSettingsFor(Uri)
     else
-      Section := TCompletionInterfaceSection.Public;
+      Settings := TCompletionSettings.Default;
     if not InterfaceItems(Resolver, Tree, Document.Text, TDocumentUris.ToPath(Uri),
-      TLspPositions.ReadPosition(PositionValue), FReadText, Section, Hints, Batch) then
+      TLspPositions.ReadPosition(PositionValue), FReadText, Settings.InterfaceSection, Hints, Batch) then
       Hints := nil
     else if Batch then
     begin
@@ -1754,6 +1774,10 @@ begin
         Notify('$/progress', EnumParams);
       end;
     end;
+    // Sender mit Typumwandlung (#480): statt der Mitglieder von TObject die des zugewiesenen Komponententyps.
+    if SenderItems(Resolver, FIndex, Tree, Document.Text, TDocumentUris.ToPath(Uri), Position, FReadText, Matching,
+      Settings.SenderCast, Senders) then
+      Exit(ToJson(Senders));
     Collected := Collect(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), Document.Text,
       TLspPositions.ReadPosition(PositionValue), Matching, Postfix, Partial);
     Collected.Items := WithoutNames(Collected.Items, Enums);
@@ -2434,6 +2458,183 @@ begin
     Document.Free;
   end;
   Result := Length(AItems) > 0;
+end;
+
+/// <summary>Alle Objekte unter AObject samt ihm selbst, auch in Frames.</summary>
+procedure CollectObjects(AObject: TDfmObject; var AList: TArray<TDfmObject>);
+var
+  Child: TDfmObject;
+begin
+  AList := AList + [AObject];
+  for Child in AObject.Children do
+    CollectObjects(Child, AList);
+end;
+
+/// <summary>AType und seine Vorfahren, nächster zuerst; nur AType, wenn er sich nicht auflösen lässt.</summary>
+function TypeChain(AResolver: TNameResolver; const AUnit: TUnitIndex; const AType: string): TArray<string>;
+var
+  Current, Ancestor: TResolvedSymbol;
+  Depth: Integer;
+begin
+  Result := [AType];
+  if not AResolver.ResolveTypeFrom(AUnit, AType, Current) then
+    Exit;
+  for Depth := 1 to 32 do
+  begin
+    if not AResolver.AncestorOf(Current, Ancestor) then
+      Break;
+    Result := Result + [Ancestor.Name];
+    Current := Ancestor;
+  end;
+end;
+
+class function TLspCompletion.SenderItems(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AText, AFileName: string; const APosition: TTextPosition; const AReadText: TCompletionReadText;
+  AMatching: TCompletionMatching; ACast: TCompletionSenderCast; out AItems: TCompletionItems): Boolean;
+const
+  // So weit sucht Atlas nach oben nach dem Kopf der Methode bzw. nach dem Parameter darin.
+  MaxHeaderDistance = 2000;
+  MaxHeaderLines = 6;
+var
+  Context: TCompletionContext;
+  Lines: TArray<string>;
+  Line, HeaderLine, ParamLine, Index: Integer;
+  Match: TMatch;
+  MethodName, FormFile, FormText, CommonType, Cast, LB, Patched: string;
+  Document: TDfmDocument;
+  Objects: TArray<TDfmObject>;
+  DfmObject: TDfmObject;
+  Prop: TDfmProperty;
+  Types, Names, Chain, First: TArray<string>;
+  UnitIndex: TUnitIndex;
+  Shared: Boolean;
+  Candidate: string;
+  PatchedTree: TSyntaxTree;
+  Postfix: TPostfixOptions;
+begin
+  AItems := Default(TCompletionItems);
+  Result := False;
+  Context := Analyze(ATree, APosition);
+  if (Context.Kind <> TCompletionContextKind.Member) or (Length(Context.Names) <> 1) or
+    not SameText(Context.Names[0], 'Sender') or not Assigned(AReadText) then
+    Exit;
+  // Kopf der umgebenden Methode "procedure TForm1.btnAnyClick(Sender: TObject);" oberhalb des Cursors.
+  Lines := TextLines(AText);
+  HeaderLine := -1;
+  for Line := Min(APosition.Line - 1, High(Lines)) downto Max(0, APosition.Line - MaxHeaderDistance) do
+  begin
+    Match := TRegEx.Match(Lines[Line], '^\s*(class\s+)?(procedure|function)\s+[\w.]+\.(\w+)\s*[(;:]',
+      [roIgnoreCase]);
+    if Match.Success then
+    begin
+      HeaderLine := Line;
+      MethodName := Match.Groups[3].Value;
+      Break;
+    end;
+  end;
+  if HeaderLine < 0 then
+    Exit;
+  ParamLine := -1;
+  for Line := HeaderLine to Min(HeaderLine + MaxHeaderLines - 1, APosition.Line - 1) do
+    if TRegEx.IsMatch(Lines[Line], '\bSender\s*:\s*TObject\b', [roIgnoreCase]) then
+    begin
+      ParamLine := Line;
+      Break;
+    end;
+  if ParamLine < 0 then
+    Exit;
+  // Komponenten, deren Ereignis im Formular auf diese Methode zeigt.
+  Document := nil;
+  for FormFile in TFormFiles.FormFiles(AFileName, AText) do
+    if AReadText(FormFile, FormText) then
+    begin
+      Document := TDfmParser.Parse(FormText);
+      if Document.Root <> nil then
+        Break;
+      FreeAndNil(Document);
+    end;
+  if Document = nil then
+    Exit;
+  Types := nil;
+  Names := nil;
+  try
+    Objects := nil;
+    CollectObjects(Document.Root, Objects);
+    for DfmObject in Objects do
+      for Prop in DfmObject.Properties do
+        if Prop.IsEvent and SameText(Prop.Value, MethodName) and (DfmObject.TypeName <> '') then
+        begin
+          Names := Names + [DfmObject.Name];
+          if IndexText(DfmObject.TypeName, Types) < 0 then
+            Types := Types + [DfmObject.TypeName];
+          Break;
+        end;
+  finally
+    Document.Free;
+  end;
+  if Length(Types) = 0 then
+    Exit;
+  // Nächster gemeinsamer Vorfahr: der erste Typ in der Kette des ersten, den alle Ketten enthalten.
+  UnitIndex := TIndexExtractor.Extract(ATree, AFileName);
+  First := TypeChain(AResolver, UnitIndex, Types[0]);
+  CommonType := '';
+  for Candidate in First do
+  begin
+    Shared := True;
+    for Index := 1 to High(Types) do
+    begin
+      Chain := TypeChain(AResolver, UnitIndex, Types[Index]);
+      if IndexText(Candidate, Chain) < 0 then
+      begin
+        Shared := False;
+        Break;
+      end;
+    end;
+    if Shared then
+    begin
+      CommonType := Candidate;
+      Break;
+    end;
+  end;
+  if (CommonType = '') or SameText(CommonType, 'TObject') then
+    Exit;
+  // Mitglieder wie bei "Sender: <Typ>": Parameter im Kopf umschreiben und neu zerlegen; die Zeile des Cursors
+  // bleibt gleich, also auch APosition.
+  if AText.Contains(#13#10) then
+    LB := #13#10
+  else
+    LB := #10;
+  Lines[ParamLine] := TRegEx.Replace(Lines[ParamLine], '\b(Sender\s*:\s*)TObject\b', '$1' + CommonType,
+    [roIgnoreCase]);
+  Patched := string.Join(LB, Lines);
+  PatchedTree := TSyntaxTreeCache.Parse(Patched);
+  try
+    Postfix := TPostfixOptions.Default;
+    Postfix.Enabled := False;
+    AItems := Collect(AResolver, AIndex, PatchedTree, AFileName, Patched, APosition, AMatching, Postfix);
+  finally
+    PatchedTree.Free;
+  end;
+  if ACast = TCompletionSenderCast.HardCast then
+    Cast := CommonType + '(' + Context.Names[0] + ')'
+  else
+    Cast := '(' + Context.Names[0] + ' as ' + CommonType + ')';
+  for Index := 0 to High(AItems.Items) do
+  begin
+    AItems.Items[Index].Sender := CommonType;
+    AItems.Items[Index].SenderOf := string.Join(', ', Names);
+    if AItems.Items[Index].HasTextEdit then
+      Continue;
+    // "Sender.Cap" → "(Sender as TButton).Caption"
+    AItems.Items[Index].HasTextEdit := True;
+    if AItems.Items[Index].InsertText <> '' then
+      AItems.Items[Index].TextEdit := TRuleEdit.Create(TTextRange.Create(Context.ChainStart, APosition),
+        Cast + '.' + AItems.Items[Index].InsertText)
+    else
+      AItems.Items[Index].TextEdit := TRuleEdit.Create(TTextRange.Create(Context.ChainStart, APosition),
+        Cast + '.' + AItems.Items[Index].Name);
+  end;
+  Result := True;
 end;
 
 /// <summary>Typen der Parameter aus "const A, B: T; var C: U; D" in Reihenfolge; untypisiert ''.</summary>
