@@ -8,6 +8,10 @@
 // Nachrichten. Nebenläufige Handler (RegisterConcurrentRequest) übergibt der
 // Dispatcher dem Scheduler; ihre Antwort geht später über den Responder.
 // Ohne Scheduler laufen auch sie im aufrufenden Thread.
+//
+// Antworten der Gegenseite auf eigene Anfragen (etwa workspace/applyEdit an
+// den Client, #397) gehen an den mit ExpectResponse gemeldeten Handler; ohne
+// Handler werden sie verworfen.
 
 interface
 
@@ -21,6 +25,10 @@ uses
   Atlas.Common.JsonRpc.Statistics;
 
 type
+  /// <summary>Antwort der Gegenseite auf eine eigene Anfrage; läuft im Lese-Thread, AResponse gehört dem
+  /// Dispatcher.</summary>
+  TJsonRpcResponseHandler = reference to procedure(const AResponse: TJSONObject);
+
   /// <summary>Beobachter je Anfrage (#647, Diagnoselog). Beide Aufrufe laufen im Thread des Handlers;
   /// Ausnahmen darin werden verschluckt.</summary>
   IJsonRpcRequestObserver = interface
@@ -47,6 +55,7 @@ type
     FStatistics: IJsonRpcStatistics;
     FObserver: IJsonRpcRequestObserver;
     FLastMessage: string;
+    FExpected: TDictionary<string, TJsonRpcResponseHandler>;
     function DispatchRequest(const AId: TJSONValue; const AMethod: string; const AParams: TJSONValue): TJSONObject;
     procedure DispatchNotification(const AMethod: string; const AParams: TJSONValue);
   public
@@ -71,6 +80,11 @@ type
     function DispatchMessage(const AMessage: TJSONObject): TJSONObject;
     /// <summary>Namen aller registrierten Anfragen (für das Diagnoselog, #647).</summary>
     function Methods: TArray<string>;
+    /// <summary>Meldet eine eigene Anfrage mit der id AId (als Text) an; ihre Antwort geht einmal an AHandler.
+    /// Threadsicher.</summary>
+    procedure ExpectResponse(const AId: string; const AHandler: TJsonRpcResponseHandler);
+    /// <summary>Gibt die Anmeldung zurück, etwa wenn die Anfrage nicht gesendet werden konnte.</summary>
+    procedure ForgetResponse(const AId: string);
     /// <summary>Optionale Prüfung vor jeder Verteilung, z. B. für den Lebenszyklus des Servers.</summary>
     property Guard: TJsonRpcGuard read FGuard write FGuard;
     /// <summary>Führt nebenläufige Anfragen aus. Wirkt nur zusammen mit Responder.</summary>
@@ -252,14 +266,36 @@ begin
   FConcurrentHandlers := TDictionary<string, TJsonRpcConcurrentRequestHandler>.Create;
   FPending := TJsonRpcPendingRequests.Create;
   FNotificationHandlers := TDictionary<string, TJsonRpcNotificationHandler>.Create;
+  FExpected := TDictionary<string, TJsonRpcResponseHandler>.Create;
 end;
 
 destructor TJsonRpcDispatcher.Destroy;
 begin
+  FExpected.Free;
   FNotificationHandlers.Free;
   FConcurrentHandlers.Free;
   FRequestHandlers.Free;
   inherited;
+end;
+
+procedure TJsonRpcDispatcher.ExpectResponse(const AId: string; const AHandler: TJsonRpcResponseHandler);
+begin
+  TMonitor.Enter(FExpected);
+  try
+    FExpected.AddOrSetValue(AId, AHandler);
+  finally
+    TMonitor.Exit(FExpected);
+  end;
+end;
+
+procedure TJsonRpcDispatcher.ForgetResponse(const AId: string);
+begin
+  TMonitor.Enter(FExpected);
+  try
+    FExpected.Remove(AId);
+  finally
+    TMonitor.Exit(FExpected);
+  end;
 end;
 
 procedure TJsonRpcDispatcher.RegisterRequest(const AMethod: string; const AHandler: TJsonRpcRequestHandler);
@@ -285,6 +321,8 @@ var
   Id: TJSONValue;
   MethodValue: TJSONValue;
   Params: TJSONValue;
+  Handler: TJsonRpcResponseHandler;
+  Found: Boolean;
 begin
   Id := AMessage.GetValue('id');
   MethodValue := AMessage.GetValue('method');
@@ -292,9 +330,25 @@ begin
 
   if MethodValue = nil then
   begin
-    // Antworten der Gegenseite auf eigene Anfragen werden noch nicht ausgewertet.
+    // Antwort der Gegenseite auf eine eigene Anfrage: an den angemeldeten Handler, sonst verwerfen.
     if (AMessage.GetValue('result') <> nil) or (AMessage.GetValue('error') <> nil) then
+    begin
+      Found := False;
+      if Id <> nil then
+      begin
+        TMonitor.Enter(FExpected);
+        try
+          Found := FExpected.TryGetValue(Id.Value, Handler);
+          if Found then
+            FExpected.Remove(Id.Value);
+        finally
+          TMonitor.Exit(FExpected);
+        end;
+      end;
+      if Found then
+        Handler(AMessage);
       Exit(nil);
+    end;
     Exit(TJsonRpcMessages.Error(Id, TJsonRpcErrorCode.InvalidRequest, 'Feld "method" fehlt'));
   end;
 
