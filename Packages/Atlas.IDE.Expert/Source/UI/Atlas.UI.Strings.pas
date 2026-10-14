@@ -43,7 +43,10 @@ type
     ResultsCaption, ResultsReferences, ResultsImplementations, ResultsIncoming, ResultsOutgoing,
     ResultsSupertypes, ResultsSubtypes, ResultsNothing, ResultsFailed, MenuReferences, MenuImplementations,
     MenuSymbolSearch, MenuIncoming, MenuOutgoing, MenuSupertypes, MenuSubtypes, MenuResultsWindow,
-    RenamePreviewTitle, RenamePreviewHint, RenamePreviewApply, RenamePreviewCancel);
+    RenamePreviewTitle, RenamePreviewHint, RenamePreviewApply, RenamePreviewCancel,
+    EditorActions, EditorExpand, EditorShrink, EditorTypeDefinition, EditorCopyQualified, EditorCopyQualifiedParams,
+    EditorFailed, EditorNoActions, EditorCopied, EditorTextCopied, EditorKindFix, EditorKindRefactor, EditorKindSource,
+    SettingsEditorKeysPriority, SettingsSlashCommands);
 
   TAtlasStrings = class
   private class var
@@ -145,7 +148,22 @@ const
      'Atlas: „%s“ in „%s“ umbenennen',
      '%d Stellen in %d Dateien werden geändert. Doppelklick zeigt die Stelle.',
      'Umbenennen',
-     'Abbrechen'),
+     'Abbrechen',
+     'Code-Aktionen…',
+     'Auswahl erweitern',
+     'Auswahl verkleinern',
+     'Gehe zu Typdefinition',
+     'Qualifizierten Namen kopieren',
+     'Qualifizierten Namen mit Parametern kopieren',
+     'Atlas: Anfrage an den Server fehlgeschlagen: %s',
+     'Atlas: An dieser Stelle gibt es keine Code-Aktionen.',
+     'Atlas: In die Zwischenablage kopiert: %s',
+     'Atlas: Text in die Zwischenablage kopiert.',
+     'Korrektur',
+     'Umbau',
+     'Quelltext',
+     'Editor-Kürzel auch belegen, wenn die Taste schon vergeben ist',
+     'Schnellbefehle mit / nach Enter und ///-Gerüste'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -228,7 +246,22 @@ const
      'Atlas: Rename “%s” to “%s”',
      '%d places in %d files will change. Double-click shows the place.',
      'Rename',
-     'Cancel'));
+     'Cancel',
+     'Code actions…',
+     'Expand selection',
+     'Shrink selection',
+     'Go to type definition',
+     'Copy qualified name',
+     'Copy qualified name with parameters',
+     'Atlas: Server request failed: %s',
+     'Atlas: No code actions here.',
+     'Atlas: Copied to the clipboard: %s',
+     'Atlas: Text copied to the clipboard.',
+     'Quick fix',
+     'Refactoring',
+     'Source',
+     'Bind editor keys even if they are already taken',
+     'Slash commands after Enter and /// scaffolds'));
 
 { TAtlasStrings }
 

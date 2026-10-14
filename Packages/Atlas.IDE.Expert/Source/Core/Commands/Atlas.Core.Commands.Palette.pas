@@ -8,6 +8,8 @@
 // Befehle aus mehreren Wörtern bestehen. Zuletzt und
 // häufig genutzte Befehle bekommen einen Zuschlag unter 100 Punkten; ohne
 // Eingabe stehen sie oben, danach alphabetisch.
+// Mit AKeepOrder (Code-Aktionen, #399) bleibt ohne Eingabe die Reihenfolge der
+// Liste, bei Gleichstand ebenso.
 
 interface
 
@@ -48,9 +50,10 @@ type
 
   TAtlasCommandPalette = class
   public
-    /// <summary>Indizes der passenden Befehle, beste zuerst.</summary>
+    /// <summary>Indizes der passenden Befehle, beste zuerst. AKeepOrder: ohne Eingabe und bei
+    /// Gleichstand die Reihenfolge von ACommands statt alphabetisch.</summary>
     class function Order(const ACommands: TArray<TAtlasCommand>; const APattern: string;
-      AHistory: TAtlasCommandHistory): TArray<Integer>; static;
+      AHistory: TAtlasCommandHistory; AKeepOrder: Boolean = False): TArray<Integer>; static;
     /// <summary>Beschriftung ohne Kürzelzeichen: "&amp;Datei" → "Datei", "&amp;&amp;" → "&amp;", "..." am Ende weg.</summary>
     class function CleanCaption(const ACaption: string): string; static;
   end;
@@ -189,7 +192,7 @@ begin
 end;
 
 class function TAtlasCommandPalette.Order(const ACommands: TArray<TAtlasCommand>; const APattern: string;
-  AHistory: TAtlasCommandHistory): TArray<Integer>;
+  AHistory: TAtlasCommandHistory; AKeepOrder: Boolean): TArray<Integer>;
 var
   Scores, Boosts: TArray<Integer>;
   Found: TList<Integer>;
@@ -227,7 +230,7 @@ begin
           Result := Boosts[B] - Boosts[A]
         else
           Result := (Scores[B] + Boosts[B]) - (Scores[A] + Boosts[A]);
-        if Result = 0 then
+        if (Result = 0) and not AKeepOrder then
           Result := CompareText(Commands[A].Caption, Commands[B].Caption);
         if Result = 0 then
           Result := A - B;

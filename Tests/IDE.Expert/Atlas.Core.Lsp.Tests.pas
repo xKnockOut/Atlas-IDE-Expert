@@ -60,6 +60,12 @@ type
     procedure ReadsImplementationsAndSymbols;
     [Test]
     procedure WalksCallAndTypeHierarchies;
+    [Test]
+    procedure ReadsCodeActionsAndRunsCommands;
+    [Test]
+    procedure RequestsTypingSelectionAndTypeDefinition;
+    [Test]
+    procedure MapsIndexBackToColumn;
   end;
 
   [TestFixture]
@@ -1260,6 +1266,122 @@ begin
     Seen.Free;
     Replies.Free;
   end;
+end;
+
+procedure TLspSessionTests.ReadsCodeActionsAndRunsCommands;
+var
+  Replies: TDictionary<string, string>;
+  Seen: TStringList;
+  Client: TLspClient;
+  Session: TLspSession;
+  Actions: TArray<TLspCodeAction>;
+  Answer: TJSONValue;
+begin
+  Replies := TDictionary<string, string>.Create;
+  Seen := TStringList.Create;
+  Client := CannedClient(Replies, Seen);
+  Session := TLspSession.Create(Client);
+  try
+    Replies.Add('textDocument/codeAction', '[{"title":"try/finally ergänzen","kind":"refactor.rewrite",' +
+      '"isPreferred":true,"edit":{"changes":{"file:///c:/p/a.pas":[{"range":{"start":{"line":2,"character":0},' +
+      '"end":{"line":2,"character":0}},"newText":"try"}]}}},' +
+      '{"title":"Befund kopieren","kind":"quickfix","command":{"title":"Befund kopieren","command":"atlas.copyText",' +
+      '"arguments":["Text"]},"edit":{"changes":{}}},' +
+      '{"title":"Status","command":"atlas.server.status"},' +
+      '{"title":"Gesperrt","disabled":{"reason":"nur in Methoden"}},{"kind":"ohne Titel"}]');
+    Replies.Add('workspace/executeCommand', '"Unit1.TForm1.Button1Click"');
+    Actions := Session.CodeActions('C:\P\A.pas', TLspRange.Create(2, 4, 2, 9));
+    Assert.AreEqual(4, Integer(Length(Actions)), 'Einträge ohne Titel entfallen');
+    Assert.AreEqual('try/finally ergänzen', Actions[0].Title);
+    Assert.IsTrue(Actions[0].Preferred);
+    Assert.AreEqual(1, Actions[0].Edit.EditCount);
+    Assert.AreEqual('', Actions[0].Command);
+    Assert.AreEqual('atlas.copyText', Actions[1].Command);
+    Assert.AreEqual('["Text"]', Actions[1].ArgumentsJson);
+    Assert.IsTrue(Actions[1].Edit.IsEmpty);
+    Assert.AreEqual('atlas.server.status', Actions[2].Command, 'Command statt CodeAction');
+    Assert.AreEqual('[]', Actions[2].ArgumentsJson);
+    Assert.AreEqual('nur in Methoden', Actions[3].Disabled);
+    Assert.Contains(Seen.Text, '"range":{"start":{"line":2,"character":4},"end":{"line":2,"character":9}}');
+    Assert.Contains(Seen.Text, '"triggerKind":1');
+    Answer := Session.RunCommand('atlas.server.qualifiedName', '["file:///c:/p/a.pas",{"line":1,"character":2}]', 1000);
+    try
+      Assert.AreEqual('Unit1.TForm1.Button1Click', Answer.Value);
+    finally
+      Answer.Free;
+    end;
+    Assert.Contains(Seen.Text, '"arguments":["file:///c:/p/a.pas",{"line":1,"character":2}]');
+    Answer := Session.RunCommand('atlas.server.status', '', 1000);
+    Answer.Free;
+    Assert.Contains(Seen.Text, '{"command":"atlas.server.status","arguments":[]}');
+  finally
+    Session.Free;
+    Client.Free;
+    Seen.Free;
+    Replies.Free;
+  end;
+end;
+
+procedure TLspSessionTests.RequestsTypingSelectionAndTypeDefinition;
+var
+  Replies: TDictionary<string, string>;
+  Seen: TStringList;
+  Client: TLspClient;
+  Session: TLspSession;
+  Edits: TArray<TLspTextEdit>;
+  Ranges: TArray<TLspRange>;
+  Locations: TArray<TLspLocation>;
+begin
+  Replies := TDictionary<string, string>.Create;
+  Seen := TStringList.Create;
+  Client := CannedClient(Replies, Seen);
+  Session := TLspSession.Create(Client);
+  try
+    Replies.Add('textDocument/onTypeFormatting', '[{"range":{"start":{"line":4,"character":0},' +
+      '"end":{"line":5,"character":0}},"newText":"uses\r\n  Unit2;\r\n"}]');
+    Replies.Add('textDocument/selectionRange', '[{"range":{"start":{"line":3,"character":2},' +
+      '"end":{"line":3,"character":7}},"parent":{"range":{"start":{"line":3,"character":2},' +
+      '"end":{"line":3,"character":20}},"parent":{"range":{"start":{"line":0,"character":0},' +
+      '"end":{"line":9,"character":0}}}}}]');
+    Replies.Add('textDocument/typeDefinition', '{"uri":"file:///c:/p/kunde.pas","range":{"start":' +
+      '{"line":12,"character":2},"end":{"line":12,"character":8}}}');
+    Edits := Session.OnTypeFormatting('C:\P\A.pas', 5, 0, #10, 2, True, 1000);
+    Assert.AreEqual(1, Integer(Length(Edits)));
+    Assert.AreEqual(4, Edits[0].StartPos.Line);
+    Assert.AreEqual('uses'#13#10'  Unit2;'#13#10, Edits[0].NewText);
+    // Zeilenumbruch als \n oder \u000A, je nach Delphi-Version.
+    Assert.IsTrue(Seen.Text.Contains('"ch":"\n"') or Seen.Text.Contains('"ch":"\u000A"'), Seen.Text);
+    Assert.Contains(Seen.Text, '"options":{"tabSize":2,"insertSpaces":true}');
+    Ranges := Session.SelectionRanges('C:\P\A.pas', 3, 4);
+    Assert.AreEqual(3, Integer(Length(Ranges)), 'innen zuerst bis zur Datei');
+    Assert.AreEqual(7, Ranges[0].EndPos.Character);
+    Assert.AreEqual(20, Ranges[1].EndPos.Character);
+    Assert.AreEqual(9, Ranges[2].EndPos.Line);
+    Assert.Contains(Seen.Text, '"positions":[{"line":3,"character":4}]');
+    Locations := Session.TypeDefinition('C:\P\A.pas', 3, 4);
+    Assert.AreEqual(1, Integer(Length(Locations)));
+    Assert.AreEqual(12, Locations[0].Line);
+  finally
+    Session.Free;
+    Client.Free;
+    Seen.Free;
+    Replies.Free;
+  end;
+end;
+
+procedure TLspSessionTests.MapsIndexBackToColumn;
+var
+  Line: string;
+  Index: Integer;
+begin
+  Assert.AreEqual(1, TLspSession.IndexToColumn('abc', 0, 8));
+  Assert.AreEqual(3, TLspSession.IndexToColumn('abc', 2, 8));
+  Assert.AreEqual(9, TLspSession.IndexToColumn(#9'x', 1, 8), 'Tab bis zur nächsten Tabulatorposition');
+  Assert.AreEqual(6, TLspSession.IndexToColumn('abc', 5, 8), 'hinter dem Zeilenende je Zeichen eine Spalte');
+  // Umkehrung von ColumnToIndex innerhalb der Zeile.
+  Line := 'a'#9'bc'#9#9'd';
+  for Index := 0 to Length(Line) do
+    Assert.AreEqual(Index, TLspSession.ColumnToIndex(Line, TLspSession.IndexToColumn(Line, Index, 4), 4));
 end;
 
 initialization

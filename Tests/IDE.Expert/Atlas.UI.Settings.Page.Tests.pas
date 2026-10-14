@@ -41,6 +41,10 @@ begin
   Settings.Preview := True;
   Settings.HoverTooltip := False;
   Settings.ListWidth := 333;
+  Settings.ActionsKey := 0;
+  Settings.ExpandKey := $C057;
+  Settings.EditorKeysPriority := True;
+  Settings.SlashCommands := False;
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
@@ -54,6 +58,11 @@ begin
   Assert.IsTrue(Saved.Preview);
   Assert.IsFalse(Saved.HoverTooltip);
   Assert.AreEqual(333, Saved.ListWidth);
+  Assert.AreEqual(0, Saved.ActionsKey);
+  Assert.AreEqual($C057, Saved.ExpandKey);
+  Assert.AreEqual($6057, Saved.ShrinkKey);
+  Assert.IsTrue(Saved.EditorKeysPriority);
+  Assert.IsFalse(Saved.SlashCommands);
 end;
 
 initialization

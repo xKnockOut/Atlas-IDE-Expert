@@ -3,8 +3,9 @@
 // Meldet den Code Insight-Manager, die Optionsseite "Atlas" (#227), die
 // Compile-Ereignisse (#527), den Einfrier-Wächter (#501), das Neuladen
 // extern geänderter Dateien (#536), die Befehlspalette (#502), die farbigen
-// Klammerpaare (#514) und das Ergebnisfenster (#400) beim Laden des
-// Packages an und beim Entladen in umgekehrter Reihenfolge wieder ab (ADR 0006).
+// Klammerpaare (#514), das Ergebnisfenster (#400) und die Editorbefehle samt
+// Tastenkürzeln und Kontextmenü (#399) beim Laden des Packages an und beim
+// Entladen in umgekehrter Reihenfolge wieder ab (ADR 0006).
 
 interface
 
@@ -45,6 +46,8 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Results.Model,
   Atlas.IDE.Results.Commands,
+  Atlas.IDE.Commands.Editor,
+  Atlas.IDE.Commands.Bindings,
   Atlas.IDE.Commands.Keys;
 
 var
@@ -64,6 +67,8 @@ var
   CheckOnSave: TAtlasIdeCheckOnSave;
   // Hauptmenü Atlas mit Schnellschaltern und Einstellungen (#227).
   MainMenu: TAtlasMainMenu;
+  // Tastenkürzel der Editorbefehle (#399).
+  EditorKeys: TAtlasIdeEditorKeys;
 
 const
   // Ab dieser Dauer ein Hinweis im Meldungsfenster (#501).
@@ -186,6 +191,38 @@ begin
     procedure
     begin
       TAtlasIdeResults.ShowWindow;
+    end);
+  // Editorbefehle (#399).
+  Palette.RegisterCommand('Atlas.CodeActions', TAtlasStrings.Text(TAtlasTextId.EditorActions), '',
+    procedure
+    begin
+      TAtlasIdeEditorCommands.CodeActions;
+    end);
+  Palette.RegisterCommand('Atlas.ExpandSelection', TAtlasStrings.Text(TAtlasTextId.EditorExpand), '',
+    procedure
+    begin
+      TAtlasIdeEditorCommands.ExpandSelection;
+    end);
+  Palette.RegisterCommand('Atlas.ShrinkSelection', TAtlasStrings.Text(TAtlasTextId.EditorShrink), '',
+    procedure
+    begin
+      TAtlasIdeEditorCommands.ShrinkSelection;
+    end);
+  Palette.RegisterCommand('Atlas.TypeDefinition', TAtlasStrings.Text(TAtlasTextId.EditorTypeDefinition), '',
+    procedure
+    begin
+      TAtlasIdeEditorCommands.GoToTypeDefinition;
+    end);
+  Palette.RegisterCommand('Atlas.CopyQualifiedName', TAtlasStrings.Text(TAtlasTextId.EditorCopyQualified), '',
+    procedure
+    begin
+      TAtlasIdeEditorCommands.CopyQualifiedName(False);
+    end);
+  Palette.RegisterCommand('Atlas.CopyQualifiedNameParams', TAtlasStrings.Text(TAtlasTextId.EditorCopyQualifiedParams),
+    '',
+    procedure
+    begin
+      TAtlasIdeEditorCommands.CopyQualifiedName(True);
     end);
   Palette.RegisterCommand('Atlas.ResetHistory', TAtlasStrings.Text(TAtlasTextId.PaletteResetHistory), '',
     procedure
@@ -376,6 +413,19 @@ begin
     begin
       GuardWarning(AText);
     end);
+  TAtlasIdeEditorCommands.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.ActiveSession;
+    end,
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
+  if EditorKeys = nil then
+    EditorKeys := TAtlasIdeEditorKeys.Create;
   if Palette = nil then
     RegisterPalette;
   if Pairs = nil then
@@ -388,6 +438,8 @@ begin
         Palette.Rebind;
       if CheckOnSave <> nil then
         CheckOnSave.Rebind;
+      if EditorKeys <> nil then
+        EditorKeys.Rebind;
     end;
   TThread.ForceQueue(nil,
     procedure
@@ -465,6 +517,8 @@ begin
   FreeAndNil(EditInbox);
   FreeAndNil(DirtyExport);
   FreeAndNil(MainMenu);
+  FreeAndNil(EditorKeys);
+  TAtlasIdeEditorCommands.Uninstall;
   TAtlasIdeResults.Uninstall;
   FreeAndNil(Pairs);
   FreeAndNil(CheckOnSave);

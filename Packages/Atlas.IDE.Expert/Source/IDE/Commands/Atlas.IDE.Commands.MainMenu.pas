@@ -13,6 +13,8 @@
 // „Symbol umbenennen…“ (#397) ruft OnRename auf.
 // Referenzen, Implementierungen, Symbolsuche und Hierarchien öffnen das
 // Ergebnisfenster (#400).
+// Code-Aktionen, Auswahl erweitern/verkleinern, Typdefinition und
+// qualifizierter Name (#399) gehen an TAtlasIdeEditorCommands.
 
 interface
 
@@ -43,6 +45,7 @@ type
     FOnRename: TProc;
     procedure RenameClick(Sender: TObject);
     procedure ResultsClick(Sender: TObject);
+    procedure EditorClick(Sender: TObject);
     function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
     procedure EnableAllClick(Sender: TObject);
     procedure TimerTick(Sender: TObject);
@@ -75,6 +78,7 @@ uses
   Atlas.IDE.Editor.Structure,
   Atlas.IDE.Diagnostics.Export,
   Atlas.IDE.Results.Commands,
+  Atlas.IDE.Commands.Editor,
   Atlas.Core.Results.Model,
   Atlas.Core.Lsp.Progress;
 
@@ -136,6 +140,13 @@ begin
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.RenameMenu);
   Item.OnClick := RenameClick;
   FRoot.Add(Item);
+  // Editorbefehle (#399); Tag wählt den Befehl in EditorClick.
+  AddItem(TAtlasTextId.EditorActions, 0, EditorClick);
+  AddItem(TAtlasTextId.EditorExpand, 1, EditorClick);
+  AddItem(TAtlasTextId.EditorShrink, 2, EditorClick);
+  AddItem(TAtlasTextId.EditorTypeDefinition, 3, EditorClick);
+  AddItem(TAtlasTextId.EditorCopyQualified, 4, EditorClick);
+  AddItem(TAtlasTextId.EditorCopyQualifiedParams, 5, EditorClick);
   FRoot.Add(NewLine);
   // Ergebnisfenster (#400); Tag wählt den Befehl in ResultsClick.
   AddItem(TAtlasTextId.MenuReferences, 0, ResultsClick);
@@ -385,6 +396,26 @@ begin
         6: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Subtypes);
       else
         TAtlasIdeResults.ShowWindow;
+      end;
+    end);
+end;
+
+procedure TAtlasMainMenu.EditorClick(Sender: TObject);
+var
+  Command: Integer;
+begin
+  Command := TMenuItem(Sender).Tag;
+  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+    procedure
+    begin
+      case Command of
+        0: TAtlasIdeEditorCommands.CodeActions;
+        1: TAtlasIdeEditorCommands.ExpandSelection;
+        2: TAtlasIdeEditorCommands.ShrinkSelection;
+        3: TAtlasIdeEditorCommands.GoToTypeDefinition;
+        4: TAtlasIdeEditorCommands.CopyQualifiedName(False);
+      else
+        TAtlasIdeEditorCommands.CopyQualifiedName(True);
       end;
     end);
 end;

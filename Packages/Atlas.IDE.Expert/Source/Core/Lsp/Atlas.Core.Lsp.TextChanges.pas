@@ -17,6 +17,20 @@ type
   TLspTextPosition = record
     Line: Integer;
     Character: Integer;
+    class function Create(ALine, ACharacter: Integer): TLspTextPosition; static;
+    /// <summary>Negativ, 0 oder positiv wie CompareText.</summary>
+    class function Compare(const A, B: TLspTextPosition): Integer; static;
+  end;
+
+  /// <summary>Bereich im Text, Ende ausschließlich (#399).</summary>
+  TLspRange = record
+    StartPos: TLspTextPosition;
+    EndPos: TLspTextPosition;
+    class function Create(AStartLine, AStartCharacter, AEndLine, AEndCharacter: Integer): TLspRange; static;
+    function IsEmpty: Boolean;
+    function Same(const AOther: TLspRange): Boolean;
+    /// <summary>AOther liegt ganz in diesem Bereich (gleiche Grenzen eingeschlossen).</summary>
+    function Contains(const AOther: TLspRange): Boolean;
   end;
 
   TLspTextChange = record
@@ -38,6 +52,46 @@ type
   end;
 
 implementation
+
+{ TLspTextPosition }
+
+class function TLspTextPosition.Create(ALine, ACharacter: Integer): TLspTextPosition;
+begin
+  Result.Line := ALine;
+  Result.Character := ACharacter;
+end;
+
+class function TLspTextPosition.Compare(const A, B: TLspTextPosition): Integer;
+begin
+  Result := A.Line - B.Line;
+  if Result = 0 then
+    Result := A.Character - B.Character;
+end;
+
+{ TLspRange }
+
+class function TLspRange.Create(AStartLine, AStartCharacter, AEndLine, AEndCharacter: Integer): TLspRange;
+begin
+  Result.StartPos := TLspTextPosition.Create(AStartLine, AStartCharacter);
+  Result.EndPos := TLspTextPosition.Create(AEndLine, AEndCharacter);
+end;
+
+function TLspRange.IsEmpty: Boolean;
+begin
+  Result := TLspTextPosition.Compare(StartPos, EndPos) >= 0;
+end;
+
+function TLspRange.Same(const AOther: TLspRange): Boolean;
+begin
+  Result := (TLspTextPosition.Compare(StartPos, AOther.StartPos) = 0) and
+    (TLspTextPosition.Compare(EndPos, AOther.EndPos) = 0);
+end;
+
+function TLspRange.Contains(const AOther: TLspRange): Boolean;
+begin
+  Result := (TLspTextPosition.Compare(StartPos, AOther.StartPos) <= 0) and
+    (TLspTextPosition.Compare(AOther.EndPos, EndPos) <= 0);
+end;
 
 function IsHighSurrogate(AChar: Char): Boolean;
 begin

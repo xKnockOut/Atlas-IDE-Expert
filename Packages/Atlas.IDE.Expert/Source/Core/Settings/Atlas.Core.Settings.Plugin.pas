@@ -92,6 +92,17 @@ type
     CheckOnSaveDelayMs: Integer;
     /// <summary>Höchstdauer einer Prüfung; darüber nur noch von Hand (Strg+Alt+F9).</summary>
     CheckOnSaveMaxMs: Integer;
+    /// <summary>Tastenkürzel im Editor (#399, TShortCut, 0 = keins): Code-Aktionen, Auswahl erweitern und
+    /// verkleinern, Gehe zu Implementierung und zu Typdefinition.</summary>
+    ActionsKey: Integer;
+    ExpandKey: Integer;
+    ShrinkKey: Integer;
+    ImplementationKey: Integer;
+    TypeDefinitionKey: Integer;
+    /// <summary>Die Editor-Kürzel auch belegen, wenn die IDE oder eine andere Erweiterung sie nutzt.</summary>
+    EditorKeysPriority: Boolean;
+    /// <summary>Schnellbefehle mit „/“ nach Enter und „///“-Gerüste beim Server auslösen (#399).</summary>
+    SlashCommands: Boolean;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -146,6 +157,13 @@ begin
   Result.CheckOnSave := False;
   Result.CheckOnSaveDelayMs := 2000;
   Result.CheckOnSaveMaxMs := 1500;
+  Result.ActionsKey := $800D; // Alt+Enter
+  Result.ExpandKey := $4057; // Strg+W
+  Result.ShrinkKey := $6057; // Strg+Umschalt+W
+  Result.ImplementationKey := $C049; // Strg+Alt+I
+  Result.TypeDefinitionKey := 0;
+  Result.EditorKeysPriority := False;
+  Result.SlashCommands := True;
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -193,6 +211,13 @@ begin
   CheckOnSave := AStore.ReadInteger('CheckOnSave', BoolValue(Default.CheckOnSave)) <> 0;
   CheckOnSaveDelayMs := AStore.ReadInteger('CheckOnSaveDelayMs', Default.CheckOnSaveDelayMs);
   CheckOnSaveMaxMs := AStore.ReadInteger('CheckOnSaveMaxMs', Default.CheckOnSaveMaxMs);
+  ActionsKey := AStore.ReadInteger('ActionsKey', Default.ActionsKey);
+  ExpandKey := AStore.ReadInteger('ExpandKey', Default.ExpandKey);
+  ShrinkKey := AStore.ReadInteger('ShrinkKey', Default.ShrinkKey);
+  ImplementationKey := AStore.ReadInteger('ImplementationKey', Default.ImplementationKey);
+  TypeDefinitionKey := AStore.ReadInteger('TypeDefinitionKey', Default.TypeDefinitionKey);
+  EditorKeysPriority := AStore.ReadInteger('EditorKeysPriority', BoolValue(Default.EditorKeysPriority)) <> 0;
+  SlashCommands := AStore.ReadInteger('SlashCommands', BoolValue(Default.SlashCommands)) <> 0;
   Normalize;
 end;
 
@@ -228,6 +253,13 @@ begin
   AStore.WriteInteger('CheckOnSave', BoolValue(CheckOnSave));
   AStore.WriteInteger('CheckOnSaveDelayMs', CheckOnSaveDelayMs);
   AStore.WriteInteger('CheckOnSaveMaxMs', CheckOnSaveMaxMs);
+  AStore.WriteInteger('ActionsKey', ActionsKey);
+  AStore.WriteInteger('ExpandKey', ExpandKey);
+  AStore.WriteInteger('ShrinkKey', ShrinkKey);
+  AStore.WriteInteger('ImplementationKey', ImplementationKey);
+  AStore.WriteInteger('TypeDefinitionKey', TypeDefinitionKey);
+  AStore.WriteInteger('EditorKeysPriority', BoolValue(EditorKeysPriority));
+  AStore.WriteInteger('SlashCommands', BoolValue(SlashCommands));
 end;
 
 end.
