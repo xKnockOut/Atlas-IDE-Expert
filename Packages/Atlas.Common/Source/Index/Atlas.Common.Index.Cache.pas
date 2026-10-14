@@ -54,7 +54,8 @@ type
 
   TIndexCache = class
   public
-    const FormatVersion = 12;
+    // 13: Mitglieder aus nicht geltenden Zweigen in Unavailable (#476).
+    const FormatVersion = 13;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
     /// <summary>Liest nur die Köpfe; bei falscher Version oder fremdem Inhalt leer.</summary>
     class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; static;

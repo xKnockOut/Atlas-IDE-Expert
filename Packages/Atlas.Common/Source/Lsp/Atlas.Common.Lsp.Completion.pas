@@ -1019,7 +1019,8 @@ var
         if (Symbol.Container = '') and (Symbol.Condition <> '') then
           Conditions.AddOrSetValue(UpperCase(Symbol.Name), Symbol.Condition);
       for Symbol in Own.Unavailable do
-        Missing.AddOrSetValue(UpperCase(Symbol.Name), Symbol.Condition);
+        if Symbol.Container = '' then
+          Missing.AddOrSetValue(UpperCase(Symbol.Name), Symbol.Condition);
       if (Conditions.Count = 0) and (Missing.Count = 0) then
         Exit;
       for Index := 0 to List.Count - 1 do
@@ -1075,7 +1076,8 @@ var
           Continue;
         for Symbol in UnitInfo.Unavailable do
         begin
-          if (not Symbol.InInterface and not SameText(UnitInfo.UnitName, Own)) or
+          // Mitglieder nicht geltender Zweige zeigt AddUnavailableMembers hinter "Objekt.".
+          if (Symbol.Container <> '') or (not Symbol.InInterface and not SameText(UnitInfo.UnitName, Own)) or
             Known.ContainsKey(UpperCase(Symbol.Name)) then
             Continue;
           Member := Default(TResolvedSymbol);
@@ -1256,6 +1258,57 @@ var
       AResolver.NameFilter := nil;
   end;
 
+  // Mitglieder aus nicht geltenden Zweigen der Typen, deren Mitglieder AMembers schon zeigt (#476):
+  // abgeschwächt am Ende, wie die übrigen nicht verfügbaren Einträge.
+  procedure AddUnavailableMembers(const AMembers: TArray<TResolvedSymbol>);
+  var
+    Containers, Known: TDictionary<string, Boolean>;
+    Candidate: TResolvedSymbol;
+    UnitInfo: TUnitIndex;
+    Symbol: TIndexSymbol;
+    Existing: TScoredItem;
+    Before: Integer;
+  begin
+    Containers := TDictionary<string, Boolean>.Create;
+    Known := TDictionary<string, Boolean>.Create;
+    try
+      for Candidate in AMembers do
+        if Candidate.Container <> '' then
+          Containers.AddOrSetValue(UpperCase(Candidate.Container), True);
+      if Containers.Count = 0 then
+        Exit;
+      for Existing in List do
+        Known.AddOrSetValue(UpperCase(Existing.Item.Name), True);
+      for UnitInfo in AIndex.Units do
+        for Symbol in UnitInfo.Unavailable do
+        begin
+          if (Symbol.Container = '') or not Containers.ContainsKey(UpperCase(Symbol.Container)) or
+            Known.ContainsKey(UpperCase(Symbol.Name)) then
+            Continue;
+          Member := Default(TResolvedSymbol);
+          Member.Name := Symbol.Name;
+          Member.Container := Symbol.Container;
+          Member.Condition := Symbol.Condition;
+          SourceFile := UnitInfo.FileName;
+          SourcePosition := Symbol.SelectionRange.StartPos;
+          Before := List.Count;
+          Add(Symbol.Name, Symbol.Container, KindOf(Symbol.Kind), 500);
+          if List.Count > Before then
+          begin
+            Scored := List[List.Count - 1];
+            Scored.Item.Unavailable := True;
+            List[List.Count - 1] := Scored;
+            Known.AddOrSetValue(UpperCase(Symbol.Name), True);
+          end;
+        end;
+    finally
+      Known.Free;
+      Containers.Free;
+      SourceFile := '';
+      Member := Default(TResolvedSymbol);
+    end;
+  end;
+
   procedure AddCandidates(const ACandidates: TArray<TResolvedSymbol>);
   var
     Candidate: TResolvedSymbol;
@@ -1330,6 +1383,7 @@ begin
               SetNameFilter(False);
             end;
             AddCandidates(Candidates);
+            AddUnavailableMembers(Candidates);
           end
           else
           begin
