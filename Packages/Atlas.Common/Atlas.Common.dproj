@@ -75,6 +75,7 @@
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.Logger.pas"/>
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.RotatingFileStream.pas"/>
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.StreamSink.pas"/>
+        <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.TransformSink.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Contract.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Messages.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.StreamTransport.pas"/>

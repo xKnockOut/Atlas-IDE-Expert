@@ -63,6 +63,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Compiler.Results,
   Atlas.Common.Lsp.WorkDoneProgress,
@@ -78,6 +79,8 @@ type
   private
     FTransport: IJsonRpcTransport;
     FLogger: ILogger;
+    /// <summary>Anonymisiert das Server-Log (#647); nil ohne --log oder mit --log-names.</summary>
+    FLogAnonymizer: ILogAnonymizer;
     FDispatcher: TJsonRpcDispatcher;
     FLifecycle: TLspLifecycle;
     FDocuments: IDocumentStore;
@@ -137,6 +140,9 @@ type
     // unter FWorkspacesLock, weil Anfrage-Threads lesen.
     FWorkspaces: TObjectList<TShellWorkspace>;
     FWorkspacesLock: TObject;
+    /// <summary>Je Arbeitsbereich die Anfragen, die ihn außerhalb von FWorkspacesLock nutzen (EnsureUnit);
+    /// ein entfernter wird erst freigegeben, wenn er hier fehlt. Nur unter FWorkspacesLock.</summary>
+    FWorkspaceUsers: TDictionary<TShellWorkspace, Integer>;
     FWorkspaceCounter: Integer;
     /// <summary>Reihenfolge der Indexaufbauten aller Projekte (#648); kleiner = früher.</summary>
     FIndexScheduler: TIndexScheduler;
@@ -171,6 +177,13 @@ type
     /// <summary>Innerster Ordner zur Datei oder nil. Aufrufer hält FWorkspacesLock.</summary>
     function WorkspaceOf(const AFileName: string): TShellWorkspace;
     function EnsureUnit(const AUnitName: string): Boolean;
+    /// <summary>Fortschritt des Indexaufbaus in Prozent über alle Projekte; -1, wenn keiner läuft.</summary>
+    function IndexLoading: Integer;
+    /// <summary>Ein Indexaufbau ist fertig: Befunde mit dem vollständigen Index neu prüfen (#647).
+    /// Index-Thread.</summary>
+    procedure IndexFinished;
+    /// <summary>True, solange ein Projekt seine Projektstufe noch nicht indiziert hat.</summary>
+    function ProjectIndexPending: Boolean;
     /// <summary>Text einer Quelldatei; geöffnete Dokumente haben Vorrang vor der Platte.</summary>
     function ReadSourceText(const AFileName: string; out AText: string): Boolean;
     /// <summary>Projektdateien aller Ordner und geöffnete Dokumente, für Referenzen und Umbenennen.</summary>
@@ -373,6 +386,11 @@ begin
       else
         AText := '';
     end);
+  FPullDiagnostics.Busy :=
+    function: Boolean
+    begin
+      Result := ProjectIndexPending;
+    end;
   FPullDiagnostics.Attach(FDispatcher);
   FSyntaxDiagnostics.OnPullChanged := FPullDiagnostics.Changed;
   FDocumentSymbols := TLspDocumentSymbols.Create(FDocuments);
@@ -432,6 +450,7 @@ begin
   FSelectionRanges.Attach(FDispatcher);
   FWorkspaces := TObjectList<TShellWorkspace>.Create(True);
   FWorkspacesLock := TObject.Create;
+  FWorkspaceUsers := TDictionary<TShellWorkspace, Integer>.Create;
   FIndexScheduler := TIndexScheduler.Create;
   FLooseConfiguration := TLspConfiguration.Create(FDocuments, FTransport,
     function(const AFileName: string; out AText: string): Boolean
@@ -473,17 +492,8 @@ begin
     end;
   FDiagnostics.IndexLoading :=
     function: Integer
-    var
-      Workspace: TShellWorkspace;
     begin
-      Result := -1;
-      TMonitor.Enter(FWorkspacesLock);
-      try
-        for Workspace in FWorkspaces do
-          Result := Max(Result, Workspace.IndexLoading);
-      finally
-        TMonitor.Exit(FWorkspacesLock);
-      end;
+      Result := IndexLoading;
     end;
   FDispatcher.Observer := FDiagnosticsRef;
   FDefinition := TLspDefinition.Create(FDocuments, FIndex,
@@ -1068,6 +1078,11 @@ begin
       Folder: TWorkspaceFolder;
     begin
       WatchParent(FLifecycle.InitializeParams);
+      // Einstellungen des IDE-Plugins (#652): initializationOptions.settings.atlas wie bei
+      // didChangeConfiguration, schon vor dem ersten Indexaufbau; atlas.json hat Vorrang.
+      if FLifecycle.InitializeParams <> nil then
+        FEditorSettings := TLspConfiguration.EditorSettingsFromParams(
+          FLifecycle.InitializeParams.GetValue('initializationOptions'));
       FHover.Markdown := TLspHover.ClientSupportsMarkdown(FLifecycle.InitializeParams);
       Folders := TLspWorkspaceFolders.FromInitialize(FLifecycle.InitializeParams);
       // Vor dem ersten Laden, damit die Projekte nicht zweimal indiziert werden (#396).
@@ -1099,6 +1114,8 @@ begin
 end;
 
 destructor TServerComposition.Destroy;
+var
+  Workspace: TShellWorkspace;
 begin
   // Zuerst: Eine laufende Übernahme greift auf die Ordner zu.
   FreeAndNil(FIndexRefresh);
@@ -1115,11 +1132,15 @@ begin
     FCompileThread.WaitFor;
     FreeAndNil(FCompileThread);
   end;
+  // Index-Threads vor der Syntaxprüfung anhalten: Ein fertiger Aufbau meldet sich dort (IndexFinished).
+  for Workspace in FWorkspaces do
+    Workspace.Stop;
   // Vor den Ordnern: der Hintergrund-Thread der Syntaxprüfung fragt ihre Symbole ab.
   FPullDiagnostics.Free;
   FSyntaxDiagnostics.Free;
   // Ordner vor dem Index: ihre Index-Threads laufen noch.
   FWorkspaces.Free;
+  FWorkspaceUsers.Free;
   FWorkspacesLock.Free;
   // Nach den Ordnern: Ihre Index-Threads sind beendet und abgemeldet.
   FIndexScheduler.Free;
@@ -1250,6 +1271,9 @@ begin
       TMonitor.Exit(FWorkspacesLock);
     end;
   end;
+  if FLogAnonymizer <> nil then
+    FLogAnonymizer.AddNames([AName, ExtractFileName(ExcludeTrailingPathDelimiter(ARoot)),
+      ChangeFileExt(ExtractFileName(AProjectFile), '')]);
   Inc(FWorkspaceCounter);
   Workspace := TShellWorkspace.Create(ARoot, AName, FDocuments, FTransport, FLogger, FIndex,
     Format('atlas-index-%d', [FWorkspaceCounter]));
@@ -1261,6 +1285,20 @@ begin
   Workspace.IdeProjects := FIdeProject;
   Workspace.Origin := AOrigin;
   Workspace.OnProjectLoaded := ProjectLoaded;
+  Workspace.OnIndexFinished := IndexFinished;
+  Workspace.OnProjectReady := IndexFinished;
+  // Projekt- und Unit-Namen erscheinen im Server-Log nicht im Klartext (#647).
+  Workspace.OnNames :=
+    procedure(ANames: TArray<string>)
+    begin
+      if FLogAnonymizer <> nil then
+        FLogAnonymizer.AddNames(ANames);
+    end;
+  Workspace.OnIndexEvent :=
+    procedure(AText: string)
+    begin
+      FDiagnostics.Log.LogEvent(AText);
+    end;
   // Das Zeitlimit gilt serverweit; bei mehreren Ordnern das zuletzt gelesene.
   Workspace.OnSettingsChanged :=
     procedure(ASettings: TServerSettings)
@@ -1343,8 +1381,19 @@ begin
     if not Shared then
       FIndex.RemoveFile(UnitIndex.FileName);
   end;
+  // Erst freigeben, wenn keine Anfrage sie mehr außerhalb der Sperre nutzt (EnsureUnit). Neue Anfragen
+  // sehen sie nicht mehr, das Warten endet also.
   for Workspace in Removed do
+  begin
+    TMonitor.Enter(FWorkspacesLock);
+    try
+      while FWorkspaceUsers.ContainsKey(Workspace) do
+        TMonitor.Wait(FWorkspacesLock, INFINITE);
+    finally
+      TMonitor.Exit(FWorkspacesLock);
+    end;
     Workspace.Free;
+  end;
   ProjectLoaded;
 end;
 
@@ -1401,14 +1450,84 @@ end;
 function TServerComposition.EnsureUnit(const AUnitName: string): Boolean;
 var
   Workspace: TShellWorkspace;
+  Targets: TArray<TShellWorkspace>;
+  Users: Integer;
 begin
-  // Anfrage-Threads: jeder Ordner versucht es mit seinen Suchpfaden.
+  // Anfrage-Threads: jeder Ordner versucht es mit seinen Suchpfaden. Das Parsen läuft außerhalb von
+  // FWorkspacesLock (#647): Sonst warteten alle Anfragen, die nur kurz einen Arbeitsbereich suchen
+  // (Defines, Einstellungen, Diagnoselog), auf das Parsen einer Unit, und Hover dauerte Minuten.
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Targets := FWorkspaces.ToArray;
+    for Workspace in Targets do
+      if FWorkspaceUsers.TryGetValue(Workspace, Users) then
+        FWorkspaceUsers[Workspace] := Users + 1
+      else
+        FWorkspaceUsers.Add(Workspace, 1);
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  try
+    Result := False;
+    for Workspace in Targets do
+      if Workspace.EnsureUnit(AUnitName) then
+        Exit(True);
+  finally
+    TMonitor.Enter(FWorkspacesLock);
+    try
+      for Workspace in Targets do
+      begin
+        Users := FWorkspaceUsers[Workspace] - 1;
+        if Users = 0 then
+          FWorkspaceUsers.Remove(Workspace)
+        else
+          FWorkspaceUsers[Workspace] := Users;
+      end;
+      TMonitor.PulseAll(FWorkspacesLock);
+    finally
+      TMonitor.Exit(FWorkspacesLock);
+    end;
+  end;
+end;
+
+function TServerComposition.IndexLoading: Integer;
+var
+  Workspace: TShellWorkspace;
+begin
+  Result := -1;
   TMonitor.Enter(FWorkspacesLock);
   try
     for Workspace in FWorkspaces do
-      if Workspace.EnsureUnit(AUnitName) then
+      Result := Max(Result, Workspace.IndexLoading);
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+procedure TServerComposition.IndexFinished;
+var
+  UnitIndex: TUnitIndex;
+begin
+  // Units aus Suchpfaden stehen in keiner .dproj; im Server-Log ebenfalls verbergen (#647).
+  if FLogAnonymizer <> nil then
+    for UnitIndex in FIndex.Units do
+      FLogAnonymizer.AddUnit(UnitIndex.UnitName, UnitIndex.FileName);
+  // Befunde aus der Zeit des Aufbaus enthalten Units, die damals noch fehlten. Im Pull-Modus steigt
+  // damit die Generation: Der Client holt geöffnete Dateien neu, workspace/diagnostic prüft alle.
+  // Gebündelt: Die große Datei zu prüfen dauerte im Log über 20 s, und jedes Projekt meldet sich.
+  FSyntaxDiagnostics.RefreshLater;
+end;
+
+function TServerComposition.ProjectIndexPending: Boolean;
+var
+  Workspace: TShellWorkspace;
+begin
+  Result := False;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    for Workspace in FWorkspaces do
+      if Workspace.ProjectPending then
         Exit(True);
-    Result := False;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
@@ -1744,6 +1863,8 @@ begin
   FCodeLens.Namespaces := Namespaces;
   FSemanticTokens.Namespaces := Namespaces;
   FDiagnostics.SetLibraryRoots(LibraryRoots);
+  if FLogAnonymizer <> nil then
+    FLogAnonymizer.SetLibraryRoots(LibraryRoots);
   FSyntaxDiagnostics.Refresh;
 end;
 
@@ -2039,6 +2160,7 @@ var
   Transport: IJsonRpcTransport;
   Warning: string;
   TraceName: string;
+  Anonymizer: ILogAnonymizer;
 begin
   // Stacktraces für das Absturzprotokoll (Exception.StackTrace).
   TStackTrace.Install;
@@ -2050,8 +2172,8 @@ begin
   LoggerImpl.AddSink(TStreamLogSink.Create(TStdStreams.CreateError, True), TLogLevel.Error);
   if AOptions.LogFile <> '' then
     try
-      LoggerImpl.AddSink(TStreamLogSink.CreateForFile(AOptions.LogFile, IntToStr(TParentWatcher.CurrentProcessId)),
-        AOptions.LogLevel);
+      LoggerImpl.AddSink(TShellDiagnostics.LogFileSink(AOptions.LogFile, IntToStr(TParentWatcher.CurrentProcessId),
+        AOptions.LogNames, Anonymizer), AOptions.LogLevel);
     except
       on E: Exception do
         Logger.Error(Format('Logdatei "%s" kann nicht geöffnet werden: %s', [AOptions.LogFile, E.Message]));
@@ -2075,6 +2197,7 @@ begin
     Logger.Warning(Warning);
 
   Result := TServerComposition.Create(Transport, Logger);
+  Result.FLogAnonymizer := Anonymizer;
   Result.FRestricted := AOptions.Restricted;
   Result.FClientProcessId := AOptions.ClientProcessId;
   if AOptions.Restricted then
@@ -2163,6 +2286,13 @@ begin
   FLogger.Info(Format('%s %s gestartet', [TProductVersion.Name, TProductVersion.Version]));
   FDiagnostics.AllowMethods(FDispatcher.Methods);
   FDiagnostics.BeginRun(TProductVersion.Version, AllocatedBytes);
+  // Endzeile, sobald die Eingabe endet: Das Plugin beendet den Prozess nach 2 s, auch wenn noch
+  // Anfragen laufen; sonst meldete der nächste Lauf einen Absturz (#647).
+  FConnection.OnLoopEnded :=
+    procedure
+    begin
+      FDiagnostics.EndRun(FEndReason, FLifecycle.ExitCode, AllocatedBytes);
+    end;
   try
     FConnection.Run;
     Result := FLifecycle.ExitCode;

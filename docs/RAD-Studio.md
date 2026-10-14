@@ -17,6 +17,8 @@ Es gibt zwei Wege:
 
 Fehlt der Server, meldet das Plugin das im Meldungsfenster und überlässt Vervollständigung und Hinweise der eingebauten Code Insight. Stürzt der Server ab, startet es ihn bei der nächsten Anfrage neu.
 
+Den Umfang des Index stellt *Tools › Optionen › Drittanbieter › Atlas* für alle Projekte ein (#652): alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und alle Units der Delphi-Bibliothek. Das Plugin gibt die Werte beim Start und nach jeder Änderung an den Server weiter. Steht `index` in der `atlas.json` eines Projekts, gilt dort die Datei. RTL, VCL und FMX liest der Server einmal je Delphi-Version und Plattform, unabhängig von den Defines des Projekts.
+
 Was Atlas selbst anzeigt, schaltet es in der IDE ab, damit nichts doppelt erscheint: Help Insight (solange der Atlas-Tooltip an ist) und die Strukturhervorhebung (solange die Atlas-Blocklinien an sind). Die IDE liest diese Schalter nur beim Start; beim ersten Start mit Atlas erscheint daher noch beides.
 
 Bedienung (#399): Das Menü *Atlas* in der Menüleiste und das Untermenü *Atlas* im Kontextmenü des Editors enthalten Code-Aktionen, Auswahl erweitern/verkleinern, Gehe zu Implementierung und Typdefinition, Referenzen und „Qualifizierten Namen kopieren“. Tastenkürzel (änderbar unter *Tools › Optionen › Drittanbieter › Atlas*): Code-Aktionen Alt+Enter, Auswahl erweitern Strg+W, verkleinern Strg+Umschalt+W, Gehe zu Implementierung Strg+Alt+I, Typdefinition ohne Vorgabe. Ist eine Taste schon von der IDE oder einer anderen Erweiterung belegt, bleibt diese Belegung und das Meldungsfenster nennt den Konflikt; der Schalter „Editor-Kürzel auch belegen …“ gibt Atlas Vorrang. Schnellbefehle (`/uses Unit`, `/try` …) werden nach Enter ausgeführt, `///` über einer Deklaration erzeugt das Kommentargerüst; beides lässt sich auf derselben Seite abschalten.
@@ -39,7 +41,7 @@ Feld- und Parameternamen (#461): In `qryOrders.FieldByName('`, `FindField('` und
 
 Freigabe absichern (#489): Nach Übernahme eines Konstruktors in `List := TStringList.Create` öffnet das `;` (auch als Commit-Zeichen) eine kleine Liste „Mit try…finally absichern“, rechts die Freigabe (`List.Free`), Fußzeile „Enter anwenden · weitertippen verwirft“. Enter setzt `try`, eine leere Zeile mit dem Cursor, `finally`, `List.Free;` und `end;` darunter, als ein Rückgängig-Schritt. Folgen bis zum Ende der Routine schon Zeilen, gibt es zusätzlich „Bis Routinenende mit try…finally absichern“. Nicht angeboten wird bei Feldern, `Result`, Interface-Variablen, Records, einem Owner (`Create(Self)`, `Create(Application)`), wenn die Variable später zurückgegeben, zugewiesen, an `Add`/`Insert` übergeben oder schon freigegeben wird, und wenn danach schon `try` steht. `completion.offerTryFinally` schaltet das Angebot ab, `completion.freeStyle` = `"freeAndNil"` schreibt `FreeAndNil(List)`.
 
-Code-Vorlagen (#51): Am Anfang einer Anweisung stehen Vorlagen mit dem Badge `sn` und der Marke „Snippet“ in der Liste: `tryf` (try…finally mit Create/Free), `trye`, `forin`, `fori`, `while`, `repeat`, `class`, `record`, `prop`, `propset` (Setter mit Prüfung auf Änderung und `Invalidate`), `comp` (Komponentengerüst) und `reg` (Register-Prozedur). Enter setzt die Vorlage mit der Einrückung der Zeile ein und markiert den ersten Platzhalter; Tippen ersetzt ihn, gleich nummerierte Platzhalter ändern sich mit. Tab springt weiter, Umschalt+Tab zurück, nach dem letzten an die Endposition; Enter springt dorthin und beendet, Esc beendet an Ort und Stelle. Der aktuelle Platzhalter ist umrahmt, verknüpfte gestrichelt, dahinter steht „Platzhalter 1 / 2 · Tab weiter · Esc fertig“. Eigene Vorlagen liegen als `*.atlas-snippet` in `%APPDATA%\Atlas\Snippets` (Atlas liest den Ordner bei Änderung neu, Fehler stehen im Diagnoseprotokoll) und ersetzen mitgelieferte mit gleichem Kürzel:
+Code-Vorlagen (#51): Am Anfang einer Anweisung stehen Vorlagen mit dem Badge `sn` und der Marke „Snippet“ in der Liste: `tryf` (try…finally mit Create/Free), `trye`, `forin`, `fori`, `while`, `repeat`, `class`, `record`, `prop`, `propset` (Setter mit Prüfung auf Änderung und `Invalidate`), `comp` (Komponentengerüst) und `reg` (Register-Prozedur). Enter setzt die Vorlage mit der Einrückung der Zeile ein und markiert den ersten Platzhalter; Tippen ersetzt ihn, gleich nummerierte Platzhalter ändern sich mit. Tab springt weiter, Umschalt+Tab zurück, nach dem letzten an die Endposition; Enter springt dorthin und beendet, Esc beendet an Ort und Stelle. Der aktuelle Platzhalter ist umrahmt, verknüpfte gestrichelt, dahinter steht „Platzhalter 1 / 2 · Tab weiter · Esc fertig“. Eigene Vorlagen liegen als `*.atlas-snippet` in `%APPDATA%\Atlas\Snippets` (Atlas liest den Ordner bei Änderung neu; fehlerhafte Dateien überspringt es) und ersetzen mitgelieferte mit gleichem Kürzel:
 
 ```
 name: Liste anlegen
@@ -56,7 +58,7 @@ end;
 
 `${1:Name}` ist ein Platzhalter mit Vorgabe, `${2}` einer ohne, `$0` die Endposition; `$FF` und andere Hexzahlen bleiben Text. Abschalten unter *Tools › Optionen › Drittanbieter › Atlas* („Code-Vorlagen (Snippets) in der Liste anbieten“, Registry-Wert `Snippets`).
 
-Zur Fehlersuche: Wert `Diagnose` (DWORD) = `1` unter `HKCU\Software\Atlas\IdePlugin` setzen und die IDE neu starten. Das Plugin schreibt dann jeden Aufruf der IDE (Hover, Strg+Klick, Position und Ergebnis) in `Atlas.IDE.Expert.log` neben der BPL.
+Zur Fehlersuche: Wert `Diagnose` (DWORD) = `1` unter `HKCU\Software\Atlas\IdePlugin` setzen und die IDE neu starten. Das Plugin schreibt dann jeden Aufruf der IDE (Hover, Strg+Klick, Position und Ergebnis) in `Atlas.IDE.Expert.log` neben der BPL. Die Datei enthält keine Pfade, Datei- oder Bezeichnernamen (nur Endungen, Positionen und Längen) und darf weitergegeben werden. Für die Vervollständigung steht dort auch, wie lange der Server brauchte, ob er nicht antwortete und warum das Popup schloss.
 
 Findet der Server keine Definition, passiert bei Strg+Klick nichts. Deklarationen in Include-Dateien (`{$I …}`) findet der Server erst mit dem Include-Resolver (#264).
 
@@ -79,7 +81,7 @@ RAD Studio 13 kann fremde Sprachserver (LSP) über stdio einbinden. So ersetzt d
 |---|---|
 | Name | `Atlas` |
 | Ausführbare Datei | Pfad zu `AtlasServer.exe` |
-| Befehlszeilenparameter | leer, oder zur Fehlersuche `--log C:\Temp\atlas.log --log-level debug` |
+| Befehlszeilenparameter | leer, oder zur Fehlersuche `--log C:\Temp\atlas.log --log-level debug` (anonymisiert: Pfade und Namen als `datei#N`/`name#N`; `--log-names` schreibt sie im Klartext) |
 | Sprachbezeichner | beliebig (siehe Schritt 2) |
 | Timeout | `15000` |
 | InitializationOptions | `{}` |

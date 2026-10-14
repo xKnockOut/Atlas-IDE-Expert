@@ -31,8 +31,11 @@ type
     /// <summary>Schlüssel für Projekt, Konfiguration, Plattform, Version, Symbole, Suchpfade und Namespaces;
     /// gleicher Schlüssel, gleicher Index. Ändert sich einer davon, gilt der Cache nicht mehr.</summary>
     class function Signature(const AProject: TProjectInfo; const ACompilerVersion: string): string; static;
-    /// <summary>Schlüssel des Bibliotheks-Caches (#492): Compilerversion, Plattform und Defines, ohne Projekt.
-    /// Projekte mit gleichem Stand teilen sich RTL/VCL; andere Defines ergeben andere {$IFDEF}-Zweige.</summary>
+    /// <summary>Symbole für die Units der Installation (#647): nur Plattform und Compilerversion. RTL, VCL
+    /// und FMX kommen als fertige DCUs; die Defines des Projekts wirken auf sie nicht.</summary>
+    class function LibraryDefines(const AProject: TProjectInfo; const ABdsVersion: string): TArray<string>; static;
+    /// <summary>Schlüssel des Bibliotheks-Caches (#492): Compilerversion und Plattform, ohne Projekt und
+    /// ohne dessen Defines (#647). Alle Projekte und Konfigurationen teilen sich RTL/VCL/FMX.</summary>
     class function LibrarySignature(const AProject: TProjectInfo; const ACompilerVersion: string): string; static;
   end;
 
@@ -137,10 +140,21 @@ begin
     TPascalPreprocessor.CompilerVersionOfBds(Version));
 end;
 
+class function TIndexProjectFiles.LibraryDefines(const AProject: TProjectInfo;
+  const ABdsVersion: string): TArray<string>;
+var
+  Version: Double;
+begin
+  if not TryStrToFloat(ABdsVersion, Version, TFormatSettings.Invariant) then
+    Version := 0;
+  Result := TPascalPreprocessor.PredefinedSymbols(AProject.Platform, TPascalPreprocessor.CompilerVersionOfBds(Version));
+end;
+
 class function TIndexProjectFiles.LibrarySignature(const AProject: TProjectInfo;
   const ACompilerVersion: string): string;
 begin
-  Result := 'LIBRARY|' + UpperCase(AProject.Platform) + '|' + ACompilerVersion + '|' + SortedKey(AProject.Defines);
+  // "2": Ältere Caches enthielten Units, die mit den Defines des Projekts gelesen wurden.
+  Result := 'LIBRARY2|' + UpperCase(AProject.Platform) + '|' + ACompilerVersion;
 end;
 
 class function TIndexProjectFiles.Signature(const AProject: TProjectInfo; const ACompilerVersion: string): string;

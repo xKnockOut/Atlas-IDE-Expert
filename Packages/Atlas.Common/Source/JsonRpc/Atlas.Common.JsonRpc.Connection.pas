@@ -36,6 +36,7 @@ type
     /// <summary>Posteingang des laufenden Run (IJsonRpcInbox), sonst nil.</summary>
     FInbox: IInterface;
     FWorkTimeout: Cardinal;
+    FOnLoopEnded: TProc;
     procedure ReportError(const AError: Exception);
     procedure ReportProblem(const AText: string);
     procedure Send(AMessage: TJSONObject);
@@ -58,6 +59,9 @@ type
     /// <summary>Wird aus der Schleife und aus Worker-Threads aufgerufen.</summary>
     property OnError: TJsonRpcErrorEvent read FOnError write FOnError;
     property WorkTimeout: Cardinal read FWorkTimeout write FWorkTimeout;
+    /// <summary>Die Schleife ist regulär zu Ende (Eingabe geschlossen oder Stop), bevor auf laufende
+    /// Anfragen gewartet wird. Für Abschlussmeldungen, die ein ungeduldiger Client sonst abschneidet.</summary>
+    property OnLoopEnded: TProc read FOnLoopEnded write FOnLoopEnded;
   end;
 
 implementation
@@ -442,6 +446,8 @@ begin
           ; // Stop wurde aufgerufen
       end;
     end;
+    if (Failure = nil) and Assigned(FOnLoopEnded) then
+      FOnLoopEnded();
   finally
     FInbox := nil;
     Inbox.Close;

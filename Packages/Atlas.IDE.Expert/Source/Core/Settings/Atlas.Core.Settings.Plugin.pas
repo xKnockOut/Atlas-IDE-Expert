@@ -105,11 +105,18 @@ type
     SlashCommands: Boolean;
     /// <summary>Code-Vorlagen in der Vervollständigung (#51, completion.snippets).</summary>
     Snippets: Boolean;
+    /// <summary>Umfang des Symbolindex für alle Projekte (#652); index in atlas.json hat Vorrang.</summary>
+    IndexProjectGroup: Boolean;
+    IndexSearchPaths: Boolean;
+    IndexLibraryPaths: Boolean;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
     procedure Load(const AStore: IAtlasSettingsStore);
     procedure Save(const AStore: IAtlasSettingsStore);
+    /// <summary>Einstellungen für den Server als JSON-Objekt im Format von atlas.json (#652); geht als
+    /// initializationOptions.settings.atlas und mit workspace/didChangeConfiguration an den Server.</summary>
+    function ServerSettingsJson: string;
   end;
 
 implementation
@@ -167,6 +174,10 @@ begin
   Result.EditorKeysPriority := False;
   Result.SlashCommands := True;
   Result.Snippets := True;
+  // Wie die Vorgaben im Schema (atlas.schema.json, index).
+  Result.IndexProjectGroup := True;
+  Result.IndexSearchPaths := True;
+  Result.IndexLibraryPaths := False;
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -222,6 +233,9 @@ begin
   EditorKeysPriority := AStore.ReadInteger('EditorKeysPriority', BoolValue(Default.EditorKeysPriority)) <> 0;
   SlashCommands := AStore.ReadInteger('SlashCommands', BoolValue(Default.SlashCommands)) <> 0;
   Snippets := AStore.ReadInteger('Snippets', BoolValue(Default.Snippets)) <> 0;
+  IndexProjectGroup := AStore.ReadInteger('IndexProjectGroup', BoolValue(Default.IndexProjectGroup)) <> 0;
+  IndexSearchPaths := AStore.ReadInteger('IndexSearchPaths', BoolValue(Default.IndexSearchPaths)) <> 0;
+  IndexLibraryPaths := AStore.ReadInteger('IndexLibraryPaths', BoolValue(Default.IndexLibraryPaths)) <> 0;
   Normalize;
 end;
 
@@ -265,6 +279,23 @@ begin
   AStore.WriteInteger('EditorKeysPriority', BoolValue(EditorKeysPriority));
   AStore.WriteInteger('SlashCommands', BoolValue(SlashCommands));
   AStore.WriteInteger('Snippets', BoolValue(Snippets));
+  AStore.WriteInteger('IndexProjectGroup', BoolValue(IndexProjectGroup));
+  AStore.WriteInteger('IndexSearchPaths', BoolValue(IndexSearchPaths));
+  AStore.WriteInteger('IndexLibraryPaths', BoolValue(IndexLibraryPaths));
+end;
+
+function JsonBool(AValue: Boolean): string;
+begin
+  if AValue then
+    Result := 'true'
+  else
+    Result := 'false';
+end;
+
+function TAtlasPluginSettings.ServerSettingsJson: string;
+begin
+  Result := '{"index":{"projectGroup":' + JsonBool(IndexProjectGroup) + ',"searchPaths":' +
+    JsonBool(IndexSearchPaths) + ',"libraryPaths":' + JsonBool(IndexLibraryPaths) + '}}';
 end;
 
 end.

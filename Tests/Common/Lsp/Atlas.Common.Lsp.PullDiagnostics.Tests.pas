@@ -21,6 +21,10 @@ type
     procedure ReportsClosedFilesInWorkspace;
     [Test]
     procedure WorkspaceSkipsKnownAndOpenFiles;
+    [Test]
+    procedure WorkspaceWaitsWhileIndexLoads;
+    [Test]
+    procedure WorkspaceStartsWhenIndexFinishes;
   end;
 
 implementation
@@ -224,6 +228,58 @@ begin
       end;
     finally
       Params.Free;
+    end;
+  finally
+    Fixture.Done;
+  end;
+end;
+
+procedure TLspPullDiagnosticsTests.WorkspaceWaitsWhileIndexLoads;
+var
+  Fixture: TFixture;
+  Result_: TJSONValue;
+begin
+  // Während des Indexaufbaus keine Befunde: Sie wären voller nicht gefundener Units (#647).
+  Fixture.Init;
+  try
+    Fixture.Pull.Busy :=
+      function: Boolean
+      begin
+        Result := True;
+      end;
+    Result_ := Fixture.Pull.WorkspaceReport(nil, Token);
+    try
+      Assert.AreEqual(0, (Result_ as TJSONObject).GetValue<TJSONArray>('items').Count);
+    finally
+      Result_.Free;
+    end;
+  finally
+    Fixture.Done;
+  end;
+end;
+
+procedure TLspPullDiagnosticsTests.WorkspaceStartsWhenIndexFinishes;
+var
+  Fixture: TFixture;
+  Result_: TJSONValue;
+  Calls: Integer;
+begin
+  // Wird der Index während des Wartens fertig, kommen die Befunde noch in derselben Antwort.
+  Fixture.Init;
+  try
+    Calls := 0;
+    Fixture.Pull.WaitMs := 5000;
+    Fixture.Pull.Busy :=
+      function: Boolean
+      begin
+        Inc(Calls);
+        Result := Calls < 3;
+      end;
+    Result_ := Fixture.Pull.WorkspaceReport(nil, Token);
+    try
+      Assert.AreEqual(1, (Result_ as TJSONObject).GetValue<TJSONArray>('items').Count);
+    finally
+      Result_.Free;
     end;
   finally
     Fixture.Done;

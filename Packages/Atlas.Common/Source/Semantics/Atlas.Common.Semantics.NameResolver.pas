@@ -132,10 +132,16 @@ type
     // Je Baum: Helfer je Typname und die Klasse der umgebenden Methode.
     FHelperTree: TSyntaxTree;
     FHelpers: TDictionary<string, TResolvedSymbol>;
+    // Units, die in diesem Resolver schon nicht gefunden wurden: nicht erneut suchen.
+    FMissingUnits: TDictionary<string, Boolean>;
+    // Zeit im Nachladen (EnsureUnit) für das Diagnoselog (#647).
+    FEnsureMs: Int64;
     FClassState: Integer;
     FClass: TResolvedSymbol;
     FInferDepth: Integer;
     function FindUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
+    /// <summary>Unit als Qualifizierer in einem Ausdruck (A.B.C): nachgeladen nur, wenn sie in uses steht.</summary>
+    function FindQualifierUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
     function UnitOf(const AResolved: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
     function ScopeUnits(const AUnit: TUnitIndex; AWithImplementation: Boolean): TArray<string>;
     function FromSymbol(const AUnit: TUnitIndex; const ASymbol: TIndexSymbol): TResolvedSymbol;
@@ -177,6 +183,9 @@ type
     function LookupInDeclarations(ANode: TSyntaxNode; const AName: string; out AResult: TResolvedSymbol): Boolean;
     function LookupInlineVars(ANode: TSyntaxNode; const AName: string; out AResult: TResolvedSymbol): Boolean;
     function MethodClass(out AType: TResolvedSymbol): Boolean;
+    /// <summary>Typ der umgebenden Methode und bei verschachtelten Typen (TAussen.TInnen.Methode) die
+    /// äußeren Typen, innerster zuerst; ihre Mitglieder sind dort ohne Präfix sichtbar.</summary>
+    function MethodClasses: TArray<TResolvedSymbol>;
     /// <summary>Unit aus dem Baum samt der Symbole ihrer $I-Dateien aus dem Index (#500).</summary>
     function TreeUnit(ATree: TSyntaxTree; const AFileName: string): TUnitIndex;
     function ResolveFirst(const ANames: TArray<string>; out AConsumed: Integer; out AResult: TResolvedSymbol): Boolean;
@@ -243,6 +252,11 @@ type
       const ATypeName, ATargetName: string): Boolean;
     /// <summary>Unit-Namespaces des Projekts (DCC_Namespace) für uses ohne Präfix.</summary>
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
+    /// <summary>Ist AName der Anfang eines Unit-Namens im Bereich (Atlas in Atlas.Core.Foo.Bar, Winapi in
+    /// Winapi.Windows.TextOut)? Nach PinTree bzw. Resolve gültig.</summary>
+    function IsUnitPrefix(const AName: string): Boolean;
+    /// <summary>Eingebauter Typ ohne Deklaration im Index (string, Integer, PChar …).</summary>
+    class function IsBuiltinTypeName(const AName: string): Boolean; static;
     /// <summary>Vorfilter für ScopeCandidates und MemberCandidates (#616): Symbole aus dem Index, deren Name
     /// nicht passt, werden nicht aufgebaut. nil = alle. Lokale Namen aus dem Baum filtert er nicht.</summary>
     property NameFilter: TCandidateNameFilter read FNameFilter write FNameFilter;
@@ -253,6 +267,7 @@ implementation
 uses
   System.StrUtils,
   System.Math,
+  System.Diagnostics,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Semantics.Attributes;
@@ -533,13 +548,15 @@ end;
 destructor TNameResolver.Destroy;
 begin
   FScopeSeen.Free;
+  FMissingUnits.Free;
   FHelpers.Free;
   inherited;
 end;
 
 function TNameResolver.FindUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
 var
-  Namespace: string;
+  Namespace, Key: string;
+  Watch: TStopwatch;
 begin
   if SameText(AName, FCurrent.UnitName) then
   begin
@@ -548,19 +565,66 @@ begin
   end;
   if FIndex.FindUnit(AName, AUnit) then
     Exit(True);
-  if Assigned(FEnsureUnit) and FEnsureUnit(AName) and FIndex.FindUnit(AName, AUnit) then
-    Exit(True);
-  // uses SysUtils mit Namespace System → System.SysUtils
+  // Erst alle Schreibweisen im Index (uses SysUtils mit Namespace System → System.SysUtils), dann
+  // erst nachladen: EnsureUnit durchsucht die Suchpfade aller Projekte und ist viel teurer (#647).
   for Namespace in FNamespaces do
-    if FIndex.FindUnit(Namespace + '.' + AName, AUnit) or
-      (Assigned(FEnsureUnit) and FEnsureUnit(Namespace + '.' + AName) and FIndex.FindUnit(Namespace + '.' + AName, AUnit)) then
+    if FIndex.FindUnit(Namespace + '.' + AName, AUnit) then
       Exit(True);
-  // Diagnoselog (#647): Unit weder im Index noch über die Suchpfade gefunden.
-  if Assigned(FEnsureUnit) then
-  begin
-    TRequestDiagnostics.Increment('missingUnits');
-    TRequestDiagnostics.ResolveFailed('unitNotFound');
+  if not Assigned(FEnsureUnit) then
+    Exit(False);
+  Key := UpperCase(AName);
+  if (FMissingUnits <> nil) and FMissingUnits.ContainsKey(Key) then
+    Exit(False);
+  Watch := TStopwatch.StartNew;
+  try
+    // Der Unit-Resolver probiert die Namespaces selbst (SysUtils → System.SysUtils). Findet er AName
+    // nicht, findet er auch Namespace.AName nicht; ein Suchlauf je Namespace kostete bei einer
+    // fehlenden Unit ein Vielfaches (#647).
+    if FEnsureUnit(AName) then
+    begin
+      if FIndex.FindUnit(AName, AUnit) then
+        Exit(True);
+      for Namespace in FNamespaces do
+        if FIndex.FindUnit(Namespace + '.' + AName, AUnit) then
+          Exit(True);
+    end;
+  finally
+    Inc(FEnsureMs, Watch.ElapsedMilliseconds);
+    TRequestDiagnostics.Note('ensureMs', Integer(FEnsureMs));
   end;
+  // Diagnoselog (#647): Unit weder im Index noch über die Suchpfade gefunden; je Unit einmal.
+  if FMissingUnits = nil then
+    FMissingUnits := TDictionary<string, Boolean>.Create;
+  FMissingUnits.Add(Key, True);
+  TRequestDiagnostics.Increment('missingUnits');
+  TRequestDiagnostics.ResolveFailed('unitNotFound');
+  Result := False;
+end;
+
+function TNameResolver.FindQualifierUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
+var
+  Used, Namespace: string;
+begin
+  // Jeder Ausdruck wie Form1.Edit1.Text prüft, ob ein Präfix eine Unit ist. Nachladen durchsucht die
+  // Suchpfade aller Projekte; das lohnt nur für Units aus uses, alle anderen nur aus dem Index (#647).
+  for Used in ScopeUnits(FCurrent, FInImplementation) do
+  begin
+    if SameText(Used, AName) then
+      Exit(FindUnit(AName, AUnit));
+    for Namespace in FNamespaces do
+      if SameText(Namespace + '.' + Used, AName) then
+        Exit(FindUnit(AName, AUnit));
+  end;
+  if SameText(AName, FCurrent.UnitName) then
+  begin
+    AUnit := FCurrent;
+    Exit(True);
+  end;
+  if FIndex.FindUnit(AName, AUnit) then
+    Exit(True);
+  for Namespace in FNamespaces do
+    if FIndex.FindUnit(Namespace + '.' + AName, AUnit) then
+      Exit(True);
   Result := False;
 end;
 
@@ -1280,12 +1344,24 @@ end;
 
 function TNameResolver.MethodClass(out AType: TResolvedSymbol): Boolean;
 var
+  Classes: TArray<TResolvedSymbol>;
+begin
+  Classes := MethodClasses;
+  Result := Length(Classes) > 0;
+  if Result then
+    AType := Classes[0];
+end;
+
+function TNameResolver.MethodClasses: TArray<TResolvedSymbol>;
+var
   Routines: TArray<TSyntaxNode>;
-  Name: string;
-  Dot: Integer;
+  Name, TypeName: string;
+  Parts: TArray<string>;
+  Dot, Index: Integer;
+  Current, Inner: TResolvedSymbol;
 begin
   // Äußerste Routine mit Punkt im Namen: procedure TFoo.Bar
-  Result := False;
+  Result := nil;
   if FTree = nil then
     Exit;
   Routines := EnclosingRoutines;
@@ -1295,13 +1371,57 @@ begin
   Dot := LastDelimiter('.', Name);
   if Dot = 0 then
     Exit;
-  Result := ResolveTypeName(Copy(Name, 1, Dot - 1), FCurrent, True, AType);
+  TypeName := Copy(Name, 1, Dot - 1);
+  // Verschachtelte Typen zuerst (procedure TAussen.TInnen.Methode): TAussen.TInnen sonst als Unit
+  // TAussen gesucht, mit Nachladen über alle Suchpfade, und die Felder blieben unaufgelöst (#647).
+  Parts := TypeName.Split(['.']);
+  if (Length(Parts) > 1) and ResolveTypeName(Parts[0], FCurrent, True, Current) then
+  begin
+    Result := [Current];
+    for Index := 1 to High(Parts) do
+    begin
+      if not FindMember(Current, Parts[Index], Inner) then
+      begin
+        Result := nil;
+        Break;
+      end;
+      Current := Inner;
+      Result := [Current] + Result;
+    end;
+    if Result <> nil then
+      Exit;
+  end;
+  if ResolveTypeName(TypeName, FCurrent, True, Current) then
+    Result := [Current];
+end;
+
+class function TNameResolver.IsBuiltinTypeName(const AName: string): Boolean;
+begin
+  Result := IsBuiltinName(AName) or MatchText(AName, ['PChar', 'PAnsiChar', 'PWideChar', 'OleVariant']);
+end;
+
+function TNameResolver.IsUnitPrefix(const AName: string): Boolean;
+var
+  UnitName, Namespace: string;
+begin
+  if StartsText(AName + '.', FCurrent.UnitName) then
+    Exit(True);
+  for UnitName in ScopeUnits(FCurrent, FInImplementation) do
+  begin
+    if StartsText(AName + '.', UnitName) then
+      Exit(True);
+    for Namespace in FNamespaces do
+      if StartsText(AName + '.', Namespace + '.' + UnitName) then
+        Exit(True);
+  end;
+  Result := False;
 end;
 
 function TNameResolver.ResolveFirst(const ANames: TArray<string>; out AConsumed: Integer;
   out AResult: TResolvedSymbol): Boolean;
 var
   ClassType: TResolvedSymbol;
+  Classes: TArray<TResolvedSymbol>;
   Count: Integer;
   UnitName: string;
   Found: TUnitIndex;
@@ -1309,22 +1429,25 @@ begin
   AConsumed := 1;
   if LookupLocal(ANames[0], AResult) then
     Exit(True);
-  if MethodClass(ClassType) then
+  Classes := MethodClasses;
+  if Length(Classes) > 0 then
   begin
     if SameText(ANames[0], 'Self') then
     begin
-      AResult := ClassType;
+      AResult := Classes[0];
       Exit(True);
     end;
-    if FindMember(ClassType, ANames[0], AResult) then
-      Exit(True);
+    // Innerster Typ zuerst, dann die äußeren (verschachtelte Typen sehen deren Mitglieder).
+    for ClassType in Classes do
+      if FindMember(ClassType, ANames[0], AResult) then
+        Exit(True);
   end;
   // Unit-Namen mit Punkten: längstes Präfix zuerst (System.SysUtils.Foo). Der
   // ganze Ausdruck zählt mit, sonst bleibt "Vcl.Werkzeug" in uses unaufgelöst.
   for Count := Length(ANames) downto 2 do
   begin
     UnitName := string.Join('.', Copy(ANames, 0, Count));
-    if FindUnit(UnitName, Found) then
+    if FindQualifierUnit(UnitName, Found) then
     begin
       AConsumed := Count;
       AResult := NoResult;
@@ -1337,7 +1460,7 @@ begin
   end;
   if LookupGlobal(FCurrent, ANames[0], FInImplementation, False, AResult) then
     Exit(True);
-  if FindUnit(ANames[0], Found) then
+  if FindQualifierUnit(ANames[0], Found) then
   begin
     AResult := NoResult;
     AResult.Kind := TResolvedKind.UnitName;

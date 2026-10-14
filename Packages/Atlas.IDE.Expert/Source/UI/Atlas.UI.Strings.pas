@@ -54,7 +54,8 @@ type
     SenderHeader,
     DataSourceFooter,
     GuardFooterKeys,
-    SettingsSnippets, PlaceholderFooter);
+    SettingsSnippets, PlaceholderFooter,
+    SettingsIndexGroup, SettingsIndexSearch, SettingsIndexLibrary);
 
   TAtlasStrings = class
   private class var
@@ -183,7 +184,9 @@ const
      'Quelle: %s',
      'Enter anwenden · weitertippen verwirft',
      'Code-Vorlagen (Snippets) in der Liste anbieten',
-     'Platzhalter %d / %d · Tab weiter · Esc fertig'),
+     'Platzhalter %d / %d · Tab weiter · Esc fertig',
+     'Index: alle Projekte der Projektgruppe', 'Index: alle Units der Projekt-Suchpfade',
+     'Index: alle Units der Delphi-Bibliothek (RTL, VCL, FMX, Komponenten)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -293,7 +296,9 @@ const
      'Source: %s',
      'Enter applies · keep typing to discard',
      'Offer code snippets in the list',
-     'Placeholder %d / %d · Tab next · Esc done'));
+     'Placeholder %d / %d · Tab next · Esc done',
+     'Index: all projects of the project group', 'Index: all units of the project search paths',
+     'Index: all units of the Delphi library (RTL, VCL, FMX, components)'));
 
 { TAtlasStrings }
 
