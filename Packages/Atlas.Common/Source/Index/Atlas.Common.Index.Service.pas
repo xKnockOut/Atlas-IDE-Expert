@@ -38,13 +38,17 @@ type
     /// <summary>Reihenfolge unter mehreren Projekten; kleiner = früher (aktives Projekt 0).</summary>
     Priority: Integer;
     Defines: TArray<string>;
+    /// <summary>Ordner der Installation und die Symbole, mit denen deren Units gelesen werden (#647);
+    /// siehe TIndexBuilder.LibraryRoots.</summary>
+    LibraryRoots: TArray<string>;
+    LibraryDefines: TArray<string>;
     ResolveUnit: TUnitFileResolver;
     /// <summary>Suchpfade für $I-Dateien (#264).</summary>
     IncludePaths: TArray<string>;
     /// <summary>Cache-Datei; '' = ohne Cache.</summary>
     CacheFile: string;
-    /// <summary>Gemeinsamer Cache der Bibliotheks-Units (RTL/VCL) je Compilerversion, Plattform und Defines;
-    /// '' = Bibliothek im Projekt-Cache (#492).</summary>
+    /// <summary>Gemeinsamer Cache der Units unter LibraryRoots (RTL/VCL/FMX) je Compilerversion und
+    /// Plattform; '' = Bibliothek im Projekt-Cache (#492).</summary>
     LibraryCacheFile: string;
     /// <summary>Cache nur lesen, z. B. weil eine andere Instanz ihn schreibt (#184).</summary>
     ReadOnlyCache: Boolean;
@@ -173,6 +177,12 @@ begin
       Exit(True);
 end;
 
+function InSharedCache(const ARequest: TIndexRequest; const AFileName: string): Boolean;
+begin
+  // Ohne Installationsordner wie bisher: alle nachgeladenen Units in den gemeinsamen Cache.
+  Result := (Length(ARequest.LibraryRoots) = 0) or TIndexBuilder.IsUnder(AFileName, ARequest.LibraryRoots);
+end;
+
 procedure TIndexService.WriteCaches(const ARequest: TIndexRequest; const ACached,
   ALibraryCached: TArray<TIndexCacheEntry>; AParsed: Integer);
 var
@@ -201,9 +211,11 @@ begin
     for FileName in ARequest.Files + ARequest.SearchFiles do
       Own.AddOrSetValue(AnsiUpperCase(FileName), True);
     for UnitIndex in FIndex.Units do
-      if UnitIndex.Library_ then
+      if UnitIndex.Library_ and InSharedCache(ARequest, UnitIndex.FileName) then
         LibraryUnits := LibraryUnits + [UnitIndex]
-      else if Own.ContainsKey(AnsiUpperCase(UnitIndex.FileName)) then
+      else if UnitIndex.Library_ or Own.ContainsKey(AnsiUpperCase(UnitIndex.FileName)) then
+        // Über uses erreichte Units außerhalb der Installation (gemeinsamer Firmencode) liest
+        // der Builder mit den Defines des Projekts; sie gehören in dessen Cache (#647).
         ProjectUnits := ProjectUnits + [UnitIndex];
   finally
     Own.Free;
@@ -247,6 +259,8 @@ begin
     Watch := TStopwatch.StartNew;
     Builder := TIndexBuilder.Create(FIndex, FFileSystem, ARequest.Defines, ARequest.ResolveUnit);
     Builder.IncludePaths := ARequest.IncludePaths;
+    Builder.LibraryRoots := ARequest.LibraryRoots;
+    Builder.LibraryDefines := ARequest.LibraryDefines;
     WaitForOtherWriter(ARequest);
     Cached := nil;
     LibraryCached := nil;
