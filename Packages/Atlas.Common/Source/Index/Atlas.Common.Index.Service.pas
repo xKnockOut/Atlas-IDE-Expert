@@ -140,23 +140,25 @@ begin
   inherited;
 end;
 
-/// <summary>Steht AUnit mit gleichem Stand (Zeitstempel, Prüfsumme) in AUnits?</summary>
-function ContainsUnit(const AUnits: TArray<TUnitIndex>; const AUnit: TUnitIndex): Boolean;
+/// <summary>Steht AUnit mit gleichem Stand (Zeitstempel, Prüfsumme) in AEntries?</summary>
+function ContainsUnit(const AEntries: TArray<TIndexCacheEntry>; const AUnit: TUnitIndex): Boolean;
 var
-  Candidate: TUnitIndex;
+  Candidate: TIndexCacheEntry;
 begin
   Result := False;
-  for Candidate in AUnits do
-    if SameText(Candidate.FileName, AUnit.FileName) and (Candidate.Stamp = AUnit.Stamp) and
-      (Candidate.Hash = AUnit.Hash) then
+  for Candidate in AEntries do
+    if SameText(Candidate.Header.FileName, AUnit.FileName) and (Candidate.Header.Stamp = AUnit.Stamp) and
+      (Candidate.Header.Hash = AUnit.Hash) then
       Exit(True);
 end;
 
 procedure TIndexService.Run(const ARequest: TIndexRequest);
 var
   Builder: TIndexBuilder;
-  Cached, LibraryCached, ProjectUnits, LibraryUnits: TArray<TUnitIndex>;
-  Text: string;
+  Cached, LibraryCached: TArray<TIndexCacheEntry>;
+  Entry: TIndexCacheEntry;
+  ProjectUnits, LibraryUnits: TArray<TUnitIndex>;
+  Data: TBytes;
   Watch: TStopwatch;
   BuildResult: TIndexBuildResult;
   UnitIndex: TUnitIndex;
@@ -170,11 +172,12 @@ begin
     WaitForOtherWriter(ARequest);
     Cached := nil;
     LibraryCached := nil;
-    if (ARequest.CacheFile <> '') and FFileSystem.ReadText(ARequest.CacheFile, Text) then
-      Cached := TIndexCache.Deserialize(Text);
+    // Nur die Köpfe lesen; die Symbole dekodiert der Builder je Unit, wenn er sie übernimmt (#617).
+    if (ARequest.CacheFile <> '') and FFileSystem.ReadBytes(ARequest.CacheFile, Data) then
+      Cached := TIndexCache.ReadEntries(Data);
     // Bibliothek aus dem gemeinsamen Cache; Einträge im Projekt-Cache (ältere Stände) gelten weiter.
-    if (ARequest.LibraryCacheFile <> '') and FFileSystem.ReadText(ARequest.LibraryCacheFile, Text) then
-      LibraryCached := TIndexCache.Deserialize(Text);
+    if (ARequest.LibraryCacheFile <> '') and FFileSystem.ReadBytes(ARequest.LibraryCacheFile, Data) then
+      LibraryCached := TIndexCache.ReadEntries(Data);
     Builder.UseCache(LibraryCached + Cached);
     // Erst mit gefülltem Cache veröffentlichen; bis dahin bedient der alte Builder EnsureUnit.
     ReplaceBuilder(Builder);
@@ -188,7 +191,7 @@ begin
       if ARequest.LibraryCacheFile = '' then
       begin
         if (BuildResult.Parsed > 0) or (Length(Cached) <> FIndex.UnitCount) then
-          FFileSystem.WriteText(ARequest.CacheFile, TIndexCache.Serialize(FIndex.Units));
+          FFileSystem.WriteBytes(ARequest.CacheFile, TIndexCache.Serialize(FIndex.Units));
       end
       else
       begin
@@ -201,7 +204,7 @@ begin
           else
             ProjectUnits := ProjectUnits + [UnitIndex];
         if (BuildResult.Parsed > 0) or (Length(Cached) <> Length(ProjectUnits)) then
-          FFileSystem.WriteText(ARequest.CacheFile, TIndexCache.Serialize(ProjectUnits));
+          FFileSystem.WriteBytes(ARequest.CacheFile, TIndexCache.Serialize(ProjectUnits));
         // Units anderer Projekte im gemeinsamen Cache behalten; neu sind nur die fehlenden.
         Current := TDictionary<string, Boolean>.Create;
         try
@@ -211,14 +214,15 @@ begin
           for UnitIndex in LibraryUnits do
             if not ContainsUnit(LibraryCached, UnitIndex) then
               LibraryChanged := True;
-          for UnitIndex in LibraryCached do
-            if not Current.ContainsKey(AnsiUpperCase(UnitIndex.FileName)) then
+          for Entry in LibraryCached do
+            if not Current.ContainsKey(AnsiUpperCase(Entry.Header.FileName)) and
+              TIndexCache.Expand(Entry, UnitIndex) then
               LibraryUnits := LibraryUnits + [UnitIndex];
         finally
           Current.Free;
         end;
         if LibraryChanged then
-          FFileSystem.WriteText(ARequest.LibraryCacheFile, TIndexCache.Serialize(LibraryUnits));
+          FFileSystem.WriteBytes(ARequest.LibraryCacheFile, TIndexCache.Serialize(LibraryUnits));
       end;
     end;
     if Assigned(FOnFinished) then

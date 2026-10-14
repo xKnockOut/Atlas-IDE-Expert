@@ -17,6 +17,8 @@
 //   Includes übernimmt der Builder aus dem Cache nur, wenn auch alle
 //   Include-Dateien denselben Zeitstempel haben (#617); eine geänderte
 //   Include-Datei liest alle Units neu ein, die sie einbinden.
+// - Aus dem Cache kommen zunächst nur die Köpfe; die Symbole einer Unit
+//   dekodiert der Builder erst, wenn er die Unit übernimmt (#617).
 // - Läuft im aufrufenden Thread; den Hintergrund-Thread stellt die
 //   Komposition bereit.
 
@@ -26,7 +28,8 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Index.Contract;
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.Cache;
 
 type
   TIndexBuildResult = record
@@ -42,7 +45,7 @@ type
     FFileSystem: IIndexFileSystem;
     FDefines: TArray<string>;
     FResolveUnit: TUnitFileResolver;
-    FCached: TDictionary<string, TUnitIndex>;
+    FCached: TDictionary<string, TIndexCacheEntry>;
     // Von EnsureUnit aus Anfrage-Threads genutzt.
     FFailedUnits: TDictionary<string, Boolean>;
     FFailedLock: TObject;
@@ -59,7 +62,9 @@ type
       const ADefines: TArray<string>; const AResolveUnit: TUnitFileResolver);
     destructor Destroy; override;
     /// <summary>Übernimmt einen geladenen Cache als Vergleichsstand.</summary>
-    procedure UseCache(const AUnits: TArray<TUnitIndex>);
+    procedure UseCache(const AUnits: TArray<TUnitIndex>); overload;
+    /// <summary>Übernimmt die Köpfe eines Caches; Symbole werden erst bei Bedarf dekodiert.</summary>
+    procedure UseCache(const AEntries: TArray<TIndexCacheEntry>); overload;
     function Build(const AFiles: TArray<string>; const AProgress: TIndexProgressEvent;
       const ACancelled: TIndexCancelled): TIndexBuildResult;
     /// <summary>Indiziert die Unit, falls noch nicht vorhanden. False, wenn sie nicht gefunden wird.</summary>
@@ -77,7 +82,6 @@ implementation
 
 uses
   Atlas.Common.Pascal.IncludeFiles,
-  Atlas.Common.Index.Cache,
   Atlas.Common.Index.Extractor;
 
 { TIndexBuilder }
@@ -90,7 +94,7 @@ begin
   FFileSystem := AFileSystem;
   FDefines := ADefines;
   FResolveUnit := AResolveUnit;
-  FCached := TDictionary<string, TUnitIndex>.Create;
+  FCached := TDictionary<string, TIndexCacheEntry>.Create;
   FFailedUnits := TDictionary<string, Boolean>.Create;
   FFailedLock := TObject.Create;
 end;
@@ -110,7 +114,16 @@ begin
   for UnitIndex in AUnits do
     // Kompakt gespeicherte Units fehlen Symbole; sie werden neu eingelesen.
     if not UnitIndex.Compact then
-      FCached.AddOrSetValue(AnsiUpperCase(UnitIndex.FileName), UnitIndex);
+      FCached.AddOrSetValue(AnsiUpperCase(UnitIndex.FileName), TIndexCacheEntry.FromUnit(UnitIndex));
+end;
+
+procedure TIndexBuilder.UseCache(const AEntries: TArray<TIndexCacheEntry>);
+var
+  Entry: TIndexCacheEntry;
+begin
+  for Entry in AEntries do
+    if not Entry.Header.Compact then
+      FCached.AddOrSetValue(AnsiUpperCase(Entry.Header.FileName), Entry);
 end;
 
 function TIndexBuilder.IsCancelled(const ACancelled: TIndexCancelled): Boolean;
@@ -171,6 +184,7 @@ function TIndexBuilder.IndexFile(const AFileName: string; ALibrary: Boolean;
 var
   Stamp: Int64;
   Text, Hash: string;
+  Entry: TIndexCacheEntry;
   Cached, UnitIndex: TUnitIndex;
   HasCache: Boolean;
 begin
@@ -179,11 +193,13 @@ begin
     Inc(AResult.Missing);
     Exit(False);
   end;
-  HasCache := FCached.TryGetValue(AnsiUpperCase(AFileName), Cached);
+  HasCache := FCached.TryGetValue(AnsiUpperCase(AFileName), Entry);
   // Mit Includes kann sich das Ergebnis ändern, ohne dass die Unit sich ändert.
-  if HasCache and not IncludesUnchanged(Cached) then
+  if HasCache and not IncludesUnchanged(Entry.Header) then
     HasCache := False;
-  if HasCache and (Cached.Stamp = Stamp) then
+  // Zeitstempel oder Inhalt passen: erst jetzt die Symbole dekodieren; ein beschädigter Block
+  // zählt wie ein fehlender Cache-Eintrag.
+  if HasCache and (Entry.Header.Stamp = Stamp) and TIndexCache.Expand(Entry, Cached) then
   begin
     Cached.Library_ := ALibrary;
     FIndex.AddUnit(Cached);
@@ -196,7 +212,7 @@ begin
     Exit(False);
   end;
   Hash := TIndexCache.HashOf(Text);
-  if HasCache and (Cached.Hash = Hash) then
+  if HasCache and (Entry.Header.Hash = Hash) and TIndexCache.Expand(Entry, Cached) then
   begin
     Cached.Stamp := Stamp;
     Cached.Library_ := ALibrary;

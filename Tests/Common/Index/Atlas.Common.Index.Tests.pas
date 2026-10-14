@@ -13,6 +13,7 @@ type
   TMemoryIndexFileSystem = class(TInterfacedObject, IIndexFileSystem)
   private
     FTexts: TDictionary<string, string>;
+    FBytes: TDictionary<string, TBytes>;
     FStamps: TDictionary<string, Int64>;
     FReads: Integer;
   public
@@ -22,6 +23,8 @@ type
     function FileStamp(const AFileName: string; out AStamp: Int64): Boolean;
     function ReadText(const AFileName: string; out AText: string): Boolean;
     function WriteText(const AFileName, AText: string): Boolean;
+    function ReadBytes(const AFileName: string; out ABytes: TBytes): Boolean;
+    function WriteBytes(const AFileName: string; const ABytes: TBytes): Boolean;
     procedure Delete(const AFileName: string);
     property Reads: Integer read FReads write FReads;
   end;
@@ -64,7 +67,13 @@ type
     [Test]
     procedure RoundTripsSpecialCharactersAndFlags;
     [Test]
-    procedure RejectsOtherVersionAndBrokenJson;
+    procedure RejectsOtherVersionAndBrokenData;
+    [Test]
+    procedure ReadsHeadersAndExpandsSymbolsOnDemand;
+    [Test]
+    procedure SharesEqualStringsAfterLoading;
+    [Test]
+    procedure RejectsDamagedSymbolBlock;
   end;
 
   [TestFixture]
@@ -97,6 +106,8 @@ type
     procedure ChangedIncludeReindexesUnit;
     [Test]
     procedure CachedIncludeUnitReusedUntilIncludeChanges;
+    [Test]
+    procedure DecodesOnlyUsedCacheEntries;
     [Test]
     // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
     [IgnoreMemoryLeaks]
@@ -217,12 +228,14 @@ constructor TMemoryIndexFileSystem.Create;
 begin
   inherited Create;
   FTexts := TDictionary<string, string>.Create;
+  FBytes := TDictionary<string, TBytes>.Create;
   FStamps := TDictionary<string, Int64>.Create;
 end;
 
 destructor TMemoryIndexFileSystem.Destroy;
 begin
   FStamps.Free;
+  FBytes.Free;
   FTexts.Free;
   inherited;
 end;
@@ -236,6 +249,7 @@ end;
 procedure TMemoryIndexFileSystem.Delete(const AFileName: string);
 begin
   FTexts.Remove(UpperCase(AFileName));
+  FBytes.Remove(UpperCase(AFileName));
   FStamps.Remove(UpperCase(AFileName));
 end;
 
@@ -265,6 +279,29 @@ begin
   TMonitor.Enter(Self);
   try
     FTexts.AddOrSetValue(UpperCase(AFileName), AText);
+    FStamps.AddOrSetValue(UpperCase(AFileName), 1);
+    Result := True;
+  finally
+    TMonitor.Exit(Self);
+  end;
+end;
+
+function TMemoryIndexFileSystem.ReadBytes(const AFileName: string; out ABytes: TBytes): Boolean;
+begin
+  TMonitor.Enter(Self);
+  try
+    Inc(FReads);
+    Result := FBytes.TryGetValue(UpperCase(AFileName), ABytes);
+  finally
+    TMonitor.Exit(Self);
+  end;
+end;
+
+function TMemoryIndexFileSystem.WriteBytes(const AFileName: string; const ABytes: TBytes): Boolean;
+begin
+  TMonitor.Enter(Self);
+  try
+    FBytes.AddOrSetValue(UpperCase(AFileName), ABytes);
     FStamps.AddOrSetValue(UpperCase(AFileName), 1);
     Result := True;
   finally
@@ -547,12 +584,85 @@ begin
   Assert.IsTrue(U.Unavailable[0].Unavailable);
 end;
 
-procedure TIndexCacheTests.RejectsOtherVersionAndBrokenJson;
+procedure TIndexCacheTests.RejectsOtherVersionAndBrokenData;
+var
+  Data: TBytes;
 begin
-  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.Deserialize('{"version":999,"units":[]}')));
-  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.Deserialize('{kaputt')));
-  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.Deserialize('')));
+  // Frühere Formate (JSON, Zeilenformat 10), fremde und abgeschnittene Daten.
+  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.Deserialize(TEncoding.UTF8.GetBytes('{"version":999,"units":[]}'))));
+  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.Deserialize(TEncoding.UTF8.GetBytes('ATLAS-INDEX'#9'10'#10))));
+  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.Deserialize(nil)));
+  Data := TIndexCache.Serialize([Extract(UnitA)]);
+  Assert.AreEqual<NativeInt>(1, Length(TIndexCache.Deserialize(Data)));
+  // Andere Version: das Byte nach der Kennung.
+  Data[8] := Data[8] + 1;
+  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.Deserialize(Data)));
+  Data := TIndexCache.Serialize([Extract(UnitA)]);
+  SetLength(Data, Length(Data) - 5);
+  Assert.AreEqual<NativeInt>(0, Length(TIndexCache.ReadEntries(Data)));
   Assert.AreNotEqual(TIndexCache.HashOf('a'), TIndexCache.HashOf('b'));
+end;
+
+procedure TIndexCacheTests.ReadsHeadersAndExpandsSymbolsOnDemand;
+var
+  Original, U: TUnitIndex;
+  Entries: TArray<TIndexCacheEntry>;
+begin
+  Original := Extract(UnitA);
+  Original.Stamp := 42;
+  Original.Includes := ['C:\Inc\a.inc'];
+  Original.IncludeStamps := [-1];
+  Entries := TIndexCache.ReadEntries(TIndexCache.Serialize([Original]));
+  Assert.AreEqual<NativeInt>(1, Length(Entries));
+  // Kopf vollständig, Symbole noch nicht dekodiert.
+  Assert.AreEqual('A', Entries[0].Header.UnitName);
+  Assert.AreEqual<Int64>(42, Entries[0].Header.Stamp);
+  Assert.AreEqual('B', Entries[0].Header.InterfaceUses[1]);
+  Assert.AreEqual<Int64>(-1, Entries[0].Header.IncludeStamps[0]);
+  Assert.AreEqual<NativeInt>(0, Length(Entries[0].Header.Symbols));
+  Assert.IsFalse(Entries[0].Expanded);
+  Assert.IsTrue(TIndexCache.Expand(Entries[0], U));
+  Assert.AreEqual<NativeInt>(Length(Original.Symbols), Length(U.Symbols));
+  Assert.AreEqual('C', U.ImplementationUses[0]);
+end;
+
+procedure TIndexCacheTests.SharesEqualStringsAfterLoading;
+var
+  First, Second: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Loaded: TArray<TUnitIndex>;
+begin
+  // Gleiche Texte stehen einmal in der String-Tabelle und teilen sich nach dem Laden eine Instanz.
+  Symbol := Default(TIndexSymbol);
+  Symbol.Name := 'Wert';
+  Symbol.TypeName := 'TDictionary<string,Integer>';
+  First := Default(TUnitIndex);
+  First.UnitName := 'Erste';
+  First.FileName := 'C:\Erste.pas';
+  First.Symbols := [Symbol];
+  Second := First;
+  Second.UnitName := 'Zweite';
+  Second.FileName := 'C:\Zweite.pas';
+  Loaded := TIndexCache.Deserialize(TIndexCache.Serialize([First, Second]));
+  Assert.AreEqual<NativeInt>(2, Length(Loaded));
+  Assert.AreEqual(Symbol.TypeName, Loaded[1].Symbols[0].TypeName);
+  Assert.IsTrue(Pointer(Loaded[0].Symbols[0].TypeName) = Pointer(Loaded[1].Symbols[0].TypeName));
+end;
+
+procedure TIndexCacheTests.RejectsDamagedSymbolBlock;
+var
+  Data: TBytes;
+  Entries: TArray<TIndexCacheEntry>;
+  U: TUnitIndex;
+begin
+  Data := TIndexCache.Serialize([Extract(UnitA)]);
+  Entries := TIndexCache.ReadEntries(Data);
+  Assert.AreEqual<NativeInt>(1, Length(Entries));
+  // Verweis auf einen Text weit hinter der Tabelle.
+  Data[Entries[0].SymbolOffset] := $FF;
+  Data[Entries[0].SymbolOffset + 1] := $7F;
+  Assert.IsFalse(TIndexCache.Expand(Entries[0], U));
+  Assert.AreEqual<NativeInt>(0, Length(U.Symbols));
 end;
 
 { TIndexBuilderTests }
@@ -833,6 +943,51 @@ begin
   Assert.AreEqual<NativeInt>(0, Length(FIndex.FindSymbols('TMitNeu')));
 end;
 
+procedure TIndexBuilderTests.DecodesOnlyUsedCacheEntries;
+var
+  Builder: TIndexBuilder;
+  Data: TBytes;
+  Entries: TArray<TIndexCacheEntry>;
+  Entry: TIndexCacheEntry;
+  BuildResult: TIndexBuildResult;
+begin
+  // #617: Der Builder liest nur die Köpfe und dekodiert die Symbole der Units, die er übernimmt.
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  try
+    Builder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], nil, nil);
+    Assert.IsTrue(Builder.EnsureUnit('F'));
+  finally
+    Builder.Free;
+  end;
+  Data := TIndexCache.Serialize(FIndex.Units);
+  // Den Symbolblock von F beschädigen; die Köpfe bleiben lesbar.
+  for Entry in TIndexCache.ReadEntries(Data) do
+    if SameText(Entry.Header.UnitName, 'F') then
+    begin
+      Data[Entry.SymbolOffset] := $FF;
+      Data[Entry.SymbolOffset + 1] := $7F;
+    end;
+  Entries := TIndexCache.ReadEntries(Data);
+  Assert.AreEqual<NativeInt>(6, Length(Entries));
+  FIndex := TSymbolIndex.Create;
+  FFiles.Reads := 0;
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  try
+    Builder.UseCache(Entries);
+    BuildResult := Builder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], nil, nil);
+    Assert.AreEqual(0, BuildResult.Parsed);
+    Assert.AreEqual(5, BuildResult.FromCache);
+    Assert.AreEqual(0, FFiles.Reads);
+    Assert.AreEqual<NativeInt>(1, Length(FIndex.FindSymbols('TB')));
+    // F wurde nie gebraucht; erst EnsureUnit stößt auf den beschädigten Block und liest die Datei.
+    Assert.IsTrue(Builder.EnsureUnit('F'));
+  finally
+    Builder.Free;
+  end;
+  Assert.AreEqual(1, FFiles.Reads);
+  Assert.AreEqual<NativeInt>(1, Length(FIndex.FindSymbols('TF')));
+end;
+
 procedure TIndexBuilderTests.EnsureUnitDoesNotWaitForOtherRequests;
 var
   Service: TIndexService;
@@ -891,7 +1046,7 @@ var
   Service: TIndexService;
   Request: TIndexRequest;
   Finished: Boolean;
-  Text: string;
+  Data: TBytes;
 begin
   Finished := False;
   Service := TIndexService.Create(FIndex, FFileSystem);
@@ -913,15 +1068,15 @@ begin
   finally
     Service.Free;
   end;
-  Assert.IsTrue(FFileSystem.ReadText('C:\Cache\index.json', Text));
-  Assert.AreEqual<NativeInt>(5, Length(TIndexCache.Deserialize(Text)));
+  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\index.json', Data));
+  Assert.AreEqual<NativeInt>(5, Length(TIndexCache.Deserialize(Data)));
 end;
 
 procedure TIndexBuilderTests.ServiceSharesLibraryCache;
 var
   Service: TIndexService;
   Request: TIndexRequest;
-  Text: string;
+  Data: TBytes;
   FromCache: Integer;
   UnitIndex: TUnitIndex;
 begin
@@ -938,11 +1093,11 @@ begin
   finally
     Service.Free;
   end;
-  Assert.IsTrue(FFileSystem.ReadText('C:\Cache\projekt1.json', Text));
-  for UnitIndex in TIndexCache.Deserialize(Text) do
+  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\projekt1.json', Data));
+  for UnitIndex in TIndexCache.Deserialize(Data) do
     Assert.IsFalse(UnitIndex.Library_, 'keine Bibliothek im Projekt-Cache: ' + UnitIndex.FileName);
-  Assert.IsTrue(FFileSystem.ReadText('C:\Cache\bibliothek.json', Text));
-  Assert.AreEqual<NativeInt>(3, Length(TIndexCache.Deserialize(Text)));
+  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\bibliothek.json', Data));
+  Assert.AreEqual<NativeInt>(3, Length(TIndexCache.Deserialize(Data)));
   // Zweites Projekt mit eigenem Cache: die Bibliothek kommt aus dem gemeinsamen.
   FIndex := TSymbolIndex.Create;
   FromCache := -1;
@@ -969,7 +1124,7 @@ var
   Service: TIndexService;
   Request: TIndexRequest;
   Builder: TIndexBuilder;
-  CacheText: string;
+  CacheData: TBytes;
   Busy: Boolean;
   Writer: TThread;
 begin
@@ -980,7 +1135,7 @@ begin
   finally
     Builder.Free;
   end;
-  CacheText := TIndexCache.Serialize(FIndex.Units);
+  CacheData := TIndexCache.Serialize(FIndex.Units);
   FIndex := TSymbolIndex.Create;
   Busy := True;
   // Die andere Instanz schreibt nach kurzer Zeit ihren Cache und gibt die Sperre frei.
@@ -988,7 +1143,7 @@ begin
     procedure
     begin
       TThread.Sleep(300);
-      FFileSystem.WriteText(CacheFile, CacheText);
+      FFileSystem.WriteBytes(CacheFile, CacheData);
       Busy := False;
     end);
   Writer.FreeOnTerminate := False;
@@ -1023,7 +1178,7 @@ procedure TIndexBuilderTests.ReadOnlyServiceStopsWaitingAfterLimit;
 var
   Service: TIndexService;
   Request: TIndexRequest;
-  Text: string;
+  Data: TBytes;
 begin
   Service := TIndexService.Create(FIndex, FFileSystem);
   try
@@ -1045,7 +1200,7 @@ begin
     Service.Free;
   end;
   // Nur lesend: kein Cache geschrieben.
-  Assert.IsFalse(FFileSystem.ReadText('C:\Cache\index.json', Text));
+  Assert.IsFalse(FFileSystem.ReadBytes('C:\Cache\index.json', Data));
 end;
 
 { TIndexProjectFilesTests }

@@ -46,6 +46,8 @@ type
     [Test]
     procedure DiskFileSystemOverwritesExistingFile;
     [Test]
+    procedure DiskFileSystemRoundTripsBytes;
+    [Test]
     procedure FileNameDependsOnlyOnSignature;
     [Test]
     procedure ConcurrentWritersLeaveReadableCache;
@@ -255,6 +257,29 @@ begin
     Assert.IsTrue(FileSystem.WriteText(Cache, '{"version":2}'));
     Assert.IsTrue(FileSystem.ReadText(Cache, Text));
     Assert.AreEqual('{"version":2}', Text);
+    Assert.AreEqual(1, Integer(Length(TDirectory.GetFiles(FRoot))), 'keine .tmp- oder .bak-Reste');
+  finally
+    FileSystem.Free;
+  end;
+end;
+
+procedure TIndexCacheDirectoryTests.DiskFileSystemRoundTripsBytes;
+var
+  FileSystem: TDiskIndexFileSystem;
+  Cache: string;
+  Data: TBytes;
+begin
+  // Binärer Cache (#617): Bytes kommen unverändert zurück, auch Nullbytes; fehlende Datei = False.
+  Cache := CreateCache('index-00000003.json');
+  FileSystem := TDiskIndexFileSystem.Create;
+  try
+    Assert.IsTrue(FileSystem.WriteBytes(Cache, TBytes.Create(0, 1, 255, 0, 13, 10)));
+    Assert.IsTrue(FileSystem.ReadBytes(Cache, Data));
+    Assert.AreEqual<NativeInt>(6, Length(Data));
+    Assert.AreEqual<Byte>(255, Data[2]);
+    Assert.AreEqual<Byte>(0, Data[3]);
+    Assert.IsFalse(FileSystem.ReadBytes(TPath.Combine(FRoot, 'fehlt.json'), Data));
+    Assert.AreEqual<NativeInt>(0, Length(Data));
     Assert.AreEqual(1, Integer(Length(TDirectory.GetFiles(FRoot))), 'keine .tmp- oder .bak-Reste');
   finally
     FileSystem.Free;

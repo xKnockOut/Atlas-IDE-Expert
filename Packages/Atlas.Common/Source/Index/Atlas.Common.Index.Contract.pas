@@ -134,6 +134,10 @@ type
     function FileStamp(const AFileName: string; out AStamp: Int64): Boolean;
     function ReadText(const AFileName: string; out AText: string): Boolean;
     function WriteText(const AFileName, AText: string): Boolean;
+    /// <summary>Binärer Inhalt (Index-Cache, #617); False, wenn die Datei fehlt.</summary>
+    function ReadBytes(const AFileName: string; out ABytes: TBytes): Boolean;
+    /// <summary>Schreibt den binären Inhalt so, dass ein Leser nie einen halben Stand sieht.</summary>
+    function WriteBytes(const AFileName: string; const ABytes: TBytes): Boolean;
   end;
 
   TIndexProgressKind = (Started, Report, Finished);

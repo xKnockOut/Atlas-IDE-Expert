@@ -33,6 +33,8 @@ type
     function FileStamp(const AFileName: string; out AStamp: Int64): Boolean;
     function ReadText(const AFileName: string; out AText: string): Boolean;
     function WriteText(const AFileName, AText: string): Boolean;
+    function ReadBytes(const AFileName: string; out ABytes: TBytes): Boolean;
+    function WriteBytes(const AFileName: string; const ABytes: TBytes): Boolean;
   end;
 
 constructor TStampFileSystem.Create;
@@ -59,6 +61,17 @@ begin
 end;
 
 function TStampFileSystem.WriteText(const AFileName, AText: string): Boolean;
+begin
+  Result := False;
+end;
+
+function TStampFileSystem.ReadBytes(const AFileName: string; out ABytes: TBytes): Boolean;
+begin
+  ABytes := nil;
+  Result := False;
+end;
+
+function TStampFileSystem.WriteBytes(const AFileName: string; const ABytes: TBytes): Boolean;
 begin
   Result := False;
 end;
