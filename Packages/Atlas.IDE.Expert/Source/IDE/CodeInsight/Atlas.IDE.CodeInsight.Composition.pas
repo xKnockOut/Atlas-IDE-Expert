@@ -2,8 +2,8 @@
 
 // Meldet den Code Insight-Manager, die Optionsseite "Atlas" (#227), die
 // Compile-Ereignisse (#527), den Einfrier-Wächter (#501), das Neuladen
-// extern geänderter Dateien (#536), die Befehlspalette (#502) und die farbigen
-// Klammerpaare (#514) beim Laden des
+// extern geänderter Dateien (#536), die Befehlspalette (#502), die farbigen
+// Klammerpaare (#514) und das Ergebnisfenster (#400) beim Laden des
 // Packages an und beim Entladen in umgekehrter Reihenfolge wieder ab (ADR 0006).
 
 interface
@@ -42,6 +42,9 @@ uses
   Atlas.IDE.Commands.MainMenu,
   Atlas.IDE.Editor.Rename,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Lsp.Session,
+  Atlas.Core.Results.Model,
+  Atlas.IDE.Results.Commands,
   Atlas.IDE.Commands.Keys;
 
 var
@@ -142,6 +145,47 @@ begin
     procedure
     begin
       RenameSymbol;
+    end);
+  // Ergebnisfenster (#400).
+  Palette.RegisterCommand('Atlas.References', TAtlasStrings.Text(TAtlasTextId.MenuReferences), '',
+    procedure
+    begin
+      TAtlasIdeResults.FindReferences;
+    end);
+  Palette.RegisterCommand('Atlas.Implementations', TAtlasStrings.Text(TAtlasTextId.MenuImplementations), '',
+    procedure
+    begin
+      TAtlasIdeResults.FindImplementations;
+    end);
+  Palette.RegisterCommand('Atlas.SymbolSearch', TAtlasStrings.Text(TAtlasTextId.MenuSymbolSearch), '',
+    procedure
+    begin
+      TAtlasIdeResults.SearchSymbol;
+    end);
+  Palette.RegisterCommand('Atlas.Callers', TAtlasStrings.Text(TAtlasTextId.MenuIncoming), '',
+    procedure
+    begin
+      TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Incoming);
+    end);
+  Palette.RegisterCommand('Atlas.Calls', TAtlasStrings.Text(TAtlasTextId.MenuOutgoing), '',
+    procedure
+    begin
+      TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Outgoing);
+    end);
+  Palette.RegisterCommand('Atlas.Supertypes', TAtlasStrings.Text(TAtlasTextId.MenuSupertypes), '',
+    procedure
+    begin
+      TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Supertypes);
+    end);
+  Palette.RegisterCommand('Atlas.Subtypes', TAtlasStrings.Text(TAtlasTextId.MenuSubtypes), '',
+    procedure
+    begin
+      TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Subtypes);
+    end);
+  Palette.RegisterCommand('Atlas.ResultsWindow', TAtlasStrings.Text(TAtlasTextId.MenuResultsWindow), '',
+    procedure
+    begin
+      TAtlasIdeResults.ShowWindow;
     end);
   Palette.RegisterCommand('Atlas.ResetHistory', TAtlasStrings.Text(TAtlasTextId.PaletteResetHistory), '',
     procedure
@@ -321,6 +365,17 @@ begin
         if Manager <> nil then
           Manager.Report(AText);
       end);
+  TAtlasIdeResults.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.ActiveSession;
+    end,
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
   if Palette = nil then
     RegisterPalette;
   if Pairs = nil then
@@ -410,6 +465,7 @@ begin
   FreeAndNil(EditInbox);
   FreeAndNil(DirtyExport);
   FreeAndNil(MainMenu);
+  TAtlasIdeResults.Uninstall;
   FreeAndNil(Pairs);
   FreeAndNil(CheckOnSave);
   FreeAndNil(Palette);

@@ -7,6 +7,8 @@
 // (TAtlasIdeWorkspaceEdit), je Datei ein Rückgängig-Schritt.
 // Vorher bekommt der Server den aktuellen Text aller offenen, schon
 // abgeglichenen Dateien, damit seine Positionen zu den Puffern passen.
+// Vor dem Übernehmen zeigt eine Vorschau alle betroffenen Zeilen vorher und
+// nachher (#400); erst „Umbenennen“ ändert etwas.
 // Ergebnis und Fehler als Zeile in der Meldungsansicht, nie als Dialog.
 
 interface
@@ -17,9 +19,9 @@ uses
 
 type
   TAtlasIdeRename = class
-  private
-    class procedure SyncOpenBuffers(ASession: TLspSession); static;
   public
+    /// <summary>Schickt dem Server den aktuellen Text aller offenen, schon abgeglichenen Dateien.</summary>
+    class procedure SyncOpenBuffers(ASession: TLspSession); static;
     /// <summary>ASession: laufende Sitzung oder nil; AOpenUnopened: nicht geöffnete Dateien öffnen
     /// statt sie auf die Platte zu schreiben; AMessage: Zeile für die Meldungsansicht.</summary>
     class procedure Execute(ASession: TLspSession; AOpenUnopened: Boolean; const AMessage: TProc<string>); static;
@@ -34,8 +36,11 @@ uses
   Atlas.UI.Strings,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Core.Results.Model,
+  Atlas.UI.Results.RenamePreview,
   Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.WorkspaceEdit;
+  Atlas.IDE.Editor.WorkspaceEdit,
+  Atlas.IDE.Hover.Editor;
 
 const
   // Projektweit über viele Units; deutlich länger als eine Hover-Anfrage.
@@ -65,6 +70,7 @@ var
   Response: TJSONValue;
   Edit: TLspWorkspaceEdit;
   Outcome: TAtlasWorkspaceEditResult;
+  Preview: TArray<TAtlasResultEntry>;
 begin
   if ASession = nil then
   begin
@@ -130,6 +136,20 @@ begin
     AMessage(TAtlasStrings.Text(TAtlasTextId.RenameNothing));
     Exit;
   end;
+  // Vorschau (#400): alle betroffenen Zeilen vorher und nachher.
+  Preview := TAtlasResults.RenamePreview(Edit,
+    function(const AFileName: string): string
+    begin
+      Result := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
+    end);
+  if not TAtlasRenamePreview.Execute(TAtlasStrings.Fmt(TAtlasTextId.RenamePreviewTitle, [OldName, NewName]),
+    TAtlasStrings.Fmt(TAtlasTextId.RenamePreviewHint, [Edit.EditCount, Length(Edit.Files)]),
+    TAtlasResults.Group(Preview),
+    procedure(const AFileName: string; ALine, ACharacter: Integer)
+    begin
+      TAtlasEditorHover.GoToLocation(AFileName, ALine, ACharacter);
+    end) then
+    Exit;
   Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, AOpenUnopened);
   if Outcome.Error <> '' then
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]))

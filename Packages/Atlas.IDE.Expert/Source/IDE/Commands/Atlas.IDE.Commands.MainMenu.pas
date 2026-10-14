@@ -11,6 +11,8 @@
 // Meldungsansicht, „Index neu aufbauen“ liest alles ohne Cache neu ein.
 // „Diagnoselog exportieren…“ (#647) packt das anonymisierte Log in eine ZIP.
 // „Symbol umbenennen…“ (#397) ruft OnRename auf.
+// Referenzen, Implementierungen, Symbolsuche und Hierarchien öffnen das
+// Ergebnisfenster (#400).
 
 interface
 
@@ -20,6 +22,7 @@ uses
   System.JSON,
   Vcl.Menus,
   Vcl.ExtCtrls,
+  Atlas.UI.Strings,
   Atlas.Core.Settings.Plugin;
 
 type
@@ -39,6 +42,8 @@ type
     FShownProgress: string;
     FOnRename: TProc;
     procedure RenameClick(Sender: TObject);
+    procedure ResultsClick(Sender: TObject);
+    function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
     procedure EnableAllClick(Sender: TObject);
     procedure TimerTick(Sender: TObject);
     procedure IndexStatusClick(Sender: TObject);
@@ -65,11 +70,12 @@ implementation
 uses
   Atlas.Core.Diagnostics.Guard,
   ToolsAPI,
-  Atlas.UI.Strings,
   Atlas.IDE.Settings.Store,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Editor.Structure,
   Atlas.IDE.Diagnostics.Export,
+  Atlas.IDE.Results.Commands,
+  Atlas.Core.Results.Model,
   Atlas.Core.Lsp.Progress;
 
 const
@@ -130,6 +136,16 @@ begin
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.RenameMenu);
   Item.OnClick := RenameClick;
   FRoot.Add(Item);
+  FRoot.Add(NewLine);
+  // Ergebnisfenster (#400); Tag wählt den Befehl in ResultsClick.
+  AddItem(TAtlasTextId.MenuReferences, 0, ResultsClick);
+  AddItem(TAtlasTextId.MenuImplementations, 1, ResultsClick);
+  AddItem(TAtlasTextId.MenuSymbolSearch, 2, ResultsClick);
+  AddItem(TAtlasTextId.MenuIncoming, 3, ResultsClick);
+  AddItem(TAtlasTextId.MenuOutgoing, 4, ResultsClick);
+  AddItem(TAtlasTextId.MenuSupertypes, 5, ResultsClick);
+  AddItem(TAtlasTextId.MenuSubtypes, 6, ResultsClick);
+  AddItem(TAtlasTextId.MenuResultsWindow, 7, ResultsClick);
   FRoot.Add(NewLine);
   Item := TMenuItem.Create(FRoot);
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.MenuIndexStatus);
@@ -340,6 +356,37 @@ begin
       begin
         FOnRename();
       end);
+end;
+
+function TAtlasMainMenu.AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
+begin
+  Result := TMenuItem.Create(FRoot);
+  Result.Caption := TAtlasStrings.Text(AText);
+  Result.Tag := ATag;
+  Result.OnClick := AOnClick;
+  FRoot.Add(Result);
+end;
+
+procedure TAtlasMainMenu.ResultsClick(Sender: TObject);
+var
+  Command: Integer;
+begin
+  Command := TMenuItem(Sender).Tag;
+  TAtlasGuard.Run(TAtlasFeature.Results,
+    procedure
+    begin
+      case Command of
+        0: TAtlasIdeResults.FindReferences;
+        1: TAtlasIdeResults.FindImplementations;
+        2: TAtlasIdeResults.SearchSymbol;
+        3: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Incoming);
+        4: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Outgoing);
+        5: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Supertypes);
+        6: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Subtypes);
+      else
+        TAtlasIdeResults.ShowWindow;
+      end;
+    end);
 end;
 
 procedure TAtlasMainMenu.EnableAllClick(Sender: TObject);

@@ -56,6 +56,10 @@ type
     procedure AcceptsApplyEditAndRepliesLater;
     [Test]
     procedure ReadsParameterInlayHints;
+    [Test]
+    procedure ReadsImplementationsAndSymbols;
+    [Test]
+    procedure WalksCallAndTypeHierarchies;
   end;
 
   [TestFixture]
@@ -86,6 +90,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Classes,
   System.IOUtils,
   System.JSON,
   System.Generics.Collections,
@@ -97,6 +102,7 @@ uses
   Atlas.Core.Files.WatchedChanges,
   Atlas.Core.Projects.Context,
   Atlas.Core.InlayHints.Store,
+  Atlas.Core.Results.Model,
   Atlas.Core.Problems.Contract;
 
 // Liest die JSON-Nachricht aus gerahmten Bytes.
@@ -1127,6 +1133,132 @@ begin
     Index := Random(Length(Old) + 1);
     New_ := Copy(Old, 1, Index) + RandomText(Random(4)) + Copy(Old, Index + Random(3) + 1, MaxInt);
     Assert.AreEqual(New_, Applied(Old, TLspTextChanges.Between(Old, New_)), Format('%d: "%s" -> "%s"', [Round, Old, New_]));
+  end;
+end;
+
+/// <summary>Client, der je Methode mit AReplies[Methode] antwortet und die Parameter in ASeen sammelt.</summary>
+function CannedClient(const AReplies: TDictionary<string, string>; ASeen: TStrings): TLspClient;
+var
+  Client: TLspClient;
+begin
+  Client := nil;
+  Client := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    var
+      Message: TJSONObject;
+      Reply: TBytes;
+      Method, Answer: string;
+    begin
+      Message := Unframe(ABytes);
+      try
+        Method := Message.GetValue<string>('method', '');
+        if not AReplies.TryGetValue(Method, Answer) or (Message.GetValue('id') = nil) then
+          Exit;
+        ASeen.Add(Method + ' ' + Message.GetValue('params').ToJSON);
+        Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":%s}',
+          [Message.GetValue<Integer>('id'), Answer]));
+        Client.Receive(Reply, Length(Reply));
+      finally
+        Message.Free;
+      end;
+    end);
+  Result := Client;
+end;
+
+procedure TLspSessionTests.ReadsImplementationsAndSymbols;
+var
+  Replies: TDictionary<string, string>;
+  Seen: TStringList;
+  Client: TLspClient;
+  Session: TLspSession;
+  Locations: TArray<TLspLocation>;
+  Symbols: TArray<TAtlasSymbol>;
+  Single: TJSONValue;
+begin
+  Replies := TDictionary<string, string>.Create;
+  Seen := TStringList.Create;
+  Client := CannedClient(Replies, Seen);
+  Session := TLspSession.Create(Client);
+  try
+    // LocationLink: Ziel ist der Name (targetSelectionRange), nicht der ganze Rumpf.
+    Replies.Add('textDocument/implementation', '[{"targetUri":"file:///c:/p/b.pas",' +
+      '"targetRange":{"start":{"line":10,"character":0},"end":{"line":20,"character":4}},' +
+      '"targetSelectionRange":{"start":{"line":10,"character":17},"end":{"line":10,"character":21}}}]');
+    Replies.Add('workspace/symbol', '[{"name":"TKunde","kind":5,"containerName":"Kunden",' +
+      '"location":{"uri":"file:///c:/p/kunden.pas","range":{"start":{"line":7,"character":2},' +
+      '"end":{"line":7,"character":8}}}},{"name":"ohne Ort","kind":12}]');
+    Locations := Session.Implementations('C:\P\A.pas', 3, 4);
+    Assert.AreEqual(1, Integer(Length(Locations)));
+    Assert.AreEqual('c:\p\b.pas', Locations[0].FileName);
+    Assert.AreEqual(10, Locations[0].Line);
+    Assert.AreEqual(17, Locations[0].Character);
+    Symbols := Session.WorkspaceSymbols('Kun', 1000);
+    Assert.AreEqual(1, Integer(Length(Symbols)), 'Symbole ohne Ort entfallen');
+    Assert.AreEqual('TKunde', Symbols[0].Name);
+    Assert.AreEqual('Kunden', Symbols[0].Container);
+    Assert.AreEqual(5, Symbols[0].Kind);
+    Assert.AreEqual('c:\p\kunden.pas', Symbols[0].FileName);
+    Assert.AreEqual(7, Symbols[0].Line);
+    Assert.Contains(Seen.Text, 'workspace/symbol {"query":"Kun"}');
+    // Einzelne Location statt Liste.
+    Single := TJSONObject.ParseJSONValue('{"uri":"file:///c:/p/c.pas","range":{"start":{"line":1,"character":2}}}');
+    try
+      Assert.AreEqual(1, Integer(Length(TLspSession.LocationsOf(Single))));
+    finally
+      Single.Free;
+    end;
+  finally
+    Session.Free;
+    Client.Free;
+    Seen.Free;
+    Replies.Free;
+  end;
+end;
+
+procedure TLspSessionTests.WalksCallAndTypeHierarchies;
+const
+  Item = '{"name":"%s","kind":12,"detail":"%s","uri":"file:///c:/p/a.pas",' +
+    '"range":{"start":{"line":%d,"character":0},"end":{"line":%d,"character":9}},' +
+    '"selectionRange":{"start":{"line":%d,"character":10},"end":{"line":%d,"character":15}},"data":{"id":%d}}';
+var
+  Replies: TDictionary<string, string>;
+  Seen: TStringList;
+  Client: TLspClient;
+  Session: TLspSession;
+  Roots, Callers, Supers: TArray<TAtlasHierarchyItem>;
+begin
+  Replies := TDictionary<string, string>.Create;
+  Seen := TStringList.Create;
+  Client := CannedClient(Replies, Seen);
+  Session := TLspSession.Create(Client);
+  try
+    Replies.Add('textDocument/prepareCallHierarchy', '[' + Format(Item, ['Laden', 'TKunde', 4, 9, 4, 4, 1]) + ']');
+    Replies.Add('callHierarchy/incomingCalls', '[{"from":' + Format(Item, ['Start', 'TForm1', 30, 40, 30, 30, 2]) +
+      ',"fromRanges":[]}]');
+    Replies.Add('textDocument/prepareTypeHierarchy', '[' + Format(Item, ['TKunde', '', 2, 2, 2, 2, 3]) + ']');
+    Replies.Add('typeHierarchy/supertypes', '[' + Format(Item, ['TPerson', '', 1, 1, 1, 1, 4]) + ']');
+    Roots := Session.PrepareHierarchy(TAtlasHierarchyDirection.Incoming, 'C:\P\A.pas', 4, 12);
+    Assert.AreEqual(1, Integer(Length(Roots)));
+    Assert.AreEqual('Laden', Roots[0].Name);
+    Assert.AreEqual('TKunde', Roots[0].Detail);
+    Assert.AreEqual(4, Roots[0].Line);
+    Assert.AreEqual(10, Roots[0].Character);
+    Callers := Session.HierarchyChildren(TAtlasHierarchyDirection.Incoming, Roots[0]);
+    Assert.AreEqual(1, Integer(Length(Callers)));
+    Assert.AreEqual('Start', Callers[0].Name);
+    Assert.AreEqual(30, Callers[0].Line);
+    // Der Server bekommt seinen Eintrag samt data zurück.
+    Assert.Contains(Seen.Text, 'callHierarchy/incomingCalls {"item":{"name":"Laden"');
+    Assert.Contains(Seen.Text, '"data":{"id":1}');
+    Roots := Session.PrepareHierarchy(TAtlasHierarchyDirection.Supertypes, 'C:\P\A.pas', 2, 3);
+    Supers := Session.HierarchyChildren(TAtlasHierarchyDirection.Supertypes, Roots[0]);
+    Assert.AreEqual(1, Integer(Length(Supers)));
+    Assert.AreEqual('TPerson', Supers[0].Name);
+  finally
+    Session.Free;
+    Client.Free;
+    Seen.Free;
+    Replies.Free;
   end;
 end;
 

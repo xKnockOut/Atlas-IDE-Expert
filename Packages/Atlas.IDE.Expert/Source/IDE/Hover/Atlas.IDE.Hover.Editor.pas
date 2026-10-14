@@ -157,6 +157,7 @@ uses
   Atlas.IDE.Editor.Buffer,
   Atlas.IDE.Editor.Style,
   Atlas.IDE.Settings.Store,
+  Atlas.IDE.Results.Commands,
   Atlas.UI.Strings;
 
 { TAtlasEditorHover.TEvents }
@@ -701,56 +702,15 @@ end;
 
 procedure TAtlasEditorHover.ShowUsages;
 var
-  Session: TLspSession;
   Data: TAtlasHoverData;
-  Locations: TArray<TLspLocation>;
-  Location: TLspLocation;
-  Messages: IOTAMessageServices;
-  Group: IOTAMessageGroup;
-  Lines: TArray<string>;
-  LastFile, Text: string;
-  LineRef: Pointer;
 begin
-  Session := CurrentSession;
   Data := FHistory.Current;
-  if (Session = nil) or not Data.Location.HasLocation then
+  if (CurrentSession = nil) or not Data.Location.HasLocation then
     Exit;
-  Screen.Cursor := crHourGlass;
-  try
-    Locations := Session.References(Data.Location.FileName, Data.Location.Line, Data.Location.Character);
-  finally
-    Screen.Cursor := crDefault;
-  end;
-  FUsagesCount := Length(Locations);
+  // Im Ergebnisfenster (#400), nach Unit gruppiert, samt Fundstellen in Formularen.
+  FUsagesCount := TAtlasIdeResults.ShowReferences(Data.Location.FileName, Data.Location.Line,
+    Data.Location.Character, Data.Title);
   Refresh;
-  // Bis es ein eigenes Ergebnisfenster gibt (#400): im Meldungsfenster, Gruppe Atlas.
-  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
-    Exit;
-  Group := Messages.GetGroup('Atlas');
-  if Group = nil then
-    Group := Messages.AddMessageGroup('Atlas');
-  Messages.ClearMessageGroup(Group);
-  Messages.AddTitleMessage(TAtlasStrings.Fmt(TAtlasTextId.HoverUsagesOf, [Length(Locations), Data.Title]), Group);
-  LastFile := '';
-  Lines := nil;
-  for Location in Locations do
-  begin
-    if not SameText(Location.FileName, LastFile) then
-    begin
-      LastFile := Location.FileName;
-      try
-        Lines := TFile.ReadAllLines(LastFile);
-      except
-        Lines := nil;
-      end;
-    end;
-    Text := Data.Title;
-    if (Location.Line >= 0) and (Location.Line <= High(Lines)) then
-      Text := Trim(Lines[Location.Line]);
-    Messages.AddToolMessage(Location.FileName, Text, 'Atlas', Location.Line + 1, Location.Character + 1, nil,
-      LineRef, Group);
-  end;
-  Messages.ShowMessageView(Group);
 end;
 
 procedure TAtlasEditorHover.Execute(AAction: TAtlasHoverAction);

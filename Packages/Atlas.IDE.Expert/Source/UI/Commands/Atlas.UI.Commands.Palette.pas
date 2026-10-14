@@ -5,6 +5,8 @@
 // gedimmt und Tastenkürzel rechts. Anders als die Vervollständigung nimmt
 // die Palette den Fokus (sie hat ein eigenes Eingabefeld). Enter führt aus,
 // Escape oder ein Klick daneben schließt.
+// Mit OnQuery (Symbolsuche, #400) holt das Fenster die Einträge 150 ms nach
+// der letzten Eingabe neu und ordnet sie dann wie die Befehle.
 
 interface
 
@@ -17,6 +19,7 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.Forms,
+  Vcl.ExtCtrls,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Commands.Palette;
@@ -35,6 +38,11 @@ type
     FTop: Integer;
     FOnExecute: TProc<TAtlasCommand>;
     FExecuting: Boolean;
+    FOnQuery: TFunc<string, TArray<TAtlasCommand>>;
+    FQueryTimer: TTimer;
+    FPrompt: string;
+    procedure PatternChanged;
+    procedure QueryTick(Sender: TObject);
     function RowHeight: Integer;
     function InputHeight: Integer;
     function RowRect(ARow: Integer): TRect;
@@ -60,6 +68,10 @@ type
     /// <summary>Nach dem Schließen; das Fenster gibt sich danach selbst frei.</summary>
     property OnExecute: TProc<TAtlasCommand> read FOnExecute write FOnExecute;
     property Pattern: string read FPattern;
+    /// <summary>Einträge zur Eingabe neu holen (z. B. beim Server); läuft im Hauptthread.</summary>
+    property OnQuery: TFunc<string, TArray<TAtlasCommand>> read FOnQuery write FOnQuery;
+    /// <summary>Zeichen im leeren Eingabefeld, Standard "&gt;".</summary>
+    property Prompt: string read FPrompt write FPrompt;
   end;
 
 implementation
@@ -89,6 +101,31 @@ begin
   Font.Name := 'Segoe UI';
   Font.Size := 10;
   OnDeactivate := FormDeactivate;
+  FPrompt := '>';
+  FQueryTimer := TTimer.Create(Self);
+  FQueryTimer.Enabled := False;
+  FQueryTimer.Interval := 150;
+  FQueryTimer.OnTimer := QueryTick;
+  Refilter;
+end;
+
+procedure TAtlasPaletteWindow.PatternChanged;
+begin
+  Refilter;
+  if Assigned(FOnQuery) then
+  begin
+    // Neu starten: erst nach einer Tipppause fragen.
+    FQueryTimer.Enabled := False;
+    FQueryTimer.Enabled := True;
+  end;
+end;
+
+procedure TAtlasPaletteWindow.QueryTick(Sender: TObject);
+begin
+  FQueryTimer.Enabled := False;
+  if not Assigned(FOnQuery) or FExecuting then
+    Exit;
+  FCommands := FOnQuery(FPattern);
   Refilter;
 end;
 
@@ -199,7 +236,7 @@ begin
           FPattern := ''
         else
           Delete(FPattern, Length(FPattern), 1);
-        Refilter;
+        PatternChanged;
       end;
   else
     Exit;
@@ -212,7 +249,7 @@ begin
   if Key >= ' ' then
   begin
     FPattern := FPattern + Key;
-    Refilter;
+    PatternChanged;
   end;
   Key := #0;
 end;
@@ -331,7 +368,7 @@ begin
   if FPattern = '' then
   begin
     Canvas.Font.Color := ToColor(FColors.Muted);
-    Text := '>';
+    Text := FPrompt;
   end
   else
   begin

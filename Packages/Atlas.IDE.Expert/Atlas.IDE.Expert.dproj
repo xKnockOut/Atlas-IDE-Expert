@@ -182,6 +182,15 @@
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.TextFile.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Context.pas"/>
         <DCCReference Include="Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas"/>
+        <DCCReference Include="Source\Core\Results\Atlas.Core.Results.Model.pas"/>
+        <DCCReference Include="Source\UI\Results\Atlas.UI.Results.Frame.pas">
+            <Form>AtlasResultsFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="Source\UI\Results\Atlas.UI.Results.RenamePreview.pas"/>
+        <DCCReference Include="Source\IDE\Results\Atlas.IDE.Results.Window.pas"/>
+        <DCCReference Include="Source\IDE\Results\Atlas.IDE.Results.Commands.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.EditInbox.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.Adapters.FolderWatcher.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Painter.pas"/>

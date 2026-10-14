@@ -23,6 +23,8 @@
 // workspace/applyEdit (#397): Mit OnApplyEdit kündigt die Sitzung applyEdit
 // an; die Anfrage geht im Lese-Thread an OnApplyEdit, das später über AReply
 // antwortet ({applied, failureReason}).
+// Ergebnisfenster (#400): Implementierungen, workspace/symbol sowie Typ- und
+// Aufrufhierarchie; der Aufrufer gleicht die Puffer vorher ab.
 
 interface
 
@@ -37,6 +39,7 @@ uses
   Atlas.Core.Files.WatchedChanges,
   Atlas.Core.Projects.Context,
   Atlas.Core.InlayHints.Store,
+  Atlas.Core.Results.Model,
   Atlas.Core.Lsp.WorkspaceEdits;
 
 type
@@ -150,6 +153,18 @@ type
     function HoverDataAt(const AFileName: string; ALine, ACharacter: Integer): TAtlasHoverData;
     /// <summary>Verwendungen des Symbols am Fundort ohne die Deklaration (textDocument/references).</summary>
     function References(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspLocation>;
+    /// <summary>Implementierungen des Symbols (textDocument/implementation, #400).</summary>
+    function Implementations(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspLocation>;
+    /// <summary>Projektweite Symbolsuche (workspace/symbol, #400); unscharf filtert der Server.</summary>
+    function WorkspaceSymbols(const AQuery: string; ATimeoutMs: Cardinal): TArray<TAtlasSymbol>;
+    /// <summary>Wurzeln einer Hierarchie am Fundort (prepareCallHierarchy bzw. prepareTypeHierarchy, #400).</summary>
+    function PrepareHierarchy(ADirection: TAtlasHierarchyDirection; const AFileName: string; ALine,
+      ACharacter: Integer): TArray<TAtlasHierarchyItem>;
+    /// <summary>Nächste Ebene unter AItem in Richtung ADirection (#400).</summary>
+    function HierarchyChildren(ADirection: TAtlasHierarchyDirection;
+      const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
+    /// <summary>Location, Location[] oder LocationLink[] einer Antwort (#400).</summary>
+    class function LocationsOf(const AResponse: TJSONValue): TArray<TLspLocation>; static;
     function Definition(const AFileName, AText: string; ALine, ACharacter: Integer;
       out ALocation: TLspLocation): Boolean;
     /// <summary>
@@ -600,6 +615,160 @@ begin
           if Location.FileName <> '' then
             Result := Result + [Location];
         end;
+  finally
+    Response.Free;
+  end;
+end;
+
+class function TLspSession.LocationsOf(const AResponse: TJSONValue): TArray<TLspLocation>;
+
+  procedure Add(const AItem: TJSONValue);
+  var
+    Location: TLspLocation;
+    Uri, Prefix: string;
+  begin
+    if not (AItem is TJSONObject) then
+      Exit;
+    // LocationLink: targetUri und targetSelectionRange; Location: uri und range.
+    Prefix := 'range';
+    if TJSONObject(AItem).TryGetValue<string>('targetUri', Uri) then
+      Prefix := 'targetSelectionRange'
+    else
+      Uri := TJSONObject(AItem).GetValue<string>('uri', '');
+    Location.FileName := UriToPath(Uri);
+    Location.Line := TJSONObject(AItem).GetValue<Integer>(Prefix + '.start.line', 0);
+    Location.Character := TJSONObject(AItem).GetValue<Integer>(Prefix + '.start.character', 0);
+    if Location.FileName <> '' then
+      Result := Result + [Location];
+  end;
+
+var
+  Item: TJSONValue;
+begin
+  Result := nil;
+  if AResponse is TJSONArray then
+    for Item in TJSONArray(AResponse) do
+      Add(Item)
+  else
+    Add(AResponse);
+end;
+
+function TLspSession.Implementations(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspLocation>;
+var
+  Response: TJSONValue;
+begin
+  Response := FClient.Request('textDocument/implementation', PositionParams(AFileName, ALine, ACharacter),
+    FTimeoutMs * 10);
+  try
+    Result := LocationsOf(Response);
+  finally
+    Response.Free;
+  end;
+end;
+
+function TLspSession.WorkspaceSymbols(const AQuery: string; ATimeoutMs: Cardinal): TArray<TAtlasSymbol>;
+var
+  Response, Item: TJSONValue;
+  Entry: TJSONObject;
+  Symbol: TAtlasSymbol;
+  Locations: TArray<TLspLocation>;
+  Location: TJSONValue;
+begin
+  Result := nil;
+  Response := FClient.Request('workspace/symbol', TJSONObject.Create(TJSONPair.Create('query', AQuery)), ATimeoutMs);
+  try
+    if not (Response is TJSONArray) then
+      Exit;
+    for Item in TJSONArray(Response) do
+    begin
+      if not (Item is TJSONObject) then
+        Continue;
+      Entry := TJSONObject(Item);
+      Symbol := Default(TAtlasSymbol);
+      Symbol.Name := Entry.GetValue<string>('name', '');
+      Symbol.Container := Entry.GetValue<string>('containerName', '');
+      Symbol.Kind := Entry.GetValue<Integer>('kind', 0);
+      Location := Entry.GetValue('location');
+      Locations := LocationsOf(Location);
+      if (Symbol.Name = '') or (Length(Locations) = 0) then
+        Continue;
+      Symbol.FileName := Locations[0].FileName;
+      Symbol.Line := Locations[0].Line;
+      Symbol.Character := Locations[0].Character;
+      Result := Result + [Symbol];
+    end;
+  finally
+    Response.Free;
+  end;
+end;
+
+function HierarchyItemOf(const AValue: TJSONValue): TAtlasHierarchyItem;
+var
+  Entry: TJSONObject;
+begin
+  Result := Default(TAtlasHierarchyItem);
+  if not (AValue is TJSONObject) then
+    Exit;
+  Entry := TJSONObject(AValue);
+  Result.Name := Entry.GetValue<string>('name', '');
+  Result.Detail := Entry.GetValue<string>('detail', '');
+  Result.Kind := Entry.GetValue<Integer>('kind', 0);
+  Result.FileName := TLspSession.UriToPath(Entry.GetValue<string>('uri', ''));
+  Result.Line := Entry.GetValue<Integer>('selectionRange.start.line', 0);
+  Result.Character := Entry.GetValue<Integer>('selectionRange.start.character', 0);
+  Result.Raw := Entry.ToJSON;
+end;
+
+function TLspSession.PrepareHierarchy(ADirection: TAtlasHierarchyDirection; const AFileName: string; ALine,
+  ACharacter: Integer): TArray<TAtlasHierarchyItem>;
+var
+  Method: string;
+  Response, Item: TJSONValue;
+begin
+  Result := nil;
+  Method := 'textDocument/prepareTypeHierarchy';
+  if TAtlasResults.IsCallHierarchy(ADirection) then
+    Method := 'textDocument/prepareCallHierarchy';
+  Response := FClient.Request(Method, PositionParams(AFileName, ALine, ACharacter), FTimeoutMs * 10);
+  try
+    if Response is TJSONArray then
+      for Item in TJSONArray(Response) do
+        if Item is TJSONObject then
+          Result := Result + [HierarchyItemOf(Item)];
+  finally
+    Response.Free;
+  end;
+end;
+
+function TLspSession.HierarchyChildren(ADirection: TAtlasHierarchyDirection;
+  const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
+const
+  Methods: array[TAtlasHierarchyDirection] of string = ('callHierarchy/incomingCalls',
+    'callHierarchy/outgoingCalls', 'typeHierarchy/supertypes', 'typeHierarchy/subtypes');
+  // Aufrufe stecken in {from|to, fromRanges}; Typen kommen direkt.
+  Members: array[TAtlasHierarchyDirection] of string = ('from', 'to', '', '');
+var
+  Raw, Response, Item, Inner: TJSONValue;
+begin
+  Result := nil;
+  Raw := TJSONObject.ParseJSONValue(AItem.Raw);
+  if not (Raw is TJSONObject) then
+  begin
+    Raw.Free;
+    Exit;
+  end;
+  Response := FClient.Request(Methods[ADirection], TJSONObject.Create(TJSONPair.Create('item', Raw)), FTimeoutMs * 10);
+  try
+    if not (Response is TJSONArray) then
+      Exit;
+    for Item in TJSONArray(Response) do
+    begin
+      Inner := Item;
+      if (Members[ADirection] <> '') and (Item is TJSONObject) then
+        Inner := TJSONObject(Item).GetValue(Members[ADirection]);
+      if Inner is TJSONObject then
+        Result := Result + [HierarchyItemOf(Inner)];
+    end;
   finally
     Response.Free;
   end;
