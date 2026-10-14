@@ -110,7 +110,7 @@ type
     /// <summary>„Feld nicht gefunden in qryOrders“ (#461), wenn APosition im Namen eines FieldByName-, FindField-
     /// oder ParamByName-Aufrufs steht, die Formulardatei Namen für die Datenmenge kennt und dieser nicht dabei ist.
     /// </summary>
-    class function DataNameHint(const AText, AFileName: string; const APosition: TTextPosition;
+    class function DataNameHint(const AIndex: ISymbolIndex; const AText, AFileName: string; const APosition: TTextPosition;
       const AReadText: THoverReadText; out AHint: string): Boolean; static;
     /// <summary>Teile des Hovers für den Atlas-Tooltip (#442), Doku und Hinweis als Klartext.</summary>
     class function AtlasJson(const AInfo: THoverInfo): TJSONObject; static;
@@ -653,12 +653,12 @@ begin
     end;
 end;
 
-class function TLspHover.DataNameHint(const AText, AFileName: string; const APosition: TTextPosition;
-  const AReadText: THoverReadText; out AHint: string): Boolean;
+class function TLspHover.DataNameHint(const AIndex: ISymbolIndex; const AText, AFileName: string;
+  const APosition: TTextPosition; const AReadText: THoverReadText; out AHint: string): Boolean;
 var
   Lines: TArray<string>;
   Call: TDataNameCall;
-  FormFile, FormText, Sql: string;
+  Sql: string;
   Names: TArray<TDataName>;
   Found: Boolean;
 begin
@@ -669,22 +669,19 @@ begin
     not TDataFieldNames.CallAt(Lines[APosition.Line].TrimRight([#13]), APosition.Character, Call) or
     (Call.Content = '') then
     Exit;
-  for FormFile in TFormFiles.FormFiles(AFileName, AText) do
-    if AReadText(FormFile, FormText) then
+  Names := TDataFieldNames.Lookup(AText, AFileName, Call, AIndex,
+    function(const AName: string; out AContent: string): Boolean
     begin
-      Names := TDataFieldNames.FromForm(FormText, Call.DataSet, Call.Kind, Sql, Found);
-      if Found then
-      begin
-        // Ohne bekannte Namen (select * ohne Schema) lässt sich nichts sagen.
-        if (Length(Names) = 0) or TDataFieldNames.Contains(Names, Call.Content) then
-          Exit;
-        if Call.Kind = TDataNameKind.Param then
-          AHint := Format('Parameter nicht gefunden in %s', [Call.DataSet])
-        else
-          AHint := Format('Feld nicht gefunden in %s', [Call.DataSet]);
-        Exit(True);
-      end;
-    end;
+      Result := AReadText(AName, AContent);
+    end, Sql, Found);
+  // Ohne bekannte Namen (select * ohne Schema) lässt sich nichts sagen.
+  if not Found or (Length(Names) = 0) or TDataFieldNames.Contains(Names, Call.Content) then
+    Exit;
+  if Call.Kind = TDataNameKind.Param then
+    AHint := Format('Parameter nicht gefunden in %s', [Call.DisplayName])
+  else
+    AHint := Format('Feld nicht gefunden in %s', [Call.DisplayName]);
+  Result := True;
 end;
 
 function TLspHover.HandleHover(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -742,7 +739,7 @@ begin
       Exit;
     end;
     // Unbekannter Feld- oder Parametername (#461).
-    if DataNameHint(Text, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue), FReadText,
+    if DataNameHint(FIndex, Text, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue), FReadText,
       Markdown) then
     begin
       Contents := TJSONObject.Create;

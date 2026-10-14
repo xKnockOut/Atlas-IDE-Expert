@@ -1538,7 +1538,7 @@ const
 
   function Items(const ALine: string; ACharacter: Integer; out AItems: TCompletionItems): Boolean;
   begin
-    Result := TLspCompletion.DataNameItems('unit Haupt;'#13#10'{$R *.dfm}'#13#10 + ALine + #13#10, HauptFile,
+    Result := TLspCompletion.DataNameItems(nil, 'unit Haupt;'#13#10'{$R *.dfm}'#13#10 + ALine + #13#10, HauptFile,
       TTextPosition.Create(2, ACharacter),
       function(const AFileName: string; out AText: string): Boolean
       begin
