@@ -279,6 +279,14 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Assert.IsTrue(Parse('{"completion": {"matching": "egal", "x": 1}}', Issues).Completion.Matching = TCompletionMatching.Fuzzy);
   Assert.AreEqual(2, Integer(Length(Issues)));
+  // Abschnitt für Interface-Methoden (#466)
+  Assert.IsTrue(Parse('{}', Issues).Completion.InterfaceSection = TCompletionInterfaceSection.Public);
+  Assert.IsTrue(Parse('{"completion": {"interfaceSection": "protected"}}', Issues).Completion.InterfaceSection =
+    TCompletionInterfaceSection.Protected);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsTrue(Parse('{"completion": {"interfaceSection": "strict"}}', Issues).Completion.InterfaceSection =
+    TCompletionInterfaceSection.Public);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Speicherbudget (#185)
   Assert.AreEqual(0, Parse('{}', Issues).MemoryBudgetMb);
   Assert.AreEqual(512, Parse('{"memoryBudgetMb": 512}', Issues).MemoryBudgetMb);

@@ -822,6 +822,18 @@ begin
         else
           ReportNode(ANode[Index], 'Erlaubt sind "fuzzy" und "prefix"');
     end
+    else if Key = 'interfaceSection' then
+    begin
+      if ExpectString(ANode[Index], Key, Text) then
+        if Text = 'private' then
+          FSettings.Completion.InterfaceSection := TCompletionInterfaceSection.Private
+        else if Text = 'protected' then
+          FSettings.Completion.InterfaceSection := TCompletionInterfaceSection.Protected
+        else if Text = 'public' then
+          FSettings.Completion.InterfaceSection := TCompletionInterfaceSection.Public
+        else
+          ReportNode(ANode[Index], 'Erlaubt sind "private", "protected" und "public"');
+    end
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "completion.%s"', [Key]), False);

@@ -125,6 +125,7 @@ contains
   Atlas.Common.Editing.PostfixTemplates in 'Source\Editing\Atlas.Common.Editing.PostfixTemplates.pas',
   Atlas.Common.Editing.CaseCompletion in 'Source\Editing\Atlas.Common.Editing.CaseCompletion.pas',
   Atlas.Common.Editing.DeclareUnknown in 'Source\Editing\Atlas.Common.Editing.DeclareUnknown.pas',
+  Atlas.Common.Editing.InterfaceStubs in 'Source\Editing\Atlas.Common.Editing.InterfaceStubs.pas',
   Atlas.Common.Lsp.StringLiteralCommands in 'Source\Lsp\Atlas.Common.Lsp.StringLiteralCommands.pas',
   Atlas.Common.Lsp.DocWiki in 'Source\Lsp\Atlas.Common.Lsp.DocWiki.pas',
   Atlas.Common.Lsp.CompilerDirectives in 'Source\Lsp\Atlas.Common.Lsp.CompilerDirectives.pas',

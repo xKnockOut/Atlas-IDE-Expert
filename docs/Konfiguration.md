@@ -55,6 +55,7 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 | Schlüssel | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|
 | `completion.matching` | string | `"fuzzy"` | `"fuzzy"`, `"prefix"` | Auswahl der Vorschläge: unscharf (Teilfolgen, Kürzel wie TSL für TStringList) oder nur nach Präfix, falls ein Editor nachträglich strikt filtert. |
+| `completion.interfaceSection` | string | `"public"` | `"private"`, `"protected"`, `"public"` | Abschnitt der Klasse, in den „Interface implementieren“ die Deklarationen fehlender Interface-Methoden schreibt. |
 
 ## slashCommands
 

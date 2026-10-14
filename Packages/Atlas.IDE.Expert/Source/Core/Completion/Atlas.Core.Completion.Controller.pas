@@ -28,7 +28,8 @@
 //
 // Unbekannter Name (#471): Stehen nur Deklarationen in der Liste, ist nichts gewählt (Passive). Enter gehört dann
 // dem Editor und schließt die Liste, damit ein neuer Name nicht ungefragt deklariert wird; eine Pfeiltaste wählt
-// die erste Deklaration.
+// die erste Deklaration. Ebenso, wenn oben nur ein Hinweis „n Methoden von I fehlen“ (#466) steht und sonst nichts:
+// Der Hinweis wird nie vorgewählt, die Auswahl beginnt beim ersten Eintrag danach.
 
 interface
 
@@ -506,6 +507,13 @@ begin
   end;
   FOrder := TAtlasRanking.Order(FItems, FPrefix, Options);
   FSelected := FirstItemFrom(0, 1);
+  // Hinweise (#466) stehen oben, gewählt ist der erste Eintrag danach.
+  Position := FSelected;
+  while (Position >= 0) and (Position <= High(FOrder)) and (TAtlasRanking.IsHeader(FOrder[Position]) or
+    FItems[FOrder[Position]].Hint) do
+    Inc(Position);
+  if (FSelected >= 0) and (Position <= High(FOrder)) then
+    FSelected := Position;
   ShowChips;
   if SelectedIndex >= 0 then
     for Position := 0 to High(FOrder) do
@@ -516,7 +524,7 @@ begin
       end;
   FEmpty := False;
   // Nur Deklarationen (#471): sichtbar, aber nicht gewählt, solange niemand eine Pfeiltaste drückt.
-  FPassive := (FSelected >= 0) and (FItems[FOrder[FSelected]].Unknown <> '') and
+  FPassive := (FSelected >= 0) and ((FItems[FOrder[FSelected]].Unknown <> '') or FItems[FOrder[FSelected]].Hint) and
     ((SelectedIndex < 0) or (FOrder[FSelected] <> SelectedIndex));
   if FPassive then
     FView.ShowList(FItems, FOrder, -1, FPrefix)
