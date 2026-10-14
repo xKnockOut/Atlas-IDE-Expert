@@ -1808,6 +1808,81 @@ begin
     Result := Copy(Result, 1, MaxLength) + ' …';
 end;
 
+/// <summary>Vorfahrenliste der Klasse ab Zeile AStartLine wie im Quelltext, samt Typargumenten
+/// ("TInterfacedObject", "IComparer<TKunde>"); nil, wenn kein "class(" folgt (#466).</summary>
+function HeaderAncestors(const ALines: TArray<string>; AStartLine: Integer): TArray<string>;
+var
+  Text, Part: string;
+  Line, Index, Depth: Integer;
+  Match: TMatch;
+begin
+  Result := nil;
+  Text := '';
+  for Line := AStartLine to Min(AStartLine + 5, High(ALines)) do
+    Text := Text + ' ' + ALines[Line];
+  Match := TRegEx.Match(Text, '=\s*class\s*(?:sealed\s*|abstract\s*)?\(', [roIgnoreCase]);
+  if not Match.Success then
+    Exit;
+  Depth := 0;
+  Part := '';
+  for Index := Match.Index + Match.Length to Length(Text) do
+  begin
+    case Text[Index] of
+      '(', '<':
+        Inc(Depth);
+      ')', '>':
+        begin
+          if Depth = 0 then
+          begin
+            if Trim(Part) <> '' then
+              Result := Result + [StringReplace(Trim(Part), ' ', '', [rfReplaceAll])];
+            Exit;
+          end;
+          Dec(Depth);
+        end;
+      ',':
+        if Depth = 0 then
+        begin
+          Result := Result + [StringReplace(Trim(Part), ' ', '', [rfReplaceAll])];
+          Part := '';
+          Continue;
+        end;
+    end;
+    Part := Part + Text[Index];
+  end;
+  Result := nil;
+end;
+
+/// <summary>Setzt Bindungen "T=TKunde" wortweise in AText ein (#466).</summary>
+function SubstituteWords(const AText: string; const ABindings: TArray<string>): string;
+var
+  Binding: string;
+  Equal: Integer;
+begin
+  Result := AText;
+  for Binding in ABindings do
+  begin
+    Equal := Pos('=', Binding);
+    Result := TRegEx.Replace(Result, '(?<![\w.])' + TRegEx.Escape(Copy(Binding, 1, Equal - 1)) + '(?![\w])',
+      Copy(Binding, Equal + 1, MaxInt).Replace('$', '$$'));
+  end;
+end;
+
+/// <summary>"IComparer<TKunde>" aus Container und Bindungen; ohne Bindungen der Container.</summary>
+function GenericName(const AContainer: string; const ABindings: TArray<string>): string;
+var
+  Binding: string;
+  Values: TArray<string>;
+begin
+  Result := AContainer;
+  if Length(ABindings) = 0 then
+    Exit;
+  Values := nil;
+  for Binding in ABindings do
+    Values := Values + [Copy(Binding, Pos('=', Binding) + 1, MaxInt)];
+  Result := Result + '<' + string.Join(', ', Values) + '>';
+end;
+
 /// <summary>Direktiven einer Deklaration (virtual, override, deprecated ...); ADeprecated: Text
 /// hinter deprecated, '' ohne Text; AIsDeprecated: deprecated kommt vor.</summary>
 function DirectivesOf(const ADeclaration: string; out ADeprecated: string; out AIsDeprecated: Boolean): TArray<string>;
@@ -2196,7 +2271,9 @@ begin
     TypeName := TypeSymbol.Container + '.' + TypeSymbol.Name
   else
     TypeName := TypeSymbol.Name;
-  Missing := AResolver.MissingInterfaceMembers(UnitIndex, TypeName);
+  // Vorfahrenliste aus dem Quelltext: Der Index kennt die Typargumente nur beim ersten Vorfahren.
+  Missing := AResolver.MissingInterfaceMembers(UnitIndex, TypeName,
+    HeaderAncestors(Lines, TypeSymbol.Range.StartPos.Line));
   if Length(Missing) = 0 then
     Exit;
   if AText.Contains(#13#10) then
@@ -2222,8 +2299,9 @@ begin
         Source := '';
       SourceLines := TextLines(Source);
     end;
-    if not TInterfaceStubs.Make(Missing[Index].Container, TypeName,
-      DeclarationOf(SourceLines, Missing[Index].Range), LB, Stub) then
+    // Generische Interfaces: Typargumente in die Deklaration einsetzen (IComparer<TKunde>: T → TKunde).
+    if not TInterfaceStubs.Make(GenericName(Missing[Index].Container, Missing[Index].Bindings), TypeName,
+      SubstituteWords(DeclarationOf(SourceLines, Missing[Index].Range), Missing[Index].Bindings), LB, Stub) then
       Continue;
     if (Length(Interfaces) = 0) or not SameText(Interfaces[High(Interfaces)], Stub.InterfaceName) then
     begin
