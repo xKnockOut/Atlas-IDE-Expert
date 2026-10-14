@@ -241,6 +241,15 @@ type
     /// <summary>Überschreibbare Methoden für ATypeName aus AFromUnit (#443): virtual, dynamic, abstract oder
     /// override in einem Vorfahren, im Typ selbst noch nicht deklariert; nächster Vorfahr zuerst (Depth 1).</summary>
     function OverridableMembers(const AFromUnit: TUnitIndex; const ATypeName: string): TArray<TResolvedSymbol>;
+    /// <summary>Name (Typ, Routine, Konstante …) so aufgelöst, wie er in AFromUnit stünde (cref, #654).</summary>
+    function ResolveNameFrom(const AFromUnit: TUnitIndex; const AName: string; out AResult: TResolvedSymbol): Boolean;
+    /// <summary>Mitglied AName von AType oder dem nächsten Vorfahren, der es deklariert, ohne Rücksicht auf die
+    /// Sichtbarkeit (Doku-Vererbung, #654). Die Deklaration im Typ geht dem Rumpf vor.</summary>
+    function DeclaredMember(const AType: TResolvedSymbol; const AName: string; out AResult: TResolvedSymbol): Boolean;
+    /// <summary>Index-Symbol als aufgelöstes Symbol (#654).</summary>
+    function SymbolFrom(const AUnit: TUnitIndex; const ASymbol: TIndexSymbol): TResolvedSymbol;
+    /// <summary>Unit, in der AResolved deklariert ist (#654).</summary>
+    function DeclaringUnit(const AResolved: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
     /// <summary>ATypeName ist ATargetName oder stammt davon ab, beide so aufgelöst, wie sie an AOffset
     /// stünden (#417).</summary>
     function TypeDescendsFrom(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer;
@@ -2233,6 +2242,55 @@ begin
   FHelperTree := nil;
   FHelpers.Clear;
   Result := ResolveTypeName(ATypeName, AFromUnit, True, AResult);
+end;
+
+function TNameResolver.ResolveNameFrom(const AFromUnit: TUnitIndex; const AName: string;
+  out AResult: TResolvedSymbol): Boolean;
+begin
+  FTree := nil;
+  FOffset := 0;
+  FCurrent := AFromUnit;
+  FInImplementation := True;
+  FClassState := 0;
+  FHelperTree := nil;
+  FHelpers.Clear;
+  Result := LookupGlobal(AFromUnit, AName, True, False, AResult);
+end;
+
+function TNameResolver.DeclaredMember(const AType: TResolvedSymbol; const AName: string;
+  out AResult: TResolvedSymbol): Boolean;
+var
+  Current, Ancestor: TResolvedSymbol;
+  OwnerUnit: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Depth: Integer;
+begin
+  Current := AType;
+  for Depth := 0 to MaxDepth do
+  begin
+    if Current.Builtin or not UnitOf(Current, OwnerUnit) then
+      Exit(False);
+    for Symbol in OwnerUnit.Symbols do
+      if SameText(Symbol.Container, Current.QualifiedName) and SameText(Symbol.Name, AName) then
+      begin
+        AResult := FromSymbol(OwnerUnit, Symbol);
+        Exit(True);
+      end;
+    if not AncestorOf(Current, Ancestor) then
+      Exit(False);
+    Current := Ancestor;
+  end;
+  Result := False;
+end;
+
+function TNameResolver.SymbolFrom(const AUnit: TUnitIndex; const ASymbol: TIndexSymbol): TResolvedSymbol;
+begin
+  Result := FromSymbol(AUnit, ASymbol);
+end;
+
+function TNameResolver.DeclaringUnit(const AResolved: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
+begin
+  Result := UnitOf(AResolved, AUnit);
 end;
 
 function TNameResolver.OverridableMembers(const AFromUnit: TUnitIndex; const ATypeName: string): TArray<TResolvedSymbol>;

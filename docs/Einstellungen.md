@@ -30,6 +30,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Robustheit | `diagnostics`: `log`, `logDays`, `logMapFile` | – | atlas.json, Editor (`atlas.diagnostics`) | nein | Kontrollkästchen, Zahlenfeld (Tage) | #647 |
 | Editor | `highlight`: `blockPairs`, `directives`, `exitPoints`, `exitKeywords` | – | atlas.json, Editor (`atlas.highlight`) | nein | Kontrollkästchen, Liste | #307 |
 | Editor | `inlayHints`: `parameterNames`, `inferredTypes`, `endMarkers`, `endMarkerMinLines` | – | atlas.json, Editor (`atlas.inlayHints`) | nein | Kontrollkästchen, Zahlenfeld | #35 |
+| Hints | `hints`: `xmlDocFull`, `xmlDocMaxLines` | – | atlas.json, Editor (`atlas.hints`) | nein | Kontrollkästchen, Zahlenfeld | #654 |
 | Editor | `stringLiteral`: `style`, `lineBreak`, `maxLineLength` | – | atlas.json, Editor (`atlas.stringLiteral`) | nein | Auswahl, Zahlenfeld | #312 |
 | Editor | `memberOrder`: `sections`, `members`, `sortFields`, `sortPublished` | – | atlas.json, Editor (`atlas.memberOrder`) | nein | Liste, Kontrollkästchen | #89 |
 | Prüfregeln | `minConfidence` | `"medium"` | atlas.json, Editor (`atlas.minConfidence`) | nein | Auswahl | #144 |

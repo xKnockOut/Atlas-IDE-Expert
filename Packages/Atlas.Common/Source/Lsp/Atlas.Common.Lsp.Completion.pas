@@ -37,7 +37,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.SlashCommands,
-  Atlas.Common.Semantics.NameResolver;
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Lsp.Documentation;
 
 type
   TCompletionContextKind = (None, Scope, Member, UsesClause);
@@ -108,7 +109,7 @@ type
 
   TPostfixOptionsFunc = reference to function(const AUri: string): TPostfixOptions;
 
-  TCompletionReadText = reference to function(const AFileName: string; out AText: string): Boolean;
+  TCompletionReadText = TDocReadText;
 
   TCompletionItems = record
     Items: TArray<TCompletionItem>;
@@ -145,6 +146,7 @@ type
     FReadText: TCompletionReadText;
     FSlashCommandsFor: TSlashCommandsProvider;
     FPostfixFor: TPostfixOptionsFunc;
+    FHintsFor: TDocHintsProvider;
     FNotify: TCompletionNotifyProc;
     FLog: TCompletionLogProc;
     // Zuletzt für completionItem/resolve gelesene Datei (#616): Beim Blättern in der Liste fragt Atlas oft
@@ -201,9 +203,11 @@ type
     class function ToJson(const AItems: TArray<TCompletionItem>; AFirstSort: Integer): TJSONArray; overload; static;
     /// <summary>Details zur Deklaration an APosition (Namensposition) in AText für das Detailpanel
     /// von Atlas (#405, #424): declaration, unit, container, visibility, directives, deprecated,
-    /// summary, params, returns, exceptions, remarks. Der Aufrufer übernimmt das Objekt.</summary>
+    /// summary, params, returns, exceptions, remarks als Klartext, dazu documentation strukturiert
+    /// samt Fundorten der Verweise und documentationText (#654). AReadText liest andere Dateien
+    /// für &lt;inheritdoc/&gt;. Der Aufrufer übernimmt das Objekt.</summary>
     class function Details(const AIndex: ISymbolIndex; const AFileName, AText: string;
-      const APosition: TTextPosition): TJSONObject; static;
+      const APosition: TTextPosition; const AReadText: TCompletionReadText = nil): TJSONObject; static;
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
     /// <summary>Liest Dateien für completionItem/resolve; ohne Zuweisung keine Details.</summary>
     property ReadText: TCompletionReadText read FReadText write FReadText;
@@ -213,6 +217,8 @@ type
     property SlashCommandsFor: TSlashCommandsProvider read FSlashCommandsFor write FSlashCommandsFor;
     /// <summary>Postfix-Vorlagen je Dokument (#188); ohne Zuweisung an und mit Inline-Variable.</summary>
     property PostfixFor: TPostfixOptionsFunc read FPostfixFor write FPostfixFor;
+    /// <summary>Anzeige von XMLDoc (#654) als data.atlas.xmlDoc; ohne Zuweisung fehlt das Feld.</summary>
+    property HintsFor: TDocHintsProvider read FHintsFor write FHintsFor;
     /// <summary>Für Teilergebnisse über $/progress (#616); ohne Zuweisung kommt alles in der Antwort.</summary>
     property Notify: TCompletionNotifyProc read FNotify write FNotify;
     /// <summary>Zeiten je Anfrage (#616); ohne Zuweisung keine Messung.</summary>
@@ -1690,7 +1696,7 @@ begin
 end;
 
 class function TLspCompletion.Details(const AIndex: ISymbolIndex; const AFileName, AText: string;
-  const APosition: TTextPosition): TJSONObject;
+  const APosition: TTextPosition; const AReadText: TCompletionReadText): TJSONObject;
 var
   Lines: TArray<string>;
   UnitInfo: TUnitIndex;
@@ -1704,6 +1710,8 @@ var
   List: TJSONArray;
   Item: TJSONObject;
   Range: TTextRange;
+  Resolver: TNameResolver;
+  Container: string;
 begin
   Result := TJSONObject.Create;
   Lines := TextLines(AText);
@@ -1749,7 +1757,32 @@ begin
   end;
   if IsDeprecated then
     Result.AddPair('deprecated', Deprecated);
-  Doc := TXmlDoc.Parse(TXmlDoc.CommentAbove(Lines, Range.StartPos.Line));
+  // XMLDoc wie im Hover (#654): mit <inheritdoc/> und den Fundorten der cref-Verweise.
+  Resolver := TNameResolver.Create(AIndex);
+  try
+    if Found then
+      Doc := TLspDocumentation.Load(Resolver, Resolver.SymbolFrom(UnitInfo, Symbol), Lines, Range.StartPos.Line,
+        TLspDocumentation.Reader(AFileName, AText, AReadText))
+    else
+      Doc := TXmlDoc.Parse(TXmlDoc.CommentAbove(Lines, Range.StartPos.Line));
+    if not Doc.IsEmpty then
+    begin
+      Container := '';
+      if Found then
+      begin
+        Container := Symbol.Container;
+        if Container = '' then
+          Container := Symbol.Name;
+        Result.AddPair('documentation', TLspDocumentation.ToJson(Doc,
+          TLspDocumentation.Targets(Resolver, UnitInfo, Container, Doc)));
+      end
+      else
+        Result.AddPair('documentation', TLspDocumentation.ToJson(Doc, nil));
+      Result.AddPair('documentationText', Doc.ToPlainText);
+    end;
+  finally
+    Resolver.Free;
+  end;
   if Doc.Summary <> '' then
     Result.AddPair('summary', Doc.Summary);
   if Doc.Returns <> '' then
@@ -1802,7 +1835,7 @@ begin
     Exit;
   if not ReadCached(FileName, Text) then
     Exit;
-  Details := TLspCompletion.Details(FIndex, FileName, Text, Position);
+  Details := TLspCompletion.Details(FIndex, FileName, Text, Position, ReadCached);
   // Für Atlas (Detailpanel) strukturiert in data.atlas; für andere Clients detail und documentation.
   if Details.TryGetValue<string>('declaration', Text) then
   begin
@@ -1811,6 +1844,8 @@ begin
   end;
   if Details.TryGetValue<string>('summary', Summary) then
     Item.AddPair('documentation', Summary);
+  if Assigned(FHintsFor) then
+    Details.AddPair('xmlDoc', TLspDocumentation.HintsJson(FHintsFor(TDocumentUris.FromPath(FileName))));
   Data.AddPair('atlas', Details);
 end;
 

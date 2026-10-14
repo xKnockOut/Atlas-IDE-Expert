@@ -70,6 +70,19 @@ type
     class function Default: TInlayHintSettings; static;
   end;
 
+  /// <summary>Anzeige von XMLDoc in Hover und Detailpanel des Plugins (#654). Der Server bereitet die Doku
+  /// immer vollständig auf und gibt die Werte nur weiter.</summary>
+  THintSettings = record
+  public const
+    MaxXmlDocLines = 50;
+  public
+    /// <summary>XMLDoc vollständig und formatiert; aus = Kurzform (summary 4, remarks 3 Zeilen).</summary>
+    XmlDocFull: Boolean;
+    /// <summary>Doku-Zeilen, ab denen der Inhalt scrollt; 0 = unbegrenzt.</summary>
+    XmlDocMaxLines: Integer;
+    class function Default: THintSettings; static;
+  end;
+
   /// <summary>Hervorheben zusammengehöriger Schlüsselwörter (#307).</summary>
   THighlightSettings = record
     /// <summary>Blockpaare (begin/end, try/finally …) und Routinen.</summary>
@@ -210,6 +223,7 @@ type
     /// <summary>Ausgewerteter Block "format" (#43).</summary>
     Formatting: TFormatStyle;
     InlayHints: TInlayHintSettings;
+    Hints: THintSettings;
     Highlight: THighlightSettings;
     Compiler: TCompilerSettings;
     Completion: TCompletionSettings;
@@ -457,6 +471,14 @@ begin
   Result.SortPublished := False;
 end;
 
+{ THintSettings }
+
+class function THintSettings.Default: THintSettings;
+begin
+  Result.XmlDocFull := True;
+  Result.XmlDocMaxLines := 0;
+end;
+
 { THighlightSettings }
 
 class function THighlightSettings.Default: THighlightSettings;
@@ -518,6 +540,7 @@ begin
   Result.Format := '';
   Result.Formatting := TFormatStyle.Default;
   Result.InlayHints := TInlayHintSettings.Default;
+  Result.Hints := THintSettings.Default;
   Result.Highlight := THighlightSettings.Default;
   Result.Compiler := TCompilerSettings.Default;
   Result.Completion := TCompletionSettings.Default;
