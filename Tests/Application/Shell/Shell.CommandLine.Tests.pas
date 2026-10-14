@@ -20,6 +20,8 @@ type
     [Test]
     procedure WarnsAboutUnknownArgument;
     [Test]
+    procedure AcceptsSingleAndTypographicDashes;
+    [Test]
     procedure ReadsClientProcessId;
     [Test]
     procedure WarnsAboutInvalidClientProcessId;
@@ -121,6 +123,17 @@ begin
   Options := TCommandLineOptions.Parse(['--gibtsnicht']);
   Assert.AreEqual<NativeInt>(1, Length(Options.Warnings));
   Assert.Contains(Options.Warnings[0], '--gibtsnicht');
+end;
+
+procedure TCommandLineOptionsTests.AcceptsSingleAndTypographicDashes;
+var
+  Options: TCommandLineOptions;
+begin
+  // So stand es in der Registry: Gedankenstrich statt "--" (#647).
+  Options := TCommandLineOptions.Parse([#$2013'log', 'C:\Temp\atlas-server.log', '-log-level', 'debug']);
+  Assert.AreEqual<NativeInt>(0, Length(Options.Warnings));
+  Assert.AreEqual('C:\Temp\atlas-server.log', Options.LogFile);
+  Assert.IsTrue(Options.LogLevel = TLogLevel.Debug);
 end;
 
 procedure TCommandLineOptionsTests.WarnsAboutInvalidLogLevel;
