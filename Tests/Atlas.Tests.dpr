@@ -126,6 +126,7 @@ uses
   Atlas.Common.Mcp.IndexTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.IndexTools.Tests.pas',
   Atlas.Common.Mcp.CodeTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.CodeTools.Tests.pas',
   Atlas.Common.Lsp.PullDiagnostics.Tests in 'Common\Lsp\Atlas.Common.Lsp.PullDiagnostics.Tests.pas',
+  Atlas.Common.Lsp.ApplyEdit.Tests in 'Common\Lsp\Atlas.Common.Lsp.ApplyEdit.Tests.pas',
   Atlas.Common.Editing.Formatter.Tests in 'Common\Editing\Atlas.Common.Editing.Formatter.Tests.pas',
   Atlas.Common.Editing.CodeActions.Tests in 'Common\Editing\Atlas.Common.Editing.CodeActions.Tests.pas',
   Atlas.Core.Lsp.Client in '..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.Client.pas',
