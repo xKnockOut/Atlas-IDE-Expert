@@ -88,6 +88,7 @@ begin
   Settings.ListWidth := 333;
   Settings.PairOwners := False;
   Settings.PairGuideWidth := 3;
+  Settings.PairGuideOpacity := 70;
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
@@ -103,6 +104,7 @@ begin
   Assert.AreEqual(333, Saved.ListWidth);
   Assert.IsFalse(Saved.PairOwners);
   Assert.AreEqual(3, Saved.PairGuideWidth);
+  Assert.AreEqual(70, Saved.PairGuideOpacity);
 end;
 
 initialization

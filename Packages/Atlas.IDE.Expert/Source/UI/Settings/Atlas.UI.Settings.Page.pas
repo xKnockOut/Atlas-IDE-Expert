@@ -63,6 +63,7 @@ type
     FPairGuides: TCheckBox;
     FPairOwners: TCheckBox;
     FPairGuideWidth: TEdit;
+    FPairGuideOpacity: TEdit;
     FProblems: TCheckBox;
     FIndexGroup: TCheckBox;
     FIndexSearch: TCheckBox;
@@ -241,6 +242,7 @@ begin
   // Anweisungen mitfärben und Linienbreite (#653); wirken nur mit der Paarfärbung.
   FPairOwners := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairOwners));
   FPairGuideWidth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuideWidth));
+  FPairGuideOpacity := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuideOpacity));
   FPairColors.OnClick := PairColorsClick;
   FProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblems));
   FProblemsList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsList));
@@ -347,6 +349,7 @@ begin
   FPairOwners.Enabled := FPairColors.Checked;
   FPairGuides.Enabled := FPairColors.Checked;
   FPairGuideWidth.Enabled := FPairColors.Checked;
+  FPairGuideOpacity.Enabled := FPairColors.Checked;
 end;
 
 function TAtlasSettingsPage.AddNumber(const ACaption: string): TEdit;
@@ -395,6 +398,7 @@ begin
   FPairGuides.Checked := ASettings.PairGuides;
   FPairOwners.Checked := ASettings.PairOwners;
   FPairGuideWidth.Text := IntToStr(ASettings.PairGuideWidth);
+  FPairGuideOpacity.Text := IntToStr(ASettings.PairGuideOpacity);
   PairColorsClick(nil);
   FProblems.Checked := ASettings.Problems;
   FIndexGroup.Checked := ASettings.IndexProjectGroup;
@@ -431,6 +435,7 @@ begin
   ASettings.PairGuides := FPairGuides.Checked;
   ASettings.PairOwners := FPairOwners.Checked;
   ASettings.PairGuideWidth := StrToIntDef(FPairGuideWidth.Text, ASettings.PairGuideWidth);
+  ASettings.PairGuideOpacity := StrToIntDef(FPairGuideOpacity.Text, ASettings.PairGuideOpacity);
   ASettings.Problems := FProblems.Checked;
   ASettings.IndexProjectGroup := FIndexGroup.Checked;
   ASettings.IndexSearchPaths := FIndexSearch.Checked;
