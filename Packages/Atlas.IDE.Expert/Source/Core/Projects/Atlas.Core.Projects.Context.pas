@@ -16,6 +16,14 @@ uses
 
 type
   TAtlasProjectContext = record
+  public const
+    /// <summary>IOTABuildConfiguration.GetValue mit geerbten Werten.</summary>
+    SourceConfiguration = 'Konfiguration';
+    /// <summary>GetValue lieferte noch $(Name); die Elternkonfigurationen hat das Plugin selbst eingesetzt.</summary>
+    SourceResolved = 'Konfiguration, Erbe selbst aufgelöst';
+    /// <summary>Ersatzweg ohne Konfigurationsschnittstelle: IOTAProjectOptions.Values.</summary>
+    SourceOptions = 'Projektoptionen';
+  public
     /// <summary>Absoluter Pfad der .dproj.</summary>
     Project: string;
     Configuration: string;
@@ -26,10 +34,22 @@ type
     SearchPaths: TArray<string>;
     Namespaces: TArray<string>;
     LibraryPaths: TArray<string>;
+    /// <summary>Woher Defines, Suchpfade und Namespaces kommen (nur fürs Protokoll, nicht für den
+    /// Server): SourceConfiguration, SourceResolved, SourceOptions oder ''.</summary>
+    Source: string;
     /// <summary>Durch ";" getrennte Liste aus den Projektoptionen, ohne leere Einträge.</summary>
     class function List(const AValue: string): TArray<string>; static;
     /// <summary>Version aus dem Registry-Schlüssel der IDE, z. B. "Software\Embarcadero\BDS\23.0" → "23.0".</summary>
     class function VersionOfRegistryKey(const AKey: string): string; static;
+    /// <summary>
+    /// Setzt in AOwn den Verweis $(AName) auf die geerbte Liste durch AParent ein, wie MSBuild es tut
+    /// ("DEBUG;$(DCC_Define)"). Leere Einträge entfallen. Ohne Verweis bleibt AOwn.
+    /// </summary>
+    class function Inherit(const AOwn, AName, AParent: string): string; static;
+    /// <summary>Hat AValue noch einen Verweis $(AName) auf sich selbst?</summary>
+    class function RefersToItself(const AValue, AName: string): Boolean; static;
+    /// <summary>Eine Zeile fürs Diagnoseprotokoll.</summary>
+    function Describe: string;
     /// <summary>Gleich, wenn sich für den Server nichts ändert.</summary>
     function Key: string;
     /// <summary>Parameter für atlas/projectContext; gehört dem Aufrufer.</summary>
@@ -68,6 +88,30 @@ begin
   // Nur eine Versionsnummer; ein eigenes Profil (-r) heißt anders.
   if (Result = '') or not CharInSet(Result[1], ['0'..'9']) then
     Result := '';
+end;
+
+class function TAtlasProjectContext.RefersToItself(const AValue, AName: string): Boolean;
+begin
+  Result := Pos(UpperCase('$(' + AName + ')'), UpperCase(AValue)) > 0;
+end;
+
+class function TAtlasProjectContext.Inherit(const AOwn, AName, AParent: string): string;
+begin
+  if not RefersToItself(AOwn, AName) then
+    Exit(AOwn);
+  Result := string.Join(';', List(StringReplace(AOwn, '$(' + AName + ')', AParent, [rfReplaceAll, rfIgnoreCase])));
+end;
+
+function TAtlasProjectContext.Describe: string;
+var
+  Origin: string;
+begin
+  Origin := Source;
+  if Origin = '' then
+    Origin := 'keine Optionen';
+  Result := Format('%s %s/%s (%s, BDS %s): Defines %s; %d Suchpfade, %d Namespaces, %d Bibliothekspfade',
+    [ExtractFileName(Project), Configuration, Platform, Origin, BdsVersion, string.Join(';', Defines),
+    Length(SearchPaths), Length(Namespaces), Length(LibraryPaths)]);
 end;
 
 function TAtlasProjectContext.Key: string;

@@ -54,6 +54,7 @@ uses
   Atlas.Common.Mcp.Paths,
   Atlas.Common.Mcp.Freshness,
   Atlas.Common.Mcp.EditTools,
+  Atlas.Common.Mcp.IdeEdits,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Checker,
@@ -84,15 +85,6 @@ end;
 
 procedure TSilentTransport.WriteMessage(const AMessage: TJSONObject);
 begin
-end;
-
-/// <summary>Schreibt AText mit Kodierung und Zeilenenden der vorhandenen Datei (#121).</summary>
-procedure WriteSourceText(const AFileName, AText: string);
-var
-  FileFormat: TFileFormat;
-begin
-  TFileEncoding.LoadFromFile(AFileName, FileFormat);
-  TFileEncoding.SaveToFile(AFileName, AText, FileFormat);
 end;
 
 /// <summary>Läuft der Prozess noch?</summary>
@@ -145,6 +137,71 @@ begin
       Json.Free;
     end;
   end;
+end;
+
+/// <summary>Prozess der IDE, in der AFileName offen ist ("open" in editor-dirty-<pid>.json, #397); 0 ohne.</summary>
+function IdeWithOpenFile(const AFileName: string): Cardinal;
+var
+  FileName, Text: string;
+  Json: TJSONValue;
+  Item: TJSONValue;
+  Pid: Integer;
+begin
+  Result := 0;
+  if not TDirectory.Exists(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas')) then
+    Exit;
+  for FileName in TDirectory.GetFiles(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
+    'editor-dirty-*.json') do
+  begin
+    try
+      Text := TFile.ReadAllText(FileName, TEncoding.UTF8);
+    except
+      on Exception do
+        Continue;
+    end;
+    Json := TJSONObject.ParseJSONValue(Text);
+    try
+      if not (Json is TJSONObject) or not TJSONObject(Json).TryGetValue<Integer>('pid', Pid) or
+        not ProcessRunning(Cardinal(Pid)) or not (TJSONObject(Json).GetValue('open') is TJSONArray) then
+        Continue;
+      for Item in TJSONArray(TJSONObject(Json).GetValue('open')) do
+        if SameText(Item.Value, AFileName) then
+          Exit(Cardinal(Pid));
+    finally
+      Json.Free;
+    end;
+  end;
+end;
+
+/// <summary>
+/// Schreibt AText mit Kodierung und Zeilenenden der vorhandenen Datei (#121). Ist die Datei in einer IDE
+/// mit Atlas-Plugin offen, ändert das Plugin den Puffer und speichert (#397); sonst die Platte.
+/// </summary>
+procedure WriteSourceText(const AFileName, AText: string);
+var
+  FileFormat: TFileFormat;
+  Expected, Reason: string;
+  Pid: Cardinal;
+begin
+  Expected := TFileEncoding.LoadFromFile(AFileName, FileFormat);
+  Pid := IdeWithOpenFile(AFileName);
+  if Pid <> 0 then
+    case TMcpIdeEdits.Send(TMcpIdeEdits.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), Pid),
+      AFileName, Expected, AText,
+      procedure
+      begin
+        Sleep(20);
+      end,
+      function: Int64
+      begin
+        Result := GetTickCount64;
+      end, Reason) of
+      TMcpIdeEditOutcome.Applied:
+        Exit;
+      TMcpIdeEditOutcome.Failed:
+        raise Exception.CreateFmt('IDE: %s', [Reason]);
+    end;
+  TFileEncoding.SaveToFile(AFileName, AText, FileFormat);
 end;
 
 /// <summary>dryRun-Argument; Vorgabe true (#61).</summary>

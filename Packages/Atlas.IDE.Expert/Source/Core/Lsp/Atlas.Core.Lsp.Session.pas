@@ -20,6 +20,9 @@
 // Projektkontext (#396): SetProjectContexts vor Initialize schickt die
 // Kontexte in initializationOptions.projectContexts, danach jeden geänderten
 // als atlas/projectContext.
+// workspace/applyEdit (#397): Mit OnApplyEdit kündigt die Sitzung applyEdit
+// an; die Anfrage geht im Lese-Thread an OnApplyEdit, das später über AReply
+// antwortet ({applied, failureReason}).
 
 interface
 
@@ -33,7 +36,8 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Files.WatchedChanges,
   Atlas.Core.Projects.Context,
-  Atlas.Core.InlayHints.Store;
+  Atlas.Core.InlayHints.Store,
+  Atlas.Core.Lsp.WorkspaceEdits;
 
 type
   TLspLocation = record
@@ -80,6 +84,11 @@ type
     Text: string;
   end;
 
+  /// <summary>Antwort auf workspace/applyEdit; nur einmal aufrufen.</summary>
+  TLspApplyEditReply = reference to procedure(AApplied: Boolean; const AFailureReason: string);
+  /// <summary>workspace/applyEdit des Servers (#397); läuft im Lese-Thread. AEdit ist schon gelesen.</summary>
+  TLspApplyEditProc = reference to procedure(const AEdit: TLspWorkspaceEdit; const AReply: TLspApplyEditReply);
+
   TLspSession = class
   private type
     TDocumentState = record
@@ -99,6 +108,7 @@ type
     FContexts: TArray<TAtlasProjectContext>;
     /// <summary>Zuletzt gemeldeter Schlüssel je Projekt (#396).</summary>
     FSentContexts: TDictionary<string, string>;
+    FOnApplyEdit: TLspApplyEditProc;
     function PositionParams(const AFileName: string; ALine, ACharacter: Integer): TJSONObject;
   public
     /// <summary>AClient gehört weiter dem Aufrufer.</summary>
@@ -121,11 +131,16 @@ type
     /// geänderte als atlas/projectContext gemeldet. Vor SetProjects aufrufen, damit ein neues Projekt
     /// gleich mit seinem Kontext geladen wird.</summary>
     procedure SetProjectContexts(const AContexts: TArray<TAtlasProjectContext>);
+    /// gleich mit seinem Kontext geladen wird. Ergebnis: die neu gemeldeten oder für initialize
+    /// gemerkten Kontexte (fürs Diagnoseprotokoll).</summary>
+    function SetProjectContexts(const AContexts: TArray<TAtlasProjectContext>): TArray<TAtlasProjectContext>;
     /// <summary>Parameternamen (InlayHintKind 2) in den Zeilen AFromLine..AToLine (0-basiert) ohne Abgleich:
     /// Sync vorher (#401). Namen ohne abschließenden Doppelpunkt.</summary>
     function InlayHints(const AFileName: string; AFromLine, AToLine: Integer;
       ATimeoutMs: Cardinal): TArray<TAtlasInlayHint>;
     procedure Initialize;
+    /// <summary>Vor Initialize setzen (#397): workspace/applyEdit des Servers annehmen.</summary>
+    property OnApplyEdit: TLspApplyEditProc read FOnApplyEdit write FOnApplyEdit;
     /// <summary>Schickt AText, falls neu oder geändert.</summary>
     procedure Sync(const AFileName, AText: string);
     function Hover(const AFileName, AText: string; ALine, ACharacter: Integer): string;
@@ -367,6 +382,8 @@ var
   Response: TJSONValue;
   Refresh: ILspSignal;
   Progress: ILspProgress;
+  ApplyEdit: TLspApplyEditProc;
+  Client: TLspClient;
 begin
   Formats := TJSONArray.Create;
   Formats.Add('plaintext');
@@ -385,7 +402,8 @@ begin
   Capabilities.AddPair('textDocument', TextDocument);
   Capabilities.AddPair('workspace', TJSONObject.Create(TJSONPair.Create('diagnostics',
     TJSONObject.Create(TJSONPair.Create('refreshSupport', TJSONBool.Create(True)))))
-    .AddPair('workspaceFolders', TJSONBool.Create(True)));
+    .AddPair('workspaceFolders', TJSONBool.Create(True))
+    .AddPair('applyEdit', TJSONBool.Create(Assigned(FOnApplyEdit))));
   Params := TJSONObject.Create;
   Params.AddPair('processId', TJSONNull.Create);
   Params.AddPair('rootUri', TJSONNull.Create);
@@ -415,6 +433,35 @@ begin
       else if AMethod = '$/progress' then
         Progress.Handle(AParams);
     end;
+  // Wie oben: Der Lese-Thread kennt nur Client und Empfänger, nicht die Sitzung.
+  ApplyEdit := FOnApplyEdit;
+  Client := FClient;
+  if Assigned(ApplyEdit) then
+    FClient.OnServerRequest :=
+      function(const AMethod: string; const AParams: TJSONValue; AId: TJSONValue): Boolean
+      var
+        Edit: TLspWorkspaceEdit;
+        Value: TJSONValue;
+      begin
+        Result := AMethod = 'workspace/applyEdit';
+        if not Result then
+          Exit;
+        Value := nil;
+        if AParams is TJSONObject then
+          Value := TJSONObject(AParams).GetValue('edit');
+        Edit := TLspWorkspaceEdit.FromJson(Value);
+        ApplyEdit(Edit,
+          procedure(AApplied: Boolean; const AFailureReason: string)
+          var
+            Answer: TJSONObject;
+          begin
+            Answer := TJSONObject.Create;
+            Answer.AddPair('applied', TJSONBool.Create(AApplied));
+            if AFailureReason <> '' then
+              Answer.AddPair('failureReason', AFailureReason);
+            Client.Respond(AId, Answer);
+          end);
+      end;
   // Ohne Arbeitsbereich leitet der Server ihn aus den geöffneten Dateien ab, ebenso für Dateien
   // außerhalb der gemeldeten Projekte.
   Response := FClient.Request('initialize', Params, 15000);
@@ -995,21 +1042,24 @@ begin
     TJSONObject.Create.AddPair('added', ProjectFolders(Added)).AddPair('removed', ProjectFolders(Removed)))));
 end;
 
-procedure TLspSession.SetProjectContexts(const AContexts: TArray<TAtlasProjectContext>);
+function TLspSession.SetProjectContexts(const AContexts: TArray<TAtlasProjectContext>):
+  TArray<TAtlasProjectContext>;
 var
   Context: TAtlasProjectContext;
   Known: string;
 begin
+  Result := nil;
   if not FInitialized then
   begin
     FContexts := AContexts;
-    Exit;
+    Exit(AContexts);
   end;
   for Context in AContexts do
     if not FSentContexts.TryGetValue(AnsiUpperCase(Context.Project), Known) or (Known <> Context.Key) then
     begin
       FSentContexts.AddOrSetValue(AnsiUpperCase(Context.Project), Context.Key);
       FClient.Notify('atlas/projectContext', Context.ToJson);
+      Result := Result + [Context];
     end;
 end;
 
