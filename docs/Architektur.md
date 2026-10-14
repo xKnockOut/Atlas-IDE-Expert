@@ -1,6 +1,8 @@
 ﻿# Architektur von Atlas IDE Expert
 
 Entscheidungen mit Begründung stehen im Entscheidungsprotokoll unter [`docs/adr/`](adr/README.md).
+Gebaut wird über das IDE-Plugin cc.ps1 ([ADR 0007](adr/0007-build-ueber-cc-ps1.md)); welches Projekt für
+welche Plattform übersetzt und getestet wird, legt [ADR 0008](adr/0008-plattformen.md) fest.
 
 Grundlage ist das Konzept „Rollenbasierte Kopplung und Kohäsion“ (Entwurf, Stand 30.09.2026). Dieses Dokument hält fest, wie das Konzept in diesem Projekt angewendet wird. Bei Widersprüchen gilt das Konzept.
 
