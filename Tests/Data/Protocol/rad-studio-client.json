@@ -1,0 +1,26 @@
+{
+  "description": "RAD-Studio-Client (#175): rootUri file:///, Klartext für Hover und Vervollständigung, languageId pascal; der Server wertet die Sprachkennung nicht aus",
+  "steps": [
+    { "send": { "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": { "processId": null, "rootUri": "file:///",
+        "capabilities": { "textDocument": { "hover": { "contentFormat": [ "plaintext" ] },
+          "completion": { "completionItem": { "documentationFormat": [ "plaintext" ] } } } } } } },
+    { "expect": { "id": 1, "result": {
+        "capabilities": { "textDocumentSync": { "openClose": true, "change": 2 }, "documentSymbolProvider": true },
+        "serverInfo": { "name": "Atlas" } } } },
+    { "send": { "jsonrpc": "2.0", "method": "initialized", "params": {} } },
+    { "send": { "jsonrpc": "2.0", "method": "textDocument/didOpen", "params": { "textDocument": {
+        "uri": "file:///c%3A/Projekt/P.dpr", "languageId": "pascal", "version": 1,
+        "text": "program P;\r\nbegin\r\n  A := 1\r\n  B := 2;\r\nend." } } } },
+    { "expect": { "method": "textDocument/publishDiagnostics", "params": {
+        "uri": "file:///c%3A/Projekt/P.dpr", "version": 1,
+        "diagnostics": [ { "range": { "start": { "line": 2, "character": 8 }, "end": { "line": 2, "character": 8 } },
+                           "severity": 1, "source": "Atlas", "message": "\";\" fehlt" } ] } } },
+    { "send": { "jsonrpc": "2.0", "id": 2, "method": "textDocument/documentSymbol", "params": { "textDocument": { "uri": "file:///c%3A/Projekt/P.dpr" } } } },
+    { "expect": { "id": 2, "result": [ { "name": "P" } ] } },
+    { "send": { "jsonrpc": "2.0", "method": "textDocument/didClose", "params": { "textDocument": { "uri": "file:///c%3A/Projekt/P.dpr" } } } },
+    { "expect": { "method": "textDocument/publishDiagnostics", "params": { "uri": "file:///c%3A/Projekt/P.dpr", "diagnostics": [] } } },
+    { "send": { "jsonrpc": "2.0", "id": 3, "method": "shutdown" } },
+    { "expect": { "id": 3, "result": null } },
+    { "send": { "jsonrpc": "2.0", "method": "exit" } }
+  ]
+}

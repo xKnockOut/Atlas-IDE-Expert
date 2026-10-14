@@ -179,9 +179,9 @@ HKEY_CURRENT_USER\Software\Embarcadero\BDS\37.0\Editor\Source Options\Borland.Ed
 
 - **Kein Arbeitsbereich:** Die IDE meldet `rootUri` als `file:///` und keine `workspaceFolders`. Der Server leitet den Arbeitsbereich deshalb aus jeder geöffneten Datei ab: Er nimmt den nächsten Ordner mit `.dproj` oder `.groupproj` darüber.
 - **Nur Klartext:** Die IDE kann kein Markdown (`hover.contentFormat = ["plaintext"]`). Der Server liefert Hover deshalb als Klartext.
-- **Neustarts:** Jede gestartete IDE startet einen eigenen Server. Die Voreinstellung „Restart server each time a project is activated“ startet ihn zusätzlich bei jedem Projektwechsel neu. Die IDE beendet den Server hart, ohne `shutdown`/`exit`. Im Log fehlt deshalb die Zeile „Beendet mit Exit-Code“. Das ist kein Absturz.
+- **Neustarts:** Jede gestartete IDE startet einen eigenen Server. Die Voreinstellung „Restart server each time a project is activated“ startet ihn zusätzlich bei jedem Projektwechsel neu. Die IDE beendet den Server hart, ohne `shutdown`/`exit`. Im Log fehlt deshalb die Zeile „Beendet mit Exit-Code“. Das ist kein Absturz. Seit #175 steht beim nächsten Start „N frühere Serverläufe ohne Endzeile (von der IDE beendet oder abgestürzt)“; trennt die IDE nur die Verbindung, steht „Verbindung beendet: Eingabe geschlossen ohne exit (IDE hat die Verbindung getrennt)“ vor „Beendet mit Exit-Code 0“. Einen echten Absturz zeigt „Server abgebrochen“ mit Fehlerklasse; das Diagnoselog unter `%LOCALAPPDATA%\Atlas\Logs\Diagnose` hält dasselbe als `run end reason …` fest.
 - **Vervollständigung:** Der Server meldet `completionProvider` und beantwortet `textDocument/completion` (#31). Die IDE meldet `completion.completionItem.documentationFormat = ["plaintext"]`; die Doku in `completionItem/resolve` kommt dann als Klartext (ganzer XMLDoc-Text), an Clients mit Markdown als `MarkupContent`.
-- **Sprachkennung:** In `didOpen` sendet die IDE `languageId = "pascal"`. Der Server wertet `languageId` nicht aus, das ist also unschädlich.
+- **Sprachkennung:** In `didOpen` sendet die IDE `languageId = "pascal"`. Der Server wertet `languageId` nicht aus, das ist also unschädlich. Die Protokollaufzeichnung `Tests/Data/Protocol/rad-studio-client.json` spielt genau diesen Client nach (`rootUri` `file:///`, Klartext, `pascal`).
 
 ## Fehlersuche
 

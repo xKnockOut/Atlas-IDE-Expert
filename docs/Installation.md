@@ -32,6 +32,16 @@ Jeder Schritt steht im Protokollfeld des Installers. Ist eine Datei gesperrt (ID
 
 **Updates:** Nach Zustimmung beim ersten Start prüft das Plugin höchstens einmal täglich, ob eine neue Version vorliegt, und meldet sie in der Meldungsansicht ([RAD-Studio.md](RAD-Studio.md)). Es lädt nichts herunter.
 
+### Ohne Plugin: Code Insight-Manager (Kurzanleitung)
+
+Wer nur den Server ohne Plugin nutzen will, trägt ihn im eingebauten LSP-Client der IDE ein (#175, ausführlich in [RAD-Studio.md](RAD-Studio.md#eingebauter-lsp-client)):
+
+1. *Tools › Optionen › Editor › Sprache › Code Insight › Code Insight-Manager › Neu*: Name `Atlas`, ausführbare Datei `AtlasServer.exe`, Timeout `15000`, InitializationOptions `{}`, Sprache beliebig.
+2. IDE schließen und unter `HKCU\Software\Embarcadero\BDS\<Version>\LSP\UserDefined\Atlas` den Wert `LanguageId` auf `Delphi` setzen.
+3. IDE starten und im Code Insight-Manager für Delphi „Atlas“ wählen.
+
+Dann laufen Syntaxfehler, Hover (als Klartext), Gliederung und Vervollständigung über Atlas. Häufige Serverstarts im Log sind normal: Die IDE startet ihren Server je IDE und bei jedem Projektwechsel neu und beendet ihn hart; der nächste Start meldet das im Log.
+
 ## VS Code
 
 Die Erweiterung `atlas-<Version>.vsix` aus dem Release enthält den Server schon:
