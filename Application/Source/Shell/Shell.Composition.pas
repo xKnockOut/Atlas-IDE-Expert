@@ -134,6 +134,9 @@ type
     // unter FWorkspacesLock, weil Anfrage-Threads lesen.
     FWorkspaces: TObjectList<TShellWorkspace>;
     FWorkspacesLock: TObject;
+    /// <summary>Je Arbeitsbereich die Anfragen, die ihn außerhalb von FWorkspacesLock nutzen (EnsureUnit);
+    /// ein entfernter wird erst freigegeben, wenn er hier fehlt. Nur unter FWorkspacesLock.</summary>
+    FWorkspaceUsers: TDictionary<TShellWorkspace, Integer>;
     FWorkspaceCounter: Integer;
     /// <summary>Reihenfolge der Indexaufbauten aller Projekte (#648); kleiner = früher.</summary>
     FIndexScheduler: TIndexScheduler;
@@ -168,6 +171,11 @@ type
     /// <summary>Innerster Ordner zur Datei oder nil. Aufrufer hält FWorkspacesLock.</summary>
     function WorkspaceOf(const AFileName: string): TShellWorkspace;
     function EnsureUnit(const AUnitName: string): Boolean;
+    /// <summary>Fortschritt des Indexaufbaus in Prozent über alle Projekte; -1, wenn keiner läuft.</summary>
+    function IndexLoading: Integer;
+    /// <summary>Ein Indexaufbau ist fertig: Befunde mit dem vollständigen Index neu prüfen (#647).
+    /// Index-Thread.</summary>
+    procedure IndexFinished;
     /// <summary>Text einer Quelldatei; geöffnete Dokumente haben Vorrang vor der Platte.</summary>
     function ReadSourceText(const AFileName: string; out AText: string): Boolean;
     /// <summary>Projektdateien aller Ordner und geöffnete Dokumente, für Referenzen und Umbenennen.</summary>
@@ -370,6 +378,11 @@ begin
       else
         AText := '';
     end);
+  FPullDiagnostics.Busy :=
+    function: Boolean
+    begin
+      Result := IndexLoading >= 0;
+    end;
   FPullDiagnostics.Attach(FDispatcher);
   FSyntaxDiagnostics.OnPullChanged := FPullDiagnostics.Changed;
   FDocumentSymbols := TLspDocumentSymbols.Create(FDocuments);
@@ -429,6 +442,7 @@ begin
   FSelectionRanges.Attach(FDispatcher);
   FWorkspaces := TObjectList<TShellWorkspace>.Create(True);
   FWorkspacesLock := TObject.Create;
+  FWorkspaceUsers := TDictionary<TShellWorkspace, Integer>.Create;
   FIndexScheduler := TIndexScheduler.Create;
   FLooseConfiguration := TLspConfiguration.Create(FDocuments, FTransport,
     function(const AFileName: string; out AText: string): Boolean
@@ -470,17 +484,8 @@ begin
     end;
   FDiagnostics.IndexLoading :=
     function: Integer
-    var
-      Workspace: TShellWorkspace;
     begin
-      Result := -1;
-      TMonitor.Enter(FWorkspacesLock);
-      try
-        for Workspace in FWorkspaces do
-          Result := Max(Result, Workspace.IndexLoading);
-      finally
-        TMonitor.Exit(FWorkspacesLock);
-      end;
+      Result := IndexLoading;
     end;
   FDispatcher.Observer := FDiagnosticsRef;
   FDefinition := TLspDefinition.Create(FDocuments, FIndex,
@@ -1063,6 +1068,8 @@ begin
 end;
 
 destructor TServerComposition.Destroy;
+var
+  Workspace: TShellWorkspace;
 begin
   // Zuerst: Eine laufende Übernahme greift auf die Ordner zu.
   FreeAndNil(FIndexRefresh);
@@ -1079,11 +1086,15 @@ begin
     FCompileThread.WaitFor;
     FreeAndNil(FCompileThread);
   end;
+  // Index-Threads vor der Syntaxprüfung anhalten: Ein fertiger Aufbau meldet sich dort (IndexFinished).
+  for Workspace in FWorkspaces do
+    Workspace.Stop;
   // Vor den Ordnern: der Hintergrund-Thread der Syntaxprüfung fragt ihre Symbole ab.
   FPullDiagnostics.Free;
   FSyntaxDiagnostics.Free;
   // Ordner vor dem Index: ihre Index-Threads laufen noch.
   FWorkspaces.Free;
+  FWorkspaceUsers.Free;
   FWorkspacesLock.Free;
   // Nach den Ordnern: Ihre Index-Threads sind beendet und abgemeldet.
   FIndexScheduler.Free;
@@ -1223,6 +1234,7 @@ begin
   Workspace.Deferred := ADeferred;
   Workspace.Origin := AOrigin;
   Workspace.OnProjectLoaded := ProjectLoaded;
+  Workspace.OnIndexFinished := IndexFinished;
   // Das Zeitlimit gilt serverweit; bei mehreren Ordnern das zuletzt gelesene.
   Workspace.OnSettingsChanged :=
     procedure(ASettings: TServerSettings)
@@ -1305,8 +1317,19 @@ begin
     if not Shared then
       FIndex.RemoveFile(UnitIndex.FileName);
   end;
+  // Erst freigeben, wenn keine Anfrage sie mehr außerhalb der Sperre nutzt (EnsureUnit). Neue Anfragen
+  // sehen sie nicht mehr, das Warten endet also.
   for Workspace in Removed do
+  begin
+    TMonitor.Enter(FWorkspacesLock);
+    try
+      while FWorkspaceUsers.ContainsKey(Workspace) do
+        TMonitor.Wait(FWorkspacesLock, INFINITE);
+    finally
+      TMonitor.Exit(FWorkspacesLock);
+    end;
     Workspace.Free;
+  end;
   ProjectLoaded;
 end;
 
@@ -1363,17 +1386,65 @@ end;
 function TServerComposition.EnsureUnit(const AUnitName: string): Boolean;
 var
   Workspace: TShellWorkspace;
+  Targets: TArray<TShellWorkspace>;
+  Users: Integer;
 begin
-  // Anfrage-Threads: jeder Ordner versucht es mit seinen Suchpfaden.
+  // Anfrage-Threads: jeder Ordner versucht es mit seinen Suchpfaden. Das Parsen läuft außerhalb von
+  // FWorkspacesLock (#647): Sonst warteten alle Anfragen, die nur kurz einen Arbeitsbereich suchen
+  // (Defines, Einstellungen, Diagnoselog), auf das Parsen einer Unit, und Hover dauerte Minuten.
   TMonitor.Enter(FWorkspacesLock);
   try
-    for Workspace in FWorkspaces do
-      if Workspace.EnsureUnit(AUnitName) then
-        Exit(True);
-    Result := False;
+    Targets := FWorkspaces.ToArray;
+    for Workspace in Targets do
+      if FWorkspaceUsers.TryGetValue(Workspace, Users) then
+        FWorkspaceUsers[Workspace] := Users + 1
+      else
+        FWorkspaceUsers.Add(Workspace, 1);
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
+  try
+    Result := False;
+    for Workspace in Targets do
+      if Workspace.EnsureUnit(AUnitName) then
+        Exit(True);
+  finally
+    TMonitor.Enter(FWorkspacesLock);
+    try
+      for Workspace in Targets do
+      begin
+        Users := FWorkspaceUsers[Workspace] - 1;
+        if Users = 0 then
+          FWorkspaceUsers.Remove(Workspace)
+        else
+          FWorkspaceUsers[Workspace] := Users;
+      end;
+      TMonitor.PulseAll(FWorkspacesLock);
+    finally
+      TMonitor.Exit(FWorkspacesLock);
+    end;
+  end;
+end;
+
+function TServerComposition.IndexLoading: Integer;
+var
+  Workspace: TShellWorkspace;
+begin
+  Result := -1;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    for Workspace in FWorkspaces do
+      Result := Max(Result, Workspace.IndexLoading);
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+procedure TServerComposition.IndexFinished;
+begin
+  // Befunde aus der Zeit des Aufbaus enthalten Units, die damals noch fehlten. Im Pull-Modus steigt
+  // damit die Generation: Der Client holt geöffnete Dateien neu, workspace/diagnostic prüft alle.
+  FSyntaxDiagnostics.Refresh;
 end;
 
 function TServerComposition.DefinesFor(const AUri: string; out ADefines: TArray<string>): Boolean;
@@ -2125,6 +2196,13 @@ begin
   FLogger.Info(Format('%s %s gestartet', [TProductVersion.Name, TProductVersion.Version]));
   FDiagnostics.AllowMethods(FDispatcher.Methods);
   FDiagnostics.BeginRun(TProductVersion.Version, AllocatedBytes);
+  // Endzeile, sobald die Eingabe endet: Das Plugin beendet den Prozess nach 2 s, auch wenn noch
+  // Anfragen laufen; sonst meldete der nächste Lauf einen Absturz (#647).
+  FConnection.OnLoopEnded :=
+    procedure
+    begin
+      FDiagnostics.EndRun(FEndReason, FLifecycle.ExitCode, AllocatedBytes);
+    end;
   try
     FConnection.Run;
     Result := FLifecycle.ExitCode;
