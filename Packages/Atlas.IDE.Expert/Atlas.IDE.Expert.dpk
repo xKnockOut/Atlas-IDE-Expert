@@ -133,6 +133,8 @@ contains
   Atlas.IDE.Build.MessageView in 'Source\IDE\Build\Atlas.IDE.Build.MessageView.pas',
   Atlas.Core.Build.Messages in 'Source\Core\Build\Atlas.Core.Build.Messages.pas',
   Atlas.Core.Build.CheckOnSave in 'Source\Core\Build\Atlas.Core.Build.CheckOnSave.pas',
+  Atlas.Core.Build.Target in 'Source\Core\Build\Atlas.Core.Build.Target.pas',
+  Atlas.IDE.Build.Target in 'Source\IDE\Build\Atlas.IDE.Build.Target.pas',
   Atlas.IDE.Build.CheckOnSave in 'Source\IDE\Build\Atlas.IDE.Build.CheckOnSave.pas';
 
 end.

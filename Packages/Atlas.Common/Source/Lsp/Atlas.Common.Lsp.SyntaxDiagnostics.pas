@@ -7,7 +7,10 @@
 // Sind die Symbole des Projekts bekannt (DefinesProvider), kommen inaktive
 // {$IFDEF}-Bereiche als Hinweise mit dem Tag Unnecessary dazu; der Editor
 // blendet sie ab. Ohne Projekt wird nichts abgeblendet, weil die aktiven
-// Symbole dann nicht bekannt sind.
+// Symbole dann nicht bekannt sind. Jeder Bereich nennt die Bedingung seines
+// Zweigs und, mit BuildTargetProvider, Zielplattform und Konfiguration (#615):
+// „Inaktiv: Bedingung WIN64 nicht erfüllt (Zielplattform Win32 · Debug)“,
+// dieselben Angaben einzeln in data.inactive.
 // Ist die Delphi-Version bekannt (VersionProvider), werden Sprachmerkmale,
 // die diese Version noch nicht kennt, als Warnung gemeldet.
 // Meldungen des letzten Compilerlaufs (CompilerMessagesProvider, #40) kommen
@@ -28,6 +31,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Baseline,
   Atlas.Common.Compiler.Contract,
+  Atlas.Common.Lsp.InactiveRegions,
   Atlas.Common.Lsp.Internals.Debouncer;
 
 type
@@ -38,6 +42,8 @@ type
   TIncludePathsProvider = reference to function(const AUri: string): TArray<string>;
   /// <summary>Eingestellte Delphi-Version für AUri; '' = unbekannt. Hintergrund-Thread.</summary>
   TDelphiVersionProvider = reference to function(const AUri: string): string;
+  /// <summary>Gewählte Zielplattform und Konfiguration für AUri (#615); False = unbekannt. Hintergrund-Thread.</summary>
+  TBuildTargetProvider = reference to function(const AUri: string; out APlatform, AConfig: string): Boolean;
 
   /// <summary>Was die Prüfregeln für ein Dokument brauchen.</summary>
   TRuleCheckContext = record
@@ -73,6 +79,8 @@ type
     Source = 'Atlas';
     CompilerSource = 'dcc';
     InactiveMessage = 'Inaktiver Bereich (bedingte Kompilierung)';
+    InactiveConditionMessage = 'Inaktiv: Bedingung %s nicht erfüllt';
+    InactiveTargetSuffix = ' (Zielplattform %s · %s)';
   private
     FStore: IDocumentStore;
     FTransport: IJsonRpcTransport;
@@ -84,6 +92,7 @@ type
     FDefinesProvider: TDefinesProvider;
     FIncludePathsProvider: TIncludePathsProvider;
     FVersionProvider: TDelphiVersionProvider;
+    FTargetProvider: TBuildTargetProvider;
     FRuleProvider: TRuleContextProvider;
     FCompilerProvider: TCompilerMessagesProvider;
     FPullMode: Boolean;
@@ -100,6 +109,8 @@ type
     procedure SetIncludePathsProvider(const AValue: TIncludePathsProvider);
     function CurrentVersion(const AUri: string): string;
     procedure SetVersionProvider(const AValue: TDelphiVersionProvider);
+    function CurrentTarget(const AUri: string; out APlatform, AConfig: string): Boolean;
+    procedure SetTargetProvider(const AValue: TBuildTargetProvider);
     function CurrentRules(const AUri: string; out AContext: TRuleCheckContext): Boolean;
     procedure SetRuleProvider(const AValue: TRuleContextProvider);
     function CurrentCompilerMessages(const AFileName: string): TArray<TCompilerMessage>;
@@ -122,6 +133,14 @@ type
     /// <summary>Wie oben, zusätzlich mit den Treffern der Prüfregeln aus ARules.</summary>
     class function BuildParams(const ADocument: ITextDocument; const AInactive: TArray<TTextRange>;
       const ADelphiVersion: string; const ARules: TRuleCheckContext): TJSONObject; overload; static;
+    /// <summary>Wie oben mit Bedingung je inaktivem Bereich und gewählter Zielplattform und
+    /// Konfiguration (#615; '' = unbekannt).</summary>
+    class function BuildParams(const ADocument: ITextDocument; const AInactive: TArray<TLspInactiveRegion>;
+      const ADelphiVersion: string; const ARules: TRuleCheckContext;
+      const APlatform, AConfig: string): TJSONObject; overload; static;
+    /// <summary>Meldung zu einem inaktiven Bereich: mit Bedingung „Inaktiv: Bedingung X nicht erfüllt“,
+    /// mit Plattform oder Konfiguration dahinter „(Zielplattform Win32 · Debug)“.</summary>
+    class function InactiveMessageOf(const ACondition, APlatform, AConfig: string): string; static;
     /// <summary>Ein Regeltreffer als LSP-Diagnostic (code = Regelkennung). Der Aufrufer übernimmt das Objekt.</summary>
     class function FindingToJson(const AFinding: TRuleFinding): TJSONObject; static;
     /// <summary>Compilermeldung als LSP-Diagnostic; ALineText (falls bekannt) begrenzt den Bereich.
@@ -147,6 +166,8 @@ type
     property DefinesProvider: TDefinesProvider write SetDefinesProvider;
     property IncludePathsProvider: TIncludePathsProvider write SetIncludePathsProvider;
     property VersionProvider: TDelphiVersionProvider write SetVersionProvider;
+    /// <summary>Zielplattform und Konfiguration für den Hinweis inaktiver Bereiche (#615).</summary>
+    property BuildTargetProvider: TBuildTargetProvider write SetTargetProvider;
     /// <summary>Liefert Regeln und Einstellungen; ohne Provider laufen keine Prüfregeln.</summary>
     property RuleProvider: TRuleContextProvider write SetRuleProvider;
     /// <summary>Liefert die Meldungen des letzten Compilerlaufs; ohne Provider keine.</summary>
@@ -168,7 +189,6 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.LanguageFeatures,
-  Atlas.Common.Lsp.InactiveRegions,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.IncludeFiles,
   Atlas.Common.Rules.Engine,
@@ -305,6 +325,36 @@ begin
   TMonitor.Enter(FDefinesLock);
   try
     FVersionProvider := AValue;
+  finally
+    TMonitor.Exit(FDefinesLock);
+  end;
+end;
+
+function TLspSyntaxDiagnostics.CurrentTarget(const AUri: string; out APlatform, AConfig: string): Boolean;
+var
+  Provider: TBuildTargetProvider;
+begin
+  TMonitor.Enter(FDefinesLock);
+  try
+    Provider := FTargetProvider;
+  finally
+    TMonitor.Exit(FDefinesLock);
+  end;
+  APlatform := '';
+  AConfig := '';
+  Result := Assigned(Provider) and Provider(AUri, APlatform, AConfig);
+  if not Result then
+  begin
+    APlatform := '';
+    AConfig := '';
+  end;
+end;
+
+procedure TLspSyntaxDiagnostics.SetTargetProvider(const AValue: TBuildTargetProvider);
+begin
+  TMonitor.Enter(FDefinesLock);
+  try
+    FTargetProvider := AValue;
   finally
     TMonitor.Exit(FDefinesLock);
   end;
@@ -522,8 +572,9 @@ end;
 function TLspSyntaxDiagnostics.Compute(const ADocument: ITextDocument): TJSONObject;
 var
   Defines: TArray<string>;
-  Inactive: TArray<TTextRange>;
+  Inactive: TArray<TLspInactiveRegion>;
   Rules: TRuleCheckContext;
+  Platform, Config: string;
   Items: TJSONArray;
   Compiled: TCompilerMessage;
   Form: TDfmDocument;
@@ -551,11 +602,12 @@ begin
   Inactive := nil;
   Issues := nil;
   if CurrentDefines(ADocument.Uri, Defines) then
-    Inactive := TLspInactiveRegions.Ranges(ADocument.Text, Defines, TDocumentUris.ToPath(ADocument.Uri),
+    Inactive := TLspInactiveRegions.Regions(ADocument.Text, Defines, TDocumentUris.ToPath(ADocument.Uri),
       TIncludeFiles.Resolver(CurrentIncludePaths(ADocument.Uri)), Issues);
   if not CurrentRules(ADocument.Uri, Rules) then
     Rules := Default(TRuleCheckContext);
-  Result := BuildParams(ADocument, Inactive, CurrentVersion(ADocument.Uri), Rules);
+  CurrentTarget(ADocument.Uri, Platform, Config);
+  Result := BuildParams(ADocument, Inactive, CurrentVersion(ADocument.Uri), Rules, Platform, Config);
   Items := Result.GetValue('diagnostics') as TJSONArray;
   for Issue in Issues do
   begin
@@ -636,13 +688,39 @@ end;
 
 class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
   const AInactive: TArray<TTextRange>; const ADelphiVersion: string; const ARules: TRuleCheckContext): TJSONObject;
+begin
+  Result := BuildParams(ADocument, TLspInactiveRegions.FromRanges(AInactive), ADelphiVersion, ARules, '', '');
+end;
+
+class function TLspSyntaxDiagnostics.InactiveMessageOf(const ACondition, APlatform, AConfig: string): string;
+var
+  Platform, Config: string;
+begin
+  if ACondition = '' then
+    Exit(InactiveMessage);
+  Result := Format(InactiveConditionMessage, [ACondition]);
+  if (APlatform = '') and (AConfig = '') then
+    Exit;
+  Platform := APlatform;
+  Config := AConfig;
+  if Platform = '' then
+    Platform := '?';
+  if Config = '' then
+    Config := '?';
+  Result := Result + Format(InactiveTargetSuffix, [Platform, Config]);
+end;
+
+class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
+  const AInactive: TArray<TLspInactiveRegion>; const ADelphiVersion: string; const ARules: TRuleCheckContext;
+  const APlatform, AConfig: string): TJSONObject;
 var
   RuleFinding: TRuleFinding;
   RuleFindings: TArray<TRuleFinding>;
   Context: TRuleContext;
 var
   Finding: TLanguageFeatureFinding;
-  Range: TTextRange;
+  Region: TLspInactiveRegion;
+  Data: TJSONObject;
   Tags: TJSONArray;
   Tree: TSyntaxTree;
   Shared: ISharedSyntaxTree;
@@ -663,7 +741,7 @@ begin
     Items.AddElement(Item);
   end;
   // Merkmale in inaktiven Zweigen ({$IF CompilerVersion >= …}) sind gewollt (#109).
-  for Finding in TLanguageFeatures.Check(Tree, ADelphiVersion, AInactive) do
+  for Finding in TLanguageFeatures.Check(Tree, ADelphiVersion, TLspInactiveRegions.RangesOf(AInactive)) do
   begin
     Item := TJSONObject.Create;
     Item.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(Finding.StartPos, Finding.EndPos)));
@@ -690,17 +768,23 @@ begin
     for RuleFinding in RuleFindings do
       Items.AddElement(FindingToJson(RuleFinding));
   end;
-  for Range in AInactive do
+  for Region in AInactive do
   begin
     Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Range));
+    Item.AddPair('range', TLspPositions.RangeToJson(Region.Range));
     Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Hint));
     Item.AddPair('source', Source);
-    Item.AddPair('message', InactiveMessage);
+    Item.AddPair('message', InactiveMessageOf(Region.Condition, APlatform, AConfig));
     Tags := TJSONArray.Create;
     // DiagnosticTag.Unnecessary
     Tags.Add(1);
     Item.AddPair('tags', Tags);
+    // Einzeln für Clients, die den Hinweis selbst setzen (Plugin, übersetzt).
+    Data := TJSONObject.Create;
+    Data.AddPair('condition', Region.Condition);
+    Data.AddPair('platform', APlatform);
+    Data.AddPair('config', AConfig);
+    Item.AddPair('data', TJSONObject.Create(TJSONPair.Create('inactive', Data)));
     Items.AddElement(Item);
   end;
   Result := TJSONObject.Create;

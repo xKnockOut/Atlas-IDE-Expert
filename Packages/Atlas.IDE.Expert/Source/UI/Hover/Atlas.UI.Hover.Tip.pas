@@ -712,6 +712,9 @@ begin
       Dec(Y, Scale(4));
       if Problem.IsCompiler then
         Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceCompiler)
+      else if Problem.Unnecessary then
+        // Inaktiver {$IFDEF}-Zweig (#615).
+        Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceInactive)
       else
         Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceAtlas);
       if Problem.Stale then

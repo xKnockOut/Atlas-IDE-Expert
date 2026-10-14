@@ -182,6 +182,8 @@
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.Messages.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.CheckOnSave.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.CheckOnSave.pas"/>
+        <DCCReference Include="Source\Core\Build\Atlas.Core.Build.Target.pas"/>
+        <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.Target.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

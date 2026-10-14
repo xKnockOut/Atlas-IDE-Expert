@@ -460,6 +460,30 @@ begin
   FDocuments.Subscribe(HandleDocumentEvent);
   FDispatcher.RegisterNotification(TLspConfiguration.DidChangeConfigurationMethod, HandleDidChangeConfiguration);
   FSyntaxDiagnostics.DefinesProvider := DefinesFor;
+  // Zielplattform und Konfiguration für den Hinweis inaktiver Zweige (#615).
+  FSyntaxDiagnostics.BuildTargetProvider :=
+    function(const AUri: string; out APlatform, AConfig: string): Boolean
+    var
+      Workspace: TShellWorkspace;
+      Project: TProjectInfo;
+    begin
+      APlatform := '';
+      AConfig := '';
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+        if (Workspace = nil) and (FWorkspaces.Count = 1) then
+          Workspace := FWorkspaces[0];
+        Result := (Workspace <> nil) and Workspace.Project(Project);
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+      if Result then
+      begin
+        APlatform := Project.Platform;
+        AConfig := Project.Config;
+      end;
+    end;
   FSyntaxDiagnostics.IncludePathsProvider :=
     function(const AUri: string): TArray<string>
     var
@@ -915,18 +939,32 @@ begin
       Project: TProjectInfo;
       Items: TJSONArray;
       Item: TJSONObject;
+      DefinesValue, Define: TJSONValue;
+      Defines: TArray<string>;
+      HasDefines: Boolean;
     begin
-      // Argument: {"config": "Release", "platform": "Win64", "uri": "…"}; alle Felder optional.
-      // Ohne Konfiguration und Plattform nur die aktuelle Auswahl je Projekt (#46).
+      // Argument: {"config": "Release", "platform": "Win64", "uri": "…", "defines": ["DEBUG"]};
+      // alle Felder optional. Ohne Konfiguration, Plattform und Symbole nur die aktuelle Auswahl
+      // je Projekt (#46). "defines" ersetzt die Symbole der .dproj (Projektoptionen der IDE, #615).
       Config := '';
       Platform := '';
       Uri := '';
+      Defines := nil;
+      HasDefines := False;
       if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONObject) then
       begin
         Options := TJSONObject(AArguments.Items[0]);
         Options.TryGetValue<string>('config', Config);
         Options.TryGetValue<string>('platform', Platform);
         Options.TryGetValue<string>('uri', Uri);
+        DefinesValue := Options.GetValue('defines');
+        if DefinesValue is TJSONArray then
+        begin
+          HasDefines := True;
+          for Define in TJSONArray(DefinesValue) do
+            if Define is TJSONString then
+              Defines := Defines + [TJSONString(Define).Value];
+        end;
       end;
       Targets := nil;
       TMonitor.Enter(FWorkspacesLock);
@@ -942,9 +980,9 @@ begin
       finally
         TMonitor.Exit(FWorkspacesLock);
       end;
-      if (Config <> '') or (Platform <> '') then
+      if (Config <> '') or (Platform <> '') or HasDefines then
         for Workspace in Targets do
-          if Workspace.Project(Project) and not Workspace.SelectBuild(Config, Platform, Error) then
+          if Workspace.Project(Project) and not Workspace.SelectBuild(Config, Platform, Defines, HasDefines, Error) then
             raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Error);
       Items := TJSONArray.Create;
       for Workspace in Targets do

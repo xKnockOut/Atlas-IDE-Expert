@@ -6,6 +6,8 @@
 // aus Include-Dateien gehören nicht zur Datei selbst und entfallen.
 // Mit Resolver (#264) werden $I-Dateien gelesen, sodass dort gesetzte
 // Symbole wirken; fehlende Includes und Zyklen kommen als Befunde zurück.
+// Regions nennt je Bereich die Bedingung des Zweigs (#476), für den Hinweis
+// „Inaktiv: Bedingung WIN64 nicht erfüllt“ im Editor (#615).
 
 interface
 
@@ -15,6 +17,14 @@ uses
   Atlas.Common.Pascal.Preprocessor;
 
 type
+  /// <summary>Inaktiver Bereich mit der Bedingung seines Zweigs ("WIN64", "not DEBUG",
+  /// "DEBUG und WIN64"); '' wenn unbekannt, etwa bei $IFOPT.</summary>
+  TLspInactiveRegion = record
+    Range: TTextRange;
+    Condition: string;
+    class function Create(const ARange: TTextRange; const ACondition: string): TLspInactiveRegion; static;
+  end;
+
   TLspInactiveRegions = record
   public
     /// <summary>Inaktive Zeilenbereiche in AText für die Symbole ADefines.</summary>
@@ -23,9 +33,29 @@ type
     /// eingebundenen Dateien, je $I-Direktive der Datei höchstens einen (Range = RootRange).</summary>
     class function Ranges(const AText: string; const ADefines: TArray<string>; const AFileName: string;
       const AResolver: TIncludeResolver; out AIssues: TArray<TPreprocessorIssue>): TArray<TTextRange>; overload; static;
+    /// <summary>Wie Ranges, je Bereich mit der Bedingung des Zweigs.</summary>
+    class function Regions(const AText: string; const ADefines: TArray<string>): TArray<TLspInactiveRegion>;
+      overload; static;
+    class function Regions(const AText: string; const ADefines: TArray<string>; const AFileName: string;
+      const AResolver: TIncludeResolver; out AIssues: TArray<TPreprocessorIssue>): TArray<TLspInactiveRegion>;
+      overload; static;
+    /// <summary>Nur die Bereiche, etwa für die Prüfung der Sprachmerkmale.</summary>
+    class function RangesOf(const ARegions: TArray<TLspInactiveRegion>): TArray<TTextRange>; static;
+    /// <summary>Bereiche ohne Bedingung.</summary>
+    class function FromRanges(const ARanges: TArray<TTextRange>): TArray<TLspInactiveRegion>; static;
   end;
 
 implementation
+
+{ TLspInactiveRegion }
+
+class function TLspInactiveRegion.Create(const ARange: TTextRange; const ACondition: string): TLspInactiveRegion;
+begin
+  Result.Range := ARange;
+  Result.Condition := ACondition;
+end;
+
+{ TLspInactiveRegions }
 
 class function TLspInactiveRegions.Ranges(const AText: string; const ADefines: TArray<string>): TArray<TTextRange>;
 var
@@ -36,11 +66,46 @@ end;
 
 class function TLspInactiveRegions.Ranges(const AText: string; const ADefines: TArray<string>; const AFileName: string;
   const AResolver: TIncludeResolver; out AIssues: TArray<TPreprocessorIssue>): TArray<TTextRange>;
+begin
+  Result := RangesOf(Regions(AText, ADefines, AFileName, AResolver, AIssues));
+end;
+
+class function TLspInactiveRegions.Regions(const AText: string;
+  const ADefines: TArray<string>): TArray<TLspInactiveRegion>;
+var
+  Issues: TArray<TPreprocessorIssue>;
+begin
+  Result := Regions(AText, ADefines, '', nil, Issues);
+end;
+
+class function TLspInactiveRegions.RangesOf(const ARegions: TArray<TLspInactiveRegion>): TArray<TTextRange>;
+var
+  Index: Integer;
+begin
+  SetLength(Result, Length(ARegions));
+  for Index := 0 to High(ARegions) do
+    Result[Index] := ARegions[Index].Range;
+end;
+
+class function TLspInactiveRegions.FromRanges(const ARanges: TArray<TTextRange>): TArray<TLspInactiveRegion>;
+var
+  Index: Integer;
+begin
+  SetLength(Result, Length(ARanges));
+  for Index := 0 to High(ARanges) do
+    Result[Index] := TLspInactiveRegion.Create(ARanges[Index], '');
+end;
+
+class function TLspInactiveRegions.Regions(const AText: string; const ADefines: TArray<string>;
+  const AFileName: string; const AResolver: TIncludeResolver;
+  out AIssues: TArray<TPreprocessorIssue>): TArray<TLspInactiveRegion>;
 var
   Options: TPreprocessorOptions;
   Processed: TPreprocessorResult;
   Inactive: TInactiveRange;
+  Conditional: TConditionalRange;
   Range: TTextRange;
+  Condition: string;
   Issue, Known: TPreprocessorIssue;
   Duplicate: Boolean;
 begin
@@ -77,7 +142,15 @@ begin
     // Leere Bereiche ({$IFDEF X}{$ENDIF}) nicht melden.
     if Range.StartPos = Range.EndPos then
       Continue;
-    Result := Result + [Range];
+    // Der Bereich beginnt hinter der Direktive, die den Zweig abschaltet, wie der Zweig selbst.
+    Condition := '';
+    for Conditional in Processed.Conditionals do
+      if (Conditional.FileIndex = 0) and not Conditional.Active and (Conditional.Range.StartPos = Range.StartPos) then
+      begin
+        Condition := Conditional.Condition;
+        Break;
+      end;
+    Result := Result + [TLspInactiveRegion.Create(Range, Condition)];
   end;
 end;
 

@@ -76,6 +76,9 @@ type
     // Per Befehl gewählte Konfiguration und Plattform (#46), unter FLock; '' = Einstellung.
     FBuildConfig: string;
     FBuildPlatform: string;
+    // Bedingte Symbole aus den Projektoptionen der IDE (#615), auch ungespeichert; nur mit FHasBuildDefines.
+    FBuildDefines: TArray<string>;
+    FHasBuildDefines: Boolean;
     FOnProjectLoaded: TProc;
     FOnIndexFinished: TProc;
     FOnProjectReady: TProc;
@@ -129,7 +132,11 @@ type
     function CompilerRequest(out ARequest: TCompilerRequest; out AError: string): Boolean;
     /// <summary>Wechselt Konfiguration und/oder Plattform ('' = unverändert) und lädt das Projekt neu (#46).
     /// False mit Grund in AError ohne Projekt oder bei unbekannten Werten. Threadsicher.</summary>
-    function SelectBuild(const AConfig, APlatform: string; out AError: string): Boolean;
+    function SelectBuild(const AConfig, APlatform: string; out AError: string): Boolean; overload;
+    /// <summary>Wie oben; mit AHasDefines ersetzen ADefines die Symbole (DCC_Define) der .dproj,
+    /// etwa ungespeicherte Projektoptionen der IDE (#615).</summary>
+    function SelectBuild(const AConfig, APlatform: string; const ADefines: TArray<string>; AHasDefines: Boolean;
+      out AError: string): Boolean; overload;
     /// <summary>Geladenes Projekt; False ohne Projekt. Threadsicher.</summary>
     function Project(out AProject: TProjectInfo): Boolean;
     /// <summary>Für das Projekt gewählte Delphi-Version (z. B. "23.0", #47); '' ohne Installation. Threadsicher.</summary>
@@ -399,6 +406,19 @@ end;
 
 function TShellWorkspace.SelectBuild(const AConfig, APlatform: string; out AError: string): Boolean;
 begin
+  Result := SelectBuild(AConfig, APlatform, nil, False, AError);
+end;
+
+function TShellWorkspace.SelectBuild(const AConfig, APlatform: string; const ADefines: TArray<string>;
+  AHasDefines: Boolean; out AError: string): Boolean;
+var
+  Define: string;
+  Defines: TArray<string>;
+begin
+  Defines := nil;
+  for Define in ADefines do
+    if (Trim(Define) <> '') and (IndexText(Trim(Define), Defines) < 0) then
+      Defines := Defines + [UpperCase(Trim(Define))];
   TMonitor.Enter(FLock);
   try
     if not FHasProject then
@@ -412,6 +432,11 @@ begin
         FBuildConfig := AConfig;
       if APlatform <> '' then
         FBuildPlatform := APlatform;
+      if AHasDefines then
+      begin
+        FBuildDefines := Defines;
+        FHasBuildDefines := True;
+      end;
     end;
   finally
     TMonitor.Exit(FLock);
@@ -419,6 +444,8 @@ begin
   if Result then
   begin
     FLogger.Info(Format('%s: Konfiguration %s, Plattform %s gewählt', [FName, AConfig, APlatform]));
+    if AHasDefines then
+      FLogger.Info(Format('%s: %d Symbole aus den Projektoptionen der IDE', [FName, Length(Defines)]));
     Reload;
   end;
 end;
@@ -737,6 +764,14 @@ begin
       FLogger.Error(Format('Projekt %s nicht lesbar: %s', [ProjectFile, E.Message]));
       Exit;
     end;
+  end;
+  // Symbole aus den Projektoptionen der IDE gelten vor denen der Datei (#615).
+  TMonitor.Enter(FLock);
+  try
+    if FHasBuildDefines then
+      Project.Defines := FBuildDefines;
+  finally
+    TMonitor.Exit(FLock);
   end;
   if Assigned(FOnNames) then
   begin

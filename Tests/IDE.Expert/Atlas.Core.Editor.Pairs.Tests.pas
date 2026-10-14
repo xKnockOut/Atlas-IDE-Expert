@@ -112,6 +112,12 @@ begin
   Assert.IsFalse(TAtlasPairs.RunMatches(Line, '(', 5));
   Assert.IsFalse(TAtlasPairs.RunMatches(Line, 'then', 12));
   Assert.IsFalse(TAtlasPairs.RunMatches(Line, '', 1));
+  // Zeichenindex als Editorspalte (#615).
+  Assert.AreEqual(1, TAtlasPairs.ColumnOf('abc', 0, 4));
+  Assert.AreEqual(3, TAtlasPairs.ColumnOf('abc', 2, 4));
+  Assert.AreEqual(5, TAtlasPairs.ColumnOf('a'#9'b', 2, 4));
+  Assert.AreEqual(5, TAtlasPairs.ColumnOf(#9'x', 1, 4));
+  Assert.AreEqual(2, TAtlasPairs.ColumnOf(#9'x', 1, 0));
 end;
 
 /// <summary>"Erste-Letzte@Spalte:Tiefe" je Linie.</summary>

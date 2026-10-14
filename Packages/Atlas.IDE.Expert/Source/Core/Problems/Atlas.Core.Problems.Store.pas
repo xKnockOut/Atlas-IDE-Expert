@@ -15,6 +15,8 @@
 //   nächsten Compile.
 // Version zählt jede Änderung, damit Zeichner und Liste nur bei Bedarf
 // neu aufbauen.
+// Inaktive {$IFDEF}-Zweige (#615) liefert InactiveSpans je Zeile als Spalten
+// des Editors, auch für Zweige, die innerhalb einer Zeile beginnen oder enden.
 
 interface
 
@@ -24,6 +26,18 @@ uses
   Atlas.Core.Problems.Contract;
 
 type
+  /// <summary>Spalten einer Editorzeile (1-basiert, Tabs aufgelöst), Last einschließlich;
+  /// Last = MaxInt bis zum Zeilenende.</summary>
+  TAtlasColumnSpan = record
+    First: Integer;
+    Last: Integer;
+    class function Create(AFirst, ALast: Integer): TAtlasColumnSpan; static;
+    /// <summary>Liegt die Spalte in einem der Bereiche?</summary>
+    class function Contains(const ASpans: TArray<TAtlasColumnSpan>; AColumn: Integer): Boolean; static;
+    /// <summary>Liegen alle Spalten AColumn .. AColumn + ACount - 1 in den Bereichen?</summary>
+    class function Covers(const ASpans: TArray<TAtlasColumnSpan>; AColumn, ACount: Integer): Boolean; static;
+  end;
+
   TAtlasProblemStore = class
   private type
     TEntry = class
@@ -33,9 +47,11 @@ type
       ResultId: string;
       Atlas: TArray<TAtlasProblem>;
       Compiler: TArray<TAtlasProblem>;
-      // ForFile, bis sich etwas ändert.
+      // ForFile bzw. Inactive, bis sich etwas ändert.
       Visible: TArray<TAtlasProblem>;
       VisibleValid: Boolean;
+      InactiveList: TArray<TAtlasProblem>;
+      InactiveValid: Boolean;
       // Zeilen von Text, bei Bedarf.
       Lines: TArray<string>;
       LinesValid: Boolean;
@@ -65,6 +81,12 @@ type
     function Inactive(const AFileName: string): TArray<TAtlasProblem>;
     /// <summary>Liegt die ganze Zeile (0-basiert) in einem inaktiven Zweig?</summary>
     function LineInactive(const AFileName: string; ALine: Integer): Boolean;
+    /// <summary>Inaktive Spalten der Zeile (0-basiert) für die Tabweite ATabWidth: ganze Zeilen und, bei
+    /// bekanntem Text, Teile von Zeilen ({$IFDEF X} a {$ENDIF}). Blasse Bereiche (geänderte Stelle) nur
+    /// als ganze Zeilen, bis neue Diagnosen da sind.</summary>
+    function InactiveSpans(const AFileName: string; ALine, ATabWidth: Integer): TArray<TAtlasColumnSpan>;
+    /// <summary>Inaktive Bereiche an der Stelle (0-basiert), für den Hinweis im Tooltip.</summary>
+    function InactiveAt(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;
     /// <summary>Probleme, die die Zeile (0-basiert) berühren.</summary>
     function OnLine(const AFileName: string; ALine: Integer): TArray<TAtlasProblem>;
     /// <summary>Probleme an der Stelle (0-basiert).</summary>
@@ -82,7 +104,36 @@ implementation
 
 uses
   System.Math,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Core.Editor.Pairs;
+
+{ TAtlasColumnSpan }
+
+class function TAtlasColumnSpan.Create(AFirst, ALast: Integer): TAtlasColumnSpan;
+begin
+  Result.First := AFirst;
+  Result.Last := ALast;
+end;
+
+class function TAtlasColumnSpan.Contains(const ASpans: TArray<TAtlasColumnSpan>; AColumn: Integer): Boolean;
+var
+  Span: TAtlasColumnSpan;
+begin
+  for Span in ASpans do
+    if (AColumn >= Span.First) and (AColumn <= Span.Last) then
+      Exit(True);
+  Result := False;
+end;
+
+class function TAtlasColumnSpan.Covers(const ASpans: TArray<TAtlasColumnSpan>; AColumn, ACount: Integer): Boolean;
+var
+  Column: Integer;
+begin
+  for Column := AColumn to AColumn + ACount - 1 do
+    if not Contains(ASpans, Column) then
+      Exit(False);
+  Result := ACount > 0;
+end;
 
 { TAtlasProblemStore }
 
@@ -147,6 +198,7 @@ begin
   Entry.TextKnown := ATextKnown;
   Entry.ResultId := AResultId;
   Entry.VisibleValid := False;
+  Entry.InactiveValid := False;
   Inc(FVersion);
 end;
 
@@ -192,6 +244,7 @@ begin
   AEntry.Text := ANewText;
   AEntry.LinesValid := False;
   AEntry.VisibleValid := False;
+  AEntry.InactiveValid := False;
 end;
 
 function TAtlasProblemStore.Inactive(const AFileName: string): TArray<TAtlasProblem>;
@@ -203,8 +256,70 @@ begin
   Entry := Find(AFileName);
   if Entry = nil then
     Exit;
+  // Zeichnen fragt je Textlauf: nicht jedes Mal alle Meldungen durchgehen.
+  if Entry.InactiveValid then
+    Exit(Entry.InactiveList);
   for Problem in Entry.Atlas do
     if Problem.Unnecessary then
+      Result := Result + [Problem];
+  Entry.InactiveList := Result;
+  Entry.InactiveValid := True;
+end;
+
+function TAtlasProblemStore.InactiveSpans(const AFileName: string; ALine, ATabWidth: Integer): TArray<TAtlasColumnSpan>;
+var
+  Problem: TAtlasProblem;
+  Text: string;
+  HasText: Boolean;
+  First, Last: Integer;
+begin
+  Result := nil;
+  HasText := False;
+  Text := '';
+  for Problem in Inactive(AFileName) do
+  begin
+    if (ALine < Problem.StartLine) or (ALine > Problem.EndLine) then
+      Continue;
+    // Zeilen zwischen den Direktiven ganz.
+    if (ALine > Problem.StartLine) and (ALine < Problem.EndLine) then
+    begin
+      Result := Result + [TAtlasColumnSpan.Create(1, MaxInt)];
+      Continue;
+    end;
+    // Erste bzw. letzte Zeile: ab dem Ende der öffnenden bis vor die schließende Direktive.
+    if Problem.Stale then
+      Continue;
+    if not HasText then
+    begin
+      if not LineText(AFileName, ALine, Text) then
+        Exit;
+      HasText := True;
+    end;
+    if ALine = Problem.StartLine then
+      First := TAtlasPairs.ColumnOf(Text, Min(Problem.StartCharacter, Length(Text)), ATabWidth)
+    else
+      First := 1;
+    if ALine = Problem.EndLine then
+      Last := TAtlasPairs.ColumnOf(Text, Min(Problem.EndCharacter, Length(Text)), ATabWidth) - 1
+    else
+      Last := MaxInt;
+    // Nur Text dimmen, nicht das Zeilenende.
+    if Last = MaxInt then
+      Last := TAtlasPairs.ColumnOf(Text, Length(Text), ATabWidth) - 1;
+    if Last >= First then
+      Result := Result + [TAtlasColumnSpan.Create(First, Last)];
+  end;
+end;
+
+function TAtlasProblemStore.InactiveAt(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;
+var
+  Problem: TAtlasProblem;
+begin
+  Result := nil;
+  for Problem in Inactive(AFileName) do
+    // Das Ende gehört schon zur schließenden Direktive.
+    if Problem.Contains(ALine, ACharacter) and
+      ((ALine < Problem.EndLine) or (ACharacter < Problem.EndCharacter)) then
       Result := Result + [Problem];
 end;
 

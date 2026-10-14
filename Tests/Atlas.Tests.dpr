@@ -225,6 +225,8 @@ uses
   Atlas.Common.Lsp.IdeBuild.Tests in 'Common\Lsp\Atlas.Common.Lsp.IdeBuild.Tests.pas',
   Atlas.Core.Build.CheckOnSave in '..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.CheckOnSave.pas',
   Atlas.Core.Build.CheckOnSave.Tests in 'IDE.Expert\Atlas.Core.Build.CheckOnSave.Tests.pas',
+  Atlas.Core.Build.Target in '..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Target.pas',
+  Atlas.Core.Build.Target.Tests in 'IDE.Expert\Atlas.Core.Build.Target.Tests.pas',
   Atlas.Common.Mcp.BuildTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.BuildTools.Tests.pas',
   Atlas.Common.Mcp.Paths.Tests in 'Common\Mcp\Atlas.Common.Mcp.Paths.Tests.pas',
   Shell.Workspace in '..\Application\Source\Shell\Shell.Workspace.pas',
