@@ -16,6 +16,10 @@
 // nicht selbst mit einem Abschnitt, wird das Schlüsselwort vorangestellt.
 // Zyklen und zu tiefe Verschachtelung überspringt der Extractor; die
 // Diagnose dazu kommt aus dem Präprozessor.
+//
+// Vorwärtsdeklarationen (TFoo = class;) erscheinen nur, wenn die Unit den Typ
+// nicht vollständig deklariert. Sonst fänden Hover, Vererbungskette und
+// Gehe zu Definition die Vorwärtsdeklaration (ohne Vorfahren) statt des Typs.
 
 interface
 
@@ -37,6 +41,9 @@ type
     FVisibility: TIndexVisibility;
     // Typargumente des Vorfahren für den nächsten Add aus AddType.
     FAncestorArgs: string;
+    // Der nächste Add aus AddType ist eine Vorwärtsdeklaration; FForwards hält deren Nummern in FSymbols.
+    FForward: Boolean;
+    FForwards: TList<Integer>;
     function IsDefaultProperty(ANode: TSyntaxNode): Boolean;
     /// <summary>Methodenkopf mit virtual, dynamic, abstract oder override?</summary>
     class function IsVirtualHeader(ANode: TSyntaxNode): Boolean; static;
@@ -50,6 +57,8 @@ type
     procedure AddMembers(ABody: TSyntaxNode; const AContainer: string);
     procedure AddDeclarations(ANode: TSyntaxNode);
     procedure AddRoutine(ANode: TSyntaxNode);
+    /// <summary>Vorwärtsdeklarationen entfernen, deren Typ in der Unit vollständig deklariert ist.</summary>
+    procedure DropForwards;
     procedure Walk(ARoot: TSyntaxNode; var AUnit: TUnitIndex);
     class function UsesOf(ASection: TSyntaxNode): TArray<string>; static;
     class function ExtractLevel(const AText, AFileName: string; const ADefines: TArray<string>;
@@ -142,10 +151,12 @@ begin
   inherited Create;
   FTokens := ATokens;
   FSymbols := TList<TIndexSymbol>.Create;
+  FForwards := TList<Integer>.Create;
 end;
 
 destructor TIndexExtractor.Destroy;
 begin
+  FForwards.Free;
   FSymbols.Free;
   inherited;
 end;
@@ -237,6 +248,8 @@ begin
     Symbol.IsDefault := IsDefaultProperty(ANode);
   Symbol.IsVirtual := (AKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and IsVirtualHeader(ANode);
   Symbol.FileName := '';
+  if FForward then
+    FForwards.Add(FSymbols.Count);
   FSymbols.Add(Symbol);
 end;
 
@@ -490,10 +503,12 @@ begin
           end;
     end;
     FAncestorArgs := AncestorArgs;
+    FForward := (Body <> nil) and (Body.Kind = TSyntaxKind.ForwardType);
     try
       Add(ADecl, ADecl.Name, AContainer, Kind, Ancestors.ToArray);
     finally
       FAncestorArgs := '';
+      FForward := False;
     end;
   finally
     Ancestors.Free;
@@ -598,6 +613,31 @@ begin
   end;
 end;
 
+procedure TIndexExtractor.DropForwards;
+var
+  Index: Integer;
+  Forwards: TArray<Boolean>;
+  Full: TDictionary<string, Boolean>;
+begin
+  if FForwards.Count = 0 then
+    Exit;
+  SetLength(Forwards, FSymbols.Count);
+  for Index in FForwards do
+    Forwards[Index] := True;
+  Full := TDictionary<string, Boolean>.Create;
+  try
+    for Index := 0 to FSymbols.Count - 1 do
+      if not Forwards[Index] then
+        Full.AddOrSetValue(UpperCase(FSymbols[Index].QualifiedName), True);
+    for Index := FForwards.Count - 1 downto 0 do
+      if Full.ContainsKey(UpperCase(FSymbols[FForwards[Index]].QualifiedName)) then
+        FSymbols.Delete(FForwards[Index]);
+  finally
+    Full.Free;
+  end;
+  FForwards.Clear;
+end;
+
 procedure TIndexExtractor.Walk(ARoot: TSyntaxNode; var AUnit: TUnitIndex);
 var
   Index: Integer;
@@ -634,6 +674,7 @@ begin
     FInInterface := False;
     AddDeclarations(ARoot);
   end;
+  DropForwards;
   AUnit.Symbols := FSymbols.ToArray;
 end;
 

@@ -3,9 +3,10 @@
 // Code Insight-Manager für Delphi in RAD Studio (ADR 0006). Die IDE ruft ihn
 // direkt auf; er fragt Atlas über eine eigene LSP-Sitzung.
 // Umgesetzt: Symbolhinweis (Hover, GetHintText), Browse (Strg+Klick,
-// GotoDefinition) und Vervollständigung im eigenen Popup (#410): Strg+Leer und
-// "." lösen sie aus, InvokeCodeCompletion öffnet das Popup und meldet der IDE
-// False, damit sie keine eigene Liste zeigt (#407). Parameterhilfe ebenso im eigenen
+// GotoDefinition), Help Insight (leer, solange der Atlas-Tooltip an ist) und
+// Vervollständigung im eigenen Popup (#410): Strg+Leer und "." lösen sie aus,
+// InvokeCodeCompletion öffnet das Popup und meldet der IDE False, damit sie
+// keine eigene Liste zeigt (#407). Parameterhilfe ebenso im eigenen
 // Hint (#436): "(", "," und Strg+Umschalt+Leer, InvokeParameterCodeInsight meldet False.
 //
 // Server: Pfad und Argumente aus HKCU\Software\Atlas\IdePlugin
@@ -32,7 +33,8 @@ uses
   Atlas.IDE.Problems.Controller;
 
 type
-  TAtlasCodeInsightManager = class(TInterfacedObject, IOTACodeInsightManager, IOTACodeInsightSelection)
+  TAtlasCodeInsightManager = class(TInterfacedObject, IOTACodeInsightManager, IOTACodeInsightManager90,
+    IOTACodeInsightSelection)
   private
     FEnabled: Boolean;
     FServer: TLspServerProcess;
@@ -66,6 +68,10 @@ type
     class function ServerPath(out AArguments: string): string; static;
     /// <summary>Gibt es den Server? Ohne ihn übernimmt die eingebaute Code Insight.</summary>
     function ServerAvailable: Boolean;
+    /// <summary>Bedient Atlas diese Datei? Wie HandlesFile, aber ohne Diagnosezeile.</summary>
+    function Handles(const AFileName: string): Boolean;
+    /// <summary>Zeigt Atlas den Tooltip selbst (Hauptschalter und Tooltip an)?</summary>
+    class function OwnTooltip: Boolean; static;
     class function DiagnoseEnabled: Boolean; static;
   public
     /// <summary>Protokolldatei neben dem Plugin.</summary>
@@ -87,6 +93,8 @@ type
     procedure Log(const AMessage: string);
     /// <summary>Zeile im Protokoll unabhängig von Diagnose, z. B. Hänger (#501).</summary>
     procedure Report(const AMessage: string);
+    /// <summary>Bietet IOTACodeInsightManager90 (Help Insight) nur an, solange der Atlas-Tooltip an ist.</summary>
+    function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
     { IOTACodeInsightManager100 }
     function GetName: string;
     function GetIDString: string;
@@ -113,6 +121,8 @@ type
     procedure Done(Accepted: Boolean; out DisplayParams: Boolean);
     { IOTACodeInsightManager }
     function GetOptionSetName: string;
+    { IOTACodeInsightManager90 }
+    function GetHelpInsightHtml: WideString;
     { IOTACodeInsightSelection }
     function GetDisplayName: string;
   end;
@@ -193,6 +203,10 @@ begin
         Result := FProblems.ProblemsAt(AFileName, ALine, ACharacter)
       else
         Result := nil;
+    end,
+    function(const AFileName: string): Boolean
+    begin
+      Result := Handles(AFileName);
     end);
 end;
 
@@ -596,6 +610,30 @@ begin
   Result := 'Borland.EditOptions.Pascal';
 end;
 
+class function TAtlasCodeInsightManager.OwnTooltip: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.HoverTooltip;
+end;
+
+function TAtlasCodeInsightManager.QueryInterface(const IID: TGUID; out Obj): HResult;
+begin
+  // Ohne IOTACodeInsightManager90 holt sich die IDE Help Insight anderswo (DelphiLSP) und zeigt
+  // es neben dem Atlas-Tooltip. Mit dem Atlas-Tooltip aus bleibt es beim Verhalten der IDE.
+  if IsEqualGUID(IID, IOTACodeInsightManager90) and not OwnTooltip then
+  begin
+    Pointer(Obj) := nil;
+    Exit(E_NOINTERFACE);
+  end;
+  Result := inherited QueryInterface(IID, Obj);
+end;
+
+function TAtlasCodeInsightManager.GetHelpInsightHtml: WideString;
+begin
+  // Der Atlas-Tooltip zeigt alles; die IDE soll keinen zweiten Tooltip öffnen.
+  Result := '';
+  Diagnose('GetHelpInsightHtml aufgerufen');
+end;
+
 function TAtlasCodeInsightManager.GetEnabled: Boolean;
 begin
   Result := FEnabled;
@@ -677,16 +715,21 @@ begin
   Result := FServerFound;
 end;
 
-function TAtlasCodeInsightManager.HandlesFile(const AFileName: string): Boolean;
+function TAtlasCodeInsightManager.Handles(const AFileName: string): Boolean;
 var
   Extension: string;
 begin
+  Extension := LowerCase(ExtractFileExt(AFileName));
+  // Hauptschalter (#407): ausgeschaltet übernimmt die eingebaute Code Insight; ebenso ohne Server.
+  Result := TAtlasIdeSettings.Current.Enabled and not TAtlasGuard.Disabled(TAtlasFeature.Completion) and
+    ((Extension = '.pas') or (Extension = '.dpr') or (Extension = '.dpk') or (Extension = '.inc')) and ServerAvailable;
+end;
+
+function TAtlasCodeInsightManager.HandlesFile(const AFileName: string): Boolean;
+begin
   Result := False;
   try
-    Extension := LowerCase(ExtractFileExt(AFileName));
-    // Hauptschalter (#407): ausgeschaltet übernimmt die eingebaute Code Insight; ebenso ohne Server.
-    Result := TAtlasIdeSettings.Current.Enabled and not TAtlasGuard.Disabled(TAtlasFeature.Completion) and ((Extension = '.pas') or (Extension = '.dpr') or
-      (Extension = '.dpk') or (Extension = '.inc')) and ServerAvailable;
+    Result := Handles(AFileName);
     Diagnose(Format('HandlesFile(%s) = %s', [ExtractFileExt(AFileName), BoolToStr(Result, True)]));
   except
     on E: Exception do
