@@ -8,7 +8,7 @@ uses
   Winapi.Windows,
   System.SysUtils,
   Vcl.Forms,
-  Atlas.Core.Product.Version in '..\Packages\Atlas.IDE.Expert\Source\Core\Atlas.Core.Product.Version.pas',
+  Atlas.Core.Product.Version in '..\Packages\Atlas.IDE.Expert\Source\Core\Product\Atlas.Core.Product.Version.pas',
   Setup.Core.Contract in 'Source\Core\Setup.Core.Contract.pas',
   Setup.Core.Ides in 'Source\Core\Setup.Core.Ides.pas',
   Setup.Core.Installer in 'Source\Core\Setup.Core.Installer.pas',

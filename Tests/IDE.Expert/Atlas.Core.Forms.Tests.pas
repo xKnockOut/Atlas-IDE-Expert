@@ -12,6 +12,9 @@ type
   [TestFixture]
   TAtlasFormsTests = class
   public
+    /// <summary>Erste Benutzung (VCL, Codepages, RTTI) ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure WritesComponentsAndHandlers;
     [Test]
@@ -84,6 +87,11 @@ const
     '    OnDblClick = GridDblClick'#13#10 +
     '  end'#13#10 +
     'end'#13#10;
+
+procedure TAtlasFormsTests.WarmUpFirstUse;
+begin
+  WritesComponentsAndHandlers;
+end;
 
 procedure TAtlasFormsTests.WritesComponentsAndHandlers;
 var

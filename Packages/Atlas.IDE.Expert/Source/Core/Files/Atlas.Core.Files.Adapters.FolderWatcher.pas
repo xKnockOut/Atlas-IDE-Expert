@@ -48,6 +48,16 @@ type
 
 implementation
 
+type
+  // FILE_NOTIFY_INFORMATION; Winapi.Windows deklariert den Satz nicht.
+  PFileNotifyInformation = ^TFileNotifyInformation;
+  TFileNotifyInformation = record
+    NextEntryOffset: DWORD;
+    Action: DWORD;
+    FileNameLength: DWORD;
+    FileName: array[0..0] of WideChar;
+  end;
+
 const
   BufferBytes = 65536;
   NotifyFilter = FILE_NOTIFY_CHANGE_FILE_NAME or FILE_NOTIFY_CHANGE_LAST_WRITE or FILE_NOTIFY_CHANGE_SIZE;

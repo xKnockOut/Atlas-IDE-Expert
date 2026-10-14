@@ -191,7 +191,7 @@ var
   Line: string;
 begin
   Line := GuidLine;
-  Assert.AreEqual(42, Length(Line));
+  Assert.AreEqual(42, Integer(Length(Line)));
   Assert.IsTrue(Line.StartsWith('[''{') and Line.EndsWith('}'']'), Line);
   Assert.AreNotEqual(Line, GuidLine);
 end;

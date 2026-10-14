@@ -197,7 +197,7 @@ begin
     end
     else if Field.Path = 'encoding' then
     begin
-      Assert.AreEqual(3, Length(Field.Examples));
+      Assert.AreEqual(3, Integer(Length(Field.Examples)));
       Assert.AreEqual('windows-1252', Field.Examples[1]);
       Assert.IsFalse(Field.PicksFile);
       Inc(Seen);
@@ -215,7 +215,7 @@ var
   Choices: TArray<TAtlasSettingChoice>;
 begin
   Choices := TAtlasSettingChoices.DelphiVersions(['23.0', '37.0', '23.0', '99.0']);
-  Assert.AreEqual(3, Length(Choices));
+  Assert.AreEqual(3, Integer(Length(Choices)));
   Assert.AreEqual('99.0', Choices[0].Caption, 'unbekannt: nur die Nummer');
   Assert.AreEqual('Delphi 13 (37.0)', Choices[1].Caption);
   Assert.AreEqual('"37.0"', Choices[1].Json);
@@ -244,13 +244,13 @@ var
   Items: TArray<string>;
 begin
   Items := TAtlasSettingChoices.DprojConfigs(Dproj);
-  Assert.AreEqual(2, Length(Items));
+  Assert.AreEqual(2, Integer(Length(Items)));
   Assert.AreEqual('Debug', Items[0]);
   Assert.AreEqual('Release', Items[1]);
   Items := TAtlasSettingChoices.DprojPlatforms(Dproj);
-  Assert.AreEqual(2, Length(Items));
+  Assert.AreEqual(2, Integer(Length(Items)));
   Assert.AreEqual('Win64', Items[1]);
-  Assert.AreEqual(0, Length(TAtlasSettingChoices.DprojConfigs('')));
+  Assert.AreEqual(0, Integer(Length(TAtlasSettingChoices.DprojConfigs(''))));
 end;
 
 procedure TAtlasSettingsLayersTests.ProfilesIncludeOwnOnes;
@@ -258,10 +258,10 @@ var
   Items: TArray<string>;
 begin
   Items := TAtlasSettingChoices.Profiles('{"team": {"extends": "fast"}, "strict": {}}');
-  Assert.AreEqual(6, Length(Items));
+  Assert.AreEqual(6, Integer(Length(Items)));
   Assert.AreEqual('standard', Items[0]);
   Assert.AreEqual('team', Items[5]);
-  Assert.AreEqual(5, Length(TAtlasSettingChoices.Profiles('')));
+  Assert.AreEqual(5, Integer(Length(TAtlasSettingChoices.Profiles(''))));
 end;
 
 procedure TAtlasSettingsLayersTests.RuleRowsFromCatalogAndFile;
@@ -274,7 +274,7 @@ begin
     '{"id": "empty-except", "name": "Leeres except", "category": "bug", "severity": "error"}]}');
   try
     Rows := TAtlasRuleTable.Rows(Catalog, '{"no-with": "off", "own-rule": {"severity": "hint", "x": 1}}');
-    Assert.AreEqual(3, Length(Rows));
+    Assert.AreEqual(3, Integer(Length(Rows)));
     Assert.AreEqual('no-with', Rows[0].Id);
     Assert.AreEqual('off', Rows[0].Severity);
     Assert.AreEqual('warning', Rows[0].DefaultSeverity);
@@ -285,7 +285,7 @@ begin
     Assert.IsTrue(Rows[2].HasOptions);
     Assert.AreEqual('hint', Rows[2].Severity);
     // Ohne Server: nur die Regeln aus der Datei.
-    Assert.AreEqual(2, Length(TAtlasRuleTable.Rows(nil, '{"a": "off", "b": "error"}')));
+    Assert.AreEqual(2, Integer(Length(TAtlasRuleTable.Rows(nil, '{"a": "off", "b": "error"}'))));
   finally
     Catalog.Free;
   end;
@@ -341,7 +341,7 @@ begin
   try
     Assert.IsTrue(TAtlasSettingsValidation.FromAnswer(Answer, Issues, Valid));
     Assert.IsFalse(Valid);
-    Assert.AreEqual(2, Length(Issues));
+    Assert.AreEqual(2, Integer(Length(Issues)));
     Assert.IsTrue(Issues[1].Error);
     Lines := TAtlasSettingsValidation.Lines(Issues);
     Assert.AreEqual('Zeile 2: Ungültiger Wert', Lines[0]);
@@ -359,7 +359,7 @@ begin
   Assert.IsTrue(TAtlasSettingsValidation.Syntax(ProjectText, Issues));
   Assert.IsTrue(TAtlasSettingsValidation.Syntax('', Issues));
   Assert.IsFalse(TAtlasSettingsValidation.Syntax('{"a": ', Issues));
-  Assert.AreEqual(1, Length(Issues));
+  Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.IsTrue(Issues[0].Error);
 end;
 
@@ -375,7 +375,7 @@ begin
   Assert.AreEqual(-1, TAtlasBaselineInfo.Count('kaputt', Entries));
   Rows := TAtlasBaselineInfo.Suppressions('{"suppressions":[{"rule":"no-with","total":4,"line":3,"file":1,' +
     '"unused":1,"files":2}],"files":10}');
-  Assert.AreEqual(1, Length(Rows));
+  Assert.AreEqual(1, Integer(Length(Rows)));
   Assert.AreEqual('no-with', Rows[0].Rule);
   Assert.AreEqual(4, Rows[0].Total);
   Assert.AreEqual(1, Rows[0].Unused);
@@ -412,7 +412,7 @@ begin
   try
     Content.Text := Settings.ResultText;
     Saved := TAtlasTextFile.Encode(Content);
-    Assert.AreEqual(Length(Bytes), Length(Saved));
+    Assert.AreEqual(Integer(Length(Bytes)), Integer(Length(Saved)));
     for Index := 0 to High(Bytes) do
       Assert.AreEqual(Bytes[Index], Saved[Index]);
     Settings.SetValue(Settings.IndexOf('language'), '"en"');
@@ -426,7 +426,7 @@ begin
   Content := TAtlasTextFile.Decode(Bytes);
   Assert.IsTrue(Content.Encoding = TAtlasTextEncoding.Utf8Bom);
   Saved := TAtlasTextFile.Encode(Content);
-  Assert.AreEqual(Length(Bytes), Length(Saved));
+  Assert.AreEqual(Integer(Length(Bytes)), Integer(Length(Saved)));
 end;
 
 initialization

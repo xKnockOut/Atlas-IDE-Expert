@@ -350,7 +350,7 @@ begin
   Assert.IsTrue(TSetupIdes.CompareVersions('9.0', '23.0') < 0);
   Assert.AreEqual('Delphi 12 Athens', TSetupIdes.Lookup('23.0').ProductName);
   Assert.IsFalse(TSetupIdes.Lookup('99.0').Supported);
-  Assert.AreEqual(2, Length(TSetupIdes.SupportedVersions));
+  Assert.AreEqual(2, Integer(Length(TSetupIdes.SupportedVersions)));
   SetLength(Ides, 3);
   Ides[0].Info := TSetupIdes.Lookup('23.0');
   Ides[0].Platform := TSetupPlatform.Win64;
@@ -377,7 +377,7 @@ begin
   Installer := TSetupInstaller.Create(Keep, Paths, '1.0.0');
   try
     Ides := Installer.Detect;
-    Assert.AreEqual(4, Length(Ides));
+    Assert.AreEqual(4, Integer(Length(Ides)));
     Assert.AreEqual('37.0-Win32', Ides[0].Id);
     Assert.IsTrue(Find(Ides, '23.0-Win32').Available);
     Assert.IsTrue(Find(Ides, '23.0-Win64').Available);
@@ -406,7 +406,7 @@ begin
   Installer := TSetupInstaller.Create(Keep, Paths, '1.0.0');
   try
     Ides := Installer.Detect;
-    Assert.AreEqual(1, Length(Ides));
+    Assert.AreEqual(1, Integer(Length(Ides)));
     Assert.IsTrue(Ides[0].Available);
     Assert.AreEqual('Delphi 13 Florence', Ides[0].Info.ProductName);
   finally
@@ -444,7 +444,7 @@ begin
     Assert.AreEqual(TSetupIdes.PackageDescription, Sys.ReadString('Software\Embarcadero\BDS\37.0\Known Packages',
       Target + '\Win32\Atlas.IDE.Expert370.bpl'));
     // Nicht unterstützt: keine Registrierung in Delphi 11.
-    Assert.AreEqual(0, Length(Sys.ValueNames('Software\Embarcadero\BDS\22.0\Known Packages')));
+    Assert.AreEqual(0, Integer(Length(Sys.ValueNames('Software\Embarcadero\BDS\22.0\Known Packages'))));
     Assert.AreEqual('"' + Target + '\AtlasSetup.exe" /uninstall',
       Sys.ReadString(TSetupInstaller.UninstallKey, 'UninstallString'));
     Assert.AreEqual('1.0.0', Sys.ReadString(TSetupInstaller.UninstallKey, 'DisplayVersion'));
@@ -478,14 +478,14 @@ begin
   Installer := TSetupInstaller.Create(Keep, Paths, '1.1.0');
   try
     Assert.IsTrue(Installer.Install([Find(Installer.Detect, '23.0-Win32')]));
-    Assert.AreEqual(2, Length(Sys.ValueNames(Key)));
+    Assert.AreEqual(2, Integer(Length(Sys.ValueNames(Key))));
     Assert.AreEqual('', Sys.ReadString(Key, 'C:\Alt\Argus.IDE.Expert290.bpl'));
     Assert.AreEqual('Other', Sys.ReadString(Key, 'C:\Fremd\Other290.bpl'));
-    Assert.AreEqual(0, Length(Sys.ValueNames('Software\Embarcadero\BDS\23.0\Disabled Packages')));
+    Assert.AreEqual(0, Integer(Length(Sys.ValueNames('Software\Embarcadero\BDS\23.0\Disabled Packages'))));
     Assert.AreEqual('x', Sys.ReadString('Software\Atlas\IdePlugin', 'Favorites'));
     // Zweiter Lauf (Aktualisierung): weiterhin genau eine Registrierung.
     Assert.IsTrue(Installer.Install([Find(Installer.Detect, '23.0-Win32')]));
-    Assert.AreEqual(2, Length(Sys.ValueNames(Key)));
+    Assert.AreEqual(2, Integer(Length(Sys.ValueNames(Key))));
     Assert.AreEqual('1.1.0', Installer.InstalledVersion);
   finally
     Installer.Free;
@@ -551,10 +551,10 @@ begin
   Installer := TSetupInstaller.Create(Keep, Paths, '1.0.0');
   try
     Running := Installer.RunningIdes(Installer.Detect);
-    Assert.AreEqual(1, Length(Running));
+    Assert.AreEqual(1, Integer(Length(Running)));
     Assert.AreEqual('23.0-Win64', Running[0].Id);
     Sys.Running := nil;
-    Assert.AreEqual(0, Length(Installer.RunningIdes(Installer.Detect)));
+    Assert.AreEqual(0, Integer(Length(Installer.RunningIdes(Installer.Detect))));
   finally
     Installer.Free;
   end;
@@ -576,7 +576,7 @@ begin
     Sys.WriteString('Software\Embarcadero\BDS\37.0\Disabled Packages x64', 'C:\x\Atlas.IDE.Expert370.bpl', 'A');
     Assert.IsTrue(Installer.Uninstall([], False));
     Assert.AreEqual(0, KnownPackages(Sys));
-    Assert.AreEqual(0, Length(Sys.ValueNames('Software\Embarcadero\BDS\37.0\Disabled Packages x64')));
+    Assert.AreEqual(0, Integer(Length(Sys.ValueNames('Software\Embarcadero\BDS\37.0\Disabled Packages x64'))));
     Assert.IsFalse(Sys.HasFileUnder(Target));
     Assert.AreEqual('', Sys.ReadString(TSetupInstaller.UninstallKey, 'DisplayName'));
     Assert.AreEqual('', Installer.InstalledVersion);

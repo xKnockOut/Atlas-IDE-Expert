@@ -112,9 +112,9 @@ type
     FWordRect: TRect;
     // Fenster beim Anzeigen (Fokus, Datei, oberste Zeile); TAtlasCloseRules vergleicht damit.
     FShown: TAtlasEditorWindowState;
-    function WindowState: TAtlasEditorWindowState;
     FKey: string;
     FShownKey: string;
+    function WindowState: TAtlasEditorWindowState;
     procedure EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     {$IF CompilerVersion >= 37.0}

@@ -285,7 +285,7 @@ begin
   Assert.IsTrue(Run(Text, 4, Edits));
   Assert.AreEqual(1, Integer(Length(Edits)));
   Line := Edits[0].NewText;
-  Assert.AreEqual(46, Length(Line), Line);
+  Assert.AreEqual(46, Integer(Length(Line)), Line);
   Assert.IsTrue(Line.StartsWith('    [''{') and Line.EndsWith('}'']'), Line);
   Assert.IsTrue(Parses(Apply(Text, Edits)));
 end;

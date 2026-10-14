@@ -628,8 +628,7 @@ begin
     try
       Valid := TAtlasSessionMarker.FromJson(TFile.ReadAllText(FileName, TEncoding.UTF8), Marker);
     except
-      on Exception do
-        Valid := False;
+      Valid := False;
     end;
     if Valid and (Marker.ProcessId = AOwnProcessId) then
       Continue;

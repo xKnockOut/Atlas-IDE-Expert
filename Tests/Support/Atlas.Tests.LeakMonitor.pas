@@ -79,7 +79,10 @@ uses
   System.SysUtils,
   System.Classes,
   System.Threading,
-  DUnitX.ServiceLocator;
+  System.DateUtils,
+  System.JSON,
+  DUnitX.ServiceLocator,
+  Atlas.Core.Diagnostics.TimeLimit;
 
 const
   /// <summary>Höchstens so lange wartet der Monitor auf Freigaben anderer Threads.</summary>
@@ -213,6 +216,7 @@ procedure PrewarmRuntime;
 var
   Task: ITask;
   Current: TThread;
+  Json: TJSONValue;
 begin
   PrewarmWaitObjects;
   // Legt den Standard-Thread-Pool und seinen Überwachungs-Thread an (bleiben bis Programmende).
@@ -225,6 +229,17 @@ begin
   Current := TThread.CurrentThread;
   if Current = nil then
     raise EInvalidOperation.Create('Kein aktueller Thread');
+  // Lokale Zeitzone (ISO-8601-Zeitstempel) und JSON-Pfade legen beim ersten Gebrauch Daten an,
+  // die bis Programmende bleiben.
+  if DateToISO8601(Now, False) = '' then
+    raise EInvalidOperation.Create('Keine Zeitzone');
+  Json := TJSONObject.ParseJSONValue('{"a":{"b":true}}');
+  try
+    if not Json.GetValue<Boolean>('a.b') then
+      raise EInvalidOperation.Create('JSON-Pfad');
+  finally
+    Json.Free;
+  end;
 end;
 
 procedure RegisterLeakMonitor;
@@ -305,11 +320,16 @@ end;
 procedure TLeakMonitor.PreTest;
 begin
   Start;
+  // Arbeiter früherer Tests vor der Messung beenden, damit ihre Freigabe in PostTest kein Leck verdeckt.
+  TAtlasTimeLimit.StopAll(1000);
   FTestBefore := AllocatedBytes;
 end;
 
 procedure TLeakMonitor.PostTest;
 begin
+  // Arbeiter des Zeitlimits (#493) bleiben für den nächsten Aufruf stehen; ihr Speicher gehört zu keinem
+  // Test. Vor dem Messen beenden, der nächste Aufruf legt neue an.
+  TAtlasTimeLimit.StopAll(1000);
   FTestAllocated := AllocatedBytes - FTestBefore;
   // Nur der Test selbst: Was das Setup belegt, gibt meist erst das TearDown frei.
   if FTestAllocated > 0 then

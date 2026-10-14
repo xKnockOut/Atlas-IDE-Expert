@@ -289,7 +289,10 @@ var
 begin
   Soak := TSoak.Create(ALeak);
   try
-    // Aufwärmrunde: Pool-Threads, RTTI und JSON-Caches.
+    // Zwei Aufwärmrunden: Pool-Threads, RTTI und JSON-Caches. Nach nur einer Runde maß die erste Messung
+    // bis zu 87 KB, weitere Messungen und doppelt so viele Runden blieben unter 5 KB (kein Leck).
+    RunSoakRound(Soak.Dispatcher).Free;
+    Soak.WaitIdle;
     RunSoakRound(Soak.Dispatcher).Free;
     Soak.WaitIdle;
     Before := AllocatedBytes;
@@ -307,7 +310,7 @@ begin
     Soak.WaitIdle;
     Result := AllocatedBytes - Before;
     // Jede "stuck"-Anfrage lief ins Zeitlimit, jede Änderungsrunde lief durch den Debouncer.
-    Assert.IsTrue(Soak.Timeouts >= (SoakRounds + 1) * SoakGroups, Format('nur %d Zeitlimits', [Soak.Timeouts]));
+    Assert.IsTrue(Soak.Timeouts >= (SoakRounds + 2) * SoakGroups, Format('nur %d Zeitlimits', [Soak.Timeouts]));
     Assert.IsTrue(Soak.Debounced > 0, 'Debouncer lief nicht');
   finally
     Soak.Free;
@@ -462,7 +465,7 @@ var
   Growth: Int64;
 begin
   // Ein TStringBuilder je Worker-Anfrage: weit über der Toleranz.
-  Leak := TWorkerLeak.Create((SoakRounds + 1) * SoakGroups);
+  Leak := TWorkerLeak.Create((SoakRounds + 2) * SoakGroups);
   try
     Growth := SoakGrowth(Leak);
   finally

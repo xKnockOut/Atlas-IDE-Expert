@@ -238,6 +238,8 @@ var
   OldFont: TFont;
   OldBrush: TBrush;
   OldPen: TPen;
+  Back: TAtlasColor;
+  Sample: COLORREF;
 begin
   // Durch die Sicherung abgeschaltet (#493).
   if TAtlasGuard.Disabled(TAtlasFeature.InlayHints) then
@@ -261,12 +263,19 @@ begin
     if TrimRight(TAtlasPairs.DisplayLine(LineState.Text, TabWidth)) <>
       TrimRight(TAtlasPairs.DisplayLine(Stored, TabWidth)) then
       Exit;
-    Colors := TAtlasIdeStyle.Colors;
     Canvas := Context.Canvas;
     // Zwei Zeichen Abstand hinter dem letzten Zeichen der Zeile.
     Cell := Context.EditorState.GetCharacterPosPx(ColumnOf(Stored, Length(TrimRight(Stored)), TabWidth) + 2,
       Context.EditorLineNum);
     X := Cell.Left;
+    // Hintergrund des Editor-Farbschemas an der Stelle des Hinweises (hinter dem Zeilenende), nicht das
+    // IDE-Thema: Sonst stand gedämpftes Grau auf fast gleichem Grau.
+    Sample := GetPixel(Canvas.Handle, X, Rect.Top + 1);
+    if Sample = CLR_INVALID then
+      Back := TAtlasColor(ColorToRGB(Canvas.Brush.Color))
+    else
+      Back := TAtlasColor(Sample);
+    Colors := TAtlasColors.ForBackground(Back);
     OldFont := TFont.Create;
     OldBrush := TBrush.Create;
     OldPen := TPen.Create;
@@ -276,9 +285,10 @@ begin
       OldPen.Assign(Canvas.Pen);
       Canvas.Font.Size := Max(6, Canvas.Font.Size - 1);
       Canvas.Font.Style := [];
-      Canvas.Font.Color := TColor(Colors.Muted);
-      Canvas.Pen.Color := TColor(TAtlasColorMath.Mix(Colors.Muted, Colors.Surface, 0.7));
-      Canvas.Brush.Color := TColor(TAtlasColorMath.Mix(Colors.Muted, Colors.Surface, 0.88));
+      // Text deutlich lesbar, Fläche leicht im Akzent abgesetzt.
+      Canvas.Font.Color := TColor(TAtlasColorMath.Mix(Colors.Text, Back, 0.8));
+      Canvas.Pen.Color := TColor(TAtlasColorMath.Mix(Colors.Accent, Back, 0.45));
+      Canvas.Brush.Color := TColor(TAtlasColorMath.Mix(Colors.Accent, Back, 0.2));
       Height := Canvas.TextHeight('Xg');
       Top := Rect.Top + Max(0, (Rect.Bottom - Rect.Top - Height - 2) div 2);
       for Name in Names do

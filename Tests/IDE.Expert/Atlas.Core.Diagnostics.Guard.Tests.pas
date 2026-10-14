@@ -13,6 +13,9 @@ type
     FFolder: string;
     FOldFolder: string;
   public
+    /// <summary>Erste Benutzung (VCL, Codepages, RTTI) ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -41,6 +44,16 @@ uses
   System.DateUtils,
   Atlas.Core.Product.Version,
   Atlas.Core.Diagnostics.Guard;
+
+procedure TAtlasGuardTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    ProviderFuseTripsOnlyThatProvider;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TAtlasGuardTests.Setup;
 begin

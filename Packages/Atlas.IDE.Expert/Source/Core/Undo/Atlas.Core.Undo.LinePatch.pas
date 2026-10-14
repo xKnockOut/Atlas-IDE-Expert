@@ -125,7 +125,7 @@ begin
     Hunk.OldCount := OldCount;
     Hunk.NewStart := Prefix;
     Hunk.NewCount := NewCount;
-    Exit([Hunk]);
+    begin Result := [Hunk]; Exit; end;
   end;
   // Längste gemeinsame Teilfolge der Mitte, von hinten: Table[Row, Column] für AOld[Row..] und ANew[Column..].
   Width := NewCount + 1;

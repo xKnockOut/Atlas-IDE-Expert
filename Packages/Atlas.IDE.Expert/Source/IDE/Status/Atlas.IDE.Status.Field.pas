@@ -23,6 +23,7 @@ interface
 uses
   Winapi.Windows,
   Winapi.Messages,
+  Winapi.CommCtrl,
   System.SysUtils,
   System.Classes,
   System.Types,
@@ -400,7 +401,7 @@ begin
     if Supports(BorlandIDEServices, INTAEditorServices, Services) then
       for Index := 0 to Services.EditWindowCount - 1 do
       begin
-        Window := Services.EditWindows[Index];
+        Window := Services.EditWindow[Index];
         if (Window <> nil) and (Window.StatusBar <> nil) then
           Bars.Add(Window.StatusBar);
       end;

@@ -362,7 +362,7 @@ begin
     TIndexCacheDirectory.FileFor(FRoot, '37.0', 'c:\p\app.dproj|Debug|Win64'));
   Assert.AreNotEqual(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'C:\P\App.dproj|Debug|Win64'),
     TIndexCacheDirectory.FileFor(FRoot, '37.0', 'C:\P\App.dproj|Release|Win64'));
-  Assert.AreEqual(16, Length(TIndexCacheDirectory.KeyHash('x')));
+  Assert.AreEqual(16, Integer(Length(TIndexCacheDirectory.KeyHash('x'))));
 end;
 
 procedure TIndexCacheDirectoryTests.ProjectAndLibraryLiveUnderIdeVersion;

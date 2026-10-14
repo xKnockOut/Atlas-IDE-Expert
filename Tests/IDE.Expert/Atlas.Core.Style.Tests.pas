@@ -416,7 +416,7 @@ begin
     Assert.AreEqual(0, Tokens[0].Start, Text);
     for Index := 1 to High(Tokens) do
       Assert.AreEqual(Tokens[Index - 1].Stop, Tokens[Index].Start, Text);
-    Assert.AreEqual(Length(Text), Tokens[High(Tokens)].Stop, Text);
+    Assert.AreEqual(Integer(Length(Text)), Tokens[High(Tokens)].Stop, Text);
   end;
 end;
 

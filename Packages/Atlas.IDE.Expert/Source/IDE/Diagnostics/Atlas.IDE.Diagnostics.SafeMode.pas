@@ -80,7 +80,7 @@ type
     /// Sitzungswerte setzen und den Hinweis vormerken.</summary>
     procedure Start(const AFolder: string; const ARegistry: IAtlasStatusRegistry);
     /// <summary>Nachrichtenschleife frei nach ALoadMs.</summary>
-    procedure Loaded(ALoadMs: Int64);
+    procedure Loaded(ALoadMs: Int64); reintroduce;
     /// <summary>Sauberes Entladen.</summary>
     procedure Stop;
     /// <summary>Fehler eines Features (#493); aus jedem Thread.</summary>
@@ -114,6 +114,10 @@ uses
   Atlas.Core.Settings.QuickToggles,
   Atlas.UI.Strings,
   Atlas.IDE.Settings.Store;
+
+const
+  // Winapi.Windows kennt die Konstante nicht (ab Windows Vista).
+  PROCESS_QUERY_LIMITED_INFORMATION = $1000;
 
 { TAtlasIdeSafeMode }
 
@@ -245,6 +249,7 @@ var
   Crashed: TArray<TAtlasSessionMarker>;
   SafeOptions: TAtlasSafeOptions;
   StartedAt: TDateTime;
+  Show: TThreadProcedure;
 begin
   FFolder := AFolder;
   FRegistry := ARegistry;
@@ -300,11 +305,12 @@ begin
     Exit;
   ShowLine;
   // Erst wenn die IDE steht: Das Hauptfenster gibt es beim Laden der Packages evtl. noch nicht.
-  TThread.ForceQueue(nil,
+  Show :=
     procedure
     begin
       ShowNotice;
-    end);
+    end;
+  TThread.ForceQueue(nil, Show);
 end;
 
 procedure TAtlasIdeSafeMode.Loaded(ALoadMs: Int64);
@@ -381,14 +387,17 @@ begin
 end;
 
 procedure TAtlasIdeSafeMode.ShowLine;
+var
+  Action: TProc;
 begin
   if (FRegistry = nil) or (FLineRef <> nil) then
     Exit;
-  FLine := TAtlasStatusLine.Create(FRegistry, StatusId, StatusOrder,
+  Action :=
     procedure
     begin
       ShowNotice;
-    end);
+    end;
+  FLine := TAtlasStatusLine.Create(FRegistry, StatusId, StatusOrder, Action);
   FLineRef := FLine;
   FLine.Update(TAtlasStrings.Text(TAtlasTextId.SafeStatusLine), TAtlasStatusState.Yellow,
     TAtlasStrings.Text(TAtlasTextId.SafeStatusSummary));

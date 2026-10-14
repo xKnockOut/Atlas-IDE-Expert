@@ -26,6 +26,9 @@ type
   [TestFixture]
   TLspSessionTests = class
   public
+    /// <summary>Erste Benutzung (VCL, Codepages, RTTI) ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure ConvertsPathsAndUris;
     [Test]
@@ -346,6 +349,11 @@ begin
 end;
 
 { TLspSessionTests }
+
+procedure TLspSessionTests.WarmUpFirstUse;
+begin
+  AcceptsApplyEditAndRepliesLater;
+end;
 
 procedure TLspSessionTests.ConvertsPathsAndUris;
 begin
@@ -802,6 +810,10 @@ begin
     Client.Receive(Incoming, Length(Incoming));
     Assert.AreEqual('{"jsonrpc":"2.0","id":8,"result":null}', Sent[1]);
   finally
+    // Eingefangene Variablen lösen: Reply hält die Antwort-Prozedur der Sitzung, die sonst im Zyklus bliebe.
+    Reply := nil;
+    Received := Default(TLspWorkspaceEdit);
+    Session.OnApplyEdit := nil;
     Session.Free;
     Client.Free;
     Sent.Free;

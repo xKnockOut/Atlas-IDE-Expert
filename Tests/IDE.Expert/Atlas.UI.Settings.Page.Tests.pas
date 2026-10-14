@@ -52,6 +52,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Classes,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Completion.SnippetCatalog,
@@ -88,6 +89,7 @@ begin
   finally
     Host.Free;
   end;
+  SnippetsPageShowsCatalogAndValidates;
 end;
 
 procedure TAtlasSettingsPageTests.GroupsSettingsOnTabs;
@@ -173,6 +175,7 @@ end;
 
 procedure TAtlasSettingsPageTests.ShowsAndReenablesTrippedFeatures;
 var
+  Host: TForm;
   Page: TAtlasSettingsPage;
   Index: Integer;
 begin
@@ -183,8 +186,12 @@ begin
       TAtlasGuard.ReportProvider('Testquelle', 'Fehler');
       TAtlasGuard.Fuse.Failed(TAtlasFeature.Pairs);
     end;
-    Page := TAtlasSettingsPage.Create(nil);
+    // Die Liste der Sicherung braucht ein Fenster, wie in der IDE.
+    Host := TForm.CreateNew(nil);
     try
+      Page := TAtlasSettingsPage.Create(Host);
+      Page.Parent := Host;
+      Page.HandleNeeded;
       Page.LoadFrom(TAtlasPluginSettings.Defaults);
       Assert.AreEqual(2, Page.FuseList.Items.Count);
       Assert.AreEqual(TAtlasGuard.FeatureName(TAtlasFeature.Pairs), Page.FuseList.Items[0]);
@@ -200,7 +207,7 @@ begin
       Assert.AreEqual(1, Page.FuseList.Items.Count, 'nur der Hinweis „keine“');
       Assert.IsFalse(Page.FuseEnableAll.Enabled);
     finally
-      Page.Free;
+      Host.Free;
     end;
   finally
     TAtlasGuard.Fuse.ResetAll;
@@ -307,11 +314,11 @@ begin
     Page.LoadFrom(Settings);
     Assert.IsFalse(Page.SafeAsk.Checked);
     Assert.IsTrue(Page.SafeAuto.Checked);
-    Assert.AreEqual(1, Page.SafeKey.ItemIndex);
+    Assert.AreEqual(1, Page.SafeKey.Choice);
     Assert.AreEqual('20000', Page.SafeTimeout.Text);
     Assert.AreEqual('5', Page.SafeHistory.Text);
     Page.SafeAuto.Checked := False;
-    Page.SafeKey.ItemIndex := 2;
+    Page.SafeKey.Choice := 2;
     Page.SafeHistory.Text := '500';
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
@@ -343,16 +350,16 @@ begin
     Assert.AreEqual('7', Page.UndoDepth.Text);
     Assert.IsTrue(Page.UndoPersist.Checked);
     Assert.AreEqual('50', Page.UndoMaxSize.Text);
-    Assert.AreEqual(1, Page.UndoOnConflict.ItemIndex);
-    Assert.AreEqual(2, Page.UndoNewFiles.ItemIndex);
+    Assert.AreEqual(1, Page.UndoOnConflict.Choice);
+    Assert.AreEqual(2, Page.UndoNewFiles.Choice);
     Assert.IsTrue(Page.UndoKey.Text <> '');
     Assert.IsTrue(Page.RedoKey.Text <> '');
     Page.UndoEnabled.Checked := False;
     Page.UndoPersist.Checked := False;
     Page.UndoDepth.Text := '999';
     Page.UndoMaxSize.Text := '0';
-    Page.UndoOnConflict.ItemIndex := 0;
-    Page.UndoNewFiles.ItemIndex := 1;
+    Page.UndoOnConflict.Choice := 0;
+    Page.UndoNewFiles.Choice := 1;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.UndoMultiFile);
@@ -371,6 +378,7 @@ end;
 
 procedure TAtlasSettingsPageTests.SnippetsPageShowsCatalogAndValidates;
 var
+  Host: TForm;
   Page: TAtlasSnippetsPage;
   Own: TAtlasSnippet;
 begin
@@ -378,8 +386,12 @@ begin
   Own.Prefix := 'eigen';
   Own.Body := 'X;';
   Own.Origin := TAtlasSnippetOrigin.User;
-  Page := TAtlasSnippetsPage.Create(nil);
+  // Listen brauchen ein Fenster, wie in der IDE.
+  Host := TForm.CreateNew(nil);
   try
+    Page := TAtlasSnippetsPage.Create(Host);
+    Page.Parent := Host;
+    Page.HandleNeeded;
     Page.Load(TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, nil, [Own]));
     Assert.AreEqual(Integer(Length(TAtlasSnippets.BuiltIn)) + 1, Page.Catalog.Count);
     Assert.AreEqual('', Page.Validate);
@@ -387,7 +399,7 @@ begin
     Page.Catalog.Update(Page.Catalog.AddNew, Own);
     Assert.IsTrue(Pos('eigen', Page.Validate) > 0);
   finally
-    Page.Free;
+    Host.Free;
   end;
 end;
 
@@ -434,11 +446,16 @@ end;
 
 procedure TAtlasSettingsPageTests.ServerPageRunsActions;
 var
+  Host: TForm;
   Page: TAtlasServerPage;
   Global, Deleted: Boolean;
 begin
-  Page := TAtlasServerPage.Create(nil);
+  // Listen brauchen ein Fenster, wie in der IDE.
+  Host := TForm.CreateNew(nil);
   try
+    Page := TAtlasServerPage.Create(Host);
+    Page.Parent := Host;
+    Page.HandleNeeded;
     // Ohne Ereignisse ist alles aus.
     Assert.IsFalse(Page.BaselineUpdate.Enabled);
     Assert.IsFalse(Page.CacheClear.Enabled);
@@ -487,7 +504,7 @@ begin
     Page.CacheClear.Click;
     Assert.AreEqual('Cache leer', Page.CacheInfo.Caption);
   finally
-    Page.Free;
+    Host.Free;
   end;
 end;
 

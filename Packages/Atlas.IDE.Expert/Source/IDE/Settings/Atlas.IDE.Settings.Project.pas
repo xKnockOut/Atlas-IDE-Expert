@@ -268,7 +268,6 @@ begin
   if SameText(ExtractFileExt(Project), '.dproj') and TFile.Exists(Project) then
     DprojText := LoadContent(Project).Text;
   OpenFile := False;
-  Accepted := False;
   // Namen und Kategorien der Regeln in der Sprache der Oberfläche (#446).
   if TAtlasStrings.Language = TAtlasLanguage.English then
     Catalog := RunCommand(CatalogCommand, '["en"]')

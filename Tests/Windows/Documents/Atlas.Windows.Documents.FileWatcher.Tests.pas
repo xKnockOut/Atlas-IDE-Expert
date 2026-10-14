@@ -41,6 +41,7 @@ end;
 procedure TFileWatcherTests.TearDown;
 begin
   TDirectory.Delete(FFolder, True);
+  FFolder := '';
 end;
 
 procedure TFileWatcherTests.ReportsChangedAndCreatedFiles;

@@ -162,7 +162,8 @@ begin
   Options.GroupInherited := True;
   Assert.AreEqual('# alNone alTop alClient Ausrichtung', Names(Items, TAtlasRanking.Order(Items, '', Options)));
   // Mit Getipptem entscheidet die Güte, bei Gleichstand die Deklaration.
-  Assert.AreEqual('# alTop', Names(Items, TAtlasRanking.Order(Items, 'alTo', Options)));
+  // alNone ist ein Tippfehler-Kandidat (ein Zeichen anders, #485) und steht in eigener Gruppe dahinter.
+  Assert.AreEqual('# alTop # alNone', Names(Items, TAtlasRanking.Order(Items, 'alTo', Options)));
 end;
 
 procedure TAtlasCompletionSetsTests.ComposesBracketInDeclarationOrder;
@@ -347,7 +348,7 @@ begin
   Items := [Value('alClient', 3), Pinned, Value('alNone', 1), Value('alTop', 2)];
   Options := TAtlasRankOptions.Defaults;
   Assert.AreEqual('# Alle Werte einfügen alNone alTop alClient', Names(Items, TAtlasRanking.Order(Items, '', Options)));
-  Assert.AreEqual('# alTop Alle Werte einfügen', Names(Items, TAtlasRanking.Order(Items, 'alTo', Options)));
+  Assert.AreEqual('# alTop Alle Werte einfügen # alNone', Names(Items, TAtlasRanking.Order(Items, 'alTo', Options)));
 end;
 
 function Insert(ALine: Integer; const AText: string): TAtlasTextEdit;
