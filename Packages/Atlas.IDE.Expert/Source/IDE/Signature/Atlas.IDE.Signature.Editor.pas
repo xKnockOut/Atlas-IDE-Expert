@@ -34,6 +34,7 @@ uses
   Atlas.Core.Signature.Providers.Server,
   Atlas.Core.Completion.Providers.Server,
   Atlas.UI.Signature.Hint,
+  Atlas.Core.Editor.CloseRules,
   Atlas.IDE.Editor.KeyHook;
 
 type
@@ -55,9 +56,10 @@ type
     FView: IOTAEditView;
     FEditorWindow: HWND;
     FOpenParen: Integer;
-    FTopRow: Integer;
-    // Größe des Editors beim Öffnen; ändert sie sich, schließt der Hint (#414).
-    FEditorSize: TPoint;
+    // Fenster beim Öffnen bzw. nach dem letzten Mitwandern; TAtlasCloseRules vergleicht damit (#414).
+    FOpened: TAtlasEditorWindowState;
+    /// <summary>Zeile (ab 1), an der der Hint hängt: Caret-Zeile beim Öffnen.</summary>
+    FAnchorLine: Integer;
     FPending: Boolean;
     // Zeile vor der letzten Änderung (Wieder öffnen nach entfernter ")").
     FLastFile: string;
@@ -112,6 +114,21 @@ begin
     Result := Point(Area.Width, Area.Height)
   else
     Result := Point(0, 0);
+end;
+
+/// <summary>Zustand für TAtlasCloseRules (#414).</summary>
+function WindowState(const AView: IOTAEditView; AWindow, AFocus: HWND): TAtlasEditorWindowState;
+begin
+  Result := Default(TAtlasEditorWindowState);
+  Result.AppActive := Application.Active;
+  Result.Focus := AFocus;
+  Result.Size := EditorSize(AWindow);
+  if AView = nil then
+    Exit;
+  Result.TopRow := AView.TopRow;
+  Result.Rows := AView.ViewSize.cy;
+  if AView.Buffer <> nil then
+    Result.FileName := AView.Buffer.FileName;
 end;
 
 
@@ -344,8 +361,8 @@ begin
   FView := AView;
   FEditorWindow := Info.hwndCaret;
   FOpenParen := Site.OpenParen;
-  FTopRow := AView.TopRow;
-  FEditorSize := EditorSize(FEditorWindow);
+  FOpened := WindowState(AView, FEditorWindow, FEditorWindow);
+  FAnchorLine := Cursor.Line;
   FPending := FProvider.Query(AView.Buffer.FileName, Text, Cursor.Line - 1, Character,
     procedure(const AHelp: TAtlasSignatureHelp)
     var
@@ -482,29 +499,28 @@ var
   Character: Integer;
   Site: TAtlasCallSite;
   View: IOTAEditView;
+  Now: TAtlasEditorWindowState;
+  Move: Boolean;
 begin
   if not Active or (FView = nil) then
   begin
     ActiveChanged;
     Exit;
   end;
-  if not Application.Active or (GetFocus <> FEditorWindow) or (EditorSize(FEditorWindow) <> FEditorSize) then
+  // IDE inaktiv, Fokus woanders, Größe geändert, Ankerzeile außer Sicht: schließen (#414).
+  Now := WindowState(FView, FEditorWindow, GetFocus);
+  if TAtlasCloseRules.Hint(FOpened, Now, FAnchorLine, Move) <> TAtlasCloseReason.None then
   begin
     Close;
     Exit;
   end;
-  // Gescrollt: mitwandern, solange die Zeile sichtbar ist (#414).
-  if FView.TopRow <> FTopRow then
+  // Gescrollt: mitwandern, solange die Ankerzeile sichtbar ist.
+  if Move then
   begin
-    if (FView.CursorPos.Line < FView.TopRow) or (FView.CursorPos.Line >= FView.TopRow + FView.ViewSize.cy) then
-    begin
-      Close;
-      Exit;
-    end;
     Anchor := FHint.Anchor;
-    Anchor.Offset(0, (FTopRow - FView.TopRow) * Anchor.Height);
+    Anchor.Offset(0, (FOpened.TopRow - Now.TopRow) * Anchor.Height);
     FHint.MoveTo(Anchor);
-    FTopRow := FView.TopRow;
+    FOpened.TopRow := Now.TopRow;
   end;
   Text := TAtlasEditorBuffer.Text(FView.Buffer);
   Cursor := FView.CursorPos;

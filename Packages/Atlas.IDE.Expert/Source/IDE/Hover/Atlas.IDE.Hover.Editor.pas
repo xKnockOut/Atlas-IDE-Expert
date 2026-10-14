@@ -38,6 +38,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.History,
+  Atlas.Core.Editor.CloseRules,
   Atlas.Core.Problems.Contract,
   Atlas.IDE.Editor.KeyHook,
   Atlas.UI.Hover.Tip;
@@ -104,8 +105,9 @@ type
     FLine: Integer;
     FStart: Integer;
     FWordRect: TRect;
-    // Fokus beim Anzeigen; wechselt er innerhalb der IDE, schließt der Tooltip (#414).
-    FShownFocus: THandle;
+    // Fenster beim Anzeigen (Fokus, Datei, oberste Zeile); TAtlasCloseRules vergleicht damit.
+    FShown: TAtlasEditorWindowState;
+    function WindowState: TAtlasEditorWindowState;
     FKey: string;
     FShownKey: string;
     procedure EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
@@ -238,7 +240,7 @@ begin
   FShowTimer.OnTimer := ShowTimerTick;
   FHideTimer := TTimer.Create(nil);
   FHideTimer.Enabled := False;
-  FHideTimer.Interval := 300;
+  FHideTimer.Interval := TAtlasCloseRules.TooltipHideDelayMs;
   FHideTimer.OnTimer := HideTimerTick;
   FWatchTimer := TTimer.Create(nil);
   FWatchTimer.Enabled := False;
@@ -577,23 +579,36 @@ begin
   FTip.ShowContent(CurrentView, FWordRect);
   TAtlasKeyHook.Add(FKeys);
   FShownKey := FKey;
-  FShownFocus := GetFocus;
+  FShown := WindowState;
   FHideTimer.Enabled := False;
   FWatchTimer.Enabled := True;
+end;
+
+function TAtlasEditorHover.WindowState: TAtlasEditorWindowState;
+var
+  View: IOTAEditView;
+begin
+  Result := Default(TAtlasEditorWindowState);
+  Result.AppActive := Application.Active;
+  Result.Focus := GetFocus;
+  View := CurrentEditView;
+  if View = nil then
+    Exit;
+  Result.TopRow := View.TopRow;
+  Result.Rows := View.ViewSize.cy;
+  if View.Buffer <> nil then
+    Result.FileName := View.Buffer.FileName;
 end;
 
 procedure TAtlasEditorHover.WatchTimerTick(Sender: TObject);
 begin
   try
-    // Andere Anwendung im Vordergrund: kein Atlas-Fenster bleibt stehen (#414).
+    // Andere Anwendung im Vordergrund, anderer Editor-Tab, Fokus woanders in der IDE (Objektinspektor,
+    // Projektverwaltung …), gescrollt (#414). Größe und Scrollen melden zusätzlich die Editor-Ereignisse.
     if not FTip.IsShown then
       FWatchTimer.Enabled := False
-    else if not Application.Active then
-      Hide
-    // Anderer Editor-Tab oder Fokus woanders in der IDE (Objektinspektor, Projektverwaltung …).
-    else if not FHistory.Pinned and not MouseOverTip and
-      ((GetFocus <> FShownFocus) or ((FView <> nil) and ((CurrentEditView = nil) or
-      not SameText(CurrentEditView.Buffer.FileName, FView.Buffer.FileName)))) then
+    else if TAtlasCloseRules.Tooltip(FShown, WindowState, FHistory.Pinned, MouseOverTip) <>
+      TAtlasCloseReason.None then
       Hide;
   except
     on E: Exception do

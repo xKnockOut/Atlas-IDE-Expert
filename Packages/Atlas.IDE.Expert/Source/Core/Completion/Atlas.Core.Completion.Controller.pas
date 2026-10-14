@@ -32,6 +32,9 @@
 // Der Hinweis wird nie vorgewählt, die Auswahl beginnt beim ersten Eintrag danach.
 //
 // Freigabe absichern (#489): Steht nur dieses Angebot in der Liste, schließt jedes getippte Zeichen sie.
+//
+// Esc (#414): Nach dem Schließen mit Esc öffnet ein automatischer Start im selben Wort (Datei, Zeile,
+// Wortanfang) die Liste nicht wieder; Strg+Leer öffnet sie und hebt die Sperre auf.
 
 interface
 
@@ -114,6 +117,15 @@ type
     FTrigger: string;
     /// <summary>Im Mengenmodus schon umgeschaltet.</summary>
     FToggled: Boolean;
+    /// <summary>Wort der offenen Liste: Datei, Zeile, Wortanfang (#414).</summary>
+    FWordFile: string;
+    FWordLine: Integer;
+    FWordStart: Integer;
+    /// <summary>Mit Esc geschlossenes Wort; FDismissedLine &lt; 0 ohne.</summary>
+    FDismissedFile: string;
+    FDismissedLine: Integer;
+    FDismissedStart: Integer;
+    procedure Dismiss;
     procedure ToggleSelected;
     procedure CommitSet;
     procedure ShowChips;
@@ -129,8 +141,11 @@ type
   public
     constructor Create(const AProvider: IAtlasCompletionProvider; const AView: IAtlasCompletionView);
     destructor Destroy; override;
-    /// <summary>Neue Vervollständigung an AContext; schließt eine offene.</summary>
+    /// <summary>Neue Vervollständigung an AContext; schließt eine offene. Ein automatischer Start im mit Esc
+    /// geschlossenen Wort öffnet nichts (#414).</summary>
     procedure Start(const AContext: TAtlasContext);
+    /// <summary>Wurde die Liste im Wort von AContext mit Esc geschlossen (#414)?</summary>
+    function Dismissed(const AContext: TAtlasContext): Boolean;
     /// <summary>Das Wort unter dem Cursor hat sich geändert: neu filtern.</summary>
     procedure UpdatePrefix(const APrefix: string);
     /// <summary>Wie UpdatePrefix, fragt aber zusätzlich neu an (gekürzte Liste, #431).</summary>
@@ -283,6 +298,7 @@ begin
   FFlag.Alive := True;
   FFlagRef := FFlag;
   FSelected := -1;
+  FDismissedLine := -1;
 end;
 
 destructor TAtlasCompletionController.Destroy;
@@ -349,9 +365,30 @@ begin
     end;
 end;
 
+function TAtlasCompletionController.Dismissed(const AContext: TAtlasContext): Boolean;
+begin
+  Result := (FDismissedLine >= 0) and (AContext.Line = FDismissedLine) and
+    (AContext.Character - Length(AContext.Prefix) = FDismissedStart) and SameText(AContext.FileName, FDismissedFile);
+end;
+
+procedure TAtlasCompletionController.Dismiss;
+begin
+  FDismissedFile := FWordFile;
+  FDismissedLine := FWordLine;
+  FDismissedStart := FWordStart;
+  Close;
+end;
+
 procedure TAtlasCompletionController.Start(const AContext: TAtlasContext);
 begin
   Close;
+  if AContext.Automatic and Dismissed(AContext) then
+    Exit;
+  // Ein anderes Wort oder Strg+Leer hebt die Sperre auf.
+  FDismissedLine := -1;
+  FWordFile := AContext.FileName;
+  FWordLine := AContext.Line;
+  FWordStart := AContext.Character - Length(AContext.Prefix);
   Inc(FGeneration);
   FActive := True;
   FLoading := True;
@@ -585,7 +622,7 @@ begin
   // Leerer Zustand: nur Esc gehört dem Popup; Pfeile und Enter gehen an den Editor.
   if FActive and FEmpty and (AKey = TAtlasNavigationKey.Cancel) then
   begin
-    Close;
+    Dismiss;
     Exit(True);
   end;
   if not GetVisible then
@@ -616,7 +653,7 @@ begin
       else
         CommitSelected;
     TAtlasNavigationKey.Cancel:
-      Close;
+      Dismiss;
     TAtlasNavigationKey.Toggle:
       if SetMode then
         ToggleSelected

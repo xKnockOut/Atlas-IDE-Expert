@@ -60,6 +60,9 @@ type
     /// <summary>Automatisch nach diesem Zeichen geöffnet, '' bei Strg+Leer. Nach "[" (#448) bietet der Server nur
     /// Mengenwerte an; ohne die bleibt das Popup zu.</summary>
     Trigger: string;
+    /// <summary>Von der IDE oder nach einem Zeichen geöffnet, nicht mit Strg+Leer. Nach Esc im selben Wort
+    /// öffnet Atlas dann nicht wieder (#414).</summary>
+    Automatic: Boolean;
   end;
 
   TAtlasCompletionItem = record
