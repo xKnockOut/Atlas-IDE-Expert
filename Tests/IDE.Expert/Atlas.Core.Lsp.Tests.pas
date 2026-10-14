@@ -42,6 +42,8 @@ type
     procedure InitializeAnnouncesPullDiagnosticsAndCountsRefresh;
     [Test]
     procedure ReportsProjectGroupChanges;
+    [Test]
+    procedure ReopensDocumentsOfPreviousSession;
   end;
 
   [TestFixture]
@@ -450,6 +452,52 @@ begin
     Session.Free;
     Client.Free;
     Methods.Free;
+  end;
+end;
+
+procedure TLspSessionTests.ReopensDocumentsOfPreviousSession;
+var
+  Client: TLspClient;
+  Previous, Fresh: TLspSession;
+  Messages: TList<string>;
+  Documents: TArray<TLspOpenDocument>;
+begin
+  Messages := TList<string>.Create;
+  Client := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    var
+      Message: TJSONObject;
+    begin
+      Message := Unframe(ABytes);
+      try
+        Messages.Add(Message.GetValue<string>('method') + ' ' +
+          Message.GetValue<string>('params.textDocument.uri', '') + ' ' +
+          Message.GetValue<string>('params.textDocument.text', ''));
+      finally
+        Message.Free;
+      end;
+    end);
+  Previous := TLspSession.Create(Client);
+  Fresh := TLspSession.Create(Client);
+  try
+    Previous.Sync('C:\P\A.pas', 'unit A;');
+    Previous.Sync('C:\P\B.pas', 'unit B;');
+    // Ungespeicherter Stand: Der neue Server muss den zuletzt geschickten Text bekommen.
+    Previous.Sync('C:\P\B.pas', 'unit B; // neu');
+    Documents := Previous.OpenDocuments;
+    Assert.AreEqual(2, Integer(Length(Documents)));
+    Messages.Clear;
+    // A ist in der neuen Sitzung schon abgeglichen und bleibt unverändert.
+    Fresh.Sync('C:\P\A.pas', 'unit A; // getippt');
+    Fresh.Reopen(Documents);
+    Assert.AreEqual(2, Integer(Messages.Count));
+    Assert.AreEqual('textDocument/didOpen file:///c%3A/p/b.pas unit B; // neu', Messages[1]);
+    Assert.AreEqual(2, Integer(Length(Fresh.SyncedFiles)));
+  finally
+    Fresh.Free;
+    Previous.Free;
+    Client.Free;
+    Messages.Free;
   end;
 end;
 
