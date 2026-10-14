@@ -112,6 +112,8 @@ type
     function ExecuteServerCommand(const ACommand: string; ATimeoutMs: Cardinal = 30000): TJSONValue;
     /// <summary>Laufende Sitzung, Server bei Bedarf gestartet; nil, wenn er nicht startet (Hauptthread).</summary>
     function ActiveSession: TLspSession;
+    /// <summary>Laufende, initialisierte Sitzung oder nil; startet keinen Server (#402).</summary>
+    function RunningSession: TLspSession;
     /// <summary>Gespeichert: didSave an den Server, falls eine Sitzung läuft (Prüfung mit dcc).</summary>
     procedure NotifySaved(const AFileName: string);
     /// <summary>Zeile im Diagnoseprotokoll (nur mit Diagnose = 1).</summary>
@@ -584,6 +586,13 @@ end;
 function TAtlasCodeInsightManager.ActiveSession: TLspSession;
 begin
   Result := SessionOrNil;
+end;
+
+function TAtlasCodeInsightManager.RunningSession: TLspSession;
+begin
+  Result := nil;
+  if (FSession <> nil) and FSession.Initialized then
+    Result := FSession;
 end;
 
 function TAtlasCodeInsightManager.ServerProgress: string;

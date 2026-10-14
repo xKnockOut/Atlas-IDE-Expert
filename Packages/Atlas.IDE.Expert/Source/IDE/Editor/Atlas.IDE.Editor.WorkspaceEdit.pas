@@ -7,6 +7,12 @@
 //   - Nicht geöffnete Dateien: nach der Einstellung „Für Änderungen öffnen“
 //     im Editor öffnen (Vorgabe) oder direkt auf die Platte schreiben, in
 //     ihrer bisherigen Kodierung (TAtlasTextFile).
+//   - Formulare, die im Designer offen sind (#402): nie auf die Platte, sonst
+//     überschreibt der Designer die Änderung beim Speichern. Geänderte
+//     Ereignis-Zuordnungen setzt TAtlasIdeForms im Designer, und zwar nach den
+//     Units, damit die umbenannten Handler dort schon stehen; andere
+//     Änderungen an offenen Formularen lehnt Atlas ab. Nicht geöffnete
+//     Formulare öffnet Atlas nicht, sondern schreibt die Datei.
 // Erst werden alle Dateien geprüft (Puffer vorhanden, Positionen gültig,
 // keine Überlappung); schlägt eine Prüfung fehl, ändert Atlas nichts.
 // Nur im Hauptthread aufrufen.
@@ -46,7 +52,9 @@ implementation
 
 uses
   Atlas.Core.Files.TextFile,
-  Atlas.IDE.Editor.Buffer;
+  Atlas.Core.Forms.Changes,
+  Atlas.IDE.Editor.Buffer,
+  Atlas.IDE.Forms.Designer;
 
 type
   TPlannedFile = record
@@ -55,7 +63,15 @@ type
     Text: string;
     Disk: TAtlasTextFileContent;
     Ranges: TArray<TLspTextRange>;
+    /// <summary>Formular im Designer (#402): Ereignis-Zuordnungen statt Text.</summary>
+    IsForm: Boolean;
+    FormChanges: TArray<TAtlasFormEventChange>;
   end;
+
+function IsFormFile(const AFileName: string): Boolean;
+begin
+  Result := SameText(ExtractFileExt(AFileName), '.dfm') or SameText(ExtractFileExt(AFileName), '.fmx');
+end;
 
 class function TAtlasIdeWorkspaceEdit.CurrentText(const AFileName: string): string;
 var
@@ -65,6 +81,9 @@ begin
   Buffer := BufferOf(AFileName);
   if Buffer <> nil then
     Exit(TAtlasEditorBuffer.Text(Buffer));
+  // Offenes Formular: der Stand des Designers, wie ihn der Server kennt (#402).
+  if TAtlasIdeForms.SentText(AFileName, Result) then
+    Exit;
   try
     if FileExists(AFileName) then
       Result := TAtlasTextFile.Load(AFileName).Text;
@@ -134,8 +153,23 @@ begin
     Plan := Default(TPlannedFile);
     Plan.FileName := FileEdits.FileName;
     Plan.Buffer := BufferOf(FileEdits.FileName);
-    if (Plan.Buffer = nil) and AOpenUnopened and FileExists(FileEdits.FileName) and
-      Supports(BorlandIDEServices, IOTAActionServices, Actions) and Actions.OpenFile(FileEdits.FileName) then
+    if (Plan.Buffer = nil) and IsFormFile(FileEdits.FileName) and TAtlasIdeForms.IsOpen(FileEdits.FileName) then
+    begin
+      Plan.IsForm := True;
+      Result.Error := TAtlasIdeForms.Check(FileEdits.FileName, FileEdits.Edits, Plan.FormChanges);
+      if Result.Error <> '' then
+      begin
+        Result.Error := Format('%s: %s', [ExtractFileName(FileEdits.FileName), Result.Error]);
+        Exit;
+      end;
+      Plans := Plans + [Plan];
+      Inc(Result.Edits, Length(FileEdits.Edits));
+      Continue;
+    end;
+    // Ein Formular würde Atlas mit dem Designer öffnen; dessen Text passt nicht zu den Positionen.
+    if (Plan.Buffer = nil) and AOpenUnopened and not IsFormFile(FileEdits.FileName) and
+      FileExists(FileEdits.FileName) and Supports(BorlandIDEServices, IOTAActionServices, Actions) and
+      Actions.OpenFile(FileEdits.FileName) then
       Plan.Buffer := BufferOf(FileEdits.FileName);
     try
       if Plan.Buffer <> nil then
@@ -162,9 +196,11 @@ begin
     Plans := Plans + [Plan];
     Inc(Result.Edits, Length(FileEdits.Edits));
   end;
-  // 2. Anwenden.
+  // 2. Anwenden: erst Units und Dateien, dann die Formulare im Designer.
   for Plan in Plans do
   begin
+    if Plan.IsForm then
+      Continue;
     try
       if Plan.Buffer <> nil then
         WriteBuffer(Plan.Buffer, Plan.Text, Plan.Ranges)
@@ -180,6 +216,19 @@ begin
         Result.Error := Format('%s: %s', [ExtractFileName(Plan.FileName), E.Message]);
         Exit;
       end;
+    end;
+    Inc(Result.Files);
+  end;
+  for Plan in Plans do
+  begin
+    if not Plan.IsForm then
+      Continue;
+    Result.Error := TAtlasIdeForms.Apply(Plan.FileName, Plan.FormChanges);
+    if Result.Error <> '' then
+    begin
+      // Die Units sind schon geändert (je Datei rückgängig zu machen); das Formular blieb, wie es war.
+      Result.Error := Format('%s: %s', [ExtractFileName(Plan.FileName), Result.Error]);
+      Exit;
     end;
     Inc(Result.Files);
   end;
