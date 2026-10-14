@@ -122,6 +122,10 @@ type
     StatusFieldHidden: string;
     /// <summary>Kurztext neben „Atlas“ (#591, statusField.showSummary).</summary>
     StatusFieldSummary: Boolean;
+    /// <summary>Tastenkürzel für das Fenster der Schnellschalter (#604, TShortCut, 0 = keins) und Vorrang wie
+    /// bei den anderen Atlas-Tasten (#494).</summary>
+    QuickToggleKey: Integer;
+    QuickToggleKeyPriority: Boolean;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -193,6 +197,8 @@ begin
   Result.StatusField := True;
   Result.StatusFieldHidden := '';
   Result.StatusFieldSummary := True;
+  Result.QuickToggleKey := $E041; // Strg+Umschalt+Alt+A
+  Result.QuickToggleKeyPriority := False;
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -212,6 +218,7 @@ begin
   CheckKey := EnsureRange(CheckKey, 0, $FFFF);
   CompletionKey := EnsureRange(CompletionKey, 0, $FFFF);
   SignatureKey := EnsureRange(SignatureKey, 0, $FFFF);
+  QuickToggleKey := EnsureRange(QuickToggleKey, 0, $FFFF);
 end;
 
 procedure TAtlasPluginSettings.Load(const AStore: IAtlasSettingsStore);
@@ -261,6 +268,9 @@ begin
   StatusField := AStore.ReadInteger('StatusField', BoolValue(Default.StatusField)) <> 0;
   StatusFieldHidden := Trim(AStore.ReadString('StatusFieldHidden', Default.StatusFieldHidden));
   StatusFieldSummary := AStore.ReadInteger('StatusFieldSummary', BoolValue(Default.StatusFieldSummary)) <> 0;
+  QuickToggleKey := AStore.ReadInteger('QuickToggleKey', Default.QuickToggleKey);
+  QuickToggleKeyPriority :=
+    AStore.ReadInteger('QuickToggleKeyPriority', BoolValue(Default.QuickToggleKeyPriority)) <> 0;
   Normalize;
 end;
 
@@ -309,6 +319,8 @@ begin
   AStore.WriteInteger('StatusField', BoolValue(StatusField));
   AStore.WriteString('StatusFieldHidden', Trim(StatusFieldHidden));
   AStore.WriteInteger('StatusFieldSummary', BoolValue(StatusFieldSummary));
+  AStore.WriteInteger('QuickToggleKey', QuickToggleKey);
+  AStore.WriteInteger('QuickToggleKeyPriority', BoolValue(QuickToggleKeyPriority));
 end;
 
 function JsonBool(AValue: Boolean): string;

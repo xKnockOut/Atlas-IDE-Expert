@@ -103,6 +103,8 @@ begin
   Assert.AreEqual(0, Settings.SignatureKey);
   Assert.IsFalse(Settings.SignatureKeyPriority);
   Assert.AreEqual(200, Settings.ProviderTimeLimitMs, 'Zeitlimit für Quellen (#493)');
+  Assert.AreEqual($E041, Settings.QuickToggleKey, 'Schnellschalter: Strg+Umschalt+Alt+A (#604)');
+  Assert.IsFalse(Settings.QuickToggleKeyPriority);
 end;
 
 procedure TAtlasPluginSettingsTests.SaveAndLoadRoundTrip;
@@ -124,6 +126,8 @@ begin
   Settings.SignatureKeyPriority := True;
   Settings.CompletionKey := $4020; // Strg+Leer
   Settings.ProviderTimeLimitMs := 350;
+  Settings.QuickToggleKey := $6051;
+  Settings.QuickToggleKeyPriority := True;
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
@@ -140,6 +144,8 @@ begin
   Assert.AreEqual($4020, Loaded.CompletionKey);
   Assert.IsFalse(Loaded.CompletionKeyPriority);
   Assert.AreEqual(350, Loaded.ProviderTimeLimitMs);
+  Assert.AreEqual($6051, Loaded.QuickToggleKey);
+  Assert.IsTrue(Loaded.QuickToggleKeyPriority);
   Assert.AreEqual('', TAtlasPluginSettings.Defaults.ServerPath, 'Standard: leer');
 end;
 

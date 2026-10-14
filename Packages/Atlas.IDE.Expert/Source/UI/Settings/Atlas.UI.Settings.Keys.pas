@@ -2,7 +2,7 @@
 
 // Seite „Tastenkonflikte“ unter Tools › Optionen › Drittanbieter › Atlas
 // (#494). Je Taste von Atlas (Befehlspalette, Syntaxprüfung,
-// Vervollständigung, Parameter-Hint) eine Zeile: Funktion, Taste als Text wie
+// Vervollständigung, Parameter-Hint, Schnellschalter #604) eine Zeile: Funktion, Taste als Text wie
 // im Menü, die Wahl „Atlas verwenden“, „anderer Belegung überlassen“ oder
 // „andere Taste für Atlas“ und darunter, wer die Taste sonst belegt. Wer eine
 // Taste belegt, fragt die IDE-Schicht über OwnerOf ab; die Seite selbst kennt
@@ -85,7 +85,7 @@ begin
   inherited Create(AOwner);
   Name := 'AtlasKeysPage';
   Width := 480;
-  Height := 420;
+  Height := 480;
   FNextTop := 0;
   Title := TLabel.Create(Self);
   Title.Parent := Self;
@@ -186,6 +186,8 @@ begin
       Result := TAtlasStrings.Text(TAtlasTextId.SettingsCheckKey);
     TAtlasKeyFunction.Completion:
       Result := TAtlasStrings.Text(TAtlasTextId.SettingsCompletionKey);
+    TAtlasKeyFunction.QuickToggle:
+      Result := TAtlasStrings.Text(TAtlasTextId.SettingsQuickToggleKey);
   else
     Result := TAtlasStrings.Text(TAtlasTextId.SettingsSignatureKey);
   end;

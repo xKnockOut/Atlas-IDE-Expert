@@ -145,11 +145,16 @@ uses
 
 /// <summary>Anzeige der XMLDoc im Panel (#654): hints aus atlas.json meldet der Server, sonst die Optionen.</summary>
 function WithDisplay(const ADetails: TAtlasItemDetails): TAtlasItemDetails;
+var
+  Full: Boolean;
 begin
   Result := ADetails;
   if not Result.Display.Known then
     Result.Display := TAtlasDocDisplay.Create(TAtlasIdeSettings.Current.XmlDocFull,
       TAtlasIdeSettings.Current.XmlDocMaxLines);
+  // Schnellschalter nur für diese Sitzung (#604) gilt auch über dem Wert aus atlas.json.
+  if TAtlasIdeSettings.SessionFlag('XmlDocFull', Full) then
+    Result.Display.Full := Full;
 end;
 
 /// <summary>Größe des Editorfensters (Client-Bereich); (0, 0) ohne Fenster.</summary>
@@ -383,7 +388,7 @@ begin
     var
       Settings: TAtlasPluginSettings;
     begin
-      Settings := TAtlasIdeSettings.Current;
+      Settings := TAtlasIdeSettings.Stored;
       Settings.ListWidth := AListWidth;
       Settings.PanelWidth := APanelWidth;
       TAtlasIdeSettings.Update(Settings);
@@ -393,7 +398,7 @@ begin
     var
       Settings: TAtlasPluginSettings;
     begin
-      Settings := TAtlasIdeSettings.Current;
+      Settings := TAtlasIdeSettings.Stored;
       Settings.PanelCollapsed := ACollapsed;
       TAtlasIdeSettings.Update(Settings);
     end;

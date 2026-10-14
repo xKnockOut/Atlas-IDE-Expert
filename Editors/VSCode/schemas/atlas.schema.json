@@ -545,7 +545,11 @@
         "xmlDocFull": {
           "type": "boolean",
           "default": true,
-          "description": "XMLDoc vollständig und formatiert zeigen (alle Abschnitte, Verweise, Listen, Code). false: Kurzform wie bisher (Beschreibung auf 4 Zeilen, Bemerkungen auf 3 Zeilen gekürzt)."
+          "description": "XMLDoc vollständig und formatiert zeigen (alle Abschnitte, Verweise, Listen, Code). false: Kurzform wie bisher (Beschreibung auf 4 Zeilen, Bemerkungen auf 3 Zeilen gekürzt).",
+          "x-quickToggle": true,
+          "x-plugin": "XmlDocFull",
+          "x-caption": "XMLDoc vollständig",
+          "x-captionEn": "Full XMLDoc"
         },
         "xmlDocMaxLines": {
           "type": "integer",

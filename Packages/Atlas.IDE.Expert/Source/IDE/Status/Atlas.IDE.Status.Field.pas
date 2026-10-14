@@ -13,6 +13,8 @@
 //   Thread) und neue oder aktivierte Editorfenster. Sie werden gesammelt;
 //   gezeichnet wird höchstens alle 250 ms im Hauptthread.
 // - OnRefresh läuft vor jedem Zeichnen im Hauptthread (feste Zeilen nachführen).
+// - Rechtsklick auf das Feld ruft OnContext mit der linken Oberkante des Felds
+//   (Schnellschalter, #604); Anchor liefert sie für das oberste Editorfenster.
 
 interface
 
@@ -61,6 +63,7 @@ type
     FOnRefresh: TProc;
     FOnOpenLog: TProc;
     FOnRestart: TProc;
+    FOnContext: TProc<TPoint>;
     procedure WndProc(var Message: TMessage);
     procedure TimerTick(Sender: TObject);
     procedure Refresh;
@@ -84,6 +87,10 @@ type
     property OnRefresh: TProc read FOnRefresh write FOnRefresh;
     property OnOpenLog: TProc read FOnOpenLog write FOnOpenLog;
     property OnRestart: TProc read FOnRestart write FOnRestart;
+    /// <summary>Rechtsklick auf das Feld; Punkt = linke Oberkante des Felds (Bildschirm).</summary>
+    property OnContext: TProc<TPoint> read FOnContext write FOnContext;
+    /// <summary>Linke Oberkante des Felds im obersten Editorfenster (Bildschirm); False ohne Feld.</summary>
+    function Anchor(out APoint: TPoint): Boolean;
   end;
 
 implementation
@@ -465,6 +472,20 @@ begin
       end);
     Exit;
   end;
+  if (Button = mbRight) and Assigned(FOnContext) and PtInRect(PanelRect(Hook), Point(X, Y)) then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Status,
+      procedure
+      var
+        Area: TRect;
+      begin
+        if FWindow <> nil then
+          FWindow.Dismiss;
+        Area := PanelRect(Hook);
+        FOnContext(Hook.Bar.ClientToScreen(Point(Area.Left, Area.Top)));
+      end);
+    Exit;
+  end;
   if Assigned(Hook.OldMouseUp) then
     Hook.OldMouseUp(Sender, Button, Shift, X, Y);
 end;
@@ -497,6 +518,30 @@ begin
   end;
   if Assigned(Hook.OldMouseMove) then
     Hook.OldMouseMove(Sender, Shift, X, Y);
+end;
+
+function TAtlasStatusField.Anchor(out APoint: TPoint): Boolean;
+var
+  Services: INTAEditorServices;
+  Window: INTAEditWindow;
+  Hook: THook;
+  Area: TRect;
+begin
+  APoint := Point(0, 0);
+  Result := False;
+  if not Supports(BorlandIDEServices, INTAEditorServices, Services) then
+    Exit;
+  Window := Services.TopEditWindow;
+  if (Window = nil) or (Window.StatusBar = nil) then
+    Exit;
+  Hook := HookOf(Window.StatusBar);
+  if (Hook = nil) or not Hook.Bar.Visible then
+    Exit;
+  Area := PanelRect(Hook);
+  if Area.IsEmpty then
+    Exit;
+  APoint := Hook.Bar.ClientToScreen(Point(Area.Left, Area.Top));
+  Result := True;
 end;
 
 procedure TAtlasStatusField.OpenWindow(AHook: THook);

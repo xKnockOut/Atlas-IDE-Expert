@@ -291,6 +291,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Status.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Status\Atlas.UI.Status.Window.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Status.Window.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.QuickToggles.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Settings.QuickToggles.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Settings\Atlas.UI.Settings.QuickToggles.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Settings.QuickToggles.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Commands\Atlas.Core.Commands.Palette.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.Palette.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Pairs.pas"/>

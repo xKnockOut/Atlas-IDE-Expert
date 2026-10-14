@@ -152,7 +152,7 @@ begin
         Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer);
       Answer.Free;
     end;
-  FPage.LoadFrom(TAtlasIdeSettings.Current);
+  FPage.LoadFrom(TAtlasIdeSettings.Stored);
 end;
 
 procedure TAtlasAddInOptions.DialogClosed(Accepted: Boolean);
@@ -162,7 +162,7 @@ begin
   try
     if Accepted and (FPage <> nil) then
     begin
-      Settings := TAtlasIdeSettings.Current;
+      Settings := TAtlasIdeSettings.Stored;
       FPage.SaveTo(Settings);
       TAtlasIdeSettings.Update(Settings);
       TAtlasIdeStructureSwitch.Sync;
@@ -211,7 +211,7 @@ procedure TAtlasKeysOptions.FrameCreated(AFrame: TCustomFrame);
 begin
   try
     FPage := AFrame as TAtlasKeysPage;
-    FPage.LoadFrom(TAtlasIdeSettings.Current);
+    FPage.LoadFrom(TAtlasIdeSettings.Stored);
     FPage.OwnerOf :=
       function(AShortCut: Word): string
       begin
@@ -231,7 +231,7 @@ begin
   try
     if Accepted and (FPage <> nil) then
     begin
-      Settings := TAtlasIdeSettings.Current;
+      Settings := TAtlasIdeSettings.Stored;
       FPage.SaveTo(Settings);
       TAtlasIdeSettings.Update(Settings);
     end;

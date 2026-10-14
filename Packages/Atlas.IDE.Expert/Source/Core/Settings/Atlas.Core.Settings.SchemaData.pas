@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..774] of string = (
+  Lines: array[0..778] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -559,7 +559,11 @@ const
     '        "xmlDocFull": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "XMLDoc vollständig und formatiert zeigen (alle Abschnitte, Verweise, Listen, Code). false: Kurzform wie bisher (Beschreibung auf 4 Zeilen, Bemerkungen auf 3 Zeilen gekürzt)."',
+    '          "description": "XMLDoc vollständig und formatiert zeigen (alle Abschnitte, Verweise, Listen, Code). false: Kurzform wie bisher (Beschreibung auf 4 Zeilen, Bemerkungen auf 3 Zeilen gekürzt)."' + ',',
+    '          "x-quickToggle": true,',
+    '          "x-plugin": "XmlDocFull",',
+    '          "x-caption": "XMLDoc vollständig",',
+    '          "x-captionEn": "Full XMLDoc"',
     '        },',
     '        "xmlDocMaxLines": {',
     '          "type": "integer",',

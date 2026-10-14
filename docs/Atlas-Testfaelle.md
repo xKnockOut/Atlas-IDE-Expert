@@ -339,6 +339,24 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 | SF10 | Zweites Editorfenster öffnen (Ansicht › Neues Editorfenster) | Auch dort ein Atlas-Feld |
 | SF11 | Package entladen | Felder verschwinden, die Statusleisten verhalten sich wie ohne Atlas |
 
+## Schnellschalter (#604)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| QS1 | Rechtsklick auf das Atlas-Feld in der Statusleiste | Fenster „Atlas · Schnellschalter“ über dem Feld, Schalter nach Seiten gruppiert (Allgemein, Editor, Hints, Vervollständigung, Compiler), u. a. „Klammerfarben“, „Blocklinien“, „XMLDoc vollständig“ |
+| QS2 | Strg+Umschalt+Alt+A im Editor | Dasselbe Fenster; zweimal drücken schließt es; Esc oder ein Klick daneben schließt es ebenfalls |
+| QS3 | Tools › Optionen › Atlas › Tastenkonflikte: Taste „Schnellschalter“ auf Strg+Umschalt+Q ändern | Neue Taste öffnet das Fenster sofort, die alte nicht mehr |
+| QS4 | Im Fenster „Klammerfarben“ anklicken | Farbige Klammerpaare verschwinden sofort, das Fenster bleibt offen und zeigt das Kästchen leer; Tools › Optionen › Atlas zeigt „Klammerfarben“ aus |
+| QS5 | IDE neu starten | Klammerfarben bleiben aus; erneut anklicken schaltet sie wieder an |
+| QS6 | „Blocklinien“ mit ↑/↓ wählen, Leertaste | Blocklinien aus bzw. an, Strukturhervorhebung der IDE entsprechend an bzw. aus |
+| QS7 | „Alles aus für diese Sitzung“ | Klammerfarben, Blocklinien, ausgegraute {$IFDEF}-Zweige und Unterstreichungen verschwinden; Kopf zeigt „Zeichnungen für diese Sitzung aus“, Knopf heißt „Alles wieder an“; Tools › Optionen › Atlas zeigt unverändert die alten Werte |
+| QS8 | „Alles wieder an“ | Alle Zeichnungen wie vorher; nach einem IDE-Neustart ohne erneuten Klick ist ohnehin alles wieder an |
+| QS9 | atlas.json mit `"hints": { "xmlDocFull": false }`, Fenster öffnen | „XMLDoc vollständig“ ist aus und trägt rechts „Projekt“ |
+| QS10 | „XMLDoc vollständig“ anklicken, „Nur für diese Sitzung“ | Tooltip und Detailpanel zeigen die volle Doku; der Schalter trägt „Sitzung“; atlas.json und Optionen unverändert |
+| QS11 | Schalter erneut anklicken, dann wie QS9 mit „Im Projekt (atlas.json)“ | atlas.json enthält `"xmlDocFull": true`, Kommentare und Reihenfolge bleiben; Optionsseite unverändert |
+| QS12 | Befehlspalette: „Atlas: Klammerfarben ein/aus“, „Atlas: Alles aus für diese Sitzung“, „Atlas: Schnellschalter öffnen“ | Wie die Klicks im Fenster bzw. Fenster öffnet unten links im aktiven Fenster, wenn kein Statusfeld da ist |
+| QS13 | Menü Atlas › „Klammerfarben“ | Häkchen wie im Fenster; Umschalten wirkt wie dort |
+
 ## Schließen der Atlas-Fenster (#414)
 
 | Nr. | Schritte | Erwartet |

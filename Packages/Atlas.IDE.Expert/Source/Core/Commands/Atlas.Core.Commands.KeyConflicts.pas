@@ -8,7 +8,7 @@
 // - Erweiterungen mit eigener Vervollständigung an ihren Packages erkennen;
 //   Atlas weist nur darauf hin und schaltet fremde Erweiterungen nie ab.
 // - Seite „Tastenkonflikte“: je Atlas-Taste (Befehlspalette, Syntaxprüfung,
-//   Vervollständigung, Parameter-Hint) Taste, fremde Belegung und die Wahl
+//   Vervollständigung, Parameter-Hint, Schnellschalter #604) Taste, fremde Belegung und die Wahl
 //   „Atlas verwenden“, „anderer Belegung überlassen“ oder „andere Taste für
 //   Atlas“ (TAtlasKeyEntry).
 // Kürzel sind TShortCut-Werte (Word) wie in Vcl.Menus.
@@ -21,7 +21,7 @@ uses
 
 type
   {$SCOPEDENUMS ON}
-  TAtlasKeyFunction = (Palette, Check, Completion, Signature);
+  TAtlasKeyFunction = (Palette, Check, Completion, Signature, QuickToggle);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -65,6 +65,7 @@ type
     CheckDefault = scCtrl or scAlt or $78; // VK_F9
     IdeCompletionKey = scCtrl or $20; // Strg+Leer
     IdeSignatureKey = scCtrl or scShift or $20; // Strg+Umschalt+Leer
+    QuickToggleDefault = scCtrl or scShift or scAlt or Ord('A');
   public
     /// <summary>Editor-Belegungen der Standard-Tastaturbelegung, die keine Aktionen sind.</summary>
     class function KnownIdeKeys: TArray<TAtlasKeyOwner>; static;
@@ -92,7 +93,8 @@ begin
   Result := [Create(TAtlasKeyFunction.Palette, Word(ASettings.PaletteKey), ASettings.PaletteKeyPriority),
     Create(TAtlasKeyFunction.Check, Word(ASettings.CheckKey), ASettings.CheckKeyPriority),
     Create(TAtlasKeyFunction.Completion, Word(ASettings.CompletionKey), ASettings.CompletionKeyPriority),
-    Create(TAtlasKeyFunction.Signature, Word(ASettings.SignatureKey), ASettings.SignatureKeyPriority)];
+    Create(TAtlasKeyFunction.Signature, Word(ASettings.SignatureKey), ASettings.SignatureKeyPriority),
+    Create(TAtlasKeyFunction.QuickToggle, Word(ASettings.QuickToggleKey), ASettings.QuickToggleKeyPriority)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -121,6 +123,11 @@ begin
         begin
           ASettings.SignatureKey := Entry.Key;
           ASettings.SignatureKeyPriority := Entry.Priority;
+        end;
+      TAtlasKeyFunction.QuickToggle:
+        begin
+          ASettings.QuickToggleKey := Entry.Key;
+          ASettings.QuickToggleKeyPriority := Entry.Priority;
         end;
     end;
 end;

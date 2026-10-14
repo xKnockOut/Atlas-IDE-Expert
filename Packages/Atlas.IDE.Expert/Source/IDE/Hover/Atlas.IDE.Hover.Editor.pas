@@ -313,6 +313,8 @@ begin
 end;
 
 function TAtlasEditorHover.CurrentView: TAtlasHoverView;
+var
+  Full: Boolean;
 begin
   Result := TAtlasHoverView.Create(FHistory.Current);
   Result.Path := FHistory.Path;
@@ -325,6 +327,9 @@ begin
   else
     Result.Display := TAtlasDocDisplay.Create(TAtlasIdeSettings.Current.XmlDocFull,
       TAtlasIdeSettings.Current.XmlDocMaxLines);
+  // Schnellschalter nur für diese Sitzung (#604) gilt auch über dem Wert aus atlas.json.
+  if TAtlasIdeSettings.SessionFlag('XmlDocFull', Full) then
+    Result.Display.Full := Full;
   // Probleme gehören zur Stelle im Editor, nicht zu angeklickten Typen.
   if FHistory.Count <= 1 then
     Result.Problems := FProblems;

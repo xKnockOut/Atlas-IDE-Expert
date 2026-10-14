@@ -65,11 +65,15 @@ begin
   Settings.SignatureKey := $6048;
   Settings.CheckKeyPriority := True;
   Entries := TAtlasKeyEntry.FromSettings(Settings);
-  Assert.AreEqual(4, Integer(Length(Entries)));
+  Assert.AreEqual(5, Integer(Length(Entries)));
   Assert.IsTrue(Entries[0].Func = TAtlasKeyFunction.Palette);
   Assert.AreEqual(Integer(TAtlasKeyConflicts.PaletteDefault), Integer(Entries[0].Key));
   Assert.IsTrue(Entries[1].Choice = TAtlasKeyChoice.UseAtlas);
   Assert.IsTrue(Entries[3].Func = TAtlasKeyFunction.Signature);
+  // Schnellschalter (#604) mit eigener Vorgabe.
+  Assert.IsTrue(Entries[4].Func = TAtlasKeyFunction.QuickToggle);
+  Assert.AreEqual(Integer(TAtlasKeyConflicts.QuickToggleDefault), Integer(Entries[4].Key));
+  Entries[4].Key := $6051;
   // Andere Taste für Atlas, dann Atlas verwenden.
   Entries[3].Key := $6049;
   Entries[3].Choose(TAtlasKeyChoice.UseAtlas);
@@ -80,6 +84,7 @@ begin
   Assert.IsTrue(Saved.SignatureKeyPriority);
   Assert.IsFalse(Saved.CheckKeyPriority);
   Assert.AreEqual(Settings.PaletteKey, Saved.PaletteKey);
+  Assert.AreEqual($6051, Saved.QuickToggleKey);
 end;
 
 procedure TAtlasKeyConflictsTests.StatusFollowsOwnerAndChoice;
