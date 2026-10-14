@@ -263,7 +263,9 @@ procedure TComponentRulesTests.ScaledAndTrivialPixelsAreSilent;
 begin
   TRuleAssert.Silent(TComponentFixedPixelsRule.Create, PaintUnit(
     '  Canvas.Pen.Width := 1;'#10'  Canvas.FillRect(Rect(0, 0, ScaleValue(16), MulDiv(16, CurrentPPI, 96)));'#10 +
-    '  X := Width div 2;'#10'  Canvas.Font.Size := 10;'#10'  Canvas.Brush.Color := $00FF8000;'));
+    '  X := Width div 2;'#10'  Canvas.Font.Size := 10;'#10'  Canvas.Brush.Color := $00FF8000;'#10 +
+    // Eigene Skalierhelfer (#647).
+    '  Canvas.FillRect(Rect(Scale(3), 0, ScaleDpi(16), Self.Scale(16)));'));
 end;
 
 procedure TComponentRulesTests.HexColorReportsSystemColorSilent;
