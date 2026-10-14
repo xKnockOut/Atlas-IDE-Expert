@@ -722,6 +722,18 @@ begin
     TryStrToInt(ANode.Name, Value) and (Value > 1);
 end;
 
+/// <summary>Skaliert der Aufruf seinen Wert? Neben ScaleValue & Co. auch eigene Helfer wie Scale(3) oder
+/// ScaleDpi(3), deren Name mit Scale beginnt (#647).</summary>
+function IsScaleCall(const AName: string): Boolean;
+var
+  Name: string;
+begin
+  Name := AName;
+  if LastDelimiter('.', Name) > 0 then
+    Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+  Result := IsIn(Name, ScaleCalls) or StartsText('Scale', Name);
+end;
+
 /// <summary>Steht der Wert in einem Zusammenhang, der kein Pixelwert ist oder schon skaliert?</summary>
 function Excluded(ANode: TSyntaxNode): Boolean;
 var
@@ -733,7 +745,7 @@ begin
   begin
     case Parent.Kind of
       TSyntaxKind.Call:
-        if IsIn(Parent.Name, ScaleCalls) or IsIn(Parent.Name, ['RGB', 'TColor', 'Sleep', 'Inc', 'Dec']) then
+        if IsScaleCall(Parent.Name) or IsIn(Parent.Name, ['RGB', 'TColor', 'Sleep', 'Inc', 'Dec']) then
           Exit(True);
       TSyntaxKind.BinaryExpr:
         if (Child = ANode) and IsIn(Parent.Name, ['*', '/', 'div', 'mod', 'shl', 'shr', 'and', 'or', 'xor']) then

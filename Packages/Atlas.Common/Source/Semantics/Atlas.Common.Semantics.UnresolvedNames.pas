@@ -121,7 +121,7 @@ var
     begin
       // IsUnitPrefix erst danach: ResolveChain legt die Unit und den Abschnitt fest.
       Resolved := AResolver.ResolveChain(ATree, AFileName, [ANode.Name], ANode.StartOffset);
-      if not Resolved.Found and not AResolver.IsUnitPrefix(ANode.Name) then
+      if not Resolved.Found and not AResolver.IsUnitPrefix(ANode.Name) and not AResolver.HasUnknownAncestor then
       begin
         Item.Name := ANode.Name;
         Item.Range := TTextRange.Create(ANode.StartPos, ANode.EndPos);
