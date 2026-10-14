@@ -32,7 +32,8 @@ uses
   Atlas.Core.Hover.Contract,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Files.WatchedChanges,
-  Atlas.Core.Projects.Context;
+  Atlas.Core.Projects.Context,
+  Atlas.Core.InlayHints.Store;
 
 type
   TLspLocation = record
@@ -120,6 +121,10 @@ type
     /// geänderte als atlas/projectContext gemeldet. Vor SetProjects aufrufen, damit ein neues Projekt
     /// gleich mit seinem Kontext geladen wird.</summary>
     procedure SetProjectContexts(const AContexts: TArray<TAtlasProjectContext>);
+    /// <summary>Parameternamen (InlayHintKind 2) in den Zeilen AFromLine..AToLine (0-basiert) ohne Abgleich:
+    /// Sync vorher (#401). Namen ohne abschließenden Doppelpunkt.</summary>
+    function InlayHints(const AFileName: string; AFromLine, AToLine: Integer;
+      ATimeoutMs: Cardinal): TArray<TAtlasInlayHint>;
     procedure Initialize;
     /// <summary>Schickt AText, falls neu oder geändert.</summary>
     procedure Sync(const AFileName, AText: string);
@@ -550,6 +555,60 @@ begin
           if Location.FileName <> '' then
             Result := Result + [Location];
         end;
+  finally
+    Response.Free;
+  end;
+end;
+
+function TLspSession.InlayHints(const AFileName: string; AFromLine, AToLine: Integer;
+  ATimeoutMs: Cardinal): TArray<TAtlasInlayHint>;
+var
+  Params, Range: TJSONObject;
+  Response, Item, Part: TJSONValue;
+  Entry: TJSONObject;
+  Parts: TJSONArray;
+  Hint: TAtlasInlayHint;
+  Text: string;
+begin
+  Result := nil;
+  Range := TJSONObject.Create;
+  Range.AddPair('start', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AFromLine))
+    .AddPair('character', TJSONNumber.Create(0)));
+  Range.AddPair('end', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AToLine + 1))
+    .AddPair('character', TJSONNumber.Create(0)));
+  Params := TJSONObject.Create;
+  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  Params.AddPair('range', Range);
+  Response := FClient.Request('textDocument/inlayHint', Params, ATimeoutMs);
+  try
+    if not (Response is TJSONArray) then
+      Exit;
+    for Item in TJSONArray(Response) do
+    begin
+      if not (Item is TJSONObject) then
+        Continue;
+      Entry := TJSONObject(Item);
+      if Entry.GetValue<Integer>('kind', 0) <> 2 then
+        Continue;
+      // label ist ein String oder eine Liste von InlayHintLabelPart.
+      Text := '';
+      if Entry.TryGetValue<TJSONArray>('label', Parts) then
+      begin
+        for Part in Parts do
+          if Part is TJSONObject then
+            Text := Text + TJSONObject(Part).GetValue<string>('value', '');
+      end
+      else
+        Text := Entry.GetValue<string>('label', '');
+      Text := Trim(Text);
+      if Text.EndsWith(':') then
+        Text := TrimRight(Copy(Text, 1, Length(Text) - 1));
+      Hint.Line := Entry.GetValue<Integer>('position.line', -1);
+      Hint.Character := Entry.GetValue<Integer>('position.character', 0);
+      Hint.Name := Text;
+      if (Hint.Line >= 0) and (Hint.Name <> '') then
+        Result := Result + [Hint];
+    end;
   finally
     Response.Free;
   end;
