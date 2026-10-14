@@ -10,7 +10,17 @@
 // jedem Tastendruck neu fragen, filterText verhindert, dass er Treffer verwirft.
 // Ab zwei getippten Zeichen kommen Symbole aus noch nicht eingebundenen Units dazu (#180),
 // Projekt-Units vor Bibliotheken; additionalTextEdits trägt die Unit beim Annehmen ins uses ein.
-// Noch nicht: Sichtbarkeit (private/protected), Generics, Class Helper, Typinferenz bei var X := ….
+// Typauflösung mit Überladungen, Generics, Class Helpern, with, var X := … und Sichtbarkeit liefert der
+// NameResolver (#263); private und strict private fremder Klassen bzw. Units und protected außerhalb von
+// Nachfahren erscheinen nicht.
+//
+// Kontexte ohne Typauflösung (#31):
+//   - nach "inherited " nur Methoden und Konstruktoren der Vorfahren,
+//   - nach "class(", "is", "is not", "as" und nach ":" in Deklarationen (auch inline var) nur Typen,
+//   - in "property Name: T read/write " nur Felder und Methoden mit passender Signatur (PropertyItems),
+//   - nach "override " im Klassenrumpf die überschreibbaren Methoden der Vorfahren (OverrideItems),
+//   - Schlüsselwörter passend zur Stelle (Anweisung, Deklaration, Klassenrumpf), sobald etwas getippt ist.
+// In Kommentaren und Strings (auch mehrzeiligen ''' ab Delphi 12) wird nichts vorgeschlagen.
 //
 // Geschwindigkeit (#616): Ist schon etwas getippt, baut der Resolver nur Kandidaten, deren Name passt
 // (NameFilter). isIncomplete kommt nur, wenn die Liste wirklich unvollständig ist (gekürzt, oder Importe
@@ -42,6 +52,10 @@ uses
 
 type
   TCompletionContextKind = (None, Scope, Member, UsesClause);
+  /// <summary>Einschränkung der Kandidaten im Gültigkeitsbereich (#31).</summary>
+  TCompletionFilter = (Any, Types, InheritedCall);
+  /// <summary>Stelle im Quelltext für passende Schlüsselwörter (#31).</summary>
+  TCompletionPlace = (Unknown, Declaration, ClassBody, Statement);
 
   TCompletionContext = record
     Kind: TCompletionContextKind;
@@ -54,6 +68,12 @@ type
     /// <summary>Bei Member: Anfang der Kette und Position des Punkts.</summary>
     ChainStart: TTextPosition;
     DotPos: TTextPosition;
+    /// <summary>Bei Scope: nur Typen bzw. nur Methoden der Vorfahren (#31).</summary>
+    Filter: TCompletionFilter;
+    /// <summary>Bei Filter Types: auch Typ-Schlüsselwörter wie string und array (nach ":").</summary>
+    TypeKeywords: Boolean;
+    /// <summary>Bei Scope: Anweisung, Deklaration oder Klassenrumpf (#31).</summary>
+    Place: TCompletionPlace;
   end;
 
   TCompletionItem = record
@@ -196,6 +216,7 @@ type
     FNotify: TCompletionNotifyProc;
     FLog: TCompletionLogProc;
     FSnippetSupport: Boolean;
+    FDocumentationMarkdown: Boolean;
     // Zuletzt für completionItem/resolve gelesene Datei (#616): Beim Blättern in der Liste fragt Atlas oft
     // nacheinander Symbole derselben großen Bibliotheks-Unit nach.
     FCacheLock: TObject;
@@ -237,6 +258,19 @@ type
     class function OverrideItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
       const APosition: TTextPosition; const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean;
       static;
+    /// <summary>In "property Name: T read " bzw. "write " im Klassenrumpf (#31): Felder vom Typ T und Methoden mit
+    /// passender Signatur (read: Funktion mit Ergebnis T und den Indexparametern; write: Prozedur mit den
+    /// Indexparametern und einem Parameter vom Typ T), auch geerbte. False außerhalb dieses Kontexts.</summary>
+    class function PropertyItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
+      const APosition: TTextPosition; AMatching: TCompletionMatching; out AItems: TCompletionItems): Boolean; static;
+    /// <summary>Schlüsselwörter für APlace (#31), klein geschrieben.</summary>
+    class function Keywords(APlace: TCompletionPlace): TArray<string>; static;
+    /// <summary>completionItem.documentationFormat aus initialize (#31): True, wenn der Client Markdown zuerst
+    /// nennt; RAD Studio meldet nur plaintext.</summary>
+    class function ClientPrefersMarkdown(const AInitializeParams: TJSONObject): Boolean; static;
+    /// <summary>documentation für completionItem/resolve aus Details: Markdown als MarkupContent, sonst Klartext
+    /// (ganzer XMLDoc-Text, ersatzweise der Kurztext); nil ohne Doku.</summary>
+    class function ResolveDocumentation(const ADetails: TJSONObject; AMarkdown: Boolean): TJSONValue; static;
     /// <summary>Nach "Objekt.Ereignis := " (#444): Methoden der umgebenden Klasse, deren Parameter zum
     /// Methodenzeigertyp des Ereignisses passen, zuletzt "Neue Methode …" mit Deklaration im private-Abschnitt
     /// und leerem Rumpf. False außerhalb dieses Kontexts.</summary>
@@ -332,6 +366,8 @@ type
     property Log: TCompletionLogProc read FLog write FLog;
     /// <summary>Client versteht Snippets (#51); sonst gehen Vorlagen als Klartext. Aus initialize.</summary>
     property SnippetSupport: Boolean read FSnippetSupport write FSnippetSupport;
+    /// <summary>Doku in completionItem/resolve als Markdown statt Klartext (#31). Aus initialize.</summary>
+    property DocumentationMarkdown: Boolean read FDocumentationMarkdown write FDocumentationMarkdown;
   end;
 
 implementation
@@ -390,6 +426,22 @@ const
   KindStruct = 22;
   KindKeyword = 14;
   KindSnippet = 15;
+  /// <summary>Typen im Index (#31: Filter nach "class(", ":", "is", "as").</summary>
+  IndexTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+    TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType, TIndexSymbolKind.EnumType,
+    TIndexSymbolKind.TypeAlias];
+  // Schlüsselwörter je Stelle (#31).
+  StatementKeywords: array[0..34] of string = ('begin', 'end', 'if', 'then', 'else', 'case', 'of', 'for', 'to',
+    'downto', 'do', 'while', 'repeat', 'until', 'try', 'except', 'finally', 'on', 'raise', 'with', 'inherited',
+    'var', 'const', 'nil', 'not', 'and', 'or', 'xor', 'div', 'mod', 'shl', 'shr', 'in', 'is', 'as');
+  DeclarationKeywords: array[0..18] of string = ('procedure', 'function', 'constructor', 'destructor', 'var',
+    'const', 'type', 'begin', 'end', 'class', 'record', 'uses', 'implementation', 'initialization', 'finalization',
+    'resourcestring', 'threadvar', 'label', 'exports');
+  ClassBodyKeywords: array[0..23] of string = ('procedure', 'function', 'constructor', 'destructor', 'property',
+    'private', 'protected', 'public', 'published', 'strict', 'class', 'var', 'const', 'type', 'end', 'case',
+    'virtual', 'override', 'overload', 'abstract', 'reintroduce', 'dynamic', 'static', 'message');
+  TypeKeywords: array[0..7] of string = ('string', 'array', 'set', 'record', 'packed', 'procedure', 'function',
+    'reference');
 
 /// <summary>Text der Zeile von APosition bis zum Cursor.</summary>
 function LineBefore(const AText: string; const APosition: TTextPosition): string;
@@ -583,6 +635,95 @@ begin
   Result.AddPair('resolveProvider', TJSONBool.Create(True));
 end;
 
+/// <summary>Anweisung, Deklaration oder Klassenrumpf an AOffset (#31): innerster Knoten, dann nach außen die
+/// erste prägende Art.</summary>
+function PlaceAt(ARoot: TSyntaxNode; AOffset: Integer): TCompletionPlace;
+var
+  Node, Child: TSyntaxNode;
+  Index: Integer;
+  Found: Boolean;
+begin
+  Result := TCompletionPlace.Unknown;
+  if ARoot = nil then
+    Exit;
+  Node := ARoot;
+  repeat
+    Found := False;
+    for Index := 0 to Node.ChildCount - 1 do
+    begin
+      Child := Node[Index];
+      if (Child.StartOffset <= AOffset) and (AOffset <= Child.EndOffset) then
+      begin
+        Node := Child;
+        Found := True;
+        Break;
+      end;
+    end;
+  until not Found;
+  while Node <> nil do
+  begin
+    if Node.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType,
+      TSyntaxKind.InterfaceType, TSyntaxKind.HelperType] then
+      Exit(TCompletionPlace.ClassBody);
+    if Node.Kind in [TSyntaxKind.Block .. TSyntaxKind.EmptyStatement] then
+      Exit(TCompletionPlace.Statement);
+    Node := Node.Parent;
+  end;
+  Result := TCompletionPlace.Declaration;
+end;
+
+/// <summary>An dieser Stelle kann nur ein Typ stehen (#31): nach "is", "is not", "as", in der Vorfahrenliste
+/// "class(…" und nach ":" in Deklarationen (in Anweisungen nur bei inline var/const und "on E:").
+/// AKeywords: auch string, array … anbieten (nur nach ":").</summary>
+function TypePosition(const ATokens: TArray<TPascalToken>; ALast: Integer; APlace: TCompletionPlace;
+  out AKeywords: Boolean): Boolean;
+var
+  Index, Before: Integer;
+begin
+  AKeywords := False;
+  Result := False;
+  if ALast < 0 then
+    Exit;
+  if ATokens[ALast].IsKeyword('is') or ATokens[ALast].IsKeyword('as') then
+    Exit(True);
+  if ATokens[ALast].IsKeyword('not') then
+  begin
+    Before := PreviousIndex(ATokens, ALast);
+    Exit((Before >= 0) and ATokens[Before].IsKeyword('is'));
+  end;
+  if ATokens[ALast].IsSymbol(':') then
+  begin
+    if APlace <> TCompletionPlace.Statement then
+      Result := True
+    else
+    begin
+      // var A, B: | bzw. on E: |
+      Index := PreviousIndex(ATokens, ALast);
+      while (Index >= 0) and not Result and ((ATokens[Index].Kind = TPascalTokenKind.Identifier) or
+        ATokens[Index].IsSymbol(',')) do
+      begin
+        Before := PreviousIndex(ATokens, Index);
+        Result := SameText(ATokens[Index].Text, 'on') and (Before >= 0) and
+          not ATokens[Before].IsSymbol('.');
+        Index := Before;
+      end;
+      Result := Result or (Index >= 0) and (ATokens[Index].IsKeyword('var') or ATokens[Index].IsKeyword('const'));
+    end;
+    AKeywords := Result;
+    Exit;
+  end;
+  // TFoo = class(TBasis, IFoo, |
+  Index := ALast;
+  while (Index >= 0) and ((ATokens[Index].Kind = TPascalTokenKind.Identifier) or ATokens[Index].IsSymbol(',') or
+    ATokens[Index].IsSymbol('.')) do
+    Index := PreviousIndex(ATokens, Index);
+  if (Index < 0) or not ATokens[Index].IsSymbol('(') then
+    Exit;
+  Before := PreviousIndex(ATokens, Index);
+  Result := (Before >= 0) and (ATokens[Before].IsKeyword('class') or ATokens[Before].IsKeyword('interface') or
+    ATokens[Before].IsKeyword('object') or ATokens[Before].IsKeyword('dispinterface'));
+end;
+
 class function TLspCompletion.Analyze(ATree: TSyntaxTree; const APosition: TTextPosition): TCompletionContext;
 var
   Tokens: TArray<TPascalToken>;
@@ -668,9 +809,17 @@ begin
     Exit;
   end;
   if (Last >= 0) and InUsesClause(Tokens, Last) then
-    Result.Kind := TCompletionContextKind.UsesClause
-  else
-    Result.Kind := TCompletionContextKind.Scope;
+  begin
+    Result.Kind := TCompletionContextKind.UsesClause;
+    Exit;
+  end;
+  Result.Kind := TCompletionContextKind.Scope;
+  // Kontexte ohne Typauflösung (#31).
+  Result.Place := PlaceAt(ATree.Root, Result.Offset);
+  if (Last >= 0) and Tokens[Last].IsKeyword('inherited') then
+    Result.Filter := TCompletionFilter.InheritedCall
+  else if TypePosition(Tokens, Last, Result.Place, Result.TypeKeywords) then
+    Result.Filter := TCompletionFilter.Types;
 end;
 
 class function TLspCompletion.KindOf(AKind: TIndexSymbolKind): Integer;
@@ -925,6 +1074,65 @@ var
 begin
   Result := (AInitializeParams <> nil) and AInitializeParams.TryGetValue<Boolean>(
     'capabilities.textDocument.completion.completionItem.snippetSupport', Value) and Value;
+end;
+
+class function TLspCompletion.ClientPrefersMarkdown(const AInitializeParams: TJSONObject): Boolean;
+const
+  Path: array[0..4] of string = ('capabilities', 'textDocument', 'completion', 'completionItem',
+    'documentationFormat');
+var
+  Node: TJSONValue;
+  Key: string;
+begin
+  Result := False;
+  Node := AInitializeParams;
+  for Key in Path do
+  begin
+    if not (Node is TJSONObject) then
+      Exit;
+    Node := TJSONObject(Node).GetValue(Key);
+  end;
+  Result := (Node is TJSONArray) and (TJSONArray(Node).Count > 0) and (TJSONArray(Node).Items[0] is TJSONString) and
+    SameText(TJSONString(TJSONArray(Node).Items[0]).Value, 'markdown');
+end;
+
+class function TLspCompletion.ResolveDocumentation(const ADetails: TJSONObject; AMarkdown: Boolean): TJSONValue;
+var
+  Text: string;
+  Markup: TJSONObject;
+begin
+  Result := nil;
+  if ADetails = nil then
+    Exit;
+  if AMarkdown and ADetails.TryGetValue<string>('documentationMarkdown', Text) and (Text <> '') then
+  begin
+    Markup := TJSONObject.Create;
+    Markup.AddPair('kind', 'markdown');
+    Markup.AddPair('value', Text);
+    Exit(Markup);
+  end;
+  // Klartext (RAD Studio: documentationFormat ["plaintext"]): ganzer Text, sonst der Kurztext.
+  if (ADetails.TryGetValue<string>('documentationText', Text) and (Text <> '')) or
+    (ADetails.TryGetValue<string>('summary', Text) and (Text <> '')) then
+    Result := TJSONString.Create(Text);
+end;
+
+class function TLspCompletion.Keywords(APlace: TCompletionPlace): TArray<string>;
+var
+  Word: string;
+begin
+  Result := nil;
+  case APlace of
+    TCompletionPlace.Statement:
+      for Word in StatementKeywords do
+        Result := Result + [Word];
+    TCompletionPlace.Declaration:
+      for Word in DeclarationKeywords do
+        Result := Result + [Word];
+    TCompletionPlace.ClassBody:
+      for Word in ClassBodyKeywords do
+        Result := Result + [Word];
+  end;
 end;
 
 class function TLspCompletion.ContextItems(const AIndex: ISymbolIndex; const ANamespaces: TArray<string>;
@@ -1274,7 +1482,8 @@ var
         for Symbol in UnitInfo.Unavailable do
         begin
           if (not Symbol.InInterface and not SameText(UnitInfo.UnitName, Own)) or
-            Known.ContainsKey(UpperCase(Symbol.Name)) then
+            Known.ContainsKey(UpperCase(Symbol.Name)) or
+            ((Context.Filter = TCompletionFilter.Types) and not (Symbol.Kind in IndexTypeKinds)) then
             Continue;
           Member := Default(TResolvedSymbol);
           Member.Name := Symbol.Name;
@@ -1348,7 +1557,8 @@ var
           Continue;
         UnitInfo := Names.Units[Entry.UnitPos];
         Symbol := UnitInfo.Symbols[Entry.SymbolPos];
-        if Known.ContainsKey(UpperCase(Symbol.Name)) then
+        if Known.ContainsKey(UpperCase(Symbol.Name)) or
+          ((Context.Filter = TCompletionFilter.Types) and not (Symbol.Kind in IndexTypeKinds)) then
           Continue;
         if MatchScore(Symbol.Name, Context.Prefix, AMatching) = TFuzzyMatch.NoMatch then
           Continue;
@@ -1497,12 +1707,41 @@ var
     end;
   end;
 
+  /// <summary>Schlüsselwörter passend zur Stelle (#31), erst ab einem getippten Zeichen; ohne Eingabe gingen die
+  /// Namen darin unter.</summary>
+  procedure AddKeywords;
+  var
+    Words: TArray<string>;
+    Word: string;
+  begin
+    if Context.Prefix = '' then
+      Exit;
+    if Context.Filter = TCompletionFilter.Types then
+    begin
+      if not Context.TypeKeywords then
+        Exit;
+      Words := nil;
+      for Word in TypeKeywords do
+        Words := Words + [Word];
+    end
+    else
+      Words := Keywords(Context.Place);
+    Member := Default(TResolvedSymbol);
+    SourceFile := '';
+    SourcePosition := Default(TTextPosition);
+    for Word in Words do
+      Add(Word, '', KindKeyword, 50);
+  end;
+
   procedure AddCandidates(const ACandidates: TArray<TResolvedSymbol>);
   var
     Candidate: TResolvedSymbol;
   begin
     for Candidate in ACandidates do
     begin
+      // Typposition (#31): nur Typen.
+      if (Context.Filter = TCompletionFilter.Types) and not Candidate.IsType then
+        Continue;
       // Wo die Deklaration steht, für completionItem/resolve.
       SourceFile := Candidate.FileName;
       SourcePosition := Candidate.SelectionRange.StartPos;
@@ -1572,6 +1811,17 @@ begin
             end;
             AddCandidates(Candidates);
           end
+          else if Context.Filter = TCompletionFilter.InheritedCall then
+          begin
+            // Nach "inherited " nur Methoden der Vorfahren (#31).
+            SetNameFilter(True);
+            try
+              Candidates := AResolver.InheritedCandidates(ATree, AFileName, Context.Offset);
+            finally
+              SetNameFilter(False);
+            end;
+            AddCandidates(Candidates);
+          end
           else
           begin
             // Eigener Gültigkeitsbereich zuerst (#616): lokal, Self, eigene Unit; dann die Units aus uses.
@@ -1592,13 +1842,15 @@ begin
             end;
             AddCandidates(Candidates);
           end;
-          if Context.Kind = TCompletionContextKind.Scope then
+          if (Context.Kind = TCompletionContextKind.Scope) and
+            (Context.Filter <> TCompletionFilter.InheritedCall) then
           begin
             // Danach die nicht eingebundenen Units.
             SendStage;
             if Length(Context.Prefix) >= MinImportPrefix then
               AddFromOtherUnits;
             AddUnavailable;
+            AddKeywords;
           end;
           // Postfix-Vorlagen stehen immer hinter den echten Mitgliedern.
           if (Context.Kind = TCompletionContextKind.Member) and APostfix.Enabled and (AText <> '') then
@@ -1775,6 +2027,17 @@ begin
 end;
 
 /// <summary>AItems ohne die Namen aus ANames (#448: Aufzählungswerte, die schon vorab kamen).</summary>
+/// <summary>AItems ohne die Schlüsselwörter aus AddKeywords (#31).</summary>
+function WithoutKeywords(const AItems: TArray<TCompletionItem>): TArray<TCompletionItem>;
+var
+  Item: TCompletionItem;
+begin
+  Result := nil;
+  for Item in AItems do
+    if Item.Kind <> KindKeyword then
+      Result := Result + [Item];
+end;
+
 function WithoutNames(const AItems, ANames: TArray<TCompletionItem>): TArray<TCompletionItem>;
 var
   Names: TDictionary<string, Boolean>;
@@ -1879,9 +2142,17 @@ begin
         Senders := Default(TCompletionItems);
       Exit(ToJson(Senders));
     end;
+    if Assigned(FMatchingFor) then
+      Matching := FMatchingFor(Uri)
+    else
+      Matching := TCompletionMatching.Fuzzy;
     // Methoden überschreiben (#443) vor der allgemeinen Vervollständigung.
     if OverrideItems(Resolver, Tree, Document.Text, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
       FReadText, Overrides) then
+      Exit(ToJson(Overrides));
+    // Property-Zugriffe (#31): nach read bzw. write nur passende Felder und Methoden.
+    if PropertyItems(Resolver, Tree, Document.Text, TDocumentUris.ToPath(Uri),
+      TLspPositions.ReadPosition(PositionValue), Matching, Overrides) then
       Exit(ToJson(Overrides));
     // Ereignis-Zuweisung (#444).
     if EventItems(Resolver, Tree, Document.Text, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
@@ -1898,10 +2169,6 @@ begin
       Collected.Items := Hints;
       Exit(ToJson(Collected));
     end;
-    if Assigned(FMatchingFor) then
-      Matching := FMatchingFor(Uri)
-    else
-      Matching := TCompletionMatching.Fuzzy;
     // Aufzählungen und Mengen (#448): im Mengenkonstruktor nur dessen Werte; sonst die Werte des erwarteten
     // Aufzählungstyps vor der übrigen Liste. Atlas fragt bei "[" mit triggerCharacter: ohne Menge nichts.
     Position := TLspPositions.ReadPosition(PositionValue);
@@ -1970,6 +2237,9 @@ begin
     Collected := Collect(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), Document.Text,
       TLspPositions.ReadPosition(PositionValue), Matching, Postfix, Partial);
     Collected.Items := WithoutNames(Collected.Items, Enums);
+    // Schlüsselwörter abschaltbar (#31, completion.keywords).
+    if not Settings.Keywords then
+      Collected.Items := WithoutKeywords(Collected.Items);
     // Kontextabhängige Code-Vorlagen (#51) am Ende der Liste.
     Collected.Items := Collected.Items + ContextItems(FIndex, FNamespaces, Document.Text, Position, Matching,
       FSnippetSupport);
@@ -2267,6 +2537,8 @@ begin
       else
         Result.AddPair('documentation', TLspDocumentation.ToJson(Doc, nil));
       Result.AddPair('documentationText', Doc.ToPlainText);
+      // Nur für documentation in completionItem/resolve; HandleResolve nimmt es wieder heraus.
+      Result.AddPair('documentationMarkdown', Doc.ToMarkdown);
     end;
   finally
     Resolver.Free;
@@ -2307,7 +2579,8 @@ function TLspCompletion.HandleResolve(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
   Item, Data, Details: TJSONObject;
-  FileName, Text, Summary: string;
+  Documentation: TJSONValue;
+  FileName, Text: string;
   Position: TTextPosition;
 begin
   if not (AParams is TJSONObject) then
@@ -2330,8 +2603,11 @@ begin
     Item.RemovePair('detail').Free;
     Item.AddPair('detail', Text);
   end;
-  if Details.TryGetValue<string>('summary', Summary) then
-    Item.AddPair('documentation', Summary);
+  // Doku als Klartext oder Markdown, je nach documentationFormat des Clients (#31).
+  Documentation := ResolveDocumentation(Details, FDocumentationMarkdown);
+  if Documentation <> nil then
+    Item.AddPair('documentation', Documentation);
+  Details.RemovePair('documentationMarkdown').Free;
   if Assigned(FHintsFor) then
     Details.AddPair('xmlDoc', TLspDocumentation.HintsJson(FHintsFor(TDocumentUris.FromPath(FileName))));
   Data.AddPair('atlas', Details);
@@ -2370,14 +2646,101 @@ begin
   Result := TInterfaceStubs.Split(ADeclaration, AIsClass, AKind, AHead, ADirectives);
 end;
 
+/// <summary>Innerster Klassen- bzw. Objekttyp (mit ARecords auch Record), in dessen Deklaration ALine liegt;
+/// ATypeName samt umgebendem Typ.</summary>
+function EnclosingType(const AUnit: TUnitIndex; ALine: Integer; ARecords: Boolean; out ATypeName: string): Boolean;
+var
+  Symbol, TypeSymbol: TIndexSymbol;
+begin
+  Result := False;
+  ATypeName := '';
+  TypeSymbol := Default(TIndexSymbol);
+  for Symbol in AUnit.Symbols do
+    if ((Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType]) or
+      (ARecords and (Symbol.Kind = TIndexSymbolKind.RecordType))) and
+      (Symbol.Range.StartPos.Line < ALine) and (Symbol.Range.EndPos.Line >= ALine) and
+      (not Result or (Symbol.Range.StartPos.Line >= TypeSymbol.Range.StartPos.Line)) then
+    begin
+      TypeSymbol := Symbol;
+      Result := True;
+    end;
+  if not Result then
+    Exit;
+  if TypeSymbol.Container <> '' then
+    ATypeName := TypeSymbol.Container + '.' + TypeSymbol.Name
+  else
+    ATypeName := TypeSymbol.Name;
+end;
+
+class function TLspCompletion.PropertyItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText,
+  AFileName: string; const APosition: TTextPosition; AMatching: TCompletionMatching;
+  out AItems: TCompletionItems): Boolean;
+var
+  Match: TMatch;
+  UnitIndex: TUnitIndex;
+  TypeName, PropType, Prefix, Param: string;
+  IndexCount: Integer;
+  IsWrite, Fits: Boolean;
+  Candidate: TResolvedSymbol;
+  Item: TCompletionItem;
+begin
+  AItems := Default(TCompletionItems);
+  Result := False;
+  // "  property Wert[I: Integer]: Double read |", auch mit "index 3" und schon gesetztem read vor write.
+  Match := TRegEx.Match(LineBefore(AText, APosition), '^\s*(?:class\s+)?property\s+\w+\s*(\[[^\]]*\])?\s*:\s*' +
+    '([\w.<>, ]+?)\s+(?:index\s+\S+\s+)?(?:read\s+\w+\s+)?(read|write)\s+(\w*)$', [roIgnoreCase]);
+  if not Match.Success then
+    Exit;
+  UnitIndex := TIndexExtractor.Extract(ATree, AFileName);
+  if not EnclosingType(UnitIndex, APosition.Line, True, TypeName) then
+    Exit;
+  Result := True;
+  PropType := Match.Groups[2].Value;
+  IsWrite := SameText(Match.Groups[3].Value, 'write');
+  Prefix := Match.Groups[4].Value;
+  // Indexparameter: "[I, J: Integer; const S: string]" sind drei.
+  IndexCount := 0;
+  for Param in Match.Groups[1].Value.Trim(['[', ']']).Split([';']) do
+    if Pos(':', Param) > 0 then
+      Inc(IndexCount, Length(Copy(Param, 1, Pos(':', Param) - 1).Split([','])));
+  for Candidate in AResolver.AccessorCandidates(UnitIndex, TypeName) do
+  begin
+    if Candidate.SymbolKind = TIndexSymbolKind.Field then
+      Fits := (IndexCount = 0) and (PlainType(Candidate.TypeName) = PlainType(PropType))
+    else if IsWrite then
+      Fits := (Candidate.TypeName = '') and (Candidate.MinArgs <= IndexCount + 1) and
+        (Candidate.MaxArgs >= IndexCount + 1) and (Length(Candidate.ParamTypes) > IndexCount) and
+        (PlainType(Candidate.ParamTypes[IndexCount]) = PlainType(PropType))
+    else
+      Fits := (Candidate.TypeName <> '') and (PlainType(Candidate.TypeName) = PlainType(PropType)) and
+        (Candidate.MinArgs <= IndexCount) and (Candidate.MaxArgs >= IndexCount);
+    if not Fits or (MatchScore(Candidate.Name, Prefix, AMatching) = TFuzzyMatch.NoMatch) then
+      Continue;
+    Item := Default(TCompletionItem);
+    Item.Name := Candidate.Name;
+    Item.Kind := KindOf(Candidate.SymbolKind);
+    if Candidate.TypeName <> '' then
+      Item.Detail := Candidate.TypeName
+    else
+      Item.Detail := Candidate.Container;
+    Item.Container := Candidate.Container;
+    Item.Depth := Candidate.Depth;
+    Item.SourceFile := Candidate.FileName;
+    Item.SourcePosition := Candidate.SelectionRange.StartPos;
+    if (AMatching = TCompletionMatching.Fuzzy) and not Candidate.Name.StartsWith(Prefix, True) then
+      Item.FilterText := Prefix;
+    AItems.Items := AItems.Items + [Item];
+  end;
+end;
+
 class function TLspCompletion.OverrideItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
   const APosition: TTextPosition; const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean;
 var
   Match: TMatch;
   UnitIndex: TUnitIndex;
-  Symbol, TypeSymbol: TIndexSymbol;
-  Found, TypedClass, IsClass, IsAbstract: Boolean;
-  TypedKind, TypeName, Source, Declaration, Kind, Head, Directives, Insert, Body, Args, LB, MethodName: string;
+  TypedClass, IsClass, IsAbstract, AfterOverride: Boolean;
+  TypedKind, TypeName, Source, Declaration, Kind, Head, Directives, Insert, Body, Args, LB, MethodName,
+    Line, Lead: string;
   Candidate: TResolvedSymbol;
   Item: TCompletionItem;
   Edit: TRuleEdit;
@@ -2385,30 +2748,29 @@ begin
   AItems := Default(TCompletionItems);
   Result := False;
   // "    procedure Ch|", "    function |", "    class procedure |"
-  Match := TRegEx.Match(LineBefore(AText, APosition), '^\s*(class\s+)?(procedure|function)\s+(\w*)$', [roIgnoreCase]);
-  if not Match.Success then
-    Exit;
-  TypedClass := Match.Groups[1].Length > 0;
-  TypedKind := LowerCase(Match.Groups[2].Value);
+  Line := LineBefore(AText, APosition);
+  Match := TRegEx.Match(Line, '^\s*(class\s+)?(procedure|function)\s+(\w*)$', [roIgnoreCase]);
+  AfterOverride := False;
+  TypedClass := False;
+  TypedKind := '';
+  if Match.Success then
+  begin
+    TypedClass := Match.Groups[1].Length > 0;
+    TypedKind := LowerCase(Match.Groups[2].Value);
+  end
+  else
+  begin
+    // "    override Ch|" (#31): beide Arten; Übernehmen macht aus der Zeile die Deklaration.
+    Match := TRegEx.Match(Line, '^(\s*)override\s+(\w*)$', [roIgnoreCase]);
+    if not Match.Success then
+      Exit;
+    AfterOverride := True;
+  end;
   // Innerster Klassentyp, in dessen Deklaration die Zeile liegt.
   UnitIndex := TIndexExtractor.Extract(ATree, AFileName);
-  Found := False;
-  TypeSymbol := Default(TIndexSymbol);
-  for Symbol in UnitIndex.Symbols do
-    if (Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType]) and
-      (Symbol.Range.StartPos.Line < APosition.Line) and (Symbol.Range.EndPos.Line >= APosition.Line) and
-      (not Found or (Symbol.Range.StartPos.Line >= TypeSymbol.Range.StartPos.Line)) then
-    begin
-      TypeSymbol := Symbol;
-      Found := True;
-    end;
-  if not Found then
+  if not EnclosingType(UnitIndex, APosition.Line, False, TypeName) then
     Exit;
   Result := True;
-  if TypeSymbol.Container <> '' then
-    TypeName := TypeSymbol.Container + '.' + TypeSymbol.Name
-  else
-    TypeName := TypeSymbol.Name;
   if AText.Contains(#13#10) then
     LB := #13#10
   else
@@ -2420,8 +2782,8 @@ begin
     else if not (Assigned(AReadText) and AReadText(Candidate.FileName, Source)) then
       Continue;
     Declaration := DeclarationOf(TextLines(Source), Candidate.Range);
-    if not SplitOverrideDeclaration(Declaration, IsClass, Kind, Head, Directives) or (Kind <> TypedKind) or
-      (IsClass <> TypedClass) then
+    if not SplitOverrideDeclaration(Declaration, IsClass, Kind, Head, Directives) or
+      (not AfterOverride and ((Kind <> TypedKind) or (IsClass <> TypedClass))) then
       Continue;
     IsAbstract := Directives.Contains(' abstract ');
     Insert := Head + ';';
@@ -2455,6 +2817,18 @@ begin
     Item.Depth := Candidate.Depth;
     Item.SourceFile := Candidate.FileName;
     Item.SourcePosition := Candidate.SelectionRange.StartPos;
+    if AfterOverride then
+    begin
+      // "override Name" wird zu "procedure Name(...); override;".
+      Lead := Kind + ' ';
+      if IsClass then
+        Lead := 'class ' + Lead;
+      Item.InsertText := '';
+      Item.HasTextEdit := True;
+      Item.TextEdit := TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(APosition.Line,
+        Match.Groups[1].Length), APosition), Lead + Insert);
+      Item.FilterText := 'override ' + MethodName;
+    end;
     if TClassCompletion.BodyEdit(ATree, AText, TypeName, Body, Edit) then
       Item.AdditionalEdits := [Edit];
     AItems.Items := AItems.Items + [Item];

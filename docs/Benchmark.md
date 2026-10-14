@@ -20,6 +20,7 @@ node Tools/Benchmark/bench.mjs --server Output\Win64\Release\Bin\AtlasServer.exe
 | `--server` | Server-EXE, Standard `Output\Win64\Release\Bin\AtlasServer.exe` |
 | `--corpus` | Ordner mit Quelltexten, mehrfach möglich; Standard `Tests/Referenzprojekt`. Für den großen Korpus zusätzlich die VCL-Quellen, z. B. `--corpus "C:\Program Files (x86)\Embarcadero\Studio\37.0\source\vcl"`. Der erste Ordner ist die Arbeitsbereichswurzel. |
 | `--samples` | Anzahl der Messpositionen (Standard 30) |
+| `--completion-samples` | Anzahl der Anfragen für die Vervollständigung (Standard 100, #31) |
 | `--out` | Ergebnisordner (Standard `benchmark/`, nicht versioniert) |
 | `--baseline` | Frühere Messung zum Vergleich |
 | `--version` | Bezeichnung im Bericht, z. B. `0.1.0` |
@@ -28,8 +29,9 @@ node Tools/Benchmark/bench.mjs --server Output\Win64\Release\Bin\AtlasServer.exe
 ## Ablauf
 
 1. Start ohne Cache (wird berichtet, hat keinen Zielwert), dann dreimal Start mit Cache. Bereit ist der Server, sobald `workspace/symbol` ein Symbol aus dem Korpus findet.
-2. An festen Bezeichnerpositionen aus den Implementierungsteilen: Definition, Vorkommen, Hover, Vervollständigung, Parameterhilfe.
-3. Für bis zu 10 Dateien: Syntaxfehler per `didChange` einfügen und die Zeit bis zu `publishDiagnostics` messen.
+2. An festen Bezeichnerpositionen aus den Implementierungsteilen: Definition, Vorkommen, Hover, Parameterhilfe.
+3. Vervollständigung (#31) mit warmem Index an eigenen Positionen (Standard 100): zwei Zeichen des Bezeichners getippt, damit wie im Editor die unscharfe Auswahl (#229) und Symbole aus nicht eingebundenen Units (#180) mitlaufen; der Client meldet wie RAD Studio `documentationFormat: ["plaintext"]`.
+4. Für bis zu 10 Dateien: Syntaxfehler per `didChange` einfügen und die Zeit bis zu `publishDiagnostics` messen.
 
 ## Ergebnis
 

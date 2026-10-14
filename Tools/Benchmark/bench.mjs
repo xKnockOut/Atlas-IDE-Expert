@@ -6,20 +6,22 @@
 //
 //   node Tools/Benchmark/bench.mjs --server Output\Win64\Release\Bin\AtlasServer.exe
 //     [--corpus Tests/Referenzprojekt] [--corpus "C:\Program Files (x86)\Embarcadero\Studio\37.0\source\vcl"]
-//     [--samples 30] [--out benchmark] [--baseline benchmark/letzte.json] [--no-fail]
+//     [--samples 30] [--completion-samples 100] [--out benchmark] [--baseline benchmark/letzte.json] [--no-fail]
 
 import { spawn } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, resolve, extname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { performance } from 'node:perf_hooks';
-import { summarize, checkTargets, compare, samplePositions, toMarkdown } from './lib.mjs';
+import { summarize, checkTargets, compare, samplePositions, completionPositions, toMarkdown } from './lib.mjs';
 
 const args = parseArgs(process.argv.slice(2));
 const repoRoot = resolve(new URL('../..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
 const server = args.server ?? join(repoRoot, 'Output', 'Win64', 'Release', 'Bin', 'AtlasServer.exe');
 const corpus = (args.corpus.length ? args.corpus : [join(repoRoot, 'Tests', 'Referenzprojekt')]).map((c) => resolve(c));
 const samples = Number(args.samples ?? 30);
+// Vervollständigung (#31): p95 über mindestens 100 Anfragen.
+const completionSamples = Number(args.completionSamples ?? 100);
 const outDir = resolve(args.out ?? join(repoRoot, 'benchmark'));
 
 class LspClient {
@@ -101,7 +103,8 @@ async function start(root, symbolProbe) {
     processId: process.pid,
     rootUri: pathToFileURL(root).href,
     workspaceFolders: [{ uri: pathToFileURL(root).href, name: 'korpus' }],
-    capabilities: { textDocument: { hover: { contentFormat: ['markdown', 'plaintext'] } } },
+    capabilities: { textDocument: { hover: { contentFormat: ['markdown', 'plaintext'] },
+      completion: { completionItem: { documentationFormat: ['plaintext'] } } } },
   });
   client.notify('initialized', {});
   // Bereit ist der Server, sobald die Symbolsuche ein bekanntes Symbol findet.
@@ -138,10 +141,12 @@ async function main() {
   const files = corpus.flatMap(listSources);
   if (files.length === 0) throw new Error('Korpus enthält keine Quelltexte');
   const root = corpus[0];
-  const positions = files.flatMap((file) => {
+  const pick = (count) => files.flatMap((file) => {
     const text = readFileSync(file, 'utf8').replace(/^\uFEFF/, '');
-    return samplePositions(text, Math.max(1, Math.ceil(samples / files.length))).map((p) => ({ ...p, file, text }));
-  }).slice(0, samples);
+    return samplePositions(text, Math.max(1, Math.ceil(count / files.length))).map((p) => ({ ...p, file, text }));
+  }).slice(0, count);
+  const positions = pick(samples);
+  const completions = completionPositions(pick(completionSamples));
   const probe = positions[0]?.name ?? 'T';
 
   const results = {};
@@ -171,8 +176,18 @@ async function main() {
     timings.definition.push(await timed(() => client.request('textDocument/definition', params)));
     timings.documentHighlight.push(await timed(() => client.request('textDocument/documentHighlight', params)));
     timings.hover.push(await timed(() => client.request('textDocument/hover', params)));
-    timings.completion.push(await timed(() => client.request('textDocument/completion', params)));
     timings.signatureHelp.push(await timed(() => client.request('textDocument/signatureHelp', params)));
+  }
+
+  // Vervollständigung (#31) mit warmem Index an eigenen Positionen, zwei Zeichen getippt.
+  for (const p of completions) {
+    const uri = pathToFileURL(p.file).href;
+    if (!opened.has(uri)) {
+      client.notify('textDocument/didOpen', { textDocument: { uri, languageId: 'delphi', version: 1, text: p.text } });
+      opened.add(uri);
+    }
+    const params = { textDocument: { uri }, position: { line: p.line, character: p.character }, context: { triggerKind: 1 } };
+    timings.completion.push(await timed(() => client.request('textDocument/completion', params)));
   }
 
   // Syntaxfehler nach Tastendruck: ein Zeichen einfügen, das die Zeile kaputt macht,
@@ -198,7 +213,7 @@ async function main() {
     date: new Date().toISOString(),
     version: args.version ?? null,
     server,
-    corpus: { roots: corpus, files: files.length, positions: positions.length },
+    corpus: { roots: corpus, files: files.length, positions: positions.length, completions: completions.length },
     results,
   };
   const previous = args.baseline && existsSync(args.baseline) ? JSON.parse(readFileSync(args.baseline, 'utf8')).results : null;
@@ -226,6 +241,7 @@ function parseArgs(list) {
       case '--server': result.server = value(); break;
       case '--corpus': result.corpus.push(value()); break;
       case '--samples': result.samples = value(); break;
+      case '--completion-samples': result.completionSamples = value(); break;
       case '--out': result.out = value(); break;
       case '--baseline': result.baseline = value(); break;
       case '--version': result.version = value(); break;

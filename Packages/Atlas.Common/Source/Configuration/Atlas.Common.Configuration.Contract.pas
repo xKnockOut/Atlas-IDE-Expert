@@ -198,6 +198,8 @@ type
     /// <summary>Nach Übernahme eines Konstruktors try…finally anbieten (#489).</summary>
     OfferTryFinally: Boolean;
     FreeStyle: TCompletionFreeStyle;
+    /// <summary>Schlüsselwörter passend zur Stelle vorschlagen (#31).</summary>
+    Keywords: Boolean;
     class function Default: TCompletionSettings; static;
   end;
 
@@ -539,6 +541,7 @@ begin
   Result.SenderCast := TCompletionSenderCast.AsOperator;
   Result.OfferTryFinally := True;
   Result.FreeStyle := TCompletionFreeStyle.Free;
+  Result.Keywords := True;
 end;
 
 { TServerSettings }

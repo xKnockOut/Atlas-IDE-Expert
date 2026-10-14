@@ -19,7 +19,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Prüfregeln | `excludeTests` | `false` | atlas.json, Editor (`atlas.excludeTests`) | nein | Kontrollkästchen | #146 |
 | Prüfregeln | `testProfile` | – | atlas.json, Editor (`atlas.testProfile`) | nein | Auswahl | #146 |
 | Compiler | `compiler`: `onSave` | – | atlas.json, Editor (`atlas.compiler`) | nein | Kontrollkästchen | #40 |
-| Vervollständigung | `completion`: `matching`, `interfaceSection`, `senderCast`, `offerTryFinally`, `freeStyle` | – | atlas.json, Editor (`atlas.completion`) | nein | Auswahl | #229, #466, #480, #489 |
+| Vervollständigung | `completion`: `matching`, `interfaceSection`, `senderCast`, `offerTryFinally`, `freeStyle`, `keywords` | – | atlas.json, Editor (`atlas.completion`) | nein | Auswahl | #31, #229, #466, #480, #489 |
 | Eingabehilfen | `usesCommand` | `true` | atlas.json, Editor (`atlas.usesCommand`) | nein | Kontrollkästchen | #254 |
 | Eingabehilfen | `slashCommands`: `enabled`, `disabled`, `headerTemplate` | – | atlas.json, Editor (`atlas.slashCommands`) | nein | Kontrollkästchen, Liste | #293 |
 | Eingabehilfen | `sortUses` | `false` | atlas.json, Editor (`atlas.sortUses`) | nein | Auswahl | #182, #284 |

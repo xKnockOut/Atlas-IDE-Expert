@@ -61,6 +61,7 @@ Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; E
 | `completion.senderCast` | string | `"as"` | `"as"`, `"cast"` | Form der Typumwandlung, wenn nach Sender. ein Member der zugewiesenen Komponenten gewählt wird: "as" schreibt (Sender as TButton), "cast" schreibt TButton(Sender). |
 | `completion.offerTryFinally` | boolean | `true` |  | Nach Übernahme eines Konstruktors in "Liste := TStringList.Create;" anbieten, den folgenden Code in try…finally mit Freigabe einzuschließen. |
 | `completion.freeStyle` | string | `"free"` | `"free"`, `"freeAndNil"` | Freigabe im finally von „Freigabe absichern“: "free" schreibt Liste.Free, "freeAndNil" schreibt FreeAndNil(Liste). |
+| `completion.keywords` | boolean | `true` |  | Schlüsselwörter passend zur Stelle vorschlagen (in Anweisungen begin, try …, im Klassenrumpf property, private …, nach ":" string, array …), sobald ein Zeichen getippt ist. |
 
 ## slashCommands
 
