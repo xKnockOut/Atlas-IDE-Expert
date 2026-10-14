@@ -255,3 +255,22 @@
   - Tests: GroupReader, PathFiles, Scheduler, Build-Stufen, workspaceFolders mit Projektdateien, ProjectChanges.
   - Offen: Delphi-Build mit 0/0/0, Testlauf, Messung mit einer echten Gruppe (Zeit und Speicher, wenn die ganze Bibliothek indiziert wird).
 
+## Stapel-Branches #393 → #395 → #397 → #396 → #401 (14.10.2026, ab main b1656e5)
+
+Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in der IDE geprüft; Pull Requests gibt es noch nicht (öffentlicher Schritt, erst nach Rückfrage).
+
+- `feature/393-neustart-dokumente` (639795f): Nach einem Serverneustart schickt die neue Sitzung alle Dokumente der alten sofort als didOpen (`OpenDocuments`, `Reopen`). Die Probleme-Prüfung holt danach alle Diagnosen neu.
+- `feature/395-puffer-sync` (b6073d6):
+  - didChange enthält nur den geänderten Bereich (`Atlas.Core.Lsp.TextChanges`; trennt nie CR|LF oder Surrogatpaare, per FPC-Fuzzing geprüft).
+  - Änderungen außerhalb der IDE: `Atlas.Core.Files.WatchedChanges` und `Adapters.FolderWatcher` beobachten Git-Arbeitsverzeichnis bzw. Projektordner mit `ReadDirectoryChangesW`. Nach 300 ms Ruhe geht `workspace/didChangeWatchedFiles` an den Server.
+- `feature/397-arbeitsbereich-aenderungen` (5f401ba):
+  - WorkspaceEdits lesen und anwenden (`Atlas.Core.Lsp.WorkspaceEdits`). Die Änderungen landen in den IDE-Puffern, je Datei als ein Rückgängig-Schritt (`Atlas.IDE.Editor.WorkspaceEdit`).
+  - Nicht geöffnete Dateien werden geöffnet (Einstellung `OpenForEdits`) oder in ihrer Kodierung auf die Platte geschrieben (`Atlas.Core.Files.TextFile`).
+  - Erster Nutzer ist „Symbol umbenennen…“ (Menü Atlas, Palette).
+  - Offen: vom Server angestoßenes `workspace/applyEdit` (sendet er nicht), der Weg über MCP, DFM (#402).
+- `feature/396-projektkontext` (fd1dafe):
+  - Das Plugin meldet je Projekt der Gruppe Konfiguration, Plattform, `DCC_Define`, `DCC_UnitSearchPath`, `DCC_Namespace` (über `IOTABuildConfiguration.GetValue(…, True)` der aktiven Plattform), die Bibliothekspfade der IDE-Registry und die IDE-Version. Das geschieht in `initialize` (`initializationOptions.projectContexts`) und danach als `atlas/projectContext`, höchstens einmal je Sekunde geprüft.
+  - Server: `Atlas.Common.Lsp.IdeProject`. `TShellWorkspace.StartIndex` nimmt diese Werte vor der `.dproj`, löst `$(…)` mit den Variablen der Installation auf und lädt bei Änderung neu.
+  - Offen: ob `GetValue(…, True)` in der IDE wirklich geerbte Werte liefert.
+- `feature/401-inlay-hints` (d714d30): Parameternamen vor Literal-Argumenten (`Atlas.Core.InlayHints.Store`, `Atlas.IDE.InlayHints.Editor`), Einstellung „Inlay-Hints“ (aus). Geholt werden nur fehlende sichtbare Zeilen, 300 ms nach der letzten Änderung. Weil der Editor keinen eingeschobenen Text kennt, zeichnet das Plugin die Namen als Marken hinter dem Zeilenende.
+- Offen für alle: Delphi-Build mit 0/0/0 (`cc.ps1`), Testlauf, Prüfung in der IDE. Die Issues bleiben offen, bis alles in main ist.
