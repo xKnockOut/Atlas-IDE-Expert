@@ -25,24 +25,42 @@ type
 implementation
 
 uses
+  Vcl.Forms,
   Vcl.ComCtrls,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
   Atlas.UI.Settings.Page;
 
 procedure TAtlasSettingsPageTests.WarmUp;
+var
+  Host: TForm;
+  Page: TAtlasSettingsPage;
 begin
   TAtlasSettingsPage.Create(nil).Free;
+  // Auch mit Fenster (Reiter, PageControl): einmalige VCL-Daten nicht dem ersten Test anrechnen.
+  Host := TForm.CreateNew(nil);
+  try
+    Page := TAtlasSettingsPage.Create(Host);
+    Page.Parent := Host;
+    Page.HandleNeeded;
+  finally
+    Host.Free;
+  end;
 end;
 
 procedure TAtlasSettingsPageTests.GroupsSettingsOnTabs;
 var
+  Host: TForm;
   Page: TAtlasSettingsPage;
   Sheet: TTabSheet;
   Index: Integer;
 begin
-  Page := TAtlasSettingsPage.Create(nil);
+  // Wie in der IDE: Die Reiter hängen erst am PageControl, wenn die Seite ein Fenster hat.
+  Host := TForm.CreateNew(nil);
   try
+    Page := TAtlasSettingsPage.Create(Host);
+    Page.Parent := Host;
+    Page.HandleNeeded;
     Assert.AreEqual(6, Page.Pages.PageCount);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabGeneral), Page.Pages.Pages[0].Caption);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabRobustness), Page.Pages.Pages[5].Caption);
@@ -53,7 +71,7 @@ begin
     end;
     Assert.AreEqual(0, Page.Pages.ActivePageIndex);
   finally
-    Page.Free;
+    Host.Free;
   end;
 end;
 
