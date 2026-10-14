@@ -17,17 +17,44 @@ type
     procedure WarmUp;
     [Test]
     procedure CreatesAndRoundTripsSettings;
+    /// <summary>Die Einstellungen stehen auf Reitern je Bereich statt auf einer langen Seite (#227).</summary>
+    [Test]
+    procedure GroupsSettingsOnTabs;
   end;
 
 implementation
 
 uses
+  Vcl.ComCtrls,
   Atlas.Core.Settings.Plugin,
+  Atlas.UI.Strings,
   Atlas.UI.Settings.Page;
 
 procedure TAtlasSettingsPageTests.WarmUp;
 begin
   TAtlasSettingsPage.Create(nil).Free;
+end;
+
+procedure TAtlasSettingsPageTests.GroupsSettingsOnTabs;
+var
+  Page: TAtlasSettingsPage;
+  Sheet: TTabSheet;
+  Index: Integer;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Assert.AreEqual(6, Page.Pages.PageCount);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabGeneral), Page.Pages.Pages[0].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabRobustness), Page.Pages.Pages[5].Caption);
+    for Index := 0 to Page.Pages.PageCount - 1 do
+    begin
+      Sheet := Page.Pages.Pages[Index];
+      Assert.IsTrue(Sheet.ControlCount > 0, Sheet.Caption);
+    end;
+    Assert.AreEqual(0, Page.Pages.ActivePageIndex);
+  finally
+    Page.Free;
+  end;
 end;
 
 procedure TAtlasSettingsPageTests.CreatesAndRoundTripsSettings;

@@ -1,8 +1,9 @@
 ﻿unit Atlas.UI.Settings.Page;
 
 // Seite „Atlas“ unter Tools › Optionen › Drittanbieter (#227, Teil
-// Vervollständigung). Reine VCL, im Code aufgebaut: Steuerelemente
-// untereinander, die IDE skaliert sie mit dem Dialog. Die DFM ist leer;
+// Vervollständigung). Reine VCL, im Code aufgebaut: Reiter je Bereich
+// (Allgemein, Vervollständigung, Editor, Index, Compiler, Robustheit), darin
+// Steuerelemente untereinander; die IDE skaliert sie mit dem Dialog. Die DFM ist leer;
 // TCustomFrame.Create verlangt für abgeleitete Frames eine Ressource. Laden und Speichern über
 // TAtlasPluginSettings; die IDE-Schicht liest und schreibt die Registry.
 
@@ -26,6 +27,8 @@ uses
 type
   TAtlasSettingsPage = class(TFrame)
   private
+    FPages: TPageControl;
+    FSheet: TTabSheet;
     FEnabled: TCheckBox;
     FServerPath: TEdit;
     FServerBrowse: TButton;
@@ -68,6 +71,8 @@ type
     FWidths: TAtlasPluginSettings;
     FNextTop: Integer;
     FOnResetHistory: TProc;
+    /// <summary>Neuer Reiter; die folgenden Add… setzen ihre Elemente darauf.</summary>
+    procedure AddSheet(AId: TAtlasTextId);
     function AddCheck(const ACaption: string): TCheckBox;
     function AddPanel(AHeight: Integer): TPanel;
     function AddNumber(const ACaption: string): TEdit;
@@ -85,6 +90,8 @@ type
     procedure LoadFrom(const ASettings: TAtlasPluginSettings);
     procedure SaveTo(var ASettings: TAtlasPluginSettings);
     /// <summary>„Verlauf zurücksetzen“ der lernenden Gewichtung (#418).</summary>
+    /// <summary>Reiter der Seite, einer je Bereich (#227).</summary>
+    property Pages: TPageControl read FPages;
     property OnResetHistory: TProc read FOnResetHistory write FOnResetHistory;
     /// <summary>Server, der bei leerem Pfad gilt (für die Anzeige „Verwendet: …“).</summary>
     property DefaultServerPath: string read FDefaultServerPath write SetDefaultServerPath;
@@ -111,7 +118,14 @@ begin
   Title.AlignWithMargins := True;
   Title.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsTitle);
   Title.Font.Style := [fsBold];
-  FNextTop := 100;
+  // Reiter je Bereich (#227); jeder stapelt seine Elemente neu von oben.
+  FPages := TPageControl.Create(Self);
+  FPages.Parent := Self;
+  FPages.Align := alClient;
+  FPages.AlignWithMargins := True;
+  FPages.Top := 100;
+
+  AddSheet(TAtlasTextId.SettingsTabGeneral);
   FEnabled := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEnabled));
   // Wo der Server liegt; leer gilt der Standard neben dem Plugin.
   Panel := AddPanel(26);
@@ -141,6 +155,11 @@ begin
   FServerStatus.Left := 180;
   FServerStatus.Top := 0;
   FServerStatus.Font.Color := clGrayText;
+  FReloadExternal := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReload));
+  // Tastenkürzel (#494).
+  FPaletteKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsPaletteKey), FPaletteKeyPriority);
+
+  AddSheet(TAtlasTextId.SettingsTabCompletion);
   Panel := AddPanel(26);
   FRowsLabel := TLabel.Create(Self);
   FRowsLabel.Parent := Panel;
@@ -165,31 +184,6 @@ begin
   FLearning := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsLearning));
   FGroupInherited := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGroupInherited));
   FPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPreview));
-  FHoverTooltip := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHover));
-  // Einfrier-Wächter (#501).
-  FHangThreshold := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHangThreshold));
-  FHangHint := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHangHint));
-  FReloadExternal := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReload));
-  FPairColors := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairs));
-  FInactiveDim := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim));
-  FPairGuides := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuides));
-  // Anweisungen mitfärben und Linienbreite (#653); wirken nur mit der Paarfärbung.
-  FPairOwners := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairOwners));
-  FPairGuideWidth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuideWidth));
-  FPairColors.OnClick := PairColorsClick;
-  FProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblems));
-  // Umfang des Index für alle Projekte; index in atlas.json hat Vorrang (#652).
-  FIndexGroup := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexGroup));
-  FIndexSearch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexSearch));
-  FIndexLibrary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexLibrary));
-  FProblemsList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsList));
-  // Compilerprüfung nach dem Speichern (#548).
-  FCheckOnSave := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCheckOnSave));
-  FCheckDelay := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckDelay));
-  FCheckMax := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckMax));
-  // Tastenkürzel (#494).
-  FPaletteKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsPaletteKey), FPaletteKeyPriority);
-  FCheckKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsCheckKey), FCheckKeyPriority);
   Panel := AddPanel(32);
   FResetHistory := TButton.Create(Self);
   FResetHistory.Parent := Panel;
@@ -205,19 +199,60 @@ begin
   FResetWidths.Top := 3;
   FResetWidths.Width := 150;
   FResetWidths.OnClick := ResetWidthsClick;
+
+  AddSheet(TAtlasTextId.SettingsTabEditor);
+  FHoverTooltip := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHover));
+  FPairColors := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairs));
+  FInactiveDim := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim));
+  FPairGuides := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuides));
+  // Anweisungen mitfärben und Linienbreite (#653); wirken nur mit der Paarfärbung.
+  FPairOwners := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairOwners));
+  FPairGuideWidth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuideWidth));
+  FPairColors.OnClick := PairColorsClick;
+  FProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblems));
+  FProblemsList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsList));
+
+  // Umfang des Index (#652).
+  AddSheet(TAtlasTextId.SettingsTabIndex);
+  // Umfang des Index für alle Projekte; index in atlas.json hat Vorrang (#652).
+  FIndexGroup := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexGroup));
+  FIndexSearch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexSearch));
+  FIndexLibrary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexLibrary));
+
+  AddSheet(TAtlasTextId.SettingsTabCompiler);
+  // Compilerprüfung nach dem Speichern (#548).
+  FCheckOnSave := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCheckOnSave));
+  FCheckDelay := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckDelay));
+  FCheckMax := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckMax));
+  FCheckKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsCheckKey), FCheckKeyPriority);
+
+  AddSheet(TAtlasTextId.SettingsTabRobustness);
+  // Einfrier-Wächter (#501).
+  FHangThreshold := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHangThreshold));
+  FHangHint := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHangHint));
+  Panel := AddPanel(32);
   FHangTest := TButton.Create(Self);
   FHangTest.Parent := Panel;
   FHangTest.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsHangTest);
-  FHangTest.Left := 320;
+  FHangTest.Left := 0;
   FHangTest.Top := 3;
   FHangTest.Width := 150;
   FHangTest.OnClick := HangTestClick;
+  FPages.ActivePageIndex := 0;
+end;
+
+procedure TAtlasSettingsPage.AddSheet(AId: TAtlasTextId);
+begin
+  FSheet := TTabSheet.Create(Self);
+  FSheet.PageControl := FPages;
+  FSheet.Caption := TAtlasStrings.Text(AId);
+  FNextTop := 100;
 end;
 
 function TAtlasSettingsPage.AddCheck(const ACaption: string): TCheckBox;
 begin
   Result := TCheckBox.Create(Self);
-  Result.Parent := Self;
+  Result.Parent := FSheet;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
   Result.Caption := ACaption;
@@ -229,7 +264,7 @@ end;
 function TAtlasSettingsPage.AddPanel(AHeight: Integer): TPanel;
 begin
   Result := TPanel.Create(Self);
-  Result.Parent := Self;
+  Result.Parent := FSheet;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
   Result.BevelOuter := bvNone;
