@@ -323,6 +323,13 @@ begin
   Result := (AToken.Kind = TPascalTokenKind.Number) and MatchStr(AToken.Text, ['0', '0.0', '0.00']);
 end;
 
+/// <summary>Gleitkommatyp, für den ein exakter Vergleich verdächtig ist. Datum und Uhrzeit nicht: Zeitstempel
+/// (z. B. Dateizeiten) werden absichtlich exakt verglichen (#647).</summary>
+function IsInexact(const AType: string): Boolean;
+begin
+  Result := TDeclaredTypes.IsFloat(AType) and not MatchText(AType, ['TDateTime', 'TDate', 'TTime']);
+end;
+
 procedure TFloatEqualityRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Tokens: TTokens;
@@ -355,9 +362,9 @@ begin
         MatchStr(Tokens[Next].Text, ['+', '-', '*', '/'])) or IsZero(Tokens[Left]) or IsZero(Tokens[Right]) then
         Continue;
       IsFloat := ((Tokens[Left].Kind = TPascalTokenKind.Identifier) and
-        TDeclaredTypes.IsFloat(Types.DeclaredType(Tokens[Left].Text, Tokens[Left].StartPos))) or
+        IsInexact(Types.DeclaredType(Tokens[Left].Text, Tokens[Left].StartPos))) or
         ((Tokens[Right].Kind = TPascalTokenKind.Identifier) and
-        TDeclaredTypes.IsFloat(Types.DeclaredType(Tokens[Right].Text, Tokens[Right].StartPos)));
+        IsInexact(Types.DeclaredType(Tokens[Right].Text, Tokens[Right].StartPos)));
       if not IsFloat then
         Continue;
       Call := 'SameValue(' + Tokens[Left].Text + ', ' + Tokens[Right].Text + ')';

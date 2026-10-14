@@ -39,6 +39,8 @@ type
     procedure AsmGivesUnknown;
     [Test]
     procedure ExceptionPathThroughFinallyDoesNotEndNormally;
+    [Test]
+    procedure MethodNamedExitIsOrdinaryCall;
   end;
 
 implementation
@@ -297,6 +299,22 @@ begin
   try
     Assert.AreEqual(1, Integer(Length(F.Graph.UnreachableStatements)));
     Assert.IsTrue(F.Graph.UnreachableStatements[0] = NodeNamed(F, 'Dead'));
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TControlFlowTests.MethodNamedExitIsOrdinaryCall;
+var
+  F: TFlowFixture;
+begin
+  // TMonitor.Exit(FLock) im finally ist kein Exit der Routine (#647).
+  F := Flow('  try'#13#10'    Y := 1;'#13#10'  finally'#13#10'    TMonitor.Exit(Self);'#13#10'  end;'#13#10 +
+    '  Result := Y;');
+  try
+    Assert.IsTrue(F.Graph.IsReachable(NodeNamed(F, 'Result')) = TFlowAnswer.Yes);
+    Assert.AreEqual(0, Integer(Length(F.Graph.UnreachableStatements)));
+    Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.No);
   finally
     F.Free;
   end;
