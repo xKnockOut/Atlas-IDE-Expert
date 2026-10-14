@@ -1084,6 +1084,8 @@ begin
         FEditorSettings := TLspConfiguration.EditorSettingsFromParams(
           FLifecycle.InitializeParams.GetValue('initializationOptions'));
       FHover.Markdown := TLspHover.ClientSupportsMarkdown(FLifecycle.InitializeParams);
+      // Code-Vorlagen mit Platzhaltern nur an Clients mit snippetSupport (#51).
+      FCompletion.SnippetSupport := TLspCompletion.ClientSupportsSnippets(FLifecycle.InitializeParams);
       Folders := TLspWorkspaceFolders.FromInitialize(FLifecycle.InitializeParams);
       // Vor dem ersten Laden, damit die Projekte nicht zweimal indiziert werden (#396).
       FIdeProject.LoadInitialize(FLifecycle.InitializeParams);

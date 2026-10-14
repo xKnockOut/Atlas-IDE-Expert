@@ -20,6 +20,8 @@ type
     [Test]
     procedure PartialItemsContinueRank;
     [Test]
+    procedure ServerSnippetsUsePlaceholderMode;
+    [Test]
     procedure ReadsResolvedDetails;
     [Test]
     procedure MergesProvidersAndCompletesOnce;
@@ -252,6 +254,40 @@ begin
   Assert.AreEqual('Klasse', Items[1].Documentation);
   Assert.IsTrue(Items[1].UnitUsed);
   Assert.AreEqual(1, Items[1].Rank);
+end;
+
+procedure TAtlasCompletionProviderTests.ServerSnippetsUsePlaceholderMode;
+var
+  Response: TJSONValue;
+  Items: TAtlasCompletionItems;
+begin
+  // Kontextabhängige Vorlage des Servers (#51): insertTextFormat 2 wird zum Snippet für den Platzhalter-Modus,
+  // die Setter-Änderungen sind keine uses-Ergänzung.
+  Response := TJSONObject.ParseJSONValue(
+    '{"isIncomplete":false,"items":[' +
+    '{"label":"prop Farbe","kind":15,"insertTextFormat":2,"data":{"action":"snippet"},' +
+    '"textEdit":{"range":{"start":{"line":9,"character":4},"end":{"line":9,"character":7}},' +
+    '"newText":"property ${1:Farbe}: TColor read FFarbe write SetFarbe;$0"},' +
+    '"additionalTextEdits":[{"range":{"start":{"line":10,"character":0},"end":{"line":10,"character":0}},' +
+    '"newText":"  private\n    procedure SetFarbe(const Value: TColor);\n"}]},' +
+    '{"label":"Farbe","kind":5,"insertText":"Farbe"}]}');
+  try
+    Items := TAtlasServerCompletionProvider.ItemsFromLsp(Response);
+  finally
+    Response.Free;
+  end;
+  Assert.AreEqual(2, Integer(Length(Items)));
+  Assert.AreEqual(Ord(TAtlasItemKind.Snippet), Ord(Items[0].Kind));
+  Assert.AreEqual('property ${1:Farbe}: TColor read FFarbe write SetFarbe;$0', Items[0].Snippet);
+  Assert.IsTrue(Items[0].HasTextEdit);
+  Assert.AreEqual(4, Items[0].TextEdit.StartCharacter);
+  Assert.AreEqual(1, Integer(Length(Items[0].AdditionalEdits)));
+  Assert.IsTrue(Items[0].UnitUsed, 'Keine uses-Ergänzung');
+  Assert.AreEqual('', Items[1].Snippet);
+  // completion.snippets aus: wie ohne die Funktion.
+  Items := TAtlasServerCompletionProvider.WithoutSnippets(Items);
+  Assert.AreEqual(1, Integer(Length(Items)));
+  Assert.AreEqual('Farbe', Items[0].Name);
 end;
 
 procedure TAtlasCompletionProviderTests.PartialItemsContinueRank;

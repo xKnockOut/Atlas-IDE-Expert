@@ -52,7 +52,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.UsesClause;
+  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Editing.ClassMembers;
 
 const
   // Typen, die per Zuweisung kopiert und als JSON-Wert geschrieben werden.
@@ -398,7 +399,8 @@ begin
       Format('procedure Set%s(const Value: %s);', [Name, Field.TypeName]), 'public',
       Format('property %s: %s read %s write Set%s;', [Name, Field.TypeName, FieldName, Name])],
       Join(Source, [Format('procedure %s.Set%s(const Value: %s);', [ClassSymbol.Name, Name, Field.TypeName]),
-      'begin', Format('  %s := Value;', [FieldName]), 'end;']));
+      TSetterGenerator.Body(FieldName, 'Value', TSetterGenerator.NotifyCall(Source, AContext.Index, ClassSymbol),
+      Source.LineBreak)]));
     // Alte Deklaration entfernen.
     AEdits := AEdits + [TRuleEdit.Create(TTextRange.Create(Field.Range.StartPos.Line, 0,
       Field.Range.StartPos.Line + 1, 0), ''), Source.RemoveCommand];

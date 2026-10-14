@@ -447,9 +447,10 @@ begin
   Hover.AddPair('contentFormat', Formats);
   TextDocument := TJSONObject.Create;
   TextDocument.AddPair('hover', Hover);
-  // Dokumentation der Vervollständigung als Klartext, keine Snippets (#408).
+  // Dokumentation der Vervollständigung als Klartext (#408). Snippets setzt das Plugin selbst mit Platzhalter-Modus
+  // ein (#51); ob sie in der Liste erscheinen, regelt completion.snippets im Plugin.
   TextDocument.AddPair('completion', TJSONObject.Create(TJSONPair.Create('completionItem',
-    TJSONObject.Create.AddPair('snippetSupport', TJSONBool.Create(False))
+    TJSONObject.Create.AddPair('snippetSupport', TJSONBool.Create(True))
       .AddPair('documentationFormat', TJSONArray.Create.Add('plaintext')))));
   // Diagnosen holt das Plugin selbst (#398); der Server bittet per refresh um neues Holen.
   TextDocument.AddPair('diagnostic', TJSONObject.Create.AddPair('dynamicRegistration', TJSONBool.Create(False))

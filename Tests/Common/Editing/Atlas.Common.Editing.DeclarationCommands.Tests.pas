@@ -235,8 +235,9 @@ begin
     '    procedure SetName(const Value: string);'#10'  public'#10 +
     '    property Name: string read FName write SetName;'#10'  end;', Text) > 0, Text);
   // Setter-Rumpf hinter der letzten Methode der Klasse.
+  // Setter mit Änderungsprüfung wie bei der Code-Vorlage (#51); TFoo ist kein Control und hat kein Changed.
   Assert.IsTrue(Pos('end;'#10#10'procedure TFoo.SetName(const Value: string);'#10'begin'#10 +
-    '  FName := Value;'#10'end;'#10, Text) > 0, Text);
+    '  if FName <> Value then'#10'    FName := Value;'#10'end;'#10, Text) > 0, Text);
   Assert.IsTrue(Parses(Text), Text);
 end;
 
