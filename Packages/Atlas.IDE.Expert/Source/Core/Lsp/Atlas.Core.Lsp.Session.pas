@@ -82,6 +82,7 @@ type
     FInitialized: Boolean;
     FProjects: TArray<string>;
     FServerSettings: string;
+    FServerVersion: string;
     procedure SyncLocked(const AFileName, AText: string);
     procedure CloseLocked(const AFileName: string);
     function PositionParams(const AFileName: string; ALine, ACharacter: Integer): TJSONObject;
@@ -159,6 +160,12 @@ type
     function ProgressText: string;
     /// <summary>Statusleiste: "Atlas indiziert … (45 %)"; '' ohne laufenden Vorgang (#492).</summary>
     function IndexingText: string;
+    /// <summary>Läuft eine Indizierung? APercent = Fortschritt, -1 = unbekannt (#591).</summary>
+    function Indexing(out APercent: Integer): Boolean;
+    /// <summary>Beobachter für $/progress, im Lese-Thread (#591).</summary>
+    procedure SetOnProgress(const AProc: TProc);
+    /// <summary>Version aus serverInfo der Antwort auf initialize; '' = unbekannt (#591).</summary>
+    property ServerVersion: string read FServerVersion;
     /// <summary>workspace/executeCommand; Ergebnis gehört dem Aufrufer (nil bei Fehler oder Zeitlimit).</summary>
     function ExecuteCommand(const ACommand: string; ATimeoutMs: Cardinal): TJSONValue; overload;
     /// <summary>Wie oben mit Argumenten; übernimmt AArguments.</summary>
@@ -379,7 +386,12 @@ begin
   // Ohne Arbeitsbereich leitet der Server ihn aus den geöffneten Dateien ab, ebenso für Dateien
   // außerhalb der gemeldeten Projekte.
   Response := FClient.Request('initialize', Params, 15000);
-  Response.Free;
+  try
+    if Response is TJSONObject then
+      FServerVersion := TJSONObject(Response).GetValue<string>('serverInfo.version', '');
+  finally
+    Response.Free;
+  end;
   FClient.Notify('initialized', TJSONObject.Create);
   FInitialized := True;
 end;
@@ -656,6 +668,16 @@ end;
 function TLspSession.IndexingText: string;
 begin
   Result := FProgress.IndexingText;
+end;
+
+function TLspSession.Indexing(out APercent: Integer): Boolean;
+begin
+  Result := FProgress.Active(APercent);
+end;
+
+procedure TLspSession.SetOnProgress(const AProc: TProc);
+begin
+  FProgress.SetOnChanged(AProc);
 end;
 
 function TLspSession.ExecuteCommand(const ACommand: string; ATimeoutMs: Cardinal): TJSONValue;

@@ -115,6 +115,13 @@ type
     XmlDocFull: Boolean;
     /// <summary>Höchstens so viele Zeilen Doku ohne Scrollen, 0 = bis zur Bildschirmhöhe (#654).</summary>
     XmlDocMaxLines: Integer;
+    /// <summary>Atlas-Feld in der Statusleiste (#591, statusField.enabled).</summary>
+    StatusField: Boolean;
+    /// <summary>Kennungen der Zeilen, die im Fenster des Felds nicht erscheinen, durch Komma getrennt
+    /// (#591, statusField.hidden).</summary>
+    StatusFieldHidden: string;
+    /// <summary>Kurztext neben „Atlas“ (#591, statusField.showSummary).</summary>
+    StatusFieldSummary: Boolean;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -183,6 +190,9 @@ begin
   Result.MemoryBudgetMb := 256;
   Result.XmlDocFull := True;
   Result.XmlDocMaxLines := 0;
+  Result.StatusField := True;
+  Result.StatusFieldHidden := '';
+  Result.StatusFieldSummary := True;
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -248,6 +258,9 @@ begin
   MemoryBudgetMb := AStore.ReadInteger('MemoryBudgetMb', Default.MemoryBudgetMb);
   XmlDocFull := AStore.ReadInteger('XmlDocFull', BoolValue(Default.XmlDocFull)) <> 0;
   XmlDocMaxLines := AStore.ReadInteger('XmlDocMaxLines', Default.XmlDocMaxLines);
+  StatusField := AStore.ReadInteger('StatusField', BoolValue(Default.StatusField)) <> 0;
+  StatusFieldHidden := Trim(AStore.ReadString('StatusFieldHidden', Default.StatusFieldHidden));
+  StatusFieldSummary := AStore.ReadInteger('StatusFieldSummary', BoolValue(Default.StatusFieldSummary)) <> 0;
   Normalize;
 end;
 
@@ -293,6 +306,9 @@ begin
   AStore.WriteInteger('MemoryBudgetMb', MemoryBudgetMb);
   AStore.WriteInteger('XmlDocFull', BoolValue(XmlDocFull));
   AStore.WriteInteger('XmlDocMaxLines', XmlDocMaxLines);
+  AStore.WriteInteger('StatusField', BoolValue(StatusField));
+  AStore.WriteString('StatusFieldHidden', Trim(StatusFieldHidden));
+  AStore.WriteInteger('StatusFieldSummary', BoolValue(StatusFieldSummary));
 end;
 
 function JsonBool(AValue: Boolean): string;

@@ -46,7 +46,8 @@ type
     KeysStatusIdeKey, KeysStatusNone, KeysStatusAtlasWins, KeysStatusLeft, KeysForeign, KeysForeignNone, KeysInvalid,
     SettingsProviderTimeLimit, SettingsFuseTitle, SettingsFuseNone, SettingsFuseEnableSelected, SettingsFuseEnableAll,
     CompletionLimited, SettingsIndexUsages, SettingsMemoryBudget, SettingsIndexTitle, SettingsIndexRefresh, SettingsIndexRebuild, SettingsIndexClear, SettingsIndexClearConfirm,
-    HidesDeclaration);
+    HidesDeclaration,
+    StatusOpenLog, StatusRestartServer, SettingsStatusField, SettingsStatusSummary, SettingsStatusHidden);
 
   TAtlasStrings = class
   private class var
@@ -174,7 +175,12 @@ const
      'Index neu aufbauen',
      'Index löschen',
      'Alle Index-Caches auf der Platte löschen? Der Index wird danach neu aufgebaut.',
-     'Verdeckt: %s'),
+     'Verdeckt: %s',
+     'Protokoll öffnen',
+     'Server neu starten',
+     'Atlas-Feld in der Statusleiste des Editors',
+     'Kurztext neben „Atlas“ zeigen',
+     'Ausgeblendete Zeilen (Kennungen):'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -279,7 +285,12 @@ const
      'Rebuild index',
      'Delete index',
      'Delete all index caches on disk? The index is rebuilt afterwards.',
-     'Hides: %s'));
+     'Hides: %s',
+     'Open log',
+     'Restart server',
+     'Atlas field in the editor status bar',
+     'Show short text next to "Atlas"',
+     'Hidden lines (ids):'));
 
 { TAtlasStrings }
 

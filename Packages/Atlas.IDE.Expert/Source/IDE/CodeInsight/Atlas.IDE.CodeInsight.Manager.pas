@@ -16,6 +16,11 @@
 // in Atlas.IDE.Expert<Version>.log neben dem Plugin (Name wie die BPL).
 // Projektgruppe (#648): Die Sitzung meldet dem Server alle Projekte der Gruppe,
 // das aktive zuerst; Änderungen der Gruppe prüft sie höchstens alle zwei Sekunden.
+// Statusfeld (#591): Phase des Servers (nicht gestartet, startet, läuft,
+// gestoppt, fehlgeschlagen) mit Version und mittlerer Antwortzeit; jede
+// Änderung, auch das Ende des Prozesses im Lese-Thread, meldet OnServerChanged.
+// QueryStatusAsync fragt atlas.server.status im Hintergrund; StopSession
+// wartet auf eine laufende Abfrage, bevor es die Sitzung freigibt.
 
 interface
 
@@ -23,7 +28,9 @@ uses
   System.SysUtils,
   System.Classes,
   System.JSON,
+  System.SyncObjs,
   ToolsAPI,
+  Atlas.Core.Status.Lines,
   Atlas.Core.Lsp.Adapters.ServerProcess,
   Atlas.Core.Lsp.Session,
   Atlas.IDE.Completion.Editor,
@@ -50,6 +57,12 @@ type
     FHover: TAtlasEditorHover;
     /// <summary>Probleme im Editor (#398).</summary>
     FProblems: TAtlasProblemsController;
+    FPhase: TAtlasServerPhase;
+    FPhaseError: string;
+    FOnServerChanged: TProc;
+    FQueryRunning: Boolean;
+    FQueryIdle: TEvent;
+    procedure SetPhase(APhase: TAtlasServerPhase; const AError: string);
     function EnsureSession: Boolean;
     /// <summary>Projekte der geöffneten Gruppe, aktives zuerst; leer ohne Gruppe (#648).</summary>
     class function GroupProjects: TArray<string>; static;
@@ -79,8 +92,6 @@ type
     procedure NotifyServer(const AMethod: string; AParams: TJSONObject);
     /// <summary>Fortschritt des Servers ("Index 45 %"); '' ohne Sitzung oder Vorgang. Startet keinen Server (#492).</summary>
     function ServerProgress: string;
-    /// <summary>Statusleiste während der Indizierung (#492); '' ohne Sitzung oder laufenden Aufbau.</summary>
-    function ServerIndexingText: string;
     /// <summary>Befehl an den Server (startet ihn bei Bedarf); Ergebnis gehört dem Aufrufer, nil bei Fehler.</summary>
     function ExecuteServerCommand(const ACommand: string; ATimeoutMs: Cardinal = 30000): TJSONValue;
     /// <summary>Gespeichert: didSave an den Server, falls eine Sitzung läuft (Prüfung mit dcc).</summary>
@@ -92,6 +103,17 @@ type
     /// <summary>Vervollständigung bzw. Parameter-Hint über eine eigene Taste von Atlas öffnen (#494).</summary>
     procedure OpenCompletion;
     procedure OpenSignature;
+    /// <summary>Stand des Servers für das Statusfeld (#591); startet keinen Server.</summary>
+    function ServerInfo: TAtlasServerInfo;
+    /// <summary>Indizierung läuft? APercent = Fortschritt, -1 = unbekannt; False ohne Sitzung.</summary>
+    function ServerIndexing(out APercent: Integer): Boolean;
+    /// <summary>„Server neu starten“ (#591, #393): Sitzung beenden und neu starten.</summary>
+    function RestartServer: Boolean;
+    /// <summary>atlas.server.status im Hintergrund, nur bei laufender Sitzung und ohne laufende
+    /// Abfrage; ADone bekommt das JSON ('' bei Fehler) im Hintergrund-Thread. False = nicht gestartet.</summary>
+    function QueryStatusAsync(const ADone: TProc<string>): Boolean;
+    /// <summary>Phase, Version oder Fortschritt haben sich geändert; aus jedem Thread.</summary>
+    property OnServerChanged: TProc read FOnServerChanged write FOnServerChanged;
     { IOTACodeInsightManager100 }
     function GetName: string;
     function GetIDString: string;
@@ -165,6 +187,8 @@ begin
   inherited Create;
   FEnabled := True;
   FDiagnose := DiagnoseEnabled;
+  FPhase := TAtlasServerPhase.NotStarted;
+  FQueryIdle := TEvent.Create(nil, True, True, '');
   Diagnose('Plugin geladen: ' + GetModuleName(HInstance));
   FProblems := TAtlasProblemsController.Create(
     function(AStart: Boolean): TLspSession
@@ -207,9 +231,11 @@ begin
   FreeAndNil(FHover);
   FreeAndNil(FSignature);
   FreeAndNil(FCompletion);
+  FOnServerChanged := nil;
   StopSession;
   // Nach StopSession: Die Threads sind dort schon angehalten.
   FreeAndNil(FProblems);
+  FQueryIdle.Free;
   inherited;
 end;
 
@@ -324,12 +350,98 @@ begin
   // Probleme: Threads anhalten, Verbindung schließen (laufende Anfragen kehren sofort zurück), warten.
   if FProblems <> nil then
     FProblems.BeginShutdown;
+  if FSession <> nil then
+    FSession.SetOnProgress(nil);
   if FServer <> nil then
     FServer.Client.Close;
   if FProblems <> nil then
     FProblems.WaitShutdown;
+  // Eine Statusabfrage im Hintergrund kehrt nach Close sofort zurück (#591).
+  FQueryIdle.WaitFor(5000);
   FreeAndNil(FSession);
   FreeAndNil(FServer);
+end;
+
+procedure TAtlasCodeInsightManager.SetPhase(APhase: TAtlasServerPhase; const AError: string);
+var
+  Changed: TProc;
+begin
+  FPhase := APhase;
+  FPhaseError := AError;
+  Changed := FOnServerChanged;
+  if Assigned(Changed) then
+    Changed();
+end;
+
+function TAtlasCodeInsightManager.ServerInfo: TAtlasServerInfo;
+begin
+  Result.Phase := FPhase;
+  Result.Error := FPhaseError;
+  Result.Version := '';
+  Result.AverageMs := 0;
+  Result.Samples := 0;
+  if (FSession <> nil) and FSession.Initialized then
+    Result.Version := FSession.ServerVersion;
+  if FServer <> nil then
+    Result.AverageMs := FServer.Client.AverageMs(Result.Samples);
+end;
+
+function TAtlasCodeInsightManager.ServerIndexing(out APercent: Integer): Boolean;
+begin
+  APercent := -1;
+  Result := (FSession <> nil) and FSession.Initialized and FSession.Indexing(APercent);
+end;
+
+function TAtlasCodeInsightManager.RestartServer: Boolean;
+begin
+  Report('Server wird neu gestartet');
+  StopSession;
+  SetPhase(TAtlasServerPhase.Stopped, '');
+  Result := EnsureSession;
+end;
+
+function TAtlasCodeInsightManager.QueryStatusAsync(const ADone: TProc<string>): Boolean;
+var
+  Session: TLspSession;
+  Idle: TEvent;
+begin
+  Result := False;
+  if FQueryRunning or (FServer = nil) or not FServer.Running or (FSession = nil) or not FSession.Initialized then
+    Exit;
+  FQueryRunning := True;
+  FQueryIdle.ResetEvent;
+  Session := FSession;
+  Idle := FQueryIdle;
+  TThread.CreateAnonymousThread(
+    procedure
+    var
+      Answer: TJSONValue;
+      Json: string;
+    begin
+      try
+        Json := '';
+        try
+          Answer := Session.ExecuteCommand(TAtlasStatusLines.StatusCommand, 5000);
+          try
+            if Answer <> nil then
+              Json := Answer.ToJSON;
+          finally
+            Answer.Free;
+          end;
+          if Assigned(ADone) then
+            ADone(Json);
+        except
+          // Hintergrund-Thread: nie eine Ausnahme nach außen.
+          on Exception do
+            ;
+        end;
+      finally
+        // Danach nichts mehr am Manager: StopSession wartet genau auf dieses Signal.
+        FQueryRunning := False;
+        Idle.SetEvent;
+      end;
+    end).Start;
+  Result := True;
 end;
 
 function TAtlasCodeInsightManager.EnsureSession: Boolean;
@@ -347,22 +459,41 @@ begin
   if not FileExists(Path) then
   begin
     ReportError('Server nicht gefunden: ' + Path);
+    SetPhase(TAtlasServerPhase.Failed, 'AtlasServer.exe nicht gefunden');
     Exit(False);
   end;
+  SetPhase(TAtlasServerPhase.Starting, '');
   try
     FServer := TLspServerProcess.Create(Path, Arguments);
+    // Ende des Prozesses (z. B. im Task-Manager beendet) färbt das Statusfeld sofort rot (#591).
+    FServer.Client.OnClosed :=
+      procedure
+      begin
+        SetPhase(TAtlasServerPhase.Stopped, '');
+      end;
     FSession := TLspSession.Create(FServer.Client);
     FSession.SetProjects(GroupProjects);
     FSession.ServerSettings := TAtlasIdeSettings.Current.ServerSettingsJson;
+    FSession.SetOnProgress(
+      procedure
+      var
+        Changed: TProc;
+      begin
+        Changed := FOnServerChanged;
+        if Assigned(Changed) then
+          Changed();
+      end);
     FProjectsChecked := GetTickCount;
     FSession.Initialize;
     FLastError := '';
+    SetPhase(TAtlasServerPhase.Running, '');
     Result := True;
   except
     on E: Exception do
     begin
       ReportError('Start fehlgeschlagen: ' + E.Message);
       StopSession;
+      SetPhase(TAtlasServerPhase.Failed, WithoutPaths(E.Message));
       Result := False;
     end;
   end;
@@ -434,14 +565,6 @@ function TAtlasCodeInsightManager.ServerProgress: string;
 begin
   if (FSession <> nil) and FSession.Initialized then
     Result := FSession.ProgressText
-  else
-    Result := '';
-end;
-
-function TAtlasCodeInsightManager.ServerIndexingText: string;
-begin
-  if (FSession <> nil) and FSession.Initialized then
-    Result := FSession.IndexingText
   else
     Result := '';
 end;

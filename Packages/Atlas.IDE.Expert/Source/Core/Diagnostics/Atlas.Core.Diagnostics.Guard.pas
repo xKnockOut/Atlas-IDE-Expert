@@ -25,7 +25,7 @@ uses
 type
 {$SCOPEDENUMS ON}
   TAtlasFeature = (Completion, Signature, Hover, Pairs, Problems, Reloader, Palette, CheckOnSave, Watchdog, Server,
-    Settings, Menu, Files, Build);
+    Settings, Menu, Files, Build, Status);
 {$SCOPEDENUMS OFF}
 
   TAtlasFeatures = set of TAtlasFeature;
@@ -375,7 +375,7 @@ class function TAtlasGuard.FeatureName(AFeature: TAtlasFeature): string;
 const
   Names: array[TAtlasFeature] of string = ('Vervollständigung', 'Parameter-Hint', 'Tooltip', 'Klammerpaare',
     'Probleme', 'Neuladen', 'Befehlspalette', 'Prüfung beim Speichern', 'Wächter', 'Server', 'Einstellungen', 'Menü',
-    'Dateien', 'Compile-Ereignisse');
+    'Dateien', 'Compile-Ereignisse', 'Statusfeld');
 begin
   Result := Names[AFeature];
 end;

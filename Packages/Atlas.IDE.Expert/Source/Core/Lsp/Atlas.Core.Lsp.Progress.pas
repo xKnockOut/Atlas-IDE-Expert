@@ -11,6 +11,8 @@
 // - IndexingText: Text für die Statusleiste des Editors, solange der Server
 //   indiziert ("Atlas indiziert … (45 %)"); die Vervollständigung zeigt
 //   dann "eingeschränkt".
+// - OnChanged (#591): nach jeder $/progress-Nachricht, im Lese-Thread; das
+//   Atlas-Statusfeld aktualisiert so die Zeile „Index“ ohne Abfrage.
 
 interface
 
@@ -29,6 +31,10 @@ type
     function Text: string;
     /// <summary>Statusleiste: "Atlas indiziert … (45 %)"; '' ohne laufenden Vorgang.</summary>
     function IndexingText: string;
+    /// <summary>Fortschritt in Prozent (-1 = unbekannt) und ob ein Vorgang läuft.</summary>
+    function Active(out APercent: Integer): Boolean;
+    /// <summary>Beobachter für Änderungen; läuft im Lese-Thread.</summary>
+    procedure SetOnChanged(const AProc: TProc);
   end;
 
   TLspProgress = class(TInterfacedObject, ILspProgress)
@@ -41,12 +47,15 @@ type
     FLock: TCriticalSection;
     FRunning: TDictionary<string, TEntry>;
     FLast: string;
+    FOnChanged: TProc;
   public
     constructor Create;
     destructor Destroy; override;
     procedure Handle(const AParams: TJSONValue);
     function Text: string;
     function IndexingText: string;
+    function Active(out APercent: Integer): Boolean;
+    procedure SetOnChanged(const AProc: TProc);
     /// <summary>Wie IndexingText aus Prozent (-1 = unbekannt); '' wenn nicht AActive.</summary>
     class function IndexingTextOf(AActive: Boolean; APercent: Integer): string; static;
   end;
@@ -104,6 +113,7 @@ var
   Token, Kind: string;
   Value: TJSONValue;
   Entry: TEntry;
+  Changed: TProc;
 begin
   if not (AParams is TJSONObject) then
     Exit;
@@ -114,24 +124,62 @@ begin
   Kind := TJSONObject(Value).GetValue<string>('kind', '');
   FLock.Enter;
   try
+    Changed := FOnChanged;
     if Kind = 'end' then
     begin
       FRunning.Remove(Token);
       if FLast = Token then
         FLast := '';
-      Exit;
-    end;
-    if not FRunning.TryGetValue(Token, Entry) then
+    end
+    else
     begin
-      Entry.Title := '';
-      Entry.Percent := -1;
+      if not FRunning.TryGetValue(Token, Entry) then
+      begin
+        Entry.Title := '';
+        Entry.Percent := -1;
+      end;
+      if TJSONObject(Value).GetValue('title') <> nil then
+        Entry.Title := TJSONObject(Value).GetValue<string>('title', '');
+      if TJSONObject(Value).GetValue('percentage') <> nil then
+        Entry.Percent := TJSONObject(Value).GetValue<Integer>('percentage', -1);
+      FRunning.AddOrSetValue(Token, Entry);
+      FLast := Token;
     end;
-    if TJSONObject(Value).GetValue('title') <> nil then
-      Entry.Title := TJSONObject(Value).GetValue<string>('title', '');
-    if TJSONObject(Value).GetValue('percentage') <> nil then
-      Entry.Percent := TJSONObject(Value).GetValue<Integer>('percentage', -1);
-    FRunning.AddOrSetValue(Token, Entry);
-    FLast := Token;
+  finally
+    FLock.Leave;
+  end;
+  if Assigned(Changed) then
+    Changed();
+end;
+
+procedure TLspProgress.SetOnChanged(const AProc: TProc);
+begin
+  FLock.Enter;
+  try
+    FOnChanged := AProc;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TLspProgress.Active(out APercent: Integer): Boolean;
+var
+  Entry: TEntry;
+  Key: string;
+begin
+  APercent := -1;
+  FLock.Enter;
+  try
+    Key := FLast;
+    Result := (Key <> '') and FRunning.TryGetValue(Key, Entry);
+    if not Result then
+      for Key in FRunning.Keys do
+      begin
+        Result := FRunning.TryGetValue(Key, Entry);
+        Break;
+      end;
+    if Result then
+      APercent := Entry.Percent;
   finally
     FLock.Leave;
   end;
