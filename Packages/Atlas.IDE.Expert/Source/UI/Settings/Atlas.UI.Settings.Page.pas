@@ -65,6 +65,7 @@ type
     FTypeDefinitionKey: TEdit;
     FEditorKeysPriority: TCheckBox;
     FSlashCommands: TCheckBox;
+    FSnippets: TCheckBox;
     FResetHistory: TButton;
     FResetWidths: TButton;
     FHangTest: TButton;
@@ -169,6 +170,8 @@ begin
   FLearning := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsLearning));
   FGroupInherited := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGroupInherited));
   FPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPreview));
+  // Code-Vorlagen (#51).
+  FSnippets := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSnippets));
   FHoverTooltip := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHover));
   // Einfrier-Wächter (#501).
   FHangThreshold := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHangThreshold));
@@ -332,6 +335,7 @@ begin
   FLearning.Checked := ASettings.Learning;
   FGroupInherited.Checked := ASettings.GroupInherited;
   FPreview.Checked := ASettings.Preview;
+  FSnippets.Checked := ASettings.Snippets;
   FHoverTooltip.Checked := ASettings.HoverTooltip;
   FHangThreshold.Text := IntToStr(ASettings.HangThresholdMs);
   FHangHint.Checked := ASettings.HangHint;
@@ -370,6 +374,7 @@ begin
   ASettings.Learning := FLearning.Checked;
   ASettings.GroupInherited := FGroupInherited.Checked;
   ASettings.Preview := FPreview.Checked;
+  ASettings.Snippets := FSnippets.Checked;
   ASettings.HoverTooltip := FHoverTooltip.Checked;
   ASettings.HangThresholdMs := StrToIntDef(FHangThreshold.Text, ASettings.HangThresholdMs);
   ASettings.HangHint := FHangHint.Checked;

@@ -103,6 +103,8 @@ type
     EditorKeysPriority: Boolean;
     /// <summary>Schnellbefehle mit „/“ nach Enter und „///“-Gerüste beim Server auslösen (#399).</summary>
     SlashCommands: Boolean;
+    /// <summary>Code-Vorlagen in der Vervollständigung (#51, completion.snippets).</summary>
+    Snippets: Boolean;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -164,6 +166,7 @@ begin
   Result.TypeDefinitionKey := 0;
   Result.EditorKeysPriority := False;
   Result.SlashCommands := True;
+  Result.Snippets := True;
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -218,6 +221,7 @@ begin
   TypeDefinitionKey := AStore.ReadInteger('TypeDefinitionKey', Default.TypeDefinitionKey);
   EditorKeysPriority := AStore.ReadInteger('EditorKeysPriority', BoolValue(Default.EditorKeysPriority)) <> 0;
   SlashCommands := AStore.ReadInteger('SlashCommands', BoolValue(Default.SlashCommands)) <> 0;
+  Snippets := AStore.ReadInteger('Snippets', BoolValue(Default.Snippets)) <> 0;
   Normalize;
 end;
 
@@ -260,6 +264,7 @@ begin
   AStore.WriteInteger('TypeDefinitionKey', TypeDefinitionKey);
   AStore.WriteInteger('EditorKeysPriority', BoolValue(EditorKeysPriority));
   AStore.WriteInteger('SlashCommands', BoolValue(SlashCommands));
+  AStore.WriteInteger('Snippets', BoolValue(Snippets));
 end;
 
 end.

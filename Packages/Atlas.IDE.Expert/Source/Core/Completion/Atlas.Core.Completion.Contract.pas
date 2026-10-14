@@ -149,6 +149,9 @@ type
     DataSource: string;
     /// <summary>Freigabe absichern (#489): Angebot nach dem ";" eines Konstruktors. Weitertippen verwirft es.</summary>
     Guard: Boolean;
+    /// <summary>Code-Vorlage (#51): Text mit Platzhaltern (${1:Name}, $0); '' sonst. Beim Übernehmen setzt der
+    /// Editor ihn mit der Einrückung der Zeile ein und startet den Platzhalter-Modus.</summary>
+    Snippet: string;
     /// <summary>Zahl der Überladungen samt dieser (mindestens 1).</summary>
     function OverloadCount: Integer;
   end;

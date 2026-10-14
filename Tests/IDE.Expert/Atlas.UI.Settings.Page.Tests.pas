@@ -45,6 +45,7 @@ begin
   Settings.ExpandKey := $C057;
   Settings.EditorKeysPriority := True;
   Settings.SlashCommands := False;
+  Settings.Snippets := False;
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
@@ -63,6 +64,7 @@ begin
   Assert.AreEqual($6057, Saved.ShrinkKey);
   Assert.IsTrue(Saved.EditorKeysPriority);
   Assert.IsFalse(Saved.SlashCommands);
+  Assert.IsFalse(Saved.Snippets);
 end;
 
 initialization

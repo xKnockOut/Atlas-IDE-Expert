@@ -675,7 +675,8 @@ function TAtlasCompletionController.CanCommitOnCharacter: Boolean;
 var
   Item: TAtlasCompletionItem;
 begin
-  Result := (FPrefix <> '') and SelectedItem(Item) and
+  // Code-Vorlagen (#51) nur über Enter oder Tab: "while(" soll keine Schleife einsetzen.
+  Result := (FPrefix <> '') and SelectedItem(Item) and (Item.Snippet = '') and
     (TAtlasCompletionMatcher.Score(FPrefix, Item.Name) >= TAtlasCompletionMatcher.ScoreWordStarts);
 end;
 

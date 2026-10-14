@@ -53,7 +53,8 @@ type
     FormHeader,
     SenderHeader,
     DataSourceFooter,
-    GuardFooterKeys);
+    GuardFooterKeys,
+    SettingsSnippets, PlaceholderFooter);
 
   TAtlasStrings = class
   private class var
@@ -180,7 +181,9 @@ const
      'Formular %s',
      'Sender ist %s · %s',
      'Quelle: %s',
-     'Enter anwenden · weitertippen verwirft'),
+     'Enter anwenden · weitertippen verwirft',
+     'Code-Vorlagen (Snippets) in der Liste anbieten',
+     'Platzhalter %d / %d · Tab weiter · Esc fertig'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -288,7 +291,9 @@ const
      'Form %s',
      'Sender is %s · %s',
      'Source: %s',
-     'Enter applies · keep typing to discard'));
+     'Enter applies · keep typing to discard',
+     'Offer code snippets in the list',
+     'Placeholder %d / %d · Tab next · Esc done'));
 
 { TAtlasStrings }
 

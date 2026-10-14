@@ -99,6 +99,7 @@ begin
   Assert.AreEqual($800D, Settings.ActionsKey, 'Code-Aktionen: Alt+Enter (#399)');
   Assert.AreEqual(0, Settings.TypeDefinitionKey, 'Typdefinition ohne Kürzel');
   Assert.IsTrue(Settings.SlashCommands, 'Schnellbefehle standardmäßig an (#399)');
+  Assert.IsTrue(Settings.Snippets, 'Code-Vorlagen standardmäßig an (#51)');
 end;
 
 procedure TAtlasPluginSettingsTests.SaveAndLoadRoundTrip;
@@ -122,6 +123,7 @@ begin
   Settings.TypeDefinitionKey := $C054;
   Settings.EditorKeysPriority := True;
   Settings.SlashCommands := False;
+  Settings.Snippets := False;
   Settings.ServerPath := '  D:\Atlas\AtlasServer.exe ';
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
@@ -141,6 +143,7 @@ begin
   Assert.AreEqual($C054, Loaded.TypeDefinitionKey);
   Assert.IsTrue(Loaded.EditorKeysPriority);
   Assert.IsFalse(Loaded.SlashCommands);
+  Assert.IsFalse(Loaded.Snippets);
   Assert.AreEqual('D:\Atlas\AtlasServer.exe', Loaded.ServerPath, 'Serverpfad ohne Leerraum');
   Assert.AreEqual('', TAtlasPluginSettings.Defaults.ServerPath, 'Standard: leer');
 end;

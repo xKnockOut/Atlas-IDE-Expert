@@ -418,11 +418,15 @@ var
   View: TFakeView;
   ViewRef: IAtlasCompletionView;
   Controller: TAtlasCompletionController;
+  Snippet: TAtlasCompletionItem;
 begin
   View := TFakeView.Create;
   ViewRef := View;
+  // Code-Vorlage (#51): nie über ein Zeichen übernommen.
+  Snippet := Item('while');
+  Snippet.Snippet := 'while ${1:Condition} do';
   Controller := TAtlasCompletionController.Create(
-    TAtlasFixedCompletionProvider.Create([Item('Add'), Item('AddStrings'), Item('Exchange')])
+    TAtlasFixedCompletionProvider.Create([Item('Add'), Item('AddStrings'), Item('Exchange'), Snippet])
       as IAtlasCompletionProvider, ViewRef);
   try
     Controller.Start(Context(''));
@@ -438,6 +442,8 @@ begin
     Assert.IsTrue(Controller.CanCommitOnCharacter, 'Wortanfänge: AddStrings');
     Controller.UpdatePrefix('xch');
     Assert.IsFalse(Controller.CanCommitOnCharacter, 'Nur Teilstring von Exchange: Zeichen bleibt allein');
+    Controller.UpdatePrefix('while');
+    Assert.IsFalse(Controller.CanCommitOnCharacter, '"while(" setzt keine Vorlage ein');
   finally
     Controller.Free;
   end;
