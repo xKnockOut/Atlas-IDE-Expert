@@ -1477,7 +1477,10 @@ begin
   // Befunde aus der Zeit des Aufbaus enthalten Units, die damals noch fehlten. Im Pull-Modus steigt
   // damit die Generation: Der Client holt geöffnete Dateien neu, workspace/diagnostic prüft alle.
   // Gebündelt: Die große Datei zu prüfen dauerte im Log über 20 s, und jedes Projekt meldet sich.
-  FSyntaxDiagnostics.RefreshLater;
+  // In einer Projektgruppe erst, wenn kein Projekt mehr indiziert wird: Sonst prüfte jedes fertige
+  // Projekt alle Dateien neu (CPU-Last beim Start).
+  if not ProjectIndexPending then
+    FSyntaxDiagnostics.RefreshLater;
 end;
 
 function TServerComposition.ProjectIndexPending: Boolean;
