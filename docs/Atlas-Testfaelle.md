@@ -268,6 +268,7 @@ Help Insight der IDE (#442): Solange der Atlas-Tooltip an ist, schaltet Atlas He
 | HI3 | Diagnose = 1, wie HI1 | Im Log `GetHelpInsightHtml aufgerufen` |
 | HI4 | Atlas › Hauptschalter aus, Maus auf einem Typ | Nur der Tooltip der IDE, kein Atlas-Tooltip |
 | HI5 | Atlas-Tooltip aus | Symbolhinweis der IDE mit dem Text von Atlas; Help Insight nach dem nächsten Start wieder wie vorher |
+| HI6 | Maus auf `TDataSource` in `Data.DB.pas` (vorwärts deklariert in Zeile 29, voll in Zeile 1988) | Fundort `Data.DB.pas : 1988`, Vererbung `TDataSource › TComponent › TPersistent › TObject` (erster Start baut den Index neu, Cache-Format 12) |
 
 Blocklinien zeichnet Atlas selbst (Einstellung „Blocklinien in den Paarfarben“). Solange sie an sind, ist die Strukturhervorhebung der IDE in der Registry abgeschaltet (`Editor\Highlight\Structural Highlighting`, `Enabled`). Die IDE liest das nur beim Start. Hat der User sie selbst abgeschaltet, ändert Atlas nichts.
 
