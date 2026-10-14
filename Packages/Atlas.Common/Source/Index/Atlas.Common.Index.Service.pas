@@ -24,6 +24,7 @@ uses
   System.SysUtils,
   System.Classes,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Index.Cache,
   Atlas.Common.Index.Builder,
   Atlas.Common.Index.Scheduler;
 
@@ -116,8 +117,7 @@ implementation
 
 uses
   System.Diagnostics,
-  System.Generics.Collections,
-  Atlas.Common.Index.Cache;
+  System.Generics.Collections;
 
 type
   TIndexThread = class(TThread)
