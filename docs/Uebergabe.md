@@ -230,3 +230,20 @@
   - Nicht gebaut und nicht getestet (Cloud). Neue Tests: `CachedIncludeUnitReusedUntilIncludeChanges`, `EnsureUnitDoesNotWaitForOtherRequests`, `TImportNameIndexTests`.
   - Cache-Format 10: Zeilen mit Tabulator-Feldern statt JSON (`TIndexCache`, Kopf `ATLAS-INDEX`), ein Durchlauf ohne JSON-Baum. Der erste Start danach liest alles neu. Dateiname bleibt `index-*.json`.
   - Punkt 9 (dauerhafter Server) verworfen (Marco). Punkt 2 (Bibliothek je Version) besteht weitgehend seit #492.
+
+
+## Critical-Issues (14.10.2026, Branch `claude/critical-issues-ygbl9i` von main)
+
+- Offen mit priority:critical: nur #616, #617, #647. Alle drei bleiben offen: nicht in main, nicht gebaut, nicht gemessen.
+- **#617 Schritt 4, Binärformat** (6e373cb): Cache-Format 11 (Magie `ATLASIDX`) mit String-Tabelle und Varints; `TIndexCache.ReadEntries` liest nur die Köpfe, `Expand` dekodiert die Symbole einer Unit erst, wenn der Builder sie übernimmt. Dazu kommen `IIndexFileSystem.ReadBytes`/`WriteBytes`. FPC-Messung mit synthetischen Daten (1569 Units, 575.823 Symbole): Schreiben 990 ms, 16 MB; Köpfe 3 ms; alles dekodieren 399 ms. Die Reihenfolge „eigenes Projekt zuerst, Bibliothek danach im Hintergrund“ besteht schon: `Build` erst die Projektdateien, dann `IndexReferenced`, alles im Index-Thread. Offen: Messung bei Marco.
+- **#647 Diagnoselog** (9d9aaca):
+  - Common: `Atlas.Common.Diagnostics.Contract`, `Anonymizer` (Kurz-IDs, Filter, `StackFrame`), `RequestScope` (threadvar, Grundcodes), `Providers.Log` (Puffer bis `Configure`), `Adapters.LogFolder` (`diag-JJJJMMTT-<pid>.log`, Laufmarken `run-<pid>.open`).
+  - Windows: `Atlas.Windows.Diagnostics.ProcessInfo`.
+  - Dispatcher: `IJsonRpcRequestObserver`.
+  - Server: `Shell.Diagnostics`. Es schreibt nach %LOCALAPPDATA%\Atlas\Logs\Diagnose; der Endgrund kommt aus `OnExit`, dem Wächter des Elternprozesses oder einer Exception.
+  - Einstellungen: `diagnostics` als Objekt mit `log`, `logDays`, `logMapFile`. Das Issue nennt `diagnostics.log.days`; das geht nicht, weil `log` schon der Schalter ist.
+  - Plugin: `Atlas.Core.Diagnostics.Export`, `Atlas.UI.Diagnostics.ExportDialog`, `Atlas.IDE.Diagnostics.Export`; Menü Atlas und Palette „Diagnoselog exportieren…“.
+  - Tests: `Atlas.Common.Diagnostics.Tests`, `Shell.Diagnostics.Tests` (Markertest über Log, Vorschau und ZIP).
+  - Weil der Filter „/“ verwirft, steht im Log „line N of M“ statt „N/M“, und die LSP-Methodennamen sind freigegeben (`AllowMethods`).
+  - Offen: Delphi-Build mit 0/0/0, Testlauf, Test in der IDE. Ein PR ist noch nicht angelegt (öffentlicher Schritt, erst nach Rückfrage).
+
