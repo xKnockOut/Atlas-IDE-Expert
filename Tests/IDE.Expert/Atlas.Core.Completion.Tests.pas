@@ -75,6 +75,8 @@ type
     procedure FindsEndBehindCursorInsideWord;
     [Test]
     procedure EndStaysAtCursorWithoutWordBehind;
+    [Test]
+    procedure DetectsDataNameStrings;
   end;
 
 implementation
@@ -578,6 +580,18 @@ begin
   Assert.AreEqual(4, TAtlasWord.EndAfter('List.Add', 4));
   Assert.AreEqual(6, TAtlasWord.EndAfter('Format', 6));
   Assert.AreEqual(8, TAtlasWord.EndAfter('  Add(  ', 8));
+end;
+
+procedure TAtlasWordTests.DetectsDataNameStrings;
+begin
+  // Feld- und Parameternamen (#461): nur im ersten String-Argument.
+  Assert.IsTrue(TAtlasWord.InDataNameString('  qryOrders.FieldByName(''cu', 27));
+  Assert.IsTrue(TAtlasWord.InDataNameString('  qryOrders.Params.ParamByName(''', 32));
+  Assert.IsTrue(TAtlasWord.InDataNameString('  if q.FindField(''A''''B'') = nil', 22));
+  Assert.IsFalse(TAtlasWord.InDataNameString('  qryOrders.FieldByName(''cu'').AsString', 29));
+  Assert.IsFalse(TAtlasWord.InDataNameString('  ShowMessage(''cu', 17));
+  Assert.IsFalse(TAtlasWord.InDataNameString('  FieldByName(''cu', 17));
+  Assert.IsFalse(TAtlasWord.InDataNameString('  // q.FieldByName(''cu', 22));
 end;
 
 procedure TAtlasMatchingBudgetTests.TyposAppearUnderDidYouMean;

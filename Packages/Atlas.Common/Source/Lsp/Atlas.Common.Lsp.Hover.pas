@@ -18,6 +18,10 @@
 // Deklaration und die Vererbungskette dazu (Atlas.Common.Lsp.HoverTypes). Ist die
 // Datei nicht geöffnet, liest der Hover sie selbst: So fragt das Plugin einen
 // angeklickten Typ über seinen Fundort ab.
+//
+// In FieldByName('…'), FindField('…') und ParamByName('…') meldet der Hover
+// einen Namen, den die Datenmenge laut Formulardatei nicht kennt, als Hinweis
+// „Feld nicht gefunden in qryOrders“ (#461); keine Diagnose.
 
 interface
 
@@ -103,6 +107,11 @@ type
     class function DocumentationAbove(const ALines: TArray<string>; ALine: Integer): string; static;
     /// <summary>False, wenn der Client in initialize nur Klartext für Hover meldet.</summary>
     class function ClientSupportsMarkdown(const AInitializeParams: TJSONObject): Boolean; static;
+    /// <summary>„Feld nicht gefunden in qryOrders“ (#461), wenn APosition im Namen eines FieldByName-, FindField-
+    /// oder ParamByName-Aufrufs steht, die Formulardatei Namen für die Datenmenge kennt und dieser nicht dabei ist.
+    /// </summary>
+    class function DataNameHint(const AText, AFileName: string; const APosition: TTextPosition;
+      const AReadText: THoverReadText; out AHint: string): Boolean; static;
     /// <summary>Teile des Hovers für den Atlas-Tooltip (#442), Doku und Hinweis als Klartext.</summary>
     class function AtlasJson(const AInfo: THoverInfo): TJSONObject; static;
     /// <summary>Antwort als Markdown (Vorgabe) oder als Klartext.</summary>
@@ -135,7 +144,9 @@ uses
   Atlas.Common.Semantics.Attributes,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Diagnostics.RequestScope,
-  Atlas.Common.Lsp.Internals.Cancellation;
+  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Dfm.FormFiles,
+  Atlas.Common.Editing.DataFieldNames;
 
 function SplitLines(const AText: string): TArray<string>;
 var
@@ -642,6 +653,40 @@ begin
     end;
 end;
 
+class function TLspHover.DataNameHint(const AText, AFileName: string; const APosition: TTextPosition;
+  const AReadText: THoverReadText; out AHint: string): Boolean;
+var
+  Lines: TArray<string>;
+  Call: TDataNameCall;
+  FormFile, FormText, Sql: string;
+  Names: TArray<TDataName>;
+  Found: Boolean;
+begin
+  AHint := '';
+  Result := False;
+  Lines := AText.Split([#10]);
+  if (APosition.Line < 0) or (APosition.Line > High(Lines)) or not Assigned(AReadText) or
+    not TDataFieldNames.CallAt(Lines[APosition.Line].TrimRight([#13]), APosition.Character, Call) or
+    (Call.Content = '') then
+    Exit;
+  for FormFile in TFormFiles.FormFiles(AFileName, AText) do
+    if AReadText(FormFile, FormText) then
+    begin
+      Names := TDataFieldNames.FromForm(FormText, Call.DataSet, Call.Kind, Sql, Found);
+      if Found then
+      begin
+        // Ohne bekannte Namen (select * ohne Schema) lässt sich nichts sagen.
+        if (Length(Names) = 0) or TDataFieldNames.Contains(Names, Call.Content) then
+          Exit;
+        if Call.Kind = TDataNameKind.Param then
+          AHint := Format('Parameter nicht gefunden in %s', [Call.DataSet])
+        else
+          AHint := Format('Feld nicht gefunden in %s', [Call.DataSet]);
+        Exit(True);
+      end;
+    end;
+end;
+
 function TLspHover.HandleHover(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
   Cancellation: IPascalCancellation;
@@ -688,6 +733,17 @@ begin
     ACancellation.ThrowIfCancellationRequested;
     // Compiler-Direktiven wie {$R+} oder {$WARN …} (#102).
     if TCompilerDirectives.HoverAt(Tree, TLspPositions.ReadPosition(PositionValue), DelphiVersion, Markdown) then
+    begin
+      Contents := TJSONObject.Create;
+      Contents.AddPair('kind', 'markdown');
+      Contents.AddPair('value', Markdown);
+      Result := TJSONObject.Create;
+      TJSONObject(Result).AddPair('contents', Contents);
+      Exit;
+    end;
+    // Unbekannter Feld- oder Parametername (#461).
+    if DataNameHint(Text, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue), FReadText,
+      Markdown) then
     begin
       Contents := TJSONObject.Create;
       Contents.AddPair('kind', 'markdown');

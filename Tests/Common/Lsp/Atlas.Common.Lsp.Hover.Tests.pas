@@ -52,6 +52,8 @@ type
     procedure ShowsConstantAndEnumValues;
     [Test]
     procedure ShowsDeprecation;
+    [Test]
+    procedure HintsUnknownDataFieldNames;
   end;
 
 implementation
@@ -67,6 +69,19 @@ uses
   Atlas.Common.Lsp.DocWiki;
 
 const
+  // Formulardatei für die Feldnamen (#461).
+  OrdersForm =
+    'object frmOrders: TfrmOrders'#13#10 +
+    '  object qryOrders: TSQLQuery'#13#10 +
+    '    SQL.Strings = ('#13#10 +
+    '      ''select CUSTOMER_ID, CURRENCY from ORDERS where ID = :Id'')'#13#10 +
+    '  end'#13#10 +
+    '  object qryAll: TSQLQuery'#13#10 +
+    '    SQL.Strings = ('#13#10 +
+    '      ''select * from ORDERS'')'#13#10 +
+    '  end'#13#10 +
+    'end'#13#10;
+
   WerkzeugFile = 'C:\P\Werkzeug.pas';
 
   UnitWerkzeug =
@@ -366,5 +381,31 @@ end;
 
 initialization
   TDUnitX.RegisterTestFixture(TLspHoverTests);
+
+procedure TLspHoverTests.HintsUnknownDataFieldNames;
+
+  function Hint(const ALine: string; out AText: string): Boolean;
+  begin
+    Result := TLspHover.DataNameHint('unit Orders;'#13#10'{$R *.dfm}'#13#10 + ALine + #13#10, 'C:\P\Orders.pas',
+      TTextPosition.Create(2, Pos('''', ALine) + 1),
+      function(const AFileName: string; out AFormText: string): Boolean
+      begin
+        AFormText := OrdersForm;
+        Result := SameText(ExtractFileExt(AFileName), '.dfm');
+      end, AText);
+  end;
+
+var
+  Text: string;
+begin
+  Assert.IsTrue(Hint('  qryOrders.FieldByName(''CUSTOMR_ID'').AsInteger;', Text));
+  Assert.AreEqual('Feld nicht gefunden in qryOrders', Text);
+  Assert.IsTrue(Hint('  qryOrders.ParamByName(''Kunde'').AsInteger := 1;', Text));
+  Assert.AreEqual('Parameter nicht gefunden in qryOrders', Text);
+  // Bekannte Namen, select * ohne Schema und zur Laufzeit erzeugte Datenmengen: kein Hinweis.
+  Assert.IsFalse(Hint('  qryOrders.FieldByName(''currency'').AsString;', Text));
+  Assert.IsFalse(Hint('  qryAll.FieldByName(''IRGENDWAS'').AsString;', Text));
+  Assert.IsFalse(Hint('  qryLaufzeit.FieldByName(''IRGENDWAS'').AsString;', Text));
+end;
 
 end.

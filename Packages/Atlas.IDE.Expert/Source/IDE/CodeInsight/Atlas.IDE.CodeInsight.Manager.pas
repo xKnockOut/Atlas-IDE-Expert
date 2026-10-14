@@ -89,6 +89,9 @@ type
     function CurrentEditView: IOTAEditView;
     /// <summary>Cursorzeile ist ein ///-Kommentar (XMLDoc, #435).</summary>
     function InXmlDocLine: Boolean;
+    /// <summary>Cursor im Namen von FieldByName('…'), FindField('…') oder ParamByName('…') (#461).
+    /// ATypedQuote: Das gerade getippte ' steht vielleicht noch nicht im Puffer.</summary>
+    function InDataNameString(ATypedQuote: Boolean): Boolean;
     function Completion: TAtlasEditorCompletion;
     function Signature: TAtlasEditorSignature;
     function SessionOrNil: TLspSession;
@@ -163,6 +166,7 @@ uses
   Atlas.Core.Problems.Contract,
   Winapi.Windows,
   Atlas.IDE.Editor.Buffer,
+  Atlas.Core.Completion.Word,
   Atlas.Core.Projects.Context,
   Atlas.IDE.Projects.Context,
   Atlas.Core.Lsp.WorkspaceEdits,
@@ -884,6 +888,26 @@ begin
     TrimLeft(TAtlasEditorBuffer.LineText(View, View.CursorPos.Line)).StartsWith('///');
 end;
 
+function TAtlasCodeInsightManager.InDataNameString(ATypedQuote: Boolean): Boolean;
+var
+  View: IOTAEditView;
+  Line: string;
+  Character: Integer;
+begin
+  Result := False;
+  View := CurrentEditView;
+  if (View = nil) or (View.Buffer = nil) then
+    Exit;
+  Line := TAtlasEditorBuffer.LineText(View, View.CursorPos.Line);
+  Character := TLspSession.ColumnToIndex(Line, View.CursorPos.Col, TAtlasEditorBuffer.TabWidth(View.Buffer));
+  Result := TAtlasWord.InDataNameString(Line, Character);
+  if not Result and ATypedQuote then
+  begin
+    Insert('''', Line, Character + 1);
+    Result := TAtlasWord.InDataNameString(Line, Character + 1);
+  end;
+end;
+
 procedure TAtlasCodeInsightManager.GetCodeInsightType(AChar: Char; AElement: Integer;
   out CodeInsightType: TOTACodeInsightType; out InvokeType: TOTAInvokeType);
 begin
@@ -910,6 +934,13 @@ begin
           CodeInsightType := citCodeInsight;
           InvokeType := itTimer;
         end;
+      // Nach FieldByName(' die Feldnamen (#461).
+      '''':
+        if InDataNameString(True) then
+        begin
+          CodeInsightType := citCodeInsight;
+          InvokeType := itTimer;
+        end;
       #2: CodeInsightType := citBrowseCodeInsight;
       #3: CodeInsightType := citHintCodeInsight;
     else
@@ -919,6 +950,8 @@ begin
     // "<" außerhalb davon ist ein Vergleich, keine Auslösung.
     if (CodeInsightType = citCodeInsight) and ((AChar = '<') or (AElement = atComment)) and InXmlDocLine then
       // Vervollständigung bleibt; die XMLDoc-Quelle liefert die Tags.
+    else if (CodeInsightType = citCodeInsight) and (AElement = atString) and InDataNameString(AChar = '''') then
+      // Feld- und Parameternamen (#461): Vervollständigung im String, die Namen kommen vom Server.
     else if (AChar = '<') or ((CodeInsightType in [citCodeInsight, citParameterCodeInsight]) and
       ((AElement = atComment) or (AElement = atString))) then
       CodeInsightType := citNone;

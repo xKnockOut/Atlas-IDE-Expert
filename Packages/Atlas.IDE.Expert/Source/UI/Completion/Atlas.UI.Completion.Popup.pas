@@ -1070,6 +1070,10 @@ begin
     DrawScrollBar;
     if TAtlasCompletionSets.Active(FItems) then
       DrawFooter(TAtlasStrings.Text(TAtlasTextId.SetFooterKeys), CountText)
+    // Feld- und Parameternamen (#461): die SQL-Anweisung als Quellenangabe.
+    else if TAtlasItemPresentation.DataSource(FItems) <> '' then
+      DrawFooter(TAtlasStrings.Fmt(TAtlasTextId.DataSourceFooter, [TAtlasItemPresentation.DataSource(FItems)]),
+        CountText)
     else
       DrawFooter(TAtlasStrings.Text(TAtlasTextId.FooterKeys), CountText);
   end;

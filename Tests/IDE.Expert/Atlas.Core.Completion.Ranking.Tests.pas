@@ -25,6 +25,8 @@ type
     procedure FormComponentsComeFirst;
     [Test]
     procedure SenderItemsGetHeaderAndTag;
+    [Test]
+    procedure DataNamesCarrySource;
   end;
 
   [TestFixture]
@@ -314,6 +316,24 @@ begin
   // Ohne Sender keine Überschrift.
   Items[0].Sender := '';
   Assert.AreEqual('Caption', Names(Items, TAtlasRanking.Order(Items, 'Cap', Options)));
+end;
+
+procedure TAtlasRankingTests.DataNamesCarrySource;
+var
+  Json: TJSONObject;
+  Items: TAtlasCompletionItems;
+begin
+  // Feld- und Parameternamen (#461): Datenmenge und SQL-Anweisung für die Fußzeile.
+  Json := TJSONObject.ParseJSONValue('{"label":"CUSTOMER_ID","kind":5,"detail":"Integer","data":{' +
+    '"dataSet":"qryOrders","dataSource":"select CUSTOMER_ID from ORDERS"}}') as TJSONObject;
+  try
+    Items := [Member('Capacity', '', 0, 0), TAtlasServerCompletionProvider.ItemFromLsp(Json, 0)];
+  finally
+    Json.Free;
+  end;
+  Assert.AreEqual('qryOrders', Items[1].DataSet);
+  Assert.AreEqual('select CUSTOMER_ID from ORDERS', TAtlasItemPresentation.DataSource(Items));
+  Assert.AreEqual('', TAtlasItemPresentation.DataSource(Copy(Items, 0, 1)));
 end;
 
 { TAtlasUsageTests }

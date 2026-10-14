@@ -173,6 +173,9 @@ begin
     // Sender mit Typumwandlung (#480).
     Result.Sender := Data.GetValue<string>('sender', '');
     Result.SenderOf := Data.GetValue<string>('senderOf', '');
+    // Feld- und Parameternamen (#461).
+    Result.DataSet := Data.GetValue<string>('dataSet', '');
+    Result.DataSource := Data.GetValue<string>('dataSource', '');
     Overloads := Data.GetValue('overloads');
     if Overloads is TJSONArray then
       for Value in TJSONArray(Overloads) do

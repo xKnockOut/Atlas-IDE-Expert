@@ -125,6 +125,10 @@ type
     Sender: string;
     /// <summary>Komponenten, denen die Methode im Designer zugewiesen ist: "btnSave, btnLoad".</summary>
     SenderOf: string;
+    /// <summary>Feld- oder Parametername (#461): Datenmenge, aus der der Name stammt; '' sonst.</summary>
+    DataSet: string;
+    /// <summary>Kurzform der SQL-Anweisung als Quellenangabe für die Fußzeile; '' ohne Anweisung.</summary>
+    DataSource: string;
   end;
 
   /// <summary>Postfix-Vorlagen (#188) je Dokument.</summary>
@@ -257,6 +261,12 @@ type
     class function ComponentItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
       const APosition: TTextPosition; const AReadText: TCompletionReadText; AMatching: TCompletionMatching;
       out AItems: TArray<TCompletionItem>): Boolean; static;
+    /// <summary>Cursor im ersten Argument von FieldByName, FindField oder ParamByName an einer Datenmenge der
+    /// Unit (#461): die Namen aus der Formulardatei (persistente Felder, Spalten der SQL-Anweisung,
+    /// Platzhalter, Params). Jeder Eintrag ersetzt den ganzen String-Inhalt. True auch ohne Namen, denn im
+    /// String gibt es sonst nichts vorzuschlagen.</summary>
+    class function DataNameItems(const AText, AFileName: string; const APosition: TTextPosition;
+      const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean; static;
     /// <summary>"Sender." in einem Ereignisbehandler mit "Sender: TObject" (#480): Ist die Methode im Formular
     /// Komponenten zugewiesen, die Mitglieder des nächsten gemeinsamen Vorfahren ihrer Typen. Jeder Eintrag
     /// ersetzt "Sender.Na" (TextEdit) durch die Umwandlung nach ACast und den Namen. False ohne Zuweisung im
@@ -324,7 +334,8 @@ uses
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.PostfixTemplates,
   Atlas.Common.Diagnostics.RequestScope,
-  Atlas.Common.Lsp.CompletionEnums;
+  Atlas.Common.Lsp.CompletionEnums,
+  Atlas.Common.Editing.DataFieldNames;
 
 const
   /// <summary>Art der Stelle im Diagnoselog (#647).</summary>
@@ -1523,7 +1534,7 @@ begin
     if (AItems[Index].SourceFile <> '') or (AItems[Index].Expected <> '') or
       (AItems[Index].Action <> '') or (AItems[Index].Condition <> '') or
       (AItems[Index].Scope > 0) or (AItems[Index].Ordinal > 0) or AItems[Index].Pinned or AItems[Index].Hint or
-      (AItems[Index].Form <> '') or (AItems[Index].Sender <> '') then
+      (AItems[Index].Form <> '') or (AItems[Index].Sender <> '') or (AItems[Index].DataSet <> '') then
     begin
       Data := TJSONObject.Create;
       if AItems[Index].SourceFile <> '' then
@@ -1587,6 +1598,13 @@ begin
       begin
         Data.AddPair('sender', AItems[Index].Sender);
         Data.AddPair('senderOf', AItems[Index].SenderOf);
+      end;
+      // Feld- und Parameternamen (#461).
+      if AItems[Index].DataSet <> '' then
+      begin
+        Data.AddPair('dataSet', AItems[Index].DataSet);
+        if AItems[Index].DataSource <> '' then
+          Data.AddPair('dataSource', AItems[Index].DataSource);
       end;
       if Length(AItems[Index].Overloads) > 0 then
       begin
@@ -1677,6 +1695,10 @@ begin
     SlashItems(Document.Text, TLspPositions.ReadPosition(PositionValue), Disabled, Directives) then
     Exit(ToJson(Directives));
   if DirectiveItems(Document.Text, TLspPositions.ReadPosition(PositionValue), Directives) then
+    Exit(ToJson(Directives));
+  // Feld- und Parameternamen im String-Literal (#461).
+  if DataNameItems(Document.Text, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue), FReadText,
+    Directives) then
     Exit(ToJson(Directives));
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
   Tree := Shared.Tree;
@@ -2635,6 +2657,56 @@ begin
         Cast + '.' + AItems.Items[Index].Name);
   end;
   Result := True;
+end;
+
+class function TLspCompletion.DataNameItems(const AText, AFileName: string; const APosition: TTextPosition;
+  const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean;
+var
+  Lines: TArray<string>;
+  Call: TDataNameCall;
+  FormFile, FormText, Sql, Source: string;
+  Names: TArray<TDataName>;
+  Name: TDataName;
+  Found: Boolean;
+  Item: TCompletionItem;
+  Range: TTextRange;
+begin
+  AItems := Default(TCompletionItems);
+  Lines := TextLines(AText);
+  if (APosition.Line < 0) or (APosition.Line > High(Lines)) or
+    not TDataFieldNames.CallAt(Lines[APosition.Line], APosition.Character, Call) then
+    Exit(False);
+  Result := True;
+  if not Assigned(AReadText) then
+    Exit;
+  // Nur aus der Formulardatei: Ohne Designer-Informationen kein geratener Vorschlag.
+  Names := nil;
+  Sql := '';
+  for FormFile in TFormFiles.FormFiles(AFileName, AText) do
+    if AReadText(FormFile, FormText) then
+    begin
+      Names := TDataFieldNames.FromForm(FormText, Call.DataSet, Call.Kind, Sql, Found);
+      if Found then
+        Break;
+    end;
+  Source := TDataFieldNames.ShortSql(Sql);
+  Range := TTextRange.Create(APosition.Line, Call.ContentStart, APosition.Line, Call.ContentEnd);
+  for Name in Names do
+  begin
+    Item := Default(TCompletionItem);
+    Item.Name := Name.Name;
+    Item.Detail := Name.TypeName;
+    if Call.Kind = TDataNameKind.Param then
+      Item.Kind := KindVariable
+    else
+      Item.Kind := KindField;
+    // Schreibweise wie in der Quelle; ersetzt den ganzen Inhalt zwischen den Anführungszeichen.
+    Item.HasTextEdit := True;
+    Item.TextEdit := TRuleEdit.Create(Range, StringReplace(Name.Name, '''', '''''', [rfReplaceAll]));
+    Item.DataSet := Call.DataSet;
+    Item.DataSource := Source;
+    AItems.Items := AItems.Items + [Item];
+  end;
 end;
 
 /// <summary>Typen der Parameter aus "const A, B: T; var C: U; D" in Reihenfolge; untypisiert ''.</summary>

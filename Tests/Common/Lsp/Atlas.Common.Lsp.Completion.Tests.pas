@@ -88,6 +88,8 @@ type
     [Test]
     procedure CastsSenderToAssignedComponents;
     [Test]
+    procedure OffersDataFieldNames;
+    [Test]
     procedure GroupsByExpectedType;
   end;
 
@@ -1518,5 +1520,62 @@ end;
 
 initialization
   TDUnitX.RegisterTestFixture(TLspCompletionTests);
+
+procedure TLspCompletionTests.OffersDataFieldNames;
+const
+  FormText =
+    'object frmOrders: TfrmOrders'#13#10 +
+    '  object qryOrders: TSQLQuery'#13#10 +
+    '    SQL.Strings = ('#13#10 +
+    '      ''select O.CUSTOMER_ID, O.CURRENCY, O.TOTAL from ORDERS O where O.ID = :OrderId'')'#13#10 +
+    '    object qryOrdersCUSTOMER_ID: TIntegerField'#13#10 +
+    '      FieldName = ''CUSTOMER_ID'''#13#10 +
+    '    end'#13#10 +
+    '  end'#13#10 +
+    'end'#13#10;
+
+  function Items(const ALine: string; ACharacter: Integer; out AItems: TCompletionItems): Boolean;
+  begin
+    Result := TLspCompletion.DataNameItems('unit Haupt;'#13#10'{$R *.dfm}'#13#10 + ALine + #13#10, HauptFile,
+      TTextPosition.Create(2, ACharacter),
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        AText := FormText;
+        Result := SameText(ExtractFileExt(AFileName), '.dfm');
+      end, AItems);
+  end;
+
+var
+  Found: TCompletionItems;
+  Json: TJSONObject;
+begin
+  // qryOrders.FieldByName('cu|'): persistente Felder, dann Spalten; der ganze String-Inhalt wird ersetzt.
+  Assert.IsTrue(Items('  qryOrders.FieldByName(''cu'').AsInteger;', 27, Found));
+  Assert.AreEqual(3, Integer(Length(Found.Items)));
+  Assert.AreEqual('CUSTOMER_ID', Found.Items[0].Name);
+  Assert.AreEqual('Integer', Found.Items[0].Detail);
+  Assert.AreEqual('CURRENCY', Found.Items[1].Name);
+  Assert.AreEqual('TOTAL', Found.Items[2].Name);
+  Assert.IsTrue(Found.Items[1].HasTextEdit);
+  Assert.AreEqual(25, Found.Items[1].TextEdit.Range.StartPos.Character);
+  Assert.AreEqual(27, Found.Items[1].TextEdit.Range.EndPos.Character);
+  Assert.AreEqual('CURRENCY', Found.Items[1].TextEdit.NewText);
+  Json := TLspCompletion.ToJson(Found);
+  try
+    Assert.IsTrue(Json.ToJSON.Contains('"dataSet":"qryOrders"'));
+    Assert.IsTrue(Json.ToJSON.Contains('"dataSource":"select O.CUSTOMER_ID'));
+  finally
+    Json.Free;
+  end;
+  // ParamByName: die Platzhalter.
+  Assert.IsTrue(Items('  qryOrders.ParamByName('''')', 25, Found));
+  Assert.AreEqual(1, Integer(Length(Found.Items)));
+  Assert.AreEqual('OrderId', Found.Items[0].Name);
+  // Zur Laufzeit erzeugt: im String, aber ohne Vorschlag.
+  Assert.IsTrue(Items('  qryNeu.FieldByName(''cu'')', 24, Found));
+  Assert.AreEqual(0, Integer(Length(Found.Items)));
+  // Andere Strings gehören nicht dazu.
+  Assert.IsFalse(Items('  ShowMessage(''cu'');', 17, Found));
+end;
 
 end.
