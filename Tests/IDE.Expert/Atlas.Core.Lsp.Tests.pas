@@ -44,6 +44,21 @@ type
     procedure ReportsProjectGroupChanges;
     [Test]
     procedure ReopensDocumentsOfPreviousSession;
+    [Test]
+    procedure SendsOnlyTheChangedRange;
+    [Test]
+    procedure ReportsWatchedFilesExceptSyncedChanges;
+  end;
+
+  [TestFixture]
+  TLspTextChangesTests = class
+  public
+    [Test]
+    procedure RangeCoversOnlyTheDifference;
+    [Test]
+    procedure NeverSplitsLineBreaksOrSurrogates;
+    [Test]
+    procedure AppliedChangeGivesNewText;
   end;
 
   [TestFixture]
@@ -69,6 +84,8 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Lsp.Adapters.ServerProcess,
+  Atlas.Core.Lsp.TextChanges,
+  Atlas.Core.Files.WatchedChanges,
   Atlas.Core.Problems.Contract;
 
 // Liest die JSON-Nachricht aus gerahmten Bytes.
@@ -501,6 +518,93 @@ begin
   end;
 end;
 
+procedure TLspSessionTests.SendsOnlyTheChangedRange;
+var
+  Client: TLspClient;
+  Session: TLspSession;
+  Changes: TList<string>;
+begin
+  Changes := TList<string>.Create;
+  Client := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    var
+      Message: TJSONObject;
+      Change: TJSONObject;
+    begin
+      Message := Unframe(ABytes);
+      try
+        if Message.GetValue<string>('method') = 'textDocument/didChange' then
+        begin
+          Change := Message.GetValue<TJSONArray>('params.contentChanges').Items[0] as TJSONObject;
+          Changes.Add(Format('%d:%d-%d:%d "%s"', [Change.GetValue<Integer>('range.start.line'),
+            Change.GetValue<Integer>('range.start.character'), Change.GetValue<Integer>('range.end.line'),
+            Change.GetValue<Integer>('range.end.character'), Change.GetValue<string>('text')]));
+        end;
+      finally
+        Message.Free;
+      end;
+    end);
+  Session := TLspSession.Create(Client);
+  try
+    Session.Sync('C:\P\A.pas', 'unit A;'#13#10'begin'#13#10'end.');
+    Session.Sync('C:\P\A.pas', 'unit A;'#13#10'begin'#13#10'  X;'#13#10'end.');
+    Session.Sync('C:\P\A.pas', 'unit A;'#13#10'begin'#13#10'end.');
+    Assert.AreEqual(2, Integer(Changes.Count));
+    Assert.AreEqual('2:0-2:0 "  X;'#13#10'"', Changes[0]);
+    Assert.AreEqual('2:0-3:0 ""', Changes[1]);
+  finally
+    Session.Free;
+    Client.Free;
+    Changes.Free;
+  end;
+end;
+
+procedure TLspSessionTests.ReportsWatchedFilesExceptSyncedChanges;
+var
+  Client: TLspClient;
+  Session: TLspSession;
+  Messages: TList<string>;
+begin
+  Messages := TList<string>.Create;
+  Client := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    var
+      Message: TJSONObject;
+      Item: TJSONValue;
+      Line: string;
+    begin
+      Message := Unframe(ABytes);
+      try
+        if Message.GetValue<string>('method') = 'workspace/didChangeWatchedFiles' then
+        begin
+          Line := '';
+          for Item in Message.GetValue<TJSONArray>('params.changes') do
+            Line := Line + Item.GetValue<string>('uri') + '=' + Item.GetValue<string>('type') + ' ';
+          Messages.Add(Line);
+        end;
+      finally
+        Message.Free;
+      end;
+    end);
+  Session := TLspSession.Create(Client);
+  try
+    Session.Sync('C:\P\Open.pas', 'unit Open;');
+    // Nur die offene Datei geändert: Ihr Editortext gilt, nichts zu melden.
+    Session.FilesChanged([TAtlasFileChange.Create('c:\p\open.pas', TAtlasFileChangeKind.Changed)]);
+    Assert.AreEqual(0, Integer(Messages.Count));
+    Session.FilesChanged([TAtlasFileChange.Create('C:\P\Open.pas', TAtlasFileChangeKind.Changed),
+      TAtlasFileChange.Create('C:\P\B.pas', TAtlasFileChangeKind.Changed),
+      TAtlasFileChange.Create('C:\P\Open.pas', TAtlasFileChangeKind.Deleted),
+      TAtlasFileChange.Create('C:\P\N.pas', TAtlasFileChangeKind.Created)]);
+    Assert.AreEqual(1, Integer(Messages.Count));
+    Assert.AreEqual('file:///c%3A/p/b.pas=2 file:///c%3A/p/open.pas=3 file:///c%3A/p/n.pas=1 ', Messages[0]);
+  finally
+    Session.Free;
+    Client.Free;
+    Messages.Free;
+  end;
+end;
+
 procedure TLspSessionTests.InitializeAnnouncesPullDiagnosticsAndCountsRefresh;
 var
   Client: TLspClient;
@@ -717,8 +821,80 @@ begin
   end;
 end;
 
+{ TLspTextChangesTests }
+
+function Applied(const AOld: string; const AChange: TLspTextChange): string;
+var
+  StartOffset, EndOffset: Integer;
+begin
+  StartOffset := TLspTextChanges.OffsetOf(AOld, AChange.StartPos);
+  EndOffset := TLspTextChanges.OffsetOf(AOld, AChange.EndPos);
+  Result := Copy(AOld, 1, StartOffset) + AChange.Text + Copy(AOld, EndOffset + 1, MaxInt);
+end;
+
+function RangeText(const AChange: TLspTextChange): string;
+begin
+  Result := Format('%d:%d-%d:%d "%s"', [AChange.StartPos.Line, AChange.StartPos.Character, AChange.EndPos.Line,
+    AChange.EndPos.Character, AChange.Text]);
+end;
+
+procedure TLspTextChangesTests.RangeCoversOnlyTheDifference;
+begin
+  Assert.AreEqual('0:5-0:5 "X"', RangeText(TLspTextChanges.Between('unit A;', 'unit XA;')));
+  Assert.AreEqual('1:1-1:2 ""', RangeText(TLspTextChanges.Between('a'#13#10'bcd', 'a'#13#10'bd')));
+  Assert.AreEqual('0:0-0:0 "x"', RangeText(TLspTextChanges.Between('', 'x')));
+  Assert.AreEqual('0:3-0:3 ""', RangeText(TLspTextChanges.Between('abc', 'abc')));
+  // Lone CR und LF zählen wie beim Server als Zeilenende.
+  Assert.AreEqual('2:0-2:1 "Y"', RangeText(TLspTextChanges.Between('a'#13'b'#10'X', 'a'#13'b'#10'Y')));
+end;
+
+procedure TLspTextChangesTests.NeverSplitsLineBreaksOrSurrogates;
+var
+  Change: TLspTextChange;
+begin
+  // CR bleibt gleich, LF wird zu "X"#10: Der Bereich darf nicht zwischen CR und LF beginnen.
+  Change := TLspTextChanges.Between('a'#13#10'b', 'a'#13'X'#10'b');
+  Assert.AreEqual('0:1-1:0 "'#13'X'#10'"', RangeText(Change));
+  // Vor dem gleichen Ende "\n..." steht im alten Text CR: das LF gehört in den Bereich.
+  Change := TLspTextChanges.Between('a'#13#10'b', 'aZ'#10'b');
+  Assert.AreEqual('aZ'#10'b', Applied('a'#13#10'b', Change));
+  Assert.AreEqual(0, Change.StartPos.Line);
+  Assert.AreEqual(1, Change.EndPos.Line);
+  // Zwei Emojis mit gleichem hohem Surrogat: nicht in der Mitte eines Paars trennen.
+  Change := TLspTextChanges.Between('x'#$D83D#$DE00, 'x'#$D83D#$DE01);
+  Assert.AreEqual('0:1-0:3 "'#$D83D#$DE01'"', RangeText(Change));
+end;
+
+procedure TLspTextChangesTests.AppliedChangeGivesNewText;
+const
+  Alphabet = 'ab'#13#10'x';
+var
+  Round, Index: Integer;
+  Old, New_: string;
+
+  function RandomText(ALength: Integer): string;
+  var
+    Position: Integer;
+  begin
+    Result := '';
+    for Position := 1 to ALength do
+      Result := Result + Alphabet[Random(Length(Alphabet)) + 1];
+  end;
+
+begin
+  RandSeed := 395;
+  for Round := 1 to 5000 do
+  begin
+    Old := RandomText(Random(12));
+    Index := Random(Length(Old) + 1);
+    New_ := Copy(Old, 1, Index) + RandomText(Random(4)) + Copy(Old, Index + Random(3) + 1, MaxInt);
+    Assert.AreEqual(New_, Applied(Old, TLspTextChanges.Between(Old, New_)), Format('%d: "%s" -> "%s"', [Round, Old, New_]));
+  end;
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TLspClientTests);
+  TDUnitX.RegisterTestFixture(TLspTextChangesTests);
   TDUnitX.RegisterTestFixture(TLspSessionTests);
   TDUnitX.RegisterTestFixture(TLspServerProcessTests);
 

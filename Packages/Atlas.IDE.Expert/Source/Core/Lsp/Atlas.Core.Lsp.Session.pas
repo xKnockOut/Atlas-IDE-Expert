@@ -3,9 +3,10 @@
 // LSP-Sitzung des IDE-Plugins (ADR 0006): initialize, Dokumentabgleich und die
 // Anfragen, die die IDE über den Code Insight-Manager stellt.
 // Abgleich: Vor jeder Anfrage wird der aktuelle Editortext geschickt, beim
-// ersten Mal als didOpen, danach als didChange mit dem ganzen Text, aber nur,
-// wenn er sich geändert hat. Positionen sind 0-basiert in UTF-16-Einheiten
-// (Delphi-String-Indizes), wie LSP sie erwartet.
+// ersten Mal als didOpen, danach als didChange mit dem geänderten Bereich
+// (#395, TLspTextChanges), aber nur, wenn er sich geändert hat. Positionen
+// sind 0-basiert in UTF-16-Einheiten (Delphi-String-Indizes), wie LSP sie
+// erwartet.
 // Diagnosen (#398) holt das Plugin selbst (Pull: textDocument/diagnostic und
 // workspace/diagnostic); eine Anfrage workspace/diagnostic/refresh des Servers
 // zählt RefreshCount hoch.
@@ -14,6 +15,8 @@
 // es Änderungen als workspace/didChangeWorkspaceFolders.
 // Serverneustart (#393): OpenDocuments der alten Sitzung, Reopen in der neuen
 // schickt sie sofort wieder als didOpen.
+// Änderungen außerhalb der IDE (#395): FilesChanged meldet sie als
+// workspace/didChangeWatchedFiles.
 
 interface
 
@@ -24,7 +27,8 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Progress,
   Atlas.Core.Hover.Contract,
-  Atlas.Core.Problems.Contract;
+  Atlas.Core.Problems.Contract,
+  Atlas.Core.Files.WatchedChanges;
 
 type
   TLspLocation = record
@@ -155,6 +159,9 @@ type
     /// <summary>Öffnet die Dokumente einer früheren Sitzung (didOpen, Version 1); schon
     /// abgeglichene bleiben unverändert. Erst nach Initialize aufrufen (#393).</summary>
     procedure Reopen(const ADocuments: TArray<TLspOpenDocument>);
+    /// <summary>workspace/didChangeWatchedFiles für Änderungen außerhalb der IDE (#395).
+    /// Geänderte Dateien, die gerade abgeglichen sind, entfallen: Für sie gilt der Editortext.</summary>
+    procedure FilesChanged(const AChanges: TArray<TAtlasFileChange>);
     /// <summary>Anzahl der workspace/diagnostic/refresh-Anfragen des Servers.</summary>
     function RefreshCount: Integer;
     /// <summary>Laufende Indizierung o. Ä. des Servers ("Index 45 %"); '' ohne (#492).</summary>
@@ -167,7 +174,8 @@ type
 implementation
 
 uses
-  System.SyncObjs;
+  System.SyncObjs,
+  Atlas.Core.Lsp.TextChanges;
 
 const
   Unreserved = ['A'..'Z', 'a'..'z', '0'..'9', '-', '.', '_', '~', '/'];
@@ -383,6 +391,7 @@ var
   Key: string;
   Params, Document, Change: TJSONObject;
   Changes: TJSONArray;
+  Edit: TLspTextChange;
 begin
   Key := AnsiLowerCase(AFileName);
   Document := TJSONObject.Create;
@@ -404,12 +413,21 @@ begin
     Document.Free;
     Exit;
   end;
+  // Nur der geänderte Bereich (#395); der Server meldet textDocumentSync.change = Incremental.
+  Edit := TLspTextChanges.Between(State.Text, AText);
   Inc(State.Version);
   State.Text := AText;
   FDocuments[Key] := State;
   Document.AddPair('version', TJSONNumber.Create(State.Version));
   Change := TJSONObject.Create;
-  Change.AddPair('text', AText);
+  Change.AddPair('range', TJSONObject.Create
+    .AddPair('start', TJSONObject.Create
+      .AddPair('line', TJSONNumber.Create(Edit.StartPos.Line))
+      .AddPair('character', TJSONNumber.Create(Edit.StartPos.Character)))
+    .AddPair('end', TJSONObject.Create
+      .AddPair('line', TJSONNumber.Create(Edit.EndPos.Line))
+      .AddPair('character', TJSONNumber.Create(Edit.EndPos.Character))));
+  Change.AddPair('text', Edit.Text);
   Changes := TJSONArray.Create;
   Changes.AddElement(Change);
   Params := TJSONObject.Create;
@@ -624,6 +642,30 @@ begin
   for Document in ADocuments do
     if not FDocuments.ContainsKey(AnsiLowerCase(Document.FileName)) then
       Sync(Document.FileName, Document.Text);
+end;
+
+procedure TLspSession.FilesChanged(const AChanges: TArray<TAtlasFileChange>);
+var
+  Change: TAtlasFileChange;
+  Items: TJSONArray;
+  Item: TJSONObject;
+begin
+  Items := TJSONArray.Create;
+  for Change in AChanges do
+  begin
+    if (Change.Kind = TAtlasFileChangeKind.Changed) and FDocuments.ContainsKey(AnsiLowerCase(Change.FileName)) then
+      Continue;
+    Item := TJSONObject.Create;
+    Item.AddPair('uri', PathToUri(Change.FileName));
+    Item.AddPair('type', TJSONNumber.Create(Ord(Change.Kind)));
+    Items.AddElement(Item);
+  end;
+  if Items.Count = 0 then
+  begin
+    Items.Free;
+    Exit;
+  end;
+  FClient.Notify('workspace/didChangeWatchedFiles', TJSONObject.Create(TJSONPair.Create('changes', Items)));
 end;
 
 function TLspSession.ProgressText: string;
