@@ -396,20 +396,31 @@ end;
 
 procedure TAtlasCompletionProviderTests.WithoutSessionCompletesEmpty;
 var
+  Server: TAtlasServerCompletionProvider;
   Provider: IAtlasCompletionProvider;
   Sink: TCollectingSink;
   SinkRef: IAtlasCompletionSink;
+  Logged: string;
 begin
-  Provider := TAtlasServerCompletionProvider.Create(
+  Server := TAtlasServerCompletionProvider.Create(
     function: TLspSession
     begin
       Result := nil;
     end);
+  Provider := Server;
+  // Warum die Liste leer bleibt, steht im Diagnoselog des Plugins (#647).
+  Logged := '';
+  Server.OnLog :=
+    procedure(const AMessage: string)
+    begin
+      Logged := Logged + AMessage;
+    end;
   Sink := TCollectingSink.Create;
   SinkRef := Sink;
   Provider.Query(Context, SinkRef);
   Assert.IsTrue(Sink.WaitDone(0), 'Ohne Server sofort fertig');
   Assert.AreEqual('', Sink.Names);
+  Assert.Contains(Logged, 'kein Server');
 end;
 
 { TAtlasServerCompletionTests }
