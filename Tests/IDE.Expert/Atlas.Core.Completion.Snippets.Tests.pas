@@ -25,6 +25,30 @@ type
     procedure BuiltInSnippetsParse;
     [Test]
     procedure LoadsFolder;
+    [Test]
+    procedure DoubleDollarIsText;
+    [Test]
+    procedure SetterSnippetKeepsInvalidateRuleSilent;
+    [Test]
+    procedure FormatRoundTrips;
+  end;
+
+  /// <summary>Live Templates der IDE (#51).</summary>
+  [TestFixture]
+  TAtlasLiveTemplatesTests = class
+  public
+    [Test]
+    procedure ReadsDelphi12Folder;
+    [Test]
+    procedure ConvertsPointsAndMarkers;
+    [Test]
+    procedure KeepsFixedPointsAndEscapesDollar;
+    [Test]
+    procedure SkipsBrokenXml;
+    [Test]
+    procedure OwnBeforeIdeBeforeBuiltIn;
+    [Test]
+    procedure IdeTemplateAppearsInList;
   end;
 
   [TestFixture]
@@ -63,7 +87,11 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Presentation,
+  Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Builtin.Components,
+  Atlas.Tests.RuleAssert,
   Atlas.Core.Completion.Snippets,
+  Atlas.Core.Completion.LiveTemplates,
   Atlas.Core.Completion.Placeholders,
   Atlas.Core.Completion.Providers.Snippets;
 
@@ -441,8 +469,182 @@ begin
   Assert.AreEqual('Snippet', Tags[0].Text);
 end;
 
+procedure TAtlasSnippetsTests.DoubleDollarIsText;
+var
+  Expansion: TAtlasSnippetExpansion;
+begin
+  Expansion := TAtlasSnippets.Expand('X := Y and $$1;$0', '', #10);
+  Assert.AreEqual('X := Y and $1;', Expansion.Text);
+  Assert.AreEqual(1, Integer(Length(Expansion.Stops)));
+  Assert.AreEqual(0, Expansion.Stops[0].Number);
+end;
+
+procedure TAtlasSnippetsTests.SetterSnippetKeepsInvalidateRuleSilent;
+const
+  Head = 'unit U;'#10'interface'#10'type'#10'  TMyControl = class(TCustomControl)'#10'  private'#10 +
+    '    FValue: Integer;'#10'    procedure SetValue(const AValue: Integer);'#10'  protected'#10 +
+    '    procedure Paint; override;'#10'  published'#10'    property Value: Integer read FValue write SetValue;'#10 +
+    '  end;'#10'implementation'#10'procedure TMyControl.Paint;'#10'begin'#10'  inherited;'#10 +
+    '  Canvas.TextOut(0, 0, IntToStr(FValue));'#10'end;'#10;
+var
+  Snippet: TAtlasSnippet;
+begin
+  // Gegenprobe: ohne Invalidate meldet die Regel (#55).
+  TRuleAssert.Reports(TComponentSetterWithoutInvalidateRule.Create, Head +
+    'procedure TMyControl.SetValue(const AValue: Integer);'#10'begin'#10'  FValue := AValue;'#10'end;'#10'end.');
+  Assert.IsTrue(Find(TAtlasSnippets.BuiltIn, 'propset', Snippet));
+  TRuleAssert.Silent(TComponentSetterWithoutInvalidateRule.Create,
+    Head + TAtlasSnippets.Expand(Snippet.Body, '', #10).Text + #10'end.');
+end;
+
+procedure TAtlasSnippetsTests.FormatRoundTrips;
+var
+  Snippet, Parsed: TAtlasSnippet;
+  Error: string;
+begin
+  Snippet := Default(TAtlasSnippet);
+  Snippet.Name := 'Schleife über eine Liste';
+  Snippet.Prefix := 'forl';
+  Snippet.Description := 'for-Schleife bis Count - 1';
+  Snippet.Body := 'for ${1:I} := 0 to ${2:List}.Count - 1 do'#10'  $0';
+  Assert.IsTrue(TAtlasSnippets.Parse(TAtlasSnippets.ToFileText(Snippet), 'forl.atlas-snippet', Parsed, Error), Error);
+  Assert.AreEqual(Snippet.Name, Parsed.Name);
+  Assert.AreEqual(Snippet.Prefix, Parsed.Prefix);
+  Assert.AreEqual(Snippet.Description, Parsed.Description);
+  Assert.AreEqual(Snippet.Body, Parsed.Body);
+  Assert.AreEqual('forl.atlas-snippet', TAtlasSnippets.FileNameFor('forl'));
+  Assert.AreEqual('a_b.atlas-snippet', TAtlasSnippets.FileNameFor('a\b'));
+end;
+
+{ TAtlasLiveTemplatesTests }
+
+function LiveTemplateFolder: string;
+var
+  Directory, Candidate: string;
+begin
+  Directory := ExtractFileDir(ParamStr(0));
+  while Directory <> '' do
+  begin
+    Candidate := TPath.Combine(Directory, 'Tests\Data\LiveTemplates\Delphi12');
+    if TDirectory.Exists(Candidate) then
+      Exit(Candidate);
+    if ExtractFileDir(Directory) = Directory then
+      Break;
+    Directory := ExtractFileDir(Directory);
+  end;
+  Result := '';
+end;
+
+procedure TAtlasLiveTemplatesTests.ReadsDelphi12Folder;
+var
+  List: TAtlasSnippetList;
+  Stats: TAtlasLiveTemplateStats;
+  Snippet: TAtlasSnippet;
+begin
+  Assert.IsTrue(LiveTemplateFolder <> '', 'Ordner Tests\Data\LiveTemplates\Delphi12 fehlt');
+  List := TAtlasLiveTemplates.LoadFolder(LiveTemplateFolder, Stats);
+  Assert.AreEqual(2, Stats.Templates);
+  // Die C++-Vorlage wird übersprungen, das Skript in "forb" entfällt.
+  Assert.AreEqual(1, Stats.Skipped);
+  Assert.AreEqual(1, Stats.Scripts);
+  Assert.IsTrue(Find(List, 'forb', Snippet));
+  Assert.AreEqual('for statement', Snippet.Description);
+  Assert.IsTrue(Snippet.Origin = TAtlasSnippetOrigin.Ide);
+  Assert.IsFalse(Find(List, 'cppfor', Snippet));
+end;
+
+procedure TAtlasLiveTemplatesTests.ConvertsPointsAndMarkers;
+var
+  List: TAtlasSnippetList;
+  Stats: TAtlasLiveTemplateStats;
+  Snippet: TAtlasSnippet;
+  Expansion: TAtlasSnippetExpansion;
+begin
+  Stats := Default(TAtlasLiveTemplateStats);
+  List := TAtlasLiveTemplates.Parse('<codetemplate><template name="forb"><point name="ident"><text>' +
+    #10'  I'#10'</text></point><point name="to"><text>N</text></point>' +
+    '<code language="Delphi" delimiter="|"><![CDATA[for |ident| := 0 to |to| do'#13#10'begin'#13#10 +
+    '|selected||*||end|'#13#10'  X(|ident|);'#13#10'end;'#13#10']]></code></template></codetemplate>', '', Stats);
+  Assert.AreEqual(1, Integer(Length(List)));
+  Snippet := List[0];
+  Assert.AreEqual('for ${1:I} := 0 to ${2:N} do'#10'begin'#10'  $0'#10'  X(${1});'#10'end;', Snippet.Body);
+  Expansion := TAtlasSnippets.Expand(Snippet.Body, '', #10);
+  Assert.AreEqual('for I := 0 to N do'#10'begin'#10'  '#10'  X(I);'#10'end;', Expansion.Text);
+end;
+
+procedure TAtlasLiveTemplatesTests.KeepsFixedPointsAndEscapesDollar;
+var
+  List: TAtlasSnippetList;
+  Stats: TAtlasLiveTemplateStats;
+  Snippet: TAtlasSnippet;
+begin
+  List := TAtlasLiveTemplates.LoadFolder(LiveTemplateFolder, Stats);
+  Assert.IsTrue(Find(List, 'atlasmask', Snippet));
+  Assert.AreEqual('Maske & Wert', Snippet.Description);
+  Assert.AreEqual('if Flags and $$1 <> 0 then $0;', Snippet.Body);
+  Assert.AreEqual('if Flags and $1 <> 0 then ;', TAtlasSnippets.Expand(Snippet.Body, '', #10).Text);
+end;
+
+procedure TAtlasLiveTemplatesTests.SkipsBrokenXml;
+var
+  List: TAtlasSnippetList;
+  Stats: TAtlasLiveTemplateStats;
+begin
+  Stats := Default(TAtlasLiveTemplateStats);
+  List := TAtlasLiveTemplates.Parse('<codetemplate><template name="x"><code><![CDATA[X;', '', Stats);
+  Assert.AreEqual(0, Integer(Length(List)));
+  Assert.AreEqual(1, Stats.Skipped);
+  // Ohne Code: übersprungen.
+  List := TAtlasLiveTemplates.Parse('<codetemplate><template name="leer"></template></codetemplate>', '', Stats);
+  Assert.AreEqual(0, Integer(Length(List)));
+  Assert.AreEqual(2, Stats.Skipped);
+end;
+
+procedure TAtlasLiveTemplatesTests.OwnBeforeIdeBeforeBuiltIn;
+var
+  Ide, Own, Merged: TAtlasSnippetList;
+  Snippet: TAtlasSnippet;
+begin
+  Snippet := Default(TAtlasSnippet);
+  Snippet.Prefix := 'tryf';
+  Snippet.Body := 'IDE;';
+  Snippet.Origin := TAtlasSnippetOrigin.Ide;
+  Ide := [Snippet];
+  Snippet.Prefix := 'forin';
+  Snippet.Body := 'IDE2;';
+  Ide := Ide + [Snippet];
+  Snippet.Prefix := 'FORIN';
+  Snippet.Body := 'Eigene;';
+  Snippet.Origin := TAtlasSnippetOrigin.User;
+  Own := [Snippet];
+  Merged := TAtlasSnippets.Merge(TAtlasSnippets.Merge(TAtlasSnippets.BuiltIn, Ide), Own);
+  Assert.AreEqual(Integer(Length(TAtlasSnippets.BuiltIn)), Integer(Length(Merged)));
+  Assert.IsTrue(Find(Merged, 'tryf', Snippet));
+  Assert.AreEqual('IDE;', Snippet.Body);
+  Assert.IsTrue(Find(Merged, 'forin', Snippet));
+  Assert.AreEqual('Eigene;', Snippet.Body);
+end;
+
+procedure TAtlasLiveTemplatesTests.IdeTemplateAppearsInList;
+var
+  List: TAtlasSnippetList;
+  Stats: TAtlasLiveTemplateStats;
+  Items: TAtlasCompletionItems;
+  Item: TAtlasCompletionItem;
+  Found: Boolean;
+begin
+  List := TAtlasLiveTemplates.LoadFolder(LiveTemplateFolder, Stats);
+  Items := TAtlasSnippetCompletionProvider.Items(TAtlasSnippets.Merge(TAtlasSnippets.BuiltIn, List));
+  Found := False;
+  for Item in Items do
+    if Item.Name = 'forb' then
+      Found := Item.Snippet <> '';
+  Assert.IsTrue(Found);
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasSnippetsTests);
+  TDUnitX.RegisterTestFixture(TAtlasLiveTemplatesTests);
   TDUnitX.RegisterTestFixture(TAtlasPlaceholderSessionTests);
   TDUnitX.RegisterTestFixture(TAtlasSnippetProviderTests);
 

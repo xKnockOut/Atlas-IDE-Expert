@@ -46,6 +46,7 @@ begin
   Settings.EditorKeysPriority := True;
   Settings.SlashCommands := False;
   Settings.Snippets := False;
+  Settings.ImportIdeTemplates := False;
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
@@ -65,6 +66,7 @@ begin
   Assert.IsTrue(Saved.EditorKeysPriority);
   Assert.IsFalse(Saved.SlashCommands);
   Assert.IsFalse(Saved.Snippets);
+  Assert.IsFalse(Saved.ImportIdeTemplates);
 end;
 
 initialization

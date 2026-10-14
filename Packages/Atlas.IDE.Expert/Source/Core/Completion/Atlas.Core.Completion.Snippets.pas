@@ -11,7 +11,9 @@
 //   $0, ${0}   Cursor nach dem letzten Platzhalter
 // Wiederholte Nummern sind verknüpft und zeigen denselben Text. Ein "$" vor
 // etwas anderem bleibt stehen, auch "$0F" oder "$FF": Hexzahlen im Delphi-Code
-// sind keine Platzhalter.
+// sind keine Platzhalter. "$$" steht für ein einzelnes "$" (für Text wie
+// "$1;", der sonst wie ein Platzhalter aussähe; so übernimmt Atlas die Live
+// Templates der IDE).
 
 interface
 
@@ -21,7 +23,8 @@ uses
 {$SCOPEDENUMS ON}
 
 type
-  TAtlasSnippetOrigin = (BuiltIn, User);
+  /// <summary>Herkunft; bei gleichem Kürzel gilt User vor Ide vor BuiltIn.</summary>
+  TAtlasSnippetOrigin = (BuiltIn, Ide, User);
 
   TAtlasSnippet = record
     /// <summary>Anzeigename, z. B. „try…finally mit Create/Free“; '' = Prefix.</summary>
@@ -63,9 +66,15 @@ type
     /// unbekannt ist.</summary>
     class function Parse(const AText, AFileName: string; out ASnippet: TAtlasSnippet;
       out AError: string): Boolean; static;
+    /// <summary>Dateiinhalt im Format von Parse (Zeilen mit #10); für die Seite „Snippets“.</summary>
+    class function ToFileText(const ASnippet: TAtlasSnippet): string; static;
+    /// <summary>Dateiname zum Kürzel, z. B. "tryf.atlas-snippet"; andere Zeichen als Buchstaben, Ziffern und _
+    /// werden zu _.</summary>
+    class function FileNameFor(const APrefix: string): string; static;
     /// <summary>tryf, trye, forin, fori, while, repeat, class, record, prop, propset, comp, reg.</summary>
     class function BuiltIn: TAtlasSnippetList; static;
-    /// <summary>Eigene Vorlagen ersetzen mitgelieferte mit gleichem Kürzel (ohne Groß/Klein).</summary>
+    /// <summary>Vorlagen aus AUser ersetzen die aus ABuiltIn mit gleichem Kürzel (ohne Groß/Klein). Für
+    /// mitgelieferte, IDE- und eigene Vorlagen zweimal: Merge(Merge(BuiltIn, Ide), User).</summary>
     class function Merge(const ABuiltIn, AUser: TAtlasSnippetList): TAtlasSnippetList; static;
     /// <summary>Setzt ABody ein: jede Zeile nach der ersten bekommt AIndent vorangestellt, Zeilenumbrüche werden
     /// zu ALineBreak, Platzhalter zu ihrem Vorgabetext (verknüpfte zum ersten vorhandenen).</summary>
@@ -135,6 +144,13 @@ begin
   begin
     if ABody[Index] = '$' then
     begin
+      // "$$" = "$"
+      if (Index < Length(ABody)) and (ABody[Index + 1] = '$') then
+      begin
+        Literal := Literal + '$';
+        Inc(Index, 2);
+        Continue;
+      end;
       // ${n} bzw. ${n:Vorgabe}
       if (Index < Length(ABody)) and (ABody[Index + 1] = '{') and (Index + 2 <= Length(ABody)) and
         IsDigit(ABody[Index + 2]) then
@@ -276,6 +292,29 @@ begin
   Result := True;
 end;
 
+class function TAtlasSnippets.ToFileText(const ASnippet: TAtlasSnippet): string;
+
+  function OneLine(const AText: string): string;
+  begin
+    Result := Trim(StringReplace(NormalizeBreaks(AText), #10, ' ', [rfReplaceAll]));
+  end;
+
+begin
+  Result := 'name: ' + OneLine(ASnippet.Name) + #10 + 'prefix: ' + OneLine(ASnippet.Prefix) + #10 +
+    'description: ' + OneLine(ASnippet.Description) + #10 + '---' + #10 + NormalizeBreaks(ASnippet.Body) + #10;
+end;
+
+class function TAtlasSnippets.FileNameFor(const APrefix: string): string;
+var
+  Index: Integer;
+begin
+  Result := APrefix;
+  for Index := 1 to Length(Result) do
+    if not IsWordChar(Result[Index]) then
+      Result[Index] := '_';
+  Result := Result + FileExtension;
+end;
+
 function Snippet(const APrefix, AName, ADescription, ABody: string): TAtlasSnippet;
 begin
   Result := Default(TAtlasSnippet);
@@ -336,9 +375,9 @@ begin
   for Own in AUser do
   begin
     Replaced := False;
-    // Doppelte Kürzel unter den eigenen: die erste Datei gilt.
+    // Doppelte Kürzel unter den neuen: die erste Datei gilt.
     for Item in Result do
-      if (Item.Origin = TAtlasSnippetOrigin.User) and SameText(Own.Prefix, Item.Prefix) then
+      if (Item.Origin = Own.Origin) and SameText(Own.Prefix, Item.Prefix) then
         Replaced := True;
     if not Replaced then
       Result := Result + [Own];

@@ -102,6 +102,7 @@ contains
   Atlas.UI.Strings in 'Source\UI\Atlas.UI.Strings.pas',
   Atlas.Core.Completion.Providers.XmlDoc in 'Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.XmlDoc.pas',
   Atlas.Core.Completion.Snippets in 'Source\Core\Completion\Atlas.Core.Completion.Snippets.pas',
+  Atlas.Core.Completion.LiveTemplates in 'Source\Core\Completion\Atlas.Core.Completion.LiveTemplates.pas',
   Atlas.Core.Completion.Placeholders in 'Source\Core\Completion\Atlas.Core.Completion.Placeholders.pas',
   Atlas.Core.Completion.Providers.Snippets in 'Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.Snippets.pas',
   Atlas.IDE.Completion.Placeholders in 'Source\IDE\Completion\Atlas.IDE.Completion.Placeholders.pas',

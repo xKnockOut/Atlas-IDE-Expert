@@ -18,8 +18,9 @@
 //     der gewählte Eintrag klar, wird er übernommen und das Zeichen bleibt stehen;
 //     sonst bleibt nur das Zeichen und das Popup schließt. Erkannt nach dem Tippen im
 //     Puffer, nicht über eine Tastenbindung: unabhängig vom Tastaturlayout.
-//   - Code-Vorlagen (#51): eigene Quelle mit den mitgelieferten Vorlagen und denen aus
-//     %APPDATA%\Atlas\Snippets (bei Änderung neu gelesen). Übernehmen setzt den Text mit der
+//   - Code-Vorlagen (#51): eigene Quelle mit den mitgelieferten Vorlagen, den Live Templates
+//     der IDE (abschaltbar, ImportIdeTemplates) und denen aus %APPDATA%\Atlas\Snippets (bei
+//     Änderung neu gelesen; eigene vor IDE vor mitgelieferten). Übernehmen setzt den Text mit der
 //     Einrückung der Zeile ein und startet den Platzhalter-Modus (Atlas.IDE.Completion.Placeholders).
 
 interface
@@ -137,6 +138,8 @@ type
     function GuardPending(const AView: IOTAEditView): Boolean;
     /// <summary>Ordner der eigenen Code-Vorlagen (#51): %APPDATA%\Atlas\Snippets.</summary>
     class function SnippetFolder: string; static;
+    /// <summary>Live Templates der laufenden IDE (#51); '' ohne Version.</summary>
+    class function IdeTemplateFolder: string; static;
   end;
 
 implementation
@@ -154,6 +157,8 @@ uses
   Atlas.Core.Completion.Matching,
   Atlas.Core.Completion.Providers.XmlDoc,
   Atlas.Core.Completion.Snippets,
+  Atlas.Core.Completion.LiveTemplates,
+  Atlas.Core.Projects.Context,
   Atlas.Core.Completion.Preview,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Settings.Store,
@@ -560,22 +565,38 @@ end;
 
 procedure TAtlasEditorCompletion.RefreshSnippets;
 var
-  Folder, Stamp: string;
+  Folder, IdeFolder, Stamp: string;
   Errors: TArray<string>;
-  Own: TAtlasSnippetList;
+  Own, Ide: TAtlasSnippetList;
+  Stats: TAtlasLiveTemplateStats;
 begin
   if (FSnippetChecked <> 0) and (TThread.GetTickCount64 - FSnippetChecked < 3000) then
     Exit;
   FSnippetChecked := TThread.GetTickCount64;
   Folder := TAtlasEditorCompletion.SnippetFolder;
-  Stamp := TAtlasSnippets.FolderStamp(Folder);
+  IdeFolder := '';
+  if TAtlasIdeSettings.Current.ImportIdeTemplates then
+    IdeFolder := TAtlasEditorCompletion.IdeTemplateFolder;
+  Stamp := TAtlasSnippets.FolderStamp(Folder) + '#' + TAtlasLiveTemplates.FolderStamp(IdeFolder);
   if Stamp = FSnippetStamp then
     Exit;
   FSnippetStamp := Stamp;
   Own := TAtlasSnippets.LoadFolder(Folder, Errors);
+  Ide := TAtlasLiveTemplates.LoadFolder(IdeFolder, Stats);
   // Ohne Datei- und Ordnernamen: Das Diagnoselog nennt keine Namen (#647).
-  Log(Format('Code-Vorlagen: %d eigene, %d fehlerhafte übersprungen', [Integer(Length(Own)), Integer(Length(Errors))]));
-  FSnippetProvider.SetSnippets(TAtlasSnippets.Merge(TAtlasSnippets.BuiltIn, Own));
+  Log(Format('Code-Vorlagen: %d eigene, %d fehlerhafte übersprungen; %d aus der IDE, %d übersprungen, ' +
+    '%d Skripte entfallen', [Integer(Length(Own)), Integer(Length(Errors)), Stats.Templates, Stats.Skipped,
+    Stats.Scripts]));
+  FSnippetProvider.SetSnippets(TAtlasSnippets.Merge(TAtlasSnippets.Merge(TAtlasSnippets.BuiltIn, Ide), Own));
+end;
+
+class function TAtlasEditorCompletion.IdeTemplateFolder: string;
+var
+  Services: IOTAServices;
+begin
+  Result := '';
+  if Supports(BorlandIDEServices, IOTAServices, Services) then
+    Result := TAtlasLiveTemplates.Folder(TAtlasProjectContext.VersionOfRegistryKey(Services.GetBaseRegistryKey));
 end;
 
 class function TAtlasEditorCompletion.SnippetFolder: string;
