@@ -25,6 +25,8 @@ type
     procedure CapabilityListsCommands;
     [Test]
     procedure StatusAsMarkdownAndJson;
+    [Test]
+    procedure StatusShowsCacheAndOffloadMetrics;
   end;
 
 implementation
@@ -225,6 +227,37 @@ begin
     Assert.AreEqual('App', Json.GetValue<string>('workspaces[0].name'));
     Assert.AreEqual(4, Json.GetValue<Integer>('requests[0].count'));
     Assert.AreEqual(Status.ToMarkdown, Json.GetValue<string>('markdown'));
+  finally
+    Json.Free;
+  end;
+end;
+
+procedure TLspStatusTests.StatusShowsCacheAndOffloadMetrics;
+var
+  Status: TServerStatus;
+  Workspace: TWorkspaceStatus;
+  Json: TJSONObject;
+begin
+  // #492: ausgelagerte Verwendungen, Größe auf der Platte, letzte Aktualisierung.
+  Status := Default(TServerStatus);
+  Status.OffloadedUnits := 4;
+  Status.DiskBytes := 3 * 1024 * 1024;
+  Workspace := Default(TWorkspaceStatus);
+  Workspace.Name := 'App';
+  Workspace.LastUpdate := EncodeDate(2026, 10, 14) + EncodeTime(12, 30, 0, 0);
+  Workspace.CacheBytes := 1024 * 1024;
+  Workspace.LibraryCacheBytes := 1024 * 1024;
+  Status.Workspaces := [Workspace];
+  Assert.IsTrue(Pos('Verwendungen von 4 Units ausgelagert', Status.ToMarkdown) > 0, Status.ToMarkdown);
+  Assert.IsTrue(Pos('- Caches auf der Platte: 3.0 MB', Status.ToMarkdown) > 0, Status.ToMarkdown);
+  Assert.IsTrue(Pos('aktualisiert 14.10.2026 12:30:00, Cache 2.0 MB', Status.ToMarkdown) > 0, Status.ToMarkdown);
+  Json := Status.ToJson;
+  try
+    Assert.AreEqual(4, Json.GetValue<Integer>('offloadedUnits'));
+    Assert.AreEqual<Int64>(3 * 1024 * 1024, Json.GetValue<Int64>('diskBytes'));
+    Assert.AreEqual<Int64>(1024 * 1024, Json.GetValue<Int64>('workspaces[0].libraryCacheBytes'));
+    Assert.IsTrue(Json.GetValue<string>('workspaces[0].lastUpdate').StartsWith('2026-10-14T12:30:00'),
+      Json.GetValue<string>('workspaces[0].lastUpdate'));
   finally
     Json.Free;
   end;

@@ -90,6 +90,11 @@ type
     FBaseline: IRuleBaseline;
     FLastIndexMs: Int64;
     FLastIndex: TIndexBuildResult;
+    /// <summary>Letzte Änderung am Index (Aufbau, Speichern, Tipp-Pause, #492); unter FLock.</summary>
+    FLastUpdate: TDateTime;
+    /// <summary>Cache-Dateien des laufenden Aufbaus (#492); unter FLock.</summary>
+    FCacheFile: string;
+    FLibraryCacheFile: string;
     /// <summary>Sperre des eigenen Index-Caches (#184); nil, wenn eine andere Instanz ihn hält.</summary>
     FCacheLock: TStream;
     FCacheLockFile: string;
@@ -99,6 +104,7 @@ type
     function LockCache(const ACacheFile, ALibraryCacheFile: string): Boolean;
     /// <summary>Weist auf gemischte Kodierungen der Projektdateien hin (Index-Thread).</summary>
     procedure ReportEncodings;
+    procedure Touch;
     procedure IndexEvent(const AText: string);
     procedure StartIndex(const ASettings: TServerSettings);
     function FindProjectFile(const ASettings: TServerSettings): string;
@@ -117,6 +123,11 @@ type
     procedure Rebuild;
     /// <summary>Hält den Indexaufbau an.</summary>
     procedure Stop;
+    /// <summary>Hält den Aufbau an und gibt die Sperre des eigenen Caches frei, damit „Index löschen“ (#492)
+    /// ihn entfernen kann; Rebuild sperrt ihn wieder.</summary>
+    procedure ReleaseCache;
+    /// <summary>Verwendungen der Bezeichner einer Unit (#492), auch ausgelagerte.</summary>
+    function UsagesOf(const AFileName: string; out AUsages: TArray<TIndexUsage>): Boolean;
     function EnsureUnit(const AUnitName: string): Boolean;
     function ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
     function ApplyText(const AFileName, AText: string): Boolean;
@@ -268,6 +279,7 @@ begin
         try
           FLastIndexMs := AElapsedMs;
           FLastIndex := AResult;
+          FLastUpdate := Now;
         finally
           TMonitor.Exit(FLock);
         end;
@@ -281,6 +293,14 @@ begin
         if Assigned(FOnIndexFinished) then
           FOnIndexFinished();
       end;
+    end;
+  FIndexService.OnCacheRejected :=
+    procedure(const AFileName, AReason: string)
+    begin
+      // Still neu aufbauen (#492): nur ins Log, keine Meldung an den Benutzer. Ohne Pfad: Das Log bleibt
+      // anonym (der Cache liegt im Benutzerprofil).
+      FLogger.Info(Format('Index-Cache verworfen (%s); wird neu aufgebaut', [AReason]));
+      IndexEvent('index cache rejected');
     end;
   FIndexService.OnError :=
     procedure(const AError: Exception)
@@ -332,6 +352,28 @@ begin
   FIndexService.Stop;
 end;
 
+procedure TShellWorkspace.ReleaseCache;
+begin
+  FIndexService.Stop;
+  FreeAndNil(FCacheLock);
+  FCacheLockFile := '';
+end;
+
+procedure TShellWorkspace.Touch;
+begin
+  TMonitor.Enter(FLock);
+  try
+    FLastUpdate := Now;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+function TShellWorkspace.UsagesOf(const AFileName: string; out AUsages: TArray<TIndexUsage>): Boolean;
+begin
+  Result := FIndexService.UsagesOf(AFileName, AUsages);
+end;
+
 procedure TShellWorkspace.Activate;
 begin
   if not FDeferred or FActivated then
@@ -362,11 +404,15 @@ end;
 function TShellWorkspace.ApplyText(const AFileName, AText: string): Boolean;
 begin
   Result := FIndexService.ApplyText(AFileName, AText);
+  if Result then
+    Touch;
 end;
 
 function TShellWorkspace.ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
 begin
   Result := FIndexService.ApplyChanges(AChanges);
+  if Result > 0 then
+    Touch;
 end;
 
 function TShellWorkspace.Defines(out ADefines: TArray<string>): Boolean;
@@ -501,9 +547,14 @@ begin
     Result.Parsed := FLastIndex.Parsed;
     Result.FromCache := FLastIndex.FromCache;
     Result.Missing := FLastIndex.Missing;
+    Result.LastUpdate := FLastUpdate;
+    Result.CacheFile := FCacheFile;
+    Result.LibraryCacheFile := FLibraryCacheFile;
   finally
     TMonitor.Exit(FLock);
   end;
+  Result.CacheBytes := TIndexCacheDirectory.SizeOf([Result.CacheFile]);
+  Result.LibraryCacheBytes := TIndexCacheDirectory.SizeOf([Result.LibraryCacheFile]);
 end;
 
 function TShellWorkspace.Baseline: IRuleBaseline;
@@ -872,11 +923,13 @@ begin
     begin
       Result := Resolver.Resolve(AUnitName);
     end;
-  CacheFile := TIndexCacheDirectory.FileFor(TIndexCacheDirectory.DefaultRoot, Signature);
+  // Ablage je IDE-Version und Projekt (#492): %LOCALAPPDATA%\Atlas\Index\<Version>\<Projekt-Hash>.
+  CacheFile := TIndexCacheDirectory.FileFor(TIndexCacheDirectory.DefaultRoot, Version, Signature);
   Request.CacheFile := CacheFile;
   // RTL/VCL/FMX einmal je Compilerversion und Plattform, geteilt mit allen Projekten (#492, #647).
-  Request.LibraryCacheFile := TIndexCacheDirectory.FileFor(TIndexCacheDirectory.DefaultRoot,
+  Request.LibraryCacheFile := TIndexCacheDirectory.LibraryFileFor(TIndexCacheDirectory.DefaultRoot, Version,
     TIndexProjectFiles.LibrarySignature(Project, Version));
+  Request.Usages := ASettings.IndexUsages;
   Request.ReadOnlyCache := not LockCache(CacheFile, Request.LibraryCacheFile);
   if Request.ReadOnlyCache then
   begin
@@ -912,6 +965,8 @@ begin
     FSearchPaths := Project.SearchPaths;
     FProjectFiles := Request.Files;
     FSearchFiles := Request.SearchFiles;
+    FCacheFile := Request.CacheFile;
+    FLibraryCacheFile := Request.LibraryCacheFile;
     FOwnFiles.Clear;
     for FileName in Request.Files + Request.SearchFiles do
       FOwnFiles.AddOrSetValue(AnsiUpperCase(FileName), True);

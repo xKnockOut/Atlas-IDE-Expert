@@ -8,6 +8,10 @@
 // Die Tastenkürzel stehen auf der eigenen Seite „Tastenkonflikte“
 // (Atlas.UI.Settings.Keys, #494). Unten zeigt die Seite, was die Sicherung
 // nach wiederholten Fehlern abgeschaltet hat, und schaltet es wieder ein (#493).
+// Abschnitt Symbolindex (#492): Verwendungen an/aus, Speichergrenze, Kennzahlen
+// (Units, Deklarationen, Größe, letzte Aktualisierung), „Index neu aufbauen“ und
+// „Index löschen“. Die Seite kennt den Server nicht; die IDE-Schicht liefert
+// Texte und führt die Befehle über OnIndexMetrics, OnIndexRebuild, OnIndexClear aus.
 
 interface
 
@@ -61,6 +65,16 @@ type
     FIndexGroup: TCheckBox;
     FIndexSearch: TCheckBox;
     FIndexLibrary: TCheckBox;
+    FIndexUsages: TCheckBox;
+    FMemoryBudget: TEdit;
+    FIndexInfo: TLabel;
+    FIndexRefresh: TButton;
+    FIndexRebuild: TButton;
+    FIndexClear: TButton;
+    FOnIndexMetrics: TFunc<string>;
+    FOnIndexRebuild: TFunc<string>;
+    FOnIndexClear: TFunc<string>;
+    FConfirmClear: TFunc<Boolean>;
     FCheckOnSave: TCheckBox;
     FCheckDelay: TEdit;
     FCheckMax: TEdit;
@@ -79,6 +93,10 @@ type
     procedure FuseEnableSelectedClick(Sender: TObject);
     procedure FuseEnableAllClick(Sender: TObject);
     procedure AddFuseSection;
+    procedure AddIndexSection;
+    procedure IndexRefreshClick(Sender: TObject);
+    procedure IndexRebuildClick(Sender: TObject);
+    procedure IndexClearClick(Sender: TObject);
     procedure ServerBrowseClick(Sender: TObject);
     procedure ServerPathChange(Sender: TObject);
     procedure SetDefaultServerPath(const AValue: string);
@@ -92,6 +110,19 @@ type
     property FuseList: TListBox read FFuseList;
     property FuseEnableSelected: TButton read FFuseEnableSelected;
     property FuseEnableAll: TButton read FFuseEnableAll;
+    /// <summary>Kennzahlen des Index neu holen und anzeigen (#492).</summary>
+    procedure RefreshIndex;
+    /// <summary>Zum Testen: Kennzahlen und Schaltflächen des Index.</summary>
+    property IndexInfo: TLabel read FIndexInfo;
+    property IndexRebuild: TButton read FIndexRebuild;
+    property IndexClear: TButton read FIndexClear;
+    /// <summary>Kennzahlen als Text; nil = nicht verfügbar.</summary>
+    property OnIndexMetrics: TFunc<string> read FOnIndexMetrics write FOnIndexMetrics;
+    /// <summary>„Index neu aufbauen“ bzw. „Index löschen“ ausführen; Ergebnis als Meldung.</summary>
+    property OnIndexRebuild: TFunc<string> read FOnIndexRebuild write FOnIndexRebuild;
+    property OnIndexClear: TFunc<string> read FOnIndexClear write FOnIndexClear;
+    /// <summary>Rückfrage vor dem Löschen; Standard: Dialog mit Ja/Nein.</summary>
+    property ConfirmClear: TFunc<Boolean> read FConfirmClear write FConfirmClear;
     /// <summary>„Verlauf zurücksetzen“ der lernenden Gewichtung (#418).</summary>
     property OnResetHistory: TProc read FOnResetHistory write FOnResetHistory;
     /// <summary>Server, der bei leerem Pfad gilt (für die Anzeige „Verwendet: …“).</summary>
@@ -101,6 +132,9 @@ type
 implementation
 
 {$R *.dfm}
+
+uses
+  System.UITypes;
 
 { TAtlasSettingsPage }
 
@@ -112,7 +146,7 @@ begin
   inherited Create(AOwner);
   Name := 'AtlasSettingsPage';
   Width := 480;
-  Height := 900;
+  Height := 1080;
   Title := TLabel.Create(Self);
   Title.Parent := Self;
   Title.Align := alTop;
@@ -191,6 +225,7 @@ begin
   FIndexGroup := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexGroup));
   FIndexSearch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexSearch));
   FIndexLibrary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexLibrary));
+  AddIndexSection;
   // Compilerprüfung nach dem Speichern (#548).
   FCheckOnSave := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCheckOnSave));
   FCheckDelay := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckDelay));
@@ -219,6 +254,88 @@ begin
   FHangTest.OnClick := HangTestClick;
   AddFuseSection;
   RefreshFuse;
+end;
+
+procedure TAtlasSettingsPage.AddIndexSection;
+var
+  Panel: TPanel;
+  Title: TLabel;
+begin
+  // Symbolindex (#492): Verwendungen, Speichergrenze, Kennzahlen und Verwaltung.
+  Panel := AddPanel(20);
+  Title := TLabel.Create(Self);
+  Title.Parent := Panel;
+  Title.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIndexTitle);
+  Title.Left := 0;
+  Title.Top := 3;
+  FIndexUsages := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexUsages));
+  FMemoryBudget := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsMemoryBudget));
+  Panel := AddPanel(66);
+  FIndexInfo := TLabel.Create(Self);
+  FIndexInfo.Parent := Panel;
+  FIndexInfo.Left := 0;
+  FIndexInfo.Top := 2;
+  FIndexInfo.Font.Color := clGrayText;
+  Panel := AddPanel(32);
+  FIndexRefresh := TButton.Create(Self);
+  FIndexRefresh.Parent := Panel;
+  FIndexRefresh.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIndexRefresh);
+  FIndexRefresh.Left := 0;
+  FIndexRefresh.Top := 3;
+  FIndexRefresh.Width := 150;
+  FIndexRefresh.OnClick := IndexRefreshClick;
+  FIndexRebuild := TButton.Create(Self);
+  FIndexRebuild.Parent := Panel;
+  FIndexRebuild.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIndexRebuild);
+  FIndexRebuild.Left := 160;
+  FIndexRebuild.Top := 3;
+  FIndexRebuild.Width := 150;
+  FIndexRebuild.OnClick := IndexRebuildClick;
+  FIndexClear := TButton.Create(Self);
+  FIndexClear.Parent := Panel;
+  FIndexClear.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIndexClear);
+  FIndexClear.Left := 320;
+  FIndexClear.Top := 3;
+  FIndexClear.Width := 150;
+  FIndexClear.OnClick := IndexClearClick;
+  // Ohne Server (Ereignisse nicht gesetzt) sind die Befehle aus.
+  RefreshIndex;
+end;
+
+procedure TAtlasSettingsPage.RefreshIndex;
+begin
+  if Assigned(FOnIndexMetrics) then
+    FIndexInfo.Caption := FOnIndexMetrics()
+  else
+    FIndexInfo.Caption := '';
+  FIndexRebuild.Enabled := Assigned(FOnIndexRebuild);
+  FIndexClear.Enabled := Assigned(FOnIndexClear);
+end;
+
+procedure TAtlasSettingsPage.IndexRefreshClick(Sender: TObject);
+begin
+  RefreshIndex;
+end;
+
+procedure TAtlasSettingsPage.IndexRebuildClick(Sender: TObject);
+begin
+  if Assigned(FOnIndexRebuild) then
+    FIndexInfo.Caption := FOnIndexRebuild();
+end;
+
+procedure TAtlasSettingsPage.IndexClearClick(Sender: TObject);
+var
+  Confirmed: Boolean;
+begin
+  if not Assigned(FOnIndexClear) then
+    Exit;
+  if Assigned(FConfirmClear) then
+    Confirmed := FConfirmClear()
+  else
+    Confirmed := MessageDlg(TAtlasStrings.Text(TAtlasTextId.SettingsIndexClearConfirm), mtConfirmation,
+      [mbYes, mbNo], 0) = mrYes;
+  if Confirmed then
+    FIndexInfo.Caption := FOnIndexClear();
 end;
 
 procedure TAtlasSettingsPage.AddFuseSection;
@@ -374,10 +491,13 @@ begin
   FIndexGroup.Checked := ASettings.IndexProjectGroup;
   FIndexSearch.Checked := ASettings.IndexSearchPaths;
   FIndexLibrary.Checked := ASettings.IndexLibraryPaths;
+  FIndexUsages.Checked := ASettings.IndexUsages;
+  FMemoryBudget.Text := IntToStr(ASettings.MemoryBudgetMb);
   FCheckOnSave.Checked := ASettings.CheckOnSave;
   FCheckDelay.Text := IntToStr(ASettings.CheckOnSaveDelayMs);
   FCheckMax.Text := IntToStr(ASettings.CheckOnSaveMaxMs);
   RefreshFuse;
+  RefreshIndex;
 end;
 
 procedure TAtlasSettingsPage.SaveTo(var ASettings: TAtlasPluginSettings);
@@ -406,6 +526,8 @@ begin
   ASettings.IndexProjectGroup := FIndexGroup.Checked;
   ASettings.IndexSearchPaths := FIndexSearch.Checked;
   ASettings.IndexLibraryPaths := FIndexLibrary.Checked;
+  ASettings.IndexUsages := FIndexUsages.Checked;
+  ASettings.MemoryBudgetMb := StrToIntDef(FMemoryBudget.Text, ASettings.MemoryBudgetMb);
   ASettings.CheckOnSave := FCheckOnSave.Checked;
   ASettings.CheckOnSaveDelayMs := StrToIntDef(FCheckDelay.Text, ASettings.CheckOnSaveDelayMs);
   ASettings.CheckOnSaveMaxMs := StrToIntDef(FCheckMax.Text, ASettings.CheckOnSaveMaxMs);

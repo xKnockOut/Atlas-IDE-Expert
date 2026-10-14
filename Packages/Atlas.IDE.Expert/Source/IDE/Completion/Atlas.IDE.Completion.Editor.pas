@@ -43,6 +43,7 @@ type
 
   TAtlasEditorCompletion = class
   private
+    FSession: TAtlasSessionFunc;
     FProviders: TAtlasCompletionProviders;
     FProvidersRef: IAtlasCompletionProvider;
     FServerProvider: TAtlasServerCompletionProvider;
@@ -91,6 +92,8 @@ type
     procedure RemoveKeyHook;
     /// <summary>Gehört die Taste gerade dem Popup?</summary>
     function WantsKey(AKey: TAtlasNavigationKey): Boolean;
+    /// <summary>Indiziert der Server gerade (#492)?</summary>
+    function IndexingNow: Boolean;
   public
     /// <summary>Nach dem Übernehmen mit Klammern den Parameter-Hint öffnen (#430).</summary>
     property OnOpenSignature: TProc read FOnOpenSignature write FOnOpenSignature;
@@ -310,6 +313,7 @@ var
   Notifier: INTAEditServicesNotifier;
 begin
   inherited Create;
+  FSession := ASession;
   FLog := ALog;
   FNotifierIndex := -1;
   FCommitEnd := -1;
@@ -437,6 +441,17 @@ begin
   FServerProvider.Shutdown;
 end;
 
+function TAtlasEditorCompletion.IndexingNow: Boolean;
+var
+  Session: TLspSession;
+begin
+  Result := False;
+  if not Assigned(FSession) then
+    Exit;
+  Session := FSession();
+  Result := (Session <> nil) and (Session.IndexingText <> '');
+end;
+
 function TAtlasEditorCompletion.Visible: Boolean;
 begin
   // Auch der leere Zustand (#423) nimmt Esc entgegen.
@@ -503,6 +518,8 @@ begin
   // Gruppen geerbter Member (#419), Chips (#422), lernende Gewichtung (#418).
   FController.GroupInherited := TAtlasIdeSettings.Current.GroupInherited;
   FPopup.DimInherited := TAtlasIdeSettings.Current.GroupInherited;
+  // Während der Server indiziert, liefert er den vorhandenen Stand; die Fußzeile sagt es (#492).
+  FPopup.Limited := IndexingNow;
   FController.ChipsEnabled := TAtlasIdeSettings.Current.FilterChips;
   if TAtlasIdeSettings.Current.Learning then
     FController.Usage := TAtlasIdeHistory.Instance

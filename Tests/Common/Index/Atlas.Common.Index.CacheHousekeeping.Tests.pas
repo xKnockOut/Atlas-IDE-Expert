@@ -28,6 +28,7 @@ type
   private
     FRoot: string;
     function CreateCache(const AName: string): string;
+    function CreateFile(const AFileName: string; ASize: Integer): string;
   public
     [SetupFixture]
     procedure SetupFixture;
@@ -49,6 +50,12 @@ type
     procedure DiskFileSystemRoundTripsBytes;
     [Test]
     procedure FileNameDependsOnlyOnSignature;
+    [Test]
+    procedure ProjectAndLibraryLiveUnderIdeVersion;
+    [Test]
+    procedure ClearRemovesNewLayoutAndEmptyFolders;
+    [Test]
+    procedure RemoveAndSizeOfNamedCaches;
     [Test]
     procedure ConcurrentWritersLeaveReadableCache;
     [Test]
@@ -292,6 +299,16 @@ begin
   TFile.WriteAllText(Result, '{}');
 end;
 
+function TIndexCacheDirectoryTests.CreateFile(const AFileName: string; ASize: Integer): string;
+var
+  Data: TBytes;
+begin
+  Result := AFileName;
+  ForceDirectories(ExtractFileDir(Result));
+  SetLength(Data, ASize);
+  TFile.WriteAllBytes(Result, Data);
+end;
+
 procedure TIndexCacheDirectoryTests.SecondLockFails;
 var
   First, Second: TStream;
@@ -341,11 +358,66 @@ end;
 procedure TIndexCacheDirectoryTests.FileNameDependsOnlyOnSignature;
 begin
   // LSP- und MCP-Prozess bilden denselben Namen (#62).
-  Assert.AreEqual(TIndexCacheDirectory.FileFor(FRoot, 'C:\P\App.dproj|Debug|Win64'),
-    TIndexCacheDirectory.FileFor(FRoot, 'C:\P\App.dproj|Debug|Win64'));
-  Assert.AreNotEqual(TIndexCacheDirectory.FileFor(FRoot, 'C:\P\App.dproj|Debug|Win64'),
-    TIndexCacheDirectory.FileFor(FRoot, 'C:\P\App.dproj|Release|Win64'));
-  Assert.StartsWith(TPath.Combine(FRoot, 'index-'), TIndexCacheDirectory.FileFor(FRoot, 'x'));
+  Assert.AreEqual(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'C:\P\App.dproj|Debug|Win64'),
+    TIndexCacheDirectory.FileFor(FRoot, '37.0', 'c:\p\app.dproj|Debug|Win64'));
+  Assert.AreNotEqual(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'C:\P\App.dproj|Debug|Win64'),
+    TIndexCacheDirectory.FileFor(FRoot, '37.0', 'C:\P\App.dproj|Release|Win64'));
+  Assert.AreEqual(16, Length(TIndexCacheDirectory.KeyHash('x')));
+end;
+
+procedure TIndexCacheDirectoryTests.ProjectAndLibraryLiveUnderIdeVersion;
+var
+  Version: string;
+begin
+  // Je IDE-Version ein Ordner, darin je Projekt einer; die Bibliothek getrennt (#492).
+  Version := TPath.Combine(TPath.Combine(FRoot, 'Index'), '37.0');
+  Assert.AreEqual(TPath.Combine(TPath.Combine(Version, TIndexCacheDirectory.KeyHash('Projekt')), 'index.atlasidx'),
+    TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Projekt'));
+  Assert.AreEqual(TPath.Combine(TPath.Combine(TPath.Combine(Version, 'Bibliothek'),
+    TIndexCacheDirectory.KeyHash('Win64')), 'index.atlasidx'),
+    TIndexCacheDirectory.LibraryFileFor(FRoot, '37.0', 'Win64'));
+  Assert.AreNotEqual(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Projekt'),
+    TIndexCacheDirectory.FileFor(FRoot, '23.0', 'Projekt'));
+  Assert.AreEqual(TPath.Combine(TPath.Combine(FRoot, 'Index'), 'ohne-Delphi'),
+    TIndexCacheDirectory.VersionFolder(FRoot, ''));
+end;
+
+procedure TIndexCacheDirectoryTests.ClearRemovesNewLayoutAndEmptyFolders;
+var
+  Project, Library_, Legacy: string;
+begin
+  Project := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Projekt'), 100);
+  Library_ := CreateFile(TIndexCacheDirectory.LibraryFileFor(FRoot, '37.0', 'Win64'), 200);
+  Legacy := CreateCache('index-00000001.json');
+  CreateCache('anderes.json');
+  Assert.AreEqual<Int64>(300 + 2, TIndexCacheDirectory.TotalSize(FRoot));
+  Assert.AreEqual(3, TIndexCacheDirectory.Clear(FRoot));
+  Assert.IsFalse(FileExists(Project));
+  Assert.IsFalse(FileExists(Library_));
+  Assert.IsFalse(FileExists(Legacy));
+  // Leere Projektordner gehen mit, fremde Dateien bleiben.
+  Assert.IsFalse(TDirectory.Exists(ExtractFileDir(Project)));
+  Assert.IsTrue(FileExists(TPath.Combine(FRoot, 'anderes.json')));
+  Assert.AreEqual<Int64>(0, TIndexCacheDirectory.TotalSize(FRoot));
+end;
+
+procedure TIndexCacheDirectoryTests.RemoveAndSizeOfNamedCaches;
+var
+  First, Second: string;
+  Lock: TStream;
+begin
+  First := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Eins'), 10);
+  Second := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Zwei'), 20);
+  Assert.AreEqual<Int64>(30, TIndexCacheDirectory.SizeOf([First, Second, '', First + '.fehlt']));
+  Lock := TIndexCacheDirectory.TryLock(Second);
+  try
+    // Die gesperrte Datei hält eine andere Instanz: bleibt.
+    Assert.AreEqual(1, TIndexCacheDirectory.Remove([First, Second, '']));
+  finally
+    Lock.Free;
+  end;
+  Assert.IsFalse(FileExists(First));
+  Assert.IsTrue(FileExists(Second));
 end;
 
 procedure TIndexCacheDirectoryTests.ConcurrentWritersLeaveReadableCache;

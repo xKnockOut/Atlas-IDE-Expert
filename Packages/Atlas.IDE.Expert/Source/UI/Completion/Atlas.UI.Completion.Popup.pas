@@ -117,6 +117,7 @@ type
     FOnOverload: TAtlasOverloadEvent;
     FOnDocLink: TAtlasDocLinkEvent;
     FDimInherited: Boolean;
+    FLimited: Boolean;
     FDimRow: Boolean;
     // Zeile einer Aktion („Neue Methode …“, #444): Name in Akzentfarbe.
     FActionRow: Boolean;
@@ -214,6 +215,9 @@ type
     property OnDocLink: TAtlasDocLinkEvent read FOnDocLink write FOnDocLink;
     /// <summary>Geerbte Member abgeschwächt zeichnen (#419).</summary>
     property DimInherited: Boolean read FDimInherited write FDimInherited;
+    /// <summary>Der Server indiziert noch (#492, #457): Die Fußzeile meldet „eingeschränkt“; die Liste
+    /// zeigt den vorhandenen Stand.</summary>
+    property Limited: Boolean read FLimited write FLimited;
   end;
 
 implementation
@@ -461,6 +465,8 @@ begin
     Result := TAtlasStrings.Fmt(TAtlasTextId.CountFits, [Fitting, TAtlasRanking.ItemCount(FOrder)])
   else
     Result := TAtlasStrings.Fmt(TAtlasTextId.CountOf, [TAtlasRanking.ItemCount(FOrder), Length(FItems)]);
+  if FLimited then
+    Result := TAtlasStrings.Text(TAtlasTextId.CompletionLimited) + ' · ' + Result;
 end;
 
 procedure TAtlasCompletionPopup.DrawHeader(ARow, APosition: Integer);
