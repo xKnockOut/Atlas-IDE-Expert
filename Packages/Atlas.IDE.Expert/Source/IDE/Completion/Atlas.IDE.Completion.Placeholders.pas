@@ -16,6 +16,15 @@
 //     gestrichelt, die übrigen gepunktet; hinter der Zeile die Fußzeile
 //     „Platzhalter 1 / 3 · Tab weiter · Esc fertig“.
 //   - Eine Änderung außerhalb, ein Wechsel der Ansicht oder Esc beendet den Modus.
+//   - Ein Undo-Schritt: Endet der Modus regulär (Esc, Enter, Tab nach dem
+//     letzten Platzhalter), nimmt Atlas das Einsetzen, alle Eingaben und
+//     Angleichungen über IOTAEditBuffer.Undo bis zum Stand vor dem Einsetzen
+//     zurück und schreibt das Ergebnis mit einem einzigen Schreiber neu. Ein
+//     Strg+Z danach stellt den Stand vor der Vorlage wieder her. Wird der Stand
+//     vor dem Einsetzen nicht erreicht (z. B. weil die IDE Schritte
+//     zusammengefasst hat), stellt Redo alles wieder her und es bleibt bei
+//     mehreren Schritten. Endet der Modus durch eine Änderung außerhalb, bleibt
+//     die Undo-Liste unberührt.
 
 interface
 
@@ -59,6 +68,9 @@ type
     // Atlas schreibt gerade selbst (verknüpfte Platzhalter): Benachrichtigungen übergehen.
     FApplying: Boolean;
     FMirrorQueued: Boolean;
+    // Puffertext vor dem Einsetzen, für den gemeinsamen Undo-Schritt.
+    FBefore: string;
+    procedure CollapseUndo;
     procedure SelectCurrent;
     /// <summary>Rahmen und Fußzeile neu zeichnen lassen.</summary>
     procedure Invalidate;
@@ -74,9 +86,9 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    /// <summary>ADocument: Text nach dem Einsetzen, AOffset: Anfang der Vorlage darin. Ohne Platzhalter steht
-    /// nur der Cursor an der Endposition.</summary>
-    procedure Start(const AView: IOTAEditView; const ADocument: string; AOffset: Integer;
+    /// <summary>ABefore: Puffertext vor dem Einsetzen, ADocument: Text danach, AOffset: Anfang der Vorlage
+    /// darin. Ohne Platzhalter steht nur der Cursor an der Endposition.</summary>
+    procedure Start(const AView: IOTAEditView; const ABefore, ADocument: string; AOffset: Integer;
       const AExpansion: TAtlasSnippetExpansion);
     procedure Stop;
     function Active: Boolean;
@@ -188,14 +200,15 @@ begin
   Result := FSession <> nil;
 end;
 
-procedure TAtlasEditorPlaceholders.Start(const AView: IOTAEditView; const ADocument: string; AOffset: Integer;
-  const AExpansion: TAtlasSnippetExpansion);
+procedure TAtlasEditorPlaceholders.Start(const AView: IOTAEditView; const ABefore, ADocument: string;
+  AOffset: Integer; const AExpansion: TAtlasSnippetExpansion);
 begin
   Stop;
   if (AView = nil) or (AView.Buffer = nil) then
     Exit;
   FView := AView;
   FFileName := AView.Buffer.FileName;
+  FBefore := ABefore;
   FSession := TAtlasPlaceholderSession.Create(ADocument, AOffset, AExpansion);
   if not AExpansion.HasPlaceholders then
   begin
@@ -214,6 +227,7 @@ begin
   TAtlasKeyHook.Remove(FKeys);
   FreeAndNil(FSession);
   FView := nil;
+  FBefore := '';
   FMirrorQueued := False;
   // Rahmen und Fußzeile verschwinden.
   if WasActive then
@@ -277,10 +291,71 @@ begin
 end;
 
 procedure TAtlasEditorPlaceholders.Finish(AToEnd: Boolean);
+var
+  Cursor: Integer;
 begin
-  if (FSession <> nil) and AToEnd and (FView <> nil) then
-    MoveTo(FSession.FinalOffset);
+  if (FSession <> nil) and (FView <> nil) then
+  begin
+    Cursor := CursorOffset(FSession.Text);
+    CollapseUndo;
+    if AToEnd then
+      MoveTo(FSession.FinalOffset)
+    else
+    begin
+      FView.CursorPos := EditPos(FSession.Text, Cursor);
+      FView.Paint;
+    end;
+  end;
   Stop;
+end;
+
+procedure TAtlasEditorPlaceholders.CollapseUndo;
+const
+  // Obergrenze der Undo-Schritte; eine Vorlage braucht selten mehr als ein paar Dutzend.
+  MaxSteps = 1000;
+var
+  Final, Text: string;
+  Steps, Index, Prefix, Suffix: Integer;
+  Writer: IOTAEditWriter;
+begin
+  if (FSession = nil) or (FView = nil) or (FView.Buffer = nil) or (FBefore = '') then
+    Exit;
+  Final := TAtlasEditorBuffer.Text(FView.Buffer);
+  if Final <> FSession.Text then
+    Exit;
+  FApplying := True;
+  try
+    Steps := 0;
+    Text := Final;
+    while (Text <> FBefore) and (Steps < MaxSteps) and FView.Buffer.Undo do
+    begin
+      Inc(Steps);
+      Text := TAtlasEditorBuffer.Text(FView.Buffer);
+    end;
+    if Text <> FBefore then
+    begin
+      // Stand vor dem Einsetzen nicht erreicht: alles wiederherstellen.
+      for Index := 1 to Steps do
+        if not FView.Buffer.Redo then
+          Break;
+      Exit;
+    end;
+    // Gemeinsamer Anfang und gemeinsames Ende; dazwischen ersetzt ein Schreiber.
+    Prefix := 0;
+    while (Prefix < Length(FBefore)) and (Prefix < Length(Final)) and (FBefore[Prefix + 1] = Final[Prefix + 1]) do
+      Inc(Prefix);
+    Suffix := 0;
+    while (Suffix < Length(FBefore) - Prefix) and (Suffix < Length(Final) - Prefix) and
+      (FBefore[Length(FBefore) - Suffix] = Final[Length(Final) - Suffix]) do
+      Inc(Suffix);
+    Writer := FView.Buffer.CreateUndoableWriter;
+    Writer.CopyTo(ByteOffset(FBefore, Prefix));
+    Writer.DeleteTo(ByteOffset(FBefore, Length(FBefore) - Suffix));
+    Writer.Insert(PAnsiChar(UTF8Encode(Copy(Final, Prefix + 1, Length(Final) - Prefix - Suffix))));
+    Writer := nil;
+  finally
+    FApplying := False;
+  end;
 end;
 
 function TAtlasEditorPlaceholders.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
