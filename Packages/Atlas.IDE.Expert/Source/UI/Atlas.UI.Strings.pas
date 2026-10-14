@@ -39,7 +39,8 @@ type
     SettingsInactiveDim, MenuToggleInactive, DidYouMean,
     DiagExportMenu, DiagExportTitle, DiagExportHint, DiagExportSave, DiagExportFilter, DiagExportEmpty, DiagExportDone,
     SettingsIndexGroup, SettingsIndexSearch, SettingsIndexLibrary,
-    SettingsXmlDocFull, SettingsXmlDocMaxLines, DocTypeParams, DocValue, DocExample, DocSeeAlso, HoverCopySelection);
+    SettingsXmlDocFull, SettingsXmlDocMaxLines, DocTypeParams, DocValue, DocExample, DocSeeAlso, HoverCopySelection,
+    InactiveCondition, InactiveTarget, InactiveRegion, ProblemsSourceInactive);
 
   TAtlasStrings = class
   private class var
@@ -123,7 +124,11 @@ const
      'Wert',
      'Beispiel',
      'Siehe auch:',
-     'Markierung kopieren'),
+     'Markierung kopieren',
+     'Inaktiv: Bedingung %s nicht erfüllt',
+     ' (Zielplattform %s · %s)',
+     'Inaktiver Bereich (bedingte Kompilierung)',
+     'Bedingte Kompilierung'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -186,7 +191,11 @@ const
      'Value',
      'Example',
      'See also:',
-     'Copy selection'));
+     'Copy selection',
+     'Inactive: condition %s not met',
+     ' (target platform %s · %s)',
+     'Inactive region (conditional compilation)',
+     'Conditional compilation'));
 
 { TAtlasStrings }
 

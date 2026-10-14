@@ -153,7 +153,10 @@ type
     /// <summary>Laufende Indizierung o. Ä. des Servers ("Index 45 %"); '' ohne (#492).</summary>
     function ProgressText: string;
     /// <summary>workspace/executeCommand; Ergebnis gehört dem Aufrufer (nil bei Fehler oder Zeitlimit).</summary>
-    function ExecuteCommand(const ACommand: string; ATimeoutMs: Cardinal): TJSONValue;
+    function ExecuteCommand(const ACommand: string; ATimeoutMs: Cardinal): TJSONValue; overload;
+    /// <summary>Wie oben mit Argumenten; übernimmt AArguments.</summary>
+    function ExecuteCommand(const ACommand: string; AArguments: TJSONArray; ATimeoutMs: Cardinal): TJSONValue;
+      overload;
     property Initialized: Boolean read FInitialized;
   end;
 
@@ -605,9 +608,14 @@ end;
 
 function TLspSession.ExecuteCommand(const ACommand: string; ATimeoutMs: Cardinal): TJSONValue;
 begin
+  Result := ExecuteCommand(ACommand, TJSONArray.Create, ATimeoutMs);
+end;
+
+function TLspSession.ExecuteCommand(const ACommand: string; AArguments: TJSONArray; ATimeoutMs: Cardinal): TJSONValue;
+begin
   try
     Result := FClient.Request('workspace/executeCommand',
-      TJSONObject.Create.AddPair('command', ACommand).AddPair('arguments', TJSONArray.Create), ATimeoutMs);
+      TJSONObject.Create.AddPair('command', ACommand).AddPair('arguments', AArguments), ATimeoutMs);
   except
     Result := nil;
   end;

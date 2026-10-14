@@ -33,6 +33,11 @@ type
     Confidence: string;
     /// <summary>Inaktiver Bereich ({$IFDEF}); kein Problem im eigentlichen Sinn.</summary>
     Unnecessary: Boolean;
+    /// <summary>Zu einem inaktiven Bereich aus data.inactive (#615): Bedingung des Zweigs ("WIN64"),
+    /// Zielplattform und Konfiguration des Servers; '' wenn unbekannt.</summary>
+    InactiveCondition: string;
+    InactivePlatform: string;
+    InactiveConfig: string;
     /// <summary>Text geändert, seit die Meldung entstand: blass zeigen.</summary>
     Stale: Boolean;
     function IsCompiler: Boolean;
@@ -40,6 +45,10 @@ type
     function Contains(ALine, ACharacter: Integer): Boolean;
     /// <summary>"Meldung (Code)" bzw. nur die Meldung.</summary>
     function Caption: string;
+    /// <summary>Hinweis zu einem inaktiven Bereich (#615): AConditionFormat mit der Bedingung (%s), dahinter
+    /// ATargetFormat mit Plattform und Konfiguration (%s, %s; "?" für Unbekanntes), wenn eins bekannt ist.
+    /// Ohne Bedingung AFallback.</summary>
+    function InactiveHint(const AConditionFormat, ATargetFormat, AFallback: string): string;
     class function FromJson(const AItem: TJSONObject): TAtlasProblem; static;
     /// <summary>Alle Diagnosen einer LSP-Liste; Nicht-Objekte werden übersprungen.</summary>
     class function ListFromJson(const AItems: TJSONArray): TArray<TAtlasProblem>; static;
@@ -74,9 +83,27 @@ begin
     Result := Format('%s (%s)', [Message, Code]);
 end;
 
+function TAtlasProblem.InactiveHint(const AConditionFormat, ATargetFormat, AFallback: string): string;
+var
+  Platform, Config: string;
+begin
+  if InactiveCondition = '' then
+    Exit(AFallback);
+  Result := Format(AConditionFormat, [InactiveCondition]);
+  if (InactivePlatform = '') and (InactiveConfig = '') then
+    Exit;
+  Platform := InactivePlatform;
+  Config := InactiveConfig;
+  if Platform = '' then
+    Platform := '?';
+  if Config = '' then
+    Config := '?';
+  Result := Result + Format(ATargetFormat, [Platform, Config]);
+end;
+
 class function TAtlasProblem.FromJson(const AItem: TJSONObject): TAtlasProblem;
 var
-  Tags, CodeValue, Data: TJSONValue;
+  Tags, CodeValue, Data, Inactive: TJSONValue;
   Tag: TJSONValue;
 begin
   Result := Default(TAtlasProblem);
@@ -103,7 +130,16 @@ begin
   Result.Message := AItem.GetValue<string>('message', '');
   Data := AItem.GetValue('data');
   if Data is TJSONObject then
+  begin
     Result.Confidence := TJSONObject(Data).GetValue<string>('confidence', '');
+    Inactive := TJSONObject(Data).GetValue('inactive');
+    if Inactive is TJSONObject then
+    begin
+      Result.InactiveCondition := TJSONObject(Inactive).GetValue<string>('condition', '');
+      Result.InactivePlatform := TJSONObject(Inactive).GetValue<string>('platform', '');
+      Result.InactiveConfig := TJSONObject(Inactive).GetValue<string>('config', '');
+    end;
+  end;
   Tags := AItem.GetValue('tags');
   if Tags is TJSONArray then
     for Tag in TJSONArray(Tags) do

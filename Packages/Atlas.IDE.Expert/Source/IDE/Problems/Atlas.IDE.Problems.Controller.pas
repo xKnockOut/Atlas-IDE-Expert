@@ -13,6 +13,11 @@
 //     anderen Projektdateien (#82).
 //   - In der IDE geschlossene Dateien bekommen didClose; dann liefert sie der
 //     Server wieder über workspace/diagnostic.
+// Inaktive {$IFDEF}-Zweige (#615) kommen mit denselben Diagnosen. Darum holt
+// der Controller auch bei ausgeschalteten Problemen, solange das Abblenden an
+// ist; dann ohne Projekt-Thread, Wellenlinien und Meldungsliste. Nebenbei
+// meldet er Konfiguration, Plattform und Defines der IDE an den Server
+// (Atlas.IDE.Build.Target).
 // Ergebnisse kommen über TThread.Queue in den Hauptthread; der Speicher wird
 // nur dort benutzt. Shutdown hält die Threads an, bevor die Sitzung endet: Der
 // Manager schließt dazwischen die Verbindung, damit laufende Anfragen sofort
@@ -30,7 +35,8 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.IDE.Problems.Painter,
-  Atlas.IDE.Problems.MessageList;
+  Atlas.IDE.Problems.MessageList,
+  Atlas.IDE.Build.Target;
 
 type
   /// <summary>Sitzung, auf Wunsch gestartet; nil, wenn keine läuft bzw. der Start scheitert.</summary>
@@ -115,6 +121,7 @@ type
     FClosedCheckAt: Cardinal;
     // Nach gescheitertem Serverstart erst später wieder versuchen.
     FRetryAt: Cardinal;
+    FBuildTarget: TAtlasIdeBuildTarget;
     procedure Tick(Sender: TObject);
     procedure EnsureWorkers(ASession: TLspSession);
     procedure StopWorkers(AWait: Boolean);
@@ -123,7 +130,10 @@ type
     procedure DeliverWorkspace(const AReports: TArray<TLspDiagnosticReport>);
     procedure CloseUnopened(ASession: TLspSession);
     procedure Publish;
+    /// <summary>Diagnosen holen: für Probleme oder für das Abblenden inaktiver Zweige.</summary>
     function Active: Boolean;
+    function ShowProblems: Boolean;
+    function ShowInactive: Boolean;
     class function IsSource(const AFileName: string): Boolean; static;
     class function IsOpenInIde(const AFileName: string): Boolean; static;
   public
@@ -133,7 +143,8 @@ type
     procedure BeginShutdown;
     /// <summary>Auf die Threads warten (Teil 2); danach darf die Sitzung enden.</summary>
     procedure WaitShutdown;
-    /// <summary>Probleme an der Stelle (0-basiert) für den Hover-Tooltip.</summary>
+    /// <summary>Probleme an der Stelle (0-basiert) für den Hover-Tooltip; mit Abblenden auch der Hinweis
+    /// „Inaktiv: Bedingung … nicht erfüllt“ eines inaktiven Zweigs (#615).</summary>
     function ProblemsAt(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;
     property Store: TAtlasProblemStore read FStore;
     /// <summary>Speicher des laufenden Controllers für andere Zeichner (inaktive Zweige, #615); nil ohne.</summary>
@@ -147,6 +158,7 @@ uses
   Winapi.Windows,
   ToolsAPI,
   Atlas.Core.Settings.Plugin,
+  Atlas.UI.Strings,
   Atlas.IDE.Editor.Buffer,
   Atlas.IDE.Settings.Store;
 
@@ -353,6 +365,11 @@ begin
   FRetired := TObjectList<TThread>.Create(True);
   FTexts := TDictionary<string, string>.Create;
   FPulled := TDictionary<string, string>.Create;
+  FBuildTarget := TAtlasIdeBuildTarget.Create(
+    procedure(const AMessage: string)
+    begin
+      FLog(AMessage);
+    end);
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 250;
   FTimer.OnTimer := Tick;
@@ -372,6 +389,7 @@ begin
   BeginShutdown;
   WaitShutdown;
   FRetired.Free;
+  FBuildTarget.Free;
   FPulled.Free;
   FTexts.Free;
   FList.Free;
@@ -395,6 +413,7 @@ begin
     TThread.RemoveQueuedEvents(Thread);
   end;
   FRetired.Clear;
+  FBuildTarget.Stop(True);
   // Die nächste Sitzung beginnt ohne Stände der alten.
   FPulled.Clear;
   FRefreshSeen := 0;
@@ -415,6 +434,7 @@ begin
     FWorkspace := nil;
   end;
   FWorkerSession := nil;
+  FBuildTarget.Stop(False);
   if AWait then
     WaitShutdown;
 end;
@@ -437,8 +457,15 @@ begin
     StopWorkers(False);
   if FDocuments = nil then
     FDocuments := TDocumentWorker.Create(ASession, DeliverDocument, FLog);
-  if FWorkspace = nil then
-    FWorkspace := TWorkspaceWorker.Create(ASession, DeliverWorkspace, FLog);
+  // Andere Projektdateien nur für die Probleme; das Abblenden braucht nur geöffnete.
+  if (FWorkspace = nil) and ShowProblems then
+    FWorkspace := TWorkspaceWorker.Create(ASession, DeliverWorkspace, FLog)
+  else if (FWorkspace <> nil) and not ShowProblems then
+  begin
+    FWorkspace.Terminate;
+    FRetired.Add(FWorkspace);
+    FWorkspace := nil;
+  end;
   FWorkerSession := ASession;
 end;
 
@@ -447,7 +474,23 @@ var
   Settings: TAtlasPluginSettings;
 begin
   Settings := TAtlasIdeSettings.Current;
+  Result := Settings.Enabled and (Settings.Problems or Settings.InactiveDim);
+end;
+
+function TAtlasProblemsController.ShowProblems: Boolean;
+var
+  Settings: TAtlasPluginSettings;
+begin
+  Settings := TAtlasIdeSettings.Current;
   Result := Settings.Enabled and Settings.Problems;
+end;
+
+function TAtlasProblemsController.ShowInactive: Boolean;
+var
+  Settings: TAtlasPluginSettings;
+begin
+  Settings := TAtlasIdeSettings.Current;
+  Result := Settings.Enabled and Settings.InactiveDim;
 end;
 
 class function TAtlasProblemsController.IsSource(const AFileName: string): Boolean;
@@ -512,6 +555,8 @@ begin
       else
       begin
         EnsureWorkers(Session);
+        // Konfiguration oder Plattform gewechselt, Defines geändert (#615).
+        FBuildTarget.Tick(Session, GetTickCount);
         // Editor gewechselt: Getipptes der vorigen Unit sofort senden, nicht erst bei der Rückkehr.
         // Sonst fehlt eine neue Deklaration in der anderen Unit (Index nach der Tipp-Pause, #492).
         if (FLastFile <> '') and not SameText(FLastFile, FileName) then
@@ -596,7 +641,7 @@ begin
   if (FListedVersion <> FStore.Version) and (GetTickCount >= FListDue) then
   begin
     FListedVersion := FStore.Version;
-    if Active then
+    if ShowProblems then
       FList.Update(FStore)
     else
       FList.Clear;
@@ -619,7 +664,7 @@ procedure TAtlasProblemsController.DeliverWorkspace(const AReports: TArray<TLspD
 var
   Report: TLspDiagnosticReport;
 begin
-  if not Active then
+  if not ShowProblems then
     Exit;
   for Report in AReports do
     // Abgeglichene Dateien kommen über textDocument/diagnostic.
@@ -628,11 +673,21 @@ begin
 end;
 
 function TAtlasProblemsController.ProblemsAt(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;
+var
+  Problem: TAtlasProblem;
 begin
-  if Active then
-    Result := FStore.At(AFileName, ALine, ACharacter)
-  else
-    Result := nil;
+  Result := nil;
+  if ShowProblems then
+    Result := FStore.At(AFileName, ALine, ACharacter);
+  if not ShowInactive then
+    Exit;
+  for Problem in FStore.InactiveAt(AFileName, ALine, ACharacter) do
+  begin
+    Result := Result + [Problem];
+    // Hinweis in der Sprache des Plugins statt der Meldung des Servers.
+    Result[High(Result)].Message := Problem.InactiveHint(TAtlasStrings.Text(TAtlasTextId.InactiveCondition),
+      TAtlasStrings.Text(TAtlasTextId.InactiveTarget), TAtlasStrings.Text(TAtlasTextId.InactiveRegion));
+  end;
 end;
 
 end.

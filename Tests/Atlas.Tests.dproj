@@ -290,6 +290,8 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IdeBuild.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.CheckOnSave.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.CheckOnSave.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Target.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Build.Target.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.BuildTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.Paths.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Workspace.pas"/>
