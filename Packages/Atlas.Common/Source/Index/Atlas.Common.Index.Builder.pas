@@ -26,6 +26,7 @@ interface
 
 uses
   System.SysUtils,
+  System.Diagnostics,
   System.Generics.Collections,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Index.Contract,
@@ -36,6 +37,9 @@ type
     Parsed: Integer;
     FromCache: Integer;
     Missing: Integer;
+    /// <summary>Zeit für das Suchen der Unit-Dateien (uses) und für das Parsen, fürs Diagnoselog (#647).</summary>
+    ResolveMs: Int64;
+    ParseMs: Int64;
     Cancelled: Boolean;
   end;
 
@@ -199,6 +203,7 @@ var
   Entry: TIndexCacheEntry;
   Cached, UnitIndex: TUnitIndex;
   HasCache: Boolean;
+  Watch: TStopwatch;
 begin
   if not FFileSystem.FileStamp(AFileName, Stamp) then
   begin
@@ -232,7 +237,9 @@ begin
     Inc(AResult.FromCache);
     Exit(True);
   end;
+  Watch := TStopwatch.StartNew;
   UnitIndex := TIndexExtractor.ExtractText(Text, AFileName, FDefines, IncludeResolver());
+  Inc(AResult.ParseMs, Watch.ElapsedMilliseconds);
   UnitIndex.Stamp := Stamp;
   UnitIndex.Hash := Hash;
   UnitIndex.IncludeStamps := IncludeStampsOf(UnitIndex.Includes);
@@ -250,6 +257,8 @@ var
   UnitIndex: TUnitIndex;
   Name, UsedName, FileName: string;
   Existing: TUnitIndex;
+  Stamp: Int64;
+  Watch: TStopwatch;
 begin
   if not Assigned(FResolveUnit) then
     Exit;
@@ -277,9 +286,20 @@ begin
       Seen.Add(UpperCase(Name), True);
       if FIndex.FindUnit(Name, Existing) then
         Continue;
+      Watch := TStopwatch.StartNew;
       FileName := FResolveUnit(Name);
+      Inc(AResult.ResolveMs, Watch.ElapsedMilliseconds);
       if FileName = '' then
         Continue;
+      // Unter anderem Namen schon im Index, z. B. "Forms" als Vcl.Forms aus einem anderen Projekt
+      // der Gruppe: nicht neu einlesen. Sonst las jedes Projekt dieselben Units erneut (#647).
+      if FIndex.FindFile(FileName, Existing) and FFileSystem.FileStamp(FileName, Stamp) and
+        (Stamp = Existing.Stamp) then
+      begin
+        for UsedName in Existing.InterfaceUses do
+          Pending.Enqueue(UsedName);
+        Continue;
+      end;
       if Assigned(AProgress) then
         AProgress(TIndexProgressKind.Report, Name, -1);
       if IndexFile(FileName, True, AResult) and FIndex.FindFile(FileName, UnitIndex) then

@@ -62,6 +62,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Compiler.Results,
   Atlas.Common.Lsp.WorkDoneProgress,
@@ -77,6 +78,8 @@ type
   private
     FTransport: IJsonRpcTransport;
     FLogger: ILogger;
+    /// <summary>Anonymisiert das Server-Log (#647); nil ohne --log oder mit --log-names.</summary>
+    FLogAnonymizer: ILogAnonymizer;
     FDispatcher: TJsonRpcDispatcher;
     FLifecycle: TLspLifecycle;
     FDocuments: IDocumentStore;
@@ -1226,6 +1229,9 @@ begin
       TMonitor.Exit(FWorkspacesLock);
     end;
   end;
+  if FLogAnonymizer <> nil then
+    FLogAnonymizer.AddNames([AName, ExtractFileName(ExcludeTrailingPathDelimiter(ARoot)),
+      ChangeFileExt(ExtractFileName(AProjectFile), '')]);
   Inc(FWorkspaceCounter);
   Workspace := TShellWorkspace.Create(ARoot, AName, FDocuments, FTransport, FLogger, FIndex,
     Format('atlas-index-%d', [FWorkspaceCounter]));
@@ -1238,6 +1244,13 @@ begin
   Workspace.OnProjectLoaded := ProjectLoaded;
   Workspace.OnIndexFinished := IndexFinished;
   Workspace.OnProjectReady := IndexFinished;
+  // Projekt- und Unit-Namen erscheinen im Server-Log nicht im Klartext (#647).
+  Workspace.OnNames :=
+    procedure(ANames: TArray<string>)
+    begin
+      if FLogAnonymizer <> nil then
+        FLogAnonymizer.AddNames(ANames);
+    end;
   Workspace.OnIndexEvent :=
     procedure(AText: string)
     begin
@@ -1449,7 +1462,13 @@ begin
 end;
 
 procedure TServerComposition.IndexFinished;
+var
+  UnitIndex: TUnitIndex;
 begin
+  // Units aus Suchpfaden stehen in keiner .dproj; im Server-Log ebenfalls verbergen (#647).
+  if FLogAnonymizer <> nil then
+    for UnitIndex in FIndex.Units do
+      FLogAnonymizer.AddUnit(UnitIndex.UnitName, UnitIndex.FileName);
   // Befunde aus der Zeit des Aufbaus enthalten Units, die damals noch fehlten. Im Pull-Modus steigt
   // damit die Generation: Der Client holt geöffnete Dateien neu, workspace/diagnostic prüft alle.
   // Gebündelt: Die große Datei zu prüfen dauerte im Log über 20 s, und jedes Projekt meldet sich.
@@ -1801,6 +1820,8 @@ begin
   FCodeLens.Namespaces := Namespaces;
   FSemanticTokens.Namespaces := Namespaces;
   FDiagnostics.SetLibraryRoots(LibraryRoots);
+  if FLogAnonymizer <> nil then
+    FLogAnonymizer.SetLibraryRoots(LibraryRoots);
   FSyntaxDiagnostics.Refresh;
 end;
 
@@ -2096,6 +2117,7 @@ var
   Transport: IJsonRpcTransport;
   Warning: string;
   TraceName: string;
+  Anonymizer: ILogAnonymizer;
 begin
   // Stacktraces für das Absturzprotokoll (Exception.StackTrace).
   TStackTrace.Install;
@@ -2107,8 +2129,8 @@ begin
   LoggerImpl.AddSink(TStreamLogSink.Create(TStdStreams.CreateError, True), TLogLevel.Error);
   if AOptions.LogFile <> '' then
     try
-      LoggerImpl.AddSink(TStreamLogSink.CreateForFile(AOptions.LogFile, IntToStr(TParentWatcher.CurrentProcessId)),
-        AOptions.LogLevel);
+      LoggerImpl.AddSink(TShellDiagnostics.LogFileSink(AOptions.LogFile, IntToStr(TParentWatcher.CurrentProcessId),
+        AOptions.LogNames, Anonymizer), AOptions.LogLevel);
     except
       on E: Exception do
         Logger.Error(Format('Logdatei "%s" kann nicht geöffnet werden: %s', [AOptions.LogFile, E.Message]));
@@ -2132,6 +2154,7 @@ begin
     Logger.Warning(Warning);
 
   Result := TServerComposition.Create(Transport, Logger);
+  Result.FLogAnonymizer := Anonymizer;
   Result.FRestricted := AOptions.Restricted;
   Result.FClientProcessId := AOptions.ClientProcessId;
   if AOptions.Restricted then

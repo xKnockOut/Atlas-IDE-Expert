@@ -43,6 +43,8 @@ type
   public
     LogFile: string;
     LogLevel: TLogLevel;
+    /// <summary>--log-names: Server-Log mit Pfaden und Namen statt anonymisiert (#647).</summary>
+    LogNames: Boolean;
     TraceFile: string;
     /// <summary>Ziel des Linter-Modus; '' = Server-Modus.</summary>
     CheckTarget: string;
@@ -189,6 +191,8 @@ begin
         else
           AddWarning(Format('Unbekannte Log-Stufe "%s", verwendet wird info', [Value]));
     end
+    else if Name = '--log-names' then
+      Result.LogNames := True
     else if Name = '--trace' then
     begin
       if TakeValue then

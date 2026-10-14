@@ -20,6 +20,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Logging.Contract,
   Atlas.Common.Diagnostics.Contract,
   Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Diagnostics.Providers.Log,
@@ -51,6 +52,10 @@ type
     constructor Create(const AFolder, ATag: string; const ADocuments: IDocumentStore; const AIndex: ISymbolIndex);
     destructor Destroy; override;
     class function DefaultFolder: string; static;
+    /// <summary>Senke für das Server-Log (--log). Anonymisiert (#647), außer mit ANames (--log-names);
+    /// AAnonymizer ist dann nil.</summary>
+    class function LogFileSink(const AFileName, AFallbackTag: string; ANames: Boolean;
+      out AAnonymizer: ILogAnonymizer): ILogSink; static;
     { IJsonRpcRequestObserver }
     procedure Started(const AMethod: string);
     procedure Finished(const AMethod: string; const AParams, AResult: TJSONValue; const AError: Exception;
@@ -80,6 +85,8 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Diagnostics.RequestScope,
+  Atlas.Common.Logging.Providers.StreamSink,
+  Atlas.Common.Logging.Providers.TransformSink,
   Atlas.Windows.Diagnostics.ProcessInfo;
 
 { TShellDiagnostics }
@@ -112,6 +119,27 @@ end;
 class function TShellDiagnostics.DefaultFolder: string;
 begin
   Result := TPath.Combine(TPath.Combine(TPath.Combine(TPath.GetCachePath, 'Atlas'), 'Logs'), 'Diagnose');
+end;
+
+class function TShellDiagnostics.LogFileSink(const AFileName, AFallbackTag: string; ANames: Boolean;
+  out AAnonymizer: ILogAnonymizer): ILogSink;
+var
+  Anonymizer: ILogAnonymizer;
+  Inner: ILogSink;
+begin
+  Inner := TStreamLogSink.CreateForFile(AFileName, AFallbackTag);
+  AAnonymizer := nil;
+  Result := Inner;
+  if ANames then
+    Exit;
+  // Eigene Variable: out-Parameter lassen sich nicht einfangen.
+  Anonymizer := TLogAnonymizer.Create(TProcessInfo.IdentityNames);
+  AAnonymizer := Anonymizer;
+  Result := TTransformLogSink.Create(Inner,
+    function(const AText: string): string
+    begin
+      Result := Anonymizer.Anonymize(AText);
+    end);
 end;
 
 procedure TShellDiagnostics.AllowMethods(const AMethods: TArray<string>);
