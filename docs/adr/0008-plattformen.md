@@ -21,6 +21,7 @@ Atlas besteht aus Packages und Anwendungen mit unterschiedlichen Anforderungen a
 | `AtlasServer` | ja | ja, Standard |
 | `Atlas.IDE.Expert` | ja, für die klassische IDE | ja, für die 64-Bit-IDE |
 | `Atlas.Tests` | – | ja |
+| `AtlasSetup` | ja ([ADR 0009](0009-installer.md)) | – |
 
 - Das Plugin wird für **Win32 und Win64** gebaut (Entscheidung zu #281 vom 14.10.2026). Die BPL trägt per `{$LIBSUFFIX AUTO}` die Package-Version im Namen (`Atlas.IDE.Expert370.bpl` für Delphi 13, `…290.bpl` für Delphi 12), damit BPLs beider IDE-Versionen nebeneinander liegen.
 - Der Server wird für **Win32 und Win64** gebaut. Ausgeliefert und vom Plugin gestartet wird standardmäßig die Win64-Fassung.

@@ -1,6 +1,6 @@
 # 0003: Symbolindex-Cache als JSON-Datei
 
-- Status: Ersetzt durch den Nachtrag unten (#617, 14.10.2026)
+- Status: Ersetzt durch [0010](0010-binaerer-index-cache.md)
 - Datum: 2026-10-07
 - Bezug: #15 Symbolindex, `docs/Architektur.md` (Cache-Format)
 
@@ -23,5 +23,8 @@ Eine JSON-Datei je Arbeitsbereich mit Formatversion, je Unit Zeitstempel und Inh
 - Der Cache wird immer ganz gelesen und geschrieben. Wird das bei großen Projekten zu langsam, ist ein Wechsel über eine neue Formatversion möglich.
 
 ## Nachtrag (#617, 14.10.2026)
+
+Die neue Entscheidung steht in [ADR 0010](0010-binaerer-index-cache.md).
+
 
 Bei 1569 Units und rund 576.000 Symbolen kostete das Laden des JSON-Baums den größten Teil des Starts. Erst ersetzte ein Zeilenformat mit Tabulatoren das JSON (Formatversion 10), jetzt ein Binärformat mit String-Tabelle (Formatversion 11, Beschreibung in `docs/Architektur.md`, Abschnitt Cache-Format). Die Köpfe aller Units werden beim Start gelesen, die Symbole je Unit erst bei Übernahme in den Index. Zum Untersuchen dient der Index selbst (`atlas.server.status`, MCP-Werkzeuge), nicht mehr ein Texteditor.

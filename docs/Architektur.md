@@ -3,6 +3,7 @@
 Entscheidungen mit Begründung stehen im Entscheidungsprotokoll unter [`docs/adr/`](adr/README.md).
 Gebaut wird über das IDE-Plugin cc.ps1 ([ADR 0007](adr/0007-build-ueber-cc-ps1.md)); welches Projekt für
 welche Plattform übersetzt und getestet wird, legt [ADR 0008](adr/0008-plattformen.md) fest.
+Schichten, Threading-Modell, Symbolindex und Cache-Format stehen in den gleichnamigen Abschnitten unten.
 
 Grundlage ist das Konzept „Rollenbasierte Kopplung und Kohäsion“ (Entwurf, Stand 30.09.2026). Dieses Dokument hält fest, wie das Konzept in diesem Projekt angewendet wird. Bei Widersprüchen gilt das Konzept.
 
@@ -13,7 +14,7 @@ Grundlage ist das Konzept „Rollenbasierte Kopplung und Kohäsion“ (Entwurf, 
 | `Atlas.Common` | Platform-Package | plattformunabhängige RTL (`System.*`) | Windows (`Winapi.*`, `System.Win.*`), VCL, FMX, `Atlas.Windows` |
 | `Atlas.Windows` | Platform-Package | RTL, `Winapi.*`, `System.Win.*`, `Atlas.Common` | VCL, FMX |
 | `AtlasServer` | Anwendung (Host) | beide Packages, RTL, Windows | VCL (Konsolenanwendung) |
-| `Atlas.IDE.Expert` | Design-Time-Package für RAD Studio (Win32, ADR 0006) | RTL, `Winapi.*`, `System.Win.*`, VCL, `designide` (Open Tools API) | `Atlas.Common`, `Atlas.Windows` (eigenständig, damit die IDE nur ein BPL laden muss) |
+| `Atlas.IDE.Expert` | Design-Time-Package für RAD Studio (Win32 und Win64, ADR 0006, ADR 0008) | RTL, `Winapi.*`, `System.Win.*`, VCL, `designide` (Open Tools API) | `Atlas.Common`, `Atlas.Windows` (eigenständig, damit die IDE nur ein BPL laden muss) |
 | `AtlasSetup` | Anwendung (Installer, VCL, Win32, ADR 0009) | RTL, `Winapi.*`, `System.Win.*`, VCL, die Versionsunit des Plugins; `Setup.Core.*` nur RTL | `Atlas.Common`, `Atlas.Windows`; in `Setup.Core.*` Windows, VCL, `Setup.Adapters.*`, `Setup.Shell.*` |
 | `Atlas.Tests` | Testprojekt (DUnitX) | alles, was getestet wird | – |
 
@@ -194,35 +195,78 @@ RTL
 
 `Lsp` verbindet Protokoll und Fachlogik; die Fachlogik darunter kennt kein JSON-RPC. `Shell` in der Anwendung setzt alles zusammen und ist die einzige Stelle, die Windows-Adapter und Common-Features verbindet.
 
+Das IDE-Plugin (ADR 0006, #406) hat drei Schichten, ebenfalls nur nach unten abhängig:
+
+```text
+Atlas.IDE.*    Open Tools API, Editor, Menüs, Einstellungsspeicher, Komposition
+Atlas.UI.*     Fenster und Steuerelemente (nur VCL)
+Atlas.Core.*   Datenmodell, Matching, LSP-Client, Einstellungen (ohne VCL und Open Tools API)
+RTL
+```
+
+Das Plugin nutzt `Atlas.Common` nicht; es spricht mit dem Server nur über LSP.
+
+## Threading-Modell
+
+### Server
+
+Der Ablauf einer Anfrage mit Lese-Thread, `Run`-Thread und Thread-Pool steht oben unter „Ablauf einer Anfrage“ (Entscheidung in [ADR 0004](adr/0004-nebenlaeufige-anfragen.md)). Dazu kommen:
+
+- **Indexaufbau:** je Arbeitsbereich ein Hintergrund-Thread (`TIndexService`). Mehrere Aufbauten (Projekte einer Projektgruppe) laufen über einen gemeinsamen `TIndexScheduler` nacheinander und stufenweise: erst die Projektdateien aller Projekte, dann die Units der Suchpfade, zuletzt die Bibliothek; das aktive Projekt zuerst (#648). Ein neuer Aufbau bricht den laufenden ab und wartet auf ihn.
+- **Nachladen einzelner Units:** `EnsureUnit` parst im Thread der Anfrage, ohne globale Sperre und ohne auf den Scheduler zu warten (#617). Eine Sperre schützt nur den Zugriff auf den Builder und zählt seine Nutzer; ein neuer Aufbau gibt den alten Builder erst frei, wenn ihn niemand mehr nutzt.
+- **Lesen des Index:** `TSymbolIndex` schützt seine Wörterbücher mit einer `TCriticalSection`, hält sie aber nur für Nachschlagen und für das Kopieren eines Schnappschusses; Durchläufe über alle Symbole laufen auf dem Schnappschuss ohne Sperre (#647). `AddUnit` ersetzt eine Unit vollständig, Leser sehen nie einen halben Stand. Der Namensindex der Import-Vorschläge (`TImportNames`) ist ein unveränderlicher Schnappschuss mit Generation.
+- **Dokumente:** Momentaufnahmen aus `IDocumentStore` ändern sich nie und dürfen in jedem Thread gelesen werden.
+- **Mehrere Serverinstanzen:** Eine Sperrdatei je Cache (`<cache>.lock`) lässt nur die erste Instanz schreiben; die anderen warten begrenzt und laden deren Stand (#62).
+
+### IDE-Plugin
+
+- **Hauptthread der IDE:** Open Tools API, VCL, Editor-Zeichnungen und alle Einstiegspunkte. Jeder Einstiegspunkt läuft über `TAtlasGuard` (#493), damit keine Ausnahme in die IDE gelangt.
+- **Lese-Thread des LSP-Clients:** liest die Ausgabe des Servers und ordnet Antworten zu. Anfragen des Servers (`workspace/applyEdit`, Refresh) und Teilergebnisse kommen dort an; was die IDE anfasst, geht über `TThread.Queue` in den Hauptthread.
+- **Datenquellen im Hintergrund:** Vervollständigung, Parameter-Hint und Probleme holen ihre Daten in eigenen Threads (`Atlas.Core.Completion.Internals.Async`); ein Ergebnis gilt nur, wenn die Anfrage noch aktuell ist. Was der Hauptthread synchron braucht, läuft über `TAtlasTimeLimit` in einem Arbeiter-Thread mit hartem Zeitlimit (Standard 200 ms).
+- **Wächter:** Der Einfrier-Wächter (#501) misst den Hauptthread aus einem eigenen Thread; die Update-Prüfung (#495) fragt in einem Hintergrund-Thread und liefert per `TThread.Queue`.
+- **Beenden:** `TAtlasShutdown` ist das gemeinsame Abbruchsignal. Jedes Warten in einem Hintergrund-Thread hört darauf, sodass beim Entladen des Packages alle Threads innerhalb einer Sekunde enden.
+
 ## Symbolindex
 
 Datenstrukturen (`Atlas.Common.Index.Contract`):
 
-- `TUnitIndex` je Datei: Unit-Name, Dateiname, Zeitstempel, Inhalts-Hash, uses-Listen aus interface und implementation, Symbole.
-- `TIndexSymbol`: Name, Container (umgebender Typ, `''` auf Unit-Ebene), Art (`TIndexSymbolKind`), Bereich der ganzen Deklaration und des Namens, `InInterface`, Vorfahren (Klassen und Interfaces) bzw. Zieltyp (Helfer), deklarierter Typ.
-- Sichtbarkeiten, Parameterlisten und Rümpfe stehen nicht im Index. Wer sie braucht (Hover mit published-Properties, Namensauflösung lokaler Variablen), parst die Datei bei Bedarf.
+- `TUnitIndex` je Datei: Unit-Name, Dateiname, Zeitstempel, Inhalts-Hash, uses-Listen aus interface und implementation, Symbole, Include-Dateien mit Zeitstempeln (#264, #617), Merker für Bibliothek, kompakte Form und initialization/finalization (#284), Deklarationen aus inaktiven Zweigen getrennt in `Unavailable` (#476) und die Verwendungen der Bezeichner (`Usages`, nach Name sortiert, nur Projekt-Units mit `index.usages`, #492).
+- `TIndexSymbol`: Name, Container (umgebender Typ, `''` auf Unit-Ebene), Art (`TIndexSymbolKind`), Bereich der ganzen Deklaration und des Namens, `InInterface`, Sichtbarkeit, Vorfahren (Klassen und Interfaces) bzw. Zieltyp (Helfer), deklarierter Typ mit Typargumenten, Typparameter, Parameterzahl und -typen, Default-Property, virtuell, Include-Datei, Bedingung des `{$IFDEF}`-Zweigs, Signatur als eine Zeile, Direktiven und XMLDoc-Kurztext (#492).
+- `TIndexUsage`: Name und alle Stellen in der Unit.
+- Rümpfe und lokale Deklarationen stehen nicht im Index. Wer sie braucht (Namensauflösung lokaler Variablen, Kontrollfluss), parst die Datei bei Bedarf.
 
-Speicher (`TSymbolIndex`): ein Wörterbuch Dateischlüssel → `TUnitIndex` und eines Unit-Name → Dateischlüssel, beide unter einer `TCriticalSection`. Die Suche nach Namen und Nachfahren läuft linear über alle Symbole; bei den bisherigen Projektgrößen genügt das. `AddUnit` ersetzt den Stand einer Datei vollständig, deshalb sehen Leser nie eine halb aktualisierte Unit.
+Speicher (`TSymbolIndex`): ein Wörterbuch Dateischlüssel → `TUnitIndex` und eines Unit-Name → Dateischlüssel, beide unter einer `TCriticalSection`; eine Generation zählt jede Änderung. Die Suche nach Namen und Nachfahren läuft linear über einen Schnappschuss aller Units. Gleiche Zeichenketten legt `TStringPool` nur einmal ab. Übersteigt der geschätzte Bedarf die Speichergrenze (`memoryBudgetMb`, Standard 256 MB, #185), lagert der Index zuerst die Verwendungen aus (sie bleiben im Cache, `TIndexService.UsagesOf` lädt sie nach), dann hält er Bibliotheks-Units und zuletzt Projekt-Units kompakt (nur interface-Symbole).
 
-Aufbau (`TIndexBuilder`, `TIndexService`): ein Hintergrund-Thread liest den Cache, indiziert zuerst die Projektdateien und danach referenzierte Units über den `TUnitFileResolver`. Ein neuer Start bricht den laufenden Aufbau ab und wartet auf ihn. `EnsureUnit` indiziert eine Unit nachträglich im aufrufenden Thread, z. B. für die Namensauflösung.
+Namensindex (`TImportNames`, #617): flache Liste der importierbaren Symbole (interface, oberste Ebene) mit einer Zeichenmaske je Name, Projekt-Units vor der Bibliothek. Die Vervollständigung prüft damit Units, die noch nicht in den uses stehen, ohne bei jeder Anfrage alle Symbole unscharf zu vergleichen.
+
+Aufbau (`TIndexBuilder`, `TIndexService`): Der Hintergrund-Thread liest den Cache (zunächst nur die Köpfe), indiziert die Projektdateien und danach referenzierte Units über den `TUnitFileResolver`, rekursiv nur, was in einer uses-Liste vorkommt. Ein Cache-Eintrag gilt weiter, wenn Zeitstempel oder Hash passen; die Symbole einer Unit dekodiert der Builder erst bei der Übernahme. `ApplyChanges` übernimmt Änderungen von außen, `EnsureUnit` indiziert eine Unit nachträglich im aufrufenden Thread.
 
 ## Cache-Format
 
-`TIndexCache` schreibt seit #617 ein Binärformat mit String-Tabelle (Formatversion 11; Dateiname weiter `index-*.json`):
+Entscheidung in [ADR 0010](adr/0010-binaerer-index-cache.md) (ersetzt ADR 0003). Ablage (`Atlas.Common.Index.Adapters.CacheDirectory`, #184, #492):
 
 ```text
-'ATLASIDX' Version
-Texte:  Anzahl, je Text Bytelänge + UTF-8 (Nummer 0 = '')
-Units:  Anzahl, je Unit Kopf (Name, Datei, Zeitstempel, Hash, Merker, uses, Includes mit Zeitstempeln,
-        Symbolzahlen) und ein Symbolblock mit Länge
-Symbol: Verweise in die Texttabelle, Positionen, Merker, Vorfahren, Typen, Parameter
+%LOCALAPPDATA%\Atlas\Index\<IDE-Version>\<Projekt-Hash>\index.atlasidx
+%LOCALAPPDATA%\Atlas\Index\<IDE-Version>\Bibliothek\<Hash>\index.atlasidx   (RTL, VCL, FMX je Plattform)
+```
+
+`TIndexCache` schreibt ein Binärformat mit String-Tabelle (Formatversion 12):
+
+```text
+Kopf:       'ATLASIDX' Version Prüfsumme (4 Byte, FNV-1a über alles dahinter)
+Texte:      Anzahl, je Text Bytelänge + UTF-8 (Nummer 0 = '')
+Units:      Anzahl, je Unit Kopf (Name, Datei, Zeitstempel, Hash, Merker, uses, Includes mit Zeitstempeln,
+            Symbolzahlen), Symbolblock mit Länge, Verwendungsblock mit Länge
+Symbol:     Verweise in die Texttabelle, Positionen, Merker, Vorfahren, Typen, Parameter, Bedingung,
+            Signatur, Direktiven, Kurztext
+Verwendung: Name, Anzahl, je Stelle Zeilenabstand zur vorigen und Spalte
 ```
 
 - Zahlen sind Varints (vorzeichenbehaftete per ZigZag); Texte stehen nur einmal in der Tabelle und teilen sich nach dem Laden eine Instanz.
-- `ReadEntries` liest nur die Köpfe. Die Symbole einer Unit dekodiert `Expand` erst, wenn der Builder die Unit übernimmt; ein beschädigter Block zählt wie ein fehlender Eintrag.
+- `ReadEntries` liest nur die Köpfe. Die Symbole einer Unit dekodiert `Expand` erst, wenn der Builder die Unit übernimmt; Verwendungen bleiben bei knappem Speicher in der Datei.
 - Beim Start gilt ein Eintrag, solange Zeitstempel oder Hash zur Datei passen (bei Units mit Includes auch deren Zeitstempel); sonst wird die Datei neu eingelesen.
-- Ein Cache mit anderer Version oder fremdem Inhalt (auch die früheren JSON- und Zeilenformate) wird verworfen. Ändert sich `TIndexSymbol`, steigt `FormatVersion`.
-- Geschrieben wird nur, wenn etwas neu eingelesen wurde oder Units weggefallen sind.
+- Eine falsche Prüfsumme, eine abgeschnittene Datei, eine andere Version oder ein früheres Format (JSON, Zeilenformat, `index-*.json`) verwirft den Cache mit dem Grund im Protokoll (`OnCacheRejected`); der Aufbau liest still neu. Ändert sich `TIndexSymbol`, steigt `FormatVersion`.
+- Geschrieben wird nur, wenn etwas neu eingelesen wurde oder Units weggefallen sind. Der Ordner wird auf eine Höchstgröße begrenzt, älteste Caches zuerst (`TIndexCacheHousekeeping`); „Index löschen“ (`atlas.server.clearIndex`) und `--clear-cache` leeren ihn.
 
 ## Geplante Zuordnung der Bausteine
 
