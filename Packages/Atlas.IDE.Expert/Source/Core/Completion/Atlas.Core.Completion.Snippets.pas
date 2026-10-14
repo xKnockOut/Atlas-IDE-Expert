@@ -11,7 +11,9 @@
 //   $0, ${0}   Cursor nach dem letzten Platzhalter
 // Wiederholte Nummern sind verknüpft und zeigen denselben Text. Ein "$" vor
 // etwas anderem bleibt stehen, auch "$0F" oder "$FF": Hexzahlen im Delphi-Code
-// sind keine Platzhalter.
+// sind keine Platzhalter. "$$" steht für ein einzelnes "$" (für Text wie
+// "$1;", der sonst wie ein Platzhalter aussähe; so übernimmt Atlas die Live
+// Templates der IDE).
 
 interface
 
@@ -21,7 +23,8 @@ uses
 {$SCOPEDENUMS ON}
 
 type
-  TAtlasSnippetOrigin = (BuiltIn, User);
+  /// <summary>Herkunft; bei gleichem Kürzel gilt User vor Ide vor BuiltIn.</summary>
+  TAtlasSnippetOrigin = (BuiltIn, Ide, User);
 
   TAtlasSnippet = record
     /// <summary>Anzeigename, z. B. „try…finally mit Create/Free“; '' = Prefix.</summary>
@@ -63,15 +66,25 @@ type
     /// unbekannt ist.</summary>
     class function Parse(const AText, AFileName: string; out ASnippet: TAtlasSnippet;
       out AError: string): Boolean; static;
+    /// <summary>Dateiinhalt im Format von Parse (Zeilen mit #10); für die Seite „Snippets“.</summary>
+    class function ToFileText(const ASnippet: TAtlasSnippet): string; static;
+    /// <summary>Dateiname zum Kürzel, z. B. "tryf.atlas-snippet"; andere Zeichen als Buchstaben, Ziffern und _
+    /// werden zu _.</summary>
+    class function FileNameFor(const APrefix: string): string; static;
     /// <summary>tryf, trye, forin, fori, while, repeat, class, record, prop, propset, comp, reg.</summary>
     class function BuiltIn: TAtlasSnippetList; static;
-    /// <summary>Eigene Vorlagen ersetzen mitgelieferte mit gleichem Kürzel (ohne Groß/Klein).</summary>
+    /// <summary>Vorlagen aus AUser ersetzen die aus ABuiltIn mit gleichem Kürzel (ohne Groß/Klein). Für
+    /// mitgelieferte, IDE- und eigene Vorlagen zweimal: Merge(Merge(BuiltIn, Ide), User).</summary>
     class function Merge(const ABuiltIn, AUser: TAtlasSnippetList): TAtlasSnippetList; static;
     /// <summary>Setzt ABody ein: jede Zeile nach der ersten bekommt AIndent vorangestellt, Zeilenumbrüche werden
     /// zu ALineBreak, Platzhalter zu ihrem Vorgabetext (verknüpfte zum ersten vorhandenen).</summary>
     class function Expand(const ABody, AIndent, ALineBreak: string): TAtlasSnippetExpansion; static;
     /// <summary>Klartext ohne Platzhalter, Zeilen mit #10; für Vorschau und Detailpanel.</summary>
     class function PlainText(const ABody: string): string; static;
+    /// <summary>Snippet des Servers (LSP-Syntax, insertTextFormat 2) im eigenen Format: \$ wird zu $$, $1 zu ${1},
+    /// Auswahl ${1|a,b|} zu ${1:a}; verschachtelte Platzhalter und ${NAME:…} werden zu ihrem Vorgabetext, "$" vor
+    /// einem Buchstaben bleibt Text.</summary>
+    class function FromLsp(const AText: string): string; static;
     /// <summary>Einrückung am Anfang von ALine (Leerzeichen und Tabs).</summary>
     class function IndentOf(const ALine: string): string; static;
     /// <summary>Stand des Ordners (Namen, Größen, Zeitstempel der Vorlagendateien); ändert sich, sobald eine
@@ -135,6 +148,13 @@ begin
   begin
     if ABody[Index] = '$' then
     begin
+      // "$$" = "$"
+      if (Index < Length(ABody)) and (ABody[Index + 1] = '$') then
+      begin
+        Literal := Literal + '$';
+        Inc(Index, 2);
+        Continue;
+      end;
       // ${n} bzw. ${n:Vorgabe}
       if (Index < Length(ABody)) and (ABody[Index + 1] = '{') and (Index + 2 <= Length(ABody)) and
         IsDigit(ABody[Index + 2]) then
@@ -276,6 +296,29 @@ begin
   Result := True;
 end;
 
+class function TAtlasSnippets.ToFileText(const ASnippet: TAtlasSnippet): string;
+
+  function OneLine(const AText: string): string;
+  begin
+    Result := Trim(StringReplace(NormalizeBreaks(AText), #10, ' ', [rfReplaceAll]));
+  end;
+
+begin
+  Result := 'name: ' + OneLine(ASnippet.Name) + #10 + 'prefix: ' + OneLine(ASnippet.Prefix) + #10 +
+    'description: ' + OneLine(ASnippet.Description) + #10 + '---' + #10 + NormalizeBreaks(ASnippet.Body) + #10;
+end;
+
+class function TAtlasSnippets.FileNameFor(const APrefix: string): string;
+var
+  Index: Integer;
+begin
+  Result := APrefix;
+  for Index := 1 to Length(Result) do
+    if not IsWordChar(Result[Index]) then
+      Result[Index] := '_';
+  Result := Result + FileExtension;
+end;
+
 function Snippet(const APrefix, AName, ADescription, ABody: string): TAtlasSnippet;
 begin
   Result := Default(TAtlasSnippet);
@@ -308,9 +351,10 @@ begin
       '${1:TMyRecord} = record'#10'  ${2:Value}: ${3:Integer};$0'#10'end;'),
     Snippet('prop', 'Property mit Feld und Setter', 'Deklaration in der Klasse; den Setter legt propset an.',
       'property ${1:Value}: ${2:Integer} read F${1} write Set${1};$0'),
+    // Gleiche Form wie /prop, /changed und die Vorlage „changed“ des Servers (TSetterGenerator).
     Snippet('propset', 'Setter mit Prüfung auf Änderung', 'Setzt das Feld nur bei Änderung und zeichnet neu.',
-      'procedure ${1:TMyControl}.Set${2:Value}(const AValue: ${3:Integer});'#10'begin'#10 +
-      '  if F${2} = AValue then'#10'    Exit;'#10'  F${2} := AValue;'#10'  Invalidate;$0'#10'end;'),
+      'procedure ${1:TMyControl}.Set${2:Value}(const Value: ${3:Integer});'#10'begin'#10 +
+      '  if F${2} <> Value then'#10'  begin'#10'    F${2} := Value;'#10'    Invalidate;$0'#10'  end;'#10'end;'),
     Snippet('comp', 'Komponentengerüst', 'Komponente mit published-Abschnitt; die Registrierung legt reg an.',
       '${1:TMyControl} = class(${2:TCustomControl})'#10'protected'#10'  procedure Paint; override;'#10 +
       'public'#10'  constructor Create(AOwner: TComponent); override;'#10'published'#10'  $0'#10'end;'),
@@ -336,9 +380,9 @@ begin
   for Own in AUser do
   begin
     Replaced := False;
-    // Doppelte Kürzel unter den eigenen: die erste Datei gilt.
+    // Doppelte Kürzel unter den neuen: die erste Datei gilt.
     for Item in Result do
-      if (Item.Origin = TAtlasSnippetOrigin.User) and SameText(Own.Prefix, Item.Prefix) then
+      if (Item.Origin = Own.Origin) and SameText(Own.Prefix, Item.Prefix) then
         Replaced := True;
     if not Replaced then
       Result := Result + [Own];
@@ -389,6 +433,110 @@ begin
     else
       Text := Text + Indented(Parts[Index].Text);
   Result.Text := Text;
+end;
+
+/// <summary>Liest ab AIndex Klartext bis zum passenden "}" bzw. Textende (verschachtelte Platzhalter und Variablen
+/// werden zu ihrer Vorgabe). Mit ATop entsteht das eigene Format ($$, ${n}, ${n:Vorgabe}).</summary>
+function ConvertLsp(const AText: string; var AIndex: Integer; ATop: Boolean): string;
+var
+  Start: Integer;
+  Number, Default: string;
+begin
+  Result := '';
+  while AIndex <= Length(AText) do
+  begin
+    case AText[AIndex] of
+      '\':
+        begin
+          if (AIndex < Length(AText)) and CharInSet(AText[AIndex + 1], ['\', '$', '}', ',', '|']) then
+          begin
+            if ATop and (AText[AIndex + 1] = '$') then
+              Result := Result + '$$'
+            else
+              Result := Result + AText[AIndex + 1];
+            Inc(AIndex, 2);
+          end
+          else
+          begin
+            Result := Result + '\';
+            Inc(AIndex);
+          end;
+          Continue;
+        end;
+      '}':
+        if not ATop then
+        begin
+          Inc(AIndex);
+          Exit;
+        end;
+      '$':
+        // $1, ${1}, ${1:Vorgabe}, ${1|a,b|}, ${NAME:Vorgabe}; "$" vor einem Buchstaben bleibt Text ($FF).
+        if (AIndex < Length(AText)) and (IsDigit(AText[AIndex + 1]) or (AText[AIndex + 1] = '{')) then
+        begin
+          Inc(AIndex);
+          if AText[AIndex] = '{' then
+            Inc(AIndex);
+          Start := AIndex;
+          while (AIndex <= Length(AText)) and IsWordChar(AText[AIndex]) do
+            Inc(AIndex);
+          Number := Copy(AText, Start, AIndex - Start);
+          Default := '';
+          if AText[Start - 1] = '{' then
+          begin
+            if (AIndex <= Length(AText)) and (AText[AIndex] = ':') then
+            begin
+              Inc(AIndex);
+              Default := ConvertLsp(AText, AIndex, False);
+            end
+            else if (AIndex <= Length(AText)) and (AText[AIndex] = '|') then
+            begin
+              // Auswahl: die erste Möglichkeit als Vorgabe.
+              Inc(AIndex);
+              Start := AIndex;
+              while (AIndex <= Length(AText)) and not CharInSet(AText[AIndex], [',', '|']) do
+                Inc(AIndex);
+              Default := Copy(AText, Start, AIndex - Start);
+              while (AIndex <= Length(AText)) and (AText[AIndex] <> '}') do
+                Inc(AIndex);
+              Inc(AIndex);
+            end
+            else
+            begin
+              while (AIndex <= Length(AText)) and (AText[AIndex] <> '}') do
+                Inc(AIndex);
+              Inc(AIndex);
+            end;
+          end;
+          // Tabstopp nur auf oberster Ebene und mit Nummer; Variablen werden zu ihrer Vorgabe.
+          if ATop and (Number <> '') and IsDigit(Number[1]) then
+          begin
+            if (Default = '') and (Number = '0') then
+              Result := Result + '$0'
+            else if Default = '' then
+              Result := Result + '${' + Number + '}'
+            else
+              Result := Result + '${' + Number + ':' + Default + '}';
+          end
+          else
+            Result := Result + Default;
+          Continue;
+        end;
+    end;
+    // Ein "$" ohne Platzhalter bleibt Text.
+    if ATop and (AText[AIndex] = '$') then
+      Result := Result + '$$'
+    else
+      Result := Result + AText[AIndex];
+    Inc(AIndex);
+  end;
+end;
+
+class function TAtlasSnippets.FromLsp(const AText: string): string;
+var
+  Index: Integer;
+begin
+  Index := 1;
+  Result := ConvertLsp(NormalizeBreaks(AText), Index, True);
 end;
 
 class function TAtlasSnippets.PlainText(const ABody: string): string;

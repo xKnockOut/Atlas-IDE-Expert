@@ -207,6 +207,8 @@ uses
   Atlas.UI.Strings.Tests in 'IDE.Expert\Atlas.UI.Strings.Tests.pas',
   Atlas.Core.Completion.Providers.XmlDoc in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.XmlDoc.pas',
   Atlas.Core.Completion.Snippets in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Snippets.pas',
+  Atlas.Core.Completion.LiveTemplates in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.LiveTemplates.pas',
+  Atlas.Core.Completion.SnippetCatalog in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.SnippetCatalog.pas',
   Atlas.Core.Completion.Placeholders in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Placeholders.pas',
   Atlas.Core.Completion.Providers.Snippets in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.Snippets.pas',
   Atlas.Core.Completion.Snippets.Tests in 'IDE.Expert\Atlas.Core.Completion.Snippets.Tests.pas',
@@ -214,6 +216,7 @@ uses
   Atlas.Core.Completion.Parentheses.Tests in 'IDE.Expert\Atlas.Core.Completion.Parentheses.Tests.pas',
   Atlas.Core.Completion.Preview in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Preview.pas',
   Atlas.UI.Settings.Page in '..\Packages\Atlas.IDE.Expert\Source\UI\Settings\Atlas.UI.Settings.Page.pas',
+  Atlas.UI.Settings.SnippetsPage in '..\Packages\Atlas.IDE.Expert\Source\UI\Settings\Atlas.UI.Settings.SnippetsPage.pas',
   Atlas.UI.Settings.Page.Tests in 'IDE.Expert\Atlas.UI.Settings.Page.Tests.pas',
   Atlas.Core.Build.Events in '..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Events.pas',
   Atlas.Core.Build.Events.Tests in 'IDE.Expert\Atlas.Core.Build.Events.Tests.pas',
@@ -296,7 +299,8 @@ uses
   Atlas.Common.Editing.CaseCompletion.Tests in 'Common\Editing\Atlas.Common.Editing.CaseCompletion.Tests.pas',
   Atlas.Common.Editing.DeclareUnknown.Tests in 'Common\Editing\Atlas.Common.Editing.DeclareUnknown.Tests.pas',
   Atlas.Common.Editing.InterfaceStubs.Tests in 'Common\Editing\Atlas.Common.Editing.InterfaceStubs.Tests.pas',
-  Atlas.Common.Lsp.Completion.Postfix.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Postfix.Tests.pas';
+  Atlas.Common.Lsp.Completion.Postfix.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Postfix.Tests.pas',
+  Atlas.Common.Editing.ContextSnippets.Tests in 'Common\Editing\Atlas.Common.Editing.ContextSnippets.Tests.pas';
 
 // Speicherrest beim Beenden in den Testbericht (Konsole) statt in einen Dialog (#177).
 procedure ReportShutdownLeak(ABytes: Int64);

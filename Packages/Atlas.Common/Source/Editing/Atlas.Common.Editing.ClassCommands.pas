@@ -43,6 +43,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassCompletion,
+  Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource;
 
 type
@@ -279,29 +280,6 @@ begin
 end;
 
 { /dtor }
-
-/// <summary>Felder, die in Konstruktoren von AClassName mit FName := ….Create erzeugt werden.</summary>
-function CreatedFields(ASource: TCommandSource; const AClassName: string): TArray<string>;
-var
-  Symbol: TIndexSymbol;
-  Index, Assign: Integer;
-  Line, Field: string;
-begin
-  Result := nil;
-  for Symbol in ASource.UnitIndex.Symbols do
-    if (Symbol.Kind = TIndexSymbolKind.Constructor_) and SameText(Symbol.Container, AClassName) and
-      (Symbol.Range.EndPos.Line > Symbol.Range.StartPos.Line) then
-      for Index := Symbol.Range.StartPos.Line to Symbol.Range.EndPos.Line do
-      begin
-        Line := Trim(ASource.Lines[Index]);
-        Assign := Pos(':=', Line);
-        if (Assign = 0) or (Pos('.Create', Copy(Line, Assign, MaxInt)) = 0) then
-          Continue;
-        Field := Trim(Copy(Line, 1, Assign - 1));
-        if IsValidIdent(Field) and (IndexText(Field, Result) < 0) then
-          Result := Result + [Field];
-      end;
-end;
 
 function ExecuteDtor(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
 var
