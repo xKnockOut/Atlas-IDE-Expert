@@ -20,7 +20,7 @@ uses
 type
 {$SCOPEDENUMS ON}
   TAtlasFeature = (Completion, Signature, Hover, Pairs, Problems, Reloader, Palette, CheckOnSave, Watchdog, Server,
-    Settings, Menu, Files, InlayHints, Results, EditorCommands);
+    Settings, Menu, Files, InlayHints, Results, EditorCommands, Forms);
 {$SCOPEDENUMS OFF}
 
   TAtlasFeatures = set of TAtlasFeature;
@@ -270,7 +270,7 @@ class function TAtlasGuard.FeatureName(AFeature: TAtlasFeature): string;
 const
   Names: array[TAtlasFeature] of string = ('Vervollständigung', 'Parameter-Hint', 'Tooltip', 'Klammerpaare',
     'Probleme', 'Neuladen', 'Befehlspalette', 'Prüfung beim Speichern', 'Wächter', 'Server', 'Einstellungen', 'Menü',
-    'Dateien', 'Inlay-Hints', 'Ergebnisfenster', 'Editorbefehle');
+    'Dateien', 'Inlay-Hints', 'Ergebnisfenster', 'Editorbefehle', 'Formulare');
 begin
   Result := Names[AFeature];
 end;

@@ -3,9 +3,10 @@
 // Meldet den Code Insight-Manager, die Optionsseite "Atlas" (#227), die
 // Compile-Ereignisse (#527), den Einfrier-Wächter (#501), das Neuladen
 // extern geänderter Dateien (#536), die Befehlspalette (#502), die farbigen
-// Klammerpaare (#514), das Ergebnisfenster (#400) und die Editorbefehle samt
-// Tastenkürzeln und Kontextmenü (#399) beim Laden des Packages an und beim
-// Entladen in umgekehrter Reihenfolge wieder ab (ADR 0006).
+// Klammerpaare (#514), das Ergebnisfenster (#400), die Editorbefehle samt
+// Tastenkürzeln und Kontextmenü (#399) und den Abgleich offener Formulare
+// (#402) beim Laden des Packages an und beim Entladen in umgekehrter
+// Reihenfolge wieder ab (ADR 0006).
 
 interface
 
@@ -48,6 +49,7 @@ uses
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Commands.Bindings,
+  Atlas.IDE.Forms.Designer,
   Atlas.IDE.Commands.Keys;
 
 var
@@ -69,6 +71,8 @@ var
   MainMenu: TAtlasMainMenu;
   // Tastenkürzel der Editorbefehle (#399).
   EditorKeys: TAtlasIdeEditorKeys;
+  // Offene Formulare an den Server (#402).
+  Forms: TAtlasIdeForms;
 
 const
   // Ab dieser Dauer ein Hinweis im Meldungsfenster (#501).
@@ -426,6 +430,19 @@ begin
     end);
   if EditorKeys = nil then
     EditorKeys := TAtlasIdeEditorKeys.Create;
+  if Forms = nil then
+    Forms := TAtlasIdeForms.Create(
+      function: TLspSession
+      begin
+        Result := nil;
+        if Manager <> nil then
+          Result := Manager.RunningSession;
+      end,
+      procedure(AText: string)
+      begin
+        if Manager <> nil then
+          Manager.Report(AText);
+      end);
   if Palette = nil then
     RegisterPalette;
   if Pairs = nil then
@@ -517,6 +534,7 @@ begin
   FreeAndNil(EditInbox);
   FreeAndNil(DirtyExport);
   FreeAndNil(MainMenu);
+  FreeAndNil(Forms);
   FreeAndNil(EditorKeys);
   TAtlasIdeEditorCommands.Uninstall;
   TAtlasIdeResults.Uninstall;

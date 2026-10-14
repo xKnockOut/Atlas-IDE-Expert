@@ -20,7 +20,8 @@ uses
 type
   TAtlasIdeRename = class
   public
-    /// <summary>Schickt dem Server den aktuellen Text aller offenen, schon abgeglichenen Dateien.</summary>
+    /// <summary>Schickt dem Server den aktuellen Text aller offenen, schon abgeglichenen Dateien und
+    /// der im Designer offenen Formulare (#402).</summary>
     class procedure SyncOpenBuffers(ASession: TLspSession); static;
     /// <summary>ASession: laufende Sitzung oder nil; AOpenUnopened: nicht geöffnete Dateien öffnen
     /// statt sie auf die Platte zu schreiben; AMessage: Zeile für die Meldungsansicht.</summary>
@@ -40,6 +41,7 @@ uses
   Atlas.UI.Results.RenamePreview,
   Atlas.IDE.Editor.Buffer,
   Atlas.IDE.Editor.WorkspaceEdit,
+  Atlas.IDE.Forms.Designer,
   Atlas.IDE.Hover.Editor;
 
 const
@@ -57,6 +59,7 @@ begin
     if Buffer <> nil then
       ASession.Sync(FileName, TAtlasEditorBuffer.Text(Buffer));
   end;
+  TAtlasIdeForms.SyncNow(ASession);
 end;
 
 class procedure TAtlasIdeRename.Execute(ASession: TLspSession; AOpenUnopened: Boolean; const AMessage: TProc<string>);

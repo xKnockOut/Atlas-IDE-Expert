@@ -196,6 +196,9 @@
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.ContextMenu.pas"/>
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.Editor.pas"/>
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.Bindings.pas"/>
+        <DCCReference Include="Source\Core\Forms\Atlas.Core.Forms.Text.pas"/>
+        <DCCReference Include="Source\Core\Forms\Atlas.Core.Forms.Changes.pas"/>
+        <DCCReference Include="Source\IDE\Forms\Atlas.IDE.Forms.Designer.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.EditInbox.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.Adapters.FolderWatcher.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Painter.pas"/>
