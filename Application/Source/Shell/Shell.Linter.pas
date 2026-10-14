@@ -243,6 +243,7 @@ begin
     else
       ConfigRoot := ExtractFileDir(TPath.GetFullPath(AOptions.CheckTarget));
     Settings := LoadSettings(ConfigRoot);
+    TFileEncodingDefaults.SetFolder(ConfigRoot, Settings.DefaultEncoding);
     // Regelprofil der Kommandozeile (#146), z. B. "strict" im CI: --profile vor profile.cli vor profile.
     if AOptions.Profile <> '' then
       Settings.Profile := AOptions.Profile

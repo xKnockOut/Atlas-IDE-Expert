@@ -194,6 +194,9 @@ type
     DelphiVersion: string;
     /// <summary>Sprache der Meldungen, "de" oder "en".</summary>
     Language: string;
+    /// <summary>Vorgabe-Codepage für Dateien ohne BOM, wenn die Erkennung nicht entscheidet (#121);
+    /// 65001 = UTF-8 (Standard), sonst eine ANSI-Codepage wie 1250.</summary>
+    DefaultEncoding: Integer;
     /// <summary>Projektdatei relativ zum Ordner der Konfiguration; '' = automatisch suchen.</summary>
     Project: string;
     Config: string;
@@ -514,6 +517,7 @@ class function TServerSettings.Default: TServerSettings;
 begin
   Result.DelphiVersion := '';
   Result.Language := 'de';
+  Result.DefaultEncoding := 65001;
   Result.Project := '';
   Result.Config := '';
   Result.Platform := '';

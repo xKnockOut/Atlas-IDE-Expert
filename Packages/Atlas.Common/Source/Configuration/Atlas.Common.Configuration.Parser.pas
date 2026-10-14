@@ -34,6 +34,7 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Configuration.Internals.JsonTree;
 
 type
@@ -1061,6 +1062,15 @@ begin
           else
             ReportNode(Value, 'Erlaubt sind "de" und "en"');
       end
+      else if Key = 'encoding' then
+      begin
+        if ExpectString(Value, Key, Text) then
+          if not TFileEncoding.ParseCodePage(Text, FSettings.DefaultEncoding) then
+          begin
+            FSettings.DefaultEncoding := TFileEncoding.Utf8CodePage;
+            ReportNode(Value, 'Unbekannte Kodierung; erwartet "utf-8" oder eine ANSI-Codepage wie "1252" oder "windows-1250"');
+          end;
+      end
       else if Key = 'project' then
       begin
         if ExpectString(Value, Key, Text) then
@@ -1308,6 +1318,8 @@ begin
       Result.DelphiVersion := FileSettings.DelphiVersion
     else if Key = 'language' then
       Result.Language := FileSettings.Language
+    else if Key = 'encoding' then
+      Result.DefaultEncoding := FileSettings.DefaultEncoding
     else if Key = 'project' then
       Result.Project := FileSettings.Project
     else if Key = 'config' then

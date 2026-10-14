@@ -6,6 +6,8 @@
 // deklariert sind; RTL, VCL und andere Bibliotheken bleiben unangetastet.
 // Bei Komponenten eines Formulars werden automatisch benannte Ereignis-Handler
 // (Button1Click) mit umbenannt (#45).
+// Betrifft das Umbenennen ein binär gespeichertes Formular, bricht es ab (#121):
+// Die Positionen stammen aus der umgewandelten Textform und passen nicht zur Datei.
 
 interface
 
@@ -62,7 +64,8 @@ type
       const AFileName: string; const APosition: TTextPosition; const AFiles: TArray<string>): TRenameCheck; static;
     /// <summary>True für einen gültigen Bezeichner, der kein reserviertes Wort ist.</summary>
     class function IsValidName(const AName: string): Boolean; static;
-    /// <summary>Alle zu ersetzenden Stellen; EJsonRpcError, wenn nicht umbenennbar.</summary>
+    /// <summary>Alle zu ersetzenden Stellen; EJsonRpcError, wenn nicht umbenennbar oder ein betroffenes
+    /// Formular binär gespeichert ist.</summary>
     class function Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const APosition: TTextPosition; const ANewName: string;
       const AFiles: TArray<string>; const AReadText: TReferenceReadText;
@@ -77,6 +80,7 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Dfm.FormFiles,
+  Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
@@ -276,6 +280,10 @@ begin
   if ARenameHandlers and Assigned(AReadText) then
     Result := Result + HandlerEdits(AResolver, AIndex, ATree, AFileName, Checked, ANewName, AFiles, AReadText,
       ACancellation);
+  for Edit in Result do
+    if not SameText(ExtractFileExt(Edit.FileName), '.pas') and TFileEncoding.IsBinaryFormFile(Edit.FileName) then
+      raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, Format('%s ist ein binär gespeichertes Formular. ' +
+        'Bitte zuerst in Textform umwandeln, dann erneut umbenennen.', [ExtractFileName(Edit.FileName)]));
 end;
 
 function TLspRename.ProjectFiles: TArray<string>;

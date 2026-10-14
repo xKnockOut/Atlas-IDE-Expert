@@ -75,6 +75,11 @@
           "default": "de",
           "markdownDescription": "Sprache der Meldungen. atlas.json im Projekt hat Vorrang."
         },
+        "atlas.encoding": {
+          "type": "string",
+          "default": "utf-8",
+          "markdownDescription": "Vorgabe-Kodierung für Dateien ohne BOM, wenn die Erkennung nicht entscheidet (reines ASCII, ungültiges UTF-8): \"utf-8\" oder eine ANSI-Codepage wie \"windows-1250\". Binäre Formulare werden nie geändert. atlas.json im Projekt hat Vorrang."
+        },
         "atlas.project": {
           "type": "string",
           "default": "",
