@@ -218,6 +218,7 @@
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.IndexTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.CodeTools.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.PullDiagnostics.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ApplyEdit.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Formatter.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DocumentLinks.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Colors.Tests.pas"/>

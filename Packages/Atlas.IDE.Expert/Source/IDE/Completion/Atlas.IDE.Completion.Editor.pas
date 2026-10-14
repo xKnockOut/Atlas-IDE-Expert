@@ -90,6 +90,8 @@ type
     /// <summary>Freigabe absichern (#489): Zeile (ab 1) und Datei des zuletzt übernommenen Konstruktors; 0 ohne.</summary>
     FGuardLine: Integer;
     FGuardFile: string;
+    /// <summary>Das nächste automatische Öffnen kommt vom Enter am Ende der Zeile FGuardLine (#489).</summary>
+    FGuardNewLine: Boolean;
     procedure Log(const AMessage: string);
     procedure Recheck;
     procedure TimerTick(Sender: TObject);
@@ -140,6 +142,9 @@ type
     class function SnippetFolder: string; static;
     /// <summary>Live Templates der laufenden IDE (#51); '' ohne Version.</summary>
     class function IdeTemplateFolder: string; static;
+    /// <summary>Hat Enter die Zeile des übernommenen Konstruktors gerade beendet (#489)? Der Cursor steht dann
+    /// in einer leeren Zeile direkt darunter.</summary>
+    function GuardNewLine(const AView: IOTAEditView): Boolean;
   end;
 
 implementation
@@ -513,7 +518,11 @@ begin
   begin
     Context.Trigger := ';';
     FGuardLine := 0;
-  end;
+  end
+  // Nach dem Zeilenende (Enter) hinter einem übernommenen Konstruktor ohne ";" (#489).
+  else if AAutomatic and FGuardNewLine then
+    Context.Trigger := #10;
+  FGuardNewLine := False;
   ApplyStyle(Anchor);
   FPopup.VisibleRows := TAtlasIdeSettings.Current.VisibleRows;
   FPopup.ManualListWidth := TAtlasIdeSettings.Current.ListWidth;
@@ -682,11 +691,29 @@ end;
 procedure TAtlasEditorCompletion.EditorModified(const AView: IOTAEditView);
 var
   RemoveAt: Integer;
+  View: IOTAEditView;
 begin
   if FController.Active then
     Recheck;
   if FPlaceholders <> nil then
     FPlaceholders.EditorModified(AView);
+  // Enter am Ende der Zeile eines übernommenen Konstruktors (#489): nach dem Zeilenende anbieten. Nicht im
+  // Benachrichtigungsaufruf selbst, sondern gleich danach.
+  if not FController.Active and GuardNewLine(AView) then
+  begin
+    FGuardLine := 0;
+    View := AView;
+    TThread.ForceQueue(nil,
+      procedure
+      begin
+        if (View.Buffer <> nil) and not FController.Active then
+        begin
+          FGuardNewLine := True;
+          if not Invoke(View, True) then
+            FGuardNewLine := False;
+        end;
+      end);
+  end;
   // ")" vor der automatischen Klammer (#430): diese überspringen.
   if FAutoParen.Active and (AView <> nil) and (AView.Buffer <> nil) then
     if AView.CursorPos.Line <> FAutoParen.Line then
@@ -1126,6 +1153,14 @@ begin
   FPlaceholders.Start(AView, AText, Document, SnippetChar + CharShift, Expansion);
   Log(Format('Code-Vorlage eingesetzt: %d Platzhalter, %d weitere Änderungen',
     [Integer(Length(Expansion.Stops)), Integer(Length(AItem.AdditionalEdits))]));
+end;
+
+function TAtlasEditorCompletion.GuardNewLine(const AView: IOTAEditView): Boolean;
+begin
+  Result := (FGuardLine > 0) and (AView <> nil) and (AView.Buffer <> nil) and
+    (AView.CursorPos.Line = FGuardLine + 1) and SameText(AView.Buffer.FileName, FGuardFile) and
+    (Trim(TAtlasEditorBuffer.LineText(AView, AView.CursorPos.Line)) = '') and
+    not TAtlasEditorBuffer.LineText(AView, FGuardLine).TrimRight.EndsWith(';');
 end;
 
 function TAtlasEditorCompletion.GuardPending(const AView: IOTAEditView): Boolean;
