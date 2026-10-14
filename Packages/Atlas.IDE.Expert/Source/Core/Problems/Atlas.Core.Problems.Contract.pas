@@ -29,6 +29,8 @@ type
     /// <summary>"Atlas" oder "dcc".</summary>
     Source: string;
     Message: string;
+    /// <summary>Konfidenz eines Regeltreffers aus data.confidence ("high", "medium", "low", #144); sonst ''.</summary>
+    Confidence: string;
     /// <summary>Inaktiver Bereich ({$IFDEF}); kein Problem im eigentlichen Sinn.</summary>
     Unnecessary: Boolean;
     /// <summary>Text geändert, seit die Meldung entstand: blass zeigen.</summary>
@@ -74,7 +76,7 @@ end;
 
 class function TAtlasProblem.FromJson(const AItem: TJSONObject): TAtlasProblem;
 var
-  Tags, CodeValue: TJSONValue;
+  Tags, CodeValue, Data: TJSONValue;
   Tag: TJSONValue;
 begin
   Result := Default(TAtlasProblem);
@@ -99,6 +101,9 @@ begin
     Result.Code := TJSONNumber(CodeValue).ToString;
   Result.Source := AItem.GetValue<string>('source', '');
   Result.Message := AItem.GetValue<string>('message', '');
+  Data := AItem.GetValue('data');
+  if Data is TJSONObject then
+    Result.Confidence := TJSONObject(Data).GetValue<string>('confidence', '');
   Tags := AItem.GetValue('tags');
   if Tags is TJSONArray then
     for Tag in TJSONArray(Tags) do

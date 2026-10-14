@@ -175,7 +175,7 @@ var
 begin
   Output := TFindingsOutput.Render([MakeFile('Src\U.pas', [MakeFinding('syntax', TRuleSeverity.Error, 4)]),
     MakeFile('Src\V.pas', nil)], TFindingsFormat.Text, nil);
-  Assert.IsTrue(Pos('Src\U.pas(5,3): error syntax: Meldung', Output) = 1, Output);
+  Assert.IsTrue(Pos('Src\U.pas(5,3): error syntax [Konfidenz hoch]: Meldung', Output) = 1, Output);
   Assert.IsTrue(Pos('1 Treffer in 1 von 2 Dateien', Output) > 0, Output);
 end;
 

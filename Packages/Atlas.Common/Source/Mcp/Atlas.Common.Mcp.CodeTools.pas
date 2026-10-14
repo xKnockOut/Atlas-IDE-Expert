@@ -304,9 +304,9 @@ begin
       begin
         Inc(Count);
         if Count <= MaxFindings then
-          Lines.Add(Format('%s:%d:%d: %s [%s] %s', [FileName, Finding.Range.StartPos.Line + 1,
+          Lines.Add(Format('%s:%d:%d: %s [%s] [Konfidenz %s] %s', [FileName, Finding.Range.StartPos.Line + 1,
             Finding.Range.StartPos.Character + 1, TFindingsOutput.SeverityName(Finding.Severity),
-            Finding.RuleId, Finding.DisplayMessage]));
+            Finding.RuleId, ConfidenceText(Finding.Confidence), Finding.Message]));
       end;
     end;
     if Count > MaxFindings then
@@ -397,8 +397,9 @@ begin
     begin
       Inc(Count);
       if Count <= MaxFindings then
-        Lines.Add(Format('%d:%d: %s [%s] %s', [Finding.Range.StartPos.Line + 1, Finding.Range.StartPos.Character + 1,
-          TFindingsOutput.SeverityName(Finding.Severity), Finding.RuleId, Finding.DisplayMessage]));
+        Lines.Add(Format('%d:%d: %s [%s] [Konfidenz %s] %s', [Finding.Range.StartPos.Line + 1,
+          Finding.Range.StartPos.Character + 1, TFindingsOutput.SeverityName(Finding.Severity), Finding.RuleId,
+          ConfidenceText(Finding.Confidence), Finding.Message]));
     end;
     CheckNames := TUnresolvedNames.Available(FIndex);
     if CheckNames then

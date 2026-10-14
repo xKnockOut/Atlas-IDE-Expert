@@ -78,7 +78,8 @@ begin
     Builder.AppendFormat('- Datei: `%s`, Zeile %d, Spalte %d', [AFileName, Line + 1,
       AFinding.Range.StartPos.Character + 1]).AppendLine;
     Builder.AppendFormat('- Schweregrad: %s', [TFindingsOutput.SeverityName(AFinding.Severity)]).AppendLine;
-    Builder.AppendFormat('- Meldung: %s', [AFinding.DisplayMessage]).AppendLine;
+    Builder.AppendFormat('- Meldung: %s', [AFinding.Message]).AppendLine;
+    Builder.AppendFormat('- Konfidenz: %s', [ConfidenceText(AFinding.Confidence)]).AppendLine;
     if Known and (Entry.Description <> '') then
     begin
       Builder.AppendLine;

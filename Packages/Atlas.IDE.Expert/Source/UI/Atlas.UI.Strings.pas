@@ -23,6 +23,7 @@ type
     KindClass, KindClassRef, KindObject, KindRecord, KindInterface, KindHelper, KindEnum, KindType, KindMethod, KindConstructor, KindRoutine, KindProperty, KindField, KindVariable, KindConstant, KindEnumMember, HoverKeyUsages, HoverKeyCopy,
     SettingsPairGuides, PairGuidesIdeOff, PairGuidesIdeOn,
     SettingsProblems, ProblemsGroup, ProblemsSourceAtlas, ProblemsSourceCompiler, ProblemsStale, ProblemsMore,
+    ProblemsConfidence, ConfidenceHigh, ConfidenceMedium, ConfidenceLow,
     SeverityError, SeverityWarning, SeverityInformation, SeverityHint,
     SettingsServerPath, SettingsServerFound, SettingsServerMissing, SettingsServerFilter,
     HelpInsightIdeOff, HelpInsightIdeOn,
@@ -46,6 +47,8 @@ type
     class function Text(AId: TAtlasTextId): string; static;
     /// <summary>Text mit Platzhaltern wie Format.</summary>
     class function Fmt(AId: TAtlasTextId; const AArgs: array of const): string; static;
+    /// <summary>"Konfidenz: mittel" zu "high", "medium", "low" (#144); '' bei anderem Wert.</summary>
+    class function Confidence(const AName: string): string; static;
     class property Language: TAtlasLanguage read FLanguage write FLanguage;
   end;
 
@@ -83,6 +86,7 @@ const
      'Atlas hat die Strukturhervorhebung der IDE wieder eingeschaltet; wirkt nach dem nächsten Start von Delphi.',
      'Probleme im Editor unterstreichen und im Meldungsfenster auflisten (Syntax, Regeln, Compiler)',
      'Atlas-Probleme', 'Atlas', 'Compiler', 'seit dem letzten Prüfen geändert', '… %d weitere Probleme',
+     'Konfidenz: %s', 'hoch', 'mittel', 'niedrig',
      'Fehler', 'Warnung', 'Info', 'Hinweis',
      'Atlas-Server (AtlasServer.exe), leer = Standard:', 'Verwendet: %s (gefunden)',
      'Verwendet: %s (nicht gefunden; ohne Server bleibt die Code Insight der IDE aktiv)',
@@ -138,6 +142,7 @@ const
      'Atlas switched the IDE''s structural highlighting back on; takes effect after the next start of Delphi.',
      'Underline problems in the editor and list them in the message view (syntax, rules, compiler)',
      'Atlas problems', 'Atlas', 'Compiler', 'changed since the last check', '… %d more problems',
+     'Confidence: %s', 'high', 'medium', 'low',
      'Error', 'Warning', 'Info', 'Hint',
      'Atlas server (AtlasServer.exe), empty = default:', 'In use: %s (found)',
      'In use: %s (not found; without a server the IDE''s Code Insight stays active)',
@@ -178,6 +183,21 @@ end;
 class function TAtlasStrings.Fmt(AId: TAtlasTextId; const AArgs: array of const): string;
 begin
   Result := Format(Texts[FLanguage, AId], AArgs);
+end;
+
+class function TAtlasStrings.Confidence(const AName: string): string;
+var
+  Level: TAtlasTextId;
+begin
+  if SameText(AName, 'high') then
+    Level := TAtlasTextId.ConfidenceHigh
+  else if SameText(AName, 'medium') then
+    Level := TAtlasTextId.ConfidenceMedium
+  else if SameText(AName, 'low') then
+    Level := TAtlasTextId.ConfidenceLow
+  else
+    Exit('');
+  Result := Fmt(TAtlasTextId.ProblemsConfidence, [Text(Level)]);
 end;
 
 initialization
