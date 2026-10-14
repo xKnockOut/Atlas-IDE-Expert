@@ -265,7 +265,7 @@ type
     /// Unit (#461): die Namen aus der Formulardatei (persistente Felder, Spalten der SQL-Anweisung,
     /// Platzhalter, Params). Jeder Eintrag ersetzt den ganzen String-Inhalt. True auch ohne Namen, denn im
     /// String gibt es sonst nichts vorzuschlagen.</summary>
-    class function DataNameItems(const AText, AFileName: string; const APosition: TTextPosition;
+    class function DataNameItems(const AIndex: ISymbolIndex; const AText, AFileName: string; const APosition: TTextPosition;
       const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean; static;
     /// <summary>"Sender." in einem Ereignisbehandler mit "Sender: TObject" (#480): Ist die Methode im Formular
     /// Komponenten zugewiesen, die Mitglieder des nächsten gemeinsamen Vorfahren ihrer Typen. Jeder Eintrag
@@ -1697,7 +1697,7 @@ begin
   if DirectiveItems(Document.Text, TLspPositions.ReadPosition(PositionValue), Directives) then
     Exit(ToJson(Directives));
   // Feld- und Parameternamen im String-Literal (#461).
-  if DataNameItems(Document.Text, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue), FReadText,
+  if DataNameItems(FIndex, Document.Text, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue), FReadText,
     Directives) then
     Exit(ToJson(Directives));
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
@@ -2659,12 +2659,12 @@ begin
   Result := True;
 end;
 
-class function TLspCompletion.DataNameItems(const AText, AFileName: string; const APosition: TTextPosition;
-  const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean;
+class function TLspCompletion.DataNameItems(const AIndex: ISymbolIndex; const AText, AFileName: string;
+  const APosition: TTextPosition; const AReadText: TCompletionReadText; out AItems: TCompletionItems): Boolean;
 var
   Lines: TArray<string>;
   Call: TDataNameCall;
-  FormFile, FormText, Sql, Source: string;
+  Sql, Source: string;
   Names: TArray<TDataName>;
   Name: TDataName;
   Found: Boolean;
@@ -2680,15 +2680,11 @@ begin
   if not Assigned(AReadText) then
     Exit;
   // Nur aus der Formulardatei: Ohne Designer-Informationen kein geratener Vorschlag.
-  Names := nil;
-  Sql := '';
-  for FormFile in TFormFiles.FormFiles(AFileName, AText) do
-    if AReadText(FormFile, FormText) then
+  Names := TDataFieldNames.Lookup(AText, AFileName, Call, AIndex,
+    function(const AName: string; out AContent: string): Boolean
     begin
-      Names := TDataFieldNames.FromForm(FormText, Call.DataSet, Call.Kind, Sql, Found);
-      if Found then
-        Break;
-    end;
+      Result := AReadText(AName, AContent);
+    end, Sql, Found);
   Source := TDataFieldNames.ShortSql(Sql);
   Range := TTextRange.Create(APosition.Line, Call.ContentStart, APosition.Line, Call.ContentEnd);
   for Name in Names do
@@ -2703,7 +2699,7 @@ begin
     // Schreibweise wie in der Quelle; ersetzt den ganzen Inhalt zwischen den Anführungszeichen.
     Item.HasTextEdit := True;
     Item.TextEdit := TRuleEdit.Create(Range, StringReplace(Name.Name, '''', '''''', [rfReplaceAll]));
-    Item.DataSet := Call.DataSet;
+    Item.DataSet := Call.DisplayName;
     Item.DataSource := Source;
     AItems.Items := AItems.Items + [Item];
   end;
