@@ -18,6 +18,8 @@ type
     [Test]
     procedure PreviewsRenamedLines;
     [Test]
+    procedure PreviewsFileOperationsFirst;
+    [Test]
     procedure MapsSymbolKindsToBadges;
   end;
 
@@ -99,6 +101,40 @@ begin
   Assert.AreEqual(2, Entries[1].Line);
   Assert.AreEqual(2, Entries[1].Character);
   Assert.AreEqual('Kunde := Kunde.Next;', Entries[1].Detail);
+end;
+
+procedure TAtlasResultsTests.PreviewsFileOperationsFirst;
+var
+  Edit: TLspWorkspaceEdit;
+  Entries: TArray<TAtlasResultEntry>;
+begin
+  // #721: Umbenennen, Anlegen und Löschen einer Datei stehen vor den Zeilen.
+  Edit := Default(TLspWorkspaceEdit);
+  Edit.Operations := [Default(TLspFileOperation), Default(TLspFileOperation), Default(TLspFileOperation)];
+  Edit.Operations[0].Kind := TLspFileOperationKind.Rename;
+  Edit.Operations[0].FileName := 'C:\P\Alt.pas';
+  Edit.Operations[0].NewFileName := 'C:\P\Neu.pas';
+  Edit.Operations[1].Kind := TLspFileOperationKind.Create;
+  Edit.Operations[1].FileName := 'C:\P\Mehr.pas';
+  Edit.Operations[2].Kind := TLspFileOperationKind.Delete;
+  Edit.Operations[2].FileName := 'C:\P\Weg.pas';
+  Edit.Files := [Default(TLspFileEdits)];
+  Edit.Files[0].FileName := 'C:\P\Neu.pas';
+  Edit.Files[0].Edits := [TextEdit(0, 5, 8, 'Neu')];
+  Entries := TAtlasResults.RenamePreview(Edit,
+    function(const AFileName: string): string
+    begin
+      Result := 'unit Alt;';
+    end);
+  Assert.AreEqual(4, Integer(Length(Entries)));
+  Assert.AreEqual('C:\P\Alt.pas', Entries[0].FileName);
+  Assert.AreEqual('Alt.pas', Entries[0].Text);
+  Assert.AreEqual('Neu.pas', Entries[0].Detail);
+  Assert.AreEqual('', Entries[1].Text);
+  Assert.AreEqual('Mehr.pas', Entries[1].Detail);
+  Assert.AreEqual('Weg.pas', Entries[2].Text);
+  Assert.AreEqual('', Entries[2].Detail);
+  Assert.AreEqual('unit Neu;', Entries[3].Detail);
 end;
 
 procedure TAtlasResultsTests.MapsSymbolKindsToBadges;

@@ -90,6 +90,8 @@ type
     FShrinkKey: TEdit;
     FImplementationKey: TEdit;
     FTypeDefinitionKey: TEdit;
+    FUndoKey: TEdit;
+    FRedoKey: TEdit;
     FEditorKeysPriority: TCheckBox;
     FSlashCommands: TCheckBox;
     FSnippets: TCheckBox;
@@ -99,6 +101,12 @@ type
     FSafeKey: TComboBox;
     FSafeTimeout: TEdit;
     FSafeHistory: TEdit;
+    FUndoEnabled: TCheckBox;
+    FUndoDepth: TEdit;
+    FUndoPersist: TCheckBox;
+    FUndoMaxSize: TEdit;
+    FUndoOnConflict: TComboBox;
+    FUndoNewFiles: TComboBox;
     FResetHistory: TButton;
     FResetWidths: TButton;
     FHangTest: TButton;
@@ -108,6 +116,7 @@ type
     function AddCheck(const ACaption: string): TCheckBox;
     function AddPanel(AHeight: Integer): TPanel;
     function AddNumber(const ACaption: string): TEdit;
+    function AddChoice(const ACaption: string; const AItems: array of string): TComboBox;
     /// <summary>Kürzel ohne eigenen Vorrang; der gilt für die Gruppe (#399). Palette und Prüfung stehen auf der
     /// Seite „Tastenkonflikte“ (#494).</summary>
     function AddKey(const ACaption: string): TEdit;
@@ -119,6 +128,7 @@ type
     procedure AddFuseSection;
     procedure AddIndexSection;
     procedure AddSafeSection;
+    procedure AddUndoSection;
     procedure IndexRefreshClick(Sender: TObject);
     procedure IndexRebuildClick(Sender: TObject);
     procedure IndexClearClick(Sender: TObject);
@@ -151,6 +161,15 @@ type
     property SafeKey: TComboBox read FSafeKey;
     property SafeTimeout: TEdit read FSafeTimeout;
     property SafeHistory: TEdit read FSafeHistory;
+    /// <summary>Zum Testen: Atlas-Änderungen über mehrere Dateien (#721).</summary>
+    property UndoEnabled: TCheckBox read FUndoEnabled;
+    property UndoDepth: TEdit read FUndoDepth;
+    property UndoPersist: TCheckBox read FUndoPersist;
+    property UndoMaxSize: TEdit read FUndoMaxSize;
+    property UndoOnConflict: TComboBox read FUndoOnConflict;
+    property UndoNewFiles: TComboBox read FUndoNewFiles;
+    property UndoKey: TEdit read FUndoKey;
+    property RedoKey: TEdit read FRedoKey;
     /// <summary>Kennzahlen als Text; nil = nicht verfügbar.</summary>
     property OnIndexMetrics: TFunc<string> read FOnIndexMetrics write FOnIndexMetrics;
     /// <summary>„Index neu aufbauen“ bzw. „Index löschen“ ausführen; Ergebnis als Meldung.</summary>
@@ -169,7 +188,9 @@ implementation
 {$R *.dfm}
 
 uses
-  System.UITypes;
+  System.UITypes,
+  System.Math,
+  Atlas.Core.Undo.Contract;
 
 { TAtlasSettingsPage }
 
@@ -181,7 +202,7 @@ begin
   inherited Create(AOwner);
   Name := 'AtlasSettingsPage';
   Width := 480;
-  Height := 1700;
+  Height := 2000;
   Title := TLabel.Create(Self);
   Title.Parent := Self;
   Title.Align := alTop;
@@ -283,9 +304,12 @@ begin
   FShrinkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorShrink));
   FImplementationKey := AddKey(TAtlasStrings.Text(TAtlasTextId.MenuImplementations));
   FTypeDefinitionKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTypeDefinition));
+  FUndoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.UndoMenu));
+  FRedoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.RedoMenu));
   FEditorKeysPriority := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorKeysPriority));
   FSlashCommands := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSlashCommands));
   AddSafeSection;
+  AddUndoSection;
   Panel := AddPanel(32);
   FResetHistory := TButton.Create(Self);
   FResetHistory.Parent := Panel;
@@ -510,6 +534,53 @@ begin
   FSafeHistory := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSafeHistory));
 end;
 
+procedure TAtlasSettingsPage.AddUndoSection;
+var
+  Panel: TPanel;
+  Caption: TLabel;
+begin
+  // Atlas-Änderungen über mehrere Dateien zurücknehmen (#721).
+  Panel := AddPanel(22);
+  Caption := TLabel.Create(Self);
+  Caption.Parent := Panel;
+  Caption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsUndoTitle);
+  Caption.Font.Style := [fsBold];
+  Caption.Left := 0;
+  Caption.Top := 4;
+  FUndoEnabled := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUndoEnabled));
+  FUndoDepth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsUndoDepth));
+  FUndoPersist := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUndoPersist));
+  FUndoMaxSize := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsUndoMaxSize));
+  // Reihenfolge wie TAtlasUndoConflictMode und TAtlasNewFilesMode.
+  FUndoOnConflict := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsUndoOnConflict),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsUndoPartial), TAtlasStrings.Text(TAtlasTextId.SettingsUndoAbort)]);
+  FUndoNewFiles := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsUndoNewFiles),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsUndoRecycle), TAtlasStrings.Text(TAtlasTextId.SettingsUndoDelete),
+    TAtlasStrings.Text(TAtlasTextId.SettingsUndoKeep)]);
+end;
+
+function TAtlasSettingsPage.AddChoice(const ACaption: string; const AItems: array of string): TComboBox;
+var
+  Panel: TPanel;
+  Caption: TLabel;
+  Item: string;
+begin
+  Panel := AddPanel(26);
+  Caption := TLabel.Create(Self);
+  Caption.Parent := Panel;
+  Caption.Caption := ACaption;
+  Caption.Left := 0;
+  Caption.Top := 5;
+  Result := TComboBox.Create(Self);
+  Result.Parent := Panel;
+  Result.Style := csDropDownList;
+  Result.Left := 180;
+  Result.Top := 1;
+  Result.Width := 240;
+  for Item in AItems do
+    Result.Items.Add(Item);
+end;
+
 function TAtlasSettingsPage.AddCheck(const ACaption: string): TCheckBox;
 begin
   Result := TCheckBox.Create(Self);
@@ -631,6 +702,14 @@ begin
   end;
   FSafeTimeout.Text := IntToStr(ASettings.SafeStartupTimeoutMs);
   FSafeHistory.Text := IntToStr(ASettings.SafeKeepSettingsHistory);
+  FUndoEnabled.Checked := ASettings.UndoMultiFile;
+  FUndoDepth.Text := IntToStr(ASettings.UndoMultiFileDepth);
+  FUndoPersist.Checked := ASettings.UndoMultiFilePersist;
+  FUndoMaxSize.Text := IntToStr(ASettings.UndoMultiFileMaxSizeMb);
+  FUndoOnConflict.ItemIndex := Ord(TAtlasUndoNames.ParseConflictMode(ASettings.UndoMultiFileOnConflict));
+  FUndoNewFiles.ItemIndex := Ord(TAtlasUndoNames.ParseNewFiles(ASettings.UndoMultiFileNewFiles));
+  FUndoKey.Text := ShortCutToText(TShortCut(ASettings.UndoKey));
+  FRedoKey.Text := ShortCutToText(TShortCut(ASettings.RedoKey));
   RefreshFuse;
   RefreshIndex;
 end;
@@ -644,6 +723,8 @@ begin
   ASettings.ShrinkKey := Integer(TextToShortCut(Trim(FShrinkKey.Text)));
   ASettings.ImplementationKey := Integer(TextToShortCut(Trim(FImplementationKey.Text)));
   ASettings.TypeDefinitionKey := Integer(TextToShortCut(Trim(FTypeDefinitionKey.Text)));
+  ASettings.UndoKey := Integer(TextToShortCut(Trim(FUndoKey.Text)));
+  ASettings.RedoKey := Integer(TextToShortCut(Trim(FRedoKey.Text)));
   ASettings.EditorKeysPriority := FEditorKeysPriority.Checked;
   ASettings.SlashCommands := FSlashCommands.Checked;
   ASettings.VisibleRows := FRowsUpDown.Position;
@@ -692,6 +773,13 @@ begin
   end;
   ASettings.SafeStartupTimeoutMs := StrToIntDef(FSafeTimeout.Text, ASettings.SafeStartupTimeoutMs);
   ASettings.SafeKeepSettingsHistory := StrToIntDef(FSafeHistory.Text, ASettings.SafeKeepSettingsHistory);
+  ASettings.UndoMultiFile := FUndoEnabled.Checked;
+  ASettings.UndoMultiFileDepth := StrToIntDef(FUndoDepth.Text, ASettings.UndoMultiFileDepth);
+  ASettings.UndoMultiFilePersist := FUndoPersist.Checked;
+  ASettings.UndoMultiFileMaxSizeMb := StrToIntDef(FUndoMaxSize.Text, ASettings.UndoMultiFileMaxSizeMb);
+  ASettings.UndoMultiFileOnConflict := TAtlasUndoNames.ConflictModeName(TAtlasUndoConflictMode(
+    Max(0, FUndoOnConflict.ItemIndex)));
+  ASettings.UndoMultiFileNewFiles := TAtlasUndoNames.NewFilesName(TAtlasNewFilesMode(Max(0, FUndoNewFiles.ItemIndex)));
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;

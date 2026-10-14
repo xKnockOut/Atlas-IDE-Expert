@@ -4,8 +4,10 @@
 // Antworten wie textDocument/rename oder Code-Aktionen lesen und auf Texte
 // anwenden. Gelesen werden "changes" (uri → TextEdit[]) und, falls vorhanden,
 // "documentChanges" (TextDocumentEdit, auch mit AnnotatedTextEdit).
-// Dateioperationen (create, rename, delete) führt Atlas nicht aus; sie werden
-// nur gezählt, damit die IDE-Schicht darauf hinweisen kann.
+// Dateioperationen in documentChanges (create, rename, delete mit ihren
+// Optionen) liest es in Operations (#721); die IDE-Schicht führt sie aus und
+// protokolliert sie. Unbekannte oder unvollständige Operationen werden nur
+// gezählt (Unsupported), damit die IDE-Schicht darauf hinweisen kann.
 // Positionen sind 0-basiert in UTF-16-Einheiten wie im LSP. Mehrere
 // Änderungen gelten alle für den Text vor der ersten; überlappende sind ein
 // Fehler. Gleicher Anfang: in der Reihenfolge der Liste (LSP 3.17).
@@ -37,9 +39,33 @@ type
     Edits: TArray<TLspTextEdit>;
   end;
 
+{$SCOPEDENUMS ON}
+  TLspFileOperationKind = (Create, Rename, Delete);
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Dateioperation aus documentChanges (CreateFile, RenameFile, DeleteFile).</summary>
+  TLspFileOperation = record
+    Kind: TLspFileOperationKind;
+    /// <summary>Anlegen, Löschen: die Datei; Umbenennen: der alte Name.</summary>
+    FileName: string;
+    /// <summary>Nur Umbenennen: der neue Name.</summary>
+    NewFileName: string;
+    /// <summary>Anlegen, Umbenennen: vorhandene Zieldatei überschreiben.</summary>
+    Overwrite: Boolean;
+    /// <summary>Anlegen, Umbenennen: vorhandene Zieldatei lassen und nichts tun.</summary>
+    IgnoreIfExists: Boolean;
+    /// <summary>Löschen: fehlende Datei ist kein Fehler.</summary>
+    IgnoreIfNotExists: Boolean;
+    /// <summary>Löschen: Ordner samt Inhalt (führt Atlas nicht aus).</summary>
+    Recursive: Boolean;
+    class function FromJson(const AValue: TJSONObject; out AResult: TLspFileOperation): Boolean; static;
+  end;
+
   TLspWorkspaceEdit = record
     Files: TArray<TLspFileEdits>;
-    /// <summary>Dateioperationen (anlegen, umbenennen, löschen), die Atlas nicht ausführt.</summary>
+    /// <summary>Dateioperationen in der Reihenfolge des Servers (#721).</summary>
+    Operations: TArray<TLspFileOperation>;
+    /// <summary>Dateioperationen, die Atlas nicht lesen kann (unbekannte Art, fehlende Adresse).</summary>
     Unsupported: Integer;
     function EditCount: Integer;
     function IsEmpty: Boolean;
@@ -99,7 +125,51 @@ end;
 
 function TLspWorkspaceEdit.IsEmpty: Boolean;
 begin
-  Result := EditCount = 0;
+  Result := (EditCount = 0) and (Length(Operations) = 0);
+end;
+
+{ TLspFileOperation }
+
+class function TLspFileOperation.FromJson(const AValue: TJSONObject; out AResult: TLspFileOperation): Boolean;
+var
+  Kind, Uri, NewUri: string;
+  Options: TJSONObject;
+begin
+  AResult := Default(TLspFileOperation);
+  if not AValue.TryGetValue<string>('kind', Kind) then
+    Exit(False);
+  if Kind = 'create' then
+    AResult.Kind := TLspFileOperationKind.Create
+  else if Kind = 'rename' then
+    AResult.Kind := TLspFileOperationKind.Rename
+  else if Kind = 'delete' then
+    AResult.Kind := TLspFileOperationKind.Delete
+  else
+    Exit(False);
+  if AResult.Kind = TLspFileOperationKind.Rename then
+  begin
+    if not AValue.TryGetValue<string>('oldUri', Uri) or not AValue.TryGetValue<string>('newUri', NewUri) then
+      Exit(False);
+    AResult.NewFileName := TLspSession.UriToPath(NewUri);
+    if AResult.NewFileName = '' then
+      Exit(False);
+  end
+  else if not AValue.TryGetValue<string>('uri', Uri) then
+    Exit(False);
+  AResult.FileName := TLspSession.UriToPath(Uri);
+  if AResult.FileName = '' then
+    Exit(False);
+  if AValue.TryGetValue<TJSONObject>('options', Options) then
+  begin
+    Options.TryGetValue<Boolean>('overwrite', AResult.Overwrite);
+    Options.TryGetValue<Boolean>('ignoreIfExists', AResult.IgnoreIfExists);
+    Options.TryGetValue<Boolean>('ignoreIfNotExists', AResult.IgnoreIfNotExists);
+    Options.TryGetValue<Boolean>('recursive', AResult.Recursive);
+  end;
+  // overwrite gewinnt über ignoreIfExists (LSP 3.17).
+  if AResult.Overwrite then
+    AResult.IgnoreIfExists := False;
+  Result := True;
 end;
 
 function ReadEdits(const AUri: string; const AEdits: TJSONArray; out AFile: TLspFileEdits): Boolean;
@@ -127,6 +197,7 @@ var
   Document: TJSONObject;
   Uri: string;
   FileEdits: TLspFileEdits;
+  Operation: TLspFileOperation;
 begin
   Result := Default(TLspWorkspaceEdit);
   if not (AValue is TJSONObject) then
@@ -141,7 +212,10 @@ begin
         Continue;
       if TJSONObject(Item).GetValue('kind') <> nil then
       begin
-        Inc(Result.Unsupported);
+        if TLspFileOperation.FromJson(TJSONObject(Item), Operation) then
+          Result.Operations := Result.Operations + [Operation]
+        else
+          Inc(Result.Unsupported);
         Continue;
       end;
       if TJSONObject(Item).TryGetValue<TJSONObject>('textDocument', Document) and

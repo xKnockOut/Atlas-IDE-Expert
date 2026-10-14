@@ -13,6 +13,7 @@ uses
   System.Classes,
   Vcl.Forms,
   Atlas.Core.Results.Model,
+  Atlas.Core.Undo.Contract,
   Atlas.UI.Results.Frame;
 
 type
@@ -22,12 +23,20 @@ type
     OnOpen: TAtlasResultsOpen;
     /// <summary>Nächste Ebene einer Hierarchie; setzt die Composition.</summary>
     OnExpand: TAtlasHierarchyExpand;
+    /// <summary>Liste „Atlas-Änderungen“ (#721): zurücknehmen, wiederherstellen, Unterschied.</summary>
+    OnChangeUndo: TAtlasChangeSetAction;
+    OnChangeRedo: TAtlasChangeSetAction;
+    OnChangeDiff: TAtlasChangeDiff;
   public
     /// <summary>Fenster zeigen (bei Bedarf anlegen); nil, wenn die IDE keine andockbaren Fenster anbietet.</summary>
     class function Frame: TAtlasResultsFrame; static;
     class procedure ShowEntries(const ATitle: string; const AEntries: TArray<TAtlasResultEntry>); static;
     class procedure ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;
       const ARoots: TArray<TAtlasHierarchyItem>); static;
+    /// <summary>Liste „Atlas-Änderungen“ (#721), neueste Sätze zuerst.</summary>
+    class procedure ShowChanges(const ATitle: string; const ASets: TArray<TAtlasChangeSet>); static;
+    /// <summary>Frame, falls das Fenster schon existiert; legt nichts an und holt nichts nach vorn.</summary>
+    class function ExistingFrame: TAtlasResultsFrame; static;
     /// <summary>Beim Entladen: Fenster schließen und freigeben.</summary>
     class procedure Release; static;
   end;
@@ -105,6 +114,24 @@ begin
     begin
       if Assigned(TAtlasIdeResultsWindow.OnOpen) then
         TAtlasIdeResultsWindow.OnOpen(AFileName, ALine, ACharacter);
+    end;
+  ResultsFrame.OnChangeUndo :=
+    procedure(ASetId: Integer)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnChangeUndo) then
+        TAtlasIdeResultsWindow.OnChangeUndo(ASetId);
+    end;
+  ResultsFrame.OnChangeRedo :=
+    procedure(ASetId: Integer)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnChangeRedo) then
+        TAtlasIdeResultsWindow.OnChangeRedo(ASetId);
+    end;
+  ResultsFrame.OnChangeDiff :=
+    procedure(ASetId: Integer; const AFileName: string)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnChangeDiff) then
+        TAtlasIdeResultsWindow.OnChangeDiff(ASetId, AFileName);
     end;
   ResultsFrame.OnExpand :=
     function(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>
@@ -223,10 +250,29 @@ begin
     Target.ShowHierarchy(ATitle, ADirection, ARoots);
 end;
 
+class procedure TAtlasIdeResultsWindow.ShowChanges(const ATitle: string; const ASets: TArray<TAtlasChangeSet>);
+var
+  Target: TAtlasResultsFrame;
+begin
+  Target := Frame;
+  if Target <> nil then
+    Target.ShowChanges(ATitle, ASets, Now, False);
+end;
+
+class function TAtlasIdeResultsWindow.ExistingFrame: TAtlasResultsFrame;
+begin
+  Result := nil;
+  if Form <> nil then
+    Result := ResultsFrame;
+end;
+
 class procedure TAtlasIdeResultsWindow.Release;
 begin
   OnOpen := nil;
   OnExpand := nil;
+  OnChangeUndo := nil;
+  OnChangeRedo := nil;
+  OnChangeDiff := nil;
   ResultsFrame := nil;
   FreeAndNil(Form);
   Dock := nil;

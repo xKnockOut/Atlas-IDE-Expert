@@ -3,7 +3,9 @@
 // Tastenkürzel der Editorbefehle (#399) als eine Tastaturbindung der IDE
 // (IOTAKeyboardBinding): Code-Aktionen (Alt+Enter), Auswahl erweitern
 // (Strg+W) und verkleinern (Strg+Umschalt+W), Gehe zu Implementierung
-// (Strg+Alt+I) und Gehe zu Typdefinition (ohne Vorgabe). Jede Taste wird wie
+// (Strg+Alt+I), Gehe zu Typdefinition (ohne Vorgabe) sowie letzte
+// Atlas-Änderung zurücknehmen (Strg+Alt+Z) und wiederherstellen
+// (Strg+Alt+Umschalt+Z, #721). Jede Taste wird wie
 // die der Befehlspalette vorher auf Konflikte geprüft (#494); ohne Vorrang
 // bleibt eine fremde Belegung aktiv. Nach geänderten Einstellungen meldet
 // Rebind die Bindung neu an. Der Befehl läuft nach der Tastenverarbeitung
@@ -59,7 +61,8 @@ uses
   Atlas.IDE.Settings.Store,
   Atlas.IDE.Commands.Keys,
   Atlas.IDE.Commands.Editor,
-  Atlas.IDE.Results.Commands;
+  Atlas.IDE.Results.Commands,
+  Atlas.IDE.Undo.Changes;
 
 { TAtlasIdeEditorKeys.TBinding }
 
@@ -184,6 +187,16 @@ begin
     procedure
     begin
       TAtlasIdeEditorCommands.GoToTypeDefinition;
+    end);
+  AddKey(Settings.UndoKey, TAtlasStrings.Text(TAtlasTextId.UndoMenu),
+    procedure
+    begin
+      TAtlasIdeUndo.UndoLast;
+    end);
+  AddKey(Settings.RedoKey, TAtlasStrings.Text(TAtlasTextId.RedoMenu),
+    procedure
+    begin
+      TAtlasIdeUndo.RedoLast;
     end);
   if (FBound = Previous) and ((FBindingIndex >= 0) = (FBound <> '')) then
     Exit;

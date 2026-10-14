@@ -10,6 +10,8 @@
 // Vor dem Übernehmen zeigt eine Vorschau alle betroffenen Zeilen vorher und
 // nachher (#400); erst „Umbenennen“ ändert etwas.
 // Ergebnis und Fehler als Zeile in der Meldungsansicht, nie als Dialog.
+// Über mehrere Dateien landet das Umbenennen als ein Satz im
+// Änderungsprotokoll (#721) und lässt sich mit Strg+Alt+Z ganz zurücknehmen.
 
 interface
 
@@ -153,7 +155,8 @@ begin
       TAtlasEditorHover.GoToLocation(AFileName, ALine, ACharacter);
     end) then
     Exit;
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, AOpenUnopened);
+  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, AOpenUnopened,
+    TAtlasStrings.Fmt(TAtlasTextId.UndoActionRename, [OldName, NewName]));
   if Outcome.Error <> '' then
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]))
   else

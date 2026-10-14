@@ -27,6 +27,8 @@ type
     procedure StatusFieldRoundTrips;
     [Test]
     procedure SafeModeRoundTrips;
+    [Test]
+    procedure UndoSettingsRoundTrip;
   end;
 
 implementation
@@ -240,6 +242,49 @@ begin
     Assert.AreEqual(20000, Saved.SafeStartupTimeoutMs);
     // Begrenzt auf die Höchstzahl.
     Assert.AreEqual(TAtlasPluginSettings.MaxSafeSettingsHistory, Saved.SafeKeepSettingsHistory);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.UndoSettingsRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  // #721: Ein/Aus, Tiefe, Sicherung, Größe, Konflikte, neue Dateien und die beiden Tasten.
+  Settings := TAtlasPluginSettings.Defaults;
+  Settings.UndoMultiFileDepth := 7;
+  Settings.UndoMultiFileOnConflict := 'abort';
+  Settings.UndoMultiFileNewFiles := 'keep';
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.IsTrue(Page.UndoEnabled.Checked);
+    Assert.AreEqual('7', Page.UndoDepth.Text);
+    Assert.IsTrue(Page.UndoPersist.Checked);
+    Assert.AreEqual('50', Page.UndoMaxSize.Text);
+    Assert.AreEqual(1, Page.UndoOnConflict.ItemIndex);
+    Assert.AreEqual(2, Page.UndoNewFiles.ItemIndex);
+    Assert.IsTrue(Page.UndoKey.Text <> '');
+    Assert.IsTrue(Page.RedoKey.Text <> '');
+    Page.UndoEnabled.Checked := False;
+    Page.UndoPersist.Checked := False;
+    Page.UndoDepth.Text := '999';
+    Page.UndoMaxSize.Text := '0';
+    Page.UndoOnConflict.ItemIndex := 0;
+    Page.UndoNewFiles.ItemIndex := 1;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.UndoMultiFile);
+    Assert.IsFalse(Saved.UndoMultiFilePersist);
+    // Begrenzt auf den erlaubten Bereich.
+    Assert.AreEqual(TAtlasPluginSettings.MaxUndoDepth, Saved.UndoMultiFileDepth);
+    Assert.AreEqual(TAtlasPluginSettings.MinUndoMaxSizeMb, Saved.UndoMultiFileMaxSizeMb);
+    Assert.AreEqual('partial', Saved.UndoMultiFileOnConflict);
+    Assert.AreEqual('delete', Saved.UndoMultiFileNewFiles);
+    Assert.AreEqual(Settings.UndoKey, Saved.UndoKey);
+    Assert.AreEqual(Settings.RedoKey, Saved.RedoKey);
   finally
     Page.Free;
   end;

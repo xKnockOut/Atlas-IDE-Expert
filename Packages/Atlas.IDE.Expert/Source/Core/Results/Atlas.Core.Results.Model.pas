@@ -75,7 +75,9 @@ type
     class function Lines(const AText: string): TArray<string>; static;
     /// <summary>
     /// Fundstellen einer Umbenennung mit Vorschau: je geänderte Zeile ein Eintrag, Text vorher,
-    /// Detail nachher. Änderungen über mehrere Zeilen zeigen nur ihren neuen Text.
+    /// Detail nachher. Änderungen über mehrere Zeilen zeigen nur ihren neuen Text. Dateioperationen
+    /// (#721) stehen vorn mit Zeile 0: Text = alter Dateiname (leer beim Anlegen), Detail = neuer
+    /// (leer beim Löschen).
     /// </summary>
     class function RenamePreview(const AEdit: TLspWorkspaceEdit; const AReadText: TAtlasReadText):
       TArray<TAtlasResultEntry>; static;
@@ -203,8 +205,25 @@ var
   Line: Integer;
   Before, After: string;
   Entry: TAtlasResultEntry;
+  Operation: TLspFileOperation;
 begin
   Result := nil;
+  for Operation in AEdit.Operations do
+  begin
+    Entry := TAtlasResultEntry.Create(Operation.FileName, 0, 0);
+    case Operation.Kind of
+      TLspFileOperationKind.Create:
+        Entry.Detail := ExtractFileName(Operation.FileName);
+      TLspFileOperationKind.Rename:
+        begin
+          Entry.Text := ExtractFileName(Operation.FileName);
+          Entry.Detail := ExtractFileName(Operation.NewFileName);
+        end;
+    else
+      Entry.Text := ExtractFileName(Operation.FileName);
+    end;
+    Result := Result + [Entry];
+  end;
   Changed := TList<Integer>.Create;
   try
     for FileEdits in AEdit.Files do

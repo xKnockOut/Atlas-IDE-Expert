@@ -378,6 +378,22 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 | AS15 | Optionen: beide Kästchen aus, Taste „keine“; AS3, AS9, AS11 wiederholen | Nie eine Rückfrage, Atlas startet immer normal |
 | AS16 | Zwei IDEs gleichzeitig starten, eine normal beenden, die andere offen lassen; dritte IDE starten | Keine Rückfrage: die laufende IDE gilt nicht als Absturz |
 
+## Atlas-Änderungen zurücknehmen (#721)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UR1 | Eine Methode umbenennen, die in drei Units und einem Ereignis-Handler im DFM vorkommt (Vorschau „Umbenennen“) | Alle vier Dateien geändert; Strg+Alt+Z nimmt alles zurück; Meldung „Atlas-Änderung zurückgenommen: Umbenennen: … (4 Dateien)“ |
+| UR2 | Nach UR1 in jeder der drei Units Strg+Z bzw. Strg+Umschalt+Z | Jeder Puffer kennt die Rücknahme als einen Schritt; Strg+Umschalt+Z stellt dort den umbenannten Stand wieder her |
+| UR3 | Nach UR1 Strg+Alt+Umschalt+Z | Umbenennung wieder in allen Dateien; Meldung „wiederhergestellt“ |
+| UR4 | Umbenennen, eine der Units nicht geöffnet, IDE neu starten, *Atlas* › „Atlas-Änderungen…“ | Der Satz steht in der Liste (Sicherung in `%LOCALAPPDATA%\Atlas\undo`); „Zurücknehmen“ im Kontextmenü stellt die geschlossene Unit in ihrer Kodierung wieder her |
+| UR5 | Zwei Umbenennungen nacheinander; in einer Datei der ersten eine der umbenannten Zeilen von Hand ändern; die erste in der Liste zurücknehmen | Andere Dateien zurückgenommen, die Datei mit der Handänderung bleibt; Meldungsansicht nennt sie als Konflikt; Satz zeigt „teilweise zurückgenommen“ |
+| UR6 | Optionen: Bei Konflikten „nichts zurücknehmen“, UR5 wiederholen | Nichts geändert, Meldung „abgebrochen“ mit Anzahl Konflikte |
+| UR7 | In der Liste Doppelklick auf eine Datei bzw. Kontextmenü „Unterschied“ am Satz | Fenster mit `-`/`+`-Zeilen der Datei bzw. aller Dateien mit Überschriften; Esc schließt |
+| UR8 | Aktion, deren Workspace-Edit eine Unit anlegt (`create` in `documentChanges`, etwa eine Code-Aktion oder `workspace/applyEdit`), dann Strg+Alt+Z | Unit aus dem Projekt ausgetragen, geschlossen und im Papierkorb; Strg+Alt+Umschalt+Z legt sie wieder an und trägt sie ein |
+| UR9 | Optionen: „Atlas-Änderungen über mehrere Dateien zurücknehmen“ aus, umbenennen, Strg+Alt+Z | Umbenennen wie bisher; Meldung „ausgeschaltet“; Liste leer; mit „Sicherung“ aus ist der Ordner `undo` leer |
+| UR10 | Optionen › Tastenkonflikte: Tasten für Zurücknehmen und Wiederherstellen ändern | Neue Tasten wirken sofort, die alten nicht mehr |
+| UR11 | Umbenennen nur in einer Datei, Strg+Alt+Z | Kein Satz (eine Datei nimmt Strg+Z zurück); Meldung „nichts zurückzunehmen“ |
+
 ## Schließen der Atlas-Fenster (#414)
 
 | Nr. | Schritte | Erwartet |
