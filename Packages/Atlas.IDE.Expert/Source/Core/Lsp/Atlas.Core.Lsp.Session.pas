@@ -112,6 +112,9 @@ type
   TLspApplyEditReply = reference to procedure(AApplied: Boolean; const AFailureReason: string);
   /// <summary>workspace/applyEdit des Servers (#397); läuft im Lese-Thread. AEdit ist schon gelesen.</summary>
   TLspApplyEditProc = reference to procedure(const AEdit: TLspWorkspaceEdit; const AReply: TLspApplyEditReply);
+  /// <summary>window/showMessage des Servers (#121); läuft im Lese-Thread. AType: 1 Fehler, 2 Warnung,
+  /// 3 Information, 4 Protokoll.</summary>
+  TLspShowMessageProc = reference to procedure(AType: Integer; const AMessage: string);
 
   TLspSession = class
   private type
@@ -133,6 +136,7 @@ type
     /// <summary>Zuletzt gemeldeter Schlüssel je Projekt (#396).</summary>
     FSentContexts: TDictionary<string, string>;
     FOnApplyEdit: TLspApplyEditProc;
+    FOnShowMessage: TLspShowMessageProc;
     FServerSettings: string;
     function PositionParams(const AFileName: string; ALine, ACharacter: Integer): TJSONObject;
   public
@@ -164,6 +168,11 @@ type
     procedure Initialize;
     /// <summary>Vor Initialize setzen (#397): workspace/applyEdit des Servers annehmen.</summary>
     property OnApplyEdit: TLspApplyEditProc read FOnApplyEdit write FOnApplyEdit;
+    /// <summary>Vor Initialize setzen (#121): Meldungen des Servers für den Benutzer.</summary>
+    property OnShowMessage: TLspShowMessageProc read FOnShowMessage write FOnShowMessage;
+    /// <summary>type und message aus den Parametern von window/showMessage; False ohne Text.</summary>
+    class function ShowMessageParams(const AParams: TJSONValue; out AType: Integer;
+      out AMessage: string): Boolean; static;
     /// <summary>{"settings": {"atlas": AJson}} für initializationOptions und didChangeConfiguration (#652);
     /// leeres oder ungültiges AJson ergibt ein leeres atlas-Objekt.</summary>
     class function SettingsParams(const AJson: string): TJSONObject; static;
@@ -430,6 +439,18 @@ begin
   end;
 end;
 
+class function TLspSession.ShowMessageParams(const AParams: TJSONValue; out AType: Integer;
+  out AMessage: string): Boolean;
+begin
+  AType := 3;
+  AMessage := '';
+  if not (AParams is TJSONObject) then
+    Exit(False);
+  AMessage := TJSONObject(AParams).GetValue<string>('message', '');
+  AType := TJSONObject(AParams).GetValue<Integer>('type', 3);
+  Result := AMessage <> '';
+end;
+
 procedure TLspSession.Initialize;
 var
   Params, Capabilities, TextDocument, Hover, Options: TJSONObject;
@@ -439,6 +460,7 @@ var
   Refresh: ILspSignal;
   Progress: ILspProgress;
   ApplyEdit: TLspApplyEditProc;
+  ShowMessageProc: TLspShowMessageProc;
   Client: TLspClient;
 begin
   Formats := TJSONArray.Create;
@@ -490,13 +512,20 @@ begin
   // Nur den Zähler einfangen, nicht die Sitzung: Der Lese-Thread kann die Sitzung überleben.
   Refresh := FRefresh;
   Progress := FProgress;
+  ShowMessageProc := FOnShowMessage;
   FClient.OnServerMessage :=
     procedure(const AMethod: string; const AParams: TJSONValue)
+    var
+      MessageType: Integer;
+      Text: string;
     begin
       if AMethod = 'workspace/diagnostic/refresh' then
         Refresh.Signal
       else if AMethod = '$/progress' then
-        Progress.Handle(AParams);
+        Progress.Handle(AParams)
+      else if (AMethod = 'window/showMessage') and Assigned(ShowMessageProc) and
+        ShowMessageParams(AParams, MessageType, Text) then
+        ShowMessageProc(MessageType, Text);
     end;
   // Wie oben: Der Lese-Thread kennt nur Client und Empfänger, nicht die Sitzung.
   ApplyEdit := FOnApplyEdit;

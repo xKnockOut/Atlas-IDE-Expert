@@ -61,14 +61,17 @@ type
     class function CodePageFor(const AFileName: string): Integer; static;
   end;
 
-  /// <summary>Zählt Kodierungen; reines ASCII passt zu jeder und zählt getrennt.</summary>
+  /// <summary>Zählt Kodierungen; reines ASCII passt zu jeder und zählt getrennt. Binäre
+  /// Formulare haben keine Textkodierung und zählen nicht mit.</summary>
   TEncodingSurvey = record
     Ascii: Integer;
     Utf8: Integer;
     Ansi: Integer;
     Utf16: Integer;
+    /// <summary>Codepage, in der ANSI-Dateien gelesen werden (Vorgabe aus atlas.json); 0 gilt als 1252.</summary>
+    AnsiCodePage: Integer;
     procedure Add(const ABytes: TBytes);
-    /// <summary>Windows-1252 neben UTF-8 oder UTF-16.</summary>
+    /// <summary>ANSI neben UTF-8 oder UTF-16.</summary>
     function IsMixed: Boolean;
     /// <summary>Zum Beispiel "3 Dateien in Windows-1252, 12 in UTF-8".</summary>
     function Describe: string;
@@ -280,6 +283,8 @@ procedure TEncodingSurvey.Add(const ABytes: TBytes);
 var
   HasNonAscii: Boolean;
 begin
+  if TFileEncoding.IsBinaryForm(ABytes) then
+    Exit;
   if HasPrefix(ABytes, [$EF, $BB, $BF]) then
     Inc(Utf8)
   else if HasPrefix(ABytes, [$FF, $FE]) or HasPrefix(ABytes, [$FE, $FF]) then
@@ -316,7 +321,11 @@ function TEncodingSurvey.Describe: string;
 
 begin
   Result := '';
-  Append(Ansi, 'Windows-1252');
+  // Mit Vorgabe UTF-8 liest der Server ungültiges UTF-8 als Windows-1252.
+  if (AnsiCodePage = 0) or (AnsiCodePage = TFileEncoding.Utf8CodePage) then
+    Append(Ansi, 'Windows-1252')
+  else
+    Append(Ansi, 'Windows-' + IntToStr(AnsiCodePage));
   Append(Utf8, 'UTF-8');
   Append(Utf16, 'UTF-16');
   Append(Ascii, 'reinem ASCII');
