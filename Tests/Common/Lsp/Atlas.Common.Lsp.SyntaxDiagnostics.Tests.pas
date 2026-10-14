@@ -53,6 +53,9 @@ type
     [IgnoreMemoryLeaks]
     procedure PublishesWithin200MsAfterLastChange;
     [Test]
+    [IgnoreMemoryLeaks]
+    procedure RefreshLaterBundlesCalls;
+    [Test]
     procedure BuildsParamsForSnapshot;
     [Test]
     procedure AddsInactiveRangesAsUnnecessaryHints;
@@ -283,6 +286,32 @@ begin
     finally
       Message.Free;
     end;
+  finally
+    Diagnostics.Free;
+  end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.RefreshLaterBundlesCalls;
+var
+  Diagnostics: TLspSyntaxDiagnostics;
+  Calls: Integer;
+  Index: Integer;
+begin
+  // Jedes Projekt einer Gruppe meldet seine Indexstufen; neu geprüft wird einmal (#647).
+  Calls := 0;
+  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport);
+  try
+    Diagnostics.PullMode := True;
+    Diagnostics.OnPullChanged :=
+      procedure
+      begin
+        TInterlocked.Increment(Calls);
+      end;
+    for Index := 1 to 5 do
+      Diagnostics.RefreshLater;
+    Assert.AreEqual(0, TInterlocked.CompareExchange(Calls, 0, 0), 'erst nach der Pause');
+    Sleep(TLspSyntaxDiagnostics.RefreshDelayMs + 500);
+    Assert.AreEqual(1, TInterlocked.CompareExchange(Calls, 0, 0));
   finally
     Diagnostics.Free;
   end;

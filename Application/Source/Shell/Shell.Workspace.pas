@@ -78,6 +78,10 @@ type
     FBuildPlatform: string;
     FOnProjectLoaded: TProc;
     FOnIndexFinished: TProc;
+    FOnProjectReady: TProc;
+    FOnIndexEvent: TProc<string>;
+    /// <summary>Ein Aufbau läuft und hat die Projektstufe noch nicht hinter sich.</summary>
+    FProjectPending: Boolean;
     FOnSettingsChanged: TProc<TServerSettings>;
     FBaseline: IRuleBaseline;
     FLastIndexMs: Int64;
@@ -91,6 +95,7 @@ type
     function LockCache(const ACacheFile, ALibraryCacheFile: string): Boolean;
     /// <summary>Weist auf gemischte Kodierungen der Projektdateien hin (Index-Thread).</summary>
     procedure ReportEncodings;
+    procedure IndexEvent(const AText: string);
     procedure StartIndex(const ASettings: TServerSettings);
     function FindProjectFile(const ASettings: TServerSettings): string;
     function GetNamespaces: TArray<string>;
@@ -147,6 +152,12 @@ type
     property OnProjectLoaded: TProc read FOnProjectLoaded write FOnProjectLoaded;
     /// <summary>Nach einem vollständigen (nicht abgebrochenen) Indexaufbau; im Index-Thread.</summary>
     property OnIndexFinished: TProc read FOnIndexFinished write FOnIndexFinished;
+    /// <summary>Projektstufe des Aufbaus fertig (Projektdateien und über uses erreichbare Units); im Index-Thread.</summary>
+    property OnProjectReady: TProc read FOnProjectReady write FOnProjectReady;
+    /// <summary>Zeile fürs Diagnoselog (#647), nur Zahlen und feste Wörter; im Index- oder Nachrichten-Thread.</summary>
+    property OnIndexEvent: TProc<string> read FOnIndexEvent write FOnIndexEvent;
+    /// <summary>True, solange ein Aufbau die Projektstufe noch nicht hinter sich hat. Threadsicher.</summary>
+    property ProjectPending: Boolean read FProjectPending;
     /// <summary>Nach dem Lesen der Einstellungen, für serverweite Werte wie das Zeitlimit (#283).</summary>
     property OnSettingsChanged: TProc<TServerSettings> read FOnSettingsChanged write FOnSettingsChanged;
     /// <summary>True, wenn AFileName zum Projekt gehört (DCCReference, Hauptdatei oder Suchpfad-Unit). Threadsicher.</summary>
@@ -223,9 +234,24 @@ begin
   FIndexService := TIndexService.Create(FIndex, TDiskIndexFileSystem.Create);
   FProgress := TLspWorkDoneProgress.Create(ATransport, AProgressToken);
   FIndexService.OnProgress := FProgress.AsIndexProgress();
+  FIndexService.OnProjectReady :=
+    procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
+    begin
+      FProjectPending := False;
+      IndexEvent(Format('index project#%d projectStage %d ms parsed %d cached %d missing %d',
+        [FPriority, AElapsedMs, AResult.Parsed, AResult.FromCache, AResult.Missing]));
+      if Assigned(FOnProjectReady) then
+        FOnProjectReady();
+    end;
   FIndexService.OnFinished :=
     procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
     begin
+      // Abgebrochen (Neustart): Der neue Aufbau hat FProjectPending schon wieder gesetzt.
+      if not AResult.Cancelled then
+        FProjectPending := False;
+      IndexEvent(Format('index project#%d done %d ms parsed %d cached %d missing %d units %d%s',
+        [FPriority, AElapsedMs, AResult.Parsed, AResult.FromCache, AResult.Missing, FIndex.UnitCount,
+         IfThen(AResult.Cancelled, ' cancelled', '')]));
       if not AResult.Cancelled then
       begin
         TMonitor.Enter(FLock);
@@ -266,6 +292,12 @@ begin
   FIndex := nil;
   FLogger := nil;
   inherited;
+end;
+
+procedure TShellWorkspace.IndexEvent(const AText: string);
+begin
+  if Assigned(FOnIndexEvent) then
+    FOnIndexEvent(AText);
 end;
 
 procedure TShellWorkspace.Load;
@@ -834,6 +866,10 @@ begin
   FLogger.Info(Format('Symbolindex für %s (%s, %s): %d Projektdateien, %d Units der Suchpfade, %d der Bibliothek, Cache %s',
     [ProjectFile, Project.Config, Project.Platform, Length(Request.Files), Length(Request.SearchFiles),
      Length(Request.LibraryFiles), CacheFile]));
+  IndexEvent(Format('index project#%d start files %d search %d library %d cache %s',
+    [FPriority, Length(Request.Files), Length(Request.SearchFiles), Length(Request.LibraryFiles),
+     IfThen(Request.ReadOnlyCache, 'readOnly', 'write')]));
+  FProjectPending := True;
   FIndexService.Start(Request);
   if Assigned(FOnProjectLoaded) then
     FOnProjectLoaded();

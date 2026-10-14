@@ -39,6 +39,9 @@ type
     Cancelled: Boolean;
   end;
 
+  /// <summary>Eine Stufe des Aufbaus ist fertig; APartial ist der Stand bis dahin.</summary>
+  TIndexStageDone = reference to procedure(const APartial: TIndexBuildResult);
+
   TIndexBuilder = class
   private
     FIndex: ISymbolIndex;
@@ -71,9 +74,11 @@ type
     function Build(const AFiles: TArray<string>; const AProgress: TIndexProgressEvent;
       const ACancelled: TIndexCancelled): TIndexBuildResult; overload;
     /// <summary>Aufbau in Stufen (#648): AFiles samt über uses erreichbarer Units, dann ASearchFiles (Projekt),
-    /// dann ALibraryFiles (Bibliothek). ATurn ordnet die Stufen mehrerer Aufbauten; nil = ohne Warten.</summary>
+    /// dann ALibraryFiles (Bibliothek). ATurn ordnet die Stufen mehrerer Aufbauten; nil = ohne Warten.
+    /// AProjectDone läuft nach der Projektstufe (Projektdateien und über uses erreichbare Units).</summary>
     function Build(const AFiles, ASearchFiles, ALibraryFiles: TArray<string>; const AProgress: TIndexProgressEvent;
-      const ACancelled: TIndexCancelled; const ATurn: IIndexTurn): TIndexBuildResult; overload;
+      const ACancelled: TIndexCancelled; const ATurn: IIndexTurn;
+      const AProjectDone: TIndexStageDone = nil): TIndexBuildResult; overload;
     /// <summary>Indiziert die Unit, falls noch nicht vorhanden. False, wenn sie nicht gefunden wird.</summary>
     function EnsureUnit(const AUnitName: string): Boolean;
     /// <summary>Übernimmt Dateiänderungen; liefert die Zahl geänderter Units.</summary>
@@ -319,7 +324,8 @@ begin
 end;
 
 function TIndexBuilder.Build(const AFiles, ASearchFiles, ALibraryFiles: TArray<string>;
-  const AProgress: TIndexProgressEvent; const ACancelled: TIndexCancelled; const ATurn: IIndexTurn): TIndexBuildResult;
+  const AProgress: TIndexProgressEvent; const ACancelled: TIndexCancelled; const ATurn: IIndexTurn;
+  const AProjectDone: TIndexStageDone): TIndexBuildResult;
 var
   Index, Total: Integer;
 
@@ -365,6 +371,8 @@ begin
     end;
     if Result.Cancelled then
       Exit;
+    if Assigned(AProjectDone) then
+      AProjectDone(Result);
     if Length(ASearchFiles) > 0 then
     begin
       if not Enter(TIndexStage.SearchPaths) then

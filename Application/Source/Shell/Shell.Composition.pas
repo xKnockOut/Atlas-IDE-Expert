@@ -176,6 +176,8 @@ type
     /// <summary>Ein Indexaufbau ist fertig: Befunde mit dem vollständigen Index neu prüfen (#647).
     /// Index-Thread.</summary>
     procedure IndexFinished;
+    /// <summary>True, solange ein Projekt seine Projektstufe noch nicht indiziert hat.</summary>
+    function ProjectIndexPending: Boolean;
     /// <summary>Text einer Quelldatei; geöffnete Dokumente haben Vorrang vor der Platte.</summary>
     function ReadSourceText(const AFileName: string; out AText: string): Boolean;
     /// <summary>Projektdateien aller Ordner und geöffnete Dokumente, für Referenzen und Umbenennen.</summary>
@@ -381,7 +383,7 @@ begin
   FPullDiagnostics.Busy :=
     function: Boolean
     begin
-      Result := IndexLoading >= 0;
+      Result := ProjectIndexPending;
     end;
   FPullDiagnostics.Attach(FDispatcher);
   FSyntaxDiagnostics.OnPullChanged := FPullDiagnostics.Changed;
@@ -1235,6 +1237,12 @@ begin
   Workspace.Origin := AOrigin;
   Workspace.OnProjectLoaded := ProjectLoaded;
   Workspace.OnIndexFinished := IndexFinished;
+  Workspace.OnProjectReady := IndexFinished;
+  Workspace.OnIndexEvent :=
+    procedure(AText: string)
+    begin
+      FDiagnostics.Log.LogEvent(AText);
+    end;
   // Das Zeitlimit gilt serverweit; bei mehreren Ordnern das zuletzt gelesene.
   Workspace.OnSettingsChanged :=
     procedure(ASettings: TServerSettings)
@@ -1444,7 +1452,23 @@ procedure TServerComposition.IndexFinished;
 begin
   // Befunde aus der Zeit des Aufbaus enthalten Units, die damals noch fehlten. Im Pull-Modus steigt
   // damit die Generation: Der Client holt geöffnete Dateien neu, workspace/diagnostic prüft alle.
-  FSyntaxDiagnostics.Refresh;
+  // Gebündelt: Die große Datei zu prüfen dauerte im Log über 20 s, und jedes Projekt meldet sich.
+  FSyntaxDiagnostics.RefreshLater;
+end;
+
+function TServerComposition.ProjectIndexPending: Boolean;
+var
+  Workspace: TShellWorkspace;
+begin
+  Result := False;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    for Workspace in FWorkspaces do
+      if Workspace.ProjectPending then
+        Exit(True);
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
 end;
 
 function TServerComposition.DefinesFor(const AUri: string; out ADefines: TArray<string>): Boolean;

@@ -122,6 +122,11 @@ type
     procedure ReadOnlyServiceStopsWaitingAfterLimit;
     [Test]
     procedure IndexesSearchAndLibraryStages;
+    [Test]
+    procedure ReportsProjectStageBeforeSearchPaths;
+    [Test]
+    [IgnoreMemoryLeaks]
+    procedure ServiceWritesCacheAfterProjectStage;
   end;
 
   [TestFixture]
@@ -748,6 +753,65 @@ begin
   Assert.IsFalse(U.Library_, 'Suchpfad-Units gehören zum Projekt');
   Assert.IsTrue(FIndex.FindUnit('E', U));
   Assert.IsTrue(U.Library_, 'Bibliotheks-Units sind Bibliothek');
+end;
+
+procedure TIndexBuilderTests.ReportsProjectStageBeforeSearchPaths;
+var
+  Builder: TIndexBuilder;
+  StageParsed: Integer;
+  HadSearchUnit: Boolean;
+  U: TUnitIndex;
+begin
+  StageParsed := -1;
+  HadSearchUnit := True;
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  try
+    Builder.Build(['C:\P\P.dpr', 'C:\P\A.pas'], ['C:\Lib\F.pas'], ['C:\Lib\E.pas'], nil, nil, nil,
+      procedure(const APartial: TIndexBuildResult)
+      begin
+        StageParsed := APartial.Parsed;
+        HadSearchUnit := FIndex.FindUnit('F', U);
+      end);
+  finally
+    Builder.Free;
+  end;
+  // P, A, B, C, D: Projektdateien und über uses erreichbare Units (#647).
+  Assert.AreEqual(5, StageParsed);
+  Assert.IsFalse(HadSearchUnit, 'Suchpfade kommen erst nach der Projektstufe');
+end;
+
+procedure TIndexBuilderTests.ServiceWritesCacheAfterProjectStage;
+var
+  Service: TIndexService;
+  Request: TIndexRequest;
+  StageUnits: NativeInt;
+  Data: TBytes;
+begin
+  StageUnits := -1;
+  Service := TIndexService.Create(FIndex, FFileSystem);
+  try
+    Service.OnProjectReady :=
+      procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
+      var
+        StageData: TBytes;
+      begin
+        // In einer Projektgruppe endet der ganze Aufbau erst spät; der Cache muss vorher stehen (#647).
+        if FFileSystem.ReadBytes('C:\Cache\index.json', StageData) then
+          StageUnits := Length(TIndexCache.Deserialize(StageData));
+      end;
+    Request := Default(TIndexRequest);
+    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    Request.SearchFiles := ['C:\Lib\F.pas'];
+    Request.ResolveUnit := Resolve;
+    Request.CacheFile := 'C:\Cache\index.json';
+    Service.Start(Request);
+    Service.WaitFor;
+  finally
+    Service.Free;
+  end;
+  Assert.AreEqual<NativeInt>(5, StageUnits);
+  Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\index.json', Data));
+  Assert.AreEqual<NativeInt>(6, Length(TIndexCache.Deserialize(Data)), 'am Ende mit Suchpfad-Unit');
 end;
 
 procedure TIndexBuilderTests.ReusesCacheWithoutReading;
