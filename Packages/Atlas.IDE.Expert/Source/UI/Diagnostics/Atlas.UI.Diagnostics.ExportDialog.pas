@@ -3,6 +3,8 @@
 // Vorschau vor dem Export des Diagnoselogs (#647): zeigt genau die Zeilen, die
 // in die ZIP-Datei kommen, und fragt nach dem Speicherort. Geschrieben wird
 // nicht hier, sondern vom Aufrufer (TAtlasDiagnosticExport.WriteZip).
+// Dieselbe Vorschau dient dem Fehlerbericht (#108) mit eigenem Titel,
+// Dateinamen und Filter.
 
 interface
 
@@ -20,11 +22,19 @@ type
   TAtlasDiagnosticExportDialog = class(TForm)
   private
     FFileName: string;
+    FDefaultName: string;
+    FFilter: string;
+    FDefaultExt: string;
     procedure SaveClick(Sender: TObject);
   public
-    constructor CreateDialog(AOwner: TComponent; const AHint, APreview: string);
+    constructor CreateDialog(AOwner: TComponent; const AHint, APreview: string); overload;
+    /// <summary>Mit eigenem Titel, vorgeschlagenem Dateinamen, Filter und Endung.</summary>
+    constructor CreateDialog(AOwner: TComponent; const ATitle, AHint, APreview, ADefaultName, AFilter,
+      ADefaultExt: string); overload;
     /// <summary>True mit AFileName, wenn der Nutzer einen Speicherort gewählt hat.</summary>
-    class function Execute(const AHint, APreview: string; out AFileName: string): Boolean; static;
+    class function Execute(const AHint, APreview: string; out AFileName: string): Boolean; overload; static;
+    class function Execute(const ATitle, AHint, APreview, ADefaultName, AFilter, ADefaultExt: string;
+      out AFileName: string): Boolean; overload; static;
     property FileName: string read FFileName;
   end;
 
@@ -37,6 +47,14 @@ const
   Gap = 8;
 
 constructor TAtlasDiagnosticExportDialog.CreateDialog(AOwner: TComponent; const AHint, APreview: string);
+begin
+  CreateDialog(AOwner, TAtlasStrings.Text(TAtlasTextId.DiagExportTitle), AHint, APreview,
+    'atlas-diagnose-' + FormatDateTime('yyyymmdd', Now) + '.zip', TAtlasStrings.Text(TAtlasTextId.DiagExportFilter),
+    'zip');
+end;
+
+constructor TAtlasDiagnosticExportDialog.CreateDialog(AOwner: TComponent; const ATitle, AHint, APreview,
+  ADefaultName, AFilter, ADefaultExt: string);
 var
   Bottom: TPanel;
   Button: TButton;
@@ -44,7 +62,10 @@ var
   Memo: TMemo;
 begin
   inherited CreateNew(AOwner);
-  Caption := TAtlasStrings.Text(TAtlasTextId.DiagExportTitle);
+  FDefaultName := ADefaultName;
+  FFilter := AFilter;
+  FDefaultExt := ADefaultExt;
+  Caption := ATitle;
   BorderStyle := bsSizeable;
   Position := poMainFormCenter;
   Width := 900;
@@ -97,14 +118,29 @@ var
 begin
   Dialog := TSaveDialog.Create(Self);
   try
-    Dialog.Filter := TAtlasStrings.Text(TAtlasTextId.DiagExportFilter);
-    Dialog.DefaultExt := 'zip';
-    Dialog.FileName := 'atlas-diagnose-' + FormatDateTime('yyyymmdd', Now) + '.zip';
+    Dialog.Filter := FFilter;
+    Dialog.DefaultExt := FDefaultExt;
+    Dialog.FileName := FDefaultName;
     Dialog.Options := Dialog.Options + [ofOverwritePrompt, ofPathMustExist];
     if not Dialog.Execute then
       Exit;
     FFileName := Dialog.FileName;
     ModalResult := mrOk;
+  finally
+    Dialog.Free;
+  end;
+end;
+
+class function TAtlasDiagnosticExportDialog.Execute(const ATitle, AHint, APreview, ADefaultName, AFilter,
+  ADefaultExt: string; out AFileName: string): Boolean;
+var
+  Dialog: TAtlasDiagnosticExportDialog;
+begin
+  Dialog := TAtlasDiagnosticExportDialog.CreateDialog(nil, ATitle, AHint, APreview, ADefaultName, AFilter,
+    ADefaultExt);
+  try
+    Result := Dialog.ShowModal = mrOk;
+    AFileName := Dialog.FileName;
   finally
     Dialog.Free;
   end;

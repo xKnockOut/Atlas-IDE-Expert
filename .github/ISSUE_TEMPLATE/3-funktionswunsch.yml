@@ -1,0 +1,24 @@
+name: Funktionswunsch
+description: Eine neue Funktion oder eine Verbesserung vorschlagen.
+title: "Wunsch: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Worum geht es?
+      description: Welche Aufgabe in der IDE soll leichter werden?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Vorschlag
+      description: Wie sollte Atlas sich verhalten? Gern mit Beispiel oder Skizze.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativen
+      description: Wie lösen Sie es heute, oder was haben Sie schon versucht?

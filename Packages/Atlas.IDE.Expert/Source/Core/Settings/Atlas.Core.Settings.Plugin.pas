@@ -186,6 +186,9 @@ type
     /// <summary>Einmal täglich nach einer neuen Version sehen (#495, updates.check); Vorgabe aus, beim ersten
     /// Start wird gefragt.</summary>
     UpdatesCheck: Boolean;
+    /// <summary>Fehlerbericht anonymisieren (#108, diagnostics.bugReport.anonymize): Pfade, Benutzername und
+    /// Bezeichner ersetzen; Vorgabe an.</summary>
+    BugReportAnonymize: Boolean;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -284,6 +287,7 @@ begin
   Result.UndoKey := $C05A; // Strg+Alt+Z
   Result.RedoKey := $E05A; // Strg+Alt+Umschalt+Z
   Result.UpdatesCheck := False;
+  Result.BugReportAnonymize := True;
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -401,6 +405,7 @@ begin
   UndoKey := AStore.ReadInteger('UndoKey', Default.UndoKey);
   RedoKey := AStore.ReadInteger('RedoKey', Default.RedoKey);
   UpdatesCheck := AStore.ReadInteger('UpdatesCheck', BoolValue(Default.UpdatesCheck)) <> 0;
+  BugReportAnonymize := AStore.ReadInteger('BugReportAnonymize', BoolValue(Default.BugReportAnonymize)) <> 0;
   Normalize;
 end;
 
@@ -476,6 +481,7 @@ begin
   AStore.WriteInteger('UndoKey', UndoKey);
   AStore.WriteInteger('RedoKey', RedoKey);
   AStore.WriteInteger('UpdatesCheck', BoolValue(UpdatesCheck));
+  AStore.WriteInteger('BugReportAnonymize', BoolValue(BugReportAnonymize));
 end;
 
 function JsonBool(AValue: Boolean): string;

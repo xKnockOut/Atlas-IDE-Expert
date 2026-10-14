@@ -40,6 +40,7 @@ uses
   Atlas.IDE.Settings.Store,
   Atlas.IDE.Diagnostics.Watchdog,
   Atlas.IDE.Diagnostics.Export,
+  Atlas.IDE.Diagnostics.BugReport,
   Atlas.IDE.Files.Reloader,
   Atlas.IDE.Commands.Palette,
   Atlas.IDE.Editor.Pairs,
@@ -203,6 +204,23 @@ begin
 end;
 
 /// <summary>„Symbol umbenennen…“ (#397) aus Menü und Palette.</summary>
+/// <summary>„Fehlerbericht erstellen…“ (#108) aus Menü, Palette und dem Fenster des abgesicherten Starts.</summary>
+procedure CreateBugReport;
+begin
+  TAtlasIdeBugReport.Execute(
+    function(const ACommand, AArgumentsJson: string): TJSONValue
+    begin
+      if Manager <> nil then
+        Result := Manager.RunServerCommand(ACommand, AArgumentsJson, 10000)
+      else
+        Result := nil;
+    end,
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
+end;
+
 procedure RenameSymbol;
 begin
   if Manager = nil then
@@ -338,6 +356,11 @@ begin
         begin
           GuardWarning(AText);
         end);
+    end);
+  Palette.RegisterCommand('Atlas.BugReport', TAtlasStrings.Text(TAtlasTextId.BugReportMenu), '',
+    procedure
+    begin
+      CreateBugReport;
     end);
   Palette.RegisterCommand('Atlas.ProjectSettings', TAtlasStrings.Text(TAtlasTextId.ProjectSettingsTitle), '',
     procedure
@@ -594,6 +617,7 @@ begin
     begin
       GuardWarning(AText);
     end);
+  MainMenu.OnBugReport := CreateBugReport;
 end;
 
 /// <summary>Meldet an, was die Stufe des abgesicherten Starts (#722) und die Einstellungen erlauben; mehrfach
@@ -786,6 +810,7 @@ begin
           GuardWarning(AText);
         end);
     end;
+  SafeMode.OnBugReport := CreateBugReport;
   SafeMode.Start(TAtlasIdeSafeMode.DefaultFolder, TAtlasStatusRegistry.Default);
   // Fehler je Feature (#493) in die Startmarke.
   TAtlasGuard.OnFailure :=

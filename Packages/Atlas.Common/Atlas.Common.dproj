@@ -76,6 +76,7 @@
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.RotatingFileStream.pas"/>
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.StreamSink.pas"/>
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.TransformSink.pas"/>
+        <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.RecentSink.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Contract.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Messages.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.StreamTransport.pas"/>
@@ -107,6 +108,7 @@
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.MapFile.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.Contract.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.Anonymizer.pas"/>
+        <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.BugReport.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.ShutdownLeaks.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.RequestScope.pas"/>
         <DCCReference Include="Source\Diagnostics\Providers\Atlas.Common.Diagnostics.Providers.Log.pas"/>

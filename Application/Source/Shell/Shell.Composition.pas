@@ -53,6 +53,8 @@ uses
   Atlas.Common.Lsp.StringLiteralCommands,
   Atlas.Common.Editing.StringLiterals,
   Atlas.Common.JsonRpc.Statistics,
+  Atlas.Common.Logging.Providers.RecentSink,
+  Atlas.Common.Diagnostics.BugReport,
   Atlas.Common.Lsp.WatchedFiles,
   Atlas.Common.Lsp.IndexRefresh,
   Atlas.Common.Lsp.IdeBuild,
@@ -125,6 +127,8 @@ type
     FColors: TLspColors;
     FCommands: TLspCommands;
     FStatistics: IJsonRpcStatistics;
+    /// <summary>Letzte Logzeilen für den Fehlerbericht (#108); nil ohne CreateForStdio.</summary>
+    FRecentLog: IRecentLogLines;
     FWatchedFiles: TLspWatchedFiles;
     /// <summary>Aktive Unit nach der Tipp-Pause neu in den Index (#492).</summary>
     FIndexRefresh: TLspIndexRefresh;
@@ -192,6 +196,10 @@ type
     /// <summary>Inhalt des Status-Befehls (#28).</summary>
     function CollectBookmarks: TArray<TBookmarkHit>;
     function CollectStatus: TServerStatus;
+    /// <summary>Fehlerbericht (#108); AArguments optional [{"anonymize", "client", "target"}].</summary>
+    function BugReport(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Wirksame Konfiguration je Arbeitsbereich als formatiertes JSON.</summary>
+    function ConfigurationReport: string;
     function DefinesFor(const AUri: string; out ADefines: TArray<string>): Boolean;
     function DelphiVersionFor(const AUri: string): string;
     /// <summary>Schnellbefehle (#293): False = aus; ADisabled samt "uses" bei usesCommand = false.</summary>
@@ -910,6 +918,11 @@ begin
       Status := CollectStatus;
       FLogger.Info('Status:' + sLineBreak + Status.ToMarkdown);
       Result := Status.ToJson;
+    end);
+  FCommands.Register(TBugReport.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := BugReport(AArguments);
     end);
   FCommands.Register(CompileCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1705,6 +1718,116 @@ begin
   Result := FBookmarks.All;
 end;
 
+function TServerComposition.ConfigurationReport: string;
+var
+  Root, Item, Effective: TJSONObject;
+  Items: TJSONArray;
+  Workspace: TShellWorkspace;
+  Targets: TArray<TShellWorkspace>;
+  Settings: TServerSettings;
+
+  function JsonOrText(const AText: string): TJSONValue;
+  begin
+    Result := nil;
+    if AText.Trim <> '' then
+      Result := TJSONObject.ParseJSONValue(AText);
+    if (Result = nil) and (AText.Trim <> '') then
+      Result := TJSONString.Create(AText);
+    if Result = nil then
+      Result := TJSONNull.Create;
+  end;
+
+begin
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Targets := FWorkspaces.ToArray;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  Root := TJSONObject.Create;
+  try
+    // Eingaben der Schichtung (Editor, dann atlas.json mit Vorrang) und die wichtigsten Ergebnisse.
+    Root.AddPair('editor', JsonOrText(FEditorSettings));
+    Items := TJSONArray.Create;
+    Root.AddPair('workspaces', Items);
+    for Workspace in Targets do
+    begin
+      Item := TJSONObject.Create;
+      Items.AddElement(Item);
+      Item.AddPair('root', Workspace.Root);
+      Item.AddPair('file', ExtractFileName(Workspace.Configuration.FileName));
+      Item.AddPair('fileContent', JsonOrText(Workspace.Configuration.FileText));
+      Settings := Workspace.Configuration.Settings;
+      Effective := TJSONObject.Create;
+      Item.AddPair('effective', Effective);
+      Effective.AddPair('delphiVersion', Settings.DelphiVersion);
+      Effective.AddPair('language', Settings.Language);
+      Effective.AddPair('defaultEncoding', TJSONNumber.Create(Settings.DefaultEncoding));
+      Effective.AddPair('project', Settings.Project);
+      Effective.AddPair('config', Settings.Config);
+      Effective.AddPair('platform', Settings.Platform);
+      Effective.AddPair('profile', Settings.Profile);
+      Effective.AddPair('rules', TJSONNumber.Create(Length(Settings.Rules)));
+      Effective.AddPair('excludeTests', TJSONBool.Create(Settings.ExcludeTests));
+      Effective.AddPair('exclude', TJSONNumber.Create(Length(Settings.Exclude)));
+    end;
+    Result := Root.Format(2);
+  finally
+    Root.Free;
+  end;
+end;
+
+function TServerComposition.BugReport(const AArguments: TJSONArray): TJSONValue;
+var
+  Input: TBugReportInput;
+  Options: TJSONObject;
+  Workspace: TShellWorkspace;
+  Target, Text: string;
+  Answer: TJSONObject;
+begin
+  Input := Default(TBugReportInput);
+  Input.Anonymize := True;
+  Target := '';
+  Options := nil;
+  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONObject) then
+    Options := TJSONObject(AArguments.Items[0]);
+  if Options <> nil then
+  begin
+    if Options.GetValue('anonymize') is TJSONBool then
+      Input.Anonymize := TJSONBool(Options.GetValue('anonymize')).AsBoolean;
+    if Options.GetValue('client') is TJSONString then
+      Input.Client := Options.GetValue('client').Value;
+    if Options.GetValue('target') is TJSONString then
+      Target := Options.GetValue('target').Value;
+  end;
+  Input.ServerVersion := TProductVersion.Version;
+  Input.Created := Now;
+  Input.Configuration := ConfigurationReport;
+  if FRecentLog <> nil then
+    Input.LogLines := FRecentLog.Lines;
+  Input.Requests := FStatistics.Recent;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    for Workspace in FWorkspaces do
+      Input.Workspaces := Input.Workspaces + [Workspace.Root];
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  Input.Identity := [GetEnvironmentVariable('USERNAME'), GetEnvironmentVariable('COMPUTERNAME'),
+    GetEnvironmentVariable('USERDOMAIN')];
+  Text := TBugReport.Build(Input);
+  Answer := TJSONObject.Create;
+  Answer.AddPair('text', Text);
+  if Target <> '' then
+  begin
+    ForceDirectories(ExtractFileDir(Target));
+    TFile.WriteAllText(Target, Text, TEncoding.UTF8);
+    Answer.AddPair('file', Target);
+  end;
+  FLogger.Info('Fehlerbericht erstellt');
+  Result := Answer;
+end;
+
 function TServerComposition.CollectStatus: TServerStatus;
 var
   Workspace: TShellWorkspace;
@@ -2263,6 +2386,8 @@ var
   Warning: string;
   TraceName: string;
   Anonymizer: ILogAnonymizer;
+  RecentSink: TRecentLogSink;
+  RecentLog: IRecentLogLines;
 begin
   // Stacktraces für das Absturzprotokoll (Exception.StackTrace).
   TStackTrace.Install;
@@ -2272,6 +2397,10 @@ begin
   // stderr zeigt VS Code ebenfalls im Ausgabefenster; dort nur Fehler, um
   // Doppelungen mit window/logMessage zu vermeiden.
   LoggerImpl.AddSink(TStreamLogSink.Create(TStdStreams.CreateError, True), TLogLevel.Error);
+  // Auszug für den Fehlerbericht (#108), unabhängig von --log.
+  RecentSink := TRecentLogSink.Create;
+  RecentLog := RecentSink;
+  LoggerImpl.AddSink(RecentSink, TLogLevel.Info);
   if AOptions.LogFile <> '' then
     try
       LoggerImpl.AddSink(TShellDiagnostics.LogFileSink(AOptions.LogFile, IntToStr(TParentWatcher.CurrentProcessId),
@@ -2299,6 +2428,7 @@ begin
     Logger.Warning(Warning);
 
   Result := TServerComposition.Create(Transport, Logger);
+  Result.FRecentLog := RecentLog;
   Result.FLogAnonymizer := Anonymizer;
   Result.FRestricted := AOptions.Restricted;
   Result.FClientProcessId := AOptions.ClientProcessId;
@@ -2377,6 +2507,7 @@ begin
   Commands.Add(SelectBuildCommand);
   Commands.Add(RebuildIndexCommand);
   Commands.Add(ClearIndexCommand);
+  Commands.Add(TBugReport.Command);
   Commands.Add(TQualifiedNames.Command);
   Commands.Add(TStringLiteralCommands.PlainTextCommand);
   Commands.Add(TStringLiteralCommands.ToLiteralCommand);

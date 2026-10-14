@@ -132,6 +132,8 @@ contains
   Atlas.Core.Diagnostics.Export in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Export.pas',
   Atlas.UI.Diagnostics.ExportDialog in 'Source\UI\Diagnostics\Atlas.UI.Diagnostics.ExportDialog.pas',
   Atlas.IDE.Diagnostics.Export in 'Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.Export.pas',
+  Atlas.Core.Diagnostics.BugReport in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.BugReport.pas',
+  Atlas.IDE.Diagnostics.BugReport in 'Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.BugReport.pas',
   Atlas.Core.Files.ExternalChanges in 'Source\Core\Files\Atlas.Core.Files.ExternalChanges.pas',
   Atlas.IDE.Files.Reloader in 'Source\IDE\Files\Atlas.IDE.Files.Reloader.pas',
   Atlas.Core.Commands.Palette in 'Source\Core\Commands\Atlas.Core.Commands.Palette.pas',

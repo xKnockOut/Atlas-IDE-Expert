@@ -1,0 +1,59 @@
+name: Fehler
+description: Atlas verhält sich falsch, stürzt ab oder bremst die IDE.
+title: "Fehler: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Am schnellsten geht es mit dem Fehlerbericht: Menü *Atlas › Fehlerbericht erstellen…* schreibt Versionen,
+        Einstellungen, Protokollauszüge und die letzten Anfragen in eine Datei (ohne Quelltext, standardmäßig
+        anonymisiert). Bitte die Datei durchsehen und hier anhängen.
+  - type: input
+    id: version
+    attributes:
+      label: Atlas-Version
+      description: Steht unter Tools › Optionen › Drittanbieter › Atlas, Abschnitt „Updates“.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: ide
+    attributes:
+      label: Delphi-Version und IDE
+      options:
+        - Delphi 13 (32-Bit-IDE)
+        - Delphi 13 (64-Bit-IDE)
+        - Delphi 12 (32-Bit-IDE)
+        - Delphi 12 (64-Bit-IDE)
+        - Andere (bitte unten angeben)
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Schritte
+      description: Was muss man tun, damit der Fehler auftritt?
+      placeholder: |
+        1. Projekt öffnen …
+        2. In Unit … Strg+Leertaste drücken
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Erwartetes Verhalten
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Tatsächliches Verhalten
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Fehlerbericht oder Log-Auszug
+      description: Datei aus *Atlas › Fehlerbericht erstellen…* anhängen oder einen Auszug einfügen.
+      render: text

@@ -128,6 +128,9 @@ type
     function ServerProgress: string;
     /// <summary>Befehl an den Server (startet ihn bei Bedarf); Ergebnis gehört dem Aufrufer, nil bei Fehler.</summary>
     function ExecuteServerCommand(const ACommand: string; ATimeoutMs: Cardinal = 30000): TJSONValue;
+    /// <summary>Befehl mit Argumenten (JSON-Array) an den laufenden Server (#108); startet keinen Server.
+    /// nil ohne Sitzung, bei Fehler oder Zeitlimit; das Ergebnis gehört dem Aufrufer.</summary>
+    function RunServerCommand(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal): TJSONValue;
     /// <summary>Laufende Sitzung, Server bei Bedarf gestartet; nil, wenn er nicht startet (Hauptthread).</summary>
     function ActiveSession: TLspSession;
     /// <summary>Laufende, initialisierte Sitzung oder nil; startet keinen Server (#402).</summary>
@@ -803,6 +806,23 @@ begin
   if Session = nil then
     Exit(nil);
   Result := Session.ExecuteCommand(ACommand, ATimeoutMs);
+end;
+
+function TAtlasCodeInsightManager.RunServerCommand(const ACommand, AArgumentsJson: string;
+  ATimeoutMs: Cardinal): TJSONValue;
+var
+  Session: TLspSession;
+begin
+  Result := nil;
+  Session := RunningSession;
+  if Session = nil then
+    Exit;
+  try
+    Result := Session.RunCommand(ACommand, AArgumentsJson, ATimeoutMs);
+  except
+    on E: Exception do
+      Diagnose('Befehl ' + ACommand + ' fehlgeschlagen: ' + E.ClassName);
+  end;
 end;
 
 function TAtlasCodeInsightManager.Signature: TAtlasEditorSignature;

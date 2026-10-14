@@ -108,6 +108,7 @@ type
     FUndoOnConflict: TComboBox;
     FUndoNewFiles: TComboBox;
     FUpdatesCheck: TCheckBox;
+    FBugReportAnonymize: TCheckBox;
     FVersion: TLabel;
     FResetHistory: TButton;
     FResetWidths: TButton;
@@ -132,6 +133,7 @@ type
     procedure AddSafeSection;
     procedure AddUndoSection;
     procedure AddUpdatesSection;
+    procedure AddBugReportSection;
     procedure IndexRefreshClick(Sender: TObject);
     procedure IndexRebuildClick(Sender: TObject);
     procedure IndexClearClick(Sender: TObject);
@@ -174,6 +176,7 @@ type
     property UndoKey: TEdit read FUndoKey;
     property RedoKey: TEdit read FRedoKey;
     property UpdatesCheck: TCheckBox read FUpdatesCheck;
+    property BugReportAnonymize: TCheckBox read FBugReportAnonymize;
     property VersionLabel: TLabel read FVersion;
     /// <summary>Kennzahlen als Text; nil = nicht verfügbar.</summary>
     property OnIndexMetrics: TFunc<string> read FOnIndexMetrics write FOnIndexMetrics;
@@ -209,7 +212,7 @@ begin
   inherited Create(AOwner);
   Name := 'AtlasSettingsPage';
   Width := 480;
-  Height := 2100;
+  Height := 2170;
   Title := TLabel.Create(Self);
   Title.Parent := Self;
   Title.Align := alTop;
@@ -318,6 +321,7 @@ begin
   AddSafeSection;
   AddUndoSection;
   AddUpdatesSection;
+  AddBugReportSection;
   Panel := AddPanel(32);
   FResetHistory := TButton.Create(Self);
   FResetHistory.Parent := Panel;
@@ -590,6 +594,22 @@ begin
   FUpdatesCheck := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUpdatesCheck));
 end;
 
+procedure TAtlasSettingsPage.AddBugReportSection;
+var
+  Panel: TPanel;
+  Caption: TLabel;
+begin
+  // Fehlerbericht (#108).
+  Panel := AddPanel(22);
+  Caption := TLabel.Create(Self);
+  Caption.Parent := Panel;
+  Caption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsBugReportTitle);
+  Caption.Font.Style := [fsBold];
+  Caption.Left := 0;
+  Caption.Top := 4;
+  FBugReportAnonymize := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBugReportAnonymize));
+end;
+
 function TAtlasSettingsPage.AddChoice(const ACaption: string; const AItems: array of string): TComboBox;
 var
   Panel: TPanel;
@@ -742,6 +762,7 @@ begin
   FUndoKey.Text := ShortCutToText(TShortCut(ASettings.UndoKey));
   FRedoKey.Text := ShortCutToText(TShortCut(ASettings.RedoKey));
   FUpdatesCheck.Checked := ASettings.UpdatesCheck;
+  FBugReportAnonymize.Checked := ASettings.BugReportAnonymize;
   RefreshFuse;
   RefreshIndex;
 end;
@@ -758,6 +779,7 @@ begin
   ASettings.UndoKey := Integer(TextToShortCut(Trim(FUndoKey.Text)));
   ASettings.RedoKey := Integer(TextToShortCut(Trim(FRedoKey.Text)));
   ASettings.UpdatesCheck := FUpdatesCheck.Checked;
+  ASettings.BugReportAnonymize := FBugReportAnonymize.Checked;
   ASettings.EditorKeysPriority := FEditorKeysPriority.Checked;
   ASettings.SlashCommands := FSlashCommands.Checked;
   ASettings.VisibleRows := FRowsUpDown.Position;
