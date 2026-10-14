@@ -2,7 +2,7 @@
 
 Alle nennenswerten Änderungen an Atlas (Server und VS-Code-Erweiterung).
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionen nach [SemVer](https://semver.org/lang/de/).
-Server und Erweiterung tragen immer dieselbe Version.
+Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
@@ -60,6 +60,8 @@ Server und Erweiterung tragen immer dieselbe Version.
 - Die Index-Optionen (Projektgruppe, Suchpfade, Bibliothek) stehen in *Tools › Optionen › Atlas* und gelten für alle Projekte; eine `atlas.json` mit `index` hat weiter Vorrang. Der Server übernimmt `initializationOptions.settings.atlas` wie die Editor-Einstellungen (#652).
 - RTL, VCL und FMX werden einmal je Delphi-Version und Plattform indiziert und für alle Projekte und Konfigurationen geteilt. Vorher hing der gemeinsame Bibliotheks-Cache an den Defines des Projekts (DEBUG, eigene Symbole), sodass Debug, Release und jedes Projekt mit eigenen Defines die Bibliothek neu lasen (#647).
 - Diagnoselog: Je Anfrage `cpu` (Rechenzeit des Threads), `parallel` (was gleichzeitig lief), `treeMs` (Warten auf den Syntaxbaum) und `ensureMs` (Nachladen von Units) (#647).
+### Entfernt
+- VS-Code-Erweiterung und Neovim-Konfiguration samt Workflow, Release-Schritten (`.vsix`, Marketplace, Open VSX) und `Tools/Package-VSCode.ps1`; Atlas konzentriert sich auf das Delphi-Plugin. Das Schema von `atlas.json` liegt jetzt unter `schemas/atlas.schema.json`.
 
 ## [0.1.0] - 2026-10-08
 

@@ -1,14 +1,11 @@
 <#
 .SYNOPSIS
-  Erzeugt THIRD-PARTY-NOTICES.md (#77) aus den Laufzeitpaketen der VS-Code-Erweiterung
-  (package-lock.json ohne dev) samt Lizenztexten aus node_modules und den festen Einträgen
-  (DUnitX). Mit -Check nur prüfen, ob die Datei aktuell ist (Exit-Code 1 sonst).
-  Vorher in Editors/VSCode "npm ci" ausführen.
+  Erzeugt THIRD-PARTY-NOTICES.md (#77) aus den festen Einträgen (DUnitX).
+  Mit -Check nur prüfen, ob die Datei aktuell ist (Exit-Code 1 sonst).
 #>
 param([switch]$Check)
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
-$Extension = Join-Path $Root 'Editors/VSCode'
 $Target = Join-Path $Root 'THIRD-PARTY-NOTICES.md'
 
 $Lines = [System.Collections.Generic.List[string]]::new()
@@ -30,26 +27,6 @@ $Lines.Add('```')
 foreach ($Line in (Get-Content (Join-Path $PSScriptRoot 'Licenses/Apache-2.0.txt'))) { $Lines.Add($Line.TrimEnd()) }
 $Lines.Add('```')
 $Lines.Add('')
-$Lines.Add('## In der VS-Code-Erweiterung (.vsix) enthalten')
-$Lines.Add('')
-
-$Lock = Get-Content (Join-Path $Extension 'package-lock.json') -Raw | ConvertFrom-Json -AsHashtable
-foreach ($Key in ($Lock.packages.Keys | Sort-Object)) {
-  $Property = [pscustomobject]@{ Name = $Key; Value = [pscustomobject]$Lock.packages[$Key] }
-  if ($Key -eq '' -or $Property.Value.dev) { continue }
-  $Name = $Property.Name -replace '^.*node_modules/', ''
-  $Dir = Join-Path $Extension $Property.Name
-  $File = Get-ChildItem $Dir -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^licen[cs]e' } | Select-Object -First 1
-  if (-not $File) { throw "Lizenztext für $Name fehlt in $Dir (npm ci ausgeführt?)" }
-  $Lines.Add("### $Name $($Property.Value.version)")
-  $Lines.Add('')
-  $Lines.Add("- Lizenz: $($Property.Value.license)")
-  $Lines.Add('')
-  $Lines.Add('```')
-  foreach ($Line in (Get-Content $File.FullName)) { $Lines.Add($Line.TrimEnd()) }
-  $Lines.Add('```')
-  $Lines.Add('')
-}
 $Text = ($Lines -join "`n").TrimEnd() + "`n"
 
 if ($Check) {
