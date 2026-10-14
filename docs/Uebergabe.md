@@ -1,4 +1,4 @@
-﻿# Übergabe: Atlas IDE Expert – Stand 09.10.2026
+# Übergabe: Atlas IDE Expert – Stand 09.10.2026
 
 ## Kontext
 - Repo: https://github.com/xKnockOut/Atlas-IDE-Expert.git, lokal unter `C:\Projekte\BetterDelphiLSP\repo`. Gearbeitet wird auf `main`.
