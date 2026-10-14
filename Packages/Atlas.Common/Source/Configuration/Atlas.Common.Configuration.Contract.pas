@@ -337,8 +337,14 @@ begin
   Text := Trim(AText);
   if not TryStrToFloat(Text, Value, TFormatSettings.Invariant) or (Value <= 0) then
     Exit;
+  // BDS-Nummern nur bekannter Versionen: 14.0 (XE6) bis 23.0 (Delphi 12) und 37.0 (Delphi 13).
+  // Andere Werte wie "99" sind ein Tippfehler und erzeugen eine Konfigurationswarnung (#109).
   if Value >= 14 then
-    Exit(Text);
+  begin
+    if ((Trunc(Value) >= 14) and (Trunc(Value) <= 23)) or (Trunc(Value) = 37) then
+      Result := Text;
+    Exit;
+  end;
   // "12.0", "12.3" usw. meinen Delphi 12; nur bei 10 zählt die Nachkommastelle.
   if Trunc(Value) <> 10 then
     Text := IntToStr(Trunc(Value))
