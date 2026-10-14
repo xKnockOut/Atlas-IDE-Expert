@@ -54,6 +54,7 @@ type
     FIndexGroup: TCheckBox;
     FIndexSearch: TCheckBox;
     FIndexLibrary: TCheckBox;
+    FProblemsList: TCheckBox;
     FCheckOnSave: TCheckBox;
     FCheckDelay: TEdit;
     FCheckMax: TEdit;
@@ -181,6 +182,7 @@ begin
   FIndexGroup := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexGroup));
   FIndexSearch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexSearch));
   FIndexLibrary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexLibrary));
+  FProblemsList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsList));
   // Compilerprüfung nach dem Speichern (#548).
   FCheckOnSave := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCheckOnSave));
   FCheckDelay := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckDelay));
@@ -320,6 +322,7 @@ begin
   FIndexGroup.Checked := ASettings.IndexProjectGroup;
   FIndexSearch.Checked := ASettings.IndexSearchPaths;
   FIndexLibrary.Checked := ASettings.IndexLibraryPaths;
+  FProblemsList.Checked := ASettings.ProblemsList;
   FCheckOnSave.Checked := ASettings.CheckOnSave;
   FCheckDelay.Text := IntToStr(ASettings.CheckOnSaveDelayMs);
   FCheckMax.Text := IntToStr(ASettings.CheckOnSaveMaxMs);
@@ -354,6 +357,7 @@ begin
   ASettings.IndexProjectGroup := FIndexGroup.Checked;
   ASettings.IndexSearchPaths := FIndexSearch.Checked;
   ASettings.IndexLibraryPaths := FIndexLibrary.Checked;
+  ASettings.ProblemsList := FProblemsList.Checked;
   ASettings.CheckOnSave := FCheckOnSave.Checked;
   ASettings.CheckOnSaveDelayMs := StrToIntDef(FCheckDelay.Text, ASettings.CheckOnSaveDelayMs);
   ASettings.CheckOnSaveMaxMs := StrToIntDef(FCheckMax.Text, ASettings.CheckOnSaveMaxMs);

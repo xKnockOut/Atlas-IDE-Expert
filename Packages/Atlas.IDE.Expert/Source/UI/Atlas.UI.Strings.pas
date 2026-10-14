@@ -38,7 +38,8 @@ type
     SettingsInactiveDim, MenuToggleInactive, DidYouMean,
     DiagExportMenu, DiagExportTitle, DiagExportHint, DiagExportSave, DiagExportFilter, DiagExportEmpty, DiagExportDone,
     SettingsIndexGroup, SettingsIndexSearch, SettingsIndexLibrary,
-    SettingsPairOwners, SettingsPairGuideWidth, MenuToggleOwners);
+    SettingsPairOwners, SettingsPairGuideWidth, MenuToggleOwners,
+    SettingsProblemsList);
 
   TAtlasStrings = class
   private class var
@@ -114,7 +115,8 @@ const
      'Index: alle Projekte der Projektgruppe', 'Index: alle Units der Projekt-Suchpfade',
      'Index: alle Units der Delphi-Bibliothek (RTL, VCL, FMX, Komponenten)',
      'Anweisung mitfärben (if, then, else, for, do, procedure …); Blocklinien ab der Anweisung',
-     'Breite der Blocklinien (Pixel bei 100 %)', 'Anweisungen mitfärben'),
+     'Breite der Blocklinien (Pixel bei 100 %)', 'Anweisungen mitfärben',
+     'Probleme im Meldungsfenster auflisten (Reiter „Atlas-Probleme“)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -171,7 +173,8 @@ const
      'Index: all projects of the project group', 'Index: all units of the project search paths',
      'Index: all units of the Delphi library (RTL, VCL, FMX, components)',
      'Colour the statement too (if, then, else, for, do, procedure …); block guides start at the statement',
-     'Width of block guides (pixels at 100 %)', 'Colour statements'));
+     'Width of block guides (pixels at 100 %)', 'Colour statements',
+     'List problems in the message view (tab “Atlas-Probleme”)'));
 
 { TAtlasStrings }
 
