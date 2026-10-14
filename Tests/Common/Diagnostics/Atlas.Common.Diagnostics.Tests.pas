@@ -55,6 +55,16 @@ type
     procedure ServerLogKeepsLibraryUnitsAndNumbers;
   end;
 
+  /// <summary>Speicherrest beim Beenden (#177).</summary>
+  [TestFixture]
+  TShutdownLeaksTests = class
+  public
+    [Test]
+    procedure CountsAllocatedMemory;
+    [Test]
+    procedure DescribesWithoutNames;
+  end;
+
 implementation
 
 uses
@@ -70,6 +80,7 @@ uses
   Atlas.Common.Diagnostics.Contract,
   Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Diagnostics.RequestScope,
+  Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Common.Diagnostics.Providers.Log,
   Atlas.Common.Diagnostics.Adapters.LogFolder;
 
@@ -571,7 +582,30 @@ begin
     Anonymizer.Anonymize('Stufe "verbose", Methode "textDocument/hover" nach "1234" ms'));
 end;
 
+{ TShutdownLeaksTests }
+
+procedure TShutdownLeaksTests.CountsAllocatedMemory;
+var
+  Before: Int64;
+  Block: Pointer;
+begin
+  Before := TShutdownLeaks.AllocatedBytes;
+  GetMem(Block, 100000);
+  try
+    Assert.IsTrue(TShutdownLeaks.AllocatedBytes - Before >= 100000);
+  finally
+    FreeMem(Block);
+  end;
+  Assert.IsTrue(TShutdownLeaks.AllocatedBytes - Before < 100000);
+end;
+
+procedure TShutdownLeaksTests.DescribesWithoutNames;
+begin
+  Assert.AreEqual('Speicherrest beim Beenden: 128 Bytes', TShutdownLeaks.Describe(128));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TDiagnosticLogTests);
+  TDUnitX.RegisterTestFixture(TShutdownLeaksTests);
 
 end.

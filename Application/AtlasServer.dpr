@@ -3,6 +3,9 @@
 {$APPTYPE CONSOLE}
 
 uses
+  // Muss als erste Unit stehen: zählt den Speicherrest beim Beenden (#177).
+  Atlas.Common.Diagnostics.ShutdownLeaks,
+  Atlas.Windows.Diagnostics.DebugOutput,
   Shell.Application in 'Source\Shell\Shell.Application.pas',
   Shell.Composition in 'Source\Shell\Shell.Composition.pas',
   Shell.CommandLine in 'Source\Shell\Shell.CommandLine.pas',
@@ -13,10 +16,17 @@ uses
   Shell.Mcp in 'Source\Shell\Shell.Mcp.pas',
   Shell.Diagnostics in 'Source\Shell\Shell.Diagnostics.pas';
 
+// Speicherrest beim Beenden an den Debugger; die Zeile im Log (--log) schreibt
+// TShutdownLeaks selbst. Kein ReportMemoryLeaksOnShutdown: dessen Dialog
+// blockiert den unsichtbar gestarteten Server (#177).
+procedure ReportShutdownLeak(ABytes: Int64);
 begin
-  // Lecks beim Beenden melden; der Bericht geht nicht auf stdout.
+  TDebugOutput.Write(TShutdownLeaks.Describe(ABytes));
+end;
+
+begin
   {$IFDEF DEBUG}
-  ReportMemoryLeaksOnShutdown := True;
+  TShutdownLeaks.Enable(ReportShutdownLeak);
   {$ENDIF}
   ExitCode := TApplicationShell.Run;
 end.

@@ -17,6 +17,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Windows.Diagnostics.DebugOutput,
   Shell.CommandLine,
   Shell.Composition,
@@ -30,6 +31,7 @@ var
 begin
   try
     Options := TCommandLineOptions.FromProcess;
+    TShutdownLeaks.SetLogFile(Options.LogFile);
     if Options.ClearCache then
       Exit(TLinterShell.ClearCache);
     if Options.CheckTarget <> '' then
