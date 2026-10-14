@@ -98,6 +98,7 @@ begin
   Assert.IsFalse(Settings.Preview, 'Vorschau standardmäßig aus (#434)');
   Assert.IsTrue(Settings.PairOwners, 'Anweisungen mitfärben standardmäßig an (#653)');
   Assert.AreEqual(2, Settings.PairGuideWidth, 'Blocklinien 2 px (#653)');
+  Assert.IsTrue(Settings.ProblemsList, 'Liste „Atlas-Probleme“ standardmäßig an');
 end;
 
 procedure TAtlasPluginSettingsTests.SaveAndLoadRoundTrip;
@@ -114,6 +115,7 @@ begin
   Settings.PanelCollapsed := True;
   Settings.Learning := False;
   Settings.Preview := True;
+  Settings.ProblemsList := False;
   Settings.ServerPath := '  D:\Atlas\AtlasServer.exe ';
   Settings.PairOwners := False;
   Settings.PairGuideWidth := 1;
@@ -129,6 +131,8 @@ begin
   Assert.IsTrue(Loaded.Preview);
   Assert.IsFalse(Loaded.PairOwners);
   Assert.AreEqual(1, Loaded.PairGuideWidth);
+  Assert.IsFalse(Loaded.ProblemsList, 'Liste „Atlas-Probleme“ abgeschaltet');
+  Assert.IsTrue(Loaded.Problems, 'Wellenlinien bleiben an');
   Assert.AreEqual('D:\Atlas\AtlasServer.exe', Loaded.ServerPath, 'Serverpfad ohne Leerraum');
   Assert.AreEqual('', TAtlasPluginSettings.Defaults.ServerPath, 'Standard: leer');
 end;
