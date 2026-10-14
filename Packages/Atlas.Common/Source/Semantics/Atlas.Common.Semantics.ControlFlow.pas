@@ -583,8 +583,9 @@ function IsPlainCall(S: TSyntaxNode): Boolean;
 var
   Target: TSyntaxNode;
 begin
+  // Ohne Kinder ist es der Name allein ("Exit;").
   if S.ChildCount = 0 then
-    Exit(False);
+    Exit(True);
   Target := S.Children[0];
   if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount > 0) then
     Target := Target.Children[0];
