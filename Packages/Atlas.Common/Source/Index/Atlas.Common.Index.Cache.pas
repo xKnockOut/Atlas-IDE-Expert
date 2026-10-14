@@ -5,6 +5,12 @@
 // mit anderer Formatversion (auch die früheren Text- und JSON-Formate) wird
 // verworfen.
 //
+// Format 12 (#492): Prüfsumme über die ganze Datei; je Symbol Signatur,
+// Direktiven und XMLDoc-Kurztext; je Unit die Verwendungen der Bezeichner in
+// einem eigenen Block, damit sie ausgelagert bleiben können. Eine Datei mit
+// falscher Prüfsumme gilt als beschädigt: ReadEntries liefert dann leer und
+// nennt den Grund, der Aufbau liest alles neu, ohne Meldung an den Benutzer.
+//
 // Format 11 (#617, Schritt 4): binär mit String-Tabelle.
 // - Jeder Text steht genau einmal in der Tabelle; Units und Symbole
 //   verweisen per Nummer darauf. Nach dem Laden teilen sich gleiche Texte
@@ -16,15 +22,18 @@
 //   so beim Start fast nichts.
 //
 // Aufbau (alle Zahlen als Varint, vorzeichenbehaftete per ZigZag):
-//   Kopf:    'ATLASIDX' Version
+//   Kopf:    'ATLASIDX' Version Prüfsumme (4 Byte, FNV-1a über alles dahinter)
 //   Texte:   Anzahl, je Text Bytelänge und UTF-8-Bytes (Nummer 0 = '')
 //   Units:   Anzahl, je Unit:
 //            Name Datei Zeitstempel Hash Merker uses(interface) uses(implementation)
 //            Include-Dateien Include-Zeitstempel Symbolzahl Zahl-nicht-verfügbar Blocklänge Block
-//            Merker: 1 = Bibliothek, 2 = kompakt, 4 = initialization/finalization
+//            Verwendungszahl Verwendungsblocklänge Verwendungsblock
+//            Merker: 1 = Bibliothek, 2 = kompakt, 4 = initialization/finalization,
+//                    8 = Verwendungen erfasst
 //   Symbol:  Name Container Art L1 C1 L2 C2 SL1 SC1 SL2 SC2 Merker Vorfahren Typ
 //            Typargumente Vorfahr-Typargumente Typparameter Sichtbarkeit MinArgs MaxArgs
-//            Parametertypen Include-Datei Bedingung
+//            Parametertypen Include-Datei Bedingung Signatur Direktiven Kurztext
+//   Verwendung: Name Anzahl, je Stelle Zeilenabstand zur vorigen und Spalte
 //            Merker: 1 = InInterface, 2 = Default, 4 = Virtuell, 8 = NichtVerfügbar
 // Listen: Anzahl, dann die Einträge. Der Dateiname der Cache-Datei bleibt index-*.json.
 
@@ -47,17 +56,28 @@ type
     SymbolEnd: Integer;
     SymbolCount: Integer;
     UnavailableCount: Integer;
+    UsageOffset: Integer;
+    UsageEnd: Integer;
+    UsageCount: Integer;
     class function FromUnit(const AUnit: TUnitIndex): TIndexCacheEntry; static;
   end;
 
   TIndexCache = class
   public
-    const FormatVersion = 11;
+    const FormatVersion = 12;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
-    /// <summary>Liest nur die Köpfe; bei falscher Version oder fremdem Inhalt leer.</summary>
-    class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; static;
-    /// <summary>Unit mit Symbolen; False, wenn der Block beschädigt ist.</summary>
-    class function Expand(const AEntry: TIndexCacheEntry; out AUnit: TUnitIndex): Boolean; static;
+    /// <summary>Liest nur die Köpfe; bei falscher Version, falscher Prüfsumme oder fremdem Inhalt leer.</summary>
+    class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; overload; static;
+    /// <summary>Wie oben; AReason nennt bei leerem Ergebnis den Grund ('' = gültig oder leer).</summary>
+    class function ReadEntries(const AData: TBytes; out AReason: string): TArray<TIndexCacheEntry>; overload;
+      static;
+    /// <summary>Unit mit Symbolen und (AUsages) Verwendungen; False, wenn ein Block beschädigt ist.
+    /// Ohne AUsages bleiben die Verwendungen auf der Platte: UsagesOffloaded ist dann gesetzt.</summary>
+    class function Expand(const AEntry: TIndexCacheEntry; out AUnit: TUnitIndex;
+      AUsages: Boolean = True): Boolean; static;
+    /// <summary>Nur die Verwendungen einer Unit (Nachladen ausgelagerter Verwendungen).</summary>
+    class function ExpandUsages(const AEntry: TIndexCacheEntry; out AUsages: TArray<TIndexUsage>): Boolean;
+      static;
     /// <summary>Liest den ganzen Cache; bei falscher Version oder fremdem Inhalt leer.</summary>
     class function Deserialize(const AData: TBytes): TArray<TUnitIndex>; static;
     /// <summary>Hash eines Dateiinhalts.</summary>
@@ -76,6 +96,9 @@ const
   FlagLibrary = 1;
   FlagCompact = 2;
   FlagInitialization = 4;
+  FlagUsages = 8;
+  // Magic, Version (1 Byte bis 127) und 4 Byte Prüfsumme.
+  ChecksumSize = 4;
   SymbolInInterface = 1;
   SymbolDefault = 2;
   SymbolVirtual = 4;
@@ -129,6 +152,16 @@ type
 procedure Fail;
 begin
   raise ECacheFormat.Create('Index-Cache beschädigt');
+end;
+
+/// <summary>FNV-1a (32 Bit) über AData ab AFrom.</summary>
+function ChecksumOf(const AData: TBytes; AFrom, ATo: Integer): Cardinal;
+var
+  Index: Integer;
+begin
+  Result := 2166136261;
+  for Index := AFrom to ATo - 1 do
+    Result := Cardinal(UInt64(Result xor AData[Index]) * 16777619);
 end;
 
 { TCacheWriter }
@@ -356,6 +389,26 @@ begin
   WriteList(AWriter, ATable, ASymbol.ParamTypes);
   AWriter.WriteVar(ATable.IndexOf(ASymbol.FileName));
   AWriter.WriteVar(ATable.IndexOf(ASymbol.Condition));
+  AWriter.WriteVar(ATable.IndexOf(ASymbol.Signature));
+  WriteList(AWriter, ATable, ASymbol.Directives);
+  AWriter.WriteVar(ATable.IndexOf(ASymbol.Summary));
+end;
+
+procedure WriteUsage(AWriter: TCacheWriter; ATable: TStringTable; const AUsage: TIndexUsage);
+var
+  Position: TTextPosition;
+  Line: Integer;
+begin
+  AWriter.WriteVar(ATable.IndexOf(AUsage.Name));
+  AWriter.WriteVar(Length(AUsage.Positions));
+  // Zeilen als Abstand zur vorigen Stelle: meist 0 oder klein.
+  Line := 0;
+  for Position in AUsage.Positions do
+  begin
+    AWriter.WriteInt(Position.Line - Line);
+    AWriter.WriteVar(Cardinal(Position.Character));
+    Line := Position.Line;
+  end;
 end;
 
 class function TIndexCache.Serialize(const AUnits: TArray<TUnitIndex>): TBytes;
@@ -364,10 +417,12 @@ var
   Body, Block, Output: TCacheWriter;
   UnitIndex: TUnitIndex;
   Symbol: TIndexSymbol;
-  Flags, MagicIndex: Integer;
+  Usage: TIndexUsage;
+  Flags, MagicIndex, ChecksumAt: Integer;
   Stamp: Int64;
   Value: string;
   Bytes: TBytes;
+  Checksum: Cardinal;
 begin
   Table := TStringTable.Create;
   Body := TCacheWriter.Create(1024 * 1024);
@@ -384,6 +439,8 @@ begin
         Flags := Flags or FlagCompact;
       if UnitIndex.HasInitialization then
         Flags := Flags or FlagInitialization;
+      if UnitIndex.UsagesIndexed then
+        Flags := Flags or FlagUsages;
       Body.WriteVar(Table.IndexOf(UnitIndex.UnitName));
       Body.WriteVar(Table.IndexOf(UnitIndex.FileName));
       Body.WriteInt(UnitIndex.Stamp);
@@ -405,11 +462,21 @@ begin
         WriteSymbol(Block, Table, Symbol);
       Body.WriteVar(Block.Length_);
       Body.WriteBytes(Block.FData, 0, Block.Length_);
+      Block.FLength := 0;
+      for Usage in UnitIndex.Usages do
+        WriteUsage(Block, Table, Usage);
+      Body.WriteVar(Length(UnitIndex.Usages));
+      Body.WriteVar(Block.Length_);
+      Body.WriteBytes(Block.FData, 0, Block.Length_);
     end;
     Output := TCacheWriter.Create(Body.Length_ + 64 * 1024);
     for MagicIndex := Low(Magic) to High(Magic) do
       Output.WriteByte(Magic[MagicIndex]);
     Output.WriteVar(FormatVersion);
+    // Platz für die Prüfsumme; sie wird zuletzt über alles dahinter berechnet.
+    ChecksumAt := Output.Length_;
+    for MagicIndex := 1 to ChecksumSize do
+      Output.WriteByte(0);
     Output.WriteVar(Table.Items.Count);
     for Value in Table.Items do
     begin
@@ -419,6 +486,9 @@ begin
     end;
     Output.WriteBytes(Body.FData, 0, Body.Length_);
     Result := Output.ToBytes;
+    Checksum := ChecksumOf(Result, ChecksumAt + ChecksumSize, Length(Result));
+    for MagicIndex := 0 to ChecksumSize - 1 do
+      Result[ChecksumAt + MagicIndex] := Byte(Checksum shr (8 * MagicIndex));
   finally
     Output.Free;
     Block.Free;
@@ -471,16 +541,46 @@ begin
   Result.ParamTypes := AReader.ReadList(AStrings);
   Result.FileName := AReader.ReadString(AStrings);
   Result.Condition := AReader.ReadString(AStrings);
+  Result.Signature := AReader.ReadString(AStrings);
+  Result.Directives := AReader.ReadList(AStrings);
+  Result.Summary := AReader.ReadString(AStrings);
+end;
+
+function ReadUsage(var AReader: TCacheReader; const AStrings: TArray<string>): TIndexUsage;
+var
+  Index, Line: Integer;
+begin
+  Result.Name := AReader.ReadString(AStrings);
+  SetLength(Result.Positions, AReader.ReadCount);
+  Line := 0;
+  for Index := 0 to High(Result.Positions) do
+  begin
+    Line := Line + AReader.ReadInt32;
+    Result.Positions[Index] := TTextPosition.Create(Line, AReader.ReadInt32);
+  end;
 end;
 
 class function TIndexCache.ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>;
+var
+  Reason: string;
+begin
+  Result := ReadEntries(AData, Reason);
+end;
+
+class function TIndexCache.ReadEntries(const AData: TBytes; out AReason: string): TArray<TIndexCacheEntry>;
 var
   Reader: TCacheReader;
   Strings: TArray<string>;
   Index, Count, StampIndex, Flags, Size: Integer;
   Entry: TIndexCacheEntry;
+  Version: UInt64;
+  Stored: Cardinal;
 begin
   Result := nil;
+  AReason := '';
+  if Length(AData) = 0 then
+    Exit;
+  AReason := 'kein Atlas-Index (Kopf fehlt)';
   if Length(AData) < Length(Magic) then
     Exit;
   for Index := Low(Magic) to High(Magic) do
@@ -490,8 +590,24 @@ begin
   Reader.Position := Length(Magic);
   Reader.Limit := Length(AData);
   try
-    if Reader.ReadVar <> FormatVersion then
+    Version := Reader.ReadVar;
+    if Version <> FormatVersion then
+    begin
+      AReason := Format('Formatversion %d statt %d', [Version, FormatVersion]);
       Exit;
+    end;
+    // Prüfsumme (#492): abgeschnittene oder veränderte Dateien vor dem Dekodieren erkennen.
+    if Reader.Position + ChecksumSize > Reader.Limit then
+      Fail;
+    Stored := 0;
+    for Index := ChecksumSize - 1 downto 0 do
+      Stored := (Stored shl 8) or AData[Reader.Position + Index];
+    Inc(Reader.Position, ChecksumSize);
+    if Stored <> ChecksumOf(AData, Reader.Position, Length(AData)) then
+    begin
+      AReason := 'Prüfsumme stimmt nicht';
+      Exit;
+    end;
     Count := Reader.ReadCount;
     SetLength(Strings, Count);
     for Index := 0 to Count - 1 do
@@ -515,6 +631,7 @@ begin
       Entry.Header.Library_ := (Flags and FlagLibrary) <> 0;
       Entry.Header.Compact := (Flags and FlagCompact) <> 0;
       Entry.Header.HasInitialization := (Flags and FlagInitialization) <> 0;
+      Entry.Header.UsagesIndexed := (Flags and FlagUsages) <> 0;
       Entry.Header.InterfaceUses := Reader.ReadList(Strings);
       Entry.Header.ImplementationUses := Reader.ReadList(Strings);
       Entry.Header.Includes := Reader.ReadList(Strings);
@@ -531,17 +648,57 @@ begin
       Entry.SymbolOffset := Reader.Position;
       Entry.SymbolEnd := Reader.Position + Size;
       Inc(Reader.Position, Size);
+      Entry.UsageCount := Reader.ReadCount;
+      Size := Reader.ReadCount;
+      if Reader.Position + Size > Reader.Limit then
+        Fail;
+      Entry.UsageOffset := Reader.Position;
+      Entry.UsageEnd := Reader.Position + Size;
+      Inc(Reader.Position, Size);
       if Entry.Header.FileName = '' then
         Fail;
       Result[Index] := Entry;
     end;
+    if Reader.Position <> Reader.Limit then
+      Fail;
+    AReason := '';
   except
     on ECacheFormat do
+    begin
       Result := nil;
+      AReason := 'Inhalt beschädigt';
+    end;
   end;
 end;
 
-class function TIndexCache.Expand(const AEntry: TIndexCacheEntry; out AUnit: TUnitIndex): Boolean;
+class function TIndexCache.ExpandUsages(const AEntry: TIndexCacheEntry; out AUsages: TArray<TIndexUsage>): Boolean;
+var
+  Reader: TCacheReader;
+  Index: Integer;
+begin
+  AUsages := nil;
+  if AEntry.Expanded then
+  begin
+    AUsages := AEntry.Header.Usages;
+    Exit(True);
+  end;
+  Reader.Data := AEntry.Data;
+  Reader.Position := AEntry.UsageOffset;
+  Reader.Limit := AEntry.UsageEnd;
+  try
+    SetLength(AUsages, AEntry.UsageCount);
+    for Index := 0 to AEntry.UsageCount - 1 do
+      AUsages[Index] := ReadUsage(Reader, AEntry.Strings);
+    Result := Reader.Position = Reader.Limit;
+  except
+    on ECacheFormat do
+      Result := False;
+  end;
+  if not Result then
+    AUsages := nil;
+end;
+
+class function TIndexCache.Expand(const AEntry: TIndexCacheEntry; out AUnit: TUnitIndex; AUsages: Boolean): Boolean;
 var
   Reader: TCacheReader;
   Index: Integer;
@@ -563,6 +720,13 @@ begin
   except
     on ECacheFormat do
       Result := False;
+  end;
+  if Result and AEntry.Header.UsagesIndexed then
+  begin
+    if AUsages then
+      Result := ExpandUsages(AEntry, AUnit.Usages)
+    else
+      AUnit.UsagesOffloaded := AEntry.UsageCount > 0;
   end;
   if not Result then
     AUnit := AEntry.Header;

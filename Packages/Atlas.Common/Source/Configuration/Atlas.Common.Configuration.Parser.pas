@@ -911,6 +911,8 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.IndexSearchPaths)
     else if Key = 'libraryPaths' then
       ExpectBoolean(ANode[Index], Key, FSettings.IndexLibraryPaths)
+    else if Key = 'usages' then
+      ExpectBoolean(ANode[Index], Key, FSettings.IndexUsages)
     else if Key = 'exclude' then
     begin
       if ANode[Index].Kind <> TJsonKind.Array_ then
@@ -1371,6 +1373,7 @@ begin
       Result.IndexProjectGroup := FileSettings.IndexProjectGroup;
       Result.IndexSearchPaths := FileSettings.IndexSearchPaths;
       Result.IndexLibraryPaths := FileSettings.IndexLibraryPaths;
+      Result.IndexUsages := FileSettings.IndexUsages;
       Result.IndexExclude := FileSettings.IndexExclude;
     end
     else if Key = 'usesCommand' then

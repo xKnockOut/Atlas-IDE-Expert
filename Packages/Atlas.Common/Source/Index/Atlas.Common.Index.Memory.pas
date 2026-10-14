@@ -7,6 +7,8 @@
 // - TIndexMemory schätzt den Bedarf einer Unit und liefert ihre kompakte Form:
 //   nur Symbole aus dem interface. Das reicht für Namensauflösung, Hover und
 //   Navigation in andere Units; die uses-Listen bleiben für den Indexaufbau.
+// - Verwendungen (#492) lassen sich vorher auslagern: WithoutUsages entfernt
+//   sie aus dem Speicher; sie bleiben im Cache auf der Platte.
 
 interface
 
@@ -33,9 +35,16 @@ type
     /// <summary>Geschätzter Bedarf in Byte; geteilte Strings zählen bei jeder Verwendung.</summary>
     class function UnitBytes(const AUnit: TUnitIndex): Int64; static;
     class function Compacted(const AUnit: TUnitIndex): TUnitIndex; static;
+    /// <summary>Bedarf der Verwendungen allein.</summary>
+    class function UsageBytes(const AUnit: TUnitIndex): Int64; static;
+    /// <summary>Unit ohne Verwendungen im Speicher; UsagesOffloaded, wenn es welche gab.</summary>
+    class function WithoutUsages(const AUnit: TUnitIndex): TUnitIndex; static;
   end;
 
 implementation
+
+uses
+  Atlas.Common.Documents.Contract;
 
 function StringBytes(const AValue: string): Int64;
 begin
@@ -102,6 +111,9 @@ begin
     AUnit.Symbols[Index].AncestorArgs := Intern(AUnit.Symbols[Index].AncestorArgs);
     AUnit.Symbols[Index].TypeParams := Intern(AUnit.Symbols[Index].TypeParams);
     AUnit.Symbols[Index].FileName := Intern(AUnit.Symbols[Index].FileName);
+    AUnit.Symbols[Index].Directives := Copy(AUnit.Symbols[Index].Directives);
+    for Inner := 0 to High(AUnit.Symbols[Index].Directives) do
+      AUnit.Symbols[Index].Directives[Inner] := Intern(AUnit.Symbols[Index].Directives[Inner]);
     AUnit.Symbols[Index].ParamTypes := Copy(AUnit.Symbols[Index].ParamTypes);
     for Inner := 0 to High(AUnit.Symbols[Index].ParamTypes) do
       AUnit.Symbols[Index].ParamTypes[Inner] := Intern(AUnit.Symbols[Index].ParamTypes[Inner]);
@@ -127,7 +139,29 @@ begin
     Inc(Result, 16);
   for Symbol in AUnit.Symbols do
     Inc(Result, SizeOf(TIndexSymbol) + StringBytes(Symbol.Name) + StringBytes(Symbol.Container) +
-      StringBytes(Symbol.TypeName) + ArrayBytes(Symbol.Ancestors));
+      StringBytes(Symbol.TypeName) + ArrayBytes(Symbol.Ancestors) + StringBytes(Symbol.Signature) +
+      StringBytes(Symbol.Summary) + ArrayBytes(Symbol.Directives));
+  Inc(Result, UsageBytes(AUnit));
+end;
+
+class function TIndexMemory.UsageBytes(const AUnit: TUnitIndex): Int64;
+var
+  Usage: TIndexUsage;
+begin
+  Result := 0;
+  if Length(AUnit.Usages) > 0 then
+    Result := 16;
+  for Usage in AUnit.Usages do
+    Inc(Result, SizeOf(TIndexUsage) + StringBytes(Usage.Name) + 16 + Length(Usage.Positions) * SizeOf(TTextPosition));
+end;
+
+class function TIndexMemory.WithoutUsages(const AUnit: TUnitIndex): TUnitIndex;
+begin
+  Result := AUnit;
+  if Length(AUnit.Usages) = 0 then
+    Exit;
+  Result.Usages := nil;
+  Result.UsagesOffloaded := True;
 end;
 
 class function TIndexMemory.Compacted(const AUnit: TUnitIndex): TUnitIndex;

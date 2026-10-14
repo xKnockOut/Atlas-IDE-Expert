@@ -5,7 +5,8 @@
 // beim Hinzufügen einer Unit in Nachschlagetabellen eingetragen.
 //
 // Speicherbudget (#185): Zeichenketten kommen in einen Pool. Übersteigt der
-// geschätzte Bedarf das Budget, werden zuerst Bibliotheks-Units, danach
+// geschätzte Bedarf das Budget, werden zuerst die Verwendungen ausgelagert
+// (#492; sie bleiben im Cache auf der Platte), dann Bibliotheks-Units, danach
 // Projekt-Units kompakt gehalten (nur interface-Symbole).
 
 interface
@@ -33,6 +34,7 @@ type
     FBytes: Int64;
     FBudget: Int64;
     FCompactCount: Integer;
+    FOffloadedCount: Integer;
     FGeneration: Int64;
     procedure AddLocked(const AKey: string; const AUnit: TUnitIndex);
     procedure ShrinkLocked;
@@ -53,6 +55,7 @@ type
     function SymbolCount: Integer;
     function MemoryBytes: Int64;
     function CompactCount: Integer;
+    function OffloadedCount: Integer;
     procedure SetBudget(ABytes: Int64);
     function Budget: Int64;
     function Generation: Int64;
@@ -116,6 +119,8 @@ begin
   Dec(FBytes, TIndexMemory.UnitBytes(Existing));
   if Existing.Compact then
     Dec(FCompactCount);
+  if Existing.UsagesOffloaded then
+    Dec(FOffloadedCount);
   FFiles.Remove(AFileKey);
   Inc(FGeneration);
   if FUnitFiles.TryGetValue(UpperCase(Existing.UnitName), UnitFile) and (UnitFile = AFileKey) then
@@ -131,6 +136,8 @@ begin
   Inc(FBytes, TIndexMemory.UnitBytes(AUnit));
   if AUnit.Compact then
     Inc(FCompactCount);
+  if AUnit.UsagesOffloaded then
+    Inc(FOffloadedCount);
 end;
 
 procedure TSymbolIndex.ShrinkLocked;
@@ -140,11 +147,12 @@ var
   Key: string;
   Existing: TUnitIndex;
 begin
-  // Erst Bibliotheken, dann Projekt-Units; jeweils nur bis das Budget wieder reicht.
-  // Ohne Überschreitung nichts kopieren: AddUnit ruft das bei jeder Unit auf.
+  // Erst die Verwendungen auslagern (#492), dann Bibliotheken, dann Projekt-Units kompakt halten;
+  // jeweils nur bis das Budget wieder reicht. Ohne Überschreitung nichts kopieren: AddUnit ruft
+  // das bei jeder Unit auf.
   if (FBudget <= 0) or (FBytes <= FBudget) or (FCompactCount >= FFiles.Count) then
     Exit;
-  for Pass := 0 to 1 do
+  for Pass := -1 to 1 do
   begin
     Keys := FFiles.Keys.ToArray;
     for Key in Keys do
@@ -152,10 +160,18 @@ begin
       if (FBudget <= 0) or (FBytes <= FBudget) then
         Exit;
       Existing := FFiles[Key];
+      if Pass < 0 then
+      begin
+        if Length(Existing.Usages) = 0 then
+          Continue;
+        RemoveFileLocked(Key);
+        AddLocked(Key, TIndexMemory.WithoutUsages(Existing));
+        Continue;
+      end;
       if Existing.Compact or ((Pass = 0) and not Existing.Library_) then
         Continue;
       RemoveFileLocked(Key);
-      AddLocked(Key, TIndexMemory.Compacted(Existing));
+      AddLocked(Key, TIndexMemory.Compacted(TIndexMemory.WithoutUsages(Existing)));
     end;
   end;
 end;
@@ -318,6 +334,16 @@ begin
   FLock.Enter;
   try
     Result := FCompactCount;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TSymbolIndex.OffloadedCount: Integer;
+begin
+  FLock.Enter;
+  try
+    Result := FOffloadedCount;
   finally
     FLock.Leave;
   end;
