@@ -135,6 +135,10 @@ type
     Batch: Boolean;
     /// <summary>Hinweis „3 Methoden von IExporter fehlen“ (#466): ganz oben, nie vorgewählt.</summary>
     Hint: Boolean;
+    /// <summary>Komponente aus dem Formular (#455): Name des Formulars, '' sonst. Gruppe „Formular …“ ganz oben.</summary>
+    Form: string;
+    /// <summary>Die Komponente passt nur über ihren Typ ("button" → btnSave): immer sichtbar, hinter den Namenstreffern.</summary>
+    ByType: Boolean;
     /// <summary>Zahl der Überladungen samt dieser (mindestens 1).</summary>
     function OverloadCount: Integer;
   end;

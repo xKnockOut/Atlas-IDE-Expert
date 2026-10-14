@@ -84,6 +84,8 @@ type
     [Test]
     procedure OffersMissingInterfaceMethods;
     [Test]
+    procedure OffersFormComponentsByNameAndType;
+    [Test]
     procedure GroupsByExpectedType;
   end;
 
@@ -922,6 +924,137 @@ begin
     Resolver.Free;
     Tree.Free;
   end;
+end;
+
+procedure TLspCompletionTests.OffersFormComponentsByNameAndType;
+const
+  UnitSteuer =
+    'unit Steuer;'#13#10 +
+    'interface'#13#10 +
+    'type'#13#10 +
+    '  TForm = class'#13#10 +
+    '  end;'#13#10 +
+    '  TPanel = class'#13#10 +
+    '  end;'#13#10 +
+    '  TButtonControl = class'#13#10 +
+    '  end;'#13#10 +
+    '  TButton = class(TButtonControl)'#13#10 +
+    '  end;'#13#10 +
+    '  TBitBtn = class(TButton)'#13#10 +
+    '  end;'#13#10 +
+    '  TCheckBox = class(TButtonControl)'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'end.';
+  // Formular wie aus dem Designer; der Panel-Inhalt zählt mit.
+  FormText =
+    'object frmMain: TfrmMain'#13#10 +
+    '  Caption = ''Haupt'''#13#10 +
+    '  object pnlOben: TPanel'#13#10 +
+    '    object btnSave: TButton'#13#10 +
+    '      Caption = ''Speichern'''#13#10 +
+    '    end'#13#10 +
+    '  end'#13#10 +
+    '  object btnLoad: TBitBtn'#13#10 +
+    '  end'#13#10 +
+    '  object chkAktiv: TCheckBox'#13#10 +
+    '  end'#13#10 +
+    'end';
+
+  /// <summary>Zeile 15 im Rumpf von Frei, Zeile 19 in TfrmMain.FormCreate.</summary>
+  function Source(const AFrei, AForm: string): string;
+  begin
+    Result :=
+      'unit Haupt;'#13#10 +
+      'interface'#13#10 +
+      'uses Steuer;'#13#10 +
+      'type'#13#10 +
+      '  TfrmMain = class(TForm)'#13#10 +
+      '    pnlOben: TPanel;'#13#10 +
+      '    btnSave: TButton;'#13#10 +
+      '    btnLoad: TBitBtn;'#13#10 +
+      '    chkAktiv: TCheckBox;'#13#10 +
+      '    procedure FormCreate(Sender: TObject);'#13#10 +
+      '  end;'#13#10 +
+      'implementation'#13#10 +
+      '{$R *.dfm}'#13#10 +
+      'procedure Frei;'#13#10 +
+      'begin'#13#10 +
+      '  ' + AFrei + #13#10 +
+      'end;'#13#10 +
+      'procedure TfrmMain.FormCreate(Sender: TObject);'#13#10 +
+      'begin'#13#10 +
+      '  ' + AForm + #13#10 +
+      'end;'#13#10 +
+      'end.';
+  end;
+
+  /// <summary>Komponenten mit ATyped vor dem Cursor, in der Methode des Formulars oder in Frei.</summary>
+  function Components(const ATyped: string; AInForm: Boolean; out AItems: TArray<TCompletionItem>): Boolean;
+  var
+    Text: string;
+    Tree: TSyntaxTree;
+    Resolver: TNameResolver;
+    Position: TTextPosition;
+  begin
+    if AInForm then
+    begin
+      Text := Source('', ATyped);
+      Position := TTextPosition.Create(19, 2 + Length(ATyped));
+    end
+    else
+    begin
+      Text := Source(ATyped, '');
+      Position := TTextPosition.Create(15, 2 + Length(ATyped));
+    end;
+    Tree := TPascalParser.Parse(Text);
+    Resolver := TNameResolver.Create(FIndex);
+    try
+      Result := TLspCompletion.ComponentItems(Resolver, Tree, Text, HauptFile, Position,
+        function(const AFileName: string; out AText: string): Boolean
+        begin
+          AText := FormText;
+          Result := SameText(ExtractFileExt(AFileName), '.dfm');
+        end, TCompletionMatching.Fuzzy, AItems);
+    finally
+      Resolver.Free;
+      Tree.Free;
+    end;
+  end;
+
+  function Joined(const AItems: TArray<TCompletionItem>): string;
+  var
+    Item: TCompletionItem;
+  begin
+    Result := '';
+    for Item in AItems do
+    begin
+      Result := Result + Item.Name;
+      if Item.ByType then
+        Result := Result + '*';
+      Result := Result + ' ';
+    end;
+    Result := Result.Trim;
+  end;
+
+var
+  Items: TArray<TCompletionItem>;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitSteuer, 'C:\P\Steuer.pas', nil));
+  // Ohne Getipptes alle Komponenten in der Reihenfolge der Formulardatei, mit Typ und Formularname.
+  Assert.IsTrue(Components('', True, Items));
+  Assert.AreEqual('pnlOben btnSave btnLoad chkAktiv', Joined(Items));
+  Assert.AreEqual('TButton', Items[1].Detail);
+  Assert.AreEqual('frmMain', Items[1].Form);
+  Assert.AreEqual(3, Items[1].Scope);
+  // Über den Namen.
+  Assert.IsTrue(Components('btn', True, Items));
+  Assert.AreEqual('btnSave btnLoad', Joined(Items));
+  // Über den Typ: TButton selbst und TBitBtn als Nachfahr, nicht TCheckBox über TButtonControl.
+  Assert.IsTrue(Components('button', True, Items));
+  Assert.AreEqual('btnSave* btnLoad*', Joined(Items));
+  // Außerhalb der Methoden des Formulars nichts.
+  Assert.IsFalse(Components('', False, Items));
 end;
 
 procedure TLspCompletionTests.OffersDeclarationsForUnknownNames;

@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Completion.Ranking.Tests;
 
-// Tests für Rangfolge (#419), Filter-Chips (#422) und lernende Gewichtung (#418).
+// Tests für Rangfolge (#419), Filter-Chips (#422), lernende Gewichtung (#418) und Formular-Komponenten (#455).
 
 interface
 
@@ -21,6 +21,8 @@ type
     procedure ChipsFilterAndCount;
     [Test]
     procedure ServerGroupHeaderAndActionLast;
+    [Test]
+    procedure FormComponentsComeFirst;
   end;
 
   [TestFixture]
@@ -42,11 +44,13 @@ uses
   System.SysUtils,
   System.Classes,
   System.IOUtils,
+  System.JSON,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Usage,
   Atlas.Core.Completion.Controller,
-  Atlas.Core.Completion.Providers.Fixed;
+  Atlas.Core.Completion.Providers.Fixed,
+  Atlas.Core.Completion.Providers.Server;
 
 type
   TRecordingView = class(TInterfacedObject, IAtlasCompletionView)
@@ -252,6 +256,31 @@ begin
   Assert.AreEqual('#,Capacity,Clear,#,Count', Names(Items, TAtlasRanking.Order(Items, 'C', Options)));
   Assert.AreEqual('#,Count', Names(Items, TAtlasRanking.Order(Items, 'Cou', Options)));
 end;
+procedure TAtlasRankingTests.FormComponentsComeFirst;
+var
+  Json: TJSONObject;
+  Items: TAtlasCompletionItems;
+  Options: TAtlasRankOptions;
+begin
+  // Komponenten aus dem Formular (#455): eigene Gruppe vor allem anderen, Typtreffer hinter Namenstreffern.
+  Json := TJSONObject.ParseJSONValue('{"label":"btnSave","kind":5,"detail":"TButton","data":{"form":"frmMain",' +
+    '"byType":true,"scope":3}}') as TJSONObject;
+  try
+    Items := [Member('TButton', '', 0, 0, TAtlasItemKind.Class_), TAtlasServerCompletionProvider.ItemFromLsp(Json, 1),
+      Member('btnButtonLeiste', '', 0, 2)];
+  finally
+    Json.Free;
+  end;
+  Assert.AreEqual('frmMain', Items[1].Form);
+  Assert.IsTrue(Items[1].ByType);
+  Items[2].Form := 'frmMain';
+  Options := TAtlasRankOptions.Defaults;
+  Assert.AreEqual('#,btnButtonLeiste,btnSave,#,TButton', Names(Items, TAtlasRanking.Order(Items, 'button', Options)));
+  // Ohne Formulareinträge keine Überschrift.
+  Items := Copy(Items, 0, 1);
+  Assert.AreEqual('TButton', Names(Items, TAtlasRanking.Order(Items, 'button', Options)));
+end;
+
 { TAtlasUsageTests }
 
 procedure TAtlasUsageTests.RecordsBoostAndMarks;

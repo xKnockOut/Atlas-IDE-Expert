@@ -116,6 +116,10 @@ type
     Batch: Boolean;
     /// <summary>Hinweis „3 Methoden von IExporter fehlen“ (#466): ganz oben, nie vorgewählt.</summary>
     Hint: Boolean;
+    /// <summary>Komponente aus dem Formular (#455): Name des Formulars; Atlas zeigt die Gruppe „Formular …“ oben.</summary>
+    Form: string;
+    /// <summary>Komponente passt nur über ihren Typ ("button" → btnSave: TButton), nicht über den Namen.</summary>
+    ByType: Boolean;
   end;
 
   /// <summary>Postfix-Vorlagen (#188) je Dokument.</summary>
@@ -240,6 +244,14 @@ type
     class function InterfaceItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
       const APosition: TTextPosition; const AReadText: TCompletionReadText; ASection: TCompletionInterfaceSection;
       out AItems: TArray<TCompletionItem>; out ABatch: Boolean): Boolean; static;
+    /// <summary>Komponenten des Formulars zur Unit (#455), wenn der Cursor ohne Punkt in einer Methode der
+    /// Formularklasse steht. Quelle ist die Formulardatei über AReadText, also der Stand im Designer, solange das
+    /// Formular offen ist. Je Komponente ein Feld mit ihrem Typ als Detail und Form = Formularname. Passt der Name
+    /// nicht zum Getippten, aber der Typ (eigene Klasse beginnt damit ohne "T", oder ein Vorfahr heißt genau so),
+    /// kommt sie mit ByType. False ohne Formular oder außerhalb seiner Methoden.</summary>
+    class function ComponentItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText, AFileName: string;
+      const APosition: TTextPosition; const AReadText: TCompletionReadText; AMatching: TCompletionMatching;
+      out AItems: TArray<TCompletionItem>): Boolean; static;
     class function KindOf(AKind: TIndexSymbolKind): Integer; static;
     /// <summary>CompletionList des LSP. Der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const AItems: TCompletionItems): TJSONObject; overload; static;
@@ -285,6 +297,9 @@ uses
   Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Editing.DeclareUnknown,
   Atlas.Common.Editing.InterfaceStubs,
+  Atlas.Common.Dfm.Contract,
+  Atlas.Common.Dfm.Parser,
+  Atlas.Common.Dfm.FormFiles,
   Atlas.Common.Lsp.CompilerDirectives,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Pascal.XmlDoc,
@@ -1494,7 +1509,8 @@ begin
     Entry.AddPair('sortText', Format('%.5d', [AFirstSort + Index]));
     if (AItems[Index].SourceFile <> '') or (AItems[Index].Expected <> '') or
       (AItems[Index].Action <> '') or (AItems[Index].Condition <> '') or
-      (AItems[Index].Scope > 0) or (AItems[Index].Ordinal > 0) or AItems[Index].Pinned or AItems[Index].Hint then
+      (AItems[Index].Scope > 0) or (AItems[Index].Ordinal > 0) or AItems[Index].Pinned or AItems[Index].Hint or
+      (AItems[Index].Form <> '') then
     begin
       Data := TJSONObject.Create;
       if AItems[Index].SourceFile <> '' then
@@ -1548,6 +1564,11 @@ begin
         Data.AddPair('batch', TJSONBool.Create(True));
       if AItems[Index].Hint then
         Data.AddPair('hint', TJSONBool.Create(True));
+      // Komponenten aus dem Formular (#455).
+      if AItems[Index].Form <> '' then
+        Data.AddPair('form', AItems[Index].Form);
+      if AItems[Index].ByType then
+        Data.AddPair('byType', TJSONBool.Create(True));
       if Length(AItems[Index].Overloads) > 0 then
       begin
         Overloads := TJSONArray.Create;
@@ -1616,6 +1637,7 @@ var
   EnumParams: TJSONObject;
   Declares: TArray<TCompletionItem>;
   Hints: TArray<TCompletionItem>;
+  Components: TArray<TCompletionItem>;
   Batch: Boolean;
   Section: TCompletionInterfaceSection;
 begin
@@ -1686,6 +1708,10 @@ begin
         Collected.Items := Enums;
       Exit(ToJson(Collected));
     end;
+    // Komponenten aus dem Formular (#455) wie die Aufzählungswerte vorab und vor der übrigen Liste.
+    if ComponentItems(Resolver, Tree, Document.Text, TDocumentUris.ToPath(Uri), Position, FReadText, Matching,
+      Components) then
+      Enums := Enums + Components;
     if Assigned(FPostfixFor) then
       Postfix := FPostfixFor(Uri)
     else
@@ -2265,6 +2291,148 @@ begin
       AItems[Index].Expected := AItems[Index].SetOf;
       AItems[Index].Fits := True;
     end;
+  Result := Length(AItems) > 0;
+end;
+
+/// <summary>Benannte Komponenten unter AObject; in Frames (inline) nur der Frame selbst, seine Komponenten
+/// sind keine Felder des Formulars.</summary>
+procedure CollectComponents(AObject: TDfmObject; var AList: TArray<TDfmObject>);
+var
+  Child: TDfmObject;
+begin
+  for Child in AObject.Children do
+  begin
+    if (Child.Kind = TDfmObjectKind.Item) or (Child.Name = '') or (Child.TypeName = '') then
+      Continue;
+    AList := AList + [Child];
+    if Child.Kind <> TDfmObjectKind.Inline_ then
+      CollectComponents(Child, AList);
+  end;
+end;
+
+/// <summary>Klassenname ohne führendes T.</summary>
+function TypeWord(const ATypeName: string): string;
+begin
+  if (Length(ATypeName) > 1) and CharInSet(ATypeName[1], ['T', 't']) then
+    Result := Copy(ATypeName, 2, MaxInt)
+  else
+    Result := ATypeName;
+end;
+
+/// <summary>Ein Typ aus AChain heißt ohne "T" genau AWord.</summary>
+function ChainHas(const AChain: TArray<string>; const AWord: string): Boolean;
+var
+  Name: string;
+begin
+  for Name in AChain do
+    if SameText(TypeWord(Name), AWord) then
+      Exit(True);
+  Result := False;
+end;
+
+class function TLspCompletion.ComponentItems(AResolver: TNameResolver; ATree: TSyntaxTree; const AText,
+  AFileName: string; const APosition: TTextPosition; const AReadText: TCompletionReadText;
+  AMatching: TCompletionMatching; out AItems: TArray<TCompletionItem>): Boolean;
+const
+  // Höchstens so viele Komponenten prüfen, ob sie von hier aus als Feld sichtbar sind.
+  MaxProbes = 3;
+var
+  Context: TCompletionContext;
+  FormFile, FormText: string;
+  Document: TDfmDocument;
+  Components: TArray<TDfmObject>;
+  Component: TDfmObject;
+  Resolved, TypeSymbol, Ancestor: TResolvedSymbol;
+  Visible, ByType: Boolean;
+  Probes, Depth: Integer;
+  UnitIndex: TUnitIndex;
+  Ancestors: TDictionary<string, TArray<string>>;
+  Chain: TArray<string>;
+  Item: TCompletionItem;
+begin
+  AItems := nil;
+  Result := False;
+  if not Assigned(AReadText) then
+    Exit;
+  Context := Analyze(ATree, APosition);
+  if Context.Kind <> TCompletionContextKind.Scope then
+    Exit;
+  Document := nil;
+  for FormFile in TFormFiles.FormFiles(AFileName, AText) do
+    if AReadText(FormFile, FormText) then
+    begin
+      Document := TDfmParser.Parse(FormText);
+      if Document.Root <> nil then
+        Break;
+      FreeAndNil(Document);
+    end;
+  if Document = nil then
+    Exit;
+  Ancestors := TDictionary<string, TArray<string>>.Create;
+  try
+    Components := nil;
+    CollectComponents(Document.Root, Components);
+    // Sichtbar nur in Methoden der Formularklasse: die ersten Komponenten müssen als deren Feld auflösen.
+    Visible := False;
+    Probes := 0;
+    for Component in Components do
+    begin
+      Resolved := AResolver.ResolveChain(ATree, AFileName, [Component.Name], Context.Offset);
+      if Resolved.Found and (Resolved.SymbolKind = TIndexSymbolKind.Field) and
+        SameText(Resolved.Container, Document.Root.TypeName) then
+      begin
+        Visible := True;
+        Break;
+      end;
+      Inc(Probes);
+      if Probes >= MaxProbes then
+        Break;
+    end;
+    if not Visible then
+      Exit;
+    UnitIndex := TIndexExtractor.Extract(ATree, AFileName);
+    for Component in Components do
+    begin
+      ByType := MatchScore(Component.Name, Context.Prefix, AMatching) = TFuzzyMatch.NoMatch;
+      // Suche über den Typ ab zwei Zeichen: eigene Klasse beginnt damit, oder ein Vorfahr heißt genau so
+      // ("button" findet TButton und TBitBtn, aber nicht TCheckBox über TButtonControl).
+      if ByType then
+      begin
+        if Length(Context.Prefix) < 2 then
+          Continue;
+        if not StartsText(Context.Prefix, TypeWord(Component.TypeName)) then
+        begin
+          if not Ancestors.TryGetValue(LowerCase(Component.TypeName), Chain) then
+          begin
+            Chain := nil;
+            if AResolver.ResolveTypeFrom(UnitIndex, Component.TypeName, TypeSymbol) then
+              for Depth := 1 to 32 do
+              begin
+                if not AResolver.AncestorOf(TypeSymbol, Ancestor) then
+                  Break;
+                Chain := Chain + [Ancestor.Name];
+                TypeSymbol := Ancestor;
+              end;
+            Ancestors.Add(LowerCase(Component.TypeName), Chain);
+          end;
+          if not ChainHas(Chain, Context.Prefix) then
+            Continue;
+        end;
+      end;
+      Item := Default(TCompletionItem);
+      Item.Name := Component.Name;
+      Item.Detail := Component.TypeName;
+      Item.Kind := KindField;
+      Item.Container := Document.Root.TypeName;
+      Item.Scope := 3;
+      Item.Form := Document.Root.Name;
+      Item.ByType := ByType;
+      AItems := AItems + [Item];
+    end;
+  finally
+    Ancestors.Free;
+    Document.Free;
+  end;
   Result := Length(AItems) > 0;
 end;
 

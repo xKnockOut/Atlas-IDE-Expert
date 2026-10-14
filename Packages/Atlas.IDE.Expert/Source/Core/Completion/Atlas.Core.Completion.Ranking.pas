@@ -21,6 +21,9 @@
 //     Ende, unter der Überschrift UnknownHeader („Name ist unbekannt“).
 //   - Hinweise „n Methoden von I fehlen“ (#466) passen immer und stehen ganz oben, auch mit Präfix; der
 //     Controller wählt sie nicht vor.
+//   - Komponenten aus dem Formular (#455) stehen als eigene Gruppe mit Überschrift („Formular frmMain“) vor allen
+//     übrigen Bezeichnern. Passt eine nur über ihren Typ ("button" → btnSave: TButton), hat der Server sie schon
+//     gefiltert; sie bleibt sichtbar und steht hinter den Namenstreffern.
 
 interface
 
@@ -181,7 +184,7 @@ begin
     begin
       if not TAtlasRanking.Matches(Items[Index], Options.Chip) then
         Continue;
-      if Items[Index].IsAction or Items[Index].Pinned or Items[Index].Hint then
+      if Items[Index].IsAction or Items[Index].Pinned or Items[Index].Hint or Items[Index].ByType then
         Scores[Index] := 0
       else
         Scores[Index] := TAtlasCompletionMatcher.Score(APattern, NameOf(Items[Index]));
@@ -195,6 +198,10 @@ begin
       function(const A, B: Integer): Integer
       begin
         Result := Ord(Items[B].Hint) - Ord(Items[A].Hint);
+        if Result = 0 then
+          Result := Ord(Items[B].Form <> '') - Ord(Items[A].Form <> '');
+        if (Result = 0) and (Items[A].Form <> '') then
+          Result := Ord(Items[A].ByType) - Ord(Items[B].ByType);
         if Result = 0 then
           Result := Ord(Items[B].Pinned and NoPattern) - Ord(Items[A].Pinned and NoPattern);
         if Result = 0 then
@@ -254,6 +261,14 @@ begin
         if (Position = 0) or (Items[Found[Position - 1]].Unknown = '') then
           Ordered.Add(UnknownHeader);
       end
+      else if Items[Index].Form <> '' then
+      begin
+        if (Position = 0) or (Items[Found[Position - 1]].Form = '') then
+          Ordered.Add(Header);
+      end
+      // Nach der Formulargruppe eine Überschrift über dem Rest („Weitere“ bzw. die Gruppe zum erwarteten Typ).
+      else if (Position > 0) and (Items[Found[Position - 1]].Form <> '') then
+        Ordered.Add(Header)
       else if AnyFits and (Items[Index].ExpectedType <> '') and not Items[Index].IsAction then
       begin
         if GroupOf(Items[Index], AnyFits) <> Group then

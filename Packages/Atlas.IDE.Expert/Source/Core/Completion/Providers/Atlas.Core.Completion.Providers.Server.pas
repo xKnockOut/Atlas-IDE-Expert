@@ -167,6 +167,9 @@ begin
     // Interface implementieren (#466).
     Result.Batch := Data.GetValue('batch') is TJSONTrue;
     Result.Hint := Data.GetValue('hint') is TJSONTrue;
+    // Komponenten aus dem Formular (#455).
+    Result.Form := Data.GetValue<string>('form', '');
+    Result.ByType := Data.GetValue('byType') is TJSONTrue;
     Overloads := Data.GetValue('overloads');
     if Overloads is TJSONArray then
       for Value in TJSONArray(Overloads) do
