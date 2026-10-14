@@ -33,6 +33,10 @@ type
     [Test]
     procedure FormatsParameterDocumentation;
     [Test]
+    procedure KeepsCrefNamesInDocumentation;
+    [Test]
+    procedure InheritsDocumentationFromAncestor;
+    [Test]
     procedure WritesMarkdown;
     [Test]
     procedure WritesPlainText;
@@ -64,6 +68,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
+  Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Lsp.DocWiki;
 
 const
@@ -79,6 +84,29 @@ const
     '    function Summe(A, B: Integer): Integer;'#10 +
     '  end;'#10 +
     '  TFarbe = (Rot, Gruen, Blau);'#10 +
+    '  TDBGridFilter = class'#10 +
+    '  end;'#10 +
+    '  TDBGridFilterColumns = class'#10 +
+    '    /// <summary>'#10 +
+    '    ///   Erstellt die Collection und bindet sie an den besitzenden'#10 +
+    '    ///   <see cref="TDBGridFilter"/>.'#10 +
+    '    /// </summary>'#10 +
+    '    /// <param name="AOwner">Der besitzende TDBGridFilter.</param>'#10 +
+    '    constructor Create(AOwner: TDBGridFilter);'#10 +
+    '  end;'#10 +
+    '  EZeichnen = class'#10 +
+    '  end;'#10 +
+    '  TBasis = class'#10 +
+    '    /// <summary>Zeichnet <paramref name="X"/>.</summary>'#10 +
+    '    /// <param name="X">Breite</param>'#10 +
+    '    /// <exception cref="EZeichnen">Bei Fehlern.</exception>'#10 +
+    '    procedure Zeichne(X: Integer); virtual;'#10 +
+    '  end;'#10 +
+    '  TAbgeleitet = class(TBasis)'#10 +
+    '    /// <inheritdoc/>'#10 +
+    '    /// <remarks>Eigene Bemerkung.</remarks>'#10 +
+    '    procedure Zeichne(X: Integer); override;'#10 +
+    '  end;'#10 +
     'const'#10 +
     '  Grenze = $10;'#10 +
     'procedure Alt; deprecated ''Neu verwenden'';'#10 +
@@ -102,8 +130,12 @@ const
     'procedure Lauf;'#10 +
     'var'#10 +
     '  R: TRechner;'#10 +
+    '  F: TDBGridFilterColumns;'#10 +
+    '  D: TAbgeleitet;'#10 +
     'begin'#10 +
     '  Zaehler := R.Summe(1, 2);'#10 +
+    '  F := TDBGridFilterColumns.Create(nil);'#10 +
+    '  D.Zeichne(1);'#10 +
     '  Zaehler := Grenze + Ord(Blau) + 255;'#10 +
     '  Alt;'#10 +
     '  Unbekannt;'#10 +
@@ -210,11 +242,75 @@ begin
 end;
 
 procedure TLspHoverTests.FormatsParameterDocumentation;
+var
+  Info: THoverInfo;
 begin
-  Assert.AreEqual('Kurz. Lang.'#10#10'*X*: Wert',
-    TLspHover.DocumentationAbove(['  /// <summary>Kurz.', '  /// Lang.</summary>', '/// <param name="X">Wert</param>',
-      'procedure P(X: Integer);'], 3));
-  Assert.AreEqual('', TLspHover.DocumentationAbove(['// kein Doku-Kommentar', 'procedure P;'], 1));
+  Info := Default(THoverInfo);
+  Info.Declaration := 'procedure P(X: Integer);';
+  Info.Doc := TXmlDoc.Parse(TXmlDoc.CommentAbove(['  /// <summary>Kurz.', '  /// Lang.</summary>',
+    '/// <param name="X">Wert</param>', 'procedure P(X: Integer);'], 3));
+  Info.Documentation := Info.Doc.ToMarkdown;
+  Assert.AreEqual('Kurz. Lang.'#10#10'*X*: Wert', Info.Documentation);
+  Assert.AreEqual('procedure P(X: Integer);'#10#10'Kurz. Lang.'#10#10'X: Wert', Info.ToPlainText);
+  Assert.IsTrue(TXmlDoc.Parse(TXmlDoc.CommentAbove(['// kein Doku-Kommentar', 'procedure P;'], 1)).IsEmpty);
+end;
+
+procedure TLspHoverTests.KeepsCrefNamesInDocumentation;
+var
+  Info: THoverInfo;
+  Json, Section, Run: TJSONObject;
+begin
+  // Beispiel aus #654: Der Name aus <see cref> fehlte.
+  Info := InfoAt('Create(nil)');
+  Assert.AreEqual('constructor Create(AOwner: TDBGridFilter);', Info.Declaration);
+  Assert.AreEqual('Erstellt die Collection und bindet sie an den besitzenden TDBGridFilter.', Info.Doc.Summary);
+  Assert.AreEqual('Erstellt die Collection und bindet sie an den besitzenden `TDBGridFilter`.'#10#10 +
+    '*AOwner*: Der besitzende TDBGridFilter.', Info.Documentation);
+  Assert.AreEqual(1, Integer(Length(Info.DocTargets)));
+  Assert.AreEqual('TDBGridFilter', Info.DocTargets[0].Name);
+  Assert.AreEqual(WerkzeugFile, Info.DocTargets[0].FileName);
+  Assert.AreEqual(PositionOf(UnitWerkzeug, 'TDBGridFilter = class', 1).Line, Info.DocTargets[0].Line);
+  // Klartext (GetHintText) mit dem Namen.
+  Assert.IsTrue(Pos('besitzenden TDBGridFilter.', Info.ToPlainText) > 0, Info.ToPlainText);
+  Json := TLspHover.AtlasJson(Info);
+  try
+    Assert.AreEqual('Erstellt die Collection und bindet sie an den besitzenden TDBGridFilter.'#10#10 +
+      'AOwner: Der besitzende TDBGridFilter.', Json.GetValue<string>('documentationText'));
+    Section := Json.GetValue<TJSONArray>('documentation.sections').Items[0] as TJSONObject;
+    Assert.AreEqual('summary', Section.GetValue<string>('kind'));
+    Run := (Section.GetValue('runs') as TJSONArray).Items[1] as TJSONObject;
+    Assert.AreEqual('ref', Run.GetValue<string>('kind'));
+    Assert.AreEqual('TDBGridFilter', Run.GetValue<string>('text'));
+    Assert.AreEqual(WerkzeugFile, Run.GetValue<string>('file'));
+    Assert.AreEqual(PositionOf(UnitWerkzeug, 'TDBGridFilter = class', 1).Line, Run.GetValue<Integer>('line'));
+    Section := Json.GetValue<TJSONArray>('documentation.sections').Items[1] as TJSONObject;
+    Assert.AreEqual('param', Section.GetValue<string>('kind'));
+    Assert.AreEqual('AOwner', Section.GetValue<string>('name'));
+  finally
+    Json.Free;
+  end;
+end;
+
+procedure TLspHoverTests.InheritsDocumentationFromAncestor;
+var
+  Info: THoverInfo;
+  Json, Section: TJSONObject;
+begin
+  Info := InfoAt('Zeichne(1)');
+  Assert.AreEqual('procedure Zeichne(X: Integer); override;', Info.Declaration);
+  Assert.AreEqual('Zeichnet X.', Info.Doc.Summary);
+  Assert.AreEqual('Breite', Info.Doc.Params[0].Text);
+  Assert.AreEqual('EZeichnen', Info.Doc.Exceptions[0].Name);
+  Assert.AreEqual('Eigene Bemerkung.', Info.Doc.Remarks);
+  Assert.IsFalse(Info.Doc.InheritDoc);
+  Json := TLspHover.AtlasJson(Info);
+  try
+    Section := Json.GetValue<TJSONArray>('documentation.sections').Items[2] as TJSONObject;
+    Assert.AreEqual('exception', Section.GetValue<string>('kind'));
+    Assert.AreEqual(PositionOf(UnitWerkzeug, 'EZeichnen = class', 1).Line, Section.GetValue<Integer>('ref.line'));
+  finally
+    Json.Free;
+  end;
 end;
 
 procedure TLspHoverTests.WritesMarkdown;
@@ -263,7 +359,8 @@ begin
   try
     Assert.AreEqual('procedure BeginUpdate;', Json.GetValue<string>('declaration'));
     Assert.AreEqual('System.Classes', Json.GetValue<string>('unit'));
-    Assert.AreEqual('Unterdrückt das Neuzeichnen.', Json.GetValue<string>('documentation'));
+    Assert.AreEqual('Unterdrückt das Neuzeichnen.', Json.GetValue<string>('documentationText'));
+    Assert.IsNull(Json.GetValue('documentation'), 'ohne XMLDoc keine Struktur');
     Assert.IsNull(Json.GetValue('value'), 'leere Teile entfallen');
   finally
     Json.Free;

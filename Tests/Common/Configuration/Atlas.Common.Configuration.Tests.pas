@@ -26,6 +26,8 @@ type
     [Test]
     procedure ReadsInlayHints;
     [Test]
+    procedure ReadsHints;
+    [Test]
     procedure ReadsMcpDisabledTools;
     [Test]
     procedure ReadsStringLiteral;
@@ -467,6 +469,35 @@ begin
     '{"inlayHints": {"endMarkerMinLines": 5}}', Issues);
   Assert.IsTrue(Settings.InlayHints.EndMarkers);
   Assert.AreEqual(5, Settings.InlayHints.EndMarkerMinLines);
+end;
+
+procedure TConfigurationParserTests.ReadsHints;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Hints.XmlDocFull);
+  Assert.AreEqual(0, Settings.Hints.XmlDocMaxLines);
+  Settings := Parse('{"hints": {"xmlDocFull": false, "xmlDocMaxLines": 10}}', Issues);
+  Assert.IsFalse(Settings.Hints.XmlDocFull);
+  Assert.AreEqual(10, Settings.Hints.XmlDocMaxLines);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  // Außerhalb 0–50 bzw. falsch getypt (Fehler), unbekannter Schlüssel (Warnung); Vorgaben bleiben.
+  Settings := Parse('{"hints": {"xmlDocMaxLines": 51, "xmlDocFull": "nein", "x": 1}}', Issues);
+  Assert.AreEqual(0, Settings.Hints.XmlDocMaxLines);
+  Assert.IsTrue(Settings.Hints.XmlDocFull);
+  Assert.AreEqual(3, Integer(Length(Issues)));
+  Assert.IsTrue(Issues[0].IsError);
+  Assert.IsTrue(Issues[1].IsError);
+  Assert.IsFalse(Issues[2].IsError);
+  Settings := Parse('{"hints": {"xmlDocMaxLines": -1}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Die Datei ersetzt den Block aus dem Editor (IDE-Plugin).
+  Settings := TConfigurationParser.ParseLayered('{"hints": {"xmlDocFull": false}}',
+    '{"hints": {"xmlDocMaxLines": 5}}', Issues);
+  Assert.IsTrue(Settings.Hints.XmlDocFull);
+  Assert.AreEqual(5, Settings.Hints.XmlDocMaxLines);
 end;
 
 procedure TServerSettingsTests.RuleSeverityFallsBackToDefault;

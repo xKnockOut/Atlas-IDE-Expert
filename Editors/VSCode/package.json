@@ -305,6 +305,11 @@
           "default": {},
           "markdownDescription": "Inlay Hints im Editor. atlas.json im Projekt hat Vorrang."
         },
+        "atlas.hints": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Anzeige von XMLDoc-Kommentaren (///) im Hover-Tooltip und im Detailpanel der Vervollständigung des IDE-Plugins. Der Server bereitet die Doku immer vollständig auf; die Werte steuern nur die Anzeige. Ohne Angabe gelten die Werte aus Tools › Optionen › Drittanbieter › Atlas. atlas.json im Projekt hat Vorrang."
+        },
         "atlas.stringLiteral": {
           "type": "object",
           "default": {},

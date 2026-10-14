@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..747] of string = (
+  Lines: array[0..769] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -545,6 +545,28 @@ const
     '      "x-page": "Editor",',
     '      "x-control": "Kontrollkästchen, Zahlenfeld",',
     '      "x-issue": "#35"',
+    '    },',
+    '    "hints": {',
+    '      "type": "object",',
+    '      "description": "Anzeige von XMLDoc-Kommentaren (///) im Hover-Tooltip und im Detailpanel der Vervollständigung des IDE-Plugins. Der Server bereitet die Doku immer vollständig auf; die Werte steu' + 'ern nur die Anzeige. Ohne Angabe gelten die Werte aus Tools › Optionen › Drittanbieter › Atlas.",',
+    '      "additionalProperties": false,',
+    '      "properties": {',
+    '        "xmlDocFull": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "XMLDoc vollständig und formatiert zeigen (alle Abschnitte, Verweise, Listen, Code). false: Kurzform wie bisher (Beschreibung auf 4 Zeilen, Bemerkungen auf 3 Zeilen gekürzt)."',
+    '        },',
+    '        "xmlDocMaxLines": {',
+    '          "type": "integer",',
+    '          "minimum": 0,',
+    '          "maximum": 50,',
+    '          "default": 0,',
+    '          "description": "Höchstzahl der Doku-Zeilen, bevor der Inhalt mit dem Mausrad scrollt (0 = unbegrenzt, nur durch Bildschirm bzw. Popup begrenzt)."',
+    '        }',
+    '      },',
+    '      "x-page": "Hints",',
+    '      "x-control": "Kontrollkästchen, Zahlenfeld",',
+    '      "x-issue": "#654"',
     '    },',
     '    "stringLiteral": {',
     '      "type": "object",',

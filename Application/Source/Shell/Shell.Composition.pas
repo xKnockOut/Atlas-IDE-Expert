@@ -193,6 +193,7 @@ type
     /// <summary>Schnellbefehle (#293): False = aus; ADisabled samt "uses" bei usesCommand = false.</summary>
     function SlashCommandsFor(const AUri: string; out ADisabled: TArray<string>): Boolean;
     function InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
+    function HintSettingsFor(const AUri: string): THintSettings;
     function CompletionSettingsFor(const AUri: string): TCompletionSettings;
     /// <summary>"stringLiteral" für AUri; AMultiline nach Stil und Delphi-Version (#312).</summary>
     function StringLiteralFor(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings;
@@ -242,6 +243,7 @@ uses
   System.Math,
   System.StrUtils,
   Atlas.Common.Product.Version,
+  Atlas.Common.Configuration.Parser,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Logging.Providers.StreamSink,
   Atlas.Common.JsonRpc.StreamTransport,
@@ -514,6 +516,7 @@ begin
       Result := EnsureUnit(AUnitName);
     end);
   FHover.VersionProvider := DelphiVersionFor;
+  FHover.HintsFor := HintSettingsFor;
   FHover.Attach(FDispatcher);
   FWorkspaceSymbols := TLspWorkspaceSymbols.Create(FIndex);
   FBookmarks := TBookmarkStore.Create;
@@ -583,7 +586,8 @@ begin
       Result := TPostfixOptions.Default;
       Result.InlineVar := TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, DelphiVersionFor(AUri));
     end;
-  // Für completionItem/resolve (Detailpanel von Atlas, #405).
+  // Für completionItem/resolve (Detailpanel von Atlas, #405); Anzeige von XMLDoc (#654).
+  FCompletion.HintsFor := HintSettingsFor;
   FCompletion.ReadText :=
     function(const AFileName: string; out AText: string): Boolean
     begin
@@ -1708,6 +1712,25 @@ begin
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
+end;
+
+function TServerComposition.HintSettingsFor(const AUri: string): THintSettings;
+var
+  Workspace: TShellWorkspace;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+    if (Workspace = nil) and (FWorkspaces.Count = 1) then
+      Workspace := FWorkspaces[0];
+    if Workspace <> nil then
+      Exit(Workspace.Configuration.Settings.Hints);
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  // Ohne Arbeitsbereich (z. B. RTL-Unit) gelten die Werte des Plugins.
+  Result := TConfigurationParser.ParseLayered(FEditorSettings, '', Issues).Hints;
 end;
 
 function TServerComposition.FormatStyleFor(const AUri: string): TFormatStyle;

@@ -60,6 +60,7 @@ type
     procedure ReadSlashCommands(ANode: TJsonNode);
     procedure ReadSortUses(ANode: TJsonNode);
     procedure ReadInlayHints(ANode: TJsonNode);
+    procedure ReadHints(ANode: TJsonNode);
     procedure ReadStringLiteral(ANode: TJsonNode);
     procedure ReadMemberOrder(ANode: TJsonNode);
     procedure ReadDfmPropertyRules(ANode: TJsonNode);
@@ -517,6 +518,38 @@ begin
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "inlayHints.%s"', [Key]), False);
+  end;
+end;
+
+procedure TValidator.ReadHints(ANode: TJsonNode);
+var
+  Index, Lines: Integer;
+  Key: string;
+  Value: TJsonNode;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"hints" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    Value := ANode[Index];
+    if Key = 'xmlDocFull' then
+      ExpectBoolean(Value, Key, FSettings.Hints.XmlDocFull)
+    else if Key = 'xmlDocMaxLines' then
+    begin
+      if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Lines) and (Lines >= 0) and
+        (Lines <= THintSettings.MaxXmlDocLines) then
+        FSettings.Hints.XmlDocMaxLines := Lines
+      else
+        ReportNode(Value, Format('"xmlDocMaxLines" muss eine ganze Zahl von 0 bis %d sein',
+          [THintSettings.MaxXmlDocLines]));
+    end
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "hints.%s"', [Key]), False);
   end;
 end;
 
@@ -1077,6 +1110,8 @@ begin
       end
       else if Key = 'inlayHints' then
         ReadInlayHints(Value)
+      else if Key = 'hints' then
+        ReadHints(Value)
       else if Key = 'stringLiteral' then
         ReadStringLiteral(Value)
       else if Key = 'memberOrder' then
@@ -1311,6 +1346,8 @@ begin
     end
     else if Key = 'inlayHints' then
       Result.InlayHints := FileSettings.InlayHints
+    else if Key = 'hints' then
+      Result.Hints := FileSettings.Hints
     else if Key = 'stringLiteral' then
       Result.StringLiteral := FileSettings.StringLiteral
     else if Key = 'memberOrder' then
