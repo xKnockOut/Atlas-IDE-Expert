@@ -66,7 +66,9 @@ uses
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Pascal.Contract;
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Semantics.NameResolver;
 
 type
   TTokens = TArray<TPascalToken>;
@@ -207,44 +209,86 @@ begin
   Result := TRuleDescriptor.Create('self-assignment', TRuleSeverity.Warning, 'Zuweisung an sich selbst');
 end;
 
+/// <summary>Quelltext der Token AFirst..ALast wie geschrieben.</summary>
+function SourceText(const AText: string; const ATokens: TTokens; AFirst, ALast: Integer): string;
+begin
+  Result := Trim(Copy(AText, ATokens[AFirst].Offset + 1,
+    ATokens[ALast].Offset + Length(ATokens[ALast].Text) - ATokens[AFirst].Offset));
+end;
+
 procedure TSelfAssignmentRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Tokens: TTokens;
   Index, Start, Stop, Before: Integer;
-  Removal: TTextRange;
+  Removal, Insert: TTextRange;
+  Resolver: TNameResolver;
+  Local, Member: TResolvedSymbol;
+  Name: string;
+  Fixes: TArray<TRuleFix>;
+  Message: string;
 begin
   if AContext.Tree = nil then
     Exit;
-  Tokens := AContext.Tree.Tokens;
-  for Index := 0 to High(Tokens) do
-  begin
-    if not Tokens[Index].IsSymbol(':=') then
-      Continue;
-    // Linke Seite bis zum Anweisungsbeginn zurück.
-    Start := PreviousCode(Tokens, Index);
-    Before := PreviousCode(Tokens, Start);
-    while (Before >= 0) and not EndsStatement(Tokens, Before) and not Tokens[Before].IsKeyword('var') and
-      not Tokens[Before].IsSymbol(':') and not Tokens[Before].IsSymbol(':=') do
+  Resolver := nil;
+  try
+    Tokens := AContext.Tree.Tokens;
+    for Index := 0 to High(Tokens) do
     begin
-      Start := Before;
+      if not Tokens[Index].IsSymbol(':=') then
+        Continue;
+      // Linke Seite bis zum Anweisungsbeginn zurück.
+      Start := PreviousCode(Tokens, Index);
       Before := PreviousCode(Tokens, Start);
+      while (Before >= 0) and not EndsStatement(Tokens, Before) and not Tokens[Before].IsKeyword('var') and
+        not Tokens[Before].IsSymbol(':') and not Tokens[Before].IsSymbol(':=') do
+      begin
+        Start := Before;
+        Before := PreviousCode(Tokens, Start);
+      end;
+      if (Before < 0) or not EndsStatement(Tokens, Before) then
+        Continue;
+      Stop := NextCode(Tokens, Index + 1);
+      while not IsStatementEnd(Tokens, Stop) do
+        Stop := NextCode(Tokens, Stop + 1);
+      if (Stop > High(Tokens)) or not IsDesignator(Tokens, Start, PreviousCode(Tokens, Index)) or
+        (Normalized(Tokens, Start, Index - 1) <> Normalized(Tokens, Index + 1, Stop - 1)) then
+        Continue;
+      if Tokens[Stop].IsSymbol(';') then
+        Removal := RangeOf(Tokens, Start, Stop)
+      else
+        Removal := RangeOf(Tokens, Start, PreviousCode(Tokens, Stop));
+      Name := SourceText(AContext.Text, Tokens, Start, PreviousCode(Tokens, Index));
+      Message := Format('%s wird sich selbst zugewiesen; gemeint ist vermutlich ein anderer Wert', [Name]);
+      Fixes := [TRuleFix.Create('Anweisung entfernen', [TRuleEdit.Create(Removal, '')])];
+      // Name := Name, wenn ein Parameter oder eine lokale Variable das gleichnamige Feld verdeckt:
+      // gemeint ist fast immer Self.Name := Name.
+      if (Start = PreviousCode(Tokens, Index)) and (Tokens[Start].Kind = TPascalTokenKind.Identifier) and
+        (AContext.Index <> nil) then
+      begin
+        if Resolver = nil then
+        begin
+          Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+          Resolver.Namespaces := AContext.Namespaces;
+        end;
+        Local := Resolver.ResolveChain(AContext.Tree, AContext.RelativePath, [Name], Tokens[Start].Offset, False);
+        if Local.Kind = TResolvedKind.Local then
+        begin
+          Member := Resolver.ResolveChain(AContext.Tree, AContext.RelativePath, ['Self', Name], Tokens[Start].Offset,
+            False);
+          if (Member.Kind = TResolvedKind.Symbol) and
+            (Member.SymbolKind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) then
+          begin
+            Message := Format('%s wird sich selbst zugewiesen: %s verdeckt %s; gemeint ist vermutlich Self.%s := %s',
+              [Name, TNameResolver.ShadowText(Local), TNameResolver.ShadowText(Member), Name, Name]);
+            Insert := TTextRange.Create(Tokens[Start].StartPos, Tokens[Start].StartPos);
+            Fixes := [TRuleFix.Create('Self. ergänzen', [TRuleEdit.Create(Insert, 'Self.')])] + Fixes;
+          end;
+        end;
+      end;
+      AReport.Add(RangeOf(Tokens, Start, PreviousCode(Tokens, Stop)), Message, TRuleConfidence.High, Fixes);
     end;
-    if (Before < 0) or not EndsStatement(Tokens, Before) then
-      Continue;
-    Stop := NextCode(Tokens, Index + 1);
-    while not IsStatementEnd(Tokens, Stop) do
-      Stop := NextCode(Tokens, Stop + 1);
-    if (Stop > High(Tokens)) or not IsDesignator(Tokens, Start, PreviousCode(Tokens, Index)) or
-      (Normalized(Tokens, Start, Index - 1) <> Normalized(Tokens, Index + 1, Stop - 1)) then
-      Continue;
-    if Tokens[Stop].IsSymbol(';') then
-      Removal := RangeOf(Tokens, Start, Stop)
-    else
-      Removal := RangeOf(Tokens, Start, PreviousCode(Tokens, Stop));
-    AReport.Add(RangeOf(Tokens, Start, PreviousCode(Tokens, Stop)),
-      Format('%s wird sich selbst zugewiesen; gemeint ist vermutlich ein anderer Wert',
-      [Trim(Normalized(Tokens, Start, Index - 1))]), TRuleConfidence.High,
-      [TRuleFix.Create('Anweisung entfernen', [TRuleEdit.Create(Removal, '')])]);
+  finally
+    Resolver.Free;
   end;
 end;
 

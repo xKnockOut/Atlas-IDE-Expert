@@ -9,7 +9,7 @@
 // Schnellschalter: gleicher Zustand wie im Fenster (Sitzung, Projekt) und bei
 // Werten aus atlas.json dieselbe Nachfrage.
 // Index des Servers (#492): Der Titel zeigt eine laufende Indizierung
-// ("Atlas – Index 45 %"); „Index-Status“ schreibt die Kennzahlen in die
+// ("Atlas – Index 45 %"), wenn IndexProgressPlace sie nicht ins Statusfeld legt; „Index-Status“ schreibt die Kennzahlen in die
 // Meldungsansicht, „Index neu aufbauen“ liest alles ohne Cache neu ein.
 // „Diagnoselog exportieren…“ (#647) packt das anonymisierte Log in eine ZIP.
 // „Symbol umbenennen…“ (#397) ruft OnRename auf.
@@ -120,6 +120,7 @@ uses
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Commands.Editor,
+  Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.Commands.ShortcutTips,
   Atlas.IDE.Style.Symbol,
@@ -131,8 +132,9 @@ uses
 
 const
   // Kennungen der Befehlspalette für die Tastenkürzel-Tipps (#600), je Tag der Einträge.
-  EditorIds: array[0..5] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
-    'Atlas.TypeDefinition', 'Atlas.CopyQualifiedName', 'Atlas.CopyQualifiedNameParams');
+  EditorIds: array[0..9] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
+    'Atlas.TypeDefinition', 'Atlas.CopyQualifiedName', 'Atlas.CopyQualifiedNameParams', 'Atlas.ToggleMethod',
+    'Atlas.SwitchTestUnit', 'Atlas.UnitSearch', 'Atlas.UnitSearchIde');
   ResultsIds: array[0..7] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
     'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow');
   UndoIds: array[0..2] of string = ('Atlas.UndoChange', 'Atlas.RedoChange', 'Atlas.ChangeList');
@@ -204,8 +206,13 @@ begin
   AddItem(TAtlasTextId.EditorExpand, 1, EditorClick);
   AddItem(TAtlasTextId.EditorShrink, 2, EditorClick);
   AddItem(TAtlasTextId.EditorTypeDefinition, 3, EditorClick);
+  AddItem(TAtlasTextId.EditorMethodToggle, 6, EditorClick);
   AddItem(TAtlasTextId.EditorCopyQualified, 4, EditorClick);
   AddItem(TAtlasTextId.EditorCopyQualifiedParams, 5, EditorClick);
+  AddItem(TAtlasTextId.EditorTestUnit, 7, EditorClick);
+  // Units suchen (#777): Atlas-Fenster und, falls es Strg+F12 übernimmt, der IDE-Dialog.
+  AddItem(TAtlasTextId.UnitSearchMenu, 8, EditorClick);
+  AddItem(TAtlasTextId.UnitSearchIdeDialog, 9, EditorClick);
   FRoot.Add(NewLine);
   // Ergebnisfenster (#400); Tag wählt den Befehl in ResultsClick.
   AddItem(TAtlasTextId.MenuReferences, 0, ResultsClick);
@@ -593,6 +600,10 @@ begin
         2: TAtlasIdeEditorCommands.ShrinkSelection;
         3: TAtlasIdeEditorCommands.GoToTypeDefinition;
         4: TAtlasIdeEditorCommands.CopyQualifiedName(False);
+        6: TAtlasIdeEditorCommands.ToggleMethod;
+        7: TAtlasIdeEditorCommands.SwitchTestUnit;
+        8: TAtlasIdeUnitSearch.Show;
+        9: TAtlasIdeUnitSearch.ShowIdeDialog;
       else
         TAtlasIdeEditorCommands.CopyQualifiedName(True);
       end;

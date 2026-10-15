@@ -6,15 +6,28 @@
 // oder roten Zeile („Atlas · Index 45 %“). Tooltip: alle Zeilen, die nicht
 // grün sind. Ein Klick öffnet TAtlasStatusWindow über dem Feld.
 // - Das Feld ist ein selbst gezeichnetes Panel rechts neben denen der IDE
-//   (INTAEditWindow.StatusBar). OnDrawPanel, OnMouseUp und OnMouseMove der
-//   Leiste werden verkettet und beim Entladen zurückgesetzt; geschlossene
-//   Fenster meldet FreeNotification.
+//   (INTAEditWindow.StatusBar). OnDrawPanel, OnMouseUp, OnMouseMove und
+//   WindowProc der Leiste werden verkettet und beim Entladen zurückgesetzt;
+//   geschlossene Fenster meldet FreeNotification.
 // - Aktualisierung nur auf Ereignisse: Änderungen der Registry (aus jedem
 //   Thread) und neue oder aktivierte Editorfenster. Sie werden gesammelt;
 //   gezeichnet wird höchstens alle 250 ms im Hauptthread.
+// - Der Fortschritt des Symbol-Index (Zeile atlas.index) steht mit
+//   IndexProgressPlace = 'statusField' immer im Feld, auch ohne Kurztext und
+//   neben einer wichtigeren Zeile („Atlas · Server langsam · Index 45 %“).
 // - OnRefresh läuft vor jedem Zeichnen im Hauptthread (feste Zeilen nachführen).
 // - Rechtsklick auf das Feld ruft OnContext mit der linken Oberkante des Felds
 //   (Schnellschalter, #604); Anchor liefert sie für das oberste Editorfenster.
+//   Die rechte Maustaste wird in WindowProc abgefangen, nicht in OnMouseUp:
+//   Sonst erzeugt die Standardbehandlung von WM_RBUTTONUP vorher
+//   WM_CONTEXTMENU, das an das Editorfenster der IDE weitergeht; dessen Menü
+//   bzw. Fokuswechsel schloss die Schnellschalter sofort wieder. Über dem
+//   Feld schluckt Atlas WM_RBUTTONDOWN, WM_RBUTTONUP und WM_CONTEXTMENU und
+//   öffnet die Schnellschalter erst nach der Mausnachricht (PostMessage).
+// - StatusFieldToggles wählt, ob Rechtsklick, Doppelklick oder beide (Vorgabe)
+//   die Schnellschalter öffnen; eine nicht gewählte Geste bleibt bei der IDE
+//   bzw. beim einfachen Klick. Beim Doppelklick schließt sich das vom ersten
+//   Klick geöffnete Statusfenster; das Loslassen danach öffnet es nicht erneut.
 // - Links steht das Atlas-Symbol (#751) in der Variante zum IDE-Thema und in
 //   der Größe zur Pixeldichte der Leiste, dann Punkt und Text.
 
@@ -41,19 +54,26 @@ type
   private type
     THook = class
     public
+      Field: TAtlasStatusField;
       Bar: TStatusBar;
       Panel: TStatusPanel;
       OldDraw: TDrawPanelEvent;
       OldMouseUp: TMouseEvent;
       OldMouseMove: TMouseMoveEvent;
+      OldWndProc: TWndMethod;
       OldHint: string;
       OldShowHint: Boolean;
       InPanel: Boolean;
+      /// <summary>Das Loslassen nach einem Doppelklick auf das Feld nicht als Klick werten.</summary>
+      SkipUp: Boolean;
+      procedure WndProc(var Message: TMessage);
     end;
   private
     FRegistry: IAtlasStatusRegistry;
     FListener: Integer;
     FHooks: TObjectList<THook>;
+    // Haken geschlossener Leisten: erst mit dem Feld freigeben, die Leiste ruft im Abbau noch WindowProc auf.
+    FDead: TObjectList<THook>;
     FWnd: HWND;
     FPosted: Integer;
     FTimer: TTimer;
@@ -78,7 +98,9 @@ type
     procedure DrawPanel(StatusBar: TStatusBar; Panel: TStatusPanel; const Rect: TRect);
     procedure BarMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure BarMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+    procedure BarMessage(AHook: THook; var Message: TMessage);
     procedure OpenWindow(AHook: THook);
+    procedure OpenContext(AHook: THook);
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
@@ -90,7 +112,7 @@ type
     property OnRefresh: TProc read FOnRefresh write FOnRefresh;
     property OnOpenLog: TProc read FOnOpenLog write FOnOpenLog;
     property OnRestart: TProc read FOnRestart write FOnRestart;
-    /// <summary>Rechtsklick auf das Feld; Punkt = linke Oberkante des Felds (Bildschirm).</summary>
+    /// <summary>Rechtsklick und Doppelklick auf das Feld; Punkt = linke Oberkante des Felds (Bildschirm).</summary>
     property OnContext: TProc<TPoint> read FOnContext write FOnContext;
     /// <summary>Linke Oberkante des Felds im obersten Editorfenster (Bildschirm); False ohne Feld.</summary>
     function Anchor(out APoint: TPoint): Boolean;
@@ -105,6 +127,7 @@ uses
   DockForm,
   ToolsAPI,
   Atlas.Core.Status.Registry,
+  Atlas.Core.Status.Lines,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Settings.Store,
@@ -115,6 +138,8 @@ uses
 
 const
   WM_ATLAS_STATUS = WM_USER + 591;
+  // LParam = TStatusBar; erst nach der Mausnachricht ausgeführt, ein freigegebenes Feld verwirft sie mit seinem Fenster.
+  WM_ATLAS_STATUS_CONTEXT = WM_USER + 592;
 
 type
   TFieldNotifier = class(TNotifierObject, INTAEditServicesNotifier)
@@ -192,6 +217,7 @@ begin
   inherited Create(nil);
   FRegistry := ARegistry;
   FHooks := TObjectList<THook>.Create(True);
+  FDead := TObjectList<THook>.Create(True);
   FNotifierIndex := -1;
   FWnd := AllocateHWnd(WndProc);
   FTimer := TTimer.Create(nil);
@@ -232,6 +258,7 @@ begin
       TAtlasGuard.Report(TAtlasFeature.Status, E);
   end;
   FreeAndNil(FHooks);
+  FreeAndNil(FDead);
   inherited;
 end;
 
@@ -243,11 +270,25 @@ begin
 end;
 
 procedure TAtlasStatusField.WndProc(var Message: TMessage);
+var
+  Hook: THook;
 begin
   if Message.Msg = WM_ATLAS_STATUS then
   begin
     if (FTimer <> nil) and not FTimer.Enabled then
       FTimer.Enabled := True;
+    Message.Result := 0;
+  end
+  else if Message.Msg = WM_ATLAS_STATUS_CONTEXT then
+  begin
+    // Die Leiste kann inzwischen geschlossen sein: nur bekannte Leisten.
+    Hook := HookOf(TStatusBar(Message.LParam));
+    if Hook <> nil then
+      TAtlasGuard.Run(TAtlasFeature.Status,
+        procedure
+        begin
+          OpenContext(Hook);
+        end);
     Message.Result := 0;
   end
   else
@@ -274,7 +315,10 @@ begin
     Exit;
   for Index := FHooks.Count - 1 downto 0 do
     if FHooks[Index].Bar = AComponent then
-      FHooks.Delete(Index);
+    begin
+      FHooks[Index].Field := nil;
+      FDead.Add(FHooks.Extract(FHooks[Index]));
+    end;
 end;
 
 function TAtlasStatusField.HookOf(ABar: TStatusBar): THook;
@@ -294,6 +338,7 @@ begin
   if (ABar = nil) or (HookOf(ABar) <> nil) then
     Exit;
   Hook := THook.Create;
+  Hook.Field := Self;
   Hook.Bar := ABar;
   Hook.OldDraw := ABar.OnDrawPanel;
   Hook.OldMouseUp := ABar.OnMouseUp;
@@ -306,6 +351,8 @@ begin
   ABar.OnDrawPanel := DrawPanel;
   ABar.OnMouseUp := BarMouseUp;
   ABar.OnMouseMove := BarMouseMove;
+  Hook.OldWndProc := ABar.WindowProc;
+  ABar.WindowProc := Hook.WndProc;
   FHooks.Add(Hook);
   ABar.FreeNotification(Self);
 end;
@@ -321,10 +368,18 @@ var
   Draw, CurrentDraw: TDrawPanelEvent;
   MouseUp, CurrentUp: TMouseEvent;
   MouseMove, CurrentMove: TMouseMoveEvent;
+  WndProc_, CurrentWndProc: TWndMethod;
 begin
   Bar := AHook.Bar;
   if not ARestore or (Bar = nil) then
     Exit;
+  // Fremde WindowProc darüber: Unsere bleibt in deren Kette und reicht ab jetzt nur noch durch.
+  WndProc_ := AHook.WndProc;
+  CurrentWndProc := Bar.WindowProc;
+  if SameMethod(TMethod(CurrentWndProc), TMethod(WndProc_)) then
+    Bar.WindowProc := AHook.OldWndProc
+  else
+    AHook.Field := nil;
   Bar.RemoveFreeNotification(Self);
   // Nur zurücksetzen, was noch unser ist: Eine andere Erweiterung kann sich danach eingehängt haben.
   Draw := DrawPanel;
@@ -352,10 +407,25 @@ end;
 procedure TAtlasStatusField.UnhookAll;
 var
   Hook: THook;
+  Index: Integer;
 begin
   for Hook in FHooks do
     Unhook(Hook, True);
+  // Noch in einer fremden Kette: nicht freigeben, die Leiste ruft seine WndProc weiter auf.
+  for Index := FHooks.Count - 1 downto 0 do
+    if FHooks[Index].Field = nil then
+      FHooks.Extract(FHooks[Index]);
   FHooks.Clear;
+end;
+
+{ TAtlasStatusField.THook }
+
+procedure TAtlasStatusField.THook.WndProc(var Message: TMessage);
+begin
+  if Field <> nil then
+    Field.BarMessage(Self, Message)
+  else
+    OldWndProc(Message);
 end;
 
 function TAtlasStatusField.PanelRect(AHook: THook): TRect;
@@ -380,13 +450,17 @@ var
   Window: INTAEditWindow;
   Hook: THook;
   Bars: TList<TStatusBar>;
+  ProgressId: string;
 begin
   if Assigned(FOnRefresh) then
     FOnRefresh();
   Settings := TAtlasIdeSettings.Current;
   FItems := TAtlasStatusSummary.Visible(FRegistry.Items, TAtlasStatusSummary.ParseIds(Settings.StatusFieldHidden));
   FState := TAtlasStatusSummary.Overall(FItems);
-  FText := TAtlasStatusSummary.FieldText(FItems, Settings.StatusFieldSummary);
+  ProgressId := '';
+  if Settings.IndexProgressInField then
+    ProgressId := TAtlasStatusLines.IndexId;
+  FText := TAtlasStatusSummary.FieldText(FItems, Settings.StatusFieldSummary, ProgressId);
   FTooltip := TAtlasStatusSummary.Tooltip(FItems);
   if FWindow <> nil then
     FWindow.SetItems(FItems);
@@ -490,26 +564,18 @@ begin
   Hook := HookOf(Sender as TStatusBar);
   if Hook = nil then
     Exit;
+  if (Button = mbLeft) and Hook.SkipUp then
+  begin
+    // Loslassen nach dem Doppelklick: Die Schnellschalter sind schon unterwegs.
+    Hook.SkipUp := False;
+    Exit;
+  end;
   if (Button = mbLeft) and PtInRect(PanelRect(Hook), Point(X, Y)) then
   begin
     TAtlasGuard.Run(TAtlasFeature.Status,
       procedure
       begin
         OpenWindow(Hook);
-      end);
-    Exit;
-  end;
-  if (Button = mbRight) and Assigned(FOnContext) and PtInRect(PanelRect(Hook), Point(X, Y)) then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.Status,
-      procedure
-      var
-        Area: TRect;
-      begin
-        if FWindow <> nil then
-          FWindow.Dismiss;
-        Area := PanelRect(Hook);
-        FOnContext(Hook.Bar.ClientToScreen(Point(Area.Left, Area.Top)));
       end);
     Exit;
   end;
@@ -545,6 +611,56 @@ begin
   end;
   if Assigned(Hook.OldMouseMove) then
     Hook.OldMouseMove(Sender, Shift, X, Y);
+end;
+
+procedure TAtlasStatusField.BarMessage(AHook: THook; var Message: TMessage);
+var
+  Position: TPoint;
+  Inside: Boolean;
+begin
+  Inside := False;
+  case Message.Msg of
+    WM_LBUTTONDOWN:
+      // Ging das Loslassen nach einem Doppelklick verloren, gilt der nächste Klick wieder.
+      AHook.SkipUp := False;
+    WM_RBUTTONDOWN, WM_RBUTTONUP:
+      Inside := Assigned(FOnContext) and TAtlasIdeSettings.Current.StatusTogglesOnRightClick and
+        PtInRect(PanelRect(AHook), SmallPointToPoint(TWMMouse(Message).Pos));
+    WM_LBUTTONDBLCLK:
+      Inside := Assigned(FOnContext) and TAtlasIdeSettings.Current.StatusTogglesOnDoubleClick and
+        PtInRect(PanelRect(AHook), SmallPointToPoint(TWMMouse(Message).Pos));
+    WM_CONTEXTMENU:
+      // -1/-1 kommt von der Tastatur (Umschalt+F10): der IDE überlassen.
+      if (TWMContextMenu(Message).XPos <> -1) or (TWMContextMenu(Message).YPos <> -1) then
+      begin
+        Position := AHook.Bar.ScreenToClient(SmallPointToPoint(TWMContextMenu(Message).Pos));
+        Inside := Assigned(FOnContext) and TAtlasIdeSettings.Current.StatusTogglesOnRightClick and
+          PtInRect(PanelRect(AHook), Position);
+      end;
+  end;
+  if not Inside then
+  begin
+    AHook.OldWndProc(Message);
+    Exit;
+  end;
+  // Über dem Feld weder die Standardbehandlung (erzeugt WM_CONTEXTMENU) noch die IDE.
+  if Message.Msg = WM_LBUTTONDBLCLK then
+    AHook.SkipUp := True;
+  if (Message.Msg = WM_RBUTTONUP) or (Message.Msg = WM_LBUTTONDBLCLK) then
+    PostMessage(FWnd, WM_ATLAS_STATUS_CONTEXT, 0, LPARAM(AHook.Bar));
+  Message.Result := 0;
+end;
+
+procedure TAtlasStatusField.OpenContext(AHook: THook);
+var
+  Area: TRect;
+begin
+  if not Assigned(FOnContext) then
+    Exit;
+  if FWindow <> nil then
+    FWindow.Dismiss;
+  Area := PanelRect(AHook);
+  FOnContext(AHook.Bar.ClientToScreen(Point(Area.Left, Area.Top)));
 end;
 
 function TAtlasStatusField.Anchor(out APoint: TPoint): Boolean;

@@ -17,6 +17,8 @@ type
     [Test]
     procedure SelfAssignmentSilent;
     [Test]
+    procedure SelfAssignmentOffersSelfForHiddenField;
+    [Test]
     procedure ForHighToLowReportedWithFix;
     [Test]
     procedure ForLowToHighSilent;
@@ -45,6 +47,11 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.RtlPatterns,
+  Atlas.Common.Rules.Engine,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
   Atlas.Tests.RuleAssert;
 
 function InRoutine(const ABody: string): string;
@@ -65,7 +72,65 @@ begin
   TRuleAssert.Reports(TSelfAssignmentRule.Create, InRoutine('  begin Liste[I] := Liste[I] end;'));
 end;
 
+procedure TRtlPatternRulesTests.SelfAssignmentOffersSelfForHiddenField;
+const
+  Source =
+    'unit Kunde;'#10 +                               // 0
+    'interface'#10 +                                 // 1
+    'type'#10 +                                      // 2
+    '  TKunde = class'#10 +                          // 3
+    '    Name: string;'#10 +                         // 4
+    '    procedure SetzeName(const Name: string);'#10 + // 5
+    '    procedure Lokal;'#10 +                      // 6
+    '  end;'#10 +                                    // 7
+    'implementation'#10 +                            // 8
+    'procedure TKunde.SetzeName(const Name: string);'#10 + // 9
+    'begin'#10 +                                     // 10
+    '  Name := Name;'#10 +                           // 11
+    'end;'#10 +                                      // 12
+    'procedure TKunde.Lokal;'#10 +                   // 13
+    'var'#10 +                                       // 14
+    '  Zahl: Integer;'#10 +                          // 15
+    'begin'#10 +                                     // 16
+    '  Zahl := Zahl;'#10 +                           // 17
+    'end;'#10 +                                      // 18
+    'end.';
+var
+  Index: ISymbolIndex;
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+  Findings: TArray<TRuleFinding>;
+begin
+  Index := TSymbolIndex.Create;
+  Tree := TPascalParser.Parse(Source);
+  try
+    Context := Default(TRuleContext);
+    Context.RelativePath := 'Kunde.pas';
+    Context.UnitName := 'Kunde';
+    Context.Text := Source;
+    Context.Tree := Tree;
+    Context.Index := Index;
+    Findings := TRuleEngine.Run([TSelfAssignmentRule.Create], TServerSettings.Default, Context);
+  finally
+    Tree.Free;
+  end;
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  // Parameter verdeckt das Feld: zuerst "Self. ergänzen", dann "Anweisung entfernen".
+  Assert.AreEqual(11, Findings[0].Range.StartPos.Line);
+  Assert.IsTrue(Pos('Parameter Name verdeckt Feld TKunde.Name', Findings[0].Message) > 0, Findings[0].Message);
+  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Self.', Findings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(2, Findings[0].Fixes[0].Edits[0].Range.StartPos.Character);
+  Assert.AreEqual(2, Findings[0].Fixes[0].Edits[0].Range.EndPos.Character);
+  Assert.AreEqual('', Findings[0].Fixes[1].Edits[0].NewText);
+  // Ohne gleichnamiges Feld bleibt es beim Entfernen; der Name steht wie geschrieben in der Meldung.
+  Assert.AreEqual(17, Findings[1].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(Findings[1].Fixes)));
+  Assert.IsTrue(Pos('Zahl wird sich selbst zugewiesen', Findings[1].Message) = 1, Findings[1].Message);
+end;
+
 procedure TRtlPatternRulesTests.SelfAssignmentSilent;
+
 begin
   TRuleAssert.Silent(TSelfAssignmentRule.Create, InRoutine('  X := Y;'#10'  Liste[I] := Liste[J];'#10 +
     '  X := X + 1;'#10'  for I := I to 10 do;'));

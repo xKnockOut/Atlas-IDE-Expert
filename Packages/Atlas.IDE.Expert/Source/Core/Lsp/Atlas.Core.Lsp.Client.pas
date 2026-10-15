@@ -16,7 +16,10 @@
 // (TAtlasShutdown, #493), damit beim Entladen kein Thread im Zeitlimit hängt.
 // Für das Statusfeld (#591) merkt sich der Client die Antwortzeiten der
 // letzten 50 Anfragen (AverageMs) und meldet das Ende der Verbindung über
-// OnClosed (etwa wenn der Serverprozess beendet wurde).
+// OnClosed (etwa wenn der Serverprozess beendet wurde). workspace/diagnostic
+// zählt nicht mit: Der Server hält es absichtlich bis zu 10 s offen
+// (Long-Polling), das Statusfeld meldete sonst dauerhaft "langsam"
+// (Rückmeldung 15.10.2026).
 
 interface
 
@@ -103,6 +106,8 @@ type
     procedure AddResponseTime(AMilliseconds: Int64);
     /// <summary>Mittlere Antwortzeit der letzten TimeSamples Anfragen in ms; ASamples = deren Anzahl.</summary>
     function AverageMs(out ASamples: Integer): Double;
+    /// <summary>Geht die Antwortzeit von AMethod in AverageMs ein? Nicht bei Long-Polling.</summary>
+    class function CountsResponseTime(const AMethod: string): Boolean; static;
     property Closed: Boolean read FClosed;
     /// <summary>Einmal beim Schließen der Verbindung, im Thread des Schließenden (Lese-Thread bei
     /// beendetem Prozess).</summary>
@@ -211,13 +216,14 @@ begin
       case TAtlasShutdown.WaitFor(Pending.Done, ATimeoutMs) of
         wrSignaled:
           // Beendete Verbindung ist keine Antwort und zählt nicht.
-          if not FClosed then
+          if not FClosed and CountsResponseTime(AMethod) then
             AddResponseTime(Watch.ElapsedMilliseconds);
         wrAbandoned:
           raise ELspClientError.CreateFmt('Keine Antwort auf %s: Atlas wird beendet', [AMethod]);
       else
         begin
-          AddResponseTime(ATimeoutMs);
+          if CountsResponseTime(AMethod) then
+            AddResponseTime(ATimeoutMs);
           // Sonst rechnet der Server weiter, während schon die nächste Anfrage kommt (CPU-Last).
           CancelOnServer(Id);
           raise ELspClientError.CreateFmt('Keine Antwort auf %s innerhalb von %d ms', [AMethod, ATimeoutMs]);
@@ -538,6 +544,11 @@ begin
   finally
     TMonitor.Exit(FLock);
   end;
+end;
+
+class function TLspClient.CountsResponseTime(const AMethod: string): Boolean;
+begin
+  Result := not SameText(AMethod, 'workspace/diagnostic');
 end;
 
 function TLspClient.AverageMs(out ASamples: Integer): Double;

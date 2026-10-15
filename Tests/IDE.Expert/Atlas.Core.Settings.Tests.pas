@@ -25,6 +25,8 @@ type
     procedure AcceptOptionsRoundTrip;
     [Test]
     procedure OneActionAfterSaving;
+    [Test]
+    procedure UnitSearchOptions;
   end;
 
   [TestFixture]
@@ -124,6 +126,11 @@ begin
   Assert.IsFalse(Settings.InlayHints, 'Inlay-Hints standardmäßig aus (#401)');
   Assert.AreEqual($800D, Settings.ActionsKey, 'Code-Aktionen: Alt+Enter (#399)');
   Assert.AreEqual(0, Settings.TypeDefinitionKey, 'Typdefinition ohne Kürzel');
+  Assert.IsTrue(Settings.MethodToggle, 'Deklaration/Implementierung wechseln standardmäßig an (#775)');
+  Assert.AreEqual($6026, Settings.MethodToggleUpKey, 'Strg+Umschalt+Hoch (#775)');
+  Assert.AreEqual($6028, Settings.MethodToggleDownKey, 'Strg+Umschalt+Runter (#775)');
+  Assert.AreEqual(0, Settings.TestUnitKey, 'Testunit-Wechsel ohne Kürzel (#189)');
+  Assert.IsTrue(Settings.CodeLensTestUnit, 'Code Lens Testunit standardmäßig an (#189)');
   Assert.IsTrue(Settings.SlashCommands, 'Schnellbefehle standardmäßig an (#399)');
   Assert.IsTrue(Settings.Snippets, 'Code-Vorlagen standardmäßig an (#51)');
   Assert.IsTrue(Settings.ImportIdeTemplates, 'Live Templates der IDE standardmäßig an (#51)');
@@ -191,6 +198,11 @@ begin
   Settings.ActionsKey := 0;
   Settings.ExpandKey := $4041;
   Settings.TypeDefinitionKey := $C054;
+  Settings.MethodToggle := False;
+  Settings.MethodToggleUpKey := 0;
+  Settings.MethodToggleDownKey := $C044; // Strg+Alt+D
+  Settings.TestUnitKey := $6054;
+  Settings.CodeLensTestUnit := False;
   Settings.EditorKeysPriority := True;
   Settings.SlashCommands := False;
   Settings.Snippets := False;
@@ -248,6 +260,11 @@ begin
   Assert.AreEqual($4041, Loaded.ExpandKey);
   Assert.AreEqual($6057, Loaded.ShrinkKey);
   Assert.AreEqual($C054, Loaded.TypeDefinitionKey);
+  Assert.IsFalse(Loaded.MethodToggle);
+  Assert.AreEqual(0, Loaded.MethodToggleUpKey, '0 = keine Taste');
+  Assert.AreEqual($C044, Loaded.MethodToggleDownKey);
+  Assert.AreEqual($6054, Loaded.TestUnitKey);
+  Assert.IsFalse(Loaded.CodeLensTestUnit);
   Assert.IsTrue(Loaded.EditorKeysPriority);
   Assert.IsFalse(Loaded.SlashCommands);
   Assert.IsFalse(Loaded.Snippets);
@@ -456,6 +473,72 @@ begin
   Settings.Normalize;
   Assert.IsTrue(Settings.CheckOnSave);
   Assert.IsFalse(Settings.CompileOnSave);
+end;
+
+procedure TAtlasPluginSettingsTests.UnitSearchOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // Units suchen (#777): alles an, Strg+F12 übernommen, Gruppen nach Projekt, Herkunft Projektgruppe.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.UnitSearchEnabled);
+  Assert.IsTrue(Settings.UnitSearchReplaceIdeDialog, 'überschreibt Strg+F12 standardmäßig');
+  Assert.IsTrue(Settings.UnitSearchRememberCollapsed);
+  Assert.IsTrue(Settings.UnitSearchFilters);
+  Assert.IsTrue(Settings.UnitSearchFilterSyntax);
+  Assert.IsTrue(Settings.UnitSearchPreview);
+  Assert.IsTrue(Settings.UnitSearchPreviewForm);
+  Assert.IsTrue(Settings.UnitSearchPreviewUsedBy);
+  Assert.IsTrue(Settings.UnitSearchMultiSelect);
+  Assert.IsTrue(Settings.UnitSearchActions);
+  Assert.IsTrue(Settings.UnitSearchActionsAddUses);
+  Assert.AreEqual('relative', Settings.UnitSearchPathStyle);
+  Assert.AreEqual('project', Settings.UnitSearchGroupBy);
+  Assert.AreEqual('group', Settings.UnitSearchDefaultScope);
+  Assert.AreEqual(0, Settings.UnitSearchKey);
+  // Unbekannte Werte fallen auf die Vorgabe zurück, Groß-/Kleinschrift wird vereinheitlicht.
+  Settings.UnitSearchPathStyle := 'irgendwie';
+  Settings.UnitSearchGroupBy := 'FOLDER';
+  Settings.UnitSearchDefaultScope := 'searchpath';
+  Settings.Normalize;
+  Assert.AreEqual('relative', Settings.UnitSearchPathStyle);
+  Assert.AreEqual('folder', Settings.UnitSearchGroupBy);
+  Assert.AreEqual('searchPath', Settings.UnitSearchDefaultScope);
+  // Speichern und Laden.
+  Settings.UnitSearchEnabled := False;
+  Settings.UnitSearchReplaceIdeDialog := False;
+  Settings.UnitSearchRememberCollapsed := False;
+  Settings.UnitSearchFilters := False;
+  Settings.UnitSearchFilterSyntax := False;
+  Settings.UnitSearchPreview := False;
+  Settings.UnitSearchPreviewForm := False;
+  Settings.UnitSearchPreviewUsedBy := False;
+  Settings.UnitSearchMultiSelect := False;
+  Settings.UnitSearchActions := False;
+  Settings.UnitSearchActionsAddUses := False;
+  Settings.UnitSearchPathStyle := 'compact';
+  Settings.UnitSearchDefaultScope := 'library';
+  Settings.UnitSearchKey := $6055;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := Default(TAtlasPluginSettings);
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.UnitSearchEnabled);
+  Assert.IsFalse(Loaded.UnitSearchReplaceIdeDialog);
+  Assert.IsFalse(Loaded.UnitSearchRememberCollapsed);
+  Assert.IsFalse(Loaded.UnitSearchFilters);
+  Assert.IsFalse(Loaded.UnitSearchFilterSyntax);
+  Assert.IsFalse(Loaded.UnitSearchPreview);
+  Assert.IsFalse(Loaded.UnitSearchPreviewForm);
+  Assert.IsFalse(Loaded.UnitSearchPreviewUsedBy);
+  Assert.IsFalse(Loaded.UnitSearchMultiSelect);
+  Assert.IsFalse(Loaded.UnitSearchActions);
+  Assert.IsFalse(Loaded.UnitSearchActionsAddUses);
+  Assert.AreEqual('compact', Loaded.UnitSearchPathStyle);
+  Assert.AreEqual('folder', Loaded.UnitSearchGroupBy);
+  Assert.AreEqual('library', Loaded.UnitSearchDefaultScope);
+  Assert.AreEqual($6055, Loaded.UnitSearchKey);
 end;
 
 { TAtlasSettingsScopesTests }

@@ -18,6 +18,7 @@ type
     FResolver: TNameResolver;
     function CheckAt(const AMarker: string; const AFiles: TArray<string>): TRenameCheck;
     function EditsAt(const AMarker, ANewName: string): TArray<TRenameEdit>;
+    function KundeError(const AMarker, ANewName: string): string;
     function FormEdits(const AMarker, ANewName: string; AHandlers: Boolean;
       AFmx: Boolean = False): TArray<TRenameEdit>;
   public
@@ -43,6 +44,12 @@ type
     procedure KeepsHandlersWhenDisabled;
     [Test]
     procedure RenamesHandlersInFmxViews;
+    [Test]
+    procedure RejectsParameterThatWouldHideField;
+    [Test]
+    procedure RejectsFieldThatWouldBeHiddenByLocal;
+    [Test]
+    procedure AllowsRenameWithoutShadowing;
   end;
 
 implementation
@@ -130,6 +137,38 @@ const
     '  end'#10 +
     'end';
 
+  KundeFile = 'C:\P\Kunde.pas';
+
+  // Feld und Parameter bzw. lokale Variable mit gleichem Namen.
+  UnitKunde =
+    'unit Kunde;'#10 +                               // 0
+    'interface'#10 +                                 // 1
+    'type'#10 +                                      // 2
+    '  TKunde = class'#10 +                          // 3
+    '    Name: string;'#10 +                         // 4
+    '    Wert: Integer;'#10 +                        // 5
+    '    procedure SetzeName(const Name: string);'#10 + // 6
+    '    procedure Zaehle;'#10 +                     // 7
+    '    procedure Umbenennen(const AName: string);'#10 + // 8
+    '  end;'#10 +                                    // 9
+    'implementation'#10 +                            // 10
+    'procedure TKunde.SetzeName(const Name: string);'#10 + // 11
+    'begin'#10 +                                     // 12
+    '  Self.Name := Name; // K1'#10 +                // 13
+    'end;'#10 +                                      // 14
+    'procedure TKunde.Zaehle;'#10 +                  // 15
+    'var'#10 +                                       // 16
+    '  Anzahl: Integer;'#10 +                        // 17
+    'begin'#10 +                                     // 18
+    '  Anzahl := Wert; // K2'#10 +                   // 19
+    'end;'#10 +                                      // 20
+    'procedure TKunde.Umbenennen(const AName: string);'#10 + // 21
+    'begin'#10 +                                     // 22
+    '  Wert := Length(AName); // K3'#10 +            // 23
+    '  Name := ''x'';'#10 +                          // 24
+    'end;'#10 +                                      // 25
+    'end.';
+
 function PositionOf(const AText, AMarker: string): TTextPosition;
 var
   Index, Line, LineStart, I: Integer;
@@ -198,7 +237,38 @@ begin
   end;
 end;
 
+function TLspRenameTests.KundeError(const AMarker, ANewName: string): string;
+var
+  Index: ISymbolIndex;
+  Resolver: TNameResolver;
+  Tree: TSyntaxTree;
+begin
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText(UnitKunde, KundeFile, nil));
+  Resolver := TNameResolver.Create(Index);
+  Tree := TPascalParser.Parse(UnitKunde);
+  try
+    Result := '';
+    try
+      TLspRename.Edits(Resolver, Index, Tree, KundeFile, PositionOf(UnitKunde, AMarker), ANewName, [KundeFile],
+        function(const AFileName: string; out AText: string): Boolean
+        begin
+          Result := SameText(AFileName, KundeFile);
+          if Result then
+            AText := UnitKunde;
+        end);
+    except
+      on E: EJsonRpcError do
+        Result := E.Message;
+    end;
+  finally
+    Tree.Free;
+    Resolver.Free;
+  end;
+end;
+
 function TLspRenameTests.FormEdits(const AMarker, ANewName: string; AHandlers: Boolean;
+
   AFmx: Boolean): TArray<TRenameEdit>;
 var
   Index: ISymbolIndex;
@@ -355,6 +425,41 @@ begin
   Assert.AreEqual(2, Fmx);
   Assert.AreEqual(2, Windows);
 end;
+
+procedure TLspRenameTests.RejectsParameterThatWouldHideField;
+var
+  Error: string;
+begin
+  // AName -> Name: "Name := 'x'" meinte danach den Parameter statt des Feldes.
+  Error := KundeError('AName); // K3', 'Name');
+  Assert.IsTrue(Pos('Bedeutung', Error) > 0, Error);
+  Assert.IsTrue(Pos('Zeile 25', Error) > 0, Error);
+  Assert.IsTrue(Pos('Feld TKunde.Name', Error) > 0, Error);
+end;
+
+procedure TLspRenameTests.RejectsFieldThatWouldBeHiddenByLocal;
+var
+  Error: string;
+begin
+  // Feld Wert -> Anzahl: In Zaehle verdeckt die lokale Variable Anzahl das umbenannte Feld.
+  Error := KundeError('Wert: Integer', 'Anzahl');
+  Assert.IsTrue(Pos('Zeile 20', Error) > 0, Error);
+  Assert.IsTrue(Pos('lokale Variable Anzahl', Error) > 0, Error);
+  Error := KundeError('Wert; // K2', 'Anzahl');
+  Assert.IsTrue(Pos('lokale Variable Anzahl', Error) > 0, Error);
+end;
+
+procedure TLspRenameTests.AllowsRenameWithoutShadowing;
+begin
+  // Das Feld ist in SetzeName nur über Self.Name erreichbar; Wert kommt dort nicht vor.
+  Assert.AreEqual('', KundeError('Name; // K1', 'Wert'));
+  Assert.AreEqual('', KundeError('AName); // K3', 'Text'));
+  // Nur Groß- und Kleinschreibung.
+  Assert.AreEqual('', KundeError('AName); // K3', 'aname'));
+  // Lokaler Name über einem Feld: Das Feld bleibt über Self erreichbar und wird nirgends ohne Self benutzt.
+  Assert.AreEqual('', KundeError('Anzahl := Wert', 'Zaehler'));
+end;
+
 
 initialization
   TDUnitX.RegisterTestFixture(TLspRenameTests);
