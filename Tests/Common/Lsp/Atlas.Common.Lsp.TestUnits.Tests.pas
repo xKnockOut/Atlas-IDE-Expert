@@ -294,4 +294,7 @@ begin
   end;
 end;
 
+initialization
+  TDUnitX.RegisterTestFixture(TLspTestUnitsTests);
+
 end.
