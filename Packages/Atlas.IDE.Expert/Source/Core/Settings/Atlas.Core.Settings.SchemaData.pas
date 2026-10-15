@@ -474,7 +474,7 @@ const
     '    "memoryBudgetMb": {',
     '      "type": "integer",',
     '      "minimum": 0,',
-    '      "default": 256,',
+    '      "default": 768,',
     '      "description": "Obergrenze für den Symbolindex im Arbeitsspeicher in MB. Darüber werden zuerst die Verwendungen ausgelagert (sie bleiben im Cache auf der Platte), dann Bibliotheks-Units (RTL, VC' + 'L) und zuletzt Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt.",',
     '      "x-page": "Speicher",',
     '      "x-control": "Zahlenfeld (MB)",',

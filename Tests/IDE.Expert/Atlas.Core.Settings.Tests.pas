@@ -247,7 +247,7 @@ begin
   // Vorgaben wie im Schema; atlas.json-Format für den Server (#652).
   Settings := TAtlasPluginSettings.Defaults;
   Assert.AreEqual('{"index":{"projectGroup":true,"searchPaths":true,"libraryPaths":false,"usages":true},' +
-    '"memoryBudgetMb":256,"hints":{"xmlDocFull":true,"xmlDocMaxLines":0}}', Settings.ServerSettingsJson);
+    '"memoryBudgetMb":768,"hints":{"xmlDocFull":true,"xmlDocMaxLines":0}}', Settings.ServerSettingsJson);
   Store := TMemoryStore.Create;
   Settings.IndexSearchPaths := False;
   Settings.IndexLibraryPaths := True;
