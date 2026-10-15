@@ -44,6 +44,11 @@ type
     FFiles: TReferenceFilesProvider;
     FNamespaces: TArray<string>;
     function HandleReferences(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+  private
+    /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie
+    /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
+    function GetNamespaces: TArray<string>;
+    procedure SetNamespaces(const AValue: TArray<string>);
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
       const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc = nil);
@@ -57,12 +62,13 @@ type
       const AFileName: string; const APosition: TTextPosition; ADeclaration: Boolean;
       const AFiles: TArray<string>; const AReadText: TReferenceReadText;
       const ACancellation: IJsonRpcCancellationToken = nil): TArray<TReferenceLocation>; static;
-    property Namespaces: TArray<string> read FNamespaces write FNamespaces;
+    property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
   end;
 
 implementation
 
 uses
+  Atlas.Common.Lsp.Internals.Namespaces,
   System.StrUtils,
   Atlas.Common.Dfm.FormFiles,
   Atlas.Common.Documents.Uris,
@@ -129,6 +135,16 @@ begin
 end;
 
 { TLspReferences }
+
+function TLspReferences.GetNamespaces: TArray<string>;
+begin
+  Result := TLspNamespaces.Read(FNamespaces);
+end;
+
+procedure TLspReferences.SetNamespaces(const AValue: TArray<string>);
+begin
+  TLspNamespaces.Write(FNamespaces, AValue);
+end;
 
 constructor TLspReferences.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
@@ -286,7 +302,7 @@ begin
     ACancellation.ThrowIfCancellationRequested;
     Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
     try
-      Resolver.Namespaces := FNamespaces;
+      Resolver.Namespaces := Namespaces;
       Found := Find(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
         IncludeDeclaration, Files, FReadText, ACancellation);
     finally
