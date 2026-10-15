@@ -64,7 +64,7 @@ Ausführlich: [docs/Installation.md](docs/Installation.md).
 | `Packages/Atlas.Common` | Package, frei von Windows und VCL |
 | `Packages/Atlas.Windows` | Package für Windows-spezifische Funktionen, frei von VCL |
 | `Application/AtlasServer` | Der Server (Konsolenprogramm, spricht LSP über stdin/stdout) |
-| `Packages/Atlas.IDE.Expert` | Das IDE-Plugin (Designtime-Package, Win32), Schichten `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
+| `Packages/Atlas.IDE.Expert` | Das IDE-Plugin (Designtime-Package; Win32 für die klassische IDE, Win64 für die 64-Bit-IDE ab Delphi 12.3), Schichten `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
 | `Tests/Atlas.Tests` | DUnitX-Tests |
 
 Details zu Rollen, Benennung und Importregeln: [docs/Architektur.md](docs/Architektur.md).
@@ -78,7 +78,7 @@ Details zu Rollen, Benennung und Importregeln: [docs/Architektur.md](docs/Archit
 
 ## Bauen
 
-In der IDE `Atlas.groupproj` öffnen und **Alle erstellen**. Die Reihenfolge Common → Windows → Server → IDE-Plugin → Tests ist in der Projektgruppe hinterlegt. Common, Windows und Server müssen für dieselbe Plattform gebaut werden, sonst findet der Server die Units der Packages nicht. Das IDE-Plugin ist nur für Win32 eingerichtet (die IDE ist 32-Bit); ein Gruppenbau für Win64 übersetzt es trotzdem mit und prüft so den Quelltext.
+In der IDE `Atlas.groupproj` öffnen und **Alle erstellen**. Die Reihenfolge Common → Windows → Server → IDE-Plugin → Tests ist in der Projektgruppe hinterlegt. Common, Windows und Server müssen für dieselbe Plattform gebaut werden, sonst findet der Server die Units der Packages nicht. Das IDE-Plugin ist für Win32 (klassische IDE) und Win64 (64-Bit-IDE ab Delphi 12.3) eingerichtet; welche BPL die IDE lädt, hängt von der IDE ab ([ADR 0008](docs/adr/0008-plattformen.md)).
 
 Auf der Kommandozeile (RAD-Studio-Eingabeaufforderung bzw. nach `rsvars.bat`):
 

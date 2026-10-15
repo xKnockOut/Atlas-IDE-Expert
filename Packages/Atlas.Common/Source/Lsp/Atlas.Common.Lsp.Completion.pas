@@ -1025,7 +1025,6 @@ begin
     Result := Left.Order - Right.Order;
 end;
 
-/// <summary>Punktzahl von AName; TFuzzyMatch.NoMatch, wenn er nicht passt.</summary>
 /// <summary>Typname für den Vergleich: ohne Leerzeichen und Unit-Präfix, klein.</summary>
 function PlainType(const AType: string): string;
 begin
@@ -1078,6 +1077,7 @@ begin
   Result := False;
 end;
 
+/// <summary>Punktzahl von AName; TFuzzyMatch.NoMatch, wenn er nicht passt.</summary>
 function MatchScore(const AName, APrefix: string; AMatching: TCompletionMatching): Integer;
 begin
   if APrefix = '' then
@@ -1634,8 +1634,6 @@ var
     List.Add(Scored);
   end;
 
-  /// <summary>Deklarationen der eigenen und eingebundener Units, die nur unter anderen Bedingungen
-  /// existieren (#476): ans Ende, mit Bedingung und als nicht verfügbar markiert.</summary>
   /// <summary>Einträge aus der eigenen Datei: Der Baum des Editors kennt keine {$IFDEF}-Zweige.
   /// Bedingung und Verfügbarkeit kommen aus dem Index dieser Unit, der mit Präprozessor gelesen ist (#476).</summary>
   procedure MarkOwnConditions;
@@ -2336,7 +2334,6 @@ begin
   end;
 end;
 
-/// <summary>AItems ohne die Namen aus ANames (#448: Aufzählungswerte, die schon vorab kamen).</summary>
 /// <summary>AItems ohne die Schlüsselwörter aus AddKeywords (#31).</summary>
 function WithoutKeywords(const AItems: TArray<TCompletionItem>): TArray<TCompletionItem>;
 var
@@ -2355,6 +2352,7 @@ begin
   SetLength(Result, Count);
 end;
 
+/// <summary>AItems ohne die Namen aus ANames (#448: Aufzählungswerte, die schon vorab kamen).</summary>
 function WithoutNames(const AItems, ANames: TArray<TCompletionItem>): TArray<TCompletionItem>;
 var
   Names: TDictionary<string, Boolean>;
