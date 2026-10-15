@@ -119,6 +119,7 @@ type
     FProblemsList: TCheckBox;
     FStatusField: TCheckBox;
     FStatusSummary: TCheckBox;
+    FStatusDoubleClick: TCheckBox;
     FStatusHidden: TEdit;
     FIndexGroup: TCheckBox;
     FIndexSearch: TCheckBox;
@@ -229,6 +230,7 @@ type
     /// <summary>Zum Testen: Einstellungen des Statusfelds (#591).</summary>
     property StatusField: TCheckBox read FStatusField;
     property StatusSummary: TCheckBox read FStatusSummary;
+    property StatusDoubleClick: TCheckBox read FStatusDoubleClick;
     property StatusHidden: TEdit read FStatusHidden;
     /// <summary>Zum Testen: abgesicherter Start (#722).</summary>
     property SafeAsk: TCheckBox read FSafeAsk;
@@ -429,6 +431,7 @@ begin
   // Atlas-Statusfeld (#591).
   FStatusField := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStatusField));
   FStatusSummary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStatusSummary));
+  FStatusDoubleClick := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStatusDoubleClick));
   FStatusHidden := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStatusHidden));
   FStatusHidden.NumbersOnly := False;
   FStatusHidden.Width := 180;
@@ -1042,6 +1045,7 @@ begin
   FProblemsList.Checked := ASettings.ProblemsList;
   FStatusField.Checked := ASettings.StatusField;
   FStatusSummary.Checked := ASettings.StatusFieldSummary;
+  FStatusDoubleClick.Checked := ASettings.StatusFieldDoubleClick;
   FStatusHidden.Text := ASettings.StatusFieldHidden;
   FIndexGroup.Checked := ASettings.IndexProjectGroup;
   FIndexSearch.Checked := ASettings.IndexSearchPaths;
@@ -1127,6 +1131,7 @@ begin
   ASettings.ProblemsList := FProblemsList.Checked;
   ASettings.StatusField := FStatusField.Checked;
   ASettings.StatusFieldSummary := FStatusSummary.Checked;
+  ASettings.StatusFieldDoubleClick := FStatusDoubleClick.Checked;
   ASettings.StatusFieldHidden := Trim(FStatusHidden.Text);
   ASettings.IndexProjectGroup := FIndexGroup.Checked;
   ASettings.IndexSearchPaths := FIndexSearch.Checked;
