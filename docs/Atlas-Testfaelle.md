@@ -760,6 +760,36 @@ Vorbereitung: Paket mit `tips.json`, `Tipps\` und `Beispiele\` neben den BPL-Ord
 | AE18 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs`) nach AE2–AE11 | Nur Zahlen („n von m Tipps in Frage“, „Tipps (#757): 10 aus tips.json“) und „Tipp gesperrt“/„Sperren aufgehoben“/„Nutzungszählung zurückgesetzt“; keine Befehle, Pfade oder Benutzernamen |
 | AE19 | Installer: Paket aus dem Release installieren, dann über eine Version mit anderem Tipp-Bild aktualisieren | `tips.json` und `Tipps\*.png` im Installationsordner; alte Bilder sind nach dem Update weg; Deinstallation mit „Daten löschen“ entfernt `usage.json` und `shortcut-tips.json` |
 
+### Hilfe und Rückmeldung (#766)
+
+Entscheidungen: Die Kurzbeschreibung kommt nur in die Issue-Vorlage, nicht in die ZIP (sie ist freier Text des Nutzers und wird ohnehin im Issue sichtbar). Die Versionen stehen in der Vorlage nur, wenn das Häkchen „Version von Atlas, RAD Studio und Windows“ gesetzt ist; sonst „(nicht angegeben)“. Die letzten Diagnosedaten (#479) sind nicht vorausgewählt. Die Ziel-URL muss mit http:// oder https:// beginnen (Einstellung und Dialog prüfen beide), sonst gilt die Issue-Seite des Atlas-Repositorys; so startet „Issue-Seite öffnen“ nie ein Programm.
+
+Vorbereitung: Paket aus dem Release bzw. `pwsh Tools/Build-Docs.ps1 -OutDir <Installationsordner>\Doku`. Ein Projekt unter einem Pfad mit dem eigenen Benutzernamen (z. B. `C:\Users\<Name>\Projekte\Kunde`) einmal geöffnet, damit `atlas.log` Projektpfade enthält. Diagnosemodus (#479) einmal an und eine Vervollständigung ausgelöst, damit `Logs\Diagnose\atlas-diagnosemodus.txt` existiert.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HR1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasDiagnosticPackageTests`, `TAtlasReportDialogTests`, `TAtlasWelcomeHelpFrameTests`, `TAtlasWelcomeSettingsTests`, `TAtlasSettingsPageTests.WelcomeSettingsRoundTrip` und `TSetupInstallerTests` grün |
+| HR2 | IDE starten | Bereich „Hilfe und Rückmeldung“ unten in der rechten Spalte mit „Atlas-Doku“, „Tastenkürzel“, „Problem melden …“ und darunter grau „Nichts wird automatisch gesendet.“ (**Abnahme**) |
+| HR3 | „Atlas-Doku“ mit installierter Doku | Der Standardbrowser öffnet `…\Atlas\Doku\index.html`: Inhaltsverzeichnis mit Überblick, Installation, RAD Studio, Einstellungen, Konfiguration, Regeln, Schlüsselwörter, MCP und Änderungen; Verweise zwischen den Seiten gehen lokal, andere ins Repository; helles und dunkles Systemthema lesbar (**Abnahme**) |
+| HR4 | Ordner `Doku` umbenennen, „Atlas-Doku“ | Der Browser öffnet `https://github.com/xKnockOut/Atlas-IDE-Expert/tree/main/docs` |
+| HR5 | „Tastenkürzel“ | Die Tastenkürzel-Übersicht aus #520 mit allen Kürzeln öffnet sich (**Abnahme**) |
+| HR6 | *Tastenkonflikte*: `keys.overview` aus | „Tastenkürzel“ ist sofort ausgegraut; wieder an: klickbar |
+| HR7 | „Problem melden …“ | Dialog „Problem melden“: Hinweis, Kurzbeschreibung, Häkchen Logs, Versionen, Einstellungen (gesetzt) und „Letzte Diagnosedaten“ (nicht gesetzt); Vorschau mit `atlas-info.txt`, `einstellungen.json`, `plugin/atlas.log`, `server/diag-*.log` und Größen; Summe „n Dateien, zusammen … KB“; Ordner = Desktop (**Abnahme**) |
+| HR8 | Häkchen einzeln ab- und anwählen, „Letzte Diagnosedaten“ setzen | Die Vorschau folgt sofort; mit Diagnosedaten kommt `atlas-diagnosemodus.txt` dazu; ohne Datei ist das Häkchen grau mit „(keine vorhanden)“; alles ab: „Nichts ausgewählt.“, „ZIP anlegen“ grau |
+| HR9 | Jede Datei per Doppelklick bzw. „Ansehen“ öffnen | Fenster „Inhalt von …“ zeigt den Text; weder Benutzername noch Rechnername noch Projektpfade, Pfade als `<pfad>`/`<ws>`, Namen als `<benutzer>`; `einstellungen.json` ohne Pfadwerte (`"<pfad>"`) (**Abnahme**) |
+| HR10 | „ZIP anlegen“ | `Atlas-Diagnose-<heute>.zip` auf dem Desktop, der Explorer zeigt sie markiert; Statuszeile „Angelegt: …“; ein zweites Mal: `…-2.zip`, die erste bleibt; ZIP enthält genau die Dateien der Vorschau (**Abnahme**) |
+| HR11 | ZIP entpacken und durchsuchen (`findstr /s /i "<Benutzername> <Rechnername> Projekte\Kunde" *`) | Keine Treffer (**Abnahme**) |
+| HR12 | „Ordner …“, anderen Ordner wählen, „ZIP anlegen“ | ZIP im gewählten Ordner; `welcomePage.help.reportFolder` = `D:\Ablage` in den Optionen: der Dialog beginnt dort, ein fehlender Ordner wird angelegt |
+| HR13 | Kurzbeschreibung eintragen, „ZIP anlegen“, dann „Issue-Seite öffnen“; in ein Textfeld einfügen | Browser öffnet `https://github.com/xKnockOut/Atlas-IDE-Expert/issues/new`; die Zwischenablage enthält Markdown mit „## Beschreibung“ (der Text), „## Versionen“ (Atlas, RAD Studio mit Plattform, Windows), „## Diagnosepaket“ mit dem ZIP-Namen; Pfade in der Beschreibung anonymisiert; Atlas hat keine Verbindung aufgebaut (Ressourcenmonitor bzw. Fiddler: keine Verbindung von `bds.exe`) (**Abnahme**) |
+| HR14 | „Versionen“ abwählen, „Issue-Seite öffnen“ ohne ZIP | Vorlage mit „(nicht angegeben)“ und „Kein Diagnosepaket angelegt.“ |
+| HR15 | `welcomePage.help.reportUrl` auf `https://example.org/neu` bzw. `cmd.exe` | Erst öffnet der Browser example.org; `cmd.exe` speichert die Optionsseite als Vorgabe-URL zurück, es startet kein Programm |
+| HR16 | `welcomePage.help` aus | Bereich verschwindet sofort; wieder an: erscheint ohne Neustart (**Abnahme**) |
+| HR17 | Englische IDE | „Help and feedback“, „Atlas docs“, „Shortcuts“, „Report a problem …“; Dialog und Vorlage englisch („## Description“) |
+| HR18 | Schmale Spalte bzw. Fenster *Atlas-Start*, 100 %, 150 %, 200 % Skalierung | Knöpfe brechen in weitere Reihen um, der Bereich wird höher, nichts abgeschnitten; Dialog mit Fuß lesbar und in der Größe änderbar |
+| HR19 | *Atlas › Diagnoselog exportieren…* (#647) mit vorhandener Diagnosemodus-Datei | Vorschau und ZIP enthalten zusätzlich `atlas-diagnosemodus.txt` |
+| HR20 | Installer: Paket aus dem Release installieren, dann aktualisieren | `Doku\index.html` und die übrigen Seiten im Installationsordner; Seiten, die es im neuen Paket nicht mehr gibt, sind weg |
+| HR21 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs\atlas.log`) nach HR7–HR15 | Nur „Problem melden (#766): Dialog geöffnet“; keine Pfade, Adressen oder Texte aus dem Dialog |
+
 ## Atlas-Symbol (#751)
 
 | Nr. | Schritte | Erwartet |

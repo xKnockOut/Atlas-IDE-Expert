@@ -34,6 +34,9 @@ jobs:
       - name: Tipps für „Atlas entdecken“ vollständig (#757)
         shell: pwsh
         run: ./Tools/Check-Tips.ps1
+      - name: Lokale HTML-Doku erzeugbar (#766)
+        shell: pwsh
+        run: ./Tools/Build-Docs.ps1 -OutDir "$env:RUNNER_TEMP/Doku"
       - name: Benchmark-Hilfsfunktionen testen
         run: node --test Tools/Benchmark/lib.test.mjs
       - name: Versionen von Server und Claude-Code-Plugin gleich
