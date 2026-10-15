@@ -37,6 +37,16 @@ type
     /// <summary>Zwei gleichzeitige Anfragen für denselben Stand prüfen nur einmal.</summary>
     [Test]
     procedure ParallelRequestsForSameStateComputeOnce;
+    /// <summary>Code-Review P-14: Long-Polling endet vor dem Zeitlimit des Watchdogs.</summary>
+    [Test]
+    procedure LongPollFollowsRequestTimeout;
+    [Test]
+    procedure WorkspaceWaitEndsBeforeRequestTimeout;
+    /// <summary>Changed weckt die prüfende und die zweite, wartende Anfrage sofort.</summary>
+    [Test]
+    // Die Test-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
+    [IgnoreMemoryLeaks]
+    procedure SecondWorkspaceRequestWakesOnChange;
   end;
 
 implementation
@@ -44,6 +54,7 @@ implementation
 uses
   System.Generics.Collections,
   System.SysUtils,
+  System.Diagnostics,
   System.Classes,
   System.SyncObjs,
   System.JSON,
@@ -460,6 +471,107 @@ begin
       Mine.Free;
       Other.Free;
     end;
+  finally
+    Fixture.Done;
+  end;
+end;
+
+procedure TLspPullDiagnosticsTests.LongPollFollowsRequestTimeout;
+begin
+  Assert.AreEqual<Cardinal>(8000, TLspPullDiagnostics.LongPollMs(10000, 10000));
+  Assert.AreEqual<Cardinal>(10000, TLspPullDiagnostics.LongPollMs(10000, 60000));
+  Assert.AreEqual<Cardinal>(500, TLspPullDiagnostics.LongPollMs(10000, 1000));
+  Assert.AreEqual<Cardinal>(10000, TLspPullDiagnostics.LongPollMs(10000, 0));
+  Assert.AreEqual<Cardinal>(0, TLspPullDiagnostics.LongPollMs(0, 10000));
+end;
+
+procedure TLspPullDiagnosticsTests.WorkspaceWaitEndsBeforeRequestTimeout;
+var
+  Fixture: TFixture;
+  Result_: TJSONValue;
+  Clock: TStopwatch;
+begin
+  Fixture.Init;
+  try
+    Fixture.Pull.WaitMs := 10000;
+    // Index lädt: nichts zu prüfen, die Anfrage wartet bis zum Zeitrahmen (1000 ms Limit -> 500 ms).
+    Fixture.Pull.Busy :=
+      function: Boolean
+      begin
+        Result := True;
+      end;
+    Fixture.Pull.RequestTimeout :=
+      function: Cardinal
+      begin
+        Result := 1000;
+      end;
+    Clock := TStopwatch.StartNew;
+    Result_ := Fixture.Pull.WorkspaceReport(nil, Token);
+    try
+      Assert.AreEqual(0, (Result_ as TJSONObject).GetValue<TJSONArray>('items').Count);
+    finally
+      Result_.Free;
+    end;
+    Assert.IsTrue(Clock.ElapsedMilliseconds >= 400, IntToStr(Clock.ElapsedMilliseconds));
+    Assert.IsTrue(Clock.ElapsedMilliseconds <= 900, IntToStr(Clock.ElapsedMilliseconds));
+  finally
+    Fixture.Done;
+  end;
+end;
+
+procedure TLspPullDiagnosticsTests.SecondWorkspaceRequestWakesOnChange;
+var
+  Fixture: TFixture;
+  Pull: TLspPullDiagnostics;
+  Loading: Boolean;
+  First, Second: TThread;
+  FirstMs, SecondMs: Int64;
+  Clock: TStopwatch;
+begin
+  Fixture.Init;
+  try
+    Pull := Fixture.Pull;
+    Pull.WaitMs := 5000;
+    Loading := True;
+    Pull.Busy :=
+      function: Boolean
+      begin
+        Result := Loading;
+      end;
+    FirstMs := -1;
+    SecondMs := -1;
+    Clock := TStopwatch.StartNew;
+    First := TThread.CreateAnonymousThread(
+      procedure
+      begin
+        Pull.WorkspaceReport(nil, Token).Free;
+        FirstMs := Clock.ElapsedMilliseconds;
+      end);
+    First.FreeOnTerminate := False;
+    Second := TThread.CreateAnonymousThread(
+      procedure
+      begin
+        Pull.WorkspaceReport(nil, Token).Free;
+        SecondMs := Clock.ElapsedMilliseconds;
+      end);
+    Second.FreeOnTerminate := False;
+    try
+      First.Start;
+      // Die erste hält den Platz; die zweite wartet nur.
+      Sleep(50);
+      Second.Start;
+      Sleep(200);
+      // Index fertig: Changed weckt beide.
+      Loading := False;
+      Pull.Changed;
+      First.WaitFor;
+      Second.WaitFor;
+    finally
+      First.Free;
+      Second.Free;
+    end;
+    Assert.IsTrue((FirstMs >= 0) and (FirstMs < 1000), IntToStr(FirstMs));
+    Assert.IsTrue((SecondMs >= 0) and (SecondMs < 1000), IntToStr(SecondMs));
   finally
     Fixture.Done;
   end;
