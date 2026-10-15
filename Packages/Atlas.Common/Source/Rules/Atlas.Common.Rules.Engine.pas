@@ -50,9 +50,9 @@ type
       const ARelativePath: string; out AEnabled: Boolean): TRuleSeverity; overload; static;
     /// <summary>Optionen der Regel als JSON-Text, sonst ''.</summary>
     class function RuleOptions(const ARuleId: string; const ASettings: TServerSettings): string; static;
-    /// <summary>True, wenn "exclude" in AOptions den Pfad oder die Unit trifft.</summary>
     /// <summary>ASeverity begrenzt nach Konfidenz.</summary>
     class function CapSeverity(ASeverity: TRuleSeverity; AConfidence: TRuleConfidence): TRuleSeverity; static;
+    /// <summary>True, wenn "exclude" in AOptions den Pfad oder die Unit trifft.</summary>
     class function IsExceptedByOptions(const AOptions, ARelativePath, AUnitName: string): Boolean; static;
     /// <summary>Alle Treffer der Regeln auf AContext, nach Zeile sortiert.</summary>
     class function Run(const ARules: TArray<IRule>; const ASettings: TServerSettings;

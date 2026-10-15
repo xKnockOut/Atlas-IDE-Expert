@@ -29,11 +29,11 @@ uses
 type
   /// <summary>Einstellung "sortUses" für AUri.</summary>
   TSortUsesProvider = reference to function(const AUri: string): Boolean;
-  /// <summary>Index und Einstellungen für die uses-Aktionen; False ohne Index.</summary>
   /// <summary>Einstellungen "stringLiteral" für AUri und ob ein mehrzeiliger String entsteht (#312).</summary>
   TStringLiteralProvider = reference to function(const AUri: string;
     out AMultiline: Boolean): TStringLiteralSettings;
 
+  /// <summary>Index und Einstellungen für die uses-Aktionen; False ohne Index.</summary>
   TUsesContextProvider = reference to function(const AUri: string; out AContext: TUsesContext): Boolean;
   /// <summary>Aktionen in Formulardateien, z. B. binär gespeicherte in Text umwandeln (#122).</summary>
   TFormActionsFunc = reference to function(const AUri, AText: string; const ARange: TTextRange): TArray<TCodeAction>;

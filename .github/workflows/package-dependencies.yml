@@ -25,6 +25,9 @@ jobs:
       - name: Einreihen in den Hauptthread nur über TAtlasMainThread (Code-Review A-02)
         shell: pwsh
         run: ./Tools/Check-MainThreadQueue.ps1
+      - name: Keine doppelten XML-Doku-Kommentare (Code-Review K-04)
+        shell: pwsh
+        run: ./Tools/Check-DocComments.ps1
       - name: Regelkatalog aktuell und vollständig
         shell: pwsh
         run: ./Tools/Update-RuleCatalog.ps1 -Check
