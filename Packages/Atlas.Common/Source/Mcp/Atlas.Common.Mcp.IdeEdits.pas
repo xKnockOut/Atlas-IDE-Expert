@@ -25,6 +25,8 @@ type
   public const
     AnswerMs = 3000;
     TakenMs = 30000;
+    /// <summary>Takt, in dem der Aufrufer von Send auf Antwort- und Übernahmedatei prüft (Code-Review P-16).</summary>
+    PollMs = 50;
   public
     /// <summary>Eingang des IDE-Prozesses APid unter ABase (%LOCALAPPDATA%\Atlas).</summary>
     class function InboxOf(const ABase: string; APid: Cardinal): string; static;
