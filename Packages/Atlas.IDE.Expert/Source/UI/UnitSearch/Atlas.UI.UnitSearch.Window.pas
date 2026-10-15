@@ -847,7 +847,7 @@ begin
   Hash := 0;
   for Index := 1 to Length(AProject) do
     Hash := ((Hash and $FFFFFF) * 31 + Ord(UpCase(AProject[Index]))) and $FFFFFF;
-  Result := FColors.Pairs[Hash mod Length(FColors.Pairs)];
+  Result := FColors.Pairs[Hash mod Cardinal(Length(FColors.Pairs))];
 end;
 
 function TAtlasUnitSearchWindow.GroupCaption(const AGroup: string): string;

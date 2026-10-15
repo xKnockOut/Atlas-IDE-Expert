@@ -124,7 +124,6 @@ var
   List: TList<TAtlasWhatsNewVersion>;
 begin
   Result := nil;
-  Root := nil;
   try
     Root := TJSONObject.ParseJSONValue(AJson);
   except

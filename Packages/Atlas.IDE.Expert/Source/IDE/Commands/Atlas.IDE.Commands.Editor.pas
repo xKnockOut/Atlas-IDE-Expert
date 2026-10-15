@@ -78,6 +78,9 @@ type
     class function TryToggleMethod: Boolean; static;
     /// <summary>Wie TryToggleMethod, für Menü und Palette: ohne Gegenstück eine Zeile in der Meldungsansicht.</summary>
     class procedure ToggleMethod; static;
+    /// <summary>F3 bzw. Umschalt+F3 mit einzeiliger Markierung: nächstes bzw. vorheriges Vorkommen markieren
+    /// und als Suchtext der IDE übernehmen. False ohne solche Markierung (die Taste geht an die IDE).</summary>
+    class function TryFindSelection(ABackward: Boolean): Boolean; static;
     class procedure CopyQualifiedName(AWithParameters: Boolean); static;
     /// <summary>Zur Testunit bzw. getesteten Unit der oberen Datei; legt eine fehlende Testunit an (#189).</summary>
     class procedure SwitchTestUnit; static;
@@ -112,7 +115,9 @@ uses
   Atlas.IDE.Hover.Editor,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Settings.Store,
-  Atlas.IDE.Undo.Changes;
+  Atlas.IDE.Undo.Changes,
+  Atlas.IDE.Notes.Service,
+  Atlas.IDE.Bookmarks.Service;
 
 const
   // Code-Aktionen und Befehle des Servers; Befehle können projektweit arbeiten.
@@ -311,6 +316,61 @@ begin
     procedure
     begin
       TAtlasIdeUndo.RedoLast;
+    end);
+  // Persönliche Notizen (#545): nach Rechtsklick in die Rinne für die angeklickte Zeile, sonst für den Cursor.
+  FContextMenu.Add('-', nil, nil);
+  FContextMenu.Add('Atlas.NoteAdd', TAtlasStrings.Text(TAtlasTextId.NotesMenuAdd), nil,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Notes,
+        procedure
+        begin
+          TAtlasIdeNotes.AddOrEdit;
+        end);
+    end);
+  FContextMenu.Add('Atlas.NoteDelete', TAtlasStrings.Text(TAtlasTextId.NotesMenuDelete), nil,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Notes,
+        procedure
+        begin
+          TAtlasIdeNotes.DeleteAtLine;
+        end);
+    end);
+  FContextMenu.Add('Atlas.NoteList', TAtlasStrings.Text(TAtlasTextId.NotesMenuList), nil,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Notes,
+        procedure
+        begin
+          TAtlasIdeNotes.ShowList;
+        end);
+    end);
+  // Benannte Lesezeichen (#622): wie die Notizen nach Rechtsklick in die Rinne für die angeklickte Zeile.
+  FContextMenu.Add('-', nil, nil);
+  FContextMenu.Add('Atlas.BookmarkAdd', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd),
+    function: Integer
+    begin
+      Result := 0;
+      if TAtlasIdeSettings.Current.BookmarksNamed then
+        Result := TAtlasIdeSettings.Current.BookmarkKey;
+    end,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Bookmarks,
+        procedure
+        begin
+          TAtlasIdeBookmarks.AddBookmark;
+        end);
+    end);
+  FContextMenu.Add('Atlas.BookmarkGoTo', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuGoTo), nil,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Bookmarks,
+        procedure
+        begin
+          TAtlasIdeBookmarks.GoToBookmark;
+        end);
     end);
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
   begin
@@ -541,6 +601,54 @@ begin
   View.CursorPos := EditPos(Lines, TLspTextPosition.Create(Target.Line, Target.Character), TabWidth);
   View.MoveViewToCursor;
   View.Paint;
+  Result := True;
+end;
+
+class function TAtlasIdeEditorCommands.TryFindSelection(ABackward: Boolean): Boolean;
+var
+  Editors: IOTAEditorServices;
+  View: IOTAEditView;
+  Block: IOTAEditBlock;
+  Lines: TArray<string>;
+  Needle, LineText: string;
+  TabWidth, Row, StartIndex, EndIndex: Integer;
+  From: TLspTextPosition;
+  Found: TLspRange;
+begin
+  Result := False;
+  if not Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+    Exit;
+  View := Editors.TopView;
+  if (View = nil) or (View.Buffer = nil) then
+    Exit;
+  Block := View.Block;
+  if (Block = nil) or not Block.IsValid or (Block.Size = 0) or (Block.StartingRow <> Block.EndingRow) then
+    Exit;
+  Needle := Block.Text;
+  if (Needle = '') or (Pos(#10, Needle) > 0) or (Pos(#13, Needle) > 0) then
+    Exit;
+  Lines := TAtlasEditorBuffer.Text(View.Buffer).Split([#13#10, #10]);
+  Row := Block.StartingRow - 1;
+  if (Row < 0) or (Row >= Length(Lines)) then
+    Exit;
+  LineText := Lines[Row];
+  TabWidth := TAtlasEditorBuffer.TabWidth(View.Buffer);
+  StartIndex := TLspSession.ColumnToIndex(LineText, Block.StartingColumn, TabWidth);
+  EndIndex := TLspSession.ColumnToIndex(LineText, Block.EndingColumn, TabWidth);
+  if ABackward then
+    From := TLspTextPosition.Create(Row, StartIndex)
+  else
+    From := TLspTextPosition.Create(Row, EndIndex);
+  if not TAtlasSelectionSearch.Find(Lines, Needle, From, ABackward, Found) then
+    Exit;
+  // Suchtext der IDE: Strg+F und „Erneut suchen“ ohne Markierung machen damit weiter.
+  try
+    View.Position.SearchOptions.SearchText := Needle;
+  except
+    on Exception do
+      ;
+  end;
+  Select(View, Lines, Found);
   Result := True;
 end;
 

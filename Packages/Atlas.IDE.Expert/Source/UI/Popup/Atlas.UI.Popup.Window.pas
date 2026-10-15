@@ -162,7 +162,9 @@ procedure TAtlasPopupWindow.CreateParams(var Params: TCreateParams);
 begin
   inherited CreateParams(Params);
   Params.Style := WS_POPUP;
-  Params.ExStyle := WS_EX_NOACTIVATE or WS_EX_TOOLWINDOW or WS_EX_TOPMOST;
+  // Nicht TOPMOST: Als Fenster im Besitz der IDE bleibt das Popup über ihr, liegt aber nicht über
+  // Dialogen und Fenstern wie „Units suchen“, die danach geöffnet werden.
+  Params.ExStyle := WS_EX_NOACTIVATE or WS_EX_TOOLWINDOW;
   Params.WindowClass.Style := Params.WindowClass.Style or CS_DROPSHADOW or CS_SAVEBITS;
   // Besitzer: Hauptfenster der IDE, damit das Popup mit ihr minimiert wird und über ihr bleibt.
   if Application.MainFormHandle <> 0 then
@@ -337,7 +339,7 @@ begin
   HandleNeeded;
   // Erst Größe, dann ohne Aktivierung zeigen; Visible bleibt False wie bei THintWindow.
   SetBounds(ABounds.Left, ABounds.Top, ABounds.Width, ABounds.Height);
-  SetWindowPos(Handle, HWND_TOPMOST, ABounds.Left, ABounds.Top, ABounds.Width, ABounds.Height,
+  SetWindowPos(Handle, HWND_TOP, ABounds.Left, ABounds.Top, ABounds.Width, ABounds.Height,
     SWP_NOACTIVATE or SWP_SHOWWINDOW);
   Invalidate;
 end;

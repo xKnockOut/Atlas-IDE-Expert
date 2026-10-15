@@ -732,6 +732,60 @@ begin
     '      "good": "Customer.Name := Edit.Text;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "metric-method-length",' + #10 +
+    '      "name": "Method too long",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "The method has more code lines than the limit (default 60). Blank lines, comments, compiler directives and local routines do not count. Split the method into smaller ones. Set th' + 'e limit with the option max, e.g. \"rules\": {\"metric-method-length\": {\"max\": 80}}.",' + #10 +
+    '      "bad": "procedure TImport.Run;\nbegin\n  // 120 lines: read, check, convert and save\nend;",' + #10 +
+    '      "good": "procedure TImport.Run;\nbegin\n  Read;\n  Check;\n  Convert;\n  Save;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-nesting-depth",' + #10 +
+    '      "name": "Nesting too deep",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "The method nests if, case, loops and try deeper than the limit (default 4). else if stays on the level of its if. Leave early with Exit or Continue, or move inner parts into thei' + 'r own methods. Set the limit with the option max.",' + #10 +
+    '      "bad": "for Item in Items do\n  if Item.Active then\n    for Line in Item.Lines do\n      if Line.Valid then\n        try\n          Save(Line);\n        except\n          Log;\n        end;",' + #10 +
+    '      "good": "for Item in Items do\n  if Item.Active then\n    SaveLines(Item);"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-cyclomatic-complexity",' + #10 +
+    '      "name": "Cyclomatic complexity too high",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "The cyclomatic complexity of the method is above the limit (default 15). It starts at 1 and adds 1 for every if, while, repeat and for, every case branch without else, every and/' + 'or in a condition and every except on; an except without on counts once. Many paths need many tests. Set the limit with the option max.",' + #10 +
+    '      "bad": "case Kind of\n  1: A;\n  2: B;\n  // ... 20 branches\nend;",' + #10 +
+    '      "good": "Handlers[Kind]();"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-cognitive-complexity",' + #10 +
+    '      "name": "Cognitive complexity too high",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "The cognitive complexity of the method is above the limit (default 15). Following SonarSource, if, case, loops and except handlers count 1 plus their nesting level; else, else if' + ', goto and every sequence of equal logical operators count 1. Nested code is harder to read than code in sequence. Set the limit with the option max.",' + #10 +
+    '      "bad": "if A then\n  for I := 0 to N do\n    if B and C or D then\n      while E do\n        F;",' + #10 +
+    '      "good": "if not A then\n  Exit;\nfor I := 0 to N do\n  ProcessItem(I);"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-parameter-count",' + #10 +
+    '      "name": "Too many parameters",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "The method has more parameters than the limit (default 6). Group related values in a record or class. Set the limit with the option max.",' + #10 +
+    '      "bad": "procedure Book(const AName, AStreet, ACity, AZip: string; AAmount: Currency; ADate: TDate; ANote: string);",' + #10 +
+    '      "good": "procedure Book(const AAddress: TAddress; const AOrder: TOrder);"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "todo-comment",' + #10 +
+    '      "name": "Open TODO comment",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "A comment starts with a marker for open work: // TODO, // FIXME or the IDE to-do format { TODO 1 -oOwner -cCategory : Text }. The hint shows marker, priority, category, owner and' + ' text, so open work appears in the problem list. Off by default; switch it on in atlas.json, e.g. \"rules\": {\"todo-comment\": {\"severity\": \"hint\"}}. Completed entries ({ DONE … }) are never repo' + 'rted. The option keywords sets the markers (default [\"TODO\", \"FIXME\"]); it also applies to get_todos and --todos.",' + #10 +
+    '      "bad": "// TODO 1 -oMarco -cGUI : set focus\nEdit.Text := '''';",' + #10 +
+    '      "good": "Edit.Text := '''';\nEdit.SetFocus;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "component-palette-icon",' + #10 +
     '      "name": "Registered component without palette icon",' + #10 +
     '      "category": "code-smell",' + #10 +
@@ -1154,6 +1208,36 @@ begin
     '      "id": "with-statement",' + #10 +
     '      "name": "with-Anweisung",' + #10 +
     '      "description": "In einem with-Block ist unklar, zu welchem Objekt ein Bezeichner gehört, und ein neues Mitglied des with-Objekts ändert still die Bedeutung. Den Ausdruck ausschreiben oder eine l' + 'okale Variable verwenden."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-method-length",' + #10 +
+    '      "name": "Methode zu lang",' + #10 +
+    '      "description": "Die Methode hat mehr Codezeilen als der Grenzwert (Vorgabe 60). Leerzeilen, Kommentare, Compiler-Direktiven und lokale Routinen zählen nicht mit. Die Methode in kleinere aufteile' + 'n. Den Grenzwert setzt die Option max, z. B. \"rules\": {\"metric-method-length\": {\"max\": 80}}."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-nesting-depth",' + #10 +
+    '      "name": "Zu tief verschachtelt",' + #10 +
+    '      "description": "Die Methode verschachtelt if, case, Schleifen und try tiefer als der Grenzwert (Vorgabe 4). else if bleibt auf der Ebene seines if. Mit Exit oder Continue früh verlassen oder inn' + 'ere Teile in eigene Methoden auslagern. Den Grenzwert setzt die Option max."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-cyclomatic-complexity",' + #10 +
+    '      "name": "Zyklomatische Komplexität zu hoch",' + #10 +
+    '      "description": "Die zyklomatische Komplexität der Methode liegt über dem Grenzwert (Vorgabe 15). Sie beginnt bei 1 und steigt um 1 je if, while, repeat und for, je case-Zweig ohne else, je and/o' + 'r in einer Bedingung und je except on; ein except ohne on zählt einmal. Viele Pfade brauchen viele Tests. Den Grenzwert setzt die Option max."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-cognitive-complexity",' + #10 +
+    '      "name": "Kognitive Komplexität zu hoch",' + #10 +
+    '      "description": "Die kognitive Komplexität der Methode liegt über dem Grenzwert (Vorgabe 15). Nach SonarSource zählen if, case, Schleifen und except-Behandler 1 plus ihre Schachtelungsebene; else' + ', else if, goto und jede Folge gleicher logischer Operatoren zählen 1. Verschachtelter Code ist schwerer zu lesen als Code hintereinander. Den Grenzwert setzt die Option max."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-parameter-count",' + #10 +
+    '      "name": "Zu viele Parameter",' + #10 +
+    '      "description": "Die Methode hat mehr Parameter als der Grenzwert (Vorgabe 6). Zusammengehörige Werte in einem Record oder einer Klasse bündeln. Den Grenzwert setzt die Option max."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "todo-comment",' + #10 +
+    '      "name": "Offener TODO-Kommentar",' + #10 +
+    '      "description": "Ein Kommentar beginnt mit einer Marke für offene Arbeit: // TODO, // FIXME oder das Format der IDE-To-Do-Liste { TODO 1 -oPerson -cKategorie : Text }. Der Hinweis zeigt Marke, Pr' + 'iorität, Kategorie, Person und Text, damit offene Arbeit in der Problemliste erscheint. In der Vorgabe aus; in atlas.json einschalten, z. B. \"rules\": {\"todo-comment\": {\"severity\": \"hint\"}}. Er' + 'ledigte Einträge ({ DONE … }) meldet die Regel nie. Die Option keywords legt die Marken fest (Vorgabe [\"TODO\", \"FIXME\"]); sie gilt auch für get_todos und --todos."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "component-palette-icon",' + #10 +

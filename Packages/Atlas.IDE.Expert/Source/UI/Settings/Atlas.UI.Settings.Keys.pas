@@ -44,6 +44,7 @@ type
     FForeign: TLabel;
     FOverview: TCheckBox;
     FStartupCheck: TCheckBox;
+    FIntro: TLabel;
     FOwnerOf: TAtlasKeyOwnerFunc;
     FNextTop: Integer;
     FUpdating: Boolean;
@@ -56,6 +57,8 @@ type
     procedure UpdateRow(AIndex: Integer);
     procedure SetOwnerOf(const AValue: TAtlasKeyOwnerFunc);
     class function FunctionCaption(AFunc: TAtlasKeyFunction): string; static;
+  protected
+    procedure Resize; override;
   public
     constructor Create(AOwner: TComponent); override;
     procedure LoadFrom(const ASettings: TAtlasPluginSettings);
@@ -90,7 +93,7 @@ const
 
 constructor TAtlasKeysPage.Create(AOwner: TComponent);
 var
-  Title, Intro: TLabel;
+  Title: TLabel;
   Panel: TPanel;
   Index: Integer;
 begin
@@ -107,13 +110,13 @@ begin
   Title.Font.Style := [fsBold];
   Title.Top := FNextTop;
   Inc(FNextTop, 100);
-  Intro := TLabel.Create(Self);
-  Intro.Parent := Self;
-  Intro.Align := alTop;
-  Intro.AlignWithMargins := True;
-  Intro.WordWrap := True;
-  Intro.Caption := TAtlasStrings.Text(TAtlasTextId.KeysIntro);
-  Intro.Top := FNextTop;
+  FIntro := TLabel.Create(Self);
+  FIntro.Parent := Self;
+  FIntro.Align := alTop;
+  FIntro.AlignWithMargins := True;
+  FIntro.WordWrap := True;
+  FIntro.Caption := TAtlasStrings.Text(TAtlasTextId.KeysIntro);
+  FIntro.Top := FNextTop;
   Inc(FNextTop, 100);
   Panel := AddPanel(20);
   AddLabel(Panel, TAtlasStrings.Text(TAtlasTextId.KeysHeaderFunction), 0, 2).Font.Style := [fsBold];
@@ -146,6 +149,23 @@ begin
   // alTop stapelt nach Top: jedes neue Element unter das vorige.
   Result.Top := FNextTop;
   Inc(FNextTop, 100);
+end;
+
+procedure TAtlasKeysPage.Resize;
+begin
+  inherited;
+  // Umbrechende Beschriftungen berechnen ihre Höhe nur beim Setzen des Texts;
+  // beim Erzeugen ist die Seite noch schmal, die Höhe zu groß (Lücke über der Tabelle).
+  if FIntro <> nil then
+  begin
+    FIntro.AutoSize := False;
+    FIntro.AutoSize := True;
+  end;
+  if FForeign <> nil then
+  begin
+    FForeign.AutoSize := False;
+    FForeign.AutoSize := True;
+  end;
 end;
 
 function TAtlasKeysPage.AddPanel(AHeight: Integer): TPanel;

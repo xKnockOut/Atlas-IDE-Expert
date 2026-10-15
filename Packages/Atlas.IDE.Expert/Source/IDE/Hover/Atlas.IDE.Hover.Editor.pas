@@ -140,6 +140,8 @@ type
     procedure Execute(AAction: TAtlasHoverAction);
     procedure ShowUsages;
     function MouseOverTip: Boolean;
+    /// <summary>Liegt der Editor unter der Maus (kein anderes Fenster davor)?</summary>
+    function MouseOverEditor: Boolean;
     function CurrentEditView: IOTAEditView;
     function WantsKey(AKey: Word; AShift: TShiftState): Boolean;
     procedure HandleKey(AKey: Word; AShift: TShiftState);
@@ -392,6 +394,16 @@ begin
     Result := Editors.TopView;
 end;
 
+function TAtlasEditorHover.MouseOverEditor: Boolean;
+var
+  Under: HWND;
+begin
+  // Liegt ein anderes Fenster über dem Editor (z. B. „Units suchen“), kein Tooltip darüber.
+  Under := WindowFromPoint(Mouse.CursorPos);
+  Result := (FEditor <> nil) and FEditor.HandleAllocated and
+    ((Under = FEditor.Handle) or IsChild(FEditor.Handle, Under));
+end;
+
 function TAtlasEditorHover.MouseOverTip: Boolean;
 begin
   Result := FTip.IsShown and PtInRect(FTip.BoundsRect, Mouse.CursorPos);
@@ -593,7 +605,7 @@ end;
 
 procedure TAtlasEditorHover.ShowData(const AData: TAtlasHoverData);
 begin
-  if (FView = nil) or not Application.Active then
+  if (FView = nil) or not Application.Active or not MouseOverEditor then
     Exit;
   if not AData.Found and (Length(FProblems) = 0) then
   begin

@@ -10,6 +10,12 @@
 // die Datei aus --output, Meldungen zum Ablauf auf stderr.
 // Mit --suppression-stats erscheint statt der Treffer die Auswertung der
 // Unterdrückungskommentare je Regel; Exit-Code dann 0.
+// Mit --metrics erscheinen statt der Treffer die Code-Metriken (#66): mit
+// --format text der Markdown-Bericht, mit json die Metrikdaten; Grenzwerte
+// aus atlas.json (Regeln metric-*, Option "max"); Exit-Code dann 0.
+// Mit --todos erscheinen statt der Treffer die offenen TODO-Einträge (#68):
+// mit --format text die Markdown-Übersicht, mit json die Daten; Marken aus
+// atlas.json (Regel todo-comment, Option "keywords"); Exit-Code dann 0.
 // Bekannte Treffer aus der Baseline (--baseline, sonst atlas-baseline.json
 // neben atlas.json) werden ausgeblendet; --update-baseline schreibt sie aus
 // den aktuellen Treffern neu (#97), Exit-Code dann 0.
@@ -55,6 +61,14 @@ uses
   Atlas.Common.Rules.Output,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.SuppressionStats,
+  Atlas.Common.Rules.Builtin.Metrics,
+  Atlas.Common.Metrics.Contract,
+  Atlas.Common.Metrics.Calculator,
+  Atlas.Common.Metrics.Report,
+  Atlas.Common.Todos.Contract,
+  Atlas.Common.Todos.Scanner,
+  Atlas.Common.Todos.Report,
+  Atlas.Common.Rules.Builtin.Todos,
   Atlas.Common.Rules.Baseline,
   Atlas.Common.Rules.ChangedFiles,
   Atlas.Common.Compiler.Contract,
@@ -258,9 +272,27 @@ var
   Candidates: TArray<string>;
   Git: TVcsChanges;
   Process: ICompilerProcess;
+  Metrics: TArray<TFileMetrics>;
+  Todos: TArray<TFileTodos>;
+  TodoEntries: TArray<TTodoEntry>;
 begin
   for Warning in AOptions.Warnings do
     WriteError(Warning);
+  if AOptions.Metrics and (AOptions.CheckFormat = TFindingsFormat.Sarif) then
+  begin
+    WriteError('--metrics gibt es nur mit --format text (Markdown) oder json');
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  if AOptions.Todos and (AOptions.CheckFormat = TFindingsFormat.Sarif) then
+  begin
+    WriteError('--todos gibt es nur mit --format text (Markdown) oder json');
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  if AOptions.Todos and AOptions.Metrics then
+  begin
+    WriteError('--todos und --metrics schließen sich aus');
+    Exit(TFindingsOutput.ExitFailure);
+  end;
   if not (TFile.Exists(AOptions.CheckTarget) or TDirectory.Exists(AOptions.CheckTarget)) then
   begin
     WriteError(Format('Ziel "%s" nicht gefunden', [AOptions.CheckTarget]));
@@ -311,6 +343,8 @@ begin
 
     Files := nil;
     Sources := nil;
+    Metrics := nil;
+    Todos := nil;
     Git := nil;
     Stats := TSuppressionStats.Create;
     try
@@ -338,6 +372,20 @@ begin
             WriteError(Format('%s: %s', [FileName, E.Message]));
             Continue;
           end;
+        end;
+        if AOptions.Metrics then
+        begin
+          Metrics := Metrics + [TFileMetrics.Create(StringReplace(RelativePath, '\', '/', [rfReplaceAll]),
+            TMetricsCalculator.ForText(Text))];
+          Continue;
+        end;
+        if AOptions.Todos then
+        begin
+          // Erledigte Einträge (DONE) zählen nicht; Dateien ohne offenen Eintrag fehlen.
+          TodoEntries := TTodoScanner.ForText(Text, TTodoRules.Keywords(Settings));
+          Todos := Todos + TTodoScanner.Filter([TFileTodos.Create(StringReplace(RelativePath, '\', '/',
+            [rfReplaceAll]), TodoEntries)], TTodoFilter.Default);
+          Continue;
         end;
         Findings := TFileChecker.CheckText(Rules, Settings, RelativePath, Text);
         if AOptions.SuppressionStats then
@@ -371,7 +419,17 @@ begin
         WriteError(Format('Baseline geschrieben: %s', [BaselinePath]));
         Exit(TFindingsOutput.ExitClean);
       end;
-      if AOptions.SuppressionStats then
+      if AOptions.Metrics and (AOptions.CheckFormat = TFindingsFormat.Json) then
+        Output := TMetricsReport.Json(Metrics, TMetricRules.Limits(Settings))
+      else if AOptions.Metrics then
+        Output := TMetricsReport.Markdown(Metrics, TMetricRules.Limits(Settings),
+          ChangeFileExt(ExtractFileName(ExcludeTrailingPathDelimiter(AOptions.CheckTarget)), ''))
+      else if AOptions.Todos and (AOptions.CheckFormat = TFindingsFormat.Json) then
+        Output := TTodoReport.Json(Todos)
+      else if AOptions.Todos then
+        Output := TTodoReport.Markdown(Todos,
+          ChangeFileExt(ExtractFileName(ExcludeTrailingPathDelimiter(AOptions.CheckTarget)), ''))
+      else if AOptions.SuppressionStats then
         Output := Stats.Render(AOptions.CheckFormat)
       else
         Output := TFindingsOutput.Render(Files, AOptions.CheckFormat, Descriptors,
@@ -398,7 +456,7 @@ begin
         Stream.Free;
       end;
     end;
-    if AOptions.SuppressionStats then
+    if AOptions.SuppressionStats or AOptions.Metrics or AOptions.Todos then
       Result := TFindingsOutput.ExitClean
     else
       Result := TFindingsOutput.ExitCode(Files, AOptions.FailOn);

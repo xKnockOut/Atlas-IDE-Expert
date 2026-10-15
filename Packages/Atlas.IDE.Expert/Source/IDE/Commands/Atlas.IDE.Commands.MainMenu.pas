@@ -22,6 +22,9 @@
 // qualifizierter Name (#399) gehen an TAtlasIdeEditorCommands.
 // Letzte Atlas-Änderung zurücknehmen bzw. wiederherstellen und die Liste
 // „Atlas-Änderungen“ (#721) gehen an TAtlasIdeUndo.
+// Persönliche Notizen (#545) gehen an TAtlasIdeNotes; sichtbar nur bei
+// eingeschalteter Einstellung „Notizen“. Benannte Lesezeichen (#622) gehen an
+// TAtlasIdeBookmarks; sichtbar nur bei bookmarks.named.
 // Das Atlas-Symbol (#751) steht am Menü und an den Einträgen für Einstellungen
 // und Optionen; UpdateImage wählt nach einem Themenwechsel die passende Variante.
 // Willkommensseite (#753): „Atlas-Start“ (auch unter Ansicht), „Atlas-Layout
@@ -29,6 +32,8 @@
 // welcomePage.enabled, Anwenden nur ohne, Zurücksetzen nur mit Atlas-Layout.
 // Befehle mit einer Kennung der Befehlspalette melden sich bei den
 // Tastenkürzel-Tipps (#600) als Aufruf per Menü (TAtlasIdeShortcutTips.Invoked).
+// Aufbau: häufige Befehle direkt, der Rest in Untermenüs (Navigation, Suchen,
+// Kopieren, Änderungen, Anzeige mit den Schaltern, Index, Hilfe und Diagnose).
 
 interface
 
@@ -49,6 +54,8 @@ type
   TAtlasMainMenu = class
   private
     FRoot: TMenuItem;
+    /// <summary>Ziel von AddItem: das Atlas-Menü oder das zuletzt angelegte Untermenü.</summary>
+    FParent: TMenuItem;
     FToggles: array[TAtlasToggle] of TMenuItem;
     FEnableAll: TMenuItem;
     FImageItems: TArray<TMenuItem>;
@@ -66,12 +73,21 @@ type
     FWelcome: array[TAtlasWelcomeCommand] of TMenuItem;
     FWelcomeLine: TMenuItem;
     FViewStart: TMenuItem;
+    FNoteItems: TArray<TMenuItem>;
+    FBookmarkItems: TArray<TMenuItem>;
+    /// <summary>Untermenü „Notizen und Lesezeichen“ (#545, #622).</summary>
+    FNotesGroup: TMenuItem;
     procedure WelcomeClick(Sender: TObject);
     procedure RenameClick(Sender: TObject);
     procedure ResultsClick(Sender: TObject);
     procedure EditorClick(Sender: TObject);
     procedure UndoClick(Sender: TObject);
-    function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
+    procedure NotesClick(Sender: TObject);
+    procedure BookmarksClick(Sender: TObject);
+    function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
+    function AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
+    /// <summary>Untermenü im Atlas-Menü; folgende AddItem landen darin.</summary>
+    function AddGroup(AText: TAtlasTextId): TMenuItem;
     procedure EnableAllClick(Sender: TObject);
     procedure TimerTick(Sender: TObject);
     procedure IndexStatusClick(Sender: TObject);
@@ -119,6 +135,8 @@ uses
   Atlas.IDE.Diagnostics.Export,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Undo.Changes,
+  Atlas.IDE.Notes.Service,
+  Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Commands.KeyMap,
@@ -138,6 +156,8 @@ const
   ResultsIds: array[0..7] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
     'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow');
   UndoIds: array[0..2] of string = ('Atlas.UndoChange', 'Atlas.RedoChange', 'Atlas.ChangeList');
+  NoteIds: array[0..2] of string = ('Atlas.NoteAdd', 'Atlas.NoteDelete', 'Atlas.NoteList');
+  BookmarkIds: array[0..2] of string = ('Atlas.BookmarkAdd', 'Atlas.BookmarkGoTo', 'Atlas.BookmarkWindow');
   WelcomeIds: array[TAtlasWelcomeCommand] of string = ('Atlas.WelcomeStart', 'Atlas.WelcomeApply',
     'Atlas.WelcomeReset');
   // Name des Menüs „Tools“ in der IDE; Atlas steht dahinter, sonst am Ende.
@@ -187,81 +207,71 @@ begin
   FRoot.Name := 'AtlasMainMenu';
   FRoot.Caption := TAtlasStrings.Text(TAtlasTextId.MenuAtlas);
   FRoot.OnClick := RootClick;
-  for Toggle := Low(TAtlasToggle) to High(TAtlasToggle) do
-  begin
-    Item := TMenuItem.Create(FRoot);
-    Item.Caption := ToggleText(Toggle);
-    Item.Tag := Ord(Toggle);
-    Item.OnClick := ToggleClick;
-    FRoot.Add(Item);
-    FToggles[Toggle] := Item;
-  end;
-  FRoot.Add(NewLine);
-  Item := TMenuItem.Create(FRoot);
-  Item.Caption := TAtlasStrings.Text(TAtlasTextId.RenameMenu);
-  Item.OnClick := RenameClick;
-  FRoot.Add(Item);
-  // Editorbefehle (#399); Tag wählt den Befehl in EditorClick.
+  // Häufige Befehle direkt, der Rest in Untermenüs (sonst scrollt das Menü).
+  FParent := FRoot;
+  AddItem(TAtlasTextId.RenameMenu, 0, RenameClick);
+  // Editorbefehle (#399) und Ergebnisfenster (#400); Tag wählt den Befehl in EditorClick bzw. ResultsClick.
   AddItem(TAtlasTextId.EditorActions, 0, EditorClick);
-  AddItem(TAtlasTextId.EditorExpand, 1, EditorClick);
-  AddItem(TAtlasTextId.EditorShrink, 2, EditorClick);
+  // Units suchen (#777).
+  AddItem(TAtlasTextId.UnitSearchMenu, 8, EditorClick);
+  AddItem(TAtlasTextId.MenuSymbolSearch, 2, ResultsClick);
+  FRoot.Add(NewLine);
+  AddGroup(TAtlasTextId.MenuGroupNavigation);
   AddItem(TAtlasTextId.EditorTypeDefinition, 3, EditorClick);
   AddItem(TAtlasTextId.EditorMethodToggle, 6, EditorClick);
-  AddItem(TAtlasTextId.EditorCopyQualified, 4, EditorClick);
-  AddItem(TAtlasTextId.EditorCopyQualifiedParams, 5, EditorClick);
   AddItem(TAtlasTextId.EditorTestUnit, 7, EditorClick);
-  // Units suchen (#777): Atlas-Fenster und, falls es Strg+F12 übernimmt, der IDE-Dialog.
-  AddItem(TAtlasTextId.UnitSearchMenu, 8, EditorClick);
+  AddItem(TAtlasTextId.EditorExpand, 1, EditorClick);
+  AddItem(TAtlasTextId.EditorShrink, 2, EditorClick);
+  // Der IDE-Dialog, falls Atlas Strg+F12 übernimmt.
   AddItem(TAtlasTextId.UnitSearchIdeDialog, 9, EditorClick);
-  FRoot.Add(NewLine);
-  // Ergebnisfenster (#400); Tag wählt den Befehl in ResultsClick.
+  AddGroup(TAtlasTextId.MenuGroupSearch);
   AddItem(TAtlasTextId.MenuReferences, 0, ResultsClick);
   AddItem(TAtlasTextId.MenuImplementations, 1, ResultsClick);
-  AddItem(TAtlasTextId.MenuSymbolSearch, 2, ResultsClick);
   AddItem(TAtlasTextId.MenuIncoming, 3, ResultsClick);
   AddItem(TAtlasTextId.MenuOutgoing, 4, ResultsClick);
   AddItem(TAtlasTextId.MenuSupertypes, 5, ResultsClick);
   AddItem(TAtlasTextId.MenuSubtypes, 6, ResultsClick);
+  FParent.Add(NewLine);
   AddItem(TAtlasTextId.MenuResultsWindow, 7, ResultsClick);
-  FRoot.Add(NewLine);
+  AddGroup(TAtlasTextId.MenuGroupCopy);
+  AddItem(TAtlasTextId.EditorCopyQualified, 4, EditorClick);
+  AddItem(TAtlasTextId.EditorCopyQualifiedParams, 5, EditorClick);
   // Atlas-Änderungen über mehrere Dateien (#721); Tag wählt den Befehl in UndoClick.
+  AddGroup(TAtlasTextId.MenuGroupChanges);
   AddItem(TAtlasTextId.UndoMenu, 0, UndoClick);
   AddItem(TAtlasTextId.RedoMenu, 1, UndoClick);
   AddItem(TAtlasTextId.UndoListMenu, 2, UndoClick);
-  FRoot.Add(NewLine);
-  Item := TMenuItem.Create(FRoot);
-  Item.Caption := TAtlasStrings.Text(TAtlasTextId.MenuIndexStatus);
-  Item.OnClick := IndexStatusClick;
-  FRoot.Add(Item);
-  Item := TMenuItem.Create(FRoot);
-  Item.Caption := TAtlasStrings.Text(TAtlasTextId.MenuIndexRebuild);
-  Item.OnClick := IndexRebuildClick;
-  FRoot.Add(Item);
-  Item := TMenuItem.Create(FRoot);
-  Item.Caption := TAtlasStrings.Text(TAtlasTextId.DiagExportMenu);
-  Item.OnClick := DiagnosticExportClick;
-  FRoot.Add(Item);
-  Item := TMenuItem.Create(FRoot);
-  Item.Caption := TAtlasStrings.Text(TAtlasTextId.BugReportMenu);
-  Item.OnClick := BugReportClick;
-  FRoot.Add(Item);
-  Item := TMenuItem.Create(FRoot);
-  Item.Caption := TAtlasStrings.Text(TAtlasTextId.SetupMenu);
-  Item.OnClick := SetupClick;
-  FRoot.Add(Item);
-  FKeyMapItem := TMenuItem.Create(FRoot);
-  FKeyMapItem.Caption := TAtlasStrings.Text(TAtlasTextId.KeyMapMenu);
-  FKeyMapItem.OnClick := KeyMapClick;
-  FRoot.Add(FKeyMapItem);
-  // Willkommensseite (#753); Tag wählt den Befehl in WelcomeClick.
+  // Persönliche Notizen (#545) und benannte Lesezeichen (#622) in einem Untermenü; Tag wählt den Befehl in
+  // NotesClick bzw. BookmarksClick. Das Untermenü ist sichtbar, solange eins von beiden an ist.
+  FNotesGroup := AddGroup(TAtlasTextId.MenuGroupNotes);
+  FNoteItems := [AddItem(TAtlasTextId.NotesMenuAdd, 0, NotesClick)];
+  FNoteItems := FNoteItems + [AddItem(TAtlasTextId.NotesMenuDelete, 1, NotesClick)];
+  FNoteItems := FNoteItems + [AddItem(TAtlasTextId.NotesMenuList, 2, NotesClick)];
+  FBookmarkItems := [NewLine];
+  FParent.Add(FBookmarkItems[0]);
+  FBookmarkItems := FBookmarkItems + [AddItem(TAtlasTextId.BookmarksMenuAdd, 0, BookmarksClick)];
+  FBookmarkItems := FBookmarkItems + [AddItem(TAtlasTextId.BookmarksMenuGoTo, 1, BookmarksClick)];
+  FBookmarkItems := FBookmarkItems + [AddItem(TAtlasTextId.BookmarksMenuWindow, 2, BookmarksClick)];
+  // Schalter und Willkommensseite (#753); Tag wählt den Befehl in ToggleClick bzw. WelcomeClick.
+  AddGroup(TAtlasTextId.MenuGroupView);
+  for Toggle := Low(TAtlasToggle) to High(TAtlasToggle) do
+    FToggles[Toggle] := AddItem(ToggleText(Toggle), Ord(Toggle), ToggleClick);
   FWelcomeLine := NewLine;
-  FRoot.Add(FWelcomeLine);
+  FParent.Add(FWelcomeLine);
   FWelcome[TAtlasWelcomeCommand.Start] := AddItem(TAtlasTextId.MenuWelcomeStart,
     Ord(TAtlasWelcomeCommand.Start), WelcomeClick);
   FWelcome[TAtlasWelcomeCommand.Apply] := AddItem(TAtlasTextId.MenuWelcomeApply,
     Ord(TAtlasWelcomeCommand.Apply), WelcomeClick);
   FWelcome[TAtlasWelcomeCommand.Reset] := AddItem(TAtlasTextId.MenuWelcomeReset,
     Ord(TAtlasWelcomeCommand.Reset), WelcomeClick);
+  AddGroup(TAtlasTextId.MenuGroupIndex);
+  AddItem(TAtlasTextId.MenuIndexStatus, 0, IndexStatusClick);
+  AddItem(TAtlasTextId.MenuIndexRebuild, 0, IndexRebuildClick);
+  AddGroup(TAtlasTextId.MenuGroupHelp);
+  FKeyMapItem := AddItem(TAtlasTextId.KeyMapMenu, 0, KeyMapClick);
+  AddItem(TAtlasTextId.SetupMenu, 0, SetupClick);
+  AddItem(TAtlasTextId.DiagExportMenu, 0, DiagnosticExportClick);
+  AddItem(TAtlasTextId.BugReportMenu, 0, BugReportClick);
   FRoot.Add(NewLine);
   Item := TMenuItem.Create(FRoot);
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsMenu);
@@ -535,9 +545,22 @@ begin
 end;
 
 procedure TAtlasMainMenu.UpdateKeyMap;
+var
+  Item: TMenuItem;
 begin
   if FKeyMapItem <> nil then
     FKeyMapItem.Visible := TAtlasIdeSettings.Current.KeyOverview;
+  // Notizen (#545) nach ihrer Einstellung.
+  for Item in FNoteItems do
+    Item.Visible := TAtlasIdeSettings.Current.Notes;
+  // Benannte Lesezeichen (#622) nach bookmarks.named.
+  for Item in FBookmarkItems do
+    Item.Visible := TAtlasIdeSettings.Current.BookmarksNamed;
+  // Trennlinie zwischen Notizen und Lesezeichen nur, wenn beide sichtbar sind.
+  if Length(FBookmarkItems) > 0 then
+    FBookmarkItems[0].Visible := TAtlasIdeSettings.Current.Notes and TAtlasIdeSettings.Current.BookmarksNamed;
+  if FNotesGroup <> nil then
+    FNotesGroup.Visible := TAtlasIdeSettings.Current.Notes or TAtlasIdeSettings.Current.BookmarksNamed;
 end;
 
 procedure TAtlasMainMenu.RenameClick(Sender: TObject);
@@ -553,11 +576,24 @@ end;
 
 function TAtlasMainMenu.AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
 begin
+  Result := AddItem(TAtlasStrings.Text(AText), ATag, AOnClick);
+end;
+
+function TAtlasMainMenu.AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
+begin
   Result := TMenuItem.Create(FRoot);
-  Result.Caption := TAtlasStrings.Text(AText);
+  Result.Caption := ACaption;
   Result.Tag := ATag;
   Result.OnClick := AOnClick;
+  FParent.Add(Result);
+end;
+
+function TAtlasMainMenu.AddGroup(AText: TAtlasTextId): TMenuItem;
+begin
+  Result := TMenuItem.Create(FRoot);
+  Result.Caption := TAtlasStrings.Text(AText);
   FRoot.Add(Result);
+  FParent := Result;
 end;
 
 procedure TAtlasMainMenu.ResultsClick(Sender: TObject);
@@ -625,6 +661,44 @@ begin
         1: TAtlasIdeUndo.RedoLast;
       else
         TAtlasIdeUndo.ShowList;
+      end;
+    end);
+end;
+
+procedure TAtlasMainMenu.NotesClick(Sender: TObject);
+var
+  Command: Integer;
+begin
+  Command := TMenuItem(Sender).Tag;
+  if (Command >= Low(NoteIds)) and (Command <= High(NoteIds)) then
+    TAtlasIdeShortcutTips.Invoked(NoteIds[Command]);
+  TAtlasGuard.Run(TAtlasFeature.Notes,
+    procedure
+    begin
+      case Command of
+        0: TAtlasIdeNotes.AddOrEdit;
+        1: TAtlasIdeNotes.DeleteAtLine;
+      else
+        TAtlasIdeNotes.ShowList;
+      end;
+    end);
+end;
+
+procedure TAtlasMainMenu.BookmarksClick(Sender: TObject);
+var
+  Command: Integer;
+begin
+  Command := TMenuItem(Sender).Tag;
+  if (Command >= Low(BookmarkIds)) and (Command <= High(BookmarkIds)) then
+    TAtlasIdeShortcutTips.Invoked(BookmarkIds[Command]);
+  TAtlasGuard.Run(TAtlasFeature.Bookmarks,
+    procedure
+    begin
+      case Command of
+        0: TAtlasIdeBookmarks.AddBookmark;
+        1: TAtlasIdeBookmarks.GoToBookmark;
+      else
+        TAtlasIdeBookmarks.ShowWindow;
       end;
     end);
 end;

@@ -42,6 +42,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.JSON,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Editing.UsesActions;

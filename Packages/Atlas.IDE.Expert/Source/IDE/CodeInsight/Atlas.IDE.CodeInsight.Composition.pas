@@ -28,6 +28,7 @@ uses
   System.Types,
   System.Win.Registry,
   System.JSON,
+  System.IOUtils,
   ToolsAPI,
   Atlas.UI.Strings,
   Atlas.Core.Settings.Plugin,
@@ -37,6 +38,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.IDE.Settings.Options,
   Atlas.IDE.Completion.History,
+  Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Build.Notifier,
   Atlas.IDE.Build.MessageView,
   Atlas.Core.Diagnostics.Hangs,
@@ -77,6 +79,7 @@ uses
   Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.Commands.Usage,
   Atlas.IDE.Commands.ShortcutTips,
+  Atlas.Core.Commands.ShortcutTips,
   Atlas.IDE.Undo.Changes,
   Atlas.Core.Updates.Check,
   Atlas.Core.Updates.Adapters.HttpSource,
@@ -90,11 +93,21 @@ uses
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.WhatsNew,
   Atlas.IDE.Welcome.Projects,
+  Atlas.Core.Editor.Metrics,
+  Atlas.Core.Projects.Todos,
+  Atlas.UI.Todos.Dialog,
   Atlas.IDE.Welcome.Unsaved,
+  Atlas.IDE.Welcome.Continue,
   Atlas.IDE.Welcome.State,
   Atlas.IDE.Welcome.Discover,
+  Atlas.IDE.Welcome.Help,
   Atlas.IDE.Welcome.Commands,
-  Atlas.IDE.Vcs.Service;
+  Atlas.IDE.Vcs.Service,
+  Atlas.IDE.Notes.Service,
+  Atlas.IDE.Notes.Gutter,
+  Atlas.IDE.Bookmarks.Service,
+  Atlas.IDE.Bookmarks.Gutter,
+  Atlas.IDE.Editor.GutterMarks;
 
 var
   ManagerIndex: Integer = -1;
@@ -106,6 +119,8 @@ var
   Reloader: TAtlasFileReloader;
   Palette: TAtlasIdePalette;
   Pairs: TAtlasEditorPairs;
+  // Markierungen in der Rinne: persönliche Notizen (#545) und benannte Lesezeichen (#622).
+  GutterMarks: TAtlasIdeGutterMarks;
   // Ungespeicherte Dateien für schreibende MCP-Werkzeuge (#61).
   DirtyExport: TAtlasDirtyExport;
   // Schreibende MCP-Werkzeuge ändern offene Dateien über das Plugin (#397).
@@ -260,6 +275,217 @@ begin
     end);
 end;
 
+const
+  MetricsCommand = 'atlas.server.metrics';
+  TodosCommand = 'atlas.server.todos';
+
+function MetricsArguments(const AProject, AMode: string): string;
+var
+  Arguments: TJSONArray;
+begin
+  Arguments := TJSONArray.Create;
+  try
+    Arguments.Add(TLspSession.PathToUri(AProject));
+    Arguments.Add(AMode);
+    Result := Arguments.ToJSON;
+  finally
+    Arguments.Free;
+  end;
+end;
+
+/// <summary>Code-Metriken (#66) und TODO-Übersicht (#68) nach einem Build für die Projekt-Zusammenfassung
+/// (Projektverlauf #758): in einem Hintergrundlauf vom laufenden Server (startet ihn nicht), Zeitpunkt der des
+/// Builds.</summary>
+procedure RecordProjectMetrics(const AProject: string);
+var
+  Project: string;
+  Stamp: TDateTime;
+begin
+  if (Manager = nil) or (Welcome = nil) or (Welcome.Projects = nil) or (AProject = '') or
+    not TAtlasIdeSettings.Current.Enabled then
+    Exit;
+  Project := AProject;
+  Stamp := TAtlasIdeProjects.StampUtc;
+  Manager.RunCommandsAsync([MetricsCommand, TodosCommand],
+    [MetricsArguments(Project, 'summary'), MetricsArguments(Project, 'summary')], 60000,
+    procedure(AAnswers: TArray<string>)
+    var
+      Answers: TArray<string>;
+    begin
+      Answers := AAnswers;
+      TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
+        procedure
+        begin
+          if (Welcome <> nil) and (Welcome.Projects <> nil) then
+            TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+              procedure
+              begin
+                // Leere oder ungültige Antworten lassen die Zusammenfassung unverändert.
+                Welcome.Projects.RecordMetrics(Project, Answers[0], Stamp);
+                Welcome.Projects.RecordTodos(Project, Answers[1], Stamp);
+              end);
+        end);
+    end);
+end;
+
+/// <summary>Metrikbericht des aktiven Projekts (#66): Markdown vom Server (startet ihn bei Bedarf) im
+/// Hintergrund, gespeichert unter %LOCALAPPDATA%\Atlas\Berichte und im Editor geöffnet.</summary>
+procedure MetricsReport;
+var
+  Project: IOTAProject;
+  FileName: string;
+begin
+  // Abgeschaltet: auch über Tastenkürzel oder „Ausprobieren“ nichts tun.
+  if (Manager = nil) or not TAtlasIdeSettings.Current.MetricsReport then
+    Exit;
+  Project := GetActiveProject;
+  if (Project = nil) or (Project.FileName = '') then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.MetricsReportNoProject));
+    Exit;
+  end;
+  FileName := TAtlasMetricsReportFile.FileName(
+    TAtlasMetricsReportFile.Folder(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas')), Project.FileName);
+  if Manager.ActiveSession = nil then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.MetricsReportFailed));
+    Exit;
+  end;
+  if Manager.RunCommandAsync(MetricsCommand, MetricsArguments(Project.FileName, 'markdown'), 120000,
+    procedure(AAnswer: string)
+    var
+      Answer: string;
+    begin
+      Answer := AAnswer;
+      TAtlasMainThread.Queue(TAtlasFeature.Menu,
+        procedure
+        begin
+          TAtlasGuard.Run(TAtlasFeature.Palette,
+            procedure
+            var
+              Text: string;
+              Actions: IOTAActionServices;
+            begin
+              if not TAtlasMetricsReportFile.MarkdownFrom(Answer, Text) then
+              begin
+                GuardWarning(TAtlasStrings.Text(TAtlasTextId.MetricsReportFailed));
+                Exit;
+              end;
+              ForceDirectories(ExtractFileDir(FileName));
+              TFile.WriteAllText(FileName, Text, TEncoding.UTF8);
+              if Supports(BorlandIDEServices, IOTAActionServices, Actions) then
+                Actions.OpenFile(FileName);
+            end);
+        end);
+    end) then
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.MetricsReportRunning))
+  else
+    // Ein Befehl im Hintergrund läuft schon (etwa die Metriken nach einem Build): später noch einmal.
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.MetricsReportBusy));
+end;
+
+var
+  /// <summary>Letzter Filter der TODO-Liste (#68) in dieser Sitzung; Vorgabe für den Filterdialog.</summary>
+  TodoFilter: TAtlasTodoFilter;
+  /// <summary>Vorschläge für den Filterdialog aus der letzten Liste.</summary>
+  TodoChoices: TAtlasTodoChoices;
+
+/// <summary>Argumente für atlas.server.todos im Modus json: [uri, "json", filter].</summary>
+function TodoArguments(const AProject: string; const AFilter: TAtlasTodoFilter): string;
+var
+  Arguments: TJSONArray;
+begin
+  Arguments := TJSONArray.Create;
+  try
+    Arguments.Add(TLspSession.PathToUri(AProject));
+    Arguments.Add('json');
+    Arguments.AddElement(TJSONObject.ParseJSONValue(AFilter.ToJson));
+    Result := Arguments.ToJSON;
+  finally
+    Arguments.Free;
+  end;
+end;
+
+/// <summary>TODO-Liste des aktiven Projekts (#68) im Ergebnisfenster: Daten vom Server (startet ihn bei Bedarf) im
+/// Hintergrund mit dem Filter AFilter (Filter des Servers), nach Unit gruppiert; Doppelklick springt zum
+/// Kommentar.</summary>
+procedure ProjectTodos(const AFilter: TAtlasTodoFilter);
+var
+  Project: IOTAProject;
+  Name, Described: string;
+  Filter: TAtlasTodoFilter;
+begin
+  // Abgeschaltet: auch über Tastenkürzel oder „Ausprobieren“ nichts tun.
+  if (Manager = nil) or not TAtlasIdeSettings.Current.TodoList then
+    Exit;
+  Project := GetActiveProject;
+  if (Project = nil) or (Project.FileName = '') then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TodoListNoProject));
+    Exit;
+  end;
+  Name := ChangeFileExt(ExtractFileName(Project.FileName), '');
+  Filter := AFilter.Trimmed;
+  Described := Filter.Describe;
+  if Manager.ActiveSession = nil then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TodoListFailed));
+    Exit;
+  end;
+  if not Manager.RunCommandAsync(TodosCommand, TodoArguments(Project.FileName, Filter), 120000,
+    procedure(AAnswer: string)
+    var
+      Answer: string;
+    begin
+      Answer := AAnswer;
+      TAtlasMainThread.Queue(TAtlasFeature.Menu,
+        procedure
+        begin
+          TAtlasGuard.Run(TAtlasFeature.Palette,
+            procedure
+            var
+              Entries: TArray<TAtlasResultEntry>;
+              Choices: TAtlasTodoChoices;
+            begin
+              if not TAtlasTodoList.Entries(Answer, Entries) then
+              begin
+                GuardWarning(TAtlasStrings.Text(TAtlasTextId.TodoListFailed));
+                Exit;
+              end;
+              // Vorschläge nur aus der ungefilterten Liste: sonst schrumpfen sie mit jedem Filter.
+              if Filter.IsEmpty and TAtlasTodoList.Choices(Answer, Choices) then
+                TodoChoices := Choices;
+              if (Length(Entries) = 0) and (Described = '') then
+                GuardWarning(TAtlasStrings.Fmt(TAtlasTextId.TodoListEmpty, [Name]))
+              else if Length(Entries) = 0 then
+                GuardWarning(TAtlasStrings.Fmt(TAtlasTextId.TodoListNoMatch, [Name, Described]))
+              else if Described = '' then
+                TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.TodoListTitle,
+                  [Name, Length(Entries)]), Entries)
+              else
+                TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.TodoListFilteredTitle,
+                  [Name, Described, Length(Entries)]), Entries);
+            end);
+        end);
+    end) then
+    // Ein Befehl im Hintergrund läuft schon (etwa die Werte nach einem Build): später noch einmal.
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TodoListBusy));
+end;
+
+/// <summary>Filterdialog der TODO-Liste (#68) mit dem letzten Filter; „Anzeigen“ fragt mit dem neuen Filter.</summary>
+procedure FilterProjectTodos;
+var
+  Filter: TAtlasTodoFilter;
+begin
+  if not TAtlasIdeSettings.Current.TodoList then
+    Exit;
+  Filter := TodoFilter;
+  if not TAtlasTodoFilterDialog.Execute(TodoChoices, Filter) then
+    Exit;
+  TodoFilter := Filter;
+  ProjectTodos(Filter);
+end;
+
 procedure RenameSymbol;
 begin
   if Manager = nil then
@@ -344,6 +570,86 @@ begin
     begin
       TAtlasIdeUndo.ShowList;
     end);
+  // Persönliche Notizen (#545); nur sichtbar, solange die Einstellung an ist.
+  Palette.RegisterCommand('Atlas.NoteAdd', TAtlasStrings.Text(TAtlasTextId.NotesMenuAdd), '',
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Notes,
+        procedure
+        begin
+          TAtlasIdeNotes.AddOrEdit;
+        end);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.Notes;
+    end);
+  Palette.RegisterCommand('Atlas.NoteDelete', TAtlasStrings.Text(TAtlasTextId.NotesMenuDelete), '',
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Notes,
+        procedure
+        begin
+          TAtlasIdeNotes.DeleteAtLine;
+        end);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.Notes;
+    end);
+  Palette.RegisterCommand('Atlas.NoteList', TAtlasStrings.Text(TAtlasTextId.NotesMenuList), '',
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Notes,
+        procedure
+        begin
+          TAtlasIdeNotes.ShowList;
+        end);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.Notes;
+    end);
+  // Benannte Lesezeichen (#622); nur sichtbar, solange bookmarks.named an ist.
+  Palette.RegisterCommand('Atlas.BookmarkAdd', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd), '',
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Bookmarks,
+        procedure
+        begin
+          TAtlasIdeBookmarks.AddBookmark;
+        end);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.BookmarksNamed;
+    end);
+  Palette.RegisterCommand('Atlas.BookmarkGoTo', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuGoTo), '',
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Bookmarks,
+        procedure
+        begin
+          TAtlasIdeBookmarks.GoToBookmark;
+        end);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.BookmarksNamed;
+    end);
+  Palette.RegisterCommand('Atlas.BookmarkWindow', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuWindow), '',
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Bookmarks,
+        procedure
+        begin
+          TAtlasIdeBookmarks.ShowWindow;
+        end);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.BookmarksNamed;
+    end);
   // Editorbefehle (#399).
   Palette.RegisterCommand('Atlas.CodeActions', TAtlasStrings.Text(TAtlasTextId.EditorActions), '',
     procedure
@@ -400,6 +706,36 @@ begin
     procedure
     begin
       TAtlasIdeHistory.Reset;
+    end);
+  // Metrikbericht des Projekts (#66); nur sichtbar, solange die Einstellung MetricsReport an ist.
+  Palette.RegisterCommand('Atlas.MetricsReport', TAtlasStrings.Text(TAtlasTextId.MetricsReportCommand), '',
+    procedure
+    begin
+      MetricsReport;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.MetricsReport;
+    end);
+  // TODO-Liste des Projekts (#68): ohne Filter (alle offenen) und mit Filterdialog; nur sichtbar, solange die
+  // Einstellung TodoList an ist.
+  Palette.RegisterCommand('Atlas.TodoList', TAtlasStrings.Text(TAtlasTextId.TodoListCommand), '',
+    procedure
+    begin
+      ProjectTodos(Default(TAtlasTodoFilter));
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.TodoList;
+    end);
+  Palette.RegisterCommand('Atlas.TodoListFilter', TAtlasStrings.Text(TAtlasTextId.TodoFilterCommand), '',
+    procedure
+    begin
+      FilterProjectTodos;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.TodoList;
     end);
   Palette.RegisterCommand('Atlas.CheckNow', TAtlasStrings.Text(TAtlasTextId.PaletteCheckNow), '',
     procedure
@@ -458,6 +794,13 @@ begin
         Welcome.ShowWhatsNew(TAtlasWhatsNewView.All);
     end);
   // Künstlicher Hänger für den Einfrier-Wächter (#501): nur im Diagnosemodus (#479, Code-Review S-07).
+  // Bereich „Weiterarbeiten“ (#755): obersten Arbeitsstand fortsetzen.
+  Palette.RegisterCommand('Atlas.Continue', TAtlasStrings.Text(TAtlasTextId.WelcomeContinueCommand), '',
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.ContinueWork <> nil) then
+        Welcome.ContinueWork.ResumeLatest;
+    end);
   Palette.RegisterCommand('Atlas.HangTest', TAtlasStrings.Text(TAtlasTextId.SettingsHangTest), '',
     procedure
     var
@@ -671,6 +1014,13 @@ begin
           procedure
           begin
             Welcome.Projects.Recorded(Messages, Project, Succeeded, Readable);
+          end);
+      // Code-Metriken und TODOs nach einem Build, nicht nach einer Hintergrundprüfung (#66, #68, #758).
+      if AReadable and not AProject.Background then
+        TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+          procedure
+          begin
+            RecordProjectMetrics(Project.FileName);
           end);
       if Manager = nil then
         Exit;
@@ -987,6 +1337,28 @@ begin
   // Editor-Zeichnungen.
   if (Pairs = nil) and (Full or Settings.PairColors or Settings.PairGuides or Settings.InactiveDim) then
     Pairs := TAtlasEditorPairs.Create;
+  // Persönliche Notizen (#545): Befehle auch abgesichert (nur lokale Dateien), die Rinne wie die übrigen
+  // Zeichnungen nur im normalen Start oder mit eingeschalteter Einstellung.
+  if Basic then
+    TAtlasIdeNotes.Start(
+      procedure(AText: string)
+      begin
+        MessageLine(AText);
+      end);
+  // Benannte Lesezeichen (#622): Befehle auch abgesichert; die Rinne teilt sich die Zeichenschicht mit den
+  // Notizen, jede Schicht folgt ihrer Einstellung.
+  if Basic then
+    TAtlasIdeBookmarks.Start(
+      procedure(AText: string)
+      begin
+        MessageLine(AText);
+      end);
+  if (GutterMarks = nil) and Basic and (Full or Settings.Notes or Settings.BookmarksNamed) then
+  begin
+    GutterMarks := TAtlasIdeGutterMarks.Create;
+    GutterMarks.Add(TAtlasIdeNotesGutter.Create);
+    GutterMarks.Add(TAtlasIdeBookmarksGutter.Create);
+  end;
   if (CompletionKey = nil) and Basic and (Full or Settings.Enabled) then
     CompletionKey := TAtlasIdeKeyBinding.Create('Atlas.Completion', 'Atlas-Vervollständigung',
       TAtlasFeature.Completion,
@@ -1101,6 +1473,12 @@ begin
       begin
         GuardWarning(AText);
       end);
+    // Bereich „Weiterarbeiten“ (#755): Arbeitsstand beim Schließen, eingehende Commits (#571) und „Gemerkt“.
+    Welcome.ContinueWork := TAtlasIdeContinue.Create(
+      procedure(AText: string)
+      begin
+        GuardWarning(AText);
+      end);
     // Zustandskachel „Atlas“ (#754): dieselben Zeilen wie das Statusfeld (#591).
     Welcome.State := CreateWelcomeState;
     // Karte „Atlas entdecken“ (#757): Befehle und Tasten aus der Palette, „Ausprobieren“ führt sie aus.
@@ -1113,12 +1491,24 @@ begin
       end,
       procedure(AId: string)
       begin
-        if Palette <> nil then
+        if Palette = nil then
+          Exit;
+        // Tipp zur Befehlspalette: „Ausprobieren“ öffnet sie.
+        if SameText(AId, TAtlasShortcutTips.PaletteCommandId) then
+          Palette.Show
+        else
           Palette.Execute(AId);
       end,
       procedure(AText: string)
       begin
         GuardWarning(AText);
+      end);
+    // Bereich „Hilfe und Rückmeldung“ (#766): „Tastenkürzel“ zeigt die Übersicht aus #520 mit allen Kürzeln.
+    Welcome.Help := TAtlasIdeHelp.Create(
+      procedure
+      begin
+        if KeyMap <> nil then
+          KeyMap.ShowAll;
       end);
   end;
   if Welcome <> nil then
@@ -1245,6 +1635,7 @@ begin
         KeyMap.ThemeChanged;
       if ShortcutTips <> nil then
         ShortcutTips.ThemeChanged;
+      TAtlasIdeBookmarks.ThemeChanged;
     end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
   if SafeMode = nil then
@@ -1279,6 +1670,8 @@ begin
       // diagnosticMode.enabled (#479).
       if DiagnosticMode <> nil then
         DiagnosticMode.ApplySettings;
+      // bookmarks.named und bookmarks.shared (#622).
+      TAtlasIdeBookmarks.ApplySettings;
       // tips.usageTracking (#757).
       if CommandUsage <> nil then
         CommandUsage.ApplySettings;
@@ -1389,6 +1782,10 @@ begin
   end;
   CommandsInstalled := False;
   FreeAndNil(Pairs);
+  // Vor dem Notiz- und dem Lesezeichendienst: Die Rinne liest deren Listen (#545, #622).
+  FreeAndNil(GutterMarks);
+  TAtlasIdeNotes.Release;
+  TAtlasIdeBookmarks.Release;
   FreeAndNil(CheckOnSave);
   FreeAndNil(Palette);
   FreeAndNil(Reloader);
@@ -1397,6 +1794,7 @@ begin
   TAtlasOptionsRegistration.Unregister;
   TAtlasProjectSettings.Command := nil;
   TAtlasIdeHistory.Release;
+  TAtlasIdeFavorites.Release;
   TAtlasIdeSymbol.Unregister;
   TAtlasIdeSettings.Release;
   if (ManagerIndex >= 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then

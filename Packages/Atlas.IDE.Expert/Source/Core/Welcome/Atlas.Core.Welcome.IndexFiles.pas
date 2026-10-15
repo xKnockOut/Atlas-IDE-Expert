@@ -14,6 +14,8 @@
 // nachrechnen. Welches Projekt ein Cache beschreibt, steht deshalb in ihm
 // selbst: Die Hauptdatei (.dpr/.dpk) ist eine seiner Units. Der gemeinsame
 // Bibliotheks-Cache (Ordner „Bibliothek“) gehört keinem Projekt.
+// Der Reiter „Gemerkt“ (#755) sucht die Unit eines Favoriten auch unter den
+// Bibliotheks-Units (ReadAll, LibraryCacheFiles, LoadUnits).
 // Nur SysUtils und Classes: läuft ohne Windows-Unit und in den Tests.
 
 interface
@@ -44,11 +46,21 @@ type
     CacheFileName = 'index.atlasidx';
     IndexFolder = 'Index';
     LibraryFolder = 'Bibliothek';
+  private
+    class function ReadEntries(const AData: TBytes; AWithLibrary: Boolean;
+      out AReason: string): TArray<TAtlasIndexFile>; static;
   public
     /// <summary>Units des Caches ohne die der Bibliothek; leer, wenn AData kein gültiger Cache in Format 15 ist.</summary>
     class function Read(const AData: TBytes): TArray<TAtlasIndexFile>; overload; static;
     /// <summary>Wie oben; AReason nennt bei leerem Ergebnis den Grund ('' = gültig).</summary>
     class function Read(const AData: TBytes; out AReason: string): TArray<TAtlasIndexFile>; overload; static;
+    /// <summary>Alle Units des Caches samt Bibliothek (#755); leer bei ungültigem Cache.</summary>
+    class function ReadAll(const AData: TBytes): TArray<TAtlasIndexFile>; static;
+    /// <summary>Units samt Bibliothek aus der Cache-Datei AFileName; leer, wenn sie fehlt, gesperrt oder ungültig
+    /// ist.</summary>
+    class function LoadUnits(const AFileName: string): TArray<TAtlasIndexFile>; static;
+    /// <summary>Gemeinsame Bibliotheks-Caches unter ARoot\Index\*\Bibliothek\index.atlasidx.</summary>
+    class function LibraryCacheFiles(const ARoot: string): TArray<string>; static;
     /// <summary>Hauptdatei (.dpr, .dpk) unter AFiles; '' ohne.</summary>
     class function MainFileOf(const AFiles: TArray<TAtlasIndexFile>): string; static;
     /// <summary>Alle Projekt-Caches unter ARoot\Index\*\*\index.atlasidx, ohne Bibliothek.</summary>
@@ -189,6 +201,19 @@ begin
 end;
 
 class function TAtlasWelcomeIndexFiles.Read(const AData: TBytes; out AReason: string): TArray<TAtlasIndexFile>;
+begin
+  Result := ReadEntries(AData, False, AReason);
+end;
+
+class function TAtlasWelcomeIndexFiles.ReadAll(const AData: TBytes): TArray<TAtlasIndexFile>;
+var
+  Reason: string;
+begin
+  Result := ReadEntries(AData, True, Reason);
+end;
+
+class function TAtlasWelcomeIndexFiles.ReadEntries(const AData: TBytes; AWithLibrary: Boolean;
+  out AReason: string): TArray<TAtlasIndexFile>;
 var
   Reader: TReader;
   Strings: TArray<string>;
@@ -255,7 +280,7 @@ begin
         Reader.Skip(Reader.ReadCount); // Verwendungsblock
         if Entry.FileName = '' then
           Fail;
-        if (Flags and FlagLibrary) = 0 then
+        if AWithLibrary or ((Flags and FlagLibrary) = 0) then
           Found.Add(Entry);
       end;
       if Reader.Position <> Reader.Limit then
@@ -351,6 +376,37 @@ begin
       Stream.ReadBuffer(Result[0], Length(Result));
   finally
     Stream.Free;
+  end;
+end;
+
+class function TAtlasWelcomeIndexFiles.LibraryCacheFiles(const ARoot: string): TArray<string>;
+var
+  Version, FileName: string;
+begin
+  Result := nil;
+  if ARoot = '' then
+    Exit;
+  for Version in SubFolders(IncludeTrailingPathDelimiter(ARoot) + IndexFolder) do
+  begin
+    FileName := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(Version) + LibraryFolder) + CacheFileName;
+    if FileExists(FileName) then
+      Result := Result + [FileName];
+  end;
+end;
+
+class function TAtlasWelcomeIndexFiles.LoadUnits(const AFileName: string): TArray<TAtlasIndexFile>;
+begin
+  Result := nil;
+  if not FileExists(AFileName) then
+    Exit;
+  try
+    Result := ReadAll(ReadBytes(AFileName));
+  except
+    // Gesperrt oder gerade verschwunden: wie ohne Cache.
+    on EStreamError do
+      Result := nil;
+    on EInOutError do
+      Result := nil;
   end;
 end;
 

@@ -62,10 +62,16 @@ type
     /// <summary>Grenzen der Stunden für welcomePage.unsaved.* (#762); wie TAtlasWelcomeUnsaved.MaxHours.</summary>
     MinUnsavedHours = 0;
     MaxUnsavedHours = 8760;
+    /// <summary>Grenzen für welcomePage.continue.count (#755); wie TAtlasWelcomeContinue.MinCount/MaxCount.</summary>
+    MinContinueCount = 1;
+    MaxContinueCount = 20;
     MinPairGuideWidth = 1;
     MaxPairGuideWidth = 3;
     MinPairGuideOpacity = 10;
     MaxPairGuideOpacity = 100;
+    /// <summary>Vorgabe für welcomePage.help.reportUrl (#766): Seite für neue Issues des Atlas-Repositorys.
+    /// </summary>
+    DefaultHelpReportUrl = 'https://github.com/xKnockOut/Atlas-IDE-Expert/issues/new';
   public
     /// <summary>Hauptschalter (#407): aus = eingebaute Code Insight der IDE.</summary>
     Enabled: Boolean;
@@ -105,6 +111,9 @@ type
     FilterChips: Boolean;
     /// <summary>Lernende Gewichtung (#418).</summary>
     Learning: Boolean;
+    /// <summary>Favoriten anheften (#458): Strg+D bzw. Stern in der Liste, angeheftete Einträge stehen oben;
+    /// gespeichert in %APPDATA%\Atlas\favorites.json.</summary>
+    Favorites: Boolean;
     /// <summary>Geerbte Member nachrangig und gruppiert (#419).</summary>
     GroupInherited: Boolean;
     /// <summary>Vorschau des gewählten Eintrags im Editor (#434).</summary>
@@ -128,6 +137,17 @@ type
     OpenForEdits: Boolean;
     /// <summary>Parameternamen vor Literal-Argumenten als Inlay-Hints (#401); standardmäßig aus.</summary>
     InlayHints: Boolean;
+    /// <summary>Persönliche Notizen an Codezeilen (#545): Symbol in der Rinne, Befehle und Liste; gespeichert in
+    /// %LOCALAPPDATA%\Atlas\Notes\, nie im Quelltext.</summary>
+    Notes: Boolean;
+    /// <summary>Benannte Lesezeichen (#622, bookmarks.named): Befehle, Seitenfenster „Lesezeichen“ und Symbol in der
+    /// Rinne; aus = die Funktion ruht, die nummerierten Lesezeichen der IDE bleiben unberührt.</summary>
+    BookmarksNamed: Boolean;
+    /// <summary>Lesezeichen im Repository für das Team speichern (#622, bookmarks.shared): atlas-bookmarks.json
+    /// statt der lokalen .atlas-bookmarks.json neben der .dproj.</summary>
+    BookmarksShared: Boolean;
+    /// <summary>„Lesezeichen setzen…“ (#622, TShortCut, 0 = keins; Vorgabe Strg+Alt+K).</summary>
+    BookmarkKey: Integer;
     /// <summary>Pfad zu AtlasServer.exe; leer: neben dem Plugin bzw. Output\Win64\Debug\Bin.</summary>
     ServerPath: string;
     /// <summary>Blocklinien in den Paarfarben statt der Strukturhervorhebung der IDE (#514).</summary>
@@ -173,6 +193,14 @@ type
     /// <summary>Code Lens „Testunit“ bzw. „Unit“ hinter der Zeile unit … (#189, codeLens.testUnit);
     /// der Befehl bleibt auch ohne sie verfügbar.</summary>
     CodeLensTestUnit: Boolean;
+    /// <summary>Code Lens mit den Kennzahlen jeder Methode (#66, codeLens.metrics; liegt in settings.json):
+    /// Länge, Tiefe, zyklomatische und kognitive Komplexität, Parameter.</summary>
+    CodeLensMetrics: Boolean;
+    /// <summary>Befehl „TODOs des Projekts“ (#68, Atlas.TodoList); aus = der Befehl verschwindet.</summary>
+    TodoList: Boolean;
+    /// <summary>Befehl „Metrikbericht des Projekts“ (#66, Atlas.MetricsReport) in der Befehlspalette; aus = der
+    /// Befehl verschwindet. Die Zusammenfassung nach dem Build hängt an der Willkommensseite.</summary>
+    MetricsReport: Boolean;
     /// <summary>Die Editor-Kürzel auch belegen, wenn die IDE oder eine andere Erweiterung sie nutzt.</summary>
     EditorKeysPriority: Boolean;
     /// <summary>Schnellbefehle mit „/“ nach Enter und „///“-Gerüste beim Server auslösen (#399).</summary>
@@ -353,6 +381,25 @@ type
     /// <summary>Nutzung je Befehl lokal zählen (#757, tips.usageTracking; %LOCALAPPDATA%\Atlas\usage.json); aus =
     /// Tipps der Reihe nach ohne Bezug zur Nutzung, auch für die Tastenkürzel-Tipps (#600).</summary>
     TipsUsageTracking: Boolean;
+    /// <summary>Bereich „Hilfe und Rückmeldung“ (#766, welcomePage.help): Atlas-Doku, Tastenkürzel, Problem
+    /// melden.</summary>
+    WelcomePageHelp: Boolean;
+    /// <summary>Ziel für „Issue-Seite öffnen“ (#766, welcomePage.help.reportUrl); nur http:// und https://, sonst
+    /// die Vorgabe.</summary>
+    WelcomePageHelpReportUrl: string;
+    /// <summary>Ordner für das Diagnosepaket (#766, welcomePage.help.reportFolder); '' = Desktop.</summary>
+    WelcomePageHelpReportFolder: string;
+    /// <summary>Bereich „Weiterarbeiten“ (#755, welcomePage.continue): Arbeitsstände merken und fortsetzen.
+    /// </summary>
+    WelcomePageContinue: Boolean;
+    /// <summary>Anzahl der Arbeitsstände (#755, welcomePage.continue.count, 1–20).</summary>
+    WelcomePageContinueCount: Integer;
+    /// <summary>„Neu seit deinem letzten Öffnen“: eingehende Commits (#755, welcomePage.continue.incoming).</summary>
+    WelcomePageContinueIncoming: Boolean;
+    /// <summary>Vor dem Anzeigen im Hintergrund fetch ausführen (#755, welcomePage.continue.fetch).</summary>
+    WelcomePageContinueFetch: Boolean;
+    /// <summary>Reiter „Gemerkt“ mit Notizen, Lesezeichen und Favoriten (#755, welcomePage.saved).</summary>
+    WelcomePageSaved: Boolean;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -371,7 +418,22 @@ type
 implementation
 
 uses
-  System.Math;
+  System.Math,
+  System.StrUtils;
+
+/// <summary>http:// oder https:// mit etwas danach, ohne Leer- und Steuerzeichen (#766).</summary>
+function IsWebAddress(const AValue: string): Boolean;
+var
+  Index: Integer;
+begin
+  Result := (StartsText('https://', AValue) and (Length(AValue) > 8)) or
+    (StartsText('http://', AValue) and (Length(AValue) > 7));
+  if not Result then
+    Exit;
+  for Index := 1 to Length(AValue) do
+    if Ord(AValue[Index]) <= 32 then
+      Exit(False);
+end;
 
 // Eigene Paarfarben einheitlich schreiben; ungültig = leer (Standardpalette).
 function NormalPairs(const AText: string): string;
@@ -429,6 +491,7 @@ begin
   Result.SignatureKeyPriority := False;
   Result.FilterChips := True;
   Result.Learning := True;
+  Result.Favorites := True;
   Result.GroupInherited := True;
   Result.Preview := False;
   Result.HoverTooltip := True;
@@ -440,6 +503,10 @@ begin
   Result.InactiveDim := True;
   Result.OpenForEdits := True;
   Result.InlayHints := False;
+  Result.Notes := True;
+  Result.BookmarksNamed := True;
+  Result.BookmarksShared := False;
+  Result.BookmarkKey := $C04B; // Strg+Alt+K
   Result.ServerPath := '';
   Result.PairGuides := True;
   Result.PairOwners := True;
@@ -464,6 +531,9 @@ begin
   Result.MethodToggleDownKey := $6028; // Strg+Umschalt+↓
   Result.TestUnitKey := 0;
   Result.CodeLensTestUnit := True;
+  Result.CodeLensMetrics := True;
+  Result.TodoList := True;
+  Result.MetricsReport := True;
   Result.EditorKeysPriority := False;
   Result.SlashCommands := True;
   Result.Snippets := True;
@@ -544,6 +614,14 @@ begin
   Result.WelcomePageStatusTileOnlyProblems := False;
   Result.WelcomePageDiscover := True;
   Result.TipsUsageTracking := True;
+  Result.WelcomePageHelp := True;
+  Result.WelcomePageHelpReportUrl := DefaultHelpReportUrl;
+  Result.WelcomePageHelpReportFolder := '';
+  Result.WelcomePageContinue := True;
+  Result.WelcomePageContinueCount := 5;
+  Result.WelcomePageContinueIncoming := True;
+  Result.WelcomePageContinueFetch := False;
+  Result.WelcomePageSaved := True;
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -571,6 +649,7 @@ begin
   // Rot nie vor gelb.
   WelcomePageUnsavedAlertHours := EnsureRange(WelcomePageUnsavedAlertHours, WelcomePageUnsavedWarnHours,
     MaxUnsavedHours);
+  WelcomePageContinueCount := EnsureRange(WelcomePageContinueCount, MinContinueCount, MaxContinueCount);
   CheckKey := EnsureRange(CheckKey, 0, $FFFF);
   CompletionKey := EnsureRange(CompletionKey, 0, $FFFF);
   SignatureKey := EnsureRange(SignatureKey, 0, $FFFF);
@@ -617,6 +696,7 @@ begin
   UnitSearchGroupBy := Choice(UnitSearchGroupBy, ['project', 'folder', 'none']);
   UnitSearchDefaultScope := Choice(UnitSearchDefaultScope, ['group', 'project', 'searchPath', 'library']);
   UnitSearchKey := EnsureRange(UnitSearchKey, 0, $FFFF);
+  BookmarkKey := EnsureRange(BookmarkKey, 0, $FFFF);
   if SameText(Trim(WelcomePageHost), 'dockWindow') then
     WelcomePageHost := 'dockWindow'
   else
@@ -636,6 +716,11 @@ begin
     ShortcutTipsScope := 'atlas'
   else
     ShortcutTipsScope := 'all';
+  // Nur Webadressen: „Issue-Seite öffnen“ übergibt das Ziel dem Browser (#766).
+  WelcomePageHelpReportUrl := Trim(WelcomePageHelpReportUrl);
+  if not IsWebAddress(WelcomePageHelpReportUrl) then
+    WelcomePageHelpReportUrl := DefaultHelpReportUrl;
+  WelcomePageHelpReportFolder := Trim(WelcomePageHelpReportFolder);
 end;
 
 procedure TAtlasPluginSettings.Load(const AStore: IAtlasSettingsStore);
@@ -664,6 +749,7 @@ begin
   SignatureKeyPriority := AStore.ReadInteger('SignatureKeyPriority', BoolValue(Default.SignatureKeyPriority)) <> 0;
   FilterChips := AStore.ReadInteger('FilterChips', BoolValue(Default.FilterChips)) <> 0;
   Learning := AStore.ReadInteger('Learning', BoolValue(Default.Learning)) <> 0;
+  Favorites := AStore.ReadInteger('Favorites', BoolValue(Default.Favorites)) <> 0;
   GroupInherited := AStore.ReadInteger('GroupInherited', BoolValue(Default.GroupInherited)) <> 0;
   Preview := AStore.ReadInteger('Preview', BoolValue(Default.Preview)) <> 0;
   HoverTooltip := AStore.ReadInteger('HoverTooltip', BoolValue(Default.HoverTooltip)) <> 0;
@@ -675,6 +761,10 @@ begin
   InactiveDim := AStore.ReadInteger('InactiveDim', BoolValue(Default.InactiveDim)) <> 0;
   OpenForEdits := AStore.ReadInteger('OpenForEdits', BoolValue(Default.OpenForEdits)) <> 0;
   InlayHints := AStore.ReadInteger('InlayHints', BoolValue(Default.InlayHints)) <> 0;
+  Notes := AStore.ReadInteger('Notes', BoolValue(Default.Notes)) <> 0;
+  BookmarksNamed := AStore.ReadInteger('BookmarksNamed', BoolValue(Default.BookmarksNamed)) <> 0;
+  BookmarksShared := AStore.ReadInteger('BookmarksShared', BoolValue(Default.BookmarksShared)) <> 0;
+  BookmarkKey := AStore.ReadInteger('BookmarkKey', Default.BookmarkKey);
   ServerPath := Trim(AStore.ReadString('ServerPath', Default.ServerPath));
   PairGuides := AStore.ReadInteger('PairGuides', BoolValue(Default.PairGuides)) <> 0;
   PairOwners := AStore.ReadInteger('PairOwners', BoolValue(Default.PairOwners)) <> 0;
@@ -698,6 +788,9 @@ begin
   MethodToggleDownKey := AStore.ReadInteger('MethodToggleDownKey', Default.MethodToggleDownKey);
   TestUnitKey := AStore.ReadInteger('TestUnitKey', Default.TestUnitKey);
   CodeLensTestUnit := AStore.ReadInteger('CodeLensTestUnit', BoolValue(Default.CodeLensTestUnit)) <> 0;
+  CodeLensMetrics := AStore.ReadInteger('CodeLensMetrics', BoolValue(Default.CodeLensMetrics)) <> 0;
+  TodoList := AStore.ReadInteger('TodoList', BoolValue(Default.TodoList)) <> 0;
+  MetricsReport := AStore.ReadInteger('MetricsReport', BoolValue(Default.MetricsReport)) <> 0;
   EditorKeysPriority := AStore.ReadInteger('EditorKeysPriority', BoolValue(Default.EditorKeysPriority)) <> 0;
   SlashCommands := AStore.ReadInteger('SlashCommands', BoolValue(Default.SlashCommands)) <> 0;
   Snippets := AStore.ReadInteger('Snippets', BoolValue(Default.Snippets)) <> 0;
@@ -786,6 +879,17 @@ begin
     BoolValue(Default.WelcomePageStatusTileOnlyProblems)) <> 0;
   WelcomePageDiscover := AStore.ReadInteger('WelcomePageDiscover', BoolValue(Default.WelcomePageDiscover)) <> 0;
   TipsUsageTracking := AStore.ReadInteger('TipsUsageTracking', BoolValue(Default.TipsUsageTracking)) <> 0;
+  WelcomePageHelp := AStore.ReadInteger('WelcomePageHelp', BoolValue(Default.WelcomePageHelp)) <> 0;
+  WelcomePageHelpReportUrl := AStore.ReadString('WelcomePageHelpReportUrl', Default.WelcomePageHelpReportUrl);
+  WelcomePageHelpReportFolder := AStore.ReadString('WelcomePageHelpReportFolder',
+    Default.WelcomePageHelpReportFolder);
+  WelcomePageContinue := AStore.ReadInteger('WelcomePageContinue', BoolValue(Default.WelcomePageContinue)) <> 0;
+  WelcomePageContinueCount := AStore.ReadInteger('WelcomePageContinueCount', Default.WelcomePageContinueCount);
+  WelcomePageContinueIncoming := AStore.ReadInteger('WelcomePageContinueIncoming',
+    BoolValue(Default.WelcomePageContinueIncoming)) <> 0;
+  WelcomePageContinueFetch := AStore.ReadInteger('WelcomePageContinueFetch',
+    BoolValue(Default.WelcomePageContinueFetch)) <> 0;
+  WelcomePageSaved := AStore.ReadInteger('WelcomePageSaved', BoolValue(Default.WelcomePageSaved)) <> 0;
   Normalize;
 end;
 
@@ -813,6 +917,7 @@ begin
   AStore.WriteInteger('SignatureKeyPriority', BoolValue(SignatureKeyPriority));
   AStore.WriteInteger('FilterChips', BoolValue(FilterChips));
   AStore.WriteInteger('Learning', BoolValue(Learning));
+  AStore.WriteInteger('Favorites', BoolValue(Favorites));
   AStore.WriteInteger('GroupInherited', BoolValue(GroupInherited));
   AStore.WriteInteger('Preview', BoolValue(Preview));
   AStore.WriteInteger('HoverTooltip', BoolValue(HoverTooltip));
@@ -824,6 +929,10 @@ begin
   AStore.WriteInteger('InactiveDim', BoolValue(InactiveDim));
   AStore.WriteInteger('OpenForEdits', BoolValue(OpenForEdits));
   AStore.WriteInteger('InlayHints', BoolValue(InlayHints));
+  AStore.WriteInteger('Notes', BoolValue(Notes));
+  AStore.WriteInteger('BookmarksNamed', BoolValue(BookmarksNamed));
+  AStore.WriteInteger('BookmarksShared', BoolValue(BookmarksShared));
+  AStore.WriteInteger('BookmarkKey', BookmarkKey);
   AStore.WriteString('ServerPath', Trim(ServerPath));
   AStore.WriteInteger('PairGuides', BoolValue(PairGuides));
   AStore.WriteInteger('PairOwners', BoolValue(PairOwners));
@@ -847,6 +956,9 @@ begin
   AStore.WriteInteger('MethodToggleDownKey', MethodToggleDownKey);
   AStore.WriteInteger('TestUnitKey', TestUnitKey);
   AStore.WriteInteger('CodeLensTestUnit', BoolValue(CodeLensTestUnit));
+  AStore.WriteInteger('CodeLensMetrics', BoolValue(CodeLensMetrics));
+  AStore.WriteInteger('TodoList', BoolValue(TodoList));
+  AStore.WriteInteger('MetricsReport', BoolValue(MetricsReport));
   AStore.WriteInteger('EditorKeysPriority', BoolValue(EditorKeysPriority));
   AStore.WriteInteger('SlashCommands', BoolValue(SlashCommands));
   AStore.WriteInteger('Snippets', BoolValue(Snippets));
@@ -926,6 +1038,14 @@ begin
   AStore.WriteInteger('WelcomePageStatusTileOnlyProblems', BoolValue(WelcomePageStatusTileOnlyProblems));
   AStore.WriteInteger('WelcomePageDiscover', BoolValue(WelcomePageDiscover));
   AStore.WriteInteger('TipsUsageTracking', BoolValue(TipsUsageTracking));
+  AStore.WriteInteger('WelcomePageHelp', BoolValue(WelcomePageHelp));
+  AStore.WriteString('WelcomePageHelpReportUrl', WelcomePageHelpReportUrl);
+  AStore.WriteString('WelcomePageHelpReportFolder', WelcomePageHelpReportFolder);
+  AStore.WriteInteger('WelcomePageContinue', BoolValue(WelcomePageContinue));
+  AStore.WriteInteger('WelcomePageContinueCount', WelcomePageContinueCount);
+  AStore.WriteInteger('WelcomePageContinueIncoming', BoolValue(WelcomePageContinueIncoming));
+  AStore.WriteInteger('WelcomePageContinueFetch', BoolValue(WelcomePageContinueFetch));
+  AStore.WriteInteger('WelcomePageSaved', BoolValue(WelcomePageSaved));
 end;
 
 function TAtlasPluginSettings.StatusTogglesOnRightClick: Boolean;

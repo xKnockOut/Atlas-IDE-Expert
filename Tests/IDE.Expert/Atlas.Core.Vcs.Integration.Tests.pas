@@ -8,6 +8,9 @@
 // Lokale Arbeit (#762): Branches mit Upstream und Vorsprung, Branch ohne
 // Upstream, Stash mit Dateien, ungepushte Commits, Push auf ein lokales
 // Bare-Repository und die Auswertung für „Nicht gesichert“.
+// Eingehende Commits (#755): Ein zweiter Klon pusht Commits zu einer
+// bearbeiteten und zu einer fremden Datei; erst nach fetch kennt die
+// Arbeitskopie sie, und nur der Commit zur bearbeiteten Datei erscheint.
 // Dazu der Prozessläufer selbst: Hauptthread abgelehnt, Zeitlimit, fehlendes
 // Programm, Hintergrund über TAtlasVcsWorker.
 
@@ -20,12 +23,17 @@ type
   [TestFixture]
   TAtlasVcsIntegrationTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure GitWorkingCopyReportsBranchRevisionAndChanges;
     [Test]
     procedure SvnWorkingCopyReportsBranchRevisionAndChanges;
     [Test]
     procedure GitLocalWorkReportsUnsavedAndPushes;
+    [Test]
+    procedure GitIncomingCommitsOnEditedFiles;
     [Test]
     procedure RunnerRefusesMainThreadAndHonoursTimeout;
     [Test]
@@ -45,7 +53,8 @@ uses
   Atlas.Core.Vcs.Worker,
   Atlas.Core.Vcs.Composition,
   Atlas.Core.Vcs.Adapters.ProcessRunner,
-  Atlas.Core.Welcome.Unsaved;
+  Atlas.Core.Welcome.Unsaved,
+  Atlas.Core.Welcome.Continue;
 
 /// <summary>Führt ein Programm für den Aufbau der Fixture aus; Ausgabe als Text, Ausnahme bei Fehler.</summary>
 function Exec(const ARunner: IAtlasVcsRunner; const AExecutable: string; const AArguments: TArray<string>;
@@ -74,7 +83,11 @@ begin
     Exit;
   // git legt schreibgeschützte Objektdateien an.
   for FileName in TDirectory.GetFiles(AFolder, '*', TSearchOption.soAllDirectories) do
+  begin
+    {$WARN SYMBOL_PLATFORM OFF}
     TFile.SetAttributes(FileName, [TFileAttribute.faNormal]);
+    {$WARN SYMBOL_PLATFORM ON}
+  end;
   try
     TDirectory.Delete(AFolder, True);
   except
@@ -100,6 +113,23 @@ begin
 end;
 
 { TAtlasVcsIntegrationTests }
+
+procedure TAtlasVcsIntegrationTests.WarmUpFirstUse;
+begin
+  // Ohne git bzw. svn meldet der Test Assert.Pass; das gilt hier nicht als Fehler.
+  try
+    GitWorkingCopyReportsBranchRevisionAndChanges;
+  except
+    on Exception do
+      ;
+  end;
+  try
+    SvnWorkingCopyReportsBranchRevisionAndChanges;
+  except
+    on Exception do
+      ;
+  end;
+end;
 
 procedure TAtlasVcsIntegrationTests.GitWorkingCopyReportsBranchRevisionAndChanges;
 var
@@ -192,12 +222,14 @@ var
   Lines: TArray<TAtlasVcsBlameLine>;
   Watch: TAtlasVcsWatch;
 begin
+  // Ohne svn bzw. svnadmin übersprungen. Exit statt Assert.Pass: DUnitX behält die Meldung
+  // im Ergebnis, und der Leckmonitor zählte sie als Leck.
   SvnExe := TAtlasVcsTools.Find(TAtlasVcsKind.Svn);
   if SvnExe = '' then
-    Assert.Pass('svn nicht installiert; Prüfung übersprungen');
+    Exit;
   SvnAdmin := TPath.Combine(ExtractFilePath(SvnExe), 'svnadmin.exe');
   if not TFile.Exists(SvnAdmin) then
-    Assert.Pass('svnadmin fehlt neben svn; Prüfung übersprungen');
+    Exit;
   Runner := TAtlasVcsProcessRunner.Create(True, nil);
   Folder := NewFolder('svn');
   try
@@ -390,6 +422,83 @@ begin
     Vcs := nil;
     Local := nil;
     RemoveFolder(Folder);
+    RemoveFolder(Remote);
+  end;
+end;
+
+procedure TAtlasVcsIntegrationTests.GitIncomingCommitsOnEditedFiles;
+var
+  GitExe, Remote, Folder, Other: string;
+  Runner: IAtlasVcsRunner;
+  Vcs: IAtlasVersionControl;
+  State: TAtlasWorkState;
+  Found: TAtlasContinueIncoming;
+  NowUtc: TDateTime;
+  Name: string;
+  Names: TArray<string>;
+begin
+  GitExe := TAtlasVcsTools.Find(TAtlasVcsKind.Git);
+  if GitExe = '' then
+    Assert.Pass('git nicht installiert; Prüfung übersprungen');
+  Runner := TAtlasVcsProcessRunner.Create(True, nil);
+  Remote := NewFolder('git-in-remote');
+  Folder := NewFolder('git-in-local');
+  Other := NewFolder('git-in-other');
+  try
+    Exec(Runner, GitExe, ['init', '-q', '--bare', Remote], Remote);
+    Exec(Runner, GitExe, ['init', '-q'], Folder);
+    Exec(Runner, GitExe, ['symbolic-ref', 'HEAD', 'refs/heads/main'], Folder);
+    Exec(Runner, GitExe, ['config', 'user.name', 'Atlas Test'], Folder);
+    Exec(Runner, GitExe, ['config', 'user.email', 'test@example.org'], Folder);
+    Exec(Runner, GitExe, ['config', 'core.autocrlf', 'false'], Folder);
+    Exec(Runner, GitExe, ['config', 'commit.gpgsign', 'false'], Folder);
+    Names := ['Kunde', 'Fremd'];
+    for Name in Names do
+      TFile.WriteAllText(TPath.Combine(Folder, Name + '.pas'), 'unit ' + Name + ';'#10, TEncoding.ASCII);
+    Exec(Runner, GitExe, ['add', '.'], Folder);
+    Exec(Runner, GitExe, ['commit', '-q', '-m', 'Erster Stand'], Folder);
+    Exec(Runner, GitExe, ['remote', 'add', 'origin', Remote], Folder);
+    Exec(Runner, GitExe, ['push', '-q', '-u', 'origin', 'main'], Folder);
+    Vcs := TAtlasVersionControl.Open(Folder, TAtlasVcsProvider.Auto, Runner);
+    // Beim Schließen: Kunde.pas offen, HEAD und origin/main gemerkt.
+    State := TAtlasWorkState.Empty;
+    State.Tabs := [TAtlasWorkTab.Create(TPath.Combine(Folder, 'Kunde.pas'), 1, 1)];
+    Assert.IsTrue(TAtlasWelcomeContinue.ProbeHead(Vcs, State));
+    Assert.AreEqual('git', State.VcsKind);
+    Assert.AreEqual('origin/main', State.Upstream);
+    Assert.AreEqual(40, Length(State.Head));
+    Assert.AreEqual(State.Head, State.UpstreamRevision);
+    // Ein Kollege pusht je einen Commit zu Kunde.pas und zu Fremd.pas.
+    Exec(Runner, GitExe, ['clone', '-q', Remote, Other], Other);
+    Exec(Runner, GitExe, ['config', 'user.name', 'Eva Kollegin'], Other);
+    Exec(Runner, GitExe, ['config', 'user.email', 'eva@example.org'], Other);
+    Exec(Runner, GitExe, ['config', 'core.autocrlf', 'false'], Other);
+    Exec(Runner, GitExe, ['config', 'commit.gpgsign', 'false'], Other);
+    TFile.AppendAllText(TPath.Combine(Other, 'Kunde.pas'), '// Prüfung'#10, TEncoding.UTF8);
+    Exec(Runner, GitExe, ['commit', '-q', '-am', 'Kunde: Prüfung'], Other);
+    TFile.AppendAllText(TPath.Combine(Other, 'Fremd.pas'), '// anders'#10, TEncoding.ASCII);
+    Exec(Runner, GitExe, ['commit', '-q', '-am', 'Fremd geändert'], Other);
+    Exec(Runner, GitExe, ['push', '-q', 'origin', 'main'], Other);
+    NowUtc := TTimeZone.Local.ToUniversalTime(Now);
+    // Ohne fetch: Grundlage ist der lokale Stand der Remote-Branches, dort ist noch nichts Neues.
+    Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, TPath.Combine(Folder, 'Atlas.dproj'), State, NowUtc,
+      Found));
+    Assert.IsTrue(Found.Available);
+    Assert.AreEqual(0, Integer(Length(Found.Commits)));
+    // Mit fetch: nur der Commit zur offenen Datei.
+    Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, Vcs, TPath.Combine(Folder, 'Atlas.dproj'), State, NowUtc,
+      Found));
+    Assert.IsFalse(Found.FetchFailed);
+    Assert.AreEqual('origin/main', Found.Upstream);
+    Assert.AreEqual(1, Integer(Length(Found.Commits)), 'Commit zu einer anderen Datei erscheint nicht');
+    Assert.AreEqual('Kunde: Prüfung', Found.Commits[0].Commit.Summary);
+    Assert.AreEqual('Eva Kollegin', Found.Commits[0].Commit.Author);
+    Assert.AreEqual(TPath.Combine(Folder, 'Kunde.pas'), Found.Commits[0].Files[0]);
+    Assert.AreEqual(7, Length(Found.Commits[0].Commit.ShortHash));
+  finally
+    Vcs := nil;
+    RemoveFolder(Folder);
+    RemoveFolder(Other);
     RemoveFolder(Remote);
   end;
 end;

@@ -121,6 +121,7 @@ type
 implementation
 
 uses
+  System.UITypes,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   System.DateUtils,

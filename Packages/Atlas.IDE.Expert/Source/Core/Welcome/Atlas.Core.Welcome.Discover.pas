@@ -22,6 +22,7 @@ interface
 
 uses
   System.SysUtils,
+  Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.Usage,
   Atlas.Core.Commands.Tips;
 
@@ -81,6 +82,9 @@ type
     /// alles zu.</summary>
     class function IsEnabled(const ATip: TAtlasTip; const ASettingOn, ACommandExists: TFunc<string, Boolean>): Boolean;
       static;
+    /// <summary>Einstellung AName (Registry-Name wie in TAtlasPluginSettings.Save) eingeschaltet: Schalter an;
+    /// bei einer Auswahl wie WelcomePageWhatsNew jeder Wert außer „off“. Unbekannter Name: False.</summary>
+    class function SettingOn(const ASettings: TAtlasPluginSettings; const AName: string): Boolean; static;
     /// <summary>Noch nie benutzt: keine Aufrufe und kein letzter Aufruf.</summary>
     class function NeverUsed(const ATip: TAtlasTip; AUsage: TAtlasCommandUsage): Boolean; static;
     /// <summary>Kennungen der Tipps in der Reihenfolge, in der die Karte sie vorschlägt. AAllowed: Funktion
@@ -109,7 +113,8 @@ implementation
 uses
   System.JSON,
   System.Generics.Collections,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Core.Settings.History;
 
 { TAtlasDiscoverAge }
 
@@ -159,7 +164,6 @@ begin
   Result := Default(TAtlasDiscoverState);
   if Copy(TrimLeft(AJson), 1, 1) <> '{' then
     Exit;
-  Root := nil;
   try
     Root := TJSONObject.ParseJSONValue(AJson);
   except
@@ -243,6 +247,21 @@ begin
   if (ATip.Command <> '') and Assigned(ACommandExists) and not ACommandExists(ATip.Command) then
     Exit(False);
   Result := True;
+end;
+
+class function TAtlasDiscover.SettingOn(const ASettings: TAtlasPluginSettings; const AName: string): Boolean;
+var
+  Store: IAtlasMemorySettingsStore;
+  Value: string;
+begin
+  if Trim(AName) = '' then
+    Exit(False);
+  // Über Save statt eines Falls je Feld: jede Einstellung ist ohne Änderung hier erreichbar.
+  Store := TAtlasMemorySettingsStore.FromSettings(ASettings);
+  if Store.HasInteger(AName) then
+    Exit(Store.ReadInteger(AName, 0) <> 0);
+  Value := Trim(Store.Text(AName));
+  Result := (Value <> '') and not SameText(Value, 'off');
 end;
 
 class function TAtlasDiscover.Order(const ATips: TAtlasTips; AUsage: TAtlasCommandUsage;

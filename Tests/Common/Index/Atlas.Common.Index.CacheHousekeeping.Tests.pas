@@ -30,6 +30,9 @@ type
     function CreateCache(const AName: string): string;
     function CreateFile(const AFileName: string; ASize: Integer): string;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [SetupFixture]
     procedure SetupFixture;
     [Setup]
@@ -216,6 +219,16 @@ begin
     Start;
     WaitFor;
     Free;
+  end;
+end;
+
+procedure TIndexCacheDirectoryTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    DiskFileSystemOverwritesExistingFile;
+  finally
+    TearDown;
   end;
 end;
 

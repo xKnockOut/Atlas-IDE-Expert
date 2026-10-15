@@ -212,7 +212,7 @@ var
   Rows: TAtlasStateRows;
 begin
   Rows := TAtlasWelcomeState.Rows(HealthyRegistry.Items);
-  Assert.AreEqual(5, Length(Rows));
+  Assert.AreEqual(5, Integer(Length(Rows)));
   Assert.AreEqual(Ord(TAtlasStateRowKind.Server), Ord(Rows[0].Kind));
   Assert.AreEqual(Ord(TAtlasStateRowKind.Version), Ord(Rows[1].Kind));
   Assert.AreEqual(Ord(TAtlasStateRowKind.Index), Ord(Rows[2].Kind));
@@ -257,7 +257,7 @@ var
   Row: TAtlasStateRow;
 begin
   Rows := TAtlasWelcomeState.Rows(nil);
-  Assert.AreEqual(5, Length(Rows));
+  Assert.AreEqual(5, Integer(Length(Rows)));
   for Row in Rows do
   begin
     Assert.IsFalse(Row.Present, Row.Id);
@@ -363,7 +363,7 @@ var
 begin
   Registry := HealthyRegistry;
   Buttons := TAtlasWelcomeState.Buttons(TAtlasWelcomeState.Rows(Registry.Items));
-  Assert.AreEqual(3, Length(Buttons));
+  Assert.AreEqual(3, Integer(Length(Buttons)));
   Assert.AreEqual(Ord(TAtlasStateButton.Restart), Ord(Buttons[0]));
   Assert.AreEqual(Ord(TAtlasStateButton.Settings), Ord(Buttons[1]));
   Assert.AreEqual(Ord(TAtlasStateButton.LogFolder), Ord(Buttons[2]));
@@ -371,12 +371,12 @@ begin
   Line(Registry, TAtlasStatusLines.VersionId, 'Version: Atlas 1.0.0, Update 1.0.1 bereit', TAtlasStatusState.Yellow,
     'Update 1.0.1 bereit', 'installiert 1.0.0');
   Buttons := TAtlasWelcomeState.Buttons(TAtlasWelcomeState.Rows(Registry.Items));
-  Assert.AreEqual(4, Length(Buttons));
+  Assert.AreEqual(4, Integer(Length(Buttons)));
   Assert.AreEqual(Ord(TAtlasStateButton.Update), Ord(Buttons[3]));
   // Eine gelbe Zeile anderswo ist kein Update.
   Registry := HealthyRegistry;
   Line(Registry, TAtlasStatusLines.SetupId, 'Einrichtung', TAtlasStatusState.Yellow, '', '');
-  Assert.AreEqual(3, Length(TAtlasWelcomeState.Buttons(TAtlasWelcomeState.Rows(Registry.Items))));
+  Assert.AreEqual(3, Integer(Length(TAtlasWelcomeState.Buttons(TAtlasWelcomeState.Rows(Registry.Items)))));
 end;
 
 procedure TAtlasWelcomeStateTests.SignatureChangesOnlyWithVisibleChange;

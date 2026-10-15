@@ -131,6 +131,9 @@ begin
   Assert.AreEqual($6028, Settings.MethodToggleDownKey, 'Strg+Umschalt+Runter (#775)');
   Assert.AreEqual(0, Settings.TestUnitKey, 'Testunit-Wechsel ohne Kürzel (#189)');
   Assert.IsTrue(Settings.CodeLensTestUnit, 'Code Lens Testunit standardmäßig an (#189)');
+  Assert.IsTrue(Settings.CodeLensMetrics, 'Code Lens Metriken standardmäßig an (#66)');
+  Assert.IsTrue(Settings.TodoList, 'Befehl standardmäßig da (#68)');
+  Assert.IsTrue(Settings.MetricsReport, 'Befehl standardmäßig da (#66)');
   Assert.IsTrue(Settings.SlashCommands, 'Schnellbefehle standardmäßig an (#399)');
   Assert.IsTrue(Settings.Snippets, 'Code-Vorlagen standardmäßig an (#51)');
   Assert.IsTrue(Settings.ImportIdeTemplates, 'Live Templates der IDE standardmäßig an (#51)');
@@ -175,6 +178,11 @@ begin
   Assert.AreEqual(1, Settings.PairGuideWidth, 'Blocklinien 1 px');
   Assert.AreEqual(75, Settings.PairGuideOpacity, 'Blocklinien 75 % Deckkraft');
   Assert.IsTrue(Settings.ProblemsList, 'Liste „Atlas-Probleme“ standardmäßig an');
+  Assert.IsTrue(Settings.Favorites, 'Favoriten anheften standardmäßig an (#458)');
+  Assert.IsTrue(Settings.Notes, 'Notizen standardmäßig an (#545)');
+  Assert.IsTrue(Settings.BookmarksNamed, 'Benannte Lesezeichen standardmäßig an (#622)');
+  Assert.IsFalse(Settings.BookmarksShared, 'Lesezeichen standardmäßig lokal, nicht im Repository (#622)');
+  Assert.AreEqual($C04B, Settings.BookmarkKey, 'Strg+Alt+K (#622)');
 end;
 
 procedure TAtlasPluginSettingsTests.SaveAndLoadRoundTrip;
@@ -190,6 +198,11 @@ begin
   Settings.PanelWidth := 400;
   Settings.PanelCollapsed := True;
   Settings.Learning := False;
+  Settings.Favorites := False;
+  Settings.Notes := False;
+  Settings.BookmarksNamed := False;
+  Settings.BookmarksShared := True;
+  Settings.BookmarkKey := $C04C;
   Settings.Preview := True;
   Settings.OpenForEdits := False;
   Settings.InlayHints := True;
@@ -201,6 +214,9 @@ begin
   Settings.MethodToggleDownKey := $C044; // Strg+Alt+D
   Settings.TestUnitKey := $6054;
   Settings.CodeLensTestUnit := False;
+  Settings.CodeLensMetrics := False;
+  Settings.TodoList := False;
+  Settings.MetricsReport := False;
   Settings.EditorKeysPriority := True;
   Settings.SlashCommands := False;
   Settings.Snippets := False;
@@ -250,6 +266,11 @@ begin
   Assert.AreEqual(400, Loaded.PanelWidth);
   Assert.IsTrue(Loaded.PanelCollapsed);
   Assert.IsFalse(Loaded.Learning);
+  Assert.IsFalse(Loaded.Favorites, 'Favoriten abschaltbar (#458)');
+  Assert.IsFalse(Loaded.Notes, 'Notizen abschaltbar (#545)');
+  Assert.IsFalse(Loaded.BookmarksNamed, 'Benannte Lesezeichen abschaltbar (#622)');
+  Assert.IsTrue(Loaded.BookmarksShared, 'Lesezeichen für das Team (#622)');
+  Assert.AreEqual($C04C, Loaded.BookmarkKey);
   Assert.IsTrue(Loaded.Preview);
   Assert.IsFalse(Loaded.OpenForEdits);
   Assert.IsTrue(Loaded.InlayHints);
@@ -262,6 +283,9 @@ begin
   Assert.AreEqual($C044, Loaded.MethodToggleDownKey);
   Assert.AreEqual($6054, Loaded.TestUnitKey);
   Assert.IsFalse(Loaded.CodeLensTestUnit);
+  Assert.IsFalse(Loaded.CodeLensMetrics);
+  Assert.IsFalse(Loaded.TodoList);
+  Assert.IsFalse(Loaded.MetricsReport);
   Assert.IsTrue(Loaded.EditorKeysPriority);
   Assert.IsFalse(Loaded.SlashCommands);
   Assert.IsFalse(Loaded.Snippets);
@@ -553,12 +577,14 @@ begin
   Store.WriteInteger('SlashCommands', 0);
   Store.WriteInteger('InlayHints', 1);
   Store.WriteInteger('CompileOnSave', 1);
+  Store.WriteInteger('CodeLensMetrics', 0);
   Store.WriteInteger('PairColors', 0);
   Store.WriteString('ServerPath', 'C:\Atlas\AtlasServer.exe');
   Assert.Contains(Routed.Text, '"slashCommands": {');
   Assert.Contains(Routed.Text, '"enabled": false');
   Assert.Contains(Routed.Text, '"parameterNames": true');
   Assert.Contains(Routed.Text, '"onSave": true');
+  Assert.Contains(Routed.Text, '"metrics": false', 'codeLens.metrics in settings.json (#66)');
   // Reine Plugin-Werte bleiben in der Registry.
   Assert.DoesNotContain(Routed.Text, 'PairColors');
   Assert.AreEqual(0, Registry.ReadInteger('PairColors', 1));

@@ -14,6 +14,9 @@ type
   [TestFixture]
   TAtlasKeyMapWindowTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -68,6 +71,16 @@ begin
     TAtlasKeyItem.Create($4044, 'Strg+D', 'Tastaturbelegung des Editors', TAtlasKeyOrigin.Plugin, 'CnWizards_D120',
     TAtlasKeyContext.Editor, TAtlasKeySource.Binding, 'Editor.16452', 101)];
   TAtlasKeyMap.Analyze(Result);
+end;
+
+procedure TAtlasKeyMapWindowTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    PaletteKeyShowsOriginAtlas;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TAtlasKeyMapWindowTests.Setup;
@@ -266,6 +279,7 @@ begin
   Assert.AreEqual('Zwischen Unit und Testunit wechseln',
     TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.TestUnit));
   Assert.AreEqual('Units suchen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.UnitSearch));
+  Assert.AreEqual('Lesezeichen setzen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.Bookmark));
   Assert.AreEqual('Code-Aktionen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.CodeActions));
   Assert.AreEqual('Suchfeld der Willkommensseite',
     TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.WelcomeSearch));
