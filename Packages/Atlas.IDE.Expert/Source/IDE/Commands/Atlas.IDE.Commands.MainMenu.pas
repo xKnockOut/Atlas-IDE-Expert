@@ -13,6 +13,9 @@
 // Meldungsansicht, „Index neu aufbauen“ liest alles ohne Cache neu ein.
 // „Diagnoselog exportieren…“ (#647) packt das anonymisierte Log in eine ZIP.
 // „Symbol umbenennen…“ (#397) ruft OnRename auf.
+// „Einrichtung prüfen…“ (#625) ruft OnSetup auf.
+// „Tastenkürzel-Übersicht…“ (#520) ruft OnKeyMap auf; sichtbar nach
+// keys.overview (UpdateKeyMap).
 // Referenzen, Implementierungen, Symbolsuche und Hierarchien öffnen das
 // Ergebnisfenster (#400).
 // Code-Aktionen, Auswahl erweitern/verkleinern, Typdefinition und
@@ -21,6 +24,9 @@
 // „Atlas-Änderungen“ (#721) gehen an TAtlasIdeUndo.
 // Das Atlas-Symbol (#751) steht am Menü und an den Einträgen für Einstellungen
 // und Optionen; UpdateImage wählt nach einem Themenwechsel die passende Variante.
+// Willkommensseite (#753): „Atlas-Start“ (auch unter Ansicht), „Atlas-Layout
+// anwenden“ und „Atlas-Layout zurücksetzen“ rufen OnWelcome; sichtbar nur bei
+// welcomePage.enabled, Anwenden nur ohne, Zurücksetzen nur mit Atlas-Layout.
 
 interface
 
@@ -35,6 +41,7 @@ uses
 type
 {$SCOPEDENUMS ON}
   TAtlasToggle = (Enabled, HoverTooltip, PairColors, PairGuides, PairOwners, Problems, InactiveDim, InlayHints);
+  TAtlasWelcomeCommand = (Start, Apply, Reset);
 {$SCOPEDENUMS OFF}
 
   TAtlasMainMenu = class
@@ -50,6 +57,14 @@ type
     FShownProgress: string;
     FOnRename: TProc;
     FOnBugReport: TProc;
+    FOnSetup: TProc;
+    FOnKeyMap: TProc;
+    FKeyMapItem: TMenuItem;
+    FOnWelcome: TProc<TAtlasWelcomeCommand>;
+    FWelcome: array[TAtlasWelcomeCommand] of TMenuItem;
+    FWelcomeLine: TMenuItem;
+    FViewStart: TMenuItem;
+    procedure WelcomeClick(Sender: TObject);
     procedure RenameClick(Sender: TObject);
     procedure ResultsClick(Sender: TObject);
     procedure EditorClick(Sender: TObject);
@@ -61,6 +76,8 @@ type
     procedure IndexRebuildClick(Sender: TObject);
     procedure DiagnosticExportClick(Sender: TObject);
     procedure BugReportClick(Sender: TObject);
+    procedure SetupClick(Sender: TObject);
+    procedure KeyMapClick(Sender: TObject);
     procedure RootClick(Sender: TObject);
     procedure ToggleClick(Sender: TObject);
     procedure ProjectClick(Sender: TObject);
@@ -74,6 +91,16 @@ type
     property OnRename: TProc read FOnRename write FOnRename;
     /// <summary>„Fehlerbericht erstellen…“ (#108).</summary>
     property OnBugReport: TProc read FOnBugReport write FOnBugReport;
+    /// <summary>„Einrichtung prüfen…“ (#625).</summary>
+    property OnSetup: TProc read FOnSetup write FOnSetup;
+    /// <summary>„Tastenkürzel-Übersicht…“ (#520).</summary>
+    property OnKeyMap: TProc read FOnKeyMap write FOnKeyMap;
+    /// <summary>Eintrag „Tastenkürzel-Übersicht…“ nach keys.overview ein- oder ausblenden.</summary>
+    procedure UpdateKeyMap;
+    /// <summary>Befehle der Willkommensseite (#753).</summary>
+    property OnWelcome: TProc<TAtlasWelcomeCommand> read FOnWelcome write FOnWelcome;
+    /// <summary>Einträge der Willkommensseite nach den Einstellungen ein- oder ausblenden.</summary>
+    procedure UpdateWelcome;
     /// <summary>Name der Einstellung eines Schalters (Schlüssel im Katalog der Schnellschalter, #604).</summary>
     class function ToggleKey(AToggle: TAtlasToggle): string; static;
     /// <summary>Atlas-Symbol (#751) für das aktive Thema an Menü und Einstellungseinträgen.</summary>
@@ -93,12 +120,16 @@ uses
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Style.Symbol,
+  Atlas.IDE.Settings.Store,
+  Atlas.Core.Settings.Plugin,
   Atlas.Core.Results.Model,
   Atlas.Core.Lsp.Progress;
 
 const
   // Name des Menüs „Tools“ in der IDE; Atlas steht dahinter, sonst am Ende.
   ToolsMenu = 'ToolsMenu';
+  // Menü „Ansicht“ der IDE; dort steht „Atlas-Start“ zusätzlich (#753).
+  ViewsMenu = 'ViewsMenu';
 
 function ToggleText(AToggle: TAtlasToggle): string;
 begin
@@ -200,6 +231,23 @@ begin
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.BugReportMenu);
   Item.OnClick := BugReportClick;
   FRoot.Add(Item);
+  Item := TMenuItem.Create(FRoot);
+  Item.Caption := TAtlasStrings.Text(TAtlasTextId.SetupMenu);
+  Item.OnClick := SetupClick;
+  FRoot.Add(Item);
+  FKeyMapItem := TMenuItem.Create(FRoot);
+  FKeyMapItem.Caption := TAtlasStrings.Text(TAtlasTextId.KeyMapMenu);
+  FKeyMapItem.OnClick := KeyMapClick;
+  FRoot.Add(FKeyMapItem);
+  // Willkommensseite (#753); Tag wählt den Befehl in WelcomeClick.
+  FWelcomeLine := NewLine;
+  FRoot.Add(FWelcomeLine);
+  FWelcome[TAtlasWelcomeCommand.Start] := AddItem(TAtlasTextId.MenuWelcomeStart,
+    Ord(TAtlasWelcomeCommand.Start), WelcomeClick);
+  FWelcome[TAtlasWelcomeCommand.Apply] := AddItem(TAtlasTextId.MenuWelcomeApply,
+    Ord(TAtlasWelcomeCommand.Apply), WelcomeClick);
+  FWelcome[TAtlasWelcomeCommand.Reset] := AddItem(TAtlasTextId.MenuWelcomeReset,
+    Ord(TAtlasWelcomeCommand.Reset), WelcomeClick);
   FRoot.Add(NewLine);
   Item := TMenuItem.Create(FRoot);
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsMenu);
@@ -222,6 +270,19 @@ begin
     if SameText(Services.MainMenu.Items[Index].Name, ToolsMenu) then
       Position := Index + 1;
   Services.MainMenu.Items.Insert(Position, FRoot);
+  for Index := 0 to Services.MainMenu.Items.Count - 1 do
+    if SameText(Services.MainMenu.Items[Index].Name, ViewsMenu) then
+    begin
+      // Gehört dem Atlas-Menü, damit es mit ihm freigegeben wird; Freigeben nimmt es aus „Ansicht“.
+      FViewStart := TMenuItem.Create(FRoot);
+      FViewStart.Caption := TAtlasStrings.Text(TAtlasTextId.MenuWelcomeStart);
+      FViewStart.Tag := Ord(TAtlasWelcomeCommand.Start);
+      FViewStart.OnClick := WelcomeClick;
+      Services.MainMenu.Items[Index].Add(FViewStart);
+      Break;
+    end;
+  UpdateWelcome;
+  UpdateKeyMap;
   UpdateImage;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 500;
@@ -269,6 +330,39 @@ begin
   end;
 end;
 
+procedure TAtlasMainMenu.UpdateWelcome;
+var
+  Settings: TAtlasPluginSettings;
+  AtlasLayout: Boolean;
+begin
+  if FRoot = nil then
+    Exit;
+  Settings := TAtlasIdeSettings.Current;
+  AtlasLayout := SameText(Settings.WelcomePageLayout, 'atlas');
+  FWelcomeLine.Visible := Settings.WelcomePage;
+  FWelcome[TAtlasWelcomeCommand.Start].Visible := Settings.WelcomePage;
+  // Das Layout gilt nur auf der Willkommensseite der IDE, nicht im Fenster „Atlas-Start“.
+  FWelcome[TAtlasWelcomeCommand.Apply].Visible := Settings.WelcomePage and
+    (Settings.WelcomePageHost = 'welcomePage') and not AtlasLayout;
+  FWelcome[TAtlasWelcomeCommand.Reset].Visible := Settings.WelcomePage and AtlasLayout;
+  if FViewStart <> nil then
+    FViewStart.Visible := Settings.WelcomePage;
+end;
+
+procedure TAtlasMainMenu.WelcomeClick(Sender: TObject);
+var
+  Command: TAtlasWelcomeCommand;
+begin
+  if not Assigned(FOnWelcome) then
+    Exit;
+  Command := TAtlasWelcomeCommand(TMenuItem(Sender).Tag);
+  TAtlasGuard.Run(TAtlasFeature.Menu,
+    procedure
+    begin
+      FOnWelcome(Command);
+    end);
+end;
+
 procedure TAtlasMainMenu.RootClick(Sender: TObject);
 var
   Toggle: TAtlasToggle;
@@ -278,6 +372,8 @@ begin
   try
     // Falls der Themenwechsel nicht gemeldet wurde.
     UpdateImage;
+    UpdateWelcome;
+    UpdateKeyMap;
     for Toggle := Low(TAtlasToggle) to High(TAtlasToggle) do
       FToggles[Toggle].Checked := TAtlasIdeQuickToggles.Checked(ToggleKey(Toggle));
     // Anweisungen mitfärben wirkt nur mit der Paarfärbung (#653).
@@ -398,6 +494,32 @@ begin
       begin
         FOnBugReport();
       end);
+end;
+
+procedure TAtlasMainMenu.SetupClick(Sender: TObject);
+begin
+  if Assigned(FOnSetup) then
+    TAtlasGuard.Run(TAtlasFeature.Menu,
+      procedure
+      begin
+        FOnSetup();
+      end);
+end;
+
+procedure TAtlasMainMenu.KeyMapClick(Sender: TObject);
+begin
+  if Assigned(FOnKeyMap) then
+    TAtlasGuard.Run(TAtlasFeature.Menu,
+      procedure
+      begin
+        FOnKeyMap();
+      end);
+end;
+
+procedure TAtlasMainMenu.UpdateKeyMap;
+begin
+  if FKeyMapItem <> nil then
+    FKeyMapItem.Visible := TAtlasIdeSettings.Current.KeyOverview;
 end;
 
 procedure TAtlasMainMenu.RenameClick(Sender: TObject);

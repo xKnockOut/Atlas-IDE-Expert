@@ -9,6 +9,11 @@
 //     zeigte die IDE sonst beide): <Basisschlüssel>\Code Insight\
 //     Borland.EditOptions.Borland.CodeInsight.LSP.Pascal, Help Insight;
 //     Merker IdeHelpInsightDisabled.
+//   - Error Insight auf Knopfdruck aus der Einrichtung (#625), nie von selbst:
+//     <Basisschlüssel>\Code Insight\Borland.EditOptions.Borland.CodeInsight.LSP.
+//     Pascal, Error Insight (Ort wie Help Insight, in der IDE zu bestätigen);
+//     Merker IdeErrorInsightDisabled. ErrorInsightChanged hält fest, dass die
+//     IDE den neuen Wert erst nach dem nächsten Start liest.
 // Es gibt dafür keine Open Tools API: Die Schalter stehen in der Registry und
 // werden von der IDE beim Start gelesen. Die Merker unter
 // HKCU\Software\Atlas\IdePlugin halten fest, was Atlas abgeschaltet hat; nur
@@ -27,6 +32,12 @@ type
     class function ApplyHelpInsight(AOwnTooltip: Boolean): Boolean; static;
     /// <summary>Beides nach den aktuellen Einstellungen; meldet Änderungen im Meldungsfenster.</summary>
     class procedure Sync; static;
+    /// <summary>Error Insight der IDE an (#625)? Ohne Wert gilt die Vorgabe der IDE: an.</summary>
+    class function ErrorInsight: Boolean; static;
+    /// <summary>Error Insight schalten (#625); True, wenn geschrieben. Wirkt nach dem nächsten Start der IDE.</summary>
+    class function SetErrorInsight(AEnabled: Boolean): Boolean; static;
+    /// <summary>In dieser Sitzung umgeschaltet: Die IDE zeigt noch den alten Stand.</summary>
+    class function ErrorInsightChanged: Boolean; static;
   end;
 
 implementation
@@ -47,6 +58,12 @@ const
   StructureMarker = 'IdeStructureDisabled';
   HelpInsightKey = '\Code Insight\Borland.EditOptions.Borland.CodeInsight.LSP.Pascal';
   HelpInsightMarker = 'IdeHelpInsightDisabled';
+  ErrorInsightValue = 'Error Insight';
+  ErrorInsightMarker = 'IdeErrorInsightDisabled';
+
+var
+  // Wert von Error Insight beim ersten Lesen in dieser Sitzung; so liest ihn die IDE bis zum Neustart.
+  ErrorInsightAtStart: Integer = -1;
 
 class function TAtlasIdeStructureSwitch.ApplySwitch(const ASubKey, AValueName, AMarker: string;
   AOwn: Boolean): Boolean;
@@ -109,6 +126,80 @@ end;
 class function TAtlasIdeStructureSwitch.ApplyHelpInsight(AOwnTooltip: Boolean): Boolean;
 begin
   Result := ApplySwitch(HelpInsightKey, 'Help Insight', HelpInsightMarker, AOwnTooltip);
+end;
+
+function BaseKey: string;
+var
+  Services: IOTAServices;
+begin
+  Result := '';
+  if Supports(BorlandIDEServices, IOTAServices, Services) then
+    Result := Services.GetBaseRegistryKey;
+end;
+
+function ReadErrorInsight: Boolean;
+var
+  Registry: TRegistry;
+begin
+  // Ohne Wert gilt die Vorgabe der IDE: eingeschaltet.
+  Result := True;
+  if BaseKey = '' then
+    Exit;
+  Registry := TRegistry.Create(KEY_READ);
+  try
+    Registry.RootKey := HKEY_CURRENT_USER;
+    if Registry.OpenKeyReadOnly(BaseKey + HelpInsightKey) and Registry.ValueExists(ErrorInsightValue) then
+      Result := not SameText(Registry.ReadString(ErrorInsightValue), 'False');
+  finally
+    Registry.Free;
+  end;
+end;
+
+class function TAtlasIdeStructureSwitch.ErrorInsight: Boolean;
+begin
+  Result := ReadErrorInsight;
+  if ErrorInsightAtStart < 0 then
+    ErrorInsightAtStart := Ord(Result);
+end;
+
+class function TAtlasIdeStructureSwitch.ErrorInsightChanged: Boolean;
+begin
+  Result := (ErrorInsightAtStart >= 0) and (Ord(ReadErrorInsight) <> ErrorInsightAtStart);
+end;
+
+class function TAtlasIdeStructureSwitch.SetErrorInsight(AEnabled: Boolean): Boolean;
+var
+  Registry: TRegistry;
+begin
+  Result := False;
+  if BaseKey = '' then
+    Exit;
+  // Stand vor der Änderung merken, falls noch nicht gelesen.
+  ErrorInsight;
+  Registry := TRegistry.Create(KEY_READ or KEY_WRITE);
+  try
+    Registry.RootKey := HKEY_CURRENT_USER;
+    try
+      if Registry.OpenKey(BaseKey + HelpInsightKey, True) then
+      begin
+        if AEnabled then
+          Registry.WriteString(ErrorInsightValue, 'True')
+        else
+          Registry.WriteString(ErrorInsightValue, 'False');
+        Result := True;
+      end;
+      Registry.CloseKey;
+      if Result and Registry.OpenKey(AtlasRegistryKey, True) then
+        Registry.WriteInteger(ErrorInsightMarker, Ord(not AEnabled));
+      Registry.CloseKey;
+    except
+      // Ohne Schreibrecht bleibt die IDE, wie sie ist.
+      on ERegistryException do
+        Result := False;
+    end;
+  finally
+    Registry.Free;
+  end;
 end;
 
 class procedure TAtlasIdeStructureSwitch.Sync;

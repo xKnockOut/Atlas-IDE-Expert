@@ -317,6 +317,8 @@ type
     LogLevel: string;
     LogFile: string;
     TraceFile: string;
+    /// <summary>Versionsverwaltung (vcs.provider, #571): "auto", "git", "svn" oder "off".</summary>
+    VcsProvider: string;
     /// <summary>True, wenn AFileName unter ein Muster aus IndexExclude fällt.</summary>
     function IsIndexExcluded(const AFileName: string): Boolean;
     /// <summary>Vorgaben, wenn keine Konfigurationsdatei existiert.</summary>
@@ -640,6 +642,7 @@ begin
   Result.LogLevel := 'info';
   Result.LogFile := '';
   Result.TraceFile := '';
+  Result.VcsProvider := 'auto';
 end;
 
 function TServerSettings.IsRuleEnabledExplicitly(const ARuleId: string): Boolean;

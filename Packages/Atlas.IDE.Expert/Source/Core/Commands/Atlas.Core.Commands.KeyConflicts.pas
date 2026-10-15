@@ -8,9 +8,13 @@
 // - Erweiterungen mit eigener Vervollständigung an ihren Packages erkennen;
 //   Atlas weist nur darauf hin und schaltet fremde Erweiterungen nie ab.
 // - Seite „Tastenkonflikte“: je Atlas-Taste (Befehlspalette, Syntaxprüfung,
-//   Vervollständigung, Parameter-Hint, Schnellschalter #604) Taste, fremde Belegung und die Wahl
+//   Vervollständigung, Parameter-Hint, Schnellschalter #604, Diagnosemodus #479) Taste, fremde Belegung und die Wahl
 //   „Atlas verwenden“, „anderer Belegung überlassen“ oder „andere Taste für
 //   Atlas“ (TAtlasKeyEntry).
+// - Alle Atlas-Tasten für die Tastenkürzel-Übersicht (#520) und die Einrichtung
+//   (#625): AllFromSettings ergänzt die Seite „Tastenkonflikte“ um die Tasten
+//   der Editorbefehle (#399), des Änderungsprotokolls (#721) und des Suchfelds
+//   der Willkommensseite (#760).
 // Kürzel sind TShortCut-Werte (Word) wie in Vcl.Menus.
 
 interface
@@ -21,7 +25,11 @@ uses
 
 type
   {$SCOPEDENUMS ON}
-  TAtlasKeyFunction = (Palette, Check, Completion, Signature, QuickToggle);
+  /// <summary>Die ersten sechs stehen auf der Seite „Tastenkonflikte“ (FromSettings); die übrigen nur in der
+  /// Übersicht (#520, AllFromSettings): Editorbefehle mit gemeinsamem Vorrang EditorKeysPriority und das Suchfeld
+  /// der Willkommensseite.</summary>
+  TAtlasKeyFunction = (Palette, Check, Completion, Signature, QuickToggle, DiagnosticMode, CodeActions,
+    ExpandSelection, ShrinkSelection, GoToImplementation, TypeDefinition, UndoChange, RedoChange, WelcomeSearch);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -38,6 +46,10 @@ type
     class function Create(AFunc: TAtlasKeyFunction; AKey: Word; APriority: Boolean): TAtlasKeyEntry; static;
     /// <summary>Alle Atlas-Tasten aus den Einstellungen, in fester Reihenfolge.</summary>
     class function FromSettings(const ASettings: TAtlasPluginSettings): TArray<TAtlasKeyEntry>; static;
+    /// <summary>Jede Taste von Atlas (#520): FromSettings, dann die Editorbefehle (Vorrang aus
+    /// EditorKeysPriority) und das Suchfeld der Willkommensseite (immer mit Vorrang: es nimmt die Taste nur dort,
+    /// solange die Seite aktiv ist).</summary>
+    class function AllFromSettings(const ASettings: TAtlasPluginSettings): TArray<TAtlasKeyEntry>; static;
     /// <summary>Tasten und Vorrang zurück in die Einstellungen.</summary>
     class procedure ToSettings(const AEntries: TArray<TAtlasKeyEntry>; var ASettings: TAtlasPluginSettings); static;
     /// <summary>Taste der IDE, über die Code Insight Atlas aufruft (Strg+Leer, Strg+Umschalt+Leer); sonst 0.</summary>
@@ -66,6 +78,8 @@ type
     IdeCompletionKey = scCtrl or $20; // Strg+Leer
     IdeSignatureKey = scCtrl or scShift or $20; // Strg+Umschalt+Leer
     QuickToggleDefault = scCtrl or scShift or scAlt or Ord('A');
+    /// <summary>Diagnosemodus (#479): Strg+Alt+Umschalt+A gehört schon den Schnellschaltern (#604).</summary>
+    DiagnosticModeDefault = scCtrl or scShift or scAlt or Ord('D');
   public
     /// <summary>Editor-Belegungen der Standard-Tastaturbelegung, die keine Aktionen sind.</summary>
     class function KnownIdeKeys: TArray<TAtlasKeyOwner>; static;
@@ -94,7 +108,23 @@ begin
     Create(TAtlasKeyFunction.Check, Word(ASettings.CheckKey), ASettings.CheckKeyPriority),
     Create(TAtlasKeyFunction.Completion, Word(ASettings.CompletionKey), ASettings.CompletionKeyPriority),
     Create(TAtlasKeyFunction.Signature, Word(ASettings.SignatureKey), ASettings.SignatureKeyPriority),
-    Create(TAtlasKeyFunction.QuickToggle, Word(ASettings.QuickToggleKey), ASettings.QuickToggleKeyPriority)];
+    Create(TAtlasKeyFunction.QuickToggle, Word(ASettings.QuickToggleKey), ASettings.QuickToggleKeyPriority),
+    Create(TAtlasKeyFunction.DiagnosticMode, Word(ASettings.DiagnosticModeKey), ASettings.DiagnosticModeKeyPriority)];
+end;
+
+class function TAtlasKeyEntry.AllFromSettings(const ASettings: TAtlasPluginSettings): TArray<TAtlasKeyEntry>;
+var
+  Shared: Boolean;
+begin
+  Shared := ASettings.EditorKeysPriority;
+  Result := FromSettings(ASettings) + [Create(TAtlasKeyFunction.CodeActions, Word(ASettings.ActionsKey), Shared),
+    Create(TAtlasKeyFunction.ExpandSelection, Word(ASettings.ExpandKey), Shared),
+    Create(TAtlasKeyFunction.ShrinkSelection, Word(ASettings.ShrinkKey), Shared),
+    Create(TAtlasKeyFunction.GoToImplementation, Word(ASettings.ImplementationKey), Shared),
+    Create(TAtlasKeyFunction.TypeDefinition, Word(ASettings.TypeDefinitionKey), Shared),
+    Create(TAtlasKeyFunction.UndoChange, Word(ASettings.UndoKey), Shared),
+    Create(TAtlasKeyFunction.RedoChange, Word(ASettings.RedoKey), Shared),
+    Create(TAtlasKeyFunction.WelcomeSearch, Word(ASettings.WelcomePageSearchKey), True)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -129,6 +159,31 @@ begin
           ASettings.QuickToggleKey := Entry.Key;
           ASettings.QuickToggleKeyPriority := Entry.Priority;
         end;
+      TAtlasKeyFunction.DiagnosticMode:
+        begin
+          ASettings.DiagnosticModeKey := Entry.Key;
+          ASettings.DiagnosticModeKeyPriority := Entry.Priority;
+        end;
+      // Editorbefehle (#399, #721): eine gemeinsame Wahl für alle.
+      TAtlasKeyFunction.CodeActions:
+        begin
+          ASettings.ActionsKey := Entry.Key;
+          ASettings.EditorKeysPriority := Entry.Priority;
+        end;
+      TAtlasKeyFunction.ExpandSelection:
+        ASettings.ExpandKey := Entry.Key;
+      TAtlasKeyFunction.ShrinkSelection:
+        ASettings.ShrinkKey := Entry.Key;
+      TAtlasKeyFunction.GoToImplementation:
+        ASettings.ImplementationKey := Entry.Key;
+      TAtlasKeyFunction.TypeDefinition:
+        ASettings.TypeDefinitionKey := Entry.Key;
+      TAtlasKeyFunction.UndoChange:
+        ASettings.UndoKey := Entry.Key;
+      TAtlasKeyFunction.RedoChange:
+        ASettings.RedoKey := Entry.Key;
+      TAtlasKeyFunction.WelcomeSearch:
+        ASettings.WelcomePageSearchKey := Entry.Key;
     end;
 end;
 

@@ -28,6 +28,8 @@
 // Filtern und Blättern nicht springt.
 // Mengenmodus (#448): Kontrollkästchen vor dem Badge, Überschrift „TAnchors ·
 // Menge von TAnchorKind“, Fußzeile mit Leertaste und „n gewählt“.
+// Diagnosemodus (#479): Ist die Messung an, meldet Paint seine Dauer an
+// TAtlasQueryTimings (Schritt „Zeichnen“); aus kein Zeitstempel.
 
 interface
 
@@ -234,6 +236,7 @@ uses
   System.Math,
   Atlas.Core.Style.Palette,
   Atlas.Core.Completion.Sets,
+  Atlas.Core.Diagnostics.Timing,
   Atlas.UI.Popup.Accessibility;
 
 const
@@ -1106,7 +1109,16 @@ end;
 procedure TAtlasCompletionPopup.Paint;
 var
   Row: Integer;
+  Timings: TAtlasQueryTimings;
+  Stamp: Int64;
 begin
+  Timings := nil;
+  Stamp := 0;
+  if TAtlasQueryTimings.Enabled then
+  begin
+    Timings := TAtlasQueryTimings.Shared;
+    Stamp := TAtlasQueryTimings.Stamp;
+  end;
   Canvas.Font := Font;
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Colors.Surface);
@@ -1140,6 +1152,8 @@ begin
     PaintPanel;
   DrawGrip;
   PaintBorder;
+  if Timings <> nil then
+    Timings.Drawn(TAtlasQueryTimings.MsSince(Stamp));
 end;
 
 procedure TAtlasCompletionPopup.PaintPanel;

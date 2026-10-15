@@ -32,6 +32,8 @@ type
     [Test]
     procedure MethodToggleRoundTrip;
     [Test]
+    procedure WelcomeSettingsRoundTrip;
+    [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
     procedure ServerPageRunsActions;
@@ -108,9 +110,10 @@ begin
     Page := TAtlasSettingsPage.Create(Host);
     Page.Parent := Host;
     Page.HandleNeeded;
-    Assert.AreEqual(11, Page.Pages.PageCount);
+    Assert.AreEqual(12, Page.Pages.PageCount);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabGeneral), Page.Pages.Pages[0].Caption);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUndo), Page.Pages.Pages[10].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabWelcome), Page.Pages.Pages[11].Caption);
     for Index := 0 to Page.Pages.PageCount - 1 do
     begin
       Sheet := Page.Pages.Pages[Index];
@@ -279,7 +282,7 @@ var
   Page: TAtlasSettingsPage;
   Settings, Saved: TAtlasPluginSettings;
 begin
-  // #591: Feld an/aus, Kurztext, ausgeblendete Zeilen.
+  // #591: Feld an/aus, Kurztext, ausgeblendete Zeilen; #479: Diagnosemodus, #625: Prüfliste auf derselben Seite.
   Settings := TAtlasPluginSettings.Defaults;
   Settings.StatusField := False;
   Settings.StatusFieldSummary := False;
@@ -294,6 +297,10 @@ begin
     Assert.AreEqual(1, Page.StatusToggles.Choice, 'nur Rechtsklick');
     Assert.AreEqual(2, Page.IndexProgress.Choice, 'Fortschritt aus');
     Assert.AreEqual('atlas.file', Page.StatusHidden.Text);
+    Assert.IsFalse(Page.DiagnosticMode.Checked, 'Diagnosemodus standardmäßig aus');
+    Assert.IsTrue(Page.SetupChecklist.Checked, 'Prüfliste beim Start standardmäßig an (#625)');
+    Page.DiagnosticMode.Checked := True;
+    Page.SetupChecklist.Checked := False;
     Page.StatusField.Checked := True;
     Page.StatusToggles.Choice := 2;
     Page.IndexProgress.Choice := 1;
@@ -301,6 +308,8 @@ begin
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsTrue(Saved.StatusField);
+    Assert.IsTrue(Saved.DiagnosticMode);
+    Assert.IsFalse(Saved.SetupChecklist);
     Assert.IsFalse(Saved.StatusFieldSummary);
     Assert.AreEqual('doubleClick', Saved.StatusFieldToggles);
     Assert.AreEqual('menu', Saved.IndexProgressPlace);
@@ -339,6 +348,89 @@ begin
     Assert.AreEqual(20000, Saved.SafeStartupTimeoutMs);
     // Begrenzt auf die Höchstzahl.
     Assert.AreEqual(TAtlasPluginSettings.MaxSafeSettingsHistory, Saved.SafeKeepSettingsHistory);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.WelcomeSettingsRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  // #753: Ein/Aus, Ort (Willkommensseite oder Fenster „Atlas-Start“), Atlas-Layout, Kopf und Grußzeile;
+  // #760: Suchfeld, Gruppe „Symbole“ und Taste; #756: Karte „Neu in Atlas“; #592: Bereich „Projekte“;
+  // #762: Bereich „Nicht gesichert“; #754: Zustandskachel „Atlas“.
+  Settings := TAtlasPluginSettings.Defaults;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.IsTrue(Page.WelcomeEnabled.Checked);
+    Assert.AreEqual(0, Page.WelcomeHost.Choice);
+    Assert.IsFalse(Page.WelcomeLayout.Checked);
+    Assert.IsTrue(Page.WelcomeHeader.Checked);
+    Assert.IsTrue(Page.WelcomeGreeting.Checked);
+    Assert.IsTrue(Page.WelcomeSearch.Checked);
+    Assert.IsTrue(Page.WelcomeSearchSymbols.Checked);
+    Assert.AreEqual(ShortCutToText($4045), Page.WelcomeSearchKey.Text);
+    Assert.AreEqual(1, Page.WelcomeWhatsNew.Choice, 'afterUpdate');
+    Assert.IsTrue(Page.WelcomeProjects.Checked);
+    Assert.AreEqual('8', Page.WelcomeMaxProjects.Text);
+    Assert.IsTrue(Page.WelcomeRefreshVcs.Checked);
+    Assert.IsTrue(Page.WelcomeUnsaved.Checked);
+    Assert.AreEqual('0', Page.WelcomeUnsavedMinAge.Text);
+    Assert.AreEqual('24', Page.WelcomeUnsavedWarn.Text);
+    Assert.AreEqual('72', Page.WelcomeUnsavedAlert.Text);
+    Assert.IsFalse(Page.WelcomeUnsavedHideClean.Checked);
+    Assert.IsTrue(Page.WelcomeStatusTile.Checked);
+    Assert.IsFalse(Page.WelcomeStatusTileOnlyProblems.Checked);
+    Page.WelcomeEnabled.Checked := False;
+    Page.WelcomeHost.Choice := 1;
+    Page.WelcomeLayout.Checked := True;
+    Page.WelcomeHeader.Checked := False;
+    Page.WelcomeGreeting.Checked := False;
+    Page.WelcomeSearch.Checked := False;
+    Page.WelcomeSearchSymbols.Checked := False;
+    Page.WelcomeSearchKey.Text := ShortCutToText($6046);
+    Page.WelcomeWhatsNew.Choice := 2;
+    Page.WelcomeProjects.Checked := False;
+    Page.WelcomeMaxProjects.Text := '99';
+    Page.WelcomeRefreshVcs.Checked := False;
+    Page.WelcomeUnsaved.Checked := False;
+    Page.WelcomeUnsavedMinAge.Text := '2';
+    Page.WelcomeUnsavedWarn.Text := '48';
+    Page.WelcomeUnsavedAlert.Text := '12';
+    Page.WelcomeUnsavedHideClean.Checked := True;
+    Page.WelcomeStatusTile.Checked := False;
+    Page.WelcomeStatusTileOnlyProblems.Checked := True;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.WelcomePage);
+    Assert.AreEqual('dockWindow', Saved.WelcomePageHost);
+    Assert.AreEqual('atlas', Saved.WelcomePageLayout);
+    Assert.IsFalse(Saved.WelcomePageHeader);
+    Assert.IsFalse(Saved.WelcomePageGreeting);
+    Assert.IsFalse(Saved.WelcomePageSearch);
+    Assert.IsFalse(Saved.WelcomePageSearchSymbols);
+    Assert.AreEqual($6046, Saved.WelcomePageSearchKey);
+    Assert.AreEqual('always', Saved.WelcomePageWhatsNew);
+    Assert.IsFalse(Saved.WelcomePageProjectStatus);
+    Assert.AreEqual(30, Saved.WelcomePageMaxProjects, 'auf 1–30 begrenzt');
+    Assert.IsFalse(Saved.WelcomePageRefreshVcs);
+    Assert.IsFalse(Saved.WelcomePageUnsaved);
+    Assert.AreEqual(2, Saved.WelcomePageUnsavedMinAgeHours);
+    Assert.AreEqual(48, Saved.WelcomePageUnsavedWarnHours);
+    Assert.AreEqual(48, Saved.WelcomePageUnsavedAlertHours, 'rot nie vor gelb');
+    Assert.IsTrue(Saved.WelcomePageUnsavedHideWhenClean);
+    Assert.IsFalse(Saved.WelcomePageStatusTile);
+    Assert.IsTrue(Saved.WelcomePageStatusTileOnlyProblems);
+    Page.LoadFrom(Saved);
+    Assert.AreEqual(1, Page.WelcomeHost.Choice);
+    Assert.IsTrue(Page.WelcomeLayout.Checked);
+    Assert.AreEqual(2, Page.WelcomeWhatsNew.Choice);
+    Page.WelcomeWhatsNew.Choice := 0;
+    Page.SaveTo(Saved);
+    Assert.AreEqual('off', Saved.WelcomePageWhatsNew);
   finally
     Page.Free;
   end;

@@ -75,6 +75,7 @@ type
     procedure ReadHighlight(ANode: TJsonNode);
     procedure ReadRefactoring(ANode: TJsonNode);
     procedure ReadCompiler(ANode: TJsonNode);
+    procedure ReadVcs(ANode: TJsonNode);
     procedure ReadCompletion(ANode: TJsonNode);
     procedure ReadDiagnostics(ANode: TJsonNode);
     procedure ReadIndex(ANode: TJsonNode);
@@ -908,6 +909,33 @@ begin
   end;
 end;
 
+procedure TValidator.ReadVcs(ANode: TJsonNode);
+var
+  Index: Integer;
+  Key, Text: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"vcs" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if Key = 'provider' then
+    begin
+      if ExpectString(ANode[Index], Key, Text) then
+        if MatchStr(Text, ['auto', 'git', 'svn', 'off']) then
+          FSettings.VcsProvider := Text
+        else
+          ReportNode(ANode[Index], 'Erlaubt sind "auto", "git", "svn" und "off"');
+    end
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "vcs.%s"', [Key]), False);
+  end;
+end;
+
 procedure TValidator.ReadCompletion(ANode: TJsonNode);
 var
   Index: Integer;
@@ -1249,6 +1277,8 @@ begin
         ReadHighlight(Value)
       else if Key = 'compiler' then
         ReadCompiler(Value)
+      else if Key = 'vcs' then
+        ReadVcs(Value)
       else if Key = 'completion' then
         ReadCompletion(Value)
       else if Key = 'refactoring' then
@@ -1579,6 +1609,8 @@ begin
       Result.Highlight := FileSettings.Highlight
     else if Key = 'compiler' then
       Result.Compiler := FileSettings.Compiler
+    else if Key = 'vcs' then
+      Result.VcsProvider := FileSettings.VcsProvider
     else if Key = 'completion' then
       Result.Completion := FileSettings.Completion
     else if Key = 'refactoring' then

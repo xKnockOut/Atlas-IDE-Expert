@@ -7,7 +7,8 @@ name: Release
 #    sofern DELPHI_RUNNER = 'true'; signiert ihn, wenn SIGN_CERT_BASE64 und
 #    SIGN_CERT_PASSWORD gesetzt sind.
 #    Baut außerdem Plugin (Win32 und Win64) und Installer (#495) und packt sie
-#    mit dem Server in atlas-ide-expert-<Version>.zip.
+#    mit dem Server, whatsnew.json und den Beispielen (#756) in
+#    atlas-ide-expert-<Version>.zip.
 # 3. Packt das Claude-Code-Plugin mit der EXE.
 # 4. Legt ein GitHub Release mit EXE, ZIP, Plugin, der Versionsdatei
 #    atlas-version.json (Update-Prüfung des Plugins, #495) und dem Abschnitt aus
@@ -110,6 +111,9 @@ jobs:
           Remove-Item $dist -Recurse -Force -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Force "$dist\Win32", "$dist\Win64" | Out-Null
           Copy-Item 'Output\Win64\Release\Bin\AtlasServer.exe', 'Output\Win32\Release\Bin\AtlasSetup.exe', 'LICENSE', 'THIRD-PARTY-NOTICES.md' $dist
+          # Karte „Neu in Atlas“ (#756): whatsnew.json aus den markierten Einträgen des Changelogs, dazu die Beispiele.
+          ./Tools/Update-WhatsNew.ps1 -OutFile "$dist\whatsnew.json"
+          Copy-Item 'Setup\Beispiele' "$dist\Beispiele" -Recurse
           Copy-Item 'Output\Win32\Release\Bpl\Atlas.IDE.Expert*.bpl' "$dist\Win32"
           Copy-Item 'Output\Win64\Release\Bpl\Atlas.IDE.Expert*.bpl' "$dist\Win64"
           if (-not (Get-ChildItem "$dist\Win32\*.bpl")) { throw 'Win32-BPL fehlt' }

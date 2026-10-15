@@ -28,6 +28,9 @@ jobs:
       - name: Konfigurationsdoku aktuell
         shell: pwsh
         run: ./Tools/Update-ConfigDoc.ps1 -Check
+      - name: Markierungen für „Neu in Atlas“ lesbar (#756)
+        shell: pwsh
+        run: ./Tools/Update-WhatsNew.ps1 -Unreleased 0.0.0 -OutFile "$env:RUNNER_TEMP/whatsnew.json"
       - name: Benchmark-Hilfsfunktionen testen
         run: node --test Tools/Benchmark/lib.test.mjs
       - name: Versionen von Server und Claude-Code-Plugin gleich

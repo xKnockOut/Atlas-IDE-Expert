@@ -245,6 +245,9 @@ begin
     '"Enabled":{"type":"boolean","x-feature":"Completion",' +
       '"default":true,"x-page":"Allgemein","x-quickToggle":true,' +
       '"x-caption":"Atlas-Code-Insight","x-captionEn":"Atlas Code Insight","x-issue":"#407"},' +
+    '"DiagnosticMode":{"type":"boolean",' +
+      '"default":false,"x-page":"Allgemein","x-quickToggle":true,' +
+      '"x-caption":"Diagnosemodus","x-captionEn":"Diagnostic mode","x-issue":"#479"},' +
     '"PairColors":{"type":"boolean","x-feature":"Pairs",' +
       '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
       '"x-caption":"Klammerfarben","x-captionEn":"Bracket colors","x-issue":"#514"},' +
@@ -282,6 +285,9 @@ begin
     '"CheckOnSave":{"type":"boolean","x-feature":"CheckOnSave",' +
       '"default":false,"x-page":"Compiler","x-quickToggle":true,' +
       '"x-caption":"Syntaxprüfung nach dem Speichern","x-captionEn":"Syntax check after saving","x-issue":"#548"},' +
+    '"WelcomePage":{"type":"boolean","x-feature":"WelcomePage",' +
+      '"default":true,"x-page":"Willkommensseite","x-quickToggle":true,' +
+      '"x-caption":"Atlas auf der Willkommensseite","x-captionEn":"Atlas on the welcome page","x-issue":"#753"},' +
     '"StatusFieldSummary":{"type":"boolean","default":true,"x-page":"Allgemein",' +
       '"x-caption":"Kurztext im Statusfeld","x-captionEn":"Summary in the status field","x-issue":"#591"}' +
     '}}';

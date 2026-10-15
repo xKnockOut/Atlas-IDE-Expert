@@ -119,6 +119,8 @@ type
     FProblems: TCheckBox;
     FProblemsList: TCheckBox;
     FStatusField: TCheckBox;
+    FDiagnosticMode: TCheckBox;
+    FSetupChecklist: TCheckBox;
     FStatusSummary: TCheckBox;
     FStatusToggles: TAtlasChoiceBox;
     FIndexProgress: TAtlasChoiceBox;
@@ -183,6 +185,25 @@ type
     FUnitSearchActions: TCheckBox;
     FUnitSearchAddUses: TCheckBox;
     FUnitSearchKey: TEdit;
+    FWelcomeEnabled: TCheckBox;
+    FWelcomeHost: TAtlasChoiceBox;
+    FWelcomeLayout: TCheckBox;
+    FWelcomeHeader: TCheckBox;
+    FWelcomeGreeting: TCheckBox;
+    FWelcomeSearch: TCheckBox;
+    FWelcomeSearchSymbols: TCheckBox;
+    FWelcomeSearchKey: TEdit;
+    FWelcomeWhatsNew: TAtlasChoiceBox;
+    FWelcomeProjects: TCheckBox;
+    FWelcomeMaxProjects: TEdit;
+    FWelcomeRefreshVcs: TCheckBox;
+    FWelcomeUnsaved: TCheckBox;
+    FWelcomeUnsavedMinAge: TEdit;
+    FWelcomeUnsavedWarn: TEdit;
+    FWelcomeUnsavedAlert: TEdit;
+    FWelcomeUnsavedHideClean: TCheckBox;
+    FWelcomeStatusTile: TCheckBox;
+    FWelcomeStatusTileOnlyProblems: TCheckBox;
     FVersion: TLabel;
     FResetHistory: TButton;
     FResetWidths: TButton;
@@ -215,6 +236,7 @@ type
     procedure AddSafeSection;
     procedure AddUndoSection;
     procedure AddUnitSearchSection;
+    procedure AddWelcomeSection;
     procedure AddUpdatesSection;
     procedure AddBugReportSection;
     procedure IndexRefreshClick(Sender: TObject);
@@ -252,6 +274,8 @@ type
     property IndexClear: TButton read FIndexClear;
     /// <summary>Zum Testen: Einstellungen des Statusfelds (#591).</summary>
     property StatusField: TCheckBox read FStatusField;
+    property DiagnosticMode: TCheckBox read FDiagnosticMode;
+    property SetupChecklist: TCheckBox read FSetupChecklist;
     property StatusSummary: TCheckBox read FStatusSummary;
     property StatusToggles: TAtlasChoiceBox read FStatusToggles;
     property IndexProgress: TAtlasChoiceBox read FIndexProgress;
@@ -277,6 +301,26 @@ type
     property RedoKey: TEdit read FRedoKey;
     property UpdatesCheck: TCheckBox read FUpdatesCheck;
     property BugReportAnonymize: TCheckBox read FBugReportAnonymize;
+    /// <summary>Zum Testen: Willkommensseite (#753).</summary>
+    property WelcomeEnabled: TCheckBox read FWelcomeEnabled;
+    property WelcomeHost: TAtlasChoiceBox read FWelcomeHost;
+    property WelcomeLayout: TCheckBox read FWelcomeLayout;
+    property WelcomeHeader: TCheckBox read FWelcomeHeader;
+    property WelcomeGreeting: TCheckBox read FWelcomeGreeting;
+    property WelcomeSearch: TCheckBox read FWelcomeSearch;
+    property WelcomeSearchSymbols: TCheckBox read FWelcomeSearchSymbols;
+    property WelcomeSearchKey: TEdit read FWelcomeSearchKey;
+    property WelcomeWhatsNew: TAtlasChoiceBox read FWelcomeWhatsNew;
+    property WelcomeProjects: TCheckBox read FWelcomeProjects;
+    property WelcomeMaxProjects: TEdit read FWelcomeMaxProjects;
+    property WelcomeRefreshVcs: TCheckBox read FWelcomeRefreshVcs;
+    property WelcomeUnsaved: TCheckBox read FWelcomeUnsaved;
+    property WelcomeUnsavedMinAge: TEdit read FWelcomeUnsavedMinAge;
+    property WelcomeUnsavedWarn: TEdit read FWelcomeUnsavedWarn;
+    property WelcomeUnsavedAlert: TEdit read FWelcomeUnsavedAlert;
+    property WelcomeUnsavedHideClean: TCheckBox read FWelcomeUnsavedHideClean;
+    property WelcomeStatusTile: TCheckBox read FWelcomeStatusTile;
+    property WelcomeStatusTileOnlyProblems: TCheckBox read FWelcomeStatusTileOnlyProblems;
     property VersionLabel: TLabel read FVersion;
     /// <summary>Kennzahlen als Text; nil = nicht verfügbar.</summary>
     property OnIndexMetrics: TFunc<string> read FOnIndexMetrics write FOnIndexMetrics;
@@ -309,7 +353,8 @@ uses
   System.Math,
   Atlas.Core.Product.Version,
   Atlas.Core.Updates.Check,
-  Atlas.Core.Undo.Contract;
+  Atlas.Core.Undo.Contract,
+  Atlas.Core.Welcome.WhatsNew;
 
 { TAtlasChoiceBox }
 
@@ -486,6 +531,10 @@ begin
   FStatusHidden := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStatusHidden));
   FStatusHidden.NumbersOnly := False;
   FStatusHidden.Width := 180;
+  // Diagnosemodus (#479); Taste auf der Seite „Tastenkonflikte“.
+  FDiagnosticMode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticMode));
+  // Prüfliste der Einrichtung beim Start (#625); aus: nur auf Abruf.
+  FSetupChecklist := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSetupChecklist));
 
   // Liste der Vervollständigung.
   AddSheet(TAtlasTextId.SettingsTabCompletion);
@@ -640,6 +689,43 @@ begin
 
   AddSheet(TAtlasTextId.SettingsTabUnitSearch);
   AddUnitSearchSection;
+
+  AddSheet(TAtlasTextId.SettingsTabWelcome);
+  AddWelcomeSection;
+end;
+
+procedure TAtlasSettingsPage.AddWelcomeSection;
+begin
+  // Atlas-Bereiche auf der Willkommensseite (#753).
+  FWelcomeEnabled := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeEnabled));
+  // Reihenfolge wie welcomePage.host: welcomePage, dockWindow.
+  FWelcomeHost := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHost),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHostPage),
+    TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHostWindow)]);
+  FWelcomeLayout := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeLayout));
+  FWelcomeHeader := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHeader));
+  FWelcomeGreeting := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeGreeting));
+  FWelcomeSearch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeSearch));
+  FWelcomeSearchSymbols := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeSearchSymbols));
+  FWelcomeSearchKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeSearchKey));
+  // Karte „Neu in Atlas“ (#756); Reihenfolge wie TAtlasWhatsNewMode: off, afterUpdate, always.
+  FWelcomeWhatsNew := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeWhatsNew),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeWhatsNewOff),
+    TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeWhatsNewAfterUpdate),
+    TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeWhatsNewAlways)]);
+  // Bereich „Projekte“ (#592).
+  FWelcomeProjects := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeProjects));
+  FWelcomeMaxProjects := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeMaxProjects));
+  FWelcomeRefreshVcs := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeRefreshVcs));
+  // Bereich „Nicht gesichert“ (#762).
+  FWelcomeUnsaved := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsaved));
+  FWelcomeUnsavedMinAge := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsavedMinAge));
+  FWelcomeUnsavedWarn := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsavedWarn));
+  FWelcomeUnsavedAlert := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsavedAlert));
+  FWelcomeUnsavedHideClean := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsavedHideClean));
+  // Zustandskachel „Atlas“ (#754).
+  FWelcomeStatusTile := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeStatusTile));
+  FWelcomeStatusTileOnlyProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeStatusTileOnlyProblems));
 end;
 
 procedure TAtlasSettingsPage.AddSheet(AId: TAtlasTextId);
@@ -1140,6 +1226,8 @@ begin
   FProblems.Checked := ASettings.Problems;
   FProblemsList.Checked := ASettings.ProblemsList;
   FStatusField.Checked := ASettings.StatusField;
+  FDiagnosticMode.Checked := ASettings.DiagnosticMode;
+  FSetupChecklist.Checked := ASettings.SetupChecklist;
   FStatusSummary.Checked := ASettings.StatusFieldSummary;
   if not ASettings.StatusTogglesOnDoubleClick then
     FStatusToggles.Choice := 1
@@ -1203,6 +1291,27 @@ begin
   FUnitSearchMultiSelect.Checked := ASettings.UnitSearchMultiSelect;
   FUnitSearchActions.Checked := ASettings.UnitSearchActions;
   FUnitSearchAddUses.Checked := ASettings.UnitSearchActionsAddUses;
+  FWelcomeEnabled.Checked := ASettings.WelcomePage;
+  FWelcomeHost.Choice := 0;
+  if ASettings.WelcomePageHost = 'dockWindow' then
+    FWelcomeHost.Choice := 1;
+  FWelcomeLayout.Checked := ASettings.WelcomePageLayout = 'atlas';
+  FWelcomeHeader.Checked := ASettings.WelcomePageHeader;
+  FWelcomeGreeting.Checked := ASettings.WelcomePageGreeting;
+  FWelcomeSearch.Checked := ASettings.WelcomePageSearch;
+  FWelcomeSearchSymbols.Checked := ASettings.WelcomePageSearchSymbols;
+  FWelcomeSearchKey.Text := ShortCutToText(TShortCut(ASettings.WelcomePageSearchKey));
+  FWelcomeWhatsNew.Choice := Ord(TAtlasWhatsNew.ModeOf(ASettings.WelcomePageWhatsNew));
+  FWelcomeProjects.Checked := ASettings.WelcomePageProjectStatus;
+  FWelcomeMaxProjects.Text := IntToStr(ASettings.WelcomePageMaxProjects);
+  FWelcomeRefreshVcs.Checked := ASettings.WelcomePageRefreshVcs;
+  FWelcomeUnsaved.Checked := ASettings.WelcomePageUnsaved;
+  FWelcomeUnsavedMinAge.Text := IntToStr(ASettings.WelcomePageUnsavedMinAgeHours);
+  FWelcomeUnsavedWarn.Text := IntToStr(ASettings.WelcomePageUnsavedWarnHours);
+  FWelcomeUnsavedAlert.Text := IntToStr(ASettings.WelcomePageUnsavedAlertHours);
+  FWelcomeUnsavedHideClean.Checked := ASettings.WelcomePageUnsavedHideWhenClean;
+  FWelcomeStatusTile.Checked := ASettings.WelcomePageStatusTile;
+  FWelcomeStatusTileOnlyProblems.Checked := ASettings.WelcomePageStatusTileOnlyProblems;
   RefreshFuse;
   RefreshIndex;
 end;
@@ -1261,6 +1370,8 @@ begin
   ASettings.Problems := FProblems.Checked;
   ASettings.ProblemsList := FProblemsList.Checked;
   ASettings.StatusField := FStatusField.Checked;
+  ASettings.DiagnosticMode := FDiagnosticMode.Checked;
+  ASettings.SetupChecklist := FSetupChecklist.Checked;
   ASettings.StatusFieldSummary := FStatusSummary.Checked;
   case FStatusToggles.Choice of
     1:
@@ -1322,6 +1433,33 @@ begin
   ASettings.UnitSearchMultiSelect := FUnitSearchMultiSelect.Checked;
   ASettings.UnitSearchActions := FUnitSearchActions.Checked;
   ASettings.UnitSearchActionsAddUses := FUnitSearchAddUses.Checked;
+  ASettings.WelcomePage := FWelcomeEnabled.Checked;
+  ASettings.WelcomePageHost := 'welcomePage';
+  if FWelcomeHost.Choice = 1 then
+    ASettings.WelcomePageHost := 'dockWindow';
+  ASettings.WelcomePageLayout := 'off';
+  if FWelcomeLayout.Checked then
+    ASettings.WelcomePageLayout := 'atlas';
+  ASettings.WelcomePageHeader := FWelcomeHeader.Checked;
+  ASettings.WelcomePageGreeting := FWelcomeGreeting.Checked;
+  ASettings.WelcomePageSearch := FWelcomeSearch.Checked;
+  ASettings.WelcomePageSearchSymbols := FWelcomeSearchSymbols.Checked;
+  ASettings.WelcomePageSearchKey := Integer(TextToShortCut(Trim(FWelcomeSearchKey.Text)));
+  ASettings.WelcomePageWhatsNew := TAtlasWhatsNew.ModeName(TAtlasWhatsNewMode(EnsureRange(FWelcomeWhatsNew.Choice,
+    Ord(Low(TAtlasWhatsNewMode)), Ord(High(TAtlasWhatsNewMode)))));
+  ASettings.WelcomePageProjectStatus := FWelcomeProjects.Checked;
+  ASettings.WelcomePageMaxProjects := StrToIntDef(Trim(FWelcomeMaxProjects.Text), ASettings.WelcomePageMaxProjects);
+  ASettings.WelcomePageRefreshVcs := FWelcomeRefreshVcs.Checked;
+  ASettings.WelcomePageUnsaved := FWelcomeUnsaved.Checked;
+  ASettings.WelcomePageUnsavedMinAgeHours := StrToIntDef(Trim(FWelcomeUnsavedMinAge.Text),
+    ASettings.WelcomePageUnsavedMinAgeHours);
+  ASettings.WelcomePageUnsavedWarnHours := StrToIntDef(Trim(FWelcomeUnsavedWarn.Text),
+    ASettings.WelcomePageUnsavedWarnHours);
+  ASettings.WelcomePageUnsavedAlertHours := StrToIntDef(Trim(FWelcomeUnsavedAlert.Text),
+    ASettings.WelcomePageUnsavedAlertHours);
+  ASettings.WelcomePageUnsavedHideWhenClean := FWelcomeUnsavedHideClean.Checked;
+  ASettings.WelcomePageStatusTile := FWelcomeStatusTile.Checked;
+  ASettings.WelcomePageStatusTileOnlyProblems := FWelcomeStatusTileOnlyProblems.Checked;
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;

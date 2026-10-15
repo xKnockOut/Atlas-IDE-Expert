@@ -19,11 +19,13 @@ AtlasServer.exe         Server (Win64)
 Win32\Atlas.IDE.Expert370.bpl   Plugin für die klassische IDE
 Win64\Atlas.IDE.Expert370.bpl   Plugin für die 64-Bit-IDE
 LICENSE, THIRD-PARTY-NOTICES.md
+whatsnew.json           Neuerungen je Version für die Karte „Neu in Atlas“ (#756)
+Beispiele\              Beispieldateien zu „Ausprobieren“ auf dieser Karte
 ```
 
 1. ZIP entpacken und `AtlasSetup.exe` starten. Administratorrechte braucht er nicht, er schreibt nur unter dem eigenen Benutzer.
 2. Er findet die installierten Delphi-Versionen über die Registry (`HKCU` und `HKLM` unter `Software\Embarcadero\BDS\<Version>`, Wert `RootDir`) und zeigt je Version die 32-Bit-IDE (`bin\bds.exe`) und, falls vorhanden, die 64-Bit-IDE (`bin64\bds.exe`). Nicht unterstützte Versionen (vor Delphi 12) und IDEs, für die das ZIP keine BPL enthält, stehen ausgegraut in der Liste.
-3. „Installieren“ (bei vorhandener Installation „Aktualisieren“) prüft zuerst, ob eine der gewählten IDEs läuft, und bittet, sie zu schließen („Wiederholen“, „Abbrechen“). Dann kopiert er alle Dateien nach `%LOCALAPPDATA%\Programs\Atlas` und trägt je IDE die BPL unter `HKCU\Software\Embarcadero\BDS\<Version>\Known Packages` (64-Bit-IDE: `Known Packages x64`) ein. Ältere Einträge von Atlas, auch unter früheren Namen (Argus, BetterDelphiLSP), und eine Abschaltung unter „Disabled Packages“ entfernt er vorher.
+3. „Installieren“ (bei vorhandener Installation „Aktualisieren“) prüft zuerst, ob eine der gewählten IDEs läuft, und bittet, sie zu schließen („Wiederholen“, „Abbrechen“). Dann kopiert er alle Dateien nach `%LOCALAPPDATA%\Programs\Atlas` (den Ordner `Beispiele` ersetzt er ganz) und trägt je IDE die BPL unter `HKCU\Software\Embarcadero\BDS\<Version>\Known Packages` (64-Bit-IDE: `Known Packages x64`) ein. Ältere Einträge von Atlas, auch unter früheren Namen (Argus, BetterDelphiLSP), und eine Abschaltung unter „Disabled Packages“ entfernt er vorher.
 4. Beim nächsten Start der IDE ist Atlas aktiv. Den Server findet das Plugin eine Ebene über der BPL.
 
 Jeder Schritt steht im Protokollfeld des Installers. Ist eine Datei gesperrt (IDE doch noch offen), bricht er vor der Registrierung ab und nennt die Ursache.

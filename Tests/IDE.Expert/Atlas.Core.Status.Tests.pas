@@ -479,8 +479,9 @@ begin
   Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(TAtlasStatusLines.ServerState(Info)));
   Assert.AreEqual('', TAtlasStatusLines.ServerSummary(Info));
   Info.Phase := TAtlasServerPhase.Stopped;
+  // Ohne „von Atlas beendet“ ist der Server abgestürzt (#754).
   Assert.AreEqual(Ord(TAtlasStatusState.Red), Ord(TAtlasStatusLines.ServerState(Info)));
-  Assert.AreEqual('Server gestoppt', TAtlasStatusLines.ServerSummary(Info));
+  Assert.AreEqual('Server abgestürzt', TAtlasStatusLines.ServerSummary(Info));
   Info := Default(TAtlasServerInfo);
   Info.Phase := TAtlasServerPhase.Failed;
   Info.Error := 'AtlasServer.exe nicht gefunden';
@@ -508,6 +509,7 @@ procedure TAtlasStatusLinesTests.IndexWhileBuildingThenUnits;
 var
   Info: TAtlasIndexInfo;
 begin
+  Info := Default(TAtlasIndexInfo);
   Info.Units := -1;
   Info.Indexing := True;
   Info.Percent := 45;
