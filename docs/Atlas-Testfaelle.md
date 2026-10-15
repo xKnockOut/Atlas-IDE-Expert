@@ -401,6 +401,31 @@ Ablage: `%LOCALAPPDATA%\Atlas\Notes\<Schlüssel>.json` je Projekt (Schlüssel wi
 | NO17 | Rinnen-API: Delphi 12 und 13, Symbol erscheint überhaupt (`cevPaintGutterEvents`, letzte Stufe von `TPaintGutterStage`) und Maus-Ereignisse kommen in der Rinne an (Tooltip, Rechtsklick) | Funktioniert in beiden Versionen; sonst Rückmeldung mit Version |
 | NO18 | Ohne geöffnetes Projekt eine einzelne Datei öffnen, Notiz anlegen | Meldung „Notizen gehören zu einem Projekt …“ |
 
+## Benannte Lesezeichen (#622)
+
+Ablage je Projekt neben der .dproj (Projekte im selben Ordner teilen sich die Datei): lokal `.atlas-bookmarks.json`, die Atlas beim Speichern in `.git/info/exclude` des Repositorys einträgt (nur lokal, nichts Eingechecktes ändert sich); mit „Lesezeichen im Repository für das Team speichern“ (`bookmarks.shared`) `atlas-bookmarks.json` zum Einchecken. Gibt es die Team-Datei noch nicht, gelten zunächst die lokalen Lesezeichen, das nächste Speichern legt die Team-Datei an. JSON UTF-8 ohne BOM mit `format` 1, `project` und `bookmarks` in Listenreihenfolge (je Lesezeichen `id`, `name`, `file` relativ mit „/“, `method`, `signature`, `offset`, `line` 1-basiert, `lineText`, `before`, `after`, `created` in UTC, bei Bedarf `lost`). Eine leere Liste löscht die Datei.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BM1 | Projekt in einem Git-Repository öffnen, Cursor in eine Methode `TKunde.Runde`, Strg+Alt+K | Kleines Fenster „Lesezeichen – Kunde.pas, Zeile 42“, Vorschlag „Runde: Result := Round(…“ ist markiert; Enter setzt, links in der Rinne ein gelbes Lesezeichenband |
+| BM2 | Maus über das Band halten | Tooltip „Lesezeichen“ mit dem Namen; zwei Lesezeichen an derselben Zeile: „2 Lesezeichen an dieser Zeile“ und beide Namen |
+| BM3 | `git status` | Keine neue Datei: `.atlas-bookmarks.json` liegt neben der .dproj, steht aber in `.git/info/exclude` |
+| BM4 | *Atlas › Lesezeichen-Fenster* | Andockbares Fenster „Atlas-Lesezeichen“ mit Filterfeld, Spalten Name, Datei (mit Zeile), Methode, Zeilenvorschau; unten „Lesezeichen in Projekt.dproj: 3, davon 0 nicht gefunden · Lokal in .atlas-bookmarks.json …“; andocken wie andere IDE-Fenster |
+| BM5 | Im Fenster Filter „kunde rund“, ↓, Enter; dann Klick auf einen anderen Eintrag | Liste zeigt nur passende Einträge; Enter bzw. Klick springt im Editor zur Zeile |
+| BM6 | Eintrag wählen, F2, neuen Namen, Enter; dann Entf und Rückfrage mit Ja | Name geändert (leerer Name bleibt beim alten); gelöschter Eintrag verschwindet aus Liste und Rinne |
+| BM7 | Eintrag per Maus nach oben ziehen; Strg+↓ auf einem Eintrag | Reihenfolge ändert sich und bleibt nach Neustart erhalten (auch in „Gehe zu Lesezeichen…“) |
+| BM8 | Methode mit Lesezeichen um 50 Zeilen nach unten verschieben (z. B. 50 Zeilen davor einfügen oder ausschneiden und weiter unten einfügen), kurz warten | Band wandert mit; Liste zeigt die neue Zeile (Akzeptanzkriterium) |
+| BM9 | IDE neu starten, Projekt öffnen, Fenster bzw. *Gehe zu Lesezeichen…* | Lesezeichen vorhanden und an der richtigen Zeile (Akzeptanzkriterium) |
+| BM10 | Datei außerhalb der IDE durch eine Fassung ohne die Methode ersetzen, IDE fragt nach Neuladen → Ja; Fenster öffnen | Lesezeichen steht grau mit „nicht gefunden · …“ in der Liste, kein Band in der Rinne (Akzeptanzkriterium); Sprung zeigt die letzte bekannte Stelle mit Meldung |
+| BM11 | Datei wiederherstellen (Methode wieder da) | Lesezeichen gilt wieder, Band erscheint |
+| BM12 | *Atlas › Gehe zu Lesezeichen…* (auch Befehlspalette), „rp“ bzw. Dateiname tippen | Fenster wie die Befehlspalette mit allen Lesezeichen in Listenreihenfolge, Ort „Kunde.pas:42 › TKunde.Runde“ grau daneben; unscharfe Suche über Name, Datei und Methode; Enter springt |
+| BM13 | Rechtsklick in die Rinne einer anderen Zeile, Kontextmenü › *Atlas › Lesezeichen setzen…* | Dialog nennt die angeklickte Zeile |
+| BM14 | „Lesezeichen im Repository für das Team speichern“ einschalten, ein Lesezeichen umbenennen | `atlas-bookmarks.json` (ohne Punkt) entsteht neben der .dproj mit allen bisherigen Lesezeichen und erscheint in `git status`; die lokale Datei bleibt unverändert |
+| BM15 | Einstellung „Benannte Lesezeichen“ (Reiter Editor) aus bzw. Schnellschalter | Keine Bänder, Fenster schließt, Einträge im Menü *Atlas* und in der Befehlspalette verschwinden, Strg+Alt+K tut nichts mehr; das Kontextmenü meldet „Benannte Lesezeichen sind ausgeschaltet …“; die nummerierten IDE-Lesezeichen (Strg+Umschalt+0…9, Strg+0…9) funktionieren unverändert (Akzeptanzkriterium) |
+| BM16 | Strg+Alt+K in der Tastenkürzel-Übersicht (#520) und auf *Tools › Optionen › Atlas*, Reiter Befehle | Eintrag „Lesezeichen setzen“; Konflikt mit einer anderen Belegung wird gemeldet; leeres Tastenfeld = keine Taste |
+| BM17 | Rinne bei 100 %, 150 % und 200 %, hell und dunkel, mit Notiz und IDE-Lesezeichen an derselben Zeile | Notizblatt und Band nebeneinander, nichts abgeschnitten; prüfen, ob sie IDE-Symbole überdecken |
+| BM18 | Ohne geöffnetes Projekt eine einzelne Datei öffnen, Strg+Alt+K | Meldung „Lesezeichen gehören zu einem Projekt …“ |
+
 ## Tippfehler (#485)
 
 | Nr. | Schritte | Erwartet |

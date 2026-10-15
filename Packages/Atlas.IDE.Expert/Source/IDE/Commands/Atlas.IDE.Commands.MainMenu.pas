@@ -23,7 +23,8 @@
 // Letzte Atlas-Änderung zurücknehmen bzw. wiederherstellen und die Liste
 // „Atlas-Änderungen“ (#721) gehen an TAtlasIdeUndo.
 // Persönliche Notizen (#545) gehen an TAtlasIdeNotes; sichtbar nur bei
-// eingeschalteter Einstellung „Notizen“.
+// eingeschalteter Einstellung „Notizen“. Benannte Lesezeichen (#622) gehen an
+// TAtlasIdeBookmarks; sichtbar nur bei bookmarks.named.
 // Das Atlas-Symbol (#751) steht am Menü und an den Einträgen für Einstellungen
 // und Optionen; UpdateImage wählt nach einem Themenwechsel die passende Variante.
 // Willkommensseite (#753): „Atlas-Start“ (auch unter Ansicht), „Atlas-Layout
@@ -69,12 +70,14 @@ type
     FWelcomeLine: TMenuItem;
     FViewStart: TMenuItem;
     FNoteItems: TArray<TMenuItem>;
+    FBookmarkItems: TArray<TMenuItem>;
     procedure WelcomeClick(Sender: TObject);
     procedure RenameClick(Sender: TObject);
     procedure ResultsClick(Sender: TObject);
     procedure EditorClick(Sender: TObject);
     procedure UndoClick(Sender: TObject);
     procedure NotesClick(Sender: TObject);
+    procedure BookmarksClick(Sender: TObject);
     function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
     procedure EnableAllClick(Sender: TObject);
     procedure TimerTick(Sender: TObject);
@@ -124,6 +127,7 @@ uses
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Notes.Service,
+  Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Commands.KeyMap,
@@ -144,6 +148,7 @@ const
     'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow');
   UndoIds: array[0..2] of string = ('Atlas.UndoChange', 'Atlas.RedoChange', 'Atlas.ChangeList');
   NoteIds: array[0..2] of string = ('Atlas.NoteAdd', 'Atlas.NoteDelete', 'Atlas.NoteList');
+  BookmarkIds: array[0..2] of string = ('Atlas.BookmarkAdd', 'Atlas.BookmarkGoTo', 'Atlas.BookmarkWindow');
   WelcomeIds: array[TAtlasWelcomeCommand] of string = ('Atlas.WelcomeStart', 'Atlas.WelcomeApply',
     'Atlas.WelcomeReset');
   // Name des Menüs „Tools“ in der IDE; Atlas steht dahinter, sonst am Ende.
@@ -240,6 +245,12 @@ begin
   FNoteItems := FNoteItems + [AddItem(TAtlasTextId.NotesMenuAdd, 0, NotesClick)];
   FNoteItems := FNoteItems + [AddItem(TAtlasTextId.NotesMenuDelete, 1, NotesClick)];
   FNoteItems := FNoteItems + [AddItem(TAtlasTextId.NotesMenuList, 2, NotesClick)];
+  // Benannte Lesezeichen (#622); Tag wählt den Befehl in BookmarksClick.
+  FBookmarkItems := [NewLine];
+  FRoot.Add(FBookmarkItems[0]);
+  FBookmarkItems := FBookmarkItems + [AddItem(TAtlasTextId.BookmarksMenuAdd, 0, BookmarksClick)];
+  FBookmarkItems := FBookmarkItems + [AddItem(TAtlasTextId.BookmarksMenuGoTo, 1, BookmarksClick)];
+  FBookmarkItems := FBookmarkItems + [AddItem(TAtlasTextId.BookmarksMenuWindow, 2, BookmarksClick)];
   FRoot.Add(NewLine);
   Item := TMenuItem.Create(FRoot);
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.MenuIndexStatus);
@@ -555,6 +566,9 @@ begin
   // Notizen (#545) nach ihrer Einstellung.
   for Item in FNoteItems do
     Item.Visible := TAtlasIdeSettings.Current.Notes;
+  // Benannte Lesezeichen (#622) nach bookmarks.named.
+  for Item in FBookmarkItems do
+    Item.Visible := TAtlasIdeSettings.Current.BookmarksNamed;
 end;
 
 procedure TAtlasMainMenu.RenameClick(Sender: TObject);
@@ -661,6 +675,25 @@ begin
         1: TAtlasIdeNotes.DeleteAtLine;
       else
         TAtlasIdeNotes.ShowList;
+      end;
+    end);
+end;
+
+procedure TAtlasMainMenu.BookmarksClick(Sender: TObject);
+var
+  Command: Integer;
+begin
+  Command := TMenuItem(Sender).Tag;
+  if (Command >= Low(BookmarkIds)) and (Command <= High(BookmarkIds)) then
+    TAtlasIdeShortcutTips.Invoked(BookmarkIds[Command]);
+  TAtlasGuard.Run(TAtlasFeature.Bookmarks,
+    procedure
+    begin
+      case Command of
+        0: TAtlasIdeBookmarks.AddBookmark;
+        1: TAtlasIdeBookmarks.GoToBookmark;
+      else
+        TAtlasIdeBookmarks.ShowWindow;
       end;
     end);
 end;

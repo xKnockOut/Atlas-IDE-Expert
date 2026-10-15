@@ -177,6 +177,9 @@ begin
   Assert.IsTrue(Settings.ProblemsList, 'Liste „Atlas-Probleme“ standardmäßig an');
   Assert.IsTrue(Settings.Favorites, 'Favoriten anheften standardmäßig an (#458)');
   Assert.IsTrue(Settings.Notes, 'Notizen standardmäßig an (#545)');
+  Assert.IsTrue(Settings.BookmarksNamed, 'Benannte Lesezeichen standardmäßig an (#622)');
+  Assert.IsFalse(Settings.BookmarksShared, 'Lesezeichen standardmäßig lokal, nicht im Repository (#622)');
+  Assert.AreEqual($C04B, Settings.BookmarkKey, 'Strg+Alt+K (#622)');
 end;
 
 procedure TAtlasPluginSettingsTests.SaveAndLoadRoundTrip;
@@ -194,6 +197,9 @@ begin
   Settings.Learning := False;
   Settings.Favorites := False;
   Settings.Notes := False;
+  Settings.BookmarksNamed := False;
+  Settings.BookmarksShared := True;
+  Settings.BookmarkKey := $C04C;
   Settings.Preview := True;
   Settings.OpenForEdits := False;
   Settings.InlayHints := True;
@@ -256,6 +262,9 @@ begin
   Assert.IsFalse(Loaded.Learning);
   Assert.IsFalse(Loaded.Favorites, 'Favoriten abschaltbar (#458)');
   Assert.IsFalse(Loaded.Notes, 'Notizen abschaltbar (#545)');
+  Assert.IsFalse(Loaded.BookmarksNamed, 'Benannte Lesezeichen abschaltbar (#622)');
+  Assert.IsTrue(Loaded.BookmarksShared, 'Lesezeichen für das Team (#622)');
+  Assert.AreEqual($C04C, Loaded.BookmarkKey);
   Assert.IsTrue(Loaded.Preview);
   Assert.IsFalse(Loaded.OpenForEdits);
   Assert.IsTrue(Loaded.InlayHints);

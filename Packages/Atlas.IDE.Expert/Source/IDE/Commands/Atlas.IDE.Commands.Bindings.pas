@@ -6,8 +6,9 @@
 // (Strg+Alt+I), Gehe zu Typdefinition (ohne Vorgabe), letzte
 // Atlas-Änderung zurücknehmen (Strg+Alt+Z) und wiederherstellen
 // (Strg+Alt+Umschalt+Z, #721) sowie Deklaration ⇄ Implementierung
-// (Strg+Umschalt+↑/↓, #775), Unit ⇄ Testunit (#189) und Units suchen (#777,
-// nur solange unitSearch.enabled an ist). Jede Taste wird wie
+// (Strg+Umschalt+↑/↓, #775), Unit ⇄ Testunit (#189), Units suchen (#777,
+// nur solange unitSearch.enabled an ist) und „Lesezeichen setzen…“ (#622,
+// Strg+Alt+K, nur solange bookmarks.named an ist). Jede Taste wird wie
 // die der Befehlspalette vorher auf Konflikte geprüft (#494); ohne Vorrang
 // bleibt eine fremde Belegung aktiv. Nach geänderten Einstellungen meldet
 // Rebind die Bindung neu an. Der Befehl läuft nach der Tastenverarbeitung
@@ -71,7 +72,8 @@ uses
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.UnitSearch.Commands,
-  Atlas.IDE.Undo.Changes;
+  Atlas.IDE.Undo.Changes,
+  Atlas.IDE.Bookmarks.Service;
 
 { TAtlasIdeEditorKeys.TBinding }
 
@@ -257,6 +259,17 @@ begin
       procedure
       begin
         TAtlasIdeUnitSearch.Show;
+      end);
+  // Benannte Lesezeichen (#622): aus = keine Taste, die IDE-Lesezeichen bleiben unberührt.
+  if Settings.BookmarksNamed then
+    AddKey(Settings.BookmarkKey, TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd),
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.Bookmarks,
+          procedure
+          begin
+            TAtlasIdeBookmarks.AddBookmark;
+          end);
       end);
   AddKey(Settings.UndoKey, TAtlasStrings.Text(TAtlasTextId.UndoMenu),
     procedure

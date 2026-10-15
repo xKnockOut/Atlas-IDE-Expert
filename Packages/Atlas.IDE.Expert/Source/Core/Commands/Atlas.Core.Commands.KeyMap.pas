@@ -287,6 +287,8 @@ begin
       Result := 'Atlas.SwitchTestUnit';
     TAtlasKeyFunction.UnitSearch, TAtlasKeyFunction.UnitSearchIde:
       Result := 'Atlas.UnitSearch';
+    TAtlasKeyFunction.Bookmark:
+      Result := 'Atlas.BookmarkAdd';
   else
     Result := '';
   end;

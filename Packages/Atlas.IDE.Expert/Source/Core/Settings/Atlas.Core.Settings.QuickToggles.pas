@@ -270,6 +270,9 @@ begin
     '"Notes":{"type":"boolean","x-feature":"Notes",' +
       '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
       '"x-caption":"Notizen","x-captionEn":"Notes","x-issue":"#545"},' +
+    '"BookmarksNamed":{"type":"boolean","x-feature":"Bookmarks",' +
+      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
+      '"x-caption":"Benannte Lesezeichen","x-captionEn":"Named bookmarks","x-issue":"#622"},' +
     '"HoverTooltip":{"type":"boolean","x-feature":"Hover",' +
       '"default":true,"x-page":"Hints","x-quickToggle":true,' +
       '"x-caption":"Hover-Tooltip","x-captionEn":"Hover tooltip","x-issue":"#442"},' +

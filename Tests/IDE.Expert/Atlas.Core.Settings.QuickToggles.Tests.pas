@@ -124,6 +124,11 @@ begin
   Assert.AreEqual('Editor', Toggle.Page);
   Assert.IsTrue(Toggle.Drawing);
   Assert.AreEqual('Notes', Toggle.Feature);
+  // Benannte Lesezeichen (#622): Schalter auf der Seite Editor, Symbol in der Rinne.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'BookmarksNamed', Toggle));
+  Assert.AreEqual('Editor', Toggle.Page);
+  Assert.IsTrue(Toggle.Drawing);
+  Assert.AreEqual('Bookmarks', Toggle.Feature);
   // Jeder Schalter ist eine Einstellung des Plugins.
   for Toggle in Toggles do
   begin

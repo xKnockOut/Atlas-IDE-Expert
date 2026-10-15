@@ -99,6 +99,8 @@ uses
   Atlas.IDE.Vcs.Service,
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Notes.Gutter,
+  Atlas.IDE.Bookmarks.Service,
+  Atlas.IDE.Bookmarks.Gutter,
   Atlas.IDE.Editor.GutterMarks;
 
 var
@@ -111,7 +113,7 @@ var
   Reloader: TAtlasFileReloader;
   Palette: TAtlasIdePalette;
   Pairs: TAtlasEditorPairs;
-  // Markierungen in der Rinne: persönliche Notizen (#545).
+  // Markierungen in der Rinne: persönliche Notizen (#545) und benannte Lesezeichen (#622).
   GutterMarks: TAtlasIdeGutterMarks;
   // Ungespeicherte Dateien für schreibende MCP-Werkzeuge (#61).
   DirtyExport: TAtlasDirtyExport;
@@ -390,6 +392,46 @@ begin
     function: Boolean
     begin
       Result := TAtlasIdeSettings.Current.Notes;
+    end);
+  // Benannte Lesezeichen (#622); nur sichtbar, solange bookmarks.named an ist.
+  Palette.RegisterCommand('Atlas.BookmarkAdd', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd), '',
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Bookmarks,
+        procedure
+        begin
+          TAtlasIdeBookmarks.AddBookmark;
+        end);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.BookmarksNamed;
+    end);
+  Palette.RegisterCommand('Atlas.BookmarkGoTo', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuGoTo), '',
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Bookmarks,
+        procedure
+        begin
+          TAtlasIdeBookmarks.GoToBookmark;
+        end);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.BookmarksNamed;
+    end);
+  Palette.RegisterCommand('Atlas.BookmarkWindow', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuWindow), '',
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Bookmarks,
+        procedure
+        begin
+          TAtlasIdeBookmarks.ShowWindow;
+        end);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.BookmarksNamed;
     end);
   // Editorbefehle (#399).
   Palette.RegisterCommand('Atlas.CodeActions', TAtlasStrings.Text(TAtlasTextId.EditorActions), '',
@@ -1034,10 +1076,19 @@ begin
       begin
         MessageLine(AText);
       end);
-  if (GutterMarks = nil) and Basic and (Full or Settings.Notes) then
+  // Benannte Lesezeichen (#622): Befehle auch abgesichert; die Rinne teilt sich die Zeichenschicht mit den
+  // Notizen, jede Schicht folgt ihrer Einstellung.
+  if Basic then
+    TAtlasIdeBookmarks.Start(
+      procedure(AText: string)
+      begin
+        MessageLine(AText);
+      end);
+  if (GutterMarks = nil) and Basic and (Full or Settings.Notes or Settings.BookmarksNamed) then
   begin
     GutterMarks := TAtlasIdeGutterMarks.Create;
     GutterMarks.Add(TAtlasIdeNotesGutter.Create);
+    GutterMarks.Add(TAtlasIdeBookmarksGutter.Create);
   end;
   if (CompletionKey = nil) and Basic and (Full or Settings.Enabled) then
     CompletionKey := TAtlasIdeKeyBinding.Create('Atlas.Completion', 'Atlas-Vervollständigung',
@@ -1307,6 +1358,7 @@ begin
         KeyMap.ThemeChanged;
       if ShortcutTips <> nil then
         ShortcutTips.ThemeChanged;
+      TAtlasIdeBookmarks.ThemeChanged;
     end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
   if SafeMode = nil then
@@ -1341,6 +1393,8 @@ begin
       // diagnosticMode.enabled (#479).
       if DiagnosticMode <> nil then
         DiagnosticMode.ApplySettings;
+      // bookmarks.named und bookmarks.shared (#622).
+      TAtlasIdeBookmarks.ApplySettings;
       // tips.usageTracking (#757).
       if CommandUsage <> nil then
         CommandUsage.ApplySettings;
@@ -1448,9 +1502,10 @@ begin
   end;
   CommandsInstalled := False;
   FreeAndNil(Pairs);
-  // Vor dem Notizdienst: Die Rinne liest dessen Notizbücher (#545).
+  // Vor dem Notiz- und dem Lesezeichendienst: Die Rinne liest deren Listen (#545, #622).
   FreeAndNil(GutterMarks);
   TAtlasIdeNotes.Release;
+  TAtlasIdeBookmarks.Release;
   FreeAndNil(CheckOnSave);
   FreeAndNil(Palette);
   FreeAndNil(Reloader);

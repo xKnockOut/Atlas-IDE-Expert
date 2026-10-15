@@ -375,6 +375,16 @@
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.GutterMarks.pas"/>
         <DCCReference Include="Source\IDE\Notes\Atlas.IDE.Notes.Service.pas"/>
         <DCCReference Include="Source\IDE\Notes\Atlas.IDE.Notes.Gutter.pas"/>
+        <DCCReference Include="Source\Core\Bookmarks\Atlas.Core.Bookmarks.Store.pas"/>
+        <DCCReference Include="Source\UI\Bookmarks\Atlas.UI.Bookmarks.Dialog.pas"/>
+        <DCCReference Include="Source\UI\Bookmarks\Atlas.UI.Bookmarks.Frame.pas">
+            <Form>AtlasBookmarksFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Window.pas"/>
+        <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Service.pas"/>
+        <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Gutter.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
