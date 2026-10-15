@@ -89,6 +89,7 @@ implementation
 
 uses
   Atlas.Common.Lsp.Internals.Namespaces,
+  Atlas.Common.Index.Files,
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,

@@ -64,6 +64,24 @@
       "good": "unit App.Common.Model;\ninterface\nuses System.Classes;"
     },
     {
+      "id": "architecture-role-import",
+      "name": "Import violates the role matrix",
+      "category": "code-smell",
+      "severity": "warning",
+      "description": "A uses entry violates the import matrix of the role concept (output artefact, feature, role: Contract, Internals, Providers, Adapters, Composition, Hosting). Off by default; switch it on in atlas.json with the option \"prefixes\". Approved exceptions go to \"allow\" as \"Source -> Target\" globs.",
+      "bad": "unit Atlas.Common.Logging.Contract;\ninterface\nuses Atlas.Common.Logging.Providers.Logger;",
+      "good": "unit Atlas.Common.Logging.Contract;\ninterface\nuses System.SysUtils;"
+    },
+    {
+      "id": "architecture-contract-content",
+      "name": "Class in a contract unit",
+      "category": "code-smell",
+      "severity": "warning",
+      "description": "A contract unit declares a class in its interface section. Contracts hold only records, interfaces, enumerations and exceptions. Off by default; switch it on in atlas.json with the option \"prefixes\". Approved exceptions go to \"allow\" as \"Unit.Type\" globs.",
+      "bad": "unit App.Orders.Contract;\ninterface\ntype\n  TOrderList = class\n  end;",
+      "good": "unit App.Orders.Contract;\ninterface\ntype\n  IOrderList = interface\n  end;"
+    },
+    {
       "id": "thread-vcl-access",
       "name": "VCL access from a thread",
       "category": "bug",

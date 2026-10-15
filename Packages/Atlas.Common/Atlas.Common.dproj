@@ -75,7 +75,7 @@
         <DCCReference Include="Source\Product\Atlas.Common.Product.Version.pas"/>
         <DCCReference Include="Source\Logging\Atlas.Common.Logging.Contract.pas"/>
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.Logger.pas"/>
-        <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.RotatingFileStream.pas"/>
+        <DCCReference Include="Source\Logging\Atlas.Common.Logging.RotatingFileStream.pas"/>
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.StreamSink.pas"/>
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.TransformSink.pas"/>
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.RecentSink.pas"/>
@@ -117,6 +117,7 @@
         <DCCReference Include="Source\Diagnostics\Providers\Atlas.Common.Diagnostics.Providers.Log.pas"/>
         <DCCReference Include="Source\Diagnostics\Adapters\Atlas.Common.Diagnostics.Adapters.LogFolder.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Contract.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.Files.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.SymbolIndex.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.NameIndex.pas"/>

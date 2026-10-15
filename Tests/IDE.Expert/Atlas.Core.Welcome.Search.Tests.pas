@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Welcome.Search.Tests;
 
 // Tests des Suchfelds der Willkommensseite ohne VCL (#760): Leser für den
-// Index-Cache (Format 15) ohne Server, Zuordnung der Caches zu Projekten,
+// Index-Cache (aktuelle Formatversion) ohne Server, Zuordnung der Caches zu Projekten,
 // unscharfe Bewertung mit Tippfehlern, Gruppierung mit Grenze je Gruppe,
 // Hinweis statt Symbolen ohne Server und die Liste „Closed Projects“.
 // CacheBytes schreibt einen Cache wie Atlas.Common.Index.Cache.Serialize,
@@ -34,6 +34,8 @@ type
     procedure FindsCachesOfAllVersionsWithoutLibrary;
     [Test]
     procedure NewestCacheWinsPerProject;
+    [Test]
+    procedure FormatVersionMatchesServer;
   end;
 
   [TestFixture]
@@ -70,7 +72,8 @@ implementation
 uses
   System.Classes,
   System.DateUtils,
-  System.IOUtils;
+  System.IOUtils,
+  Atlas.Common.Index.Cache;
 
 type
   TUnitSpec = record
@@ -251,6 +254,13 @@ begin
   Assert.AreEqual('andere Formatversion', Reason);
   Assert.AreEqual(0, Integer(Length(TAtlasWelcomeIndexFiles.Read(TEncoding.ASCII.GetBytes('{"units":[]}'), Reason))));
   Assert.AreNotEqual('', Reason);
+end;
+
+procedure TAtlasWelcomeIndexFilesTests.FormatVersionMatchesServer;
+begin
+  // Code-Review K-05: Plugin und Server lesen dasselbe Cache-Format.
+  Assert.AreEqual(TIndexCache.FormatVersion, TAtlasWelcomeIndexFiles.FormatVersion,
+    'Plugin und Server lesen dasselbe Cache-Format; beide Konstanten zusammen erhöhen.');
 end;
 
 procedure TAtlasWelcomeIndexFilesTests.RejectsBadChecksum;
