@@ -313,7 +313,7 @@ begin
   Result.IndexSearchPaths := True;
   Result.IndexLibraryPaths := False;
   Result.IndexUsages := True;
-  Result.MemoryBudgetMb := 256;
+  Result.MemoryBudgetMb := 768;
   Result.XmlDocFull := True;
   Result.XmlDocMaxLines := 0;
   Result.StatusField := True;

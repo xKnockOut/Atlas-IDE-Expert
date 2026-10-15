@@ -359,11 +359,11 @@ begin
   Parse('{"refactoring": {"inline": false}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   // Speicherbudget (#185)
-  Assert.AreEqual(256, Parse('{}', Issues).MemoryBudgetMb, 'Vorgabe 256 MB (#492)');
+  Assert.AreEqual(768, Parse('{}', Issues).MemoryBudgetMb, 'Vorgabe 768 MB (Rückmeldung 15.10.2026)');
   Assert.AreEqual(0, Parse('{"memoryBudgetMb": 0}', Issues).MemoryBudgetMb, '0 = unbegrenzt');
   Assert.AreEqual(512, Parse('{"memoryBudgetMb": 512}', Issues).MemoryBudgetMb);
   Assert.AreEqual(0, Integer(Length(Issues)));
-  Assert.AreEqual(256, Parse('{"memoryBudgetMb": -1}', Issues).MemoryBudgetMb);
+  Assert.AreEqual(768, Parse('{"memoryBudgetMb": -1}', Issues).MemoryBudgetMb);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Settings := TConfigurationParser.ParseLayered('{"memoryBudgetMb": 100}', '{"memoryBudgetMb": 200}', Issues);
   Assert.AreEqual(200, Settings.MemoryBudgetMb);

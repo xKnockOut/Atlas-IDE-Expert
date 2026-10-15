@@ -26,7 +26,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Eingabehilfen | `sortUses` | `false` | atlas.json, Editor (`atlas.sortUses`) | nein | Auswahl | #182, #284 |
 | Eingabehilfen | `usesKeep` | `` | atlas.json, Editor (`atlas.usesKeep`) | nein | Liste | #284 |
 | Prüfregeln | `dfmPropertyRules` | `` | atlas.json, Editor (`atlas.dfmPropertyRules`) | nein | Eigener Editor (Klasse und Property aus dem Index) | #309 |
-| Speicher | `memoryBudgetMb` | `256` | atlas.json, Editor (`atlas.memoryBudgetMb`) | nein | Zahlenfeld (MB) | #185, #492 |
+| Speicher | `memoryBudgetMb` | `768` | atlas.json, Editor (`atlas.memoryBudgetMb`) | nein | Zahlenfeld (MB) | #185, #492 |
 | Speicher | `index`: `projectGroup`, `searchPaths`, `libraryPaths`, `usages`, `exclude` | – | atlas.json, Editor (`atlas.index`) | nein | Kontrollkästchen, Liste mit Hinzufügen/Entfernen | #648, #492 |
 | Robustheit | `requestTimeoutMs` | `10000` | atlas.json, Editor (`atlas.requestTimeoutMs`) | nein | Zahlenfeld (ms) | #283 |
 | Robustheit | `diagnostics`: `log`, `logDays`, `logMapFile` | – | atlas.json, Editor (`atlas.diagnostics`) | nein | Kontrollkästchen, Zahlenfeld (Tage) | #647 |
