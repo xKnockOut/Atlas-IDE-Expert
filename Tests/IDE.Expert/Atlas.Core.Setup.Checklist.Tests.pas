@@ -43,6 +43,8 @@ type
     [Test]
     procedure KeysConflictOnlyWhenLeftToOther;
     [Test]
+    procedure KeysCoverEditorCommands;
+    [Test]
     procedure EveryNonGreenPointHasAButton;
     [Test]
     procedure ProgressCountsGreenPoints;
@@ -375,6 +377,23 @@ begin
   Assert.AreEqual('1', Check.Args[0]);
   Assert.AreEqual('Strg+Alt+F9', Check.Args[1]);
   Assert.AreEqual('Andere Erweiterung', Check.Args[2]);
+end;
+
+procedure TAtlasSetupChecklistTests.KeysCoverEditorCommands;
+var
+  Input: TAtlasSetupInput;
+  Check: TAtlasSetupResult;
+begin
+  // Gemeinsame Quelle mit der Tastenkürzel-Übersicht (#520): auch die Tasten der Editorbefehle zählen.
+  Input := GoodInput;
+  Input.Keys := [TAtlasSetupKey.Create(TAtlasKeyEntry.Create(TAtlasKeyFunction.ExpandSelection, $4057, False),
+    'Strg+W', 'Tastaturbelegung des Editors (CnWizards_D120)'),
+    TAtlasSetupKey.Create(TAtlasKeyEntry.Create(TAtlasKeyFunction.WelcomeSearch, $4045, True), 'Strg+E',
+    'Inkrementelle Suche (IDE)')];
+  Check := TAtlasSetupChecklist.CheckKeys(Input);
+  Assert.AreEqual(Ord(TAtlasSetupFinding.KeysConflict), Ord(Check.Finding));
+  Assert.AreEqual('1', Check.Args[0], 'das Suchfeld der Willkommensseite gewinnt dort immer');
+  Assert.AreEqual('Strg+W', Check.Args[1]);
 end;
 
 procedure TAtlasSetupChecklistTests.EveryNonGreenPointHasAButton;

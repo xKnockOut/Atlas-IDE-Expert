@@ -14,6 +14,8 @@
 // „Diagnoselog exportieren…“ (#647) packt das anonymisierte Log in eine ZIP.
 // „Symbol umbenennen…“ (#397) ruft OnRename auf.
 // „Einrichtung prüfen…“ (#625) ruft OnSetup auf.
+// „Tastenkürzel-Übersicht…“ (#520) ruft OnKeyMap auf; sichtbar nach
+// keys.overview (UpdateKeyMap).
 // Referenzen, Implementierungen, Symbolsuche und Hierarchien öffnen das
 // Ergebnisfenster (#400).
 // Code-Aktionen, Auswahl erweitern/verkleinern, Typdefinition und
@@ -56,6 +58,8 @@ type
     FOnRename: TProc;
     FOnBugReport: TProc;
     FOnSetup: TProc;
+    FOnKeyMap: TProc;
+    FKeyMapItem: TMenuItem;
     FOnWelcome: TProc<TAtlasWelcomeCommand>;
     FWelcome: array[TAtlasWelcomeCommand] of TMenuItem;
     FWelcomeLine: TMenuItem;
@@ -73,6 +77,7 @@ type
     procedure DiagnosticExportClick(Sender: TObject);
     procedure BugReportClick(Sender: TObject);
     procedure SetupClick(Sender: TObject);
+    procedure KeyMapClick(Sender: TObject);
     procedure RootClick(Sender: TObject);
     procedure ToggleClick(Sender: TObject);
     procedure ProjectClick(Sender: TObject);
@@ -88,6 +93,10 @@ type
     property OnBugReport: TProc read FOnBugReport write FOnBugReport;
     /// <summary>„Einrichtung prüfen…“ (#625).</summary>
     property OnSetup: TProc read FOnSetup write FOnSetup;
+    /// <summary>„Tastenkürzel-Übersicht…“ (#520).</summary>
+    property OnKeyMap: TProc read FOnKeyMap write FOnKeyMap;
+    /// <summary>Eintrag „Tastenkürzel-Übersicht…“ nach keys.overview ein- oder ausblenden.</summary>
+    procedure UpdateKeyMap;
     /// <summary>Befehle der Willkommensseite (#753).</summary>
     property OnWelcome: TProc<TAtlasWelcomeCommand> read FOnWelcome write FOnWelcome;
     /// <summary>Einträge der Willkommensseite nach den Einstellungen ein- oder ausblenden.</summary>
@@ -220,6 +229,10 @@ begin
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.SetupMenu);
   Item.OnClick := SetupClick;
   FRoot.Add(Item);
+  FKeyMapItem := TMenuItem.Create(FRoot);
+  FKeyMapItem.Caption := TAtlasStrings.Text(TAtlasTextId.KeyMapMenu);
+  FKeyMapItem.OnClick := KeyMapClick;
+  FRoot.Add(FKeyMapItem);
   // Willkommensseite (#753); Tag wählt den Befehl in WelcomeClick.
   FWelcomeLine := NewLine;
   FRoot.Add(FWelcomeLine);
@@ -263,6 +276,7 @@ begin
       Break;
     end;
   UpdateWelcome;
+  UpdateKeyMap;
   UpdateImage;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 500;
@@ -353,6 +367,7 @@ begin
     // Falls der Themenwechsel nicht gemeldet wurde.
     UpdateImage;
     UpdateWelcome;
+    UpdateKeyMap;
     for Toggle := Low(TAtlasToggle) to High(TAtlasToggle) do
       FToggles[Toggle].Checked := TAtlasIdeQuickToggles.Checked(ToggleKey(Toggle));
     // Anweisungen mitfärben wirkt nur mit der Paarfärbung (#653).
@@ -483,6 +498,22 @@ begin
       begin
         FOnSetup();
       end);
+end;
+
+procedure TAtlasMainMenu.KeyMapClick(Sender: TObject);
+begin
+  if Assigned(FOnKeyMap) then
+    TAtlasGuard.Run(TAtlasFeature.Menu,
+      procedure
+      begin
+        FOnKeyMap();
+      end);
+end;
+
+procedure TAtlasMainMenu.UpdateKeyMap;
+begin
+  if FKeyMapItem <> nil then
+    FKeyMapItem.Visible := TAtlasIdeSettings.Current.KeyOverview;
 end;
 
 procedure TAtlasMainMenu.RenameClick(Sender: TObject);

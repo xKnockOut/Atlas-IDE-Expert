@@ -1,7 +1,8 @@
 ﻿unit Atlas.UI.Settings.Keys.Tests;
 
 // Tests für die Seite „Tastenkonflikte“ (#494): Laden und Speichern, Status je
-// Zeile über eine vorgegebene Belegung und die Wahl „Atlas verwenden“.
+// Zeile über eine vorgegebene Belegung und die Wahl „Atlas verwenden“;
+// Schalter der Tastenkürzel-Übersicht (#520).
 
 interface
 
@@ -22,6 +23,8 @@ type
     procedure UseAtlasTakesIdeKey;
     [Test]
     procedure ListsForeignCompletions;
+    [Test]
+    procedure RoundTripsOverviewSwitches;
   end;
 
 implementation
@@ -134,6 +137,31 @@ begin
   finally
     Page.Free;
   end;
+end;
+
+procedure TAtlasKeysPageTests.RoundTripsOverviewSwitches;
+var
+  Page: TAtlasKeysPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  Page := TAtlasKeysPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.OverviewBox.Checked, 'Menüeintrag standardmäßig an');
+    Assert.IsTrue(Page.StartupCheckBox.Checked, 'Prüfung beim Start standardmäßig an');
+    Settings := TAtlasPluginSettings.Defaults;
+    Settings.KeyStartupCheck := False;
+    Page.LoadFrom(Settings);
+    Assert.IsFalse(Page.StartupCheckBox.Checked);
+    Page.OverviewBox.Checked := False;
+    Page.StartupCheckBox.Checked := True;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+  finally
+    Page.Free;
+  end;
+  Assert.IsFalse(Saved.KeyOverview);
+  Assert.IsTrue(Saved.KeyStartupCheck);
 end;
 
 initialization

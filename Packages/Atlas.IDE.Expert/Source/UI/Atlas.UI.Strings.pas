@@ -207,7 +207,15 @@ type
     WelcomeStateTitle, WelcomeStateRestart, WelcomeStateSettings, WelcomeStateLogFolder, WelcomeStateUpdate,
     WelcomeStateServerMissing, WelcomeStateVersion, WelcomeStateIndexMissing, WelcomeStateSetupMissing,
     WelcomeStateDiagnosticOff, WelcomeStateDiagnosticOn, WelcomeStateDiagnosticDetail, SettingsWelcomeStatusTile,
-    SettingsWelcomeStatusTileOnlyProblems);
+    SettingsWelcomeStatusTileOnlyProblems,
+    KeyMapMenu, KeyMapTitle, KeyMapSearchHint, KeyMapOnlyConflicts, KeyMapSummary, KeyMapSummaryFiltered,
+    KeyMapColumnKey, KeyMapColumnCommand, KeyMapColumnOrigin, KeyMapColumnContext, KeyMapColumnHint,
+    KeyMapOriginIde, KeyMapOriginAtlas, KeyMapOriginPlugin, KeyMapContextGlobal, KeyMapContextEditor,
+    KeyMapContextDesigner, KeyMapContextWelcome, KeyMapWins, KeyMapLoses, KeyMapNoneActive,
+    KeyMapReasonAtlasPriority, KeyMapReasonAtlasYields, KeyMapReasonEditorBinding, KeyMapReasonLastBinding,
+    KeyMapReasonFirstAction, KeyMapReasonOwnWindow, KeyMapExport, KeyMapConflictsButton, KeyMapRefresh,
+    KeyMapClose, KeyMapPrint, KeyMapCreated, KeyMapFilter, KeyMapEditorBinding, KeyMapStartConflict,
+    KeyMapNobody, KeyMapExportFailed, SettingsKeyOverview, SettingsKeyStartupCheck);
 
   TAtlasStrings = class
   private class var
@@ -679,7 +687,22 @@ const
      'Server: kein Zustand', 'Atlas %s', 'Index unbekannt', 'Einrichtung noch nicht geprüft',
      'Diagnosemodus aus', 'Diagnosemodus an', 'Logs wachsen',
      'Zustandskachel „Atlas“ (Server, Version, Index, Einrichtung, Diagnosemodus)',
-     'Zustandskachel nur zeigen, wenn eine Zeile gelb oder rot ist'),
+     'Zustandskachel nur zeigen, wenn eine Zeile gelb oder rot ist',
+     'Tastenkürzel-Übersicht…', 'Atlas – Tastenkürzel', 'Taste oder Befehl suchen, z. B. Strg+Umschalt+P',
+     'Nur Konflikte', '%d Kürzel, %d Konflikte', '%d von %d Kürzeln, %d Konflikte', 'Taste', 'Befehl',
+     'Herkunft', 'Kontext', 'Hinweis', 'IDE', 'Atlas', 'Erweiterung %s', 'global', 'Editor', 'Designer',
+     'Willkommensseite', 'gewinnt: %s', 'unterliegt „%s“ (%s): %s', 'doppelt belegt, keine Belegung aktiv',
+     'Atlas hat Vorrang (Tastenkonflikte)', 'Atlas überlässt die Taste (Tastenkonflikte)',
+     'im Editor geht die Tastaturbelegung dem Menübefehl vor', 'zuletzt angemeldete Tastaturbelegung',
+     'erste Aktion in der Liste der IDE', 'nur auf der Willkommensseite, dort gewinnt Atlas',
+     'Als HTML exportieren', 'Tastenkonflikte…', 'Aktualisieren', 'Schließen', 'Drucken', 'Stand: %s · %s',
+     'Filter: %s', 'Tastaturbelegung des Editors',
+     'Atlas: %0:s ist doppelt belegt – %1:s (Atlas) und %2:s; es gewinnt %3:s. ' +
+       'Übersicht: Atlas > Tastenkürzel-Übersicht; Entscheidung unter Tools > Optionen > Drittanbieter > Atlas > ' +
+       'Tastenkonflikte.',
+     'keine der beiden', 'Atlas: Tastenkürzel-Übersicht konnte nicht exportiert werden (%s).',
+     'Menüeintrag und Befehl „Tastenkürzel-Übersicht“',
+     'Beim Start die Atlas-Tasten prüfen und Konflikte in der Meldungsansicht melden'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1122,7 +1145,20 @@ const
      'Atlas', 'Restart server', 'Settings', 'Open log folder', 'Update now', 'Server: no status', 'Atlas %s',
      'Index unknown', 'Setup not checked yet', 'Diagnostic mode off', 'Diagnostic mode on', 'logs are growing',
      'Status tile "Atlas" (server, version, index, setup, diagnostic mode)',
-     'Show the status tile only when a row is yellow or red'));
+     'Show the status tile only when a row is yellow or red',
+     'Keyboard shortcuts…', 'Atlas – Keyboard shortcuts', 'Search key or command, e.g. Ctrl+Shift+P',
+     'Conflicts only', '%d shortcuts, %d conflicts', '%d of %d shortcuts, %d conflicts', 'Key', 'Command',
+     'Origin', 'Context', 'Note', 'IDE', 'Atlas', 'Extension %s', 'global', 'Editor', 'Designer', 'Welcome page',
+     'wins: %s', 'loses to "%s" (%s): %s', 'assigned twice, none active', 'Atlas has priority (key conflicts)',
+     'Atlas leaves the key (key conflicts)', 'in the editor the key binding comes before the menu command',
+     'key binding registered last', 'first action in the IDE list', 'only on the welcome page, where Atlas wins',
+     'Export as HTML', 'Key conflicts…', 'Refresh', 'Close', 'Print', 'As of %s · %s', 'Filter: %s',
+     'Editor key binding',
+     'Atlas: %0:s is assigned twice – %1:s (Atlas) and %2:s; %3:s wins. ' +
+       'Overview: Atlas > Keyboard shortcuts; decide under Tools > Options > Third Party > Atlas > Key conflicts.',
+     'neither', 'Atlas: Could not export the keyboard shortcuts (%s).',
+     'Menu item and command "Keyboard shortcuts"',
+     'Check the Atlas keys at startup and report conflicts in the Messages view'));
 
 { TAtlasStrings }
 
