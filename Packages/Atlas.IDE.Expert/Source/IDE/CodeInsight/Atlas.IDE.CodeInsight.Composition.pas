@@ -74,9 +74,11 @@ uses
   Atlas.IDE.Results.Window,
   Atlas.IDE.Style.Symbol,
   Atlas.Core.Welcome.Sections,
+  Atlas.Core.Welcome.WhatsNew,
   Atlas.UI.Welcome.Frame,
   Atlas.Core.Commands.Palette,
   Atlas.IDE.Welcome.Search,
+  Atlas.IDE.Welcome.WhatsNew,
   Atlas.IDE.Welcome.Commands;
 
 var
@@ -393,6 +395,19 @@ begin
     begin
       if Welcome <> nil then
         Welcome.ResetLayout;
+    end);
+  // Karte „Neu in Atlas“ (#756): wie das Kontextmenü; zeigt die Willkommensseite bzw. „Atlas-Start“.
+  Palette.RegisterCommand('Atlas.WhatsNew', TAtlasStrings.Text(TAtlasTextId.WelcomeNewsShowCurrent), '',
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.WhatsNew <> nil) and TAtlasIdeSettings.Current.WelcomePage then
+        Welcome.ShowWhatsNew(TAtlasWhatsNewView.Current);
+    end);
+  Palette.RegisterCommand('Atlas.WhatsNewAll', TAtlasStrings.Text(TAtlasTextId.WelcomeNewsShowAllCommand), '',
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.WhatsNew <> nil) and TAtlasIdeSettings.Current.WelcomePage then
+        Welcome.ShowWhatsNew(TAtlasWhatsNewView.All);
     end);
   Palette.RegisterCommand('Atlas.HangTest', TAtlasStrings.Text(TAtlasTextId.SettingsHangTest), '',
     procedure
@@ -828,6 +843,27 @@ begin
       begin
         if Palette <> nil then
           Palette.Execute(AId);
+      end);
+    // Karte „Neu in Atlas“ (#756): „Ausprobieren“ führt Atlas-Befehle der Palette aus.
+    Welcome.WhatsNew := TAtlasIdeWhatsNew.Create(
+      function(AId: string): Boolean
+      var
+        Command: TAtlasCommand;
+      begin
+        Result := False;
+        if Palette <> nil then
+          for Command in Palette.AtlasCommands do
+            if SameText(Command.Id, AId) then
+              Exit(True);
+      end,
+      procedure(AId: string)
+      begin
+        if Palette <> nil then
+          Palette.Execute(AId);
+      end,
+      procedure(AText: string)
+      begin
+        GuardWarning(AText);
       end);
   end;
   if Welcome <> nil then

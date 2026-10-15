@@ -343,7 +343,7 @@ var
   Settings, Saved: TAtlasPluginSettings;
 begin
   // #753: Ein/Aus, Ort (Willkommensseite oder Fenster „Atlas-Start“), Atlas-Layout, Kopf und Grußzeile;
-  // #760: Suchfeld, Gruppe „Symbole“ und Taste.
+  // #760: Suchfeld, Gruppe „Symbole“ und Taste; #756: Karte „Neu in Atlas“.
   Settings := TAtlasPluginSettings.Defaults;
   Page := TAtlasSettingsPage.Create(nil);
   try
@@ -356,6 +356,7 @@ begin
     Assert.IsTrue(Page.WelcomeSearch.Checked);
     Assert.IsTrue(Page.WelcomeSearchSymbols.Checked);
     Assert.AreEqual(ShortCutToText($4045), Page.WelcomeSearchKey.Text);
+    Assert.AreEqual(1, Page.WelcomeWhatsNew.Choice, 'afterUpdate');
     Page.WelcomeEnabled.Checked := False;
     Page.WelcomeHost.Choice := 1;
     Page.WelcomeLayout.Checked := True;
@@ -364,6 +365,7 @@ begin
     Page.WelcomeSearch.Checked := False;
     Page.WelcomeSearchSymbols.Checked := False;
     Page.WelcomeSearchKey.Text := ShortCutToText($6046);
+    Page.WelcomeWhatsNew.Choice := 2;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.WelcomePage);
@@ -374,9 +376,14 @@ begin
     Assert.IsFalse(Saved.WelcomePageSearch);
     Assert.IsFalse(Saved.WelcomePageSearchSymbols);
     Assert.AreEqual($6046, Saved.WelcomePageSearchKey);
+    Assert.AreEqual('always', Saved.WelcomePageWhatsNew);
     Page.LoadFrom(Saved);
     Assert.AreEqual(1, Page.WelcomeHost.Choice);
     Assert.IsTrue(Page.WelcomeLayout.Checked);
+    Assert.AreEqual(2, Page.WelcomeWhatsNew.Choice);
+    Page.WelcomeWhatsNew.Choice := 0;
+    Page.SaveTo(Saved);
+    Assert.AreEqual('off', Saved.WelcomePageWhatsNew);
   finally
     Page.Free;
   end;

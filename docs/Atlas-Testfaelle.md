@@ -632,6 +632,23 @@ Vorbereitung: Formular mit Button `btnSave` und den Methoden `FormCreate(Sender:
 | WS9 | Optionen: Taste des Suchfelds auf Strg+Umschalt+F; dann „Gruppe Symbole“ aus; dann „Suchfeld zeigen“ aus | neue Taste wirkt; Gruppe „Symbole“ fehlt ganz; Suchfeld verschwindet, die Taste tut auf der Willkommensseite nichts |
 | WS10 | Fenster „Atlas-Start“ (WP10) | Suchfeld oben im Kopf, verhält sich wie auf der Willkommensseite |
 
+### Neu in Atlas (#756)
+
+Vorbereitung: Paket mit `whatsnew.json` (Release oder `pwsh Tools/Update-WhatsNew.ps1 -Unreleased 1.1.0 -OutFile <BPL-Ordner>\..\whatsnew.json`, dazu `Setup\Beispiele` als `Beispiele` daneben). Die gesehene Version steht in `HKCU\Software\Atlas\IdePlugin`, Wert `WhatsNewSeen`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NA1 | Erste Installation (`WhatsNewSeen` fehlt), IDE starten | keine Karte; danach steht `WhatsNewSeen` auf der Plugin-Version |
+| NA2 | `WhatsNewSeen` = 1.0.0, Plugin 1.1.0, IDE starten | Karte „Neu in Atlas 1.1.0“ oben in der ersten Spalte (Atlas-Layout, „Atlas-Start“) bzw. als eigener Bereich; Zeilen mit Titel, Satz, Tastenkürzel (Suchfeld: tatsächliche Belegung aus WS9), Schalter, „Ausprobieren“ |
+| NA3 | Schalter „Suchfeld“ aus; *Tools › Optionen › Atlas › Willkommensseite* öffnen | Suchfeld verschwindet sofort; „Suchfeld zeigen“ ist aus; wieder an: Suchfeld zurück |
+| NA4 | „Ausprobieren“ beim Suchfeld; bei „Postfix-Vorlagen“ | Fenster „Atlas-Start“ öffnet sich; `Beispiele\Postfix.pas` öffnet sich mit dem Cursor in Zeile 23 |
+| NA5 | „Gelesen“, IDE neu starten | Karte weg, auch nach dem Neustart; `WhatsNewSeen` = 1.1.0 |
+| NA6 | `WhatsNewSeen` = 1.0.0, Plugin 1.2.0 mit Einträgen für 1.1.0 und 1.2.0 | Karte „Neu in Atlas“ mit Überschriften „Version 1.2.0“ und „Version 1.1.0“, je mit ihren Zeilen |
+| NA7 | Rechtsklick in die Atlas-Bereiche bzw. den Kopf: „Alle Versionen“; Überschrift einer älteren Version anklicken | Karte mit allen Versionen, nur die neueste aufgeklappt; Klick klappt auf und zu; „Schließen“ blendet sie aus |
+| NA8 | Rechtsklick: „Neuigkeiten dieser Version zeigen“; Befehlspalette „Neu in Atlas: alle Versionen“ | Karte der aktuellen Version bzw. aller Versionen; mit Host „Atlas-Start“ öffnet sich das Fenster |
+| NA9 | Optionen: Karte „Neu in Atlas“ = nie; dann = immer | keine Karte, kein Eintrag im Kontextmenü; mit „immer“ bleibt die Karte der aktuellen Version auch nach „Gelesen“ und Neustart stehen |
+| NA10 | `whatsnew.json` löschen, „Alle Versionen“ wählen | Meldung „Neu in Atlas: keine Neuigkeiten gefunden …“, keine Karte |
+
 ## Atlas-Symbol (#751)
 
 | Nr. | Schritte | Erwartet |

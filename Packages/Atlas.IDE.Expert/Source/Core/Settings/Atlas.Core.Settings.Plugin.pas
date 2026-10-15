@@ -240,6 +240,12 @@ type
     WelcomePageSearchSymbols: Boolean;
     /// <summary>Taste für den Fokus ins Suchfeld, solange die Willkommensseite aktiv ist (TShortCut; 0 = keine).</summary>
     WelcomePageSearchKey: Integer;
+    /// <summary>Karte „Neu in Atlas“ (#756, welcomePage.whatsNew): off, afterUpdate (einmalig nach einem
+    /// Versionswechsel) oder always.</summary>
+    WelcomePageWhatsNew: string;
+    /// <summary>Zuletzt gesehene Version der Karte „Neu in Atlas“ (#756); kein Schlüssel in atlas.json, nur
+    /// Zustand des Plugins. '' vor dem ersten Start.</summary>
+    WhatsNewSeen: string;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -366,6 +372,8 @@ begin
   Result.WelcomePageSearch := True;
   Result.WelcomePageSearchSymbols := True;
   Result.WelcomePageSearchKey := $4045; // Strg+E
+  Result.WelcomePageWhatsNew := 'afterUpdate';
+  Result.WhatsNewSeen := '';
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -422,6 +430,13 @@ begin
     WelcomePageLayout := 'atlas'
   else
     WelcomePageLayout := 'off';
+  if SameText(Trim(WelcomePageWhatsNew), 'off') then
+    WelcomePageWhatsNew := 'off'
+  else if SameText(Trim(WelcomePageWhatsNew), 'always') then
+    WelcomePageWhatsNew := 'always'
+  else
+    WelcomePageWhatsNew := 'afterUpdate';
+  WhatsNewSeen := Trim(WhatsNewSeen);
 end;
 
 procedure TAtlasPluginSettings.Load(const AStore: IAtlasSettingsStore);
@@ -521,6 +536,8 @@ begin
   WelcomePageSearchSymbols := AStore.ReadInteger('WelcomePageSearchSymbols',
     BoolValue(Default.WelcomePageSearchSymbols)) <> 0;
   WelcomePageSearchKey := AStore.ReadInteger('WelcomePageSearchKey', Default.WelcomePageSearchKey);
+  WelcomePageWhatsNew := AStore.ReadString('WelcomePageWhatsNew', Default.WelcomePageWhatsNew);
+  WhatsNewSeen := AStore.ReadString('WhatsNewSeen', Default.WhatsNewSeen);
   Normalize;
 end;
 
@@ -616,6 +633,8 @@ begin
   AStore.WriteInteger('WelcomePageSearch', BoolValue(WelcomePageSearch));
   AStore.WriteInteger('WelcomePageSearchSymbols', BoolValue(WelcomePageSearchSymbols));
   AStore.WriteInteger('WelcomePageSearchKey', WelcomePageSearchKey);
+  AStore.WriteString('WelcomePageWhatsNew', WelcomePageWhatsNew);
+  AStore.WriteString('WhatsNewSeen', WhatsNewSeen);
 end;
 
 end.
