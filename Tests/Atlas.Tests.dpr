@@ -93,6 +93,7 @@ uses
   Atlas.Common.Pascal.Lexer.Tests in 'Common\Pascal\Atlas.Common.Pascal.Lexer.Tests.pas',
   Atlas.Common.Lsp.Internals.Debouncer.Tests in 'Common\Lsp\Atlas.Common.Lsp.Internals.Debouncer.Tests.pas',
   Atlas.Common.Lsp.Internals.Namespaces.Tests in 'Common\Lsp\Atlas.Common.Lsp.Internals.Namespaces.Tests.pas',
+  Atlas.Common.Lsp.Internals.FormCache.Tests in 'Common\Lsp\Atlas.Common.Lsp.Internals.FormCache.Tests.pas',
   Atlas.Common.JsonRpc.Watchdog.Tests in 'Common\JsonRpc\Atlas.Common.JsonRpc.Watchdog.Tests.pas',
   Atlas.Common.JsonRpc.CurrentRequest.Tests in 'Common\JsonRpc\Atlas.Common.JsonRpc.CurrentRequest.Tests.pas',
   Atlas.Windows.Diagnostics.StackTrace.Tests in 'Windows\Diagnostics\Atlas.Windows.Diagnostics.StackTrace.Tests.pas',

@@ -90,6 +90,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 - Watchdog des Servers: Nebenläufige Anfragen (Formatierung, Schnellbefehle) beantwortet er beim Ablauf des Zeitlimits sofort mit `RequestCancelled` (-32800); eine spätere Antwort des Handlers wird verworfen. Die Lang-Abfrage von `workspace/diagnostic` richtet sich nach `requestTimeoutMs` und endet vor dem Zeitlimit (Code-Review A-06, P-14).
 - MCP-Server: Änderungen aus der IDE werden alle 50 ms statt seltener abgefragt (P-16).
+- Server schneller auf dem heißen Pfad: Referenzsuche und Vorkommen werten den Syntaxbaum einmal vor (`PinTree`, verschachtelbar) statt je Treffer neu; gemessen unter FPC mit 300 Treffern rund 500 ms → 80 ms. Die Namensauflösung behält Helper- und Vorfahren-Caches je Unit und Abschnitt, die Vervollständigung liest Formulardateien über einen kleinen Cache (`Internals.FormCache`) und nur innerhalb von Routinen, `ISymbolIndex.Units` ist ein Schnappschuss, und der Anonymisierer der Logs übersetzt seine regulären Ausdrücke nur einmal (Code-Review P-01, P-02, P-05, P-06, P-07, P-08, P-11, P-12, P-13, P-17).
 
 ### Behoben
 - Server: Schnellbefehle (`/define`, `/config`) laden das Projekt nur noch im Thread der Nachrichtenschleife neu; der Namensraum-Zustand der Features ist gesperrt (Code-Review A-03).

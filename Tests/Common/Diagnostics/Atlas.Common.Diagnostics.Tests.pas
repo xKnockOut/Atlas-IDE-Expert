@@ -56,6 +56,14 @@ type
     procedure ServerLogHidesPathsAndNames;
     [Test]
     procedure ServerLogKeepsLibraryUnitsAndNumbers;
+    /// <summary>Code-Review P-11: Die einmal übersetzten Muster liefern über viele Zeilen dieselben Marken;
+    /// 2000 Zeilen bleiben deutlich unter einer Millisekunde je Zeile.</summary>
+    [Test]
+    procedure AnonymizeManyLinesSameLabels;
+    /// <summary>Code-Review P-11: Die geteilten TRegEx-Instanzen laufen nur unter der Sperre; parallele
+    /// Aufrufe liefern dieselben Marken ohne Ausnahme.</summary>
+    [Test]
+    procedure AnonymizeConcurrent;
   end;
 
   /// <summary>Speicherrest beim Beenden (#177).</summary>
@@ -73,6 +81,8 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
+  System.SyncObjs,
+  System.StrUtils,
   System.IOUtils,
   System.JSON,
   System.Diagnostics,
@@ -596,6 +606,82 @@ begin
     Anonymizer.Anonymize('Unit "C:\Program Files\Embarcadero\Studio\37.0\source\vcl\Vcl.Forms.pas" geladen'));
   Assert.AreEqual('Stufe "wert#1", Methode "textDocument/hover" nach "1234" ms',
     Anonymizer.Anonymize('Stufe "verbose", Methode "textDocument/hover" nach "1234" ms'));
+end;
+
+const
+  AnonymizeLine = 'Symbolindex für Kundenverwaltung: "C:\Projekte\Haupt.pas" Firma.Kunden.TKunde nach "12" ms';
+  AnonymizedLine = 'Symbolindex für name#1: "datei#1.pas" name#2.TKunde nach "12" ms';
+
+function NewAnonymizer: ILogAnonymizer;
+begin
+  Result := TLogAnonymizer.Create(['mmuster']);
+  Result.AddNames(['Kundenverwaltung']);
+  Result.AddUnit('Firma.Kunden', 'C:\Projekte\Firma.Kunden.pas');
+end;
+
+procedure TDiagnosticLogTests.AnonymizeManyLinesSameLabels;
+const
+  Lines = 2000;
+var
+  Anonymizer: ILogAnonymizer;
+  Watch: TStopwatch;
+  Index: Integer;
+begin
+  Anonymizer := NewAnonymizer;
+  Watch := TStopwatch.StartNew;
+  for Index := 1 to Lines do
+    Assert.AreEqual(AnonymizedLine, Anonymizer.Anonymize(AnonymizeLine));
+  Watch.Stop;
+  Assert.IsTrue(Watch.ElapsedMilliseconds < Lines, Format('%d ms für %d Zeilen', [Watch.ElapsedMilliseconds, Lines]));
+  // Ein langer Text mit vielen Treffern (TStringBuilder statt Anhängen) bleibt vollständig.
+  Assert.AreEqual(DupeString(AnonymizedLine + ' ', 50), Anonymizer.Anonymize(DupeString(AnonymizeLine + ' ', 50)));
+end;
+
+/// <summary>Thread, der ACount Mal AAnonymizer auf AnonymizeLine anwendet und Abweichungen in AFailures^ zählt.
+/// </summary>
+function AnonymizeThread(const AAnonymizer: ILogAnonymizer; ACount: Integer; AFailures: PInteger): TThread;
+begin
+  Result := TThread.CreateAnonymousThread(
+    procedure
+    var
+      Index: Integer;
+    begin
+      for Index := 1 to ACount do
+        try
+          if AAnonymizer.Anonymize(AnonymizeLine) <> AnonymizedLine then
+            TInterlocked.Increment(AFailures^);
+        except
+          TInterlocked.Increment(AFailures^);
+        end;
+    end);
+  Result.FreeOnTerminate := False;
+end;
+
+procedure TDiagnosticLogTests.AnonymizeConcurrent;
+const
+  ThreadCount = 4;
+  PerThread = 200;
+var
+  Anonymizer: ILogAnonymizer;
+  Failures: Integer;
+  Threads: array[0..ThreadCount - 1] of TThread;
+  Number: Integer;
+begin
+  Anonymizer := NewAnonymizer;
+  Failures := 0;
+  for Number := 0 to ThreadCount - 1 do
+    Threads[Number] := AnonymizeThread(Anonymizer, PerThread, @Failures);
+  try
+    for Number := 0 to ThreadCount - 1 do
+      Threads[Number].Start;
+    for Number := 0 to ThreadCount - 1 do
+      Threads[Number].WaitFor;
+  finally
+    for Number := 0 to ThreadCount - 1 do
+      Threads[Number].Free;
+  end;
+  Assert.AreEqual(0, Failures);
+  Assert.AreEqual(AnonymizedLine, Anonymizer.Anonymize(AnonymizeLine));
 end;
 
 { TShutdownLeaksTests }
