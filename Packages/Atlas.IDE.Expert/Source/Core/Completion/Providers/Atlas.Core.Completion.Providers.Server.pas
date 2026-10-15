@@ -1,8 +1,9 @@
 ﻿unit Atlas.Core.Completion.Providers.Server;
 
 // Standardquelle der Vervollständigung (#408): der Atlas-Server über die
-// LSP-Sitzung des Plugins (ADR 0006). Prepare gleicht im Hauptthread den
-// Editortext ab (Sync), Fetch fragt textDocument/completion im Hintergrund an
+// LSP-Sitzung des Plugins (ADR 0006). Prepare gleicht im aufrufenden Thread
+// (Zeitlimit-Arbeiter, #493) den Editortext ab (Sync ist threadsicher), Fetch
+// fragt textDocument/completion im Hintergrund an
 // und übersetzt die LSP-Einträge. Details für das Detailpanel (#405, #424)
 // fragt Resolve über completionItem/resolve nach; der Server liefert sie
 // strukturiert in data.atlas.
@@ -24,7 +25,8 @@ uses
   Atlas.Core.Lsp.Session;
 
 type
-  /// <summary>Aktuelle Sitzung oder nil, wenn kein Server verfügbar ist. Im Hauptthread aufgerufen.</summary>
+  /// <summary>Laufende Sitzung oder nil; startet nie einen Server (Code-Review A-01). Aus beliebigem Thread
+  /// aufgerufen, meist im Zeitlimit-Arbeiter.</summary>
   TAtlasSessionFunc = reference to function: TLspSession;
   /// <summary>Zeile fürs Diagnoselog des Plugins; ohne Namen aus dem Quelltext. Auch aus Hintergrund-Threads.</summary>
   TAtlasProviderLog = reference to procedure(const AMessage: string);
@@ -77,6 +79,8 @@ uses
   System.Generics.Collections,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Documentation.Contract,
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Lsp.Client;
 
 { TAtlasServerCompletionProvider }
@@ -328,7 +332,7 @@ begin
       Log('Vervollständigung: kein Server verbunden');
     Exit;
   end;
-  // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
+  // Sync ist threadsicher (FDocLock in TLspSession); hier im Zeitlimit-Arbeiter.
   Session.Sync(AContext.FileName, AContext.Text);
   AData := Session;
 end;
@@ -506,7 +510,8 @@ begin
         Response.Free;
       end;
       Details.Hides := Hides;
-      TThread.Queue(nil,
+      // Der Rückruf zeigt das Detailpanel; die Hülle zählt seine Fehler für die Vervollständigung (S-05, A-02).
+      TAtlasMainThread.Queue(TAtlasFeature.Completion,
         procedure
         begin
           if AliveToken.Alive and (AliveRef <> nil) and

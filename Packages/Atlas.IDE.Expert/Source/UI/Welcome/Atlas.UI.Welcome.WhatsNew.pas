@@ -136,6 +136,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
   System.Math,
   Atlas.UI.Strings;
@@ -171,7 +173,7 @@ begin
   Source := FSource;
   // Die Quelle baut Karte und Bereiche neu; das Menü darf nicht in seinem eigenen Klick verschwinden.
   if Source <> nil then
-    TThread.ForceQueue(nil,
+    TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
       procedure
       begin
         Source.Show(View);
@@ -497,7 +499,7 @@ begin
   Version := FHeadingVersions[TLabel(Sender).Tag];
   Frame := Self;
   // Nicht im Klick des Labels neu bauen: Toggle gibt es frei.
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
       if Live.Contains(Frame) then
@@ -516,7 +518,7 @@ begin
   Source := FSource;
   Setting := FRows[TCheckBox(Sender).Tag].Item.Setting;
   Value := TCheckBox(Sender).Checked;
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
       Source.SetSwitch(Setting, Value);
@@ -532,7 +534,7 @@ begin
     Exit;
   Source := FSource;
   Item := FRows[TButton(Sender).Tag].Item;
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
       Source.TryItem(Item);
@@ -546,7 +548,7 @@ begin
   if FSource = nil then
     Exit;
   Source := FSource;
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
       Source.Dismiss;

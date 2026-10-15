@@ -6,7 +6,8 @@
 // (Strg+Alt+I), Gehe zu Typdefinition (ohne Vorgabe), letzte
 // Atlas-Änderung zurücknehmen (Strg+Alt+Z) und wiederherstellen
 // (Strg+Alt+Umschalt+Z, #721) sowie Deklaration ⇄ Implementierung
-// (Strg+Umschalt+↑/↓, #775). Jede Taste wird wie
+// (Strg+Umschalt+↑/↓, #775), Unit ⇄ Testunit (#189) und Units suchen (#777,
+// nur solange unitSearch.enabled an ist). Jede Taste wird wie
 // die der Befehlspalette vorher auf Konflikte geprüft (#494); ohne Vorrang
 // bleibt eine fremde Belegung aktiv. Nach geänderten Einstellungen meldet
 // Rebind die Bindung neu an. Der Befehl läuft nach der Tastenverarbeitung
@@ -67,6 +68,7 @@ implementation
 
 uses
   Winapi.Windows,
+  Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
@@ -135,7 +137,7 @@ begin
       BindingResult := krHandled;
       Proc := Key.Proc;
       // Keine Exception an die IDE (#493); erst nach der Tastenverarbeitung.
-      TThread.ForceQueue(nil,
+      TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
         procedure
         begin
           TAtlasGuard.Run(TAtlasFeature.EditorCommands, Proc);
@@ -267,11 +269,13 @@ begin
     begin
       TAtlasIdeEditorCommands.SwitchTestUnit;
     end);
-  AddKey(Settings.UnitSearchKey, TAtlasStrings.Text(TAtlasTextId.UnitSearchTitle),
-    procedure
-    begin
-      TAtlasIdeUnitSearch.Show;
-    end);
+  // Units suchen (#777): aus = keine eigene Taste (die IDE behält Strg+F12 für ihren Dialog).
+  if Settings.UnitSearchEnabled then
+    AddKey(Settings.UnitSearchKey, TAtlasStrings.Text(TAtlasTextId.UnitSearchTitle),
+      procedure
+      begin
+        TAtlasIdeUnitSearch.Show;
+      end);
   AddKey(Settings.UndoKey, TAtlasStrings.Text(TAtlasTextId.UndoMenu),
     procedure
     begin

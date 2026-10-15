@@ -195,7 +195,7 @@ begin
       AFileName, Expected, AText,
       procedure
       begin
-        Sleep(20);
+        Sleep(TMcpIdeEdits.PollMs);
       end,
       function: Int64
       begin

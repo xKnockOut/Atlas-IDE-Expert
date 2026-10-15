@@ -1,7 +1,8 @@
 ﻿unit Atlas.Core.Completion.Internals.Async;
 
 // Basis für Datenquellen der Vervollständigung, die im Hintergrund arbeiten
-// (#408). Query ruft Prepare im aufrufenden Thread (dem Hauptthread der IDE)
+// (#408). Query ruft Prepare im aufrufenden Thread – seit #493 meist ein
+// Arbeiter von TAtlasTimeLimit (Composite.QueryOne), nicht der Hauptthread –
 // und Fetch in einem eigenen Thread; dessen Ergebnis geht nur an die Senke,
 // wenn der Query noch aktuell ist. Mehrere Threads dürfen gleichzeitig laufen,
 // damit ein neuer Query nie auf einen langsamen alten warten muss. Beim
@@ -46,7 +47,8 @@ type
   protected
     /// <summary>Zählt E als Fehler der Quelle? Standard: ja.</summary>
     function IsFailure(E: Exception): Boolean; virtual;
-    /// <summary>Im aufrufenden Thread vor dem Start; False = nichts zu tun (Complete sofort).
+    /// <summary>Im aufrufenden Thread vor dem Start, meist im Zeitlimit-Arbeiter (#493): weder VCL noch Open Tools
+    /// API, kein Serverstart (Code-Review K-03). False = nichts zu tun (Complete sofort).
     /// AData geht unverändert an Fetch (nicht übernommen, muss bis zum Ende von Fetch leben).</summary>
     function Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean; virtual;
     /// <summary>Im Hintergrund. Ausnahmen gelten als leeres Ergebnis. AIncomplete: Die Liste ist
@@ -56,7 +58,7 @@ type
       const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems; virtual; abstract;
     /// <summary>Weitere Arbeit im Hintergrund (z. B. Details nachfragen); Shutdown wartet auch darauf.</summary>
     procedure RunInBackground(const AWork: TProc);
-    /// <summary>Für Aufrufe per TThread.Queue: nur ausführen, solange Token.Alive gilt.</summary>
+    /// <summary>Für Aufrufe per TAtlasMainThread.Queue: nur ausführen, solange Token.Alive gilt.</summary>
     property Token: TAtlasAliveToken read FToken;
     property TokenRef: IInterface read FTokenRef;
   public
@@ -215,49 +217,59 @@ begin
   end;
   Context := AContext;
   Sink := ASink;
-  Worker := TThread.CreateAnonymousThread(
-    procedure
-    var
-      Items: TAtlasCompletionItems;
-      Incomplete: Boolean;
-    begin
-      Items := nil;
-      Incomplete := False;
-      try
-        Items := Fetch(Context, Data,
-          function: Boolean
-          begin
-            Result := not IsCurrent(Generation);
-          end,
-          procedure(const AItems: TAtlasCompletionItems)
-          begin
-            if (Length(AItems) > 0) and IsCurrent(Generation) then
-              Sink.AddItems(AItems);
-          end, Incomplete);
-      except
-        // Server weg, Zeitlimit oder unerwartete Antwort: keine Einträge; Fehler zählt die Sicherung (#493).
-        on E: Exception do
-        begin
-          Items := nil;
-          Failed(E);
-        end;
-      end;
-      if IsCurrent(Generation) then
-      begin
-        Sink.AddItems(Items);
-        if Incomplete then
-          Sink.MarkIncomplete;
-        Sink.Complete;
-      end;
-    end);
-  Worker.FreeOnTerminate := False;
+  Worker := nil;
   FLock.Enter;
   try
-    FWorkers.Add(Worker);
+    // Prepare läuft im Zeitlimit-Arbeiter und kann das Zeitlimit überdauern (Code-Review A-13): Ist die Anfrage
+    // inzwischen überholt, abgebrochen oder hat Shutdown die Arbeiter eingesammelt, keine Vollanfrage mehr stellen.
+    // Unter FLock und mit Start in der Sperre, damit Shutdown keinen danach gestarteten Arbeiter übersieht.
+    if IsCurrent(Generation) then
+    begin
+      Worker := TThread.CreateAnonymousThread(
+        procedure
+        var
+          Items: TAtlasCompletionItems;
+          Incomplete: Boolean;
+        begin
+          Items := nil;
+          Incomplete := False;
+          try
+            Items := Fetch(Context, Data,
+              function: Boolean
+              begin
+                Result := not IsCurrent(Generation);
+              end,
+              procedure(const AItems: TAtlasCompletionItems)
+              begin
+                if (Length(AItems) > 0) and IsCurrent(Generation) then
+                  Sink.AddItems(AItems);
+              end, Incomplete);
+          except
+            // Server weg, Zeitlimit oder unerwartete Antwort: keine Einträge; Fehler zählt die Sicherung (#493).
+            on E: Exception do
+            begin
+              Items := nil;
+              Failed(E);
+            end;
+          end;
+          if IsCurrent(Generation) then
+          begin
+            Sink.AddItems(Items);
+            if Incomplete then
+              Sink.MarkIncomplete;
+            Sink.Complete;
+          end;
+        end);
+      Worker.FreeOnTerminate := False;
+      FWorkers.Add(Worker);
+      Worker.Start;
+    end;
   finally
     FLock.Leave;
   end;
-  Worker.Start;
+  // Überholt: Die Senken verwerfen veraltete Aufrufe; Composite erwartet je Teil ein Complete.
+  if Worker = nil then
+    ASink.Complete;
 end;
 
 end.

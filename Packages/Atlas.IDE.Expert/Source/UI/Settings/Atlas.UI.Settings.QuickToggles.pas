@@ -92,6 +92,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.UI.Strings;
 
@@ -283,7 +285,7 @@ begin
   end;
   // Projektwert: Die IDE-Schicht fragt nach, wo die Änderung gelten soll; das Fenster schließt vorher.
   Dismiss;
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Status,
     procedure
     begin
       Handler(Item);

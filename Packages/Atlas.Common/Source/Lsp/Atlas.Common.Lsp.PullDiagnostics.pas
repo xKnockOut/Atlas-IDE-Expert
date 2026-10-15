@@ -13,6 +13,8 @@
 // workspace/diagnostic arbeitet pro Anfrage höchstens BudgetMs und liefert den
 // Rest bei der nächsten Anfrage. Gibt es nichts Neues, wartet die Anfrage bis
 // WaitMs auf eine Änderung (Long-Polling), damit der Client nicht ständig fragt.
+// Mit RequestTimeout endet das Warten (und das Budget) sicher vor dem Zeitlimit
+// des Watchdogs (Code-Review P-14); Changed weckt alle Wartenden sofort.
 //
 // Solange der Symbolindex aufgebaut wird (Busy), prüft workspace/diagnostic
 // nichts (#647): Die Befunde wären voller nicht gefundener Units, kosteten
@@ -52,6 +54,8 @@ type
   TPullReadText = reference to function(const AFileName: string; out AText: string): Boolean;
   /// <summary>True, solange der Symbolindex aufgebaut wird.</summary>
   TPullBusy = reference to function: Boolean;
+  /// <summary>Aktuelles Zeitlimit des Watchdogs für Anfragen in ms (0 = keines).</summary>
+  TPullTimeout = reference to function: Cardinal;
 
   TLspPullDiagnostics = class
   public const
@@ -70,6 +74,8 @@ type
     MaxCachedReports = 500;
     /// <summary>Takt, in dem eine Anfrage auf die gleiche Berechnung einer anderen wartet.</summary>
     RunningPollMs = 20;
+    /// <summary>Takt, in dem Wartende Abbruch und Indexzustand prüfen; Changed weckt sofort.</summary>
+    ChangeSliceMs = 100;
   private
     FStore: IDocumentStore;
     FDiagnostics: TLspSyntaxDiagnostics;
@@ -78,7 +84,10 @@ type
     FStamp: TPullFileStamp;
     FReadText: TPullReadText;
     FGeneration: Integer;
-    FChanged: TEvent;
+    /// <summary>Monitor für FGeneration und das Wecken Wartender (statt Auto-Reset-Event, das nur einen
+    /// weckte).</summary>
+    FChangedLock: TObject;
+    FRequestTimeout: TPullTimeout;
     FRefreshSupport: Boolean;
     FRefreshCounter: Integer;
     FBudgetMs: Cardinal;
@@ -101,11 +110,17 @@ type
     /// <summary>True: Der Aufrufer rechnet AKey jetzt selbst. False mit ACached: Befunde aus dem
     /// Speicher (gehören dem Aufrufer). False ohne: Eine andere Anfrage rechnet gerade.</summary>
     function Claim(const AUri, AResultId, AKey: string; out ACached: TJSONArray): Boolean;
-    /// <summary>Wartet ohne zu prüfen bis WaitMs auf eine Änderung (zweite gleichzeitige Anfrage).</summary>
-    procedure WaitForChange(const ACancellation: IJsonRpcCancellationToken);
+    /// <summary>Wartet ohne zu prüfen bis AWaitMs auf eine Änderung (zweite gleichzeitige Anfrage).</summary>
+    procedure WaitForChange(const ACancellation: IJsonRpcCancellationToken; AWaitMs: Cardinal);
+    /// <summary>Wartet höchstens ChangeSliceMs, solange die Generation AGeneration ist.</summary>
+    procedure WaitSlice(AGeneration: Integer);
+    /// <summary>Weckt alle Wartenden.</summary>
+    procedure WakeAll;
+    /// <summary>Zeitrahmen dieser Anfrage aus RequestTimeout; High(Cardinal) ohne Limit.</summary>
+    function TimeLimit: Cardinal;
     function HandleDocument(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function CollectWorkspace(const APrevious: TDictionary<string, string>;
-      const ACancellation: IJsonRpcCancellationToken; out AComplete: Boolean): TJSONArray;
+      const ACancellation: IJsonRpcCancellationToken; ABudgetMs: Int64; out AComplete: Boolean): TJSONArray;
   public
     constructor Create(const AStore: IDocumentStore; ADiagnostics: TLspSyntaxDiagnostics;
       const ATransport: IJsonRpcTransport; const AFiles: TPullFilesProvider; const AStamp: TPullFileStamp;
@@ -126,12 +141,19 @@ type
       const ACancellation: IJsonRpcCancellationToken): TJSONObject; overload;
     /// <summary>Antwort auf workspace/diagnostic; wartet ohne Neuigkeiten bis WaitMs.</summary>
     function WorkspaceReport(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+    /// <summary>Antwort sicher vor dem Zeitlimit des Watchdogs (P-14): 2 s Reserve, bei kurzen Limits die
+    /// Hälfte. ATimeoutMs = 0 (kein Limit): High(Cardinal).</summary>
+    class function TimeLimitMs(ATimeoutMs: Cardinal): Cardinal; static;
+    /// <summary>Wartezeit des Long-Pollings: AWaitMs, höchstens TimeLimitMs(ATimeoutMs).</summary>
+    class function LongPollMs(AWaitMs, ATimeoutMs: Cardinal): Cardinal; static;
     property Generation: Integer read FGeneration;
     property RefreshSupport: Boolean read FRefreshSupport write FRefreshSupport;
     property BudgetMs: Cardinal read FBudgetMs write FBudgetMs;
     property WaitMs: Cardinal read FWaitMs write FWaitMs;
     /// <summary>Ohne Provider gilt der Index als fertig.</summary>
     property Busy: TPullBusy read FBusy write FBusy;
+    /// <summary>Zeitlimit des Watchdogs; ohne Provider (Tests) gelten WaitMs und BudgetMs unverändert.</summary>
+    property RequestTimeout: TPullTimeout read FRequestTimeout write FRequestTimeout;
     /// <summary>Anzahl tatsächlich berechneter Dateibefunde (für Tests und das Diagnoselog).</summary>
     property Computed: Integer read FComputed;
   end;
@@ -159,7 +181,7 @@ begin
   FStamp := AStamp;
   FReadText := AReadText;
   FGeneration := 1;
-  FChanged := TEvent.Create(nil, False, False, '');
+  FChangedLock := TObject.Create;
   FBudgetMs := DefaultBudgetMs;
   FWaitMs := DefaultWaitMs;
   FCache := TObjectDictionary<string, TJSONArray>.Create([doOwnsValues]);
@@ -174,7 +196,7 @@ begin
   FCacheLock.Free;
   FCacheIds.Free;
   FCache.Free;
-  FChanged.Free;
+  FChangedLock.Free;
   inherited;
 end;
 
@@ -210,13 +232,70 @@ begin
   Result.AddPair('workspaceDiagnostics', TJSONBool.Create(True));
 end;
 
+class function TLspPullDiagnostics.TimeLimitMs(ATimeoutMs: Cardinal): Cardinal;
+var
+  Half, Reserved: Int64;
+begin
+  if ATimeoutMs = 0 then
+    Exit(High(Cardinal));
+  Half := Int64(ATimeoutMs) div 2;
+  Reserved := Int64(ATimeoutMs) - 2000;
+  if Reserved > Half then
+    Result := Cardinal(Reserved)
+  else
+    Result := Cardinal(Half);
+end;
+
+class function TLspPullDiagnostics.LongPollMs(AWaitMs, ATimeoutMs: Cardinal): Cardinal;
+begin
+  Result := TimeLimitMs(ATimeoutMs);
+  if AWaitMs < Result then
+    Result := AWaitMs;
+end;
+
+function TLspPullDiagnostics.TimeLimit: Cardinal;
+begin
+  if Assigned(FRequestTimeout) then
+    Result := TimeLimitMs(FRequestTimeout())
+  else
+    Result := High(Cardinal);
+end;
+
+procedure TLspPullDiagnostics.WaitSlice(AGeneration: Integer);
+begin
+  TMonitor.Enter(FChangedLock);
+  try
+    // Unter der Sperre prüfen: Ein Changed zwischen Prüfung und Wait geht nicht verloren.
+    if FGeneration = AGeneration then
+      TMonitor.Wait(FChangedLock, ChangeSliceMs);
+  finally
+    TMonitor.Exit(FChangedLock);
+  end;
+end;
+
+procedure TLspPullDiagnostics.WakeAll;
+begin
+  TMonitor.Enter(FChangedLock);
+  try
+    TMonitor.PulseAll(FChangedLock);
+  finally
+    TMonitor.Exit(FChangedLock);
+  end;
+end;
+
 procedure TLspPullDiagnostics.Changed;
 var
   Request: TJSONObject;
   Counter: Integer;
 begin
-  TInterlocked.Increment(FGeneration);
-  FChanged.SetEvent;
+  TMonitor.Enter(FChangedLock);
+  try
+    TInterlocked.Increment(FGeneration);
+    // Weckt alle Wartenden, nicht nur einen (P-14).
+    TMonitor.PulseAll(FChangedLock);
+  finally
+    TMonitor.Exit(FChangedLock);
+  end;
   if not FRefreshSupport or (FTransport = nil) then
     Exit;
   // Geöffnete Dokumente holt der Client nach refresh neu ab (z. B. nach einem Compilerlauf).
@@ -331,19 +410,17 @@ begin
   end;
 end;
 
-procedure TLspPullDiagnostics.WaitForChange(const ACancellation: IJsonRpcCancellationToken);
+procedure TLspPullDiagnostics.WaitForChange(const ACancellation: IJsonRpcCancellationToken; AWaitMs: Cardinal);
 var
   Generation: Integer;
-  Waited: Cardinal;
+  Clock: TStopwatch;
 begin
   Generation := FGeneration;
-  Waited := 0;
-  while (Waited < FWaitMs) and (FGeneration = Generation) and (FWorkspaceActive <> 0) and
+  Clock := TStopwatch.StartNew;
+  // Changed und das Ende der prüfenden Anfrage wecken sofort (WakeAll); der Takt gilt nur dem Abbruch.
+  while (Clock.ElapsedMilliseconds < Int64(AWaitMs)) and (FGeneration = Generation) and (FWorkspaceActive <> 0) and
     not ACancellation.IsCancellationRequested do
-  begin
-    Sleep(100);
-    Inc(Waited, 100);
-  end;
+    WaitSlice(Generation);
 end;
 
 function TLspPullDiagnostics.DocumentReport(const AUri, APreviousResultId: string): TJSONObject;
@@ -408,7 +485,7 @@ begin
 end;
 
 function TLspPullDiagnostics.CollectWorkspace(const APrevious: TDictionary<string, string>;
-  const ACancellation: IJsonRpcCancellationToken; out AComplete: Boolean): TJSONArray;
+  const ACancellation: IJsonRpcCancellationToken; ABudgetMs: Int64; out AComplete: Boolean): TJSONArray;
 var
   FileName, Uri, Text, ResultId, Known: string;
   Stamp: Int64;
@@ -435,7 +512,7 @@ begin
       ResultId := Format('%d:t%d', [FGeneration, Stamp]);
       if APrevious.TryGetValue(Uri, Known) and (Known = ResultId) then
         Continue;
-      if Clock.ElapsedMilliseconds > FBudgetMs then
+      if Clock.ElapsedMilliseconds > ABudgetMs then
       begin
         AComplete := False;
         Break;
@@ -461,6 +538,21 @@ begin
   end;
 end;
 
+/// <summary>Budget einer Prüfrunde: Rest bis ALimit, höchstens ABudgetMs; ohne Limit ABudgetMs.</summary>
+function BudgetFor(ALimit, ABudgetMs: Cardinal; const AClock: TStopwatch): Int64;
+var
+  Remaining: Int64;
+begin
+  Result := ABudgetMs;
+  if ALimit = High(Cardinal) then
+    Exit;
+  Remaining := Int64(ALimit) - AClock.ElapsedMilliseconds;
+  if Remaining < 0 then
+    Remaining := 0;
+  if Remaining < Result then
+    Result := Remaining;
+end;
+
 function TLspPullDiagnostics.WorkspaceReport(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
@@ -471,13 +563,20 @@ var
   Items: TJSONArray;
   Complete: Boolean;
   Pending: Boolean;
-  Waited: Cardinal;
   Generation: Integer;
+  Clock: TStopwatch;
+  Limit, PollMs: Cardinal;
 begin
+  // Zeitrahmen der Anfrage: Antwort vor dem Zeitlimit des Watchdogs (P-14).
+  Clock := TStopwatch.StartNew;
+  Limit := TimeLimit;
+  PollMs := FWaitMs;
+  if Limit < PollMs then
+    PollMs := Limit;
   // Nur eine Anfrage prüft; eine zweite wartet bloß auf eine Änderung und antwortet leer.
   if TInterlocked.CompareExchange(FWorkspaceActive, 1, 0) <> 0 then
   begin
-    WaitForChange(ACancellation);
+    WaitForChange(ACancellation, PollMs);
     TRequestDiagnostics.Reason(ReasonWorkspaceBusy);
     Result := TJSONObject.Create;
     TJSONObject(Result).AddPair('items', TJSONArray.Create);
@@ -496,12 +595,12 @@ begin
     if Pending then
       Items := TJSONArray.Create
     else
-      Items := CollectWorkspace(Previous, ACancellation, Complete);
+      Items := CollectWorkspace(Previous, ACancellation, BudgetFor(Limit, FBudgetMs, Clock), Complete);
     // Nichts Neues: auf eine Änderung warten, statt sofort leer zu antworten.
-    Waited := 0;
-    while (Items.Count = 0) and Complete and (Waited < FWaitMs) and not ACancellation.IsCancellationRequested do
+    while (Items.Count = 0) and Complete and (Clock.ElapsedMilliseconds < Int64(PollMs)) and
+      not ACancellation.IsCancellationRequested do
     begin
-      FChanged.WaitFor(100);
+      WaitSlice(Generation);
       if (FGeneration <> Generation) or (Pending and not IsBusy) then
       begin
         Generation := FGeneration;
@@ -509,10 +608,9 @@ begin
         if not Pending then
         begin
           Items.Free;
-          Items := CollectWorkspace(Previous, ACancellation, Complete);
+          Items := CollectWorkspace(Previous, ACancellation, BudgetFor(Limit, FBudgetMs, Clock), Complete);
         end;
       end;
-      Inc(Waited, 100);
     end;
     if Items.Count = 0 then
     begin
@@ -526,6 +624,8 @@ begin
   finally
     Previous.Free;
     TInterlocked.Exchange(FWorkspaceActive, 0);
+    // Eine zweite, wartende Anfrage endet jetzt sofort.
+    WakeAll;
   end;
 end;
 

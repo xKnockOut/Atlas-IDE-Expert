@@ -102,7 +102,7 @@ var
 begin
   {$WARN SYMBOL_PLATFORM OFF}
   GetMemoryManagerState(State);
-  {$WARN SYMBOL_PLATFORM ON}
+  {$WARN SYMBOL_PLATFORM DEFAULT}
   Result := Int64(State.TotalAllocatedMediumBlockSize) + Int64(State.TotalAllocatedLargeBlockSize);
   for I := Low(State.SmallBlockTypeStates) to High(State.SmallBlockTypeStates) do
     Inc(Result, Int64(State.SmallBlockTypeStates[I].AllocatedBlockCount) *

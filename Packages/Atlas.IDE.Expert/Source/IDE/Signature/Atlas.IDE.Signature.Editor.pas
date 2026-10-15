@@ -98,6 +98,8 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Lsp.Client,
   Vcl.Forms,
   DockForm,
   Atlas.Core.Signature.CallScanner,
@@ -447,14 +449,19 @@ begin
   if not Removed then
     Exit;
   // Erst nach der Änderung, wenn die IDE den Caret gesetzt hat.
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Signature,
     procedure
     begin
       try
         Reopen(AView);
       except
         on E: Exception do
+        begin
           Log('Parameter-Hint: ' + E.Message);
+          // Server weg oder Zeitlimit ist erwartbar; anderes zählt die Sicherung (Code-Review S-05).
+          if not (E is ELspClientError) then
+            TAtlasGuard.Report(TAtlasFeature.Signature, E);
+        end;
       end;
     end);
 end;

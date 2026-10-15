@@ -212,7 +212,7 @@ begin
   FDebouncer := TDebouncer.Create(SoakDebounceMs);
   FDispatcher := CreateSoakDispatcher(ALeak, Self);
   FDispatcher.Watchdog := TJsonRpcWatchdog.Create(FDispatcher.PendingRequests, SoakTimeoutMs,
-    procedure(const AMethod: string; ATimeoutMs: Cardinal)
+    procedure(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean)
     begin
       TInterlocked.Increment(Soak.FTimeouts);
     end);

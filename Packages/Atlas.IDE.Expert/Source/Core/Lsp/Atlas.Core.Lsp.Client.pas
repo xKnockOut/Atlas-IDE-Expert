@@ -47,6 +47,10 @@ type
   public const
     /// <summary>So viele Antwortzeiten gehen in AverageMs ein (#591).</summary>
     TimeSamples = 50;
+    /// <summary>Obergrenzen der Rahmung wie im Server (Atlas.Common.JsonRpc.StreamTransport): Kopf 8 KB,
+    /// Inhalt 256 MB (Code-Review D-10). Darüber gilt die Verbindung als kaputt.</summary>
+    MaxHeaderLength = 8 * 1024;
+    MaxContentLength = 256 * 1024 * 1024;
   private type
     TPending = class
     public
@@ -440,19 +444,31 @@ end;
 
 function TLspClient.TakeMessage(out AText: string): Boolean;
 var
-  HeaderLength, Index, Len, BodyLength: Integer;
+  HeaderLength, Index, Len, BodyLength, Last: Integer;
   Header, Line: string;
 begin
   Result := False;
   HeaderLength := -1;
-  for Index := 0 to Length(FBuffer) - 4 do
+  // Nur im möglichen Kopf suchen, nicht im ganzen Puffer (Code-Review D-10).
+  Last := Length(FBuffer) - 4;
+  if Last > MaxHeaderLength then
+    Last := MaxHeaderLength;
+  for Index := 0 to Last do
     if CompareMem(@FBuffer[Index], @HeaderEnd[0], 4) then
     begin
       HeaderLength := Index;
       Break;
     end;
   if HeaderLength < 0 then
+  begin
+    // Kein Kopfende in den ersten MaxHeaderLength Bytes: kein LSP, Verbindung aufgeben statt den Speicher zu füllen.
+    if Length(FBuffer) >= MaxHeaderLength + 4 then
+    begin
+      FBuffer := nil;
+      raise ELspClientError.Create('Servernachricht ohne Kopfende');
+    end;
     Exit;
+  end;
   Header := TEncoding.UTF8.GetString(FBuffer, 0, HeaderLength);
   BodyLength := -1;
   for Line in Header.Split([#13#10]) do
@@ -464,6 +480,12 @@ begin
     // Kaputter Kopf: verwerfen und weitermachen.
     Delete(FBuffer, 0, Len);
     Exit(True);
+  end;
+  if BodyLength > MaxContentLength then
+  begin
+    FBuffer := nil;
+    raise ELspClientError.CreateFmt('Servernachricht mit %d Bytes über der Grenze von %d Bytes',
+      [BodyLength, MaxContentLength]);
   end;
   if Length(FBuffer) < Len + BodyLength then
     Exit;

@@ -13,6 +13,11 @@ type
     procedure RecordsIncomingAndOutgoingMessages;
     [Test]
     procedure PassesClosedInputThroughWithoutTrace;
+    /// <summary>Code-Review S-07: nach dem ersten Schreibfehler kein weiterer Versuch.</summary>
+    [Test]
+    procedure StopsTracingAfterWriteFailure;
+    [Test]
+    procedure ReportsWriteFailureOnce;
   end;
 
 implementation
@@ -26,6 +31,59 @@ uses
   Atlas.Common.JsonRpc.StreamTransport,
   Atlas.Common.JsonRpc.TracingTransport,
   Atlas.Common.JsonRpc.TestSupport;
+
+type
+  /// <summary>Mitschnitt, dessen Schreiben immer scheitert (z. B. Datenträger entfernt).</summary>
+  TFailingStream = class(TMemoryStream)
+  private
+    FWrites: Integer;
+  public
+    function Write(const Buffer; Count: Longint): Longint; overload; override;
+    property Writes: Integer read FWrites;
+  end;
+
+function TFailingStream.Write(const Buffer; Count: Longint): Longint;
+begin
+  Inc(FWrites);
+  raise EWriteError.Create('simuliert');
+end;
+
+/// <summary>Schreibt drei Nachrichten über einen Mitschnitt in AFailing; liefert die beim Client
+/// angekommenen Nachrichten.</summary>
+function WriteThree(AFailing: TFailingStream; const AOnFailed: TJsonRpcTraceFailedEvent): Integer;
+var
+  Output: TBytesStream;
+  Tracing: TJsonRpcTracingTransport;
+  Transport: IJsonRpcTransport;
+  Outgoing: TJSONObject;
+  Written: TObjectList<TJSONObject>;
+  Index: Integer;
+begin
+  Output := TBytesStream.Create;
+  try
+    Tracing := TJsonRpcTracingTransport.Create(TJsonRpcStreamTransport.Create(nil, Output, False), AFailing, False);
+    Transport := Tracing;
+    Tracing.OnFailed := AOnFailed;
+    for Index := 1 to 3 do
+    begin
+      Outgoing := TJsonRpcTestSupport.Parse(Format('{"jsonrpc":"2.0","id":%d,"result":null}', [Index]));
+      try
+        Transport.WriteMessage(Outgoing);
+      finally
+        Outgoing.Free;
+      end;
+    end;
+    Transport := nil;
+    Written := TJsonRpcTestSupport.ReadMessages(Output);
+    try
+      Result := Written.Count;
+    finally
+      Written.Free;
+    end;
+  finally
+    Output.Free;
+  end;
+end;
 
 { TJsonRpcTracingTransportTests }
 
@@ -100,6 +158,43 @@ begin
   finally
     Trace.Free;
     Input.Free;
+  end;
+end;
+
+procedure TJsonRpcTracingTransportTests.StopsTracingAfterWriteFailure;
+var
+  Failing: TFailingStream;
+begin
+  Failing := TFailingStream.Create;
+  try
+    // Der Client bekommt alle Nachrichten, der Mitschnitt wird nur einmal versucht.
+    Assert.AreEqual(3, WriteThree(Failing, nil));
+    Assert.AreEqual(1, Failing.Writes);
+  finally
+    Failing.Free;
+  end;
+end;
+
+procedure TJsonRpcTracingTransportTests.ReportsWriteFailureOnce;
+var
+  Failing: TFailingStream;
+  Calls: Integer;
+  Reason: string;
+begin
+  Calls := 0;
+  Reason := '';
+  Failing := TFailingStream.Create;
+  try
+    WriteThree(Failing,
+      procedure(const AReason: string)
+      begin
+        Inc(Calls);
+        Reason := AReason;
+      end);
+    Assert.AreEqual(1, Calls);
+    Assert.Contains(Reason, 'EWriteError');
+  finally
+    Failing.Free;
   end;
 end;
 

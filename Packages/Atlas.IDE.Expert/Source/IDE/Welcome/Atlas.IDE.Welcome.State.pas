@@ -67,6 +67,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
   System.Classes,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
@@ -122,7 +123,7 @@ begin
         // Aus jedem Thread: verglichen und gemeldet wird im Hauptthread, höchstens eine Prüfung unterwegs.
         if AtomicCmpExchange(Queued, 1, 0) <> 0 then
           Exit;
-        TThread.ForceQueue(nil,
+        TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
           procedure
           begin
             AtomicExchange(Queued, 0);

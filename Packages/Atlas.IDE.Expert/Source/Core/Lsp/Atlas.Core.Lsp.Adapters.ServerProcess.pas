@@ -190,17 +190,22 @@ begin
   Security := Default(TSecurityAttributes);
   Security.nLength := SizeOf(Security);
   Security.bInheritHandle := True;
-  // Großer Puffer: Ein ganzer Unit-Text passt meist hinein, ohne auf den Server zu warten.
-  if not CreatePipe(InputRead, FInputWrite, @Security, 1 shl 20) then
-    RaiseLastOSError;
-  if not CreatePipe(FOutputRead, OutputWrite, @Security, 0) then
-    RaiseLastOSError;
-  // Die eigenen Enden dürfen nicht vererbt werden, sonst endet der Server nie.
-  SetHandleInformation(FInputWrite, HANDLE_FLAG_INHERIT, 0);
-  SetHandleInformation(FOutputRead, HANDLE_FLAG_INHERIT, 0);
-  NulHandle := CreateFile('NUL', GENERIC_WRITE, FILE_SHARE_READ or FILE_SHARE_WRITE, @Security,
-    OPEN_EXISTING, 0, 0);
+  InputRead := 0;
+  OutputWrite := 0;
+  NulHandle := INVALID_HANDLE_VALUE;
+  // Die Enden des Kindprozesses schließt das finally auf jedem Weg, auch wenn die zweite Pipe oder CreateProcess
+  // scheitert (Code-Review S-07); die eigenen Enden (FInputWrite, FOutputRead) schließt Destroy.
   try
+    // Großer Puffer: Ein ganzer Unit-Text passt meist hinein, ohne auf den Server zu warten.
+    if not CreatePipe(InputRead, FInputWrite, @Security, 1 shl 20) then
+      RaiseLastOSError;
+    if not CreatePipe(FOutputRead, OutputWrite, @Security, 0) then
+      RaiseLastOSError;
+    // Die eigenen Enden dürfen nicht vererbt werden, sonst endet der Server nie.
+    SetHandleInformation(FInputWrite, HANDLE_FLAG_INHERIT, 0);
+    SetHandleInformation(FOutputRead, HANDLE_FLAG_INHERIT, 0);
+    NulHandle := CreateFile('NUL', GENERIC_WRITE, FILE_SHARE_READ or FILE_SHARE_WRITE, @Security,
+      OPEN_EXISTING, 0, 0);
     Startup := Default(TStartupInfo);
     Startup.cb := SizeOf(Startup);
     Startup.dwFlags := STARTF_USESTDHANDLES;
@@ -213,8 +218,10 @@ begin
       PChar(ExtractFileDir(AExeName)), Startup, Info) then
       RaiseLastOSError;
   finally
-    CloseHandle(InputRead);
-    CloseHandle(OutputWrite);
+    if InputRead <> 0 then
+      CloseHandle(InputRead);
+    if OutputWrite <> 0 then
+      CloseHandle(OutputWrite);
     if NulHandle <> INVALID_HANDLE_VALUE then
       CloseHandle(NulHandle);
   end;

@@ -95,6 +95,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
   Winapi.Windows,
   Winapi.PsAPI,
   Vcl.ActnList,
@@ -192,7 +193,7 @@ begin
     Exit;
   Changed := FChanged;
   // Nach der Meldung: Das Package ist dann fertig geladen bzw. entladen.
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
     procedure
     begin
       // Keine Exception an die IDE (#493).

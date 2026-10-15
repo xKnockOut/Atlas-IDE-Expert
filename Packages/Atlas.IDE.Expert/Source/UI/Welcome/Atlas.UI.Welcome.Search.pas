@@ -102,6 +102,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Style.Color,
   Atlas.UI.Strings;
@@ -375,7 +377,7 @@ begin
       begin
         Handler(Hit);
       end;
-    TThread.ForceQueue(nil, Open);
+    TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage, Open);
   end;
 end;
 

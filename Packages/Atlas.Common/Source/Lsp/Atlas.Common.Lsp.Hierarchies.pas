@@ -69,6 +69,11 @@ type
     function HandlePrepareCall(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleIncoming(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleOutgoing(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+  private
+    /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie
+    /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
+    function GetNamespaces: TArray<string>;
+    procedure SetNamespaces(const AValue: TArray<string>);
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
       const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc = nil);
@@ -92,12 +97,13 @@ type
     class function ItemFromJson(const AValue: TJSONValue; out AItem: THierarchyItem): Boolean; static;
     /// <summary>CallHierarchyIncomingCall[] (AKey 'from') bzw. OutgoingCall[] (AKey 'to').</summary>
     class function CallsToJson(const ACalls: TArray<THierarchyCall>; const AKey: string): TJSONArray; static;
-    property Namespaces: TArray<string> read FNamespaces write FNamespaces;
+    property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
   end;
 
 implementation
 
 uses
+  Atlas.Common.Lsp.Internals.Namespaces,
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions,
@@ -316,6 +322,16 @@ begin
 end;
 
 { TLspHierarchies }
+
+function TLspHierarchies.GetNamespaces: TArray<string>;
+begin
+  Result := TLspNamespaces.Read(FNamespaces);
+end;
+
+procedure TLspHierarchies.SetNamespaces(const AValue: TArray<string>);
+begin
+  TLspNamespaces.Write(FNamespaces, AValue);
+end;
 
 constructor TLspHierarchies.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
@@ -625,7 +641,7 @@ end;
 function TLspHierarchies.NewResolver: TNameResolver;
 begin
   Result := TNameResolver.Create(FIndex, FEnsureUnit);
-  Result.Namespaces := FNamespaces;
+  Result.Namespaces := Namespaces;
 end;
 
 function TLspHierarchies.Prepare(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken;

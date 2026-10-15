@@ -251,8 +251,19 @@ begin
       Id := TAtlasTextId.UndoMenu;
     TAtlasKeyFunction.RedoChange:
       Id := TAtlasTextId.RedoMenu;
+    TAtlasKeyFunction.WelcomeSearch:
+      Id := TAtlasTextId.SettingsWelcomeSearchKey;
+    // Die erste Taste trägt den Namen des Befehls (Tipps #600), die zweite den Zusatz „Taste 2“.
+    TAtlasKeyFunction.MethodToggleUp:
+      Id := TAtlasTextId.EditorMethodToggle;
+    TAtlasKeyFunction.MethodToggleDown:
+      Id := TAtlasTextId.SettingsMethodToggleDown;
+    TAtlasKeyFunction.TestUnit:
+      Id := TAtlasTextId.EditorTestUnit;
+    TAtlasKeyFunction.UnitSearch:
+      Id := TAtlasTextId.UnitSearchTitle;
   else
-    Id := TAtlasTextId.SettingsWelcomeSearchKey;
+    Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;
   Result := Plain(TAtlasStrings.Text(Id));
 end;

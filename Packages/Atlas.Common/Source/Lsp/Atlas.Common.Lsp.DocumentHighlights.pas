@@ -46,6 +46,11 @@ type
     FNamespaces: TArray<string>;
     FSettingsFor: THighlightSettingsProvider;
     function HandleHighlight(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+  private
+    /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie
+    /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
+    function GetNamespaces: TArray<string>;
+    procedure SetNamespaces(const AValue: TArray<string>);
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
       const AEnsureUnit: TEnsureUnitFunc = nil);
@@ -54,7 +59,7 @@ type
     class function Highlights(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const APosition: TTextPosition;
       const ACancellation: IJsonRpcCancellationToken = nil): TArray<TDocumentHighlight>; static;
-    property Namespaces: TArray<string> read FNamespaces write FNamespaces;
+    property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
     /// <summary>Ohne Zuweisung gelten die Vorgaben.</summary>
     property SettingsFor: THighlightSettingsProvider read FSettingsFor write FSettingsFor;
   end;
@@ -62,6 +67,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Internals.Namespaces,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.Definition,
@@ -104,6 +110,16 @@ begin
 end;
 
 { TLspDocumentHighlights }
+
+function TLspDocumentHighlights.GetNamespaces: TArray<string>;
+begin
+  Result := TLspNamespaces.Read(FNamespaces);
+end;
+
+procedure TLspDocumentHighlights.SetNamespaces(const AValue: TArray<string>);
+begin
+  TLspNamespaces.Write(FNamespaces, AValue);
+end;
 
 constructor TLspDocumentHighlights.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AEnsureUnit: TEnsureUnitFunc);
@@ -210,7 +226,7 @@ begin
   begin
     Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
     try
-      Resolver.Namespaces := FNamespaces;
+      Resolver.Namespaces := Namespaces;
       Found := Highlights(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri),
         TLspPositions.ReadPosition(PositionValue), ACancellation);
     finally

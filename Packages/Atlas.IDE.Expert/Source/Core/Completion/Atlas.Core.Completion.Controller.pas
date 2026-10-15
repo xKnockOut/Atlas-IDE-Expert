@@ -7,7 +7,8 @@
 // zeigt die Ansicht den leeren Zustand (#423), statt zu verschwinden.
 //
 // Alle öffentlichen Methoden laufen im Hauptthread. Einträge aus anderen
-// Threads stellt die Senke über TThread.Queue in den Hauptthread; was nach
+// Threads stellt die Senke über TAtlasMainThread.Queue in den Hauptthread
+// (beim Entladen verworfen, Code-Review A-02); was nach
 // Close, einem neuen Start oder dem Freigeben ankommt, wird verworfen.
 //
 // Gekürzte Listen (#431, LSP isIncomplete): Beim Weitertippen filtert Requery
@@ -200,6 +201,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Timing,
   System.Math,
@@ -255,8 +257,8 @@ begin
   FlagRef := FFlagRef;
   Generation := FGeneration;
   Items := AItems;
-  // Im Hauptthread läuft Queue sofort, sonst beim nächsten CheckSynchronize.
-  TThread.Queue(nil,
+  // Im Hauptthread läuft Queue sofort, sonst beim nächsten CheckSynchronize; beim Entladen verworfen (A-02).
+  TAtlasMainThread.Queue(TAtlasFeature.Completion,
     procedure
     begin
       if Flag.Alive and (FlagRef <> nil) then
@@ -279,7 +281,7 @@ begin
   Flag := FFlag;
   FlagRef := FFlagRef;
   Generation := FGeneration;
-  TThread.Queue(nil,
+  TAtlasMainThread.Queue(TAtlasFeature.Completion,
     procedure
     begin
       if Flag.Alive and (FlagRef <> nil) then
@@ -302,7 +304,7 @@ begin
   Flag := FFlag;
   FlagRef := FFlagRef;
   Generation := FGeneration;
-  TThread.Queue(nil,
+  TAtlasMainThread.Queue(TAtlasFeature.Completion,
     procedure
     begin
       if Flag.Alive and (FlagRef <> nil) then
