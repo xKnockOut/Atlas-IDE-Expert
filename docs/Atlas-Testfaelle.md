@@ -399,6 +399,8 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 | SF9 | Optionen: „Kurztext neben „Atlas“ zeigen“ aus; „Ausgeblendete Zeilen“ = `atlas.file` | Feld zeigt nur „Atlas“; im Fenster fehlt die Zeile „Datei“ |
 | SF10 | Zweites Editorfenster öffnen (Ansicht › Neues Editorfenster) | Auch dort ein Atlas-Feld |
 | SF11 | Package entladen | Felder verschwinden, die Statusleisten verhalten sich wie ohne Atlas |
+| SF12 | Index neu aufbauen (Menü *Atlas*), während der Server langsam ist | Statusfeld zeigt „Atlas · Server langsam · Index NN %“, der Menütitel bleibt „Atlas“; nach dem Aufbau verschwindet der Fortschritt |
+| SF13 | „Fortschritt des Symbol-Index“ = Im Menütitel, dann Index neu aufbauen | Menütitel „Atlas – …“ mit Fortschritt, im Statusfeld nur noch als Kurztext, wenn der Index die wichtigste Zeile ist; „Nicht anzeigen“: nirgends |
 
 ## Schnellschalter (#604)
 
@@ -417,6 +419,9 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 | QS11 | Schalter erneut anklicken, dann wie QS9 mit „Im Projekt (atlas.json)“ | atlas.json enthält `"xmlDocFull": true`, Kommentare und Reihenfolge bleiben; Optionsseite unverändert |
 | QS12 | Befehlspalette: „Atlas: Klammerfarben ein/aus“, „Atlas: Alles aus für diese Sitzung“, „Atlas: Schnellschalter öffnen“ | Wie die Klicks im Fenster bzw. Fenster öffnet unten links im aktiven Fenster, wenn kein Statusfeld da ist |
 | QS13 | Menü Atlas › „Klammerfarben“ | Häkchen wie im Fenster; Umschalten wirkt wie dort |
+| QS14 | Doppelklick auf das Atlas-Feld in der Statusleiste | Fenster „Atlas · Schnellschalter“ über dem Feld; das Statusfenster des ersten Klicks schließt sich, beim Loslassen öffnet es nicht erneut |
+| QS15 | Tools › Optionen › Atlas › Allgemein: „Schnellschalter öffnen mit“ = Rechtsklick, dann Doppelklick auf das Feld | Kein Schnellschalter-Fenster; der Doppelklick wirkt wie zwei einfache Klicks (Statusfenster öffnet und schließt); Rechtsklick öffnet die Schnellschalter |
+| QS16 | „Schnellschalter öffnen mit“ = Doppelklick, dann Rechtsklick auf das Feld | Kein Schnellschalter-Fenster, der Rechtsklick geht an die IDE; Doppelklick öffnet die Schnellschalter |
 
 ## Abgesicherter Start (#722)
 
@@ -822,6 +827,79 @@ Vorbereitung: Paket aus dem Release bzw. `pwsh Tools/Build-Docs.ps1 -OutDir <Ins
 | SY6 | *Tools › Optionen › Benutzeroberfläche › IDE-Stil* zwischen hell und dunkel wechseln | Menü, Statusfeld, Optionsseite und Ergebnisfenster wechseln ohne Neustart die Variante |
 | SY7 | Explorer: `AtlasServer.exe` und `AtlasSetup.exe`; „Apps und Features“ nach der Installation | Symbol bei beiden Dateien und beim Eintrag „Atlas“ |
 
+## Verdeckte Felder (Feld und lokaler Name gleich)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VF1 | `procedure TKunde.SetzeName(const Name: string)` mit Feld `Name`; Hover und Strg+Klick auf `Name` in `Self.Name := Name` (links und rechts) | Links das Feld `TKunde.Name`, rechts der Parameter |
+| VF2 | In einer Methode `P := procedure(Wert: Integer) begin Anzahl := Wert; end;` bei Feldern `Wert` und `Anzahl`: Hover auf `Wert` und `Anzahl` | `Wert` ist der Parameter der anonymen Methode, `Anzahl` das Feld; Strg+Leer zeigt `Wert` als Parameter mit „Verdeckt: Feld TKunde.Wert“ |
+| VF3 | Wie VF2 mit `var Anzahl: Integer;` in der anonymen Methode; Verwendungen von `Anzahl` darin suchen | Nur die lokale Variable der anonymen Methode, nicht das Feld |
+| VF4 | Parameter `AName` einer Methode in `Name` umbenennen, die auch `Name := 'x'` (Feld) enthält | Abbruch mit „Umbenennen in "Name" würde die Bedeutung ändern: … meinte "Name" danach Parameter Name statt Feld TKunde.Name“; nichts geändert |
+| VF5 | Feld `Wert` in `Anzahl` umbenennen, wenn eine Methode eine lokale Variable `Anzahl` hat und dort `Wert` ohne `Self.` verwendet | Abbruch mit Hinweis auf die lokale Variable und die Zeile |
+| VF6 | `Name := Name;` in VF1 statt `Self.Name := Name;` | Warnung self-assignment „… Parameter Name verdeckt Feld TKunde.Name …“; erste Korrektur „Self. ergänzen“ ergibt `Self.Name := Name;` |
+## Deklaration und Implementierung wechseln (#775)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DI1 | Cursor auf `procedure Run;` im Klassenrumpf, Strg+Umschalt+↓ | Cursor steht auf `Run` in `procedure TFoo.Run;` der Implementierung |
+| DI2 | Cursor irgendwo im Rumpf von `TFoo.Run` (auch in einer lokalen Routine), Strg+Umschalt+↑ | Cursor steht auf `Run` in der Deklaration |
+| DI3 | Überladene Methode (`Add(Integer)`, `Add(string)`) aus beiden Richtungen | Jeweils die passende Überladung |
+| DI4 | Verschachtelte Klasse, generische Klasse, `class operator`, Routine aus dem interface-Teil | Sprung wie bei DI1/DI2 |
+| DI5 | Cursor außerhalb einer Methode (z. B. auf einem Feld oder einer Leerzeile), Strg+Umschalt+↑ | Verhalten wie ohne Atlas (Klassennavigation der IDE) |
+| DI6 | Optionen › Atlas › Befehle: „Zwischen Deklaration und Implementierung wechseln“ aus, OK | Strg+Umschalt+↑/↓ macht wieder die IDE; Menü *Atlas* › „Deklaration/Implementierung wechseln“ geht weiter |
+| DI7 | Taste 1 auf Strg+Alt+D ändern, Taste 2 leeren, OK | Strg+Alt+D wechselt; Strg+Umschalt+↑ macht die IDE, Strg+Umschalt+↓ ebenso |
+| DI8 | Menü *Atlas*, Kontextmenü *Atlas* und Befehlspalette „Deklaration/Implementierung wechseln“ | Sprung wie DI1; außerhalb einer Methode Zeile „Am Cursor steht keine Methode …“ in der Meldungsansicht |
+## DUnitX-Testgerüst (#274)
+
+Voraussetzung: Projektgruppe mit einem DUnitX-Testprojekt (`.dpr` mit `uses DUnitX.TestFramework`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TG1 | Cursor auf `TKunde = class` in `Kunden.pas`, Code-Aktionen (Strg+.) | Eintrag „DUnitX-Testunit für TKunde anlegen“ |
+| TG2 | Eintrag wählen | `Kunden.Tests.pas` im Ordner des Testprojekts angelegt und geöffnet; `[TestFixture] TKundeTests` mit `FSubject`, `[Setup]`, `[TearDown]` und einem `[Test]` je public-Methode (überladene als `TestX2`), jeder Test mit `Assert.Fail` |
+| TG3 | Testprojekt ist geladen: Projektverwaltung und `.dpr` ansehen | Neue Unit steht im Testprojekt (nicht im aktiven Projekt), `uses` der `.dpr` enthält sie |
+| TG4 | Testprojekt ist nicht geladen: `.dpr` und `.dproj` im Editor ansehen | `Kunden.Tests in 'Kunden.Tests.pas'` in der `.dpr`, `DCCReference` in der `.dproj`; keine `.dpr` wurde im Editor geöffnet |
+| TG5 | Testprojekt übersetzen | Übersetzt ohne Fehler, Warnungen und Hinweise; die Tests schlagen mit „Test für … fehlt noch“ fehl |
+| TG6 | Klasse mit `constructor Create(AName: string)` | Setup enthält nur den Kommentar „braucht Argumente im Konstruktor“ |
+| TG7 | atlas.json `"testUnits": {"pattern": "Test.{unit}", "folder": "Tests/Unit"}`, TG1 | Neue Unit `Test.Kunden.pas` unter `Tests\Unit`, relativer Pfad in `.dpr` und `.dproj` |
+| TG8 | Projektgruppe ohne Testprojekt, TG1 | Kein Eintrag zum Anlegen |
+| TG9 | Testunit existiert schon, Code-Aktionen auf der Klasse | „Zur Testunit Kunden.Tests wechseln“ öffnet sie |
+
+## Zwischen Unit und Testunit wechseln (#189)
+
+Voraussetzung wie bei #274; Server läuft.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TU1 | `Kunden.pas` öffnen, Testunit fehlt | Hinter `unit Kunden;` steht die Marke „+ Testunit Kunden.Tests anlegen“ |
+| TU2 | Marke anklicken | Testunit wie TG2 angelegt, in `.dpr`/`.dproj` (bzw. im geladenen Testprojekt) eingetragen und geöffnet |
+| TU3 | Zurück zu `Kunden.pas` | Marke zeigt nach kurzer Zeit „→ Testunit Kunden.Tests“; Klick öffnet sie |
+| TU4 | In `Kunden.Tests.pas` | Marke „→ Unit Kunden“; Klick öffnet `Kunden.pas` |
+| TU5 | *Atlas › Zwischen Unit und Testunit wechseln*, Kontextmenü *Atlas*, Befehlspalette „Zwischen Unit und Testunit wechseln“ und eingestelltes Tastenkürzel | Gleicher Wechsel wie per Marke; ohne Testprojekt Meldung „Keine Testunit: …“ |
+| TU6 | Optionen › Atlas: „Code Lens „zur Testunit““ aus | Marke verschwindet ohne Neustart; Befehl, Menü und Taste wechseln weiter |
+| TU7 | Programmdatei (`.dpr`) oder Datei mit Kommentar vor `unit` | Keine Marke in der `.dpr`; bei Kommentarkopf steht sie hinter der Zeile `unit …;` |
+| TU8 | Kein Compiler, kein Build: TU2–TU4 direkt nach dem Öffnen des Projekts | Wechsel funktioniert in beide Richtungen |
+
+## Units suchen (#777)
+
+Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testprojekt; Server läuft; Einstellungen auf Vorgabe.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| US1 | Strg+F12 | Atlas-Fenster „Units suchen“ statt des IDE-Dialogs; erst „Units werden geladen …“, dann Gruppen je Projekt mit Trefferzahl, aktives Projekt zuerst |
+| US2 | *Ansicht › Units* mit gedrückter Umschalttaste; Befehlspalette „IDE-Dialog Units suchen“ | Der Dialog der IDE |
+| US3 | Optionen › Atlas › Units suchen: „Strg+F12 … öffnen das Atlas-Fenster“ aus, Strg+F12 | IDE-Dialog ohne Neustart; *Atlas › Units suchen (Atlas)…* öffnet weiter das Atlas-Fenster |
+| US4 | `sett` tippen | Units mit „sett“ im Namen, bester Treffer oben, Treffer hervorgehoben, Fußzeile „n von m“ |
+| US5 | `-t:test sett` und `p:ide t:form` | Erst ohne Testunits; dann nur Formulare aus Projekten mit „ide“ im Namen; die Filter erscheinen als Chips, Rücktaste im leeren Feld entfernt den letzten |
+| US6 | Chips Herkunft und Art umschalten, Fenster schließen und wieder öffnen | Wahl und eingeklappte Gruppen sind je Projektgruppe gemerkt, ebenso Lage, Größe und Vorschaubreite |
+| US7 | Strg+G | Gruppierung Projekt → Ordner → Flach; Strg+←/→ klappt die Gruppe zu bzw. auf |
+| US8 | Eine Formular-Unit wählen, F4 | Vorschau mit Kopfkommentar, Zeilen, Änderungsdatum, Git-Zustand, Typen, „Verwendet von (n)“ und Formularskizze; F4 blendet sie aus und ein |
+| US9 | Leertaste auf drei Units, „In uses aufnehmen“ | Units stehen im passenden uses der Unit, die vor dem Öffnen oben im Editor war (interface, wenn ein Bezeichner des interface-Teils aus ihnen stammt); Meldung „3 Units in uses von … aufgenommen“; Alt+Enter macht dasselbe für die gewählte Unit |
+| US10 | Umschalt+Enter bzw. „Formular öffnen“ auf einer Formular-Unit | Formular im Designer; bei einer Unit ohne Formular Meldung „… hat kein Formular“ |
+| US11 | „Testunits öffnen“ (Strg+T) auf `Kunden` | `Kunden.Tests.pas` geöffnet; ohne Testunit Meldung „Keine Testunit zu Kunden“ |
+| US12 | „Pfade kopieren“ (Strg+C), „Im Explorer zeigen“, „Im Projektmanager zeigen“ | Pfade in der Zwischenablage; Explorer mit markierter Datei; Projektmanager offen, Meldung „Kunden gehört zu …“ |
+| US13 | Jede Einstellung der Seite einzeln aus | Vorschau, Formularskizze, „Verwendet von“, Chips, Tippsyntax, Häkchen, Aktionsleiste, „In uses aufnehmen“ fehlen jeweils; Pfadanzeige und Vorgewählte Herkunft wirken beim nächsten Öffnen |
+| US14 | Server beenden, Strg+F12 | Meldung „Der Atlas-Server läuft nicht“ und der IDE-Dialog |
 ## Diagnosemodus (#479)
 
 Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert, ein Projekt mit einigen Units geöffnet, Server läuft.

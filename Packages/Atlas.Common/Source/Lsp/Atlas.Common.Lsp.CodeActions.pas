@@ -10,7 +10,8 @@
 // markierten Korrekturen). Beide kommen nur, wenn der Client sie über
 // context.only ausdrücklich anfragt. Ebenso source.removeUnusedImports (#284);
 // "fehlende Unit ergänzen" und "ins implementation verschieben" kommen mit den
-// übrigen Korrekturen, sobald UsesContextFor gesetzt ist.
+// übrigen Korrekturen, sobald UsesContextFor gesetzt ist. Weitere Aktionen
+// mit Dateioperationen (Testunit anlegen, #274) kommen über ExtraActions.
 
 interface
 
@@ -40,6 +41,10 @@ type
   /// <summary>Einstellungen "memberOrder" für AUri (#89).</summary>
   TMemberOrderProvider = reference to function(const AUri: string): TMemberOrderSettings;
 
+  /// <summary>Weitere Aktionen als fertige LSP-CodeActions, etwa mit Dateioperationen (#274). Der
+  /// Aufrufer übernimmt die Objekte.</summary>
+  TExtraActionsFunc = reference to function(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
+
   TLspCodeActions = class
   public const
     Method = 'textDocument/codeAction';
@@ -52,6 +57,7 @@ type
     FFormActions: TFormActionsFunc;
     FStringLiteralFor: TStringLiteralProvider;
     FMemberOrderFor: TMemberOrderProvider;
+    FExtraActions: TExtraActionsFunc;
     function HandleCodeAction(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore; const ARuleProvider: TRuleContextProvider);
@@ -72,6 +78,8 @@ type
     property MemberOrderFor: TMemberOrderProvider read FMemberOrderFor write FMemberOrderFor;
     /// <summary>Aktionen in .dfm/.fmx; ohne Zuweisung keine.</summary>
     property FormActions: TFormActionsFunc read FFormActions write FFormActions;
+    /// <summary>Weitere Aktionen in Units (Testunit anlegen und wechseln, #274/#189); ohne Zuweisung keine.</summary>
+    property ExtraActions: TExtraActionsFunc read FExtraActions write FExtraActions;
   end;
 
 implementation
@@ -210,6 +218,7 @@ var
   Item: TJSONValue;
   OrderSettings: TMemberOrderSettings;
   OrderEdit: TRuleEdit;
+  Extra: TJSONObject;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue)) then
@@ -322,6 +331,9 @@ begin
     TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
   if WantsFixAll and TCodeActions.FixAll(Findings, Action) then
     TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+  if WantsEditing and Assigned(FExtraActions) then
+    for Extra in FExtraActions(Uri, Range) do
+      TJSONArray(Result).AddElement(Extra);
 end;
 
 end.

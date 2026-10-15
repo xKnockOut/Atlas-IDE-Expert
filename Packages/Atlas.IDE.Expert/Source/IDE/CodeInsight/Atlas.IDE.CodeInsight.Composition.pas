@@ -60,6 +60,7 @@ uses
   Atlas.Core.Results.Model,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Commands.Editor,
+  Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Commands.Bindings,
   Atlas.IDE.Forms.Designer,
   Atlas.Core.Status.Registry,
@@ -366,6 +367,11 @@ begin
     begin
       TAtlasIdeEditorCommands.GoToTypeDefinition;
     end);
+  Palette.RegisterCommand('Atlas.ToggleMethod', TAtlasStrings.Text(TAtlasTextId.EditorMethodToggle), '',
+    procedure
+    begin
+      TAtlasIdeEditorCommands.ToggleMethod;
+    end);
   Palette.RegisterCommand('Atlas.CopyQualifiedName', TAtlasStrings.Text(TAtlasTextId.EditorCopyQualified), '',
     procedure
     begin
@@ -376,6 +382,21 @@ begin
     procedure
     begin
       TAtlasIdeEditorCommands.CopyQualifiedName(True);
+    end);
+  Palette.RegisterCommand('Atlas.SwitchTestUnit', TAtlasStrings.Text(TAtlasTextId.EditorTestUnit), '',
+    procedure
+    begin
+      TAtlasIdeEditorCommands.SwitchTestUnit;
+    end);
+  Palette.RegisterCommand('Atlas.UnitSearch', TAtlasStrings.Text(TAtlasTextId.UnitSearchTitle), '',
+    procedure
+    begin
+      TAtlasIdeUnitSearch.Show;
+    end);
+  Palette.RegisterCommand('Atlas.UnitSearchIde', TAtlasStrings.Text(TAtlasTextId.UnitSearchIdeDialog), '',
+    procedure
+    begin
+      TAtlasIdeUnitSearch.ShowIdeDialog;
     end);
   Palette.RegisterCommand('Atlas.ResetHistory', TAtlasStrings.Text(TAtlasTextId.PaletteResetHistory), '',
     procedure
@@ -729,7 +750,8 @@ begin
   MainMenu := TAtlasMainMenu.Create(
     function: string
     begin
-      if Manager <> nil then
+      // Fortschritt im Menütitel nur, wenn er nicht ins Statusfeld gehört (IndexProgressPlace).
+      if (Manager <> nil) and TAtlasIdeSettings.Current.IndexProgressInMenu then
         Result := Manager.ServerProgress
       else
         Result := '';
@@ -843,6 +865,18 @@ begin
         GuardWarning(AText);
       end);
     TAtlasIdeEditorCommands.Install(
+      function: TLspSession
+      begin
+        Result := nil;
+        if Manager <> nil then
+          Result := Manager.ActiveSession;
+      end,
+      procedure(AText: string)
+      begin
+        GuardWarning(AText);
+      end);
+    // Units suchen (#777): übernimmt Strg+F12, solange die Einstellungen es wollen.
+    TAtlasIdeUnitSearch.Install(
       function: TLspSession
       begin
         Result := nil;
@@ -1350,6 +1384,7 @@ begin
   TAtlasIdeUndo.Stop;
   if CommandsInstalled then
   begin
+    TAtlasIdeUnitSearch.Uninstall;
     TAtlasIdeEditorCommands.Uninstall;
     TAtlasIdeResults.Uninstall;
   end;

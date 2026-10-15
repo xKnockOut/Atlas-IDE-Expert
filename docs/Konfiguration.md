@@ -31,7 +31,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `sortUses` | Projekt (atlas.json) | boolean string | `false` | `true`, `false`, `"alphabetic"`, `"namespace"` | "uses aufräumen" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder "alphabetic" alphabetisch, "namespace" nach Namespace gruppiert (System, Vcl, ... und Units ohne Namespace zuletzt). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units. |
 | `usesKeep` | Projekt (atlas.json) | array<string> | `` |  | Units, die "ungenutzte uses entfernen" nie entfernt, zusätzlich zu allen Units mit initialization-Abschnitt. |
 | `dfmPropertyRules` | Projekt (atlas.json) | array<object> | `` |  | Eigenschaftsregeln für Formulardateien: Vorgaben für Komponenten-Properties, gemeldet als dfm-property am Feld der Komponente in der Unit. Nicht gespeicherte Properties gelten mit ihrem default-Wert. |
-| `memoryBudgetMb` | global (settings.json) | integer | `256` | 0… | Obergrenze für den Symbolindex im Arbeitsspeicher in MB. Darüber werden zuerst die Verwendungen ausgelagert (sie bleiben im Cache auf der Platte), dann Bibliotheks-Units (RTL, VCL) und zuletzt Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. |
+| `memoryBudgetMb` | global (settings.json) | integer | `768` | 0… | Obergrenze für den Symbolindex im Arbeitsspeicher in MB. Darüber werden zuerst die Verwendungen ausgelagert (sie bleiben im Cache auf der Platte), dann Bibliotheks-Units (RTL, VCL) und zuletzt Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. |
 | `index` | gemischt, siehe unten | object | – |  | Umfang des Symbolindex. Standard: alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und alle Units der Bibliotheks- und Suchpfade der Delphi-Installation, auch wenn keine Unit sie einbindet. Reihenfolge: aktives Projekt, übrige Projekte, Suchpfade, Bibliothek; alles im Hintergrund, die Bibliothek aus dem gemeinsamen Cache. |
 | `requestTimeoutMs` | global (settings.json) | integer | `10000` | 1000… | Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet. |
 | `diagnostics` | global (settings.json) | object | – |  | Anonymisiertes Diagnoselog des Servers (je Anfrage Dauer, Ergebnis und Grundcode, je Lauf Start und Ende mit Grund). Es enthält keine Pfade, keine Projekt-, Unit- oder Bezeichnernamen und keinen Quelltext und lässt sich über „Diagnoselog exportieren“ weitergeben. |
@@ -40,6 +40,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `hints` | global (settings.json) | object | – |  | Anzeige von XMLDoc-Kommentaren (///) im Hover-Tooltip und im Detailpanel der Vervollständigung des IDE-Plugins. Der Server bereitet die Doku immer vollständig auf; die Werte steuern nur die Anzeige. Ohne Angabe gelten die Werte aus Tools › Optionen › Drittanbieter › Atlas. |
 | `stringLiteral` | Projekt (atlas.json) | object | – |  | Code-Aktionen „Als String-Literal“ und „Als Klartext kopieren“. |
 | `memberOrder` | Projekt (atlas.json) | object | – |  | Code-Aktion „Klassenmitglieder ordnen“: Reihenfolge der Sichtbarkeitsabschnitte und der Mitglieder darin. |
+| `testUnits` | Projekt (atlas.json) | object | – |  | Testunits anlegen und zwischen Unit und Testunit wechseln: Namensmuster, Ordner neuer Testunits und Testprojekt. |
 | `minConfidence` | Projekt (atlas.json) | string | `"medium"` | `"low"`, `"medium"`, `"high"` | Regeltreffer unter dieser Konfidenz ausblenden. |
 | `exclude` | Projekt (atlas.json) | array<string> | – | z. B. `["ThirdParty/**","Generated/*.pas"]` | Ordner und Dateien, die nicht geprüft werden (Glob-Muster relativ zu diesem Ordner: *, **, ?). |
 | `mcp` | global (settings.json) | object | – | z. B. `{"disabledTools":["rename_symbol","apply_code_action"]}` | MCP-Modus (--mcp) für KI-Assistenten. |
@@ -145,6 +146,14 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `memberOrder.members` | Projekt (atlas.json) | array<string> | `["field","constructor","destructor","method","property"]` |  | Zielreihenfolge der Mitglieder in einem Abschnitt; innerhalb einer Art bleibt die Reihenfolge. |
 | `memberOrder.sortFields` | Projekt (atlas.json) | boolean | `false` |  | Abschnitte mit Feldern auch dann verschieben, wenn sich dadurch die Reihenfolge der Felder (Speicherlayout) ändert. |
 | `memberOrder.sortPublished` | Projekt (atlas.json) | boolean | `false` |  | Auch published-Abschnitte umsortieren; ihre Reihenfolge bestimmt Streaming und Objektinspektor. |
+
+## testUnits
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `testUnits.pattern` | Projekt (atlas.json) | string | `"{unit}.Tests"` |  | Name der Testunit; {unit} steht für den Namen der getesteten Unit, z. B. "{unit}.Tests" oder "Test.{unit}". |
+| `testUnits.folder` | Projekt (atlas.json) | string | `""` |  | Ordner für neue Testunits relativ zur Wurzel; leer: Ordner des Testprojekts. |
+| `testUnits.project` | Projekt (atlas.json) | string | `""` |  | Testprojekt (.dproj oder .dpr) relativ zur Wurzel; leer: das Projekt im Arbeitsbereich, dessen .dpr DUnitX oder DUnit verwendet. |
 
 ## mcp
 

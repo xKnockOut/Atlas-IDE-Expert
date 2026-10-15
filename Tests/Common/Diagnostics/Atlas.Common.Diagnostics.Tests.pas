@@ -29,6 +29,9 @@ type
     procedure RequestScopeCollectsCodes;
     [Test]
     procedure RequestScopeWithoutOpenDoesNothing;
+    /// <summary>Slowest behält die längste Dauer samt Namen (langsamste Prüfregel).</summary>
+    [Test]
+    procedure RequestScopeKeepsSlowest;
     [Test]
     procedure FormatsRequestLine;
     [Test]
@@ -282,6 +285,19 @@ begin
   Assert.AreEqual('unitNotFound', Notes.Resolve);
   Assert.AreEqual(12, Notes.Count);
   Assert.AreEqual('ctx=memberAccess inString=false missingUnits=2', string.Join(' ', Notes.Notes));
+end;
+
+procedure TDiagnosticLogTests.RequestScopeKeepsSlowest;
+var
+  Notes: TRequestNotes;
+begin
+  TRequestDiagnostics.Open;
+  TRequestDiagnostics.Slowest('slowRule', 'erste', 120);
+  TRequestDiagnostics.Slowest('slowRule', 'kurz', 80);
+  TRequestDiagnostics.Slowest('slowRule', 'lang', 900);
+  TRequestDiagnostics.Slowest('slowRule', 'gleich', 900);
+  Notes := TRequestDiagnostics.Close;
+  Assert.AreEqual('slowRule=lang slowRuleMs=900', string.Join(' ', Notes.Notes));
 end;
 
 procedure TDiagnosticLogTests.RequestScopeWithoutOpenDoesNothing;

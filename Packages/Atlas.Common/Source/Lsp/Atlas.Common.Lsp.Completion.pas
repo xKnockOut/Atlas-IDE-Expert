@@ -961,6 +961,13 @@ begin
   end;
 end;
 
+/// <summary>Eintrag aus dem nächsten Gültigkeitsbereich: lokal, Parameter, eigenes Mitglied (nicht geerbt)
+/// oder eigene Unit; solche Einträge fallen beim Kürzen auf MaxItems nie heraus.</summary>
+function IsNearItem(const AItem: TCompletionItem): Boolean;
+begin
+  Result := (AItem.Scope in [1, 2, 4]) or ((AItem.Scope = 3) and (AItem.Depth = 0));
+end;
+
 type
   TScoredItem = record
     Item: TCompletionItem;
@@ -1789,7 +1796,7 @@ var
   /// können (Atlas gruppiert erst, wenn einer passt).</summary>
   function TakeStage(AStaged: Boolean): TArray<TCompletionItem>;
   var
-    Room: Integer;
+    Room, Near, OthersLeft, Kept: Integer;
     // Lokal: Schleifenvariablen dürfen nicht aus der äußeren Routine stammen (E1019).
     Index: Integer;
     Scored: TScoredItem;
@@ -1822,7 +1829,31 @@ var
     if List.Count > Room then
     begin
       Truncated := True;
-      List.Count := Room;
+      // Nahe Einträge (lokal, Parameter, eigene Mitglieder ohne geerbte, eigene Unit) nie abschneiden: Bei
+      // Formularen mit Hunderten geerbten Mitgliedern verdrängten kurze geerbte Namen sonst die eigenen
+      // Methoden mit längerem Namen (Rückmeldung 15.10.2026). Die Reihenfolge bleibt.
+      Near := 0;
+      for Index := 0 to List.Count - 1 do
+        if IsNearItem(List[Index].Item) then
+          Inc(Near);
+      OthersLeft := Max(0, Room - Near);
+      Kept := 0;
+      for Index := 0 to List.Count - 1 do
+      begin
+        Scored := List[Index];
+        if IsNearItem(Scored.Item) then
+        begin
+          if Kept >= Room then
+            Continue;
+        end
+        else if OthersLeft > 0 then
+          Dec(OthersLeft)
+        else
+          Continue;
+        List[Kept] := Scored;
+        Inc(Kept);
+      end;
+      List.Count := Kept;
     end;
     SetLength(Result, List.Count);
     for Index := 0 to List.Count - 1 do
@@ -4304,4 +4335,4 @@ begin
   Result := True;
 end;
 
-end.
+end.
