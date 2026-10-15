@@ -668,3 +668,23 @@ Voraussetzung wie bei #274; Server läuft.
 | TU7 | Programmdatei (`.dpr`) oder Datei mit Kommentar vor `unit` | Keine Marke in der `.dpr`; bei Kommentarkopf steht sie hinter der Zeile `unit …;` |
 | TU8 | Kein Compiler, kein Build: TU2–TU4 direkt nach dem Öffnen des Projekts | Wechsel funktioniert in beide Richtungen |
 
+## Units suchen (#777)
+
+Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testprojekt; Server läuft; Einstellungen auf Vorgabe.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| US1 | Strg+F12 | Atlas-Fenster „Units suchen“ statt des IDE-Dialogs; erst „Units werden geladen …“, dann Gruppen je Projekt mit Trefferzahl, aktives Projekt zuerst |
+| US2 | *Ansicht › Units* mit gedrückter Umschalttaste; Befehlspalette „IDE-Dialog Units suchen“ | Der Dialog der IDE |
+| US3 | Optionen › Atlas › Units suchen: „Strg+F12 … öffnen das Atlas-Fenster“ aus, Strg+F12 | IDE-Dialog ohne Neustart; *Atlas › Units suchen (Atlas)…* öffnet weiter das Atlas-Fenster |
+| US4 | `sett` tippen | Units mit „sett“ im Namen, bester Treffer oben, Treffer hervorgehoben, Fußzeile „n von m“ |
+| US5 | `-t:test sett` und `p:ide t:form` | Erst ohne Testunits; dann nur Formulare aus Projekten mit „ide“ im Namen; die Filter erscheinen als Chips, Rücktaste im leeren Feld entfernt den letzten |
+| US6 | Chips Herkunft und Art umschalten, Fenster schließen und wieder öffnen | Wahl und eingeklappte Gruppen sind je Projektgruppe gemerkt, ebenso Lage, Größe und Vorschaubreite |
+| US7 | Strg+G | Gruppierung Projekt → Ordner → Flach; Strg+←/→ klappt die Gruppe zu bzw. auf |
+| US8 | Eine Formular-Unit wählen, F4 | Vorschau mit Kopfkommentar, Zeilen, Änderungsdatum, Git-Zustand, Typen, „Verwendet von (n)“ und Formularskizze; F4 blendet sie aus und ein |
+| US9 | Leertaste auf drei Units, „In uses aufnehmen“ | Units stehen im passenden uses der Unit, die vor dem Öffnen oben im Editor war (interface, wenn ein Bezeichner des interface-Teils aus ihnen stammt); Meldung „3 Units in uses von … aufgenommen“; Alt+Enter macht dasselbe für die gewählte Unit |
+| US10 | Umschalt+Enter bzw. „Formular öffnen“ auf einer Formular-Unit | Formular im Designer; bei einer Unit ohne Formular Meldung „… hat kein Formular“ |
+| US11 | „Testunits öffnen“ (Strg+T) auf `Kunden` | `Kunden.Tests.pas` geöffnet; ohne Testunit Meldung „Keine Testunit zu Kunden“ |
+| US12 | „Pfade kopieren“ (Strg+C), „Im Explorer zeigen“, „Im Projektmanager zeigen“ | Pfade in der Zwischenablage; Explorer mit markierter Datei; Projektmanager offen, Meldung „Kunden gehört zu …“ |
+| US13 | Jede Einstellung der Seite einzeln aus | Vorschau, Formularskizze, „Verwendet von“, Chips, Tippsyntax, Häkchen, Aktionsleiste, „In uses aufnehmen“ fehlen jeweils; Pfadanzeige und Vorgewählte Herkunft wirken beim nächsten Öffnen |
+| US14 | Server beenden, Strg+F12 | Meldung „Der Atlas-Server läuft nicht“ und der IDE-Dialog |

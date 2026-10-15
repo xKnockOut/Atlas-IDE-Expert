@@ -269,6 +269,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StringLiteralCommands.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CodeActions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TestUnits.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.UnitSearch.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ControlFlow.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Attributes.pas"/>

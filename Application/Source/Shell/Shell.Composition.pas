@@ -36,6 +36,7 @@ uses
   Atlas.Common.Lsp.DocumentHighlights,
   Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.TestUnits,
+  Atlas.Common.Lsp.UnitSearch,
   Atlas.Common.Lsp.DocumentLinks,
   Atlas.Common.Lsp.Colors,
   Atlas.Common.Lsp.Commands,
@@ -130,6 +131,8 @@ type
     FTestUnits: TLspTestUnits;
     /// <summary>Gefundenes Testprogramm je Wurzel mit Zeitpunkt (#274); Sperre ist das Objekt selbst.</summary>
     FTestPrograms: TDictionary<string, TPair<string, UInt64>>;
+    /// <summary>Daten des Fensters „Units suchen“ im Plugin (#777).</summary>
+    FUnitSearch: TUnitSearch;
     FDocumentLinks: TLspDocumentLinks;
     FColors: TLspColors;
     FCommands: TLspCommands;
@@ -205,6 +208,10 @@ type
     function ReadSourceText(const AFileName: string; out AText: string): Boolean;
     /// <summary>Muster, Ordner und Testprogramm für Testunits zur Datei (#274, #189).</summary>
     function TestUnitContextFor(const AUri: string; out AContext: TTestUnitContext): Boolean;
+    /// <summary>Index, Projekte und Dateizugriffe für „Units suchen“ (#777).</summary>
+    function UnitSearchContext(out AContext: TUnitSearchContext): Boolean;
+    /// <summary>Git-Zustand einer Datei für die Vorschau (#777); '' ohne Git oder Repository.</summary>
+    function GitStateOf(const AFileName: string): string;
     /// <summary>Projektdateien aller Ordner und geöffnete Dokumente, für Referenzen und Umbenennen.</summary>
     function ProjectSourceFiles: TArray<string>;
     /// <summary>Inhalt des Status-Befehls (#28).</summary>
@@ -288,6 +295,7 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Documents.Uris,
   Shell.SlashHost,
+  Shell.VcsChanges,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Builtin.General,
   Atlas.Common.Lsp.FormFiles,
@@ -923,6 +931,22 @@ begin
     begin
       Result := FTestUnits.Execute(AArguments);
     end);
+  FUnitSearch := TUnitSearch.Create(UnitSearchContext);
+  FCommands.Register(TUnitSearch.UnitsCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FUnitSearch.ExecuteUnits(AArguments);
+    end);
+  FCommands.Register(TUnitSearch.PreviewCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FUnitSearch.ExecutePreview(AArguments);
+    end);
+  FCommands.Register(TUnitSearch.AddUsesCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FUnitSearch.ExecuteAddUses(AArguments);
+    end);
   FCommands.Register(TQualifiedNames.Command,
     function(const AArguments: TJSONArray): TJSONValue
     begin
@@ -1327,6 +1351,7 @@ begin
   FCodeActions.Free;
   FTestUnits.Free;
   FTestPrograms.Free;
+  FUnitSearch.Free;
   FDocumentLinks.Free;
   FColors.Free;
   FCommands.Free;
@@ -1841,6 +1866,113 @@ begin
     TMonitor.Exit(FTestPrograms);
   end;
   Result := True;
+end;
+
+function TServerComposition.UnitSearchContext(out AContext: TUnitSearchContext): Boolean;
+var
+  Workspace: TShellWorkspace;
+  Info: TProjectInfo;
+  Project: TUnitSearchProject;
+  Text: string;
+begin
+  AContext := Default(TUnitSearchContext);
+  AContext.Units := FIndex.Units;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    for Workspace in FWorkspaces do
+    begin
+      Project := Default(TUnitSearchProject);
+      Project.Files := Workspace.ProjectFiles;
+      if Workspace.Project(Info) then
+      begin
+        Project.FileName := Info.FileName;
+        Project.Name := ChangeFileExt(ExtractFileName(Info.FileName), '');
+        Project.IsTest := (Info.MainSource <> '') and ReadSourceText(Info.MainSource, Text) and
+          TTestUnits.IsTestProgram(Text);
+      end
+      else
+        Project.Name := Workspace.Name;
+      AContext.Projects := AContext.Projects + [Project];
+    end;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  AContext.AncestorsOf :=
+    function(AType: string): TArray<string>
+    var
+      Location: TSymbolLocation;
+    begin
+      Result := nil;
+      for Location in FIndex.FindSymbols(AType) do
+        if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and (Location.Symbol.Container = '') then
+          Exit(Location.Symbol.Ancestors);
+    end;
+  AContext.Exists :=
+    function(AFileName: string): Boolean
+    begin
+      Result := FileExists(AFileName);
+    end;
+  AContext.ReadText :=
+    function(AFileName: string): string
+    begin
+      if not ReadSourceText(AFileName, Result) then
+        Result := '';
+    end;
+  AContext.Modified :=
+    function(AFileName: string): TDateTime
+    begin
+      Result := 0;
+      if FileExists(AFileName) then
+        Result := TFile.GetLastWriteTime(AFileName);
+    end;
+  AContext.GitState :=
+    function(AFileName: string): string
+    begin
+      Result := GitStateOf(AFileName);
+    end;
+  AContext.UsesFor :=
+    function(AUri: string): TUsesContext
+    var
+      Provider: TUsesContextProvider;
+    begin
+      Provider := FCodeActions.UsesContextFor;
+      if not Assigned(Provider) or not Provider(AUri, Result) then
+        Result := Default(TUsesContext);
+    end;
+  Result := True;
+end;
+
+function TServerComposition.GitStateOf(const AFileName: string): string;
+var
+  Request: TCompilerRequest;
+  Output: TArray<string>;
+  Code: Integer;
+begin
+  Result := '';
+  if not FileExists(AFileName) then
+    Exit;
+  Request := Default(TCompilerRequest);
+  Request.Executable := TVcsChanges.FindProgram('git.exe');
+  Request.Arguments := ['status', '--porcelain', '--', ExtractFileName(AFileName)];
+  Request.WorkingDir := ExtractFileDir(AFileName);
+  Output := nil;
+  Code := -1;
+  try
+    Code := FCompilerProcess.Run(Request,
+      procedure(const ALine: string)
+      begin
+        Output := Output + [ALine];
+      end);
+  except
+    // Ohne Git: kein Zustand.
+    on E: Exception do
+    begin
+      FLogger.Debug('Git-Zustand nicht ermittelt: ' + E.ClassName);
+      Exit;
+    end;
+  end;
+  // Exit-Code 128: kein Repository.
+  Result := TUnitSearch.GitState(Output, Code = 0);
 end;
 
 function TServerComposition.ProjectSourceFiles: TArray<string>;
