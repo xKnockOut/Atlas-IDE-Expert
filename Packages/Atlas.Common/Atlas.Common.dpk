@@ -210,6 +210,7 @@ contains
   Atlas.Common.Editing.Formatter in 'Source\Editing\Atlas.Common.Editing.Formatter.pas',
   Atlas.Common.Lsp.CodeActions in 'Source\Lsp\Atlas.Common.Lsp.CodeActions.pas',
   Atlas.Common.Lsp.TestUnits in 'Source\Lsp\Atlas.Common.Lsp.TestUnits.pas',
+  Atlas.Common.Lsp.UnitSearch in 'Source\Lsp\Atlas.Common.Lsp.UnitSearch.pas',
   Atlas.Common.Semantics.ControlFlow in 'Source\Semantics\Atlas.Common.Semantics.ControlFlow.pas',
   Atlas.Common.Semantics.NameResolver in 'Source\Semantics\Atlas.Common.Semantics.NameResolver.pas',
   Atlas.Common.Semantics.Attributes in 'Source\Semantics\Atlas.Common.Semantics.Attributes.pas',
