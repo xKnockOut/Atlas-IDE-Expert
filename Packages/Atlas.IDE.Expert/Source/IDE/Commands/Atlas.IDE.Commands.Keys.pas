@@ -8,6 +8,8 @@
 // Nach dem Installieren oder Entfernen von Packages prüft Atlas erneut
 // (WatchPackages). TAtlasIdeKeyBinding belegt eine einzelne Taste für eine
 // Aktion, etwa die eigenen Tasten für Vervollständigung und Parameter-Hint.
+// Gemeldete Tasten merkt sich Reported, damit die Prüfung beim Start (#520)
+// denselben Konflikt nicht ein zweites Mal meldet.
 
 interface
 
@@ -63,6 +65,8 @@ type
     end;
   private class var
     FReported: TArray<string>;
+    // Tasten, zu denen schon ein Konflikt gemeldet ist (#520).
+    FReportedKeys: TArray<Word>;
     // Schon gemeldete Erweiterungen mit eigener Vervollständigung: nach Package-Änderungen nur neue melden.
     FForeignReported: TArray<string>;
     FWatch: TPackageWatch;
@@ -80,6 +84,9 @@ type
     /// <summary>Hinweis, wenn eine andere Erweiterung eine eigene Vervollständigung mitbringt.</summary>
     class procedure ReportForeignCompletion; static;
     class procedure AddMessage(const AText: string); static;
+    /// <summary>Zu AShortCut ist in dieser Sitzung schon ein Konflikt gemeldet (#494, #520).</summary>
+    class function Reported(AShortCut: Word): Boolean; static;
+    class procedure MarkReported(AShortCut: Word); static;
     /// <summary>AChanged im Hauptthread aufrufen, sobald Packages installiert oder entfernt werden.</summary>
     class procedure WatchPackages(const AChanged: TProc); static;
     class procedure UnwatchPackages; static;
@@ -268,6 +275,23 @@ begin
       Exit;
   FReported := FReported + [Key];
   AddMessage(TAtlasStrings.Fmt(TAtlasTextId.KeyConflict, [ShortCutToText(AShortCut), Holder, AWhat]));
+  MarkReported(AShortCut);
+end;
+
+class function TAtlasIdeKeys.Reported(AShortCut: Word): Boolean;
+var
+  Key: Word;
+begin
+  Result := False;
+  for Key in FReportedKeys do
+    if Key = AShortCut then
+      Exit(True);
+end;
+
+class procedure TAtlasIdeKeys.MarkReported(AShortCut: Word);
+begin
+  if not Reported(AShortCut) then
+    FReportedKeys := FReportedKeys + [AShortCut];
 end;
 
 class procedure TAtlasIdeKeys.Bind(const ABinding: IOTAKeyboardBinding; var AIndex: Integer);

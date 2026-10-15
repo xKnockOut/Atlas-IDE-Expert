@@ -60,8 +60,11 @@ type
     SnippetsFolder = 'Snippets';
     DisplayName = 'Atlas IDE Expert';
     Publisher = 'Atlas';
-    /// <summary>Dateien neben den BPLs.</summary>
-    CommonFiles: array[0..3] of string = (ServerExe, SetupExe, 'LICENSE', 'THIRD-PARTY-NOTICES.md');
+    /// <summary>Dateien neben den BPLs; whatsnew.json für die Karte „Neu in Atlas“ (#756).</summary>
+    CommonFiles: array[0..4] of string = (ServerExe, SetupExe, 'LICENSE', 'THIRD-PARTY-NOTICES.md', 'whatsnew.json');
+    /// <summary>Beispieldateien für „Ausprobieren“ der Karte „Neu in Atlas“ (#756); ersetzt bei jeder
+    /// Installation den ganzen Ordner.</summary>
+    SamplesFolder = 'Beispiele';
   private
     FSystem: ISetupSystem;
     FPaths: TSetupPaths;
@@ -76,6 +79,7 @@ type
     function HasAtlas(const AKey: string): Boolean;
     function RemoveAtlas(const AKey: string): Boolean;
     procedure CopyFiles(const AIdes: TArray<TSetupIde>);
+    procedure CopySamples;
     procedure Register(const AIde: TSetupIde);
     procedure WriteUninstallEntry;
     procedure RemoveRegistrations;
@@ -295,6 +299,7 @@ begin
     FSystem.CopyFile(Source, Target);
     Report(TSetupStepKind.FileCopied, Name);
   end;
+  CopySamples;
   for Ide in AIdes do
   begin
     if not Ide.Available then
@@ -305,6 +310,27 @@ begin
       Continue;
     FSystem.CopyFile(Source, Target);
     Report(TSetupStepKind.FileCopied, Join(TSetupIdes.PlatformFolder(Ide.Platform), Ide.PackageFileName));
+  end;
+end;
+
+procedure TSetupInstaller.CopySamples;
+var
+  Source, Target, Name: string;
+  Names: TArray<string>;
+begin
+  Source := Join(FPaths.SourceDir, SamplesFolder);
+  Target := Join(FPaths.InstallDir, SamplesFolder);
+  if SameText(Source, Target) then
+    Exit;
+  Names := FSystem.FilesIn(Source);
+  // Ohne Beispiele im Paket bleibt ein vorhandener Ordner, sonst gelten genau die neuen.
+  if Length(Names) = 0 then
+    Exit;
+  FSystem.DeleteDirectory(Target);
+  for Name in Names do
+  begin
+    FSystem.CopyFile(Join(Source, Name), Join(Target, Name));
+    Report(TSetupStepKind.FileCopied, Join(SamplesFolder, Name));
   end;
 end;
 
@@ -332,6 +358,8 @@ begin
     if FSystem.FileExists(Path) then
       Inc(Result, FSystem.FileSize(Path));
   end;
+  for Name in FSystem.FilesIn(Join(FPaths.InstallDir, SamplesFolder)) do
+    Inc(Result, FSystem.FileSize(Join(Join(FPaths.InstallDir, SamplesFolder), Name)));
   for Info in TSetupIdes.SupportedVersions do
     for Platform := Low(TSetupPlatform) to High(TSetupPlatform) do
     begin

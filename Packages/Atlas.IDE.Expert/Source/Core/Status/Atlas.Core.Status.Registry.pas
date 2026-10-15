@@ -5,7 +5,8 @@
 //   Order und Kennung, mit Beobachtern für Änderungen. Default ist die
 //   Registry des Plugins; Tests legen eigene an.
 // - TAtlasStatusLine: einfache Zeile mit Text, Kurztext, Zustand und optionaler
-//   Aktion; Update meldet nur echte Änderungen an die Registry.
+//   Aktion, dazu Kurzform und Zusatz für die Zustandskachel (#754,
+//   IAtlasStatusBrief); Update meldet nur echte Änderungen an die Registry.
 // - TAtlasStatusSummary: was das Feld zeigt: sichtbare Zeilen (ohne
 //   statusField.hidden), Gesamtzustand (der schlechteste aller Zeilen), Text
 //   „Atlas“ bzw. „Atlas · 2 Fehler“ und Tooltip mit den Zeilen, die nicht grün sind.
@@ -48,13 +49,15 @@ type
 
   /// <summary>Zeile mit festen Daten, die der Besitzer über Update setzt. Die Registry hält die Zeile;
   /// die Zeile kennt die Registry nur schwach und muss vor ihr abgemeldet werden.</summary>
-  TAtlasStatusLine = class(TInterfacedObject, IAtlasStatusItem)
+  TAtlasStatusLine = class(TInterfacedObject, IAtlasStatusItem, IAtlasStatusBrief)
   private
     FLock: TCriticalSection;
     FId: string;
     FOrder: Integer;
     FText: string;
     FSummary: string;
+    FBrief: string;
+    FDetail: string;
     FState: TAtlasStatusState;
     FAction: TProc;
     FRegistry: Pointer;
@@ -70,9 +73,16 @@ type
     function Order: Integer;
     function HasAction: Boolean;
     procedure Execute;
-    /// <summary>Setzt den Inhalt; meldet Changed nur, wenn sich etwas ändert. Aus jedem Thread.</summary>
+    { IAtlasStatusBrief }
+    function Brief: string;
+    function Detail: string;
+    /// <summary>Setzt den Inhalt; meldet Changed nur, wenn sich etwas ändert. Aus jedem Thread. Ohne ABrief und
+    /// ADetail sind beide leer (die Kachel zeigt dann AText).</summary>
     procedure Update(const AText: string; AState: TAtlasStatusState); overload;
     procedure Update(const AText: string; AState: TAtlasStatusState; const ASummary: string); overload;
+    /// <summary>Mit Kurzform und Zusatz rechts für die Zustandskachel (#754).</summary>
+    procedure Update(const AText: string; AState: TAtlasStatusState; const ASummary, ABrief,
+      ADetail: string); overload;
     /// <summary>Löst die Verbindung zur Registry; danach meldet Update nichts mehr.</summary>
     procedure Detach;
   end;
@@ -355,22 +365,51 @@ begin
     FAction();
 end;
 
+function TAtlasStatusLine.Brief: string;
+begin
+  FLock.Enter;
+  try
+    Result := FBrief;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TAtlasStatusLine.Detail: string;
+begin
+  FLock.Enter;
+  try
+    Result := FDetail;
+  finally
+    FLock.Leave;
+  end;
+end;
+
 procedure TAtlasStatusLine.Update(const AText: string; AState: TAtlasStatusState);
 begin
   Update(AText, AState, '');
 end;
 
 procedure TAtlasStatusLine.Update(const AText: string; AState: TAtlasStatusState; const ASummary: string);
+begin
+  Update(AText, AState, ASummary, '', '');
+end;
+
+procedure TAtlasStatusLine.Update(const AText: string; AState: TAtlasStatusState; const ASummary, ABrief,
+  ADetail: string);
 var
   Different: Boolean;
   Registry: Pointer;
 begin
   FLock.Enter;
   try
-    Different := (FText <> AText) or (FState <> AState) or (FSummary <> ASummary);
+    Different := (FText <> AText) or (FState <> AState) or (FSummary <> ASummary) or (FBrief <> ABrief) or
+      (FDetail <> ADetail);
     FText := AText;
     FState := AState;
     FSummary := ASummary;
+    FBrief := ABrief;
+    FDetail := ADetail;
     Registry := FRegistry;
   finally
     FLock.Leave;

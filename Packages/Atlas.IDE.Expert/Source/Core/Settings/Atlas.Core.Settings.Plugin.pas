@@ -56,6 +56,12 @@ type
     MaxUndoDepth = 200;
     MinUndoMaxSizeMb = 1;
     MaxUndoMaxSizeMb = 1024;
+    /// <summary>Grenzen für welcomePage.maxProjects (#592); wie TAtlasWelcomeProjects.MinMax/MaxMax.</summary>
+    MinWelcomeProjects = 1;
+    MaxWelcomeProjects = 30;
+    /// <summary>Grenzen der Stunden für welcomePage.unsaved.* (#762); wie TAtlasWelcomeUnsaved.MaxHours.</summary>
+    MinUnsavedHours = 0;
+    MaxUnsavedHours = 8760;
     MinPairGuideWidth = 1;
     MaxPairGuideWidth = 3;
     MinPairGuideOpacity = 10;
@@ -207,6 +213,26 @@ type
     /// bei den anderen Atlas-Tasten (#494).</summary>
     QuickToggleKey: Integer;
     QuickToggleKeyPriority: Boolean;
+    /// <summary>Diagnosemodus (#479, diagnosticMode.enabled): Diagnosefenster mit Zeitmessung je Abfrage der
+    /// Vervollständigung; Vorgabe aus. Aus heißt: keine Messung, kein Fenster, keine Statuszeile.</summary>
+    DiagnosticMode: Boolean;
+    /// <summary>Tastenkürzel, das den Diagnosemodus umschaltet (#479, TShortCut, 0 = keins); Vorgabe
+    /// Strg+Alt+Umschalt+D, weil Strg+Alt+Umschalt+A den Schnellschaltern (#604) gehört. Vorrang wie bei den
+    /// anderen Atlas-Tasten (#494).</summary>
+    DiagnosticModeKey: Integer;
+    DiagnosticModeKeyPriority: Boolean;
+    /// <summary>Prüfliste „Atlas-Einrichtung“ beim IDE-Start zeigen, solange nicht alles grün ist (#625,
+    /// ui.setupChecklist); aus: nur auf Abruf (Menü Atlas, Befehlspalette, Statusfeld).</summary>
+    SetupChecklist: Boolean;
+    /// <summary>Die Prüfliste war schon einmal offen (#625); vorher öffnet sie beim Start in jedem Fall. Kein
+    /// Schlüssel in atlas.json, nur Zustand des Plugins.</summary>
+    SetupChecklistSeen: Boolean;
+    /// <summary>Tastenkürzel-Übersicht (#520): Menüeintrag *Atlas › Tastenkürzel-Übersicht…* und Befehl der
+    /// Palette; aus: beide ausgeblendet.</summary>
+    KeyOverview: Boolean;
+    /// <summary>Beim Start die Tasten von Atlas gegen alle Belegungen prüfen und jeden Konflikt einmal in der
+    /// Meldungsansicht melden (#520).</summary>
+    KeyStartupCheck: Boolean;
     /// <summary>Abgesicherter Start (#722): nach einem Absturz fragen (safeMode.askAfterCrash).</summary>
     SafeAskAfterCrash: Boolean;
     /// <summary>Nach zwei Abstürzen kurz hintereinander ohne Rückfrage abgesichert
@@ -271,6 +297,51 @@ type
     UnitSearchDefaultScope: string;
     /// <summary>Eigenes Kürzel für das Atlas-Fenster (#777, TShortCut, 0 = keins); Strg+F12 über replaceIdeDialog.</summary>
     UnitSearchKey: Integer;
+    /// <summary>Hauptschalter der Atlas-Willkommensseite (#753, welcomePage.enabled): Atlas-Bereiche auf der
+    /// Willkommensseite der IDE und Fenster „Atlas-Start“.</summary>
+    WelcomePage: Boolean;
+    /// <summary>Wo die Bereiche erscheinen: welcomePage oder dockWindow (welcomePage.host); ohne Schnittstelle
+    /// der IDE immer dockWindow.</summary>
+    WelcomePageHost: string;
+    /// <summary>off oder atlas (welcomePage.layout); setzt der Befehl „Atlas-Layout anwenden“.</summary>
+    WelcomePageLayout: string;
+    /// <summary>Kopf mit Symbol und Version (welcomePage.header) und Grußzeile darin (welcomePage.greeting).</summary>
+    WelcomePageHeader: Boolean;
+    WelcomePageGreeting: Boolean;
+    /// <summary>Suchfeld im Kopf (#760, welcomePage.search) und dessen Gruppe „Symbole“ (welcomePage.search.symbols,
+    /// braucht laufenden Server).</summary>
+    WelcomePageSearch: Boolean;
+    WelcomePageSearchSymbols: Boolean;
+    /// <summary>Taste für den Fokus ins Suchfeld, solange die Willkommensseite aktiv ist (TShortCut; 0 = keine).</summary>
+    WelcomePageSearchKey: Integer;
+    /// <summary>Karte „Neu in Atlas“ (#756, welcomePage.whatsNew): off, afterUpdate (einmalig nach einem
+    /// Versionswechsel) oder always.</summary>
+    WelcomePageWhatsNew: string;
+    /// <summary>Zuletzt gesehene Version der Karte „Neu in Atlas“ (#756); kein Schlüssel in atlas.json, nur
+    /// Zustand des Plugins. '' vor dem ersten Start.</summary>
+    WhatsNewSeen: string;
+    /// <summary>Bereich „Projekte“ mit Zustand je Projekt (#592, welcomePage.projectStatus).</summary>
+    WelcomePageProjectStatus: Boolean;
+    /// <summary>Anzahl der gezeigten Projekte (#592, welcomePage.maxProjects, 1–30).</summary>
+    WelcomePageMaxProjects: Integer;
+    /// <summary>Branch und Änderungen beim Anzeigen frisch abfragen (#592, welcomePage.refreshVcs); sonst gilt
+    /// der gespeicherte Stand.</summary>
+    WelcomePageRefreshVcs: Boolean;
+    /// <summary>Bereich „Nicht gesichert“ (#762, welcomePage.unsaved).</summary>
+    WelcomePageUnsaved: Boolean;
+    /// <summary>Nicht Gesichertes erst ab diesem Alter zeigen (#762, welcomePage.unsaved.minAgeHours, 0–8760).</summary>
+    WelcomePageUnsavedMinAgeHours: Integer;
+    /// <summary>Ab diesem Alter gelb (#762, welcomePage.unsaved.warnHours, 0–8760).</summary>
+    WelcomePageUnsavedWarnHours: Integer;
+    /// <summary>Ab diesem Alter rot (#762, welcomePage.unsaved.alertHours, 0–8760, nie unter warnHours).</summary>
+    WelcomePageUnsavedAlertHours: Integer;
+    /// <summary>Bereich ausblenden, wenn nichts zu zeigen ist (#762, welcomePage.unsaved.hideWhenClean).</summary>
+    WelcomePageUnsavedHideWhenClean: Boolean;
+    /// <summary>Zustandskachel „Atlas“ (#754, welcomePage.statusTile).</summary>
+    WelcomePageStatusTile: Boolean;
+    /// <summary>Zustandskachel nur zeigen, wenn eine Zeile gelb oder rot ist (#754,
+    /// welcomePage.statusTile.onlyProblems).</summary>
+    WelcomePageStatusTileOnlyProblems: Boolean;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -401,6 +472,13 @@ begin
   Result.IndexProgressPlace := 'statusField';
   Result.QuickToggleKey := $E041; // Strg+Umschalt+Alt+A
   Result.QuickToggleKeyPriority := False;
+  Result.DiagnosticMode := False;
+  Result.DiagnosticModeKey := $E044; // Strg+Umschalt+Alt+D
+  Result.DiagnosticModeKeyPriority := False;
+  Result.SetupChecklist := True;
+  Result.SetupChecklistSeen := False;
+  Result.KeyOverview := True;
+  Result.KeyStartupCheck := True;
   Result.SafeAskAfterCrash := True;
   Result.SafeAutoAfterRepeatedCrash := True;
   Result.SafeStartupKey := 'shift';
@@ -431,6 +509,26 @@ begin
   Result.UnitSearchGroupBy := 'project';
   Result.UnitSearchDefaultScope := 'group';
   Result.UnitSearchKey := 0;
+  Result.WelcomePage := True;
+  Result.WelcomePageHost := 'welcomePage';
+  Result.WelcomePageLayout := 'off';
+  Result.WelcomePageHeader := True;
+  Result.WelcomePageGreeting := True;
+  Result.WelcomePageSearch := True;
+  Result.WelcomePageSearchSymbols := True;
+  Result.WelcomePageSearchKey := $4045; // Strg+E
+  Result.WelcomePageWhatsNew := 'afterUpdate';
+  Result.WhatsNewSeen := '';
+  Result.WelcomePageProjectStatus := True;
+  Result.WelcomePageMaxProjects := 8;
+  Result.WelcomePageRefreshVcs := True;
+  Result.WelcomePageUnsaved := True;
+  Result.WelcomePageUnsavedMinAgeHours := 0;
+  Result.WelcomePageUnsavedWarnHours := 24;
+  Result.WelcomePageUnsavedAlertHours := 72;
+  Result.WelcomePageUnsavedHideWhenClean := False;
+  Result.WelcomePageStatusTile := True;
+  Result.WelcomePageStatusTileOnlyProblems := False;
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -451,10 +549,18 @@ begin
   MemoryBudgetMb := EnsureRange(MemoryBudgetMb, 0, MaxMemoryBudgetMb);
   // TShortCut ist ein Word.
   PaletteKey := EnsureRange(PaletteKey, 0, $FFFF);
+  WelcomePageSearchKey := EnsureRange(WelcomePageSearchKey, 0, $FFFF);
+  WelcomePageMaxProjects := EnsureRange(WelcomePageMaxProjects, MinWelcomeProjects, MaxWelcomeProjects);
+  WelcomePageUnsavedMinAgeHours := EnsureRange(WelcomePageUnsavedMinAgeHours, MinUnsavedHours, MaxUnsavedHours);
+  WelcomePageUnsavedWarnHours := EnsureRange(WelcomePageUnsavedWarnHours, MinUnsavedHours, MaxUnsavedHours);
+  // Rot nie vor gelb.
+  WelcomePageUnsavedAlertHours := EnsureRange(WelcomePageUnsavedAlertHours, WelcomePageUnsavedWarnHours,
+    MaxUnsavedHours);
   CheckKey := EnsureRange(CheckKey, 0, $FFFF);
   CompletionKey := EnsureRange(CompletionKey, 0, $FFFF);
   SignatureKey := EnsureRange(SignatureKey, 0, $FFFF);
   QuickToggleKey := EnsureRange(QuickToggleKey, 0, $FFFF);
+  DiagnosticModeKey := EnsureRange(DiagnosticModeKey, 0, $FFFF);
   SafeStartupTimeoutMs := EnsureRange(SafeStartupTimeoutMs, MinSafeStartupTimeout, MaxSafeStartupTimeout);
   SafeKeepSettingsHistory := EnsureRange(SafeKeepSettingsHistory, 0, MaxSafeSettingsHistory);
   if SameText(Trim(StatusFieldToggles), 'rightClick') then
@@ -496,6 +602,21 @@ begin
   UnitSearchGroupBy := Choice(UnitSearchGroupBy, ['project', 'folder', 'none']);
   UnitSearchDefaultScope := Choice(UnitSearchDefaultScope, ['group', 'project', 'searchPath', 'library']);
   UnitSearchKey := EnsureRange(UnitSearchKey, 0, $FFFF);
+  if SameText(Trim(WelcomePageHost), 'dockWindow') then
+    WelcomePageHost := 'dockWindow'
+  else
+    WelcomePageHost := 'welcomePage';
+  if SameText(Trim(WelcomePageLayout), 'atlas') then
+    WelcomePageLayout := 'atlas'
+  else
+    WelcomePageLayout := 'off';
+  if SameText(Trim(WelcomePageWhatsNew), 'off') then
+    WelcomePageWhatsNew := 'off'
+  else if SameText(Trim(WelcomePageWhatsNew), 'always') then
+    WelcomePageWhatsNew := 'always'
+  else
+    WelcomePageWhatsNew := 'afterUpdate';
+  WhatsNewSeen := Trim(WhatsNewSeen);
 end;
 
 procedure TAtlasPluginSettings.Load(const AStore: IAtlasSettingsStore);
@@ -577,6 +698,14 @@ begin
   QuickToggleKey := AStore.ReadInteger('QuickToggleKey', Default.QuickToggleKey);
   QuickToggleKeyPriority :=
     AStore.ReadInteger('QuickToggleKeyPriority', BoolValue(Default.QuickToggleKeyPriority)) <> 0;
+  DiagnosticMode := AStore.ReadInteger('DiagnosticMode', BoolValue(Default.DiagnosticMode)) <> 0;
+  DiagnosticModeKey := AStore.ReadInteger('DiagnosticModeKey', Default.DiagnosticModeKey);
+  DiagnosticModeKeyPriority :=
+    AStore.ReadInteger('DiagnosticModeKeyPriority', BoolValue(Default.DiagnosticModeKeyPriority)) <> 0;
+  SetupChecklist := AStore.ReadInteger('SetupChecklist', BoolValue(Default.SetupChecklist)) <> 0;
+  SetupChecklistSeen := AStore.ReadInteger('SetupChecklistSeen', BoolValue(Default.SetupChecklistSeen)) <> 0;
+  KeyOverview := AStore.ReadInteger('KeyOverview', BoolValue(Default.KeyOverview)) <> 0;
+  KeyStartupCheck := AStore.ReadInteger('KeyStartupCheck', BoolValue(Default.KeyStartupCheck)) <> 0;
   SafeAskAfterCrash := AStore.ReadInteger('SafeAskAfterCrash', BoolValue(Default.SafeAskAfterCrash)) <> 0;
   SafeAutoAfterRepeatedCrash :=
     AStore.ReadInteger('SafeAutoAfterRepeatedCrash', BoolValue(Default.SafeAutoAfterRepeatedCrash)) <> 0;
@@ -608,6 +737,32 @@ begin
   UnitSearchGroupBy := AStore.ReadString('UnitSearchGroupBy', Default.UnitSearchGroupBy);
   UnitSearchDefaultScope := AStore.ReadString('UnitSearchDefaultScope', Default.UnitSearchDefaultScope);
   UnitSearchKey := AStore.ReadInteger('UnitSearchKey', Default.UnitSearchKey);
+  WelcomePage := AStore.ReadInteger('WelcomePage', BoolValue(Default.WelcomePage)) <> 0;
+  WelcomePageHost := AStore.ReadString('WelcomePageHost', Default.WelcomePageHost);
+  WelcomePageLayout := AStore.ReadString('WelcomePageLayout', Default.WelcomePageLayout);
+  WelcomePageHeader := AStore.ReadInteger('WelcomePageHeader', BoolValue(Default.WelcomePageHeader)) <> 0;
+  WelcomePageGreeting := AStore.ReadInteger('WelcomePageGreeting', BoolValue(Default.WelcomePageGreeting)) <> 0;
+  WelcomePageSearch := AStore.ReadInteger('WelcomePageSearch', BoolValue(Default.WelcomePageSearch)) <> 0;
+  WelcomePageSearchSymbols := AStore.ReadInteger('WelcomePageSearchSymbols',
+    BoolValue(Default.WelcomePageSearchSymbols)) <> 0;
+  WelcomePageSearchKey := AStore.ReadInteger('WelcomePageSearchKey', Default.WelcomePageSearchKey);
+  WelcomePageWhatsNew := AStore.ReadString('WelcomePageWhatsNew', Default.WelcomePageWhatsNew);
+  WhatsNewSeen := AStore.ReadString('WhatsNewSeen', Default.WhatsNewSeen);
+  WelcomePageProjectStatus := AStore.ReadInteger('WelcomePageProjectStatus',
+    BoolValue(Default.WelcomePageProjectStatus)) <> 0;
+  WelcomePageMaxProjects := AStore.ReadInteger('WelcomePageMaxProjects', Default.WelcomePageMaxProjects);
+  WelcomePageRefreshVcs := AStore.ReadInteger('WelcomePageRefreshVcs', BoolValue(Default.WelcomePageRefreshVcs)) <> 0;
+  WelcomePageUnsaved := AStore.ReadInteger('WelcomePageUnsaved', BoolValue(Default.WelcomePageUnsaved)) <> 0;
+  WelcomePageUnsavedMinAgeHours := AStore.ReadInteger('WelcomePageUnsavedMinAgeHours',
+    Default.WelcomePageUnsavedMinAgeHours);
+  WelcomePageUnsavedWarnHours := AStore.ReadInteger('WelcomePageUnsavedWarnHours', Default.WelcomePageUnsavedWarnHours);
+  WelcomePageUnsavedAlertHours := AStore.ReadInteger('WelcomePageUnsavedAlertHours',
+    Default.WelcomePageUnsavedAlertHours);
+  WelcomePageUnsavedHideWhenClean := AStore.ReadInteger('WelcomePageUnsavedHideWhenClean',
+    BoolValue(Default.WelcomePageUnsavedHideWhenClean)) <> 0;
+  WelcomePageStatusTile := AStore.ReadInteger('WelcomePageStatusTile', BoolValue(Default.WelcomePageStatusTile)) <> 0;
+  WelcomePageStatusTileOnlyProblems := AStore.ReadInteger('WelcomePageStatusTileOnlyProblems',
+    BoolValue(Default.WelcomePageStatusTileOnlyProblems)) <> 0;
   Normalize;
 end;
 
@@ -687,6 +842,13 @@ begin
   AStore.WriteString('IndexProgressPlace', IndexProgressPlace);
   AStore.WriteInteger('QuickToggleKey', QuickToggleKey);
   AStore.WriteInteger('QuickToggleKeyPriority', BoolValue(QuickToggleKeyPriority));
+  AStore.WriteInteger('DiagnosticMode', BoolValue(DiagnosticMode));
+  AStore.WriteInteger('DiagnosticModeKey', DiagnosticModeKey);
+  AStore.WriteInteger('DiagnosticModeKeyPriority', BoolValue(DiagnosticModeKeyPriority));
+  AStore.WriteInteger('SetupChecklist', BoolValue(SetupChecklist));
+  AStore.WriteInteger('SetupChecklistSeen', BoolValue(SetupChecklistSeen));
+  AStore.WriteInteger('KeyOverview', BoolValue(KeyOverview));
+  AStore.WriteInteger('KeyStartupCheck', BoolValue(KeyStartupCheck));
   AStore.WriteInteger('SafeAskAfterCrash', BoolValue(SafeAskAfterCrash));
   AStore.WriteInteger('SafeAutoAfterRepeatedCrash', BoolValue(SafeAutoAfterRepeatedCrash));
   AStore.WriteString('SafeStartupKey', SafeStartupKey);
@@ -738,6 +900,26 @@ function TAtlasPluginSettings.IndexProgressInMenu: Boolean;
 begin
   Result := SameText(Trim(IndexProgressPlace), 'menu') or
     (not StatusField and SameText(Trim(IndexProgressPlace), 'statusField'));
+  AStore.WriteInteger('WelcomePage', BoolValue(WelcomePage));
+  AStore.WriteString('WelcomePageHost', WelcomePageHost);
+  AStore.WriteString('WelcomePageLayout', WelcomePageLayout);
+  AStore.WriteInteger('WelcomePageHeader', BoolValue(WelcomePageHeader));
+  AStore.WriteInteger('WelcomePageGreeting', BoolValue(WelcomePageGreeting));
+  AStore.WriteInteger('WelcomePageSearch', BoolValue(WelcomePageSearch));
+  AStore.WriteInteger('WelcomePageSearchSymbols', BoolValue(WelcomePageSearchSymbols));
+  AStore.WriteInteger('WelcomePageSearchKey', WelcomePageSearchKey);
+  AStore.WriteString('WelcomePageWhatsNew', WelcomePageWhatsNew);
+  AStore.WriteString('WhatsNewSeen', WhatsNewSeen);
+  AStore.WriteInteger('WelcomePageProjectStatus', BoolValue(WelcomePageProjectStatus));
+  AStore.WriteInteger('WelcomePageMaxProjects', WelcomePageMaxProjects);
+  AStore.WriteInteger('WelcomePageRefreshVcs', BoolValue(WelcomePageRefreshVcs));
+  AStore.WriteInteger('WelcomePageUnsaved', BoolValue(WelcomePageUnsaved));
+  AStore.WriteInteger('WelcomePageUnsavedMinAgeHours', WelcomePageUnsavedMinAgeHours);
+  AStore.WriteInteger('WelcomePageUnsavedWarnHours', WelcomePageUnsavedWarnHours);
+  AStore.WriteInteger('WelcomePageUnsavedAlertHours', WelcomePageUnsavedAlertHours);
+  AStore.WriteInteger('WelcomePageUnsavedHideWhenClean', BoolValue(WelcomePageUnsavedHideWhenClean));
+  AStore.WriteInteger('WelcomePageStatusTile', BoolValue(WelcomePageStatusTile));
+  AStore.WriteInteger('WelcomePageStatusTileOnlyProblems', BoolValue(WelcomePageStatusTileOnlyProblems));
 end;
 
 end.

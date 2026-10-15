@@ -42,6 +42,8 @@ type
     [Test]
     procedure ReadsCompilerSettings;
     [Test]
+    procedure ReadsVcsProvider;
+    [Test]
     procedure ReadsFormatSettings;
     [Test]
     procedure FileOverridesEditorPerKey;
@@ -288,6 +290,29 @@ begin
   Settings := Parse('{"format": {"indentSize": 0, "keywordCase": "camel", "x": 1}}', Issues);
   Assert.AreEqual(3, Integer(Length(Issues)));
   Assert.IsTrue(Settings.Formatting.Given = []);
+end;
+
+procedure TConfigurationParserTests.ReadsVcsProvider;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // Versionsverwaltung (#571): Vorgabe auto.
+  Settings := Parse('{}', Issues);
+  Assert.AreEqual('auto', Settings.VcsProvider);
+  Settings := Parse('{"vcs": {"provider": "svn"}}', Issues);
+  Assert.AreEqual('svn', Settings.VcsProvider);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Settings := Parse('{"vcs": {"provider": "cvs", "x": 1}}', Issues);
+  Assert.AreEqual('auto', Settings.VcsProvider, 'unbekannter Wert bleibt bei der Vorgabe');
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Parse('{"vcs": "git"}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'vcs muss ein Objekt sein');
+  Settings := TConfigurationParser.ParseLayered('{"vcs": {"provider": "off"}}', '{"vcs": {"provider": "git"}}',
+    Issues);
+  Assert.AreEqual('off', Settings.VcsProvider, 'Datei vor Editor');
+  Settings := TConfigurationParser.ParseLayered('', '{"vcs": {"provider": "git"}}', Issues);
+  Assert.AreEqual('git', Settings.VcsProvider);
 end;
 
 procedure TConfigurationParserTests.ReadsCompilerSettings;

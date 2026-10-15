@@ -5,8 +5,10 @@
 // extern geänderter Dateien (#536), die Befehlspalette (#502), die farbigen
 // Klammerpaare (#514), das Ergebnisfenster (#400), die Editorbefehle samt
 // Tastenkürzeln und Kontextmenü (#399), den Abgleich offener Formulare (#402),
-// das Atlas-Statusfeld (#591), die Schnellschalter (#604) und das
-// dateiübergreifende Zurücknehmen von Atlas-Änderungen (#721) beim Laden des
+// das Atlas-Statusfeld (#591), die Schnellschalter (#604), das
+// dateiübergreifende Zurücknehmen von Atlas-Änderungen (#721), die
+// Versionsverwaltung (#571), den Diagnosemodus (#479) und die Einrichtung mit
+// Prüfliste (#625) beim Laden des
 // Packages an und beim Entladen in umgekehrter Reihenfolge wieder ab
 // (ADR 0006). Zuerst entscheidet der abgesicherte Start
 // (#722), was angemeldet wird; RegisterFeatures holt den Rest nach, sobald
@@ -20,6 +22,7 @@ implementation
 
 uses
   Winapi.Windows,
+  Winapi.ShellAPI,
   System.SysUtils,
   System.Classes,
   System.Types,
@@ -41,6 +44,8 @@ uses
   Atlas.IDE.Diagnostics.Watchdog,
   Atlas.IDE.Diagnostics.Export,
   Atlas.IDE.Diagnostics.BugReport,
+  Atlas.IDE.Diagnostics.Timing,
+  Atlas.IDE.Setup.Checklist,
   Atlas.IDE.Files.Reloader,
   Atlas.IDE.Commands.Palette,
   Atlas.IDE.Editor.Pairs,
@@ -68,12 +73,24 @@ uses
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Diagnostics.TimeLimit,
   Atlas.IDE.Commands.Keys,
+  Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.Undo.Changes,
   Atlas.Core.Updates.Check,
   Atlas.Core.Updates.Adapters.HttpSource,
   Atlas.IDE.Updates.Check,
   Atlas.IDE.Results.Window,
-  Atlas.IDE.Style.Symbol;
+  Atlas.IDE.Style.Symbol,
+  Atlas.Core.Welcome.Sections,
+  Atlas.Core.Welcome.WhatsNew,
+  Atlas.UI.Welcome.Frame,
+  Atlas.Core.Commands.Palette,
+  Atlas.IDE.Welcome.Search,
+  Atlas.IDE.Welcome.WhatsNew,
+  Atlas.IDE.Welcome.Projects,
+  Atlas.IDE.Welcome.Unsaved,
+  Atlas.IDE.Welcome.State,
+  Atlas.IDE.Welcome.Commands,
+  Atlas.IDE.Vcs.Service;
 
 var
   ManagerIndex: Integer = -1;
@@ -106,6 +123,12 @@ var
   SignatureKey: TAtlasIdeKeyBinding;
   // Schnellschalter mit Fenster, Taste und Befehlen in der Palette (#604).
   QuickToggles: TAtlasIdeQuickToggles;
+  // Diagnosemodus mit Fenster, Taste und Statuszeile (#479).
+  DiagnosticMode: TAtlasIdeDiagnosticMode;
+  // Einrichtung mit Prüfliste und Statuszeile (#625).
+  Setup: TAtlasIdeSetupChecklist;
+  // Tastenkürzel-Übersicht mit Prüfung beim Start (#520).
+  KeyMap: TAtlasIdeKeyMap;
   // Abgesicherter Start nach einem Absturz (#722).
   SafeMode: TAtlasIdeSafeMode;
   // Rückfrage und tägliche Update-Prüfung (#495).
@@ -116,6 +139,8 @@ var
   StartupDone: Boolean;
   // Paketbeobachtung und Meldung fremder Vervollständigung angemeldet (#494).
   KeysWatched: Boolean;
+  // Atlas-Bereiche auf der Willkommensseite und Fenster „Atlas-Start“ (#753).
+  Welcome: TAtlasIdeWelcome;
 
 const
   // Ab dieser Dauer ein Hinweis im Meldungsfenster (#501).
@@ -141,6 +166,8 @@ begin
       TAtlasStrings.Text(TAtlasTextId.SettingsSignatureKey));
   if QuickToggles <> nil then
     QuickToggles.Rebind;
+  if DiagnosticMode <> nil then
+    DiagnosticMode.Rebind;
 end;
 
 procedure ReportHang(const AHang: TAtlasHang);
@@ -390,6 +417,37 @@ begin
     begin
       TAtlasProjectSettings.Execute;
     end);
+  Palette.RegisterCommand('Atlas.WelcomeStart', TAtlasStrings.Text(TAtlasTextId.MenuWelcomeStart), '',
+    procedure
+    begin
+      if (Welcome <> nil) and TAtlasIdeSettings.Current.WelcomePage then
+        Welcome.ShowStart;
+    end);
+  Palette.RegisterCommand('Atlas.WelcomeApply', TAtlasStrings.Text(TAtlasTextId.MenuWelcomeApply), '',
+    procedure
+    begin
+      if (Welcome <> nil) and TAtlasIdeSettings.Current.WelcomePage then
+        Welcome.ApplyLayout;
+    end);
+  Palette.RegisterCommand('Atlas.WelcomeReset', TAtlasStrings.Text(TAtlasTextId.MenuWelcomeReset), '',
+    procedure
+    begin
+      if Welcome <> nil then
+        Welcome.ResetLayout;
+    end);
+  // Karte „Neu in Atlas“ (#756): wie das Kontextmenü; zeigt die Willkommensseite bzw. „Atlas-Start“.
+  Palette.RegisterCommand('Atlas.WhatsNew', TAtlasStrings.Text(TAtlasTextId.WelcomeNewsShowCurrent), '',
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.WhatsNew <> nil) and TAtlasIdeSettings.Current.WelcomePage then
+        Welcome.ShowWhatsNew(TAtlasWhatsNewView.Current);
+    end);
+  Palette.RegisterCommand('Atlas.WhatsNewAll', TAtlasStrings.Text(TAtlasTextId.WelcomeNewsShowAllCommand), '',
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.WhatsNew <> nil) and TAtlasIdeSettings.Current.WelcomePage then
+        Welcome.ShowWhatsNew(TAtlasWhatsNewView.All);
+    end);
   Palette.RegisterCommand('Atlas.HangTest', TAtlasStrings.Text(TAtlasTextId.SettingsHangTest), '',
     procedure
     var
@@ -411,6 +469,51 @@ begin
     FileName := TAtlasGuard.RotatingLog.FileName;
   if FileExists(FileName) and Supports(BorlandIDEServices, IOTAActionServices, Actions) then
     Actions.OpenFile(FileName);
+end;
+
+/// <summary>„Einstellungen“ der Zustandskachel (#754): Optionsseite „Atlas“ (#227) wie Menü Atlas › Einstellungen.</summary>
+procedure OpenAtlasOptions;
+var
+  Options: IOTAEnvironmentOptions140;
+  Services: IOTAServices;
+begin
+  if Supports(BorlandIDEServices, IOTAServices, Services) and
+    Supports(Services.GetEnvironmentOptions, IOTAEnvironmentOptions140, Options) then
+    Options.EditOptions('', 'Atlas');
+end;
+
+/// <summary>„Log-Ordner öffnen“ der Zustandskachel (#754): %LOCALAPPDATA%\Atlas\Logs im Explorer.</summary>
+procedure OpenLogFolder;
+var
+  Folder: string;
+begin
+  Folder := TAtlasRotatingLog.DefaultFolder;
+  ForceDirectories(Folder);
+  ShellExecute(0, 'open', PChar(Folder), nil, nil, SW_SHOWNORMAL);
+end;
+
+/// <summary>Zustandskachel „Atlas“ (#754): Zeilen aus dem Statusfeld, Knöpfe über den Manager und die Update-Prüfung.</summary>
+function CreateWelcomeState: TAtlasIdeWelcomeState;
+var
+  Actions: TAtlasStateActions;
+begin
+  Actions.Restart :=
+    procedure
+    begin
+      if Manager <> nil then
+        Manager.RestartServer;
+      if StatusField <> nil then
+        StatusField.RequestRefresh;
+    end;
+  Actions.Settings := OpenAtlasOptions;
+  Actions.LogFolder := OpenLogFolder;
+  Actions.Update :=
+    procedure
+    begin
+      if Updates <> nil then
+        Updates.OpenUpdate;
+    end;
+  Result := TAtlasIdeWelcomeState.Create(TAtlasStatusRegistry.Default, Actions);
 end;
 
 procedure RegisterStatusField;
@@ -535,13 +638,25 @@ begin
   // Compilermeldungen aus dem Reiter „Build“ an den Server (#528).
   Events.Add(TAtlasMessageViewReader.Create(
     procedure(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
-      ASucceeded: Boolean; const AInfo: string)
+      ASucceeded: Boolean; const AInfo: string; AReadable: Boolean)
     var
       Messages: TArray<TAtlasCompilerMessage>;
+      Project: TAtlasCompileProject;
+      Succeeded, Readable: Boolean;
     begin
+      Messages := TAtlasCompilerMessages.Resolve(AMessages, AProject.FileName, KnownFiles(AProject.FileName));
+      // Projekt-Zusammenfassung für die Willkommensseite (#592): letzter Build bzw. letzte Hintergrundprüfung.
+      Project := AProject;
+      Succeeded := ASucceeded;
+      Readable := AReadable;
+      if (Welcome <> nil) and (Welcome.Projects <> nil) then
+        TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+          procedure
+          begin
+            Welcome.Projects.Recorded(Messages, Project, Succeeded, Readable);
+          end);
       if Manager = nil then
         Exit;
-      Messages := TAtlasCompilerMessages.Resolve(AMessages, AProject.FileName, KnownFiles(AProject.FileName));
       if Length(Messages) > 0 then
         Manager.Report(Format('Meldungsfenster: %s (z. B. %s, Zeile %d)', [AInfo, Messages[0].FileName,
           Messages[0].Line]))
@@ -644,6 +759,55 @@ begin
   MainMenu.OnBugReport := CreateBugReport;
 end;
 
+/// <summary>Einrichtung mit Prüfliste (#625); Zustand des Servers über den Manager und das Statusfeld.</summary>
+procedure CreateSetup;
+var
+  Hooks: TAtlasSetupHooks;
+begin
+  Hooks.ServerInfo :=
+    function: TAtlasServerInfo
+    begin
+      if Manager <> nil then
+        Result := Manager.ServerInfo
+      else
+        Result := Default(TAtlasServerInfo);
+    end;
+  Hooks.Indexing :=
+    function(out APercent: Integer): Boolean
+    begin
+      APercent := -1;
+      Result := (Manager <> nil) and Manager.ServerIndexing(APercent);
+    end;
+  Hooks.StatusJson :=
+    function: string
+    begin
+      Result := '';
+      if StatusLines <> nil then
+        Result := StatusLines.StatusJson;
+    end;
+  Hooks.StartServer :=
+    function(ARestart: Boolean): Boolean
+    begin
+      Result := False;
+      if Manager = nil then
+        Exit;
+      if ARestart then
+        Result := Manager.RestartServer
+      else
+        // Die aktive Sitzung startet den Server, wenn er noch nicht läuft.
+        Result := Manager.ActiveSession <> nil;
+    end;
+  Hooks.ServerCommand :=
+    function(ACommand: string): TJSONValue
+    begin
+      if Manager <> nil then
+        Result := Manager.ExecuteServerCommand(ACommand)
+      else
+        Result := nil;
+    end;
+  Setup := TAtlasIdeSetupChecklist.Create(TAtlasStatusRegistry.Default, Hooks);
+end;
+
 /// <summary>Meldet an, was die Stufe des abgesicherten Starts (#722) und die Einstellungen erlauben; mehrfach
 /// aufrufbar. Normal: alles. Abgesichert: Serververbindung, Statusfeld, Einstellungen, Palette und Menü; dazu,
 /// was ein Schnellschalter wieder einschaltet. Minimal: nur Einstellungsseite und Statusfeld.</summary>
@@ -737,6 +901,8 @@ begin
       begin
         TAtlasGuard.Log(AText);
       end);
+    // Zeile „Version“ im Statusfeld und in der Zustandskachel (#754).
+    Updates.ShowStatus(TAtlasStatusRegistry.Default);
   end;
   if Basic and (EditorKeys = nil) then
     EditorKeys := TAtlasIdeEditorKeys.Create;
@@ -754,11 +920,32 @@ begin
         if Manager <> nil then
           Manager.Report(AText);
       end);
+  // Diagnosemodus (#479): ohne Einstellung nur Taste und Befehl, keine Messung.
+  if Basic and (DiagnosticMode = nil) then
+    DiagnosticMode := TAtlasIdeDiagnosticMode.Create(TAtlasStatusRegistry.Default);
+  // Einrichtung (#625): auch abgesichert, sie fragt den Server nie selbst und startet ihn nur auf Knopfdruck.
+  if Basic and (Setup = nil) and (StatusLines <> nil) then
+    CreateSetup;
+  // Tastenkürzel-Übersicht (#520): auch abgesichert, sie liest nur die Belegungen der IDE.
+  if Basic and (KeyMap = nil) then
+    KeyMap := TAtlasIdeKeyMap.Create;
   if Basic and (Palette = nil) then
   begin
     RegisterPalette;
+    // Atlas-Befehle zeigen ihre Taste (#520).
+    Palette.ShortCutOf :=
+      function(AId: string): string
+      begin
+        Result := TAtlasIdeKeyMap.AtlasShortCut(AId);
+      end;
     if QuickToggles <> nil then
       QuickToggles.RegisterCommands(Palette);
+    if DiagnosticMode <> nil then
+      DiagnosticMode.RegisterCommands(Palette);
+    if Setup <> nil then
+      Setup.RegisterCommands(Palette);
+    if KeyMap <> nil then
+      KeyMap.RegisterCommands(Palette);
   end;
   // Editor-Zeichnungen.
   if (Pairs = nil) and (Full or Settings.PairColors or Settings.PairGuides or Settings.InactiveDim) then
@@ -797,12 +984,123 @@ begin
       begin
         RebindKeys;
         TAtlasIdeKeys.ReportForeignCompletion;
+        // Neue Belegungen anderer Erweiterungen gegen die Atlas-Tasten prüfen (#520).
+        if KeyMap <> nil then
+          KeyMap.CheckNow;
       end);
   end;
+  // Willkommensseite (#753): auch abgesichert, sie startet keinen Server und liest nur lokale Daten.
+  if Basic and (Welcome = nil) and (StatusLines <> nil) then
+  begin
+    Welcome := TAtlasIdeWelcome.Create(
+      function: TAtlasServerInfo
+      begin
+        if Manager <> nil then
+          Result := Manager.ServerInfo
+        else
+          Result := Default(TAtlasServerInfo);
+      end,
+      function(out APercent: Integer): Boolean
+      begin
+        APercent := -1;
+        Result := (Manager <> nil) and Manager.ServerIndexing(APercent);
+      end,
+      function: Integer
+      begin
+        Result := -1;
+        if StatusLines <> nil then
+          Result := StatusLines.Units;
+      end,
+      procedure(AText: string)
+      begin
+        GuardWarning(AText);
+      end);
+    // Suchfeld im Kopf (#760): Befehle aus der Palette, sobald es sie gibt.
+    Welcome.Search := TAtlasIdeWelcomeSearch.Create(
+      function: TArray<TAtlasCommand>
+      begin
+        Result := nil;
+        if Palette <> nil then
+          Result := Palette.AtlasCommands;
+      end,
+      procedure(AId: string)
+      begin
+        if Palette <> nil then
+          Palette.Execute(AId);
+      end);
+    // Karte „Neu in Atlas“ (#756): „Ausprobieren“ führt Atlas-Befehle der Palette aus.
+    Welcome.WhatsNew := TAtlasIdeWhatsNew.Create(
+      function(AId: string): Boolean
+      var
+        Command: TAtlasCommand;
+      begin
+        Result := False;
+        if Palette <> nil then
+          for Command in Palette.AtlasCommands do
+            if SameText(Command.Id, AId) then
+              Exit(True);
+      end,
+      procedure(AId: string)
+      begin
+        if Palette <> nil then
+          Palette.Execute(AId);
+      end,
+      procedure(AText: string)
+      begin
+        GuardWarning(AText);
+      end);
+    // Bereich „Projekte“ (#592): Zustand je Projekt aus den Projekt-Zusammenfassungen.
+    Welcome.Projects := TAtlasIdeProjects.Create(
+      procedure(AText: string)
+      begin
+        GuardWarning(AText);
+      end);
+    // Bereich „Nicht gesichert“ (#762): nicht Gesichertes je Projekt über die VCS-Schnittstelle (#571).
+    Welcome.Unsaved := TAtlasIdeUnsaved.Create(
+      procedure(AText: string)
+      begin
+        GuardWarning(AText);
+      end);
+    // Zustandskachel „Atlas“ (#754): dieselben Zeilen wie das Statusfeld (#591).
+    Welcome.State := CreateWelcomeState;
+  end;
+  if Welcome <> nil then
+    Welcome.Sync;
   if Basic and (MainMenu = nil) then
   begin
     CreateMainMenu;
     MainMenu.OnRename := RenameSymbol;
+    MainMenu.OnSetup :=
+      procedure
+      begin
+        if Setup <> nil then
+          Setup.ShowWindow;
+      end;
+    MainMenu.OnKeyMap :=
+      procedure
+      begin
+        if KeyMap <> nil then
+          KeyMap.ShowWindow;
+      end;
+    MainMenu.OnWelcome :=
+      procedure(ACommand: TAtlasWelcomeCommand)
+      begin
+        if Welcome = nil then
+          Exit;
+        case ACommand of
+          TAtlasWelcomeCommand.Start:
+            Welcome.ShowStart;
+          TAtlasWelcomeCommand.Apply:
+            Welcome.ApplyLayout;
+        else
+          Welcome.ResetLayout;
+        end;
+      end;
+  end;
+  if MainMenu <> nil then
+  begin
+    MainMenu.UpdateWelcome;
+    MainMenu.UpdateKeyMap;
   end;
   // Phase und Fortschritt des Servers melden sich aus jedem Thread; gezeichnet wird gesammelt.
   if (Manager <> nil) and (StatusField <> nil) then
@@ -866,6 +1164,8 @@ begin
   TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
   TAtlasGuard.OnWarning := GuardWarning;
   TAtlasStrings.Language := IdeLanguage;
+  // Versionsverwaltung (#571): Aufrufe im Hintergrund; fehlt git bzw. svn, einmal eine Zeile.
+  TAtlasIdeVcs.Start(MessageLine);
   // Atlas-Symbol (#751): Startbildschirm, Info-Dialog und Bildliste immer, auch abgesichert.
   TAtlasIdeSymbol.Register;
   TAtlasIdeSymbol.OnThemeChanged :=
@@ -876,6 +1176,14 @@ begin
       if StatusField <> nil then
         StatusField.RequestRefresh;
       TAtlasIdeResultsWindow.UpdateIcon;
+      if Welcome <> nil then
+        Welcome.ThemeChanged;
+      if DiagnosticMode <> nil then
+        DiagnosticMode.ThemeChanged;
+      if Setup <> nil then
+        Setup.ThemeChanged;
+      if KeyMap <> nil then
+        KeyMap.ThemeChanged;
     end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
   if SafeMode = nil then
@@ -907,6 +1215,9 @@ begin
       // updates.check (#495).
       if Updates <> nil then
         Updates.ApplySettings;
+      // diagnosticMode.enabled (#479).
+      if DiagnosticMode <> nil then
+        DiagnosticMode.ApplySettings;
       TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
       // Index-Optionen schreibt der Optionsdialog nach settings.json; der Server beobachtet die Datei (#652).
       // Statusfeld an, aus, Kurztext oder ausgeblendete Zeilen geändert (#591).
@@ -942,6 +1253,12 @@ begin
       StartupDone := True;
       if SafeMode <> nil then
         SafeMode.Loaded(TAtlasWatchdog.Timestamp - LoadedAt);
+      // Prüfliste beim ersten Start bzw. solange ein Punkt fest gelb oder rot ist (#625).
+      if Setup <> nil then
+        Setup.Start;
+      // Eigene Tasten prüfen, sobald die übrigen Packages ihre Tasten angemeldet haben (#520).
+      if KeyMap <> nil then
+        KeyMap.CheckAtStart;
     end);
 end;
 
@@ -954,6 +1271,7 @@ begin
   // Zuerst das gemeinsame Abbruchsignal: Jeder Hintergrund-Thread hört auf zu warten (#493).
   StartedAt := TThread.GetTickCount64;
   TAtlasShutdown.Signal;
+  TAtlasIdeVcs.Stop;
   TAtlasGuard.OnWarning := nil;
   TAtlasGuard.OnFailure := nil;
   TAtlasIdeSettings.OnChanged := nil;
@@ -964,17 +1282,27 @@ begin
   if SafeMode <> nil then
     SafeMode.Stop;
   FreeAndNil(SafeMode);
+  // Vor dem Statusfeld: Der Diagnosemodus hat eine Zeile in dessen Registry (#479).
+  FreeAndNil(DiagnosticMode);
+  // Vor dem Statusfeld: Die Einrichtung hat eine Zeile in dessen Registry und liest StatusLines (#625).
+  FreeAndNil(Setup);
+  FreeAndNil(KeyMap);
+  // Vor dem Statusfeld: Die Update-Prüfung hat die Zeile „Version“ in dessen Registry (#754).
+  FreeAndNil(Updates);
   FreeAndNil(QuickToggles);
   FreeAndNil(SignatureKey);
   FreeAndNil(CompletionKey);
   FreeAndNil(EditInbox);
   FreeAndNil(DirtyExport);
+  // Vor dem Statusfeld: Die Willkommensseite beobachtet dessen Registry.
+  FreeAndNil(Welcome);
+  TAtlasWelcomeViews.Release;
+  TAtlasWelcomeSections.ReleaseDefault;
   UnregisterStatusField;
   FreeAndNil(MainMenu);
   FreeAndNil(Forms);
   FreeAndNil(EditorKeys);
   TAtlasIdeUndo.Stop;
-  FreeAndNil(Updates);
   if CommandsInstalled then
   begin
     TAtlasIdeUnitSearch.Uninstall;

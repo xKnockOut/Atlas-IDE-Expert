@@ -7,7 +7,9 @@
 // „andere Taste für Atlas“ und darunter, wer die Taste sonst belegt. Wer eine
 // Taste belegt, fragt die IDE-Schicht über OwnerOf ab; die Seite selbst kennt
 // die Open Tools API nicht. Darunter die erkannten Erweiterungen mit eigener
-// Vervollständigung. Reine VCL, im Code aufgebaut wie Atlas.UI.Settings.Page.
+// Vervollständigung. Ganz unten die Schalter der Tastenkürzel-Übersicht (#520):
+// Menüeintrag und Befehl sowie die Prüfung beim Start. Reine VCL, im Code
+// aufgebaut wie Atlas.UI.Settings.Page.
 
 interface
 
@@ -40,11 +42,14 @@ type
     FEntries: TArray<TAtlasKeyEntry>;
     FRows: TArray<TRow>;
     FForeign: TLabel;
+    FOverview: TCheckBox;
+    FStartupCheck: TCheckBox;
     FOwnerOf: TAtlasKeyOwnerFunc;
     FNextTop: Integer;
     FUpdating: Boolean;
     function AddPanel(AHeight: Integer): TPanel;
     function AddLabel(AParent: TWinControl; const ACaption: string; ALeft, ATop: Integer): TLabel;
+    function AddCheck(const ACaption: string): TCheckBox;
     procedure AddRow(AIndex: Integer);
     procedure KeyChange(Sender: TObject);
     procedure ChoiceChange(Sender: TObject);
@@ -65,9 +70,15 @@ type
     function ChoiceBox(AIndex: Integer): TAtlasChoiceBox;
     function StatusLabel(AIndex: Integer): TLabel;
     function ForeignLabel: TLabel;
+    /// <summary>Zum Testen: Schalter der Tastenkürzel-Übersicht (#520).</summary>
+    property OverviewBox: TCheckBox read FOverview;
+    property StartupCheckBox: TCheckBox read FStartupCheck;
   end;
 
 implementation
+
+uses
+  Atlas.UI.Commands.KeyMap;
 
 {$R *.dfm}
 
@@ -120,6 +131,21 @@ begin
   FForeign.Top := FNextTop;
   Inc(FNextTop, 100);
   ShowForeignCompletions(nil);
+  // Tastenkürzel-Übersicht (#520).
+  FOverview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsKeyOverview));
+  FStartupCheck := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsKeyStartupCheck));
+end;
+
+function TAtlasKeysPage.AddCheck(const ACaption: string): TCheckBox;
+begin
+  Result := TCheckBox.Create(Self);
+  Result.Parent := Self;
+  Result.Align := alTop;
+  Result.AlignWithMargins := True;
+  Result.Caption := ACaption;
+  // alTop stapelt nach Top: jedes neue Element unter das vorige.
+  Result.Top := FNextTop;
+  Inc(FNextTop, 100);
 end;
 
 function TAtlasKeysPage.AddPanel(AHeight: Integer): TPanel;
@@ -185,10 +211,15 @@ begin
       Result := TAtlasStrings.Text(TAtlasTextId.SettingsCheckKey);
     TAtlasKeyFunction.Completion:
       Result := TAtlasStrings.Text(TAtlasTextId.SettingsCompletionKey);
+    TAtlasKeyFunction.Signature:
+      Result := TAtlasStrings.Text(TAtlasTextId.SettingsSignatureKey);
     TAtlasKeyFunction.QuickToggle:
       Result := TAtlasStrings.Text(TAtlasTextId.SettingsQuickToggleKey);
+    TAtlasKeyFunction.DiagnosticMode:
+      Result := TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticModeKey);
   else
-    Result := TAtlasStrings.Text(TAtlasTextId.SettingsSignatureKey);
+    // Die übrigen Funktionen (#520) stehen nur in der Übersicht, nicht auf dieser Seite.
+    Result := TAtlasKeyMapWindow.FunctionCaption(AFunc);
   end;
 end;
 
@@ -299,11 +330,15 @@ begin
   end;
   for Index := 0 to High(FRows) do
     UpdateRow(Index);
+  FOverview.Checked := ASettings.KeyOverview;
+  FStartupCheck.Checked := ASettings.KeyStartupCheck;
 end;
 
 procedure TAtlasKeysPage.SaveTo(var ASettings: TAtlasPluginSettings);
 begin
   TAtlasKeyEntry.ToSettings(FEntries, ASettings);
+  ASettings.KeyOverview := FOverview.Checked;
+  ASettings.KeyStartupCheck := FStartupCheck.Checked;
   ASettings.Normalize;
 end;
 

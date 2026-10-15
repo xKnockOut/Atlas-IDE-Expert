@@ -35,6 +35,10 @@
 //
 // Esc (#414): Nach dem Schließen mit Esc öffnet ein automatischer Start im selben Wort (Datei, Zeile,
 // Wortanfang) die Liste nicht wieder; Strg+Leer öffnet sie und hebt die Sperre auf.
+//
+// Diagnosemodus (#479): Ist TAtlasQueryTimings.Enabled, beginnt Start eine gemessene Abfrage (Kontext ab
+// AContext.Started, Art des Kontexts, nur der Dateiname), Refresh meldet die Dauer von Filtern und Sortieren
+// samt Anzahl der Einträge und die erste sichtbare Liste. Aus wird nichts gemessen.
 
 interface
 
@@ -197,10 +201,34 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Diagnostics.Timing,
   System.Math,
   Atlas.Core.Completion.Matching,
   Atlas.Core.Completion.Presentation,
   Atlas.Core.Completion.Sets;
+
+/// <summary>Art des Kontexts für den Diagnosemodus (#479); nie Text aus dem Editor.</summary>
+function TimingKind(const AContext: TAtlasContext): string;
+begin
+  case AContext.Kind of
+    TAtlasContextKind.MemberAccess:
+      Result := 'Member';
+    TAtlasContextKind.ClassDeclaration:
+      Result := 'Klassendeklaration';
+    TAtlasContextKind.EventAssignment:
+      Result := 'Ereigniszuweisung';
+    TAtlasContextKind.Directive:
+      Result := 'Direktive';
+    TAtlasContextKind.XmlDoc:
+      Result := 'XMLDoc';
+  else
+    Result := 'Bezeichner';
+  end;
+  if AContext.Automatic then
+    Result := Result + ', automatisch'
+  else
+    Result := Result + ', Strg+Leer';
+end;
 
 { TAtlasCompletionController.TControllerSink }
 
@@ -400,6 +428,8 @@ begin
   FOrder := nil;
   FSelected := -1;
   FEmpty := False;
+  if TAtlasQueryTimings.Enabled and (TAtlasQueryTimings.Shared <> nil) then
+    TAtlasQueryTimings.Shared.BeginQuery(AContext.Started, TimingKind(AContext), ExtractFileName(AContext.FileName));
   Query(AContext);
 end;
 
@@ -523,11 +553,21 @@ end;
 
 procedure TAtlasCompletionController.Refresh(AKeepSelection: Boolean);
 var
-  SelectedIndex, Position: Integer;
+  SelectedIndex, Position, Shown: Integer;
   Options: TAtlasRankOptions;
   Usage: TAtlasUsage;
   Items: TAtlasCompletionItems;
+  Timings: TAtlasQueryTimings;
+  Stamp: Int64;
 begin
+  // Diagnosemodus (#479): nur an einen Zeitstempel nehmen.
+  Timings := nil;
+  Stamp := 0;
+  if TAtlasQueryTimings.Enabled then
+  begin
+    Timings := TAtlasQueryTimings.Shared;
+    Stamp := TAtlasQueryTimings.Stamp;
+  end;
   SelectedIndex := -1;
   if AKeepSelection and not FPassive and (FSelected >= 0) and (FSelected < Length(FOrder)) then
     SelectedIndex := FOrder[FSelected];
@@ -546,6 +586,14 @@ begin
       end;
   end;
   FOrder := TAtlasRanking.Order(FItems, FPrefix, Options);
+  if Timings <> nil then
+  begin
+    Shown := 0;
+    for Position := 0 to High(FOrder) do
+      if not TAtlasRanking.IsHeader(FOrder[Position]) then
+        Inc(Shown);
+    Timings.FilterSorted(TAtlasQueryTimings.MsSince(Stamp), Length(FItems), Shown);
+  end;
   FSelected := FirstItemFrom(0, 1);
   // Hinweise (#466) stehen oben, gewählt ist der erste Eintrag danach.
   Position := FSelected;
@@ -566,6 +614,8 @@ begin
   // Nur Deklarationen (#471): sichtbar, aber nicht gewählt, solange niemand eine Pfeiltaste drückt.
   FPassive := (FSelected >= 0) and ((FItems[FOrder[FSelected]].Unknown <> '') or FItems[FOrder[FSelected]].Hint) and
     ((SelectedIndex < 0) or (FOrder[FSelected] <> SelectedIndex));
+  if (Timings <> nil) and (FSelected >= 0) then
+    Timings.ListShown;
   if FPassive then
     FView.ShowList(FItems, FOrder, -1, FPrefix)
   else if FSelected >= 0 then

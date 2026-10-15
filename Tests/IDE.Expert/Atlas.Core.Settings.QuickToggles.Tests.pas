@@ -111,6 +111,10 @@ begin
   for Toggle in Toggles do
     Assert.IsFalse(Toggle.ProjectPath.StartsWith('hints.') or Toggle.ProjectPath.StartsWith('index.'), Toggle.Key);
   Assert.IsFalse(TAtlasQuickToggles.Find(Toggles, 'StatusFieldSummary', Toggle), 'ohne x-quickToggle');
+  // Diagnosemodus (#479): Schalter auf der Seite Allgemein, keine Zeichnung.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'DiagnosticMode', Toggle));
+  Assert.AreEqual('Allgemein', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
   // Jeder Schalter ist eine Einstellung des Plugins.
   for Toggle in Toggles do
   begin

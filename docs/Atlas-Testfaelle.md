@@ -603,6 +603,140 @@ Vorbereitung: Formular mit Button `btnSave` und den Methoden `FormCreate(Sender:
 | PE23 | „Commit-Zeichen“, „uses ergänzen“, „Parameter-Hints“ je aus | `;` übernimmt nicht; keine uses-Ergänzung; kein Hint bei `(` |
 | PE24 | „Listenbreite automatisch“ an | Liste passt sich der Breite der Einträge an |
 
+## Willkommensseite (#753)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WP1 | RAD Studio 13 (und 12) mit Atlas starten, Willkommensseite ansehen | Bereich „Atlas“ mit Symbol, „Guten Morgen/Tag/Abend, <Vorname>“, „Atlas <Version> · Server startet mit dem ersten Projekt“; die Willkommensseite startet keinen Server |
+| WP2 | Projekt öffnen, Index aufbauen lassen, zur Willkommensseite wechseln | Kurzstatus „Server läuft · Index wird aufgebaut (n %)“, danach „Server läuft · 1.284 Units im Index“; ändert sich mit dem Statusfeld |
+| WP3 | Atlas-Bereiche der Willkommensseite (Kopf) über *Layout bearbeiten* verschieben, ausblenden, wieder einblenden | verhalten sich wie eingebaute Bereiche; Titel im Rahmen der IDE |
+| WP4 | *Atlas › Atlas-Layout anwenden*; IDE neu starten | Meldung „Atlas-Layout angewendet …“; `%LOCALAPPDATA%\Atlas\welcomepage-layout-backup.json` existiert; „Atlas“ steht oben über alle Spalten (zwei Zeilen), die übrigen Bereiche darunter in alter Anordnung; einzelne Atlas-Bereiche fehlen |
+| WP5 | Nach WP4: Wird das Layout sofort übernommen oder erst nach dem Neustart? | Ergebnis notieren (ADR 0011); nach dem Neustart gilt es in jedem Fall, die Datei `welcomepage-layout-pending` ist danach weg |
+| WP6 | „Atlas“ nach WP4 von Hand nach unten verschieben, IDE neu starten | bleibt, wo es ist |
+| WP7 | *Atlas › Atlas-Layout zurücksetzen*; IDE neu starten | Meldung „Das vorige Layout … wiederhergestellt“; Registry `…\BDS\<Version>\WelcomePage` wie vor WP4 (Export vergleichen), Sicherung gelöscht |
+| WP8 | Zurücksetzen ohne Sicherung | „Keine Sicherung des Layouts gefunden …“, nichts ändert sich |
+| WP9 | *Tools › Optionen › Atlas › Willkommensseite*: „Atlas-Layout verwenden“ an bzw. aus | wie WP4 bzw. WP7, ohne Meldung |
+| WP10 | Optionen: „Anzeigen in“ = Fenster „Atlas-Start“ | Willkommensseite ohne Atlas-Bereiche, Fenster „Atlas-Start“ öffnet sich (eine Spalte, andockbar); *Ansicht › Atlas-Start* öffnet es wieder |
+| WP11 | Optionen: Kopf aus, dann Grußzeile aus | Kopf verschwindet; ohne Grußzeile steht „Atlas“ statt des Grußes |
+| WP12 | Schnellschalter „Atlas auf der Willkommensseite“ aus | alle Atlas-Bereiche und „Atlas-Start“ weg, Menüeinträge ausgeblendet |
+| WP13 | IDE-Stil hell/dunkel wechseln | Atlas-Bereiche und „Atlas-Start“ folgen dem Thema, Symbol in passender Variante |
+| WP14 | IDE ohne Schnittstelle der Willkommensseite (`WelcomePagePluginService` = nil), z. B. Willkommensseite abgeschaltet | „Atlas-Start“ ersetzt die Willkommensseite |
+
+### Suchfeld (#760)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WS1 | Willkommensseite ohne geöffnetes Projekt, Strg+E, „wel“ tippen | Fokus im Suchfeld rechts im Kopf; Liste darunter mit Gruppen: Dateien mit `…WelcomePage.pas` (sofern ein Projekt mit dieser Unit schon einmal indiziert wurde), Symbole mit „Symbole nach dem Öffnen eines Projekts“, Befehle mit „Atlas-Layout anwenden“; je Gruppe höchstens 4, darunter „n weitere“ |
+| WS2 | „Wlecome“ tippen | dieselbe Datei wie WS1 (Tippfehler-Toleranz) |
+| WS3 | Pfeiltasten, Enter auf eine Datei eines nicht geöffneten Projekts | Projekt öffnet sich, danach die Datei; Suchfeld leer, Liste weg |
+| WS4 | Projekt öffnen, Server läuft, zurück zur Willkommensseite, Klassennamen suchen | Gruppe „Symbole“ zeigt Treffer; Enter springt an die Deklaration |
+| WS5 | Ohne laufenden Server suchen | Gruppe „Symbole“ nur mit Hinweis; im Statusfeld startet kein Server |
+| WS6 | Projekt aus *Datei › Wieder öffnen* suchen und mit Enter öffnen | Gruppe „Projekte“ zeigt es (Name, Ordner); Enter öffnet es. Wenn die Gruppe leer bleibt: Export von `HKCU\Software\Embarcadero\BDS\<Version>\Closed Projects` an Marco/Claude (Format angenommen) |
+| WS7 | Esc im Suchfeld; Klick in die IDE daneben | Esc leert das Feld und schließt die Liste; Klick daneben schließt die Liste |
+| WS8 | Editor aktiv, Strg+E | inkrementelle Suche der IDE wie bisher (Atlas greift nur auf der Willkommensseite) |
+| WS9 | Optionen: Taste des Suchfelds auf Strg+Umschalt+F; dann „Gruppe Symbole“ aus; dann „Suchfeld zeigen“ aus | neue Taste wirkt; Gruppe „Symbole“ fehlt ganz; Suchfeld verschwindet, die Taste tut auf der Willkommensseite nichts |
+| WS10 | Fenster „Atlas-Start“ (WP10) | Suchfeld oben im Kopf, verhält sich wie auf der Willkommensseite |
+
+### Neu in Atlas (#756)
+
+Vorbereitung: Paket mit `whatsnew.json` (Release oder `pwsh Tools/Update-WhatsNew.ps1 -Unreleased 1.1.0 -OutFile <BPL-Ordner>\..\whatsnew.json`, dazu `Setup\Beispiele` als `Beispiele` daneben). Die gesehene Version steht in `HKCU\Software\Atlas\IdePlugin`, Wert `WhatsNewSeen`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NA1 | Erste Installation (`WhatsNewSeen` fehlt), IDE starten | keine Karte; danach steht `WhatsNewSeen` auf der Plugin-Version |
+| NA2 | `WhatsNewSeen` = 1.0.0, Plugin 1.1.0, IDE starten | Karte „Neu in Atlas 1.1.0“ oben in der ersten Spalte (Atlas-Layout, „Atlas-Start“) bzw. als eigener Bereich; Zeilen mit Titel, Satz, Tastenkürzel (Suchfeld: tatsächliche Belegung aus WS9), Schalter, „Ausprobieren“ |
+| NA3 | Schalter „Suchfeld“ aus; *Tools › Optionen › Atlas › Willkommensseite* öffnen | Suchfeld verschwindet sofort; „Suchfeld zeigen“ ist aus; wieder an: Suchfeld zurück |
+| NA4 | „Ausprobieren“ beim Suchfeld; bei „Postfix-Vorlagen“ | Fenster „Atlas-Start“ öffnet sich; `Beispiele\Postfix.pas` öffnet sich mit dem Cursor in Zeile 23 |
+| NA5 | „Gelesen“, IDE neu starten | Karte weg, auch nach dem Neustart; `WhatsNewSeen` = 1.1.0 |
+| NA6 | `WhatsNewSeen` = 1.0.0, Plugin 1.2.0 mit Einträgen für 1.1.0 und 1.2.0 | Karte „Neu in Atlas“ mit Überschriften „Version 1.2.0“ und „Version 1.1.0“, je mit ihren Zeilen |
+| NA7 | Rechtsklick in die Atlas-Bereiche bzw. den Kopf: „Alle Versionen“; Überschrift einer älteren Version anklicken | Karte mit allen Versionen, nur die neueste aufgeklappt; Klick klappt auf und zu; „Schließen“ blendet sie aus |
+| NA8 | Rechtsklick: „Neuigkeiten dieser Version zeigen“; Befehlspalette „Neu in Atlas: alle Versionen“ | Karte der aktuellen Version bzw. aller Versionen; mit Host „Atlas-Start“ öffnet sich das Fenster |
+| NA9 | Optionen: Karte „Neu in Atlas“ = nie; dann = immer | keine Karte, kein Eintrag im Kontextmenü; mit „immer“ bleibt die Karte der aktuellen Version auch nach „Gelesen“ und Neustart stehen |
+| NA10 | `whatsnew.json` löschen, „Alle Versionen“ wählen | Meldung „Neu in Atlas: keine Neuigkeiten gefunden …“, keine Karte |
+
+### Projekte mit Zustand (#592)
+
+Abweichungen vom Issue (begründet in ADR 0011): Bereich als Inhalts-Frame statt `INTAWelcomePageDataPluginListView`, Ersatzfenster „Atlas-Start“ statt „Projektzustand“, Einstellungen auf der Seite *Willkommensseite* statt *Allgemein*. Neue Regeltreffer zählt Atlas aus den Problemen, die das Plugin vom Server hat (Baseline schon abgezogen), also nur in geprüften Dateien.
+
+Vorbereitung: zwei Projekte in Git (eins auf `main`, eins auf einem Feature-Branch mit ungespeicherten Änderungen), ein Projekt ohne Versionsverwaltung, eine Projektgruppe. Je Projekt einmal öffnen und wieder schließen. Die Zusammenfassungen stehen in `%LOCALAPPDATA%\Atlas\projects\*.json`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PZ1 | Willkommensseite (bzw. Fenster „Atlas-Start“) öffnen | Bereich „Projekte“ mit den zuletzt geschlossenen Projekten der IDE, höchstens 8; je Zeile Name, gekürzter Pfad, Branch bzw. SVN-Pfad und Marken |
+| PZ2 | Projekt auf `main` fehlerfrei bauen (Strg+F9), schließen | grüne Marke „Build 0/0/0“, Branch `main`, keine Marke „geändert“ |
+| PZ3 | Im Feature-Projekt zwei Fehler einbauen, bauen, schließen; auf der Willkommensseite die rote Marke „2 Fehler“ anklicken | Zeile zeigt rote Marke „2 Fehler“; Klick öffnet das Projekt und die Unit mit dem Cursor an der ersten Fehlerstelle |
+| PZ4 | Klick auf die Zeile (nicht auf eine Marke) | Projekt öffnet sich; solange es offen ist, steht es nicht in der Liste (die IDE führt es dann nicht unter „Closed Projects“) |
+| PZ5 | Feature-Projekt: Datei ändern und speichern (ohne Commit), Projekt schließen; Branch mit Upstream und einem lokalen Commit | gelbe Marke „n geändert“; neutrale Marke „↑1 ↓0“ |
+| PZ6 | Projekt ohne Versionsverwaltung | kein Branch, keine Marken „geändert“/„↑↓“, keine Fehlermeldung |
+| PZ7 | Prüfung beim Speichern an (#548), im geschlossenen Zustand zuletzt einen Syntaxfehler gespeichert | Marke „Prüfung: 1 Fehler“, nur wenn die Prüfung neuer als der letzte Build ist; Klick springt zur Stelle |
+| PZ8 | Maus über eine Zeile halten | Tooltip mit letztem Build (Zeit, Art, Konfiguration, Plattform, Zahlen), erster Meldung, Hintergrundprüfung, Branch/Revision, Änderungen und Hinweis zum Klick |
+| PZ9 | Netzlaufwerk trennen bzw. git aus dem PATH nehmen, Willkommensseite öffnen | Seite erscheint sofort; Branch und Marken aus der gespeicherten Zusammenfassung mit „Stand vom …“; kurz „wird abgefragt …“ |
+| PZ10 | Acht Projekte in der Liste, IDE neu starten | Willkommensseite ohne spürbare Verzögerung (< 200 ms für den Bereich); kein Server-Start; Branch-Abfrage läuft im Hintergrund |
+| PZ11 | Rechtsklick auf eine Zeile: „Ordner öffnen“; dann „Aus Liste entfernen“ | Explorer mit markierter Projektdatei; Zeile verschwindet und bleibt nach Neustart weg, bis das Projekt wieder geöffnet wird |
+| PZ12 | Projektgruppe bauen (Alle erzeugen), Gruppe schließen | Gruppe in der Liste mit dem Ergebnis des letzten Builds |
+| PZ13 | *Tools › Optionen › Atlas › Willkommensseite*: „Bereich ‚Projekte‘ …“ aus; Anzahl auf 3; „Branch und Änderungen … frisch abfragen“ aus | Bereich verschwindet bzw. zeigt drei Projekte; ohne frische Abfrage nur der gespeicherte Stand („Stand vom …“); 99 eingegeben wird als 30 gespeichert |
+| PZ14 | Dunkles und helles IDE-Thema, 150 % Skalierung | Text, Marken und Tooltip gut lesbar; Marken nicht abgeschnitten |
+| PZ15 | Delphi 12 bzw. Host „Atlas-Start“ | Bereich erscheint im Fenster „Atlas-Start“ mit demselben Inhalt |
+| PZ16 | Neu in Atlas: Schalter „Projekte mit Zustand“ aus und wieder an | Bereich verschwindet sofort und kommt zurück; Optionsseite zeigt denselben Wert |
+| PZ17 | Probleme an (#398), Baseline mit bekannten Treffern; im Projekt zwei neue `with`-Anweisungen einbauen, speichern, warten bis die Probleme da sind, Projekt schließen | gelbe Marke „2 neue Treffer“; Tooltip „2 neue Regeltreffer gegenüber der Baseline (geprüfte Dateien)“; Treffer aus der Baseline zählen nicht. Mit ausgeschalteten Problemen bleibt der alte Stand |
+| PZ18 | Eine Git-Arbeitskopie mit zwei Projekten in Unterordnern; nur im ersten eine Datei ändern, beide schließen | „1 geändert“ nur beim ersten Projekt, das zweite ohne Marke |
+| PZ19 | git so umbenennen, dass der Aufruf hängt bzw. fehlt; Willkommensseite öffnen, 10 s warten, Bereich neu zeichnen lassen (Fenster wechseln) | „wird abgefragt …“ verschwindet spätestens nach 5 s; danach gespeicherter Stand mit „Stand vom …“ |
+
+### Nicht gesichert (#762)
+
+Abweichungen vom Issue: Die Auswertung liegt in `Atlas.Core.Welcome.Unsaved` statt in `Atlas.Common`, weil das Plugin `Atlas.Common` nicht einbindet (ADR 0011). „Ansehen“ öffnet das Projekt und listet die Dateien im Fenster „Atlas-Ergebnisse“, weil #571 keine eigene Änderungsansicht hat. Gleichartiges wird je Projekt zu einer Zeile zusammengefasst (z. B. „2 Stashes, ältester …“); repository-weite Arten (Commits, Branches ohne Upstream, Stashes) erscheinen je Arbeitskopie nur einmal.
+
+Vorbereitung: Git-Projekt `GitDemo` mit Remote `origin` (z. B. ein lokales Bare-Repository), Branch `main` mit Upstream; SVN-Projekt `SvnDemo`; ein Projekt ohne Versionsverwaltung. Alle drei einmal öffnen und schließen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NG1 | `GitDemo`: 3 Commits ohne Push, eine Änderung mit `git stash push -m Versuch` sichern, dann 4 Dateien ändern bzw. anlegen bzw. löschen; Projekt schließen, Willkommensseite öffnen | Bereich „Nicht gesichert“ in der rechten Spalte mit 3 Zeilen „**GitDemo** · main“: „4 Dateien: … · seit …“ mit „Ansehen“, „3 Commits nicht gepusht (main) · seit …“ mit „Push …“, „Stash „Versuch“ vom … · seit …“ mit „Ansehen“; älteste zuerst |
+| NG2 | `SvnDemo`: 2 Dateien ändern, Projekt schließen | eine Zeile „2 Dateien geändert · seit …“, keine Push- und keine Stash-Zeile |
+| NG3 | SVN-Datei mit Konflikt (zwei Arbeitskopien, beide ändern, `svn update`) | Zeile „1 Dateien im Konflikt“ bzw. „n Dateien im Konflikt“ mit „Ansehen“ |
+| NG4 | Projekt ohne Versionsverwaltung | erscheint nicht; keine Meldung, kein Eintrag im Protokoll als Fehler |
+| NG5 | Datei vor über 72 Stunden geändert (Änderungszeit setzen, z. B. `(Get-Item X.pas).LastWriteTime = (Get-Date).AddDays(-4)`) | Punkt rot; zwischen 24 und 72 Stunden gelb; jünger grün |
+| NG6 | „Push …“ in der Commit-Zeile | Dialog „Push – GitDemo“ mit Ziel `main → origin/main (3 Commits)` und den Commits (Kurz-Hash, Zeit, Betreff); Enter und Esc brechen ab, nichts wird gepusht |
+| NG7 | NG6, dann „Pushen“ | Push läuft im Hintergrund; Meldungsansicht „GitDemo: main nach origin/main gepusht.“; Zeile verschwindet nach der neuen Abfrage |
+| NG8 | Branch `feature/x` ohne Upstream mit einem Commit, „Push …“ | Zeile „Branch feature/x ohne Upstream, 1 Commits nur lokal“; Dialog nennt „feature/x → origin/feature/x (neu auf dem Server, wird verfolgter Branch; …)“; nach „Pushen“ hat der Branch einen Upstream |
+| NG9 | Push mit neueren Commits auf dem Server (Push abgelehnt) bzw. Remote nicht erreichbar | Meldung „Push von … fehlgeschlagen (…). Hat der Server neuere Commits, erst Pull.“; kein Hängen der IDE; nach spätestens 2 Minuten Zeitlimit |
+| NG10 | „Ansehen“ in der Änderungszeile bzw. in der Stash-Zeile | Projekt öffnet sich (falls noch nicht offen); Fenster „Atlas-Ergebnisse“ listet die Dateien mit Art („geändert“, „neu“, „gelöscht“) bzw. „Stash „Versuch“: geändert“; Doppelklick öffnet die Datei |
+| NG11 | Rechtsklick auf eine Zeile: „Ordner öffnen“; dann „Ignorieren bis morgen“ | Explorer mit markierter Projektdatei; Zeile verschwindet und kommt am nächsten Tag (nach Mitternacht Ortszeit) bzw. nach IDE-Neustart am selben Tag nicht wieder |
+| NG12 | Alles committen, pushen, Stash verwerfen; Willkommensseite neu öffnen | Zeile „Alles gesichert“; mit „Bereich ausblenden, wenn alles gesichert ist“ verschwindet der Bereich ganz und kommt bei neuer Arbeit wieder |
+| NG13 | *Tools › Optionen › Atlas › Willkommensseite*: „Bereich ‚Nicht gesichert‘ …“ aus | Bereich verschwindet sofort, keine git- bzw. svn-Aufrufe mehr (Prozess-Monitor) |
+| NG14 | Mindestalter 48 eingeben | Zeilen jünger als 48 Stunden fehlen; „Nichts zu zeigen (n Einträge jünger als die Mindestzeit …)“; Gelb 48 und Rot 12 eingeben speichert Rot = 48 |
+| NG15 | Netzlaufwerk trennen bzw. git aus dem PATH nehmen; Willkommensseite öffnen | Seite sofort da; gespeicherter Stand aus der Projekt-Zusammenfassung; kein `git fetch`, kein Netzzugriff (Prozess-Monitor: nur lokale git-Aufrufe), je Projekt höchstens 2 s |
+| NG16 | Acht Projekte in der Liste, IDE neu starten | Bereich ohne spürbare Verzögerung; Abfrage im Hintergrund, höchstens einmal je Minute und Projekt; beim Schließen eines Projekts sofort neu |
+| NG17 | Dunkles und helles Thema, 150 % Skalierung, Delphi 12 bzw. Host „Atlas-Start“ | Punkt, Name, Branch, Detailzeile und Schaltfläche lesbar und nicht abgeschnitten; Tooltip mit Pfad, Branches und ältestem Stand; im Fenster „Atlas-Start“ derselbe Inhalt |
+
+### Zustandskachel „Atlas“ (#754)
+
+Abweichungen vom Issue: „Jetzt aktualisieren“ führt den Ablauf aus #495 aus, also die Seite mit Änderungen und Download des neuen Releases im Browser; Atlas lädt und installiert nichts selbst (#495 schließt das aus). Der Index-Stand ohne laufenden Server kommt aus der neuen Datei `%LOCALAPPDATA%\Atlas\index-state.json`; der Zeitpunkt der letzten vollständigen Indizierung ist das Ende des letzten Indexlaufs, den Atlas gesehen hat. Die Texte der Statusfeld-Zeilen Server, Index und Version sind wie die übrigen Zeilen aus #591 deutsch.
+
+Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert, Willkommensseite (bzw. Fenster *Atlas-Start*) mit Atlas-Bereichen, ein Projekt mit einigen Units.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZK1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasWelcomeStateTests`, `TAtlasStateLinesTests`, `TAtlasIndexStoreTests`, `TAtlasStateUpdateTests` und `TAtlasWelcomeStateFrameTests` grün |
+| ZK2 | IDE starten, Projekt öffnen, Server läuft, Indizierung fertig; Willkommensseite | Kachel „Atlas“ in der rechten Spalte mit fünf Zeilen: grün „Server läuft“ mit „seit hh:mm“ rechts, „Atlas <Version>“ (grün „aktuell“ mit eingeschalteter Update-Prüfung, sonst grau), grün „Index: n Units“ mit „indiziert hh:mm“, „Einrichtung: …“, grau „Diagnosemodus aus“; darunter „Server neu starten“, „Einstellungen“, „Log-Ordner öffnen“; kein „Jetzt aktualisieren“ |
+| ZK3 | Während der Indizierung (z. B. Index neu aufbauen) | Index-Zeile gelb „Index wird aufgebaut“ mit Prozent rechts (z. B. „45 %“), ändert sich ohne Klick; danach grün mit „indiziert <Uhrzeit des Endes>“ |
+| ZK4 | `AtlasServer.exe` im Task-Manager beenden | Zeile „Server abgestürzt“ rot mit „um hh:mm“; Statusfeld zeigt im selben Moment dieselbe Ampel (rot) und im Tooltip „Server: abgestürzt um …“ |
+| ZK5 | ZK4, dann „Server neu starten“ | Server startet; Zeile wird gelb („startet“) und dann grün „Server läuft“ mit neuem „seit“; kein Zwischenstand „beendet“ als rot |
+| ZK6 | *Atlas › Server neu starten* bzw. Server über die Optionen beenden | kurz „Server beendet“ grau (nicht rot), danach wie ZK5 |
+| ZK7 | Server läuft nicht (Serverpfad ungültig), IDE nach einer Sitzung mit indiziertem Projekt neu starten | Index-Zeile grau „Index: n Units“ mit „Stand vom TT.MM. hh:mm“ (bzw. nur Uhrzeit am selben Tag); Tooltip „… (Server läuft nicht)“. Ohne je gespeicherten Stand: „Index: Server läuft nicht“ |
+| ZK8 | Update-Prüfung an, in `%LOCALAPPDATA%\Atlas\updates.json` `"lastCheck"` auf ein altes Datum und eine ältere installierte Version (bzw. neues Release vorhanden); IDE starten | Nach der Prüfung Zeile gelb „Update x.y.z bereit“ mit „installiert a.b.c“; Knopf „Jetzt aktualisieren“ erscheint; Statusfeld zeigt dieselbe gelbe Zeile „Version: Atlas a.b.c, Update x.y.z bereit“ |
+| ZK9 | ZK8: „Jetzt aktualisieren“ bzw. Klick auf die Versionszeile | Browser öffnet die Release-Seite des Updates (https); kein Download durch die IDE; Plugin-Protokoll „Update x.y.z: Änderungen im Browser geöffnet“ ohne Adresse |
+| ZK10 | ZK8, IDE neu starten (Prüfung heute schon gelaufen) | Gelbe Zeile und Knopf bleiben (gefundene Version in `updates.json`, Feld `available`); nach Installation der neuen Version grün „aktuell“ |
+| ZK11 | Einrichtung mit einem gelben Punkt (z. B. Error Insight an) | Zeile „Einrichtung: 5 von 6 erledigt“ gelb, unterstrichen; Klick öffnet die Prüfliste (#625) |
+| ZK12 | Diagnosemodus einschalten (Strg+Umschalt+Alt+D) | Zeile gelb „Diagnosemodus an“ mit „Logs wachsen“ rechts, unterstrichen; Klick öffnet „Atlas-Diagnose“; ausschalten: grau „Diagnosemodus aus“ |
+| ZK13 | „Einstellungen“ | *Tools › Optionen › Drittanbieter › Atlas* öffnet (wie Menü *Atlas › Optionen…*) |
+| ZK14 | „Log-Ordner öffnen“ | Explorer mit `%LOCALAPPDATA%\Atlas\Logs` |
+| ZK15 | Für jede Zeile Kachel und Statusfeld vergleichen (Tooltip bzw. Fenster des Statusfelds) | Gleiche Ampel je Zeile; Tooltip der Kachelzeile = Text der Statusfeld-Zeile |
+| ZK16 | *Tools › Optionen › Atlas › Willkommensseite*: „Zustandskachel nur zeigen, wenn eine Zeile gelb oder rot ist“; alles grün bzw. grau | Kachel verschwindet sofort; Diagnosemodus einschalten bzw. Server beenden: Kachel erscheint ohne Neuladen der Seite, nach dem Ausschalten verschwindet sie wieder |
+| ZK17 | „Zustandskachel „Atlas“ …“ aus | Kachel verschwindet sofort; im Kontextmenü bzw. Atlas-Layout kein Bereich „Atlas“ mehr; an: kommt zurück |
+| ZK18 | Im Leerlauf 5 Minuten beobachten (Prozess-Monitor, Profiler) | Kein Zeitgeber der Kachel; gezeichnet wird nur bei einer Änderung (Server-Abfrage alle 5 s ändert nur bei neuen Werten etwas) |
+| ZK19 | Schmale Spalte bzw. Fenster *Atlas-Start* schmal ziehen; dunkles und helles Thema, 150 % Skalierung | Knöpfe brechen in eine zweite Reihe um, die Kachel wird höher, nichts abgeschnitten; lange Texte enden mit „…“, Zusatz rechts bleibt sichtbar; Punkte und Texte lesbar; Themenwechsel ohne Neustart |
+| ZK20 | Abgesicherter Start | Kachel zeigt, was es gibt; fehlende Zeilen grau (z. B. „Einrichtung noch nicht geprüft“); kein Fehler im Protokoll |
+
 ## Atlas-Symbol (#751)
 
 | Nr. | Schritte | Erwartet |
@@ -688,3 +822,83 @@ Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testpro
 | US12 | „Pfade kopieren“ (Strg+C), „Im Explorer zeigen“, „Im Projektmanager zeigen“ | Pfade in der Zwischenablage; Explorer mit markierter Datei; Projektmanager offen, Meldung „Kunden gehört zu …“ |
 | US13 | Jede Einstellung der Seite einzeln aus | Vorschau, Formularskizze, „Verwendet von“, Chips, Tippsyntax, Häkchen, Aktionsleiste, „In uses aufnehmen“ fehlen jeweils; Pfadanzeige und Vorgewählte Herkunft wirken beim nächsten Öffnen |
 | US14 | Server beenden, Strg+F12 | Meldung „Der Atlas-Server läuft nicht“ und der IDE-Dialog |
+## Diagnosemodus (#479)
+
+Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert, ein Projekt mit einigen Units geöffnet, Server läuft.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DM1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasTimingTests`, `TAtlasCompletionTimingTests` und `TAtlasTimingFrameTests` grün |
+| DM2 | Frisch installiert: *Tools › Optionen › Atlas*, Seite *Allgemein* | Kontrollkästchen „Diagnosemodus …“ aus; kein Fenster „Atlas-Diagnose“, keine Zeile „Diagnosemodus“ im Statusfeld |
+| DM3 | Kontrollkästchen setzen, OK | Andockbares Fenster „Atlas-Diagnose“ öffnet (klein, lässt sich wie das Ergebnisfenster andocken); Hinweis „Noch keine Abfrage gemessen …“; gelbe Zeile „Diagnosemodus: an“ im Atlas-Statusfeld, Klick darauf zeigt das Fenster |
+| DM4 | Im Editor Strg+Leer, dann weitertippen | Titel „Letzte Abfrage: Bezeichner, Strg+Leer, <Uhrzeit>“; Zeilen Kontext, „Quelle: Server“, „Quelle: XMLDoc“ bzw. „Quelle: Code-Vorlagen“ (je Quelle mit Namen), Filtern und Sortieren, Zeichnen, Bis zur Liste, Einträge; Spalten Letzte, Mittel (n), Maximum, Budget (8, 50, 12, 10, 50 ms) |
+| DM5 | Server mit künstlicher Verzögerung (Index neu aufbauen lassen und sofort Strg+Leer; oder `ProviderTimeLimitMs` hoch und den Server im Debugger anhalten) | Zeit der Quelle „Server“ fett in Warnfarbe auf abgesetzter Fläche; Popup trotzdem mit den übrigen Einträgen |
+| DM6 | 60 Mal die Vervollständigung öffnen | Spaltenkopf „Mittel (50)“; Mittelwert und Maximum über höchstens 50 Abfragen |
+| DM7 | „Bericht kopieren“, in einen Editor einfügen | Atlas-, IDE-Version und Plattform, Budgets, Tabelle, Abfragen (neueste zuerst), Einstellungen; kein Quelltext, keine Präfixe, kein Dateiname; Serverpfad als `<pfad>`, Benutzername als `<benutzer>`; Hinweis „Bericht in der Zwischenablage (ohne Quelltext).“ |
+| DM8 | „Dateinamen in den Bericht“ anhaken, erneut kopieren | Wie DM7, zusätzlich der Dateiname (ohne Ordner) je Abfrage |
+| DM9 | Strg+Alt+Umschalt+D | Diagnosemodus aus: Fenster zu, Statuszeile weg, Optionsseite zeigt aus; erneut: wieder an. Strg+Alt+Umschalt+A öffnet weiterhin die Schnellschalter, die dort auch „Diagnosemodus“ (Seite Allgemein) zeigen |
+| DM10 | Befehlspalette „Atlas: Diagnosemodus ein/aus“ und „Atlas: Diagnosefenster zeigen“ | Schalten bzw. zeigen das Fenster (bei ausgeschaltetem Modus schaltet „zeigen“ ihn ein) |
+| DM11 | Seite *Tastenkonflikte* | Zeile „Diagnosemodus ein/aus“ mit Strg+Umschalt+Alt+D; andere Taste eintragen wirkt nach OK sofort |
+| DM12 | Diagnosemodus aus, 30 Mal Vervollständigung | Verhalten wie ohne die Funktion; im Wächter- bzw. Profiler-Protokoll keine zusätzliche Zeit; `%LOCALAPPDATA%\Atlas\Logs\Diagnose\atlas-diagnosemodus.txt` unverändert |
+| DM13 | Diagnosemodus an, einige Abfragen, dann aus (oder IDE schließen) | `atlas-diagnosemodus.txt` enthält den Bericht ohne Dateinamen; während der Modus an ist, höchstens alle 30 s aktualisiert |
+| DM14 | Dunkles und helles Thema, 150 % Skalierung | Tabelle lesbar, Warnfarbe deutlich, nichts abgeschnitten; Themenwechsel ohne Neustart |
+| DM15 | Diagnosemodus an, IDE neu starten | Fenster öffnet nach dem Laden wieder, Statuszeile gelb |
+
+## Einrichtung mit Prüfliste (#625)
+
+Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert. Für den „ersten Start“ unter `HKCU\Software\Atlas\IdePlugin` den Wert `SetupChecklistSeen` löschen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EP1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasSetupChecklistTests`, `TAtlasSetupControllerTests` und `TAtlasSetupWindowTests` grün |
+| EP2 | Erster Start (ohne `SetupChecklistSeen`) mit einer Projektgruppe | Nach dem Laden öffnet das nicht modale Fenster „Atlas-Einrichtung“; die IDE bleibt bedienbar; sechs Zeilen mit Punkt: Server, Delphi 13 (37.0) bzw. Delphi 12 (23.0) mit Plattform, Projektgruppe mit Unterzeile je Projekt, Bibliotheks-Cache, Error Insight, Tastenkürzel; unten „Probier es aus: **Strg+Leer** in einer Methode“ (bzw. die eigene Taste aus *Tastenkonflikte*) |
+| EP3 | Während der Server startet bzw. indiziert, Fenster offen lassen | Punkte gelb mit „Server wird gestartet…“ bzw. „wird indiziert: n von m Projekten fertig“; aktualisiert sich alle 2 s ohne Klick; Projektzeilen wechseln von „wird aufgebaut“ auf „fertig“ |
+| EP4 | Serverpfad in *Tools › Optionen › Atlas* auf eine nicht vorhandene Datei, IDE neu starten | Prüfliste öffnet von selbst; Server rot „AtlasServer.exe nicht gefunden“, Knopf „Server-Pfad wählen…“; Datei wählen → Pfad steht danach auf der Optionsseite, der Server startet, Punkt wird grün |
+| EP5 | Server einer anderen Version eintragen | Gelb „Server x passt nicht zum Plugin y“ mit „Server-Pfad wählen…“ |
+| EP6 | **Error-Insight-Ort bestätigen**: *Tools › Optionen › Editor › Sprache › Code Insight* Error Insight an; IDE neu starten | Zeile „Error Insight der IDE ist noch an (doppelte Meldungen)“, Knopf „Error Insight abschalten“. Klick: Zeile „Error Insight umgeschaltet, wirkt nach dem Neustart der IDE“; in der Registry unter `<BDS-Schlüssel>\Code Insight\Borland.EditOptions.Borland.CodeInsight.LSP.Pascal` steht `Error Insight = False`. Nach Neustart ist Error Insight in den IDE-Optionen aus und die Zeile grün. Stimmt der Ort nicht (Optionen zeigen weiter an), bitte den richtigen Schlüssel melden |
+| EP7 | Atlas-Probleme aus (*Atlas*-Seite), Error Insight aus | Gelb „Weder Error Insight noch Atlas zeigen Fehler im Editor“ mit „Error Insight einschalten“ |
+| EP8 | Taste von Atlas mit einer fremden Erweiterung belegen (z. B. CnPack auf Strg+Leer) | Gelb „1 Tastenkürzel anders belegt, z. B. …“; „Tastenkonflikte öffnen“ öffnet *Tools › Optionen › Drittanbieter › Atlas › Tastenkonflikte* (**Seite prüfen**); nach Ändern und „Erneut prüfen“ grün |
+| EP9 | Bibliotheks-Cache löschen (`%LOCALAPPDATA%\Atlas\Index\<Version>\…\Bibliothek` bzw. „Index löschen“), Server neu starten | Gelb „Bibliotheks-Cache fehlt, erster Start dauert länger“ bzw. „entsteht beim ersten Indexlauf“, Knopf „Jetzt aufbauen“ baut den Index neu |
+| EP10 | Ein Projekt der Gruppe nicht indizierbar (Projekt hinzufügen, Server noch ohne Workspace) | Gelb „Projektgruppe: 1 von n Projekten nicht im Index (Name)“; Knopf „Index neu aufbauen“ |
+| EP11 | „Warum?“ an einem gelben Punkt (z. B. ohne Projekt bei Delphi) | Erklärung erscheint unter den Zeilen im Fenster, kein weiterer Dialog |
+| EP12 | „Bericht kopieren“, in einen Editor einfügen | Titel, „n von 6 erledigt“, Atlas-, IDE-Version und Plattform, Zeilen mit `[ok]`/`[!]`/`[x]`; kein Pfad, Benutzer- oder Rechnername steht als `<benutzer>`; Hinweis „Bericht in der Zwischenablage (ohne Pfade und Namen).“ |
+| EP13 | Alles grün, IDE neu starten | Prüfliste öffnet **nicht** von selbst; Zeile „Einrichtung: vollständig (6 von 6)“ grün im Statusfeld |
+| EP14 | Ein Punkt fest gelb (z. B. Error Insight an), `ui.setupChecklist` aus (Kontrollkästchen im Fenster oder Seite *Allgemein*), IDE neu starten | Prüfliste öffnet nicht von selbst; *Atlas › Einrichtung prüfen…*, Befehlspalette „Einrichtung prüfen…“ und Klick auf die gelbe Zeile „Einrichtung: 5 von 6 erledigt“ im Statusfeld öffnen sie |
+| EP15 | Projekt öffnen, während der Server noch startet; IDE neu starten | Fenster wartet; wird alles grün, öffnet es nicht; bleibt etwas nach 2 Minuten im Gange, öffnet es ebenfalls nicht |
+| EP16 | Dunkles und helles Thema, 150 % Skalierung, Thema wechseln bei offenem Fenster | Zeilen, Punkte und Knöpfe lesbar, nichts abgeschnitten; Farben folgen ohne Neustart |
+| EP17 | Abgesicherter Start (Umschalt beim Laden, Stufe minimal) | Keine Prüfliste, kein Menüeintrag; abgesichert (nicht minimal) wie normal, nur auf Abruf und beim Start |
+
+## Tastenkürzel-Übersicht (#520)
+
+Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; für TK5/TK6 eine Erweiterung mit eigener Tastaturbelegung (z. B. CnPack oder GExperts).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TK1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasKeyMapTests`, `TAtlasKeyMapWindowTests`, `TAtlasKeysPageTests` und `TAtlasSetupChecklistTests` grün |
+| TK2 | *Atlas › Tastenkürzel-Übersicht…* bzw. Befehlspalette „Tastenkürzel-Übersicht“ | Nicht modales Fenster „Atlas – Tastenkürzel“ mit Spalten Taste, Befehl, Herkunft, Kontext, Hinweis; Zeile „Strg+Umschalt+P · Befehlspalette · Atlas · global“ (**Abnahme**); Aktionen der IDE (z. B. Strg+S „Speichern“) mit Herkunft IDE; unten rechts „n Kürzel, m Konflikte“ |
+| TK3 | *Tastenkonflikte*: „Auswahl erweitern“ absichtlich auf Strg+Umschalt+P legen, OK, Übersicht „Aktualisieren“ | Beide Zeilen rot (**Abnahme**); Hinweis bei der einen „gewinnt …“, bei der anderen „unterliegt „…“ (Atlas): …“ mit Grund; beim nächsten IDE-Start einmal eine Meldung im Meldungsfenster „Atlas: Strg+Umschalt+P ist doppelt belegt – … (Atlas) und …; es gewinnt …“ mit Verweis auf die Übersicht und *Tools › Optionen › Atlas › Tastenkonflikte*; kein zweites Mal in derselben Sitzung |
+| TK4 | Suchfeld: „Strg+Umschalt+P“, „Ctrl+Shift+P“, „palette“, „IDE“; „Nur Konflikte“ an | Jeweils nur passende Zeilen; Zusammenfassung „x von n Kürzeln“; „Nur Konflikte“ zeigt nur rote Zeilen; „Aktualisieren“ behält Suche und Filter |
+| TK5 | Erweiterung mit eigener Editor-Belegung auf eine Atlas-Taste (z. B. Strg+Leer) | Zeile „Tastaturbelegung des Editors“ mit Herkunft „Erweiterung <Paket>“, Kontext Editor, rot; Hinweis nennt den Gewinner (**prüfen, ob die IDE das bestätigt**: Taste im Editor drücken) |
+| TK6 | Fremde Aktion mit Kürzel (z. B. GExperts-Menüeintrag) | Herkunft „Erweiterung <Paket>“ statt IDE (**Herkunft prüfen**; bei falscher Zuordnung Paket und Aktion melden) |
+| TK7 | „Als HTML exportieren“ | Browser öffnet `%LOCALAPPDATA%\Atlas\Tastenkuerzel.html` mit Titel, Stand, Filter (falls gesetzt) und nur den gezeigten Zeilen, Konflikte rot; „Drucken“ bzw. Strg+P: Druckvorschau ohne Knopf, Tabelle vollständig, Kopfzeile wiederholt sich (**Abnahme**) |
+| TK8 | „Tastenkonflikte…“ im Fenster | Öffnet *Tools › Optionen › Drittanbieter › Atlas › Tastenkonflikte* |
+| TK9 | *Tastenkonflikte*: „Menüeintrag und Befehl „Tastenkürzel-Übersicht““ aus | Menüeintrag und Befehl verschwinden sofort; offenes Fenster bleibt bedienbar |
+| TK10 | *Tastenkonflikte*: „Beim Start die Atlas-Tasten prüfen …“ aus, Konflikt aus TK3 lassen, IDE neu starten | Keine Meldung beim Start; Übersicht zeigt den Konflikt weiter rot |
+| TK11 | Einrichtung (#625) mit dem Konflikt aus TK3 bzw. TK5 | Zeile „Tastenkürzel“ gelb, nennt dieselbe Taste wie die Übersicht |
+| TK12 | Dunkles und helles Thema, 150 % Skalierung, Thema wechseln bei offenem Fenster; Esc | Liste, rote Zeilen und Knöpfe lesbar, Farben folgen ohne Neustart; Esc schließt das Fenster |
+| TK13 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs`) nach TK3 | Nur Anzahlen (Kürzel, Konflikte), keine Pfade oder Benutzernamen |
+
+## Versionsverwaltung (#571)
+
+Vorbereitung: Git für Windows und TortoiseSVN mit Kommandozeilenwerkzeugen (`svn.exe`, `svnadmin.exe`) installiert. Die Schnittstelle hat noch keine sichtbaren Nutzer in der IDE (folgen mit #592, #762, #755, #764, #765); geprüft wird über die Tests, den Einstellungsdialog und die Kommandozeile.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VC1 | `Atlas.Tests` (Win32 und Win64) bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasVcsTests` und `TAtlasVcsIntegrationTests` grün; kein Konsolenfenster blitzt auf, während die Git- und SVN-Fixtures angelegt werden |
+| VC2 | VC1 mit `svn.exe` aus PATH und TortoiseSVN-Ordner entfernt (umbenennen) | SVN-Test „übersprungen“ (svn nicht installiert), alle übrigen grün |
+| VC3 | Plugin (Win32 und Win64) bauen, IDE starten und wieder schließen | 0/0/0; keine Meldung zur Versionsverwaltung; Protokoll ohne Fehler, Entladen weiterhin unter einer Sekunde |
+| VC4 | *Atlas › Globale Einstellungen*, Seite *Allgemein* | Feld `vcs.provider` als Auswahl `auto`, `git`, `svn`, `off`, Vorgabe `auto`; „svn“ speichern schreibt `"vcs": {"provider": "svn"}` in `%APPDATA%\Atlas\settings.json` |
+| VC5 | SVN-Arbeitskopie: `AtlasServer --check <Ordner> --changed`, eine Datei ändern, eine neue anlegen; dann mit `--include-uncommitted` | wie bisher: „SVN: n von m Dateien geändert“, die geänderte Datei geprüft; mit `--include-uncommitted` auch die neue |
+| VC6 | VC5 mit `"vcs": {"provider": "off"}` bzw. `"git"` in settings.json | Meldung „Versionsverwaltung abgeschaltet (vcs.provider = off)“ bzw. „… liegt in keiner Arbeitskopie für vcs.provider = git“, Exit-Code 3 |
+| VC7 | SVN-Arbeitskopie innerhalb eines Git-Repositorys (z. B. Fremdcode unter `lib`): `--changed` im SVN-Ordner | SVN wird verwendet (nächstliegende Arbeitskopie), nicht mehr Git |
+| VC8 | VC5 mit `svn.exe` aus PATH entfernt | Meldung „… liegt in einer SVN-Arbeitskopie, aber svn ist nicht installiert …“ statt eines Absturzes |

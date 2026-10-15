@@ -4,7 +4,7 @@ Server und Claude-Code-Plugin tragen dieselbe [SemVer](https://semver.org/lang/d
 
 ## Ablauf
 
-1. Änderungen laufend unter `## [Unveröffentlicht]` in `CHANGELOG.md` eintragen.
+1. Änderungen laufend unter `## [Unveröffentlicht]` in `CHANGELOG.md` eintragen. Einträge für die Karte „Neu in Atlas“ (#756) bekommen am Zeilenende eine Markierung `<!-- whatsnew … -->` (Felder `title`, `text`, `setting`, `key`, `command`, `sample`, `line`; siehe `Tools/Update-WhatsNew.ps1`); Beispieldateien liegen in `Setup/Beispiele`. Der Release erzeugt daraus `whatsnew.json` im Installationspaket, die Release-Notizen enthalten die Markierungen nicht.
 2. `pwsh Tools/Set-Version.ps1 -Version 0.2.0` setzt die Version überall und legt den Changelog-Abschnitt an.
 3. Committen, mergen, dann `git tag v0.2.0` und `git push origin v0.2.0`.
 4. `.github/workflows/release.yml` prüft die Versionen, baut den Server (Win64 Release) auf dem Delphi-Runner, packt das Claude-Code-Plugin mit EXE und legt das GitHub Release mit EXE, Map-Datei, Plugin und den Changelog-Notizen an. Versionen `0.x` und mit Suffix (`-beta.1`) gelten als Vorabversion.

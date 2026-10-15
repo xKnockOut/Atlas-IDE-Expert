@@ -10,6 +10,8 @@
         Atlas.UI.*   ohne Open Tools API und Atlas.IDE.*
     - Setup (Installer, #495): ohne Atlas.Common und Atlas.Windows; darin
         Setup.Core.* frei von Windows, VCL, Setup.Adapters und Setup.Shell
+    - Atlas.Core.Vcs.* (Versionsverwaltung, #571): übersetzt auch der Server
+        mit; darum nur RTL, Winapi und eigene Atlas.Core.Vcs.*-Units
 
     Ausgewertet werden alle uses-Klauseln der .pas-Dateien und die
     requires-Klausel der .dpk-Datei jedes Packages. Kommentare, Strings und
@@ -152,6 +154,12 @@ foreach ($package in $Packages) {
         $layer = $Layers | Where-Object { $ownUnit.StartsWith($_.UnitPrefix, [StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
 
         foreach ($unit in Get-ClauseEntries $text 'uses') {
+            # Geteilte Units (#571): nur Atlas.Core.Vcs.* aus dem eigenen Feature.
+            if ($ownUnit.StartsWith('Atlas.Core.Vcs.', [StringComparison]::OrdinalIgnoreCase) -and
+                $unit.Name.StartsWith('Atlas.', [StringComparison]::OrdinalIgnoreCase) -and
+                -not $unit.Name.StartsWith('Atlas.Core.Vcs.', [StringComparison]::OrdinalIgnoreCase)) {
+                $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Atlas.Core.Vcs.* übersetzt auch der Server mit und darf nur Atlas.Core.Vcs.* verwenden"
+            }
             $prefixHit = $package.ForbiddenPrefix | Where-Object { $unit.Name.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) }
             $unitHit = $package.ForbiddenUnits | Where-Object { $unit.Name -ieq $_ }
             if ($prefixHit -or $unitHit) {

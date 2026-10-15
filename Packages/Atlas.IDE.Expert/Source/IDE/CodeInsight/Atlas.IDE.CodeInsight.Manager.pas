@@ -31,6 +31,8 @@
 // Statusfeld (#591): Phase des Servers (nicht gestartet, startet, läuft,
 // gestoppt, fehlgeschlagen) mit Version und mittlerer Antwortzeit; jede
 // Änderung, auch das Ende des Prozesses im Lese-Thread, meldet OnServerChanged.
+// Für die Zustandskachel (#754) mit Beginn der Phase (Start bzw. Ende) und ob
+// Atlas den Server selbst beendet hat (StopSession) oder er abgestürzt ist.
 // QueryStatusAsync fragt atlas.server.status im Hintergrund; StopSession
 // wartet auf eine laufende Abfrage, bevor es die Sitzung freigibt.
 
@@ -84,10 +86,16 @@ type
     FTestUnitLens: TAtlasEditorTestUnitLens;
     FPhase: TAtlasServerPhase;
     FPhaseError: string;
+    /// <summary>Beginn der Phase (Ortszeit) und „von Atlas beendet“ (#754).</summary>
+    FPhaseSince: TDateTime;
+    FPhaseEnded: Boolean;
+    /// <summary>StopSession läuft: Ein Ende des Prozesses jetzt ist kein Absturz.</summary>
+    FStopping: Boolean;
     FOnServerChanged: TProc;
     FQueryRunning: Boolean;
     FQueryIdle: TEvent;
-    procedure SetPhase(APhase: TAtlasServerPhase; const AError: string);
+    procedure SetPhase(APhase: TAtlasServerPhase; const AError: string); overload;
+    procedure SetPhase(APhase: TAtlasServerPhase; const AError: string; AEnded: Boolean); overload;
     function EnsureSession: Boolean;
     /// <summary>Projekte der geöffneten Gruppe, aktives zuerst; leer ohne Gruppe (#648).</summary>
     class function GroupProjects: TArray<string>; static;
@@ -99,6 +107,7 @@ type
     /// <summary>Gesammelte Änderungen außerhalb der IDE an den Server (Hauptthread, #395).</summary>
     procedure FlushFileChanges;
     procedure StopSession;
+    procedure StopSessionNow;
     /// <summary>Nimmt workspace/applyEdit der Sitzung an (#397).</summary>
     procedure AcceptApplyEdit(ASession: TLspSession);
     /// <summary>Warnungen und Fehler des Servers (window/showMessage) ins Meldungsfenster (#121).</summary>
@@ -442,6 +451,16 @@ end;
 
 procedure TAtlasCodeInsightManager.StopSession;
 begin
+  FStopping := True;
+  try
+    StopSessionNow;
+  finally
+    FStopping := False;
+  end;
+end;
+
+procedure TAtlasCodeInsightManager.StopSessionNow;
+begin
   // Laufende Anfragen der Vervollständigung nutzen die Sitzung noch.
   if FCompletion <> nil then
     FCompletion.Shutdown;
@@ -463,11 +482,20 @@ begin
 end;
 
 procedure TAtlasCodeInsightManager.SetPhase(APhase: TAtlasServerPhase; const AError: string);
+begin
+  SetPhase(APhase, AError, False);
+end;
+
+procedure TAtlasCodeInsightManager.SetPhase(APhase: TAtlasServerPhase; const AError: string; AEnded: Boolean);
 var
   Changed: TProc;
 begin
+  // Ein beendeter Server bleibt beendet, bis er wieder startet; der Zeitpunkt bleibt der erste.
+  if (APhase <> FPhase) or (AEnded <> FPhaseEnded) then
+    FPhaseSince := Now;
   FPhase := APhase;
   FPhaseError := AError;
+  FPhaseEnded := (APhase = TAtlasServerPhase.Stopped) and AEnded;
   Changed := FOnServerChanged;
   if Assigned(Changed) then
     Changed();
@@ -475,8 +503,11 @@ end;
 
 function TAtlasCodeInsightManager.ServerInfo: TAtlasServerInfo;
 begin
+  Result := Default(TAtlasServerInfo);
   Result.Phase := FPhase;
   Result.Error := FPhaseError;
+  Result.Since := FPhaseSince;
+  Result.Ended := FPhaseEnded;
   Result.Version := '';
   Result.AverageMs := 0;
   Result.Samples := 0;
@@ -496,7 +527,7 @@ function TAtlasCodeInsightManager.RestartServer: Boolean;
 begin
   Report('Server wird neu gestartet');
   StopSession;
-  SetPhase(TAtlasServerPhase.Stopped, '');
+  SetPhase(TAtlasServerPhase.Stopped, '', True);
   Result := EnsureSession;
 end;
 
@@ -578,7 +609,8 @@ begin
     FServer.Client.OnClosed :=
       procedure
       begin
-        SetPhase(TAtlasServerPhase.Stopped, '');
+        // Während StopSession beendet Atlas den Server selbst; sonst ist er abgestürzt (#754).
+        SetPhase(TAtlasServerPhase.Stopped, '', FStopping);
       end;
     FSession := TLspSession.Create(FServer.Client);
     FContextsChecked := 0;

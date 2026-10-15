@@ -11,7 +11,14 @@
 //   Versionsnummer und Link zu den Änderungen; sonst bleibt es still.
 // - Ins Plugin-Protokoll nur Ergebnis und Fehlerart, keine Adresse.
 // - Aus: kein Fenster, keine Abfrage, kein Thread.
-// Zustand (gefragt, letzte Prüfung) in %LOCALAPPDATA%\Atlas\updates.json.
+// - Zeile atlas.version im Atlas-Statusfeld (#591) und damit in der
+//   Zustandskachel der Willkommensseite (#754): installierte Version, gelb
+//   mit Versionsnummer, solange ein gefundenes Update nicht installiert ist.
+//   Klick auf die Zeile bzw. „Jetzt aktualisieren“ (OpenUpdate) öffnet wie
+//   der Hinweis aus #495 die Änderungen samt Download im Browser; Atlas lädt
+//   und installiert nichts selbst.
+// Zustand (gefragt, letzte Prüfung, gefundene Version) in
+// %LOCALAPPDATA%\Atlas\updates.json.
 
 interface
 
@@ -19,6 +26,8 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.ExtCtrls,
+  Atlas.Core.Status.Contract,
+  Atlas.Core.Status.Registry,
   Atlas.Core.Updates.Contract,
   Atlas.Core.Updates.Check,
   Atlas.UI.Updates.Consent;
@@ -37,6 +46,12 @@ type
     FConsent: TAtlasUpdateConsent;
     FOnMessage: TProc<string>;
     FOnLog: TProc<string>;
+    // Zeile atlas.version (#754); FLineRef hält sie, die Registry ebenfalls.
+    FRegistry: IAtlasStatusRegistry;
+    FLine: TAtlasStatusLine;
+    FLineRef: IAtlasStatusItem;
+    FLineAction: Boolean;
+    procedure UpdateLine;
     procedure LoadState;
     procedure SaveState;
     procedure Tick(Sender: TObject);
@@ -58,8 +73,16 @@ type
     procedure ApplySettings;
     /// <summary>Prüfen, wenn eingeschaltet und fällig.</summary>
     procedure CheckNow;
-    /// <summary>Beim Entladen: Takt und Fenster weg, Thread beenden (TAtlasShutdown bricht die Abfrage ab).</summary>
+    /// <summary>Beim Entladen: Takt und Fenster weg, Zeile im Statusfeld weg, Thread beenden (TAtlasShutdown
+    /// bricht die Abfrage ab).</summary>
     procedure Stop;
+    /// <summary>Zeile atlas.version in ARegistry melden (#754); nach Start.</summary>
+    procedure ShowStatus(const ARegistry: IAtlasStatusRegistry);
+    /// <summary>Gefundenes Update, das noch nicht installiert ist.</summary>
+    function UpdateReady(out ARelease: TAtlasRelease): Boolean;
+    /// <summary>„Jetzt aktualisieren“ (#754): Änderungen und Download des Updates im Browser öffnen (Ablauf aus
+    /// #495); ohne Update nichts.</summary>
+    procedure OpenUpdate;
     property State: TAtlasUpdateState read FState;
     property Consent: TAtlasUpdateConsent read FConsent;
     property Busy: TThread read FThread;
@@ -68,9 +91,12 @@ type
 implementation
 
 uses
+  Winapi.Windows,
+  Winapi.ShellAPI,
   System.Types,
   System.IOUtils,
   Vcl.Forms,
+  Atlas.Core.Status.Lines,
   Atlas.Core.Product.Version,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Shutdown,
@@ -181,6 +207,8 @@ procedure TAtlasIdeUpdates.ApplySettings;
 begin
   if FSource = nil then
     Exit;
+  // updates.check an oder aus: Die Zeile „Version“ zeigt es.
+  UpdateLine;
   if TAtlasIdeSettings.Current.UpdatesCheck and not FState.Asked then
   begin
     // In den Optionen eingeschaltet: das ist die Zustimmung, keine Frage mehr.
@@ -261,7 +289,10 @@ begin
     FreeAndNil(FThread);
   end;
   FState.LastCheck := AState.LastCheck;
+  // Gefundene Version merken bzw. nach „aktuell“ vergessen (#754).
+  TAtlasUpdates.Remember(FState, AResult);
   SaveState;
+  UpdateLine;
   case AResult.Outcome of
     TAtlasUpdateOutcome.NewVersion:
       begin
@@ -281,6 +312,13 @@ procedure TAtlasIdeUpdates.Stop;
 begin
   FTimer.Enabled := False;
   FSource := nil;
+  if FLine <> nil then
+    FLine.Detach;
+  if FRegistry <> nil then
+    FRegistry.Remove(TAtlasStatusLines.VersionId);
+  FLine := nil;
+  FLineRef := nil;
+  FRegistry := nil;
   if FConsent <> nil then
   begin
     FConsent.RemoveFreeNotification(Self);
@@ -300,6 +338,68 @@ begin
       FThread := nil;
     end;
   end;
+end;
+
+procedure TAtlasIdeUpdates.ShowStatus(const ARegistry: IAtlasStatusRegistry);
+begin
+  FRegistry := ARegistry;
+  UpdateLine;
+end;
+
+function TAtlasIdeUpdates.UpdateReady(out ARelease: TAtlasRelease): Boolean;
+begin
+  Result := TAtlasUpdates.Pending(FState, TAtlasPluginVersion.Version, ARelease);
+end;
+
+procedure TAtlasIdeUpdates.UpdateLine;
+var
+  Info: TAtlasVersionInfo;
+  Release: TAtlasRelease;
+  Ready: Boolean;
+begin
+  if FRegistry = nil then
+    Exit;
+  Ready := UpdateReady(Release);
+  Info := Default(TAtlasVersionInfo);
+  Info.Installed := TAtlasPluginVersion.Version;
+  Info.Available := Release.Version;
+  Info.CheckEnabled := TAtlasIdeSettings.Current.UpdatesCheck;
+  Info.Checked := FState.LastCheck > 0;
+  // Anklickbar nur mit Update: Die Zeile wird dafür ersetzt (die Aktion gehört zur Zeile).
+  if (FLine = nil) or (FLineAction <> Ready) then
+  begin
+    if FLine <> nil then
+      FLine.Detach;
+    if Ready then
+      FLine := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.VersionId, TAtlasStatusLines.VersionOrder,
+        procedure
+        begin
+          OpenUpdate;
+        end)
+    else
+      FLine := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.VersionId, TAtlasStatusLines.VersionOrder);
+    FLineRef := FLine;
+    FLineAction := Ready;
+    FLine.Update(TAtlasStatusLines.VersionText(Info), TAtlasStatusLines.VersionState(Info),
+      TAtlasStatusLines.VersionSummary(Info), TAtlasStatusLines.VersionBrief(Info),
+      TAtlasStatusLines.VersionDetail(Info));
+    FRegistry.Add(FLineRef);
+    Exit;
+  end;
+  FLine.Update(TAtlasStatusLines.VersionText(Info), TAtlasStatusLines.VersionState(Info),
+    TAtlasStatusLines.VersionSummary(Info), TAtlasStatusLines.VersionBrief(Info),
+    TAtlasStatusLines.VersionDetail(Info));
+end;
+
+procedure TAtlasIdeUpdates.OpenUpdate;
+var
+  Release: TAtlasRelease;
+begin
+  if not UpdateReady(Release) then
+    Exit;
+  Log('Update ' + Release.Version + ': Änderungen im Browser geöffnet');
+  // Nur https-Adressen (TAtlasUpdates.TryParse bzw. Pending); heruntergeladen wird im Browser, nicht von Atlas.
+  ShellExecute(0, 'open', PChar(Release.ChangesUrl), nil, nil, SW_SHOWNORMAL);
 end;
 
 end.

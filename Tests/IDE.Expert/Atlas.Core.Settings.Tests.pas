@@ -141,6 +141,16 @@ begin
   Assert.AreEqual(200, Settings.ProviderTimeLimitMs, 'Zeitlimit für Quellen (#493)');
   Assert.AreEqual($E041, Settings.QuickToggleKey, 'Schnellschalter: Strg+Umschalt+Alt+A (#604)');
   Assert.IsFalse(Settings.QuickToggleKeyPriority);
+  // Diagnosemodus (#479): aus; Taste Strg+Umschalt+Alt+D, weil A den Schnellschaltern gehört.
+  Assert.IsFalse(Settings.DiagnosticMode);
+  Assert.AreEqual($E044, Settings.DiagnosticModeKey);
+  Assert.IsFalse(Settings.DiagnosticModeKeyPriority);
+  // Einrichtung mit Prüfliste (#625): beim Start zeigen, solange nicht alles grün ist; noch nie gesehen.
+  Assert.IsTrue(Settings.SetupChecklist);
+  Assert.IsFalse(Settings.SetupChecklistSeen);
+  // Tastenkürzel-Übersicht (#520): Menüeintrag und Startprüfung an.
+  Assert.IsTrue(Settings.KeyOverview);
+  Assert.IsTrue(Settings.KeyStartupCheck);
   // Abgesicherter Start (#722).
   Assert.IsTrue(Settings.SafeAskAfterCrash);
   Assert.IsTrue(Settings.SafeAutoAfterRepeatedCrash);
@@ -199,6 +209,13 @@ begin
   Settings.ProviderTimeLimitMs := 350;
   Settings.QuickToggleKey := $6051;
   Settings.QuickToggleKeyPriority := True;
+  Settings.DiagnosticMode := True;
+  Settings.DiagnosticModeKey := $6044;
+  Settings.DiagnosticModeKeyPriority := True;
+  Settings.SetupChecklist := False;
+  Settings.SetupChecklistSeen := True;
+  Settings.KeyOverview := False;
+  Settings.KeyStartupCheck := False;
   Settings.SafeAskAfterCrash := False;
   Settings.SafeAutoAfterRepeatedCrash := False;
   Settings.SafeStartupKey := 'none';
@@ -258,6 +275,13 @@ begin
   Assert.AreEqual(350, Loaded.ProviderTimeLimitMs);
   Assert.AreEqual($6051, Loaded.QuickToggleKey);
   Assert.IsTrue(Loaded.QuickToggleKeyPriority);
+  Assert.IsTrue(Loaded.DiagnosticMode);
+  Assert.AreEqual($6044, Loaded.DiagnosticModeKey);
+  Assert.IsTrue(Loaded.DiagnosticModeKeyPriority);
+  Assert.IsFalse(Loaded.SetupChecklist);
+  Assert.IsTrue(Loaded.SetupChecklistSeen);
+  Assert.IsFalse(Loaded.KeyOverview);
+  Assert.IsFalse(Loaded.KeyStartupCheck);
   Assert.IsFalse(Loaded.SafeAskAfterCrash);
   Assert.IsFalse(Loaded.SafeAutoAfterRepeatedCrash);
   Assert.AreEqual('none', Loaded.SafeStartupKey);
@@ -612,6 +636,16 @@ begin
     Paths := Paths + Field.Path + '|';
   Assert.Contains(Paths, '|language|');
   Assert.Contains(Paths, '|completion.matching|');
+  // Versionsverwaltung (#571): im Dialog der globalen Einstellungen, Seite Allgemein, als Auswahl.
+  Assert.Contains(Paths, '|vcs.provider|');
+  for Field in Global do
+    if Field.Path = 'vcs.provider' then
+    begin
+      Assert.AreEqual('Allgemein', Field.Page);
+      Assert.AreEqual('"auto"', Field.DefaultJson);
+      Assert.AreEqual(4, Integer(Length(Field.Choices)));
+      Assert.AreEqual('"off"', Field.Choices[3]);
+    end;
   // Auf den Reitern der Optionsseite bzw. von der IDE gesetzt: nicht noch einmal im Dialog.
   Assert.DoesNotContain(Paths, '|index.projectGroup|');
   Assert.DoesNotContain(Paths, '|hints.xmlDocFull|');

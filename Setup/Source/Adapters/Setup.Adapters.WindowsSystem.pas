@@ -31,6 +31,7 @@ type
     procedure DeleteDirectory(const ADirectory: string);
     procedure DeleteDirectoryLater(const ADirectory: string);
     function FileSize(const AFileName: string): Int64;
+    function FilesIn(const ADirectory: string): TArray<string>;
     function RunningExecutables: TArray<string>;
   end;
 
@@ -230,6 +231,17 @@ procedure TSetupWindowsSystem.DeleteDirectory(const ADirectory: string);
 begin
   if System.SysUtils.DirectoryExists(ADirectory) then
     TDirectory.Delete(ADirectory, True);
+end;
+
+function TSetupWindowsSystem.FilesIn(const ADirectory: string): TArray<string>;
+var
+  Path: string;
+begin
+  Result := nil;
+  if not System.SysUtils.DirectoryExists(ADirectory) then
+    Exit;
+  for Path in TDirectory.GetFiles(ADirectory) do
+    Result := Result + [ExtractFileName(Path)];
 end;
 
 procedure TSetupWindowsSystem.DeleteDirectoryLater(const ADirectory: string);
