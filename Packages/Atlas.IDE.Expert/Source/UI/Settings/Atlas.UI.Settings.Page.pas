@@ -168,6 +168,7 @@ type
     FWelcomeSearch: TCheckBox;
     FWelcomeSearchSymbols: TCheckBox;
     FWelcomeSearchKey: TEdit;
+    FWelcomeWhatsNew: TAtlasChoiceBox;
     FVersion: TLabel;
     FResetHistory: TButton;
     FResetWidths: TButton;
@@ -265,6 +266,7 @@ type
     property WelcomeSearch: TCheckBox read FWelcomeSearch;
     property WelcomeSearchSymbols: TCheckBox read FWelcomeSearchSymbols;
     property WelcomeSearchKey: TEdit read FWelcomeSearchKey;
+    property WelcomeWhatsNew: TAtlasChoiceBox read FWelcomeWhatsNew;
     property VersionLabel: TLabel read FVersion;
     /// <summary>Kennzahlen als Text; nil = nicht verfügbar.</summary>
     property OnIndexMetrics: TFunc<string> read FOnIndexMetrics write FOnIndexMetrics;
@@ -297,7 +299,8 @@ uses
   System.Math,
   Atlas.Core.Product.Version,
   Atlas.Core.Updates.Check,
-  Atlas.Core.Undo.Contract;
+  Atlas.Core.Undo.Contract,
+  Atlas.Core.Welcome.WhatsNew;
 
 { TAtlasChoiceBox }
 
@@ -614,6 +617,11 @@ begin
   FWelcomeSearch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeSearch));
   FWelcomeSearchSymbols := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeSearchSymbols));
   FWelcomeSearchKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeSearchKey));
+  // Karte „Neu in Atlas“ (#756); Reihenfolge wie TAtlasWhatsNewMode: off, afterUpdate, always.
+  FWelcomeWhatsNew := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeWhatsNew),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeWhatsNewOff),
+    TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeWhatsNewAfterUpdate),
+    TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeWhatsNewAlways)]);
 end;
 
 procedure TAtlasSettingsPage.AddSheet(AId: TAtlasTextId);
@@ -1128,6 +1136,7 @@ begin
   FWelcomeSearch.Checked := ASettings.WelcomePageSearch;
   FWelcomeSearchSymbols.Checked := ASettings.WelcomePageSearchSymbols;
   FWelcomeSearchKey.Text := ShortCutToText(TShortCut(ASettings.WelcomePageSearchKey));
+  FWelcomeWhatsNew.Choice := Ord(TAtlasWhatsNew.ModeOf(ASettings.WelcomePageWhatsNew));
   RefreshFuse;
   RefreshIndex;
 end;
@@ -1223,6 +1232,8 @@ begin
   ASettings.WelcomePageSearch := FWelcomeSearch.Checked;
   ASettings.WelcomePageSearchSymbols := FWelcomeSearchSymbols.Checked;
   ASettings.WelcomePageSearchKey := Integer(TextToShortCut(Trim(FWelcomeSearchKey.Text)));
+  ASettings.WelcomePageWhatsNew := TAtlasWhatsNew.ModeName(TAtlasWhatsNewMode(EnsureRange(FWelcomeWhatsNew.Choice,
+    Ord(Low(TAtlasWhatsNewMode)), Ord(High(TAtlasWhatsNewMode)))));
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;

@@ -227,14 +227,17 @@ contains
   Atlas.Core.Welcome.HostLayout in 'Source\Core\Welcome\Atlas.Core.Welcome.HostLayout.pas',
   Atlas.Core.Welcome.IndexFiles in 'Source\Core\Welcome\Atlas.Core.Welcome.IndexFiles.pas',
   Atlas.Core.Welcome.Search in 'Source\Core\Welcome\Atlas.Core.Welcome.Search.pas',
+  Atlas.Core.Welcome.WhatsNew in 'Source\Core\Welcome\Atlas.Core.Welcome.WhatsNew.pas',
   Atlas.UI.Welcome.Frame in 'Source\UI\Welcome\Atlas.UI.Welcome.Frame.pas' {AtlasWelcomeFrame: TFrame},
   Atlas.UI.Welcome.Search in 'Source\UI\Welcome\Atlas.UI.Welcome.Search.pas',
   Atlas.UI.Welcome.Header in 'Source\UI\Welcome\Atlas.UI.Welcome.Header.pas',
   Atlas.UI.Welcome.Board in 'Source\UI\Welcome\Atlas.UI.Welcome.Board.pas',
+  Atlas.UI.Welcome.WhatsNew in 'Source\UI\Welcome\Atlas.UI.Welcome.WhatsNew.pas',
   Atlas.IDE.Welcome.Page in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Page.pas',
   Atlas.IDE.Welcome.Registry in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Registry.pas',
   Atlas.IDE.Welcome.Window in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Window.pas',
   Atlas.IDE.Welcome.Search in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Search.pas',
+  Atlas.IDE.Welcome.WhatsNew in 'Source\IDE\Welcome\Atlas.IDE.Welcome.WhatsNew.pas',
   Atlas.IDE.Welcome.Commands in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Commands.pas';
 
 end.

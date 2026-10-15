@@ -16,6 +16,10 @@
 // - Kopf: Grußzeile nach Uhrzeit und Vorname des Windows-Kontos, Version,
 //   Kurzstatus aus Server und Index; neu bei jeder Änderung im Statusfeld.
 //   Rechts das Suchfeld (#760, welcomePage.search), angebunden an Search.
+// - Karte „Neu in Atlas“ (#756, WhatsNew): nach einem Update oben in der
+//   ersten Spalte; Kontextmenü von Frame „Atlas“ und Kopf mit „Neuigkeiten
+//   dieser Version zeigen“ und „Alle Versionen“ (nicht bei
+//   welcomePage.whatsNew = off).
 // Die Willkommensseite startet keinen Server und liest nur lokale Daten.
 
 interface
@@ -26,12 +30,14 @@ uses
   Atlas.Core.Status.Lines,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Backup,
+  Atlas.Core.Welcome.WhatsNew,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.Header,
   Atlas.UI.Welcome.Board,
   Atlas.IDE.Status.Lines,
   Atlas.IDE.Welcome.Page,
-  Atlas.IDE.Welcome.Search;
+  Atlas.IDE.Welcome.Search,
+  Atlas.IDE.Welcome.WhatsNew;
 
 type
   TAtlasIdeWelcome = class
@@ -49,6 +55,11 @@ type
     FLastLayout: string;
     FAccess: IAtlasRegistryAccess;
     FSearch: TAtlasIdeWelcomeSearch;
+    FWhatsNew: TAtlasIdeWhatsNew;
+    // Hält die Quelle der Karte am Leben; die Frames halten sie ebenfalls als Schnittstelle.
+    FWhatsNewRef: IInterface;
+    procedure SetWhatsNew(AValue: TAtlasIdeWhatsNew);
+    procedure AttachMenu(AFrame: TAtlasWelcomeFrame);
     procedure SectionChanged(const AId: string);
     procedure Flush;
     function CaptionOf(const APluginId: string): string;
@@ -79,6 +90,9 @@ type
     procedure Sync;
     /// <summary>Menü Ansicht › Atlas-Start.</summary>
     procedure ShowStart;
+    /// <summary>Befehle „Neuigkeiten dieser Version zeigen“ und „Alle Versionen“ (#756); im Fenster
+    /// „Atlas-Start“ öffnet es dieses.</summary>
+    procedure ShowWhatsNew(AView: TAtlasWhatsNewView);
     procedure ApplyLayout;
     procedure ResetLayout;
     procedure ThemeChanged;
@@ -86,6 +100,8 @@ type
     property Access: IAtlasRegistryAccess read FAccess write FAccess;
     /// <summary>Suchfeld (#760); gehört danach der Steuerung. nil = ohne Suchfeld.</summary>
     property Search: TAtlasIdeWelcomeSearch read FSearch write FSearch;
+    /// <summary>Karte „Neu in Atlas“ (#756); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
+    property WhatsNew: TAtlasIdeWhatsNew read FWhatsNew write SetWhatsNew;
     class function HeaderInfo(const AServer: TAtlasServerInfo; AIndexing: Boolean; APercent, AUnits: Integer;
       AHour: Integer; const AFirstName: string; AGreeting: Boolean): TAtlasWelcomeHeaderInfo; static;
   end;
@@ -103,6 +119,7 @@ uses
   Atlas.Core.Welcome.Layout,
   Atlas.Core.Welcome.HostLayout,
   Atlas.UI.Strings,
+  Atlas.UI.Welcome.WhatsNew,
   Atlas.IDE.Settings.Store,
   Atlas.IDE.Welcome.Registry,
   Atlas.IDE.Welcome.Window;
@@ -175,10 +192,54 @@ begin
   FreeAndNil(FSearch);
   TAtlasWelcomeSections.Default.RemoveListener(FSectionsListener);
   TAtlasStatusRegistry.Default.RemoveListener(FStatusListener);
+  if FWhatsNew <> nil then
+    FWhatsNew.Stop;
   // Beim Beenden der IDE: Hat die IDE ihr Layout aus dem Speicher zurückgeschrieben, gilt die Marke weiter.
   TAtlasIdeWelcomePage.RemoveAll;
   TAtlasIdeWelcomeWindow.Release;
+  // Nach den Frames: Sie halten die Quelle der Karte ebenfalls.
+  FWhatsNew := nil;
+  FWhatsNewRef := nil;
   inherited;
+end;
+
+procedure TAtlasIdeWelcome.SetWhatsNew(AValue: TAtlasIdeWhatsNew);
+begin
+  FWhatsNew := AValue;
+  FWhatsNewRef := AValue;
+  if FWhatsNew <> nil then
+    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        FWhatsNew.Start;
+      end);
+end;
+
+/// <summary>Kontextmenü „Neu in Atlas“ an Frame „Atlas“ bzw. Kopf hängen oder (off) entfernen.</summary>
+procedure TAtlasIdeWelcome.AttachMenu(AFrame: TAtlasWelcomeFrame);
+var
+  Menu: TAtlasWhatsNewMenu;
+begin
+  if AFrame = nil then
+    Exit;
+  Menu := nil;
+  if AFrame.PopupMenu is TAtlasWhatsNewMenu then
+    Menu := TAtlasWhatsNewMenu(AFrame.PopupMenu);
+  if (FWhatsNew = nil) or not FWhatsNew.Active then
+  begin
+    if Menu <> nil then
+    begin
+      AFrame.PopupMenu := nil;
+      Menu.Free;
+    end;
+    Exit;
+  end;
+  if Menu = nil then
+  begin
+    Menu := TAtlasWhatsNewMenu.Create(AFrame);
+    AFrame.PopupMenu := Menu;
+  end;
+  Menu.Source := FWhatsNew;
 end;
 
 class function TAtlasIdeWelcome.AtlasFolder: string;
@@ -235,6 +296,7 @@ begin
   AHeader.ShowSearch(Settings.WelcomePageSearch and (FSearch <> nil));
   if (FSearch <> nil) and (AHeader.Search <> nil) then
     FSearch.Attach(AHeader.Search);
+  AttachMenu(AHeader);
 end;
 
 procedure TAtlasIdeWelcome.FillBoard(ABoard: TAtlasWelcomeBoardFrame; AColumns: Integer);
@@ -244,8 +306,12 @@ begin
   if ABoard = nil then
     Exit;
   Layout := TAtlasWelcomeLayout.Atlas;
+  // Nach einem Update steht „Neu in Atlas“ oben in der ersten Spalte (#756).
+  if (FWhatsNew <> nil) and FWhatsNew.OnTop then
+    Layout := Layout.MovedToTop(TAtlasWelcomeIds.News);
   ABoard.Header.Visible := Settings.WelcomePageHeader;
   FillHeader(ABoard.Header);
+  AttachMenu(ABoard);
   ABoard.Rebuild(TAtlasWelcomeSections.Default.Visible, Layout, AColumns);
 end;
 
@@ -263,6 +329,9 @@ begin
     procedure
     begin
       Current := Settings;
+      // Titel und Reihenfolge der Karte „Neu in Atlas“ nach den Einstellungen (welcomePage.whatsNew).
+      if FWhatsNew <> nil then
+        FWhatsNew.Refresh;
       if not Current.WelcomePage then
         Host := ''
       else if (Current.WelcomePageHost = 'dockWindow') or not TAtlasIdeWelcomePage.Available then
@@ -583,6 +652,19 @@ begin
     procedure
     begin
       FillBoard(TAtlasIdeWelcomeWindow.Show, 1);
+    end);
+end;
+
+procedure TAtlasIdeWelcome.ShowWhatsNew(AView: TAtlasWhatsNewView);
+begin
+  if FWhatsNew = nil then
+    Exit;
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      FWhatsNew.Show(AView);
+      if FShownHost = 'dockWindow' then
+        ShowStart;
     end);
 end;
 

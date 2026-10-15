@@ -41,6 +41,8 @@ type
     procedure JsonRoundTrip;
     [Test]
     procedure InvalidJsonGivesAtlas;
+    [Test]
+    procedure MovedToTopLeadsFirstColumn;
   end;
 
   [TestFixture]
@@ -356,6 +358,32 @@ begin
   Assert.IsTrue(TAtlasWelcomeLayout.FromJson('{"columns":7,"slots":[{"id":"atlas.news","column":9}]}', Loaded));
   Assert.AreEqual(TAtlasWelcomeLayout.MaxColumns, Loaded.Columns);
   Assert.AreEqual(TAtlasWelcomeLayout.MaxColumns - 1, Loaded.Slots[0].Column);
+end;
+
+procedure TAtlasWelcomeLayoutTests.MovedToTopLeadsFirstColumn;
+var
+  Moved: TAtlasWelcomeLayout;
+  Columns: TArray<TArray<string>>;
+  Sections: TArray<TAtlasWelcomeSection>;
+begin
+  // #756: Nach einem Update steht „Neu in Atlas“ oben links statt in der rechten Spalte.
+  Moved := TAtlasWelcomeLayout.Atlas.MovedToTop(TAtlasWelcomeIds.News);
+  Assert.AreEqual(Integer(Length(TAtlasWelcomeLayout.Atlas.Slots)), Integer(Length(Moved.Slots)));
+  Sections := [Section(TAtlasWelcomeIds.Continue, 10, TAtlasWelcomeColumn.Left),
+    Section(TAtlasWelcomeIds.State, 40, TAtlasWelcomeColumn.Right),
+    Section(TAtlasWelcomeIds.News, 50, TAtlasWelcomeColumn.Right)];
+  Columns := Moved.Arrange(Sections, 2);
+  Assert.AreEqual('atlas.news,atlas.continue', Joined(Columns[0]));
+  Assert.AreEqual('atlas.state', Joined(Columns[1]));
+  Columns := TAtlasWelcomeLayout.Atlas.Arrange(Sections, 2);
+  Assert.AreEqual('atlas.continue', Joined(Columns[0]));
+  Assert.AreEqual('atlas.state,atlas.news', Joined(Columns[1]));
+  // Eine Spalte: ganz oben.
+  Columns := Moved.Arrange(Sections, 1);
+  Assert.AreEqual('atlas.news,atlas.continue,atlas.state', Joined(Columns[0]));
+  // Unbekannte Kennung kommt dazu, das Original bleibt unverändert.
+  Assert.AreEqual(Integer(Length(TAtlasWelcomeLayout.Atlas.Slots)) + 1,
+    Integer(Length(TAtlasWelcomeLayout.Atlas.MovedToTop('atlas.neu').Slots)));
 end;
 
 { TAtlasWelcomeGreetingTests }
@@ -692,6 +720,8 @@ begin
   Assert.AreEqual('off', Settings.WelcomePageLayout, 'das Layout der IDE bleibt, bis man es anwendet');
   Assert.IsTrue(Settings.WelcomePageHeader);
   Assert.IsTrue(Settings.WelcomePageGreeting);
+  Assert.AreEqual('afterUpdate', Settings.WelcomePageWhatsNew);
+  Assert.AreEqual('', Settings.WhatsNewSeen, 'vor dem ersten Start nichts gesehen');
 end;
 
 procedure TAtlasWelcomeSettingsTests.NormalizeMapsUnknownValues;
@@ -701,14 +731,23 @@ begin
   Settings := TAtlasPluginSettings.Defaults;
   Settings.WelcomePageHost := ' DOCKWINDOW ';
   Settings.WelcomePageLayout := 'Atlas';
+  Settings.WelcomePageWhatsNew := ' ALWAYS ';
+  Settings.WhatsNewSeen := ' 1.1.0 ';
   Settings.Normalize;
   Assert.AreEqual('dockWindow', Settings.WelcomePageHost);
   Assert.AreEqual('atlas', Settings.WelcomePageLayout);
+  Assert.AreEqual('always', Settings.WelcomePageWhatsNew);
+  Assert.AreEqual('1.1.0', Settings.WhatsNewSeen);
   Settings.WelcomePageHost := 'irgendwo';
   Settings.WelcomePageLayout := 'eigen';
+  Settings.WelcomePageWhatsNew := 'manchmal';
   Settings.Normalize;
   Assert.AreEqual('welcomePage', Settings.WelcomePageHost);
   Assert.AreEqual('off', Settings.WelcomePageLayout);
+  Assert.AreEqual('afterUpdate', Settings.WelcomePageWhatsNew);
+  Settings.WelcomePageWhatsNew := 'Off';
+  Settings.Normalize;
+  Assert.AreEqual('off', Settings.WelcomePageWhatsNew);
 end;
 
 procedure TAtlasWelcomeSettingsTests.SaveAndLoadRoundTrip;
@@ -723,9 +762,13 @@ begin
   Saved.WelcomePageLayout := 'atlas';
   Saved.WelcomePageHeader := False;
   Saved.WelcomePageGreeting := False;
+  Saved.WelcomePageWhatsNew := 'always';
+  Saved.WhatsNewSeen := '1.1.0';
   Saved.Save(Store);
   Assert.AreEqual(0, Store.ReadInteger('WelcomePage', 1), 'Registry-Name');
   Assert.AreEqual('atlas', Store.ReadString('WelcomePageLayout', ''));
+  Assert.AreEqual('always', Store.ReadString('WelcomePageWhatsNew', ''));
+  Assert.AreEqual('1.1.0', Store.ReadString('WhatsNewSeen', ''));
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.WelcomePage);
@@ -733,6 +776,8 @@ begin
   Assert.AreEqual('atlas', Loaded.WelcomePageLayout);
   Assert.IsFalse(Loaded.WelcomePageHeader);
   Assert.IsFalse(Loaded.WelcomePageGreeting);
+  Assert.AreEqual('always', Loaded.WelcomePageWhatsNew);
+  Assert.AreEqual('1.1.0', Loaded.WhatsNewSeen);
 end;
 
 initialization

@@ -83,6 +83,7 @@ type
     procedure DeleteDirectory(const ADirectory: string);
     procedure DeleteDirectoryLater(const ADirectory: string);
     function FileSize(const AFileName: string): Int64;
+    function FilesIn(const ADirectory: string): TArray<string>;
     function RunningExecutables: TArray<string>;
     function HasFileUnder(const ADirectory: string): Boolean;
   end;
@@ -267,6 +268,20 @@ begin
   Result := 2048;
 end;
 
+function TFakeSystem.FilesIn(const ADirectory: string): TArray<string>;
+var
+  Item, Rest: string;
+begin
+  Result := nil;
+  for Item in Files do
+    if Up(Item).StartsWith(Up(ADirectory) + '\') then
+    begin
+      Rest := Copy(Item, Length(ADirectory) + 2, MaxInt);
+      if Pos('\', Rest) = 0 then
+        Result := Result + [Rest];
+    end;
+end;
+
 function TFakeSystem.RunningExecutables: TArray<string>;
 begin
   Result := Running;
@@ -309,6 +324,8 @@ begin
   Result.Files.Add(Source + '\Win32\Atlas.IDE.Expert290.bpl');
   Result.Files.Add(Source + '\Win64\Atlas.IDE.Expert290.bpl');
   Result.Files.Add(Source + '\Win32\Atlas.IDE.Expert370.bpl');
+  Result.Files.Add(Source + '\Beispiele\Suchfeld.pas');
+  Result.Files.Add(Source + '\Beispiele\Karte.pas');
 end;
 
 function Find(const AIdes: TArray<TSetupIde>; const AId: string): TSetupIde;
@@ -437,6 +454,10 @@ begin
     Assert.IsTrue(Sys.FileExists(Target + '\Win32\Atlas.IDE.Expert290.bpl'));
     Assert.IsTrue(Sys.FileExists(Target + '\Win64\Atlas.IDE.Expert290.bpl'));
     Assert.IsTrue(Sys.FileExists(Target + '\Win32\Atlas.IDE.Expert370.bpl'));
+    // Karte „Neu in Atlas“ (#756): whatsnew.json und Beispiele neben den BPL-Ordnern.
+    Assert.IsTrue(Sys.FileExists(Target + '\whatsnew.json'));
+    Assert.IsTrue(Sys.FileExists(Target + '\Beispiele\Suchfeld.pas'));
+    Assert.IsTrue(Sys.FileExists(Target + '\Beispiele\Karte.pas'));
     Assert.AreEqual(TSetupIdes.PackageDescription, Sys.ReadString('Software\Embarcadero\BDS\23.0\Known Packages',
       Target + '\Win32\Atlas.IDE.Expert290.bpl'));
     Assert.AreEqual(TSetupIdes.PackageDescription, Sys.ReadString(
@@ -475,6 +496,10 @@ begin
   Sys.WriteString('Software\Embarcadero\BDS\23.0\Disabled Packages', 'C:\Alt\Argus.IDE.Expert290.bpl', 'Argus');
   // Einstellungen und Favoriten liegen unter Software\Atlas und bleiben unberührt.
   Sys.WriteString('Software\Atlas\IdePlugin', 'Favorites', 'x');
+  // Gesehene Version der Karte „Neu in Atlas“ (#756) bleibt, damit die Karte die neue Version meldet.
+  Sys.WriteString('Software\Atlas\IdePlugin', 'WhatsNewSeen', '1.0.0');
+  // Beispiel der alten Version, das es nicht mehr gibt.
+  Sys.Files.Add(Target + '\Beispiele\Alt.pas');
   Installer := TSetupInstaller.Create(Keep, Paths, '1.1.0');
   try
     Assert.IsTrue(Installer.Install([Find(Installer.Detect, '23.0-Win32')]));
@@ -483,6 +508,9 @@ begin
     Assert.AreEqual('Other', Sys.ReadString(Key, 'C:\Fremd\Other290.bpl'));
     Assert.AreEqual(0, Integer(Length(Sys.ValueNames('Software\Embarcadero\BDS\23.0\Disabled Packages'))));
     Assert.AreEqual('x', Sys.ReadString('Software\Atlas\IdePlugin', 'Favorites'));
+    Assert.AreEqual('1.0.0', Sys.ReadString('Software\Atlas\IdePlugin', 'WhatsNewSeen'));
+    Assert.IsFalse(Sys.FileExists(Target + '\Beispiele\Alt.pas'), 'Beispiele gelten je Version');
+    Assert.IsTrue(Sys.FileExists(Target + '\Beispiele\Karte.pas'));
     // Zweiter Lauf (Aktualisierung): weiterhin genau eine Registrierung.
     Assert.IsTrue(Installer.Install([Find(Installer.Detect, '23.0-Win32')]));
     Assert.AreEqual(2, Integer(Length(Sys.ValueNames(Key))));

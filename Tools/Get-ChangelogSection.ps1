@@ -22,6 +22,7 @@ $Result = foreach ($Line in $Lines) {
         $Inside = $Line -match "^## \[$([regex]::Escape($Version))\]"
         continue
     }
-    if ($Inside) { $Line }
+    # Markierungen für whatsnew.json (#756, Update-WhatsNew.ps1) gehören nicht in die Release-Notizen.
+    if ($Inside) { $Line -replace '\s*<!--\s*whatsnew\b.*?-->', '' }
 }
 ($Result -join "`n").Trim()

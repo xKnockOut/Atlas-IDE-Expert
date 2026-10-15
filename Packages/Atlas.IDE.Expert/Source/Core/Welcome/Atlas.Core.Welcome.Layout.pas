@@ -39,6 +39,9 @@ type
     class function Atlas: TAtlasWelcomeLayout; static;
     /// <summary>Platz von AId; False, wenn das Layout den Bereich nicht kennt.</summary>
     function SlotOf(const AId: string; out ASlot: TAtlasWelcomeSlot): Boolean;
+    /// <summary>Dasselbe Layout mit AId ganz oben in der ersten Spalte (Karte „Neu in Atlas“ nach einem
+    /// Update, #756); die übrigen Plätze behalten Spalte und Reihenfolge.</summary>
+    function MovedToTop(const AId: string): TAtlasWelcomeLayout;
     /// <summary>Kennungen je Spalte (AColumns Spalten, mindestens eine) für die sichtbaren ASections.</summary>
     function Arrange(const ASections: TArray<TAtlasWelcomeSection>; AColumns: Integer): TArray<TArray<string>>;
     function ToJson: string;
@@ -88,6 +91,18 @@ begin
     end;
   ASlot := TAtlasWelcomeSlot.Create(AId, 0);
   Result := False;
+end;
+
+function TAtlasWelcomeLayout.MovedToTop(const AId: string): TAtlasWelcomeLayout;
+var
+  Slot: TAtlasWelcomeSlot;
+begin
+  Result.Name := Name;
+  Result.Columns := Columns;
+  Result.Slots := [TAtlasWelcomeSlot.Create(AId, 0)];
+  for Slot in Slots do
+    if not SameText(Slot.Id, AId) then
+      Result.Slots := Result.Slots + [Slot];
 end;
 
 function Clamp(AValue, AMin, AMax: Integer): Integer;

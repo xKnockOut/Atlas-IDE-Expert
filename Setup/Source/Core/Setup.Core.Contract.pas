@@ -34,6 +34,8 @@ type
     /// <summary>Ordner löschen, sobald dieser Prozess beendet ist (der Installer liegt selbst darin).</summary>
     procedure DeleteDirectoryLater(const ADirectory: string);
     function FileSize(const AFileName: string): Int64;
+    /// <summary>Namen der Dateien direkt in ADirectory (ohne Unterordner); leer, wenn es ihn nicht gibt.</summary>
+    function FilesIn(const ADirectory: string): TArray<string>;
     /// <summary>Vollständige Pfade der laufenden Programme.</summary>
     function RunningExecutables: TArray<string>;
   end;

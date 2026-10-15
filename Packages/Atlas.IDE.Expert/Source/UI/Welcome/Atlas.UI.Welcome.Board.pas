@@ -31,6 +31,7 @@ type
     FViews: TObjectDictionary<string, TAtlasWelcomeSectionFrame>;
     FColumns: TArray<TArray<string>>;
     procedure ScrollResize(Sender: TObject);
+    procedure ViewHeightChanged(Sender: TObject);
     procedure Place;
   public
     constructor Create(AOwner: TComponent); override;
@@ -102,6 +103,7 @@ begin
         if Frame = nil then
           Continue;
         Frame.Parent := FScroll;
+        Frame.OnHeightChanged := ViewHeightChanged;
         FViews.Add(Key, Frame);
         Frame.UpdateContent;
       end;
@@ -118,6 +120,11 @@ begin
 end;
 
 procedure TAtlasWelcomeBoardFrame.ScrollResize(Sender: TObject);
+begin
+  Place;
+end;
+
+procedure TAtlasWelcomeBoardFrame.ViewHeightChanged(Sender: TObject);
 begin
   Place;
 end;
@@ -143,7 +150,9 @@ begin
       Frame := View(Id);
       if Frame = nil then
         Continue;
-      Frame.SetBounds(Left, Top, Width, Frame.PreferredHeight);
+      // Breite zuerst: Bereiche mit umbrechendem Text (#756) berechnen ihre Höhe danach.
+      Frame.SetBounds(Left, Top, Width, Frame.Height);
+      Frame.Height := Frame.PreferredHeight;
       Inc(Top, Frame.Height + Gap);
     end;
   end;

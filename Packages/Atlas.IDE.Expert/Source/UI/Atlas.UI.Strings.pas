@@ -157,7 +157,12 @@ type
     SettingsWelcomeGreeting,
     WelcomeSearchHint, WelcomeSearchProjects, WelcomeSearchFiles, WelcomeSearchSymbols, WelcomeSearchCommands,
     WelcomeSearchMore, WelcomeSearchNoServer, WelcomeSearchForm, SettingsWelcomeSearch,
-    SettingsWelcomeSearchSymbols, SettingsWelcomeSearchKey);
+    SettingsWelcomeSearchSymbols, SettingsWelcomeSearchKey,
+    WelcomeNewsTitle, WelcomeNewsTitlePlain, WelcomeNewsVersion, WelcomeNewsTry, WelcomeNewsRead,
+    WelcomeNewsClose, WelcomeNewsSwitch, WelcomeNewsSwitchHint, WelcomeNewsShowCurrent, WelcomeNewsShowAll,
+    WelcomeNewsShowAllCommand, WelcomeNewsMissing, WelcomeNewsNoSample, WelcomeNewsNoCommand,
+    SettingsWelcomeWhatsNew, SettingsWelcomeWhatsNewOff, SettingsWelcomeWhatsNewAfterUpdate,
+    SettingsWelcomeWhatsNewAlways);
 
   TAtlasStrings = class
   private class var
@@ -551,7 +556,12 @@ const
      'Fenster „Atlas-Start“', 'Atlas-Layout verwenden', 'Kopf mit Symbol und Version', 'Grußzeile im Kopf',
      'Projekte, Dateien, Symbole, Befehle suchen', 'Projekte', 'Dateien', 'Symbole', 'Befehle', '%d weitere',
      'Symbole nach dem Öffnen eines Projekts', 'Formular', 'Suchfeld zeigen',
-     'Gruppe „Symbole“ im Suchfeld (braucht laufenden Server)', 'Suchfeld der Willkommensseite'),
+     'Gruppe „Symbole“ im Suchfeld (braucht laufenden Server)', 'Suchfeld der Willkommensseite',
+     'Neu in Atlas %s', 'Neu in Atlas', 'Version %s', 'Ausprobieren', 'Gelesen', 'Schließen', 'An',
+     'Schaltet die Einstellung %s sofort um', 'Neuigkeiten dieser Version zeigen', 'Alle Versionen',
+     'Neu in Atlas: alle Versionen', 'Neu in Atlas: keine Neuigkeiten gefunden (%s fehlt oder ist leer).',
+     'Neu in Atlas: Beispieldatei nicht gefunden: %s', 'Neu in Atlas: Befehl nicht gefunden: %s',
+     'Karte „Neu in Atlas“ zeigen:', 'nie', 'einmalig nach einem Update', 'immer'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -921,7 +931,12 @@ const
      'Use Atlas layout', 'Header with symbol and version', 'Greeting in the header',
      'Search projects, files, symbols, commands', 'Projects', 'Files', 'Symbols', 'Commands', '%d more',
      'Symbols after opening a project', 'form', 'Show search field',
-     '“Symbols” group in the search field (needs a running server)', 'Welcome page search field'));
+     '“Symbols” group in the search field (needs a running server)', 'Welcome page search field',
+     'New in Atlas %s', 'New in Atlas', 'Version %s', 'Try it', 'Got it', 'Close', 'On',
+     'Switches the setting %s right away', 'Show what''s new in this version', 'All versions',
+     'New in Atlas: all versions', 'New in Atlas: nothing found (%s is missing or empty).',
+     'New in Atlas: sample file not found: %s', 'New in Atlas: command not found: %s',
+     'Show the "New in Atlas" card:', 'never', 'once after an update', 'always'));
 
 { TAtlasStrings }
 

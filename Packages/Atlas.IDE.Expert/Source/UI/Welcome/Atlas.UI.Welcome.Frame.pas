@@ -41,6 +41,7 @@ type
     FTitleBar: TPanel;
     FTitle: TLabel;
     FBody: TPanel;
+    FOnHeightChanged: TNotifyEvent;
     function GetShowTitle: Boolean;
     procedure SetShowTitle(AValue: Boolean);
     function GetTitle: string;
@@ -48,6 +49,8 @@ type
   protected
     /// <summary>Höhe des Inhalts in Pixeln bei der aktuellen Skalierung.</summary>
     function BodyHeight: Integer; virtual;
+    /// <summary>Der Inhalt braucht eine andere Höhe (z. B. aufgeklappt, #756); meldet OnHeightChanged.</summary>
+    procedure HeightChanged;
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Höhe, die der Frame im Atlas-Layout braucht (Titel plus Inhalt).</summary>
@@ -58,6 +61,8 @@ type
     /// <summary>Hierhin legen Bereiche ihren Inhalt.</summary>
     property Body: TPanel read FBody;
     property TitleLabel: TLabel read FTitle;
+    /// <summary>Der Frame „Atlas“ ordnet daraufhin die Spalten neu.</summary>
+    property OnHeightChanged: TNotifyEvent read FOnHeightChanged write FOnHeightChanged;
   end;
 
   TAtlasWelcomeViewFactory = reference to function(AOwner: TComponent): TAtlasWelcomeSectionFrame;
@@ -140,6 +145,12 @@ end;
 function TAtlasWelcomeSectionFrame.BodyHeight: Integer;
 begin
   Result := DefaultBodyHeight;
+end;
+
+procedure TAtlasWelcomeSectionFrame.HeightChanged;
+begin
+  if Assigned(FOnHeightChanged) then
+    FOnHeightChanged(Self);
 end;
 
 function TAtlasWelcomeSectionFrame.PreferredHeight: Integer;
