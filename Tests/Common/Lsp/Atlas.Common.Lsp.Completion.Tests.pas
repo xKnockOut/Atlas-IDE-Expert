@@ -341,8 +341,10 @@ end;
 
 procedure TLspCompletionTests.FuzzyFindsSubsequencesAndAbbreviations;
 begin
-  // "zlr" ist Teilfolge von Zaehler, "TB" Kürzel von TBasis.
-  Assert.AreEqual('Zaehler', Names(ItemsAt(WithCode('  zlr'), '  zlr', TCompletionMatching.Fuzzy)));
+  // "ehl" ist Teilwort von Zaehler, "TB" Kürzel von TBasis. Verstreute Teilfolgen wie "zlr" filtert
+  // das Plugin beim Weitertippen weg; der Server liefert sie deshalb auch nicht (D-05, ADR 0012).
+  Assert.AreEqual('Zaehler', Names(ItemsAt(WithCode('  ehl'), '  ehl', TCompletionMatching.Fuzzy)));
+  Assert.AreEqual('', Names(ItemsAt(WithCode('  zlr'), '  zlr', TCompletionMatching.Fuzzy)));
   Assert.AreEqual('TBasis', Names(ItemsAt(WithCode('  TBa'), '  TBa', TCompletionMatching.Fuzzy)));
   Assert.AreEqual('', Names(ItemsAt(WithCode('  xyz'), '  xyz', TCompletionMatching.Fuzzy)));
 end;
@@ -365,12 +367,12 @@ var
   Json: TJSONObject;
 begin
   // Vollständig (#616): Der Editor filtert beim Weitertippen selbst, statt bei jedem Zeichen neu zu fragen.
-  Items := ItemsAt(WithCode('  zlr'), '  zlr', TCompletionMatching.Fuzzy);
+  Items := ItemsAt(WithCode('  ehl'), '  ehl', TCompletionMatching.Fuzzy);
   Assert.IsFalse(Items.Incomplete);
-  Assert.AreEqual('zlr', Items.Items[0].FilterText);
+  Assert.AreEqual('ehl', Items.Items[0].FilterText);
   Json := TLspCompletion.ToJson(Items);
   try
-    Assert.AreEqual('zlr', Json.GetValue<string>('items[0].filterText'));
+    Assert.AreEqual('ehl', Json.GetValue<string>('items[0].filterText'));
     Assert.IsTrue(Json.GetValue('isIncomplete') is TJSONFalse);
   finally
     Json.Free;

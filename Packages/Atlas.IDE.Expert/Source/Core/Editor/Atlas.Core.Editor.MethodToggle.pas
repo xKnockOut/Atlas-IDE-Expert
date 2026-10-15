@@ -57,6 +57,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Chars;
+
 type
   TTokenKind = (tkIdent, tkNumber, tkString, tkSymbol, tkEof);
 
@@ -114,16 +117,6 @@ type
   public
     function Run(const AText: string): TArray<TAtlasMethodPlace>;
   end;
-
-function IsIdentStart(C: Char): Boolean;
-begin
-  Result := CharInSet(C, ['A'..'Z', 'a'..'z', '_']) or (Ord(C) > 127);
-end;
-
-function IsIdentChar(C: Char): Boolean;
-begin
-  Result := IsIdentStart(C) or CharInSet(C, ['0'..'9']);
-end;
 
 { TParser }
 
@@ -258,17 +251,17 @@ begin
     begin
       Start := I;
       Inc(I);
-      while (I <= Len) and (IsIdentChar(AText[I]) or (AText[I] = '$')) do
+      while (I <= Len) and (TTextChars.IsIdentChar(AText[I]) or (AText[I] = '$')) do
         Inc(I);
       AddToken(Copy(AText, Start, I - Start), tkString, Line, Start - LineStart, False);
     end
-    else if IsIdentStart(C) or ((C = '&') and (I < Len) and IsIdentStart(AText[I + 1])) then
+    else if TTextChars.IsIdentStart(C) or ((C = '&') and (I < Len) and TTextChars.IsIdentStart(AText[I + 1])) then
     begin
       Escaped := C = '&';
       if Escaped then
         Inc(I);
       Start := I;
-      while (I <= Len) and IsIdentChar(AText[I]) do
+      while (I <= Len) and TTextChars.IsIdentChar(AText[I]) do
         Inc(I);
       AddToken(Copy(AText, Start, I - Start), tkIdent, Line, Start - LineStart, Escaped);
     end
@@ -276,7 +269,7 @@ begin
     begin
       Start := I;
       Inc(I);
-      while (I <= Len) and (IsIdentChar(AText[I]) or
+      while (I <= Len) and (TTextChars.IsIdentChar(AText[I]) or
         ((AText[I] = '.') and (I < Len) and CharInSet(AText[I + 1], ['0'..'9']))) do
         Inc(I);
       AddToken(Copy(AText, Start, I - Start), tkNumber, Line, Start - LineStart, False);

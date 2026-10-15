@@ -47,7 +47,8 @@ uses
   System.StrUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.Lexer;
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Text.Lines;
 
 const
   FormUses = 'Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,' +
@@ -151,14 +152,6 @@ begin
     ALineBreak + ALineBreak + 'end.' + ALineBreak;
 end;
 
-function LineBreakOf(const AText: string): string;
-begin
-  if Pos(#13#10, AText) > 0 then
-    Result := #13#10
-  else
-    Result := #10;
-end;
-
 class function TUnitTemplates.ProgramEdits(const AText, AUnitName, AFileName, AClassName: string;
   AKind: TFormKind; out AEdits: TArray<TRuleEdit>): Boolean;
 var
@@ -167,7 +160,7 @@ var
   Comment, LB: string;
 begin
   AEdits := nil;
-  LB := LineBreakOf(AText);
+  LB := TTextLines.LineBreakOf(AText);
   Tokens := TPascalLexer.Tokenize(AText);
   Semicolon := -1;
   for Index := 0 to High(Tokens) do
@@ -216,7 +209,7 @@ var
   InName: Boolean;
 begin
   AEdit := Default(TRuleEdit);
-  LB := LineBreakOf(AText);
+  LB := TTextLines.LineBreakOf(AText);
   Tokens := TPascalLexer.Tokenize(AText);
   Semicolon := -1;
   for Index := 0 to High(Tokens) do
@@ -262,7 +255,7 @@ var
   Index, Last: Integer;
   Indent, LB, Text: string;
 begin
-  LB := LineBreakOf(AText);
+  LB := TTextLines.LineBreakOf(AText);
   Lines := AText.Split([LB]);
   Last := -1;
   for Index := 0 to High(Lines) do

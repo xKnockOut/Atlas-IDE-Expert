@@ -62,7 +62,8 @@ uses
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Pascal.Contract;
+  Atlas.Common.Pascal.Contract,
+  Atlas.Text.Lines;
 
 function TokenRange(const AToken: TPascalToken): TTextRange;
 begin
@@ -104,14 +105,6 @@ begin
   while (Index <= Length(Lines[ALine])) and CharInSet(Lines[ALine][Index], [' ', #9]) do
     Inc(Index);
   Result := Copy(Lines[ALine], 1, Index - 1);
-end;
-
-function LineBreakOf(const AText: string): string;
-begin
-  if Pos(#13#10, AText) > 0 then
-    Result := #13#10
-  else
-    Result := #10;
 end;
 
 function GuidLine: string;
@@ -159,7 +152,7 @@ begin
     AReport.Add(TokenRange(Tokens[Index]), 'Leerer except-Block verschluckt jede Ausnahme; behandeln, ' +
       'weiterwerfen oder mit einem Kommentar begründen', TRuleConfidence.High,
       [TRuleFix.Create('raise; einfügen', [TRuleEdit.Create(TTextRange.Create(Tokens[Index].EndPos,
-        Tokens[Index].EndPos), LineBreakOf(AContext.Text) + Indent + '  raise;')])]);
+        Tokens[Index].EndPos), TTextLines.LineBreakOf(AContext.Text) + Indent + '  raise;')])]);
   end;
 end;
 
@@ -274,7 +267,8 @@ begin
     AReport.Add(TokenRange(Tokens[Declaration.NameToken]), Format('Interface %s hat keine GUID; Supports, as ' +
       'und QueryInterface brauchen eine', [Declaration.Name]), Confidence,
       [TRuleFix.Create('GUID einfügen', [TRuleEdit.Create(TTextRange.Create(Tokens[Declaration.HeaderEnd].EndPos,
-        Tokens[Declaration.HeaderEnd].EndPos), LineBreakOf(AContext.Text) + Indent + '  ' + GuidLine)], True)]);
+        Tokens[Declaration.HeaderEnd].EndPos),
+        TTextLines.LineBreakOf(AContext.Text) + Indent + '  ' + GuidLine)], True)]);
   end;
 end;
 
@@ -344,7 +338,7 @@ begin
   Header := Template(AContext.Options);
   if Header = '' then
     Exit;
-  LineBreak := LineBreakOf(AContext.Text);
+  LineBreak := TTextLines.LineBreakOf(AContext.Text);
   Header := StringReplace(StringReplace(Header, #13#10, #10, [rfReplaceAll]), #10, LineBreak, [rfReplaceAll]);
   Text := AContext.Text;
   if (Text <> '') and (Text[1] = #$FEFF) then

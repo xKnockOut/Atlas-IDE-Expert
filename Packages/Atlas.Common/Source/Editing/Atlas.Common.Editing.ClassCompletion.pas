@@ -71,25 +71,13 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Pascal.Contract;
+  Atlas.Common.Pascal.Contract,
+  Atlas.Text.Lines;
 
 const
   TypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.HelperType];
   MethodKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_];
-
-function SplitLines(const AText: string): TArray<string>;
-begin
-  Result := AText.Replace(#13#10, #10).Replace(#13, #10).Split([#10]);
-end;
-
-function LineBreakOf(const AText: string): string;
-begin
-  if Pos(#13#10, AText) > 0 then
-    Result := #13#10
-  else
-    Result := #10;
-end;
 
 function ContainsLine(const ARange: TTextRange; ALine: Integer): Boolean;
 begin
@@ -287,11 +275,6 @@ begin
     Result := ASymbol.Container + '.' + ASymbol.Name
   else
     Result := ASymbol.Name;
-end;
-
-function IndentOf(const ALine: string): string;
-begin
-  Result := Copy(ALine, 1, Length(ALine) - Length(TrimLeft(ALine)));
 end;
 
 /// <summary>Bereich und Text hinter dem Methodennamen bis vor das erste ";" außerhalb von Klammern,
@@ -560,7 +543,7 @@ var
   Item: TUnmatchedMethod;
 begin
   Result := nil;
-  Lines := SplitLines(AText);
+  Lines := TTextLines.SplitLines(AText);
   UnitIndex := TIndexExtractor.Extract(ATree, '');
   Declarations := TList<TIndexSymbol>.Create;
   Bodies := TList<TIndexSymbol>.Create;
@@ -644,7 +627,7 @@ begin
   AEdit := Default(TRuleEdit);
   if AMethod.Declared then
     Exit;
-  Lines := SplitLines(AText);
+  Lines := TTextLines.SplitLines(AText);
   UnitIndex := TIndexExtractor.Extract(ATree, '');
   Found := False;
   TypeSymbol := Default(TIndexSymbol);
@@ -671,7 +654,7 @@ begin
       Overloaded := True;
   if Overloaded and not HasWord(Declaration, 'overload') then
     Declaration := Declaration + ' overload;';
-  LB := LineBreakOf(AText);
+  LB := TTextLines.LineBreakOf(AText);
   // Vorhandener private-Abschnitt (nicht strict private) direkt im Typ.
   for Line := TypeSymbol.Range.StartPos.Line + 1 to TypeSymbol.Range.EndPos.Line - 1 do
   begin
@@ -679,7 +662,7 @@ begin
     if Trimmed = 'private' then
     begin
       AEdit := TRuleEdit.Create(TTextRange.Create(Line, Length(Lines[Line]), Line, Length(Lines[Line])),
-        LB + IndentOf(Lines[Line]) + '  ' + Declaration);
+        LB + TTextLines.IndentOf(Lines[Line]) + '  ' + Declaration);
       Exit(True);
     end;
   end;
@@ -688,7 +671,8 @@ begin
   if not LowerCase(TrimLeft(Lines[EndLine])).StartsWith('end') then
     Exit;
   AEdit := TRuleEdit.Create(TTextRange.Create(EndLine, 0, EndLine, 0),
-    IndentOf(Lines[EndLine]) + 'private' + LB + IndentOf(Lines[EndLine]) + '  ' + Declaration + LB);
+    TTextLines.IndentOf(Lines[EndLine]) + 'private' + LB + TTextLines.IndentOf(Lines[EndLine]) + '  ' +
+    Declaration + LB);
   Result := True;
 end;
 
@@ -703,7 +687,7 @@ var
   LB: string;
 begin
   AEdit := Default(TRuleEdit);
-  Lines := SplitLines(AText);
+  Lines := TTextLines.SplitLines(AText);
   UnitIndex := TIndexExtractor.Extract(ATree, '');
   Found := False;
   TypeSymbol := Default(TIndexSymbol);
@@ -721,7 +705,7 @@ begin
     if (Symbol.Kind in MethodKinds) and SameText(Symbol.Container, ATypeName) and
       not ContainsLine(TypeSymbol.Range, Symbol.Range.StartPos.Line) and (Symbol.Range.EndPos.Line > LastLine) then
       LastLine := Symbol.Range.EndPos.Line;
-  LB := LineBreakOf(AText);
+  LB := TTextLines.LineBreakOf(AText);
   if LastLine >= 0 then
     AEdit := TRuleEdit.Create(TTextRange.Create(LastLine, Length(Lines[LastLine]), LastLine, Length(Lines[LastLine])),
       LB + LB + ABody)
@@ -750,7 +734,7 @@ var
 begin
   AAction := Default(TCodeAction);
   Result := False;
-  Lines := SplitLines(AText);
+  Lines := TTextLines.SplitLines(AText);
   UnitIndex := TIndexExtractor.Extract(ATree, '');
   // Innerster Typ unter dem Cursor.
   Found := False;
@@ -817,7 +801,7 @@ begin
     end;
     if Missing.Count = 0 then
       Exit;
-    LB := LineBreakOf(AText);
+    LB := TTextLines.LineBreakOf(AText);
     Bodies := '';
     for Symbol in Missing do
     begin

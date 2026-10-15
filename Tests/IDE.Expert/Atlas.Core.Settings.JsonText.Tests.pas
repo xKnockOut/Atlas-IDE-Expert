@@ -30,6 +30,9 @@ type
     procedure SchemaListsSimpleFieldsAndComplexOnes;
     [Test]
     procedure FieldAcceptsOnlyMatchingValues;
+    /// <summary>Zeilenkommentar endet auch an einem alleinstehenden CR, wie beim Server (ADR 0012).</summary>
+    [Test]
+    procedure LineCommentEndsAtCr;
   end;
 
 implementation
@@ -171,6 +174,20 @@ begin
   Assert.IsTrue(Field.Accepts('["a","b"]'));
   Assert.IsFalse(Field.Accepts('[1]'));
   Assert.AreEqual('de', TAtlasSettingsSchema.Display('"de"'));
+end;
+
+procedure TAtlasJsonTextTests.LineCommentEndsAtCr;
+var
+  Root: TJSONObject;
+begin
+  Root := TAtlasJsonText.Parse('{ // Kommentar'#13'"a": 1 }');
+  try
+    Assert.IsNotNull(Root);
+    Assert.AreEqual('1', TAtlasJsonText.ValueAt(Root, 'a'));
+  finally
+    Root.Free;
+  end;
+  Assert.AreEqual('{ "a": 2 }', TAtlasJsonText.SetValue('{ "a": 1 }', 'a', '2'));
 end;
 
 initialization

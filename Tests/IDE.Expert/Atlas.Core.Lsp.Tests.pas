@@ -96,6 +96,12 @@ type
     procedure NeverSplitsLineBreaksOrSurrogates;
     [Test]
     procedure AppliedChangeGivesNewText;
+    /// <summary>Wie beim Server (TLineTable): ein Index zwischen CR und LF zählt zum Zeilenende.</summary>
+    [Test]
+    procedure PositionOfInsideCrlf;
+    /// <summary>Positionen und Offsets passen für CRLF, LF und CR zueinander.</summary>
+    [Test]
+    procedure PositionAndOffsetAgree;
   end;
 
   [TestFixture]
@@ -411,7 +417,7 @@ end;
 
 procedure TLspSessionTests.ConvertsPathsAndUris;
 begin
-  Assert.AreEqual('file:///C%3A/Mein%20Projekt/%C3%9Cbung.pas', TLspSession.PathToUri('C:\Mein Projekt\Übung.pas'));
+  Assert.AreEqual('file:///c%3A/Mein%20Projekt/%C3%9Cbung.pas', TLspSession.PathToUri('C:\Mein Projekt\Übung.pas'));
   Assert.AreEqual('C:\Mein Projekt\Übung.pas', TLspSession.UriToPath('file:///C%3A/Mein%20Projekt/%C3%9Cbung.pas'));
   Assert.AreEqual('c:\x\a.pas', TLspSession.UriToPath('file:///c:/x/a.pas'));
   Assert.AreEqual('file://server/share/a.pas', TLspSession.PathToUri('\\server\share\a.pas'));
@@ -1434,6 +1440,32 @@ begin
     New_ := Copy(Old, 1, Index) + RandomText(Random(4)) + Copy(Old, Index + Random(3) + 1, MaxInt);
     Assert.AreEqual(New_, Applied(Old, TLspTextChanges.Between(Old, New_)), Format('%d: "%s" -> "%s"', [Round, Old, New_]));
   end;
+end;
+
+procedure TLspTextChangesTests.PositionOfInsideCrlf;
+var
+  Position: TLspTextPosition;
+begin
+  Position := TLspTextChanges.PositionOf('ab'#13#10'c', 3);
+  Assert.AreEqual('0:2', Format('%d:%d', [Position.Line, Position.Character]));
+  Position := TLspTextChanges.PositionOf('ab'#13#10'c', 4);
+  Assert.AreEqual('1:0', Format('%d:%d', [Position.Line, Position.Character]));
+  Assert.AreEqual(5, TLspTextChanges.OffsetOf('ab'#13#10'c', TLspTextPosition.Create(7, 0)),
+    'hinter der letzten Zeile');
+end;
+
+procedure TLspTextChangesTests.PositionAndOffsetAgree;
+const
+  Text = 'a'#13#10'bc'#10'd'#13'e';
+var
+  Offset: Integer;
+begin
+  for Offset := 0 to Length(Text) do
+    if (Offset = 0) or (Text[Offset] <> #13) or (Offset = Length(Text)) or (Text[Offset + 1] <> #10) then
+      Assert.AreEqual(Offset, TLspTextChanges.OffsetOf(Text, TLspTextChanges.PositionOf(Text, Offset)),
+        IntToStr(Offset));
+  Assert.AreEqual(3, TLspTextChanges.OffsetOf(Text, TLspTextPosition.Create(1, 0)));
+  Assert.AreEqual(7, TLspTextChanges.OffsetOf(Text, TLspTextPosition.Create(2, 9)), 'geklemmt auf das Zeilenende');
 end;
 
 /// <summary>Client, der je Methode mit AReplies[Methode] antwortet und die Parameter in ASeen sammelt.</summary>

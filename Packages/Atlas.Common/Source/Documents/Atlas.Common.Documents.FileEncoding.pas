@@ -23,6 +23,9 @@
 //
 // Binäre Formulare (TPF0) schreibt SaveToFile nie zurück.
 //
+// Die Prüfungen (UTF-8, BOM, Codepage, TPF0, Windows-1252, Zeilenenden) stehen
+// in Atlas.Text und gelten gleich im Plugin (ADR 0012).
+//
 // TEncodingSurvey zählt die Kodierungen mehrerer Dateien, damit der Server
 // auf ein Projekt mit gemischten Kodierungen hinweisen kann.
 
@@ -120,25 +123,13 @@ implementation
 
 uses
   System.Classes,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Text.Lines,
+  Atlas.Text.Encoding;
 
 var
   DefaultsLock: TObject;
   DefaultFolders: TDictionary<string, Integer>;
-
-const
-  /// <summary>Codepages mit einem Byte je Zeichen, die als Vorgabe erlaubt sind.</summary>
-  SingleByteCodePages: array[0..33] of Integer = (437, 737, 775, 850, 852, 855, 857, 858, 860, 861, 862, 863, 864,
-    865, 866, 869, 874, 1250, 1251, 1252, 1253, 1254, 1255, 1256, 1257, 1258, 20866, 21866, 28591, 28592, 28595,
-    28597, 28605, 28603);
-
-const
-  // Zeichen 0x80..0x9F in Windows-1252; nicht belegte Werte bleiben gleich.
-  Cp1252High: array[$80..$9F] of Word = (
-    $20AC, $0081, $201A, $0192, $201E, $2026, $2020, $2021,
-    $02C6, $2030, $0160, $2039, $0152, $008D, $017D, $008F,
-    $0090, $2018, $2019, $201C, $201D, $2022, $2013, $2014,
-    $02DC, $2122, $0161, $203A, $0153, $009D, $017E, $0178);
 
 { TFileFormat }
 
@@ -212,71 +203,6 @@ begin
   end;
 end;
 
-// Prüft strikt: keine überlangen Formen, keine Surrogate, höchstens U+10FFFF.
-function CheckUtf8(const ABytes: TBytes; AStart: Integer; out AHasNonAscii: Boolean): Boolean;
-var
-  Index: Integer;
-  Lead: Byte;
-  Count: Integer;
-  CodePoint: Cardinal;
-  Next: Integer;
-begin
-  AHasNonAscii := False;
-  Index := AStart;
-  while Index < Length(ABytes) do
-  begin
-    Lead := ABytes[Index];
-    if Lead < $80 then
-    begin
-      Inc(Index);
-      Continue;
-    end;
-    AHasNonAscii := True;
-    if (Lead >= $C2) and (Lead <= $DF) then
-    begin
-      Count := 1;
-      CodePoint := Lead and $1F;
-    end
-    else if (Lead >= $E0) and (Lead <= $EF) then
-    begin
-      Count := 2;
-      CodePoint := Lead and $0F;
-    end
-    else if (Lead >= $F0) and (Lead <= $F4) then
-    begin
-      Count := 3;
-      CodePoint := Lead and $07;
-    end
-    else
-      Exit(False);
-    if Index + Count > High(ABytes) then
-      Exit(False);
-    for Next := Index + 1 to Index + Count do
-    begin
-      if (ABytes[Next] and $C0) <> $80 then
-        Exit(False);
-      CodePoint := (CodePoint shl 6) or (ABytes[Next] and $3F);
-    end;
-    if ((Count = 2) and (CodePoint < $800)) or ((Count = 3) and (CodePoint < $10000)) or
-      (CodePoint > $10FFFF) or ((CodePoint >= $D800) and (CodePoint <= $DFFF)) then
-      Exit(False);
-    Inc(Index, Count + 1);
-  end;
-  Result := True;
-end;
-
-function HasPrefix(const ABytes: TBytes; const APrefix: array of Byte): Boolean;
-var
-  Index: Integer;
-begin
-  if Length(ABytes) < Length(APrefix) then
-    Exit(False);
-  for Index := 0 to High(APrefix) do
-    if ABytes[Index] <> APrefix[Index] then
-      Exit(False);
-  Result := True;
-end;
-
 { TEncodingSurvey }
 
 procedure TEncodingSurvey.Add(const ABytes: TBytes);
@@ -285,11 +211,11 @@ var
 begin
   if TFileEncoding.IsBinaryForm(ABytes) then
     Exit;
-  if HasPrefix(ABytes, [$EF, $BB, $BF]) then
+  if TTextEncodingProbe.HasPrefix(ABytes, [$EF, $BB, $BF]) then
     Inc(Utf8)
-  else if HasPrefix(ABytes, [$FF, $FE]) or HasPrefix(ABytes, [$FE, $FF]) then
+  else if TTextEncodingProbe.HasPrefix(ABytes, [$FF, $FE]) or TTextEncodingProbe.HasPrefix(ABytes, [$FE, $FF]) then
     Inc(Utf16)
-  else if not CheckUtf8(ABytes, 0, HasNonAscii) then
+  else if not TTextEncodingProbe.IsValidUtf8(ABytes, 0, HasNonAscii) then
     Inc(Ansi)
   else if HasNonAscii then
     Inc(Utf8)
@@ -332,44 +258,13 @@ begin
 end;
 
 function DecodeCp1252(const ABytes: TBytes): string;
-var
-  Index: Integer;
-  Value: Byte;
 begin
-  SetLength(Result, Length(ABytes));
-  for Index := 0 to High(ABytes) do
-  begin
-    Value := ABytes[Index];
-    if (Value >= $80) and (Value <= $9F) then
-      Result[Index + 1] := Char(Cp1252High[Value])
-    else
-      Result[Index + 1] := Char(Value);
-  end;
+  Result := TTextEncodingProbe.DecodeCp1252(ABytes, 0);
 end;
 
 function EncodeCp1252(const AText: string): TBytes;
-var
-  Index: Integer;
-  Code: Word;
-  High1252: Integer;
-  Value: Byte;
 begin
-  SetLength(Result, Length(AText));
-  for Index := 1 to Length(AText) do
-  begin
-    Code := Ord(AText[Index]);
-    Value := Ord('?');
-    if (Code < $80) or ((Code >= $A0) and (Code <= $FF)) then
-      Value := Code
-    else
-      for High1252 := Low(Cp1252High) to High(Cp1252High) do
-        if Cp1252High[High1252] = Code then
-        begin
-          Value := High1252;
-          Break;
-        end;
-    Result[Index - 1] := Value;
-  end;
+  Result := TTextEncodingProbe.EncodeCp1252(AText);
 end;
 
 function DecodeAnsi(const ABytes: TBytes; ACodePage: Integer): string;
@@ -457,13 +352,13 @@ class function TFileEncoding.DetectEncoding(const ABytes: TBytes; ADefault: TFil
 var
   HasNonAscii: Boolean;
 begin
-  if HasPrefix(ABytes, [$EF, $BB, $BF]) then
+  if TTextEncodingProbe.HasPrefix(ABytes, [$EF, $BB, $BF]) then
     Exit(TFileEncodingKind.Utf8Bom);
-  if HasPrefix(ABytes, [$FF, $FE]) then
+  if TTextEncodingProbe.HasPrefix(ABytes, [$FF, $FE]) then
     Exit(TFileEncodingKind.Utf16LE);
-  if HasPrefix(ABytes, [$FE, $FF]) then
+  if TTextEncodingProbe.HasPrefix(ABytes, [$FE, $FF]) then
     Exit(TFileEncodingKind.Utf16BE);
-  if not CheckUtf8(ABytes, 0, HasNonAscii) then
+  if not TTextEncodingProbe.IsValidUtf8(ABytes, 0, HasNonAscii) then
     Exit(TFileEncodingKind.Ansi1252);
   if HasNonAscii then
     Exit(TFileEncodingKind.Utf8);
@@ -478,42 +373,20 @@ end;
 
 class function TFileEncoding.DetectLineBreak(const AText: string; out AMixed: Boolean;
   ADefault: TLineBreakStyle): TLineBreakStyle;
-var
-  Counts: array[TLineBreakStyle] of Integer;
-  Index: Integer;
-  Style: TLineBreakStyle;
-  Kinds: Integer;
+const
+  ToText: array[TLineBreakStyle] of TTextLineBreak = (TTextLineBreak.CRLF, TTextLineBreak.LF, TTextLineBreak.CR);
 begin
-  Counts[TLineBreakStyle.CRLF] := 0;
-  Counts[TLineBreakStyle.LF] := 0;
-  Counts[TLineBreakStyle.CR] := 0;
-  Index := 1;
-  while Index <= Length(AText) do
-  begin
-    if AText[Index] = #13 then
-    begin
-      if (Index < Length(AText)) and (AText[Index + 1] = #10) then
-      begin
-        Inc(Counts[TLineBreakStyle.CRLF]);
-        Inc(Index);
-      end
-      else
-        Inc(Counts[TLineBreakStyle.CR]);
-    end
-    else if AText[Index] = #10 then
-      Inc(Counts[TLineBreakStyle.LF]);
-    Inc(Index);
+  // Bei Gleichstand gewinnt ADefault, sofern er vorkommt; sonst CRLF vor LF vor CR.
+  case TTextLines.DominantOf(AText, ToText[ADefault], AMixed) of
+    TTextLineBreak.CRLF:
+      Result := TLineBreakStyle.CRLF;
+    TTextLineBreak.LF:
+      Result := TLineBreakStyle.LF;
+    TTextLineBreak.CR:
+      Result := TLineBreakStyle.CR;
+  else
+    Result := ADefault;
   end;
-  Result := ADefault;
-  Kinds := 0;
-  for Style := Low(TLineBreakStyle) to High(TLineBreakStyle) do
-    if Counts[Style] > 0 then
-    begin
-      Inc(Kinds);
-      if (Counts[Result] < Counts[Style]) or (Counts[Result] = 0) then
-        Result := Style;
-    end;
-  AMixed := Kinds > 1;
 end;
 
 class function TFileEncoding.Decode(const ABytes: TBytes; out AFormat: TFileFormat;
@@ -548,7 +421,8 @@ begin
     Exit(Decode(ABytes, AFormat));
   AFormat.Encoding := DetectEncoding(ABytes);
   // Reines ASCII gilt bei einer ANSI-Vorgabe als ANSI: Eingefügte Umlaute landen dann in der Codepage.
-  if (AFormat.Encoding = TFileEncodingKind.Utf8) and CheckUtf8(ABytes, 0, HasNonAscii) and not HasNonAscii then
+  if (AFormat.Encoding = TFileEncodingKind.Utf8) and TTextEncodingProbe.IsValidUtf8(ABytes, 0, HasNonAscii) and
+    not HasNonAscii then
     AFormat.Encoding := TFileEncodingKind.Ansi1252;
   case AFormat.Encoding of
     TFileEncodingKind.Utf8Bom:
@@ -568,69 +442,24 @@ begin
 end;
 
 class function TFileEncoding.ParseCodePage(const AText: string; out ACodePage: Integer): Boolean;
-var
-  Text: string;
-  Known: Integer;
 begin
-  Result := False;
-  ACodePage := 0;
-  Text := LowerCase(Trim(AText));
-  if (Text = 'utf-8') or (Text = 'utf8') then
-  begin
-    ACodePage := Utf8CodePage;
-    Exit(True);
-  end;
-  if Copy(Text, 1, 8) = 'windows-' then
-    Delete(Text, 1, 8)
-  else if Copy(Text, 1, 2) = 'cp' then
-    Delete(Text, 1, 2);
-  if not TryStrToInt(Text, ACodePage) then
-    Exit;
-  if ACodePage = Utf8CodePage then
-    Exit(True);
-  for Known in SingleByteCodePages do
-    if Known = ACodePage then
-      Exit(True);
-  ACodePage := 0;
+  Result := TTextEncodingProbe.ParseCodePage(AText, ACodePage);
 end;
 
 class function TFileEncoding.IsBinaryForm(const ABytes: TBytes): Boolean;
 begin
-  Result := HasPrefix(ABytes, [Ord('T'), Ord('P'), Ord('F'), Ord('0')]) or HasPrefix(ABytes, [$FF, $0A, $00]);
+  Result := TTextEncodingProbe.IsBinaryForm(ABytes);
 end;
 
 class function TFileEncoding.NormalizeLineBreaks(const AText: string; AStyle: TLineBreakStyle): string;
-var
-  Builder: TStringBuilder;
-  Index: Integer;
-  LineBreak: string;
 begin
   case AStyle of
-    TLineBreakStyle.LF: LineBreak := #10;
-    TLineBreakStyle.CR: LineBreak := #13;
+    TLineBreakStyle.LF:
+      Result := TTextLines.NormalizeLineBreaks(AText, #10);
+    TLineBreakStyle.CR:
+      Result := TTextLines.NormalizeLineBreaks(AText, #13);
   else
-    LineBreak := #13#10;
-  end;
-  Builder := TStringBuilder.Create(Length(AText));
-  try
-    Index := 1;
-    while Index <= Length(AText) do
-    begin
-      if AText[Index] = #13 then
-      begin
-        Builder.Append(LineBreak);
-        if (Index < Length(AText)) and (AText[Index + 1] = #10) then
-          Inc(Index);
-      end
-      else if AText[Index] = #10 then
-        Builder.Append(LineBreak)
-      else
-        Builder.Append(AText[Index]);
-      Inc(Index);
-    end;
-    Result := Builder.ToString;
-  finally
-    Builder.Free;
+    Result := TTextLines.NormalizeLineBreaks(AText, #13#10);
   end;
 end;
 

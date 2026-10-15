@@ -56,7 +56,8 @@ implementation
 uses
   System.Classes,
   System.IOUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Text.Entities;
 
 type
   /// <summary>Knoten des kleinen XML-Baums.</summary>
@@ -119,18 +120,6 @@ begin
     Result := Node.Text;
 end;
 
-function DecodeEntities(const AText: string): string;
-begin
-  Result := AText;
-  if Pos('&', Result) = 0 then
-    Exit;
-  Result := StringReplace(Result, '&lt;', '<', [rfReplaceAll]);
-  Result := StringReplace(Result, '&gt;', '>', [rfReplaceAll]);
-  Result := StringReplace(Result, '&quot;', '"', [rfReplaceAll]);
-  Result := StringReplace(Result, '&apos;', '''', [rfReplaceAll]);
-  Result := StringReplace(Result, '&amp;', '&', [rfReplaceAll]);
-end;
-
 /// <summary>Liest AXml in einen Baum unter einem künstlichen Wurzelknoten; EXmlError bei kaputtem Aufbau.</summary>
 function ParseXml(const AXml: string): TXmlNode;
 var
@@ -167,7 +156,7 @@ begin
           Close := Index;
           while (Close <= Length(AXml)) and (AXml[Close] <> '<') do
             Inc(Close);
-          Current.Text := Current.Text + DecodeEntities(Copy(AXml, Index, Close - Index));
+          Current.Text := Current.Text + TTextEntities.Decode(Copy(AXml, Index, Close - Index));
           Index := Close;
           Continue;
         end;
@@ -235,7 +224,7 @@ begin
               Close := Position + 1;
               while (Close <= Length(Tag)) and (Tag[Close] <> Quote) do
                 Inc(Close);
-              Value := DecodeEntities(Copy(Tag, Position + 1, Close - Position - 1));
+              Value := TTextEntities.Decode(Copy(Tag, Position + 1, Close - Position - 1));
               Position := Close + 1;
             end;
           end;
