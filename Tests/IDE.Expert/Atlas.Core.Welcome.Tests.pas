@@ -767,7 +767,17 @@ begin
   Saved.WelcomePageProjectStatus := False;
   Saved.WelcomePageMaxProjects := 12;
   Saved.WelcomePageRefreshVcs := False;
+  Saved.WelcomePageUnsaved := False;
+  Saved.WelcomePageUnsavedMinAgeHours := 3;
+  Saved.WelcomePageUnsavedWarnHours := 10;
+  Saved.WelcomePageUnsavedAlertHours := 20;
+  Saved.WelcomePageUnsavedHideWhenClean := True;
   Saved.Save(Store);
+  Assert.AreEqual(0, Store.ReadInteger('WelcomePageUnsaved', 1), 'Registry-Name (#762)');
+  Assert.AreEqual(3, Store.ReadInteger('WelcomePageUnsavedMinAgeHours', 0));
+  Assert.AreEqual(10, Store.ReadInteger('WelcomePageUnsavedWarnHours', 0));
+  Assert.AreEqual(20, Store.ReadInteger('WelcomePageUnsavedAlertHours', 0));
+  Assert.AreEqual(1, Store.ReadInteger('WelcomePageUnsavedHideWhenClean', 0));
   Assert.AreEqual(0, Store.ReadInteger('WelcomePageProjectStatus', 1), 'Registry-Name (#592)');
   Assert.AreEqual(12, Store.ReadInteger('WelcomePageMaxProjects', 0));
   Assert.AreEqual(0, Store.ReadInteger('WelcomePageRefreshVcs', 1));
@@ -787,6 +797,11 @@ begin
   Assert.IsFalse(Loaded.WelcomePageProjectStatus);
   Assert.AreEqual(12, Loaded.WelcomePageMaxProjects);
   Assert.IsFalse(Loaded.WelcomePageRefreshVcs);
+  Assert.IsFalse(Loaded.WelcomePageUnsaved);
+  Assert.AreEqual(3, Loaded.WelcomePageUnsavedMinAgeHours);
+  Assert.AreEqual(10, Loaded.WelcomePageUnsavedWarnHours);
+  Assert.AreEqual(20, Loaded.WelcomePageUnsavedAlertHours);
+  Assert.IsTrue(Loaded.WelcomePageUnsavedHideWhenClean);
 end;
 
 initialization

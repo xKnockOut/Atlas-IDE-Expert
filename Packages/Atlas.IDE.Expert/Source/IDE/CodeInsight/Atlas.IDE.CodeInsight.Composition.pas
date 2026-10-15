@@ -81,6 +81,7 @@ uses
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.WhatsNew,
   Atlas.IDE.Welcome.Projects,
+  Atlas.IDE.Welcome.Unsaved,
   Atlas.IDE.Welcome.Commands,
   Atlas.IDE.Vcs.Service;
 
@@ -882,6 +883,12 @@ begin
       end);
     // Bereich „Projekte“ (#592): Zustand je Projekt aus den Projekt-Zusammenfassungen.
     Welcome.Projects := TAtlasIdeProjects.Create(
+      procedure(AText: string)
+      begin
+        GuardWarning(AText);
+      end);
+    // Bereich „Nicht gesichert“ (#762): nicht Gesichertes je Projekt über die VCS-Schnittstelle (#571).
+    Welcome.Unsaved := TAtlasIdeUnsaved.Create(
       procedure(AText: string)
       begin
         GuardWarning(AText);

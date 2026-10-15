@@ -343,7 +343,8 @@ var
   Settings, Saved: TAtlasPluginSettings;
 begin
   // #753: Ein/Aus, Ort (Willkommensseite oder Fenster „Atlas-Start“), Atlas-Layout, Kopf und Grußzeile;
-  // #760: Suchfeld, Gruppe „Symbole“ und Taste; #756: Karte „Neu in Atlas“; #592: Bereich „Projekte“.
+  // #760: Suchfeld, Gruppe „Symbole“ und Taste; #756: Karte „Neu in Atlas“; #592: Bereich „Projekte“;
+  // #762: Bereich „Nicht gesichert“.
   Settings := TAtlasPluginSettings.Defaults;
   Page := TAtlasSettingsPage.Create(nil);
   try
@@ -360,6 +361,11 @@ begin
     Assert.IsTrue(Page.WelcomeProjects.Checked);
     Assert.AreEqual('8', Page.WelcomeMaxProjects.Text);
     Assert.IsTrue(Page.WelcomeRefreshVcs.Checked);
+    Assert.IsTrue(Page.WelcomeUnsaved.Checked);
+    Assert.AreEqual('0', Page.WelcomeUnsavedMinAge.Text);
+    Assert.AreEqual('24', Page.WelcomeUnsavedWarn.Text);
+    Assert.AreEqual('72', Page.WelcomeUnsavedAlert.Text);
+    Assert.IsFalse(Page.WelcomeUnsavedHideClean.Checked);
     Page.WelcomeEnabled.Checked := False;
     Page.WelcomeHost.Choice := 1;
     Page.WelcomeLayout.Checked := True;
@@ -372,6 +378,11 @@ begin
     Page.WelcomeProjects.Checked := False;
     Page.WelcomeMaxProjects.Text := '99';
     Page.WelcomeRefreshVcs.Checked := False;
+    Page.WelcomeUnsaved.Checked := False;
+    Page.WelcomeUnsavedMinAge.Text := '2';
+    Page.WelcomeUnsavedWarn.Text := '48';
+    Page.WelcomeUnsavedAlert.Text := '12';
+    Page.WelcomeUnsavedHideClean.Checked := True;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.WelcomePage);
@@ -386,6 +397,11 @@ begin
     Assert.IsFalse(Saved.WelcomePageProjectStatus);
     Assert.AreEqual(30, Saved.WelcomePageMaxProjects, 'auf 1–30 begrenzt');
     Assert.IsFalse(Saved.WelcomePageRefreshVcs);
+    Assert.IsFalse(Saved.WelcomePageUnsaved);
+    Assert.AreEqual(2, Saved.WelcomePageUnsavedMinAgeHours);
+    Assert.AreEqual(48, Saved.WelcomePageUnsavedWarnHours);
+    Assert.AreEqual(48, Saved.WelcomePageUnsavedAlertHours, 'rot nie vor gelb');
+    Assert.IsTrue(Saved.WelcomePageUnsavedHideWhenClean);
     Page.LoadFrom(Saved);
     Assert.AreEqual(1, Page.WelcomeHost.Choice);
     Assert.IsTrue(Page.WelcomeLayout.Checked);

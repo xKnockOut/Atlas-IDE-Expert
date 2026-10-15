@@ -2,7 +2,8 @@
 
 // Leere Umsetzung (#571): ohne Arbeitskopie, mit vcs.provider = off oder wenn
 // git bzw. svn fehlt. Alle Aufrufe kehren sofort ohne Prozess zurück und
-// liefern keine Versionsangaben, nie einen Fehler; Outcome sagt, warum.
+// liefern keine Versionsangaben, nie einen Fehler; Outcome sagt, warum. Das
+// gilt auch für IAtlasVcsLocalWork (#762).
 
 interface
 
@@ -11,7 +12,7 @@ uses
   Atlas.Core.Vcs.Contract;
 
 type
-  TAtlasNullVersionControl = class(TInterfacedObject, IAtlasVersionControl)
+  TAtlasNullVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork)
   private
     FOutcome: TAtlasVcsOutcome;
   public
@@ -25,6 +26,14 @@ type
     function FileAt(const AFileName, ARevision: string; out AContent: TBytes): TAtlasVcsOutcome;
     function Blame(const AFileName: string; out ALines: TArray<TAtlasVcsBlameLine>): TAtlasVcsOutcome;
     function ChangeMarker: string;
+    { IAtlasVcsLocalWork }
+    function Branches(out ABranches: TArray<TAtlasVcsBranch>): TAtlasVcsOutcome;
+    function Stashes(out AStashes: TArray<TAtlasVcsStash>): TAtlasVcsOutcome;
+    function Remotes(out ANames: TArray<string>): TAtlasVcsOutcome;
+    function Outgoing(const ABranch, AUpstream: string; AMax: Integer;
+      out ACommits: TArray<TAtlasVcsCommit>): TAtlasVcsOutcome;
+    function ChangesIn(const ARevision: string; out AChanges: TArray<TAtlasVcsChange>): TAtlasVcsOutcome;
+    function Push(const ABranch, ARemote, ARemoteRef: string; ASetUpstream: Boolean): TAtlasVcsOutcome;
     property Outcome: TAtlasVcsOutcome read FOutcome;
   end;
 
@@ -81,6 +90,44 @@ end;
 function TAtlasNullVersionControl.ChangeMarker: string;
 begin
   Result := '';
+end;
+
+function TAtlasNullVersionControl.Branches(out ABranches: TArray<TAtlasVcsBranch>): TAtlasVcsOutcome;
+begin
+  ABranches := nil;
+  Result := FOutcome;
+end;
+
+function TAtlasNullVersionControl.Stashes(out AStashes: TArray<TAtlasVcsStash>): TAtlasVcsOutcome;
+begin
+  AStashes := nil;
+  Result := FOutcome;
+end;
+
+function TAtlasNullVersionControl.Remotes(out ANames: TArray<string>): TAtlasVcsOutcome;
+begin
+  ANames := nil;
+  Result := FOutcome;
+end;
+
+function TAtlasNullVersionControl.Outgoing(const ABranch, AUpstream: string; AMax: Integer;
+  out ACommits: TArray<TAtlasVcsCommit>): TAtlasVcsOutcome;
+begin
+  ACommits := nil;
+  Result := FOutcome;
+end;
+
+function TAtlasNullVersionControl.ChangesIn(const ARevision: string;
+  out AChanges: TArray<TAtlasVcsChange>): TAtlasVcsOutcome;
+begin
+  AChanges := nil;
+  Result := FOutcome;
+end;
+
+function TAtlasNullVersionControl.Push(const ABranch, ARemote, ARemoteRef: string;
+  ASetUpstream: Boolean): TAtlasVcsOutcome;
+begin
+  Result := FOutcome;
 end;
 
 end.
