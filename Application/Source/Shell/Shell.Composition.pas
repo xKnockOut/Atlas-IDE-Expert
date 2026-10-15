@@ -35,6 +35,7 @@ uses
   Atlas.Common.Editing.Bookmarks,
   Atlas.Common.Lsp.DocumentHighlights,
   Atlas.Common.Lsp.CodeActions,
+  Atlas.Common.Lsp.TestUnits,
   Atlas.Common.Lsp.DocumentLinks,
   Atlas.Common.Lsp.Colors,
   Atlas.Common.Lsp.Commands,
@@ -125,6 +126,10 @@ type
     FCodeLens: TLspCodeLens;
     FSemanticTokens: TLspSemanticTokens;
     FCodeActions: TLspCodeActions;
+    /// <summary>Testunit anlegen und wechseln (#274, #189).</summary>
+    FTestUnits: TLspTestUnits;
+    /// <summary>Gefundenes Testprogramm je Wurzel mit Zeitpunkt (#274); Sperre ist das Objekt selbst.</summary>
+    FTestPrograms: TDictionary<string, TPair<string, UInt64>>;
     FDocumentLinks: TLspDocumentLinks;
     FColors: TLspColors;
     FCommands: TLspCommands;
@@ -198,6 +203,8 @@ type
     function ProjectIndexPending: Boolean;
     /// <summary>Text einer Quelldatei; geöffnete Dokumente haben Vorrang vor der Platte.</summary>
     function ReadSourceText(const AFileName: string; out AText: string): Boolean;
+    /// <summary>Muster, Ordner und Testprogramm für Testunits zur Datei (#274, #189).</summary>
+    function TestUnitContextFor(const AUri: string; out AContext: TTestUnitContext): Boolean;
     /// <summary>Projektdateien aller Ordner und geöffnete Dokumente, für Referenzen und Umbenennen.</summary>
     function ProjectSourceFiles: TArray<string>;
     /// <summary>Inhalt des Status-Befehls (#28).</summary>
@@ -289,6 +296,7 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Editing.TestUnits,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Compiler.OutputParser,
   Atlas.Windows.Compiler.Adapters.ProcessRunner,
@@ -849,6 +857,13 @@ begin
         end;
       Result := True;
     end;
+  FTestPrograms := TDictionary<string, TPair<string, UInt64>>.Create;
+  FTestUnits := TLspTestUnits.Create(FDocuments, TestUnitContextFor);
+  FCodeActions.ExtraActions :=
+    function(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>
+    begin
+      Result := FTestUnits.Actions(AUri, ARange.StartPos.Line);
+    end;
   FCodeActions.Attach(FDispatcher);
   FDocumentLinks := TLspDocumentLinks.Create(FDocuments,
     function(const AUri: string): TArray<string>
@@ -902,6 +917,11 @@ begin
       FLogger.Info(Format('%d binäre Formulare in Text umgewandelt, %d Sicherungskopien (.bak)',
         [Converted, Backups]));
       Result := TJSONString.Create(Format('%d Formulare umgewandelt', [Converted]));
+    end);
+  FCommands.Register(TLspTestUnits.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FTestUnits.Execute(AArguments);
     end);
   FCommands.Register(TQualifiedNames.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1305,6 +1325,8 @@ begin
   FCompletion.Free;
   FRename.Free;
   FCodeActions.Free;
+  FTestUnits.Free;
+  FTestPrograms.Free;
   FDocumentLinks.Free;
   FColors.Free;
   FCommands.Free;
@@ -1724,6 +1746,101 @@ begin
     AText := TFileEncoding.LoadFromFile(AFileName, FileFormat)
   else
     AText := '';
+end;
+
+function TServerComposition.TestUnitContextFor(const AUri: string; out AContext: TTestUnitContext): Boolean;
+const
+  // Testprogramm höchstens so lange merken; ein neu angelegtes wird danach gefunden.
+  CacheMs = 10000;
+var
+  Workspace, Other: TShellWorkspace;
+  Info: TProjectInfo;
+  Candidates: TArray<string>;
+  Root, Folder, Found: string;
+  Cached: TPair<string, UInt64>;
+  HasCached: Boolean;
+begin
+  AContext := Default(TTestUnitContext);
+  Candidates := nil;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+    if (Workspace = nil) and (FWorkspaces.Count = 1) then
+      Workspace := FWorkspaces[0];
+    if Workspace = nil then
+      Exit(False);
+    AContext.Settings := Workspace.Configuration.Settings.TestUnits;
+    Root := Workspace.Root;
+    // Projekte der Gruppe zuerst, dann .dpr in der Wurzel und eine Ebene darunter.
+    for Other in FWorkspaces do
+      if Other.Project(Info) and (Info.MainSource <> '') then
+        Candidates := Candidates + [Info.MainSource];
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  AContext.Root := Root;
+  AContext.ReadText :=
+    function(const AFileName: string): string
+    begin
+      if not ReadSourceText(AFileName, Result) then
+        Result := '';
+    end;
+  AContext.Exists :=
+    function(const AFileName: string): Boolean
+    var
+      Document: ITextDocument;
+    begin
+      Result := FileExists(AFileName) or FDocuments.TryGet(TDocumentUris.FromPath(AFileName), Document);
+    end;
+  AContext.FindUnit :=
+    function(const AUnitName: string): string
+    var
+      UnitIndex: TUnitIndex;
+    begin
+      // Nur der Index: Diese Abfrage läuft bei jeder Code-Aktion und soll nichts nachladen.
+      if FIndex.FindUnit(AUnitName, UnitIndex) and not UnitIndex.Library_ then
+        Result := UnitIndex.FileName
+      else
+        Result := '';
+    end;
+  if AContext.Settings.Project <> '' then
+  begin
+    Found := AContext.Settings.Project;
+    if not TPath.IsPathRooted(Found) then
+      Found := TPath.Combine(Root, Found);
+    AContext.TestProgram := ChangeFileExt(ExpandFileName(Found), '.dpr');
+    Exit(True);
+  end;
+  TMonitor.Enter(FTestPrograms);
+  try
+    HasCached := FTestPrograms.TryGetValue(LowerCase(Root), Cached) and
+      (TThread.GetTickCount64 - Cached.Value < CacheMs);
+  finally
+    TMonitor.Exit(FTestPrograms);
+  end;
+  if HasCached then
+  begin
+    AContext.TestProgram := Cached.Key;
+    Exit(True);
+  end;
+  try
+    Candidates := Candidates + TDirectory.GetFiles(Root, '*.dpr', TSearchOption.soTopDirectoryOnly);
+    for Folder in TDirectory.GetDirectories(Root) do
+      if not ExtractFileName(Folder).StartsWith('.') then
+        Candidates := Candidates + TDirectory.GetFiles(Folder, '*.dpr', TSearchOption.soTopDirectoryOnly);
+  except
+    on E: EInOutError do
+      FLogger.Debug('Testprojekt: Ordner nicht lesbar: ' + E.Message);
+  end;
+  AContext.TestProgram := TTestUnits.FindTestProgram(Candidates, AContext.ReadText);
+  TMonitor.Enter(FTestPrograms);
+  try
+    FTestPrograms.AddOrSetValue(LowerCase(Root), TPair<string, UInt64>.Create(AContext.TestProgram,
+      TThread.GetTickCount64));
+  finally
+    TMonitor.Exit(FTestPrograms);
+  end;
+  Result := True;
 end;
 
 function TServerComposition.ProjectSourceFiles: TArray<string>;

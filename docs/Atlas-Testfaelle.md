@@ -609,3 +609,20 @@ Vorbereitung: Formular mit Button `btnSave` und den Methoden `FormCreate(Sender:
 | SY5 | SY3/SY4 bei 100, 150 und 200 % Skalierung (Monitor wechseln) | Symbol scharf und in passender Größe |
 | SY6 | *Tools › Optionen › Benutzeroberfläche › IDE-Stil* zwischen hell und dunkel wechseln | Menü, Statusfeld, Optionsseite und Ergebnisfenster wechseln ohne Neustart die Variante |
 | SY7 | Explorer: `AtlasServer.exe` und `AtlasSetup.exe`; „Apps und Features“ nach der Installation | Symbol bei beiden Dateien und beim Eintrag „Atlas“ |
+
+## DUnitX-Testgerüst (#274)
+
+Voraussetzung: Projektgruppe mit einem DUnitX-Testprojekt (`.dpr` mit `uses DUnitX.TestFramework`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TG1 | Cursor auf `TKunde = class` in `Kunden.pas`, Code-Aktionen (Strg+.) | Eintrag „DUnitX-Testunit für TKunde anlegen“ |
+| TG2 | Eintrag wählen | `Kunden.Tests.pas` im Ordner des Testprojekts angelegt und geöffnet; `[TestFixture] TKundeTests` mit `FSubject`, `[Setup]`, `[TearDown]` und einem `[Test]` je public-Methode (überladene als `TestX2`), jeder Test mit `Assert.Fail` |
+| TG3 | Testprojekt ist geladen: Projektverwaltung und `.dpr` ansehen | Neue Unit steht im Testprojekt (nicht im aktiven Projekt), `uses` der `.dpr` enthält sie |
+| TG4 | Testprojekt ist nicht geladen: `.dpr` und `.dproj` im Editor ansehen | `Kunden.Tests in 'Kunden.Tests.pas'` in der `.dpr`, `DCCReference` in der `.dproj`; keine `.dpr` wurde im Editor geöffnet |
+| TG5 | Testprojekt übersetzen | Übersetzt ohne Fehler, Warnungen und Hinweise; die Tests schlagen mit „Test für … fehlt noch“ fehl |
+| TG6 | Klasse mit `constructor Create(AName: string)` | Setup enthält nur den Kommentar „braucht Argumente im Konstruktor“ |
+| TG7 | atlas.json `"testUnits": {"pattern": "Test.{unit}", "folder": "Tests/Unit"}`, TG1 | Neue Unit `Test.Kunden.pas` unter `Tests\Unit`, relativer Pfad in `.dpr` und `.dproj` |
+| TG8 | Projektgruppe ohne Testprojekt, TG1 | Kein Eintrag zum Anlegen |
+| TG9 | Testunit existiert schon, Code-Aktionen auf der Klasse | „Zur Testunit Kunden.Tests wechseln“ öffnet sie |
+

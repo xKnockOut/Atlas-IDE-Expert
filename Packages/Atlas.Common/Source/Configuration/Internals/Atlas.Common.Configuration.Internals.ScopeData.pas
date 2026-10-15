@@ -33,7 +33,7 @@ const
     'logFile',
     'traceFile');
   /// <summary>Schlüssel des Projekts (atlas.json).</summary>
-  ProjectSettingPaths: array[0..22] of string = (
+  ProjectSettingPaths: array[0..23] of string = (
     'encoding',
     'project',
     'config',
@@ -54,6 +54,7 @@ const
     'index.exclude',
     'stringLiteral',
     'memberOrder',
+    'testUnits',
     'minConfidence',
     'exclude',
     'format');

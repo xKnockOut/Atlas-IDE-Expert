@@ -7,8 +7,9 @@
 //   bevorzugte zuerst (Ersatz für die Glühbirne). Die gewählte ändert die
 //   Puffer über TAtlasIdeWorkspaceEdit (je Datei ein Rückgängig-Schritt, #397)
 //   und führt danach ihren Befehl aus: atlas.copyText legt das erste Argument
-//   in die Zwischenablage, alle anderen gehen als workspace/executeCommand an
-//   den Server.
+//   in die Zwischenablage, atlas.openFile öffnet die Datei der URI im ersten
+//   Argument (Testunit, #274/#189), alle anderen gehen als
+//   workspace/executeCommand an den Server.
 // - Auswahl erweitern und verkleinern (textDocument/selectionRange).
 // - Gehe zu Typdefinition (textDocument/typeDefinition); Gehe zu
 //   Implementierung liegt im Ergebnisfenster (#400).
@@ -104,6 +105,7 @@ const
   // Beim Tippen: lieber nichts tun als die IDE aufhalten.
   SlashTimeoutMs = 3000;
   CopyTextCommand = 'atlas.copyText';
+  OpenFileCommand = 'atlas.openFile';
   QualifiedNameCommand = 'atlas.server.qualifiedName';
 
 type
@@ -644,6 +646,18 @@ begin
         Clipboard.AsText := TJSONArray(Arguments).Items[0].Value;
         Say(TAtlasStrings.Text(TAtlasTextId.EditorTextCopied));
       end;
+    finally
+      Arguments.Free;
+    end;
+    Exit;
+  end;
+  if ACommand = OpenFileCommand then
+  begin
+    // Client-Befehl: Datei der URI im ersten Argument öffnen.
+    Arguments := TJSONObject.ParseJSONValue(AArgumentsJson);
+    try
+      if (Arguments is TJSONArray) and (TJSONArray(Arguments).Count > 0) then
+        TAtlasEditorHover.GoToLocation(TLspSession.UriToPath(TJSONArray(Arguments).Items[0].Value), 0, 0);
     finally
       Arguments.Free;
     end;

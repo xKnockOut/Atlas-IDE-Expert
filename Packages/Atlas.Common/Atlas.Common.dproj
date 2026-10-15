@@ -170,6 +170,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CollectionCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UnitTemplates.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.TestUnits.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ErrorCommands.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.UnresolvedNames.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Architecture.pas"/>
@@ -267,6 +268,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.InterfaceStubs.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StringLiteralCommands.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CodeActions.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TestUnits.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ControlFlow.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Attributes.pas"/>

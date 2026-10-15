@@ -8,6 +8,10 @@
 // Optionen) liest es in Operations (#721); die IDE-Schicht führt sie aus und
 // protokolliert sie. Unbekannte oder unvollständige Operationen werden nur
 // gezählt (Unsupported), damit die IDE-Schicht darauf hinweisen kann.
+// Trägt ein Edit eine neue Unit selbst in ein Projekt ein (.dproj und .dpr,
+// etwa die Testunit aus #274), nennt ProjectFile dieses Projekt; ist es in
+// der IDE geladen, entfernt WithoutProject diese Änderungen, und die IDE
+// trägt die Unit über ihr Projekt ein.
 // Positionen sind 0-basiert in UTF-16-Einheiten wie im LSP. Mehrere
 // Änderungen gelten alle für den Text vor der ersten; überlappende sind ein
 // Fehler. Gleicher Anfang: in der Reihenfolge der Liste (LSP 3.17).
@@ -69,6 +73,10 @@ type
     Unsupported: Integer;
     function EditCount: Integer;
     function IsEmpty: Boolean;
+    /// <summary>Erste geänderte .dproj; '' ohne.</summary>
+    function ProjectFile: string;
+    /// <summary>Ohne die Änderungen an AProject (.dproj) und seiner Hauptdatei (.dpr, .dpk).</summary>
+    function WithoutProject(const AProject: string): TLspWorkspaceEdit;
     /// <summary>Aus einem WorkspaceEdit; nil oder null ergibt eine leere Änderung.</summary>
     class function FromJson(const AValue: TJSONValue): TLspWorkspaceEdit; static;
   end;
@@ -126,6 +134,29 @@ end;
 function TLspWorkspaceEdit.IsEmpty: Boolean;
 begin
   Result := (EditCount = 0) and (Length(Operations) = 0);
+end;
+
+function TLspWorkspaceEdit.ProjectFile: string;
+var
+  FileEdits: TLspFileEdits;
+begin
+  Result := '';
+  for FileEdits in Files do
+    if SameText(ExtractFileExt(FileEdits.FileName), '.dproj') then
+      Exit(FileEdits.FileName);
+end;
+
+function TLspWorkspaceEdit.WithoutProject(const AProject: string): TLspWorkspaceEdit;
+var
+  FileEdits: TLspFileEdits;
+begin
+  Result := Self;
+  Result.Files := nil;
+  for FileEdits in Files do
+    if not SameText(FileEdits.FileName, AProject) and
+      not SameText(FileEdits.FileName, ChangeFileExt(AProject, '.dpr')) and
+      not SameText(FileEdits.FileName, ChangeFileExt(AProject, '.dpk')) then
+      Result.Files := Result.Files + [FileEdits];
 end;
 
 { TLspFileOperation }
