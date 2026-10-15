@@ -293,16 +293,17 @@ var
   Settings: TServerSettings;
   Issues: TArray<TConfigurationIssue>;
 begin
+  // Vorgabe aus: Das Plugin wählt „Nach dem Speichern“ selbst.
   Settings := Parse('{}', Issues);
-  Assert.IsTrue(Settings.Compiler.OnSave);
-  Settings := Parse('{"compiler": {"onSave": false}}', Issues);
   Assert.IsFalse(Settings.Compiler.OnSave);
+  Settings := Parse('{"compiler": {"onSave": true}}', Issues);
+  Assert.IsTrue(Settings.Compiler.OnSave);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Settings := Parse('{"compiler": {"onSave": "nein", "x": 1}}', Issues);
-  Assert.IsTrue(Settings.Compiler.OnSave);
-  Assert.AreEqual(2, Integer(Length(Issues)));
-  Settings := TConfigurationParser.ParseLayered('{"compiler": {"onSave": false}}', '{}', Issues);
   Assert.IsFalse(Settings.Compiler.OnSave);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{"compiler": {"onSave": true}}', '{}', Issues);
+  Assert.IsTrue(Settings.Compiler.OnSave);
   // Schnellbefehle (#293)
   Settings := Parse('{}', Issues);
   Assert.IsTrue(Settings.SlashCommands);

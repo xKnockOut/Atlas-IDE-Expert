@@ -14,6 +14,8 @@ type
     [Test]
     procedure ChecksTextWithServerParser;
     [Test]
+    procedure ReportsKeysAtTheWrongPlace;
+    [Test]
     procedure ListsRuleCatalogInLanguage;
   end;
 
@@ -59,6 +61,40 @@ begin
     try
       Assert.IsTrue((Answer.GetValue('valid') as TJSONBool).AsBoolean);
       Assert.AreEqual(0, TJSONArray(Answer.GetValue('issues')).Count);
+    finally
+      Answer.Free;
+    end;
+  finally
+    Args.Free;
+  end;
+end;
+
+procedure TLspSettingsCommandsTests.ReportsKeysAtTheWrongPlace;
+var
+  Args: TJSONArray;
+  Answer: TJSONObject;
+  Issues: TJSONArray;
+begin
+  // Als atlas.json (Vorgabe): der globale Schlüssel ist eine Warnung, der Text bleibt gültig.
+  Args := Arguments('{"rules": {}, "memoryBudgetMb": 512}');
+  try
+    Answer := TLspSettingsCommands.Check(Args);
+    try
+      Assert.IsTrue((Answer.GetValue('valid') as TJSONBool).AsBoolean);
+      Issues := TJSONArray(Answer.GetValue('issues'));
+      Assert.AreEqual(1, Issues.Count);
+      Assert.Contains((Issues.Items[0] as TJSONObject).GetValue<string>('message'), '"memoryBudgetMb"');
+      Assert.IsFalse(((Issues.Items[0] as TJSONObject).GetValue('error') as TJSONBool).AsBoolean);
+    finally
+      Answer.Free;
+    end;
+    // Als globale Datei: rules gehört zum Projekt.
+    Args.Add('global');
+    Answer := TLspSettingsCommands.Check(Args);
+    try
+      Issues := TJSONArray(Answer.GetValue('issues'));
+      Assert.AreEqual(1, Issues.Count);
+      Assert.Contains((Issues.Items[0] as TJSONObject).GetValue<string>('message'), '"rules"');
     finally
       Answer.Free;
     end;

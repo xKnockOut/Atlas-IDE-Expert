@@ -105,8 +105,11 @@ begin
   Assert.IsTrue(Toggle.Drawing);
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'PairGuides', Toggle));
   Assert.IsTrue(Toggle.Drawing);
+  // hints ist global (x-scope, #227): Der Schalter schreibt nur die Plugin-Einstellung, nie atlas.json.
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'XmlDocFull', Toggle));
-  Assert.AreEqual('hints.xmlDocFull', Toggle.ProjectPath);
+  Assert.AreEqual('', Toggle.ProjectPath);
+  for Toggle in Toggles do
+    Assert.IsFalse(Toggle.ProjectPath.StartsWith('hints.') or Toggle.ProjectPath.StartsWith('index.'), Toggle.Key);
   Assert.IsFalse(TAtlasQuickToggles.Find(Toggles, 'StatusFieldSummary', Toggle), 'ohne x-quickToggle');
   // Jeder Schalter ist eine Einstellung des Plugins.
   for Toggle in Toggles do

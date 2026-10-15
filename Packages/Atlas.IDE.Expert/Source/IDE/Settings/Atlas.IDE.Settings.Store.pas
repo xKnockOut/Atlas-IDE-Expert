@@ -8,6 +8,11 @@
 // gespeicherten mit den Sitzungswerten darüber (nur für diese Sitzung, „Alles
 // aus“); Stored die gespeicherten für Optionsseite und Update. Sitzungswerte
 // landen nie in der Registry.
+// Ort der Einstellungen: Index, Speicher, XMLDoc, Inlay-Hints, Schnellbefehle
+// und Kompilieren nach dem Speichern gelten auch für den Server und liegen in
+// %APPDATA%\Atlas\settings.json (TAtlasRoutedSettingsStore); der Server liest
+// die Datei selbst und beobachtet sie. Alte Werte aus der Registry übernimmt
+// das erste Lesen einmal in die Datei.
 // Abgesicherter Start (#722): Vor jeder gespeicherten Änderung kommt der alte
 // Stand in die Einstellungsstände (%APPDATA%\Atlas\settings-history.json),
 // höchstens safeMode.keepSettingsHistory; Restore setzt auf einen davon zurück.
@@ -16,6 +21,7 @@ interface
 
 uses
   System.SysUtils,
+  Atlas.Core.Files.TextFile,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.QuickToggles;
@@ -36,6 +42,10 @@ type
     class procedure Changed; static;
     class function HistoryFile: string; static;
     class procedure SaveHistory; static;
+    class function GlobalFile: string; static;
+    /// <summary>False, wenn die Datei da, aber nicht lesbar ist; dann wird sie auch nicht geschrieben.</summary>
+    class function LoadGlobal(out AContent: TAtlasTextFileContent): Boolean; static;
+    class procedure SaveGlobal(const AContent: TAtlasTextFileContent; const AText: string); static;
   public
     /// <summary>Wirksame Werte: gespeichert, darüber die Sitzungswerte der Schnellschalter (#604).</summary>
     class function Current: TAtlasPluginSettings; static;
@@ -74,6 +84,8 @@ uses
   System.DateUtils,
   System.Win.Registry,
   Atlas.Core.Settings.SchemaData,
+  Atlas.Core.Settings.Layers,
+  Atlas.Core.Settings.Scopes,
   Atlas.UI.Strings;
 
 type
@@ -166,14 +178,63 @@ end;
 
 { TAtlasIdeSettings }
 
+class function TAtlasIdeSettings.GlobalFile: string;
+begin
+  Result := TAtlasSettingsFiles.GlobalFile(GetEnvironmentVariable('APPDATA'));
+end;
+
+class function TAtlasIdeSettings.LoadGlobal(out AContent: TAtlasTextFileContent): Boolean;
+begin
+  AContent := Default(TAtlasTextFileContent);
+  AContent.Encoding := TAtlasTextEncoding.Utf8;
+  Result := True;
+  try
+    if (GlobalFile <> '') and TFile.Exists(GlobalFile) then
+      AContent := TAtlasTextFile.Load(GlobalFile);
+  except
+    // Gesperrt oder unlesbar: wie keine Datei für diese Sitzung, aber nicht überschreiben.
+    on Exception do
+    begin
+      AContent.Text := '';
+      Result := False;
+    end;
+  end;
+end;
+
+class procedure TAtlasIdeSettings.SaveGlobal(const AContent: TAtlasTextFileContent; const AText: string);
+var
+  Content: TAtlasTextFileContent;
+begin
+  if (GlobalFile = '') or (AText = AContent.Text) then
+    Exit;
+  Content := AContent;
+  Content.Text := AText;
+  try
+    ForceDirectories(ExtractFileDir(GlobalFile));
+    TAtlasTextFile.Save(GlobalFile, Content);
+  except
+    // Ohne Schreibrecht bleiben die Werte für diese Sitzung bestehen.
+    on Exception do
+      ;
+  end;
+end;
+
 class procedure TAtlasIdeSettings.EnsureLoaded;
 var
+  Content: TAtlasTextFileContent;
+  Readable: Boolean;
+  Routed: TAtlasRoutedSettingsStore;
   Store: IAtlasSettingsStore;
 begin
   if FLoaded then
     Exit;
   FStored := TAtlasPluginSettings.Defaults;
-  Store := TRegistryStore.Create(False);
+  Readable := LoadGlobal(Content);
+  Routed := TAtlasRoutedSettingsStore.Create(TRegistryStore.Create(False), Content.Text);
+  Store := Routed;
+  // Einmalig: Werte, die bis hierher in der Registry lagen, nach settings.json.
+  if Routed.Migrate and Readable then
+    SaveGlobal(Content, Routed.Text);
   FStored.Load(Store);
   FLoaded := True;
   FEffective := FSession.Apply(FStored, QuickToggles);
@@ -200,6 +261,9 @@ end;
 
 class procedure TAtlasIdeSettings.Update(const ASettings: TAtlasPluginSettings);
 var
+  Content: TAtlasTextFileContent;
+  Readable: Boolean;
+  Routed: TAtlasRoutedSettingsStore;
   Store: IAtlasSettingsStore;
   Next: TAtlasPluginSettings;
 begin
@@ -216,8 +280,13 @@ begin
   end;
   FStored := Next;
   FLoaded := True;
-  Store := TRegistryStore.Create(True);
+  // settings.json frisch lesen: Der Dialog der globalen Einstellungen schreibt dieselbe Datei.
+  Readable := LoadGlobal(Content);
+  Routed := TAtlasRoutedSettingsStore.Create(TRegistryStore.Create(True), Content.Text);
+  Store := Routed;
   FStored.Save(Store);
+  if Readable then
+    SaveGlobal(Content, Routed.Text);
   Changed;
 end;
 

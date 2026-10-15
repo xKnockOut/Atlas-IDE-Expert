@@ -40,11 +40,11 @@ type
     [Test]
     procedure ReadsRootFromInitializeParams;
     [Test]
-    procedure AppliesEditorSettingsBelowFile;
+    procedure EditorSettingsCountAsGlobal;
     [Test]
-    procedure TakesIndexFromInitializationOptions;
+    procedure IndexComesFromGlobalLayers;
     [Test]
-    procedure GlobalFileIsLowestLayer;
+    procedure EachKeyHasOnePlace;
     [Test]
     procedure ReloadsChangedFileUnlessOpen;
   end;
@@ -207,18 +207,21 @@ begin
   Assert.AreEqual('', TLspConfiguration.RootPathFromInitialize(nil));
 end;
 
-procedure TLspConfigurationTests.AppliesEditorSettingsBelowFile;
+procedure TLspConfigurationTests.EditorSettingsCountAsGlobal;
 var
   Dispatcher: TJsonRpcDispatcher;
   Message, Response: TJSONObject;
 begin
+  // Die Editor-Ebene liegt über der globalen Datei und gilt nur für globale Schlüssel; das IDE-Plugin meldet
+  // dort die Version der laufenden IDE.
   FDiskText := '{"platform": "Win64"}';
   FConfiguration.LoadWorkspace(Root);
   Dispatcher := TJsonRpcDispatcher.Create;
   try
     FConfiguration.Attach(Dispatcher);
     Message := TJSONObject.ParseJSONValue('{"jsonrpc": "2.0", "method": "workspace/didChangeConfiguration", ' +
-      '"params": {"settings": {"atlas": {"platform": "Win32", "config": "Release"}}}}') as TJSONObject;
+      '"params": {"settings": {"atlas": {"platform": "Win32", "config": "Release", "delphiVersion": "37.0", ' +
+      '"language": "en"}}}}') as TJSONObject;
     try
       Response := Dispatcher.DispatchMessage(Message);
       Assert.IsNull(Response);
@@ -229,46 +232,57 @@ begin
     Dispatcher.Free;
   end;
   Assert.AreEqual('Win64', FConfiguration.Settings.Platform);
-  Assert.AreEqual('Release', FConfiguration.Settings.Config);
+  Assert.AreEqual(TServerSettings.Default.Config, FConfiguration.Settings.Config, 'config gehört zum Projekt');
+  Assert.AreEqual('37.0', FConfiguration.Settings.DelphiVersion);
+  Assert.AreEqual('en', FConfiguration.Settings.Language);
+  FConfiguration.SetGlobalSettings('{"language": "de", "delphiVersion": "23.0"}');
+  Assert.AreEqual('en', FConfiguration.Settings.Language, 'Editor über global');
+  Assert.AreEqual('37.0', FConfiguration.Settings.DelphiVersion);
   Assert.AreEqual('', TLspConfiguration.EditorSettingsFromParams(nil));
 end;
 
-procedure TLspConfigurationTests.TakesIndexFromInitializationOptions;
+procedure TLspConfigurationTests.IndexComesFromGlobalLayers;
 var
-  Options: TJSONValue;
+  Message: TJSONObject;
+  Diagnostics: TJSONArray;
 begin
-  // Atlas-Optionen des IDE-Plugins (#652): gelten ohne index in atlas.json, sonst gilt die Datei.
-  Options := TJSONObject.ParseJSONValue('{"settings": {"atlas": {"index": {"libraryPaths": true, ' +
-    '"searchPaths": false}}}}');
+  // Indexumfang gilt für alle Projekte (Marco, #652); atlas.json behält nur index.exclude.
+  FDiskText := '{"index": {"libraryPaths": false, "exclude": ["**/Demos/**"]}}';
+  FConfiguration.SetGlobalSettings('{"index": {"libraryPaths": true, "searchPaths": false, "exclude": ["x"]}}');
+  FConfiguration.LoadWorkspace(Root);
+  Assert.IsTrue(FConfiguration.Settings.IndexLibraryPaths);
+  Assert.IsFalse(FConfiguration.Settings.IndexSearchPaths);
+  Assert.AreEqual(1, Integer(Length(FConfiguration.Settings.IndexExclude)));
+  Assert.AreEqual('**/Demos/**', FConfiguration.Settings.IndexExclude[0]);
+  // Die Datei bekommt eine Warnung am Schlüssel, der nicht ins Projekt gehört.
+  Message := FCapture.MessageAt(FCapture.Count - 1);
   try
-    FDiskText := '{"platform": "Win64"}';
-    FConfiguration.LoadWorkspace(Root);
-    FConfiguration.SetEditorSettings(TLspConfiguration.EditorSettingsFromParams(Options));
-    Assert.IsTrue(FConfiguration.Settings.IndexLibraryPaths);
-    Assert.IsFalse(FConfiguration.Settings.IndexSearchPaths);
-    FDiskText := '{"index": {"libraryPaths": false}}';
-    FConfiguration.LoadWorkspace(Root);
-    Assert.IsFalse(FConfiguration.Settings.IndexLibraryPaths);
+    Diagnostics := Message.GetValue<TJSONArray>('params.diagnostics');
+    Assert.AreEqual(1, Diagnostics.Count);
+    Assert.AreEqual(2, (Diagnostics.Items[0] as TJSONObject).GetValue<Integer>('severity'));
+    Assert.Contains((Diagnostics.Items[0] as TJSONObject).GetValue<string>('message'), '"index.libraryPaths"');
+    Assert.AreEqual(0, (Diagnostics.Items[0] as TJSONObject).GetValue<Integer>('range.start.line'));
+    Assert.AreEqual(11, (Diagnostics.Items[0] as TJSONObject).GetValue<Integer>('range.start.character'));
   finally
-    Options.Free;
+    Message.Free;
   end;
 end;
 
-procedure TLspConfigurationTests.GlobalFileIsLowestLayer;
+procedure TLspConfigurationTests.EachKeyHasOnePlace;
 begin
-  // #227: %APPDATA%\Atlas\settings.json unter Editor-Einstellungen und atlas.json.
-  FDiskText := '{"platform": "Win64"}';
+  // #227: globale Schlüssel aus %APPDATA%\Atlas\settings.json, Projekt-Schlüssel aus atlas.json; am falschen
+  // Ort wirkt ein Schlüssel nicht.
+  FDiskText := '{"platform": "Win64", "language": "de"}';
   FConfiguration.LoadWorkspace(Root);
   FConfiguration.SetGlobalSettings('{"platform": "Win32", "config": "Release", "language": "en", ' +
     '"rules": {"empty-except": "off", "with-statement": "error"}}');
   Assert.AreEqual('Win64', FConfiguration.Settings.Platform);
-  Assert.AreEqual('Release', FConfiguration.Settings.Config);
+  Assert.AreEqual(TServerSettings.Default.Config, FConfiguration.Settings.Config);
   Assert.AreEqual('en', FConfiguration.Settings.Language);
-  FConfiguration.SetEditorSettings('{"config": "Debug", "rules": {"empty-except": "warning"}}');
-  Assert.AreEqual('Debug', FConfiguration.Settings.Config);
-  Assert.AreEqual('en', FConfiguration.Settings.Language);
-  // Regeln je Id: die des Editors gewinnt, die übrige globale bleibt.
-  Assert.AreEqual(2, Integer(Length(FConfiguration.Settings.Rules)));
+  Assert.AreEqual(0, Integer(Length(FConfiguration.Settings.Rules)), 'Regeln nur im Projekt');
+  FConfiguration.SetEditorSettings('{"language": "de"}');
+  Assert.AreEqual('de', FConfiguration.Settings.Language);
+  FConfiguration.SetEditorSettings('');
   FConfiguration.SetGlobalSettings('');
   Assert.AreEqual('de', FConfiguration.Settings.Language);
   // Kaputte globale Datei: wie keine.

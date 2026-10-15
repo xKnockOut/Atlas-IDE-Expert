@@ -336,13 +336,14 @@ begin
   Result.Pinned := FHistory.Pinned;
   Result.CanGoBack := FHistory.CanGoBack;
   Result.UsagesCount := FUsagesCount;
-  // Anzeige der XMLDoc (#654): hints aus atlas.json meldet der Server, sonst die Optionen des Plugins.
+  // Anzeige der XMLDoc (#654): hints aus settings.json meldet der Server, sonst die Optionen des Plugins
+  // (dieselben Werte, #227).
   if Result.Data.Display.Known then
     Result.Display := Result.Data.Display
   else
     Result.Display := TAtlasDocDisplay.Create(TAtlasIdeSettings.Current.XmlDocFull,
       TAtlasIdeSettings.Current.XmlDocMaxLines);
-  // Schnellschalter nur für diese Sitzung (#604) gilt auch über dem Wert aus atlas.json.
+  // Schnellschalter nur für diese Sitzung (#604) gilt auch über dem Wert des Servers.
   if TAtlasIdeSettings.SessionFlag('XmlDocFull', Full) then
     Result.Display.Full := Full;
   // Probleme gehören zur Stelle im Editor, nicht zu angeklickten Typen.

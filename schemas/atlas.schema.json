@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Atlas-Konfiguration",
-  "description": "Einstellungen für Atlas im Projektordner.",
+  "description": "Einstellungen für Atlas. Jeder Schlüssel hat genau einen Ort (x-scope): \"project\" in atlas.json im Projektordner (Atlas › Projekt-Einstellungen), \"global\" in %APPDATA%\\Atlas\\settings.json für alle Projekte (Tools › Optionen › Atlas). Ein Schlüssel am falschen Ort wird ignoriert und gemeldet.",
   "type": "object",
   "properties": {
     "$schema": {
@@ -15,6 +15,7 @@
         "37.0",
         "23.0"
       ],
+      "x-scope": "global",
       "x-page": "Allgemein",
       "x-control": "Auswahl aus den installierten Versionen",
       "x-issue": "#47, #258"
@@ -27,6 +28,7 @@
       ],
       "default": "de",
       "description": "Sprache der Meldungen.",
+      "x-scope": "global",
       "x-page": "Allgemein",
       "x-control": "Auswahl",
       "x-issue": "#24"
@@ -40,6 +42,7 @@
         "windows-1250"
       ],
       "description": "Vorgabe-Kodierung für Dateien ohne BOM, wenn die Erkennung nicht entscheidet (reines ASCII, ungültiges UTF-8): \"utf-8\" oder eine ANSI-Codepage wie \"windows-1250\". Binäre Formulare werden nie geändert.",
+      "x-scope": "project",
       "x-page": "Allgemein",
       "x-control": "Auswahl",
       "x-issue": "#121"
@@ -47,6 +50,7 @@
     "project": {
       "type": "string",
       "description": "Projektdatei (.dproj) relativ zu diesem Ordner. Leer: automatisch suchen.",
+      "x-scope": "project",
       "x-page": "Projekt",
       "x-control": "Vorgabe: aktives IDE-Projekt",
       "x-issue": "#14, #24"
@@ -58,6 +62,7 @@
         "Debug",
         "Release"
       ],
+      "x-scope": "project",
       "x-page": "Projekt",
       "x-control": "Auswahl aus der .dproj",
       "x-issue": "#14, #46"
@@ -69,6 +74,7 @@
         "Win32",
         "Win64"
       ],
+      "x-scope": "project",
       "x-page": "Projekt",
       "x-control": "Auswahl aus der .dproj",
       "x-issue": "#14, #46"
@@ -147,6 +153,7 @@
           }
         ]
       },
+      "x-scope": "project",
       "x-page": "Prüfregeln",
       "x-control": "Tabelle aus dem Regelkatalog",
       "x-issue": "#41"
@@ -177,6 +184,7 @@
         "fast",
         "strict"
       ],
+      "x-scope": "project",
       "x-page": "Prüfregeln",
       "x-control": "Auswahl",
       "x-issue": "#146"
@@ -219,6 +227,7 @@
           }
         }
       },
+      "x-scope": "project",
       "x-page": "Prüfregeln",
       "x-control": "Profil-Editor",
       "x-issue": "#146"
@@ -255,6 +264,7 @@
           }
         }
       },
+      "x-scope": "project",
       "x-page": "Prüfregeln",
       "x-control": "Liste mit Mustern",
       "x-issue": "#146"
@@ -263,6 +273,7 @@
       "type": "boolean",
       "default": false,
       "description": "Test-Units und Testprojekte (uses DUnitX.TestFramework, TestFramework oder TestInsight.*) nicht prüfen.",
+      "x-scope": "project",
       "x-page": "Prüfregeln",
       "x-control": "Kontrollkästchen",
       "x-issue": "#146"
@@ -273,6 +284,7 @@
       "examples": [
         "fast"
       ],
+      "x-scope": "project",
       "x-page": "Prüfregeln",
       "x-control": "Auswahl",
       "x-issue": "#146"
@@ -284,10 +296,11 @@
       "properties": {
         "onSave": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "description": "Nach dem Speichern einer Quelldatei das Projekt im Hintergrund kompilieren und die Meldungen anzeigen."
         }
       },
+      "x-scope": "global",
       "x-page": "Compiler",
       "x-control": "Kontrollkästchen",
       "x-issue": "#40"
@@ -307,6 +320,7 @@
           "description": "Auswahl der Vorschläge: unscharf (Teilfolgen, Kürzel wie TSL für TStringList) oder nur nach Präfix, falls ein Editor nachträglich strikt filtert."
         },
         "interfaceSection": {
+          "x-scope": "project",
           "type": "string",
           "enum": [
             "private",
@@ -317,6 +331,7 @@
           "description": "Abschnitt der Klasse, in den „Interface implementieren“ die Deklarationen fehlender Interface-Methoden schreibt."
         },
         "senderCast": {
+          "x-scope": "project",
           "type": "string",
           "enum": [
             "as",
@@ -331,6 +346,7 @@
           "description": "Nach Übernahme eines Konstruktors in \"Liste := TStringList.Create;\" anbieten, den folgenden Code in try…finally mit Freigabe einzuschließen."
         },
         "freeStyle": {
+          "x-scope": "project",
           "type": "string",
           "enum": [
             "free",
@@ -350,6 +366,7 @@
           "description": "Postfix-Vorlagen hinter einem Ausdruck anbieten: Liste.for wird zu for var Item in Liste do, FKunde.notnil zu if Assigned(FKunde) then, dazu tryf, ifa, fmt, nil, not, if, forin, free, try, var, exit und eigene Vorlagen mit \"postfix: true\"."
         }
       },
+      "x-scope": "global",
       "x-page": "Vervollständigung",
       "x-control": "Auswahl",
       "x-issue": "#31, #188, #229, #466, #480, #489"
@@ -365,6 +382,7 @@
           "description": "Inline-Variablen (for var Item in …, var Name := …) erzeugen, wenn die Delphi-Version sie kennt (ab 10.3). Aus: Atlas trägt die Variable in den var-Abschnitt der Routine ein."
         }
       },
+      "x-scope": "project",
       "x-page": "Vervollständigung",
       "x-control": "Kontrollkästchen",
       "x-issue": "#50, #188"
@@ -373,6 +391,7 @@
       "type": "boolean",
       "default": true,
       "description": "Eine Zeile \"/uses Unit1, Unit2\" wird nach Enter gelöscht und die Units kommen ins passende uses.",
+      "x-scope": "global",
       "x-page": "Eingabehilfen",
       "x-control": "Kontrollkästchen",
       "x-issue": "#254"
@@ -401,6 +420,7 @@
           "description": "Vorlage für /header mit den Platzhaltern {unit}, {jahr} und {autor}. Leer: die Vorlage der Regel file-header, sonst ein einfacher Kopf."
         }
       },
+      "x-scope": "global",
       "x-page": "Eingabehilfen",
       "x-control": "Kontrollkästchen, Liste",
       "x-issue": "#293"
@@ -418,6 +438,7 @@
       ],
       "default": false,
       "description": "\"uses aufräumen\" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder \"alphabetic\" alphabetisch, \"namespace\" nach Namespace gruppiert (System, Vcl, ... und Units ohne Namespace zuletzt). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units.",
+      "x-scope": "project",
       "x-page": "Eingabehilfen",
       "x-control": "Auswahl",
       "x-issue": "#182, #284"
@@ -429,6 +450,7 @@
       },
       "default": [],
       "description": "Units, die \"ungenutzte uses entfernen\" nie entfernt, zusätzlich zu allen Units mit initialization-Abschnitt.",
+      "x-scope": "project",
       "x-page": "Eingabehilfen",
       "x-control": "Liste",
       "x-issue": "#284"
@@ -453,6 +475,7 @@
           "exclude": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Glob-Muster für Dateien, die die Regel nicht prüft." }
         }
       },
+      "x-scope": "project",
       "x-page": "Prüfregeln",
       "x-control": "Eigener Editor (Klasse und Property aus dem Index)",
       "x-issue": "#309"
@@ -462,6 +485,7 @@
       "minimum": 0,
       "default": 256,
       "description": "Obergrenze für den Symbolindex im Arbeitsspeicher in MB. Darüber werden zuerst die Verwendungen ausgelagert (sie bleiben im Cache auf der Platte), dann Bibliotheks-Units (RTL, VCL) und zuletzt Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt.",
+      "x-scope": "global",
       "x-page": "Speicher",
       "x-control": "Zahlenfeld (MB)",
       "x-issue": "#185, #492"
@@ -492,6 +516,7 @@
           "description": "Verwendungen der Bezeichner in Projekt-Units mit indizieren (Verwendungsbeispiele); aus = nur Deklarationen, kleinerer Index."
         },
         "exclude": {
+          "x-scope": "project",
           "type": "array",
           "items": { "type": "string" },
           "default": [],
@@ -499,6 +524,7 @@
           "examples": [["**/Demos/**", "**/Samples/**"]]
         }
       },
+      "x-scope": "global",
       "x-page": "Speicher",
       "x-control": "Kontrollkästchen, Liste mit Hinzufügen/Entfernen",
       "x-issue": "#648, #492"
@@ -508,6 +534,7 @@
       "minimum": 1000,
       "default": 10000,
       "description": "Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet.",
+      "x-scope": "global",
       "x-page": "Robustheit",
       "x-control": "Zahlenfeld (ms)",
       "x-issue": "#283"
@@ -535,6 +562,7 @@
           "description": "Zuordnung Kurz-ID (doc#4) → Pfad lokal speichern, nur für die eigene Analyse. Der Export nimmt sie nie mit."
         }
       },
+      "x-scope": "global",
       "x-page": "Robustheit",
       "x-control": "Kontrollkästchen, Zahlenfeld (Tage)",
       "x-issue": "#647"
@@ -573,6 +601,7 @@
           "description": "Was als Ausstiegspunkt gilt; eigene Routinen, die immer eine Exception auslösen, lassen sich ergänzen."
         }
       },
+      "x-scope": "global",
       "x-page": "Editor",
       "x-control": "Kontrollkästchen, Liste",
       "x-issue": "#307"
@@ -604,6 +633,7 @@
           "description": "Mindestlänge eines Blocks in Zeilen für eine Endmarkierung."
         }
       },
+      "x-scope": "global",
       "x-page": "Editor",
       "x-control": "Kontrollkästchen, Zahlenfeld",
       "x-issue": "#35"
@@ -630,6 +660,7 @@
           "description": "Höchstzahl der Doku-Zeilen, bevor der Inhalt mit dem Mausrad scrollt (0 = unbegrenzt, nur durch Bildschirm bzw. Popup begrenzt)."
         }
       },
+      "x-scope": "global",
       "x-page": "Hints",
       "x-control": "Kontrollkästchen, Zahlenfeld",
       "x-issue": "#654"
@@ -658,6 +689,7 @@
           "description": "Bei Verkettung lange Zeilen zusätzlich umbrechen (0 = nicht umbrechen)."
         }
       },
+      "x-scope": "project",
       "x-page": "Editor",
       "x-control": "Auswahl, Zahlenfeld",
       "x-issue": "#312"
@@ -690,6 +722,7 @@
           "description": "Auch published-Abschnitte umsortieren; ihre Reihenfolge bestimmt Streaming und Objektinspektor."
         }
       },
+      "x-scope": "project",
       "x-page": "Editor",
       "x-control": "Liste, Kontrollkästchen",
       "x-issue": "#89"
@@ -703,6 +736,7 @@
       ],
       "default": "medium",
       "description": "Regeltreffer unter dieser Konfidenz ausblenden.",
+      "x-scope": "project",
       "x-page": "Prüfregeln",
       "x-control": "Auswahl",
       "x-issue": "#144"
@@ -719,6 +753,7 @@
           "Generated/*.pas"
         ]
       ],
+      "x-scope": "project",
       "x-page": "Projekt",
       "x-control": "Liste mit Hinzufügen/Entfernen",
       "x-issue": "#24"
@@ -745,6 +780,7 @@
           ]
         }
       ],
+      "x-scope": "global",
       "x-page": "MCP",
       "x-control": "Liste mit Hinzufügen/Entfernen",
       "x-issue": "#99"
@@ -805,6 +841,7 @@
           "description": "Zeilenenden vereinheitlichen; ohne Angabe bleiben sie."
         }
       },
+      "x-scope": "project",
       "x-page": "Formatierung",
       "x-control": "Zahlenfeld, Kontrollkästchen, Auswahl",
       "x-issue": "#43"
@@ -819,6 +856,7 @@
       ],
       "default": "info",
       "description": "Mindeststufe der Meldungen im Ausgabefenster und in der Logdatei. Gilt ab dem nächsten Start; die Kommandozeilenoption --log-level hat Vorrang.",
+      "x-scope": "global",
       "x-page": "Protokoll",
       "x-control": "Auswahl",
       "x-issue": "#76, #96",
@@ -829,6 +867,7 @@
       "type": "string",
       "default": "",
       "description": "Optionale Logdatei des Servers (Rotation bei 10 MB). Gilt ab dem nächsten Start; --log hat Vorrang.",
+      "x-scope": "global",
       "x-page": "Protokoll",
       "x-control": "Datei wählen",
       "x-issue": "#76, #96",
@@ -839,6 +878,7 @@
       "type": "string",
       "default": "",
       "description": "Optionaler Mitschnitt aller JSON-Nachrichten zur Fehlersuche. Gilt ab dem nächsten Start; --trace hat Vorrang.",
+      "x-scope": "global",
       "x-page": "Protokoll",
       "x-control": "Datei wählen",
       "x-issue": "#76, #96",

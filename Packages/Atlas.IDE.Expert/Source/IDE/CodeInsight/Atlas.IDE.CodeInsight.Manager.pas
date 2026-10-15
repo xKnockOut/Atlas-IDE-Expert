@@ -576,7 +576,7 @@ begin
     Projects := GroupProjects;
     FSession.SetProjects(Projects);
     WatchProjects(Projects);
-    FSession.ServerSettings := TAtlasIdeSettings.Current.ServerSettingsJson;
+    // Server-Einstellungen liest der Server selbst aus settings.json und atlas.json; das Plugin schickt keine.
     FSession.SetOnProgress(
       procedure
       var

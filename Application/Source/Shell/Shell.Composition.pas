@@ -244,7 +244,6 @@ type
     SelectBuildCommand = 'atlas.server.selectBuild';
     RebuildIndexCommand = 'atlas.server.rebuildIndex';
     /// <summary>Globale Benutzerdatei unter %APPDATA% (#227).</summary>
-    GlobalSettingsName = 'Atlas\settings.json';
     /// <summary>Anfragen, die länger laufen, werden abgebrochen und gemeldet.</summary>
     RequestTimeoutMs = 10000;
   public
@@ -272,6 +271,7 @@ uses
   System.StrUtils,
   Atlas.Common.Product.Version,
   Atlas.Common.Configuration.Parser,
+  Atlas.Common.Configuration.Scopes,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Logging.Providers.StreamSink,
   Atlas.Common.JsonRpc.StreamTransport,
@@ -1200,8 +1200,9 @@ begin
       Folder: TWorkspaceFolder;
     begin
       WatchParent(FLifecycle.InitializeParams);
-      // Einstellungen des IDE-Plugins (#652): initializationOptions.settings.atlas wie bei
-      // didChangeConfiguration, schon vor dem ersten Indexaufbau; atlas.json hat Vorrang.
+      // Editor-Ebene: initializationOptions.settings.atlas wie bei didChangeConfiguration, schon vor dem
+      // ersten Indexaufbau; sie zählt wie global (TConfigurationScopes). Das IDE-Plugin schickt keine
+      // Einstellungen mehr: Es schreibt settings.json, die der Server selbst liest und beobachtet.
       if FLifecycle.InitializeParams <> nil then
         FEditorSettings := TLspConfiguration.EditorSettingsFromParams(
           FLifecycle.InitializeParams.GetValue('initializationOptions'));
@@ -2037,8 +2038,9 @@ begin
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
-  // Ohne Arbeitsbereich (z. B. RTL-Unit) gelten die Werte des Plugins.
-  Result := TConfigurationParser.ParseLayered(FEditorSettings, '', Issues).Hints;
+  // Ohne Arbeitsbereich (z. B. RTL-Unit) gelten die globalen Einstellungen.
+  Result := TConfigurationParser.Parse(TConfigurationScopes.Effective(FGlobalSettings, FEditorSettings, ''),
+    Issues).Hints;
 end;
 
 function TServerComposition.FormatStyleFor(const AUri: string): TFormatStyle;
@@ -2403,13 +2405,8 @@ begin
 end;
 
 class function TServerComposition.GlobalSettingsPath: string;
-var
-  AppData: string;
 begin
-  AppData := GetEnvironmentVariable('APPDATA');
-  if AppData = '' then
-    Exit('');
-  Result := IncludeTrailingPathDelimiter(AppData) + GlobalSettingsName;
+  Result := TConfigurationScopes.GlobalFile(GetEnvironmentVariable('APPDATA'));
 end;
 
 procedure TServerComposition.LoadGlobalSettings;
@@ -2417,7 +2414,8 @@ var
   Text: string;
   FileFormat: TFileFormat;
   Workspace: TShellWorkspace;
-  Issues: TArray<TConfigurationIssue>;
+  Issues, Misplaced: TArray<TConfigurationIssue>;
+  Issue: TConfigurationIssue;
 begin
   Text := '';
   if (FGlobalSettingsFile <> '') and FileExists(FGlobalSettingsFile) then
@@ -2434,7 +2432,11 @@ begin
   if Text <> '' then
   begin
     TConfigurationParser.Parse(Text, Issues);
-    FLogger.Info(Format('Globale Einstellungen gelesen (%d Meldungen)', [Length(Issues)]));
+    // Projekt-Schlüssel in der globalen Datei wirken nicht; das Log nennt sie.
+    TConfigurationScopes.Filter(Text, TConfigurationScope.Global, Misplaced);
+    FLogger.Info(Format('Globale Einstellungen gelesen (%d Meldungen)', [Length(Issues) + Length(Misplaced)]));
+    for Issue in Misplaced do
+      FLogger.Warning(Issue.Message);
   end;
   for Workspace in FWorkspaces.ToArray do
     Workspace.Configuration.SetGlobalSettings(FGlobalSettings);

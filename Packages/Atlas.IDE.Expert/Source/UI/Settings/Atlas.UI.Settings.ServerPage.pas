@@ -1,8 +1,9 @@
 ﻿unit Atlas.UI.Settings.ServerPage;
 
 // Seite „Atlas › Server“ unter Tools › Optionen › Drittanbieter (#227):
-//   - Einstellungen des Servers für alle Projekte (%APPDATA%\Atlas\settings.json)
-//     und die des aktiven Projekts (atlas.json) im Dialog bearbeiten.
+//   - Weitere Einstellungen des Servers für alle Projekte (%APPDATA%\Atlas\settings.json,
+//     ohne die Werte der übrigen Reiter) und die des aktiven Projekts (atlas.json)
+//     im Dialog bearbeiten; jede Einstellung hat genau einen Ort (#227).
 //   - Baseline (#97): Anzahl der Treffer in atlas-baseline.json, „Baseline neu
 //     erzeugen“ und „Baseline löschen“.
 //   - Unterdrückungen „lsp-ignore“ je Regel (#147, nur Anzeige).

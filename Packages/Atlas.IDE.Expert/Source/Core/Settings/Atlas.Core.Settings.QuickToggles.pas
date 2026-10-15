@@ -8,8 +8,10 @@
 //   TAtlasPluginSettings.Load/Save. "x-drawing" kennzeichnet, was „Alles aus
 //   für diese Sitzung“ abschaltet (Zeichnungen im Editor).
 // - atlas.schema.json: Einstellungen mit "x-plugin" (Name der Plugin-
-//   Einstellung) haben zusätzlich einen Wert im Projekt; der Schalter zeigt
-//   dann „Projekt“, wenn atlas.json ihn setzt.
+//   Einstellung). Nur Projekt-Schlüssel (x-scope, #227) haben einen Wert in
+//   atlas.json; der Schalter zeigt dann „Projekt“, wenn atlas.json ihn setzt.
+//   Globale Schlüssel (z. B. hints.xmlDocFull) stehen nur in settings.json,
+//   dorthin schreibt die Plugin-Einstellung selbst.
 // Ein Schalter schreibt dieselbe globale Einstellung wie die Optionsseite.
 // Sitzungswerte (nur für diese Sitzung oder „Alles aus“) liegen in
 // TAtlasToggleSession und ändern die gespeicherten Werte nie.
@@ -132,7 +134,7 @@ begin
 end;
 
 type
-  TVisit = reference to procedure(const APath, APage: string; ASchema: TJSONObject);
+  TVisit = reference to procedure(const APath, APage, AScope: string; ASchema: TJSONObject);
 
 function IsBoolean(ASchema: TJSONObject): Boolean;
 var
@@ -143,12 +145,12 @@ begin
 end;
 
 /// <summary>Ruft AVisit für jede boolesche Einstellung mit x-quickToggle auf, auch für Glieder von Objekten
-/// (Pfad "objekt.glied", Seite des Objekts).</summary>
+/// (Pfad "objekt.glied", Seite des Objekts, x-scope des Glieds oder sonst des Objekts).</summary>
 procedure Walk(const ASchemaJson: string; const AVisit: TVisit);
 var
   Root, Properties, Children: TJSONValue;
   Pair, Sub: TJSONPair;
-  Page: string;
+  Page, Scope: string;
 begin
   Root := TJSONObject.ParseJSONValue(ASchemaJson);
   try
@@ -162,14 +164,16 @@ begin
       if not (Pair.JsonValue is TJSONObject) then
         Continue;
       Page := TJSONObject(Pair.JsonValue).GetValue<string>('x-page', '');
+      Scope := TJSONObject(Pair.JsonValue).GetValue<string>('x-scope', '');
       if IsBoolean(TJSONObject(Pair.JsonValue)) and IsTrue(TJSONObject(Pair.JsonValue), 'x-quickToggle') then
-        AVisit(Pair.JsonString.Value, Page, TJSONObject(Pair.JsonValue));
+        AVisit(Pair.JsonString.Value, Page, Scope, TJSONObject(Pair.JsonValue));
       Children := TJSONObject(Pair.JsonValue).GetValue('properties');
       if Children is TJSONObject then
         for Sub in TJSONObject(Children) do
           if (Sub.JsonValue is TJSONObject) and IsBoolean(TJSONObject(Sub.JsonValue)) and
             IsTrue(TJSONObject(Sub.JsonValue), 'x-quickToggle') then
-            AVisit(Pair.JsonString.Value + '.' + Sub.JsonString.Value, Page, TJSONObject(Sub.JsonValue));
+            AVisit(Pair.JsonString.Value + '.' + Sub.JsonString.Value, Page,
+              TJSONObject(Sub.JsonValue).GetValue<string>('x-scope', Scope), TJSONObject(Sub.JsonValue));
     end;
   finally
     Root.Free;
@@ -297,7 +301,7 @@ var
 begin
   List := nil;
   Walk(APluginCatalog,
-    procedure(const APath, APage: string; ASchema: TJSONObject)
+    procedure(const APath, APage, AScope: string; ASchema: TJSONObject)
     var
       Toggle: TAtlasQuickToggle;
     begin
@@ -311,27 +315,31 @@ begin
       List := List + [Toggle];
     end);
   Walk(AProjectSchema,
-    procedure(const APath, APage: string; ASchema: TJSONObject)
+    procedure(const APath, APage, AScope: string; ASchema: TJSONObject)
     var
       Toggle: TAtlasQuickToggle;
       Index: Integer;
-      Key: string;
+      Key, ProjectPath: string;
     begin
       Key := ASchema.GetValue<string>('x-plugin', '');
       // Ohne Plugin-Einstellung gibt es keinen globalen Wert, den der Schalter schreiben könnte.
       if Key = '' then
         Exit;
+      // Globale Schlüssel gelten in atlas.json nicht (#227): kein Ziel „Projekt“.
+      ProjectPath := APath;
+      if AScope = 'global' then
+        ProjectPath := '';
       for Index := 0 to High(List) do
         if SameText(List[Index].Key, Key) then
         begin
-          List[Index].ProjectPath := APath;
+          List[Index].ProjectPath := ProjectPath;
           Exit;
         end;
       Toggle := Default(TAtlasQuickToggle);
       Toggle.Key := Key;
       Toggle.Page := APage;
       Toggle.Caption := CaptionOf(ASchema, AEnglish);
-      Toggle.ProjectPath := APath;
+      Toggle.ProjectPath := ProjectPath;
       Toggle.Drawing := IsTrue(ASchema, 'x-drawing');
       Toggle.Feature := ASchema.GetValue<string>('x-feature', '');
       List := List + [Toggle];

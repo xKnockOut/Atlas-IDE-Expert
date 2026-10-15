@@ -103,6 +103,7 @@ contains
   Atlas.IDE.Settings.Options in 'Source\IDE\Settings\Atlas.IDE.Settings.Options.pas',
   Atlas.Core.Settings.JsonText in 'Source\Core\Settings\Atlas.Core.Settings.JsonText.pas',
   Atlas.Core.Settings.Schema in 'Source\Core\Settings\Atlas.Core.Settings.Schema.pas',
+  Atlas.Core.Settings.Scopes in 'Source\Core\Settings\Atlas.Core.Settings.Scopes.pas',
   Atlas.Core.Settings.SchemaData in 'Source\Core\Settings\Atlas.Core.Settings.SchemaData.pas',
   Atlas.UI.Settings.ProjectDialog in 'Source\UI\Settings\Atlas.UI.Settings.ProjectDialog.pas',
   Atlas.IDE.Settings.Project in 'Source\IDE\Settings\Atlas.IDE.Settings.Project.pas',
