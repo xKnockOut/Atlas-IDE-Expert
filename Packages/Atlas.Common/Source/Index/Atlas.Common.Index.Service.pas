@@ -109,6 +109,8 @@ type
     function AcquireBuilder: TIndexBuilder;
     procedure ReleaseBuilder;
     procedure ReplaceBuilder(ABuilder: TIndexBuilder);
+    /// <summary>Meldet AError über OnError; eine Ausnahme der Meldung beendet den Index-Thread nicht.</summary>
+    procedure ReportError(const AError: Exception);
   public
     constructor Create(const AIndex: ISymbolIndex; const AFileSystem: IIndexFileSystem);
     destructor Destroy; override;
@@ -418,34 +420,41 @@ begin
   try
     Watch := TStopwatch.StartNew;
     Builder := TIndexBuilder.Create(FIndex, FFileSystem, ARequest.Defines, ARequest.ResolveUnit);
-    Builder.IncludePaths := ARequest.IncludePaths;
-    Builder.LibraryRoots := ARequest.LibraryRoots;
-    Builder.LibraryDefines := ARequest.LibraryDefines;
-    Builder.Usages := ARequest.Usages;
-    WaitForOtherWriter(ARequest);
-    TMonitor.Enter(FLock);
     try
-      FCacheFile := ARequest.CacheFile;
-    finally
-      TMonitor.Exit(FLock);
+      Builder.IncludePaths := ARequest.IncludePaths;
+      Builder.LibraryRoots := ARequest.LibraryRoots;
+      Builder.LibraryDefines := ARequest.LibraryDefines;
+      Builder.Usages := ARequest.Usages;
+      WaitForOtherWriter(ARequest);
+      TMonitor.Enter(FLock);
+      try
+        FCacheFile := ARequest.CacheFile;
+      finally
+        TMonitor.Exit(FLock);
+      end;
+      // Nur die Köpfe lesen; die Symbole dekodiert der Builder je Unit, wenn er sie übernimmt (#617).
+      // Ein beschädigter Cache liefert nichts: Dann liest der Aufbau alles neu (#492).
+      Cached := ReadCache(ARequest.CacheFile);
+      // Bibliothek aus dem gemeinsamen Cache; Einträge im Projekt-Cache (ältere Stände) gelten weiter.
+      // Alle Projekte teilen eine gelesene Kopie (Rückmeldung 15.10.2026).
+      LibraryStamp := -1;
+      if ARequest.LibraryCacheFile <> '' then
+      begin
+        LibraryCached := TSharedCacheReads.Acquire(FFileSystem, ARequest.LibraryCacheFile, LibraryStamp,
+          function: TArray<TIndexCacheEntry>
+          begin
+            Result := ReadCache(Request.LibraryCacheFile);
+          end);
+        LibraryHeld := True;
+      end;
+      Builder.UseCache(LibraryCached + Cached);
+    except
+      // Noch nicht veröffentlicht: sonst bliebe der Builder als Leck zurück (Code-Review A-04).
+      Builder.Free;
+      raise;
     end;
-    // Nur die Köpfe lesen; die Symbole dekodiert der Builder je Unit, wenn er sie übernimmt (#617).
-    // Ein beschädigter Cache liefert nichts: Dann liest der Aufbau alles neu (#492).
-    Cached := ReadCache(ARequest.CacheFile);
-    // Bibliothek aus dem gemeinsamen Cache; Einträge im Projekt-Cache (ältere Stände) gelten weiter.
-    // Alle Projekte teilen eine gelesene Kopie (Rückmeldung 15.10.2026).
-    LibraryStamp := -1;
-    if ARequest.LibraryCacheFile <> '' then
-    begin
-      LibraryCached := TSharedCacheReads.Acquire(FFileSystem, ARequest.LibraryCacheFile, LibraryStamp,
-        function: TArray<TIndexCacheEntry>
-        begin
-          Result := ReadCache(Request.LibraryCacheFile);
-        end);
-      LibraryHeld := True;
-    end;
-    Builder.UseCache(LibraryCached + Cached);
     // Erst mit gefülltem Cache veröffentlichen; bis dahin bedient der alte Builder EnsureUnit.
+    // Hinter dem inneren try: Ab hier gehört der Builder dem Dienst (kein doppeltes Free).
     ReplaceBuilder(Builder);
     Turn := nil;
     if FScheduler <> nil then
@@ -477,11 +486,21 @@ begin
       FOnFinished(BuildResult, Watch.ElapsedMilliseconds);
   except
     on E: Exception do
-      if Assigned(FOnError) then
-        FOnError(E);
+      ReportError(E);
   end;
   if LibraryHeld then
     TSharedCacheReads.Release(FFileSystem, ARequest.LibraryCacheFile, LibraryStamp);
+end;
+
+procedure TIndexService.ReportError(const AError: Exception);
+begin
+  if not Assigned(FOnError) then
+    Exit;
+  try
+    FOnError(AError);
+  except
+    // Sonst läge die Ausnahme ungelesen in TThread.FatalException (Code-Review A-04).
+  end;
 end;
 
 procedure TIndexService.WaitForOtherWriter(const ARequest: TIndexRequest);
