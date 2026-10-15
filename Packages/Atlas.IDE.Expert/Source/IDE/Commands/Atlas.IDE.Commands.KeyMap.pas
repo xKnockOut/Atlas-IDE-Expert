@@ -23,6 +23,9 @@
 //   Atlas-Befehls in der Befehlspalette (#502, AtlasShortCut) und spätere
 //   Einstiege (#600 Tastenkürzel-Tipps, #766 Knopf auf der Willkommensseite:
 //   ShowWindow mit Suchtext).
+// - Spalte „Selten per Tastatur“ (#600): Collect übernimmt je Zeile die Zählung
+//   der Tastenkürzel-Tipps (TAtlasIdeShortcutTips.UsageOf), Aktionen über ihren
+//   Namen, Atlas-Tasten über den Befehl der Palette.
 
 interface
 
@@ -69,6 +72,9 @@ type
     procedure ShowWindow; overload;
     /// <summary>Fenster zeigen und nach AQuery suchen (Taste oder Text).</summary>
     procedure ShowWindow(const AQuery: string); overload;
+    /// <summary>Fenster zeigen, Suche leeren: alle Kürzel (Link „Alle Kürzel“ der Tastenkürzel-Tipps, #600).
+    /// </summary>
+    procedure ShowAll;
     /// <summary>„Tastenkürzel-Übersicht…“ in der Befehlspalette, sichtbar nach keys.overview.</summary>
     procedure RegisterCommands(APalette: TAtlasIdePalette);
     /// <summary>Package geladen: nach StartDelayMs die eigenen Tasten prüfen (keys.startupCheck).</summary>
@@ -96,7 +102,11 @@ uses
   Atlas.UI.Strings,
   Atlas.IDE.Settings.Store,
   Atlas.IDE.Editor.Style,
-  Atlas.IDE.Commands.Keys;
+  Atlas.IDE.Commands.Keys,
+  Atlas.Core.Commands.Usage,
+  Atlas.Core.Commands.ShortcutTips,
+  Atlas.IDE.Commands.Usage,
+  Atlas.IDE.Commands.ShortcutTips;
 
 const
   KeyIdPrefix = 'Atlas.Key.';
@@ -422,6 +432,36 @@ begin
   end;
 end;
 
+/// <summary>Zählung je Befehl aus der gemeinsamen Zählung (#600, #757); ohne sie bleibt sie 0.</summary>
+procedure AddUsage(var AItems: TArray<TAtlasKeyItem>);
+var
+  Index: Integer;
+  Id: string;
+  Entry: TAtlasCommandUsageEntry;
+begin
+  if TAtlasIdeCommandUsage.Instance = nil then
+    Exit;
+  for Index := 0 to High(AItems) do
+  begin
+    case AItems[Index].Source of
+      TAtlasKeySource.Action:
+        Id := AItems[Index].Id;
+      TAtlasKeySource.Binding:
+        if AItems[Index].Origin = TAtlasKeyOrigin.Atlas then
+          Id := TAtlasShortcutTips.AtlasCommandId(AItems[Index].Func)
+        else
+          Id := '';
+    else
+      Id := '';
+    end;
+    if (Id <> '') and TAtlasIdeShortcutTips.UsageOf(Id, Entry) then
+    begin
+      AItems[Index].MouseUses := Entry.Mouse;
+      AItems[Index].KeyUses := Entry.Keyboard;
+    end;
+  end;
+end;
+
 { TAtlasIdeKeyMap }
 
 constructor TAtlasIdeKeyMap.Create;
@@ -463,6 +503,7 @@ begin
     Items.Free;
   end;
   TAtlasKeyMap.Analyze(Result);
+  AddUsage(Result);
 end;
 
 class function TAtlasIdeKeyMap.SetupKeys: TArray<TAtlasSetupKey>;
@@ -574,6 +615,13 @@ begin
     FWindow.SetQuery(AQuery);
   FWindow.Show;
   FWindow.BringToFront;
+end;
+
+procedure TAtlasIdeKeyMap.ShowAll;
+begin
+  ShowWindow;
+  if FWindow <> nil then
+    FWindow.SetQuery('');
 end;
 
 procedure TAtlasIdeKeyMap.ExportHtml;

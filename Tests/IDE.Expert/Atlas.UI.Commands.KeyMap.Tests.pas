@@ -2,7 +2,8 @@
 
 // Fenster „Atlas – Tastenkürzel“ (#520): Befehlspalette mit Herkunft Atlas,
 // doppelt belegte Kürzel rot mit Hinweis auf den Gewinner, Suche nach Taste
-// und „Nur Konflikte“, Knöpfe und HTML-Export der gezeigten Zeilen.
+// und „Nur Konflikte“, Knöpfe und HTML-Export der gezeigten Zeilen; Spalte
+// „Selten per Tastatur“ aus der Zählung der Tastenkürzel-Tipps (#600).
 
 interface
 
@@ -29,6 +30,8 @@ type
     procedure ExportContainsShownRows;
     [Test]
     procedure FunctionCaptionsWithoutPunctuation;
+    [Test]
+    procedure RarelyByKeyboardColumn;
   end;
 
 implementation
@@ -211,6 +214,36 @@ begin
   finally
     Window.Free;
   end;
+end;
+
+procedure TAtlasKeyMapWindowTests.RarelyByKeyboardColumn;
+var
+  Items: TArray<TAtlasKeyItem>;
+  Headers, Cells: TArray<string>;
+begin
+  Headers := TAtlasKeyMapWindow.Headers;
+  Assert.AreEqual(6, Integer(Length(Headers)));
+  Assert.AreEqual('Selten per Tastatur', Headers[4]);
+  Assert.AreEqual('Hinweis', Headers[5], 'Hinweis bleibt die letzte, breite Spalte');
+  Items := Sample;
+  // Ohne Zählung leer.
+  Cells := TAtlasKeyMapWindow.Cells(Items, 0);
+  Assert.AreEqual(6, Integer(Length(Cells)));
+  Assert.AreEqual('', Cells[4]);
+  // Fünfmal per Maus, nie über das Kürzel: selten per Tastatur.
+  Items[0].MouseUses := 5;
+  Items[0].KeyUses := 0;
+  Assert.IsTrue(Items[0].RarelyByKeyboard);
+  Assert.AreEqual('5× Maus, 0× Tastatur', TAtlasKeyMapWindow.Cells(Items, 0)[4]);
+  // Meist über das Kürzel: nicht selten.
+  Items[0].MouseUses := 1;
+  Items[0].KeyUses := 3;
+  Assert.IsFalse(Items[0].RarelyByKeyboard);
+  Assert.AreEqual('', TAtlasKeyMapWindow.Cells(Items, 0)[4]);
+  // Zu wenige Aufrufe für ein Urteil.
+  Items[0].MouseUses := 2;
+  Items[0].KeyUses := 0;
+  Assert.IsFalse(Items[0].RarelyByKeyboard);
 end;
 
 procedure TAtlasKeyMapWindowTests.FunctionCaptionsWithoutPunctuation;

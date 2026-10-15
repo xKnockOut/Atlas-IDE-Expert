@@ -725,6 +725,9 @@ begin
   // #754: Zustandskachel an, auch bei allem grün.
   Assert.IsTrue(Settings.WelcomePageStatusTile);
   Assert.IsFalse(Settings.WelcomePageStatusTileOnlyProblems);
+  // #757: Karte „Atlas entdecken“ an, Nutzung lokal zählen an.
+  Assert.IsTrue(Settings.WelcomePageDiscover);
+  Assert.IsTrue(Settings.TipsUsageTracking);
 end;
 
 procedure TAtlasWelcomeSettingsTests.NormalizeMapsUnknownValues;
@@ -777,7 +780,11 @@ begin
   Saved.WelcomePageUnsavedHideWhenClean := True;
   Saved.WelcomePageStatusTile := False;
   Saved.WelcomePageStatusTileOnlyProblems := True;
+  Saved.WelcomePageDiscover := False;
+  Saved.TipsUsageTracking := False;
   Saved.Save(Store);
+  Assert.AreEqual(0, Store.ReadInteger('WelcomePageDiscover', 1), 'Registry-Name (#757)');
+  Assert.AreEqual(0, Store.ReadInteger('TipsUsageTracking', 1), 'Registry-Name (#757)');
   Assert.AreEqual(0, Store.ReadInteger('WelcomePageStatusTile', 1), 'Registry-Name (#754)');
   Assert.AreEqual(1, Store.ReadInteger('WelcomePageStatusTileOnlyProblems', 0));
   Assert.AreEqual(0, Store.ReadInteger('WelcomePageUnsaved', 1), 'Registry-Name (#762)');
@@ -811,6 +818,8 @@ begin
   Assert.IsTrue(Loaded.WelcomePageUnsavedHideWhenClean);
   Assert.IsFalse(Loaded.WelcomePageStatusTile);
   Assert.IsTrue(Loaded.WelcomePageStatusTileOnlyProblems);
+  Assert.IsFalse(Loaded.WelcomePageDiscover);
+  Assert.IsFalse(Loaded.TipsUsageTracking);
 end;
 
 initialization
