@@ -147,6 +147,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
   Winapi.Windows,
   System.IOUtils,
   Atlas.Core.Product.Version,
@@ -569,7 +570,7 @@ var
 begin
   Id := AId;
   // Beobachter melden auch aus Hintergrund-Threads; gesammelt und gezeichnet wird im Hauptthread.
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     var
       Known: string;
@@ -583,7 +584,7 @@ begin
       if Instance.FQueued then
         Exit;
       Instance.FQueued := True;
-      TThread.ForceQueue(nil,
+      TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
         procedure
         begin
           if Instance <> nil then

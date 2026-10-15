@@ -79,6 +79,8 @@ uses
   System.Generics.Collections,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Documentation.Contract,
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Lsp.Client;
 
 { TAtlasServerCompletionProvider }
@@ -508,7 +510,8 @@ begin
         Response.Free;
       end;
       Details.Hides := Hides;
-      TThread.Queue(nil,
+      // Der Rückruf zeigt das Detailpanel; die Hülle zählt seine Fehler für die Vervollständigung (S-05, A-02).
+      TAtlasMainThread.Queue(TAtlasFeature.Completion,
         procedure
         begin
           if AliveToken.Alive and (AliveRef <> nil) and
