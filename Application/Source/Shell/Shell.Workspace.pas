@@ -384,7 +384,20 @@ begin
   FIndexService.OnError :=
     procedure(const AError: Exception)
     begin
+      // Sonst bliebe workspace/diagnostic bis zum nächsten Reload bei indexLoading (Code-Review A-04).
+      // StartIndex hält den alten Lauf an, bevor es FProjectPending setzt: Das hier trifft nur den eigenen.
+      FProjectPending := False;
       FLogger.Error(Format('Fehler beim Aufbau des Symbolindex für %s: %s: %s', [FName, AError.ClassName, AError.Message]));
+      IndexEvent(Format('index project#%d failed %s', [FPriority, AError.ClassName]));
+      try
+        // Ohne aktiven Fortschritt ein No-op.
+        FProgress.Finish('Fehlgeschlagen');
+      except
+        // Transport schon geschlossen: Das Log genügt.
+      end;
+      // Teilweise aufgebauter Index: Syntaxprüfung und Pull-Diagnosen sollen ihn trotzdem nutzen.
+      if Assigned(FOnIndexFinished) then
+        FOnIndexFinished();
     end;
 end;
 
