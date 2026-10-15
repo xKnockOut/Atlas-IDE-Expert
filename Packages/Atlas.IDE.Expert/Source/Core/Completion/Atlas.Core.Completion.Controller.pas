@@ -23,6 +23,10 @@
 // Member mit Überschriften (#419; Header in der Reihenfolge, die Auswahl
 // überspringt sie), Filter-Chips (#422).
 //
+// Favoriten (#458, Favorites): Eintreffende Einträge bekommen Favorite gesetzt; ToggleFavorite heftet den
+// Eintrag an einer Position an bzw. löst ihn, sortiert neu und lässt die Auswahl auf dem gewählten Eintrag.
+// Gespeichert wird vom Aufrufer (IDE-Schicht).
+//
 // Mengenmodus (#448, TAtlasCompletionSets): Toggle (Leertaste) hakt den gewählten Wert an oder ab, Accept
 // übernimmt die ganze Klammer. Hat niemand umgeschaltet, nimmt Enter den gewählten Wert dazu. Nach "[" geöffnet
 // (Trigger) und ohne Einträge schließt die Liste still, statt den leeren Zustand zu zeigen.
@@ -48,7 +52,8 @@ uses
   System.Classes,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Ranking,
-  Atlas.Core.Completion.Usage;
+  Atlas.Core.Completion.Usage,
+  Atlas.Core.Completion.Favorites;
 
 {$SCOPEDENUMS ON}
 
@@ -118,6 +123,7 @@ type
     FChipsEnabled: Boolean;
     FChip: TAtlasChip;
     FUsage: TAtlasUsage;
+    FFavorites: TAtlasFavorites;
     /// <summary>Zeichen, nach dem automatisch geöffnet wurde (#448).</summary>
     FTrigger: string;
     /// <summary>Im Mengenmodus schon umgeschaltet.</summary>
@@ -136,6 +142,8 @@ type
     procedure ShowChips;
     function FirstItemFrom(APosition, ADirection: Integer): Integer;
     procedure ItemsArrived(AGeneration: Integer; const AItems: TAtlasCompletionItems);
+    /// <summary>Marken „zuletzt“/„häufig“ (#418) und Favorit (#458) ab AFrom setzen.</summary>
+    procedure MarkItems(AFrom: Integer);
     procedure IncompleteArrived(AGeneration: Integer);
     procedure Query(const AContext: TAtlasContext);
     procedure SelectByName(const AName: string);
@@ -196,6 +204,14 @@ type
     property ChipsEnabled: Boolean read FChipsEnabled write FChipsEnabled;
     /// <summary>Lernende Gewichtung (#418); nil = aus. Gehört dem Aufrufer.</summary>
     property Usage: TAtlasUsage read FUsage write FUsage;
+    /// <summary>Angeheftete Favoriten (#458); nil = aus. Gehört dem Aufrufer.</summary>
+    property Favorites: TAtlasFavorites read FFavorites write FFavorites;
+    /// <summary>Eintrag an APosition (Anzeigereihenfolge) anheften bzw. lösen (Klick auf den Stern); AItem ist
+    /// der Eintrag. Added bzw. Removed sortieren neu, die Auswahl bleibt auf dem gewählten Eintrag. NotAllowed
+    /// ohne Favoriten, ohne Liste oder auf einer Überschrift.</summary>
+    function ToggleFavorite(APosition: Integer; out AItem: TAtlasCompletionItem): TAtlasFavoriteToggle;
+    /// <summary>Wie ToggleFavorite für den gewählten Eintrag (Strg+D); NotAllowed, wenn nichts gewählt ist.</summary>
+    function ToggleSelectedFavorite(out AItem: TAtlasCompletionItem): TAtlasFavoriteToggle;
   end;
 
 implementation
@@ -501,7 +517,6 @@ procedure TAtlasCompletionController.ItemsArrived(AGeneration: Integer; const AI
 var
   Item: TAtlasCompletionItem;
   SelectedName: string;
-  Index: Integer;
 begin
   if not FActive or (AGeneration <> FGeneration) or (Length(AItems) = 0) then
     Exit;
@@ -513,9 +528,7 @@ begin
       SelectedName := Item.Name;
     FReplace := False;
     FItems := AItems;
-    if FUsage <> nil then
-      for Index := 0 to High(FItems) do
-        FItems[Index].Usage := FUsage.Mark(FItems[Index]);
+    MarkItems(0);
     Refresh(False);
     if (SelectedName <> '') and (Length(FOrder) > 0) then
     begin
@@ -525,10 +538,45 @@ begin
     Exit;
   end;
   FItems := FItems + AItems;
-  if FUsage <> nil then
-    for Index := Length(FItems) - Length(AItems) to High(FItems) do
-      FItems[Index].Usage := FUsage.Mark(FItems[Index]);
+  MarkItems(Length(FItems) - Length(AItems));
   Refresh(True);
+end;
+
+procedure TAtlasCompletionController.MarkItems(AFrom: Integer);
+var
+  Index: Integer;
+begin
+  for Index := Max(0, AFrom) to High(FItems) do
+  begin
+    if FUsage <> nil then
+      FItems[Index].Usage := FUsage.Mark(FItems[Index]);
+    FItems[Index].Favorite := (FFavorites <> nil) and FFavorites.IsFavorite(FItems[Index]);
+  end;
+end;
+
+function TAtlasCompletionController.ToggleFavorite(APosition: Integer;
+  out AItem: TAtlasCompletionItem): TAtlasFavoriteToggle;
+begin
+  Result := TAtlasFavoriteToggle.NotAllowed;
+  AItem := Default(TAtlasCompletionItem);
+  if (FFavorites = nil) or not FActive or (APosition < 0) or (APosition > High(FOrder)) or
+    TAtlasRanking.IsHeader(FOrder[APosition]) then
+    Exit;
+  AItem := FItems[FOrder[APosition]];
+  Result := FFavorites.Toggle(AItem);
+  if (Result <> TAtlasFavoriteToggle.Added) and (Result <> TAtlasFavoriteToggle.Removed) then
+    Exit;
+  // Alle Einträge neu markieren: Derselbe Member kann aus mehreren Quellen kommen.
+  MarkItems(0);
+  AItem.Favorite := Result = TAtlasFavoriteToggle.Added;
+  Refresh(True);
+end;
+
+function TAtlasCompletionController.ToggleSelectedFavorite(out AItem: TAtlasCompletionItem): TAtlasFavoriteToggle;
+begin
+  if not SelectedItem(AItem) then
+    Exit(TAtlasFavoriteToggle.NotAllowed);
+  Result := ToggleFavorite(FSelected, AItem);
 end;
 
 procedure TAtlasCompletionController.Completed(AGeneration: Integer);

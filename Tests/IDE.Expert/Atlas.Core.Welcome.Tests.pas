@@ -728,6 +728,17 @@ begin
   // #757: Karte „Atlas entdecken“ an, Nutzung lokal zählen an.
   Assert.IsTrue(Settings.WelcomePageDiscover);
   Assert.IsTrue(Settings.TipsUsageTracking);
+  // #766: Bereich „Hilfe und Rückmeldung“ an, Issue-Seite des Repositorys, Desktop.
+  Assert.IsTrue(Settings.WelcomePageHelp);
+  Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, Settings.WelcomePageHelpReportUrl);
+  Assert.AreEqual('https://github.com/xKnockOut/Atlas-IDE-Expert/issues/new', Settings.WelcomePageHelpReportUrl);
+  Assert.AreEqual('', Settings.WelcomePageHelpReportFolder, 'leer = Desktop');
+  // #755: Weiterarbeiten an mit 5 Arbeitsständen, eingehende Commits an, fetch aus, „Gemerkt“ an.
+  Assert.IsTrue(Settings.WelcomePageContinue);
+  Assert.AreEqual(5, Settings.WelcomePageContinueCount);
+  Assert.IsTrue(Settings.WelcomePageContinueIncoming);
+  Assert.IsFalse(Settings.WelcomePageContinueFetch, 'kein Netzzugriff ohne Zustimmung');
+  Assert.IsTrue(Settings.WelcomePageSaved);
 end;
 
 procedure TAtlasWelcomeSettingsTests.NormalizeMapsUnknownValues;
@@ -754,6 +765,31 @@ begin
   Settings.WelcomePageWhatsNew := 'Off';
   Settings.Normalize;
   Assert.AreEqual('off', Settings.WelcomePageWhatsNew);
+  // #766: Ziel der Issue-Seite nur als Webadresse, sonst die Vorgabe; Leerzeichen weg.
+  Settings.WelcomePageHelpReportUrl := '  https://example.org/issues/new  ';
+  Settings.WelcomePageHelpReportFolder := '  D:\Diagnose  ';
+  Settings.Normalize;
+  Assert.AreEqual('https://example.org/issues/new', Settings.WelcomePageHelpReportUrl);
+  Assert.AreEqual('D:\Diagnose', Settings.WelcomePageHelpReportFolder);
+  Settings.WelcomePageHelpReportUrl := 'http://intern/issues';
+  Settings.Normalize;
+  Assert.AreEqual('http://intern/issues', Settings.WelcomePageHelpReportUrl);
+  Settings.WelcomePageHelpReportUrl := 'file:///C:/Windows/System32/cmd.exe';
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, Settings.WelcomePageHelpReportUrl, 'keine Datei');
+  Settings.WelcomePageHelpReportUrl := 'cmd.exe';
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, Settings.WelcomePageHelpReportUrl, 'kein Programm');
+  Settings.WelcomePageHelpReportUrl := '';
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, Settings.WelcomePageHelpReportUrl, 'leer = Vorgabe');
+  // #755: Anzahl der Arbeitsstände 1–20.
+  Settings.WelcomePageContinueCount := 0;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MinContinueCount, Settings.WelcomePageContinueCount);
+  Settings.WelcomePageContinueCount := 99;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MaxContinueCount, Settings.WelcomePageContinueCount);
 end;
 
 procedure TAtlasWelcomeSettingsTests.SaveAndLoadRoundTrip;
@@ -770,6 +806,11 @@ begin
   Saved.WelcomePageGreeting := False;
   Saved.WelcomePageWhatsNew := 'always';
   Saved.WhatsNewSeen := '1.1.0';
+  Saved.WelcomePageContinue := False;
+  Saved.WelcomePageContinueCount := 7;
+  Saved.WelcomePageContinueIncoming := False;
+  Saved.WelcomePageContinueFetch := True;
+  Saved.WelcomePageSaved := False;
   Saved.WelcomePageProjectStatus := False;
   Saved.WelcomePageMaxProjects := 12;
   Saved.WelcomePageRefreshVcs := False;
@@ -782,7 +823,13 @@ begin
   Saved.WelcomePageStatusTileOnlyProblems := True;
   Saved.WelcomePageDiscover := False;
   Saved.TipsUsageTracking := False;
+  Saved.WelcomePageHelp := False;
+  Saved.WelcomePageHelpReportUrl := 'https://example.org/issues/new';
+  Saved.WelcomePageHelpReportFolder := 'D:\Diagnose';
   Saved.Save(Store);
+  Assert.AreEqual(0, Store.ReadInteger('WelcomePageHelp', 1), 'Registry-Name (#766)');
+  Assert.AreEqual('https://example.org/issues/new', Store.ReadString('WelcomePageHelpReportUrl', ''));
+  Assert.AreEqual('D:\Diagnose', Store.ReadString('WelcomePageHelpReportFolder', ''));
   Assert.AreEqual(0, Store.ReadInteger('WelcomePageDiscover', 1), 'Registry-Name (#757)');
   Assert.AreEqual(0, Store.ReadInteger('TipsUsageTracking', 1), 'Registry-Name (#757)');
   Assert.AreEqual(0, Store.ReadInteger('WelcomePageStatusTile', 1), 'Registry-Name (#754)');
@@ -792,6 +839,11 @@ begin
   Assert.AreEqual(10, Store.ReadInteger('WelcomePageUnsavedWarnHours', 0));
   Assert.AreEqual(20, Store.ReadInteger('WelcomePageUnsavedAlertHours', 0));
   Assert.AreEqual(1, Store.ReadInteger('WelcomePageUnsavedHideWhenClean', 0));
+  Assert.AreEqual(0, Store.ReadInteger('WelcomePageContinue', 1), 'Registry-Name (#755)');
+  Assert.AreEqual(7, Store.ReadInteger('WelcomePageContinueCount', 0));
+  Assert.AreEqual(0, Store.ReadInteger('WelcomePageContinueIncoming', 1));
+  Assert.AreEqual(1, Store.ReadInteger('WelcomePageContinueFetch', 0));
+  Assert.AreEqual(0, Store.ReadInteger('WelcomePageSaved', 1));
   Assert.AreEqual(0, Store.ReadInteger('WelcomePageProjectStatus', 1), 'Registry-Name (#592)');
   Assert.AreEqual(12, Store.ReadInteger('WelcomePageMaxProjects', 0));
   Assert.AreEqual(0, Store.ReadInteger('WelcomePageRefreshVcs', 1));
@@ -808,6 +860,11 @@ begin
   Assert.IsFalse(Loaded.WelcomePageGreeting);
   Assert.AreEqual('always', Loaded.WelcomePageWhatsNew);
   Assert.AreEqual('1.1.0', Loaded.WhatsNewSeen);
+  Assert.IsFalse(Loaded.WelcomePageContinue);
+  Assert.AreEqual(7, Loaded.WelcomePageContinueCount);
+  Assert.IsFalse(Loaded.WelcomePageContinueIncoming);
+  Assert.IsTrue(Loaded.WelcomePageContinueFetch);
+  Assert.IsFalse(Loaded.WelcomePageSaved);
   Assert.IsFalse(Loaded.WelcomePageProjectStatus);
   Assert.AreEqual(12, Loaded.WelcomePageMaxProjects);
   Assert.IsFalse(Loaded.WelcomePageRefreshVcs);
@@ -820,6 +877,9 @@ begin
   Assert.IsTrue(Loaded.WelcomePageStatusTileOnlyProblems);
   Assert.IsFalse(Loaded.WelcomePageDiscover);
   Assert.IsFalse(Loaded.TipsUsageTracking);
+  Assert.IsFalse(Loaded.WelcomePageHelp);
+  Assert.AreEqual('https://example.org/issues/new', Loaded.WelcomePageHelpReportUrl);
+  Assert.AreEqual('D:\Diagnose', Loaded.WelcomePageHelpReportFolder);
 end;
 
 initialization

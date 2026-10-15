@@ -20,6 +20,12 @@ type
     [Test]
     procedure ListsDiagnosticsWithLocation;
     [Test]
+    procedure ReportsMetrics;
+    [Test]
+    procedure ReportsTodosOfProjectFilesOnly;
+    [Test]
+    procedure FiltersTodos;
+    [Test]
     procedure ParsesDirection;
     [Test]
     procedure ReplacesLineRange;
@@ -39,7 +45,8 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Lsp.References,
   Atlas.Common.Mcp.Server,
-  Atlas.Common.Mcp.CodeTools;
+  Atlas.Common.Mcp.CodeTools,
+  Atlas.Common.Todos.Contract;
 
 const
   WorkerFile = 'C:\P\Worker.pas';
@@ -179,6 +186,75 @@ begin
     end);
   Assert.Contains(Text, 'C:\P\Kaputt.pas:6:');
   Assert.Contains(Text, 'in 1 Dateien');
+end;
+
+procedure TMcpCodeToolsTests.ReportsMetrics;
+var
+  Text: string;
+  ReadText: TReferenceReadText;
+begin
+  ReadText :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      AText := 'unit Lang;'#10'interface'#10'implementation'#10 +
+        'procedure Viele(A, B, C, D, E, F, G: Integer);'#10'begin'#10'end;'#10'end.';
+      Result := True;
+    end;
+  Text := TMcpCodeTools.Metrics(TServerSettings.Default, 'C:\P', ['C:\P\Lang.pas'], ReadText, False);
+  Assert.Contains(Text, '# Code-Metriken: P');
+  Assert.Contains(Text, '| Viele | Lang.pas | 4 | 3 | 0 | 1 | 0 | **7** |');
+  Text := TMcpCodeTools.Metrics(TServerSettings.Default, 'C:\P', ['C:\P\Lang.pas'], ReadText, True);
+  Assert.Contains(Text, '"exceeded": ["parameters"]');
+end;
+
+/// <summary>Zwei Projektdateien mit TODOs; Fremd.pas läge auch im Ordner, gehört aber nicht zum Projekt.</summary>
+function TodoText(const AFileName: string; out AText: string): Boolean;
+begin
+  Result := True;
+  if AFileName.EndsWith('Kasse.pas') then
+    AText := 'unit Kasse;'#10'// TODO 1 -oMarco -cGUI : Fokus setzen'#10'{ DONE -oAnna : Rundung }'#10 +
+      '// FIXME: Rabatt doppelt'#10'end.'
+  else if AFileName.EndsWith('Lager.pas') then
+    AText := 'unit Lager;'#10'{ TODO 2 -oAnna -cDaten : Index anlegen }'#10'end.'
+  else
+    AText := 'unit Fremd;'#10'// TODO fremd'#10'end.';
+end;
+
+procedure TMcpCodeToolsTests.ReportsTodosOfProjectFilesOnly;
+var
+  Text: string;
+begin
+  Text := TMcpCodeTools.Todos(TServerSettings.Default, 'C:\P', ['C:\P\Kasse.pas', 'C:\P\Lager.pas'], TodoText,
+    TTodoFilter.Default, False);
+  Assert.Contains(Text, '# TODOs: P');
+  Assert.Contains(Text, '3 offene Einträge in 2 Dateien (FIXME 1, TODO 2).');
+  Assert.Contains(Text, '| 2 | TODO | 1 | GUI | Marco | Fokus setzen |');
+  Assert.DoesNotContain(Text, 'Rundung');
+  Assert.DoesNotContain(Text, 'fremd');
+  Text := TMcpCodeTools.Todos(TServerSettings.Default, 'C:\P', ['C:\P\Kasse.pas'], TodoText,
+    TTodoFilter.All, True);
+  Assert.Contains(Text, '"keyword": "DONE", "done": true');
+  Assert.Contains(Text, '"open": 2, "done": 1');
+end;
+
+procedure TMcpCodeToolsTests.FiltersTodos;
+var
+  Filter: TTodoFilter;
+  Text: string;
+begin
+  Filter := TTodoFilter.Default;
+  Filter.Owner := 'anna';
+  Text := TMcpCodeTools.Todos(TServerSettings.Default, 'C:\P', ['C:\P\Kasse.pas', 'C:\P\Lager.pas'], TodoText,
+    Filter, True);
+  Assert.Contains(Text, '"text": "Index anlegen"');
+  Assert.DoesNotContain(Text, 'Fokus');
+  Filter := TTodoFilter.Default;
+  Filter.Category := 'GUI';
+  Filter.UnitName := 'Kasse';
+  Text := TMcpCodeTools.Todos(TServerSettings.Default, 'C:\P', ['C:\P\Kasse.pas', 'C:\P\Lager.pas'], TodoText,
+    Filter, True);
+  Assert.Contains(Text, '"open": 1');
+  Assert.Contains(Text, '"unit": "Kasse"');
 end;
 
 procedure TMcpCodeToolsTests.ReplacesLineRange;

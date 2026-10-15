@@ -4,7 +4,8 @@
 // svn: Parser mit aufgezeichneten Ausgaben (git 2.43, svn 1.14), Umsetzungen
 // mit einem Prozessläufer-Ersatz, Erkennen der Arbeitskopie, Auswahl nach
 // vcs.provider, einmalige Meldung bei fehlendem Programm und Wechsel-
-// erkennung. Die Tests mit echtem git bzw. svn stehen in
+// erkennung; eingehende Commits mit Autor und Dateien und die Aufrufe
+// dafür (#755). Die Tests mit echtem git bzw. svn stehen in
 // Atlas.Core.Vcs.Integration.Tests.
 
 interface
@@ -72,6 +73,10 @@ type
     procedure GitProviderRunsLocalWorkCommands;
     [Test]
     procedure SvnAndNullLocalWork;
+    [Test]
+    procedure GitIncomingParsesCommitsWithFiles;
+    [Test]
+    procedure GitProviderRunsIncomingCommands;
   end;
 
 implementation
@@ -1322,6 +1327,78 @@ begin
   Assert.IsTrue(Local.Outgoing('main', '', 1, Commits) = TAtlasVcsOutcome.Disabled);
   Assert.IsTrue(Local.ChangesIn('x', Changes) = TAtlasVcsOutcome.Disabled);
   Assert.IsTrue(Local.Push('main', 'origin', 'refs/heads/main', False) = TAtlasVcsOutcome.Disabled);
+end;
+
+procedure TAtlasVcsTests.GitIncomingParsesCommitsWithFiles;
+var
+  Commits: TArray<TAtlasVcsIncomingCommit>;
+begin
+  // git log --format=%x1e%H%x00%ct%x00%an%x00%s --name-only -z: Trenner, Kopf mit NUL, Zeilenende, Dateien mit NUL.
+  Commits := TAtlasGitParser.ParseIncoming(#$1E + Hash1 + #0'1792071092'#0'Eva Muster'#0'Kunde: Prüfung'#0#10 +
+    'src/Kunde.pas'#0'Neu.pas'#0#10 + #$1E + Hash2 + #0'1792071000'#0'Max'#0'Merge branch x'#0#10, Root);
+  Assert.AreEqual(2, Integer(Length(Commits)));
+  Assert.AreEqual(Hash1, Commits[0].Hash);
+  Assert.AreEqual(Copy(Hash1, 1, 7), Commits[0].ShortHash);
+  Assert.AreEqual('Eva Muster', Commits[0].Author);
+  Assert.AreEqual('Kunde: Prüfung', Commits[0].Summary);
+  Assert.AreEqual(2, Integer(Length(Commits[0].Files)));
+  Assert.AreEqual(Under('src/Kunde.pas'), Commits[0].Files[0], 'vollständiger Pfad');
+  Assert.AreEqual(Under('Neu.pas'), Commits[0].Files[1]);
+  Assert.IsTrue(Commits[1].Date < Commits[0].Date);
+  Assert.AreEqual(0, Integer(Length(Commits[1].Files)), 'Merge ohne Dateien');
+  Assert.AreEqual(0, Integer(Length(TAtlasGitParser.ParseIncoming('', Root))), 'nichts Neues');
+  Assert.WillRaise(
+    procedure
+    begin
+      TAtlasGitParser.ParseIncoming(#$1E'kurz'#0'1'#0, Root);
+    end, EAtlasVcsParse);
+end;
+
+procedure TAtlasVcsTests.GitProviderRunsIncomingCommands;
+const
+  Prefix = '--no-optional-locks -c core.quotepath=off -c color.ui=false ';
+var
+  Runner: TFakeRunner;
+  RunnerRef: IAtlasVcsRunner;
+  Vcs: IAtlasVersionControl;
+  Incoming: IAtlasVcsIncoming;
+  Commits: TArray<TAtlasVcsIncomingCommit>;
+  Revision: string;
+begin
+  Runner := TFakeRunner.Create;
+  RunnerRef := Runner;
+  Runner.Answer('rev-parse', Hash2 + #10);
+  Runner.Answer('log', #$1E + Hash1 + #0'1792071092'#0'Eva'#0'eins'#0#10'A.pas'#0);
+  Runner.Answer('fetch', '');
+  Vcs := TAtlasGitVersionControl.Create(Root, RunnerRef, 'git.exe', 5000);
+  Assert.IsTrue(Supports(Vcs, IAtlasVcsIncoming, Incoming), 'Git bietet IAtlasVcsIncoming');
+  Assert.IsTrue(Incoming.Resolve('origin/main', Revision) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(Hash2, Revision);
+  Assert.AreEqual(Prefix + 'rev-parse --verify --quiet origin/main^{commit}', Runner.Calls[0]);
+  Assert.IsTrue(Incoming.Incoming('origin/main', [Hash1, '', Hash2], 200, Commits) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(Prefix + 'log --format=' + TAtlasGitParser.IncomingFormat + ' --name-only -z --no-renames ' +
+    '--max-count=200 origin/main --not ' + Hash1 + ' ' + Hash2, Runner.Calls[1], 'nur lokale Remote-Branches');
+  Assert.AreEqual(1, Integer(Length(Commits)));
+  Assert.AreEqual(Under('A.pas'), Commits[0].Files[0]);
+  Assert.IsTrue(Incoming.Fetch('') = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(Prefix + '-c credential.interactive=never -c core.askPass= fetch --quiet --no-tags',
+    Runner.Calls[2], 'ohne Rückfrage nach Zugangsdaten');
+  // Namen, die als Option gelesen würden, starten keinen Prozess.
+  Assert.IsTrue(Incoming.Resolve('--all', Revision) = TAtlasVcsOutcome.Failed);
+  Assert.IsTrue(Incoming.Incoming('--all', nil, 5, Commits) = TAtlasVcsOutcome.Failed);
+  Assert.IsTrue(Incoming.Incoming('origin/main', ['-p'], 5, Commits) = TAtlasVcsOutcome.Failed);
+  Assert.IsTrue(Incoming.Fetch('--upload-pack=x') = TAtlasVcsOutcome.Failed);
+  Assert.AreEqual(3, Integer(Length(Runner.Calls)));
+  // SVN: kein lokaler Stand des Servers, kein Prozess; leere Umsetzung meldet ihren Grund.
+  Vcs := TAtlasSvnVersionControl.Create(Root, RunnerRef, 'svn.exe');
+  Assert.IsTrue(Supports(Vcs, IAtlasVcsIncoming, Incoming));
+  Assert.IsTrue(Incoming.Incoming('trunk', nil, 5, Commits) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(0, Integer(Length(Commits)));
+  Assert.AreEqual(3, Integer(Length(Runner.Calls)), 'SVN startet keinen Prozess');
+  Vcs := TAtlasNullVersionControl.Create(TAtlasVcsOutcome.Disabled);
+  Assert.IsTrue(Supports(Vcs, IAtlasVcsIncoming, Incoming));
+  Assert.IsTrue(Incoming.Fetch('') = TAtlasVcsOutcome.Disabled);
+  Assert.IsTrue(Incoming.Incoming('origin/main', nil, 5, Commits) = TAtlasVcsOutcome.Disabled);
 end;
 
 initialization

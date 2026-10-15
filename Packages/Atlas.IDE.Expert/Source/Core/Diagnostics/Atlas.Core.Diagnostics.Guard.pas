@@ -25,7 +25,8 @@ uses
 type
 {$SCOPEDENUMS ON}
   TAtlasFeature = (Completion, Signature, Hover, Pairs, Problems, Reloader, Palette, CheckOnSave, Watchdog, Server,
-    Settings, Menu, Files, InlayHints, Results, EditorCommands, Forms, Build, Status, WelcomePage, ShortcutTips);
+    Settings, Menu, Files, InlayHints, Results, EditorCommands, Forms, Build, Status, WelcomePage, ShortcutTips,
+    Notes, Bookmarks);
 {$SCOPEDENUMS OFF}
 
   TAtlasFeatures = set of TAtlasFeature;
@@ -380,7 +381,7 @@ const
   Names: array[TAtlasFeature] of string = ('Vervollständigung', 'Parameter-Hint', 'Tooltip', 'Klammerpaare',
     'Probleme', 'Neuladen', 'Befehlspalette', 'Prüfung beim Speichern', 'Wächter', 'Server', 'Einstellungen', 'Menü',
     'Dateien', 'Inlay-Hints', 'Ergebnisfenster', 'Editorbefehle', 'Formulare', 'Compile-Ereignisse', 'Statusfeld',
-    'Willkommensseite', 'Tastenkürzel-Tipps');
+    'Willkommensseite', 'Tastenkürzel-Tipps', 'Notizen', 'Lesezeichen');
 begin
   Result := Names[AFeature];
 end;

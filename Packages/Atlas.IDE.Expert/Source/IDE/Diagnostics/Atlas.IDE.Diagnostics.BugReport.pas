@@ -20,6 +20,13 @@ type
   TAtlasIdeBugReport = record
   public
     class procedure Execute(const AServer: TAtlasServerCommandWithArguments; const AMessage: TProc<string>); static;
+    /// <summary>Ordner der Projekte der geöffneten Projektgruppe (für &lt;ws&gt;); auch für „Problem melden“
+    /// (#766).</summary>
+    class function ProjectRoots: TArray<string>; static;
+    /// <summary>Einstellungen des Plugins als JSON.</summary>
+    class function SettingsJson: string; static;
+    /// <summary>Benutzer-, Rechner- und Domänenname, die anonymisiert werden.</summary>
+    class function Identity: TArray<string>; static;
   end;
 
 implementation
@@ -37,8 +44,7 @@ uses
   Atlas.UI.Strings,
   Atlas.IDE.Settings.Store;
 
-/// <summary>Ordner der Projekte der geöffneten Projektgruppe (für &lt;ws&gt;).</summary>
-function ProjectRoots: TArray<string>;
+class function TAtlasIdeBugReport.ProjectRoots: TArray<string>;
 var
   Modules: IOTAModuleServices;
   Group: IOTAProjectGroup;
@@ -62,7 +68,7 @@ begin
   end;
 end;
 
-function SettingsJson: string;
+class function TAtlasIdeBugReport.SettingsJson: string;
 var
   Values: TJSONObject;
 begin
@@ -72,6 +78,12 @@ begin
   finally
     Values.Free;
   end;
+end;
+
+class function TAtlasIdeBugReport.Identity: TArray<string>;
+begin
+  Result := [GetEnvironmentVariable('USERNAME'), GetEnvironmentVariable('COMPUTERNAME'),
+    GetEnvironmentVariable('USERDOMAIN')];
 end;
 
 class procedure TAtlasIdeBugReport.Execute(const AServer: TAtlasServerCommandWithArguments;
@@ -92,8 +104,7 @@ begin
   Input.Anonymize := TAtlasIdeSettings.Current.BugReportAnonymize;
   Input.Created := Now;
   Input.Roots := ProjectRoots;
-  Input.Identity := [GetEnvironmentVariable('USERNAME'), GetEnvironmentVariable('COMPUTERNAME'),
-    GetEnvironmentVariable('USERDOMAIN')];
+  Input.Identity := Identity;
   Input.Settings := SettingsJson;
   Input.PluginLog := TAtlasBugReport.Tail(TPath.Combine(TAtlasRotatingLog.DefaultFolder, 'atlas.log'),
     TAtlasBugReport.LogLines);

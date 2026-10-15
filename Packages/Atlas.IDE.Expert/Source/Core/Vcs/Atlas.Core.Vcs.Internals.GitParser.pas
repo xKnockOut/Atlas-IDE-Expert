@@ -10,6 +10,10 @@
 //   git log --format=<LogFormat> …                         Commits
 //   git diff --name-status -z <a> <b>                      geänderte Dateien
 //   git remote                                             Remotes
+// Für eingehende Commits (#755):
+//   git log --format=<IncomingFormat> --name-only -z …     Commits mit Dateien
+//   Jeder Commit beginnt mit RS (#$1E), danach Hash, Zeit, Autor und Betreff
+//   je mit NUL abgeschlossen, dann LF und die Dateien je mit NUL.
 // Mit -z trennt git die Einträge durch NUL und schreibt Pfade unverändert
 // (UTF-8, ohne Anführungszeichen); bei Umbenennungen folgt der alte Pfad als
 // eigener Eintrag. Pfade sind relativ zur Wurzel, weil git dort läuft.
@@ -40,6 +44,8 @@ type
     StashFormat = '%H%x00%ct%x00%gd%x00%gs';
     /// <summary>Format für git log (#762): Hash, Zeit (Unix), Betreff.</summary>
     LogFormat = '%H%x00%ct%x00%s';
+    /// <summary>Format für git log --name-only -z (#755): RS, Hash, Zeit (Unix), Autor, Betreff.</summary>
+    IncomingFormat = '%x1e%H%x00%ct%x00%an%x00%s';
   public
     /// <summary>Ausgabe von git for-each-ref mit BranchFormat.</summary>
     class function ParseBranches(const AText: string): TArray<TAtlasVcsBranch>; static;
@@ -49,6 +55,8 @@ type
     class function ParseLog(const AText: string): TArray<TAtlasVcsCommit>; static;
     /// <summary>Ausgabe von git diff --name-status -z; Pfade vollständig unter ARoot.</summary>
     class function ParseNameStatus(const AText, ARoot: string): TArray<TAtlasVcsChange>; static;
+    /// <summary>Ausgabe von git log --name-only -z mit IncomingFormat; Pfade vollständig unter ARoot.</summary>
+    class function ParseIncoming(const AText, ARoot: string): TArray<TAtlasVcsIncomingCommit>; static;
     /// <summary>Ausgabe von git remote: ein Name je Zeile.</summary>
     class function ParseLines(const AText: string): TArray<string>; static;
   end;
@@ -419,6 +427,39 @@ begin
     Change.Path := VcsFullPath(ARoot, Entries[Index]);
     Inc(Index);
     Result := Result + [Change];
+  end;
+end;
+
+class function TAtlasGitParser.ParseIncoming(const AText, ARoot: string): TArray<TAtlasVcsIncomingCommit>;
+var
+  Records, Fields: TArray<string>;
+  Item, Path: string;
+  Index: Integer;
+  Commit: TAtlasVcsIncomingCommit;
+begin
+  Result := nil;
+  Records := AText.Split([#$1E]);
+  for Item in Records do
+  begin
+    // Vor dem ersten Trenner steht nichts; Zeilenenden zwischen den Commits zählen nicht.
+    if Item.Trim([#0, #10, #13]) = '' then
+      Continue;
+    Fields := Item.Split([#0]);
+    if (Length(Fields) < 4) or (Length(Fields[0]) < 7) then
+      raise EAtlasVcsParse.Create('git log: Hash, Zeit, Autor und Betreff erwartet');
+    Commit := Default(TAtlasVcsIncomingCommit);
+    Commit.Hash := Fields[0];
+    Commit.Date := UnixField(Fields[1]);
+    Commit.Author := Fields[2];
+    Commit.Summary := Fields[3];
+    // Dateien: die erste nach einem Zeilenende, alle je mit NUL abgeschlossen.
+    for Index := 4 to High(Fields) do
+    begin
+      Path := Fields[Index].Trim([#10, #13]);
+      if Path <> '' then
+        Commit.Files := Commit.Files + [VcsFullPath(ARoot, Path)];
+    end;
+    Result := Result + [Commit];
   end;
 end;
 

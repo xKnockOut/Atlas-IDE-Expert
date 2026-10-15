@@ -14,6 +14,9 @@
 // Commits noch Stashes oder lokale Branches; was nicht übertragen ist, sind
 // die geänderten Dateien (Changes). Branches, Stashes, Remotes und Outgoing
 // liefern deshalb ohne Prozess Ok mit leerer Liste, ChangesIn und Push Failed.
+// Eingehende Commits (IAtlasVcsIncoming, #755): SVN hält keinen lokalen
+// Stand des Servers; Resolve liefert '', Incoming eine leere Liste, Fetch tut
+// nichts (alle Ok ohne Prozess).
 // ChangeMarker: Zeitstempel und Größe von .svn/wc.db; svn update und
 // svn switch schreiben die Datenbank.
 
@@ -25,7 +28,7 @@ uses
   Atlas.Core.Vcs.Tools;
 
 type
-  TAtlasSvnVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork)
+  TAtlasSvnVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming)
   private
     FRoot: string;
     FCommand: TAtlasVcsCommand;
@@ -51,6 +54,11 @@ type
       out ACommits: TArray<TAtlasVcsCommit>): TAtlasVcsOutcome;
     function ChangesIn(const ARevision: string; out AChanges: TArray<TAtlasVcsChange>): TAtlasVcsOutcome;
     function Push(const ABranch, ARemote, ARemoteRef: string; ASetUpstream: Boolean): TAtlasVcsOutcome;
+    { IAtlasVcsIncoming }
+    function Resolve(const ARef: string; out ARevision: string): TAtlasVcsOutcome;
+    function Incoming(const AUpstream: string; const AExclude: TArray<string>; AMax: Integer;
+      out ACommits: TArray<TAtlasVcsIncomingCommit>): TAtlasVcsOutcome;
+    function Fetch(const ARemote: string): TAtlasVcsOutcome;
   end;
 
 implementation
@@ -233,6 +241,26 @@ function TAtlasSvnVersionControl.Push(const ABranch, ARemote, ARemoteRef: string
   ASetUpstream: Boolean): TAtlasVcsOutcome;
 begin
   Result := TAtlasVcsOutcome.Failed;
+end;
+
+{ IAtlasVcsIncoming (#755) }
+
+function TAtlasSvnVersionControl.Resolve(const ARef: string; out ARevision: string): TAtlasVcsOutcome;
+begin
+  ARevision := '';
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TAtlasSvnVersionControl.Incoming(const AUpstream: string; const AExclude: TArray<string>; AMax: Integer;
+  out ACommits: TArray<TAtlasVcsIncomingCommit>): TAtlasVcsOutcome;
+begin
+  ACommits := nil;
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TAtlasSvnVersionControl.Fetch(const ARemote: string): TAtlasVcsOutcome;
+begin
+  Result := TAtlasVcsOutcome.Ok;
 end;
 
 end.
