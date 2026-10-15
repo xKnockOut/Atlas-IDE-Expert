@@ -609,3 +609,16 @@ Vorbereitung: Formular mit Button `btnSave` und den Methoden `FormCreate(Sender:
 | SY5 | SY3/SY4 bei 100, 150 und 200 % Skalierung (Monitor wechseln) | Symbol scharf und in passender Größe |
 | SY6 | *Tools › Optionen › Benutzeroberfläche › IDE-Stil* zwischen hell und dunkel wechseln | Menü, Statusfeld, Optionsseite und Ergebnisfenster wechseln ohne Neustart die Variante |
 | SY7 | Explorer: `AtlasServer.exe` und `AtlasSetup.exe`; „Apps und Features“ nach der Installation | Symbol bei beiden Dateien und beim Eintrag „Atlas“ |
+
+## Deklaration und Implementierung wechseln (#775)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DI1 | Cursor auf `procedure Run;` im Klassenrumpf, Strg+Umschalt+↓ | Cursor steht auf `Run` in `procedure TFoo.Run;` der Implementierung |
+| DI2 | Cursor irgendwo im Rumpf von `TFoo.Run` (auch in einer lokalen Routine), Strg+Umschalt+↑ | Cursor steht auf `Run` in der Deklaration |
+| DI3 | Überladene Methode (`Add(Integer)`, `Add(string)`) aus beiden Richtungen | Jeweils die passende Überladung |
+| DI4 | Verschachtelte Klasse, generische Klasse, `class operator`, Routine aus dem interface-Teil | Sprung wie bei DI1/DI2 |
+| DI5 | Cursor außerhalb einer Methode (z. B. auf einem Feld oder einer Leerzeile), Strg+Umschalt+↑ | Verhalten wie ohne Atlas (Klassennavigation der IDE) |
+| DI6 | Optionen › Atlas › Befehle: „Zwischen Deklaration und Implementierung wechseln“ aus, OK | Strg+Umschalt+↑/↓ macht wieder die IDE; Menü *Atlas* › „Deklaration/Implementierung wechseln“ geht weiter |
+| DI7 | Taste 1 auf Strg+Alt+D ändern, Taste 2 leeren, OK | Strg+Alt+D wechselt; Strg+Umschalt+↑ macht die IDE, Strg+Umschalt+↓ ebenso |
+| DI8 | Menü *Atlas*, Kontextmenü *Atlas* und Befehlspalette „Deklaration/Implementierung wechseln“ | Sprung wie DI1; außerhalb einer Methode Zeile „Am Cursor steht keine Methode …“ in der Meldungsansicht |

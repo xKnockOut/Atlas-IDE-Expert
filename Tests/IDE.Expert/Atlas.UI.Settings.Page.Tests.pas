@@ -30,6 +30,8 @@ type
     [Test]
     procedure UndoSettingsRoundTrip;
     [Test]
+    procedure MethodToggleRoundTrip;
+    [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
     procedure ServerPageRunsActions;
@@ -70,6 +72,7 @@ uses
   Vcl.Graphics,
   Vcl.ImageCollection,
   System.JSON,
+  Vcl.Menus,
   Vcl.Forms,
   Vcl.ComCtrls,
   Atlas.UI.Strings;
@@ -371,6 +374,32 @@ begin
     Assert.AreEqual('delete', Saved.UndoMultiFileNewFiles);
     Assert.AreEqual(Settings.UndoKey, Saved.UndoKey);
     Assert.AreEqual(Settings.RedoKey, Saved.RedoKey);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.MethodToggleRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  // #775: Schalter und beide Tasten; leeres Feld = keine Taste.
+  Settings := TAtlasPluginSettings.Defaults;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.IsTrue(Page.MethodToggle.Checked);
+    Assert.AreEqual(ShortCutToText(TShortCut($6026)), Page.MethodToggleUpKey.Text);
+    Assert.AreEqual(ShortCutToText(TShortCut($6028)), Page.MethodToggleDownKey.Text);
+    Page.MethodToggle.Checked := False;
+    Page.MethodToggleUpKey.Text := '';
+    Page.MethodToggleDownKey.Text := ShortCutToText(TShortCut($C044));
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.MethodToggle);
+    Assert.AreEqual(0, Saved.MethodToggleUpKey);
+    Assert.AreEqual($C044, Saved.MethodToggleDownKey);
   finally
     Page.Free;
   end;

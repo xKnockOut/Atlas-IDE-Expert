@@ -350,3 +350,12 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Inlay-Hints:** „Name = Wert“ am Zeilenende, nur aussagekräftige (nicht einziges Argument, keine vagen Namen, nicht wenn das Argument den Namen enthält). Issue #768 (eigene Spalte in der Zeilenleiste).
 - **Werkzeug:** `cc.ps1` (IDE-Plugins\Claude-Compile, nicht committet) wertet das Fortschrittsfenster „Erzeugen“ nicht mehr als Blockade. Plugin-Builds: Atlas-Paket vorher unter „Disabled Packages“ abschalten, sonst lädt die Build-IDE die alte BPL.
 - **Issues:** 44 geschlossen; offen mit Kommentar #281 (Lauf in Delphi 12), #414 (manuelle Prüfung), #144 (Konfidenz im Hover). Alle Ketten-Branches und `claude/project-thread-8pa4h2` gelöscht; nur `feature/261-ide-compiler` bleibt.
+
+## #775 Deklaration ⇄ Implementierung (15.10.2026, Branch `claude/project-thread-oqg6m8` von main)
+- Strg+Umschalt+↑/↓ wechselt zwischen Methodendeklaration und Implementierung. Logik ohne Server und ohne OTA in `Atlas.Core.Editor.MethodToggle` (eigener kleiner Lexer und Parser), IDE-Teil `TAtlasIdeEditorCommands.TryToggleMethod`.
+- Die IDE hat dieselbe Funktion (Klassennavigation) auf denselben Tasten; Atlas blockierte sie vorher nicht. Jetzt bindet Atlas die Tasten mit `AddAttemptKey`: sofort ausgeführt, ohne Treffer `krNextProc`, damit die IDE weitermacht. Mit `MethodToggle` aus bindet Atlas nichts.
+- Einstellungen `MethodToggle`, `MethodToggleUpKey` ($6026), `MethodToggleDownKey` ($6028), Reiter *Befehle*. Wenn PR #769 (settings.json) kommt, müssen die drei Werte dort mit hinein.
+- 15 DUnitX-Tests in `Tests/IDE.Expert/Atlas.Core.Editor.MethodToggle.Tests.pas`, unter FPC 3.2.2 grün; zusätzlich gegen alle 684 Units im Repository: alle 7186 nicht abstrakten Deklarationen finden ihre Implementierung, der Rückweg stimmt. Nicht gebaut in Delphi; Prüfliste DI1–DI8 in `docs/Atlas-Testfaelle.md`.
+- Offen beim Bauen prüfen: ob `krNextProc` in der Bindung wirklich die Klassennavigation der IDE erreicht (DI5).
+- Konflikt: #639 „Wert umschalten“ plant dieselben Tasten.
+- `Tools/Update-ConfigDoc.ps1` bricht auf main schon vor dieser Änderung mit „The variable '$Section' cannot be retrieved“ ab (unter pwsh 7.4 in der Cloud).
