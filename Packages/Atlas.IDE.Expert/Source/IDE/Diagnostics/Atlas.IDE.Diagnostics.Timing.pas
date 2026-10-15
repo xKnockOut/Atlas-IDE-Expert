@@ -27,6 +27,7 @@ uses
   Vcl.ExtCtrls,
   Atlas.Core.Status.Contract,
   Atlas.Core.Status.Registry,
+  Atlas.Core.Status.Lines,
   Atlas.IDE.Commands.Keys,
   Atlas.IDE.Commands.Palette,
   Atlas.UI.Diagnostics.TimingFrame;
@@ -34,7 +35,8 @@ uses
 type
   TAtlasIdeDiagnosticMode = class
   public const
-    StatusId = 'atlas.diagnosticMode';
+    /// <summary>Dieselbe Kennung liest die Zustandskachel (#754).</summary>
+    StatusId = TAtlasStatusLines.DiagnosticModeId;
     StatusOrder = 3;
     RefreshMs = 500;
     SaveEveryMs = 30000;
@@ -213,7 +215,8 @@ begin
   FLineRef := FLine;
   // Gelb: Der Modus misst und schreibt Diagnosedaten (#754).
   FLine.Update(TAtlasStrings.Text(TAtlasTextId.DiagnosticStatusLine), TAtlasStatusState.Yellow,
-    TAtlasStrings.Text(TAtlasTextId.DiagnosticStatusSummary));
+    TAtlasStrings.Text(TAtlasTextId.DiagnosticStatusSummary), TAtlasStrings.Text(TAtlasTextId.WelcomeStateDiagnosticOn),
+    TAtlasStrings.Text(TAtlasTextId.WelcomeStateDiagnosticDetail));
   FRegistry.Add(FLineRef);
 end;
 

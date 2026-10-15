@@ -6,7 +6,9 @@
 // als IAtlasStatusItem bei IAtlasStatusRegistry an und ruft Changed, wenn
 // sich ihr Inhalt ändert. Das Feld in der Statusleiste und das Fenster beim
 // Klick lesen nur die Registry; neue Zeilen brauchen keine Änderung an der
-// Oberfläche.
+// Oberfläche. Die Zustandskachel der Willkommensseite (#754) liest dieselben
+// Zeilen; die optionale Schnittstelle IAtlasStatusBrief liefert ihr eine
+// Kurzform mit Zusatz rechts.
 
 interface
 
@@ -35,6 +37,16 @@ type
     function HasAction: Boolean;
     /// <summary>Aktion bei Klick auf die Zeile; im Hauptthread.</summary>
     procedure Execute;
+  end;
+
+  /// <summary>Optionale Kurzform einer Zeile für die Zustandskachel der Willkommensseite (#754). Zustand und
+  /// Aktion bleiben die der Zeile; Zeilen ohne diese Schnittstelle zeigen dort ihren Text.</summary>
+  IAtlasStatusBrief = interface
+    ['{9C4E2B71-0D5A-4F3E-8B26-7A1F6C93D4E5}']
+    /// <summary>Kurzer Text, z. B. "Server läuft"; '' = Text der Zeile.</summary>
+    function Brief: string;
+    /// <summary>Zusatz rechts, z. B. "seit 19:02"; '' = keiner.</summary>
+    function Detail: string;
   end;
 
   IAtlasStatusRegistry = interface

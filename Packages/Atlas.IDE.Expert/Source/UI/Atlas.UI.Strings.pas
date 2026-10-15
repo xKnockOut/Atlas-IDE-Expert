@@ -203,7 +203,11 @@ type
     SetupErrorInsightIde, SetupErrorInsightDuplicate, SetupErrorInsightNone, SetupErrorInsightRestart,
     SetupKeysReady, SetupKeysReadyWins, SetupKeysConflict, SetupWhyServerStarting, SetupWhyServerVersion,
     SetupWhyDelphiNoProject, SetupWhyDelphiUnknown, SetupWhyIndexBuilding, SetupWhyIndexNoProjects,
-    SetupWhyLibraryPending, SetupWhyErrorInsightRestart);
+    SetupWhyLibraryPending, SetupWhyErrorInsightRestart,
+    WelcomeStateTitle, WelcomeStateRestart, WelcomeStateSettings, WelcomeStateLogFolder, WelcomeStateUpdate,
+    WelcomeStateServerMissing, WelcomeStateVersion, WelcomeStateIndexMissing, WelcomeStateSetupMissing,
+    WelcomeStateDiagnosticOff, WelcomeStateDiagnosticOn, WelcomeStateDiagnosticDetail, SettingsWelcomeStatusTile,
+    SettingsWelcomeStatusTileOnlyProblems);
 
   TAtlasStrings = class
   private class var
@@ -670,7 +674,12 @@ const
      'Der Server liest die Units der Projekte nacheinander ein, das aktive zuerst. Vervollständigung und Hover arbeiten schon währenddessen.',
      'Ohne geöffnetes Projekt gibt es nichts zu indizieren. Öffne ein Projekt oder eine Projektgruppe.',
      'RTL und VCL liest der erste Indexlauf einmal je Delphi-Version und Plattform ein und legt sie im Bibliotheks-Cache ab; alle Projekte teilen ihn.',
-     'Die IDE liest diese Einstellung nur beim Start. Nach dem nächsten Start der IDE ist der Punkt grün.'),
+     'Die IDE liest diese Einstellung nur beim Start. Nach dem nächsten Start der IDE ist der Punkt grün.',
+     'Atlas', 'Server neu starten', 'Einstellungen', 'Log-Ordner öffnen', 'Jetzt aktualisieren',
+     'Server: kein Zustand', 'Atlas %s', 'Index unbekannt', 'Einrichtung noch nicht geprüft',
+     'Diagnosemodus aus', 'Diagnosemodus an', 'Logs wachsen',
+     'Zustandskachel „Atlas“ (Server, Version, Index, Einrichtung, Diagnosemodus)',
+     'Zustandskachel nur zeigen, wenn eine Zeile gelb oder rot ist'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1109,7 +1118,11 @@ const
      'The server reads the units of the projects one after another, the active one first. Completion and hover already work meanwhile.',
      'Without an open project there is nothing to index. Open a project or a project group.',
      'The first indexing run reads RTL and VCL once per Delphi version and platform into the library cache; all projects share it.',
-     'The IDE reads this setting only at startup. After the next IDE start the point is green.'));
+     'The IDE reads this setting only at startup. After the next IDE start the point is green.',
+     'Atlas', 'Restart server', 'Settings', 'Open log folder', 'Update now', 'Server: no status', 'Atlas %s',
+     'Index unknown', 'Setup not checked yet', 'Diagnostic mode off', 'Diagnostic mode on', 'logs are growing',
+     'Status tile "Atlas" (server, version, index, setup, diagnostic mode)',
+     'Show the status tile only when a row is yellow or red'));
 
 { TAtlasStrings }
 

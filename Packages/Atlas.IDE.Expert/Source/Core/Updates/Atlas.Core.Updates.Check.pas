@@ -10,9 +10,11 @@
 // - Versionen nach SemVer 2.0 (Vorabversionen vor der Version, Build-Angabe
 //   ohne Bedeutung). Neuer ist eine Version nur, wenn sie größer ist als die
 //   installierte.
-// - Der Zustand (gefragt, letzte Prüfung) liegt in einer eigenen Datei, nicht
-//   in den Einstellungen, damit die tägliche Prüfung keine Einstellungsstände
-//   (#722) erzeugt.
+// - Der Zustand (gefragt, letzte Prüfung, zuletzt gefundene neuere Version)
+//   liegt in einer eigenen Datei, nicht in den Einstellungen, damit die
+//   tägliche Prüfung keine Einstellungsstände (#722) erzeugt. Die gefundene
+//   Version hält die Zeile „Version“ des Statusfelds und der Zustandskachel
+//   (#754) bis zur nächsten Prüfung bzw. bis sie installiert ist.
 // Heruntergeladen oder installiert wird nie etwas.
 
 interface
@@ -33,6 +35,9 @@ type
     Asked: Boolean;
     /// <summary>Letzte Abfrage (Ortszeit); 0 = nie.</summary>
     LastCheck: TDateTime;
+    /// <summary>Zuletzt gefundene neuere Version und Adresse ihrer Änderungen (#754); '' = keine.</summary>
+    Available: string;
+    ChangesUrl: string;
     function ToJson: string;
     class function FromJson(const AJson: string): TAtlasUpdateState; static;
   end;
@@ -65,6 +70,13 @@ type
     class function IsDue(ALastCheck, ANow: TDateTime): Boolean; static;
     /// <summary>Adresse mit genau zwei Parametern: atlas und ide.</summary>
     class function RequestUrl(const ABase, AAtlasVersion, AIdeVersion: string): string; static;
+    /// <summary>Ergebnis einer Prüfung im Zustand merken (#754): neue Version setzt Available und ChangesUrl,
+    /// „aktuell“ löscht sie; ein Fehlschlag oder keine Abfrage ändert nichts.</summary>
+    class procedure Remember(var AState: TAtlasUpdateState; const AResult: TAtlasUpdateResult); static;
+    /// <summary>Gemerkte Version, die neuer ist als AInstalled; False ohne (dann ist ARelease leer). Nach der
+    /// Installation des Updates gilt sie nicht mehr.</summary>
+    class function Pending(const AState: TAtlasUpdateState; const AInstalled: string;
+      out ARelease: TAtlasRelease): Boolean; static;
     /// <summary>Eine Prüfung; setzt AState.LastCheck, wenn abgefragt wurde.</summary>
     class function Run(const ASource: IAtlasVersionSource; var AState: TAtlasUpdateState; AEnabled: Boolean;
       const AInstalled, AIdeVersion: string; ANow: TDateTime): TAtlasUpdateResult; static;
@@ -101,6 +113,11 @@ begin
     Root.AddPair('asked', TJSONBool.Create(Asked));
     if LastCheck > 0 then
       Root.AddPair('lastCheck', TJSONString.Create(DateToISO8601(LastCheck, False)));
+    if Available <> '' then
+    begin
+      Root.AddPair('available', TJSONString.Create(Available));
+      Root.AddPair('changes', TJSONString.Create(ChangesUrl));
+    end;
     Result := Root.ToJSON;
   finally
     Root.Free;
@@ -110,7 +127,9 @@ end;
 class function TAtlasUpdateState.FromJson(const AJson: string): TAtlasUpdateState;
 var
   Value: TJSONValue;
+  Root: TJSONObject;
   Text: string;
+  Found: Boolean;
 begin
   Result := Default(TAtlasUpdateState);
   try
@@ -122,10 +141,22 @@ begin
   try
     if not (Value is TJSONObject) then
       Exit;
-    TJSONObject(Value).TryGetValue<Boolean>('asked', Result.Asked);
-    if TJSONObject(Value).TryGetValue<string>('lastCheck', Text) and
-      not TryISO8601ToDate(Text, Result.LastCheck, False) then
+    Root := TJSONObject(Value);
+    Root.TryGetValue<Boolean>('asked', Result.Asked);
+    // Ergebnis der Abfragen erst in eine Variable: so lesen es auch andere Compiler (Tests unter FPC).
+    Found := Root.TryGetValue<string>('lastCheck', Text);
+    if Found and not TryISO8601ToDate(Text, Result.LastCheck, False) then
       Result.LastCheck := 0;
+    // Nur eine gültige Version (#754); ohne https-Adresse gilt die Release-Seite der Version.
+    Found := Root.TryGetValue<string>('available', Text);
+    if Found and TAtlasUpdates.IsValidVersion(Text) then
+    begin
+      Result.Available := Text;
+      Found := Root.TryGetValue<string>('changes', Result.ChangesUrl);
+      if not Found or not Result.ChangesUrl.StartsWith('https://', True) or
+        (Result.ChangesUrl.IndexOfAny([' ', #9, #10, #13]) >= 0) then
+        Result.ChangesUrl := TAtlasUpdates.ReleasesUrl + '/tag/v' + Text;
+    end;
   finally
     Value.Free;
   end;
@@ -228,6 +259,7 @@ end;
 class function TAtlasUpdates.TryParse(const AJson: string; out ARelease: TAtlasRelease): Boolean;
 var
   Value: TJSONValue;
+  Found: Boolean;
 begin
   ARelease := Default(TAtlasRelease);
   try
@@ -237,15 +269,21 @@ begin
       Value := nil;
   end;
   try
-    Result := (Value is TJSONObject) and TJSONObject(Value).TryGetValue<string>('version', ARelease.Version) and
-      IsValidVersion(ARelease.Version);
+    // Ergebnis der Abfragen erst in eine Variable: so lesen es auch andere Compiler (Tests unter FPC).
+    Result := Value is TJSONObject;
+    if Result then
+    begin
+      Found := TJSONObject(Value).TryGetValue<string>('version', ARelease.Version);
+      Result := Found and IsValidVersion(ARelease.Version);
+    end;
     if not Result then
     begin
       ARelease := Default(TAtlasRelease);
       Exit;
     end;
     // Nur https-Adressen landen in der Meldungsansicht.
-    if not TJSONObject(Value).TryGetValue<string>('changes', ARelease.ChangesUrl) or
+    Found := TJSONObject(Value).TryGetValue<string>('changes', ARelease.ChangesUrl);
+    if not Found or
       not ARelease.ChangesUrl.StartsWith('https://', True) or (ARelease.ChangesUrl.IndexOfAny([' ', #9, #10, #13]) >= 0)
     then
       ARelease.ChangesUrl := ReleasesUrl + '/tag/v' + ARelease.Version;
@@ -263,6 +301,36 @@ class function TAtlasUpdates.RequestUrl(const ABase, AAtlasVersion, AIdeVersion:
 begin
   Result := ABase + '?atlas=' + TNetEncoding.URL.Encode(AAtlasVersion) + '&ide=' +
     TNetEncoding.URL.Encode(AIdeVersion);
+end;
+
+class procedure TAtlasUpdates.Remember(var AState: TAtlasUpdateState; const AResult: TAtlasUpdateResult);
+begin
+  case AResult.Outcome of
+    TAtlasUpdateOutcome.NewVersion:
+      begin
+        AState.Available := AResult.Release.Version;
+        AState.ChangesUrl := AResult.Release.ChangesUrl;
+      end;
+    TAtlasUpdateOutcome.Current:
+      begin
+        AState.Available := '';
+        AState.ChangesUrl := '';
+      end;
+  end;
+end;
+
+class function TAtlasUpdates.Pending(const AState: TAtlasUpdateState; const AInstalled: string;
+  out ARelease: TAtlasRelease): Boolean;
+begin
+  ARelease := Default(TAtlasRelease);
+  Result := (AState.Available <> '') and (Compare(AState.Available, AInstalled) > 0);
+  if not Result then
+    Exit;
+  ARelease.Version := AState.Available;
+  ARelease.ChangesUrl := AState.ChangesUrl;
+  if not ARelease.ChangesUrl.StartsWith('https://', True) or (ARelease.ChangesUrl.IndexOfAny([' ', #9, #10, #13]) >= 0)
+  then
+    ARelease.ChangesUrl := ReleasesUrl + '/tag/v' + AState.Available;
 end;
 
 class function TAtlasUpdates.Run(const ASource: IAtlasVersionSource; var AState: TAtlasUpdateState;

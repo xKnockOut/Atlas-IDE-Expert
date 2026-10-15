@@ -350,7 +350,7 @@ var
 begin
   // #753: Ein/Aus, Ort (Willkommensseite oder Fenster „Atlas-Start“), Atlas-Layout, Kopf und Grußzeile;
   // #760: Suchfeld, Gruppe „Symbole“ und Taste; #756: Karte „Neu in Atlas“; #592: Bereich „Projekte“;
-  // #762: Bereich „Nicht gesichert“.
+  // #762: Bereich „Nicht gesichert“; #754: Zustandskachel „Atlas“.
   Settings := TAtlasPluginSettings.Defaults;
   Page := TAtlasSettingsPage.Create(nil);
   try
@@ -372,6 +372,8 @@ begin
     Assert.AreEqual('24', Page.WelcomeUnsavedWarn.Text);
     Assert.AreEqual('72', Page.WelcomeUnsavedAlert.Text);
     Assert.IsFalse(Page.WelcomeUnsavedHideClean.Checked);
+    Assert.IsTrue(Page.WelcomeStatusTile.Checked);
+    Assert.IsFalse(Page.WelcomeStatusTileOnlyProblems.Checked);
     Page.WelcomeEnabled.Checked := False;
     Page.WelcomeHost.Choice := 1;
     Page.WelcomeLayout.Checked := True;
@@ -389,6 +391,8 @@ begin
     Page.WelcomeUnsavedWarn.Text := '48';
     Page.WelcomeUnsavedAlert.Text := '12';
     Page.WelcomeUnsavedHideClean.Checked := True;
+    Page.WelcomeStatusTile.Checked := False;
+    Page.WelcomeStatusTileOnlyProblems.Checked := True;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.WelcomePage);
@@ -408,6 +412,8 @@ begin
     Assert.AreEqual(48, Saved.WelcomePageUnsavedWarnHours);
     Assert.AreEqual(48, Saved.WelcomePageUnsavedAlertHours, 'rot nie vor gelb');
     Assert.IsTrue(Saved.WelcomePageUnsavedHideWhenClean);
+    Assert.IsFalse(Saved.WelcomePageStatusTile);
+    Assert.IsTrue(Saved.WelcomePageStatusTileOnlyProblems);
     Page.LoadFrom(Saved);
     Assert.AreEqual(1, Page.WelcomeHost.Choice);
     Assert.IsTrue(Page.WelcomeLayout.Checked);

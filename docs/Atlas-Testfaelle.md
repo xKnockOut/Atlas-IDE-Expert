@@ -703,6 +703,35 @@ Vorbereitung: Git-Projekt `GitDemo` mit Remote `origin` (z. B. ein lokales Bare-
 | NG16 | Acht Projekte in der Liste, IDE neu starten | Bereich ohne spürbare Verzögerung; Abfrage im Hintergrund, höchstens einmal je Minute und Projekt; beim Schließen eines Projekts sofort neu |
 | NG17 | Dunkles und helles Thema, 150 % Skalierung, Delphi 12 bzw. Host „Atlas-Start“ | Punkt, Name, Branch, Detailzeile und Schaltfläche lesbar und nicht abgeschnitten; Tooltip mit Pfad, Branches und ältestem Stand; im Fenster „Atlas-Start“ derselbe Inhalt |
 
+### Zustandskachel „Atlas“ (#754)
+
+Abweichungen vom Issue: „Jetzt aktualisieren“ führt den Ablauf aus #495 aus, also die Seite mit Änderungen und Download des neuen Releases im Browser; Atlas lädt und installiert nichts selbst (#495 schließt das aus). Der Index-Stand ohne laufenden Server kommt aus der neuen Datei `%LOCALAPPDATA%\Atlas\index-state.json`; der Zeitpunkt der letzten vollständigen Indizierung ist das Ende des letzten Indexlaufs, den Atlas gesehen hat. Die Texte der Statusfeld-Zeilen Server, Index und Version sind wie die übrigen Zeilen aus #591 deutsch.
+
+Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert, Willkommensseite (bzw. Fenster *Atlas-Start*) mit Atlas-Bereichen, ein Projekt mit einigen Units.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZK1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasWelcomeStateTests`, `TAtlasStateLinesTests`, `TAtlasIndexStoreTests`, `TAtlasStateUpdateTests` und `TAtlasWelcomeStateFrameTests` grün |
+| ZK2 | IDE starten, Projekt öffnen, Server läuft, Indizierung fertig; Willkommensseite | Kachel „Atlas“ in der rechten Spalte mit fünf Zeilen: grün „Server läuft“ mit „seit hh:mm“ rechts, „Atlas <Version>“ (grün „aktuell“ mit eingeschalteter Update-Prüfung, sonst grau), grün „Index: n Units“ mit „indiziert hh:mm“, „Einrichtung: …“, grau „Diagnosemodus aus“; darunter „Server neu starten“, „Einstellungen“, „Log-Ordner öffnen“; kein „Jetzt aktualisieren“ |
+| ZK3 | Während der Indizierung (z. B. Index neu aufbauen) | Index-Zeile gelb „Index wird aufgebaut“ mit Prozent rechts (z. B. „45 %“), ändert sich ohne Klick; danach grün mit „indiziert <Uhrzeit des Endes>“ |
+| ZK4 | `AtlasServer.exe` im Task-Manager beenden | Zeile „Server abgestürzt“ rot mit „um hh:mm“; Statusfeld zeigt im selben Moment dieselbe Ampel (rot) und im Tooltip „Server: abgestürzt um …“ |
+| ZK5 | ZK4, dann „Server neu starten“ | Server startet; Zeile wird gelb („startet“) und dann grün „Server läuft“ mit neuem „seit“; kein Zwischenstand „beendet“ als rot |
+| ZK6 | *Atlas › Server neu starten* bzw. Server über die Optionen beenden | kurz „Server beendet“ grau (nicht rot), danach wie ZK5 |
+| ZK7 | Server läuft nicht (Serverpfad ungültig), IDE nach einer Sitzung mit indiziertem Projekt neu starten | Index-Zeile grau „Index: n Units“ mit „Stand vom TT.MM. hh:mm“ (bzw. nur Uhrzeit am selben Tag); Tooltip „… (Server läuft nicht)“. Ohne je gespeicherten Stand: „Index: Server läuft nicht“ |
+| ZK8 | Update-Prüfung an, in `%LOCALAPPDATA%\Atlas\updates.json` `"lastCheck"` auf ein altes Datum und eine ältere installierte Version (bzw. neues Release vorhanden); IDE starten | Nach der Prüfung Zeile gelb „Update x.y.z bereit“ mit „installiert a.b.c“; Knopf „Jetzt aktualisieren“ erscheint; Statusfeld zeigt dieselbe gelbe Zeile „Version: Atlas a.b.c, Update x.y.z bereit“ |
+| ZK9 | ZK8: „Jetzt aktualisieren“ bzw. Klick auf die Versionszeile | Browser öffnet die Release-Seite des Updates (https); kein Download durch die IDE; Plugin-Protokoll „Update x.y.z: Änderungen im Browser geöffnet“ ohne Adresse |
+| ZK10 | ZK8, IDE neu starten (Prüfung heute schon gelaufen) | Gelbe Zeile und Knopf bleiben (gefundene Version in `updates.json`, Feld `available`); nach Installation der neuen Version grün „aktuell“ |
+| ZK11 | Einrichtung mit einem gelben Punkt (z. B. Error Insight an) | Zeile „Einrichtung: 5 von 6 erledigt“ gelb, unterstrichen; Klick öffnet die Prüfliste (#625) |
+| ZK12 | Diagnosemodus einschalten (Strg+Umschalt+Alt+D) | Zeile gelb „Diagnosemodus an“ mit „Logs wachsen“ rechts, unterstrichen; Klick öffnet „Atlas-Diagnose“; ausschalten: grau „Diagnosemodus aus“ |
+| ZK13 | „Einstellungen“ | *Tools › Optionen › Drittanbieter › Atlas* öffnet (wie Menü *Atlas › Optionen…*) |
+| ZK14 | „Log-Ordner öffnen“ | Explorer mit `%LOCALAPPDATA%\Atlas\Logs` |
+| ZK15 | Für jede Zeile Kachel und Statusfeld vergleichen (Tooltip bzw. Fenster des Statusfelds) | Gleiche Ampel je Zeile; Tooltip der Kachelzeile = Text der Statusfeld-Zeile |
+| ZK16 | *Tools › Optionen › Atlas › Willkommensseite*: „Zustandskachel nur zeigen, wenn eine Zeile gelb oder rot ist“; alles grün bzw. grau | Kachel verschwindet sofort; Diagnosemodus einschalten bzw. Server beenden: Kachel erscheint ohne Neuladen der Seite, nach dem Ausschalten verschwindet sie wieder |
+| ZK17 | „Zustandskachel „Atlas“ …“ aus | Kachel verschwindet sofort; im Kontextmenü bzw. Atlas-Layout kein Bereich „Atlas“ mehr; an: kommt zurück |
+| ZK18 | Im Leerlauf 5 Minuten beobachten (Prozess-Monitor, Profiler) | Kein Zeitgeber der Kachel; gezeichnet wird nur bei einer Änderung (Server-Abfrage alle 5 s ändert nur bei neuen Werten etwas) |
+| ZK19 | Schmale Spalte bzw. Fenster *Atlas-Start* schmal ziehen; dunkles und helles Thema, 150 % Skalierung | Knöpfe brechen in eine zweite Reihe um, die Kachel wird höher, nichts abgeschnitten; lange Texte enden mit „…“, Zusatz rechts bleibt sichtbar; Punkte und Texte lesbar; Themenwechsel ohne Neustart |
+| ZK20 | Abgesicherter Start | Kachel zeigt, was es gibt; fehlende Zeilen grau (z. B. „Einrichtung noch nicht geprüft“); kein Fehler im Protokoll |
+
 ## Atlas-Symbol (#751)
 
 | Nr. | Schritte | Erwartet |
