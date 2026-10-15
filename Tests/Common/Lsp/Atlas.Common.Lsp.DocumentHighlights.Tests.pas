@@ -28,6 +28,9 @@ type
     procedure MarksMethodDeclarationAndImplementation;
     [Test]
     procedure NothingOutsideIdentifiers;
+    /// <summary>Code-Review P-01: Mit vom Aufrufer gepinntem Baum dasselbe Ergebnis; der Pin bleibt danach.</summary>
+    [Test]
+    procedure HighlightsWithPinnedResolver;
   end;
 
 implementation
@@ -145,6 +148,37 @@ end;
 procedure TLspDocumentHighlightsTests.NothingOutsideIdentifiers;
 begin
   Assert.AreEqual('', Describe('begin'));
+end;
+
+procedure TLspDocumentHighlightsTests.HighlightsWithPinnedResolver;
+var
+  Tree: TSyntaxTree;
+  Pinned: TUnitIndex;
+  Found: TArray<TDocumentHighlight>;
+begin
+  Tree := TPascalParser.Parse(Source);
+  try
+    FResolver.PinTree(Tree, 'C:\P\Haupt.pas');
+    try
+      Pinned := FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas');
+      Found := TLspDocumentHighlights.Highlights(FResolver, FIndex, Tree, 'C:\P\Haupt.pas',
+        PositionOf(Source, 'Wert;', 1));
+      Assert.AreEqual(3, Integer(Length(Found)));
+      Assert.AreEqual(7, Found[0].Range.StartPos.Line);
+      Assert.IsTrue(Found[0].Kind = THighlightKind.Text);
+      Assert.AreEqual(12, Found[1].Range.StartPos.Line);
+      Assert.IsTrue(Found[1].Kind = THighlightKind.Read);
+      Assert.AreEqual(13, Found[2].Range.StartPos.Line);
+      Assert.IsTrue(Found[2].Kind = THighlightKind.Write);
+      Assert.IsTrue(Pointer(Pinned.Symbols) = Pointer(FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas').Symbols));
+    finally
+      FResolver.UnpinTree;
+    end;
+  finally
+    Tree.Free;
+  end;
+  // Ohne äußeren Pin unverändert.
+  Assert.AreEqual('7:4/T 12:10/R 13:2/W', Describe('Wert;'));
 end;
 
 initialization

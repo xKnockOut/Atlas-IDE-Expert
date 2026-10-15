@@ -7,6 +7,9 @@
 
 interface
 
+uses
+  Atlas.Core.Documentation.Layout;
+
 {$SCOPEDENUMS ON}
 
 type
@@ -352,6 +355,9 @@ type
     class function Fmt(AId: TAtlasTextId; const AArgs: array of const): string; static;
     /// <summary>"Konfidenz: mittel" zu "high", "medium", "low" (#144); '' bei anderem Wert.</summary>
     class function Confidence(const AName: string): string; static;
+    /// <summary>Überschriften der XMLDoc-Abschnitte in der Sprache der Oberfläche; eine Stelle für Hover und
+    /// Detailpanel (D-07).</summary>
+    class function DocLabels: TAtlasDocLabels; static;
     class property Language: TAtlasLanguage read FLanguage write FLanguage;
   end;
 
@@ -1627,6 +1633,14 @@ end;
 class function TAtlasStrings.Fmt(AId: TAtlasTextId; const AArgs: array of const): string;
 begin
   Result := Format(Texts[FLanguage, AId], AArgs);
+end;
+
+class function TAtlasStrings.DocLabels: TAtlasDocLabels;
+begin
+  Result.TypeParams := Text(TAtlasTextId.DocTypeParams);
+  Result.Value := Text(TAtlasTextId.DocValue);
+  Result.Example := Text(TAtlasTextId.DocExample);
+  Result.SeeAlso := Text(TAtlasTextId.DocSeeAlso);
 end;
 
 class function TAtlasStrings.Confidence(const AName: string): string;

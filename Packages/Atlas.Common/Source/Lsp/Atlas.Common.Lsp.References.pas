@@ -70,6 +70,7 @@ implementation
 uses
   Atlas.Common.Lsp.Internals.Namespaces,
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Common.Dfm.FormFiles,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions,
@@ -166,21 +167,36 @@ class function TLspReferences.InTree(AResolver: TNameResolver; const AIndex: ISy
   const AFileName, AName: string; const AWanted: TDefinitionTarget;
   const ACancellation: IJsonRpcCancellationToken): TArray<TTextRange>;
 var
-  Token: TPascalToken;
+  Index: Integer;
+  Alternative: string;
   Candidate: TArray<TDefinitionTarget>;
+  Ranges: TList<TTextRange>;
 begin
   Result := nil;
-  for Token in ATree.Tokens do
-  begin
-    // Attribute (#119): [TestFixture] verwendet TestFixtureAttribute.
-    if (Token.Kind <> TPascalTokenKind.Identifier) or not (SameText(CleanName(Token.Text), AName) or
-      SameText(CleanName(Token.Text), AlternativeName(AName))) then
-      Continue;
-    if ACancellation <> nil then
-      ACancellation.ThrowIfCancellationRequested;
-    Candidate := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, Token.StartPos, True);
-    if (Length(Candidate) > 0) and SameTarget(Candidate[0], AWanted) then
-      Result := Result + [TTextRange.Create(Token.StartPos, Token.EndPos)];
+  Alternative := AlternativeName(AName);
+  Ranges := TList<TTextRange>.Create;
+  // Den Baum einmal auswerten statt je Treffer (Code-Review P-01); verschachtelt zulässig, wenn der
+  // Aufrufer ihn schon gepinnt hat.
+  AResolver.PinTree(ATree, AFileName);
+  try
+    // Über den Index statt for-in: keine Kopie des Token-Records je Token.
+    for Index := 0 to High(ATree.Tokens) do
+    begin
+      // Attribute (#119): [TestFixture] verwendet TestFixtureAttribute.
+      if (ATree.Tokens[Index].Kind <> TPascalTokenKind.Identifier) or
+        not (SameText(CleanName(ATree.Tokens[Index].Text), AName) or
+        SameText(CleanName(ATree.Tokens[Index].Text), Alternative)) then
+        Continue;
+      if ACancellation <> nil then
+        ACancellation.ThrowIfCancellationRequested;
+      Candidate := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, ATree.Tokens[Index].StartPos, True);
+      if (Length(Candidate) > 0) and SameTarget(Candidate[0], AWanted) then
+        Ranges.Add(TTextRange.Create(ATree.Tokens[Index].StartPos, ATree.Tokens[Index].EndPos));
+    end;
+    Result := Ranges.ToArray;
+  finally
+    AResolver.UnpinTree;
+    Ranges.Free;
   end;
 end;
 
@@ -188,6 +204,9 @@ class function TLspReferences.Find(AResolver: TNameResolver; const AIndex: ISymb
   const AFileName: string; const APosition: TTextPosition; ADeclaration: Boolean;
   const AFiles: TArray<string>; const AReadText: TReferenceReadText;
   const ACancellation: IJsonRpcCancellationToken): TArray<TReferenceLocation>;
+
+var
+  Locations: TList<TReferenceLocation>;
 
   procedure Add(const AFile: string; const ARanges: TArray<TTextRange>);
   var
@@ -198,7 +217,7 @@ class function TLspReferences.Find(AResolver: TNameResolver; const AIndex: ISymb
     begin
       Location.FileName := AFile;
       Location.Range := Range;
-      Result := Result + [Location];
+      Locations.Add(Location);
     end;
   end;
 
@@ -206,54 +225,62 @@ var
   Index: Integer;
   Name, FileName, Text, DfmName: string;
   Wanted: TArray<TDefinitionTarget>;
-  Searched: TArray<string>;
+  Searched: TDictionary<string, Boolean>;
   Tree: TSyntaxTree;
-  Filtered: TArray<TReferenceLocation>;
-  Location: TReferenceLocation;
 begin
   Result := nil;
   Index := TokenAt(ATree.Tokens, APosition);
   if Index < 0 then
     Exit;
-  Wanted := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
-  if Length(Wanted) = 0 then
-    Exit;
-  Name := CleanName(ATree.Tokens[Index].Text);
-  Add(AFileName, InTree(AResolver, AIndex, ATree, AFileName, Name, Wanted[0], ACancellation));
-  Searched := [AFileName];
-  for FileName in AFiles do
-  begin
-    if IndexText(FileName, Searched) >= 0 then
-      Continue;
-    Searched := Searched + [FileName];
-    // Die kürzere Schreibweise ist in der längeren enthalten.
-    if not (Assigned(AReadText) and AReadText(FileName, Text)) or not (ContainsText(Text, Name) or
-      ContainsText(Text, AlternativeName(Name))) then
-      Continue;
-    Tree := TSyntaxTreeCache.Parse(Text);
-    try
-      Add(FileName, InTree(AResolver, AIndex, Tree, FileName, Name, Wanted[0], ACancellation));
-    finally
-      Tree.Free;
+  // Listen statt Result := Result + [...] (Code-Review P-08); bei vielen Treffern quadratisch.
+  Locations := TList<TReferenceLocation>.Create;
+  Searched := TDictionary<string, Boolean>.Create;
+  // Den eigenen Baum einmal auswerten (Code-Review P-01): Targets und InTree nutzen ihn; die Fremdbäume
+  // pinnt InTree darüber und löst sie wieder.
+  AResolver.PinTree(ATree, AFileName);
+  try
+    Wanted := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
+    if Length(Wanted) = 0 then
+      Exit;
+    Name := CleanName(ATree.Tokens[Index].Text);
+    Add(AFileName, InTree(AResolver, AIndex, ATree, AFileName, Name, Wanted[0], ACancellation));
+    Searched.AddOrSetValue(AnsiUpperCase(AFileName), True);
+    for FileName in AFiles do
+    begin
+      if Searched.ContainsKey(AnsiUpperCase(FileName)) then
+        Continue;
+      Searched.Add(AnsiUpperCase(FileName), True);
+      // Die kürzere Schreibweise ist in der längeren enthalten.
+      if not (Assigned(AReadText) and AReadText(FileName, Text)) or not (ContainsText(Text, Name) or
+        ContainsText(Text, AlternativeName(Name))) then
+        Continue;
+      Tree := TSyntaxTreeCache.Parse(Text);
+      try
+        Add(FileName, InTree(AResolver, AIndex, Tree, FileName, Name, Wanted[0], ACancellation));
+      finally
+        Tree.Free;
+      end;
     end;
+    // Formulare zur Unit der Deklaration, bei FMX samt Plattformansichten (#87).
+    if Assigned(AReadText) then
+    begin
+      if not AReadText(Wanted[0].FileName, Text) then
+        Text := '';
+      for DfmName in TFormFiles.FormFiles(Wanted[0].FileName, Text) do
+        if AReadText(DfmName, Text) then
+          Add(DfmName, InForm(Text, Name));
+    end;
+    if not ADeclaration then
+      for Index := Locations.Count - 1 downto 0 do
+        if SameText(Locations[Index].FileName, Wanted[0].FileName) and
+          (Locations[Index].Range.StartPos = Wanted[0].SelectionRange.StartPos) then
+          Locations.Delete(Index);
+    Result := Locations.ToArray;
+  finally
+    AResolver.UnpinTree;
+    Searched.Free;
+    Locations.Free;
   end;
-  // Formulare zur Unit der Deklaration, bei FMX samt Plattformansichten (#87).
-  if Assigned(AReadText) then
-  begin
-    if not AReadText(Wanted[0].FileName, Text) then
-      Text := '';
-    for DfmName in TFormFiles.FormFiles(Wanted[0].FileName, Text) do
-      if AReadText(DfmName, Text) then
-        Add(DfmName, InForm(Text, Name));
-  end;
-  if ADeclaration then
-    Exit;
-  Filtered := nil;
-  for Location in Result do
-    if not (SameText(Location.FileName, Wanted[0].FileName) and
-      (Location.Range.StartPos = Wanted[0].SelectionRange.StartPos)) then
-      Filtered := Filtered + [Location];
-  Result := Filtered;
 end;
 
 function TLspReferences.HandleReferences(const AParams: TJSONValue;

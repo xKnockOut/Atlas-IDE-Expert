@@ -82,6 +82,17 @@ type
     procedure SymbolsNamedUsesTableOfStoredUnit;
     [Test]
     procedure SymbolsNamedFallsBackForChangedSymbols;
+    /// <summary>Code-Review P-13: Ohne Änderung liefert Units denselben Schnappschuss (kein Kopieren).</summary>
+    [Test]
+    procedure UnitsSnapshotReusedWithoutChange;
+    [Test]
+    procedure UnitsSnapshotRenewedAfterChange;
+    /// <summary>Code-Review P-13: UnavailableUnits nur mit Deklarationen aus nicht geltenden Zweigen.</summary>
+    [Test]
+    procedure UnavailableUnitsOnlyAffected;
+    /// <summary>Code-Review P-13: InternUnit außerhalb der Index-Sperre; parallele AddUnit verlieren nichts.</summary>
+    [Test]
+    procedure AddUnitConcurrentKeepsAllUnits;
   end;
 
   [TestFixture]
@@ -820,6 +831,120 @@ begin
   Found := MakeUnit('C', 'C:\C.pas', ['X', 'Y', 'x']);
   Assert.IsTrue(Found.NameTable = nil);
   Assert.AreEqual<NativeInt>(2, Length(Found.SymbolsNamed('X')));
+end;
+
+procedure TSymbolIndexTests.UnitsSnapshotReusedWithoutChange;
+var
+  Index: ISymbolIndex;
+  First, Second: TArray<TUnitIndex>;
+  Found: TUnitIndex;
+begin
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['Foo']));
+  Index.AddUnit(MakeUnit('B', 'C:\B.pas', ['Bar']));
+  First := Index.Units;
+  Second := Index.Units;
+  Assert.AreEqual<NativeInt>(2, Length(First));
+  Assert.IsTrue(Pointer(First) = Pointer(Second));
+  // Lesende Zugriffe ändern den Stand nicht.
+  Assert.IsTrue(Index.FindUnit('A', Found));
+  Index.FindSymbols('Foo');
+  Assert.IsTrue(Pointer(First) = Pointer(Index.Units));
+end;
+
+procedure TSymbolIndexTests.UnitsSnapshotRenewedAfterChange;
+var
+  Index: ISymbolIndex;
+  First, Second: TArray<TUnitIndex>;
+begin
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['Foo']));
+  First := Index.Units;
+  Index.AddUnit(MakeUnit('B', 'C:\B.pas', ['Bar']));
+  Second := Index.Units;
+  Assert.IsFalse(Pointer(First) = Pointer(Second));
+  Assert.AreEqual<NativeInt>(1, Length(First));
+  Assert.AreEqual<NativeInt>(2, Length(Second));
+  // Ersetzen derselben Datei.
+  Index.AddUnit(MakeUnit('B', 'C:\B.pas', ['Bar', 'Baz']));
+  First := Index.Units;
+  Assert.IsFalse(Pointer(First) = Pointer(Second));
+  Assert.AreEqual<NativeInt>(2, Length(First));
+  Index.RemoveFile('C:\A.pas');
+  Second := Index.Units;
+  Assert.AreEqual<NativeInt>(1, Length(Second));
+  Assert.AreEqual('B', Second[0].UnitName);
+  Assert.AreEqual<NativeInt>(2, Length(Second[0].Symbols));
+end;
+
+procedure TSymbolIndexTests.UnavailableUnitsOnlyAffected;
+var
+  Index: ISymbolIndex;
+  WithBranch: TUnitIndex;
+  Found: TArray<TUnitIndex>;
+begin
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['Foo']));
+  WithBranch := MakeUnit('B', 'C:\B.pas', ['Bar']);
+  WithBranch.Unavailable := MakeUnit('B', 'C:\B.pas', ['NurDebug']).Symbols;
+  Index.AddUnit(WithBranch);
+  Found := Index.UnavailableUnits;
+  Assert.AreEqual<NativeInt>(1, Length(Found));
+  Assert.AreEqual('B', Found[0].UnitName);
+  Assert.AreEqual('NurDebug', Found[0].Unavailable[0].Name);
+  // Neue Fassung ohne nicht geltende Zweige: fällt heraus.
+  Index.AddUnit(MakeUnit('B', 'C:\B.pas', ['Bar']));
+  Assert.AreEqual<NativeInt>(0, Length(Index.UnavailableUnits));
+  Index.AddUnit(WithBranch);
+  Assert.AreEqual<NativeInt>(1, Length(Index.UnavailableUnits));
+  Index.RemoveFile('C:\B.pas');
+  Assert.AreEqual<NativeInt>(0, Length(Index.UnavailableUnits));
+end;
+
+/// <summary>Thread, der ACount Units mit dem gemeinsamen Symbol "Gemeinsam" in AIndex einträgt.</summary>
+function AddUnitsThread(const AIndex: ISymbolIndex; AThread, ACount: Integer): TThread;
+begin
+  Result := TThread.CreateAnonymousThread(
+    procedure
+    var
+      Position: Integer;
+    begin
+      for Position := 1 to ACount do
+        AIndex.AddUnit(MakeUnit(Format('U%d_%d', [AThread, Position]), Format('C:\U%d_%d.pas', [AThread, Position]),
+          ['Gemeinsam', 'Eigen' + IntToStr(Position)]));
+    end);
+  Result.FreeOnTerminate := False;
+end;
+
+procedure TSymbolIndexTests.AddUnitConcurrentKeepsAllUnits;
+const
+  ThreadCount = 4;
+  PerThread = 100;
+var
+  Index: ISymbolIndex;
+  Threads: array[0..ThreadCount - 1] of TThread;
+  Number: Integer;
+  First, Last: TUnitIndex;
+begin
+  Index := TSymbolIndex.Create;
+  for Number := 0 to ThreadCount - 1 do
+    Threads[Number] := AddUnitsThread(Index, Number, PerThread);
+  try
+    for Number := 0 to ThreadCount - 1 do
+      Threads[Number].Start;
+    for Number := 0 to ThreadCount - 1 do
+      Threads[Number].WaitFor;
+  finally
+    for Number := 0 to ThreadCount - 1 do
+      Threads[Number].Free;
+  end;
+  Assert.AreEqual(ThreadCount * PerThread, Index.UnitCount);
+  Assert.AreEqual<NativeInt>(ThreadCount * PerThread, Length(Index.Units));
+  Assert.AreEqual<NativeInt>(ThreadCount * PerThread, Length(Index.FindSymbols('Gemeinsam')));
+  // Der Pool teilt gleiche Zeichenketten auch zwischen den Threads.
+  Assert.IsTrue(Index.FindUnit('U0_1', First));
+  Assert.IsTrue(Index.FindUnit('U3_100', Last));
+  Assert.IsTrue(Pointer(First.Symbols[0].Name) = Pointer(Last.Symbols[0].Name));
 end;
 
 { TIndexCacheTests }

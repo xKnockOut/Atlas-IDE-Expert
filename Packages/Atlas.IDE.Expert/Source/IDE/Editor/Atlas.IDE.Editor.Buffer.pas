@@ -37,23 +37,30 @@ const
   ChunkSize = 65536;
 var
   Reader: IOTAEditReader;
-  Chunk: AnsiString;
   Bytes: TBytes;
-  Position, Count: Integer;
+  Position, Count, Used, Capacity: Integer;
 begin
   Reader := ABuffer.CreateReader;
   Position := 0;
+  // Direkt in den Puffer lesen, Kapazität verdoppeln (P-04): kein Zwischenstück und kein Umkopieren je Stück.
+  Capacity := ChunkSize;
+  Bytes := nil;
+  SetLength(Bytes, Capacity);
+  Used := 0;
   repeat
-    SetLength(Chunk, ChunkSize);
-    Count := Reader.GetText(Position, PAnsiChar(Chunk), ChunkSize);
+    if Used + ChunkSize > Capacity then
+    begin
+      Capacity := Capacity * 2;
+      SetLength(Bytes, Capacity);
+    end;
+    Count := Reader.GetText(Position, PAnsiChar(@Bytes[Used]), ChunkSize);
     if Count > 0 then
     begin
-      SetLength(Bytes, Length(Bytes) + Count);
-      Move(Chunk[1], Bytes[Length(Bytes) - Count], Count);
+      Inc(Used, Count);
       Inc(Position, Count);
     end;
   until Count < ChunkSize;
-  Result := TEncoding.UTF8.GetString(Bytes);
+  Result := TEncoding.UTF8.GetString(Bytes, 0, Used);
 end;
 
 class function TAtlasEditorBuffer.LineText(const AView: IOTAEditView; ALine: Integer): string;

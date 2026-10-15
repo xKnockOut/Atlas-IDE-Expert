@@ -162,7 +162,12 @@ type
     function FindSymbols(const AName: string): TArray<TSymbolLocation>;
     /// <summary>Direkte Nachfahren eines Typs (Klassen, Interfaces, Helfer).</summary>
     function Descendants(const ATypeName: string): TArray<TSymbolLocation>;
+    /// <summary>Alle Units. Das Ergebnis ist ein geteilter Schnappschuss (Code-Review P-13): nur lesen, nicht
+    /// verändern.</summary>
     function Units: TArray<TUnitIndex>;
+    /// <summary>Nur die Units mit Deklarationen aus nicht geltenden Zweigen (#476); meist wenige, für die
+    /// Vervollständigung (Code-Review P-13).</summary>
+    function UnavailableUnits: TArray<TUnitIndex>;
     function UnitCount: Integer;
     function SymbolCount: Integer;
     /// <summary>Geschätzter Speicherbedarf der Einträge in Byte.</summary>
@@ -366,14 +371,22 @@ end;
 
 function TUnitIndex.SymbolsNamed(const AName: string): TArray<Integer>;
 var
-  Position: Integer;
+  Position, Count: Integer;
 begin
   if (NameTable <> nil) and NameTable.Positions(Symbols, AName, Result) then
     Exit;
+  // Ohne Tabelle linear; das Ergebnis wächst in Stufen statt je Treffer um eins (Code-Review P-08).
   Result := nil;
+  Count := 0;
   for Position := 0 to High(Symbols) do
     if SameText(Symbols[Position].Name, AName) then
-      Result := Result + [Position];
+    begin
+      if Count = Length(Result) then
+        SetLength(Result, Count * 2 + 4);
+      Result[Count] := Position;
+      Inc(Count);
+    end;
+  SetLength(Result, Count);
 end;
 
 { TIndexFiles }

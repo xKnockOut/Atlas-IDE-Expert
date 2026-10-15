@@ -24,6 +24,13 @@ type
   /// <summary>Farben der Klammer- und Blockpaare je Tiefe, zyklisch (#514).</summary>
   TAtlasPairColors = array[0..4] of TAtlasColor;
 
+  /// <summary>Farben einer Inlay-Hint-Marke (P-10): aus dem Editorhintergrund gemischt.</summary>
+  TAtlasHintColors = record
+    Text: TAtlasColor;
+    Pen: TAtlasColor;
+    Fill: TAtlasColor;
+  end;
+
   TAtlasColors = record
     IsDark: Boolean;
     /// <summary>Fläche der Fenster.</summary>
@@ -61,7 +68,24 @@ type
     class function Dark: TAtlasColors; static;
     /// <summary>Light oder Dark, je nachdem ob ABackground (Fensterfarbe der IDE) dunkel ist.</summary>
     class function ForBackground(ABackground: TAtlasColor): TAtlasColors; static;
+    /// <summary>Farben der Inlay-Hint-Marken auf dem Editorhintergrund ABack (P-10): Text deutlich
+    /// lesbar, Fläche leicht im Akzent abgesetzt.</summary>
+    class function InlayHint(ABack: TAtlasColor): TAtlasHintColors; static;
   end;
+
+const
+  /// <summary>Blasse Probleme (Text seither geändert): Anteil der Schweregradfarbe über der Fläche,
+  /// gleich in Editor und Hover (D-07).</summary>
+  AtlasMixFaded = 0.55;
+  /// <summary>Daumen der Scrollleisten: Anteil von Muted über der Fläche (D-07).</summary>
+  AtlasMixThumb = 0.5;
+  /// <summary>Inlay-Hint-Marken: Anteile von Text bzw. Akzent über dem Editorhintergrund (P-10).</summary>
+  AtlasMixInlayText = 0.8;
+  AtlasMixInlayPen = 0.45;
+  AtlasMixInlayFill = 0.2;
+  /// <summary>Chips und Tags (D-07): Innenabstand links und rechts zusammen und Eckenradius, logische Pixel.</summary>
+  AtlasChipPad = 12;
+  AtlasChipRadius = 4;
 
 implementation
 
@@ -216,6 +240,16 @@ begin
     Result := Dark
   else
     Result := Light;
+end;
+
+class function TAtlasColors.InlayHint(ABack: TAtlasColor): TAtlasHintColors;
+var
+  Colors: TAtlasColors;
+begin
+  Colors := ForBackground(ABack);
+  Result.Text := TAtlasColorMath.Mix(Colors.Text, ABack, AtlasMixInlayText);
+  Result.Pen := TAtlasColorMath.Mix(Colors.Accent, ABack, AtlasMixInlayPen);
+  Result.Fill := TAtlasColorMath.Mix(Colors.Accent, ABack, AtlasMixInlayFill);
 end;
 
 end.
