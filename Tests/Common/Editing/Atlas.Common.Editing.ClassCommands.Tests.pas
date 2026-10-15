@@ -150,6 +150,7 @@ procedure TClassCommandsTests.WarmUp;
 begin
   Expand('/impl');
   Parses(WithCommand(''));
+  OverrideFromIndex;
 end;
 
 procedure TClassCommandsTests.ImplAddsMissingBodies;

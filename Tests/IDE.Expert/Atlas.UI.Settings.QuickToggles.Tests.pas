@@ -13,6 +13,9 @@ type
   [TestFixture]
   TAtlasQuickToggleWindowTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure GroupsByPage;
     [Test]
@@ -47,6 +50,11 @@ function SampleItems: TArray<TAtlasQuickToggleItem>;
 begin
   Result := TAtlasQuickToggles.Items(TAtlasQuickToggles.Build(Catalog, ''), TAtlasPluginSettings.Defaults,
     Default(TAtlasToggleSession), nil);
+end;
+
+procedure TAtlasQuickToggleWindowTests.WarmUpFirstUse;
+begin
+  GroupsByPage;
 end;
 
 procedure TAtlasQuickToggleWindowTests.GroupsByPage;

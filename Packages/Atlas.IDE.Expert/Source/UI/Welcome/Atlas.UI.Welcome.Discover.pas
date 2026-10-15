@@ -240,6 +240,9 @@ var
   Kind: TAtlasDiscoverButton;
   OldHeight: Integer;
 begin
+  // Ohne Fenster später: Die Tafel ruft UpdateContent nach dem Einhängen.
+  if not HasWindow then
+    Exit;
   OldHeight := FContentHeight;
   FCard := Default(TAtlasDiscoverCard);
   FHasCard := (FSource <> nil) and FSource.Card(FCard);

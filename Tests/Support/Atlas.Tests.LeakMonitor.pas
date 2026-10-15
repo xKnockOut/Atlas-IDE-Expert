@@ -75,6 +75,7 @@ implementation
 // statt des früheren DUnitX.IoC (TDUnitXIoC); die Schnittstelle ist gleich.
 uses
   Winapi.Windows,
+  Winapi.MMSystem,
   Winapi.TlHelp32,
   System.SysUtils,
   System.Classes,
@@ -82,6 +83,7 @@ uses
   System.DateUtils,
   System.JSON,
   DUnitX.ServiceLocator,
+  Atlas.Common.Editing.SlashCommands,
   Atlas.Core.Diagnostics.TimeLimit;
 
 const
@@ -219,6 +221,9 @@ var
   Json: TJSONValue;
 begin
   PrewarmWaitObjects;
+  // Gemeinsame Befehlsliste: entsteht beim ersten Zugriff und bleibt; sonst trifft das je nach
+  // Reihenfolge (paralleler Lauf) einen anderen Test als Leck.
+  TSlashCommandRegistry.Shared;
   // Legt den Standard-Thread-Pool und seinen Überwachungs-Thread an (bleiben bis Programmende).
   Task := TTask.Run(
     procedure
@@ -244,6 +249,9 @@ end;
 
 procedure RegisterLeakMonitor;
 begin
+  // Sleep(2) beim Warten auf andere Threads schliefe sonst eine ganze Zeitscheibe (rund 16 ms)
+  // und verdreifachte die Laufzeit der Tests.
+  timeBeginPeriod(1);
   PrewarmRuntime;
   TDUnitXServiceLocator.DefaultContainer.RegisterType<IMemoryLeakMonitor>(
     function: IMemoryLeakMonitor

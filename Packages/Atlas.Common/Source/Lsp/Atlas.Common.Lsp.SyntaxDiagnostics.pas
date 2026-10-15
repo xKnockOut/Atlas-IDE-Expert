@@ -784,7 +784,13 @@ begin
     Context.FormText := ARules.FormText;
     Context.ReadFile := ARules.ReadFile;
     Context.Cancelled := ARules.Cancelled;
-    RuleFindings := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
+    // Abbruch (ERuleCheckCancelled): Die bis dahin gesammelten Meldungen freigeben.
+    try
+      RuleFindings := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
+    except
+      Items.Free;
+      raise;
+    end;
     if ARules.Baseline <> nil then
       RuleFindings := ARules.Baseline.Filter(ARules.RelativePath, ADocument.Text, RuleFindings);
     for RuleFinding in RuleFindings do

@@ -124,7 +124,8 @@ end;
 
 function TAtlasVcsProcessRunner.IsCancelled: Boolean;
 begin
-  Result := TThread.CheckTerminated;
+  // CheckTerminated wirft im Hauptthread und in fremden Threads; dort gibt es nichts abzubrechen.
+  Result := not TThread.CurrentThread.ExternalThread and TThread.CheckTerminated;
   if not Result and Assigned(FCancelled) then
     Result := FCancelled();
 end;

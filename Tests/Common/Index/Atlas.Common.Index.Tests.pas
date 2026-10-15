@@ -104,6 +104,9 @@ type
     FIndex: ISymbolIndex;
     function Resolve(const AUnitName: string): string;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -950,6 +953,16 @@ begin
 end;
 
 { TIndexBuilderTests }
+
+procedure TIndexBuilderTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    ServiceSharesLibraryCache;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TIndexBuilderTests.Setup;
 begin

@@ -13,6 +13,9 @@ type
   [TestFixture]
   TAtlasSetupWindowTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -67,6 +70,16 @@ begin
   Result.Status.Workspaces := [Workspace];
   Result.ErrorInsight := True;
   Result.AtlasProblems := True;
+end;
+
+procedure TAtlasSetupWindowTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    ButtonOnlyForNonGreenPoints;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TAtlasSetupWindowTests.Setup;

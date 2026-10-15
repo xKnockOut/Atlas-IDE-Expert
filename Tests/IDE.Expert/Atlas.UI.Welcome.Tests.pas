@@ -39,6 +39,9 @@ type
   [TestFixture]
   TAtlasWelcomeBoardTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure ViewsCreateFramesWithId;
     [Test]
@@ -65,6 +68,9 @@ type
   [TestFixture]
   TAtlasWelcomeWhatsNewFrameTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure UnreadShowsRowsWithSwitchKeyAndTry;
     [Test]
@@ -82,6 +88,9 @@ type
   [TestFixture]
   TAtlasWelcomeProjectsFrameTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure PillTextsFollowKind;
     [Test]
@@ -123,6 +132,9 @@ type
   [TestFixture]
   TAtlasWelcomeDiscoverFrameTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure AgeTextsFollowKind;
     [Test]
@@ -517,6 +529,11 @@ begin
   Result := TAtlasWelcomeSection.Create(AId, 'Titel ' + AId, AOrder, AColumn, nil);
 end;
 
+procedure TAtlasWelcomeBoardTests.WarmUpFirstUse;
+begin
+  BoardPlacesSectionsInColumns;
+end;
+
 procedure TAtlasWelcomeBoardTests.ViewsCreateFramesWithId;
 var
   View: TAtlasWelcomeSectionFrame;
@@ -589,13 +606,17 @@ end;
 
 procedure TAtlasWelcomeBoardTests.BoardKeepsAndDropsFrames;
 var
+  Host: TForm;
   Board: TAtlasWelcomeBoardFrame;
   Kept: TAtlasWelcomeSectionFrame;
   Before: Integer;
 begin
   RegisterViews([TAtlasWelcomeIds.Continue, TAtlasWelcomeIds.State]);
+  // Wie in der IDE: Die Tafel hängt an einem Fenster.
+  Host := TForm.CreateNew(nil);
   Board := TAtlasWelcomeBoardFrame.Create(nil);
   try
+    Board.Parent := Host;
     Board.Rebuild([Section(TAtlasWelcomeIds.Continue, 20, TAtlasWelcomeColumn.Left),
       Section(TAtlasWelcomeIds.State, 10, TAtlasWelcomeColumn.Right)], TAtlasWelcomeLayout.Atlas, 2);
     Kept := Board.View(TAtlasWelcomeIds.Continue);
@@ -609,6 +630,7 @@ begin
     Assert.AreEqual(Before + 2, TTestSection(Kept).Updates);
   finally
     Board.Free;
+    Host.Free;
     TAtlasWelcomeViews.Release;
   end;
 end;
@@ -746,6 +768,11 @@ begin
 end;
 
 { TAtlasWelcomeWhatsNewFrameTests }
+
+procedure TAtlasWelcomeWhatsNewFrameTests.WarmUpFirstUse;
+begin
+  UnreadShowsRowsWithSwitchKeyAndTry;
+end;
 
 procedure TAtlasWelcomeWhatsNewFrameTests.UnreadShowsRowsWithSwitchKeyAndTry;
 var
@@ -963,6 +990,11 @@ begin
 end;
 
 { TAtlasWelcomeProjectsFrameTests }
+
+procedure TAtlasWelcomeProjectsFrameTests.WarmUpFirstUse;
+begin
+  RowsSetHeightAndAskForRefresh;
+end;
 
 procedure TAtlasWelcomeProjectsFrameTests.PillTextsFollowKind;
 var
@@ -1547,6 +1579,11 @@ begin
 end;
 
 { TAtlasWelcomeDiscoverFrameTests }
+
+procedure TAtlasWelcomeDiscoverFrameTests.WarmUpFirstUse;
+begin
+  CardShowsTipAndButtons;
+end;
 
 procedure TAtlasWelcomeDiscoverFrameTests.AgeTextsFollowKind;
 var

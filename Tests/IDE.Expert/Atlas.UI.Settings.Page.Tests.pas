@@ -114,10 +114,11 @@ begin
     Page := TAtlasSettingsPage.Create(Host);
     Page.Parent := Host;
     Page.HandleNeeded;
-    Assert.AreEqual(12, Page.Pages.PageCount);
+    Assert.AreEqual(13, Page.Pages.PageCount);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabGeneral), Page.Pages.Pages[0].Caption);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUndo), Page.Pages.Pages[10].Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabWelcome), Page.Pages.Pages[11].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUnitSearch), Page.Pages.Pages[11].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabWelcome), Page.Pages.Pages[12].Caption);
     for Index := 0 to Page.Pages.PageCount - 1 do
     begin
       Sheet := Page.Pages.Pages[Index];
