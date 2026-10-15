@@ -46,6 +46,11 @@ type
     procedure SortsByPosition;
     [Test]
     procedure RuleAssertPositiveAndNegative;
+    /// <summary>Abbruch wirkt vor der nächsten Regel (Diagnoselog 15.10.2026).</summary>
+    [Test]
+    procedure CancelledStopsBeforeNextRule;
+    [Test]
+    procedure SlowRuleNamedInDiagnostics;
   end;
 
 implementation
@@ -57,6 +62,10 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
+  Atlas.Common.Rules.Engine,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Diagnostics.RequestScope,
   Atlas.Tests.RuleAssert;
 
 type
@@ -275,6 +284,85 @@ procedure TRuleEngineTests.RuleAssertPositiveAndNegative;
 begin
   TRuleAssert.Reports(TMarkerRule.Create, Source);
   TRuleAssert.Silent(TMarkerRule.Create, SourceWith('  X := 1;'#13#10));
+end;
+
+procedure TRuleEngineTests.CancelledStopsBeforeNextRule;
+var
+  Stop: Boolean;
+  Runs: Integer;
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+begin
+  Stop := False;
+  Runs := 0;
+  Tree := TPascalParser.Parse(Source);
+  try
+    Context := Default(TRuleContext);
+    Context.Text := Source;
+    Context.Tree := Tree;
+    Context.Cancelled :=
+      function: Boolean
+      begin
+        Result := Stop;
+      end;
+    Assert.WillRaise(
+      procedure
+      begin
+        TRuleEngine.Run([
+          TCallbackRule.Create('erste',
+            procedure
+            begin
+              Inc(Runs);
+              Stop := True;
+            end),
+          TCallbackRule.Create('zweite',
+            procedure
+            begin
+              Inc(Runs);
+            end)], TServerSettings.Default, Context);
+      end, ERuleCheckCancelled);
+    Assert.AreEqual(1, Runs);
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TRuleEngineTests.SlowRuleNamedInDiagnostics;
+var
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+  Notes: TRequestNotes;
+  Joined, Note: string;
+begin
+  Tree := TPascalParser.Parse(Source);
+  try
+    Context := Default(TRuleContext);
+    Context.Text := Source;
+    Context.Tree := Tree;
+    TRequestDiagnostics.Open;
+    try
+      TRuleEngine.Run([
+        TCallbackRule.Create('schnell',
+          procedure
+          begin
+          end),
+        TCallbackRule.Create('langsam',
+          procedure
+          begin
+            Sleep(TRuleEngine.SlowRuleMs + 50);
+          end)], TServerSettings.Default, Context);
+    finally
+      Notes := TRequestDiagnostics.Close;
+    end;
+  finally
+    Tree.Free;
+  end;
+  Joined := '';
+  for Note in Notes.Notes do
+    Joined := Joined + Note + ' ';
+  Assert.Contains(Joined, 'slowRule=langsam ');
+  Assert.Contains(Joined, 'slowRuleMs=');
+  Assert.DoesNotContain(Joined, 'schnell');
 end;
 
 initialization

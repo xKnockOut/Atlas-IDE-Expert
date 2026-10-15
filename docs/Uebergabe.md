@@ -350,3 +350,12 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Inlay-Hints:** „Name = Wert“ am Zeilenende, nur aussagekräftige (nicht einziges Argument, keine vagen Namen, nicht wenn das Argument den Namen enthält). Issue #768 (eigene Spalte in der Zeilenleiste).
 - **Werkzeug:** `cc.ps1` (IDE-Plugins\Claude-Compile, nicht committet) wertet das Fortschrittsfenster „Erzeugen“ nicht mehr als Blockade. Plugin-Builds: Atlas-Paket vorher unter „Disabled Packages“ abschalten, sonst lädt die Build-IDE die alte BPL.
 - **Issues:** 44 geschlossen; offen mit Kommentar #281 (Lauf in Delphi 12), #414 (manuelle Prüfung), #144 (Konfidenz im Hover). Alle Ketten-Branches und `claude/project-thread-8pa4h2` gelöscht; nur `feature/261-ide-compiler` bleibt.
+
+## Diagnoselogs vom 15.10.2026 (Branch `claude/project-thread-j9xhhv` von main 4730b4a)
+- **Ursache der Zeitlimits (bis 241 s, cpu≈elapsed):** `TSymbolIndex.FindSymbols`/`Descendants` durchsuchten bei jedem Aufruf alle Symbole aller Einheiten (~0,2 s bei 5561 Einheiten). Regeln wie Vererbung (`TAncestry.FindType` je Methode/Vorfahr), DfmProperties, DataBinding, FormFields rufen das viele Male auf. Jetzt Nachschlagetabellen nach Name und Vorfahr (`FByName`, `FByAncestor`), gepflegt in `AddLocked`/`RemoveFileLocked`, verdichtet ab 4096 toten Einträgen. Messung (1,67 Mio. Symbole): 300×FindSymbols 53 s → 0,04 s, 100×Descendants 13,6 s → 0,43 s, gleiche Treffer.
+- **Abbruch:** `TRuleContext.Cancelled`; die Regelmaschine prüft vor jeder Regel und wirft `ERuleCheckCancelled`. Pull-Diagnose reicht das Abbruch-Token durch (didChange/Zeitlimit beenden die Prüfung), Push-Diagnose bricht bei veraltetem Stand ab.
+- **Zusammenlegen:** gleichzeitige Anfragen für denselben Dokumentstand rechnen nur einmal (`TPullDiagnostics.Claim`).
+- **Diagnoselog:** langsamste Regel als `slowRule`/`slowRuleMs` (ab 100 ms).
+- **Hover hinter dem Dateiende:** `Atlas.IDE.Editor.Buffer.LineText` liefert '' für Zeilen hinter dem Ende (vorher letzte Zeile → Hover in Zeile 1800 von 1793). Ursache abgeleitet, in der Cloud nicht prüfbar.
+- **Tests (FPC):** neue Tests für Index, Regelmaschine, Pull-Diagnose grün; bekannte FPC-Fehlschläge unverändert. `RequestScopeKeepsSlowest` nur unter Delphi.
+- **Offen:** Delphi-Build 0/0/0 und Testlauf (Marco, cc.ps1), `Check-*.ps1`, neues anonymes Diagnoselog. Die Logs 3600 und 8308 kamen abgeschnitten an und sind nicht ausgewertet. Kein PR/Merge ohne Marcos Wort.
