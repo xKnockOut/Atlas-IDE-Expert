@@ -191,7 +191,7 @@ begin
       Result := not SameText(ExtractFileName(AProject), 'Neu.dproj');
       ASummary.Hidden := SameText(ExtractFileName(AProject), 'Weg.dproj');
     end, 8);
-  Assert.AreEqual(3, Length(Entries));
+  Assert.AreEqual(3, Integer(Length(Entries)));
   Assert.AreEqual('C:\A\Eins.dproj', Entries[0].Project, 'Pfad der IDE gilt');
   Assert.AreEqual('Eins', Entries[0].Name);
   Assert.IsTrue(Entries[0].HasSummary);
@@ -209,10 +209,10 @@ begin
   Recent := nil;
   for Index := 1 to 40 do
     Recent := Recent + [Format('C:\P%d\P%d.dproj', [Index, Index])];
-  Assert.AreEqual(8, Length(TAtlasWelcomeProjects.Entries(Recent, nil, TAtlasWelcomeProjects.DefaultMax)));
-  Assert.AreEqual(1, Length(TAtlasWelcomeProjects.Entries(Recent, nil, 0)), 'mindestens eins');
-  Assert.AreEqual(30, Length(TAtlasWelcomeProjects.Entries(Recent, nil, 99)), 'höchstens 30');
-  Assert.AreEqual(0, Length(TAtlasWelcomeProjects.Entries(nil, nil, 8)));
+  Assert.AreEqual(8, Integer(Length(TAtlasWelcomeProjects.Entries(Recent, nil, TAtlasWelcomeProjects.DefaultMax))));
+  Assert.AreEqual(1, Integer(Length(TAtlasWelcomeProjects.Entries(Recent, nil, 0))), 'mindestens eins');
+  Assert.AreEqual(30, Integer(Length(TAtlasWelcomeProjects.Entries(Recent, nil, 99))), 'höchstens 30');
+  Assert.AreEqual(0, Integer(Length(TAtlasWelcomeProjects.Entries(nil, nil, 8))));
 end;
 
 procedure TAtlasWelcomeProjectsTests.CleanBuildOnMainIsGreen;
@@ -224,7 +224,7 @@ begin
   Item := Entry(WithBuild(OnMain, True, 0, 0, 0));
   Assert.AreEqual('main', Item.Branch);
   Pills := TAtlasWelcomeProjects.Pills(Item);
-  Assert.AreEqual(1, Length(Pills));
+  Assert.AreEqual(1, Integer(Length(Pills)));
   Assert.IsTrue(Pills[0].Kind = TAtlasProjectPillKind.Build);
   Assert.IsTrue(Pills[0].Level = TAtlasProjectPillLevel.Good);
   Assert.AreEqual(0, Pills[0].A + Pills[0].B + Pills[0].C);
@@ -285,14 +285,14 @@ begin
   Summary.Check.First.FileName := 'C:\Projekte\Unit2.pas';
   Summary.Check.At := Summary.Build.At + 1 / 24;
   Pills := TAtlasWelcomeProjects.Pills(Entry(Summary));
-  Assert.AreEqual(2, Length(Pills));
+  Assert.AreEqual(2, Integer(Length(Pills)));
   Assert.IsTrue(Pills[1].Kind = TAtlasProjectPillKind.CheckErrors);
   Assert.IsTrue(Pills[1].Clickable);
   Summary.Check.At := Summary.Build.At - 1 / 24;
-  Assert.AreEqual(1, Length(TAtlasWelcomeProjects.Pills(Entry(Summary))), 'ältere Prüfung zählt nicht');
+  Assert.AreEqual(1, Integer(Length(TAtlasWelcomeProjects.Pills(Entry(Summary)))), 'ältere Prüfung zählt nicht');
   Summary.Check.At := Summary.Build.At + 1 / 24;
   Summary.Check.Errors := 0;
-  Assert.AreEqual(1, Length(TAtlasWelcomeProjects.Pills(Entry(Summary))), 'fehlerfreie Prüfung ohne Marke');
+  Assert.AreEqual(1, Integer(Length(TAtlasWelcomeProjects.Pills(Entry(Summary)))), 'fehlerfreie Prüfung ohne Marke');
 end;
 
 procedure TAtlasWelcomeProjectsTests.ChangesSyncAndRules;
@@ -307,7 +307,7 @@ begin
   Summary.Rules.Known := True;
   Summary.Rules.NewHits := 3;
   Pills := TAtlasWelcomeProjects.Pills(Entry(Summary));
-  Assert.AreEqual(3, Length(Pills), 'ohne Build keine Build-Marke');
+  Assert.AreEqual(3, Integer(Length(Pills)), 'ohne Build keine Build-Marke');
   Assert.IsTrue(Pills[0].Kind = TAtlasProjectPillKind.Changes);
   Assert.AreEqual(4, Pills[0].A);
   Assert.IsTrue(Pills[0].Level = TAtlasProjectPillLevel.Warning);
@@ -331,7 +331,7 @@ begin
   Item := Entry(Summary);
   Assert.AreEqual('', Item.Branch);
   Assert.IsFalse(Item.VcsStale, 'kein „Stand vom …“');
-  Assert.AreEqual(0, Length(TAtlasWelcomeProjects.Pills(Item)));
+  Assert.AreEqual(0, Integer(Length(TAtlasWelcomeProjects.Pills(Item))));
   Assert.IsTrue(TAtlasWelcomeProjects.Level(TAtlasWelcomeProjects.Pills(Item)) = TAtlasProjectPillLevel.Neutral);
   // Gespeicherter Stand mit Arbeitskopie: bis zur frischen Abfrage „Stand vom …“.
   Item := Entry(OnMain);
@@ -612,7 +612,7 @@ begin
   Assert.AreEqual('C:\'#$2026'\Studio\Projekte\Atlas\Demo.dproj', Short);
   Assert.IsTrue(Length(Short) <= 40);
   Short := TAtlasWelcomeProjects.ShortPath('C:\Ordner\EinSehrLangerProjektnameDerNichtPasst.dproj', 20);
-  Assert.AreEqual(20, Length(Short), 'nur das Ende des Namens');
+  Assert.AreEqual(20, Integer(Length(Short)), 'nur das Ende des Namens');
   Assert.AreEqual(#$2026, Copy(Short, 1, 1));
 end;
 

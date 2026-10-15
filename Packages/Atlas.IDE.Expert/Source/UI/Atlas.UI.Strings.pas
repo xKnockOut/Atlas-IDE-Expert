@@ -153,7 +153,6 @@ type
     EditorMethodToggle, EditorMethodToggleNone, SettingsMethodToggle, SettingsMethodToggleUp,
     SettingsMethodToggleDown,
     EditorTestUnit, SettingsCodeLensTestUnit, TestUnitLensTest, TestUnitLensUnit, TestUnitLensCreate, TestUnitNone,
-    EditorTestUnit, SettingsCodeLensTestUnit, TestUnitLensTest, TestUnitLensUnit, TestUnitLensCreate, TestUnitNone,
     UnitSearchTitle,
     UnitSearchMenu,
     UnitSearchIdeDialog,

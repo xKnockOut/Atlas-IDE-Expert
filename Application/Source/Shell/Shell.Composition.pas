@@ -1956,7 +1956,6 @@ begin
   Request.Arguments := ['status', '--porcelain', '--', ExtractFileName(AFileName)];
   Request.WorkingDir := ExtractFileDir(AFileName);
   Output := nil;
-  Code := -1;
   try
     Code := FCompilerProcess.Run(Request,
       procedure(const ALine: string)

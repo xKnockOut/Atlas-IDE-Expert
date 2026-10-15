@@ -142,7 +142,7 @@ begin
   Assert.AreEqual(Ord(TAtlasSetupFinding.ServerVersionMismatch), Ord(Check.Finding));
   Assert.AreEqual(Ord(TAtlasStatusState.Red), Ord(Check.State));
   Assert.AreEqual(Ord(TAtlasSetupFix.ChooseServerPath), Ord(Check.Fix));
-  Assert.AreEqual(2, Length(Check.Args));
+  Assert.AreEqual(2, Integer(Length(Check.Args)));
   Assert.AreEqual('0.0.9', Check.Args[0]);
   Assert.AreEqual('0.1.0', Check.Args[1]);
 end;
@@ -237,7 +237,7 @@ begin
   Assert.AreEqual('1', Check.Args[0]);
   Assert.AreEqual('3', Check.Args[1]);
   Assert.AreEqual('Rechnung', Check.Args[2]);
-  Assert.AreEqual(3, Length(Check.Projects));
+  Assert.AreEqual(3, Integer(Length(Check.Projects)));
   Assert.AreEqual(Ord(TAtlasSetupProjectState.Missing), Ord(Check.Projects[2].State));
 end;
 
@@ -281,7 +281,7 @@ begin
   Input.Projects := nil;
   Check := TAtlasSetupChecklist.CheckIndex(Input);
   Assert.AreEqual(Ord(TAtlasSetupFinding.IndexReady), Ord(Check.Finding));
-  Assert.AreEqual(2, Length(Check.Projects));
+  Assert.AreEqual(2, Integer(Length(Check.Projects)));
 end;
 
 procedure TAtlasSetupChecklistTests.IndexWithoutServerOrProjects;
@@ -475,7 +475,7 @@ begin
     '"libraryCacheBytes":2048},{"name":"Export","lastIndexMs":-1,"libraryCacheBytes":0}],"requests":[]}');
   Assert.IsTrue(Status.Known);
   Assert.AreEqual(42, Status.Units);
-  Assert.AreEqual(2, Length(Status.Workspaces));
+  Assert.AreEqual(2, Integer(Length(Status.Workspaces)));
   Assert.AreEqual('Kunden', Status.Workspaces[0].Name);
   Assert.IsTrue(Status.Workspaces[0].Done);
   Assert.AreEqual(Int64(2048), Status.Workspaces[0].LibraryCacheBytes);

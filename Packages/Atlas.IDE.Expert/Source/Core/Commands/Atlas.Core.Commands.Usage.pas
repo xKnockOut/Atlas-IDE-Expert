@@ -173,6 +173,7 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   System.IOUtils,
   System.JSON,
   System.Generics.Defaults;
@@ -267,7 +268,6 @@ var
   Value: TJSONValue;
 begin
   Result := nil;
-  Value := nil;
   // Kein Objekt: gar nicht erst parsen.
   if Copy(TrimLeft(AJson), 1, 1) <> '{' then
     Exit;

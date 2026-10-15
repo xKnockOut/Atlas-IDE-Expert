@@ -209,7 +209,11 @@ begin
   FUnits := AUnits;
   FMessage := AMessage;
   FAccess := TAtlasIdeRegistryAccess.Create;
-  FSectionsListener := TAtlasWelcomeSections.Default.AddListener(SectionChanged);
+  FSectionsListener := TAtlasWelcomeSections.Default.AddListener(
+    procedure(AId: string)
+    begin
+      SectionChanged(AId);
+    end);
   FStatusListener := TAtlasStatusRegistry.Default.AddListener(
     procedure
     begin
@@ -422,13 +426,14 @@ var
   Current: TAtlasPluginSettings;
   Host: string;
   Wanted: TArray<string>;
-  Section: TAtlasWelcomeSection;
-  Id, Plugin: string;
   Registered: TArray<string>;
   Keep: Boolean;
 begin
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
+    var
+      Section: TAtlasWelcomeSection;
+      Id, Plugin: string;
     begin
       Current := Settings;
       // Titel und Reihenfolge der Karte „Neu in Atlas“ nach den Einstellungen (welcomePage.whatsNew).
@@ -566,13 +571,15 @@ end;
 procedure TAtlasIdeWelcome.SectionChanged(const AId: string);
 var
   Id: string;
+  Collect: TThreadProcedure;
 begin
   Id := AId;
   // Beobachter melden auch aus Hintergrund-Threads; gesammelt und gezeichnet wird im Hauptthread.
-  TThread.ForceQueue(nil,
+  Collect :=
     procedure
     var
       Known: string;
+      Flush: TThreadProcedure;
     begin
       if Instance = nil then
         Exit;
@@ -583,13 +590,15 @@ begin
       if Instance.FQueued then
         Exit;
       Instance.FQueued := True;
-      TThread.ForceQueue(nil,
+      Flush :=
         procedure
         begin
           if Instance <> nil then
             Instance.Flush;
-        end);
-    end);
+        end;
+      TThread.ForceQueue(nil, Flush);
+    end;
+  TThread.ForceQueue(nil, Collect);
 end;
 
 procedure TAtlasIdeWelcome.Flush;

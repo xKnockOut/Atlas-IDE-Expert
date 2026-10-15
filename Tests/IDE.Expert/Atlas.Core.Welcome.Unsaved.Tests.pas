@@ -345,7 +345,7 @@ var
 begin
   Fake := GitFixture;
   Vcs := Fake;
-  Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(Vcs, Root + '\Demo', NowUtc, FileTimes, nil, State));
+  Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(Vcs, Root + '\Demo', NowUtc, FileTimes(), nil, State));
   Assert.AreEqual('git', State.Kind);
   Assert.AreEqual(Root, State.Root);
   Assert.AreEqual('main', State.Branch, 'aktueller Branch aus der Branch-Liste');
@@ -396,7 +396,7 @@ begin
   Svn.Branch := 'trunk';
   Svn.Revision := '42';
   Fake.FHead := Svn;
-  Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(Vcs, Root, NowUtc, FileTimes, nil, State));
+  Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(Vcs, Root, NowUtc, FileTimes(), nil, State));
   Assert.AreEqual('svn', State.Kind);
   Assert.AreEqual('trunk', State.Branch);
   State := TAtlasWelcomeUnsaved.Merge(TAtlasUnsavedState.Empty, State, NowUtc);
@@ -456,7 +456,7 @@ begin
     Change(Root + '\Anderes\B.pas', TAtlasVcsChangeKind.Modified),
     Change(Root + '\Demo\K.pas', TAtlasVcsChangeKind.Conflicted),
     Change(Root + '\Demo\Weg.pas', TAtlasVcsChangeKind.Deleted)];
-  Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(Vcs, Root + '\demo', NowUtc, FileTimes, nil, State));
+  Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(Vcs, Root + '\demo', NowUtc, FileTimes(), nil, State));
   Assert.IsTrue(State.Find(TAtlasUnsavedKind.Changes, Found));
   Assert.AreEqual(2, Found.Count, 'nur im Projektordner, ohne Konflikt');
   Assert.AreEqual(1, Found.Deleted);

@@ -250,14 +250,14 @@ begin
     Sections.Add(Section('atlas.state', 10, TAtlasWelcomeColumn.Right));
     Sections.Changed('atlas.state');
     Sections.Changed;
-    Assert.AreEqual(3, Heard.Count);
+    Assert.AreEqual(3, Integer(Heard.Count));
     Assert.AreEqual('', Heard[0], 'Hinzufügen ändert die Menge');
     Assert.AreEqual('atlas.state', Heard[1], 'Inhalt eines Bereichs');
     Assert.AreEqual('', Heard[2]);
     Assert.AreEqual(Version + 3, Sections.Version);
     Sections.RemoveListener(Handle);
     Sections.Changed;
-    Assert.AreEqual(3, Heard.Count, 'abgemeldet');
+    Assert.AreEqual(3, Integer(Heard.Count), 'abgemeldet');
   finally
     Sections.Free;
     Heard.Free;
