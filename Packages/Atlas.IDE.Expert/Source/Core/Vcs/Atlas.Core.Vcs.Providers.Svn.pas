@@ -10,6 +10,10 @@
 //   Changes   status --xml
 //   FileAt    cat -r <Revision> <Pfad>      (Revision '' = BASE)
 //   Blame     blame --xml <Pfad>            (Blame spricht mit dem Server)
+// Nicht gesicherte Arbeit (IAtlasVcsLocalWork, #762): SVN kennt weder lokale
+// Commits noch Stashes oder lokale Branches; was nicht übertragen ist, sind
+// die geänderten Dateien (Changes). Branches, Stashes, Remotes und Outgoing
+// liefern deshalb ohne Prozess Ok mit leerer Liste, ChangesIn und Push Failed.
 // ChangeMarker: Zeitstempel und Größe von .svn/wc.db; svn update und
 // svn switch schreiben die Datenbank.
 
@@ -21,7 +25,7 @@ uses
   Atlas.Core.Vcs.Tools;
 
 type
-  TAtlasSvnVersionControl = class(TInterfacedObject, IAtlasVersionControl)
+  TAtlasSvnVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork)
   private
     FRoot: string;
     FCommand: TAtlasVcsCommand;
@@ -39,6 +43,14 @@ type
     function FileAt(const AFileName, ARevision: string; out AContent: TBytes): TAtlasVcsOutcome;
     function Blame(const AFileName: string; out ALines: TArray<TAtlasVcsBlameLine>): TAtlasVcsOutcome;
     function ChangeMarker: string;
+    { IAtlasVcsLocalWork }
+    function Branches(out ABranches: TArray<TAtlasVcsBranch>): TAtlasVcsOutcome;
+    function Stashes(out AStashes: TArray<TAtlasVcsStash>): TAtlasVcsOutcome;
+    function Remotes(out ANames: TArray<string>): TAtlasVcsOutcome;
+    function Outgoing(const ABranch, AUpstream: string; AMax: Integer;
+      out ACommits: TArray<TAtlasVcsCommit>): TAtlasVcsOutcome;
+    function ChangesIn(const ARevision: string; out AChanges: TArray<TAtlasVcsChange>): TAtlasVcsOutcome;
+    function Push(const ABranch, ARemote, ARemoteRef: string; ASetUpstream: Boolean): TAtlasVcsOutcome;
   end;
 
 implementation
@@ -181,6 +193,46 @@ begin
   finally
     FindClose(Info);
   end;
+end;
+
+{ IAtlasVcsLocalWork: in SVN gibt es nichts davon }
+
+function TAtlasSvnVersionControl.Branches(out ABranches: TArray<TAtlasVcsBranch>): TAtlasVcsOutcome;
+begin
+  ABranches := nil;
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TAtlasSvnVersionControl.Stashes(out AStashes: TArray<TAtlasVcsStash>): TAtlasVcsOutcome;
+begin
+  AStashes := nil;
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TAtlasSvnVersionControl.Remotes(out ANames: TArray<string>): TAtlasVcsOutcome;
+begin
+  ANames := nil;
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TAtlasSvnVersionControl.Outgoing(const ABranch, AUpstream: string; AMax: Integer;
+  out ACommits: TArray<TAtlasVcsCommit>): TAtlasVcsOutcome;
+begin
+  ACommits := nil;
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TAtlasSvnVersionControl.ChangesIn(const ARevision: string;
+  out AChanges: TArray<TAtlasVcsChange>): TAtlasVcsOutcome;
+begin
+  AChanges := nil;
+  Result := TAtlasVcsOutcome.Failed;
+end;
+
+function TAtlasSvnVersionControl.Push(const ABranch, ARemote, ARemoteRef: string;
+  ASetUpstream: Boolean): TAtlasVcsOutcome;
+begin
+  Result := TAtlasVcsOutcome.Failed;
 end;
 
 end.

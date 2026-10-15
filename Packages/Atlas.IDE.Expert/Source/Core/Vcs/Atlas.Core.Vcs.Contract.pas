@@ -11,6 +11,10 @@
 // IDE lehnt ihn dort ab.
 // Ohne VCL und Open Tools API; auch der Server (--changed mit SVN, #276)
 // übersetzt diese Units mit.
+// IAtlasVcsLocalWork (#762) ergänzt, was noch nicht auf dem Server liegt:
+// lokale Branches mit Vorsprung, Commits, die nur lokal sind, Stashes und das
+// Pushen nach Bestätigung. Abfragen lesen nur das lokale Repository (kein
+// fetch); nur Push spricht mit dem Server.
 
 interface
 
@@ -98,6 +102,54 @@ type
     function Uncommitted: Boolean;
   end;
 
+  /// <summary>Lokaler Branch (Git, #762).</summary>
+  TAtlasVcsBranch = record
+    /// <summary>Kurzname, z. B. "feature/x".</summary>
+    Name: string;
+    /// <summary>Verfolgter Branch, z. B. "origin/main"; '' ohne.</summary>
+    Upstream: string;
+    /// <summary>Remote des verfolgten Branchs, z. B. "origin"; '' ohne.</summary>
+    Remote: string;
+    /// <summary>Ref auf dem Remote, z. B. "refs/heads/main"; '' ohne.</summary>
+    RemoteRef: string;
+    /// <summary>Der verfolgte Branch existiert nicht mehr (auf dem Server gelöscht).</summary>
+    Gone: Boolean;
+    /// <summary>Commits vor bzw. hinter dem verfolgten Branch nach dem letzten Abruf; -1 unbekannt bzw. ohne.</summary>
+    Ahead: Integer;
+    Behind: Integer;
+    /// <summary>Zeitpunkt des letzten Commits (Committer, UTC); 0 unbekannt.</summary>
+    TipDate: TDateTime;
+    /// <summary>HEAD zeigt auf diesen Branch.</summary>
+    Current: Boolean;
+    /// <summary>Hat einen verfolgten Branch, der noch existiert.</summary>
+    function Tracked: Boolean;
+  end;
+
+  /// <summary>Eintrag der Stash-Liste (Git, #762).</summary>
+  TAtlasVcsStash = record
+    /// <summary>Commit des Stashs (bleibt gleich, wenn neuere dazukommen).</summary>
+    Hash: string;
+    /// <summary>Auswahl wie "stash@{0}".</summary>
+    Ref: string;
+    /// <summary>Branch beim Anlegen.</summary>
+    Branch: string;
+    /// <summary>Name bzw. Nachricht ohne "WIP on …:"/"On …:".</summary>
+    Message: string;
+    /// <summary>Angelegt (UTC).</summary>
+    Date: TDateTime;
+  end;
+
+  /// <summary>Commit in einer Liste (z. B. noch nicht gepusht, #762).</summary>
+  TAtlasVcsCommit = record
+    Hash: string;
+    /// <summary>Committer-Zeitpunkt (UTC).</summary>
+    Date: TDateTime;
+    /// <summary>Erste Zeile der Nachricht.</summary>
+    Summary: string;
+    /// <summary>Kurzform des Hashs (7 Zeichen).</summary>
+    function ShortHash: string;
+  end;
+
   /// <summary>Ergebnis eines Prozessaufrufs.</summary>
   TAtlasVcsRunResult = record
     Outcome: TAtlasVcsOutcome;
@@ -140,6 +192,30 @@ type
     /// <summary>Billige Marke aus Dateizeitstempeln der Verwaltungsdaten (ohne Prozess); ändert sie sich, kann
     /// sich Branch oder Revision geändert haben. '' ohne Arbeitskopie.</summary>
     function ChangeMarker: string;
+  end;
+
+  /// <summary>Was noch nicht auf dem Server liegt (#762). Git, SVN und die leere Umsetzung bieten diese
+  /// Schnittstelle zusätzlich zu IAtlasVersionControl (Supports). SVN kennt weder lokale Commits noch Stashes:
+  /// Branches, Stashes, Remotes und Outgoing liefern dort Ok mit leerer Liste, ChangesIn und Push Failed. Jede
+  /// Methode startet einen Prozess: nur aus einem Hintergrund-Thread aufrufen. Keine Abfrage spricht mit dem
+  /// Server (kein fetch); Vorsprung und Rückstand gelten seit dem letzten Abruf.</summary>
+  IAtlasVcsLocalWork = interface
+    ['{3F1C7B52-8E4A-4D19-A6E0-5B2D9C8F7A61}']
+    /// <summary>Lokale Branches mit verfolgtem Branch und Vorsprung.</summary>
+    function Branches(out ABranches: TArray<TAtlasVcsBranch>): TAtlasVcsOutcome;
+    /// <summary>Stashes, neuester zuerst.</summary>
+    function Stashes(out AStashes: TArray<TAtlasVcsStash>): TAtlasVcsOutcome;
+    /// <summary>Namen der Remotes, z. B. "origin".</summary>
+    function Remotes(out ANames: TArray<string>): TAtlasVcsOutcome;
+    /// <summary>Commits von ABranch, die nicht in AUpstream liegen ('' = auf keinem Remote), neueste zuerst,
+    /// höchstens AMax.</summary>
+    function Outgoing(const ABranch, AUpstream: string; AMax: Integer;
+      out ACommits: TArray<TAtlasVcsCommit>): TAtlasVcsOutcome;
+    /// <summary>Dateien, die ARevision (Commit oder Stash) gegenüber ihrem ersten Vorgänger ändert.</summary>
+    function ChangesIn(const ARevision: string; out AChanges: TArray<TAtlasVcsChange>): TAtlasVcsOutcome;
+    /// <summary>Pusht ABranch nach ARemote auf ARemoteRef (z. B. "refs/heads/main"); ASetUpstream trägt ihn als
+    /// verfolgten Branch ein. Spricht mit dem Server; nur nach Bestätigung durch den Benutzer.</summary>
+    function Push(const ABranch, ARemote, ARemoteRef: string; ASetUpstream: Boolean): TAtlasVcsOutcome;
   end;
 
   /// <summary>Fehler beim Lesen einer Ausgabe; die Umsetzungen machen daraus Outcome Failed.</summary>
@@ -241,6 +317,20 @@ end;
 function TAtlasVcsBlameLine.Uncommitted: Boolean;
 begin
   Result := Revision = '';
+end;
+
+{ TAtlasVcsBranch }
+
+function TAtlasVcsBranch.Tracked: Boolean;
+begin
+  Result := (Upstream <> '') and not Gone;
+end;
+
+{ TAtlasVcsCommit }
+
+function TAtlasVcsCommit.ShortHash: string;
+begin
+  Result := Copy(Hash, 1, 7);
 end;
 
 { TAtlasVcsRunResult }

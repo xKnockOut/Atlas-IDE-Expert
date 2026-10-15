@@ -64,6 +64,14 @@ type
     procedure GitChangeMarkerFollowsHeadAndBranch;
     [Test]
     procedure WorkerReportsWhetherItStarted;
+    [Test]
+    procedure GitParsesBranchesStashesLogAndNameStatus;
+    [Test]
+    procedure GitParserRejectsBrokenLocalWork;
+    [Test]
+    procedure GitProviderRunsLocalWorkCommands;
+    [Test]
+    procedure SvnAndNullLocalWork;
   end;
 
 implementation
@@ -1114,6 +1122,206 @@ begin
   finally
     Worker.Free;
   end;
+end;
+
+procedure TAtlasVcsTests.GitParsesBranchesStashesLogAndNameStatus;
+var
+  Branches: TArray<TAtlasVcsBranch>;
+  Stashes: TArray<TAtlasVcsStash>;
+  Commits: TArray<TAtlasVcsCommit>;
+  Changes: TArray<TAtlasVcsChange>;
+begin
+  // #762: Ausgaben wie von git 2.43 (for-each-ref mit %00, "%(HEAD)" ist "*" oder " ").
+  Branches := TAtlasGitParser.ParseBranches(
+    'lokal'#0#0#0#0#0'1792071091'#0' '#10 +
+    'main'#0'origin/main'#0'origin'#0'refs/heads/main'#0'ahead 2'#0'1792071092'#0'*'#10 +
+    'dev'#0'origin/dev'#0'origin'#0'refs/heads/dev'#0'ahead 1, behind 4'#0'1792071000'#0' '#10 +
+    'alt'#0'origin/alt'#0'origin'#0'refs/heads/alt'#0'gone'#0'1792070000'#0' '#10 +
+    'sync'#0'origin/sync'#0'origin'#0'refs/heads/sync'#0#0'1792070000'#0' '#10);
+  Assert.AreEqual(5, Integer(Length(Branches)));
+  Assert.AreEqual('lokal', Branches[0].Name);
+  Assert.AreEqual('', Branches[0].Upstream);
+  Assert.IsFalse(Branches[0].Tracked);
+  Assert.AreEqual(-1, Branches[0].Ahead, 'ohne Upstream unbekannt');
+  Assert.IsFalse(Branches[0].Current);
+  Assert.IsTrue(Branches[0].TipDate > 0);
+  Assert.AreEqual('origin/main', Branches[1].Upstream);
+  Assert.AreEqual('origin', Branches[1].Remote);
+  Assert.AreEqual('refs/heads/main', Branches[1].RemoteRef);
+  Assert.AreEqual(2, Branches[1].Ahead);
+  Assert.AreEqual(0, Branches[1].Behind);
+  Assert.IsTrue(Branches[1].Current);
+  Assert.IsTrue(Branches[1].Tracked);
+  Assert.AreEqual(1, Branches[2].Ahead);
+  Assert.AreEqual(4, Branches[2].Behind);
+  Assert.IsTrue(Branches[3].Gone, 'Upstream auf dem Server gelöscht');
+  Assert.IsFalse(Branches[3].Tracked);
+  Assert.AreEqual(0, Branches[4].Ahead, 'gleichauf');
+  Assert.AreEqual(0, Branches[4].Behind);
+  Assert.AreEqual(0, Integer(Length(TAtlasGitParser.ParseBranches(''))));
+
+  Stashes := TAtlasGitParser.ParseStashes(
+    Hash1 + #0'1792071092'#0'stash@{0}'#0'On main: Mein Name'#10 +
+    Hash2 + #0'1792071000'#0'stash@{1}'#0'WIP on feature/x: 9805f75 Hover-Cache: erster Wurf'#10);
+  Assert.AreEqual(2, Integer(Length(Stashes)));
+  Assert.AreEqual(Hash1, Stashes[0].Hash);
+  Assert.AreEqual('stash@{0}', Stashes[0].Ref);
+  Assert.AreEqual('main', Stashes[0].Branch);
+  Assert.AreEqual('Mein Name', Stashes[0].Message);
+  Assert.AreEqual('feature/x', Stashes[1].Branch);
+  Assert.AreEqual('Hover-Cache: erster Wurf', Stashes[1].Message, 'ohne "WIP on …:" und Hash');
+  Assert.IsTrue(Stashes[1].Date < Stashes[0].Date);
+
+  Commits := TAtlasGitParser.ParseLog(Hash1 + #0'1792071091'#0'vier'#10 + Hash2 + #0'1792071000'#0#10);
+  Assert.AreEqual(2, Integer(Length(Commits)));
+  Assert.AreEqual('vier', Commits[0].Summary);
+  Assert.AreEqual(Copy(Hash1, 1, 7), Commits[0].ShortHash);
+  Assert.AreEqual('', Commits[1].Summary, 'leere Nachricht');
+  Assert.IsTrue(Commits[1].Date < Commits[0].Date);
+
+  Changes := TAtlasGitParser.ParseNameStatus('M'#0'src/A.pas'#0'A'#0'Neu.pas'#0'D'#0'Weg.pas'#0 +
+    'R100'#0'Alt.pas'#0'Umbenannt.pas'#0, Root);
+  Assert.AreEqual(4, Integer(Length(Changes)));
+  Assert.AreEqual(Under('src/A.pas'), Changes[0].Path);
+  Assert.IsTrue(Changes[0].Kind = TAtlasVcsChangeKind.Modified);
+  Assert.IsTrue(Changes[1].Kind = TAtlasVcsChangeKind.Added);
+  Assert.IsTrue(Changes[2].Kind = TAtlasVcsChangeKind.Deleted);
+  Assert.IsTrue(Changes[3].Kind = TAtlasVcsChangeKind.Renamed);
+  Assert.AreEqual(Under('Umbenannt.pas'), Changes[3].Path);
+  Assert.AreEqual(Under('Alt.pas'), Changes[3].OldPath);
+
+  Assert.AreEqual(2, Integer(Length(TAtlasGitParser.ParseLines('origin'#10'upstream'#13#10#10))));
+end;
+
+procedure TAtlasVcsTests.GitParserRejectsBrokenLocalWork;
+begin
+  Assert.WillRaise(
+    procedure
+    begin
+      TAtlasGitParser.ParseBranches('main'#0'origin/main'#10);
+    end, EAtlasVcsParse, 'zu wenige Felder');
+  Assert.WillRaise(
+    procedure
+    begin
+      TAtlasGitParser.ParseBranches('main'#0'origin/main'#0'origin'#0'refs/heads/main'#0'vorne 2'#0'1'#0'*');
+    end, EAtlasVcsParse, 'Abstand unbekannt');
+  Assert.WillRaise(
+    procedure
+    begin
+      TAtlasGitParser.ParseStashes('nur eins');
+    end, EAtlasVcsParse);
+  Assert.WillRaise(
+    procedure
+    begin
+      TAtlasGitParser.ParseLog('kurz');
+    end, EAtlasVcsParse);
+  Assert.WillRaise(
+    procedure
+    begin
+      TAtlasGitParser.ParseNameStatus('X'#0'a'#0, Root);
+    end, EAtlasVcsParse, 'Art unbekannt');
+  Assert.WillRaise(
+    procedure
+    begin
+      TAtlasGitParser.ParseNameStatus('M'#0, Root);
+    end, EAtlasVcsParse, 'Pfad fehlt');
+end;
+
+procedure TAtlasVcsTests.GitProviderRunsLocalWorkCommands;
+const
+  Prefix = '--no-optional-locks -c core.quotepath=off -c color.ui=false ';
+var
+  Runner: TFakeRunner;
+  RunnerRef: IAtlasVcsRunner;
+  Vcs: IAtlasVersionControl;
+  Local: IAtlasVcsLocalWork;
+  Branches: TArray<TAtlasVcsBranch>;
+  Stashes: TArray<TAtlasVcsStash>;
+  Commits: TArray<TAtlasVcsCommit>;
+  Changes: TArray<TAtlasVcsChange>;
+  Names: TArray<string>;
+begin
+  Runner := TFakeRunner.Create;
+  RunnerRef := Runner;
+  Runner.Answer('for-each-ref', 'main'#0'origin/main'#0'origin'#0'refs/heads/main'#0'ahead 1'#0'1792071092'#0'*'#10);
+  Runner.Answer('stash', Hash1 + #0'1792071092'#0'stash@{0}'#0'On main: X'#10);
+  Runner.Answer('remote', 'origin'#10);
+  Runner.Answer('log', Hash2 + #0'1792071091'#0'eins'#10);
+  Runner.Answer('diff', 'M'#0'A.pas'#0);
+  Vcs := TAtlasGitVersionControl.Create(Root, RunnerRef, 'git.exe', 5000);
+  Assert.IsTrue(Supports(Vcs, IAtlasVcsLocalWork, Local), 'Git bietet IAtlasVcsLocalWork');
+  Assert.IsTrue(Local.Branches(Branches) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(1, Integer(Length(Branches)));
+  Assert.AreEqual(Prefix + 'for-each-ref --format=' + TAtlasGitParser.BranchFormat + ' refs/heads', Runner.Calls[0]);
+  Assert.IsTrue(Local.Stashes(Stashes) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(Prefix + 'stash list --format=' + TAtlasGitParser.StashFormat, Runner.Calls[1]);
+  Assert.AreEqual('X', Stashes[0].Message);
+  Assert.IsTrue(Local.Remotes(Names) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual('origin', Names[0]);
+  Assert.IsTrue(Local.Outgoing('main', 'origin/main', 51, Commits) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(Prefix + 'log --format=' + TAtlasGitParser.LogFormat + ' --max-count=51 refs/heads/main --not ' +
+    'origin/main', Runner.Calls[3], 'kein fetch: nur das lokale Repository');
+  Assert.AreEqual('eins', Commits[0].Summary);
+  Assert.IsTrue(Local.Outgoing('lokal', '', 0, Commits) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(Prefix + 'log --format=' + TAtlasGitParser.LogFormat + ' --max-count=1 refs/heads/lokal --not ' +
+    '--remotes', Runner.Calls[4], 'ohne Upstream: auf keinem Remote');
+  Assert.IsTrue(Local.ChangesIn(Hash1, Changes) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(Prefix + 'diff --name-status -z --no-renames ' + Hash1 + '^1 ' + Hash1, Runner.Calls[5]);
+  Assert.AreEqual(Under('A.pas'), Changes[0].Path);
+  Assert.IsTrue(Local.Push('main', 'origin', 'refs/heads/main', False) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(Prefix + 'push --porcelain origin refs/heads/main:refs/heads/main', Runner.Calls[6]);
+  Assert.IsTrue(Local.Push('neu', 'origin', 'refs/heads/neu', True) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(Prefix + 'push --porcelain --set-upstream origin refs/heads/neu:refs/heads/neu', Runner.Calls[7]);
+  // Namen, die als Option gelesen würden, starten keinen Prozess.
+  Assert.IsTrue(Local.Outgoing('-x', '', 5, Commits) = TAtlasVcsOutcome.Failed);
+  Assert.IsTrue(Local.Outgoing('main', '--all', 5, Commits) = TAtlasVcsOutcome.Failed);
+  Assert.IsTrue(Local.ChangesIn('--output=x', Changes) = TAtlasVcsOutcome.Failed);
+  Assert.IsTrue(Local.Push('main', '-f', 'refs/heads/main', False) = TAtlasVcsOutcome.Failed);
+  Assert.IsTrue(Local.Push('a b', 'origin', 'refs/heads/main', False) = TAtlasVcsOutcome.Failed);
+  Assert.AreEqual(8, Integer(Length(Runner.Calls)));
+  // Exit-Code ungleich 0 (z. B. Push abgelehnt) = Failed.
+  Runner.ExitCode := 1;
+  Assert.IsTrue(Local.Push('main', 'origin', 'refs/heads/main', False) = TAtlasVcsOutcome.Failed);
+  Assert.IsTrue(Local.Branches(Branches) = TAtlasVcsOutcome.Failed);
+  Assert.AreEqual(0, Integer(Length(Branches)));
+end;
+
+procedure TAtlasVcsTests.SvnAndNullLocalWork;
+var
+  Runner: TFakeRunner;
+  RunnerRef: IAtlasVcsRunner;
+  Vcs: IAtlasVersionControl;
+  Local: IAtlasVcsLocalWork;
+  Branches: TArray<TAtlasVcsBranch>;
+  Stashes: TArray<TAtlasVcsStash>;
+  Commits: TArray<TAtlasVcsCommit>;
+  Changes: TArray<TAtlasVcsChange>;
+  Names: TArray<string>;
+begin
+  // SVN: keine lokalen Commits, Stashes oder Branches; kein Prozess.
+  Runner := TFakeRunner.Create;
+  RunnerRef := Runner;
+  Vcs := TAtlasSvnVersionControl.Create(Root, RunnerRef, 'svn.exe');
+  Assert.IsTrue(Supports(Vcs, IAtlasVcsLocalWork, Local));
+  Assert.IsTrue(Local.Branches(Branches) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(0, Integer(Length(Branches)));
+  Assert.IsTrue(Local.Stashes(Stashes) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(0, Integer(Length(Stashes)));
+  Assert.IsTrue(Local.Remotes(Names) = TAtlasVcsOutcome.Ok);
+  Assert.IsTrue(Local.Outgoing('trunk', '', 10, Commits) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(0, Integer(Length(Commits)));
+  Assert.IsTrue(Local.ChangesIn('42', Changes) = TAtlasVcsOutcome.Failed);
+  Assert.IsTrue(Local.Push('trunk', 'x', 'y', False) = TAtlasVcsOutcome.Failed);
+  Assert.AreEqual(0, Integer(Length(Runner.Calls)), 'kein Prozess');
+  // Leere Umsetzung: Outcome sagt, warum.
+  Vcs := TAtlasNullVersionControl.Create(TAtlasVcsOutcome.Disabled);
+  Assert.IsTrue(Supports(Vcs, IAtlasVcsLocalWork, Local));
+  Assert.IsTrue(Local.Branches(Branches) = TAtlasVcsOutcome.Disabled);
+  Assert.IsTrue(Local.Stashes(Stashes) = TAtlasVcsOutcome.Disabled);
+  Assert.IsTrue(Local.Remotes(Names) = TAtlasVcsOutcome.Disabled);
+  Assert.IsTrue(Local.Outgoing('main', '', 1, Commits) = TAtlasVcsOutcome.Disabled);
+  Assert.IsTrue(Local.ChangesIn('x', Changes) = TAtlasVcsOutcome.Disabled);
+  Assert.IsTrue(Local.Push('main', 'origin', 'refs/heads/main', False) = TAtlasVcsOutcome.Disabled);
 end;
 
 initialization

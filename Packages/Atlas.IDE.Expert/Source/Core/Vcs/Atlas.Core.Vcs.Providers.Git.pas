@@ -11,6 +11,13 @@
 //   Changes   status --porcelain=v2 --branch -z --untracked-files=all
 //   FileAt    show <Revision>:<Pfad>        (Revision '' = HEAD)
 //   Blame     blame --porcelain -- <Pfad>
+// Nicht gesicherte Arbeit (IAtlasVcsLocalWork, #762), ohne fetch:
+//   Branches  for-each-ref --format=… refs/heads
+//   Stashes   stash list --format=…
+//   Remotes   remote
+//   Outgoing  log --format=… --max-count=N refs/heads/<Branch> --not <Upstream>|--remotes
+//   ChangesIn diff --name-status -z --no-renames <Revision>^1 <Revision>
+//   Push      push --porcelain [--set-upstream] <Remote> refs/heads/<Branch>:<Ref>
 // ChangeMarker liest nur Dateien: .git/HEAD (Inhalt und Zeitstempel), die
 // Datei des Branchs unter refs/heads und packed-refs. In Worktrees und
 // Submodulen ist .git eine Datei mit "gitdir: …".
@@ -23,7 +30,7 @@ uses
   Atlas.Core.Vcs.Tools;
 
 type
-  TAtlasGitVersionControl = class(TInterfacedObject, IAtlasVersionControl)
+  TAtlasGitVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork)
   private
     FRoot: string;
     FCommand: TAtlasVcsCommand;
@@ -43,6 +50,14 @@ type
     function FileAt(const AFileName, ARevision: string; out AContent: TBytes): TAtlasVcsOutcome;
     function Blame(const AFileName: string; out ALines: TArray<TAtlasVcsBlameLine>): TAtlasVcsOutcome;
     function ChangeMarker: string;
+    { IAtlasVcsLocalWork }
+    function Branches(out ABranches: TArray<TAtlasVcsBranch>): TAtlasVcsOutcome;
+    function Stashes(out AStashes: TArray<TAtlasVcsStash>): TAtlasVcsOutcome;
+    function Remotes(out ANames: TArray<string>): TAtlasVcsOutcome;
+    function Outgoing(const ABranch, AUpstream: string; AMax: Integer;
+      out ACommits: TArray<TAtlasVcsCommit>): TAtlasVcsOutcome;
+    function ChangesIn(const ARevision: string; out AChanges: TArray<TAtlasVcsChange>): TAtlasVcsOutcome;
+    function Push(const ABranch, ARemote, ARemoteRef: string; ASetUpstream: Boolean): TAtlasVcsOutcome;
     /// <summary>Ordner mit den Verwaltungsdaten: ARoot\.git oder das Ziel von "gitdir:"; '' ohne.</summary>
     class function GitDir(const ARoot: string): string; static;
   end;
@@ -210,6 +225,138 @@ begin
       Result := TAtlasVcsOutcome.Failed;
     end;
   end;
+end;
+
+/// <summary>Name, der nicht als Option missverstanden werden kann und keine Leer- oder Steuerzeichen hat.</summary>
+function SafeName(const AName: string): Boolean;
+var
+  Index: Integer;
+begin
+  Result := (AName <> '') and (AName[1] <> '-');
+  if Result then
+    for Index := 1 to Length(AName) do
+      if Ord(AName[Index]) <= 32 then
+        Exit(False);
+end;
+
+function TAtlasGitVersionControl.Branches(out ABranches: TArray<TAtlasVcsBranch>): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+begin
+  ABranches := nil;
+  Result := Git(['for-each-ref', '--format=' + TAtlasGitParser.BranchFormat, 'refs/heads'], Output);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  try
+    ABranches := TAtlasGitParser.ParseBranches(VcsUtf8(Output));
+  except
+    on EAtlasVcsParse do
+    begin
+      ABranches := nil;
+      Result := TAtlasVcsOutcome.Failed;
+    end;
+  end;
+end;
+
+function TAtlasGitVersionControl.Stashes(out AStashes: TArray<TAtlasVcsStash>): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+begin
+  AStashes := nil;
+  Result := Git(['stash', 'list', '--format=' + TAtlasGitParser.StashFormat], Output);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  try
+    AStashes := TAtlasGitParser.ParseStashes(VcsUtf8(Output));
+  except
+    on EAtlasVcsParse do
+    begin
+      AStashes := nil;
+      Result := TAtlasVcsOutcome.Failed;
+    end;
+  end;
+end;
+
+function TAtlasGitVersionControl.Remotes(out ANames: TArray<string>): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+begin
+  ANames := nil;
+  Result := Git(['remote'], Output);
+  if Result = TAtlasVcsOutcome.Ok then
+    ANames := TAtlasGitParser.ParseLines(VcsUtf8(Output));
+end;
+
+function TAtlasGitVersionControl.Outgoing(const ABranch, AUpstream: string; AMax: Integer;
+  out ACommits: TArray<TAtlasVcsCommit>): TAtlasVcsOutcome;
+var
+  Arguments: TArray<string>;
+  Output: TBytes;
+  Limit: Integer;
+begin
+  ACommits := nil;
+  if not SafeName(ABranch) or ((AUpstream <> '') and not SafeName(AUpstream)) then
+    Exit(TAtlasVcsOutcome.Failed);
+  Limit := AMax;
+  if Limit < 1 then
+    Limit := 1;
+  Arguments := ['log', '--format=' + TAtlasGitParser.LogFormat, '--max-count=' + IntToStr(Limit),
+    'refs/heads/' + ABranch, '--not'];
+  // Ohne Upstream: Commits, die auf keinem Remote liegen.
+  if AUpstream = '' then
+    Arguments := Arguments + ['--remotes']
+  else
+    Arguments := Arguments + [AUpstream];
+  Result := Git(Arguments, Output);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  try
+    ACommits := TAtlasGitParser.ParseLog(VcsUtf8(Output));
+  except
+    on EAtlasVcsParse do
+    begin
+      ACommits := nil;
+      Result := TAtlasVcsOutcome.Failed;
+    end;
+  end;
+end;
+
+function TAtlasGitVersionControl.ChangesIn(const ARevision: string;
+  out AChanges: TArray<TAtlasVcsChange>): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+begin
+  AChanges := nil;
+  if not SafeName(ARevision) then
+    Exit(TAtlasVcsOutcome.Failed);
+  // Stash: erster Vorgänger ist der Stand beim Anlegen; der Unterschied ist die gesicherte Arbeit.
+  Result := Git(['diff', '--name-status', '-z', '--no-renames', ARevision + '^1', ARevision], Output);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  try
+    AChanges := TAtlasGitParser.ParseNameStatus(VcsUtf8(Output), FRoot);
+  except
+    on EAtlasVcsParse do
+    begin
+      AChanges := nil;
+      Result := TAtlasVcsOutcome.Failed;
+    end;
+  end;
+end;
+
+function TAtlasGitVersionControl.Push(const ABranch, ARemote, ARemoteRef: string;
+  ASetUpstream: Boolean): TAtlasVcsOutcome;
+var
+  Arguments: TArray<string>;
+  Output: TBytes;
+begin
+  if not SafeName(ABranch) or not SafeName(ARemote) or not SafeName(ARemoteRef) then
+    Exit(TAtlasVcsOutcome.Failed);
+  Arguments := ['push', '--porcelain'];
+  if ASetUpstream then
+    Arguments := Arguments + ['--set-upstream'];
+  Arguments := Arguments + [ARemote, 'refs/heads/' + ABranch + ':' + ARemoteRef];
+  Result := Git(Arguments, Output);
 end;
 
 class function TAtlasGitVersionControl.GitDir(const ARoot: string): string;

@@ -59,6 +59,9 @@ type
     /// <summary>Grenzen für welcomePage.maxProjects (#592); wie TAtlasWelcomeProjects.MinMax/MaxMax.</summary>
     MinWelcomeProjects = 1;
     MaxWelcomeProjects = 30;
+    /// <summary>Grenzen der Stunden für welcomePage.unsaved.* (#762); wie TAtlasWelcomeUnsaved.MaxHours.</summary>
+    MinUnsavedHours = 0;
+    MaxUnsavedHours = 8760;
     MinPairGuideWidth = 1;
     MaxPairGuideWidth = 3;
     MinPairGuideOpacity = 10;
@@ -256,6 +259,16 @@ type
     /// <summary>Branch und Änderungen beim Anzeigen frisch abfragen (#592, welcomePage.refreshVcs); sonst gilt
     /// der gespeicherte Stand.</summary>
     WelcomePageRefreshVcs: Boolean;
+    /// <summary>Bereich „Nicht gesichert“ (#762, welcomePage.unsaved).</summary>
+    WelcomePageUnsaved: Boolean;
+    /// <summary>Nicht Gesichertes erst ab diesem Alter zeigen (#762, welcomePage.unsaved.minAgeHours, 0–8760).</summary>
+    WelcomePageUnsavedMinAgeHours: Integer;
+    /// <summary>Ab diesem Alter gelb (#762, welcomePage.unsaved.warnHours, 0–8760).</summary>
+    WelcomePageUnsavedWarnHours: Integer;
+    /// <summary>Ab diesem Alter rot (#762, welcomePage.unsaved.alertHours, 0–8760, nie unter warnHours).</summary>
+    WelcomePageUnsavedAlertHours: Integer;
+    /// <summary>Bereich ausblenden, wenn nichts zu zeigen ist (#762, welcomePage.unsaved.hideWhenClean).</summary>
+    WelcomePageUnsavedHideWhenClean: Boolean;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -387,6 +400,11 @@ begin
   Result.WelcomePageProjectStatus := True;
   Result.WelcomePageMaxProjects := 8;
   Result.WelcomePageRefreshVcs := True;
+  Result.WelcomePageUnsaved := True;
+  Result.WelcomePageUnsavedMinAgeHours := 0;
+  Result.WelcomePageUnsavedWarnHours := 24;
+  Result.WelcomePageUnsavedAlertHours := 72;
+  Result.WelcomePageUnsavedHideWhenClean := False;
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -409,6 +427,11 @@ begin
   PaletteKey := EnsureRange(PaletteKey, 0, $FFFF);
   WelcomePageSearchKey := EnsureRange(WelcomePageSearchKey, 0, $FFFF);
   WelcomePageMaxProjects := EnsureRange(WelcomePageMaxProjects, MinWelcomeProjects, MaxWelcomeProjects);
+  WelcomePageUnsavedMinAgeHours := EnsureRange(WelcomePageUnsavedMinAgeHours, MinUnsavedHours, MaxUnsavedHours);
+  WelcomePageUnsavedWarnHours := EnsureRange(WelcomePageUnsavedWarnHours, MinUnsavedHours, MaxUnsavedHours);
+  // Rot nie vor gelb.
+  WelcomePageUnsavedAlertHours := EnsureRange(WelcomePageUnsavedAlertHours, WelcomePageUnsavedWarnHours,
+    MaxUnsavedHours);
   CheckKey := EnsureRange(CheckKey, 0, $FFFF);
   CompletionKey := EnsureRange(CompletionKey, 0, $FFFF);
   SignatureKey := EnsureRange(SignatureKey, 0, $FFFF);
@@ -556,6 +579,14 @@ begin
     BoolValue(Default.WelcomePageProjectStatus)) <> 0;
   WelcomePageMaxProjects := AStore.ReadInteger('WelcomePageMaxProjects', Default.WelcomePageMaxProjects);
   WelcomePageRefreshVcs := AStore.ReadInteger('WelcomePageRefreshVcs', BoolValue(Default.WelcomePageRefreshVcs)) <> 0;
+  WelcomePageUnsaved := AStore.ReadInteger('WelcomePageUnsaved', BoolValue(Default.WelcomePageUnsaved)) <> 0;
+  WelcomePageUnsavedMinAgeHours := AStore.ReadInteger('WelcomePageUnsavedMinAgeHours',
+    Default.WelcomePageUnsavedMinAgeHours);
+  WelcomePageUnsavedWarnHours := AStore.ReadInteger('WelcomePageUnsavedWarnHours', Default.WelcomePageUnsavedWarnHours);
+  WelcomePageUnsavedAlertHours := AStore.ReadInteger('WelcomePageUnsavedAlertHours',
+    Default.WelcomePageUnsavedAlertHours);
+  WelcomePageUnsavedHideWhenClean := AStore.ReadInteger('WelcomePageUnsavedHideWhenClean',
+    BoolValue(Default.WelcomePageUnsavedHideWhenClean)) <> 0;
   Normalize;
 end;
 
@@ -656,6 +687,11 @@ begin
   AStore.WriteInteger('WelcomePageProjectStatus', BoolValue(WelcomePageProjectStatus));
   AStore.WriteInteger('WelcomePageMaxProjects', WelcomePageMaxProjects);
   AStore.WriteInteger('WelcomePageRefreshVcs', BoolValue(WelcomePageRefreshVcs));
+  AStore.WriteInteger('WelcomePageUnsaved', BoolValue(WelcomePageUnsaved));
+  AStore.WriteInteger('WelcomePageUnsavedMinAgeHours', WelcomePageUnsavedMinAgeHours);
+  AStore.WriteInteger('WelcomePageUnsavedWarnHours', WelcomePageUnsavedWarnHours);
+  AStore.WriteInteger('WelcomePageUnsavedAlertHours', WelcomePageUnsavedAlertHours);
+  AStore.WriteInteger('WelcomePageUnsavedHideWhenClean', BoolValue(WelcomePageUnsavedHideWhenClean));
 end;
 
 end.

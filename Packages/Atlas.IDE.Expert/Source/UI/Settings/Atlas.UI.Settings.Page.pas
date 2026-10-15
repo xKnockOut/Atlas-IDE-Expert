@@ -172,6 +172,11 @@ type
     FWelcomeProjects: TCheckBox;
     FWelcomeMaxProjects: TEdit;
     FWelcomeRefreshVcs: TCheckBox;
+    FWelcomeUnsaved: TCheckBox;
+    FWelcomeUnsavedMinAge: TEdit;
+    FWelcomeUnsavedWarn: TEdit;
+    FWelcomeUnsavedAlert: TEdit;
+    FWelcomeUnsavedHideClean: TCheckBox;
     FVersion: TLabel;
     FResetHistory: TButton;
     FResetWidths: TButton;
@@ -273,6 +278,11 @@ type
     property WelcomeProjects: TCheckBox read FWelcomeProjects;
     property WelcomeMaxProjects: TEdit read FWelcomeMaxProjects;
     property WelcomeRefreshVcs: TCheckBox read FWelcomeRefreshVcs;
+    property WelcomeUnsaved: TCheckBox read FWelcomeUnsaved;
+    property WelcomeUnsavedMinAge: TEdit read FWelcomeUnsavedMinAge;
+    property WelcomeUnsavedWarn: TEdit read FWelcomeUnsavedWarn;
+    property WelcomeUnsavedAlert: TEdit read FWelcomeUnsavedAlert;
+    property WelcomeUnsavedHideClean: TCheckBox read FWelcomeUnsavedHideClean;
     property VersionLabel: TLabel read FVersion;
     /// <summary>Kennzahlen als Text; nil = nicht verfügbar.</summary>
     property OnIndexMetrics: TFunc<string> read FOnIndexMetrics write FOnIndexMetrics;
@@ -632,6 +642,12 @@ begin
   FWelcomeProjects := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeProjects));
   FWelcomeMaxProjects := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeMaxProjects));
   FWelcomeRefreshVcs := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeRefreshVcs));
+  // Bereich „Nicht gesichert“ (#762).
+  FWelcomeUnsaved := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsaved));
+  FWelcomeUnsavedMinAge := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsavedMinAge));
+  FWelcomeUnsavedWarn := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsavedWarn));
+  FWelcomeUnsavedAlert := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsavedAlert));
+  FWelcomeUnsavedHideClean := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsavedHideClean));
 end;
 
 procedure TAtlasSettingsPage.AddSheet(AId: TAtlasTextId);
@@ -1150,6 +1166,11 @@ begin
   FWelcomeProjects.Checked := ASettings.WelcomePageProjectStatus;
   FWelcomeMaxProjects.Text := IntToStr(ASettings.WelcomePageMaxProjects);
   FWelcomeRefreshVcs.Checked := ASettings.WelcomePageRefreshVcs;
+  FWelcomeUnsaved.Checked := ASettings.WelcomePageUnsaved;
+  FWelcomeUnsavedMinAge.Text := IntToStr(ASettings.WelcomePageUnsavedMinAgeHours);
+  FWelcomeUnsavedWarn.Text := IntToStr(ASettings.WelcomePageUnsavedWarnHours);
+  FWelcomeUnsavedAlert.Text := IntToStr(ASettings.WelcomePageUnsavedAlertHours);
+  FWelcomeUnsavedHideClean.Checked := ASettings.WelcomePageUnsavedHideWhenClean;
   RefreshFuse;
   RefreshIndex;
 end;
@@ -1250,6 +1271,14 @@ begin
   ASettings.WelcomePageProjectStatus := FWelcomeProjects.Checked;
   ASettings.WelcomePageMaxProjects := StrToIntDef(Trim(FWelcomeMaxProjects.Text), ASettings.WelcomePageMaxProjects);
   ASettings.WelcomePageRefreshVcs := FWelcomeRefreshVcs.Checked;
+  ASettings.WelcomePageUnsaved := FWelcomeUnsaved.Checked;
+  ASettings.WelcomePageUnsavedMinAgeHours := StrToIntDef(Trim(FWelcomeUnsavedMinAge.Text),
+    ASettings.WelcomePageUnsavedMinAgeHours);
+  ASettings.WelcomePageUnsavedWarnHours := StrToIntDef(Trim(FWelcomeUnsavedWarn.Text),
+    ASettings.WelcomePageUnsavedWarnHours);
+  ASettings.WelcomePageUnsavedAlertHours := StrToIntDef(Trim(FWelcomeUnsavedAlert.Text),
+    ASettings.WelcomePageUnsavedAlertHours);
+  ASettings.WelcomePageUnsavedHideWhenClean := FWelcomeUnsavedHideClean.Checked;
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;

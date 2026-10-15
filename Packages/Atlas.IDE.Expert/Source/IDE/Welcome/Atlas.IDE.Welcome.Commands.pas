@@ -22,6 +22,8 @@
 //   welcomePage.whatsNew = off).
 // - Bereich „Projekte“ (#592, Projects): Zustand je zuletzt geöffnetem
 //   Projekt aus den Projekt-Zusammenfassungen; meldet sich selbst an.
+// - Bereich „Nicht gesichert“ (#762, Unsaved): nicht Committetes, nicht
+//   Gepushtes und Stashes je Projekt; meldet sich selbst an.
 // Die Willkommensseite startet keinen Server und liest nur lokale Daten.
 
 interface
@@ -40,7 +42,8 @@ uses
   Atlas.IDE.Welcome.Page,
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.WhatsNew,
-  Atlas.IDE.Welcome.Projects;
+  Atlas.IDE.Welcome.Projects,
+  Atlas.IDE.Welcome.Unsaved;
 
 type
   TAtlasIdeWelcome = class
@@ -64,8 +67,12 @@ type
     FProjects: TAtlasIdeProjects;
     // Hält die Quelle des Bereichs „Projekte“ am Leben; die Frames halten sie ebenfalls.
     FProjectsRef: IInterface;
+    FUnsaved: TAtlasIdeUnsaved;
+    // Hält die Quelle des Bereichs „Nicht gesichert“ am Leben; die Frames halten sie ebenfalls.
+    FUnsavedRef: IInterface;
     procedure SetWhatsNew(AValue: TAtlasIdeWhatsNew);
     procedure SetProjects(AValue: TAtlasIdeProjects);
+    procedure SetUnsaved(AValue: TAtlasIdeUnsaved);
     procedure AttachMenu(AFrame: TAtlasWelcomeFrame);
     procedure SectionChanged(const AId: string);
     procedure Flush;
@@ -111,6 +118,8 @@ type
     property WhatsNew: TAtlasIdeWhatsNew read FWhatsNew write SetWhatsNew;
     /// <summary>Bereich „Projekte“ (#592); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
     property Projects: TAtlasIdeProjects read FProjects write SetProjects;
+    /// <summary>Bereich „Nicht gesichert“ (#762); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
+    property Unsaved: TAtlasIdeUnsaved read FUnsaved write SetUnsaved;
     class function HeaderInfo(const AServer: TAtlasServerInfo; AIndexing: Boolean; APercent, AUnits: Integer;
       AHour: Integer; const AFirstName: string; AGreeting: Boolean): TAtlasWelcomeHeaderInfo; static;
   end;
@@ -205,6 +214,8 @@ begin
     FWhatsNew.Stop;
   if FProjects <> nil then
     FProjects.Stop;
+  if FUnsaved <> nil then
+    FUnsaved.Stop;
   // Beim Beenden der IDE: Hat die IDE ihr Layout aus dem Speicher zurückgeschrieben, gilt die Marke weiter.
   TAtlasIdeWelcomePage.RemoveAll;
   TAtlasIdeWelcomeWindow.Release;
@@ -213,7 +224,21 @@ begin
   FWhatsNewRef := nil;
   FProjects := nil;
   FProjectsRef := nil;
+  FUnsaved := nil;
+  FUnsavedRef := nil;
   inherited;
+end;
+
+procedure TAtlasIdeWelcome.SetUnsaved(AValue: TAtlasIdeUnsaved);
+begin
+  FUnsaved := AValue;
+  FUnsavedRef := AValue;
+  if FUnsaved <> nil then
+    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        FUnsaved.Start;
+      end);
 end;
 
 procedure TAtlasIdeWelcome.SetProjects(AValue: TAtlasIdeProjects);

@@ -677,6 +677,32 @@ Vorbereitung: zwei Projekte in Git (eins auf `main`, eins auf einem Feature-Bran
 | PZ18 | Eine Git-Arbeitskopie mit zwei Projekten in Unterordnern; nur im ersten eine Datei ändern, beide schließen | „1 geändert“ nur beim ersten Projekt, das zweite ohne Marke |
 | PZ19 | git so umbenennen, dass der Aufruf hängt bzw. fehlt; Willkommensseite öffnen, 10 s warten, Bereich neu zeichnen lassen (Fenster wechseln) | „wird abgefragt …“ verschwindet spätestens nach 5 s; danach gespeicherter Stand mit „Stand vom …“ |
 
+### Nicht gesichert (#762)
+
+Abweichungen vom Issue: Die Auswertung liegt in `Atlas.Core.Welcome.Unsaved` statt in `Atlas.Common`, weil das Plugin `Atlas.Common` nicht einbindet (ADR 0011). „Ansehen“ öffnet das Projekt und listet die Dateien im Fenster „Atlas-Ergebnisse“, weil #571 keine eigene Änderungsansicht hat. Gleichartiges wird je Projekt zu einer Zeile zusammengefasst (z. B. „2 Stashes, ältester …“); repository-weite Arten (Commits, Branches ohne Upstream, Stashes) erscheinen je Arbeitskopie nur einmal.
+
+Vorbereitung: Git-Projekt `GitDemo` mit Remote `origin` (z. B. ein lokales Bare-Repository), Branch `main` mit Upstream; SVN-Projekt `SvnDemo`; ein Projekt ohne Versionsverwaltung. Alle drei einmal öffnen und schließen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NG1 | `GitDemo`: 3 Commits ohne Push, eine Änderung mit `git stash push -m Versuch` sichern, dann 4 Dateien ändern bzw. anlegen bzw. löschen; Projekt schließen, Willkommensseite öffnen | Bereich „Nicht gesichert“ in der rechten Spalte mit 3 Zeilen „**GitDemo** · main“: „4 Dateien: … · seit …“ mit „Ansehen“, „3 Commits nicht gepusht (main) · seit …“ mit „Push …“, „Stash „Versuch“ vom … · seit …“ mit „Ansehen“; älteste zuerst |
+| NG2 | `SvnDemo`: 2 Dateien ändern, Projekt schließen | eine Zeile „2 Dateien geändert · seit …“, keine Push- und keine Stash-Zeile |
+| NG3 | SVN-Datei mit Konflikt (zwei Arbeitskopien, beide ändern, `svn update`) | Zeile „1 Dateien im Konflikt“ bzw. „n Dateien im Konflikt“ mit „Ansehen“ |
+| NG4 | Projekt ohne Versionsverwaltung | erscheint nicht; keine Meldung, kein Eintrag im Protokoll als Fehler |
+| NG5 | Datei vor über 72 Stunden geändert (Änderungszeit setzen, z. B. `(Get-Item X.pas).LastWriteTime = (Get-Date).AddDays(-4)`) | Punkt rot; zwischen 24 und 72 Stunden gelb; jünger grün |
+| NG6 | „Push …“ in der Commit-Zeile | Dialog „Push – GitDemo“ mit Ziel `main → origin/main (3 Commits)` und den Commits (Kurz-Hash, Zeit, Betreff); Enter und Esc brechen ab, nichts wird gepusht |
+| NG7 | NG6, dann „Pushen“ | Push läuft im Hintergrund; Meldungsansicht „GitDemo: main nach origin/main gepusht.“; Zeile verschwindet nach der neuen Abfrage |
+| NG8 | Branch `feature/x` ohne Upstream mit einem Commit, „Push …“ | Zeile „Branch feature/x ohne Upstream, 1 Commits nur lokal“; Dialog nennt „feature/x → origin/feature/x (neu auf dem Server, wird verfolgter Branch; …)“; nach „Pushen“ hat der Branch einen Upstream |
+| NG9 | Push mit neueren Commits auf dem Server (Push abgelehnt) bzw. Remote nicht erreichbar | Meldung „Push von … fehlgeschlagen (…). Hat der Server neuere Commits, erst Pull.“; kein Hängen der IDE; nach spätestens 2 Minuten Zeitlimit |
+| NG10 | „Ansehen“ in der Änderungszeile bzw. in der Stash-Zeile | Projekt öffnet sich (falls noch nicht offen); Fenster „Atlas-Ergebnisse“ listet die Dateien mit Art („geändert“, „neu“, „gelöscht“) bzw. „Stash „Versuch“: geändert“; Doppelklick öffnet die Datei |
+| NG11 | Rechtsklick auf eine Zeile: „Ordner öffnen“; dann „Ignorieren bis morgen“ | Explorer mit markierter Projektdatei; Zeile verschwindet und kommt am nächsten Tag (nach Mitternacht Ortszeit) bzw. nach IDE-Neustart am selben Tag nicht wieder |
+| NG12 | Alles committen, pushen, Stash verwerfen; Willkommensseite neu öffnen | Zeile „Alles gesichert“; mit „Bereich ausblenden, wenn alles gesichert ist“ verschwindet der Bereich ganz und kommt bei neuer Arbeit wieder |
+| NG13 | *Tools › Optionen › Atlas › Willkommensseite*: „Bereich ‚Nicht gesichert‘ …“ aus | Bereich verschwindet sofort, keine git- bzw. svn-Aufrufe mehr (Prozess-Monitor) |
+| NG14 | Mindestalter 48 eingeben | Zeilen jünger als 48 Stunden fehlen; „Nichts zu zeigen (n Einträge jünger als die Mindestzeit …)“; Gelb 48 und Rot 12 eingeben speichert Rot = 48 |
+| NG15 | Netzlaufwerk trennen bzw. git aus dem PATH nehmen; Willkommensseite öffnen | Seite sofort da; gespeicherter Stand aus der Projekt-Zusammenfassung; kein `git fetch`, kein Netzzugriff (Prozess-Monitor: nur lokale git-Aufrufe), je Projekt höchstens 2 s |
+| NG16 | Acht Projekte in der Liste, IDE neu starten | Bereich ohne spürbare Verzögerung; Abfrage im Hintergrund, höchstens einmal je Minute und Projekt; beim Schließen eines Projekts sofort neu |
+| NG17 | Dunkles und helles Thema, 150 % Skalierung, Delphi 12 bzw. Host „Atlas-Start“ | Punkt, Name, Branch, Detailzeile und Schaltfläche lesbar und nicht abgeschnitten; Tooltip mit Pfad, Branches und ältestem Stand; im Fenster „Atlas-Start“ derselbe Inhalt |
+
 ## Atlas-Symbol (#751)
 
 | Nr. | Schritte | Erwartet |

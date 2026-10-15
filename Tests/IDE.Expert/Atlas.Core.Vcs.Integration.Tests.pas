@@ -5,6 +5,9 @@
 // einem temporären Ordner an und prüfen Branch, Revision, geänderte Dateien,
 // Inhalt in einer Revision, Zeilenherkunft und Wechselerkennung. Fehlt git
 // bzw. svn (oder svnadmin), wird der Test übersprungen.
+// Lokale Arbeit (#762): Branches mit Upstream und Vorsprung, Branch ohne
+// Upstream, Stash mit Dateien, ungepushte Commits, Push auf ein lokales
+// Bare-Repository und die Auswertung für „Nicht gesichert“.
 // Dazu der Prozessläufer selbst: Hauptthread abgelehnt, Zeitlimit, fehlendes
 // Programm, Hintergrund über TAtlasVcsWorker.
 
@@ -22,6 +25,8 @@ type
     [Test]
     procedure SvnWorkingCopyReportsBranchRevisionAndChanges;
     [Test]
+    procedure GitLocalWorkReportsUnsavedAndPushes;
+    [Test]
     procedure RunnerRefusesMainThreadAndHonoursTimeout;
     [Test]
     procedure WorkerRunsInBackgroundAndDeliversInMainThread;
@@ -33,12 +38,14 @@ uses
   System.SysUtils,
   System.Classes,
   System.IOUtils,
+  System.DateUtils,
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Vcs.Tools,
   Atlas.Core.Vcs.Switches,
   Atlas.Core.Vcs.Worker,
   Atlas.Core.Vcs.Composition,
-  Atlas.Core.Vcs.Adapters.ProcessRunner;
+  Atlas.Core.Vcs.Adapters.ProcessRunner,
+  Atlas.Core.Welcome.Unsaved;
 
 /// <summary>Führt ein Programm für den Aufbau der Fixture aus; Ausgabe als Text, Ausnahme bei Fehler.</summary>
 function Exec(const ARunner: IAtlasVcsRunner; const AExecutable: string; const AArguments: TArray<string>;
@@ -245,6 +252,145 @@ begin
   finally
     Vcs := nil;
     RemoveFolder(Folder);
+  end;
+end;
+
+procedure TAtlasVcsIntegrationTests.GitLocalWorkReportsUnsavedAndPushes;
+var
+  GitExe, Folder, Remote: string;
+  Runner: IAtlasVcsRunner;
+  Vcs: IAtlasVersionControl;
+  Local: IAtlasVcsLocalWork;
+  Branches: TArray<TAtlasVcsBranch>;
+  Stashes: TArray<TAtlasVcsStash>;
+  Commits: TArray<TAtlasVcsCommit>;
+  Changes: TArray<TAtlasVcsChange>;
+  Change: TAtlasVcsChange;
+  Remotes: TArray<string>;
+  State: TAtlasUnsavedState;
+  Item: TAtlasUnsavedItem;
+  Projects: TArray<TAtlasUnsavedProject>;
+  View: TAtlasUnsavedView;
+  Plans: TArray<TAtlasUnsavedPush>;
+  NowUtc: TDateTime;
+  Name: string;
+  Names: TArray<string>;
+begin
+  GitExe := TAtlasVcsTools.Find(TAtlasVcsKind.Git);
+  if GitExe = '' then
+    Assert.Pass('git nicht installiert; Prüfung übersprungen');
+  Runner := TAtlasVcsProcessRunner.Create(True, nil);
+  Remote := NewFolder('git-remote');
+  Folder := NewFolder('git-local');
+  try
+    Exec(Runner, GitExe, ['init', '-q', '--bare', Remote], Remote);
+    Exec(Runner, GitExe, ['init', '-q'], Folder);
+    Exec(Runner, GitExe, ['symbolic-ref', 'HEAD', 'refs/heads/main'], Folder);
+    Exec(Runner, GitExe, ['config', 'user.name', 'Atlas Test'], Folder);
+    Exec(Runner, GitExe, ['config', 'user.email', 'test@example.org'], Folder);
+    Exec(Runner, GitExe, ['config', 'core.autocrlf', 'false'], Folder);
+    Exec(Runner, GitExe, ['config', 'commit.gpgsign', 'false'], Folder);
+    Names := ['A', 'B', 'C', 'D'];
+    for Name in Names do
+      TFile.WriteAllText(TPath.Combine(Folder, Name + '.pas'), 'unit ' + Name + ';'#10, TEncoding.ASCII);
+    Exec(Runner, GitExe, ['add', '.'], Folder);
+    Exec(Runner, GitExe, ['commit', '-q', '-m', 'Erster Stand'], Folder);
+    Exec(Runner, GitExe, ['remote', 'add', 'origin', Remote], Folder);
+    Exec(Runner, GitExe, ['push', '-q', '-u', 'origin', 'main'], Folder);
+    // Abnahme: 3 ungepushte Commits, 1 Stash, 4 geänderte Dateien.
+    Names := ['Zwei', 'Drei', 'Vier'];
+    for Name in Names do
+      Exec(Runner, GitExe, ['commit', '-q', '--allow-empty', '-m', Name], Folder);
+    TFile.AppendAllText(TPath.Combine(Folder, 'A.pas'), '// Versuch'#10, TEncoding.ASCII);
+    Exec(Runner, GitExe, ['stash', 'push', '-q', '-m', 'Versuch'], Folder);
+    TFile.AppendAllText(TPath.Combine(Folder, 'A.pas'), '// neu'#10, TEncoding.ASCII);
+    TFile.AppendAllText(TPath.Combine(Folder, 'B.pas'), '// neu'#10, TEncoding.ASCII);
+    TFile.Delete(TPath.Combine(Folder, 'D.pas'));
+    TFile.WriteAllText(TPath.Combine(Folder, 'E.pas'), 'unit E;'#10, TEncoding.ASCII);
+
+    Vcs := TAtlasVersionControl.Open(Folder, TAtlasVcsProvider.Auto, Runner);
+    Assert.IsTrue(Supports(Vcs, IAtlasVcsLocalWork, Local), 'Git kann lokale Arbeit');
+    Assert.IsTrue(Local.Remotes(Remotes) = TAtlasVcsOutcome.Ok);
+    Assert.AreEqual(1, Integer(Length(Remotes)));
+    Assert.AreEqual('origin', Remotes[0]);
+    Assert.IsTrue(Local.Branches(Branches) = TAtlasVcsOutcome.Ok);
+    Assert.AreEqual(1, Integer(Length(Branches)));
+    Assert.AreEqual('main', Branches[0].Name);
+    Assert.AreEqual('origin/main', Branches[0].Upstream);
+    Assert.AreEqual(3, Branches[0].Ahead);
+    Assert.AreEqual(0, Branches[0].Behind);
+    Assert.IsTrue(Branches[0].Current);
+    Assert.IsTrue(Local.Outgoing('main', 'origin/main', 10, Commits) = TAtlasVcsOutcome.Ok);
+    Assert.AreEqual(3, Integer(Length(Commits)));
+    Assert.AreEqual('Vier', Commits[0].Summary, 'neuester zuerst');
+    Assert.IsTrue(Local.Stashes(Stashes) = TAtlasVcsOutcome.Ok);
+    Assert.AreEqual(1, Integer(Length(Stashes)));
+    Assert.AreEqual('Versuch', Stashes[0].Message);
+    Assert.AreEqual('main', Stashes[0].Branch);
+    Assert.IsTrue(Local.ChangesIn(Stashes[0].Hash, Changes) = TAtlasVcsOutcome.Ok);
+    Assert.AreEqual(1, Integer(Length(Changes)));
+    Assert.IsTrue(Find(Changes, TPath.Combine(Folder, 'A.pas'), Change), 'Datei im Stash');
+    Assert.IsTrue(Change.Kind = TAtlasVcsChangeKind.Modified);
+
+    NowUtc := TTimeZone.Local.ToUniversalTime(Now);
+    Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(Vcs, Folder, NowUtc, nil, nil, State));
+    Assert.IsTrue(State.Find(TAtlasUnsavedKind.Changes, Item));
+    Assert.AreEqual(4, Item.Count);
+    Assert.AreEqual(2, Item.Modified);
+    Assert.AreEqual(1, Item.Added);
+    Assert.AreEqual(1, Item.Deleted);
+    Assert.IsTrue(State.Find(TAtlasUnsavedKind.Commits, Item));
+    Assert.AreEqual(3, Item.Count);
+    Assert.IsTrue(Item.Since > 0, 'Alter aus dem ältesten Commit');
+    Assert.IsTrue(State.Find(TAtlasUnsavedKind.Stashes, Item));
+    Assert.AreEqual(1, Item.Count);
+    Assert.IsFalse(State.Find(TAtlasUnsavedKind.NoUpstream, Item));
+    SetLength(Projects, 1);
+    Projects[0] := Default(TAtlasUnsavedProject);
+    Projects[0].Project := TPath.Combine(Folder, 'Atlas.dproj');
+    Projects[0].State := State;
+    Projects[0].Fresh := True;
+    View := TAtlasWelcomeUnsaved.View(Projects, NowUtc, TAtlasUnsavedOptions.Create(0, 24, 72));
+    Assert.AreEqual(3, Integer(Length(View.Rows)), 'Änderungen, Commits, Stash');
+
+    // Branch ohne Upstream mit einem Commit, der auf keinem Remote liegt.
+    Exec(Runner, GitExe, ['checkout', '-q', '-b', 'feature/lokal'], Folder);
+    Exec(Runner, GitExe, ['commit', '-q', '--allow-empty', '-m', 'Nur lokal'], Folder);
+    Assert.IsTrue(Local.Outgoing('feature/lokal', '', 10, Commits) = TAtlasVcsOutcome.Ok);
+    Assert.AreEqual(4, Integer(Length(Commits)), 'drei von main und einer eigener, keiner auf origin');
+    Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(Vcs, Folder, NowUtc, nil, nil, State));
+    Assert.IsTrue(State.Find(TAtlasUnsavedKind.NoUpstream, Item));
+    Assert.AreEqual(1, Item.Count);
+    Assert.AreEqual('feature/lokal', Item.Branches[0]);
+
+    // Push erst nach Plan: main auf seinen Upstream, der neue Branch mit --set-upstream.
+    Assert.IsTrue(State.Find(TAtlasUnsavedKind.Commits, Item));
+    Assert.IsTrue(TAtlasWelcomeUnsaved.PushPlans(Local, Item, Plans) = TAtlasVcsOutcome.Ok);
+    Assert.AreEqual(1, Integer(Length(Plans)));
+    Assert.AreEqual('origin/main', Plans[0].Target);
+    Assert.IsTrue(Local.Push(Plans[0].Branch, Plans[0].Remote, Plans[0].RemoteRef, Plans[0].SetUpstream) =
+      TAtlasVcsOutcome.Ok);
+    Assert.IsTrue(State.Find(TAtlasUnsavedKind.NoUpstream, Item));
+    Assert.IsTrue(TAtlasWelcomeUnsaved.PushPlans(Local, Item, Plans) = TAtlasVcsOutcome.Ok);
+    Assert.AreEqual(1, Integer(Length(Plans)));
+    Assert.IsTrue(Plans[0].SetUpstream);
+    Assert.AreEqual('origin/feature/lokal', Plans[0].Target);
+    Assert.IsTrue(Local.Push(Plans[0].Branch, Plans[0].Remote, Plans[0].RemoteRef, Plans[0].SetUpstream) =
+      TAtlasVcsOutcome.Ok);
+    Assert.IsTrue(Local.Branches(Branches) = TAtlasVcsOutcome.Ok);
+    Assert.AreEqual(2, Integer(Length(Branches)));
+    Names := ['feature/lokal', 'main'];
+    for Name in Names do
+      Assert.IsTrue((Branches[0].Name = Name) or (Branches[1].Name = Name), Name);
+    Assert.IsTrue(Branches[0].Tracked and Branches[1].Tracked, 'beide verfolgt');
+    Assert.AreEqual(0, Branches[0].Ahead + Branches[1].Ahead, 'alles gepusht');
+    Assert.IsTrue(Local.Push('-x', 'origin', 'refs/heads/main', False) = TAtlasVcsOutcome.Failed,
+      'keine Optionen als Branch');
+  finally
+    Vcs := nil;
+    Local := nil;
+    RemoveFolder(Folder);
+    RemoveFolder(Remote);
   end;
 end;
 
