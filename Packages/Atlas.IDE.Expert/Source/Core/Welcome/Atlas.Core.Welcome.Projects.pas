@@ -15,7 +15,15 @@
 // - Versionsverwaltung: Head und Änderungen mit je VcsCallTimeoutMs (zusammen
 //   2 s je Projekt), nur im Hintergrund. Keine Arbeitskopie oder vcs.provider
 //   = off ergibt „none“ (kein Branch, keine Marke, kein Fehler); andere Fehler
-//   lassen den gespeicherten Stand stehen („Stand vom …“).
+//   lassen den gespeicherten Stand stehen („Stand vom …“). Geänderte Dateien
+//   zählen nur unterhalb des Projektordners (eine Arbeitskopie kann mehrere
+//   Projekte enthalten). Kommt eine Abfrage nicht binnen VcsQueryLimitMs
+//   zurück, gilt sie als beendet (kein dauerhaftes „wird abgefragt …“).
+// - Regeltreffer (#97): Atlas-Regeltreffer, die das Plugin vom Server bekommt
+//   (Probleme #398, auch für nicht geöffnete Projektdateien über
+//   workspace/diagnostic); der Server hat die Baseline schon abgezogen. Gezählt
+//   werden Treffer in Dateien unterhalb des Projektordners, nur wenn dort
+//   mindestens eine Datei geprüft ist („sofern bekannt“).
 
 interface
 
@@ -23,6 +31,8 @@ uses
   System.SysUtils,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Build.Messages,
+  Atlas.Core.Problems.Contract,
+  Atlas.Core.Problems.Store,
   Atlas.Core.Vcs.Contract;
 
 type
@@ -76,6 +86,9 @@ type
     VcsCallTimeoutMs = 1000;
     /// <summary>Frühestens nach dieser Zeit fragt die Seite dasselbe Projekt erneut ab.</summary>
     VcsRefreshMs = 60000;
+    /// <summary>Spätestens dann gilt eine Abfrage als beendet, auch ohne Ergebnis (zwei Aufrufe mit Zeitlimit
+    /// plus Reserve).</summary>
+    VcsQueryLimitMs = 5000;
   public
     /// <summary>Einträge zu ARecent (Reihenfolge der IDE), jedes Projekt einmal, ohne entfernte, höchstens AMax
     /// (auf MinMax..MaxMax begrenzt).</summary>
@@ -93,7 +106,22 @@ type
     /// <summary>Head und Änderungen abfragen (startet Prozesse: nur im Hintergrund). True mit AState, wenn das
     /// Ergebnis gilt (auch „none“); False bei Fehler, Zeitüberschreitung oder fehlendem Programm.</summary>
     class function Probe(const AVcs: IAtlasVersionControl; ANowUtc: TDateTime;
-      out AState: TAtlasProjectVcs): Boolean; static;
+      out AState: TAtlasProjectVcs): Boolean; overload; static;
+    /// <summary>Wie oben; geänderte Dateien nur unterhalb von AFolder (Projektordner; '' = alle).</summary>
+    class function Probe(const AVcs: IAtlasVersionControl; const AFolder: string; ANowUtc: TDateTime;
+      out AState: TAtlasProjectVcs): Boolean; overload; static;
+    /// <summary>Liegt AFileName in AFolder oder darunter? Groß-/Kleinschreibung und / bzw. \ egal.</summary>
+    class function InFolder(const AFileName, AFolder: string): Boolean; static;
+    /// <summary>Läuft eine Abfrage, die bei AStartedMs begann (Tick in ms), bei ANowMs noch?</summary>
+    class function QueryRunning(AStartedMs, ANowMs: UInt64): Boolean; static;
+    /// <summary>Atlas-Regeltreffer: Code einer Regel, nicht vom Compiler, kein inaktiver Bereich.</summary>
+    class function IsRuleHit(const AProblem: TAtlasProblem): Boolean; static;
+    /// <summary>Regeltreffer in den Dateien von AStore unterhalb von AFolder. False (unbekannt), wenn dort keine
+    /// Datei geprüft ist.</summary>
+    class function CountRuleHits(AStore: TAtlasProblemStore; const AFolder: string;
+      out AHits: Integer): Boolean; static;
+    /// <summary>Neue Regeltreffer gegenüber der Baseline in die Zusammenfassung ("rules").</summary>
+    class procedure RecordRules(var ASummary: TAtlasProjectSummary; AHits: Integer; ANowUtc: TDateTime); static;
     /// <summary>Pfad gekürzt auf höchstens AMaxLength Zeichen: Anfang, „…“ und so viele Ordner vom Ende wie
     /// passen.</summary>
     class function ShortPath(const APath: string; AMaxLength: Integer): string; static;
@@ -320,10 +348,71 @@ end;
 
 class function TAtlasWelcomeProjects.Probe(const AVcs: IAtlasVersionControl; ANowUtc: TDateTime;
   out AState: TAtlasProjectVcs): Boolean;
+begin
+  Result := Probe(AVcs, '', ANowUtc, AState);
+end;
+
+class function TAtlasWelcomeProjects.InFolder(const AFileName, AFolder: string): Boolean;
+var
+  Folder, FileName: string;
+begin
+  Folder := StringReplace(Trim(AFolder), '/', '\', [rfReplaceAll]);
+  FileName := StringReplace(Trim(AFileName), '/', '\', [rfReplaceAll]);
+  if (Folder = '') or (FileName = '') then
+    Exit(False);
+  if Folder[Length(Folder)] <> '\' then
+    Folder := Folder + '\';
+  Result := SameText(Copy(FileName, 1, Length(Folder)), Folder);
+end;
+
+class function TAtlasWelcomeProjects.QueryRunning(AStartedMs, ANowMs: UInt64): Boolean;
+begin
+  // Ein Tick vor dem Start (Uhr übergelaufen o. Ä.) zählt als beendet.
+  Result := (ANowMs >= AStartedMs) and (ANowMs - AStartedMs < VcsQueryLimitMs);
+end;
+
+class function TAtlasWelcomeProjects.IsRuleHit(const AProblem: TAtlasProblem): Boolean;
+begin
+  Result := (AProblem.Code <> '') and not AProblem.IsCompiler and not AProblem.Unnecessary;
+end;
+
+class function TAtlasWelcomeProjects.CountRuleHits(AStore: TAtlasProblemStore; const AFolder: string;
+  out AHits: Integer): Boolean;
+var
+  FileName: string;
+  Problem: TAtlasProblem;
+begin
+  AHits := 0;
+  Result := False;
+  if AStore = nil then
+    Exit;
+  for FileName in AStore.AllFiles do
+    if InFolder(FileName, AFolder) then
+    begin
+      Result := True;
+      for Problem in AStore.ForFile(FileName) do
+        if IsRuleHit(Problem) then
+          Inc(AHits);
+    end;
+end;
+
+class procedure TAtlasWelcomeProjects.RecordRules(var ASummary: TAtlasProjectSummary; AHits: Integer;
+  ANowUtc: TDateTime);
+begin
+  ASummary.Rules := TAtlasProjectRules.Empty;
+  ASummary.Rules.Known := True;
+  ASummary.Rules.At := ANowUtc;
+  ASummary.Rules.NewHits := AHits;
+end;
+
+class function TAtlasWelcomeProjects.Probe(const AVcs: IAtlasVersionControl; const AFolder: string;
+  ANowUtc: TDateTime; out AState: TAtlasProjectVcs): Boolean;
 var
   Outcome: TAtlasVcsOutcome;
   Head: TAtlasVcsHead;
   Changes: TArray<TAtlasVcsChange>;
+  Change: TAtlasVcsChange;
+  Count: Integer;
 begin
   AState := TAtlasProjectVcs.Empty;
   Result := False;
@@ -348,7 +437,13 @@ begin
   AState.Ahead := Head.Ahead;
   AState.Behind := Head.Behind;
   if AVcs.Changes(Changes) = TAtlasVcsOutcome.Ok then
-    AState.Changed := Length(Changes);
+  begin
+    Count := 0;
+    for Change in Changes do
+      if (AFolder = '') or InFolder(Change.Path, AFolder) or InFolder(Change.OldPath, AFolder) then
+        Inc(Count);
+    AState.Changed := Count;
+  end;
   Result := True;
 end;
 

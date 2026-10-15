@@ -5,7 +5,8 @@
 // „Build 0/0/0“, rote Marke „2 Fehler“ mit Sprungziel, ohne
 // Versionsverwaltung kein Branch und kein Fehler), Übernahme eines Compiles
 // in die Zusammenfassung, Abfrage der Versionsverwaltung mit Ersatz-Umsetzung
-// und gekürzte Pfade.
+// (geänderte Dateien nur im Projektordner, Ende einer hängenden Abfrage),
+// Regeltreffer aus den Problemen des Servers und gekürzte Pfade.
 
 interface
 
@@ -45,6 +46,18 @@ type
     [Test]
     procedure ProbeFailureKeepsStoredState;
     [Test]
+    procedure ProbeCountsChangesBelowProjectFolder;
+    [Test]
+    procedure InFolderIgnoresCaseAndSeparators;
+    [Test]
+    procedure QueryEndsAfterLimit;
+    [Test]
+    procedure CountsRuleHitsBelowProjectFolder;
+    [Test]
+    procedure RuleHitsUnknownWithoutCheckedFiles;
+    [Test]
+    procedure RecordsRuleHits;
+    [Test]
     procedure ShortensLongPaths;
     [Test]
     procedure SettingsDefaultsAndLimits;
@@ -58,6 +71,8 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.Core.Build.Messages,
   Atlas.Core.Vcs.Contract,
+  Atlas.Core.Problems.Contract,
+  Atlas.Core.Problems.Store,
   Atlas.Core.Welcome.Projects;
 
 type
@@ -453,6 +468,139 @@ begin
     Assert.IsFalse(State.Known);
   end;
   Assert.IsFalse(TAtlasWelcomeProjects.Probe(nil, 46000, State));
+end;
+
+function Problem(const ACode, ASource: string; AUnnecessary: Boolean): TAtlasProblem;
+begin
+  Result := Default(TAtlasProblem);
+  Result.Code := ACode;
+  Result.Source := ASource;
+  Result.Message := 'Meldung ' + ACode;
+  Result.Unnecessary := AUnnecessary;
+end;
+
+function VcsChange(const APath, AOldPath: string): TAtlasVcsChange;
+begin
+  Result := Default(TAtlasVcsChange);
+  Result.Path := APath;
+  Result.OldPath := AOldPath;
+end;
+
+procedure TAtlasWelcomeProjectsTests.ProbeCountsChangesBelowProjectFolder;
+var
+  Fake: TFakeVcs;
+  Vcs: IAtlasVersionControl;
+  State: TAtlasProjectVcs;
+begin
+  // Eine Arbeitskopie mit zwei Projekten: Je Projekt zählen nur seine Dateien.
+  Fake := TFakeVcs.Create;
+  Vcs := Fake;
+  Fake.FKind := TAtlasVcsKind.Git;
+  Fake.FHeadOutcome := TAtlasVcsOutcome.Ok;
+  Fake.FChangesOutcome := TAtlasVcsOutcome.Ok;
+  Fake.FHead := TAtlasVcsHead.Empty;
+  Fake.FHead.Branch := 'main';
+  Fake.FChanges := [VcsChange('C:\Repo\App\Main.pas', ''), VcsChange('C:/Repo/App/Sub/Neu.pas', ''),
+    VcsChange('C:\Repo\Lib\Util.pas', ''), VcsChange('C:\Repo\Approved.txt', ''),
+    VcsChange('C:\Repo\App\Umbenannt.pas', 'C:\Repo\Lib\Alt.pas'),
+    VcsChange('C:\Repo\Lib\Weg.pas', 'C:\Repo\App\Weg.pas')];
+  Assert.IsTrue(TAtlasWelcomeProjects.Probe(Vcs, 'C:\Repo\App', 46000, State));
+  Assert.AreEqual(4, State.Changed);
+  Assert.IsTrue(TAtlasWelcomeProjects.Probe(Vcs, 'c:\repo\lib\', 46000, State));
+  Assert.AreEqual(3, State.Changed);
+  Assert.IsTrue(TAtlasWelcomeProjects.Probe(Vcs, 46000, State));
+  Assert.AreEqual(6, State.Changed, 'ohne Ordner alle');
+end;
+
+procedure TAtlasWelcomeProjectsTests.InFolderIgnoresCaseAndSeparators;
+begin
+  Assert.IsTrue(TAtlasWelcomeProjects.InFolder('C:\Repo\App\Main.pas', 'c:/repo/app'));
+  Assert.IsTrue(TAtlasWelcomeProjects.InFolder('c:/repo/app/sub/x.pas', 'C:\Repo\App\'));
+  Assert.IsFalse(TAtlasWelcomeProjects.InFolder('C:\Repo\Apps\Main.pas', 'C:\Repo\App'), 'Nachbarordner');
+  Assert.IsFalse(TAtlasWelcomeProjects.InFolder('C:\Repo\Main.pas', 'C:\Repo\App'));
+  Assert.IsFalse(TAtlasWelcomeProjects.InFolder('', 'C:\Repo'));
+  Assert.IsFalse(TAtlasWelcomeProjects.InFolder('C:\Repo\Main.pas', ''));
+end;
+
+procedure TAtlasWelcomeProjectsTests.QueryEndsAfterLimit;
+begin
+  Assert.IsTrue(TAtlasWelcomeProjects.QueryRunning(1000, 1000));
+  Assert.IsTrue(TAtlasWelcomeProjects.QueryRunning(1000, 1000 + TAtlasWelcomeProjects.VcsQueryLimitMs - 1));
+  Assert.IsFalse(TAtlasWelcomeProjects.QueryRunning(1000, 1000 + TAtlasWelcomeProjects.VcsQueryLimitMs));
+  Assert.IsFalse(TAtlasWelcomeProjects.QueryRunning(5000, 1000), 'Uhr zurück');
+end;
+
+procedure TAtlasWelcomeProjectsTests.CountsRuleHitsBelowProjectFolder;
+var
+  Store: TAtlasProblemStore;
+  Hits: Integer;
+begin
+  Store := TAtlasProblemStore.Create;
+  try
+    // Regeltreffer zählen; Compilermeldungen, Syntaxfehler (ohne Code) und inaktive Zweige nicht.
+    Store.Update('C:\Repo\App\Main.pas', '', False, [Problem('with-statement', 'Atlas', False),
+      Problem('E2003', TAtlasProblem.CompilerSource, False), Problem('', 'Atlas', False),
+      Problem('unused-variable', 'Atlas', False)], '', True);
+    Store.Update('C:\Repo\App\Sub\Daten.pas', '', False, [Problem('empty-except', 'Atlas', False),
+      Problem('inactive', 'Atlas', True)], '', True);
+    Store.Update('C:\Repo\App\Sauber.pas', '', False, [], '', True);
+    Store.Update('C:\Repo\Lib\Util.pas', '', False, [Problem('with-statement', 'Atlas', False)], '', True);
+    Assert.IsTrue(TAtlasWelcomeProjects.CountRuleHits(Store, 'C:\Repo\App', Hits));
+    Assert.AreEqual(3, Hits);
+    Assert.IsTrue(TAtlasWelcomeProjects.CountRuleHits(Store, 'C:\Repo\Lib', Hits));
+    Assert.AreEqual(1, Hits);
+    Assert.IsTrue(TAtlasWelcomeProjects.CountRuleHits(Store, 'C:\Repo', Hits));
+    Assert.AreEqual(4, Hits);
+  finally
+    Store.Free;
+  end;
+end;
+
+procedure TAtlasWelcomeProjectsTests.RuleHitsUnknownWithoutCheckedFiles;
+var
+  Store: TAtlasProblemStore;
+  Hits: Integer;
+begin
+  Assert.IsFalse(TAtlasWelcomeProjects.CountRuleHits(nil, 'C:\Repo\App', Hits));
+  Store := TAtlasProblemStore.Create;
+  try
+    Assert.IsFalse(TAtlasWelcomeProjects.CountRuleHits(Store, 'C:\Repo\App', Hits), 'leer');
+    Store.Update('C:\Anders\Main.pas', '', False, [Problem('with-statement', 'Atlas', False)], '', True);
+    Assert.IsFalse(TAtlasWelcomeProjects.CountRuleHits(Store, 'C:\Repo\App', Hits), 'nur fremde Dateien');
+    Assert.AreEqual(0, Hits);
+    // Eine geprüfte Datei ohne Treffer: bekannt, 0.
+    Store.Update('C:\Repo\App\Main.pas', '', False, [], '', True);
+    Assert.IsTrue(TAtlasWelcomeProjects.CountRuleHits(Store, 'C:\Repo\App', Hits));
+    Assert.AreEqual(0, Hits);
+  finally
+    Store.Free;
+  end;
+end;
+
+procedure TAtlasWelcomeProjectsTests.RecordsRuleHits;
+var
+  Summary: TAtlasProjectSummary;
+  Pill: TAtlasProjectPill;
+  Found: Boolean;
+begin
+  Summary := OnMain;
+  TAtlasWelcomeProjects.RecordRules(Summary, 4, 46000);
+  Assert.IsTrue(Summary.Rules.Known);
+  Assert.AreEqual(4, Summary.Rules.NewHits);
+  Assert.IsTrue(Summary.Rules.At = 46000);
+  Found := False;
+  for Pill in TAtlasWelcomeProjects.Pills(Entry(Summary)) do
+    if Pill.Kind = TAtlasProjectPillKind.Rules then
+    begin
+      Found := True;
+      Assert.AreEqual(4, Pill.A);
+    end;
+  Assert.IsTrue(Found);
+  // 0 neue Treffer: bekannt, aber keine Marke.
+  TAtlasWelcomeProjects.RecordRules(Summary, 0, 46001);
+  Assert.IsTrue(Summary.Rules.Known);
+  for Pill in TAtlasWelcomeProjects.Pills(Entry(Summary)) do
+    Assert.IsFalse(Pill.Kind = TAtlasProjectPillKind.Rules);
 end;
 
 procedure TAtlasWelcomeProjectsTests.ShortensLongPaths;

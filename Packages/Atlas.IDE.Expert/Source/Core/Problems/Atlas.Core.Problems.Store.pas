@@ -97,6 +97,9 @@ type
     function LineText(const AFileName: string; ALine: Integer; out AText: string): Boolean;
     /// <summary>Dateien mit Problemen, nach Namen sortiert.</summary>
     function Files: TArray<string>;
+    /// <summary>Alle Dateien mit Diagnosen des Servers, auch ohne Probleme, nach Namen sortiert (Projektzustand
+    /// #592: Was hier fehlt, ist nicht geprüft).</summary>
+    function AllFiles: TArray<string>;
     property Version: Integer read FVersion;
   end;
 
@@ -473,6 +476,20 @@ begin
   for Problem in ForFile(AFileName) do
     if Problem.Contains(ALine, ACharacter) then
       Result := Result + [Problem];
+end;
+
+function TAtlasProblemStore.AllFiles: TArray<string>;
+var
+  Entry: TEntry;
+begin
+  Result := nil;
+  for Entry in FEntries.Values do
+    Result := Result + [Entry.FileName];
+  TArray.Sort<string>(Result, TComparer<string>.Construct(
+    function(const A, B: string): Integer
+    begin
+      Result := CompareText(A, B);
+    end));
 end;
 
 function TAtlasProblemStore.Files: TArray<string>;
