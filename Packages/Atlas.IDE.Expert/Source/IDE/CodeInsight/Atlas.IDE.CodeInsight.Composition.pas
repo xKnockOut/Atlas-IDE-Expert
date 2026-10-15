@@ -328,6 +328,11 @@ begin
     begin
       TAtlasIdeEditorCommands.GoToTypeDefinition;
     end);
+  Palette.RegisterCommand('Atlas.ToggleMethod', TAtlasStrings.Text(TAtlasTextId.EditorMethodToggle), '',
+    procedure
+    begin
+      TAtlasIdeEditorCommands.ToggleMethod;
+    end);
   Palette.RegisterCommand('Atlas.CopyQualifiedName', TAtlasStrings.Text(TAtlasTextId.EditorCopyQualified), '',
     procedure
     begin

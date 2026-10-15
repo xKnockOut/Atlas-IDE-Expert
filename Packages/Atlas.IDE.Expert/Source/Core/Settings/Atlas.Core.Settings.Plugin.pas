@@ -156,6 +156,12 @@ type
     ShrinkKey: Integer;
     ImplementationKey: Integer;
     TypeDefinitionKey: Integer;
+    /// <summary>Zwischen Deklaration und Implementierung wechseln (#775); aus: Atlas belegt die Tasten nicht,
+    /// die Klassennavigation der IDE gilt.</summary>
+    MethodToggle: Boolean;
+    /// <summary>Tasten für den Wechsel (#775, TShortCut, 0 = keine): Strg+Umschalt+↑ und Strg+Umschalt+↓.</summary>
+    MethodToggleUpKey: Integer;
+    MethodToggleDownKey: Integer;
     /// <summary>Die Editor-Kürzel auch belegen, wenn die IDE oder eine andere Erweiterung sie nutzt.</summary>
     EditorKeysPriority: Boolean;
     /// <summary>Schnellbefehle mit „/“ nach Enter und „///“-Gerüste beim Server auslösen (#399).</summary>
@@ -324,6 +330,9 @@ begin
   Result.ShrinkKey := $6057; // Strg+Umschalt+W
   Result.ImplementationKey := $C049; // Strg+Alt+I
   Result.TypeDefinitionKey := 0;
+  Result.MethodToggle := True;
+  Result.MethodToggleUpKey := $6026; // Strg+Umschalt+↑
+  Result.MethodToggleDownKey := $6028; // Strg+Umschalt+↓
   Result.EditorKeysPriority := False;
   Result.SlashCommands := True;
   Result.Snippets := True;
@@ -413,6 +422,8 @@ begin
     UndoMultiFileNewFiles := 'recycleBin';
   UndoKey := EnsureRange(UndoKey, 0, $FFFF);
   RedoKey := EnsureRange(RedoKey, 0, $FFFF);
+  MethodToggleUpKey := EnsureRange(MethodToggleUpKey, 0, $FFFF);
+  MethodToggleDownKey := EnsureRange(MethodToggleDownKey, 0, $FFFF);
   PairGuideWidth := EnsureRange(PairGuideWidth, MinPairGuideWidth, MaxPairGuideWidth);
   PairGuideOpacity := EnsureRange(PairGuideOpacity, MinPairGuideOpacity, MaxPairGuideOpacity);
   PairColorsLight := NormalPairs(PairColorsLight);
@@ -474,6 +485,9 @@ begin
   ShrinkKey := AStore.ReadInteger('ShrinkKey', Default.ShrinkKey);
   ImplementationKey := AStore.ReadInteger('ImplementationKey', Default.ImplementationKey);
   TypeDefinitionKey := AStore.ReadInteger('TypeDefinitionKey', Default.TypeDefinitionKey);
+  MethodToggle := AStore.ReadInteger('MethodToggle', BoolValue(Default.MethodToggle)) <> 0;
+  MethodToggleUpKey := AStore.ReadInteger('MethodToggleUpKey', Default.MethodToggleUpKey);
+  MethodToggleDownKey := AStore.ReadInteger('MethodToggleDownKey', Default.MethodToggleDownKey);
   EditorKeysPriority := AStore.ReadInteger('EditorKeysPriority', BoolValue(Default.EditorKeysPriority)) <> 0;
   SlashCommands := AStore.ReadInteger('SlashCommands', BoolValue(Default.SlashCommands)) <> 0;
   Snippets := AStore.ReadInteger('Snippets', BoolValue(Default.Snippets)) <> 0;
@@ -565,6 +579,9 @@ begin
   AStore.WriteInteger('ShrinkKey', ShrinkKey);
   AStore.WriteInteger('ImplementationKey', ImplementationKey);
   AStore.WriteInteger('TypeDefinitionKey', TypeDefinitionKey);
+  AStore.WriteInteger('MethodToggle', BoolValue(MethodToggle));
+  AStore.WriteInteger('MethodToggleUpKey', MethodToggleUpKey);
+  AStore.WriteInteger('MethodToggleDownKey', MethodToggleDownKey);
   AStore.WriteInteger('EditorKeysPriority', BoolValue(EditorKeysPriority));
   AStore.WriteInteger('SlashCommands', BoolValue(SlashCommands));
   AStore.WriteInteger('Snippets', BoolValue(Snippets));

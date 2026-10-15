@@ -202,6 +202,7 @@ contains
   Atlas.IDE.Results.Window in 'Source\IDE\Results\Atlas.IDE.Results.Window.pas',
   Atlas.IDE.Results.Commands in 'Source\IDE\Results\Atlas.IDE.Results.Commands.pas',
   Atlas.Core.Editor.Selection in 'Source\Core\Editor\Atlas.Core.Editor.Selection.pas',
+  Atlas.Core.Editor.MethodToggle in 'Source\Core\Editor\Atlas.Core.Editor.MethodToggle.pas',
   Atlas.Core.Editor.SlashTrigger in 'Source\Core\Editor\Atlas.Core.Editor.SlashTrigger.pas',
   Atlas.IDE.Commands.ContextMenu in 'Source\IDE\Commands\Atlas.IDE.Commands.ContextMenu.pas',
   Atlas.IDE.Commands.Editor in 'Source\IDE\Commands\Atlas.IDE.Commands.Editor.pas',

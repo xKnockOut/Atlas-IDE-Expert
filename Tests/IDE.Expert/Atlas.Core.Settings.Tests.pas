@@ -124,6 +124,9 @@ begin
   Assert.IsFalse(Settings.InlayHints, 'Inlay-Hints standardmäßig aus (#401)');
   Assert.AreEqual($800D, Settings.ActionsKey, 'Code-Aktionen: Alt+Enter (#399)');
   Assert.AreEqual(0, Settings.TypeDefinitionKey, 'Typdefinition ohne Kürzel');
+  Assert.IsTrue(Settings.MethodToggle, 'Deklaration/Implementierung wechseln standardmäßig an (#775)');
+  Assert.AreEqual($6026, Settings.MethodToggleUpKey, 'Strg+Umschalt+Hoch (#775)');
+  Assert.AreEqual($6028, Settings.MethodToggleDownKey, 'Strg+Umschalt+Runter (#775)');
   Assert.IsTrue(Settings.SlashCommands, 'Schnellbefehle standardmäßig an (#399)');
   Assert.IsTrue(Settings.Snippets, 'Code-Vorlagen standardmäßig an (#51)');
   Assert.IsTrue(Settings.ImportIdeTemplates, 'Live Templates der IDE standardmäßig an (#51)');
@@ -176,6 +179,9 @@ begin
   Settings.ActionsKey := 0;
   Settings.ExpandKey := $4041;
   Settings.TypeDefinitionKey := $C054;
+  Settings.MethodToggle := False;
+  Settings.MethodToggleUpKey := 0;
+  Settings.MethodToggleDownKey := $C044; // Strg+Alt+D
   Settings.EditorKeysPriority := True;
   Settings.SlashCommands := False;
   Settings.Snippets := False;
@@ -223,6 +229,9 @@ begin
   Assert.AreEqual($4041, Loaded.ExpandKey);
   Assert.AreEqual($6057, Loaded.ShrinkKey);
   Assert.AreEqual($C054, Loaded.TypeDefinitionKey);
+  Assert.IsFalse(Loaded.MethodToggle);
+  Assert.AreEqual(0, Loaded.MethodToggleUpKey, '0 = keine Taste');
+  Assert.AreEqual($C044, Loaded.MethodToggleDownKey);
   Assert.IsTrue(Loaded.EditorKeysPriority);
   Assert.IsFalse(Loaded.SlashCommands);
   Assert.IsFalse(Loaded.Snippets);
