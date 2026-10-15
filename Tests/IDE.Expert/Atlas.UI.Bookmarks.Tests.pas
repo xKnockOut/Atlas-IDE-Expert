@@ -17,6 +17,9 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -32,6 +35,9 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -85,6 +91,16 @@ begin
 end;
 
 { TAtlasBookmarkDialogTests }
+
+procedure TAtlasBookmarkDialogTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    ShowsSuggestionAndButtons;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TAtlasBookmarkDialogTests.Setup;
 begin
@@ -140,6 +156,16 @@ begin
 end;
 
 { TAtlasBookmarksFrameTests }
+
+procedure TAtlasBookmarksFrameTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    ShowsColumnsAndLostBookmarks;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TAtlasBookmarksFrameTests.Setup;
 begin
@@ -373,7 +399,8 @@ begin
     Frame.SetBookmarks(TAtlasBookmarkList.Create(Project), 'Kein Projekt geöffnet.', '');
     Assert.IsTrue(Frame.EmptyLabel.Visible);
     Assert.IsFalse(Frame.List.Visible);
-    Assert.IsTrue(Frame.EmptyLabel.Caption.StartsWith('Noch keine Lesezeichen'));
+    // TCaption ist ein eigener Typ ohne String-Helfer.
+    Assert.IsTrue(string(Frame.EmptyLabel.Caption).StartsWith('Noch keine Lesezeichen'));
     Assert.AreEqual('', Frame.SelectedId);
     Frame.SetBookmarks(SampleList, '', '');
     Assert.IsFalse(Frame.EmptyLabel.Visible);

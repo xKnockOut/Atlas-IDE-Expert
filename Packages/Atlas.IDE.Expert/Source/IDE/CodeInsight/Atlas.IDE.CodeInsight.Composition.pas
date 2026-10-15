@@ -29,6 +29,8 @@ uses
   System.Win.Registry,
   System.JSON,
   System.IOUtils,
+  System.UITypes,
+  Vcl.Dialogs,
   ToolsAPI,
   Atlas.UI.Strings,
   Atlas.Core.Settings.Plugin,
@@ -93,8 +95,10 @@ uses
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.WhatsNew,
   Atlas.IDE.Welcome.Projects,
+  Atlas.IDE.Welcome.Trends,
   Atlas.Core.Editor.Metrics,
   Atlas.Core.Projects.Todos,
+  Atlas.Core.Projects.Baseline,
   Atlas.UI.Todos.Dialog,
   Atlas.IDE.Welcome.Unsaved,
   Atlas.IDE.Welcome.Continue,
@@ -292,10 +296,31 @@ begin
   end;
 end;
 
-/// <summary>Code-Metriken (#66) und TODO-Übersicht (#68) nach einem Build für die Projekt-Zusammenfassung
-/// (Projektverlauf #758): in einem Hintergrundlauf vom laufenden Server (startet ihn nicht), Zeitpunkt der des
-/// Builds.</summary>
-procedure RecordProjectMetrics(const AProject: string);
+/// <summary>Stand der Baseline (#97) im Ordner AFolder; liest nur lokale Dateien, auch im Hintergrund.</summary>
+function BaselineState(const AFolder: string): TAtlasBaselineState;
+begin
+  Result := TAtlasProjectBaselines.StateOf(AFolder,
+    function(const AFileName: string): Boolean
+    begin
+      Result := FileExists(AFileName);
+    end,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      AText := '';
+      try
+        AText := TFile.ReadAllText(AFileName, TEncoding.UTF8);
+        Result := True;
+      except
+        on Exception do
+          Result := False;
+      end;
+    end);
+end;
+
+/// <summary>Code-Metriken (#66), TODO-Übersicht (#68) und Stand der Baseline (#97) nach einem Build für die
+/// Projekt-Zusammenfassung (Projektverlauf #758, Einrichtung #759): in einem Hintergrundlauf vom laufenden Server
+/// (startet ihn nicht), Zeitpunkt AStampUtc der des Builds: Damit kommen die Werte in seinen Messpunkt.</summary>
+procedure RecordProjectMetrics(const AProject: string; AStampUtc: TDateTime);
 var
   Project: string;
   Stamp: TDateTime;
@@ -304,14 +329,17 @@ begin
     not TAtlasIdeSettings.Current.Enabled then
     Exit;
   Project := AProject;
-  Stamp := TAtlasIdeProjects.StampUtc;
+  Stamp := AStampUtc;
   Manager.RunCommandsAsync([MetricsCommand, TodosCommand],
     [MetricsArguments(Project, 'summary'), MetricsArguments(Project, 'summary')], 60000,
     procedure(AAnswers: TArray<string>)
     var
       Answers: TArray<string>;
+      Baseline: TAtlasBaselineState;
     begin
       Answers := AAnswers;
+      // Die Baseline-Datei hier im Hintergrund lesen: Bei Altprojekten prüft das viele Pfade.
+      Baseline := BaselineState(ExtractFileDir(Project));
       TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
         procedure
         begin
@@ -322,6 +350,7 @@ begin
                 // Leere oder ungültige Antworten lassen die Zusammenfassung unverändert.
                 Welcome.Projects.RecordMetrics(Project, Answers[0], Stamp);
                 Welcome.Projects.RecordTodos(Project, Answers[1], Stamp);
+                Welcome.Projects.RecordBaseline(Project, Baseline, Stamp);
               end);
         end);
     end);
@@ -381,6 +410,127 @@ begin
   else
     // Ein Befehl im Hintergrund läuft schon (etwa die Metriken nach einem Build): später noch einmal.
     GuardWarning(TAtlasStrings.Text(TAtlasTextId.MetricsReportBusy));
+end;
+
+const
+  /// <summary>Höchstens so viele Pfade in Rückfrage und Meldung; der Rest als „… und n weitere“.</summary>
+  BaselineOrphanLines = 15;
+
+/// <summary>Einträge ohne Datei (#97) als Zeilen „Pfad (n Treffer)“, höchstens BaselineOrphanLines.</summary>
+function BaselineOrphanText(const AOrphans: TArray<TAtlasBaselineOrphan>): TArray<string>;
+var
+  Index: Integer;
+begin
+  Result := nil;
+  for Index := 0 to High(AOrphans) do
+  begin
+    if Index = BaselineOrphanLines then
+    begin
+      Result := Result + [TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateOrphansMore, [Length(AOrphans) - Index])];
+      Break;
+    end;
+    Result := Result + [TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateOrphanLine, [AOrphans[Index].Path,
+      AOrphans[Index].Count])];
+  end;
+end;
+
+/// <summary>Ergebnis von atlas.updateBaseline (#97) in der Meldungsansicht: zuerst die entfernten Einträge ohne
+/// Datei mit Pfaden, dann die Zähler. Nur dort, nicht im Plugin-Protokoll: Es enthält Pfade.</summary>
+procedure ReportBaselineUpdate(const AUpdate: TAtlasBaselineUpdate);
+var
+  Line: string;
+begin
+  if AUpdate.OrphanCount > 0 then
+  begin
+    MessageLine(TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateOrphans, [AUpdate.OrphanCount]));
+    for Line in BaselineOrphanText(AUpdate.Orphans) do
+      MessageLine(Line);
+  end;
+  MessageLine(TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateDone, [AUpdate.FileName, AUpdate.Total, AUpdate.Files,
+    AUpdate.Added, AUpdate.Removed, AUpdate.Unchanged]));
+  if AUpdate.Completed > 0 then
+    MessageLine(TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateCompleted, [AUpdate.Completed]));
+end;
+
+/// <summary>„Baseline des Projekts aktualisieren“ (#97): nennt vorher die Einträge ohne Datei und fragt nach, lässt
+/// den Server (atlas.updateBaseline) im Hintergrund alle Dateien prüfen und die Baseline schreiben, meldet die
+/// Zähler und schreibt den Abschnitt "baseline" der Projekt-Zusammenfassung.</summary>
+procedure UpdateBaseline;
+var
+  Project: IOTAProject;
+  FileName: string;
+  State: TAtlasBaselineState;
+begin
+  // Abgeschaltet: auch über Tastenkürzel oder „Ausprobieren“ nichts tun.
+  if (Manager = nil) or not TAtlasIdeSettings.Current.BaselineUpdate then
+    Exit;
+  Project := GetActiveProject;
+  if (Project = nil) or (Project.FileName = '') then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.BaselineUpdateNoProject));
+    Exit;
+  end;
+  if Manager.ActiveSession = nil then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.BaselineUpdateFailed));
+    Exit;
+  end;
+  FileName := Project.FileName;
+  // Einträge ohne Datei nennen, bevor das Aktualisieren sie entfernt (umbenannte oder verschobene Dateien).
+  State := BaselineState(ExtractFileDir(FileName));
+  if (State.OrphanCount > 0) and (MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateConfirm,
+    [State.OrphanCount, sLineBreak + string.Join(sLineBreak, BaselineOrphanText(State.Orphans)) + sLineBreak +
+    sLineBreak]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes) then
+    Exit;
+  if Manager.RunCommandAsync(TAtlasProjectBaselines.Command,
+    TAtlasProjectBaselines.Arguments(TLspSession.PathToUri(FileName)), TAtlasProjectBaselines.TimeoutMs,
+    procedure(AAnswer: string)
+    var
+      Answer: string;
+      Update: TAtlasBaselineUpdate;
+      Valid, Elsewhere: Boolean;
+      After: TAtlasBaselineState;
+    begin
+      Answer := AAnswer;
+      After := Default(TAtlasBaselineState);
+      // Im Hintergrund: Antwort lesen und die neue Datei zählen.
+      Valid := TAtlasProjectBaselines.FromServer(Answer, Update);
+      // Nicht im Projektordner geschrieben (#758): Verlauf und Einrichtung lesen weiter dort.
+      Elsewhere := Valid and TAtlasProjectBaselines.WrittenElsewhere(FileName, Update.FileName);
+      if Elsewhere then
+        After := BaselineState(ExtractFileDir(FileName))
+      else if Valid then
+        After := BaselineState(ExtractFileDir(Update.FileName));
+      TAtlasMainThread.Queue(TAtlasFeature.Menu,
+        procedure
+        begin
+          TAtlasGuard.Run(TAtlasFeature.Palette,
+            procedure
+            begin
+              if not Valid then
+              begin
+                GuardWarning(TAtlasStrings.Text(TAtlasTextId.BaselineUpdateFailed));
+                Exit;
+              end;
+              ReportBaselineUpdate(Update);
+              if Elsewhere then
+              begin
+                MessageLine(TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateElsewhere, [ExtractFileDir(Update.FileName),
+                  ExtractFileDir(FileName)]));
+                // Zähler des Servers gehören zur anderen Datei: nur den Stand im Projektordner eintragen.
+                if (Welcome <> nil) and (Welcome.Projects <> nil) then
+                  Welcome.Projects.RecordBaseline(FileName, After, TAtlasIdeProjects.StampUtc);
+                Exit;
+              end;
+              if (Welcome <> nil) and (Welcome.Projects <> nil) then
+                Welcome.Projects.RecordBaseline(FileName, After, Update, TAtlasIdeProjects.StampUtc);
+            end);
+        end);
+    end) then
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.BaselineUpdateRunning))
+  else
+    // Ein Befehl im Hintergrund läuft schon (etwa die Werte nach einem Build): später noch einmal.
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.BaselineUpdateBusy));
 end;
 
 var
@@ -737,6 +887,16 @@ begin
     begin
       Result := TAtlasIdeSettings.Current.TodoList;
     end);
+  // Baseline des Projekts aktualisieren (#97); nur sichtbar, solange die Einstellung BaselineUpdate an ist.
+  Palette.RegisterCommand('Atlas.UpdateBaseline', TAtlasStrings.Text(TAtlasTextId.BaselineUpdateCommand), '',
+    procedure
+    begin
+      UpdateBaseline;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.BaselineUpdate;
+    end);
   Palette.RegisterCommand('Atlas.CheckNow', TAtlasStrings.Text(TAtlasTextId.PaletteCheckNow), '',
     procedure
     begin
@@ -1003,24 +1163,27 @@ begin
       Messages: TArray<TAtlasCompilerMessage>;
       Project: TAtlasCompileProject;
       Succeeded, Readable: Boolean;
+      Stamp: TDateTime;
     begin
       Messages := TAtlasCompilerMessages.Resolve(AMessages, AProject.FileName, KnownFiles(AProject.FileName));
       // Projekt-Zusammenfassung für die Willkommensseite (#592): letzter Build bzw. letzte Hintergrundprüfung.
       Project := AProject;
       Succeeded := ASucceeded;
       Readable := AReadable;
+      // Ein Zeitpunkt je Build: Metriken, TODOs und Baseline kommen damit in den Messpunkt des Builds (#758).
+      Stamp := TAtlasIdeProjects.StampUtc;
       if (Welcome <> nil) and (Welcome.Projects <> nil) then
         TAtlasGuard.Run(TAtlasFeature.WelcomePage,
           procedure
           begin
-            Welcome.Projects.Recorded(Messages, Project, Succeeded, Readable);
+            Welcome.Projects.Recorded(Messages, Project, Succeeded, Readable, Stamp);
           end);
       // Code-Metriken und TODOs nach einem Build, nicht nach einer Hintergrundprüfung (#66, #68, #758).
       if AReadable and not AProject.Background then
         TAtlasGuard.Run(TAtlasFeature.WelcomePage,
           procedure
           begin
-            RecordProjectMetrics(Project.FileName);
+            RecordProjectMetrics(Project.FileName, Stamp);
           end);
       if Manager = nil then
         Exit;
@@ -1467,6 +1630,8 @@ begin
       begin
         GuardWarning(AText);
       end);
+    // Bereich „Projektverlauf“ (#758): Linien über die letzten Builds des in „Projekte“ gewählten Projekts.
+    Welcome.Trends := TAtlasIdeTrends.Create(Welcome.Projects);
     // Bereich „Nicht gesichert“ (#762): nicht Gesichertes je Projekt über die VCS-Schnittstelle (#571).
     Welcome.Unsaved := TAtlasIdeUnsaved.Create(
       procedure(AText: string)

@@ -52,6 +52,7 @@ uses
   Atlas.Common.Lsp.CodeLens,
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Todos,
+  Atlas.Common.Lsp.Baseline,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Lsp.QualifiedNames,
@@ -134,6 +135,8 @@ type
     FMetrics: TLspMetrics;
     /// <summary>TODO-Übersicht (#68): Befehl atlas.server.todos.</summary>
     FTodos: TLspTodos;
+    /// <summary>Baseline für Altprojekte (#97): Befehl atlas.updateBaseline.</summary>
+    FBaseline: TLspBaseline;
     FSemanticTokens: TLspSemanticTokens;
     FCodeActions: TLspCodeActions;
     /// <summary>Testunit anlegen und wechseln (#274, #189).</summary>
@@ -217,6 +220,8 @@ type
     function ProjectIndexPending: Boolean;
     /// <summary>Text einer Quelldatei; geöffnete Dokumente haben Vorrang vor der Platte.</summary>
     function ReadSourceText(const AFileName: string; out AText: string): Boolean;
+    /// <summary>Dateizugriffe für atlas.updateBaseline (#97): schreibt UTF-8 ohne BOM wie --update-baseline.</summary>
+    function BaselineFiles: TLspBaselineFiles;
     /// <summary>Muster, Ordner und Testprogramm für Testunits zur Datei (#274, #189).</summary>
     function TestUnitContextFor(const AUri: string; out AContext: TTestUnitContext): Boolean;
     /// <summary>Index, Projekte und Dateizugriffe für „Units suchen“ (#777).</summary>
@@ -304,6 +309,7 @@ uses
   System.IOUtils,
   System.Math,
   System.StrUtils,
+  System.Diagnostics,
   Atlas.Common.Product.Version,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes,
@@ -319,6 +325,8 @@ uses
   Shell.SlashHost,
   Shell.VcsChanges,
   Atlas.Common.Rules.Engine,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Builtin.General,
   Atlas.Common.Lsp.FormFiles,
   Atlas.Common.Dfm.FormModel,
@@ -811,6 +819,36 @@ begin
     begin
       Result := ReadSourceText(AFileName, AText);
     end);
+  // Baseline (#97): dieselben Dateien wie die Metriken, Prüfung wie im Editor (Regeln, Index, Formulardatei).
+  FBaseline := TLspBaseline.Create(MetricsSourceFor,
+    function(const AFileName: string; out ACheck: TLspBaselineCheck): Boolean
+    var
+      Context: TRuleCheckContext;
+      Tree: TSyntaxTree;
+      Extension: string;
+    begin
+      ACheck := Default(TLspBaselineCheck);
+      Extension := LowerCase(ExtractFileExt(AFileName));
+      Result := ((Extension = '.pas') or (Extension = '.dpr') or (Extension = '.dpk')) and
+        ReadSourceText(AFileName, ACheck.Text) and RuleContextFor(TDocumentUris.FromPath(AFileName), Context) and
+        (Context.RelativePath <> '');
+      if not Result then
+        Exit;
+      ACheck.RelativePath := Context.RelativePath;
+      Tree := TSyntaxTreeCache.Parse(ACheck.Text);
+      try
+        ACheck.Findings := TLspSyntaxDiagnostics.RuleFindings(ACheck.Text, Tree, Context);
+      finally
+        Tree.Free;
+      end;
+    end,
+    BaselineFiles);
+  FBaseline.OnWritten :=
+    procedure(AFileName: string)
+    begin
+      // Der Arbeitsbereich liest die Datei beim nächsten Prüfen neu; offene Dokumente gleich neu prüfen.
+      FSyntaxDiagnostics.RefreshLater;
+    end;
   FSemanticTokens := TLspSemanticTokens.Create(FDocuments, FIndex,
     function(const AUnitName: string): Boolean
     begin
@@ -1003,6 +1041,20 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FTodos.Execute(AArguments);
+    end);
+  FCommands.Register(TLspBaseline.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    var
+      Watch: TStopwatch;
+    begin
+      // Prüft das ganze Projekt: in großen Altprojekten dauert das; nur Zahlen ins Log, keine Pfade.
+      Watch := TStopwatch.StartNew;
+      Result := FBaseline.Execute(AArguments);
+      if Result is TJSONObject then
+        FLogger.Info(Format('Baseline aktualisiert: %d Treffer in %d Dateien (%d neu, %d entfernt, %d ohne Datei), ' +
+          '%d ms', [TJSONObject(Result).GetValue<Integer>('total', -1), TJSONObject(Result).GetValue<Integer>('files',
+          -1), TJSONObject(Result).GetValue<Integer>('added', -1), TJSONObject(Result).GetValue<Integer>('removed',
+          -1), TJSONObject(Result).GetValue<Integer>('orphaned.count', -1), Watch.ElapsedMilliseconds]));
     end);
   FCommands.Register(TLspTestUnits.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1470,6 +1522,7 @@ begin
   FCodeLens.Free;
   FMetrics.Free;
   FTodos.Free;
+  FBaseline.Free;
   FInlayHints.Free;
   FImplementations.Free;
   FHierarchies.Free;
@@ -1895,6 +1948,38 @@ begin
     AText := TFileEncoding.LoadFromFile(AFileName, FileFormat)
   else
     AText := '';
+end;
+
+function TServerComposition.BaselineFiles: TLspBaselineFiles;
+begin
+  Result.Exists :=
+    function(const AFileName: string): Boolean
+    begin
+      Result := TFile.Exists(AFileName);
+    end;
+  Result.Read :=
+    function(const AFileName: string; out AText: string): Boolean
+    var
+      FileFormat: TFileFormat;
+    begin
+      Result := TFile.Exists(AFileName);
+      if Result then
+        AText := TFileEncoding.LoadFromFile(AFileName, FileFormat)
+      else
+        AText := '';
+    end;
+  Result.Write :=
+    procedure(const AFileName, AText: string)
+    var
+      Encoding: TEncoding;
+    begin
+      Encoding := TUTF8Encoding.Create(False);
+      try
+        TFile.WriteAllText(AFileName, AText, Encoding);
+      finally
+        Encoding.Free;
+      end;
+    end;
 end;
 
 function TServerComposition.TestUnitContextFor(const AUri: string; out AContext: TTestUnitContext): Boolean;
@@ -3112,6 +3197,8 @@ begin
   Commands.Add(TQualifiedNames.Command);
   Commands.Add(TStringLiteralCommands.PlainTextCommand);
   Commands.Add(TStringLiteralCommands.ToLiteralCommand);
+  // Editor-Befehl (#97): Clients wie VS Code bieten ihn damit an.
+  Commands.Add(TLspBaseline.Command);
   Result.AddPair('executeCommandProvider', TJSONObject.Create(TJSONPair.Create('commands', Commands)));
   Result.AddPair('workspace', TLspWorkspaceFolders.Capability);
 end;

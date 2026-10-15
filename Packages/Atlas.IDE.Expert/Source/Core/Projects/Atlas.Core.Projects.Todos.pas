@@ -243,7 +243,6 @@ var
 begin
   AEntries := nil;
   Result := False;
-  Value := nil;
   try
     Value := TJSONObject.ParseJSONValue(AJson);
   except
@@ -297,7 +296,6 @@ var
 begin
   AChoices := Default(TAtlasTodoChoices);
   Result := False;
-  Value := nil;
   try
     Value := TJSONObject.ParseJSONValue(AJson);
   except

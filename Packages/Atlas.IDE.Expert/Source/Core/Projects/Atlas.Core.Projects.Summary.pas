@@ -22,7 +22,7 @@
 //             "revision": "…", "changed": 3, "ahead": 1, "behind": 0},
 //     "build": {"at": "…", "kind": "build|make|check|…", "configuration": "Debug",
 //               "platform": "Win32", "succeeded": true, "errors": 0,
-//               "warnings": 0, "hints": 0, "first": {…}},
+//               "warnings": 0, "hints": 0, "durationMs": 12480, "first": {…}},
 //     "check": {"at": "…", "errors": 2, "first": {"file": "…", "line": 12,
 //               "column": 5, "code": "E2003", "text": "…"}},
 //     "rules": {"at": "…", "newHits": 3},
@@ -31,7 +31,13 @@
 //                             "cognitive": 2.4, "parameters": 1.3},
 //                 "maximum": {"length": 140, …}, "exceeded": {"length": 2, …}},
 //     "todos": {"at": "…", "files": 4, "open": 9, "done": 2,
-//               "keywords": {"FIXME": 2, "TODO": 7}}
+//               "keywords": {"FIXME": 2, "TODO": 7}},
+//     "baseline": {"at": "…", "exists": true, "valid": true, "entries": 40,
+//                  "hits": 52, "orphaned": 2, "updated": "…", "added": 3,
+//                  "removed": 5},
+//     "trends": {"builds": 31, "points": [{"at": "…", "build": 31,
+//                "branch": "main", "commit": "…", "warnings": 3, "ruleHits": 12,
+//                "todos": 9, "duration": 12.5, "methodLength": 11.8}, …]}
 //   }
 // "changed", "ahead", "behind" = -1: unbekannt. "first" ist die erste Fehler-
 // meldung (Zeile und Spalte ab 1). "build" ist der letzte Lauf des Benutzers,
@@ -44,6 +50,27 @@
 // "todos" ist die TODO-Übersicht (#68) beim letzten Build: Dateien mit
 // offenen Einträgen, offene und erledigte Einträge, offene je Marke; der
 // Projektverlauf liest daraus die Reihe „offene TODOs“ ("open").
+// "baseline" ist die Baseline des Projekts (#97), gelesen nach jedem Build
+// und nach „Baseline des Projekts aktualisieren“: "exists" = atlas-baseline.json
+// (oder der frühere Name) liegt im Projektordner, "valid" = lesbar, "entries"
+// Einträge, "hits" Treffer darin, "orphaned" Treffer in Einträgen, deren
+// Datei es nicht mehr gibt. "updated", "added" und "removed" stammen vom
+// letzten Aktualisieren über Atlas (fehlen = unbekannt; ein Build ändert sie
+// nicht). Der Projektverlauf (#758) zeigt „Regeltreffer seit Baseline“
+// ("rules.newHits") nur, wenn "exists" gilt, sonst eine Lücke; die Einrichtung
+// (#759) liest „Baseline vorhanden“ aus "exists" und bietet sonst
+// „Baseline erzeugen“ (Befehl atlas.updateBaseline) an.
+// "build.durationMs" ist die Dauer des Compiles (#527, bei einer Projektgruppe
+// die der Gruppe); fehlt = unbekannt.
+// "trends" ist der Projektverlauf (#758): je Build des Benutzers ein Messpunkt
+// (Ringpuffer, höchstens welcomePage.trends.points), älteste zuerst. "builds"
+// zählt alle Builds, "build" ist die laufende Nummer des Punkts. Je Reihe der
+// Wert zum Zeitpunkt des Builds: "warnings" Warnungen plus Hinweise, "ruleHits"
+// neue Regeltreffer gegenüber der Baseline (nur mit Baseline), "todos" offene
+// TODOs, "duration" Build-Dauer in s, "methodLength" mittlere Methodenlänge in
+// Zeilen (beide mit einer Nachkommastelle). Fehlt ein Wert, war er nicht
+// bekannt; der Verlauf zeigt dort eine Lücke. Unbekannte Felder eines Punkts
+// bleiben erhalten (zugeordnet über "build").
 //
 // Erweitern: Neue Felder und Abschnitte dürfen jederzeit dazukommen, ohne
 // "format" zu erhöhen. Leser übergehen, was sie nicht kennen; Schreiber
@@ -100,6 +127,8 @@ type
     Errors: Integer;
     Warnings: Integer;
     Hints: Integer;
+    /// <summary>Dauer des Compiles in ms (#758); 0 = unbekannt.</summary>
+    DurationMs: Integer;
     First: TAtlasProjectLocation;
     class function Empty: TAtlasProjectBuild; static;
   end;
@@ -166,6 +195,63 @@ type
     class function Empty: TAtlasProjectRules; static;
   end;
 
+  /// <summary>Baseline des Projekts (#97); Grundlage für Projektverlauf (#758) und Einrichtung (#759).</summary>
+  TAtlasProjectBaseline = record
+    Known: Boolean;
+    /// <summary>Zeitpunkt des Lesens (UTC): Build oder Aktualisieren.</summary>
+    At: TDateTime;
+    /// <summary>Die Datei liegt im Projektordner.</summary>
+    Exists: Boolean;
+    /// <summary>Die Datei ist eine lesbare Baseline; ohne Datei False.</summary>
+    Valid: Boolean;
+    Entries: Integer;
+    /// <summary>Treffer in der Baseline (Summe von "count").</summary>
+    Hits: Integer;
+    /// <summary>Treffer in Einträgen, deren Datei es nicht mehr gibt.</summary>
+    Orphaned: Integer;
+    /// <summary>Letztes Aktualisieren über Atlas (UTC); 0 = unbekannt, dann gelten Added und Removed nicht.</summary>
+    Updated: TDateTime;
+    Added: Integer;
+    Removed: Integer;
+    class function Empty: TAtlasProjectBaseline; static;
+  end;
+
+{$SCOPEDENUMS ON}
+  /// <summary>Reihen des Projektverlaufs (#758) in der Reihenfolge der Kacheln.</summary>
+  TAtlasTrendSeries = (Warnings, RuleHits, Todos, Duration, MethodLength);
+{$SCOPEDENUMS OFF}
+
+  TAtlasTrendNumbers = array[TAtlasTrendSeries] of Integer;
+  TAtlasTrendFlags = array[TAtlasTrendSeries] of Boolean;
+
+  /// <summary>Messpunkt des Projektverlaufs (#758): Werte eines Builds.</summary>
+  TAtlasTrendPoint = record
+    /// <summary>Zeitpunkt des Builds (UTC).</summary>
+    At: TDateTime;
+    /// <summary>Laufende Nummer des Builds (ab 1).</summary>
+    Build: Integer;
+    /// <summary>Branch bzw. SVN-Pfad zum Zeitpunkt des Builds; '' = unbekannt.</summary>
+    Branch: string;
+    /// <summary>Commit bzw. Revision; '' = unbekannt.</summary>
+    Commit: string;
+    /// <summary>Wert je Reihe in Zehnteln (3 Warnungen = 30, 12,5 s = 125); gilt nur mit Has.</summary>
+    Values: TAtlasTrendNumbers;
+    /// <summary>Wert bekannt; sonst Lücke.</summary>
+    Has: TAtlasTrendFlags;
+    class function Create(AAtUtc: TDateTime; ABuild: Integer): TAtlasTrendPoint; static;
+    procedure SetValue(ASeries: TAtlasTrendSeries; ATenths: Integer);
+    procedure Clear(ASeries: TAtlasTrendSeries);
+  end;
+
+  /// <summary>Projektverlauf (#758): Ringpuffer der Messpunkte, älteste zuerst.</summary>
+  TAtlasProjectTrends = record
+    Known: Boolean;
+    /// <summary>Builds bisher; Nummer des nächsten Punkts ist Builds + 1.</summary>
+    Builds: Integer;
+    Points: TArray<TAtlasTrendPoint>;
+    class function Empty: TAtlasProjectTrends; static;
+  end;
+
   TAtlasProjectSummary = record
     /// <summary>Vollständiger Pfad der Projektdatei (.dproj, .groupproj …).</summary>
     Project: string;
@@ -180,6 +266,8 @@ type
     Rules: TAtlasProjectRules;
     Metrics: TAtlasProjectMetrics;
     Todos: TAtlasProjectTodos;
+    Baseline: TAtlasProjectBaseline;
+    Trends: TAtlasProjectTrends;
     /// <summary>Gelesener Text der Datei; ToJson behält daraus alle unbekannten Felder.</summary>
     Raw: string;
     class function Create(const AProject: string): TAtlasProjectSummary; static;
@@ -195,6 +283,10 @@ type
     Format = 1;
     /// <summary>Kennzahlen im Abschnitt "metrics" (wie atlas.server.metrics, #66).</summary>
     MetricKeys: array[0..4] of string = ('length', 'nesting', 'cyclomatic', 'cognitive', 'parameters');
+    /// <summary>Namen der Reihen im Abschnitt "trends" und in welcomePage.trends.series (#758).</summary>
+    TrendKeys: array[TAtlasTrendSeries] of string = ('warnings', 'ruleHits', 'todos', 'duration', 'methodLength');
+    /// <summary>Reihen mit einer Nachkommastelle in der Datei; die übrigen sind ganze Zahlen.</summary>
+    TrendDecimals: array[TAtlasTrendSeries] of Boolean = (False, False, False, True, True);
     /// <summary>Unterordner von %LOCALAPPDATA%\Atlas.</summary>
     FolderName = 'projects';
   public
@@ -238,15 +330,20 @@ uses
 
 const
   // Bekannte Felder; alles andere übernimmt ToJson unverändert aus Raw.
-  TopKeys: array[0..10] of string = ('format', 'project', 'lastOpened', 'lastClosed', 'hidden', 'vcs', 'build',
-    'check', 'rules', 'metrics', 'todos');
+  TopKeys: array[0..12] of string = ('format', 'project', 'lastOpened', 'lastClosed', 'hidden', 'vcs', 'build',
+    'check', 'rules', 'metrics', 'todos', 'baseline', 'trends');
   VcsKeys: array[0..6] of string = ('at', 'kind', 'branch', 'revision', 'changed', 'ahead', 'behind');
-  BuildKeys: array[0..8] of string = ('at', 'kind', 'configuration', 'platform', 'succeeded', 'errors', 'warnings',
-    'hints', 'first');
+  BuildKeys: array[0..9] of string = ('at', 'kind', 'configuration', 'platform', 'succeeded', 'errors', 'warnings',
+    'hints', 'durationMs', 'first');
   CheckKeys: array[0..2] of string = ('at', 'errors', 'first');
   RulesKeys: array[0..1] of string = ('at', 'newHits');
   MetricsKeys: array[0..6] of string = ('at', 'files', 'methods', 'overLimits', 'average', 'maximum', 'exceeded');
   TodosKeys: array[0..4] of string = ('at', 'files', 'open', 'done', 'keywords');
+  BaselineKeys: array[0..8] of string = ('at', 'exists', 'valid', 'entries', 'hits', 'orphaned', 'updated', 'added',
+    'removed');
+  TrendsKeys: array[0..1] of string = ('builds', 'points');
+  TrendPointKeys: array[0..8] of string = ('at', 'build', 'branch', 'commit', 'warnings', 'ruleHits', 'todos',
+    'duration', 'methodLength');
 
 { TAtlasProjectLocation }
 
@@ -291,6 +388,42 @@ begin
   Result := Default(TAtlasProjectRules);
 end;
 
+{ TAtlasProjectBaseline }
+
+class function TAtlasProjectBaseline.Empty: TAtlasProjectBaseline;
+begin
+  Result := Default(TAtlasProjectBaseline);
+end;
+
+{ TAtlasTrendPoint }
+
+class function TAtlasTrendPoint.Create(AAtUtc: TDateTime; ABuild: Integer): TAtlasTrendPoint;
+begin
+  Result := Default(TAtlasTrendPoint);
+  Result.At := AAtUtc;
+  Result.Build := ABuild;
+end;
+
+procedure TAtlasTrendPoint.SetValue(ASeries: TAtlasTrendSeries; ATenths: Integer);
+begin
+  Values[ASeries] := ATenths;
+  Has[ASeries] := True;
+end;
+
+procedure TAtlasTrendPoint.Clear(ASeries: TAtlasTrendSeries);
+begin
+  Values[ASeries] := 0;
+  Has[ASeries] := False;
+end;
+
+{ TAtlasProjectTrends }
+
+class function TAtlasProjectTrends.Empty: TAtlasProjectTrends;
+begin
+  Result := Default(TAtlasProjectTrends);
+  Result.Points := nil;
+end;
+
 { TAtlasProjectSummary }
 
 class function TAtlasProjectSummary.Create(const AProject: string): TAtlasProjectSummary;
@@ -303,6 +436,8 @@ begin
   Result.Rules := TAtlasProjectRules.Empty;
   Result.Metrics := TAtlasProjectMetrics.Empty;
   Result.Todos := TAtlasProjectTodos.Empty;
+  Result.Baseline := TAtlasProjectBaseline.Empty;
+  Result.Trends := TAtlasProjectTrends.Empty;
 end;
 
 function TAtlasProjectSummary.Name: string;
@@ -498,7 +633,6 @@ var
 begin
   AMetrics := TAtlasProjectMetrics.Empty;
   Result := False;
-  Value := nil;
   try
     Value := TJSONObject.ParseJSONValue(AJson);
   except
@@ -579,7 +713,6 @@ var
 begin
   ATodos := TAtlasProjectTodos.Empty;
   Result := False;
-  Value := nil;
   try
     Value := TJSONObject.ParseJSONValue(AJson);
   except
@@ -602,6 +735,108 @@ begin
   finally
     Value.Free;
   end;
+end;
+
+/// <summary>Abschnitt "trends"; leer ohne Abschnitt. Punkte ohne gültige Nummer bekommen eine nach der letzten.
+/// </summary>
+function TrendsOf(ASection: TJSONObject): TAtlasProjectTrends;
+var
+  Points: TJSONValue;
+  Item: TJSONValue;
+  Index: Integer;
+  Series: TAtlasTrendSeries;
+  Point: TAtlasTrendPoint;
+  Value: TJSONValue;
+  Highest: Integer;
+begin
+  Result := TAtlasProjectTrends.Empty;
+  if ASection = nil then
+    Exit;
+  Result.Known := True;
+  Result.Builds := NumberOf(ASection, 'builds', 0);
+  Highest := 0;
+  Points := ASection.GetValue('points');
+  if Points is TJSONArray then
+    for Index := 0 to TJSONArray(Points).Count - 1 do
+    begin
+      Item := TJSONArray(Points).Items[Index];
+      if not (Item is TJSONObject) then
+        Continue;
+      Point := TAtlasTrendPoint.Create(TAtlasProjectSummaries.TimeOf(TextOf(TJSONObject(Item), 'at')),
+        NumberOf(TJSONObject(Item), 'build', 0));
+      if Point.Build <= Highest then
+        Point.Build := Highest + 1;
+      Highest := Point.Build;
+      Point.Branch := TextOf(TJSONObject(Item), 'branch');
+      Point.Commit := TextOf(TJSONObject(Item), 'commit');
+      for Series := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
+      begin
+        Value := TJSONObject(Item).GetValue(TAtlasProjectSummaries.TrendKeys[Series]);
+        if Value is TJSONNumber then
+          Point.SetValue(Series, Round(TJSONNumber(Value).AsDouble * 10));
+      end;
+      Result.Points := Result.Points + [Point];
+    end;
+  // Ohne oder mit zu kleinem Zähler: mindestens die höchste Nummer.
+  if Result.Builds < Highest then
+    Result.Builds := Highest;
+end;
+
+/// <summary>Punkt mit der Nummer ABuild aus dem Abschnitt "trends" von AOriginal (darf nil sein); nil ohne.</summary>
+function OriginalPoint(AOriginal: TJSONObject; ABuild: Integer): TJSONObject;
+var
+  Points: TJSONValue;
+  Index: Integer;
+  Item: TJSONValue;
+begin
+  Result := nil;
+  if AOriginal = nil then
+    Exit;
+  Points := AOriginal.GetValue('points');
+  if not (Points is TJSONArray) then
+    Exit;
+  for Index := 0 to TJSONArray(Points).Count - 1 do
+  begin
+    Item := TJSONArray(Points).Items[Index];
+    if (Item is TJSONObject) and (NumberOf(TJSONObject(Item), 'build', 0) = ABuild) then
+      Exit(TJSONObject(Item));
+  end;
+end;
+
+function TrendsJson(const ATrends: TAtlasProjectTrends; AOriginal: TJSONObject): TJSONObject;
+var
+  Points: TJSONArray;
+  Item: TJSONObject;
+  Point: TAtlasTrendPoint;
+  Series: TAtlasTrendSeries;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('builds', TJSONNumber.Create(ATrends.Builds));
+  Points := TJSONArray.Create;
+  Result.AddPair('points', Points);
+  for Point in ATrends.Points do
+  begin
+    Item := TJSONObject.Create;
+    Points.AddElement(Item);
+    AddTime(Item, 'at', Point.At);
+    Item.AddPair('build', TJSONNumber.Create(Point.Build));
+    if Point.Branch <> '' then
+      Item.AddPair('branch', Point.Branch);
+    if Point.Commit <> '' then
+      Item.AddPair('commit', Point.Commit);
+    for Series := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
+    begin
+      // Lücke: kein Feld.
+      if not Point.Has[Series] then
+        Continue;
+      if TAtlasProjectSummaries.TrendDecimals[Series] then
+        Item.AddPair(TAtlasProjectSummaries.TrendKeys[Series], TJSONNumber.Create(Point.Values[Series] / 10))
+      else
+        Item.AddPair(TAtlasProjectSummaries.TrendKeys[Series], TJSONNumber.Create(Point.Values[Series] div 10));
+    end;
+    KeepUnknown(Item, OriginalPoint(AOriginal, Point.Build), TrendPointKeys);
+  end;
+  KeepUnknown(Result, AOriginal, TrendsKeys);
 end;
 
 { TAtlasProjectSummaries }
@@ -756,6 +991,7 @@ begin
       ASummary.Build.Errors := NumberOf(Section, 'errors', 0);
       ASummary.Build.Warnings := NumberOf(Section, 'warnings', 0);
       ASummary.Build.Hints := NumberOf(Section, 'hints', 0);
+      ASummary.Build.DurationMs := NumberOf(Section, 'durationMs', 0);
       ASummary.Build.First := LocationOf(ObjectOf(Section, 'first'));
     end;
     Section := ObjectOf(Root, 'check');
@@ -775,6 +1011,21 @@ begin
     end;
     ASummary.Metrics := MetricsOf(ObjectOf(Root, 'metrics'));
     ASummary.Todos := TodosOf(ObjectOf(Root, 'todos'));
+    Section := ObjectOf(Root, 'baseline');
+    if Section <> nil then
+    begin
+      ASummary.Baseline.Known := True;
+      ASummary.Baseline.At := TimeOf(TextOf(Section, 'at'));
+      ASummary.Baseline.Exists := FlagOf(Section, 'exists');
+      ASummary.Baseline.Valid := FlagOf(Section, 'valid');
+      ASummary.Baseline.Entries := NumberOf(Section, 'entries', 0);
+      ASummary.Baseline.Hits := NumberOf(Section, 'hits', 0);
+      ASummary.Baseline.Orphaned := NumberOf(Section, 'orphaned', 0);
+      ASummary.Baseline.Updated := TimeOf(TextOf(Section, 'updated'));
+      ASummary.Baseline.Added := NumberOf(Section, 'added', 0);
+      ASummary.Baseline.Removed := NumberOf(Section, 'removed', 0);
+    end;
+    ASummary.Trends := TrendsOf(ObjectOf(Root, 'trends'));
     Result := True;
   finally
     Value.Free;
@@ -833,6 +1084,8 @@ begin
       Section.AddPair('errors', TJSONNumber.Create(ASummary.Build.Errors));
       Section.AddPair('warnings', TJSONNumber.Create(ASummary.Build.Warnings));
       Section.AddPair('hints', TJSONNumber.Create(ASummary.Build.Hints));
+      if ASummary.Build.DurationMs > 0 then
+        Section.AddPair('durationMs', TJSONNumber.Create(ASummary.Build.DurationMs));
       if not ASummary.Build.First.IsEmpty then
         Section.AddPair('first', LocationJson(ASummary.Build.First));
       KeepUnknown(Section, ObjectOf(Original, 'build'), BuildKeys);
@@ -882,6 +1135,26 @@ begin
         Keywords.AddPair(ASummary.Todos.Keywords[Index], TJSONNumber.Create(ASummary.Todos.KeywordCounts[Index]));
       KeepUnknown(Section, ObjectOf(Original, 'todos'), TodosKeys);
     end;
+    if ASummary.Baseline.Known then
+    begin
+      Section := TJSONObject.Create;
+      Root.AddPair('baseline', Section);
+      AddTime(Section, 'at', ASummary.Baseline.At);
+      Section.AddPair('exists', TJSONBool.Create(ASummary.Baseline.Exists));
+      Section.AddPair('valid', TJSONBool.Create(ASummary.Baseline.Valid));
+      Section.AddPair('entries', TJSONNumber.Create(ASummary.Baseline.Entries));
+      Section.AddPair('hits', TJSONNumber.Create(ASummary.Baseline.Hits));
+      Section.AddPair('orphaned', TJSONNumber.Create(ASummary.Baseline.Orphaned));
+      if ASummary.Baseline.Updated <> 0 then
+      begin
+        AddTime(Section, 'updated', ASummary.Baseline.Updated);
+        Section.AddPair('added', TJSONNumber.Create(ASummary.Baseline.Added));
+        Section.AddPair('removed', TJSONNumber.Create(ASummary.Baseline.Removed));
+      end;
+      KeepUnknown(Section, ObjectOf(Original, 'baseline'), BaselineKeys);
+    end;
+    if ASummary.Trends.Known then
+      Root.AddPair('trends', TrendsJson(ASummary.Trends, ObjectOf(Original, 'trends')));
     KeepUnknown(Root, Original, TopKeys);
     Result := Root.ToJSON;
   finally

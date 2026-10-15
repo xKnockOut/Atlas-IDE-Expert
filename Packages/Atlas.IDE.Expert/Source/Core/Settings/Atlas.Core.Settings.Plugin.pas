@@ -65,6 +65,12 @@ type
     /// <summary>Grenzen für welcomePage.continue.count (#755); wie TAtlasWelcomeContinue.MinCount/MaxCount.</summary>
     MinContinueCount = 1;
     MaxContinueCount = 20;
+    /// <summary>Grenzen für welcomePage.trends.points (#758); wie TAtlasProjectTrendLog.MinPoints/MaxPoints.</summary>
+    MinTrendPoints = 2;
+    MaxTrendPoints = 100;
+    /// <summary>Vorgabe für welcomePage.trends.series (#758): alle Reihen, Namen wie
+    /// TAtlasProjectSummaries.TrendKeys.</summary>
+    DefaultTrendSeries = 'warnings,ruleHits,todos,duration,methodLength';
     MinPairGuideWidth = 1;
     MaxPairGuideWidth = 3;
     MinPairGuideOpacity = 10;
@@ -198,6 +204,9 @@ type
     CodeLensMetrics: Boolean;
     /// <summary>Befehl „TODOs des Projekts“ (#68, Atlas.TodoList); aus = der Befehl verschwindet.</summary>
     TodoList: Boolean;
+    /// <summary>Befehl „Baseline des Projekts aktualisieren“ (#97, Atlas.UpdateBaseline) in der Befehlspalette;
+    /// aus = der Befehl und sein Tipp verschwinden. Die Baseline selbst wirkt weiter.</summary>
+    BaselineUpdate: Boolean;
     /// <summary>Befehl „Metrikbericht des Projekts“ (#66, Atlas.MetricsReport) in der Befehlspalette; aus = der
     /// Befehl verschwindet. Die Zusammenfassung nach dem Build hängt an der Willkommensseite.</summary>
     MetricsReport: Boolean;
@@ -400,6 +409,14 @@ type
     WelcomePageContinueFetch: Boolean;
     /// <summary>Reiter „Gemerkt“ mit Notizen, Lesezeichen und Favoriten (#755, welcomePage.saved).</summary>
     WelcomePageSaved: Boolean;
+    /// <summary>Bereich „Projektverlauf“ (#758, welcomePage.trends): Messpunkte je Build mitschreiben und als
+    /// Linien zeigen; aus = kein Bereich, nichts wird mitgeschrieben.</summary>
+    WelcomePageTrends: Boolean;
+    /// <summary>Gespeicherte Builds je Projekt (#758, welcomePage.trends.points, 2–100).</summary>
+    WelcomePageTrendsPoints: Integer;
+    /// <summary>Gezeigte Reihen (#758, welcomePage.trends.series): Namen durch Komma getrennt, in der Reihenfolge
+    /// warnings, ruleHits, todos, duration, methodLength; '' = keine.</summary>
+    WelcomePageTrendsSeries: string;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -420,6 +437,36 @@ implementation
 uses
   System.Math,
   System.StrUtils;
+
+const
+  /// <summary>Reihen des Projektverlaufs (#758) wie TAtlasProjectSummaries.TrendKeys (Test prüft Gleichheit).</summary>
+  TrendSeriesNames: array[0..4] of string = ('warnings', 'ruleHits', 'todos', 'duration', 'methodLength');
+
+/// <summary>Bekannte Reihen aus AText (Komma, Semikolon, Leerzeichen; Groß-/Kleinschreibung egal) in fester
+/// Reihenfolge, jede einmal.</summary>
+function NormalizedTrendSeries(const AText: string): string;
+var
+  Parts: TArray<string>;
+  Part: string;
+  Index: Integer;
+  Wanted: array[0..4] of Boolean;
+begin
+  for Index := Low(Wanted) to High(Wanted) do
+    Wanted[Index] := False;
+  Parts := AText.Split([',', ';', ' ']);
+  for Part in Parts do
+    for Index := Low(TrendSeriesNames) to High(TrendSeriesNames) do
+      if SameText(Trim(Part), TrendSeriesNames[Index]) then
+        Wanted[Index] := True;
+  Result := '';
+  for Index := Low(TrendSeriesNames) to High(TrendSeriesNames) do
+    if Wanted[Index] then
+    begin
+      if Result <> '' then
+        Result := Result + ',';
+      Result := Result + TrendSeriesNames[Index];
+    end;
+end;
 
 /// <summary>http:// oder https:// mit etwas danach, ohne Leer- und Steuerzeichen (#766).</summary>
 function IsWebAddress(const AValue: string): Boolean;
@@ -533,6 +580,7 @@ begin
   Result.CodeLensTestUnit := True;
   Result.CodeLensMetrics := True;
   Result.TodoList := True;
+  Result.BaselineUpdate := True;
   Result.MetricsReport := True;
   Result.EditorKeysPriority := False;
   Result.SlashCommands := True;
@@ -619,6 +667,9 @@ begin
   Result.WelcomePageHelpReportFolder := '';
   Result.WelcomePageContinue := True;
   Result.WelcomePageContinueCount := 5;
+  Result.WelcomePageTrends := True;
+  Result.WelcomePageTrendsPoints := 30;
+  Result.WelcomePageTrendsSeries := DefaultTrendSeries;
   Result.WelcomePageContinueIncoming := True;
   Result.WelcomePageContinueFetch := False;
   Result.WelcomePageSaved := True;
@@ -650,6 +701,8 @@ begin
   WelcomePageUnsavedAlertHours := EnsureRange(WelcomePageUnsavedAlertHours, WelcomePageUnsavedWarnHours,
     MaxUnsavedHours);
   WelcomePageContinueCount := EnsureRange(WelcomePageContinueCount, MinContinueCount, MaxContinueCount);
+  WelcomePageTrendsPoints := EnsureRange(WelcomePageTrendsPoints, MinTrendPoints, MaxTrendPoints);
+  WelcomePageTrendsSeries := NormalizedTrendSeries(WelcomePageTrendsSeries);
   CheckKey := EnsureRange(CheckKey, 0, $FFFF);
   CompletionKey := EnsureRange(CompletionKey, 0, $FFFF);
   SignatureKey := EnsureRange(SignatureKey, 0, $FFFF);
@@ -790,6 +843,7 @@ begin
   CodeLensTestUnit := AStore.ReadInteger('CodeLensTestUnit', BoolValue(Default.CodeLensTestUnit)) <> 0;
   CodeLensMetrics := AStore.ReadInteger('CodeLensMetrics', BoolValue(Default.CodeLensMetrics)) <> 0;
   TodoList := AStore.ReadInteger('TodoList', BoolValue(Default.TodoList)) <> 0;
+  BaselineUpdate := AStore.ReadInteger('BaselineUpdate', BoolValue(Default.BaselineUpdate)) <> 0;
   MetricsReport := AStore.ReadInteger('MetricsReport', BoolValue(Default.MetricsReport)) <> 0;
   EditorKeysPriority := AStore.ReadInteger('EditorKeysPriority', BoolValue(Default.EditorKeysPriority)) <> 0;
   SlashCommands := AStore.ReadInteger('SlashCommands', BoolValue(Default.SlashCommands)) <> 0;
@@ -890,6 +944,9 @@ begin
   WelcomePageContinueFetch := AStore.ReadInteger('WelcomePageContinueFetch',
     BoolValue(Default.WelcomePageContinueFetch)) <> 0;
   WelcomePageSaved := AStore.ReadInteger('WelcomePageSaved', BoolValue(Default.WelcomePageSaved)) <> 0;
+  WelcomePageTrends := AStore.ReadInteger('WelcomePageTrends', BoolValue(Default.WelcomePageTrends)) <> 0;
+  WelcomePageTrendsPoints := AStore.ReadInteger('WelcomePageTrendsPoints', Default.WelcomePageTrendsPoints);
+  WelcomePageTrendsSeries := AStore.ReadString('WelcomePageTrendsSeries', Default.WelcomePageTrendsSeries);
   Normalize;
 end;
 
@@ -958,6 +1015,7 @@ begin
   AStore.WriteInteger('CodeLensTestUnit', BoolValue(CodeLensTestUnit));
   AStore.WriteInteger('CodeLensMetrics', BoolValue(CodeLensMetrics));
   AStore.WriteInteger('TodoList', BoolValue(TodoList));
+  AStore.WriteInteger('BaselineUpdate', BoolValue(BaselineUpdate));
   AStore.WriteInteger('MetricsReport', BoolValue(MetricsReport));
   AStore.WriteInteger('EditorKeysPriority', BoolValue(EditorKeysPriority));
   AStore.WriteInteger('SlashCommands', BoolValue(SlashCommands));
@@ -1046,6 +1104,9 @@ begin
   AStore.WriteInteger('WelcomePageContinueIncoming', BoolValue(WelcomePageContinueIncoming));
   AStore.WriteInteger('WelcomePageContinueFetch', BoolValue(WelcomePageContinueFetch));
   AStore.WriteInteger('WelcomePageSaved', BoolValue(WelcomePageSaved));
+  AStore.WriteInteger('WelcomePageTrends', BoolValue(WelcomePageTrends));
+  AStore.WriteInteger('WelcomePageTrendsPoints', WelcomePageTrendsPoints);
+  AStore.WriteString('WelcomePageTrendsSeries', WelcomePageTrendsSeries);
 end;
 
 function TAtlasPluginSettings.StatusTogglesOnRightClick: Boolean;

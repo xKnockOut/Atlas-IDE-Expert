@@ -39,6 +39,11 @@ type
     FWrites: Integer;
   public
     function Write(const Buffer; Count: Longint): Longint; overload; override;
+    // Delphi: WriteBuffer(TBytes) läuft über diese Überladungen, nicht über Write(const Buffer; Count).
+    {$IFNDEF FPC}
+    function Write(const Buffer: TBytes; Offset, Count: Longint): Longint; overload; override;
+    function Write64(const Buffer: TBytes; Offset, Count: Int64): Int64; override;
+    {$ENDIF}
     property Writes: Integer read FWrites;
   end;
 
@@ -47,6 +52,20 @@ begin
   Inc(FWrites);
   raise EWriteError.Create('simuliert');
 end;
+
+{$IFNDEF FPC}
+function TFailingStream.Write(const Buffer: TBytes; Offset, Count: Longint): Longint;
+begin
+  Inc(FWrites);
+  raise EWriteError.Create('simuliert');
+end;
+
+function TFailingStream.Write64(const Buffer: TBytes; Offset, Count: Int64): Int64;
+begin
+  Inc(FWrites);
+  raise EWriteError.Create('simuliert');
+end;
+{$ENDIF}
 
 /// <summary>Schreibt drei Nachrichten über einen Mitschnitt in AFailing; liefert die beim Client
 /// angekommenen Nachrichten.</summary>

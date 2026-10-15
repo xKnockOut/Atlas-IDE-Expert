@@ -316,6 +316,8 @@ begin
   Folder := NewFolder('git-local');
   try
     Exec(Runner, GitExe, ['init', '-q', '--bare', Remote], Remote);
+    // Ohne init.defaultBranch = main zeigte HEAD der Ablage auf master: Der Klon bliebe leer.
+    Exec(Runner, GitExe, ['symbolic-ref', 'HEAD', 'refs/heads/main'], Remote);
     Exec(Runner, GitExe, ['init', '-q'], Folder);
     Exec(Runner, GitExe, ['symbolic-ref', 'HEAD', 'refs/heads/main'], Folder);
     Exec(Runner, GitExe, ['config', 'user.name', 'Atlas Test'], Folder);
@@ -446,6 +448,8 @@ begin
   Other := NewFolder('git-in-other');
   try
     Exec(Runner, GitExe, ['init', '-q', '--bare', Remote], Remote);
+    // Ohne init.defaultBranch = main zeigte HEAD der Ablage auf master: Der Klon bliebe leer.
+    Exec(Runner, GitExe, ['symbolic-ref', 'HEAD', 'refs/heads/main'], Remote);
     Exec(Runner, GitExe, ['init', '-q'], Folder);
     Exec(Runner, GitExe, ['symbolic-ref', 'HEAD', 'refs/heads/main'], Folder);
     Exec(Runner, GitExe, ['config', 'user.name', 'Atlas Test'], Folder);
@@ -466,7 +470,7 @@ begin
     Assert.IsTrue(TAtlasWelcomeContinue.ProbeHead(Vcs, State));
     Assert.AreEqual('git', State.VcsKind);
     Assert.AreEqual('origin/main', State.Upstream);
-    Assert.AreEqual(40, Length(State.Head));
+    Assert.AreEqual(40, Integer(Length(State.Head)));
     Assert.AreEqual(State.Head, State.UpstreamRevision);
     // Ein Kollege pusht je einen Commit zu Kunde.pas und zu Fremd.pas.
     Exec(Runner, GitExe, ['clone', '-q', Remote, Other], Other);
@@ -494,7 +498,7 @@ begin
     Assert.AreEqual('Kunde: Prüfung', Found.Commits[0].Commit.Summary);
     Assert.AreEqual('Eva Kollegin', Found.Commits[0].Commit.Author);
     Assert.AreEqual(TPath.Combine(Folder, 'Kunde.pas'), Found.Commits[0].Files[0]);
-    Assert.AreEqual(7, Length(Found.Commits[0].Commit.ShortHash));
+    Assert.AreEqual(7, Integer(Length(Found.Commits[0].Commit.ShortHash)));
   finally
     Vcs := nil;
     RemoveFolder(Folder);

@@ -182,6 +182,8 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
+  Winapi.Windows,
   System.Classes,
   System.IOUtils,
   System.JSON,
@@ -635,7 +637,6 @@ begin
   Result := nil;
   if AJson = '' then
     Exit;
-  Value := nil;
   try
     Value := TJSONObject.ParseJSONValue(AJson);
   except

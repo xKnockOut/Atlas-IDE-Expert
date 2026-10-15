@@ -139,6 +139,7 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Filter.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Output.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Baseline.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Scopes.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.SuppressionStats.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.pas"/>
@@ -240,6 +241,7 @@
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Report.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Todos.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Baseline.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SemanticTokens.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Commands.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ApplyEdit.pas"/>

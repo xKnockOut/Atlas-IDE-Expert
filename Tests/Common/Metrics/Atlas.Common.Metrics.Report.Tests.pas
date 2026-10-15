@@ -194,7 +194,7 @@ begin
   Assert.IsFalse(Limits.Exceeds(TMetricKind.Cyclomatic, 15), 'der Grenzwert selbst ist erlaubt');
   Assert.IsTrue(Limits.Exceeds(TMetricKind.Cyclomatic, 16));
   Values := Routine('A', 0, 61, 0, 1, 0, 0).Values;
-  Assert.AreEqual(1, Length(Limits.Exceeded(Values)));
+  Assert.AreEqual(1, Integer(Length(Limits.Exceeded(Values))));
 end;
 
 procedure TMetricsReportTests.KindKeysRoundTrip;

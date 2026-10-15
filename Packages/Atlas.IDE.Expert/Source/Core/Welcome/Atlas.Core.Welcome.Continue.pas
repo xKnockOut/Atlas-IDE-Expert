@@ -213,6 +213,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.JSON,
   System.DateUtils,
   Atlas.Core.Editor.MethodToggle,

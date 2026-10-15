@@ -144,6 +144,11 @@ begin
   Assert.AreEqual('Editor', Toggle.Page);
   Assert.IsFalse(Toggle.Drawing);
   Assert.AreEqual('Palette', Toggle.Feature);
+  // Befehl (#97): eigener Schalter je Palettenbefehl, keine Zeichnung.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'BaselineUpdate', Toggle));
+  Assert.AreEqual('Editor', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  Assert.AreEqual('Palette', Toggle.Feature);
   // Jeder Schalter ist eine Einstellung des Plugins.
   for Toggle in Toggles do
   begin
@@ -195,6 +200,7 @@ begin
   Assert.IsTrue(Effective.Preview = Stored.Preview);
   Assert.IsTrue(Effective.TodoList, 'Befehl (#68) ist keine Zeichnung');
   Assert.IsTrue(Effective.MetricsReport, 'Befehl (#66) ist keine Zeichnung');
+  Assert.IsTrue(Effective.BaselineUpdate, 'Befehl (#97) ist keine Zeichnung');
   Assert.IsTrue(Stored.PairColors);
   Assert.IsTrue(Stored.PairGuides);
   Assert.IsTrue(Stored.HoverTooltip);

@@ -150,6 +150,8 @@
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.MetricsLens.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Metrics.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Todos.pas"/>
+        <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Baseline.pas"/>
+        <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Trends.pas"/>
         <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.Model.pas"/>
         <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.State.pas"/>
         <DCCReference Include="Source\UI\UnitSearch\Atlas.UI.UnitSearch.Window.pas"/>
@@ -344,6 +346,7 @@
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Search.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.WhatsNew.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Projects.pas"/>
+        <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Trends.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Unsaved.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Continue.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Saved.pas"/>
@@ -360,6 +363,7 @@
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Board.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.WhatsNew.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Projects.pas"/>
+        <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Trends.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Unsaved.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Continue.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.State.pas"/>
@@ -372,6 +376,7 @@
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Search.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.WhatsNew.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Projects.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Trends.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Unsaved.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.State.pas"/>

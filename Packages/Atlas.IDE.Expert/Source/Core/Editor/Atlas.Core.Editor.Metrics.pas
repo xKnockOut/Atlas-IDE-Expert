@@ -230,7 +230,6 @@ var
   Value: TJSONValue;
 begin
   AText := '';
-  Value := nil;
   try
     Value := TJSONObject.ParseJSONValue(AJson);
   except
