@@ -62,6 +62,9 @@ type
     /// <summary>Grenzen der Stunden für welcomePage.unsaved.* (#762); wie TAtlasWelcomeUnsaved.MaxHours.</summary>
     MinUnsavedHours = 0;
     MaxUnsavedHours = 8760;
+    /// <summary>Grenzen für welcomePage.continue.count (#755); wie TAtlasWelcomeContinue.MinCount/MaxCount.</summary>
+    MinContinueCount = 1;
+    MaxContinueCount = 20;
     MinPairGuideWidth = 1;
     MaxPairGuideWidth = 3;
     MinPairGuideOpacity = 10;
@@ -378,6 +381,17 @@ type
     WelcomePageHelpReportUrl: string;
     /// <summary>Ordner für das Diagnosepaket (#766, welcomePage.help.reportFolder); '' = Desktop.</summary>
     WelcomePageHelpReportFolder: string;
+    /// <summary>Bereich „Weiterarbeiten“ (#755, welcomePage.continue): Arbeitsstände merken und fortsetzen.
+    /// </summary>
+    WelcomePageContinue: Boolean;
+    /// <summary>Anzahl der Arbeitsstände (#755, welcomePage.continue.count, 1–20).</summary>
+    WelcomePageContinueCount: Integer;
+    /// <summary>„Neu seit deinem letzten Öffnen“: eingehende Commits (#755, welcomePage.continue.incoming).</summary>
+    WelcomePageContinueIncoming: Boolean;
+    /// <summary>Vor dem Anzeigen im Hintergrund fetch ausführen (#755, welcomePage.continue.fetch).</summary>
+    WelcomePageContinueFetch: Boolean;
+    /// <summary>Reiter „Gemerkt“ mit Notizen, Lesezeichen und Favoriten (#755, welcomePage.saved).</summary>
+    WelcomePageSaved: Boolean;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -592,6 +606,11 @@ begin
   Result.WelcomePageHelp := True;
   Result.WelcomePageHelpReportUrl := DefaultHelpReportUrl;
   Result.WelcomePageHelpReportFolder := '';
+  Result.WelcomePageContinue := True;
+  Result.WelcomePageContinueCount := 5;
+  Result.WelcomePageContinueIncoming := True;
+  Result.WelcomePageContinueFetch := False;
+  Result.WelcomePageSaved := True;
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -619,6 +638,7 @@ begin
   // Rot nie vor gelb.
   WelcomePageUnsavedAlertHours := EnsureRange(WelcomePageUnsavedAlertHours, WelcomePageUnsavedWarnHours,
     MaxUnsavedHours);
+  WelcomePageContinueCount := EnsureRange(WelcomePageContinueCount, MinContinueCount, MaxContinueCount);
   CheckKey := EnsureRange(CheckKey, 0, $FFFF);
   CompletionKey := EnsureRange(CompletionKey, 0, $FFFF);
   SignatureKey := EnsureRange(SignatureKey, 0, $FFFF);
@@ -849,6 +869,13 @@ begin
   WelcomePageHelpReportUrl := AStore.ReadString('WelcomePageHelpReportUrl', Default.WelcomePageHelpReportUrl);
   WelcomePageHelpReportFolder := AStore.ReadString('WelcomePageHelpReportFolder',
     Default.WelcomePageHelpReportFolder);
+  WelcomePageContinue := AStore.ReadInteger('WelcomePageContinue', BoolValue(Default.WelcomePageContinue)) <> 0;
+  WelcomePageContinueCount := AStore.ReadInteger('WelcomePageContinueCount', Default.WelcomePageContinueCount);
+  WelcomePageContinueIncoming := AStore.ReadInteger('WelcomePageContinueIncoming',
+    BoolValue(Default.WelcomePageContinueIncoming)) <> 0;
+  WelcomePageContinueFetch := AStore.ReadInteger('WelcomePageContinueFetch',
+    BoolValue(Default.WelcomePageContinueFetch)) <> 0;
+  WelcomePageSaved := AStore.ReadInteger('WelcomePageSaved', BoolValue(Default.WelcomePageSaved)) <> 0;
   Normalize;
 end;
 
@@ -997,6 +1024,11 @@ begin
   AStore.WriteInteger('WelcomePageHelp', BoolValue(WelcomePageHelp));
   AStore.WriteString('WelcomePageHelpReportUrl', WelcomePageHelpReportUrl);
   AStore.WriteString('WelcomePageHelpReportFolder', WelcomePageHelpReportFolder);
+  AStore.WriteInteger('WelcomePageContinue', BoolValue(WelcomePageContinue));
+  AStore.WriteInteger('WelcomePageContinueCount', WelcomePageContinueCount);
+  AStore.WriteInteger('WelcomePageContinueIncoming', BoolValue(WelcomePageContinueIncoming));
+  AStore.WriteInteger('WelcomePageContinueFetch', BoolValue(WelcomePageContinueFetch));
+  AStore.WriteInteger('WelcomePageSaved', BoolValue(WelcomePageSaved));
 end;
 
 function TAtlasPluginSettings.StatusTogglesOnRightClick: Boolean;

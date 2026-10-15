@@ -865,6 +865,34 @@ Vorbereitung: Paket aus dem Release bzw. `pwsh Tools/Build-Docs.ps1 -OutDir <Ins
 | HR20 | Installer: Paket aus dem Release installieren, dann aktualisieren | `Doku\index.html` und die übrigen Seiten im Installationsordner; Seiten, die es im neuen Paket nicht mehr gibt, sind weg |
 | HR21 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs\atlas.log`) nach HR7–HR15 | Nur „Problem melden (#766): Dialog geöffnet“; keine Pfade, Adressen oder Texte aus dem Dialog |
 
+### Weiterarbeiten (#755)
+
+Abweichungen vom Issue: „Gemerkt“ ist ein zweiter Reiter im Bereich „Weiterarbeiten“. Favoriten (#458) haben weder Projekt noch Datei: Sie stehen unter „alle Projekte“, der Ort ist die Unit, der Sprung sucht die Datei im Index-Cache (Projekte und Bibliothek). Ein Klick auf einen eingehenden Commit listet dessen Dateien im Fenster „Atlas-Ergebnisse“, weil #571 keine Commit-Ansicht hat. Bei SVN fehlt der Abschnitt „Neu seit …“ (kein lokaler Stand des Servers). Ohne offene Reiter beim Schließen bleibt der gespeicherte Arbeitsstand stehen; mit `welcomePage.continue` aus zeichnet Atlas nichts auf.
+
+Vorbereitung: Git-Projekt `GitDemo` (mindestens 8 Units) mit Remote `origin` (z. B. ein lokales Bare-Repository `Demo.git`) und Branch `main` mit Upstream; ein zweiter Klon `Kollege` desselben Remotes; ein SVN-Projekt `SvnDemo`; ein Projekt `OhneVcs` ohne Versionsverwaltung; eine Projektgruppe `Gruppe.groupproj` mit zwei Projekten. In zwei Projekten je eine Notiz (#545) und ein benanntes Lesezeichen (#622), dazu ein angehefteter Favorit (#458), z. B. `TStringList.Add`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WA1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasWelcomeContinueTests`, `TAtlasWelcomeSavedTests`, `TAtlasWelcomeContinueFrameTests`, `TAtlasVcsTests`, `TAtlasVcsIntegrationTests.GitIncomingCommitsOnEditedFiles`, `TAtlasWelcomeSettingsTests` und `TAtlasSettingsPageTests.WelcomeSettingsRoundTrip` grün |
+| WA2 | `GitDemo` öffnen, 7 Units in einer bestimmten Reihenfolge öffnen, Reiter per Ziehen umsortieren, in drei Units an verschiedenen Stellen tippen (zuletzt in `Kunde.pas` in `TKunde.Laden`), eine andere Unit aktivieren, Projekt schließen | Willkommensseite: Bereich „Weiterarbeiten“, Reiter „Zuletzt“ mit „**GitDemo** · 7 Reiter“, „gerade eben“ und „Kunde.pas › TKunde.Laden“; Tooltip mit Pfad, Zeitpunkt und „Zuletzt bearbeitet: …\Kunde.pas:<Zeile> › TKunde.Laden“ (**Abnahme**) |
+| WA3 | WA2, dann „Fortsetzen“ | Projekt öffnet sich; die 7 Reiter in der Reihenfolge von vorher, in jeder geänderten Unit steht der Cursor an der letzten Änderung, in den übrigen an der Cursorstelle beim Schließen; aktiv ist der zuletzt aktive Reiter (**Abnahme**) |
+| WA4 | Wie WA2 mit Projektgruppe `Gruppe.groupproj` (Units aus beiden Projekten), Gruppe schließen | Ein Eintrag „Gruppe · n Reiter“; „Fortsetzen“ öffnet die Gruppe und die Reiter |
+| WA5 | WA2, dann eine der 7 Units im Explorer löschen; „Fortsetzen“ | 6 Reiter öffnen sich; unter der Liste und in der Meldungsansicht „Weiterarbeiten: nicht mehr vorhanden, übersprungen: <Datei>“; kein Fehlerdialog (**Abnahme**) |
+| WA6 | IDE mit offenem `GitDemo` und Reitern über *Datei › Beenden* schließen, neu starten | Arbeitsstand von `GitDemo` steht oben mit den Reitern vom Beenden |
+| WA7 | Alle Reiter schließen, dann das Projekt | Der vorherige Arbeitsstand bleibt unverändert stehen (kein Eintrag „0 Reiter“) |
+| WA8 | Im Klon `Kollege` einen Commit „Kunde: Prüfung“ an `Kunde.pas` und einen Commit an einer Datei, die in `GitDemo` nicht offen und nicht geändert war, pushen; in `GitDemo` `git fetch`; Willkommensseite öffnen | Abschnitt „Neu seit deinem letzten Öffnen (origin/main)“ mit genau einer Zeile „<Hash>  Kunde: Prüfung — <Autor> · Kunde.pas“; der zweite Commit fehlt (**Abnahme**) |
+| WA9 | Klick auf die Commit-Zeile | Fenster „Atlas-Ergebnisse“ mit „Commit <Hash> – Kunde: Prüfung (<Autor>): n Dateien“, die eigenen Dateien zuerst; Doppelklick öffnet die Datei |
+| WA10 | WA8 ohne `git fetch`, `welcomePage.continue.fetch` aus | „Keine neuen Commits zu deinen Dateien.“; kein Netzzugriff (Prozess-Monitor: kein `git fetch`) |
+| WA11 | `welcomePage.continue.fetch` an, Remote erreichbar; dann Remote unerreichbar bzw. SSH-Remote ohne Schlüssel | Commit erscheint ohne manuellen Abruf; unerreichbar: Hinweis „Abruf (fetch) fehlgeschlagen, Stand des letzten Abrufs.“, kein Anmeldedialog, die Seite hängt nicht (höchstens 5 s im Hintergrund) |
+| WA12 | `SvnDemo` und `OhneVcs` öffnen, Reiter öffnen, schließen | Einträge erscheinen; kein Abschnitt „Neu seit …“, keine Meldung, kein Fehler im Protokoll (**Abnahme**) |
+| WA13 | Reiter „Gemerkt“ | Liste mit Notizen und Lesezeichen aus beiden Projekten (Art, Text, Datei:Zeile, Projekt) und dem Favoriten („Favorit“, `TStringList.Add`, Unit, „alle Projekte“); Filter „kunde“ grenzt ein (**Abnahme**) |
+| WA14 | Doppelklick bzw. Enter auf eine Notiz, ein Lesezeichen und den Favoriten | Projekt öffnet sich bei Bedarf, die Datei an der Zeile; Lesezeichen über ihren Anker (auch nach verschobenem Code); Favorit springt zur Deklaration in der Unit (Bibliothek aus dem Index-Cache); ohne Cache Meldung „Favorit …: Unit … nicht im Index-Cache gefunden.“ (**Abnahme**) |
+| WA15 | Befehlspalette „Letzten Arbeitsstand fortsetzen“ | Wie „Fortsetzen“ für den obersten Eintrag; ohne Arbeitsstand Meldung „Es gibt noch keinen gespeicherten Arbeitsstand.“ |
+| WA16 | *Tools › Optionen › Atlas › Willkommensseite*: jeden der fünf Schalter einzeln umstellen (`welcomePage.continue`, `.count` = 2, `.incoming`, `.fetch`, `welcomePage.saved`) | Bereich verschwindet bzw. kommt; 2 Einträge; Abschnitt „Neu seit …“ verschwindet; fetch wie WA11; Reiter „Gemerkt“ verschwindet, „Zuletzt“ bleibt; jeder wirkt ohne Neustart und nur auf seinen Teil (**Abnahme**) |
+| WA17 | `welcomePage.continue` aus, Projekt mit Reitern schließen, wieder an | Kein neuer Arbeitsstand für dieses Schließen |
+| WA18 | Englische IDE; dunkles und helles Thema; 150 % Skalierung; Fenster *Atlas-Start* | „Continue working“, „Recent“, „Saved“, „7 tabs“, „5 min ago“, „Resume“; Texte und Schaltfläche lesbar und nicht abgeschnitten; im Fenster derselbe Inhalt |
+| WA19 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs\atlas.log`) nach WA2–WA16 | Nur Meldungen wie in der Meldungsansicht, ohne Pfade (Dateinamen ohne Ordner); kein Quelltext, keine Betreffzeilen von Commits |
+
 ## Atlas-Symbol (#751)
 
 | Nr. | Schritte | Erwartet |

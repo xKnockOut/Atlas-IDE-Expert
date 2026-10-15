@@ -92,6 +92,7 @@ uses
   Atlas.IDE.Welcome.WhatsNew,
   Atlas.IDE.Welcome.Projects,
   Atlas.IDE.Welcome.Unsaved,
+  Atlas.IDE.Welcome.Continue,
   Atlas.IDE.Welcome.State,
   Atlas.IDE.Welcome.Discover,
   Atlas.IDE.Welcome.Help,
@@ -545,6 +546,13 @@ begin
     begin
       if (Welcome <> nil) and (Welcome.WhatsNew <> nil) and TAtlasIdeSettings.Current.WelcomePage then
         Welcome.ShowWhatsNew(TAtlasWhatsNewView.All);
+    end);
+  // Bereich „Weiterarbeiten“ (#755): obersten Arbeitsstand fortsetzen.
+  Palette.RegisterCommand('Atlas.Continue', TAtlasStrings.Text(TAtlasTextId.WelcomeContinueCommand), '',
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.ContinueWork <> nil) then
+        Welcome.ContinueWork.ResumeLatest;
     end);
   Palette.RegisterCommand('Atlas.HangTest', TAtlasStrings.Text(TAtlasTextId.SettingsHangTest), '',
     procedure
@@ -1200,6 +1208,12 @@ begin
       end);
     // Bereich „Nicht gesichert“ (#762): nicht Gesichertes je Projekt über die VCS-Schnittstelle (#571).
     Welcome.Unsaved := TAtlasIdeUnsaved.Create(
+      procedure(AText: string)
+      begin
+        GuardWarning(AText);
+      end);
+    // Bereich „Weiterarbeiten“ (#755): Arbeitsstand beim Schließen, eingehende Commits (#571) und „Gemerkt“.
+    Welcome.ContinueWork := TAtlasIdeContinue.Create(
       procedure(AText: string)
       begin
         GuardWarning(AText);

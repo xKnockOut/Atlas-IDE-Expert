@@ -327,6 +327,16 @@
       "image": "Tipps\\lesezeichen-fenster.png"
     },
     {
+      "id": "continueWork",
+      "command": "Atlas.Continue",
+      "setting": "WelcomePageContinue",
+      "title": "Weiterarbeiten",
+      "titleEn": "Pick up where you left off",
+      "text": "Öffnet das zuletzt geschlossene Projekt mit seinen Reitern in der alten Reihenfolge, der Cursor steht an der letzten Änderung. Die Willkommensseite zeigt dazu, was andere seitdem an diesen Dateien geändert haben.",
+      "textEn": "Opens the most recently closed project with its tabs in their old order, the cursor at the last change. The welcome page also shows what others have changed in these files since then.",
+      "image": "Tipps\\weiterarbeiten.png"
+    },
+    {
       "id": "welcomeLayout",
       "command": "Atlas.WelcomeApply",
       "usage": [

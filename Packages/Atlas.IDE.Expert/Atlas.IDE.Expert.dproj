@@ -323,6 +323,8 @@
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.WhatsNew.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Projects.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Unsaved.pas"/>
+        <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Continue.pas"/>
+        <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Saved.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.State.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Discover.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Help.pas"/>
@@ -337,6 +339,7 @@
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.WhatsNew.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Projects.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Unsaved.pas"/>
+        <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Continue.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.State.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Discover.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Help.pas"/>
@@ -348,6 +351,7 @@
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.WhatsNew.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Projects.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Unsaved.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.State.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Discover.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Help.pas"/>

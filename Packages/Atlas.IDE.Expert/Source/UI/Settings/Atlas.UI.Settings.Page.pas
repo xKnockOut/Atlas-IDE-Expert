@@ -204,6 +204,11 @@ type
     FWelcomeSearchSymbols: TCheckBox;
     FWelcomeSearchKey: TEdit;
     FWelcomeWhatsNew: TAtlasChoiceBox;
+    FWelcomeContinue: TCheckBox;
+    FWelcomeContinueCount: TEdit;
+    FWelcomeContinueIncoming: TCheckBox;
+    FWelcomeContinueFetch: TCheckBox;
+    FWelcomeSaved: TCheckBox;
     FWelcomeProjects: TCheckBox;
     FWelcomeMaxProjects: TEdit;
     FWelcomeRefreshVcs: TCheckBox;
@@ -352,6 +357,11 @@ type
     property WelcomeSearchSymbols: TCheckBox read FWelcomeSearchSymbols;
     property WelcomeSearchKey: TEdit read FWelcomeSearchKey;
     property WelcomeWhatsNew: TAtlasChoiceBox read FWelcomeWhatsNew;
+    property WelcomeContinue: TCheckBox read FWelcomeContinue;
+    property WelcomeContinueCount: TEdit read FWelcomeContinueCount;
+    property WelcomeContinueIncoming: TCheckBox read FWelcomeContinueIncoming;
+    property WelcomeContinueFetch: TCheckBox read FWelcomeContinueFetch;
+    property WelcomeSaved: TCheckBox read FWelcomeSaved;
     property WelcomeProjects: TCheckBox read FWelcomeProjects;
     property WelcomeMaxProjects: TEdit read FWelcomeMaxProjects;
     property WelcomeRefreshVcs: TCheckBox read FWelcomeRefreshVcs;
@@ -797,6 +807,12 @@ begin
     [TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeWhatsNewOff),
     TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeWhatsNewAfterUpdate),
     TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeWhatsNewAlways)]);
+  // Bereich „Weiterarbeiten“ (#755).
+  FWelcomeContinue := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeContinue));
+  FWelcomeContinueCount := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeContinueCount));
+  FWelcomeContinueIncoming := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeContinueIncoming));
+  FWelcomeContinueFetch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeContinueFetch));
+  FWelcomeSaved := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeSaved));
   // Bereich „Projekte“ (#592).
   FWelcomeProjects := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeProjects));
   FWelcomeMaxProjects := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeMaxProjects));
@@ -1553,6 +1569,11 @@ begin
   FWelcomeSearchSymbols.Checked := ASettings.WelcomePageSearchSymbols;
   FWelcomeSearchKey.Text := ShortCutToText(TShortCut(ASettings.WelcomePageSearchKey));
   FWelcomeWhatsNew.Choice := Ord(TAtlasWhatsNew.ModeOf(ASettings.WelcomePageWhatsNew));
+  FWelcomeContinue.Checked := ASettings.WelcomePageContinue;
+  FWelcomeContinueCount.Text := IntToStr(ASettings.WelcomePageContinueCount);
+  FWelcomeContinueIncoming.Checked := ASettings.WelcomePageContinueIncoming;
+  FWelcomeContinueFetch.Checked := ASettings.WelcomePageContinueFetch;
+  FWelcomeSaved.Checked := ASettings.WelcomePageSaved;
   FWelcomeProjects.Checked := ASettings.WelcomePageProjectStatus;
   FWelcomeMaxProjects.Text := IntToStr(ASettings.WelcomePageMaxProjects);
   FWelcomeRefreshVcs.Checked := ASettings.WelcomePageRefreshVcs;
@@ -1711,6 +1732,12 @@ begin
   ASettings.WelcomePageSearchKey := Integer(TextToShortCut(Trim(FWelcomeSearchKey.Text)));
   ASettings.WelcomePageWhatsNew := TAtlasWhatsNew.ModeName(TAtlasWhatsNewMode(EnsureRange(FWelcomeWhatsNew.Choice,
     Ord(Low(TAtlasWhatsNewMode)), Ord(High(TAtlasWhatsNewMode)))));
+  ASettings.WelcomePageContinue := FWelcomeContinue.Checked;
+  ASettings.WelcomePageContinueCount := StrToIntDef(Trim(FWelcomeContinueCount.Text),
+    ASettings.WelcomePageContinueCount);
+  ASettings.WelcomePageContinueIncoming := FWelcomeContinueIncoming.Checked;
+  ASettings.WelcomePageContinueFetch := FWelcomeContinueFetch.Checked;
+  ASettings.WelcomePageSaved := FWelcomeSaved.Checked;
   ASettings.WelcomePageProjectStatus := FWelcomeProjects.Checked;
   ASettings.WelcomePageMaxProjects := StrToIntDef(Trim(FWelcomeMaxProjects.Text), ASettings.WelcomePageMaxProjects);
   ASettings.WelcomePageRefreshVcs := FWelcomeRefreshVcs.Checked;

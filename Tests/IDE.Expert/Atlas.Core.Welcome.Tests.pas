@@ -733,6 +733,12 @@ begin
   Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, Settings.WelcomePageHelpReportUrl);
   Assert.AreEqual('https://github.com/xKnockOut/Atlas-IDE-Expert/issues/new', Settings.WelcomePageHelpReportUrl);
   Assert.AreEqual('', Settings.WelcomePageHelpReportFolder, 'leer = Desktop');
+  // #755: Weiterarbeiten an mit 5 Arbeitsständen, eingehende Commits an, fetch aus, „Gemerkt“ an.
+  Assert.IsTrue(Settings.WelcomePageContinue);
+  Assert.AreEqual(5, Settings.WelcomePageContinueCount);
+  Assert.IsTrue(Settings.WelcomePageContinueIncoming);
+  Assert.IsFalse(Settings.WelcomePageContinueFetch, 'kein Netzzugriff ohne Zustimmung');
+  Assert.IsTrue(Settings.WelcomePageSaved);
 end;
 
 procedure TAtlasWelcomeSettingsTests.NormalizeMapsUnknownValues;
@@ -777,6 +783,13 @@ begin
   Settings.WelcomePageHelpReportUrl := '';
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, Settings.WelcomePageHelpReportUrl, 'leer = Vorgabe');
+  // #755: Anzahl der Arbeitsstände 1–20.
+  Settings.WelcomePageContinueCount := 0;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MinContinueCount, Settings.WelcomePageContinueCount);
+  Settings.WelcomePageContinueCount := 99;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MaxContinueCount, Settings.WelcomePageContinueCount);
 end;
 
 procedure TAtlasWelcomeSettingsTests.SaveAndLoadRoundTrip;
@@ -793,6 +806,11 @@ begin
   Saved.WelcomePageGreeting := False;
   Saved.WelcomePageWhatsNew := 'always';
   Saved.WhatsNewSeen := '1.1.0';
+  Saved.WelcomePageContinue := False;
+  Saved.WelcomePageContinueCount := 7;
+  Saved.WelcomePageContinueIncoming := False;
+  Saved.WelcomePageContinueFetch := True;
+  Saved.WelcomePageSaved := False;
   Saved.WelcomePageProjectStatus := False;
   Saved.WelcomePageMaxProjects := 12;
   Saved.WelcomePageRefreshVcs := False;
@@ -821,6 +839,11 @@ begin
   Assert.AreEqual(10, Store.ReadInteger('WelcomePageUnsavedWarnHours', 0));
   Assert.AreEqual(20, Store.ReadInteger('WelcomePageUnsavedAlertHours', 0));
   Assert.AreEqual(1, Store.ReadInteger('WelcomePageUnsavedHideWhenClean', 0));
+  Assert.AreEqual(0, Store.ReadInteger('WelcomePageContinue', 1), 'Registry-Name (#755)');
+  Assert.AreEqual(7, Store.ReadInteger('WelcomePageContinueCount', 0));
+  Assert.AreEqual(0, Store.ReadInteger('WelcomePageContinueIncoming', 1));
+  Assert.AreEqual(1, Store.ReadInteger('WelcomePageContinueFetch', 0));
+  Assert.AreEqual(0, Store.ReadInteger('WelcomePageSaved', 1));
   Assert.AreEqual(0, Store.ReadInteger('WelcomePageProjectStatus', 1), 'Registry-Name (#592)');
   Assert.AreEqual(12, Store.ReadInteger('WelcomePageMaxProjects', 0));
   Assert.AreEqual(0, Store.ReadInteger('WelcomePageRefreshVcs', 1));
@@ -837,6 +860,11 @@ begin
   Assert.IsFalse(Loaded.WelcomePageGreeting);
   Assert.AreEqual('always', Loaded.WelcomePageWhatsNew);
   Assert.AreEqual('1.1.0', Loaded.WhatsNewSeen);
+  Assert.IsFalse(Loaded.WelcomePageContinue);
+  Assert.AreEqual(7, Loaded.WelcomePageContinueCount);
+  Assert.IsFalse(Loaded.WelcomePageContinueIncoming);
+  Assert.IsTrue(Loaded.WelcomePageContinueFetch);
+  Assert.IsFalse(Loaded.WelcomePageSaved);
   Assert.IsFalse(Loaded.WelcomePageProjectStatus);
   Assert.AreEqual(12, Loaded.WelcomePageMaxProjects);
   Assert.IsFalse(Loaded.WelcomePageRefreshVcs);

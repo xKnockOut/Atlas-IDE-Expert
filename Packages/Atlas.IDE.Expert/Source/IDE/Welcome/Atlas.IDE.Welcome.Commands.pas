@@ -20,6 +20,9 @@
 //   ersten Spalte; Kontextmenü von Frame „Atlas“ und Kopf mit „Neuigkeiten
 //   dieser Version zeigen“ und „Alle Versionen“ (nicht bei
 //   welcomePage.whatsNew = off).
+// - Bereich „Weiterarbeiten“ (#755, ContinueWork): Arbeitsstand je Projekt
+//   (Reiter, letzte Änderung), eingehende Commits und „Gemerkt“; schreibt
+//   beim Schließen und beim Beenden (Stop) und meldet sich selbst an.
 // - Bereich „Projekte“ (#592, Projects): Zustand je zuletzt geöffnetem
 //   Projekt aus den Projekt-Zusammenfassungen; meldet sich selbst an.
 // - Bereich „Nicht gesichert“ (#762, Unsaved): nicht Committetes, nicht
@@ -51,6 +54,7 @@ uses
   Atlas.IDE.Welcome.WhatsNew,
   Atlas.IDE.Welcome.Projects,
   Atlas.IDE.Welcome.Unsaved,
+  Atlas.IDE.Welcome.Continue,
   Atlas.IDE.Welcome.State,
   Atlas.IDE.Welcome.Discover,
   Atlas.IDE.Welcome.Help;
@@ -80,6 +84,9 @@ type
     FUnsaved: TAtlasIdeUnsaved;
     // Hält die Quelle des Bereichs „Nicht gesichert“ am Leben; die Frames halten sie ebenfalls.
     FUnsavedRef: IInterface;
+    FContinue: TAtlasIdeContinue;
+    // Hält die Quelle des Bereichs „Weiterarbeiten“ am Leben; die Frames halten sie ebenfalls.
+    FContinueRef: IInterface;
     FState: TAtlasIdeWelcomeState;
     // Hält die Quelle der Zustandskachel am Leben; die Frames halten sie ebenfalls.
     FStateRef: IInterface;
@@ -95,6 +102,7 @@ type
     procedure SetHelp(AValue: TAtlasIdeHelp);
     procedure SetProjects(AValue: TAtlasIdeProjects);
     procedure SetUnsaved(AValue: TAtlasIdeUnsaved);
+    procedure SetContinue(AValue: TAtlasIdeContinue);
     procedure AttachMenu(AFrame: TAtlasWelcomeFrame);
     procedure SectionChanged(const AId: string);
     procedure Flush;
@@ -142,6 +150,9 @@ type
     property Projects: TAtlasIdeProjects read FProjects write SetProjects;
     /// <summary>Bereich „Nicht gesichert“ (#762); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
     property Unsaved: TAtlasIdeUnsaved read FUnsaved write SetUnsaved;
+    /// <summary>Bereich „Weiterarbeiten“ (#755); gehört danach der Steuerung (Start beim Setzen). nil = ohne.
+    /// Nicht „Continue“: Das verdeckte in den Methoden die Prozedur System.Continue.</summary>
+    property ContinueWork: TAtlasIdeContinue read FContinue write SetContinue;
     /// <summary>Zustandskachel „Atlas“ (#754); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
     property State: TAtlasIdeWelcomeState read FState write SetState;
     /// <summary>Karte „Atlas entdecken“ (#757); gehört danach der Steuerung (Start beim Setzen). nil = ohne.
@@ -246,6 +257,9 @@ begin
     FProjects.Stop;
   if FUnsaved <> nil then
     FUnsaved.Stop;
+  // Schreibt den Arbeitsstand des noch offenen Projekts (Beenden der IDE).
+  if FContinue <> nil then
+    FContinue.Stop;
   if FState <> nil then
     FState.Stop;
   if FDiscover <> nil then
@@ -262,6 +276,8 @@ begin
   FProjectsRef := nil;
   FUnsaved := nil;
   FUnsavedRef := nil;
+  FContinue := nil;
+  FContinueRef := nil;
   FState := nil;
   FStateRef := nil;
   FDiscover := nil;
@@ -316,6 +332,18 @@ begin
       procedure
       begin
         FUnsaved.Start;
+      end);
+end;
+
+procedure TAtlasIdeWelcome.SetContinue(AValue: TAtlasIdeContinue);
+begin
+  FContinue := AValue;
+  FContinueRef := AValue;
+  if FContinue <> nil then
+    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        FContinue.Start;
       end);
 end;
 

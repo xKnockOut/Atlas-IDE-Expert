@@ -3,7 +3,7 @@
 // Leere Umsetzung (#571): ohne Arbeitskopie, mit vcs.provider = off oder wenn
 // git bzw. svn fehlt. Alle Aufrufe kehren sofort ohne Prozess zurück und
 // liefern keine Versionsangaben, nie einen Fehler; Outcome sagt, warum. Das
-// gilt auch für IAtlasVcsLocalWork (#762).
+// gilt auch für IAtlasVcsLocalWork (#762) und IAtlasVcsIncoming (#755).
 
 interface
 
@@ -12,7 +12,7 @@ uses
   Atlas.Core.Vcs.Contract;
 
 type
-  TAtlasNullVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork)
+  TAtlasNullVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming)
   private
     FOutcome: TAtlasVcsOutcome;
   public
@@ -34,6 +34,11 @@ type
       out ACommits: TArray<TAtlasVcsCommit>): TAtlasVcsOutcome;
     function ChangesIn(const ARevision: string; out AChanges: TArray<TAtlasVcsChange>): TAtlasVcsOutcome;
     function Push(const ABranch, ARemote, ARemoteRef: string; ASetUpstream: Boolean): TAtlasVcsOutcome;
+    { IAtlasVcsIncoming }
+    function Resolve(const ARef: string; out ARevision: string): TAtlasVcsOutcome;
+    function Incoming(const AUpstream: string; const AExclude: TArray<string>; AMax: Integer;
+      out ACommits: TArray<TAtlasVcsIncomingCommit>): TAtlasVcsOutcome;
+    function Fetch(const ARemote: string): TAtlasVcsOutcome;
     property Outcome: TAtlasVcsOutcome read FOutcome;
   end;
 
@@ -126,6 +131,26 @@ end;
 
 function TAtlasNullVersionControl.Push(const ABranch, ARemote, ARemoteRef: string;
   ASetUpstream: Boolean): TAtlasVcsOutcome;
+begin
+  Result := FOutcome;
+end;
+
+{ IAtlasVcsIncoming (#755) }
+
+function TAtlasNullVersionControl.Resolve(const ARef: string; out ARevision: string): TAtlasVcsOutcome;
+begin
+  ARevision := '';
+  Result := FOutcome;
+end;
+
+function TAtlasNullVersionControl.Incoming(const AUpstream: string; const AExclude: TArray<string>; AMax: Integer;
+  out ACommits: TArray<TAtlasVcsIncomingCommit>): TAtlasVcsOutcome;
+begin
+  ACommits := nil;
+  Result := FOutcome;
+end;
+
+function TAtlasNullVersionControl.Fetch(const ARemote: string): TAtlasVcsOutcome;
 begin
   Result := FOutcome;
 end;

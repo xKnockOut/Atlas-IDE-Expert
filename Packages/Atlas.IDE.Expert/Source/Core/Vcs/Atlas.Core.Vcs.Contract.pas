@@ -15,6 +15,10 @@
 // lokale Branches mit Vorsprung, Commits, die nur lokal sind, Stashes und das
 // Pushen nach Bestätigung. Abfragen lesen nur das lokale Repository (kein
 // fetch); nur Push spricht mit dem Server.
+// IAtlasVcsIncoming (#755) liefert eingehende Commits: was auf dem verfolgten
+// Branch (z. B. origin/main) liegt, aber nicht in gemerkten Ständen, mit Autor
+// und geänderten Dateien. Grundlage ist der lokale Stand der Remote-Branches;
+// nur Fetch spricht mit dem Server (ohne Rückfrage nach Zugangsdaten).
 
 interface
 
@@ -150,6 +154,20 @@ type
     function ShortHash: string;
   end;
 
+  /// <summary>Eingehender Commit mit Autor und geänderten Dateien (#755).</summary>
+  TAtlasVcsIncomingCommit = record
+    Hash: string;
+    /// <summary>Committer-Zeitpunkt (UTC).</summary>
+    Date: TDateTime;
+    Author: string;
+    /// <summary>Erste Zeile der Nachricht.</summary>
+    Summary: string;
+    /// <summary>Geänderte Dateien, vollständige Pfade; leer bei Merges.</summary>
+    Files: TArray<string>;
+    /// <summary>Kurzform des Hashs (7 Zeichen).</summary>
+    function ShortHash: string;
+  end;
+
   /// <summary>Ergebnis eines Prozessaufrufs.</summary>
   TAtlasVcsRunResult = record
     Outcome: TAtlasVcsOutcome;
@@ -216,6 +234,26 @@ type
     /// <summary>Pusht ABranch nach ARemote auf ARemoteRef (z. B. "refs/heads/main"); ASetUpstream trägt ihn als
     /// verfolgten Branch ein. Spricht mit dem Server; nur nach Bestätigung durch den Benutzer.</summary>
     function Push(const ABranch, ARemote, ARemoteRef: string; ASetUpstream: Boolean): TAtlasVcsOutcome;
+  end;
+
+  /// <summary>Eingehende Commits (#755). Git, SVN und die leere Umsetzung bieten diese Schnittstelle
+  /// zusätzlich zu IAtlasVersionControl (Supports). Resolve und Incoming lesen nur das lokale Repository (Git:
+  /// den Stand der Remote-Branches seit dem letzten Abruf); nur Fetch spricht mit dem Server. SVN hält keinen
+  /// lokalen Stand des Servers: Resolve liefert dort '', Incoming eine leere Liste und Fetch tut nichts (alle
+  /// Ok ohne Prozess). Jede Methode der Git-Umsetzung startet einen Prozess: nur aus einem Hintergrund-Thread
+  /// aufrufen.</summary>
+  IAtlasVcsIncoming = interface
+    ['{5D8B2E47-1C9A-4F63-B7D0-2E6A4C9F1B83}']
+    /// <summary>Commit zu ARef (z. B. "origin/main", "HEAD" oder ein Hash); Failed, wenn es ihn nicht gibt.
+    /// </summary>
+    function Resolve(const ARef: string; out ARevision: string): TAtlasVcsOutcome;
+    /// <summary>Commits von AUpstream, die in keinem Stand aus AExclude liegen (leere Einträge zählen nicht),
+    /// neueste zuerst, höchstens AMax, mit Autor und geänderten Dateien.</summary>
+    function Incoming(const AUpstream: string; const AExclude: TArray<string>; AMax: Integer;
+      out ACommits: TArray<TAtlasVcsIncomingCommit>): TAtlasVcsOutcome;
+    /// <summary>Remote-Branches von ARemote abrufen ('' = Remote des aktuellen Branchs bzw. origin), ohne
+    /// Rückfrage nach Zugangsdaten. Spricht mit dem Server.</summary>
+    function Fetch(const ARemote: string): TAtlasVcsOutcome;
   end;
 
   /// <summary>Fehler beim Lesen einer Ausgabe; die Umsetzungen machen daraus Outcome Failed.</summary>
@@ -329,6 +367,13 @@ end;
 { TAtlasVcsCommit }
 
 function TAtlasVcsCommit.ShortHash: string;
+begin
+  Result := Copy(Hash, 1, 7);
+end;
+
+{ TAtlasVcsIncomingCommit }
+
+function TAtlasVcsIncomingCommit.ShortHash: string;
 begin
   Result := Copy(Hash, 1, 7);
 end;
