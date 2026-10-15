@@ -102,6 +102,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Style.Color,
   Atlas.UI.Strings;
@@ -367,7 +369,7 @@ begin
   Clear;
   // Erst nach dem Schließen öffnen: Projekt laden kann dauern und Dialoge zeigen.
   if Assigned(Handler) then
-    TThread.ForceQueue(nil,
+    TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
       procedure
       begin
         Handler(Hit);

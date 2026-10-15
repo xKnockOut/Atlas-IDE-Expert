@@ -81,6 +81,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Completion.Presentation;
 
@@ -206,7 +208,7 @@ begin
   Close;
   // Erst nach dem Schließen ausführen: Der Befehl öffnet evtl. selbst einen Dialog.
   if Assigned(Handler) then
-    TThread.ForceQueue(nil,
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Palette,
       procedure
       begin
         Handler(Command);

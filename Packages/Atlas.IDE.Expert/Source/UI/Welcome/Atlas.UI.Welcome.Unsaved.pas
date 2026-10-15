@@ -121,6 +121,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Diagnostics.Guard,
   System.DateUtils,
   Vcl.Themes,
   Atlas.UI.Strings;
@@ -476,7 +478,7 @@ begin
   Source := FSource;
   Row := FView.Rows[AHit.Row];
   // Die Quelle füllt den Bereich danach neu (und „Push …“ zeigt einen Dialog): nicht im eigenen Mausereignis.
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
       if Row.Item.CanPush then
@@ -538,7 +540,7 @@ begin
   if not MenuTarget(Row) then
     Exit;
   Source := FSource;
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
       Source.OpenFolder(Row);
@@ -553,7 +555,7 @@ begin
   if not MenuTarget(Row) then
     Exit;
   Source := FSource;
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
       Source.Ignore(Row);
