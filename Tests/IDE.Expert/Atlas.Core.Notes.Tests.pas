@@ -1,10 +1,9 @@
 ﻿unit Atlas.Core.Notes.Tests;
 
-// Tests der persönlichen Notizen (#545): Verankerung an der Codezeile (folgt
-// eingefügten und gelöschten Zeilen, Einrückung egal, geänderte Zeile bleibt,
-// gelöschte Zeile verwaist), Notizbuch (Anlegen, Ändern, Löschen, Liste mit
-// verwaisten Notizen am Ende) und Ablage (Format, unbekannte Felder, höheres
-// Format, Platte, alle Notizbücher ohne geöffnetes Projekt).
+// Tests der persönlichen Notizen (#545): Notizbuch (Anlegen, Ändern, Löschen,
+// Neuverankern, Liste mit verwaisten Notizen am Ende) und Ablage (Format,
+// unbekannte Felder, höheres Format, Platte, alle Notizbücher ohne geöffnetes
+// Projekt). Die Verankerung selbst testet Atlas.Core.Editor.LineAnchor.Tests.
 
 interface
 
@@ -12,34 +11,6 @@ uses
   DUnitX.TestFramework;
 
 type
-  [TestFixture]
-  TAtlasNoteAnchorTests = class
-  public
-    [Test]
-    procedure NormalizeCollapsesWhitespace;
-    [Test]
-    procedure CaptureTakesNeighbours;
-    [Test]
-    procedure StaysWhenNothingChanged;
-    /// <summary>Akzeptanzkriterium: Die Notiz bleibt nach Einfügen von Zeilen oberhalb an ihrer Codezeile.</summary>
-    [Test]
-    procedure FollowsLinesInsertedAbove;
-    [Test]
-    procedure FollowsLinesRemovedAbove;
-    [Test]
-    procedure IgnoresIndentation;
-    [Test]
-    procedure StaysOnEditedLine;
-    [Test]
-    procedure DeletedLineIsOrphaned;
-    [Test]
-    procedure RepeatedLineFollowsNeighbours;
-    [Test]
-    procedure RepeatedLineWithoutNeighboursIsOrphaned;
-    [Test]
-    procedure EmptyLineNeedsNeighbour;
-  end;
-
   [TestFixture]
   TAtlasNoteStoreTests = class
   private
@@ -90,7 +61,7 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.JSON,
-  Atlas.Core.Notes.Anchor,
+  Atlas.Core.Editor.LineAnchor,
   Atlas.Core.Notes.Store,
   Atlas.Core.Projects.Summary;
 
@@ -122,158 +93,6 @@ end;
 function SameTime(A, B: TDateTime): Boolean;
 begin
   Result := Abs(A - B) < 1 / 86400 / 2;
-end;
-
-{ TAtlasNoteAnchorTests }
-
-procedure TAtlasNoteAnchorTests.NormalizeCollapsesWhitespace;
-begin
-  Assert.AreEqual('Result := Round(X);', TAtlasNoteAnchors.Normalize(#9'  Result  :='#9'Round(X);  '));
-  Assert.AreEqual('', TAtlasNoteAnchors.Normalize('   '#9));
-  Assert.AreEqual(3, Length(TAtlasNoteAnchors.Lines('a'#13#10'b'#10'c')));
-end;
-
-procedure TAtlasNoteAnchorTests.CaptureTakesNeighbours;
-var
-  Anchor: TAtlasNoteAnchor;
-begin
-  Anchor := TAtlasNoteAnchors.Capture(Code, 8);
-  Assert.AreEqual(8, Anchor.Line);
-  Assert.AreEqual('Result := Round(X * 100) / 100;', Anchor.Text);
-  Assert.AreEqual(2, Length(Anchor.Before));
-  Assert.AreEqual('begin', Anchor.Before[0], 'nächste Zeile zuerst');
-  Assert.AreEqual('function Runde(X: Double): Double;', Anchor.Before[1]);
-  Assert.AreEqual('end;', Anchor.After[0]);
-  Assert.AreEqual('', Anchor.After[1]);
-  // Am Rand gibt es weniger Nachbarn.
-  Anchor := TAtlasNoteAnchors.Capture(Code, 0);
-  Assert.AreEqual(0, Length(Anchor.Before));
-  Assert.AreEqual(2, Length(Anchor.After));
-  Anchor := TAtlasNoteAnchors.Capture(Code, 11);
-  Assert.AreEqual(0, Length(Anchor.After));
-  Anchor := TAtlasNoteAnchors.Capture(Code, 99);
-  Assert.AreEqual('', Anchor.Text, 'außerhalb des Textes');
-end;
-
-procedure TAtlasNoteAnchorTests.StaysWhenNothingChanged;
-var
-  Line: Integer;
-begin
-  Assert.AreEqual(Ord(TAtlasNoteMatch.Same),
-    Ord(TAtlasNoteAnchors.Locate(Code, TAtlasNoteAnchors.Capture(Code, 8), Line)));
-  Assert.AreEqual(8, Line);
-end;
-
-procedure TAtlasNoteAnchorTests.FollowsLinesInsertedAbove;
-var
-  Anchor: TAtlasNoteAnchor;
-  Changed: TArray<string>;
-  Line: Integer;
-begin
-  Anchor := TAtlasNoteAnchors.Capture(Code, 8);
-  Changed := Insert(Code, 4, ['uses', '  System.Math;', '']);
-  Assert.AreEqual(Ord(TAtlasNoteMatch.Moved), Ord(TAtlasNoteAnchors.Locate(Changed, Anchor, Line)));
-  Assert.AreEqual(11, Line);
-  Assert.AreEqual('  Result := Round(X * 100) / 100;', Changed[Line]);
-  // Auch direkt über der Zeile eingefügt (der nächste Nachbar ändert sich).
-  Changed := Insert(Code, 8, ['  // Rundung', '  X := Abs(X);']);
-  Assert.AreEqual(Ord(TAtlasNoteMatch.Moved), Ord(TAtlasNoteAnchors.Locate(Changed, Anchor, Line)));
-  Assert.AreEqual(10, Line);
-end;
-
-procedure TAtlasNoteAnchorTests.FollowsLinesRemovedAbove;
-var
-  Line: Integer;
-begin
-  Assert.AreEqual(Ord(TAtlasNoteMatch.Moved),
-    Ord(TAtlasNoteAnchors.Locate(Without(Code, 1, 3), TAtlasNoteAnchors.Capture(Code, 8), Line)));
-  Assert.AreEqual(5, Line);
-end;
-
-procedure TAtlasNoteAnchorTests.IgnoresIndentation;
-var
-  Changed: TArray<string>;
-  Line: Integer;
-begin
-  Changed := Copy(Code, 0, Length(Code));
-  Changed[8] := #9'Result   :=  Round(X * 100) / 100;';
-  Assert.AreEqual(Ord(TAtlasNoteMatch.Same),
-    Ord(TAtlasNoteAnchors.Locate(Changed, TAtlasNoteAnchors.Capture(Code, 8), Line)));
-  Assert.AreEqual(8, Line);
-end;
-
-procedure TAtlasNoteAnchorTests.StaysOnEditedLine;
-var
-  Changed: TArray<string>;
-  Line: Integer;
-begin
-  Changed := Insert(Code, 0, ['// Kopf']);
-  Changed[9] := '  Result := RoundTo(X, -2);';
-  Assert.AreEqual(Ord(TAtlasNoteMatch.Changed),
-    Ord(TAtlasNoteAnchors.Locate(Changed, TAtlasNoteAnchors.Capture(Code, 8), Line)));
-  Assert.AreEqual(9, Line);
-end;
-
-procedure TAtlasNoteAnchorTests.DeletedLineIsOrphaned;
-var
-  Line: Integer;
-begin
-  Assert.AreEqual(Ord(TAtlasNoteMatch.Orphaned),
-    Ord(TAtlasNoteAnchors.Locate(Without(Code, 8, 1), TAtlasNoteAnchors.Capture(Code, 8), Line)));
-  Assert.AreEqual(8, Line, 'behält die letzte Zeile');
-  Assert.AreEqual(Ord(TAtlasNoteMatch.Orphaned),
-    Ord(TAtlasNoteAnchors.Locate(nil, TAtlasNoteAnchors.Capture(Code, 8), Line)), 'leere Datei');
-end;
-
-procedure TAtlasNoteAnchorTests.RepeatedLineFollowsNeighbours;
-var
-  Lines, Changed: TArray<string>;
-  Line: Integer;
-begin
-  Lines := ['procedure A;', 'begin', '  Lade;', 'end;', '', 'procedure B;', 'begin', '  Speichere;', 'end;'];
-  // Notiz am zweiten „end;“; davor kommt eine neue Routine mit weiterem „end;“.
-  Changed := Insert(Lines, 5, ['procedure C;', 'begin', 'end;', '']);
-  Assert.AreEqual(Ord(TAtlasNoteMatch.Moved),
-    Ord(TAtlasNoteAnchors.Locate(Changed, TAtlasNoteAnchors.Capture(Lines, 8), Line)));
-  Assert.AreEqual(12, Line);
-  Assert.AreEqual('  Speichere;', Changed[Line - 1]);
-end;
-
-procedure TAtlasNoteAnchorTests.RepeatedLineWithoutNeighboursIsOrphaned;
-var
-  Anchor: TAtlasNoteAnchor;
-  Line: Integer;
-begin
-  Anchor := Default(TAtlasNoteAnchor);
-  Anchor.Line := 1;
-  Anchor.Text := 'end;';
-  Anchor.Before := ['  Weg;'];
-  Anchor.After := ['  Auch weg;'];
-  // Mehrere „end;“, keiner mit passendem Nachbarn, die bisherige Zeile ist keins: nicht eindeutig.
-  Assert.AreEqual(Ord(TAtlasNoteMatch.Orphaned),
-    Ord(TAtlasNoteAnchors.Locate(['begin', 'x;', 'end;', 'y;', 'end;'], Anchor, Line)));
-  // Steht an der bisherigen Zeile noch ein „end;“, bleibt die Notiz dort.
-  Assert.AreEqual(Ord(TAtlasNoteMatch.Same),
-    Ord(TAtlasNoteAnchors.Locate(['begin', 'end;', 'y;', 'end;'], Anchor, Line)));
-  Assert.AreEqual(1, Line);
-  // Nur einmal vorhanden: eindeutig, auch ohne Nachbarn.
-  Assert.AreEqual(Ord(TAtlasNoteMatch.Moved),
-    Ord(TAtlasNoteAnchors.Locate(['a;', 'b;', 'c;', 'end;'], Anchor, Line)));
-  Assert.AreEqual(3, Line);
-end;
-
-procedure TAtlasNoteAnchorTests.EmptyLineNeedsNeighbour;
-var
-  Anchor: TAtlasNoteAnchor;
-  Line: Integer;
-begin
-  Anchor := TAtlasNoteAnchors.Capture(['a;', 'b;', '', 'c;', 'd;'], 2);
-  Assert.AreEqual(Ord(TAtlasNoteMatch.Moved),
-    Ord(TAtlasNoteAnchors.Locate(['x;', 'a;', 'b;', '', 'c;', 'd;'], Anchor, Line)));
-  Assert.AreEqual(3, Line);
-  // Leere Zeilen gibt es viele; ohne passenden Nachbarn ist keine gemeint.
-  Assert.AreEqual(Ord(TAtlasNoteMatch.Orphaned),
-    Ord(TAtlasNoteAnchors.Locate(['', 'x;', '', 'y;'], Anchor, Line)));
 end;
 
 { TAtlasNoteStoreTests }
@@ -329,7 +148,7 @@ begin
   Assert.IsTrue(Book.Relocate(UnitFile, Changed));
   Assert.AreEqual(10, Book.Notes[0].Line);
   Assert.AreEqual(8, Book.Notes[1].Line, 'andere Datei unberührt');
-  Assert.IsTrue(Book.Notes[0].Anchor.SameAs(TAtlasNoteAnchors.Capture(Changed, 10)), 'neuer Stand gemerkt');
+  Assert.IsTrue(Book.Notes[0].Anchor.SameAs(TAtlasLineAnchors.Capture(Changed, 10)), 'neuer Stand gemerkt');
   // Zeile gelöscht: verwaist; wieder eingefügt (Rückgängig): wieder zugeordnet.
   Assert.IsTrue(Book.Relocate(UnitFile, Without(Changed, 10, 1)));
   Assert.IsTrue(Book.Notes[0].Orphaned);
@@ -554,7 +373,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TAtlasNoteAnchorTests);
   TDUnitX.RegisterTestFixture(TAtlasNoteStoreTests);
 
 end.

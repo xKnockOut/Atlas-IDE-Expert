@@ -98,7 +98,8 @@ uses
   Atlas.IDE.Welcome.Commands,
   Atlas.IDE.Vcs.Service,
   Atlas.IDE.Notes.Service,
-  Atlas.IDE.Notes.Gutter;
+  Atlas.IDE.Notes.Gutter,
+  Atlas.IDE.Editor.GutterMarks;
 
 var
   ManagerIndex: Integer = -1;
@@ -110,8 +111,8 @@ var
   Reloader: TAtlasFileReloader;
   Palette: TAtlasIdePalette;
   Pairs: TAtlasEditorPairs;
-  // Persönliche Notizen in der Rinne (#545).
-  NotesGutter: TAtlasIdeNotesGutter;
+  // Markierungen in der Rinne: persönliche Notizen (#545).
+  GutterMarks: TAtlasIdeGutterMarks;
   // Ungespeicherte Dateien für schreibende MCP-Werkzeuge (#61).
   DirtyExport: TAtlasDirtyExport;
   // Schreibende MCP-Werkzeuge ändern offene Dateien über das Plugin (#397).
@@ -1033,8 +1034,11 @@ begin
       begin
         MessageLine(AText);
       end);
-  if (NotesGutter = nil) and Basic and (Full or Settings.Notes) then
-    NotesGutter := TAtlasIdeNotesGutter.Create;
+  if (GutterMarks = nil) and Basic and (Full or Settings.Notes) then
+  begin
+    GutterMarks := TAtlasIdeGutterMarks.Create;
+    GutterMarks.Add(TAtlasIdeNotesGutter.Create);
+  end;
   if (CompletionKey = nil) and Basic and (Full or Settings.Enabled) then
     CompletionKey := TAtlasIdeKeyBinding.Create('Atlas.Completion', 'Atlas-Vervollständigung',
       TAtlasFeature.Completion,
@@ -1445,7 +1449,7 @@ begin
   CommandsInstalled := False;
   FreeAndNil(Pairs);
   // Vor dem Notizdienst: Die Rinne liest dessen Notizbücher (#545).
-  FreeAndNil(NotesGutter);
+  FreeAndNil(GutterMarks);
   TAtlasIdeNotes.Release;
   FreeAndNil(CheckOnSave);
   FreeAndNil(Palette);
