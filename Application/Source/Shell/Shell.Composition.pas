@@ -178,6 +178,8 @@ type
     FCompileLock: TObject;
     FCompileThread: TThread;
     FCompiling: Boolean;
+    /// <summary>Beenden läuft: kein neuer Compilerlauf mehr (Code-Review A-05). Unter FCompileLock.</summary>
+    FCompileStopping: Boolean;
     FHasPendingCompile: Boolean;
     FPendingCompile: TCompilerRequest;
     /// <summary>Grund, warum der Compiler nicht nutzbar ist; '' = nutzbar. Unter FCompileLock.
@@ -246,6 +248,14 @@ type
     procedure CompilerUnavailable(const AReason: string);
     /// <summary>Hintergrund-Thread: führt ARequest und vorgemerkte Läufe aus.</summary>
     procedure CompileLoop(const ARequest: TCompilerRequest);
+    /// <summary>Ein Compilerlauf mit Fortschritt und Meldungen; Fehler landen im Fortschritt und im Log.</summary>
+    procedure CompileOnce(const ARequest: TCompilerRequest);
+    /// <summary>Beenden: keine neuen Läufe, laufenden Compiler abbrechen, Thread abwarten (A-05).</summary>
+    procedure StopCompiler;
+    /// <summary>Beenden: Index-Threads aller Ordner anhalten; nil-sicher.</summary>
+    procedure StopIndexThreads;
+    /// <summary>Beenden: gibt Features, Ordner und Index frei.</summary>
+    procedure FreeFeatures;
     procedure HandleDidChangeConfiguration(const AParams: TJSONValue);
     /// <summary>Dateiänderungen von außen: Projektdateien laden das Projekt neu, Quelltexte aktualisieren den Index.</summary>
     procedure HandleWatchedFiles(const AChanges: TArray<TFileChange>);
@@ -1298,28 +1308,67 @@ begin
 end;
 
 destructor TServerComposition.Destroy;
-var
-  Workspace: TShellWorkspace;
 begin
   // Zuerst: Eine laufende Übernahme greift auf die Ordner zu.
   FreeAndNil(FIndexRefresh);
   // Vor der Verbindung: Beide Wächter rufen FConnection.
   FreeAndNil(FFileWatcher);
-  FParentWatcher.Free;
-  FConnection.Free;
-  // Nach der Verbindung laufen keine Anfragen mehr, die das Diagnoselog beobachtet.
-  FDispatcher.Observer := nil;
+  FreeAndNil(FParentWatcher);
+  FreeAndNil(FConnection);
+  if FDispatcher <> nil then
+    FDispatcher.Watchdog := nil;
+  // Compiler und Index-Threads anhalten, solange Diagnoselog und Syntaxprüfung noch leben (Code-Review A-05):
+  // Ein abgebrochener Aufbau meldet sich über OnIndexEvent im Diagnoselog, ein Compilerlauf über die
+  // Syntaxprüfung.
+  StopCompiler;
+  StopIndexThreads;
+  // Erst jetzt meldet sich niemand mehr beim Diagnoselog.
+  if FDispatcher <> nil then
+    FDispatcher.Observer := nil;
   FDiagnostics := nil;
   FDiagnosticsRef := nil;
-  // Laufenden Compilerlauf abwarten: Er meldet über die Syntaxprüfung.
+  FreeFeatures;
+  if FTracing <> nil then
+    FTracing.OnFailed := nil;
+  FTransport := nil;
+  FLogger := nil;
+  inherited;
+end;
+
+procedure TServerComposition.StopCompiler;
+begin
+  if FCompileLock <> nil then
+  begin
+    TMonitor.Enter(FCompileLock);
+    try
+      FCompileStopping := True;
+      FHasPendingCompile := False;
+    finally
+      TMonitor.Exit(FCompileLock);
+    end;
+  end;
+  // Statt unbegrenzt auf dcc32 zu warten: Prozess beenden, dann endet der Thread sofort.
+  if FCompilerProcess <> nil then
+    FCompilerProcess.Cancel;
   if FCompileThread <> nil then
   begin
     FCompileThread.WaitFor;
     FreeAndNil(FCompileThread);
   end;
-  // Index-Threads vor der Syntaxprüfung anhalten: Ein fertiger Aufbau meldet sich dort (IndexFinished).
+end;
+
+procedure TServerComposition.StopIndexThreads;
+var
+  Workspace: TShellWorkspace;
+begin
+  if FWorkspaces = nil then
+    Exit;
   for Workspace in FWorkspaces do
     Workspace.Stop;
+end;
+
+procedure TServerComposition.FreeFeatures;
+begin
   // Vor den Ordnern: der Hintergrund-Thread der Syntaxprüfung fragt ihre Symbole ab.
   FPullDiagnostics.Free;
   FSyntaxDiagnostics.Free;
@@ -1368,13 +1417,7 @@ begin
   FTextDocumentSync.Free;
   FDocuments := nil;
   FLifecycle.Free;
-  FDispatcher.Watchdog := nil;
   FDispatcher.Free;
-  if FTracing <> nil then
-    FTracing.OnFailed := nil;
-  FTransport := nil;
-  FLogger := nil;
-  inherited;
 end;
 
 function TServerComposition.ProjectsOf(const AFolder: TWorkspaceFolder): TArray<string>;
@@ -1487,7 +1530,9 @@ begin
   Workspace.OnIndexEvent :=
     procedure(AText: string)
     begin
-      FDiagnostics.Log.LogEvent(AText);
+      // Absicherung: Beim Beenden ist das Diagnoselog schon fort (Code-Review A-05).
+      if FDiagnostics <> nil then
+        FDiagnostics.Log.LogEvent(AText);
     end;
   // Das Zeitlimit gilt serverweit; bei mehreren Ordnern das zuletzt gelesene.
   Workspace.OnSettingsChanged :=
@@ -2534,6 +2579,9 @@ begin
   end;
   TMonitor.Enter(FCompileLock);
   try
+    // Beenden läuft schon (A-05): keinen neuen Thread mehr starten.
+    if FCompileStopping then
+      Exit;
     if FCompiling then
     begin
       // Der laufende Lauf startet danach den neuesten Stand.
@@ -2553,6 +2601,7 @@ begin
   FCompileThread := TThread.CreateAnonymousThread(
     procedure
     begin
+      TThread.NameThreadForDebugging('Atlas.Compile');
       CompileLoop(Request);
     end);
   FCompileThread.FreeOnTerminate := False;
@@ -2562,6 +2611,51 @@ end;
 procedure TServerComposition.CompileLoop(const ARequest: TCompilerRequest);
 var
   Request: TCompilerRequest;
+  Done: Boolean;
+begin
+  Request := ARequest;
+  Done := False;
+  try
+    try
+      repeat
+        CompileOnce(Request);
+        TMonitor.Enter(FCompileLock);
+        try
+          if FCompileStopping or not FHasPendingCompile then
+          begin
+            FCompiling := False;
+            Done := True;
+          end
+          else
+          begin
+            Request := FPendingCompile;
+            FHasPendingCompile := False;
+          end;
+        finally
+          TMonitor.Exit(FCompileLock);
+        end;
+      until Done;
+    except
+      // Sonst läge die Ausnahme ungelesen in FatalException und FCompiling bliebe True (Code-Review S-06).
+      on E: Exception do
+        FLogger.Error(Format('Compilerlauf abgebrochen: %s: %s', [E.ClassName, E.Message]));
+    end;
+  finally
+    if not Done then
+    begin
+      TMonitor.Enter(FCompileLock);
+      try
+        FCompiling := False;
+        FHasPendingCompile := False;
+      finally
+        TMonitor.Exit(FCompileLock);
+      end;
+    end;
+  end;
+end;
+
+procedure TServerComposition.CompileOnce(const ARequest: TCompilerRequest);
+var
   Lines: TList<string>;
   Messages: TArray<TCompilerMessage>;
   Item: TCompilerMessage;
@@ -2569,75 +2663,63 @@ var
   Code, Index: Integer;
   Summary, Output: string;
 begin
-  Request := ARequest;
-  repeat
-    Lines := TList<string>.Create;
+  Lines := TList<string>.Create;
+  try
     try
+      // Im try (S-06): Wirft schon der Start des Fortschritts, endet der Lauf geordnet.
       FCompileProgress.Start('Projekt kompilieren');
-      try
-        Code := FCompilerProcess.Run(Request,
-          procedure(const ALine: string)
-          begin
-            Lines.Add(ALine);
-          end);
-        Messages := TCompilerOutputParser.Parse(Lines.ToArray, Request.WorkingDir);
-        if (Code <> 0) and (Length(Messages) = 0) then
+      Code := FCompilerProcess.Run(ARequest,
+        procedure(const ALine: string)
         begin
-          // Abbruch ohne eine einzige Meldung: Der Compiler selbst ist nicht nutzbar,
-          // z. B. ohne Lizenz für die Kommandozeile. Bisherige Meldungen bleiben stehen.
-          Output := '';
-          for Index := 0 to Min(Lines.Count, 3) - 1 do
-            if Trim(Lines[Index]) <> '' then
-              Output := Output + ' ' + Trim(Lines[Index]);
-          CompilerUnavailable(Format('%s endet mit Exit-Code %d ohne Meldungen:%s',
-            [Request.Executable, Code, Output]));
-          FCompileProgress.Finish('Compiler nicht nutzbar');
-        end
-        else
-        begin
-          TMonitor.Enter(FCompileLock);
-          try
-            FCompilerUnavailable := '';
-          finally
-            TMonitor.Exit(FCompileLock);
-          end;
-          FillChar(Counts, SizeOf(Counts), 0);
-          for Item in Messages do
-          begin
-            Inc(Counts[Item.Severity]);
-            if Item.FileName = '' then
-              FLogger.Warning(Format('Compiler: %s %s', [Item.Code, Item.Text]));
-          end;
-          FSyntaxDiagnostics.RefreshFiles(FCompilerResults.Replace(Messages));
-          Summary := Format('%d Fehler, %d Warnungen, %d Hinweise',
-            [Counts[TCompilerSeverity.Error] + Counts[TCompilerSeverity.Fatal], Counts[TCompilerSeverity.Warning],
-            Counts[TCompilerSeverity.Hint]]);
-          FLogger.Info(Format('Kompiliert mit %s (Exit-Code %d): %s', [Request.Executable, Code, Summary]));
-          FCompileProgress.Finish(Summary);
-        end;
-      except
-        on E: Exception do
-        begin
-          CompilerUnavailable(E.Message);
-          FCompileProgress.Finish('Fehlgeschlagen');
-        end;
-      end;
-    finally
-      Lines.Free;
-    end;
-    TMonitor.Enter(FCompileLock);
-    try
-      if not FHasPendingCompile then
+          Lines.Add(ALine);
+        end);
+      Messages := TCompilerOutputParser.Parse(Lines.ToArray, ARequest.WorkingDir);
+      if (Code <> 0) and (Length(Messages) = 0) then
       begin
-        FCompiling := False;
-        Break;
+        // Abbruch ohne eine einzige Meldung: Der Compiler selbst ist nicht nutzbar,
+        // z. B. ohne Lizenz für die Kommandozeile. Bisherige Meldungen bleiben stehen.
+        Output := '';
+        for Index := 0 to Min(Lines.Count, 3) - 1 do
+          if Trim(Lines[Index]) <> '' then
+            Output := Output + ' ' + Trim(Lines[Index]);
+        CompilerUnavailable(Format('%s endet mit Exit-Code %d ohne Meldungen:%s',
+          [ARequest.Executable, Code, Output]));
+        FCompileProgress.Finish('Compiler nicht nutzbar');
+      end
+      else
+      begin
+        TMonitor.Enter(FCompileLock);
+        try
+          FCompilerUnavailable := '';
+        finally
+          TMonitor.Exit(FCompileLock);
+        end;
+        FillChar(Counts, SizeOf(Counts), 0);
+        for Item in Messages do
+        begin
+          Inc(Counts[Item.Severity]);
+          if Item.FileName = '' then
+            FLogger.Warning(Format('Compiler: %s %s', [Item.Code, Item.Text]));
+        end;
+        FSyntaxDiagnostics.RefreshFiles(FCompilerResults.Replace(Messages));
+        Summary := Format('%d Fehler, %d Warnungen, %d Hinweise',
+          [Counts[TCompilerSeverity.Error] + Counts[TCompilerSeverity.Fatal], Counts[TCompilerSeverity.Warning],
+          Counts[TCompilerSeverity.Hint]]);
+        FLogger.Info(Format('Kompiliert mit %s (Exit-Code %d): %s', [ARequest.Executable, Code, Summary]));
+        FCompileProgress.Finish(Summary);
       end;
-      Request := FPendingCompile;
-      FHasPendingCompile := False;
-    finally
-      TMonitor.Exit(FCompileLock);
+    except
+      on ECompilerCancelled do
+        ; // Beenden (A-05): nichts mehr melden, der Transport ist schon zu.
+      on E: Exception do
+      begin
+        CompilerUnavailable(E.Message);
+        FCompileProgress.Finish('Fehlgeschlagen');
+      end;
     end;
-  until False;
+  finally
+    Lines.Free;
+  end;
 end;
 
 procedure TServerComposition.HandleDidChangeConfiguration(const AParams: TJSONValue);
