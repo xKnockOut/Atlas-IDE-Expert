@@ -12,6 +12,9 @@
 // - Aktualisierung nur auf Ereignisse: Änderungen der Registry (aus jedem
 //   Thread) und neue oder aktivierte Editorfenster. Sie werden gesammelt;
 //   gezeichnet wird höchstens alle 250 ms im Hauptthread.
+// - Der Fortschritt des Symbol-Index (Zeile atlas.index) steht mit
+//   IndexProgressPlace = 'statusField' immer im Feld, auch ohne Kurztext und
+//   neben einer wichtigeren Zeile („Atlas · Server langsam · Index 45 %“).
 // - OnRefresh läuft vor jedem Zeichnen im Hauptthread (feste Zeilen nachführen).
 // - Rechtsklick auf das Feld ruft OnContext mit der linken Oberkante des Felds
 //   (Schnellschalter, #604); Anchor liefert sie für das oberste Editorfenster.
@@ -124,6 +127,7 @@ uses
   DockForm,
   ToolsAPI,
   Atlas.Core.Status.Registry,
+  Atlas.Core.Status.Lines,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Settings.Store,
@@ -446,13 +450,17 @@ var
   Window: INTAEditWindow;
   Hook: THook;
   Bars: TList<TStatusBar>;
+  ProgressId: string;
 begin
   if Assigned(FOnRefresh) then
     FOnRefresh();
   Settings := TAtlasIdeSettings.Current;
   FItems := TAtlasStatusSummary.Visible(FRegistry.Items, TAtlasStatusSummary.ParseIds(Settings.StatusFieldHidden));
   FState := TAtlasStatusSummary.Overall(FItems);
-  FText := TAtlasStatusSummary.FieldText(FItems, Settings.StatusFieldSummary);
+  ProgressId := '';
+  if Settings.IndexProgressInField then
+    ProgressId := TAtlasStatusLines.IndexId;
+  FText := TAtlasStatusSummary.FieldText(FItems, Settings.StatusFieldSummary, ProgressId);
   FTooltip := TAtlasStatusSummary.Tooltip(FItems);
   if FWindow <> nil then
     FWindow.SetItems(FItems);

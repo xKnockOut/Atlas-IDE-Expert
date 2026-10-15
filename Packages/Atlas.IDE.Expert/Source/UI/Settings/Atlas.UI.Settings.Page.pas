@@ -120,6 +120,7 @@ type
     FStatusField: TCheckBox;
     FStatusSummary: TCheckBox;
     FStatusToggles: TAtlasChoiceBox;
+    FIndexProgress: TAtlasChoiceBox;
     FStatusHidden: TEdit;
     FIndexGroup: TCheckBox;
     FIndexSearch: TCheckBox;
@@ -231,6 +232,7 @@ type
     property StatusField: TCheckBox read FStatusField;
     property StatusSummary: TCheckBox read FStatusSummary;
     property StatusToggles: TAtlasChoiceBox read FStatusToggles;
+    property IndexProgress: TAtlasChoiceBox read FIndexProgress;
     property StatusHidden: TEdit read FStatusHidden;
     /// <summary>Zum Testen: abgesicherter Start (#722).</summary>
     property SafeAsk: TCheckBox read FSafeAsk;
@@ -435,6 +437,10 @@ begin
     [TAtlasStrings.Text(TAtlasTextId.SettingsStatusTogglesBoth),
     TAtlasStrings.Text(TAtlasTextId.SettingsStatusTogglesRight),
     TAtlasStrings.Text(TAtlasTextId.SettingsStatusTogglesDouble)]);
+  FIndexProgress := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsIndexProgress),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsIndexProgressField),
+    TAtlasStrings.Text(TAtlasTextId.SettingsIndexProgressMenu),
+    TAtlasStrings.Text(TAtlasTextId.SettingsIndexProgressOff)]);
   FStatusHidden := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStatusHidden));
   FStatusHidden.NumbersOnly := False;
   FStatusHidden.Width := 180;
@@ -1054,6 +1060,12 @@ begin
     FStatusToggles.Choice := 2
   else
     FStatusToggles.Choice := 0;
+  if SameText(ASettings.IndexProgressPlace, 'menu') then
+    FIndexProgress.Choice := 1
+  else if SameText(ASettings.IndexProgressPlace, 'off') then
+    FIndexProgress.Choice := 2
+  else
+    FIndexProgress.Choice := 0;
   FStatusHidden.Text := ASettings.StatusFieldHidden;
   FIndexGroup.Checked := ASettings.IndexProjectGroup;
   FIndexSearch.Checked := ASettings.IndexSearchPaths;
@@ -1146,6 +1158,14 @@ begin
       ASettings.StatusFieldToggles := 'doubleClick';
   else
     ASettings.StatusFieldToggles := 'both';
+  end;
+  case FIndexProgress.Choice of
+    1:
+      ASettings.IndexProgressPlace := 'menu';
+    2:
+      ASettings.IndexProgressPlace := 'off';
+  else
+    ASettings.IndexProgressPlace := 'statusField';
   end;
   ASettings.StatusFieldHidden := Trim(FStatusHidden.Text);
   ASettings.IndexProjectGroup := FIndexGroup.Checked;

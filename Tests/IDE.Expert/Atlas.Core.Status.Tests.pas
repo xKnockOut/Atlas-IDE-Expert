@@ -31,6 +31,8 @@ type
     [Test]
     procedure FieldTextShowsSummaryOfWorstLine;
     [Test]
+    procedure FieldTextAlwaysShowsIndexProgress;
+    [Test]
     procedure TooltipListsLinesThatAreNotGreen;
     [Test]
     procedure ParsesHiddenIds;
@@ -390,6 +392,22 @@ begin
   Assert.AreEqual('Atlas', TAtlasStatusSummary.FieldText(Items, True), 'grün ohne Kurztext');
   Items := [Line(nil, 'a', 0, TAtlasStatusState.Red, 'A', ''), Line(nil, 'b', 1, TAtlasStatusState.Red, 'B', 'B!')];
   Assert.AreEqual('Atlas', TAtlasStatusSummary.FieldText(Items, True), 'wichtigste Zeile ohne Kurztext');
+end;
+
+procedure TAtlasStatusRegistryTests.FieldTextAlwaysShowsIndexProgress;
+var
+  Items: TArray<IAtlasStatusItem>;
+begin
+  Items := [Line(nil, 'atlas.server', 0, TAtlasStatusState.Yellow, 'Server: langsam', 'Server langsam'),
+    Line(nil, 'atlas.index', 10, TAtlasStatusState.Yellow, 'Index', 'Index 45 %')];
+  Assert.AreEqual('Atlas · Server langsam', TAtlasStatusSummary.FieldText(Items, True), 'ohne Fortschritt');
+  Assert.AreEqual('Atlas · Server langsam · Index 45 %', TAtlasStatusSummary.FieldText(Items, True, 'atlas.index'));
+  Assert.AreEqual('Atlas · Index 45 %', TAtlasStatusSummary.FieldText(Items, False, 'atlas.index'),
+    'Fortschritt auch ohne Kurztext');
+  Items := [Line(nil, 'atlas.index', 10, TAtlasStatusState.Yellow, 'Index', 'Index 45 %')];
+  Assert.AreEqual('Atlas · Index 45 %', TAtlasStatusSummary.FieldText(Items, True, 'ATLAS.INDEX'), 'nicht doppelt');
+  Items := [Line(nil, 'atlas.index', 10, TAtlasStatusState.Green, 'Index: 1569 Units', '')];
+  Assert.AreEqual('Atlas', TAtlasStatusSummary.FieldText(Items, True, 'atlas.index'), 'fertig: nichts');
 end;
 
 procedure TAtlasStatusRegistryTests.TooltipListsLinesThatAreNotGreen;
@@ -767,12 +785,16 @@ begin
   Assert.IsTrue(Settings.StatusFieldSummary, 'statusField.showSummary: Vorgabe an');
   Assert.AreEqual('', Settings.StatusFieldHidden);
   Assert.AreEqual('both', Settings.StatusFieldToggles, 'statusField.openToggles: Vorgabe beide');
+  Assert.AreEqual('statusField', Settings.IndexProgressPlace, 'statusField.indexProgress: Vorgabe Statusfeld');
+  Assert.IsTrue(Settings.IndexProgressInField);
+  Assert.IsFalse(Settings.IndexProgressInMenu);
   Assert.IsTrue(Settings.StatusTogglesOnRightClick);
   Assert.IsTrue(Settings.StatusTogglesOnDoubleClick);
   Store := TMemoryStore.Create;
   Settings.StatusField := False;
   Settings.StatusFieldSummary := False;
   Settings.StatusFieldToggles := 'doubleClick';
+  Settings.IndexProgressPlace := 'menu';
   Settings.StatusFieldHidden := ' atlas.file, test.fehler ';
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
@@ -780,6 +802,18 @@ begin
   Assert.IsFalse(Loaded.StatusField);
   Assert.IsFalse(Loaded.StatusFieldSummary);
   Assert.AreEqual('doubleClick', Loaded.StatusFieldToggles);
+  Assert.AreEqual('menu', Loaded.IndexProgressPlace);
+  Assert.IsFalse(Loaded.IndexProgressInField);
+  Assert.IsTrue(Loaded.IndexProgressInMenu);
+  // Statusfeld aus: Der Fortschritt weicht in den Menütitel aus.
+  Loaded.IndexProgressPlace := 'statusField';
+  Assert.IsFalse(Loaded.IndexProgressInField, 'Statusfeld aus');
+  Assert.IsTrue(Loaded.IndexProgressInMenu, 'Statusfeld aus');
+  Loaded.IndexProgressPlace := ' OFF ';
+  Loaded.Normalize;
+  Assert.AreEqual('off', Loaded.IndexProgressPlace);
+  Assert.IsFalse(Loaded.IndexProgressInField);
+  Assert.IsFalse(Loaded.IndexProgressInMenu);
   Assert.IsFalse(Loaded.StatusTogglesOnRightClick, 'nur Doppelklick');
   Assert.IsTrue(Loaded.StatusTogglesOnDoubleClick);
   // Groß-/Kleinschreibung egal, Unbekanntes wird zur Vorgabe.

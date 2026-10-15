@@ -9,7 +9,7 @@
 // Schnellschalter: gleicher Zustand wie im Fenster (Sitzung, Projekt) und bei
 // Werten aus atlas.json dieselbe Nachfrage.
 // Index des Servers (#492): Der Titel zeigt eine laufende Indizierung
-// ("Atlas – Index 45 %"); „Index-Status“ schreibt die Kennzahlen in die
+// ("Atlas – Index 45 %"), wenn IndexProgressPlace sie nicht ins Statusfeld legt; „Index-Status“ schreibt die Kennzahlen in die
 // Meldungsansicht, „Index neu aufbauen“ liest alles ohne Cache neu ein.
 // „Diagnoselog exportieren…“ (#647) packt das anonymisierte Log in eine ZIP.
 // „Symbol umbenennen…“ (#397) ruft OnRename auf.
