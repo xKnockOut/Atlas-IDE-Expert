@@ -147,7 +147,14 @@ type
     SettingsTabColors, SettingsPairColorsLight, SettingsPairColorsDark, SettingsPairColorsReset,
     SettingsPairColorsHint, TargetFooter, UnavailableHint,
     SettingsTabInsert, SettingsTabCommands, SettingsTabStartup, SettingsTabUndo,
-    SettingsAfterSaveNone, SettingsAfterSaveCheck, SettingsAfterSaveCompile);
+    SettingsAfterSaveNone, SettingsAfterSaveCheck, SettingsAfterSaveCompile,
+    WelcomeNight, WelcomeMorning, WelcomeDay, WelcomeEvening, WelcomeVersion, WelcomeServerRunning,
+    WelcomeServerStarting, WelcomeServerStopped, WelcomeServerFailed, WelcomeServerIdle, WelcomeUnits,
+    WelcomeIndexing, WelcomeIndexingPercent, WelcomeStartCaption, WelcomeHeaderTitle, WelcomeBoardTitle,
+    MenuWelcomeStart, MenuWelcomeApply, MenuWelcomeReset, WelcomeApplied, WelcomeResetDone, WelcomeNoBackup,
+    WelcomeBackupFailed, SettingsTabWelcome, SettingsWelcomeEnabled, SettingsWelcomeHost,
+    SettingsWelcomeHostPage, SettingsWelcomeHostWindow, SettingsWelcomeLayout, SettingsWelcomeHeader,
+    SettingsWelcomeGreeting);
 
   TAtlasStrings = class
   private class var
@@ -528,7 +535,17 @@ const
      'Ziel: %s', 'Nicht verfügbar: Die Bedingung „%s“ ist für %s nicht erfüllt. Es gelten die Symbole der Plattform ' +
      'und des Compilers sowie die Bedingungen aus den Projektoptionen der aktiven Konfiguration (z. B. DEBUG).',
      'Einfügen', 'Befehle', 'Start und Updates', 'Rückgängig',
-     'Nichts tun', 'Syntax prüfen (IDE)', 'Kompilieren (Server)'),
+     'Nichts tun', 'Syntax prüfen (IDE)', 'Kompilieren (Server)',
+     'Gute Nacht', 'Guten Morgen', 'Guten Tag', 'Guten Abend', 'Atlas %s', 'Server läuft', 'Server startet',
+     'Server gestoppt', 'Server fehlt', 'Server startet mit dem ersten Projekt', '%s Units im Index',
+     'Index wird aufgebaut', 'Index wird aufgebaut (%d %%)', 'Atlas-Start', 'Atlas', 'Atlas', 'Atlas-Start',
+     'Atlas-Layout anwenden', 'Atlas-Layout zurücksetzen',
+     'Atlas-Layout angewendet; das bisherige Layout ist gesichert.',
+     'Das vorige Layout der Willkommensseite ist wiederhergestellt.',
+     'Keine Sicherung des Layouts gefunden; die Atlas-Bereiche bleiben, wie sie sind.',
+     'Das Layout konnte nicht gesichert werden: %s', 'Willkommensseite',
+     'Atlas-Bereiche auf der Willkommensseite', 'Anzeigen in', 'Willkommensseite der IDE',
+     'Fenster „Atlas-Start“', 'Atlas-Layout verwenden', 'Kopf mit Symbol und Version', 'Grußzeile im Kopf'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -886,7 +903,16 @@ const
      'Target: %s', 'Not available: the condition “%s” is not met for %s. The symbols of the platform ' +
      'and compiler and the conditionals from the project options of the active configuration (e.g. DEBUG) apply.',
      'Insertion', 'Commands', 'Startup and updates', 'Undo',
-     'Do nothing', 'Check syntax (IDE)', 'Compile (server)'));
+     'Do nothing', 'Check syntax (IDE)', 'Compile (server)',
+     'Good night', 'Good morning', 'Good afternoon', 'Good evening', 'Atlas %s', 'Server running',
+     'Server starting', 'Server stopped', 'Server missing', 'Server starts with the first project',
+     '%s units in the index', 'Building the index', 'Building the index (%d %%)', 'Atlas Start', 'Atlas',
+     'Atlas', 'Atlas Start', 'Apply Atlas layout', 'Reset Atlas layout',
+     'Atlas layout applied; the previous layout has been backed up.',
+     'The previous welcome page layout has been restored.',
+     'No layout backup found; the Atlas sections stay as they are.', 'The layout could not be backed up: %s',
+     'Welcome page', 'Atlas sections on the welcome page', 'Show in', 'IDE welcome page', '“Atlas Start” window',
+     'Use Atlas layout', 'Header with symbol and version', 'Greeting in the header'));
 
 { TAtlasStrings }
 

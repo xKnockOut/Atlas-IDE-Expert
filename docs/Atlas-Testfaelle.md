@@ -598,6 +598,25 @@ Vorbereitung: Formular mit Button `btnSave` und den Methoden `FormCreate(Sender:
 | PE23 | „Commit-Zeichen“, „uses ergänzen“, „Parameter-Hints“ je aus | `;` übernimmt nicht; keine uses-Ergänzung; kein Hint bei `(` |
 | PE24 | „Listenbreite automatisch“ an | Liste passt sich der Breite der Einträge an |
 
+## Willkommensseite (#753)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WP1 | RAD Studio 13 (und 12) mit Atlas starten, Willkommensseite ansehen | Bereich „Atlas“ mit Symbol, „Guten Morgen/Tag/Abend, <Vorname>“, „Atlas <Version> · Server startet mit dem ersten Projekt“; die Willkommensseite startet keinen Server |
+| WP2 | Projekt öffnen, Index aufbauen lassen, zur Willkommensseite wechseln | Kurzstatus „Server läuft · Index wird aufgebaut (n %)“, danach „Server läuft · 1.284 Units im Index“; ändert sich mit dem Statusfeld |
+| WP3 | Atlas-Bereiche der Willkommensseite (Kopf) über *Layout bearbeiten* verschieben, ausblenden, wieder einblenden | verhalten sich wie eingebaute Bereiche; Titel im Rahmen der IDE |
+| WP4 | *Atlas › Atlas-Layout anwenden*; IDE neu starten | Meldung „Atlas-Layout angewendet …“; `%LOCALAPPDATA%\Atlas\welcomepage-layout-backup.json` existiert; „Atlas“ steht oben über alle Spalten (zwei Zeilen), die übrigen Bereiche darunter in alter Anordnung; einzelne Atlas-Bereiche fehlen |
+| WP5 | Nach WP4: Wird das Layout sofort übernommen oder erst nach dem Neustart? | Ergebnis notieren (ADR 0011); nach dem Neustart gilt es in jedem Fall, die Datei `welcomepage-layout-pending` ist danach weg |
+| WP6 | „Atlas“ nach WP4 von Hand nach unten verschieben, IDE neu starten | bleibt, wo es ist |
+| WP7 | *Atlas › Atlas-Layout zurücksetzen*; IDE neu starten | Meldung „Das vorige Layout … wiederhergestellt“; Registry `…\BDS\<Version>\WelcomePage` wie vor WP4 (Export vergleichen), Sicherung gelöscht |
+| WP8 | Zurücksetzen ohne Sicherung | „Keine Sicherung des Layouts gefunden …“, nichts ändert sich |
+| WP9 | *Tools › Optionen › Atlas › Willkommensseite*: „Atlas-Layout verwenden“ an bzw. aus | wie WP4 bzw. WP7, ohne Meldung |
+| WP10 | Optionen: „Anzeigen in“ = Fenster „Atlas-Start“ | Willkommensseite ohne Atlas-Bereiche, Fenster „Atlas-Start“ öffnet sich (eine Spalte, andockbar); *Ansicht › Atlas-Start* öffnet es wieder |
+| WP11 | Optionen: Kopf aus, dann Grußzeile aus | Kopf verschwindet; ohne Grußzeile steht „Atlas“ statt des Grußes |
+| WP12 | Schnellschalter „Atlas auf der Willkommensseite“ aus | alle Atlas-Bereiche und „Atlas-Start“ weg, Menüeinträge ausgeblendet |
+| WP13 | IDE-Stil hell/dunkel wechseln | Atlas-Bereiche und „Atlas-Start“ folgen dem Thema, Symbol in passender Variante |
+| WP14 | IDE ohne Schnittstelle der Willkommensseite (`WelcomePagePluginService` = nil), z. B. Willkommensseite abgeschaltet | „Atlas-Start“ ersetzt die Willkommensseite |
+
 ## Atlas-Symbol (#751)
 
 | Nr. | Schritte | Erwartet |

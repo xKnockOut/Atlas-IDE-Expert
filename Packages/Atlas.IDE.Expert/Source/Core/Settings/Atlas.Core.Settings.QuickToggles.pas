@@ -282,6 +282,9 @@ begin
     '"CheckOnSave":{"type":"boolean","x-feature":"CheckOnSave",' +
       '"default":false,"x-page":"Compiler","x-quickToggle":true,' +
       '"x-caption":"Syntaxprüfung nach dem Speichern","x-captionEn":"Syntax check after saving","x-issue":"#548"},' +
+    '"WelcomePage":{"type":"boolean","x-feature":"WelcomePage",' +
+      '"default":true,"x-page":"Willkommensseite","x-quickToggle":true,' +
+      '"x-caption":"Atlas auf der Willkommensseite","x-captionEn":"Atlas on the welcome page","x-issue":"#753"},' +
     '"StatusFieldSummary":{"type":"boolean","default":true,"x-page":"Allgemein",' +
       '"x-caption":"Kurztext im Statusfeld","x-captionEn":"Summary in the status field","x-issue":"#591"}' +
     '}}';

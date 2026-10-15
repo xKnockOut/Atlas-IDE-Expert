@@ -223,6 +223,17 @@ type
     /// <summary>Fehlerbericht anonymisieren (#108, diagnostics.bugReport.anonymize): Pfade, Benutzername und
     /// Bezeichner ersetzen; Vorgabe an.</summary>
     BugReportAnonymize: Boolean;
+    /// <summary>Hauptschalter der Atlas-Willkommensseite (#753, welcomePage.enabled): Atlas-Bereiche auf der
+    /// Willkommensseite der IDE und Fenster „Atlas-Start“.</summary>
+    WelcomePage: Boolean;
+    /// <summary>Wo die Bereiche erscheinen: welcomePage oder dockWindow (welcomePage.host); ohne Schnittstelle
+    /// der IDE immer dockWindow.</summary>
+    WelcomePageHost: string;
+    /// <summary>off oder atlas (welcomePage.layout); setzt der Befehl „Atlas-Layout anwenden“.</summary>
+    WelcomePageLayout: string;
+    /// <summary>Kopf mit Symbol und Version (welcomePage.header) und Grußzeile darin (welcomePage.greeting).</summary>
+    WelcomePageHeader: Boolean;
+    WelcomePageGreeting: Boolean;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -341,6 +352,11 @@ begin
   Result.RedoKey := $E05A; // Strg+Alt+Umschalt+Z
   Result.UpdatesCheck := False;
   Result.BugReportAnonymize := True;
+  Result.WelcomePage := True;
+  Result.WelcomePageHost := 'welcomePage';
+  Result.WelcomePageLayout := 'off';
+  Result.WelcomePageHeader := True;
+  Result.WelcomePageGreeting := True;
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -388,6 +404,14 @@ begin
   PairGuideOpacity := EnsureRange(PairGuideOpacity, MinPairGuideOpacity, MaxPairGuideOpacity);
   PairColorsLight := NormalPairs(PairColorsLight);
   PairColorsDark := NormalPairs(PairColorsDark);
+  if SameText(Trim(WelcomePageHost), 'dockWindow') then
+    WelcomePageHost := 'dockWindow'
+  else
+    WelcomePageHost := 'welcomePage';
+  if SameText(Trim(WelcomePageLayout), 'atlas') then
+    WelcomePageLayout := 'atlas'
+  else
+    WelcomePageLayout := 'off';
 end;
 
 procedure TAtlasPluginSettings.Load(const AStore: IAtlasSettingsStore);
@@ -478,6 +502,11 @@ begin
   RedoKey := AStore.ReadInteger('RedoKey', Default.RedoKey);
   UpdatesCheck := AStore.ReadInteger('UpdatesCheck', BoolValue(Default.UpdatesCheck)) <> 0;
   BugReportAnonymize := AStore.ReadInteger('BugReportAnonymize', BoolValue(Default.BugReportAnonymize)) <> 0;
+  WelcomePage := AStore.ReadInteger('WelcomePage', BoolValue(Default.WelcomePage)) <> 0;
+  WelcomePageHost := AStore.ReadString('WelcomePageHost', Default.WelcomePageHost);
+  WelcomePageLayout := AStore.ReadString('WelcomePageLayout', Default.WelcomePageLayout);
+  WelcomePageHeader := AStore.ReadInteger('WelcomePageHeader', BoolValue(Default.WelcomePageHeader)) <> 0;
+  WelcomePageGreeting := AStore.ReadInteger('WelcomePageGreeting', BoolValue(Default.WelcomePageGreeting)) <> 0;
   Normalize;
 end;
 
@@ -565,6 +594,11 @@ begin
   AStore.WriteInteger('RedoKey', RedoKey);
   AStore.WriteInteger('UpdatesCheck', BoolValue(UpdatesCheck));
   AStore.WriteInteger('BugReportAnonymize', BoolValue(BugReportAnonymize));
+  AStore.WriteInteger('WelcomePage', BoolValue(WelcomePage));
+  AStore.WriteString('WelcomePageHost', WelcomePageHost);
+  AStore.WriteString('WelcomePageLayout', WelcomePageLayout);
+  AStore.WriteInteger('WelcomePageHeader', BoolValue(WelcomePageHeader));
+  AStore.WriteInteger('WelcomePageGreeting', BoolValue(WelcomePageGreeting));
 end;
 
 end.

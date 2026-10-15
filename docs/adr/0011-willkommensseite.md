@@ -1,0 +1,37 @@
+# 0011: Atlas-Bereiche als Plugins der IDE-Willkommensseite, Layout über die Registry
+
+- Status: Angenommen
+- Datum: 2026-10-15
+- Bezug: #761 Willkommensseite (Epic), #753 Rahmen und Atlas-Layout, #767 frei konfigurierbares Layout
+
+## Kontext
+
+Atlas soll beim Start der IDE eigene Bereiche zeigen (Zustand, Weiterarbeiten, Projekte, Neu in Atlas …), am besten auf der Willkommensseite von RAD Studio. Die Open Tools API dokumentiert die Willkommensseite kaum. Die Beispiele von Embarcadero (RADStudio12Demos, Object Pascal/ToolsAPI/WelcomePage) zeigen eine Schnittstelle in `ToolsAPI.WelcomePage`, die es in RAD Studio 12 und 13 gibt. Das Layout der Seite (welcher Bereich in welcher Zeile und Spalte steht, welche ausgeblendet sind) legt die IDE nicht über eine Schnittstelle offen, sondern speichert es in der Registry. Marcos Export aus Delphi 12 (BDS 23.0) zeigt das Format:
+
+- `…\BDS\<Version>\WelcomePage\Layout`: `RowsCount`, `ColumnsCount`
+- `…\Layout\Item <n>`: `PluginID`, `Row`, `Column`, `RowSpan`, `ColumnSpan`
+- `…\WelcomePage\AvailablePlugins`: `"0"`, `"1"`, … = ausgeblendete Bereiche
+
+## Entscheidung
+
+- **Jeder Atlas-Bereich ist ein Inhalts-Plugin** der Willkommensseite: Er implementiert `INTAWelcomePagePlugin` und `INTAWelcomePageContentPluginCreator` und wird mit `WelcomePagePluginService.RegisterPluginCreator` angemeldet. Die IDE bekommt einen Rahmen mit Titelzeile (`CreateCaptionFrame`), in den der Atlas-Frame als Client gesetzt wird. So lassen sich Atlas-Bereiche wie die eingebauten verschieben, ein- und ausblenden. Die Kennungen sind `Atlas.Welcome.<Bereich>`.
+- **Atlas-Layout als ein Bereich „Atlas“:** Mit `welcomePage.layout = atlas` meldet Atlas statt der einzelnen Bereiche einen Bereich `Atlas.Welcome.board` an (Kopf plus alle Bereiche in zwei Spalten). Atlas setzt ihn in der Registry oben über alle Spalten (zwei Zeilen hoch) und schiebt die übrigen Bereiche nach unten.
+- **Sicherung vor dem ersten Eingriff:** Bevor Atlas das Layout das erste Mal ändert, sichert es den ganzen Schlüssel `WelcomePage` (alle Werte mit Typ und alle Unterschlüssel) nach `%LOCALAPPDATA%\Atlas\welcomepage-layout-backup.json`. Gab es den Schlüssel nicht, steht das in der Sicherung. „Atlas-Layout zurücksetzen“ schreibt den Stand exakt zurück (bzw. löscht den Schlüssel) und entfernt die Sicherung.
+- **Marke für den nächsten Start:** Da offen ist, ob die IDE ein geändertes Layout sofort liest oder ihr Layout beim Beenden aus dem Speicher zurückschreibt, legt Atlas `%LOCALAPPDATA%\Atlas\welcomepage-layout-pending` mit dem gewünschten Stand an (`atlas` oder die wiederherzustellende Sicherung). Beim nächsten Start wiederholt Atlas den Eingriff, falls die Registry ihn nicht mehr enthält; gilt er, entfällt die Marke. Danach darf der Benutzer den Bereich „Atlas“ frei verschieben.
+- **Ersatz ohne Schnittstelle:** Fehlt `WelcomePagePluginService` oder ist `welcomePage.host = dockWindow`, zeigt das andockbare Fenster „Atlas-Start“ (Ansicht › Atlas-Start) dieselben Bereiche in einer Spalte.
+- **Schichten:** Bereichsregister, Layout, Grußzeile, Sicherung und Raster ohne VCL und ohne Open Tools API in `Atlas.Core.Welcome.*` (getestet), Frames in `Atlas.UI.Welcome.*`, Anbindung an die IDE in `Atlas.IDE.Welcome.*`. #753 nannte `Atlas.Common` für die Datenklassen; das Plugin-Package bindet `Atlas.Common` aber nicht ein, daher liegen sie in der VCL- und OTA-freien Schicht `Atlas.Core` des Plugins.
+- **Inhalts-Plugins statt Listen-Plugins:** `INTAWelcomePageDataPluginListView` zeigt nur Listenzeilen. Da Inhalts-Plugins mit eigenem VCL-Frame in 12 und 13 gehen, nutzen alle Atlas-Bereiche Frames; Listen bleiben Bereichen vorbehalten, die nur Zeilen zeigen.
+
+## Alternativen
+
+- **Eigene Willkommensseite als Editor-Ansicht:** volle Kontrolle, aber eine zweite Startseite neben der der IDE; doppelt und gegen die Gewohnheit der Benutzer.
+- **Nur das Fenster „Atlas-Start“:** einfach und ohne Registry, aber nicht dort, wo man beim Start hinschaut.
+- **Layout über Fensterklassen der IDE suchen und umsortieren:** hängt an internen Klassen, die sich je Version ändern, und wirkt nicht über einen Neustart hinaus.
+- **Layout ohne Sicherung ändern:** schneller umgesetzt, aber der Benutzer verlöre seine Anordnung ohne Weg zurück.
+
+## Folgen
+
+- Atlas-Bereiche verhalten sich wie eingebaute; der Benutzer ordnet sie mit den Mitteln der IDE.
+- Das Registry-Format ist nicht dokumentiert. Ändert Embarcadero es, findet `TAtlasHostLayout.Read` kein Raster; Atlas geht dann von der Vorgabe der IDE aus, und „Zurücksetzen“ bringt immer den gesicherten Stand zurück.
+- Spätere Bereiche (#754–#767) melden nur eine Fabrik in `TAtlasWelcomeViews` und einen Eintrag in `TAtlasWelcomeSections` an; Willkommensseite, Bereich „Atlas“ und „Atlas-Start“ nutzen sie ohne weitere Anpassung.
+- Ob die IDE das geänderte Layout sofort übernimmt, prüft Marco in RAD Studio 13; die Marke deckt beide Fälle ab.

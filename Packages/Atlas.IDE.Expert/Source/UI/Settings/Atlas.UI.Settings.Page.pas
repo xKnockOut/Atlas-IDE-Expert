@@ -160,6 +160,11 @@ type
     FUndoNewFiles: TAtlasChoiceBox;
     FUpdatesCheck: TCheckBox;
     FBugReportAnonymize: TCheckBox;
+    FWelcomeEnabled: TCheckBox;
+    FWelcomeHost: TAtlasChoiceBox;
+    FWelcomeLayout: TCheckBox;
+    FWelcomeHeader: TCheckBox;
+    FWelcomeGreeting: TCheckBox;
     FVersion: TLabel;
     FResetHistory: TButton;
     FResetWidths: TButton;
@@ -191,6 +196,7 @@ type
     procedure AddIndexSection;
     procedure AddSafeSection;
     procedure AddUndoSection;
+    procedure AddWelcomeSection;
     procedure AddUpdatesSection;
     procedure AddBugReportSection;
     procedure IndexRefreshClick(Sender: TObject);
@@ -247,6 +253,12 @@ type
     property RedoKey: TEdit read FRedoKey;
     property UpdatesCheck: TCheckBox read FUpdatesCheck;
     property BugReportAnonymize: TCheckBox read FBugReportAnonymize;
+    /// <summary>Zum Testen: Willkommensseite (#753).</summary>
+    property WelcomeEnabled: TCheckBox read FWelcomeEnabled;
+    property WelcomeHost: TAtlasChoiceBox read FWelcomeHost;
+    property WelcomeLayout: TCheckBox read FWelcomeLayout;
+    property WelcomeHeader: TCheckBox read FWelcomeHeader;
+    property WelcomeGreeting: TCheckBox read FWelcomeGreeting;
     property VersionLabel: TLabel read FVersion;
     /// <summary>Kennzahlen als Text; nil = nicht verfügbar.</summary>
     property OnIndexMetrics: TFunc<string> read FOnIndexMetrics write FOnIndexMetrics;
@@ -577,6 +589,22 @@ begin
 
   AddSheet(TAtlasTextId.SettingsTabUndo);
   AddUndoSection;
+
+  AddSheet(TAtlasTextId.SettingsTabWelcome);
+  AddWelcomeSection;
+end;
+
+procedure TAtlasSettingsPage.AddWelcomeSection;
+begin
+  // Atlas-Bereiche auf der Willkommensseite (#753).
+  FWelcomeEnabled := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeEnabled));
+  // Reihenfolge wie welcomePage.host: welcomePage, dockWindow.
+  FWelcomeHost := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHost),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHostPage),
+    TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHostWindow)]);
+  FWelcomeLayout := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeLayout));
+  FWelcomeHeader := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHeader));
+  FWelcomeGreeting := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeGreeting));
 end;
 
 procedure TAtlasSettingsPage.AddSheet(AId: TAtlasTextId);
@@ -1081,6 +1109,13 @@ begin
   FRedoKey.Text := ShortCutToText(TShortCut(ASettings.RedoKey));
   FUpdatesCheck.Checked := ASettings.UpdatesCheck;
   FBugReportAnonymize.Checked := ASettings.BugReportAnonymize;
+  FWelcomeEnabled.Checked := ASettings.WelcomePage;
+  FWelcomeHost.Choice := 0;
+  if ASettings.WelcomePageHost = 'dockWindow' then
+    FWelcomeHost.Choice := 1;
+  FWelcomeLayout.Checked := ASettings.WelcomePageLayout = 'atlas';
+  FWelcomeHeader.Checked := ASettings.WelcomePageHeader;
+  FWelcomeGreeting.Checked := ASettings.WelcomePageGreeting;
   RefreshFuse;
   RefreshIndex;
 end;
@@ -1164,6 +1199,15 @@ begin
   ASettings.UndoMultiFileOnConflict := TAtlasUndoNames.ConflictModeName(TAtlasUndoConflictMode(
     Max(0, FUndoOnConflict.Choice)));
   ASettings.UndoMultiFileNewFiles := TAtlasUndoNames.NewFilesName(TAtlasNewFilesMode(Max(0, FUndoNewFiles.Choice)));
+  ASettings.WelcomePage := FWelcomeEnabled.Checked;
+  ASettings.WelcomePageHost := 'welcomePage';
+  if FWelcomeHost.Choice = 1 then
+    ASettings.WelcomePageHost := 'dockWindow';
+  ASettings.WelcomePageLayout := 'off';
+  if FWelcomeLayout.Checked then
+    ASettings.WelcomePageLayout := 'atlas';
+  ASettings.WelcomePageHeader := FWelcomeHeader.Checked;
+  ASettings.WelcomePageGreeting := FWelcomeGreeting.Checked;
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;

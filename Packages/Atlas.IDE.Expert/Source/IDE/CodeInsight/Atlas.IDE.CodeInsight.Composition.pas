@@ -72,7 +72,10 @@ uses
   Atlas.Core.Updates.Adapters.HttpSource,
   Atlas.IDE.Updates.Check,
   Atlas.IDE.Results.Window,
-  Atlas.IDE.Style.Symbol;
+  Atlas.IDE.Style.Symbol,
+  Atlas.Core.Welcome.Sections,
+  Atlas.UI.Welcome.Frame,
+  Atlas.IDE.Welcome.Commands;
 
 var
   ManagerIndex: Integer = -1;
@@ -115,6 +118,8 @@ var
   StartupDone: Boolean;
   // Paketbeobachtung und Meldung fremder Vervollständigung angemeldet (#494).
   KeysWatched: Boolean;
+  // Atlas-Bereiche auf der Willkommensseite und Fenster „Atlas-Start“ (#753).
+  Welcome: TAtlasIdeWelcome;
 
 const
   // Ab dieser Dauer ein Hinweis im Meldungsfenster (#501).
@@ -368,6 +373,24 @@ begin
     procedure
     begin
       TAtlasProjectSettings.Execute;
+    end);
+  Palette.RegisterCommand('Atlas.WelcomeStart', TAtlasStrings.Text(TAtlasTextId.MenuWelcomeStart), '',
+    procedure
+    begin
+      if (Welcome <> nil) and TAtlasIdeSettings.Current.WelcomePage then
+        Welcome.ShowStart;
+    end);
+  Palette.RegisterCommand('Atlas.WelcomeApply', TAtlasStrings.Text(TAtlasTextId.MenuWelcomeApply), '',
+    procedure
+    begin
+      if (Welcome <> nil) and TAtlasIdeSettings.Current.WelcomePage then
+        Welcome.ApplyLayout;
+    end);
+  Palette.RegisterCommand('Atlas.WelcomeReset', TAtlasStrings.Text(TAtlasTextId.MenuWelcomeReset), '',
+    procedure
+    begin
+      if Welcome <> nil then
+        Welcome.ResetLayout;
     end);
   Palette.RegisterCommand('Atlas.HangTest', TAtlasStrings.Text(TAtlasTextId.SettingsHangTest), '',
     procedure
@@ -765,11 +788,56 @@ begin
         TAtlasIdeKeys.ReportForeignCompletion;
       end);
   end;
+  // Willkommensseite (#753): auch abgesichert, sie startet keinen Server und liest nur lokale Daten.
+  if Basic and (Welcome = nil) and (StatusLines <> nil) then
+  begin
+    Welcome := TAtlasIdeWelcome.Create(
+      function: TAtlasServerInfo
+      begin
+        if Manager <> nil then
+          Result := Manager.ServerInfo
+        else
+          Result := Default(TAtlasServerInfo);
+      end,
+      function(out APercent: Integer): Boolean
+      begin
+        APercent := -1;
+        Result := (Manager <> nil) and Manager.ServerIndexing(APercent);
+      end,
+      function: Integer
+      begin
+        Result := -1;
+        if StatusLines <> nil then
+          Result := StatusLines.Units;
+      end,
+      procedure(AText: string)
+      begin
+        GuardWarning(AText);
+      end);
+  end;
+  if Welcome <> nil then
+    Welcome.Sync;
   if Basic and (MainMenu = nil) then
   begin
     CreateMainMenu;
     MainMenu.OnRename := RenameSymbol;
+    MainMenu.OnWelcome :=
+      procedure(ACommand: TAtlasWelcomeCommand)
+      begin
+        if Welcome = nil then
+          Exit;
+        case ACommand of
+          TAtlasWelcomeCommand.Start:
+            Welcome.ShowStart;
+          TAtlasWelcomeCommand.Apply:
+            Welcome.ApplyLayout;
+        else
+          Welcome.ResetLayout;
+        end;
+      end;
   end;
+  if MainMenu <> nil then
+    MainMenu.UpdateWelcome;
   // Phase und Fortschritt des Servers melden sich aus jedem Thread; gezeichnet wird gesammelt.
   if (Manager <> nil) and (StatusField <> nil) then
     Manager.OnServerChanged :=
@@ -842,6 +910,8 @@ begin
       if StatusField <> nil then
         StatusField.RequestRefresh;
       TAtlasIdeResultsWindow.UpdateIcon;
+      if Welcome <> nil then
+        Welcome.ThemeChanged;
     end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
   if SafeMode = nil then
@@ -935,6 +1005,10 @@ begin
   FreeAndNil(CompletionKey);
   FreeAndNil(EditInbox);
   FreeAndNil(DirtyExport);
+  // Vor dem Statusfeld: Die Willkommensseite beobachtet dessen Registry.
+  FreeAndNil(Welcome);
+  TAtlasWelcomeViews.Release;
+  TAtlasWelcomeSections.ReleaseDefault;
   UnregisterStatusField;
   FreeAndNil(MainMenu);
   FreeAndNil(Forms);
