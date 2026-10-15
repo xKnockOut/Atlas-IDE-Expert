@@ -63,6 +63,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
@@ -131,7 +132,7 @@ begin
       BindingResult := krHandled;
       Proc := Key.Proc;
       // Keine Exception an die IDE (#493); erst nach der Tastenverarbeitung.
-      TThread.ForceQueue(nil,
+      TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
         procedure
         begin
           TAtlasGuard.Run(TAtlasFeature.EditorCommands, Proc);

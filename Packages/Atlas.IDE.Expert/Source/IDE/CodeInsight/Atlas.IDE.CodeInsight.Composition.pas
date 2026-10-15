@@ -1006,7 +1006,7 @@ begin
   if Basic and not KeysWatched then
   begin
     KeysWatched := True;
-    TThread.ForceQueue(nil,
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
       procedure
       begin
         TAtlasGuard.Run(TAtlasFeature.Settings,
@@ -1318,7 +1318,7 @@ begin
         Result := nil;
     end);
   // Ladezeit bis zur freien Nachrichtenschleife: zu lange zählt beim nächsten Start wie ein Absturz (#722).
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
     procedure
     begin
       StartupDone := True;

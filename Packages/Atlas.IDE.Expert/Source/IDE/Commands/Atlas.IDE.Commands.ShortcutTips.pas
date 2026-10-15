@@ -138,6 +138,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
   Winapi.Messages,
   System.Types,
   Vcl.Controls,
@@ -745,7 +746,7 @@ begin
   KeyText := AKeyText;
   Caption := ACaption;
   Known := AKnown;
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.ShortcutTips,
     procedure
     begin
       TAtlasGuard.Run(TAtlasFeature.ShortcutTips,

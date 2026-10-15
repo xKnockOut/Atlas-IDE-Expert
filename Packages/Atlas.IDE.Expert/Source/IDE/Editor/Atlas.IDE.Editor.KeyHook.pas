@@ -44,6 +44,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   System.Generics.Collections;
 
@@ -88,7 +89,7 @@ begin
         begin
           // Gedrückt (auch Wiederholung): ausführen, solange der Client noch angemeldet ist.
           if (LParam and $80000000) = 0 then
-            TThread.ForceQueue(nil,
+            TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
               procedure
               begin
                 try

@@ -43,6 +43,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
   System.SysUtils,
   System.Classes,
@@ -225,7 +227,7 @@ begin
   if Length(Texts) = 0 then
     Exit;
   // Beim Laden des Plugins ist das Meldungsfenster noch nicht bereit.
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
     procedure
     var
       Messages: IOTAMessageServices;

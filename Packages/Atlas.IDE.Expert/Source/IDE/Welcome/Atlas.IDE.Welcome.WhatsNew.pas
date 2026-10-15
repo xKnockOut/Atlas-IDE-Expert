@@ -78,6 +78,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
   System.Classes,
   System.IOUtils,
   Vcl.Menus,
@@ -160,7 +161,7 @@ begin
     // Erste Installation: nichts Ungelesenes. Gespeichert wird nach dem Laden des Plugins.
     FSeen := TAtlasWhatsNew.SeenAfterStart(FSeen, FCurrent);
     Current := FCurrent;
-    TThread.ForceQueue(nil,
+    TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
       procedure
       var
         Next: TAtlasPluginSettings;
