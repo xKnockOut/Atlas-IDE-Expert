@@ -66,6 +66,9 @@ type
     MaxPairGuideWidth = 3;
     MinPairGuideOpacity = 10;
     MaxPairGuideOpacity = 100;
+    /// <summary>Vorgabe für welcomePage.help.reportUrl (#766): Seite für neue Issues des Atlas-Repositorys.
+    /// </summary>
+    DefaultHelpReportUrl = 'https://github.com/xKnockOut/Atlas-IDE-Expert/issues/new';
   public
     /// <summary>Hauptschalter (#407): aus = eingebaute Code Insight der IDE.</summary>
     Enabled: Boolean;
@@ -305,6 +308,14 @@ type
     /// <summary>Nutzung je Befehl lokal zählen (#757, tips.usageTracking; %LOCALAPPDATA%\Atlas\usage.json); aus =
     /// Tipps der Reihe nach ohne Bezug zur Nutzung, auch für die Tastenkürzel-Tipps (#600).</summary>
     TipsUsageTracking: Boolean;
+    /// <summary>Bereich „Hilfe und Rückmeldung“ (#766, welcomePage.help): Atlas-Doku, Tastenkürzel, Problem
+    /// melden.</summary>
+    WelcomePageHelp: Boolean;
+    /// <summary>Ziel für „Issue-Seite öffnen“ (#766, welcomePage.help.reportUrl); nur http:// und https://, sonst
+    /// die Vorgabe.</summary>
+    WelcomePageHelpReportUrl: string;
+    /// <summary>Ordner für das Diagnosepaket (#766, welcomePage.help.reportFolder); '' = Desktop.</summary>
+    WelcomePageHelpReportFolder: string;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -315,7 +326,22 @@ type
 implementation
 
 uses
-  System.Math;
+  System.Math,
+  System.StrUtils;
+
+/// <summary>http:// oder https:// mit etwas danach, ohne Leer- und Steuerzeichen (#766).</summary>
+function IsWebAddress(const AValue: string): Boolean;
+var
+  Index: Integer;
+begin
+  Result := (StartsText('https://', AValue) and (Length(AValue) > 8)) or
+    (StartsText('http://', AValue) and (Length(AValue) > 7));
+  if not Result then
+    Exit;
+  for Index := 1 to Length(AValue) do
+    if Ord(AValue[Index]) <= 32 then
+      Exit(False);
+end;
 
 // Eigene Paarfarben einheitlich schreiben; ungültig = leer (Standardpalette).
 function NormalPairs(const AText: string): string;
@@ -454,6 +480,9 @@ begin
   Result.WelcomePageStatusTileOnlyProblems := False;
   Result.WelcomePageDiscover := True;
   Result.TipsUsageTracking := True;
+  Result.WelcomePageHelp := True;
+  Result.WelcomePageHelpReportUrl := DefaultHelpReportUrl;
+  Result.WelcomePageHelpReportFolder := '';
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -528,6 +557,11 @@ begin
     ShortcutTipsScope := 'atlas'
   else
     ShortcutTipsScope := 'all';
+  // Nur Webadressen: „Issue-Seite öffnen“ übergibt das Ziel dem Browser (#766).
+  WelcomePageHelpReportUrl := Trim(WelcomePageHelpReportUrl);
+  if not IsWebAddress(WelcomePageHelpReportUrl) then
+    WelcomePageHelpReportUrl := DefaultHelpReportUrl;
+  WelcomePageHelpReportFolder := Trim(WelcomePageHelpReportFolder);
 end;
 
 procedure TAtlasPluginSettings.Load(const AStore: IAtlasSettingsStore);
@@ -656,6 +690,10 @@ begin
     BoolValue(Default.WelcomePageStatusTileOnlyProblems)) <> 0;
   WelcomePageDiscover := AStore.ReadInteger('WelcomePageDiscover', BoolValue(Default.WelcomePageDiscover)) <> 0;
   TipsUsageTracking := AStore.ReadInteger('TipsUsageTracking', BoolValue(Default.TipsUsageTracking)) <> 0;
+  WelcomePageHelp := AStore.ReadInteger('WelcomePageHelp', BoolValue(Default.WelcomePageHelp)) <> 0;
+  WelcomePageHelpReportUrl := AStore.ReadString('WelcomePageHelpReportUrl', Default.WelcomePageHelpReportUrl);
+  WelcomePageHelpReportFolder := AStore.ReadString('WelcomePageHelpReportFolder',
+    Default.WelcomePageHelpReportFolder);
   Normalize;
 end;
 
@@ -774,6 +812,9 @@ begin
   AStore.WriteInteger('WelcomePageStatusTileOnlyProblems', BoolValue(WelcomePageStatusTileOnlyProblems));
   AStore.WriteInteger('WelcomePageDiscover', BoolValue(WelcomePageDiscover));
   AStore.WriteInteger('TipsUsageTracking', BoolValue(TipsUsageTracking));
+  AStore.WriteInteger('WelcomePageHelp', BoolValue(WelcomePageHelp));
+  AStore.WriteString('WelcomePageHelpReportUrl', WelcomePageHelpReportUrl);
+  AStore.WriteString('WelcomePageHelpReportFolder', WelcomePageHelpReportFolder);
 end;
 
 end.

@@ -91,6 +91,7 @@ uses
   Atlas.IDE.Welcome.Unsaved,
   Atlas.IDE.Welcome.State,
   Atlas.IDE.Welcome.Discover,
+  Atlas.IDE.Welcome.Help,
   Atlas.IDE.Welcome.Commands,
   Atlas.IDE.Vcs.Service;
 
@@ -1076,6 +1077,13 @@ begin
       procedure(AText: string)
       begin
         GuardWarning(AText);
+      end);
+    // Bereich „Hilfe und Rückmeldung“ (#766): „Tastenkürzel“ zeigt die Übersicht aus #520 mit allen Kürzeln.
+    Welcome.Help := TAtlasIdeHelp.Create(
+      procedure
+      begin
+        if KeyMap <> nil then
+          KeyMap.ShowAll;
       end);
   end;
   if Welcome <> nil then

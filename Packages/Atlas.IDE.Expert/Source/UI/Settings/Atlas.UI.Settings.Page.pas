@@ -189,6 +189,10 @@ type
     FUnblockTips: TButton;
     FOnResetUsage: TProc;
     FOnUnblockTips: TProc;
+    FWelcomeHelp: TCheckBox;
+    FWelcomeHelpReportUrl: TEdit;
+    FWelcomeHelpReportFolder: TEdit;
+    FWelcomeHelpFolderBrowse: TButton;
     FVersion: TLabel;
     FResetHistory: TButton;
     FResetWidths: TButton;
@@ -213,6 +217,9 @@ type
     procedure ResetHistoryClick(Sender: TObject);
     procedure ResetUsageClick(Sender: TObject);
     procedure UnblockTipsClick(Sender: TObject);
+    procedure HelpFolderBrowseClick(Sender: TObject);
+    /// <summary>Beschriftung in einer Zeile, darunter ein Textfeld über die ganze Breite (#766).</summary>
+    function AddTextLine(const ACaption: string): TEdit;
     procedure ResetWidthsClick(Sender: TObject);
     procedure HangTestClick(Sender: TObject);
     procedure PairColorsClick(Sender: TObject);
@@ -308,6 +315,10 @@ type
     property TipsUsageTracking: TCheckBox read FTipsUsageTracking;
     property ResetUsageButton: TButton read FResetUsage;
     property UnblockTipsButton: TButton read FUnblockTips;
+    /// <summary>Zum Testen: Bereich „Hilfe und Rückmeldung“ (#766).</summary>
+    property WelcomeHelp: TCheckBox read FWelcomeHelp;
+    property WelcomeHelpReportUrl: TEdit read FWelcomeHelpReportUrl;
+    property WelcomeHelpReportFolder: TEdit read FWelcomeHelpReportFolder;
     property VersionLabel: TLabel read FVersion;
     /// <summary>Kennzahlen als Text; nil = nicht verfügbar.</summary>
     property OnIndexMetrics: TFunc<string> read FOnIndexMetrics write FOnIndexMetrics;
@@ -709,6 +720,57 @@ begin
   FUnblockTips.Top := 3;
   FUnblockTips.Width := 200;
   FUnblockTips.OnClick := UnblockTipsClick;
+  // Bereich „Hilfe und Rückmeldung“ (#766): Schalter, Ziel der Issue-Seite, Ordner der ZIP.
+  FWelcomeHelp := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHelp));
+  FWelcomeHelpReportUrl := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHelpReportUrl));
+  FWelcomeHelpReportFolder := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHelpReportFolder));
+  FWelcomeHelpReportFolder.TextHint := TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHelpDesktop);
+  FWelcomeHelpReportFolder.Width := FWelcomeHelpReportFolder.Width - 36;
+  FWelcomeHelpFolderBrowse := TButton.Create(Self);
+  FWelcomeHelpFolderBrowse.Parent := FWelcomeHelpReportFolder.Parent;
+  FWelcomeHelpFolderBrowse.Caption := '…';
+  FWelcomeHelpFolderBrowse.Left := FWelcomeHelpReportFolder.Left + FWelcomeHelpReportFolder.Width + 6;
+  FWelcomeHelpFolderBrowse.Top := 0;
+  FWelcomeHelpFolderBrowse.Width := 30;
+  FWelcomeHelpFolderBrowse.Anchors := [akTop, akRight];
+  FWelcomeHelpFolderBrowse.OnClick := HelpFolderBrowseClick;
+end;
+
+function TAtlasSettingsPage.AddTextLine(const ACaption: string): TEdit;
+var
+  Panel: TWinControl;
+  Heading: TLabel;
+begin
+  Panel := AddPanel(20);
+  Heading := TLabel.Create(Self);
+  Heading.Parent := Panel;
+  Heading.Caption := ACaption;
+  Heading.Left := 0;
+  Heading.Top := 3;
+  // Eigene Zeile für das Feld: Adressen und Pfade brauchen die Breite.
+  Panel := AddPanel(26);
+  Result := TEdit.Create(Self);
+  Result.Parent := Panel;
+  Result.Left := 0;
+  Result.Top := 1;
+  Result.Width := 466;
+  Result.Anchors := [akLeft, akTop, akRight];
+end;
+
+procedure TAtlasSettingsPage.HelpFolderBrowseClick(Sender: TObject);
+var
+  Dialog: TFileOpenDialog;
+begin
+  Dialog := TFileOpenDialog.Create(Self);
+  try
+    Dialog.Options := Dialog.Options + [fdoPickFolders, fdoPathMustExist];
+    if FWelcomeHelpReportFolder.Text <> '' then
+      Dialog.DefaultFolder := FWelcomeHelpReportFolder.Text;
+    if Dialog.Execute then
+      FWelcomeHelpReportFolder.Text := Dialog.FileName;
+  finally
+    Dialog.Free;
+  end;
 end;
 
 procedure TAtlasSettingsPage.AddSheet(AId: TAtlasTextId);
@@ -1240,6 +1302,9 @@ begin
   FWelcomeStatusTileOnlyProblems.Checked := ASettings.WelcomePageStatusTileOnlyProblems;
   FWelcomeDiscover.Checked := ASettings.WelcomePageDiscover;
   FTipsUsageTracking.Checked := ASettings.TipsUsageTracking;
+  FWelcomeHelp.Checked := ASettings.WelcomePageHelp;
+  FWelcomeHelpReportUrl.Text := ASettings.WelcomePageHelpReportUrl;
+  FWelcomeHelpReportFolder.Text := ASettings.WelcomePageHelpReportFolder;
   RefreshFuse;
   RefreshIndex;
 end;
@@ -1357,6 +1422,9 @@ begin
   ASettings.WelcomePageStatusTileOnlyProblems := FWelcomeStatusTileOnlyProblems.Checked;
   ASettings.WelcomePageDiscover := FWelcomeDiscover.Checked;
   ASettings.TipsUsageTracking := FTipsUsageTracking.Checked;
+  ASettings.WelcomePageHelp := FWelcomeHelp.Checked;
+  ASettings.WelcomePageHelpReportUrl := Trim(FWelcomeHelpReportUrl.Text);
+  ASettings.WelcomePageHelpReportFolder := Trim(FWelcomeHelpReportFolder.Text);
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;

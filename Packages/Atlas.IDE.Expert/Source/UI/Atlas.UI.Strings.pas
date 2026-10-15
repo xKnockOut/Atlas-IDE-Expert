@@ -224,7 +224,14 @@ type
     WelcomeDiscoverNever, WelcomeDiscoverToday, WelcomeDiscoverYesterday, WelcomeDiscoverDays,
     WelcomeDiscoverWeek, WelcomeDiscoverWeeks, WelcomeDiscoverMonth, WelcomeDiscoverMonths, WelcomeDiscoverYear,
     WelcomeDiscoverYears, WelcomeDiscoverPosition, WelcomeDiscoverNoCommand, WelcomeDiscoverNoSample,
-    WelcomeDiscoverPressKey);
+    WelcomeDiscoverPressKey,
+    WelcomeHelpTitle, WelcomeHelpDocs, WelcomeHelpKeys, WelcomeHelpReport, WelcomeHelpNote, ReportTitle,
+    ReportHint, ReportDescription, ReportParts, ReportPartLogs, ReportPartVersions, ReportPartSettings,
+    ReportPartLastData, ReportPartLastDataMissing, ReportPreview, ReportColumnFile, ReportColumnSize, ReportView,
+    ReportFolder, ReportFolderChange, ReportCreateZip, ReportOpenIssue, ReportClose, ReportEmpty, ReportSummary,
+    ReportZipDone, ReportZipFailed, ReportIssueDone, ReportViewerTitle, ReportSizeBytes, ReportSizeKb,
+    ReportSizeMb, SettingsWelcomeHelp, SettingsWelcomeHelpReportUrl, SettingsWelcomeHelpReportFolder,
+    SettingsWelcomeHelpDesktop);
 
   TAtlasStrings = class
   private class var
@@ -722,7 +729,20 @@ const
      'Zuletzt vor 1 Monat', 'Zuletzt vor %d Monaten', 'Zuletzt vor 1 Jahr', 'Zuletzt vor %d Jahren',
      'Tipp %d von %d', 'Atlas entdecken: Der Befehl %s ist gerade nicht verfügbar.',
      'Atlas entdecken: Die Beispieldatei %s fehlt in der Installation.',
-     'Atlas entdecken: Beispiel geöffnet – jetzt %s drücken.'),
+     'Atlas entdecken: Beispiel geöffnet – jetzt %s drücken.',
+     'Hilfe und Rückmeldung', 'Atlas-Doku', 'Tastenkürzel', 'Problem melden …',
+     'Nichts wird automatisch gesendet.', 'Problem melden',
+     'Atlas stellt ein anonymisiertes Diagnosepaket zusammen. Nichts wird automatisch gesendet: Du legst das ZIP an, siehst dir vorher jede Datei an und hängst es selbst an das Issue an.',
+     'Kurzbeschreibung:', 'Ins Paket kommen:', 'Logs von Plugin und Server (anonymisiert)',
+     'Version von Atlas, RAD Studio und Windows', 'Einstellungen ohne Pfade',
+     'Letzte Diagnosedaten (Diagnosemodus)', 'Letzte Diagnosedaten (keine vorhanden)',
+     'Vorschau (Doppelklick oder „Ansehen“ zeigt den Inhalt):', 'Datei', 'Größe', 'Ansehen', 'Ordner: %s',
+     'Ordner …', 'ZIP anlegen', 'Issue-Seite öffnen', 'Schließen', 'Nichts ausgewählt.',
+     '%d Dateien, zusammen %s', 'Angelegt: %s', 'ZIP konnte nicht angelegt werden: %s',
+     'Vorlage in der Zwischenablage; die Issue-Seite ist im Browser geöffnet.', 'Inhalt von %s', '%d Bytes',
+     '%s KB', '%s MB', 'Bereich „Hilfe und Rückmeldung“ (Atlas-Doku, Tastenkürzel, Problem melden)',
+     'Ziel für „Issue-Seite öffnen“ (http:// oder https://):', 'Ordner für das Diagnosepaket (leer: Desktop):',
+     'Desktop'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1189,7 +1209,19 @@ const
      'Last used %d months ago', 'Last used 1 year ago', 'Last used %d years ago', 'Tip %d of %d',
      'Discover Atlas: the command %s is not available right now.',
      'Discover Atlas: the sample file %s is missing from the installation.',
-     'Discover Atlas: sample opened – now press %s.'));
+     'Discover Atlas: sample opened – now press %s.',
+     'Help and feedback', 'Atlas docs', 'Shortcuts', 'Report a problem …', 'Nothing is sent automatically.',
+     'Report a problem',
+     'Atlas puts together an anonymized diagnostic package. Nothing is sent automatically: you create the ZIP, look at every file beforehand and attach it to the issue yourself.',
+     'Short description:', 'Include in the package:', 'Plugin and server logs (anonymized)',
+     'Atlas, RAD Studio and Windows version', 'Settings without paths', 'Last diagnostic data (diagnostic mode)',
+     'Last diagnostic data (none available)', 'Preview (double-click or “View” shows the content):', 'File',
+     'Size', 'View', 'Folder: %s', 'Folder …', 'Create ZIP', 'Open issue page', 'Close', 'Nothing selected.',
+     '%d files, %s in total', 'Created: %s', 'Could not create the ZIP: %s',
+     'Template copied to the clipboard; the issue page is open in the browser.', 'Content of %s', '%d bytes',
+     '%s KB', '%s MB', '“Help and feedback” section (Atlas docs, shortcuts, report a problem)',
+     'Target of “Open issue page” (http:// or https://):', 'Folder for the diagnostic package (empty: desktop):',
+     'Desktop'));
 
 { TAtlasStrings }
 

@@ -407,6 +407,10 @@ begin
     Assert.IsFalse(Page.WelcomeStatusTileOnlyProblems.Checked);
     Assert.IsTrue(Page.WelcomeDiscover.Checked);
     Assert.IsTrue(Page.TipsUsageTracking.Checked);
+    // #766: Bereich „Hilfe und Rückmeldung“, Ziel der Issue-Seite, Ordner (leer = Desktop).
+    Assert.IsTrue(Page.WelcomeHelp.Checked);
+    Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, Page.WelcomeHelpReportUrl.Text);
+    Assert.AreEqual('', Page.WelcomeHelpReportFolder.Text);
     Page.WelcomeEnabled.Checked := False;
     Page.WelcomeHost.Choice := 1;
     Page.WelcomeLayout.Checked := True;
@@ -428,8 +432,14 @@ begin
     Page.WelcomeStatusTileOnlyProblems.Checked := True;
     Page.WelcomeDiscover.Checked := False;
     Page.TipsUsageTracking.Checked := False;
+    Page.WelcomeHelp.Checked := False;
+    Page.WelcomeHelpReportUrl.Text := ' https://example.org/issues/new ';
+    Page.WelcomeHelpReportFolder.Text := ' D:\Diagnose ';
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.WelcomePageHelp);
+    Assert.AreEqual('https://example.org/issues/new', Saved.WelcomePageHelpReportUrl);
+    Assert.AreEqual('D:\Diagnose', Saved.WelcomePageHelpReportFolder);
     Assert.IsFalse(Saved.WelcomePage);
     Assert.AreEqual('dockWindow', Saved.WelcomePageHost);
     Assert.AreEqual('atlas', Saved.WelcomePageLayout);
@@ -452,14 +462,20 @@ begin
     Assert.IsFalse(Saved.WelcomePageDiscover);
     Assert.IsFalse(Saved.TipsUsageTracking);
     Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.WelcomeHelp.Checked);
+    Assert.AreEqual('https://example.org/issues/new', Page.WelcomeHelpReportUrl.Text);
+    Assert.AreEqual('D:\Diagnose', Page.WelcomeHelpReportFolder.Text);
     Assert.IsFalse(Page.WelcomeDiscover.Checked);
     Assert.IsFalse(Page.TipsUsageTracking.Checked);
     Assert.AreEqual(1, Page.WelcomeHost.Choice);
     Assert.IsTrue(Page.WelcomeLayout.Checked);
     Assert.AreEqual(2, Page.WelcomeWhatsNew.Choice);
     Page.WelcomeWhatsNew.Choice := 0;
+    // Keine Webadresse als Ziel: die Vorgabe.
+    Page.WelcomeHelpReportUrl.Text := 'cmd.exe';
     Page.SaveTo(Saved);
     Assert.AreEqual('off', Saved.WelcomePageWhatsNew);
+    Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, Saved.WelcomePageHelpReportUrl);
   finally
     Page.Free;
   end;
