@@ -10,6 +10,13 @@
 //   zu den Einträgen ohne Datei, bevor sie entfernt werden) und nach jedem
 //   Build für den Abschnitt "baseline" der Projekt-Zusammenfassung
 //   (Projektverlauf #758, Einrichtung #759).
+// - Ordner (#758): Der Server schreibt die Baseline in den Ordner des
+//   Arbeitsbereichs, zu dem das Projekt gehört; das Plugin liest sie im
+//   Projektordner. In RAD Studio ist das derselbe Ordner: Das Plugin meldet
+//   jedes Projekt der Gruppe als eigenen Arbeitsbereich (Ordner der .dproj).
+//   Abweichen kann er nur über Ausweichwege des Servers (Projekt noch nicht
+//   als Arbeitsbereich bekannt). WrittenElsewhere erkennt das an der Antwort
+//   ("file"); das Plugin meldet es dann und liest weiter den Projektordner.
 //
 // Pfade in der Baseline sind relativ zum Ordner der Datei und mit „/“
 // getrennt; zum Prüfen setzt StateOf sie mit „\“ an den Ordner (das Plugin
@@ -89,6 +96,9 @@ type
     /// <summary>Wie StateOf, aber aus dem Text AText einer Datei in AFolder.</summary>
     class function StateOfText(const AFolder, AText: string; const AExists: TAtlasBaselineFileExists):
       TAtlasBaselineState; static;
+    /// <summary>Hat der Server die Baseline AWrittenFile außerhalb des Ordners von AProject geschrieben? Pfade
+    /// ohne Rücksicht auf Groß-/Kleinschreibung, „/“ oder „\“; False, wenn eine Angabe fehlt.</summary>
+    class function WrittenElsewhere(const AProject, AWrittenFile: string): Boolean; static;
     /// <summary>Argumente für atlas.updateBaseline: [uri].</summary>
     class function Arguments(const AProjectUri: string): string; static;
     /// <summary>Liest die Antwort von atlas.updateBaseline; False bei leerem oder ungültigem Text.</summary>
@@ -107,6 +117,18 @@ implementation
 
 uses
   System.JSON;
+
+/// <summary>Ordner von AFileName, normiert (Großbuchstaben, „\“, ohne Trenner am Ende); '' ohne Ordner.</summary>
+function FolderKey(const AFileName: string): string;
+var
+  Index: Integer;
+begin
+  Result := TAtlasProjectSummaries.NormalizedPath(AFileName);
+  Index := Length(Result);
+  while (Index > 0) and (Result[Index] <> '\') do
+    Dec(Index);
+  Result := Copy(Result, 1, Index - 1);
+end;
 
 { TAtlasBaselineState }
 
@@ -190,6 +212,11 @@ begin
 end;
 
 { TAtlasProjectBaselines }
+
+class function TAtlasProjectBaselines.WrittenElsewhere(const AProject, AWrittenFile: string): Boolean;
+begin
+  Result := (Trim(AProject) <> '') and (Trim(AWrittenFile) <> '') and (FolderKey(AProject) <> FolderKey(AWrittenFile));
+end;
 
 class function TAtlasProjectBaselines.FileIn(const AFolder: string; const AExists: TAtlasBaselineFileExists): string;
 begin

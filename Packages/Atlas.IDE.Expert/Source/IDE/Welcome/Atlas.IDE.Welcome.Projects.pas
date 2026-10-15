@@ -35,6 +35,17 @@
 //   und übergibt sie an RecordBaseline; nach „Baseline des Projekts
 //   aktualisieren“ ebenso mit den Zählern des Servers. Abschnitt "baseline"
 //   für Projektverlauf (#758) und Einrichtung (#759).
+// - Projektverlauf (#758, welcomePage.trends): nach jedem Build des Benutzers
+//   (nicht nach einer Hintergrundprüfung) ein Messpunkt im Abschnitt "trends"
+//   (TAtlasProjectTrendLog.Append, Ringpuffer mit welcomePage.trends.points),
+//   auch für die Projektgruppe. Metriken, TODOs und Baseline aus dem
+//   Hintergrundlauf danach sowie der frisch abgefragte Branch und Commit
+//   kommen mit demselben Zeitpunkt und werden in diesen Punkt nachgetragen
+//   (Fill). Die Build-Dauer steht in "build.durationMs" (Gruppe: Dauer des
+//   ganzen Laufs).
+// - Auswahl (#758): Mit eingeschaltetem Projektverlauf wählt ein Klick auf eine
+//   Zeile das Projekt für den Verlauf (Doppelklick öffnet); Select meldet
+//   beiden Bereichen die Änderung.
 // - Die Willkommensseite startet keinen Server und liest nur lokale Dateien.
 
 interface
@@ -75,15 +86,22 @@ type
     FLive: TDictionary<string, TAtlasProjectVcs>;
     // Normierter Pfad → Start der laufenden Abfrage (GetTickCount64).
     FQuerying: TDictionary<string, UInt64>;
+    // Für den Projektverlauf gewähltes Projekt (#758); '' = keins.
+    FSelected: string;
     procedure Changed;
     procedure Report(const AText: string);
     procedure Opened(const AProject: string);
     procedure Closing(const AProject: string);
-    procedure Query(const AProject: string);
+    procedure Query(const AProject: string); overload;
+    /// <summary>Wie oben; mit ABuildUtc &gt; 0 trägt das Ergebnis Branch und Commit in den Messpunkt dieses Builds
+    /// ein (#758).</summary>
+    procedure Query(const AProject: string; ABuildUtc: TDateTime); overload;
     function Querying(const AKey: string): Boolean;
     procedure RecordRules(const AProject: string; ANowUtc: TDateTime);
     procedure RecordInto(const AProject: string; const AMessages: TArray<TAtlasCompilerMessage>;
-      const AInfo: TAtlasCompileProject; ASucceeded: Boolean; ANowUtc: TDateTime);
+      const AInfo: TAtlasCompileProject; ASucceeded: Boolean; ADurationMs: Int64; ANowUtc: TDateTime);
+    procedure RecordTrend(const AProject: string; ANowUtc: TDateTime);
+    class function TrendsOn: Boolean; static;
     class function NowUtc: TDateTime; static;
     class function ProjectOpen(const AFileName: string): Boolean; static;
     class function GroupOf(const AProject: string): string; static;
@@ -99,7 +117,11 @@ type
     /// <summary>Ergebnis eines Compiles aus dem Reiter „Build“ (#528); AReadable = False: Meldungen nicht
     /// lesbar, dann bleibt die Zusammenfassung unverändert.</summary>
     procedure Recorded(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
-      ASucceeded, AReadable: Boolean);
+      ASucceeded, AReadable: Boolean); overload;
+    /// <summary>Wie oben mit dem Zeitpunkt des Builds AAtUtc; denselben bekommen RecordMetrics, RecordTodos und
+    /// RecordBaseline, damit ihre Werte in den Messpunkt des Projektverlaufs kommen (#758).</summary>
+    procedure Recorded(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
+      ASucceeded, AReadable: Boolean; AAtUtc: TDateTime); overload;
     /// <summary>Antwort von atlas.server.metrics (Modus summary) für AProject zum Zeitpunkt AAtUtc (#66);
     /// ungültige oder leere Antwort: Zusammenfassung bleibt unverändert. Hauptthread.</summary>
     procedure RecordMetrics(const AProject, AJson: string; AAtUtc: TDateTime);
@@ -126,6 +148,9 @@ type
     procedure OpenFolder(const AProject: string);
     procedure Remove(const AProject: string);
     procedure Shown;
+    function Selectable: Boolean;
+    procedure Select(const AProject: string);
+    function Selected: string;
   end;
 
 implementation
@@ -138,6 +163,7 @@ uses
   System.DateUtils,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Projects.Trends,
   Atlas.Core.Welcome.Search,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Frame,
@@ -306,8 +332,36 @@ end;
 
 procedure TAtlasIdeProjects.Changed;
 begin
-  if not FStopped then
-    TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.Projects);
+  if FStopped then
+    Exit;
+  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.Projects);
+  // Der Projektverlauf (#758) liest dieselben Zusammenfassungen und folgt der Auswahl.
+  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.History);
+end;
+
+class function TAtlasIdeProjects.TrendsOn: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.WelcomePageTrends;
+end;
+
+function TAtlasIdeProjects.Selectable: Boolean;
+begin
+  // Ohne Projektverlauf hat eine Auswahl keinen Zweck: Klick öffnet wie bisher (#592).
+  Result := not FStopped and TrendsOn;
+end;
+
+procedure TAtlasIdeProjects.Select(const AProject: string);
+begin
+  if FStopped or (TAtlasProjectSummaries.NormalizedPath(AProject) = TAtlasProjectSummaries.NormalizedPath(FSelected))
+  then
+    Exit;
+  FSelected := AProject;
+  Changed;
+end;
+
+function TAtlasIdeProjects.Selected: string;
+begin
+  Result := FSelected;
 end;
 
 procedure TAtlasIdeProjects.Report(const AText: string);
@@ -381,6 +435,11 @@ begin
 end;
 
 procedure TAtlasIdeProjects.Query(const AProject: string);
+begin
+  Query(AProject, 0);
+end;
+
+procedure TAtlasIdeProjects.Query(const AProject: string; ABuildUtc: TDateTime);
 var
   Keep: IAtlasProjectsSource;
   Key, Project, Dir, Root: string;
@@ -388,6 +447,7 @@ var
   Ok: Boolean;
   State: TAtlasProjectVcs;
   Started: UInt64;
+  BuildStamp: TDateTime;
 begin
   Key := TAtlasProjectSummaries.NormalizedPath(AProject);
   if FStopped or Querying(Key) then
@@ -399,6 +459,7 @@ begin
   Dir := ExtractFileDir(AProject);
   Root := Folder;
   Stamp := NowUtc;
+  BuildStamp := ABuildUtc;
   Ok := False;
   State := TAtlasProjectVcs.Empty;
   // Arbeit und Ergebnis teilen sich Ok und State; das Ergebnis kommt erst nach der Arbeit.
@@ -427,6 +488,9 @@ begin
           procedure(var ASummary: TAtlasProjectSummary)
           begin
             ASummary.Vcs := State;
+            // Branch und Commit zum Zeitpunkt des Builds in dessen Messpunkt (#758).
+            if BuildStamp > 0 then
+              TAtlasProjectTrendLog.Fill(ASummary, BuildStamp);
           end);
       end;
       Changed;
@@ -499,41 +563,88 @@ begin
 end;
 
 procedure TAtlasIdeProjects.RecordInto(const AProject: string; const AMessages: TArray<TAtlasCompilerMessage>;
-  const AInfo: TAtlasCompileProject; ASucceeded: Boolean; ANowUtc: TDateTime);
+  const AInfo: TAtlasCompileProject; ASucceeded: Boolean; ADurationMs: Int64; ANowUtc: TDateTime);
 var
   Messages: TArray<TAtlasCompilerMessage>;
   Info: TAtlasCompileProject;
   Succeeded: Boolean;
   Stamp: TDateTime;
+  Duration: Integer;
 begin
   Messages := AMessages;
   Info := AInfo;
   Succeeded := ASucceeded;
   Stamp := ANowUtc;
+  // Mehr als 24 Tage gibt es nicht; ungültige Werte als unbekannt.
+  Duration := 0;
+  if (ADurationMs > 0) and (ADurationMs < MaxInt) then
+    Duration := Integer(ADurationMs);
   TAtlasProjectSummaries.Update(Folder, AProject,
     procedure(var ASummary: TAtlasProjectSummary)
     begin
       TAtlasWelcomeProjects.RecordCompile(ASummary, Messages, Info.Background, Succeeded,
         TAtlasCompileEvents.KindText(Info.Kind), Info.Configuration, Info.Platform, Stamp);
+      // Build-Dauer (#758); eine Hintergrundprüfung ändert den Abschnitt "build" nicht.
+      if not Info.Background then
+        ASummary.Build.DurationMs := Duration;
+    end);
+end;
+
+procedure TAtlasIdeProjects.RecordTrend(const AProject: string; ANowUtc: TDateTime);
+var
+  Stamp: TDateTime;
+  Limit: Integer;
+begin
+  Stamp := ANowUtc;
+  Limit := TAtlasIdeSettings.Current.WelcomePageTrendsPoints;
+  TAtlasProjectSummaries.Update(Folder, AProject,
+    procedure(var ASummary: TAtlasProjectSummary)
+    begin
+      TAtlasProjectTrendLog.Append(ASummary, Stamp, Limit);
     end);
 end;
 
 procedure TAtlasIdeProjects.Recorded(const AMessages: TArray<TAtlasCompilerMessage>;
   const AProject: TAtlasCompileProject; ASucceeded, AReadable: Boolean);
+begin
+  Recorded(AMessages, AProject, ASucceeded, AReadable, NowUtc);
+end;
+
+procedure TAtlasIdeProjects.Recorded(const AMessages: TArray<TAtlasCompilerMessage>;
+  const AProject: TAtlasCompileProject; ASucceeded, AReadable: Boolean; AAtUtc: TDateTime);
 var
   Stamp: TDateTime;
   Group: string;
+  GroupDuration: Int64;
+  Trends: Boolean;
 begin
   if FStopped or not AReadable or (AProject.FileName = '') then
     Exit;
-  Stamp := NowUtc;
-  RecordInto(AProject.FileName, AMessages, AProject, ASucceeded, Stamp);
+  Stamp := AAtUtc;
+  // Projektverlauf (#758): nur Builds des Benutzers, nicht die eigene Hintergrundprüfung.
+  Trends := TrendsOn and not AProject.Background;
+  RecordInto(AProject.FileName, AMessages, AProject, ASucceeded, AProject.DurationMs, Stamp);
   RecordRules(AProject.FileName, Stamp);
+  if Trends then
+    RecordTrend(AProject.FileName, Stamp);
   Group := GroupOf(AProject.FileName);
   if Group <> '' then
   begin
-    RecordInto(Group, AMessages, AProject, ASucceeded, Stamp);
+    // Die Gruppe misst den ganzen Lauf („Alle erzeugen“); ohne Angabe die Dauer des Projekts.
+    GroupDuration := AProject.GroupDurationMs;
+    if GroupDuration <= 0 then
+      GroupDuration := AProject.DurationMs;
+    RecordInto(Group, AMessages, AProject, ASucceeded, GroupDuration, Stamp);
     RecordRules(Group, Stamp);
+    if Trends then
+      RecordTrend(Group, Stamp);
+  end;
+  // Branch und Commit des Builds frisch abfragen (im Hintergrund); bis dahin gilt der bekannte Stand.
+  if Trends and TAtlasIdeSettings.Current.WelcomePageRefreshVcs then
+  begin
+    Query(ProjectFileOf(AProject.FileName), Stamp);
+    if Group <> '' then
+      Query(Group, Stamp);
   end;
   Changed;
 end;
@@ -550,6 +661,8 @@ begin
     procedure(var ASummary: TAtlasProjectSummary)
     begin
       ASummary.Metrics := Metrics;
+      // In den Messpunkt des Builds mit demselben Zeitpunkt (#758); ohne Punkt nichts.
+      TAtlasProjectTrendLog.Fill(ASummary, ASummary.Metrics.At);
     end);
   Changed;
 end;
@@ -566,6 +679,8 @@ begin
     procedure(var ASummary: TAtlasProjectSummary)
     begin
       ASummary.Todos := Todos;
+      // In den Messpunkt des Builds mit demselben Zeitpunkt (#758); ohne Punkt nichts.
+      TAtlasProjectTrendLog.Fill(ASummary, ASummary.Todos.At);
     end);
   Changed;
 end;
@@ -584,6 +699,8 @@ begin
     procedure(var ASummary: TAtlasProjectSummary)
     begin
       TAtlasProjectBaselines.Measured(ASummary.Baseline, State, Stamp);
+      // Ohne Baseline wird „Regeltreffer seit Baseline“ im Messpunkt dieses Builds zur Lücke (#758).
+      TAtlasProjectTrendLog.Fill(ASummary, Stamp);
     end);
   Changed;
 end;

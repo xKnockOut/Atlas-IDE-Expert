@@ -9,7 +9,9 @@
 // Tooltip nennt Build, Prüfung, Versionsverwaltung und Regeltreffer im
 // Einzelnen. Klick auf die Zeile öffnet das Projekt, Klick auf eine rote
 // Marke öffnet es und springt zur ersten Meldung; das Kontextmenü bietet
-// „Ordner öffnen“ und „Aus Liste entfernen“ (nur dieser Bereich).
+// „Öffnen“, „Ordner öffnen“ und „Aus Liste entfernen“ (nur dieser Bereich).
+// Mit Projektverlauf (#758, Selectable) wählt ein Klick die Zeile für den
+// Verlauf (hinterlegt), Doppelklick öffnet; rote Marken springen weiter.
 // Daten und Aktionen kommen über IAtlasProjectsSource aus der IDE-Schicht;
 // Klicks gehen über die Nachrichtenschleife, weil die Quelle den Bereich
 // daraufhin neu füllt.
@@ -42,6 +44,12 @@ type
     procedure Remove(const AProject: string);
     /// <summary>Der Bereich wird gezeigt: Versionsverwaltung bei Bedarf im Hintergrund frisch abfragen.</summary>
     procedure Shown;
+    /// <summary>Klick wählt eine Zeile für den Projektverlauf (#758) statt sie zu öffnen.</summary>
+    function Selectable: Boolean;
+    /// <summary>Projekt für den Projektverlauf wählen (#758).</summary>
+    procedure Select(const AProject: string);
+    /// <summary>Gewähltes Projekt; '' = keins (der Verlauf zeigt dann das oberste).</summary>
+    function Selected: string;
   end;
 
   TAtlasProjectsHit = record
@@ -67,15 +75,22 @@ type
     FPills: TArray<TArray<TAtlasProjectPill>>;
     FPillRects: TArray<TArray<TRect>>;
     FMenu: TPopupMenu;
+    FOpenItem: TMenuItem;
     FOpenFolderItem: TMenuItem;
     FRemoveItem: TMenuItem;
     FMenuRow: Integer;
     FHintRow: Integer;
+    // Lage des letzten Drückens für den Doppelklick (#758) und ob es der zweite Klick eines Doppelklicks war.
+    FLastMouse: TPoint;
+    FDoubleDown: Boolean;
     procedure SetSource(const AValue: IAtlasProjectsSource);
     procedure BoxPaint(Sender: TObject);
     procedure BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure BoxMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure BoxDblClick(Sender: TObject);
     procedure MenuPopup(Sender: TObject);
+    procedure OpenClick(Sender: TObject);
     procedure OpenFolderClick(Sender: TObject);
     procedure RemoveClick(Sender: TObject);
     procedure LayoutPills;
@@ -89,19 +104,26 @@ type
     function HitTest(X, Y: Integer): TAtlasProjectsHit;
     /// <summary>Klick wie mit der Maus (auch für Tests).</summary>
     procedure ClickAt(const AHit: TAtlasProjectsHit);
+    /// <summary>Doppelklick wie mit der Maus: öffnet die Zeile (auch für Tests).</summary>
+    procedure DoubleClickAt(const AHit: TAtlasProjectsHit);
+    /// <summary>Zeile des gewählten Projekts (#758); -1 = keine.</summary>
+    function SelectedRow: Integer;
     /// <summary>Text einer Marke, z. B. „Build 0/0/0“ oder „2 Fehler“.</summary>
     class function PillText(const APill: TAtlasProjectPill): string; static;
     class function PillColor(ALevel: TAtlasProjectPillLevel): TColor; static;
     /// <summary>Zweite Zeile: gekürzter Pfad, letztes Öffnen und „Stand vom …“.</summary>
     class function DetailText(const AEntry: TAtlasProjectEntry): string; static;
-    /// <summary>Tooltip mit allen Angaben.</summary>
-    class function HintFor(const AEntry: TAtlasProjectEntry): string; static;
+    /// <summary>Tooltip mit allen Angaben; letzte Zeile nennt den Klick (öffnet bzw. mit ASelectable wählt).
+    /// </summary>
+    class function HintFor(const AEntry: TAtlasProjectEntry): string; overload; static;
+    class function HintFor(const AEntry: TAtlasProjectEntry; ASelectable: Boolean): string; overload; static;
     /// <summary>UTC-Zeit als lokale Kurzform; '' für 0.</summary>
     class function LocalText(AUtc: TDateTime): string; static;
     property Source: IAtlasProjectsSource read FSource write SetSource;
     property Entries: TAtlasProjectEntries read FEntries;
     property PaintBox: TPaintBox read FBox;
     property Menu: TPopupMenu read FMenu;
+    property OpenItem: TMenuItem read FOpenItem;
     property OpenFolderItem: TMenuItem read FOpenFolderItem;
     property RemoveItem: TMenuItem read FRemoveItem;
     /// <summary>Zeile des zuletzt geöffneten Kontextmenüs; -1 = keine.</summary>
@@ -132,8 +154,15 @@ begin
   FBox.OnPaint := BoxPaint;
   FBox.OnMouseMove := BoxMouseMove;
   FBox.OnMouseUp := BoxMouseUp;
+  FBox.OnMouseDown := BoxMouseDown;
+  FBox.OnDblClick := BoxDblClick;
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
+  FOpenItem := TMenuItem.Create(Self);
+  FOpenItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsOpen);
+  FOpenItem.Default := True;
+  FOpenItem.OnClick := OpenClick;
+  FMenu.Items.Add(FOpenItem);
   FOpenFolderItem := TMenuItem.Create(Self);
   FOpenFolderItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsOpenFolder);
   FOpenFolderItem.OnClick := OpenFolderClick;
@@ -244,6 +273,11 @@ begin
 end;
 
 class function TAtlasWelcomeProjectsFrame.HintFor(const AEntry: TAtlasProjectEntry): string;
+begin
+  Result := HintFor(AEntry, False);
+end;
+
+class function TAtlasWelcomeProjectsFrame.HintFor(const AEntry: TAtlasProjectEntry; ASelectable: Boolean): string;
 var
   Lines: TStringList;
   Summary: TAtlasProjectSummary;
@@ -288,7 +322,10 @@ begin
     end;
     if Summary.Rules.Known then
       Lines.Add(TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsHintRules, [Summary.Rules.NewHits]));
-    Lines.Add(TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsHintClick));
+    if ASelectable then
+      Lines.Add(TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsHintSelect))
+    else
+      Lines.Add(TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsHintClick));
     Result := TrimRight(Lines.Text);
   finally
     Lines.Free;
@@ -328,6 +365,7 @@ var
   PillRect: TRect;
   Text, Branch: string;
   TextColor, MutedColor: TColor;
+  Selected: Integer;
 begin
   Canvas := FBox.Canvas;
   Canvas.Brush.Style := bsClear;
@@ -346,11 +384,21 @@ begin
   LayoutPills;
   Dot := ScaleValue(DotSize);
   Radius := ScaleValue(PillHeight);
+  Selected := SelectedRow;
   for Row := 0 to High(FEntries) do
   begin
     Entry := FEntries[Row];
     Top := RowTop(Row);
     Left := ScaleValue(Indent);
+    // Für den Projektverlauf gewählte Zeile hinterlegen (#758), in der Markierungsfarbe des Themas.
+    if Row = Selected then
+    begin
+      Canvas.Brush.Style := bsSolid;
+      Canvas.Brush.Color := StyleServices(Self).GetSystemColor(clHighlight);
+      Canvas.Pen.Color := Canvas.Brush.Color;
+      Canvas.FillRect(Rect(0, Top, ScaleValue(3), Top + ScaleValue(RowHeight) - ScaleValue(2)));
+      Canvas.Brush.Style := bsClear;
+    end;
     // Punkt mit der schlimmsten Stufe; ohne Angaben grau.
     Canvas.Brush.Style := bsSolid;
     Canvas.Brush.Color := PillColor(TAtlasWelcomeProjects.Level(FPills[Row]));
@@ -423,7 +471,7 @@ var
   Source: IAtlasProjectsSource;
   Project: string;
   Target: TAtlasProjectLocation;
-  Jump: Boolean;
+  Jump, Choose: Boolean;
 begin
   if (FSource = nil) or (AHit.Row < 0) or (AHit.Row > High(FEntries)) then
     Exit;
@@ -433,15 +481,52 @@ begin
   Target := Default(TAtlasProjectLocation);
   if Jump then
     Target := FPills[AHit.Row][AHit.Pill].Target;
+  // Mit Projektverlauf wählt der Klick (#758); rote Marken springen weiter zur Meldung.
+  Choose := not Jump and Source.Selectable;
   // Die Quelle füllt den Bereich danach neu: nicht im eigenen Mausereignis.
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
       if Jump then
         Source.OpenAt(Project, Target)
+      else if Choose then
+        Source.Select(Project)
       else
         Source.Open(Project);
     end);
+end;
+
+procedure TAtlasWelcomeProjectsFrame.DoubleClickAt(const AHit: TAtlasProjectsHit);
+var
+  Source: IAtlasProjectsSource;
+  Project: string;
+begin
+  // Ohne Auswahl öffnet schon der einfache Klick; ein zweites Öffnen wäre doppelt.
+  if (FSource = nil) or (AHit.Row < 0) or (AHit.Row > High(FEntries)) or not FSource.Selectable then
+    Exit;
+  Source := FSource;
+  Project := FEntries[AHit.Row].Project;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      Source.Open(Project);
+    end);
+end;
+
+function TAtlasWelcomeProjectsFrame.SelectedRow: Integer;
+var
+  Wanted: string;
+  Row: Integer;
+begin
+  Result := -1;
+  if (FSource = nil) or not FSource.Selectable or (Length(FEntries) = 0) then
+    Exit;
+  Wanted := TAtlasProjectSummaries.NormalizedPath(FSource.Selected);
+  for Row := 0 to High(FEntries) do
+    if TAtlasProjectSummaries.NormalizedPath(FEntries[Row].Project) = Wanted then
+      Exit(Row);
+  // Ohne (gültige) Auswahl zeigt der Verlauf das oberste Projekt.
+  Result := 0;
 end;
 
 procedure TAtlasWelcomeProjectsFrame.BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -457,7 +542,7 @@ begin
     Exit;
   FHintRow := Hit.Row;
   if Hit.Row >= 0 then
-    FBox.Hint := HintFor(FEntries[Hit.Row])
+    FBox.Hint := HintFor(FEntries[Hit.Row], (FSource <> nil) and FSource.Selectable)
   else
     FBox.Hint := '';
   Application.CancelHint;
@@ -466,8 +551,22 @@ end;
 procedure TAtlasWelcomeProjectsFrame.BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X,
   Y: Integer);
 begin
-  if Button = mbLeft then
+  // Der zweite Klick eines Doppelklicks wählt nicht noch einmal: BoxDblClick öffnet.
+  if (Button = mbLeft) and not FDoubleDown then
     ClickAt(HitTest(X, Y));
+  FDoubleDown := False;
+end;
+
+procedure TAtlasWelcomeProjectsFrame.BoxMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X,
+  Y: Integer);
+begin
+  FLastMouse := Point(X, Y);
+  FDoubleDown := ssDouble in Shift;
+end;
+
+procedure TAtlasWelcomeProjectsFrame.BoxDblClick(Sender: TObject);
+begin
+  DoubleClickAt(HitTest(FLastMouse.X, FLastMouse.Y));
 end;
 
 procedure TAtlasWelcomeProjectsFrame.MenuPopup(Sender: TObject);
@@ -476,8 +575,25 @@ var
 begin
   Position := FBox.ScreenToClient(FMenu.PopupPoint);
   FMenuRow := HitTest(Position.X, Position.Y).Row;
+  FOpenItem.Enabled := FMenuRow >= 0;
   FOpenFolderItem.Enabled := FMenuRow >= 0;
   FRemoveItem.Enabled := FMenuRow >= 0;
+end;
+
+procedure TAtlasWelcomeProjectsFrame.OpenClick(Sender: TObject);
+var
+  Source: IAtlasProjectsSource;
+  Project: string;
+begin
+  if (FSource = nil) or (FMenuRow < 0) or (FMenuRow > High(FEntries)) then
+    Exit;
+  Source := FSource;
+  Project := FEntries[FMenuRow].Project;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      Source.Open(Project);
+    end);
 end;
 
 procedure TAtlasWelcomeProjectsFrame.OpenFolderClick(Sender: TObject);
