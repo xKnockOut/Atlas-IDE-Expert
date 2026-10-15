@@ -614,3 +614,14 @@ Vorbereitung: Formular mit Button `btnSave` und den Methoden `FormCreate(Sender:
 | SY5 | SY3/SY4 bei 100, 150 und 200 % Skalierung (Monitor wechseln) | Symbol scharf und in passender Größe |
 | SY6 | *Tools › Optionen › Benutzeroberfläche › IDE-Stil* zwischen hell und dunkel wechseln | Menü, Statusfeld, Optionsseite und Ergebnisfenster wechseln ohne Neustart die Variante |
 | SY7 | Explorer: `AtlasServer.exe` und `AtlasSetup.exe`; „Apps und Features“ nach der Installation | Symbol bei beiden Dateien und beim Eintrag „Atlas“ |
+
+## Verdeckte Felder (Feld und lokaler Name gleich)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VF1 | `procedure TKunde.SetzeName(const Name: string)` mit Feld `Name`; Hover und Strg+Klick auf `Name` in `Self.Name := Name` (links und rechts) | Links das Feld `TKunde.Name`, rechts der Parameter |
+| VF2 | In einer Methode `P := procedure(Wert: Integer) begin Anzahl := Wert; end;` bei Feldern `Wert` und `Anzahl`: Hover auf `Wert` und `Anzahl` | `Wert` ist der Parameter der anonymen Methode, `Anzahl` das Feld; Strg+Leer zeigt `Wert` als Parameter mit „Verdeckt: Feld TKunde.Wert“ |
+| VF3 | Wie VF2 mit `var Anzahl: Integer;` in der anonymen Methode; Verwendungen von `Anzahl` darin suchen | Nur die lokale Variable der anonymen Methode, nicht das Feld |
+| VF4 | Parameter `AName` einer Methode in `Name` umbenennen, die auch `Name := 'x'` (Feld) enthält | Abbruch mit „Umbenennen in "Name" würde die Bedeutung ändern: … meinte "Name" danach Parameter Name statt Feld TKunde.Name“; nichts geändert |
+| VF5 | Feld `Wert` in `Anzahl` umbenennen, wenn eine Methode eine lokale Variable `Anzahl` hat und dort `Wert` ohne `Self.` verwendet | Abbruch mit Hinweis auf die lokale Variable und die Zeile |
+| VF6 | `Name := Name;` in VF1 statt `Self.Name := Name;` | Warnung self-assignment „… Parameter Name verdeckt Feld TKunde.Name …“; erste Korrektur „Self. ergänzen“ ergibt `Self.Name := Name;` |
