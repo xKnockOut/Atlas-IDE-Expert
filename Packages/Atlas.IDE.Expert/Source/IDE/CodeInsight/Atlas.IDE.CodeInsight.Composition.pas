@@ -73,6 +73,7 @@ uses
   Atlas.Core.Diagnostics.TimeLimit,
   Atlas.IDE.Commands.Keys,
   Atlas.IDE.Commands.KeyMap,
+  Atlas.IDE.Commands.Usage,
   Atlas.IDE.Commands.ShortcutTips,
   Atlas.IDE.Undo.Changes,
   Atlas.Core.Updates.Check,
@@ -89,6 +90,7 @@ uses
   Atlas.IDE.Welcome.Projects,
   Atlas.IDE.Welcome.Unsaved,
   Atlas.IDE.Welcome.State,
+  Atlas.IDE.Welcome.Discover,
   Atlas.IDE.Welcome.Commands,
   Atlas.IDE.Vcs.Service;
 
@@ -129,7 +131,10 @@ var
   Setup: TAtlasIdeSetupChecklist;
   // Tastenkürzel-Übersicht mit Prüfung beim Start (#520).
   KeyMap: TAtlasIdeKeyMap;
-  // Tastenkürzel-Tipps und Zählung je Befehl (#600); nur im normalen Start.
+  // Gemeinsame Zählung je Befehl und Tippquelle (#600, #757); auch abgesichert (liest und schreibt nur
+  // lokale Dateien).
+  CommandUsage: TAtlasIdeCommandUsage;
+  // Tastenkürzel-Tipps, zählen in CommandUsage (#600); nur im normalen Start.
   ShortcutTips: TAtlasIdeShortcutTips;
   // Abgesicherter Start nach einem Absturz (#722).
   SafeMode: TAtlasIdeSafeMode;
@@ -898,9 +903,26 @@ begin
   // Tastenkürzel-Übersicht (#520): auch abgesichert, sie liest nur die Belegungen der IDE.
   if Basic and (KeyMap = nil) then
     KeyMap := TAtlasIdeKeyMap.Create;
-  // Tastenkürzel-Tipps (#600): Beobachtung an oder aus nach shortcutTips.enabled (ApplySettings).
-  if Full and (ShortcutTips = nil) then
-    ShortcutTips := TAtlasIdeShortcutTips.Create;
+  // Gemeinsame Zählung (#757): vor den Tastenkürzel-Tipps und der Willkommensseite, die sie nutzen.
+  if Basic and (CommandUsage = nil) then
+  begin
+    CommandUsage := TAtlasIdeCommandUsage.Create;
+    // Nach „Zählung zurücksetzen“: „Noch nie benutzt“ auf der Karte sofort.
+    CommandUsage.OnReset :=
+      procedure
+      begin
+        if (Welcome <> nil) and (Welcome.Discover <> nil) then
+          Welcome.Discover.Refresh;
+      end;
+  end;
+  // Tastenkürzel-Tipps (#600): Beobachtung an oder aus nach shortcutTips.enabled (ApplySettings); zählt auch
+  // für „Atlas entdecken“ (#757), solange die Karte und die Zählung an sind.
+  if Full and (ShortcutTips = nil) and (CommandUsage <> nil) then
+  begin
+    ShortcutTips := TAtlasIdeShortcutTips.Create(CommandUsage);
+    ShortcutTips.CountAlways := Settings.WelcomePage and Settings.WelcomePageDiscover and
+      Settings.TipsUsageTracking;
+  end;
   if Basic and (Palette = nil) then
   begin
     RegisterPalette;
@@ -1038,6 +1060,23 @@ begin
       end);
     // Zustandskachel „Atlas“ (#754): dieselben Zeilen wie das Statusfeld (#591).
     Welcome.State := CreateWelcomeState;
+    // Karte „Atlas entdecken“ (#757): Befehle und Tasten aus der Palette, „Ausprobieren“ führt sie aus.
+    Welcome.Discover := TAtlasIdeDiscover.Create(
+      function: TArray<TAtlasCommand>
+      begin
+        Result := nil;
+        if Palette <> nil then
+          Result := Palette.AtlasCommands;
+      end,
+      procedure(AId: string)
+      begin
+        if Palette <> nil then
+          Palette.Execute(AId);
+      end,
+      procedure(AText: string)
+      begin
+        GuardWarning(AText);
+      end);
   end;
   if Welcome <> nil then
     Welcome.Sync;
@@ -1195,9 +1234,16 @@ begin
       // diagnosticMode.enabled (#479).
       if DiagnosticMode <> nil then
         DiagnosticMode.ApplySettings;
-      // shortcutTips.* und neu belegte Tasten (#600).
+      // tips.usageTracking (#757).
+      if CommandUsage <> nil then
+        CommandUsage.ApplySettings;
+      // shortcutTips.* und neu belegte Tasten (#600); Zählung für „Atlas entdecken“ (#757).
       if ShortcutTips <> nil then
+      begin
+        ShortcutTips.CountAlways := TAtlasIdeSettings.Current.WelcomePage and
+          TAtlasIdeSettings.Current.WelcomePageDiscover and TAtlasIdeSettings.Current.TipsUsageTracking;
         ShortcutTips.ApplySettings;
+      end;
       TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
       // Index-Optionen schreibt der Optionsdialog nach settings.json; der Server beobachtet die Datei (#652).
       // Statusfeld an, aus, Kurztext oder ausgeblendete Zeilen geändert (#591).
@@ -1278,6 +1324,8 @@ begin
   FreeAndNil(DirtyExport);
   // Vor dem Statusfeld: Die Willkommensseite beobachtet dessen Registry.
   FreeAndNil(Welcome);
+  // Nach den Tastenkürzel-Tipps und der Willkommensseite, die sie nutzen; speichert die Zählung (#757).
+  FreeAndNil(CommandUsage);
   TAtlasWelcomeViews.Release;
   TAtlasWelcomeSections.ReleaseDefault;
   UnregisterStatusField;

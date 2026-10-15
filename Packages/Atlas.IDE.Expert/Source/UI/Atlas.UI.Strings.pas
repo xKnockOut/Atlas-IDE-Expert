@@ -218,7 +218,13 @@ type
     KeyMapNobody, KeyMapExportFailed, SettingsKeyOverview, SettingsKeyStartupCheck,
     SettingsShortcutTips, SettingsShortcutTipsScope, SettingsShortcutTipsAtlas, SettingsShortcutTipsAll,
     ShortcutTipLabel, ShortcutTipCommand, ShortcutTipNever, ShortcutTipAllKeys, ShortcutTipSpoken,
-    AccessShortcutTip, KeyMapColumnRarely, KeyMapRarely);
+    AccessShortcutTip, KeyMapColumnRarely, KeyMapRarely,
+    SettingsWelcomeDiscover, SettingsTipsUsageTracking, SettingsResetUsage, SettingsUnblockTips,
+    WelcomeDiscoverTitle, WelcomeDiscoverEmpty, WelcomeDiscoverTry, WelcomeDiscoverNext, WelcomeDiscoverBlock,
+    WelcomeDiscoverNever, WelcomeDiscoverToday, WelcomeDiscoverYesterday, WelcomeDiscoverDays,
+    WelcomeDiscoverWeek, WelcomeDiscoverWeeks, WelcomeDiscoverMonth, WelcomeDiscoverMonths, WelcomeDiscoverYear,
+    WelcomeDiscoverYears, WelcomeDiscoverPosition, WelcomeDiscoverNoCommand, WelcomeDiscoverNoSample,
+    WelcomeDiscoverPressKey);
 
   TAtlasStrings = class
   private class var
@@ -708,7 +714,15 @@ const
      'Beim Start die Atlas-Tasten prüfen und Konflikte in der Meldungsansicht melden',
      'Tastenkürzel-Tipps zeigen (nach Aufruf per Maus)', 'Tipps für:', 'Nur Atlas-Befehle', 'Atlas und IDE',
      'Tipp:', 'für „%s“', 'Nicht mehr zeigen', 'Alle Kürzel', 'Tipp: %s für %s', 'Tastenkürzel-Tipp',
-     'Selten per Tastatur', '%d× Maus, %d× Tastatur'),
+     'Selten per Tastatur', '%d× Maus, %d× Tastatur',
+     'Karte „Atlas entdecken“ (ein Tipp je Start)', 'Nutzung je Befehl lokal zählen (für die Auswahl der Tipps)',
+     'Zählung zurücksetzen', 'Gesperrte Tipps wieder zeigen', 'Atlas entdecken', 'Keine Tipps vorhanden.',
+     'Ausprobieren', 'Nächster Tipp', 'Nicht mehr zeigen', 'Noch nie benutzt', 'Zuletzt heute benutzt',
+     'Zuletzt gestern benutzt', 'Zuletzt vor %d Tagen', 'Zuletzt vor 1 Woche', 'Zuletzt vor %d Wochen',
+     'Zuletzt vor 1 Monat', 'Zuletzt vor %d Monaten', 'Zuletzt vor 1 Jahr', 'Zuletzt vor %d Jahren',
+     'Tipp %d von %d', 'Atlas entdecken: Der Befehl %s ist gerade nicht verfügbar.',
+     'Atlas entdecken: Die Beispieldatei %s fehlt in der Installation.',
+     'Atlas entdecken: Beispiel geöffnet – jetzt %s drücken.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1167,7 +1181,15 @@ const
      'Check the Atlas keys at startup and report conflicts in the Messages view',
      'Show keyboard shortcut tips (after using the mouse)', 'Tips for:', 'Atlas commands only', 'Atlas and IDE',
      'Tip:', 'for “%s”', 'Don''t show again', 'All shortcuts', 'Tip: %s for %s', 'Keyboard shortcut tip',
-     'Rarely by keyboard', '%d× mouse, %d× keyboard'));
+     'Rarely by keyboard', '%d× mouse, %d× keyboard',
+     'Card "Discover Atlas" (one tip per start)', 'Count command usage locally (to choose tips)',
+     'Reset usage count', 'Show blocked tips again', 'Discover Atlas', 'No tips available.', 'Try it',
+     'Next tip', 'Don''t show again', 'Never used', 'Last used today', 'Last used yesterday',
+     'Last used %d days ago', 'Last used 1 week ago', 'Last used %d weeks ago', 'Last used 1 month ago',
+     'Last used %d months ago', 'Last used 1 year ago', 'Last used %d years ago', 'Tip %d of %d',
+     'Discover Atlas: the command %s is not available right now.',
+     'Discover Atlas: the sample file %s is missing from the installation.',
+     'Discover Atlas: sample opened – now press %s.'));
 
 { TAtlasStrings }
 

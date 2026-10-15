@@ -326,6 +326,7 @@ begin
   Result.Files.Add(Source + '\Win32\Atlas.IDE.Expert370.bpl');
   Result.Files.Add(Source + '\Beispiele\Suchfeld.pas');
   Result.Files.Add(Source + '\Beispiele\Karte.pas');
+  Result.Files.Add(Source + '\Tipps\code-aktionen.png');
 end;
 
 function Find(const AIdes: TArray<TSetupIde>; const AId: string): TSetupIde;
@@ -458,6 +459,9 @@ begin
     Assert.IsTrue(Sys.FileExists(Target + '\whatsnew.json'));
     Assert.IsTrue(Sys.FileExists(Target + '\Beispiele\Suchfeld.pas'));
     Assert.IsTrue(Sys.FileExists(Target + '\Beispiele\Karte.pas'));
+    // Karte „Atlas entdecken“ (#757): tips.json und die Bilder im Ordner Tipps.
+    Assert.IsTrue(Sys.FileExists(Target + '\tips.json'));
+    Assert.IsTrue(Sys.FileExists(Target + '\Tipps\code-aktionen.png'));
     Assert.AreEqual(TSetupIdes.PackageDescription, Sys.ReadString('Software\Embarcadero\BDS\23.0\Known Packages',
       Target + '\Win32\Atlas.IDE.Expert290.bpl'));
     Assert.AreEqual(TSetupIdes.PackageDescription, Sys.ReadString(
@@ -500,6 +504,7 @@ begin
   Sys.WriteString('Software\Atlas\IdePlugin', 'WhatsNewSeen', '1.0.0');
   // Beispiel der alten Version, das es nicht mehr gibt.
   Sys.Files.Add(Target + '\Beispiele\Alt.pas');
+  Sys.Files.Add(Target + '\Tipps\alt.png');
   Installer := TSetupInstaller.Create(Keep, Paths, '1.1.0');
   try
     Assert.IsTrue(Installer.Install([Find(Installer.Detect, '23.0-Win32')]));
@@ -511,6 +516,8 @@ begin
     Assert.AreEqual('1.0.0', Sys.ReadString('Software\Atlas\IdePlugin', 'WhatsNewSeen'));
     Assert.IsFalse(Sys.FileExists(Target + '\Beispiele\Alt.pas'), 'Beispiele gelten je Version');
     Assert.IsTrue(Sys.FileExists(Target + '\Beispiele\Karte.pas'));
+    Assert.IsFalse(Sys.FileExists(Target + '\Tipps\alt.png'), 'Bilder der Tipps gelten je Version (#757)');
+    Assert.IsTrue(Sys.FileExists(Target + '\Tipps\code-aktionen.png'));
     // Zweiter Lauf (Aktualisierung): weiterhin genau eine Registrierung.
     Assert.IsTrue(Installer.Install([Find(Installer.Detect, '23.0-Win32')]));
     Assert.AreEqual(2, Integer(Length(Sys.ValueNames(Key))));

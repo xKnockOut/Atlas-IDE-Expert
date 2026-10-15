@@ -300,6 +300,11 @@ type
     /// <summary>Zustandskachel nur zeigen, wenn eine Zeile gelb oder rot ist (#754,
     /// welcomePage.statusTile.onlyProblems).</summary>
     WelcomePageStatusTileOnlyProblems: Boolean;
+    /// <summary>Karte „Atlas entdecken“ (#757, welcomePage.discover).</summary>
+    WelcomePageDiscover: Boolean;
+    /// <summary>Nutzung je Befehl lokal zählen (#757, tips.usageTracking; %LOCALAPPDATA%\Atlas\usage.json); aus =
+    /// Tipps der Reihe nach ohne Bezug zur Nutzung, auch für die Tastenkürzel-Tipps (#600).</summary>
+    TipsUsageTracking: Boolean;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -447,6 +452,8 @@ begin
   Result.WelcomePageUnsavedHideWhenClean := False;
   Result.WelcomePageStatusTile := True;
   Result.WelcomePageStatusTileOnlyProblems := False;
+  Result.WelcomePageDiscover := True;
+  Result.TipsUsageTracking := True;
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -647,6 +654,8 @@ begin
   WelcomePageStatusTile := AStore.ReadInteger('WelcomePageStatusTile', BoolValue(Default.WelcomePageStatusTile)) <> 0;
   WelcomePageStatusTileOnlyProblems := AStore.ReadInteger('WelcomePageStatusTileOnlyProblems',
     BoolValue(Default.WelcomePageStatusTileOnlyProblems)) <> 0;
+  WelcomePageDiscover := AStore.ReadInteger('WelcomePageDiscover', BoolValue(Default.WelcomePageDiscover)) <> 0;
+  TipsUsageTracking := AStore.ReadInteger('TipsUsageTracking', BoolValue(Default.TipsUsageTracking)) <> 0;
   Normalize;
 end;
 
@@ -763,6 +772,8 @@ begin
   AStore.WriteInteger('WelcomePageUnsavedHideWhenClean', BoolValue(WelcomePageUnsavedHideWhenClean));
   AStore.WriteInteger('WelcomePageStatusTile', BoolValue(WelcomePageStatusTile));
   AStore.WriteInteger('WelcomePageStatusTileOnlyProblems', BoolValue(WelcomePageStatusTileOnlyProblems));
+  AStore.WriteInteger('WelcomePageDiscover', BoolValue(WelcomePageDiscover));
+  AStore.WriteInteger('TipsUsageTracking', BoolValue(TipsUsageTracking));
 end;
 
 end.

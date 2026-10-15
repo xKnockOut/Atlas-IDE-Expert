@@ -1,0 +1,124 @@
+{
+  "format": 1,
+  "tips": [
+    {
+      "id": "codeActions",
+      "command": "Atlas.CodeActions",
+      "title": "Code-Aktionen",
+      "titleEn": "Code actions",
+      "text": "Zeigt, was Atlas an der Cursorstelle kann: unbekannte Namen deklarieren, uses ergänzen, Methoden vervollständigen. Die gewählte Aktion ändert den Quelltext sofort.",
+      "textEn": "Shows what Atlas can do at the cursor: declare unknown names, add uses entries, complete methods. The chosen action changes the code right away.",
+      "image": "Tipps\\code-aktionen.png",
+      "sample": "Beispiele\\Entdecken.pas",
+      "line": 57,
+      "column": 27
+    },
+    {
+      "id": "expandSelection",
+      "command": "Atlas.ExpandSelection",
+      "usage": [
+        "Atlas.ExpandSelection",
+        "Atlas.ShrinkSelection"
+      ],
+      "title": "Auswahl erweitern",
+      "titleEn": "Expand selection",
+      "text": "Erweitert die Auswahl Schritt für Schritt: Name, Ausdruck, Anweisung, Block, Routine. Verkleinern geht denselben Weg zurück.",
+      "textEn": "Grows the selection step by step: name, expression, statement, block, routine. Shrink goes back the same way.",
+      "image": "Tipps\\auswahl-erweitern.png",
+      "sample": "Beispiele\\Entdecken.pas",
+      "line": 56,
+      "column": 32
+    },
+    {
+      "id": "rename",
+      "command": "Atlas.Rename",
+      "title": "Umbenennen im ganzen Projekt",
+      "titleEn": "Rename across the project",
+      "text": "Benennt ein Symbol in allen Units und Formularen um und zeigt vorher jede betroffene Zeile.",
+      "textEn": "Renames a symbol in all units and forms and shows every affected line first.",
+      "image": "Tipps\\umbenennen.png",
+      "sample": "Beispiele\\Entdecken.pas",
+      "line": 21,
+      "column": 3
+    },
+    {
+      "id": "references",
+      "command": "Atlas.References",
+      "title": "Referenzen finden",
+      "titleEn": "Find references",
+      "text": "Listet alle Stellen, die ein Symbol verwenden, nach Unit gruppiert im Ergebnisfenster – auch in Formulardateien.",
+      "textEn": "Lists every place that uses a symbol, grouped by unit in the results window – form files included.",
+      "image": "Tipps\\referenzen.png",
+      "sample": "Beispiele\\Entdecken.pas",
+      "line": 26,
+      "column": 14
+    },
+    {
+      "id": "implementations",
+      "command": "Atlas.Implementations",
+      "title": "Gehe zu Implementierung",
+      "titleEn": "Go to implementation",
+      "text": "Springt von einer Interface-Methode oder virtuellen Methode zu allen Klassen, die sie umsetzen.",
+      "textEn": "Jumps from an interface method or virtual method to every class that implements it.",
+      "image": "Tipps\\implementierungen.png",
+      "sample": "Beispiele\\Entdecken.pas",
+      "line": 18,
+      "column": 14
+    },
+    {
+      "id": "callers",
+      "command": "Atlas.Callers",
+      "title": "Wer ruft das auf?",
+      "titleEn": "Who calls this?",
+      "text": "Zeigt die aufrufenden Routinen als Baum; jede Ebene lässt sich weiter aufklappen.",
+      "textEn": "Shows the calling routines as a tree; every level can be expanded further.",
+      "image": "Tipps\\aufrufer.png",
+      "sample": "Beispiele\\Entdecken.pas",
+      "line": 50,
+      "column": 10
+    },
+    {
+      "id": "symbolSearch",
+      "command": "Atlas.SymbolSearch",
+      "title": "Symbolsuche",
+      "titleEn": "Symbol search",
+      "text": "Findet Klassen, Routinen und Konstanten im ganzen Projekt, schon während der Eingabe.",
+      "textEn": "Finds classes, routines and constants across the project while you type.",
+      "image": "Tipps\\symbolsuche.png"
+    },
+    {
+      "id": "undoChange",
+      "command": "Atlas.UndoChange",
+      "usage": [
+        "Atlas.UndoChange",
+        "Atlas.RedoChange",
+        "Atlas.ChangeList"
+      ],
+      "setting": "UndoMultiFile",
+      "title": "Änderungen über mehrere Dateien zurücknehmen",
+      "titleEn": "Undo changes across files",
+      "text": "Nimmt eine Atlas-Änderung wie Umbenennen in allen betroffenen Dateien auf einmal zurück.",
+      "textEn": "Undoes an Atlas change such as a rename in all affected files at once.",
+      "image": "Tipps\\zuruecknehmen.png"
+    },
+    {
+      "id": "quickToggles",
+      "command": "Atlas.QuickToggles",
+      "title": "Schnellschalter",
+      "titleEn": "Quick toggles",
+      "text": "Schaltet Atlas-Funktionen mit einem Tastendruck aus und wieder ein, für diese Sitzung, global oder nur im Projekt.",
+      "textEn": "Turns Atlas features off and on with one keystroke, for this session, globally or just for the project.",
+      "image": "Tipps\\schnellschalter.png"
+    },
+    {
+      "id": "keyOverview",
+      "command": "Atlas.KeyOverview",
+      "setting": "KeyOverview",
+      "title": "Tastenkürzel-Übersicht",
+      "titleEn": "Keyboard shortcut overview",
+      "text": "Zeigt alle Tastenkürzel der IDE und von Atlas mit Konflikten und wie oft Sie sie per Tastatur nutzen.",
+      "textEn": "Shows every IDE and Atlas shortcut with conflicts and how often you use it from the keyboard.",
+      "image": "Tipps\\tastenkuerzel.png"
+    }
+  ]
+}
