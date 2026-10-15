@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Logging.Providers.RotatingFileStream.Tests;
+﻿unit Atlas.Common.Logging.RotatingFileStream.Tests;
 
 interface
 
@@ -38,7 +38,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.IOUtils,
-  Atlas.Common.Logging.Providers.RotatingFileStream;
+  Atlas.Common.Logging.RotatingFileStream;
 
 procedure WriteText(AStream: TStream; const AText: string);
 var

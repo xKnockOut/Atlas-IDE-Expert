@@ -416,6 +416,7 @@ implementation
 
 uses
   Atlas.Common.Lsp.Internals.Namespaces,
+  Atlas.Common.Index.Files,
   System.Math,
   System.StrUtils,
   System.Diagnostics,

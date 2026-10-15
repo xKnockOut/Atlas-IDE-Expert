@@ -283,6 +283,7 @@
         <DCCReference Include="Source\IDE\Setup\Atlas.IDE.Setup.Checklist.pas"/>
         <DCCReference Include="Source\Core\Undo\Atlas.Core.Undo.LinePatch.pas"/>
         <DCCReference Include="Source\Core\Undo\Atlas.Core.Undo.Contract.pas"/>
+        <DCCReference Include="Source\Core\Undo\Atlas.Core.Undo.Names.pas"/>
         <DCCReference Include="Source\Core\Undo\Atlas.Core.Undo.Journal.pas"/>
         <DCCReference Include="Source\Core\Undo\Atlas.Core.Undo.Adapters.FileStore.pas"/>
         <DCCReference Include="Source\Core\Undo\Atlas.Core.Undo.Adapters.DiskTarget.pas"/>
@@ -301,6 +302,7 @@
         <DCCReference Include="Source\IDE\Files\Atlas.IDE.Files.EditInbox.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.TextDiff.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.WatchedChanges.pas"/>
+        <DCCReference Include="Source\Core\Files\Atlas.Core.Files.Contract.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.TextFile.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.EncodingDefault.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Context.pas"/>

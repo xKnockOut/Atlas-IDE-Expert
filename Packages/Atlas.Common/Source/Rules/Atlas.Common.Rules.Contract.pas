@@ -12,8 +12,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Semantics.NameResolver;
+  // Genehmigte Ausnahme der Rollenmatrix (Architektur.md, "Genehmigte Ausnahmen"): der Syntaxbaum ist
+  // Datengrundlage jeder Regel und hängt selbst nur an Contracts.
+  Atlas.Common.Pascal.SyntaxTree;
 
 type
   /// <summary>Feste Angaben einer Regel.</summary>
