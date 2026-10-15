@@ -103,6 +103,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
   Winapi.Windows,
   Winapi.ShellAPI,
   System.Classes,
@@ -299,7 +300,7 @@ begin
     begin
       // Keep hält die Quelle bis zum Aufruf am Leben.
       Keep := Self;
-      TThread.ForceQueue(nil,
+      TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
         procedure
         begin
           if Keep <> nil then

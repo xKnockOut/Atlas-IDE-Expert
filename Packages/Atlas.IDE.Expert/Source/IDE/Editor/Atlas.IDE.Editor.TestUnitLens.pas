@@ -77,6 +77,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
   Winapi.Windows,
   System.Math,
   System.JSON,
@@ -378,7 +379,7 @@ begin
     (View.TopRow <> FLensTopRow) then
     Exit;
   // Erst nach dem Mausereignis: der Editor setzt sonst den Cursor nach dem Wechsel.
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
     procedure
     begin
       TAtlasGuard.Run(TAtlasFeature.EditorCommands,

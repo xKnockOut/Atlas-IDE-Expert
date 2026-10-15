@@ -85,6 +85,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
   System.IOUtils,
   System.JSON,
   Vcl.Clipbrd,
@@ -181,7 +182,7 @@ begin
     FTimer.Enabled := True;
     AddStatusLine;
     // Nicht mitten im Laden des Packages bzw. im Optionsdialog andocken: erst in der nächsten Runde.
-    TThread.ForceQueue(nil,
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
       procedure
       begin
         if (FInstance <> nil) and FInstance.FActive then

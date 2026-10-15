@@ -54,6 +54,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
   System.Rtti,
   System.TypInfo,
@@ -164,7 +166,7 @@ begin
   if FPending then
     Exit;
   FPending := True;
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Build,
     procedure
     var
       Messages: TArray<TAtlasCompilerMessage>;

@@ -99,6 +99,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
   System.Math,
   Vcl.Graphics,
   Atlas.Core.Diagnostics.Guard,
@@ -406,7 +407,7 @@ begin
   begin
     FMirrorQueued := True;
     // Nicht im Benachrichtigungsaufruf selbst schreiben, sondern gleich danach.
-    TThread.ForceQueue(nil,
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Completion,
       procedure
       begin
         try

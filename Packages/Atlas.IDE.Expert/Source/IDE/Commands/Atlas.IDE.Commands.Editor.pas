@@ -90,6 +90,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
   System.Types,
   System.JSON,
   Vcl.Forms,
@@ -856,7 +857,7 @@ begin
   FLastSlash := Key;
   // Erst nach der Änderung, wenn die IDE den Cursor gesetzt hat; nie im Notifier.
   View := AView;
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
     procedure
     begin
       TAtlasGuard.Run(TAtlasFeature.EditorCommands,

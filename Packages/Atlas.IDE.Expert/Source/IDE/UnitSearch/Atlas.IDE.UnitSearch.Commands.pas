@@ -54,6 +54,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
   Winapi.Windows,
   Winapi.ShellAPI,
   System.Types,
@@ -556,7 +557,7 @@ begin
   Area := Screen.MonitorFromWindow(GetForegroundWindow).WorkareaRect;
   Search.Window.ShowOver(Area);
   // Erst nach dem Zeichnen laden: das Fenster zeigt so lange „Units werden geladen …“.
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
     procedure
     var
       Answer: TJSONValue;
