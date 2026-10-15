@@ -334,6 +334,16 @@ begin
   Result.Kind := TResolvedKind.None;
 end;
 
+/// <summary>Knoten mit Parametern und Ergebnistyp einer Routine: der Kopf einer benannten Routine,
+/// bei einer anonymen Methode der Knoten selbst; nil ohne Kopf.</summary>
+function RoutineHeaderOf(ARoutine: TSyntaxNode): TSyntaxNode;
+begin
+  if ARoutine.Kind = TSyntaxKind.AnonymousMethod then
+    Result := ARoutine
+  else
+    Result := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+end;
+
 function Contains(ANode: TSyntaxNode; AOffset: Integer): Boolean;
 begin
   Result := (ANode.StartOffset <= AOffset) and (AOffset <= ANode.EndOffset);
@@ -1223,7 +1233,8 @@ var
   Index: Integer;
   Descended: Boolean;
 begin
-  // Innerste Routine zuerst.
+  // Innerste Routine zuerst; anonyme Methoden zählen mit, ihre Parameter und lokalen Variablen
+  // verdecken gleichnamige Felder wie die einer benannten Routine.
   Path := TList<TSyntaxNode>.Create;
   try
     Node := FTree.Root;
@@ -1233,7 +1244,7 @@ begin
         if Contains(Node[Index], FOffset) then
         begin
           Node := Node[Index];
-          if Node.Kind = TSyntaxKind.RoutineDecl then
+          if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
             Path.Insert(0, Node);
           Descended := True;
           Break;
@@ -1349,7 +1360,7 @@ begin
   begin
     if LookupInlineVars(Routine, AName, AResult) then
       Exit(True);
-    Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
+    Header := RoutineHeaderOf(Routine);
     if Header <> nil then
     begin
       Params := Header.FindChild(TSyntaxKind.Parameters);
@@ -2199,7 +2210,8 @@ begin
       // Lokale Namen vor den Parametern (#488): Stufe 1 vor Stufe 2.
       CollectInlineVars(Routine, List, FScopeSeen);
       CollectDeclarations(Routine, List, FScopeSeen);
-      Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
+      Header := RoutineHeaderOf(Routine);
+
       if Header <> nil then
       begin
         Params := Header.FindChild(TSyntaxKind.Parameters);
