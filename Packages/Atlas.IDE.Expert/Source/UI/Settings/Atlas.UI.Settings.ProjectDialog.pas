@@ -132,6 +132,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Settings.JsonText,
   Atlas.UI.Strings;
@@ -843,7 +845,7 @@ begin
   if Index = FRuleIndex then
     FRulesJson := '';
   // Nicht im Klick des Knopfs neu aufbauen: ShowPage gibt ihn frei.
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
     procedure
     begin
       if FPageList.ItemIndex >= 0 then

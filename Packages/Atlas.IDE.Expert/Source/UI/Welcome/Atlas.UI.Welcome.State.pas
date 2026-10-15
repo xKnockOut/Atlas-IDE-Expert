@@ -96,6 +96,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Diagnostics.Guard,
   System.Math,
   Vcl.Themes,
   Atlas.Core.Product.Version,
@@ -370,7 +372,7 @@ begin
   Source := FSource;
   Id := FRows[ARow].Id;
   // Die Aktion öffnet Fenster oder ändert den Zustand: nicht im eigenen Mausereignis.
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
       Source.RunRow(Id);
@@ -384,7 +386,7 @@ begin
   if FSource = nil then
     Exit;
   Source := FSource;
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
       Source.Run(AButton);

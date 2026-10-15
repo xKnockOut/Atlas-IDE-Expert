@@ -111,6 +111,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Diagnostics.Guard,
   System.DateUtils,
   Vcl.Themes,
   Atlas.UI.Strings;
@@ -431,7 +433,7 @@ begin
   if Jump then
     Target := FPills[AHit.Row][AHit.Pill].Target;
   // Die Quelle füllt den Bereich danach neu: nicht im eigenen Mausereignis.
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
       if Jump then
@@ -486,7 +488,7 @@ begin
     Exit;
   Source := FSource;
   Project := FEntries[FMenuRow].Project;
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
       Source.OpenFolder(Project);
@@ -502,7 +504,7 @@ begin
     Exit;
   Source := FSource;
   Project := FEntries[FMenuRow].Project;
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
       Source.Remove(Project);
