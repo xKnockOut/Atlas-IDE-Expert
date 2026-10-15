@@ -6,6 +6,9 @@
 // Akzentfarbe auf einer abgerundeten Akzentfläche; Standardwerte von Parametern
 // (" = 1", #441) gedämpft. Messen und Zeichnen gehen
 // über dieselben Stücke, damit Umbruch und Zeichnung übereinstimmen.
+// P-09: Stücke ohne Array-Verkettung und ohne Sortieren je Token; der Umbruch
+// misst den Text einmal (Präfixsummen) und rechnet dann nur noch Differenzen
+// (TAtlasWrap).
 
 interface
 
@@ -45,6 +48,8 @@ type
     /// <summary>Zeichnet Text[AFrom..ATill) ab AX in der Zeile ARow; AX steht danach hinter dem Text.</summary>
     procedure Draw(ACanvas: TCanvas; const AColors: TAtlasColors; AFrom, ATill: Integer; var AX: Integer;
       const ARow: TRect; ADimmed: Boolean; ARadius: Integer);
+    /// <summary>Breiten aller Präfixe: Ergebnis[i] = Breite von Text[0..i), Länge Length(Text) + 1.</summary>
+    function PrefixWidths(ACanvas: TCanvas): TArray<Integer>;
     /// <summary>Zeilen (Bereiche) bei Umbruch an Leerzeichen; Folgezeilen um AIndent schmaler.</summary>
     function WrapAtSpaces(ACanvas: TCanvas; AWidth, AIndent: Integer): TArray<TPoint>;
   end;
@@ -54,7 +59,7 @@ implementation
 uses
   Winapi.Windows,
   System.Math,
-  System.Generics.Collections;
+  Atlas.Core.Style.Wrap;
 
 { TAtlasStyledText }
 
@@ -72,40 +77,60 @@ function TAtlasStyledText.Pieces(AFrom, ATill: Integer): TArray<TPiece>;
 var
   Token: TAtlasToken;
   Cuts: TArray<Integer>;
+  CutCount, Count: Integer;
   Piece: TPiece;
-  Index, From, Till: Integer;
+  Index, From, Till, Value, Position: Integer;
   Range: TPoint;
-  Sorted: TArray<Integer>;
+
+  procedure AddCut(AValue: Integer);
+  begin
+    Cuts[CutCount] := AValue;
+    Inc(CutCount);
+  end;
+
 begin
   Result := nil;
+  Count := 0;
+  // Höchstens Anfang, Ende, zwei aktive Grenzen und zwei je gedämpftem Bereich.
+  Cuts := nil;
+  SetLength(Cuts, 4 + 2 * Length(MutedRanges));
   for Token in Tokens do
   begin
     From := Max(AFrom, Token.Start);
     Till := Min(ATill, Token.Stop);
     if Till <= From then
       Continue;
-    // Innerhalb des Tokens an den Grenzen des aktiven Bereichs schneiden.
-    Cuts := [From];
-    for Index in [ActiveStart, ActiveStop] do
-      if (Index > From) and (Index < Till) then
-        Cuts := Cuts + [Index];
+    // Innerhalb des Tokens an den Grenzen des aktiven und der gedämpften Bereiche schneiden.
+    CutCount := 0;
+    AddCut(From);
+    if (ActiveStart > From) and (ActiveStart < Till) then
+      AddCut(ActiveStart);
+    if (ActiveStop > From) and (ActiveStop < Till) then
+      AddCut(ActiveStop);
     for Range in MutedRanges do
     begin
       if (Range.X > From) and (Range.X < Till) then
-        Cuts := Cuts + [Range.X];
+        AddCut(Range.X);
       if (Range.Y > From) and (Range.Y < Till) then
-        Cuts := Cuts + [Range.Y];
+        AddCut(Range.Y);
     end;
-    Cuts := Cuts + [Till];
-    // Aufsteigend und ohne Doppelte.
-    TArray.Sort<Integer>(Cuts);
-    Sorted := nil;
-    for Index in Cuts do
-      if (Length(Sorted) = 0) or (Sorted[High(Sorted)] <> Index) then
-        Sorted := Sorted + [Index];
-    Cuts := Sorted;
-    for Index := 0 to High(Cuts) - 1 do
+    AddCut(Till);
+    // Aufsteigend und ohne Doppelte: Einfügesortierung, die Liste ist winzig.
+    for Index := 1 to CutCount - 1 do
     begin
+      Value := Cuts[Index];
+      Position := Index - 1;
+      while (Position >= 0) and (Cuts[Position] > Value) do
+      begin
+        Cuts[Position + 1] := Cuts[Position];
+        Dec(Position);
+      end;
+      Cuts[Position + 1] := Value;
+    end;
+    for Index := 0 to CutCount - 2 do
+    begin
+      if Cuts[Index + 1] = Cuts[Index] then
+        Continue;
       Piece.Start := Cuts[Index];
       Piece.Stop := Cuts[Index + 1];
       Piece.Kind := Token.Kind;
@@ -114,9 +139,13 @@ begin
       for Range in MutedRanges do
         if (Piece.Start >= Range.X) and (Piece.Stop <= Range.Y) then
           Piece.Muted := True;
-      Result := Result + [Piece];
+      if Count = Length(Result) then
+        SetLength(Result, 2 * Count + 8);
+      Result[Count] := Piece;
+      Inc(Count);
     end;
   end;
+  SetLength(Result, Count);
 end;
 
 procedure TAtlasStyledText.ApplyFont(ACanvas: TCanvas; const APiece: TPiece; ADimmed: Boolean);
@@ -215,36 +244,45 @@ begin
   ACanvas.Brush.Style := bsSolid;
 end;
 
-function TAtlasStyledText.WrapAtSpaces(ACanvas: TCanvas; AWidth, AIndent: Integer): TArray<TPoint>;
+function TAtlasStyledText.PrefixWidths(ACanvas: TCanvas): TArray<Integer>;
 var
-  Index, LineStart, Last, Limit: Integer;
-  Breaks: TArray<Integer>;
-  Candidate: Integer;
+  Piece: TPiece;
+  Partial: TArray<Integer>;
+  PieceText: string;
+  Index, Base, Fit, Done: Integer;
+  Size: TSize;
+begin
+  Result := nil;
+  SetLength(Result, Length(Text) + 1);
+  Result[0] := 0;
+  Done := 0;
+  for Piece in Pieces(0, Length(Text)) do
+  begin
+    // Lücke ohne Token (kommt bei TAtlasSyntax nicht vor): Breite 0 wie bisher in Width.
+    for Index := Done + 1 to Piece.Start do
+      Result[Index] := Result[Done];
+    Done := Piece.Stop;
+    ApplyFont(ACanvas, Piece, False);
+    PieceText := Copy(Text, Piece.Start + 1, Piece.Stop - Piece.Start);
+    // TextWidth wählt die Schrift mit dem Stil des Stücks in den DC; dann Teilbreiten je Zeichen.
+    Base := Result[Piece.Start];
+    Result[Piece.Stop] := Base + ACanvas.TextWidth(PieceText);
+    Partial := nil;
+    SetLength(Partial, Length(PieceText));
+    if (Length(PieceText) > 0) and GetTextExtentExPointW(ACanvas.Handle, PChar(PieceText), Length(PieceText),
+      MaxInt, @Fit, @Partial[0], Size) then
+      for Index := 0 to High(Partial) - 1 do
+        Result[Piece.Start + Index + 1] := Base + Partial[Index];
+  end;
+  for Index := Done + 1 to Length(Text) do
+    Result[Index] := Result[Done];
+  ACanvas.Font.Style := [];
+end;
+
+function TAtlasStyledText.WrapAtSpaces(ACanvas: TCanvas; AWidth, AIndent: Integer): TArray<TPoint>;
 begin
   // Umbruch hinter Leerzeichen; ein Wort, das allein nicht passt, steht allein (gekürzt).
-  Breaks := nil;
-  for Index := 1 to Length(Text) - 1 do
-    if Text[Index] = ' ' then
-      Breaks := Breaks + [Index];
-  Breaks := Breaks + [Length(Text)];
-  Result := nil;
-  LineStart := 0;
-  Last := -1;
-  for Candidate in Breaks do
-  begin
-    if Length(Result) = 0 then
-      Limit := AWidth
-    else
-      Limit := AWidth - AIndent;
-    if (Last > LineStart) and (Width(ACanvas, LineStart, Candidate) > Limit) then
-    begin
-      Result := Result + [Point(LineStart, Last)];
-      LineStart := Last;
-    end;
-    Last := Candidate;
-  end;
-  if LineStart < Length(Text) then
-    Result := Result + [Point(LineStart, Length(Text))];
+  Result := TAtlasWrap.AtSpaces(Text, PrefixWidths(ACanvas), AWidth, AIndent);
 end;
 
 end.

@@ -92,6 +92,7 @@ uses
   Atlas.Core.Forms.Changes,
   Atlas.Core.Undo.Contract,
   Atlas.IDE.Editor.Buffer,
+  Atlas.IDE.Editor.Snapshot,
   Atlas.IDE.Forms.Designer,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Undo.Target;
@@ -281,6 +282,8 @@ begin
       Writer.Insert(PAnsiChar(UTF8Encode(Range.NewText)));
   end;
   Writer := nil;
+  // Eigener Schreibvorgang: Probleme und Inlay-Hints lesen den Puffer neu (P-04).
+  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
 
 class function TAtlasIdeWorkspaceEdit.Apply(const AEdit: TLspWorkspaceEdit; AOpenUnopened: Boolean;

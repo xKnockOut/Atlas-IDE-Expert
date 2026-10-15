@@ -247,6 +247,7 @@ uses
   Atlas.Core.Problems.Contract,
   Winapi.Windows,
   Atlas.IDE.Editor.Buffer,
+  Atlas.IDE.Editor.Snapshot,
   Atlas.Core.Completion.Word,
   Atlas.Core.Projects.Context,
   Atlas.IDE.Projects.Context,
@@ -304,6 +305,8 @@ begin
   Diagnose('Plugin geladen: ' + GetModuleName(HInstance));
   FFileChanges := TAtlasWatchedChanges.Create;
   FFolderWatcher := TAtlasFolderWatcher.Create(FFileChanges);
+  // Gemeinsamer Pufferstand für Probleme und Inlay-Hints (P-04).
+  TAtlasEditorSnapshots.Install;
   FProblems := TAtlasProblemsController.Create(
     function(AStart: Boolean): TLspSession
     begin
@@ -386,6 +389,8 @@ begin
   StopSession;
   // Nach StopSession: Die Threads sind dort schon angehalten.
   FreeAndNil(FProblems);
+  // Nach beiden Verbrauchern.
+  TAtlasEditorSnapshots.Uninstall;
   FQueryIdle.Free;
   FCommandIdle.Free;
   inherited;

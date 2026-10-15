@@ -141,9 +141,11 @@ uses
   System.Math,
   System.StrUtils,
   Atlas.Core.Style.Palette,
+  Atlas.Core.Problems.Colors,
   Atlas.Core.Documentation.Layout,
   Atlas.UI.Strings,
   Atlas.UI.Popup.Styled,
+  Atlas.UI.Popup.Draw,
   Atlas.UI.Popup.Accessibility;
 
 { TAtlasHoverView }
@@ -172,14 +174,6 @@ begin
   inherited Destroy;
 end;
 
-function DocLabels: TAtlasDocLabels;
-begin
-  Result.TypeParams := TAtlasStrings.Text(TAtlasTextId.DocTypeParams);
-  Result.Value := TAtlasStrings.Text(TAtlasTextId.DocValue);
-  Result.Example := TAtlasStrings.Text(TAtlasTextId.DocExample);
-  Result.SeeAlso := TAtlasStrings.Text(TAtlasTextId.DocSeeAlso);
-end;
-
 procedure TAtlasHoverTip.PrepareDoc(AWidth: Integer);
 var
   Doc: TAtlasDoc;
@@ -194,7 +188,7 @@ begin
     Exit;
   end;
   HandleNeeded;
-  FDoc.Build(Canvas, Doc, AWidth - Scale(22), Font, UIFont, PPI, FView.Display.Full, DocLabels);
+  FDoc.Build(Canvas, Doc, AWidth - Scale(22), Font, UIFont, PPI, FView.Display.Full, TAtlasStrings.DocLabels);
 end;
 
 function TAtlasHoverTip.FitHeight(AWidth, AAvailable: Integer): Integer;
@@ -336,18 +330,8 @@ var
 
   function SeverityColor(const AProblem: TAtlasProblem): TAtlasColor;
   begin
-    case AProblem.Severity of
-      TAtlasProblemSeverity.Error:
-        Result := Colors.Error;
-      TAtlasProblemSeverity.Warning:
-        Result := Colors.Warn;
-      TAtlasProblemSeverity.Information:
-        Result := Colors.Accent;
-    else
-      Result := Colors.Muted;
-    end;
-    if AProblem.Stale then
-      Result := TAtlasColorMath.Mix(Result, Colors.Surface, 0.5);
+    // Gleiche Farbe wie die Wellenlinie im Editor (D-07).
+    Result := ProblemColor(Colors, AProblem);
   end;
 
   procedure AddHit(AKind: THitKind; AIndex: Integer; const ARect: TRect);
@@ -470,26 +454,26 @@ var
       Canvas.Font.Style := [fsBold];
     TextWidth := Canvas.TextWidth(AText);
     Height := Canvas.TextHeight('Wg') + Scale(2);
-    if (X + TextWidth + Scale(12) > Right) and (X > Left) then
+    if (X + TextWidth + Scale(TAtlasDraw.ChipPad) > Right) and (X > Left) then
     begin
       X := Left;
       Inc(Y, RowHeight + Scale(4));
       RowHeight := 0;
     end;
-    Cell := Rect(X, Y, X + TextWidth + Scale(12), Y + Height);
+    Cell := Rect(X, Y, X + TextWidth + Scale(TAtlasDraw.ChipPad), Y + Height);
     if Drawing then
     begin
       Marked := ACurrent or IsHot(hkAncestor, AIndex);
       if Marked then
-        FrameRounded(Cell, Colors.Accent, 4, ToColor(Colors.Surface))
+        FrameRounded(Cell, Colors.Accent, TAtlasDraw.ChipRadius, ToColor(Colors.Surface))
       else
-        FrameRounded(Cell, Colors.Line, 4, ToColor(Colors.Surface));
+        FrameRounded(Cell, Colors.Line, TAtlasDraw.ChipRadius, ToColor(Colors.Surface));
       Canvas.Brush.Style := bsClear;
       if Marked then
         Canvas.Font.Color := ToColor(Colors.Accent)
       else
         Canvas.Font.Color := ToColor(Colors.Text);
-      Canvas.TextOut(Cell.Left + Scale(6), Cell.Top + Scale(1), AText);
+      Canvas.TextOut(Cell.Left + Scale(TAtlasDraw.ChipPad div 2), Cell.Top + Scale(1), AText);
     end;
     if not ACurrent then
       AddHit(hkAncestor, AIndex, Cell);

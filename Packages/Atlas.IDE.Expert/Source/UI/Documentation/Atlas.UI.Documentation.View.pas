@@ -84,6 +84,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Popup.Draw,
   System.SysUtils,
   System.Math,
   Atlas.UI.Popup.Window;
@@ -409,9 +410,8 @@ begin
     Track := FViewport;
     Thumb := Max(Scale(16), MulDiv(Track, FViewport, FLayout.Height));
     ThumbTop := ATop + MulDiv(Track - Thumb, FScroll, Max(1, FLayout.Height - FViewport));
-    ACanvas.Brush.Style := bsSolid;
-    ACanvas.Brush.Color := ToColor(TAtlasColorMath.Mix(AColors.Muted, AColors.Surface, 0.5));
-    ACanvas.FillRect(Rect(ALeft + FWidth + Scale(4), ThumbTop, ALeft + FWidth + Scale(7), ThumbTop + Thumb));
+    TAtlasDraw.Thumb(ACanvas, Rect(ALeft + FWidth + Scale(4), ThumbTop, ALeft + FWidth + Scale(7), ThumbTop + Thumb),
+      AColors, 0);
   end;
   ACanvas.Brush.Style := bsSolid;
 end;
