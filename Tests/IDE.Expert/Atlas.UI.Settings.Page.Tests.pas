@@ -74,6 +74,7 @@ uses
   System.JSON,
   Vcl.Forms,
   Vcl.ComCtrls,
+  Vcl.Menus,
   Atlas.UI.Strings;
 
 procedure TAtlasSettingsPageTests.WarmUp;
@@ -341,7 +342,8 @@ var
   Page: TAtlasSettingsPage;
   Settings, Saved: TAtlasPluginSettings;
 begin
-  // #753: Ein/Aus, Ort (Willkommensseite oder Fenster „Atlas-Start“), Atlas-Layout, Kopf und Grußzeile.
+  // #753: Ein/Aus, Ort (Willkommensseite oder Fenster „Atlas-Start“), Atlas-Layout, Kopf und Grußzeile;
+  // #760: Suchfeld, Gruppe „Symbole“ und Taste.
   Settings := TAtlasPluginSettings.Defaults;
   Page := TAtlasSettingsPage.Create(nil);
   try
@@ -351,11 +353,17 @@ begin
     Assert.IsFalse(Page.WelcomeLayout.Checked);
     Assert.IsTrue(Page.WelcomeHeader.Checked);
     Assert.IsTrue(Page.WelcomeGreeting.Checked);
+    Assert.IsTrue(Page.WelcomeSearch.Checked);
+    Assert.IsTrue(Page.WelcomeSearchSymbols.Checked);
+    Assert.AreEqual(ShortCutToText($4045), Page.WelcomeSearchKey.Text);
     Page.WelcomeEnabled.Checked := False;
     Page.WelcomeHost.Choice := 1;
     Page.WelcomeLayout.Checked := True;
     Page.WelcomeHeader.Checked := False;
     Page.WelcomeGreeting.Checked := False;
+    Page.WelcomeSearch.Checked := False;
+    Page.WelcomeSearchSymbols.Checked := False;
+    Page.WelcomeSearchKey.Text := ShortCutToText($6046);
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.WelcomePage);
@@ -363,6 +371,9 @@ begin
     Assert.AreEqual('atlas', Saved.WelcomePageLayout);
     Assert.IsFalse(Saved.WelcomePageHeader);
     Assert.IsFalse(Saved.WelcomePageGreeting);
+    Assert.IsFalse(Saved.WelcomePageSearch);
+    Assert.IsFalse(Saved.WelcomePageSearchSymbols);
+    Assert.AreEqual($6046, Saved.WelcomePageSearchKey);
     Page.LoadFrom(Saved);
     Assert.AreEqual(1, Page.WelcomeHost.Choice);
     Assert.IsTrue(Page.WelcomeLayout.Checked);

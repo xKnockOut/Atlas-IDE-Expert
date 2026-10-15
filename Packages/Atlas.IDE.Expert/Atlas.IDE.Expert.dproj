@@ -285,16 +285,20 @@
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Greeting.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Backup.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.HostLayout.pas"/>
+        <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.IndexFiles.pas"/>
+        <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Search.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Frame.pas">
             <Form>AtlasWelcomeFrame</Form>
             <FormType>dfm</FormType>
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
+        <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Search.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Header.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Board.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Page.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Registry.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Window.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Search.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Commands.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.Target.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.Target.pas"/>

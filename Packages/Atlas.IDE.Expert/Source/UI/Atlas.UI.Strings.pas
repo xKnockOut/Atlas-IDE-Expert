@@ -154,7 +154,10 @@ type
     MenuWelcomeStart, MenuWelcomeApply, MenuWelcomeReset, WelcomeApplied, WelcomeResetDone, WelcomeNoBackup,
     WelcomeBackupFailed, SettingsTabWelcome, SettingsWelcomeEnabled, SettingsWelcomeHost,
     SettingsWelcomeHostPage, SettingsWelcomeHostWindow, SettingsWelcomeLayout, SettingsWelcomeHeader,
-    SettingsWelcomeGreeting);
+    SettingsWelcomeGreeting,
+    WelcomeSearchHint, WelcomeSearchProjects, WelcomeSearchFiles, WelcomeSearchSymbols, WelcomeSearchCommands,
+    WelcomeSearchMore, WelcomeSearchNoServer, WelcomeSearchForm, SettingsWelcomeSearch,
+    SettingsWelcomeSearchSymbols, SettingsWelcomeSearchKey);
 
   TAtlasStrings = class
   private class var
@@ -545,7 +548,10 @@ const
      'Keine Sicherung des Layouts gefunden; die Atlas-Bereiche bleiben, wie sie sind.',
      'Das Layout konnte nicht gesichert werden: %s', 'Willkommensseite',
      'Atlas-Bereiche auf der Willkommensseite', 'Anzeigen in', 'Willkommensseite der IDE',
-     'Fenster „Atlas-Start“', 'Atlas-Layout verwenden', 'Kopf mit Symbol und Version', 'Grußzeile im Kopf'),
+     'Fenster „Atlas-Start“', 'Atlas-Layout verwenden', 'Kopf mit Symbol und Version', 'Grußzeile im Kopf',
+     'Projekte, Dateien, Symbole, Befehle suchen', 'Projekte', 'Dateien', 'Symbole', 'Befehle', '%d weitere',
+     'Symbole nach dem Öffnen eines Projekts', 'Formular', 'Suchfeld zeigen',
+     'Gruppe „Symbole“ im Suchfeld (braucht laufenden Server)', 'Suchfeld der Willkommensseite'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -912,7 +918,10 @@ const
      'The previous welcome page layout has been restored.',
      'No layout backup found; the Atlas sections stay as they are.', 'The layout could not be backed up: %s',
      'Welcome page', 'Atlas sections on the welcome page', 'Show in', 'IDE welcome page', '“Atlas Start” window',
-     'Use Atlas layout', 'Header with symbol and version', 'Greeting in the header'));
+     'Use Atlas layout', 'Header with symbol and version', 'Greeting in the header',
+     'Search projects, files, symbols, commands', 'Projects', 'Files', 'Symbols', 'Commands', '%d more',
+     'Symbols after opening a project', 'form', 'Show search field',
+     '“Symbols” group in the search field (needs a running server)', 'Welcome page search field'));
 
 { TAtlasStrings }
 

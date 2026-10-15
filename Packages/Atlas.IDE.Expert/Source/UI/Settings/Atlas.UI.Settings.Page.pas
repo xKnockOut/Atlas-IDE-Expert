@@ -165,6 +165,9 @@ type
     FWelcomeLayout: TCheckBox;
     FWelcomeHeader: TCheckBox;
     FWelcomeGreeting: TCheckBox;
+    FWelcomeSearch: TCheckBox;
+    FWelcomeSearchSymbols: TCheckBox;
+    FWelcomeSearchKey: TEdit;
     FVersion: TLabel;
     FResetHistory: TButton;
     FResetWidths: TButton;
@@ -259,6 +262,9 @@ type
     property WelcomeLayout: TCheckBox read FWelcomeLayout;
     property WelcomeHeader: TCheckBox read FWelcomeHeader;
     property WelcomeGreeting: TCheckBox read FWelcomeGreeting;
+    property WelcomeSearch: TCheckBox read FWelcomeSearch;
+    property WelcomeSearchSymbols: TCheckBox read FWelcomeSearchSymbols;
+    property WelcomeSearchKey: TEdit read FWelcomeSearchKey;
     property VersionLabel: TLabel read FVersion;
     /// <summary>Kennzahlen als Text; nil = nicht verfügbar.</summary>
     property OnIndexMetrics: TFunc<string> read FOnIndexMetrics write FOnIndexMetrics;
@@ -605,6 +611,9 @@ begin
   FWelcomeLayout := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeLayout));
   FWelcomeHeader := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHeader));
   FWelcomeGreeting := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeGreeting));
+  FWelcomeSearch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeSearch));
+  FWelcomeSearchSymbols := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeSearchSymbols));
+  FWelcomeSearchKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeSearchKey));
 end;
 
 procedure TAtlasSettingsPage.AddSheet(AId: TAtlasTextId);
@@ -1116,6 +1125,9 @@ begin
   FWelcomeLayout.Checked := ASettings.WelcomePageLayout = 'atlas';
   FWelcomeHeader.Checked := ASettings.WelcomePageHeader;
   FWelcomeGreeting.Checked := ASettings.WelcomePageGreeting;
+  FWelcomeSearch.Checked := ASettings.WelcomePageSearch;
+  FWelcomeSearchSymbols.Checked := ASettings.WelcomePageSearchSymbols;
+  FWelcomeSearchKey.Text := ShortCutToText(TShortCut(ASettings.WelcomePageSearchKey));
   RefreshFuse;
   RefreshIndex;
 end;
@@ -1208,6 +1220,9 @@ begin
     ASettings.WelcomePageLayout := 'atlas';
   ASettings.WelcomePageHeader := FWelcomeHeader.Checked;
   ASettings.WelcomePageGreeting := FWelcomeGreeting.Checked;
+  ASettings.WelcomePageSearch := FWelcomeSearch.Checked;
+  ASettings.WelcomePageSearchSymbols := FWelcomeSearchSymbols.Checked;
+  ASettings.WelcomePageSearchKey := Integer(TextToShortCut(Trim(FWelcomeSearchKey.Text)));
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;

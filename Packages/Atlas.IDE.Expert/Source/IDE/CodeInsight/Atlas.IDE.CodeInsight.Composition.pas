@@ -75,6 +75,8 @@ uses
   Atlas.IDE.Style.Symbol,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.Frame,
+  Atlas.Core.Commands.Palette,
+  Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.Commands;
 
 var
@@ -813,6 +815,19 @@ begin
       procedure(AText: string)
       begin
         GuardWarning(AText);
+      end);
+    // Suchfeld im Kopf (#760): Befehle aus der Palette, sobald es sie gibt.
+    Welcome.Search := TAtlasIdeWelcomeSearch.Create(
+      function: TArray<TAtlasCommand>
+      begin
+        Result := nil;
+        if Palette <> nil then
+          Result := Palette.AtlasCommands;
+      end,
+      procedure(AId: string)
+      begin
+        if Palette <> nil then
+          Palette.Execute(AId);
       end);
   end;
   if Welcome <> nil then

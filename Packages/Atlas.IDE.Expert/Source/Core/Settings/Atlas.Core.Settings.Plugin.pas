@@ -234,6 +234,12 @@ type
     /// <summary>Kopf mit Symbol und Version (welcomePage.header) und Grußzeile darin (welcomePage.greeting).</summary>
     WelcomePageHeader: Boolean;
     WelcomePageGreeting: Boolean;
+    /// <summary>Suchfeld im Kopf (#760, welcomePage.search) und dessen Gruppe „Symbole“ (welcomePage.search.symbols,
+    /// braucht laufenden Server).</summary>
+    WelcomePageSearch: Boolean;
+    WelcomePageSearchSymbols: Boolean;
+    /// <summary>Taste für den Fokus ins Suchfeld, solange die Willkommensseite aktiv ist (TShortCut; 0 = keine).</summary>
+    WelcomePageSearchKey: Integer;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -357,6 +363,9 @@ begin
   Result.WelcomePageLayout := 'off';
   Result.WelcomePageHeader := True;
   Result.WelcomePageGreeting := True;
+  Result.WelcomePageSearch := True;
+  Result.WelcomePageSearchSymbols := True;
+  Result.WelcomePageSearchKey := $4045; // Strg+E
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -377,6 +386,7 @@ begin
   MemoryBudgetMb := EnsureRange(MemoryBudgetMb, 0, MaxMemoryBudgetMb);
   // TShortCut ist ein Word.
   PaletteKey := EnsureRange(PaletteKey, 0, $FFFF);
+  WelcomePageSearchKey := EnsureRange(WelcomePageSearchKey, 0, $FFFF);
   CheckKey := EnsureRange(CheckKey, 0, $FFFF);
   CompletionKey := EnsureRange(CompletionKey, 0, $FFFF);
   SignatureKey := EnsureRange(SignatureKey, 0, $FFFF);
@@ -507,6 +517,10 @@ begin
   WelcomePageLayout := AStore.ReadString('WelcomePageLayout', Default.WelcomePageLayout);
   WelcomePageHeader := AStore.ReadInteger('WelcomePageHeader', BoolValue(Default.WelcomePageHeader)) <> 0;
   WelcomePageGreeting := AStore.ReadInteger('WelcomePageGreeting', BoolValue(Default.WelcomePageGreeting)) <> 0;
+  WelcomePageSearch := AStore.ReadInteger('WelcomePageSearch', BoolValue(Default.WelcomePageSearch)) <> 0;
+  WelcomePageSearchSymbols := AStore.ReadInteger('WelcomePageSearchSymbols',
+    BoolValue(Default.WelcomePageSearchSymbols)) <> 0;
+  WelcomePageSearchKey := AStore.ReadInteger('WelcomePageSearchKey', Default.WelcomePageSearchKey);
   Normalize;
 end;
 
@@ -599,6 +613,9 @@ begin
   AStore.WriteString('WelcomePageLayout', WelcomePageLayout);
   AStore.WriteInteger('WelcomePageHeader', BoolValue(WelcomePageHeader));
   AStore.WriteInteger('WelcomePageGreeting', BoolValue(WelcomePageGreeting));
+  AStore.WriteInteger('WelcomePageSearch', BoolValue(WelcomePageSearch));
+  AStore.WriteInteger('WelcomePageSearchSymbols', BoolValue(WelcomePageSearchSymbols));
+  AStore.WriteInteger('WelcomePageSearchKey', WelcomePageSearchKey);
 end;
 
 end.
