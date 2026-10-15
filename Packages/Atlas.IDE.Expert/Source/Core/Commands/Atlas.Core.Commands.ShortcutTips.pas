@@ -115,7 +115,8 @@ type
     /// <summary>Befehl einer Atlas-Taste für Zählung und Tipps: der Befehl der Palette, sonst „Atlas.“ und ein
     /// fester Name.</summary>
     class function AtlasCommandId(AFunc: TAtlasKeyFunction): string; static;
-    /// <summary>Atlas-Taste zum Befehl AId; False, wenn keine.</summary>
+    /// <summary>Atlas-Taste zum Befehl AId, bei mehreren Tasten für einen Befehl die erste (#775, #777); False,
+    /// wenn keine.</summary>
     class function AtlasFunctionOf(const AId: string; out AFunc: TAtlasKeyFunction): Boolean; static;
     /// <summary>Atlas-Taste ohne Befehl in der Befehlspalette (Befehlspalette selbst, Vervollständigung,
     /// Parameter-Hint, Diagnosemodus, Suchfeld der Willkommensseite); die Karte „Atlas entdecken“ (#757) zeigt

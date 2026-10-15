@@ -153,7 +153,6 @@ type
     EditorMethodToggle, EditorMethodToggleNone, SettingsMethodToggle, SettingsMethodToggleUp,
     SettingsMethodToggleDown,
     EditorTestUnit, SettingsCodeLensTestUnit, TestUnitLensTest, TestUnitLensUnit, TestUnitLensCreate, TestUnitNone,
-    EditorTestUnit, SettingsCodeLensTestUnit, TestUnitLensTest, TestUnitLensUnit, TestUnitLensCreate, TestUnitNone,
     UnitSearchTitle,
     UnitSearchMenu,
     UnitSearchIdeDialog,
@@ -304,7 +303,8 @@ type
     ReportFolder, ReportFolderChange, ReportCreateZip, ReportOpenIssue, ReportClose, ReportEmpty, ReportSummary,
     ReportZipDone, ReportZipFailed, ReportIssueDone, ReportViewerTitle, ReportSizeBytes, ReportSizeKb,
     ReportSizeMb, SettingsWelcomeHelp, SettingsWelcomeHelpReportUrl, SettingsWelcomeHelpReportFolder,
-    SettingsWelcomeHelpDesktop);
+    SettingsWelcomeHelpDesktop,
+    KeyMapUnitSearchIde);
 
   TAtlasStrings = class
   private class var
@@ -896,7 +896,8 @@ const
      'Vorlage in der Zwischenablage; die Issue-Seite ist im Browser geöffnet.', 'Inhalt von %s', '%d Bytes',
      '%s KB', '%s MB', 'Bereich „Hilfe und Rückmeldung“ (Atlas-Doku, Tastenkürzel, Problem melden)',
      'Ziel für „Issue-Seite öffnen“ (http:// oder https://):', 'Ordner für das Diagnosepaket (leer: Desktop):',
-     'Desktop'),
+     'Desktop',
+     'Units suchen über Strg+F12 (statt IDE-Dialog)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1456,7 +1457,8 @@ const
      'Template copied to the clipboard; the issue page is open in the browser.', 'Content of %s', '%d bytes',
      '%s KB', '%s MB', '“Help and feedback” section (Atlas docs, shortcuts, report a problem)',
      'Target of “Open issue page” (http:// or https://):', 'Folder for the diagnostic package (empty: desktop):',
-     'Desktop'));
+     'Desktop',
+     'Search units via Ctrl+F12 (instead of IDE dialog)'));
 
 { TAtlasStrings }
 
