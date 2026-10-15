@@ -106,8 +106,12 @@ type
     class function ValueLine(const ATile: TAtlasTrendTile): string; static;
     /// <summary>„vorher 3“ mit dem letzten bekannten Wert davor; '' ohne.</summary>
     class function PreviousLine(const ATile: TAtlasTrendTile): string; static;
-    /// <summary>„Build 12 · 14.10.2026 17:45 · main · 1a2b3c4 · Offene TODOs: 17“.</summary>
-    class function PointInfo(const AView: TAtlasTrendView; ATile, APoint: Integer): string; static;
+    /// <summary>„Build 3 von 30 · Nr. 27 · 14.10.2026 17:45 · main · 1a2b3c4 · Offene TODOs: 17“: Position in den
+    /// gezeigten Punkten, laufende Nummer des Builds (nur wenn sie abweicht), Zeitpunkt, Branch, Commit, Wert.</summary>
+    class function PointInfo(const AView: TAtlasTrendView; ATile, APoint: Integer): string; overload; static;
+    /// <summary>Wie oben; ANumber = False lässt die laufende Nummer weg (zu wenig Platz).</summary>
+    class function PointInfo(const AView: TAtlasTrendView; ATile, APoint: Integer; ANumber: Boolean): string;
+      overload; static;
     /// <summary>Dezimaltrennzeichen der Oberflächensprache.</summary>
     class function DecimalChar: Char; static;
     /// <summary>UTC-Zeit als lokale Kurzform; '' für 0.</summary>
@@ -322,6 +326,12 @@ begin
 end;
 
 class function TAtlasWelcomeTrendsFrame.PointInfo(const AView: TAtlasTrendView; ATile, APoint: Integer): string;
+begin
+  Result := PointInfo(AView, ATile, APoint, True);
+end;
+
+class function TAtlasWelcomeTrendsFrame.PointInfo(const AView: TAtlasTrendView; ATile, APoint: Integer;
+  ANumber: Boolean): string;
 var
   Point: TAtlasTrendPoint;
   Tile: TAtlasTrendTile;
@@ -332,7 +342,10 @@ begin
     Exit;
   Point := AView.Points[APoint];
   Tile := AView.Tiles[ATile];
-  Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeTrendsBuild, [Point.Build]);
+  // Wie im Mockup „Build i von N“ in den gezeigten Punkten; die laufende Nummer zählt alle Builds.
+  Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeTrendsBuild, [APoint + 1, Length(AView.Points)]);
+  if ANumber and (Point.Build > 0) and (Point.Build <> APoint + 1) then
+    Result := Result + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.WelcomeTrendsBuildNumber, [Point.Build]);
   if Point.At > 0 then
     Result := Result + ' · ' + LocalText(Point.At);
   if Point.Branch <> '' then
@@ -546,6 +559,7 @@ var
   Canvas: TCanvas;
   Index, Width: Integer;
   MutedColor: TColor;
+  Info: string;
 begin
   Canvas := FBox.Canvas;
   Canvas.Brush.Style := bsClear;
@@ -566,7 +580,11 @@ begin
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Assign(Font);
   Canvas.Font.Color := MutedColor;
-  Canvas.TextOut(ScaleValue(Indent), InfoTop(Width) + ScaleValue(3), InfoText);
+  Info := InfoText;
+  // Zu schmal für alles: die laufende Nummer weglassen.
+  if (ChosenTile >= 0) and (Canvas.TextWidth(Info) > Width - 2 * ScaleValue(Indent)) then
+    Info := PointInfo(FView, ChosenTile, ChosenPoint, False);
+  Canvas.TextOut(ScaleValue(Indent), InfoTop(Width) + ScaleValue(3), Info);
 end;
 
 procedure TAtlasWelcomeTrendsFrame.BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);

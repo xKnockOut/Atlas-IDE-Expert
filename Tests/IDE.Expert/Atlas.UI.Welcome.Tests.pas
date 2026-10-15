@@ -1443,7 +1443,8 @@ begin
     Assert.AreEqual(2, Frame.ChosenPoint);
     Assert.AreEqual(0, Frame.ChosenTile);
     Info := Frame.InfoText;
-    Assert.Contains(Info, 'Build 3');
+    Assert.Contains(Info, 'Build 3 von 5', 'Position wie im Mockup');
+    Assert.IsFalse(Info.Contains('Nr.'), 'laufende Nummer gleich der Position: nicht doppelt');
     Assert.Contains(Info, TAtlasWelcomeTrendsFrame.LocalText(Fake.FView.Points[2].At), 'Datum');
     Assert.Contains(Info, 'main', 'Branch');
     Assert.Contains(Info, '1a2b3c2', 'Commit gekürzt');
@@ -1461,6 +1462,18 @@ begin
     // Neu laden (gleiches Projekt, neuer Build): Auswahl bleibt am Build.
     Frame.UpdateContent;
     Assert.AreEqual(0, Frame.ChosenPoint);
+    // Nur die letzten 3 Builds gezeigt: Position in der Reihe, dazu die laufende Nummer.
+    Fake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [12, 9, 6, 3, 0]),
+      [TAtlasTrendSeries.Warnings], 3);
+    Frame.UpdateContent;
+    Hit.Tile := 0;
+    Hit.Point := 0;
+    Frame.ClickAt(Hit);
+    Assert.Contains(Frame.InfoText, 'Build 1 von 3 · Nr. 3 · ');
+    Info := TAtlasWelcomeTrendsFrame.PointInfo(Frame.View, 0, 0, False);
+    Assert.Contains(Info, 'Build 1 von 3 · ');
+    Assert.IsFalse(Info.Contains('Nr.'), 'ohne Platz ohne laufende Nummer');
+    Assert.Contains(Info, 'Warnungen + Hinweise: 6');
   finally
     Host.Free;
     TAtlasStrings.Language := Saved;
