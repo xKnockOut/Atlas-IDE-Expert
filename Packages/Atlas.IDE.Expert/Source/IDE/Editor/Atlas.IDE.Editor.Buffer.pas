@@ -15,7 +15,7 @@ type
   public
     /// <summary>Ganzer Text des Puffers, auch ungespeichert.</summary>
     class function Text(const ABuffer: IOTAEditBuffer): string; static;
-    /// <summary>Text der Zeile ALine (1-basiert) ohne Zeilenende.</summary>
+    /// <summary>Text der Zeile ALine (1-basiert) ohne Zeilenende; '' hinter dem Dateiende.</summary>
     class function LineText(const AView: IOTAEditView; ALine: Integer): string; static;
     /// <summary>Erste Tabulatorweite der Editoroptionen, sonst 8.</summary>
     class function TabWidth(const ABuffer: IOTAEditBuffer): Integer; static;
@@ -63,13 +63,18 @@ var
   CharPos: TOTACharPos;
   Reader: IOTAEditReader;
   Chunk: AnsiString;
-  Count, Stop: Integer;
+  Count, Stop, Position: Integer;
 begin
   CharPos.Line := ALine;
   CharPos.CharIndex := 0;
+  Position := AView.CharPosToPos(CharPos);
+  // Unter dem Dateiende liefert der Editor eine Position in der letzten Zeile; deren Text gehört
+  // nicht zu ALine (Diagnoselog 15.10.2026: Hover auf Zeile 1800 bei 1793 Zeilen).
+  if AView.PosToCharPos(Position).Line <> ALine then
+    Exit('');
   Reader := AView.Buffer.CreateReader;
   SetLength(Chunk, MaxLine);
-  Count := Reader.GetText(AView.CharPosToPos(CharPos), PAnsiChar(Chunk), MaxLine);
+  Count := Reader.GetText(Position, PAnsiChar(Chunk), MaxLine);
   Stop := 1;
   while (Stop <= Count) and not (Chunk[Stop] in [#13, #10]) do
     Inc(Stop);

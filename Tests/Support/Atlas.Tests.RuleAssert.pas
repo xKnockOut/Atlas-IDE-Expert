@@ -7,6 +7,7 @@
 interface
 
 uses
+  System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract;
 
@@ -27,10 +28,20 @@ type
     class procedure Silent(ARule: IRule; const ASource: string); static;
   end;
 
+  /// <summary>Testregel ohne Treffer: ruft beim Prüfen AOnCheck auf (zählen, warten, abbrechen).</summary>
+  TCallbackRule = class(TInterfacedObject, IRule)
+  private
+    FId: string;
+    FOnCheck: TProc;
+  public
+    constructor Create(const AId: string; const AOnCheck: TProc);
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 implementation
 
 uses
-  System.SysUtils,
   DUnitX.TestFramework,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Pascal.SyntaxTree,
@@ -89,6 +100,25 @@ end;
 class procedure TRuleAssert.Silent(ARule: IRule; const ASource: string);
 begin
   Reports(ARule, ASource, 0);
+end;
+
+{ TCallbackRule }
+
+constructor TCallbackRule.Create(const AId: string; const AOnCheck: TProc);
+begin
+  inherited Create;
+  FId := AId;
+  FOnCheck := AOnCheck;
+end;
+
+function TCallbackRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(FId, TRuleSeverity.Warning, 'Testregel');
+end;
+
+procedure TCallbackRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FOnCheck();
 end;
 
 end.

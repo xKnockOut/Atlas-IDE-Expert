@@ -4,6 +4,15 @@
 // Dateinamen ohne Groß-/Kleinschreibung; Symbolnamen und Vorfahren werden
 // beim Hinzufügen einer Unit in Nachschlagetabellen eingetragen.
 //
+// Nachschlagetabellen (Diagnoselog 15.10.2026): FindSymbols und Descendants
+// liefen früher über alle Symbole aller Units. Mit eingelesener Bibliothek
+// (über 5000 Units) kostete jeder Aufruf mehrere Zehntel Sekunden; Prüfregeln
+// rufen ihn je Methode und Vorfahr auf, eine Datei brauchte so 30 s bis über
+// 200 s. Jetzt verweist je Name (und je Vorfahr ohne Unit-Präfix) eine Liste
+// auf Platz der Unit und Position des Symbols. Ersetzte oder entfernte Units
+// lassen ihre Verweise als tot zurück (Platz ohne Datei); überwiegen die
+// toten, werden die Tabellen neu aufgebaut.
+//
 // Speicherbudget (#185): Zeichenketten kommen in einen Pool. Übersteigt der
 // geschätzte Bedarf das Budget, werden zuerst die Verwendungen ausgelagert
 // (#492; sie bleiben im Cache auf der Platte), dann Bibliotheks-Units, danach
@@ -19,10 +28,18 @@ uses
   Atlas.Common.Index.Memory;
 
 type
-  /// <summary>Filter für Locations; const, damit nicht jedes Symbol kopiert wird.</summary>
-  TIndexSymbolFilter = reference to function(const ASymbol: TIndexSymbol): Boolean;
-
   TSymbolIndex = class(TInterfacedObject, ISymbolIndex)
+  private type
+    /// <summary>Verweis auf ein Symbol: Platz der Unit (FSlotKeys) und Position in ihren Symbolen.</summary>
+    TSymbolRef = record
+      Slot: Integer;
+      Position: Integer;
+    end;
+    TSymbolRefs = TList<TSymbolRef>;
+    TSymbolTable = TObjectDictionary<string, TSymbolRefs>;
+  public const
+    /// <summary>Ab so vielen toten Verweisen (und mehr tot als lebend) werden die Tabellen neu gebaut.</summary>
+    RebuildDeadRefs = 4096;
   private
     FLock: TCriticalSection;
     // Dateiname (groß) → Unit
@@ -36,10 +53,24 @@ type
     FCompactCount: Integer;
     FOffloadedCount: Integer;
     FGeneration: Int64;
+    // Name (groß) → Verweise; Vorfahr ohne Unit-Präfix und Typargumente (groß) → Verweise.
+    FByName: TSymbolTable;
+    FByAncestor: TSymbolTable;
+    // Platz → Dateischlüssel ('' = Unit ersetzt oder entfernt) und Zahl seiner Verweise.
+    FSlotKeys: TList<string>;
+    FSlotRefs: TList<Integer>;
+    // Dateischlüssel → aktueller Platz.
+    FFileSlots: TDictionary<string, Integer>;
+    FLiveRefs: Integer;
+    FDeadRefs: Integer;
     procedure AddLocked(const AKey: string; const AUnit: TUnitIndex);
     procedure ShrinkLocked;
-    function Locations(const AFilter: TIndexSymbolFilter): TArray<TSymbolLocation>;
     procedure RemoveFileLocked(const AFileKey: string);
+    procedure AddRefsLocked(const AKey: string; const AUnit: TUnitIndex);
+    procedure DropRefsLocked(const AKey: string);
+    /// <summary>Baut die Tabellen neu, wenn die toten Verweise überwiegen.</summary>
+    procedure CleanRefsLocked;
+    function LocationsLocked(ATable: TSymbolTable; const AKey: string): TArray<TSymbolLocation>;
   public
     constructor Create;
     destructor Destroy; override;
@@ -64,6 +95,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   Atlas.Common.Index.NameIndex;
 
 var
@@ -95,12 +127,22 @@ begin
   FFiles := TDictionary<string, TUnitIndex>.Create;
   FUnitFiles := TDictionary<string, string>.Create;
   FPool := TStringPool.Create;
+  FByName := TSymbolTable.Create([doOwnsValues]);
+  FByAncestor := TSymbolTable.Create([doOwnsValues]);
+  FSlotKeys := TList<string>.Create;
+  FSlotRefs := TList<Integer>.Create;
+  FFileSlots := TDictionary<string, Integer>.Create;
 end;
 
 destructor TSymbolIndex.Destroy;
 begin
   // Namensindex der Import-Vorschläge (#617) hält sonst unsere Units fest.
   TImportNames.Forget(Self);
+  FFileSlots.Free;
+  FSlotRefs.Free;
+  FSlotKeys.Free;
+  FByAncestor.Free;
+  FByName.Free;
   FPool.Free;
   FUnitFiles.Free;
   FFiles.Free;
@@ -122,6 +164,7 @@ begin
   if Existing.UsagesOffloaded then
     Dec(FOffloadedCount);
   FFiles.Remove(AFileKey);
+  DropRefsLocked(AFileKey);
   Inc(FGeneration);
   if FUnitFiles.TryGetValue(UpperCase(Existing.UnitName), UnitFile) and (UnitFile = AFileKey) then
     FUnitFiles.Remove(UpperCase(Existing.UnitName));
@@ -138,6 +181,125 @@ begin
     Inc(FCompactCount);
   if AUnit.UsagesOffloaded then
     Inc(FOffloadedCount);
+  AddRefsLocked(AKey, AUnit);
+end;
+
+procedure AddRef(ATable: TObjectDictionary<string, TList<TSymbolIndex.TSymbolRef>>; const AKey: string;
+  ASlot, APosition: Integer);
+var
+  Refs: TList<TSymbolIndex.TSymbolRef>;
+  Ref: TSymbolIndex.TSymbolRef;
+begin
+  if not ATable.TryGetValue(AKey, Refs) then
+  begin
+    Refs := TList<TSymbolIndex.TSymbolRef>.Create;
+    ATable.Add(AKey, Refs);
+  end;
+  Ref.Slot := ASlot;
+  Ref.Position := APosition;
+  Refs.Add(Ref);
+end;
+
+procedure TSymbolIndex.AddRefsLocked(const AKey: string; const AUnit: TUnitIndex);
+var
+  Slot, Position, AncestorPos, Count: Integer;
+  Keys: TArray<string>;
+  Key: string;
+begin
+  Slot := FSlotKeys.Add(AKey);
+  FSlotRefs.Add(0);
+  FFileSlots.AddOrSetValue(AKey, Slot);
+  Count := 0;
+  // Zugriff über den Index, damit die Symbol-Records nicht kopiert werden.
+  for Position := 0 to High(AUnit.Symbols) do
+  begin
+    AddRef(FByName, UpperCase(AUnit.Symbols[Position].Name), Slot, Position);
+    Inc(Count);
+    // Je Symbol jeden Vorfahren nur einmal (class(TFoo, IFoo) mit Unit.TFoo und TFoo<T>).
+    Keys := nil;
+    for AncestorPos := 0 to High(AUnit.Symbols[Position].Ancestors) do
+    begin
+      Key := UpperCase(LastPart(AUnit.Symbols[Position].Ancestors[AncestorPos]));
+      if (Key = '') or (IndexStr(Key, Keys) >= 0) then
+        Continue;
+      Keys := Keys + [Key];
+      AddRef(FByAncestor, Key, Slot, Position);
+      Inc(Count);
+    end;
+  end;
+  FSlotRefs[Slot] := Count;
+  Inc(FLiveRefs, Count);
+end;
+
+procedure TSymbolIndex.DropRefsLocked(const AKey: string);
+var
+  Slot: Integer;
+begin
+  if not FFileSlots.TryGetValue(AKey, Slot) then
+    Exit;
+  FFileSlots.Remove(AKey);
+  FSlotKeys[Slot] := '';
+  Dec(FLiveRefs, FSlotRefs[Slot]);
+  Inc(FDeadRefs, FSlotRefs[Slot]);
+  FSlotRefs[Slot] := 0;
+end;
+
+procedure TSymbolIndex.CleanRefsLocked;
+var
+  Pair: TPair<string, TUnitIndex>;
+begin
+  if (FDeadRefs < RebuildDeadRefs) or (FDeadRefs <= FLiveRefs) then
+    Exit;
+  FByName.Clear;
+  FByAncestor.Clear;
+  FSlotKeys.Clear;
+  FSlotRefs.Clear;
+  FFileSlots.Clear;
+  FLiveRefs := 0;
+  FDeadRefs := 0;
+  for Pair in FFiles do
+    AddRefsLocked(Pair.Key, Pair.Value);
+end;
+
+function TSymbolIndex.LocationsLocked(ATable: TSymbolTable; const AKey: string): TArray<TSymbolLocation>;
+var
+  Refs: TSymbolRefs;
+  Found: TList<TSymbolLocation>;
+  Index, LastSlot: Integer;
+  Ref: TSymbolRef;
+  FileKey: string;
+  Owner: TUnitIndex;
+  Known: Boolean;
+  Location: TSymbolLocation;
+begin
+  Result := nil;
+  if not ATable.TryGetValue(AKey, Refs) then
+    Exit;
+  Found := TList<TSymbolLocation>.Create;
+  try
+    LastSlot := -1;
+    Known := False;
+    for Index := 0 to Refs.Count - 1 do
+    begin
+      Ref := Refs[Index];
+      // Verweise einer Unit stehen beieinander: die Unit nur beim Wechsel des Platzes nachschlagen.
+      if Ref.Slot <> LastSlot then
+      begin
+        LastSlot := Ref.Slot;
+        FileKey := FSlotKeys[Ref.Slot];
+        Known := (FileKey <> '') and FFiles.TryGetValue(FileKey, Owner);
+      end;
+      if not Known or (Ref.Position > High(Owner.Symbols)) then
+        Continue;
+      Location.UnitName := Owner.UnitName;
+      Location.FileName := Owner.SymbolFile(Owner.Symbols[Ref.Position]);
+      Location.Symbol := Owner.Symbols[Ref.Position];
+      Found.Add(Location);
+    end;
+    Result := Found.ToArray;
+  finally
+    Found.Free;
+  end;
 end;
 
 procedure TSymbolIndex.ShrinkLocked;
@@ -193,6 +355,7 @@ begin
     RemoveFileLocked(Key);
     AddLocked(Key, Pooled);
     ShrinkLocked;
+    CleanRefsLocked;
   finally
     FLock.Leave;
   end;
@@ -203,6 +366,7 @@ begin
   FLock.Enter;
   try
     RemoveFileLocked(AnsiUpperCase(AFileName));
+    CleanRefsLocked;
   finally
     FLock.Leave;
   end;
@@ -230,63 +394,29 @@ begin
   end;
 end;
 
-function TSymbolIndex.Locations(const AFilter: TIndexSymbolFilter): TArray<TSymbolLocation>;
-var
-  Found: TList<TSymbolLocation>;
-  Snapshot: TArray<TUnitIndex>;
-  UnitPos, SymbolPos: Integer;
-  Location: TSymbolLocation;
-begin
-  // Nur den Schnappschuss unter der Sperre nehmen (#647): Der Durchlauf über alle
-  // Symbole (große Projekte über 500.000) hielt sonst FindUnit und FindFile jeder
-  // anderen Anfrage auf, solange Prüfregeln FindSymbols aufrufen. Zugriff über den
-  // Index statt for-in, damit die Symbol-Records nicht kopiert werden.
-  Snapshot := Units;
-  Found := TList<TSymbolLocation>.Create;
-  try
-    for UnitPos := 0 to High(Snapshot) do
-      for SymbolPos := 0 to High(Snapshot[UnitPos].Symbols) do
-        if AFilter(Snapshot[UnitPos].Symbols[SymbolPos]) then
-        begin
-          Location.UnitName := Snapshot[UnitPos].UnitName;
-          Location.FileName := Snapshot[UnitPos].SymbolFile(Snapshot[UnitPos].Symbols[SymbolPos]);
-          Location.Symbol := Snapshot[UnitPos].Symbols[SymbolPos];
-          Found.Add(Location);
-        end;
-    Result := Found.ToArray;
-  finally
-    Found.Free;
-  end;
-end;
-
 function TSymbolIndex.FindSymbols(const AName: string): TArray<TSymbolLocation>;
-var
-  Name: string;
 begin
-  Name := AName;
-  Result := Locations(
-    function(const ASymbol: TIndexSymbol): Boolean
-    begin
-      // Länge zuerst: trennt fast alle Symbole ohne Zeichenvergleich aus.
-      Result := (Length(ASymbol.Name) = Length(Name)) and SameText(ASymbol.Name, Name);
-    end);
+  FLock.Enter;
+  try
+    Result := LocationsLocked(FByName, UpperCase(AName));
+  finally
+    FLock.Leave;
+  end;
 end;
 
 function TSymbolIndex.Descendants(const ATypeName: string): TArray<TSymbolLocation>;
 var
-  Name: string;
+  Key: string;
 begin
-  Name := LastPart(ATypeName);
-  Result := Locations(
-    function(const ASymbol: TIndexSymbol): Boolean
-    var
-      Ancestor: string;
-    begin
-      for Ancestor in ASymbol.Ancestors do
-        if SameText(LastPart(Ancestor), Name) then
-          Exit(True);
-      Result := False;
-    end);
+  Key := UpperCase(LastPart(ATypeName));
+  if Key = '' then
+    Exit(nil);
+  FLock.Enter;
+  try
+    Result := LocationsLocked(FByAncestor, Key);
+  finally
+    FLock.Leave;
+  end;
 end;
 
 function TSymbolIndex.Units: TArray<TUnitIndex>;
@@ -355,6 +485,7 @@ begin
   try
     FBudget := ABytes;
     ShrinkLocked;
+    CleanRefsLocked;
   finally
     FLock.Leave;
   end;

@@ -24,6 +24,12 @@
 // gefragt), wartet sie nur auf eine Änderung und antwortet leer. Befunde einer
 // Datei bleiben je Ergebnis-Id gespeichert: Fragt der Client dieselbe Datei im
 // selben Stand erneut ohne previousResultId, wird nicht neu geprüft.
+//
+// Laufzeit (Diagnoselog 15.10.2026): Die Prüfregeln fragen vor jeder Regel das
+// Abbruchsignal der Anfrage. Ein Zeitlimit, $/cancelRequest oder eine Änderung
+// des Dokuments (ContentModified) beendet die Prüfung, statt sie bis zu vier
+// Minuten weiterlaufen zu lassen. Fragen mehrere Anfragen dieselbe Datei im
+// selben Stand an, rechnet nur die erste; die übrigen warten auf ihr Ergebnis.
 
 interface
 
@@ -62,6 +68,8 @@ type
     ReasonWorkspaceBusy = 'workspaceBusy';
     /// <summary>Höchstzahl gespeicherter Dateibefunde, danach wird der Speicher geleert.</summary>
     MaxCachedReports = 500;
+    /// <summary>Takt, in dem eine Anfrage auf die gleiche Berechnung einer anderen wartet.</summary>
+    RunningPollMs = 20;
   private
     FStore: IDocumentStore;
     FDiagnostics: TLspSyntaxDiagnostics;
@@ -82,10 +90,17 @@ type
     FCache: TObjectDictionary<string, TJSONArray>;
     FCacheIds: TDictionary<string, string>;
     FCacheLock: TObject;
+    // Laufende Berechnungen: Uri + #0 + Ergebnis-Id. Unter FCacheLock.
+    FRunning: TDictionary<string, Boolean>;
     FComputed: Integer;
     function IsBusy: Boolean;
-    /// <summary>Befunde zu ADocument im Stand AResultId, aus dem Speicher oder neu berechnet.</summary>
-    function CachedDiagnose(const AUri, AResultId: string; const ADocument: ITextDocument): TJSONArray;
+    /// <summary>Befunde zu ADocument im Stand AResultId, aus dem Speicher oder neu berechnet. Rechnet
+    /// gerade eine andere Anfrage denselben Stand, wartet es auf deren Ergebnis. ACancellation darf nil sein.</summary>
+    function CachedDiagnose(const AUri, AResultId: string; const ADocument: ITextDocument;
+      const ACancellation: IJsonRpcCancellationToken): TJSONArray;
+    /// <summary>True: Der Aufrufer rechnet AKey jetzt selbst. False mit ACached: Befunde aus dem
+    /// Speicher (gehören dem Aufrufer). False ohne: Eine andere Anfrage rechnet gerade.</summary>
+    function Claim(const AUri, AResultId, AKey: string; out ACached: TJSONArray): Boolean;
     /// <summary>Wartet ohne zu prüfen bis WaitMs auf eine Änderung (zweite gleichzeitige Anfrage).</summary>
     procedure WaitForChange(const ACancellation: IJsonRpcCancellationToken);
     function HandleDocument(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -105,7 +120,10 @@ type
     /// <summary>Einstellungen, Index oder Compilermeldungen haben sich geändert. Threadsicher.</summary>
     procedure Changed;
     /// <summary>Ergebnis zu einer Datei: {kind, resultId[, items]}. Threadsicher.</summary>
-    function DocumentReport(const AUri, APreviousResultId: string): TJSONObject;
+    function DocumentReport(const AUri, APreviousResultId: string): TJSONObject; overload;
+    /// <summary>Wie DocumentReport; bricht beim Signal von ACancellation ab (nil = nie).</summary>
+    function DocumentReport(const AUri, APreviousResultId: string;
+      const ACancellation: IJsonRpcCancellationToken): TJSONObject; overload;
     /// <summary>Antwort auf workspace/diagnostic; wartet ohne Neuigkeiten bis WaitMs.</summary>
     function WorkspaceReport(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     property Generation: Integer read FGeneration;
@@ -123,6 +141,7 @@ implementation
 uses
   System.Diagnostics,
   Atlas.Common.Diagnostics.RequestScope,
+  Atlas.Common.Rules.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.TextDocument;
 
@@ -146,10 +165,12 @@ begin
   FCache := TObjectDictionary<string, TJSONArray>.Create([doOwnsValues]);
   FCacheIds := TDictionary<string, string>.Create;
   FCacheLock := TObject.Create;
+  FRunning := TDictionary<string, Boolean>.Create;
 end;
 
 destructor TLspPullDiagnostics.Destroy;
 begin
+  FRunning.Free;
   FCacheLock.Free;
   FCacheIds.Free;
   FCache.Free;
@@ -211,11 +232,30 @@ begin
   end;
 end;
 
-function Diagnose(ADiagnostics: TLspSyntaxDiagnostics; const ADocument: ITextDocument): TJSONArray;
+function Diagnose(ADiagnostics: TLspSyntaxDiagnostics; const ADocument: ITextDocument;
+  const ACancellation: IJsonRpcCancellationToken): TJSONArray;
 var
   Params: TJSONObject;
+  Cancelled: TRuleCancelled;
 begin
-  Params := ADiagnostics.Compute(ADocument);
+  Cancelled := nil;
+  if ACancellation <> nil then
+    Cancelled :=
+      function: Boolean
+      begin
+        Result := ACancellation.IsCancellationRequested;
+      end;
+  try
+    Params := ADiagnostics.Compute(ADocument, Cancelled);
+  except
+    on ERuleCheckCancelled do
+    begin
+      // Liefert EJsonRpcRequestCancelled bzw. EJsonRpcContentModified wie jede abgebrochene Anfrage.
+      if ACancellation <> nil then
+        ACancellation.ThrowIfCancellationRequested;
+      raise;
+    end;
+  end;
   try
     Result := Params.GetValue('diagnostics').Clone as TJSONArray;
   finally
@@ -223,35 +263,69 @@ begin
   end;
 end;
 
-function TLspPullDiagnostics.CachedDiagnose(const AUri, AResultId: string;
-  const ADocument: ITextDocument): TJSONArray;
+function TLspPullDiagnostics.CachedDiagnose(const AUri, AResultId: string; const ADocument: ITextDocument;
+  const ACancellation: IJsonRpcCancellationToken): TJSONArray;
 var
-  Known: string;
-  Items: TJSONArray;
+  Key: string;
+  Cached: TJSONArray;
 begin
-  if AResultId <> '' then
+  if AResultId = '' then
   begin
+    Result := Diagnose(FDiagnostics, ADocument, ACancellation);
+    TInterlocked.Increment(FComputed);
+    Exit;
+  end;
+  Key := AUri + #0 + AResultId;
+  while not Claim(AUri, AResultId, Key, Cached) do
+  begin
+    if Cached <> nil then
+      Exit(Cached);
+    // Dieselbe Datei im selben Stand rechnet schon eine andere Anfrage: auf ihr Ergebnis warten.
+    if ACancellation <> nil then
+      ACancellation.ThrowIfCancellationRequested;
+    Sleep(RunningPollMs);
+  end;
+  try
+    Result := Diagnose(FDiagnostics, ADocument, ACancellation);
+    TInterlocked.Increment(FComputed);
     TMonitor.Enter(FCacheLock);
     try
-      if FCacheIds.TryGetValue(AUri, Known) and (Known = AResultId) and FCache.TryGetValue(AUri, Items) then
-        Exit(Items.Clone as TJSONArray);
+      if FCache.Count >= MaxCachedReports then
+      begin
+        FCache.Clear;
+        FCacheIds.Clear;
+      end;
+      FCache.AddOrSetValue(AUri, Result.Clone as TJSONArray);
+      FCacheIds.AddOrSetValue(AUri, AResultId);
+    finally
+      TMonitor.Exit(FCacheLock);
+    end;
+  finally
+    TMonitor.Enter(FCacheLock);
+    try
+      FRunning.Remove(Key);
     finally
       TMonitor.Exit(FCacheLock);
     end;
   end;
-  Result := Diagnose(FDiagnostics, ADocument);
-  TInterlocked.Increment(FComputed);
-  if AResultId = '' then
-    Exit;
+end;
+
+function TLspPullDiagnostics.Claim(const AUri, AResultId, AKey: string; out ACached: TJSONArray): Boolean;
+var
+  Known: string;
+  Items: TJSONArray;
+begin
+  ACached := nil;
   TMonitor.Enter(FCacheLock);
   try
-    if FCache.Count >= MaxCachedReports then
+    if FCacheIds.TryGetValue(AUri, Known) and (Known = AResultId) and FCache.TryGetValue(AUri, Items) then
     begin
-      FCache.Clear;
-      FCacheIds.Clear;
+      ACached := Items.Clone as TJSONArray;
+      Exit(False);
     end;
-    FCache.AddOrSetValue(AUri, Result.Clone as TJSONArray);
-    FCacheIds.AddOrSetValue(AUri, AResultId);
+    Result := not FRunning.ContainsKey(AKey);
+    if Result then
+      FRunning.Add(AKey, True);
   finally
     TMonitor.Exit(FCacheLock);
   end;
@@ -273,6 +347,12 @@ begin
 end;
 
 function TLspPullDiagnostics.DocumentReport(const AUri, APreviousResultId: string): TJSONObject;
+begin
+  Result := DocumentReport(AUri, APreviousResultId, nil);
+end;
+
+function TLspPullDiagnostics.DocumentReport(const AUri, APreviousResultId: string;
+  const ACancellation: IJsonRpcCancellationToken): TJSONObject;
 var
   Document: ITextDocument;
   FileName, Text, ResultId: string;
@@ -304,7 +384,14 @@ begin
   if Document = nil then
     Result.AddPair('items', TJSONArray.Create)
   else
-    Result.AddPair('items', CachedDiagnose(AUri, ResultId, Document));
+  begin
+    try
+      Result.AddPair('items', CachedDiagnose(AUri, ResultId, Document, ACancellation));
+    except
+      Result.Free;
+      raise;
+    end;
+  end;
 end;
 
 function TLspPullDiagnostics.HandleDocument(const AParams: TJSONValue;
@@ -317,7 +404,7 @@ begin
   if not TJSONObject(AParams).TryGetValue<string>('previousResultId', Previous) then
     Previous := '';
   ACancellation.ThrowIfCancellationRequested;
-  Result := DocumentReport(Uri, Previous);
+  Result := DocumentReport(Uri, Previous, ACancellation);
 end;
 
 function TLspPullDiagnostics.CollectWorkspace(const APrevious: TDictionary<string, string>;
@@ -327,6 +414,7 @@ var
   Stamp: Int64;
   Document, Disk: ITextDocument;
   Report: TJSONObject;
+  Items: TJSONArray;
   Clock: TStopwatch;
 begin
   Result := TJSONArray.Create;
@@ -356,12 +444,14 @@ begin
         Continue;
       // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
       Disk := TTextDocument.Create(Uri, 'objectpascal', 0, Text);
+      // Erst prüfen, dann den Bericht anlegen: Ein Abbruch hinterlässt so kein Objekt.
+      Items := CachedDiagnose(Uri, ResultId, Disk, ACancellation);
       Report := TJSONObject.Create;
       Report.AddPair('uri', Uri);
       Report.AddPair('version', TJSONNull.Create);
       Report.AddPair('kind', 'full');
       Report.AddPair('resultId', ResultId);
-      Report.AddPair('items', CachedDiagnose(Uri, ResultId, Disk));
+      Report.AddPair('items', Items);
       Result.AddElement(Report);
       APrevious.AddOrSetValue(Uri, ResultId);
     end;
