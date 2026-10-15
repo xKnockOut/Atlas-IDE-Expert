@@ -21,10 +21,10 @@
 //   bzw. Fokuswechsel schloss die Schnellschalter sofort wieder. Über dem
 //   Feld schluckt Atlas WM_RBUTTONDOWN, WM_RBUTTONUP und WM_CONTEXTMENU und
 //   öffnet die Schnellschalter erst nach der Mausnachricht (PostMessage).
-// - Doppelklick auf das Feld öffnet ebenfalls die Schnellschalter
-//   (StatusFieldDoubleClick, Vorgabe an). Das vom ersten Klick geöffnete
-//   Statusfenster schließt sich dabei; das Loslassen nach dem Doppelklick
-//   öffnet es nicht erneut.
+// - StatusFieldToggles wählt, ob Rechtsklick, Doppelklick oder beide (Vorgabe)
+//   die Schnellschalter öffnen; eine nicht gewählte Geste bleibt bei der IDE
+//   bzw. beim einfachen Klick. Beim Doppelklick schließt sich das vom ersten
+//   Klick geöffnete Statusfenster; das Loslassen danach öffnet es nicht erneut.
 // - Links steht das Atlas-Symbol (#751) in der Variante zum IDE-Thema und in
 //   der Größe zur Pixeldichte der Leiste, dann Punkt und Text.
 
@@ -616,17 +616,18 @@ begin
       // Ging das Loslassen nach einem Doppelklick verloren, gilt der nächste Klick wieder.
       AHook.SkipUp := False;
     WM_RBUTTONDOWN, WM_RBUTTONUP:
-      Inside := Assigned(FOnContext) and
+      Inside := Assigned(FOnContext) and TAtlasIdeSettings.Current.StatusTogglesOnRightClick and
         PtInRect(PanelRect(AHook), SmallPointToPoint(TWMMouse(Message).Pos));
     WM_LBUTTONDBLCLK:
-      Inside := Assigned(FOnContext) and TAtlasIdeSettings.Current.StatusFieldDoubleClick and
+      Inside := Assigned(FOnContext) and TAtlasIdeSettings.Current.StatusTogglesOnDoubleClick and
         PtInRect(PanelRect(AHook), SmallPointToPoint(TWMMouse(Message).Pos));
     WM_CONTEXTMENU:
       // -1/-1 kommt von der Tastatur (Umschalt+F10): der IDE überlassen.
       if (TWMContextMenu(Message).XPos <> -1) or (TWMContextMenu(Message).YPos <> -1) then
       begin
         Position := AHook.Bar.ScreenToClient(SmallPointToPoint(TWMContextMenu(Message).Pos));
-        Inside := Assigned(FOnContext) and PtInRect(PanelRect(AHook), Position);
+        Inside := Assigned(FOnContext) and TAtlasIdeSettings.Current.StatusTogglesOnRightClick and
+          PtInRect(PanelRect(AHook), Position);
       end;
   end;
   if not Inside then

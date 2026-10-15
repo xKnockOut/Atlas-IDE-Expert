@@ -178,9 +178,9 @@ type
     StatusFieldHidden: string;
     /// <summary>Kurztext neben „Atlas“ (#591, statusField.showSummary).</summary>
     StatusFieldSummary: Boolean;
-    /// <summary>Doppelklick auf das Feld öffnet die Schnellschalter wie ein Rechtsklick
-    /// (statusField.doubleClick).</summary>
-    StatusFieldDoubleClick: Boolean;
+    /// <summary>Womit das Feld die Schnellschalter öffnet: 'both' (Rechts- und Doppelklick, Vorgabe),
+    /// 'rightClick' oder 'doubleClick' (statusField.openToggles).</summary>
+    StatusFieldToggles: string;
     /// <summary>Tastenkürzel für das Fenster der Schnellschalter (#604, TShortCut, 0 = keins) und Vorrang wie
     /// bei den anderen Atlas-Tasten (#494).</summary>
     QuickToggleKey: Integer;
@@ -224,6 +224,10 @@ type
     procedure Normalize;
     procedure Load(const AStore: IAtlasSettingsStore);
     procedure Save(const AStore: IAtlasSettingsStore);
+    /// <summary>Rechtsklick auf das Statusfeld öffnet die Schnellschalter (StatusFieldToggles).</summary>
+    function StatusTogglesOnRightClick: Boolean;
+    /// <summary>Doppelklick auf das Statusfeld öffnet die Schnellschalter (StatusFieldToggles).</summary>
+    function StatusTogglesOnDoubleClick: Boolean;
     /// <summary>Einstellungen für den Server als JSON-Objekt im Format von atlas.json (#652); geht als
     /// initializationOptions.settings.atlas und mit workspace/didChangeConfiguration an den Server.</summary>
     function ServerSettingsJson: string;
@@ -322,7 +326,7 @@ begin
   Result.StatusField := True;
   Result.StatusFieldHidden := '';
   Result.StatusFieldSummary := True;
-  Result.StatusFieldDoubleClick := True;
+  Result.StatusFieldToggles := 'both';
   Result.QuickToggleKey := $E041; // Strg+Umschalt+Alt+A
   Result.QuickToggleKeyPriority := False;
   Result.SafeAskAfterCrash := True;
@@ -363,6 +367,12 @@ begin
   QuickToggleKey := EnsureRange(QuickToggleKey, 0, $FFFF);
   SafeStartupTimeoutMs := EnsureRange(SafeStartupTimeoutMs, MinSafeStartupTimeout, MaxSafeStartupTimeout);
   SafeKeepSettingsHistory := EnsureRange(SafeKeepSettingsHistory, 0, MaxSafeSettingsHistory);
+  if SameText(Trim(StatusFieldToggles), 'rightClick') then
+    StatusFieldToggles := 'rightClick'
+  else if SameText(Trim(StatusFieldToggles), 'doubleClick') then
+    StatusFieldToggles := 'doubleClick'
+  else
+    StatusFieldToggles := 'both';
   SafeStartupKey := LowerCase(Trim(SafeStartupKey));
   if (SafeStartupKey <> 'shift') and (SafeStartupKey <> 'ctrl') and (SafeStartupKey <> 'none') then
     SafeStartupKey := 'shift';
@@ -454,8 +464,7 @@ begin
   StatusField := AStore.ReadInteger('StatusField', BoolValue(Default.StatusField)) <> 0;
   StatusFieldHidden := Trim(AStore.ReadString('StatusFieldHidden', Default.StatusFieldHidden));
   StatusFieldSummary := AStore.ReadInteger('StatusFieldSummary', BoolValue(Default.StatusFieldSummary)) <> 0;
-  StatusFieldDoubleClick :=
-    AStore.ReadInteger('StatusFieldDoubleClick', BoolValue(Default.StatusFieldDoubleClick)) <> 0;
+  StatusFieldToggles := AStore.ReadString('StatusFieldToggles', Default.StatusFieldToggles);
   QuickToggleKey := AStore.ReadInteger('QuickToggleKey', Default.QuickToggleKey);
   QuickToggleKeyPriority :=
     AStore.ReadInteger('QuickToggleKeyPriority', BoolValue(Default.QuickToggleKeyPriority)) <> 0;
@@ -544,7 +553,7 @@ begin
   AStore.WriteInteger('StatusField', BoolValue(StatusField));
   AStore.WriteString('StatusFieldHidden', Trim(StatusFieldHidden));
   AStore.WriteInteger('StatusFieldSummary', BoolValue(StatusFieldSummary));
-  AStore.WriteInteger('StatusFieldDoubleClick', BoolValue(StatusFieldDoubleClick));
+  AStore.WriteString('StatusFieldToggles', StatusFieldToggles);
   AStore.WriteInteger('QuickToggleKey', QuickToggleKey);
   AStore.WriteInteger('QuickToggleKeyPriority', BoolValue(QuickToggleKeyPriority));
   AStore.WriteInteger('SafeAskAfterCrash', BoolValue(SafeAskAfterCrash));
@@ -562,6 +571,16 @@ begin
   AStore.WriteInteger('RedoKey', RedoKey);
   AStore.WriteInteger('UpdatesCheck', BoolValue(UpdatesCheck));
   AStore.WriteInteger('BugReportAnonymize', BoolValue(BugReportAnonymize));
+end;
+
+function TAtlasPluginSettings.StatusTogglesOnRightClick: Boolean;
+begin
+  Result := not SameText(Trim(StatusFieldToggles), 'doubleClick');
+end;
+
+function TAtlasPluginSettings.StatusTogglesOnDoubleClick: Boolean;
+begin
+  Result := not SameText(Trim(StatusFieldToggles), 'rightClick');
 end;
 
 function JsonBool(AValue: Boolean): string;
