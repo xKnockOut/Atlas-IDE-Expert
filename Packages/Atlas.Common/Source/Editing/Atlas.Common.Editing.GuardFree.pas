@@ -79,25 +79,8 @@ uses
   System.Math,
   System.StrUtils,
   System.RegularExpressions,
-  Atlas.Common.Documents.Contract;
-
-function SplitLines(const AText: string): TArray<string>;
-var
-  Index: Integer;
-begin
-  Result := AText.Split([#10]);
-  for Index := 0 to High(Result) do
-    if EndsStr(#13, Result[Index]) then
-      Result[Index] := Copy(Result[Index], 1, Length(Result[Index]) - 1);
-end;
-
-function LineBreakOf(const AText: string): string;
-begin
-  if Pos(#13#10, AText) > 0 then
-    Result := #13#10
-  else
-    Result := #10;
-end;
+  Atlas.Common.Documents.Contract,
+  Atlas.Text.Lines;
 
 /// <summary>Innerste Routine mit Rumpf, deren begin…end Zeile ALine enthält; nil sonst.</summary>
 function RoutineAt(ANode: TSyntaxNode; ALine: Integer): TSyntaxNode;
@@ -241,7 +224,7 @@ begin
   AOffer := Default(TGuardOffer);
   AOffer.BlankLine := -1;
   Result := False;
-  Lines := SplitLines(AText);
+  Lines := TTextLines.SplitLines(AText);
   if (ATree = nil) or (ATree.Root = nil) or (ALine < 0) or (ALine > High(Lines)) then
     Exit;
   // Einrückung, "var ", Name, ": Typ", Klasse, Konstruktor, Argumente, ";". Leere Alternativen halten jede Gruppe
@@ -333,8 +316,8 @@ var
   LB, Indent, Release, Body, Head: string;
   Index, Last, Start, StopLine, StopCharacter: Integer;
 begin
-  Lines := SplitLines(AText);
-  LB := LineBreakOf(AText);
+  Lines := TTextLines.SplitLines(AText);
+  LB := TTextLines.LineBreakOf(AText);
   Indent := AOffer.Indent;
   if AStyle = TCompletionFreeStyle.FreeAndNil then
     Release := 'FreeAndNil(' + AOffer.Variable + ');'

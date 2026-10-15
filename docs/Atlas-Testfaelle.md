@@ -1194,3 +1194,18 @@ Vorbereitung: Plugin installiert, Probleme und Inlay-Hints an, Projekt geöffnet
 | PP9 | Detailpanel mit langer Deklaration, Panel breiter und schmaler ziehen | Umbruch wie bisher, folgt der Breite |
 | PP10 | Hover über einer Zeile mit blasser Warnung | Farbe so blass wie die Wellenlinie im Editor |
 | PP11 | Chips im Hover (Vererbung), Tags in Vervollständigung und Detailpanel | Gleicher Innenabstand und gleiche Rundung; Scroll-Daumen in Liste und Doku gleich grau |
+
+## Gemeinsamer Code Atlas.Text (ADR 0012, Code-Review D-01 bis D-06, D-10)
+
+Vorbereitung: Projektgruppe neu gebaut, Plugin installiert, Diagnosemodus an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TX1 | Plugin Win32 und Win64 bauen (Delphi 12 und 13), IDE starten | 0 Fehler, 0 Warnungen, 0 Hinweise (kein W1033); unter *Komponenten › Packages installieren* nur `Atlas.IDE.Expert…bpl`, kein `Atlas.Text` oder `Atlas.Common`; Plugin lädt und entlädt wie bisher |
+| TX2 | Gesamte Projektgruppe `Atlas.groupproj` neu erzeugen (Win32, Win64) | Reihenfolge Text → Common → Windows → Server/Tests; 0/0/0; `Atlas.Tests` grün |
+| TX3 | ANSI-Datei mit Umlauten (CP1252) und eine Datei mit den Bytes `ED A0 80` ohne BOM über eine Server-Code-Aktion ändern, ohne sie im Editor zu öffnen; danach öffnen | Umlaute unverändert; Statusfeld „Datei“ zeigt bei beiden ANSI; Server und Plugin melden dieselbe Kodierung |
+| TX4 | *Atlas › Fehlerbericht* mit Projekt unter `C:\Users\<Name>\…` | Pfade `<ws>\…` bzw. `<pfad>`, Benutzer `<benutzer>`, Text in Anführungszeichen `<wert>`; Plugin- und Serverteil gleich |
+| TX5 | Vervollständigung: `stl` in einer Unit mit `TStringList`, dann `myLis` bei `ERROR_TOO_MANY_LINKS` (Windows-Units im Suchpfad), weitertippen | `TStringList` bleibt in der Liste; `ERROR_TOO_MANY_LINKS` erscheint nicht, auch nicht kurz |
+| TX6 | Datei auf Laufwerk `C:` öffnen, Hover, Strg+Klick, Umbenennen über zwei Dateien | funktioniert wie vorher; das Protokoll im Diagnosemodus zeigt URIs mit `file:///c%3A/…` |
+| TX7 | `settings.json` mit `// Kommentar` und CR-only-Zeilenenden speichern, Optionen öffnen | Einstellungen werden gelesen, keine Fehlermeldung |
+| TX8 | Info-Dialog und Startbildschirm, `AtlasServer --version`, Titel des Installers | überall dieselbe Version |

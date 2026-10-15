@@ -63,6 +63,9 @@ type
     procedure ReadsDelphi12Folder;
     [Test]
     procedure ConvertsPointsAndMarkers;
+    /// <summary>Numerische Entities wie im Server (Atlas.Text.Entities, D-03).</summary>
+    [Test]
+    procedure DecodesNumericEntities;
     [Test]
     procedure KeepsFixedPointsAndEscapesDollar;
     [Test]
@@ -844,6 +847,19 @@ begin
   Assert.AreEqual('for ${1:I} := 0 to ${2:N} do'#10'begin'#10'  $0'#10'  X(${1});'#10'end;', Snippet.Body);
   Expansion := TAtlasSnippets.Expand(Snippet.Body, '', #10);
   Assert.AreEqual('for I := 0 to N do'#10'begin'#10'  '#10'  X(I);'#10'end;', Expansion.Text);
+end;
+
+procedure TAtlasLiveTemplatesTests.DecodesNumericEntities;
+var
+  List: TAtlasSnippetList;
+  Stats: TAtlasLiveTemplateStats;
+begin
+  Stats := Default(TAtlasLiveTemplateStats);
+  List := TAtlasLiveTemplates.Parse('<codetemplate><template name="e"><point name="v"><text>&#228;&#x20AC;&lt;' +
+    '</text></point><code language="Delphi" delimiter="|"><![CDATA[X := |v|;]]></code></template></codetemplate>',
+    '', Stats);
+  Assert.AreEqual(1, Integer(Length(List)));
+  Assert.AreEqual('X := ${1:'#$00E4#$20AC'<};', List[0].Body);
 end;
 
 procedure TAtlasLiveTemplatesTests.KeepsFixedPointsAndEscapesDollar;

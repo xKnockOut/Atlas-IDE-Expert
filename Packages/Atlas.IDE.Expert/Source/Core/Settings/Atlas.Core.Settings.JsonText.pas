@@ -6,12 +6,13 @@
 // Text des betroffenen Werts. Neue Schlüssel kommen ans Ende ihres Objekts,
 // eingerückt wie ihre Geschwister. Pfade mit Punkt: "compiler.onSave".
 // Werte werden als JSON-Text übergeben ("true", "12", "\"de\"", "[\"a\"]").
+// Leerraum, Kommentare und Strings überspringt TJsoncScanner aus Atlas.Text,
+// derselbe wie beim Server (ADR 0012): // endet an LF oder CR.
 
 interface
 
 uses
   System.SysUtils,
-  System.Math,
   System.Generics.Collections,
   System.JSON;
 
@@ -36,6 +37,10 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Lines,
+  Atlas.Text.Jsonc;
+
 type
   TMember = record
     KeyStart: Integer;
@@ -59,38 +64,14 @@ type
 
 procedure TScanner.SkipSpace(var APos: Integer);
 begin
-  while APos <= Length(Text) do
-  begin
-    if CharInSet(Text[APos], [' ', #9, #10, #13]) then
-      Inc(APos)
-    else if (Text[APos] = '/') and (APos < Length(Text)) and (Text[APos + 1] = '/') then
-    begin
-      while (APos <= Length(Text)) and (Text[APos] <> #10) do
-        Inc(APos);
-    end
-    else if (Text[APos] = '/') and (APos < Length(Text)) and (Text[APos + 1] = '*') then
-    begin
-      Inc(APos, 2);
-      while (APos < Length(Text)) and not ((Text[APos] = '*') and (Text[APos + 1] = '/')) do
-        Inc(APos);
-      Inc(APos, 2);
-    end
-    else
-      Break;
-  end;
+  // Offene Blockkommentare toleriert: APos steht dann hinter dem Text.
+  TJsoncScanner.SkipSpace(Text, APos);
 end;
 
 procedure TScanner.SkipString(var APos: Integer);
 begin
   // APos steht auf dem öffnenden Anführungszeichen.
-  Inc(APos);
-  while (APos <= Length(Text)) and (Text[APos] <> '"') do
-  begin
-    if Text[APos] = '\' then
-      Inc(APos);
-    Inc(APos);
-  end;
-  Inc(APos);
+  TJsoncScanner.SkipString(Text, APos);
 end;
 
 procedure TScanner.SkipValue(var APos: Integer);
@@ -229,10 +210,7 @@ end;
 
 function TScanner.LineBreak: string;
 begin
-  if Pos(#13#10, Text) > 0 then
-    Result := #13#10
-  else
-    Result := #10;
+  Result := TTextLines.LineBreakOf(Text);
 end;
 
 function Segments(const APath: string): TArray<string>;
@@ -264,51 +242,8 @@ begin
 end;
 
 class function TAtlasJsonText.StripComments(const AText: string): string;
-var
-  Scanner: TScanner;
-  Pos, Start, Next: Integer;
 begin
-  Result := AText;
-  Scanner.Text := AText;
-  Pos := 1;
-  while Pos <= Length(AText) do
-  begin
-    case AText[Pos] of
-      '"':
-        begin
-          Scanner.SkipString(Pos);
-          Continue;
-        end;
-      '/':
-        if (Pos < Length(AText)) and CharInSet(AText[Pos + 1], ['/', '*']) then
-        begin
-          Start := Pos;
-          if AText[Pos + 1] = '/' then
-            while (Pos <= Length(AText)) and (AText[Pos] <> #10) do
-              Inc(Pos)
-          else
-          begin
-            Inc(Pos, 2);
-            while (Pos < Length(AText)) and not ((AText[Pos] = '*') and (AText[Pos + 1] = '/')) do
-              Inc(Pos);
-            Inc(Pos, 2);
-          end;
-          for Next := Start to Min(Pos, Length(AText) + 1) - 1 do
-            if not CharInSet(Result[Next], [#10, #13]) then
-              Result[Next] := ' ';
-          Continue;
-        end;
-      ',':
-        begin
-          // Schlusskomma vor } oder ] (auch mit Kommentaren dazwischen) entfernen.
-          Next := Pos + 1;
-          Scanner.SkipSpace(Next);
-          if (Next <= Length(AText)) and CharInSet(AText[Next], ['}', ']']) then
-            Result[Pos] := ' ';
-        end;
-    end;
-    Inc(Pos);
-  end;
+  Result := TJsoncScanner.StripComments(AText);
 end;
 
 class function TAtlasJsonText.Parse(const AText: string): TJSONObject;

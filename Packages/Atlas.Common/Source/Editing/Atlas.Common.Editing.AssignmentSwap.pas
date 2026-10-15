@@ -62,36 +62,13 @@ implementation
 
 uses
   System.StrUtils,
-  System.IOUtils;
-
-function SplitLines(const AText: string): TArray<string>;
-var
-  I, Start: Integer;
-begin
-  Result := nil;
-  Start := 1;
-  for I := 1 to Length(AText) do
-    if AText[I] = #10 then
-    begin
-      Result := Result + [Copy(AText, Start, I - Start)];
-      Start := I + 1;
-    end;
-  Result := Result + [Copy(AText, Start, MaxInt)];
-end;
+  System.IOUtils,
+  Atlas.Text.Chars,
+  Atlas.Text.Lines;
 
 function IsBlank(C: Char): Boolean;
 begin
   Result := CharInSet(C, [' ', #9]);
-end;
-
-function IsIdentStart(C: Char): Boolean;
-begin
-  Result := CharInSet(C, ['A'..'Z', 'a'..'z', '_']) or (Ord(C) >= 128);
-end;
-
-function IsIdentChar(C: Char): Boolean;
-begin
-  Result := IsIdentStart(C) or CharInSet(C, ['0'..'9']);
 end;
 
 /// <summary>Beginn des ersten Kommentars außerhalb von Strings; Length + 1 ohne.</summary>
@@ -173,9 +150,9 @@ begin
   I := 1;
   while I <= Length(Expression) do
   begin
-    if not IsIdentStart(Expression[I]) then
+    if not TTextChars.IsIdentStart(Expression[I]) then
       Exit(False);
-    while (I <= Length(Expression)) and IsIdentChar(Expression[I]) do
+    while (I <= Length(Expression)) and TTextChars.IsIdentChar(Expression[I]) do
       Inc(I);
     // Nach einem Bezeichner: Indizes und ^, dann ein Punkt oder das Ende.
     while (I <= Length(Expression)) and CharInSet(Expression[I], ['[', '^']) do
@@ -218,14 +195,6 @@ begin
     Result := ' // ' + TAssignmentSwap.Marker + ' ' + Rest;
 end;
 
-function StripCr(const ALine: string): string;
-begin
-  if EndsStr(#13, ALine) then
-    Result := Copy(ALine, 1, Length(ALine) - 1)
-  else
-    Result := ALine;
-end;
-
 class function TAssignmentSwap.Swap(const AText: string; const ARange: TTextRange; const AReadOnly: TReadOnlyCheck;
   out AEdits: TArray<TRuleEdit>): Boolean;
 var
@@ -237,7 +206,7 @@ var
   Aligned: Boolean;
 begin
   AEdits := nil;
-  Lines := SplitLines(AText);
+  Lines := TTextLines.SplitLines(AText);
   First := ARange.StartPos.Line;
   LastLine := ARange.EndPos.Line;
   // Markierung bis zum Zeilenanfang: Diese Zeile gehört nicht mehr dazu.
@@ -258,7 +227,7 @@ begin
   Result := False;
   for Index := 0 to Count - 1 do
   begin
-    IsAssignment[Index] := Parse(StripCr(Lines[First + Index]), Parsed[Index]);
+    IsAssignment[Index] := Parse(Lines[First + Index], Parsed[Index]);
     Swappable[Index] := IsAssignment[Index] and IsAssignable(Parsed[Index].Left) and
       IsAssignable(Parsed[Index].Right) and not (Assigned(AReadOnly) and AReadOnly(Parsed[Index].Right));
     if not Swappable[Index] then
@@ -279,7 +248,7 @@ begin
   begin
     if not IsAssignment[Index] then
       Continue;
-    Text := StripCr(Lines[First + Index]);
+    Text := Lines[First + Index];
     if Swappable[Index] then
     begin
       Gap := Parsed[Index].GapBefore;
@@ -321,10 +290,10 @@ var
   Line: Integer;
 begin
   Result := '';
-  Lines := SplitLines(AText);
+  Lines := TTextLines.SplitLines(AText);
   for Line := ARange.StartPos.Line to ARange.EndPos.Line do
     if (Line >= 0) and (Line <= High(Lines)) then
-      Result := Result + ' ' + StripCr(Lines[Line]);
+      Result := Result + ' ' + Lines[Line];
 end;
 
 function HasWord(const AText, AWord: string): Boolean;
@@ -336,8 +305,8 @@ begin
   Start := Pos(AWord, Lower);
   while Start > 0 do
   begin
-    if ((Start = 1) or not IsIdentChar(Lower[Start - 1])) and
-      ((Start + Length(AWord) > Length(Lower)) or not IsIdentChar(Lower[Start + Length(AWord)])) then
+    if ((Start = 1) or not TTextChars.IsIdentChar(Lower[Start - 1])) and
+      ((Start + Length(AWord) > Length(Lower)) or not TTextChars.IsIdentChar(Lower[Start + Length(AWord)])) then
       Exit(True);
     Start := PosEx(AWord, Lower, Start + 1);
   end;

@@ -15,6 +15,7 @@ Hier stehen Architekturentscheidungen mit Kontext, Entscheidung und Folgen. Eine
 | [0009](0009-installer.md) | Installer als eigene VCL-Anwendung je Benutzer | Angenommen |
 | [0010](0010-binaerer-index-cache.md) | Binärer Index-Cache mit String-Tabelle und Prüfsumme | Angenommen |
 | [0011](0011-willkommensseite.md) | Atlas-Bereiche als Plugins der IDE-Willkommensseite, Layout über die Registry | Angenommen |
+| [0012](0012-gemeinsamer-text-code.md) | Plugin ohne Atlas.Common; gemeinsamer Code in Atlas.Text | Angenommen |
 
 ## Vorlage
 

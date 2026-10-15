@@ -25,7 +25,7 @@ Die Open Tools API bietet dafür:
 
 Ein Design-Time-Package `Atlas.IDE.Expert` (bis #406 `Atlas.IdePlugin`; Win32, denn `bds.exe` ist 32-Bit) meldet sich als **Code Insight-Manager für Delphi** an. Es ist ein **dünner LSP-Client**:
 
-- Es startet AtlasServer als **eigenen Prozess** und spricht mit ihm JSON-RPC über stdin/stdout. Die Protokollschicht `Atlas.Common.JsonRpc.*` wird wiederverwendet.
+- Es startet AtlasServer als **eigenen Prozess** und spricht mit ihm JSON-RPC über stdin/stdout. Die Protokollschicht `Atlas.Common.JsonRpc.*` wird wiederverwendet. (Überholt, siehe Fortschreibung „eigener Client“ und ADR 0012.)
 - Es übersetzt Editor-Ereignisse in LSP-Nachrichten (`didOpen`, `didChange`, `didClose`) und die Aufrufe der IDE in Anfragen (`hover`, `definition`, `completion`, `signatureHelp`).
 - Die gesamte Sprachlogik bleibt im Server. VS Code, Claude Code, Neovim und RAD Studio bekommen dieselben Ergebnisse.
 - Stürzt der Server ab oder hängt er, startet das Plugin ihn neu. Die IDE läuft weiter.
@@ -58,3 +58,7 @@ Bis Schritt 5 umgesetzt ist, liefert der eingebaute LSP-Weg die Diagnosen, sofer
 - **Datenquelle über eine Schnittstelle:** Die Oberfläche kennt nur `IAtlasCompletionProvider` (`Atlas.Core.Completion.Contract`). Eine Quelle liefert Teilmengen an eine Senke und meldet zum Schluss genau einmal `Complete`; nach `Cancel` oder einem neuen Query erreicht nichts mehr die alte Senke. `TAtlasCompletionProviders` führt mehrere Quellen zusammen.
 - **Standardquelle ist der eigene Server** (ADR 0001): `TAtlasServerCompletionProvider` gleicht den Editortext im Hauptthread ab und fragt `textDocument/completion` im Hintergrund an, damit die IDE nie wartet. DelphiLSP wäre eine weitere Quelle (#63), Snippets ebenfalls (#51). Die Abwägung DelphiLSP gegen eigenen Parser ist damit zugunsten des eigenen Parsers entschieden, bleibt aber über die Schnittstelle umkehrbar.
 - **Testdaten:** `TAtlasFixedCompletionProvider` liefert feste Einträge, auf Wunsch verzögert; damit lässt sich die Oberfläche ohne Server testen (#415) und ein langsamer Provider nachstellen (#409).
+
+## Fortschreibung: eigener Client, kein Atlas.Common (#406, ADR 0012)
+
+- Seit #406 bindet das Plugin `Atlas.Common` nicht ein: Es hat einen eigenen schlanken LSP-Client (`Atlas.Core.Lsp.*`) und bleibt ein einzelnes BPL. Code, den Server und Plugin gemeinsam brauchen und der nur die RTL braucht, liegt einmal im Package `Atlas.Text` und wird ins Plugin als Quelltext übersetzt; die Begründung steht in [ADR 0012](0012-gemeinsamer-text-code.md).

@@ -79,7 +79,9 @@ implementation
 
 uses
   System.StrUtils,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Text.Lines,
+  Atlas.Text.Chars;
 
 { TAtlasInlayHintStore }
 
@@ -101,29 +103,8 @@ begin
 end;
 
 class function TAtlasInlayHintStore.SplitLines(const AText: string): TArray<string>;
-var
-  Index, Start: Integer;
 begin
-  Result := nil;
-  Start := 1;
-  Index := 1;
-  while Index <= Length(AText) do
-  begin
-    if (AText[Index] = #13) or (AText[Index] = #10) then
-    begin
-      Result := Result + [Copy(AText, Start, Index - Start)];
-      if (AText[Index] = #13) and (Index < Length(AText)) and (AText[Index + 1] = #10) then
-        Inc(Index);
-      Start := Index + 1;
-    end;
-    Inc(Index);
-  end;
-  Result := Result + [Copy(AText, Start, MaxInt)];
-end;
-
-function IsIdentChar(AChar: Char): Boolean;
-begin
-  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AChar) > 127);
+  Result := TTextLines.SplitLines(AText);
 end;
 
 class function TAtlasInlayHintStore.IsLiteralAt(const ALine: string; ACharacter: Integer): Boolean;
@@ -152,7 +133,7 @@ begin
       Exit(CharInSet(Next, ['0'..'9', '$', '%']));
   end;
   Stop := Index;
-  while (Stop <= Length(ALine)) and IsIdentChar(ALine[Stop]) do
+  while (Stop <= Length(ALine)) and TTextChars.IsIdentChar(ALine[Stop]) do
     Inc(Stop);
   Word := LowerCase(Copy(ALine, Index, Stop - Index));
   Result := (Word = 'true') or (Word = 'false') or (Word = 'nil');

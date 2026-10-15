@@ -11,28 +11,38 @@ Grundlage ist das Konzept „Rollenbasierte Kopplung und Kohäsion“ (Entwurf, 
 
 | Projekt | Art (Konzept 6.2) | Darf verwenden | Darf nicht verwenden |
 |---|---|---|---|
-| `Atlas.Common` | Platform-Package | plattformunabhängige RTL (`System.*`) | Windows (`Winapi.*`, `System.Win.*`), VCL, FMX, `Atlas.Windows` |
+| `Atlas.Text` | Platform-Package, zusätzlich als Quelltext im Plugin (ADR 0012) | nur RTL (`System.*`) | Windows, VCL, FMX, alle anderen Atlas-Artefakte |
+| `Atlas.Common` | Platform-Package | plattformunabhängige RTL (`System.*`), `Atlas.Text` | Windows (`Winapi.*`, `System.Win.*`), VCL, FMX, `Atlas.Windows` |
 | `Atlas.Windows` | Platform-Package | RTL, `Winapi.*`, `System.Win.*`, `Atlas.Common` | VCL, FMX |
 | `AtlasServer` | Anwendung (Host) | beide Packages, RTL, Windows; die Versionsverwaltung des Plugins (`Atlas.Core.Vcs.*`, #571) als Quelltext | VCL (Konsolenanwendung) |
-| `Atlas.IDE.Expert` | Design-Time-Package für RAD Studio (Win32 und Win64, ADR 0006, ADR 0008) | RTL, `Winapi.*`, `System.Win.*`, VCL, `vclwinx` (Bildsammlung für das Atlas-Symbol, #751), `designide` (Open Tools API) | `Atlas.Common`, `Atlas.Windows` (eigenständig, damit die IDE nur ein BPL laden muss) |
-| `AtlasSetup` | Anwendung (Installer, VCL, Win32, ADR 0009) | RTL, `Winapi.*`, `System.Win.*`, VCL, die Versionsunit des Plugins; `Setup.Core.*` nur RTL | `Atlas.Common`, `Atlas.Windows`; in `Setup.Core.*` Windows, VCL, `Setup.Adapters.*`, `Setup.Shell.*` |
+| `Atlas.IDE.Expert` | Design-Time-Package für RAD Studio (Win32 und Win64, ADR 0006, ADR 0008) | RTL, `Winapi.*`, `System.Win.*`, VCL, `vclwinx` (Bildsammlung für das Atlas-Symbol, #751), `designide` (Open Tools API), `Atlas.Text.*` als Quelltext (`contains … in '..\Atlas.Text\…'`, ADR 0012) | `Atlas.Common`, `Atlas.Windows` (eigenständig, damit die IDE nur ein BPL laden muss, ADR 0012) |
+| `AtlasSetup` | Anwendung (Installer, VCL, Win32, ADR 0009) | RTL, `Winapi.*`, `System.Win.*`, VCL, die Versionsunit `Atlas.Text.Product.Version` als Quelltext; `Setup.Core.*` nur RTL | `Atlas.Common`, `Atlas.Windows`; in `Setup.Core.*` Windows, VCL, `Setup.Adapters.*`, `Setup.Shell.*` |
 | `Atlas.Tests` | Testprojekt (DUnitX) | alles, was getestet wird | – |
 
 Abhängigkeitsrichtung:
 
 ```text
-AtlasServer ──► Atlas.Windows ──► Atlas.Common ──► RTL
+AtlasServer ──► Atlas.Windows ──► Atlas.Common ──► Atlas.Text ──► RTL
      │                                 ▲
      └─────────────────────────────────┘
+Atlas.IDE.Expert ··► Atlas.Text (Quelltext, kein requires)
+AtlasSetup       ··► Atlas.Text.Product.Version (Quelltext)
 ```
 
-Die Regeln für die Packages prüft `Tools/Check-PackageDependencies.ps1` (uses- und requires-Klauseln). Das Skript läuft lokal und in der GitHub Action „Package-Abhängigkeiten“.
+Die Regeln für die Packages prüft `Tools/Check-PackageDependencies.ps1` (uses-, requires- und contains-Klauseln). Das Skript läuft lokal und in der GitHub Action „Package-Abhängigkeiten“. Zu Atlas.Text (ADR 0012) prüft es zusätzlich:
+
+- Das Plugin enthält genau die Units aus `Atlas.Text.dpk` (sonst W1033) und außer eigenen Units nur solche aus `..\Atlas.Text\Source`.
+- `Atlas.Tests.dpr` und `AtlasServer.dpr` binden Atlas.Text nicht als Quelltext ein; sie linken die DCUs aus `Dcu/Atlas.Text`.
+- **Kopien-Sperre:** Außerhalb von `Packages/Atlas.Text` entsteht keine neue Routine wie `LineBreakOf`, `SplitLines`, `IndentOf`, `IsWordChar`, `IsIdentChar`, `IsUtf8`, `PercentDecode` oder `DecodeEntities`. Ausnahmen (Fassaden mit eigenem Typ, öffentliche Weiterleitungen, SQL-Bezeichner, Block Rules) stehen mit Grund in `$AllowedLocal`; die Liste soll nur schrumpfen.
 
 ## Verzeichnisstruktur
 
 ```text
-Atlas.groupproj          Projektgruppe (Build-Reihenfolge: Common, Windows, Anwendung, IDE-Plugin, Installer, Tests)
+Atlas.groupproj          Projektgruppe (Build-Reihenfolge: Text, Common, Windows, Anwendung, IDE-Plugin, Installer, Tests)
 Packages/
+  Atlas.Text/
+    Atlas.Text.dpk/.dproj
+    Source/<Feature>/              Zeilen, Zeichen, Kodierung, URIs, Diff, Fuzzy, JSONC, Entities, Version (ADR 0012)
   Atlas.Common/
     Atlas.Common.dpk/.dproj
     Source/<Feature>/              ein Ordner je Platform-Feature, darin optional Rollenordner
@@ -51,7 +61,7 @@ Setup/
   Source/Core/  Source/Adapters/  Source/Shell/
 Tests/
   Atlas.Tests.dpr/.dproj
-  Common/  Windows/  Application/  IDE.Expert/  Setup/  (Tests je Ausgabeartefakt)
+  Text/  Common/  Windows/  Application/  IDE.Expert/  Setup/  (Tests je Ausgabeartefakt)
   Data/Protocol/                   aufgezeichnete Nachrichtenfolgen für Protokolltests (JSON)
 Editors/ClaudeCode/                Plugin für Claude Code (LSP und MCP)
 schemas/                           JSON-Schema von atlas.json, Quelle für Doku und Einstellungsdialog
@@ -67,7 +77,8 @@ Die Anwendung und das Testprojekt binden die Packages statisch ein: Sie finden d
 Ausgabeartefakt.Feature.Rolle.Sache
 ```
 
-- Präfixe der Ausgabeartefakte (Whitelist): `Atlas.Common`, `Atlas.Windows`, `Atlas.IDE.Expert`
+- Präfixe der Ausgabeartefakte (Whitelist): `Atlas.Text`, `Atlas.Common`, `Atlas.Windows`, `Atlas.IDE.Expert`
+- `Atlas.Text`-Units heißen `Atlas.Text.<Feature>` (Feature-Wurzel ohne Rolle, z. B. `Atlas.Text.Lines`); sie enthalten nur reine Funktionen und Records ohne Zustand, ohne `inline` und ohne Standardparameter, keine Contracts oder Provider
 - Units der Anwendung tragen kein Präfix, z. B. `Shell.Application`
 - Units im Wurzelverzeichnis eines Features tragen keinen Rollenbezeichner, z. B. `Atlas.Common.Product.Version`
 - Ausnahme Plugin (#406): Die Units von `Atlas.IDE.Expert` heißen nach ihrer Schicht `Atlas.Core.*` (Datenmodell, Matching, LSP-Client; ohne VCL und Open Tools API), `Atlas.UI.*` (Fenster; nur VCL) und `Atlas.IDE.*` (Open Tools API, Tastaturbindung, Einstellungen), darunter `Feature.Rolle.Sache`. `Core` und `UI` verwenden nie `Atlas.IDE.*`, `Core` nie `Atlas.UI.*`; geprüft durch `Tools/Check-PackageDependencies.ps1`. So lassen sich `Core` und `UI` später ohne Codeänderung in ein Runtime-Package auslagern.
@@ -155,7 +166,7 @@ Komposition von Hand (keine Container-Bibliothek). Composition-Units tragen desh
 | `Atlas.Core.Documentation` / `Atlas.UI.Documentation` (Plugin) | `Contract`, `Layout`, `View` | XMLDoc in Tooltip und Detailpanel (#654): Abschnitte und Läufe aus `atlas.documentation` bzw. `data.atlas.documentation`, Anzeige-Einstellungen `xmlDoc`; Satz ohne VCL (Messen per Rückruf): Umbruch an Wortgrenzen, zweispaltige Parameter, Listen mit hängendem Einzug, Tabellen, eingefärbte Codeblöcke, Kurzform; Ausschnitt mit Mausrad, Verweise und Links als Klickflächen, Markieren und Kopieren |
 | `Atlas.Core.Diagnostics` / `Atlas.UI.Diagnostics` / `Atlas.IDE.Diagnostics` (Plugin) | `Export`, `ExportDialog` | „Diagnoselog exportieren…“ (#647) im Menü Atlas und in der Befehlspalette: Diagnoselogs des Servers der letzten 7 Tage (ohne Zuordnungsdatei) und, falls vorhanden, die letzten Daten des Diagnosemodus (#479, seit #766) mit Vorschau genau des ZIP-Inhalts, dann ZIP-Datei an einem gewählten Ort |
 | `Atlas.Core.Diagnostics` / `Atlas.UI.Diagnostics` (Plugin) | `Package`, `ReportDialog` | „Problem melden“ (#766): `TAtlasDiagnosticPackage` stellt das Paket aus den gewählten Teilen zusammen (Versionen, Einstellungen ohne Pfade, Plugin-Log mit den Regeln des Fehlerberichts, Diagnoselogs, Diagnosemodus-Datei; alles über `TAtlasBugReport` anonymisiert), prüft auf Lecks, schreibt die ZIP über `System.Zip`, wählt den freien Dateinamen, baut die Issue-Vorlage und lässt nur http(s)-Adressen zu (Core, ohne VCL); der Dialog zeigt Häkchen, Vorschau jeder Datei und die Knöpfe, Explorer, Zwischenablage und Browser kommen als `TAtlasReportActions` aus der IDE-Schicht (UI) |
-| `Atlas.Core.Diagnostics` / `Atlas.IDE.Diagnostics` (Plugin) | `BugReport` | Fehlerbericht (#108): der Core setzt Plugin-Teil (Versionen, Einstellungen, Protokollende) und Bericht des Servers (`atlas.server.bugReport`) zusammen und anonymisiert ohne `Atlas.Common` (ADR 0006); die IDE-Schicht holt Projektwurzeln über die OTA, ruft den Server über den Manager auf, zeigt die Vorschau im Exportdialog und schreibt die Datei. Issue-Vorlagen in `.github/ISSUE_TEMPLATE` |
+| `Atlas.Core.Diagnostics` / `Atlas.IDE.Diagnostics` (Plugin) | `BugReport` | Fehlerbericht (#108): der Core setzt Plugin-Teil (Versionen, Einstellungen, Protokollende) und Bericht des Servers (`atlas.server.bugReport`) zusammen und anonymisiert mit `Atlas.Text.Anonymize` wie der Server (ADR 0012); die IDE-Schicht holt Projektwurzeln über die OTA, ruft den Server über den Manager auf, zeigt die Vorschau im Exportdialog und schreibt die Datei. Issue-Vorlagen in `.github/ISSUE_TEMPLATE` |
 | `Atlas.Core.Diagnostics` / `Atlas.Core.Product` (Plugin) | `Guard`, `TimeLimit`, `Shutdown`, `MainThread`, `Version` | Absturzsicherheit (#493): `TAtlasGuard` fängt Fehler an jedem Einstiegspunkt, protokolliert sie (Version, einzeilige Meldung, Stack-Trace) und zählt sie je Feature bzw. Datenquelle (3 in 5 Minuten schalten nur diese ab); `TAtlasTimeLimit` führt Aufrufe von Datenquellen aus dem Hauptthread in Arbeiter-Threads mit hartem Zeitlimit aus; `TAtlasShutdown` ist das gemeinsame Abbruchsignal, auf das jedes Warten in Hintergrund-Threads hört (Entladen in unter 1 s); `TAtlasMainThread` reiht Aufrufe in den Hauptthread ein (`Queue` im Hauptthread sofort, `ForceQueue` immer), gebunden an einen eigenen Besitzer-Thread, den die Komposition direkt nach dem Abbruchsignal anhält: Noch wartende Einträge werden verworfen, neue nicht mehr angenommen; jeder Eintrag läuft unter der Sicherung seines Features. `TAtlasTimeLimit.WaitIdle` wartet, bis kein (auch aufgegebener) Arbeiter mehr läuft |
 | `Atlas.IDE.Editor.Style` (Plugin) | – | Hell/Dunkel nach dem IDE-Thema, ersatzweise nach `AppsUseLightTheme`; Editorschrift; bei jedem Öffnen eines Atlas-Fensters neu abgefragt |
 | `Atlas.Core.Status` / `Atlas.UI.Status` / `Atlas.IDE.Status` (Plugin) | `Contract`, `Registry`, `Lines`, `IndexStore`, `Window`, `Field` | Atlas-Statusfeld (#591): `IAtlasStatusItem` (Kennung, Text, Kurztext, Zustand neutral/grün/gelb/rot, Reihenfolge, optionale Aktion) und threadsichere `IAtlasStatusRegistry` mit Beobachtern; Gesamtzustand = schlechteste Zeile, Kurztext der wichtigsten gelben oder roten Zeile, Tooltip, ausgeblendete Kennungen; feste Zeilen Server (Phase, Antwortzeit der letzten 50 Anfragen, Version), Index (Fortschritt, Units aus `atlas.server.status` alle 5 s im Hintergrund) und Datei; Fenster mit Punkten, Zeilenaktionen und Knöpfen; selbst gezeichnetes Panel in der Statusleiste jedes Editorfensters mit verketteten Ereignissen, Neuzeichnen gesammelt höchstens alle 250 ms. Für die Zustandskachel (#754): optionale Kurzform je Zeile (`IAtlasStatusBrief`: Kurztext und Zusatz rechts), Server mit Beginn der Phase und Absturz (rot) gegenüber von Atlas beendet, Zeile Version (`atlas.version`, von der Update-Prüfung #495 gemeldet) und letzter Index-Stand (`TAtlasIndexTracker`, `%LOCALAPPDATA%\Atlas\index-state.json`) für „Stand vom …“ ohne laufenden Server
