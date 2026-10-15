@@ -1,4 +1,4 @@
-# Übergabe: Atlas IDE Expert – Stand 09.10.2026
+﻿# Übergabe: Atlas IDE Expert – Stand 09.10.2026
 
 ## Kontext
 - Repo: https://github.com/xKnockOut/Atlas-IDE-Expert.git, lokal unter `C:\Projekte\BetterDelphiLSP\repo`. Gearbeitet wird auf `main`.
@@ -422,3 +422,11 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Gemergt auf Marcos Stand bffd54f6:** `claude/code-review-fixes-awz1nk-server-robustheit` (Code-Review Blöcke A und B, darin `feature/520-tasten-nachziehen`) und der Willkommensseiten-Stapel bis `feature/68-todo-uebersicht` (#757 Bilder, #458, #766, #545, #622, #755, #66, #68).
 - **Angepasst:** Einreihungen in den Hauptthread aus Willkommensseite, Metrikbericht und TODO-Liste über `TAtlasMainThread` (Code-Review A-02; `Check-MainThreadQueue.ps1` grün). Notizen (#545) und Lesezeichen (#622) im gegliederten Atlas-Menü als eigenes Untermenü „Notizen und Lesezeichen“ (`MenuGroupNotes`), sichtbar, solange eins von beiden an ist.
 - **Geprüft:** alle Prüfskripte aus `Tools/` grün (pwsh in der Cloud). **Nicht gebaut:** Gruppenbau und Tests bei Marco.
+
+## Code-Review Block C: Heißer Pfad des Servers (15.10.2026, Branch `claude/code-review-fixes-awz1nk-heisser-pfad` auf Block B, nicht gepusht)
+- **Umfang:** P-01, P-02, P-05 (Rest), P-06, P-07, P-08 (ohne `Semantics.ControlFlow`), P-11, P-12 (Rest), P-13, P-17 nach dem Plan `C-server-hotpath`.
+- **Neu:** `Atlas.Common.Lsp.Internals.FormCache` (LRU mit 16 Formular-Schnappschüssen; offene Dateien nach Text, Dateien auf der Platte nach Dateialter), `TNameResolver.ExtractedUnit`, verschachteltes `PinTree`/`UnpinTree` (Stapel), `ISymbolIndex.UnavailableUnits`.
+- **Messung unter FPC (Basis → neu):** `references` mit 300 Treffern 519/422 ms → 79/80 ms; `documentHighlight` 421/462 ms → 80/82 ms; `Units` ×2000 bei 500 Units 280 ms → 0 ms; Vervollständigung ×20 94 → 84 ms. Anonymisierer unter FPC ohne Unterschied (dort kein PCRE-Übersetzen).
+- **Abweichungen:** `ComponentItemsFromForm`/`SenderItemsFromForm` als neue Namen statt Überladungen (Mehrdeutigkeit mit anonymen Methoden); Stempel offener DFMs ist der Text statt der Version; nur die Sperre „außerhalb einer Routine nichts lesen“, kein früher Ausstieg bei fremder Klasse (wegen `with`); Schnappschuss von `Units` wird bei Änderung verworfen statt Generationszähler; Regex von `SubstituteWords` unverändert; Regex-Rückfall in `SenderItems` bleibt.
+- **Geprüft in der Cloud:** die vier Prüfskripte grün; FPC-Harness `--all` ohne neue Fehlschläge gegenüber der Basis (2503 statt 2474 grün). `Atlas.Common.Diagnostics.Tests` übersetzt unter FPC schon vorher nicht (`ShutdownLeaks`); die neuen Anonymisierer-Tests liefen über eine Kopie grün.
+- **Offen bei Marco:** Delphi-Build Win32/Win64 0/0/0; Diagnose-Tests unter Delphi; Laufzeit des Anonymisierers mit PCRE; in der IDE Referenzen, Vorkommen, Vervollständigung von Komponenten und `Sender.` in Formularen.

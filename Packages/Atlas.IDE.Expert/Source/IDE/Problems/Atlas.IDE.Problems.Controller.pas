@@ -111,6 +111,8 @@ type
     FRetired: TObjectList<TThread>;
     // Letzter gesehener bzw. zuletzt geholter Editortext je Datei (Schlüssel klein).
     FTexts: TDictionary<string, string>;
+    // Version des Pufferstands je Datei (P-04): Vergleich statt des ganzen Textes.
+    FVersions: TDictionary<string, Cardinal>;
     // Zuletzt aktiver Editor: beim Wechsel seinen Stand sofort an den Server (Index, #492).
     FLastFile: string;
     FPulled: TDictionary<string, string>;
@@ -159,10 +161,12 @@ implementation
 uses
   Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
+  Vcl.Forms,
   ToolsAPI,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
   Atlas.IDE.Editor.Buffer,
+  Atlas.IDE.Editor.Snapshot,
   Atlas.IDE.Settings.Store;
 
 { TAtlasProblemsController.TDocumentWorker }
@@ -368,6 +372,7 @@ begin
   FList := TAtlasProblemsList.Create;
   FRetired := TObjectList<TThread>.Create(True);
   FTexts := TDictionary<string, string>.Create;
+  FVersions := TDictionary<string, Cardinal>.Create;
   FPulled := TDictionary<string, string>.Create;
   FBuildTarget := TAtlasIdeBuildTarget.Create(
     procedure(const AMessage: string)
@@ -396,6 +401,7 @@ begin
   FBuildTarget.Free;
   FPulled.Free;
   FTexts.Free;
+  FVersions.Free;
   FList.Free;
   FPainter.Free;
   FStore.Free;
@@ -525,6 +531,8 @@ var
   Refresh, Changed: Boolean;
   Pull: TPull;
   Pulls: TArray<TPull>;
+  Snapshot: TAtlasEditorSnapshot;
+  KnownVersion: Cardinal;
 begin
   // Durch die Sicherung abgeschaltet (#493).
   if TAtlasGuard.Disabled(TAtlasFeature.Problems) then
@@ -537,21 +545,27 @@ begin
         StopWorkers(False);
       FStore.Clear;
       FTexts.Clear;
+      FVersions.Clear;
       FPulled.Clear;
       Publish;
       Exit;
     end;
     View := nil;
-    if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+    // Ohne Fokus ändert sich der Puffer nur über Neuladen, das den Stand ohnehin als veraltet markiert:
+    // dann weder Puffer lesen noch abgleichen (P-04). Freigeben, Stoppen und Veröffentlichen laufen weiter.
+    if Application.Active and Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
       View := Editors.TopView;
     if (View <> nil) and (View.Buffer <> nil) and IsSource(View.Buffer.FileName) then
     begin
       FileName := View.Buffer.FileName;
       Key := TAtlasProblemStore.Key(FileName);
-      Text := TAtlasEditorBuffer.Text(View.Buffer);
+      // Gemeinsamer Pufferstand (P-04): gelesen nur nach einer Änderung.
+      Snapshot := TAtlasEditorSnapshots.Get(View);
+      Text := Snapshot.Text;
       // Markierungen wandern mit, bevor neue Diagnosen da sind.
-      if not FTexts.TryGetValue(Key, Known) or (Known <> Text) then
+      if not FVersions.TryGetValue(Key, KnownVersion) or (KnownVersion <> Snapshot.Version) then
       begin
+        FVersions.AddOrSetValue(Key, Snapshot.Version);
         FTexts.AddOrSetValue(Key, Text);
         FStore.Edit(FileName, Text);
         FChangedAt := GetTickCount;
@@ -633,6 +647,7 @@ begin
     begin
       ASession.Close(FileName);
       FTexts.Remove(TAtlasProblemStore.Key(FileName));
+      FVersions.Remove(TAtlasProblemStore.Key(FileName));
       FPulled.Remove(TAtlasProblemStore.Key(FileName));
     end;
 end;

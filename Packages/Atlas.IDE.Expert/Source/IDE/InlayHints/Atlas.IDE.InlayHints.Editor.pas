@@ -13,13 +13,21 @@
 //   Editor kennt keinen eingeschobenen Text; so bleiben Datei, Undo und
 //   Cursor unberührt. Gezeichnet wird nur, wenn die Zeile im Editor der im
 //   Speicher entspricht.
+// - Zeichnen ohne Objektkopien (P-10): reines GDI zwischen SaveDC und
+//   RestoreDC wie im Problem-Zeichner; Schrift, Stift und Pinsel sind Felder
+//   und werden nur bei geänderter Editorschrift bzw. geändertem Hintergrund
+//   neu gebaut. Die Einstellung wird erst geprüft, wenn die Zeile Hinweise hat.
+// - Pufferstand (P-04): über TAtlasEditorSnapshots, gelesen nur nach einer
+//   Änderung; bei inaktiver IDE wird der Puffer nicht geprüft.
 
 interface
 
 uses
   System.SysUtils,
   System.Types,
+  Winapi.Windows,
   Vcl.ExtCtrls,
+  Vcl.Graphics,
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Lsp.Session,
@@ -49,9 +57,22 @@ type
     FIndex: Integer;
     FFileName: string;
     FText: string;
+    FVersion: Cardinal;
     FChangedAt: Cardinal;
     FRetryAt: Cardinal;
     FShowing: Boolean;
+    FHintFont: TFont;
+    FFontKey: string;
+    FBack: COLORREF;
+    FBackKnown: Boolean;
+    FTextColor: COLORREF;
+    FPen: HGDIOBJ;
+    FBrush: HGDIOBJ;
+    /// <summary>Baut FHintFont nur neu, wenn sich Name, Größe oder PPI der Editorschrift geändert haben.</summary>
+    procedure EnsureHintFont(const AEditorFont: TFont);
+    /// <summary>Stift, Pinsel und Textfarbe nur neu, wenn sich der Hintergrund geändert hat.</summary>
+    procedure EnsureColors(ABack: COLORREF);
+    procedure FreeColors;
     procedure Tick(Sender: TObject);
     procedure Fetch(const AView: IOTAEditView);
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
@@ -65,9 +86,8 @@ type
 implementation
 
 uses
-  Winapi.Windows,
   System.Math,
-  Vcl.Graphics,
+  Vcl.Forms,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Settings.Plugin,
@@ -75,6 +95,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Pairs,
   Atlas.IDE.Editor.Buffer,
+  Atlas.IDE.Editor.Snapshot,
   Atlas.IDE.Editor.Style,
   Atlas.IDE.Settings.Store;
 
@@ -100,6 +121,7 @@ begin
   FSession := ASession;
   FStore := TAtlasInlayHintStore.Create;
   FIndex := -1;
+  FHintFont := TFont.Create;
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
@@ -121,6 +143,8 @@ begin
     Services.RemoveEditorEventsNotifier(FIndex);
   FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
+  FreeColors;
+  FHintFont.Free;
   FStore.Free;
   inherited Destroy;
 end;
@@ -143,38 +167,41 @@ end;
 
 procedure TAtlasEditorInlayHints.Tick(Sender: TObject);
 var
-  Settings: TAtlasPluginSettings;
   Editors: IOTAEditorServices;
   View: IOTAEditView;
-  Text: string;
+  Snapshot: TAtlasEditorSnapshot;
 begin
   // Durch die Sicherung abgeschaltet (#493).
   if TAtlasGuard.Disabled(TAtlasFeature.InlayHints) then
     Exit;
   try
-    Settings := TAtlasIdeSettings.Current;
-    if not (Settings.Enabled and Settings.InlayHints) then
+    if not TAtlasIdeSettings.InlayHintsOn then
     begin
       if FShowing then
       begin
         FStore.Clear;
         FFileName := '';
         FText := '';
+        FVersion := 0;
         FShowing := False;
         Invalidate;
       end;
       Exit;
     end;
+    // Ohne Fokus ändert sich der Puffer nur über Neuladen; das markiert den Stand ohnehin als veraltet (P-04).
+    if not Application.Active then
+      Exit;
     View := nil;
     if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
       View := Editors.TopView;
     if (View = nil) or (View.Buffer = nil) or not IsSource(View.Buffer.FileName) then
       Exit;
-    Text := TAtlasEditorBuffer.Text(View.Buffer);
-    if not SameText(FFileName, View.Buffer.FileName) or (FText <> Text) then
+    Snapshot := TAtlasEditorSnapshots.Get(View);
+    if not SameText(FFileName, Snapshot.FileName) or (FVersion <> Snapshot.Version) then
     begin
-      FFileName := View.Buffer.FileName;
-      FText := Text;
+      FFileName := Snapshot.FileName;
+      FText := Snapshot.Text;
+      FVersion := Snapshot.Version;
       FChangedAt := GetTickCount;
       Exit;
     end;
@@ -224,22 +251,58 @@ begin
   Result := Length(TAtlasPairs.DisplayLine(Copy(ALine, 1, Max(0, ACharacter)), ATabWidth)) + 1;
 end;
 
+procedure TAtlasEditorInlayHints.FreeColors;
+begin
+  if FPen <> 0 then
+    DeleteObject(FPen);
+  if FBrush <> 0 then
+    DeleteObject(FBrush);
+  FPen := 0;
+  FBrush := 0;
+  FBackKnown := False;
+end;
+
+procedure TAtlasEditorInlayHints.EnsureColors(ABack: COLORREF);
+var
+  Colors: TAtlasHintColors;
+begin
+  if FBackKnown and (FBack = ABack) then
+    Exit;
+  FreeColors;
+  Colors := TAtlasColors.InlayHint(TAtlasColor(ABack));
+  FTextColor := COLORREF(ColorToRGB(TColor(Colors.Text)));
+  FPen := CreatePen(PS_SOLID, 1, ColorToRGB(TColor(Colors.Pen)));
+  FBrush := CreateSolidBrush(ColorToRGB(TColor(Colors.Fill)));
+  FBack := ABack;
+  FBackKnown := True;
+end;
+
+procedure TAtlasEditorInlayHints.EnsureHintFont(const AEditorFont: TFont);
+var
+  Key: string;
+begin
+  Key := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
+  if Key = FFontKey then
+    Exit;
+  FHintFont.Assign(AEditorFont);
+  FHintFont.Size := Max(6, AEditorFont.Size - 1);
+  FHintFont.Style := [];
+  FFontKey := Key;
+end;
+
 procedure TAtlasEditorInlayHints.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
   var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
-  Settings: TAtlasPluginSettings;
   Names: TArray<string>;
   Name, Stored: string;
   LineState: INTACodeEditorLineState;
-  Line, TabWidth, X, Width, Height, Top: Integer;
-  Colors: TAtlasColors;
+  Line, TabWidth, X, Height, Top: Integer;
   Canvas: TCanvas;
   Cell, Pill: TRect;
-  OldFont: TFont;
-  OldBrush: TBrush;
-  OldPen: TPen;
-  Back: TAtlasColor;
   Sample: COLORREF;
+  DC: HDC;
+  Saved: Integer;
+  Size: TSize;
 begin
   // Durch die Sicherung abgeschaltet (#493).
   if TAtlasGuard.Disabled(TAtlasFeature.InlayHints) then
@@ -247,12 +310,12 @@ begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) then
     Exit;
   try
-    Settings := TAtlasIdeSettings.Current;
-    if not (Settings.Enabled and Settings.InlayHints) then
-      Exit;
     Line := Context.LogicalLineNum - 1;
     Names := FStore.OnLine(Context.FileName, Line);
     if Length(Names) = 0 then
+      Exit;
+    // Erst hier: die meisten Zeilen haben keine Hinweise (P-10).
+    if not TAtlasIdeSettings.InlayHintsOn then
       Exit;
     LineState := Context.LineState;
     if (LineState = nil) or (Context.EditView = nil) or (Context.EditView.Buffer = nil) or
@@ -264,50 +327,39 @@ begin
       TrimRight(TAtlasPairs.DisplayLine(Stored, TabWidth)) then
       Exit;
     Canvas := Context.Canvas;
+    DC := Canvas.Handle;
     // Zwei Zeichen Abstand hinter dem letzten Zeichen der Zeile.
     Cell := Context.EditorState.GetCharacterPosPx(ColumnOf(Stored, Length(TrimRight(Stored)), TabWidth) + 2,
       Context.EditorLineNum);
     X := Cell.Left;
     // Hintergrund des Editor-Farbschemas an der Stelle des Hinweises (hinter dem Zeilenende), nicht das
-    // IDE-Thema: Sonst stand gedämpftes Grau auf fast gleichem Grau.
-    Sample := GetPixel(Canvas.Handle, X, Rect.Top + 1);
+    // IDE-Thema: Sonst stand gedämpftes Grau auf fast gleichem Grau. Farben nur bei Abweichung neu.
+    Sample := GetPixel(DC, X, Rect.Top + 1);
     if Sample = CLR_INVALID then
-      Back := TAtlasColor(ColorToRGB(Canvas.Brush.Color))
-    else
-      Back := TAtlasColor(Sample);
-    Colors := TAtlasColors.ForBackground(Back);
-    OldFont := TFont.Create;
-    OldBrush := TBrush.Create;
-    OldPen := TPen.Create;
+      Sample := COLORREF(ColorToRGB(Canvas.Brush.Color));
+    EnsureColors(Sample);
+    EnsureHintFont(Canvas.Font);
+    // Reines GDI: Zustand der VCL-Canvas der IDE bleibt unberührt.
+    Saved := SaveDC(DC);
     try
-      OldFont.Assign(Canvas.Font);
-      OldBrush.Assign(Canvas.Brush);
-      OldPen.Assign(Canvas.Pen);
-      Canvas.Font.Size := Max(6, Canvas.Font.Size - 1);
-      Canvas.Font.Style := [];
-      // Text deutlich lesbar, Fläche leicht im Akzent abgesetzt.
-      Canvas.Font.Color := TColor(TAtlasColorMath.Mix(Colors.Text, Back, 0.8));
-      Canvas.Pen.Color := TColor(TAtlasColorMath.Mix(Colors.Accent, Back, 0.45));
-      Canvas.Brush.Color := TColor(TAtlasColorMath.Mix(Colors.Accent, Back, 0.2));
-      Height := Canvas.TextHeight('Xg');
+      SelectObject(DC, FHintFont.Handle);
+      SelectObject(DC, FPen);
+      SelectObject(DC, FBrush);
+      SetTextColor(DC, FTextColor);
+      SetBkMode(DC, TRANSPARENT);
+      GetTextExtentPoint32W(DC, 'Xg', 2, Size);
+      Height := Size.cy;
       Top := Rect.Top + Max(0, (Rect.Bottom - Rect.Top - Height - 2) div 2);
       for Name in Names do
       begin
-        Width := Canvas.TextWidth(Name);
-        Pill := TRect.Create(X, Top, X + Width + 8, Top + Height + 2);
-        Canvas.Brush.Style := bsSolid;
-        Canvas.RoundRect(Pill.Left, Pill.Top, Pill.Right, Pill.Bottom, 6, 6);
-        Canvas.Brush.Style := bsClear;
-        Canvas.TextOut(Pill.Left + 4, Pill.Top + 1, Name);
+        GetTextExtentPoint32W(DC, PChar(Name), Length(Name), Size);
+        Pill := TRect.Create(X, Top, X + Size.cx + 8, Top + Height + 2);
+        RoundRect(DC, Pill.Left, Pill.Top, Pill.Right, Pill.Bottom, 6, 6);
+        TextOutW(DC, Pill.Left + 4, Pill.Top + 1, PChar(Name), Length(Name));
         X := Pill.Right + 4;
       end;
     finally
-      Canvas.Font.Assign(OldFont);
-      Canvas.Brush.Assign(OldBrush);
-      Canvas.Pen.Assign(OldPen);
-      OldPen.Free;
-      OldBrush.Free;
-      OldFont.Free;
+      RestoreDC(DC, Saved);
     end;
   except
     // Zeichnen darf die IDE nie stören.

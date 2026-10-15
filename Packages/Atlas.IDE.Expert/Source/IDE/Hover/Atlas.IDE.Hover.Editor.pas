@@ -40,6 +40,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.History,
+  Atlas.Core.Hover.Layout,
   Atlas.Core.Editor.CloseRules,
   Atlas.Core.Problems.Contract,
   Atlas.IDE.Editor.KeyHook,

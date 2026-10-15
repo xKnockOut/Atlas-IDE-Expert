@@ -34,6 +34,12 @@ type
     procedure ForFileHidesInactiveRangesAndDuplicatesAndSorts;
     [Test]
     procedure DiskResultsAdoptTheEditorText;
+    [Test]
+    procedure ProblemColorErrorIsError;
+    [Test]
+    procedure ProblemColorFadedMixesSurface;
+    [Test]
+    procedure ProblemColorHintMuted;
   end;
 
 implementation
@@ -41,7 +47,10 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  Atlas.Core.Style.Color,
+  Atlas.Core.Style.Palette,
   Atlas.Core.Problems.Contract,
+  Atlas.Core.Problems.Colors,
   Atlas.Core.Problems.Store,
   Atlas.Core.Lsp.Session;
 
@@ -376,6 +385,38 @@ begin
   finally
     Store.Free;
   end;
+end;
+
+procedure TAtlasProblemsTests.ProblemColorErrorIsError;
+var
+  Colors: TAtlasColors;
+begin
+  Colors := TAtlasColors.Light;
+  Assert.AreEqual(Colors.Error, ProblemColor(Colors, Problem(0, 0, 'x')));
+  Assert.AreEqual(Colors.Warn, ProblemColor(Colors, Problem(0, 0, 'x', 'Atlas', TAtlasProblemSeverity.Warning)));
+  Assert.AreEqual(Colors.Accent,
+    ProblemColor(Colors, Problem(0, 0, 'x', 'Atlas', TAtlasProblemSeverity.Information)));
+end;
+
+procedure TAtlasProblemsTests.ProblemColorFadedMixesSurface;
+var
+  Colors: TAtlasColors;
+  Faded: TAtlasProblem;
+begin
+  // Editor und Hover gleich blass (D-07).
+  Colors := TAtlasColors.Dark;
+  Faded := Problem(0, 0, 'x', 'Atlas', TAtlasProblemSeverity.Warning);
+  Faded.Stale := True;
+  Assert.AreEqual(TAtlasColorMath.Mix(Colors.Warn, Colors.Surface, AtlasMixFaded), ProblemColor(Colors, Faded));
+  Assert.AreEqual(0.55, AtlasMixFaded, 0.0001);
+end;
+
+procedure TAtlasProblemsTests.ProblemColorHintMuted;
+var
+  Colors: TAtlasColors;
+begin
+  Colors := TAtlasColors.Light;
+  Assert.AreEqual(Colors.Muted, ProblemColor(Colors, Problem(0, 0, 'x', 'Atlas', TAtlasProblemSeverity.Hint)));
 end;
 
 initialization

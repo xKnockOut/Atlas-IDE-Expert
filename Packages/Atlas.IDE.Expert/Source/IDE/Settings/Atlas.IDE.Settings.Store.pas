@@ -51,6 +51,10 @@ type
     class function Current: TAtlasPluginSettings; static;
     /// <summary>Gespeicherte Werte (Registry) ohne Sitzungswerte; Grundlage für Optionsseite und Update.</summary>
     class function Stored: TAtlasPluginSettings; static;
+    /// <summary>Plugin eingeschaltet und Inlay-Hints an; ohne Kopie des Einstellungsrecords (P-10).</summary>
+    class function InlayHintsOn: Boolean; static;
+    /// <summary>Plugin eingeschaltet und Problem-Markierungen an; ohne Kopie des Einstellungsrecords (P-10).</summary>
+    class function ProblemMarksOn: Boolean; static;
     /// <summary>Übernimmt und speichert ASettings (gespeicherte Werte, ohne Sitzungswerte).</summary>
     class procedure Update(const ASettings: TAtlasPluginSettings); static;
     /// <summary>Sitzungswerte der Schnellschalter (#604).</summary>
@@ -244,6 +248,18 @@ class function TAtlasIdeSettings.Current: TAtlasPluginSettings;
 begin
   EnsureLoaded;
   Result := FEffective;
+end;
+
+class function TAtlasIdeSettings.InlayHintsOn: Boolean;
+begin
+  EnsureLoaded;
+  Result := FEffective.Enabled and FEffective.InlayHints;
+end;
+
+class function TAtlasIdeSettings.ProblemMarksOn: Boolean;
+begin
+  EnsureLoaded;
+  Result := FEffective.Enabled and FEffective.Problems;
 end;
 
 class function TAtlasIdeSettings.Stored: TAtlasPluginSettings;
