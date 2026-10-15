@@ -34,6 +34,11 @@ type
     OutputFile: string;
     /// <summary>Eigene Hintergrundprüfung von Atlas (#548), kein Build des Benutzers.</summary>
     Background: Boolean;
+    /// <summary>Dauer des Compiles in ms (#758); setzt nur der Leser des Meldungsfensters nach dem Ende, sonst 0.
+    /// </summary>
+    DurationMs: Int64;
+    /// <summary>Dauer des ganzen Laufs (Gruppe) in ms (#758); 0 = unbekannt.</summary>
+    GroupDurationMs: Int64;
   end;
 
   /// <summary>Teilnehmer an den Compile-Ereignissen; alle Methoden sind optional.</summary>

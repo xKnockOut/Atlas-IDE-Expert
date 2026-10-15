@@ -189,6 +189,9 @@ end;
 
 procedure TAtlasMessageViewReader.GroupFinished(ASucceeded: Boolean; ADurationMs: Int64);
 begin
+  // Dauer des ganzen Laufs für die Zusammenfassung der Projektgruppe (#758); das Lesen wartet ohnehin auf die
+  // Nachrichtenschleife.
+  FProject.GroupDurationMs := ADurationMs;
   ReadSoon(ASucceeded);
 end;
 
@@ -196,6 +199,8 @@ procedure TAtlasMessageViewReader.ProjectFinished(const AProject: TAtlasCompileP
   ADurationMs: Int64);
 begin
   FProject := AProject;
+  // Build-Dauer für den Projektverlauf (#758).
+  FProject.DurationMs := ADurationMs;
   ReadSoon(ASucceeded);
 end;
 
