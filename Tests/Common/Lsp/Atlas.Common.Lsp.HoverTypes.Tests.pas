@@ -152,6 +152,12 @@ begin
   finally
     TearDown;
   end;
+  Setup;
+  try
+    HoverReadsFilesThatAreNotOpen;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TLspHoverTypesTests.Setup;

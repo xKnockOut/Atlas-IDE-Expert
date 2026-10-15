@@ -158,7 +158,8 @@ var
   Kind: TAtlasHelpButton;
   Measure: TBitmap;
 begin
-  if FArranging or (FNote = nil) then
+  // Ohne Fenster lässt sich kein Text messen; CreateWnd holt UpdateContent nach.
+  if FArranging or (FNote = nil) or not HasWindow then
     Exit;
   FArranging := True;
   try

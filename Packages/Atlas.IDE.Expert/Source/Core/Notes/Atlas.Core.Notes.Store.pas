@@ -136,6 +136,7 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   System.Classes,
   System.IOUtils,
   System.JSON,
@@ -520,7 +521,6 @@ begin
   Result := nil;
   if AJson = '' then
     Exit;
-  Value := nil;
   try
     Value := TJSONObject.ParseJSONValue(AJson);
   except
@@ -774,7 +774,8 @@ begin
           Result := Result + [Book];
       until FindNext(Search) <> 0;
     finally
-      FindClose(Search);
+      // Winapi.Windows hat ein gleichnamiges FindClose für Handles.
+      System.SysUtils.FindClose(Search);
     end;
   TArray.Sort<TAtlasNoteBook>(Result, TComparer<TAtlasNoteBook>.Construct(
     function(const A, B: TAtlasNoteBook): Integer

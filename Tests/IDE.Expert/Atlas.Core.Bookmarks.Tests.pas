@@ -115,6 +115,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.IOUtils,
   System.JSON,
@@ -589,6 +590,8 @@ procedure TAtlasBookmarkStorageTests.TearDown;
 begin
   if DirectoryExists(FFolder) then
     TDirectory.Delete(FFolder, True);
+  // Der Leckmonitor misst den Saldo von Setup und TearDown.
+  FFolder := '';
 end;
 
 function TAtlasBookmarkStorageTests.Project: string;

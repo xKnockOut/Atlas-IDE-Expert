@@ -691,9 +691,9 @@ begin
             try
               Answer := Session.RunCommand(Commands[Index], Arguments[Index], Timeout);
             except
-              // Fehler, Zeitlimit oder geschlossene Verbindung: '' für diesen Befehl.
+              // Fehler, Zeitlimit oder geschlossene Verbindung: '' für diesen Befehl (Answer bleibt nil).
               on Exception do
-                Answer := nil;
+                ;
             end;
             try
               if Answer <> nil then

@@ -58,6 +58,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.IOUtils,
   System.JSON,
@@ -106,6 +107,8 @@ procedure TAtlasNoteStoreTests.TearDown;
 begin
   if DirectoryExists(FFolder) then
     TDirectory.Delete(FFolder, True);
+  // Der Leckmonitor misst den Saldo von Setup und TearDown.
+  FFolder := '';
 end;
 
 procedure TAtlasNoteStoreTests.AddFindChangeAndRemove;
@@ -121,7 +124,7 @@ begin
   Index := Book.IndexAt('c:/projekte/kunde.pas', 8);
   Assert.AreEqual(0, Index, 'Pfad ohne Groß-/Kleinschreibung');
   Assert.AreEqual(-1, Book.IndexAt(UnitFile, 7));
-  Assert.AreEqual(1, Length(Book.AtLine(UnitFile, 8)));
+  Assert.AreEqual(1, Integer(Length(Book.AtLine(UnitFile, 8))));
   Assert.AreEqual('Result := Round(X * 100) / 100;', Book.Notes[0].Anchor.Text);
   Assert.IsTrue(SameTime(At(2026, 10, 15, 9, 0, 0), Book.Notes[0].Created));
   Assert.IsTrue(Book.SetText(Id, 'Rundung prüfen'#10'und testen', At(2026, 10, 15, 10, 0, 0)));
@@ -129,7 +132,7 @@ begin
   Assert.IsTrue(SameTime(At(2026, 10, 15, 10, 0, 0), Book.Notes[0].Changed));
   Assert.IsFalse(Book.SetText('gibt-es-nicht', 'x', Now));
   Assert.AreNotEqual(Id, Book.Add(UnitFile, Code, 2, 'zweite', Now), 'Kennungen eindeutig');
-  Assert.AreEqual(1, Length(Book.Files), 'eine Datei');
+  Assert.AreEqual(1, Integer(Length(Book.Files)), 'eine Datei');
   Assert.IsTrue(Book.Remove(Id));
   Assert.IsFalse(Book.Remove(Id));
   Assert.AreEqual(1, Book.Count);
@@ -184,7 +187,7 @@ begin
   Book.Add('C:\Projekte\Alt.pas', Code, 4, 'verwaist', Now);
   Book.OrphanFile('C:\Projekte\Alt.pas');
   Groups := Book.Groups;
-  Assert.AreEqual(3, Length(Groups));
+  Assert.AreEqual(3, Integer(Length(Groups)));
   Assert.AreEqual(UnitFile, Groups[0].FileName, 'nach Dateiname');
   Assert.AreEqual('k1', Groups[0].Notes[0].Text, 'nach Zeile');
   Assert.AreEqual('k2', Groups[0].Notes[1].Text);
@@ -245,7 +248,7 @@ begin
   Assert.AreEqual(41, Book.Notes[0].Line, '"line" zählt ab 1');
   Assert.AreEqual('Result := Round(X);', Book.Notes[0].Anchor.Text);
   Assert.AreEqual('var X: Double;', Book.Notes[0].Anchor.Before[1]);
-  Assert.AreEqual(1, Length(Book.Notes[0].Anchor.After));
+  Assert.AreEqual(1, Integer(Length(Book.Notes[0].Anchor.After)));
   Assert.IsTrue(SameTime(At(2026, 10, 15, 9, 30, 0), Book.Notes[0].Created));
   Assert.IsFalse(Book.Notes[0].Orphaned);
   // Ohne "format" gilt 1.
@@ -342,11 +345,11 @@ begin
   // Kaputte Datei stört nicht.
   TFile.WriteAllText(TPath.Combine(FFolder, 'kaputt.json'), '{');
   Books := TAtlasNotes.LoadAll(FFolder);
-  Assert.AreEqual(2, Length(Books));
+  Assert.AreEqual(2, Integer(Length(Books)));
   Assert.AreEqual(Project, Books[0].Project, 'nach Projektpfad');
   Assert.AreEqual('a', Books[0].Notes[0].Text);
   Assert.AreEqual('C:\Projekte\Zweites.dproj', Books[1].Project);
-  Assert.AreEqual(0, Length(TAtlasNotes.LoadAll(TPath.Combine(FFolder, 'fehlt'))));
+  Assert.AreEqual(0, Integer(Length(TAtlasNotes.LoadAll(TPath.Combine(FFolder, 'fehlt')))));
 end;
 
 procedure TAtlasNoteStoreTests.StorageLivesOutsideTheProject;

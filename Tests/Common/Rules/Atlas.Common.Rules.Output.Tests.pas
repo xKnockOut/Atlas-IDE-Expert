@@ -55,6 +55,15 @@ type
     procedure ParsesFormat;
     [Test]
     procedure ParsesFailOn;
+    /// <summary>Abnahme #97: SARIF enthält partialFingerprints und baselineState.</summary>
+    [Test]
+    procedure SarifCarriesFingerprintsAndBaselineState;
+    [Test]
+    procedure SarifNumbersIdenticalFingerprints;
+    [Test]
+    procedure SarifWithoutBaselineHasNoState;
+    [Test]
+    procedure CheckerReturnsScopes;
   end;
 
 implementation
@@ -67,6 +76,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Filter,
+  Atlas.Common.Rules.Scopes,
+  Atlas.Common.Rules.Baseline,
   Atlas.Common.Rules.Output;
 
 function MakeFinding(const ARuleId: string; ASeverity: TRuleSeverity; ALine: Integer = 0): TRuleFinding;
@@ -86,6 +97,16 @@ begin
   Result.Path := APath;
   Result.FullPath := AFullPath;
   Result.Findings := AFindings;
+end;
+
+function MakeMark(const AFinding: TRuleFinding; AState: TBaselineState; const ARoutine: string): TBaselineMark;
+begin
+  Result := Default(TBaselineMark);
+  Result.Finding := AFinding;
+  Result.Routine := ARoutine;
+  Result.Fingerprint := '0badf00d';
+  Result.Context := 'c0ffee00';
+  Result.State := AState;
 end;
 
 function Settings(const AJson: string): TServerSettings;
@@ -319,6 +340,75 @@ begin
   Assert.AreEqual(Ord(TFailOn.Never), Ord(FailOn));
   Assert.IsFalse(TFindingsOutput.TryParseFailOn('hint', FailOn));
   Assert.AreEqual(Ord(TFailOn.Error), Ord(FailOn));
+end;
+
+procedure TLinterOutputTests.SarifCarriesFingerprintsAndBaselineState;
+var
+  CheckedFile: TCheckedFile;
+  Absent: TBaselineMark;
+  Output, Hash: string;
+begin
+  CheckedFile := MakeFile('Src\U.pas', [MakeFinding('syntax', TRuleSeverity.Error, 3)]);
+  Absent := MakeMark(Default(TRuleFinding), TBaselineState.Absent, 'TFoo.Alt');
+  Absent.Finding.RuleId := 'syntax';
+  CheckedFile.Marks := [MakeMark(MakeFinding('syntax', TRuleSeverity.Error, 3), TBaselineState.New, 'TFoo.Bar'),
+    MakeMark(MakeFinding('syntax', TRuleSeverity.Error, 7), TBaselineState.Unchanged, 'TFoo.Baz'), Absent];
+  Output := TFindingsOutput.Render([CheckedFile], TFindingsFormat.Sarif, [TFileChecker.SyntaxDescriptor]);
+  Hash := TRuleBaseline.SarifFingerprint(CheckedFile.Marks[0]);
+  Assert.IsTrue(Pos('"partialFingerprints":{"atlasBaseline/v1":"' + Hash + ':1","atlasContext/v1":"c0ffee00:1"}',
+    Output) > 0, Output);
+  Assert.IsTrue(Pos('"baselineState":"new"', Output) > 0, Output);
+  Assert.IsTrue(Pos('"baselineState":"unchanged","suppressions":[{"kind":"external","justification":' +
+    '"atlas-baseline.json"}]', Output) > 0, Output);
+  Assert.IsTrue(Pos('"baselineState":"absent"', Output) > 0, Output);
+  Assert.IsTrue(Pos('"routine":"TFoo.Bar"', Output) > 0, Output);
+  // Nicht mehr gefunden: ohne Region, Schweregrad der Regel.
+  Assert.IsTrue(Pos('"artifactLocation":{"uri":"Src/U.pas"}}}],"partialFingerprints"', Output) > 0, Output);
+  Assert.IsTrue(Pos('"startLine":4', Output) > 0, Output);
+  Assert.IsTrue(Pos('"startLine":8', Output) > 0, Output);
+  // Unverändert und nicht mehr gefunden zählen nicht für den Exit-Code: der zählt nur Findings.
+  CheckedFile.Findings := nil;
+  Assert.AreEqual(TFindingsOutput.ExitClean, TFindingsOutput.ExitCode([CheckedFile], TFailOn.Warning));
+end;
+
+procedure TLinterOutputTests.SarifNumbersIdenticalFingerprints;
+var
+  CheckedFile: TCheckedFile;
+  Output, Hash: string;
+begin
+  CheckedFile := MakeFile('U.pas', nil);
+  CheckedFile.Marks := [MakeMark(MakeFinding('a', TRuleSeverity.Hint, 3), TBaselineState.New, 'P'),
+    MakeMark(MakeFinding('a', TRuleSeverity.Hint, 9), TBaselineState.New, 'P')];
+  Output := TFindingsOutput.Render([CheckedFile], TFindingsFormat.Sarif, nil);
+  Hash := TRuleBaseline.SarifFingerprint(CheckedFile.Marks[0]);
+  Assert.IsTrue(Pos('"atlasBaseline/v1":"' + Hash + ':1"', Output) > 0, Output);
+  Assert.IsTrue(Pos('"atlasBaseline/v1":"' + Hash + ':2"', Output) > 0, Output);
+  Assert.IsTrue(Pos('"atlasContext/v1":"c0ffee00:2"', Output) > 0, Output);
+end;
+
+procedure TLinterOutputTests.SarifWithoutBaselineHasNoState;
+var
+  CheckedFile: TCheckedFile;
+  Output: string;
+begin
+  CheckedFile := MakeFile('U.pas', [MakeFinding('a', TRuleSeverity.Hint, 3)]);
+  CheckedFile.Marks := [MakeMark(CheckedFile.Findings[0], TBaselineState.None, 'P')];
+  Output := TFindingsOutput.Render([CheckedFile], TFindingsFormat.Sarif, nil);
+  Assert.IsTrue(Pos('"partialFingerprints"', Output) > 0, Output);
+  Assert.IsTrue(Pos('baselineState', Output) = 0, Output);
+  Assert.IsTrue(Pos('suppressions', Output) = 0, Output);
+  // Text und JSON bleiben unverändert.
+  Assert.IsTrue(Pos('partialFingerprints', TFindingsOutput.Render([CheckedFile], TFindingsFormat.Json, nil)) = 0);
+end;
+
+procedure TLinterOutputTests.CheckerReturnsScopes;
+var
+  Scopes: TFindingScopes;
+begin
+  TFileChecker.CheckText(nil, Settings('{}'), 'U.pas',
+    'unit U; interface implementation procedure TFoo.Bar; begin end; end.', Scopes);
+  Assert.AreEqual(1, Scopes.RoutineCount);
+  Assert.AreEqual('TFoo.Bar', Scopes.At(0));
 end;
 
 initialization

@@ -59,6 +59,8 @@ type
     procedure ExportClick(Sender: TObject);
     procedure BugClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    /// <summary>Höhe nach dem tatsächlichen Umbruch von Text und Knöpfen (erst mit Fenster bekannt).</summary>
+    procedure FitHeight;
   public
     /// <summary>ARestore: Beschriftung von „Einstellungen auf den Stand vor … zurücksetzen“; '' blendet den Knopf
     /// aus (nur im abgesicherten Fenster). ADetails: Zeilen für „Details“.</summary>
@@ -206,8 +208,29 @@ begin
   Result.Margins.SetBounds(0, 0, Gap, Gap div 2);
 end;
 
+procedure TAtlasSafeModeNotice.FitHeight;
+var
+  Extra: Integer;
+begin
+  HandleNeeded;
+  // Umbrechende Beschriftungen und die Knopfreihe messen erst mit Fenster richtig;
+  // im Konstruktor war die Höhe zu klein (Knöpfe abgeschnitten).
+  FText.AutoSize := False;
+  FText.AutoSize := True;
+  FSuggestion.AutoSize := False;
+  FSuggestion.AutoSize := True;
+  FButtons.AutoSize := False;
+  FButtons.AutoSize := True;
+  Realign;
+  Extra := 0;
+  if FDetailsPanel.Visible then
+    Extra := ScaleValue(DetailsHeight);
+  ClientHeight := FButtons.Top + FButtons.Height + Gap + Extra;
+end;
+
 procedure TAtlasSafeModeNotice.ShowIn(const AArea: TRect);
 begin
+  FitHeight;
   Left := AArea.Right - Width - Gap;
   Top := AArea.Bottom - Height - Gap;
   // Nicht modal: Die IDE startet weiter, während der Hinweis offen ist.
@@ -280,10 +303,7 @@ begin
   FBugButton.Visible := Assigned(FOnBugReport);
   FExportButton.Visible := Assigned(FOnExportLog);
   FDetailsPanel.Visible := not FDetailsPanel.Visible;
-  if FDetailsPanel.Visible then
-    ClientHeight := FButtons.Top + FButtons.Height + Gap + ScaleValue(DetailsHeight)
-  else
-    ClientHeight := FButtons.Top + FButtons.Height + Gap;
+  FitHeight;
   // Unten bleibt unten: das Fenster wächst nach oben.
   if Visible then
     Top := Bottom - Height;

@@ -138,7 +138,8 @@ begin
     Assert.Contains(Text, '"root":"C:\\P"');
     // Ohne „/“ verglichen: ToJSON darf ihn maskieren.
     Assert.Contains(Text, '"unit":"Helper"');
-    Assert.DoesNotContain(Text, '"DONE"');
+    // DUnitX vergleicht ohne Groß-/Kleinschreibung: „"DONE"“ allein träfe den Schlüssel „"done"“.
+    Assert.DoesNotContain(Text, '"keyword":"DONE"');
     Assert.DoesNotContain(Text, 'fremd');
     Text := Run(Todos, '', 'json', '{"owner": "anna", "includeDone": true}');
     Assert.Contains(Text, '"keyword":"DONE","done":true');

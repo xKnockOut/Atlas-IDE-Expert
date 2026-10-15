@@ -107,6 +107,9 @@ type
   [TestFixture]
   TLspServerProcessTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     // Startet den echten Server neben dem Testprogramm.
     [Test]
     [IgnoreMemoryLeaks]
@@ -1114,6 +1117,11 @@ begin
 end;
 
 { TLspServerProcessTests }
+
+procedure TLspServerProcessTests.WarmUpFirstUse;
+begin
+  StartFailureLeavesNoHandles;
+end;
 
 procedure TLspServerProcessTests.StartFailureLeavesNoHandles;
 const
