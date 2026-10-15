@@ -117,6 +117,8 @@ type
     function TabsShown: Boolean;
   protected
     function BodyHeight: Integer; override;
+  protected
+    procedure CreateWnd; override;
   public
     constructor Create(AOwner: TComponent); override;
     procedure UpdateContent; override;
@@ -178,6 +180,17 @@ const
 
 { TAtlasWelcomeContinueFrame }
 
+procedure TAtlasWelcomeContinueFrame.CreateWnd;
+begin
+  inherited;
+  if FTabs.Tabs.Count = 0 then
+  begin
+    FTabs.Tabs.Add(TAtlasStrings.Text(TAtlasTextId.WelcomeContinueTabRecent));
+    FTabs.Tabs.Add(TAtlasStrings.Text(TAtlasTextId.WelcomeContinueTabSaved));
+    FTabs.TabIndex := PageRecent;
+  end;
+end;
+
 constructor TAtlasWelcomeContinueFrame.Create(AOwner: TComponent);
 var
   Column: TListColumn;
@@ -187,9 +200,7 @@ begin
   FTabs.Parent := Body;
   FTabs.Align := alTop;
   FTabs.Height := ScaleValue(TabHeight);
-  FTabs.Tabs.Add(TAtlasStrings.Text(TAtlasTextId.WelcomeContinueTabRecent));
-  FTabs.Tabs.Add(TAtlasStrings.Text(TAtlasTextId.WelcomeContinueTabSaved));
-  FTabs.TabIndex := PageRecent;
+  // Reiter erst in CreateWnd: TTabControl braucht dafür ein Fenster („kein übergeordnetes Fenster“).
   FTabs.OnChange := TabsChange;
 
   FBox := TPaintBox.Create(Self);
@@ -303,6 +314,9 @@ procedure TAtlasWelcomeContinueFrame.UpdateContent;
 var
   Count, Lines: Integer;
 begin
+  // Ohne Fenster später: CreateWnd bzw. die Tafel ruft UpdateContent nach dem Einhängen.
+  if not HasWindow then
+    Exit;
   Count := Length(FEntries);
   Lines := IncomingLines;
   FEntries := nil;

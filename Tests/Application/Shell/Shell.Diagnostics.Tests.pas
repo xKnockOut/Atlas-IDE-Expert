@@ -22,6 +22,9 @@ type
     procedure RunSession(AEnabled: Boolean);
     function AllLogText: string;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -125,6 +128,16 @@ begin
 end;
 
 { TShellDiagnosticsTests }
+
+procedure TShellDiagnosticsTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    NoMarkerReachesLogOrExport;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TShellDiagnosticsTests.Setup;
 begin

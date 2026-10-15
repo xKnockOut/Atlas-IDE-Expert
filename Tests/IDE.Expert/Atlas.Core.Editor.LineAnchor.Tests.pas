@@ -70,7 +70,7 @@ procedure TAtlasLineAnchorTests.NormalizeCollapsesWhitespace;
 begin
   Assert.AreEqual('Result := Round(X);', TAtlasLineAnchors.Normalize(#9'  Result  :='#9'Round(X);  '));
   Assert.AreEqual('', TAtlasLineAnchors.Normalize('   '#9));
-  Assert.AreEqual(3, Length(TAtlasLineAnchors.Lines('a'#13#10'b'#10'c')));
+  Assert.AreEqual(3, Integer(Length(TAtlasLineAnchors.Lines('a'#13#10'b'#10'c'))));
 end;
 
 procedure TAtlasLineAnchorTests.CaptureTakesNeighbours;
@@ -80,17 +80,17 @@ begin
   Anchor := TAtlasLineAnchors.Capture(Code, 8);
   Assert.AreEqual(8, Anchor.Line);
   Assert.AreEqual('Result := Round(X * 100) / 100;', Anchor.Text);
-  Assert.AreEqual(2, Length(Anchor.Before));
+  Assert.AreEqual(2, Integer(Length(Anchor.Before)));
   Assert.AreEqual('begin', Anchor.Before[0], 'nächste Zeile zuerst');
   Assert.AreEqual('function Runde(X: Double): Double;', Anchor.Before[1]);
   Assert.AreEqual('end;', Anchor.After[0]);
   Assert.AreEqual('', Anchor.After[1]);
   // Am Rand gibt es weniger Nachbarn.
   Anchor := TAtlasLineAnchors.Capture(Code, 0);
-  Assert.AreEqual(0, Length(Anchor.Before));
-  Assert.AreEqual(2, Length(Anchor.After));
+  Assert.AreEqual(0, Integer(Length(Anchor.Before)));
+  Assert.AreEqual(2, Integer(Length(Anchor.After)));
   Anchor := TAtlasLineAnchors.Capture(Code, 11);
-  Assert.AreEqual(0, Length(Anchor.After));
+  Assert.AreEqual(0, Integer(Length(Anchor.After)));
   Anchor := TAtlasLineAnchors.Capture(Code, 99);
   Assert.AreEqual('', Anchor.Text, 'außerhalb des Textes');
 end;

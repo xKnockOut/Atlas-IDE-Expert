@@ -16,6 +16,9 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -35,6 +38,9 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -95,6 +101,16 @@ begin
 end;
 
 { TAtlasNoteDialogTests }
+
+procedure TAtlasNoteDialogTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    SavesTrimmedTextWithLineFeeds;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TAtlasNoteDialogTests.Setup;
 begin
@@ -197,6 +213,16 @@ begin
 end;
 
 { TAtlasNotesListTests }
+
+procedure TAtlasNotesListTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    ShowsGroupsAndOrphans;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TAtlasNotesListTests.Setup;
 begin

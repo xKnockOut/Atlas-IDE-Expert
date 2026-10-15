@@ -51,7 +51,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.Parser;
+  Atlas.Common.Pascal.TreeCache;
 
 const
   ExpressionKinds = [TSyntaxKind.Identifier, TSyntaxKind.Literal, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
@@ -609,7 +609,8 @@ class function TMetricsCalculator.ForText(const AText: string): TArray<TRoutineM
 var
   Tree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  // Über den Cache: TSyntaxTreeCacheTests.NoParserCallsOutsideCache verlangt das für alle Parser-Aufrufe.
+  Tree := TSyntaxTreeCache.Parse(AText);
   try
     Result := Routines(Tree);
   finally

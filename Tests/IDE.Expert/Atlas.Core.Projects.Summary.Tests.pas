@@ -113,6 +113,8 @@ procedure TAtlasProjectSummaryTests.TearDown;
 begin
   if DirectoryExists(FFolder) then
     TDirectory.Delete(FFolder, True);
+  // Der Leckmonitor misst den Saldo von Setup und TearDown.
+  FFolder := '';
 end;
 
 procedure TAtlasProjectSummaryTests.KeyIsStableAndIgnoresCaseAndSlashes;

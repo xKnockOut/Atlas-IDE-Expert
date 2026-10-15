@@ -1899,6 +1899,9 @@ begin
     Assert.AreEqual(3, Integer(Length(Fake.Calls)));
   finally
     Host.Free;
+  end;
+end;
+
 procedure TAtlasWelcomeDiscoverFrameTests.ImageFitsColumn;
 var
   Host: TForm;

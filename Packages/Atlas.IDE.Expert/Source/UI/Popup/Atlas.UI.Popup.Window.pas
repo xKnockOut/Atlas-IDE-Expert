@@ -74,9 +74,10 @@ type
     procedure FrameRounded(const ARect: TRect; ALine: TAtlasColor; ARadius: Integer; AFill: TColor = clNone);
     /// <summary>Rolle (UiaListControlType, UiaToolTipControlType) und Name für Screenreader.</summary>
     procedure SetAccessible(ARole: Integer; const AName: string);
-    /// <summary>Feature, dem Fehler des Fensters angerechnet werden (Sicherung, #493).</summary>
-    property GuardFeature: TAtlasFeature read FGuardFeature write FGuardFeature;
   public
+    /// <summary>Feature, dem Fehler des Fensters angerechnet werden (Sicherung, #493); die Randmarken setzen es
+    /// je Ebene.</summary>
+    property GuardFeature: TAtlasFeature read FGuardFeature write FGuardFeature;
     /// <summary>Lässt einen Screenreader AText vorlesen; derselbe Text zweimal hintereinander nur einmal.</summary>
     procedure Announce(const AText: string);
     constructor Create(AOwner: TComponent); override;
