@@ -28,7 +28,7 @@
         <DCC_MapFile>3</DCC_MapFile>
         <SanitizedProjectName>Atlas_Tests</SanitizedProjectName>
         <DCC_Namespace>System;Winapi;System.Win;$(DCC_Namespace)</DCC_Namespace>
-        <DCC_UnitSearchPath>$(DUnitX);..\Output\$(Platform)\$(Config)\Dcu\Atlas.Common;..\Output\$(Platform)\$(Config)\Dcu\Atlas.Windows;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>$(DUnitX);..\Output\$(Platform)\$(Config)\Dcu\Atlas.Text;..\Output\$(Platform)\$(Config)\Dcu\Atlas.Common;..\Output\$(Platform)\$(Config)\Dcu\Atlas.Windows;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_DcuOutput>..\Output\$(Platform)\$(Config)\Dcu\Atlas.Tests</DCC_DcuOutput>
         <DCC_ExeOutput>..\Output\$(Platform)\$(Config)\Bin</DCC_ExeOutput>
         <DCC_ConsoleTarget>true</DCC_ConsoleTarget>
@@ -52,6 +52,15 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="Common\Atlas.Common.Product.Version.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Lines.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Chars.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Encoding.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Anonymize.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Uris.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Diff.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Fuzzy.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Jsonc.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Entities.Tests.pas"/>
         <DCCReference Include="Common\Logging\Atlas.Common.Logging.Providers.Logger.Tests.pas"/>
         <DCCReference Include="Common\Logging\Atlas.Common.Logging.Providers.StreamSink.Tests.pas"/>
         <DCCReference Include="Common\Logging\Atlas.Common.Logging.Providers.RotatingFileStream.Tests.pas"/>
@@ -149,6 +158,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SyntaxDiagnostics.Tests.pas"/>
         <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.Tests.pas"/>
         <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.Scopes.Tests.pas"/>
+        <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.JsonTree.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Configuration.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SettingsCommands.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DocumentSymbols.Tests.pas"/>
@@ -373,6 +383,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.TextFile.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.EncodingDefault.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Files.TextFile.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Text.Agreement.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Files.EncodingDefault.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Projects\Atlas.Core.Projects.Context.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Context.Tests.pas"/>

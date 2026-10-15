@@ -89,6 +89,16 @@
         <DCCReference Include="vcl.dcp"/>
         <DCCReference Include="vclwinx.dcp"/>
         <DCCReference Include="designide.dcp"/>
+        <DCCReference Include="..\Atlas.Text\Source\Product\Atlas.Text.Product.Version.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\Lines\Atlas.Text.Lines.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\Chars\Atlas.Text.Chars.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\Encoding\Atlas.Text.Encoding.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\Anonymize\Atlas.Text.Anonymize.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\Uris\Atlas.Text.Uris.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\Diff\Atlas.Text.Diff.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\Fuzzy\Atlas.Text.Fuzzy.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\Jsonc\Atlas.Text.Jsonc.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\Entities\Atlas.Text.Entities.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Progress.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Client.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Session.pas"/>

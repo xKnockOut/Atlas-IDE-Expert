@@ -82,12 +82,8 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Diagnostics,
-  Atlas.Common.Rules.Checker;
-
-function SplitLines(const AText: string): TArray<string>;
-begin
-  Result := StringReplace(AText, #13#10, #10, [rfReplaceAll]).Split([#10]);
-end;
+  Atlas.Common.Rules.Checker,
+  Atlas.Text.Lines;
 
 /// <summary>Regel-IDs bestehen aus Kleinbuchstaben, Ziffern und Bindestrichen.</summary>
 function IsRuleId(const AId: string): Boolean;
@@ -161,7 +157,7 @@ var
   Index: Integer;
 begin
   Result := nil;
-  Lines := SplitLines(AText);
+  Lines := TTextLines.SplitLines(AText);
   for Index := 0 to High(Lines) do
   begin
     ReadMarkers(Lines[Index], Index, ExpectedMarker, True, Result);
@@ -174,7 +170,7 @@ var
   Line, Id: string;
 begin
   Result := nil;
-  for Line in SplitLines(AText) do
+  for Line in TTextLines.SplitLines(AText) do
   begin
     Id := Line;
     if Pos('#', Id) > 0 then
@@ -192,7 +188,7 @@ var
   HasIssue: Boolean;
 begin
   Result := nil;
-  for Line in SplitLines(AText) do
+  for Line in TTextLines.SplitLines(AText) do
   begin
     Id := Line;
     Note := '';
@@ -256,7 +252,7 @@ var
   Temp: TRuleRate;
 begin
   Result := nil;
-  Lines := SplitLines(ACsv);
+  Lines := TTextLines.SplitLines(ACsv);
   // Zeile 0 ist die Kopfzeile.
   for Index := 1 to High(Lines) do
   begin

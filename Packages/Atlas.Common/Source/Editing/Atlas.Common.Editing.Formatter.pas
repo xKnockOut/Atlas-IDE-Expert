@@ -38,7 +38,8 @@ implementation
 uses
   System.Math,
   System.Generics.Collections,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Text.Lines;
 
 type
   TLineInfo = record
@@ -53,19 +54,6 @@ type
     EndColumn: Integer;
     Text: string;
   end;
-
-function SplitLines(const AText: string): TArray<string>;
-begin
-  Result := AText.Replace(#13#10, #10).Replace(#13, #10).Split([#10]);
-end;
-
-function DetectLineBreak(const AText: string): string;
-begin
-  if Pos(#13#10, AText) > 0 then
-    Result := #13#10
-  else
-    Result := #10;
-end;
 
 /// <summary>Führenden Leerraum nach Spalten umrechnen, Rest unverändert.</summary>
 function Reindent(const ALine: string; const ASettings: TFormatStyle): string;
@@ -122,7 +110,7 @@ begin
   Settings := ASettings;
   if Settings.IndentSize < 1 then
     Settings.IndentSize := 2;
-  Lines := SplitLines(AText);
+  Lines := TTextLines.SplitLines(AText);
   SetLength(Info, Length(Lines));
   SetLength(Gaps, Length(Lines));
   for Line := 0 to High(Lines) do
@@ -220,7 +208,7 @@ begin
     WholeFile := (AFirstLine <= 0) and (ALastLine < 0);
     if WholeFile then
     begin
-      LB := DetectLineBreak(AText);
+      LB := TTextLines.LineBreakOf(AText);
       Changed := (Settings.EndOfLine <> '') and (Settings.EndOfLine <> LB) and (Length(Lines) > 1);
       if Changed then
       begin
@@ -257,8 +245,8 @@ begin
   if (Length(Edits) = 1) and (Edits[0].Range.StartPos.Line = 0) and (Edits[0].Range.StartPos.Character = 0) and
     (Edits[0].Range.EndPos.Line > 0) then
     Exit(Edits[0].NewText);
-  LB := DetectLineBreak(AText);
-  Lines := SplitLines(AText);
+  LB := TTextLines.LineBreakOf(AText);
+  Lines := TTextLines.SplitLines(AText);
   for Index := High(Edits) downto 0 do
   begin
     Edit := Edits[Index];

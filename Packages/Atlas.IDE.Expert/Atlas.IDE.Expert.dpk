@@ -38,7 +38,9 @@
 // (Atlas.IDE.Expert290.bpl für Delphi 12, …370.bpl für Delphi 13), damit die
 // BPLs beider IDE-Versionen nebeneinander liegen können.
 // Bewusst ohne Atlas.Common/Atlas.Windows: ein einzelnes Package, das die IDE
-// ohne weitere BPLs laden kann.
+// ohne weitere BPLs laden kann (ADR 0012). Gemeinsamen Textcode mit dem Server
+// (Atlas.Text) übersetzt das Plugin als Quelltext mit; die Liste unten muss
+// alle Units von Atlas.Text.dpk enthalten (Tools\Check-PackageDependencies.ps1).
 
 requires
   rtl,
@@ -47,6 +49,16 @@ requires
   designide;
 
 contains
+  Atlas.Text.Product.Version in '..\Atlas.Text\Source\Product\Atlas.Text.Product.Version.pas',
+  Atlas.Text.Lines in '..\Atlas.Text\Source\Lines\Atlas.Text.Lines.pas',
+  Atlas.Text.Chars in '..\Atlas.Text\Source\Chars\Atlas.Text.Chars.pas',
+  Atlas.Text.Encoding in '..\Atlas.Text\Source\Encoding\Atlas.Text.Encoding.pas',
+  Atlas.Text.Anonymize in '..\Atlas.Text\Source\Anonymize\Atlas.Text.Anonymize.pas',
+  Atlas.Text.Uris in '..\Atlas.Text\Source\Uris\Atlas.Text.Uris.pas',
+  Atlas.Text.Diff in '..\Atlas.Text\Source\Diff\Atlas.Text.Diff.pas',
+  Atlas.Text.Fuzzy in '..\Atlas.Text\Source\Fuzzy\Atlas.Text.Fuzzy.pas',
+  Atlas.Text.Jsonc in '..\Atlas.Text\Source\Jsonc\Atlas.Text.Jsonc.pas',
+  Atlas.Text.Entities in '..\Atlas.Text\Source\Entities\Atlas.Text.Entities.pas',
   Atlas.Core.Lsp.Progress in 'Source\Core\Lsp\Atlas.Core.Lsp.Progress.pas',
   Atlas.Core.Lsp.Client in 'Source\Core\Lsp\Atlas.Core.Lsp.Client.pas',
   Atlas.Core.Lsp.Session in 'Source\Core\Lsp\Atlas.Core.Lsp.Session.pas',

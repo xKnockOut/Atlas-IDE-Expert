@@ -1088,7 +1088,7 @@ begin
       Exit(0);
     Exit(TFuzzyMatch.NoMatch);
   end;
-  Result := TFuzzyMatch.Score(AName, APrefix);
+  Result := TFuzzyMatch.CompletionScore(AName, APrefix);
 end;
 
 /// <summary>Vorfilter des Resolvers (#616): nur Namen, die zu APrefix passen. GetEnumerator bleibt, weil die

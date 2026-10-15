@@ -52,7 +52,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.ControlFlow,
-  Atlas.Common.Rules.Derived;
+  Atlas.Common.Rules.Derived,
+  Atlas.Text.Lines;
 
 type
   /// <summary>Lokale Variable der Routine mit Typ ('' wenn unbekannt).</summary>
@@ -335,14 +336,6 @@ begin
 end;
 
 
-function LineBreakOf(const AText: string): string;
-begin
-  if Pos(#13#10, AText) > 0 then
-    Result := #13#10
-  else
-    Result := #10;
-end;
-
 /// <summary>Korrektur "Variable je Durchlauf kopieren"; False, wenn sie nicht sicher möglich ist.</summary>
 function CopyPerIterationFix(const ACache: IRuleDerivedCache; const AContext: TRuleContext;
   ARoutine, AMethod: TSyntaxNode; const ALocal: TLocal; const ALocals: TArray<TLocal>; out AFix: TRuleFix): Boolean;
@@ -382,7 +375,7 @@ begin
   finally
     Identifiers.Free;
   end;
-  LB := LineBreakOf(Text);
+  LB := TTextLines.LineBreakOf(Text);
   // Einrückung der Routine; die lokale Funktion steht direkt vor ihrem begin.
   LineStart := ARoutine.StartOffset;
   while (LineStart > 0) and (Text[LineStart] <> #10) do

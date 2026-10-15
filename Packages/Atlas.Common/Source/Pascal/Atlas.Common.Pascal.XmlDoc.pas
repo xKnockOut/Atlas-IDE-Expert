@@ -110,7 +110,8 @@ implementation
 
 uses
   System.Math,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Text.Entities;
 
 const
   SectionNames: array[TXmlDocSectionKind] of string = ('summary', 'param', 'typeparam', 'returns', 'value',
@@ -195,68 +196,6 @@ begin
     end;
   if Space then
     Result := Result + ' ';
-end;
-
-function CodePointText(ACode: Integer): string;
-begin
-  if (ACode <= 0) or (ACode > $10FFFF) or ((ACode >= $D800) and (ACode <= $DFFF)) then
-    Exit('');
-  if ACode <= $FFFF then
-    Exit(Char(ACode));
-  Dec(ACode, $10000);
-  Result := Char($D800 + (ACode shr 10)) + Char($DC00 + (ACode and $3FF));
-end;
-
-/// <summary>&amp;lt; &amp;gt; &amp;amp; &amp;quot; &amp;apos; &amp;#NN; &amp;#xNN;; Unbekanntes bleibt stehen.</summary>
-function DecodeEntities(const AText: string): string;
-var
-  Index, Close, Code: Integer;
-  Name, Replacement: string;
-begin
-  if Pos('&', AText) = 0 then
-    Exit(AText);
-  Result := '';
-  Index := 1;
-  while Index <= Length(AText) do
-  begin
-    if AText[Index] = '&' then
-    begin
-      Close := PosEx(';', AText, Index + 1);
-      if (Close > 0) and (Close - Index <= 10) then
-      begin
-        Name := Copy(AText, Index + 1, Close - Index - 1);
-        Replacement := '';
-        if Name = 'lt' then
-          Replacement := '<'
-        else if Name = 'gt' then
-          Replacement := '>'
-        else if Name = 'amp' then
-          Replacement := '&'
-        else if Name = 'quot' then
-          Replacement := '"'
-        else if Name = 'apos' then
-          Replacement := ''''
-        else if (Length(Name) > 2) and ((Name[2] = 'x') or (Name[2] = 'X')) and (Name[1] = '#') then
-        begin
-          if TryStrToInt('$' + Copy(Name, 3, MaxInt), Code) then
-            Replacement := CodePointText(Code);
-        end
-        else if (Length(Name) > 1) and (Name[1] = '#') then
-        begin
-          if TryStrToInt(Copy(Name, 2, MaxInt), Code) then
-            Replacement := CodePointText(Code);
-        end;
-        if Replacement <> '' then
-        begin
-          Result := Result + Replacement;
-          Index := Close + 1;
-          Continue;
-        end;
-      end;
-    end;
-    Result := Result + AText[Index];
-    Inc(Index);
-  end;
 end;
 
 function LeadingSpaces(const ALine: string): Integer;
@@ -453,7 +392,7 @@ begin
       Close := PosEx('<', AXml, Index);
       if Close = 0 then
         Close := Length_ + 1;
-      AddText(Stack[High(Stack)], DecodeEntities(Copy(AXml, Index, Close - Index)));
+      AddText(Stack[High(Stack)], TTextEntities.Decode(Copy(AXml, Index, Close - Index)));
       Index := Close;
       Continue;
     end;
@@ -570,7 +509,7 @@ begin
               Inc(Start);
             end;
         end;
-        Attributes := Attributes + [LowerCase(AttrName), DecodeEntities(Value)];
+        Attributes := Attributes + [LowerCase(AttrName), TTextEntities.Decode(Value)];
       end;
     end;
     if not Valid then

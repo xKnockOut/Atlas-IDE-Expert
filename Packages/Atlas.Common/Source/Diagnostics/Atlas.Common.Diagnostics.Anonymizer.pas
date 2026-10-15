@@ -109,7 +109,8 @@ implementation
 
 uses
   System.StrUtils,
-  System.NetEncoding;
+  System.NetEncoding,
+  Atlas.Text.Chars;
 
 const
   IdPrefixes: array[TDiagnosticIdKind] of string = ('proj', 'doc', 'unit');
@@ -255,18 +256,15 @@ begin
   Result := CharInSet(ACh, ['A'..'Z', 'a'..'z']);
 end;
 
-function IsWordChar(ACh: Char): Boolean;
-begin
-  Result := CharInSet(ACh, ['A'..'Z', 'a'..'z', '0'..'9', '_']);
-end;
-
 /// <summary>Einzelner Buchstabe als ganzes Wort vor einem Doppelpunkt, z. B. "C:".</summary>
 function HasDriveLetter(const ALine: string): Boolean;
 var
   Index: Integer;
 begin
   for Index := 1 to Length(ALine) - 1 do
-    if (ALine[Index + 1] = ':') and IsLetter(ALine[Index]) and ((Index = 1) or not IsWordChar(ALine[Index - 1])) then
+    // Bewusst ASCII: Ein Umlaut davor hebt die Erkennung nicht auf, im Zweifel gilt die Zeile als Pfad.
+    if (ALine[Index + 1] = ':') and IsLetter(ALine[Index]) and
+      ((Index = 1) or not TTextChars.IsAsciiIdentChar(ALine[Index - 1])) then
       Exit(True);
   Result := False;
 end;

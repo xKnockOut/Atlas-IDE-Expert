@@ -24,6 +24,7 @@ uses
   System.IOUtils,
   System.JSON,
   Atlas.Core.Files.TextFile,
+  Atlas.Text.Encoding,
   Atlas.Core.Settings.JsonText;
 
 class function TAtlasEncodingDefault.FromJson(const AText: string): Integer;
@@ -37,7 +38,7 @@ begin
     Exit;
   try
     Value := Root.GetValue('encoding');
-    if (Value is TJSONString) and not TAtlasTextFile.ParseCodePage(Value.Value, Result) then
+    if (Value is TJSONString) and not TTextEncodingProbe.ParseCodePage(Value.Value, Result) then
       Result := 0;
   finally
     Root.Free;

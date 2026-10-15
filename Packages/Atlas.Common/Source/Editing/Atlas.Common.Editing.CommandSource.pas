@@ -34,6 +34,10 @@ type
     function Indent(ALine: Integer): string;
     /// <summary>Löscht die Befehlszeile samt Zeilenende.</summary>
     function RemoveCommand: TRuleEdit;
+    /// <summary>Ersetzt die Befehlszeile durch ALines, jede mit der Einrückung der Befehlszeile.</summary>
+    function ReplaceWithIndentedLines(const ALines: array of string): TRuleEdit;
+    /// <summary>Ersetzt die Befehlszeile durch ALines ohne Einrückung (die Zeilen bringen sie mit).</summary>
+    function ReplaceWithLines(const ALines: array of string): TRuleEdit;
     /// <summary>Fügt ANewText am Ende von Zeile ALine ein.</summary>
     function AfterLine(ALine: Integer; const ANewText: string): TRuleEdit;
     /// <summary>Fügt ANewText vor Zeile ALine ein.</summary>
@@ -88,7 +92,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.UsesClause;
+  Atlas.Common.Editing.UsesClause,
+  Atlas.Text.Lines;
 
 constructor TCommandSource.Create(const AContext: TSlashContext);
 var
@@ -96,10 +101,7 @@ var
 begin
   inherited Create;
   Line := AContext.Line;
-  if Pos(#13#10, AContext.Text) > 0 then
-    FLineBreak := #13#10
-  else
-    FLineBreak := #10;
+  FLineBreak := TTextLines.LineBreakOf(AContext.Text);
   FLines := AContext.Text.Split([FLineBreak]);
   FCommandIndent := Indent(Line);
   FLines[Line] := StringOfChar(' ', Length(FLines[Line]));
@@ -124,20 +126,37 @@ begin
 end;
 
 function TCommandSource.Indent(ALine: Integer): string;
-var
-  Index: Integer;
 begin
   if (ALine = Line) and (FTree <> nil) then
     Exit(FCommandIndent);
-  Index := 1;
-  while (Index <= Length(FLines[ALine])) and CharInSet(FLines[ALine][Index], [' ', #9]) do
-    Inc(Index);
-  Result := Copy(FLines[ALine], 1, Index - 1);
+  Result := TTextLines.IndentOf(FLines[ALine]);
 end;
 
 function TCommandSource.RemoveCommand: TRuleEdit;
 begin
   Result := TRuleEdit.Create(TTextRange.Create(Line, 0, Line + 1, 0), '');
+end;
+
+function TCommandSource.ReplaceWithIndentedLines(const ALines: array of string): TRuleEdit;
+var
+  Index: Integer;
+  Text: string;
+begin
+  Text := '';
+  for Index := 0 to High(ALines) do
+    Text := Text + Indent(Line) + ALines[Index] + FLineBreak;
+  Result := TRuleEdit.Create(TTextRange.Create(Line, 0, Line + 1, 0), Text);
+end;
+
+function TCommandSource.ReplaceWithLines(const ALines: array of string): TRuleEdit;
+var
+  Index: Integer;
+  Text: string;
+begin
+  Text := '';
+  for Index := 0 to High(ALines) do
+    Text := Text + ALines[Index] + FLineBreak;
+  Result := TRuleEdit.Create(TTextRange.Create(Line, 0, Line + 1, 0), Text);
 end;
 
 function TCommandSource.AfterLine(ALine: Integer; const ANewText: string): TRuleEdit;

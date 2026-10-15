@@ -36,15 +36,11 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.StringLiterals,
   Atlas.Common.Dfm.Contract,
-  Atlas.Common.Dfm.Parser;
+  Atlas.Common.Dfm.Parser,
+  Atlas.Text.Chars;
 
 type
   TTokens = TArray<TPascalToken>;
-
-function IsWordChar(C: Char): Boolean;
-begin
-  Result := CharInSet(C, ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(C) > 127);
-end;
 
 function Contains(const AItems: TArray<string>; const AName: string): Boolean;
 begin
@@ -147,11 +143,11 @@ begin
     end
     else if (ASql[Index] = ':') and (Index < Length(ASql)) and (ASql[Index + 1] = ':') then
       Inc(Index)
-    else if (ASql[Index] = ':') and ((Index = 1) or not IsWordChar(ASql[Index - 1])) and
-      (Index < Length(ASql)) and IsWordChar(ASql[Index + 1]) then
+    else if (ASql[Index] = ':') and ((Index = 1) or not TTextChars.IsIdentChar(ASql[Index - 1])) and
+      (Index < Length(ASql)) and TTextChars.IsIdentChar(ASql[Index + 1]) then
     begin
       Start := Index + 1;
-      while (Index < Length(ASql)) and IsWordChar(ASql[Index + 1]) do
+      while (Index < Length(ASql)) and TTextChars.IsIdentChar(ASql[Index + 1]) do
         Inc(Index);
       Name := Copy(ASql, Start, Index - Start + 1);
       if not Contains(Result, Name) then

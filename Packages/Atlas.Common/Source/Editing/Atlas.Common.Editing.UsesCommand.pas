@@ -31,7 +31,8 @@ implementation
 uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.UsesClause;
+  Atlas.Common.Editing.UsesClause,
+  Atlas.Text.Lines;
 
 function IsUnitName(const AName: string): Boolean;
 var
@@ -75,10 +76,7 @@ var
 begin
   AEdits := nil;
   Line := APosition.Line - 1;
-  if Pos(#13#10, AText) > 0 then
-    LineBreak := #13#10
-  else
-    LineBreak := #10;
+  LineBreak := TTextLines.LineBreakOf(AText);
   Lines := AText.Split([LineBreak]);
   if (Line < 0) or (Line >= High(Lines) + 1) or not Parse(Lines[Line], Units) then
     Exit(False);

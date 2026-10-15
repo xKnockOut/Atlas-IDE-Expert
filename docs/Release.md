@@ -1,6 +1,6 @@
 # Release
 
-Server und Claude-Code-Plugin tragen dieselbe [SemVer](https://semver.org/lang/de/)-Version. Quellen sind `TProductVersion.Version` (`Atlas.Common.Product.Version.pas`) und `version` in `Editors/ClaudeCode/atlas/.claude-plugin/plugin.json` und `.claude-plugin/marketplace.json`; `pwsh Tools/Check-Version.ps1` prüft beide und den Abschnitt in `CHANGELOG.md`.
+Server und Claude-Code-Plugin tragen dieselbe [SemVer](https://semver.org/lang/de/)-Version. Quellen sind `TAtlasVersion.Version` (`Packages/Atlas.Text/Source/Product/Atlas.Text.Product.Version.pas`, gemeinsam für Server, Plugin und Installer, ADR 0012; `TProductVersion` und `TAtlasPluginVersion` verweisen nur darauf) und `version` in `Editors/ClaudeCode/atlas/.claude-plugin/plugin.json` und `.claude-plugin/marketplace.json`; `pwsh Tools/Check-Version.ps1` prüft beide und den Abschnitt in `CHANGELOG.md`.
 
 ## Ablauf
 

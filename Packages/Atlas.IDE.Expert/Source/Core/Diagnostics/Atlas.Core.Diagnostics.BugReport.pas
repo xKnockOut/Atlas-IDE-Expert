@@ -7,8 +7,8 @@
 // Anonymisiert (Einstellung diagnostics.bugReport.anonymize, Vorgabe an)
 // werden Pfade unter einem Projektordner zu <ws>\…, alle anderen absoluten
 // Pfade zu <pfad>, Benutzer- und Rechnername zu <benutzer> und im Protokoll
-// Text in Anführungszeichen zu <wert>; die Regeln entsprechen denen des
-// Servers (das Plugin bindet Atlas.Common nicht ein, ADR 0006).
+// Text in Anführungszeichen zu <wert>. Die Regeln stehen einmal in
+// Atlas.Text.Anonymize und gelten für Server und Plugin gleich (ADR 0012).
 
 interface
 
@@ -58,180 +58,19 @@ implementation
 uses
   System.Classes,
   System.JSON,
-  System.IOUtils;
-
-const
-  WorkspaceLabel = '<ws>';
-  PathLabel = '<pfad>';
-  UserLabel = '<benutzer>';
-  ValueLabel = '<wert>';
-
-function IsWordChar(C: Char): Boolean;
-begin
-  Result := CharInSet(C, ['0'..'9', 'A'..'Z', 'a'..'z', '_']) or (Ord(C) > 127);
-end;
-
-function IsPathEnd(C: Char): Boolean;
-begin
-  Result := (Ord(C) <= 32) or CharInSet(C, ['"', '''', '|', '`', '(', ')', '[', ']', '{', '}', ',', ';', '<', '>',
-    '*', '?']) or (C = #$201C) or (C = #$201D) or (C = #$201E) or (C = #$00AB) or (C = #$00BB);
-end;
-
-function TrimDelimiters(const APath: string): string;
-begin
-  Result := APath;
-  while (Length(Result) > 3) and CharInSet(Result[Length(Result)], ['\', '/']) do
-    SetLength(Result, Length(Result) - 1);
-end;
-
-function PathLengthAt(const AText: string; AIndex: Integer): Integer;
-var
-  Stop: Integer;
-begin
-  Result := 0;
-  // Nicht mitten im Wort und nicht direkt hinter einer Marke wie <ws>.
-  if (AIndex > 1) and (IsWordChar(AText[AIndex - 1]) or CharInSet(AText[AIndex - 1], ['<', '>'])) then
-    Exit;
-  if (AIndex + 2 <= Length(AText)) and CharInSet(AText[AIndex], ['A'..'Z', 'a'..'z']) and
-    (AText[AIndex + 1] = ':') and CharInSet(AText[AIndex + 2], ['\', '/']) then
-    Stop := AIndex + 3
-  else if (AIndex + 2 <= Length(AText)) and (AText[AIndex] = '\') and (AText[AIndex + 1] = '\') and
-    IsWordChar(AText[AIndex + 2]) then
-    Stop := AIndex + 2
-  else if SameText(Copy(AText, AIndex, 7), 'file://') then
-    Stop := AIndex + 7
-  else
-    Exit;
-  while (Stop <= Length(AText)) and not IsPathEnd(AText[Stop]) do
-    Inc(Stop);
-  Result := Stop - AIndex;
-end;
-
-function ReplaceAbsolutePaths(const AText: string): string;
-var
-  Builder: TStringBuilder;
-  Index, Len: Integer;
-begin
-  Builder := TStringBuilder.Create;
-  try
-    Index := 1;
-    while Index <= Length(AText) do
-    begin
-      Len := PathLengthAt(AText, Index);
-      if Len > 0 then
-      begin
-        Builder.Append(PathLabel);
-        Inc(Index, Len);
-      end
-      else
-      begin
-        Builder.Append(Copy(AText, Index, 1));
-        Inc(Index);
-      end;
-    end;
-    Result := Builder.ToString;
-  finally
-    Builder.Free;
-  end;
-end;
-
-function ReplaceQuoted(const AText: string): string;
-var
-  Builder: TStringBuilder;
-  Index, Stop: Integer;
-  Open, Close: Char;
-begin
-  Builder := TStringBuilder.Create;
-  try
-    Index := 1;
-    while Index <= Length(AText) do
-    begin
-      Close := #0;
-      Open := AText[Index];
-      if Open = '"' then
-        Close := '"'
-      else if Open = '''' then
-      begin
-        // Apostroph im Wort (z. B. „don't“) ist kein Anführungszeichen.
-        if (Index = 1) or not IsWordChar(AText[Index - 1]) then
-          Close := '''';
-      end
-      else if Open = #$201E then
-        Close := #$201C
-      else if Open = #$201C then
-        Close := #$201D
-      else if Open = #$00BB then
-        Close := #$00AB
-      else if Open = #$00AB then
-        Close := #$00BB;
-      Stop := 0;
-      if Close <> #0 then
-      begin
-        Stop := Index + 1;
-        while (Stop <= Length(AText)) and (AText[Stop] <> Close) do
-          Inc(Stop);
-        if Stop > Length(AText) then
-          Stop := 0;
-      end;
-      if (Stop > Index + 1) and (Copy(AText, Index + 1, 1) <> '<') then
-      begin
-        Builder.Append(Copy(AText, Index, 1)).Append(ValueLabel).Append(Copy(AText, Stop, 1));
-        Index := Stop + 1;
-      end
-      else
-      begin
-        Builder.Append(Copy(AText, Index, 1));
-        Inc(Index);
-      end;
-    end;
-    Result := Builder.ToString;
-  finally
-    Builder.Free;
-  end;
-end;
+  System.IOUtils,
+  Atlas.Text.Anonymize;
 
 { TAtlasBugReport }
 
 class function TAtlasBugReport.AnonymizePaths(const AText: string; const ARoots, AIdentity: TArray<string>): string;
-var
-  Root, Slashed, Swap: string;
-  Roots: TArray<string>;
-  Index, Other: Integer;
 begin
-  Result := AText;
-  Roots := nil;
-  for Root in ARoots do
-    if TrimDelimiters(Root) <> '' then
-      Roots := Roots + [TrimDelimiters(Root)];
-  // Längste Wurzel zuerst, damit verschachtelte Ordner vollständig gekürzt werden.
-  for Index := 0 to High(Roots) - 1 do
-    for Other := Index + 1 to High(Roots) do
-      if Length(Roots[Other]) > Length(Roots[Index]) then
-      begin
-        Swap := Roots[Index];
-        Roots[Index] := Roots[Other];
-        Roots[Other] := Swap;
-      end;
-  for Root in Roots do
-  begin
-    Slashed := StringReplace(Root, '\', '/', [rfReplaceAll]);
-    Result := StringReplace(Result, 'file:///' + StringReplace(Slashed, ':', '%3A', []), WorkspaceLabel,
-      [rfReplaceAll, rfIgnoreCase]);
-    Result := StringReplace(Result, 'file:///' + Slashed, WorkspaceLabel, [rfReplaceAll, rfIgnoreCase]);
-    Result := StringReplace(Result, Root, WorkspaceLabel, [rfReplaceAll, rfIgnoreCase]);
-    Result := StringReplace(Result, Slashed, WorkspaceLabel, [rfReplaceAll, rfIgnoreCase]);
-    Result := StringReplace(Result, StringReplace(Root, '\', '\\', [rfReplaceAll]), WorkspaceLabel,
-      [rfReplaceAll, rfIgnoreCase]);
-  end;
-  Result := ReplaceAbsolutePaths(Result);
-  for Root in AIdentity do
-    if Length(Root) >= 3 then
-      Result := StringReplace(Result, Root, UserLabel, [rfReplaceAll, rfIgnoreCase]);
+  Result := TTextAnonymizer.AnonymizePaths(AText, ARoots, AIdentity);
 end;
 
 class function TAtlasBugReport.AnonymizeLogLine(const ALine: string; const ARoots, AIdentity: TArray<string>): string;
 begin
-  Result := ReplaceQuoted(AnonymizePaths(ALine, ARoots, AIdentity));
+  Result := TTextAnonymizer.AnonymizeLogLine(ALine, ARoots, AIdentity);
 end;
 
 class function TAtlasBugReport.ServerArguments(const AInput: TAtlasBugReportInput): string;
@@ -286,7 +125,7 @@ begin
       Text := Line;
       if AInput.Anonymize then
         Text := AnonymizeLogLine(Text, AInput.Roots, AInput.Identity);
-      Builder.Append(StringReplace(Text, '```', '` ` `', [rfReplaceAll])).Append(sLineBreak);
+      Builder.Append(TTextAnonymizer.FenceSafe(Text)).Append(sLineBreak);
     end;
     Builder.Append('```').Append(sLineBreak).Append(sLineBreak);
 
