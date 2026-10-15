@@ -48,6 +48,7 @@ uses
   Atlas.Core.Forms.Changes,
   Atlas.Core.Undo.Adapters.DiskTarget,
   Atlas.IDE.Editor.Buffer,
+  Atlas.IDE.Editor.Snapshot,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Forms.Designer;
 
@@ -133,6 +134,8 @@ begin
   if Change.Text <> '' then
     Writer.Insert(PAnsiChar(UTF8Encode(Change.Text)));
   Writer := nil;
+  // Eigener Schreibvorgang: gemeinsamen Pufferstand verwerfen (P-04).
+  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
 
 procedure TAtlasIdeUndoTarget.Write(const AFileName: string; const AContent: TAtlasTextFileContent);

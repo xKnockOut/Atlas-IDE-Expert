@@ -1165,3 +1165,21 @@ Vorbereitung: Plugin installiert, Projekt geöffnet, Server-Log über `--log` ak
 | RS6 | Problemansicht aktiv, 2 min nichts ändern | Keine Zeitlimit-Warnung für `workspace/diagnostic`; Antworten im Mitschnitt im Abstand von etwa 8 s |
 | RS7 | Server mit `--trace` auf einen USB-Stick, Stick abziehen | Genau eine Warnung „Mitschnitt abgebrochen …“; die Editorfunktionen laufen weiter |
 | RS8 | Claude Code: eine in der IDE offene Datei per MCP-Werkzeug ändern | Die Änderung erscheint wie bisher im Editorpuffer |
+
+## Leistung des Plugins (Code-Review P-04, P-09, P-10, P-15, D-07)
+
+Vorbereitung: Plugin installiert, Probleme und Inlay-Hints an, Projekt geöffnet.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PP1 | Große Unit (> 1 MB) vorn, IDE 1 min im Leerlauf, Zeitmessung (Diagnosemodus) offen | Keine Last durch die Zeitgeber von Problemen und Inlay-Hints |
+| PP2 | In der Unit tippen | Problemmarken wandern wie bisher mit, neue Diagnosen nach der Tipp-Pause |
+| PP3 | Strg+Z / Umschalt+Strg+Z | Marken und Inlay-Hints folgen dem Text |
+| PP4 | Im Formular-Designer eine Komponente einfügen | Das neue Feld ist in den Problemen spätestens nach 2 s berücksichtigt |
+| PP5 | Offene Datei extern ändern, neu laden | Diagnosen passen zum neuen Text |
+| PP6 | IDE in den Hintergrund, nach einer Minute zurück | Sofort aktuell |
+| PP7 | Inlay-Hints an; helles und dunkles Editorthema; Strg+Mausrad; Schriftgröße in den Editoroptionen ändern | Marken gleich aussehend wie vorher; der Editortext danach unverändert (keine kleinere Schrift „hängengeblieben“) |
+| PP8 | Vervollständigung öffnen, Monitor mit anderer DPI, Editorzoom ändern | Zeilen-, Chip- und Fußzeilenhöhe passen sofort |
+| PP9 | Detailpanel mit langer Deklaration, Panel breiter und schmaler ziehen | Umbruch wie bisher, folgt der Breite |
+| PP10 | Hover über einer Zeile mit blasser Warnung | Farbe so blass wie die Wellenlinie im Editor |
+| PP11 | Chips im Hover (Vererbung), Tags in Vervollständigung und Detailpanel | Gleicher Innenabstand und gleiche Rundung; Scroll-Daumen in Liste und Doku gleich grau |

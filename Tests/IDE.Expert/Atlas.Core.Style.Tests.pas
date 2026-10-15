@@ -50,6 +50,25 @@ type
     procedure LightPairsStandOut;
     [Test]
     procedure DarkPairsStandOut;
+    [Test]
+    procedure InlayHintColorsMixFromBackground;
+  end;
+
+  [TestFixture]
+  TAtlasWrapTests = class
+  private
+    function Cum(const AText: string): TArray<Integer>;
+  public
+    [Test]
+    procedure WrapFitsOneLine;
+    [Test]
+    procedure WrapBreaksAtSpace;
+    [Test]
+    procedure WrapIndentNarrowsFollowLines;
+    [Test]
+    procedure WrapLongWordStandsAlone;
+    [Test]
+    procedure WrapEmptyText;
   end;
 
   [TestFixture]
@@ -104,6 +123,7 @@ uses
   System.Math,
   System.Types,
   Atlas.Core.Style.Syntax,
+  Atlas.Core.Style.Wrap,
   Atlas.Core.Style.Scaling,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Presentation;
@@ -574,8 +594,94 @@ begin
   Assert.AreEqual('', Positions(TAtlasItemPresentation.Highlights('myLis', 'ERROR_TOO_MANY_LINKS')));
 end;
 
+procedure TAtlasPaletteTests.InlayHintColorsMixFromBackground;
+var
+  Back: TAtlasColor;
+  Colors: TAtlasColors;
+  Hint: TAtlasHintColors;
+begin
+  // Hell: Rollen der hellen Palette, gemischt mit den bisherigen Anteilen 0,8 / 0,45 / 0,2.
+  Back := TAtlasColorMath.FromHex('#FFFFFF');
+  Colors := TAtlasColors.Light;
+  Hint := TAtlasColors.InlayHint(Back);
+  Assert.AreEqual(TAtlasColorMath.Mix(Colors.Text, Back, 0.8), Hint.Text);
+  Assert.AreEqual(TAtlasColorMath.Mix(Colors.Accent, Back, 0.45), Hint.Pen);
+  Assert.AreEqual(TAtlasColorMath.Mix(Colors.Accent, Back, 0.2), Hint.Fill);
+  // Dunkel: Rollen der dunklen Palette.
+  Back := TAtlasColorMath.FromHex('#1E1E1E');
+  Colors := TAtlasColors.Dark;
+  Hint := TAtlasColors.InlayHint(Back);
+  Assert.AreEqual(TAtlasColorMath.Mix(Colors.Text, Back, 0.8), Hint.Text);
+  Assert.AreEqual(TAtlasColorMath.Mix(Colors.Accent, Back, 0.2), Hint.Fill);
+end;
+
+{ TAtlasWrapTests }
+
+function TAtlasWrapTests.Cum(const AText: string): TArray<Integer>;
+var
+  Index: Integer;
+begin
+  // Jedes Zeichen 10 Pixel breit.
+  Result := nil;
+  SetLength(Result, Length(AText) + 1);
+  for Index := 0 to Length(AText) do
+    Result[Index] := 10 * Index;
+end;
+
+procedure TAtlasWrapTests.WrapFitsOneLine;
+var
+  Lines: TArray<TPoint>;
+begin
+  Lines := TAtlasWrap.AtSpaces('a bc d', Cum('a bc d'), 100, 0);
+  Assert.AreEqual(1, Integer(Length(Lines)));
+  Assert.AreEqual(0, Lines[0].X);
+  Assert.AreEqual(6, Lines[0].Y);
+end;
+
+procedure TAtlasWrapTests.WrapBreaksAtSpace;
+var
+  Lines: TArray<TPoint>;
+begin
+  // „procedure Foo(A: Integer)“: 25 Zeichen, Breite 150 = 15 Zeichen.
+  Lines := TAtlasWrap.AtSpaces('procedure Foo(A: Integer)', Cum('procedure Foo(A: Integer)'), 150, 0);
+  Assert.AreEqual(2, Integer(Length(Lines)));
+  Assert.AreEqual(0, Lines[0].X);
+  Assert.AreEqual(10, Lines[0].Y);
+  Assert.AreEqual(10, Lines[1].X);
+  Assert.AreEqual(25, Lines[1].Y);
+end;
+
+procedure TAtlasWrapTests.WrapIndentNarrowsFollowLines;
+var
+  Lines: TArray<TPoint>;
+begin
+  // Erste Zeile 8 Zeichen, Folgezeilen um 3 Zeichen schmaler (5).
+  Lines := TAtlasWrap.AtSpaces('aa bb cc dd ee', Cum('aa bb cc dd ee'), 80, 30);
+  Assert.AreEqual(3, Integer(Length(Lines)));
+  Assert.IsTrue(Lines[0] = Point(0, 6));
+  Assert.IsTrue(Lines[1] = Point(6, 9));
+  Assert.IsTrue(Lines[2] = Point(9, 14));
+end;
+
+procedure TAtlasWrapTests.WrapLongWordStandsAlone;
+var
+  Lines: TArray<TPoint>;
+begin
+  Lines := TAtlasWrap.AtSpaces('a Sehrlangeswort b', Cum('a Sehrlangeswort b'), 50, 0);
+  Assert.AreEqual(3, Integer(Length(Lines)));
+  Assert.IsTrue(Lines[0] = Point(0, 2));
+  Assert.IsTrue(Lines[1] = Point(2, 17));
+  Assert.IsTrue(Lines[2] = Point(17, 18));
+end;
+
+procedure TAtlasWrapTests.WrapEmptyText;
+begin
+  Assert.AreEqual(0, Integer(Length(TAtlasWrap.AtSpaces('', Cum(''), 100, 0))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasColorTests);
+  TDUnitX.RegisterTestFixture(TAtlasWrapTests);
   TDUnitX.RegisterTestFixture(TAtlasPaletteTests);
   TDUnitX.RegisterTestFixture(TAtlasScalingTests);
   TDUnitX.RegisterTestFixture(TAtlasSyntaxTests);

@@ -110,6 +110,7 @@ function ToColor(AColor: TAtlasColor): TColor;
 implementation
 
 uses
+  Atlas.UI.Popup.Draw,
   Winapi.DwmApi,
   System.Math,
   Vcl.Forms,
@@ -124,7 +125,8 @@ const
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
-  Result := TColor(AColor);
+  // Eine Umwandlung für alle Popups (D-07).
+  Result := Atlas.UI.Popup.Draw.ToColor(AColor);
 end;
 
 { TAtlasPopupWindow }

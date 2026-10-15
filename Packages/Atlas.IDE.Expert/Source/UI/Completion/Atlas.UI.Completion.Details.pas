@@ -29,7 +29,8 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Documentation.Contract,
-  Atlas.UI.Documentation.View;
+  Atlas.UI.Documentation.View,
+  Atlas.UI.Popup.Styled;
 
 type
   TAtlasDetailView = class
@@ -47,6 +48,11 @@ type
     FDocLeft: Integer;
     FDocTop: Integer;
     FMaxHeight: Integer;
+    // Je Details einmal (P-15): Doku und eingefärbte Deklaration; Umbruch nur bei anderer Breite oder Schrift.
+    FDocData: TAtlasDoc;
+    FDecl: TAtlasStyledText;
+    FDeclLines: TArray<TPoint>;
+    FDeclKey: string;
     procedure SetDetails(const AValue: TAtlasItemDetails);
   public
     constructor Create;
@@ -81,7 +87,7 @@ implementation
 uses
   System.Math,
   Atlas.UI.Popup.Window,
-  Atlas.UI.Popup.Styled,
+  Atlas.UI.Popup.Draw,
   Atlas.Core.Documentation.Layout,
   Atlas.UI.Strings;
 
@@ -103,6 +109,10 @@ procedure TAtlasDetailView.SetDetails(const AValue: TAtlasItemDetails);
 begin
   FDetails := AValue;
   FDocWidth := 0;
+  FDocData := DocOf(AValue);
+  FDecl := TAtlasStyledText.Create(AValue.Declaration);
+  FDeclLines := nil;
+  FDeclKey := '';
 end;
 
 class function TAtlasDetailView.DocOf(const ADetails: TAtlasItemDetails): TAtlasDoc;
@@ -153,22 +163,11 @@ begin
   Result := FDoc.ScrollBy(ASteps * FDoc.WheelStep);
 end;
 
-function DocLabels: TAtlasDocLabels;
-begin
-  Result.TypeParams := TAtlasStrings.Text(TAtlasTextId.DocTypeParams);
-  Result.Value := TAtlasStrings.Text(TAtlasTextId.DocValue);
-  Result.Example := TAtlasStrings.Text(TAtlasTextId.DocExample);
-  Result.SeeAlso := TAtlasStrings.Text(TAtlasTextId.DocSeeAlso);
-end;
-
 function TAtlasDetailView.Render(ACanvas: TCanvas; const AColors: TAtlasColors; AFont, AUIFont: TFont;
   const ABounds: TRect; APPI: Integer; ADraw: Boolean): Integer;
 var
   Left, Y, Right, TagX, TagHeight, LineHeight, Fixed: Integer;
-  Text, Tag: string;
-  Doc: TAtlasDoc;
-  Declaration: TAtlasStyledText;
-  Lines: TArray<TPoint>;
+  Text, Tag, Key: string;
   Line, X: Integer;
   Box, Rect_: TRect;
 
@@ -182,7 +181,8 @@ var
     ACanvas.Brush.Style := bsClear;
     ACanvas.Pen.Style := psSolid;
     ACanvas.Pen.Color := ToColor(ALine);
-    ACanvas.RoundRect(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom, Scale(6), Scale(6));
+    ACanvas.RoundRect(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom, Scale(2 * TAtlasDraw.ChipRadius),
+      Scale(2 * TAtlasDraw.ChipRadius));
   end;
 
   /// <summary>Text in der UI-Schrift umbrechend ab Y; AMaxLines = 0 ohne Grenze.</summary>
@@ -210,12 +210,7 @@ var
   procedure Separator;
   begin
     if ADraw then
-    begin
-      ACanvas.Pen.Style := psSolid;
-      ACanvas.Pen.Color := ToColor(AColors.Line);
-      ACanvas.MoveTo(Left, Y + Scale(2));
-      ACanvas.LineTo(Right, Y + Scale(2));
-    end;
+      TAtlasDraw.Separator(ACanvas, Left, Right, Y + Scale(2), AColors.Line);
     Inc(Y, Scale(8));
   end;
 
@@ -269,7 +264,7 @@ begin
       if Tag = '' then
         Continue;
       ACanvas.Font := AUIFont;
-      Box := Rect(TagX, Y, TagX + ACanvas.TextWidth(Tag) + Scale(10), Y + TagHeight);
+      Box := Rect(TagX, Y, TagX + ACanvas.TextWidth(Tag) + Scale(TAtlasDraw.ChipPad), Y + TagHeight);
       if ADraw then
       begin
         if Tag = 'deprecated' then
@@ -295,13 +290,17 @@ begin
   begin
     ACanvas.Font := AFont;
     LineHeight := ACanvas.TextHeight('Wg') + Scale(2);
-    Declaration := TAtlasStyledText.Create(FDetails.Declaration);
-    Lines := Declaration.WrapAtSpaces(ACanvas, Right - Left, Scale(16));
-    for Line := 0 to High(Lines) do
+    Key := IntToStr(Right - Left) + '|' + IntToStr(APPI) + '|' + AFont.Name + '|' + IntToStr(AFont.Height);
+    if Key <> FDeclKey then
+    begin
+      FDeclLines := FDecl.WrapAtSpaces(ACanvas, Right - Left, Scale(16));
+      FDeclKey := Key;
+    end;
+    for Line := 0 to High(FDeclLines) do
     begin
       X := Left + IfThen(Line > 0, Scale(16));
       if ADraw then
-        Declaration.Draw(ACanvas, AColors, Lines[Line].X, Lines[Line].Y, X, Rect(X, Y, Right, Y + LineHeight),
+        FDecl.Draw(ACanvas, AColors, FDeclLines[Line].X, FDeclLines[Line].Y, X, Rect(X, Y, Right, Y + LineHeight),
           False, Scale(3));
       Inc(Y, LineHeight);
     end;
@@ -319,8 +318,7 @@ begin
   for Text in FDetails.Hides do
     Block(TAtlasStrings.Fmt(TAtlasTextId.HidesDeclaration, [Text]), AColors.Muted, [fsItalic]);
   // 4.–6. Veraltung, Verfügbarkeit und XMLDoc; ohne Inhalt keine Trennlinie und keine leeren Abschnitte.
-  Doc := DocOf(FDetails);
-  if FDetails.IsDeprecated or not Doc.IsEmpty or (FDetails.Availability <> '') then
+  if FDetails.IsDeprecated or not FDocData.IsEmpty or (FDetails.Availability <> '') then
   begin
     Separator;
     // Im aktiven Ziel nicht deklariert (#476): zuerst, in Warnfarbe.
@@ -331,13 +329,13 @@ begin
         Block(TAtlasStrings.Fmt(TAtlasTextId.DeprecatedWith, [FDetails.DeprecatedText]), AColors.Warn, [])
       else
         Block(TAtlasStrings.Text(TAtlasTextId.DeprecatedPlain), AColors.Warn, []);
-    if Doc.IsEmpty then
+    if FDocData.IsEmpty then
       FDoc.Clear
     else
     begin
       if FDocWidth <> Right - Left then
       begin
-        FDoc.Build(ACanvas, Doc, Right - Left, AFont, AUIFont, APPI, FDetails.Display.Full, DocLabels);
+        FDoc.Build(ACanvas, FDocData, Right - Left, AFont, AUIFont, APPI, FDetails.Display.Full, TAtlasStrings.DocLabels);
         FDocWidth := Right - Left;
       end;
       // Höher als erlaubt: nur die Doku scrollt, Kopf und Deklaration bleiben.

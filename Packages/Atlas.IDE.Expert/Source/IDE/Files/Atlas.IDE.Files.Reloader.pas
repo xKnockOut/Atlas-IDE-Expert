@@ -56,6 +56,7 @@ uses
   Atlas.UI.Strings,
   Atlas.IDE.Settings.Store,
   Atlas.IDE.Editor.Buffer,
+  Atlas.IDE.Editor.Snapshot,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Files.TextDiff;
 
@@ -239,6 +240,8 @@ begin
     States[Index].LeftColumn := View.LeftColumn;
   end;
   Module.Refresh(True);
+  // Neu geladen ohne Editorereignis: gemeinsamen Pufferstand verwerfen (P-04).
+  TAtlasEditorSnapshots.Invalidate(AFileName);
   Editor := SourceEditorOf(Module);
   if Editor <> nil then
     for Index := 0 to Editor.EditViewCount - 1 do
