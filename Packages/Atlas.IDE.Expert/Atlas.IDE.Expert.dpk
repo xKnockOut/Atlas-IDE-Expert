@@ -63,6 +63,7 @@ contains
   Atlas.Core.Signature.Contract in 'Source\Core\Signature\Atlas.Core.Signature.Contract.pas',
   Atlas.Core.Hover.Contract in 'Source\Core\Hover\Atlas.Core.Hover.Contract.pas',
   Atlas.Core.Hover.History in 'Source\Core\Hover\Atlas.Core.Hover.History.pas',
+  Atlas.Core.Hover.Layout in 'Source\Core\Hover\Atlas.Core.Hover.Layout.pas',
   Atlas.Core.Documentation.Contract in 'Source\Core\Documentation\Atlas.Core.Documentation.Contract.pas',
   Atlas.Core.Documentation.Layout in 'Source\Core\Documentation\Atlas.Core.Documentation.Layout.pas',
   Atlas.Core.Signature.CallScanner in 'Source\Core\Signature\Atlas.Core.Signature.CallScanner.pas',

@@ -83,6 +83,9 @@ const
   AtlasMixInlayText = 0.8;
   AtlasMixInlayPen = 0.45;
   AtlasMixInlayFill = 0.2;
+  /// <summary>Chips und Tags (D-07): Innenabstand links und rechts zusammen und Eckenradius, logische Pixel.</summary>
+  AtlasChipPad = 12;
+  AtlasChipRadius = 4;
 
 implementation
 

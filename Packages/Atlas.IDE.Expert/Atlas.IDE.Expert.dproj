@@ -105,6 +105,7 @@
         <DCCReference Include="Source\Core\Signature\Atlas.Core.Signature.Contract.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Contract.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.History.pas"/>
+        <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Layout.pas"/>
         <DCCReference Include="Source\Core\Documentation\Atlas.Core.Documentation.Contract.pas"/>
         <DCCReference Include="Source\Core\Documentation\Atlas.Core.Documentation.Layout.pas"/>
         <DCCReference Include="Source\Core\Signature\Atlas.Core.Signature.CallScanner.pas"/>

@@ -263,6 +263,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Signature\Atlas.Core.Signature.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Hover\Atlas.Core.Hover.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Hover\Atlas.Core.Hover.History.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Hover\Atlas.Core.Hover.Layout.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Layout.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Documentation\Atlas.Core.Documentation.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Documentation\Atlas.Core.Documentation.Layout.pas"/>
