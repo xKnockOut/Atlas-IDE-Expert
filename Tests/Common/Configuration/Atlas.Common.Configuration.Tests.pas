@@ -32,6 +32,8 @@ type
     [Test]
     procedure ChecksMetricLimitOption;
     [Test]
+    procedure ChecksTodoKeywordsOption;
+    [Test]
     procedure ReadsHints;
     [Test]
     procedure ReadsMcpDisabledTools;
@@ -643,6 +645,22 @@ begin
   Assert.AreEqual(1, Integer(Length(Issues)));
   Parse('{"rules": {"metric-method-length": {"max": 2.5}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
+procedure TConfigurationParserTests.ChecksTodoKeywordsOption;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{"rules": {"todo-comment": {"severity": "hint", "keywords": ["TODO", "hack"]}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('{"severity": "hint", "keywords": ["TODO", "hack"]}', Settings.Rules[0].Options);
+  Parse('{"rules": {"todo-comment": {"keywords": "TODO"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"keywords"');
+  // DONE ist die Marke der erledigten Einträge; Zeichen außer Buchstaben passen nicht zum ersten Wort.
+  Parse('{"rules": {"todo-comment": {"keywords": ["DONE", "TO-DO", "", 1, "XXX"]}}}', Issues);
+  Assert.AreEqual(4, Integer(Length(Issues)));
 end;
 
 procedure TConfigurationParserTests.ReadsHints;

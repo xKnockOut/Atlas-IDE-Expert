@@ -50,6 +50,7 @@ uses
   Atlas.Common.Lsp.InlayHints,
   Atlas.Common.Lsp.CodeLens,
   Atlas.Common.Lsp.Metrics,
+  Atlas.Common.Lsp.Todos,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Lsp.QualifiedNames,
@@ -128,6 +129,8 @@ type
     FCodeLens: TLspCodeLens;
     /// <summary>Code-Metriken (#66): Befehl atlas.server.metrics mit Zwischenspeicher je Datei.</summary>
     FMetrics: TLspMetrics;
+    /// <summary>TODO-Übersicht (#68): Befehl atlas.server.todos.</summary>
+    FTodos: TLspTodos;
     FSemanticTokens: TLspSemanticTokens;
     FCodeActions: TLspCodeActions;
     /// <summary>Testunit anlegen und wechseln (#274, #189).</summary>
@@ -766,6 +769,12 @@ begin
     begin
       Result := ReadSourceText(AFileName, AText);
     end);
+  // Gleiche Quelle wie die Metriken: Einstellungen, Wurzel und Dateien des Projektmodells (#14).
+  FTodos := TLspTodos.Create(MetricsSourceFor,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end);
   FSemanticTokens := TLspSemanticTokens.Create(FDocuments, FIndex,
     function(const AUnitName: string): Boolean
     begin
@@ -953,6 +962,11 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FMetrics.Execute(AArguments);
+    end);
+  FCommands.Register(TLspTodos.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FTodos.Execute(AArguments);
     end);
   FCommands.Register(TLspTestUnits.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1371,6 +1385,7 @@ begin
   FSemanticTokens.Free;
   FCodeLens.Free;
   FMetrics.Free;
+  FTodos.Free;
   FInlayHints.Free;
   FImplementations.Free;
   FHierarchies.Free;

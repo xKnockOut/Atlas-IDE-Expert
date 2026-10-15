@@ -979,6 +979,25 @@ Voraussetzung: Server läuft, Beispielprojekt mit `Setup\Beispiele\Entdecken.pas
 | MX13 | `AtlasServer --check <Projekt> --metrics` und `--metrics --format json` | Markdown bzw. JSON mit `"format": 1`, `limits`, `summary`, `files`; Exitcode 0; `--format sarif` mit `--metrics` endet mit Fehler |
 | MX14 | Claude Code: Werkzeug `get_metrics` ohne und mit `file` | Bericht des Projekts bzw. Werte der Datei, Grenzwerte aus atlas.json |
 
+## TODO-Übersicht (#68)
+
+Voraussetzung: Server läuft, eigenes Projekt geöffnet. In einer Unit des Projekts stehen `// TODO 2 -oMarco -cGUI : Fokus setzen`, `{ TODO 1 -cExport : CSV mit BOM }`, `// FIXME Rabatt`, `{ DONE -oAnna : Index }` und `s := '// TODO kein Kommentar';`; eine Unit im Projektordner, die nicht zum Projekt gehört, enthält `// TODO fremd`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TD1 | Befehlspalette „TODOs des Projekts“ | Ergebnisfenster „TODOs in <Projekt>: 3“, nach Unit gruppiert: „TODO 2 [GUI, Marco]: Fokus setzen“, „TODO 1 [Export]: CSV mit BOM“, „FIXME: Rabatt“; kein DONE-Eintrag, nichts aus der Zeichenkette, nichts aus der fremden Unit |
+| TD2 | Doppelklick auf einen Eintrag aus TD1 | Editor öffnet die Unit an der Zeile und Spalte des Kommentars |
+| TD3 | TD1 in einem Projekt ohne TODO-Kommentare | Meldung „Keine offenen TODOs in <Projekt>.“ |
+| TD4 | TD1 ohne geöffnetes Projekt | Meldung „TODOs des Projekts: kein aktives Projekt.“ |
+| TD5 | Projekt bauen und sofort TD1 | Entweder die Liste oder „… Der Atlas-Server ist gerade beschäftigt …“; ein zweiter Versuch nach kurzer Zeit zeigt die Liste |
+| TD6 | atlas.json: `"rules": {"todo-comment": "hint"}` speichern | Nach höchstens 30 s Hinweise `todo-comment` an den drei offenen Kommentaren mit demselben Text wie in TD1; keiner am DONE-Eintrag |
+| TD7 | Zeile `// lsp-ignore: todo-comment` über einen der Kommentare aus TD6 | Dieser Hinweis verschwindet; die Liste aus TD1 zeigt den Eintrag weiter |
+| TD8 | atlas.json: `"todo-comment": {"severity": "off", "keywords": ["TODO", "FIXME", "HACK"]}`, ein `// HACK Umweg` ergänzen, TD1 | Liste enthält „HACK: Umweg“; keine Hinweise im Editor |
+| TD9 | atlas.json: `"todo-comment": {"keywords": ["TO-DO", "DONE"]}` | Probleme in atlas.json: „Eine Marke besteht nur aus Buchstaben und ist nicht DONE, z. B. "HACK"“; es gelten die übrigen bzw. die Vorgabe-Marken |
+| TD10 | Projekt bauen (Strg+F9), danach `%LOCALAPPDATA%\Atlas\projects\<Schlüssel>.json` ansehen | Neben `metrics` ein Abschnitt `todos` mit `at` (Zeitpunkt des Builds), `files`, `open` (3), `done` (1) und `keywords` mit den offenen Einträgen je Marke (`{"FIXME": 1, "TODO": 2}`) |
+| TD11 | `AtlasServer --check <Projekt> --todos` und `--todos --format json` | Markdown „# TODOs: <Projekt>“ mit „Nach Kategorie“, „Nach Person“ und einer Tabelle je Unit bzw. JSON mit `"format": 1`, `summary`, `files`; Exitcode 0; `--format sarif` oder `--metrics` zusammen mit `--todos` endet mit Fehler |
+| TD12 | Claude Code: Werkzeug `get_todos` ohne Argumente, mit `owner: "Marco"`, mit `includeDone: true`, mit `file` | Markdown über das Projekt; nur Marcos Einträge; zusätzlich der DONE-Eintrag als erledigt; nur die Einträge der Datei |
+
 ## Units suchen (#777)
 
 Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testprojekt; Server läuft; Einstellungen auf Vorgabe.

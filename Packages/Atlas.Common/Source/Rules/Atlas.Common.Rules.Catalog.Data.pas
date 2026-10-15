@@ -777,6 +777,15 @@ begin
     '      "good": "procedure Book(const AAddress: TAddress; const AOrder: TOrder);"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "todo-comment",' + #10 +
+    '      "name": "Open TODO comment",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "A comment starts with a marker for open work: // TODO, // FIXME or the IDE to-do format { TODO 1 -oOwner -cCategory : Text }. The hint shows marker, priority, category, owner and' + ' text, so open work appears in the problem list. Off by default; switch it on in atlas.json, e.g. \"rules\": {\"todo-comment\": {\"severity\": \"hint\"}}. Completed entries ({ DONE … }) are never repo' + 'rted. The option keywords sets the markers (default [\"TODO\", \"FIXME\"]); it also applies to get_todos and --todos.",' + #10 +
+    '      "bad": "// TODO 1 -oMarco -cGUI : set focus\nEdit.Text := '''';",' + #10 +
+    '      "good": "Edit.Text := '''';\nEdit.SetFocus;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "component-palette-icon",' + #10 +
     '      "name": "Registered component without palette icon",' + #10 +
     '      "category": "code-smell",' + #10 +
@@ -1224,6 +1233,11 @@ begin
     '      "id": "metric-parameter-count",' + #10 +
     '      "name": "Zu viele Parameter",' + #10 +
     '      "description": "Die Methode hat mehr Parameter als der Grenzwert (Vorgabe 6). Zusammengehörige Werte in einem Record oder einer Klasse bündeln. Den Grenzwert setzt die Option max."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "todo-comment",' + #10 +
+    '      "name": "Offener TODO-Kommentar",' + #10 +
+    '      "description": "Ein Kommentar beginnt mit einer Marke für offene Arbeit: // TODO, // FIXME oder das Format der IDE-To-Do-Liste { TODO 1 -oPerson -cKategorie : Text }. Der Hinweis zeigt Marke, Pr' + 'iorität, Kategorie, Person und Text, damit offene Arbeit in der Problemliste erscheint. In der Vorgabe aus; in atlas.json einschalten, z. B. \"rules\": {\"todo-comment\": {\"severity\": \"hint\"}}. Er' + 'ledigte Einträge ({ DONE … }) meldet die Regel nie. Die Option keywords legt die Marken fest (Vorgabe [\"TODO\", \"FIXME\"]); sie gilt auch für get_todos und --todos."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "component-palette-icon",' + #10 +

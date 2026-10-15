@@ -50,6 +50,7 @@ uses
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.IndexTools,
   Atlas.Common.Mcp.CodeTools,
+  Atlas.Common.Todos.Contract,
   Atlas.Common.Mcp.BuildTools,
   Atlas.Common.Mcp.Paths,
   Atlas.Common.Mcp.Freshness,
@@ -364,6 +365,47 @@ begin
       if Length(Files) = 0 then
         raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
       Result := TMcpCodeTools.Metrics(AWorkspace.Configuration.Settings, ARoot, Files, ReadSourceText,
+        SameText(Format, 'json'));
+    end);
+  AServer.AddTool('get_todos',
+    'TODO-Übersicht (#68): Kommentare // TODO, // FIXME und das Format der IDE-To-Do-Liste ' +
+    '{ TODO 1 -oPerson -cKategorie : Text } aus allen Dateien des Projekts, mit Priorität, Person und Kategorie. ' +
+    'Erledigte Einträge ({ DONE … }) nur mit includeDone. Weitere Marken über die Option "keywords" der Regel ' +
+    'todo-comment in atlas.json. Als Markdown-Übersicht oder als JSON-Daten.',
+    '{"type":"object","properties":{' +
+      '"file":{"type":"string","description":"Pfad einer .pas-Datei; leer = alle Projektdateien"},' +
+      '"unit":{"type":"string","description":"Nur diese Unit (Name oder Pfad relativ zum Projekt)"},' +
+      '"category":{"type":"string","description":"Nur diese Kategorie (-c)"},' +
+      '"owner":{"type":"string","description":"Nur diese Person (-o)"},' +
+      '"keyword":{"type":"string","description":"Nur diese Marke, z. B. FIXME"},' +
+      '"includeDone":{"type":"boolean","description":"Auch erledigte Einträge (DONE); Vorgabe false"},' +
+      '"format":{"type":"string","enum":["markdown","json"],"description":"markdown (Vorgabe) oder json"}}}',
+    function(const AArguments: TJSONObject): string
+    var
+      FileName, Format: string;
+      Files: TArray<string>;
+      Filter: TTodoFilter;
+      IncludeDone: Boolean;
+    begin
+      FileName := TMcpServer.OptionalString(AArguments, 'file');
+      Format := TMcpServer.OptionalString(AArguments, 'format');
+      if (Format <> '') and not SameText(Format, 'markdown') and not SameText(Format, 'json') then
+        raise EMcpToolError.Create('"format" ist markdown oder json');
+      Filter := TTodoFilter.Default;
+      Filter.UnitName := TMcpServer.OptionalString(AArguments, 'unit');
+      Filter.Category := TMcpServer.OptionalString(AArguments, 'category');
+      Filter.Owner := TMcpServer.OptionalString(AArguments, 'owner');
+      Filter.Keyword := TMcpServer.OptionalString(AArguments, 'keyword');
+      if (AArguments <> nil) and AArguments.TryGetValue<Boolean>('includeDone', IncludeDone) then
+        Filter.IncludeDone := IncludeDone;
+      // Projektweit heißt: die Dateien, die das Projektmodell (#14) dem Projekt zuordnet.
+      if FileName <> '' then
+        Files := [AGuard.Resolve(FileName)]
+      else
+        Files := AWorkspace.ProjectFiles;
+      if Length(Files) = 0 then
+        raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
+      Result := TMcpCodeTools.Todos(AWorkspace.Configuration.Settings, ARoot, Files, ReadSourceText, Filter,
         SameText(Format, 'json'));
     end);
   AServer.AddTool('check_code',

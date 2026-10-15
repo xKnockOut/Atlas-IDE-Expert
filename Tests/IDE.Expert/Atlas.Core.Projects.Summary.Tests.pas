@@ -50,6 +50,10 @@ type
     procedure MetricsFromServerAndRoundTrip;
     [Test]
     procedure MetricsRejectInvalidAnswer;
+    [Test]
+    procedure TodosFromServerAndRoundTrip;
+    [Test]
+    procedure TodosRejectInvalidAnswer;
   end;
 
 implementation
@@ -249,6 +253,7 @@ begin
   Assert.IsFalse(Summary.Check.Known);
   Assert.IsFalse(Summary.Rules.Known);
   Assert.IsFalse(Summary.Metrics.Known);
+  Assert.IsFalse(Summary.Todos.Known);
   Assert.IsTrue(Summary.LastOpened = 0);
   Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "vcs": {"kind": "none"}}', Summary));
   Assert.IsTrue(Summary.Vcs.Known);
@@ -395,6 +400,61 @@ begin
   Assert.IsFalse(TAtlasProjectMetrics.FromServer('"# Bericht"', 0, Metrics));
   Assert.IsFalse(TAtlasProjectMetrics.FromServer('{"summary": {"files": 1}}', 0, Metrics));
   Assert.IsFalse(Metrics.Known);
+end;
+
+procedure TAtlasProjectSummaryTests.TodosFromServerAndRoundTrip;
+const
+  // Antwort von atlas.server.todos im Modus "summary" (#68).
+  Answer = '{"format": 1, "summary": {"files": 2, "open": 5, "done": 1, "keywords": {"FIXME": 2, "TODO": 3}}}';
+var
+  Todos: TAtlasProjectTodos;
+  Summary, Read: TAtlasProjectSummary;
+  Stamp: TDateTime;
+  Json: string;
+begin
+  Stamp := EncodeDate(2026, 10, 15) + EncodeTime(9, 30, 0, 0);
+  Assert.IsTrue(TAtlasProjectTodos.FromServer(Answer, Stamp, Todos));
+  Assert.IsTrue(Todos.Known);
+  Assert.IsTrue(Todos.At = Stamp, 'Zeitpunkt des Builds');
+  Assert.AreEqual(2, Todos.Files);
+  Assert.AreEqual(5, Todos.Open, 'Reihe „offene TODOs“ des Projektverlaufs (#758)');
+  Assert.AreEqual(1, Todos.Done);
+  Assert.AreEqual(2, Todos.CountOf('fixme'));
+  Assert.AreEqual(0, Todos.CountOf('HACK'));
+  Summary := TAtlasProjectSummary.Create(Project);
+  Assert.IsFalse(Summary.Todos.Known);
+  Summary.Todos := Todos;
+  Json := TAtlasProjectSummaries.ToJson(Summary);
+  Assert.Contains(Json, '"todos":{"at":"2026-10-15T09:30:00Z","files":2,"open":5,"done":1,' +
+    '"keywords":{"FIXME":2,"TODO":3}}');
+  Assert.IsTrue(TAtlasProjectSummaries.Parse(Json, Read));
+  Assert.IsTrue(Read.Todos.Known);
+  Assert.AreEqual(5, Read.Todos.Open);
+  Assert.AreEqual(3, Read.Todos.CountOf('TODO'));
+  Assert.IsTrue(Read.Todos.At = Stamp);
+  // Ohne Abschnitt bleibt er unbekannt; unbekannte Felder im Abschnitt bleiben.
+  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj"}', Read));
+  Assert.IsFalse(Read.Todos.Known);
+  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "todos": {"open": 0, ' +
+    '"history": [3, 0]}}', Read));
+  Assert.IsTrue(Read.Todos.Known);
+  Assert.AreEqual(0, Read.Todos.Open);
+  Assert.Contains(TAtlasProjectSummaries.ToJson(Read), '"history":[3,0]');
+end;
+
+procedure TAtlasProjectSummaryTests.TodosRejectInvalidAnswer;
+var
+  Todos: TAtlasProjectTodos;
+begin
+  Assert.IsFalse(TAtlasProjectTodos.FromServer('', 0, Todos));
+  Assert.IsFalse(TAtlasProjectTodos.FromServer('"# TODOs"', 0, Todos));
+  Assert.IsFalse(TAtlasProjectTodos.FromServer('{"summary": {"files": 1}}', 0, Todos));
+  Assert.IsFalse(Todos.Known);
+  // Ein Projekt ohne TODOs: 0 ist ein Wert, keine Lücke.
+  Assert.IsTrue(TAtlasProjectTodos.FromServer('{"summary": {"files": 0, "open": 0, "done": 0, "keywords": {}}}', 1,
+    Todos));
+  Assert.IsTrue(Todos.Known);
+  Assert.AreEqual(0, Integer(Length(Todos.Keywords)));
 end;
 
 initialization

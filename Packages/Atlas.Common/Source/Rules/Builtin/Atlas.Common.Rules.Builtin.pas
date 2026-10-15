@@ -36,6 +36,7 @@ uses
   Atlas.Common.Rules.Builtin.DfmProperties,
   Atlas.Common.Rules.Builtin.SlashCommands,
   Atlas.Common.Rules.Builtin.Metrics,
+  Atlas.Common.Rules.Builtin.Todos,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -67,6 +68,7 @@ begin
     RegisterDfmPropertyRules(Registry);
     RegisterSlashCommandRules(Registry);
     RegisterMetricRules(Registry);
+    RegisterTodoRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

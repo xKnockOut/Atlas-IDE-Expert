@@ -93,6 +93,7 @@ uses
   Atlas.IDE.Welcome.WhatsNew,
   Atlas.IDE.Welcome.Projects,
   Atlas.Core.Editor.Metrics,
+  Atlas.Core.Projects.Todos,
   Atlas.IDE.Welcome.Unsaved,
   Atlas.IDE.Welcome.Continue,
   Atlas.IDE.Welcome.State,
@@ -274,6 +275,7 @@ end;
 
 const
   MetricsCommand = 'atlas.server.metrics';
+  TodosCommand = 'atlas.server.todos';
 
 function MetricsArguments(const AProject, AMode: string): string;
 var
@@ -289,8 +291,9 @@ begin
   end;
 end;
 
-/// <summary>Code-Metriken nach einem Build für die Projekt-Zusammenfassung (#66, Projektverlauf #758): im
-/// Hintergrund vom laufenden Server (startet ihn nicht), Zeitpunkt der des Builds.</summary>
+/// <summary>Code-Metriken (#66) und TODO-Übersicht (#68) nach einem Build für die Projekt-Zusammenfassung
+/// (Projektverlauf #758): in einem Hintergrundlauf vom laufenden Server (startet ihn nicht), Zeitpunkt der des
+/// Builds.</summary>
 procedure RecordProjectMetrics(const AProject: string);
 var
   Project: string;
@@ -301,14 +304,13 @@ begin
     Exit;
   Project := AProject;
   Stamp := TAtlasIdeProjects.StampUtc;
-  Manager.RunCommandAsync(MetricsCommand, MetricsArguments(Project, 'summary'), 60000,
-    procedure(AAnswer: string)
+  Manager.RunCommandsAsync([MetricsCommand, TodosCommand],
+    [MetricsArguments(Project, 'summary'), MetricsArguments(Project, 'summary')], 60000,
+    procedure(AAnswers: TArray<string>)
     var
-      Answer: string;
+      Answers: TArray<string>;
     begin
-      Answer := AAnswer;
-      if Answer = '' then
-        Exit;
+      Answers := AAnswers;
       TThread.Queue(nil,
         procedure
         begin
@@ -316,7 +318,9 @@ begin
             TAtlasGuard.Run(TAtlasFeature.WelcomePage,
               procedure
               begin
-                Welcome.Projects.RecordMetrics(Project, Answer, Stamp);
+                // Leere oder ungültige Antworten lassen die Zusammenfassung unverändert.
+                Welcome.Projects.RecordMetrics(Project, Answers[0], Stamp);
+                Welcome.Projects.RecordTodos(Project, Answers[1], Stamp);
               end);
         end);
     end);
@@ -375,6 +379,55 @@ begin
   else
     // Ein Befehl im Hintergrund läuft schon (etwa die Metriken nach einem Build): später noch einmal.
     GuardWarning(TAtlasStrings.Text(TAtlasTextId.MetricsReportBusy));
+end;
+
+/// <summary>TODO-Liste des aktiven Projekts (#68) im Ergebnisfenster: Daten vom Server (startet ihn bei Bedarf) im
+/// Hintergrund, nach Unit gruppiert; Doppelklick springt zum Kommentar.</summary>
+procedure ProjectTodos;
+var
+  Project: IOTAProject;
+  Name: string;
+begin
+  if Manager = nil then
+    Exit;
+  Project := GetActiveProject;
+  if (Project = nil) or (Project.FileName = '') then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TodoListNoProject));
+    Exit;
+  end;
+  Name := ChangeFileExt(ExtractFileName(Project.FileName), '');
+  if Manager.ActiveSession = nil then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TodoListFailed));
+    Exit;
+  end;
+  if not Manager.RunCommandAsync(TodosCommand, MetricsArguments(Project.FileName, 'json'), 120000,
+    procedure(AAnswer: string)
+    var
+      Answer: string;
+    begin
+      Answer := AAnswer;
+      TThread.Queue(nil,
+        procedure
+        begin
+          TAtlasGuard.Run(TAtlasFeature.Palette,
+            procedure
+            var
+              Entries: TArray<TAtlasResultEntry>;
+            begin
+              if not TAtlasTodoList.Entries(Answer, Entries) then
+                GuardWarning(TAtlasStrings.Text(TAtlasTextId.TodoListFailed))
+              else if Length(Entries) = 0 then
+                GuardWarning(TAtlasStrings.Fmt(TAtlasTextId.TodoListEmpty, [Name]))
+              else
+                TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.TodoListTitle,
+                  [Name, Length(Entries)]), Entries);
+            end);
+        end);
+    end) then
+    // Ein Befehl im Hintergrund läuft schon (etwa die Werte nach einem Build): später noch einmal.
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TodoListBusy));
 end;
 
 procedure RenameSymbol;
@@ -603,6 +656,12 @@ begin
     procedure
     begin
       MetricsReport;
+    end);
+  // TODO-Liste des Projekts (#68).
+  Palette.RegisterCommand('Atlas.TodoList', TAtlasStrings.Text(TAtlasTextId.TodoListCommand), '',
+    procedure
+    begin
+      ProjectTodos;
     end);
   Palette.RegisterCommand('Atlas.CheckNow', TAtlasStrings.Text(TAtlasTextId.PaletteCheckNow), '',
     procedure
@@ -874,7 +933,7 @@ begin
           begin
             Welcome.Projects.Recorded(Messages, Project, Succeeded, Readable);
           end);
-      // Code-Metriken nach einem Build, nicht nach einer Hintergrundprüfung (#66, #758).
+      // Code-Metriken und TODOs nach einem Build, nicht nach einer Hintergrundprüfung (#66, #68, #758).
       if AReadable and not AProject.Background then
         TAtlasGuard.Run(TAtlasFeature.WelcomePage,
           procedure

@@ -412,6 +412,15 @@
       "text": "Fasst die Code-Metriken aller Units des aktiven Projekts als Markdown zusammen: Mittelwerte, Höchstwerte und die Methoden über einem Grenzwert.",
       "textEn": "Summarizes the code metrics of all units in the active project as Markdown: averages, maximums and the methods above a limit.",
       "image": "Tipps\\metrikbericht.png"
+    },
+    {
+      "id": "todoList",
+      "command": "Atlas.TodoList",
+      "title": "TODOs des Projekts",
+      "titleEn": "Project TODOs",
+      "text": "Listet die offenen TODO- und FIXME-Kommentare aller Units des aktiven Projekts nach Unit im Ergebnisfenster, auch // TODO, mit Priorität, Kategorie (-c) und Person (-o). Doppelklick springt hin.",
+      "textEn": "Lists the open TODO and FIXME comments of all units in the active project by unit in the results window, including // TODO, with priority, category (-c) and owner (-o). Double-click jumps there.",
+      "image": "Tipps\\todo-liste.png"
     }
   ]
 }

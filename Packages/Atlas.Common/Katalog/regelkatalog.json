@@ -757,6 +757,15 @@
       "good": "procedure Book(const AAddress: TAddress; const AOrder: TOrder);"
     },
     {
+      "id": "todo-comment",
+      "name": "Open TODO comment",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "A comment starts with a marker for open work: // TODO, // FIXME or the IDE to-do format { TODO 1 -oOwner -cCategory : Text }. The hint shows marker, priority, category, owner and text, so open work appears in the problem list. Off by default; switch it on in atlas.json, e.g. \"rules\": {\"todo-comment\": {\"severity\": \"hint\"}}. Completed entries ({ DONE … }) are never reported. The option keywords sets the markers (default [\"TODO\", \"FIXME\"]); it also applies to get_todos and --todos.",
+      "bad": "// TODO 1 -oMarco -cGUI : set focus\nEdit.Text := '';",
+      "good": "Edit.Text := '';\nEdit.SetFocus;"
+    },
+    {
       "id": "component-palette-icon",
       "name": "Registered component without palette icon",
       "category": "code-smell",

@@ -67,6 +67,7 @@ type
     procedure ReadSortUses(ANode: TJsonNode);
     procedure ReadInlayHints(ANode: TJsonNode);
     procedure ReadCodeLens(ANode: TJsonNode);
+    procedure CheckTodoKeywords(ANode: TJsonNode);
     procedure ReadHints(ANode: TJsonNode);
     procedure ReadStringLiteral(ANode: TJsonNode);
     procedure ReadMemberOrder(ANode: TJsonNode);
@@ -224,7 +225,10 @@ begin
           // Grenzwert der Metrik-Regeln (#66); die Regel liest ihn aus den Optionen.
           else if (Value.Keys[Inner] = 'max') and not ((Value[Inner].Kind = TJsonKind.Number) and
             TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 1)) then
-            ReportNode(Value[Inner], '"max" muss eine ganze Zahl ab 1 sein');
+            ReportNode(Value[Inner], '"max" muss eine ganze Zahl ab 1 sein')
+          // Marken der Regel todo-comment (#68); die Regel und get_todos lesen sie aus den Optionen.
+          else if Value.Keys[Inner] = 'keywords' then
+            CheckTodoKeywords(Value[Inner]);
         Rule.Options := Copy(FText, Value.Start + 1, Value.Stop - Value.Start);
       end
       else
@@ -533,6 +537,31 @@ begin
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "inlayHints.%s"', [Key]), False);
+  end;
+end;
+
+procedure TValidator.CheckTodoKeywords(ANode: TJsonNode);
+var
+  Index, Position: Integer;
+  Keyword: string;
+  Valid: Boolean;
+begin
+  if ANode.Kind <> TJsonKind.Array_ then
+  begin
+    ReportNode(ANode, '"keywords" muss eine Liste von Marken sein, z. B. ["TODO", "FIXME"]');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Keyword := '';
+    if ANode[Index].Kind = TJsonKind.String_ then
+      Keyword := Trim(ANode[Index].Value);
+    Valid := (Keyword <> '') and not SameText(Keyword, 'DONE');
+    for Position := 1 to Length(Keyword) do
+      if not CharInSet(Keyword[Position], ['A'..'Z', 'a'..'z']) then
+        Valid := False;
+    if not Valid then
+      ReportNode(ANode[Index], 'Eine Marke besteht nur aus Buchstaben und ist nicht DONE, z. B. "HACK"');
   end;
 end;
 

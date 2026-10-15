@@ -27,6 +27,9 @@
 //   RecordMetrics; Zeitpunkt ist der des Builds. Nur in die Zusammenfassung
 //   des Projekts, nicht der Gruppe: Werte eines Projekts wären für die Gruppe
 //   irreführend. Grundlage des Projektverlaufs (#758).
+// - TODO-Übersicht (#68): im selben Hintergrundlauf fragt die Composition
+//   atlas.server.todos (Modus summary) und übergibt die Antwort an
+//   RecordTodos; ebenso nur für das Projekt, Zeitpunkt der des Builds.
 // - Die Willkommensseite startet keinen Server und liest nur lokale Dateien.
 
 interface
@@ -94,6 +97,9 @@ type
     /// <summary>Antwort von atlas.server.metrics (Modus summary) für AProject zum Zeitpunkt AAtUtc (#66);
     /// ungültige oder leere Antwort: Zusammenfassung bleibt unverändert. Hauptthread.</summary>
     procedure RecordMetrics(const AProject, AJson: string; AAtUtc: TDateTime);
+    /// <summary>Antwort von atlas.server.todos (Modus summary) für AProject zum Zeitpunkt AAtUtc (#68);
+    /// ungültige oder leere Antwort: Zusammenfassung bleibt unverändert. Hauptthread.</summary>
+    procedure RecordTodos(const AProject, AJson: string; AAtUtc: TDateTime);
     /// <summary>Jetzt in UTC, Zeitpunkt der Einträge.</summary>
     class function StampUtc: TDateTime; static;
     /// <summary>%LOCALAPPDATA%\Atlas\projects.</summary>
@@ -531,6 +537,22 @@ begin
     procedure(var ASummary: TAtlasProjectSummary)
     begin
       ASummary.Metrics := Metrics;
+    end);
+  Changed;
+end;
+
+procedure TAtlasIdeProjects.RecordTodos(const AProject, AJson: string; AAtUtc: TDateTime);
+var
+  Todos: TAtlasProjectTodos;
+begin
+  if FStopped or (AProject = '') then
+    Exit;
+  if not TAtlasProjectTodos.FromServer(AJson, AAtUtc, Todos) then
+    Exit;
+  TAtlasProjectSummaries.Update(Folder, AProject,
+    procedure(var ASummary: TAtlasProjectSummary)
+    begin
+      ASummary.Todos := Todos;
     end);
   Changed;
 end;

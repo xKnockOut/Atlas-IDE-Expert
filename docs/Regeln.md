@@ -88,6 +88,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`metric-cyclomatic-complexity`](#metric-cyclomatic-complexity) | Zyklomatische Komplexität zu hoch | Code Smell | Hinweis |
 | [`metric-cognitive-complexity`](#metric-cognitive-complexity) | Kognitive Komplexität zu hoch | Code Smell | Hinweis |
 | [`metric-parameter-count`](#metric-parameter-count) | Zu viele Parameter | Code Smell | Hinweis |
+| [`todo-comment`](#todo-comment) | Offener TODO-Kommentar | Code Smell | Hinweis |
 | [`component-palette-icon`](#component-palette-icon) | Registrierte Komponente ohne Palettensymbol | Code Smell | Hinweis |
 | [`unresolved-identifier`](#unresolved-identifier) | Nicht deklarierter Bezeichner | Bug | Warnung |
 
@@ -2002,6 +2003,27 @@ Richtig:
 
 ```pascal
 procedure Book(const AAddress: TAddress; const AOrder: TOrder);
+```
+
+<a id="todo-comment"></a>
+## todo-comment
+
+**Offener TODO-Kommentar** · Code Smell · Hinweis
+
+Ein Kommentar beginnt mit einer Marke für offene Arbeit: // TODO, // FIXME oder das Format der IDE-To-Do-Liste { TODO 1 -oPerson -cKategorie : Text }. Der Hinweis zeigt Marke, Priorität, Kategorie, Person und Text, damit offene Arbeit in der Problemliste erscheint. In der Vorgabe aus; in atlas.json einschalten, z. B. "rules": {"todo-comment": {"severity": "hint"}}. Erledigte Einträge ({ DONE … }) meldet die Regel nie. Die Option keywords legt die Marken fest (Vorgabe ["TODO", "FIXME"]); sie gilt auch für get_todos und --todos.
+
+Mit Treffer:
+
+```pascal
+// TODO 1 -oMarco -cGUI : set focus
+Edit.Text := '';
+```
+
+Richtig:
+
+```pascal
+Edit.Text := '';
+Edit.SetFocus;
 ```
 
 <a id="component-palette-icon"></a>

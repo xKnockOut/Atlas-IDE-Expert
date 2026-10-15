@@ -335,7 +335,8 @@ type
     SettingsCodeLensMetrics, MetricsLensLines, MetricsLensDepth, MetricsLensCyclomatic, MetricsLensCognitive,
     MetricsLensParameters, MetricsLensLimit, MetricsReportCommand, MetricsReportNoProject, MetricsReportFailed,
     MetricsReportRunning,
-    MetricsReportBusy);
+    MetricsReportBusy,
+    TodoListCommand, TodoListNoProject, TodoListFailed, TodoListEmpty, TodoListTitle, TodoListBusy);
 
   TAtlasStrings = class
   private class var
@@ -981,7 +982,11 @@ const
      'kognitiv %d', '%d Parameter', '%s (> %d)', 'Metrikbericht des Projekts',
      'Metrikbericht: kein aktives Projekt.', 'Metrikbericht: Der Atlas-Server hat keinen Bericht geliefert.',
      'Metrikbericht wird erstellt …',
-     'Metrikbericht: Der Atlas-Server berechnet gerade Metriken; bitte gleich noch einmal versuchen.'),
+     'Metrikbericht: Der Atlas-Server berechnet gerade Metriken; bitte gleich noch einmal versuchen.',
+     'TODOs des Projekts', 'TODOs des Projekts: kein aktives Projekt.',
+     'TODOs des Projekts: Der Atlas-Server hat keine Liste geliefert.', 'Keine offenen TODOs in %s.',
+     'TODOs in %s: %d',
+     'TODOs des Projekts: Der Atlas-Server ist gerade beschäftigt; bitte gleich noch einmal versuchen.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1589,7 +1594,10 @@ const
      'cognitive %d', '%d parameters', '%s (> %d)', 'Project metrics report',
      'Metrics report: no active project.', 'Metrics report: the Atlas server returned no report.',
      'Creating metrics report …',
-     'Metrics report: the Atlas server is computing metrics right now; please try again shortly.'));
+     'Metrics report: the Atlas server is computing metrics right now; please try again shortly.',
+     'Project TODOs', 'Project TODOs: no active project.', 'Project TODOs: the Atlas server returned no list.',
+     'No open TODOs in %s.', 'TODOs in %s: %d',
+     'Project TODOs: the Atlas server is busy right now; please try again shortly.'));
 
 { TAtlasStrings }
 

@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..958] of string = (
+  Lines: array[0..967] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -136,6 +136,15 @@ const
     '                "type": "integer",',
     '                "minimum": 1,',
     '                "description": "Nur metric-* (#66): Grenzwert der Kennzahl; darüber meldet die Regel die Methode. Vorgaben: Länge 60, Tiefe 4, zyklomatisch 15, kognitiv 15, Parameter 6."',
+    '              },',
+    '              "keywords": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string",',
+    '                  "pattern": "^[A-Za-z]+$"',
+    '                },',
+    '                "default": ["TODO", "FIXME"],',
+    '                "description": "Nur todo-comment (#68): Marken offener TODO-Einträge (nur Buchstaben, Groß-/Kleinschreibung egal), z. B. [\"TODO\", \"FIXME\", \"HACK\"]. Erledigt ist immer DONE. Gilt ' + 'auch, wenn die Regel aus ist, für get_todos, atlas.server.todos und --todos. Vorgabe: TODO und FIXME."',
     '              },',
     '              "layers": {',
     '                "type": "array",',
