@@ -20,6 +20,9 @@
 //   ersten Spalte; Kontextmenü von Frame „Atlas“ und Kopf mit „Neuigkeiten
 //   dieser Version zeigen“ und „Alle Versionen“ (nicht bei
 //   welcomePage.whatsNew = off).
+// - Bereich „Weiterarbeiten“ (#755, ContinueWork): Arbeitsstand je Projekt
+//   (Reiter, letzte Änderung), eingehende Commits und „Gemerkt“; schreibt
+//   beim Schließen und beim Beenden (Stop) und meldet sich selbst an.
 // - Bereich „Projekte“ (#592, Projects): Zustand je zuletzt geöffnetem
 //   Projekt aus den Projekt-Zusammenfassungen; meldet sich selbst an.
 // - Bereich „Nicht gesichert“ (#762, Unsaved): nicht Committetes, nicht
@@ -29,6 +32,8 @@
 //   meldet sich selbst an.
 // - Karte „Atlas entdecken“ (#757, Discover): ein Tipp je Start aus tips.json
 //   nach der gemeinsamen Zählung (#600); meldet sich selbst an.
+// - Bereich „Hilfe und Rückmeldung“ (#766, Help): Atlas-Doku, Tastenkürzel
+//   (#520) und „Problem melden …“ mit Diagnosepaket; meldet sich selbst an.
 // Die Willkommensseite startet keinen Server und liest nur lokale Daten.
 
 interface
@@ -49,8 +54,10 @@ uses
   Atlas.IDE.Welcome.WhatsNew,
   Atlas.IDE.Welcome.Projects,
   Atlas.IDE.Welcome.Unsaved,
+  Atlas.IDE.Welcome.Continue,
   Atlas.IDE.Welcome.State,
-  Atlas.IDE.Welcome.Discover;
+  Atlas.IDE.Welcome.Discover,
+  Atlas.IDE.Welcome.Help;
 
 type
   TAtlasIdeWelcome = class
@@ -77,17 +84,25 @@ type
     FUnsaved: TAtlasIdeUnsaved;
     // Hält die Quelle des Bereichs „Nicht gesichert“ am Leben; die Frames halten sie ebenfalls.
     FUnsavedRef: IInterface;
+    FContinue: TAtlasIdeContinue;
+    // Hält die Quelle des Bereichs „Weiterarbeiten“ am Leben; die Frames halten sie ebenfalls.
+    FContinueRef: IInterface;
     FState: TAtlasIdeWelcomeState;
     // Hält die Quelle der Zustandskachel am Leben; die Frames halten sie ebenfalls.
     FStateRef: IInterface;
     FDiscover: TAtlasIdeDiscover;
     // Hält die Quelle der Karte „Atlas entdecken“ am Leben; die Frames halten sie ebenfalls.
     FDiscoverRef: IInterface;
+    FHelp: TAtlasIdeHelp;
+    // Hält die Quelle des Bereichs „Hilfe und Rückmeldung“ am Leben; die Frames halten sie ebenfalls.
+    FHelpRef: IInterface;
     procedure SetWhatsNew(AValue: TAtlasIdeWhatsNew);
     procedure SetState(AValue: TAtlasIdeWelcomeState);
     procedure SetDiscover(AValue: TAtlasIdeDiscover);
+    procedure SetHelp(AValue: TAtlasIdeHelp);
     procedure SetProjects(AValue: TAtlasIdeProjects);
     procedure SetUnsaved(AValue: TAtlasIdeUnsaved);
+    procedure SetContinue(AValue: TAtlasIdeContinue);
     procedure AttachMenu(AFrame: TAtlasWelcomeFrame);
     procedure SectionChanged(const AId: string);
     procedure Flush;
@@ -135,11 +150,17 @@ type
     property Projects: TAtlasIdeProjects read FProjects write SetProjects;
     /// <summary>Bereich „Nicht gesichert“ (#762); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
     property Unsaved: TAtlasIdeUnsaved read FUnsaved write SetUnsaved;
+    /// <summary>Bereich „Weiterarbeiten“ (#755); gehört danach der Steuerung (Start beim Setzen). nil = ohne.
+    /// Nicht „Continue“: Das verdeckte in den Methoden die Prozedur System.Continue.</summary>
+    property ContinueWork: TAtlasIdeContinue read FContinue write SetContinue;
     /// <summary>Zustandskachel „Atlas“ (#754); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
     property State: TAtlasIdeWelcomeState read FState write SetState;
     /// <summary>Karte „Atlas entdecken“ (#757); gehört danach der Steuerung (Start beim Setzen). nil = ohne.
     /// </summary>
     property Discover: TAtlasIdeDiscover read FDiscover write SetDiscover;
+    /// <summary>Bereich „Hilfe und Rückmeldung“ (#766); gehört danach der Steuerung (Start beim Setzen). nil =
+    /// ohne.</summary>
+    property Help: TAtlasIdeHelp read FHelp write SetHelp;
     class function HeaderInfo(const AServer: TAtlasServerInfo; AIndexing: Boolean; APercent, AUnits: Integer;
       AHour: Integer; const AFirstName: string; AGreeting: Boolean): TAtlasWelcomeHeaderInfo; static;
   end;
@@ -241,10 +262,15 @@ begin
     FProjects.Stop;
   if FUnsaved <> nil then
     FUnsaved.Stop;
+  // Schreibt den Arbeitsstand des noch offenen Projekts (Beenden der IDE).
+  if FContinue <> nil then
+    FContinue.Stop;
   if FState <> nil then
     FState.Stop;
   if FDiscover <> nil then
     FDiscover.Stop;
+  if FHelp <> nil then
+    FHelp.Stop;
   // Beim Beenden der IDE: Hat die IDE ihr Layout aus dem Speicher zurückgeschrieben, gilt die Marke weiter.
   TAtlasIdeWelcomePage.RemoveAll;
   TAtlasIdeWelcomeWindow.Release;
@@ -255,10 +281,14 @@ begin
   FProjectsRef := nil;
   FUnsaved := nil;
   FUnsavedRef := nil;
+  FContinue := nil;
+  FContinueRef := nil;
   FState := nil;
   FStateRef := nil;
   FDiscover := nil;
   FDiscoverRef := nil;
+  FHelp := nil;
+  FHelpRef := nil;
   inherited;
 end;
 
@@ -286,6 +316,18 @@ begin
       end);
 end;
 
+procedure TAtlasIdeWelcome.SetHelp(AValue: TAtlasIdeHelp);
+begin
+  FHelp := AValue;
+  FHelpRef := AValue;
+  if FHelp <> nil then
+    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        FHelp.Start;
+      end);
+end;
+
 procedure TAtlasIdeWelcome.SetUnsaved(AValue: TAtlasIdeUnsaved);
 begin
   FUnsaved := AValue;
@@ -295,6 +337,18 @@ begin
       procedure
       begin
         FUnsaved.Start;
+      end);
+end;
+
+procedure TAtlasIdeWelcome.SetContinue(AValue: TAtlasIdeContinue);
+begin
+  FContinue := AValue;
+  FContinueRef := AValue;
+  if FContinue <> nil then
+    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        FContinue.Start;
       end);
 end;
 
@@ -443,6 +497,9 @@ begin
       // Karte „Atlas entdecken“: eingeschaltete Funktionen und welcomePage.discover (#757).
       if FDiscover <> nil then
         FDiscover.Refresh;
+      // Bereich „Hilfe und Rückmeldung“: welcomePage.help und keys.overview (#766).
+      if FHelp <> nil then
+        FHelp.Refresh;
       if not Current.WelcomePage then
         Host := ''
       else if (Current.WelcomePageHost = 'dockWindow') or not TAtlasIdeWelcomePage.Available then

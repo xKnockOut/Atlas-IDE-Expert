@@ -267,6 +267,21 @@ begin
     '"InlayHints":{"type":"boolean","x-feature":"InlayHints",' +
       '"default":false,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
       '"x-caption":"Inlay-Hints","x-captionEn":"Inlay hints","x-issue":"#401"},' +
+    '"Notes":{"type":"boolean","x-feature":"Notes",' +
+      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
+      '"x-caption":"Notizen","x-captionEn":"Notes","x-issue":"#545"},' +
+    '"BookmarksNamed":{"type":"boolean","x-feature":"Bookmarks",' +
+      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
+      '"x-caption":"Benannte Lesezeichen","x-captionEn":"Named bookmarks","x-issue":"#622"},' +
+    '"CodeLensMetrics":{"type":"boolean","x-feature":"EditorCommands",' +
+      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
+      '"x-caption":"Code-Metriken","x-captionEn":"Code metrics","x-issue":"#66"},' +
+    '"TodoList":{"type":"boolean","x-feature":"Palette",' +
+      '"default":true,"x-page":"Editor","x-quickToggle":true,' +
+      '"x-caption":"TODO-Liste","x-captionEn":"TODO list","x-issue":"#68"},' +
+    '"MetricsReport":{"type":"boolean","x-feature":"Palette",' +
+      '"default":true,"x-page":"Editor","x-quickToggle":true,' +
+      '"x-caption":"Metrikbericht","x-captionEn":"Metrics report","x-issue":"#66"},' +
     '"HoverTooltip":{"type":"boolean","x-feature":"Hover",' +
       '"default":true,"x-page":"Hints","x-quickToggle":true,' +
       '"x-caption":"Hover-Tooltip","x-captionEn":"Hover tooltip","x-issue":"#442"},' +
@@ -282,6 +297,9 @@ begin
     '"Learning":{"type":"boolean","x-feature":"Completion",' +
       '"default":true,"x-page":"Vervollständigung","x-quickToggle":true,' +
       '"x-caption":"Lernende Gewichtung","x-captionEn":"Learned ranking","x-issue":"#418"},' +
+    '"Favorites":{"type":"boolean","x-feature":"Completion",' +
+      '"default":true,"x-page":"Vervollständigung","x-quickToggle":true,' +
+      '"x-caption":"Favoriten anheften","x-captionEn":"Pin favorites","x-issue":"#458"},' +
     '"CheckOnSave":{"type":"boolean","x-feature":"CheckOnSave",' +
       '"default":false,"x-page":"Compiler","x-quickToggle":true,' +
       '"x-caption":"Syntaxprüfung nach dem Speichern","x-captionEn":"Syntax check after saving","x-issue":"#548"},' +

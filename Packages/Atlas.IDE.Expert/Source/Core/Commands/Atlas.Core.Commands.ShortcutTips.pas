@@ -84,6 +84,8 @@ type
     ScopeAll = 'all';
     /// <summary>Höchster Abstand zwischen den Schritten eines Kürzels mit zwei Schritten.</summary>
     ChordMs = 2000;
+    /// <summary>Befehl der Taste, die die Befehlspalette öffnet (#502); kein Befehl der Palette selbst.</summary>
+    PaletteCommandId = 'Atlas.CommandPalette';
   public
     /// <summary>shortcutTips.scope als Wert; Unbekanntes gilt als all.</summary>
     class function ScopeOf(const AText: string): TAtlasTipScope; static;
@@ -116,6 +118,10 @@ type
     /// <summary>Atlas-Taste zum Befehl AId, bei mehreren Tasten für einen Befehl die erste (#775, #777); False,
     /// wenn keine.</summary>
     class function AtlasFunctionOf(const AId: string; out AFunc: TAtlasKeyFunction): Boolean; static;
+    /// <summary>Atlas-Taste ohne Befehl in der Befehlspalette (Befehlspalette selbst, Vervollständigung,
+    /// Parameter-Hint, Diagnosemodus, Suchfeld der Willkommensseite); die Karte „Atlas entdecken“ (#757) zeigt
+    /// für sie die Taste aus den Einstellungen.</summary>
+    class function IsKeyOnly(const AId: string; out AFunc: TAtlasKeyFunction): Boolean; static;
     /// <summary>Rechteck AWidth × AHeight unten rechts in AArea mit AMargin Abstand; bleibt in AArea.</summary>
     class function PlaceBottomRight(const AArea: TRect; AWidth, AHeight, AMargin: Integer): TRect; static;
   end;
@@ -327,7 +333,7 @@ begin
     Exit;
   case AFunc of
     TAtlasKeyFunction.Palette:
-      Result := 'Atlas.CommandPalette';
+      Result := PaletteCommandId;
     TAtlasKeyFunction.Completion:
       Result := 'Atlas.Completion';
     TAtlasKeyFunction.Signature:
@@ -353,6 +359,11 @@ begin
       Exit(True);
     end;
   Result := False;
+end;
+
+class function TAtlasShortcutTips.IsKeyOnly(const AId: string; out AFunc: TAtlasKeyFunction): Boolean;
+begin
+  Result := AtlasFunctionOf(AId, AFunc) and (TAtlasKeyMap.CommandIdOf(AFunc) = '');
 end;
 
 class function TAtlasShortcutTips.PlaceBottomRight(const AArea: TRect; AWidth, AHeight, AMargin: Integer): TRect;

@@ -124,6 +124,10 @@ type
     class procedure Invoked(const AId: string); static;
     /// <summary>Nutzung je Befehl für die Übersicht (#520); False ohne gemeinsame Zählung.</summary>
     class function UsageOf(const AId: string; out AEntry: TAtlasCommandUsageEntry): Boolean; static;
+    /// <summary>Taste einer Atlas-Funktion ohne Befehl der Befehlspalette (TAtlasShortcutTips.IsKeyOnly), für die
+    /// Karte „Atlas entdecken“ (#757): die Taste, die Atlas gerade hält; bei Vervollständigung und Parameter-Hint
+    /// ohne eigene Taste die der IDE (Code Insight). False, wenn AId keine solche Funktion ist.</summary>
+    class function KeyOnlyText(const AId: string; out AKeyText: string): Boolean; static;
     /// <summary>Einstellungen geändert (shortcutTips.*, Tasten): Beobachtung an/aus, Tabelle neu.</summary>
     procedure ApplySettings;
     /// <summary>Packages geändert: Tabelle der Kürzel neu bauen.</summary>
@@ -442,6 +446,27 @@ begin
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.ShortcutTips, E);
   end;
+end;
+
+class function TAtlasIdeShortcutTips.KeyOnlyText(const AId: string; out AKeyText: string): Boolean;
+var
+  Func: TAtlasKeyFunction;
+  Entry: TAtlasKeyEntry;
+begin
+  AKeyText := '';
+  Result := TAtlasShortcutTips.IsKeyOnly(AId, Func);
+  if not Result then
+    Exit;
+  AKeyText := AtlasKeyText(Func);
+  if AKeyText <> '' then
+    Exit;
+  // Vervollständigung und Parameter-Hint ohne eigene Taste laufen über Code Insight mit der Taste der IDE.
+  for Entry in TAtlasKeyEntry.AllFromSettings(TAtlasIdeSettings.Current) do
+    if (Entry.Func = Func) and (Entry.Key = 0) and (Entry.IdeKey <> 0) then
+    begin
+      AKeyText := ShortCutToText(TShortCut(Entry.IdeKey));
+      Exit;
+    end;
 end;
 
 class function TAtlasIdeShortcutTips.UsageOf(const AId: string; out AEntry: TAtlasCommandUsageEntry): Boolean;

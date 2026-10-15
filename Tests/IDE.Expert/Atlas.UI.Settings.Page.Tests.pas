@@ -27,6 +27,12 @@ type
     procedure StatusFieldRoundTrips;
     [Test]
     procedure ShortcutTipsRoundTrip;
+    /// <summary>Notizen (#545): Schalter auf dem Reiter Editor, Vorgabe an.</summary>
+    [Test]
+    procedure NotesRoundTrip;
+    /// <summary>Benannte Lesezeichen (#622): zwei Schalter auf dem Reiter Editor, Taste bei den Befehlen.</summary>
+    [Test]
+    procedure BookmarksRoundTrip;
     [Test]
     procedure SafeModeRoundTrips;
     [Test]
@@ -37,6 +43,9 @@ type
     procedure WelcomeSettingsRoundTrip;
     [Test]
     procedure UsageButtonsCallBack;
+    /// <summary>Favoriten (#458): Schalter, Liste, „Entfernen“ und „Alle entfernen“.</summary>
+    [Test]
+    procedure FavoritesListAndRemove;
     [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
@@ -65,6 +74,8 @@ uses
   System.SysUtils,
   System.Classes,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Completion.Contract,
+  Atlas.Core.Completion.Favorites,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Completion.SnippetCatalog,
   Atlas.Core.Diagnostics.Guard,
@@ -157,6 +168,9 @@ begin
   Settings.PairGuideWidth := 3;
   Settings.PairGuideOpacity := 70;
   Settings.PairColorsLight := '#0071E3,#007C8A,#C000E0,#008700,#4040FF';
+  Settings.CodeLensMetrics := False;
+  Settings.TodoList := False;
+  Settings.MetricsReport := False;
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
@@ -185,6 +199,9 @@ begin
   Assert.AreEqual(70, Saved.PairGuideOpacity);
   Assert.AreEqual('#0071E3,#007C8A,#C000E0,#008700,#4040FF', Saved.PairColorsLight);
   Assert.AreEqual('', Saved.PairColorsDark, 'Standardfarben bleiben leer');
+  Assert.IsFalse(Saved.CodeLensMetrics, 'Code Lens Metriken (#66)');
+  Assert.IsFalse(Saved.TodoList, 'Befehl (#68)');
+  Assert.IsFalse(Saved.MetricsReport, 'Befehl (#66)');
 end;
 
 procedure TAtlasSettingsPageTests.ShowsAndReenablesTrippedFeatures;
@@ -353,6 +370,53 @@ begin
   end;
 end;
 
+procedure TAtlasSettingsPageTests.NotesRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.NotesCheck.Checked, 'Notizen standardmäßig an');
+    Page.NotesCheck.Checked := False;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.Notes, 'Notizen abschaltbar');
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.NotesCheck.Checked);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.BookmarksRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.BookmarksNamedCheck.Checked, 'Lesezeichen standardmäßig an');
+    Assert.IsFalse(Page.BookmarksSharedCheck.Checked, 'standardmäßig lokal');
+    Assert.AreEqual(ShortCutToText($C04B), Page.BookmarkKey.Text, 'Strg+Alt+K');
+    Page.BookmarksNamedCheck.Checked := False;
+    Page.BookmarksSharedCheck.Checked := True;
+    Page.BookmarkKey.Text := '';
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.BookmarksNamed, 'abschaltbar');
+    Assert.IsTrue(Saved.BookmarksShared);
+    Assert.AreEqual(0, Saved.BookmarkKey, 'leer = keine Taste');
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.BookmarksNamedCheck.Checked);
+    Assert.IsTrue(Page.BookmarksSharedCheck.Checked);
+  finally
+    Page.Free;
+  end;
+end;
+
 procedure TAtlasSettingsPageTests.SafeModeRoundTrips;
 var
   Page: TAtlasSettingsPage;
@@ -394,7 +458,7 @@ var
 begin
   // #753: Ein/Aus, Ort (Willkommensseite oder Fenster „Atlas-Start“), Atlas-Layout, Kopf und Grußzeile;
   // #760: Suchfeld, Gruppe „Symbole“ und Taste; #756: Karte „Neu in Atlas“; #592: Bereich „Projekte“;
-  // #762: Bereich „Nicht gesichert“; #754: Zustandskachel „Atlas“; #757: Karte „Atlas entdecken“, Zählung und
+  // #762: Bereich „Nicht gesichert“; #755: Bereich „Weiterarbeiten“; #754: Zustandskachel „Atlas“; #757: Karte „Atlas entdecken“, Zählung und
   // ihre Knöpfe.
   Settings := TAtlasPluginSettings.Defaults;
   Page := TAtlasSettingsPage.Create(nil);
@@ -409,6 +473,12 @@ begin
     Assert.IsTrue(Page.WelcomeSearchSymbols.Checked);
     Assert.AreEqual(ShortCutToText($4045), Page.WelcomeSearchKey.Text);
     Assert.AreEqual(1, Page.WelcomeWhatsNew.Choice, 'afterUpdate');
+    // #755: Bereich „Weiterarbeiten“ und Reiter „Gemerkt“.
+    Assert.IsTrue(Page.WelcomeContinue.Checked);
+    Assert.AreEqual('5', Page.WelcomeContinueCount.Text);
+    Assert.IsTrue(Page.WelcomeContinueIncoming.Checked);
+    Assert.IsFalse(Page.WelcomeContinueFetch.Checked);
+    Assert.IsTrue(Page.WelcomeSaved.Checked);
     Assert.IsTrue(Page.WelcomeProjects.Checked);
     Assert.AreEqual('8', Page.WelcomeMaxProjects.Text);
     Assert.IsTrue(Page.WelcomeRefreshVcs.Checked);
@@ -421,6 +491,10 @@ begin
     Assert.IsFalse(Page.WelcomeStatusTileOnlyProblems.Checked);
     Assert.IsTrue(Page.WelcomeDiscover.Checked);
     Assert.IsTrue(Page.TipsUsageTracking.Checked);
+    // #766: Bereich „Hilfe und Rückmeldung“, Ziel der Issue-Seite, Ordner (leer = Desktop).
+    Assert.IsTrue(Page.WelcomeHelp.Checked);
+    Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, Page.WelcomeHelpReportUrl.Text);
+    Assert.AreEqual('', Page.WelcomeHelpReportFolder.Text);
     Page.WelcomeEnabled.Checked := False;
     Page.WelcomeHost.Choice := 1;
     Page.WelcomeLayout.Checked := True;
@@ -430,6 +504,11 @@ begin
     Page.WelcomeSearchSymbols.Checked := False;
     Page.WelcomeSearchKey.Text := ShortCutToText($6046);
     Page.WelcomeWhatsNew.Choice := 2;
+    Page.WelcomeContinue.Checked := False;
+    Page.WelcomeContinueCount.Text := '50';
+    Page.WelcomeContinueIncoming.Checked := False;
+    Page.WelcomeContinueFetch.Checked := True;
+    Page.WelcomeSaved.Checked := False;
     Page.WelcomeProjects.Checked := False;
     Page.WelcomeMaxProjects.Text := '99';
     Page.WelcomeRefreshVcs.Checked := False;
@@ -442,8 +521,14 @@ begin
     Page.WelcomeStatusTileOnlyProblems.Checked := True;
     Page.WelcomeDiscover.Checked := False;
     Page.TipsUsageTracking.Checked := False;
+    Page.WelcomeHelp.Checked := False;
+    Page.WelcomeHelpReportUrl.Text := ' https://example.org/issues/new ';
+    Page.WelcomeHelpReportFolder.Text := ' D:\Diagnose ';
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.WelcomePageHelp);
+    Assert.AreEqual('https://example.org/issues/new', Saved.WelcomePageHelpReportUrl);
+    Assert.AreEqual('D:\Diagnose', Saved.WelcomePageHelpReportFolder);
     Assert.IsFalse(Saved.WelcomePage);
     Assert.AreEqual('dockWindow', Saved.WelcomePageHost);
     Assert.AreEqual('atlas', Saved.WelcomePageLayout);
@@ -453,6 +538,11 @@ begin
     Assert.IsFalse(Saved.WelcomePageSearchSymbols);
     Assert.AreEqual($6046, Saved.WelcomePageSearchKey);
     Assert.AreEqual('always', Saved.WelcomePageWhatsNew);
+    Assert.IsFalse(Saved.WelcomePageContinue);
+    Assert.AreEqual(20, Saved.WelcomePageContinueCount, 'auf 1–20 begrenzt');
+    Assert.IsFalse(Saved.WelcomePageContinueIncoming);
+    Assert.IsTrue(Saved.WelcomePageContinueFetch);
+    Assert.IsFalse(Saved.WelcomePageSaved);
     Assert.IsFalse(Saved.WelcomePageProjectStatus);
     Assert.AreEqual(30, Saved.WelcomePageMaxProjects, 'auf 1–30 begrenzt');
     Assert.IsFalse(Saved.WelcomePageRefreshVcs);
@@ -466,14 +556,20 @@ begin
     Assert.IsFalse(Saved.WelcomePageDiscover);
     Assert.IsFalse(Saved.TipsUsageTracking);
     Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.WelcomeHelp.Checked);
+    Assert.AreEqual('https://example.org/issues/new', Page.WelcomeHelpReportUrl.Text);
+    Assert.AreEqual('D:\Diagnose', Page.WelcomeHelpReportFolder.Text);
     Assert.IsFalse(Page.WelcomeDiscover.Checked);
     Assert.IsFalse(Page.TipsUsageTracking.Checked);
     Assert.AreEqual(1, Page.WelcomeHost.Choice);
     Assert.IsTrue(Page.WelcomeLayout.Checked);
     Assert.AreEqual(2, Page.WelcomeWhatsNew.Choice);
     Page.WelcomeWhatsNew.Choice := 0;
+    // Keine Webadresse als Ziel: die Vorgabe.
+    Page.WelcomeHelpReportUrl.Text := 'cmd.exe';
     Page.SaveTo(Saved);
     Assert.AreEqual('off', Saved.WelcomePageWhatsNew);
+    Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, Saved.WelcomePageHelpReportUrl);
   finally
     Page.Free;
   end;
@@ -506,6 +602,67 @@ begin
     Assert.IsFalse(Page.UnblockTipsButton.Enabled, 'erledigt');
   finally
     Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.FavoritesListAndRemove;
+var
+  Host: TForm;
+  Page: TAtlasSettingsPage;
+  Favorites: TAtlasFavorites;
+  Settings, Saved: TAtlasPluginSettings;
+  Item: TAtlasCompletionItem;
+  Names: TArray<string>;
+  Name: string;
+begin
+  Names := ['Open', 'Close', 'ParamByName'];
+  Favorites := TAtlasFavorites.Create;
+  Host := TForm.CreateNew(nil);
+  try
+    for Name in Names do
+    begin
+      Item := Default(TAtlasCompletionItem);
+      Item.Name := Name;
+      Item.DeclaringClass := 'TDataSet';
+      Favorites.Toggle(Item);
+    end;
+    // Die Liste braucht ein Fenster, wie in der IDE.
+    Page := TAtlasSettingsPage.Create(Host);
+    Page.Parent := Host;
+    Page.HandleNeeded;
+    Page.OnRemoveFavorites :=
+      procedure(AKeys: TArray<string>)
+      var
+        Key: string;
+      begin
+        for Key in AKeys do
+          Favorites.Remove(Key);
+      end;
+    Page.OnFavorites :=
+      function: TArray<TAtlasFavorite>
+      begin
+        Result := Favorites.Items;
+      end;
+    Settings := TAtlasPluginSettings.Defaults;
+    Page.LoadFrom(Settings);
+    Assert.IsTrue(Page.FavoritesCheck.Checked);
+    Page.FavoritesCheck.Checked := False;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.Favorites, 'abschaltbar');
+    Assert.AreEqual(3, Page.FavoritesList.Items.Count);
+    Assert.AreEqual('TDataSet.Open', Page.FavoritesList.Items[0]);
+    Page.FavoritesList.Selected[1] := True;
+    Page.FavoritesRemove.Click;
+    Assert.AreEqual(2, Favorites.Count, 'Close gelöst');
+    Assert.AreEqual('TDataSet.ParamByName', Page.FavoritesList.Items[1]);
+    Page.FavoritesRemoveAll.Click;
+    Assert.AreEqual(0, Favorites.Count);
+    Assert.AreEqual(1, Page.FavoritesList.Items.Count, 'nur der Hinweis „keine“');
+    Assert.IsFalse(Page.FavoritesRemoveAll.Enabled);
+  finally
+    Host.Free;
+    Favorites.Free;
   end;
 end;
 

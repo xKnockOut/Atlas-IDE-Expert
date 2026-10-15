@@ -28,6 +28,10 @@ type
     procedure ResolvesReferenceCountWithoutHeaders;
     [Test]
     procedure WritesCommandOrData;
+    [Test]
+    procedure MetricLensesOverImplementedMethods;
+    [Test]
+    procedure MetricLensIsPlainText;
   end;
 
 implementation
@@ -41,6 +45,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
+  Atlas.Common.Metrics.Contract,
   Atlas.Common.Lsp.MessageHandlers;
 
 const
@@ -207,6 +212,52 @@ begin
     Assert.AreEqual('1 Referenz', Json.GetValue<string>('command.title'));
     Assert.AreEqual(TLspCodeLens.ShowLocationsCommand, Json.GetValue<string>('command.command'));
     Assert.AreEqual(3, TJSONArray(Json.GetValue<TJSONValue>('command.arguments')).Count);
+  finally
+    Json.Free;
+  end;
+end;
+
+procedure TLspCodeLensTests.MetricLensesOverImplementedMethods;
+var
+  Tree: TSyntaxTree;
+  Entries: TArray<TCodeLensEntry>;
+  Limits: TMetricLimits;
+begin
+  Tree := TPascalParser.Parse(UnitHaupt);
+  try
+    Entries := TLspCodeLens.MetricLenses(Tree, TMetricLimits.Default);
+    Assert.AreEqual(3, Integer(Length(Entries)), 'nur die Rümpfe, keine Deklarationen');
+    Assert.IsTrue(Entries[0].Kind = TCodeLensKind.Metrics);
+    Assert.AreEqual(12, Entries[0].Range.StartPos.Line);
+    Assert.AreEqual(10, Entries[0].Range.StartPos.Character);
+    Assert.AreEqual('4 Zeilen · Tiefe 0 · zyklomatisch 1 · kognitiv 0 · 1 Parameter', Entries[0].Title);
+    Assert.AreEqual(20, Entries[2].Range.StartPos.Line);
+    Limits := TMetricLimits.Default;
+    Limits.Values[TMetricKind.MethodLength] := 3;
+    Entries := TLspCodeLens.MetricLenses(Tree, Limits);
+    Assert.AreEqual('4 Zeilen (> 3) · Tiefe 0 · zyklomatisch 1 · kognitiv 0 · 1 Parameter', Entries[0].Title);
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TLspCodeLensTests.MetricLensIsPlainText;
+var
+  Entry: TCodeLensEntry;
+  Json: TJSONObject;
+  Title, Command: string;
+begin
+  Entry := Default(TCodeLensEntry);
+  Entry.Kind := TCodeLensKind.Metrics;
+  Entry.Range := TTextRange.Create(TTextPosition.Create(12, 10), TTextPosition.Create(12, 22));
+  Entry.Title := '4 Zeilen';
+  Json := TLspCodeLens.ToJson(Entry, HauptFile);
+  try
+    Title := Json.GetValue<string>('command.title');
+    Command := Json.GetValue<string>('command.command');
+    Assert.AreEqual('4 Zeilen', Title);
+    Assert.AreEqual('', Command, 'ohne Klickziel');
+    Assert.IsNull(Json.GetValue('data'));
   finally
     Json.Free;
   end;

@@ -4,7 +4,9 @@
 //   - "5 Referenzen" (erst bei codeLens/resolve gezählt, weil die Suche das Projekt liest),
 //   - "überschreibt TControl.Paint" bei Methoden, die ein Vorfahr schon deklariert,
 //   - "3 Nachfahren" bei Klassen und Interfaces,
-//   - "behandelt WM_PAINT (… auch in TWinControl)" bei Klassen mit Message-Handlern.
+//   - "behandelt WM_PAINT (… auch in TWinControl)" bei Klassen mit Message-Handlern,
+//   - Code-Metriken über jeder implementierten Methode (#66, Einstellung codeLens.metrics):
+//     "12 Zeilen · Tiefe 2 · zyklomatisch 4 · kognitiv 3 · 2 Parameter"; ohne Klickziel.
 // Ein Klick ruft atlas.showLocations im Editor auf (Argumente: URI, Position, Locations).
 
 interface
@@ -20,10 +22,14 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Metrics.Contract,
   Atlas.Common.Lsp.References;
 
 type
-  TCodeLensKind = (References, Overrides, Descendants, Messages);
+  TCodeLensKind = (References, Overrides, Descendants, Messages, Metrics);
+
+  /// <summary>Grenzwerte für die Metrik-Linsen der Datei AUri; False = Metrik-Linsen aus.</summary>
+  TCodeLensMetricsFunc = reference to function(const AUri: string; out ALimits: TMetricLimits): Boolean;
 
   TCodeLensLocation = record
     FileName: string;
@@ -51,6 +57,7 @@ type
     FReadText: TReferenceReadText;
     FFiles: TReferenceFilesProvider;
     FNamespaces: TArray<string>;
+    FMetricsFor: TCodeLensMetricsFunc;
     function NewResolver: TNameResolver;
     function HandleLens(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleResolve(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -67,6 +74,8 @@ type
     /// <summary>Alle Linsen der Datei; Referenzen noch ohne Titel.</summary>
     class function Lenses(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const AReadText: TReferenceReadText): TArray<TCodeLensEntry>; static;
+    /// <summary>Metrik-Linse über dem Namen jeder implementierten Methode (#66).</summary>
+    class function MetricLenses(ATree: TSyntaxTree; const ALimits: TMetricLimits): TArray<TCodeLensEntry>; static;
     /// <summary>Zählt die Referenzen auf das Symbol der Linse.</summary>
     class function ResolveReferences(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const AEntry: TCodeLensEntry; const AFiles: TArray<string>;
@@ -74,6 +83,8 @@ type
     /// <summary>CodeLens des LSP; ohne Titel mit data für codeLens/resolve. Der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const AEntry: TCodeLensEntry; const AFileName: string): TJSONObject; static;
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
+    /// <summary>Einstellung und Grenzwerte der Metrik-Linsen; nil = keine.</summary>
+    property MetricsFor: TCodeLensMetricsFunc read FMetricsFor write FMetricsFor;
   end;
 
 implementation
@@ -87,7 +98,9 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.MessageHandlers,
-  Atlas.Common.Lsp.Internals.Cancellation;
+  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Metrics.Calculator,
+  Atlas.Common.Metrics.Report;
 
 const
   RoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
@@ -313,6 +326,22 @@ begin
   end;
 end;
 
+class function TLspCodeLens.MetricLenses(ATree: TSyntaxTree; const ALimits: TMetricLimits): TArray<TCodeLensEntry>;
+var
+  Routine: TRoutineMetrics;
+  Entry: TCodeLensEntry;
+begin
+  Result := nil;
+  for Routine in TMetricsCalculator.Routines(ATree) do
+  begin
+    Entry := Default(TCodeLensEntry);
+    Entry.Kind := TCodeLensKind.Metrics;
+    Entry.Range := Routine.NameRange;
+    Entry.Title := TMetricsReport.LensTitle(Routine.Values, ALimits);
+    Result := Result + [Entry];
+  end;
+end;
+
 class function TLspCodeLens.ResolveReferences(AResolver: TNameResolver; const AIndex: ISymbolIndex;
   ATree: TSyntaxTree; const AFileName: string; const AEntry: TCodeLensEntry; const AFiles: TArray<string>;
   const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TCodeLensEntry;
@@ -343,6 +372,15 @@ var
 begin
   Result := TJSONObject.Create;
   Result.AddPair('range', TLspPositions.RangeToJson(AEntry.Range));
+  if AEntry.Kind = TCodeLensKind.Metrics then
+  begin
+    // Nur Anzeige: ein leerer Befehl macht die Linse in VS Code zu reinem Text.
+    Command := TJSONObject.Create;
+    Command.AddPair('title', AEntry.Title);
+    Command.AddPair('command', '');
+    Result.AddPair('command', Command);
+    Exit;
+  end;
   if AEntry.Title = '' then
   begin
     Data := TJSONObject.Create;
@@ -388,6 +426,7 @@ var
   Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Entry: TCodeLensEntry;
+  Limits: TMetricLimits;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt');
@@ -403,6 +442,9 @@ begin
     Result := TJSONArray.Create;
     for Entry in Lenses(Resolver, FIndex, Tree, FileName, FReadText) do
       TJSONArray(Result).AddElement(ToJson(Entry, FileName));
+    if Assigned(FMetricsFor) and FMetricsFor(Uri, Limits) then
+      for Entry in MetricLenses(Tree, Limits) do
+        TJSONArray(Result).AddElement(ToJson(Entry, FileName));
   finally
     Resolver.Free;
   end;

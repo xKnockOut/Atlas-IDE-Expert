@@ -262,6 +262,8 @@ begin
       Id := TAtlasTextId.EditorTestUnit;
     TAtlasKeyFunction.UnitSearch:
       Id := TAtlasTextId.UnitSearchTitle;
+    TAtlasKeyFunction.Bookmark:
+      Id := TAtlasTextId.BookmarksMenuAdd;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

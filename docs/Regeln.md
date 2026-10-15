@@ -83,6 +83,12 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`redundant-parens`](#redundant-parens) | Überflüssige Klammern | Code Smell | Hinweis |
 | [`redundant-begin-end`](#redundant-begin-end) | begin … end um eine einzelne Anweisung | Code Smell | Hinweis |
 | [`with-statement`](#with-statement) | with-Anweisung | Code Smell | Hinweis |
+| [`metric-method-length`](#metric-method-length) | Methode zu lang | Code Smell | Hinweis |
+| [`metric-nesting-depth`](#metric-nesting-depth) | Zu tief verschachtelt | Code Smell | Hinweis |
+| [`metric-cyclomatic-complexity`](#metric-cyclomatic-complexity) | Zyklomatische Komplexität zu hoch | Code Smell | Hinweis |
+| [`metric-cognitive-complexity`](#metric-cognitive-complexity) | Kognitive Komplexität zu hoch | Code Smell | Hinweis |
+| [`metric-parameter-count`](#metric-parameter-count) | Zu viele Parameter | Code Smell | Hinweis |
+| [`todo-comment`](#todo-comment) | Offener TODO-Kommentar | Code Smell | Hinweis |
 | [`component-palette-icon`](#component-palette-icon) | Registrierte Komponente ohne Palettensymbol | Code Smell | Hinweis |
 | [`unresolved-identifier`](#unresolved-identifier) | Nicht deklarierter Bezeichner | Bug | Warnung |
 
@@ -1872,6 +1878,152 @@ Richtig:
 
 ```pascal
 Customer.Name := Edit.Text;
+```
+
+<a id="metric-method-length"></a>
+## metric-method-length
+
+**Methode zu lang** · Code Smell · Hinweis
+
+Die Methode hat mehr Codezeilen als der Grenzwert (Vorgabe 60). Leerzeilen, Kommentare, Compiler-Direktiven und lokale Routinen zählen nicht mit. Die Methode in kleinere aufteilen. Den Grenzwert setzt die Option max, z. B. "rules": {"metric-method-length": {"max": 80}}.
+
+Mit Treffer:
+
+```pascal
+procedure TImport.Run;
+begin
+  // 120 lines: read, check, convert and save
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TImport.Run;
+begin
+  Read;
+  Check;
+  Convert;
+  Save;
+end;
+```
+
+<a id="metric-nesting-depth"></a>
+## metric-nesting-depth
+
+**Zu tief verschachtelt** · Code Smell · Hinweis
+
+Die Methode verschachtelt if, case, Schleifen und try tiefer als der Grenzwert (Vorgabe 4). else if bleibt auf der Ebene seines if. Mit Exit oder Continue früh verlassen oder innere Teile in eigene Methoden auslagern. Den Grenzwert setzt die Option max.
+
+Mit Treffer:
+
+```pascal
+for Item in Items do
+  if Item.Active then
+    for Line in Item.Lines do
+      if Line.Valid then
+        try
+          Save(Line);
+        except
+          Log;
+        end;
+```
+
+Richtig:
+
+```pascal
+for Item in Items do
+  if Item.Active then
+    SaveLines(Item);
+```
+
+<a id="metric-cyclomatic-complexity"></a>
+## metric-cyclomatic-complexity
+
+**Zyklomatische Komplexität zu hoch** · Code Smell · Hinweis
+
+Die zyklomatische Komplexität der Methode liegt über dem Grenzwert (Vorgabe 15). Sie beginnt bei 1 und steigt um 1 je if, while, repeat und for, je case-Zweig ohne else, je and/or in einer Bedingung und je except on; ein except ohne on zählt einmal. Viele Pfade brauchen viele Tests. Den Grenzwert setzt die Option max.
+
+Mit Treffer:
+
+```pascal
+case Kind of
+  1: A;
+  2: B;
+  // ... 20 branches
+end;
+```
+
+Richtig:
+
+```pascal
+Handlers[Kind]();
+```
+
+<a id="metric-cognitive-complexity"></a>
+## metric-cognitive-complexity
+
+**Kognitive Komplexität zu hoch** · Code Smell · Hinweis
+
+Die kognitive Komplexität der Methode liegt über dem Grenzwert (Vorgabe 15). Nach SonarSource zählen if, case, Schleifen und except-Behandler 1 plus ihre Schachtelungsebene; else, else if, goto und jede Folge gleicher logischer Operatoren zählen 1. Verschachtelter Code ist schwerer zu lesen als Code hintereinander. Den Grenzwert setzt die Option max.
+
+Mit Treffer:
+
+```pascal
+if A then
+  for I := 0 to N do
+    if B and C or D then
+      while E do
+        F;
+```
+
+Richtig:
+
+```pascal
+if not A then
+  Exit;
+for I := 0 to N do
+  ProcessItem(I);
+```
+
+<a id="metric-parameter-count"></a>
+## metric-parameter-count
+
+**Zu viele Parameter** · Code Smell · Hinweis
+
+Die Methode hat mehr Parameter als der Grenzwert (Vorgabe 6). Zusammengehörige Werte in einem Record oder einer Klasse bündeln. Den Grenzwert setzt die Option max.
+
+Mit Treffer:
+
+```pascal
+procedure Book(const AName, AStreet, ACity, AZip: string; AAmount: Currency; ADate: TDate; ANote: string);
+```
+
+Richtig:
+
+```pascal
+procedure Book(const AAddress: TAddress; const AOrder: TOrder);
+```
+
+<a id="todo-comment"></a>
+## todo-comment
+
+**Offener TODO-Kommentar** · Code Smell · Hinweis
+
+Ein Kommentar beginnt mit einer Marke für offene Arbeit: // TODO, // FIXME oder das Format der IDE-To-Do-Liste { TODO 1 -oPerson -cKategorie : Text }. Der Hinweis zeigt Marke, Priorität, Kategorie, Person und Text, damit offene Arbeit in der Problemliste erscheint. In der Vorgabe aus; in atlas.json einschalten, z. B. "rules": {"todo-comment": {"severity": "hint"}}. Erledigte Einträge ({ DONE … }) meldet die Regel nie. Die Option keywords legt die Marken fest (Vorgabe ["TODO", "FIXME"]); sie gilt auch für get_todos und --todos.
+
+Mit Treffer:
+
+```pascal
+// TODO 1 -oMarco -cGUI : set focus
+Edit.Text := '';
+```
+
+Richtig:
+
+```pascal
+Edit.Text := '';
+Edit.SetFocus;
 ```
 
 <a id="component-palette-icon"></a>

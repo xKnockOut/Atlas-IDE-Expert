@@ -25,12 +25,25 @@
 //               "warnings": 0, "hints": 0, "first": {…}},
 //     "check": {"at": "…", "errors": 2, "first": {"file": "…", "line": 12,
 //               "column": 5, "code": "E2003", "text": "…"}},
-//     "rules": {"at": "…", "newHits": 3}
+//     "rules": {"at": "…", "newHits": 3},
+//     "metrics": {"at": "…", "files": 12, "methods": 340, "overLimits": 5,
+//                 "average": {"length": 12.5, "nesting": 1.2, "cyclomatic": 3.1,
+//                             "cognitive": 2.4, "parameters": 1.3},
+//                 "maximum": {"length": 140, …}, "exceeded": {"length": 2, …}},
+//     "todos": {"at": "…", "files": 4, "open": 9, "done": 2,
+//               "keywords": {"FIXME": 2, "TODO": 7}}
 //   }
 // "changed", "ahead", "behind" = -1: unbekannt. "first" ist die erste Fehler-
 // meldung (Zeile und Spalte ab 1). "build" ist der letzte Lauf des Benutzers,
 // "check" die letzte Hintergrundprüfung (#548), "rules" neue Regeltreffer
-// gegenüber der Baseline (#97, nur wenn bekannt).
+// gegenüber der Baseline (#97, nur wenn bekannt). "metrics" sind die
+// Code-Metriken des Projekts (#66) beim letzten Build: Dateien, Methoden,
+// Methoden über einem Grenzwert, Mittelwert (eine Nachkommastelle), Maximum
+// und Zahl der Methoden über dem Grenzwert je Kennzahl. Der Projektverlauf
+// (#758) liest daraus z. B. die mittlere Methodenlänge zum Zeitpunkt "at".
+// "todos" ist die TODO-Übersicht (#68) beim letzten Build: Dateien mit
+// offenen Einträgen, offene und erledigte Einträge, offene je Marke; der
+// Projektverlauf liest daraus die Reihe „offene TODOs“ ("open").
 //
 // Erweitern: Neue Felder und Abschnitte dürfen jederzeit dazukommen, ohne
 // "format" zu erhöhen. Leser übergehen, was sie nicht kennen; Schreiber
@@ -100,6 +113,51 @@ type
     class function Empty: TAtlasProjectCheck; static;
   end;
 
+  /// <summary>Werte je Kennzahl der Code-Metriken in der Reihenfolge von MetricKeys.</summary>
+  TAtlasMetricNumbers = array[0..4] of Integer;
+
+  /// <summary>Code-Metriken des Projekts beim letzten Build (#66), Grundlage des Projektverlaufs (#758).</summary>
+  TAtlasProjectMetrics = record
+    Known: Boolean;
+    /// <summary>Zeitpunkt des Builds (UTC).</summary>
+    At: TDateTime;
+    Files: Integer;
+    Methods: Integer;
+    /// <summary>Methoden mit mindestens einer Überschreitung.</summary>
+    OverLimits: Integer;
+    /// <summary>Mittelwert in Zehnteln (125 = 12,5).</summary>
+    AverageTenths: TAtlasMetricNumbers;
+    Maximum: TAtlasMetricNumbers;
+    /// <summary>Methoden über dem Grenzwert je Kennzahl.</summary>
+    Exceeded: TAtlasMetricNumbers;
+    class function Empty: TAtlasProjectMetrics; static;
+    /// <summary>Liest die Antwort von atlas.server.metrics im Modus "summary" ({"summary": {…}}) oder einen
+    /// Abschnitt "metrics"; AAtUtc wird der Zeitpunkt. False bei ungültigem Text.</summary>
+    class function FromServer(const AJson: string; AAtUtc: TDateTime; out AMetrics: TAtlasProjectMetrics): Boolean;
+      static;
+  end;
+
+  /// <summary>TODO-Einträge des Projekts beim letzten Build (#68), Grundlage des Projektverlaufs (#758).</summary>
+  TAtlasProjectTodos = record
+    Known: Boolean;
+    /// <summary>Zeitpunkt des Builds (UTC).</summary>
+    At: TDateTime;
+    /// <summary>Dateien mit mindestens einem offenen Eintrag.</summary>
+    Files: Integer;
+    Open: Integer;
+    Done: Integer;
+    /// <summary>Marken der offenen Einträge (TODO, FIXME …); Anzahl in KeywordCounts.</summary>
+    Keywords: TArray<string>;
+    KeywordCounts: TArray<Integer>;
+    class function Empty: TAtlasProjectTodos; static;
+    /// <summary>Offene Einträge mit der Marke AKeyword; 0, wenn es keine gibt.</summary>
+    function CountOf(const AKeyword: string): Integer;
+    /// <summary>Liest die Antwort von atlas.server.todos im Modus "summary" ({"summary": {…}}) oder einen
+    /// Abschnitt "todos"; AAtUtc wird der Zeitpunkt. False bei ungültigem Text.</summary>
+    class function FromServer(const AJson: string; AAtUtc: TDateTime; out ATodos: TAtlasProjectTodos): Boolean;
+      static;
+  end;
+
   /// <summary>Neue Regeltreffer gegenüber der Baseline (#97).</summary>
   TAtlasProjectRules = record
     Known: Boolean;
@@ -120,6 +178,8 @@ type
     Build: TAtlasProjectBuild;
     Check: TAtlasProjectCheck;
     Rules: TAtlasProjectRules;
+    Metrics: TAtlasProjectMetrics;
+    Todos: TAtlasProjectTodos;
     /// <summary>Gelesener Text der Datei; ToJson behält daraus alle unbekannten Felder.</summary>
     Raw: string;
     class function Create(const AProject: string): TAtlasProjectSummary; static;
@@ -133,6 +193,8 @@ type
   public const
     /// <summary>Format, das diese Fassung liest und schreibt.</summary>
     Format = 1;
+    /// <summary>Kennzahlen im Abschnitt "metrics" (wie atlas.server.metrics, #66).</summary>
+    MetricKeys: array[0..4] of string = ('length', 'nesting', 'cyclomatic', 'cognitive', 'parameters');
     /// <summary>Unterordner von %LOCALAPPDATA%\Atlas.</summary>
     FolderName = 'projects';
   public
@@ -176,13 +238,15 @@ uses
 
 const
   // Bekannte Felder; alles andere übernimmt ToJson unverändert aus Raw.
-  TopKeys: array[0..8] of string = ('format', 'project', 'lastOpened', 'lastClosed', 'hidden', 'vcs', 'build',
-    'check', 'rules');
+  TopKeys: array[0..10] of string = ('format', 'project', 'lastOpened', 'lastClosed', 'hidden', 'vcs', 'build',
+    'check', 'rules', 'metrics', 'todos');
   VcsKeys: array[0..6] of string = ('at', 'kind', 'branch', 'revision', 'changed', 'ahead', 'behind');
   BuildKeys: array[0..8] of string = ('at', 'kind', 'configuration', 'platform', 'succeeded', 'errors', 'warnings',
     'hints', 'first');
   CheckKeys: array[0..2] of string = ('at', 'errors', 'first');
   RulesKeys: array[0..1] of string = ('at', 'newHits');
+  MetricsKeys: array[0..6] of string = ('at', 'files', 'methods', 'overLimits', 'average', 'maximum', 'exceeded');
+  TodosKeys: array[0..4] of string = ('at', 'files', 'open', 'done', 'keywords');
 
 { TAtlasProjectLocation }
 
@@ -237,6 +301,8 @@ begin
   Result.Build := TAtlasProjectBuild.Empty;
   Result.Check := TAtlasProjectCheck.Empty;
   Result.Rules := TAtlasProjectRules.Empty;
+  Result.Metrics := TAtlasProjectMetrics.Empty;
+  Result.Todos := TAtlasProjectTodos.Empty;
 end;
 
 function TAtlasProjectSummary.Name: string;
@@ -365,6 +431,177 @@ procedure AddTime(AObject: TJSONObject; const AName: string; AUtc: TDateTime);
 begin
   if AUtc > 0 then
     AObject.AddPair(AName, TAtlasProjectSummaries.TimeText(AUtc));
+end;
+
+/// <summary>Zahlen je Kennzahl aus AObject; ATenths: Dezimalzahlen als Zehntel. Fehlende bleiben 0.</summary>
+function MetricNumbersOf(AObject: TJSONObject; ATenths: Boolean): TAtlasMetricNumbers;
+var
+  Index: Integer;
+  Value: TJSONValue;
+begin
+  for Index := Low(Result) to High(Result) do
+  begin
+    Result[Index] := 0;
+    if AObject = nil then
+      Continue;
+    Value := AObject.GetValue(TAtlasProjectSummaries.MetricKeys[Index]);
+    if not (Value is TJSONNumber) then
+      Continue;
+    if ATenths then
+      Result[Index] := Round(TJSONNumber(Value).AsDouble * 10)
+    else
+      Result[Index] := TJSONNumber(Value).AsInt;
+  end;
+end;
+
+/// <summary>Objekt {"length": …, …}; ATenths: Werte als Dezimalzahl mit einer Nachkommastelle.</summary>
+function MetricNumbersJson(const ANumbers: TAtlasMetricNumbers; ATenths: Boolean): TJSONObject;
+var
+  Index: Integer;
+begin
+  Result := TJSONObject.Create;
+  for Index := Low(ANumbers) to High(ANumbers) do
+    if ATenths then
+      Result.AddPair(TAtlasProjectSummaries.MetricKeys[Index], TJSONNumber.Create(ANumbers[Index] / 10))
+    else
+      Result.AddPair(TAtlasProjectSummaries.MetricKeys[Index], TJSONNumber.Create(ANumbers[Index]));
+end;
+
+/// <summary>Kennzahlen aus einem Objekt mit files, methods, overLimits, average, maximum, exceeded.</summary>
+function MetricsOf(ASection: TJSONObject): TAtlasProjectMetrics;
+begin
+  Result := TAtlasProjectMetrics.Empty;
+  if ASection = nil then
+    Exit;
+  Result.Known := True;
+  Result.At := TAtlasProjectSummaries.TimeOf(TextOf(ASection, 'at'));
+  Result.Files := NumberOf(ASection, 'files', 0);
+  Result.Methods := NumberOf(ASection, 'methods', 0);
+  Result.OverLimits := NumberOf(ASection, 'overLimits', 0);
+  Result.AverageTenths := MetricNumbersOf(ObjectOf(ASection, 'average'), True);
+  Result.Maximum := MetricNumbersOf(ObjectOf(ASection, 'maximum'), False);
+  Result.Exceeded := MetricNumbersOf(ObjectOf(ASection, 'exceeded'), False);
+end;
+
+{ TAtlasProjectMetrics }
+
+class function TAtlasProjectMetrics.Empty: TAtlasProjectMetrics;
+begin
+  Result := Default(TAtlasProjectMetrics);
+end;
+
+class function TAtlasProjectMetrics.FromServer(const AJson: string; AAtUtc: TDateTime;
+  out AMetrics: TAtlasProjectMetrics): Boolean;
+var
+  Value: TJSONValue;
+  Section: TJSONObject;
+begin
+  AMetrics := TAtlasProjectMetrics.Empty;
+  Result := False;
+  Value := nil;
+  try
+    Value := TJSONObject.ParseJSONValue(AJson);
+  except
+    on Exception do
+      Value := nil;
+  end;
+  try
+    if not (Value is TJSONObject) then
+      Exit;
+    Section := ObjectOf(TJSONObject(Value), 'summary');
+    if Section = nil then
+      Section := ObjectOf(TJSONObject(Value), 'metrics');
+    if Section = nil then
+      Section := TJSONObject(Value);
+    if not (Section.GetValue('methods') is TJSONNumber) then
+      Exit;
+    AMetrics := MetricsOf(Section);
+    AMetrics.At := AAtUtc;
+    Result := True;
+  finally
+    Value.Free;
+  end;
+end;
+
+/// <summary>Zahlen aus einem Objekt mit files, open, done, keywords.</summary>
+function TodosOf(ASection: TJSONObject): TAtlasProjectTodos;
+var
+  Keywords: TJSONObject;
+  Index: Integer;
+  Pair: TJSONPair;
+begin
+  Result := TAtlasProjectTodos.Empty;
+  if ASection = nil then
+    Exit;
+  Result.Known := True;
+  Result.At := TAtlasProjectSummaries.TimeOf(TextOf(ASection, 'at'));
+  Result.Files := NumberOf(ASection, 'files', 0);
+  Result.Open := NumberOf(ASection, 'open', 0);
+  Result.Done := NumberOf(ASection, 'done', 0);
+  Keywords := ObjectOf(ASection, 'keywords');
+  if Keywords = nil then
+    Exit;
+  for Index := 0 to Keywords.Count - 1 do
+  begin
+    Pair := Keywords.Pairs[Index];
+    if Pair.JsonValue is TJSONNumber then
+    begin
+      Result.Keywords := Result.Keywords + [Pair.JsonString.Value];
+      Result.KeywordCounts := Result.KeywordCounts + [TJSONNumber(Pair.JsonValue).AsInt];
+    end;
+  end;
+end;
+
+{ TAtlasProjectTodos }
+
+class function TAtlasProjectTodos.Empty: TAtlasProjectTodos;
+begin
+  Result := Default(TAtlasProjectTodos);
+  Result.Keywords := nil;
+  Result.KeywordCounts := nil;
+end;
+
+function TAtlasProjectTodos.CountOf(const AKeyword: string): Integer;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(Keywords) do
+    if SameText(Keywords[Index], AKeyword) then
+      Exit(KeywordCounts[Index]);
+  Result := 0;
+end;
+
+class function TAtlasProjectTodos.FromServer(const AJson: string; AAtUtc: TDateTime;
+  out ATodos: TAtlasProjectTodos): Boolean;
+var
+  Value: TJSONValue;
+  Section: TJSONObject;
+begin
+  ATodos := TAtlasProjectTodos.Empty;
+  Result := False;
+  Value := nil;
+  try
+    Value := TJSONObject.ParseJSONValue(AJson);
+  except
+    on Exception do
+      Value := nil;
+  end;
+  try
+    if not (Value is TJSONObject) then
+      Exit;
+    Section := ObjectOf(TJSONObject(Value), 'summary');
+    if Section = nil then
+      Section := ObjectOf(TJSONObject(Value), 'todos');
+    if Section = nil then
+      Section := TJSONObject(Value);
+    if not (Section.GetValue('open') is TJSONNumber) then
+      Exit;
+    ATodos := TodosOf(Section);
+    ATodos.At := AAtUtc;
+    Result := True;
+  finally
+    Value.Free;
+  end;
 end;
 
 { TAtlasProjectSummaries }
@@ -536,6 +773,8 @@ begin
       ASummary.Rules.At := TimeOf(TextOf(Section, 'at'));
       ASummary.Rules.NewHits := NumberOf(Section, 'newHits', 0);
     end;
+    ASummary.Metrics := MetricsOf(ObjectOf(Root, 'metrics'));
+    ASummary.Todos := TodosOf(ObjectOf(Root, 'todos'));
     Result := True;
   finally
     Value.Free;
@@ -545,7 +784,8 @@ end;
 class function TAtlasProjectSummaries.ToJson(const ASummary: TAtlasProjectSummary): string;
 var
   Value: TJSONValue;
-  Original, Root, Section: TJSONObject;
+  Original, Root, Section, Keywords: TJSONObject;
+  Index: Integer;
 begin
   Value := nil;
   if ASummary.Raw <> '' then
@@ -614,6 +854,33 @@ begin
       AddTime(Section, 'at', ASummary.Rules.At);
       Section.AddPair('newHits', TJSONNumber.Create(ASummary.Rules.NewHits));
       KeepUnknown(Section, ObjectOf(Original, 'rules'), RulesKeys);
+    end;
+    if ASummary.Metrics.Known then
+    begin
+      Section := TJSONObject.Create;
+      Root.AddPair('metrics', Section);
+      AddTime(Section, 'at', ASummary.Metrics.At);
+      Section.AddPair('files', TJSONNumber.Create(ASummary.Metrics.Files));
+      Section.AddPair('methods', TJSONNumber.Create(ASummary.Metrics.Methods));
+      Section.AddPair('overLimits', TJSONNumber.Create(ASummary.Metrics.OverLimits));
+      Section.AddPair('average', MetricNumbersJson(ASummary.Metrics.AverageTenths, True));
+      Section.AddPair('maximum', MetricNumbersJson(ASummary.Metrics.Maximum, False));
+      Section.AddPair('exceeded', MetricNumbersJson(ASummary.Metrics.Exceeded, False));
+      KeepUnknown(Section, ObjectOf(Original, 'metrics'), MetricsKeys);
+    end;
+    if ASummary.Todos.Known then
+    begin
+      Section := TJSONObject.Create;
+      Root.AddPair('todos', Section);
+      AddTime(Section, 'at', ASummary.Todos.At);
+      Section.AddPair('files', TJSONNumber.Create(ASummary.Todos.Files));
+      Section.AddPair('open', TJSONNumber.Create(ASummary.Todos.Open));
+      Section.AddPair('done', TJSONNumber.Create(ASummary.Todos.Done));
+      Keywords := TJSONObject.Create;
+      Section.AddPair('keywords', Keywords);
+      for Index := 0 to High(ASummary.Todos.Keywords) do
+        Keywords.AddPair(ASummary.Todos.Keywords[Index], TJSONNumber.Create(ASummary.Todos.KeywordCounts[Index]));
+      KeepUnknown(Section, ObjectOf(Original, 'todos'), TodosKeys);
     end;
     KeepUnknown(Root, Original, TopKeys);
     Result := Root.ToJSON;

@@ -50,6 +50,8 @@ uses
   Atlas.Common.Lsp.Implementations,
   Atlas.Common.Lsp.InlayHints,
   Atlas.Common.Lsp.CodeLens,
+  Atlas.Common.Lsp.Metrics,
+  Atlas.Common.Lsp.Todos,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Lsp.QualifiedNames,
@@ -128,6 +130,10 @@ type
     FImplementations: TLspImplementations;
     FInlayHints: TLspInlayHints;
     FCodeLens: TLspCodeLens;
+    /// <summary>Code-Metriken (#66): Befehl atlas.server.metrics mit Zwischenspeicher je Datei.</summary>
+    FMetrics: TLspMetrics;
+    /// <summary>TODO-Übersicht (#68): Befehl atlas.server.todos.</summary>
+    FTodos: TLspTodos;
     FSemanticTokens: TLspSemanticTokens;
     FCodeActions: TLspCodeActions;
     /// <summary>Testunit anlegen und wechseln (#274, #189).</summary>
@@ -231,6 +237,9 @@ type
     /// <summary>Schnellbefehle (#293): False = aus; ADisabled samt "uses" bei usesCommand = false.</summary>
     function SlashCommandsFor(const AUri: string; out ADisabled: TArray<string>): Boolean;
     function InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
+    /// <summary>Einstellungen, Wurzel und Dateien für die Code-Metriken (#66): Datei, Projekt (.dproj/.dpr/.dpk),
+    /// Ordner oder '' (einziger Arbeitsbereich).</summary>
+    function MetricsSourceFor(const AFileName: string; AProject: Boolean; out ASource: TLspMetricsSource): Boolean;
     function HintSettingsFor(const AUri: string): THintSettings;
     function RefactoringSettingsFor(const AUri: string): TRefactoringSettings;
     function CompletionSettingsFor(const AUri: string): TCompletionSettings;
@@ -320,6 +329,8 @@ uses
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.TestUnits,
   Atlas.Common.Rules.Builtin,
+  Atlas.Common.Rules.Builtin.Metrics,
+  Atlas.Common.Metrics.Contract,
   Atlas.Common.Compiler.OutputParser,
   Atlas.Windows.Compiler.Adapters.ProcessRunner,
   Atlas.Windows.Console.StdStreams,
@@ -779,7 +790,28 @@ begin
     begin
       Result := EnsureUnit(AUnitName);
     end);
+  FCodeLens.MetricsFor :=
+    function(const AUri: string; out ALimits: TMetricLimits): Boolean
+    var
+      Source: TLspMetricsSource;
+    begin
+      if not MetricsSourceFor(TDocumentUris.ToPath(AUri), False, Source) then
+        Source.Settings := TServerSettings.Default;
+      ALimits := TMetricRules.Limits(Source.Settings);
+      Result := Source.Settings.CodeLens.Metrics;
+    end;
   FCodeLens.Attach(FDispatcher);
+  FMetrics := TLspMetrics.Create(MetricsSourceFor,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end);
+  // Gleiche Quelle wie die Metriken: Einstellungen, Wurzel und Dateien des Projektmodells (#14).
+  FTodos := TLspTodos.Create(MetricsSourceFor,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end);
   FSemanticTokens := TLspSemanticTokens.Create(FDocuments, FIndex,
     function(const AUnitName: string): Boolean
     begin
@@ -962,6 +994,16 @@ begin
       FLogger.Info(Format('%d binäre Formulare in Text umgewandelt, %d Sicherungskopien (.bak)',
         [Converted, Backups]));
       Result := TJSONString.Create(Format('%d Formulare umgewandelt', [Converted]));
+    end);
+  FCommands.Register(TLspMetrics.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FMetrics.Execute(AArguments);
+    end);
+  FCommands.Register(TLspTodos.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FTodos.Execute(AArguments);
     end);
   FCommands.Register(TLspTestUnits.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1427,6 +1469,8 @@ begin
   FReferences.Free;
   FSemanticTokens.Free;
   FCodeLens.Free;
+  FMetrics.Free;
+  FTodos.Free;
   FInlayHints.Free;
   FImplementations.Free;
   FHierarchies.Free;
@@ -2332,6 +2376,49 @@ begin
     TMonitor.Exit(FWorkspacesLock);
   end;
   AMultiline := TStringLiterals.UseMultiline(Result.Style, DelphiVersionFor(AUri));
+end;
+
+function TServerComposition.MetricsSourceFor(const AFileName: string; AProject: Boolean;
+  out ASource: TLspMetricsSource): Boolean;
+var
+  Workspace, Candidate: TShellWorkspace;
+  Project: TProjectInfo;
+  Extension: string;
+begin
+  ASource := Default(TLspMetricsSource);
+  ASource.Settings := TServerSettings.Default;
+  Extension := LowerCase(ExtractFileExt(AFileName));
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := nil;
+    // Projektdatei: der Arbeitsbereich dieses Projekts (Projektgruppe, #648).
+    if (Extension = '.dproj') or (Extension = '.dpr') or (Extension = '.dpk') then
+      for Candidate in FWorkspaces do
+        if (Candidate.Project(Project) and (SameText(Project.FileName, AFileName) or
+          SameText(Project.MainSource, AFileName) or SameText(ChangeFileExt(Project.FileName, '.dproj'),
+          ChangeFileExt(AFileName, '.dproj')))) or SameText(Candidate.ProjectFile, AFileName) then
+        begin
+          Workspace := Candidate;
+          Break;
+        end;
+    if (Workspace = nil) and (AFileName <> '') then
+      Workspace := WorkspaceOf(AFileName);
+    if (Workspace = nil) and (FWorkspaces.Count = 1) then
+      Workspace := FWorkspaces[0];
+    if Workspace = nil then
+      Exit(False);
+    ASource.Settings := Workspace.Configuration.Settings;
+    ASource.Root := Workspace.Root;
+    if Workspace.Project(Project) then
+      ASource.Title := ChangeFileExt(ExtractFileName(Project.FileName), '')
+    else
+      ASource.Title := Workspace.Name;
+    if AProject then
+      ASource.Files := Workspace.ProjectFiles;
+    Result := True;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
 end;
 
 function TServerComposition.InlayHintSettingsFor(const AUri: string): TInlayHintSettings;

@@ -133,6 +133,9 @@
         <DCCReference Include="Source\IDE\InlayHints\Atlas.IDE.InlayHints.Editor.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.TestUnitLens.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.TestUnit.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.MetricsLens.pas"/>
+        <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Metrics.pas"/>
+        <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Todos.pas"/>
         <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.Model.pas"/>
         <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.State.pas"/>
         <DCCReference Include="Source\UI\UnitSearch\Atlas.UI.UnitSearch.Window.pas"/>
@@ -194,6 +197,8 @@
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Sets.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Usage.pas"/>
         <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.History.pas"/>
+        <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Favorites.pas"/>
+        <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.Favorites.pas"/>
         <DCCReference Include="Source\UI\Atlas.UI.Strings.pas"/>
         <DCCReference Include="Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.XmlDoc.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Snippets.pas"/>
@@ -219,6 +224,8 @@
         <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.Watchdog.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Export.pas"/>
         <DCCReference Include="Source\UI\Diagnostics\Atlas.UI.Diagnostics.ExportDialog.pas"/>
+        <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Package.pas"/>
+        <DCCReference Include="Source\UI\Diagnostics\Atlas.UI.Diagnostics.ReportDialog.pas"/>
         <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.Export.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.BugReport.pas"/>
         <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.BugReport.pas"/>
@@ -320,8 +327,11 @@
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.WhatsNew.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Projects.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Unsaved.pas"/>
+        <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Continue.pas"/>
+        <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Saved.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.State.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Discover.pas"/>
+        <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Help.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Frame.pas">
             <Form>AtlasWelcomeFrame</Form>
             <FormType>dfm</FormType>
@@ -333,8 +343,10 @@
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.WhatsNew.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Projects.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Unsaved.pas"/>
+        <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Continue.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.State.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Discover.pas"/>
+        <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Help.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Push.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Page.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Registry.pas"/>
@@ -343,8 +355,10 @@
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.WhatsNew.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Projects.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Unsaved.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.State.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Discover.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Help.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Commands.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Contract.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Internals.Text.pas"/>
@@ -362,6 +376,24 @@
         <DCCReference Include="Source\IDE\Vcs\Atlas.IDE.Vcs.Service.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.Target.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.Target.pas"/>
+        <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.LineAnchor.pas"/>
+        <DCCReference Include="Source\Core\Notes\Atlas.Core.Notes.Store.pas"/>
+        <DCCReference Include="Source\UI\Notes\Atlas.UI.Notes.Tip.pas"/>
+        <DCCReference Include="Source\UI\Notes\Atlas.UI.Notes.Dialog.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.GutterMarks.pas"/>
+        <DCCReference Include="Source\IDE\Notes\Atlas.IDE.Notes.Service.pas"/>
+        <DCCReference Include="Source\IDE\Notes\Atlas.IDE.Notes.Gutter.pas"/>
+        <DCCReference Include="Source\Core\Bookmarks\Atlas.Core.Bookmarks.Store.pas"/>
+        <DCCReference Include="Source\UI\Bookmarks\Atlas.UI.Bookmarks.Dialog.pas"/>
+        <DCCReference Include="Source\UI\Todos\Atlas.UI.Todos.Dialog.pas"/>
+        <DCCReference Include="Source\UI\Bookmarks\Atlas.UI.Bookmarks.Frame.pas">
+            <Form>AtlasBookmarksFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Window.pas"/>
+        <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Service.pas"/>
+        <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Gutter.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

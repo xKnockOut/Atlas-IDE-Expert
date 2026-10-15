@@ -178,6 +178,15 @@ begin
   Assert.AreEqual('alt.json', Options.BaselineFile);
   Assert.IsTrue(Options.UpdateBaseline);
   Assert.IsTrue(Options.ClearCache);
+  Assert.IsFalse(Options.Metrics);
+  Options := TCommandLineOptions.Parse(['--check', 'App.dproj', '--metrics', '--format', 'json']);
+  Assert.AreEqual(0, Integer(Length(Options.Warnings)));
+  Assert.IsTrue(Options.Metrics, '--metrics (#66)');
+  Assert.AreEqual(Ord(TFindingsFormat.Json), Ord(Options.CheckFormat));
+  Assert.IsFalse(Options.Todos);
+  Options := TCommandLineOptions.Parse(['--check', 'App.dproj', '--todos']);
+  Assert.AreEqual(0, Integer(Length(Options.Warnings)));
+  Assert.IsTrue(Options.Todos, '--todos (#68)');
 end;
 
 procedure TCommandLineOptionsTests.ReadsFailOnAndSourceRoot;

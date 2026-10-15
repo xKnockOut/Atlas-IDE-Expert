@@ -13,6 +13,9 @@
 // OnIndexClear aus. Im Seitenkopf steht das Atlas-Symbol (#751) passend zu Thema und Skalierung.
 // Jeder Reiter bleibt niedriger als die Seite: Sonst scrollt die IDE ihren Bereich beim Reiterwechsel
 // zum Fokus, und die Seite „springt“.
+// Reiter Vervollständigung: angeheftete Favoriten (#458) an/aus, Liste („TDataSet.Open“) mit „Entfernen“
+// und „Alle entfernen“. Die Seite kennt die Ablage nicht; OnFavorites liefert die Liste, OnRemoveFavorites
+// löst die Schlüssel sofort (nicht erst mit OK).
 
 interface
 
@@ -31,6 +34,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Completion.Favorites,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.SafeMode,
@@ -108,7 +112,16 @@ type
     FInactiveDim: TCheckBox;
     FOpenForEdits: TCheckBox;
     FInlayHints: TCheckBox;
+    FNotes: TCheckBox;
+    FBookmarksNamed: TCheckBox;
+    FBookmarksShared: TCheckBox;
     FCodeLensTestUnit: TCheckBox;
+    /// <summary>Code Lens mit Code-Metriken (#66).</summary>
+    FCodeLensMetrics: TCheckBox;
+    /// <summary>Befehl in der Befehlspalette (#68).</summary>
+    FTodoList: TCheckBox;
+    /// <summary>Befehl in der Befehlspalette (#66).</summary>
+    FMetricsReport: TCheckBox;
     FPairGuides: TCheckBox;
     FPairOwners: TCheckBox;
     FPairGuideWidth: TEdit;
@@ -152,6 +165,7 @@ type
     FMethodToggleUpKey: TEdit;
     FMethodToggleDownKey: TEdit;
     FTestUnitKey: TEdit;
+    FBookmarkKey: TEdit;
     FUndoKey: TEdit;
     FRedoKey: TEdit;
     FEditorKeysPriority: TCheckBox;
@@ -196,6 +210,11 @@ type
     FWelcomeSearchSymbols: TCheckBox;
     FWelcomeSearchKey: TEdit;
     FWelcomeWhatsNew: TAtlasChoiceBox;
+    FWelcomeContinue: TCheckBox;
+    FWelcomeContinueCount: TEdit;
+    FWelcomeContinueIncoming: TCheckBox;
+    FWelcomeContinueFetch: TCheckBox;
+    FWelcomeSaved: TCheckBox;
     FWelcomeProjects: TCheckBox;
     FWelcomeMaxProjects: TEdit;
     FWelcomeRefreshVcs: TCheckBox;
@@ -212,8 +231,20 @@ type
     FUnblockTips: TButton;
     FOnResetUsage: TProc;
     FOnUnblockTips: TProc;
+    FWelcomeHelp: TCheckBox;
+    FWelcomeHelpReportUrl: TEdit;
+    FWelcomeHelpReportFolder: TEdit;
+    FWelcomeHelpFolderBrowse: TButton;
     FVersion: TLabel;
     FResetHistory: TButton;
+    // Favoriten (#458): Schalter, Liste und Schlüssel je Zeile.
+    FFavorites: TCheckBox;
+    FFavoritesList: TListBox;
+    FFavoritesRemove: TButton;
+    FFavoritesRemoveAll: TButton;
+    FFavoriteKeys: TArray<string>;
+    FOnFavorites: TFunc<TArray<TAtlasFavorite>>;
+    FOnRemoveFavorites: TProc<TArray<string>>;
     FResetWidths: TButton;
     FHangTest: TButton;
     FHangTestRow: TWinControl;
@@ -235,8 +266,15 @@ type
     /// Seite „Tastenkonflikte“ (#494).</summary>
     function AddKey(const ACaption: string): TEdit;
     procedure ResetHistoryClick(Sender: TObject);
+    procedure AddFavoritesSection;
+    procedure FavoritesRemoveClick(Sender: TObject);
+    procedure FavoritesRemoveAllClick(Sender: TObject);
+    procedure SetOnFavorites(const AValue: TFunc<TArray<TAtlasFavorite>>);
     procedure ResetUsageClick(Sender: TObject);
     procedure UnblockTipsClick(Sender: TObject);
+    procedure HelpFolderBrowseClick(Sender: TObject);
+    /// <summary>Beschriftung in einer Zeile, darunter ein Textfeld über die ganze Breite (#766).</summary>
+    function AddTextLine(const ACaption: string): TEdit;
     procedure ResetWidthsClick(Sender: TObject);
     procedure HangTestClick(Sender: TObject);
     procedure DiagnosticModeClick(Sender: TObject);
@@ -274,6 +312,8 @@ type
     procedure RefreshFuse;
     /// <summary>Kennzahlen des Index neu holen und anzeigen (#492).</summary>
     procedure RefreshIndex;
+    /// <summary>Liste der angehefteten Favoriten neu lesen (#458).</summary>
+    procedure RefreshFavorites;
     /// <summary>Reiter der Seite, einer je Bereich (#227).</summary>
     property Pages: TPageControl read FPages;
     /// <summary>Zum Testen: Liste und Schaltflächen der Sicherung.</summary>
@@ -327,6 +367,11 @@ type
     property WelcomeSearchSymbols: TCheckBox read FWelcomeSearchSymbols;
     property WelcomeSearchKey: TEdit read FWelcomeSearchKey;
     property WelcomeWhatsNew: TAtlasChoiceBox read FWelcomeWhatsNew;
+    property WelcomeContinue: TCheckBox read FWelcomeContinue;
+    property WelcomeContinueCount: TEdit read FWelcomeContinueCount;
+    property WelcomeContinueIncoming: TCheckBox read FWelcomeContinueIncoming;
+    property WelcomeContinueFetch: TCheckBox read FWelcomeContinueFetch;
+    property WelcomeSaved: TCheckBox read FWelcomeSaved;
     property WelcomeProjects: TCheckBox read FWelcomeProjects;
     property WelcomeMaxProjects: TEdit read FWelcomeMaxProjects;
     property WelcomeRefreshVcs: TCheckBox read FWelcomeRefreshVcs;
@@ -342,6 +387,10 @@ type
     property TipsUsageTracking: TCheckBox read FTipsUsageTracking;
     property ResetUsageButton: TButton read FResetUsage;
     property UnblockTipsButton: TButton read FUnblockTips;
+    /// <summary>Zum Testen: Bereich „Hilfe und Rückmeldung“ (#766).</summary>
+    property WelcomeHelp: TCheckBox read FWelcomeHelp;
+    property WelcomeHelpReportUrl: TEdit read FWelcomeHelpReportUrl;
+    property WelcomeHelpReportFolder: TEdit read FWelcomeHelpReportFolder;
     property VersionLabel: TLabel read FVersion;
     /// <summary>Kennzahlen als Text; nil = nicht verfügbar.</summary>
     property OnIndexMetrics: TFunc<string> read FOnIndexMetrics write FOnIndexMetrics;
@@ -352,6 +401,20 @@ type
     property ConfirmClear: TFunc<Boolean> read FConfirmClear write FConfirmClear;
     /// <summary>„Verlauf zurücksetzen“ der lernenden Gewichtung (#418).</summary>
     property OnResetHistory: TProc read FOnResetHistory write FOnResetHistory;
+    /// <summary>Angeheftete Favoriten (#458) für die Liste; nil = keine Liste.</summary>
+    property OnFavorites: TFunc<TArray<TAtlasFavorite>> read FOnFavorites write SetOnFavorites;
+    /// <summary>Favoriten mit diesen Schlüsseln lösen (#458, „Entfernen“, „Alle entfernen“).</summary>
+    property OnRemoveFavorites: TProc<TArray<string>> read FOnRemoveFavorites write FOnRemoveFavorites;
+    /// <summary>Zum Testen: Favoriten (#458).</summary>
+    property FavoritesCheck: TCheckBox read FFavorites;
+    property NotesCheck: TCheckBox read FNotes;
+    /// <summary>Zum Testen: benannte Lesezeichen (#622).</summary>
+    property BookmarksNamedCheck: TCheckBox read FBookmarksNamed;
+    property BookmarksSharedCheck: TCheckBox read FBookmarksShared;
+    property BookmarkKey: TEdit read FBookmarkKey;
+    property FavoritesList: TListBox read FFavoritesList;
+    property FavoritesRemove: TButton read FFavoritesRemove;
+    property FavoritesRemoveAll: TButton read FFavoritesRemoveAll;
     /// <summary>„Zählung zurücksetzen“ der Nutzung je Befehl (#757).</summary>
     property OnResetUsage: TProc read FOnResetUsage write FOnResetUsage;
     /// <summary>„Gesperrte Tipps wieder zeigen“ der Karte „Atlas entdecken“ (#757).</summary>
@@ -591,6 +654,7 @@ begin
   FPanelCollapsed := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPanelCollapsed));
   FFilterChips := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsChips));
   FLearning := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsLearning));
+  FFavorites := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFavorites));
   FGroupInherited := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGroupInherited));
   FPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPreview));
   Panel := AddPanel(32);
@@ -608,6 +672,7 @@ begin
   FResetWidths.Top := 3;
   FResetWidths.Width := 150;
   FResetWidths.OnClick := ResetWidthsClick;
+  AddFavoritesSection;
 
   // Was beim Übernehmen eingefügt wird.
   AddSheet(TAtlasTextId.SettingsTabInsert);
@@ -634,7 +699,15 @@ begin
   FPairColors.OnClick := PairColorsClick;
   FInactiveDim := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim));
   FInlayHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayHints));
+  // Persönliche Notizen an Codezeilen (#545).
+  FNotes := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNotes));
+  // Benannte Lesezeichen (#622): Funktion und Ablage für das Team; die Taste steht bei den Editorbefehlen.
+  FBookmarksNamed := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBookmarksNamed));
+  FBookmarksShared := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBookmarksShared));
   FCodeLensTestUnit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTestUnit));
+  FCodeLensMetrics := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensMetrics));
+  FTodoList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTodoList));
+  FMetricsReport := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMetricsReport));
 
   // Eigene Paarfarben und deren Reihenfolge je Thema.
   AddSheet(TAtlasTextId.SettingsTabColors);
@@ -687,6 +760,8 @@ begin
   FMethodToggleUpKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggleUp));
   FMethodToggleDownKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggleDown));
   FTestUnitKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTestUnit));
+  // „Lesezeichen setzen…“ (#622).
+  FBookmarkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd));
   FUndoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.UndoMenu));
   FRedoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.RedoMenu));
   FEditorKeysPriority := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorKeysPriority));
@@ -749,6 +824,12 @@ begin
     [TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeWhatsNewOff),
     TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeWhatsNewAfterUpdate),
     TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeWhatsNewAlways)]);
+  // Bereich „Weiterarbeiten“ (#755).
+  FWelcomeContinue := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeContinue));
+  FWelcomeContinueCount := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeContinueCount));
+  FWelcomeContinueIncoming := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeContinueIncoming));
+  FWelcomeContinueFetch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeContinueFetch));
+  FWelcomeSaved := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeSaved));
   // Bereich „Projekte“ (#592).
   FWelcomeProjects := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeProjects));
   FWelcomeMaxProjects := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeMaxProjects));
@@ -780,6 +861,57 @@ begin
   FUnblockTips.Top := 3;
   FUnblockTips.Width := 200;
   FUnblockTips.OnClick := UnblockTipsClick;
+  // Bereich „Hilfe und Rückmeldung“ (#766): Schalter, Ziel der Issue-Seite, Ordner der ZIP.
+  FWelcomeHelp := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHelp));
+  FWelcomeHelpReportUrl := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHelpReportUrl));
+  FWelcomeHelpReportFolder := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHelpReportFolder));
+  FWelcomeHelpReportFolder.TextHint := TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHelpDesktop);
+  FWelcomeHelpReportFolder.Width := FWelcomeHelpReportFolder.Width - 36;
+  FWelcomeHelpFolderBrowse := TButton.Create(Self);
+  FWelcomeHelpFolderBrowse.Parent := FWelcomeHelpReportFolder.Parent;
+  FWelcomeHelpFolderBrowse.Caption := '…';
+  FWelcomeHelpFolderBrowse.Left := FWelcomeHelpReportFolder.Left + FWelcomeHelpReportFolder.Width + 6;
+  FWelcomeHelpFolderBrowse.Top := 0;
+  FWelcomeHelpFolderBrowse.Width := 30;
+  FWelcomeHelpFolderBrowse.Anchors := [akTop, akRight];
+  FWelcomeHelpFolderBrowse.OnClick := HelpFolderBrowseClick;
+end;
+
+function TAtlasSettingsPage.AddTextLine(const ACaption: string): TEdit;
+var
+  Panel: TWinControl;
+  Heading: TLabel;
+begin
+  Panel := AddPanel(20);
+  Heading := TLabel.Create(Self);
+  Heading.Parent := Panel;
+  Heading.Caption := ACaption;
+  Heading.Left := 0;
+  Heading.Top := 3;
+  // Eigene Zeile für das Feld: Adressen und Pfade brauchen die Breite.
+  Panel := AddPanel(26);
+  Result := TEdit.Create(Self);
+  Result.Parent := Panel;
+  Result.Left := 0;
+  Result.Top := 1;
+  Result.Width := 466;
+  Result.Anchors := [akLeft, akTop, akRight];
+end;
+
+procedure TAtlasSettingsPage.HelpFolderBrowseClick(Sender: TObject);
+var
+  Dialog: TFileOpenDialog;
+begin
+  Dialog := TFileOpenDialog.Create(Self);
+  try
+    Dialog.Options := Dialog.Options + [fdoPickFolders, fdoPathMustExist];
+    if FWelcomeHelpReportFolder.Text <> '' then
+      Dialog.DefaultFolder := FWelcomeHelpReportFolder.Text;
+    if Dialog.Execute then
+      FWelcomeHelpReportFolder.Text := Dialog.FileName;
+  finally
+    Dialog.Free;
+  end;
 end;
 
 procedure TAtlasSettingsPage.AddSheet(AId: TAtlasTextId);
@@ -802,6 +934,97 @@ begin
     FPages.ActivePageIndex := 0;
   // Die Liste der Sicherung braucht ein Fenster; vorher bleibt sie leer.
   RefreshFuse;
+  RefreshFavorites;
+end;
+
+procedure TAtlasSettingsPage.AddFavoritesSection;
+var
+  Panel: TWinControl;
+begin
+  AddTitle(TAtlasTextId.SettingsFavoritesTitle);
+  Panel := AddPanel(80);
+  FFavoritesList := TListBox.Create(Self);
+  FFavoritesList.Parent := Panel;
+  FFavoritesList.Align := alClient;
+  FFavoritesList.MultiSelect := True;
+  Panel := AddPanel(32);
+  FFavoritesRemove := TButton.Create(Self);
+  FFavoritesRemove.Parent := Panel;
+  FFavoritesRemove.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFavoritesRemove);
+  FFavoritesRemove.Left := 0;
+  FFavoritesRemove.Top := 3;
+  FFavoritesRemove.Width := 150;
+  FFavoritesRemove.OnClick := FavoritesRemoveClick;
+  FFavoritesRemoveAll := TButton.Create(Self);
+  FFavoritesRemoveAll.Parent := Panel;
+  FFavoritesRemoveAll.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFavoritesRemoveAll);
+  FFavoritesRemoveAll.Left := 160;
+  FFavoritesRemoveAll.Top := 3;
+  FFavoritesRemoveAll.Width := 150;
+  FFavoritesRemoveAll.OnClick := FavoritesRemoveAllClick;
+end;
+
+procedure TAtlasSettingsPage.SetOnFavorites(const AValue: TFunc<TArray<TAtlasFavorite>>);
+begin
+  FOnFavorites := AValue;
+  RefreshFavorites;
+end;
+
+procedure TAtlasSettingsPage.RefreshFavorites;
+var
+  Favorites: TArray<TAtlasFavorite>;
+  Favorite: TAtlasFavorite;
+  Any: Boolean;
+begin
+  // Wie die Liste der Sicherung: ohne Fenster folgt das in CreateWnd.
+  if not HandleAllocated then
+    Exit;
+  Favorites := nil;
+  if Assigned(FOnFavorites) then
+    Favorites := FOnFavorites();
+  FFavoriteKeys := nil;
+  Any := Length(Favorites) > 0;
+  FFavoritesList.Items.BeginUpdate;
+  try
+    FFavoritesList.Items.Clear;
+    for Favorite in Favorites do
+    begin
+      FFavoritesList.Items.Add(Favorite.DisplayName);
+      FFavoriteKeys := FFavoriteKeys + [Favorite.Key];
+    end;
+    if not Any then
+      FFavoritesList.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsFavoritesNone));
+  finally
+    FFavoritesList.Items.EndUpdate;
+  end;
+  FFavoritesList.Enabled := Any;
+  FFavoritesRemove.Enabled := Any and Assigned(FOnRemoveFavorites);
+  FFavoritesRemoveAll.Enabled := Any and Assigned(FOnRemoveFavorites);
+end;
+
+procedure TAtlasSettingsPage.FavoritesRemoveClick(Sender: TObject);
+var
+  Keys: TArray<string>;
+  Index: Integer;
+begin
+  if not Assigned(FOnRemoveFavorites) then
+    Exit;
+  Keys := nil;
+  for Index := 0 to Min(FFavoritesList.Items.Count, Length(FFavoriteKeys)) - 1 do
+    if FFavoritesList.Selected[Index] then
+      Keys := Keys + [FFavoriteKeys[Index]];
+  if Length(Keys) = 0 then
+    Exit;
+  FOnRemoveFavorites(Keys);
+  RefreshFavorites;
+end;
+
+procedure TAtlasSettingsPage.FavoritesRemoveAllClick(Sender: TObject);
+begin
+  if not Assigned(FOnRemoveFavorites) or (Length(FFavoriteKeys) = 0) then
+    Exit;
+  FOnRemoveFavorites(Copy(FFavoriteKeys));
+  RefreshFavorites;
 end;
 
 procedure TAtlasSettingsPage.AddTitle(AId: TAtlasTextId);
@@ -1238,6 +1461,7 @@ begin
   FMethodToggleUpKey.Text := ShortCutToText(TShortCut(ASettings.MethodToggleUpKey));
   FMethodToggleDownKey.Text := ShortCutToText(TShortCut(ASettings.MethodToggleDownKey));
   FTestUnitKey.Text := ShortCutToText(TShortCut(ASettings.TestUnitKey));
+  FBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.BookmarkKey));
   FEditorKeysPriority.Checked := ASettings.EditorKeysPriority;
   FSlashCommands.Checked := ASettings.SlashCommands;
   ServerPathChange(nil);
@@ -1254,6 +1478,7 @@ begin
   FAutoWidth.OnClick := AutoWidthClick;
   FFilterChips.Checked := ASettings.FilterChips;
   FLearning.Checked := ASettings.Learning;
+  FFavorites.Checked := ASettings.Favorites;
   FGroupInherited.Checked := ASettings.GroupInherited;
   FPreview.Checked := ASettings.Preview;
   FSnippets.Checked := ASettings.Snippets;
@@ -1269,7 +1494,13 @@ begin
   FPairColors.Checked := ASettings.PairColors;
   FInactiveDim.Checked := ASettings.InactiveDim;
   FInlayHints.Checked := ASettings.InlayHints;
+  FNotes.Checked := ASettings.Notes;
+  FBookmarksNamed.Checked := ASettings.BookmarksNamed;
+  FBookmarksShared.Checked := ASettings.BookmarksShared;
   FCodeLensTestUnit.Checked := ASettings.CodeLensTestUnit;
+  FCodeLensMetrics.Checked := ASettings.CodeLensMetrics;
+  FTodoList.Checked := ASettings.TodoList;
+  FMetricsReport.Checked := ASettings.MetricsReport;
   FPairGuides.Checked := ASettings.PairGuides;
   FPairOwners.Checked := ASettings.PairOwners;
   FPairGuideWidth.Text := IntToStr(ASettings.PairGuideWidth);
@@ -1360,6 +1591,11 @@ begin
   FWelcomeSearchSymbols.Checked := ASettings.WelcomePageSearchSymbols;
   FWelcomeSearchKey.Text := ShortCutToText(TShortCut(ASettings.WelcomePageSearchKey));
   FWelcomeWhatsNew.Choice := Ord(TAtlasWhatsNew.ModeOf(ASettings.WelcomePageWhatsNew));
+  FWelcomeContinue.Checked := ASettings.WelcomePageContinue;
+  FWelcomeContinueCount.Text := IntToStr(ASettings.WelcomePageContinueCount);
+  FWelcomeContinueIncoming.Checked := ASettings.WelcomePageContinueIncoming;
+  FWelcomeContinueFetch.Checked := ASettings.WelcomePageContinueFetch;
+  FWelcomeSaved.Checked := ASettings.WelcomePageSaved;
   FWelcomeProjects.Checked := ASettings.WelcomePageProjectStatus;
   FWelcomeMaxProjects.Text := IntToStr(ASettings.WelcomePageMaxProjects);
   FWelcomeRefreshVcs.Checked := ASettings.WelcomePageRefreshVcs;
@@ -1372,6 +1608,9 @@ begin
   FWelcomeStatusTileOnlyProblems.Checked := ASettings.WelcomePageStatusTileOnlyProblems;
   FWelcomeDiscover.Checked := ASettings.WelcomePageDiscover;
   FTipsUsageTracking.Checked := ASettings.TipsUsageTracking;
+  FWelcomeHelp.Checked := ASettings.WelcomePageHelp;
+  FWelcomeHelpReportUrl.Text := ASettings.WelcomePageHelpReportUrl;
+  FWelcomeHelpReportFolder.Text := ASettings.WelcomePageHelpReportFolder;
   RefreshFuse;
   RefreshIndex;
 end;
@@ -1389,6 +1628,7 @@ begin
   ASettings.MethodToggleUpKey := Integer(TextToShortCut(Trim(FMethodToggleUpKey.Text)));
   ASettings.MethodToggleDownKey := Integer(TextToShortCut(Trim(FMethodToggleDownKey.Text)));
   ASettings.TestUnitKey := Integer(TextToShortCut(Trim(FTestUnitKey.Text)));
+  ASettings.BookmarkKey := Integer(TextToShortCut(Trim(FBookmarkKey.Text)));
   ASettings.UndoKey := Integer(TextToShortCut(Trim(FUndoKey.Text)));
   ASettings.RedoKey := Integer(TextToShortCut(Trim(FRedoKey.Text)));
   ASettings.UpdatesCheck := FUpdatesCheck.Checked;
@@ -1405,6 +1645,7 @@ begin
   ASettings.OpenDelayMs := StrToIntDef(FOpenDelay.Text, ASettings.OpenDelayMs);
   ASettings.FilterChips := FFilterChips.Checked;
   ASettings.Learning := FLearning.Checked;
+  ASettings.Favorites := FFavorites.Checked;
   ASettings.GroupInherited := FGroupInherited.Checked;
   ASettings.Preview := FPreview.Checked;
   ASettings.Snippets := FSnippets.Checked;
@@ -1420,7 +1661,13 @@ begin
   ASettings.PairColors := FPairColors.Checked;
   ASettings.InactiveDim := FInactiveDim.Checked;
   ASettings.InlayHints := FInlayHints.Checked;
+  ASettings.Notes := FNotes.Checked;
+  ASettings.BookmarksNamed := FBookmarksNamed.Checked;
+  ASettings.BookmarksShared := FBookmarksShared.Checked;
   ASettings.CodeLensTestUnit := FCodeLensTestUnit.Checked;
+  ASettings.CodeLensMetrics := FCodeLensMetrics.Checked;
+  ASettings.TodoList := FTodoList.Checked;
+  ASettings.MetricsReport := FMetricsReport.Checked;
   ASettings.PairGuides := FPairGuides.Checked;
   ASettings.PairOwners := FPairOwners.Checked;
   ASettings.PairGuideWidth := StrToIntDef(FPairGuideWidth.Text, ASettings.PairGuideWidth);
@@ -1510,6 +1757,12 @@ begin
   ASettings.WelcomePageSearchKey := Integer(TextToShortCut(Trim(FWelcomeSearchKey.Text)));
   ASettings.WelcomePageWhatsNew := TAtlasWhatsNew.ModeName(TAtlasWhatsNewMode(EnsureRange(FWelcomeWhatsNew.Choice,
     Ord(Low(TAtlasWhatsNewMode)), Ord(High(TAtlasWhatsNewMode)))));
+  ASettings.WelcomePageContinue := FWelcomeContinue.Checked;
+  ASettings.WelcomePageContinueCount := StrToIntDef(Trim(FWelcomeContinueCount.Text),
+    ASettings.WelcomePageContinueCount);
+  ASettings.WelcomePageContinueIncoming := FWelcomeContinueIncoming.Checked;
+  ASettings.WelcomePageContinueFetch := FWelcomeContinueFetch.Checked;
+  ASettings.WelcomePageSaved := FWelcomeSaved.Checked;
   ASettings.WelcomePageProjectStatus := FWelcomeProjects.Checked;
   ASettings.WelcomePageMaxProjects := StrToIntDef(Trim(FWelcomeMaxProjects.Text), ASettings.WelcomePageMaxProjects);
   ASettings.WelcomePageRefreshVcs := FWelcomeRefreshVcs.Checked;
@@ -1525,6 +1778,9 @@ begin
   ASettings.WelcomePageStatusTileOnlyProblems := FWelcomeStatusTileOnlyProblems.Checked;
   ASettings.WelcomePageDiscover := FWelcomeDiscover.Checked;
   ASettings.TipsUsageTracking := FTipsUsageTracking.Checked;
+  ASettings.WelcomePageHelp := FWelcomeHelp.Checked;
+  ASettings.WelcomePageHelpReportUrl := Trim(FWelcomeHelpReportUrl.Text);
+  ASettings.WelcomePageHelpReportFolder := Trim(FWelcomeHelpReportFolder.Text);
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;
