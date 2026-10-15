@@ -948,27 +948,6 @@ begin
   AStore.WriteString('UnitSearchGroupBy', UnitSearchGroupBy);
   AStore.WriteString('UnitSearchDefaultScope', UnitSearchDefaultScope);
   AStore.WriteInteger('UnitSearchKey', UnitSearchKey);
-end;
-
-function TAtlasPluginSettings.StatusTogglesOnRightClick: Boolean;
-begin
-  Result := not SameText(Trim(StatusFieldToggles), 'doubleClick');
-end;
-
-function TAtlasPluginSettings.StatusTogglesOnDoubleClick: Boolean;
-begin
-  Result := not SameText(Trim(StatusFieldToggles), 'rightClick');
-end;
-
-function TAtlasPluginSettings.IndexProgressInField: Boolean;
-begin
-  Result := StatusField and SameText(Trim(IndexProgressPlace), 'statusField');
-end;
-
-function TAtlasPluginSettings.IndexProgressInMenu: Boolean;
-begin
-  Result := SameText(Trim(IndexProgressPlace), 'menu') or
-    (not StatusField and SameText(Trim(IndexProgressPlace), 'statusField'));
   AStore.WriteInteger('WelcomePage', BoolValue(WelcomePage));
   AStore.WriteString('WelcomePageHost', WelcomePageHost);
   AStore.WriteString('WelcomePageLayout', WelcomePageLayout);
@@ -994,6 +973,27 @@ begin
   AStore.WriteInteger('WelcomePageHelp', BoolValue(WelcomePageHelp));
   AStore.WriteString('WelcomePageHelpReportUrl', WelcomePageHelpReportUrl);
   AStore.WriteString('WelcomePageHelpReportFolder', WelcomePageHelpReportFolder);
+end;
+
+function TAtlasPluginSettings.StatusTogglesOnRightClick: Boolean;
+begin
+  Result := not SameText(Trim(StatusFieldToggles), 'doubleClick');
+end;
+
+function TAtlasPluginSettings.StatusTogglesOnDoubleClick: Boolean;
+begin
+  Result := not SameText(Trim(StatusFieldToggles), 'rightClick');
+end;
+
+function TAtlasPluginSettings.IndexProgressInField: Boolean;
+begin
+  Result := StatusField and SameText(Trim(IndexProgressPlace), 'statusField');
+end;
+
+function TAtlasPluginSettings.IndexProgressInMenu: Boolean;
+begin
+  Result := SameText(Trim(IndexProgressPlace), 'menu') or
+    (not StatusField and SameText(Trim(IndexProgressPlace), 'statusField'));
 end;
 
 end.

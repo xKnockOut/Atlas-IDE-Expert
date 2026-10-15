@@ -22,6 +22,9 @@
 // - Export als druckbare HTML-Seite (Zeilen mit Konflikt rot).
 // - AtlasConflicts liefert die Atlas-Tasten mit offenem Konflikt für die
 //   Meldung beim Start und die Einrichtung (#625).
+// - „Units suchen“ übernimmt Strg+F12 (#777): Die Taste bleibt bei der Aktion
+//   der IDE; die Übersicht zeigt die Aktion als Atlas-Zeile (Quelle Action,
+//   Kontext global), solange die Übernahme an ist.
 
 interface
 
@@ -116,11 +119,14 @@ type
     scAlt = TAtlasKeyConflicts.scAlt;
     ModifierMask = scShift or scCtrl or scAlt;
   public
-    /// <summary>Kontext einer Atlas-Taste: das Suchfeld auf der Willkommensseite, alle übrigen im Editor
-    /// (Tastaturbelegungen wirken nur dort).</summary>
+    /// <summary>Kontext einer Atlas-Taste: das Suchfeld auf der Willkommensseite, Strg+F12 für „Units suchen“
+    /// global (Aktion der IDE), alle übrigen im Editor (Tastaturbelegungen wirken nur dort).</summary>
     class function ContextOf(AFunc: TAtlasKeyFunction): TAtlasKeyContext; static;
+    /// <summary>Window für das Suchfeld, Action für Strg+F12 (#777), sonst Binding.</summary>
     class function SourceOf(AFunc: TAtlasKeyFunction): TAtlasKeySource; static;
-    /// <summary>Befehl der Befehlspalette (#502) zu einer Atlas-Taste; '' ohne.</summary>
+    /// <summary>Befehl der Befehlspalette (#502) zu einer Atlas-Taste; '' ohne. Mehrere Tasten können denselben
+    /// Befehl haben (beide Tasten von Deklaration ⇄ Implementierung, eigene Taste und Strg+F12 für „Units
+    /// suchen“).</summary>
     class function CommandIdOf(AFunc: TAtlasKeyFunction): string; static;
     /// <summary>Kontext einer Aktion nach ihrer Kategorie: „Designer“/„Formular“ = Designer, „Editor“ = Editor,
     /// sonst global (Menübefehle wirken im ganzen Hauptfenster).</summary>
@@ -232,18 +238,26 @@ end;
 
 class function TAtlasKeyMap.ContextOf(AFunc: TAtlasKeyFunction): TAtlasKeyContext;
 begin
-  if AFunc = TAtlasKeyFunction.WelcomeSearch then
-    Result := TAtlasKeyContext.WelcomePage
+  case AFunc of
+    TAtlasKeyFunction.WelcomeSearch:
+      Result := TAtlasKeyContext.WelcomePage;
+    TAtlasKeyFunction.UnitSearchIde:
+      Result := TAtlasKeyContext.Global;
   else
     Result := TAtlasKeyContext.Editor;
+  end;
 end;
 
 class function TAtlasKeyMap.SourceOf(AFunc: TAtlasKeyFunction): TAtlasKeySource;
 begin
-  if AFunc = TAtlasKeyFunction.WelcomeSearch then
-    Result := TAtlasKeySource.Window
+  case AFunc of
+    TAtlasKeyFunction.WelcomeSearch:
+      Result := TAtlasKeySource.Window;
+    TAtlasKeyFunction.UnitSearchIde:
+      Result := TAtlasKeySource.Action;
   else
     Result := TAtlasKeySource.Binding;
+  end;
 end;
 
 class function TAtlasKeyMap.CommandIdOf(AFunc: TAtlasKeyFunction): string;
@@ -267,6 +281,12 @@ begin
       Result := 'Atlas.UndoChange';
     TAtlasKeyFunction.RedoChange:
       Result := 'Atlas.RedoChange';
+    TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown:
+      Result := 'Atlas.ToggleMethod';
+    TAtlasKeyFunction.TestUnit:
+      Result := 'Atlas.SwitchTestUnit';
+    TAtlasKeyFunction.UnitSearch, TAtlasKeyFunction.UnitSearchIde:
+      Result := 'Atlas.UnitSearch';
   else
     Result := '';
   end;
