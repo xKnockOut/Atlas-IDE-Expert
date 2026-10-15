@@ -171,8 +171,14 @@ begin
 end;
 
 procedure TSymbolIndex.AddLocked(const AKey: string; const AUnit: TUnitIndex);
+var
+  Stored: TUnitIndex;
 begin
-  FFiles.Add(AKey, AUnit);
+  // Jede abgelegte Fassung bekommt ihre eigene Namenstabelle (Diagnoselog 15.10.2026); FindUnit und
+  // FindFile geben sie mit, die Namensauflösung sucht darüber statt linear.
+  Stored := AUnit;
+  Stored.PrepareNames;
+  FFiles.Add(AKey, Stored);
   Inc(FGeneration);
   FUnitFiles.AddOrSetValue(UpperCase(AUnit.UnitName), AKey);
   Inc(FSymbolCount, Length(AUnit.Symbols));

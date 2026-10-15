@@ -73,6 +73,10 @@ type
     procedure LookupsFollowCompaction;
     [Test]
     procedure DescendantsListSymbolOnce;
+    [Test]
+    procedure SymbolsNamedUsesTableOfStoredUnit;
+    [Test]
+    procedure SymbolsNamedFallsBackForChangedSymbols;
   end;
 
   [TestFixture]
@@ -744,6 +748,52 @@ begin
   Assert.AreEqual<NativeInt>(1, Length(Index.Descendants('TBase')));
   Assert.AreEqual<NativeInt>(1, Length(Index.Descendants('Unit.IBase')));
   Assert.AreEqual<NativeInt>(0, Length(Index.Descendants('')));
+end;
+
+procedure TSymbolIndexTests.SymbolsNamedUsesTableOfStoredUnit;
+var
+  Index: ISymbolIndex;
+  U, Found: TUnitIndex;
+  Positions: TArray<Integer>;
+begin
+  // Diagnoselog 15.10.2026: Die Namensauflösung sucht über die Tabelle der abgelegten Unit.
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['Foo', 'Bar', 'foo']));
+  Assert.IsTrue(Index.FindUnit('A', Found));
+  Assert.IsTrue(Found.NameTable <> nil);
+  Positions := Found.SymbolsNamed('FOO');
+  Assert.AreEqual<NativeInt>(2, Length(Positions));
+  Assert.AreEqual(0, Positions[0]);
+  Assert.AreEqual(2, Positions[1]);
+  Assert.AreEqual<NativeInt>(0, Length(Found.SymbolsNamed('Fehlt')));
+  // Ersetzte Fassung: neue Tabelle, alte Positionen gelten nicht mehr.
+  U := MakeUnit('A', 'C:\A.pas', ['Bar', 'Foo']);
+  Index.AddUnit(U);
+  Assert.IsTrue(Index.FindUnit('A', Found));
+  Positions := Found.SymbolsNamed('foo');
+  Assert.AreEqual<NativeInt>(1, Length(Positions));
+  Assert.AreEqual(1, Positions[0]);
+end;
+
+procedure TSymbolIndexTests.SymbolsNamedFallsBackForChangedSymbols;
+var
+  Index: ISymbolIndex;
+  Found: TUnitIndex;
+  Positions: TArray<Integer>;
+begin
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['Foo']));
+  Assert.IsTrue(Index.FindUnit('A', Found));
+  // Neues Array in der Kopie: die Tabelle passt nicht mehr, gesucht wird linear.
+  Found.Symbols := Copy(Found.Symbols) + MakeUnit('B', 'C:\B.pas', ['Neu', 'Foo']).Symbols;
+  Positions := Found.SymbolsNamed('Foo');
+  Assert.AreEqual<NativeInt>(2, Length(Positions));
+  Assert.AreEqual(2, Positions[1]);
+  Assert.AreEqual<NativeInt>(1, Length(Found.SymbolsNamed('neu')));
+  // Ohne Tabelle (Unit nie im Index) ebenso.
+  Found := MakeUnit('C', 'C:\C.pas', ['X', 'Y', 'x']);
+  Assert.IsTrue(Found.NameTable = nil);
+  Assert.AreEqual<NativeInt>(2, Length(Found.SymbolsNamed('X')));
 end;
 
 { TIndexCacheTests }

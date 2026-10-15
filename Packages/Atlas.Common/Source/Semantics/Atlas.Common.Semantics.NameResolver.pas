@@ -774,15 +774,17 @@ function TNameResolver.LookupInUnit(const AUnit: TUnitIndex; const AName: string
   AOnlyInterface, AOnlyTypes: Boolean; out AResult: TResolvedSymbol; AArity: Integer): Boolean;
 var
   Symbol: TIndexSymbol;
-  Pass: Integer;
+  Pass, Position: Integer;
+  Positions: TArray<Integer>;
 begin
+  // Über die Namenstabelle statt linear durch alle Symbole (Diagnoselog 15.10.2026).
+  Positions := AUnit.SymbolsNamed(AName);
   // Mit Typargumenten nur generische Typen passender Stelligkeit; ohne zuerst nicht generische.
   for Pass := 0 to 1 do
   begin
-    for Symbol in AUnit.Symbols do
+    for Position in Positions do
     begin
-      if not SameText(Symbol.Name, AName) then
-        Continue;
+      Symbol := AUnit.Symbols[Position];
       if AOnlyInterface and not Symbol.InInterface then
         Continue;
       if AOnlyTypes and not (Symbol.Kind in TypeKinds) then
@@ -1057,7 +1059,7 @@ var
   Key, Target, UnitName: string;
   Units: TList<TUnitIndex>;
   Used: TUnitIndex;
-  Symbol: TIndexSymbol;
+  Position: Integer;
   Found: Boolean;
   Candidate: TResolvedSymbol;
 
@@ -1086,12 +1088,15 @@ begin
     for Used in Units do
     begin
       Found := False;
-      for Symbol in Used.Symbols do
-        if (Symbol.Kind = TIndexSymbolKind.HelperType) and (Symbol.Container = '') and (Length(Symbol.Ancestors) > 0) and
-          Matches(Symbol.Ancestors[Length(Symbol.Ancestors) - 1]) and
-          (Symbol.InInterface or SameText(Used.FileName, FCurrent.FileName)) then
+      // Über den Index statt for-in: jede Kopie eines Symbol-Records kostet, und hier laufen alle
+      // Symbole aller Units der uses-Liste durch (Diagnoselog 15.10.2026).
+      for Position := 0 to High(Used.Symbols) do
+        if (Used.Symbols[Position].Kind = TIndexSymbolKind.HelperType) and (Used.Symbols[Position].Container = '') and
+          (Length(Used.Symbols[Position].Ancestors) > 0) and
+          Matches(Used.Symbols[Position].Ancestors[High(Used.Symbols[Position].Ancestors)]) and
+          (Used.Symbols[Position].InInterface or SameText(Used.FileName, FCurrent.FileName)) then
         begin
-          Candidate := FromSymbol(Used, Symbol);
+          Candidate := FromSymbol(Used, Used.Symbols[Position]);
           Found := True;
         end;
       if Found then
@@ -1112,7 +1117,7 @@ var
   Current, Ancestor, Helper, Found: TResolvedSymbol;
   OwnerUnit, HelperUnit: TUnitIndex;
   Symbol: TIndexSymbol;
-  Depth: Integer;
+  Depth, Position: Integer;
   TypeName: string;
   Hidden: Boolean;
 begin
@@ -1123,14 +1128,16 @@ begin
     // Helfer zuerst: ihre Mitglieder verdecken gleichnamige des Typs.
     if HelperFor(Current, Helper) and UnitOf(Helper, HelperUnit) then
     begin
-      for Symbol in HelperUnit.Symbols do
-        if SameText(Symbol.Container, Helper.QualifiedName) and SameText(Symbol.Name, AName) and
-          IsVisible(Symbol, HelperUnit, Helper) then
+      for Position in HelperUnit.SymbolsNamed(AName) do
+      begin
+        Symbol := HelperUnit.Symbols[Position];
+        if SameText(Symbol.Container, Helper.QualifiedName) and IsVisible(Symbol, HelperUnit, Helper) then
         begin
           Found := FromSymbol(HelperUnit, Symbol);
           Found.Bindings := Current.Bindings;
           AddDistinct(Result, Found);
         end;
+      end;
       if Result <> nil then
         Exit;
     end;
@@ -1139,8 +1146,10 @@ begin
     TypeName := Current.QualifiedName;
     Hidden := False;
     // Erste Fundstelle: die Deklaration im Typ steht vor dem Rumpf in implementation.
-    for Symbol in OwnerUnit.Symbols do
-      if SameText(Symbol.Container, TypeName) and SameText(Symbol.Name, AName) then
+    for Position in OwnerUnit.SymbolsNamed(AName) do
+    begin
+      Symbol := OwnerUnit.Symbols[Position];
+      if SameText(Symbol.Container, TypeName) then
       begin
         // Ist die Deklaration unsichtbar, gilt das auch für ihren Rumpf.
         if Hidden or not IsVisible(Symbol, OwnerUnit, Current) then
@@ -1152,6 +1161,7 @@ begin
         Found.Bindings := Current.Bindings;
         AddDistinct(Result, Found);
       end;
+    end;
     if Result <> nil then
       Exit;
     if not AncestorOf(Current, Ancestor) then
@@ -1202,6 +1212,7 @@ function TNameResolver.UnitRoutines(const ASymbol: TResolvedSymbol): TArray<TRes
 var
   Owner: TUnitIndex;
   Symbol: TIndexSymbol;
+  Position: Integer;
   SameUnit: Boolean;
 begin
   // Überladene freie Routinen derselben Unit.
@@ -1210,10 +1221,12 @@ begin
     (ASymbol.Container <> '') or not UnitOf(ASymbol, Owner) then
     Exit;
   SameUnit := SameText(Owner.FileName, FCurrent.FileName);
-  for Symbol in Owner.Symbols do
-    if (Symbol.Kind = TIndexSymbolKind.Routine) and (Symbol.Container = '') and SameText(Symbol.Name, ASymbol.Name) and
-      (SameUnit or Symbol.InInterface) then
+  for Position in Owner.SymbolsNamed(ASymbol.Name) do
+  begin
+    Symbol := Owner.Symbols[Position];
+    if (Symbol.Kind = TIndexSymbolKind.Routine) and (Symbol.Container = '') and (SameUnit or Symbol.InInterface) then
       AddDistinct(Result, FromSymbol(Owner, Symbol));
+  end;
 end;
 
 function TNameResolver.EnclosingRoutines: TArray<TSyntaxNode>;
@@ -2321,12 +2334,14 @@ var
 begin
   Result := TIndexExtractor.Extract(ATree, AFileName);
   // Der Baum kennt nur die Datei selbst; Deklarationen aus Include-Dateien stehen im Index.
-  if (FIndex = nil) or (AFileName = '') or not FIndex.FindFile(AFileName, Indexed) then
-    Exit;
-  for Symbol in Indexed.Symbols do
-    if Symbol.FileName <> '' then
-      Result.Symbols := Result.Symbols + [Symbol];
-  Result.Includes := Indexed.Includes;
+  if (FIndex <> nil) and (AFileName <> '') and FIndex.FindFile(AFileName, Indexed) then
+  begin
+    for Symbol in Indexed.Symbols do
+      if Symbol.FileName <> '' then
+        Result.Symbols := Result.Symbols + [Symbol];
+    Result.Includes := Indexed.Includes;
+  end;
+  Result.PrepareNames;
 end;
 
 function TNameResolver.ChainType(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
@@ -2851,4 +2866,4 @@ begin
   Result := Actual.Found and Target.Found and Actual.IsType and Target.IsType and DescendsFrom(Actual, Target);
 end;
 
-end.
+end.
