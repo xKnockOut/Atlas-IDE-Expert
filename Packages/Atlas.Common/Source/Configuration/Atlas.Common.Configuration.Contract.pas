@@ -603,7 +603,7 @@ begin
   Result.MemberOrder := TMemberOrderSettings.Default;
   Result.DfmPropertyRules := nil;
   // Wie die Vorgabe des Plugins (#492): darüber zuerst Verwendungen auslagern.
-  Result.MemoryBudgetMb := 256;
+  Result.MemoryBudgetMb := 768;
   Result.RequestTimeoutMs := 10000;
   Result.DiagnosticsLog := True;
   Result.DiagnosticsLogDays := 7;

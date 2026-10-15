@@ -26,7 +26,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Eingabehilfen | `sortUses` | `false` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl | #182, #284 |
 | Eingabehilfen | `usesKeep` | `` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Liste | #284 |
 | Prüfregeln | `dfmPropertyRules` | `` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Eigener Editor (Klasse und Property aus dem Index) | #309 |
-| Speicher | `memoryBudgetMb` | `256` | settings.json (Tools › Optionen › Atlas) | nein | Zahlenfeld (MB) | #185, #492 |
+| Speicher | `memoryBudgetMb` | `768` | settings.json (Tools › Optionen › Atlas) | nein | Zahlenfeld (MB) | #185, #492 |
 | Speicher | `index`: `projectGroup`, `searchPaths`, `libraryPaths`, `usages`, `exclude` | – | settings.json (Tools › Optionen › Atlas); `exclude` in atlas.json | nein | Kontrollkästchen, Liste mit Hinzufügen/Entfernen | #648, #492 |
 | Robustheit | `requestTimeoutMs` | `10000` | settings.json (Tools › Optionen › Atlas) | nein | Zahlenfeld (ms) | #283 |
 | Robustheit | `diagnostics`: `log`, `logDays`, `logMapFile` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Zahlenfeld (Tage) | #647 |

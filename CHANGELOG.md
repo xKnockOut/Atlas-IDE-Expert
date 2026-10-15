@@ -68,6 +68,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ### Geändert
 - Der Fortschritt beim Aufbau des Symbol-Index steht jetzt im Atlas-Statusfeld unten statt im Titel des Menüs *Atlas*, auch neben einer anderen Meldung („Atlas · Server langsam · Index 45 %“). „Fortschritt des Symbol-Index“ (Optionen › Atlas › Allgemein, Registry `IndexProgressPlace`) wählt Statusfeld (Vorgabe), Menütitel oder keine Anzeige; mit abgeschaltetem Statusfeld steht er im Menütitel.
+- Speichergrenze des Symbolindex (`memoryBudgetMb`) jetzt standardmäßig 768 MB statt 256 MB: Mit großen Projektgruppen samt Bibliothek (rund 630 MB) hielt der Index sonst alle Bibliotheken kompakt. Kompakte Bibliotheks-Einträge im Cache gelten jetzt wieder, der Bibliotheks-Cache wird einmal für alle Projekte gelesen, und nach dem Aufbau geben die Projekte ihre Cache-Kopien frei.
 - Konfidenz als eigenes Feld statt Zusatz „(Konfidenz: mittel)“ im Meldungstext: LSP `data.confidence`, eigene Spalte in der Textausgabe des Linters und im MCP-Werkzeug, eigene Zeile im Tooltip des Plugins und im KI-Prompt; Schema und Doku beschreiben den Deckel bei `severity` (#144).
 - Linter: Exit-Code 1 nur noch, wenn ein Treffer `--fail-on` erreicht (Standard: ein Fehler), sonst 0; bisher 1 bei Warnungen und 2 bei Fehlern. 3 bleibt für Aufruf- und Lesefehler (#95).
 

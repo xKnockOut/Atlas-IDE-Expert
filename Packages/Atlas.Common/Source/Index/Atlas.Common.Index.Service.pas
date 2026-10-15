@@ -24,6 +24,12 @@
 // Stufen (#648): Projektdateien, dann alle Units der Suchpfade, dann die
 // Bibliothek. Mit einem gemeinsamen TIndexScheduler laufen die Aufbauten
 // mehrerer Projekte nacheinander und stufenweise.
+//
+// Speicher (Rückmeldung 15.10.2026, 1,5 GB bei sechs Projekten): Den
+// gemeinsamen Bibliotheks-Cache lesen alle Dienste eines Prozesses nur einmal
+// (TSharedCacheReads), und nach einem vollständigen Aufbau gibt der Builder
+// seine Cache-Einträge frei. Vorher hielt jedes Projekt seinen Projekt- und
+// eine eigene Kopie des Bibliotheks-Caches bis zum nächsten Aufbau.
 
 interface
 
@@ -140,6 +146,107 @@ uses
   System.Generics.Collections;
 
 type
+  /// <summary>Gemeinsam gelesener Bibliotheks-Cache: Alle Dienste eines Prozesses teilen eine Kopie, solange
+  /// jemand sie nutzt; Schlüssel ist Dateisystem und Datei, gültig für einen Zeitstempel.</summary>
+  TSharedCacheReads = class
+  private type
+    TShared = class
+      Stamp: Int64;
+      Entries: TArray<TIndexCacheEntry>;
+      Users: Integer;
+    end;
+  private
+    class var FLock: TObject;
+    class var FFiles: TObjectDictionary<string, TShared>;
+    class function KeyOf(const AFileSystem: IIndexFileSystem; const AFileName: string): string; static;
+  public
+    class constructor Create;
+    class destructor Destroy;
+    /// <summary>Einträge von AFileName; liest nur, wenn niemand denselben Stand hält. AStamp merkt sich der
+    /// Aufrufer für Release.</summary>
+    class function Acquire(const AFileSystem: IIndexFileSystem; const AFileName: string; out AStamp: Int64;
+      const ARead: TFunc<TArray<TIndexCacheEntry>>): TArray<TIndexCacheEntry>; static;
+    class procedure Release(const AFileSystem: IIndexFileSystem; const AFileName: string; AStamp: Int64); static;
+    /// <summary>Zahl der gehaltenen Dateien (für Tests).</summary>
+    class function HeldCount: Integer; static;
+  end;
+
+class constructor TSharedCacheReads.Create;
+begin
+  FLock := TObject.Create;
+  FFiles := TObjectDictionary<string, TShared>.Create([doOwnsValues]);
+end;
+
+class destructor TSharedCacheReads.Destroy;
+begin
+  FFiles.Free;
+  FLock.Free;
+end;
+
+class function TSharedCacheReads.KeyOf(const AFileSystem: IIndexFileSystem; const AFileName: string): string;
+begin
+  Result := IntToHex(NativeInt(Pointer(AFileSystem)), 16) + '|' + AnsiUpperCase(AFileName);
+end;
+
+class function TSharedCacheReads.Acquire(const AFileSystem: IIndexFileSystem; const AFileName: string;
+  out AStamp: Int64; const ARead: TFunc<TArray<TIndexCacheEntry>>): TArray<TIndexCacheEntry>;
+var
+  Key: string;
+  Shared: TShared;
+begin
+  if not AFileSystem.FileStamp(AFileName, AStamp) then
+    AStamp := -1;
+  Key := KeyOf(AFileSystem, AFileName);
+  // Unter der Sperre lesen: Ein zweiter Dienst wartet lieber, als dieselbe Datei ein zweites Mal zu laden.
+  TMonitor.Enter(FLock);
+  try
+    if FFiles.TryGetValue(Key, Shared) and (Shared.Stamp = AStamp) then
+    begin
+      Inc(Shared.Users);
+      Exit(Shared.Entries);
+    end;
+    Shared := TShared.Create;
+    Shared.Stamp := AStamp;
+    Shared.Entries := ARead();
+    Shared.Users := 1;
+    FFiles.AddOrSetValue(Key, Shared);
+    Result := Shared.Entries;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+class procedure TSharedCacheReads.Release(const AFileSystem: IIndexFileSystem; const AFileName: string;
+  AStamp: Int64);
+var
+  Key: string;
+  Shared: TShared;
+begin
+  Key := KeyOf(AFileSystem, AFileName);
+  TMonitor.Enter(FLock);
+  try
+    // Anderer Stand: Der Eintrag wurde schon ersetzt; die eigene Kopie hält der Aufrufer selbst.
+    if not FFiles.TryGetValue(Key, Shared) or (Shared.Stamp <> AStamp) then
+      Exit;
+    Dec(Shared.Users);
+    if Shared.Users <= 0 then
+      FFiles.Remove(Key);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+class function TSharedCacheReads.HeldCount: Integer;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FFiles.Count;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+type
   TIndexThread = class(TThread)
   private
     FService: TIndexService;
@@ -185,16 +292,16 @@ begin
   inherited;
 end;
 
-/// <summary>Steht AUnit mit gleichem Stand (Zeitstempel, Prüfsumme) in AEntries?</summary>
-function ContainsUnit(const AEntries: TArray<TIndexCacheEntry>; const AUnit: TUnitIndex): Boolean;
+/// <summary>Steht AUnit mit gleichem Stand (Zeitstempel, Prüfsumme) in AEntries? AByFile ordnet
+/// jedem Dateinamen (groß) seine Stelle in AEntries zu; linear wären es bei Tausenden
+/// Bibliotheks-Units Millionen Vergleiche (Diagnoselog 15.10.2026).</summary>
+function ContainsUnit(const AEntries: TArray<TIndexCacheEntry>; AByFile: TDictionary<string, Integer>;
+  const AUnit: TUnitIndex): Boolean;
 var
-  Candidate: TIndexCacheEntry;
+  Position: Integer;
 begin
-  Result := False;
-  for Candidate in AEntries do
-    if SameText(Candidate.Header.FileName, AUnit.FileName) and (Candidate.Header.Stamp = AUnit.Stamp) and
-      (Candidate.Header.Hash = AUnit.Hash) then
-      Exit(True);
+  Result := AByFile.TryGetValue(AnsiUpperCase(AUnit.FileName), Position) and
+    (AEntries[Position].Header.Stamp = AUnit.Stamp) and (AEntries[Position].Header.Hash = AUnit.Hash);
 end;
 
 function InSharedCache(const ARequest: TIndexRequest; const AFileName: string): Boolean;
@@ -207,12 +314,14 @@ procedure TIndexService.WriteCaches(const ARequest: TIndexRequest; const ACached
   ALibraryCached: TArray<TIndexCacheEntry>; AParsed: Integer);
 var
   Entry: TIndexCacheEntry;
-  ProjectUnits, LibraryUnits: TArray<TUnitIndex>;
+  ProjectUnits, LibraryUnits: TList<TUnitIndex>;
   UnitIndex: TUnitIndex;
   Current: TDictionary<string, Boolean>;
+  CachedByFile: TDictionary<string, Integer>;
   LibraryChanged: Boolean;
   Own: TDictionary<string, Boolean>;
   FileName: string;
+  Position: Integer;
 begin
   if (ARequest.CacheFile = '') or ARequest.ReadOnlyCache then
     Exit;
@@ -223,43 +332,58 @@ begin
     Exit;
   end;
   // Getrennt schreiben: Projekt-Units ins Projekt, Bibliothek in den gemeinsamen Cache.
-  ProjectUnits := nil;
-  LibraryUnits := nil;
-  // Der Index ist mit anderen Projekten geteilt: in den Projekt-Cache nur die eigenen Units.
-  Own := TDictionary<string, Boolean>.Create;
+  // Listen statt Array-Anhängen: das kopierte bei jeder Unit das ganze Array.
+  ProjectUnits := TList<TUnitIndex>.Create;
+  LibraryUnits := TList<TUnitIndex>.Create;
   try
-    for FileName in ARequest.Files + ARequest.SearchFiles do
-      Own.AddOrSetValue(AnsiUpperCase(FileName), True);
-    for UnitIndex in FIndex.Units do
-      if UnitIndex.Library_ and InSharedCache(ARequest, UnitIndex.FileName) then
-        LibraryUnits := LibraryUnits + [UnitIndex]
-      else if UnitIndex.Library_ or Own.ContainsKey(AnsiUpperCase(UnitIndex.FileName)) then
-        // Über uses erreichte Units außerhalb der Installation (gemeinsamer Firmencode) liest
-        // der Builder mit den Defines des Projekts; sie gehören in dessen Cache (#647).
-        ProjectUnits := ProjectUnits + [UnitIndex];
+    // Der Index ist mit anderen Projekten geteilt: in den Projekt-Cache nur die eigenen Units.
+    Own := TDictionary<string, Boolean>.Create;
+    try
+      for FileName in ARequest.Files + ARequest.SearchFiles do
+        Own.AddOrSetValue(AnsiUpperCase(FileName), True);
+      for UnitIndex in FIndex.Units do
+        if UnitIndex.Library_ and InSharedCache(ARequest, UnitIndex.FileName) then
+          LibraryUnits.Add(UnitIndex)
+        else if UnitIndex.Library_ or Own.ContainsKey(AnsiUpperCase(UnitIndex.FileName)) then
+          // Über uses erreichte Units außerhalb der Installation (gemeinsamer Firmencode) liest
+          // der Builder mit den Defines des Projekts; sie gehören in dessen Cache (#647).
+          ProjectUnits.Add(UnitIndex);
+    finally
+      Own.Free;
+    end;
+    if (AParsed > 0) or (Length(ACached) <> ProjectUnits.Count) then
+      FFileSystem.WriteBytes(ARequest.CacheFile, TIndexCache.Serialize(ProjectUnits.ToArray));
+    // Units anderer Projekte im gemeinsamen Cache behalten; neu sind nur die fehlenden.
+    Current := TDictionary<string, Boolean>.Create;
+    CachedByFile := TDictionary<string, Integer>.Create;
+    try
+      for Position := 0 to High(ALibraryCached) do
+        CachedByFile.AddOrSetValue(AnsiUpperCase(ALibraryCached[Position].Header.FileName), Position);
+      for UnitIndex in LibraryUnits do
+        Current.AddOrSetValue(AnsiUpperCase(UnitIndex.FileName), True);
+      LibraryChanged := False;
+      for UnitIndex in LibraryUnits do
+        if not ContainsUnit(ALibraryCached, CachedByFile, UnitIndex) then
+        begin
+          LibraryChanged := True;
+          Break;
+        end;
+      // Ohne Änderung wird nichts geschrieben; dann auch nichts dekodieren.
+      if LibraryChanged then
+        for Entry in ALibraryCached do
+          if not Current.ContainsKey(AnsiUpperCase(Entry.Header.FileName)) and
+            TIndexCache.Expand(Entry, UnitIndex) then
+            LibraryUnits.Add(UnitIndex);
+    finally
+      CachedByFile.Free;
+      Current.Free;
+    end;
+    if LibraryChanged then
+      FFileSystem.WriteBytes(ARequest.LibraryCacheFile, TIndexCache.Serialize(LibraryUnits.ToArray));
   finally
-    Own.Free;
+    LibraryUnits.Free;
+    ProjectUnits.Free;
   end;
-  if (AParsed > 0) or (Length(ACached) <> Length(ProjectUnits)) then
-    FFileSystem.WriteBytes(ARequest.CacheFile, TIndexCache.Serialize(ProjectUnits));
-  // Units anderer Projekte im gemeinsamen Cache behalten; neu sind nur die fehlenden.
-  Current := TDictionary<string, Boolean>.Create;
-  try
-    for UnitIndex in LibraryUnits do
-      Current.AddOrSetValue(AnsiUpperCase(UnitIndex.FileName), True);
-    LibraryChanged := False;
-    for UnitIndex in LibraryUnits do
-      if not ContainsUnit(ALibraryCached, UnitIndex) then
-        LibraryChanged := True;
-    for Entry in ALibraryCached do
-      if not Current.ContainsKey(AnsiUpperCase(Entry.Header.FileName)) and
-        TIndexCache.Expand(Entry, UnitIndex) then
-        LibraryUnits := LibraryUnits + [UnitIndex];
-  finally
-    Current.Free;
-  end;
-  if LibraryChanged then
-    FFileSystem.WriteBytes(ARequest.LibraryCacheFile, TIndexCache.Serialize(LibraryUnits));
 end;
 
 function TIndexService.ReadCache(const AFileName: string): TArray<TIndexCacheEntry>;
@@ -284,9 +408,13 @@ var
   Turn: IIndexTurn;
   WrittenParsed: Integer;
   Request: TIndexRequest;
+  LibraryStamp: Int64;
+  LibraryHeld: Boolean;
 begin
   // Kopie für die anonyme Methode: const-Parameter lassen sich nicht einfangen.
   Request := ARequest;
+  LibraryHeld := False;
+  LibraryStamp := -1;
   try
     Watch := TStopwatch.StartNew;
     Builder := TIndexBuilder.Create(FIndex, FFileSystem, ARequest.Defines, ARequest.ResolveUnit);
@@ -305,7 +433,17 @@ begin
     // Ein beschädigter Cache liefert nichts: Dann liest der Aufbau alles neu (#492).
     Cached := ReadCache(ARequest.CacheFile);
     // Bibliothek aus dem gemeinsamen Cache; Einträge im Projekt-Cache (ältere Stände) gelten weiter.
-    LibraryCached := ReadCache(ARequest.LibraryCacheFile);
+    // Alle Projekte teilen eine gelesene Kopie (Rückmeldung 15.10.2026).
+    LibraryStamp := -1;
+    if ARequest.LibraryCacheFile <> '' then
+    begin
+      LibraryCached := TSharedCacheReads.Acquire(FFileSystem, ARequest.LibraryCacheFile, LibraryStamp,
+        function: TArray<TIndexCacheEntry>
+        begin
+          Result := ReadCache(Request.LibraryCacheFile);
+        end);
+      LibraryHeld := True;
+    end;
     Builder.UseCache(LibraryCached + Cached);
     // Erst mit gefülltem Cache veröffentlichen; bis dahin bedient der alte Builder EnsureUnit.
     ReplaceBuilder(Builder);
@@ -330,7 +468,11 @@ begin
     // Abmelden vor dem Schreiben des Caches: Das nächste Projekt muss darauf nicht warten.
     Turn := nil;
     if not BuildResult.Cancelled then
+    begin
       WriteCaches(ARequest, Cached, LibraryCached, BuildResult.Parsed - WrittenParsed);
+      // Der Index hat alles übernommen; spätere Units (EnsureUnit) liest der Builder aus der Datei.
+      Builder.ReleaseCache;
+    end;
     if Assigned(FOnFinished) then
       FOnFinished(BuildResult, Watch.ElapsedMilliseconds);
   except
@@ -338,6 +480,8 @@ begin
       if Assigned(FOnError) then
         FOnError(E);
   end;
+  if LibraryHeld then
+    TSharedCacheReads.Release(FFileSystem, ARequest.LibraryCacheFile, LibraryStamp);
 end;
 
 procedure TIndexService.WaitForOtherWriter(const ARequest: TIndexRequest);
