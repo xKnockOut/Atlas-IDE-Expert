@@ -37,6 +37,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.IDE.Settings.Options,
   Atlas.IDE.Completion.History,
+  Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Build.Notifier,
   Atlas.IDE.Build.MessageView,
   Atlas.Core.Diagnostics.Hangs,
@@ -1362,6 +1363,7 @@ begin
   TAtlasOptionsRegistration.Unregister;
   TAtlasProjectSettings.Command := nil;
   TAtlasIdeHistory.Release;
+  TAtlasIdeFavorites.Release;
   TAtlasIdeSymbol.Unregister;
   TAtlasIdeSettings.Release;
   if (ManagerIndex >= 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then

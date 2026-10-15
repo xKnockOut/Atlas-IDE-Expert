@@ -35,6 +35,9 @@ type
     procedure WelcomeSettingsRoundTrip;
     [Test]
     procedure UsageButtonsCallBack;
+    /// <summary>Favoriten (#458): Schalter, Liste, „Entfernen“ und „Alle entfernen“.</summary>
+    [Test]
+    procedure FavoritesListAndRemove;
     [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
@@ -60,6 +63,8 @@ uses
   System.SysUtils,
   System.Classes,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Completion.Contract,
+  Atlas.Core.Completion.Favorites,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Completion.SnippetCatalog,
   Atlas.Core.Diagnostics.Guard,
@@ -508,6 +513,67 @@ begin
     Assert.IsFalse(Page.UnblockTipsButton.Enabled, 'erledigt');
   finally
     Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.FavoritesListAndRemove;
+var
+  Host: TForm;
+  Page: TAtlasSettingsPage;
+  Favorites: TAtlasFavorites;
+  Settings, Saved: TAtlasPluginSettings;
+  Item: TAtlasCompletionItem;
+  Names: TArray<string>;
+  Name: string;
+begin
+  Names := ['Open', 'Close', 'ParamByName'];
+  Favorites := TAtlasFavorites.Create;
+  Host := TForm.CreateNew(nil);
+  try
+    for Name in Names do
+    begin
+      Item := Default(TAtlasCompletionItem);
+      Item.Name := Name;
+      Item.DeclaringClass := 'TDataSet';
+      Favorites.Toggle(Item);
+    end;
+    // Die Liste braucht ein Fenster, wie in der IDE.
+    Page := TAtlasSettingsPage.Create(Host);
+    Page.Parent := Host;
+    Page.HandleNeeded;
+    Page.OnRemoveFavorites :=
+      procedure(AKeys: TArray<string>)
+      var
+        Key: string;
+      begin
+        for Key in AKeys do
+          Favorites.Remove(Key);
+      end;
+    Page.OnFavorites :=
+      function: TArray<TAtlasFavorite>
+      begin
+        Result := Favorites.Items;
+      end;
+    Settings := TAtlasPluginSettings.Defaults;
+    Page.LoadFrom(Settings);
+    Assert.IsTrue(Page.FavoritesCheck.Checked);
+    Page.FavoritesCheck.Checked := False;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.Favorites, 'abschaltbar');
+    Assert.AreEqual(3, Page.FavoritesList.Items.Count);
+    Assert.AreEqual('TDataSet.Open', Page.FavoritesList.Items[0]);
+    Page.FavoritesList.Selected[1] := True;
+    Page.FavoritesRemove.Click;
+    Assert.AreEqual(2, Favorites.Count, 'Close gelöst');
+    Assert.AreEqual('TDataSet.ParamByName', Page.FavoritesList.Items[1]);
+    Page.FavoritesRemoveAll.Click;
+    Assert.AreEqual(0, Favorites.Count);
+    Assert.AreEqual(1, Page.FavoritesList.Items.Count, 'nur der Hinweis „keine“');
+    Assert.IsFalse(Page.FavoritesRemoveAll.Enabled);
+  finally
+    Host.Free;
+    Favorites.Free;
   end;
 end;
 

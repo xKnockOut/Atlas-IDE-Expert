@@ -3,6 +3,7 @@
 // Meldet die Seite „Atlas“ unter Tools › Optionen › Drittanbieter an
 // (INTAAddInOptions, #227) und verbindet sie mit den Einstellungen in der
 // Registry. „Verlauf zurücksetzen“ leert die lernende Gewichtung (#418).
+// Die Liste der angehefteten Favoriten (#458) kommt aus TAtlasIdeFavorites; „Entfernen“ wirkt sofort.
 // Darunter die Seite „Snippets“ (#51): Code-Vorlagen ansehen, eigene anlegen,
 // bearbeiten und löschen; gespeichert wird beim Schließen mit OK. Der Punkt
 // in der Überschrift „Atlas.Snippets“ hängt die Seite unter „Atlas“.
@@ -56,6 +57,8 @@ uses
   Atlas.UI.Strings,
   Atlas.IDE.Commands.Keys,
   Atlas.IDE.Commands.Usage,
+  Atlas.Core.Completion.Favorites,
+  Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Welcome.Discover,
   Atlas.IDE.Editor.Structure,
   Atlas.IDE.CodeInsight.Manager,
@@ -174,6 +177,21 @@ begin
       Result := TAtlasServerTool.FileVersion(APath);
     end;
   FPage.OnResetHistory := FResetHistory;
+  // Angeheftete Favoriten (#458): Liste und Entfernen.
+  FPage.OnRemoveFavorites :=
+    procedure(AKeys: TArray<string>)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          TAtlasIdeFavorites.Remove(AKeys);
+        end);
+    end;
+  FPage.OnFavorites :=
+    function: TArray<TAtlasFavorite>
+    begin
+      Result := TAtlasIdeFavorites.Items;
+    end;
   // Karte „Atlas entdecken“ (#757): Zählung zurücksetzen, gesperrte Tipps wieder zeigen.
   FPage.OnResetUsage :=
     procedure

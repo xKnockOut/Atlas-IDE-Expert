@@ -231,7 +231,10 @@ type
     ReportFolder, ReportFolderChange, ReportCreateZip, ReportOpenIssue, ReportClose, ReportEmpty, ReportSummary,
     ReportZipDone, ReportZipFailed, ReportIssueDone, ReportViewerTitle, ReportSizeBytes, ReportSizeKb,
     ReportSizeMb, SettingsWelcomeHelp, SettingsWelcomeHelpReportUrl, SettingsWelcomeHelpReportFolder,
-    SettingsWelcomeHelpDesktop);
+    SettingsWelcomeHelpDesktop,
+    FavoritePinned, FavoriteUnpinned, FavoritesFull, FavoriteNotAllowed, SettingsFavorites,
+    SettingsFavoritesTitle, SettingsFavoritesRemove, SettingsFavoritesRemoveAll, SettingsFavoritesNone,
+    AccessFavorite);
 
   TAtlasStrings = class
   private class var
@@ -742,7 +745,11 @@ const
      'Vorlage in der Zwischenablage; die Issue-Seite ist im Browser geöffnet.', 'Inhalt von %s', '%d Bytes',
      '%s KB', '%s MB', 'Bereich „Hilfe und Rückmeldung“ (Atlas-Doku, Tastenkürzel, Problem melden)',
      'Ziel für „Issue-Seite öffnen“ (http:// oder https://):', 'Ordner für das Diagnosepaket (leer: Desktop):',
-     'Desktop'),
+     'Desktop',
+     '%s angeheftet · Strg+D löst', '%s gelöst', 'Schon %d Favoriten bei %s – erst einen lösen',
+     'Dieser Eintrag lässt sich nicht anheften', 'Favoriten anheften (Strg+D oder Stern in der Liste)',
+     'Angeheftete Favoriten (höchstens 5 je Typ)', 'Entfernen', 'Alle entfernen', 'Keine Favoriten angeheftet.',
+     'angeheftet'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1221,7 +1228,10 @@ const
      'Template copied to the clipboard; the issue page is open in the browser.', 'Content of %s', '%d bytes',
      '%s KB', '%s MB', '“Help and feedback” section (Atlas docs, shortcuts, report a problem)',
      'Target of “Open issue page” (http:// or https://):', 'Folder for the diagnostic package (empty: desktop):',
-     'Desktop'));
+     'Desktop',
+     '%s pinned · Ctrl+D unpins', '%s unpinned', 'Already %d favorites for %s – unpin one first',
+     'This entry cannot be pinned', 'Pin favorites (Ctrl+D or star in the list)',
+     'Pinned favorites (at most 5 per type)', 'Remove', 'Remove all', 'No pinned favorites.', 'pinned'));
 
 { TAtlasStrings }
 

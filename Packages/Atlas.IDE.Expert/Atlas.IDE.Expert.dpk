@@ -130,6 +130,8 @@ contains
   Atlas.Core.Completion.Sets in 'Source\Core\Completion\Atlas.Core.Completion.Sets.pas',
   Atlas.Core.Completion.Usage in 'Source\Core\Completion\Atlas.Core.Completion.Usage.pas',
   Atlas.IDE.Completion.History in 'Source\IDE\Completion\Atlas.IDE.Completion.History.pas',
+  Atlas.Core.Completion.Favorites in 'Source\Core\Completion\Atlas.Core.Completion.Favorites.pas',
+  Atlas.IDE.Completion.Favorites in 'Source\IDE\Completion\Atlas.IDE.Completion.Favorites.pas',
   Atlas.UI.Strings in 'Source\UI\Atlas.UI.Strings.pas',
   Atlas.Core.Completion.Providers.XmlDoc in 'Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.XmlDoc.pas',
   Atlas.Core.Completion.Snippets in 'Source\Core\Completion\Atlas.Core.Completion.Snippets.pas',

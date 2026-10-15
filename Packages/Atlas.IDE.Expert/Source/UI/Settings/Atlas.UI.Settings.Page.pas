@@ -13,6 +13,9 @@
 // OnIndexClear aus. Im Seitenkopf steht das Atlas-Symbol (#751) passend zu Thema und Skalierung.
 // Jeder Reiter bleibt niedriger als die Seite: Sonst scrollt die IDE ihren Bereich beim Reiterwechsel
 // zum Fokus, und die Seite „springt“.
+// Reiter Vervollständigung: angeheftete Favoriten (#458) an/aus, Liste („TDataSet.Open“) mit „Entfernen“
+// und „Alle entfernen“. Die Seite kennt die Ablage nicht; OnFavorites liefert die Liste, OnRemoveFavorites
+// löst die Schlüssel sofort (nicht erst mit OK).
 
 interface
 
@@ -31,6 +34,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Completion.Favorites,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.SafeMode,
@@ -195,6 +199,14 @@ type
     FWelcomeHelpFolderBrowse: TButton;
     FVersion: TLabel;
     FResetHistory: TButton;
+    // Favoriten (#458): Schalter, Liste und Schlüssel je Zeile.
+    FFavorites: TCheckBox;
+    FFavoritesList: TListBox;
+    FFavoritesRemove: TButton;
+    FFavoritesRemoveAll: TButton;
+    FFavoriteKeys: TArray<string>;
+    FOnFavorites: TFunc<TArray<TAtlasFavorite>>;
+    FOnRemoveFavorites: TProc<TArray<string>>;
     FResetWidths: TButton;
     FHangTest: TButton;
     FWidths: TAtlasPluginSettings;
@@ -215,6 +227,10 @@ type
     /// Seite „Tastenkonflikte“ (#494).</summary>
     function AddKey(const ACaption: string): TEdit;
     procedure ResetHistoryClick(Sender: TObject);
+    procedure AddFavoritesSection;
+    procedure FavoritesRemoveClick(Sender: TObject);
+    procedure FavoritesRemoveAllClick(Sender: TObject);
+    procedure SetOnFavorites(const AValue: TFunc<TArray<TAtlasFavorite>>);
     procedure ResetUsageClick(Sender: TObject);
     procedure UnblockTipsClick(Sender: TObject);
     procedure HelpFolderBrowseClick(Sender: TObject);
@@ -255,6 +271,8 @@ type
     procedure RefreshFuse;
     /// <summary>Kennzahlen des Index neu holen und anzeigen (#492).</summary>
     procedure RefreshIndex;
+    /// <summary>Liste der angehefteten Favoriten neu lesen (#458).</summary>
+    procedure RefreshFavorites;
     /// <summary>Reiter der Seite, einer je Bereich (#227).</summary>
     property Pages: TPageControl read FPages;
     /// <summary>Zum Testen: Liste und Schaltflächen der Sicherung.</summary>
@@ -329,6 +347,15 @@ type
     property ConfirmClear: TFunc<Boolean> read FConfirmClear write FConfirmClear;
     /// <summary>„Verlauf zurücksetzen“ der lernenden Gewichtung (#418).</summary>
     property OnResetHistory: TProc read FOnResetHistory write FOnResetHistory;
+    /// <summary>Angeheftete Favoriten (#458) für die Liste; nil = keine Liste.</summary>
+    property OnFavorites: TFunc<TArray<TAtlasFavorite>> read FOnFavorites write SetOnFavorites;
+    /// <summary>Favoriten mit diesen Schlüsseln lösen (#458, „Entfernen“, „Alle entfernen“).</summary>
+    property OnRemoveFavorites: TProc<TArray<string>> read FOnRemoveFavorites write FOnRemoveFavorites;
+    /// <summary>Zum Testen: Favoriten (#458).</summary>
+    property FavoritesCheck: TCheckBox read FFavorites;
+    property FavoritesList: TListBox read FFavoritesList;
+    property FavoritesRemove: TButton read FFavoritesRemove;
+    property FavoritesRemoveAll: TButton read FFavoritesRemoveAll;
     /// <summary>„Zählung zurücksetzen“ der Nutzung je Befehl (#757).</summary>
     property OnResetUsage: TProc read FOnResetUsage write FOnResetUsage;
     /// <summary>„Gesperrte Tipps wieder zeigen“ der Karte „Atlas entdecken“ (#757).</summary>
@@ -544,6 +571,7 @@ begin
   FPanelCollapsed := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPanelCollapsed));
   FFilterChips := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsChips));
   FLearning := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsLearning));
+  FFavorites := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFavorites));
   FGroupInherited := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGroupInherited));
   FPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPreview));
   Panel := AddPanel(32);
@@ -561,6 +589,7 @@ begin
   FResetWidths.Top := 3;
   FResetWidths.Width := 150;
   FResetWidths.OnClick := ResetWidthsClick;
+  AddFavoritesSection;
 
   // Was beim Übernehmen eingefügt wird.
   AddSheet(TAtlasTextId.SettingsTabInsert);
@@ -793,6 +822,97 @@ begin
     FPages.ActivePageIndex := 0;
   // Die Liste der Sicherung braucht ein Fenster; vorher bleibt sie leer.
   RefreshFuse;
+  RefreshFavorites;
+end;
+
+procedure TAtlasSettingsPage.AddFavoritesSection;
+var
+  Panel: TWinControl;
+begin
+  AddTitle(TAtlasTextId.SettingsFavoritesTitle);
+  Panel := AddPanel(80);
+  FFavoritesList := TListBox.Create(Self);
+  FFavoritesList.Parent := Panel;
+  FFavoritesList.Align := alClient;
+  FFavoritesList.MultiSelect := True;
+  Panel := AddPanel(32);
+  FFavoritesRemove := TButton.Create(Self);
+  FFavoritesRemove.Parent := Panel;
+  FFavoritesRemove.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFavoritesRemove);
+  FFavoritesRemove.Left := 0;
+  FFavoritesRemove.Top := 3;
+  FFavoritesRemove.Width := 150;
+  FFavoritesRemove.OnClick := FavoritesRemoveClick;
+  FFavoritesRemoveAll := TButton.Create(Self);
+  FFavoritesRemoveAll.Parent := Panel;
+  FFavoritesRemoveAll.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFavoritesRemoveAll);
+  FFavoritesRemoveAll.Left := 160;
+  FFavoritesRemoveAll.Top := 3;
+  FFavoritesRemoveAll.Width := 150;
+  FFavoritesRemoveAll.OnClick := FavoritesRemoveAllClick;
+end;
+
+procedure TAtlasSettingsPage.SetOnFavorites(const AValue: TFunc<TArray<TAtlasFavorite>>);
+begin
+  FOnFavorites := AValue;
+  RefreshFavorites;
+end;
+
+procedure TAtlasSettingsPage.RefreshFavorites;
+var
+  Favorites: TArray<TAtlasFavorite>;
+  Favorite: TAtlasFavorite;
+  Any: Boolean;
+begin
+  // Wie die Liste der Sicherung: ohne Fenster folgt das in CreateWnd.
+  if not HandleAllocated then
+    Exit;
+  Favorites := nil;
+  if Assigned(FOnFavorites) then
+    Favorites := FOnFavorites();
+  FFavoriteKeys := nil;
+  Any := Length(Favorites) > 0;
+  FFavoritesList.Items.BeginUpdate;
+  try
+    FFavoritesList.Items.Clear;
+    for Favorite in Favorites do
+    begin
+      FFavoritesList.Items.Add(Favorite.DisplayName);
+      FFavoriteKeys := FFavoriteKeys + [Favorite.Key];
+    end;
+    if not Any then
+      FFavoritesList.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsFavoritesNone));
+  finally
+    FFavoritesList.Items.EndUpdate;
+  end;
+  FFavoritesList.Enabled := Any;
+  FFavoritesRemove.Enabled := Any and Assigned(FOnRemoveFavorites);
+  FFavoritesRemoveAll.Enabled := Any and Assigned(FOnRemoveFavorites);
+end;
+
+procedure TAtlasSettingsPage.FavoritesRemoveClick(Sender: TObject);
+var
+  Keys: TArray<string>;
+  Index: Integer;
+begin
+  if not Assigned(FOnRemoveFavorites) then
+    Exit;
+  Keys := nil;
+  for Index := 0 to Min(FFavoritesList.Items.Count, Length(FFavoriteKeys)) - 1 do
+    if FFavoritesList.Selected[Index] then
+      Keys := Keys + [FFavoriteKeys[Index]];
+  if Length(Keys) = 0 then
+    Exit;
+  FOnRemoveFavorites(Keys);
+  RefreshFavorites;
+end;
+
+procedure TAtlasSettingsPage.FavoritesRemoveAllClick(Sender: TObject);
+begin
+  if not Assigned(FOnRemoveFavorites) or (Length(FFavoriteKeys) = 0) then
+    Exit;
+  FOnRemoveFavorites(Copy(FFavoriteKeys));
+  RefreshFavorites;
 end;
 
 procedure TAtlasSettingsPage.AddTitle(AId: TAtlasTextId);
@@ -1214,6 +1334,7 @@ begin
   FAutoWidth.OnClick := AutoWidthClick;
   FFilterChips.Checked := ASettings.FilterChips;
   FLearning.Checked := ASettings.Learning;
+  FFavorites.Checked := ASettings.Favorites;
   FGroupInherited.Checked := ASettings.GroupInherited;
   FPreview.Checked := ASettings.Preview;
   FSnippets.Checked := ASettings.Snippets;
@@ -1334,6 +1455,7 @@ begin
   ASettings.OpenDelayMs := StrToIntDef(FOpenDelay.Text, ASettings.OpenDelayMs);
   ASettings.FilterChips := FFilterChips.Checked;
   ASettings.Learning := FLearning.Checked;
+  ASettings.Favorites := FFavorites.Checked;
   ASettings.GroupInherited := FGroupInherited.Checked;
   ASettings.Preview := FPreview.Checked;
   ASettings.Snippets := FSnippets.Checked;

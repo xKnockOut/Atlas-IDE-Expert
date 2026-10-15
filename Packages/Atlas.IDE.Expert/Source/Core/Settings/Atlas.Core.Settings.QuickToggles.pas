@@ -282,6 +282,9 @@ begin
     '"Learning":{"type":"boolean","x-feature":"Completion",' +
       '"default":true,"x-page":"Vervollständigung","x-quickToggle":true,' +
       '"x-caption":"Lernende Gewichtung","x-captionEn":"Learned ranking","x-issue":"#418"},' +
+    '"Favorites":{"type":"boolean","x-feature":"Completion",' +
+      '"default":true,"x-page":"Vervollständigung","x-quickToggle":true,' +
+      '"x-caption":"Favoriten anheften","x-captionEn":"Pin favorites","x-issue":"#458"},' +
     '"CheckOnSave":{"type":"boolean","x-feature":"CheckOnSave",' +
       '"default":false,"x-page":"Compiler","x-quickToggle":true,' +
       '"x-caption":"Syntaxprüfung nach dem Speichern","x-captionEn":"Syntax check after saving","x-issue":"#548"},' +
