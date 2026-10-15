@@ -88,7 +88,14 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 - Konfidenz als eigenes Feld statt Zusatz „(Konfidenz: mittel)“ im Meldungstext: LSP `data.confidence`, eigene Spalte in der Textausgabe des Linters und im MCP-Werkzeug, eigene Zeile im Tooltip des Plugins und im KI-Prompt; Schema und Doku beschreiben den Deckel bei `severity` (#144).
 - Linter: Exit-Code 1 nur noch, wenn ein Treffer `--fail-on` erreicht (Standard: ein Fehler), sonst 0; bisher 1 bei Warnungen und 2 bei Fehlern. 3 bleibt für Aufruf- und Lesefehler (#95).
 
+- Watchdog des Servers: Nebenläufige Anfragen (Formatierung, Schnellbefehle) beantwortet er beim Ablauf des Zeitlimits sofort mit `RequestCancelled` (-32800); eine spätere Antwort des Handlers wird verworfen. Die Lang-Abfrage von `workspace/diagnostic` richtet sich nach `requestTimeoutMs` und endet vor dem Zeitlimit (Code-Review A-06, P-14).
+- MCP-Server: Änderungen aus der IDE werden alle 50 ms statt seltener abgefragt (P-16).
+
 ### Behoben
+- Server: Schnellbefehle (`/define`, `/config`) laden das Projekt nur noch im Thread der Nachrichtenschleife neu; der Namensraum-Zustand der Features ist gesperrt (Code-Review A-03).
+- Server: Ein Lese- oder Schreibfehler des Index-Caches beendet den Indexaufbau sauber und meldet ihn als fehlgeschlagen, statt den Fortschritt hängen zu lassen (A-04).
+- Server: Ein laufender Compiler wird beim Beenden abgebrochen; der Compiler-Thread endet ohne Absturz (A-05, S-06).
+- Server: Ein Schreibfehler der Protokollaufzeichnung (Trace) wird einmal gemeldet und beendet die Aufzeichnung (S-07).
 - Code Insight: Der Server startet und stoppt nur noch im Hauptthread der IDE. Bisher konnten Vervollständigung und Parameter-Hint einen nicht laufenden Server aus einem Hintergrund-Thread starten. Dabei liefen Aufrufe der Open Tools API und der VCL im falschen Thread, und schnelles Weitertippen konnte die Sitzung freigeben, während sie noch startete. Jeder solche Start zählte außerdem als Zeitüberschreitung; drei davon schalteten die Server-Quelle ab. Gestartet wird jetzt über Strg+Leer, den Parameter-Hint (Strg+Umschalt+Leer, „(“), die eigenen Tasten, den Hover und den Probleme-Takt; die automatische Liste nach „.“ bringt ohne laufenden Server nur die übrigen Quellen (Code-Review A-01).
 - Entladen des Packages und Schließen der IDE: Aufrufe, die Atlas in den Hauptthread einreiht, werden beim Entladen verworfen, statt danach in nicht mehr geladenem Code zu laufen. Jeder solche Aufruf läuft unter der Sicherung seiner Funktion (A-02).
 - Neustart des Servers über das Statusfeld oder Abschalten wartet auf laufende Hover-Anfragen (A-07).
