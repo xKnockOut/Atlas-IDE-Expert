@@ -66,6 +66,7 @@ type
     procedure ReadSlashCommands(ANode: TJsonNode);
     procedure ReadSortUses(ANode: TJsonNode);
     procedure ReadInlayHints(ANode: TJsonNode);
+    procedure ReadCodeLens(ANode: TJsonNode);
     procedure ReadHints(ANode: TJsonNode);
     procedure ReadStringLiteral(ANode: TJsonNode);
     procedure ReadMemberOrder(ANode: TJsonNode);
@@ -184,6 +185,7 @@ var
   Rule: TRuleSetting;
   Rules: TList<TRuleSetting>;
   Severity: TRuleSeverity;
+  Limit: Integer;
 begin
   ARules := nil;
   if ANode.Kind <> TJsonKind.Object_ then
@@ -218,7 +220,11 @@ begin
               ReportNode(Value[Inner], 'Unbekannter Schweregrad; erlaubt: off, hint, info, warning, error')
             else
               Rule.Severity := Severity;
-          end;
+          end
+          // Grenzwert der Metrik-Regeln (#66); die Regel liest ihn aus den Optionen.
+          else if (Value.Keys[Inner] = 'max') and not ((Value[Inner].Kind = TJsonKind.Number) and
+            TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 1)) then
+            ReportNode(Value[Inner], '"max" muss eine ganze Zahl ab 1 sein');
         Rule.Options := Copy(FText, Value.Start + 1, Value.Stop - Value.Start);
       end
       else
@@ -527,6 +533,27 @@ begin
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "inlayHints.%s"', [Key]), False);
+  end;
+end;
+
+procedure TValidator.ReadCodeLens(ANode: TJsonNode);
+var
+  Index: Integer;
+  Key: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"codeLens" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if Key = 'metrics' then
+      ExpectBoolean(ANode[Index], Key, FSettings.CodeLens.Metrics)
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "codeLens.%s"', [Key]), False);
   end;
 end;
 
@@ -1263,6 +1290,8 @@ begin
       end
       else if Key = 'inlayHints' then
         ReadInlayHints(Value)
+      else if Key = 'codeLens' then
+        ReadCodeLens(Value)
       else if Key = 'hints' then
         ReadHints(Value)
       else if Key = 'stringLiteral' then
@@ -1595,6 +1624,8 @@ begin
     end
     else if Key = 'inlayHints' then
       Result.InlayHints := FileSettings.InlayHints
+    else if Key = 'codeLens' then
+      Result.CodeLens := FileSettings.CodeLens
     else if Key = 'hints' then
       Result.Hints := FileSettings.Hints
     else if Key = 'stringLiteral' then

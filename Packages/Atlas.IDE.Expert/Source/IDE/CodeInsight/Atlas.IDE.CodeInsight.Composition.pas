@@ -28,6 +28,7 @@ uses
   System.Types,
   System.Win.Registry,
   System.JSON,
+  System.IOUtils,
   ToolsAPI,
   Atlas.UI.Strings,
   Atlas.Core.Settings.Plugin,
@@ -91,6 +92,7 @@ uses
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.WhatsNew,
   Atlas.IDE.Welcome.Projects,
+  Atlas.Core.Editor.Metrics,
   Atlas.IDE.Welcome.Unsaved,
   Atlas.IDE.Welcome.Continue,
   Atlas.IDE.Welcome.State,
@@ -268,6 +270,111 @@ begin
     begin
       GuardWarning(AText);
     end);
+end;
+
+const
+  MetricsCommand = 'atlas.server.metrics';
+
+function MetricsArguments(const AProject, AMode: string): string;
+var
+  Arguments: TJSONArray;
+begin
+  Arguments := TJSONArray.Create;
+  try
+    Arguments.Add(TLspSession.PathToUri(AProject));
+    Arguments.Add(AMode);
+    Result := Arguments.ToJSON;
+  finally
+    Arguments.Free;
+  end;
+end;
+
+/// <summary>Code-Metriken nach einem Build für die Projekt-Zusammenfassung (#66, Projektverlauf #758): im
+/// Hintergrund vom laufenden Server (startet ihn nicht), Zeitpunkt der des Builds.</summary>
+procedure RecordProjectMetrics(const AProject: string);
+var
+  Project: string;
+  Stamp: TDateTime;
+begin
+  if (Manager = nil) or (Welcome = nil) or (Welcome.Projects = nil) or (AProject = '') or
+    not TAtlasIdeSettings.Current.Enabled then
+    Exit;
+  Project := AProject;
+  Stamp := TAtlasIdeProjects.StampUtc;
+  Manager.RunCommandAsync(MetricsCommand, MetricsArguments(Project, 'summary'), 60000,
+    procedure(AAnswer: string)
+    var
+      Answer: string;
+    begin
+      Answer := AAnswer;
+      if Answer = '' then
+        Exit;
+      TThread.Queue(nil,
+        procedure
+        begin
+          if (Welcome <> nil) and (Welcome.Projects <> nil) then
+            TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+              procedure
+              begin
+                Welcome.Projects.RecordMetrics(Project, Answer, Stamp);
+              end);
+        end);
+    end);
+end;
+
+/// <summary>Metrikbericht des aktiven Projekts (#66): Markdown vom Server (startet ihn bei Bedarf) im
+/// Hintergrund, gespeichert unter %LOCALAPPDATA%\Atlas\Berichte und im Editor geöffnet.</summary>
+procedure MetricsReport;
+var
+  Project: IOTAProject;
+  FileName: string;
+begin
+  if Manager = nil then
+    Exit;
+  Project := GetActiveProject;
+  if (Project = nil) or (Project.FileName = '') then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.MetricsReportNoProject));
+    Exit;
+  end;
+  FileName := TAtlasMetricsReportFile.FileName(
+    TAtlasMetricsReportFile.Folder(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas')), Project.FileName);
+  if Manager.ActiveSession = nil then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.MetricsReportFailed));
+    Exit;
+  end;
+  if Manager.RunCommandAsync(MetricsCommand, MetricsArguments(Project.FileName, 'markdown'), 120000,
+    procedure(AAnswer: string)
+    var
+      Answer: string;
+    begin
+      Answer := AAnswer;
+      TThread.Queue(nil,
+        procedure
+        begin
+          TAtlasGuard.Run(TAtlasFeature.Palette,
+            procedure
+            var
+              Text: string;
+              Actions: IOTAActionServices;
+            begin
+              if not TAtlasMetricsReportFile.MarkdownFrom(Answer, Text) then
+              begin
+                GuardWarning(TAtlasStrings.Text(TAtlasTextId.MetricsReportFailed));
+                Exit;
+              end;
+              ForceDirectories(ExtractFileDir(FileName));
+              TFile.WriteAllText(FileName, Text, TEncoding.UTF8);
+              if Supports(BorlandIDEServices, IOTAActionServices, Actions) then
+                Actions.OpenFile(FileName);
+            end);
+        end);
+    end) then
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.MetricsReportRunning))
+  else
+    // Ein Befehl im Hintergrund läuft schon (etwa die Metriken nach einem Build): später noch einmal.
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.MetricsReportBusy));
 end;
 
 procedure RenameSymbol;
@@ -490,6 +597,12 @@ begin
     procedure
     begin
       TAtlasIdeHistory.Reset;
+    end);
+  // Metrikbericht des Projekts (#66).
+  Palette.RegisterCommand('Atlas.MetricsReport', TAtlasStrings.Text(TAtlasTextId.MetricsReportCommand), '',
+    procedure
+    begin
+      MetricsReport;
     end);
   Palette.RegisterCommand('Atlas.CheckNow', TAtlasStrings.Text(TAtlasTextId.PaletteCheckNow), '',
     procedure
@@ -760,6 +873,13 @@ begin
           procedure
           begin
             Welcome.Projects.Recorded(Messages, Project, Succeeded, Readable);
+          end);
+      // Code-Metriken nach einem Build, nicht nach einer Hintergrundprüfung (#66, #758).
+      if AReadable and not AProject.Background then
+        TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+          procedure
+          begin
+            RecordProjectMetrics(Project.FileName);
           end);
       if Manager = nil then
         Exit;

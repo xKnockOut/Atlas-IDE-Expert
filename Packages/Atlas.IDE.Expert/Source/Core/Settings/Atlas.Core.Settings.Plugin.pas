@@ -193,6 +193,9 @@ type
     /// <summary>Code Lens „Testunit“ bzw. „Unit“ hinter der Zeile unit … (#189, codeLens.testUnit);
     /// der Befehl bleibt auch ohne sie verfügbar.</summary>
     CodeLensTestUnit: Boolean;
+    /// <summary>Code Lens mit den Kennzahlen jeder Methode (#66, codeLens.metrics; liegt in settings.json):
+    /// Länge, Tiefe, zyklomatische und kognitive Komplexität, Parameter.</summary>
+    CodeLensMetrics: Boolean;
     /// <summary>Die Editor-Kürzel auch belegen, wenn die IDE oder eine andere Erweiterung sie nutzt.</summary>
     EditorKeysPriority: Boolean;
     /// <summary>Schnellbefehle mit „/“ nach Enter und „///“-Gerüste beim Server auslösen (#399).</summary>
@@ -523,6 +526,7 @@ begin
   Result.MethodToggleDownKey := $6028; // Strg+Umschalt+↓
   Result.TestUnitKey := 0;
   Result.CodeLensTestUnit := True;
+  Result.CodeLensMetrics := True;
   Result.EditorKeysPriority := False;
   Result.SlashCommands := True;
   Result.Snippets := True;
@@ -777,6 +781,7 @@ begin
   MethodToggleDownKey := AStore.ReadInteger('MethodToggleDownKey', Default.MethodToggleDownKey);
   TestUnitKey := AStore.ReadInteger('TestUnitKey', Default.TestUnitKey);
   CodeLensTestUnit := AStore.ReadInteger('CodeLensTestUnit', BoolValue(Default.CodeLensTestUnit)) <> 0;
+  CodeLensMetrics := AStore.ReadInteger('CodeLensMetrics', BoolValue(Default.CodeLensMetrics)) <> 0;
   EditorKeysPriority := AStore.ReadInteger('EditorKeysPriority', BoolValue(Default.EditorKeysPriority)) <> 0;
   SlashCommands := AStore.ReadInteger('SlashCommands', BoolValue(Default.SlashCommands)) <> 0;
   Snippets := AStore.ReadInteger('Snippets', BoolValue(Default.Snippets)) <> 0;
@@ -942,6 +947,7 @@ begin
   AStore.WriteInteger('MethodToggleDownKey', MethodToggleDownKey);
   AStore.WriteInteger('TestUnitKey', TestUnitKey);
   AStore.WriteInteger('CodeLensTestUnit', BoolValue(CodeLensTestUnit));
+  AStore.WriteInteger('CodeLensMetrics', BoolValue(CodeLensMetrics));
   AStore.WriteInteger('EditorKeysPriority', BoolValue(EditorKeysPriority));
   AStore.WriteInteger('SlashCommands', BoolValue(SlashCommands));
   AStore.WriteInteger('Snippets', BoolValue(Snippets));

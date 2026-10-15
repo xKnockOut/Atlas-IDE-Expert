@@ -35,6 +35,8 @@
 // Atlas den Server selbst beendet hat (StopSession) oder er abgestürzt ist.
 // QueryStatusAsync fragt atlas.server.status im Hintergrund; StopSession
 // wartet auf eine laufende Abfrage, bevor es die Sitzung freigibt.
+// RunCommandAsync (#66) schickt einen Befehl mit Argumenten im Hintergrund,
+// etwa die Metriken des Projekts nach einem Build; ebenso abgesichert.
 
 interface
 
@@ -54,6 +56,7 @@ uses
   Atlas.IDE.Hover.Editor,
   Atlas.IDE.InlayHints.Editor,
   Atlas.IDE.Editor.TestUnitLens,
+  Atlas.IDE.Editor.MetricsLens,
   Atlas.IDE.Problems.Controller;
 
 type
@@ -84,6 +87,8 @@ type
     /// <summary>Inlay-Hints (#401).</summary>
     FInlayHints: TAtlasEditorInlayHints;
     FTestUnitLens: TAtlasEditorTestUnitLens;
+    /// <summary>Code Lens mit Code-Metriken (#66).</summary>
+    FMetricsLens: TAtlasEditorMetricsLens;
     FPhase: TAtlasServerPhase;
     FPhaseError: string;
     /// <summary>Beginn der Phase (Ortszeit) und „von Atlas beendet“ (#754).</summary>
@@ -94,6 +99,9 @@ type
     FOnServerChanged: TProc;
     FQueryRunning: Boolean;
     FQueryIdle: TEvent;
+    /// <summary>Befehl im Hintergrund (RunCommandAsync, #66).</summary>
+    FCommandRunning: Boolean;
+    FCommandIdle: TEvent;
     procedure SetPhase(APhase: TAtlasServerPhase; const AError: string); overload;
     procedure SetPhase(APhase: TAtlasServerPhase; const AError: string; AEnded: Boolean); overload;
     function EnsureSession: Boolean;
@@ -172,6 +180,11 @@ type
     /// <summary>atlas.server.status im Hintergrund, nur bei laufender Sitzung und ohne laufende
     /// Abfrage; ADone bekommt das JSON ('' bei Fehler) im Hintergrund-Thread. False = nicht gestartet.</summary>
     function QueryStatusAsync(const ADone: TProc<string>): Boolean;
+    /// <summary>Befehl mit Argumenten (JSON-Array) im Hintergrund an den laufenden Server (#66), nur ohne
+    /// laufenden Hintergrundbefehl; startet keinen Server. ADone bekommt das Ergebnis als JSON ('' bei Fehler
+    /// oder Zeitlimit) im Hintergrund-Thread. False = nicht gestartet.</summary>
+    function RunCommandAsync(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal;
+      const ADone: TProc<string>): Boolean;
     /// <summary>Phase, Version oder Fortschritt haben sich geändert; aus jedem Thread.</summary>
     property OnServerChanged: TProc read FOnServerChanged write FOnServerChanged;
     /// <summary>Bietet IOTACodeInsightManager90 (Help Insight) nur an, solange der Atlas-Tooltip an ist.</summary>
@@ -264,6 +277,7 @@ begin
   FDiagnose := DiagnoseEnabled;
   FPhase := TAtlasServerPhase.NotStarted;
   FQueryIdle := TEvent.Create(nil, True, True, '');
+  FCommandIdle := TEvent.Create(nil, True, True, '');
   Diagnose('Plugin geladen: ' + GetModuleName(HInstance));
   FFileChanges := TAtlasWatchedChanges.Create;
   FFolderWatcher := TAtlasFolderWatcher.Create(FFileChanges);
@@ -322,6 +336,15 @@ begin
       else
         Result := nil;
     end);
+  // Code Lens mit Code-Metriken (#66); startet ebenfalls keinen Server.
+  FMetricsLens := TAtlasEditorMetricsLens.Create(
+    function: TLspSession
+    begin
+      if (FServer <> nil) and FServer.Running and (FSession <> nil) and FSession.Initialized then
+        Result := FSession
+      else
+        Result := nil;
+    end);
 end;
 
 destructor TAtlasCodeInsightManager.Destroy;
@@ -334,6 +357,7 @@ begin
   // Vor der Sitzung: wartet auf laufende Anfragen und meldet Tasten und Beobachter ab.
   FreeAndNil(FInlayHints);
   FreeAndNil(FTestUnitLens);
+  FreeAndNil(FMetricsLens);
   FreeAndNil(FHover);
   FreeAndNil(FSignature);
   FreeAndNil(FCompletion);
@@ -342,6 +366,7 @@ begin
   // Nach StopSession: Die Threads sind dort schon angehalten.
   FreeAndNil(FProblems);
   FQueryIdle.Free;
+  FCommandIdle.Free;
   inherited;
 end;
 
@@ -475,8 +500,9 @@ begin
     FServer.Client.Close;
   if FProblems <> nil then
     FProblems.WaitShutdown;
-  // Eine Statusabfrage im Hintergrund kehrt nach Close sofort zurück (#591).
+  // Eine Statusabfrage im Hintergrund kehrt nach Close sofort zurück (#591), ebenso ein Befehl (#66).
   FQueryIdle.WaitFor(5000);
+  FCommandIdle.WaitFor(5000);
   FreeAndNil(FSession);
   FreeAndNil(FServer);
 end;
@@ -569,6 +595,64 @@ begin
       finally
         // Danach nichts mehr am Manager: StopSession wartet genau auf dieses Signal.
         FQueryRunning := False;
+        Idle.SetEvent;
+      end;
+    end).Start;
+  Result := True;
+end;
+
+function TAtlasCodeInsightManager.RunCommandAsync(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal;
+  const ADone: TProc<string>): Boolean;
+var
+  Session: TLspSession;
+  Idle: TEvent;
+  Command, Arguments: string;
+  Timeout: Cardinal;
+begin
+  Result := False;
+  if FCommandRunning or (FServer = nil) or not FServer.Running or (FSession = nil) or
+    not FSession.Initialized then
+    Exit;
+  FCommandRunning := True;
+  FCommandIdle.ResetEvent;
+  Session := FSession;
+  Idle := FCommandIdle;
+  Command := ACommand;
+  Arguments := AArgumentsJson;
+  Timeout := ATimeoutMs;
+  TThread.CreateAnonymousThread(
+    procedure
+    var
+      Answer: TJSONValue;
+      Json: string;
+    begin
+      try
+        Json := '';
+        Answer := nil;
+        try
+          try
+            Answer := Session.RunCommand(Command, Arguments, Timeout);
+          except
+            // Fehler, Zeitlimit oder geschlossene Verbindung: '' an ADone.
+            on Exception do
+              Answer := nil;
+          end;
+          try
+            if Answer <> nil then
+              Json := Answer.ToJSON;
+          finally
+            Answer.Free;
+          end;
+          if Assigned(ADone) then
+            ADone(Json);
+        except
+          // Hintergrund-Thread: nie eine Ausnahme nach außen.
+          on Exception do
+            ;
+        end;
+      finally
+        // Danach nichts mehr am Manager: StopSession wartet genau auf dieses Signal.
+        FCommandRunning := False;
         Idle.SetEvent;
       end;
     end).Start;

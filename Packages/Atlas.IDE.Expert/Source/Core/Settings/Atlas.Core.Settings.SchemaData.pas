@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..937] of string = (
+  Lines: array[0..958] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -131,6 +131,11 @@ const
     '                  "type": "string"',
     '                },',
     '                "description": "Ausnahmen dieser Regel: Glob-Muster für Pfade (relativ zur Konfiguration) oder Unit-Namen."',
+    '              },',
+    '              "max": {',
+    '                "type": "integer",',
+    '                "minimum": 1,',
+    '                "description": "Nur metric-* (#66): Grenzwert der Kennzahl; darüber meldet die Regel die Methode. Vorgaben: Länge 60, Tiefe 4, zyklomatisch 15, kognitiv 15, Parameter 6."',
     '              },',
     '              "layers": {',
     '                "type": "array",',
@@ -673,6 +678,22 @@ const
     '      "x-page": "Editor",',
     '      "x-control": "Kontrollkästchen, Zahlenfeld",',
     '      "x-issue": "#35"',
+    '    },',
+    '    "codeLens": {',
+    '      "type": "object",',
+    '      "description": "Code Lens im Editor.",',
+    '      "additionalProperties": false,',
+    '      "properties": {',
+    '        "metrics": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Kennzahlen über jeder Methode: Länge in Codezeilen, Verschachtelungstiefe, zyklomatische und kognitive Komplexität, Parameteranzahl. Die Grenzwerte stehen bei den Regeln metr' + 'ic-* unter \"max\"."',
+    '        }',
+    '      },',
+    '      "x-scope": "global",',
+    '      "x-page": "Editor",',
+    '      "x-control": "Kontrollkästchen",',
+    '      "x-issue": "#66"',
     '    },',
     '    "hints": {',
     '      "type": "object",',

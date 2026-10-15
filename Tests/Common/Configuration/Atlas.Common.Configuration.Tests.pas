@@ -28,6 +28,10 @@ type
     [Test]
     procedure ReadsInlayHints;
     [Test]
+    procedure ReadsCodeLens;
+    [Test]
+    procedure ChecksMetricLimitOption;
+    [Test]
     procedure ReadsHints;
     [Test]
     procedure ReadsMcpDisabledTools;
@@ -600,6 +604,45 @@ begin
     '{"inlayHints": {"endMarkerMinLines": 5}}', Issues);
   Assert.IsTrue(Settings.InlayHints.EndMarkers);
   Assert.AreEqual(5, Settings.InlayHints.EndMarkerMinLines);
+end;
+
+procedure TConfigurationParserTests.ReadsCodeLens;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.CodeLens.Metrics, 'Kennzahlen standardmäßig an (#66)');
+  Settings := Parse('{"codeLens": {"metrics": false}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.CodeLens.Metrics);
+  Settings := Parse('{"codeLens": {"metrics": 1, "x": true}}', Issues);
+  Assert.IsTrue(Settings.CodeLens.Metrics);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Assert.IsTrue(Issues[0].IsError);
+  Assert.IsFalse(Issues[1].IsError);
+  Parse('{"codeLens": true}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Die Datei ersetzt den Block aus dem Editor.
+  Settings := TConfigurationParser.ParseLayered('{"codeLens": {"metrics": false}}', '{"codeLens": {}}', Issues);
+  Assert.IsTrue(Settings.CodeLens.Metrics);
+end;
+
+procedure TConfigurationParserTests.ChecksMetricLimitOption;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{"rules": {"metric-cyclomatic-complexity": {"severity": "warning", "max": 10}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('{"severity": "warning", "max": 10}', Settings.Rules[0].Options);
+  Parse('{"rules": {"metric-method-length": {"max": 0}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"max"');
+  Parse('{"rules": {"metric-method-length": {"max": "80"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Parse('{"rules": {"metric-method-length": {"max": 2.5}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
 procedure TConfigurationParserTests.ReadsHints;

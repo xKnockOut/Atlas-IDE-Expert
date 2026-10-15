@@ -180,7 +180,9 @@ const
     'foreign-form-control-access,form-field-type-mismatch,form-field-without-object,' +
     'form-object-without-field,format-without-settings,generic-exception-raised,hides-virtual,' +
     'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,invisible-char,' +
-    'lock-without-finally,possibly-uninitialized,raise-in-finally,redundant-assigned-free,result-not-set,' +
+    'lock-without-finally,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,' +
+    'metric-nesting-depth,metric-parameter-count,possibly-uninitialized,raise-in-finally,redundant-assigned-free,' +
+    'result-not-set,' +
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
     'security-tls-verification-disabled,security-weak-crypto,self-assignment,sizeof-pointer,' +
     'slash-command,synchronize-in-destructor,thread-free-with-free-on-terminate,thread-resume-suspend,' +
@@ -213,6 +215,8 @@ begin
   Assert.AreEqual('bool-compare,component-fixed-pixels,component-hardcoded-color,component-palette-icon,' +
     'component-setter-without-invalidate,dfm-property,empty-except,forbidden-uses,' +
     'foreign-form-control-access,format-without-settings,generic-exception-raised,' +
+    'metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,metric-nesting-depth,' +
+    'metric-parameter-count,' +
     'redundant-assigned-free,slash-command,thread-resume-suspend,unused-assignment,unused-local,' +
     'unused-parameter,with-statement',
     ActiveRules('style'));

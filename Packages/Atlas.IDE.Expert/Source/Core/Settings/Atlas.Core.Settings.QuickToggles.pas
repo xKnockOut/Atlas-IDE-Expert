@@ -273,6 +273,9 @@ begin
     '"BookmarksNamed":{"type":"boolean","x-feature":"Bookmarks",' +
       '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
       '"x-caption":"Benannte Lesezeichen","x-captionEn":"Named bookmarks","x-issue":"#622"},' +
+    '"CodeLensMetrics":{"type":"boolean","x-feature":"EditorCommands",' +
+      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
+      '"x-caption":"Code-Metriken","x-captionEn":"Code metrics","x-issue":"#66"},' +
     '"HoverTooltip":{"type":"boolean","x-feature":"Hover",' +
       '"default":true,"x-page":"Hints","x-quickToggle":true,' +
       '"x-caption":"Hover-Tooltip","x-captionEn":"Hover tooltip","x-issue":"#442"},' +

@@ -331,7 +331,11 @@ type
     WelcomeSavedColProject, WelcomeSavedNote, WelcomeSavedBookmark, WelcomeSavedFavorite,
     WelcomeSavedAllProjects, WelcomeSavedLost, WelcomeSavedEmpty, WelcomeSavedNoMatch, WelcomeSavedUnitMissing,
     WelcomeSavedFileMissing, SettingsWelcomeContinue, SettingsWelcomeContinueCount,
-    SettingsWelcomeContinueIncoming, SettingsWelcomeContinueFetch, SettingsWelcomeSaved);
+    SettingsWelcomeContinueIncoming, SettingsWelcomeContinueFetch, SettingsWelcomeSaved,
+    SettingsCodeLensMetrics, MetricsLensLines, MetricsLensDepth, MetricsLensCyclomatic, MetricsLensCognitive,
+    MetricsLensParameters, MetricsLensLimit, MetricsReportCommand, MetricsReportNoProject, MetricsReportFailed,
+    MetricsReportRunning,
+    MetricsReportBusy);
 
   TAtlasStrings = class
   private class var
@@ -972,7 +976,12 @@ const
      'Datei nicht gefunden: %s', 'Bereich „Weiterarbeiten“ (Arbeitsstand beim Schließen merken und fortsetzen)',
      'Anzahl der Arbeitsstände (1–20)', 'Eingehende Commits zu den eigenen Dateien zeigen',
      'Vorher im Hintergrund abrufen (fetch, 5 s, ohne Anmeldung)',
-     'Reiter „Gemerkt“ (Notizen, Lesezeichen und Favoriten aller Projekte)'),
+     'Reiter „Gemerkt“ (Notizen, Lesezeichen und Favoriten aller Projekte)',
+     'Code Lens mit Code-Metriken hinter dem Methodenkopf', '%d Zeilen', 'Tiefe %d', 'zyklomatisch %d',
+     'kognitiv %d', '%d Parameter', '%s (> %d)', 'Metrikbericht des Projekts',
+     'Metrikbericht: kein aktives Projekt.', 'Metrikbericht: Der Atlas-Server hat keinen Bericht geliefert.',
+     'Metrikbericht wird erstellt …',
+     'Metrikbericht: Der Atlas-Server berechnet gerade Metriken; bitte gleich noch einmal versuchen.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1575,7 +1584,12 @@ const
      '“Continue working” section (remember the work state when closing and resume it)',
      'Number of work states (1–20)', 'Show incoming commits touching your files',
      'Fetch in the background first (5 s, without sign-in)',
-     '“Saved” tab (notes, bookmarks and favorites of all projects)'));
+     '“Saved” tab (notes, bookmarks and favorites of all projects)',
+     'Code lens with code metrics after the method header', '%d lines', 'depth %d', 'cyclomatic %d',
+     'cognitive %d', '%d parameters', '%s (> %d)', 'Project metrics report',
+     'Metrics report: no active project.', 'Metrics report: the Atlas server returned no report.',
+     'Creating metrics report …',
+     'Metrics report: the Atlas server is computing metrics right now; please try again shortly.'));
 
 { TAtlasStrings }
 

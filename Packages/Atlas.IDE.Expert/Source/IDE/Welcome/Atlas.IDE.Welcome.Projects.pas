@@ -21,6 +21,12 @@
 // - Regeltreffer (#97): beim Schließen und nach jedem Build aus den Problemen,
 //   die das Plugin vom Server hat (#398, Baseline schon abgezogen), gezählt
 //   im Projektordner; nur wenn Probleme an sind und dort Dateien geprüft sind.
+// - Code-Metriken (#66): nach einem Build (nicht nach einer Hintergrund-
+//   prüfung) fragt die Composition den laufenden Server im Hintergrund nach
+//   atlas.server.metrics (Modus summary) und übergibt die Antwort an
+//   RecordMetrics; Zeitpunkt ist der des Builds. Nur in die Zusammenfassung
+//   des Projekts, nicht der Gruppe: Werte eines Projekts wären für die Gruppe
+//   irreführend. Grundlage des Projektverlaufs (#758).
 // - Die Willkommensseite startet keinen Server und liest nur lokale Dateien.
 
 interface
@@ -85,6 +91,11 @@ type
     /// lesbar, dann bleibt die Zusammenfassung unverändert.</summary>
     procedure Recorded(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
       ASucceeded, AReadable: Boolean);
+    /// <summary>Antwort von atlas.server.metrics (Modus summary) für AProject zum Zeitpunkt AAtUtc (#66);
+    /// ungültige oder leere Antwort: Zusammenfassung bleibt unverändert. Hauptthread.</summary>
+    procedure RecordMetrics(const AProject, AJson: string; AAtUtc: TDateTime);
+    /// <summary>Jetzt in UTC, Zeitpunkt der Einträge.</summary>
+    class function StampUtc: TDateTime; static;
     /// <summary>%LOCALAPPDATA%\Atlas\projects.</summary>
     class function Folder: string; static;
     /// <summary>.dpr bzw. .dpk mit .dproj daneben → .dproj (so führt die IDE ihre Liste).</summary>
@@ -506,6 +517,27 @@ begin
     RecordRules(Group, Stamp);
   end;
   Changed;
+end;
+
+procedure TAtlasIdeProjects.RecordMetrics(const AProject, AJson: string; AAtUtc: TDateTime);
+var
+  Metrics: TAtlasProjectMetrics;
+begin
+  if FStopped or (AProject = '') then
+    Exit;
+  if not TAtlasProjectMetrics.FromServer(AJson, AAtUtc, Metrics) then
+    Exit;
+  TAtlasProjectSummaries.Update(Folder, AProject,
+    procedure(var ASummary: TAtlasProjectSummary)
+    begin
+      ASummary.Metrics := Metrics;
+    end);
+  Changed;
+end;
+
+class function TAtlasIdeProjects.StampUtc: TDateTime;
+begin
+  Result := NowUtc;
 end;
 
 procedure TAtlasIdeProjects.Open(const AProject: string);
