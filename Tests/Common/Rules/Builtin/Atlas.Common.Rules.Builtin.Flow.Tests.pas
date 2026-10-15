@@ -39,6 +39,10 @@ type
     procedure UnreachableInBranchAndTry;
     [Test]
     procedure ReachableCodeIsSilent;
+    /// <summary>Fluss-, Erfassungs- und Unbenutzt-Regeln in einem Lauf teilen Routinen und
+    /// Kontrollflussgraphen (Review P-03).</summary>
+    [Test]
+    procedure FlowRulesFindSameWithSharedGraphs;
   end;
 
 implementation
@@ -50,6 +54,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Flow,
+  Atlas.Common.Rules.Builtin.Capture,
+  Atlas.Common.Rules.Builtin.Unused,
   Atlas.Tests.RuleAssert;
 
 function Routine(const ABody: string; const AHeader: string = 'function F: Integer;';
@@ -189,6 +195,26 @@ begin
   // asm macht den Graphen unvollständig: keine Aussage.
   TRuleAssert.Silent(TUnreachableCodeRule.Create,
     Routine('  Exit;'#10'  asm'#10'    nop'#10'  end;', 'procedure P;'));
+end;
+
+procedure TFlowRulesTests.FlowRulesFindSameWithSharedGraphs;
+const
+  Source =
+    'unit U;'#10'interface'#10'implementation'#10 +
+    'function F(A: Boolean; Unbenutzt: Integer): Integer;'#10 +
+    'begin'#10'  if A then'#10'    Result := 1;'#10'end;'#10 +
+    'procedure P;'#10'var'#10'  I, J: Integer;'#10'  K: Integer;'#10'  S: string;'#10 +
+    '  procedure Inner;'#10'  var'#10'    X: Integer;'#10'  begin'#10'    Foo(X);'#10'  end;'#10 +
+    'begin'#10'  Foo(I);'#10'  K := 1;'#10'  K := 2;'#10'  Foo(K);'#10 +
+    '  for S in Liste do'#10'    TThread.Queue(nil, procedure begin Memo1.Lines.Add(S); end);'#10 +
+    '  Exit;'#10'  Bar;'#10'end;'#10'end.';
+var
+  Count: Integer;
+begin
+  Count := TRuleAssert.SameAsSeparateRuns([TResultNotSetRule.Create, TPossiblyUninitializedRule.Create,
+    TUnreachableCodeRule.Create, TCapturedLoopVariableRule.Create, TUnusedLocalRule.Create,
+    TUnusedParameterRule.Create, TUnusedAssignmentRule.Create], Source, '{"minConfidence": "low"}');
+  Assert.IsTrue(Count >= 5, 'Treffer mehrerer Regeln: ' + IntToStr(Count));
 end;
 
 initialization

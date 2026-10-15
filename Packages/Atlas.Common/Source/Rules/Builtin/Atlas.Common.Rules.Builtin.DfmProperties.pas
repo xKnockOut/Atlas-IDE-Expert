@@ -42,12 +42,28 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Index.Extractor,
   Atlas.Common.Dfm.Contract,
-  Atlas.Common.Dfm.FormModel;
+  Atlas.Common.Dfm.FormModel,
+  Atlas.Common.Rules.Derived;
 
 const
   MaxDepth = 30;
+  // Typ der ersten Property-Deklaration, auch mit Index: property Items[I: Integer]: string.
+  PropertyTypePattern = '\bproperty\s+\w+\s*(?:\[[^\]]*\])?\s*:\s*([\w.]+)';
+  DefaultPattern = '\bdefault\s+([^;]+?)\s*;';
+
+/// <summary>Wert nach "default" in ADeclaration über das kompilierte Muster ARegEx.</summary>
+function DefaultOf(const ARegEx: TRegEx; const ADeclaration: string; out AValue: string): Boolean;
+var
+  Match: TMatch;
+begin
+  Match := ARegEx.Match(ADeclaration);
+  Result := Match.Success;
+  if Result then
+    AValue := Trim(Match.Groups[1].Value)
+  else
+    AValue := '';
+end;
 
 type
   /// <summary>Ein Prüflauf: Klassenketten und Property-Deklarationen über den Index.</summary>
@@ -56,6 +72,10 @@ type
     FContext: TRuleContext;
     FUnit: TUnitIndex;
     FLines: TDictionary<string, TArray<string>>;
+    // Je Prüfung einmal kompiliert (Review P-11). TRegEx hält Zustand und ist nicht
+    // threadsicher; Regeln laufen parallel, daher keine globale Instanz.
+    FPropertyType: TRegEx;
+    FDefault: TRegEx;
     function FileLines(const AFileName: string): TArray<string>;
     function FindClass(const AName: string; out ALocation: TSymbolLocation): Boolean;
     function DeclarationText(const ALocation: TSymbolLocation): string;
@@ -78,6 +98,8 @@ begin
   FContext := AContext;
   FUnit := AUnit;
   FLines := TDictionary<string, TArray<string>>.Create;
+  FPropertyType := TRegEx.Create(PropertyTypePattern, [roIgnoreCase, roCompiled]);
+  FDefault := TRegEx.Create(DefaultPattern, [roIgnoreCase, roCompiled]);
 end;
 
 destructor TPropertyChecker.Destroy;
@@ -210,10 +232,10 @@ begin
         Declaration := DeclarationText(Member);
         if ContainsText(Declaration, 'nodefault') then
           Exit(False);
-        if TDfmPropertyCheckRule.DeclaredDefault(Declaration, AValue) then
+        if DefaultOf(FDefault, Declaration, AValue) then
           Exit(True);
         // Typ steht nur in der ersten Deklaration; eine Hochstufung (property X;) erbt ihn.
-        Match := TRegEx.Match(Declaration, '\bproperty\s+\w+\s*(?:\[[^\]]*\])?\s*:\s*([\w.]+)', [roIgnoreCase]);
+        Match := FPropertyType.Match(Declaration);
         if Match.Success and (TypeName = '') then
         begin
           TypeName := Match.Groups[1].Value;
@@ -248,15 +270,8 @@ begin
 end;
 
 class function TDfmPropertyCheckRule.DeclaredDefault(const ADeclaration: string; out AValue: string): Boolean;
-var
-  Match: TMatch;
 begin
-  Match := TRegEx.Match(ADeclaration, '\bdefault\s+([^;]+?)\s*;', [roIgnoreCase]);
-  Result := Match.Success;
-  if Result then
-    AValue := Trim(Match.Groups[1].Value)
-  else
-    AValue := '';
+  Result := DefaultOf(TRegEx.Create(DefaultPattern, [roIgnoreCase]), ADeclaration, AValue);
 end;
 
 function Unquote(const AValue: string): string;
@@ -393,11 +408,14 @@ var
   UnitIndex: TUnitIndex;
   Symbol: TIndexSymbol;
   ClassRange, Range: TTextRange;
+  Cache: IRuleDerivedCache;
 begin
   if (Length(AContext.DfmPropertyRules) = 0) or (AContext.FormText = '') or (AContext.Tree = nil) then
     Exit;
   // Gemeldet wird in der Unit: am Feld der Komponente, sonst an der Formularklasse.
-  UnitIndex := TIndexExtractor.Extract(AContext.Tree, '');
+  // Den Index der Datei teilt der Lauf mit den anderen Regeln (Review P-03).
+  Cache := TRuleDerived.Open(AContext);
+  UnitIndex := TRuleDerived.UnitIndex(Cache, AContext);
   Model := TFormModel.Create(AContext.FormText);
   Checker := TPropertyChecker.Create(AContext, UnitIndex);
   try

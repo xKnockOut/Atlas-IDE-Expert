@@ -70,7 +70,8 @@ uses
   System.StrUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Pascal.Contract;
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Rules.Derived;
 
 const
   CommandCalls: array[0..7] of string = ('ShellExecute', 'ShellExecuteA', 'ShellExecuteW', 'ShellExecuteEx',
@@ -86,17 +87,13 @@ const
   HttpExceptions: array[0..5] of string = ('http://localhost', 'http://127.0.0.1', 'http://[::1]',
     'http://www.w3.org/', 'http://schemas.', 'http://ns.');
 
-/// <summary>Token ohne Kommentare und Direktiven.</summary>
+/// <summary>Token ohne Kommentare und Direktiven, je Lauf einmal berechnet (Review P-03, P-08).</summary>
 function CodeTokens(const AContext: TRuleContext): TArray<TPascalToken>;
 var
-  Token: TPascalToken;
+  Cache: IRuleDerivedCache;
 begin
-  Result := nil;
-  if AContext.Tree = nil then
-    Exit;
-  for Token in AContext.Tree.Tokens do
-    if not (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
-      Result := Result + [Token];
+  Cache := TRuleDerived.Open(AContext);
+  Result := TRuleDerived.CodeTokens(Cache, AContext);
 end;
 
 function IsOneOf(const AText: string; const AWords: array of string): Boolean;
