@@ -245,6 +245,9 @@ begin
     '"Enabled":{"type":"boolean","x-feature":"Completion",' +
       '"default":true,"x-page":"Allgemein","x-quickToggle":true,' +
       '"x-caption":"Atlas-Code-Insight","x-captionEn":"Atlas Code Insight","x-issue":"#407"},' +
+    '"DiagnosticMode":{"type":"boolean",' +
+      '"default":false,"x-page":"Allgemein","x-quickToggle":true,' +
+      '"x-caption":"Diagnosemodus","x-captionEn":"Diagnostic mode","x-issue":"#479"},' +
     '"PairColors":{"type":"boolean","x-feature":"Pairs",' +
       '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
       '"x-caption":"Klammerfarben","x-captionEn":"Bracket colors","x-issue":"#514"},' +

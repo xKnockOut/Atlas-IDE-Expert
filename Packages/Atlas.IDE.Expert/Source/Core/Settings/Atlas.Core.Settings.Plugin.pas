@@ -195,6 +195,14 @@ type
     /// bei den anderen Atlas-Tasten (#494).</summary>
     QuickToggleKey: Integer;
     QuickToggleKeyPriority: Boolean;
+    /// <summary>Diagnosemodus (#479, diagnosticMode.enabled): Diagnosefenster mit Zeitmessung je Abfrage der
+    /// Vervollständigung; Vorgabe aus. Aus heißt: keine Messung, kein Fenster, keine Statuszeile.</summary>
+    DiagnosticMode: Boolean;
+    /// <summary>Tastenkürzel, das den Diagnosemodus umschaltet (#479, TShortCut, 0 = keins); Vorgabe
+    /// Strg+Alt+Umschalt+D, weil Strg+Alt+Umschalt+A den Schnellschaltern (#604) gehört. Vorrang wie bei den
+    /// anderen Atlas-Tasten (#494).</summary>
+    DiagnosticModeKey: Integer;
+    DiagnosticModeKeyPriority: Boolean;
     /// <summary>Abgesicherter Start (#722): nach einem Absturz fragen (safeMode.askAfterCrash).</summary>
     SafeAskAfterCrash: Boolean;
     /// <summary>Nach zwei Abstürzen kurz hintereinander ohne Rückfrage abgesichert
@@ -372,6 +380,9 @@ begin
   Result.StatusFieldSummary := True;
   Result.QuickToggleKey := $E041; // Strg+Umschalt+Alt+A
   Result.QuickToggleKeyPriority := False;
+  Result.DiagnosticMode := False;
+  Result.DiagnosticModeKey := $E044; // Strg+Umschalt+Alt+D
+  Result.DiagnosticModeKeyPriority := False;
   Result.SafeAskAfterCrash := True;
   Result.SafeAutoAfterRepeatedCrash := True;
   Result.SafeStartupKey := 'shift';
@@ -436,6 +447,7 @@ begin
   CompletionKey := EnsureRange(CompletionKey, 0, $FFFF);
   SignatureKey := EnsureRange(SignatureKey, 0, $FFFF);
   QuickToggleKey := EnsureRange(QuickToggleKey, 0, $FFFF);
+  DiagnosticModeKey := EnsureRange(DiagnosticModeKey, 0, $FFFF);
   SafeStartupTimeoutMs := EnsureRange(SafeStartupTimeoutMs, MinSafeStartupTimeout, MaxSafeStartupTimeout);
   SafeKeepSettingsHistory := EnsureRange(SafeKeepSettingsHistory, 0, MaxSafeSettingsHistory);
   SafeStartupKey := LowerCase(Trim(SafeStartupKey));
@@ -548,6 +560,10 @@ begin
   QuickToggleKey := AStore.ReadInteger('QuickToggleKey', Default.QuickToggleKey);
   QuickToggleKeyPriority :=
     AStore.ReadInteger('QuickToggleKeyPriority', BoolValue(Default.QuickToggleKeyPriority)) <> 0;
+  DiagnosticMode := AStore.ReadInteger('DiagnosticMode', BoolValue(Default.DiagnosticMode)) <> 0;
+  DiagnosticModeKey := AStore.ReadInteger('DiagnosticModeKey', Default.DiagnosticModeKey);
+  DiagnosticModeKeyPriority :=
+    AStore.ReadInteger('DiagnosticModeKeyPriority', BoolValue(Default.DiagnosticModeKeyPriority)) <> 0;
   SafeAskAfterCrash := AStore.ReadInteger('SafeAskAfterCrash', BoolValue(Default.SafeAskAfterCrash)) <> 0;
   SafeAutoAfterRepeatedCrash :=
     AStore.ReadInteger('SafeAutoAfterRepeatedCrash', BoolValue(Default.SafeAutoAfterRepeatedCrash)) <> 0;
@@ -659,6 +675,9 @@ begin
   AStore.WriteInteger('StatusFieldSummary', BoolValue(StatusFieldSummary));
   AStore.WriteInteger('QuickToggleKey', QuickToggleKey);
   AStore.WriteInteger('QuickToggleKeyPriority', BoolValue(QuickToggleKeyPriority));
+  AStore.WriteInteger('DiagnosticMode', BoolValue(DiagnosticMode));
+  AStore.WriteInteger('DiagnosticModeKey', DiagnosticModeKey);
+  AStore.WriteInteger('DiagnosticModeKeyPriority', BoolValue(DiagnosticModeKeyPriority));
   AStore.WriteInteger('SafeAskAfterCrash', BoolValue(SafeAskAfterCrash));
   AStore.WriteInteger('SafeAutoAfterRepeatedCrash', BoolValue(SafeAutoAfterRepeatedCrash));
   AStore.WriteString('SafeStartupKey', SafeStartupKey);

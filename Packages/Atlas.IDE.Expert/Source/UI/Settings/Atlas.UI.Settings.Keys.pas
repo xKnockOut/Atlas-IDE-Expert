@@ -187,6 +187,8 @@ begin
       Result := TAtlasStrings.Text(TAtlasTextId.SettingsCompletionKey);
     TAtlasKeyFunction.QuickToggle:
       Result := TAtlasStrings.Text(TAtlasTextId.SettingsQuickToggleKey);
+    TAtlasKeyFunction.DiagnosticMode:
+      Result := TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticModeKey);
   else
     Result := TAtlasStrings.Text(TAtlasTextId.SettingsSignatureKey);
   end;

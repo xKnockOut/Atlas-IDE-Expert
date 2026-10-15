@@ -63,6 +63,9 @@ type
     /// <summary>Von der IDE oder nach einem Zeichen geöffnet, nicht mit Strg+Leer. Nach Esc im selben Wort
     /// öffnet Atlas dann nicht wieder (#414).</summary>
     Automatic: Boolean;
+    /// <summary>Diagnosemodus (#479): Zeitstempel (TAtlasQueryTimings.Stamp) des auslösenden Ereignisses, ab dem
+    /// der Kontext ermittelt wurde; 0 = nicht gemessen.</summary>
+    Started: Int64;
   end;
 
   TAtlasCompletionItem = record

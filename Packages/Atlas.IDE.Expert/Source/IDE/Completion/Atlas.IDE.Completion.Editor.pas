@@ -22,6 +22,8 @@
 //     der IDE (abschaltbar, ImportIdeTemplates) und denen aus %APPDATA%\Atlas\Snippets (bei
 //     Änderung neu gelesen; eigene vor IDE vor mitgelieferten). Übernehmen setzt den Text mit der
 //     Einrückung der Zeile ein und startet den Platzhalter-Modus (Atlas.IDE.Completion.Placeholders).
+//   - Diagnosemodus (#479): Invoke nimmt nur bei eingeschalteter Messung beim Aufruf einen Zeitstempel
+//     (TAtlasContext.Started); der Kontext reicht von dort bis zur Anfrage.
 
 interface
 
@@ -172,6 +174,7 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Diagnostics.Timing,
   Winapi.Messages,
   System.Math,
   System.Generics.Collections,
@@ -594,8 +597,13 @@ var
   Character, WordStart: Integer;
   Window: HWND;
   Anchor: TRect;
+  Started: Int64;
 begin
   Result := False;
+  // Diagnosemodus (#479): Kontext ab hier messen.
+  Started := 0;
+  if TAtlasQueryTimings.Enabled then
+    Started := TAtlasQueryTimings.Stamp;
   if (AView = nil) or (AView.Buffer = nil) then
     Exit;
   Cursor := AView.CursorPos;
@@ -627,6 +635,7 @@ begin
   Context.Character := Character;
   Context.Prefix := Copy(LineText, WordStart + 1, Character - WordStart);
   Context.Automatic := AAutomatic;
+  Context.Started := Started;
   // Mit Esc geschlossen (#414): im selben Wort nicht automatisch wieder öffnen.
   if AAutomatic and FController.Dismissed(Context) then
     Exit;

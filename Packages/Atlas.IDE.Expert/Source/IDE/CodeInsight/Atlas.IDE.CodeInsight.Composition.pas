@@ -6,8 +6,8 @@
 // Klammerpaare (#514), das Ergebnisfenster (#400), die Editorbefehle samt
 // Tastenkürzeln und Kontextmenü (#399), den Abgleich offener Formulare (#402),
 // das Atlas-Statusfeld (#591), die Schnellschalter (#604), das
-// dateiübergreifende Zurücknehmen von Atlas-Änderungen (#721) und die
-// Versionsverwaltung (#571) beim Laden des
+// dateiübergreifende Zurücknehmen von Atlas-Änderungen (#721), die
+// Versionsverwaltung (#571) und den Diagnosemodus (#479) beim Laden des
 // Packages an und beim Entladen in umgekehrter Reihenfolge wieder ab
 // (ADR 0006). Zuerst entscheidet der abgesicherte Start
 // (#722), was angemeldet wird; RegisterFeatures holt den Rest nach, sobald
@@ -42,6 +42,7 @@ uses
   Atlas.IDE.Diagnostics.Watchdog,
   Atlas.IDE.Diagnostics.Export,
   Atlas.IDE.Diagnostics.BugReport,
+  Atlas.IDE.Diagnostics.Timing,
   Atlas.IDE.Files.Reloader,
   Atlas.IDE.Commands.Palette,
   Atlas.IDE.Editor.Pairs,
@@ -116,6 +117,8 @@ var
   SignatureKey: TAtlasIdeKeyBinding;
   // Schnellschalter mit Fenster, Taste und Befehlen in der Palette (#604).
   QuickToggles: TAtlasIdeQuickToggles;
+  // Diagnosemodus mit Fenster, Taste und Statuszeile (#479).
+  DiagnosticMode: TAtlasIdeDiagnosticMode;
   // Abgesicherter Start nach einem Absturz (#722).
   SafeMode: TAtlasIdeSafeMode;
   // Rückfrage und tägliche Update-Prüfung (#495).
@@ -153,6 +156,8 @@ begin
       TAtlasStrings.Text(TAtlasTextId.SettingsSignatureKey));
   if QuickToggles <> nil then
     QuickToggles.Rebind;
+  if DiagnosticMode <> nil then
+    DiagnosticMode.Rebind;
 end;
 
 procedure ReportHang(const AHang: TAtlasHang);
@@ -776,11 +781,16 @@ begin
         if Manager <> nil then
           Manager.Report(AText);
       end);
+  // Diagnosemodus (#479): ohne Einstellung nur Taste und Befehl, keine Messung.
+  if Basic and (DiagnosticMode = nil) then
+    DiagnosticMode := TAtlasIdeDiagnosticMode.Create(TAtlasStatusRegistry.Default);
   if Basic and (Palette = nil) then
   begin
     RegisterPalette;
     if QuickToggles <> nil then
       QuickToggles.RegisterCommands(Palette);
+    if DiagnosticMode <> nil then
+      DiagnosticMode.RegisterCommands(Palette);
   end;
   // Editor-Zeichnungen.
   if (Pairs = nil) and (Full or Settings.PairColors or Settings.PairGuides or Settings.InactiveDim) then
@@ -993,6 +1003,8 @@ begin
       TAtlasIdeResultsWindow.UpdateIcon;
       if Welcome <> nil then
         Welcome.ThemeChanged;
+      if DiagnosticMode <> nil then
+        DiagnosticMode.ThemeChanged;
     end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
   if SafeMode = nil then
@@ -1024,6 +1036,9 @@ begin
       // updates.check (#495).
       if Updates <> nil then
         Updates.ApplySettings;
+      // diagnosticMode.enabled (#479).
+      if DiagnosticMode <> nil then
+        DiagnosticMode.ApplySettings;
       TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
       // Index-Optionen schreibt der Optionsdialog nach settings.json; der Server beobachtet die Datei (#652).
       // Statusfeld an, aus, Kurztext oder ausgeblendete Zeilen geändert (#591).
@@ -1082,6 +1097,8 @@ begin
   if SafeMode <> nil then
     SafeMode.Stop;
   FreeAndNil(SafeMode);
+  // Vor dem Statusfeld: Der Diagnosemodus hat eine Zeile in dessen Registry (#479).
+  FreeAndNil(DiagnosticMode);
   FreeAndNil(QuickToggles);
   FreeAndNil(SignatureKey);
   FreeAndNil(CompletionKey);

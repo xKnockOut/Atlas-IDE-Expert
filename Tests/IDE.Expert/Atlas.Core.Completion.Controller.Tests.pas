@@ -52,6 +52,20 @@ type
     procedure PartialResultsReplaceThenAppend;
   end;
 
+  /// <summary>Diagnosemodus (#479) über den ganzen Ablauf: Quellen, Filtern, erste Liste.</summary>
+  [TestFixture]
+  TAtlasCompletionTimingTests = class
+  public
+    [TearDown]
+    procedure TearDown;
+    [Test]
+    procedure DelayedProviderIsOverBudget;
+    [Test]
+    procedure NoSourceTextInMeasurements;
+    [Test]
+    procedure OffMeasuresNothing;
+  end;
+
 implementation
 
 uses
@@ -62,7 +76,9 @@ uses
   Atlas.Core.Completion.Controller,
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Usage,
-  Atlas.Core.Completion.Providers.Fixed;
+  Atlas.Core.Completion.Composite,
+  Atlas.Core.Completion.Providers.Fixed,
+  Atlas.Core.Diagnostics.Timing;
 
 type
   TFakeView = class(TInterfacedObject, IAtlasCompletionView)
@@ -700,7 +716,166 @@ begin
   end;
 end;
 
+{ TAtlasCompletionTimingTests }
+
+/// <summary>Zwei Quellen mit Namen: "Langsam" liefert nach ADelayMs, "Schnell" sofort.</summary>
+function TimedProviders(ADelayMs: Cardinal): IAtlasCompletionProvider;
+var
+  Providers: TAtlasCompletionProviders;
+  Slow, Fast: TAtlasFixedCompletionProvider;
+begin
+  Providers := TAtlasCompletionProviders.Create;
+  Result := Providers;
+  // Zeitlimit höher als die Verzögerung: Die Quelle liefert spät, wird aber nicht abgebrochen.
+  Providers.TimeLimitMs := 2000;
+  Slow := TAtlasFixedCompletionProvider.Create([Item('Langsam1'), Item('Langsam2')], ADelayMs);
+  Slow.Name := 'Langsam';
+  Providers.Add(Slow);
+  Fast := TAtlasFixedCompletionProvider.Create([Item('Schnell')]);
+  Fast.Name := 'Schnell';
+  Providers.Add(Fast);
+end;
+
+procedure TAtlasCompletionTimingTests.TearDown;
+begin
+  TAtlasQueryTimings.Enabled := False;
+  TAtlasQueryTimings.Shared.Clear;
+end;
+
+procedure TAtlasCompletionTimingTests.DelayedProviderIsOverBudget;
+var
+  View: TFakeView;
+  ViewRef: IAtlasCompletionView;
+  Controller: TAtlasCompletionController;
+  Start: TAtlasContext;
+  Queries: TArray<TAtlasQueryTiming>;
+  Rows: TArray<TAtlasTimingRow>;
+  Row: TAtlasTimingRow;
+  SlowWarn, FastSeen: Boolean;
+begin
+  TAtlasQueryTimings.Shared.Clear;
+  TAtlasQueryTimings.Enabled := True;
+  View := TFakeView.Create;
+  ViewRef := View;
+  Controller := TAtlasCompletionController.Create(TimedProviders(200), ViewRef);
+  try
+    Start := Context('');
+    Start.Started := TAtlasQueryTimings.Stamp;
+    Controller.Start(Start);
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+  finally
+    Controller.Free;
+  end;
+  Queries := TAtlasQueryTimings.Shared.Snapshot;
+  Assert.AreEqual(1, Integer(Length(Queries)));
+  Assert.AreEqual(2, Integer(Length(Queries[0].Providers)), 'beide Quellen mit Namen');
+  Assert.IsTrue(Queries[0].ContextMs >= 0, 'Kontext gemessen');
+  Assert.IsTrue(Queries[0].FilterSortSteps > 0, 'Filtern und Sortieren gemessen');
+  Assert.IsTrue(Queries[0].FirstVisibleMs >= 0, 'erste Liste gemessen');
+  Assert.AreEqual(3, Queries[0].Count);
+  // Abnahme: Die Zeit des verzögerten Providers erscheint in Warnfarbe, die des schnellen nicht.
+  Rows := TAtlasTimingRows.Build(Queries);
+  SlowWarn := False;
+  FastSeen := False;
+  for Row in Rows do
+    if Row.Kind = TAtlasTimingRowKind.Provider then
+      if Row.Name = 'Langsam' then
+      begin
+        Assert.IsTrue(Row.Last >= 150, 'Verzögerung gemessen');
+        SlowWarn := Row.LastWarn;
+      end
+      else if Row.Name = 'Schnell' then
+      begin
+        FastSeen := True;
+        Assert.IsFalse(Row.LastWarn, 'schnelle Quelle im Budget');
+      end;
+  Assert.IsTrue(SlowWarn, 'verzögerte Quelle über dem Budget');
+  Assert.IsTrue(FastSeen);
+end;
+
+procedure TAtlasCompletionTimingTests.NoSourceTextInMeasurements;
+var
+  View: TFakeView;
+  ViewRef: IAtlasCompletionView;
+  Controller: TAtlasCompletionController;
+  Start: TAtlasContext;
+  Input: TAtlasTimingReportInput;
+  Report: string;
+begin
+  TAtlasQueryTimings.Shared.Clear;
+  TAtlasQueryTimings.Enabled := True;
+  View := TFakeView.Create;
+  ViewRef := View;
+  Controller := TAtlasCompletionController.Create(TimedProviders(0), ViewRef);
+  try
+    Start := Context('Lan');
+    Start.FileName := 'C:\Users\Tester\Projekt\GeheimeUnit.pas';
+    Start.Text := 'procedure GeheimerQuelltext; begin Lan end;';
+    Controller.Start(Start);
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+  finally
+    Controller.Free;
+  end;
+  Input := Default(TAtlasTimingReportInput);
+  Input.AtlasVersion := '1.0.0';
+  Input.IdeVersion := '37.0';
+  Input.Platform := 'Win64';
+  Input.Settings := '{}';
+  Input.Created := Now;
+  // Abnahme: Der kopierte Bericht enthält keinen Quelltext und ohne Häkchen keinen Dateinamen.
+  Report := TAtlasTimingReport.Build(TAtlasQueryTimings.Shared.Snapshot, Input);
+  Assert.IsFalse(Report.Contains('GeheimerQuelltext'), 'kein Quelltext');
+  Assert.IsFalse(Report.Contains('begin Lan'), 'kein Quelltext');
+  Assert.IsFalse(Report.Contains('GeheimeUnit'), 'Dateiname nur auf Wunsch');
+  Assert.IsFalse(Report.Contains('Tester'), 'kein Ordner');
+  Input.FileNames := True;
+  Report := TAtlasTimingReport.Build(TAtlasQueryTimings.Shared.Snapshot, Input);
+  Assert.IsTrue(Report.Contains('GeheimeUnit.pas'), 'auf Wunsch der Dateiname');
+  Assert.IsFalse(Report.Contains('Tester'), 'auch dann ohne Ordner');
+  Assert.IsFalse(Report.Contains('GeheimerQuelltext'), 'auch dann kein Quelltext');
+end;
+
+procedure TAtlasCompletionTimingTests.OffMeasuresNothing;
+var
+  View: TFakeView;
+  ViewRef: IAtlasCompletionView;
+  Controller: TAtlasCompletionController;
+  Version: Integer;
+begin
+  // Abnahme: Mit diagnosticMode.enabled aus misst Atlas nichts; der Ablauf ist derselbe.
+  TAtlasQueryTimings.Shared.Clear;
+  TAtlasQueryTimings.Enabled := False;
+  Version := TAtlasQueryTimings.Shared.Version;
+  View := TFakeView.Create;
+  ViewRef := View;
+  Controller := TAtlasCompletionController.Create(TimedProviders(0), ViewRef);
+  try
+    Controller.Start(Context(''));
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    // Beide Quellen liefern wie sonst; die Reihenfolge hängt davon ab, welche zuerst fertig ist.
+    Assert.Contains(View.Names, 'Langsam1');
+    Assert.Contains(View.Names, 'Schnell');
+  finally
+    Controller.Free;
+  end;
+  Assert.AreEqual(Version, TAtlasQueryTimings.Shared.Version, 'keine Messung');
+  Assert.AreEqual(0, Integer(Length(TAtlasQueryTimings.Shared.Snapshot)));
+end;
+
 initialization  TDUnitX.RegisterTestFixture(TAtlasCompletionMatcherTests);
   TDUnitX.RegisterTestFixture(TAtlasCompletionControllerTests);
+  TDUnitX.RegisterTestFixture(TAtlasCompletionTimingTests);
 
 end.
