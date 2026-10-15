@@ -134,6 +134,11 @@ begin
   Assert.AreEqual('Editor', Toggle.Page);
   Assert.IsTrue(Toggle.Drawing);
   Assert.AreEqual('EditorCommands', Toggle.Feature);
+  // Befehl (#66): Schalter auf der Seite Editor; keine Zeichnung, „Alles aus“ lässt ihn stehen.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'MetricsReport', Toggle));
+  Assert.AreEqual('Editor', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  Assert.AreEqual('Palette', Toggle.Feature);
   // Jeder Schalter ist eine Einstellung des Plugins.
   for Toggle in Toggles do
   begin
@@ -183,6 +188,7 @@ begin
   Assert.IsFalse(Effective.PairColors);
   Assert.IsFalse(Effective.PairGuides);
   Assert.IsTrue(Effective.Preview = Stored.Preview);
+  Assert.IsTrue(Effective.MetricsReport, 'Befehl (#66) ist keine Zeichnung');
   Assert.IsTrue(Stored.PairColors);
   Assert.IsTrue(Stored.PairGuides);
   Assert.IsTrue(Stored.HoverTooltip);

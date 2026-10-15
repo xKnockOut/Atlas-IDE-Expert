@@ -276,6 +276,9 @@ begin
     '"CodeLensMetrics":{"type":"boolean","x-feature":"EditorCommands",' +
       '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
       '"x-caption":"Code-Metriken","x-captionEn":"Code metrics","x-issue":"#66"},' +
+    '"MetricsReport":{"type":"boolean","x-feature":"Palette",' +
+      '"default":true,"x-page":"Editor","x-quickToggle":true,' +
+      '"x-caption":"Metrikbericht","x-captionEn":"Metrics report","x-issue":"#66"},' +
     '"HoverTooltip":{"type":"boolean","x-feature":"Hover",' +
       '"default":true,"x-page":"Hints","x-quickToggle":true,' +
       '"x-caption":"Hover-Tooltip","x-captionEn":"Hover tooltip","x-issue":"#442"},' +
