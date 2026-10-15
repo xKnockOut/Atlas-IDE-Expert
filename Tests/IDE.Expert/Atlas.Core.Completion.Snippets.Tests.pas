@@ -32,6 +32,8 @@ type
     [Test]
     procedure FormatRoundTrips;
     [Test]
+    procedure ContextForGenerateMenu;
+    [Test]
     procedure ParsesPostfixSnippets;
     [Test]
     procedure SendsPostfixSnippetsToServer;
@@ -557,6 +559,34 @@ begin
   Assert.AreEqual(Snippet.Body, Parsed.Body);
   Assert.AreEqual('forl.atlas-snippet', TAtlasSnippets.FileNameFor('forl'));
   Assert.AreEqual('a_b.atlas-snippet', TAtlasSnippets.FileNameFor('a\b'));
+end;
+
+procedure TAtlasSnippetsTests.ContextForGenerateMenu;
+var
+  Snippet, Parsed: TAtlasSnippet;
+  Error: string;
+begin
+  // Kontext für das Erzeugen-Menü (#719, Kontext aus #665).
+  Assert.IsTrue(TAtlasSnippets.Parse('prefix: lg'#10'context: statement, class'#10'---'#10'Log;', '', Snippet, Error),
+    Error);
+  Assert.AreEqual('statement, class', Snippet.Context);
+  Assert.IsTrue(TAtlasSnippets.Parse(TAtlasSnippets.ToFileText(Snippet), '', Parsed, Error), Error);
+  Assert.AreEqual('statement, class', Parsed.Context);
+  Assert.IsFalse(TAtlasSnippets.Parse('prefix: lg'#10'context: irgendwo'#10'---'#10'Log;', '', Snippet, Error));
+  Assert.Contains(Error, 'irgendwo');
+  // Ohne Kontext überall, statement nur in Routinen, declaration nicht im Rumpf.
+  Assert.IsTrue(TAtlasSnippets.FitsContext('', ['class']));
+  Assert.IsTrue(TAtlasSnippets.FitsContext('any', []));
+  Assert.IsTrue(TAtlasSnippets.FitsContext('statement', ['routine', 'class']));
+  Assert.IsFalse(TAtlasSnippets.FitsContext('statement', ['class']));
+  Assert.IsTrue(TAtlasSnippets.FitsContext('declaration', ['interface']));
+  Assert.IsTrue(TAtlasSnippets.FitsContext('declaration', ['class']));
+  Assert.IsFalse(TAtlasSnippets.FitsContext('declaration', ['routine', 'class']));
+  Assert.IsTrue(TAtlasSnippets.FitsContext('implementation, class', ['implementation']));
+  Assert.IsFalse(TAtlasSnippets.FitsContext('class', ['record']));
+  // Mitgelieferte Vorlagen haben einen Kontext.
+  for Snippet in TAtlasSnippets.BuiltIn do
+    Assert.IsTrue(Snippet.Context <> '', Snippet.Prefix);
 end;
 
 procedure TAtlasSnippetsTests.ParsesPostfixSnippets;

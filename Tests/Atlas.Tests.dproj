@@ -101,6 +101,7 @@
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.BugReport.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.QualifiedNames.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.TestUnits.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SlashMenu.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.UnitSearch.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WinApiDocs.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.KeywordReference.Tests.pas"/>
@@ -183,6 +184,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DeclarationCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.WrapCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.SlashMenu.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.MaintenanceCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TypeCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CollectionCommands.Tests.pas"/>

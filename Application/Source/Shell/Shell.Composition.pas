@@ -52,6 +52,7 @@ uses
   Atlas.Common.Lsp.CodeLens,
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Todos,
+  Atlas.Common.Lsp.SlashMenu,
   Atlas.Common.Lsp.Baseline,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
@@ -104,6 +105,7 @@ type
     FFoldingRanges: TLspFoldingRanges;
     FLinkedEditing: TLspLinkedEditing;
     FFormatting: TLspFormatting;
+    FSlashMenu: TLspSlashMenu;
     FSelectionRanges: TLspSelectionRanges;
     FDefinition: TLspDefinition;
     FHover: TLspHover;
@@ -550,6 +552,11 @@ begin
     end;
   FFormatting.SlashHost := SlashHost;
   FFormatting.Attach(FDispatcher);
+  // Erzeugen-Menü (#719): dieselben Schalter, Versionen und derselbe Host wie die Schnellbefehle nach Enter.
+  FSlashMenu := TLspSlashMenu.Create(FDocuments);
+  FSlashMenu.SlashCommandsFor := SlashCommandsFor;
+  FSlashMenu.DelphiVersionFor := DelphiVersionFor;
+  FSlashMenu.SlashHost := SlashHost;
   FSelectionRanges := TLspSelectionRanges.Create(FDocuments);
   FSelectionRanges.Attach(FDispatcher);
   FWorkspaces := TObjectList<TShellWorkspace>.Create(True);
@@ -608,6 +615,7 @@ begin
   FSyntaxDiagnostics.RuleProvider := RuleContextFor;
   FIndex := TSymbolIndex.Create;
   FFormatting.Index := FIndex;
+  FSlashMenu.Index := FIndex;
   FEndReason := TDiagnosticEndReason.InputClosed;
   FRequestTimeout := RequestTimeoutMs;
   FDiagnostics := TShellDiagnostics.Create(TShellDiagnostics.DefaultFolder, IntToStr(GetCurrentProcessId),
@@ -750,6 +758,8 @@ begin
       FLogger.Debug(AText);
     end;
   FCompletion.Attach(FDispatcher);
+  // „Interface implementieren“ im Erzeugen-Menü (#719, #466) wie in der Vervollständigung.
+  FSlashMenu.Completion := FCompletion;
   FSignatureHelp := TLspSignatureHelp.Create(FDocuments, FIndex,
     function(const AFileName: string; out AText: string): Boolean
     begin
@@ -1056,6 +1066,21 @@ begin
           '%d ms', [TJSONObject(Result).GetValue<Integer>('total', -1), TJSONObject(Result).GetValue<Integer>('files',
           -1), TJSONObject(Result).GetValue<Integer>('added', -1), TJSONObject(Result).GetValue<Integer>('removed',
           -1), TJSONObject(Result).GetValue<Integer>('orphaned.count', -1), Watch.ElapsedMilliseconds]));
+    end);
+  FCommands.Register(TLspSlashMenu.MenuCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FSlashMenu.ExecuteMenu(AArguments);
+    end);
+  FCommands.Register(TLspSlashMenu.ChoicesCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FSlashMenu.ExecuteChoices(AArguments);
+    end);
+  FCommands.Register(TLspSlashMenu.RunCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FSlashMenu.ExecuteRun(AArguments);
     end);
   FCommands.Register(TLspTestUnits.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1512,6 +1537,7 @@ begin
   FFoldingRanges.Free;
   FLinkedEditing.Free;
   FFormatting.Free;
+  FSlashMenu.Free;
   FSelectionRanges.Free;
   FDefinition.Free;
   FHover.Free;
