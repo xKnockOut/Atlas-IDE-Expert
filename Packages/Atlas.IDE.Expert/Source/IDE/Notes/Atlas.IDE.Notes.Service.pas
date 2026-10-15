@@ -5,8 +5,8 @@
 // %LOCALAPPDATA%\Atlas\Notes\<Schlüssel>.json (TAtlasNotes, nie im Projekt-
 // oder Repository-Ordner) und führt die Befehle aus:
 // - „Notiz an dieser Zeile…“: Dialog für die Zeile, die zuletzt per Rechtsklick
-//   in der Rinne gewählt wurde (höchstens GutterMs alt, gleiche Datei),
-//   sonst für die Cursorzeile. Gibt es dort schon eine Notiz, wird sie
+//   in der Rinne gewählt wurde (TAtlasIdeGutterMarks.TakeLine: höchstens eine
+//   Minute alt, gleiche Datei), sonst für die Cursorzeile. Gibt es dort schon eine Notiz, wird sie
 //   bearbeitet.
 // - „Notiz an dieser Zeile löschen“ mit Rückfrage.
 // - „Notizen des Projekts“: verankert alle Notizen gegen den aktuellen Text
@@ -22,23 +22,17 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Notes.Anchor,
+  Atlas.Core.Editor.LineAnchor,
   Atlas.Core.Notes.Store;
 
 type
   TAtlasIdeNotes = class
-  public const
-    /// <summary>So lange gilt ein Rechtsklick in die Rinne für die Befehle.</summary>
-    GutterMs = 60000;
   private class var
     FBooks: TDictionary<string, TAtlasNoteBook>;
     /// <summary>Datei (klein) → Projekt; gefüllt von Track und den Befehlen.</summary>
     FProjectOf: TDictionary<string, string>;
     FFolder: string;
     FMessage: TProc<string>;
-    FGutterFile: string;
-    FGutterLine: Integer;
-    FGutterAt: UInt64;
     /// <summary>Projekt der zuletzt gezeigten Liste.</summary>
     FListProject: string;
   private
@@ -62,9 +56,6 @@ type
     class procedure Release; static;
     /// <summary>Ordner der Notizbücher; Vorgabe TAtlasNotes.DefaultFolder.</summary>
     class property Folder: string read FFolder write FFolder;
-    /// <summary>Rechtsklick in die Rinne an ALine (0-basiert) von AFileName; gilt für die nächsten Befehle.</summary>
-    class procedure RememberGutterLine(const AFileName: string; ALine: Integer); static;
-    class procedure ForgetGutterLine; static;
     /// <summary>Oberer Editor zeigt AFileName mit AText: Projekt merken und dessen Notizen der Datei neu
     /// verankern (gespeichert, wenn sich etwas ändert). True, wenn sich Notizen bewegt haben.</summary>
     class function Track(const AFileName, AText: string): Boolean; static;
@@ -97,6 +88,7 @@ uses
   Atlas.UI.Notes.Dialog,
   Atlas.UI.Results.Frame,
   Atlas.IDE.Editor.WorkspaceEdit,
+  Atlas.IDE.Editor.GutterMarks,
   Atlas.IDE.Results.Window,
   Atlas.IDE.Settings.Store;
 
@@ -111,7 +103,6 @@ begin
     FBooks := TDictionary<string, TAtlasNoteBook>.Create;
   if FProjectOf = nil then
     FProjectOf := TDictionary<string, string>.Create;
-  FGutterLine := -1;
   TAtlasIdeResultsWindow.OnNoteEdit :=
     procedure(const ANoteId: string)
     begin
@@ -131,7 +122,6 @@ begin
   FMessage := nil;
   FreeAndNil(FBooks);
   FreeAndNil(FProjectOf);
-  FGutterFile := '';
   FListProject := '';
 end;
 
@@ -197,22 +187,9 @@ begin
     Say(TAtlasStrings.Text(TAtlasTextId.NotesSaveFailed));
 end;
 
-class procedure TAtlasIdeNotes.RememberGutterLine(const AFileName: string; ALine: Integer);
-begin
-  FGutterFile := AFileName;
-  FGutterLine := ALine;
-  FGutterAt := TThread.GetTickCount64;
-end;
-
-class procedure TAtlasIdeNotes.ForgetGutterLine;
-begin
-  FGutterFile := '';
-  FGutterLine := -1;
-end;
-
 class function TAtlasIdeNotes.CurrentLines(const AFileName: string): TArray<string>;
 begin
-  Result := TAtlasNoteAnchors.Lines(TAtlasIdeWorkspaceEdit.CurrentText(AFileName));
+  Result := TAtlasLineAnchors.Lines(TAtlasIdeWorkspaceEdit.CurrentText(AFileName));
 end;
 
 class procedure TAtlasIdeNotes.Invalidate;
@@ -237,7 +214,7 @@ begin
   Current := Book(Project);
   if Length(Current.ForFile(AFileName)) = 0 then
     Exit;
-  Result := Current.Relocate(AFileName, TAtlasNoteAnchors.Lines(AText));
+  Result := Current.Relocate(AFileName, TAtlasLineAnchors.Lines(AText));
   if Result then
     Store(Current);
 end;
@@ -287,12 +264,8 @@ begin
   end;
   AFileName := View.Buffer.FileName;
   // Rechtsklick in die Rinne (#545) gilt vor dem Cursor, solange er frisch ist und zur Datei passt.
-  if (FGutterLine >= 0) and TAtlasNotes.SameFile(FGutterFile, AFileName) and
-    (TThread.GetTickCount64 - FGutterAt <= GutterMs) then
-    ALine := FGutterLine
-  else
+  if not TAtlasIdeGutterMarks.TakeLine(AFileName, ALine) then
     ALine := View.CursorPos.Line - 1;
-  ForgetGutterLine;
   Result := ALine >= 0;
 end;
 
@@ -416,7 +389,7 @@ begin
     if Text = '' then
       Changed := Current.OrphanFile(FileName) or Changed
     else
-      Changed := Current.Relocate(FileName, TAtlasNoteAnchors.Lines(Text)) or Changed;
+      Changed := Current.Relocate(FileName, TAtlasLineAnchors.Lines(Text)) or Changed;
     if FProjectOf <> nil then
       FProjectOf.AddOrSetValue(Key(FileName), Project);
   end;

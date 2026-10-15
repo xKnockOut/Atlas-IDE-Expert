@@ -1,10 +1,12 @@
-﻿unit Atlas.Core.Notes.Anchor;
+﻿unit Atlas.Core.Editor.LineAnchor;
 
-// Verankerung persönlicher Notizen (#545) an einer Codezeile, ohne VCL und
-// Open Tools API. Eine Notiz merkt sich nicht nur die Zeilennummer, sondern
-// den Inhalt ihrer Zeile und je zwei Nachbarzeilen davor und danach (ohne
-// Leerraum am Rand, Leerraumfolgen zu einem Leerzeichen; Einrücken ändert
-// also nichts). Locate sucht die Zeile im aktuellen Text wieder:
+// Verankerung an einer Codezeile, ohne VCL und Open Tools API; gemeinsam für
+// persönliche Notizen (#545) und benannte Lesezeichen (#622). Ein Anker merkt
+// sich nicht nur die Zeilennummer, sondern den Inhalt seiner Zeile und je
+// zwei Nachbarzeilen davor und danach (ohne Leerraum am Rand, Leerraumfolgen
+// zu einem Leerzeichen; Einrücken ändert also nichts). Locate sucht die Zeile
+// im aktuellen Text wieder, auf Wunsch nur in einem Bereich (etwa dem Rumpf
+// einer Methode, #622):
 //   1. Gleicher Inhalt: die Stelle mit den meisten passenden Nachbarzeilen,
 //      bei Gleichstand die nächste zur bisherigen Zeile. Same, wenn das die
 //      bisherige Zeile ist, sonst Moved (z. B. Zeilen oberhalb eingefügt).
@@ -13,8 +15,8 @@
 //      Eine leere Zeile braucht immer mindestens einen passenden Nachbarn.
 //   2. Inhalt nirgends mehr: Die Zeile wurde geändert. Stehen alle gemerkten
 //      Nachbarn (mindestens einer nicht leer) noch um eine Stelle herum, bleibt
-//      die Notiz dort (Changed) und der Aufrufer merkt sich den neuen Inhalt.
-//   3. Sonst ist die Notiz verwaist (Orphaned) und behält ihre letzte Zeile.
+//      der Anker dort (Changed) und der Aufrufer merkt sich den neuen Inhalt.
+//   3. Sonst ist der Anker verwaist (Orphaned) und behält seine letzte Zeile.
 // Eine gelöschte Zeile wird so verwaist: Ihre Nachbarn liegen danach direkt
 // aneinander, an keiner Stelle passen beide Seiten.
 
@@ -25,20 +27,20 @@ uses
 
 type
 {$SCOPEDENUMS ON}
-  /// <summary>Ergebnis von TAtlasNoteAnchors.Locate.</summary>
-  TAtlasNoteMatch = (
+  /// <summary>Ergebnis von TAtlasLineAnchors.Locate.</summary>
+  TAtlasLineMatch = (
     /// <summary>Die Zeile steht noch an derselben Stelle.</summary>
     Same,
     /// <summary>Gleicher Inhalt an anderer Stelle (Zeilen davor eingefügt oder entfernt).</summary>
     Moved,
-    /// <summary>Inhalt der Zeile geändert, die Nachbarzeilen stimmen: Die Notiz bleibt dort.</summary>
+    /// <summary>Inhalt der Zeile geändert, die Nachbarzeilen stimmen: Der Anker bleibt dort.</summary>
     Changed,
     /// <summary>Nicht mehr zuordenbar („verwaist“).</summary>
     Orphaned);
 {$SCOPEDENUMS OFF}
 
-  /// <summary>Codezeile einer Notiz mit Umfeld; Texte normiert (TAtlasNoteAnchors.Normalize).</summary>
-  TAtlasNoteAnchor = record
+  /// <summary>Codezeile mit Umfeld; Texte normiert (TAtlasLineAnchors.Normalize).</summary>
+  TAtlasLineAnchor = record
     /// <summary>0-basiert.</summary>
     Line: Integer;
     /// <summary>Inhalt der Zeile.</summary>
@@ -48,10 +50,10 @@ type
     /// <summary>Zeilen danach, die nächste zuerst (After[0] = Line + 1); höchstens ContextLines.</summary>
     After: TArray<string>;
     /// <summary>Gleiche Zeile, gleicher Inhalt, gleiches Umfeld.</summary>
-    function SameAs(const AOther: TAtlasNoteAnchor): Boolean;
+    function SameAs(const AOther: TAtlasLineAnchor): Boolean;
   end;
 
-  TAtlasNoteAnchors = class
+  TAtlasLineAnchors = class
   public const
     /// <summary>Gemerkte Nachbarzeilen je Seite.</summary>
     ContextLines = 2;
@@ -61,16 +63,20 @@ type
     /// <summary>Zeilen eines Textes (CRLF, LF oder CR).</summary>
     class function Lines(const AText: string): TArray<string>; static;
     /// <summary>Anker der Zeile ALine (0-basiert); außerhalb des Textes ohne Inhalt und Umfeld.</summary>
-    class function Capture(const ALines: TArray<string>; ALine: Integer): TAtlasNoteAnchor; static;
+    class function Capture(const ALines: TArray<string>; ALine: Integer): TAtlasLineAnchor; static;
     /// <summary>Sucht die Zeile von AAnchor in ALines (Ablauf oben). ALine ist die gefundene Zeile, bei
     /// Orphaned die bisherige.</summary>
-    class function Locate(const ALines: TArray<string>; const AAnchor: TAtlasNoteAnchor;
-      out ALine: Integer): TAtlasNoteMatch; static;
+    class function Locate(const ALines: TArray<string>; const AAnchor: TAtlasLineAnchor;
+      out ALine: Integer): TAtlasLineMatch; overload; static;
+    /// <summary>Wie oben, sucht aber nur Zeilen von AFirst bis ALast (0-basiert, auf den Text begrenzt); die
+    /// Nachbarzeilen dürfen außerhalb liegen. Same heißt: gefunden an AAnchor.Line.</summary>
+    class function Locate(const ALines: TArray<string>; const AAnchor: TAtlasLineAnchor; AFirst, ALast: Integer;
+      out ALine: Integer): TAtlasLineMatch; overload; static;
   end;
 
 implementation
 
-{ TAtlasNoteAnchor }
+{ TAtlasLineAnchor }
 
 function SameTexts(const A, B: TArray<string>): Boolean;
 var
@@ -84,15 +90,15 @@ begin
       Exit(False);
 end;
 
-function TAtlasNoteAnchor.SameAs(const AOther: TAtlasNoteAnchor): Boolean;
+function TAtlasLineAnchor.SameAs(const AOther: TAtlasLineAnchor): Boolean;
 begin
   Result := (Line = AOther.Line) and (Text = AOther.Text) and SameTexts(Before, AOther.Before) and
     SameTexts(After, AOther.After);
 end;
 
-{ TAtlasNoteAnchors }
+{ TAtlasLineAnchors }
 
-class function TAtlasNoteAnchors.Normalize(const AText: string): string;
+class function TAtlasLineAnchors.Normalize(const AText: string): string;
 var
   Builder: TStringBuilder;
   Ch: Char;
@@ -117,16 +123,16 @@ begin
   end;
 end;
 
-class function TAtlasNoteAnchors.Lines(const AText: string): TArray<string>;
+class function TAtlasLineAnchors.Lines(const AText: string): TArray<string>;
 begin
   Result := AText.Replace(#13#10, #10).Replace(#13, #10).Split([#10]);
 end;
 
-class function TAtlasNoteAnchors.Capture(const ALines: TArray<string>; ALine: Integer): TAtlasNoteAnchor;
+class function TAtlasLineAnchors.Capture(const ALines: TArray<string>; ALine: Integer): TAtlasLineAnchor;
 var
   Index: Integer;
 begin
-  Result := Default(TAtlasNoteAnchor);
+  Result := Default(TAtlasLineAnchor);
   Result.Line := ALine;
   if (ALine < 0) or (ALine > High(ALines)) then
     Exit;
@@ -146,7 +152,7 @@ begin
 end;
 
 /// <summary>Passende Nachbarzeilen um AIndex (ANorm normiert).</summary>
-function ContextScore(const ANorm: TArray<string>; const AAnchor: TAtlasNoteAnchor; AIndex: Integer): Integer;
+function ContextScore(const ANorm: TArray<string>; const AAnchor: TAtlasLineAnchor; AIndex: Integer): Integer;
 var
   Step, Line: Integer;
 begin
@@ -166,7 +172,7 @@ begin
 end;
 
 /// <summary>Mindestens eine gemerkte Nachbarzeile hat Inhalt.</summary>
-function HasSolidContext(const AAnchor: TAtlasNoteAnchor): Boolean;
+function HasSolidContext(const AAnchor: TAtlasLineAnchor): Boolean;
 var
   Text: string;
 begin
@@ -185,14 +191,24 @@ begin
   Result := (ABest < 0) or (Abs(ACandidate - ATarget) < Abs(ABest - ATarget));
 end;
 
-class function TAtlasNoteAnchors.Locate(const ALines: TArray<string>; const AAnchor: TAtlasNoteAnchor;
-  out ALine: Integer): TAtlasNoteMatch;
+class function TAtlasLineAnchors.Locate(const ALines: TArray<string>; const AAnchor: TAtlasLineAnchor;
+  out ALine: Integer): TAtlasLineMatch;
+begin
+  Result := Locate(ALines, AAnchor, 0, High(ALines), ALine);
+end;
+
+class function TAtlasLineAnchors.Locate(const ALines: TArray<string>; const AAnchor: TAtlasLineAnchor;
+  AFirst, ALast: Integer; out ALine: Integer): TAtlasLineMatch;
 var
   Norm: TArray<string>;
   Index, Best, BestScore, Score, Count, Full: Integer;
 begin
   ALine := AAnchor.Line;
-  Result := TAtlasNoteMatch.Orphaned;
+  Result := TAtlasLineMatch.Orphaned;
+  if AFirst < 0 then
+    AFirst := 0;
+  if ALast > High(ALines) then
+    ALast := High(ALines);
   SetLength(Norm, Length(ALines));
   for Index := 0 to High(ALines) do
     Norm[Index] := Normalize(ALines[Index]);
@@ -200,7 +216,7 @@ begin
   Best := -1;
   BestScore := -1;
   Count := 0;
-  for Index := 0 to High(Norm) do
+  for Index := AFirst to ALast do
   begin
     if Norm[Index] <> AAnchor.Text then
       Continue;
@@ -222,9 +238,9 @@ begin
   begin
     ALine := Best;
     if Best = AAnchor.Line then
-      Result := TAtlasNoteMatch.Same
+      Result := TAtlasLineMatch.Same
     else
-      Result := TAtlasNoteMatch.Moved;
+      Result := TAtlasLineMatch.Moved;
     Exit;
   end;
   // 2. Inhalt geändert: alle Nachbarn passen noch um eine Stelle.
@@ -232,13 +248,13 @@ begin
   if (Full = 0) or not HasSolidContext(AAnchor) then
     Exit;
   Best := -1;
-  for Index := 0 to High(Norm) do
+  for Index := AFirst to ALast do
     if (ContextScore(Norm, AAnchor, Index) = Full) and Closer(Index, Best, AAnchor.Line) then
       Best := Index;
   if Best >= 0 then
   begin
     ALine := Best;
-    Result := TAtlasNoteMatch.Changed;
+    Result := TAtlasLineMatch.Changed;
   end;
 end;
 

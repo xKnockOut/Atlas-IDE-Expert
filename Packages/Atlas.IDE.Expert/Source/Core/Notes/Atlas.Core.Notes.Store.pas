@@ -26,7 +26,7 @@
 //   }
 // "line" zählt ab 1 (wie im Editor). "lineText", "before" und "after" sind
 // die normierte Zeile und ihre Nachbarn (die nächste zuerst) für die
-// Verankerung (Atlas.Core.Notes.Anchor). "orphaned" steht nur bei verwaisten
+// Verankerung (Atlas.Core.Editor.LineAnchor). "orphaned" steht nur bei verwaisten
 // Notizen. Unbekannte Felder (oben und je Notiz) bleiben beim Schreiben
 // erhalten; "format" steigt nur bei einer inkompatiblen Änderung, eine Datei
 // mit höherem Format wird weder gelesen noch überschrieben. Ein leeres
@@ -37,7 +37,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Notes.Anchor;
+  Atlas.Core.Editor.LineAnchor;
 
 type
   TAtlasNote = record
@@ -47,7 +47,7 @@ type
     FileName: string;
     /// <summary>Text der Notiz, ein- oder mehrzeilig (Zeilen mit #10 getrennt).</summary>
     Text: string;
-    Anchor: TAtlasNoteAnchor;
+    Anchor: TAtlasLineAnchor;
     /// <summary>UTC.</summary>
     Created: TDateTime;
     /// <summary>Letzte Änderung des Textes (UTC).</summary>
@@ -162,7 +162,7 @@ var
   Index, First: Integer;
 begin
   Result := '';
-  Lines := TAtlasNoteAnchors.Lines(Text);
+  Lines := TAtlasLineAnchors.Lines(Text);
   First := -1;
   for Index := 0 to High(Lines) do
     if Trim(Lines[Index]) <> '' then
@@ -275,7 +275,7 @@ begin
   Note.Id := TAtlasNotes.NewId;
   Note.FileName := AFileName;
   Note.Text := AText;
-  Note.Anchor := TAtlasNoteAnchors.Capture(ALines, ALine);
+  Note.Anchor := TAtlasLineAnchors.Capture(ALines, ALine);
   Note.Created := ANowUtc;
   Note.Changed := ANowUtc;
   Notes := Notes + [Note];
@@ -307,14 +307,14 @@ end;
 function TAtlasNoteBook.Relocate(const AFileName: string; const ALines: TArray<string>): Boolean;
 var
   Index, Line: Integer;
-  Anchor: TAtlasNoteAnchor;
+  Anchor: TAtlasLineAnchor;
 begin
   Result := False;
   for Index := 0 to High(Notes) do
   begin
     if not TAtlasNotes.SameFile(Notes[Index].FileName, AFileName) then
       Continue;
-    if TAtlasNoteAnchors.Locate(ALines, Notes[Index].Anchor, Line) = TAtlasNoteMatch.Orphaned then
+    if TAtlasLineAnchors.Locate(ALines, Notes[Index].Anchor, Line) = TAtlasLineMatch.Orphaned then
     begin
       if not Notes[Index].Orphaned then
       begin
@@ -324,7 +324,7 @@ begin
       Continue;
     end;
     // Gefunden: neuen Stand merken, damit die Notiz auch weiteren Änderungen folgt.
-    Anchor := TAtlasNoteAnchors.Capture(ALines, Line);
+    Anchor := TAtlasLineAnchors.Capture(ALines, Line);
     if Notes[Index].Orphaned or not Notes[Index].Anchor.SameAs(Anchor) then
     begin
       Notes[Index].Anchor := Anchor;
@@ -468,7 +468,7 @@ begin
     Exit;
   List := TJSONArray(Value);
   for Index := 0 to List.Count - 1 do
-    if (List.Items[Index] is TJSONString) and (Length(Result) < TAtlasNoteAnchors.ContextLines) then
+    if (List.Items[Index] is TJSONString) and (Length(Result) < TAtlasLineAnchors.ContextLines) then
       Result := Result + [TJSONString(List.Items[Index]).Value];
 end;
 
