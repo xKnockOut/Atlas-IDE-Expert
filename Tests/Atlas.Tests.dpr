@@ -273,6 +273,8 @@ uses
   Atlas.Core.Editor.Selection in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Selection.pas',
   Atlas.Core.Editor.SlashTrigger in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.SlashTrigger.pas',
   Atlas.Core.Editor.Commands.Tests in 'IDE.Expert\Atlas.Core.Editor.Commands.Tests.pas',
+  Atlas.Core.Editor.TestUnit in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.TestUnit.pas',
+  Atlas.Core.Editor.TestUnit.Tests in 'IDE.Expert\Atlas.Core.Editor.TestUnit.Tests.pas',
   Atlas.Core.Forms.Text in '..\Packages\Atlas.IDE.Expert\Source\Core\Forms\Atlas.Core.Forms.Text.pas',
   Atlas.Core.Forms.Changes in '..\Packages\Atlas.IDE.Expert\Source\Core\Forms\Atlas.Core.Forms.Changes.pas',
   Atlas.Core.Forms.Tests in 'IDE.Expert\Atlas.Core.Forms.Tests.pas',

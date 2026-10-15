@@ -147,7 +147,8 @@ type
     SettingsTabColors, SettingsPairColorsLight, SettingsPairColorsDark, SettingsPairColorsReset,
     SettingsPairColorsHint, TargetFooter, UnavailableHint,
     SettingsTabInsert, SettingsTabCommands, SettingsTabStartup, SettingsTabUndo,
-    SettingsAfterSaveNone, SettingsAfterSaveCheck, SettingsAfterSaveCompile);
+    SettingsAfterSaveNone, SettingsAfterSaveCheck, SettingsAfterSaveCompile,
+    EditorTestUnit, SettingsCodeLensTestUnit, TestUnitLensTest, TestUnitLensUnit, TestUnitLensCreate, TestUnitNone);
 
   TAtlasStrings = class
   private class var
@@ -528,7 +529,9 @@ const
      'Ziel: %s', 'Nicht verfügbar: Die Bedingung „%s“ ist für %s nicht erfüllt. Es gelten die Symbole der Plattform ' +
      'und des Compilers sowie die Bedingungen aus den Projektoptionen der aktiven Konfiguration (z. B. DEBUG).',
      'Einfügen', 'Befehle', 'Start und Updates', 'Rückgängig',
-     'Nichts tun', 'Syntax prüfen (IDE)', 'Kompilieren (Server)'),
+     'Nichts tun', 'Syntax prüfen (IDE)', 'Kompilieren (Server)',
+     'Zwischen Unit und Testunit wechseln', 'Code Lens „zur Testunit“ hinter der unit-Zeile', '→ Testunit %s',
+     '→ Unit %s', '+ Testunit %s anlegen', 'Keine Testunit: %s'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -886,7 +889,9 @@ const
      'Target: %s', 'Not available: the condition “%s” is not met for %s. The symbols of the platform ' +
      'and compiler and the conditionals from the project options of the active configuration (e.g. DEBUG) apply.',
      'Insertion', 'Commands', 'Startup and updates', 'Undo',
-     'Do nothing', 'Check syntax (IDE)', 'Compile (server)'));
+     'Do nothing', 'Check syntax (IDE)', 'Compile (server)',
+     'Switch between unit and test unit', 'Code lens “to test unit” after the unit line', '→ Test unit %s',
+     '→ Unit %s', '+ Create test unit %s', 'No test unit: %s'));
 
 { TAtlasStrings }
 

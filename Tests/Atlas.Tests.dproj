@@ -342,6 +342,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Selection.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.SlashTrigger.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Commands.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.TestUnit.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.TestUnit.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Forms\Atlas.Core.Forms.Text.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Forms\Atlas.Core.Forms.Changes.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Forms.Tests.pas"/>

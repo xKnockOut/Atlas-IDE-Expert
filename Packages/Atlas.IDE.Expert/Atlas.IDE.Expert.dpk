@@ -89,6 +89,8 @@ contains
   Atlas.IDE.Editor.WorkspaceEdit in 'Source\IDE\Editor\Atlas.IDE.Editor.WorkspaceEdit.pas',
   Atlas.IDE.Projects.Context in 'Source\IDE\Projects\Atlas.IDE.Projects.Context.pas',
   Atlas.IDE.InlayHints.Editor in 'Source\IDE\InlayHints\Atlas.IDE.InlayHints.Editor.pas',
+  Atlas.IDE.Editor.TestUnitLens in 'Source\IDE\Editor\Atlas.IDE.Editor.TestUnitLens.pas',
+  Atlas.Core.Editor.TestUnit in 'Source\Core\Editor\Atlas.Core.Editor.TestUnit.pas',
   Atlas.IDE.Editor.Rename in 'Source\IDE\Editor\Atlas.IDE.Editor.Rename.pas',
   Atlas.IDE.Editor.KeyHook in 'Source\IDE\Editor\Atlas.IDE.Editor.KeyHook.pas',
   Atlas.IDE.Signature.Editor in 'Source\IDE\Signature\Atlas.IDE.Signature.Editor.pas',

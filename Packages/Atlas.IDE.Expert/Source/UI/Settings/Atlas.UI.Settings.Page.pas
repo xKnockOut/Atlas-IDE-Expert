@@ -108,6 +108,7 @@ type
     FInactiveDim: TCheckBox;
     FOpenForEdits: TCheckBox;
     FInlayHints: TCheckBox;
+    FCodeLensTestUnit: TCheckBox;
     FPairGuides: TCheckBox;
     FPairOwners: TCheckBox;
     FPairGuideWidth: TEdit;
@@ -141,6 +142,7 @@ type
     FShrinkKey: TEdit;
     FImplementationKey: TEdit;
     FTypeDefinitionKey: TEdit;
+    FTestUnitKey: TEdit;
     FUndoKey: TEdit;
     FRedoKey: TEdit;
     FEditorKeysPriority: TCheckBox;
@@ -501,6 +503,7 @@ begin
   FPairColors.OnClick := PairColorsClick;
   FInactiveDim := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim));
   FInlayHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayHints));
+  FCodeLensTestUnit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTestUnit));
 
   // Eigene Paarfarben und deren Reihenfolge je Thema.
   AddSheet(TAtlasTextId.SettingsTabColors);
@@ -548,6 +551,7 @@ begin
   FShrinkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorShrink));
   FImplementationKey := AddKey(TAtlasStrings.Text(TAtlasTextId.MenuImplementations));
   FTypeDefinitionKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTypeDefinition));
+  FTestUnitKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTestUnit));
   FUndoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.UndoMenu));
   FRedoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.RedoMenu));
   FEditorKeysPriority := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorKeysPriority));
@@ -1004,6 +1008,7 @@ begin
   FShrinkKey.Text := ShortCutToText(TShortCut(ASettings.ShrinkKey));
   FImplementationKey.Text := ShortCutToText(TShortCut(ASettings.ImplementationKey));
   FTypeDefinitionKey.Text := ShortCutToText(TShortCut(ASettings.TypeDefinitionKey));
+  FTestUnitKey.Text := ShortCutToText(TShortCut(ASettings.TestUnitKey));
   FEditorKeysPriority.Checked := ASettings.EditorKeysPriority;
   FSlashCommands.Checked := ASettings.SlashCommands;
   ServerPathChange(nil);
@@ -1035,6 +1040,7 @@ begin
   FPairColors.Checked := ASettings.PairColors;
   FInactiveDim.Checked := ASettings.InactiveDim;
   FInlayHints.Checked := ASettings.InlayHints;
+  FCodeLensTestUnit.Checked := ASettings.CodeLensTestUnit;
   FPairGuides.Checked := ASettings.PairGuides;
   FPairOwners.Checked := ASettings.PairOwners;
   FPairGuideWidth.Text := IntToStr(ASettings.PairGuideWidth);
@@ -1094,6 +1100,7 @@ begin
   ASettings.ShrinkKey := Integer(TextToShortCut(Trim(FShrinkKey.Text)));
   ASettings.ImplementationKey := Integer(TextToShortCut(Trim(FImplementationKey.Text)));
   ASettings.TypeDefinitionKey := Integer(TextToShortCut(Trim(FTypeDefinitionKey.Text)));
+  ASettings.TestUnitKey := Integer(TextToShortCut(Trim(FTestUnitKey.Text)));
   ASettings.UndoKey := Integer(TextToShortCut(Trim(FUndoKey.Text)));
   ASettings.RedoKey := Integer(TextToShortCut(Trim(FRedoKey.Text)));
   ASettings.UpdatesCheck := FUpdatesCheck.Checked;
@@ -1125,6 +1132,7 @@ begin
   ASettings.PairColors := FPairColors.Checked;
   ASettings.InactiveDim := FInactiveDim.Checked;
   ASettings.InlayHints := FInlayHints.Checked;
+  ASettings.CodeLensTestUnit := FCodeLensTestUnit.Checked;
   ASettings.PairGuides := FPairGuides.Checked;
   ASettings.PairOwners := FPairOwners.Checked;
   ASettings.PairGuideWidth := StrToIntDef(FPairGuideWidth.Text, ASettings.PairGuideWidth);
