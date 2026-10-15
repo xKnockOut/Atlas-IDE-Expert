@@ -135,6 +135,9 @@ type
     // Je Baum: Helfer je Typname und die Klasse der umgebenden Methode.
     FHelperTree: TSyntaxTree;
     FHelpers: TDictionary<string, TResolvedSymbol>;
+    // Aufgelöste Vorfahren je Typ (Diagnoselog 15.10.2026): Jeder Mitgliedszugriff lief die ganze
+    // Vererbungskette neu durch; gilt wie FHelpers für einen Baum.
+    FAncestors: TDictionary<string, TResolvedSymbol>;
     // Units, die in diesem Resolver schon nicht gefunden wurden: nicht erneut suchen.
     FMissingUnits: TDictionary<string, Boolean>;
     // Zeit im Nachladen (EnsureUnit) für das Diagnoselog (#647).
@@ -173,6 +176,8 @@ type
     function FindReceiver(AEndOffset: Integer): TSyntaxNode;
     function FindCall(ACalleeEnd: Integer): TSyntaxNode;
     function IsForVar(ANode: TSyntaxNode): Boolean;
+    /// <summary>Index des ersten Tokens von FTree mit Offset &gt;= AOffset (binäre Suche).</summary>
+    function FirstTokenAt(AOffset: Integer): Integer;
     function ResolveFirstAll(const ANames: TArray<string>; out AConsumed: Integer;
       out AResults: TArray<TResolvedSymbol>): Boolean;
     function ResolveNames(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
@@ -580,12 +585,14 @@ begin
   FIndex := AIndex;
   FEnsureUnit := AEnsureUnit;
   FHelpers := TDictionary<string, TResolvedSymbol>.Create;
+  FAncestors := TDictionary<string, TResolvedSymbol>.Create;
 end;
 
 destructor TNameResolver.Destroy;
 begin
   FScopeSeen.Free;
   FMissingUnits.Free;
+  FAncestors.Free;
   FHelpers.Free;
   inherited;
 end;
@@ -742,13 +749,14 @@ begin
   Result.FileName := FCurrent.FileName;
   Result.Range := TTextRange.Create(ANode.StartPos, ANode.EndPos);
   Result.SelectionRange := Result.Range;
-  // Auswahl auf den Namen selbst legen.
-  for Index := 0 to High(FTree.Tokens) do
+  // Auswahl auf den Namen selbst legen; ab dem ersten Token des Knotens, nicht ab Dateianfang: Das
+  // kostete je lokalem Namen einen Lauf über alle Tokens davor (Diagnoselog 15.10.2026, große Units).
+  for Index := FirstTokenAt(ANode.StartOffset) to High(FTree.Tokens) do
   begin
     Token := FTree.Tokens[Index];
     if Token.Offset >= ANode.EndOffset then
       Break;
-    if (Token.Offset >= ANode.StartOffset) and (Token.Kind = TPascalTokenKind.Identifier) and
+    if (Token.Kind = TPascalTokenKind.Identifier) and
       (SameText(Token.Text, AName) or SameText(Token.Text, '&' + AName)) then
     begin
       Result.SelectionRange := TTextRange.Create(Token.StartPos, Token.EndPos);
@@ -957,7 +965,7 @@ end;
 function TNameResolver.AncestorOf(const AType: TResolvedSymbol; out AAncestor: TResolvedSymbol): Boolean;
 var
   FromUnit: TUnitIndex;
-  Name: string;
+  Name, Key: string;
 begin
   Result := False;
   if AType.Builtin or not UnitOf(AType, FromUnit) then
@@ -973,8 +981,14 @@ begin
   // Helfer: der "Vorfahr" ist der erweiterte Typ, nicht der Elterntyp.
   if AType.SymbolKind = TIndexSymbolKind.HelperType then
     Exit;
+  Key := UpperCase(FromUnit.FileName + '|' + AType.QualifiedName + '|' + Name);
+  if FAncestors.TryGetValue(Key, AAncestor) then
+    Exit(AAncestor.Found);
   Result := ResolveTypeText(Name, FromUnit, SameText(FromUnit.FileName, FCurrent.FileName), AAncestor) and
     not AAncestor.Builtin and not SameText(AAncestor.QualifiedName, AType.QualifiedName);
+  if not Result then
+    AAncestor := NoResult;
+  FAncestors.AddOrSetValue(Key, AAncestor);
 end;
 
 /// <summary>Stammt die Klasse von TCustomAttribute ab? Bricht die Kette an einem unbekannten Vorfahren ab,
@@ -1306,13 +1320,27 @@ var
   Index: Integer;
 begin
   // for var I := ...: das Wort nach "for" ist "var".
-  Result := False;
-  for Index := 0 to High(FTree.Tokens) - 1 do
-    if FTree.Tokens[Index].Offset >= ANode.StartOffset then
-    begin
-      Result := FTree.Tokens[Index].IsKeyword('for') and FTree.Tokens[Index + 1].IsKeyword('var');
-      Exit;
-    end;
+  Index := FirstTokenAt(ANode.StartOffset);
+  Result := (Index < High(FTree.Tokens)) and FTree.Tokens[Index].IsKeyword('for') and
+    FTree.Tokens[Index + 1].IsKeyword('var');
+end;
+
+function TNameResolver.FirstTokenAt(AOffset: Integer): Integer;
+var
+  Low, High_, Middle: Integer;
+begin
+  // Binäre Suche: erstes Token mit Offset >= AOffset; Length(Tokens), wenn es keines gibt.
+  Low := 0;
+  High_ := Length(FTree.Tokens);
+  while Low < High_ do
+  begin
+    Middle := (Low + High_) div 2;
+    if FTree.Tokens[Middle].Offset < AOffset then
+      Low := Middle + 1
+    else
+      High_ := Middle;
+  end;
+  Result := Low;
 end;
 
 function TNameResolver.LookupInlineVars(ANode: TSyntaxNode; const AName: string;
@@ -1968,6 +1996,7 @@ begin
   if ATree <> FHelperTree then
   begin
     FHelpers.Clear;
+    FAncestors.Clear;
     FHelperTree := ATree;
   end;
   Section := ATree.Root.FindChild(TSyntaxKind.InterfaceSection);
@@ -2379,6 +2408,7 @@ begin
   FClassState := 0;
   FHelperTree := nil;
   FHelpers.Clear;
+  FAncestors.Clear;
   Result := ResolveTypeName(ATypeName, AFromUnit, True, AResult);
 end;
 
@@ -2392,6 +2422,7 @@ begin
   FClassState := 0;
   FHelperTree := nil;
   FHelpers.Clear;
+  FAncestors.Clear;
   Result := LookupGlobal(AFromUnit, AName, True, False, AResult);
 end;
 
