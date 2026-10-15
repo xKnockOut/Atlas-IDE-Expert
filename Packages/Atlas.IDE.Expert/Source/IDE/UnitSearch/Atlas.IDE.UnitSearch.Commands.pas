@@ -15,6 +15,8 @@
 //   unitSearch.replaceIdeDialog an sind. Mit gedrückter Umschalttaste, ohne
 //   Server und über den Befehl „IDE-Dialog Units suchen“ kommt der IDE-Dialog.
 //   Die Einstellungen gelten ohne Neustart; Uninstall stellt die Aktion zurück.
+//   Die Tastenkürzel-Übersicht (#520) fragt die übernommene Aktion über
+//   HookedAction ab und zeigt Strg+F12 dann als Atlas-Taste.
 // Meldungen nur als Zeile in der Meldungsansicht, nie als Dialog.
 
 interface
@@ -43,6 +45,8 @@ type
     class procedure Show; overload; static;
     /// <summary>Den Dialog der IDE (Ansicht › Units) ohne Umweg über Atlas.</summary>
     class procedure ShowIdeDialog; static;
+    /// <summary>Die Aktion der IDE, an die sich Atlas für Strg+F12 gehängt hat; nil ohne (#520).</summary>
+    class function HookedAction: TBasicAction; static;
     /// <summary>Datei für Lage und Wahl des Fensters.</summary>
     class function StateFile: string; static;
   end;
@@ -404,6 +408,13 @@ end;
 class function TAtlasIdeUnitSearch.StateFile: string;
 begin
   Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), 'unitsearch.json');
+end;
+
+class function TAtlasIdeUnitSearch.HookedAction: TBasicAction;
+begin
+  Result := nil;
+  if FHook <> nil then
+    Result := TUnitDialogHook(FHook).FAction;
 end;
 
 class procedure TAtlasIdeUnitSearch.ShowIdeDialog;
