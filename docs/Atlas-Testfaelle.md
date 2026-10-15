@@ -651,6 +651,8 @@ Vorbereitung: Paket mit `whatsnew.json` (Release oder `pwsh Tools/Update-WhatsNe
 
 ### Projekte mit Zustand (#592)
 
+Abweichungen vom Issue (begründet in ADR 0011): Bereich als Inhalts-Frame statt `INTAWelcomePageDataPluginListView`, Ersatzfenster „Atlas-Start“ statt „Projektzustand“, Einstellungen auf der Seite *Willkommensseite* statt *Allgemein*. Neue Regeltreffer zählt Atlas aus den Problemen, die das Plugin vom Server hat (Baseline schon abgezogen), also nur in geprüften Dateien.
+
 Vorbereitung: zwei Projekte in Git (eins auf `main`, eins auf einem Feature-Branch mit ungespeicherten Änderungen), ein Projekt ohne Versionsverwaltung, eine Projektgruppe. Je Projekt einmal öffnen und wieder schließen. Die Zusammenfassungen stehen in `%LOCALAPPDATA%\Atlas\projects\*.json`.
 
 | Nr. | Schritte | Erwartet |
@@ -671,6 +673,9 @@ Vorbereitung: zwei Projekte in Git (eins auf `main`, eins auf einem Feature-Bran
 | PZ14 | Dunkles und helles IDE-Thema, 150 % Skalierung | Text, Marken und Tooltip gut lesbar; Marken nicht abgeschnitten |
 | PZ15 | Delphi 12 bzw. Host „Atlas-Start“ | Bereich erscheint im Fenster „Atlas-Start“ mit demselben Inhalt |
 | PZ16 | Neu in Atlas: Schalter „Projekte mit Zustand“ aus und wieder an | Bereich verschwindet sofort und kommt zurück; Optionsseite zeigt denselben Wert |
+| PZ17 | Probleme an (#398), Baseline mit bekannten Treffern; im Projekt zwei neue `with`-Anweisungen einbauen, speichern, warten bis die Probleme da sind, Projekt schließen | gelbe Marke „2 neue Treffer“; Tooltip „2 neue Regeltreffer gegenüber der Baseline (geprüfte Dateien)“; Treffer aus der Baseline zählen nicht. Mit ausgeschalteten Problemen bleibt der alte Stand |
+| PZ18 | Eine Git-Arbeitskopie mit zwei Projekten in Unterordnern; nur im ersten eine Datei ändern, beide schließen | „1 geändert“ nur beim ersten Projekt, das zweite ohne Marke |
+| PZ19 | git so umbenennen, dass der Aufruf hängt bzw. fehlt; Willkommensseite öffnen, 10 s warten, Bereich neu zeichnen lassen (Fenster wechseln) | „wird abgefragt …“ verschwindet spätestens nach 5 s; danach gespeicherter Stand mit „Stand vom …“ |
 
 ## Atlas-Symbol (#751)
 

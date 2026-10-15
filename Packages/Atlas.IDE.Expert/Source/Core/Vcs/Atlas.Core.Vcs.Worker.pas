@@ -32,8 +32,8 @@ type
     /// <summary>Stop mit 1 s; Threads, die dann noch laufen, bleiben bis zu ihrem Ende im Speicher.</summary>
     destructor Destroy; override;
     /// <summary>AWork im Hintergrund, danach ADone im Hauptthread (nicht nach Stop). Aus dem Hauptthread
-    /// aufrufen; nach Stop wirkungslos.</summary>
-    procedure Run(const AWork, ADone: TProc);
+    /// aufrufen; nach Stop wirkungslos. False, wenn nichts gestartet wurde (dann kommt auch ADone nie).</summary>
+    function Run(const AWork, ADone: TProc): Boolean;
     /// <summary>Keine weiteren Ergebnisse; laufende Prozesse abbrechen und höchstens AMs auf die Threads warten.
     /// True, wenn alle beendet sind.</summary>
     function Stop(AMs: Cardinal): Boolean;
@@ -83,11 +83,12 @@ begin
   AThread.Free;
 end;
 
-procedure TAtlasVcsWorker.Run(const AWork, ADone: TProc);
+function TAtlasVcsWorker.Run(const AWork, ADone: TProc): Boolean;
 var
   Thread: TThread;
   Work, Done: TProc;
 begin
+  Result := False;
   if FStopped then
     Exit;
   Work := AWork;
@@ -126,6 +127,7 @@ begin
     FLock.Leave;
   end;
   Thread.Start;
+  Result := True;
 end;
 
 function TAtlasVcsWorker.Stop(AMs: Cardinal): Boolean;

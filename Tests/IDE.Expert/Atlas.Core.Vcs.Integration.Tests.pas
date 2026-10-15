@@ -300,7 +300,7 @@ begin
   Outcome := TAtlasVcsOutcome.Failed;
   Worker := TAtlasVcsWorker.Create;
   try
-    Worker.Run(
+    Assert.IsTrue(Worker.Run(
       procedure
       begin
         Outcome := Vcs.Head(Head);
@@ -309,7 +309,7 @@ begin
       begin
         InMain := TThread.CurrentThread.ThreadID = MainThreadID;
         Done := True;
-      end);
+      end), 'gestartet');
     Deadline := TThread.GetTickCount64 + 20000;
     while not Done and (TThread.GetTickCount64 < Deadline) do
     begin
@@ -327,14 +327,14 @@ begin
     // Nach Stop kommt nichts mehr an.
     Done := False;
     Worker.Stop(1000);
-    Worker.Run(
+    Assert.IsFalse(Worker.Run(
       procedure
       begin
       end,
       procedure
       begin
         Done := True;
-      end);
+      end), 'nach Stop nicht gestartet');
     CheckSynchronize(50);
     Assert.IsFalse(Done);
   finally

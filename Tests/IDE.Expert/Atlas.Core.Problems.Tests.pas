@@ -347,8 +347,13 @@ begin
     Assert.AreEqual(1, Integer(Length(Store.Files)));
     Store.Update('C:\P\C.pas', '', True, [], '1', True);
     Assert.AreEqual(1, Integer(Length(Store.Files)), 'ohne Probleme nicht in der Liste');
+    // AllFiles: alle geprüften Dateien, auch ohne Probleme, sortiert (#592).
+    Assert.AreEqual(2, Integer(Length(Store.AllFiles)));
+    Assert.AreEqual('C:\P\B.pas', Store.AllFiles[0]);
+    Assert.AreEqual('C:\P\C.pas', Store.AllFiles[1]);
     Store.Remove('C:\P\B.pas');
     Assert.AreEqual(0, Integer(Length(Store.Files)));
+    Assert.AreEqual(1, Integer(Length(Store.AllFiles)));
   finally
     Store.Free;
   end;

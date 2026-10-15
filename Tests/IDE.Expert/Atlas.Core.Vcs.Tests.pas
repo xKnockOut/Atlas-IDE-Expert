@@ -62,6 +62,8 @@ type
     procedure WatchAsksOnlyWhenMarkerChanges;
     [Test]
     procedure GitChangeMarkerFollowsHeadAndBranch;
+    [Test]
+    procedure WorkerReportsWhetherItStarted;
   end;
 
 implementation
@@ -79,7 +81,8 @@ uses
   Atlas.Core.Vcs.Providers.Git,
   Atlas.Core.Vcs.Providers.Svn,
   Atlas.Core.Vcs.Providers.Null,
-  Atlas.Core.Vcs.Composition;
+  Atlas.Core.Vcs.Composition,
+  Atlas.Core.Vcs.Worker;
 
 const
   Hash1 = '1979e3d795214220705682d5b0b63c8f3b7e66d7';
@@ -1075,6 +1078,41 @@ begin
     RemoveDir(Folder + PathDelim + '.git' + PathDelim + 'refs');
     RemoveDir(Folder + PathDelim + '.git');
     RemoveDir(Folder);
+  end;
+end;
+
+procedure TAtlasVcsTests.WorkerReportsWhetherItStarted;
+var
+  Worker: TAtlasVcsWorker;
+  Done: Boolean;
+  Deadline: UInt64;
+begin
+  // #592: Ohne Start kommt kein Ergebnis; der Aufrufer muss das wissen, sonst bleibt „wird abgefragt …“.
+  Done := False;
+  Worker := TAtlasVcsWorker.Create;
+  try
+    Assert.IsTrue(Worker.Run(
+      procedure
+      begin
+      end,
+      procedure
+      begin
+        Done := True;
+      end));
+    Deadline := TThread.GetTickCount64 + 5000;
+    while not Done and (TThread.GetTickCount64 < Deadline) do
+      CheckSynchronize(10);
+    Assert.IsTrue(Done);
+    Worker.Stop(1000);
+    Assert.IsFalse(Worker.Run(
+      procedure
+      begin
+      end,
+      procedure
+      begin
+      end));
+  finally
+    Worker.Free;
   end;
 end;
 

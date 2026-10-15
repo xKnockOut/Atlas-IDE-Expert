@@ -16,6 +16,11 @@
 // - Versionsverwaltung (#571): beim Anzeigen im Hintergrund frisch abgefragt
 //   (welcomePage.refreshVcs), je Projekt höchstens einmal je Minute, mit 2 s
 //   Zeitlimit; bis dahin gilt der gespeicherte Stand („Stand vom …“).
+//   Geänderte Dateien zählen nur im Projektordner. Startet die Abfrage nicht
+//   oder kommt sie nicht binnen 5 s zurück, endet „wird abgefragt …“.
+// - Regeltreffer (#97): beim Schließen und nach jedem Build aus den Problemen,
+//   die das Plugin vom Server hat (#398, Baseline schon abgezogen), gezählt
+//   im Projektordner; nur wenn Probleme an sind und dort Dateien geprüft sind.
 // - Die Willkommensseite startet keinen Server und liest nur lokale Dateien.
 
 interface
@@ -53,12 +58,15 @@ type
     // Normierter Pfad → Zeitpunkt (GetTickCount64) bzw. Ergebnis der letzten Abfrage in dieser Sitzung.
     FFresh: TDictionary<string, UInt64>;
     FLive: TDictionary<string, TAtlasProjectVcs>;
-    FQuerying: TDictionary<string, Boolean>;
+    // Normierter Pfad → Start der laufenden Abfrage (GetTickCount64).
+    FQuerying: TDictionary<string, UInt64>;
     procedure Changed;
     procedure Report(const AText: string);
     procedure Opened(const AProject: string);
     procedure Closing(const AProject: string);
     procedure Query(const AProject: string);
+    function Querying(const AKey: string): Boolean;
+    procedure RecordRules(const AProject: string; ANowUtc: TDateTime);
     procedure RecordInto(const AProject: string; const AMessages: TArray<TAtlasCompilerMessage>;
       const AInfo: TAtlasCompileProject; ASucceeded: Boolean; ANowUtc: TDateTime);
     class function NowUtc: TDateTime; static;
@@ -105,6 +113,7 @@ uses
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Settings.Store,
   Atlas.IDE.Results.Commands,
+  Atlas.IDE.Problems.Controller,
   Atlas.IDE.Vcs.Service,
   Atlas.IDE.Welcome.Search;
 
@@ -153,7 +162,7 @@ begin
   FNotifierIndex := -1;
   FFresh := TDictionary<string, UInt64>.Create;
   FLive := TDictionary<string, TAtlasProjectVcs>.Create;
-  FQuerying := TDictionary<string, Boolean>.Create;
+  FQuerying := TDictionary<string, UInt64>.Create;
 end;
 
 destructor TAtlasIdeProjects.Destroy;
@@ -311,7 +320,7 @@ begin
       Result[Index].Summary.Vcs := Vcs;
       Result[Index].VcsFresh := True;
     end;
-    Result[Index].VcsQuerying := FQuerying.ContainsKey(Key);
+    Result[Index].VcsQuerying := Querying(Key);
   end;
 end;
 
@@ -330,6 +339,17 @@ begin
       Query(Entry.Project);
 end;
 
+function TAtlasIdeProjects.Querying(const AKey: string): Boolean;
+var
+  Started: UInt64;
+begin
+  // Eine Abfrage, die nicht binnen VcsQueryLimitMs zurückkam, gilt als beendet.
+  Result := FQuerying.TryGetValue(AKey, Started) and
+    TAtlasWelcomeProjects.QueryRunning(Started, GetTickCount64);
+  if not Result then
+    FQuerying.Remove(AKey);
+end;
+
 procedure TAtlasIdeProjects.Query(const AProject: string);
 var
   Keep: IAtlasProjectsSource;
@@ -337,11 +357,13 @@ var
   Stamp: TDateTime;
   Ok: Boolean;
   State: TAtlasProjectVcs;
+  Started: UInt64;
 begin
   Key := TAtlasProjectSummaries.NormalizedPath(AProject);
-  if FStopped or FQuerying.ContainsKey(Key) then
+  if FStopped or Querying(Key) then
     Exit;
-  FQuerying.Add(Key, True);
+  Started := GetTickCount64;
+  FQuerying.AddOrSetValue(Key, Started);
   Keep := Self;
   Project := AProject;
   Dir := ExtractFileDir(AProject);
@@ -350,18 +372,23 @@ begin
   Ok := False;
   State := TAtlasProjectVcs.Empty;
   // Arbeit und Ergebnis teilen sich Ok und State; das Ergebnis kommt erst nach der Arbeit.
-  TAtlasIdeVcs.Run(
+  if not TAtlasIdeVcs.Run(
     procedure
     begin
-      Ok := TAtlasWelcomeProjects.Probe(TAtlasIdeVcs.ForFolder(Dir, TAtlasWelcomeProjects.VcsCallTimeoutMs), Stamp,
-        State);
+      // Geänderte Dateien nur im Projektordner: Eine Arbeitskopie kann mehrere Projekte enthalten.
+      Ok := TAtlasWelcomeProjects.Probe(TAtlasIdeVcs.ForFolder(Dir, TAtlasWelcomeProjects.VcsCallTimeoutMs), Dir,
+        Stamp, State);
     end,
     procedure
+    var
+      Current: UInt64;
     begin
       // Keep hält die Quelle bis hierher am Leben.
       if (Keep = nil) or FStopped then
         Exit;
-      FQuerying.Remove(Key);
+      // Nur die eigene Abfrage beenden, nicht eine neuere nach Ablauf des Zeitlimits.
+      if FQuerying.TryGetValue(Key, Current) and (Current = Started) then
+        FQuerying.Remove(Key);
       FFresh.AddOrSetValue(Key, GetTickCount64);
       if Ok then
       begin
@@ -373,6 +400,32 @@ begin
           end);
       end;
       Changed;
+    end) then
+  begin
+    // Nicht gestartet (Versionsverwaltung noch nicht bereit oder beendet): kein „wird abgefragt …“, nicht
+    // bei jedem Zeichnen neu versuchen.
+    FQuerying.Remove(Key);
+    FFresh.AddOrSetValue(Key, GetTickCount64);
+  end;
+end;
+
+procedure TAtlasIdeProjects.RecordRules(const AProject: string; ANowUtc: TDateTime);
+var
+  Settings: TAtlasPluginSettings;
+  Hits: Integer;
+  Stamp: TDateTime;
+begin
+  // Nur was das Plugin vom Server hat (Probleme an); ohne geprüfte Datei im Projektordner bleibt der alte Stand.
+  Settings := TAtlasIdeSettings.Current;
+  if not (Settings.Enabled and Settings.Problems) then
+    Exit;
+  if not TAtlasWelcomeProjects.CountRuleHits(TAtlasProblemsController.Current, ExtractFileDir(AProject), Hits) then
+    Exit;
+  Stamp := ANowUtc;
+  TAtlasProjectSummaries.Update(Folder, AProject,
+    procedure(var ASummary: TAtlasProjectSummary)
+    begin
+      TAtlasWelcomeProjects.RecordRules(ASummary, Hits, Stamp);
     end);
 end;
 
@@ -407,6 +460,8 @@ begin
     begin
       ASummary.LastClosed := Stamp;
     end);
+  // Regeltreffer, solange die Probleme des Projekts noch im Speicher sind.
+  RecordRules(Project, Stamp);
   // Branch und Änderungen beim Schließen festhalten (im Hintergrund, auch wenn die Willkommensseite noch zu ist).
   if TAtlasIdeSettings.Current.WelcomePageRefreshVcs then
     Query(Project);
@@ -443,9 +498,13 @@ begin
     Exit;
   Stamp := NowUtc;
   RecordInto(AProject.FileName, AMessages, AProject, ASucceeded, Stamp);
+  RecordRules(AProject.FileName, Stamp);
   Group := GroupOf(AProject.FileName);
   if Group <> '' then
+  begin
     RecordInto(Group, AMessages, AProject, ASucceeded, Stamp);
+    RecordRules(Group, Stamp);
+  end;
   Changed;
 end;
 

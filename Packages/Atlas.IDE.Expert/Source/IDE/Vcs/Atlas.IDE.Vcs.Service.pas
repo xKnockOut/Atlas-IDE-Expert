@@ -37,8 +37,9 @@ type
     class function ForFolder(const AFolder: string): IAtlasVersionControl; overload; static;
     /// <summary>Wie oben mit eigenem Zeitlimit je Aufruf (Willkommensseite: 1 s, #592).</summary>
     class function ForFolder(const AFolder: string; ATimeoutMs: Cardinal): IAtlasVersionControl; overload; static;
-    /// <summary>AWork im Hintergrund, danach ADone im Hauptthread; nach Stop wirkungslos.</summary>
-    class procedure Run(const AWork, ADone: TProc); static;
+    /// <summary>AWork im Hintergrund, danach ADone im Hauptthread; nach Stop wirkungslos. False, wenn nichts
+    /// gestartet wurde (vor Start, nach Stop): Dann kommt ADone nie.</summary>
+    class function Run(const AWork, ADone: TProc): Boolean; static;
   end;
 
 implementation
@@ -182,10 +183,9 @@ begin
     ATimeoutMs);
 end;
 
-class procedure TAtlasIdeVcs.Run(const AWork, ADone: TProc);
+class function TAtlasIdeVcs.Run(const AWork, ADone: TProc): Boolean;
 begin
-  if Worker <> nil then
-    Worker.Run(AWork, ADone);
+  Result := (Worker <> nil) and Worker.Run(AWork, ADone);
 end;
 
 initialization
