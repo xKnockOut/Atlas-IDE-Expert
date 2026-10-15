@@ -45,7 +45,8 @@ type
     FIndex: ISymbolIndex;
     FSlashHost: ISlashHost;
     function HandleOnType(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-    function Handle(const AParams: TJSONValue; AWithRange: Boolean): TJSONValue;
+    function Handle(const AParams: TJSONValue; AWithRange: Boolean;
+      const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleFormatting(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleRangeFormatting(const AParams: TJSONValue;
       const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -75,7 +76,9 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Editing.Formatter,
   Atlas.Common.Editing.DocComments;
 
@@ -116,43 +119,54 @@ var
   Item: TJSONObject;
   Version: string;
   Shared: ISharedSyntaxTree;
+  Cancellation: IPascalCancellation;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Felder "textDocument.uri" und "position" fehlen');
   Result := TJSONArray.Create;
-  if not TJSONObject(AParams).TryGetValue<string>('ch', Character) or ((Character <> #10) and
-    (Character <> '/')) then
-    Exit;
-  if not FStore.TryGet(Uri, Document) then
-    Exit;
-  if Character = '/' then
-  begin
-    Shared := TSyntaxTreeCache.Get(Document);
-    if TDocComments.AfterSlash(Document.Text, Shared.Tree, TLspPositions.ReadPosition(PositionValue), Edit) then
+  try
+    if not TJSONObject(AParams).TryGetValue<string>('ch', Character) or ((Character <> #10) and
+      (Character <> '/')) then
+      Exit;
+    if not FStore.TryGet(Uri, Document) then
+      Exit;
+    if Character = '/' then
     begin
-      Item := TJSONObject.Create;
-      Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-      Item.AddPair('newText', Edit.NewText);
-      TJSONArray(Result).AddElement(Item);
+      // Abbruchsignal an den Parser (Code-Review A-06).
+      Cancellation := TRequestCancellation.Create(ACancellation);
+      Shared := TSyntaxTreeCache.Get(Document, Cancellation);
+      if TDocComments.AfterSlash(Document.Text, Shared.Tree, TLspPositions.ReadPosition(PositionValue), Edit) then
+      begin
+        Item := TJSONObject.Create;
+        Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
+        Item.AddPair('newText', Edit.NewText);
+        TJSONArray(Result).AddElement(Item);
+      end;
+      Exit;
     end;
-    Exit;
-  end;
-  Disabled := nil;
-  Version := '';
-  if Assigned(FDelphiVersionFor) then
-    Version := FDelphiVersionFor(Uri);
-  if (not Assigned(FSlashCommandsFor) or FSlashCommandsFor(Uri, Disabled)) and
-    TSlashCommandRegistry.Shared.AfterEnter(Document.Text, TLspPositions.ReadPosition(PositionValue), nil, Disabled,
-    Edits, FIndex, Version, Uri, FSlashHost) then
-  begin
-    for Edit in Edits do
+    Disabled := nil;
+    Version := '';
+    if Assigned(FDelphiVersionFor) then
+      Version := FDelphiVersionFor(Uri);
+    // Abgebrochen (Watchdog, $/cancelRequest): keine Schnellbefehle mehr ausführen, die Projekt und Platte
+    // ändern (A-06).
+    ACancellation.ThrowIfCancellationRequested;
+    if (not Assigned(FSlashCommandsFor) or FSlashCommandsFor(Uri, Disabled)) and
+      TSlashCommandRegistry.Shared.AfterEnter(Document.Text, TLspPositions.ReadPosition(PositionValue), nil, Disabled,
+      Edits, FIndex, Version, Uri, FSlashHost) then
     begin
-      Item := TJSONObject.Create;
-      Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-      Item.AddPair('newText', Edit.NewText);
-      TJSONArray(Result).AddElement(Item);
+      for Edit in Edits do
+      begin
+        Item := TJSONObject.Create;
+        Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
+        Item.AddPair('newText', Edit.NewText);
+        TJSONArray(Result).AddElement(Item);
+      end;
     end;
+  except
+    Result.Free;
+    raise;
   end;
 end;
 
@@ -195,7 +209,8 @@ begin
   Result.Given := AConfigured.Given;
 end;
 
-function TLspFormatting.Handle(const AParams: TJSONValue; AWithRange: Boolean): TJSONValue;
+function TLspFormatting.Handle(const AParams: TJSONValue; AWithRange: Boolean;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
   Uri: string;
   Document: ITextDocument;
@@ -231,6 +246,8 @@ begin
     if (Range.EndPos.Character = 0) and (LastLine > FirstLine) then
       Dec(LastLine);
   end;
+  // Die Einstellungen können Dateien lesen (.editorconfig); danach nicht mehr formatieren (A-06).
+  ACancellation.ThrowIfCancellationRequested;
   Edits := TFormatter.Edits(Document.Text, TPascalLexer.Tokenize(Document.Text), Settings, FirstLine, LastLine);
   Result := TJSONArray.Create;
   for Edit in Edits do
@@ -245,13 +262,13 @@ end;
 function TLspFormatting.HandleFormatting(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 begin
-  Result := Handle(AParams, False);
+  Result := Handle(AParams, False, ACancellation);
 end;
 
 function TLspFormatting.HandleRangeFormatting(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 begin
-  Result := Handle(AParams, True);
+  Result := Handle(AParams, True, ACancellation);
 end;
 
 end.

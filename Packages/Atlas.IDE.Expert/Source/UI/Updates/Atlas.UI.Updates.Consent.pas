@@ -49,6 +49,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings;
 
 const
@@ -129,7 +131,7 @@ begin
   FDone := True;
   Close;
   if Assigned(AProc) then
-    TThread.ForceQueue(nil,
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
       procedure
       begin
         AProc();

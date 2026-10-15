@@ -103,6 +103,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
   Winapi.Windows,
   System.Types,
   System.IOUtils,
@@ -310,7 +311,7 @@ begin
     begin
       ShowNotice;
     end;
-  TThread.ForceQueue(nil, Show);
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Settings, Show);
 end;
 
 procedure TAtlasIdeSafeMode.Loaded(ALoadMs: Int64);

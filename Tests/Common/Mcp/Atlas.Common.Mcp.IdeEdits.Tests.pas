@@ -26,6 +26,9 @@ type
     procedure WritesItselfWhenTheFileIsNoLongerOpen;
     [Test]
     procedure FailsWhenTakenButNeverAnswered;
+    /// <summary>Code-Review P-16: nicht zu eng (Last), nicht zu weit (Antwortzeit).</summary>
+    [Test]
+    procedure PollIntervalStaysWithinBounds;
   end;
 
 implementation
@@ -140,6 +143,16 @@ begin
       Plugin(FInbox, '', Seen);
     end, Clock, Reason) = TMcpIdeEditOutcome.Failed);
   Assert.IsNotEmpty(Reason);
+end;
+
+procedure TMcpIdeEditsTests.PollIntervalStaysWithinBounds;
+var
+  Ms: Integer;
+begin
+  // Über eine Variable: Ein Vergleich zweier Konstanten wäre ein konstanter Ausdruck.
+  Ms := TMcpIdeEdits.PollMs;
+  Assert.IsTrue(Ms >= 50, IntToStr(Ms));
+  Assert.IsTrue(Ms <= 100, IntToStr(Ms));
 end;
 
 initialization

@@ -34,6 +34,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
   System.IOUtils,
   Atlas.Core.Diagnostics.Guard,
   System.Classes,
@@ -246,7 +247,7 @@ begin
     // schreibt die IDE danach ihre Editoroptionen aus dem Speicher zurück, auch die Schalter,
     // die Atlas abgeschaltet hatte. Sonst zeigt sie ab dem nächsten Start wieder beide Tooltips.
     if Accepted then
-      TThread.ForceQueue(nil,
+      TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
         procedure
         begin
           TAtlasGuard.Run(TAtlasFeature.Settings,

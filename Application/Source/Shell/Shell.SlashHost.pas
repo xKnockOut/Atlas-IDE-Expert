@@ -7,6 +7,10 @@
 // an ihn statt auf die Platte, damit die IDE sie nicht beim Speichern des
 // Projekts überschreibt; neu geladen wird nach seiner Antwort. Lehnt er ab,
 // bleibt die Datei unverändert und der Editor zeigt den Grund.
+//
+// Schnellbefehle laufen in einem Worker-Thread (onTypeFormatting). Neu geladen
+// wird nur im Thread der Nachrichtenschleife (Code-Review A-03): WriteProject
+// und SelectBuild stellen das über RunInLoop dorthin.
 
 interface
 
@@ -36,7 +40,10 @@ type
     FRequestId: Integer;
     FDispatcher: TJsonRpcDispatcher;
     FClientAppliesEdits: TFunc<Boolean>;
+    FRunInLoop: TJsonRpcScheduler;
     function WriteThroughClient(const AUri, AFileName, AText: string): Boolean;
+    /// <summary>Führt AWork im Thread der Nachrichtenschleife aus (über RunInLoop), sonst sofort.</summary>
+    procedure InLoop(const AWork: TProc);
   public
     /// <summary>ADispatcher und AClientAppliesEdits dürfen nil sein; dann schreibt der Host selbst.</summary>
     constructor Create(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
@@ -49,6 +56,9 @@ type
     procedure SelectBuild(const AUri, AConfig, APlatform: string);
     procedure ShowDocument(const AFileName: string; const ASelection: TTextRange);
     function HeaderTemplate(const AUri: string): string;
+    /// <summary>Stellt Arbeit in die Nachrichtenschleife (TJsonRpcConnection.Queue). Reload und SelectBuild
+    /// laufen nur dort (Code-Review A-03); ohne Zuweisung (Tests) sofort.</summary>
+    property RunInLoop: TJsonRpcScheduler read FRunInLoop write FRunInLoop;
   end;
 
 implementation
@@ -106,7 +116,7 @@ begin
     Exit;
   OldText := TFileEncoding.LoadFromFile(AFileName, FileFormat);
   Id := Format('atlas/applyEdit/%d', [AtomicIncrement(FRequestId)]);
-  // Nur lokale Werte einfangen: Die Antwort kommt im Lese-Thread.
+  // Nur lokale Werte einfangen: Die Antwort kommt in der Nachrichtenschleife (ExpectResponse).
   Logger := FLogger;
   Transport := FTransport;
   WorkspaceOf := FWorkspaceOf;
@@ -151,11 +161,21 @@ begin
   Result := True;
 end;
 
+procedure TShellSlashHost.InLoop(const AWork: TProc);
+begin
+  if Assigned(FRunInLoop) then
+    FRunInLoop(AWork)
+  else
+    AWork();
+end;
+
 procedure TShellSlashHost.WriteProject(const AUri, AText: string);
 var
   Workspace: TShellWorkspace;
   Info: TProjectInfo;
   FileFormat: TFileFormat;
+  WorkspaceOf: TWorkspaceOfFunc;
+  Uri: string;
 begin
   Workspace := FWorkspaceOf(AUri);
   if (Workspace = nil) or not Workspace.Project(Info) then
@@ -168,21 +188,51 @@ begin
     TFileEncoding.LoadFromFile(Info.FileName, FileFormat);
     TFileEncoding.SaveToFile(Info.FileName, AText, FileFormat);
     FLogger.Info(Format('%s geändert (Schnellbefehl)', [Info.FileName]));
-    Workspace.Reload;
   except
     on E: Exception do
+    begin
       FLogger.Error(Format('%s ließ sich nicht schreiben: %s', [Info.FileName, E.Message]));
+      Exit;
+    end;
   end;
+  // const-Parameter lassen sich nicht einfangen.
+  WorkspaceOf := FWorkspaceOf;
+  Uri := AUri;
+  InLoop(
+    procedure
+    var
+      Target: TShellWorkspace;
+    begin
+      // In der Schleife neu suchen: Bis dahin kann der Ordner geschlossen worden sein.
+      Target := WorkspaceOf(Uri);
+      if Target <> nil then
+        Target.Reload;
+    end);
 end;
 
 procedure TShellSlashHost.SelectBuild(const AUri, AConfig, APlatform: string);
 var
-  Workspace: TShellWorkspace;
-  Error: string;
+  WorkspaceOf: TWorkspaceOfFunc;
+  Logger: ILogger;
+  Uri, Config, PlatformName: string;
 begin
-  Workspace := FWorkspaceOf(AUri);
-  if (Workspace <> nil) and not Workspace.SelectBuild(AConfig, APlatform, Error) then
-    FLogger.Warning(Error);
+  // const-Parameter lassen sich nicht einfangen; Self auch nicht (der Host kann vorher frei werden).
+  WorkspaceOf := FWorkspaceOf;
+  Logger := FLogger;
+  Uri := AUri;
+  Config := AConfig;
+  PlatformName := APlatform;
+  InLoop(
+    procedure
+    var
+      Workspace: TShellWorkspace;
+      Error: string;
+    begin
+      // Wählt Konfiguration und Plattform und lädt neu: nur in der Schleife (A-03).
+      Workspace := WorkspaceOf(Uri);
+      if (Workspace <> nil) and not Workspace.SelectBuild(Config, PlatformName, Error) then
+        Logger.Warning(Error);
+    end);
 end;
 
 procedure TShellSlashHost.ShowDocument(const AFileName: string; const ASelection: TTextRange);

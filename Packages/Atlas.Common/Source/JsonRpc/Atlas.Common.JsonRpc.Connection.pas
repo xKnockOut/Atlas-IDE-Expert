@@ -9,6 +9,10 @@
 //                    der gesendeten Reihenfolge ankommt.
 //   Worker           nebenläufige Anfragen laufen im Thread-Pool und antworten
 //                    selbst; der Transport schreibt threadsicher.
+//
+// Zustand, der nur im Thread von Run geändert werden darf (z. B. Neuladen eines
+// Arbeitsbereichs), stellen andere Threads über Queue in die Schleife
+// (Code-Review A-03).
 
 interface
 
@@ -33,10 +37,16 @@ type
     FDispatcher: TJsonRpcDispatcher;
     FStopped: Boolean;
     FOnError: TJsonRpcErrorEvent;
-    /// <summary>Posteingang des laufenden Run (IJsonRpcInbox), sonst nil.</summary>
+    /// <summary>Posteingang des laufenden Run (IJsonRpcInbox), sonst nil. Nur unter FInboxLock:
+    /// Post, Queue und Stop kommen aus fremden Threads (Interface-Zuweisung ist nicht atomar).</summary>
     FInbox: IInterface;
+    FInboxLock: TObject;
     FWorkTimeout: Cardinal;
     FOnLoopEnded: TProc;
+    FUnfinishedWork: Boolean;
+    function LockedInbox: IInterface;
+    procedure SetInbox(const AInbox: IInterface);
+    procedure RunWork(const AWork: TProc);
     procedure ReportError(const AError: Exception);
     procedure ReportProblem(const AText: string);
     procedure Send(AMessage: TJSONObject);
@@ -45,6 +55,7 @@ type
   public
     /// <summary>Der Dispatcher bleibt im Besitz des Aufrufers.</summary>
     constructor Create(const ATransport: IJsonRpcTransport; ADispatcher: TJsonRpcDispatcher);
+    destructor Destroy; override;
     /// <summary>
     /// Verarbeitet Nachrichten, bis Stop aufgerufen oder die Eingabe geschlossen wird.
     /// Ein zerstörter Nachrichtenstrom beendet die Schleife mit EJsonRpcTransportError.
@@ -59,10 +70,19 @@ type
     /// (#227): Sie läuft im Thread der Schleife vor den noch nicht verarbeiteten Nachrichten des Clients.
     /// Übernimmt AMessage; ohne laufende Schleife False und AMessage wird freigegeben. Threadsicher.</summary>
     function Post(AMessage: TJSONObject): Boolean;
+    /// <summary>Stellt AWork in die Schleife: Es läuft im Thread von Run, vor den noch nicht verarbeiteten
+    /// Nachrichten des Clients und nach früheren Post/Queue. Für Zustand, der nur dort geändert werden darf
+    /// (Indexaufbau, Code-Review A-03). Ohne laufende Schleife False; AWork läuft dann nicht. Threadsicher.
+    /// Ausnahmen von AWork gehen an OnError.</summary>
+    function Queue(const AWork: TProc): Boolean;
     property Stopped: Boolean read FStopped;
     /// <summary>Wird aus der Schleife und aus Worker-Threads aufgerufen.</summary>
     property OnError: TJsonRpcErrorEvent read FOnError write FOnError;
     property WorkTimeout: Cardinal read FWorkTimeout write FWorkTimeout;
+    /// <summary>True, wenn Run beim Ende nach WorkTimeout noch laufende nebenläufige Anfragen hatte
+    /// (Code-Review A-06). Deren Handler können noch auf Objekte des Aufrufers zugreifen; er darf sie dann
+    /// nicht freigeben.</summary>
+    property UnfinishedWork: Boolean read FUnfinishedWork;
     /// <summary>Die Schleife ist regulär zu Ende (Eingabe geschlossen oder Stop), bevor auf laufende
     /// Anfragen gewartet wird. Für Abschlussmeldungen, die ein ungeduldiger Client sonst abschneidet.</summary>
     property OnLoopEnded: TProc read FOnLoopEnded write FOnLoopEnded;
@@ -82,7 +102,7 @@ const
   WaitForever = Cardinal($FFFFFFFF);
 
 type
-  TJsonRpcInboxKind = (ikMessage, ikInvalid, ikClosed, ikFailed, ikWakeUp);
+  TJsonRpcInboxKind = (ikMessage, ikInvalid, ikClosed, ikFailed, ikWakeUp, ikWork);
 
   TJsonRpcInboxItem = record
     Kind: TJsonRpcInboxKind;
@@ -93,6 +113,8 @@ type
     Text: string;
     /// <summary>ikFailed: Fehler des Transports, wird in Run erneut ausgelöst.</summary>
     Error: Exception;
+    /// <summary>ikWork: Arbeit für den Thread der Schleife (Queue).</summary>
+    Work: TProc;
     procedure Release;
   end;
 
@@ -143,6 +165,7 @@ procedure TJsonRpcInboxItem.Release;
 begin
   FreeAndNil(Message);
   FreeAndNil(Error);
+  Work := nil;
 end;
 
 { TJsonRpcInbox }
@@ -353,6 +376,44 @@ begin
   FTransport := ATransport;
   FDispatcher := ADispatcher;
   FWorkTimeout := DefaultWorkTimeout;
+  FInboxLock := TObject.Create;
+end;
+
+destructor TJsonRpcConnection.Destroy;
+begin
+  FInboxLock.Free;
+  inherited;
+end;
+
+function TJsonRpcConnection.LockedInbox: IInterface;
+begin
+  TMonitor.Enter(FInboxLock);
+  try
+    Result := FInbox;
+  finally
+    TMonitor.Exit(FInboxLock);
+  end;
+end;
+
+procedure TJsonRpcConnection.SetInbox(const AInbox: IInterface);
+begin
+  TMonitor.Enter(FInboxLock);
+  try
+    FInbox := AInbox;
+  finally
+    TMonitor.Exit(FInboxLock);
+  end;
+end;
+
+procedure TJsonRpcConnection.RunWork(const AWork: TProc);
+begin
+  try
+    AWork();
+  except
+    // Wie bei Benachrichtigungen: melden und weiterarbeiten.
+    on E: Exception do
+      ReportError(E);
+  end;
 end;
 
 procedure TJsonRpcConnection.ReportError(const AError: Exception);
@@ -440,8 +501,9 @@ var
   Error: Exception;
 begin
   FStopped := False;
+  FUnfinishedWork := False;
   Inbox := TJsonRpcInbox.Create;
-  FInbox := Inbox;
+  SetInbox(Inbox);
 
   OwnScheduler := not Assigned(FDispatcher.Scheduler);
   if OwnScheduler then
@@ -482,16 +544,25 @@ begin
           end;
         ikWakeUp:
           ; // Stop wurde aufgerufen
+        ikWork:
+          try
+            RunWork(Item.Work);
+          finally
+            Item.Release;
+          end;
       end;
     end;
     if (Failure = nil) and Assigned(FOnLoopEnded) then
       FOnLoopEnded();
   finally
-    FInbox := nil;
+    SetInbox(nil);
     Inbox.Close;
     FDispatcher.PendingRequests.CancelAll;
     if not FDispatcher.PendingRequests.WaitForWork(FWorkTimeout) then
+    begin
+      FUnfinishedWork := True;
       ReportProblem('Nebenläufige Anfragen wurden beim Beenden nicht rechtzeitig fertig');
+    end;
     if OwnScheduler then
       FDispatcher.Scheduler := nil;
     if OwnResponder then
@@ -510,7 +581,23 @@ var
 begin
   Item := InboxItem(ikMessage);
   Item.Message := AMessage;
-  if Supports(FInbox, IJsonRpcInbox, Inbox) then
+  if Supports(LockedInbox, IJsonRpcInbox, Inbox) then
+    Result := Inbox.PutFirst(Item)
+  else
+  begin
+    Item.Release;
+    Result := False;
+  end;
+end;
+
+function TJsonRpcConnection.Queue(const AWork: TProc): Boolean;
+var
+  Inbox: IJsonRpcInbox;
+  Item: TJsonRpcInboxItem;
+begin
+  Item := InboxItem(ikWork);
+  Item.Work := AWork;
+  if Supports(LockedInbox, IJsonRpcInbox, Inbox) then
     Result := Inbox.PutFirst(Item)
   else
   begin
@@ -524,7 +611,7 @@ var
   Inbox: IJsonRpcInbox;
 begin
   FStopped := True;
-  if Supports(FInbox, IJsonRpcInbox, Inbox) then
+  if Supports(LockedInbox, IJsonRpcInbox, Inbox) then
     Inbox.Put(InboxItem(ikWakeUp));
 end;
 

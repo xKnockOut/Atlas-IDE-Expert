@@ -173,6 +173,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Timing,
   Winapi.Messages,
@@ -908,7 +909,7 @@ begin
   begin
     FGuardLine := 0;
     View := AView;
-    TThread.ForceQueue(nil,
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Completion,
       procedure
       begin
         if (View.Buffer <> nil) and not FController.Active then
@@ -941,7 +942,7 @@ begin
   if Line = 0 then
     Line := View.CursorPos.Line;
   // Nicht im Benachrichtigungsaufruf selbst ändern, sondern gleich danach.
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Completion,
     procedure
     var
       Text: string;
@@ -1285,7 +1286,7 @@ begin
     FAutoParen := TAtlasAutoParen.Start(View.CursorPos.Line, TLspSession.ColumnToIndex(LineText,
       View.CursorPos.Col, TAtlasEditorBuffer.TabWidth(View.Buffer)), LineText);
     if Assigned(FOnOpenSignature) then
-      TThread.ForceQueue(nil,
+      TAtlasMainThread.ForceQueue(TAtlasFeature.Signature,
         procedure
         begin
           if Assigned(FOnOpenSignature) then
@@ -1301,7 +1302,7 @@ begin
     FGuardLine := View.CursorPos.Line;
     FGuardFile := View.Buffer.FileName;
     if (FCommitEnd >= 0) and (FCommitEnd < Length(LineText)) and (LineText[FCommitEnd + 1] = ';') then
-      TThread.ForceQueue(nil,
+      TAtlasMainThread.ForceQueue(TAtlasFeature.Completion,
         procedure
         begin
           if GuardPending(View) then

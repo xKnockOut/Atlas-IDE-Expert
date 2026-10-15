@@ -338,6 +338,11 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 | CI6 | Überladene Routine (`IntToStr(`) | Hint zeigt die Zahl der Überladungen; ↑/↓ blättert durch sie |
 | CI7 | `AtlasServer.exe` umbenennen, IDE neu starten, Strg+Leer | Meldungsfenster nennt den nicht gefundenen Server; Vervollständigung und Hinweise der eingebauten Code Insight funktionieren |
 | CI8 | Server im Task-Manager beenden, danach Strg+Leer | Atlas startet den Server neu, die Liste erscheint (ggf. „eingeschränkt“, solange er indiziert) |
+| CI9 | Server im Task-Manager beenden, sofort in einer Methode `Self.` tippen (automatische Liste), dann Strg+Leer | Kein Fehlerdialog, keine Zugriffsverletzung; die automatische Liste kommt ohne Server-Einträge, Strg+Leer startet den Server und zeigt sie; im Protokoll kein „Zeitlimit … überschritten“ für die Server-Quelle (Code-Review A-01) |
+| CI10 | CI9 dreimal innerhalb von fünf Minuten | Die Quelle „Server“ bleibt eingeschaltet (*Optionen › Atlas › Robustheit* ohne Eintrag) |
+| CI11 | Maus auf einem Bezeichner halten, bis der Tooltip lädt; währenddessen Statusfeld › Server neu starten | Kein Absturz, kein Tooltip aus der alten Sitzung; Neustart wie gewohnt (A-07) |
+| CI12 | Hover über einem Bezeichner auslösen und sofort *Komponenten › Packages installieren* › Atlas abwählen (Package entladen); danach weiterarbeiten | Kein Absturz beim Entladen und danach; Protokoll „Atlas entladen in … ms; Hintergrund-Threads beendet: True“ (A-02) |
+| CI13 | Server einen `workspace/applyEdit` schicken lassen (z. B. Code-Aktion „uses ergänzen“) und die Datei vorher schreibgeschützt setzen | Kein Fehlerdialog der IDE; der Server bekommt genau eine Antwort (`applied: false` mit Grund), mit `Diagnose` = 1 steht „workspace/applyEdit: …“ im Protokoll (S-05) |
 
 ## Symbolindex (#492)
 
@@ -517,12 +522,13 @@ Protokoll: `Atlas.IDE.Expert370.log` neben dem Plugin (Hänger stehen dort immer
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| W1 | Tools › Optionen › Atlas › „Wächter testen (1 s)“ | IDE steht 1 s; danach im Protokoll „Hänger ~1000 ms um …; Atlas: Wächter-Test, … ms; Fenster: Optionen“, darunter Zeilen `Modul+Offset` (u. a. `Atlas.IDE.Expert370.bpl`, `kernel*.dll`) und „Sitzung: 1 Hänger …“ |
+| W1 | Diagnosemodus an (*Optionen › Atlas › Allgemein*), dann Tools › Optionen › Atlas › Robustheit › „Wächter testen (1 s)“ | IDE steht 1 s; danach im Protokoll „Hänger ~1000 ms um …; Atlas: Wächter-Test, … ms; Fenster: Optionen“, darunter Zeilen `Modul+Offset` (u. a. `Atlas.IDE.Expert370.bpl`, `kernel*.dll`) und „Sitzung: 1 Hänger …“ |
 | W2 | Normal arbeiten ohne Hänger | Keine Hänger-Zeilen im Protokoll |
 | W3 | Schwelle auf 2000 setzen, W1 wiederholen | Kein Eintrag (1 s liegt unter der Schwelle) |
 | W4 | Schwelle 500, „Hinweis im Meldungsfenster …“ an; einen Hänger über 2 s erzeugen (z. B. großes Projekt öffnen) | Zeile „Atlas: Die IDE hat n ms nicht reagiert“ in der Gruppe „Atlas“ des Meldungsfensters, kein Dialog |
 | W5 | Mit `Diagnose` = 1 IDE starten | Zeile „Start: Laden des Packages bis zur freien Nachrichtenschleife n ms“ |
 | W6 | IDE schließen | Schließt ohne Verzögerung; bei Hängern in der Sitzung steht am Ende „Sitzung: n Hänger, längster …“ |
+| W7 | Diagnosemodus aus; Reiter *Robustheit* ansehen und in der Befehlspalette „Wächter“ suchen | Kein Knopf „Wächter testen“, kein Palettenbefehl; nach dem Einschalten des Diagnosemodus erscheint der Knopf sofort, der Befehl beim nächsten Öffnen der Palette (Code-Review S-07) |
 
 ## Include-Dateien (#500)
 
@@ -902,7 +908,7 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; für TK5/TK6 eine
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| TK1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasKeyMapTests`, `TAtlasKeyMapWindowTests`, `TAtlasKeysPageTests` und `TAtlasSetupChecklistTests` grün |
+| TK1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasKeyMapTests` (auch der Wächter `EveryKeySettingIsInOverview`: jede Tasten-Einstellung steht in der Übersicht), `TAtlasKeyMapWindowTests`, `TAtlasKeysPageTests`, `TAtlasShortcutTipsTests` und `TAtlasSetupChecklistTests` grün |
 | TK2 | *Atlas › Tastenkürzel-Übersicht…* bzw. Befehlspalette „Tastenkürzel-Übersicht“ | Nicht modales Fenster „Atlas – Tastenkürzel“ mit Spalten Taste, Befehl, Herkunft, Kontext, Hinweis; Zeile „Strg+Umschalt+P · Befehlspalette · Atlas · global“ (**Abnahme**); Aktionen der IDE (z. B. Strg+S „Speichern“) mit Herkunft IDE; unten rechts „n Kürzel, m Konflikte“ |
 | TK3 | *Tastenkonflikte*: „Auswahl erweitern“ absichtlich auf Strg+Umschalt+P legen, OK, Übersicht „Aktualisieren“ | Beide Zeilen rot (**Abnahme**); Hinweis bei der einen „gewinnt …“, bei der anderen „unterliegt „…“ (Atlas): …“ mit Grund; beim nächsten IDE-Start einmal eine Meldung im Meldungsfenster „Atlas: Strg+Umschalt+P ist doppelt belegt – … (Atlas) und …; es gewinnt …“ mit Verweis auf die Übersicht und *Tools › Optionen › Atlas › Tastenkonflikte*; kein zweites Mal in derselben Sitzung |
 | TK4 | Suchfeld: „Strg+Umschalt+P“, „Ctrl+Shift+P“, „palette“, „IDE“; „Nur Konflikte“ an | Jeweils nur passende Zeilen; Zusammenfassung „x von n Kürzeln“; „Nur Konflikte“ zeigt nur rote Zeilen; „Aktualisieren“ behält Suche und Filter |
@@ -915,6 +921,12 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; für TK5/TK6 eine
 | TK11 | Einrichtung (#625) mit dem Konflikt aus TK3 bzw. TK5 | Zeile „Tastenkürzel“ gelb, nennt dieselbe Taste wie die Übersicht |
 | TK12 | Dunkles und helles Thema, 150 % Skalierung, Thema wechseln bei offenem Fenster; Esc | Liste, rote Zeilen und Knöpfe lesbar, Farben folgen ohne Neustart; Esc schließt das Fenster |
 | TK13 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs`) nach TK3 | Nur Anzahlen (Kürzel, Konflikte), keine Pfade oder Benutzernamen |
+| TK14 | Übersicht öffnen (Vorgaben: Deklaration ⇄ Implementierung an, „Units suchen“ an, Übernahme von Strg+F12 an); in *Optionen › Atlas › Befehle* eine Taste für „Zwischen Unit und Testunit wechseln“ und unter *Units suchen* ein eigenes Kürzel setzen, „Aktualisieren“ | Zeilen „Strg+Umschalt+↑ · Deklaration/Implementierung wechseln · Atlas · Editor“ und „Strg+Umschalt+↓ · Deklaration/Implementierung wechseln (Taste 2)“ (Tastentext so, wie die IDE ihn schreibt), „Zwischen Unit und Testunit wechseln“, „Units suchen“ (eigene Taste) und „Strg+F12 · Units suchen über Strg+F12 (statt IDE-Dialog) · Atlas · global“; keine zweite Zeile „Units…“ mit Herkunft IDE für Strg+F12 (**Abnahme**) |
+| TK15 | „Deklaration/Implementierung wechseln“ ausschalten; *Units suchen* ganz aus; dann nur „Strg+F12 und Ansicht › Units öffnen das Atlas-Fenster“ aus; jeweils „Aktualisieren“ | Ausgeschaltet verschwinden die Zeilen der beiden Wechsel-Tasten bzw. der eigenen Units-Taste; Strg+F12 steht ohne Übernahme als „Units…“ mit Herkunft IDE; nichts davon rot und keine Meldung beim nächsten Start (**Abnahme**) |
+| TK16 | Eigene Taste für Unit ⇄ Testunit absichtlich auf Strg+W (Auswahl erweitern) legen, IDE neu starten | Beide Zeilen rot; beim Start eine Meldung im Meldungsfenster für die doppelte Belegung; Einrichtung (#625): Zeile „Tastenkürzel“ gelb mit derselben Taste |
+| TK17 | Erweiterung, die Strg+Umschalt+↑ oder Strg+F12 selbst belegt (z. B. CnPack/GExperts), dann Übersicht und IDE-Neustart | Atlas-Zeile rot, Hinweis nennt die Erweiterung als Gewinner; Startmeldung erscheint (**prüfen, ob die IDE das bestätigt**: Taste im Editor drücken) |
+| TK18 | Befehlspalette: „Units suchen“ und „Deklaration/Implementierung wechseln“ suchen | „Units suchen“ zeigt Strg+F12 (bzw. die eigene Taste, wenn gesetzt), „Deklaration/Implementierung wechseln“ Strg+Umschalt+↑; mit abgeschalteter Übernahme bzw. abgeschaltetem Wechsel keine Taste |
+| TK19 | Tastenkürzel-Tipps (#600) an; „Units suchen“ zweimal über das Menü *Atlas* aufrufen | Tipp nennt Strg+F12; nach Strg+F12 zählt die Spalte „Selten per Tastatur“ den Aufruf als Tastatur |
 
 ## Tastenkürzel-Tipps (#600)
 

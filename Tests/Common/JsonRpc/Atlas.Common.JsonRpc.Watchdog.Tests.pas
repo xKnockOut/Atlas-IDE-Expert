@@ -17,6 +17,13 @@ type
     procedure ZeroTimeoutDisablesWatching;
     [Test]
     procedure SetTimeoutAppliesToLaterRequests;
+    /// <summary>Code-Review A-06: nebenläufige Anfrage wird beim Ablauf genau einmal beantwortet.</summary>
+    [Test]
+    procedure AnswersConcurrentRequestOnceAfterTimeout;
+    [Test]
+    procedure HandlerAnswerBeforeTimeoutWins;
+    [Test]
+    procedure WatchWithoutResponderOnlyCancels;
   end;
 
 implementation
@@ -24,6 +31,7 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
+  System.SyncObjs,
   System.JSON,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.PendingRequests,
@@ -56,7 +64,7 @@ begin
   Pending := TJsonRpcPendingRequests.Create;
   TimedOut := '';
   Watchdog := TJsonRpcWatchdog.Create(Pending, 20,
-    procedure(const AMethod: string; ATimeoutMs: Cardinal)
+    procedure(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean)
     begin
       TimedOut := AMethod;
     end);
@@ -127,7 +135,7 @@ begin
   Pending := TJsonRpcPendingRequests.Create;
   Reported := 0;
   Watchdog := TJsonRpcWatchdog.Create(Pending, 60000,
-    procedure(const AMethod: string; ATimeoutMs: Cardinal)
+    procedure(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean)
     begin
       Reported := ATimeoutMs;
     end);
@@ -143,6 +151,141 @@ begin
       end, 2000));
     Assert.AreEqual(Cardinal(20), Reported);
     Assert.IsTrue(Token.IsCancellationRequested);
+    Pending.Release(Id, Token);
+  finally
+    Id.Free;
+  end;
+end;
+
+procedure TJsonRpcWatchdogTests.AnswersConcurrentRequestOnceAfterTimeout;
+var
+  Pending: IJsonRpcPendingRequests;
+  Watchdog: IJsonRpcWatchdog;
+  Id: TJSONValue;
+  Token: IJsonRpcCancellationToken;
+  Answers, Code, AnswerId: Integer;
+  Timeouts: Integer;
+  Answered: Boolean;
+begin
+  Pending := TJsonRpcPendingRequests.Create;
+  Answers := 0;
+  Code := 0;
+  AnswerId := 0;
+  Timeouts := 0;
+  Answered := False;
+  Watchdog := TJsonRpcWatchdog.Create(Pending, 20,
+    procedure(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean)
+    begin
+      Answered := AAnswered;
+      TInterlocked.Increment(Timeouts);
+    end);
+  Id := TJSONNumber.Create(1);
+  try
+    Token := Pending.Acquire(Id);
+    Watchdog.Watch(Id, 'test/slow', Token,
+      procedure(const AResponse: TJSONObject)
+      begin
+        try
+          Code := AResponse.GetValue<Integer>('error.code');
+          AnswerId := AResponse.GetValue<Integer>('id');
+          TInterlocked.Increment(Answers);
+        finally
+          AResponse.Free;
+        end;
+      end);
+    Assert.IsTrue(WaitUntil(
+      function: Boolean
+      begin
+        Result := Timeouts > 0;
+      end, 2000));
+    TThread.Sleep(50);
+    Assert.AreEqual(1, Answers);
+    Assert.AreEqual(TJsonRpcErrorCode.RequestCancelled, Code);
+    Assert.AreEqual(1, AnswerId);
+    Assert.IsTrue(Answered);
+    Assert.IsTrue(Token.IsCancellationRequested);
+    // Der Worker darf danach nicht mehr antworten.
+    Assert.IsFalse(Pending.TryAnswer(Token));
+    Pending.Release(Id, Token);
+  finally
+    Id.Free;
+  end;
+end;
+
+procedure TJsonRpcWatchdogTests.HandlerAnswerBeforeTimeoutWins;
+var
+  Pending: IJsonRpcPendingRequests;
+  Watchdog: IJsonRpcWatchdog;
+  Id: TJSONValue;
+  Token: IJsonRpcCancellationToken;
+  Answers, Timeouts: Integer;
+  Answered: Boolean;
+begin
+  Pending := TJsonRpcPendingRequests.Create;
+  Answers := 0;
+  Timeouts := 0;
+  Answered := True;
+  Watchdog := TJsonRpcWatchdog.Create(Pending, 20,
+    procedure(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean)
+    begin
+      Answered := AAnswered;
+      TInterlocked.Increment(Timeouts);
+    end);
+  Id := TJSONNumber.Create(2);
+  try
+    Token := Pending.Acquire(Id);
+    // Der "Worker" hat schon geantwortet, aber Unwatch noch nicht erreicht.
+    Assert.IsTrue(Pending.TryAnswer(Token));
+    Watchdog.Watch(Id, 'test/slow', Token,
+      procedure(const AResponse: TJSONObject)
+      begin
+        TInterlocked.Increment(Answers);
+        AResponse.Free;
+      end);
+    Assert.IsTrue(WaitUntil(
+      function: Boolean
+      begin
+        Result := Timeouts > 0;
+      end, 2000));
+    Assert.AreEqual(0, Answers);
+    Assert.IsFalse(Answered);
+    Pending.Release(Id, Token);
+  finally
+    Id.Free;
+  end;
+end;
+
+procedure TJsonRpcWatchdogTests.WatchWithoutResponderOnlyCancels;
+var
+  Pending: IJsonRpcPendingRequests;
+  Watchdog: IJsonRpcWatchdog;
+  Id: TJSONValue;
+  Token: IJsonRpcCancellationToken;
+  Timeouts: Integer;
+  Answered: Boolean;
+begin
+  Pending := TJsonRpcPendingRequests.Create;
+  Timeouts := 0;
+  Answered := True;
+  Watchdog := TJsonRpcWatchdog.Create(Pending, 20,
+    procedure(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean)
+    begin
+      Answered := AAnswered;
+      TInterlocked.Increment(Timeouts);
+    end);
+  Id := TJSONNumber.Create(3);
+  try
+    Token := Pending.Acquire(Id);
+    Watchdog.Watch(Id, 'test/sync');
+    Assert.IsTrue(WaitUntil(
+      function: Boolean
+      begin
+        Result := Timeouts > 0;
+      end, 2000));
+    Assert.IsFalse(Answered);
+    Assert.IsTrue(Token.IsCancellationRequested);
+    // Synchrone Anfragen antworten selbst.
+    Assert.IsTrue(Pending.TryAnswer(Token));
     Pending.Release(Id, Token);
   finally
     Id.Free;

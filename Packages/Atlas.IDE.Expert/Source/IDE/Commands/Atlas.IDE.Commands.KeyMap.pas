@@ -26,6 +26,13 @@
 // - Spalte „Selten per Tastatur“ (#600): Collect übernimmt je Zeile die Zählung
 //   der Tastenkürzel-Tipps (TAtlasIdeShortcutTips.UsageOf), Aktionen über ihren
 //   Namen, Atlas-Tasten über den Befehl der Palette.
+// - Abgeschaltete Funktionen (TAtlasKeyEntry.Disabled, etwa #775 aus oder
+//   „Units suchen“ aus) bekommen keine Zeile und sind kein Konflikt.
+// - Strg+F12 (#777): Die IDE-Aktion „Units“, an die sich „Units suchen“ hängt
+//   (TAtlasIdeUnitSearch.HookedAction), erscheint bei unitSearch.enabled und
+//   unitSearch.replaceIdeDialog als Atlas-Zeile mit ihren echten Tasten, sonst
+//   als Aktion der IDE (ihr Handler liegt dann zwar in Atlas, ruft aber nur
+//   den Dialog der IDE).
 
 interface
 
@@ -33,6 +40,7 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.ExtCtrls,
+  Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Commands.KeyMap,
   Atlas.Core.Setup.Checklist,
   Atlas.IDE.Commands.Palette,
@@ -61,6 +69,9 @@ type
     class function Instance: TAtlasIdeKeyMap; static;
     /// <summary>Alle Belegungen aus IDE, Atlas und anderen Erweiterungen, ausgewertet (Hauptthread).</summary>
     class function Collect: TArray<TAtlasKeyItem>; static;
+    /// <summary>TAtlasKeyEntry.AllFromSettings mit den aktuellen Einstellungen; bei Strg+F12 (#777) die Taste,
+    /// die die übernommene Aktion der IDE wirklich hat (0, wenn Atlas sich nicht anhängen konnte).</summary>
+    class function AtlasEntries: TArray<TAtlasKeyEntry>; static;
     /// <summary>Jede Atlas-Taste mit fremder Belegung für die Einrichtung (#625); Vorrang zählt nur, wenn Atlas
     /// die Taste auch wirklich hat.</summary>
     class function SetupKeys: TArray<TAtlasSetupKey>; static;
@@ -97,7 +108,6 @@ uses
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Commands.Palette,
   Atlas.UI.Strings,
   Atlas.IDE.Settings.Store,
@@ -106,13 +116,15 @@ uses
   Atlas.Core.Commands.Usage,
   Atlas.Core.Commands.ShortcutTips,
   Atlas.IDE.Commands.Usage,
-  Atlas.IDE.Commands.ShortcutTips;
+  Atlas.IDE.Commands.ShortcutTips,
+  Atlas.IDE.UnitSearch.Commands;
 
 const
   KeyIdPrefix = 'Atlas.Key.';
   // Reihenfolge, in der die Komposition die Tasten anmeldet (RebindKeys); bei mehreren Atlas-Belegungen
-  // derselben Taste gilt die zuletzt angemeldete.
-  BindOrder: array[TAtlasKeyFunction] of Integer = (1, 2, 4, 5, 6, 7, 3, 3, 3, 3, 3, 3, 3, 8);
+  // derselben Taste gilt die zuletzt angemeldete. 3 = Editorbefehle (eine Bindung); Strg+F12 (#777) ist keine
+  // Bindung, sondern eine Aktion und bekommt ihren Platz in der Aktionsliste.
+  BindOrder: array[TAtlasKeyFunction] of Integer = (1, 2, 4, 5, 6, 7, 3, 3, 3, 3, 3, 3, 3, 8, 3, 3, 3, 3, 0);
 
 type
   /// <summary>Herkunft je Modul, einmal ermittelt.</summary>
@@ -184,17 +196,16 @@ begin
       Exit(Index);
 end;
 
-/// <summary>Die Tasten von Atlas; ohne eigene Taste (Vervollständigung über Strg+Leer der IDE) keine Zeile.</summary>
-procedure AddAtlasKeys(AItems: TList<TAtlasKeyItem>);
+/// <summary>Die Tasten von Atlas; ohne eigene Taste (Vervollständigung über Strg+Leer der IDE) oder abgeschaltet
+/// keine Zeile. Strg+F12 (#777) kommt mit den Aktionen (AddActions).</summary>
+procedure AddAtlasKeys(AItems: TList<TAtlasKeyItem>; const AEntries: TArray<TAtlasKeyEntry>);
 var
-  Settings: TAtlasPluginSettings;
   Entry: TAtlasKeyEntry;
   Item: TAtlasKeyItem;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  for Entry in TAtlasKeyEntry.AllFromSettings(Settings) do
+  for Entry in AEntries do
   begin
-    if Entry.Key = 0 then
+    if (Entry.Key = 0) or Entry.Disabled or (TAtlasKeyMap.SourceOf(Entry.Func) = TAtlasKeySource.Action) then
       Continue;
     Item := TAtlasKeyItem.Create(Entry.Key, ShortCutToText(TShortCut(Entry.Key)),
       TAtlasKeyMapWindow.FunctionCaption(Entry.Func), TAtlasKeyOrigin.Atlas, TAtlasKeyMap.AtlasName,
@@ -204,7 +215,8 @@ begin
     Item.Func := Entry.Func;
     Item.Priority := Entry.Priority;
     if Item.Source = TAtlasKeySource.Window then
-      Item.Active := Settings.WelcomePage and Settings.WelcomePageSearch
+      // Abgeschaltet (Willkommensseite oder Suchfeld aus) kommt es oben gar nicht an.
+      Item.Active := True
     else
       // Wie beim Belegen (#494): frei oder mit Vorrang.
       Item.Active := TAtlasKeyConflicts.ShouldBind(Entry.Key, TAtlasIdeKeys.Owner(Entry.Key), Entry.Priority);
@@ -213,13 +225,19 @@ begin
 end;
 
 procedure AddAction(AItems: TList<TAtlasKeyItem>; AOrigins: TOrigins; AAction: TCustomAction;
-  AShortCut: TShortCut; AOrder: Integer);
+  AShortCut: TShortCut; AOrder: Integer; AHooked: Boolean);
 var
   Origin: TAtlasKeyOrigin;
   Name, Caption: string;
   Item: TAtlasKeyItem;
 begin
-  if SameText(AAction.Category, 'Atlas') or AAction.Category.StartsWith('Atlas.', True) then
+  // Die Aktion „Units“ ohne Übernahme durch Atlas (#777): Der Handler liegt in Atlas, ruft aber den Dialog der IDE.
+  if AHooked then
+  begin
+    Origin := TAtlasKeyOrigin.Ide;
+    Name := TAtlasKeyMap.IdeName;
+  end
+  else if SameText(AAction.Category, 'Atlas') or AAction.Category.StartsWith('Atlas.', True) then
   begin
     Origin := TAtlasKeyOrigin.Atlas;
     Name := TAtlasKeyMap.AtlasName;
@@ -240,27 +258,65 @@ begin
   AItems.Add(Item);
 end;
 
-procedure AddActions(AItems: TList<TAtlasKeyItem>; AOrigins: TOrigins);
+/// <summary>Die von „Units suchen“ übernommene Aktion „Units“ (#777) als Atlas-Taste: bewusst übernommen, also
+/// mit Vorrang; Platz in der Aktionsliste wie die Aktion selbst.</summary>
+procedure AddUnitSearchAction(AItems: TList<TAtlasKeyItem>; AAction: TCustomAction; AShortCut: TShortCut;
+  AOrder: Integer);
+const
+  Func = TAtlasKeyFunction.UnitSearchIde;
+var
+  Item: TAtlasKeyItem;
+begin
+  Item := TAtlasKeyItem.Create(Word(AShortCut), ShortCutToText(AShortCut), TAtlasKeyMapWindow.FunctionCaption(Func),
+    TAtlasKeyOrigin.Atlas, TAtlasKeyMap.AtlasName, TAtlasKeyMap.ContextOf(Func), TAtlasKeyMap.SourceOf(Func),
+    KeyIdPrefix + IntToStr(Ord(Func)), AOrder);
+  Item.Category := AAction.Category;
+  Item.Func := Func;
+  Item.Priority := True;
+  AItems.Add(Item);
+end;
+
+/// <summary>Taste der Aktion oder, bei der übernommenen Aktion „Units“ (#777) und eingeschalteter Übernahme, die
+/// Atlas-Zeile dafür.</summary>
+procedure AddActionKey(AItems: TList<TAtlasKeyItem>; AOrigins: TOrigins; AAction: TCustomAction;
+  AShortCut: TShortCut; AOrder: Integer; AHooked, ATakenOver: Boolean);
+begin
+  if AHooked and ATakenOver then
+    AddUnitSearchAction(AItems, AAction, AShortCut, AOrder)
+  else
+    AddAction(AItems, AOrigins, AAction, AShortCut, AOrder, AHooked);
+end;
+
+procedure AddActions(AItems: TList<TAtlasKeyItem>; AOrigins: TOrigins; const AEntries: TArray<TAtlasKeyEntry>);
 var
   Services: INTAServices;
   Index, Secondary: Integer;
   Action: TCustomAction;
   Key: TShortCut;
+  Hooked: TBasicAction;
+  Entry: TAtlasKeyEntry;
+  TakenOver, IsHooked: Boolean;
 begin
   if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.ActionList = nil) then
     Exit;
+  Hooked := TAtlasIdeUnitSearch.HookedAction;
+  TakenOver := False;
+  for Entry in AEntries do
+    if Entry.Func = TAtlasKeyFunction.UnitSearchIde then
+      TakenOver := not Entry.Disabled;
   for Index := 0 to Services.ActionList.ActionCount - 1 do
   begin
     if not (Services.ActionList.Actions[Index] is TCustomAction) then
       Continue;
     Action := TCustomAction(Services.ActionList.Actions[Index]);
+    IsHooked := (Hooked <> nil) and (Action = Hooked);
     if Action.ShortCut <> 0 then
-      AddAction(AItems, AOrigins, Action, Action.ShortCut, Index);
+      AddActionKey(AItems, AOrigins, Action, Action.ShortCut, Index, IsHooked, TakenOver);
     for Secondary := 0 to Action.SecondaryShortCuts.Count - 1 do
     begin
       Key := Action.SecondaryShortCuts.ShortCuts[Secondary];
       if (Key <> 0) and (Key <> Action.ShortCut) then
-        AddAction(AItems, AOrigins, Action, Key, Index);
+        AddActionKey(AItems, AOrigins, Action, Key, Index, IsHooked, TakenOver);
     end;
   end;
 end;
@@ -445,7 +501,11 @@ begin
   begin
     case AItems[Index].Source of
       TAtlasKeySource.Action:
-        Id := AItems[Index].Id;
+        // Strg+F12 für „Units suchen“ (#777) zählt beim Befehl der Palette.
+        if (AItems[Index].Origin = TAtlasKeyOrigin.Atlas) and AItems[Index].Id.StartsWith(KeyIdPrefix) then
+          Id := TAtlasShortcutTips.AtlasCommandId(AItems[Index].Func)
+        else
+          Id := AItems[Index].Id;
       TAtlasKeySource.Binding:
         if AItems[Index].Origin = TAtlasKeyOrigin.Atlas then
           Id := TAtlasShortcutTips.AtlasCommandId(AItems[Index].Func)
@@ -484,17 +544,36 @@ begin
   Result := FInstance;
 end;
 
+class function TAtlasIdeKeyMap.AtlasEntries: TArray<TAtlasKeyEntry>;
+var
+  Index: Integer;
+  Hooked: TBasicAction;
+begin
+  Result := TAtlasKeyEntry.AllFromSettings(TAtlasIdeSettings.Current);
+  Hooked := TAtlasIdeUnitSearch.HookedAction;
+  for Index := 0 to High(Result) do
+    if Result[Index].Func = TAtlasKeyFunction.UnitSearchIde then
+    begin
+      if Hooked is TCustomAction then
+        Result[Index].Key := Word(TCustomAction(Hooked).ShortCut)
+      else
+        Result[Index].Key := 0;
+    end;
+end;
+
 class function TAtlasIdeKeyMap.Collect: TArray<TAtlasKeyItem>;
 var
   Origins: TOrigins;
   Items: TList<TAtlasKeyItem>;
+  Entries: TArray<TAtlasKeyEntry>;
 begin
+  Entries := AtlasEntries;
   // Liste statt Anhängen ans Array: Die IDE hat weit über tausend Aktionen.
   Items := TList<TAtlasKeyItem>.Create;
   Origins := TOrigins.Create;
   try
-    AddAtlasKeys(Items);
-    AddActions(Items, Origins);
+    AddAtlasKeys(Items, Entries);
+    AddActions(Items, Origins, Entries);
     AddKnownIdeKeys(Items);
     AddBindings(Items, Origins);
     Result := Items.ToArray;
@@ -515,7 +594,7 @@ var
 begin
   Result := nil;
   Items := Collect;
-  for Entry in TAtlasKeyEntry.AllFromSettings(TAtlasIdeSettings.Current) do
+  for Entry in AtlasEntries do
   begin
     Text := '';
     if Entry.Key <> 0 then
@@ -541,8 +620,9 @@ begin
   Result := '';
   if ACommandId = '' then
     Exit;
-  for Entry in TAtlasKeyEntry.AllFromSettings(TAtlasIdeSettings.Current) do
-    if (Entry.Key <> 0) and SameText(TAtlasKeyMap.CommandIdOf(Entry.Func), ACommandId) and
+  // Mehrere Tasten für einen Befehl (#775, #777): die erste, die Atlas hält.
+  for Entry in AtlasEntries do
+    if (Entry.Key <> 0) and not Entry.Disabled and SameText(TAtlasKeyMap.CommandIdOf(Entry.Func), ACommandId) and
       TAtlasKeyConflicts.ShouldBind(Entry.Key, TAtlasIdeKeys.Owner(Entry.Key), Entry.Priority) then
       Exit(ShortCutToText(TShortCut(Entry.Key)));
 end;

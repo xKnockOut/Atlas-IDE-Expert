@@ -102,6 +102,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Diagnostics.Guard,
   System.Math,
   Vcl.Imaging.pngimage,
   Atlas.UI.Strings;
@@ -389,7 +391,7 @@ begin
   Source := FSource;
   Id := FCard.Id;
   // Die Quelle baut die Karte neu: nicht im Klick des Knopfs.
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
       case AButton of

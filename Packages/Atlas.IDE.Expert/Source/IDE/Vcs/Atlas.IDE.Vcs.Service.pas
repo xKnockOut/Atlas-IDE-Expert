@@ -45,6 +45,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
   System.Classes,
   System.SyncObjs,
   System.JSON,
@@ -126,7 +127,7 @@ begin
   TAtlasGuard.Log(Format('Versionsverwaltung: %s nicht gefunden, weiter ohne', [Name]));
   Text := Format(TAtlasStrings.Text(TAtlasTextId.VcsToolMissing), [Name, Name]);
   // Kann aus einem Hintergrund-Thread kommen; die Meldungsansicht nur im Hauptthread.
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Status,
     procedure
     begin
       if Assigned(Message_) and not TAtlasShutdown.Signalled then

@@ -16,6 +16,8 @@ type
     FBytes: TDictionary<string, TBytes>;
     FStamps: TDictionary<string, Int64>;
     FReads: Integer;
+    FFailReads: Boolean;
+    FFailWrites: Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -27,6 +29,9 @@ type
     function WriteBytes(const AFileName: string; const ABytes: TBytes): Boolean;
     procedure Delete(const AFileName: string);
     property Reads: Integer read FReads write FReads;
+    /// <summary>ReadBytes bzw. WriteBytes lösen EInOutError aus (Cache nicht lesbar/schreibbar).</summary>
+    property FailReads: Boolean read FFailReads write FFailReads;
+    property FailWrites: Boolean read FFailWrites write FFailWrites;
   end;
 
   [TestFixture]
@@ -159,6 +164,16 @@ type
     // Der Index-Dienst arbeitet in einem eigenen Thread; dessen Verwaltungsdaten bleiben bis Programmende.
     [IgnoreMemoryLeaks]
     procedure ServiceWritesCacheAfterProjectStage;
+    /// <summary>Code-Review A-04: Fehler im Aufbau gehen genau einmal an OnError.</summary>
+    [Test]
+    [IgnoreMemoryLeaks]
+    procedure ServiceReportsCacheWriteFailureOnce;
+    [Test]
+    [IgnoreMemoryLeaks]
+    procedure ServiceReportsCacheReadFailure;
+    [Test]
+    [IgnoreMemoryLeaks]
+    procedure ServiceSurvivesFailingErrorHandler;
   end;
 
   [TestFixture]
@@ -339,6 +354,8 @@ end;
 
 function TMemoryIndexFileSystem.ReadBytes(const AFileName: string; out ABytes: TBytes): Boolean;
 begin
+  if FFailReads then
+    raise EInOutError.Create('simuliert');
   TMonitor.Enter(Self);
   try
     Inc(FReads);
@@ -350,6 +367,8 @@ end;
 
 function TMemoryIndexFileSystem.WriteBytes(const AFileName: string; const ABytes: TBytes): Boolean;
 begin
+  if FFailWrites then
+    raise EInOutError.Create('simuliert');
   TMonitor.Enter(Self);
   try
     FBytes.AddOrSetValue(UpperCase(AFileName), ABytes);
@@ -1592,6 +1611,110 @@ begin
   end;
   Assert.IsTrue(FFileSystem.ReadBytes('C:\Cache\index.json', Data));
   Assert.AreEqual<NativeInt>(5, Length(TIndexCache.Deserialize(Data)));
+end;
+
+procedure TIndexBuilderTests.ServiceReportsCacheWriteFailureOnce;
+var
+  Service: TIndexService;
+  Request: TIndexRequest;
+  Errors, Finished: Integer;
+begin
+  Errors := 0;
+  Finished := 0;
+  FFiles.FailWrites := True;
+  Service := TIndexService.Create(FIndex, FFileSystem);
+  try
+    Service.OnFinished :=
+      procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
+      begin
+        Inc(Finished);
+      end;
+    Service.OnError :=
+      procedure(const AError: Exception)
+      begin
+        Inc(Errors);
+      end;
+    Request := Default(TIndexRequest);
+    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    Request.ResolveUnit := Resolve;
+    Request.CacheFile := 'C:\Cache\index.json';
+    Service.Start(Request);
+    Service.WaitFor;
+    Assert.AreEqual(1, Errors);
+    Assert.AreEqual(0, Finished);
+  finally
+    Service.Free;
+  end;
+end;
+
+procedure TIndexBuilderTests.ServiceReportsCacheReadFailure;
+var
+  Service: TIndexService;
+  Request: TIndexRequest;
+  Errors: Integer;
+  ErrorClass: string;
+begin
+  Errors := 0;
+  ErrorClass := '';
+  FFiles.FailReads := True;
+  Service := TIndexService.Create(FIndex, FFileSystem);
+  try
+    Service.OnError :=
+      procedure(const AError: Exception)
+      begin
+        Inc(Errors);
+        ErrorClass := AError.ClassName;
+      end;
+    Request := Default(TIndexRequest);
+    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    Request.ResolveUnit := Resolve;
+    Request.CacheFile := 'C:\Cache\index.json';
+    Service.Start(Request);
+    Service.WaitFor;
+    Assert.AreEqual(1, Errors);
+    Assert.AreEqual('EInOutError', ErrorClass);
+    // Der Builder wurde nie veröffentlicht (und nicht geleakt): EnsureUnit findet nichts.
+    Assert.IsFalse(Service.EnsureUnit('X'));
+  finally
+    Service.Free;
+  end;
+end;
+
+procedure TIndexBuilderTests.ServiceSurvivesFailingErrorHandler;
+var
+  Service: TIndexService;
+  Request: TIndexRequest;
+  Finished: Boolean;
+begin
+  Finished := False;
+  FFiles.FailWrites := True;
+  Service := TIndexService.Create(FIndex, FFileSystem);
+  try
+    Service.OnError :=
+      procedure(const AError: Exception)
+      begin
+        raise EInvalidOpException.Create('Meldung scheitert');
+      end;
+    Service.OnFinished :=
+      procedure(const AResult: TIndexBuildResult; AElapsedMs: Int64)
+      begin
+        Finished := True;
+      end;
+    Request := Default(TIndexRequest);
+    Request.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    Request.ResolveUnit := Resolve;
+    Request.CacheFile := 'C:\Cache\index.json';
+    Service.Start(Request);
+    Service.WaitFor;
+    Assert.IsFalse(Finished);
+    // Der Thread endete geordnet; ein neuer Lauf ohne Fehler läuft durch.
+    FFiles.FailWrites := False;
+    Service.Start(Request);
+    Service.WaitFor;
+    Assert.IsTrue(Finished);
+  finally
+    Service.Free;
+  end;
 end;
 
 procedure TIndexBuilderTests.ServiceSharesLibraryCache;

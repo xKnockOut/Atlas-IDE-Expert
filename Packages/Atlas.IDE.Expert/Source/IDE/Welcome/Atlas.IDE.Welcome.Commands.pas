@@ -147,6 +147,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
   Winapi.Windows,
   System.IOUtils,
   Atlas.Core.Product.Version,
@@ -596,9 +597,9 @@ begin
           if Instance <> nil then
             Instance.Flush;
         end;
-      TThread.ForceQueue(nil, Flush);
+      TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage, Flush);
     end;
-  TThread.ForceQueue(nil, Collect);
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage, Collect);
 end;
 
 procedure TAtlasIdeWelcome.Flush;

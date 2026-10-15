@@ -91,12 +91,17 @@ type
     FPhaseEnded: Boolean;
     /// <summary>StopSession läuft: Ein Ende des Prozesses jetzt ist kein Absturz.</summary>
     FStopping: Boolean;
+    /// <summary>EnsureSession startet gerade (gegen Wiedereintritt über CheckSynchronize, Code-Review A-01).</summary>
+    FStarting: Boolean;
     FOnServerChanged: TProc;
     FQueryRunning: Boolean;
     FQueryIdle: TEvent;
     procedure SetPhase(APhase: TAtlasServerPhase; const AError: string); overload;
     procedure SetPhase(APhase: TAtlasServerPhase; const AError: string; AEnded: Boolean); overload;
+    /// <summary>Laufende Sitzung oder Start im Hauptthread; außerhalb des Hauptthreads nur, was schon läuft (A-01).</summary>
     function EnsureSession: Boolean;
+    /// <summary>Server starten und Sitzung aufbauen; nur aus EnsureSession, nur im Hauptthread.</summary>
+    function StartSession: Boolean;
     /// <summary>Projekte der geöffneten Gruppe, aktives zuerst; leer ohne Gruppe (#648).</summary>
     class function GroupProjects: TArray<string>; static;
     procedure RefreshProjects;
@@ -227,7 +232,10 @@ uses
   Atlas.IDE.Projects.Context,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.UI.Strings,
-  Atlas.IDE.Editor.WorkspaceEdit;
+  Atlas.IDE.Editor.WorkspaceEdit,
+  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Diagnostics.TimeLimit,
+  Atlas.Core.Diagnostics.Shutdown;
 
 var
   /// <summary>Lebender Manager; nach dem Freigeben nil, damit späte applyEdit-Aufrufe nichts mehr tun.</summary>
@@ -240,6 +248,14 @@ const
   // Unterscheidet sich vom gleichnamigen benutzerdefinierten LSP-Eintrag.
   ManagerName = 'Atlas IDE Expert';
   ManagerId = 'Atlas.CodeInsight';
+
+/// <summary>Fehler eines Einstiegspunkts an die Sicherung (#493, Code-Review S-05); ein beendeter Server oder sein
+/// Zeitlimit (ELspClientError) ist erwartbar und zählt nicht.</summary>
+procedure ReportFailure(AFeature: TAtlasFeature; E: Exception);
+begin
+  if not (E is ELspClientError) then
+    TAtlasGuard.Report(AFeature, E);
+end;
 
 /// <summary>Öffnet den Schlüssel der Einstellungen, ersatzweise den früheren; liefert den
 /// geöffneten Schlüssel oder ''.</summary>
@@ -270,12 +286,10 @@ begin
   FProblems := TAtlasProblemsController.Create(
     function(AStart: Boolean): TLspSession
     begin
-      if AStart and EnsureSession then
-        Result := FSession
-      else if (FServer <> nil) and FServer.Running and (FSession <> nil) and FSession.Initialized then
-        Result := FSession
-      else
-        Result := nil;
+      // Start nur im Hauptthread (Probleme-Takt); EnsureSession kehrt sonst sofort zurück (A-01).
+      if AStart then
+        EnsureSession;
+      Result := RunningSession;
     end,
     procedure(const AMessage: string)
     begin
@@ -285,7 +299,7 @@ begin
     function: TLspSession
     begin
       if EnsureSession then
-        Result := FSession
+        Result := RunningSession
       else
         Result := nil;
     end,
@@ -451,6 +465,9 @@ end;
 
 procedure TAtlasCodeInsightManager.StopSession;
 begin
+  // Nur im Hauptthread (A-01); verschachtelt (CheckSynchronize beim Warten) nichts tun.
+  if not TAtlasMainThread.IsMain or FStopping then
+    Exit;
   FStopping := True;
   try
     StopSessionNow;
@@ -461,6 +478,7 @@ end;
 
 procedure TAtlasCodeInsightManager.StopSessionNow;
 begin
+  Assert(TAtlasMainThread.IsMain, 'StopSessionNow außerhalb des Hauptthreads');
   // Laufende Anfragen der Vervollständigung nutzen die Sitzung noch.
   if FCompletion <> nil then
     FCompletion.Shutdown;
@@ -473,10 +491,16 @@ begin
     FSession.SetOnProgress(nil);
   if FServer <> nil then
     FServer.Client.Close;
+  // Hover-Anfragen halten die Sitzung als rohen Zeiger; nach Close kehren sie sofort zurück (Code-Review A-07).
+  if FHover <> nil then
+    FHover.Shutdown;
   if FProblems <> nil then
     FProblems.WaitShutdown;
   // Eine Statusabfrage im Hintergrund kehrt nach Close sofort zurück (#591).
   FQueryIdle.WaitFor(5000);
+  // Aufgegebene Zeitlimit-Arbeiter können noch in Prepare bzw. Sync der Sitzung stecken (A-01, A-13).
+  if not TAtlasTimeLimit.WaitIdle(TAtlasShutdown.StopMs) then
+    Diagnose('Sitzung beendet, während ein Zeitlimit-Arbeiter noch lief');
   FreeAndNil(FSession);
   FreeAndNil(FServer);
 end;
@@ -576,11 +600,15 @@ begin
 end;
 
 function TAtlasCodeInsightManager.EnsureSession: Boolean;
-var
-  Path, Arguments: string;
-  Documents: TArray<TLspOpenDocument>;
-  Projects: TArray<string>;
 begin
+  // Start und Stopp gehören dem Hauptthread (A-01): Zeitlimit-Arbeiter, Lese-Thread und Hintergrund-Threads
+  // bekommen nur, was schon läuft.
+  if not TAtlasMainThread.IsMain then
+    Exit(RunningSession <> nil);
+  // Verschachtelt aus StopSession oder StartSession (Warten auf Threads arbeitet eingereihte Aufrufe ab):
+  // weder neu starten noch die gleich freigegebene Sitzung herausgeben.
+  if FStopping or FStarting then
+    Exit(RunningSession <> nil);
   if (FServer <> nil) and FServer.Running and (FSession <> nil) and FSession.Initialized then
   begin
     RefreshContexts;
@@ -588,6 +616,20 @@ begin
     FlushFileChanges;
     Exit(True);
   end;
+  FStarting := True;
+  try
+    Result := StartSession;
+  finally
+    FStarting := False;
+  end;
+end;
+
+function TAtlasCodeInsightManager.StartSession: Boolean;
+var
+  Path, Arguments: string;
+  Documents: TArray<TLspOpenDocument>;
+  Projects: TArray<string>;
+begin
   // Abgestürzter oder hängender Server: Was die alte Sitzung abgeglichen hatte, bekommt
   // der neue Server sofort wieder, nicht erst bei der nächsten Anfrage je Datei (#393).
   Documents := nil;
@@ -688,33 +730,38 @@ begin
   ASession.OnApplyEdit :=
     procedure(const AEdit: TLspWorkspaceEdit; const AReply: TLspApplyEditReply)
     begin
-      // Lese-Thread: Open Tools API nur im Hauptthread.
-      TThread.Queue(nil,
+      // Lese-Thread: Open Tools API nur im Hauptthread. Atlas gehört der Eintrag: beim Entladen verworfen
+      // (Code-Review A-02); ohne Antwort gibt die Sitzung die Id frei (S-07).
+      TAtlasMainThread.Queue(TAtlasFeature.EditorCommands,
         procedure
         var
           Outcome: TAtlasWorkspaceEditResult;
+          Applied: Boolean;
+          Reason: string;
         begin
-          // Manager weg oder neue Sitzung: Die alte Verbindung gibt es nicht mehr.
+          // Manager weg oder neue Sitzung: Die alte Verbindung gibt es nicht mehr, nicht antworten.
           if (LiveManager <> Manager) or (Manager.FSession <> ASession) then
             Exit;
+          Applied := False;
           if AEdit.Unsupported > 0 then
-          begin
-            AReply(False, 'Dateioperationen (anlegen, umbenennen, löschen) werden nicht unterstützt.');
-            Exit;
-          end;
-          try
-            Outcome := TAtlasIdeWorkspaceEdit.Apply(AEdit, TAtlasIdeSettings.Current.OpenForEdits,
-              TAtlasStrings.Text(TAtlasTextId.UndoActionServer));
-          except
-            on E: Exception do
-            begin
-              AReply(False, E.Message);
-              Exit;
+            Reason := 'Dateioperationen (anlegen, umbenennen, löschen) werden nicht unterstützt.'
+          else
+            try
+              Outcome := TAtlasIdeWorkspaceEdit.Apply(AEdit, TAtlasIdeSettings.Current.OpenForEdits,
+                TAtlasStrings.Text(TAtlasTextId.UndoActionServer));
+              Manager.Diagnose(Format('workspace/applyEdit: %d Änderungen in %d Dateien %s', [Outcome.Edits,
+                Outcome.Files, Outcome.Error]));
+              Applied := Outcome.Error = '';
+              Reason := Outcome.Error;
+            except
+              on E: Exception do
+              begin
+                Reason := E.Message;
+                TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+              end;
             end;
-          end;
-          Manager.Diagnose(Format('workspace/applyEdit: %d Änderungen in %d Dateien %s', [Outcome.Edits,
-            Outcome.Files, Outcome.Error]));
-          AReply(Outcome.Error = '', Outcome.Error);
+          // Genau eine Antwort, auch nach einer Ausnahme (S-05).
+          AReply(Applied, Reason);
         end);
     end;
 end;
@@ -730,7 +777,7 @@ begin
       // Information und Protokoll gehören ins Diagnoseprotokoll, nicht ins Meldungsfenster.
       if AType > 2 then
         Exit;
-      TThread.Queue(nil,
+      TAtlasMainThread.Queue(TAtlasFeature.Server,
         procedure
         var
           Messages: IOTAMessageServices;
@@ -846,7 +893,10 @@ end;
 function TAtlasCodeInsightManager.RunningSession: TLspSession;
 begin
   Result := nil;
-  if (FSession <> nil) and FSession.Initialized then
+  // Während StopSession nie: Die Sitzung wird gleich freigegeben (A-01). Aus jedem Thread aufrufbar.
+  if FStopping then
+    Exit;
+  if (FServer <> nil) and FServer.Running and (FSession <> nil) and FSession.Initialized then
     Result := FSession;
 end;
 
@@ -891,7 +941,8 @@ begin
     FSignature := TAtlasEditorSignature.Create(
       function: TLspSession
       begin
-        Result := SessionOrNil;
+        // Aufgerufen im Zeitlimit-Arbeiter (#493): nur eine laufende Sitzung, nie ein Start (A-01).
+        Result := RunningSession;
       end,
       function: Boolean
       begin
@@ -911,7 +962,8 @@ begin
     FCompletion := TAtlasEditorCompletion.Create(
       function: TLspSession
       begin
-        Result := SessionOrNil;
+        // Aufgerufen im Zeitlimit-Arbeiter (#493): nur eine laufende Sitzung, nie ein Start (A-01).
+        Result := RunningSession;
       end,
       procedure(const AMessage: string)
       begin
@@ -936,6 +988,9 @@ var
 begin
   Activity := TAtlasActivity.Scope('Symbolhinweis');
   Result := '';
+  // Durch die Sicherung abgeschaltet (#493, Code-Review S-05).
+  if TAtlasGuard.Disabled(TAtlasFeature.Hover) then
+    Exit;
   Diagnose(Format('GetHintText(%d, %d) aufgerufen', [HintLine, HintCol]));
   // Eigener Tooltip (#442): die IDE zeigt keinen zweiten.
   if TAtlasIdeSettings.Current.HoverTooltip then
@@ -956,6 +1011,7 @@ begin
     on E: Exception do
     begin
       ReportError('Hover: ' + E.Message);
+      ReportFailure(TAtlasFeature.Hover, E);
       Result := '';
     end;
   end;
@@ -978,6 +1034,9 @@ begin
   AFileName := '';
   ALineNum := 0;
   Result := True;
+  // Durch die Sicherung abgeschaltet (#493, Code-Review S-05); AFileName = '' bricht still ab.
+  if TAtlasGuard.Disabled(TAtlasFeature.EditorCommands) then
+    Exit;
   Diagnose(Format('GotoDefinition(Index %d) aufgerufen', [Index]));
   try
     View := CurrentEditView;
@@ -1011,6 +1070,7 @@ begin
     on E: Exception do
     begin
       ReportError('Gehe zu Definition: ' + E.Message);
+      ReportFailure(TAtlasFeature.EditorCommands, E);
       AFileName := '';
       ALineNum := 0;
     end;
@@ -1275,10 +1335,16 @@ begin
   Result := False;
   Diagnose(Format('InvokeCodeCompletion(%d, %d Zeichen)', [Ord(HowInvoked), Length(Str)]));
   try
+    // Start nur hier im Hauptthread (A-01); die Quellen bekommen danach die laufende Sitzung.
+    // Ohne Server liefern die übrigen Quellen trotzdem.
+    EnsureSession;
     Completion.Invoke(CurrentEditView, HowInvoked <> itManual);
   except
     on E: Exception do
+    begin
       ReportError('Vervollständigung: ' + E.Message);
+      ReportFailure(TAtlasFeature.Completion, E);
+    end;
   end;
 end;
 
@@ -1295,10 +1361,15 @@ begin
   Result := False;
   Diagnose(Format('InvokeParameterCodeInsight(%d)', [Ord(HowInvoked)]));
   try
+    // Start nur hier im Hauptthread (A-01).
+    EnsureSession;
     Signature.Invoke(CurrentEditView);
   except
     on E: Exception do
+    begin
       ReportError('Parameterhilfe: ' + E.Message);
+      ReportFailure(TAtlasFeature.Signature, E);
+    end;
   end;
 end;
 
@@ -1308,10 +1379,15 @@ begin
     Exit;
   Diagnose('Vervollständigung über eigene Taste');
   try
+    // Start nur hier im Hauptthread (A-01).
+    EnsureSession;
     Completion.Invoke(CurrentEditView);
   except
     on E: Exception do
+    begin
       ReportError('Vervollständigung: ' + E.Message);
+      ReportFailure(TAtlasFeature.Completion, E);
+    end;
   end;
 end;
 
@@ -1321,10 +1397,15 @@ begin
     Exit;
   Diagnose('Parameterhilfe über eigene Taste');
   try
+    // Start nur hier im Hauptthread (A-01).
+    EnsureSession;
     Signature.Invoke(CurrentEditView);
   except
     on E: Exception do
+    begin
       ReportError('Parameterhilfe: ' + E.Message);
+      ReportFailure(TAtlasFeature.Signature, E);
+    end;
   end;
 end;
 

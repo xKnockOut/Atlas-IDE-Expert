@@ -79,6 +79,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Status.Registry,
   Atlas.UI.Strings;
@@ -227,7 +229,7 @@ begin
   Dismiss;
   // Erst nach dem Schließen ausführen: die Aktion öffnet evtl. ein Menü oder einen Dialog.
   if Assigned(AProc) then
-    TThread.ForceQueue(nil,
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Status,
       procedure
       begin
         AProc();

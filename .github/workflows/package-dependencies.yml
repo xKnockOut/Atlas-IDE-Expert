@@ -22,6 +22,9 @@ jobs:
       - name: Mit Delphi 12 verträglich
         shell: pwsh
         run: ./Tools/Check-Delphi12.ps1
+      - name: Einreihen in den Hauptthread nur über TAtlasMainThread (Code-Review A-02)
+        shell: pwsh
+        run: ./Tools/Check-MainThreadQueue.ps1
       - name: Regelkatalog aktuell und vollständig
         shell: pwsh
         run: ./Tools/Update-RuleCatalog.ps1 -Check

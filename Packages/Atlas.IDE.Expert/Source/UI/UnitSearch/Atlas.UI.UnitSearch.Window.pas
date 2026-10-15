@@ -202,6 +202,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Diagnostics.Guard,
   System.Math,
   System.StrUtils,
   System.DateUtils,
@@ -622,7 +624,7 @@ begin
     TAtlasUnitSearchAction.OpenTests] then
     Close;
   if Assigned(Handler) then
-    TThread.ForceQueue(nil,
+    TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
       procedure
       begin
         Handler(AAction, Entries);

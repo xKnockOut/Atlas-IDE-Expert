@@ -72,6 +72,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Diagnostics.TimeLimit,
+  Atlas.Core.Diagnostics.MainThread,
   Atlas.IDE.Commands.Keys,
   Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.Commands.Usage,
@@ -456,13 +457,21 @@ begin
       if (Welcome <> nil) and (Welcome.WhatsNew <> nil) and TAtlasIdeSettings.Current.WelcomePage then
         Welcome.ShowWhatsNew(TAtlasWhatsNewView.All);
     end);
+  // Künstlicher Hänger für den Einfrier-Wächter (#501): nur im Diagnosemodus (#479, Code-Review S-07).
   Palette.RegisterCommand('Atlas.HangTest', TAtlasStrings.Text(TAtlasTextId.SettingsHangTest), '',
     procedure
     var
       Activity: IInterface;
     begin
+      // Auch über Verlauf oder Taste nicht außerhalb des Diagnosemodus.
+      if not TAtlasIdeSettings.Current.DiagnosticMode then
+        Exit;
       Activity := TAtlasActivity.Scope('Wächter-Test');
       Sleep(1000);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.DiagnosticMode;
     end);
 end;
 
@@ -997,7 +1006,7 @@ begin
   if Basic and not KeysWatched then
   begin
     KeysWatched := True;
-    TThread.ForceQueue(nil,
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
       procedure
       begin
         TAtlasGuard.Run(TAtlasFeature.Settings,
@@ -1209,6 +1218,8 @@ begin
   StartupDone := False;
   // Abbruchsignal eines früheren Entladens in derselben Sitzung zurücknehmen (#493).
   TAtlasShutdown.Reset;
+  // Einreihen in den Hauptthread wieder annehmen (nach einem früheren Unregister, Code-Review A-02).
+  TAtlasMainThread.Start;
   TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
   TAtlasGuard.OnWarning := GuardWarning;
   TAtlasStrings.Language := IdeLanguage;
@@ -1307,7 +1318,7 @@ begin
         Result := nil;
     end);
   // Ladezeit bis zur freien Nachrichtenschleife: zu lange zählt beim nächsten Start wie ein Absturz (#722).
-  TThread.ForceQueue(nil,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
     procedure
     begin
       StartupDone := True;
@@ -1331,6 +1342,9 @@ begin
   // Zuerst das gemeinsame Abbruchsignal: Jeder Hintergrund-Thread hört auf zu warten (#493).
   StartedAt := TThread.GetTickCount64;
   TAtlasShutdown.Signal;
+  // Vor allem anderen: Was jetzt noch wartet oder während des Abbaus eingereiht wird, liefe nach dem Entladen
+  // in nicht mehr geladenem Code (Code-Review A-02). Queue im Hauptthread läuft weiter sofort.
+  TAtlasMainThread.Stop;
   TAtlasIdeVcs.Stop;
   TAtlasGuard.OnWarning := nil;
   TAtlasGuard.OnFailure := nil;
