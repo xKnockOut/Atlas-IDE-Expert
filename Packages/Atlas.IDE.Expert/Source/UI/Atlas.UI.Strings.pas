@@ -350,7 +350,8 @@ type
     WelcomeTrendsDuration, WelcomeTrendsMethodLength, WelcomeTrendsSeconds, WelcomeTrendsLines,
     WelcomeTrendsPrevious, WelcomeTrendsNoValue, WelcomeTrendsClickHint, WelcomeTrendsBuild,
     WelcomeTrendsTileHint, WelcomeProjectsHintSelect, WelcomeProjectsOpen, SettingsWelcomeTrends,
-    SettingsWelcomeTrendsPoints, SettingsWelcomeTrendsSeries, BaselineUpdateElsewhere);
+    SettingsWelcomeTrendsPoints, SettingsWelcomeTrendsSeries, BaselineUpdateElsewhere,
+    WelcomeTrendsBuildNumber);
 
   TAtlasStrings = class
   private class var
@@ -1025,7 +1026,7 @@ const
      '%s: noch keine Builds aufgezeichnet. Nach dem nächsten Build erscheint hier der Verlauf.',
      'Keine Reihe gewählt (Tools › Optionen › Atlas › Willkommensseite).', 'Warnungen + Hinweise',
      'Regeltreffer seit Baseline', 'Offene TODOs', 'Build-Dauer', 'Mittl. Methodenlänge', 's', 'Zeilen',
-     'vorher %s', 'kein Wert', 'Auf einen Punkt klicken, um den Build zu sehen.', 'Build %d',
+     'vorher %s', 'kein Wert', 'Auf einen Punkt klicken, um den Build zu sehen.', 'Build %0:d von %1:d',
      '%s: Wert je Build, Lücke = beim Build nicht bekannt. Klick auf einen Punkt zeigt den Build.',
      'Klick wählt das Projekt für den Projektverlauf, Doppelklick öffnet es; Klick auf eine rote Marke springt ' +
      'zur ersten Meldung.',
@@ -1033,7 +1034,8 @@ const
      'Gespeicherte Builds je Projekt (2–100):', 'Reihe im Projektverlauf: %s',
      'Atlas: Der Server hat die Baseline in %0:s geschrieben, nicht im Projektordner %1:s (das Projekt ist dort ' +
      'wohl noch nicht als Arbeitsbereich bekannt). Projektverlauf und Einrichtung lesen die Baseline im ' +
-     'Projektordner; bitte nach dem nächsten Build erneut aktualisieren.'),
+     'Projektordner; bitte nach dem nächsten Build erneut aktualisieren.',
+     'Nr. %d'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1667,7 +1669,7 @@ const
      '%s: no builds recorded yet. The history appears here after the next build.',
      'No series selected (Tools › Options › Atlas › Welcome page).', 'Warnings + hints',
      'Rule hits since baseline', 'Open TODOs', 'Build time', 'Avg. method length', 's', 'lines', 'before %s',
-     'no value', 'Click a point to see its build.', 'Build %d',
+     'no value', 'Click a point to see its build.', 'Build %0:d of %1:d',
      '%s: value per build, gap = unknown at build time. Click a point to see the build.',
      'Click selects the project for the project history, double-click opens it; click a red badge to jump to ' +
      'the first message.',
@@ -1675,7 +1677,8 @@ const
      'Series in project history: %s',
      'Atlas: The server wrote the baseline to %0:s, not to the project folder %1:s (it probably does not know ' +
      'the project as a workspace yet). Project history and setup read the baseline in the project folder; please ' +
-     'update again after the next build.'));
+     'update again after the next build.',
+     'no. %d'));
 
 { TAtlasStrings }
 
