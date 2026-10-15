@@ -119,7 +119,7 @@ type
     FProblemsList: TCheckBox;
     FStatusField: TCheckBox;
     FStatusSummary: TCheckBox;
-    FStatusDoubleClick: TCheckBox;
+    FStatusToggles: TAtlasChoiceBox;
     FStatusHidden: TEdit;
     FIndexGroup: TCheckBox;
     FIndexSearch: TCheckBox;
@@ -230,7 +230,7 @@ type
     /// <summary>Zum Testen: Einstellungen des Statusfelds (#591).</summary>
     property StatusField: TCheckBox read FStatusField;
     property StatusSummary: TCheckBox read FStatusSummary;
-    property StatusDoubleClick: TCheckBox read FStatusDoubleClick;
+    property StatusToggles: TAtlasChoiceBox read FStatusToggles;
     property StatusHidden: TEdit read FStatusHidden;
     /// <summary>Zum Testen: abgesicherter Start (#722).</summary>
     property SafeAsk: TCheckBox read FSafeAsk;
@@ -431,7 +431,10 @@ begin
   // Atlas-Statusfeld (#591).
   FStatusField := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStatusField));
   FStatusSummary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStatusSummary));
-  FStatusDoubleClick := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStatusDoubleClick));
+  FStatusToggles := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsStatusToggles),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsStatusTogglesBoth),
+    TAtlasStrings.Text(TAtlasTextId.SettingsStatusTogglesRight),
+    TAtlasStrings.Text(TAtlasTextId.SettingsStatusTogglesDouble)]);
   FStatusHidden := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStatusHidden));
   FStatusHidden.NumbersOnly := False;
   FStatusHidden.Width := 180;
@@ -1045,7 +1048,12 @@ begin
   FProblemsList.Checked := ASettings.ProblemsList;
   FStatusField.Checked := ASettings.StatusField;
   FStatusSummary.Checked := ASettings.StatusFieldSummary;
-  FStatusDoubleClick.Checked := ASettings.StatusFieldDoubleClick;
+  if not ASettings.StatusTogglesOnDoubleClick then
+    FStatusToggles.Choice := 1
+  else if not ASettings.StatusTogglesOnRightClick then
+    FStatusToggles.Choice := 2
+  else
+    FStatusToggles.Choice := 0;
   FStatusHidden.Text := ASettings.StatusFieldHidden;
   FIndexGroup.Checked := ASettings.IndexProjectGroup;
   FIndexSearch.Checked := ASettings.IndexSearchPaths;
@@ -1131,7 +1139,14 @@ begin
   ASettings.ProblemsList := FProblemsList.Checked;
   ASettings.StatusField := FStatusField.Checked;
   ASettings.StatusFieldSummary := FStatusSummary.Checked;
-  ASettings.StatusFieldDoubleClick := FStatusDoubleClick.Checked;
+  case FStatusToggles.Choice of
+    1:
+      ASettings.StatusFieldToggles := 'rightClick';
+    2:
+      ASettings.StatusFieldToggles := 'doubleClick';
+  else
+    ASettings.StatusFieldToggles := 'both';
+  end;
   ASettings.StatusFieldHidden := Trim(FStatusHidden.Text);
   ASettings.IndexProjectGroup := FIndexGroup.Checked;
   ASettings.IndexSearchPaths := FIndexSearch.Checked;

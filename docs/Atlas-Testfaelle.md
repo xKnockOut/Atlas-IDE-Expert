@@ -402,7 +402,8 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 | QS12 | Befehlspalette: „Atlas: Klammerfarben ein/aus“, „Atlas: Alles aus für diese Sitzung“, „Atlas: Schnellschalter öffnen“ | Wie die Klicks im Fenster bzw. Fenster öffnet unten links im aktiven Fenster, wenn kein Statusfeld da ist |
 | QS13 | Menü Atlas › „Klammerfarben“ | Häkchen wie im Fenster; Umschalten wirkt wie dort |
 | QS14 | Doppelklick auf das Atlas-Feld in der Statusleiste | Fenster „Atlas · Schnellschalter“ über dem Feld; das Statusfenster des ersten Klicks schließt sich, beim Loslassen öffnet es nicht erneut |
-| QS15 | Tools › Optionen › Atlas › Allgemein: „Doppelklick auf das Feld öffnet die Schnellschalter“ aus, dann Doppelklick auf das Feld | Kein Schnellschalter-Fenster; der Doppelklick wirkt wie zwei einfache Klicks auf das Feld (Statusfenster öffnet und schließt) |
+| QS15 | Tools › Optionen › Atlas › Allgemein: „Schnellschalter öffnen mit“ = Rechtsklick, dann Doppelklick auf das Feld | Kein Schnellschalter-Fenster; der Doppelklick wirkt wie zwei einfache Klicks (Statusfenster öffnet und schließt); Rechtsklick öffnet die Schnellschalter |
+| QS16 | „Schnellschalter öffnen mit“ = Doppelklick, dann Rechtsklick auf das Feld | Kein Schnellschalter-Fenster, der Rechtsklick geht an die IDE; Doppelklick öffnet die Schnellschalter |
 
 ## Abgesicherter Start (#722)
 

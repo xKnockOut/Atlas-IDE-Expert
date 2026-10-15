@@ -766,18 +766,31 @@ begin
   Assert.IsTrue(Settings.StatusField, 'statusField.enabled: Vorgabe an');
   Assert.IsTrue(Settings.StatusFieldSummary, 'statusField.showSummary: Vorgabe an');
   Assert.AreEqual('', Settings.StatusFieldHidden);
-  Assert.IsTrue(Settings.StatusFieldDoubleClick, 'statusField.doubleClick: Vorgabe an');
+  Assert.AreEqual('both', Settings.StatusFieldToggles, 'statusField.openToggles: Vorgabe beide');
+  Assert.IsTrue(Settings.StatusTogglesOnRightClick);
+  Assert.IsTrue(Settings.StatusTogglesOnDoubleClick);
   Store := TMemoryStore.Create;
   Settings.StatusField := False;
   Settings.StatusFieldSummary := False;
-  Settings.StatusFieldDoubleClick := False;
+  Settings.StatusFieldToggles := 'doubleClick';
   Settings.StatusFieldHidden := ' atlas.file, test.fehler ';
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.StatusField);
   Assert.IsFalse(Loaded.StatusFieldSummary);
-  Assert.IsFalse(Loaded.StatusFieldDoubleClick);
+  Assert.AreEqual('doubleClick', Loaded.StatusFieldToggles);
+  Assert.IsFalse(Loaded.StatusTogglesOnRightClick, 'nur Doppelklick');
+  Assert.IsTrue(Loaded.StatusTogglesOnDoubleClick);
+  // Groß-/Kleinschreibung egal, Unbekanntes wird zur Vorgabe.
+  Settings.StatusFieldToggles := ' RIGHTCLICK ';
+  Settings.Normalize;
+  Assert.AreEqual('rightClick', Settings.StatusFieldToggles);
+  Assert.IsTrue(Settings.StatusTogglesOnRightClick);
+  Assert.IsFalse(Settings.StatusTogglesOnDoubleClick, 'nur Rechtsklick');
+  Settings.StatusFieldToggles := 'dreifach';
+  Settings.Normalize;
+  Assert.AreEqual('both', Settings.StatusFieldToggles);
   Assert.AreEqual('atlas.file, test.fehler', Loaded.StatusFieldHidden);
 end;
 
