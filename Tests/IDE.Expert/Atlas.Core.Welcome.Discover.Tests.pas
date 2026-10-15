@@ -22,6 +22,8 @@ type
     procedure FindsTipByCommand;
     [Test]
     procedure FileStaysInInstallFolder;
+    [Test]
+    procedure HighDpiImageWhenScaledAndPresent;
   end;
 
   [TestFixture]
@@ -37,6 +39,8 @@ type
     procedure BlockedAndDisabledTipsNeverAppear;
     [Test]
     procedure EnabledFollowsSettingAndCommand;
+    [Test]
+    procedure SettingOnReadsSwitchesAndChoices;
     [Test]
     procedure NewStartBeginsAfterLastShownTip;
     [Test]
@@ -56,6 +60,7 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
+  Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.Usage,
   Atlas.Core.Commands.Tips,
   Atlas.Core.Welcome.Discover;
@@ -68,7 +73,8 @@ const
       '"image":"Tipps\\code-aktionen.png","sample":"Beispiele\\Entdecken.pas","line":12,"column":5},' +
     '{"id":"expand","command":"Atlas.ExpandSelection","usage":["Atlas.ExpandSelection","Atlas.ShrinkSelection"],' +
       '"title":"Auswahl erweitern","text":"Schritt für Schritt."},' +
-    '{"id":"undo","command":"Atlas.UndoChange","setting":"UndoMultiFile","title":"Zurücknehmen über Dateien"},' +
+    '{"id":"undo","command":"Atlas.UndoChange","setting":"UndoMultiFile","try":"Atlas.ChangeList",' +
+      '"title":"Zurücknehmen über Dateien"},' +
     '{"command":"Atlas.SymbolSearch","title":"Symbolsuche"}' +
     ']}';
 
@@ -113,6 +119,8 @@ begin
   Assert.AreEqual('Atlas.ExpandSelection,Atlas.ShrinkSelection', Joined(List[1].UsageIds));
   Assert.AreEqual('Auswahl erweitern', List[1].TitleIn(True), 'ohne Englisch der deutsche Titel');
   Assert.AreEqual('UndoMultiFile', List[2].Setting);
+  Assert.AreEqual('Atlas.ChangeList', List[2].TryId, '„Ausprobieren“ mit eigenem Befehl');
+  Assert.AreEqual('Atlas.CodeActions', List[0].TryId, 'ohne try der Befehl');
   Assert.AreEqual('Atlas.SymbolSearch', List[3].Id, 'ohne id gilt der Befehl');
 end;
 
@@ -159,6 +167,32 @@ begin
   Assert.AreEqual('', TAtlasTipCatalog.FileIn(Folder, '\a.png'));
   Assert.AreEqual('', TAtlasTipCatalog.FileIn(Folder, ''));
   Assert.AreEqual('', TAtlasTipCatalog.FileIn('', 'Tipps\a.png'));
+end;
+
+procedure TAtlasTipCatalogTests.HighDpiImageWhenScaledAndPresent;
+var
+  Folder, Small, Large, Lone: string;
+begin
+  Assert.AreEqual('Tipps\a@2x.png', TAtlasTipCatalog.HighDpiName('Tipps\a.png'));
+  Assert.AreEqual('', TAtlasTipCatalog.HighDpiName(''));
+  Folder := TPath.Combine(TPath.GetTempPath, 'AtlasTipImages' + IntToStr(Random(1000000)));
+  ForceDirectories(Folder);
+  try
+    Small := TPath.Combine(Folder, 'a.png');
+    Large := TPath.Combine(Folder, 'a@2x.png');
+    Lone := TPath.Combine(Folder, 'b.png');
+    TFile.WriteAllText(Small, 'x');
+    TFile.WriteAllText(Large, 'x');
+    TFile.WriteAllText(Lone, 'x');
+    Assert.AreEqual(Small, TAtlasTipCatalog.ImageFor(Small, 320), '100 %: die einfache Datei Pixel für Pixel');
+    Assert.AreEqual(Small, TAtlasTipCatalog.ImageFor(Small, 250), 'schmale Spalte: verkleinert');
+    Assert.AreEqual(Large, TAtlasTipCatalog.ImageFor(Small, 400), '125 %: doppelte Auflösung, verkleinert');
+    Assert.AreEqual(Large, TAtlasTipCatalog.ImageFor(Small, 640), '200 %: doppelte Auflösung Pixel für Pixel');
+    Assert.AreEqual(Lone, TAtlasTipCatalog.ImageFor(Lone, 640), 'ohne @2x die einfache Datei');
+    Assert.AreEqual('', TAtlasTipCatalog.ImageFor('', 640));
+  finally
+    TDirectory.Delete(Folder, True);
+  end;
 end;
 
 { TAtlasDiscoverTests }
@@ -306,6 +340,25 @@ begin
       Result := SameText(AName, 'UndoMultiFile');
     end;
   Assert.IsTrue(TAtlasDiscover.IsEnabled(List[2], SettingOn, CommandExists), 'Einstellung an');
+end;
+
+procedure TAtlasDiscoverTests.SettingOnReadsSwitchesAndChoices;
+var
+  Settings: TAtlasPluginSettings;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Settings.UndoMultiFile := True;
+  Settings.KeyOverview := False;
+  Assert.IsTrue(TAtlasDiscover.SettingOn(Settings, 'UndoMultiFile'));
+  Assert.IsTrue(TAtlasDiscover.SettingOn(Settings, 'undomultifile'), 'ohne Groß/klein');
+  Assert.IsFalse(TAtlasDiscover.SettingOn(Settings, 'KeyOverview'));
+  // Auswahl: alles außer „off“ heißt an.
+  Settings.WelcomePageWhatsNew := 'afterUpdate';
+  Assert.IsTrue(TAtlasDiscover.SettingOn(Settings, 'WelcomePageWhatsNew'));
+  Settings.WelcomePageWhatsNew := 'off';
+  Assert.IsFalse(TAtlasDiscover.SettingOn(Settings, 'WelcomePageWhatsNew'));
+  Assert.IsFalse(TAtlasDiscover.SettingOn(Settings, 'GibtEsNicht'), 'unbekannt: aus');
+  Assert.IsFalse(TAtlasDiscover.SettingOn(Settings, ''));
 end;
 
 procedure TAtlasDiscoverTests.NewStartBeginsAfterLastShownTip;
