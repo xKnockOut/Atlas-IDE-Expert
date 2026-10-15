@@ -18,6 +18,8 @@ type
     [Test]
     procedure ReadsFileOperationOptionsAndCountsUnknown;
     [Test]
+    procedure DropsEditsOfOwnProject;
+    [Test]
     procedure AppliesSeveralEditsAgainstTheOriginalText;
     [Test]
     procedure InsertsAtTheSamePositionInListOrder;
@@ -125,6 +127,26 @@ begin
   Assert.IsFalse(Edit.Operations[2].Overwrite);
   Assert.AreEqual(0, Edit.EditCount);
   Assert.IsFalse(Edit.IsEmpty);
+end;
+
+procedure TLspWorkspaceEditTests.DropsEditsOfOwnProject;
+const
+  Insert = '"edits":[{"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":0}},"newText":"x"}]}';
+var
+  Edit, Rest: TLspWorkspaceEdit;
+begin
+  // Neue Testunit (#274): .dpr und .dproj des Testprojekts trägt die IDE selbst ein, wenn es geladen ist.
+  Edit := Parse('{"documentChanges":[' +
+    '{"kind":"create","uri":"file:///c%3A/p/tests/k.tests.pas"},' +
+    '{"textDocument":{"uri":"file:///c%3A/p/tests/k.tests.pas","version":null},' + Insert + ',' +
+    '{"textDocument":{"uri":"file:///c%3A/p/tests/tests.dpr","version":null},' + Insert + ',' +
+    '{"textDocument":{"uri":"file:///c%3A/p/tests/tests.dproj","version":null},' + Insert + ']}');
+  Assert.AreEqual('c:\p\tests\tests.dproj', Edit.ProjectFile);
+  Rest := Edit.WithoutProject(Edit.ProjectFile);
+  Assert.AreEqual(1, Integer(Length(Rest.Files)));
+  Assert.AreEqual('c:\p\tests\k.tests.pas', Rest.Files[0].FileName);
+  Assert.AreEqual(1, Integer(Length(Rest.Operations)));
+  Assert.AreEqual('', Parse('{"changes":{}}').ProjectFile);
 end;
 
 procedure TLspWorkspaceEditTests.AppliesSeveralEditsAgainstTheOriginalText;
