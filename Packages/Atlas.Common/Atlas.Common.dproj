@@ -302,6 +302,8 @@
         <DCCReference Include="Source\Configuration\Atlas.Common.Configuration.Contract.pas"/>
         <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.JsonTree.pas"/>
         <DCCReference Include="Source\Configuration\Atlas.Common.Configuration.Parser.pas"/>
+        <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.ScopeData.pas"/>
+        <DCCReference Include="Source\Configuration\Atlas.Common.Configuration.Scopes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Configuration.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SettingsCommands.pas"/>
         <DCCReference Include="Source\Documents\Atlas.Common.Documents.Uris.pas"/>

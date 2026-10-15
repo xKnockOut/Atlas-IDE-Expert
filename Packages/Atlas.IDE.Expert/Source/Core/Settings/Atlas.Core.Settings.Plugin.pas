@@ -4,6 +4,10 @@
 // ohne Registry: Vorgaben, Grenzen, Lesen und Schreiben über einen Speicher.
 // Die IDE-Schicht speichert in HKCU\Software\Atlas\IdePlugin, Tests im
 // Arbeitsspeicher. Breiten in logischen Pixeln (96 dpi, #412).
+// Die Server-Einstellungen unter den Feldern (Index, Speicher, XMLDoc,
+// Inlay-Hints, Schnellbefehle, Kompilieren nach dem Speichern) liegen in
+// %APPDATA%\Atlas\settings.json; TAtlasRoutedSettingsStore leitet sie dorthin
+// (Atlas.Core.Settings.Scopes).
 
 interface
 
@@ -136,8 +140,11 @@ type
     Problems: Boolean;
     /// <summary>Probleme zusätzlich im Meldungsfenster auflisten (Gruppe „Atlas-Probleme“); nur mit Problems.</summary>
     ProblemsList: Boolean;
-    /// <summary>Syntaxprüfung des Compilers nach dem Speichern (#548).</summary>
+    /// <summary>Syntaxprüfung des Compilers nach dem Speichern (#548). Schließt CompileOnSave aus: Die
+    /// Optionsseite bietet eine Auswahl „Nach dem Speichern“ (aus, Syntaxprüfung, Kompilieren).</summary>
     CheckOnSave: Boolean;
+    /// <summary>Der Server kompiliert nach dem Speichern im Hintergrund (compiler.onSave, #40).</summary>
+    CompileOnSave: Boolean;
     /// <summary>Wartezeit nach dem letzten Speichern.</summary>
     CheckOnSaveDelayMs: Integer;
     /// <summary>Höchstdauer einer Prüfung; darüber nur noch von Hand (Strg+Alt+F9).</summary>
@@ -157,7 +164,7 @@ type
     Snippets: Boolean;
     /// <summary>Live Templates der IDE als Code-Vorlagen einlesen (#51, completion.importIdeTemplates).</summary>
     ImportIdeTemplates: Boolean;
-    /// <summary>Umfang des Symbolindex für alle Projekte (#652); index in atlas.json hat Vorrang.</summary>
+    /// <summary>Umfang des Symbolindex für alle Projekte (#652, index.* in settings.json).</summary>
     IndexProjectGroup: Boolean;
     IndexSearchPaths: Boolean;
     IndexLibraryPaths: Boolean;
@@ -166,8 +173,8 @@ type
     /// <summary>Speichergrenze des Symbolindex in MB (#492, memoryBudgetMb); darüber lagert der Server
     /// zuerst die Verwendungen aus. 0 = unbegrenzt.</summary>
     MemoryBudgetMb: Integer;
-    /// <summary>XMLDoc in Tooltip und Detailpanel vollständig (#654); aus = Kurzform. hints in atlas.json
-    /// hat Vorrang.</summary>
+    /// <summary>XMLDoc in Tooltip und Detailpanel vollständig (#654, hints.xmlDocFull in settings.json); aus =
+    /// Kurzform.</summary>
     XmlDocFull: Boolean;
     /// <summary>Höchstens so viele Zeilen Doku ohne Scrollen, 0 = bis zur Bildschirmhöhe (#654).</summary>
     XmlDocMaxLines: Integer;
@@ -221,9 +228,6 @@ type
     procedure Normalize;
     procedure Load(const AStore: IAtlasSettingsStore);
     procedure Save(const AStore: IAtlasSettingsStore);
-    /// <summary>Einstellungen für den Server als JSON-Objekt im Format von atlas.json (#652); geht als
-    /// initializationOptions.settings.atlas und mit workspace/didChangeConfiguration an den Server.</summary>
-    function ServerSettingsJson: string;
   end;
 
 implementation
@@ -297,6 +301,7 @@ begin
   Result.ProblemsList := True;
   // Die Prüfung in der IDE zeigt deren Fortschritt; Standard ist die Prüfung des Servers mit dcc (compiler.onSave).
   Result.CheckOnSave := False;
+  Result.CompileOnSave := False;
   Result.CheckOnSaveDelayMs := 2000;
   Result.CheckOnSaveMaxMs := 1500;
   Result.ActionsKey := $800D; // Alt+Enter
@@ -348,6 +353,9 @@ begin
   ProviderTimeLimitMs := EnsureRange(ProviderTimeLimitMs, MinProviderTimeLimit, MaxProviderTimeLimit);
   CheckOnSaveDelayMs := EnsureRange(CheckOnSaveDelayMs, MinCheckDelay, MaxCheckDelay);
   CheckOnSaveMaxMs := EnsureRange(CheckOnSaveMaxMs, MinCheckMax, MaxCheckMax);
+  // Nach dem Speichern genau eins von beiden: Die Syntaxprüfung der IDE gewinnt.
+  if CheckOnSave then
+    CompileOnSave := False;
   XmlDocMaxLines := EnsureRange(XmlDocMaxLines, 0, MaxXmlDocLines);
   OpenDelayMs := EnsureRange(OpenDelayMs, 0, MaxOpenDelay);
   MemoryBudgetMb := EnsureRange(MemoryBudgetMb, 0, MaxMemoryBudgetMb);
@@ -431,6 +439,7 @@ begin
   CheckOnSave := AStore.ReadInteger('CheckOnSave', BoolValue(Default.CheckOnSave)) <> 0;
   CheckOnSaveDelayMs := AStore.ReadInteger('CheckOnSaveDelayMs', Default.CheckOnSaveDelayMs);
   CheckOnSaveMaxMs := AStore.ReadInteger('CheckOnSaveMaxMs', Default.CheckOnSaveMaxMs);
+  CompileOnSave := AStore.ReadInteger('CompileOnSave', BoolValue(Default.CompileOnSave)) <> 0;
   ActionsKey := AStore.ReadInteger('ActionsKey', Default.ActionsKey);
   ExpandKey := AStore.ReadInteger('ExpandKey', Default.ExpandKey);
   ShrinkKey := AStore.ReadInteger('ShrinkKey', Default.ShrinkKey);
@@ -519,6 +528,7 @@ begin
   AStore.WriteInteger('CheckOnSave', BoolValue(CheckOnSave));
   AStore.WriteInteger('CheckOnSaveDelayMs', CheckOnSaveDelayMs);
   AStore.WriteInteger('CheckOnSaveMaxMs', CheckOnSaveMaxMs);
+  AStore.WriteInteger('CompileOnSave', BoolValue(CompileOnSave));
   AStore.WriteInteger('ActionsKey', ActionsKey);
   AStore.WriteInteger('ExpandKey', ExpandKey);
   AStore.WriteInteger('ShrinkKey', ShrinkKey);
@@ -555,23 +565,6 @@ begin
   AStore.WriteInteger('RedoKey', RedoKey);
   AStore.WriteInteger('UpdatesCheck', BoolValue(UpdatesCheck));
   AStore.WriteInteger('BugReportAnonymize', BoolValue(BugReportAnonymize));
-end;
-
-function JsonBool(AValue: Boolean): string;
-begin
-  if AValue then
-    Result := 'true'
-  else
-    Result := 'false';
-end;
-
-function TAtlasPluginSettings.ServerSettingsJson: string;
-begin
-  Result := '{"index":{"projectGroup":' + JsonBool(IndexProjectGroup) + ',"searchPaths":' +
-    JsonBool(IndexSearchPaths) + ',"libraryPaths":' + JsonBool(IndexLibraryPaths) + ',"usages":' +
-    JsonBool(IndexUsages) + '},"memoryBudgetMb":' + IntToStr(EnsureRange(MemoryBudgetMb, 0, MaxMemoryBudgetMb)) +
-    ',"hints":{"xmlDocFull":' +
-    JsonBool(XmlDocFull) + ',"xmlDocMaxLines":' + IntToStr(EnsureRange(XmlDocMaxLines, 0, MaxXmlDocLines)) + '}}';
 end;
 
 end.

@@ -45,6 +45,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
+  Atlas.Common.Configuration.Scopes,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.DprojReader,
@@ -91,17 +92,28 @@ begin
   Result := (Ext = '.pas') or (Ext = '.dpr') or (Ext = '.dpk');
 end;
 
+// Wie im Server: globale Datei für globale Schlüssel, atlas.json für Projekt-Schlüssel (TConfigurationScopes).
 function LoadSettings(const ARoot: string): TServerSettings;
 var
-  FileName: string;
+  FileName, GlobalFile, Text, GlobalText: string;
   FileFormat: TFileFormat;
-  Issues: TArray<TConfigurationIssue>;
+  Issues, Misplaced: TArray<TConfigurationIssue>;
   Issue: TConfigurationIssue;
 begin
+  GlobalText := '';
+  GlobalFile := TConfigurationScopes.GlobalFile(GetEnvironmentVariable('APPDATA'));
+  if (GlobalFile <> '') and TFile.Exists(GlobalFile) then
+    GlobalText := TFileEncoding.LoadFromFile(GlobalFile, FileFormat);
+  Text := '';
   FileName := ExistingOrLegacyFile(ARoot, ConfigurationFileName, LegacyConfigurationFileName);
-  if not TFile.Exists(FileName) then
-    Exit(TServerSettings.Default);
-  Result := TConfigurationParser.Parse(TFileEncoding.LoadFromFile(FileName, FileFormat), Issues);
+  if TFile.Exists(FileName) then
+    Text := TFileEncoding.LoadFromFile(FileName, FileFormat);
+  Result := TConfigurationParser.Parse(TConfigurationScopes.Effective(GlobalText, '', Text), Misplaced);
+  if Text = '' then
+    Exit;
+  TConfigurationParser.Parse(Text, Issues);
+  TConfigurationScopes.Filter(Text, TConfigurationScope.Project, Misplaced);
+  Issues := Issues + Misplaced;
   for Issue in Issues do
     WriteError(Format('%s(%d,%d): %s', [FileName, Issue.Range.StartPos.Line + 1,
       Issue.Range.StartPos.Character + 1, Issue.Message]));
