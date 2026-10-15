@@ -267,6 +267,66 @@
       "image": "Tipps\\einrichtung.png"
     },
     {
+      "id": "noteAdd",
+      "command": "Atlas.NoteAdd",
+      "setting": "Notes",
+      "title": "Notizen an Codezeilen",
+      "titleEn": "Notes on code lines",
+      "text": "Hängt eine persönliche Notiz an eine Zeile, ohne den Quelltext zu ändern. Das Notizblatt in der Rinne zeigt sie beim Überfahren; die Notiz wandert mit, wenn sich Zeilen verschieben.",
+      "textEn": "Attaches a personal note to a line without changing the code. The note icon in the gutter shows it on hover; the note moves along when lines shift.",
+      "image": "Tipps\\notiz-setzen.png"
+    },
+    {
+      "id": "noteDelete",
+      "command": "Atlas.NoteDelete",
+      "setting": "Notes",
+      "title": "Notiz löschen",
+      "titleEn": "Delete a note",
+      "text": "Rechtsklick auf das Notizblatt in der Rinne, dann Atlas › Notiz an dieser Zeile löschen. Ein leerer Text im Notizfenster löscht die Notiz ebenfalls.",
+      "textEn": "Right-click the note icon in the gutter, then Atlas › Delete note on this line. Saving an empty text in the note window deletes it too.",
+      "image": "Tipps\\notiz-loeschen.png"
+    },
+    {
+      "id": "noteList",
+      "command": "Atlas.NoteList",
+      "setting": "Notes",
+      "title": "Notizen des Projekts",
+      "titleEn": "Project notes",
+      "text": "Listet alle Notizen des Projekts nach Datei im Ergebnisfenster. Doppelklick springt hin; Notizen, deren Zeile verschwunden ist, stehen unter „Verwaist“.",
+      "textEn": "Lists all notes of the project by file in the results window. Double-click jumps there; notes whose line is gone appear under \"Orphaned\".",
+      "image": "Tipps\\notizen-liste.png"
+    },
+    {
+      "id": "bookmarkAdd",
+      "command": "Atlas.BookmarkAdd",
+      "setting": "BookmarksNamed",
+      "title": "Benannte Lesezeichen",
+      "titleEn": "Named bookmarks",
+      "text": "Setzt ein Lesezeichen mit Namen; Methode und Zeilenbeginn sind schon vorgeschlagen. Es folgt seiner Methode, auch wenn sie im Quelltext wandert, und übersteht den Neustart der IDE.",
+      "textEn": "Sets a bookmark with a name; method and line start are already suggested. It follows its method even when the method moves and survives an IDE restart.",
+      "image": "Tipps\\lesezeichen-setzen.png"
+    },
+    {
+      "id": "bookmarkGoTo",
+      "command": "Atlas.BookmarkGoTo",
+      "setting": "BookmarksNamed",
+      "title": "Gehe zu Lesezeichen",
+      "titleEn": "Go to bookmark",
+      "text": "Findet jedes Lesezeichen des Projekts über ein paar Buchstaben aus Name, Datei oder Methode; Enter springt hin.",
+      "textEn": "Finds any bookmark of the project from a few letters of its name, file or method; Enter jumps there.",
+      "image": "Tipps\\lesezeichen-gehe-zu.png"
+    },
+    {
+      "id": "bookmarkWindow",
+      "command": "Atlas.BookmarkWindow",
+      "setting": "BookmarksNamed",
+      "title": "Lesezeichen-Fenster",
+      "titleEn": "Bookmarks window",
+      "text": "Andockbare Liste aller Lesezeichen mit Filter: Enter springt, F2 benennt um, Entf löscht, Ziehen sortiert. Nicht mehr gefundene bleiben grau stehen.",
+      "textEn": "Dockable list of all bookmarks with a filter: Enter jumps, F2 renames, Del deletes, dragging reorders. Bookmarks that can no longer be found stay in grey.",
+      "image": "Tipps\\lesezeichen-fenster.png"
+    },
+    {
       "id": "welcomeLayout",
       "command": "Atlas.WelcomeApply",
       "usage": [
