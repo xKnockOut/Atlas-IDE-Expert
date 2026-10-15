@@ -119,6 +119,7 @@ type
     FProblemsList: TCheckBox;
     FStatusField: TCheckBox;
     FDiagnosticMode: TCheckBox;
+    FSetupChecklist: TCheckBox;
     FStatusSummary: TCheckBox;
     FStatusHidden: TEdit;
     FIndexGroup: TCheckBox;
@@ -248,6 +249,7 @@ type
     /// <summary>Zum Testen: Einstellungen des Statusfelds (#591).</summary>
     property StatusField: TCheckBox read FStatusField;
     property DiagnosticMode: TCheckBox read FDiagnosticMode;
+    property SetupChecklist: TCheckBox read FSetupChecklist;
     property StatusSummary: TCheckBox read FStatusSummary;
     property StatusHidden: TEdit read FStatusHidden;
     /// <summary>Zum Testen: abgesicherter Start (#722).</summary>
@@ -473,6 +475,8 @@ begin
   FStatusHidden.Width := 180;
   // Diagnosemodus (#479); Taste auf der Seite „Tastenkonflikte“.
   FDiagnosticMode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticMode));
+  // Prüfliste der Einrichtung beim Start (#625); aus: nur auf Abruf.
+  FSetupChecklist := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSetupChecklist));
 
   // Liste der Vervollständigung.
   AddSheet(TAtlasTextId.SettingsTabCompletion);
@@ -1121,6 +1125,7 @@ begin
   FProblemsList.Checked := ASettings.ProblemsList;
   FStatusField.Checked := ASettings.StatusField;
   FDiagnosticMode.Checked := ASettings.DiagnosticMode;
+  FSetupChecklist.Checked := ASettings.SetupChecklist;
   FStatusSummary.Checked := ASettings.StatusFieldSummary;
   FStatusHidden.Text := ASettings.StatusFieldHidden;
   FIndexGroup.Checked := ASettings.IndexProjectGroup;
@@ -1230,6 +1235,7 @@ begin
   ASettings.ProblemsList := FProblemsList.Checked;
   ASettings.StatusField := FStatusField.Checked;
   ASettings.DiagnosticMode := FDiagnosticMode.Checked;
+  ASettings.SetupChecklist := FSetupChecklist.Checked;
   ASettings.StatusFieldSummary := FStatusSummary.Checked;
   ASettings.StatusFieldHidden := Trim(FStatusHidden.Text);
   ASettings.IndexProjectGroup := FIndexGroup.Checked;

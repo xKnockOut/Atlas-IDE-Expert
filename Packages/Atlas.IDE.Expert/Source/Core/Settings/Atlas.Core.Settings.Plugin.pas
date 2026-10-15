@@ -203,6 +203,12 @@ type
     /// anderen Atlas-Tasten (#494).</summary>
     DiagnosticModeKey: Integer;
     DiagnosticModeKeyPriority: Boolean;
+    /// <summary>Prüfliste „Atlas-Einrichtung“ beim IDE-Start zeigen, solange nicht alles grün ist (#625,
+    /// ui.setupChecklist); aus: nur auf Abruf (Menü Atlas, Befehlspalette, Statusfeld).</summary>
+    SetupChecklist: Boolean;
+    /// <summary>Die Prüfliste war schon einmal offen (#625); vorher öffnet sie beim Start in jedem Fall. Kein
+    /// Schlüssel in atlas.json, nur Zustand des Plugins.</summary>
+    SetupChecklistSeen: Boolean;
     /// <summary>Abgesicherter Start (#722): nach einem Absturz fragen (safeMode.askAfterCrash).</summary>
     SafeAskAfterCrash: Boolean;
     /// <summary>Nach zwei Abstürzen kurz hintereinander ohne Rückfrage abgesichert
@@ -383,6 +389,8 @@ begin
   Result.DiagnosticMode := False;
   Result.DiagnosticModeKey := $E044; // Strg+Umschalt+Alt+D
   Result.DiagnosticModeKeyPriority := False;
+  Result.SetupChecklist := True;
+  Result.SetupChecklistSeen := False;
   Result.SafeAskAfterCrash := True;
   Result.SafeAutoAfterRepeatedCrash := True;
   Result.SafeStartupKey := 'shift';
@@ -564,6 +572,8 @@ begin
   DiagnosticModeKey := AStore.ReadInteger('DiagnosticModeKey', Default.DiagnosticModeKey);
   DiagnosticModeKeyPriority :=
     AStore.ReadInteger('DiagnosticModeKeyPriority', BoolValue(Default.DiagnosticModeKeyPriority)) <> 0;
+  SetupChecklist := AStore.ReadInteger('SetupChecklist', BoolValue(Default.SetupChecklist)) <> 0;
+  SetupChecklistSeen := AStore.ReadInteger('SetupChecklistSeen', BoolValue(Default.SetupChecklistSeen)) <> 0;
   SafeAskAfterCrash := AStore.ReadInteger('SafeAskAfterCrash', BoolValue(Default.SafeAskAfterCrash)) <> 0;
   SafeAutoAfterRepeatedCrash :=
     AStore.ReadInteger('SafeAutoAfterRepeatedCrash', BoolValue(Default.SafeAutoAfterRepeatedCrash)) <> 0;
@@ -678,6 +688,8 @@ begin
   AStore.WriteInteger('DiagnosticMode', BoolValue(DiagnosticMode));
   AStore.WriteInteger('DiagnosticModeKey', DiagnosticModeKey);
   AStore.WriteInteger('DiagnosticModeKeyPriority', BoolValue(DiagnosticModeKeyPriority));
+  AStore.WriteInteger('SetupChecklist', BoolValue(SetupChecklist));
+  AStore.WriteInteger('SetupChecklistSeen', BoolValue(SetupChecklistSeen));
   AStore.WriteInteger('SafeAskAfterCrash', BoolValue(SafeAskAfterCrash));
   AStore.WriteInteger('SafeAutoAfterRepeatedCrash', BoolValue(SafeAutoAfterRepeatedCrash));
   AStore.WriteString('SafeStartupKey', SafeStartupKey);

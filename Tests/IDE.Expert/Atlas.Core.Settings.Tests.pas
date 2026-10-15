@@ -138,6 +138,9 @@ begin
   Assert.IsFalse(Settings.DiagnosticMode);
   Assert.AreEqual($E044, Settings.DiagnosticModeKey);
   Assert.IsFalse(Settings.DiagnosticModeKeyPriority);
+  // Einrichtung mit Prüfliste (#625): beim Start zeigen, solange nicht alles grün ist; noch nie gesehen.
+  Assert.IsTrue(Settings.SetupChecklist);
+  Assert.IsFalse(Settings.SetupChecklistSeen);
   // Abgesicherter Start (#722).
   Assert.IsTrue(Settings.SafeAskAfterCrash);
   Assert.IsTrue(Settings.SafeAutoAfterRepeatedCrash);
@@ -194,6 +197,8 @@ begin
   Settings.DiagnosticMode := True;
   Settings.DiagnosticModeKey := $6044;
   Settings.DiagnosticModeKeyPriority := True;
+  Settings.SetupChecklist := False;
+  Settings.SetupChecklistSeen := True;
   Settings.SafeAskAfterCrash := False;
   Settings.SafeAutoAfterRepeatedCrash := False;
   Settings.SafeStartupKey := 'none';
@@ -251,6 +256,8 @@ begin
   Assert.IsTrue(Loaded.DiagnosticMode);
   Assert.AreEqual($6044, Loaded.DiagnosticModeKey);
   Assert.IsTrue(Loaded.DiagnosticModeKeyPriority);
+  Assert.IsFalse(Loaded.SetupChecklist);
+  Assert.IsTrue(Loaded.SetupChecklistSeen);
   Assert.IsFalse(Loaded.SafeAskAfterCrash);
   Assert.IsFalse(Loaded.SafeAutoAfterRepeatedCrash);
   Assert.AreEqual('none', Loaded.SafeStartupKey);

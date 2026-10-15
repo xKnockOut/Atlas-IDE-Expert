@@ -737,6 +737,30 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert, ein Projekt mit e
 | DM14 | Dunkles und helles Thema, 150 % Skalierung | Tabelle lesbar, Warnfarbe deutlich, nichts abgeschnitten; Themenwechsel ohne Neustart |
 | DM15 | Diagnosemodus an, IDE neu starten | Fenster öffnet nach dem Laden wieder, Statuszeile gelb |
 
+## Einrichtung mit Prüfliste (#625)
+
+Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert. Für den „ersten Start“ unter `HKCU\Software\Atlas\IdePlugin` den Wert `SetupChecklistSeen` löschen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EP1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasSetupChecklistTests`, `TAtlasSetupControllerTests` und `TAtlasSetupWindowTests` grün |
+| EP2 | Erster Start (ohne `SetupChecklistSeen`) mit einer Projektgruppe | Nach dem Laden öffnet das nicht modale Fenster „Atlas-Einrichtung“; die IDE bleibt bedienbar; sechs Zeilen mit Punkt: Server, Delphi 13 (37.0) bzw. Delphi 12 (23.0) mit Plattform, Projektgruppe mit Unterzeile je Projekt, Bibliotheks-Cache, Error Insight, Tastenkürzel; unten „Probier es aus: **Strg+Leer** in einer Methode“ (bzw. die eigene Taste aus *Tastenkonflikte*) |
+| EP3 | Während der Server startet bzw. indiziert, Fenster offen lassen | Punkte gelb mit „Server wird gestartet…“ bzw. „wird indiziert: n von m Projekten fertig“; aktualisiert sich alle 2 s ohne Klick; Projektzeilen wechseln von „wird aufgebaut“ auf „fertig“ |
+| EP4 | Serverpfad in *Tools › Optionen › Atlas* auf eine nicht vorhandene Datei, IDE neu starten | Prüfliste öffnet von selbst; Server rot „AtlasServer.exe nicht gefunden“, Knopf „Server-Pfad wählen…“; Datei wählen → Pfad steht danach auf der Optionsseite, der Server startet, Punkt wird grün |
+| EP5 | Server einer anderen Version eintragen | Gelb „Server x passt nicht zum Plugin y“ mit „Server-Pfad wählen…“ |
+| EP6 | **Error-Insight-Ort bestätigen**: *Tools › Optionen › Editor › Sprache › Code Insight* Error Insight an; IDE neu starten | Zeile „Error Insight der IDE ist noch an (doppelte Meldungen)“, Knopf „Error Insight abschalten“. Klick: Zeile „Error Insight umgeschaltet, wirkt nach dem Neustart der IDE“; in der Registry unter `<BDS-Schlüssel>\Code Insight\Borland.EditOptions.Borland.CodeInsight.LSP.Pascal` steht `Error Insight = False`. Nach Neustart ist Error Insight in den IDE-Optionen aus und die Zeile grün. Stimmt der Ort nicht (Optionen zeigen weiter an), bitte den richtigen Schlüssel melden |
+| EP7 | Atlas-Probleme aus (*Atlas*-Seite), Error Insight aus | Gelb „Weder Error Insight noch Atlas zeigen Fehler im Editor“ mit „Error Insight einschalten“ |
+| EP8 | Taste von Atlas mit einer fremden Erweiterung belegen (z. B. CnPack auf Strg+Leer) | Gelb „1 Tastenkürzel anders belegt, z. B. …“; „Tastenkonflikte öffnen“ öffnet *Tools › Optionen › Drittanbieter › Atlas › Tastenkonflikte* (**Seite prüfen**); nach Ändern und „Erneut prüfen“ grün |
+| EP9 | Bibliotheks-Cache löschen (`%LOCALAPPDATA%\Atlas\Index\<Version>\…\Bibliothek` bzw. „Index löschen“), Server neu starten | Gelb „Bibliotheks-Cache fehlt, erster Start dauert länger“ bzw. „entsteht beim ersten Indexlauf“, Knopf „Jetzt aufbauen“ baut den Index neu |
+| EP10 | Ein Projekt der Gruppe nicht indizierbar (Projekt hinzufügen, Server noch ohne Workspace) | Gelb „Projektgruppe: 1 von n Projekten nicht im Index (Name)“; Knopf „Index neu aufbauen“ |
+| EP11 | „Warum?“ an einem gelben Punkt (z. B. ohne Projekt bei Delphi) | Erklärung erscheint unter den Zeilen im Fenster, kein weiterer Dialog |
+| EP12 | „Bericht kopieren“, in einen Editor einfügen | Titel, „n von 6 erledigt“, Atlas-, IDE-Version und Plattform, Zeilen mit `[ok]`/`[!]`/`[x]`; kein Pfad, Benutzer- oder Rechnername steht als `<benutzer>`; Hinweis „Bericht in der Zwischenablage (ohne Pfade und Namen).“ |
+| EP13 | Alles grün, IDE neu starten | Prüfliste öffnet **nicht** von selbst; Zeile „Einrichtung: vollständig (6 von 6)“ grün im Statusfeld |
+| EP14 | Ein Punkt fest gelb (z. B. Error Insight an), `ui.setupChecklist` aus (Kontrollkästchen im Fenster oder Seite *Allgemein*), IDE neu starten | Prüfliste öffnet nicht von selbst; *Atlas › Einrichtung prüfen…*, Befehlspalette „Einrichtung prüfen…“ und Klick auf die gelbe Zeile „Einrichtung: 5 von 6 erledigt“ im Statusfeld öffnen sie |
+| EP15 | Projekt öffnen, während der Server noch startet; IDE neu starten | Fenster wartet; wird alles grün, öffnet es nicht; bleibt etwas nach 2 Minuten im Gange, öffnet es ebenfalls nicht |
+| EP16 | Dunkles und helles Thema, 150 % Skalierung, Thema wechseln bei offenem Fenster | Zeilen, Punkte und Knöpfe lesbar, nichts abgeschnitten; Farben folgen ohne Neustart |
+| EP17 | Abgesicherter Start (Umschalt beim Laden, Stufe minimal) | Keine Prüfliste, kein Menüeintrag; abgesichert (nicht minimal) wie normal, nur auf Abruf und beim Start |
+
 ## Versionsverwaltung (#571)
 
 Vorbereitung: Git für Windows und TortoiseSVN mit Kommandozeilenwerkzeugen (`svn.exe`, `svnadmin.exe`) installiert. Die Schnittstelle hat noch keine sichtbaren Nutzer in der IDE (folgen mit #592, #762, #755, #764, #765); geprüft wird über die Tests, den Einstellungsdialog und die Kommandozeile.
