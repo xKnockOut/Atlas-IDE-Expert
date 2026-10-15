@@ -449,6 +449,12 @@ begin
     begin
       Result := ProjectIndexPending;
     end;
+  // Long-Polling endet vor dem Zeitlimit des Watchdogs (Code-Review P-14).
+  FPullDiagnostics.RequestTimeout :=
+    function: Cardinal
+    begin
+      Result := FRequestTimeout;
+    end;
   FPullDiagnostics.Attach(FDispatcher);
   FSyntaxDiagnostics.OnPullChanged := FPullDiagnostics.Changed;
   FDocumentSymbols := TLspDocumentSymbols.Create(FDocuments);
