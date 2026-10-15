@@ -336,7 +336,7 @@ uses
   Atlas.Windows.Documents.PathCanonicalizer,
   Atlas.Windows.Diagnostics.Adapters.DebugOutputSink,
   Atlas.Windows.Diagnostics.StackTrace,
-  Atlas.Common.Logging.Providers.RotatingFileStream,
+  Atlas.Common.Logging.RotatingFileStream,
   Atlas.Windows.Editing.SystemColors,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.GroupReader,

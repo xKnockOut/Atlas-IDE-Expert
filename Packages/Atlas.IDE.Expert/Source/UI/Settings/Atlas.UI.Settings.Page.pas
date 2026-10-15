@@ -442,6 +442,7 @@ uses
   Atlas.Core.Product.Version,
   Atlas.Core.Updates.Check,
   Atlas.Core.Undo.Contract,
+  Atlas.Core.Undo.Names,
   Atlas.Core.Welcome.WhatsNew,
   Atlas.Core.Commands.ShortcutTips;
 

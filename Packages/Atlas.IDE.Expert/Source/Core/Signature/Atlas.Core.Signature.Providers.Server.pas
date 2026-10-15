@@ -20,7 +20,6 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Core.Signature.Contract,
-  Atlas.Core.Completion.Providers.Server,
   Atlas.Core.Lsp.Session;
 
 type
