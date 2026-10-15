@@ -11,6 +11,9 @@ type
   [TestFixture]
   TLspNamespacesTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure ReadReturnsWrittenValue;
     /// <summary>Ein Thread ersetzt fortlaufend, ein anderer liest: kein zerrissenes Array, keine
@@ -29,6 +32,11 @@ uses
   Atlas.Common.Lsp.Internals.Namespaces;
 
 { TLspNamespacesTests }
+
+procedure TLspNamespacesTests.WarmUpFirstUse;
+begin
+  ReadReturnsWrittenValue;
+end;
 
 procedure TLspNamespacesTests.ReadReturnsWrittenValue;
 var

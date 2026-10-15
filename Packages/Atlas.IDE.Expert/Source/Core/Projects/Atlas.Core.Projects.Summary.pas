@@ -498,7 +498,6 @@ var
 begin
   AMetrics := TAtlasProjectMetrics.Empty;
   Result := False;
-  Value := nil;
   try
     Value := TJSONObject.ParseJSONValue(AJson);
   except
@@ -579,7 +578,6 @@ var
 begin
   ATodos := TAtlasProjectTodos.Empty;
   Result := False;
-  Value := nil;
   try
     Value := TJSONObject.ParseJSONValue(AJson);
   except
