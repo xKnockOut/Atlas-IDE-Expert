@@ -57,6 +57,9 @@ type
     procedure TodosFromServerAndRoundTrip;
     [Test]
     procedure TodosRejectInvalidAnswer;
+    /// <summary>Abschnitt "baseline" (#97) für Projektverlauf (#758) und Einrichtung (#759).</summary>
+    [Test]
+    procedure BaselineRoundTripAndUnknownFields;
   end;
 
 implementation
@@ -269,6 +272,7 @@ begin
   Assert.IsFalse(Summary.Rules.Known);
   Assert.IsFalse(Summary.Metrics.Known);
   Assert.IsFalse(Summary.Todos.Known);
+  Assert.IsFalse(Summary.Baseline.Known);
   Assert.IsTrue(Summary.LastOpened = 0);
   Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "vcs": {"kind": "none"}}', Summary));
   Assert.IsTrue(Summary.Vcs.Known);
@@ -470,6 +474,52 @@ begin
     Todos));
   Assert.IsTrue(Todos.Known);
   Assert.AreEqual(0, Integer(Length(Todos.Keywords)));
+end;
+
+procedure TAtlasProjectSummaryTests.BaselineRoundTripAndUnknownFields;
+var
+  Summary, Read: TAtlasProjectSummary;
+  Stamp: TDateTime;
+  Json: string;
+begin
+  Stamp := EncodeDate(2026, 10, 15) + EncodeTime(9, 30, 0, 0);
+  Summary := TAtlasProjectSummary.Create(Project);
+  Summary.Baseline.Known := True;
+  Summary.Baseline.At := Stamp;
+  Summary.Baseline.Exists := True;
+  Summary.Baseline.Valid := True;
+  Summary.Baseline.Entries := 40;
+  Summary.Baseline.Hits := 52;
+  Summary.Baseline.Orphaned := 2;
+  Json := TAtlasProjectSummaries.ToJson(Summary);
+  // Ohne Aktualisieren über Atlas keine Zähler.
+  Assert.Contains(Json, '"baseline":{"at":"2026-10-15T09:30:00Z","exists":true,"valid":true,"entries":40,' +
+    '"hits":52,"orphaned":2}');
+  Summary.Baseline.Updated := Stamp;
+  Summary.Baseline.Added := 3;
+  Summary.Baseline.Removed := 5;
+  Json := TAtlasProjectSummaries.ToJson(Summary);
+  Assert.Contains(Json, '"orphaned":2,"updated":"2026-10-15T09:30:00Z","added":3,"removed":5}');
+  Assert.IsTrue(TAtlasProjectSummaries.Parse(Json, Read));
+  Assert.IsTrue(Read.Baseline.Known);
+  Assert.IsTrue(Read.Baseline.Exists);
+  Assert.IsTrue(Read.Baseline.Valid);
+  Assert.AreEqual(40, Read.Baseline.Entries);
+  Assert.AreEqual(52, Read.Baseline.Hits);
+  Assert.AreEqual(2, Read.Baseline.Orphaned);
+  Assert.IsTrue(Read.Baseline.Updated = Stamp);
+  Assert.AreEqual(3, Read.Baseline.Added);
+  Assert.AreEqual(5, Read.Baseline.Removed);
+  // Keine Baseline: bekannt, aber nicht vorhanden (Lücke im Projektverlauf, „Baseline erzeugen“ in der
+  // Einrichtung); unbekannte Felder im Abschnitt bleiben.
+  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "baseline": {"at": ' +
+    '"2026-10-15T09:30:00Z", "exists": false, "trend": [1, 2]}}', Read));
+  Assert.IsTrue(Read.Baseline.Known);
+  Assert.IsFalse(Read.Baseline.Exists);
+  Assert.IsTrue(Read.Baseline.Updated = 0);
+  Json := TAtlasProjectSummaries.ToJson(Read);
+  Assert.Contains(Json, '"trend":[1,2]');
+  Assert.IsTrue(Pos('"updated"', Json) = 0, Json);
 end;
 
 initialization

@@ -1013,6 +1013,29 @@ Voraussetzung: Server läuft, eigenes Projekt geöffnet. In einer Unit des Proje
 | TD18 | TD13, „Zurücksetzen“, „Anzeigen“ | Alle Felder leer; Liste wie TD1 mit Titel ohne Klammer |
 | TD19 | Optionen › Atlas › Editor: „Befehl „TODOs des Projekts“ in der Befehlspalette“ aus (oder Schnellschalter „TODO-Liste“) | Beide Befehle aus TD1 und TD13 verschwinden ohne Neustart aus der Befehlspalette, die Tipps „TODOs des Projekts“ und „TODOs filtern“ erscheinen nicht mehr; Hinweise der Regel `todo-comment`, `get_todos` und der Abschnitt `todos` nach einem Build (TD10) bleiben; „Alles aus für diese Sitzung“ lässt die Befehle stehen |
 
+## Baseline für Altprojekte (#97)
+
+Voraussetzung: Server läuft, eigenes Projekt geöffnet, die Regel `empty-except` (oder eine andere, die im Projekt Treffer hat) ist an. In `Kasse.pas` steht in `TKasse.Buchen` und in `TKasse.Storno` je dieselbe Zeile mit einem Treffer (z. B. `except end;`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BL1 | Befehlspalette „Baseline des Projekts aktualisieren“ ohne vorhandene Baseline | Meldung „Baseline wird aktualisiert …“, danach im Meldungsfenster „Baseline geschrieben: <Ordner>\atlas-baseline.json (n Treffer in m Dateien; n neu, 0 entfernt, 0 unverändert)“; die Treffer im Editor verschwinden nach kurzer Zeit |
+| BL2 | `atlas-baseline.json` ansehen | Je Eintrag `path`, `rule`, `fingerprint`, `count`, `routine` (z. B. `TKasse.Buchen`; außerhalb einer Routine `implementation` o. ä.) und `context` |
+| BL3 | Die Zeile in `TKasse.Buchen` neu einrücken und eine Leerzeile darüber einfügen | Kein Treffer erscheint |
+| BL4 | `TKasse.Buchen` in `TKasse.Verbuchen` umbenennen (Deklaration und Rumpf) | Kein Treffer erscheint |
+| BL5 | Dieselbe Zeile ein drittes Mal in eine neue Methode `TKasse.Neu` kopieren | Nur dieser Treffer erscheint (gleiche Zeile in anderer Routine ist neu) |
+| BL6 | Die Zeile aus `TKasse.Storno` in eine andere Methode verschieben | Der verschobene Treffer erscheint |
+| BL7 | Eine Unit mit Treffern aus der Baseline umbenennen (Datei und Projekt), BL1 | Vorher Rückfrage „Die Baseline enthält n Einträge ohne Datei …“ mit dem alten Pfad und der Trefferzahl; „Nein“ bricht ab, nichts wird geschrieben. Mit „Ja“: Meldungsfenster nennt zuerst „Baseline: n Einträge ohne Datei entfernt …“ mit dem Pfad, dann die Zähler |
+| BL8 | Eine Baseline einer älteren Atlas-Fassung (Einträge ohne `routine`) ins Projekt legen | Die bekannten Treffer bleiben ausgeblendet. BL1: zusätzlich „Baseline: n Einträge der älteren Baseline um die Routine ergänzt.“; die Datei hat danach `routine` und `context` |
+| BL9 | `// lsp-ignore: empty-except` über eine Zeile, deren Treffer in der Baseline steht | Kein `unused-suppression` an diesem Kommentar |
+| BL10 | `AtlasServer --check <Projekt> --update-baseline` nach BL7 (ohne Plugin) | stderr: zuerst „n Einträge ohne Datei werden entfernt …“ mit Pfaden, dann „Baseline geschrieben: … (… neu, … entfernt, … unverändert)“; Exitcode 0 |
+| BL11 | `AtlasServer --check <Projekt> --format sarif` mit Baseline und einem neuen Treffer | Jedes Ergebnis hat `partialFingerprints` mit `atlasBaseline/v1` und `atlasContext/v1`; der neue Treffer `baselineState` `new`, bekannte `unchanged` mit `suppressions` (`external`); ein Eintrag ohne Treffer `absent`; Exitcode zählt nur den neuen Treffer |
+| BL12 | BL11 ohne Baseline | `partialFingerprints` vorhanden, kein `baselineState`, keine `suppressions` |
+| BL13 | Projekt bauen (Strg+F9), danach `%LOCALAPPDATA%\Atlas\projects\<Schlüssel>.json` ansehen | Abschnitt `baseline` mit `at`, `exists` true, `valid` true, `entries`, `hits`, `orphaned`; nach BL1 zusätzlich `updated`, `added`, `removed`. Baseline löschen und bauen: `exists` false, `updated` bleibt |
+| BL14 | BL1 ohne geöffnetes Projekt bzw. direkt nach einem Build | „Baseline aktualisieren: kein aktives Projekt.“ bzw. ggf. „… Der Atlas-Server ist gerade beschäftigt …“ |
+| BL15 | VS Code oder anderer Editor: `workspace/executeCommand` `atlas.updateBaseline` mit der URI des Projekts | Antwort mit `file`, `total`, `files`, `added`, `removed`, `unchanged`, `completed`, `orphaned`; der Befehl steht in `executeCommandProvider` |
+| BL16 | Optionen › Atlas › Editor: „Befehl „Baseline des Projekts aktualisieren“ in der Befehlspalette“ aus (oder Schnellschalter „Baseline aktualisieren“) | Der Befehl und sein Tipp verschwinden ohne Neustart; die Baseline blendet weiter aus, BL13 schreibt weiter; „Alles aus für diese Sitzung“ lässt den Befehl stehen |
+
 ## Units suchen (#777)
 
 Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testprojekt; Server läuft; Einstellungen auf Vorgabe.

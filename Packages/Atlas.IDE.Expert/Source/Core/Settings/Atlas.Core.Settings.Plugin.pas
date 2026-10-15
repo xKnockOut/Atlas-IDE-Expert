@@ -198,6 +198,9 @@ type
     CodeLensMetrics: Boolean;
     /// <summary>Befehl „TODOs des Projekts“ (#68, Atlas.TodoList); aus = der Befehl verschwindet.</summary>
     TodoList: Boolean;
+    /// <summary>Befehl „Baseline des Projekts aktualisieren“ (#97, Atlas.UpdateBaseline) in der Befehlspalette;
+    /// aus = der Befehl und sein Tipp verschwinden. Die Baseline selbst wirkt weiter.</summary>
+    BaselineUpdate: Boolean;
     /// <summary>Befehl „Metrikbericht des Projekts“ (#66, Atlas.MetricsReport) in der Befehlspalette; aus = der
     /// Befehl verschwindet. Die Zusammenfassung nach dem Build hängt an der Willkommensseite.</summary>
     MetricsReport: Boolean;
@@ -533,6 +536,7 @@ begin
   Result.CodeLensTestUnit := True;
   Result.CodeLensMetrics := True;
   Result.TodoList := True;
+  Result.BaselineUpdate := True;
   Result.MetricsReport := True;
   Result.EditorKeysPriority := False;
   Result.SlashCommands := True;
@@ -790,6 +794,7 @@ begin
   CodeLensTestUnit := AStore.ReadInteger('CodeLensTestUnit', BoolValue(Default.CodeLensTestUnit)) <> 0;
   CodeLensMetrics := AStore.ReadInteger('CodeLensMetrics', BoolValue(Default.CodeLensMetrics)) <> 0;
   TodoList := AStore.ReadInteger('TodoList', BoolValue(Default.TodoList)) <> 0;
+  BaselineUpdate := AStore.ReadInteger('BaselineUpdate', BoolValue(Default.BaselineUpdate)) <> 0;
   MetricsReport := AStore.ReadInteger('MetricsReport', BoolValue(Default.MetricsReport)) <> 0;
   EditorKeysPriority := AStore.ReadInteger('EditorKeysPriority', BoolValue(Default.EditorKeysPriority)) <> 0;
   SlashCommands := AStore.ReadInteger('SlashCommands', BoolValue(Default.SlashCommands)) <> 0;
@@ -958,6 +963,7 @@ begin
   AStore.WriteInteger('CodeLensTestUnit', BoolValue(CodeLensTestUnit));
   AStore.WriteInteger('CodeLensMetrics', BoolValue(CodeLensMetrics));
   AStore.WriteInteger('TodoList', BoolValue(TodoList));
+  AStore.WriteInteger('BaselineUpdate', BoolValue(BaselineUpdate));
   AStore.WriteInteger('MetricsReport', BoolValue(MetricsReport));
   AStore.WriteInteger('EditorKeysPriority', BoolValue(EditorKeysPriority));
   AStore.WriteInteger('SlashCommands', BoolValue(SlashCommands));

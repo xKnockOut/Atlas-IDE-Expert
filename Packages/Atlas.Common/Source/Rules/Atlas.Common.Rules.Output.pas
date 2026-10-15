@@ -9,6 +9,16 @@
 // Dateien außerhalb als absoluter file:-URI. message.text ist der englische
 // Katalogname der Regel ohne Konfidenz-Zusatz; die Konfidenz steht in
 // properties.confidence, die deutsche Meldung des Treffers in properties.detail.
+//
+// Baseline (#97): Trägt TCheckedFile.Marks die Treffer mit Fingerabdrücken,
+// bekommt jedes Ergebnis partialFingerprints mit dem Baseline-Fingerabdruck
+// ("atlasBaseline/v1": Regel, Routine und Zeile) und dem Kontext
+// ("atlasContext/v1"), je mit ":n" für den n-ten gleichen Treffer der Datei.
+// So erkennt Code Scanning verschobene Treffer wieder. Mit Baseline steht
+// zusätzlich baselineState "new", "unchanged" oder "absent" am Ergebnis;
+// unveränderte Treffer tragen eine externe Unterdrückung (suppressions, kind
+// "external"), nicht mehr gefundene stehen ohne Region mit der Datei da. Text,
+// JSON und der Exit-Code sehen weiter nur die neuen Treffer (Findings).
 
 interface
 
@@ -61,7 +71,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Product.Version,
   Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.Catalog.Data;
+  Atlas.Common.Rules.Catalog.Data,
+  Atlas.Common.Rules.Baseline,
+  System.Generics.Collections;
 
 class function TFindingsOutput.TryParseFormat(const AText: string; out AFormat: TFindingsFormat): Boolean;
 var
@@ -345,9 +357,89 @@ begin
     Result := AFinding.Message;
 end;
 
+function BaselineStateName(AState: TBaselineState): string;
+begin
+  case AState of
+    TBaselineState.New:
+      Result := 'new';
+    TBaselineState.Unchanged:
+      Result := 'unchanged';
+    TBaselineState.Absent:
+      Result := 'absent';
+  else
+    Result := '';
+  end;
+end;
+
+/// <summary>AKey mit ":n" für das n-te Vorkommen in ACounts.</summary>
+function Occurrence(ACounts: TDictionary<string, Integer>; const AKey: string): string;
+var
+  Count: Integer;
+begin
+  if not ACounts.TryGetValue(AKey, Count) then
+    Count := 0;
+  Inc(Count);
+  ACounts.AddOrSetValue(AKey, Count);
+  Result := AKey + ':' + IntToStr(Count);
+end;
+
+/// <summary>Standard-Schweregrad der Regel ARuleId aus ARules; Hinweis, wenn sie fehlt.</summary>
+function DefaultSeverityOf(const ARules: TArray<TRuleDescriptor>; const ARuleId: string): TRuleSeverity;
+var
+  Rule: TRuleDescriptor;
+begin
+  for Rule in ARules do
+    if SameText(Rule.Id, ARuleId) then
+      Exit(Rule.DefaultSeverity);
+  Result := TRuleSeverity.Hint;
+end;
+
+/// <summary>Ein Ergebnis mit Fingerabdrücken und Zustand gegenüber der Baseline.</summary>
+procedure AppendSarifMark(ABuilder: TStringBuilder; ACatalog: TRuleCatalog; const ARules: TArray<TRuleDescriptor>;
+  const ACheckedFile: TCheckedFile; const ASourceRoot: string; const AMark: TBaselineMark;
+  ALineCounts, AContextCounts: TDictionary<string, Integer>);
+var
+  Finding: TRuleFinding;
+  Severity: TRuleSeverity;
+begin
+  Finding := AMark.Finding;
+  // Nicht mehr gefunden: Schweregrad aus dem Aufrufer, sonst der Standard der Regel.
+  if (AMark.State = TBaselineState.Absent) and (Finding.Severity in [TRuleSeverity.Default, TRuleSeverity.Off]) then
+    Severity := DefaultSeverityOf(ARules, Finding.RuleId)
+  else
+    Severity := Finding.Severity;
+  ABuilder.Append('{"ruleId":').Append(TFindingsOutput.JsonString(Finding.RuleId));
+  ABuilder.Append(',"level":').Append(TFindingsOutput.JsonString(SarifLevel(Severity)));
+  ABuilder.Append(',"message":{"text":').Append(TFindingsOutput.JsonString(SarifMessage(ACatalog, Finding)));
+  ABuilder.Append('},"locations":[{"physicalLocation":{"artifactLocation":');
+  ABuilder.Append(SarifLocation(ACheckedFile, ASourceRoot)).Append('}');
+  // Nicht mehr gefunden: keine Stelle im aktuellen Text.
+  if AMark.State <> TBaselineState.Absent then
+    ABuilder.Append(Format(',"region":{"startLine":%d,"startColumn":%d,"endLine":%d,"endColumn":%d}',
+      [Finding.Range.StartPos.Line + 1, Finding.Range.StartPos.Character + 1,
+      Finding.Range.EndPos.Line + 1, Finding.Range.EndPos.Character + 1]));
+  ABuilder.Append('}}]');
+  ABuilder.Append(',"partialFingerprints":{"atlasBaseline/v1":');
+  ABuilder.Append(TFindingsOutput.JsonString(Occurrence(ALineCounts, TRuleBaseline.SarifFingerprint(AMark))));
+  ABuilder.Append(',"atlasContext/v1":').Append(TFindingsOutput.JsonString(Occurrence(AContextCounts,
+    AMark.Context))).Append('}');
+  if AMark.State <> TBaselineState.None then
+    ABuilder.Append(',"baselineState":').Append(TFindingsOutput.JsonString(BaselineStateName(AMark.State)));
+  if AMark.State = TBaselineState.Unchanged then
+    ABuilder.Append(',"suppressions":[{"kind":"external","justification":').Append(
+      TFindingsOutput.JsonString(BaselineFileName)).Append('}]');
+  ABuilder.Append(',"properties":{"confidence":').Append(TFindingsOutput.JsonString(ConfidenceName(Finding.Confidence)));
+  ABuilder.Append(',"detail":').Append(TFindingsOutput.JsonString(Finding.Message));
+  if AMark.Routine <> '' then
+    ABuilder.Append(',"routine":').Append(TFindingsOutput.JsonString(AMark.Routine));
+  ABuilder.Append('}}');
+end;
+
 function RenderSarif(const AFiles: TArray<TCheckedFile>; const ARules: TArray<TRuleDescriptor>;
   const ASourceRoot: string): string;
 var
+  Mark: TBaselineMark;
+  LineCounts, ContextCounts: TDictionary<string, Integer>;
   Builder: TStringBuilder;
   CheckedFile: TCheckedFile;
   Finding: TRuleFinding;
@@ -398,6 +490,26 @@ begin
     Builder.Append(',"results":[');
     First := True;
     for CheckedFile in AFiles do
+    begin
+      if Length(CheckedFile.Marks) > 0 then
+      begin
+        // Zähler je Datei: gleiche Treffer derselben Datei unterscheidet ":n".
+        LineCounts := TDictionary<string, Integer>.Create;
+        ContextCounts := TDictionary<string, Integer>.Create;
+        try
+          for Mark in CheckedFile.Marks do
+          begin
+            if not First then
+              Builder.Append(',');
+            First := False;
+            AppendSarifMark(Builder, Catalog, ARules, CheckedFile, ASourceRoot, Mark, LineCounts, ContextCounts);
+          end;
+        finally
+          ContextCounts.Free;
+          LineCounts.Free;
+        end;
+        Continue;
+      end;
       for Finding in CheckedFile.Findings do
       begin
         if not First then
@@ -415,6 +527,7 @@ begin
         Builder.Append(',"detail":').Append(TFindingsOutput.JsonString(Finding.Message));
         Builder.Append('}}');
       end;
+    end;
     Builder.Append(']}]}');
     Result := Builder.ToString;
   finally

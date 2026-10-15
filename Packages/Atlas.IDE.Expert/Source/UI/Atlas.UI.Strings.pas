@@ -344,7 +344,10 @@ type
     TodoListCommand, TodoListNoProject, TodoListFailed, TodoListEmpty, TodoListTitle, TodoListBusy,
     TodoFilterCommand, TodoFilterTitle, TodoFilterCategory, TodoFilterOwner, TodoFilterUnit, TodoFilterKeyword,
     TodoFilterDone, TodoFilterHint, TodoFilterOk, TodoFilterCancel, TodoFilterReset, TodoListFilteredTitle,
-    TodoListNoMatch);
+    TodoListNoMatch,
+    SettingsBaselineUpdate, BaselineUpdateCommand, BaselineUpdateNoProject, BaselineUpdateFailed,
+    BaselineUpdateRunning, BaselineUpdateBusy, BaselineUpdateDone, BaselineUpdateCompleted,
+    BaselineUpdateOrphans, BaselineUpdateOrphanLine, BaselineUpdateOrphansMore, BaselineUpdateConfirm);
 
   TAtlasStrings = class
   private class var
@@ -1004,7 +1007,19 @@ const
      'TODOs des Projekts filtern …', 'TODOs filtern', 'Kategorie (-c):', 'Person (-o):', 'Unit:', 'Marke:',
      'Erledigte zeigen (DONE)', 'Leere Felder filtern nicht; die Vorschläge stammen aus der letzten Liste.',
      'Anzeigen', 'Abbrechen', 'Zurücksetzen', 'TODOs in %s (%s): %d',
-     'Keine TODOs in %s passen zum Filter (%s).'),
+     'Keine TODOs in %s passen zum Filter (%s).',
+     'Befehl „Baseline des Projekts aktualisieren“ in der Befehlspalette', 'Baseline des Projekts aktualisieren',
+     'Baseline aktualisieren: kein aktives Projekt.',
+     'Baseline aktualisieren: Der Atlas-Server hat keine Baseline geschrieben (Projekt noch nicht geladen, ' +
+     'Server nicht bereit oder Zeitlimit überschritten).',
+     'Baseline wird aktualisiert: Atlas prüft alle Dateien des Projekts …',
+     'Baseline aktualisieren: Der Atlas-Server ist gerade beschäftigt; bitte gleich noch einmal versuchen.',
+     'Baseline geschrieben: %s (%d Treffer in %d Dateien; %d neu, %d entfernt, %d unverändert)',
+     'Baseline: %d Einträge der älteren Baseline um die Routine ergänzt.',
+     'Baseline: %d Einträge ohne Datei entfernt (umbenannt, verschoben oder gelöscht):', '  %s (%d Treffer)',
+     '  … und %d weitere',
+     'Die Baseline enthält %d Einträge ohne Datei (umbenannt, verschoben oder gelöscht):%sBeim Aktualisieren ' +
+     'fallen sie heraus; die Treffer unter dem neuen Pfad nimmt die Baseline neu auf. Jetzt aktualisieren?'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1621,7 +1636,19 @@ const
      'Project TODOs: the Atlas server is busy right now; please try again shortly.',
      'Filter project TODOs …', 'Filter TODOs', 'Category (-c):', 'Owner (-o):', 'Unit:', 'Keyword:',
      'Show done entries (DONE)', 'Empty fields do not filter; suggestions come from the last list.', 'Show',
-     'Cancel', 'Reset', 'TODOs in %s (%s): %d', 'No TODOs in %s match the filter (%s).'));
+     'Cancel', 'Reset', 'TODOs in %s (%s): %d', 'No TODOs in %s match the filter (%s).',
+     'Command "Update project baseline" in the command palette', 'Update project baseline',
+     'Update baseline: no active project.',
+     'Update baseline: the Atlas server wrote no baseline (project not loaded yet, server not ready or ' +
+     'time limit exceeded).',
+     'Updating baseline: Atlas is checking all files of the project …',
+     'Update baseline: the Atlas server is busy right now; please try again shortly.',
+     'Baseline written: %s (%d findings in %d files; %d added, %d removed, %d unchanged)',
+     'Baseline: %d entries of the older baseline completed with their routine.',
+     'Baseline: removed %d entries without a file (renamed, moved or deleted):', '  %s (%d findings)',
+     '  … and %d more',
+     'The baseline contains %d entries without a file (renamed, moved or deleted):%sUpdating removes them; ' +
+     'findings under the new path are added again. Update now?'));
 
 { TAtlasStrings }
 

@@ -433,6 +433,16 @@
       "text": "Zeigt nur die TODOs einer Kategorie (-c), einer Person (-o), einer Unit oder einer Marke, auf Wunsch auch erledigte (DONE). Die Vorschläge stammen aus der letzten Liste; der Filter bleibt für die Sitzung.",
       "textEn": "Shows only the TODOs of one category (-c), owner (-o), unit or keyword, optionally including done ones (DONE). Suggestions come from the last list; the filter stays for the session.",
       "image": "Tipps\\todo-filter.png"
+    },
+    {
+      "id": "updateBaseline",
+      "command": "Atlas.UpdateBaseline",
+      "setting": "BaselineUpdate",
+      "title": "Baseline des Projekts aktualisieren",
+      "titleEn": "Update project baseline",
+      "text": "Nimmt alle heutigen Regeltreffer des aktiven Projekts in atlas-baseline.json auf; danach meldet Atlas nur neue. Zählt neue, entfernte und unveränderte Treffer und nennt vorher Einträge, deren Datei es nicht mehr gibt.",
+      "textEn": "Records all current rule findings of the active project in atlas-baseline.json; afterwards Atlas reports only new ones. Counts added, removed and unchanged findings and first names entries whose file no longer exists.",
+      "image": "Tipps\\baseline.png"
     }
   ]
 }
