@@ -129,6 +129,10 @@ type
     [Test]
     procedure DecodesOnlyUsedCacheEntries;
     [Test]
+    procedure CompactLibraryCacheReusedUnderBudget;
+    [Test]
+    procedure ReleaseCacheDropsEntries;
+    [Test]
     // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
     [IgnoreMemoryLeaks]
     procedure ServiceBuildsInBackgroundAndWritesCache;
@@ -1371,6 +1375,80 @@ begin
   end;
   Assert.AreEqual(1, BuildResult.Parsed);
   Assert.AreEqual<NativeInt>(0, Length(FIndex.FindSymbols('TMitNeu')));
+end;
+
+procedure TIndexBuilderTests.CompactLibraryCacheReusedUnderBudget;
+const
+  UnitText = 'unit K;'#10'interface'#10'type TK = class end;'#10'implementation'#10 +
+    'procedure Versteckt; begin end;'#10'end.';
+var
+  Builder: TIndexBuilder;
+  Cache: TArray<TUnitIndex>;
+  BuildResult: TIndexBuildResult;
+begin
+  // Diagnoselog 15.10.2026: Bei knappem Budget stehen Bibliotheken kompakt im Cache. Sie werden
+  // wiederverwendet, solange ein Budget gilt; ohne Budget braucht es alle Symbole.
+  FFiles.Put('C:\Lib\K.pas', UnitText, 1);
+  FIndex.SetBudget(1);
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  try
+    Builder.Build(nil, nil, ['C:\Lib\K.pas'], nil, nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Assert.AreEqual(1, FIndex.CompactCount);
+  Cache := TIndexCache.Deserialize(TIndexCache.Serialize(FIndex.Units));
+  Assert.IsTrue(Cache[0].Compact);
+  FIndex := TSymbolIndex.Create;
+  FIndex.SetBudget(1);
+  FFiles.Reads := 0;
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  try
+    Builder.UseCache(Cache);
+    BuildResult := Builder.Build(nil, nil, ['C:\Lib\K.pas'], nil, nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Assert.AreEqual(0, BuildResult.Parsed);
+  Assert.AreEqual(1, BuildResult.FromCache);
+  Assert.AreEqual(0, FFiles.Reads);
+  FIndex := TSymbolIndex.Create;
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  try
+    Builder.UseCache(Cache);
+    BuildResult := Builder.Build(nil, nil, ['C:\Lib\K.pas'], nil, nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Assert.AreEqual(1, BuildResult.Parsed, 'ohne Budget neu einlesen');
+  Assert.AreEqual<NativeInt>(1, Length(FIndex.FindSymbols('Versteckt')));
+end;
+
+procedure TIndexBuilderTests.ReleaseCacheDropsEntries;
+var
+  Builder: TIndexBuilder;
+  Cache: TArray<TUnitIndex>;
+begin
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  try
+    Builder.Build(['C:\Lib\C.pas', 'C:\Lib\D.pas'], nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Cache := FIndex.Units;
+  FIndex := TSymbolIndex.Create;
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  try
+    Builder.UseCache(Cache);
+    Assert.AreEqual(2, Builder.CachedCount);
+    Builder.Build(['C:\Lib\C.pas', 'C:\Lib\D.pas'], nil, nil);
+    Builder.ReleaseCache;
+    Assert.AreEqual(0, Builder.CachedCount);
+    // Später nachgeladene Units liest der Builder aus der Datei.
+    Assert.IsTrue(Builder.EnsureUnit('C'));
+  finally
+    Builder.Free;
+  end;
 end;
 
 procedure TIndexBuilderTests.DecodesOnlyUsedCacheEntries;

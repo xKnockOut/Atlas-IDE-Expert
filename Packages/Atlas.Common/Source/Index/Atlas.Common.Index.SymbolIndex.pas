@@ -52,6 +52,9 @@ type
     FBudget: Int64;
     FCompactCount: Integer;
     FOffloadedCount: Integer;
+    // Dateischlüssel der Units, die sich noch verkleinern lassen (nicht kompakt oder mit
+    // Verwendungen); ShrinkLocked läuft nur über sie statt bei jeder Unit über alle.
+    FShrinkable: TDictionary<string, Boolean>;
     FGeneration: Int64;
     // Name (groß) → Verweise; Vorfahr ohne Unit-Präfix und Typargumente (groß) → Verweise.
     FByName: TSymbolTable;
@@ -132,12 +135,14 @@ begin
   FSlotKeys := TList<string>.Create;
   FSlotRefs := TList<Integer>.Create;
   FFileSlots := TDictionary<string, Integer>.Create;
+  FShrinkable := TDictionary<string, Boolean>.Create;
 end;
 
 destructor TSymbolIndex.Destroy;
 begin
   // Namensindex der Import-Vorschläge (#617) hält sonst unsere Units fest.
   TImportNames.Forget(Self);
+  FShrinkable.Free;
   FFileSlots.Free;
   FSlotRefs.Free;
   FSlotKeys.Free;
@@ -164,6 +169,7 @@ begin
   if Existing.UsagesOffloaded then
     Dec(FOffloadedCount);
   FFiles.Remove(AFileKey);
+  FShrinkable.Remove(AFileKey);
   DropRefsLocked(AFileKey);
   Inc(FGeneration);
   if FUnitFiles.TryGetValue(UpperCase(Existing.UnitName), UnitFile) and (UnitFile = AFileKey) then
@@ -187,6 +193,8 @@ begin
     Inc(FCompactCount);
   if AUnit.UsagesOffloaded then
     Inc(FOffloadedCount);
+  if not AUnit.Compact or (Length(AUnit.Usages) > 0) then
+    FShrinkable.AddOrSetValue(AKey, True);
   AddRefsLocked(AKey, AUnit);
 end;
 
@@ -318,16 +326,17 @@ begin
   // Erst die Verwendungen auslagern (#492), dann Bibliotheken, dann Projekt-Units kompakt halten;
   // jeweils nur bis das Budget wieder reicht. Ohne Überschreitung nichts kopieren: AddUnit ruft
   // das bei jeder Unit auf.
-  if (FBudget <= 0) or (FBytes <= FBudget) or (FCompactCount >= FFiles.Count) then
+  if (FBudget <= 0) or (FBytes <= FBudget) or (FShrinkable.Count = 0) then
     Exit;
   for Pass := -1 to 1 do
   begin
-    Keys := FFiles.Keys.ToArray;
+    Keys := FShrinkable.Keys.ToArray;
     for Key in Keys do
     begin
       if (FBudget <= 0) or (FBytes <= FBudget) then
         Exit;
-      Existing := FFiles[Key];
+      if not FFiles.TryGetValue(Key, Existing) then
+        Continue;
       if Pass < 0 then
       begin
         if Length(Existing.Usages) = 0 then

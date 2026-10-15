@@ -242,7 +242,10 @@ type
   TUnitNameTable = class(TInterfacedObject, IUnitNameTable)
   private
     FSymbols: TArray<TIndexSymbol>;
-    FNames: TDictionary<string, TArray<Integer>>;
+    // Name (groß) → erste Stelle; FNext verkettet die weiteren Stellen gleichen Namens
+    // aufsteigend (-1 = Ende). Spart je Name ein eigenes Array (Speicherbedarf, 15.10.2026).
+    FFirst: TDictionary<string, Integer>;
+    FNext: TArray<Integer>;
     procedure Build;
   public
     constructor Create(const ASymbols: TArray<TIndexSymbol>);
@@ -261,48 +264,69 @@ end;
 
 destructor TUnitNameTable.Destroy;
 begin
-  FNames.Free;
+  FFirst.Free;
   inherited;
 end;
 
 procedure TUnitNameTable.Build;
 var
-  Names: TDictionary<string, TArray<Integer>>;
-  Position: Integer;
+  First: TDictionary<string, Integer>;
+  Position, Head: Integer;
   Key: string;
-  Found: TArray<Integer>;
 begin
-  Names := TDictionary<string, TArray<Integer>>.Create;
-  // Zugriff über den Index, damit die Symbol-Records nicht kopiert werden.
-  for Position := 0 to High(FSymbols) do
+  First := TDictionary<string, Integer>.Create;
+  SetLength(FNext, Length(FSymbols));
+  // Von hinten verketten, damit die Kette aufsteigend läuft; Zugriff über den Index, damit
+  // die Symbol-Records nicht kopiert werden.
+  for Position := High(FSymbols) downto 0 do
   begin
     Key := UpperCase(FSymbols[Position].Name);
-    if not Names.TryGetValue(Key, Found) then
-      Found := nil;
-    Names.AddOrSetValue(Key, Found + [Position]);
+    if not First.TryGetValue(Key, Head) then
+      Head := -1;
+    FNext[Position] := Head;
+    First.AddOrSetValue(Key, Position);
   end;
-  FNames := Names;
+  First.TrimExcess;
+  FFirst := First;
 end;
 
 function TUnitNameTable.Positions(const ASymbols: TArray<TIndexSymbol>; const AName: string;
   out APositions: TArray<Integer>): Boolean;
+var
+  Position, Current, Count: Integer;
 begin
   APositions := nil;
   if Pointer(ASymbols) <> Pointer(FSymbols) then
     Exit(False);
-  if FNames = nil then
+  if FFirst = nil then
   begin
     TMonitor.Enter(Self);
     try
-      if FNames = nil then
+      if FFirst = nil then
         Build;
     finally
       TMonitor.Exit(Self);
     end;
   end;
-  if not FNames.TryGetValue(UpperCase(AName), APositions) then
-    APositions := nil;
   Result := True;
+  if not FFirst.TryGetValue(UpperCase(AName), Position) then
+    Exit;
+  Count := 0;
+  Current := Position;
+  while Current >= 0 do
+  begin
+    Inc(Count);
+    Current := FNext[Current];
+  end;
+  SetLength(APositions, Count);
+  Count := 0;
+  Current := Position;
+  while Current >= 0 do
+  begin
+    APositions[Count] := Current;
+    Inc(Count);
+    Current := FNext[Current];
+  end;
 end;
 
 { TIndexSymbol }
