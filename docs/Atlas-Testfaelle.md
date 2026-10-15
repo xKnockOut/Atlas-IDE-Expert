@@ -958,6 +958,27 @@ Voraussetzung wie bei #274; Server läuft.
 | TU7 | Programmdatei (`.dpr`) oder Datei mit Kommentar vor `unit` | Keine Marke in der `.dpr`; bei Kommentarkopf steht sie hinter der Zeile `unit …;` |
 | TU8 | Kein Compiler, kein Build: TU2–TU4 direkt nach dem Öffnen des Projekts | Wechsel funktioniert in beide Richtungen |
 
+## Code-Metriken (#66)
+
+Voraussetzung: Server läuft, Beispielprojekt mit `Setup\Beispiele\Entdecken.pas` bzw. eigenes Projekt geöffnet.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MX1 | `Entdecken.pas` öffnen, kurz warten | Hinter `function Gesamtpreis(…): Currency;` steht die Marke „9 Zeilen · Tiefe 1 · zyklomatisch 2 · kognitiv 1 · 3 Parameter“, hinter jedem anderen Methodenkopf eine eigene Marke; keine Marke im `interface`-Teil |
+| MX2 | Im Rumpf von `Gesamtpreis` ein `if A then if B then X;` ergänzen, eine Sekunde warten | Marke zeigt nach der Tipp-Pause die neuen Werte; während des Tippens bleibt sie an ihrem Kopf (keine Marke an fremden Zeilen) |
+| MX3 | Methode mit acht Parametern schreiben | Marke gelb, „8 Parameter (> 6)“; im Editor ein Hinweis `metric-parameter-count` am Methodennamen |
+| MX4 | Zeile `// lsp-ignore: metric-parameter-count` über den Kopf aus MX3 | Hinweis verschwindet; die Marke bleibt (Information) |
+| MX5 | atlas.json: `"rules": {"metric-parameter-count": {"max": 10}}` speichern | Nach höchstens 30 s ist die Marke aus MX3 nicht mehr gelb, der Hinweis bleibt weg auch ohne Kommentar |
+| MX6 | atlas.json: `"metric-parameter-count": {"max": 0}` | Problem in atlas.json: „"max" muss eine ganze Zahl ab 1 sein“; es gilt die Vorgabe 6 |
+| MX7 | Optionen › Atlas › Editor: „Code Lens mit Code-Metriken hinter dem Methodenkopf“ aus | Marken verschwinden ohne Neustart; Hinweise `metric-*` bleiben (Regeln einzeln abschaltbar) |
+| MX8 | Schnellschalter „Code-Metriken“ bzw. „Alles aus für diese Sitzung“ | Marken verschwinden; „Alles wieder an“ bringt sie zurück |
+| MX9 | Befehlspalette „Metrikbericht des Projekts“ | Meldung „Metrikbericht wird erstellt …“, danach öffnet `%LOCALAPPDATA%\Atlas\Berichte\Metriken-<Projekt>.md` mit Überschrift „# Code-Metriken: <Projekt>“, Tabelle der Kennzahlen, „Über einem Grenzwert“, „Komplexeste Methoden“ und „Dateien“ |
+| MX10 | MX9 ohne geöffnetes Projekt | Meldung „Metrikbericht: kein aktives Projekt.“ |
+| MX11 | Projekt bauen (Strg+F9), danach `%LOCALAPPDATA%\Atlas\projects\<Schlüssel>.json` ansehen | Abschnitt `metrics` mit `at` (Zeitpunkt des Builds), `files`, `methods`, `overLimits`, `average`, `maximum`, `exceeded`; nach einer Hintergrundprüfung (#548) ändert er sich nicht |
+| MX12 | Großes Projekt (mehrere hundert Units): erster Build, sofort danach tippen | Editor bleibt flüssig; Code Lens kann bis zum Ende der Zusammenfassung ausbleiben und erscheint danach |
+| MX13 | `AtlasServer --check <Projekt> --metrics` und `--metrics --format json` | Markdown bzw. JSON mit `"format": 1`, `limits`, `summary`, `files`; Exitcode 0; `--format sarif` mit `--metrics` endet mit Fehler |
+| MX14 | Claude Code: Werkzeug `get_metrics` ohne und mit `file` | Bericht des Projekts bzw. Werte der Datei, Grenzwerte aus atlas.json |
+
 ## Units suchen (#777)
 
 Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testprojekt; Server läuft; Einstellungen auf Vorgabe.

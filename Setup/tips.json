@@ -391,6 +391,27 @@
       "text": "Packt die Diagnoselogs des Servers der letzten Tage mit den Versionen in eine ZIP-Datei zum Anhängen an eine Fehlermeldung.",
       "textEn": "Packs the server diagnostic logs of the last few days together with the versions into a ZIP file to attach to a bug report.",
       "image": "Tipps\\diagnoselog.png"
+    },
+    {
+      "id": "codeLensMetrics",
+      "setting": "CodeLensMetrics",
+      "title": "Code-Metriken je Methode",
+      "titleEn": "Code metrics per method",
+      "text": "Zeigt hinter jedem Methodenkopf Länge, Verschachtelungstiefe, zyklomatische und kognitive Komplexität und Parameteranzahl. Werte über dem Grenzwert aus atlas.json sind markiert.",
+      "textEn": "Shows length, nesting depth, cyclomatic and cognitive complexity and parameter count after every method header. Values above the limit from atlas.json are marked.",
+      "image": "Tipps\\code-metriken.png",
+      "sample": "Beispiele\\Entdecken.pas",
+      "line": 70,
+      "column": 10
+    },
+    {
+      "id": "metricsReport",
+      "command": "Atlas.MetricsReport",
+      "title": "Metrikbericht des Projekts",
+      "titleEn": "Project metrics report",
+      "text": "Fasst die Code-Metriken aller Units des aktiven Projekts als Markdown zusammen: Mittelwerte, Höchstwerte und die Methoden über einem Grenzwert.",
+      "textEn": "Summarizes the code metrics of all units in the active project as Markdown: averages, maximums and the methods above a limit.",
+      "image": "Tipps\\metrikbericht.png"
     }
   ]
 }

@@ -131,6 +131,7 @@ begin
   Assert.AreEqual($6028, Settings.MethodToggleDownKey, 'Strg+Umschalt+Runter (#775)');
   Assert.AreEqual(0, Settings.TestUnitKey, 'Testunit-Wechsel ohne Kürzel (#189)');
   Assert.IsTrue(Settings.CodeLensTestUnit, 'Code Lens Testunit standardmäßig an (#189)');
+  Assert.IsTrue(Settings.CodeLensMetrics, 'Code Lens Metriken standardmäßig an (#66)');
   Assert.IsTrue(Settings.SlashCommands, 'Schnellbefehle standardmäßig an (#399)');
   Assert.IsTrue(Settings.Snippets, 'Code-Vorlagen standardmäßig an (#51)');
   Assert.IsTrue(Settings.ImportIdeTemplates, 'Live Templates der IDE standardmäßig an (#51)');
@@ -211,6 +212,7 @@ begin
   Settings.MethodToggleDownKey := $C044; // Strg+Alt+D
   Settings.TestUnitKey := $6054;
   Settings.CodeLensTestUnit := False;
+  Settings.CodeLensMetrics := False;
   Settings.EditorKeysPriority := True;
   Settings.SlashCommands := False;
   Settings.Snippets := False;
@@ -277,6 +279,7 @@ begin
   Assert.AreEqual($C044, Loaded.MethodToggleDownKey);
   Assert.AreEqual($6054, Loaded.TestUnitKey);
   Assert.IsFalse(Loaded.CodeLensTestUnit);
+  Assert.IsFalse(Loaded.CodeLensMetrics);
   Assert.IsTrue(Loaded.EditorKeysPriority);
   Assert.IsFalse(Loaded.SlashCommands);
   Assert.IsFalse(Loaded.Snippets);
@@ -568,12 +571,14 @@ begin
   Store.WriteInteger('SlashCommands', 0);
   Store.WriteInteger('InlayHints', 1);
   Store.WriteInteger('CompileOnSave', 1);
+  Store.WriteInteger('CodeLensMetrics', 0);
   Store.WriteInteger('PairColors', 0);
   Store.WriteString('ServerPath', 'C:\Atlas\AtlasServer.exe');
   Assert.Contains(Routed.Text, '"slashCommands": {');
   Assert.Contains(Routed.Text, '"enabled": false');
   Assert.Contains(Routed.Text, '"parameterNames": true');
   Assert.Contains(Routed.Text, '"onSave": true');
+  Assert.Contains(Routed.Text, '"metrics": false', 'codeLens.metrics in settings.json (#66)');
   // Reine Plugin-Werte bleiben in der Registry.
   Assert.DoesNotContain(Routed.Text, 'PairColors');
   Assert.AreEqual(0, Registry.ReadInteger('PairColors', 1));

@@ -20,6 +20,8 @@ type
     [Test]
     procedure ListsDiagnosticsWithLocation;
     [Test]
+    procedure ReportsMetrics;
+    [Test]
     procedure ParsesDirection;
     [Test]
     procedure ReplacesLineRange;
@@ -179,6 +181,25 @@ begin
     end);
   Assert.Contains(Text, 'C:\P\Kaputt.pas:6:');
   Assert.Contains(Text, 'in 1 Dateien');
+end;
+
+procedure TMcpCodeToolsTests.ReportsMetrics;
+var
+  Text: string;
+  ReadText: TReferenceReadText;
+begin
+  ReadText :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      AText := 'unit Lang;'#10'interface'#10'implementation'#10 +
+        'procedure Viele(A, B, C, D, E, F, G: Integer);'#10'begin'#10'end;'#10'end.';
+      Result := True;
+    end;
+  Text := TMcpCodeTools.Metrics(TServerSettings.Default, 'C:\P', ['C:\P\Lang.pas'], ReadText, False);
+  Assert.Contains(Text, '# Code-Metriken: P');
+  Assert.Contains(Text, '| Viele | Lang.pas | 4 | 3 | 0 | 1 | 0 | **7** |');
+  Text := TMcpCodeTools.Metrics(TServerSettings.Default, 'C:\P', ['C:\P\Lang.pas'], ReadText, True);
+  Assert.Contains(Text, '"exceeded": ["parameters"]');
 end;
 
 procedure TMcpCodeToolsTests.ReplacesLineRange;

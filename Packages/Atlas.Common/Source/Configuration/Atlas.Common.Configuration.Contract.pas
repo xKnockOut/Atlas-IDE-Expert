@@ -70,6 +70,14 @@ type
     class function Default: TInlayHintSettings; static;
   end;
 
+  /// <summary>Code Lens im Editor ("codeLens").</summary>
+  TCodeLensSettings = record
+    /// <summary>Kennzahlen über jeder Methode (#66): Länge, Tiefe, zyklomatische und kognitive Komplexität,
+    /// Parameter.</summary>
+    Metrics: Boolean;
+    class function Default: TCodeLensSettings; static;
+  end;
+
   /// <summary>Anzeige von XMLDoc in Hover und Detailpanel des Plugins (#654). Der Server bereitet die Doku
   /// immer vollständig auf und gibt die Werte nur weiter.</summary>
   THintSettings = record
@@ -264,6 +272,7 @@ type
     /// <summary>Ausgewerteter Block "format" (#43).</summary>
     Formatting: TFormatStyle;
     InlayHints: TInlayHintSettings;
+    CodeLens: TCodeLensSettings;
     Hints: THintSettings;
     Highlight: THighlightSettings;
     Compiler: TCompilerSettings;
@@ -500,6 +509,13 @@ begin
   Result.EndMarkerMinLines := 20;
 end;
 
+{ TCodeLensSettings }
+
+class function TCodeLensSettings.Default: TCodeLensSettings;
+begin
+  Result.Metrics := True;
+end;
+
 { TStringLiteralSettings }
 
 class function TStringLiteralSettings.Default: TStringLiteralSettings;
@@ -611,6 +627,7 @@ begin
   Result.Format := '';
   Result.Formatting := TFormatStyle.Default;
   Result.InlayHints := TInlayHintSettings.Default;
+  Result.CodeLens := TCodeLensSettings.Default;
   Result.Hints := THintSettings.Default;
   Result.Highlight := THighlightSettings.Default;
   Result.Compiler := TCompilerSettings.Default;

@@ -341,6 +341,31 @@ begin
       Result := TMcpCodeTools.Diagnostics(BuiltinRules, AWorkspace.Configuration.Settings, ARoot, Files,
         ReadSourceText);
     end);
+  AServer.AddTool('get_metrics',
+    'Code-Metriken (#66) je Methode: Länge in Codezeilen, Verschachtelungstiefe, zyklomatische und kognitive ' +
+    'Komplexität, Parameteranzahl; Grenzwerte aus atlas.json (Regeln metric-*, Option "max"). Als Markdown-Bericht ' +
+    'mit den Methoden über einem Grenzwert oder als JSON-Daten.',
+    '{"type":"object","properties":{' +
+      '"file":{"type":"string","description":"Pfad einer .pas-Datei; leer = alle Projektdateien"},' +
+      '"format":{"type":"string","enum":["markdown","json"],"description":"markdown (Vorgabe) oder json"}}}',
+    function(const AArguments: TJSONObject): string
+    var
+      FileName, Format: string;
+      Files: TArray<string>;
+    begin
+      FileName := TMcpServer.OptionalString(AArguments, 'file');
+      Format := TMcpServer.OptionalString(AArguments, 'format');
+      if (Format <> '') and not SameText(Format, 'markdown') and not SameText(Format, 'json') then
+        raise EMcpToolError.Create('"format" ist markdown oder json');
+      if FileName <> '' then
+        Files := [AGuard.Resolve(FileName)]
+      else
+        Files := AWorkspace.ProjectFiles;
+      if Length(Files) = 0 then
+        raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
+      Result := TMcpCodeTools.Metrics(AWorkspace.Configuration.Settings, ARoot, Files, ReadSourceText,
+        SameText(Format, 'json'));
+    end);
   AServer.AddTool('check_code',
     'Prüft geplanten Code ohne zu schreiben (#178): Syntaxfehler, Regeltreffer und nicht auflösbare Bezeichner. ' +
     'Entweder den ganzen neuen Text der Unit angeben oder mit startLine/endLine nur einen Zeilenbereich ersetzen.',

@@ -46,6 +46,10 @@ type
     procedure UpdateCreatesAndChanges;
     [Test]
     procedure NameWithoutExtension;
+    [Test]
+    procedure MetricsFromServerAndRoundTrip;
+    [Test]
+    procedure MetricsRejectInvalidAnswer;
   end;
 
 implementation
@@ -244,6 +248,7 @@ begin
   Assert.IsFalse(Summary.Build.Known);
   Assert.IsFalse(Summary.Check.Known);
   Assert.IsFalse(Summary.Rules.Known);
+  Assert.IsFalse(Summary.Metrics.Known);
   Assert.IsTrue(Summary.LastOpened = 0);
   Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "vcs": {"kind": "none"}}', Summary));
   Assert.IsTrue(Summary.Vcs.Known);
@@ -338,6 +343,58 @@ begin
   Assert.AreEqual('Demo', TAtlasProjectSummary.Create(Project).Name);
   Assert.AreEqual('Gruppe', TAtlasProjectSummary.Create('C:\G\Gruppe.groupproj').Name);
   Assert.AreEqual('Atlas.IDE.Expert', TAtlasProjectSummary.Create('C:\A\Atlas.IDE.Expert.dpk').Name);
+end;
+
+procedure TAtlasProjectSummaryTests.MetricsFromServerAndRoundTrip;
+const
+  // Antwort von atlas.server.metrics im Modus "summary" (#66).
+  Answer = '{"format": 1, "limits": {"length": 60, "nesting": 4, "cyclomatic": 15, "cognitive": 15, ' +
+    '"parameters": 6}, "summary": {"files": 2, "methods": 3, "overLimits": 1, ' +
+    '"average": {"length": 30.3, "nesting": 2.0, "cyclomatic": 6.7, "cognitive": 7.0, "parameters": 3.0}, ' +
+    '"maximum": {"length": 75, "nesting": 5, "cyclomatic": 17, "cognitive": 20, "parameters": 7}, ' +
+    '"exceeded": {"length": 1, "nesting": 1, "cyclomatic": 1, "cognitive": 1, "parameters": 1}}}';
+var
+  Metrics: TAtlasProjectMetrics;
+  Summary, Read: TAtlasProjectSummary;
+  Stamp: TDateTime;
+  Json: string;
+begin
+  Stamp := EncodeDate(2026, 10, 15) + EncodeTime(9, 30, 0, 0);
+  Assert.IsTrue(TAtlasProjectMetrics.FromServer(Answer, Stamp, Metrics));
+  Assert.IsTrue(Metrics.Known);
+  Assert.IsTrue(Metrics.At = Stamp, 'Zeitpunkt des Builds');
+  Assert.AreEqual(2, Metrics.Files);
+  Assert.AreEqual(3, Metrics.Methods);
+  Assert.AreEqual(1, Metrics.OverLimits);
+  Assert.AreEqual(303, Metrics.AverageTenths[0], 'mittlere Methodenlänge für den Projektverlauf (#758)');
+  Assert.AreEqual(67, Metrics.AverageTenths[2]);
+  Assert.AreEqual(75, Metrics.Maximum[0]);
+  Assert.AreEqual(1, Metrics.Exceeded[4]);
+  Summary := TAtlasProjectSummary.Create(Project);
+  Summary.Metrics := Metrics;
+  Json := TAtlasProjectSummaries.ToJson(Summary);
+  Assert.Contains(Json, '"metrics":{"at":"2026-10-15T09:30:00Z","files":2,"methods":3,"overLimits":1');
+  Assert.Contains(Json, '"average":{"length":30.3');
+  Assert.Contains(Json, '"maximum":{"length":75');
+  Assert.IsTrue(TAtlasProjectSummaries.Parse(Json, Read));
+  Assert.IsTrue(Read.Metrics.Known);
+  Assert.AreEqual(303, Read.Metrics.AverageTenths[0]);
+  Assert.AreEqual(20, Read.Metrics.Maximum[3]);
+  Assert.IsTrue(Read.Metrics.At = Stamp);
+  // Unbekannte Felder im Abschnitt bleiben (z. B. eine Verlaufsreihe aus #758).
+  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "metrics": {"methods": 1, ' +
+    '"history": [1, 2]}}', Read));
+  Assert.Contains(TAtlasProjectSummaries.ToJson(Read), '"history":[1,2]');
+end;
+
+procedure TAtlasProjectSummaryTests.MetricsRejectInvalidAnswer;
+var
+  Metrics: TAtlasProjectMetrics;
+begin
+  Assert.IsFalse(TAtlasProjectMetrics.FromServer('', 0, Metrics));
+  Assert.IsFalse(TAtlasProjectMetrics.FromServer('"# Bericht"', 0, Metrics));
+  Assert.IsFalse(TAtlasProjectMetrics.FromServer('{"summary": {"files": 1}}', 0, Metrics));
+  Assert.IsFalse(Metrics.Known);
 end;
 
 initialization

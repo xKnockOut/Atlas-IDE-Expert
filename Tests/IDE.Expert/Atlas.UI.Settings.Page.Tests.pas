@@ -164,6 +164,7 @@ begin
   Settings.PairGuideWidth := 3;
   Settings.PairGuideOpacity := 70;
   Settings.PairColorsLight := '#0071E3,#007C8A,#C000E0,#008700,#4040FF';
+  Settings.CodeLensMetrics := False;
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
@@ -192,6 +193,7 @@ begin
   Assert.AreEqual(70, Saved.PairGuideOpacity);
   Assert.AreEqual('#0071E3,#007C8A,#C000E0,#008700,#4040FF', Saved.PairColorsLight);
   Assert.AreEqual('', Saved.PairColorsDark, 'Standardfarben bleiben leer');
+  Assert.IsFalse(Saved.CodeLensMetrics, 'Code Lens Metriken (#66)');
 end;
 
 procedure TAtlasSettingsPageTests.ShowsAndReenablesTrippedFeatures;

@@ -25,6 +25,7 @@ sind schneller und genauer als Textsuche und das Lesen ganzer Dateien.
 - Geplanten Code mit `check_code` prüfen, bevor er in die Datei geht
   (Syntax, Prüfregeln, nicht auflösbare Bezeichner).
 - `get_diagnostics` für den Stand einer Datei oder des Projekts.
+- `get_metrics` vor und nach einem Umbau: welche Methoden zu lang, zu tief verschachtelt oder zu komplex sind (Grenzwerte aus `atlas.json`).
 - Befunde mit `explain_finding` erklären lassen (Regel, Ausschnitt, Vorher/Nachher).
 - `get_last_build` zeigt den letzten Build aus der IDE samt Compilermeldungen.
 

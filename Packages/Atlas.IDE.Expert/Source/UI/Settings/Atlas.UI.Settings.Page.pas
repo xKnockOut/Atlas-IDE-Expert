@@ -116,6 +116,8 @@ type
     FBookmarksNamed: TCheckBox;
     FBookmarksShared: TCheckBox;
     FCodeLensTestUnit: TCheckBox;
+    /// <summary>Code Lens mit Code-Metriken (#66).</summary>
+    FCodeLensMetrics: TCheckBox;
     FPairGuides: TCheckBox;
     FPairOwners: TCheckBox;
     FPairGuideWidth: TEdit;
@@ -695,6 +697,7 @@ begin
   FBookmarksNamed := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBookmarksNamed));
   FBookmarksShared := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBookmarksShared));
   FCodeLensTestUnit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTestUnit));
+  FCodeLensMetrics := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensMetrics));
 
   // Eigene Paarfarben und deren Reihenfolge je Thema.
   AddSheet(TAtlasTextId.SettingsTabColors);
@@ -1481,6 +1484,7 @@ begin
   FBookmarksNamed.Checked := ASettings.BookmarksNamed;
   FBookmarksShared.Checked := ASettings.BookmarksShared;
   FCodeLensTestUnit.Checked := ASettings.CodeLensTestUnit;
+  FCodeLensMetrics.Checked := ASettings.CodeLensMetrics;
   FPairGuides.Checked := ASettings.PairGuides;
   FPairOwners.Checked := ASettings.PairOwners;
   FPairGuideWidth.Text := IntToStr(ASettings.PairGuideWidth);
@@ -1643,6 +1647,7 @@ begin
   ASettings.BookmarksNamed := FBookmarksNamed.Checked;
   ASettings.BookmarksShared := FBookmarksShared.Checked;
   ASettings.CodeLensTestUnit := FCodeLensTestUnit.Checked;
+  ASettings.CodeLensMetrics := FCodeLensMetrics.Checked;
   ASettings.PairGuides := FPairGuides.Checked;
   ASettings.PairOwners := FPairOwners.Checked;
   ASettings.PairGuideWidth := StrToIntDef(FPairGuideWidth.Text, ASettings.PairGuideWidth);
