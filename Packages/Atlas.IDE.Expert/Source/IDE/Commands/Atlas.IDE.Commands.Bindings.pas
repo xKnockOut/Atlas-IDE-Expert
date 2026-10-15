@@ -13,7 +13,9 @@
 // (ForceQueue), nicht in der Bindung selbst. Ausnahme sind Befehle mit
 // Rückfall (AddAttemptKey): Sie laufen sofort, und ohne Treffer geht die
 // Taste an die nächste Bindung (krNextProc), beim Wechsel Deklaration ⇄
-// Implementierung also an die Klassennavigation der IDE.
+// Implementierung also an die Klassennavigation der IDE. F3 und Umschalt+F3
+// suchen eine einzeilige Markierung vorwärts bzw. rückwärts; ohne Markierung
+// bleibt es bei „Erneut suchen“ der IDE.
 
 interface
 
@@ -51,7 +53,9 @@ type
     FKeys: TArray<TKey>;
     FBound: string;
     procedure AddKey(AKey: Integer; const AWhat: string; const AProc: TProc);
-    procedure AddAttemptKey(AKey: Integer; const AWhat: string; const AAttempt: TFunc<Boolean>);
+    /// <summary>ACheck False: ohne Konfliktprüfung, weil die Taste ohne Treffer ohnehin an die IDE weitergeht.</summary>
+    procedure AddAttemptKey(AKey: Integer; const AWhat: string; const AAttempt: TFunc<Boolean>;
+      ACheck: Boolean = True);
   public
     constructor Create;
     destructor Destroy; override;
@@ -62,6 +66,7 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
@@ -178,7 +183,8 @@ begin
   FBound := FBound + IntToStr(AKey) + ';';
 end;
 
-procedure TAtlasIdeEditorKeys.AddAttemptKey(AKey: Integer; const AWhat: string; const AAttempt: TFunc<Boolean>);
+procedure TAtlasIdeEditorKeys.AddAttemptKey(AKey: Integer; const AWhat: string; const AAttempt: TFunc<Boolean>;
+  ACheck: Boolean);
 var
   Existing, Key: TKey;
 begin
@@ -186,7 +192,7 @@ begin
   for Existing in FKeys do
     if Existing.Key = Word(AKey) then
       Exit;
-  if not TAtlasIdeKeys.Decide(Word(AKey), TAtlasIdeSettings.Current.EditorKeysPriority, AWhat) then
+  if ACheck and not TAtlasIdeKeys.Decide(Word(AKey), TAtlasIdeSettings.Current.EditorKeysPriority, AWhat) then
     Exit;
   Key.Key := Word(AKey);
   Key.Proc := nil;
@@ -245,6 +251,17 @@ begin
         Result := TAtlasIdeEditorCommands.TryToggleMethod;
       end);
   end;
+  // Markierung suchen: F3 bzw. Umschalt+F3 mit einzeiliger Markierung; sonst „Erneut suchen“ der IDE.
+  AddAttemptKey(ShortCut(VK_F3, []), 'F3',
+    function: Boolean
+    begin
+      Result := TAtlasIdeEditorCommands.TryFindSelection(False);
+    end, False);
+  AddAttemptKey(ShortCut(VK_F3, [ssShift]), 'Umschalt+F3',
+    function: Boolean
+    begin
+      Result := TAtlasIdeEditorCommands.TryFindSelection(True);
+    end, False);
   AddKey(Settings.TestUnitKey, TAtlasStrings.Text(TAtlasTextId.EditorTestUnit),
     procedure
     begin
