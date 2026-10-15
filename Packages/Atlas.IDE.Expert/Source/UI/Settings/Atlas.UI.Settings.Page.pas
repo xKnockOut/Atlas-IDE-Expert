@@ -179,6 +179,8 @@ type
     FWelcomeUnsavedWarn: TEdit;
     FWelcomeUnsavedAlert: TEdit;
     FWelcomeUnsavedHideClean: TCheckBox;
+    FWelcomeStatusTile: TCheckBox;
+    FWelcomeStatusTileOnlyProblems: TCheckBox;
     FVersion: TLabel;
     FResetHistory: TButton;
     FResetWidths: TButton;
@@ -287,6 +289,8 @@ type
     property WelcomeUnsavedWarn: TEdit read FWelcomeUnsavedWarn;
     property WelcomeUnsavedAlert: TEdit read FWelcomeUnsavedAlert;
     property WelcomeUnsavedHideClean: TCheckBox read FWelcomeUnsavedHideClean;
+    property WelcomeStatusTile: TCheckBox read FWelcomeStatusTile;
+    property WelcomeStatusTileOnlyProblems: TCheckBox read FWelcomeStatusTileOnlyProblems;
     property VersionLabel: TLabel read FVersion;
     /// <summary>Kennzahlen als Text; nil = nicht verfügbar.</summary>
     property OnIndexMetrics: TFunc<string> read FOnIndexMetrics write FOnIndexMetrics;
@@ -656,6 +660,9 @@ begin
   FWelcomeUnsavedWarn := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsavedWarn));
   FWelcomeUnsavedAlert := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsavedAlert));
   FWelcomeUnsavedHideClean := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsavedHideClean));
+  // Zustandskachel „Atlas“ (#754).
+  FWelcomeStatusTile := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeStatusTile));
+  FWelcomeStatusTileOnlyProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeStatusTileOnlyProblems));
 end;
 
 procedure TAtlasSettingsPage.AddSheet(AId: TAtlasTextId);
@@ -1181,6 +1188,8 @@ begin
   FWelcomeUnsavedWarn.Text := IntToStr(ASettings.WelcomePageUnsavedWarnHours);
   FWelcomeUnsavedAlert.Text := IntToStr(ASettings.WelcomePageUnsavedAlertHours);
   FWelcomeUnsavedHideClean.Checked := ASettings.WelcomePageUnsavedHideWhenClean;
+  FWelcomeStatusTile.Checked := ASettings.WelcomePageStatusTile;
+  FWelcomeStatusTileOnlyProblems.Checked := ASettings.WelcomePageStatusTileOnlyProblems;
   RefreshFuse;
   RefreshIndex;
 end;
@@ -1291,6 +1300,8 @@ begin
   ASettings.WelcomePageUnsavedAlertHours := StrToIntDef(Trim(FWelcomeUnsavedAlert.Text),
     ASettings.WelcomePageUnsavedAlertHours);
   ASettings.WelcomePageUnsavedHideWhenClean := FWelcomeUnsavedHideClean.Checked;
+  ASettings.WelcomePageStatusTile := FWelcomeStatusTile.Checked;
+  ASettings.WelcomePageStatusTileOnlyProblems := FWelcomeStatusTileOnlyProblems.Checked;
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;

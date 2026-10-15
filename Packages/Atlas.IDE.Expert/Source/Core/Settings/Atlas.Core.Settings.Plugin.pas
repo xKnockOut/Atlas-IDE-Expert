@@ -283,6 +283,11 @@ type
     WelcomePageUnsavedAlertHours: Integer;
     /// <summary>Bereich ausblenden, wenn nichts zu zeigen ist (#762, welcomePage.unsaved.hideWhenClean).</summary>
     WelcomePageUnsavedHideWhenClean: Boolean;
+    /// <summary>Zustandskachel „Atlas“ (#754, welcomePage.statusTile).</summary>
+    WelcomePageStatusTile: Boolean;
+    /// <summary>Zustandskachel nur zeigen, wenn eine Zeile gelb oder rot ist (#754,
+    /// welcomePage.statusTile.onlyProblems).</summary>
+    WelcomePageStatusTileOnlyProblems: Boolean;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -424,6 +429,8 @@ begin
   Result.WelcomePageUnsavedWarnHours := 24;
   Result.WelcomePageUnsavedAlertHours := 72;
   Result.WelcomePageUnsavedHideWhenClean := False;
+  Result.WelcomePageStatusTile := True;
+  Result.WelcomePageStatusTileOnlyProblems := False;
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -613,6 +620,9 @@ begin
     Default.WelcomePageUnsavedAlertHours);
   WelcomePageUnsavedHideWhenClean := AStore.ReadInteger('WelcomePageUnsavedHideWhenClean',
     BoolValue(Default.WelcomePageUnsavedHideWhenClean)) <> 0;
+  WelcomePageStatusTile := AStore.ReadInteger('WelcomePageStatusTile', BoolValue(Default.WelcomePageStatusTile)) <> 0;
+  WelcomePageStatusTileOnlyProblems := AStore.ReadInteger('WelcomePageStatusTileOnlyProblems',
+    BoolValue(Default.WelcomePageStatusTileOnlyProblems)) <> 0;
   Normalize;
 end;
 
@@ -723,6 +733,8 @@ begin
   AStore.WriteInteger('WelcomePageUnsavedWarnHours', WelcomePageUnsavedWarnHours);
   AStore.WriteInteger('WelcomePageUnsavedAlertHours', WelcomePageUnsavedAlertHours);
   AStore.WriteInteger('WelcomePageUnsavedHideWhenClean', BoolValue(WelcomePageUnsavedHideWhenClean));
+  AStore.WriteInteger('WelcomePageStatusTile', BoolValue(WelcomePageStatusTile));
+  AStore.WriteInteger('WelcomePageStatusTileOnlyProblems', BoolValue(WelcomePageStatusTileOnlyProblems));
 end;
 
 end.

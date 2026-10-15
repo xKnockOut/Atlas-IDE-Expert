@@ -722,6 +722,9 @@ begin
   Assert.IsTrue(Settings.WelcomePageGreeting);
   Assert.AreEqual('afterUpdate', Settings.WelcomePageWhatsNew);
   Assert.AreEqual('', Settings.WhatsNewSeen, 'vor dem ersten Start nichts gesehen');
+  // #754: Zustandskachel an, auch bei allem grün.
+  Assert.IsTrue(Settings.WelcomePageStatusTile);
+  Assert.IsFalse(Settings.WelcomePageStatusTileOnlyProblems);
 end;
 
 procedure TAtlasWelcomeSettingsTests.NormalizeMapsUnknownValues;
@@ -772,7 +775,11 @@ begin
   Saved.WelcomePageUnsavedWarnHours := 10;
   Saved.WelcomePageUnsavedAlertHours := 20;
   Saved.WelcomePageUnsavedHideWhenClean := True;
+  Saved.WelcomePageStatusTile := False;
+  Saved.WelcomePageStatusTileOnlyProblems := True;
   Saved.Save(Store);
+  Assert.AreEqual(0, Store.ReadInteger('WelcomePageStatusTile', 1), 'Registry-Name (#754)');
+  Assert.AreEqual(1, Store.ReadInteger('WelcomePageStatusTileOnlyProblems', 0));
   Assert.AreEqual(0, Store.ReadInteger('WelcomePageUnsaved', 1), 'Registry-Name (#762)');
   Assert.AreEqual(3, Store.ReadInteger('WelcomePageUnsavedMinAgeHours', 0));
   Assert.AreEqual(10, Store.ReadInteger('WelcomePageUnsavedWarnHours', 0));
@@ -802,6 +809,8 @@ begin
   Assert.AreEqual(10, Loaded.WelcomePageUnsavedWarnHours);
   Assert.AreEqual(20, Loaded.WelcomePageUnsavedAlertHours);
   Assert.IsTrue(Loaded.WelcomePageUnsavedHideWhenClean);
+  Assert.IsFalse(Loaded.WelcomePageStatusTile);
+  Assert.IsTrue(Loaded.WelcomePageStatusTileOnlyProblems);
 end;
 
 initialization

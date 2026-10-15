@@ -150,7 +150,7 @@ type
   TAtlasSetupChecklist = class
   public const
     /// <summary>Zeile im Atlas-Statusfeld (#591), auch Quelle der Zustandskachel (#754).</summary>
-    StatusId = 'atlas.setup';
+    StatusId = TAtlasStatusLines.SetupId;
     StatusOrder = 4;
     /// <summary>Befehl der Palette und des Menüs Atlas › Einrichtung prüfen.</summary>
     CommandId = 'Atlas.SetupChecklist';

@@ -22,6 +22,7 @@ implementation
 
 uses
   Winapi.Windows,
+  Winapi.ShellAPI,
   System.SysUtils,
   System.Classes,
   System.Types,
@@ -85,6 +86,7 @@ uses
   Atlas.IDE.Welcome.WhatsNew,
   Atlas.IDE.Welcome.Projects,
   Atlas.IDE.Welcome.Unsaved,
+  Atlas.IDE.Welcome.State,
   Atlas.IDE.Welcome.Commands,
   Atlas.IDE.Vcs.Service;
 
@@ -443,6 +445,51 @@ begin
     FileName := TAtlasGuard.RotatingLog.FileName;
   if FileExists(FileName) and Supports(BorlandIDEServices, IOTAActionServices, Actions) then
     Actions.OpenFile(FileName);
+end;
+
+/// <summary>„Einstellungen“ der Zustandskachel (#754): Optionsseite „Atlas“ (#227) wie Menü Atlas › Einstellungen.</summary>
+procedure OpenAtlasOptions;
+var
+  Options: IOTAEnvironmentOptions140;
+  Services: IOTAServices;
+begin
+  if Supports(BorlandIDEServices, IOTAServices, Services) and
+    Supports(Services.GetEnvironmentOptions, IOTAEnvironmentOptions140, Options) then
+    Options.EditOptions('', 'Atlas');
+end;
+
+/// <summary>„Log-Ordner öffnen“ der Zustandskachel (#754): %LOCALAPPDATA%\Atlas\Logs im Explorer.</summary>
+procedure OpenLogFolder;
+var
+  Folder: string;
+begin
+  Folder := TAtlasRotatingLog.DefaultFolder;
+  ForceDirectories(Folder);
+  ShellExecute(0, 'open', PChar(Folder), nil, nil, SW_SHOWNORMAL);
+end;
+
+/// <summary>Zustandskachel „Atlas“ (#754): Zeilen aus dem Statusfeld, Knöpfe über den Manager und die Update-Prüfung.</summary>
+function CreateWelcomeState: TAtlasIdeWelcomeState;
+var
+  Actions: TAtlasStateActions;
+begin
+  Actions.Restart :=
+    procedure
+    begin
+      if Manager <> nil then
+        Manager.RestartServer;
+      if StatusField <> nil then
+        StatusField.RequestRefresh;
+    end;
+  Actions.Settings := OpenAtlasOptions;
+  Actions.LogFolder := OpenLogFolder;
+  Actions.Update :=
+    procedure
+    begin
+      if Updates <> nil then
+        Updates.OpenUpdate;
+    end;
+  Result := TAtlasIdeWelcomeState.Create(TAtlasStatusRegistry.Default, Actions);
 end;
 
 procedure RegisterStatusField;
@@ -817,6 +864,8 @@ begin
       begin
         TAtlasGuard.Log(AText);
       end);
+    // Zeile „Version“ im Statusfeld und in der Zustandskachel (#754).
+    Updates.ShowStatus(TAtlasStatusRegistry.Default);
   end;
   if Basic and (EditorKeys = nil) then
     EditorKeys := TAtlasIdeEditorKeys.Create;
@@ -961,6 +1010,8 @@ begin
       begin
         GuardWarning(AText);
       end);
+    // Zustandskachel „Atlas“ (#754): dieselben Zeilen wie das Statusfeld (#591).
+    Welcome.State := CreateWelcomeState;
   end;
   if Welcome <> nil then
     Welcome.Sync;
@@ -1170,6 +1221,8 @@ begin
   FreeAndNil(DiagnosticMode);
   // Vor dem Statusfeld: Die Einrichtung hat eine Zeile in dessen Registry und liest StatusLines (#625).
   FreeAndNil(Setup);
+  // Vor dem Statusfeld: Die Update-Prüfung hat die Zeile „Version“ in dessen Registry (#754).
+  FreeAndNil(Updates);
   FreeAndNil(QuickToggles);
   FreeAndNil(SignatureKey);
   FreeAndNil(CompletionKey);
@@ -1184,7 +1237,6 @@ begin
   FreeAndNil(Forms);
   FreeAndNil(EditorKeys);
   TAtlasIdeUndo.Stop;
-  FreeAndNil(Updates);
   if CommandsInstalled then
   begin
     TAtlasIdeEditorCommands.Uninstall;

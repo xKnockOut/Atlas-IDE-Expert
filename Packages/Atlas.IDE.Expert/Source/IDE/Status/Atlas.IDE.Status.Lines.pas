@@ -8,6 +8,11 @@
 //   Zeitgeber, liefert nebenbei die Antwortzeit), nur solange der Server läuft.
 //   Die letzte Antwort hält StatusJson für die Einrichtung (#625: Index je
 //   Projekt, Bibliotheks-Cache), damit sie den Server nicht selbst abfragt.
+//   Für die Zustandskachel (#754): Server mit „seit“ bzw. Zeitpunkt des
+//   Absturzes, Index mit Zeitpunkt der letzten vollständigen Indizierung;
+//   den letzten Index-Stand hält TAtlasIndexTracker in
+//   %LOCALAPPDATA%\Atlas\index-state.json, damit die Zeile ohne laufenden
+//   Server „Stand vom …“ zeigt.
 // - „Datei“: Kodierung und Zeilenende der aktiven Datei (#121), gelesen von
 //   der Platte, solange sie sich nicht ändert aus dem Zwischenspeicher. Ein
 //   Klick öffnet die Auswahl (UTF-8 mit/ohne BOM, ANSI; CRLF/LF). Die Wahl
@@ -27,6 +32,7 @@ uses
   Atlas.Core.Status.Contract,
   Atlas.Core.Status.Registry,
   Atlas.Core.Status.Lines,
+  Atlas.Core.Status.IndexStore,
   Atlas.Core.Files.Format;
 
 type
@@ -60,6 +66,9 @@ type
     FReport: TProc<string>;
     FUnits: TUnits;
     FUnitsRef: IInterface;
+    // Letzter Index-Stand (#754); nur im Hauptthread.
+    FTracker: TAtlasIndexTracker;
+    FIndexFile: string;
     FPoll: TTimer;
     FCache: TDictionary<string, TCached>;
     FTargets: TDictionary<string, TAtlasFileFormat>;
@@ -132,6 +141,8 @@ begin
   FUnitsRef := FUnits;
   FCache := TDictionary<string, TCached>.Create;
   FTargets := TDictionary<string, TAtlasFileFormat>.Create;
+  FIndexFile := TAtlasIndexStore.DefaultFile;
+  FTracker := TAtlasIndexTracker.Create(TAtlasIndexStore.Load(FIndexFile));
   FServer := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.ServerId, TAtlasStatusLines.ServerOrder);
   FServerRef := FServer;
   FIndex := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.IndexId, TAtlasStatusLines.IndexOrder);
@@ -163,6 +174,10 @@ begin
   FRegistry.Remove(TAtlasStatusLines.ServerId);
   FRegistry.Remove(TAtlasStatusLines.IndexId);
   FRegistry.Remove(TAtlasStatusLines.FileId);
+  // Lief der Server bis jetzt, gilt sein letzter Stand als „Stand vom …“ beim nächsten Start.
+  if FTracker.Observe(False, False, -1, Now) then
+    TAtlasIndexStore.Save(FIndexFile, FTracker.Snapshot);
+  FreeAndNil(FTracker);
   FreeAndNil(FMenu);
   FTargets.Free;
   FCache.Free;
@@ -226,7 +241,7 @@ var
 begin
   Info := FServerInfo();
   FServer.Update(TAtlasStatusLines.ServerText(Info), TAtlasStatusLines.ServerState(Info),
-    TAtlasStatusLines.ServerSummary(Info));
+    TAtlasStatusLines.ServerSummary(Info), TAtlasStatusLines.ServerBrief(Info), TAtlasStatusLines.ServerDetail(Info));
   // Nach einem Neustart sind die Units erst wieder nach der nächsten Abfrage bekannt.
   if Info.Phase <> TAtlasServerPhase.Running then
   begin
@@ -243,19 +258,22 @@ end;
 procedure TAtlasIdeStatusLines.RefreshIndex;
 var
   Info: TAtlasIndexInfo;
-  Running: Boolean;
+  Running, Indexing: Boolean;
+  Percent, Units: Integer;
 begin
   Running := FServerInfo().Phase = TAtlasServerPhase.Running;
-  Info.Units := FUnits.Value;
-  Info.Percent := -1;
-  Info.Indexing := Running and FIndexing(Info.Percent);
-  if not Running then
-  begin
-    FIndex.Update('Index: Server läuft nicht', TAtlasStatusState.Neutral);
-    Exit;
-  end;
+  Percent := -1;
+  Indexing := Running and FIndexing(Percent);
+  Units := -1;
+  if Running then
+    Units := FUnits.Value;
+  // Letzten Stand merken; geschrieben wird nur bei einer Änderung und wenn der Server aufhört (#754).
+  if FTracker.Observe(Running, Indexing, Units, Now) then
+    TAtlasIndexStore.Save(FIndexFile, FTracker.Snapshot);
+  // Ohne laufenden Server die gespeicherten Werte mit „Stand vom …“.
+  Info := FTracker.Info(Running, Indexing, Percent, Units);
   FIndex.Update(TAtlasStatusLines.IndexText(Info), TAtlasStatusLines.IndexState(Info),
-    TAtlasStatusLines.IndexSummary(Info));
+    TAtlasStatusLines.IndexSummary(Info), TAtlasStatusLines.IndexBrief(Info), TAtlasStatusLines.IndexDetail(Info));
 end;
 
 function TAtlasIdeStatusLines.ActiveFile: string;
