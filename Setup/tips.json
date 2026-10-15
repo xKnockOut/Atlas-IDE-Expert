@@ -407,6 +407,7 @@
     {
       "id": "metricsReport",
       "command": "Atlas.MetricsReport",
+      "setting": "MetricsReport",
       "title": "Metrikbericht des Projekts",
       "titleEn": "Project metrics report",
       "text": "Fasst die Code-Metriken aller Units des aktiven Projekts als Markdown zusammen: Mittelwerte, Höchstwerte und die Methoden über einem Grenzwert.",

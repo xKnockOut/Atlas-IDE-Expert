@@ -333,7 +333,8 @@ var
   Project: IOTAProject;
   FileName: string;
 begin
-  if Manager = nil then
+  // Abgeschaltet: auch über Tastenkürzel oder „Ausprobieren“ nichts tun.
+  if (Manager = nil) or not TAtlasIdeSettings.Current.MetricsReport then
     Exit;
   Project := GetActiveProject;
   if (Project = nil) or (Project.FileName = '') then
@@ -651,11 +652,15 @@ begin
     begin
       TAtlasIdeHistory.Reset;
     end);
-  // Metrikbericht des Projekts (#66).
+  // Metrikbericht des Projekts (#66); nur sichtbar, solange die Einstellung MetricsReport an ist.
   Palette.RegisterCommand('Atlas.MetricsReport', TAtlasStrings.Text(TAtlasTextId.MetricsReportCommand), '',
     procedure
     begin
       MetricsReport;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.MetricsReport;
     end);
   // TODO-Liste des Projekts (#68).
   Palette.RegisterCommand('Atlas.TodoList', TAtlasStrings.Text(TAtlasTextId.TodoListCommand), '',
