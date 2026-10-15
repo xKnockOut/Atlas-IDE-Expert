@@ -28,6 +28,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Baseline,
   Atlas.Common.Compiler.Contract,
@@ -143,6 +144,10 @@ type
     /// <summary>Meldung zu einem inaktiven Bereich: mit Bedingung „Inaktiv: Bedingung X nicht erfüllt“,
     /// mit Plattform oder Konfiguration dahinter „(Zielplattform Win32 · Debug)“.</summary>
     class function InactiveMessageOf(const ACondition, APlatform, AConfig: string): string; static;
+    /// <summary>Treffer der Prüfregeln aus ARules für AText (Baum ATree), ohne die Baseline abzuziehen; so prüft
+    /// auch atlas.updateBaseline (#97). Leer ohne Regeln.</summary>
+    class function RuleFindings(const AText: string; ATree: TSyntaxTree;
+      const ARules: TRuleCheckContext): TArray<TRuleFinding>; static;
     /// <summary>Ein Regeltreffer als LSP-Diagnostic (code = Regelkennung). Der Aufrufer übernimmt das Objekt.</summary>
     class function FindingToJson(const AFinding: TRuleFinding): TJSONObject; static;
     /// <summary>Compilermeldung als LSP-Diagnostic; ALineText (falls bekannt) begrenzt den Bereich.
@@ -191,8 +196,8 @@ uses
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Rules.Scopes,
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.IncludeFiles,
@@ -736,8 +741,7 @@ class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
   const APlatform, AConfig: string): TJSONObject;
 var
   RuleFinding: TRuleFinding;
-  RuleFindings: TArray<TRuleFinding>;
-  Context: TRuleContext;
+  Findings: TArray<TRuleFinding>;
 var
   Finding: TLanguageFeatureFinding;
   Region: TLspInactiveRegion;
@@ -773,27 +777,17 @@ begin
   end;
   if Length(ARules.Rules) > 0 then
   begin
-    Context := Default(TRuleContext);
-    Context.RelativePath := ARules.RelativePath;
-    Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARules.RelativePath, '/', '\', [rfReplaceAll])), '');
-    Context.Text := ADocument.Text;
-    Context.Tree := Tree;
-    Context.Index := ARules.Index;
-    Context.EnsureUnit := ARules.EnsureUnit;
-    Context.Namespaces := ARules.Namespaces;
-    Context.FormText := ARules.FormText;
-    Context.ReadFile := ARules.ReadFile;
-    Context.Cancelled := ARules.Cancelled;
     // Abbruch (ERuleCheckCancelled): Die bis dahin gesammelten Meldungen freigeben.
     try
-      RuleFindings := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
+      Findings := RuleFindings(ADocument.Text, Tree, ARules);
     except
       Items.Free;
       raise;
     end;
+    // Routinen aus demselben Baum: Die Baseline (#97) braucht sie für ihren Schlüssel.
     if ARules.Baseline <> nil then
-      RuleFindings := ARules.Baseline.Filter(ARules.RelativePath, ADocument.Text, RuleFindings);
-    for RuleFinding in RuleFindings do
+      Findings := ARules.Baseline.Filter(ARules.RelativePath, ADocument.Text, TFindingScopes.FromTree(Tree), Findings);
+    for RuleFinding in Findings do
       Items.AddElement(FindingToJson(RuleFinding));
   end;
   for Region in AInactive do
@@ -819,6 +813,27 @@ begin
   Result.AddPair('uri', ADocument.Uri);
   Result.AddPair('version', TJSONNumber.Create(ADocument.Version));
   Result.AddPair('diagnostics', Items);
+end;
+
+class function TLspSyntaxDiagnostics.RuleFindings(const AText: string; ATree: TSyntaxTree;
+  const ARules: TRuleCheckContext): TArray<TRuleFinding>;
+var
+  Context: TRuleContext;
+begin
+  if Length(ARules.Rules) = 0 then
+    Exit(nil);
+  Context := Default(TRuleContext);
+  Context.RelativePath := ARules.RelativePath;
+  Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARules.RelativePath, '/', '\', [rfReplaceAll])), '');
+  Context.Text := AText;
+  Context.Tree := ATree;
+  Context.Index := ARules.Index;
+  Context.EnsureUnit := ARules.EnsureUnit;
+  Context.Namespaces := ARules.Namespaces;
+  Context.FormText := ARules.FormText;
+  Context.ReadFile := ARules.ReadFile;
+  Context.Cancelled := ARules.Cancelled;
+  Result := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
 end;
 
 class function TLspSyntaxDiagnostics.BuildEmptyParams(const AUri: string): TJSONObject;
