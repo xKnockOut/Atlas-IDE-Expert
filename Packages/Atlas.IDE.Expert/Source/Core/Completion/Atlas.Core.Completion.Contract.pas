@@ -119,6 +119,9 @@ type
     HasParameters: Boolean;
     /// <summary>Vom Controller gesetzt (#418).</summary>
     Usage: TAtlasUsageMark;
+    /// <summary>Angeheftet (#458), vom Controller gesetzt: steht vor allen anderen Gruppen, wenn er zum
+    /// getippten Präfix passt, und trägt links einen Stern.</summary>
+    Favorite: Boolean;
     /// <summary>Erwarteter Typ an der Stelle (#417, #444); '' ohne. Die Liste gruppiert dann nach Fits.</summary>
     ExpectedType: string;
     /// <summary>Eintrag passt zu ExpectedType.</summary>

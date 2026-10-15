@@ -317,6 +317,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Declare.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Usage.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Ranking.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Favorites.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Favorites.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Atlas.UI.Strings.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Strings.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.XmlDoc.pas"/>

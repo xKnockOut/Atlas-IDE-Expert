@@ -248,6 +248,8 @@ uses
   Atlas.Core.Completion.Declare.Tests in 'IDE.Expert\Atlas.Core.Completion.Declare.Tests.pas',
   Atlas.Core.Completion.Usage in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Usage.pas',
   Atlas.Core.Completion.Ranking.Tests in 'IDE.Expert\Atlas.Core.Completion.Ranking.Tests.pas',
+  Atlas.Core.Completion.Favorites in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Favorites.pas',
+  Atlas.Core.Completion.Favorites.Tests in 'IDE.Expert\Atlas.Core.Completion.Favorites.Tests.pas',
   Atlas.UI.Strings in '..\Packages\Atlas.IDE.Expert\Source\UI\Atlas.UI.Strings.pas',
   Atlas.UI.Strings.Tests in 'IDE.Expert\Atlas.UI.Strings.Tests.pas',
   Atlas.Core.Completion.Providers.XmlDoc in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.XmlDoc.pas',

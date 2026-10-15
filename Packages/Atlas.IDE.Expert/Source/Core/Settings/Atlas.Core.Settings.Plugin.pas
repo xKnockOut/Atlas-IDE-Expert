@@ -108,6 +108,9 @@ type
     FilterChips: Boolean;
     /// <summary>Lernende Gewichtung (#418).</summary>
     Learning: Boolean;
+    /// <summary>Favoriten anheften (#458): Strg+D bzw. Stern in der Liste, angeheftete Einträge stehen oben;
+    /// gespeichert in %APPDATA%\Atlas\favorites.json.</summary>
+    Favorites: Boolean;
     /// <summary>Geerbte Member nachrangig und gruppiert (#419).</summary>
     GroupInherited: Boolean;
     /// <summary>Vorschau des gewählten Eintrags im Editor (#434).</summary>
@@ -387,6 +390,7 @@ begin
   Result.SignatureKeyPriority := False;
   Result.FilterChips := True;
   Result.Learning := True;
+  Result.Favorites := True;
   Result.GroupInherited := True;
   Result.Preview := False;
   Result.HoverTooltip := True;
@@ -590,6 +594,7 @@ begin
   SignatureKeyPriority := AStore.ReadInteger('SignatureKeyPriority', BoolValue(Default.SignatureKeyPriority)) <> 0;
   FilterChips := AStore.ReadInteger('FilterChips', BoolValue(Default.FilterChips)) <> 0;
   Learning := AStore.ReadInteger('Learning', BoolValue(Default.Learning)) <> 0;
+  Favorites := AStore.ReadInteger('Favorites', BoolValue(Default.Favorites)) <> 0;
   GroupInherited := AStore.ReadInteger('GroupInherited', BoolValue(Default.GroupInherited)) <> 0;
   Preview := AStore.ReadInteger('Preview', BoolValue(Default.Preview)) <> 0;
   HoverTooltip := AStore.ReadInteger('HoverTooltip', BoolValue(Default.HoverTooltip)) <> 0;
@@ -721,6 +726,7 @@ begin
   AStore.WriteInteger('SignatureKeyPriority', BoolValue(SignatureKeyPriority));
   AStore.WriteInteger('FilterChips', BoolValue(FilterChips));
   AStore.WriteInteger('Learning', BoolValue(Learning));
+  AStore.WriteInteger('Favorites', BoolValue(Favorites));
   AStore.WriteInteger('GroupInherited', BoolValue(GroupInherited));
   AStore.WriteInteger('Preview', BoolValue(Preview));
   AStore.WriteInteger('HoverTooltip', BoolValue(HoverTooltip));

@@ -360,6 +360,22 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 | RB3 | Lokale Variable `Name`, die das Feld `Name` der Klasse verdeckt | `Name` einmal mit „lokal“; das Detailpanel nennt „Verdeckt: Feld TKlasse.Name“ |
 | RB4 | Methode von `Self` und Routine aus einer uses-Unit in der Liste | Tag mit der Klasse bzw. dem Namen der Unit |
 
+## Favoriten anheften (#458)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FA1 | In einer Methode mit `qry: TFDQuery` hinter `qry.` Strg+Leer, `Open` wählen, Strg+D | Fußzeile „Open angeheftet · Strg+D löst“; `Open` steht mit gefülltem Stern links ganz oben, die Auswahl bleibt auf `Open`; der Editor formatiert nichts |
+| FA2 | Mit der Maus über `ParamByName` fahren, auf den leeren Stern links klicken | Stern gefüllt, `ParamByName` steht oben (zusammen mit `Open`); die Auswahl ändert sich nicht |
+| FA3 | Andere Query `qry2.` Strg+Leer, ohne Präfix, dann `P`, dann `Op`, dann `Cl` | Ohne Präfix beide Favoriten oben; mit `P` nur `ParamByName` oben; mit `Op` nur `Open`; mit `Cl` keiner (sie passen nicht) |
+| FA4 | Viele Male `Close` übernehmen (lernende Gewichtung), dann `qry.` Strg+Leer | `Open` und `ParamByName` stehen trotzdem vor `Close` |
+| FA5 | Bei `TDataSet` fünf Member anheften, einen sechsten mit Strg+D | Fußzeile „Schon 5 Favoriten bei TDataSet – erst einen lösen“; nichts ändert sich; Sprachausgabe liest den Hinweis |
+| FA6 | IDE beenden und neu starten, `qry.` Strg+Leer | Favoriten aus FA1/FA2 stehen weiter oben; `%APPDATA%\Atlas\favorites.json` enthält sie |
+| FA7 | *Tools › Optionen › Drittanbieter › Atlas*, Reiter Vervollständigung: Liste „Angeheftete Favoriten“, `TDataSet.Open` wählen, „Entfernen“ | Eintrag verschwindet sofort; beim nächsten `qry.` steht `Open` wieder an seinem Platz |
+| FA8 | „Alle entfernen“ | Liste zeigt „Keine Favoriten angeheftet.“, Knöpfe ausgegraut |
+| FA9 | Häkchen „Favoriten anheften“ aus (oder Schnellschalter), `qry.` Strg+Leer, Strg+D | Keine Sternspalte, keine Sonderstellung; Strg+D geht an den Editor |
+| FA10 | Auf „Neue Methode …“ bzw. „Alle Werte einfügen“ Strg+D | Fußzeile „Dieser Eintrag lässt sich nicht anheften“ |
+| FA11 | Popup bei 150 % und 200 % Skalierung, hell und dunkel | Stern scharf und mittig, Badge rückt um die Sternspalte nach rechts, nichts abgeschnitten |
+
 ## Tippfehler (#485)
 
 | Nr. | Schritte | Erwartet |

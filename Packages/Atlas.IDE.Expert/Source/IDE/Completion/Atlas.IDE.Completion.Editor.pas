@@ -24,6 +24,9 @@
 //     Einrückung der Zeile ein und startet den Platzhalter-Modus (Atlas.IDE.Completion.Placeholders).
 //   - Diagnosemodus (#479): Invoke nimmt nur bei eingeschalteter Messung beim Aufruf einen Zeitstempel
 //     (TAtlasContext.Started); der Kontext reicht von dort bis zur Anfrage.
+//   - Favoriten (#458, Einstellung Favorites): Strg+D im offenen Popup bzw. Klick auf den Stern heftet den
+//     Eintrag an oder löst ihn (TAtlasIdeFavorites, sofort gespeichert); Ergebnis bzw. „Schon 5 Favoriten …“
+//     als Hinweis in der Fußzeile. Strg+D gehört bei offener Liste immer dem Popup, nie dem Editor.
 
 interface
 
@@ -136,6 +139,9 @@ type
     function WantsKey(AKey: TAtlasNavigationKey): Boolean;
     /// <summary>Indiziert der Server gerade (#492)?</summary>
     function IndexingNow: Boolean;
+    /// <summary>Favorit (#458) an APosition anheften bzw. lösen; APosition &lt; 0 = gewählter Eintrag (Strg+D).
+    /// Speichert und zeigt das Ergebnis in der Fußzeile.</summary>
+    procedure ToggleFavorite(APosition: Integer);
   public
     /// <summary>Nach dem Übernehmen mit Klammern den Parameter-Hint öffnen (#430).</summary>
     property OnOpenSignature: TProc read FOnOpenSignature write FOnOpenSignature;
@@ -150,7 +156,8 @@ type
     procedure ViewChanged;
     /// <summary>Taste aus dem Tastatur-Hook; True, wenn verbraucht.</summary>
     function HandleKey(AKey: TAtlasNavigationKey): Boolean;
-    /// <summary>Befehle im offenen Popup: Strg+Q Panel ein/aus (#428), Alt+1 … Alt+6 Chips (#422).</summary>
+    /// <summary>Befehle im offenen Popup: Strg+Q Panel ein/aus (#428), Alt+1 … Alt+6 Chips (#422), Strg+D
+    /// Favorit (#458).</summary>
     function WantsCommand(AKey: Word; AShift: TShiftState): Boolean;
     procedure HandleCommand(AKey: Word; AShift: TShiftState);
     /// <summary>Editortext wurde geändert.</summary>
@@ -196,6 +203,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Settings.Store,
   Atlas.IDE.Completion.History,
+  Atlas.Core.Completion.Favorites,
+  Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Signature.Editor,
   Atlas.Core.Completion.Ranking,
   Atlas.IDE.Editor.Buffer,
@@ -474,6 +483,12 @@ begin
     begin
       FController.SelectChip(AChip);
     end;
+  // Stern einer Zeile (#458).
+  FPopup.OnFavorite :=
+    procedure(APosition: Integer)
+    begin
+      ToggleFavorite(APosition);
+    end;
   FPopup.OnAccept :=
     procedure(APosition: Integer)
     begin
@@ -680,6 +695,12 @@ begin
     FController.Usage := TAtlasIdeHistory.Instance
   else
     FController.Usage := nil;
+  // Favoriten (#458): abgeschaltet weder Stern noch Sonderstellung.
+  FPopup.FavoritesEnabled := TAtlasIdeSettings.Current.Favorites;
+  if TAtlasIdeSettings.Current.Favorites then
+    FController.Favorites := TAtlasIdeFavorites.Instance
+  else
+    FController.Favorites := nil;
   // Das Popup beginnt am Wortanfang, nicht am Caret.
   FPopup.Canvas.Font := FPopup.Font;
   Anchor.Left := Anchor.Left - FPopup.Canvas.TextWidth(Context.Prefix);
@@ -865,8 +886,10 @@ function TAtlasEditorCompletion.WantsCommand(AKey: Word; AShift: TShiftState): B
 var
   Item: TAtlasCompletionItem;
 begin
-  // Strg+Q Panel (#428), Alt+1 … Alt+6 Chips (#422), Strg+C mit markierter Doku im Panel (#654).
+  // Strg+Q Panel (#428), Alt+1 … Alt+6 Chips (#422), Strg+C mit markierter Doku im Panel (#654), Strg+D Favorit
+  // (#458; bei offener Liste nie an den Editor).
   Result := FController.Visible and (((AKey = Ord('Q')) and (AShift = [ssCtrl])) or
+    ((AKey = Ord('D')) and (AShift = [ssCtrl]) and (FController.Favorites <> nil)) or
     ((AKey = Ord('C')) and (AShift = [ssCtrl]) and (FPopup.SelectedDocText <> '')) or
     (((AKey = VK_UP) or (AKey = VK_DOWN)) and (AShift = [ssAlt]) and FController.SelectedItem(Item) and
       (Item.OverloadCount > 1)) or
@@ -879,12 +902,45 @@ begin
     FPopup.TogglePanel
   else if (AKey = Ord('C')) and (AShift = [ssCtrl]) then
     Clipboard.AsText := FPopup.SelectedDocText
+  else if (AKey = Ord('D')) and (AShift = [ssCtrl]) then
+    ToggleFavorite(-1)
   else if (AKey = VK_UP) and (AShift = [ssAlt]) then
     ChangeOverload(-1)
   else if (AKey = VK_DOWN) and (AShift = [ssAlt]) then
     ChangeOverload(1)
   else if (AKey >= Ord('1')) and (AKey <= Ord('6')) then
     FController.SelectChipAt(AKey - Ord('1'));
+end;
+
+procedure TAtlasEditorCompletion.ToggleFavorite(APosition: Integer);
+var
+  Item: TAtlasCompletionItem;
+  Outcome: TAtlasFavoriteToggle;
+begin
+  if APosition < 0 then
+    Outcome := FController.ToggleSelectedFavorite(Item)
+  else
+    Outcome := FController.ToggleFavorite(APosition, Item);
+  case Outcome of
+    TAtlasFavoriteToggle.Added:
+      begin
+        TAtlasIdeFavorites.Save;
+        FPopup.ShowNotice(TAtlasStrings.Fmt(TAtlasTextId.FavoritePinned, [Item.Name]));
+      end;
+    TAtlasFavoriteToggle.Removed:
+      begin
+        TAtlasIdeFavorites.Save;
+        FPopup.ShowNotice(TAtlasStrings.Fmt(TAtlasTextId.FavoriteUnpinned, [Item.Name]));
+      end;
+    // Ein sechster Favorit ersetzt keinen (#458).
+    TAtlasFavoriteToggle.Full:
+      FPopup.ShowNotice(TAtlasStrings.Fmt(TAtlasTextId.FavoritesFull, [TAtlasFavorites.MaxPerType,
+        TAtlasFavorites.TypeNameOf(Item)]));
+  else
+    if FController.Favorites <> nil then
+      FPopup.ShowNotice(TAtlasStrings.Text(TAtlasTextId.FavoriteNotAllowed));
+  end;
+  ActiveChanged;
 end;
 
 function TAtlasEditorCompletion.HandleKey(AKey: TAtlasNavigationKey): Boolean;

@@ -188,6 +188,8 @@
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Sets.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Usage.pas"/>
         <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.History.pas"/>
+        <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Favorites.pas"/>
+        <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.Favorites.pas"/>
         <DCCReference Include="Source\UI\Atlas.UI.Strings.pas"/>
         <DCCReference Include="Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.XmlDoc.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Snippets.pas"/>
