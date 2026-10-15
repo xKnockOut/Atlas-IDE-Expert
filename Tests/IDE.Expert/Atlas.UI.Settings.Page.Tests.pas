@@ -54,6 +54,9 @@ type
     /// <summary>Die Einstellungen stehen auf Reitern je Bereich statt auf einer langen Seite (#227).</summary>
     [Test]
     procedure GroupsSettingsOnTabs;
+    /// <summary>„Wächter testen“ nur im Diagnosemodus (Code-Review S-07).</summary>
+    [Test]
+    procedure HangTestOnlyInDiagnosticMode;
   end;
 
 implementation
@@ -839,6 +842,29 @@ begin
     Assert.IsNotNull(Page.Symbol);
     Assert.AreEqual(TAtlasSymbol.HeaderSize, Page.Symbol.LogicalSize);
     Assert.AreEqual(TAtlasSymbol.PixelSize(TAtlasSymbol.HeaderSize, Page.Symbol.CurrentPPI), Page.Symbol.Width);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.HangTestOnlyInDiagnosticMode;
+var
+  Page: TAtlasSettingsPage;
+  Settings: TAtlasPluginSettings;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Settings.DiagnosticMode := False;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.IsFalse(Page.HangTestRow.Visible, 'ohne Diagnosemodus verborgen');
+    Page.DiagnosticMode.Checked := True;
+    Assert.IsTrue(Page.HangTestRow.Visible, 'sofort sichtbar, wenn der Diagnosemodus eingeschaltet wird');
+    Page.LoadFrom(Settings);
+    Assert.IsFalse(Page.HangTestRow.Visible, 'nach dem Laden ohne Diagnosemodus wieder verborgen');
+    Settings.DiagnosticMode := True;
+    Page.LoadFrom(Settings);
+    Assert.IsTrue(Page.HangTestRow.Visible, 'mit Diagnosemodus geladen');
   finally
     Page.Free;
   end;

@@ -457,13 +457,21 @@ begin
       if (Welcome <> nil) and (Welcome.WhatsNew <> nil) and TAtlasIdeSettings.Current.WelcomePage then
         Welcome.ShowWhatsNew(TAtlasWhatsNewView.All);
     end);
+  // Künstlicher Hänger für den Einfrier-Wächter (#501): nur im Diagnosemodus (#479, Code-Review S-07).
   Palette.RegisterCommand('Atlas.HangTest', TAtlasStrings.Text(TAtlasTextId.SettingsHangTest), '',
     procedure
     var
       Activity: IInterface;
     begin
+      // Auch über Verlauf oder Taste nicht außerhalb des Diagnosemodus.
+      if not TAtlasIdeSettings.Current.DiagnosticMode then
+        Exit;
       Activity := TAtlasActivity.Scope('Wächter-Test');
       Sleep(1000);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.DiagnosticMode;
     end);
 end;
 

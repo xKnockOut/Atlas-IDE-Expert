@@ -216,6 +216,7 @@ type
     FResetHistory: TButton;
     FResetWidths: TButton;
     FHangTest: TButton;
+    FHangTestRow: TWinControl;
     FWidths: TAtlasPluginSettings;
     FNextTop: Integer;
     FOnResetHistory: TProc;
@@ -238,6 +239,7 @@ type
     procedure UnblockTipsClick(Sender: TObject);
     procedure ResetWidthsClick(Sender: TObject);
     procedure HangTestClick(Sender: TObject);
+    procedure DiagnosticModeClick(Sender: TObject);
     procedure PairColorsClick(Sender: TObject);
     procedure FuseEnableSelectedClick(Sender: TObject);
     procedure FuseEnableAllClick(Sender: TObject);
@@ -285,6 +287,8 @@ type
     /// <summary>Zum Testen: Einstellungen des Statusfelds (#591).</summary>
     property StatusField: TCheckBox read FStatusField;
     property DiagnosticMode: TCheckBox read FDiagnosticMode;
+    /// <summary>Zeile mit „Wächter testen“; nur im Diagnosemodus sichtbar (Code-Review S-07).</summary>
+    property HangTestRow: TWinControl read FHangTestRow;
     property SetupChecklist: TCheckBox read FSetupChecklist;
     property ShortcutTips: TCheckBox read FShortcutTips;
     property ShortcutTipsScope: TAtlasChoiceBox read FShortcutTipsScope;
@@ -695,6 +699,10 @@ begin
   // Blockierschutz für Datenquellen (#493).
   FProviderTimeLimit := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsProviderTimeLimit));
   Panel := AddPanel(32);
+  // Künstlicher Hänger (#501) nur im Diagnosemodus (#479), nicht neben den regulären Einstellungen (S-07).
+  FHangTestRow := Panel;
+  FHangTestRow.Visible := False;
+  FDiagnosticMode.OnClick := DiagnosticModeClick;
   FHangTest := TButton.Create(Self);
   FHangTest.Parent := Panel;
   FHangTest.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsHangTest);
@@ -1273,6 +1281,8 @@ begin
   FProblemsList.Checked := ASettings.ProblemsList;
   FStatusField.Checked := ASettings.StatusField;
   FDiagnosticMode.Checked := ASettings.DiagnosticMode;
+  // Checked löst OnClick nur bei einer Änderung aus.
+  FHangTestRow.Visible := ASettings.DiagnosticMode;
   FSetupChecklist.Checked := ASettings.SetupChecklist;
   FShortcutTips.Checked := ASettings.ShortcutTips;
   FShortcutTipsScope.Choice := Ord(TAtlasShortcutTips.ScopeOf(ASettings.ShortcutTipsScope));
@@ -1614,6 +1624,11 @@ begin
   // Künstlicher Hänger für den Einfrier-Wächter (#501): erscheint im Protokoll mit dieser Aktion.
   Activity := TAtlasActivity.Scope('Wächter-Test');
   Sleep(1000);
+end;
+
+procedure TAtlasSettingsPage.DiagnosticModeClick(Sender: TObject);
+begin
+  FHangTestRow.Visible := FDiagnosticMode.Checked;
 end;
 
 procedure TAtlasSettingsPage.ResetWidthsClick(Sender: TObject);

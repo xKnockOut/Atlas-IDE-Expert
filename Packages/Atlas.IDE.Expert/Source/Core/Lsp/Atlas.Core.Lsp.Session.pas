@@ -22,7 +22,9 @@
 // als atlas/projectContext.
 // workspace/applyEdit (#397): Mit OnApplyEdit kündigt die Sitzung applyEdit
 // an; die Anfrage geht im Lese-Thread an OnApplyEdit, das später über AReply
-// antwortet ({applied, failureReason}).
+// antwortet ({applied, failureReason}). Antwortet der Empfänger nicht (Sitzung
+// beendet, Eintrag beim Entladen verworfen), gibt die Sitzung die Id frei
+// (Code-Review S-07); nur die erste Antwort zählt.
 // Ergebnisfenster (#400): Implementierungen, workspace/symbol sowie Typ- und
 // Aufrufhierarchie; der Aufrufer gleicht die Puffer vorher ab.
 // Bedienung im Editor (#399): Code-Aktionen, Befehle mit Argumenten,
@@ -322,6 +324,41 @@ begin
   TInterlocked.Increment(FCount);
 end;
 
+type
+  /// <summary>Id einer Serveranfrage, auf die später geantwortet wird (#397). Wer zuerst Take ruft, antwortet;
+  /// kommt keine Antwort, gibt der letzte Verweis die Id frei (Code-Review S-07).</summary>
+  ILspPendingId = interface
+    function Take: TJSONValue;
+  end;
+
+  TLspPendingId = class(TInterfacedObject, ILspPendingId)
+  private
+    FId: TJSONValue;
+  public
+    constructor Create(AId: TJSONValue);
+    destructor Destroy; override;
+    function Take: TJSONValue;
+  end;
+
+{ TLspPendingId }
+
+constructor TLspPendingId.Create(AId: TJSONValue);
+begin
+  inherited Create;
+  FId := AId;
+end;
+
+destructor TLspPendingId.Destroy;
+begin
+  FId.Free;
+  inherited Destroy;
+end;
+
+function TLspPendingId.Take: TJSONValue;
+begin
+  Result := TInterlocked.Exchange<TJSONValue>(FId, nil);
+end;
+
 { TLspSession }
 
 constructor TLspSession.Create(AClient: TLspClient; ATimeoutMs: Cardinal);
@@ -555,6 +592,7 @@ begin
       var
         Edit: TLspWorkspaceEdit;
         Value: TJSONValue;
+        Pending: ILspPendingId;
       begin
         Result := AMethod = 'workspace/applyEdit';
         if not Result then
@@ -563,17 +601,30 @@ begin
         if AParams is TJSONObject then
           Value := TJSONObject(AParams).GetValue('edit');
         Edit := TLspWorkspaceEdit.FromJson(Value);
-        ApplyEdit(Edit,
-          procedure(AApplied: Boolean; const AFailureReason: string)
-          var
-            Answer: TJSONObject;
-          begin
-            Answer := TJSONObject.Create;
-            Answer.AddPair('applied', TJSONBool.Create(AApplied));
-            if AFailureReason <> '' then
-              Answer.AddPair('failureReason', AFailureReason);
-            Client.Respond(AId, Answer);
-          end);
+        // Ab hier gehört AId der Sitzung; antwortet niemand, gibt Pending sie frei (S-07).
+        Pending := TLspPendingId.Create(AId);
+        try
+          ApplyEdit(Edit,
+            procedure(AApplied: Boolean; const AFailureReason: string)
+            var
+              Id: TJSONValue;
+              Answer: TJSONObject;
+            begin
+              // Nur die erste Antwort zählt.
+              Id := Pending.Take;
+              if Id = nil then
+                Exit;
+              Answer := TJSONObject.Create;
+              Answer.AddPair('applied', TJSONBool.Create(AApplied));
+              if AFailureReason <> '' then
+                Answer.AddPair('failureReason', AFailureReason);
+              Client.Respond(Id, Answer);
+            end);
+        except
+          // Nicht angenommen: Der Client antwortet mit null und gibt seine Id selbst frei.
+          Pending.Take;
+          raise;
+        end;
       end;
   // Ohne Arbeitsbereich leitet der Server ihn aus den geöffneten Dateien ab, ebenso für Dateien
   // außerhalb der gemeldeten Projekte.

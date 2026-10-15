@@ -21,6 +21,13 @@ type
     procedure ForwardsServerMessagesToHandler;
     [Test]
     procedure RoutesPartialResultsToRequest;
+    /// <summary>Obergrenzen der Rahmung (Code-Review D-10).</summary>
+    [Test]
+    procedure RejectsOversizedContentLength;
+    [Test]
+    procedure RejectsHeaderWithoutEnd;
+    [Test]
+    procedure AcceptsMessageAtHeaderLimit;
   end;
 
   [TestFixture]
@@ -57,6 +64,11 @@ type
     procedure SendsProjectContextsInInitializeAndOnChange;
     [Test]
     procedure AcceptsApplyEditAndRepliesLater;
+    /// <summary>Antwortet niemand, gibt die Sitzung die Id frei (Code-Review S-07).</summary>
+    [Test]
+    procedure FreesApplyEditIdWithoutReply;
+    [Test]
+    procedure RepliesToApplyEditOnlyOnce;
     [Test]
     procedure ReadsParameterInlayHints;
     [Test]
@@ -97,11 +109,15 @@ type
     procedure PullsDiagnosticsAgainstServer;
     [Test]
     procedure CompilerMessagesReachPulledDiagnostics;
+    /// <summary>Scheitert der Start, bleiben keine Handles offen (Code-Review S-07).</summary>
+    [Test]
+    procedure StartFailureLeavesNoHandles;
   end;
 
 implementation
 
 uses
+  Winapi.Windows,
   System.SysUtils,
   System.Classes,
   System.IOUtils,
@@ -126,6 +142,44 @@ begin
   Text := TEncoding.UTF8.GetString(ABytes);
   Result := TJSONObject.ParseJSONValue(Text.Substring(Text.IndexOf(#13#10#13#10) + 4)) as TJSONObject;
 end;
+
+/// <summary>Zahl der offenen Handles des Prozesses (eigene Deklaration, unabhängig von der Delphi-Version).</summary>
+function ProcessHandleCount(hProcess: THandle; var pdwHandleCount: DWORD): BOOL; stdcall;
+  external kernel32 name 'GetProcessHandleCount';
+
+/// <summary>Client, der Gesendetes in ASent sammelt; antwortet auf initialize.</summary>
+function ApplyEditClient(ASent: TList<string>): TLspClient;
+var
+  Client: TLspClient;
+begin
+  Client := nil;
+  Client := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    var
+      Message: TJSONObject;
+      Answer: TBytes;
+    begin
+      Message := Unframe(ABytes);
+      try
+        if Message.GetValue<string>('method', '') = 'initialize' then
+        begin
+          Answer := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
+            [Message.GetValue<Integer>('id')]));
+          Client.Receive(Answer, Length(Answer));
+        end
+        else if Message.GetValue('method') = nil then
+          ASent.Add(Message.ToJSON);
+      finally
+        Message.Free;
+      end;
+    end);
+  Result := Client;
+end;
+
+const
+  ApplyEditRequest = '{"jsonrpc":"2.0","id":7,"method":"workspace/applyEdit","params":{"edit":' +
+    '{"changes":{"file:///c%3A/p/a.pas":[{"range":{"start":{"line":0,"character":0},' +
+    '"end":{"line":0,"character":1}},"newText":"b"}]}}}}';
 
 { TLspClientTests }
 
@@ -985,6 +1039,179 @@ begin
   Assert.AreEqual('C:\G\B.dproj', Removed[0]);
   TLspSession.ProjectChanges(['C:\G\A.dproj'], ['C:\G\A.dproj'], Added, Removed);
   Assert.AreEqual<NativeInt>(0, Length(Added) + Length(Removed));
+end;
+
+procedure TLspSessionTests.FreesApplyEditIdWithoutReply;
+var
+  Client: TLspClient;
+  Session: TLspSession;
+  Sent: TList<string>;
+  Calls: Integer;
+  Incoming: TBytes;
+begin
+  Sent := TList<string>.Create;
+  Calls := 0;
+  Client := ApplyEditClient(Sent);
+  Session := TLspSession.Create(Client);
+  try
+    // Wie ein beim Entladen verworfener Eintrag: Die Antwort-Prozedur wird nie gerufen.
+    Session.OnApplyEdit :=
+      procedure(const AEdit: TLspWorkspaceEdit; const AReply: TLspApplyEditReply)
+      begin
+        Inc(Calls);
+      end;
+    Session.Initialize;
+    Incoming := TLspClient.Frame(ApplyEditRequest);
+    Client.Receive(Incoming, Length(Incoming));
+    Assert.AreEqual(1, Calls);
+    // Keine Antwort; die Id gibt die Sitzung frei (der Leak-Monitor prüft das).
+    Assert.AreEqual(0, Integer(Sent.Count));
+  finally
+    Session.OnApplyEdit := nil;
+    Session.Free;
+    Client.Free;
+    Sent.Free;
+  end;
+end;
+
+procedure TLspSessionTests.RepliesToApplyEditOnlyOnce;
+var
+  Client: TLspClient;
+  Session: TLspSession;
+  Sent: TList<string>;
+  Reply: TLspApplyEditReply;
+  Incoming: TBytes;
+begin
+  Sent := TList<string>.Create;
+  Client := ApplyEditClient(Sent);
+  Session := TLspSession.Create(Client);
+  try
+    Session.OnApplyEdit :=
+      procedure(const AEdit: TLspWorkspaceEdit; const AReply: TLspApplyEditReply)
+      begin
+        Reply := AReply;
+      end;
+    Session.Initialize;
+    Incoming := TLspClient.Frame(ApplyEditRequest);
+    Client.Receive(Incoming, Length(Incoming));
+    Reply(True, '');
+    Reply(True, '');
+    Assert.AreEqual(1, Integer(Sent.Count), 'genau eine Antwort');
+    Assert.AreEqual('{"jsonrpc":"2.0","id":7,"result":{"applied":true}}', Sent[0]);
+  finally
+    Reply := nil;
+    Session.OnApplyEdit := nil;
+    Session.Free;
+    Client.Free;
+    Sent.Free;
+  end;
+end;
+
+{ TLspServerProcessTests }
+
+procedure TLspServerProcessTests.StartFailureLeavesNoHandles;
+const
+  Missing = 'C:\nicht\vorhanden\AtlasServer.exe';
+var
+  Before, After: DWORD;
+  Index: Integer;
+begin
+  // Vorlauf außerhalb der Messung: einmalige Handles der RTL (Ausnahmen, Codepages) vorwegnehmen.
+  Assert.WillRaise(
+    procedure
+    begin
+      TLspServerProcess.Create(Missing, '').Free;
+    end, EOSError);
+  Before := 0;
+  After := 0;
+  Assert.IsTrue(ProcessHandleCount(GetCurrentProcess, Before));
+  for Index := 1 to 10 do
+    Assert.WillRaise(
+      procedure
+      begin
+        TLspServerProcess.Create(Missing, '').Free;
+      end, EOSError);
+  Assert.IsTrue(ProcessHandleCount(GetCurrentProcess, After));
+  // Je Lauf vier Pipe-Enden und NUL; ein Leck zeigte sich als Zuwachs um mindestens zehn.
+  Assert.IsTrue(Integer(After) - Integer(Before) < 5, Format('Handles vorher %d, nachher %d', [Before, After]));
+end;
+
+{ TLspClientTests (Obergrenzen) }
+
+procedure TLspClientTests.RejectsOversizedContentLength;
+var
+  Client: TLspClient;
+  Incoming: TBytes;
+begin
+  Client := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    begin
+    end);
+  try
+    Incoming := TEncoding.UTF8.GetBytes('Content-Length: 300000000'#13#10#13#10'{');
+    Assert.WillRaise(
+      procedure
+      begin
+        Client.Receive(Incoming, Length(Incoming));
+      end, ELspClientError);
+  finally
+    Client.Free;
+  end;
+end;
+
+procedure TLspClientTests.RejectsHeaderWithoutEnd;
+var
+  Client: TLspClient;
+  Incoming: TBytes;
+begin
+  Client := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    begin
+    end);
+  try
+    Incoming := TEncoding.UTF8.GetBytes(StringOfChar('x', 9000));
+    Assert.WillRaise(
+      procedure
+      begin
+        Client.Receive(Incoming, Length(Incoming));
+      end, ELspClientError);
+  finally
+    Client.Free;
+  end;
+end;
+
+procedure TLspClientTests.AcceptsMessageAtHeaderLimit;
+const
+  Body = '{"jsonrpc":"2.0","method":"window/logMessage","params":{"type":3}}';
+var
+  Client: TLspClient;
+  Seen: TList<string>;
+  Header: string;
+  Incoming: TBytes;
+begin
+  Seen := TList<string>.Create;
+  Client := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    begin
+    end);
+  try
+    Client.OnServerMessage :=
+      procedure(const AMethod: string; const AParams: TJSONValue)
+      begin
+        Seen.Add(AMethod);
+      end;
+    // Kopf knapp unter der Grenze: ein langes Füllfeld vor Content-Length.
+    Header := 'X-Fill: ' + StringOfChar('a', TLspClient.MaxHeaderLength - 40) + #13#10 +
+      'Content-Length: ' + IntToStr(Length(Body)) + #13#10#13#10;
+    Assert.IsTrue(Length(Header) - 4 <= TLspClient.MaxHeaderLength, 'Kopf innerhalb der Grenze');
+    Incoming := TEncoding.UTF8.GetBytes(Header + Body);
+    Client.Receive(Incoming, Length(Incoming));
+    Assert.AreEqual(1, Integer(Seen.Count));
+    Assert.AreEqual('window/logMessage', Seen[0]);
+  finally
+    Client.Free;
+    Seen.Free;
+  end;
 end;
 
 { TLspServerProcessTests }
