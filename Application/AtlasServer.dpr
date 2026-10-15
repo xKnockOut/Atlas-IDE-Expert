@@ -13,6 +13,17 @@ uses
   Shell.Linter in 'Source\Shell\Shell.Linter.pas',
   Shell.SlashHost in 'Source\Shell\Shell.SlashHost.pas',
   Shell.VcsChanges in 'Source\Shell\Shell.VcsChanges.pas',
+  Atlas.Core.Vcs.Contract in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Contract.pas',
+  Atlas.Core.Vcs.Internals.Text in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Internals.Text.pas',
+  Atlas.Core.Vcs.Internals.GitParser in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Internals.GitParser.pas',
+  Atlas.Core.Vcs.Internals.SvnParser in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Internals.SvnParser.pas',
+  Atlas.Core.Vcs.Tools in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Tools.pas',
+  Atlas.Core.Vcs.Providers.Git in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Providers.Git.pas',
+  Atlas.Core.Vcs.Providers.Svn in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Providers.Svn.pas',
+  Atlas.Core.Vcs.Providers.Null in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Providers.Null.pas',
+  Atlas.Core.Vcs.Detection in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Detection.pas',
+  Atlas.Core.Vcs.Composition in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Composition.pas',
+  Atlas.Core.Vcs.Adapters.ProcessRunner in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Adapters.ProcessRunner.pas',
   Shell.Mcp in 'Source\Shell\Shell.Mcp.pas',
   Shell.Diagnostics in 'Source\Shell\Shell.Diagnostics.pas';
 

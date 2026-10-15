@@ -2,8 +2,10 @@
 
 // Host-Rolle Shell: geänderte Dateien und Zeilen aus der Versionsverwaltung für
 // --changed und --diff. Startet git bzw. svn über ICompilerProcess und wertet
-// die Ausgabe mit TChangedFiles aus. TVcsChanges.Detect nimmt Git, wenn der
-// Ordner in einem Git-Repository liegt, sonst SVN.
+// die Ausgabe mit TChangedFiles aus. TVcsChanges.Detect wählt wie das Plugin
+// über die gemeinsame Schnittstelle der Versionsverwaltung (#571,
+// Atlas.Core.Vcs.*): die nächstliegende Arbeitskopie (.git oder .svn, bei
+// Gleichstand Git) nach vcs.provider (auto/git/svn/off).
 //
 // Git (#157):
 //   git rev-parse --show-toplevel              Wurzel des Repositorys
@@ -13,9 +15,10 @@
 //   git ls-files --others --exclude-standard   neue Dateien bei --include-uncommitted
 //   git diff -U0 <Ref> [HEAD]                  geänderte Zeilen
 //
-// SVN (#276): Änderungen liegen immer in der Arbeitskopie.
-//   svn info --show-item wc-root               Wurzel der Arbeitskopie
-//   svn status                                 --changed ohne Basis: gegenüber BASE
+// SVN (#276): Änderungen liegen immer in der Arbeitskopie. Wurzel, geänderte
+// und neue Dateien kommen aus derselben Umsetzung wie im Plugin
+// (TAtlasSvnVersionControl: svn status --xml); nur die Vergleiche mit einer
+// Revision laufen hier:
 //   svn diff --summarize -r <Rev>              --diff <Rev> bzw. --changed <Rev>
 //   svn diff [-r <Rev>]                        geänderte Zeilen
 // --include-uncommitted nimmt bei SVN die unversionierten Dateien ("?") dazu.
@@ -25,7 +28,8 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Compiler.Contract,
-  Atlas.Common.Rules.ChangedFiles;
+  Atlas.Common.Rules.ChangedFiles,
+  Atlas.Core.Vcs.Contract;
 
 type
   EVcsChanges = class(Exception);
@@ -45,8 +49,13 @@ type
     procedure AddWholeFile(const APath: string);
   public
     constructor Create(const AProcess: ICompilerProcess; const AWorkingDir: string);
-    /// <summary>Git oder SVN für AWorkingDir; Ausnahme, wenn keins von beiden passt.</summary>
-    class function Detect(const AProcess: ICompilerProcess; const AWorkingDir: string): TVcsChanges; static;
+    /// <summary>Git oder SVN für AWorkingDir nach vcs.provider (AProvider: auto, git, svn, off); Ausnahme,
+    /// wenn keins passt, die Versionsverwaltung abgeschaltet ist oder svn fehlt.</summary>
+    class function Detect(const AProcess: ICompilerProcess; const AWorkingDir, AProvider: string): TVcsChanges;
+      overload; static;
+    /// <summary>Wie oben mit vcs.provider = auto.</summary>
+    class function Detect(const AProcess: ICompilerProcess; const AWorkingDir: string): TVcsChanges; overload;
+      static;
     /// <summary>Programm aus PATH, z. B. git.exe; AName, wenn nicht gefunden.</summary>
     class function FindProgram(const AName: string): string; static;
     /// <summary>Ermittelt die Änderungen. ADefaultBase: --changed ohne eigene Basis.</summary>
@@ -70,8 +79,12 @@ type
 
   TSvnChanges = class(TVcsChanges)
   private
+    FVcs: IAtlasVersionControl;
     function Svn(const AArguments: TArray<string>): TArray<string>;
   public
+    /// <summary>AWorkingCopy: gefundene SVN-Arbeitskopie; ASvn: vollständiger Pfad von svn.</summary>
+    constructor Create(const AProcess: ICompilerProcess; const AWorkingDir: string;
+      const AWorkingCopy: TAtlasVcsWorkingCopy; const ASvn: string);
     procedure Load(const ARef: string; AMergeBase, ADefaultBase, AIncludeUncommitted, AWithLines: Boolean); override;
     function Name: string; override;
   end;
@@ -79,7 +92,12 @@ type
 implementation
 
 uses
-  System.IOUtils;
+  System.IOUtils,
+  Atlas.Core.Vcs.Tools,
+  Atlas.Core.Vcs.Detection,
+  Atlas.Core.Vcs.Composition,
+  Atlas.Core.Vcs.Internals.Text,
+  Atlas.Core.Vcs.Adapters.ProcessRunner;
 
 { TVcsChanges }
 
@@ -135,44 +153,40 @@ begin
   FLines := FLines + [Item];
 end;
 
-class function TVcsChanges.Detect(const AProcess: ICompilerProcess; const AWorkingDir: string): TVcsChanges;
+class function TVcsChanges.Detect(const AProcess: ICompilerProcess; const AWorkingDir, AProvider: string): TVcsChanges;
 var
-  Probe: TVcsChanges;
-  ExitCode: Integer;
+  Provider: TAtlasVcsProvider;
+  WorkingCopy: TAtlasVcsWorkingCopy;
+  SvnExe: string;
 begin
-  Probe := TGitChanges.Create(AProcess, AWorkingDir);
-  try
-    try
-      Probe.Run('git', ['rev-parse', '--is-inside-work-tree'], False, ExitCode);
-    except
-      // git nicht installiert
-      on ECompilerError do
-        ExitCode := -1;
-    end;
-    if ExitCode = 0 then
-      Exit(Probe);
-  except
-    Probe.Free;
-    raise;
+  Provider := AtlasVcsProviderOf(AProvider);
+  if Provider = TAtlasVcsProvider.Off then
+    raise EVcsChanges.Create('Versionsverwaltung abgeschaltet (vcs.provider = off)');
+  WorkingCopy := TAtlasVcsDetection.Find(AWorkingDir, Provider);
+  case WorkingCopy.Kind of
+    TAtlasVcsKind.Git:
+      Result := TGitChanges.Create(AProcess, AWorkingDir);
+    TAtlasVcsKind.Svn:
+      begin
+        SvnExe := TAtlasVcsTools.Find(TAtlasVcsKind.Svn);
+        if SvnExe = '' then
+          raise EVcsChanges.CreateFmt('%s liegt in einer SVN-Arbeitskopie, aber svn ist nicht installiert ' +
+            '(TortoiseSVN mit Kommandozeilenwerkzeugen genügt)', [AWorkingDir]);
+        Result := TSvnChanges.Create(AProcess, AWorkingDir, WorkingCopy, SvnExe);
+      end;
+  else
+    if Provider = TAtlasVcsProvider.Auto then
+      raise EVcsChanges.CreateFmt('%s liegt weder in einem Git-Repository noch in einer SVN-Arbeitskopie',
+        [AWorkingDir])
+    else
+      raise EVcsChanges.CreateFmt('%s liegt in keiner Arbeitskopie für vcs.provider = %s',
+        [AWorkingDir, AtlasVcsProviderText(Provider)]);
   end;
-  Probe.Free;
-  Probe := TSvnChanges.Create(AProcess, AWorkingDir);
-  try
-    try
-      Probe.Run('svn', ['info', '--show-item', 'wc-root'], False, ExitCode);
-    except
-      on ECompilerError do
-        ExitCode := -1;
-    end;
-    if ExitCode = 0 then
-      Exit(Probe);
-  except
-    Probe.Free;
-    raise;
-  end;
-  Probe.Free;
-  raise EVcsChanges.CreateFmt('%s liegt weder in einem Git-Repository noch in einer SVN-Arbeitskopie',
-    [AWorkingDir]);
+end;
+
+class function TVcsChanges.Detect(const AProcess: ICompilerProcess; const AWorkingDir: string): TVcsChanges;
+begin
+  Result := Detect(AProcess, AWorkingDir, 'auto');
 end;
 
 { TGitChanges }
@@ -227,6 +241,17 @@ end;
 
 { TSvnChanges }
 
+constructor TSvnChanges.Create(const AProcess: ICompilerProcess; const AWorkingDir: string;
+  const AWorkingCopy: TAtlasVcsWorkingCopy; const ASvn: string);
+var
+  Runner: IAtlasVcsRunner;
+begin
+  inherited Create(AProcess, AWorkingDir);
+  // Kommandozeile: kein Fenster, der Hauptthread darf warten.
+  Runner := TAtlasVcsProcessRunner.Create(True, nil);
+  FVcs := TAtlasVersionControl.ForWorkingCopy(AWorkingCopy, Runner, ASvn, TAtlasVcsCommand.DefaultTimeoutMs * 4);
+end;
+
 function TSvnChanges.Name: string;
 begin
   Result := 'SVN';
@@ -241,23 +266,34 @@ end;
 
 procedure TSvnChanges.Load(const ARef: string; AMergeBase, ADefaultBase, AIncludeUncommitted, AWithLines: Boolean);
 var
-  Output, Range: TArray<string>;
-  Path, Line: string;
+  Range: TArray<string>;
+  Changes: TArray<TAtlasVcsChange>;
+  Change: TAtlasVcsChange;
+  Path, Relative: string;
+  Outcome: TAtlasVcsOutcome;
 begin
-  Output := Svn(['info', '--show-item', 'wc-root']);
-  if Length(Output) = 0 then
-    raise EVcsChanges.Create('Keine SVN-Arbeitskopie');
-  FRepoRoot := ExcludeTrailingPathDelimiter(StringReplace(Trim(Output[0]), '/', PathDelim, [rfReplaceAll]));
+  FRepoRoot := FVcs.WorkingCopy.Root;
   // Pfade relativ zur Wurzel: svn läuft dort.
   FWorkingDir := FRepoRoot;
   FFiles := nil;
   FLines := nil;
+  Changes := nil;
+  if ADefaultBase or AIncludeUncommitted then
+  begin
+    Outcome := FVcs.Changes(Changes);
+    if Outcome <> TAtlasVcsOutcome.Ok then
+      raise EVcsChanges.CreateFmt('svn status ist fehlgeschlagen (%s)',
+        [AtlasVcsOutcomeName(Outcome)]);
+  end;
   // SVN kennt keine Merge-Base: --changed ohne eigene Basis vergleicht mit BASE.
   if ADefaultBase then
   begin
     Range := nil;
-    for Path in TChangedFiles.ParseSvnStatus(Svn(['status']), False) do
-      FFiles := FFiles + [TChangedFiles.FullPath(FRepoRoot, Path)];
+    // Wie bisher A, M und R; gelöschte und fehlende Dateien gibt es nicht zu prüfen.
+    for Change in Changes do
+      if (Change.Kind = TAtlasVcsChangeKind.Modified) or (Change.Kind = TAtlasVcsChangeKind.Added) or
+        (Change.Kind = TAtlasVcsChangeKind.Replaced) then
+        FFiles := FFiles + [Change.Path];
   end
   else
   begin
@@ -268,9 +304,9 @@ begin
   if AWithLines then
     FLines := TChangedFiles.ParseSvnDiff(Svn(['diff', '--internal-diff'] + Range));
   if AIncludeUncommitted then
-    for Line in Svn(['status']) do
-      if (Length(Line) > 8) and (Line[1] = '?') then
-        AddWholeFile(Trim(Copy(Line, 9, MaxInt)));
+    for Change in Changes do
+      if (Change.Kind = TAtlasVcsChangeKind.Untracked) and VcsRelativePath(FRepoRoot, Change.Path, Relative) then
+        AddWholeFile(Relative);
 end;
 
 end.

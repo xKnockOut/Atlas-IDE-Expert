@@ -238,6 +238,20 @@ contains
   Atlas.IDE.Welcome.Window in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Window.pas',
   Atlas.IDE.Welcome.Search in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Search.pas',
   Atlas.IDE.Welcome.WhatsNew in 'Source\IDE\Welcome\Atlas.IDE.Welcome.WhatsNew.pas',
-  Atlas.IDE.Welcome.Commands in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Commands.pas';
+  Atlas.IDE.Welcome.Commands in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Commands.pas',
+  Atlas.Core.Vcs.Contract in 'Source\Core\Vcs\Atlas.Core.Vcs.Contract.pas',
+  Atlas.Core.Vcs.Internals.Text in 'Source\Core\Vcs\Atlas.Core.Vcs.Internals.Text.pas',
+  Atlas.Core.Vcs.Internals.GitParser in 'Source\Core\Vcs\Atlas.Core.Vcs.Internals.GitParser.pas',
+  Atlas.Core.Vcs.Internals.SvnParser in 'Source\Core\Vcs\Atlas.Core.Vcs.Internals.SvnParser.pas',
+  Atlas.Core.Vcs.Tools in 'Source\Core\Vcs\Atlas.Core.Vcs.Tools.pas',
+  Atlas.Core.Vcs.Providers.Git in 'Source\Core\Vcs\Atlas.Core.Vcs.Providers.Git.pas',
+  Atlas.Core.Vcs.Providers.Svn in 'Source\Core\Vcs\Atlas.Core.Vcs.Providers.Svn.pas',
+  Atlas.Core.Vcs.Providers.Null in 'Source\Core\Vcs\Atlas.Core.Vcs.Providers.Null.pas',
+  Atlas.Core.Vcs.Detection in 'Source\Core\Vcs\Atlas.Core.Vcs.Detection.pas',
+  Atlas.Core.Vcs.Composition in 'Source\Core\Vcs\Atlas.Core.Vcs.Composition.pas',
+  Atlas.Core.Vcs.Switches in 'Source\Core\Vcs\Atlas.Core.Vcs.Switches.pas',
+  Atlas.Core.Vcs.Worker in 'Source\Core\Vcs\Atlas.Core.Vcs.Worker.pas',
+  Atlas.Core.Vcs.Adapters.ProcessRunner in 'Source\Core\Vcs\Atlas.Core.Vcs.Adapters.ProcessRunner.pas',
+  Atlas.IDE.Vcs.Service in 'Source\IDE\Vcs\Atlas.IDE.Vcs.Service.pas';
 
 end.

@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..889] of string = (
+  Lines: array[0..911] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -318,6 +318,28 @@ const
     '      "x-page": "Compiler",',
     '      "x-control": "Kontrollkästchen",',
     '      "x-issue": "#40"',
+    '    },',
+    '    "vcs": {',
+    '      "type": "object",',
+    '      "description": "Versionsverwaltung (Git, SVN) für geänderte Dateien, Branch und Revision.",',
+    '      "additionalProperties": false,',
+    '      "properties": {',
+    '        "provider": {',
+    '          "type": "string",',
+    '          "enum": [',
+    '            "auto",',
+    '            "git",',
+    '            "svn",',
+    '            "off"',
+    '          ],',
+    '          "default": "auto",',
+    '          "description": "auto: nach gefundener Arbeitskopie (.git oder .svn, die nächstliegende gilt, bei Gleichstand Git). git bzw. svn: nur diese Art. off: ohne Versionsverwaltung. Git und SVN über' + ' die Kommandozeile (git bzw. svn, TortoiseSVN mit Kommandozeilenwerkzeugen genügt); fehlt das Programm, meldet Atlas das einmal und arbeitet ohne Versionsangaben weiter."',
+    '        }',
+    '      },',
+    '      "x-scope": "global",',
+    '      "x-page": "Allgemein",',
+    '      "x-control": "Auswahl",',
+    '      "x-issue": "#571"',
     '    },',
     '    "completion": {',
     '      "type": "object",',

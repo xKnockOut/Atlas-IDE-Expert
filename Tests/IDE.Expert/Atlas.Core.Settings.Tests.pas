@@ -529,6 +529,16 @@ begin
     Paths := Paths + Field.Path + '|';
   Assert.Contains(Paths, '|language|');
   Assert.Contains(Paths, '|completion.matching|');
+  // Versionsverwaltung (#571): im Dialog der globalen Einstellungen, Seite Allgemein, als Auswahl.
+  Assert.Contains(Paths, '|vcs.provider|');
+  for Field in Global do
+    if Field.Path = 'vcs.provider' then
+    begin
+      Assert.AreEqual('Allgemein', Field.Page);
+      Assert.AreEqual('"auto"', Field.DefaultJson);
+      Assert.AreEqual(4, Integer(Length(Field.Choices)));
+      Assert.AreEqual('"off"', Field.Choices[3]);
+    end;
   // Auf den Reitern der Optionsseite bzw. von der IDE gesetzt: nicht noch einmal im Dialog.
   Assert.DoesNotContain(Paths, '|index.projectGroup|');
   Assert.DoesNotContain(Paths, '|hints.xmlDocFull|');

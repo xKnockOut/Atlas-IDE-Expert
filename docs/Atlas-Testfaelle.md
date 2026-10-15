@@ -660,3 +660,18 @@ Vorbereitung: Paket mit `whatsnew.json` (Release oder `pwsh Tools/Update-WhatsNe
 | SY5 | SY3/SY4 bei 100, 150 und 200 % Skalierung (Monitor wechseln) | Symbol scharf und in passender Größe |
 | SY6 | *Tools › Optionen › Benutzeroberfläche › IDE-Stil* zwischen hell und dunkel wechseln | Menü, Statusfeld, Optionsseite und Ergebnisfenster wechseln ohne Neustart die Variante |
 | SY7 | Explorer: `AtlasServer.exe` und `AtlasSetup.exe`; „Apps und Features“ nach der Installation | Symbol bei beiden Dateien und beim Eintrag „Atlas“ |
+
+## Versionsverwaltung (#571)
+
+Vorbereitung: Git für Windows und TortoiseSVN mit Kommandozeilenwerkzeugen (`svn.exe`, `svnadmin.exe`) installiert. Die Schnittstelle hat noch keine sichtbaren Nutzer in der IDE (folgen mit #592, #762, #755, #764, #765); geprüft wird über die Tests, den Einstellungsdialog und die Kommandozeile.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VC1 | `Atlas.Tests` (Win32 und Win64) bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasVcsTests` und `TAtlasVcsIntegrationTests` grün; kein Konsolenfenster blitzt auf, während die Git- und SVN-Fixtures angelegt werden |
+| VC2 | VC1 mit `svn.exe` aus PATH und TortoiseSVN-Ordner entfernt (umbenennen) | SVN-Test „übersprungen“ (svn nicht installiert), alle übrigen grün |
+| VC3 | Plugin (Win32 und Win64) bauen, IDE starten und wieder schließen | 0/0/0; keine Meldung zur Versionsverwaltung; Protokoll ohne Fehler, Entladen weiterhin unter einer Sekunde |
+| VC4 | *Atlas › Globale Einstellungen*, Seite *Allgemein* | Feld `vcs.provider` als Auswahl `auto`, `git`, `svn`, `off`, Vorgabe `auto`; „svn“ speichern schreibt `"vcs": {"provider": "svn"}` in `%APPDATA%\Atlas\settings.json` |
+| VC5 | SVN-Arbeitskopie: `AtlasServer --check <Ordner> --changed`, eine Datei ändern, eine neue anlegen; dann mit `--include-uncommitted` | wie bisher: „SVN: n von m Dateien geändert“, die geänderte Datei geprüft; mit `--include-uncommitted` auch die neue |
+| VC6 | VC5 mit `"vcs": {"provider": "off"}` bzw. `"git"` in settings.json | Meldung „Versionsverwaltung abgeschaltet (vcs.provider = off)“ bzw. „… liegt in keiner Arbeitskopie für vcs.provider = git“, Exit-Code 3 |
+| VC7 | SVN-Arbeitskopie innerhalb eines Git-Repositorys (z. B. Fremdcode unter `lib`): `--changed` im SVN-Ordner | SVN wird verwendet (nächstliegende Arbeitskopie), nicht mehr Git |
+| VC8 | VC5 mit `svn.exe` aus PATH entfernt | Meldung „… liegt in einer SVN-Arbeitskopie, aber svn ist nicht installiert …“ statt eines Absturzes |
