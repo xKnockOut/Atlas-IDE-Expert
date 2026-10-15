@@ -32,6 +32,8 @@ type
     [Test]
     procedure UndoSettingsRoundTrip;
     [Test]
+    procedure MethodToggleRoundTrip;
+    [Test]
     procedure WelcomeSettingsRoundTrip;
     [Test]
     procedure UsageButtonsCallBack;
@@ -76,9 +78,9 @@ uses
   Vcl.Graphics,
   Vcl.ImageCollection,
   System.JSON,
+  Vcl.Menus,
   Vcl.Forms,
   Vcl.ComCtrls,
-  Vcl.Menus,
   Atlas.UI.Strings;
 
 procedure TAtlasSettingsPageTests.WarmUp;
@@ -288,18 +290,24 @@ begin
   Settings := TAtlasPluginSettings.Defaults;
   Settings.StatusField := False;
   Settings.StatusFieldSummary := False;
+  Settings.StatusFieldToggles := 'rightClick';
+  Settings.IndexProgressPlace := 'off';
   Settings.StatusFieldHidden := 'atlas.file';
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
     Assert.IsFalse(Page.StatusField.Checked);
     Assert.IsFalse(Page.StatusSummary.Checked);
+    Assert.AreEqual(1, Page.StatusToggles.Choice, 'nur Rechtsklick');
+    Assert.AreEqual(2, Page.IndexProgress.Choice, 'Fortschritt aus');
     Assert.AreEqual('atlas.file', Page.StatusHidden.Text);
     Assert.IsFalse(Page.DiagnosticMode.Checked, 'Diagnosemodus standardmäßig aus');
     Assert.IsTrue(Page.SetupChecklist.Checked, 'Prüfliste beim Start standardmäßig an (#625)');
     Page.DiagnosticMode.Checked := True;
     Page.SetupChecklist.Checked := False;
     Page.StatusField.Checked := True;
+    Page.StatusToggles.Choice := 2;
+    Page.IndexProgress.Choice := 1;
     Page.StatusHidden.Text := ' atlas.file, atlas.index ';
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
@@ -307,6 +315,8 @@ begin
     Assert.IsTrue(Saved.DiagnosticMode);
     Assert.IsFalse(Saved.SetupChecklist);
     Assert.IsFalse(Saved.StatusFieldSummary);
+    Assert.AreEqual('doubleClick', Saved.StatusFieldToggles);
+    Assert.AreEqual('menu', Saved.IndexProgressPlace);
     Assert.AreEqual('atlas.file, atlas.index', Saved.StatusFieldHidden);
   finally
     Page.Free;
@@ -549,6 +559,32 @@ begin
     Assert.AreEqual('delete', Saved.UndoMultiFileNewFiles);
     Assert.AreEqual(Settings.UndoKey, Saved.UndoKey);
     Assert.AreEqual(Settings.RedoKey, Saved.RedoKey);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.MethodToggleRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  // #775: Schalter und beide Tasten; leeres Feld = keine Taste.
+  Settings := TAtlasPluginSettings.Defaults;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.IsTrue(Page.MethodToggle.Checked);
+    Assert.AreEqual(ShortCutToText(TShortCut($6026)), Page.MethodToggleUpKey.Text);
+    Assert.AreEqual(ShortCutToText(TShortCut($6028)), Page.MethodToggleDownKey.Text);
+    Page.MethodToggle.Checked := False;
+    Page.MethodToggleUpKey.Text := '';
+    Page.MethodToggleDownKey.Text := ShortCutToText(TShortCut($C044));
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.MethodToggle);
+    Assert.AreEqual(0, Saved.MethodToggleUpKey);
+    Assert.AreEqual($C044, Saved.MethodToggleDownKey);
   finally
     Page.Free;
   end;

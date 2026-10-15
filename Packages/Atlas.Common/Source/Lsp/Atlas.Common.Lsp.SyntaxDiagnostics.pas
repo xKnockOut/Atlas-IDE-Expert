@@ -62,6 +62,8 @@ type
     FormText: string;
     /// <summary>Dateien neben der Unit, z. B. .dcr (#114); nil = keine.</summary>
     ReadFile: TRuleFileReader;
+    /// <summary>Abbruch zwischen den Prüfregeln; nil = nie. Setzt Compute.</summary>
+    Cancelled: TRuleCancelled;
   end;
 
   /// <summary>Regeln und Einstellungen für AUri; False = keine Regeln prüfen. Hintergrund-Thread.</summary>
@@ -149,7 +151,10 @@ type
       AHasLineText: Boolean): TJSONObject; static;
     /// <summary>Parameter für publishDiagnostics zu ADocument (Pascal oder Formular) mit Regeln
     /// und Compilermeldungen. Threadsicher; der Aufrufer übernimmt das Objekt.</summary>
-    function Compute(const ADocument: ITextDocument): TJSONObject;
+    function Compute(const ADocument: ITextDocument): TJSONObject; overload;
+    /// <summary>Wie Compute; fragt ACancelled vor jeder Prüfregel und bricht dann mit
+    /// ERuleCheckCancelled ab (Diagnoselog 15.10.2026).</summary>
+    function Compute(const ADocument: ITextDocument; const ACancelled: TRuleCancelled): TJSONObject; overload;
     /// <summary>Prüft alle geöffneten Dokumente neu, z. B. nach geänderten Symbolen.</summary>
     procedure Refresh;
     /// <summary>Wie Refresh, aber gebündelt: Mehrere Aufrufe innerhalb von RefreshDelayMs
@@ -570,6 +575,11 @@ begin
 end;
 
 function TLspSyntaxDiagnostics.Compute(const ADocument: ITextDocument): TJSONObject;
+begin
+  Result := Compute(ADocument, nil);
+end;
+
+function TLspSyntaxDiagnostics.Compute(const ADocument: ITextDocument; const ACancelled: TRuleCancelled): TJSONObject;
 var
   Defines: TArray<string>;
   Inactive: TArray<TLspInactiveRegion>;
@@ -606,6 +616,7 @@ begin
       TIncludeFiles.Resolver(CurrentIncludePaths(ADocument.Uri)), Issues);
   if not CurrentRules(ADocument.Uri, Rules) then
     Rules := Default(TRuleCheckContext);
+  Rules.Cancelled := ACancelled;
   CurrentTarget(ADocument.Uri, Platform, Config);
   Result := BuildParams(ADocument, Inactive, CurrentVersion(ADocument.Uri), Rules, Platform, Config);
   Items := Result.GetValue('diagnostics') as TJSONArray;
@@ -630,7 +641,17 @@ procedure TLspSyntaxDiagnostics.Publish(const ADocument: ITextDocument);
 var
   Params: TJSONObject;
 begin
-  Params := Compute(ADocument);
+  // Überholte Stände nicht zu Ende prüfen: Der neuere meldet selbst.
+  try
+    Params := Compute(ADocument,
+      function: Boolean
+      begin
+        Result := not IsCurrent(ADocument);
+      end);
+  except
+    on ERuleCheckCancelled do
+      Exit;
+  end;
   TMonitor.Enter(FSendLock);
   try
     // Inzwischen geändert oder geschlossen: Der neuere Stand meldet selbst.
@@ -762,6 +783,7 @@ begin
     Context.Namespaces := ARules.Namespaces;
     Context.FormText := ARules.FormText;
     Context.ReadFile := ARules.ReadFile;
+    Context.Cancelled := ARules.Cancelled;
     RuleFindings := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
     if ARules.Baseline <> nil then
       RuleFindings := ARules.Baseline.Filter(ARules.RelativePath, ADocument.Text, RuleFindings);

@@ -31,6 +31,9 @@ type
     /// Datenmodulen Application.CreateForm vor Application.Run. False ohne uses.</summary>
     class function ProgramEdits(const AText, AUnitName, AFileName, AClassName: string; AKind: TFormKind;
       out AEdits: TArray<TRuleEdit>): Boolean; static;
+    /// <summary>Edit für die .dpr: "AUnitName in 'AFileName'" am Ende des uses, ohne Formular (#274).
+    /// False ohne uses oder wenn die Unit dort schon steht.</summary>
+    class function UnitProgramEdit(const AText, AUnitName, AFileName: string; out AEdit: TRuleEdit): Boolean; static;
     /// <summary>Edit für die .dproj: DCCReference mit Form und gegebenenfalls DesignClass hinter
     /// dem letzten DCCReference. False ohne DCCReference.</summary>
     class function ProjectEdit(const AText, AFileName, AClassName: string; AKind: TFormKind;
@@ -201,6 +204,54 @@ begin
           StringOfChar(' ', Tokens[Index].StartPos.Character)]))];
         Break;
       end;
+  Result := True;
+end;
+
+class function TUnitTemplates.UnitProgramEdit(const AText, AUnitName, AFileName: string;
+  out AEdit: TRuleEdit): Boolean;
+var
+  Tokens: TArray<TPascalToken>;
+  Index, Next, Semicolon: Integer;
+  Name, LB: string;
+  InName: Boolean;
+begin
+  AEdit := Default(TRuleEdit);
+  LB := LineBreakOf(AText);
+  Tokens := TPascalLexer.Tokenize(AText);
+  Semicolon := -1;
+  for Index := 0 to High(Tokens) do
+    if Tokens[Index].IsKeyword('uses') then
+    begin
+      // Namen bis "in", "," oder ";" zusammensetzen; Pfade und Kommentare zählen nicht.
+      Name := '';
+      InName := True;
+      for Next := Index + 1 to High(Tokens) do
+      begin
+        if Tokens[Next].IsSymbol(';') or Tokens[Next].IsSymbol(',') then
+        begin
+          if SameText(Name, AUnitName) then
+            Exit(False);
+          Name := '';
+          InName := True;
+          if Tokens[Next].IsSymbol(';') then
+          begin
+            Semicolon := Next;
+            Break;
+          end;
+        end
+        else if Tokens[Next].IsKeyword('in') then
+          InName := False
+        else if InName and (Tokens[Next].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
+          Name := Name + Tokens[Next].Text
+        else if InName and Tokens[Next].IsSymbol('.') then
+          Name := Name + '.';
+      end;
+      Break;
+    end;
+  if Semicolon < 0 then
+    Exit(False);
+  AEdit := TRuleEdit.Create(TTextRange.Create(Tokens[Semicolon].StartPos, Tokens[Semicolon].StartPos),
+    Format(',%s  %s in %s', [LB, AUnitName, QuotedStr(AFileName)]));
   Result := True;
 end;
 

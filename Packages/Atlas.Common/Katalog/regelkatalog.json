@@ -500,7 +500,7 @@
       "name": "Assignment to itself",
       "category": "bug",
       "severity": "warning",
-      "description": "A variable, field or property is assigned to itself. Usually a different value was meant, for example a parameter or another field.",
+      "description": "A variable, field or property is assigned to itself. Usually a different value was meant, for example a parameter or another field. If a parameter or local variable hides a field of the same name (Name := Name), Atlas offers Self.Name := Name as the fix.",
       "bad": "FName := FName;",
       "good": "FName := AName;"
     },

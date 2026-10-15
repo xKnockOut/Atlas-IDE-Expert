@@ -108,6 +108,7 @@ type
     FInactiveDim: TCheckBox;
     FOpenForEdits: TCheckBox;
     FInlayHints: TCheckBox;
+    FCodeLensTestUnit: TCheckBox;
     FPairGuides: TCheckBox;
     FPairOwners: TCheckBox;
     FPairGuideWidth: TEdit;
@@ -123,6 +124,8 @@ type
     FShortcutTips: TCheckBox;
     FShortcutTipsScope: TAtlasChoiceBox;
     FStatusSummary: TCheckBox;
+    FStatusToggles: TAtlasChoiceBox;
+    FIndexProgress: TAtlasChoiceBox;
     FStatusHidden: TEdit;
     FIndexGroup: TCheckBox;
     FIndexSearch: TCheckBox;
@@ -145,6 +148,10 @@ type
     FShrinkKey: TEdit;
     FImplementationKey: TEdit;
     FTypeDefinitionKey: TEdit;
+    FMethodToggle: TCheckBox;
+    FMethodToggleUpKey: TEdit;
+    FMethodToggleDownKey: TEdit;
+    FTestUnitKey: TEdit;
     FUndoKey: TEdit;
     FRedoKey: TEdit;
     FEditorKeysPriority: TCheckBox;
@@ -164,6 +171,22 @@ type
     FUndoNewFiles: TAtlasChoiceBox;
     FUpdatesCheck: TCheckBox;
     FBugReportAnonymize: TCheckBox;
+    // Units suchen (#777).
+    FUnitSearchEnabled: TCheckBox;
+    FUnitSearchReplace: TCheckBox;
+    FUnitSearchPathStyle: TAtlasChoiceBox;
+    FUnitSearchGroupBy: TAtlasChoiceBox;
+    FUnitSearchRememberCollapsed: TCheckBox;
+    FUnitSearchFilters: TCheckBox;
+    FUnitSearchDefaultScope: TAtlasChoiceBox;
+    FUnitSearchFilterSyntax: TCheckBox;
+    FUnitSearchPreview: TCheckBox;
+    FUnitSearchPreviewForm: TCheckBox;
+    FUnitSearchPreviewUsedBy: TCheckBox;
+    FUnitSearchMultiSelect: TCheckBox;
+    FUnitSearchActions: TCheckBox;
+    FUnitSearchAddUses: TCheckBox;
+    FUnitSearchKey: TEdit;
     FWelcomeEnabled: TCheckBox;
     FWelcomeHost: TAtlasChoiceBox;
     FWelcomeLayout: TCheckBox;
@@ -229,6 +252,7 @@ type
     procedure AddIndexSection;
     procedure AddSafeSection;
     procedure AddUndoSection;
+    procedure AddUnitSearchSection;
     procedure AddWelcomeSection;
     procedure AddUpdatesSection;
     procedure AddBugReportSection;
@@ -272,6 +296,8 @@ type
     property ShortcutTips: TCheckBox read FShortcutTips;
     property ShortcutTipsScope: TAtlasChoiceBox read FShortcutTipsScope;
     property StatusSummary: TCheckBox read FStatusSummary;
+    property StatusToggles: TAtlasChoiceBox read FStatusToggles;
+    property IndexProgress: TAtlasChoiceBox read FIndexProgress;
     property StatusHidden: TEdit read FStatusHidden;
     /// <summary>Zum Testen: abgesicherter Start (#722).</summary>
     property SafeAsk: TCheckBox read FSafeAsk;
@@ -287,6 +313,10 @@ type
     property UndoOnConflict: TAtlasChoiceBox read FUndoOnConflict;
     property UndoNewFiles: TAtlasChoiceBox read FUndoNewFiles;
     property UndoKey: TEdit read FUndoKey;
+    /// <summary>Zum Testen: Deklaration/Implementierung wechseln (#775).</summary>
+    property MethodToggle: TCheckBox read FMethodToggle;
+    property MethodToggleUpKey: TEdit read FMethodToggleUpKey;
+    property MethodToggleDownKey: TEdit read FMethodToggleDownKey;
     property RedoKey: TEdit read FRedoKey;
     property UpdatesCheck: TCheckBox read FUpdatesCheck;
     property BugReportAnonymize: TCheckBox read FBugReportAnonymize;
@@ -423,6 +453,22 @@ const
   // Linke Kante der Eingabefelder; Platz für die längste Beschriftung („Breite der Blocklinien …“).
   FieldLeft = 280;
 
+const
+  // Reihenfolge der Auswahllisten von „Units suchen“ (#777) wie die Werte der Einstellungen.
+  UnitSearchPathStyles: array[0..2] of string = ('relative', 'compact', 'absolute');
+  UnitSearchGroupings: array[0..2] of string = ('project', 'folder', 'none');
+  UnitSearchScopes: array[0..3] of string = ('group', 'project', 'searchPath', 'library');
+
+function ChoiceOf(const AValue: string; const AValues: array of string): Integer;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(AValues) do
+    if SameText(AValues[Index], AValue) then
+      Exit(Index);
+  Result := 0;
+end;
+
 { TAtlasSettingsPage }
 
 constructor TAtlasSettingsPage.Create(AOwner: TComponent);
@@ -507,6 +553,14 @@ begin
   // Atlas-Statusfeld (#591).
   FStatusField := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStatusField));
   FStatusSummary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStatusSummary));
+  FStatusToggles := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsStatusToggles),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsStatusTogglesBoth),
+    TAtlasStrings.Text(TAtlasTextId.SettingsStatusTogglesRight),
+    TAtlasStrings.Text(TAtlasTextId.SettingsStatusTogglesDouble)]);
+  FIndexProgress := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsIndexProgress),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsIndexProgressField),
+    TAtlasStrings.Text(TAtlasTextId.SettingsIndexProgressMenu),
+    TAtlasStrings.Text(TAtlasTextId.SettingsIndexProgressOff)]);
   FStatusHidden := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStatusHidden));
   FStatusHidden.NumbersOnly := False;
   FStatusHidden.Width := 180;
@@ -587,6 +641,7 @@ begin
   FPairColors.OnClick := PairColorsClick;
   FInactiveDim := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim));
   FInlayHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayHints));
+  FCodeLensTestUnit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTestUnit));
 
   // Eigene Paarfarben und deren Reihenfolge je Thema.
   AddSheet(TAtlasTextId.SettingsTabColors);
@@ -634,6 +689,11 @@ begin
   FShrinkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorShrink));
   FImplementationKey := AddKey(TAtlasStrings.Text(TAtlasTextId.MenuImplementations));
   FTypeDefinitionKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTypeDefinition));
+  // Deklaration ⇄ Implementierung (#775); aus: Klassennavigation der IDE.
+  FMethodToggle := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggle));
+  FMethodToggleUpKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggleUp));
+  FMethodToggleDownKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggleDown));
+  FTestUnitKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTestUnit));
   FUndoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.UndoMenu));
   FRedoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.RedoMenu));
   FEditorKeysPriority := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorKeysPriority));
@@ -663,6 +723,9 @@ begin
 
   AddSheet(TAtlasTextId.SettingsTabUndo);
   AddUndoSection;
+
+  AddSheet(TAtlasTextId.SettingsTabUnitSearch);
+  AddUnitSearchSection;
 
   AddSheet(TAtlasTextId.SettingsTabWelcome);
   AddWelcomeSection;
@@ -990,6 +1053,33 @@ begin
   FSafeHistory := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSafeHistory));
 end;
 
+procedure TAtlasSettingsPage.AddUnitSearchSection;
+begin
+  FUnitSearchEnabled := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchEnabled));
+  FUnitSearchReplace := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchReplace));
+  FUnitSearchKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchKey));
+  FUnitSearchPathStyle := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPathStyle),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPathRelative),
+    TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPathCompact),
+    TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPathAbsolute)]);
+  FUnitSearchGroupBy := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchGroupBy),
+    [TAtlasStrings.Text(TAtlasTextId.UnitSearchGroupProject), TAtlasStrings.Text(TAtlasTextId.UnitSearchGroupFolder),
+    TAtlasStrings.Text(TAtlasTextId.UnitSearchGroupNone)]);
+  FUnitSearchRememberCollapsed := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchRememberCollapsed));
+  FUnitSearchFilters := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchFilters));
+  FUnitSearchDefaultScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchDefaultScope),
+    [TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginGroup), TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginActive),
+    TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginSearchPath),
+    TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginLibrary)]);
+  FUnitSearchFilterSyntax := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchFilterSyntax));
+  FUnitSearchPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreview));
+  FUnitSearchPreviewForm := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreviewForm));
+  FUnitSearchPreviewUsedBy := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreviewUsedBy));
+  FUnitSearchMultiSelect := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchMultiSelect));
+  FUnitSearchActions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchActions));
+  FUnitSearchAddUses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchAddUses));
+end;
+
 procedure TAtlasSettingsPage.AddUndoSection;
 begin
   // Atlas-Änderungen über mehrere Dateien zurücknehmen (#721).
@@ -1198,6 +1288,10 @@ begin
   FShrinkKey.Text := ShortCutToText(TShortCut(ASettings.ShrinkKey));
   FImplementationKey.Text := ShortCutToText(TShortCut(ASettings.ImplementationKey));
   FTypeDefinitionKey.Text := ShortCutToText(TShortCut(ASettings.TypeDefinitionKey));
+  FMethodToggle.Checked := ASettings.MethodToggle;
+  FMethodToggleUpKey.Text := ShortCutToText(TShortCut(ASettings.MethodToggleUpKey));
+  FMethodToggleDownKey.Text := ShortCutToText(TShortCut(ASettings.MethodToggleDownKey));
+  FTestUnitKey.Text := ShortCutToText(TShortCut(ASettings.TestUnitKey));
   FEditorKeysPriority.Checked := ASettings.EditorKeysPriority;
   FSlashCommands.Checked := ASettings.SlashCommands;
   ServerPathChange(nil);
@@ -1229,6 +1323,7 @@ begin
   FPairColors.Checked := ASettings.PairColors;
   FInactiveDim.Checked := ASettings.InactiveDim;
   FInlayHints.Checked := ASettings.InlayHints;
+  FCodeLensTestUnit.Checked := ASettings.CodeLensTestUnit;
   FPairGuides.Checked := ASettings.PairGuides;
   FPairOwners.Checked := ASettings.PairOwners;
   FPairGuideWidth.Text := IntToStr(ASettings.PairGuideWidth);
@@ -1244,6 +1339,18 @@ begin
   FShortcutTips.Checked := ASettings.ShortcutTips;
   FShortcutTipsScope.Choice := Ord(TAtlasShortcutTips.ScopeOf(ASettings.ShortcutTipsScope));
   FStatusSummary.Checked := ASettings.StatusFieldSummary;
+  if not ASettings.StatusTogglesOnDoubleClick then
+    FStatusToggles.Choice := 1
+  else if not ASettings.StatusTogglesOnRightClick then
+    FStatusToggles.Choice := 2
+  else
+    FStatusToggles.Choice := 0;
+  if SameText(ASettings.IndexProgressPlace, 'menu') then
+    FIndexProgress.Choice := 1
+  else if SameText(ASettings.IndexProgressPlace, 'off') then
+    FIndexProgress.Choice := 2
+  else
+    FIndexProgress.Choice := 0;
   FStatusHidden.Text := ASettings.StatusFieldHidden;
   FIndexGroup.Checked := ASettings.IndexProjectGroup;
   FIndexSearch.Checked := ASettings.IndexSearchPaths;
@@ -1279,6 +1386,21 @@ begin
   FRedoKey.Text := ShortCutToText(TShortCut(ASettings.RedoKey));
   FUpdatesCheck.Checked := ASettings.UpdatesCheck;
   FBugReportAnonymize.Checked := ASettings.BugReportAnonymize;
+  FUnitSearchEnabled.Checked := ASettings.UnitSearchEnabled;
+  FUnitSearchReplace.Checked := ASettings.UnitSearchReplaceIdeDialog;
+  FUnitSearchKey.Text := ShortCutToText(TShortCut(ASettings.UnitSearchKey));
+  FUnitSearchPathStyle.Choice := ChoiceOf(ASettings.UnitSearchPathStyle, UnitSearchPathStyles);
+  FUnitSearchGroupBy.Choice := ChoiceOf(ASettings.UnitSearchGroupBy, UnitSearchGroupings);
+  FUnitSearchRememberCollapsed.Checked := ASettings.UnitSearchRememberCollapsed;
+  FUnitSearchFilters.Checked := ASettings.UnitSearchFilters;
+  FUnitSearchDefaultScope.Choice := ChoiceOf(ASettings.UnitSearchDefaultScope, UnitSearchScopes);
+  FUnitSearchFilterSyntax.Checked := ASettings.UnitSearchFilterSyntax;
+  FUnitSearchPreview.Checked := ASettings.UnitSearchPreview;
+  FUnitSearchPreviewForm.Checked := ASettings.UnitSearchPreviewForm;
+  FUnitSearchPreviewUsedBy.Checked := ASettings.UnitSearchPreviewUsedBy;
+  FUnitSearchMultiSelect.Checked := ASettings.UnitSearchMultiSelect;
+  FUnitSearchActions.Checked := ASettings.UnitSearchActions;
+  FUnitSearchAddUses.Checked := ASettings.UnitSearchActionsAddUses;
   FWelcomeEnabled.Checked := ASettings.WelcomePage;
   FWelcomeHost.Choice := 0;
   if ASettings.WelcomePageHost = 'dockWindow' then
@@ -1318,6 +1440,10 @@ begin
   ASettings.ShrinkKey := Integer(TextToShortCut(Trim(FShrinkKey.Text)));
   ASettings.ImplementationKey := Integer(TextToShortCut(Trim(FImplementationKey.Text)));
   ASettings.TypeDefinitionKey := Integer(TextToShortCut(Trim(FTypeDefinitionKey.Text)));
+  ASettings.MethodToggle := FMethodToggle.Checked;
+  ASettings.MethodToggleUpKey := Integer(TextToShortCut(Trim(FMethodToggleUpKey.Text)));
+  ASettings.MethodToggleDownKey := Integer(TextToShortCut(Trim(FMethodToggleDownKey.Text)));
+  ASettings.TestUnitKey := Integer(TextToShortCut(Trim(FTestUnitKey.Text)));
   ASettings.UndoKey := Integer(TextToShortCut(Trim(FUndoKey.Text)));
   ASettings.RedoKey := Integer(TextToShortCut(Trim(FRedoKey.Text)));
   ASettings.UpdatesCheck := FUpdatesCheck.Checked;
@@ -1349,6 +1475,7 @@ begin
   ASettings.PairColors := FPairColors.Checked;
   ASettings.InactiveDim := FInactiveDim.Checked;
   ASettings.InlayHints := FInlayHints.Checked;
+  ASettings.CodeLensTestUnit := FCodeLensTestUnit.Checked;
   ASettings.PairGuides := FPairGuides.Checked;
   ASettings.PairOwners := FPairOwners.Checked;
   ASettings.PairGuideWidth := StrToIntDef(FPairGuideWidth.Text, ASettings.PairGuideWidth);
@@ -1364,6 +1491,22 @@ begin
   ASettings.ShortcutTipsScope := TAtlasShortcutTips.ScopeName(TAtlasTipScope(EnsureRange(FShortcutTipsScope.Choice,
     Ord(Low(TAtlasTipScope)), Ord(High(TAtlasTipScope)))));
   ASettings.StatusFieldSummary := FStatusSummary.Checked;
+  case FStatusToggles.Choice of
+    1:
+      ASettings.StatusFieldToggles := 'rightClick';
+    2:
+      ASettings.StatusFieldToggles := 'doubleClick';
+  else
+    ASettings.StatusFieldToggles := 'both';
+  end;
+  case FIndexProgress.Choice of
+    1:
+      ASettings.IndexProgressPlace := 'menu';
+    2:
+      ASettings.IndexProgressPlace := 'off';
+  else
+    ASettings.IndexProgressPlace := 'statusField';
+  end;
   ASettings.StatusFieldHidden := Trim(FStatusHidden.Text);
   ASettings.IndexProjectGroup := FIndexGroup.Checked;
   ASettings.IndexSearchPaths := FIndexSearch.Checked;
@@ -1393,6 +1536,21 @@ begin
   ASettings.UndoMultiFileOnConflict := TAtlasUndoNames.ConflictModeName(TAtlasUndoConflictMode(
     Max(0, FUndoOnConflict.Choice)));
   ASettings.UndoMultiFileNewFiles := TAtlasUndoNames.NewFilesName(TAtlasNewFilesMode(Max(0, FUndoNewFiles.Choice)));
+  ASettings.UnitSearchEnabled := FUnitSearchEnabled.Checked;
+  ASettings.UnitSearchReplaceIdeDialog := FUnitSearchReplace.Checked;
+  ASettings.UnitSearchKey := Integer(TextToShortCut(Trim(FUnitSearchKey.Text)));
+  ASettings.UnitSearchPathStyle := UnitSearchPathStyles[EnsureRange(FUnitSearchPathStyle.Choice, 0, 2)];
+  ASettings.UnitSearchGroupBy := UnitSearchGroupings[EnsureRange(FUnitSearchGroupBy.Choice, 0, 2)];
+  ASettings.UnitSearchRememberCollapsed := FUnitSearchRememberCollapsed.Checked;
+  ASettings.UnitSearchFilters := FUnitSearchFilters.Checked;
+  ASettings.UnitSearchDefaultScope := UnitSearchScopes[EnsureRange(FUnitSearchDefaultScope.Choice, 0, 3)];
+  ASettings.UnitSearchFilterSyntax := FUnitSearchFilterSyntax.Checked;
+  ASettings.UnitSearchPreview := FUnitSearchPreview.Checked;
+  ASettings.UnitSearchPreviewForm := FUnitSearchPreviewForm.Checked;
+  ASettings.UnitSearchPreviewUsedBy := FUnitSearchPreviewUsedBy.Checked;
+  ASettings.UnitSearchMultiSelect := FUnitSearchMultiSelect.Checked;
+  ASettings.UnitSearchActions := FUnitSearchActions.Checked;
+  ASettings.UnitSearchActionsAddUses := FUnitSearchAddUses.Checked;
   ASettings.WelcomePage := FWelcomeEnabled.Checked;
   ASettings.WelcomePageHost := 'welcomePage';
   if FWelcomeHost.Choice = 1 then
