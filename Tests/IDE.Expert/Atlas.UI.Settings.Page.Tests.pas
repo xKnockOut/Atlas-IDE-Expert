@@ -281,6 +281,7 @@ begin
   Settings.StatusField := False;
   Settings.StatusFieldSummary := False;
   Settings.StatusFieldToggles := 'rightClick';
+  Settings.IndexProgressPlace := 'off';
   Settings.StatusFieldHidden := 'atlas.file';
   Page := TAtlasSettingsPage.Create(nil);
   try
@@ -288,15 +289,18 @@ begin
     Assert.IsFalse(Page.StatusField.Checked);
     Assert.IsFalse(Page.StatusSummary.Checked);
     Assert.AreEqual(1, Page.StatusToggles.Choice, 'nur Rechtsklick');
+    Assert.AreEqual(2, Page.IndexProgress.Choice, 'Fortschritt aus');
     Assert.AreEqual('atlas.file', Page.StatusHidden.Text);
     Page.StatusField.Checked := True;
     Page.StatusToggles.Choice := 2;
+    Page.IndexProgress.Choice := 1;
     Page.StatusHidden.Text := ' atlas.file, atlas.index ';
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsTrue(Saved.StatusField);
     Assert.IsFalse(Saved.StatusFieldSummary);
     Assert.AreEqual('doubleClick', Saved.StatusFieldToggles);
+    Assert.AreEqual('menu', Saved.IndexProgressPlace);
     Assert.AreEqual('atlas.file, atlas.index', Saved.StatusFieldHidden);
   finally
     Page.Free;

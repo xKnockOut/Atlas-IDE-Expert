@@ -181,6 +181,10 @@ type
     /// <summary>Womit das Feld die Schnellschalter öffnet: 'both' (Rechts- und Doppelklick, Vorgabe),
     /// 'rightClick' oder 'doubleClick' (statusField.openToggles).</summary>
     StatusFieldToggles: string;
+    /// <summary>Wo der Fortschritt beim Aufbau des Symbol-Index steht: 'statusField' (Vorgabe; mit
+    /// abgeschaltetem Statusfeld im Menütitel), 'menu' (Titel des Menüs Atlas) oder 'off'
+    /// (statusField.indexProgress).</summary>
+    IndexProgressPlace: string;
     /// <summary>Tastenkürzel für das Fenster der Schnellschalter (#604, TShortCut, 0 = keins) und Vorrang wie
     /// bei den anderen Atlas-Tasten (#494).</summary>
     QuickToggleKey: Integer;
@@ -228,6 +232,10 @@ type
     function StatusTogglesOnRightClick: Boolean;
     /// <summary>Doppelklick auf das Statusfeld öffnet die Schnellschalter (StatusFieldToggles).</summary>
     function StatusTogglesOnDoubleClick: Boolean;
+    /// <summary>Statusfeld zeigt den Fortschritt des Symbol-Index (IndexProgressPlace).</summary>
+    function IndexProgressInField: Boolean;
+    /// <summary>Titel des Menüs Atlas zeigt den Fortschritt (IndexProgressPlace, Statusfeld aus).</summary>
+    function IndexProgressInMenu: Boolean;
     /// <summary>Einstellungen für den Server als JSON-Objekt im Format von atlas.json (#652); geht als
     /// initializationOptions.settings.atlas und mit workspace/didChangeConfiguration an den Server.</summary>
     function ServerSettingsJson: string;
@@ -327,6 +335,7 @@ begin
   Result.StatusFieldHidden := '';
   Result.StatusFieldSummary := True;
   Result.StatusFieldToggles := 'both';
+  Result.IndexProgressPlace := 'statusField';
   Result.QuickToggleKey := $E041; // Strg+Umschalt+Alt+A
   Result.QuickToggleKeyPriority := False;
   Result.SafeAskAfterCrash := True;
@@ -373,6 +382,12 @@ begin
     StatusFieldToggles := 'doubleClick'
   else
     StatusFieldToggles := 'both';
+  if SameText(Trim(IndexProgressPlace), 'menu') then
+    IndexProgressPlace := 'menu'
+  else if SameText(Trim(IndexProgressPlace), 'off') then
+    IndexProgressPlace := 'off'
+  else
+    IndexProgressPlace := 'statusField';
   SafeStartupKey := LowerCase(Trim(SafeStartupKey));
   if (SafeStartupKey <> 'shift') and (SafeStartupKey <> 'ctrl') and (SafeStartupKey <> 'none') then
     SafeStartupKey := 'shift';
@@ -465,6 +480,7 @@ begin
   StatusFieldHidden := Trim(AStore.ReadString('StatusFieldHidden', Default.StatusFieldHidden));
   StatusFieldSummary := AStore.ReadInteger('StatusFieldSummary', BoolValue(Default.StatusFieldSummary)) <> 0;
   StatusFieldToggles := AStore.ReadString('StatusFieldToggles', Default.StatusFieldToggles);
+  IndexProgressPlace := AStore.ReadString('IndexProgressPlace', Default.IndexProgressPlace);
   QuickToggleKey := AStore.ReadInteger('QuickToggleKey', Default.QuickToggleKey);
   QuickToggleKeyPriority :=
     AStore.ReadInteger('QuickToggleKeyPriority', BoolValue(Default.QuickToggleKeyPriority)) <> 0;
@@ -554,6 +570,7 @@ begin
   AStore.WriteString('StatusFieldHidden', Trim(StatusFieldHidden));
   AStore.WriteInteger('StatusFieldSummary', BoolValue(StatusFieldSummary));
   AStore.WriteString('StatusFieldToggles', StatusFieldToggles);
+  AStore.WriteString('IndexProgressPlace', IndexProgressPlace);
   AStore.WriteInteger('QuickToggleKey', QuickToggleKey);
   AStore.WriteInteger('QuickToggleKeyPriority', BoolValue(QuickToggleKeyPriority));
   AStore.WriteInteger('SafeAskAfterCrash', BoolValue(SafeAskAfterCrash));
@@ -581,6 +598,17 @@ end;
 function TAtlasPluginSettings.StatusTogglesOnDoubleClick: Boolean;
 begin
   Result := not SameText(Trim(StatusFieldToggles), 'rightClick');
+end;
+
+function TAtlasPluginSettings.IndexProgressInField: Boolean;
+begin
+  Result := StatusField and SameText(Trim(IndexProgressPlace), 'statusField');
+end;
+
+function TAtlasPluginSettings.IndexProgressInMenu: Boolean;
+begin
+  Result := SameText(Trim(IndexProgressPlace), 'menu') or
+    (not StatusField and SameText(Trim(IndexProgressPlace), 'statusField'));
 end;
 
 function JsonBool(AValue: Boolean): string;
