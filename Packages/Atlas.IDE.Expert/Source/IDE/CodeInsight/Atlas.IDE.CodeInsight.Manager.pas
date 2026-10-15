@@ -730,33 +730,38 @@ begin
   ASession.OnApplyEdit :=
     procedure(const AEdit: TLspWorkspaceEdit; const AReply: TLspApplyEditReply)
     begin
-      // Lese-Thread: Open Tools API nur im Hauptthread.
-      TThread.Queue(nil,
+      // Lese-Thread: Open Tools API nur im Hauptthread. Atlas gehört der Eintrag: beim Entladen verworfen
+      // (Code-Review A-02); ohne Antwort gibt die Sitzung die Id frei (S-07).
+      TAtlasMainThread.Queue(TAtlasFeature.EditorCommands,
         procedure
         var
           Outcome: TAtlasWorkspaceEditResult;
+          Applied: Boolean;
+          Reason: string;
         begin
-          // Manager weg oder neue Sitzung: Die alte Verbindung gibt es nicht mehr.
+          // Manager weg oder neue Sitzung: Die alte Verbindung gibt es nicht mehr, nicht antworten.
           if (LiveManager <> Manager) or (Manager.FSession <> ASession) then
             Exit;
+          Applied := False;
           if AEdit.Unsupported > 0 then
-          begin
-            AReply(False, 'Dateioperationen (anlegen, umbenennen, löschen) werden nicht unterstützt.');
-            Exit;
-          end;
-          try
-            Outcome := TAtlasIdeWorkspaceEdit.Apply(AEdit, TAtlasIdeSettings.Current.OpenForEdits,
-              TAtlasStrings.Text(TAtlasTextId.UndoActionServer));
-          except
-            on E: Exception do
-            begin
-              AReply(False, E.Message);
-              Exit;
+            Reason := 'Dateioperationen (anlegen, umbenennen, löschen) werden nicht unterstützt.'
+          else
+            try
+              Outcome := TAtlasIdeWorkspaceEdit.Apply(AEdit, TAtlasIdeSettings.Current.OpenForEdits,
+                TAtlasStrings.Text(TAtlasTextId.UndoActionServer));
+              Manager.Diagnose(Format('workspace/applyEdit: %d Änderungen in %d Dateien %s', [Outcome.Edits,
+                Outcome.Files, Outcome.Error]));
+              Applied := Outcome.Error = '';
+              Reason := Outcome.Error;
+            except
+              on E: Exception do
+              begin
+                Reason := E.Message;
+                TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+              end;
             end;
-          end;
-          Manager.Diagnose(Format('workspace/applyEdit: %d Änderungen in %d Dateien %s', [Outcome.Edits,
-            Outcome.Files, Outcome.Error]));
-          AReply(Outcome.Error = '', Outcome.Error);
+          // Genau eine Antwort, auch nach einer Ausnahme (S-05).
+          AReply(Applied, Reason);
         end);
     end;
 end;
@@ -772,7 +777,7 @@ begin
       // Information und Protokoll gehören ins Diagnoseprotokoll, nicht ins Meldungsfenster.
       if AType > 2 then
         Exit;
-      TThread.Queue(nil,
+      TAtlasMainThread.Queue(TAtlasFeature.Server,
         procedure
         var
           Messages: IOTAMessageServices;
