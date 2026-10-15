@@ -34,6 +34,8 @@ type
     [Test]
     procedure WelcomeSettingsRoundTrip;
     [Test]
+    procedure UsageButtonsCallBack;
+    [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
     procedure ServerPageRunsActions;
@@ -378,7 +380,8 @@ var
 begin
   // #753: Ein/Aus, Ort (Willkommensseite oder Fenster „Atlas-Start“), Atlas-Layout, Kopf und Grußzeile;
   // #760: Suchfeld, Gruppe „Symbole“ und Taste; #756: Karte „Neu in Atlas“; #592: Bereich „Projekte“;
-  // #762: Bereich „Nicht gesichert“; #754: Zustandskachel „Atlas“.
+  // #762: Bereich „Nicht gesichert“; #754: Zustandskachel „Atlas“; #757: Karte „Atlas entdecken“, Zählung und
+  // ihre Knöpfe.
   Settings := TAtlasPluginSettings.Defaults;
   Page := TAtlasSettingsPage.Create(nil);
   try
@@ -402,6 +405,8 @@ begin
     Assert.IsFalse(Page.WelcomeUnsavedHideClean.Checked);
     Assert.IsTrue(Page.WelcomeStatusTile.Checked);
     Assert.IsFalse(Page.WelcomeStatusTileOnlyProblems.Checked);
+    Assert.IsTrue(Page.WelcomeDiscover.Checked);
+    Assert.IsTrue(Page.TipsUsageTracking.Checked);
     Page.WelcomeEnabled.Checked := False;
     Page.WelcomeHost.Choice := 1;
     Page.WelcomeLayout.Checked := True;
@@ -421,6 +426,8 @@ begin
     Page.WelcomeUnsavedHideClean.Checked := True;
     Page.WelcomeStatusTile.Checked := False;
     Page.WelcomeStatusTileOnlyProblems.Checked := True;
+    Page.WelcomeDiscover.Checked := False;
+    Page.TipsUsageTracking.Checked := False;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.WelcomePage);
@@ -442,13 +449,47 @@ begin
     Assert.IsTrue(Saved.WelcomePageUnsavedHideWhenClean);
     Assert.IsFalse(Saved.WelcomePageStatusTile);
     Assert.IsTrue(Saved.WelcomePageStatusTileOnlyProblems);
+    Assert.IsFalse(Saved.WelcomePageDiscover);
+    Assert.IsFalse(Saved.TipsUsageTracking);
     Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.WelcomeDiscover.Checked);
+    Assert.IsFalse(Page.TipsUsageTracking.Checked);
     Assert.AreEqual(1, Page.WelcomeHost.Choice);
     Assert.IsTrue(Page.WelcomeLayout.Checked);
     Assert.AreEqual(2, Page.WelcomeWhatsNew.Choice);
     Page.WelcomeWhatsNew.Choice := 0;
     Page.SaveTo(Saved);
     Assert.AreEqual('off', Saved.WelcomePageWhatsNew);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.UsageButtonsCallBack;
+var
+  Page: TAtlasSettingsPage;
+  Calls: string;
+begin
+  // #757: „Zählung zurücksetzen“ und „Gesperrte Tipps wieder zeigen“ rufen die IDE-Schicht, je einmal.
+  Calls := '';
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.OnResetUsage :=
+      procedure
+      begin
+        Calls := Calls + 'reset;';
+      end;
+    Page.OnUnblockTips :=
+      procedure
+      begin
+        Calls := Calls + 'unblock;';
+      end;
+    Assert.IsTrue(Page.ResetUsageButton.Enabled);
+    Page.ResetUsageButton.Click;
+    Page.UnblockTipsButton.Click;
+    Assert.AreEqual('reset;unblock;', Calls);
+    Assert.IsFalse(Page.ResetUsageButton.Enabled, 'erledigt');
+    Assert.IsFalse(Page.UnblockTipsButton.Enabled, 'erledigt');
   finally
     Page.Free;
   end;

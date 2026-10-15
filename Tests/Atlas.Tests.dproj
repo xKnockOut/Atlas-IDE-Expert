@@ -381,6 +381,9 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Unsaved.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Welcome\Atlas.Core.Welcome.State.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.State.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Commands\Atlas.Core.Commands.Tips.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Welcome\Atlas.Core.Welcome.Discover.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Discover.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Welcome\Atlas.UI.Welcome.Frame.pas">
             <Form>AtlasWelcomeFrame</Form>
             <FormType>dfm</FormType>
@@ -394,6 +397,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Welcome\Atlas.UI.Welcome.Unsaved.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Welcome\Atlas.UI.Welcome.Push.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Welcome\Atlas.UI.Welcome.State.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Welcome\Atlas.UI.Welcome.Discover.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Status\Atlas.UI.Status.Window.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Status.Window.Tests.pas"/>

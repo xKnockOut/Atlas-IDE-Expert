@@ -105,6 +105,7 @@ uses
   Atlas.IDE.Commands.Keys,
   Atlas.Core.Commands.Usage,
   Atlas.Core.Commands.ShortcutTips,
+  Atlas.IDE.Commands.Usage,
   Atlas.IDE.Commands.ShortcutTips;
 
 const
@@ -431,14 +432,14 @@ begin
   end;
 end;
 
-/// <summary>Zählung je Befehl aus den Tastenkürzel-Tipps (#600); ohne laufende Tipps bleibt sie 0.</summary>
+/// <summary>Zählung je Befehl aus der gemeinsamen Zählung (#600, #757); ohne sie bleibt sie 0.</summary>
 procedure AddUsage(var AItems: TArray<TAtlasKeyItem>);
 var
   Index: Integer;
   Id: string;
   Entry: TAtlasCommandUsageEntry;
 begin
-  if TAtlasIdeShortcutTips.Instance = nil then
+  if TAtlasIdeCommandUsage.Instance = nil then
     Exit;
   for Index := 0 to High(AItems) do
   begin

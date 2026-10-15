@@ -3,7 +3,8 @@
 // Tests für die Tastenkürzel-Tipps (#600): Regeln (je Tag, drei Aufrufe über
 // das Kürzel, Abstand 30 s, „Nicht mehr zeigen“, ohne Kürzel, per Tastatur,
 // Bereich, Debug-Sitzung, modaler Dialog), Kürzel mit zwei Schritten, Lage
-// unten rechts und die Zählung je Befehl in shortcut-tips.json (auch für #757).
+// unten rechts und die Zählung je Befehl: Zähler in usage.json, Zustand der
+// Tipps in shortcut-tips.json (gemeinsam mit #757).
 
 interface
 
@@ -61,14 +62,30 @@ type
     procedure RarelyByKeyboard;
     [Test]
     procedure FileIsNotTheCompletionUsage;
+    [Test]
+    procedure UsageJsonHoldsOnlyIdsCountersAndDate;
+    [Test]
+    procedure TrackingOffCountsNothing;
+    [Test]
+    procedure ResetCountsKeepsTipState;
+    [Test]
+    procedure OlderTipsFileMovesCountsToUsageJson;
+    [Test]
+    procedure UsageJsonWinsOverOlderCounts;
+    [Test]
+    procedure SectionsRoundTrip;
+    [Test]
+    procedure HigherFormatUsageJsonIsNotOverwritten;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.Classes,
   System.Types,
   System.IOUtils,
+  System.JSON,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Commands.Usage,
@@ -386,7 +403,9 @@ begin
     TAtlasShortcutTips.MarkShown(Entry, Moment(9, 0, 1));
     Usage.Put(Entry);
     Assert.AreEqual(2, Integer(Length(Usage.Entries)), 'Groß/klein egal, leere Id nicht');
+    // Zustand der Tipps aus shortcut-tips.json, Zähler aus usage.json (#757).
     Assert.IsTrue(Loaded.Parse(Usage.ToJson));
+    Assert.IsTrue(Loaded.ParseCounts(Usage.CountsToJson));
     Assert.IsTrue(Loaded.Find('ecclasscompletion', Entry));
     Assert.AreEqual(ClassCompletion, Entry.Id);
     Assert.AreEqual(2, Entry.Mouse);
@@ -491,12 +510,16 @@ begin
     Entry := Usage.Entry(ClassCompletion);
     Entry.Never := True;
     Usage.Put(Entry);
-    Assert.IsTrue(Usage.SaveToFile(FileName), 'legt den Ordner an');
+    Usage.SaveToFiles(FileName, TAtlasCommandUsage.DefaultUsageFile(Folder));
+    Assert.IsTrue(TFile.Exists(FileName), 'legt den Ordner an');
+    Assert.IsTrue(TFile.Exists(TAtlasCommandUsage.DefaultUsageFile(Folder)));
     Assert.IsFalse(Usage.Changed);
-    Assert.IsTrue(Loaded.LoadFromFile(FileName));
+    Loaded.LoadFromFiles(FileName, TAtlasCommandUsage.DefaultUsageFile(Folder));
     Assert.IsTrue(Loaded.Entry(ClassCompletion).Never);
     Assert.AreEqual(1, Loaded.Entry(ClassCompletion).Mouse);
+    Assert.IsFalse(Loaded.Changed);
     Assert.IsFalse(TFile.Exists(FileName + '.tmp'));
+    Assert.IsFalse(TFile.Exists(TAtlasCommandUsage.DefaultUsageFile(Folder) + '.tmp'));
   finally
     Loaded.Free;
     Usage.Free;
@@ -527,11 +550,271 @@ procedure TAtlasCommandUsageTests.FileIsNotTheCompletionUsage;
 var
   FileName: string;
 begin
-  // %APPDATA%\Atlas\usage.json gehört der lernenden Vervollständigung (#418) und bleibt unberührt.
+  // %APPDATA%\Atlas\usage.json gehört der lernenden Vervollständigung (#418) und bleibt unberührt; die Zählung
+  // der Befehle (#757) liegt in %LOCALAPPDATA%\Atlas\usage.json, der Zustand der Tipps in shortcut-tips.json.
   FileName := TAtlasCommandUsage.DefaultFile('LocalAppData');
   Assert.IsTrue(FileName.EndsWith('shortcut-tips.json'));
   Assert.IsTrue(FileName.StartsWith(IncludeTrailingPathDelimiter('LocalAppData') + 'Atlas'));
-  Assert.IsFalse(FileName.EndsWith('usage.json'));
+  FileName := TAtlasCommandUsage.DefaultUsageFile('LocalAppData');
+  Assert.AreEqual(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter('LocalAppData') + 'Atlas') + 'usage.json',
+    FileName);
+end;
+
+/// <summary>Namen aller Felder in den Einträgen von "commands", sortiert und ohne Doppelte, mit Komma.</summary>
+function FieldNames(const AJson: string): string;
+var
+  Root: TJSONValue;
+  Commands: TJSONValue;
+  Index, Inner: Integer;
+  Item: TJSONObject;
+  Names: TStringList;
+begin
+  Result := '';
+  Root := TJSONObject.ParseJSONValue(AJson);
+  Names := TStringList.Create;
+  try
+    Names.Sorted := True;
+    Names.Duplicates := dupIgnore;
+    if not (Root is TJSONObject) then
+      Exit;
+    Commands := TJSONObject(Root).GetValue('commands');
+    if not (Commands is TJSONObject) then
+      Exit;
+    for Index := 0 to TJSONObject(Commands).Count - 1 do
+      if TJSONObject(Commands).Pairs[Index].JsonValue is TJSONObject then
+      begin
+        Item := TJSONObject(TJSONObject(Commands).Pairs[Index].JsonValue);
+        for Inner := 0 to Item.Count - 1 do
+          Names.Add(Item.Pairs[Inner].JsonString.Value);
+      end;
+    Result := Names.CommaText;
+  finally
+    Names.Free;
+    Root.Free;
+  end;
+end;
+
+/// <summary>Namen der Felder oberster Ebene, sortiert, mit Komma.</summary>
+function TopNames(const AJson: string): string;
+var
+  Root: TJSONValue;
+  Index: Integer;
+  Names: TStringList;
+begin
+  Result := '';
+  Root := TJSONObject.ParseJSONValue(AJson);
+  Names := TStringList.Create;
+  try
+    Names.Sorted := True;
+    if Root is TJSONObject then
+      for Index := 0 to TJSONObject(Root).Count - 1 do
+        Names.Add(TJSONObject(Root).Pairs[Index].JsonString.Value);
+    Result := Names.CommaText;
+  finally
+    Names.Free;
+    Root.Free;
+  end;
+end;
+
+procedure TAtlasCommandUsageTests.UsageJsonHoldsOnlyIdsCountersAndDate;
+var
+  Usage: TAtlasCommandUsage;
+  Entry: TAtlasCommandUsageEntry;
+begin
+  // #757: usage.json enthält nur Befehlskennungen, Zähler und Datum.
+  Usage := TAtlasCommandUsage.Create;
+  try
+    Usage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(9, 0, 0));
+    Usage.Count(ClassCompletion, TAtlasCommandInput.Keyboard, Moment(9, 5, 0));
+    Entry := Usage.Entry(ClassCompletion);
+    Entry.Never := True;
+    TAtlasShortcutTips.MarkShown(Entry, Moment(9, 6, 0));
+    Usage.Put(Entry);
+    Usage.SetSection('discover', '{"blocked":["rename"],"last":"codeActions"}');
+    Assert.AreEqual('commands,format', TopNames(Usage.CountsToJson));
+    Assert.AreEqual('keyboard,lastUsed,mouse', FieldNames(Usage.CountsToJson));
+    Assert.Contains(Usage.CountsToJson, '"Atlas.CodeActions"');
+    Assert.Contains(Usage.CountsToJson, '"lastUsed":"2026-10-15T09:05:00"');
+    Assert.DoesNotContain(Usage.CountsToJson, 'rename');
+    // Zustand der Tipps ohne Zähler in shortcut-tips.json.
+    Assert.AreEqual('lastTip,never', FieldNames(Usage.ToJson));
+    Assert.AreEqual('commands,discover,format', TopNames(Usage.ToJson));
+    Assert.DoesNotContain(Usage.ToJson, 'Atlas.CodeActions', False, 'ohne Tipp-Zustand kein Eintrag');
+  finally
+    Usage.Free;
+  end;
+end;
+
+procedure TAtlasCommandUsageTests.TrackingOffCountsNothing;
+var
+  Usage: TAtlasCommandUsage;
+  Entry: TAtlasCommandUsageEntry;
+begin
+  Usage := TAtlasCommandUsage.Create;
+  try
+    Assert.IsTrue(Usage.Tracking, 'Vorgabe: zählen');
+    Usage.Tracking := False;
+    Usage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(9, 0, 0));
+    Usage.Count('Atlas.CodeActions', TAtlasCommandInput.Keyboard, Moment(9, 0, 0));
+    Assert.AreEqual(0, Usage.UseCount('Atlas.CodeActions'));
+    Assert.IsFalse(Usage.CountsChanged, 'nichts zu schreiben');
+    // Tipps dürfen weiter ihren Zustand merken.
+    Entry := Usage.Entry('Atlas.CodeActions');
+    Entry.Never := True;
+    Usage.Put(Entry);
+    Assert.IsTrue(Usage.TipsChanged);
+    Assert.IsFalse(Usage.CountsChanged);
+    Usage.Clear;
+    Assert.IsFalse(Usage.Tracking, 'Clear lässt die Einstellung');
+    Usage.Tracking := True;
+    Usage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(9, 0, 0));
+    Assert.AreEqual(1, Usage.UseCount('Atlas.CodeActions'));
+  finally
+    Usage.Free;
+  end;
+end;
+
+procedure TAtlasCommandUsageTests.ResetCountsKeepsTipState;
+var
+  Usage: TAtlasCommandUsage;
+  Entry: TAtlasCommandUsageEntry;
+begin
+  Usage := TAtlasCommandUsage.Create;
+  try
+    Usage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(9, 0, 0));
+    Usage.Count(ClassCompletion, TAtlasCommandInput.Mouse, Moment(9, 0, 0));
+    Entry := Usage.Entry(ClassCompletion);
+    Entry.Never := True;
+    Usage.Put(Entry);
+    Usage.Changed := False;
+    Usage.ResetCounts;
+    Assert.IsTrue(Usage.CountsChanged);
+    Assert.AreEqual(0, Usage.UseCount('Atlas.CodeActions'));
+    Assert.AreEqual(0, Usage.UseCount(ClassCompletion));
+    Assert.IsTrue(Usage.Entry(ClassCompletion).Never, '„Nicht mehr zeigen“ bleibt');
+    Assert.IsTrue(Usage.Entry('Atlas.CodeActions').LastUsed = 0);
+    Assert.AreEqual('', FieldNames(Usage.CountsToJson), 'usage.json leer');
+    Usage.Changed := False;
+    Usage.ResetCounts;
+    Assert.IsFalse(Usage.Changed, 'nichts mehr zurückzusetzen');
+  finally
+    Usage.Free;
+  end;
+end;
+
+procedure TAtlasCommandUsageTests.OlderTipsFileMovesCountsToUsageJson;
+var
+  Usage, Loaded: TAtlasCommandUsage;
+  Folder, TipsFile, UsageFile: string;
+begin
+  // Ältere Fassung von #600: Zähler in shortcut-tips.json, usage.json fehlt.
+  Folder := TPath.Combine(TPath.GetTempPath, 'atlas-usage-' + FormatDateTime('hhnnsszzz', Now) + '-m');
+  TipsFile := TAtlasCommandUsage.DefaultFile(Folder);
+  UsageFile := TAtlasCommandUsage.DefaultUsageFile(Folder);
+  ForceDirectories(ExtractFileDir(TipsFile));
+  TFile.WriteAllText(TipsFile, '{"format":1,"commands":{"Atlas.Rename":{"mouse":2,"keyboard":1,' +
+    '"lastUsed":"2026-10-01T08:00:00","never":true}}}');
+  Usage := TAtlasCommandUsage.Create;
+  Loaded := TAtlasCommandUsage.Create;
+  try
+    Usage.LoadFromFiles(TipsFile, UsageFile);
+    Assert.AreEqual(3, Usage.UseCount('Atlas.Rename'));
+    Assert.IsTrue(Usage.Entry('Atlas.Rename').Never);
+    Assert.IsTrue(Usage.CountsChanged, 'beim nächsten Speichern umziehen');
+    Usage.SaveToFiles(TipsFile, UsageFile);
+    Assert.IsTrue(TFile.Exists(UsageFile));
+    Assert.DoesNotContain(TFile.ReadAllText(TipsFile), 'mouse');
+    Assert.Contains(TFile.ReadAllText(UsageFile), '"mouse":2');
+    Loaded.LoadFromFiles(TipsFile, UsageFile);
+    Assert.AreEqual(3, Loaded.UseCount('Atlas.Rename'));
+    Assert.IsTrue(Loaded.Entry('Atlas.Rename').Never);
+    Assert.IsFalse(Loaded.Changed);
+  finally
+    Loaded.Free;
+    Usage.Free;
+    if TDirectory.Exists(Folder) then
+      TDirectory.Delete(Folder, True);
+  end;
+end;
+
+procedure TAtlasCommandUsageTests.UsageJsonWinsOverOlderCounts;
+var
+  Usage: TAtlasCommandUsage;
+begin
+  Usage := TAtlasCommandUsage.Create;
+  try
+    Assert.IsTrue(Usage.Parse('{"format":1,"commands":{"A":{"mouse":5,"never":true},"B":{"keyboard":4}}}'));
+    Assert.IsTrue(Usage.ParseCounts('{"format":1,"commands":{"A":{"mouse":1,"lastUsed":"2026-10-01T08:00:00"},' +
+      '"C":{"keyboard":"2"},"":{"mouse":1},"D":7}}'));
+    Assert.AreEqual(1, Usage.UseCount('A'));
+    Assert.IsTrue(Usage.Entry('A').Never);
+    Assert.AreEqual(0, Usage.UseCount('B'), 'alte Zähler fallen weg');
+    Assert.AreEqual(2, Usage.UseCount('C'));
+    Assert.AreEqual(0, Usage.UseCount('D'));
+    Assert.IsFalse(Usage.ParseCounts('kein JSON'));
+    Assert.IsTrue(Usage.CountsWritable);
+  finally
+    Usage.Free;
+  end;
+end;
+
+procedure TAtlasCommandUsageTests.SectionsRoundTrip;
+var
+  Usage, Loaded: TAtlasCommandUsage;
+begin
+  Usage := TAtlasCommandUsage.Create;
+  Loaded := TAtlasCommandUsage.Create;
+  try
+    Assert.AreEqual('', Usage.Section('discover'));
+    Usage.SetSection('discover', '{"blocked":["rename"],"last":"codeActions"}');
+    Assert.IsTrue(Usage.TipsChanged);
+    Assert.IsFalse(Usage.CountsChanged);
+    Assert.Contains(Usage.Section('discover'), '"rename"');
+    Usage.SetSection('other', '[1,2]');
+    Assert.IsTrue(Loaded.Parse(Usage.ToJson));
+    Assert.Contains(Loaded.Section('discover'), '"last":"codeActions"');
+    Assert.AreEqual('[1,2]', Loaded.Section('other'));
+    // Vergebene Namen und kaputter Text ändern nichts.
+    Loaded.SetSection('commands', '{}');
+    Loaded.SetSection('format', '2');
+    Loaded.SetSection('discover', '{kaputt');
+    Assert.Contains(Loaded.ToJson, '"format":1');
+    Assert.Contains(Loaded.Section('discover'), 'codeActions');
+    Loaded.SetSection('discover', '');
+    Assert.AreEqual('', Loaded.Section('discover'));
+    Assert.DoesNotContain(Loaded.ToJson, 'discover');
+    Assert.AreEqual('[1,2]', Loaded.Section('other'));
+  finally
+    Loaded.Free;
+    Usage.Free;
+  end;
+end;
+
+procedure TAtlasCommandUsageTests.HigherFormatUsageJsonIsNotOverwritten;
+var
+  Usage: TAtlasCommandUsage;
+  FileName: string;
+begin
+  Usage := TAtlasCommandUsage.Create;
+  try
+    Assert.IsFalse(Usage.ParseCounts('{"format":2,"commands":{"X":{"mouse":1}}}'));
+    Assert.IsFalse(Usage.CountsWritable);
+    Assert.AreEqual(0, Usage.UseCount('X'));
+    FileName := TPath.Combine(TPath.GetTempPath, 'atlas-usage-' + FormatDateTime('hhnnsszzz', Now) + '-f.json');
+    TFile.WriteAllText(FileName, '{"format":2}');
+    try
+      Usage.Clear;
+      Assert.IsTrue(Usage.CountsWritable);
+      Usage.Count('X', TAtlasCommandInput.Mouse, Moment(10, 0, 0));
+      Assert.IsFalse(Usage.SaveCountsToFile(FileName), 'neuere Fassung bleibt');
+      Assert.IsFalse(Usage.CountsWritable);
+      Assert.Contains(TFile.ReadAllText(FileName), '"format":2');
+    finally
+      System.SysUtils.DeleteFile(FileName);
+    end;
+  finally
+    Usage.Free;
+  end;
 end;
 
 initialization

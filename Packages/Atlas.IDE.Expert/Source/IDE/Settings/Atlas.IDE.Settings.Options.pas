@@ -55,6 +55,8 @@ uses
   Atlas.IDE.Settings.ServerTool,
   Atlas.UI.Strings,
   Atlas.IDE.Commands.Keys,
+  Atlas.IDE.Commands.Usage,
+  Atlas.IDE.Welcome.Discover,
   Atlas.IDE.Editor.Structure,
   Atlas.IDE.CodeInsight.Manager,
   Atlas.IDE.Settings.Store;
@@ -172,6 +174,25 @@ begin
       Result := TAtlasServerTool.FileVersion(APath);
     end;
   FPage.OnResetHistory := FResetHistory;
+  // Karte „Atlas entdecken“ (#757): Zählung zurücksetzen, gesperrte Tipps wieder zeigen.
+  FPage.OnResetUsage :=
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          TAtlasIdeCommandUsage.ResetCounts;
+        end);
+    end;
+  FPage.OnUnblockTips :=
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          TAtlasIdeDiscover.UnblockAll;
+        end);
+    end;
   // Symbolindex (#492): vor LoadFrom, das die Kennzahlen gleich anzeigt.
   FPage.OnIndexMetrics :=
     function: string

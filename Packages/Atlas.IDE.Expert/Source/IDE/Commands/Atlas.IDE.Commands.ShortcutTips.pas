@@ -30,11 +30,15 @@
 //   Menübeschriftungen, Atlas-Tasten, die Atlas tatsächlich hält) gezählt; die
 //   Tabelle wird nach KeysMaxAgeMs, nach Package-Änderungen und nach
 //   geänderten Einstellungen neu gebaut. Jede Taste schließt einen offenen Tipp.
-// Zählung und Merker je Befehl in %LOCALAPPDATA%\Atlas\shortcut-tips.json
-// (TAtlasCommandUsage, nur lokal), gespeichert SaveDelayMs nach der letzten
-// Änderung und beim Entladen; die Tastenkürzel-Übersicht (#520) und später
-// „Atlas entdecken“ (#757) lesen sie über Usage bzw. die Datei. Ohne
-// shortcutTips.enabled beobachtet Atlas nichts (außer CountAlways ist gesetzt).
+// Zählung je Befehl in %LOCALAPPDATA%\Atlas\usage.json und Merker der Tipps
+// in %LOCALAPPDATA%\Atlas\shortcut-tips.json über die gemeinsame Zählung
+// TAtlasIdeCommandUsage (#757, nur lokal), gespeichert dort SaveDelayMs nach
+// der letzten Änderung und beim Entladen; die Tastenkürzel-Übersicht (#520)
+// und „Atlas entdecken“ (#757) lesen dieselbe Zählung. Mit tips.usageTracking
+// aus zählt sie nichts. Ohne shortcutTips.enabled beobachtet Atlas nichts
+// (außer CountAlways ist gesetzt: Karte „Atlas entdecken“ mit Zählung an).
+// Der Titel eines Tipps kommt aus tips.json, wenn es dort einen Tipp zum
+// Befehl gibt (dieselbe Tippquelle wie #757), sonst von der Aktion.
 // Kein Tipp während einer angehaltenen Debug-Sitzung, bei offenem modalem
 // Dialog und häufiger als alle 30 s; die Regeln stehen im Core.
 
@@ -46,16 +50,14 @@ uses
   System.Classes,
   System.Generics.Collections,
   Vcl.AppEvnts,
-  Vcl.ExtCtrls,
   Atlas.Core.Commands.Usage,
   Atlas.Core.Commands.ShortcutTips,
-  Atlas.UI.Commands.ShortcutTip;
+  Atlas.UI.Commands.ShortcutTip,
+  Atlas.IDE.Commands.Usage;
 
 type
   TAtlasIdeShortcutTips = class
   public const
-    /// <summary>Speichern so lange nach der letzten Änderung.</summary>
-    SaveDelayMs = 5000;
     /// <summary>Tabelle Kürzel → Befehle spätestens nach dieser Zeit neu bauen.</summary>
     KeysMaxAgeMs = 30000;
     /// <summary>Eine Aktion zählt nur, wenn der Benutzer so kurz vorher etwas eingegeben hat.</summary>
@@ -66,10 +68,10 @@ type
   private class var
     FInstance: TAtlasIdeShortcutTips;
   private
-    FUsage: TAtlasCommandUsage;
+    /// <summary>Gemeinsame Zählung (#757); gehört der Komposition.</summary>
+    FHolder: TAtlasIdeCommandUsage;
     FEvents: TApplicationEvents;
     FWindow: TAtlasShortcutTipWindow;
-    FSaveTimer: TTimer;
     FActive: Boolean;
     FCountAlways: Boolean;
     /// <summary>Befehl des gerade gezeigten Tipps.</summary>
@@ -87,7 +89,6 @@ type
     FLearned: TDictionary<string, string>;
     procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
     procedure AppActionExecute(Action: TBasicAction; var Handled: Boolean);
-    procedure SaveTick(Sender: TObject);
     procedure NeverClick(Sender: TObject);
     procedure AllKeysClick(Sender: TObject);
     procedure Changed;
@@ -109,25 +110,27 @@ type
     procedure ShowTip(const AId, AKeyText, ACaption: string);
     procedure UpdateActive;
     procedure SetCountAlways(AValue: Boolean);
+    function GetUsage: TAtlasCommandUsage;
+    /// <summary>Titel des Tipps zum Befehl aus tips.json in der Sprache der IDE; '' ohne.</summary>
+    function TipTitle(const AId: string): string;
   public
-    constructor Create;
+    /// <summary>AHolder: gemeinsame Zählung (#757), muss länger leben als die Tipps.</summary>
+    constructor Create(AHolder: TAtlasIdeCommandUsage);
     destructor Destroy; override;
     /// <summary>Die laufenden Tipps oder nil.</summary>
     class function Instance: TAtlasIdeShortcutTips; static;
-    /// <summary>%LOCALAPPDATA%\Atlas\shortcut-tips.json.</summary>
-    class function UsageFile: string; static;
     /// <summary>Ein Befehl von Atlas oder eine Aktion wurde per Menü, Kontextmenü oder Befehlspalette aufgerufen
     /// (AId: Befehl der Palette bzw. Name der Aktion). Ohne laufende Tipps nichts.</summary>
     class procedure Invoked(const AId: string); static;
-    /// <summary>Nutzung je Befehl für die Übersicht (#520) und #757; nil ohne laufende Tipps.</summary>
+    /// <summary>Nutzung je Befehl für die Übersicht (#520); False ohne gemeinsame Zählung.</summary>
     class function UsageOf(const AId: string; out AEntry: TAtlasCommandUsageEntry): Boolean; static;
     /// <summary>Einstellungen geändert (shortcutTips.*, Tasten): Beobachtung an/aus, Tabelle neu.</summary>
     procedure ApplySettings;
     /// <summary>Packages geändert: Tabelle der Kürzel neu bauen.</summary>
     procedure KeysChanged;
     procedure ThemeChanged;
-    property Usage: TAtlasCommandUsage read FUsage;
-    /// <summary>Zählen auch ohne shortcutTips.enabled (für einen späteren Nutzer wie #757); Tipps nur mit.
+    property Usage: TAtlasCommandUsage read GetUsage;
+    /// <summary>Zählen auch ohne shortcutTips.enabled (Karte „Atlas entdecken“, #757); Tipps nur mit.
     /// </summary>
     property CountAlways: Boolean read FCountAlways write SetCountAlways;
   end;
@@ -137,7 +140,6 @@ implementation
 uses
   Winapi.Messages,
   System.Types,
-  System.IOUtils,
   Vcl.Controls,
   Vcl.Forms,
   Vcl.Menus,
@@ -148,8 +150,10 @@ uses
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Commands.KeyMap,
   Atlas.Core.Commands.Palette,
+  Atlas.Core.Commands.Tips,
   Atlas.UI.Popup.Window,
   Atlas.UI.Commands.KeyMap,
+  Atlas.UI.Strings,
   Atlas.IDE.Settings.Store,
   Atlas.IDE.Editor.Style,
   Atlas.IDE.Commands.Keys,
@@ -367,18 +371,13 @@ end;
 
 { TAtlasIdeShortcutTips }
 
-constructor TAtlasIdeShortcutTips.Create;
+constructor TAtlasIdeShortcutTips.Create(AHolder: TAtlasIdeCommandUsage);
 begin
   inherited Create;
   FInstance := Self;
-  FUsage := TAtlasCommandUsage.Create;
-  FUsage.LoadFromFile(UsageFile);
+  FHolder := AHolder;
   FKeys := TDictionary<string, TArray<string>>.Create;
   FLearned := TDictionary<string, string>.Create;
-  FSaveTimer := TTimer.Create(nil);
-  FSaveTimer.Enabled := False;
-  FSaveTimer.Interval := SaveDelayMs;
-  FSaveTimer.OnTimer := SaveTick;
   FEvents := TApplicationEvents.Create(nil);
   UpdateActive;
 end;
@@ -389,18 +388,10 @@ begin
     FInstance := nil;
   // Erst abmelden, dann freigeben (#493).
   FreeAndNil(FEvents);
-  FreeAndNil(FSaveTimer);
   FreeAndNil(FWindow);
-  try
-    Save;
-  except
-    // Beim Entladen nichts an die IDE.
-    on E: Exception do
-      TAtlasGuard.Log('Tastenkürzel-Tipps: Speichern beim Entladen: ' + E.ClassName);
-  end;
+  // Gespeichert wird von der gemeinsamen Zählung (#757), die länger lebt.
   FKeys.Free;
   FLearned.Free;
-  FUsage.Free;
   inherited;
 end;
 
@@ -409,14 +400,18 @@ begin
   Result := FInstance;
 end;
 
-class function TAtlasIdeShortcutTips.UsageFile: string;
-var
-  Folder: string;
+function TAtlasIdeShortcutTips.GetUsage: TAtlasCommandUsage;
 begin
-  Folder := GetEnvironmentVariable('LOCALAPPDATA');
-  if Folder = '' then
-    Folder := TPath.GetTempPath;
-  Result := TAtlasCommandUsage.DefaultFile(Folder);
+  Result := FHolder.Usage;
+end;
+
+function TAtlasIdeShortcutTips.TipTitle(const AId: string): string;
+var
+  Tip: TAtlasTip;
+begin
+  Result := '';
+  if TAtlasTipCatalog.FindByCommand(FHolder.Tips, AId, Tip) then
+    Result := Tip.TitleIn(TAtlasStrings.Language = TAtlasLanguage.English);
 end;
 
 class procedure TAtlasIdeShortcutTips.Invoked(const AId: string);
@@ -437,7 +432,7 @@ end;
 class function TAtlasIdeShortcutTips.UsageOf(const AId: string; out AEntry: TAtlasCommandUsageEntry): Boolean;
 begin
   AEntry := TAtlasCommandUsageEntry.Create(AId);
-  Result := (FInstance <> nil) and FInstance.FUsage.Find(AId, AEntry);
+  Result := (TAtlasIdeCommandUsage.Instance <> nil) and TAtlasIdeCommandUsage.Instance.Usage.Find(AId, AEntry);
 end;
 
 procedure TAtlasIdeShortcutTips.UpdateActive;
@@ -496,24 +491,12 @@ end;
 procedure TAtlasIdeShortcutTips.Changed;
 begin
   // Gesammelt speichern: nicht bei jedem Klick auf die Platte.
-  FSaveTimer.Enabled := False;
-  FSaveTimer.Enabled := True;
+  FHolder.Changed;
 end;
 
 procedure TAtlasIdeShortcutTips.Save;
 begin
-  if (FUsage <> nil) and FUsage.Changed then
-    FUsage.SaveToFile(UsageFile);
-end;
-
-procedure TAtlasIdeShortcutTips.SaveTick(Sender: TObject);
-begin
-  FSaveTimer.Enabled := False;
-  TAtlasGuard.Run(TAtlasFeature.ShortcutTips,
-    procedure
-    begin
-      Save;
-    end);
+  FHolder.SaveNow;
 end;
 
 procedure TAtlasIdeShortcutTips.AddKeys(AShortCut: Word; const AId: string);
@@ -614,7 +597,7 @@ begin
     Exit;
   Now_ := Now;
   for Id in Ids do
-    FUsage.Count(Id, TAtlasCommandInput.Keyboard, Now_);
+    Usage.Count(Id, TAtlasCommandInput.Keyboard, Now_);
   Changed;
 end;
 
@@ -718,14 +701,14 @@ end;
 
 procedure TAtlasIdeShortcutTips.MouseUse(const AId: string);
 begin
-  FUsage.Count(AId, TAtlasCommandInput.Mouse, Now);
+  Usage.Count(AId, TAtlasCommandInput.Mouse, Now);
   Changed;
   Queue(AId, '', '', False);
 end;
 
 procedure TAtlasIdeShortcutTips.MouseUse(const AId, AKeyText, ACaption: string);
 begin
-  FUsage.Count(AId, TAtlasCommandInput.Mouse, Now);
+  Usage.Count(AId, TAtlasCommandInput.Mouse, Now);
   Changed;
   // Kürzel außerhalb der Aktionsliste der IDE für die Tastatur merken.
   if (AKeyText <> '') and (FindAction(AId) = nil) then
@@ -794,7 +777,10 @@ var
 begin
   Settings := TAtlasIdeSettings.Current;
   KeyText := AKeyText;
-  Caption := ACaption;
+  // Dieselbe Tippquelle wie „Atlas entdecken“ (#757): Titel aus tips.json, sonst der Aktion.
+  Caption := TipTitle(AId);
+  if Caption = '' then
+    Caption := ACaption;
   if Caption = '' then
     Caption := AId;
   Situation := TAtlasTipSituation.Create(Settings.ShortcutTips, TAtlasShortcutTips.ScopeOf(Settings.ShortcutTipsScope),
@@ -806,7 +792,7 @@ begin
     Situation.DebugPaused := DebugPaused;
     Situation.ModalOpen := ModalOpen;
   end;
-  Verdict := TAtlasShortcutTips.Decide(FUsage.Entry(AId), Situation);
+  Verdict := TAtlasShortcutTips.Decide(Usage.Entry(AId), Situation);
   if Verdict = TAtlasTipVerdict.Show then
     ShowTip(AId, KeyText, Caption);
 end;
@@ -838,9 +824,9 @@ begin
   FWindow.ShowTip(TAtlasShortcutTipView.Create(AKeyText, ACaption, TAtlasIdeSettings.Current.KeyOverview), Area);
   FTipId := AId;
   FLastTipAt := Now;
-  Entry := FUsage.Entry(AId);
+  Entry := Usage.Entry(AId);
   TAtlasShortcutTips.MarkShown(Entry, FLastTipAt);
-  FUsage.Put(Entry);
+  Usage.Put(Entry);
   Changed;
   // Anonym: kein Dateiname, kein Quelltext.
   TAtlasGuard.Log('Tastenkürzel-Tipp gezeigt (#600)');
@@ -855,9 +841,9 @@ begin
     begin
       if FTipId = '' then
         Exit;
-      Entry := FUsage.Entry(FTipId);
+      Entry := Usage.Entry(FTipId);
       Entry.Never := True;
-      FUsage.Put(Entry);
+      Usage.Put(Entry);
       // Gleich sichern: Die Wahl soll auch einen Absturz überstehen.
       Save;
     end);

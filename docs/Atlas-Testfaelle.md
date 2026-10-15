@@ -732,6 +732,34 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert, Willkommensseite 
 | ZK19 | Schmale Spalte bzw. Fenster *Atlas-Start* schmal ziehen; dunkles und helles Thema, 150 % Skalierung | Knöpfe brechen in eine zweite Reihe um, die Kachel wird höher, nichts abgeschnitten; lange Texte enden mit „…“, Zusatz rechts bleibt sichtbar; Punkte und Texte lesbar; Themenwechsel ohne Neustart |
 | ZK20 | Abgesicherter Start | Kachel zeigt, was es gibt; fehlende Zeilen grau (z. B. „Einrichtung noch nicht geprüft“); kein Fehler im Protokoll |
 
+### Atlas entdecken (#757)
+
+Entscheidung zur Ablage: Die Zählung je Befehl steht (wie im Issue verlangt) in `%LOCALAPPDATA%\Atlas\usage.json` und enthält nur Befehlskennung, Zähler (`mouse`, `keyboard`) und `lastUsed`. Zustand der Tipps (letzter Tastenkürzel-Tipp, „Nicht mehr zeigen“ aus #600) und der Abschnitt `discover` der Karte (gesperrte Tipps, zuletzt gezeigter) stehen in `%LOCALAPPDATA%\Atlas\shortcut-tips.json`. Gezählt wird über die Beobachtung der Tastenkürzel-Tipps (#600); sie läuft, solange `shortcutTips.enabled` oder (Willkommensseite, Karte und `tips.usageTracking` an) gilt. Im abgesicherten Start (#722) zeigt die Karte Tipps, zählt aber nichts.
+
+Vorbereitung: Paket mit `tips.json`, `Tipps\` und `Beispiele\` neben den BPL-Ordnern (Installer bzw. `Setup\tips.json`, `Setup\Tipps` und `Setup\Beispiele` von Hand dorthin kopieren). `%LOCALAPPDATA%\Atlas\usage.json` und `shortcut-tips.json` gelöscht. Willkommensseite (bzw. Fenster *Atlas-Start*) mit Atlas-Bereichen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AE1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasTipCatalogTests`, `TAtlasDiscoverTests`, `TAtlasCommandUsageTests`, `TAtlasWelcomeDiscoverFrameTests`, `TAtlasSettingsPageTests.WelcomeSettingsRoundTrip`, `TAtlasSettingsPageTests.UsageButtonsCallBack` und `TSetupInstallerTests` grün |
+| AE2 | IDE starten | Karte „Atlas entdecken“ in der rechten Spalte unter „Neu in Atlas“ (Atlas-Layout) bzw. als eigener Bereich: Bild links, fetter Titel „Code-Aktionen“ mit dem tatsächlichen Kürzel (z. B. „Ctrl+.“ bzw. „Strg+.“) daneben, ein bis zwei Sätze, grau „Noch nie benutzt“ und rechts „Tipp 1 von 10“; darunter „Ausprobieren“, „Nächster Tipp“, „Nicht mehr zeigen“ (**Abnahme**) |
+| AE3 | „Ausprobieren“ bei „Code-Aktionen“ | `Beispiele\Entdecken.pas` öffnet sich, der Cursor steht auf `Rabatt` (Zeile 57); Meldungsansicht „Atlas entdecken: Beispiel geöffnet – jetzt … drücken.“; das Kürzel zeigt die Code-Aktionen |
+| AE4 | AE3, dann das Kürzel drücken; IDE neu starten | `usage.json` enthält `Atlas.CodeActions` mit `keyboard` ≥ 1 und `lastUsed` von heute (spätestens 5 s nach dem Aufruf bzw. beim Beenden gespeichert); nach dem Neustart kommt zuerst ein anderer, noch nie benutzter Tipp; „Code-Aktionen“ erscheint erst nach allen nie benutzten und zeigt dann „Zuletzt heute benutzt“ (**Abnahme**) |
+| AE5 | „Nächster Tipp“ mehrmals | Tipp für Tipp in der festen Reihenfolge des Starts, „Tipp n von m“ zählt mit, nach dem letzten wieder der erste; IDE neu starten: die Karte beginnt nach dem zuletzt gezeigten Tipp |
+| AE6 | Bei „Umbenennen im ganzen Projekt“ „Nicht mehr zeigen“; IDE neu starten, alle Tipps durchblättern | Die Karte springt sofort zum nächsten Tipp; `shortcut-tips.json` enthält `"discover": {"blocked": ["rename"], …}`; auch nach dem Neustart kommt der Tipp nie wieder, „von m“ ist um eins kleiner (**Abnahme**) |
+| AE7 | *Tools › Optionen › Atlas › Willkommensseite* „Gesperrte Tipps wieder zeigen“ | Knopf wird grau; der gesperrte Tipp erscheint beim Durchblättern wieder (hinten in der Reihenfolge) |
+| AE8 | Seite *Rückgängig über mehrere Dateien*: `undo.multiFile` aus; Tastenkürzel-Übersicht (*Tastenkonflikte*) aus; dann alle Tipps durchblättern, IDE neu starten | „Änderungen über mehrere Dateien zurücknehmen“ und „Tastenkürzel-Übersicht“ erscheinen nie (auch nicht über „Nächster Tipp“); wieder an: sie kommen ohne Neustart zurück (**Abnahme**) |
+| AE9 | `welcomePage.discover` aus | Karte verschwindet sofort, im Kontextmenü bzw. Atlas-Layout kein Bereich „Atlas entdecken“; mit `shortcutTips.enabled` aus wird nichts mehr gezählt (Protokoll „Beobachtung False“) (**Abnahme**) |
+| AE10 | `tips.usageTracking` aus, einige Atlas-Befehle per Menü und Kürzel aufrufen, IDE neu starten | `usage.json` ändert sich nicht (Zeitstempel und Inhalt); die Karte zeigt keinen Hinweis „Noch nie benutzt“/„Zuletzt …“ und die Tipps kommen der Reihe nach, je Start nach dem zuletzt gezeigten (**Abnahme**) |
+| AE11 | „Zählung zurücksetzen“ | Knopf wird grau; `usage.json` enthält keine Zähler mehr (`"commands": {}`); die Karte zeigt sofort „Noch nie benutzt“; `shortcut-tips.json` (gesperrte Tipps, „Nicht mehr zeigen“ aus #600) bleibt |
+| AE12 | `usage.json` in einem Editor ansehen | Nur `format` und je Befehl `mouse`, `keyboard`, `lastUsed`; keine Dateinamen, kein Quelltext, keine Projektnamen (**Abnahme**) |
+| AE13 | Alte `shortcut-tips.json` aus #600 mit Zählern (`mouse`/`keyboard`/`lastUsed` je Befehl), `usage.json` fehlt; IDE starten, einen Befehl aufrufen, 5 s warten | `usage.json` entsteht mit den alten Zählern plus dem neuen Aufruf; `shortcut-tips.json` enthält danach nur noch `lastTip`/`never` und `discover` |
+| AE14 | Über die Befehlspalette (oder das Menü *Atlas*) „Symbolsuche“ ausführen, die Karte bei „Symbolsuche“ „Ausprobieren“ | Ohne Beispieldatei führt „Ausprobieren“ den Befehl aus; danach gilt er beim nächsten Start nicht mehr als nie benutzt |
+| AE15 | Mit `shortcutTips.enabled` an eine Atlas-Aktion per Menü aufrufen, die in `tips.json` steht (z. B. *Atlas › Auswahl erweitern*) | Der Tastenkürzel-Tipp (#600) zeigt den Titel aus `tips.json` („Auswahl erweitern“) |
+| AE16 | `tips.json` löschen bzw. alle Tipps sperren | Kein Bereich „Atlas entdecken“; kein Fehler im Protokoll. Bild löschen: Karte ohne Bild, Text rückt nach links. `Beispiele\Entdecken.pas` löschen: „Ausprobieren“ meldet „Die Beispieldatei … fehlt in der Installation.“ |
+| AE17 | Dunkles und helles Thema, 100 %, 150 %, 200 % Skalierung; Spalte bzw. Fenster *Atlas-Start* schmal ziehen | Bild scharf genug und nicht verzerrt (96×60 logische Pixel), Text bricht um, Knöpfe brechen in eine zweite Reihe um, die Karte wird höher, nichts abgeschnitten (**Abnahme**) |
+| AE18 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs`) nach AE2–AE11 | Nur Zahlen („n von m Tipps in Frage“, „Tipps (#757): 10 aus tips.json“) und „Tipp gesperrt“/„Sperren aufgehoben“/„Nutzungszählung zurückgesetzt“; keine Befehle, Pfade oder Benutzernamen |
+| AE19 | Installer: Paket aus dem Release installieren, dann über eine Version mit anderem Tipp-Bild aktualisieren | `tips.json` und `Tipps\*.png` im Installationsordner; alte Bilder sind nach dem Update weg; Deinstallation mit „Daten löschen“ entfernt `usage.json` und `shortcut-tips.json` |
+
 ## Atlas-Symbol (#751)
 
 | Nr. | Schritte | Erwartet |
@@ -812,7 +840,7 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; für TK5/TK6 eine
 
 ## Tastenkürzel-Tipps (#600)
 
-Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; `shortcutTips.enabled` an, `shortcutTips.scope` = `all`; `%LOCALAPPDATA%\Atlas\shortcut-tips.json` gelöscht. Ein Projekt mit einer Klasse, deren Methoden noch nicht implementiert sind. Zwischen zwei Tipps 30 s warten (Mindestabstand), sofern ein Fall nichts anderes sagt.
+Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; `shortcutTips.enabled` an, `shortcutTips.scope` = `all`; `%LOCALAPPDATA%\Atlas\shortcut-tips.json` und `%LOCALAPPDATA%\Atlas\usage.json` gelöscht (seit #757 steht die Zählung in `usage.json`, der Zustand der Tipps in `shortcut-tips.json`). Ein Projekt mit einer Klasse, deren Methoden noch nicht implementiert sind. Zwischen zwei Tipps 30 s warten (Mindestabstand), sofern ein Fall nichts anderes sagt.
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
@@ -822,8 +850,8 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; `shortcutTips.ena
 | TT4 | TT2 wiederholen und sofort eine beliebige Taste drücken | Der Tipp verschwindet mit der Taste; die Taste wirkt normal im Editor |
 | TT5 | Nach TT2 am selben Tag (nach mehr als 30 s) erneut über das Kontextmenü „Klasse beim Cursor vervollständigen“ | Kein Tipp (höchstens einer je Aktion und Tag, **Abnahme**) |
 | TT6 | Am nächsten Tag (oder `lastTip` des Befehls in `shortcut-tips.json` auf gestern setzen, IDE neu starten) TT2 wiederholen, im Tipp „Nicht mehr zeigen“ klicken; IDE neu starten, an einem weiteren Tag erneut TT2 | Nach dem Klick verschwindet der Tipp; `shortcut-tips.json` enthält für den Befehl `"never": true`; auch nach dem Neustart und an späteren Tagen kein Tipp für diesen Befehl, Tipps für andere Befehle erscheinen weiter (**Abnahme**) |
-| TT7 | Strg+Umschalt+C dreimal im Editor drücken, dann (anderer Tag) über das Kontextmenü aufrufen | `keyboard` des Befehls in `shortcut-tips.json` steht auf 3 (nach höchstens 5 s gespeichert); kein Tipp mehr |
-| TT8 | Eine Aktion per Tastatur auslösen, z. B. Strg+Umschalt+C oder F9 | Kein Tipp (**Abnahme**); die Datei zählt `keyboard`, nicht `mouse` |
+| TT7 | Strg+Umschalt+C dreimal im Editor drücken, dann (anderer Tag) über das Kontextmenü aufrufen | `keyboard` des Befehls in `usage.json` steht auf 3 (nach höchstens 5 s gespeichert); kein Tipp mehr |
+| TT8 | Eine Aktion per Tastatur auslösen, z. B. Strg+Umschalt+C oder F9 | Kein Tipp (**Abnahme**); `usage.json` zählt `keyboard`, nicht `mouse` |
 | TT9 | Über das Hauptmenü eine Aktion ohne Kürzel aufrufen (z. B. *Projekt › Optionen…* ohne Belegung oder *Atlas › Fehlerbericht erstellen…*) | Kein Tipp (**Abnahme**); `mouse` wird trotzdem gezählt |
 | TT10 | Über die Werkzeugleiste „Speichern“ klicken, dann über das Hauptmenü *Atlas › Auswahl erweitern* | Je ein Tipp mit „[Strg]+[S]“ bzw. der Atlas-Taste für „Auswahl erweitern“ (mit 30 s Abstand) |
 | TT11 | Befehlspalette (Strg+Umschalt+P), dort „Speichern“ bzw. einen Atlas-Befehl mit Taste wählen | Tipp mit dem Kürzel des gewählten Befehls (die Palette zählt als Aufruf ohne Kürzel) |
@@ -835,9 +863,9 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; `shortcutTips.ena
 | TT17 | Im Tipp auf „Alle Kürzel“ klicken | Das Fenster „Atlas – Tastenkürzel“ (#520) öffnet mit leerer Suche; mit `keys.overview` aus fehlt der Link |
 | TT18 | Nach TT2–TT11 die Tastenkürzel-Übersicht öffnen | Spalte „Selten per Tastatur“ zwischen Kontext und Hinweis; bei Befehlen mit mindestens drei Aufrufen, davon weniger als ein Viertel per Kürzel, steht z. B. „3× Maus, 0× Tastatur“; der HTML-Export enthält die Spalte |
 | TT19 | `shortcutTips.scope` auf „Nur Atlas-Befehle“, dann TT10 | Kein Tipp für „Speichern“, aber für den Atlas-Befehl |
-| TT20 | `shortcutTips.enabled` aus (Seite *Allgemein* oder Schnellschalter), dann TT2 | Kein Tipp; Protokoll „Beobachtung False“; `shortcut-tips.json` ändert sich nicht mehr |
+| TT20 | `shortcutTips.enabled` aus (Seite *Allgemein* oder Schnellschalter), dann TT2 | Kein Tipp; Protokoll „Beobachtung False“ (nur, wenn auch `welcomePage.discover` oder `tips.usageTracking` aus ist, sonst zählt Atlas für „Atlas entdecken“ weiter); `shortcut-tips.json` ändert sich nicht mehr |
 | TT21 | IDE-Thema hell ↔ dunkel wechseln, während ein Tipp sichtbar ist; dann erneut einen Tipp auslösen | Tipp in den Farben des Themas, Tastenkappen abgesetzt, Links in Akzentfarbe; 100 %, 150 %, 200 % Skalierung scharf und nicht abgeschnitten |
-| TT22 | `%APPDATA%\Atlas\usage.json` (Vervollständigung) vor und nach TT2–TT11 vergleichen | Unverändert durch die Tipps; die Zählung steht nur in `%LOCALAPPDATA%\Atlas\shortcut-tips.json` |
+| TT22 | `%APPDATA%\Atlas\usage.json` (Vervollständigung) vor und nach TT2–TT11 vergleichen | Unverändert durch die Tipps; die Zählung steht nur in `%LOCALAPPDATA%\Atlas\usage.json` (#757) |
 | TT23 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs`) nach TT2 | Nur „Tastenkürzel-Tipp gezeigt (#600)“ bzw. „Beobachtung True/False“, keine Befehlsnamen, Pfade oder Benutzernamen |
 | TT24 | Abgesicherter Start (#722) | Keine Tipps und keine Zählung; Menü und Palette funktionieren unverändert |
 
