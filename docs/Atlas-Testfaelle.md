@@ -637,3 +637,19 @@ Vorbereitung: Formular mit Button `btnSave` und den Methoden `FormCreate(Sender:
 | DI6 | Optionen › Atlas › Befehle: „Zwischen Deklaration und Implementierung wechseln“ aus, OK | Strg+Umschalt+↑/↓ macht wieder die IDE; Menü *Atlas* › „Deklaration/Implementierung wechseln“ geht weiter |
 | DI7 | Taste 1 auf Strg+Alt+D ändern, Taste 2 leeren, OK | Strg+Alt+D wechselt; Strg+Umschalt+↑ macht die IDE, Strg+Umschalt+↓ ebenso |
 | DI8 | Menü *Atlas*, Kontextmenü *Atlas* und Befehlspalette „Deklaration/Implementierung wechseln“ | Sprung wie DI1; außerhalb einer Methode Zeile „Am Cursor steht keine Methode …“ in der Meldungsansicht |
+## DUnitX-Testgerüst (#274)
+
+Voraussetzung: Projektgruppe mit einem DUnitX-Testprojekt (`.dpr` mit `uses DUnitX.TestFramework`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TG1 | Cursor auf `TKunde = class` in `Kunden.pas`, Code-Aktionen (Strg+.) | Eintrag „DUnitX-Testunit für TKunde anlegen“ |
+| TG2 | Eintrag wählen | `Kunden.Tests.pas` im Ordner des Testprojekts angelegt und geöffnet; `[TestFixture] TKundeTests` mit `FSubject`, `[Setup]`, `[TearDown]` und einem `[Test]` je public-Methode (überladene als `TestX2`), jeder Test mit `Assert.Fail` |
+| TG3 | Testprojekt ist geladen: Projektverwaltung und `.dpr` ansehen | Neue Unit steht im Testprojekt (nicht im aktiven Projekt), `uses` der `.dpr` enthält sie |
+| TG4 | Testprojekt ist nicht geladen: `.dpr` und `.dproj` im Editor ansehen | `Kunden.Tests in 'Kunden.Tests.pas'` in der `.dpr`, `DCCReference` in der `.dproj`; keine `.dpr` wurde im Editor geöffnet |
+| TG5 | Testprojekt übersetzen | Übersetzt ohne Fehler, Warnungen und Hinweise; die Tests schlagen mit „Test für … fehlt noch“ fehl |
+| TG6 | Klasse mit `constructor Create(AName: string)` | Setup enthält nur den Kommentar „braucht Argumente im Konstruktor“ |
+| TG7 | atlas.json `"testUnits": {"pattern": "Test.{unit}", "folder": "Tests/Unit"}`, TG1 | Neue Unit `Test.Kunden.pas` unter `Tests\Unit`, relativer Pfad in `.dpr` und `.dproj` |
+| TG8 | Projektgruppe ohne Testprojekt, TG1 | Kein Eintrag zum Anlegen |
+| TG9 | Testunit existiert schon, Code-Aktionen auf der Klasse | „Zur Testunit Kunden.Tests wechseln“ öffnet sie |
+

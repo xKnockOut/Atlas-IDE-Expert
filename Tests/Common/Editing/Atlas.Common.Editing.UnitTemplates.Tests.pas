@@ -27,6 +27,8 @@ type
     procedure ProgramFrameWithoutCreateForm;
     [Test]
     procedure ProjectGetsReference;
+    [Test]
+    procedure ProgramGetsPlainUnit;
   end;
 
 implementation
@@ -165,6 +167,24 @@ begin
   Assert.AreEqual(','#10'  Adresse in ''Adresse.pas'' {AdresseFrame: TFrame}', Edits[0].NewText);
   Assert.IsFalse(TUnitTemplates.ProgramEdits('program P;'#10'begin'#10'end.', 'A', 'A.pas', 'TA', TFormKind.Form,
     Edits));
+end;
+
+procedure TUnitTemplatesTests.ProgramGetsPlainUnit;
+const
+  Tests = 'program Tests;'#10'uses'#10'  DUnitX.TestFramework,'#10'  Kunden.Tests in ''Kunden.Tests.pas'';'#10 +
+    'begin'#10'end.';
+var
+  Edit: TRuleEdit;
+  Text: string;
+begin
+  Assert.IsTrue(TUnitTemplates.UnitProgramEdit(Tests, 'Rechnung.Tests', 'Sub\Rechnung.Tests.pas', Edit));
+  Text := ApplyOne(Tests, Edit);
+  Assert.IsTrue(Pos('  Kunden.Tests in ''Kunden.Tests.pas'','#10'  Rechnung.Tests in ''Sub\Rechnung.Tests.pas'';',
+    Text) > 0, Text);
+  Assert.IsTrue(Parses(Text), Text);
+  // Schon eingetragen (auch mit anderer Schreibweise): kein Edit.
+  Assert.IsFalse(TUnitTemplates.UnitProgramEdit(Tests, 'kunden.tests', 'Kunden.Tests.pas', Edit));
+  Assert.IsFalse(TUnitTemplates.UnitProgramEdit('program P;'#10'begin'#10'end.', 'A', 'A.pas', Edit));
 end;
 
 procedure TUnitTemplatesTests.ProjectGetsReference;
