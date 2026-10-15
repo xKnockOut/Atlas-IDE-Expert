@@ -176,6 +176,7 @@ begin
   Assert.AreEqual(75, Settings.PairGuideOpacity, 'Blocklinien 75 % Deckkraft');
   Assert.IsTrue(Settings.ProblemsList, 'Liste „Atlas-Probleme“ standardmäßig an');
   Assert.IsTrue(Settings.Favorites, 'Favoriten anheften standardmäßig an (#458)');
+  Assert.IsTrue(Settings.Notes, 'Notizen standardmäßig an (#545)');
 end;
 
 procedure TAtlasPluginSettingsTests.SaveAndLoadRoundTrip;
@@ -192,6 +193,7 @@ begin
   Settings.PanelCollapsed := True;
   Settings.Learning := False;
   Settings.Favorites := False;
+  Settings.Notes := False;
   Settings.Preview := True;
   Settings.OpenForEdits := False;
   Settings.InlayHints := True;
@@ -253,6 +255,7 @@ begin
   Assert.IsTrue(Loaded.PanelCollapsed);
   Assert.IsFalse(Loaded.Learning);
   Assert.IsFalse(Loaded.Favorites, 'Favoriten abschaltbar (#458)');
+  Assert.IsFalse(Loaded.Notes, 'Notizen abschaltbar (#545)');
   Assert.IsTrue(Loaded.Preview);
   Assert.IsFalse(Loaded.OpenForEdits);
   Assert.IsTrue(Loaded.InlayHints);

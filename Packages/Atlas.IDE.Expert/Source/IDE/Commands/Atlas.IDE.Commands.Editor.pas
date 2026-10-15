@@ -111,7 +111,8 @@ uses
   Atlas.IDE.Hover.Editor,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Settings.Store,
-  Atlas.IDE.Undo.Changes;
+  Atlas.IDE.Undo.Changes,
+  Atlas.IDE.Notes.Service;
 
 const
   // Code-Aktionen und Befehle des Servers; Befehle können projektweit arbeiten.
@@ -310,6 +311,35 @@ begin
     procedure
     begin
       TAtlasIdeUndo.RedoLast;
+    end);
+  // Persönliche Notizen (#545): nach Rechtsklick in die Rinne für die angeklickte Zeile, sonst für den Cursor.
+  FContextMenu.Add('-', nil, nil);
+  FContextMenu.Add('Atlas.NoteAdd', TAtlasStrings.Text(TAtlasTextId.NotesMenuAdd), nil,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Notes,
+        procedure
+        begin
+          TAtlasIdeNotes.AddOrEdit;
+        end);
+    end);
+  FContextMenu.Add('Atlas.NoteDelete', TAtlasStrings.Text(TAtlasTextId.NotesMenuDelete), nil,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Notes,
+        procedure
+        begin
+          TAtlasIdeNotes.DeleteAtLine;
+        end);
+    end);
+  FContextMenu.Add('Atlas.NoteList', TAtlasStrings.Text(TAtlasTextId.NotesMenuList), nil,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Notes,
+        procedure
+        begin
+          TAtlasIdeNotes.ShowList;
+        end);
     end);
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
   begin

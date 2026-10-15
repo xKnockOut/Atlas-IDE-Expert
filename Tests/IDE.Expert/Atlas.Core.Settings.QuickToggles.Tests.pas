@@ -119,6 +119,11 @@ begin
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'ShortcutTips', Toggle));
   Assert.AreEqual('Allgemein', Toggle.Page);
   Assert.IsFalse(Toggle.Drawing);
+  // Persönliche Notizen (#545): Schalter auf der Seite Editor, Symbol in der Rinne.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'Notes', Toggle));
+  Assert.AreEqual('Editor', Toggle.Page);
+  Assert.IsTrue(Toggle.Drawing);
+  Assert.AreEqual('Notes', Toggle.Feature);
   // Jeder Schalter ist eine Einstellung des Plugins.
   for Toggle in Toggles do
   begin

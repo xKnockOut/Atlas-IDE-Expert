@@ -27,6 +27,9 @@ type
     procedure StatusFieldRoundTrips;
     [Test]
     procedure ShortcutTipsRoundTrip;
+    /// <summary>Notizen (#545): Schalter auf dem Reiter Editor, Vorgabe an.</summary>
+    [Test]
+    procedure NotesRoundTrip;
     [Test]
     procedure SafeModeRoundTrips;
     [Test]
@@ -349,6 +352,26 @@ begin
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.ShortcutTips.Checked);
     Assert.AreEqual(0, Page.ShortcutTipsScope.Choice);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.NotesRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.NotesCheck.Checked, 'Notizen standardmäßig an');
+    Page.NotesCheck.Checked := False;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.Notes, 'Notizen abschaltbar');
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.NotesCheck.Checked);
   finally
     Page.Free;
   end;

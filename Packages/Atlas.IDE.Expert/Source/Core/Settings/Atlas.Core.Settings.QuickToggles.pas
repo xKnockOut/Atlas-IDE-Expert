@@ -267,6 +267,9 @@ begin
     '"InlayHints":{"type":"boolean","x-feature":"InlayHints",' +
       '"default":false,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
       '"x-caption":"Inlay-Hints","x-captionEn":"Inlay hints","x-issue":"#401"},' +
+    '"Notes":{"type":"boolean","x-feature":"Notes",' +
+      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
+      '"x-caption":"Notizen","x-captionEn":"Notes","x-issue":"#545"},' +
     '"HoverTooltip":{"type":"boolean","x-feature":"Hover",' +
       '"default":true,"x-page":"Hints","x-quickToggle":true,' +
       '"x-caption":"Hover-Tooltip","x-captionEn":"Hover tooltip","x-issue":"#442"},' +
