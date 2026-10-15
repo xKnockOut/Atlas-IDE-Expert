@@ -17,6 +17,9 @@ type
     procedure FixRemovesEmptyVarSection;
     [Test]
     procedure FixRemovesNameFromList;
+    /// <summary>Bereiche der Korrektur über die Zeilentabelle des Ableitungscaches (Review D-04).</summary>
+    [Test]
+    procedure RemoveVariableFixInCrLfFile;
     [Test]
     procedure UsedLocalIsSilent;
     [Test]
@@ -79,7 +82,12 @@ begin
     #10'  end;'#10'implementation'#10 + AImplementation + #10'end.';
 end;
 
-/// <summary>Wendet die erste Korrektur des ersten Treffers an (Zeilen mit #10).</summary>
+function CrLf(const AText: string): string;
+begin
+  Result := StringReplace(AText, #10, #13#10, [rfReplaceAll]);
+end;
+
+/// <summary>Wendet die erste Korrektur des ersten Treffers an (Zeilen mit #10 oder #13#10).</summary>
 function ApplyFirstFix(const ASource: string; const AFindings: TArray<TRuleFinding>): string;
 var
   Lines: TArray<string>;
@@ -134,6 +142,20 @@ begin
     ApplyFirstFix(Source, TRuleAssert.Findings(TUnusedLocalRule.Create, Source)));
   Source := Routine('  I := 1;'#10'  Foo(I);', 'procedure P;', 'var'#10'  I, J: Integer;'#10);
   Assert.AreEqual(Routine('  I := 1;'#10'  Foo(I);', 'procedure P;', 'var'#10'  I: Integer;'#10),
+    ApplyFirstFix(Source, TRuleAssert.Findings(TUnusedLocalRule.Create, Source)));
+end;
+
+procedure TUnusedRulesTests.RemoveVariableFixInCrLfFile;
+var
+  Source: string;
+begin
+  Source := CrLf(Routine('  I := 1;'#10'  Foo(I);', 'procedure P;', 'var'#10'  I: Integer;'#10'  J: string;'#10));
+  Assert.AreEqual(CrLf(Routine('  I := 1;'#10'  Foo(I);', 'procedure P;', 'var'#10'  I: Integer;'#10)),
+    ApplyFirstFix(Source, TRuleAssert.Findings(TUnusedLocalRule.Create, Source)));
+  Source := CrLf(Routine('  Foo;', 'procedure P;', 'var'#10'  J: string;'#10));
+  Assert.AreEqual(CrLf(Routine('  Foo;')), ApplyFirstFix(Source, TRuleAssert.Findings(TUnusedLocalRule.Create, Source)));
+  Source := CrLf(Routine('  J := 1;'#10'  Foo(J);', 'procedure P;', 'var'#10'  I, J: Integer;'#10));
+  Assert.AreEqual(CrLf(Routine('  J := 1;'#10'  Foo(J);', 'procedure P;', 'var'#10'  J: Integer;'#10)),
     ApplyFirstFix(Source, TRuleAssert.Findings(TUnusedLocalRule.Create, Source)));
 end;
 

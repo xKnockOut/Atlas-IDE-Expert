@@ -39,6 +39,9 @@ type
     procedure ScaledAndTrivialPixelsAreSilent;
     [Test]
     procedure HexColorReportsSystemColorSilent;
+    /// <summary>Alle sechs Regeln in einem Lauf teilen das Komponentenmodell (Review P-03).</summary>
+    [Test]
+    procedure AllComponentRulesShareModelInOneRun;
   end;
 
 implementation
@@ -273,6 +276,26 @@ begin
   TRuleAssert.Reports(TComponentHardcodedColorRule.Create, PaintUnit('  Canvas.Brush.Color := $00FF8000;'));
   TRuleAssert.Reports(TComponentHardcodedColorRule.Create, PaintUnit('  Canvas.Pen.Color := RGB(255, 128, 0);'));
   TRuleAssert.Silent(TComponentHardcodedColorRule.Create, PaintUnit('  Canvas.Brush.Color := clBtnFace;'));
+end;
+
+procedure TComponentRulesTests.AllComponentRulesShareModelInOneRun;
+var
+  Source: string;
+  Count: Integer;
+begin
+  Source := ControlUnit(SizeMembers + #10 + LinkMembers + #10 +
+    '  protected'#10'    procedure Loaded; override;'#10'    procedure Paint; override;',
+    'constructor TFoo.Create(AOwner: TComponent);'#10'begin'#10'  inherited Create(AOwner);'#10 +
+    '  FSize := 10;'#10'end;'#10 +
+    'procedure TFoo.SetLink(const Value: TControl);'#10'begin'#10'  FLink := Value;'#10'end;'#10 +
+    'procedure TFoo.Loaded;'#10'begin'#10'  Layout;'#10'end;'#10 +
+    'procedure TFoo.Paint;'#10'begin'#10'  inherited;'#10'  Canvas.FillRect(Rect(0, 0, 16, 16));'#10 +
+    '  Canvas.Brush.Color := $00FF8000;'#10'end;');
+  Count := TRuleAssert.SameAsSeparateRuns([TComponentMissingInheritedRule.Create,
+    TComponentDefaultMismatchRule.Create, TComponentMissingFreeNotificationRule.Create,
+    TComponentSetterWithoutInvalidateRule.Create, TComponentFixedPixelsRule.Create,
+    TComponentHardcodedColorRule.Create], Source, LowConfidence);
+  Assert.IsTrue(Count >= 5, 'Treffer mehrerer Regeln: ' + IntToStr(Count));
 end;
 
 initialization

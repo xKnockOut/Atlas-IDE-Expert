@@ -59,7 +59,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Semantics.ControlFlow;
+  Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Rules.Derived;
 
 const
   SimpleTypes: array[0..23] of string = ('Integer', 'Cardinal', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt',
@@ -140,17 +141,6 @@ begin
   Result := False;
 end;
 
-/// <summary>Alle RoutineDecl mit Rumpf, auch lokale.</summary>
-procedure CollectRoutines(ANode: TSyntaxNode; var ARoutines: TArray<TSyntaxNode>);
-var
-  Index: Integer;
-begin
-  if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.FindChild(TSyntaxKind.Block) <> nil) then
-    ARoutines := ARoutines + [ANode];
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectRoutines(ANode[Index], ARoutines);
-end;
-
 function ShortName(const AName: string): string;
 begin
   Result := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
@@ -192,15 +182,14 @@ var
   Routines: TArray<TSyntaxNode>;
   Routine, Header, Block: TSyntaxNode;
   Graph: TControlFlowGraph;
-  Lookup: TFlowSignatureLookup;
+  Cache: IRuleDerivedCache;
   Name: string;
 begin
   if AContext.Tree = nil then
     Exit;
-  Routines := nil;
-  CollectRoutines(AContext.Tree.Root, Routines);
-  // Signaturen der Datei einmal je Prüfung lesen, nicht je Routine (#143).
-  Lookup := TFlowSignatures.FromTree(AContext.Tree.Root);
+  // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln (Review P-03).
+  Cache := TRuleDerived.Open(AContext);
+  Routines := TRuleDerived.Routines(Cache, AContext);
   for Routine in Routines do
   begin
     Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
@@ -211,16 +200,12 @@ begin
     Name := ShortName(Routine.Name);
     if HasOpaqueUse(Block, 'Result') or HasOpaqueUse(Block, Name) or ContainsKind(Block, TSyntaxKind.InheritedExpr) then
       Continue;
-    Graph := TControlFlowGraph.Build(Routine, Lookup);
-    try
-      // Alte Schreibweise: Zuweisung an den Funktionsnamen setzt ebenfalls das Ergebnis.
-      if (Graph.MayEndWithout('Result') = TFlowAnswer.Yes) and (Graph.MayEndWithout(Name) = TFlowAnswer.Yes) then
-        AReport.Add(HeaderNameRange(AContext, Routine),
-          Format('"%s" kann enden, ohne Result zu setzen; der Rückgabewert ist dann undefiniert', [Name]),
-          TRuleConfidence.High);
-    finally
-      Graph.Free;
-    end;
+    Graph := TRuleDerived.Graph(Cache, AContext, Routine);
+    // Alte Schreibweise: Zuweisung an den Funktionsnamen setzt ebenfalls das Ergebnis.
+    if (Graph.MayEndWithout('Result') = TFlowAnswer.Yes) and (Graph.MayEndWithout(Name) = TFlowAnswer.Yes) then
+      AReport.Add(HeaderNameRange(AContext, Routine),
+        Format('"%s" kann enden, ohne Result zu setzen; der Rückgabewert ist dann undefiniert', [Name]),
+        TRuleConfidence.High);
   end;
 end;
 
@@ -237,7 +222,7 @@ var
   Routines: TArray<TSyntaxNode>;
   Routine, Block, Section, Decl, TypeNode: TSyntaxNode;
   Graph: TControlFlowGraph;
-  Lookup: TFlowSignatureLookup;
+  Cache: IRuleDerivedCache;
   Index, Inner: Integer;
   Name, TypeName: string;
   Confidence: TRuleConfidence;
@@ -281,50 +266,45 @@ var
 begin
   if AContext.Tree = nil then
     Exit;
-  Routines := nil;
-  CollectRoutines(AContext.Tree.Root, Routines);
-  // Signaturen der Datei einmal je Prüfung lesen, nicht je Routine (#143).
-  Lookup := TFlowSignatures.FromTree(AContext.Tree.Root);
+  // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln (Review P-03).
+  Cache := TRuleDerived.Open(AContext);
+  Routines := TRuleDerived.Routines(Cache, AContext);
   for Routine in Routines do
   begin
     Block := Routine.FindChild(TSyntaxKind.Block);
     Graph := nil;
-    try
-      for Index := 0 to Routine.ChildCount - 1 do
+    for Index := 0 to Routine.ChildCount - 1 do
+    begin
+      Section := Routine[Index];
+      if Section.Kind <> TSyntaxKind.VarSection then
+        Continue;
+      for Inner := 0 to Section.ChildCount - 1 do
       begin
-        Section := Routine[Index];
-        if Section.Kind <> TSyntaxKind.VarSection then
+        Decl := Section[Inner];
+        TypeNode := Decl.FindChild(TSyntaxKind.TypeReference);
+        // var X: Integer = 0 ist vorbelegt; nur einfache Deklarationen mit Typverweis.
+        if (Decl.Kind <> TSyntaxKind.VarDecl) or (TypeNode = nil) or (Decl.ChildCount <> 1) or
+          (TypeNode.FindChild(TSyntaxKind.GenericArgs) <> nil) then
           Continue;
-        for Inner := 0 to Section.ChildCount - 1 do
+        TypeName := TypeNode.Name;
+        if MatchText(TypeName, SimpleTypes) then
+          Confidence := TRuleConfidence.High
+        else if StartsText('T', TypeName) and (Length(TypeName) > 1) and not MatchText(TypeName, ManagedTypes) then
+          Confidence := TRuleConfidence.Medium
+        else
+          Continue;
+        for Name in Decl.Name.Split([',']) do
         begin
-          Decl := Section[Inner];
-          TypeNode := Decl.FindChild(TSyntaxKind.TypeReference);
-          // var X: Integer = 0 ist vorbelegt; nur einfache Deklarationen mit Typverweis.
-          if (Decl.Kind <> TSyntaxKind.VarDecl) or (TypeNode = nil) or (Decl.ChildCount <> 1) or
-            (TypeNode.FindChild(TSyntaxKind.GenericArgs) <> nil) then
+          if HasOpaqueUse(Block, Name.Trim) then
             Continue;
-          TypeName := TypeNode.Name;
-          if MatchText(TypeName, SimpleTypes) then
-            Confidence := TRuleConfidence.High
-          else if StartsText('T', TypeName) and (Length(TypeName) > 1) and not MatchText(TypeName, ManagedTypes) then
-            Confidence := TRuleConfidence.Medium
-          else
-            Continue;
-          for Name in Decl.Name.Split([',']) do
-          begin
-            if HasOpaqueUse(Block, Name.Trim) then
-              Continue;
-            if Graph = nil then
-              Graph := TControlFlowGraph.Build(Routine, Lookup);
-            if not Graph.Complete then
-              Break;
-            Reported := False;
-            Visit(Block);
-          end;
+          if Graph = nil then
+            Graph := TRuleDerived.Graph(Cache, AContext, Routine);
+          if not Graph.Complete then
+            Break;
+          Reported := False;
+          Visit(Block);
         end;
       end;
-    finally
-      Graph.Free;
     end;
   end;
 end;
@@ -364,7 +344,7 @@ var
   Dead: TArray<TSyntaxNode>;
   Routine: TSyntaxNode;
   Graph: TControlFlowGraph;
-  Lookup: TFlowSignatureLookup;
+  Cache: IRuleDerivedCache;
   Unreachable: TArray<TFlowNode>;
   Node: TFlowNode;
 
@@ -420,28 +400,23 @@ var
 begin
   if AContext.Tree = nil then
     Exit;
-  Routines := nil;
-  CollectRoutines(AContext.Tree.Root, Routines);
-  // Signaturen der Datei einmal je Prüfung lesen, nicht je Routine (#143).
-  Lookup := TFlowSignatures.FromTree(AContext.Tree.Root);
+  // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln (Review P-03).
+  Cache := TRuleDerived.Open(AContext);
+  Routines := TRuleDerived.Routines(Cache, AContext);
   for Routine in Routines do
   begin
-    Graph := TControlFlowGraph.Build(Routine, Lookup);
-    try
-      if not Graph.Complete then
-        Continue;
-      Unreachable := Graph.UnreachableStatements;
-      Dead := nil;
-      for Node in Unreachable do
-        if Node.Syntax <> nil then
-          Dead := Dead + [Node.Syntax];
-      for Node in Unreachable do
-        if (Node.Syntax <> nil) and StartsDeadRun(Node.Syntax) then
-          AReport.Add(FirstLineRange(AContext, Node.Syntax), 'Diese Anweisung wird nie ausgeführt',
-            TRuleConfidence.High);
-    finally
-      Graph.Free;
-    end;
+    Graph := TRuleDerived.Graph(Cache, AContext, Routine);
+    if not Graph.Complete then
+      Continue;
+    Unreachable := Graph.UnreachableStatements;
+    Dead := nil;
+    for Node in Unreachable do
+      if Node.Syntax <> nil then
+        Dead := Dead + [Node.Syntax];
+    for Node in Unreachable do
+      if (Node.Syntax <> nil) and StartsDeadRun(Node.Syntax) then
+        AReport.Add(FirstLineRange(AContext, Node.Syntax), 'Diese Anweisung wird nie ausgeführt',
+          TRuleConfidence.High);
   end;
 end;
 

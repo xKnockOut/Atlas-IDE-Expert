@@ -137,6 +137,7 @@
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Lexer.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Parser.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.TreeCache.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.SyntaxTree.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.IncludeFiles.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Internals.Debouncer.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Internals.Namespaces.Tests.pas"/>
@@ -163,6 +164,7 @@
         <DCCReference Include="Support\Atlas.Tests.LeakMonitor.Tests.pas"/>
         <DCCReference Include="Support\Atlas.Tests.RuleAssert.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Engine.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Derived.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.GoldenCorpus.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Profiles.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Confidence.Tests.pas"/>

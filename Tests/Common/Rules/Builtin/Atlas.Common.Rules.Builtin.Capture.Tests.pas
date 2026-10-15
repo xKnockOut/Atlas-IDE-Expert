@@ -29,6 +29,9 @@ type
     procedure CustomDeferredApiFromOptions;
     [Test]
     procedure FixCopiesValuePerIteration;
+    /// <summary>Einfügeposition und Bereich über die Zeilentabelle des Ableitungscaches (Review D-04).</summary>
+    [Test]
+    procedure CopyPerIterationFixPositionsInCrLfFile;
   end;
 
 implementation
@@ -161,6 +164,22 @@ begin
     Tree.Free;
   end;
   TRuleAssert.Silent(TCapturedLoopVariableRule.Create, Fixed);
+end;
+
+procedure TCaptureRuleTests.CopyPerIterationFixPositionsInCrLfFile;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := StringReplace(Routine(QueueLoop, StringVar), #10, #13#10, [rfReplaceAll]);
+  Findings := TRuleAssert.Findings(TCapturedLoopVariableRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(StringReplace(Routine('  for S in Liste do'#10'    TThread.Queue(nil, CaptureS(S));',
+    StringVar + '  function CaptureS(const AValue: string): TProc;'#10'  begin'#10 +
+    '    Result := procedure begin Memo1.Lines.Add(AValue); end;'#10'  end;'#10#10), #10, #13#10, [rfReplaceAll]),
+    Fixed);
 end;
 
 initialization

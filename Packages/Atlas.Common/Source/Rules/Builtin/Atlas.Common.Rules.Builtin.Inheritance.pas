@@ -50,7 +50,8 @@ type
     function FindType(const AName: string; out AType: TSymbolLocation): Boolean;
     function MethodsOf(const AType: TSymbolLocation; const AName: string): TArray<TIndexSymbol>;
   public
-    constructor Create(const AContext: TRuleContext);
+    /// <summary>ALocal ist der Index der geprüften Datei (TRuleDerived.UnitIndex, Review P-03).</summary>
+    constructor Create(const AIndex: ISymbolIndex; const ALocal: TUnitIndex);
     /// <summary>Name des direkten Vorfahren; TObject ohne Angabe; '' wenn der Typ unbekannt ist.</summary>
     function ParentOf(const ATypeName: string): string;
     /// <summary>Erbt ATypeName (auch über mehrere Stufen) von AAncestor? False, wenn die Kette abbricht.</summary>
@@ -94,7 +95,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Index.Extractor;
+  Atlas.Common.Rules.Derived;
 
 function TMethodDecl.Has(const ADirective: string): Boolean;
 begin
@@ -129,11 +130,11 @@ end;
 
 { TAncestry }
 
-constructor TAncestry.Create(const AContext: TRuleContext);
+constructor TAncestry.Create(const AIndex: ISymbolIndex; const ALocal: TUnitIndex);
 begin
   inherited Create;
-  FIndex := AContext.Index;
-  FLocal := TIndexExtractor.Extract(AContext.Tree, '');
+  FIndex := AIndex;
+  FLocal := ALocal;
 end;
 
 function TAncestry.FindType(const AName: string; out AType: TSymbolLocation): Boolean;
@@ -386,12 +387,15 @@ end;
 function Prepare(const AContext: TRuleContext; out AAncestry: TAncestry; out AMethods: TArray<TMethodDecl>): Boolean;
 var
   Method: TMethodDecl;
+  Cache: IRuleDerivedCache;
 begin
   AAncestry := nil;
   AMethods := nil;
   if AContext.Tree = nil then
     Exit(False);
-  AAncestry := TAncestry.Create(AContext);
+  // Den Index der Datei teilt der Lauf mit den anderen Regeln (Review P-03).
+  Cache := TRuleDerived.Open(AContext);
+  AAncestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
   for Method in ClassMethods(AContext, AAncestry) do
     if not Settled(Method) then
       AMethods := AMethods + [Method];

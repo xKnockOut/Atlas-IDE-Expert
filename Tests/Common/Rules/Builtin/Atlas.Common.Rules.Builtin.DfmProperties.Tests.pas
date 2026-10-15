@@ -32,6 +32,11 @@ type
     procedure WithoutRulesIsSilent;
     [Test]
     procedure Conditions;
+    /// <summary>Muster für default einmal je Prüfung kompiliert (Review P-11); Verhalten unverändert.</summary>
+    [Test]
+    procedure DeclaredDefaultReadsValue;
+    [Test]
+    procedure DefaultFromDeclarationWithIndexedProperty;
   end;
 
 implementation
@@ -252,6 +257,32 @@ begin
     Value));
   Assert.AreEqual('7', Value);
   Assert.IsFalse(TDfmPropertyCheckRule.DeclaredDefault('property Name: string read FName;', Value));
+end;
+
+procedure TDfmPropertyRulesTests.DeclaredDefaultReadsValue;
+var
+  Value: string;
+begin
+  Assert.IsTrue(TDfmPropertyCheckRule.DeclaredDefault(
+    'property Size: Integer read FSize write FSize default 5;', Value));
+  Assert.AreEqual('5', Value);
+  Assert.IsTrue(TDfmPropertyCheckRule.DeclaredDefault(
+    'property Options: TDBGridOptions read FOptions DEFAULT [dgEditing, dgTitles] ;', Value));
+  Assert.AreEqual('[dgEditing, dgTitles]', Value);
+  Assert.IsFalse(TDfmPropertyCheckRule.DeclaredDefault('property Caption: string read FCaption;', Value));
+  Assert.AreEqual('', Value);
+end;
+
+procedure TDfmPropertyRulesTests.DefaultFromDeclarationWithIndexedProperty;
+var
+  Value: string;
+begin
+  // "default;" nach einer Array-Property ist keine Vorgabe.
+  Assert.IsFalse(TDfmPropertyCheckRule.DeclaredDefault(
+    'property Items[Index: Integer]: string read GetItem write SetItem; default;', Value));
+  Assert.IsTrue(TDfmPropertyCheckRule.DeclaredDefault(
+    'property Flags[Index: Integer]: Integer index 1 read GetFlag default 0;', Value));
+  Assert.AreEqual('0', Value);
 end;
 
 initialization
