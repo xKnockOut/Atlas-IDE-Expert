@@ -75,6 +75,7 @@ uses
   Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.Commands.Usage,
   Atlas.IDE.Commands.ShortcutTips,
+  Atlas.Core.Commands.ShortcutTips,
   Atlas.IDE.Undo.Changes,
   Atlas.Core.Updates.Check,
   Atlas.Core.Updates.Adapters.HttpSource,
@@ -1070,7 +1071,12 @@ begin
       end,
       procedure(AId: string)
       begin
-        if Palette <> nil then
+        if Palette = nil then
+          Exit;
+        // Tipp zur Befehlspalette: „Ausprobieren“ öffnet sie.
+        if SameText(AId, TAtlasShortcutTips.PaletteCommandId) then
+          Palette.Show
+        else
           Palette.Execute(AId);
       end,
       procedure(AText: string)

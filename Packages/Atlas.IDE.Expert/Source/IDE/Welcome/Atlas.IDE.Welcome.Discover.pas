@@ -10,13 +10,17 @@
 //   (TAtlasDiscover.Order): noch nie benutzte zuerst, dann die am längsten
 //   nicht benutzten; mit tips.usageTracking aus der Reihe nach. Der zuletzt
 //   gezeigte Tipp wird gemerkt, der nächste Start beginnt danach.
-// - Eingeschaltet heißt: Einstellung des Tipps an (über die Registry-Namen
-//   wie die Schnellschalter, #227) und Befehl in der Befehlspalette sichtbar
-//   (#502 koppelt die Befehle an ihre Einstellungen). Abgeschaltete
-//   Funktionen kommen nie, auch nicht nach „Nächster Tipp“.
+// - Eingeschaltet heißt: Einstellung des Tipps an (Registry-Name wie bei den
+//   Schnellschaltern, #227; eine Auswahl wie WelcomePageWhatsNew gilt außer
+//   bei „off“ als an) und Befehl in der Befehlspalette sichtbar (#502 koppelt
+//   die Befehle an ihre Einstellungen). Atlas-Tasten ohne Befehl der Palette
+//   (Befehlspalette, Vervollständigung, Parameter-Hint) gelten als Befehl mit
+//   der Taste aus den Einstellungen. Abgeschaltete Funktionen kommen nie, auch
+//   nicht nach „Nächster Tipp“.
 // - „Ausprobieren“: Beispieldatei an der Stelle aus tips.json öffnen (mit
-//   Hinweis auf das Kürzel in der Meldungsansicht), sonst den Befehl über die
-//   Befehlspalette ausführen (zählt dann als Aufruf).
+//   Hinweis auf das Kürzel in der Meldungsansicht), sonst den Befehl aus
+//   "try" bzw. "command" über die Befehlspalette ausführen (zählt dann als
+//   Aufruf); der Tipp zur Befehlspalette öffnet sie.
 // - „Nicht mehr zeigen“ sperrt den Tipp dauerhaft und speichert sofort.
 // - welcomePage.discover aus: kein Bereich, keine Auswahl.
 // Protokoll anonym: nur Zahlen, keine Befehle, keine Pfade.
@@ -53,6 +57,8 @@ type
     function Tips: TAtlasTips;
     function Tracking: Boolean;
     function FindCommand(const AId: string; out ACommand: TAtlasCommand): Boolean;
+    /// <summary>„Ausprobieren“ kann AId ausführen: Befehl der Palette oder die Befehlspalette selbst.</summary>
+    function CanRun(const AId: string): Boolean;
     function IsEnabled(const ATip: TAtlasTip): Boolean;
     /// <summary>Kennungen der Tipps, die gerade in Frage kommen (eingeschaltet, nicht gesperrt).</summary>
     function AllowedIds: TArray<string>;
@@ -96,11 +102,12 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Commands.Usage,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.QuickToggles,
+  Atlas.Core.Commands.ShortcutTips,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Settings.Store,
   Atlas.IDE.Commands.Usage,
+  Atlas.IDE.Commands.ShortcutTips,
   Atlas.IDE.Results.Commands;
 
 function English: Boolean;
@@ -208,17 +215,31 @@ end;
 function TAtlasIdeDiscover.FindCommand(const AId: string; out ACommand: TAtlasCommand): Boolean;
 var
   Command: TAtlasCommand;
+  KeyText: string;
 begin
   ACommand := Default(TAtlasCommand);
-  if not Assigned(FCommands) then
-    Exit(False);
-  for Command in FCommands() do
-    if SameText(Command.Id, AId) then
-    begin
-      ACommand := Command;
-      Exit(True);
-    end;
-  Result := False;
+  if Assigned(FCommands) then
+    for Command in FCommands() do
+      if SameText(Command.Id, AId) then
+      begin
+        ACommand := Command;
+        Exit(True);
+      end;
+  // Atlas-Taste ohne Befehl der Palette: Taste aus den Einstellungen, nicht über die Palette ausführbar.
+  Result := TAtlasIdeShortcutTips.KeyOnlyText(AId, KeyText);
+  if Result then
+  begin
+    ACommand.Id := AId;
+    ACommand.ShortCut := KeyText;
+  end;
+end;
+
+function TAtlasIdeDiscover.CanRun(const AId: string): Boolean;
+var
+  Command: TAtlasCommand;
+begin
+  Result := (AId <> '') and FindCommand(AId, Command) and
+    (Command.IsAtlas or SameText(AId, TAtlasShortcutTips.PaletteCommandId));
 end;
 
 function TAtlasIdeDiscover.IsEnabled(const ATip: TAtlasTip): Boolean;
@@ -228,11 +249,9 @@ begin
   Settings := TAtlasIdeSettings.Current;
   Result := TAtlasDiscover.IsEnabled(ATip,
     function(AName: string): Boolean
-    var
-      Value: Boolean;
     begin
       // Unbekannter Name: lieber kein Tipp als einer zu einer Funktion, die es so nicht gibt.
-      Result := TAtlasQuickToggles.GetFlag(Settings, AName, Value) and Value;
+      Result := TAtlasDiscover.SettingOn(Settings, AName);
     end,
     function(AId: string): Boolean
     var
@@ -358,7 +377,7 @@ begin
   if TAtlasIdeCommandUsage.Instance <> nil then
     Usage := TAtlasIdeCommandUsage.Instance.Usage;
   ACard.Age := TAtlasDiscover.UsageAge(Tip, Usage, Tracking, Now);
-  ACard.CanTry := (SamplePath(Tip) <> '') or ((Tip.Command <> '') and FindCommand(Tip.Command, Command));
+  ACard.CanTry := (SamplePath(Tip) <> '') or CanRun(Tip.TryId);
   Allowed := AllowedIds;
   Shown := TAtlasDiscover.Effective(FQueue, Allowed);
   ACard.Position := TAtlasDiscover.IndexIn(Shown, Tip.Id) + 1;
@@ -404,11 +423,11 @@ begin
         Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeDiscoverNoSample, [Tip.Sample]));
         Exit;
       end;
-      if HasCommand and Assigned(FRun) then
+      if CanRun(Tip.TryId) and Assigned(FRun) then
         // Über die Palette: zählt als Aufruf (#600) und steht im Verlauf.
-        FRun(Tip.Command)
+        FRun(Tip.TryId)
       else
-        Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeDiscoverNoCommand, [Tip.Command]));
+        Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeDiscoverNoCommand, [Tip.TryId]));
     end);
 end;
 
