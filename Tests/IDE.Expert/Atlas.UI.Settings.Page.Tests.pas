@@ -343,7 +343,7 @@ var
   Settings, Saved: TAtlasPluginSettings;
 begin
   // #753: Ein/Aus, Ort (Willkommensseite oder Fenster „Atlas-Start“), Atlas-Layout, Kopf und Grußzeile;
-  // #760: Suchfeld, Gruppe „Symbole“ und Taste; #756: Karte „Neu in Atlas“.
+  // #760: Suchfeld, Gruppe „Symbole“ und Taste; #756: Karte „Neu in Atlas“; #592: Bereich „Projekte“.
   Settings := TAtlasPluginSettings.Defaults;
   Page := TAtlasSettingsPage.Create(nil);
   try
@@ -357,6 +357,9 @@ begin
     Assert.IsTrue(Page.WelcomeSearchSymbols.Checked);
     Assert.AreEqual(ShortCutToText($4045), Page.WelcomeSearchKey.Text);
     Assert.AreEqual(1, Page.WelcomeWhatsNew.Choice, 'afterUpdate');
+    Assert.IsTrue(Page.WelcomeProjects.Checked);
+    Assert.AreEqual('8', Page.WelcomeMaxProjects.Text);
+    Assert.IsTrue(Page.WelcomeRefreshVcs.Checked);
     Page.WelcomeEnabled.Checked := False;
     Page.WelcomeHost.Choice := 1;
     Page.WelcomeLayout.Checked := True;
@@ -366,6 +369,9 @@ begin
     Page.WelcomeSearchSymbols.Checked := False;
     Page.WelcomeSearchKey.Text := ShortCutToText($6046);
     Page.WelcomeWhatsNew.Choice := 2;
+    Page.WelcomeProjects.Checked := False;
+    Page.WelcomeMaxProjects.Text := '99';
+    Page.WelcomeRefreshVcs.Checked := False;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.WelcomePage);
@@ -377,6 +383,9 @@ begin
     Assert.IsFalse(Saved.WelcomePageSearchSymbols);
     Assert.AreEqual($6046, Saved.WelcomePageSearchKey);
     Assert.AreEqual('always', Saved.WelcomePageWhatsNew);
+    Assert.IsFalse(Saved.WelcomePageProjectStatus);
+    Assert.AreEqual(30, Saved.WelcomePageMaxProjects, 'auf 1–30 begrenzt');
+    Assert.IsFalse(Saved.WelcomePageRefreshVcs);
     Page.LoadFrom(Saved);
     Assert.AreEqual(1, Page.WelcomeHost.Choice);
     Assert.IsTrue(Page.WelcomeLayout.Checked);

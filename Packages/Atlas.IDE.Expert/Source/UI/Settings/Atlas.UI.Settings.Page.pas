@@ -169,6 +169,9 @@ type
     FWelcomeSearchSymbols: TCheckBox;
     FWelcomeSearchKey: TEdit;
     FWelcomeWhatsNew: TAtlasChoiceBox;
+    FWelcomeProjects: TCheckBox;
+    FWelcomeMaxProjects: TEdit;
+    FWelcomeRefreshVcs: TCheckBox;
     FVersion: TLabel;
     FResetHistory: TButton;
     FResetWidths: TButton;
@@ -267,6 +270,9 @@ type
     property WelcomeSearchSymbols: TCheckBox read FWelcomeSearchSymbols;
     property WelcomeSearchKey: TEdit read FWelcomeSearchKey;
     property WelcomeWhatsNew: TAtlasChoiceBox read FWelcomeWhatsNew;
+    property WelcomeProjects: TCheckBox read FWelcomeProjects;
+    property WelcomeMaxProjects: TEdit read FWelcomeMaxProjects;
+    property WelcomeRefreshVcs: TCheckBox read FWelcomeRefreshVcs;
     property VersionLabel: TLabel read FVersion;
     /// <summary>Kennzahlen als Text; nil = nicht verfügbar.</summary>
     property OnIndexMetrics: TFunc<string> read FOnIndexMetrics write FOnIndexMetrics;
@@ -622,6 +628,10 @@ begin
     [TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeWhatsNewOff),
     TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeWhatsNewAfterUpdate),
     TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeWhatsNewAlways)]);
+  // Bereich „Projekte“ (#592).
+  FWelcomeProjects := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeProjects));
+  FWelcomeMaxProjects := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeMaxProjects));
+  FWelcomeRefreshVcs := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeRefreshVcs));
 end;
 
 procedure TAtlasSettingsPage.AddSheet(AId: TAtlasTextId);
@@ -1137,6 +1147,9 @@ begin
   FWelcomeSearchSymbols.Checked := ASettings.WelcomePageSearchSymbols;
   FWelcomeSearchKey.Text := ShortCutToText(TShortCut(ASettings.WelcomePageSearchKey));
   FWelcomeWhatsNew.Choice := Ord(TAtlasWhatsNew.ModeOf(ASettings.WelcomePageWhatsNew));
+  FWelcomeProjects.Checked := ASettings.WelcomePageProjectStatus;
+  FWelcomeMaxProjects.Text := IntToStr(ASettings.WelcomePageMaxProjects);
+  FWelcomeRefreshVcs.Checked := ASettings.WelcomePageRefreshVcs;
   RefreshFuse;
   RefreshIndex;
 end;
@@ -1234,6 +1247,9 @@ begin
   ASettings.WelcomePageSearchKey := Integer(TextToShortCut(Trim(FWelcomeSearchKey.Text)));
   ASettings.WelcomePageWhatsNew := TAtlasWhatsNew.ModeName(TAtlasWhatsNewMode(EnsureRange(FWelcomeWhatsNew.Choice,
     Ord(Low(TAtlasWhatsNewMode)), Ord(High(TAtlasWhatsNewMode)))));
+  ASettings.WelcomePageProjectStatus := FWelcomeProjects.Checked;
+  ASettings.WelcomePageMaxProjects := StrToIntDef(Trim(FWelcomeMaxProjects.Text), ASettings.WelcomePageMaxProjects);
+  ASettings.WelcomePageRefreshVcs := FWelcomeRefreshVcs.Checked;
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;

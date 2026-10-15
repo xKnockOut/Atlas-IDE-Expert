@@ -57,6 +57,9 @@ type
     procedure Open(const AHit: TAtlasWelcomeHit);
     /// <summary>Favoriten und zuletzt geöffnete Projekte der IDE, in dieser Reihenfolge.</summary>
     class function RecentProjects: TArray<string>; static;
+    /// <summary>Nur die zuletzt geöffneten Projekte und Projektgruppen der IDE (Closed Projects), neueste zuerst
+    /// (Bereich „Projekte“, #592).</summary>
+    class function ClosedProjects: TArray<string>; static;
     /// <summary>Ablage der Index-Caches: %LOCALAPPDATA%\Atlas (wie TPath.GetCachePath des Servers).</summary>
     class function CacheRoot: string; static;
   end;
@@ -154,10 +157,8 @@ begin
   end;
 end;
 
-class function TAtlasIdeWelcomeSearch.RecentProjects: TArray<string>;
-const
-  // Favoriten der Willkommensseite zuerst, dann die Liste „Wieder öffnen“.
-  Keys: array[0..2] of string = ('Favorite Projects', 'WelcomePage\Favorites', 'Closed Projects');
+/// <summary>Projekte aus den Registry-Schlüsseln AKeys unter der Basis der IDE, jedes einmal.</summary>
+function ProjectsIn(const AKeys: array of string): TArray<string>;
 var
   Registry: TRegistry;
   Base, Key, Project: string;
@@ -171,7 +172,7 @@ begin
   Seen := TDictionary<string, Boolean>.Create;
   try
     Registry.RootKey := HKEY_CURRENT_USER;
-    for Key in Keys do
+    for Key in AKeys do
       for Project in TAtlasWelcomeSearch.RecentProjects(ReadProjectValues(Registry, Base + '\' + Key)) do
         if not Seen.ContainsKey(AnsiUpperCase(Project)) then
         begin
@@ -182,6 +183,17 @@ begin
     Seen.Free;
     Registry.Free;
   end;
+end;
+
+class function TAtlasIdeWelcomeSearch.RecentProjects: TArray<string>;
+begin
+  // Favoriten der Willkommensseite zuerst, dann die Liste „Wieder öffnen“.
+  Result := ProjectsIn(['Favorite Projects', 'WelcomePage\Favorites', 'Closed Projects']);
+end;
+
+class function TAtlasIdeWelcomeSearch.ClosedProjects: TArray<string>;
+begin
+  Result := ProjectsIn(['Closed Projects']);
 end;
 
 function TAtlasIdeWelcomeSearch.ProjectFiles: TArray<string>;

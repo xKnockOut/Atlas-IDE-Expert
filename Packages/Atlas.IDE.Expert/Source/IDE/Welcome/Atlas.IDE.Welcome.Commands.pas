@@ -20,6 +20,8 @@
 //   ersten Spalte; Kontextmenü von Frame „Atlas“ und Kopf mit „Neuigkeiten
 //   dieser Version zeigen“ und „Alle Versionen“ (nicht bei
 //   welcomePage.whatsNew = off).
+// - Bereich „Projekte“ (#592, Projects): Zustand je zuletzt geöffnetem
+//   Projekt aus den Projekt-Zusammenfassungen; meldet sich selbst an.
 // Die Willkommensseite startet keinen Server und liest nur lokale Daten.
 
 interface
@@ -37,7 +39,8 @@ uses
   Atlas.IDE.Status.Lines,
   Atlas.IDE.Welcome.Page,
   Atlas.IDE.Welcome.Search,
-  Atlas.IDE.Welcome.WhatsNew;
+  Atlas.IDE.Welcome.WhatsNew,
+  Atlas.IDE.Welcome.Projects;
 
 type
   TAtlasIdeWelcome = class
@@ -58,7 +61,11 @@ type
     FWhatsNew: TAtlasIdeWhatsNew;
     // Hält die Quelle der Karte am Leben; die Frames halten sie ebenfalls als Schnittstelle.
     FWhatsNewRef: IInterface;
+    FProjects: TAtlasIdeProjects;
+    // Hält die Quelle des Bereichs „Projekte“ am Leben; die Frames halten sie ebenfalls.
+    FProjectsRef: IInterface;
     procedure SetWhatsNew(AValue: TAtlasIdeWhatsNew);
+    procedure SetProjects(AValue: TAtlasIdeProjects);
     procedure AttachMenu(AFrame: TAtlasWelcomeFrame);
     procedure SectionChanged(const AId: string);
     procedure Flush;
@@ -102,6 +109,8 @@ type
     property Search: TAtlasIdeWelcomeSearch read FSearch write FSearch;
     /// <summary>Karte „Neu in Atlas“ (#756); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
     property WhatsNew: TAtlasIdeWhatsNew read FWhatsNew write SetWhatsNew;
+    /// <summary>Bereich „Projekte“ (#592); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
+    property Projects: TAtlasIdeProjects read FProjects write SetProjects;
     class function HeaderInfo(const AServer: TAtlasServerInfo; AIndexing: Boolean; APercent, AUnits: Integer;
       AHour: Integer; const AFirstName: string; AGreeting: Boolean): TAtlasWelcomeHeaderInfo; static;
   end;
@@ -194,13 +203,29 @@ begin
   TAtlasStatusRegistry.Default.RemoveListener(FStatusListener);
   if FWhatsNew <> nil then
     FWhatsNew.Stop;
+  if FProjects <> nil then
+    FProjects.Stop;
   // Beim Beenden der IDE: Hat die IDE ihr Layout aus dem Speicher zurückgeschrieben, gilt die Marke weiter.
   TAtlasIdeWelcomePage.RemoveAll;
   TAtlasIdeWelcomeWindow.Release;
   // Nach den Frames: Sie halten die Quelle der Karte ebenfalls.
   FWhatsNew := nil;
   FWhatsNewRef := nil;
+  FProjects := nil;
+  FProjectsRef := nil;
   inherited;
+end;
+
+procedure TAtlasIdeWelcome.SetProjects(AValue: TAtlasIdeProjects);
+begin
+  FProjects := AValue;
+  FProjectsRef := AValue;
+  if FProjects <> nil then
+    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        FProjects.Start;
+      end);
 end;
 
 procedure TAtlasIdeWelcome.SetWhatsNew(AValue: TAtlasIdeWhatsNew);

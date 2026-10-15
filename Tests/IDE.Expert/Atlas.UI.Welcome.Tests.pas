@@ -5,7 +5,9 @@
 // der Frame „Atlas“ mit Kopf und Bereichen in Spalten; Suchfeld im Kopf
 // (#760): Ein-/Ausblenden, Abfrage, Auswahl mit Grenzen, Öffnen und Esc;
 // Karte „Neu in Atlas“ (#756): Zeilen mit Schalter, Taste und
-// „Ausprobieren“, Gruppen je Version, Auf- und Zuklappen, Kontextmenü.
+// „Ausprobieren“, Gruppen je Version, Auf- und Zuklappen, Kontextmenü;
+// Bereich „Projekte“ (#592): Texte der Marken, Zeilen und Höhe, Tooltip,
+// Klicks auf Zeile, Fehler-Marke und Kontextmenü.
 
 interface
 
@@ -71,6 +73,21 @@ type
     procedure BoardSizesCardToItsText;
   end;
 
+  [TestFixture]
+  TAtlasWelcomeProjectsFrameTests = class
+  public
+    [Test]
+    procedure PillTextsFollowKind;
+    [Test]
+    procedure RowsSetHeightAndAskForRefresh;
+    [Test]
+    procedure DetailAndHintNameState;
+    [Test]
+    procedure ClicksReachSource;
+    [Test]
+    procedure HitTestFindsRows;
+  end;
+
 implementation
 
 uses
@@ -88,9 +105,25 @@ uses
   Atlas.Core.Welcome.Search,
   Atlas.UI.Welcome.Search,
   Atlas.Core.Welcome.WhatsNew,
-  Atlas.UI.Welcome.WhatsNew;
+  Atlas.UI.Welcome.WhatsNew,
+  Atlas.Core.Projects.Summary,
+  Atlas.Core.Welcome.Projects,
+  Atlas.UI.Welcome.Projects;
 
 type
+  /// <summary>Quelle des Bereichs „Projekte“ für die Tests; merkt sich die Aufrufe.</summary>
+  TFakeProjects = class(TInterfacedObject, IAtlasProjectsSource)
+  public
+    FEntries: TAtlasProjectEntries;
+    Calls: TArray<string>;
+    function Entries: TAtlasProjectEntries;
+    procedure Open(const AProject: string);
+    procedure OpenAt(const AProject: string; const ATarget: TAtlasProjectLocation);
+    procedure OpenFolder(const AProject: string);
+    procedure Remove(const AProject: string);
+    procedure Shown;
+  end;
+
   /// <summary>Quelle der Karte für die Tests; merkt sich die Aufrufe.</summary>
   TFakeWhatsNew = class(TInterfacedObject, IAtlasWhatsNewSource)
   public
@@ -158,6 +191,69 @@ end;
 procedure TFakeWhatsNew.Show(AView: TAtlasWhatsNewView);
 begin
   Calls := Calls + [Format('show %d', [Ord(AView)])];
+end;
+
+{ TFakeProjects }
+
+function TFakeProjects.Entries: TAtlasProjectEntries;
+begin
+  Result := FEntries;
+end;
+
+procedure TFakeProjects.Open(const AProject: string);
+begin
+  Calls := Calls + ['open ' + AProject];
+end;
+
+procedure TFakeProjects.OpenAt(const AProject: string; const ATarget: TAtlasProjectLocation);
+begin
+  Calls := Calls + [Format('openAt %s %s %d', [AProject, ATarget.FileName, ATarget.Line])];
+end;
+
+procedure TFakeProjects.OpenFolder(const AProject: string);
+begin
+  Calls := Calls + ['folder ' + AProject];
+end;
+
+procedure TFakeProjects.Remove(const AProject: string);
+begin
+  Calls := Calls + ['remove ' + AProject];
+end;
+
+procedure TFakeProjects.Shown;
+begin
+  Calls := Calls + ['shown'];
+end;
+
+/// <summary>Projekt auf main; mit AErrors &gt; 0 ein fehlgeschlagener Build mit Sprungziel.</summary>
+function ProjectEntry(const AProject: string; AErrors: Integer): TAtlasProjectEntry;
+begin
+  Result := Default(TAtlasProjectEntry);
+  Result.HasSummary := True;
+  Result.Summary := TAtlasProjectSummary.Create(AProject);
+  Result.Summary.Vcs.Known := True;
+  Result.Summary.Vcs.Kind := 'git';
+  Result.Summary.Vcs.Branch := 'main';
+  Result.Summary.Vcs.Changed := 0;
+  Result.Summary.Vcs.At := EncodeDate(2026, 10, 14) + EncodeTime(17, 45, 0, 0);
+  Result.Summary.Build.Known := True;
+  Result.Summary.Build.Kind := 'build';
+  Result.Summary.Build.Succeeded := AErrors = 0;
+  Result.Summary.Build.Errors := AErrors;
+  if AErrors > 0 then
+  begin
+    Result.Summary.Build.First.FileName := 'C:\P\Main.pas';
+    Result.Summary.Build.First.Line := 12;
+    Result.Summary.Build.First.Code := 'E2003';
+  end;
+end;
+
+function ProjectsFrame(AHost: TForm; const ASource: IAtlasProjectsSource): TAtlasWelcomeProjectsFrame;
+begin
+  Result := TAtlasWelcomeProjectsFrame.Create(AHost);
+  Result.Parent := AHost;
+  Result.Width := 600;
+  Result.Source := ASource;
 end;
 
 function NewsItem(const ATitle, ASetting, AKey, ACommand: string): TAtlasWhatsNewItem;
@@ -777,10 +873,163 @@ begin
   end;
 end;
 
+{ TAtlasWelcomeProjectsFrameTests }
+
+procedure TAtlasWelcomeProjectsFrameTests.PillTextsFollowKind;
+var
+  Saved: TAtlasLanguage;
+begin
+  Saved := TAtlasStrings.Language;
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Assert.AreEqual('Build 0/0/0', TAtlasWelcomeProjectsFrame.PillText(
+      TAtlasProjectPill.Create(TAtlasProjectPillKind.Build, TAtlasProjectPillLevel.Good, 0, 0, 0)));
+    Assert.AreEqual('Build 0/3/1', TAtlasWelcomeProjectsFrame.PillText(
+      TAtlasProjectPill.Create(TAtlasProjectPillKind.Build, TAtlasProjectPillLevel.Warning, 0, 3, 1)));
+    Assert.AreEqual('2 Fehler', TAtlasWelcomeProjectsFrame.PillText(
+      TAtlasProjectPill.Create(TAtlasProjectPillKind.BuildErrors, TAtlasProjectPillLevel.Error, 2, 0, 0)));
+    Assert.AreEqual('Prüfung: 1 Fehler', TAtlasWelcomeProjectsFrame.PillText(
+      TAtlasProjectPill.Create(TAtlasProjectPillKind.CheckErrors, TAtlasProjectPillLevel.Error, 1, 0, 0)));
+    Assert.AreEqual('3 geändert', TAtlasWelcomeProjectsFrame.PillText(
+      TAtlasProjectPill.Create(TAtlasProjectPillKind.Changes, TAtlasProjectPillLevel.Warning, 3, 0, 0)));
+    Assert.AreEqual(#$2191'1 '#$2193'2', TAtlasWelcomeProjectsFrame.PillText(
+      TAtlasProjectPill.Create(TAtlasProjectPillKind.Sync, TAtlasProjectPillLevel.Neutral, 1, 2, 0)));
+    Assert.AreEqual('5 neue Treffer', TAtlasWelcomeProjectsFrame.PillText(
+      TAtlasProjectPill.Create(TAtlasProjectPillKind.Rules, TAtlasProjectPillLevel.Warning, 5, 0, 0)));
+    Assert.AreNotEqual(Integer(TAtlasWelcomeProjectsFrame.PillColor(TAtlasProjectPillLevel.Good)),
+      Integer(TAtlasWelcomeProjectsFrame.PillColor(TAtlasProjectPillLevel.Error)));
+  finally
+    TAtlasStrings.Language := Saved;
+  end;
+end;
+
+procedure TAtlasWelcomeProjectsFrameTests.RowsSetHeightAndAskForRefresh;
+var
+  Host: TForm;
+  Fake: TFakeProjects;
+  Source: IAtlasProjectsSource;
+  Frame: TAtlasWelcomeProjectsFrame;
+  Empty, Two: Integer;
+begin
+  Fake := TFakeProjects.Create;
+  Source := Fake;
+  Host := TForm.CreateNew(nil);
+  try
+    Frame := ProjectsFrame(Host, Source);
+    Assert.AreEqual(1, Integer(Length(Fake.Calls)), 'beim Anzeigen frisch abfragen');
+    Assert.AreEqual('shown', Fake.Calls[0]);
+    Assert.AreEqual(0, Integer(Length(Frame.Entries)));
+    Empty := Frame.PreferredHeight;
+    Fake.FEntries := [ProjectEntry('C:\P\Eins.dproj', 0), ProjectEntry('C:\P\Zwei.dproj', 2)];
+    Frame.UpdateContent;
+    Assert.AreEqual(2, Integer(Length(Frame.Entries)));
+    Two := Frame.PreferredHeight;
+    Assert.IsTrue(Two > Empty, Format('leer %d, zwei Zeilen %d', [Empty, Two]));
+    Assert.AreEqual(1, Integer(Length(Fake.Calls)), 'Neu lesen fragt nicht erneut ab');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TAtlasWelcomeProjectsFrameTests.DetailAndHintNameState;
+var
+  Saved: TAtlasLanguage;
+  Item: TAtlasProjectEntry;
+  Hint, Detail: string;
+begin
+  Saved := TAtlasStrings.Language;
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Item := ProjectEntry('C:\P\Zwei.dproj', 2);
+    Detail := TAtlasWelcomeProjectsFrame.DetailText(Item);
+    Assert.Contains(Detail, 'C:\P\Zwei.dproj');
+    Assert.Contains(Detail, 'Stand vom', 'gespeicherter Stand');
+    Item.VcsFresh := True;
+    Assert.IsFalse(TAtlasWelcomeProjectsFrame.DetailText(Item).Contains('Stand vom'), 'frisch abgefragt');
+    Hint := TAtlasWelcomeProjectsFrame.HintFor(Item);
+    Assert.Contains(Hint, 'main');
+    Assert.Contains(Hint, '2 Fehler');
+    Assert.Contains(Hint, 'Main.pas (12)');
+    Assert.Contains(Hint, 'E2003');
+    Item.Summary.Build := TAtlasProjectBuild.Empty;
+    Assert.Contains(TAtlasWelcomeProjectsFrame.HintFor(Item),
+      TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsHintNoBuild));
+    Assert.AreEqual('', TAtlasWelcomeProjectsFrame.LocalText(0));
+  finally
+    TAtlasStrings.Language := Saved;
+  end;
+end;
+
+procedure TAtlasWelcomeProjectsFrameTests.ClicksReachSource;
+var
+  Host: TForm;
+  Fake: TFakeProjects;
+  Source: IAtlasProjectsSource;
+  Frame: TAtlasWelcomeProjectsFrame;
+  Hit: TAtlasProjectsHit;
+begin
+  Fake := TFakeProjects.Create;
+  Source := Fake;
+  Fake.FEntries := [ProjectEntry('C:\P\Eins.dproj', 0), ProjectEntry('C:\P\Zwei.dproj', 2)];
+  Host := TForm.CreateNew(nil);
+  try
+    Frame := ProjectsFrame(Host, Source);
+    Fake.Calls := nil;
+    Hit.Row := 0;
+    Hit.Pill := -1;
+    Frame.ClickAt(Hit);
+    // Rote Marke: Projekt öffnen und zur ersten Meldung springen.
+    Hit.Row := 1;
+    Hit.Pill := 0;
+    Frame.ClickAt(Hit);
+    // Grüne Marke ist kein Sprungziel: öffnet nur das Projekt.
+    Hit.Row := 0;
+    Hit.Pill := 0;
+    Frame.ClickAt(Hit);
+    Frame.MenuRow := 1;
+    Frame.OpenFolderItem.Click;
+    Frame.RemoveItem.Click;
+    Assert.AreEqual(0, Integer(Length(Fake.Calls)), 'alles über die Nachrichtenschleife');
+    CheckSynchronize;
+    Assert.AreEqual(5, Integer(Length(Fake.Calls)));
+    Assert.AreEqual('open C:\P\Eins.dproj', Fake.Calls[0]);
+    Assert.AreEqual('openAt C:\P\Zwei.dproj C:\P\Main.pas 12', Fake.Calls[1]);
+    Assert.AreEqual('open C:\P\Eins.dproj', Fake.Calls[2]);
+    Assert.AreEqual('folder C:\P\Zwei.dproj', Fake.Calls[3]);
+    Assert.AreEqual('remove C:\P\Zwei.dproj', Fake.Calls[4]);
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TAtlasWelcomeProjectsFrameTests.HitTestFindsRows;
+var
+  Host: TForm;
+  Fake: TFakeProjects;
+  Source: IAtlasProjectsSource;
+  Frame: TAtlasWelcomeProjectsFrame;
+  Row: Integer;
+begin
+  Fake := TFakeProjects.Create;
+  Source := Fake;
+  Fake.FEntries := [ProjectEntry('C:\P\Eins.dproj', 0), ProjectEntry('C:\P\Zwei.dproj', 0)];
+  Host := TForm.CreateNew(nil);
+  try
+    Frame := ProjectsFrame(Host, Source);
+    Row := Frame.ScaleValue(TAtlasWelcomeProjectsFrame.RowHeight);
+    Assert.AreEqual(0, Frame.HitTest(20, Row div 2).Row);
+    Assert.AreEqual(1, Frame.HitTest(20, Row + Row div 2).Row);
+    Assert.AreEqual(-1, Frame.HitTest(20, 5 * Row).Row, 'unter der letzten Zeile');
+  finally
+    Host.Free;
+  end;
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasWelcomeHeaderTests);
   TDUnitX.RegisterTestFixture(TAtlasWelcomeSearchBoxTests);
   TDUnitX.RegisterTestFixture(TAtlasWelcomeBoardTests);
   TDUnitX.RegisterTestFixture(TAtlasWelcomeWhatsNewFrameTests);
+  TDUnitX.RegisterTestFixture(TAtlasWelcomeProjectsFrameTests);
 
 end.

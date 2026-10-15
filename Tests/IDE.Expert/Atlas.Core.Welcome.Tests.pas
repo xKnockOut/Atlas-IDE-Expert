@@ -764,7 +764,13 @@ begin
   Saved.WelcomePageGreeting := False;
   Saved.WelcomePageWhatsNew := 'always';
   Saved.WhatsNewSeen := '1.1.0';
+  Saved.WelcomePageProjectStatus := False;
+  Saved.WelcomePageMaxProjects := 12;
+  Saved.WelcomePageRefreshVcs := False;
   Saved.Save(Store);
+  Assert.AreEqual(0, Store.ReadInteger('WelcomePageProjectStatus', 1), 'Registry-Name (#592)');
+  Assert.AreEqual(12, Store.ReadInteger('WelcomePageMaxProjects', 0));
+  Assert.AreEqual(0, Store.ReadInteger('WelcomePageRefreshVcs', 1));
   Assert.AreEqual(0, Store.ReadInteger('WelcomePage', 1), 'Registry-Name');
   Assert.AreEqual('atlas', Store.ReadString('WelcomePageLayout', ''));
   Assert.AreEqual('always', Store.ReadString('WelcomePageWhatsNew', ''));
@@ -778,6 +784,9 @@ begin
   Assert.IsFalse(Loaded.WelcomePageGreeting);
   Assert.AreEqual('always', Loaded.WelcomePageWhatsNew);
   Assert.AreEqual('1.1.0', Loaded.WhatsNewSeen);
+  Assert.IsFalse(Loaded.WelcomePageProjectStatus);
+  Assert.AreEqual(12, Loaded.WelcomePageMaxProjects);
+  Assert.IsFalse(Loaded.WelcomePageRefreshVcs);
 end;
 
 initialization
