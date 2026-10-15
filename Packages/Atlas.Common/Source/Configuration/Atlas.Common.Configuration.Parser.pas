@@ -38,6 +38,7 @@ implementation
 uses
   System.StrUtils,
   System.Generics.Collections,
+  Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Configuration.Internals.JsonTree;
@@ -46,6 +47,8 @@ type
   TValidator = class
   private
     FText: string;
+    /// <summary>Zeilenindex von FText für die Positionen der Meldungen.</summary>
+    FLines: TLineTable;
     FIssues: TList<TConfigurationIssue>;
     FSettings: TServerSettings;
     /// <summary>"testProfile" mit einem Namen, der erst nach "profiles" geprüft werden kann.</summary>
@@ -99,6 +102,7 @@ constructor TValidator.Create(const AText: string);
 begin
   inherited Create;
   FText := AText;
+  FLines := TLineTable.Build(AText);
   FIssues := TList<TConfigurationIssue>.Create;
   FSettings := TServerSettings.Default;
 end;
@@ -110,31 +114,8 @@ begin
 end;
 
 function TValidator.PositionAt(AOffset: Integer): TTextPosition;
-var
-  Index: Integer;
-  Line: Integer;
-  LineStart: Integer;
 begin
-  Line := 0;
-  LineStart := 0;
-  Index := 0;
-  while (Index < AOffset) and (Index < Length(FText)) do
-  begin
-    if FText[Index + 1] = #13 then
-    begin
-      if (Index + 1 < Length(FText)) and (FText[Index + 2] = #10) then
-        Inc(Index);
-      Inc(Line);
-      LineStart := Index + 1;
-    end
-    else if FText[Index + 1] = #10 then
-    begin
-      Inc(Line);
-      LineStart := Index + 1;
-    end;
-    Inc(Index);
-  end;
-  Result := TTextPosition.Create(Line, AOffset - LineStart);
+  Result := FLines.PositionAt(AOffset);
 end;
 
 procedure TValidator.Report(AStart, AStop: Integer; const AMessage: string; AIsError: Boolean);

@@ -69,7 +69,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Inheritance;
+  Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Text.Lines;
 
 const
   // Bekannte VCL-Basisklassen; erreicht die Vorfahrenkette eine davon, gilt die Klasse
@@ -167,10 +168,7 @@ begin
   FAncestry := TAncestry.Create(AContext.Index, ALocal);
   FClasses := TList<TClassInfo>.Create;
   FMethods := TList<TMethodImpl>.Create;
-  if Pos(#13#10, AContext.Text) > 0 then
-    FLineBreak := #13#10
-  else
-    FLineBreak := #10;
+  FLineBreak := TTextLines.LineBreakOf(AContext.Text);
   Collect(AContext.Tree.Root);
 end;
 

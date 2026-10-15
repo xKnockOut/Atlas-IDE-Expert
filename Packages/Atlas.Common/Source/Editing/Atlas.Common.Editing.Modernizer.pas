@@ -29,17 +29,9 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
-
-function IsIdentChar(C: Char): Boolean;
-begin
-  Result := CharInSet(C, ['A'..'Z', 'a'..'z', '0'..'9', '_']);
-end;
-
-function IndentOf(const ALine: string): Integer;
-begin
-  Result := Length(ALine) - Length(TrimLeft(ALine));
-end;
+  System.StrUtils,
+  Atlas.Text.Chars,
+  Atlas.Text.Lines;
 
 class function TModernizer.WordPos(const AWord, ALine: string; AFrom: Integer): Integer;
 var
@@ -53,8 +45,8 @@ begin
     if ALine[Index] = '''' then
       InString := not InString
     else if not InString and (Index >= AFrom) and SameText(Copy(ALine, Index, Length(AWord)), AWord) and
-      ((Index = 1) or not IsIdentChar(ALine[Index - 1])) and
-      ((Index + Length(AWord) > Length(ALine)) or not IsIdentChar(ALine[Index + Length(AWord)])) then
+      ((Index = 1) or not TTextChars.IsAsciiIdentChar(ALine[Index - 1])) and
+      ((Index + Length(AWord) > Length(ALine)) or not TTextChars.IsAsciiIdentChar(ALine[Index + Length(AWord)])) then
       Exit(Index)
     else if not InString and (Copy(ALine, Index, 2) = '//') then
       Exit(0);
@@ -88,7 +80,8 @@ var
   Line: Integer;
 begin
   for Line := 1 to High(ALines) do
-    if SameText(Trim(ALines[Line]), 'begin') and (IndentOf(ALines[Line]) = IndentOf(ALines[0])) then
+    if SameText(Trim(ALines[Line]), 'begin') and
+      (TTextLines.IndentLength(ALines[Line]) = TTextLines.IndentLength(ALines[0])) then
       Exit(Line);
   Result := -1;
 end;
@@ -109,7 +102,7 @@ begin
       Name := Copy(Text, 1, Length(Text) - 6);
       if (Name <> '') and SameText(Trim(ALines[Line + 1]), Name + ' := nil;') then
       begin
-        ALines[Line] := Copy(ALines[Line], 1, IndentOf(ALines[Line])) + 'FreeAndNil(' + Name + ');';
+        ALines[Line] := Copy(ALines[Line], 1, TTextLines.IndentLength(ALines[Line])) + 'FreeAndNil(' + Name + ');';
         Delete(ALines, Line + 1);
         Inc(Result);
       end;
@@ -146,16 +139,18 @@ begin
   if SameText(Trim(ALines[AFirst]), 'begin') then
   begin
     for Line := AFirst + 1 to High(ALines) do
-      if (IndentOf(ALines[Line]) <= IndentOf(ALines[AFirst])) and (Trim(ALines[Line]) <> '') then
+      if (TTextLines.IndentLength(ALines[Line]) <= TTextLines.IndentLength(ALines[AFirst])) and
+        (Trim(ALines[Line]) <> '') then
       begin
-        if StartsText('end', Trim(ALines[Line])) and (IndentOf(ALines[Line]) = IndentOf(ALines[AFirst])) then
+        if StartsText('end', Trim(ALines[Line])) and
+          (TTextLines.IndentLength(ALines[Line]) = TTextLines.IndentLength(ALines[AFirst])) then
           Exit(Line);
         Exit(-1);
       end;
     Exit(-1);
   end;
   // Einzelne Anweisung in einer Zeile.
-  if (IndentOf(ALines[AFirst]) > AHeaderIndent) and EndsStr(';', TrimRight(ALines[AFirst])) then
+  if (TTextLines.IndentLength(ALines[AFirst]) > AHeaderIndent) and EndsStr(';', TrimRight(ALines[AFirst])) then
     Exit(AFirst);
   Result := -1;
 end;
@@ -171,7 +166,7 @@ begin
   ALine := '';
   repeat
     At := Pos(LowerCase(Access), LowerCase(Rest));
-    if (At > 1) and (IsIdentChar(Rest[At - 1]) or (Rest[At - 1] = '.')) then
+    if (At > 1) and (TTextChars.IsAsciiIdentChar(Rest[At - 1]) or (Rest[At - 1] = '.')) then
       At := 0;
     if At = 0 then
       Break;
@@ -215,7 +210,7 @@ begin
     List := ListOf(Upper);
     if List = '' then
       Continue;
-    Indent := IndentOf(ALines[Line]);
+    Indent := TTextLines.IndentLength(ALines[Line]);
     Last := BodyEnd(ALines, Line + 1, Indent);
     if Last < 0 then
       Continue;
@@ -287,7 +282,7 @@ begin
       end;
       Start := Line + 1;
       Stop := Start;
-      while (Stop < BeginLine) and (IndentOf(ALines[Stop]) > IndentOf(ALines[Line])) do
+      while (Stop < BeginLine) and (TTextLines.IndentLength(ALines[Stop]) > TTextLines.IndentLength(ALines[Line])) do
         Inc(Stop);
       for Declaration := Start to Stop - 1 do
       begin
@@ -313,11 +308,12 @@ begin
         if not AInline then
           Continue;
         Text := Trim(ALines[Use]);
-        if (IndentOf(ALines[Use]) <> IndentOf(ALines[BeginLine]) + 2) or not StartsText(Name + ' := ', Text) or
-          not EndsStr(';', Text) or (TModernizer.WordPos(Name, Text, Length(Name) + 1) > 0) then
+        if (TTextLines.IndentLength(ALines[Use]) <> TTextLines.IndentLength(ALines[BeginLine]) + 2) or
+          not StartsText(Name + ' := ', Text) or not EndsStr(';', Text) or
+          (TModernizer.WordPos(Name, Text, Length(Name) + 1) > 0) then
           Continue;
-        ALines[Use] := Copy(ALines[Use], 1, IndentOf(ALines[Use])) + Format('var %s: %s := %s', [Name, TypeName,
-          Copy(Text, Length(Name) + 5, MaxInt)]);
+        ALines[Use] := Copy(ALines[Use], 1, TTextLines.IndentLength(ALines[Use])) +
+          Format('var %s: %s := %s', [Name, TypeName, Copy(Text, Length(Name) + 5, MaxInt)]);
         Delete(ALines, Declaration);
         // Leerer var-Abschnitt fällt weg.
         if Start = Stop - 1 then

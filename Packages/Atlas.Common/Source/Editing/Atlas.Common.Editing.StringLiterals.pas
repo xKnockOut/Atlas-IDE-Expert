@@ -49,26 +49,8 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Pascal.LanguageFeatures;
-
-/// <summary>Zeilen ohne Zeilenende; #13#10 und #10.</summary>
-function SplitLines(const AText: string): TArray<string>;
-var
-  I, Start: Integer;
-begin
-  Result := nil;
-  Start := 1;
-  for I := 1 to Length(AText) do
-    if AText[I] = #10 then
-    begin
-      if (I > Start) and (AText[I - 1] = #13) then
-        Result := Result + [Copy(AText, Start, I - Start - 1)]
-      else
-        Result := Result + [Copy(AText, Start, I - Start)];
-      Start := I + 1;
-    end;
-  Result := Result + [Copy(AText, Start, MaxInt)];
-end;
+  Atlas.Common.Pascal.LanguageFeatures,
+  Atlas.Text.Lines;
 
 { TStringLiterals }
 
@@ -163,7 +145,7 @@ var
   Line, Piece, Separator: string;
   Multiline: Boolean;
 begin
-  Lines := SplitLines(APlainText);
+  Lines := TTextLines.SplitLines(APlainText);
   Output := nil;
   Multiline := AMultiline and FitsMultiline(Lines);
   if Multiline then
@@ -228,7 +210,7 @@ var
   Indent: Integer;
   Index: Integer;
 begin
-  Lines := SplitLines(AToken);
+  Lines := TTextLines.SplitLines(AToken);
   Result := '';
   if Length(Lines) < 2 then
     Exit;
@@ -348,7 +330,7 @@ var
   Lines: TArray<string>;
   Line: Integer;
 begin
-  Lines := SplitLines(AText);
+  Lines := TTextLines.SplitLines(AText);
   Result := '';
   for Line := ARange.StartPos.Line to ARange.EndPos.Line do
   begin

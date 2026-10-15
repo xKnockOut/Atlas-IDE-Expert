@@ -12,27 +12,24 @@
 // Zeilen behalten ihr Zeilenende (CRLF, LF, CR), damit gemischte Zeilenenden
 // und eine fehlende letzte Zeilenschaltung erhalten bleiben. Verglichen wird
 // nach gleichem Anfang und Ende mit der längsten gemeinsamen Teilfolge; ist der
-// Rest zu groß dafür, gilt er als ein Block.
+// Rest zu groß dafür, gilt er als ein Block. Zerlegen und Vergleichen kommen
+// aus Atlas.Text (ADR 0012).
 
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Text.Diff;
 
 type
   /// <summary>Geänderter Zeilenblock: im alten Text ab OldStart OldCount Zeilen, im neuen ab NewStart
   /// NewCount Zeilen (0-basiert).</summary>
-  TAtlasLineHunk = record
-    OldStart: Integer;
-    OldCount: Integer;
-    NewStart: Integer;
-    NewCount: Integer;
-  end;
+  TAtlasLineHunk = TTextLineHunk;
 
   TAtlasLinePatch = class
   public const
     /// <summary>Größte Fläche (Zeilen alt × neu) für den genauen Vergleich der Mitte.</summary>
-    MaxCells = 4000000;
+    MaxCells = TTextDiff.MaxCells;
   public
     /// <summary>Zeilen samt Zeilenende; die letzte ohne, wenn der Text nicht mit einem endet.</summary>
     class function SplitLines(const AText: string): TArray<string>; static;
@@ -46,122 +43,17 @@ type
 implementation
 
 uses
-  System.Math;
+  System.Math,
+  Atlas.Text.Lines;
 
 class function TAtlasLinePatch.SplitLines(const AText: string): TArray<string>;
-var
-  Index, Start, Count: Integer;
 begin
-  Result := nil;
-  Count := 0;
-  Start := 1;
-  Index := 1;
-  while Index <= Length(AText) do
-  begin
-    if (AText[Index] = #13) and (Index < Length(AText)) and (AText[Index + 1] = #10) then
-      Inc(Index);
-    if (AText[Index] = #10) or (AText[Index] = #13) then
-    begin
-      if Count = Length(Result) then
-        SetLength(Result, Max(16, Count * 2));
-      Result[Count] := Copy(AText, Start, Index - Start + 1);
-      Inc(Count);
-      Start := Index + 1;
-    end;
-    Inc(Index);
-  end;
-  if Start <= Length(AText) then
-  begin
-    SetLength(Result, Count + 1);
-    Result[Count] := Copy(AText, Start, MaxInt);
-    Inc(Count);
-  end;
-  SetLength(Result, Count);
+  Result := TTextLines.SplitKeepingBreaks(AText);
 end;
 
 class function TAtlasLinePatch.Hunks(const AOld, ANew: TArray<string>): TArray<TAtlasLineHunk>;
-var
-  Prefix, Suffix, OldCount, NewCount, Row, Column, Width: Integer;
-  Table: TArray<Integer>;
-  Hunk: TAtlasLineHunk;
-  Open: Boolean;
-
-  procedure Flush;
-  begin
-    if Open then
-      Result := Result + [Hunk];
-    Open := False;
-  end;
-
-  procedure Touch(AOldLine, ANewLine: Integer);
-  begin
-    if Open then
-      Exit;
-    Open := True;
-    Hunk.OldStart := AOldLine;
-    Hunk.NewStart := ANewLine;
-    Hunk.OldCount := 0;
-    Hunk.NewCount := 0;
-  end;
-
 begin
-  Result := nil;
-  Prefix := 0;
-  while (Prefix < Length(AOld)) and (Prefix < Length(ANew)) and (AOld[Prefix] = ANew[Prefix]) do
-    Inc(Prefix);
-  Suffix := 0;
-  while (Suffix < Length(AOld) - Prefix) and (Suffix < Length(ANew) - Prefix) and
-    (AOld[High(AOld) - Suffix] = ANew[High(ANew) - Suffix]) do
-    Inc(Suffix);
-  OldCount := Length(AOld) - Prefix - Suffix;
-  NewCount := Length(ANew) - Prefix - Suffix;
-  if (OldCount = 0) and (NewCount = 0) then
-    Exit;
-  Hunk := Default(TAtlasLineHunk);
-  if (OldCount = 0) or (NewCount = 0) or (Int64(OldCount + 1) * (NewCount + 1) > MaxCells) then
-  begin
-    // Nur auf einer Seite etwas oder zu groß: ein Block.
-    Hunk.OldStart := Prefix;
-    Hunk.OldCount := OldCount;
-    Hunk.NewStart := Prefix;
-    Hunk.NewCount := NewCount;
-    begin Result := [Hunk]; Exit; end;
-  end;
-  // Längste gemeinsame Teilfolge der Mitte, von hinten: Table[Row, Column] für AOld[Row..] und ANew[Column..].
-  Width := NewCount + 1;
-  SetLength(Table, (OldCount + 1) * Width);
-  for Row := OldCount - 1 downto 0 do
-    for Column := NewCount - 1 downto 0 do
-      if AOld[Prefix + Row] = ANew[Prefix + Column] then
-        Table[Row * Width + Column] := Table[(Row + 1) * Width + Column + 1] + 1
-      else
-        Table[Row * Width + Column] := Max(Table[(Row + 1) * Width + Column], Table[Row * Width + Column + 1]);
-  Open := False;
-  Row := 0;
-  Column := 0;
-  while (Row < OldCount) or (Column < NewCount) do
-  begin
-    if (Row < OldCount) and (Column < NewCount) and (AOld[Prefix + Row] = ANew[Prefix + Column]) then
-    begin
-      Flush;
-      Inc(Row);
-      Inc(Column);
-    end
-    else if (Column = NewCount) or ((Row < OldCount) and
-      (Table[(Row + 1) * Width + Column] >= Table[Row * Width + Column + 1])) then
-    begin
-      Touch(Prefix + Row, Prefix + Column);
-      Inc(Hunk.OldCount);
-      Inc(Row);
-    end
-    else
-    begin
-      Touch(Prefix + Row, Prefix + Column);
-      Inc(Hunk.NewCount);
-      Inc(Column);
-    end;
-  end;
-  Flush;
+  Result := TTextDiff.Hunks(AOld, ANew);
 end;
 
 class function TAtlasLinePatch.Rebase(const ASource, ATarget, ACurrent: string; out AResult: string): Boolean;

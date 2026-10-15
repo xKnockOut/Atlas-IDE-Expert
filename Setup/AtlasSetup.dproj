@@ -50,6 +50,7 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <DCCReference Include="..\Packages\Atlas.Text\Source\Product\Atlas.Text.Product.Version.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Product\Atlas.Core.Product.Version.pas"/>
         <DCCReference Include="Source\Core\Setup.Core.Contract.pas"/>
         <DCCReference Include="Source\Core\Setup.Core.Ides.pas"/>

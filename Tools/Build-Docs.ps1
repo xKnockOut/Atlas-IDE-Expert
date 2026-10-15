@@ -45,7 +45,7 @@ $Pages = @(
 )
 
 $Version = 'unbekannt'
-$VersionUnit = Join-Path $Root 'Packages/Atlas.IDE.Expert/Source/Core/Product/Atlas.Core.Product.Version.pas'
+$VersionUnit = Join-Path $Root 'Packages/Atlas.Text/Source/Product/Atlas.Text.Product.Version.pas'
 if (Test-Path $VersionUnit) {
     $Match = [regex]::Match([IO.File]::ReadAllText($VersionUnit), "Version = '([^']+)'")
     if ($Match.Success) { $Version = $Match.Groups[1].Value }

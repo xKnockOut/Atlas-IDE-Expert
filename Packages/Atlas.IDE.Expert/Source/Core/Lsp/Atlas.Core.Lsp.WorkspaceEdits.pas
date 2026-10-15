@@ -97,7 +97,8 @@ implementation
 uses
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Core.Lsp.Session;
+  Atlas.Core.Lsp.Session,
+  Atlas.Text.Lines;
 
 function ReadPosition(const ARange: TJSONObject; const AName: string; out APosition: TLspTextPosition): Boolean;
 var
@@ -275,17 +276,19 @@ var
   Items: TArray<TIndexedRange>;
   Index: Integer;
   LastLine: Integer;
+  Lines: TLineTable;
 begin
   // Letzte gültige Zeile: Positionen dahinter sind ein Fehler, nicht still das Textende.
-  LastLine := TLspTextChanges.PositionOf(AText, Length(AText)).Line;
+  Lines := TLineTable.Build(AText);
+  LastLine := Lines.LineCount - 1;
   SetLength(Items, Length(AEdits));
   for Index := 0 to High(AEdits) do
   begin
     if (AEdits[Index].StartPos.Line > LastLine) or (AEdits[Index].EndPos.Line > LastLine) then
       raise ELspEditError.CreateFmt('Änderung in Zeile %d, der Text hat nur %d Zeilen',
         [AEdits[Index].EndPos.Line + 1, LastLine + 1]);
-    Items[Index].Range.StartOffset := TLspTextChanges.OffsetOf(AText, AEdits[Index].StartPos);
-    Items[Index].Range.EndOffset := TLspTextChanges.OffsetOf(AText, AEdits[Index].EndPos);
+    Items[Index].Range.StartOffset := TLspTextChanges.OffsetOf(Lines, AEdits[Index].StartPos);
+    Items[Index].Range.EndOffset := TLspTextChanges.OffsetOf(Lines, AEdits[Index].EndPos);
     Items[Index].Range.NewText := AEdits[Index].NewText;
     Items[Index].Index := Index;
     if Items[Index].Range.EndOffset < Items[Index].Range.StartOffset then
