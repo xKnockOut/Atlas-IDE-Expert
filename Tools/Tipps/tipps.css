@@ -56,3 +56,14 @@ body { font: 12px/1.4 "Segoe UI", "DejaVu Sans", sans-serif; color: #e3e7ee; }
 .ok { color: #7ee2a8; } .warn { color: #ffcb6b; } .bad { color: #ff6b81; }
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
 .note { position: absolute; left: 9px; right: 9px; bottom: 7px; color: #9aa4b8; font-size: 11px; white-space: nowrap; }
+
+/* Rinne links neben dem Quelltext mit den Symbolen für Notizen und Lesezeichen. */
+.code.lines { white-space: normal; }
+.lines .ln { display: flex; align-items: center; height: 17px; white-space: pre; }
+.lines .g { width: 14px; flex: none; display: flex; justify-content: center; align-items: center; }
+.notemark { flex: none; width: 9px; height: 11px; background: #4a66c8; border: 1px solid #a9c1ff; border-radius: 1px; }
+.bookmark { flex: none; width: 8px; height: 12px; background: #ffcb6b; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 70%, 0 100%); }
+textarea, .area { background: #262c38; border: 1px solid #3d5afe; border-radius: 4px; padding: 3px 8px; }
+.grid .row { display: flex; height: 19px; align-items: center; white-space: nowrap; }
+.grid .row > span { flex: none; overflow: hidden; text-overflow: ellipsis; padding-right: 6px; }
+.grid .head { color: #9aa4b8; font-size: 11px; border-bottom: 1px solid #3c4352; }
