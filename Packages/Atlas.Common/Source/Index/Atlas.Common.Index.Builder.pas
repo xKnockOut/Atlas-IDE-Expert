@@ -24,6 +24,10 @@
 //   veraltet; ohne Usages bleiben Verwendungen aus dem Cache weg.
 // - Läuft im aufrufenden Thread; den Hintergrund-Thread stellt die
 //   Komposition bereit.
+// - ReleaseCache gibt die Cache-Einträge nach dem Aufbau frei (Rückmeldung
+//   15.10.2026): Jeder Eintrag hält die ganze gelesene Cache-Datei; mit sechs
+//   Projekten lagen so Projekt- und Bibliotheks-Cache sechsmal im Speicher,
+//   obwohl der Index sie längst übernommen hatte.
 
 interface
 
@@ -56,6 +60,8 @@ type
     FDefines: TArray<string>;
     FResolveUnit: TUnitFileResolver;
     FCached: TDictionary<string, TIndexCacheEntry>;
+    // EnsureUnit liest FCached aus Anfrage-Threads, ReleaseCache leert es.
+    FCacheLock: TObject;
     // Von EnsureUnit aus Anfrage-Threads genutzt.
     FFailedUnits: TDictionary<string, Boolean>;
     FFailedLock: TObject;
@@ -87,6 +93,11 @@ type
     procedure UseCache(const AUnits: TArray<TUnitIndex>); overload;
     /// <summary>Übernimmt die Köpfe eines Caches; Symbole werden erst bei Bedarf dekodiert.</summary>
     procedure UseCache(const AEntries: TArray<TIndexCacheEntry>); overload;
+    /// <summary>Gibt die Cache-Einträge frei (nach dem Aufbau); spätere Units liest der Builder aus der Datei.
+    /// Threadsicher.</summary>
+    procedure ReleaseCache;
+    /// <summary>Zahl der gehaltenen Cache-Einträge (für Tests).</summary>
+    function CachedCount: Integer;
     function Build(const AFiles: TArray<string>; const AProgress: TIndexProgressEvent;
       const ACancelled: TIndexCancelled): TIndexBuildResult; overload;
     /// <summary>Aufbau in Stufen (#648): AFiles samt über uses erreichbarer Units, dann ASearchFiles (Projekt),
@@ -135,6 +146,7 @@ begin
   FDefines := ADefines;
   FResolveUnit := AResolveUnit;
   FCached := TDictionary<string, TIndexCacheEntry>.Create;
+  FCacheLock := TObject.Create;
   FFailedUnits := TDictionary<string, Boolean>.Create;
   FFailedLock := TObject.Create;
 end;
@@ -168,6 +180,7 @@ destructor TIndexBuilder.Destroy;
 begin
   FFailedLock.Free;
   FFailedUnits.Free;
+  FCacheLock.Free;
   FCached.Free;
   inherited;
 end;
@@ -176,19 +189,48 @@ procedure TIndexBuilder.UseCache(const AUnits: TArray<TUnitIndex>);
 var
   UnitIndex: TUnitIndex;
 begin
-  for UnitIndex in AUnits do
-    // Kompakt gespeicherte Units fehlen Symbole; sie werden neu eingelesen.
-    if not UnitIndex.Compact then
+  TMonitor.Enter(FCacheLock);
+  try
+    // Ob ein kompakter Eintrag taugt, entscheidet CacheFits beim Einlesen.
+    for UnitIndex in AUnits do
       FCached.AddOrSetValue(AnsiUpperCase(UnitIndex.FileName), TIndexCacheEntry.FromUnit(UnitIndex));
+  finally
+    TMonitor.Exit(FCacheLock);
+  end;
 end;
 
 procedure TIndexBuilder.UseCache(const AEntries: TArray<TIndexCacheEntry>);
 var
   Entry: TIndexCacheEntry;
 begin
-  for Entry in AEntries do
-    if not Entry.Header.Compact then
+  TMonitor.Enter(FCacheLock);
+  try
+    for Entry in AEntries do
       FCached.AddOrSetValue(AnsiUpperCase(Entry.Header.FileName), Entry);
+  finally
+    TMonitor.Exit(FCacheLock);
+  end;
+end;
+
+procedure TIndexBuilder.ReleaseCache;
+begin
+  TMonitor.Enter(FCacheLock);
+  try
+    FCached.Clear;
+    FCached.TrimExcess;
+  finally
+    TMonitor.Exit(FCacheLock);
+  end;
+end;
+
+function TIndexBuilder.CachedCount: Integer;
+begin
+  TMonitor.Enter(FCacheLock);
+  try
+    Result := FCached.Count;
+  finally
+    TMonitor.Exit(FCacheLock);
+  end;
 end;
 
 function TIndexBuilder.IsCancelled(const ACancelled: TIndexCancelled): Boolean;
@@ -254,6 +296,11 @@ begin
   // Mit Includes kann sich das Ergebnis ändern, ohne dass die Unit sich ändert; ohne erfasste
   // Verwendungen taugt der Eintrag nicht, sobald sie gebraucht werden.
   Result := IncludesUnchanged(AEntry.Header) and (AEntry.Header.UsagesIndexed or not WantsUsages(ALibrary));
+  // Kompakten Einträgen fehlen die Symbole aus dem implementation-Teil. Für Bibliotheken reicht
+  // das, solange ein Budget gilt: der Index würde sie ohnehin wieder kompakt halten. Sonst liefen
+  // bei knappem Budget alle Bibliotheken bei jedem Start durch den Parser (Diagnoselog 15.10.2026).
+  if Result and AEntry.Header.Compact then
+    Result := ALibrary and (FIndex.Budget > 0);
 end;
 
 function TIndexBuilder.FromCache(const AEntry: TIndexCacheEntry; ALibrary: Boolean; out AUnit: TUnitIndex): Boolean;
@@ -292,7 +339,12 @@ begin
     Inc(AResult.Missing);
     Exit(False);
   end;
-  HasCache := FCached.TryGetValue(AnsiUpperCase(AFileName), Entry);
+  TMonitor.Enter(FCacheLock);
+  try
+    HasCache := FCached.TryGetValue(AnsiUpperCase(AFileName), Entry);
+  finally
+    TMonitor.Exit(FCacheLock);
+  end;
   if HasCache and not CacheFits(Entry, ALibrary) then
     HasCache := False;
   // Zeitstempel oder Inhalt passen: erst jetzt die Symbole dekodieren; ein beschädigter Block

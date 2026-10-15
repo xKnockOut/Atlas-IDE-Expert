@@ -7,12 +7,18 @@
 //   bevorzugte zuerst (Ersatz für die Glühbirne). Die gewählte ändert die
 //   Puffer über TAtlasIdeWorkspaceEdit (je Datei ein Rückgängig-Schritt, #397)
 //   und führt danach ihren Befehl aus: atlas.copyText legt das erste Argument
-//   in die Zwischenablage, alle anderen gehen als workspace/executeCommand an
-//   den Server.
+//   in die Zwischenablage, atlas.openFile öffnet die Datei der URI im ersten
+//   Argument (Testunit, #274/#189), alle anderen gehen als
+//   workspace/executeCommand an den Server.
 // - Auswahl erweitern und verkleinern (textDocument/selectionRange).
 // - Gehe zu Typdefinition (textDocument/typeDefinition); Gehe zu
 //   Implementierung liegt im Ergebnisfenster (#400).
+// - Zwischen Deklaration und Implementierung wechseln (#775): ohne Server,
+//   direkt aus dem Puffer (Atlas.Core.Editor.MethodToggle).
 // - Qualifizierten Namen kopieren (atlas.server.qualifiedName, #128).
+// - Zwischen Unit und Testunit wechseln (atlas.server.testUnit, #189): öffnet
+//   das Gegenstück; fehlt die Testunit, legt das Edit des Servers sie an und
+//   trägt sie ins Testprojekt ein (#274), danach wird sie geöffnet.
 // - Schnellbefehle mit „/“ nach Enter (#293) und ///-Gerüste (#88): Nach jeder
 //   Änderung im Editor prüft TAtlasSlashTrigger die Cursorzeile; passt sie,
 //   geht textDocument/onTypeFormatting an den Server, und zwar nach der
@@ -67,7 +73,14 @@ type
     class procedure ExpandSelection; static;
     class procedure ShrinkSelection; static;
     class procedure GoToTypeDefinition; static;
+    /// <summary>Cursor zum Gegenstück der Methode am Cursor (Deklaration ⇄ Implementierung, #775); False ohne
+    /// Gegenstück, dann ohne Meldung (die Taste geht an die IDE weiter).</summary>
+    class function TryToggleMethod: Boolean; static;
+    /// <summary>Wie TryToggleMethod, für Menü und Palette: ohne Gegenstück eine Zeile in der Meldungsansicht.</summary>
+    class procedure ToggleMethod; static;
     class procedure CopyQualifiedName(AWithParameters: Boolean); static;
+    /// <summary>Zur Testunit bzw. getesteten Unit der oberen Datei; legt eine fehlende Testunit an (#189).</summary>
+    class procedure SwitchTestUnit; static;
     /// <summary>Nach jeder Änderung im Editor (Notifier): Schnellbefehle und ///-Gerüste auslösen.</summary>
     class procedure EditorModified(const AView: IOTAEditView); static;
     /// <summary>Untermenü Atlas in die Kontextmenüs der Editorfenster hängen.</summary>
@@ -88,6 +101,8 @@ uses
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Editor.Selection,
+  Atlas.Core.Editor.MethodToggle,
+  Atlas.Core.Editor.TestUnit,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.IDE.Editor.Buffer,
@@ -104,7 +119,9 @@ const
   // Beim Tippen: lieber nichts tun als die IDE aufhalten.
   SlashTimeoutMs = 3000;
   CopyTextCommand = 'atlas.copyText';
+  OpenFileCommand = 'atlas.openFile';
   QualifiedNameCommand = 'atlas.server.qualifiedName';
+  TestUnitCommand = 'atlas.server.testUnit';
 
 type
   TEditorNotifier = class(TNotifierObject, INTAEditServicesNotifier)
@@ -238,12 +255,32 @@ begin
     begin
       GoToTypeDefinition;
     end);
+  FContextMenu.Add('Atlas.ToggleMethod', TAtlasStrings.Text(TAtlasTextId.EditorMethodToggle),
+    function: Integer
+    begin
+      Result := 0;
+      if TAtlasIdeSettings.Current.MethodToggle then
+        Result := TAtlasIdeSettings.Current.MethodToggleUpKey;
+    end,
+    procedure
+    begin
+      ToggleMethod;
+    end);
   FContextMenu.Add('Atlas.References', TAtlasStrings.Text(TAtlasTextId.MenuReferences), nil,
     procedure
     begin
       TAtlasIdeResults.FindReferences;
     end);
   FContextMenu.Add('-', nil, nil);
+  FContextMenu.Add('Atlas.SwitchTestUnit', TAtlasStrings.Text(TAtlasTextId.EditorTestUnit),
+    function: Integer
+    begin
+      Result := TAtlasIdeSettings.Current.TestUnitKey;
+    end,
+    procedure
+    begin
+      SwitchTestUnit;
+    end);
   FContextMenu.Add('Atlas.CopyQualifiedName', TAtlasStrings.Text(TAtlasTextId.EditorCopyQualified), nil,
     procedure
     begin
@@ -473,6 +510,45 @@ begin
   TAtlasEditorHover.GoToLocation(Found[0].FileName, Found[0].Line, Found[0].Character);
 end;
 
+class function TAtlasIdeEditorCommands.TryToggleMethod: Boolean;
+var
+  Editors: IOTAEditorServices;
+  View: IOTAEditView;
+  Text, LineText: string;
+  Lines: TArray<string>;
+  Cursor: TOTAEditPos;
+  TabWidth, Row: Integer;
+  Target: TAtlasMethodPlace;
+begin
+  Result := False;
+  if not Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+    Exit;
+  View := Editors.TopView;
+  if (View = nil) or (View.Buffer = nil) then
+    Exit;
+  Text := TAtlasEditorBuffer.Text(View.Buffer);
+  Lines := Text.Split([#13#10, #10]);
+  TabWidth := TAtlasEditorBuffer.TabWidth(View.Buffer);
+  Cursor := View.CursorPos;
+  Row := Cursor.Line - 1;
+  LineText := '';
+  if (Row >= 0) and (Row < Length(Lines)) then
+    LineText := Lines[Row];
+  if not TAtlasMethodToggle.Counterpart(Text, Row, TLspSession.ColumnToIndex(LineText, Cursor.Col, TabWidth),
+    Target) then
+    Exit;
+  View.CursorPos := EditPos(Lines, TLspTextPosition.Create(Target.Line, Target.Character), TabWidth);
+  View.MoveViewToCursor;
+  View.Paint;
+  Result := True;
+end;
+
+class procedure TAtlasIdeEditorCommands.ToggleMethod;
+begin
+  if not TryToggleMethod then
+    Say(TAtlasStrings.Text(TAtlasTextId.EditorMethodToggleNone));
+end;
+
 class procedure TAtlasIdeEditorCommands.CopyQualifiedName(AWithParameters: Boolean);
 var
   View: IOTAEditView;
@@ -514,6 +590,73 @@ begin
   finally
     Answer.Free;
   end;
+end;
+
+class procedure TAtlasIdeEditorCommands.SwitchTestUnit;
+var
+  View: IOTAEditView;
+  FileName, Arguments: string;
+  Lines: TArray<string>;
+  Selection: TLspRange;
+  Values: TJSONArray;
+  Answer, EditValue: TJSONValue;
+  Info: TAtlasTestUnitInfo;
+  Edit: TLspWorkspaceEdit;
+  Outcome: TAtlasWorkspaceEditResult;
+begin
+  if not Current(View, FileName, Lines, Selection) then
+    Exit;
+  Values := TJSONArray.Create;
+  try
+    Values.Add(TLspSession.PathToUri(FileName));
+    Values.Add(Selection.StartPos.Line);
+    Arguments := Values.ToJSON;
+  finally
+    Values.Free;
+  end;
+  try
+    Answer := Session.RunCommand(TestUnitCommand, Arguments, CommandTimeoutMs);
+  except
+    on E: ELspClientError do
+    begin
+      Say(TAtlasStrings.Fmt(TAtlasTextId.EditorFailed, [E.Message]));
+      Exit;
+    end;
+  end;
+  try
+    Info := TAtlasTestUnitInfo.FromJson(Answer,
+      function(AUri: string): string
+      begin
+        Result := TLspSession.UriToPath(AUri);
+      end);
+    Edit := Default(TLspWorkspaceEdit);
+    if (Answer is TJSONObject) and Info.CanCreate then
+    begin
+      EditValue := TJSONObject(Answer).GetValue('edit');
+      Edit := TLspWorkspaceEdit.FromJson(EditValue);
+    end;
+  finally
+    Answer.Free;
+  end;
+  if Info.CounterpartFile <> '' then
+  begin
+    TAtlasEditorHover.GoToLocation(Info.CounterpartFile, 0, 0);
+    Exit;
+  end;
+  if not Info.CanCreate or Edit.IsEmpty then
+  begin
+    Say(TAtlasStrings.Fmt(TAtlasTextId.TestUnitNone, [Info.Reason]));
+    Exit;
+  end;
+  // Anlegen und ins Testprojekt eintragen (#274), dann öffnen.
+  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasIdeSettings.Current.OpenForEdits,
+    TAtlasStrings.Fmt(TAtlasTextId.TestUnitLensCreate, [Info.Counterpart]));
+  if Outcome.Error <> '' then
+  begin
+    Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
+    Exit;
+  end;
+  TAtlasEditorHover.GoToLocation(Info.NewFile, 0, 0);
 end;
 
 function KindCaption(const AKind: string): string;
@@ -644,6 +787,18 @@ begin
         Clipboard.AsText := TJSONArray(Arguments).Items[0].Value;
         Say(TAtlasStrings.Text(TAtlasTextId.EditorTextCopied));
       end;
+    finally
+      Arguments.Free;
+    end;
+    Exit;
+  end;
+  if ACommand = OpenFileCommand then
+  begin
+    // Client-Befehl: Datei der URI im ersten Argument öffnen.
+    Arguments := TJSONObject.ParseJSONValue(AArgumentsJson);
+    try
+      if (Arguments is TJSONArray) and (TJSONArray(Arguments).Count > 0) then
+        TAtlasEditorHover.GoToLocation(TLspSession.UriToPath(TJSONArray(Arguments).Items[0].Value), 0, 0);
     finally
       Arguments.Free;
     end;

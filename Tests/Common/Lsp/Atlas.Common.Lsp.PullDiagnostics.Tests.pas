@@ -31,6 +31,12 @@ type
     /// <summary>Eine zweite gleichzeitige workspace/diagnostic-Anfrage prüft nicht noch einmal.</summary>
     [Test]
     procedure SecondWorkspaceRequestDoesNotCollect;
+    /// <summary>Ein Abbruch wirkt vor der nächsten Prüfregel, nicht erst am Ende (Diagnoselog 15.10.2026).</summary>
+    [Test]
+    procedure CancelStopsRuleChecks;
+    /// <summary>Zwei gleichzeitige Anfragen für denselben Stand prüfen nur einmal.</summary>
+    [Test]
+    procedure ParallelRequestsForSameStateComputeOnce;
   end;
 
 implementation
@@ -38,7 +44,12 @@ implementation
 uses
   System.Generics.Collections,
   System.SysUtils,
+  System.Classes,
+  System.SyncObjs,
   System.JSON,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Rules.Contract,
+  Atlas.Tests.RuleAssert,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.PendingRequests,
   Atlas.Common.Documents.Contract,
@@ -354,6 +365,100 @@ begin
       Assert.AreEqual(1, (Outer as TJSONObject).GetValue<TJSONArray>('items').Count, 'erste prüft');
     finally
       Outer.Free;
+    end;
+  finally
+    Fixture.Done;
+  end;
+end;
+
+procedure TLspPullDiagnosticsTests.CancelStopsRuleChecks;
+var
+  Fixture: TFixture;
+  Source: IJsonRpcCancellationSource;
+  Runs: Integer;
+begin
+  Fixture.Init;
+  try
+    Runs := 0;
+    Source := TJsonRpcCancellation.Create;
+    Fixture.Diagnostics.RuleProvider :=
+      function(const AUri: string; out AContext: TRuleCheckContext): Boolean
+      begin
+        AContext := Default(TRuleCheckContext);
+        AContext.Settings := TServerSettings.Default;
+        AContext.Rules := [
+          TCallbackRule.Create('erste',
+            procedure
+            begin
+              Inc(Runs);
+              Source.Cancel;
+            end),
+          TCallbackRule.Create('zweite',
+            procedure
+            begin
+              Inc(Runs);
+            end)];
+        Result := True;
+      end;
+    Assert.WillRaise(
+      procedure
+      begin
+        Fixture.Pull.DocumentReport(TDocumentUris.FromPath(OpenFile), '', Source).Free;
+      end, EJsonRpcRequestCancelled);
+    Assert.AreEqual(1, Runs);
+    Assert.AreEqual(0, Fixture.Pull.Computed);
+  finally
+    Fixture.Done;
+  end;
+end;
+
+procedure TLspPullDiagnosticsTests.ParallelRequestsForSameStateComputeOnce;
+var
+  Fixture: TFixture;
+  Runs: Integer;
+  Worker: TThread;
+  Mine, Other: TJSONObject;
+begin
+  Fixture.Init;
+  try
+    Runs := 0;
+    Other := nil;
+    Fixture.Diagnostics.RuleProvider :=
+      function(const AUri: string; out AContext: TRuleCheckContext): Boolean
+      begin
+        AContext := Default(TRuleCheckContext);
+        AContext.Settings := TServerSettings.Default;
+        AContext.Rules := [
+          TCallbackRule.Create('langsam',
+            procedure
+            begin
+              TInterlocked.Increment(Runs);
+              Sleep(300);
+            end)];
+        Result := True;
+      end;
+    Worker := TThread.CreateAnonymousThread(
+      procedure
+      begin
+        Other := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(OpenFile), '', Token);
+      end);
+    Worker.FreeOnTerminate := False;
+    Worker.Start;
+    try
+      Sleep(100);
+      Mine := Fixture.Pull.DocumentReport(TDocumentUris.FromPath(OpenFile), '', Token);
+      Worker.WaitFor;
+    finally
+      Worker.Free;
+    end;
+    try
+      Assert.AreEqual(1, Runs);
+      Assert.AreEqual(1, Fixture.Pull.Computed);
+      Assert.IsNotNull(Other);
+      Assert.AreEqual(Other.GetValue('resultId').Value, Mine.GetValue('resultId').Value);
+    finally
+      Mine.Free;
+      Other.Free;
     end;
   finally
     Fixture.Done;

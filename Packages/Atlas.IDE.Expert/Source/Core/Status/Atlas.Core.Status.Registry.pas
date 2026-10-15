@@ -101,7 +101,12 @@ type
     class function Leading(const AItems: TArray<IAtlasStatusItem>): IAtlasStatusItem; static;
     /// <summary>„Atlas“, mit AShowSummary und gelber oder roter wichtigster Zeile mit Kurztext
     /// „Atlas · Kurztext“.</summary>
-    class function FieldText(const AItems: TArray<IAtlasStatusItem>; AShowSummary: Boolean): string; static;
+    class function FieldText(const AItems: TArray<IAtlasStatusItem>; AShowSummary: Boolean): string; overload; static;
+    /// <summary>Wie oben; dazu immer der Kurztext der gelben oder roten Zeile AAlwaysId (Fortschritt des
+    /// Symbol-Index), auch ohne AShowSummary und wenn eine andere Zeile wichtiger ist:
+    /// „Atlas · Server langsam · Index 45 %“.</summary>
+    class function FieldText(const AItems: TArray<IAtlasStatusItem>; AShowSummary: Boolean;
+      const AAlwaysId: string): string; overload; static;
     /// <summary>Zeilen, die nicht grün sind, eine je Zeile; ohne solche „Atlas: alles in Ordnung“.</summary>
     class function Tooltip(const AItems: TArray<IAtlasStatusItem>): string; static;
     /// <summary>Kennungen aus einem Text mit Komma, Semikolon oder Leerzeichen.</summary>
@@ -467,15 +472,32 @@ end;
 
 class function TAtlasStatusSummary.FieldText(const AItems: TArray<IAtlasStatusItem>;
   AShowSummary: Boolean): string;
+begin
+  Result := FieldText(AItems, AShowSummary, '');
+end;
+
+class function TAtlasStatusSummary.FieldText(const AItems: TArray<IAtlasStatusItem>; AShowSummary: Boolean;
+  const AAlwaysId: string): string;
 var
-  Lead: IAtlasStatusItem;
+  Lead, Item: IAtlasStatusItem;
 begin
   Result := FieldCaption;
-  if not AShowSummary then
-    Exit;
-  Lead := Leading(AItems);
+  Lead := nil;
+  if AShowSummary then
+    Lead := Leading(AItems);
   if (Lead <> nil) and (Ord(Lead.State) >= Ord(TAtlasStatusState.Yellow)) and (Lead.Summary <> '') then
-    Result := Result + Separator + Lead.Summary;
+    Result := Result + Separator + Lead.Summary
+  else
+    Lead := nil;
+  if AAlwaysId = '' then
+    Exit;
+  for Item in AItems do
+    if SameText(Item.Id, AAlwaysId) and (Item <> Lead) and (Ord(Item.State) >= Ord(TAtlasStatusState.Yellow)) and
+      (Item.Summary <> '') then
+    begin
+      Result := Result + Separator + Item.Summary;
+      Exit;
+    end;
 end;
 
 class function TAtlasStatusSummary.Tooltip(const AItems: TArray<IAtlasStatusItem>): string;

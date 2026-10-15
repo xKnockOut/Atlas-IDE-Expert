@@ -14,6 +14,7 @@ interface
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
@@ -72,16 +73,12 @@ end;
 class function TUnresolvedNames.Find(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AFileName: string): TArray<TUnresolvedName>;
 var
-  Declared: TArray<string>;
+  // Nachschlagen statt Liste: bei vielen Inline-Variablen sonst ein Lauf je Bezeichner (Diagnoselog 15.10.2026).
+  Declared: TDictionary<string, Boolean>;
 
   function IsDeclared(const AName: string): Boolean;
-  var
-    Name: string;
   begin
-    for Name in Declared do
-      if SameText(Name, AName) then
-        Exit(True);
-    Result := False;
+    Result := Declared.ContainsKey(UpperCase(AName));
   end;
 
   // Namen, die die Grundstufe nicht sicher als lokal kennt: Ausnahmevariablen und Inline-Variablen.
@@ -91,7 +88,7 @@ var
   begin
     if (ANode.Kind in [TSyntaxKind.ExceptionHandler, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst,
       TSyntaxKind.LabeledStatement, TSyntaxKind.GotoStatement]) and (ANode.Name <> '') then
-      Declared := Declared + [ANode.Name];
+      Declared.AddOrSetValue(UpperCase(ANode.Name), True);
     for Index := 0 to ANode.ChildCount - 1 do
       CollectDeclared(ANode[Index]);
   end;
@@ -134,15 +131,19 @@ var
 
 begin
   Result := nil;
-  Declared := nil;
   if (ATree = nil) or (ATree.Root = nil) then
     Exit;
-  CollectDeclared(ATree.Root);
-  AResolver.PinTree(ATree, AFileName);
+  Declared := TDictionary<string, Boolean>.Create;
   try
-    Visit(ATree.Root, False);
+    CollectDeclared(ATree.Root);
+    AResolver.PinTree(ATree, AFileName);
+    try
+      Visit(ATree.Root, False);
+    finally
+      AResolver.UnpinTree;
+    end;
   finally
-    AResolver.UnpinTree;
+    Declared.Free;
   end;
 end;
 

@@ -64,6 +64,11 @@ type
   /// <summary>Alles, was eine Regel über die geprüfte Datei wissen darf.</summary>
   /// <summary>Liest eine Datei neben der Unit, z. B. die .dcr aus {$R *.dcr} (#114).</summary>
   TRuleFileReader = reference to function(const AFileName: string; out AData: TBytes): Boolean;
+  /// <summary>True, wenn die Prüfung abgebrochen werden soll (Zeitlimit, Dokument geändert).</summary>
+  TRuleCancelled = reference to function: Boolean;
+
+  /// <summary>Die Prüfung wurde über TRuleContext.Cancelled abgebrochen; es gibt kein Ergebnis.</summary>
+  ERuleCheckCancelled = class(Exception);
 
   TRuleContext = record
     /// <summary>Pfad relativ zum Ordner der Konfiguration, '' wenn unbekannt.</summary>
@@ -90,6 +95,8 @@ type
     ReadFile: TRuleFileReader;
     /// <summary>Eigenschaftsregeln für Formulardateien aus atlas.json (#309); setzt TRuleEngine.Run.</summary>
     DfmPropertyRules: TArray<TDfmPropertyRule>;
+    /// <summary>Abbruch zwischen den Regeln (Diagnoselog 15.10.2026); nil = nie abbrechen.</summary>
+    Cancelled: TRuleCancelled;
   end;
 
   /// <summary>Sammelt die Treffer einer Regel.</summary>

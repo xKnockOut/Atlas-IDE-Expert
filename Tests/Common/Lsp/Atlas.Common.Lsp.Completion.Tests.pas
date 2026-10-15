@@ -26,6 +26,8 @@ type
     [Test]
     procedure ScopeListsLocalsMembersAndUsedUnits;
     [Test]
+    procedure OwnMethodsSurviveTruncation;
+    [Test]
     procedure PlainItemsHaveNoTextEdit;
     [Test]
     procedure ItemsCarryTheirScope;
@@ -227,6 +229,29 @@ begin
   // Nächster Gültigkeitsbereich zuerst; Versteckt steht nur in implementation von Werkzeug.
   Assert.AreEqual('Wert Anzahl Self Name Bar Zaehler Melde TFoo TBasis Rechne',
     Names(ItemsAt(WithCode('  '), #10'begin'#10'  ')));
+end;
+
+procedure TLspCompletionTests.OwnMethodsSurviveTruncation;
+var
+  Source, Text: string;
+  Index: Integer;
+  Items: TCompletionItems;
+begin
+  // Rückmeldung 15.10.2026: Bei einem Vorfahren mit mehr als MaxItems kurzen Mitgliedern fielen eigene
+  // Methoden mit längerem Namen beim Kürzen heraus.
+  Source := 'unit Gross;'#10'interface'#10'type'#10'  TGross = class'#10'  public'#10;
+  for Index := 0 to TLspCompletion.MaxItems + 199 do
+    Source := Source + '    procedure R' + IntToStr(Index) + ';'#10;
+  Source := Source + '  end;'#10'implementation'#10'end.';
+  FIndex.AddUnit(TIndexExtractor.ExtractText(Source, 'C:\P\Gross.pas', nil));
+  Text := StringReplace(StringReplace(WithCode('  R'), 'uses Werkzeug;', 'uses Werkzeug, Gross;', []),
+    'class(TBasis)', 'class(TGross)', []);
+  Text := StringReplace(Text, '    procedure Bar(Anzahl: Integer);',
+    '    procedure Bar(Anzahl: Integer);'#10'    procedure RechneSehrLangerName;', []);
+  Items := ItemsAt(Text, #10'  R', TCompletionMatching.Fuzzy);
+  Assert.IsTrue(Items.Incomplete);
+  Assert.AreEqual<NativeInt>(TLspCompletion.MaxItems, Length(Items.Items));
+  Assert.IsTrue(Pos(' RechneSehrLangerName ', ' ' + Names(Items) + ' ') > 0, 'eigene Methode fehlt');
 end;
 
 procedure TLspCompletionTests.ScopeFiltersByPrefix;

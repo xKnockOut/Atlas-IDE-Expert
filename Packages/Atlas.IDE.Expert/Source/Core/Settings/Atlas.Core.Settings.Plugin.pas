@@ -165,6 +165,17 @@ type
     ShrinkKey: Integer;
     ImplementationKey: Integer;
     TypeDefinitionKey: Integer;
+    /// <summary>Zwischen Deklaration und Implementierung wechseln (#775); aus: Atlas belegt die Tasten nicht,
+    /// die Klassennavigation der IDE gilt.</summary>
+    MethodToggle: Boolean;
+    /// <summary>Tasten für den Wechsel (#775, TShortCut, 0 = keine): Strg+Umschalt+↑ und Strg+Umschalt+↓.</summary>
+    MethodToggleUpKey: Integer;
+    MethodToggleDownKey: Integer;
+    /// <summary>Zwischen Unit und Testunit wechseln (#189, TShortCut, 0 = keins).</summary>
+    TestUnitKey: Integer;
+    /// <summary>Code Lens „Testunit“ bzw. „Unit“ hinter der Zeile unit … (#189, codeLens.testUnit);
+    /// der Befehl bleibt auch ohne sie verfügbar.</summary>
+    CodeLensTestUnit: Boolean;
     /// <summary>Die Editor-Kürzel auch belegen, wenn die IDE oder eine andere Erweiterung sie nutzt.</summary>
     EditorKeysPriority: Boolean;
     /// <summary>Schnellbefehle mit „/“ nach Enter und „///“-Gerüste beim Server auslösen (#399).</summary>
@@ -194,6 +205,13 @@ type
     StatusFieldHidden: string;
     /// <summary>Kurztext neben „Atlas“ (#591, statusField.showSummary).</summary>
     StatusFieldSummary: Boolean;
+    /// <summary>Womit das Feld die Schnellschalter öffnet: 'both' (Rechts- und Doppelklick, Vorgabe),
+    /// 'rightClick' oder 'doubleClick' (statusField.openToggles).</summary>
+    StatusFieldToggles: string;
+    /// <summary>Wo der Fortschritt beim Aufbau des Symbol-Index steht: 'statusField' (Vorgabe; mit
+    /// abgeschaltetem Statusfeld im Menütitel), 'menu' (Titel des Menüs Atlas) oder 'off'
+    /// (statusField.indexProgress).</summary>
+    IndexProgressPlace: string;
     /// <summary>Tastenkürzel für das Fenster der Schnellschalter (#604, TShortCut, 0 = keins) und Vorrang wie
     /// bei den anderen Atlas-Tasten (#494).</summary>
     QuickToggleKey: Integer;
@@ -258,6 +276,36 @@ type
     /// <summary>Fehlerbericht anonymisieren (#108, diagnostics.bugReport.anonymize): Pfade, Benutzername und
     /// Bezeichner ersetzen; Vorgabe an.</summary>
     BugReportAnonymize: Boolean;
+    /// <summary>Hauptschalter für das Fenster „Units suchen“ (#777, unitSearch.enabled); Vorgabe an.</summary>
+    UnitSearchEnabled: Boolean;
+    /// <summary>Strg+F12 und Ansicht › Units öffnen das Atlas-Fenster statt des IDE-Dialogs (#777, unitSearch.replaceIdeDialog); Vorgabe an.</summary>
+    UnitSearchReplaceIdeDialog: Boolean;
+    /// <summary>Eingeklappte Gruppen je Projektgruppe merken (#777, unitSearch.rememberCollapsed); Vorgabe an.</summary>
+    UnitSearchRememberCollapsed: Boolean;
+    /// <summary>Chipzeile mit Herkunft und Art (#777, unitSearch.filters); Vorgabe an.</summary>
+    UnitSearchFilters: Boolean;
+    /// <summary>Tippsyntax p:/t: im Suchfeld (#777, unitSearch.filterSyntax); Vorgabe an.</summary>
+    UnitSearchFilterSyntax: Boolean;
+    /// <summary>Vorschaubereich (#777, unitSearch.preview); Vorgabe an.</summary>
+    UnitSearchPreview: Boolean;
+    /// <summary>Formularskizze in der Vorschau (#777, unitSearch.preview.form); Vorgabe an.</summary>
+    UnitSearchPreviewForm: Boolean;
+    /// <summary>„Verwendet von“ in der Vorschau (#777, unitSearch.preview.usedBy); Vorgabe an.</summary>
+    UnitSearchPreviewUsedBy: Boolean;
+    /// <summary>Häkchen und Mehrfachauswahl (#777, unitSearch.multiSelect); Vorgabe an.</summary>
+    UnitSearchMultiSelect: Boolean;
+    /// <summary>Aktionsleiste (#777, unitSearch.actions); Vorgabe an.</summary>
+    UnitSearchActions: Boolean;
+    /// <summary>Aktion „In uses aufnehmen“ (#777, unitSearch.actions.addUses); Vorgabe an.</summary>
+    UnitSearchActionsAddUses: Boolean;
+    /// <summary>Pfadanzeige in der zweiten Zeile (#777, unitSearch.pathStyle): relative, compact, absolute.</summary>
+    UnitSearchPathStyle: string;
+    /// <summary>Gruppierung (#777, unitSearch.groupBy): none, project, folder.</summary>
+    UnitSearchGroupBy: string;
+    /// <summary>Vorgewählte Herkunft (#777, unitSearch.defaultScope): project, group, searchPath, library.</summary>
+    UnitSearchDefaultScope: string;
+    /// <summary>Eigenes Kürzel für das Atlas-Fenster (#777, TShortCut, 0 = keins); Strg+F12 über replaceIdeDialog.</summary>
+    UnitSearchKey: Integer;
     /// <summary>Hauptschalter der Atlas-Willkommensseite (#753, welcomePage.enabled): Atlas-Bereiche auf der
     /// Willkommensseite der IDE und Fenster „Atlas-Start“.</summary>
     WelcomePage: Boolean;
@@ -321,6 +369,14 @@ type
     procedure Normalize;
     procedure Load(const AStore: IAtlasSettingsStore);
     procedure Save(const AStore: IAtlasSettingsStore);
+    /// <summary>Rechtsklick auf das Statusfeld öffnet die Schnellschalter (StatusFieldToggles).</summary>
+    function StatusTogglesOnRightClick: Boolean;
+    /// <summary>Doppelklick auf das Statusfeld öffnet die Schnellschalter (StatusFieldToggles).</summary>
+    function StatusTogglesOnDoubleClick: Boolean;
+    /// <summary>Statusfeld zeigt den Fortschritt des Symbol-Index (IndexProgressPlace).</summary>
+    function IndexProgressInField: Boolean;
+    /// <summary>Titel des Menüs Atlas zeigt den Fortschritt (IndexProgressPlace, Statusfeld aus).</summary>
+    function IndexProgressInMenu: Boolean;
   end;
 
 implementation
@@ -352,6 +408,18 @@ begin
     Result := TAtlasColors.PairsText(Pairs)
   else
     Result := '';
+end;
+
+/// <summary>AValue, wenn er (ohne Groß-/Kleinschreibung) unter AAllowed steht, in deren Schreibweise;
+/// sonst der erste erlaubte Wert.</summary>
+function Choice(const AValue: string; const AAllowed: array of string): string;
+var
+  Item: string;
+begin
+  for Item in AAllowed do
+    if SameText(Trim(AValue), Item) then
+      Exit(Item);
+  Result := AAllowed[0];
 end;
 
 function BoolValue(AValue: Boolean): Integer;
@@ -417,6 +485,11 @@ begin
   Result.ShrinkKey := $6057; // Strg+Umschalt+W
   Result.ImplementationKey := $C049; // Strg+Alt+I
   Result.TypeDefinitionKey := 0;
+  Result.MethodToggle := True;
+  Result.MethodToggleUpKey := $6026; // Strg+Umschalt+↑
+  Result.MethodToggleDownKey := $6028; // Strg+Umschalt+↓
+  Result.TestUnitKey := 0;
+  Result.CodeLensTestUnit := True;
   Result.EditorKeysPriority := False;
   Result.SlashCommands := True;
   Result.Snippets := True;
@@ -426,12 +499,14 @@ begin
   Result.IndexSearchPaths := True;
   Result.IndexLibraryPaths := False;
   Result.IndexUsages := True;
-  Result.MemoryBudgetMb := 256;
+  Result.MemoryBudgetMb := 768;
   Result.XmlDocFull := True;
   Result.XmlDocMaxLines := 0;
   Result.StatusField := True;
   Result.StatusFieldHidden := '';
   Result.StatusFieldSummary := True;
+  Result.StatusFieldToggles := 'both';
+  Result.IndexProgressPlace := 'statusField';
   Result.QuickToggleKey := $E041; // Strg+Umschalt+Alt+A
   Result.QuickToggleKeyPriority := False;
   Result.DiagnosticMode := False;
@@ -458,6 +533,21 @@ begin
   Result.RedoKey := $E05A; // Strg+Alt+Umschalt+Z
   Result.UpdatesCheck := False;
   Result.BugReportAnonymize := True;
+  Result.UnitSearchEnabled := True;
+  Result.UnitSearchReplaceIdeDialog := True;
+  Result.UnitSearchRememberCollapsed := True;
+  Result.UnitSearchFilters := True;
+  Result.UnitSearchFilterSyntax := True;
+  Result.UnitSearchPreview := True;
+  Result.UnitSearchPreviewForm := True;
+  Result.UnitSearchPreviewUsedBy := True;
+  Result.UnitSearchMultiSelect := True;
+  Result.UnitSearchActions := True;
+  Result.UnitSearchActionsAddUses := True;
+  Result.UnitSearchPathStyle := 'relative';
+  Result.UnitSearchGroupBy := 'project';
+  Result.UnitSearchDefaultScope := 'group';
+  Result.UnitSearchKey := 0;
   Result.WelcomePage := True;
   Result.WelcomePageHost := 'welcomePage';
   Result.WelcomePageLayout := 'off';
@@ -517,6 +607,18 @@ begin
   DiagnosticModeKey := EnsureRange(DiagnosticModeKey, 0, $FFFF);
   SafeStartupTimeoutMs := EnsureRange(SafeStartupTimeoutMs, MinSafeStartupTimeout, MaxSafeStartupTimeout);
   SafeKeepSettingsHistory := EnsureRange(SafeKeepSettingsHistory, 0, MaxSafeSettingsHistory);
+  if SameText(Trim(StatusFieldToggles), 'rightClick') then
+    StatusFieldToggles := 'rightClick'
+  else if SameText(Trim(StatusFieldToggles), 'doubleClick') then
+    StatusFieldToggles := 'doubleClick'
+  else
+    StatusFieldToggles := 'both';
+  if SameText(Trim(IndexProgressPlace), 'menu') then
+    IndexProgressPlace := 'menu'
+  else if SameText(Trim(IndexProgressPlace), 'off') then
+    IndexProgressPlace := 'off'
+  else
+    IndexProgressPlace := 'statusField';
   SafeStartupKey := LowerCase(Trim(SafeStartupKey));
   if (SafeStartupKey <> 'shift') and (SafeStartupKey <> 'ctrl') and (SafeStartupKey <> 'none') then
     SafeStartupKey := 'shift';
@@ -534,10 +636,16 @@ begin
     UndoMultiFileNewFiles := 'recycleBin';
   UndoKey := EnsureRange(UndoKey, 0, $FFFF);
   RedoKey := EnsureRange(RedoKey, 0, $FFFF);
+  MethodToggleUpKey := EnsureRange(MethodToggleUpKey, 0, $FFFF);
+  MethodToggleDownKey := EnsureRange(MethodToggleDownKey, 0, $FFFF);
   PairGuideWidth := EnsureRange(PairGuideWidth, MinPairGuideWidth, MaxPairGuideWidth);
   PairGuideOpacity := EnsureRange(PairGuideOpacity, MinPairGuideOpacity, MaxPairGuideOpacity);
   PairColorsLight := NormalPairs(PairColorsLight);
   PairColorsDark := NormalPairs(PairColorsDark);
+  UnitSearchPathStyle := Choice(UnitSearchPathStyle, ['relative', 'compact', 'absolute']);
+  UnitSearchGroupBy := Choice(UnitSearchGroupBy, ['project', 'folder', 'none']);
+  UnitSearchDefaultScope := Choice(UnitSearchDefaultScope, ['group', 'project', 'searchPath', 'library']);
+  UnitSearchKey := EnsureRange(UnitSearchKey, 0, $FFFF);
   if SameText(Trim(WelcomePageHost), 'dockWindow') then
     WelcomePageHost := 'dockWindow'
   else
@@ -619,6 +727,11 @@ begin
   ShrinkKey := AStore.ReadInteger('ShrinkKey', Default.ShrinkKey);
   ImplementationKey := AStore.ReadInteger('ImplementationKey', Default.ImplementationKey);
   TypeDefinitionKey := AStore.ReadInteger('TypeDefinitionKey', Default.TypeDefinitionKey);
+  MethodToggle := AStore.ReadInteger('MethodToggle', BoolValue(Default.MethodToggle)) <> 0;
+  MethodToggleUpKey := AStore.ReadInteger('MethodToggleUpKey', Default.MethodToggleUpKey);
+  MethodToggleDownKey := AStore.ReadInteger('MethodToggleDownKey', Default.MethodToggleDownKey);
+  TestUnitKey := AStore.ReadInteger('TestUnitKey', Default.TestUnitKey);
+  CodeLensTestUnit := AStore.ReadInteger('CodeLensTestUnit', BoolValue(Default.CodeLensTestUnit)) <> 0;
   EditorKeysPriority := AStore.ReadInteger('EditorKeysPriority', BoolValue(Default.EditorKeysPriority)) <> 0;
   SlashCommands := AStore.ReadInteger('SlashCommands', BoolValue(Default.SlashCommands)) <> 0;
   Snippets := AStore.ReadInteger('Snippets', BoolValue(Default.Snippets)) <> 0;
@@ -633,6 +746,8 @@ begin
   StatusField := AStore.ReadInteger('StatusField', BoolValue(Default.StatusField)) <> 0;
   StatusFieldHidden := Trim(AStore.ReadString('StatusFieldHidden', Default.StatusFieldHidden));
   StatusFieldSummary := AStore.ReadInteger('StatusFieldSummary', BoolValue(Default.StatusFieldSummary)) <> 0;
+  StatusFieldToggles := AStore.ReadString('StatusFieldToggles', Default.StatusFieldToggles);
+  IndexProgressPlace := AStore.ReadString('IndexProgressPlace', Default.IndexProgressPlace);
   QuickToggleKey := AStore.ReadInteger('QuickToggleKey', Default.QuickToggleKey);
   QuickToggleKeyPriority :=
     AStore.ReadInteger('QuickToggleKeyPriority', BoolValue(Default.QuickToggleKeyPriority)) <> 0;
@@ -662,6 +777,21 @@ begin
   RedoKey := AStore.ReadInteger('RedoKey', Default.RedoKey);
   UpdatesCheck := AStore.ReadInteger('UpdatesCheck', BoolValue(Default.UpdatesCheck)) <> 0;
   BugReportAnonymize := AStore.ReadInteger('BugReportAnonymize', BoolValue(Default.BugReportAnonymize)) <> 0;
+  UnitSearchEnabled := AStore.ReadInteger('UnitSearchEnabled', BoolValue(Default.UnitSearchEnabled)) <> 0;
+  UnitSearchReplaceIdeDialog := AStore.ReadInteger('UnitSearchReplaceIdeDialog', BoolValue(Default.UnitSearchReplaceIdeDialog)) <> 0;
+  UnitSearchRememberCollapsed := AStore.ReadInteger('UnitSearchRememberCollapsed', BoolValue(Default.UnitSearchRememberCollapsed)) <> 0;
+  UnitSearchFilters := AStore.ReadInteger('UnitSearchFilters', BoolValue(Default.UnitSearchFilters)) <> 0;
+  UnitSearchFilterSyntax := AStore.ReadInteger('UnitSearchFilterSyntax', BoolValue(Default.UnitSearchFilterSyntax)) <> 0;
+  UnitSearchPreview := AStore.ReadInteger('UnitSearchPreview', BoolValue(Default.UnitSearchPreview)) <> 0;
+  UnitSearchPreviewForm := AStore.ReadInteger('UnitSearchPreviewForm', BoolValue(Default.UnitSearchPreviewForm)) <> 0;
+  UnitSearchPreviewUsedBy := AStore.ReadInteger('UnitSearchPreviewUsedBy', BoolValue(Default.UnitSearchPreviewUsedBy)) <> 0;
+  UnitSearchMultiSelect := AStore.ReadInteger('UnitSearchMultiSelect', BoolValue(Default.UnitSearchMultiSelect)) <> 0;
+  UnitSearchActions := AStore.ReadInteger('UnitSearchActions', BoolValue(Default.UnitSearchActions)) <> 0;
+  UnitSearchActionsAddUses := AStore.ReadInteger('UnitSearchActionsAddUses', BoolValue(Default.UnitSearchActionsAddUses)) <> 0;
+  UnitSearchPathStyle := AStore.ReadString('UnitSearchPathStyle', Default.UnitSearchPathStyle);
+  UnitSearchGroupBy := AStore.ReadString('UnitSearchGroupBy', Default.UnitSearchGroupBy);
+  UnitSearchDefaultScope := AStore.ReadString('UnitSearchDefaultScope', Default.UnitSearchDefaultScope);
+  UnitSearchKey := AStore.ReadInteger('UnitSearchKey', Default.UnitSearchKey);
   WelcomePage := AStore.ReadInteger('WelcomePage', BoolValue(Default.WelcomePage)) <> 0;
   WelcomePageHost := AStore.ReadString('WelcomePageHost', Default.WelcomePageHost);
   WelcomePageLayout := AStore.ReadString('WelcomePageLayout', Default.WelcomePageLayout);
@@ -750,6 +880,11 @@ begin
   AStore.WriteInteger('ShrinkKey', ShrinkKey);
   AStore.WriteInteger('ImplementationKey', ImplementationKey);
   AStore.WriteInteger('TypeDefinitionKey', TypeDefinitionKey);
+  AStore.WriteInteger('MethodToggle', BoolValue(MethodToggle));
+  AStore.WriteInteger('MethodToggleUpKey', MethodToggleUpKey);
+  AStore.WriteInteger('MethodToggleDownKey', MethodToggleDownKey);
+  AStore.WriteInteger('TestUnitKey', TestUnitKey);
+  AStore.WriteInteger('CodeLensTestUnit', BoolValue(CodeLensTestUnit));
   AStore.WriteInteger('EditorKeysPriority', BoolValue(EditorKeysPriority));
   AStore.WriteInteger('SlashCommands', BoolValue(SlashCommands));
   AStore.WriteInteger('Snippets', BoolValue(Snippets));
@@ -764,6 +899,8 @@ begin
   AStore.WriteInteger('StatusField', BoolValue(StatusField));
   AStore.WriteString('StatusFieldHidden', Trim(StatusFieldHidden));
   AStore.WriteInteger('StatusFieldSummary', BoolValue(StatusFieldSummary));
+  AStore.WriteString('StatusFieldToggles', StatusFieldToggles);
+  AStore.WriteString('IndexProgressPlace', IndexProgressPlace);
   AStore.WriteInteger('QuickToggleKey', QuickToggleKey);
   AStore.WriteInteger('QuickToggleKeyPriority', BoolValue(QuickToggleKeyPriority));
   AStore.WriteInteger('DiagnosticMode', BoolValue(DiagnosticMode));
@@ -790,6 +927,42 @@ begin
   AStore.WriteInteger('RedoKey', RedoKey);
   AStore.WriteInteger('UpdatesCheck', BoolValue(UpdatesCheck));
   AStore.WriteInteger('BugReportAnonymize', BoolValue(BugReportAnonymize));
+  AStore.WriteInteger('UnitSearchEnabled', BoolValue(UnitSearchEnabled));
+  AStore.WriteInteger('UnitSearchReplaceIdeDialog', BoolValue(UnitSearchReplaceIdeDialog));
+  AStore.WriteInteger('UnitSearchRememberCollapsed', BoolValue(UnitSearchRememberCollapsed));
+  AStore.WriteInteger('UnitSearchFilters', BoolValue(UnitSearchFilters));
+  AStore.WriteInteger('UnitSearchFilterSyntax', BoolValue(UnitSearchFilterSyntax));
+  AStore.WriteInteger('UnitSearchPreview', BoolValue(UnitSearchPreview));
+  AStore.WriteInteger('UnitSearchPreviewForm', BoolValue(UnitSearchPreviewForm));
+  AStore.WriteInteger('UnitSearchPreviewUsedBy', BoolValue(UnitSearchPreviewUsedBy));
+  AStore.WriteInteger('UnitSearchMultiSelect', BoolValue(UnitSearchMultiSelect));
+  AStore.WriteInteger('UnitSearchActions', BoolValue(UnitSearchActions));
+  AStore.WriteInteger('UnitSearchActionsAddUses', BoolValue(UnitSearchActionsAddUses));
+  AStore.WriteString('UnitSearchPathStyle', UnitSearchPathStyle);
+  AStore.WriteString('UnitSearchGroupBy', UnitSearchGroupBy);
+  AStore.WriteString('UnitSearchDefaultScope', UnitSearchDefaultScope);
+  AStore.WriteInteger('UnitSearchKey', UnitSearchKey);
+end;
+
+function TAtlasPluginSettings.StatusTogglesOnRightClick: Boolean;
+begin
+  Result := not SameText(Trim(StatusFieldToggles), 'doubleClick');
+end;
+
+function TAtlasPluginSettings.StatusTogglesOnDoubleClick: Boolean;
+begin
+  Result := not SameText(Trim(StatusFieldToggles), 'rightClick');
+end;
+
+function TAtlasPluginSettings.IndexProgressInField: Boolean;
+begin
+  Result := StatusField and SameText(Trim(IndexProgressPlace), 'statusField');
+end;
+
+function TAtlasPluginSettings.IndexProgressInMenu: Boolean;
+begin
+  Result := SameText(Trim(IndexProgressPlace), 'menu') or
+    (not StatusField and SameText(Trim(IndexProgressPlace), 'statusField'));
   AStore.WriteInteger('WelcomePage', BoolValue(WelcomePage));
   AStore.WriteString('WelcomePageHost', WelcomePageHost);
   AStore.WriteString('WelcomePageLayout', WelcomePageLayout);

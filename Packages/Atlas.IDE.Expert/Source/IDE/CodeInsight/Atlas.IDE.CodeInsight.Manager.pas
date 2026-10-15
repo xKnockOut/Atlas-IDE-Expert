@@ -53,6 +53,7 @@ uses
   Atlas.IDE.Signature.Editor,
   Atlas.IDE.Hover.Editor,
   Atlas.IDE.InlayHints.Editor,
+  Atlas.IDE.Editor.TestUnitLens,
   Atlas.IDE.Problems.Controller;
 
 type
@@ -82,6 +83,7 @@ type
     FProblems: TAtlasProblemsController;
     /// <summary>Inlay-Hints (#401).</summary>
     FInlayHints: TAtlasEditorInlayHints;
+    FTestUnitLens: TAtlasEditorTestUnitLens;
     FPhase: TAtlasServerPhase;
     FPhaseError: string;
     /// <summary>Beginn der Phase (Ortszeit) und „von Atlas beendet“ (#754).</summary>
@@ -311,6 +313,15 @@ begin
       else
         Result := nil;
     end);
+  // Code Lens zur Testunit (#189); startet ebenfalls keinen Server.
+  FTestUnitLens := TAtlasEditorTestUnitLens.Create(
+    function: TLspSession
+    begin
+      if (FServer <> nil) and FServer.Running and (FSession <> nil) and FSession.Initialized then
+        Result := FSession
+      else
+        Result := nil;
+    end);
 end;
 
 destructor TAtlasCodeInsightManager.Destroy;
@@ -322,6 +333,7 @@ begin
   FreeAndNil(FFileChanges);
   // Vor der Sitzung: wartet auf laufende Anfragen und meldet Tasten und Beobachter ab.
   FreeAndNil(FInlayHints);
+  FreeAndNil(FTestUnitLens);
   FreeAndNil(FHover);
   FreeAndNil(FSignature);
   FreeAndNil(FCompletion);

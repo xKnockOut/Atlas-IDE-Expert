@@ -135,6 +135,9 @@ type
     // Je Baum: Helfer je Typname und die Klasse der umgebenden Methode.
     FHelperTree: TSyntaxTree;
     FHelpers: TDictionary<string, TResolvedSymbol>;
+    // Aufgelöste Vorfahren je Typ (Diagnoselog 15.10.2026): Jeder Mitgliedszugriff lief die ganze
+    // Vererbungskette neu durch; gilt wie FHelpers für einen Baum.
+    FAncestors: TDictionary<string, TResolvedSymbol>;
     // Units, die in diesem Resolver schon nicht gefunden wurden: nicht erneut suchen.
     FMissingUnits: TDictionary<string, Boolean>;
     // Zeit im Nachladen (EnsureUnit) für das Diagnoselog (#647).
@@ -173,6 +176,8 @@ type
     function FindReceiver(AEndOffset: Integer): TSyntaxNode;
     function FindCall(ACalleeEnd: Integer): TSyntaxNode;
     function IsForVar(ANode: TSyntaxNode): Boolean;
+    /// <summary>Index des ersten Tokens von FTree mit Offset &gt;= AOffset (binäre Suche).</summary>
+    function FirstTokenAt(AOffset: Integer): Integer;
     function ResolveFirstAll(const ANames: TArray<string>; out AConsumed: Integer;
       out AResults: TArray<TResolvedSymbol>): Boolean;
     function ResolveNames(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
@@ -332,6 +337,16 @@ function NoResult: TResolvedSymbol;
 begin
   Result := Default(TResolvedSymbol);
   Result.Kind := TResolvedKind.None;
+end;
+
+/// <summary>Knoten mit Parametern und Ergebnistyp einer Routine: der Kopf einer benannten Routine,
+/// bei einer anonymen Methode der Knoten selbst; nil ohne Kopf.</summary>
+function RoutineHeaderOf(ARoutine: TSyntaxNode): TSyntaxNode;
+begin
+  if ARoutine.Kind = TSyntaxKind.AnonymousMethod then
+    Result := ARoutine
+  else
+    Result := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
 end;
 
 function Contains(ANode: TSyntaxNode; AOffset: Integer): Boolean;
@@ -580,12 +595,14 @@ begin
   FIndex := AIndex;
   FEnsureUnit := AEnsureUnit;
   FHelpers := TDictionary<string, TResolvedSymbol>.Create;
+  FAncestors := TDictionary<string, TResolvedSymbol>.Create;
 end;
 
 destructor TNameResolver.Destroy;
 begin
   FScopeSeen.Free;
   FMissingUnits.Free;
+  FAncestors.Free;
   FHelpers.Free;
   inherited;
 end;
@@ -742,13 +759,14 @@ begin
   Result.FileName := FCurrent.FileName;
   Result.Range := TTextRange.Create(ANode.StartPos, ANode.EndPos);
   Result.SelectionRange := Result.Range;
-  // Auswahl auf den Namen selbst legen.
-  for Index := 0 to High(FTree.Tokens) do
+  // Auswahl auf den Namen selbst legen; ab dem ersten Token des Knotens, nicht ab Dateianfang: Das
+  // kostete je lokalem Namen einen Lauf über alle Tokens davor (Diagnoselog 15.10.2026, große Units).
+  for Index := FirstTokenAt(ANode.StartOffset) to High(FTree.Tokens) do
   begin
     Token := FTree.Tokens[Index];
     if Token.Offset >= ANode.EndOffset then
       Break;
-    if (Token.Offset >= ANode.StartOffset) and (Token.Kind = TPascalTokenKind.Identifier) and
+    if (Token.Kind = TPascalTokenKind.Identifier) and
       (SameText(Token.Text, AName) or SameText(Token.Text, '&' + AName)) then
     begin
       Result.SelectionRange := TTextRange.Create(Token.StartPos, Token.EndPos);
@@ -774,15 +792,17 @@ function TNameResolver.LookupInUnit(const AUnit: TUnitIndex; const AName: string
   AOnlyInterface, AOnlyTypes: Boolean; out AResult: TResolvedSymbol; AArity: Integer): Boolean;
 var
   Symbol: TIndexSymbol;
-  Pass: Integer;
+  Pass, Position: Integer;
+  Positions: TArray<Integer>;
 begin
+  // Über die Namenstabelle statt linear durch alle Symbole (Diagnoselog 15.10.2026).
+  Positions := AUnit.SymbolsNamed(AName);
   // Mit Typargumenten nur generische Typen passender Stelligkeit; ohne zuerst nicht generische.
   for Pass := 0 to 1 do
   begin
-    for Symbol in AUnit.Symbols do
+    for Position in Positions do
     begin
-      if not SameText(Symbol.Name, AName) then
-        Continue;
+      Symbol := AUnit.Symbols[Position];
       if AOnlyInterface and not Symbol.InInterface then
         Continue;
       if AOnlyTypes and not (Symbol.Kind in TypeKinds) then
@@ -955,7 +975,7 @@ end;
 function TNameResolver.AncestorOf(const AType: TResolvedSymbol; out AAncestor: TResolvedSymbol): Boolean;
 var
   FromUnit: TUnitIndex;
-  Name: string;
+  Name, Key: string;
 begin
   Result := False;
   if AType.Builtin or not UnitOf(AType, FromUnit) then
@@ -971,8 +991,14 @@ begin
   // Helfer: der "Vorfahr" ist der erweiterte Typ, nicht der Elterntyp.
   if AType.SymbolKind = TIndexSymbolKind.HelperType then
     Exit;
+  Key := UpperCase(FromUnit.FileName + '|' + AType.QualifiedName + '|' + Name);
+  if FAncestors.TryGetValue(Key, AAncestor) then
+    Exit(AAncestor.Found);
   Result := ResolveTypeText(Name, FromUnit, SameText(FromUnit.FileName, FCurrent.FileName), AAncestor) and
     not AAncestor.Builtin and not SameText(AAncestor.QualifiedName, AType.QualifiedName);
+  if not Result then
+    AAncestor := NoResult;
+  FAncestors.AddOrSetValue(Key, AAncestor);
 end;
 
 /// <summary>Stammt die Klasse von TCustomAttribute ab? Bricht die Kette an einem unbekannten Vorfahren ab,
@@ -1057,7 +1083,7 @@ var
   Key, Target, UnitName: string;
   Units: TList<TUnitIndex>;
   Used: TUnitIndex;
-  Symbol: TIndexSymbol;
+  Position: Integer;
   Found: Boolean;
   Candidate: TResolvedSymbol;
 
@@ -1086,12 +1112,15 @@ begin
     for Used in Units do
     begin
       Found := False;
-      for Symbol in Used.Symbols do
-        if (Symbol.Kind = TIndexSymbolKind.HelperType) and (Symbol.Container = '') and (Length(Symbol.Ancestors) > 0) and
-          Matches(Symbol.Ancestors[Length(Symbol.Ancestors) - 1]) and
-          (Symbol.InInterface or SameText(Used.FileName, FCurrent.FileName)) then
+      // Über den Index statt for-in: jede Kopie eines Symbol-Records kostet, und hier laufen alle
+      // Symbole aller Units der uses-Liste durch (Diagnoselog 15.10.2026).
+      for Position := 0 to High(Used.Symbols) do
+        if (Used.Symbols[Position].Kind = TIndexSymbolKind.HelperType) and (Used.Symbols[Position].Container = '') and
+          (Length(Used.Symbols[Position].Ancestors) > 0) and
+          Matches(Used.Symbols[Position].Ancestors[High(Used.Symbols[Position].Ancestors)]) and
+          (Used.Symbols[Position].InInterface or SameText(Used.FileName, FCurrent.FileName)) then
         begin
-          Candidate := FromSymbol(Used, Symbol);
+          Candidate := FromSymbol(Used, Used.Symbols[Position]);
           Found := True;
         end;
       if Found then
@@ -1112,7 +1141,7 @@ var
   Current, Ancestor, Helper, Found: TResolvedSymbol;
   OwnerUnit, HelperUnit: TUnitIndex;
   Symbol: TIndexSymbol;
-  Depth: Integer;
+  Depth, Position: Integer;
   TypeName: string;
   Hidden: Boolean;
 begin
@@ -1123,14 +1152,16 @@ begin
     // Helfer zuerst: ihre Mitglieder verdecken gleichnamige des Typs.
     if HelperFor(Current, Helper) and UnitOf(Helper, HelperUnit) then
     begin
-      for Symbol in HelperUnit.Symbols do
-        if SameText(Symbol.Container, Helper.QualifiedName) and SameText(Symbol.Name, AName) and
-          IsVisible(Symbol, HelperUnit, Helper) then
+      for Position in HelperUnit.SymbolsNamed(AName) do
+      begin
+        Symbol := HelperUnit.Symbols[Position];
+        if SameText(Symbol.Container, Helper.QualifiedName) and IsVisible(Symbol, HelperUnit, Helper) then
         begin
           Found := FromSymbol(HelperUnit, Symbol);
           Found.Bindings := Current.Bindings;
           AddDistinct(Result, Found);
         end;
+      end;
       if Result <> nil then
         Exit;
     end;
@@ -1139,8 +1170,10 @@ begin
     TypeName := Current.QualifiedName;
     Hidden := False;
     // Erste Fundstelle: die Deklaration im Typ steht vor dem Rumpf in implementation.
-    for Symbol in OwnerUnit.Symbols do
-      if SameText(Symbol.Container, TypeName) and SameText(Symbol.Name, AName) then
+    for Position in OwnerUnit.SymbolsNamed(AName) do
+    begin
+      Symbol := OwnerUnit.Symbols[Position];
+      if SameText(Symbol.Container, TypeName) then
       begin
         // Ist die Deklaration unsichtbar, gilt das auch für ihren Rumpf.
         if Hidden or not IsVisible(Symbol, OwnerUnit, Current) then
@@ -1152,6 +1185,7 @@ begin
         Found.Bindings := Current.Bindings;
         AddDistinct(Result, Found);
       end;
+    end;
     if Result <> nil then
       Exit;
     if not AncestorOf(Current, Ancestor) then
@@ -1202,6 +1236,7 @@ function TNameResolver.UnitRoutines(const ASymbol: TResolvedSymbol): TArray<TRes
 var
   Owner: TUnitIndex;
   Symbol: TIndexSymbol;
+  Position: Integer;
   SameUnit: Boolean;
 begin
   // Überladene freie Routinen derselben Unit.
@@ -1210,10 +1245,12 @@ begin
     (ASymbol.Container <> '') or not UnitOf(ASymbol, Owner) then
     Exit;
   SameUnit := SameText(Owner.FileName, FCurrent.FileName);
-  for Symbol in Owner.Symbols do
-    if (Symbol.Kind = TIndexSymbolKind.Routine) and (Symbol.Container = '') and SameText(Symbol.Name, ASymbol.Name) and
-      (SameUnit or Symbol.InInterface) then
+  for Position in Owner.SymbolsNamed(ASymbol.Name) do
+  begin
+    Symbol := Owner.Symbols[Position];
+    if (Symbol.Kind = TIndexSymbolKind.Routine) and (Symbol.Container = '') and (SameUnit or Symbol.InInterface) then
       AddDistinct(Result, FromSymbol(Owner, Symbol));
+  end;
 end;
 
 function TNameResolver.EnclosingRoutines: TArray<TSyntaxNode>;
@@ -1223,7 +1260,8 @@ var
   Index: Integer;
   Descended: Boolean;
 begin
-  // Innerste Routine zuerst.
+  // Innerste Routine zuerst; anonyme Methoden zählen mit, ihre Parameter und lokalen Variablen
+  // verdecken gleichnamige Felder wie die einer benannten Routine.
   Path := TList<TSyntaxNode>.Create;
   try
     Node := FTree.Root;
@@ -1233,7 +1271,7 @@ begin
         if Contains(Node[Index], FOffset) then
         begin
           Node := Node[Index];
-          if Node.Kind = TSyntaxKind.RoutineDecl then
+          if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
             Path.Insert(0, Node);
           Descended := True;
           Break;
@@ -1293,13 +1331,27 @@ var
   Index: Integer;
 begin
   // for var I := ...: das Wort nach "for" ist "var".
-  Result := False;
-  for Index := 0 to High(FTree.Tokens) - 1 do
-    if FTree.Tokens[Index].Offset >= ANode.StartOffset then
-    begin
-      Result := FTree.Tokens[Index].IsKeyword('for') and FTree.Tokens[Index + 1].IsKeyword('var');
-      Exit;
-    end;
+  Index := FirstTokenAt(ANode.StartOffset);
+  Result := (Index < High(FTree.Tokens)) and FTree.Tokens[Index].IsKeyword('for') and
+    FTree.Tokens[Index + 1].IsKeyword('var');
+end;
+
+function TNameResolver.FirstTokenAt(AOffset: Integer): Integer;
+var
+  Low, High_, Middle: Integer;
+begin
+  // Binäre Suche: erstes Token mit Offset >= AOffset; Length(Tokens), wenn es keines gibt.
+  Low := 0;
+  High_ := Length(FTree.Tokens);
+  while Low < High_ do
+  begin
+    Middle := (Low + High_) div 2;
+    if FTree.Tokens[Middle].Offset < AOffset then
+      Low := Middle + 1
+    else
+      High_ := Middle;
+  end;
+  Result := Low;
 end;
 
 function TNameResolver.LookupInlineVars(ANode: TSyntaxNode; const AName: string;
@@ -1349,7 +1401,7 @@ begin
   begin
     if LookupInlineVars(Routine, AName, AResult) then
       Exit(True);
-    Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
+    Header := RoutineHeaderOf(Routine);
     if Header <> nil then
     begin
       Params := Header.FindChild(TSyntaxKind.Parameters);
@@ -1955,6 +2007,7 @@ begin
   if ATree <> FHelperTree then
   begin
     FHelpers.Clear;
+    FAncestors.Clear;
     FHelperTree := ATree;
   end;
   Section := ATree.Root.FindChild(TSyntaxKind.InterfaceSection);
@@ -2199,7 +2252,8 @@ begin
       // Lokale Namen vor den Parametern (#488): Stufe 1 vor Stufe 2.
       CollectInlineVars(Routine, List, FScopeSeen);
       CollectDeclarations(Routine, List, FScopeSeen);
-      Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
+      Header := RoutineHeaderOf(Routine);
+
       if Header <> nil then
       begin
         Params := Header.FindChild(TSyntaxKind.Parameters);
@@ -2321,12 +2375,14 @@ var
 begin
   Result := TIndexExtractor.Extract(ATree, AFileName);
   // Der Baum kennt nur die Datei selbst; Deklarationen aus Include-Dateien stehen im Index.
-  if (FIndex = nil) or (AFileName = '') or not FIndex.FindFile(AFileName, Indexed) then
-    Exit;
-  for Symbol in Indexed.Symbols do
-    if Symbol.FileName <> '' then
-      Result.Symbols := Result.Symbols + [Symbol];
-  Result.Includes := Indexed.Includes;
+  if (FIndex <> nil) and (AFileName <> '') and FIndex.FindFile(AFileName, Indexed) then
+  begin
+    for Symbol in Indexed.Symbols do
+      if Symbol.FileName <> '' then
+        Result.Symbols := Result.Symbols + [Symbol];
+    Result.Includes := Indexed.Includes;
+  end;
+  Result.PrepareNames;
 end;
 
 function TNameResolver.ChainType(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
@@ -2364,6 +2420,7 @@ begin
   FClassState := 0;
   FHelperTree := nil;
   FHelpers.Clear;
+  FAncestors.Clear;
   Result := ResolveTypeName(ATypeName, AFromUnit, True, AResult);
 end;
 
@@ -2377,6 +2434,7 @@ begin
   FClassState := 0;
   FHelperTree := nil;
   FHelpers.Clear;
+  FAncestors.Clear;
   Result := LookupGlobal(AFromUnit, AName, True, False, AResult);
 end;
 
@@ -2851,4 +2909,4 @@ begin
   Result := Actual.Found and Target.Found and Actual.IsType and Target.IsType and DescendsFrom(Actual, Target);
 end;
 
-end.
+end.
