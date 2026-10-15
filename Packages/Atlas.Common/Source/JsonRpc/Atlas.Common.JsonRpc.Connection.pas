@@ -43,6 +43,7 @@ type
     FInboxLock: TObject;
     FWorkTimeout: Cardinal;
     FOnLoopEnded: TProc;
+    FUnfinishedWork: Boolean;
     function LockedInbox: IInterface;
     procedure SetInbox(const AInbox: IInterface);
     procedure RunWork(const AWork: TProc);
@@ -78,6 +79,10 @@ type
     /// <summary>Wird aus der Schleife und aus Worker-Threads aufgerufen.</summary>
     property OnError: TJsonRpcErrorEvent read FOnError write FOnError;
     property WorkTimeout: Cardinal read FWorkTimeout write FWorkTimeout;
+    /// <summary>True, wenn Run beim Ende nach WorkTimeout noch laufende nebenläufige Anfragen hatte
+    /// (Code-Review A-06). Deren Handler können noch auf Objekte des Aufrufers zugreifen; er darf sie dann
+    /// nicht freigeben.</summary>
+    property UnfinishedWork: Boolean read FUnfinishedWork;
     /// <summary>Die Schleife ist regulär zu Ende (Eingabe geschlossen oder Stop), bevor auf laufende
     /// Anfragen gewartet wird. Für Abschlussmeldungen, die ein ungeduldiger Client sonst abschneidet.</summary>
     property OnLoopEnded: TProc read FOnLoopEnded write FOnLoopEnded;
@@ -496,6 +501,7 @@ var
   Error: Exception;
 begin
   FStopped := False;
+  FUnfinishedWork := False;
   Inbox := TJsonRpcInbox.Create;
   SetInbox(Inbox);
 
@@ -553,7 +559,10 @@ begin
     Inbox.Close;
     FDispatcher.PendingRequests.CancelAll;
     if not FDispatcher.PendingRequests.WaitForWork(FWorkTimeout) then
+    begin
+      FUnfinishedWork := True;
       ReportProblem('Nebenläufige Anfragen wurden beim Beenden nicht rechtzeitig fertig');
+    end;
     if OwnScheduler then
       FDispatcher.Scheduler := nil;
     if OwnResponder then

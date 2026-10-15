@@ -25,8 +25,8 @@ uses
   Atlas.Common.JsonRpc.Statistics;
 
 type
-  /// <summary>Antwort der Gegenseite auf eine eigene Anfrage; läuft im Lese-Thread, AResponse gehört dem
-  /// Dispatcher.</summary>
+  /// <summary>Antwort der Gegenseite auf eine eigene Anfrage; läuft in der Nachrichtenschleife
+  /// (DispatchMessage), AResponse gehört dem Dispatcher.</summary>
   TJsonRpcResponseHandler = reference to procedure(const AResponse: TJSONObject);
 
   /// <summary>Beobachter je Anfrage (#647, Diagnoselog). Beide Aufrufe laufen im Thread des Handlers;
@@ -112,7 +112,8 @@ implementation
 
 uses
   System.Diagnostics,
-  Atlas.Common.JsonRpc.Messages;
+  Atlas.Common.JsonRpc.Messages,
+  Atlas.Common.JsonRpc.CurrentRequest;
 
 function ErrorResponse(const AId: TJSONValue; const AError: Exception): TJSONObject;
 begin
@@ -163,13 +164,20 @@ var
   Watch: TStopwatch;
   Failed: Boolean;
   Value: TJSONValue;
+  Previous: Pointer;
 begin
   Watch := TStopwatch.StartNew;
   Failed := False;
   ObserveStarted(AObserver, AMethod);
   try
     AToken.ThrowIfCancellationRequested;
-    Value := AHandler(AParams, AToken);
+    // Tiefe Aufrufe ohne Token-Parameter (EnsureUnit) fragen das Signal über TJsonRpcCurrentRequest (A-06).
+    Previous := TJsonRpcCurrentRequest.Enter(AToken);
+    try
+      Value := AHandler(AParams, AToken);
+    finally
+      TJsonRpcCurrentRequest.Leave(Previous);
+    end;
     Result := TJsonRpcMessages.Response(AId, Value);
     ObserveFinished(AObserver, AMethod, AParams, Value, nil, AQueueMs, Watch.ElapsedMilliseconds);
   except
@@ -232,8 +240,9 @@ begin
       begin
         try
           Ticket := 0;
+          // Beim Ablauf antwortet der Watchdog selbst mit RequestCancelled (Code-Review A-06).
           if Watchdog <> nil then
-            Ticket := Watchdog.Watch(Id, Method);
+            Ticket := Watchdog.Watch(Id, Method, Token, Responder);
           try
             Response := RunConcurrent(Id, Params, Method, Handler, Token, OnFailed, Statistics, Observer,
               Queued.ElapsedMilliseconds);
@@ -244,7 +253,12 @@ begin
             Params.Free;
             Id.Free;
           end;
-          Responder(Response);
+          // Hat der Watchdog schon mit RequestCancelled geantwortet, wird die späte Antwort verworfen:
+          // genau eine Antwort je Anfrage (A-06).
+          if Pending.TryAnswer(Token) then
+            Responder(Response)
+          else
+            Response.Free;
         finally
           Pending.EndWork;
         end;
@@ -396,6 +410,7 @@ var
   Watch: TStopwatch;
   Measured: Boolean;
   Value: TJSONValue;
+  Previous: Pointer;
 begin
   Token := FPending.Acquire(AId);
   Scheduled := False;
@@ -429,7 +444,12 @@ begin
         Ticket := FWatchdog.Watch(AId, AMethod);
       Measured := True;
       ObserveStarted(FObserver, AMethod);
-      Value := Handler(AParams);
+      Previous := TJsonRpcCurrentRequest.Enter(Token);
+      try
+        Value := Handler(AParams);
+      finally
+        TJsonRpcCurrentRequest.Leave(Previous);
+      end;
       Result := TJsonRpcMessages.Response(AId, Value);
       ObserveFinished(FObserver, AMethod, AParams, Value, nil, 0, Watch.ElapsedMilliseconds);
       if FStatistics <> nil then
