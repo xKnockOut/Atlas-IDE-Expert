@@ -29,6 +29,8 @@
 // welcomePage.enabled, Anwenden nur ohne, Zurücksetzen nur mit Atlas-Layout.
 // Befehle mit einer Kennung der Befehlspalette melden sich bei den
 // Tastenkürzel-Tipps (#600) als Aufruf per Menü (TAtlasIdeShortcutTips.Invoked).
+// Aufbau: häufige Befehle direkt, der Rest in Untermenüs (Navigation, Suchen,
+// Kopieren, Änderungen, Anzeige mit den Schaltern, Index, Hilfe und Diagnose).
 
 interface
 
@@ -49,6 +51,8 @@ type
   TAtlasMainMenu = class
   private
     FRoot: TMenuItem;
+    /// <summary>Ziel von AddItem: das Atlas-Menü oder das zuletzt angelegte Untermenü.</summary>
+    FParent: TMenuItem;
     FToggles: array[TAtlasToggle] of TMenuItem;
     FEnableAll: TMenuItem;
     FImageItems: TArray<TMenuItem>;
@@ -71,7 +75,10 @@ type
     procedure ResultsClick(Sender: TObject);
     procedure EditorClick(Sender: TObject);
     procedure UndoClick(Sender: TObject);
-    function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
+    function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
+    function AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
+    /// <summary>Untermenü im Atlas-Menü; folgende AddItem landen darin.</summary>
+    function AddGroup(AText: TAtlasTextId): TMenuItem;
     procedure EnableAllClick(Sender: TObject);
     procedure TimerTick(Sender: TObject);
     procedure IndexStatusClick(Sender: TObject);
@@ -187,81 +194,61 @@ begin
   FRoot.Name := 'AtlasMainMenu';
   FRoot.Caption := TAtlasStrings.Text(TAtlasTextId.MenuAtlas);
   FRoot.OnClick := RootClick;
-  for Toggle := Low(TAtlasToggle) to High(TAtlasToggle) do
-  begin
-    Item := TMenuItem.Create(FRoot);
-    Item.Caption := ToggleText(Toggle);
-    Item.Tag := Ord(Toggle);
-    Item.OnClick := ToggleClick;
-    FRoot.Add(Item);
-    FToggles[Toggle] := Item;
-  end;
-  FRoot.Add(NewLine);
-  Item := TMenuItem.Create(FRoot);
-  Item.Caption := TAtlasStrings.Text(TAtlasTextId.RenameMenu);
-  Item.OnClick := RenameClick;
-  FRoot.Add(Item);
-  // Editorbefehle (#399); Tag wählt den Befehl in EditorClick.
+  // Häufige Befehle direkt, der Rest in Untermenüs (sonst scrollt das Menü).
+  FParent := FRoot;
+  AddItem(TAtlasTextId.RenameMenu, 0, RenameClick);
+  // Editorbefehle (#399) und Ergebnisfenster (#400); Tag wählt den Befehl in EditorClick bzw. ResultsClick.
   AddItem(TAtlasTextId.EditorActions, 0, EditorClick);
-  AddItem(TAtlasTextId.EditorExpand, 1, EditorClick);
-  AddItem(TAtlasTextId.EditorShrink, 2, EditorClick);
+  // Units suchen (#777).
+  AddItem(TAtlasTextId.UnitSearchMenu, 8, EditorClick);
+  AddItem(TAtlasTextId.MenuSymbolSearch, 2, ResultsClick);
+  FRoot.Add(NewLine);
+  AddGroup(TAtlasTextId.MenuGroupNavigation);
   AddItem(TAtlasTextId.EditorTypeDefinition, 3, EditorClick);
   AddItem(TAtlasTextId.EditorMethodToggle, 6, EditorClick);
-  AddItem(TAtlasTextId.EditorCopyQualified, 4, EditorClick);
-  AddItem(TAtlasTextId.EditorCopyQualifiedParams, 5, EditorClick);
   AddItem(TAtlasTextId.EditorTestUnit, 7, EditorClick);
-  // Units suchen (#777): Atlas-Fenster und, falls es Strg+F12 übernimmt, der IDE-Dialog.
-  AddItem(TAtlasTextId.UnitSearchMenu, 8, EditorClick);
+  AddItem(TAtlasTextId.EditorExpand, 1, EditorClick);
+  AddItem(TAtlasTextId.EditorShrink, 2, EditorClick);
+  // Der IDE-Dialog, falls Atlas Strg+F12 übernimmt.
   AddItem(TAtlasTextId.UnitSearchIdeDialog, 9, EditorClick);
-  FRoot.Add(NewLine);
-  // Ergebnisfenster (#400); Tag wählt den Befehl in ResultsClick.
+  AddGroup(TAtlasTextId.MenuGroupSearch);
   AddItem(TAtlasTextId.MenuReferences, 0, ResultsClick);
   AddItem(TAtlasTextId.MenuImplementations, 1, ResultsClick);
-  AddItem(TAtlasTextId.MenuSymbolSearch, 2, ResultsClick);
   AddItem(TAtlasTextId.MenuIncoming, 3, ResultsClick);
   AddItem(TAtlasTextId.MenuOutgoing, 4, ResultsClick);
   AddItem(TAtlasTextId.MenuSupertypes, 5, ResultsClick);
   AddItem(TAtlasTextId.MenuSubtypes, 6, ResultsClick);
+  FParent.Add(NewLine);
   AddItem(TAtlasTextId.MenuResultsWindow, 7, ResultsClick);
-  FRoot.Add(NewLine);
+  AddGroup(TAtlasTextId.MenuGroupCopy);
+  AddItem(TAtlasTextId.EditorCopyQualified, 4, EditorClick);
+  AddItem(TAtlasTextId.EditorCopyQualifiedParams, 5, EditorClick);
   // Atlas-Änderungen über mehrere Dateien (#721); Tag wählt den Befehl in UndoClick.
+  AddGroup(TAtlasTextId.MenuGroupChanges);
   AddItem(TAtlasTextId.UndoMenu, 0, UndoClick);
   AddItem(TAtlasTextId.RedoMenu, 1, UndoClick);
   AddItem(TAtlasTextId.UndoListMenu, 2, UndoClick);
   FRoot.Add(NewLine);
-  Item := TMenuItem.Create(FRoot);
-  Item.Caption := TAtlasStrings.Text(TAtlasTextId.MenuIndexStatus);
-  Item.OnClick := IndexStatusClick;
-  FRoot.Add(Item);
-  Item := TMenuItem.Create(FRoot);
-  Item.Caption := TAtlasStrings.Text(TAtlasTextId.MenuIndexRebuild);
-  Item.OnClick := IndexRebuildClick;
-  FRoot.Add(Item);
-  Item := TMenuItem.Create(FRoot);
-  Item.Caption := TAtlasStrings.Text(TAtlasTextId.DiagExportMenu);
-  Item.OnClick := DiagnosticExportClick;
-  FRoot.Add(Item);
-  Item := TMenuItem.Create(FRoot);
-  Item.Caption := TAtlasStrings.Text(TAtlasTextId.BugReportMenu);
-  Item.OnClick := BugReportClick;
-  FRoot.Add(Item);
-  Item := TMenuItem.Create(FRoot);
-  Item.Caption := TAtlasStrings.Text(TAtlasTextId.SetupMenu);
-  Item.OnClick := SetupClick;
-  FRoot.Add(Item);
-  FKeyMapItem := TMenuItem.Create(FRoot);
-  FKeyMapItem.Caption := TAtlasStrings.Text(TAtlasTextId.KeyMapMenu);
-  FKeyMapItem.OnClick := KeyMapClick;
-  FRoot.Add(FKeyMapItem);
-  // Willkommensseite (#753); Tag wählt den Befehl in WelcomeClick.
+  // Schalter und Willkommensseite (#753); Tag wählt den Befehl in ToggleClick bzw. WelcomeClick.
+  AddGroup(TAtlasTextId.MenuGroupView);
+  for Toggle := Low(TAtlasToggle) to High(TAtlasToggle) do
+    FToggles[Toggle] := AddItem(ToggleText(Toggle), Ord(Toggle), ToggleClick);
   FWelcomeLine := NewLine;
-  FRoot.Add(FWelcomeLine);
+  FParent.Add(FWelcomeLine);
   FWelcome[TAtlasWelcomeCommand.Start] := AddItem(TAtlasTextId.MenuWelcomeStart,
     Ord(TAtlasWelcomeCommand.Start), WelcomeClick);
   FWelcome[TAtlasWelcomeCommand.Apply] := AddItem(TAtlasTextId.MenuWelcomeApply,
     Ord(TAtlasWelcomeCommand.Apply), WelcomeClick);
   FWelcome[TAtlasWelcomeCommand.Reset] := AddItem(TAtlasTextId.MenuWelcomeReset,
     Ord(TAtlasWelcomeCommand.Reset), WelcomeClick);
+  AddGroup(TAtlasTextId.MenuGroupIndex);
+  AddItem(TAtlasTextId.MenuIndexStatus, 0, IndexStatusClick);
+  AddItem(TAtlasTextId.MenuIndexRebuild, 0, IndexRebuildClick);
+  AddGroup(TAtlasTextId.MenuGroupHelp);
+  FKeyMapItem := AddItem(TAtlasTextId.KeyMapMenu, 0, KeyMapClick);
+  AddItem(TAtlasTextId.SetupMenu, 0, SetupClick);
+  AddItem(TAtlasTextId.DiagExportMenu, 0, DiagnosticExportClick);
+  AddItem(TAtlasTextId.BugReportMenu, 0, BugReportClick);
   FRoot.Add(NewLine);
   Item := TMenuItem.Create(FRoot);
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsMenu);
@@ -553,11 +540,24 @@ end;
 
 function TAtlasMainMenu.AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
 begin
+  Result := AddItem(TAtlasStrings.Text(AText), ATag, AOnClick);
+end;
+
+function TAtlasMainMenu.AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
+begin
   Result := TMenuItem.Create(FRoot);
-  Result.Caption := TAtlasStrings.Text(AText);
+  Result.Caption := ACaption;
   Result.Tag := ATag;
   Result.OnClick := AOnClick;
+  FParent.Add(Result);
+end;
+
+function TAtlasMainMenu.AddGroup(AText: TAtlasTextId): TMenuItem;
+begin
+  Result := TMenuItem.Create(FRoot);
+  Result.Caption := TAtlasStrings.Text(AText);
   FRoot.Add(Result);
+  FParent := Result;
 end;
 
 procedure TAtlasMainMenu.ResultsClick(Sender: TObject);

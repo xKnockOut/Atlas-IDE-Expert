@@ -36,6 +36,7 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   System.IniFiles,
   Vcl.ActnList,
   Vcl.ImgList,
@@ -177,6 +178,11 @@ begin
   end;
 end;
 
+const
+  // Fenstergröße beim ersten Öffnen (logische Pixel).
+  DefaultWidth = 410;
+  DefaultHeight = 530;
+
 { TAtlasIdeWelcomeWindow }
 
 class function TAtlasIdeWelcomeWindow.Show: TAtlasWelcomeBoardFrame;
@@ -194,6 +200,12 @@ begin
     if Form <> nil then
     begin
       Form.FreeNotification(Watch);
+      // Vorgabe für das frei schwebende Fenster: alle Bereiche ohne Scrollen (410 × 530 bei 100 %).
+      if Form.Floating then
+      begin
+        Form.Width := MulDiv(DefaultWidth, Screen.PixelsPerInch, 96);
+        Form.Height := MulDiv(DefaultHeight, Screen.PixelsPerInch, 96);
+      end;
       UpdateIcon;
     end;
   end;

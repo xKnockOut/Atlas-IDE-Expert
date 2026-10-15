@@ -301,7 +301,7 @@ class function TAtlasWelcomeSearch.RecentProjects(const AValues: TArray<TPair<st
 var
   Values: TValueList;
   Pair: TPair<string, string>;
-  Part: string;
+  Part, Path: string;
   Seen: TDictionary<string, Boolean>;
 begin
   Result := nil;
@@ -318,15 +318,19 @@ begin
       end));
     for Pair in Values do
       for Part in Pair.Value.Split([',']) do
-        if IsProjectFile(Part) and IsAbsolute(Trim(Part)) then
+      begin
+        // Delphi 13 setzt den Pfad in Hochkommas: TProjectGroup,'C:\P\A.groupproj',1.
+        Path := AnsiDequotedStr(Trim(Part), '''');
+        if IsProjectFile(Path) and IsAbsolute(Path) then
         begin
-          if not Seen.ContainsKey(AnsiUpperCase(Trim(Part))) then
+          if not Seen.ContainsKey(AnsiUpperCase(Path)) then
           begin
-            Seen.Add(AnsiUpperCase(Trim(Part)), True);
-            Result := Result + [Trim(Part)];
+            Seen.Add(AnsiUpperCase(Path), True);
+            Result := Result + [Path];
           end;
           Break;
         end;
+      end;
   finally
     Seen.Free;
     Values.Free;

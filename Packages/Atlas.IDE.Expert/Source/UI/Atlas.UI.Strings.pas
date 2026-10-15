@@ -35,6 +35,7 @@ type
     ProjectSettingsBadNumber, ProjectSettingsFile,
     MenuAtlas, MenuToggleEnabled, MenuToggleHover, MenuTogglePairs, MenuToggleGuides, MenuToggleProblems, MenuOptions, MenuEnableAll,
     MenuIndexStatus, MenuIndexRebuild, MenuIndexRebuilding, MenuIndexNoServer,
+    MenuGroupNavigation, MenuGroupSearch, MenuGroupCopy, MenuGroupChanges, MenuGroupView, MenuGroupIndex, MenuGroupHelp,
     SettingsPaletteKey, SettingsCheckKey, SettingsKeyPriority, KeyConflict, ForeignCompletion,
     SettingsInactiveDim, MenuToggleInactive, DidYouMean,
     DiagExportMenu, DiagExportTitle, DiagExportHint, DiagExportSave, DiagExportFilter, DiagExportEmpty, DiagExportDone,
@@ -363,6 +364,7 @@ const
      'Probleme anzeigen', 'Optionen…', 'Abgeschaltete Funktionen einschalten (%s)',
      'Index-Status', 'Index neu aufbauen', 'Atlas: Index wird ohne Cache neu aufgebaut; der Fortschritt steht im Menütitel.',
      'Atlas: Server nicht erreichbar.',
+     'Navigation', 'Suchen', 'Kopieren', 'Änderungen', 'Anzeige', 'Index', 'Hilfe und Diagnose',
      'Befehlspalette:', 'Syntaxprüfung jetzt:', 'Vorrang vor anderer Belegung',
      'Atlas: %0:s ist schon belegt (%1:s); Atlas überlässt die Taste und belegt sie nicht für %2:s. ' +
        'Entscheidung unter Tools > Optionen > Drittanbieter > Atlas > Tastenkonflikte.',
@@ -921,6 +923,7 @@ const
      'Show problems', 'Options…', 'Re-enable switched-off features (%s)',
      'Index status', 'Rebuild index', 'Atlas: rebuilding the index without cache; progress shows in the menu title.',
      'Atlas: server not reachable.',
+     'Navigation', 'Search', 'Copy', 'Changes', 'View', 'Index', 'Help and diagnostics',
      'Command palette:', 'Syntax check now:', 'Take precedence over other assignment',
      'Atlas: %0:s is already assigned (%1:s); Atlas leaves the key and does not use it for %2:s. ' +
        'Decide under Tools > Options > Third Party > Atlas > Key conflicts.',
