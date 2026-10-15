@@ -39,6 +39,7 @@ uses
 procedure TAtlasUpdateConsentTests.WarmUpFirstUse;
 begin
   AsksOnceAndRunsFirstAnswer;
+  SettingsPageShowsVersionAndSwitch;
 end;
 
 procedure TAtlasUpdateConsentTests.AsksOnceAndRunsFirstAnswer;
