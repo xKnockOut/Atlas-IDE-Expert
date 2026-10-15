@@ -49,7 +49,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Dfm.Contract,
-  Atlas.Common.Dfm.Parser;
+  Atlas.Common.Dfm.Parser,
+  Atlas.Text.Lines;
 
 type
   TFormField = record
@@ -255,14 +256,6 @@ begin
   Result := ALine > FClass.StartPos.Line;
 end;
 
-function LineBreakOf(const AText: string): string;
-begin
-  if Pos(#13#10, AText) > 0 then
-    Result := #13#10
-  else
-    Result := #10;
-end;
-
 { TFormFieldWithoutObjectRule }
 
 function TFormFieldWithoutObjectRule.Descriptor: TRuleDescriptor;
@@ -317,7 +310,7 @@ begin
         if Match.FieldInsert(AContext.Text, Line, Indent) then
           Fixes := [TRuleFix.Create(Format('Feld %s: %s ergänzen', [Obj.Name, Obj.TypeName]),
             [TRuleEdit.Create(TTextRange.Create(Line, 0, Line, 0),
-            Indent + Obj.Name + ': ' + Obj.TypeName + ';' + LineBreakOf(AContext.Text))])];
+            Indent + Obj.Name + ': ' + Obj.TypeName + ';' + TTextLines.LineBreakOf(AContext.Text))])];
         // Gemeldet wird an der Formularklasse; die Formulardatei ist nicht das geprüfte Dokument.
         AReport.Add(TTextRange.Create(Match.FClass.Parent.StartPos.Line, Match.FClass.Parent.StartPos.Character,
           Match.FClass.Parent.StartPos.Line, Match.FClass.Parent.StartPos.Character +

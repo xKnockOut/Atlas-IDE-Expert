@@ -35,7 +35,8 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Documents.Contract;
+  Atlas.Common.Documents.Contract,
+  Atlas.Text.Lines;
 
 type
   TItem = record
@@ -343,10 +344,7 @@ begin
   end;
   if not Other then
     Exit;
-  if Pos(#13#10, AText) > 0 then
-    LB := #13#10
-  else
-    LB := #10;
+  LB := TTextLines.LineBreakOf(AText);
   Text := '';
   for Line := 0 to High(Output) do
     Text := Text + Output[Line] + LB;

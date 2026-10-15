@@ -120,7 +120,8 @@ uses
   System.RegularExpressions,
   System.Generics.Defaults,
   Atlas.Common.Pascal.XmlDoc,
-  Atlas.Common.Pascal.TreeCache;
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Text.Lines;
 
 const
   // Direktiven nach Routinenköpfen und Hinweise (wie im Parser); zählen nicht als Verwendung.
@@ -1121,13 +1122,6 @@ var
   // Abschnitt (type/const/var …) am Anfang jeder Zeile; einmal für die ganze Datei bestimmt.
   Sections: TArray<string>;
 
-  function IndentOf(const AValue: string): Integer;
-  begin
-    Result := 0;
-    while (Result < Length(AValue)) and CharInSet(AValue[Result + 1], [' ', #9]) do
-      Inc(Result);
-  end;
-
   procedure AddUnavailable(const AName: string; AKind: TIndexSymbolKind; ALine, AColumn: Integer;
     const ACondition: string; const AContainer: string = '');
   var
@@ -1353,7 +1347,7 @@ begin
           if Trim(Code) = '' then
             Continue;
         end;
-        Indent := IndentOf(Line);
+        Indent := TTextLines.IndentLength(Line);
         // Routinen auf Unit-Ebene stehen am Zeilenanfang.
         Match := TRegEx.Match(Code, '^(procedure|function)\s+([A-Za-z_]\w*)\s*[(:;]', [roIgnoreCase]);
         if Match.Success then

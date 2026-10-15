@@ -6,12 +6,14 @@
 // Zeichen 0-basiert in UTF-16-Einheiten) und sein neuer Inhalt.
 // Zeilenumbrüche wie beim Server: CR, LF und CRLF. Eine Grenze liegt nie
 // zwischen CR und LF und nie mitten in einem Surrogatpaar, sonst würde der
-// Server die Position anders deuten.
+// Server die Position anders deuten. Zeilen und Positionen rechnet
+// TLineTable aus Atlas.Text, dieselbe Tabelle wie beim Server (ADR 0012).
 
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Text.Lines;
 
 type
   TLspTextPosition = record
@@ -45,10 +47,16 @@ type
     /// <summary>Kleinster zusammenhängender Bereich, der AOld in ANew überführt.
     /// Bei gleichen Texten ein leerer Bereich am Textende mit leerem Text.</summary>
     class function Between(const AOld, ANew: string): TLspTextChange; static;
-    /// <summary>Position zum Zeichenindex (0-basiert) in AText.</summary>
-    class function PositionOf(const AText: string; AOffset: Integer): TLspTextPosition; static;
-    /// <summary>Zeichenindex (0-basiert) zur Position; hinter dem Zeilenende das Zeilenende.</summary>
-    class function OffsetOf(const AText: string; const APosition: TLspTextPosition): Integer; static;
+    /// <summary>Position zum Zeichenindex (0-basiert) in AText; ein Index zwischen CR und LF zählt
+    /// zum Zeilenende.</summary>
+    class function PositionOf(const AText: string; AOffset: Integer): TLspTextPosition; overload; static;
+    /// <summary>Wie oben mit einer schon gebauten Zeilentabelle (mehrere Abfragen auf einem Text).</summary>
+    class function PositionOf(const ALines: TLineTable; AOffset: Integer): TLspTextPosition; overload; static;
+    /// <summary>Zeichenindex (0-basiert) zur Position; hinter dem Zeilenende das Zeilenende, hinter der
+    /// letzten Zeile das Textende.</summary>
+    class function OffsetOf(const AText: string; const APosition: TLspTextPosition): Integer; overload; static;
+    class function OffsetOf(const ALines: TLineTable; const APosition: TLspTextPosition): Integer; overload;
+      static;
   end;
 
 implementation
@@ -103,63 +111,33 @@ begin
   Result := (Ord(AChar) >= $DC00) and (Ord(AChar) <= $DFFF);
 end;
 
-class function TLspTextChanges.PositionOf(const AText: string; AOffset: Integer): TLspTextPosition;
+class function TLspTextChanges.PositionOf(const ALines: TLineTable; AOffset: Integer): TLspTextPosition;
 var
-  Index, LineStart: Integer;
+  Position: TTextPosition;
 begin
-  Result.Line := 0;
-  LineStart := 0;
-  Index := 0;
-  while Index < AOffset do
-  begin
-    // AText ist 1-basiert, Index 0-basiert.
-    if AText[Index + 1] = #13 then
-    begin
-      if (Index + 1 < AOffset) and (AText[Index + 2] = #10) then
-        Inc(Index);
-      Inc(Result.Line);
-      LineStart := Index + 1;
-    end
-    else if AText[Index + 1] = #10 then
-    begin
-      Inc(Result.Line);
-      LineStart := Index + 1;
-    end;
-    Inc(Index);
-  end;
-  Result.Character := AOffset - LineStart;
+  Position := ALines.PositionAt(AOffset);
+  Result := TLspTextPosition.Create(Position.Line, Position.Character);
+end;
+
+class function TLspTextChanges.PositionOf(const AText: string; AOffset: Integer): TLspTextPosition;
+begin
+  Result := PositionOf(TLineTable.Build(AText), AOffset);
+end;
+
+class function TLspTextChanges.OffsetOf(const ALines: TLineTable; const APosition: TLspTextPosition): Integer;
+begin
+  Result := ALines.OffsetAt(TTextPosition.Create(APosition.Line, APosition.Character));
 end;
 
 class function TLspTextChanges.OffsetOf(const AText: string; const APosition: TLspTextPosition): Integer;
-var
-  Line, LineEnd: Integer;
 begin
-  Result := 0;
-  Line := 0;
-  while (Line < APosition.Line) and (Result < Length(AText)) do
-  begin
-    if AText[Result + 1] = #13 then
-    begin
-      if (Result + 1 < Length(AText)) and (AText[Result + 2] = #10) then
-        Inc(Result);
-      Inc(Line);
-    end
-    else if AText[Result + 1] = #10 then
-      Inc(Line);
-    Inc(Result);
-  end;
-  // Hinter dem Zeilenende zählt das Zeilenende, wie beim Server (LSP).
-  LineEnd := Result;
-  while (LineEnd < Length(AText)) and (AText[LineEnd + 1] <> #13) and (AText[LineEnd + 1] <> #10) do
-    Inc(LineEnd);
-  Inc(Result, APosition.Character);
-  if Result > LineEnd then
-    Result := LineEnd;
+  Result := OffsetOf(TLineTable.Build(AText), APosition);
 end;
 
 class function TLspTextChanges.Between(const AOld, ANew: string): TLspTextChange;
 var
   Prefix, Suffix, MaxSuffix: Integer;
+  Lines: TLineTable;
 begin
   Prefix := 0;
   while (Prefix < Length(AOld)) and (Prefix < Length(ANew)) and (AOld[Prefix + 1] = ANew[Prefix + 1]) do
@@ -183,8 +161,9 @@ begin
     else if IsLowSurrogate(AOld[Length(AOld) - Suffix + 1]) then
       Dec(Suffix);
   end;
-  Result.StartPos := PositionOf(AOld, Prefix);
-  Result.EndPos := PositionOf(AOld, Length(AOld) - Suffix);
+  Lines := TLineTable.Build(AOld);
+  Result.StartPos := PositionOf(Lines, Prefix);
+  Result.EndPos := PositionOf(Lines, Length(AOld) - Suffix);
   Result.Text := Copy(ANew, Prefix + 1, Length(ANew) - Prefix - Suffix);
 end;
 

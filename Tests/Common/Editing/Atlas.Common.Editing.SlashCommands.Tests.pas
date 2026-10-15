@@ -20,6 +20,9 @@ type
     procedure UsesRunsThroughRegistry;
     [Test]
     procedure UnknownCommandStaysWithHint;
+    /// <summary>Gemischte Zeilenenden: Zeilen werden an jedem Umbruch getrennt (TTextLines.SplitLines, D-03).</summary>
+    [Test]
+    procedure MixedLineBreaksKeepLineNumbers;
     [Test]
     procedure CommandInStringOrCommentIsIgnored;
     [Test]
@@ -104,6 +107,17 @@ begin
   Assert.AreEqual('Unbekannter Schnellbefehl /gibtsnicht', Problems[0].Message);
   // Falsche Argumente: Grund des Befehls.
   Assert.AreEqual(1, Integer(Length(TSlashCommandRegistry.Shared.Problems(Source('/uses 1A'), nil))));
+end;
+
+procedure TSlashCommandsTests.MixedLineBreaksKeepLineNumbers;
+var
+  Problems: TArray<TSlashProblem>;
+begin
+  // CRLF-Datei mit einer LF-Zeile davor: der Befehl steht trotzdem in Zeile 3.
+  Problems := TSlashCommandRegistry.Shared.Problems('unit U;'#13#10'interface'#10'implementation'#13#10 +
+    '  /gibtsnicht X'#13#10'end.', nil);
+  Assert.AreEqual(1, Integer(Length(Problems)));
+  Assert.AreEqual(3, Problems[0].Range.StartPos.Line);
 end;
 
 procedure TSlashCommandsTests.CommandInStringOrCommentIsIgnored;

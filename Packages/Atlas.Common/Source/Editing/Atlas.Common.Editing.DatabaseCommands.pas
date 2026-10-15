@@ -83,17 +83,6 @@ begin
     Result := Format('%s%s.ParamByName(%s).Value := ;', [AIndent, AName, QuotedStr(AParam)]);
 end;
 
-/// <summary>Ersetzt die Befehlszeile durch ALines.</summary>
-function ReplaceCommand(ASource: TCommandSource; const ALines: TArray<string>): TRuleEdit;
-var
-  Text, Line: string;
-begin
-  Text := '';
-  for Line in ALines do
-    Text := Text + Line + ASource.LineBreak;
-  Result := TRuleEdit.Create(TTextRange.Create(ASource.Line, 0, ASource.Line + 1, 0), Text);
-end;
-
 { /sql }
 
 function ExecuteSql(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
@@ -124,7 +113,7 @@ begin
     end;
     for Param in TSqlText.Params(Sql) do
       Lines := Lines + [ParamLine(Indent, Name, TypeName, Param)];
-    AEdits := [ReplaceCommand(Source, Lines)];
+    AEdits := [Source.ReplaceWithLines(Lines)];
     Result := True;
   finally
     Source.Free;
@@ -187,7 +176,7 @@ begin
     Lines := nil;
     for Param in Missing do
       Lines := Lines + [ParamLine(Indent, Name, TypeName, Param)];
-    AEdits := [ReplaceCommand(Source, Lines)];
+    AEdits := [Source.ReplaceWithLines(Lines)];
     Result := True;
   finally
     Source.Free;

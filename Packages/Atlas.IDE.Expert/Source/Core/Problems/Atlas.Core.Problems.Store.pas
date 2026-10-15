@@ -108,7 +108,8 @@ implementation
 uses
   System.Math,
   System.Generics.Defaults,
-  Atlas.Core.Editor.Pairs;
+  Atlas.Core.Editor.Pairs,
+  Atlas.Text.Diff;
 
 { TAtlasColumnSpan }
 
@@ -231,13 +232,7 @@ var
 begin
   OldLines := AEntry.Text.Split([#10]);
   NewLines := ANewText.Split([#10]);
-  Prefix := 0;
-  while (Prefix < Length(OldLines)) and (Prefix < Length(NewLines)) and (OldLines[Prefix] = NewLines[Prefix]) do
-    Inc(Prefix);
-  Suffix := 0;
-  while (Suffix < Length(OldLines) - Prefix) and (Suffix < Length(NewLines) - Prefix) and
-    (OldLines[High(OldLines) - Suffix] = NewLines[High(NewLines) - Suffix]) do
-    Inc(Suffix);
+  TTextDiff.CommonPrefixSuffix(OldLines, NewLines, Prefix, Suffix);
   ChangedEnd := Length(OldLines) - Suffix;
   Delta := Length(NewLines) - Length(OldLines);
   for Index := 0 to High(AEntry.Atlas) do

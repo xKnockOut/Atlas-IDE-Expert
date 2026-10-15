@@ -29,11 +29,13 @@
 {$IMPLICITBUILD ON}
 
 // Platform-Package ohne Abhängigkeit zu Windows und VCL.
-// Erlaubt ist ausschließlich die plattformunabhängige RTL (System.*).
+// Erlaubt sind die plattformunabhängige RTL (System.*) und Atlas.Text
+// (gemeinsamer Textcode mit dem Plugin, ADR 0012).
 // Geprüft durch Tools\Check-PackageDependencies.ps1.
 
 requires
-  rtl;
+  rtl,
+  Atlas.Text;
 
 contains
   Atlas.Common.Product.Version in 'Source\Product\Atlas.Common.Product.Version.pas',

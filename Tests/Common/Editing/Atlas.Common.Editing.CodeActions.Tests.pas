@@ -33,6 +33,9 @@ type
     procedure SuppressLineInsertsCommentAbove;
     [Test]
     procedure SuppressLineExtendsExistingComment;
+    /// <summary>Zeilen auch bei CR allein getrennt (TTextLines.SplitLines, D-03).</summary>
+    [Test]
+    procedure SuppressLineInCrOnlyText;
     [Test]
     procedure SuppressFileAtTop;
     [Test]
@@ -235,6 +238,16 @@ var
   Edit: TRuleEdit;
 begin
   Edit := TCodeActions.SuppressLine('begin' + LB + '  // lsp-ignore: a' + LB + '  X;' + LB + 'end;', 2, 'b');
+  Assert.AreEqual(1, Edit.Range.StartPos.Line);
+  Assert.AreEqual(Integer(Length('  // lsp-ignore: a')), Edit.Range.StartPos.Character);
+  Assert.AreEqual(', b', Edit.NewText);
+end;
+
+procedure TCodeActionTests.SuppressLineInCrOnlyText;
+var
+  Edit: TRuleEdit;
+begin
+  Edit := TCodeActions.SuppressLine('begin'#13'  // lsp-ignore: a'#13'  X;'#13'end;', 2, 'b');
   Assert.AreEqual(1, Edit.Range.StartPos.Line);
   Assert.AreEqual(Integer(Length('  // lsp-ignore: a')), Edit.Range.StartPos.Character);
   Assert.AreEqual(', b', Edit.NewText);

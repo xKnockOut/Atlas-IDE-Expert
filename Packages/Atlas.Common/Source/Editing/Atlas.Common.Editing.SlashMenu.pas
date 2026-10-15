@@ -99,6 +99,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Math,
+  Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
@@ -144,16 +145,6 @@ function Entry(const AName: string; APlaces: TSlashPlaces; AGroup: TSlashGroup;
   AArgument: TSlashArgument): TSlashMenuEntry; overload;
 begin
   Result := Entry(AName, APlaces, AGroup, AArgument, False, False, '');
-end;
-
-function LeadingSpace(const ALine: string): string;
-var
-  Index: Integer;
-begin
-  Index := 1;
-  while (Index <= Length(ALine)) and CharInSet(ALine[Index], [' ', #9]) do
-    Inc(Index);
-  Result := Copy(ALine, 1, Index - 1);
 end;
 
 function LongerOf(const A, B: string): string;
@@ -313,11 +304,7 @@ begin
   AVirtual := '';
   ACommandLine := -1;
   AWrapUntil := 0;
-  if Pos(#13#10, AText) > 0 then
-    LineBreak := #13#10
-  else
-    LineBreak := #10;
-  Lines := AText.Split([LineBreak]);
+  Lines := TTextLines.SplitLines(AText, LineBreak);
   if (ASpot.Line < 0) or (ASpot.Line > High(Lines)) then
     Exit(False);
   Current := Lines[ASpot.Line];
@@ -325,11 +312,11 @@ begin
   begin
     // Vor die Markierung, eingerückt wie ihre erste Zeile mit Text; umschlossen wird nur sie.
     ACommandLine := ASpot.Line;
-    Indent := LeadingSpace(Current);
+    Indent := TTextLines.IndentOf(Current);
     for Index := ASpot.Line to Min(ASpot.EndLine, High(Lines)) do
       if Trim(Lines[Index]) <> '' then
       begin
-        Indent := LeadingSpace(Lines[Index]);
+        Indent := TTextLines.IndentOf(Lines[Index]);
         Break;
       end;
     AWrapUntil := Min(ASpot.EndLine, High(Lines)) + 2;
@@ -338,7 +325,7 @@ begin
   begin
     // Leere Zeile: an ihre Stelle; die IDE hält den Cursor oft hinter dem Zeilenende (eingerückt ohne Leerzeichen).
     ACommandLine := ASpot.Line;
-    Indent := LeadingSpace(Current);
+    Indent := TTextLines.IndentOf(Current);
     if ASpot.Character > Length(Indent) then
       Indent := StringOfChar(' ', ASpot.Character);
   end
@@ -346,16 +333,16 @@ begin
   begin
     // Zeile mit Text: dahinter, eingerückt wie sie oder wie die nächste Zeile mit Text, falls tiefer.
     ACommandLine := ASpot.Line + 1;
-    Indent := LeadingSpace(Current);
+    Indent := TTextLines.IndentOf(Current);
     for Index := ASpot.Line + 1 to High(Lines) do
       if Trim(Lines[Index]) <> '' then
       begin
-        Indent := LongerOf(Indent, LeadingSpace(Lines[Index]));
+        Indent := LongerOf(Indent, TTextLines.IndentOf(Lines[Index]));
         Break;
       end;
   end;
   Insert(Indent + ACommand, Lines, ACommandLine);
-  AVirtual := string.Join(LineBreak, Lines);
+  AVirtual := TTextLines.JoinLines(Lines, LineBreak);
   Result := True;
 end;
 
@@ -513,11 +500,8 @@ begin
     Edits, AReason);
   if not Result then
     Exit;
-  if Pos(#13#10, AText) > 0 then
-    LineBreak := #13#10
-  else
-    LineBreak := #10;
-  Lines := Virtual.Split([LineBreak]);
+  LineBreak := TTextLines.LineBreakOf(AText);
+  Lines := TTextLines.SplitLines(Virtual);
   AEdits := MapEdits(Edits, CommandLine, Lines[CommandLine], LineBreak);
 end;
 
@@ -572,7 +556,7 @@ begin
   // Nur die Einrückung vor dem Befehl kann stehen bleiben, nie der Befehl selbst.
   Indent := '';
   if (FirstEdit >= 0) and (FirstStart > 0) then
-    Indent := Copy(ACommandText, 1, Min(FirstStart, Length(LeadingSpace(ACommandText))));
+    Indent := Copy(ACommandText, 1, Min(FirstStart, Length(TTextLines.IndentOf(ACommandText))));
   Mapped := nil;
   for Index := 0 to High(AEdits) do
   begin

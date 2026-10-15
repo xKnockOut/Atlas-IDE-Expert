@@ -166,7 +166,8 @@ uses
   Atlas.Common.Editing.WinApiCommands,
   Atlas.Common.Editing.TaskCommands,
   Atlas.Common.Editing.RecordCommands,
-  Atlas.Common.Editing.ErrorCommands;
+  Atlas.Common.Editing.ErrorCommands,
+  Atlas.Text.Lines;
 
 function IsDisabled(const AName: string; const ADisabled: TArray<string>): Boolean;
 var
@@ -176,15 +177,6 @@ begin
     if SameText(Name, AName) then
       Exit(True);
   Result := False;
-end;
-
-function SplitLines(const AText: string; out ALineBreak: string): TArray<string>;
-begin
-  if Pos(#13#10, AText) > 0 then
-    ALineBreak := #13#10
-  else
-    ALineBreak := #10;
-  Result := AText.Split([ALineBreak]);
 end;
 
 { TSlashContext }
@@ -405,7 +397,7 @@ begin
   AReason := '';
   Context := Default(TSlashContext);
   Context.Line := ALine;
-  Lines := SplitLines(AText, LineBreak);
+  Lines := TTextLines.SplitLines(AText, LineBreak);
   if (Context.Line < 0) or (Context.Line > High(Lines)) then
     Exit(False);
   Context.LineText := Lines[Context.Line];
@@ -463,7 +455,7 @@ var
 begin
   Result := nil;
   Tokens := nil;
-  Lines := SplitLines(AText, LineBreak);
+  Lines := TTextLines.SplitLines(AText, LineBreak);
   for Line := 0 to High(Lines) do
   begin
     if not Split(Lines[Line], Name, Arguments) then

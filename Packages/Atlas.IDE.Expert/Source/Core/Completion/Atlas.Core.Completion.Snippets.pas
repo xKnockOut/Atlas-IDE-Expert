@@ -128,7 +128,9 @@ implementation
 
 uses
   System.Classes,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Text.Lines,
+  Atlas.Text.Chars;
 
 type
   TSegment = record
@@ -141,11 +143,6 @@ type
 function IsDigit(C: Char): Boolean;
 begin
   Result := (C >= '0') and (C <= '9');
-end;
-
-function IsWordChar(C: Char): Boolean;
-begin
-  Result := IsDigit(C) or ((C >= 'A') and (C <= 'Z')) or ((C >= 'a') and (C <= 'z')) or (C = '_');
 end;
 
 function NormalizeBreaks(const AText: string): string;
@@ -215,7 +212,7 @@ begin
       end;
       // $0 allein, nicht $0F
       if (Index < Length(ABody)) and (ABody[Index + 1] = '0') and
-        ((Index + 2 > Length(ABody)) or not IsWordChar(ABody[Index + 2])) then
+        ((Index + 2 > Length(ABody)) or not TTextChars.IsAsciiIdentChar(ABody[Index + 2])) then
       begin
         FlushLiteral;
         Segment := Default(TSegment);
@@ -324,7 +321,7 @@ begin
     Exit;
   end;
   for Index := 1 to Length(ASnippet.Prefix) do
-    if not IsWordChar(ASnippet.Prefix[Index]) then
+    if not TTextChars.IsAsciiIdentChar(ASnippet.Prefix[Index]) then
     begin
       AError := Format('Kürzel "%s": nur Buchstaben, Ziffern und _', [ASnippet.Prefix]);
       Exit;
@@ -377,7 +374,7 @@ var
 begin
   Result := APrefix;
   for Index := 1 to Length(Result) do
-    if not IsWordChar(Result[Index]) then
+    if not TTextChars.IsAsciiIdentChar(Result[Index]) then
       Result[Index] := '_';
   Result := Result + FileExtension;
 end;
@@ -621,7 +618,7 @@ begin
           if AText[AIndex] = '{' then
             Inc(AIndex);
           Start := AIndex;
-          while (AIndex <= Length(AText)) and IsWordChar(AText[AIndex]) do
+          while (AIndex <= Length(AText)) and TTextChars.IsAsciiIdentChar(AText[AIndex]) do
             Inc(AIndex);
           Number := Copy(AText, Start, AIndex - Start);
           Default := '';
@@ -689,13 +686,8 @@ begin
 end;
 
 class function TAtlasSnippets.IndentOf(const ALine: string): string;
-var
-  Index: Integer;
 begin
-  Index := 1;
-  while (Index <= Length(ALine)) and ((ALine[Index] = ' ') or (ALine[Index] = #9)) do
-    Inc(Index);
-  Result := Copy(ALine, 1, Index - 1);
+  Result := TTextLines.IndentOf(ALine);
 end;
 
 class function TAtlasSnippets.FolderStamp(const APath: string): string;

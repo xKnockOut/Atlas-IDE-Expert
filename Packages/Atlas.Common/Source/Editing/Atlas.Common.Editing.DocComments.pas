@@ -42,52 +42,13 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Text.Lines;
 
 const
   DeclarationKinds = [TSyntaxKind.TypeDecl, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl, TSyntaxKind.Field,
     TSyntaxKind.PropertyDecl, TSyntaxKind.RoutineHeader, TSyntaxKind.RoutineDecl];
   RoutineWords: array[0..4] of string = ('function', 'procedure', 'constructor', 'destructor', 'operator');
-
-function SplitText(const AText: string): TArray<string>;
-var
-  Index, Start: Integer;
-begin
-  Result := nil;
-  Start := 1;
-  for Index := 1 to Length(AText) + 1 do
-    if (Index > Length(AText)) or (AText[Index] = #10) then
-    begin
-      Result := Result + [Copy(AText, Start, Index - Start)];
-      Start := Index + 1;
-    end;
-  // \r am Zeilenende gehört nicht zum Inhalt.
-  for Index := 0 to High(Result) do
-    if EndsStr(#13, Result[Index]) then
-      Result[Index] := Copy(Result[Index], 1, Length(Result[Index]) - 1);
-end;
-
-function LineBreakOf(const AText: string): string;
-begin
-  if Pos(#13#10, AText) > 0 then
-    Result := #13#10
-  else
-    Result := #10;
-end;
-
-function JoinLines(const ALines: TArray<string>; const ALineBreak: string): string;
-var
-  Index: Integer;
-begin
-  Result := '';
-  for Index := 0 to High(ALines) do
-    Result := Result + IfThen(Index > 0, ALineBreak) + ALines[Index];
-end;
-
-function IndentOf(const ALine: string): string;
-begin
-  Result := Copy(ALine, 1, Length(ALine) - Length(TrimLeft(ALine)));
-end;
 
 /// <summary>Teile von AText an ASeparator auf Klammertiefe 0.</summary>
 function SplitTop(const AText: string; ASeparator: Char): TArray<string>;
@@ -267,16 +228,16 @@ var
   Skeleton: TArray<string>;
 begin
   Result := False;
-  Lines := SplitText(AText);
+  Lines := TTextLines.SplitLines(AText);
   Line := APosition.Line;
   if (Line < 0) or (Line >= High(Lines)) or (Trim(Lines[Line]) <> '///') then
     Exit;
   // Schon dokumentiert oder kein Ziel darunter.
   if ((Line > 0) and IsDocLine(Lines[Line - 1])) or not IsDeclarationLine(ATree, Lines, Line + 1) then
     Exit;
-  Skeleton := TDocComments.Skeleton(TDocComments.Signature(Lines, Line + 1), IndentOf(Lines[Line]));
+  Skeleton := TDocComments.Skeleton(TDocComments.Signature(Lines, Line + 1), TTextLines.IndentOf(Lines[Line]));
   AEdit := TRuleEdit.Create(TTextRange.Create(Line, 0, Line, Length(Lines[Line])),
-    JoinLines(Skeleton, LineBreakOf(AText)));
+    TTextLines.JoinLines(Skeleton, TTextLines.LineBreakOf(AText)));
   Result := True;
 end;
 
@@ -305,11 +266,11 @@ var
   Stale: Boolean;
 begin
   Result := nil;
-  Lines := SplitText(AText);
+  Lines := TTextLines.SplitLines(AText);
   if not IsDeclarationLine(ATree, Lines, ALine) or IsDocLine(Lines[ALine]) then
     Exit;
-  LB := LineBreakOf(AText);
-  Indent := IndentOf(Lines[ALine]);
+  LB := TTextLines.LineBreakOf(AText);
+  Indent := TTextLines.IndentOf(Lines[ALine]);
   Signature := TDocComments.Signature(Lines, ALine);
   Action := Default(TCodeAction);
   Action.Kind := RewriteKind;
@@ -320,7 +281,7 @@ begin
   begin
     Action.Title := 'Dokumentationskommentar erzeugen';
     Action.Edits := [TRuleEdit.Create(TTextRange.Create(ALine, 0, ALine, 0),
-      JoinLines(TDocComments.Skeleton(Signature, Indent), LB) + LB)];
+      TTextLines.JoinLines(TDocComments.Skeleton(Signature, Indent), LB) + LB)];
     Result := [Action];
     Exit;
   end;

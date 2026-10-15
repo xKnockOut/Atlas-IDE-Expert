@@ -37,10 +37,8 @@ type
 
 implementation
 
-function SplitLines(const AText: string): TArray<string>;
-begin
-  Result := AText.Replace(#13#10, #10).Replace(#13, #10).Split([#10]);
-end;
+uses
+  Atlas.Text.Lines;
 
 function IsIdentifier(const AValue: string): Boolean;
 var
@@ -100,8 +98,8 @@ var
 begin
   AChanges := nil;
   AReason := '';
-  OldLines := SplitLines(AOld);
-  NewLines := SplitLines(ANew);
+  OldLines := TTextLines.SplitLines(AOld);
+  NewLines := TTextLines.SplitLines(ANew);
   if Length(OldLines) <> Length(NewLines) then
   begin
     AReason := 'Zeilen hinzugefügt oder entfernt';

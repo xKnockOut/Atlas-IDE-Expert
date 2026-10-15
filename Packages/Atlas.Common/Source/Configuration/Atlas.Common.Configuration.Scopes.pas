@@ -56,7 +56,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Internals.JsonTree,
-  Atlas.Common.Configuration.Internals.ScopeData;
+  Atlas.Common.Configuration.Internals.ScopeData,
+  Atlas.Text.Lines;
 
 function Listed(const APath: string; const AList: array of string): Boolean;
 var
@@ -66,32 +67,6 @@ begin
     if Item = APath then
       Exit(True);
   Result := False;
-end;
-
-function PositionAt(const AText: string; AOffset: Integer): TTextPosition;
-var
-  Index, Line, LineStart: Integer;
-begin
-  Line := 0;
-  LineStart := 0;
-  Index := 0;
-  while (Index < AOffset) and (Index < Length(AText)) do
-  begin
-    if AText[Index + 1] = #13 then
-    begin
-      if (Index + 1 < Length(AText)) and (AText[Index + 2] = #10) then
-        Inc(Index);
-      Inc(Line);
-      LineStart := Index + 1;
-    end
-    else if AText[Index + 1] = #10 then
-    begin
-      Inc(Line);
-      LineStart := Index + 1;
-    end;
-    Inc(Index);
-  end;
-  Result := TTextPosition.Create(Line, AOffset - LineStart);
 end;
 
 function QuoteKey(const AKey: string): string;
@@ -167,8 +142,8 @@ var
   var
     Issue: TConfigurationIssue;
   begin
-    Issue.Range := TTextRange.Create(PositionAt(AText, AKeyStart),
-      PositionAt(AText, AKeyStart + Length(AKeyText) + 2));
+    Issue.Range := TTextRange.Create(TLineTable.Build(AText).PositionAt(AKeyStart),
+      TLineTable.Build(AText).PositionAt(AKeyStart + Length(AKeyText) + 2));
     Issue.Message := Misplaced(APath, AKeep);
     Issue.IsError := False;
     AIssues := AIssues + [Issue];

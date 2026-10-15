@@ -11,17 +11,13 @@ interface
 {$SCOPEDENUMS ON}
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Text.Lines;
 
 type
-  /// <summary>Position im Text: Zeile und Spalte, beide ab 0, Spalte in UTF-16-Codeeinheiten.</summary>
-  TTextPosition = record
-    Line: Integer;
-    Character: Integer;
-    constructor Create(ALine, ACharacter: Integer);
-    class operator Equal(const A, B: TTextPosition): Boolean;
-    class operator NotEqual(const A, B: TTextPosition): Boolean;
-  end;
+  /// <summary>Position im Text: Zeile und Spalte, beide ab 0, Spalte in UTF-16-Codeeinheiten.
+  /// Derselbe Typ wie in Atlas.Text.Lines (ADR 0012), damit TLineTable ohne Umrechnung passt.</summary>
+  TTextPosition = Atlas.Text.Lines.TTextPosition;
 
   /// <summary>Bereich von StartPos (einschließlich) bis EndPos (ausschließlich).</summary>
   TTextRange = record
@@ -108,24 +104,6 @@ type
   end;
 
 implementation
-
-{ TTextPosition }
-
-constructor TTextPosition.Create(ALine, ACharacter: Integer);
-begin
-  Line := ALine;
-  Character := ACharacter;
-end;
-
-class operator TTextPosition.Equal(const A, B: TTextPosition): Boolean;
-begin
-  Result := (A.Line = B.Line) and (A.Character = B.Character);
-end;
-
-class operator TTextPosition.NotEqual(const A, B: TTextPosition): Boolean;
-begin
-  Result := not (A = B);
-end;
 
 { TTextRange }
 
