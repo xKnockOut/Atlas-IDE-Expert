@@ -107,4 +107,7 @@ begin
   Assert.AreEqual(-1, TAtlasTestUnits.UnitLine(['units;']));
 end;
 
+initialization
+  TDUnitX.RegisterTestFixture(TAtlasTestUnitTests);
+
 end.
