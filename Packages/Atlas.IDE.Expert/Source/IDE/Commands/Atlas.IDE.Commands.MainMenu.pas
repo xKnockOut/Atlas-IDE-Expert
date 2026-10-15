@@ -13,6 +13,7 @@
 // Meldungsansicht, „Index neu aufbauen“ liest alles ohne Cache neu ein.
 // „Diagnoselog exportieren…“ (#647) packt das anonymisierte Log in eine ZIP.
 // „Symbol umbenennen…“ (#397) ruft OnRename auf.
+// „Einrichtung prüfen…“ (#625) ruft OnSetup auf.
 // Referenzen, Implementierungen, Symbolsuche und Hierarchien öffnen das
 // Ergebnisfenster (#400).
 // Code-Aktionen, Auswahl erweitern/verkleinern, Typdefinition und
@@ -54,6 +55,7 @@ type
     FShownProgress: string;
     FOnRename: TProc;
     FOnBugReport: TProc;
+    FOnSetup: TProc;
     FOnWelcome: TProc<TAtlasWelcomeCommand>;
     FWelcome: array[TAtlasWelcomeCommand] of TMenuItem;
     FWelcomeLine: TMenuItem;
@@ -70,6 +72,7 @@ type
     procedure IndexRebuildClick(Sender: TObject);
     procedure DiagnosticExportClick(Sender: TObject);
     procedure BugReportClick(Sender: TObject);
+    procedure SetupClick(Sender: TObject);
     procedure RootClick(Sender: TObject);
     procedure ToggleClick(Sender: TObject);
     procedure ProjectClick(Sender: TObject);
@@ -83,6 +86,8 @@ type
     property OnRename: TProc read FOnRename write FOnRename;
     /// <summary>„Fehlerbericht erstellen…“ (#108).</summary>
     property OnBugReport: TProc read FOnBugReport write FOnBugReport;
+    /// <summary>„Einrichtung prüfen…“ (#625).</summary>
+    property OnSetup: TProc read FOnSetup write FOnSetup;
     /// <summary>Befehle der Willkommensseite (#753).</summary>
     property OnWelcome: TProc<TAtlasWelcomeCommand> read FOnWelcome write FOnWelcome;
     /// <summary>Einträge der Willkommensseite nach den Einstellungen ein- oder ausblenden.</summary>
@@ -210,6 +215,10 @@ begin
   Item := TMenuItem.Create(FRoot);
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.BugReportMenu);
   Item.OnClick := BugReportClick;
+  FRoot.Add(Item);
+  Item := TMenuItem.Create(FRoot);
+  Item.Caption := TAtlasStrings.Text(TAtlasTextId.SetupMenu);
+  Item.OnClick := SetupClick;
   FRoot.Add(Item);
   // Willkommensseite (#753); Tag wählt den Befehl in WelcomeClick.
   FWelcomeLine := NewLine;
@@ -463,6 +472,16 @@ begin
       procedure
       begin
         FOnBugReport();
+      end);
+end;
+
+procedure TAtlasMainMenu.SetupClick(Sender: TObject);
+begin
+  if Assigned(FOnSetup) then
+    TAtlasGuard.Run(TAtlasFeature.Menu,
+      procedure
+      begin
+        FOnSetup();
       end);
 end;
 

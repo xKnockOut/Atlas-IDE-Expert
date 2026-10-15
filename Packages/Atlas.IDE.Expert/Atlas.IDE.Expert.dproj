@@ -238,6 +238,9 @@
         </DCCReference>
         <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.TimingWindow.pas"/>
         <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.Timing.pas"/>
+        <DCCReference Include="Source\Core\Setup\Atlas.Core.Setup.Checklist.pas"/>
+        <DCCReference Include="Source\UI\Setup\Atlas.UI.Setup.Window.pas"/>
+        <DCCReference Include="Source\IDE\Setup\Atlas.IDE.Setup.Checklist.pas"/>
         <DCCReference Include="Source\Core\Undo\Atlas.Core.Undo.LinePatch.pas"/>
         <DCCReference Include="Source\Core\Undo\Atlas.Core.Undo.Contract.pas"/>
         <DCCReference Include="Source\Core\Undo\Atlas.Core.Undo.Journal.pas"/>

@@ -7,7 +7,8 @@
 // Tastenkürzeln und Kontextmenü (#399), den Abgleich offener Formulare (#402),
 // das Atlas-Statusfeld (#591), die Schnellschalter (#604), das
 // dateiübergreifende Zurücknehmen von Atlas-Änderungen (#721), die
-// Versionsverwaltung (#571) und den Diagnosemodus (#479) beim Laden des
+// Versionsverwaltung (#571), den Diagnosemodus (#479) und die Einrichtung mit
+// Prüfliste (#625) beim Laden des
 // Packages an und beim Entladen in umgekehrter Reihenfolge wieder ab
 // (ADR 0006). Zuerst entscheidet der abgesicherte Start
 // (#722), was angemeldet wird; RegisterFeatures holt den Rest nach, sobald
@@ -43,6 +44,7 @@ uses
   Atlas.IDE.Diagnostics.Export,
   Atlas.IDE.Diagnostics.BugReport,
   Atlas.IDE.Diagnostics.Timing,
+  Atlas.IDE.Setup.Checklist,
   Atlas.IDE.Files.Reloader,
   Atlas.IDE.Commands.Palette,
   Atlas.IDE.Editor.Pairs,
@@ -119,6 +121,8 @@ var
   QuickToggles: TAtlasIdeQuickToggles;
   // Diagnosemodus mit Fenster, Taste und Statuszeile (#479).
   DiagnosticMode: TAtlasIdeDiagnosticMode;
+  // Einrichtung mit Prüfliste und Statuszeile (#625).
+  Setup: TAtlasIdeSetupChecklist;
   // Abgesicherter Start nach einem Absturz (#722).
   SafeMode: TAtlasIdeSafeMode;
   // Rückfrage und tägliche Update-Prüfung (#495).
@@ -683,6 +687,55 @@ begin
   MainMenu.OnBugReport := CreateBugReport;
 end;
 
+/// <summary>Einrichtung mit Prüfliste (#625); Zustand des Servers über den Manager und das Statusfeld.</summary>
+procedure CreateSetup;
+var
+  Hooks: TAtlasSetupHooks;
+begin
+  Hooks.ServerInfo :=
+    function: TAtlasServerInfo
+    begin
+      if Manager <> nil then
+        Result := Manager.ServerInfo
+      else
+        Result := Default(TAtlasServerInfo);
+    end;
+  Hooks.Indexing :=
+    function(out APercent: Integer): Boolean
+    begin
+      APercent := -1;
+      Result := (Manager <> nil) and Manager.ServerIndexing(APercent);
+    end;
+  Hooks.StatusJson :=
+    function: string
+    begin
+      Result := '';
+      if StatusLines <> nil then
+        Result := StatusLines.StatusJson;
+    end;
+  Hooks.StartServer :=
+    function(ARestart: Boolean): Boolean
+    begin
+      Result := False;
+      if Manager = nil then
+        Exit;
+      if ARestart then
+        Result := Manager.RestartServer
+      else
+        // Die aktive Sitzung startet den Server, wenn er noch nicht läuft.
+        Result := Manager.ActiveSession <> nil;
+    end;
+  Hooks.ServerCommand :=
+    function(ACommand: string): TJSONValue
+    begin
+      if Manager <> nil then
+        Result := Manager.ExecuteServerCommand(ACommand)
+      else
+        Result := nil;
+    end;
+  Setup := TAtlasIdeSetupChecklist.Create(TAtlasStatusRegistry.Default, Hooks);
+end;
+
 /// <summary>Meldet an, was die Stufe des abgesicherten Starts (#722) und die Einstellungen erlauben; mehrfach
 /// aufrufbar. Normal: alles. Abgesichert: Serververbindung, Statusfeld, Einstellungen, Palette und Menü; dazu,
 /// was ein Schnellschalter wieder einschaltet. Minimal: nur Einstellungsseite und Statusfeld.</summary>
@@ -784,6 +837,9 @@ begin
   // Diagnosemodus (#479): ohne Einstellung nur Taste und Befehl, keine Messung.
   if Basic and (DiagnosticMode = nil) then
     DiagnosticMode := TAtlasIdeDiagnosticMode.Create(TAtlasStatusRegistry.Default);
+  // Einrichtung (#625): auch abgesichert, sie fragt den Server nie selbst und startet ihn nur auf Knopfdruck.
+  if Basic and (Setup = nil) and (StatusLines <> nil) then
+    CreateSetup;
   if Basic and (Palette = nil) then
   begin
     RegisterPalette;
@@ -791,6 +847,8 @@ begin
       QuickToggles.RegisterCommands(Palette);
     if DiagnosticMode <> nil then
       DiagnosticMode.RegisterCommands(Palette);
+    if Setup <> nil then
+      Setup.RegisterCommands(Palette);
   end;
   // Editor-Zeichnungen.
   if (Pairs = nil) and (Full or Settings.PairColors or Settings.PairGuides or Settings.InactiveDim) then
@@ -910,6 +968,12 @@ begin
   begin
     CreateMainMenu;
     MainMenu.OnRename := RenameSymbol;
+    MainMenu.OnSetup :=
+      procedure
+      begin
+        if Setup <> nil then
+          Setup.ShowWindow;
+      end;
     MainMenu.OnWelcome :=
       procedure(ACommand: TAtlasWelcomeCommand)
       begin
@@ -1005,6 +1069,8 @@ begin
         Welcome.ThemeChanged;
       if DiagnosticMode <> nil then
         DiagnosticMode.ThemeChanged;
+      if Setup <> nil then
+        Setup.ThemeChanged;
     end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
   if SafeMode = nil then
@@ -1074,6 +1140,9 @@ begin
       StartupDone := True;
       if SafeMode <> nil then
         SafeMode.Loaded(TAtlasWatchdog.Timestamp - LoadedAt);
+      // Prüfliste beim ersten Start bzw. solange ein Punkt fest gelb oder rot ist (#625).
+      if Setup <> nil then
+        Setup.Start;
     end);
 end;
 
@@ -1099,6 +1168,8 @@ begin
   FreeAndNil(SafeMode);
   // Vor dem Statusfeld: Der Diagnosemodus hat eine Zeile in dessen Registry (#479).
   FreeAndNil(DiagnosticMode);
+  // Vor dem Statusfeld: Die Einrichtung hat eine Zeile in dessen Registry und liest StatusLines (#625).
+  FreeAndNil(Setup);
   FreeAndNil(QuickToggles);
   FreeAndNil(SignatureKey);
   FreeAndNil(CompletionKey);

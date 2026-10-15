@@ -6,6 +6,8 @@
 // - „Index“: Fortschritt aus $/progress, Anzahl Units aus atlas.server.status.
 //   Alle 5 s fragt ein Hintergrund-Thread den Status ab (einzige Abfrage im
 //   Zeitgeber, liefert nebenbei die Antwortzeit), nur solange der Server läuft.
+//   Die letzte Antwort hält StatusJson für die Einrichtung (#625: Index je
+//   Projekt, Bibliotheks-Cache), damit sie den Server nicht selbst abfragt.
 // - „Datei“: Kodierung und Zeilenende der aktiven Datei (#121), gelesen von
 //   der Platte, solange sie sich nicht ändert aus dem Zwischenspeicher. Ein
 //   Klick öffnet die Auswahl (UTF-8 mit/ohne BOM, ANSI; CRLF/LF). Die Wahl
@@ -41,6 +43,8 @@ type
     TUnits = class(TInterfacedObject)
     public
       Value: Integer;
+      /// <summary>Letzte Antwort von atlas.server.status; nur unter TMonitor des Objekts lesen und schreiben.</summary>
+      Json: string;
     end;
   private
     FRegistry: IAtlasStatusRegistry;
@@ -84,6 +88,9 @@ type
     procedure SetTarget(const AFileName: string; const ATarget: TAtlasFileFormat);
     /// <summary>Units im Index aus der letzten Abfrage; -1 = unbekannt (Kopf der Willkommensseite, #753).</summary>
     function Units: Integer;
+    /// <summary>Letzte Antwort von atlas.server.status als JSON; '' ohne laufenden Server oder vor der ersten
+    /// Abfrage (Einrichtung, #625). Aus jedem Thread.</summary>
+    function StatusJson: string;
   end;
 
 implementation
@@ -98,6 +105,16 @@ uses
 function TAtlasIdeStatusLines.Units: Integer;
 begin
   Result := FUnits.Value;
+end;
+
+function TAtlasIdeStatusLines.StatusJson: string;
+begin
+  TMonitor.Enter(FUnits);
+  try
+    Result := FUnits.Json;
+  finally
+    TMonitor.Exit(FUnits);
+  end;
 end;
 
 constructor TAtlasIdeStatusLines.Create(const ARegistry: IAtlasStatusRegistry;
@@ -181,6 +198,15 @@ begin
           Count := TAtlasStatusLines.UnitsOf(AJson);
           if Count >= 0 then
             AtomicExchange(Units.Value, Count);
+          if AJson <> '' then
+          begin
+            TMonitor.Enter(Units);
+            try
+              Units.Json := AJson;
+            finally
+              TMonitor.Exit(Units);
+            end;
+          end;
           Registry.Changed;
         end);
       RefreshServer;
@@ -203,7 +229,15 @@ begin
     TAtlasStatusLines.ServerSummary(Info));
   // Nach einem Neustart sind die Units erst wieder nach der nächsten Abfrage bekannt.
   if Info.Phase <> TAtlasServerPhase.Running then
+  begin
     AtomicExchange(FUnits.Value, -1);
+    TMonitor.Enter(FUnits);
+    try
+      FUnits.Json := '';
+    finally
+      TMonitor.Exit(FUnits);
+    end;
+  end;
 end;
 
 procedure TAtlasIdeStatusLines.RefreshIndex;
