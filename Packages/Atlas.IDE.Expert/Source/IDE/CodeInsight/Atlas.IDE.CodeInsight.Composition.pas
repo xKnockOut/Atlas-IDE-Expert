@@ -344,6 +344,11 @@ begin
     begin
       TAtlasIdeEditorCommands.CopyQualifiedName(True);
     end);
+  Palette.RegisterCommand('Atlas.SwitchTestUnit', TAtlasStrings.Text(TAtlasTextId.EditorTestUnit), '',
+    procedure
+    begin
+      TAtlasIdeEditorCommands.SwitchTestUnit;
+    end);
   Palette.RegisterCommand('Atlas.ResetHistory', TAtlasStrings.Text(TAtlasTextId.PaletteResetHistory), '',
     procedure
     begin

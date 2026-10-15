@@ -163,6 +163,7 @@ begin
   AddItem(TAtlasTextId.EditorMethodToggle, 6, EditorClick);
   AddItem(TAtlasTextId.EditorCopyQualified, 4, EditorClick);
   AddItem(TAtlasTextId.EditorCopyQualifiedParams, 5, EditorClick);
+  AddItem(TAtlasTextId.EditorTestUnit, 7, EditorClick);
   FRoot.Add(NewLine);
   // Ergebnisfenster (#400); Tag wählt den Befehl in ResultsClick.
   AddItem(TAtlasTextId.MenuReferences, 0, ResultsClick);
@@ -451,6 +452,7 @@ begin
         3: TAtlasIdeEditorCommands.GoToTypeDefinition;
         4: TAtlasIdeEditorCommands.CopyQualifiedName(False);
         6: TAtlasIdeEditorCommands.ToggleMethod;
+        7: TAtlasIdeEditorCommands.SwitchTestUnit;
       else
         TAtlasIdeEditorCommands.CopyQualifiedName(True);
       end;

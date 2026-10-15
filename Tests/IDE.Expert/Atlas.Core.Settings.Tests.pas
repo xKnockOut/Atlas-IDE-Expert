@@ -127,6 +127,8 @@ begin
   Assert.IsTrue(Settings.MethodToggle, 'Deklaration/Implementierung wechseln standardmäßig an (#775)');
   Assert.AreEqual($6026, Settings.MethodToggleUpKey, 'Strg+Umschalt+Hoch (#775)');
   Assert.AreEqual($6028, Settings.MethodToggleDownKey, 'Strg+Umschalt+Runter (#775)');
+  Assert.AreEqual(0, Settings.TestUnitKey, 'Testunit-Wechsel ohne Kürzel (#189)');
+  Assert.IsTrue(Settings.CodeLensTestUnit, 'Code Lens Testunit standardmäßig an (#189)');
   Assert.IsTrue(Settings.SlashCommands, 'Schnellbefehle standardmäßig an (#399)');
   Assert.IsTrue(Settings.Snippets, 'Code-Vorlagen standardmäßig an (#51)');
   Assert.IsTrue(Settings.ImportIdeTemplates, 'Live Templates der IDE standardmäßig an (#51)');
@@ -182,6 +184,8 @@ begin
   Settings.MethodToggle := False;
   Settings.MethodToggleUpKey := 0;
   Settings.MethodToggleDownKey := $C044; // Strg+Alt+D
+  Settings.TestUnitKey := $6054;
+  Settings.CodeLensTestUnit := False;
   Settings.EditorKeysPriority := True;
   Settings.SlashCommands := False;
   Settings.Snippets := False;
@@ -232,6 +236,8 @@ begin
   Assert.IsFalse(Loaded.MethodToggle);
   Assert.AreEqual(0, Loaded.MethodToggleUpKey, '0 = keine Taste');
   Assert.AreEqual($C044, Loaded.MethodToggleDownKey);
+  Assert.AreEqual($6054, Loaded.TestUnitKey);
+  Assert.IsFalse(Loaded.CodeLensTestUnit);
   Assert.IsTrue(Loaded.EditorKeysPriority);
   Assert.IsFalse(Loaded.SlashCommands);
   Assert.IsFalse(Loaded.Snippets);
