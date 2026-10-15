@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: "Rollenmatrix: Selbsttest (Code-Review A-12)"
+        shell: pwsh
+        run: ./Tools/Check-PackageDependencies.ps1 -SelfTest
       - name: Package-Abhängigkeiten prüfen
         shell: pwsh
         run: ./Tools/Check-PackageDependencies.ps1

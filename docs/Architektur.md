@@ -94,8 +94,36 @@ Platform-Features in den Packages (Konzept 8.3) importieren weder Host noch Host
 | Internals | eigenes Contract und Internals, fremdes Contract und Root |
 | Providers, Adapters, Root | eigenes Contract, Internals und Root, fremdes Contract und Root |
 | Composition | eigenes Contract, Providers, Adapters, Root und Composition, fremdes Contract und Root |
+| Hosting | eigenes Contract, Providers, Adapters, Root, Composition und Hosting, fremdes Contract und Root |
 
 Für die Anwendung gelten die Host-Matrix (8.1) und die Hosted-Feature-Matrix (8.2). Hosted-Features importieren sich nie gegenseitig; feature-übergreifende Abläufe orchestriert der Host (Konzept 11).
+
+Host-Matrix (8.1), wie sie die Prüfung derzeit annimmt (Code-Review A-12; bis zur Bestätigung gegen das Konzept):
+
+| Importierende Unit | Darf importieren |
+|---|---|
+| Host-Unit ohne Präfix (`Foundation.*`, `Core.*`, `Shell.*`, `Adapters.*`, `Platform.*`) | andere Host-Units; von Platform-Features Contract, Root, Providers, Adapters, Composition und Hosting, nie Internals |
+| Platform-Feature | nie eine Host-Unit |
+
+### Automatische Prüfung
+
+Die Matrix wird zweimal umgesetzt und gegen dieselbe Fallliste `Tests/Data/Architecture/role-imports.json` getestet (je Matrixzelle ein Fall):
+
+- `Tools/Check-PackageDependencies.ps1` (CI, ohne Delphi) prüft alle Units unter `Packages/` und `Application/`; `-SelfTest` prüft nur die Fallliste.
+- Die Prüfregeln `architecture-role-import` und `architecture-contract-content` (`Atlas.Common.Rules.Builtin.Architecture`, `TArchitectureMatrix`) zeigen Verstöße im Editor und in der Selbstprüfung des Servers. Sie sind experimentell und ohne `prefixes` stumm.
+
+Eingeordnet wird nach `Ausgabeartefakt.Feature.Rolle.Sache`: längstes passendes Präfix, dann Feature, dann ein Rollenbezeichner oder Root. Units ohne Präfix mit einer Host-Rolle als erstem Segment gehören zum Host; alles andere (RTL, VCL, `Setup.*`, Tests) wird nicht geprüft. Contract-Units dürfen im interface keine Klassen deklarieren, außer Ausnahmen (Konzept 7.1).
+
+### Genehmigte Ausnahmen
+
+Die Liste steht einmal in `atlas.json` (`allow` der beiden Regeln) und gilt für Skript und Linter. JSON kennt keine Kommentare, darum die Begründungen hier:
+
+| Ausnahme | Grund |
+|---|---|
+| `Atlas.Common.Rules.Contract -> Atlas.Common.Pascal.SyntaxTree` | Der Syntaxbaum ist Datengrundlage jeder Regel und hängt selbst nur an Contracts; ein Baum-Interface würde alle Regeln ändern. |
+| `Atlas.Common.Documents.Contract -> Atlas.Text.Lines` | `TTextPosition` ist derselbe Typ wie in `Atlas.Text` (ADR 0012); `Atlas.Text` hat nur zustandslose Funktionen und Records. |
+| `Atlas.IDE.* -> Atlas.Core.*` | Die Schicht `Atlas.IDE` ist faktisch die Komposition des Plugins und greift auf Providers, Adapters und Composition der Core-Features zu. Wird mit der Neuordnung der Plugin-Schichten (Code-Review A-09) Eintrag für Eintrag ersetzt. Verstöße innerhalb `Atlas.Core` und `Atlas.UI` bleiben sichtbar. |
+| `Atlas.Common.Dfm.Contract.TDfm*` (Contract-Inhalt) | `TDfmObject` und `TDfmDocument` sind reine Datenklassen eines Baums (Besitz der Kinder, kein Verhalten); Verschieben änderte rund 20 Units ohne Abhängigkeitsgewinn. |
 
 ## Tests
 
