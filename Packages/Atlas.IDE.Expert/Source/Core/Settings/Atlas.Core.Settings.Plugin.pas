@@ -196,6 +196,8 @@ type
     /// <summary>Code Lens mit den Kennzahlen jeder Methode (#66, codeLens.metrics; liegt in settings.json):
     /// Länge, Tiefe, zyklomatische und kognitive Komplexität, Parameter.</summary>
     CodeLensMetrics: Boolean;
+    /// <summary>Befehl „TODOs des Projekts“ (#68, Atlas.TodoList); aus = der Befehl verschwindet.</summary>
+    TodoList: Boolean;
     /// <summary>Befehl „Metrikbericht des Projekts“ (#66, Atlas.MetricsReport) in der Befehlspalette; aus = der
     /// Befehl verschwindet. Die Zusammenfassung nach dem Build hängt an der Willkommensseite.</summary>
     MetricsReport: Boolean;
@@ -530,6 +532,7 @@ begin
   Result.TestUnitKey := 0;
   Result.CodeLensTestUnit := True;
   Result.CodeLensMetrics := True;
+  Result.TodoList := True;
   Result.MetricsReport := True;
   Result.EditorKeysPriority := False;
   Result.SlashCommands := True;
@@ -786,6 +789,7 @@ begin
   TestUnitKey := AStore.ReadInteger('TestUnitKey', Default.TestUnitKey);
   CodeLensTestUnit := AStore.ReadInteger('CodeLensTestUnit', BoolValue(Default.CodeLensTestUnit)) <> 0;
   CodeLensMetrics := AStore.ReadInteger('CodeLensMetrics', BoolValue(Default.CodeLensMetrics)) <> 0;
+  TodoList := AStore.ReadInteger('TodoList', BoolValue(Default.TodoList)) <> 0;
   MetricsReport := AStore.ReadInteger('MetricsReport', BoolValue(Default.MetricsReport)) <> 0;
   EditorKeysPriority := AStore.ReadInteger('EditorKeysPriority', BoolValue(Default.EditorKeysPriority)) <> 0;
   SlashCommands := AStore.ReadInteger('SlashCommands', BoolValue(Default.SlashCommands)) <> 0;
@@ -953,6 +957,7 @@ begin
   AStore.WriteInteger('TestUnitKey', TestUnitKey);
   AStore.WriteInteger('CodeLensTestUnit', BoolValue(CodeLensTestUnit));
   AStore.WriteInteger('CodeLensMetrics', BoolValue(CodeLensMetrics));
+  AStore.WriteInteger('TodoList', BoolValue(TodoList));
   AStore.WriteInteger('MetricsReport', BoolValue(MetricsReport));
   AStore.WriteInteger('EditorKeysPriority', BoolValue(EditorKeysPriority));
   AStore.WriteInteger('SlashCommands', BoolValue(SlashCommands));

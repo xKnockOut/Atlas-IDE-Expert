@@ -118,6 +118,8 @@ type
     FCodeLensTestUnit: TCheckBox;
     /// <summary>Code Lens mit Code-Metriken (#66).</summary>
     FCodeLensMetrics: TCheckBox;
+    /// <summary>Befehl in der Befehlspalette (#68).</summary>
+    FTodoList: TCheckBox;
     /// <summary>Befehl in der Befehlspalette (#66).</summary>
     FMetricsReport: TCheckBox;
     FPairGuides: TCheckBox;
@@ -700,6 +702,7 @@ begin
   FBookmarksShared := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBookmarksShared));
   FCodeLensTestUnit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTestUnit));
   FCodeLensMetrics := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensMetrics));
+  FTodoList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTodoList));
   FMetricsReport := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMetricsReport));
 
   // Eigene Paarfarben und deren Reihenfolge je Thema.
@@ -1488,6 +1491,7 @@ begin
   FBookmarksShared.Checked := ASettings.BookmarksShared;
   FCodeLensTestUnit.Checked := ASettings.CodeLensTestUnit;
   FCodeLensMetrics.Checked := ASettings.CodeLensMetrics;
+  FTodoList.Checked := ASettings.TodoList;
   FMetricsReport.Checked := ASettings.MetricsReport;
   FPairGuides.Checked := ASettings.PairGuides;
   FPairOwners.Checked := ASettings.PairOwners;
@@ -1652,6 +1656,7 @@ begin
   ASettings.BookmarksShared := FBookmarksShared.Checked;
   ASettings.CodeLensTestUnit := FCodeLensTestUnit.Checked;
   ASettings.CodeLensMetrics := FCodeLensMetrics.Checked;
+  ASettings.TodoList := FTodoList.Checked;
   ASettings.MetricsReport := FMetricsReport.Checked;
   ASettings.PairGuides := FPairGuides.Checked;
   ASettings.PairOwners := FPairOwners.Checked;

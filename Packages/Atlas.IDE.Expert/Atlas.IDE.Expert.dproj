@@ -384,6 +384,7 @@
         <DCCReference Include="Source\IDE\Notes\Atlas.IDE.Notes.Gutter.pas"/>
         <DCCReference Include="Source\Core\Bookmarks\Atlas.Core.Bookmarks.Store.pas"/>
         <DCCReference Include="Source\UI\Bookmarks\Atlas.UI.Bookmarks.Dialog.pas"/>
+        <DCCReference Include="Source\UI\Todos\Atlas.UI.Todos.Dialog.pas"/>
         <DCCReference Include="Source\UI\Bookmarks\Atlas.UI.Bookmarks.Frame.pas">
             <Form>AtlasBookmarksFrame</Form>
             <FormType>dfm</FormType>

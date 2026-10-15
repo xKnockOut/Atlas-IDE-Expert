@@ -332,12 +332,15 @@ type
     WelcomeSavedAllProjects, WelcomeSavedLost, WelcomeSavedEmpty, WelcomeSavedNoMatch, WelcomeSavedUnitMissing,
     WelcomeSavedFileMissing, SettingsWelcomeContinue, SettingsWelcomeContinueCount,
     SettingsWelcomeContinueIncoming, SettingsWelcomeContinueFetch, SettingsWelcomeSaved,
-    SettingsCodeLensMetrics, SettingsMetricsReport,
+    SettingsCodeLensMetrics, SettingsMetricsReport, SettingsTodoList,
     MetricsLensLines, MetricsLensDepth, MetricsLensCyclomatic, MetricsLensCognitive,
     MetricsLensParameters, MetricsLensLimit, MetricsReportCommand, MetricsReportNoProject, MetricsReportFailed,
     MetricsReportRunning,
     MetricsReportBusy,
-    TodoListCommand, TodoListNoProject, TodoListFailed, TodoListEmpty, TodoListTitle, TodoListBusy);
+    TodoListCommand, TodoListNoProject, TodoListFailed, TodoListEmpty, TodoListTitle, TodoListBusy,
+    TodoFilterCommand, TodoFilterTitle, TodoFilterCategory, TodoFilterOwner, TodoFilterUnit, TodoFilterKeyword,
+    TodoFilterDone, TodoFilterHint, TodoFilterOk, TodoFilterCancel, TodoFilterReset, TodoListFilteredTitle,
+    TodoListNoMatch);
 
   TAtlasStrings = class
   private class var
@@ -980,7 +983,8 @@ const
      'Vorher im Hintergrund abrufen (fetch, 5 s, ohne Anmeldung)',
      'Reiter „Gemerkt“ (Notizen, Lesezeichen und Favoriten aller Projekte)',
      'Code Lens mit Code-Metriken hinter dem Methodenkopf',
-     'Befehl „Metrikbericht des Projekts“ in der Befehlspalette', '%d Zeilen', 'Tiefe %d', 'zyklomatisch %d',
+     'Befehl „Metrikbericht des Projekts“ in der Befehlspalette',
+     'Befehl „TODOs des Projekts“ in der Befehlspalette', '%d Zeilen', 'Tiefe %d', 'zyklomatisch %d',
      'kognitiv %d', '%d Parameter', '%s (> %d)', 'Metrikbericht des Projekts',
      'Metrikbericht: kein aktives Projekt.', 'Metrikbericht: Der Atlas-Server hat keinen Bericht geliefert.',
      'Metrikbericht wird erstellt …',
@@ -988,7 +992,11 @@ const
      'TODOs des Projekts', 'TODOs des Projekts: kein aktives Projekt.',
      'TODOs des Projekts: Der Atlas-Server hat keine Liste geliefert.', 'Keine offenen TODOs in %s.',
      'TODOs in %s: %d',
-     'TODOs des Projekts: Der Atlas-Server ist gerade beschäftigt; bitte gleich noch einmal versuchen.'),
+     'TODOs des Projekts: Der Atlas-Server ist gerade beschäftigt; bitte gleich noch einmal versuchen.',
+     'TODOs des Projekts filtern …', 'TODOs filtern', 'Kategorie (-c):', 'Person (-o):', 'Unit:', 'Marke:',
+     'Erledigte zeigen (DONE)', 'Leere Felder filtern nicht; die Vorschläge stammen aus der letzten Liste.',
+     'Anzeigen', 'Abbrechen', 'Zurücksetzen', 'TODOs in %s (%s): %d',
+     'Keine TODOs in %s passen zum Filter (%s).'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1593,14 +1601,18 @@ const
      'Fetch in the background first (5 s, without sign-in)',
      '“Saved” tab (notes, bookmarks and favorites of all projects)',
      'Code lens with code metrics after the method header',
-     'Command "Project metrics report" in the command palette', '%d lines', 'depth %d', 'cyclomatic %d',
+     'Command "Project metrics report" in the command palette',
+     'Command "Project TODOs" in the command palette', '%d lines', 'depth %d', 'cyclomatic %d',
      'cognitive %d', '%d parameters', '%s (> %d)', 'Project metrics report',
      'Metrics report: no active project.', 'Metrics report: the Atlas server returned no report.',
      'Creating metrics report …',
      'Metrics report: the Atlas server is computing metrics right now; please try again shortly.',
      'Project TODOs', 'Project TODOs: no active project.', 'Project TODOs: the Atlas server returned no list.',
      'No open TODOs in %s.', 'TODOs in %s: %d',
-     'Project TODOs: the Atlas server is busy right now; please try again shortly.'));
+     'Project TODOs: the Atlas server is busy right now; please try again shortly.',
+     'Filter project TODOs …', 'Filter TODOs', 'Category (-c):', 'Owner (-o):', 'Unit:', 'Keyword:',
+     'Show done entries (DONE)', 'Empty fields do not filter; suggestions come from the last list.', 'Show',
+     'Cancel', 'Reset', 'TODOs in %s (%s): %d', 'No TODOs in %s match the filter (%s).'));
 
 { TAtlasStrings }
 
