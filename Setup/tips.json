@@ -2,6 +2,15 @@
   "format": 1,
   "tips": [
     {
+      "id": "commandPalette",
+      "command": "Atlas.CommandPalette",
+      "title": "Befehlspalette",
+      "titleEn": "Command palette",
+      "text": "Alle Befehle von IDE und Atlas an einem Ort: ein paar Buchstaben tippen, Enter drücken. Zuletzt benutzte stehen oben, das Kürzel steht daneben.",
+      "textEn": "Every IDE and Atlas command in one place: type a few letters, press Enter. Recently used ones come first, with their shortcut next to them.",
+      "image": "Tipps\\befehlspalette.png"
+    },
+    {
       "id": "codeActions",
       "command": "Atlas.CodeActions",
       "title": "Code-Aktionen",
@@ -10,7 +19,7 @@
       "textEn": "Shows what Atlas can do at the cursor: declare unknown names, add uses entries, complete methods. The chosen action changes the code right away.",
       "image": "Tipps\\code-aktionen.png",
       "sample": "Beispiele\\Entdecken.pas",
-      "line": 57,
+      "line": 77,
       "column": 27
     },
     {
@@ -26,7 +35,7 @@
       "textEn": "Grows the selection step by step: name, expression, statement, block, routine. Shrink goes back the same way.",
       "image": "Tipps\\auswahl-erweitern.png",
       "sample": "Beispiele\\Entdecken.pas",
-      "line": 56,
+      "line": 76,
       "column": 32
     },
     {
@@ -38,7 +47,7 @@
       "textEn": "Renames a symbol in all units and forms and shows every affected line first.",
       "image": "Tipps\\umbenennen.png",
       "sample": "Beispiele\\Entdecken.pas",
-      "line": 21,
+      "line": 28,
       "column": 3
     },
     {
@@ -50,7 +59,7 @@
       "textEn": "Lists every place that uses a symbol, grouped by unit in the results window – form files included.",
       "image": "Tipps\\referenzen.png",
       "sample": "Beispiele\\Entdecken.pas",
-      "line": 26,
+      "line": 33,
       "column": 14
     },
     {
@@ -62,20 +71,20 @@
       "textEn": "Jumps from an interface method or virtual method to every class that implements it.",
       "image": "Tipps\\implementierungen.png",
       "sample": "Beispiele\\Entdecken.pas",
-      "line": 18,
+      "line": 25,
       "column": 14
     },
     {
-      "id": "callers",
-      "command": "Atlas.Callers",
-      "title": "Wer ruft das auf?",
-      "titleEn": "Who calls this?",
-      "text": "Zeigt die aufrufenden Routinen als Baum; jede Ebene lässt sich weiter aufklappen.",
-      "textEn": "Shows the calling routines as a tree; every level can be expanded further.",
-      "image": "Tipps\\aufrufer.png",
+      "id": "typeDefinition",
+      "command": "Atlas.TypeDefinition",
+      "title": "Gehe zu Typdefinition",
+      "titleEn": "Go to type definition",
+      "text": "Springt von einer Variablen, einem Feld oder Parameter zur Deklaration seines Typs statt zur Variablen selbst.",
+      "textEn": "Jumps from a variable, field or parameter to the declaration of its type instead of the variable itself.",
+      "image": "Tipps\\typdefinition.png",
       "sample": "Beispiele\\Entdecken.pas",
-      "line": 50,
-      "column": 10
+      "line": 82,
+      "column": 13
     },
     {
       "id": "symbolSearch",
@@ -87,6 +96,105 @@
       "image": "Tipps\\symbolsuche.png"
     },
     {
+      "id": "callers",
+      "command": "Atlas.Callers",
+      "title": "Wer ruft das auf?",
+      "titleEn": "Who calls this?",
+      "text": "Zeigt die aufrufenden Routinen als Baum; jede Ebene lässt sich weiter aufklappen.",
+      "textEn": "Shows the calling routines as a tree; every level can be expanded further.",
+      "image": "Tipps\\aufrufer.png",
+      "sample": "Beispiele\\Entdecken.pas",
+      "line": 70,
+      "column": 10
+    },
+    {
+      "id": "calls",
+      "command": "Atlas.Calls",
+      "title": "Was ruft das auf?",
+      "titleEn": "What does this call?",
+      "text": "Zeigt als Baum, welche Routinen eine Methode aufruft, Ebene für Ebene: So verfolgen Sie den Ablauf nach unten.",
+      "textEn": "Shows as a tree which routines a method calls, level by level, so you can follow the flow downwards.",
+      "image": "Tipps\\aufrufe.png",
+      "sample": "Beispiele\\Entdecken.pas",
+      "line": 80,
+      "column": 10
+    },
+    {
+      "id": "supertypes",
+      "command": "Atlas.Supertypes",
+      "title": "Vorfahren anzeigen",
+      "titleEn": "Show supertypes",
+      "text": "Zeigt die Vorfahren einer Klasse und die Interfaces, die sie umsetzt, bis hinauf zu TObject.",
+      "textEn": "Shows the ancestors of a class and the interfaces it implements, all the way up to TObject.",
+      "image": "Tipps\\vorfahren.png",
+      "sample": "Beispiele\\Entdecken.pas",
+      "line": 41,
+      "column": 3
+    },
+    {
+      "id": "subtypes",
+      "command": "Atlas.Subtypes",
+      "title": "Nachfahren anzeigen",
+      "titleEn": "Show subtypes",
+      "text": "Zeigt als Baum alle Klassen im Projekt, die von einer Klasse erben oder ein Interface umsetzen.",
+      "textEn": "Shows as a tree every class in the project that inherits from a class or implements an interface.",
+      "image": "Tipps\\nachfahren.png",
+      "sample": "Beispiele\\Entdecken.pas",
+      "line": 36,
+      "column": 3
+    },
+    {
+      "id": "resultsWindow",
+      "command": "Atlas.ResultsWindow",
+      "title": "Ergebnisfenster",
+      "titleEn": "Results window",
+      "text": "Holt das andockbare Fenster „Atlas-Ergebnisse“ mit dem letzten Ergebnis zurück; Doppelklick oder Enter springt zur Stelle.",
+      "textEn": "Brings back the dockable \"Atlas results\" window with the last result; double-click or Enter jumps to the location.",
+      "image": "Tipps\\ergebnisfenster.png"
+    },
+    {
+      "id": "completion",
+      "command": "Atlas.Completion",
+      "setting": "Enabled",
+      "title": "Vervollständigung von Atlas",
+      "titleEn": "Atlas completion",
+      "text": "Zeigt lokale Namen zuerst, schlägt bei Tippfehlern „Meintest du“ vor und trägt die Unit beim Übernehmen in uses ein.",
+      "textEn": "Lists local names first, suggests \"Did you mean\" for typos and adds the unit to uses when you accept an entry.",
+      "image": "Tipps\\vervollstaendigung.png",
+      "sample": "Beispiele\\Entdecken.pas",
+      "line": 82,
+      "column": 20
+    },
+    {
+      "id": "signature",
+      "command": "Atlas.Signature",
+      "setting": "Enabled",
+      "title": "Parameter-Hint",
+      "titleEn": "Parameter hint",
+      "text": "Zeigt in einem Aufruf die Parameter der Routine und hebt den an der Cursorstelle hervor.",
+      "textEn": "Shows the parameters of the routine inside a call and highlights the one at the cursor.",
+      "image": "Tipps\\parameter-hint.png",
+      "sample": "Beispiele\\Entdecken.pas",
+      "line": 82,
+      "column": 64
+    },
+    {
+      "id": "copyQualifiedName",
+      "command": "Atlas.CopyQualifiedName",
+      "usage": [
+        "Atlas.CopyQualifiedName",
+        "Atlas.CopyQualifiedNameParams"
+      ],
+      "title": "Qualifizierten Namen kopieren",
+      "titleEn": "Copy qualified name",
+      "text": "Legt den vollen Namen des Symbols am Cursor in die Zwischenablage, etwa Entdecken.TStaffelpreise.Preis; auf Wunsch mit Parametern.",
+      "textEn": "Copies the full name of the symbol at the cursor to the clipboard, such as Entdecken.TStaffelpreise.Preis; optionally with parameters.",
+      "image": "Tipps\\qualifizierter-name.png",
+      "sample": "Beispiele\\Entdecken.pas",
+      "line": 65,
+      "column": 25
+    },
+    {
       "id": "undoChange",
       "command": "Atlas.UndoChange",
       "usage": [
@@ -95,11 +203,21 @@
         "Atlas.ChangeList"
       ],
       "setting": "UndoMultiFile",
+      "try": "Atlas.ChangeList",
       "title": "Änderungen über mehrere Dateien zurücknehmen",
       "titleEn": "Undo changes across files",
-      "text": "Nimmt eine Atlas-Änderung wie Umbenennen in allen betroffenen Dateien auf einmal zurück.",
-      "textEn": "Undoes an Atlas change such as a rename in all affected files at once.",
+      "text": "Nimmt eine Atlas-Änderung wie Umbenennen in allen betroffenen Dateien auf einmal zurück. Die Liste „Atlas-Änderungen“ zeigt auch ältere.",
+      "textEn": "Undoes an Atlas change such as a rename in all affected files at once. The \"Atlas changes\" list shows older ones too.",
       "image": "Tipps\\zuruecknehmen.png"
+    },
+    {
+      "id": "checkNow",
+      "command": "Atlas.CheckNow",
+      "title": "Compiler prüfen",
+      "titleEn": "Check with compiler",
+      "text": "Startet die Syntaxprüfung des Compilers für das aktive Projekt, ohne .exe oder .dcu zu schreiben.",
+      "textEn": "Runs the compiler syntax check for the active project without writing an .exe or .dcu.",
+      "image": "Tipps\\syntaxpruefung.png"
     },
     {
       "id": "quickToggles",
@@ -111,6 +229,16 @@
       "image": "Tipps\\schnellschalter.png"
     },
     {
+      "id": "quickTogglesAllOff",
+      "command": "Atlas.QuickToggles.AllOff",
+      "try": "Atlas.QuickToggles",
+      "title": "Alles aus für diese Sitzung",
+      "titleEn": "All off for this session",
+      "text": "Schaltet alle Zeichnungen von Atlas im Editor ab, ohne eine Einstellung zu ändern; „Alles wieder an“ holt sie zurück.",
+      "textEn": "Turns off all Atlas drawings in the editor without changing a setting; \"All on again\" brings them back.",
+      "image": "Tipps\\alles-aus.png"
+    },
+    {
       "id": "keyOverview",
       "command": "Atlas.KeyOverview",
       "setting": "KeyOverview",
@@ -119,6 +247,80 @@
       "text": "Zeigt alle Tastenkürzel der IDE und von Atlas mit Konflikten und wie oft Sie sie per Tastatur nutzen.",
       "textEn": "Shows every IDE and Atlas shortcut with conflicts and how often you use it from the keyboard.",
       "image": "Tipps\\tastenkuerzel.png"
+    },
+    {
+      "id": "projectSettings",
+      "command": "Atlas.ProjectSettings",
+      "title": "Projekt-Einstellungen",
+      "titleEn": "Project settings",
+      "text": "Bearbeitet die atlas.json des aktiven Projekts und zeigt je Feld, ob der Wert aus dem Projekt, global oder vom Standard kommt.",
+      "textEn": "Edits the atlas.json of the active project and shows for every field whether the value comes from the project, the global settings or the default.",
+      "image": "Tipps\\projekt-einstellungen.png"
+    },
+    {
+      "id": "setupChecklist",
+      "command": "Atlas.SetupChecklist",
+      "title": "Einrichtung prüfen",
+      "titleEn": "Check setup",
+      "text": "Prüft Server, Index, Error Insight und Tasten auf einen Blick und bietet für jeden offenen Punkt den passenden Knopf.",
+      "textEn": "Checks server, index, Error Insight and keys at a glance and offers the right button for every open item.",
+      "image": "Tipps\\einrichtung.png"
+    },
+    {
+      "id": "welcomeLayout",
+      "command": "Atlas.WelcomeApply",
+      "usage": [
+        "Atlas.WelcomeApply",
+        "Atlas.WelcomeReset"
+      ],
+      "setting": "WelcomePage",
+      "title": "Atlas-Layout anwenden",
+      "titleEn": "Apply Atlas layout",
+      "text": "Setzt den Bereich „Atlas“ oben über die ganze Breite der Willkommensseite. „Atlas-Layout zurücksetzen“ stellt das vorige Layout exakt wieder her.",
+      "textEn": "Places the \"Atlas\" area across the full width at the top of the welcome page. \"Reset Atlas layout\" restores the previous layout exactly.",
+      "image": "Tipps\\atlas-layout.png"
+    },
+    {
+      "id": "welcomeStart",
+      "command": "Atlas.WelcomeStart",
+      "setting": "WelcomePage",
+      "title": "Atlas-Start",
+      "titleEn": "Atlas Start",
+      "text": "Öffnet die Atlas-Bereiche jederzeit wieder, auch über Ansicht › Atlas-Start.",
+      "textEn": "Opens the Atlas areas again at any time, also via View › Atlas Start.",
+      "image": "Tipps\\atlas-start.png"
+    },
+    {
+      "id": "whatsNew",
+      "command": "Atlas.WhatsNew",
+      "usage": [
+        "Atlas.WhatsNew",
+        "Atlas.WhatsNewAll"
+      ],
+      "setting": "WelcomePageWhatsNew",
+      "title": "Neu in Atlas",
+      "titleEn": "New in Atlas",
+      "text": "Zeigt die Neuigkeiten dieser Version mit Kürzel und „Ausprobieren“; „Alle Versionen“ blättert durch die früheren.",
+      "textEn": "Shows what is new in this version with shortcuts and \"Try it\"; \"All versions\" pages through earlier ones.",
+      "image": "Tipps\\neuigkeiten.png"
+    },
+    {
+      "id": "bugReport",
+      "command": "Atlas.BugReport",
+      "title": "Fehlerbericht erstellen",
+      "titleEn": "Create bug report",
+      "text": "Schreibt Versionen, Einstellungen und die letzten Protokollzeilen in eine Markdown-Datei für ein Issue, anonymisiert und ohne Quelltext. Vor dem Speichern sehen Sie genau den Text.",
+      "textEn": "Writes versions, settings and the latest log lines to a Markdown file for an issue, anonymized and without source code. You see the exact text before saving.",
+      "image": "Tipps\\fehlerbericht.png"
+    },
+    {
+      "id": "exportDiagnostics",
+      "command": "Atlas.ExportDiagnostics",
+      "title": "Diagnoselog exportieren",
+      "titleEn": "Export diagnostic log",
+      "text": "Packt die Diagnoselogs des Servers der letzten Tage mit den Versionen in eine ZIP-Datei zum Anhängen an eine Fehlermeldung.",
+      "textEn": "Packs the server diagnostic logs of the last few days together with the versions into a ZIP file to attach to a bug report.",
+      "image": "Tipps\\diagnoselog.png"
     }
   ]
 }

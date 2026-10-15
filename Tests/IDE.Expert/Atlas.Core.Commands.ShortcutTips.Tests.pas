@@ -40,6 +40,8 @@ type
     [Test]
     procedure AtlasCommandFollowsCurrentKey;
     [Test]
+    procedure KeyOnlyFunctionsHaveNoPaletteCommand;
+    [Test]
     procedure PlacesTipBottomRight;
     [Test]
     procedure RecognizesShortCutStrokes;
@@ -353,6 +355,23 @@ begin
     if Entry.Func = Func then
       Key := Entry.Key;
   Assert.AreEqual(Integer(TAtlasKeyConflicts.scCtrl or TAtlasKeyConflicts.scAlt or Ord('E')), Integer(Key));
+end;
+
+procedure TAtlasShortcutTipsTests.KeyOnlyFunctionsHaveNoPaletteCommand;
+var
+  Func: TAtlasKeyFunction;
+begin
+  // Karte „Atlas entdecken“ (#757): Tipps zu Tasten ohne Befehl der Palette zeigen die Taste selbst.
+  Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly(TAtlasShortcutTips.PaletteCommandId, Func));
+  Assert.IsTrue(Func = TAtlasKeyFunction.Palette);
+  Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('atlas.completion', Func), 'ohne Groß/klein');
+  Assert.IsTrue(Func = TAtlasKeyFunction.Completion);
+  Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('Atlas.Signature', Func));
+  Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('Atlas.WelcomeSearch', Func));
+  Assert.IsFalse(TAtlasShortcutTips.IsKeyOnly('Atlas.ExpandSelection', Func), 'Befehl der Palette');
+  Assert.IsFalse(TAtlasShortcutTips.IsKeyOnly('Atlas.QuickToggles', Func), 'Befehl der Palette');
+  Assert.IsFalse(TAtlasShortcutTips.IsKeyOnly('Atlas.Rename', Func), 'keine Atlas-Taste');
+  Assert.IsFalse(TAtlasShortcutTips.IsKeyOnly('', Func));
 end;
 
 procedure TAtlasShortcutTipsTests.PlacesTipBottomRight;
