@@ -94,6 +94,7 @@ uses
   Atlas.IDE.Welcome.Projects,
   Atlas.Core.Editor.Metrics,
   Atlas.Core.Projects.Todos,
+  Atlas.UI.Todos.Dialog,
   Atlas.IDE.Welcome.Unsaved,
   Atlas.IDE.Welcome.Continue,
   Atlas.IDE.Welcome.State,
@@ -382,14 +383,39 @@ begin
     GuardWarning(TAtlasStrings.Text(TAtlasTextId.MetricsReportBusy));
 end;
 
+var
+  /// <summary>Letzter Filter der TODO-Liste (#68) in dieser Sitzung; Vorgabe für den Filterdialog.</summary>
+  TodoFilter: TAtlasTodoFilter;
+  /// <summary>Vorschläge für den Filterdialog aus der letzten Liste.</summary>
+  TodoChoices: TAtlasTodoChoices;
+
+/// <summary>Argumente für atlas.server.todos im Modus json: [uri, "json", filter].</summary>
+function TodoArguments(const AProject: string; const AFilter: TAtlasTodoFilter): string;
+var
+  Arguments: TJSONArray;
+begin
+  Arguments := TJSONArray.Create;
+  try
+    Arguments.Add(TLspSession.PathToUri(AProject));
+    Arguments.Add('json');
+    Arguments.AddElement(TJSONObject.ParseJSONValue(AFilter.ToJson));
+    Result := Arguments.ToJSON;
+  finally
+    Arguments.Free;
+  end;
+end;
+
 /// <summary>TODO-Liste des aktiven Projekts (#68) im Ergebnisfenster: Daten vom Server (startet ihn bei Bedarf) im
-/// Hintergrund, nach Unit gruppiert; Doppelklick springt zum Kommentar.</summary>
-procedure ProjectTodos;
+/// Hintergrund mit dem Filter AFilter (Filter des Servers), nach Unit gruppiert; Doppelklick springt zum
+/// Kommentar.</summary>
+procedure ProjectTodos(const AFilter: TAtlasTodoFilter);
 var
   Project: IOTAProject;
-  Name: string;
+  Name, Described: string;
+  Filter: TAtlasTodoFilter;
 begin
-  if Manager = nil then
+  // Abgeschaltet: auch über Tastenkürzel oder „Ausprobieren“ nichts tun.
+  if (Manager = nil) or not TAtlasIdeSettings.Current.TodoList then
     Exit;
   Project := GetActiveProject;
   if (Project = nil) or (Project.FileName = '') then
@@ -398,12 +424,14 @@ begin
     Exit;
   end;
   Name := ChangeFileExt(ExtractFileName(Project.FileName), '');
+  Filter := AFilter.Trimmed;
+  Described := Filter.Describe;
   if Manager.ActiveSession = nil then
   begin
     GuardWarning(TAtlasStrings.Text(TAtlasTextId.TodoListFailed));
     Exit;
   end;
-  if not Manager.RunCommandAsync(TodosCommand, MetricsArguments(Project.FileName, 'json'), 120000,
+  if not Manager.RunCommandAsync(TodosCommand, TodoArguments(Project.FileName, Filter), 120000,
     procedure(AAnswer: string)
     var
       Answer: string;
@@ -416,19 +444,45 @@ begin
             procedure
             var
               Entries: TArray<TAtlasResultEntry>;
+              Choices: TAtlasTodoChoices;
             begin
               if not TAtlasTodoList.Entries(Answer, Entries) then
-                GuardWarning(TAtlasStrings.Text(TAtlasTextId.TodoListFailed))
-              else if Length(Entries) = 0 then
+              begin
+                GuardWarning(TAtlasStrings.Text(TAtlasTextId.TodoListFailed));
+                Exit;
+              end;
+              // Vorschläge nur aus der ungefilterten Liste: sonst schrumpfen sie mit jedem Filter.
+              if Filter.IsEmpty and TAtlasTodoList.Choices(Answer, Choices) then
+                TodoChoices := Choices;
+              if (Length(Entries) = 0) and (Described = '') then
                 GuardWarning(TAtlasStrings.Fmt(TAtlasTextId.TodoListEmpty, [Name]))
-              else
+              else if Length(Entries) = 0 then
+                GuardWarning(TAtlasStrings.Fmt(TAtlasTextId.TodoListNoMatch, [Name, Described]))
+              else if Described = '' then
                 TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.TodoListTitle,
-                  [Name, Length(Entries)]), Entries);
+                  [Name, Length(Entries)]), Entries)
+              else
+                TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.TodoListFilteredTitle,
+                  [Name, Described, Length(Entries)]), Entries);
             end);
         end);
     end) then
     // Ein Befehl im Hintergrund läuft schon (etwa die Werte nach einem Build): später noch einmal.
     GuardWarning(TAtlasStrings.Text(TAtlasTextId.TodoListBusy));
+end;
+
+/// <summary>Filterdialog der TODO-Liste (#68) mit dem letzten Filter; „Anzeigen“ fragt mit dem neuen Filter.</summary>
+procedure FilterProjectTodos;
+var
+  Filter: TAtlasTodoFilter;
+begin
+  if not TAtlasIdeSettings.Current.TodoList then
+    Exit;
+  Filter := TodoFilter;
+  if not TAtlasTodoFilterDialog.Execute(TodoChoices, Filter) then
+    Exit;
+  TodoFilter := Filter;
+  ProjectTodos(Filter);
 end;
 
 procedure RenameSymbol;
@@ -662,11 +716,25 @@ begin
     begin
       Result := TAtlasIdeSettings.Current.MetricsReport;
     end);
-  // TODO-Liste des Projekts (#68).
+  // TODO-Liste des Projekts (#68): ohne Filter (alle offenen) und mit Filterdialog; nur sichtbar, solange die
+  // Einstellung TodoList an ist.
   Palette.RegisterCommand('Atlas.TodoList', TAtlasStrings.Text(TAtlasTextId.TodoListCommand), '',
     procedure
     begin
-      ProjectTodos;
+      ProjectTodos(Default(TAtlasTodoFilter));
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.TodoList;
+    end);
+  Palette.RegisterCommand('Atlas.TodoListFilter', TAtlasStrings.Text(TAtlasTextId.TodoFilterCommand), '',
+    procedure
+    begin
+      FilterProjectTodos;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.TodoList;
     end);
   Palette.RegisterCommand('Atlas.CheckNow', TAtlasStrings.Text(TAtlasTextId.PaletteCheckNow), '',
     procedure

@@ -998,6 +998,13 @@ Voraussetzung: Server läuft, eigenes Projekt geöffnet. In einer Unit des Proje
 | TD10 | Projekt bauen (Strg+F9), danach `%LOCALAPPDATA%\Atlas\projects\<Schlüssel>.json` ansehen | Neben `metrics` ein Abschnitt `todos` mit `at` (Zeitpunkt des Builds), `files`, `open` (3), `done` (1) und `keywords` mit den offenen Einträgen je Marke (`{"FIXME": 1, "TODO": 2}`) |
 | TD11 | `AtlasServer --check <Projekt> --todos` und `--todos --format json` | Markdown „# TODOs: <Projekt>“ mit „Nach Kategorie“, „Nach Person“ und einer Tabelle je Unit bzw. JSON mit `"format": 1`, `summary`, `files`; Exitcode 0; `--format sarif` oder `--metrics` zusammen mit `--todos` endet mit Fehler |
 | TD12 | Claude Code: Werkzeug `get_todos` ohne Argumente, mit `owner: "Marco"`, mit `includeDone: true`, mit `file` | Markdown über das Projekt; nur Marcos Einträge; zusätzlich der DONE-Eintrag als erledigt; nur die Einträge der Datei |
+| TD13 | Befehlspalette „TODOs des Projekts filtern …“ nach TD1 | Dialog „TODOs filtern“ mit Kategorie (-c), Person (-o), Unit und Marke; die Auswahllisten enthalten GUI und Export, Marco, die Units mit Einträgen bzw. FIXME und TODO; „Erledigte zeigen (DONE)“ aus |
+| TD14 | In TD13 Kategorie „GUI“ wählen, Enter | Ergebnisfenster „TODOs in <Projekt> (-cGUI): 1“ mit „TODO 2 [GUI, Marco]: Fokus setzen“ |
+| TD15 | TD13 erneut öffnen: Kategorie steht noch auf „GUI“ (Filter der Sitzung); Kategorie leeren, Person „marco“ (klein) tippen, „Anzeigen“ | Titel „TODOs in <Projekt> (-omarco): 1“; Groß-/Kleinschreibung egal |
+| TD16 | TD13 mit „Erledigte zeigen (DONE)“ und Person „Anna“ | Liste enthält „DONE [Anna]: Index“ |
+| TD17 | TD13 mit Unit, die es nicht gibt (z. B. „Gibtsnicht“) | Meldung „Keine TODOs in <Projekt> passen zum Filter (Gibtsnicht).“ |
+| TD18 | TD13, „Zurücksetzen“, „Anzeigen“ | Alle Felder leer; Liste wie TD1 mit Titel ohne Klammer |
+| TD19 | Optionen › Atlas › Editor: „Befehl „TODOs des Projekts“ in der Befehlspalette“ aus (oder Schnellschalter „TODO-Liste“) | Beide Befehle aus TD1 und TD13 verschwinden ohne Neustart aus der Befehlspalette, die Tipps „TODOs des Projekts“ und „TODOs filtern“ erscheinen nicht mehr; Hinweise der Regel `todo-comment`, `get_todos` und der Abschnitt `todos` nach einem Build (TD10) bleiben; „Alles aus für diese Sitzung“ lässt die Befehle stehen |
 
 ## Units suchen (#777)
 

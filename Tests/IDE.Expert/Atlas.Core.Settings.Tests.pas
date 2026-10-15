@@ -132,6 +132,7 @@ begin
   Assert.AreEqual(0, Settings.TestUnitKey, 'Testunit-Wechsel ohne Kürzel (#189)');
   Assert.IsTrue(Settings.CodeLensTestUnit, 'Code Lens Testunit standardmäßig an (#189)');
   Assert.IsTrue(Settings.CodeLensMetrics, 'Code Lens Metriken standardmäßig an (#66)');
+  Assert.IsTrue(Settings.TodoList, 'Befehl standardmäßig da (#68)');
   Assert.IsTrue(Settings.MetricsReport, 'Befehl standardmäßig da (#66)');
   Assert.IsTrue(Settings.SlashCommands, 'Schnellbefehle standardmäßig an (#399)');
   Assert.IsTrue(Settings.Snippets, 'Code-Vorlagen standardmäßig an (#51)');
@@ -214,6 +215,7 @@ begin
   Settings.TestUnitKey := $6054;
   Settings.CodeLensTestUnit := False;
   Settings.CodeLensMetrics := False;
+  Settings.TodoList := False;
   Settings.MetricsReport := False;
   Settings.EditorKeysPriority := True;
   Settings.SlashCommands := False;
@@ -282,6 +284,7 @@ begin
   Assert.AreEqual($6054, Loaded.TestUnitKey);
   Assert.IsFalse(Loaded.CodeLensTestUnit);
   Assert.IsFalse(Loaded.CodeLensMetrics);
+  Assert.IsFalse(Loaded.TodoList);
   Assert.IsFalse(Loaded.MetricsReport);
   Assert.IsTrue(Loaded.EditorKeysPriority);
   Assert.IsFalse(Loaded.SlashCommands);
