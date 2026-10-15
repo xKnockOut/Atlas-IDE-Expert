@@ -19,6 +19,7 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.JsonRpc.Connection,
   Atlas.Common.JsonRpc.Watchdog,
+  Atlas.Common.JsonRpc.TracingTransport,
   Atlas.Common.Lsp.Lifecycle,
   Atlas.Common.Lsp.ApplyEdit,
   Atlas.Common.Lsp.TextDocumentSync,
@@ -85,6 +86,8 @@ type
   TServerComposition = class
   private
     FTransport: IJsonRpcTransport;
+    /// <summary>Mitschnitt (--trace) in FTransport, nicht besitzend; nil ohne Mitschnitt.</summary>
+    FTracing: TJsonRpcTracingTransport;
     FLogger: ILogger;
     /// <summary>Anonymisiert das Server-Log (#647); nil ohne --log oder mit --log-names.</summary>
     FLogAnonymizer: ILogAnonymizer;
@@ -289,7 +292,7 @@ uses
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Logging.Providers.StreamSink,
   Atlas.Common.JsonRpc.StreamTransport,
-  Atlas.Common.JsonRpc.TracingTransport,
+  Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Common.Lsp.Adapters.LogMessageSink,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Documents.FileEncoding,
@@ -1367,6 +1370,8 @@ begin
   FLifecycle.Free;
   FDispatcher.Watchdog := nil;
   FDispatcher.Free;
+  if FTracing <> nil then
+    FTracing.OnFailed := nil;
   FTransport := nil;
   FLogger := nil;
   inherited;
@@ -1743,17 +1748,8 @@ begin
 end;
 
 function AllocatedBytes: Int64;
-var
-  State: TMemoryManagerState;
-  I: Integer;
 begin
-  {$WARN SYMBOL_PLATFORM OFF}
-  GetMemoryManagerState(State);
-  {$WARN SYMBOL_PLATFORM ON}
-  Result := Int64(State.TotalAllocatedMediumBlockSize) + Int64(State.TotalAllocatedLargeBlockSize);
-  for I := Low(State.SmallBlockTypeStates) to High(State.SmallBlockTypeStates) do
-    Inc(Result, Int64(State.SmallBlockTypeStates[I].AllocatedBlockCount) *
-      State.SmallBlockTypeStates[I].UseableBlockSize);
+  Result := TShutdownLeaks.AllocatedBytes;
 end;
 
 function TServerComposition.ReadSourceText(const AFileName: string; out AText: string): Boolean;
@@ -2772,7 +2768,9 @@ var
   Anonymizer: ILogAnonymizer;
   RecentSink: TRecentLogSink;
   RecentLog: IRecentLogLines;
+  Tracing: TJsonRpcTracingTransport;
 begin
+  Tracing := nil;
   // Stacktraces für das Absturzprotokoll (Exception.StackTrace).
   TStackTrace.Install;
   LoggerImpl := TLogger.Create;
@@ -2798,8 +2796,9 @@ begin
   Transport := TJsonRpcStreamTransport.Create(TStdStreams.CreateInput, TStdStreams.ReserveOutputForProtocol, True);
   if AOptions.TraceFile <> '' then
     try
-      Transport := TJsonRpcTracingTransport.Create(Transport,
+      Tracing := TJsonRpcTracingTransport.Create(Transport,
         CreateTraceStream(AOptions.TraceFile, IntToStr(TParentWatcher.CurrentProcessId), TraceName), True);
+      Transport := Tracing;
       if not SameText(TraceName, AOptions.TraceFile) then
         Logger.Info(Format('Mitschnitt "%s" ist belegt, schreibe nach "%s"', [AOptions.TraceFile, TraceName]));
     except
@@ -2812,6 +2811,17 @@ begin
     Logger.Warning(Warning);
 
   Result := TServerComposition.Create(Transport, Logger);
+  if Tracing <> nil then
+  begin
+    Result.FTracing := Tracing;
+    // Nur Logger einfangen; den Zyklus Logger → Sink → Transport → Closure bricht das einmalige
+    // Leeren beim Melden bzw. Destroy (S-07). Anonym: Klasse und Meldung, kein Pfad.
+    Tracing.OnFailed :=
+      procedure(const AReason: string)
+      begin
+        Logger.Warning('Mitschnitt abgebrochen, der Server arbeitet ohne weiter: ' + AReason);
+      end;
+  end;
   Result.FRecentLog := RecentLog;
   Result.FLogAnonymizer := Anonymizer;
   Result.FRestricted := AOptions.Restricted;
