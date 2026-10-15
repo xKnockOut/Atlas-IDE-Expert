@@ -659,7 +659,7 @@ var
 begin
   Box := TAtlasWelcomeSearchBox.Create(nil);
   try
-    Box.OnQuery := SampleQuery;
+    Box.OnQuery := SampleQuery();
     Box.Edit.Text := 'wel';
     Box.Query;
     // Dateien (2), Symbole mit Hinweis, Befehle (1).
@@ -681,7 +681,7 @@ var
 begin
   Box := TAtlasWelcomeSearchBox.Create(nil);
   try
-    Box.OnQuery := SampleQuery;
+    Box.OnQuery := SampleQuery();
     Box.Edit.Text := 'wel';
     Box.Query;
     Box.Select(-5);
@@ -703,7 +703,7 @@ begin
   Opened := '';
   Box := TAtlasWelcomeSearchBox.Create(nil);
   try
-    Box.OnQuery := SampleQuery;
+    Box.OnQuery := SampleQuery();
     Box.OnOpen :=
       procedure(const AHit: TAtlasWelcomeHit)
       begin
@@ -1363,12 +1363,14 @@ procedure AddLine(const ARegistry: IAtlasStatusRegistry; const AId, AText: strin
 var
   Line: TAtlasStatusLine;
   Ref: IAtlasStatusItem;
+  Action: TProc;
 begin
+  Action :=
+    procedure
+    begin
+    end;
   if AAction then
-    Line := TAtlasStatusLine.Create(ARegistry, AId, 0,
-      procedure
-      begin
-      end)
+    Line := TAtlasStatusLine.Create(ARegistry, AId, 0, Action)
   else
     Line := TAtlasStatusLine.Create(ARegistry, AId, 0);
   Ref := Line;

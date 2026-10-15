@@ -159,7 +159,6 @@ begin
   Result := Default(TAtlasDiscoverState);
   if Copy(TrimLeft(AJson), 1, 1) <> '{' then
     Exit;
-  Root := nil;
   try
     Root := TJSONObject.ParseJSONValue(AJson);
   except

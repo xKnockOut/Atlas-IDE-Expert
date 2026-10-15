@@ -165,6 +165,8 @@ type
 implementation
 
 uses
+  Winapi.Windows,
+  System.Generics.Collections,
   System.Classes,
   System.IOUtils,
   System.JSON;
@@ -454,7 +456,6 @@ var
   Value: TJSONValue;
 begin
   Result := 0;
-  Value := nil;
   try
     Value := TJSONObject.ParseJSONValue(AJson);
   except
@@ -476,7 +477,6 @@ var
 begin
   ASummary := TAtlasProjectSummary.Create('');
   Result := False;
-  Value := nil;
   try
     Value := TJSONObject.ParseJSONValue(AJson);
   except

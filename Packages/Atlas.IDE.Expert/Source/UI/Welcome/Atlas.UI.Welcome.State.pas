@@ -96,6 +96,7 @@ type
 implementation
 
 uses
+  System.UITypes,
   System.Math,
   Vcl.Themes,
   Atlas.Core.Product.Version,

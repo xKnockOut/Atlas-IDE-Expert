@@ -170,7 +170,7 @@ var
   Row: TAtlasWelcomeSearchRow;
   Hit: TAtlasWelcomeHit;
   Text: string;
-  Part: TRect;
+  Part, Cell: TRect;
   Width_: Integer;
 begin
   Row := FBox.FRows[ARow];
@@ -211,13 +211,14 @@ begin
       Inc(Part.Left, MulDiv(12, Screen.PixelsPerInch, 96));
       Canvas.Font.Color := ToColor(FBox.FColors.Text);
       Width_ := Min(Canvas.TextWidth(Hit.Caption) + MulDiv(4, Screen.PixelsPerInch, 96), Part.Width);
-      DrawText(Canvas.Handle, PChar(Hit.Caption), -1, Rect(Part.Left, Part.Top, Part.Left + Width_, Part.Bottom),
+      Cell := Rect(Part.Left, Part.Top, Part.Left + Width_, Part.Bottom);
+      DrawText(Canvas.Handle, PChar(Hit.Caption), -1, Cell,
         DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
       if Hit.Detail <> '' then
       begin
         Canvas.Font.Color := ToColor(FBox.FColors.Muted);
-        DrawText(Canvas.Handle, PChar(Hit.Detail), -1,
-          Rect(Part.Left + Width_ + MulDiv(10, Screen.PixelsPerInch, 96), Part.Top, Part.Right, Part.Bottom),
+        Cell := Rect(Part.Left + Width_ + MulDiv(10, Screen.PixelsPerInch, 96), Part.Top, Part.Right, Part.Bottom);
+        DrawText(Canvas.Handle, PChar(Hit.Detail), -1, Cell,
           DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_PATH_ELLIPSIS);
       end;
     end;
@@ -359,6 +360,7 @@ procedure TAtlasWelcomeSearchBox.OpenSelected;
 var
   Hit: TAtlasWelcomeHit;
   Handler: TAtlasWelcomeSearchOpen;
+  Open: TThreadProcedure;
 begin
   if (FSelected < 0) or (FSelected > High(FHits)) then
     Exit;
@@ -367,11 +369,14 @@ begin
   Clear;
   // Erst nach dem Schließen öffnen: Projekt laden kann dauern und Dialoge zeigen.
   if Assigned(Handler) then
-    TThread.ForceQueue(nil,
+  begin
+    Open :=
       procedure
       begin
         Handler(Hit);
-      end);
+      end;
+    TThread.ForceQueue(nil, Open);
+  end;
 end;
 
 procedure TAtlasWelcomeSearchBox.EditExit(Sender: TObject);

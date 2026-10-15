@@ -74,7 +74,11 @@ begin
     Exit;
   // git legt schreibgeschützte Objektdateien an.
   for FileName in TDirectory.GetFiles(AFolder, '*', TSearchOption.soAllDirectories) do
+  begin
+    {$WARN SYMBOL_PLATFORM OFF}
     TFile.SetAttributes(FileName, [TFileAttribute.faNormal]);
+    {$WARN SYMBOL_PLATFORM ON}
+  end;
   try
     TDirectory.Delete(AFolder, True);
   except

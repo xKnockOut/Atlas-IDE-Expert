@@ -111,6 +111,7 @@ type
 implementation
 
 uses
+  System.UITypes,
   System.DateUtils,
   Vcl.Themes,
   Atlas.UI.Strings;
