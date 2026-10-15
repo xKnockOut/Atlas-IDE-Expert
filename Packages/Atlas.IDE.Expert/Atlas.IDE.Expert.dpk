@@ -304,6 +304,12 @@ contains
   Atlas.UI.Notes.Dialog in 'Source\UI\Notes\Atlas.UI.Notes.Dialog.pas',
   Atlas.IDE.Editor.GutterMarks in 'Source\IDE\Editor\Atlas.IDE.Editor.GutterMarks.pas',
   Atlas.IDE.Notes.Service in 'Source\IDE\Notes\Atlas.IDE.Notes.Service.pas',
-  Atlas.IDE.Notes.Gutter in 'Source\IDE\Notes\Atlas.IDE.Notes.Gutter.pas';
+  Atlas.IDE.Notes.Gutter in 'Source\IDE\Notes\Atlas.IDE.Notes.Gutter.pas',
+  Atlas.Core.Bookmarks.Store in 'Source\Core\Bookmarks\Atlas.Core.Bookmarks.Store.pas',
+  Atlas.UI.Bookmarks.Dialog in 'Source\UI\Bookmarks\Atlas.UI.Bookmarks.Dialog.pas',
+  Atlas.UI.Bookmarks.Frame in 'Source\UI\Bookmarks\Atlas.UI.Bookmarks.Frame.pas' {AtlasBookmarksFrame: TFrame},
+  Atlas.IDE.Bookmarks.Window in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Window.pas',
+  Atlas.IDE.Bookmarks.Service in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Service.pas',
+  Atlas.IDE.Bookmarks.Gutter in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Gutter.pas';
 
 end.

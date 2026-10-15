@@ -137,6 +137,14 @@ type
     /// <summary>Persönliche Notizen an Codezeilen (#545): Symbol in der Rinne, Befehle und Liste; gespeichert in
     /// %LOCALAPPDATA%\Atlas\Notes\, nie im Quelltext.</summary>
     Notes: Boolean;
+    /// <summary>Benannte Lesezeichen (#622, bookmarks.named): Befehle, Seitenfenster „Lesezeichen“ und Symbol in der
+    /// Rinne; aus = die Funktion ruht, die nummerierten Lesezeichen der IDE bleiben unberührt.</summary>
+    BookmarksNamed: Boolean;
+    /// <summary>Lesezeichen im Repository für das Team speichern (#622, bookmarks.shared): atlas-bookmarks.json
+    /// statt der lokalen .atlas-bookmarks.json neben der .dproj.</summary>
+    BookmarksShared: Boolean;
+    /// <summary>„Lesezeichen setzen…“ (#622, TShortCut, 0 = keins; Vorgabe Strg+Alt+K).</summary>
+    BookmarkKey: Integer;
     /// <summary>Pfad zu AtlasServer.exe; leer: neben dem Plugin bzw. Output\Win64\Debug\Bin.</summary>
     ServerPath: string;
     /// <summary>Blocklinien in den Paarfarben statt der Strukturhervorhebung der IDE (#514).</summary>
@@ -474,6 +482,9 @@ begin
   Result.OpenForEdits := True;
   Result.InlayHints := False;
   Result.Notes := True;
+  Result.BookmarksNamed := True;
+  Result.BookmarksShared := False;
+  Result.BookmarkKey := $C04B; // Strg+Alt+K
   Result.ServerPath := '';
   Result.PairGuides := True;
   Result.PairOwners := True;
@@ -654,6 +665,7 @@ begin
   UnitSearchGroupBy := Choice(UnitSearchGroupBy, ['project', 'folder', 'none']);
   UnitSearchDefaultScope := Choice(UnitSearchDefaultScope, ['group', 'project', 'searchPath', 'library']);
   UnitSearchKey := EnsureRange(UnitSearchKey, 0, $FFFF);
+  BookmarkKey := EnsureRange(BookmarkKey, 0, $FFFF);
   if SameText(Trim(WelcomePageHost), 'dockWindow') then
     WelcomePageHost := 'dockWindow'
   else
@@ -719,6 +731,9 @@ begin
   OpenForEdits := AStore.ReadInteger('OpenForEdits', BoolValue(Default.OpenForEdits)) <> 0;
   InlayHints := AStore.ReadInteger('InlayHints', BoolValue(Default.InlayHints)) <> 0;
   Notes := AStore.ReadInteger('Notes', BoolValue(Default.Notes)) <> 0;
+  BookmarksNamed := AStore.ReadInteger('BookmarksNamed', BoolValue(Default.BookmarksNamed)) <> 0;
+  BookmarksShared := AStore.ReadInteger('BookmarksShared', BoolValue(Default.BookmarksShared)) <> 0;
+  BookmarkKey := AStore.ReadInteger('BookmarkKey', Default.BookmarkKey);
   ServerPath := Trim(AStore.ReadString('ServerPath', Default.ServerPath));
   PairGuides := AStore.ReadInteger('PairGuides', BoolValue(Default.PairGuides)) <> 0;
   PairOwners := AStore.ReadInteger('PairOwners', BoolValue(Default.PairOwners)) <> 0;
@@ -874,6 +889,9 @@ begin
   AStore.WriteInteger('OpenForEdits', BoolValue(OpenForEdits));
   AStore.WriteInteger('InlayHints', BoolValue(InlayHints));
   AStore.WriteInteger('Notes', BoolValue(Notes));
+  AStore.WriteInteger('BookmarksNamed', BoolValue(BookmarksNamed));
+  AStore.WriteInteger('BookmarksShared', BoolValue(BookmarksShared));
+  AStore.WriteInteger('BookmarkKey', BookmarkKey);
   AStore.WriteString('ServerPath', Trim(ServerPath));
   AStore.WriteInteger('PairGuides', BoolValue(PairGuides));
   AStore.WriteInteger('PairOwners', BoolValue(PairOwners));

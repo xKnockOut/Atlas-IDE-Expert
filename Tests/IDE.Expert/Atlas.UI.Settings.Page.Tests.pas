@@ -30,6 +30,9 @@ type
     /// <summary>Notizen (#545): Schalter auf dem Reiter Editor, Vorgabe an.</summary>
     [Test]
     procedure NotesRoundTrip;
+    /// <summary>Benannte Lesezeichen (#622): zwei Schalter auf dem Reiter Editor, Taste bei den Befehlen.</summary>
+    [Test]
+    procedure BookmarksRoundTrip;
     [Test]
     procedure SafeModeRoundTrips;
     [Test]
@@ -372,6 +375,33 @@ begin
     Assert.IsFalse(Saved.Notes, 'Notizen abschaltbar');
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.NotesCheck.Checked);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.BookmarksRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.BookmarksNamedCheck.Checked, 'Lesezeichen standardmäßig an');
+    Assert.IsFalse(Page.BookmarksSharedCheck.Checked, 'standardmäßig lokal');
+    Assert.AreEqual(ShortCutToText($C04B), Page.BookmarkKey.Text, 'Strg+Alt+K');
+    Page.BookmarksNamedCheck.Checked := False;
+    Page.BookmarksSharedCheck.Checked := True;
+    Page.BookmarkKey.Text := '';
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.BookmarksNamed, 'abschaltbar');
+    Assert.IsTrue(Saved.BookmarksShared);
+    Assert.AreEqual(0, Saved.BookmarkKey, 'leer = keine Taste');
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.BookmarksNamedCheck.Checked);
+    Assert.IsTrue(Page.BookmarksSharedCheck.Checked);
   finally
     Page.Free;
   end;

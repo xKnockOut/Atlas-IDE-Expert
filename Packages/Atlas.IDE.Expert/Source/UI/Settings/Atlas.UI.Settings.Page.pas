@@ -113,6 +113,8 @@ type
     FOpenForEdits: TCheckBox;
     FInlayHints: TCheckBox;
     FNotes: TCheckBox;
+    FBookmarksNamed: TCheckBox;
+    FBookmarksShared: TCheckBox;
     FCodeLensTestUnit: TCheckBox;
     FPairGuides: TCheckBox;
     FPairOwners: TCheckBox;
@@ -157,6 +159,7 @@ type
     FMethodToggleUpKey: TEdit;
     FMethodToggleDownKey: TEdit;
     FTestUnitKey: TEdit;
+    FBookmarkKey: TEdit;
     FUndoKey: TEdit;
     FRedoKey: TEdit;
     FEditorKeysPriority: TCheckBox;
@@ -385,6 +388,10 @@ type
     /// <summary>Zum Testen: Favoriten (#458).</summary>
     property FavoritesCheck: TCheckBox read FFavorites;
     property NotesCheck: TCheckBox read FNotes;
+    /// <summary>Zum Testen: benannte Lesezeichen (#622).</summary>
+    property BookmarksNamedCheck: TCheckBox read FBookmarksNamed;
+    property BookmarksSharedCheck: TCheckBox read FBookmarksShared;
+    property BookmarkKey: TEdit read FBookmarkKey;
     property FavoritesList: TListBox read FFavoritesList;
     property FavoritesRemove: TButton read FFavoritesRemove;
     property FavoritesRemoveAll: TButton read FFavoritesRemoveAll;
@@ -674,6 +681,9 @@ begin
   FInlayHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayHints));
   // Persönliche Notizen an Codezeilen (#545).
   FNotes := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNotes));
+  // Benannte Lesezeichen (#622): Funktion und Ablage für das Team; die Taste steht bei den Editorbefehlen.
+  FBookmarksNamed := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBookmarksNamed));
+  FBookmarksShared := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBookmarksShared));
   FCodeLensTestUnit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTestUnit));
 
   // Eigene Paarfarben und deren Reihenfolge je Thema.
@@ -727,6 +737,8 @@ begin
   FMethodToggleUpKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggleUp));
   FMethodToggleDownKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggleDown));
   FTestUnitKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTestUnit));
+  // „Lesezeichen setzen…“ (#622).
+  FBookmarkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd));
   FUndoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.UndoMenu));
   FRedoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.RedoMenu));
   FEditorKeysPriority := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorKeysPriority));
@@ -1416,6 +1428,7 @@ begin
   FMethodToggleUpKey.Text := ShortCutToText(TShortCut(ASettings.MethodToggleUpKey));
   FMethodToggleDownKey.Text := ShortCutToText(TShortCut(ASettings.MethodToggleDownKey));
   FTestUnitKey.Text := ShortCutToText(TShortCut(ASettings.TestUnitKey));
+  FBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.BookmarkKey));
   FEditorKeysPriority.Checked := ASettings.EditorKeysPriority;
   FSlashCommands.Checked := ASettings.SlashCommands;
   ServerPathChange(nil);
@@ -1449,6 +1462,8 @@ begin
   FInactiveDim.Checked := ASettings.InactiveDim;
   FInlayHints.Checked := ASettings.InlayHints;
   FNotes.Checked := ASettings.Notes;
+  FBookmarksNamed.Checked := ASettings.BookmarksNamed;
+  FBookmarksShared.Checked := ASettings.BookmarksShared;
   FCodeLensTestUnit.Checked := ASettings.CodeLensTestUnit;
   FPairGuides.Checked := ASettings.PairGuides;
   FPairOwners.Checked := ASettings.PairOwners;
@@ -1570,6 +1585,7 @@ begin
   ASettings.MethodToggleUpKey := Integer(TextToShortCut(Trim(FMethodToggleUpKey.Text)));
   ASettings.MethodToggleDownKey := Integer(TextToShortCut(Trim(FMethodToggleDownKey.Text)));
   ASettings.TestUnitKey := Integer(TextToShortCut(Trim(FTestUnitKey.Text)));
+  ASettings.BookmarkKey := Integer(TextToShortCut(Trim(FBookmarkKey.Text)));
   ASettings.UndoKey := Integer(TextToShortCut(Trim(FUndoKey.Text)));
   ASettings.RedoKey := Integer(TextToShortCut(Trim(FRedoKey.Text)));
   ASettings.UpdatesCheck := FUpdatesCheck.Checked;
@@ -1603,6 +1619,8 @@ begin
   ASettings.InactiveDim := FInactiveDim.Checked;
   ASettings.InlayHints := FInlayHints.Checked;
   ASettings.Notes := FNotes.Checked;
+  ASettings.BookmarksNamed := FBookmarksNamed.Checked;
+  ASettings.BookmarksShared := FBookmarksShared.Checked;
   ASettings.CodeLensTestUnit := FCodeLensTestUnit.Checked;
   ASettings.PairGuides := FPairGuides.Checked;
   ASettings.PairOwners := FPairOwners.Checked;

@@ -112,7 +112,8 @@ uses
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Settings.Store,
   Atlas.IDE.Undo.Changes,
-  Atlas.IDE.Notes.Service;
+  Atlas.IDE.Notes.Service,
+  Atlas.IDE.Bookmarks.Service;
 
 const
   // Code-Aktionen und Befehle des Servers; Befehle können projektweit arbeiten.
@@ -339,6 +340,32 @@ begin
         procedure
         begin
           TAtlasIdeNotes.ShowList;
+        end);
+    end);
+  // Benannte Lesezeichen (#622): wie die Notizen nach Rechtsklick in die Rinne für die angeklickte Zeile.
+  FContextMenu.Add('-', nil, nil);
+  FContextMenu.Add('Atlas.BookmarkAdd', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd),
+    function: Integer
+    begin
+      Result := 0;
+      if TAtlasIdeSettings.Current.BookmarksNamed then
+        Result := TAtlasIdeSettings.Current.BookmarkKey;
+    end,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Bookmarks,
+        procedure
+        begin
+          TAtlasIdeBookmarks.AddBookmark;
+        end);
+    end);
+  FContextMenu.Add('Atlas.BookmarkGoTo', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuGoTo), nil,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Bookmarks,
+        procedure
+        begin
+          TAtlasIdeBookmarks.GoToBookmark;
         end);
     end);
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then

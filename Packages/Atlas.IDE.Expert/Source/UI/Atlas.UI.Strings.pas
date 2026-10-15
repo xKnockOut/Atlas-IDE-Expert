@@ -311,7 +311,14 @@ type
     NotesMenuAdd, NotesMenuDelete, NotesMenuList, NotesDialogTitle, NotesDialogHint, NotesDialogSave,
     NotesDialogCancel, NotesDialogDelete, NotesListTitle, NotesOrphanGroup, NotesOrphanEntry, NotesEdit,
     NotesDelete, NotesDeleteConfirm, NotesTipTitle, NotesTipMore, NotesDisabled, NotesNoEditor, NotesNoProject,
-    NotesNone, NotesSaveFailed, SettingsNotes);
+    NotesNone, NotesSaveFailed, SettingsNotes,
+    BookmarksMenuAdd, BookmarksMenuGoTo, BookmarksMenuWindow, BookmarksCaption, BookmarksDialogTitle,
+    BookmarksDialogPrompt, BookmarksDialogOk, BookmarksDialogCancel, BookmarksFilterHint, BookmarksColumnName,
+    BookmarksColumnFile, BookmarksColumnMethod, BookmarksColumnLine, BookmarksLost, BookmarksEmpty,
+    BookmarksRename, BookmarksDelete, BookmarksDeleteConfirm, BookmarksTipTitle, BookmarksTipMore,
+    BookmarksDisabled, BookmarksNoEditor, BookmarksNoProject, BookmarksNone, BookmarksSaveFailed,
+    BookmarksLostJump, BookmarksListTitle, BookmarksStoredLocal, BookmarksStoredShared, BookmarksNoProjectList,
+    SettingsBookmarksNamed, SettingsBookmarksShared);
 
   TAtlasStrings = class
   private class var
@@ -917,7 +924,22 @@ const
      'Für eine Notiz zuerst eine Datei im Editor öffnen.',
      'Notizen gehören zu einem Projekt; bitte zuerst ein Projekt öffnen.', 'An dieser Zeile steht keine Notiz.',
      'Notizen konnten nicht gespeichert werden.',
-     'Persönliche Notizen an Codezeilen (Symbol in der Rinne, nicht im Quelltext)'),
+     'Persönliche Notizen an Codezeilen (Symbol in der Rinne, nicht im Quelltext)',
+     'Lesezeichen setzen…', 'Gehe zu Lesezeichen…', 'Lesezeichen-Fenster', 'Atlas-Lesezeichen',
+     'Lesezeichen – %s, Zeile %d', 'Name des Lesezeichens:', 'Setzen', 'Abbrechen',
+     'Filtern: Name, Datei, Methode oder Zeile', 'Name', 'Datei', 'Methode', 'Zeilenvorschau', 'nicht gefunden',
+     'Noch keine Lesezeichen: „Lesezeichen setzen…“ im Kontextmenü des Editors, im Menü Atlas oder per Tastenkürzel.',
+     'Umbenennen', 'Löschen', 'Lesezeichen „%s“ löschen?', 'Lesezeichen', '%d Lesezeichen an dieser Zeile',
+     'Benannte Lesezeichen sind ausgeschaltet (Tools › Optionen › Atlas, Reiter Editor).',
+     'Für ein Lesezeichen zuerst eine Datei im Editor öffnen.',
+     'Lesezeichen gehören zu einem Projekt; bitte zuerst ein Projekt öffnen.',
+     'Das Projekt hat noch keine Lesezeichen.', 'Lesezeichen konnten nicht gespeichert werden.',
+     'Lesezeichen „%s“ nicht gefunden; der Editor zeigt die letzte bekannte Stelle.',
+     'Lesezeichen in %s: %d, davon %d nicht gefunden',
+     'Lokal in .atlas-bookmarks.json neben der Projektdatei (nicht eingecheckt)',
+     'Für das Team in atlas-bookmarks.json neben der Projektdatei (zum Einchecken)', 'Kein Projekt geöffnet.',
+     'Benannte Lesezeichen (Seitenfenster, Symbol in der Rinne)',
+     'Lesezeichen im Repository für das Team speichern (atlas-bookmarks.json statt .atlas-bookmarks.json)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1489,7 +1511,21 @@ const
      'Personal notes are switched off (Tools › Options › Atlas, Editor tab).',
      'Open a file in the editor first to add a note.', 'Notes belong to a project; please open a project first.',
      'There is no note on this line.', 'Notes could not be saved.',
-     'Personal notes on code lines (gutter icon, not in the source)'));
+     'Personal notes on code lines (gutter icon, not in the source)',
+     'Set bookmark…', 'Go to bookmark…', 'Bookmarks window', 'Atlas bookmarks', 'Bookmark – %s, line %d',
+     'Bookmark name:', 'Set', 'Cancel', 'Filter: name, file, method or line', 'Name', 'File', 'Method', 'Line preview',
+     'not found',
+     'No bookmarks yet: use “Set bookmark…” in the editor context menu, the Atlas menu or its shortcut.',
+     'Rename', 'Delete', 'Delete bookmark “%s”?', 'Bookmark', '%d bookmarks on this line',
+     'Named bookmarks are switched off (Tools › Options › Atlas, Editor tab).',
+     'Open a file in the editor first to set a bookmark.',
+     'Bookmarks belong to a project; please open a project first.', 'The project has no bookmarks yet.',
+     'Bookmarks could not be saved.', 'Bookmark “%s” not found; the editor shows its last known location.',
+     'Bookmarks in %s: %d, %d of them not found',
+     'Local in .atlas-bookmarks.json next to the project file (not committed)',
+     'For the team in atlas-bookmarks.json next to the project file (to commit)', 'No project open.',
+     'Named bookmarks (side window, gutter icon)',
+     'Store bookmarks in the repository for the team (atlas-bookmarks.json instead of .atlas-bookmarks.json)'));
 
 { TAtlasStrings }
 
