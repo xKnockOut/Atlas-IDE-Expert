@@ -649,6 +649,29 @@ Vorbereitung: Paket mit `whatsnew.json` (Release oder `pwsh Tools/Update-WhatsNe
 | NA9 | Optionen: Karte „Neu in Atlas“ = nie; dann = immer | keine Karte, kein Eintrag im Kontextmenü; mit „immer“ bleibt die Karte der aktuellen Version auch nach „Gelesen“ und Neustart stehen |
 | NA10 | `whatsnew.json` löschen, „Alle Versionen“ wählen | Meldung „Neu in Atlas: keine Neuigkeiten gefunden …“, keine Karte |
 
+### Projekte mit Zustand (#592)
+
+Vorbereitung: zwei Projekte in Git (eins auf `main`, eins auf einem Feature-Branch mit ungespeicherten Änderungen), ein Projekt ohne Versionsverwaltung, eine Projektgruppe. Je Projekt einmal öffnen und wieder schließen. Die Zusammenfassungen stehen in `%LOCALAPPDATA%\Atlas\projects\*.json`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PZ1 | Willkommensseite (bzw. Fenster „Atlas-Start“) öffnen | Bereich „Projekte“ mit den zuletzt geschlossenen Projekten der IDE, höchstens 8; je Zeile Name, gekürzter Pfad, Branch bzw. SVN-Pfad und Marken |
+| PZ2 | Projekt auf `main` fehlerfrei bauen (Strg+F9), schließen | grüne Marke „Build 0/0/0“, Branch `main`, keine Marke „geändert“ |
+| PZ3 | Im Feature-Projekt zwei Fehler einbauen, bauen, schließen; auf der Willkommensseite die rote Marke „2 Fehler“ anklicken | Zeile zeigt rote Marke „2 Fehler“; Klick öffnet das Projekt und die Unit mit dem Cursor an der ersten Fehlerstelle |
+| PZ4 | Klick auf die Zeile (nicht auf eine Marke) | Projekt öffnet sich; solange es offen ist, steht es nicht in der Liste (die IDE führt es dann nicht unter „Closed Projects“) |
+| PZ5 | Feature-Projekt: Datei ändern und speichern (ohne Commit), Projekt schließen; Branch mit Upstream und einem lokalen Commit | gelbe Marke „n geändert“; neutrale Marke „↑1 ↓0“ |
+| PZ6 | Projekt ohne Versionsverwaltung | kein Branch, keine Marken „geändert“/„↑↓“, keine Fehlermeldung |
+| PZ7 | Prüfung beim Speichern an (#548), im geschlossenen Zustand zuletzt einen Syntaxfehler gespeichert | Marke „Prüfung: 1 Fehler“, nur wenn die Prüfung neuer als der letzte Build ist; Klick springt zur Stelle |
+| PZ8 | Maus über eine Zeile halten | Tooltip mit letztem Build (Zeit, Art, Konfiguration, Plattform, Zahlen), erster Meldung, Hintergrundprüfung, Branch/Revision, Änderungen und Hinweis zum Klick |
+| PZ9 | Netzlaufwerk trennen bzw. git aus dem PATH nehmen, Willkommensseite öffnen | Seite erscheint sofort; Branch und Marken aus der gespeicherten Zusammenfassung mit „Stand vom …“; kurz „wird abgefragt …“ |
+| PZ10 | Acht Projekte in der Liste, IDE neu starten | Willkommensseite ohne spürbare Verzögerung (< 200 ms für den Bereich); kein Server-Start; Branch-Abfrage läuft im Hintergrund |
+| PZ11 | Rechtsklick auf eine Zeile: „Ordner öffnen“; dann „Aus Liste entfernen“ | Explorer mit markierter Projektdatei; Zeile verschwindet und bleibt nach Neustart weg, bis das Projekt wieder geöffnet wird |
+| PZ12 | Projektgruppe bauen (Alle erzeugen), Gruppe schließen | Gruppe in der Liste mit dem Ergebnis des letzten Builds |
+| PZ13 | *Tools › Optionen › Atlas › Willkommensseite*: „Bereich ‚Projekte‘ …“ aus; Anzahl auf 3; „Branch und Änderungen … frisch abfragen“ aus | Bereich verschwindet bzw. zeigt drei Projekte; ohne frische Abfrage nur der gespeicherte Stand („Stand vom …“); 99 eingegeben wird als 30 gespeichert |
+| PZ14 | Dunkles und helles IDE-Thema, 150 % Skalierung | Text, Marken und Tooltip gut lesbar; Marken nicht abgeschnitten |
+| PZ15 | Delphi 12 bzw. Host „Atlas-Start“ | Bereich erscheint im Fenster „Atlas-Start“ mit demselben Inhalt |
+| PZ16 | Neu in Atlas: Schalter „Projekte mit Zustand“ aus und wieder an | Bereich verschwindet sofort und kommt zurück; Optionsseite zeigt denselben Wert |
+
 ## Atlas-Symbol (#751)
 
 | Nr. | Schritte | Erwartet |

@@ -31,8 +31,9 @@ type
     class function Read(out AMessages: TArray<TAtlasCompilerMessage>; out AInfo: string): Boolean; static;
   end;
 
+  /// <summary>AReadable: Der Reiter war lesbar (sonst sind AMessages leer und sagen nichts über den Lauf).</summary>
   TAtlasMessagesProc = reference to procedure(const AMessages: TArray<TAtlasCompilerMessage>;
-    const AProject: TAtlasCompileProject; ASucceeded: Boolean; const AInfo: string);
+    const AProject: TAtlasCompileProject; ASucceeded: Boolean; const AInfo: string; AReadable: Boolean);
 
   /// <summary>Liest nach jedem Compile den Reiter „Build“ und gibt die Meldungen weiter (#528).</summary>
   TAtlasMessageViewReader = class(TAtlasCompileParticipant)
@@ -168,17 +169,19 @@ begin
     var
       Messages: TArray<TAtlasCompilerMessage>;
       Info: string;
+      Readable: Boolean;
     begin
       FPending := False;
       Messages := nil;
+      Readable := False;
       try
-        TAtlasMessageView.Read(Messages, Info);
+        Readable := TAtlasMessageView.Read(Messages, Info);
       except
         on E: Exception do
           Info := Info + '; ' + E.ClassName + ': ' + E.Message;
       end;
       if Assigned(FOnMessages) then
-        FOnMessages(Messages, FProject, FSucceeded, Info);
+        FOnMessages(Messages, FProject, FSucceeded, Info, Readable);
     end);
 end;
 

@@ -80,6 +80,7 @@ uses
   Atlas.Core.Commands.Palette,
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.WhatsNew,
+  Atlas.IDE.Welcome.Projects,
   Atlas.IDE.Welcome.Commands,
   Atlas.IDE.Vcs.Service;
 
@@ -556,13 +557,25 @@ begin
   // Compilermeldungen aus dem Reiter „Build“ an den Server (#528).
   Events.Add(TAtlasMessageViewReader.Create(
     procedure(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
-      ASucceeded: Boolean; const AInfo: string)
+      ASucceeded: Boolean; const AInfo: string; AReadable: Boolean)
     var
       Messages: TArray<TAtlasCompilerMessage>;
+      Project: TAtlasCompileProject;
+      Succeeded, Readable: Boolean;
     begin
+      Messages := TAtlasCompilerMessages.Resolve(AMessages, AProject.FileName, KnownFiles(AProject.FileName));
+      // Projekt-Zusammenfassung für die Willkommensseite (#592): letzter Build bzw. letzte Hintergrundprüfung.
+      Project := AProject;
+      Succeeded := ASucceeded;
+      Readable := AReadable;
+      if (Welcome <> nil) and (Welcome.Projects <> nil) then
+        TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+          procedure
+          begin
+            Welcome.Projects.Recorded(Messages, Project, Succeeded, Readable);
+          end);
       if Manager = nil then
         Exit;
-      Messages := TAtlasCompilerMessages.Resolve(AMessages, AProject.FileName, KnownFiles(AProject.FileName));
       if Length(Messages) > 0 then
         Manager.Report(Format('Meldungsfenster: %s (z. B. %s, Zeile %d)', [AInfo, Messages[0].FileName,
           Messages[0].Line]))
@@ -863,6 +876,12 @@ begin
         if Palette <> nil then
           Palette.Execute(AId);
       end,
+      procedure(AText: string)
+      begin
+        GuardWarning(AText);
+      end);
+    // Bereich „Projekte“ (#592): Zustand je Projekt aus den Projekt-Zusammenfassungen.
+    Welcome.Projects := TAtlasIdeProjects.Create(
       procedure(AText: string)
       begin
         GuardWarning(AText);

@@ -34,7 +34,9 @@ type
     class function Provider: TAtlasVcsProvider; static;
     /// <summary>Umsetzung für AFolder (z. B. Ordner des Projekts); leer, wenn abgeschaltet oder ohne
     /// Arbeitskopie.</summary>
-    class function ForFolder(const AFolder: string): IAtlasVersionControl; static;
+    class function ForFolder(const AFolder: string): IAtlasVersionControl; overload; static;
+    /// <summary>Wie oben mit eigenem Zeitlimit je Aufruf (Willkommensseite: 1 s, #592).</summary>
+    class function ForFolder(const AFolder: string; ATimeoutMs: Cardinal): IAtlasVersionControl; overload; static;
     /// <summary>AWork im Hintergrund, danach ADone im Hauptthread; nach Stop wirkungslos.</summary>
     class procedure Run(const AWork, ADone: TProc); static;
   end;
@@ -53,6 +55,7 @@ uses
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Vcs.Worker,
   Atlas.Core.Vcs.Composition,
+  Atlas.Core.Vcs.Tools,
   Atlas.Core.Vcs.Adapters.ProcessRunner;
 
 var
@@ -162,6 +165,21 @@ begin
   if RunnerRef = nil then
     RunnerRef := TAtlasVcsProcessRunner.Create;
   Result := TAtlasVersionControl.Open(AFolder, Provider, RunnerRef);
+end;
+
+class function TAtlasIdeVcs.ForFolder(const AFolder: string; ATimeoutMs: Cardinal): IAtlasVersionControl;
+var
+  RunnerRef: IAtlasVcsRunner;
+begin
+  RunnerRef := Runner;
+  if RunnerRef = nil then
+    RunnerRef := TAtlasVcsProcessRunner.Create;
+  Result := TAtlasVersionControl.Open(AFolder, Provider, RunnerRef,
+    function(AKind: TAtlasVcsKind): string
+    begin
+      Result := TAtlasVcsTools.Find(AKind);
+    end,
+    ATimeoutMs);
 end;
 
 class procedure TAtlasIdeVcs.Run(const AWork, ADone: TProc);

@@ -56,6 +56,9 @@ type
     MaxUndoDepth = 200;
     MinUndoMaxSizeMb = 1;
     MaxUndoMaxSizeMb = 1024;
+    /// <summary>Grenzen für welcomePage.maxProjects (#592); wie TAtlasWelcomeProjects.MinMax/MaxMax.</summary>
+    MinWelcomeProjects = 1;
+    MaxWelcomeProjects = 30;
     MinPairGuideWidth = 1;
     MaxPairGuideWidth = 3;
     MinPairGuideOpacity = 10;
@@ -246,6 +249,13 @@ type
     /// <summary>Zuletzt gesehene Version der Karte „Neu in Atlas“ (#756); kein Schlüssel in atlas.json, nur
     /// Zustand des Plugins. '' vor dem ersten Start.</summary>
     WhatsNewSeen: string;
+    /// <summary>Bereich „Projekte“ mit Zustand je Projekt (#592, welcomePage.projectStatus).</summary>
+    WelcomePageProjectStatus: Boolean;
+    /// <summary>Anzahl der gezeigten Projekte (#592, welcomePage.maxProjects, 1–30).</summary>
+    WelcomePageMaxProjects: Integer;
+    /// <summary>Branch und Änderungen beim Anzeigen frisch abfragen (#592, welcomePage.refreshVcs); sonst gilt
+    /// der gespeicherte Stand.</summary>
+    WelcomePageRefreshVcs: Boolean;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -374,6 +384,9 @@ begin
   Result.WelcomePageSearchKey := $4045; // Strg+E
   Result.WelcomePageWhatsNew := 'afterUpdate';
   Result.WhatsNewSeen := '';
+  Result.WelcomePageProjectStatus := True;
+  Result.WelcomePageMaxProjects := 8;
+  Result.WelcomePageRefreshVcs := True;
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -395,6 +408,7 @@ begin
   // TShortCut ist ein Word.
   PaletteKey := EnsureRange(PaletteKey, 0, $FFFF);
   WelcomePageSearchKey := EnsureRange(WelcomePageSearchKey, 0, $FFFF);
+  WelcomePageMaxProjects := EnsureRange(WelcomePageMaxProjects, MinWelcomeProjects, MaxWelcomeProjects);
   CheckKey := EnsureRange(CheckKey, 0, $FFFF);
   CompletionKey := EnsureRange(CompletionKey, 0, $FFFF);
   SignatureKey := EnsureRange(SignatureKey, 0, $FFFF);
@@ -538,6 +552,10 @@ begin
   WelcomePageSearchKey := AStore.ReadInteger('WelcomePageSearchKey', Default.WelcomePageSearchKey);
   WelcomePageWhatsNew := AStore.ReadString('WelcomePageWhatsNew', Default.WelcomePageWhatsNew);
   WhatsNewSeen := AStore.ReadString('WhatsNewSeen', Default.WhatsNewSeen);
+  WelcomePageProjectStatus := AStore.ReadInteger('WelcomePageProjectStatus',
+    BoolValue(Default.WelcomePageProjectStatus)) <> 0;
+  WelcomePageMaxProjects := AStore.ReadInteger('WelcomePageMaxProjects', Default.WelcomePageMaxProjects);
+  WelcomePageRefreshVcs := AStore.ReadInteger('WelcomePageRefreshVcs', BoolValue(Default.WelcomePageRefreshVcs)) <> 0;
   Normalize;
 end;
 
@@ -635,6 +653,9 @@ begin
   AStore.WriteInteger('WelcomePageSearchKey', WelcomePageSearchKey);
   AStore.WriteString('WelcomePageWhatsNew', WelcomePageWhatsNew);
   AStore.WriteString('WhatsNewSeen', WhatsNewSeen);
+  AStore.WriteInteger('WelcomePageProjectStatus', BoolValue(WelcomePageProjectStatus));
+  AStore.WriteInteger('WelcomePageMaxProjects', WelcomePageMaxProjects);
+  AStore.WriteInteger('WelcomePageRefreshVcs', BoolValue(WelcomePageRefreshVcs));
 end;
 
 end.

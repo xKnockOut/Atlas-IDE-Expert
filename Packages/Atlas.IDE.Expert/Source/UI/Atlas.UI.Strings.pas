@@ -163,7 +163,14 @@ type
     WelcomeNewsShowAllCommand, WelcomeNewsMissing, WelcomeNewsNoSample, WelcomeNewsNoCommand,
     SettingsWelcomeWhatsNew, SettingsWelcomeWhatsNewOff, SettingsWelcomeWhatsNewAfterUpdate,
     SettingsWelcomeWhatsNewAlways,
-    VcsToolMissing);
+    VcsToolMissing,
+    WelcomeProjectsTitle, WelcomeProjectsEmpty, WelcomeProjectsBuild, WelcomeProjectsErrors,
+    WelcomeProjectsCheckErrors, WelcomeProjectsChanged, WelcomeProjectsSync, WelcomeProjectsRules,
+    WelcomeProjectsStale, WelcomeProjectsOpened, WelcomeProjectsQuerying, WelcomeProjectsOpenFolder,
+    WelcomeProjectsRemove, WelcomeProjectsHintBuild, WelcomeProjectsHintNoBuild, WelcomeProjectsHintCheck,
+    WelcomeProjectsHintFirst, WelcomeProjectsHintVcs, WelcomeProjectsHintChanged, WelcomeProjectsHintSync,
+    WelcomeProjectsHintRules, WelcomeProjectsHintClick, WelcomeProjectsMissing, SettingsWelcomeProjects,
+    SettingsWelcomeMaxProjects, SettingsWelcomeRefreshVcs);
 
   TAtlasStrings = class
   private class var
@@ -563,7 +570,17 @@ const
      'Neu in Atlas: alle Versionen', 'Neu in Atlas: keine Neuigkeiten gefunden (%s fehlt oder ist leer).',
      'Neu in Atlas: Beispieldatei nicht gefunden: %s', 'Neu in Atlas: Befehl nicht gefunden: %s',
      'Karte „Neu in Atlas“ zeigen:', 'nie', 'einmalig nach einem Update', 'immer',
-     'Atlas: %s nicht gefunden (nicht installiert?); Atlas arbeitet ohne %s-Angaben weiter (vcs.provider).'),
+     'Atlas: %s nicht gefunden (nicht installiert?); Atlas arbeitet ohne %s-Angaben weiter (vcs.provider).',
+     'Projekte', 'Noch keine zuletzt geöffneten Projekte.', 'Build %d/%d/%d', '%d Fehler', 'Prüfung: %d Fehler',
+     '%d geändert', '↑%d ↓%d', '%d neue Treffer', 'Stand vom %s', 'geöffnet %s', 'wird abgefragt …',
+     'Ordner öffnen', 'Aus Liste entfernen',
+     'Letzter Build %s (%s, %s %s): %d Fehler, %d Warnungen, %d Hinweise', 'Noch kein Build mit Atlas',
+     'Letzte Hintergrundprüfung %s: %d Fehler', 'Erste Meldung: %s (%d): %s', '%s %s: %s',
+     '%d geänderte oder neue Dateien', '%d Commits vor, %d hinter dem Upstream',
+     '%d neue Regeltreffer gegenüber der Baseline',
+     'Klick öffnet das Projekt; Klick auf eine rote Marke springt zur ersten Meldung.',
+     'Projekt nicht gefunden: %s', 'Bereich „Projekte“ mit Branch, Build und Prüfung je Projekt',
+     'Anzahl der gezeigten Projekte (1–30):', 'Branch und Änderungen beim Anzeigen frisch abfragen'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -939,7 +956,16 @@ const
      'New in Atlas: all versions', 'New in Atlas: nothing found (%s is missing or empty).',
      'New in Atlas: sample file not found: %s', 'New in Atlas: command not found: %s',
      'Show the "New in Atlas" card:', 'never', 'once after an update', 'always',
-     'Atlas: %s not found (not installed?); Atlas continues without %s information (vcs.provider).'));
+     'Atlas: %s not found (not installed?); Atlas continues without %s information (vcs.provider).',
+     'Projects', 'No recently opened projects yet.', 'Build %d/%d/%d', '%d error(s)', 'Check: %d error(s)',
+     '%d changed', '↑%d ↓%d', '%d new findings', 'as of %s', 'opened %s', 'querying …', 'Open folder',
+     'Remove from list', 'Last build %s (%s, %s %s): %d errors, %d warnings, %d hints',
+     'No build with Atlas yet', 'Last background check %s: %d errors', 'First message: %s (%d): %s', '%s %s: %s',
+     '%d changed or new files', '%d commits ahead, %d behind upstream',
+     '%d new rule findings compared to the baseline',
+     'Click opens the project; click on a red badge jumps to the first message.', 'Project not found: %s',
+     '"Projects" section with branch, build and check per project', 'Number of projects shown (1–30):',
+     'Query branch and changes when shown'));
 
 { TAtlasStrings }
 
