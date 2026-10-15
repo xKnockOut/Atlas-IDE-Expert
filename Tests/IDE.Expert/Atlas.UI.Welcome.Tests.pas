@@ -131,6 +131,8 @@ type
     procedure CardShowsTipAndButtons;
     [Test]
     procedure ClicksReachSource;
+    [Test]
+    procedure ImageFitsColumn;
   end;
 
   [TestFixture]
@@ -177,7 +179,9 @@ uses
   Atlas.Core.Welcome.Discover,
   Atlas.UI.Welcome.Discover,
   Atlas.Core.Welcome.Help,
-  Atlas.UI.Welcome.Help;
+  Atlas.UI.Welcome.Help,
+  System.IOUtils,
+  Vcl.Imaging.pngimage;
 
 type
   /// <summary>Quelle des Bereichs „Hilfe und Rückmeldung“ für die Tests; merkt sich die Aufrufe.</summary>
@@ -1811,6 +1815,56 @@ begin
     Assert.AreEqual(3, Integer(Length(Fake.Calls)));
   finally
     Host.Free;
+procedure TAtlasWelcomeDiscoverFrameTests.ImageFitsColumn;
+var
+  Host: TForm;
+  Fake: TFakeDiscover;
+  Source: IAtlasDiscoverSource;
+  Frame: TAtlasWelcomeDiscoverFrame;
+  Folder, FileName: string;
+  Png: TPngImage;
+begin
+  Folder := TPath.Combine(TPath.GetTempPath, 'AtlasDiscoverImage' + IntToStr(Random(1000000)));
+  ForceDirectories(Folder);
+  FileName := TPath.Combine(Folder, 'tipp.png');
+  Png := TPngImage.CreateBlank(COLOR_RGB, 8, TAtlasWelcomeDiscoverFrame.ImageWidth,
+    TAtlasWelcomeDiscoverFrame.ImageHeight);
+  try
+    Png.SaveToFile(FileName);
+  finally
+    Png.Free;
+  end;
+  Fake := DiscoverFake;
+  Fake.Card_.ImageFile := FileName;
+  Source := Fake;
+  Host := TForm.CreateNew(nil);
+  try
+    Frame := TAtlasWelcomeDiscoverFrame.Create(Host);
+    Frame.Parent := Host;
+    // Schmale Spalte: Bild oben, höchstens so breit wie die Spalte, Seitenverhältnis 16:9; Text darunter.
+    Frame.SetBounds(0, 0, 420, 200);
+    Frame.Source := Source;
+    Assert.IsTrue(Frame.Image.Visible, 'Bild geladen');
+    Assert.IsTrue(Frame.Image.Width <= Frame.ClientWidth);
+    Assert.IsTrue(Frame.Image.Width >= TAtlasWelcomeDiscoverFrame.ImageWidth, 'bei 100 % volle Größe, sonst mehr');
+    Assert.IsTrue(Abs(Frame.Image.Height - Frame.Image.Width * TAtlasWelcomeDiscoverFrame.ImageHeight div
+      TAtlasWelcomeDiscoverFrame.ImageWidth) <= 1, 'Seitenverhältnis bleibt');
+    Assert.IsTrue(Frame.TipTitle.Top >= Frame.Image.Top + Frame.Image.Height, 'Titel unter dem Bild');
+    Assert.AreEqual(Frame.Image.Left, Frame.TipTitle.Left, 'Text bündig mit dem Bild');
+    Assert.IsTrue(Frame.PreferredHeight > Frame.Image.Height, 'Höhe mit Bild');
+    // Breite Spalte: Text neben dem Bild.
+    Frame.SetBounds(0, 0, 2000, 200);
+    Frame.UpdateContent;
+    Assert.IsTrue(Frame.TipTitle.Left >= Frame.Image.Left + Frame.Image.Width, 'Titel neben dem Bild');
+    Assert.IsTrue(Frame.TipTitle.Top < Frame.Image.Top + Frame.Image.Height);
+    // Ohne Bild: kein Platz dafür.
+    Fake.Card_.ImageFile := '';
+    Frame.UpdateContent;
+    Assert.IsFalse(Frame.Image.Visible);
+    Assert.AreEqual(Frame.ScaleValue(TAtlasWelcomeDiscoverFrame.Indent), Frame.TipTitle.Left);
+  finally
+    Host.Free;
+    TDirectory.Delete(Folder, True);
   end;
 end;
 
