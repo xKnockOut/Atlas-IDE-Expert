@@ -35,6 +35,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Hints | `hints`: `xmlDocFull`, `xmlDocMaxLines` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Zahlenfeld | #654 |
 | Editor | `stringLiteral`: `style`, `lineBreak`, `maxLineLength` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl, Zahlenfeld | #312 |
 | Editor | `memberOrder`: `sections`, `members`, `sortFields`, `sortPublished` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Liste, Kontrollkästchen | #89 |
+| Projekt | `testUnits`: `pattern`, `folder`, `project` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Textfeld, Dateiauswahl | #274 |
 | Prüfregeln | `minConfidence` | `"medium"` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl | #144 |
 | Projekt | `exclude` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Liste mit Hinzufügen/Entfernen | #24 |
 | MCP | `mcp`: `disabledTools` | – | settings.json (Tools › Optionen › Atlas) | nein | Liste mit Hinzufügen/Entfernen | #99 |

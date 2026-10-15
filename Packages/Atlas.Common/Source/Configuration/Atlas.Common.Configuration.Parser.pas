@@ -69,6 +69,7 @@ type
     procedure ReadHints(ANode: TJsonNode);
     procedure ReadStringLiteral(ANode: TJsonNode);
     procedure ReadMemberOrder(ANode: TJsonNode);
+    procedure ReadTestUnits(ANode: TJsonNode);
     procedure ReadDfmPropertyRules(ANode: TJsonNode);
     function ReadDfmPropertyRule(ANode: TJsonNode; out ARule: TDfmPropertyRule): Boolean;
     procedure ReadHighlight(ANode: TJsonNode);
@@ -779,6 +780,53 @@ begin
   end;
 end;
 
+procedure TValidator.ReadTestUnits(ANode: TJsonNode);
+var
+  Index: Integer;
+  Key, Text: string;
+  Value: TJsonNode;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"testUnits" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    Value := ANode[Index];
+    if Key = 'pattern' then
+    begin
+      if ExpectString(Value, Key, Text) then
+      begin
+        // Ohne {unit} hätten alle Units dieselbe Testunit.
+        if Pos('{unit}', Text) = 0 then
+          ReportNode(Value, '"testUnits.pattern" muss {unit} enthalten')
+        else
+          FSettings.TestUnits.Pattern := Text;
+      end;
+    end
+    else if Key = 'folder' then
+    begin
+      if ExpectString(Value, Key, Text) then
+        FSettings.TestUnits.Folder := Text;
+    end
+    else if Key = 'project' then
+    begin
+      if ExpectString(Value, Key, Text) then
+      begin
+        if (Text <> '') and not MatchText(ExtractFileExt(Text), ['.dproj', '.dpr']) then
+          ReportNode(Value, '"testUnits.project" muss eine .dproj oder .dpr sein')
+        else
+          FSettings.TestUnits.Project := Text;
+      end;
+    end
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "testUnits.%s"', [Key]), False);
+  end;
+end;
+
 procedure TValidator.ReadHighlight(ANode: TJsonNode);
 var
   Index, Item: Integer;
@@ -1193,6 +1241,8 @@ begin
         ReadStringLiteral(Value)
       else if Key = 'memberOrder' then
         ReadMemberOrder(Value)
+      else if Key = 'testUnits' then
+        ReadTestUnits(Value)
       else if Key = 'dfmPropertyRules' then
         ReadDfmPropertyRules(Value)
       else if Key = 'highlight' then
@@ -1521,6 +1571,8 @@ begin
       Result.StringLiteral := FileSettings.StringLiteral
     else if Key = 'memberOrder' then
       Result.MemberOrder := FileSettings.MemberOrder
+    else if Key = 'testUnits' then
+      Result.TestUnits := FileSettings.TestUnits
     else if Key = 'dfmPropertyRules' then
       Result.DfmPropertyRules := FileSettings.DfmPropertyRules
     else if Key = 'highlight' then

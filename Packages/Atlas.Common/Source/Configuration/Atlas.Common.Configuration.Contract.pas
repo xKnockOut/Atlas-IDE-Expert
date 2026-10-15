@@ -130,6 +130,17 @@ type
     class function Default: TMemberOrderSettings; static;
   end;
 
+  /// <summary>Testunits (#274, #189): Namensmuster, Ordner neuer Testunits und Testprojekt.</summary>
+  TTestUnitSettings = record
+    /// <summary>Name der Testunit; {unit} steht für den Namen der getesteten Unit.</summary>
+    Pattern: string;
+    /// <summary>Ordner neuer Testunits relativ zur Wurzel; leer = Ordner des Testprojekts.</summary>
+    Folder: string;
+    /// <summary>Testprojekt (.dproj oder .dpr) relativ zur Wurzel; leer = automatisch erkennen.</summary>
+    Project: string;
+    class function Default: TTestUnitSettings; static;
+  end;
+
   {$SCOPEDENUMS ON}
   /// <summary>Bedingung einer Eigenschaftsregel für Formulardateien (#309).</summary>
   TDfmCondition = (Equal, NotEqual, Contains, NotContains, Empty, NotEmpty);
@@ -278,6 +289,8 @@ type
     StringLiteral: TStringLiteralSettings;
     /// <summary>Klassenmitglieder ordnen (#89).</summary>
     MemberOrder: TMemberOrderSettings;
+    /// <summary>Testunits anlegen und wechseln (#274, #189).</summary>
+    TestUnits: TTestUnitSettings;
     /// <summary>Eigenschaftsregeln für Formulardateien (#309).</summary>
     DfmPropertyRules: TArray<TDfmPropertyRule>;
     /// <summary>Obergrenze für den Symbolindex in MB; 0 = unbegrenzt (#185).</summary>
@@ -504,6 +517,15 @@ begin
   Result.SortPublished := False;
 end;
 
+{ TTestUnitSettings }
+
+class function TTestUnitSettings.Default: TTestUnitSettings;
+begin
+  Result.Pattern := '{unit}.Tests';
+  Result.Folder := '';
+  Result.Project := '';
+end;
+
 { THintSettings }
 
 class function THintSettings.Default: THintSettings;
@@ -601,6 +623,7 @@ begin
   Result.UsesKeep := nil;
   Result.StringLiteral := TStringLiteralSettings.Default;
   Result.MemberOrder := TMemberOrderSettings.Default;
+  Result.TestUnits := TTestUnitSettings.Default;
   Result.DfmPropertyRules := nil;
   // Wie die Vorgabe des Plugins (#492): darüber zuerst Verwendungen auslagern.
   Result.MemoryBudgetMb := 256;

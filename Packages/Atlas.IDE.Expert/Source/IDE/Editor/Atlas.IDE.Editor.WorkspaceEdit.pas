@@ -23,7 +23,11 @@
 // Dateioperationen des Servers (#721: anlegen, umbenennen, löschen) plant
 // Atlas mit: Änderungen an einer neuen Datei gehen in ihren Inhalt, eine neue
 // Unit kommt ins aktive Projekt (wenn sie unter dessen Ordner liegt), eine
-// umbenannte bleibt in ihrem Projekt. Ausgeführt wird erst nach allen
+// umbenannte bleibt in ihrem Projekt. Ändert das Edit selbst eine .dproj
+// (neue Testunit, #274), kommt die neue Unit in dieses Projekt: Ist es
+// geladen, trägt die IDE sie ein und Atlas lässt die Änderungen an .dproj und
+// .dpr weg; sonst schreibt Atlas beide auf die Platte. Eine .dpr oder .dpk
+// öffnet Atlas nie im Editor, das würde das Projekt öffnen. Ausgeführt wird erst nach allen
 // Prüfungen: neue Dateien anlegen, dann die Textänderungen, zuletzt alte
 // Dateien schließen, austragen und in den Papierkorb verschieben.
 // Jede Änderung mehrerer Dateien landet als ein Satz im Änderungsprotokoll
@@ -72,6 +76,8 @@ type
     class function ProjectForNewFile(const AFileName: string): string; static;
     /// <summary>.dproj oder .groupproj?</summary>
     class function IsProjectFile(const AFileName: string): Boolean; static;
+    /// <summary>.dpr oder .dpk?</summary>
+    class function IsProjectSource(const AFileName: string): Boolean; static;
     /// <summary>Wendet AEdit an. AOpenUnopened: nicht geöffnete Dateien im Editor öffnen,
     /// sonst auf die Platte schreiben. AAction: Name der Aktion im Änderungsprotokoll (#721).</summary>
     class function Apply(const AEdit: TLspWorkspaceEdit; AOpenUnopened: Boolean;
@@ -168,6 +174,11 @@ end;
 class function TAtlasIdeWorkspaceEdit.IsProjectFile(const AFileName: string): Boolean;
 begin
   Result := SameText(ExtractFileExt(AFileName), '.dproj') or SameText(ExtractFileExt(AFileName), '.groupproj');
+end;
+
+class function TAtlasIdeWorkspaceEdit.IsProjectSource(const AFileName: string): Boolean;
+begin
+  Result := SameText(ExtractFileExt(AFileName), '.dpr') or SameText(ExtractFileExt(AFileName), '.dpk');
 end;
 
 class function TAtlasIdeWorkspaceEdit.ProjectOfFile(const AFileName: string): string;
@@ -293,6 +304,9 @@ var
   Sent, Base, FinalText: string;
   HasBase: Boolean;
   Index: Integer;
+  Edit: TLspWorkspaceEdit;
+  Owner: string;
+  OwnerLoaded: Boolean;
 
   function Content(const AFileName, AText: string): TAtlasTextFileContent;
   begin
@@ -413,6 +427,17 @@ var
       PlanCreate(AFileName, AProject, AContent);
   end;
 
+  /// <summary>Projekt für eine neue Datei: das des Edits (#274) oder das aktive.</summary>
+  function NewFileProject(const AFileName: string): string;
+  begin
+    if Owner = '' then
+      Result := ProjectForNewFile(AFileName)
+    else if OwnerLoaded and SameText(ExtractFileExt(AFileName), '.pas') then
+      Result := Owner
+    else
+      Result := '';
+  end;
+
   procedure PlanOperation(const AOperation: TLspFileOperation);
   var
     Source: TAtlasTextFileContent;
@@ -423,7 +448,7 @@ var
         begin
           if Exists(AOperation.FileName) and not MayReplace(AOperation.FileName, AOperation) then
             Exit;
-          SetTarget(AOperation.FileName, ProjectForNewFile(AOperation.FileName), Content(AOperation.FileName, ''));
+          SetTarget(AOperation.FileName, NewFileProject(AOperation.FileName), Content(AOperation.FileName, ''));
         end;
       TLspFileOperationKind.Rename:
         begin
@@ -478,8 +503,13 @@ begin
   Gone := TDictionary<string, Integer>.Create;
   Replaced := TDictionary<string, TReplacedFile>.Create;
   try
+    Edit := AEdit;
+    Owner := Edit.ProjectFile;
+    OwnerLoaded := (Owner <> '') and (Length(Edit.Operations) > 0) and (ProjectModule(Owner) <> nil);
+    if OwnerLoaded then
+      Edit := Edit.WithoutProject(Owner);
     // 1. Prüfen: Dateioperationen und alle Texte planen, noch nichts ändern.
-    for Operation in AEdit.Operations do
+    for Operation in Edit.Operations do
       try
         PlanOperation(Operation);
       except
@@ -490,7 +520,7 @@ begin
         end;
       end;
     Targets := nil;
-    for FileEdits in AEdit.Files do
+    for FileEdits in Edit.Files do
     begin
       if Gone.ContainsKey(KeyOf(FileEdits.FileName)) then
       begin
@@ -569,7 +599,7 @@ begin
         end
         // Ein Formular würde Atlas mit dem Designer öffnen; dessen Text passt nicht zu den Positionen.
         else if (Plan.Buffer = nil) and AOpenUnopened and not IsFormFile(FileEdits.FileName) and
-          FileExists(FileEdits.FileName) and Supports(BorlandIDEServices, IOTAActionServices, Actions) and
+          not IsProjectSource(FileEdits.FileName) and FileExists(FileEdits.FileName) and Supports(BorlandIDEServices, IOTAActionServices, Actions) and
           Actions.OpenFile(FileEdits.FileName) then
           Plan.Buffer := BufferOf(FileEdits.FileName);
         if Plan.Buffer <> nil then
