@@ -91,6 +91,7 @@ uses
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Commands.Editor,
+  Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Style.Symbol,
   Atlas.Core.Results.Model,
   Atlas.Core.Lsp.Progress;
@@ -163,6 +164,9 @@ begin
   AddItem(TAtlasTextId.EditorCopyQualified, 4, EditorClick);
   AddItem(TAtlasTextId.EditorCopyQualifiedParams, 5, EditorClick);
   AddItem(TAtlasTextId.EditorTestUnit, 6, EditorClick);
+  // Units suchen (#777): Atlas-Fenster und, falls es Strg+F12 übernimmt, der IDE-Dialog.
+  AddItem(TAtlasTextId.UnitSearchMenu, 7, EditorClick);
+  AddItem(TAtlasTextId.UnitSearchIdeDialog, 8, EditorClick);
   FRoot.Add(NewLine);
   // Ergebnisfenster (#400); Tag wählt den Befehl in ResultsClick.
   AddItem(TAtlasTextId.MenuReferences, 0, ResultsClick);
@@ -452,6 +456,8 @@ begin
         4: TAtlasIdeEditorCommands.CopyQualifiedName(False);
         5: TAtlasIdeEditorCommands.CopyQualifiedName(True);
         6: TAtlasIdeEditorCommands.SwitchTestUnit;
+        7: TAtlasIdeUnitSearch.Show;
+        8: TAtlasIdeUnitSearch.ShowIdeDialog;
       end;
     end);
 end;

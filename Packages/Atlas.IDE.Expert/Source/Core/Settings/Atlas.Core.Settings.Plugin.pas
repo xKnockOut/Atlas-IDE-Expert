@@ -228,6 +228,36 @@ type
     /// <summary>Fehlerbericht anonymisieren (#108, diagnostics.bugReport.anonymize): Pfade, Benutzername und
     /// Bezeichner ersetzen; Vorgabe an.</summary>
     BugReportAnonymize: Boolean;
+    /// <summary>Hauptschalter für das Fenster „Units suchen“ (#777, unitSearch.enabled); Vorgabe an.</summary>
+    UnitSearchEnabled: Boolean;
+    /// <summary>Strg+F12 und Ansicht › Units öffnen das Atlas-Fenster statt des IDE-Dialogs (#777, unitSearch.replaceIdeDialog); Vorgabe an.</summary>
+    UnitSearchReplaceIdeDialog: Boolean;
+    /// <summary>Eingeklappte Gruppen je Projektgruppe merken (#777, unitSearch.rememberCollapsed); Vorgabe an.</summary>
+    UnitSearchRememberCollapsed: Boolean;
+    /// <summary>Chipzeile mit Herkunft und Art (#777, unitSearch.filters); Vorgabe an.</summary>
+    UnitSearchFilters: Boolean;
+    /// <summary>Tippsyntax p:/t: im Suchfeld (#777, unitSearch.filterSyntax); Vorgabe an.</summary>
+    UnitSearchFilterSyntax: Boolean;
+    /// <summary>Vorschaubereich (#777, unitSearch.preview); Vorgabe an.</summary>
+    UnitSearchPreview: Boolean;
+    /// <summary>Formularskizze in der Vorschau (#777, unitSearch.preview.form); Vorgabe an.</summary>
+    UnitSearchPreviewForm: Boolean;
+    /// <summary>„Verwendet von“ in der Vorschau (#777, unitSearch.preview.usedBy); Vorgabe an.</summary>
+    UnitSearchPreviewUsedBy: Boolean;
+    /// <summary>Häkchen und Mehrfachauswahl (#777, unitSearch.multiSelect); Vorgabe an.</summary>
+    UnitSearchMultiSelect: Boolean;
+    /// <summary>Aktionsleiste (#777, unitSearch.actions); Vorgabe an.</summary>
+    UnitSearchActions: Boolean;
+    /// <summary>Aktion „In uses aufnehmen“ (#777, unitSearch.actions.addUses); Vorgabe an.</summary>
+    UnitSearchActionsAddUses: Boolean;
+    /// <summary>Pfadanzeige in der zweiten Zeile (#777, unitSearch.pathStyle): relative, compact, absolute.</summary>
+    UnitSearchPathStyle: string;
+    /// <summary>Gruppierung (#777, unitSearch.groupBy): none, project, folder.</summary>
+    UnitSearchGroupBy: string;
+    /// <summary>Vorgewählte Herkunft (#777, unitSearch.defaultScope): project, group, searchPath, library.</summary>
+    UnitSearchDefaultScope: string;
+    /// <summary>Eigenes Kürzel für das Atlas-Fenster (#777, TShortCut, 0 = keins); Strg+F12 über replaceIdeDialog.</summary>
+    UnitSearchKey: Integer;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -249,6 +279,18 @@ begin
     Result := TAtlasColors.PairsText(Pairs)
   else
     Result := '';
+end;
+
+/// <summary>AValue, wenn er (ohne Groß-/Kleinschreibung) unter AAllowed steht, in deren Schreibweise;
+/// sonst der erste erlaubte Wert.</summary>
+function Choice(const AValue: string; const AAllowed: array of string): string;
+var
+  Item: string;
+begin
+  for Item in AAllowed do
+    if SameText(Trim(AValue), Item) then
+      Exit(Item);
+  Result := AAllowed[0];
 end;
 
 function BoolValue(AValue: Boolean): Integer;
@@ -348,6 +390,21 @@ begin
   Result.RedoKey := $E05A; // Strg+Alt+Umschalt+Z
   Result.UpdatesCheck := False;
   Result.BugReportAnonymize := True;
+  Result.UnitSearchEnabled := True;
+  Result.UnitSearchReplaceIdeDialog := True;
+  Result.UnitSearchRememberCollapsed := True;
+  Result.UnitSearchFilters := True;
+  Result.UnitSearchFilterSyntax := True;
+  Result.UnitSearchPreview := True;
+  Result.UnitSearchPreviewForm := True;
+  Result.UnitSearchPreviewUsedBy := True;
+  Result.UnitSearchMultiSelect := True;
+  Result.UnitSearchActions := True;
+  Result.UnitSearchActionsAddUses := True;
+  Result.UnitSearchPathStyle := 'relative';
+  Result.UnitSearchGroupBy := 'project';
+  Result.UnitSearchDefaultScope := 'group';
+  Result.UnitSearchKey := 0;
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -395,6 +452,10 @@ begin
   PairGuideOpacity := EnsureRange(PairGuideOpacity, MinPairGuideOpacity, MaxPairGuideOpacity);
   PairColorsLight := NormalPairs(PairColorsLight);
   PairColorsDark := NormalPairs(PairColorsDark);
+  UnitSearchPathStyle := Choice(UnitSearchPathStyle, ['relative', 'compact', 'absolute']);
+  UnitSearchGroupBy := Choice(UnitSearchGroupBy, ['project', 'folder', 'none']);
+  UnitSearchDefaultScope := Choice(UnitSearchDefaultScope, ['group', 'project', 'searchPath', 'library']);
+  UnitSearchKey := EnsureRange(UnitSearchKey, 0, $FFFF);
 end;
 
 procedure TAtlasPluginSettings.Load(const AStore: IAtlasSettingsStore);
@@ -487,6 +548,21 @@ begin
   RedoKey := AStore.ReadInteger('RedoKey', Default.RedoKey);
   UpdatesCheck := AStore.ReadInteger('UpdatesCheck', BoolValue(Default.UpdatesCheck)) <> 0;
   BugReportAnonymize := AStore.ReadInteger('BugReportAnonymize', BoolValue(Default.BugReportAnonymize)) <> 0;
+  UnitSearchEnabled := AStore.ReadInteger('UnitSearchEnabled', BoolValue(Default.UnitSearchEnabled)) <> 0;
+  UnitSearchReplaceIdeDialog := AStore.ReadInteger('UnitSearchReplaceIdeDialog', BoolValue(Default.UnitSearchReplaceIdeDialog)) <> 0;
+  UnitSearchRememberCollapsed := AStore.ReadInteger('UnitSearchRememberCollapsed', BoolValue(Default.UnitSearchRememberCollapsed)) <> 0;
+  UnitSearchFilters := AStore.ReadInteger('UnitSearchFilters', BoolValue(Default.UnitSearchFilters)) <> 0;
+  UnitSearchFilterSyntax := AStore.ReadInteger('UnitSearchFilterSyntax', BoolValue(Default.UnitSearchFilterSyntax)) <> 0;
+  UnitSearchPreview := AStore.ReadInteger('UnitSearchPreview', BoolValue(Default.UnitSearchPreview)) <> 0;
+  UnitSearchPreviewForm := AStore.ReadInteger('UnitSearchPreviewForm', BoolValue(Default.UnitSearchPreviewForm)) <> 0;
+  UnitSearchPreviewUsedBy := AStore.ReadInteger('UnitSearchPreviewUsedBy', BoolValue(Default.UnitSearchPreviewUsedBy)) <> 0;
+  UnitSearchMultiSelect := AStore.ReadInteger('UnitSearchMultiSelect', BoolValue(Default.UnitSearchMultiSelect)) <> 0;
+  UnitSearchActions := AStore.ReadInteger('UnitSearchActions', BoolValue(Default.UnitSearchActions)) <> 0;
+  UnitSearchActionsAddUses := AStore.ReadInteger('UnitSearchActionsAddUses', BoolValue(Default.UnitSearchActionsAddUses)) <> 0;
+  UnitSearchPathStyle := AStore.ReadString('UnitSearchPathStyle', Default.UnitSearchPathStyle);
+  UnitSearchGroupBy := AStore.ReadString('UnitSearchGroupBy', Default.UnitSearchGroupBy);
+  UnitSearchDefaultScope := AStore.ReadString('UnitSearchDefaultScope', Default.UnitSearchDefaultScope);
+  UnitSearchKey := AStore.ReadInteger('UnitSearchKey', Default.UnitSearchKey);
   Normalize;
 end;
 
@@ -576,6 +652,21 @@ begin
   AStore.WriteInteger('RedoKey', RedoKey);
   AStore.WriteInteger('UpdatesCheck', BoolValue(UpdatesCheck));
   AStore.WriteInteger('BugReportAnonymize', BoolValue(BugReportAnonymize));
+  AStore.WriteInteger('UnitSearchEnabled', BoolValue(UnitSearchEnabled));
+  AStore.WriteInteger('UnitSearchReplaceIdeDialog', BoolValue(UnitSearchReplaceIdeDialog));
+  AStore.WriteInteger('UnitSearchRememberCollapsed', BoolValue(UnitSearchRememberCollapsed));
+  AStore.WriteInteger('UnitSearchFilters', BoolValue(UnitSearchFilters));
+  AStore.WriteInteger('UnitSearchFilterSyntax', BoolValue(UnitSearchFilterSyntax));
+  AStore.WriteInteger('UnitSearchPreview', BoolValue(UnitSearchPreview));
+  AStore.WriteInteger('UnitSearchPreviewForm', BoolValue(UnitSearchPreviewForm));
+  AStore.WriteInteger('UnitSearchPreviewUsedBy', BoolValue(UnitSearchPreviewUsedBy));
+  AStore.WriteInteger('UnitSearchMultiSelect', BoolValue(UnitSearchMultiSelect));
+  AStore.WriteInteger('UnitSearchActions', BoolValue(UnitSearchActions));
+  AStore.WriteInteger('UnitSearchActionsAddUses', BoolValue(UnitSearchActionsAddUses));
+  AStore.WriteString('UnitSearchPathStyle', UnitSearchPathStyle);
+  AStore.WriteString('UnitSearchGroupBy', UnitSearchGroupBy);
+  AStore.WriteString('UnitSearchDefaultScope', UnitSearchDefaultScope);
+  AStore.WriteInteger('UnitSearchKey', UnitSearchKey);
 end;
 
 end.

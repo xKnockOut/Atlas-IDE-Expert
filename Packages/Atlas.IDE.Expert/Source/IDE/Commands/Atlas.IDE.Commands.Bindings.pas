@@ -62,6 +62,7 @@ uses
   Atlas.IDE.Commands.Keys,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Results.Commands,
+  Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Undo.Changes;
 
 { TAtlasIdeEditorKeys.TBinding }
@@ -192,6 +193,11 @@ begin
     procedure
     begin
       TAtlasIdeEditorCommands.SwitchTestUnit;
+    end);
+  AddKey(Settings.UnitSearchKey, TAtlasStrings.Text(TAtlasTextId.UnitSearchTitle),
+    procedure
+    begin
+      TAtlasIdeUnitSearch.Show;
     end);
   AddKey(Settings.UndoKey, TAtlasStrings.Text(TAtlasTextId.UndoMenu),
     procedure

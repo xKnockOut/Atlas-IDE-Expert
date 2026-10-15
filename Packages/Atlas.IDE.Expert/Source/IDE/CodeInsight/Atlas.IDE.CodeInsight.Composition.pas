@@ -54,6 +54,7 @@ uses
   Atlas.Core.Results.Model,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Commands.Editor,
+  Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Commands.Bindings,
   Atlas.IDE.Forms.Designer,
   Atlas.Core.Status.Registry,
@@ -343,6 +344,16 @@ begin
     procedure
     begin
       TAtlasIdeEditorCommands.SwitchTestUnit;
+    end);
+  Palette.RegisterCommand('Atlas.UnitSearch', TAtlasStrings.Text(TAtlasTextId.UnitSearchTitle), '',
+    procedure
+    begin
+      TAtlasIdeUnitSearch.Show;
+    end);
+  Palette.RegisterCommand('Atlas.UnitSearchIde', TAtlasStrings.Text(TAtlasTextId.UnitSearchIdeDialog), '',
+    procedure
+    begin
+      TAtlasIdeUnitSearch.ShowIdeDialog;
     end);
   Palette.RegisterCommand('Atlas.ResetHistory', TAtlasStrings.Text(TAtlasTextId.PaletteResetHistory), '',
     procedure
@@ -683,6 +694,18 @@ begin
       begin
         GuardWarning(AText);
       end);
+    // Units suchen (#777): übernimmt Strg+F12, solange die Einstellungen es wollen.
+    TAtlasIdeUnitSearch.Install(
+      function: TLspSession
+      begin
+        Result := nil;
+        if Manager <> nil then
+          Result := Manager.ActiveSession;
+      end,
+      procedure(AText: string)
+      begin
+        GuardWarning(AText);
+      end);
   end;
   // Änderungsprotokoll vor den Tasten: Strg+Alt+Z braucht es (#721).
   if Basic and (TAtlasIdeUndo.Journal = nil) then
@@ -948,6 +971,7 @@ begin
   FreeAndNil(Updates);
   if CommandsInstalled then
   begin
+    TAtlasIdeUnitSearch.Uninstall;
     TAtlasIdeEditorCommands.Uninstall;
     TAtlasIdeResults.Uninstall;
   end;

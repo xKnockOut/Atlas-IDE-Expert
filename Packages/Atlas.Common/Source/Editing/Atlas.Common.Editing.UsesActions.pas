@@ -65,11 +65,20 @@ type
     class function MissingUnits(const ATokens: TArray<TPascalToken>; ATree: TSyntaxTree;
       const APosition: TTextPosition; const ADeclaring: TUnitsDeclaringFunc;
       const ANamespaces: TArray<string>): TArray<string>; static;
+    /// <summary>Edits, die AUnits ins uses eintragen (#777, „In uses aufnehmen“): ins interface, wenn der
+    /// interface-Teil schon ein Symbol nennt, das die Unit auf Unit-Ebene deklariert (ADeclaring), sonst ins
+    /// implementation-uses (bei
+    /// Programmen ins einzige uses). Schon eingebundene Units (auch über Namespaces), doppelte Namen und
+    /// die eigene Unit entfallen; AAdded nennt die eingetragenen. False ohne Edit.</summary>
+    class function AddUnits(const ATokens: TArray<TPascalToken>; const AUnits: TArray<string>;
+      const ADeclaring: TUnitsDeclaringFunc; const ANamespaces: TArray<string>; const ALineBreak: string;
+      out AEdits: TArray<TRuleEdit>; out AAdded: TArray<string>): Boolean; static;
   end;
 
 implementation
 
 uses
+  System.Math,
   System.Generics.Collections,
   Atlas.Common.Editing.UsesClause;
 
@@ -322,6 +331,71 @@ begin
   for Candidate in Candidates do
     if not ContainsText_(Result, Candidate) then
       Result := Result + [Candidate];
+end;
+
+class function TUsesActions.AddUnits(const ATokens: TArray<TPascalToken>; const AUnits: TArray<string>;
+  const ADeclaring: TUnitsDeclaringFunc; const ANamespaces: TArray<string>; const ALineBreak: string;
+  out AEdits: TArray<TRuleEdit>; out AAdded: TArray<string>): Boolean;
+var
+  Used, ForInterface, ForImplementation, InterfaceNeeds: TArray<string>;
+  Identifiers: TDictionary<string, Integer>;
+  Pair: TPair<string, Integer>;
+  Name, Own: string;
+  Index, InterfaceOffset, ImplementationOffset: Integer;
+  Edit: TRuleEdit;
+begin
+  AEdits := nil;
+  AAdded := nil;
+  Used := TUsesClauses.UsedUnits(ATokens);
+  Own := TUsesClauses.OwnName(ATokens);
+  ForInterface := nil;
+  ForImplementation := nil;
+  InterfaceOffset := -1;
+  ImplementationOffset := -1;
+  for Index := 0 to High(ATokens) do
+    if ATokens[Index].IsKeyword('interface') and (InterfaceOffset < 0) then
+      InterfaceOffset := ATokens[Index].Offset
+    else if ATokens[Index].IsKeyword('implementation') then
+    begin
+      ImplementationOffset := ATokens[Index].Offset;
+      Break;
+    end;
+  // Units, die Bezeichner des interface-Teils deklarieren.
+  InterfaceNeeds := nil;
+  if (InterfaceOffset >= 0) and (ImplementationOffset >= 0) and Assigned(ADeclaring) then
+  begin
+    Identifiers := CollectIdentifiers(ATokens, TUsesClauses.Clauses(ATokens));
+    try
+      for Pair in Identifiers do
+        if Pair.Value and InInterfacePart <> 0 then
+          for Name in ADeclaring(Pair.Key) do
+            if ContainsText_(AUnits, Name) and not ContainsText_(InterfaceNeeds, Name) then
+              InterfaceNeeds := InterfaceNeeds + [Name];
+    finally
+      Identifiers.Free;
+    end;
+  end;
+  for Name in AUnits do
+  begin
+    if (Trim(Name) = '') or SameText(Name, Own) or ContainsText_(AAdded, Name) or
+      TUsesClauses.IsUsed(Used, Name, ANamespaces) then
+      Continue;
+    if ContainsText_(InterfaceNeeds, Name) or (ImplementationOffset < 0) then
+      ForInterface := ForInterface + [Name]
+    else
+      ForImplementation := ForImplementation + [Name];
+    AAdded := AAdded + [Name];
+  end;
+  // Ein Edit je Abschnitt; Programme und Units ohne implementation haben nur ein uses.
+  if (Length(ForInterface) > 0) and TUsesClauses.AddUnit(ATokens, Max(0, InterfaceOffset),
+    string.Join(', ', ForInterface), ALineBreak, Edit) then
+    AEdits := AEdits + [Edit];
+  if (Length(ForImplementation) > 0) and TUsesClauses.AddUnit(ATokens, ImplementationOffset,
+    string.Join(', ', ForImplementation), ALineBreak, Edit) then
+    AEdits := AEdits + [Edit];
+  Result := Length(AEdits) > 0;
+  if not Result then
+    AAdded := nil;
 end;
 
 end.
