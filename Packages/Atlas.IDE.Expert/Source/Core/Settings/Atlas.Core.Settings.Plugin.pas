@@ -178,6 +178,9 @@ type
     StatusFieldHidden: string;
     /// <summary>Kurztext neben „Atlas“ (#591, statusField.showSummary).</summary>
     StatusFieldSummary: Boolean;
+    /// <summary>Doppelklick auf das Feld öffnet die Schnellschalter wie ein Rechtsklick
+    /// (statusField.doubleClick).</summary>
+    StatusFieldDoubleClick: Boolean;
     /// <summary>Tastenkürzel für das Fenster der Schnellschalter (#604, TShortCut, 0 = keins) und Vorrang wie
     /// bei den anderen Atlas-Tasten (#494).</summary>
     QuickToggleKey: Integer;
@@ -319,6 +322,7 @@ begin
   Result.StatusField := True;
   Result.StatusFieldHidden := '';
   Result.StatusFieldSummary := True;
+  Result.StatusFieldDoubleClick := True;
   Result.QuickToggleKey := $E041; // Strg+Umschalt+Alt+A
   Result.QuickToggleKeyPriority := False;
   Result.SafeAskAfterCrash := True;
@@ -450,6 +454,8 @@ begin
   StatusField := AStore.ReadInteger('StatusField', BoolValue(Default.StatusField)) <> 0;
   StatusFieldHidden := Trim(AStore.ReadString('StatusFieldHidden', Default.StatusFieldHidden));
   StatusFieldSummary := AStore.ReadInteger('StatusFieldSummary', BoolValue(Default.StatusFieldSummary)) <> 0;
+  StatusFieldDoubleClick :=
+    AStore.ReadInteger('StatusFieldDoubleClick', BoolValue(Default.StatusFieldDoubleClick)) <> 0;
   QuickToggleKey := AStore.ReadInteger('QuickToggleKey', Default.QuickToggleKey);
   QuickToggleKeyPriority :=
     AStore.ReadInteger('QuickToggleKeyPriority', BoolValue(Default.QuickToggleKeyPriority)) <> 0;
@@ -538,6 +544,7 @@ begin
   AStore.WriteInteger('StatusField', BoolValue(StatusField));
   AStore.WriteString('StatusFieldHidden', Trim(StatusFieldHidden));
   AStore.WriteInteger('StatusFieldSummary', BoolValue(StatusFieldSummary));
+  AStore.WriteInteger('StatusFieldDoubleClick', BoolValue(StatusFieldDoubleClick));
   AStore.WriteInteger('QuickToggleKey', QuickToggleKey);
   AStore.WriteInteger('QuickToggleKeyPriority', BoolValue(QuickToggleKeyPriority));
   AStore.WriteInteger('SafeAskAfterCrash', BoolValue(SafeAskAfterCrash));

@@ -766,15 +766,18 @@ begin
   Assert.IsTrue(Settings.StatusField, 'statusField.enabled: Vorgabe an');
   Assert.IsTrue(Settings.StatusFieldSummary, 'statusField.showSummary: Vorgabe an');
   Assert.AreEqual('', Settings.StatusFieldHidden);
+  Assert.IsTrue(Settings.StatusFieldDoubleClick, 'statusField.doubleClick: Vorgabe an');
   Store := TMemoryStore.Create;
   Settings.StatusField := False;
   Settings.StatusFieldSummary := False;
+  Settings.StatusFieldDoubleClick := False;
   Settings.StatusFieldHidden := ' atlas.file, test.fehler ';
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.StatusField);
   Assert.IsFalse(Loaded.StatusFieldSummary);
+  Assert.IsFalse(Loaded.StatusFieldDoubleClick);
   Assert.AreEqual('atlas.file, test.fehler', Loaded.StatusFieldHidden);
 end;
 

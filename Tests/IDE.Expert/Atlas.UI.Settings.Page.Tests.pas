@@ -280,19 +280,23 @@ begin
   Settings := TAtlasPluginSettings.Defaults;
   Settings.StatusField := False;
   Settings.StatusFieldSummary := False;
+  Settings.StatusFieldDoubleClick := False;
   Settings.StatusFieldHidden := 'atlas.file';
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
     Assert.IsFalse(Page.StatusField.Checked);
     Assert.IsFalse(Page.StatusSummary.Checked);
+    Assert.IsFalse(Page.StatusDoubleClick.Checked);
     Assert.AreEqual('atlas.file', Page.StatusHidden.Text);
     Page.StatusField.Checked := True;
+    Page.StatusDoubleClick.Checked := True;
     Page.StatusHidden.Text := ' atlas.file, atlas.index ';
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsTrue(Saved.StatusField);
     Assert.IsFalse(Saved.StatusFieldSummary);
+    Assert.IsTrue(Saved.StatusFieldDoubleClick);
     Assert.AreEqual('atlas.file, atlas.index', Saved.StatusFieldHidden);
   finally
     Page.Free;
