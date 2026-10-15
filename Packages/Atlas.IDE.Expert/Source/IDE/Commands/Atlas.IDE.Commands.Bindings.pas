@@ -3,13 +3,17 @@
 // Tastenkürzel der Editorbefehle (#399) als eine Tastaturbindung der IDE
 // (IOTAKeyboardBinding): Code-Aktionen (Alt+Enter), Auswahl erweitern
 // (Strg+W) und verkleinern (Strg+Umschalt+W), Gehe zu Implementierung
-// (Strg+Alt+I), Gehe zu Typdefinition (ohne Vorgabe) sowie letzte
+// (Strg+Alt+I), Gehe zu Typdefinition (ohne Vorgabe), letzte
 // Atlas-Änderung zurücknehmen (Strg+Alt+Z) und wiederherstellen
-// (Strg+Alt+Umschalt+Z, #721). Jede Taste wird wie
+// (Strg+Alt+Umschalt+Z, #721) sowie Deklaration ⇄ Implementierung
+// (Strg+Umschalt+↑/↓, #775). Jede Taste wird wie
 // die der Befehlspalette vorher auf Konflikte geprüft (#494); ohne Vorrang
 // bleibt eine fremde Belegung aktiv. Nach geänderten Einstellungen meldet
 // Rebind die Bindung neu an. Der Befehl läuft nach der Tastenverarbeitung
-// (ForceQueue), nicht in der Bindung selbst.
+// (ForceQueue), nicht in der Bindung selbst. Ausnahme sind Befehle mit
+// Rückfall (AddAttemptKey): Sie laufen sofort, und ohne Treffer geht die
+// Taste an die nächste Bindung (krNextProc), beim Wechsel Deklaration ⇄
+// Implementierung also an die Klassennavigation der IDE.
 
 interface
 
@@ -25,6 +29,8 @@ type
     TKey = record
       Key: Word;
       Proc: TProc;
+      /// <summary>Statt Proc: sofort ausführen; False gibt die Taste an die nächste Bindung weiter.</summary>
+      Attempt: TFunc<Boolean>;
     end;
 
     TBinding = class(TNotifierObject, IOTAKeyboardBinding)
@@ -45,6 +51,7 @@ type
     FKeys: TArray<TKey>;
     FBound: string;
     procedure AddKey(AKey: Integer; const AWhat: string; const AProc: TProc);
+    procedure AddAttemptKey(AKey: Integer; const AWhat: string; const AAttempt: TFunc<Boolean>);
   public
     constructor Create;
     destructor Destroy; override;
@@ -95,6 +102,8 @@ procedure TAtlasIdeEditorKeys.TBinding.Pressed(const Context: IOTAKeyContext; Ke
 var
   Key: TKey;
   Proc: TProc;
+  Attempt: TFunc<Boolean>;
+  Done: Boolean;
 begin
   BindingResult := krUnhandled;
   if FOwner = nil then
@@ -102,6 +111,21 @@ begin
   for Key in FOwner.FKeys do
     if Key.Key = KeyCode then
     begin
+      if Assigned(Key.Attempt) then
+      begin
+        Attempt := Key.Attempt;
+        Done := False;
+        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+          procedure
+          begin
+            Done := Attempt();
+          end);
+        if Done then
+          BindingResult := krHandled
+        else
+          BindingResult := krNextProc;
+        Exit;
+      end;
       BindingResult := krHandled;
       Proc := Key.Proc;
       // Keine Exception an die IDE (#493); erst nach der Tastenverarbeitung.
@@ -148,6 +172,24 @@ begin
     Exit;
   Key.Key := Word(AKey);
   Key.Proc := AProc;
+  Key.Attempt := nil;
+  FKeys := FKeys + [Key];
+  FBound := FBound + IntToStr(AKey) + ';';
+end;
+
+procedure TAtlasIdeEditorKeys.AddAttemptKey(AKey: Integer; const AWhat: string; const AAttempt: TFunc<Boolean>);
+var
+  Existing, Key: TKey;
+begin
+  // Dieselbe Taste zweimal (beide Felder gleich belegt) nur einmal binden.
+  for Existing in FKeys do
+    if Existing.Key = Word(AKey) then
+      Exit;
+  if not TAtlasIdeKeys.Decide(Word(AKey), TAtlasIdeSettings.Current.EditorKeysPriority, AWhat) then
+    Exit;
+  Key.Key := Word(AKey);
+  Key.Proc := nil;
+  Key.Attempt := AAttempt;
   FKeys := FKeys + [Key];
   FBound := FBound + IntToStr(AKey) + ';';
 end;
@@ -188,6 +230,20 @@ begin
     begin
       TAtlasIdeEditorCommands.GoToTypeDefinition;
     end);
+  // Deklaration ⇄ Implementierung (#775): aus = Taste bleibt bei der Klassennavigation der IDE.
+  if Settings.MethodToggle then
+  begin
+    AddAttemptKey(Settings.MethodToggleUpKey, TAtlasStrings.Text(TAtlasTextId.EditorMethodToggle),
+      function: Boolean
+      begin
+        Result := TAtlasIdeEditorCommands.TryToggleMethod;
+      end);
+    AddAttemptKey(Settings.MethodToggleDownKey, TAtlasStrings.Text(TAtlasTextId.EditorMethodToggle),
+      function: Boolean
+      begin
+        Result := TAtlasIdeEditorCommands.TryToggleMethod;
+      end);
+  end;
   AddKey(Settings.UndoKey, TAtlasStrings.Text(TAtlasTextId.UndoMenu),
     procedure
     begin

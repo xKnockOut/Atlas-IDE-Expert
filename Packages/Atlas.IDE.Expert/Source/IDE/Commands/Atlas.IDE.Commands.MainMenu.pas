@@ -160,6 +160,7 @@ begin
   AddItem(TAtlasTextId.EditorExpand, 1, EditorClick);
   AddItem(TAtlasTextId.EditorShrink, 2, EditorClick);
   AddItem(TAtlasTextId.EditorTypeDefinition, 3, EditorClick);
+  AddItem(TAtlasTextId.EditorMethodToggle, 6, EditorClick);
   AddItem(TAtlasTextId.EditorCopyQualified, 4, EditorClick);
   AddItem(TAtlasTextId.EditorCopyQualifiedParams, 5, EditorClick);
   FRoot.Add(NewLine);
@@ -449,6 +450,7 @@ begin
         2: TAtlasIdeEditorCommands.ShrinkSelection;
         3: TAtlasIdeEditorCommands.GoToTypeDefinition;
         4: TAtlasIdeEditorCommands.CopyQualifiedName(False);
+        6: TAtlasIdeEditorCommands.ToggleMethod;
       else
         TAtlasIdeEditorCommands.CopyQualifiedName(True);
       end;
