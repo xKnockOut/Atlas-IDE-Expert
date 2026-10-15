@@ -27,6 +27,9 @@ type
   [TestFixture]
   TAtlasDiscoverTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure NeverUsedComesBeforeUsed;
     [Test]
@@ -162,6 +165,11 @@ begin
 end;
 
 { TAtlasDiscoverTests }
+
+procedure TAtlasDiscoverTests.WarmUpFirstUse;
+begin
+  EnabledFollowsSettingAndCommand;
+end;
 
 procedure TAtlasDiscoverTests.NeverUsedComesBeforeUsed;
 var
@@ -306,6 +314,9 @@ begin
       Result := SameText(AName, 'UndoMultiFile');
     end;
   Assert.IsTrue(TAtlasDiscover.IsEnabled(List[2], SettingOn, CommandExists), 'Einstellung an');
+  // Die Closures liegen im selben Rahmen wie die Variablen, die sie halten: Kreis lösen.
+  SettingOn := nil;
+  CommandExists := nil;
 end;
 
 procedure TAtlasDiscoverTests.NewStartBeginsAfterLastShownTip;

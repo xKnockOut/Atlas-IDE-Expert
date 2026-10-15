@@ -12,6 +12,9 @@ type
   [TestFixture]
   TRuleEngineTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure RegistryRejectsDuplicateId;
     [Test]
@@ -133,6 +136,11 @@ begin
 end;
 
 { TRuleEngineTests }
+
+procedure TRuleEngineTests.WarmUpFirstUse;
+begin
+  CancelledStopsBeforeNextRule;
+end;
 
 procedure TRuleEngineTests.RegistryRejectsDuplicateId;
 var
@@ -323,6 +331,8 @@ begin
       end, ERuleCheckCancelled);
     Assert.AreEqual(1, Runs);
   finally
+    // Context hängt in der Closure und hält über Cancelled die Closure selbst: Kreis lösen.
+    Context.Cancelled := nil;
     Tree.Free;
   end;
 end;

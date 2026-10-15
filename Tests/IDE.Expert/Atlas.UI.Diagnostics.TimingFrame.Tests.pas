@@ -13,6 +13,9 @@ type
   [TestFixture]
   TAtlasTimingFrameTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure EmptyShowsHint;
     [Test]
@@ -51,6 +54,11 @@ begin
 end;
 
 { TAtlasTimingFrameTests }
+
+procedure TAtlasTimingFrameTests.WarmUpFirstUse;
+begin
+  RowsWithProviderNamesAndWarnings;
+end;
 
 procedure TAtlasTimingFrameTests.EmptyShowsHint;
 var

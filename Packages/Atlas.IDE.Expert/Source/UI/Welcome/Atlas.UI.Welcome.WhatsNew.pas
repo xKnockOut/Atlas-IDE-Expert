@@ -277,6 +277,9 @@ procedure TAtlasWelcomeWhatsNewFrame.UpdateContent;
 var
   View: TAtlasWhatsNewView;
 begin
+  // Ohne Fenster später: Die Tafel ruft UpdateContent nach dem Einhängen.
+  if not HasWindow then
+    Exit;
   View := TAtlasWhatsNewView.Hidden;
   FVersions := nil;
   if FSource <> nil then

@@ -16,6 +16,9 @@ type
   private
     FFolder: string;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -82,6 +85,16 @@ begin
 end;
 
 { TAtlasProjectSummaryTests }
+
+procedure TAtlasProjectSummaryTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    KeyIsStableAndIgnoresCaseAndSlashes;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TAtlasProjectSummaryTests.Setup;
 begin

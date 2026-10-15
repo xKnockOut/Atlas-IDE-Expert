@@ -308,7 +308,7 @@ begin
   Assert.AreEqual(2, Integer(Length(Issues)));
   Parse('{"vcs": "git"}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)), 'vcs muss ein Objekt sein');
-  Settings := TConfigurationParser.ParseLayered('{"vcs": {"provider": "off"}}', '{"vcs": {"provider": "git"}}',
+  Settings := TConfigurationParser.ParseLayered('{"vcs": {"provider": "git"}}', '{"vcs": {"provider": "off"}}',
     Issues);
   Assert.AreEqual('off', Settings.VcsProvider, 'Datei vor Editor');
   Settings := TConfigurationParser.ParseLayered('', '{"vcs": {"provider": "git"}}', Issues);
