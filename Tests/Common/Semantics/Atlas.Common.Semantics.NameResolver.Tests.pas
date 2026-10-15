@@ -27,6 +27,12 @@ type
     [Test]
     procedure ResolvesMembersInMethodsAndSelf;
     [Test]
+    procedure LocalsHideFieldsOfTheSameName;
+    [Test]
+    procedure AnonymousMethodLocalsHideFields;
+    [Test]
+    procedure CandidatesInAnonymousMethodHideFields;
+    [Test]
     procedure ResolvesInheritedMembersAcrossUnits;
     [Test]
     procedure LastUsedUnitWins;
@@ -257,7 +263,121 @@ begin
   Assert.AreEqual(6, R.SelectionRange.StartPos.Line);
 end;
 
+const
+  // Parameter, lokale Variablen und Felder mit gleichem Namen; ohne Self gewinnt wie in Delphi der lokale Name.
+  SourceVerdeckt =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TKunde = class'#10 +
+    '  private'#10 +
+    '    Name: string;'#10 +
+    '    Wert: Integer;'#10 +
+    '    Anzahl: Integer;'#10 +
+    '    procedure SetzeName(const Name: string);'#10 +
+    '    procedure Zaehle;'#10 +
+    '    procedure Anonym;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TKunde.SetzeName(const Name: string);'#10 +
+    'begin'#10 +
+    '  Self.Name := Name; {M1}'#10 +
+    'end;'#10 +
+    'procedure TKunde.Zaehle;'#10 +
+    'var'#10 +
+    '  Anzahl: Integer;'#10 +
+    'begin'#10 +
+    '  Anzahl := Wert; {M2}'#10 +
+    'end;'#10 +
+    'procedure TKunde.Anonym;'#10 +
+    'var'#10 +
+    '  P: TProc<Integer>;'#10 +
+    '  F: TFunc<Integer>;'#10 +
+    'begin'#10 +
+    '  P := procedure(Wert: Integer)'#10 +
+    '    begin'#10 +
+    '      Anzahl := Wert; {M3}'#10 +
+    '    end;'#10 +
+    '  F := function: Integer'#10 +
+    '    var'#10 +
+    '      Anzahl: Integer;'#10 +
+    '    begin'#10 +
+    '      Anzahl := Wert; {M4}'#10 +
+    '      Result := Anzahl;'#10 +
+    '    end;'#10 +
+    '  Wert := 1; {M5}'#10 +
+    'end;'#10 +
+    'end.';
+
+procedure TNameResolverTests.LocalsHideFieldsOfTheSameName;
+var
+  R: TResolvedSymbol;
+begin
+  R := ResolveAt(SourceVerdeckt, 'Name := Name; {M1}');
+  Assert.IsTrue(R.Kind = TResolvedKind.Symbol, 'Self.Name ist das Feld');
+  Assert.AreEqual('TKunde.Name', R.QualifiedName);
+  R := ResolveAt(SourceVerdeckt, 'Name; {M1}');
+  Assert.IsTrue(R.Kind = TResolvedKind.Local);
+  Assert.IsTrue(R.IsParameter);
+  R := ResolveAt(SourceVerdeckt, 'Anzahl := Wert; {M2}');
+  Assert.IsTrue(R.Kind = TResolvedKind.Local);
+  Assert.AreEqual(19, R.SelectionRange.StartPos.Line);
+  R := ResolveAt(SourceVerdeckt, 'Wert; {M2}');
+  Assert.AreEqual('TKunde.Wert', R.QualifiedName);
+end;
+
+procedure TNameResolverTests.AnonymousMethodLocalsHideFields;
+var
+  R: TResolvedSymbol;
+begin
+  // Parameter der anonymen Methode verdeckt das Feld Wert; Anzahl bleibt das Feld.
+  R := ResolveAt(SourceVerdeckt, 'Wert; {M3}');
+  Assert.IsTrue(R.Kind = TResolvedKind.Local);
+  Assert.IsTrue(R.IsParameter);
+  Assert.AreEqual(28, R.SelectionRange.StartPos.Line);
+  R := ResolveAt(SourceVerdeckt, 'Anzahl := Wert; {M3}');
+  Assert.AreEqual('TKunde.Anzahl', R.QualifiedName);
+  // var-Abschnitt der anonymen Methode; Wert ist dort wieder das Feld.
+  R := ResolveAt(SourceVerdeckt, 'Anzahl := Wert; {M4}');
+  Assert.IsTrue(R.Kind = TResolvedKind.Local);
+  Assert.AreEqual(34, R.SelectionRange.StartPos.Line);
+  R := ResolveAt(SourceVerdeckt, 'Wert; {M4}');
+  Assert.AreEqual('TKunde.Wert', R.QualifiedName);
+  R := ResolveAt(SourceVerdeckt, 'Result := Anzahl');
+  Assert.IsTrue(R.Kind = TResolvedKind.Local);
+  // Außerhalb der anonymen Methoden gilt wieder das Feld.
+  R := ResolveAt(SourceVerdeckt, 'Wert := 1; {M5}');
+  Assert.AreEqual('TKunde.Wert', R.QualifiedName);
+end;
+
+procedure TNameResolverTests.CandidatesInAnonymousMethodHideFields;
+var
+  Tree: TSyntaxTree;
+  Candidates: TArray<TResolvedSymbol>;
+  Candidate: TResolvedSymbol;
+  Found: Integer;
+begin
+  Tree := TPascalParser.Parse(SourceVerdeckt);
+  try
+    Candidates := FResolver.OwnScopeCandidates(Tree, 'C:\P\Haupt.pas', Pos('Anzahl := Wert; {M3}', SourceVerdeckt) - 1);
+    FResolver.UsedScopeCandidates;
+  finally
+    Tree.Free;
+  end;
+  Found := 0;
+  for Candidate in Candidates do
+    if SameText(Candidate.Name, 'Wert') then
+    begin
+      Inc(Found);
+      Assert.IsTrue(Candidate.IsParameter);
+      Assert.AreEqual(1, Integer(Length(Candidate.Hides)));
+      Assert.AreEqual('Feld TKunde.Wert', Candidate.Hides[0]);
+    end;
+  Assert.AreEqual(1, Found);
+end;
+
 procedure TNameResolverTests.ResolvesInheritedMembersAcrossUnits;
+
 const
   Source =
     'unit Haupt;'#10 +

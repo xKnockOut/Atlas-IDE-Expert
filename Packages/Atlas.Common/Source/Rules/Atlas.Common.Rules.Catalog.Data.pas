@@ -520,7 +520,7 @@ begin
     '      "name": "Assignment to itself",' + #10 +
     '      "category": "bug",' + #10 +
     '      "severity": "warning",' + #10 +
-    '      "description": "A variable, field or property is assigned to itself. Usually a different value was meant, for example a parameter or another field.",' + #10 +
+    '      "description": "A variable, field or property is assigned to itself. Usually a different value was meant, for example a parameter or another field. If a parameter or local variable hides a field' + ' of the same name (Name := Name), Atlas offers Self.Name := Name as the fix.",' + #10 +
     '      "bad": "FName := FName;",' + #10 +
     '      "good": "FName := AName;"' + #10 +
     '    },' + #10 +
@@ -1038,7 +1038,7 @@ begin
     '    {' + #10 +
     '      "id": "self-assignment",' + #10 +
     '      "name": "Zuweisung an sich selbst",' + #10 +
-    '      "description": "Einer Variablen, einem Feld oder einer Property wird der eigene Wert zugewiesen. Gemeint ist meist ein anderer Wert, etwa ein Parameter oder ein anderes Feld."' + #10 +
+    '      "description": "Einer Variablen, einem Feld oder einer Property wird der eigene Wert zugewiesen. Gemeint ist meist ein anderer Wert, etwa ein Parameter oder ein anderes Feld. Verdeckt ein Parame' + 'ter oder eine lokale Variable ein gleichnamiges Feld (Name := Name), bietet Atlas Self.Name := Name als Korrektur an."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "for-high-to-low",' + #10 +
