@@ -9,6 +9,9 @@ type
   [TestFixture]
   TLspPullDiagnosticsTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure DetectsClientSupport;
     [Test]
@@ -118,6 +121,11 @@ end;
 function Token: IJsonRpcCancellationToken;
 begin
   Result := TJsonRpcCancellation.Create;
+end;
+
+procedure TLspPullDiagnosticsTests.WarmUpFirstUse;
+begin
+  CancelStopsRuleChecks;
 end;
 
 procedure TLspPullDiagnosticsTests.DetectsClientSupport;

@@ -25,10 +25,18 @@ uses
 
 type
   TAtlasWelcomeFrame = class(TFrame)
+  private
+    FPendingUpdate: Boolean;
+  protected
+    procedure CreateWnd; override;
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Inhalt neu lesen und zeichnen; im Hauptthread.</summary>
     procedure UpdateContent; virtual;
+    /// <summary>Hängt der Frame an einem Fenster? Vorher kein Messen von Text: Beschriftungen
+    /// holen ihren Gerätekontext vom Elternfenster („kein übergeordnetes Fenster“). Ohne Fenster
+    /// holt CreateWnd das UpdateContent nach.</summary>
+    function HasWindow: Boolean;
   end;
 
   TAtlasWelcomeSectionFrame = class(TAtlasWelcomeFrame)
@@ -97,6 +105,31 @@ end;
 procedure TAtlasWelcomeFrame.UpdateContent;
 begin
   Invalidate;
+end;
+
+function TAtlasWelcomeFrame.HasWindow: Boolean;
+var
+  Control: TWinControl;
+begin
+  Control := Self;
+  while Control <> nil do
+  begin
+    if Control.HandleAllocated or (Control.ParentWindow <> 0) or (Control is TCustomForm) then
+      Exit(True);
+    Control := Control.Parent;
+  end;
+  FPendingUpdate := True;
+  Result := False;
+end;
+
+procedure TAtlasWelcomeFrame.CreateWnd;
+begin
+  inherited;
+  if FPendingUpdate then
+  begin
+    FPendingUpdate := False;
+    UpdateContent;
+  end;
 end;
 
 { TAtlasWelcomeSectionFrame }

@@ -11,13 +11,19 @@
 //     "command": "Atlas.CodeActions",   Befehl der Befehlspalette: Kürzel, Ausprobieren
 //     "usage": ["Atlas.CodeActions"],   Befehle, deren Nutzung zählt; sonst [command]
 //     "setting": "UndoMultiFile",       Plugin-Einstellung (Registry-Name); aus = Tipp aus
+//     "try": "Atlas.ChangeList",        Befehl für „Ausprobieren“ ohne Beispiel; sonst command
 //     "title": "…", "titleEn": "…",     Titel deutsch und englisch
 //     "text": "…", "textEn": "…",       ein bis zwei Sätze
-//     "image": "Tipps\\code-aktionen.png",   PNG relativ zum Installationsordner
+//     "image": "Tipps\\code-aktionen.png",   PNG relativ zum Installationsordner (320 × 180,
+//                                             daneben code-aktionen@2x.png mit 640 × 360)
 //     "sample": "Beispiele\\Entdecken.pas",  Beispieldatei für „Ausprobieren“
 //     "line": 12, "column": 5}]}              Stelle darin ab 1
 // Pflicht sind title und command oder id. Unbekannte Felder werden
 // übergangen; doppelte Kennungen zählen einmal (die erste).
+// Bilder: Die Karte zeigt sie in ImageWidth × ImageHeight (logische Pixel);
+// breiter als ImageWidth Pixel (ab 125 % Skalierung) nimmt sie die Datei mit
+// @2x, wenn es sie gibt (ImageFor). Erzeugt werden beide aus HTML-Vorlagen
+// mit Tools/Tipps/Render-Tips.mjs.
 
 interface
 
@@ -32,6 +38,9 @@ type
     Usage: TArray<string>;
     /// <summary>Name der Plugin-Einstellung wie in der Registry; '' = immer an.</summary>
     Setting: string;
+    /// <summary>Befehl für „Ausprobieren“ ohne Beispieldatei, wenn Command dafür nicht taugt (etwa
+    /// „Zurücknehmen“: die Liste der Änderungen statt sofort zurückzunehmen); '' = Command.</summary>
+    TryCommand: string;
     Title: string;
     TitleEn: string;
     Text: string;
@@ -45,6 +54,8 @@ type
     Column: Integer;
     /// <summary>Usage, sonst [Command]; ohne beides leer.</summary>
     function UsageIds: TArray<string>;
+    /// <summary>Befehl für „Ausprobieren“: TryCommand, sonst Command.</summary>
+    function TryId: string;
     /// <summary>Titel in der Sprache; ohne englischen der deutsche.</summary>
     function TitleIn(AEnglish: Boolean): string;
     function TextIn(AEnglish: Boolean): string;
@@ -58,6 +69,12 @@ type
     /// <summary>Ordner der Bilder im Installationsordner.</summary>
     ImageFolder = 'Tipps';
     FormatVersion = 1;
+    /// <summary>Anzeigegröße der Bilder in logischen Pixeln (bei 100 %) und Pixelgröße der einfachen Datei.
+    /// </summary>
+    ImageWidth = 320;
+    ImageHeight = 180;
+    /// <summary>Zusatz der Datei mit doppelter Auflösung: code-aktionen@2x.png.</summary>
+    HighDpiSuffix = '@2x';
   public
     /// <summary>Tipps aus tips.json in der Reihenfolge der Datei; leer bei ungültigem Inhalt.</summary>
     class function Parse(const AJson: string): TAtlasTips; static;
@@ -69,6 +86,12 @@ type
     /// <summary>Datei ARelative im Ordner AFolder; '' bei absolutem Pfad, Laufwerk, „..“ oder leerem Teil.
     /// tips.json ist Teil der Installation, aber kein Ort für fremde Pfade.</summary>
     class function FileIn(const AFolder, ARelative: string): string; static;
+    /// <summary>Name der Datei mit doppelter Auflösung: „…\a.png“ → „…\a@2x.png“; '' bei leerem Namen.
+    /// </summary>
+    class function HighDpiName(const AFileName: string): string; static;
+    /// <summary>Bild für eine Anzeigebreite von AShownWidth Pixeln: breiter als ImageWidth die Datei mit @2x,
+    /// wenn es sie gibt, sonst AFileName.</summary>
+    class function ImageFor(const AFileName: string; AShownWidth: Integer): string; static;
   end;
 
 implementation
@@ -83,6 +106,13 @@ begin
   Result := Usage;
   if (Length(Result) = 0) and (Command <> '') then
     Result := [Command];
+end;
+
+function TAtlasTip.TryId: string;
+begin
+  Result := TryCommand;
+  if Result = '' then
+    Result := Command;
 end;
 
 function TAtlasTip.TitleIn(AEnglish: Boolean): string;
@@ -156,7 +186,6 @@ begin
   // Kein Objekt: gar nicht erst parsen.
   if Copy(TrimLeft(AJson), 1, 1) <> '{' then
     Exit;
-  Root := nil;
   try
     Root := TJSONObject.ParseJSONValue(AJson);
   except
@@ -182,6 +211,7 @@ begin
         Tip.Id := Tip.Command;
       Tip.Usage := ListOf(Item, 'usage');
       Tip.Setting := TextOf(Item, 'setting');
+      Tip.TryCommand := TextOf(Item, 'try');
       Tip.Title := TextOf(Item, 'title');
       Tip.TitleEn := TextOf(Item, 'titleEn');
       Tip.Text := TextOf(Item, 'text');
@@ -238,6 +268,29 @@ begin
   Relative := StringReplace(Relative, '/', PathDelim, [rfReplaceAll]);
   Relative := StringReplace(Relative, '\', PathDelim, [rfReplaceAll]);
   Result := IncludeTrailingPathDelimiter(AFolder) + Relative;
+end;
+
+class function TAtlasTipCatalog.HighDpiName(const AFileName: string): string;
+var
+  Extension: string;
+begin
+  Result := '';
+  if Trim(AFileName) = '' then
+    Exit;
+  Extension := ExtractFileExt(AFileName);
+  Result := Copy(AFileName, 1, Length(AFileName) - Length(Extension)) + HighDpiSuffix + Extension;
+end;
+
+class function TAtlasTipCatalog.ImageFor(const AFileName: string; AShownWidth: Integer): string;
+var
+  Large: string;
+begin
+  Result := AFileName;
+  if (AFileName = '') or (AShownWidth <= ImageWidth) then
+    Exit;
+  Large := HighDpiName(AFileName);
+  if FileExists(Large) then
+    Result := Large;
 end;
 
 end.

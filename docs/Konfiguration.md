@@ -37,6 +37,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `diagnostics` | global (settings.json) | object | – |  | Anonymisiertes Diagnoselog des Servers (je Anfrage Dauer, Ergebnis und Grundcode, je Lauf Start und Ende mit Grund). Es enthält keine Pfade, keine Projekt-, Unit- oder Bezeichnernamen und keinen Quelltext und lässt sich über „Diagnoselog exportieren“ weitergeben. |
 | `highlight` | global (settings.json) | object | – |  | Zusammengehörige Schlüsselwörter hervorheben, wenn der Cursor auf einem steht. |
 | `inlayHints` | global (settings.json) | object | – |  | Inlay Hints im Editor. |
+| `codeLens` | global (settings.json) | object | – |  | Code Lens im Editor. |
 | `hints` | global (settings.json) | object | – |  | Anzeige von XMLDoc-Kommentaren (///) im Hover-Tooltip und im Detailpanel der Vervollständigung des IDE-Plugins. Der Server bereitet die Doku immer vollständig auf; die Werte steuern nur die Anzeige. Ohne Angabe gelten die Werte aus Tools › Optionen › Drittanbieter › Atlas. |
 | `stringLiteral` | Projekt (atlas.json) | object | – |  | Code-Aktionen „Als String-Literal“ und „Als Klartext kopieren“. |
 | `memberOrder` | Projekt (atlas.json) | object | – |  | Code-Aktion „Klassenmitglieder ordnen“: Reihenfolge der Sichtbarkeitsabschnitte und der Mitglieder darin. |
@@ -122,6 +123,12 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `inlayHints.inferredTypes` | global (settings.json) | boolean | `true` |  | Abgeleiteter Typ hinter var X := …. |
 | `inlayHints.endMarkers` | global (settings.json) | boolean | `true` |  | Hinter dem end langer Blöcke anzeigen, was dort endet. |
 | `inlayHints.endMarkerMinLines` | global (settings.json) | integer | `20` | 1… | Mindestlänge eines Blocks in Zeilen für eine Endmarkierung. |
+
+## codeLens
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `codeLens.metrics` | global (settings.json) | boolean | `true` |  | Kennzahlen über jeder Methode: Länge in Codezeilen, Verschachtelungstiefe, zyklomatische und kognitive Komplexität, Parameteranzahl. Die Grenzwerte stehen bei den Regeln metric-* unter "max". |
 
 ## hints
 

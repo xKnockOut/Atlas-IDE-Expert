@@ -180,7 +180,9 @@ const
     'foreign-form-control-access,form-field-type-mismatch,form-field-without-object,' +
     'form-object-without-field,format-without-settings,generic-exception-raised,hides-virtual,' +
     'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,invisible-char,' +
-    'lock-without-finally,possibly-uninitialized,raise-in-finally,redundant-assigned-free,result-not-set,' +
+    'lock-without-finally,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,' +
+    'metric-nesting-depth,metric-parameter-count,possibly-uninitialized,raise-in-finally,redundant-assigned-free,' +
+    'result-not-set,' +
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
     'security-tls-verification-disabled,security-weak-crypto,self-assignment,sizeof-pointer,' +
     'slash-command,synchronize-in-destructor,thread-free-with-free-on-terminate,thread-resume-suspend,' +
@@ -189,10 +191,10 @@ const
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
   // strict schaltet experimentelle Regeln ein (#146): security-path-traversal (#149), file-header und
-  // hardcoded-string (#56), random-without-randomize (#153).
+  // hardcoded-string (#56), random-without-randomize (#153), die freiwillige Regel todo-comment (#68).
   Assert.AreEqual(Merged(All, ['catch-all-without-raise', 'file-header', 'hardcoded-string',
     'loop-invariant-call', 'missing-begin-update', 'random-without-randomize', 'redundant-begin-end',
-    'redundant-parens', 'security-path-traversal', 'string-concat-in-loop']), ActiveRules('strict'));
+    'redundant-parens', 'security-path-traversal', 'string-concat-in-loop', 'todo-comment']), ActiveRules('strict'));
   Assert.AreEqual('assert-side-effect,bidi-control,captured-loop-variable,char-to-pchar,' +
     'component-create-without-override,component-default-mismatch,component-missing-free-notification,' +
     'component-missing-inherited,constructor-on-instance,control-char,declared-not-implemented,' +
@@ -213,6 +215,8 @@ begin
   Assert.AreEqual('bool-compare,component-fixed-pixels,component-hardcoded-color,component-palette-icon,' +
     'component-setter-without-invalidate,dfm-property,empty-except,forbidden-uses,' +
     'foreign-form-control-access,format-without-settings,generic-exception-raised,' +
+    'metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,metric-nesting-depth,' +
+    'metric-parameter-count,' +
     'redundant-assigned-free,slash-command,thread-resume-suspend,unused-assignment,unused-local,' +
     'unused-parameter,with-statement',
     ActiveRules('style'));

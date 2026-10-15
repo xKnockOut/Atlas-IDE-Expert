@@ -1,13 +1,27 @@
 ﻿unit Atlas.UI.Welcome.Discover;
 
 // Karte „Atlas entdecken“ der Willkommensseite (#757), ohne Open Tools API:
-//   ┌────────┐ Code-Aktionen  Strg+.
-//   │  Bild  │ Ein bis zwei Sätze, was die Funktion tut.
-//   └────────┘ Noch nie benutzt                     Tipp 2 von 7
+//   ┌──────────────────┐
+//   │       Bild       │  (schmale Spalte: Bild oben, so breit wie möglich)
+//   └──────────────────┘
+//   Code-Aktionen  Alt+Enter
+//   Ein bis zwei Sätze, was die Funktion tut.
+//   Noch nie benutzt                     Tipp 2 von 7
 //   [Ausprobieren] [Nächster Tipp] [Nicht mehr zeigen]
+// Breite Spalte (Platz für Bild und MinTextWidth): Bild links, Text daneben.
 // Ein Tipp je IDE-Start; Bild (PNG aus dem Installationsordner, sonst ohne),
 // Titel, tatsächliche Belegung des Befehls, Text und Hinweis zur Nutzung
 // („Noch nie benutzt“, „Zuletzt vor 3 Wochen“; ohne Zählung keiner).
+// Bildgröße: ImageWidth × ImageHeight logische Pixel, also bei 100 % genau
+// die Pixel der einfachen Datei (scharf, Text im Bild lesbar). Wird das Bild
+// breiter gezeigt (ab 125 %), kommt die Datei mit @2x
+// (TAtlasTipCatalog.ImageFor). Weicht die Anzeigegröße von der Datei ab,
+// rechnet RenderImage das Bild einmal mit HALFTONE auf die Größe um (die
+// Standard-Streckung der GDI ließe helle Schrift auf dunklem Grund
+// ausfallen); neu bei jedem Anordnen mit anderer Größe, also auch nach einem
+// Monitorwechsel. Schmaler als das Bild: kleiner mit gleichem
+// Seitenverhältnis. Ein Bild für helles und dunkles Thema (eigener dunkler
+// Editor-Grund mit grauem Rahmen).
 // „Nächster Tipp“ nur, wenn es mehr als einen gibt; „Ausprobieren“ nur mit
 // Beispieldatei oder vorhandenem Befehl.
 // Daten und Aktionen kommen über IAtlasDiscoverSource aus der IDE-Schicht.
@@ -18,12 +32,15 @@
 interface
 
 uses
+  // Vor Vcl.Graphics: sonst verdeckt Winapi.Windows.TBitmap die VCL-Klasse.
+  Winapi.Windows,
   System.SysUtils,
   System.Classes,
   Vcl.Controls,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Graphics,
+  Atlas.Core.Commands.Tips,
   Atlas.Core.Welcome.Discover,
   Atlas.UI.Welcome.Frame;
 
@@ -48,8 +65,10 @@ type
   public const
     Indent = 8;
     Gap = 8;
-    ImageWidth = 96;
-    ImageHeight = 60;
+    ImageWidth = TAtlasTipCatalog.ImageWidth;
+    ImageHeight = TAtlasTipCatalog.ImageHeight;
+    /// <summary>Text neben dem Bild erst ab dieser Breite; sonst steht das Bild darüber.</summary>
+    MinTextWidth = 220;
     ButtonHeight = 24;
     ButtonPadding = 16;
   private
@@ -58,6 +77,10 @@ type
     FHasCard: Boolean;
     FImage: TImage;
     FImageFile: string;
+    /// <summary>Geladene Datei in ihrer eigenen Größe; FImage zeigt sie auf die Anzeigegröße gerechnet.</summary>
+    FOriginal: TPicture;
+    FShownWidth: Integer;
+    FShownHeight: Integer;
     FTitleLabel: TLabel;
     FKey: TLabel;
     FText: TLabel;
@@ -69,6 +92,11 @@ type
     FArranging: Boolean;
     procedure SetSource(const AValue: IAtlasDiscoverSource);
     procedure LoadImage(const AFileName: string);
+    function HasImage: Boolean;
+    /// <summary>Bild für die Anzeigebreite AWidth (Pixel) laden und Sichtbarkeit setzen.</summary>
+    procedure ShowImage(AWidth: Integer);
+    /// <summary>FImage zeigt das Bild in AWidth × AHeight Pixeln; ohne Umrechnung bei gleicher Größe.</summary>
+    procedure RenderImage(AWidth, AHeight: Integer);
     procedure Arrange;
     procedure BodyResize(Sender: TObject);
     procedure ButtonClick(Sender: TObject);
@@ -76,6 +104,7 @@ type
     function BodyHeight: Integer; override;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
     procedure UpdateContent; override;
     /// <summary>Klick auf einen Knopf wie mit der Maus (auch für Tests).</summary>
     procedure ClickButton(AButton: TAtlasDiscoverButton);
@@ -123,11 +152,11 @@ var
 
 begin
   inherited Create(AOwner);
+  FOriginal := TPicture.Create;
   FImage := TImage.Create(Self);
   FImage.Parent := Body;
-  FImage.Stretch := True;
-  FImage.Proportional := True;
-  FImage.Center := True;
+  // RenderImage liefert das Bild schon in der Größe von FImage.
+  FImage.Stretch := False;
   FImage.Visible := False;
   FTitleLabel := NewLabel;
   FTitleLabel.Font.Style := [fsBold];
@@ -152,6 +181,12 @@ begin
   end;
   Body.OnResize := BodyResize;
   UpdateContent;
+end;
+
+destructor TAtlasWelcomeDiscoverFrame.Destroy;
+begin
+  FOriginal.Free;
+  inherited;
 end;
 
 class function TAtlasWelcomeDiscoverFrame.TitleText: string;
@@ -225,15 +260,62 @@ begin
   if AFileName = FImageFile then
     Exit;
   FImageFile := AFileName;
+  FOriginal.Assign(nil);
   FImage.Picture.Assign(nil);
+  FShownWidth := 0;
+  FShownHeight := 0;
   if (AFileName = '') or not FileExists(AFileName) then
     Exit;
   try
-    FImage.Picture.LoadFromFile(AFileName);
+    FOriginal.LoadFromFile(AFileName);
   except
     // Kaputtes Bild: Karte ohne Bild.
     on Exception do
-      FImage.Picture.Assign(nil);
+      FOriginal.Assign(nil);
+  end;
+end;
+
+function TAtlasWelcomeDiscoverFrame.HasImage: Boolean;
+begin
+  Result := (FOriginal.Graphic <> nil) and not FOriginal.Graphic.Empty;
+end;
+
+procedure TAtlasWelcomeDiscoverFrame.ShowImage(AWidth: Integer);
+begin
+  LoadImage(TAtlasTipCatalog.ImageFor(FCard.ImageFile, AWidth));
+  FImage.Visible := FHasCard and HasImage;
+end;
+
+procedure TAtlasWelcomeDiscoverFrame.RenderImage(AWidth, AHeight: Integer);
+var
+  Native, Scaled: TBitmap;
+begin
+  if not HasImage or ((AWidth = FShownWidth) and (AHeight = FShownHeight)) then
+    Exit;
+  FShownWidth := AWidth;
+  FShownHeight := AHeight;
+  Native := TBitmap.Create;
+  Scaled := TBitmap.Create;
+  try
+    Native.PixelFormat := pf24bit;
+    Native.SetSize(FOriginal.Width, FOriginal.Height);
+    Native.Canvas.Draw(0, 0, FOriginal.Graphic);
+    Scaled.PixelFormat := pf24bit;
+    Scaled.SetSize(AWidth, AHeight);
+    if (AWidth = Native.Width) and (AHeight = Native.Height) then
+      Scaled.Canvas.Draw(0, 0, Native)
+    else
+    begin
+      // HALFTONE mittelt die Pixel; die Vorgabe der GDI ließe dünne helle Schrift ausfallen.
+      SetStretchBltMode(Scaled.Canvas.Handle, HALFTONE);
+      SetBrushOrgEx(Scaled.Canvas.Handle, 0, 0, nil);
+      StretchBlt(Scaled.Canvas.Handle, 0, 0, AWidth, AHeight, Native.Canvas.Handle, 0, 0, Native.Width,
+        Native.Height, SRCCOPY);
+    end;
+    FImage.Picture.Assign(Scaled);
+  finally
+    Scaled.Free;
+    Native.Free;
   end;
 end;
 
@@ -242,13 +324,14 @@ var
   Kind: TAtlasDiscoverButton;
   OldHeight: Integer;
 begin
+  // Ohne Fenster später: Die Tafel ruft UpdateContent nach dem Einhängen.
+  if not HasWindow then
+    Exit;
   OldHeight := FContentHeight;
   FCard := Default(TAtlasDiscoverCard);
   FHasCard := (FSource <> nil) and FSource.Card(FCard);
   if not FHasCard then
     FCard := Default(TAtlasDiscoverCard);
-  LoadImage(FCard.ImageFile);
-  FImage.Visible := FHasCard and (FImage.Picture.Graphic <> nil) and not FImage.Picture.Graphic.Empty;
   FTitleLabel.Caption := FCard.Title;
   FKey.Caption := FCard.KeyText;
   FText.Caption := FCard.Text;
@@ -283,7 +366,7 @@ end;
 
 procedure TAtlasWelcomeDiscoverFrame.Arrange;
 var
-  Width, Left, Top, TextLeft, Right, Bottom, ButtonWidth, ButtonLeft, ButtonTop: Integer;
+  Width, Left, Top, TextLeft, Right, Bottom, ButtonWidth, ButtonLeft, ButtonTop, ShownWidth, ShownHeight: Integer;
   Kind: TAtlasDiscoverButton;
   Measure: TBitmap;
 begin
@@ -298,17 +381,34 @@ begin
     Top := ScaleValue(Gap) div 2;
     if not FHasCard then
     begin
+      FImage.Visible := False;
       FEmpty.SetBounds(Left, Top, FEmpty.Width, FEmpty.Height);
       FContentHeight := FEmpty.Top + FEmpty.Height + ScaleValue(Gap);
       Exit;
     end;
     TextLeft := Left;
     Bottom := Top;
+    // Bild in voller Größe, solange die Spalte reicht, sonst kleiner mit gleichem Seitenverhältnis; die Datei
+    // passend zur Breite (nach einem Monitorwechsel neu).
+    ShownWidth := Max(Min(Right - Left, ScaleValue(ImageWidth)), 1);
+    ShownHeight := Max(ShownWidth * ImageHeight div ImageWidth, 1);
+    ShowImage(ShownWidth);
     if FImage.Visible then
     begin
-      FImage.SetBounds(Left, Top, ScaleValue(ImageWidth), ScaleValue(ImageHeight));
-      TextLeft := Left + ScaleValue(ImageWidth) + ScaleValue(Gap);
-      Bottom := FImage.Top + FImage.Height;
+      FImage.SetBounds(Left, Top, ShownWidth, ShownHeight);
+      RenderImage(ShownWidth, ShownHeight);
+      if Right - Left >= ScaleValue(ImageWidth) + ScaleValue(Gap) + ScaleValue(MinTextWidth) then
+      begin
+        // Breit: Text neben dem Bild.
+        TextLeft := Left + ShownWidth + ScaleValue(Gap);
+        Bottom := FImage.Top + FImage.Height;
+      end
+      else
+      begin
+        // Schmal: Text unter dem Bild.
+        Top := FImage.Top + FImage.Height + ScaleValue(Gap);
+        Bottom := Top;
+      end;
     end;
     FTitleLabel.SetBounds(TextLeft, Top, FTitleLabel.Width, FTitleLabel.Height);
     Top := FTitleLabel.Top + FTitleLabel.Height;

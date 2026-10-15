@@ -366,6 +366,72 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 | RB3 | Lokale Variable `Name`, die das Feld `Name` der Klasse verdeckt | `Name` einmal mit „lokal“; das Detailpanel nennt „Verdeckt: Feld TKlasse.Name“ |
 | RB4 | Methode von `Self` und Routine aus einer uses-Unit in der Liste | Tag mit der Klasse bzw. dem Namen der Unit |
 
+## Favoriten anheften (#458)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FA1 | In einer Methode mit `qry: TFDQuery` hinter `qry.` Strg+Leer, `Open` wählen, Strg+D | Fußzeile „Open angeheftet · Strg+D löst“; `Open` steht mit gefülltem Stern links ganz oben, die Auswahl bleibt auf `Open`; der Editor formatiert nichts |
+| FA2 | Mit der Maus über `ParamByName` fahren, auf den leeren Stern links klicken | Stern gefüllt, `ParamByName` steht oben (zusammen mit `Open`); die Auswahl ändert sich nicht |
+| FA3 | Andere Query `qry2.` Strg+Leer, ohne Präfix, dann `P`, dann `Op`, dann `Cl` | Ohne Präfix beide Favoriten oben; mit `P` nur `ParamByName` oben; mit `Op` nur `Open`; mit `Cl` keiner (sie passen nicht) |
+| FA4 | Viele Male `Close` übernehmen (lernende Gewichtung), dann `qry.` Strg+Leer | `Open` und `ParamByName` stehen trotzdem vor `Close` |
+| FA5 | Bei `TDataSet` fünf Member anheften, einen sechsten mit Strg+D | Fußzeile „Schon 5 Favoriten bei TDataSet – erst einen lösen“; nichts ändert sich; Sprachausgabe liest den Hinweis |
+| FA6 | IDE beenden und neu starten, `qry.` Strg+Leer | Favoriten aus FA1/FA2 stehen weiter oben; `%APPDATA%\Atlas\favorites.json` enthält sie |
+| FA7 | *Tools › Optionen › Drittanbieter › Atlas*, Reiter Vervollständigung: Liste „Angeheftete Favoriten“, `TDataSet.Open` wählen, „Entfernen“ | Eintrag verschwindet sofort; beim nächsten `qry.` steht `Open` wieder an seinem Platz |
+| FA8 | „Alle entfernen“ | Liste zeigt „Keine Favoriten angeheftet.“, Knöpfe ausgegraut |
+| FA9 | Häkchen „Favoriten anheften“ aus (oder Schnellschalter), `qry.` Strg+Leer, Strg+D | Keine Sternspalte, keine Sonderstellung; Strg+D geht an den Editor |
+| FA10 | Auf „Neue Methode …“ bzw. „Alle Werte einfügen“ Strg+D | Fußzeile „Dieser Eintrag lässt sich nicht anheften“ |
+| FA11 | Popup bei 150 % und 200 % Skalierung, hell und dunkel | Stern scharf und mittig, Badge rückt um die Sternspalte nach rechts, nichts abgeschnitten |
+
+## Persönliche Notizen (#545)
+
+Ablage: `%LOCALAPPDATA%\Atlas\Notes\<Schlüssel>.json` je Projekt (Schlüssel wie die Projekt-Zusammenfassung aus #592), JSON mit `format` 1, `project` und `notes` (je Notiz `id`, `file`, `line` 1-basiert, `text`, `lineText`, `before`, `after`, `created`, `changed` in UTC, bei Bedarf `orphaned`). Nie im Projekt- oder Repository-Ordner.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NO1 | Projekt in einem Git-Repository öffnen, Cursor in eine Methode, *Atlas › Notiz an dieser Zeile…*, zwei Zeilen Text, Strg+Enter | Dialog „Notiz – Kunde.pas, Zeile 42“ mit Hinweis; nach Strg+Enter links in der Rinne ein kleines Notizblatt an der Zeile |
+| NO2 | `git status` im Repository | Keine Änderung, keine neue Datei; die Notiz steht in `%LOCALAPPDATA%\Atlas\Notes\` |
+| NO3 | Maus über das Notizblatt in der Rinne halten | Nach etwa 0,3 s Tooltip „Notiz vom 15.10.2026“ mit beiden Zeilen; Maus weg schließt ihn |
+| NO4 | Oberhalb der Zeile drei Zeilen einfügen, kurz warten | Das Symbol wandert mit seiner Codezeile nach unten (Akzeptanzkriterium) |
+| NO5 | Die Codezeile der Notiz leicht ändern (z. B. Parameter umbenennen) | Symbol verschwindet kurz und steht nach der Tipp-Pause wieder an derselben Zeile |
+| NO6 | Rechtsklick in die Rinne einer anderen Zeile, Kontextmenü › *Atlas › Notiz an dieser Zeile…* | Dialog nennt die angeklickte Zeile, nicht die Cursorzeile |
+| NO7 | *Atlas › Notizen des Projekts* | Ergebnisfenster „Notizen in Projekt.dproj: n, davon 0 verwaist“, je Datei eine Gruppe mit „Zeile: erste Textzeile“; alle Notizen des Projekts (Akzeptanzkriterium) |
+| NO8 | Doppelklick bzw. Enter auf einen Eintrag | Editor springt zur Zeile |
+| NO9 | Kontextmenü eines Eintrags › „Notiz bearbeiten…“, Text ändern, speichern | Liste zeigt den neuen Text, Eintrag bleibt gewählt |
+| NO10 | Die Codezeile samt Nachbarn löschen, Liste neu öffnen | Notiz unter „Verwaist (1)“ mit Datei und letzter Zeile; kein Symbol in der Rinne |
+| NO11 | Eintrag wählen, Entf, Rückfrage mit Ja | Notiz verschwindet aus Liste und Rinne |
+| NO12 | Datei mit Notizen außerhalb der IDE löschen oder umbenennen, Liste öffnen | Ihre Notizen stehen unter „Verwaist“ |
+| NO13 | Dialog einer vorhandenen Notiz, Text ganz löschen, Speichern | Notiz gelöscht; bei einer neuen Notiz ohne Text wird nichts angelegt |
+| NO14 | IDE neu starten, Datei öffnen | Symbole und Liste wie vorher |
+| NO15 | Einstellung „Persönliche Notizen…“ (Reiter Editor) aus bzw. Schnellschalter „Notizen“ | Keine Symbole; Einträge im Menü *Atlas* und in der Befehlspalette verschwinden; das Kontextmenü meldet „Persönliche Notizen sind ausgeschaltet …“ in der Meldungsansicht |
+| NO16 | Rinne bei 100 %, 150 % und 200 %, hell und dunkel, mit Haltepunkt und Lesezeichen an derselben Zeile | Symbol sichtbar und nicht abgeschnitten; prüfen, ob es Haltepunkt- oder Lesezeichen-Symbol überdeckt (Lage links in der Rinne ist ungeprüft) |
+| NO17 | Rinnen-API: Delphi 12 und 13, Symbol erscheint überhaupt (`cevPaintGutterEvents`, letzte Stufe von `TPaintGutterStage`) und Maus-Ereignisse kommen in der Rinne an (Tooltip, Rechtsklick) | Funktioniert in beiden Versionen; sonst Rückmeldung mit Version |
+| NO18 | Ohne geöffnetes Projekt eine einzelne Datei öffnen, Notiz anlegen | Meldung „Notizen gehören zu einem Projekt …“ |
+
+## Benannte Lesezeichen (#622)
+
+Ablage je Projekt neben der .dproj (Projekte im selben Ordner teilen sich die Datei): lokal `.atlas-bookmarks.json`, die Atlas beim Speichern in `.git/info/exclude` des Repositorys einträgt (nur lokal, nichts Eingechecktes ändert sich); mit „Lesezeichen im Repository für das Team speichern“ (`bookmarks.shared`) `atlas-bookmarks.json` zum Einchecken. Gibt es die Team-Datei noch nicht, gelten zunächst die lokalen Lesezeichen, das nächste Speichern legt die Team-Datei an. JSON UTF-8 ohne BOM mit `format` 1, `project` und `bookmarks` in Listenreihenfolge (je Lesezeichen `id`, `name`, `file` relativ mit „/“, `method`, `signature`, `offset`, `line` 1-basiert, `lineText`, `before`, `after`, `created` in UTC, bei Bedarf `lost`). Eine leere Liste löscht die Datei.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BM1 | Projekt in einem Git-Repository öffnen, Cursor in eine Methode `TKunde.Runde`, Strg+Alt+K | Kleines Fenster „Lesezeichen – Kunde.pas, Zeile 42“, Vorschlag „Runde: Result := Round(…“ ist markiert; Enter setzt, links in der Rinne ein gelbes Lesezeichenband |
+| BM2 | Maus über das Band halten | Tooltip „Lesezeichen“ mit dem Namen; zwei Lesezeichen an derselben Zeile: „2 Lesezeichen an dieser Zeile“ und beide Namen |
+| BM3 | `git status` | Keine neue Datei: `.atlas-bookmarks.json` liegt neben der .dproj, steht aber in `.git/info/exclude` |
+| BM4 | *Atlas › Lesezeichen-Fenster* | Andockbares Fenster „Atlas-Lesezeichen“ mit Filterfeld, Spalten Name, Datei (mit Zeile), Methode, Zeilenvorschau; unten „Lesezeichen in Projekt.dproj: 3, davon 0 nicht gefunden · Lokal in .atlas-bookmarks.json …“; andocken wie andere IDE-Fenster |
+| BM5 | Im Fenster Filter „kunde rund“, ↓, Enter; dann Klick auf einen anderen Eintrag | Liste zeigt nur passende Einträge; Enter bzw. Klick springt im Editor zur Zeile |
+| BM6 | Eintrag wählen, F2, neuen Namen, Enter; dann Entf und Rückfrage mit Ja | Name geändert (leerer Name bleibt beim alten); gelöschter Eintrag verschwindet aus Liste und Rinne |
+| BM7 | Eintrag per Maus nach oben ziehen; Strg+↓ auf einem Eintrag | Reihenfolge ändert sich und bleibt nach Neustart erhalten (auch in „Gehe zu Lesezeichen…“) |
+| BM8 | Methode mit Lesezeichen um 50 Zeilen nach unten verschieben (z. B. 50 Zeilen davor einfügen oder ausschneiden und weiter unten einfügen), kurz warten | Band wandert mit; Liste zeigt die neue Zeile (Akzeptanzkriterium) |
+| BM9 | IDE neu starten, Projekt öffnen, Fenster bzw. *Gehe zu Lesezeichen…* | Lesezeichen vorhanden und an der richtigen Zeile (Akzeptanzkriterium) |
+| BM10 | Datei außerhalb der IDE durch eine Fassung ohne die Methode ersetzen, IDE fragt nach Neuladen → Ja; Fenster öffnen | Lesezeichen steht grau mit „nicht gefunden · …“ in der Liste, kein Band in der Rinne (Akzeptanzkriterium); Sprung zeigt die letzte bekannte Stelle mit Meldung |
+| BM11 | Datei wiederherstellen (Methode wieder da) | Lesezeichen gilt wieder, Band erscheint |
+| BM12 | *Atlas › Gehe zu Lesezeichen…* (auch Befehlspalette), „rp“ bzw. Dateiname tippen | Fenster wie die Befehlspalette mit allen Lesezeichen in Listenreihenfolge, Ort „Kunde.pas:42 › TKunde.Runde“ grau daneben; unscharfe Suche über Name, Datei und Methode; Enter springt |
+| BM13 | Rechtsklick in die Rinne einer anderen Zeile, Kontextmenü › *Atlas › Lesezeichen setzen…* | Dialog nennt die angeklickte Zeile |
+| BM14 | „Lesezeichen im Repository für das Team speichern“ einschalten, ein Lesezeichen umbenennen | `atlas-bookmarks.json` (ohne Punkt) entsteht neben der .dproj mit allen bisherigen Lesezeichen und erscheint in `git status`; die lokale Datei bleibt unverändert |
+| BM15 | Einstellung „Benannte Lesezeichen“ (Reiter Editor) aus bzw. Schnellschalter | Keine Bänder, Fenster schließt, Einträge im Menü *Atlas* und in der Befehlspalette verschwinden, Strg+Alt+K tut nichts mehr; das Kontextmenü meldet „Benannte Lesezeichen sind ausgeschaltet …“; die nummerierten IDE-Lesezeichen (Strg+Umschalt+0…9, Strg+0…9) funktionieren unverändert (Akzeptanzkriterium) |
+| BM16 | Strg+Alt+K in der Tastenkürzel-Übersicht (#520) und auf *Tools › Optionen › Atlas*, Reiter Befehle | Eintrag „Lesezeichen setzen“; Konflikt mit einer anderen Belegung wird gemeldet; leeres Tastenfeld = keine Taste |
+| BM17 | Rinne bei 100 %, 150 % und 200 %, hell und dunkel, mit Notiz und IDE-Lesezeichen an derselben Zeile | Notizblatt und Band nebeneinander, nichts abgeschnitten; prüfen, ob sie IDE-Symbole überdecken |
+| BM18 | Ohne geöffnetes Projekt eine einzelne Datei öffnen, Strg+Alt+K | Meldung „Lesezeichen gehören zu einem Projekt …“ |
+
 ## Tippfehler (#485)
 
 | Nr. | Schritte | Erwartet |
@@ -752,14 +818,14 @@ Vorbereitung: Paket mit `tips.json`, `Tipps\` und `Beispiele\` neben den BPL-Ord
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| AE1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasTipCatalogTests`, `TAtlasDiscoverTests`, `TAtlasCommandUsageTests`, `TAtlasWelcomeDiscoverFrameTests`, `TAtlasSettingsPageTests.WelcomeSettingsRoundTrip`, `TAtlasSettingsPageTests.UsageButtonsCallBack` und `TSetupInstallerTests` grün |
-| AE2 | IDE starten | Karte „Atlas entdecken“ in der rechten Spalte unter „Neu in Atlas“ (Atlas-Layout) bzw. als eigener Bereich: Bild links, fetter Titel „Code-Aktionen“ mit dem tatsächlichen Kürzel (z. B. „Ctrl+.“ bzw. „Strg+.“) daneben, ein bis zwei Sätze, grau „Noch nie benutzt“ und rechts „Tipp 1 von 10“; darunter „Ausprobieren“, „Nächster Tipp“, „Nicht mehr zeigen“ (**Abnahme**) |
-| AE3 | „Ausprobieren“ bei „Code-Aktionen“ | `Beispiele\Entdecken.pas` öffnet sich, der Cursor steht auf `Rabatt` (Zeile 57); Meldungsansicht „Atlas entdecken: Beispiel geöffnet – jetzt … drücken.“; das Kürzel zeigt die Code-Aktionen |
+| AE1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasTipCatalogTests` (auch `HighDpiImageWhenScaledAndPresent`), `TAtlasDiscoverTests` (auch `SettingOnReadsSwitchesAndChoices`), `TAtlasShortcutTipsTests.KeyOnlyFunctionsHaveNoPaletteCommand`, `TAtlasCommandUsageTests`, `TAtlasWelcomeDiscoverFrameTests` (auch `ImageFitsColumn`), `TAtlasSettingsPageTests.WelcomeSettingsRoundTrip`, `TAtlasSettingsPageTests.UsageButtonsCallBack` und `TSetupInstallerTests` grün |
+| AE2 | IDE starten | Karte „Atlas entdecken“ in der rechten Spalte unter „Neu in Atlas“ (Atlas-Layout) bzw. als eigener Bereich: Bild (320 × 180, in schmaler Spalte oben, ab etwa 560 Pixeln Spaltenbreite links neben dem Text), fetter Titel „Befehlspalette“ mit dem tatsächlichen Kürzel („Strg+Umschalt+P“ bzw. „Ctrl+Shift+P“) daneben, ein bis zwei Sätze, grau „Noch nie benutzt“ und rechts „Tipp 1 von n“ (n bis 28, je nach eingeschalteten Funktionen); darunter „Ausprobieren“, „Nächster Tipp“, „Nicht mehr zeigen“ (**Abnahme**) |
+| AE3 | „Nächster Tipp“ bis „Code-Aktionen“, dort „Ausprobieren“ | `Beispiele\Entdecken.pas` öffnet sich, der Cursor steht auf `Rabatt` (Zeile 77); Meldungsansicht „Atlas entdecken: Beispiel geöffnet – jetzt … drücken.“; das Kürzel zeigt die Code-Aktionen |
 | AE4 | AE3, dann das Kürzel drücken; IDE neu starten | `usage.json` enthält `Atlas.CodeActions` mit `keyboard` ≥ 1 und `lastUsed` von heute (spätestens 5 s nach dem Aufruf bzw. beim Beenden gespeichert); nach dem Neustart kommt zuerst ein anderer, noch nie benutzter Tipp; „Code-Aktionen“ erscheint erst nach allen nie benutzten und zeigt dann „Zuletzt heute benutzt“ (**Abnahme**) |
 | AE5 | „Nächster Tipp“ mehrmals | Tipp für Tipp in der festen Reihenfolge des Starts, „Tipp n von m“ zählt mit, nach dem letzten wieder der erste; IDE neu starten: die Karte beginnt nach dem zuletzt gezeigten Tipp |
 | AE6 | Bei „Umbenennen im ganzen Projekt“ „Nicht mehr zeigen“; IDE neu starten, alle Tipps durchblättern | Die Karte springt sofort zum nächsten Tipp; `shortcut-tips.json` enthält `"discover": {"blocked": ["rename"], …}`; auch nach dem Neustart kommt der Tipp nie wieder, „von m“ ist um eins kleiner (**Abnahme**) |
 | AE7 | *Tools › Optionen › Atlas › Willkommensseite* „Gesperrte Tipps wieder zeigen“ | Knopf wird grau; der gesperrte Tipp erscheint beim Durchblättern wieder (hinten in der Reihenfolge) |
-| AE8 | Seite *Rückgängig über mehrere Dateien*: `undo.multiFile` aus; Tastenkürzel-Übersicht (*Tastenkonflikte*) aus; dann alle Tipps durchblättern, IDE neu starten | „Änderungen über mehrere Dateien zurücknehmen“ und „Tastenkürzel-Übersicht“ erscheinen nie (auch nicht über „Nächster Tipp“); wieder an: sie kommen ohne Neustart zurück (**Abnahme**) |
+| AE8 | Seite *Rückgängig über mehrere Dateien*: `undo.multiFile` aus; Tastenkürzel-Übersicht (*Tastenkonflikte*) aus; `welcomePage.whatsNew` = `off`; dann alle Tipps durchblättern, IDE neu starten | „Änderungen über mehrere Dateien zurücknehmen“, „Tastenkürzel-Übersicht“ und „Neu in Atlas“ erscheinen nie (auch nicht über „Nächster Tipp“); wieder an bzw. `afterUpdate`: sie kommen ohne Neustart zurück. Mit dem Hauptschalter (Atlas aus) fehlen „Vervollständigung von Atlas“ und „Parameter-Hint“ (**Abnahme**) |
 | AE9 | `welcomePage.discover` aus | Karte verschwindet sofort, im Kontextmenü bzw. Atlas-Layout kein Bereich „Atlas entdecken“; mit `shortcutTips.enabled` aus wird nichts mehr gezählt (Protokoll „Beobachtung False“) (**Abnahme**) |
 | AE10 | `tips.usageTracking` aus, einige Atlas-Befehle per Menü und Kürzel aufrufen, IDE neu starten | `usage.json` ändert sich nicht (Zeitstempel und Inhalt); die Karte zeigt keinen Hinweis „Noch nie benutzt“/„Zuletzt …“ und die Tipps kommen der Reihe nach, je Start nach dem zuletzt gezeigten (**Abnahme**) |
 | AE11 | „Zählung zurücksetzen“ | Knopf wird grau; `usage.json` enthält keine Zähler mehr (`"commands": {}`); die Karte zeigt sofort „Noch nie benutzt“; `shortcut-tips.json` (gesperrte Tipps, „Nicht mehr zeigen“ aus #600) bleibt |
@@ -768,9 +834,71 @@ Vorbereitung: Paket mit `tips.json`, `Tipps\` und `Beispiele\` neben den BPL-Ord
 | AE14 | Über die Befehlspalette (oder das Menü *Atlas*) „Symbolsuche“ ausführen, die Karte bei „Symbolsuche“ „Ausprobieren“ | Ohne Beispieldatei führt „Ausprobieren“ den Befehl aus; danach gilt er beim nächsten Start nicht mehr als nie benutzt |
 | AE15 | Mit `shortcutTips.enabled` an eine Atlas-Aktion per Menü aufrufen, die in `tips.json` steht (z. B. *Atlas › Auswahl erweitern*) | Der Tastenkürzel-Tipp (#600) zeigt den Titel aus `tips.json` („Auswahl erweitern“) |
 | AE16 | `tips.json` löschen bzw. alle Tipps sperren | Kein Bereich „Atlas entdecken“; kein Fehler im Protokoll. Bild löschen: Karte ohne Bild, Text rückt nach links. `Beispiele\Entdecken.pas` löschen: „Ausprobieren“ meldet „Die Beispieldatei … fehlt in der Installation.“ |
-| AE17 | Dunkles und helles Thema, 100 %, 150 %, 200 % Skalierung; Spalte bzw. Fenster *Atlas-Start* schmal ziehen | Bild scharf genug und nicht verzerrt (96×60 logische Pixel), Text bricht um, Knöpfe brechen in eine zweite Reihe um, die Karte wird höher, nichts abgeschnitten (**Abnahme**) |
-| AE18 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs`) nach AE2–AE11 | Nur Zahlen („n von m Tipps in Frage“, „Tipps (#757): 10 aus tips.json“) und „Tipp gesperrt“/„Sperren aufgehoben“/„Nutzungszählung zurückgesetzt“; keine Befehle, Pfade oder Benutzernamen |
-| AE19 | Installer: Paket aus dem Release installieren, dann über eine Version mit anderem Tipp-Bild aktualisieren | `tips.json` und `Tipps\*.png` im Installationsordner; alte Bilder sind nach dem Update weg; Deinstallation mit „Daten löschen“ entfernt `usage.json` und `shortcut-tips.json` |
+| AE17 | Dunkles und helles Thema, 100 %, 125 %, 150 %, 200 % Skalierung (Monitor wechseln); Spalte bzw. Fenster *Atlas-Start* schmal und breit ziehen | Bild in beiden Themen gut abgegrenzt (grauer Rand) und der Text im Bild bei 100 % ohne Lupe lesbar (320 × 180, Pixel für Pixel scharf); bei 200 % aus der `@2x`-Datei Pixel für Pixel, bei 125 % und 150 % aus ihr glatt verkleinert (helle Schrift bleibt erhalten), nie verzerrt; nach dem Monitorwechsel passt das Bild ohne Neustart. Schmale Spalte: Bild oben, kleiner mit gleichem Seitenverhältnis, Text darunter; breite Spalte: Text neben dem Bild. Text bricht um, Knöpfe brechen in eine zweite Reihe um, die Karte wird höher, nichts abgeschnitten (**Abnahme**) |
+| AE18 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs`) nach AE2–AE11 | Nur Zahlen („n von m Tipps in Frage“, „Tipps (#757): 28 aus tips.json“) und „Tipp gesperrt“/„Sperren aufgehoben“/„Nutzungszählung zurückgesetzt“; keine Befehle, Pfade oder Benutzernamen |
+| AE19 | Installer: Paket aus dem Release installieren, dann über eine Version mit anderem Tipp-Bild aktualisieren | `tips.json` und `Tipps\*.png` (je Tipp `<name>.png` und `<name>@2x.png`) im Installationsordner; alte Bilder sind nach dem Update weg; Deinstallation mit „Daten löschen“ entfernt `usage.json` und `shortcut-tips.json` |
+| AE20 | Tipp „Befehlspalette“: „Ausprobieren“; dann *Tastenkonflikte* die Taste der Palette ändern und die Willkommensseite neu zeigen | Die Befehlspalette öffnet sich über dem aktiven Fenster; die Karte zeigt danach die neue Taste |
+| AE21 | Alle Tipps mit Beispielstelle nacheinander „Ausprobieren“ und das genannte Kürzel drücken (bzw. den Befehl aus dem Menü *Atlas* aufrufen, wenn kein Kürzel belegt ist) | Cursor in `Entdecken.pas` (Zeile:Spalte) und Ergebnis: Code-Aktionen 77:27 auf `Rabatt` (Liste der Aktionen); Auswahl erweitern 76:32 auf `Preis` (wächst schrittweise); Umbenennen 28:3 auf `TKunde`; Referenzen 33:14 auf `Name` (Fundstellen in Zeile 33 und 82); Implementierungen 25:14 auf `IPreisliste.Preis` (TStandardpreise.Preis, TStaffelpreise.Preis); Typdefinition 82:13 auf `AKunde` (springt zu `TKunde`, Zeile 28); Aufrufer 70:10 auf `Gesamtpreis` (Beschriftung); Aufrufe 80:10 auf `Beschriftung` (Gesamtpreis, TStaffelpreise.Create, CurrToStr); Vorfahren 41:3 auf `TStaffelpreise` (TStandardpreise, TInterfacedObject, IPreisliste); Nachfahren 36:3 auf `TStandardpreise` (TStaffelpreise); Vervollständigung 82:20 hinter `AKunde.` (Strg+Leer: Mitglieder von TKunde mit `Name`); Parameter-Hint 82:64 im Aufruf von `Gesamtpreis` (Strg+Umschalt+Leer: zweiter Parameter `APreise` hervorgehoben); Qualifizierter Name 65:25 auf `Preis` (Zwischenablage `Entdecken.TStaffelpreise.Preis`) (**Abnahme**) |
+| AE22 | Tipps ohne Beispielstelle „Ausprobieren“: Symbolsuche, Ergebnisfenster, Compiler prüfen, Schnellschalter, Tastenkürzel-Übersicht, Projekt-Einstellungen, Einrichtung prüfen, Atlas-Layout anwenden, Atlas-Start, Neu in Atlas, Fehlerbericht erstellen, Diagnoselog exportieren | Jeweils derselbe Befehl wie in der Befehlspalette (Fenster bzw. Dialog öffnet sich, Syntaxprüfung des aktiven Projekts läuft, Layout wird angewendet); „Änderungen über mehrere Dateien zurücknehmen“ öffnet nur die Liste „Atlas-Änderungen“ und nimmt nichts zurück; „Alles aus für diese Sitzung“ öffnet nur die Schnellschalter |
+| AE23 | Vervollständigung und Parameter-Hint ohne eigene Taste (Seite *Tastenkonflikte*: keine) bzw. mit eigener Taste | Die Karte nennt Strg+Leer bzw. Strg+Umschalt+Leer der IDE; mit eigener Taste diese |
+
+### Hilfe und Rückmeldung (#766)
+
+Entscheidungen: Die Kurzbeschreibung kommt nur in die Issue-Vorlage, nicht in die ZIP (sie ist freier Text des Nutzers und wird ohnehin im Issue sichtbar). Die Versionen stehen in der Vorlage nur, wenn das Häkchen „Version von Atlas, RAD Studio und Windows“ gesetzt ist; sonst „(nicht angegeben)“. Die letzten Diagnosedaten (#479) sind nicht vorausgewählt. Die Ziel-URL muss mit http:// oder https:// beginnen (Einstellung und Dialog prüfen beide), sonst gilt die Issue-Seite des Atlas-Repositorys; so startet „Issue-Seite öffnen“ nie ein Programm.
+
+Vorbereitung: Paket aus dem Release bzw. `pwsh Tools/Build-Docs.ps1 -OutDir <Installationsordner>\Doku`. Ein Projekt unter einem Pfad mit dem eigenen Benutzernamen (z. B. `C:\Users\<Name>\Projekte\Kunde`) einmal geöffnet, damit `atlas.log` Projektpfade enthält. Diagnosemodus (#479) einmal an und eine Vervollständigung ausgelöst, damit `Logs\Diagnose\atlas-diagnosemodus.txt` existiert.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HR1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasDiagnosticPackageTests`, `TAtlasReportDialogTests`, `TAtlasWelcomeHelpFrameTests`, `TAtlasWelcomeSettingsTests`, `TAtlasSettingsPageTests.WelcomeSettingsRoundTrip` und `TSetupInstallerTests` grün |
+| HR2 | IDE starten | Bereich „Hilfe und Rückmeldung“ unten in der rechten Spalte mit „Atlas-Doku“, „Tastenkürzel“, „Problem melden …“ und darunter grau „Nichts wird automatisch gesendet.“ (**Abnahme**) |
+| HR3 | „Atlas-Doku“ mit installierter Doku | Der Standardbrowser öffnet `…\Atlas\Doku\index.html`: Inhaltsverzeichnis mit Überblick, Installation, RAD Studio, Einstellungen, Konfiguration, Regeln, Schlüsselwörter, MCP und Änderungen; Verweise zwischen den Seiten gehen lokal, andere ins Repository; helles und dunkles Systemthema lesbar (**Abnahme**) |
+| HR4 | Ordner `Doku` umbenennen, „Atlas-Doku“ | Der Browser öffnet `https://github.com/xKnockOut/Atlas-IDE-Expert/tree/main/docs` |
+| HR5 | „Tastenkürzel“ | Die Tastenkürzel-Übersicht aus #520 mit allen Kürzeln öffnet sich (**Abnahme**) |
+| HR6 | *Tastenkonflikte*: `keys.overview` aus | „Tastenkürzel“ ist sofort ausgegraut; wieder an: klickbar |
+| HR7 | „Problem melden …“ | Dialog „Problem melden“: Hinweis, Kurzbeschreibung, Häkchen Logs, Versionen, Einstellungen (gesetzt) und „Letzte Diagnosedaten“ (nicht gesetzt); Vorschau mit `atlas-info.txt`, `einstellungen.json`, `plugin/atlas.log`, `server/diag-*.log` und Größen; Summe „n Dateien, zusammen … KB“; Ordner = Desktop (**Abnahme**) |
+| HR8 | Häkchen einzeln ab- und anwählen, „Letzte Diagnosedaten“ setzen | Die Vorschau folgt sofort; mit Diagnosedaten kommt `atlas-diagnosemodus.txt` dazu; ohne Datei ist das Häkchen grau mit „(keine vorhanden)“; alles ab: „Nichts ausgewählt.“, „ZIP anlegen“ grau |
+| HR9 | Jede Datei per Doppelklick bzw. „Ansehen“ öffnen | Fenster „Inhalt von …“ zeigt den Text; weder Benutzername noch Rechnername noch Projektpfade, Pfade als `<pfad>`/`<ws>`, Namen als `<benutzer>`; `einstellungen.json` ohne Pfadwerte (`"<pfad>"`) (**Abnahme**) |
+| HR10 | „ZIP anlegen“ | `Atlas-Diagnose-<heute>.zip` auf dem Desktop, der Explorer zeigt sie markiert; Statuszeile „Angelegt: …“; ein zweites Mal: `…-2.zip`, die erste bleibt; ZIP enthält genau die Dateien der Vorschau (**Abnahme**) |
+| HR11 | ZIP entpacken und durchsuchen (`findstr /s /i "<Benutzername> <Rechnername> Projekte\Kunde" *`) | Keine Treffer (**Abnahme**) |
+| HR12 | „Ordner …“, anderen Ordner wählen, „ZIP anlegen“ | ZIP im gewählten Ordner; `welcomePage.help.reportFolder` = `D:\Ablage` in den Optionen: der Dialog beginnt dort, ein fehlender Ordner wird angelegt |
+| HR13 | Kurzbeschreibung eintragen, „ZIP anlegen“, dann „Issue-Seite öffnen“; in ein Textfeld einfügen | Browser öffnet `https://github.com/xKnockOut/Atlas-IDE-Expert/issues/new`; die Zwischenablage enthält Markdown mit „## Beschreibung“ (der Text), „## Versionen“ (Atlas, RAD Studio mit Plattform, Windows), „## Diagnosepaket“ mit dem ZIP-Namen; Pfade in der Beschreibung anonymisiert; Atlas hat keine Verbindung aufgebaut (Ressourcenmonitor bzw. Fiddler: keine Verbindung von `bds.exe`) (**Abnahme**) |
+| HR14 | „Versionen“ abwählen, „Issue-Seite öffnen“ ohne ZIP | Vorlage mit „(nicht angegeben)“ und „Kein Diagnosepaket angelegt.“ |
+| HR15 | `welcomePage.help.reportUrl` auf `https://example.org/neu` bzw. `cmd.exe` | Erst öffnet der Browser example.org; `cmd.exe` speichert die Optionsseite als Vorgabe-URL zurück, es startet kein Programm |
+| HR16 | `welcomePage.help` aus | Bereich verschwindet sofort; wieder an: erscheint ohne Neustart (**Abnahme**) |
+| HR17 | Englische IDE | „Help and feedback“, „Atlas docs“, „Shortcuts“, „Report a problem …“; Dialog und Vorlage englisch („## Description“) |
+| HR18 | Schmale Spalte bzw. Fenster *Atlas-Start*, 100 %, 150 %, 200 % Skalierung | Knöpfe brechen in weitere Reihen um, der Bereich wird höher, nichts abgeschnitten; Dialog mit Fuß lesbar und in der Größe änderbar |
+| HR19 | *Atlas › Diagnoselog exportieren…* (#647) mit vorhandener Diagnosemodus-Datei | Vorschau und ZIP enthalten zusätzlich `atlas-diagnosemodus.txt` |
+| HR20 | Installer: Paket aus dem Release installieren, dann aktualisieren | `Doku\index.html` und die übrigen Seiten im Installationsordner; Seiten, die es im neuen Paket nicht mehr gibt, sind weg |
+| HR21 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs\atlas.log`) nach HR7–HR15 | Nur „Problem melden (#766): Dialog geöffnet“; keine Pfade, Adressen oder Texte aus dem Dialog |
+
+### Weiterarbeiten (#755)
+
+Abweichungen vom Issue: „Gemerkt“ ist ein zweiter Reiter im Bereich „Weiterarbeiten“. Favoriten (#458) haben weder Projekt noch Datei: Sie stehen unter „alle Projekte“, der Ort ist die Unit, der Sprung sucht die Datei im Index-Cache (Projekte und Bibliothek). Ein Klick auf einen eingehenden Commit listet dessen Dateien im Fenster „Atlas-Ergebnisse“, weil #571 keine Commit-Ansicht hat. Bei SVN fehlt der Abschnitt „Neu seit …“ (kein lokaler Stand des Servers). Ohne offene Reiter beim Schließen bleibt der gespeicherte Arbeitsstand stehen; mit `welcomePage.continue` aus zeichnet Atlas nichts auf.
+
+Vorbereitung: Git-Projekt `GitDemo` (mindestens 8 Units) mit Remote `origin` (z. B. ein lokales Bare-Repository `Demo.git`) und Branch `main` mit Upstream; ein zweiter Klon `Kollege` desselben Remotes; ein SVN-Projekt `SvnDemo`; ein Projekt `OhneVcs` ohne Versionsverwaltung; eine Projektgruppe `Gruppe.groupproj` mit zwei Projekten. In zwei Projekten je eine Notiz (#545) und ein benanntes Lesezeichen (#622), dazu ein angehefteter Favorit (#458), z. B. `TStringList.Add`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WA1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasWelcomeContinueTests`, `TAtlasWelcomeSavedTests`, `TAtlasWelcomeContinueFrameTests`, `TAtlasVcsTests`, `TAtlasVcsIntegrationTests.GitIncomingCommitsOnEditedFiles`, `TAtlasWelcomeSettingsTests` und `TAtlasSettingsPageTests.WelcomeSettingsRoundTrip` grün |
+| WA2 | `GitDemo` öffnen, 7 Units in einer bestimmten Reihenfolge öffnen, Reiter per Ziehen umsortieren, in drei Units an verschiedenen Stellen tippen (zuletzt in `Kunde.pas` in `TKunde.Laden`), eine andere Unit aktivieren, Projekt schließen | Willkommensseite: Bereich „Weiterarbeiten“, Reiter „Zuletzt“ mit „**GitDemo** · 7 Reiter“, „gerade eben“ und „Kunde.pas › TKunde.Laden“; Tooltip mit Pfad, Zeitpunkt und „Zuletzt bearbeitet: …\Kunde.pas:<Zeile> › TKunde.Laden“ (**Abnahme**) |
+| WA3 | WA2, dann „Fortsetzen“ | Projekt öffnet sich; die 7 Reiter in der Reihenfolge von vorher, in jeder geänderten Unit steht der Cursor an der letzten Änderung, in den übrigen an der Cursorstelle beim Schließen; aktiv ist der zuletzt aktive Reiter (**Abnahme**) |
+| WA4 | Wie WA2 mit Projektgruppe `Gruppe.groupproj` (Units aus beiden Projekten), Gruppe schließen | Ein Eintrag „Gruppe · n Reiter“; „Fortsetzen“ öffnet die Gruppe und die Reiter |
+| WA5 | WA2, dann eine der 7 Units im Explorer löschen; „Fortsetzen“ | 6 Reiter öffnen sich; unter der Liste und in der Meldungsansicht „Weiterarbeiten: nicht mehr vorhanden, übersprungen: <Datei>“; kein Fehlerdialog (**Abnahme**) |
+| WA6 | IDE mit offenem `GitDemo` und Reitern über *Datei › Beenden* schließen, neu starten | Arbeitsstand von `GitDemo` steht oben mit den Reitern vom Beenden |
+| WA7 | Alle Reiter schließen, dann das Projekt | Der vorherige Arbeitsstand bleibt unverändert stehen (kein Eintrag „0 Reiter“) |
+| WA8 | Im Klon `Kollege` einen Commit „Kunde: Prüfung“ an `Kunde.pas` und einen Commit an einer Datei, die in `GitDemo` nicht offen und nicht geändert war, pushen; in `GitDemo` `git fetch`; Willkommensseite öffnen | Abschnitt „Neu seit deinem letzten Öffnen (origin/main)“ mit genau einer Zeile „<Hash>  Kunde: Prüfung — <Autor> · Kunde.pas“; der zweite Commit fehlt (**Abnahme**) |
+| WA9 | Klick auf die Commit-Zeile | Fenster „Atlas-Ergebnisse“ mit „Commit <Hash> – Kunde: Prüfung (<Autor>): n Dateien“, die eigenen Dateien zuerst; Doppelklick öffnet die Datei |
+| WA10 | WA8 ohne `git fetch`, `welcomePage.continue.fetch` aus | „Keine neuen Commits zu deinen Dateien.“; kein Netzzugriff (Prozess-Monitor: kein `git fetch`) |
+| WA11 | `welcomePage.continue.fetch` an, Remote erreichbar; dann Remote unerreichbar bzw. SSH-Remote ohne Schlüssel | Commit erscheint ohne manuellen Abruf; unerreichbar: Hinweis „Abruf (fetch) fehlgeschlagen, Stand des letzten Abrufs.“, kein Anmeldedialog, die Seite hängt nicht (höchstens 5 s im Hintergrund) |
+| WA12 | `SvnDemo` und `OhneVcs` öffnen, Reiter öffnen, schließen | Einträge erscheinen; kein Abschnitt „Neu seit …“, keine Meldung, kein Fehler im Protokoll (**Abnahme**) |
+| WA13 | Reiter „Gemerkt“ | Liste mit Notizen und Lesezeichen aus beiden Projekten (Art, Text, Datei:Zeile, Projekt) und dem Favoriten („Favorit“, `TStringList.Add`, Unit, „alle Projekte“); Filter „kunde“ grenzt ein (**Abnahme**) |
+| WA14 | Doppelklick bzw. Enter auf eine Notiz, ein Lesezeichen und den Favoriten | Projekt öffnet sich bei Bedarf, die Datei an der Zeile; Lesezeichen über ihren Anker (auch nach verschobenem Code); Favorit springt zur Deklaration in der Unit (Bibliothek aus dem Index-Cache); ohne Cache Meldung „Favorit …: Unit … nicht im Index-Cache gefunden.“ (**Abnahme**) |
+| WA15 | Befehlspalette „Letzten Arbeitsstand fortsetzen“ | Wie „Fortsetzen“ für den obersten Eintrag; ohne Arbeitsstand Meldung „Es gibt noch keinen gespeicherten Arbeitsstand.“ |
+| WA16 | *Tools › Optionen › Atlas › Willkommensseite*: jeden der fünf Schalter einzeln umstellen (`welcomePage.continue`, `.count` = 2, `.incoming`, `.fetch`, `welcomePage.saved`) | Bereich verschwindet bzw. kommt; 2 Einträge; Abschnitt „Neu seit …“ verschwindet; fetch wie WA11; Reiter „Gemerkt“ verschwindet, „Zuletzt“ bleibt; jeder wirkt ohne Neustart und nur auf seinen Teil (**Abnahme**) |
+| WA17 | `welcomePage.continue` aus, Projekt mit Reitern schließen, wieder an | Kein neuer Arbeitsstand für dieses Schließen |
+| WA18 | Englische IDE; dunkles und helles Thema; 150 % Skalierung; Fenster *Atlas-Start* | „Continue working“, „Recent“, „Saved“, „7 tabs“, „5 min ago“, „Resume“; Texte und Schaltfläche lesbar und nicht abgeschnitten; im Fenster derselbe Inhalt |
+| WA19 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs\atlas.log`) nach WA2–WA16 | Nur Meldungen wie in der Meldungsansicht, ohne Pfade (Dateinamen ohne Ordner); kein Quelltext, keine Betreffzeilen von Commits |
 
 ## Atlas-Symbol (#751)
 
@@ -836,6 +964,54 @@ Voraussetzung wie bei #274; Server läuft.
 | TU6 | Optionen › Atlas: „Code Lens „zur Testunit““ aus | Marke verschwindet ohne Neustart; Befehl, Menü und Taste wechseln weiter |
 | TU7 | Programmdatei (`.dpr`) oder Datei mit Kommentar vor `unit` | Keine Marke in der `.dpr`; bei Kommentarkopf steht sie hinter der Zeile `unit …;` |
 | TU8 | Kein Compiler, kein Build: TU2–TU4 direkt nach dem Öffnen des Projekts | Wechsel funktioniert in beide Richtungen |
+
+## Code-Metriken (#66)
+
+Voraussetzung: Server läuft, Beispielprojekt mit `Setup\Beispiele\Entdecken.pas` bzw. eigenes Projekt geöffnet.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MX1 | `Entdecken.pas` öffnen, kurz warten | Hinter `function Gesamtpreis(…): Currency;` steht die Marke „9 Zeilen · Tiefe 1 · zyklomatisch 2 · kognitiv 1 · 3 Parameter“, hinter jedem anderen Methodenkopf eine eigene Marke; keine Marke im `interface`-Teil |
+| MX2 | Im Rumpf von `Gesamtpreis` ein `if A then if B then X;` ergänzen, eine Sekunde warten | Marke zeigt nach der Tipp-Pause die neuen Werte; während des Tippens bleibt sie an ihrem Kopf (keine Marke an fremden Zeilen) |
+| MX3 | Methode mit acht Parametern schreiben | Marke gelb, „8 Parameter (> 6)“; im Editor ein Hinweis `metric-parameter-count` am Methodennamen |
+| MX4 | Zeile `// lsp-ignore: metric-parameter-count` über den Kopf aus MX3 | Hinweis verschwindet; die Marke bleibt (Information) |
+| MX5 | atlas.json: `"rules": {"metric-parameter-count": {"max": 10}}` speichern | Nach höchstens 30 s ist die Marke aus MX3 nicht mehr gelb, der Hinweis bleibt weg auch ohne Kommentar |
+| MX6 | atlas.json: `"metric-parameter-count": {"max": 0}` | Problem in atlas.json: „"max" muss eine ganze Zahl ab 1 sein“; es gilt die Vorgabe 6 |
+| MX7 | Optionen › Atlas › Editor: „Code Lens mit Code-Metriken hinter dem Methodenkopf“ aus | Marken verschwinden ohne Neustart; Hinweise `metric-*` bleiben (Regeln einzeln abschaltbar) |
+| MX8 | Schnellschalter „Code-Metriken“ bzw. „Alles aus für diese Sitzung“ | Marken verschwinden; „Alles wieder an“ bringt sie zurück |
+| MX9 | Befehlspalette „Metrikbericht des Projekts“ | Meldung „Metrikbericht wird erstellt …“, danach öffnet `%LOCALAPPDATA%\Atlas\Berichte\Metriken-<Projekt>.md` mit Überschrift „# Code-Metriken: <Projekt>“, Tabelle der Kennzahlen, „Über einem Grenzwert“, „Komplexeste Methoden“ und „Dateien“ |
+| MX10 | MX9 ohne geöffnetes Projekt | Meldung „Metrikbericht: kein aktives Projekt.“ |
+| MX11 | Projekt bauen (Strg+F9), danach `%LOCALAPPDATA%\Atlas\projects\<Schlüssel>.json` ansehen | Abschnitt `metrics` mit `at` (Zeitpunkt des Builds), `files`, `methods`, `overLimits`, `average`, `maximum`, `exceeded`; nach einer Hintergrundprüfung (#548) ändert er sich nicht |
+| MX12 | Großes Projekt (mehrere hundert Units): erster Build, sofort danach tippen | Editor bleibt flüssig; Code Lens kann bis zum Ende der Zusammenfassung ausbleiben und erscheint danach |
+| MX13 | `AtlasServer --check <Projekt> --metrics` und `--metrics --format json` | Markdown bzw. JSON mit `"format": 1`, `limits`, `summary`, `files`; Exitcode 0; `--format sarif` mit `--metrics` endet mit Fehler |
+| MX14 | Claude Code: Werkzeug `get_metrics` ohne und mit `file` | Bericht des Projekts bzw. Werte der Datei, Grenzwerte aus atlas.json |
+| MX15 | Optionen › Atlas › Editor: „Befehl „Metrikbericht des Projekts“ in der Befehlspalette“ aus (oder Schnellschalter „Metrikbericht“) | Befehl verschwindet ohne Neustart aus der Befehlspalette, der Tipp „Metrikbericht des Projekts“ erscheint nicht mehr; nach einem Build steht der Abschnitt `metrics` weiter in der Projekt-Zusammenfassung; wieder an: Befehl ist zurück |
+
+## TODO-Übersicht (#68)
+
+Voraussetzung: Server läuft, eigenes Projekt geöffnet. In einer Unit des Projekts stehen `// TODO 2 -oMarco -cGUI : Fokus setzen`, `{ TODO 1 -cExport : CSV mit BOM }`, `// FIXME Rabatt`, `{ DONE -oAnna : Index }` und `s := '// TODO kein Kommentar';`; eine Unit im Projektordner, die nicht zum Projekt gehört, enthält `// TODO fremd`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TD1 | Befehlspalette „TODOs des Projekts“ | Ergebnisfenster „TODOs in <Projekt>: 3“, nach Unit gruppiert: „TODO 2 [GUI, Marco]: Fokus setzen“, „TODO 1 [Export]: CSV mit BOM“, „FIXME: Rabatt“; kein DONE-Eintrag, nichts aus der Zeichenkette, nichts aus der fremden Unit |
+| TD2 | Doppelklick auf einen Eintrag aus TD1 | Editor öffnet die Unit an der Zeile und Spalte des Kommentars |
+| TD3 | TD1 in einem Projekt ohne TODO-Kommentare | Meldung „Keine offenen TODOs in <Projekt>.“ |
+| TD4 | TD1 ohne geöffnetes Projekt | Meldung „TODOs des Projekts: kein aktives Projekt.“ |
+| TD5 | Projekt bauen und sofort TD1 | Entweder die Liste oder „… Der Atlas-Server ist gerade beschäftigt …“; ein zweiter Versuch nach kurzer Zeit zeigt die Liste |
+| TD6 | atlas.json: `"rules": {"todo-comment": "hint"}` speichern | Nach höchstens 30 s Hinweise `todo-comment` an den drei offenen Kommentaren mit demselben Text wie in TD1; keiner am DONE-Eintrag |
+| TD7 | Zeile `// lsp-ignore: todo-comment` über einen der Kommentare aus TD6 | Dieser Hinweis verschwindet; die Liste aus TD1 zeigt den Eintrag weiter |
+| TD8 | atlas.json: `"todo-comment": {"severity": "off", "keywords": ["TODO", "FIXME", "HACK"]}`, ein `// HACK Umweg` ergänzen, TD1 | Liste enthält „HACK: Umweg“; keine Hinweise im Editor |
+| TD9 | atlas.json: `"todo-comment": {"keywords": ["TO-DO", "DONE"]}` | Probleme in atlas.json: „Eine Marke besteht nur aus Buchstaben und ist nicht DONE, z. B. "HACK"“; es gelten die übrigen bzw. die Vorgabe-Marken |
+| TD10 | Projekt bauen (Strg+F9), danach `%LOCALAPPDATA%\Atlas\projects\<Schlüssel>.json` ansehen | Neben `metrics` ein Abschnitt `todos` mit `at` (Zeitpunkt des Builds), `files`, `open` (3), `done` (1) und `keywords` mit den offenen Einträgen je Marke (`{"FIXME": 1, "TODO": 2}`) |
+| TD11 | `AtlasServer --check <Projekt> --todos` und `--todos --format json` | Markdown „# TODOs: <Projekt>“ mit „Nach Kategorie“, „Nach Person“ und einer Tabelle je Unit bzw. JSON mit `"format": 1`, `summary`, `files`; Exitcode 0; `--format sarif` oder `--metrics` zusammen mit `--todos` endet mit Fehler |
+| TD12 | Claude Code: Werkzeug `get_todos` ohne Argumente, mit `owner: "Marco"`, mit `includeDone: true`, mit `file` | Markdown über das Projekt; nur Marcos Einträge; zusätzlich der DONE-Eintrag als erledigt; nur die Einträge der Datei |
+| TD13 | Befehlspalette „TODOs des Projekts filtern …“ nach TD1 | Dialog „TODOs filtern“ mit Kategorie (-c), Person (-o), Unit und Marke; die Auswahllisten enthalten GUI und Export, Marco, die Units mit Einträgen bzw. FIXME und TODO; „Erledigte zeigen (DONE)“ aus |
+| TD14 | In TD13 Kategorie „GUI“ wählen, Enter | Ergebnisfenster „TODOs in <Projekt> (-cGUI): 1“ mit „TODO 2 [GUI, Marco]: Fokus setzen“ |
+| TD15 | TD13 erneut öffnen: Kategorie steht noch auf „GUI“ (Filter der Sitzung); Kategorie leeren, Person „marco“ (klein) tippen, „Anzeigen“ | Titel „TODOs in <Projekt> (-omarco): 1“; Groß-/Kleinschreibung egal |
+| TD16 | TD13 mit „Erledigte zeigen (DONE)“ und Person „Anna“ | Liste enthält „DONE [Anna]: Index“ |
+| TD17 | TD13 mit Unit, die es nicht gibt (z. B. „Gibtsnicht“) | Meldung „Keine TODOs in <Projekt> passen zum Filter (Gibtsnicht).“ |
+| TD18 | TD13, „Zurücksetzen“, „Anzeigen“ | Alle Felder leer; Liste wie TD1 mit Titel ohne Klammer |
+| TD19 | Optionen › Atlas › Editor: „Befehl „TODOs des Projekts“ in der Befehlspalette“ aus (oder Schnellschalter „TODO-Liste“) | Beide Befehle aus TD1 und TD13 verschwinden ohne Neustart aus der Befehlspalette, die Tipps „TODOs des Projekts“ und „TODOs filtern“ erscheinen nicht mehr; Hinweise der Regel `todo-comment`, `get_todos` und der Abschnitt `todos` nach einem Build (TD10) bleiben; „Alles aus für diese Sitzung“ lässt die Befehle stehen |
 
 ## Units suchen (#777)
 

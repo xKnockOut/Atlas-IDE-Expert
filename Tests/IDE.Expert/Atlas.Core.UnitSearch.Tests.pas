@@ -278,12 +278,12 @@ begin
   Assert.AreEqual('abcdef', TAtlasUnitSearch.MiddleEllipsis('abcdef', 6));
   Assert.AreEqual('ab…fg', TAtlasUnitSearch.MiddleEllipsis('abcdefg', 5));
   Assert.AreEqual('a…g', TAtlasUnitSearch.MiddleEllipsis('abcdefg', 3));
-  Assert.AreEqual(10, Length(TAtlasUnitSearch.MiddleEllipsis('Packages\Atlas.Common\Source\Dfm\X.pas', 10)));
+  Assert.AreEqual(10, Integer(Length(TAtlasUnitSearch.MiddleEllipsis('Packages\Atlas.Common\Source\Dfm\X.pas', 10))));
   FileName := Root + '\Packages\Atlas.Common\Source\Dfm\Atlas.Common.Dfm.BinaryForm.pas';
   Assert.AreEqual('Packages\Atlas.Common\Source\Dfm\Atlas.Common.Dfm.BinaryForm.pas',
     TAtlasUnitSearch.DisplayPath(FileName, Root, TAtlasUnitPathStyle.Relative, 20));
   Assert.IsTrue(TAtlasUnitSearch.DisplayPath(FileName, Root, TAtlasUnitPathStyle.Compact, 30).EndsWith('BinaryForm.pas'));
-  Assert.AreEqual(30, Length(TAtlasUnitSearch.DisplayPath(FileName, Root, TAtlasUnitPathStyle.Compact, 30)));
+  Assert.AreEqual(30, Integer(Length(TAtlasUnitSearch.DisplayPath(FileName, Root, TAtlasUnitPathStyle.Compact, 30))));
   Assert.AreEqual(FileName, TAtlasUnitSearch.DisplayPath(FileName, Root, TAtlasUnitPathStyle.Absolute, 30));
   Assert.AreEqual('C:\Lib\Hilfe.pas', TAtlasUnitSearch.DisplayPath('C:\Lib\Hilfe.pas', Root,
     TAtlasUnitPathStyle.Relative, 0), 'außerhalb absolut');

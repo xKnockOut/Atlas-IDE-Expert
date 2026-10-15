@@ -25,6 +25,9 @@
 //     übrigen Bezeichnern. Passt eine nur über ihren Typ ("button" → btnSave: TButton), hat der Server sie schon
 //     gefiltert; sie bleibt sichtbar und steht hinter den Namenstreffern.
 //   - Sender mit Typumwandlung (#480): eine Überschrift „Sender ist TButton · btnSave, btnLoad“ über der Liste.
+//   - Favoriten (#458, Item.Favorite): vor allen anderen Gruppen, auch vor Hinweisen und Formularkomponenten,
+//     unabhängig von Lernen und Rang, aber nur, wenn sie zum getippten Präfix passen. Ohne Überschrift; die
+//     Gruppen danach beginnen wie am Anfang der Liste.
 
 interface
 
@@ -162,7 +165,7 @@ var
   Items: TAtlasCompletionItems;
   Scores, Boosts: TArray<Integer>;
   Found, Ordered: TList<Integer>;
-  Index, Position, Depth, Unknown: Integer;
+  Index, Position, Depth, Unknown, First: Integer;
   Grouped, AnyFits, NoPattern: Boolean;
   Container: string;
   Group: Integer;
@@ -201,7 +204,10 @@ begin
     Found.Sort(TComparer<Integer>.Construct(
       function(const A, B: Integer): Integer
       begin
-        Result := Ord(Items[B].Hint) - Ord(Items[A].Hint);
+        // Angeheftete Favoriten (#458) vor allem anderen.
+        Result := Ord(Items[B].Favorite) - Ord(Items[A].Favorite);
+        if Result = 0 then
+          Result := Ord(Items[B].Hint) - Ord(Items[A].Hint);
         if Result = 0 then
           Result := Ord(Items[B].Form <> '') - Ord(Items[A].Form <> '');
         if (Result = 0) and (Items[A].Form <> '') then
@@ -259,24 +265,33 @@ begin
     Depth := 0;
     Container := '';
     Group := -1;
+    // Favoriten (#458) stehen vorne und ohne Überschrift; die übrigen Gruppen beginnen bei First.
+    First := 0;
+    while (First < Found.Count) and Items[Found[First]].Favorite do
+      Inc(First);
     for Position := 0 to Found.Count - 1 do
     begin
       Index := Found[Position];
+      if Position < First then
+      begin
+        Ordered.Add(Index);
+        Continue;
+      end;
       // Überschrift je Gruppe zum erwarteten Typ (#417), sonst vor jeder Gruppe geerbter Member (#419).
       if Items[Index].Unknown <> '' then
       begin
-        if (Position = 0) or (Items[Found[Position - 1]].Unknown = '') then
+        if (Position = First) or (Items[Found[Position - 1]].Unknown = '') then
           Ordered.Add(UnknownHeader);
       end
       else if Items[Index].Form <> '' then
       begin
-        if (Position = 0) or (Items[Found[Position - 1]].Form = '') then
+        if (Position = First) or (Items[Found[Position - 1]].Form = '') then
           Ordered.Add(Header);
       end
-      else if (Items[Index].Sender <> '') and (Position = 0) then
+      else if (Items[Index].Sender <> '') and (Position = First) then
         Ordered.Add(Header)
       // Nach der Formulargruppe eine Überschrift über dem Rest („Weitere“ bzw. die Gruppe zum erwarteten Typ).
-      else if (Position > 0) and (Items[Found[Position - 1]].Form <> '') then
+      else if (Position > First) and (Items[Found[Position - 1]].Form <> '') then
         Ordered.Add(Header)
       else if AnyFits and (Items[Index].ExpectedType <> '') and not Items[Index].IsAction then
       begin

@@ -12,7 +12,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Lsp.References,
+  Atlas.Common.Todos.Contract;
 
 {$SCOPEDENUMS ON}
 
@@ -45,6 +46,15 @@ type
     class function Diagnostics(const ARules: TArray<IRule>; const ASettings: TServerSettings;
       const ARoot: string; const AFiles: TArray<string>; const AReadText: TReferenceReadText): string; static;
     class function ParseDirection(const AText: string): TMcpCallDirection; static;
+    /// <summary>get_metrics (#66): Kennzahlen je Methode mit den Grenzwerten aus ASettings; Markdown-Bericht
+    /// oder mit AJson die Metrikdaten. Pfade relativ zu ARoot.</summary>
+    class function Metrics(const ASettings: TServerSettings; const ARoot: string; const AFiles: TArray<string>;
+      const AReadText: TReferenceReadText; AJson: Boolean): string; static;
+    /// <summary>get_todos (#68): TODO-Einträge der Dateien AFiles mit den Marken aus ASettings (Option keywords
+    /// der Regel todo-comment), gefiltert nach AFilter; Markdown-Übersicht oder mit AJson die Daten. Pfade relativ
+    /// zu ARoot.</summary>
+    class function Todos(const ASettings: TServerSettings; const ARoot: string; const AFiles: TArray<string>;
+      const AReadText: TReferenceReadText; const AFilter: TTodoFilter; AJson: Boolean): string; static;
     /// <summary>
     /// check_code (#178): prüft AText als neuen Inhalt von AFileName, ohne zu schreiben.
     /// Mit AStartLine > 0 ersetzt AText nur die Zeilen AStartLine..AEndLine (ab 1, einschließlich;
@@ -73,6 +83,13 @@ uses
   Atlas.Common.Rules.Output,
   Atlas.Common.Mcp.IndexTools,
   Atlas.Common.Mcp.Server,
+  Atlas.Common.Metrics.Contract,
+  Atlas.Common.Metrics.Collector,
+  Atlas.Common.Metrics.Report,
+  Atlas.Common.Rules.Builtin.Metrics,
+  Atlas.Common.Todos.Scanner,
+  Atlas.Common.Todos.Report,
+  Atlas.Common.Rules.Builtin.Todos,
   Atlas.Common.Semantics.UnresolvedNames;
 
 { TMcpCodeTools }
@@ -275,6 +292,47 @@ begin
   finally
     Lines.Free;
   end;
+end;
+
+class function TMcpCodeTools.Metrics(const ASettings: TServerSettings; const ARoot: string;
+  const AFiles: TArray<string>; const AReadText: TReferenceReadText; AJson: Boolean): string;
+var
+  Collector: TMetricsCollector;
+  Files: TArray<TFileMetrics>;
+  Limits: TMetricLimits;
+begin
+  Limits := TMetricRules.Limits(ASettings);
+  Collector := TMetricsCollector.Create;
+  try
+    Files := Collector.Collect(AFiles, ARoot,
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        Result := Assigned(AReadText) and AReadText(AFileName, AText);
+      end);
+  finally
+    Collector.Free;
+  end;
+  if AJson then
+    Result := TMetricsReport.Json(Files, Limits)
+  else
+    Result := TMetricsReport.Markdown(Files, Limits, ExtractFileName(ExcludeTrailingPathDelimiter(ARoot)));
+end;
+
+class function TMcpCodeTools.Todos(const ASettings: TServerSettings; const ARoot: string;
+  const AFiles: TArray<string>; const AReadText: TReferenceReadText; const AFilter: TTodoFilter;
+  AJson: Boolean): string;
+var
+  Files: TArray<TFileTodos>;
+begin
+  Files := TTodoScanner.Filter(TTodoScanner.Collect(AFiles, ARoot,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := Assigned(AReadText) and AReadText(AFileName, AText);
+    end, TTodoRules.Keywords(ASettings)), AFilter);
+  if AJson then
+    Result := TTodoReport.Json(Files)
+  else
+    Result := TTodoReport.Markdown(Files, ExtractFileName(ExcludeTrailingPathDelimiter(ARoot)));
 end;
 
 class function TMcpCodeTools.Diagnostics(const ARules: TArray<IRule>; const ASettings: TServerSettings;

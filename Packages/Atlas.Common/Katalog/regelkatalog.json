@@ -712,6 +712,60 @@
       "good": "Customer.Name := Edit.Text;"
     },
     {
+      "id": "metric-method-length",
+      "name": "Method too long",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "The method has more code lines than the limit (default 60). Blank lines, comments, compiler directives and local routines do not count. Split the method into smaller ones. Set the limit with the option max, e.g. \"rules\": {\"metric-method-length\": {\"max\": 80}}.",
+      "bad": "procedure TImport.Run;\nbegin\n  // 120 lines: read, check, convert and save\nend;",
+      "good": "procedure TImport.Run;\nbegin\n  Read;\n  Check;\n  Convert;\n  Save;\nend;"
+    },
+    {
+      "id": "metric-nesting-depth",
+      "name": "Nesting too deep",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "The method nests if, case, loops and try deeper than the limit (default 4). else if stays on the level of its if. Leave early with Exit or Continue, or move inner parts into their own methods. Set the limit with the option max.",
+      "bad": "for Item in Items do\n  if Item.Active then\n    for Line in Item.Lines do\n      if Line.Valid then\n        try\n          Save(Line);\n        except\n          Log;\n        end;",
+      "good": "for Item in Items do\n  if Item.Active then\n    SaveLines(Item);"
+    },
+    {
+      "id": "metric-cyclomatic-complexity",
+      "name": "Cyclomatic complexity too high",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "The cyclomatic complexity of the method is above the limit (default 15). It starts at 1 and adds 1 for every if, while, repeat and for, every case branch without else, every and/or in a condition and every except on; an except without on counts once. Many paths need many tests. Set the limit with the option max.",
+      "bad": "case Kind of\n  1: A;\n  2: B;\n  // ... 20 branches\nend;",
+      "good": "Handlers[Kind]();"
+    },
+    {
+      "id": "metric-cognitive-complexity",
+      "name": "Cognitive complexity too high",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "The cognitive complexity of the method is above the limit (default 15). Following SonarSource, if, case, loops and except handlers count 1 plus their nesting level; else, else if, goto and every sequence of equal logical operators count 1. Nested code is harder to read than code in sequence. Set the limit with the option max.",
+      "bad": "if A then\n  for I := 0 to N do\n    if B and C or D then\n      while E do\n        F;",
+      "good": "if not A then\n  Exit;\nfor I := 0 to N do\n  ProcessItem(I);"
+    },
+    {
+      "id": "metric-parameter-count",
+      "name": "Too many parameters",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "The method has more parameters than the limit (default 6). Group related values in a record or class. Set the limit with the option max.",
+      "bad": "procedure Book(const AName, AStreet, ACity, AZip: string; AAmount: Currency; ADate: TDate; ANote: string);",
+      "good": "procedure Book(const AAddress: TAddress; const AOrder: TOrder);"
+    },
+    {
+      "id": "todo-comment",
+      "name": "Open TODO comment",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "A comment starts with a marker for open work: // TODO, // FIXME or the IDE to-do format { TODO 1 -oOwner -cCategory : Text }. The hint shows marker, priority, category, owner and text, so open work appears in the problem list. Off by default; switch it on in atlas.json, e.g. \"rules\": {\"todo-comment\": {\"severity\": \"hint\"}}. Completed entries ({ DONE … }) are never reported. The option keywords sets the markers (default [\"TODO\", \"FIXME\"]); it also applies to get_todos and --todos.",
+      "bad": "// TODO 1 -oMarco -cGUI : set focus\nEdit.Text := '';",
+      "good": "Edit.Text := '';\nEdit.SetFocus;"
+    },
+    {
       "id": "component-palette-icon",
       "name": "Registered component without palette icon",
       "category": "code-smell",

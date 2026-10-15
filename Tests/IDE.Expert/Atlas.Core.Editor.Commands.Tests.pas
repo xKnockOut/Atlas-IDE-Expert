@@ -12,6 +12,9 @@ type
   [TestFixture]
   TAtlasEditorCommandsTests = class
   public
+    /// <summary>F3 mit Markierung: nächstes und vorheriges Vorkommen, über das Dateiende hinweg.</summary>
+    [Test]
+    procedure SearchFindsNextAndPreviousWithWrap;
     [Test]
     procedure ExpandsStepByStep;
     [Test]
@@ -101,6 +104,27 @@ begin
     TAtlasSlashTrigger.Key('C:\P\A.pas', 3, TAtlasSlashKind.Command, '/try '));
   Assert.AreNotEqual(TAtlasSlashTrigger.Key('a.pas', 3, TAtlasSlashKind.Command, '/try'),
     TAtlasSlashTrigger.Key('a.pas', 4, TAtlasSlashKind.Command, '/try'));
+end;
+
+procedure TAtlasEditorCommandsTests.SearchFindsNextAndPreviousWithWrap;
+var
+  Lines: TArray<string>;
+  Found: TLspRange;
+begin
+  Lines := ['Foo := Bar;', 'if foo then', '  Baz(Foo);'];
+  // Markierung „Foo“ in Zeile 0, Zeichen 0..3: weiter ab dem Ende.
+  Assert.IsTrue(TAtlasSelectionSearch.Find(Lines, 'Foo', TLspTextPosition.Create(0, 3), False, Found));
+  Assert.IsTrue(Found.Same(TLspRange.Create(1, 3, 1, 6)), 'ohne Groß-/Kleinschreibung');
+  Assert.IsTrue(TAtlasSelectionSearch.Find(Lines, 'Foo', TLspTextPosition.Create(2, 9), False, Found));
+  Assert.IsTrue(Found.Same(TLspRange.Create(0, 0, 0, 3)), 'am Ende von vorn');
+  // Rückwärts: endet vor dem Anfang der Markierung.
+  Assert.IsTrue(TAtlasSelectionSearch.Find(Lines, 'Foo', TLspTextPosition.Create(2, 6), True, Found));
+  Assert.IsTrue(Found.Same(TLspRange.Create(1, 3, 1, 6)));
+  Assert.IsTrue(TAtlasSelectionSearch.Find(Lines, 'Foo', TLspTextPosition.Create(0, 0), True, Found));
+  Assert.IsTrue(Found.Same(TLspRange.Create(2, 6, 2, 9)), 'am Anfang von hinten');
+  Assert.IsTrue(TAtlasSelectionSearch.Find(Lines, 'Bar', TLspTextPosition.Create(0, 10), False, Found));
+  Assert.IsTrue(Found.Same(TLspRange.Create(0, 7, 0, 10)), 'einziges Vorkommen: wieder dasselbe');
+  Assert.IsFalse(TAtlasSelectionSearch.Find(Lines, 'Nichts', TLspTextPosition.Create(0, 0), False, Found));
 end;
 
 initialization

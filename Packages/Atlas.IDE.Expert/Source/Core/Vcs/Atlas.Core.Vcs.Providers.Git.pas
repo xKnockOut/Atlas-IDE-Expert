@@ -18,6 +18,13 @@
 //   Outgoing  log --format=… --max-count=N refs/heads/<Branch> --not <Upstream>|--remotes
 //   ChangesIn diff --name-status -z --no-renames <Revision>^1 <Revision>
 //   Push      push --porcelain [--set-upstream] <Remote> refs/heads/<Branch>:<Ref>
+// Eingehende Commits (IAtlasVcsIncoming, #755):
+//   Resolve   rev-parse --verify --quiet <Ref>^{commit}
+//   Incoming  log --format=… --name-only -z --no-renames --max-count=N <Upstream> --not <Stände>
+//   Fetch     -c credential.interactive=never -c core.askPass= fetch --quiet --no-tags [<Remote>]
+//             (Git Credential Manager fragt nicht, git selbst ruft kein
+//             Kennwortfenster; ohne Konsole und mit stdin NUL fragt git auch
+//             im Terminal nicht nach. Das Zeitlimit setzt der Aufrufer.)
 // ChangeMarker liest nur Dateien: .git/HEAD (Inhalt und Zeitstempel), die
 // Datei des Branchs unter refs/heads und packed-refs. In Worktrees und
 // Submodulen ist .git eine Datei mit "gitdir: …".
@@ -30,7 +37,7 @@ uses
   Atlas.Core.Vcs.Tools;
 
 type
-  TAtlasGitVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork)
+  TAtlasGitVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming)
   private
     FRoot: string;
     FCommand: TAtlasVcsCommand;
@@ -58,6 +65,11 @@ type
       out ACommits: TArray<TAtlasVcsCommit>): TAtlasVcsOutcome;
     function ChangesIn(const ARevision: string; out AChanges: TArray<TAtlasVcsChange>): TAtlasVcsOutcome;
     function Push(const ABranch, ARemote, ARemoteRef: string; ASetUpstream: Boolean): TAtlasVcsOutcome;
+    { IAtlasVcsIncoming }
+    function Resolve(const ARef: string; out ARevision: string): TAtlasVcsOutcome;
+    function Incoming(const AUpstream: string; const AExclude: TArray<string>; AMax: Integer;
+      out ACommits: TArray<TAtlasVcsIncomingCommit>): TAtlasVcsOutcome;
+    function Fetch(const ARemote: string): TAtlasVcsOutcome;
     /// <summary>Ordner mit den Verwaltungsdaten: ARoot\.git oder das Ziel von "gitdir:"; '' ohne.</summary>
     class function GitDir(const ARoot: string): string; static;
   end;
@@ -356,6 +368,78 @@ begin
   if ASetUpstream then
     Arguments := Arguments + ['--set-upstream'];
   Arguments := Arguments + [ARemote, 'refs/heads/' + ABranch + ':' + ARemoteRef];
+  Result := Git(Arguments, Output);
+end;
+
+function TAtlasGitVersionControl.Resolve(const ARef: string; out ARevision: string): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+begin
+  ARevision := '';
+  if not SafeName(ARef) then
+    Exit(TAtlasVcsOutcome.Failed);
+  Result := Git(['rev-parse', '--verify', '--quiet', ARef + '^{commit}'], Output);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  ARevision := Trim(VcsUtf8(Output));
+  if ARevision = '' then
+    Result := TAtlasVcsOutcome.Failed;
+end;
+
+function TAtlasGitVersionControl.Incoming(const AUpstream: string; const AExclude: TArray<string>; AMax: Integer;
+  out ACommits: TArray<TAtlasVcsIncomingCommit>): TAtlasVcsOutcome;
+var
+  Arguments: TArray<string>;
+  Output: TBytes;
+  Limit: Integer;
+  Revision: string;
+  Excluded: Boolean;
+begin
+  ACommits := nil;
+  if not SafeName(AUpstream) then
+    Exit(TAtlasVcsOutcome.Failed);
+  Limit := AMax;
+  if Limit < 1 then
+    Limit := 1;
+  Arguments := ['log', '--format=' + TAtlasGitParser.IncomingFormat, '--name-only', '-z', '--no-renames',
+    '--max-count=' + IntToStr(Limit), AUpstream];
+  Excluded := False;
+  for Revision in AExclude do
+  begin
+    if Revision = '' then
+      Continue;
+    if not SafeName(Revision) then
+      Exit(TAtlasVcsOutcome.Failed);
+    if not Excluded then
+      Arguments := Arguments + ['--not'];
+    Excluded := True;
+    Arguments := Arguments + [Revision];
+  end;
+  Result := Git(Arguments, Output);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  try
+    ACommits := TAtlasGitParser.ParseIncoming(VcsUtf8(Output), FRoot);
+  except
+    on EAtlasVcsParse do
+    begin
+      ACommits := nil;
+      Result := TAtlasVcsOutcome.Failed;
+    end;
+  end;
+end;
+
+function TAtlasGitVersionControl.Fetch(const ARemote: string): TAtlasVcsOutcome;
+var
+  Arguments: TArray<string>;
+  Output: TBytes;
+begin
+  if (ARemote <> '') and not SafeName(ARemote) then
+    Exit(TAtlasVcsOutcome.Failed);
+  // Nie nach Zugangsdaten fragen: kein Fenster des Credential Managers, kein Kennwortprogramm.
+  Arguments := ['-c', 'credential.interactive=never', '-c', 'core.askPass=', 'fetch', '--quiet', '--no-tags'];
+  if ARemote <> '' then
+    Arguments := Arguments + [ARemote];
   Result := Git(Arguments, Output);
 end;
 

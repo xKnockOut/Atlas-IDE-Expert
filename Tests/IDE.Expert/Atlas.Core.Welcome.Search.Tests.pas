@@ -554,11 +554,14 @@ begin
     TPair<string, string>.Create('File_1', 'TProject,c:\p\gruppe.groupproj'),
     TPair<string, string>.Create('File_2', 'C:\P\Ohne Klasse.dproj'),
     TPair<string, string>.Create('File_3', 'TProject,Relativ.dproj'),
+    // Delphi 13: Pfad in Hochkommas.
+    TPair<string, string>.Create('File_4', 'TProjectGroup,''C:\P\Atlas.groupproj'',1'),
     TPair<string, string>.Create('Max Closed Files', '10')]);
-  Assert.AreEqual(3, Integer(Length(Projects)));
+  Assert.AreEqual(4, Integer(Length(Projects)));
   Assert.AreEqual('C:\P\Gruppe.groupproj', Projects[0]);
   Assert.AreEqual('C:\P\Ohne Klasse.dproj', Projects[1]);
-  Assert.AreEqual('C:\P\Zehn.dproj', Projects[2]);
+  Assert.AreEqual('C:\P\Atlas.groupproj', Projects[2]);
+  Assert.AreEqual('C:\P\Zehn.dproj', Projects[3]);
 end;
 
 initialization

@@ -22,6 +22,9 @@ type
     FTestProgram: string;
     function Context: TTestUnitContext;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -88,6 +91,16 @@ const
     'implementation'#10 +
     'end.';
 
+procedure TLspTestUnitsTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    MissingTestUnitCanBeCreated;
+  finally
+    TearDown;
+  end;
+end;
+
 procedure TLspTestUnitsTests.Setup;
 begin
   FStore := TDocumentStore.Create;
@@ -112,6 +125,7 @@ begin
   FUnits.Free;
   FFiles.Free;
   FStore := nil;
+  FTestProgram := '';
 end;
 
 function TLspTestUnitsTests.Context: TTestUnitContext;

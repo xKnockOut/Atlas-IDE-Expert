@@ -4,7 +4,7 @@
 // globale Schlüssel in %APPDATA%\Atlas\settings.json, Projekt-Schlüssel in
 // atlas.json (x-scope im Schema).
 // Ein Teil der globalen Server-Einstellungen steht auf den Reitern der
-// Optionsseite: Index, Speicher, XMLDoc, Inlay-Hints, Schnellbefehle und
+// Optionsseite: Index, Speicher, XMLDoc, Inlay-Hints, Code-Metriken, Schnellbefehle und
 // Kompilieren nach dem Speichern. Sie gehören zu TAtlasPluginSettings, liegen
 // aber in settings.json statt in der Registry; TAtlasRoutedSettingsStore leitet
 // sie dorthin um. So lesen Plugin und Server denselben Wert, und der Dialog
@@ -89,6 +89,7 @@ begin
     Setting('SlashCommands', 'slashCommands.enabled', True),
     // Das Plugin zeigt nur Parameternamen; die übrigen Inlay-Hints betreffen es nicht.
     Setting('InlayHints', 'inlayHints.parameterNames', True),
+    Setting('CodeLensMetrics', 'codeLens.metrics', True),
     Setting('CompileOnSave', 'compiler.onSave', True)];
 end;
 

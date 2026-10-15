@@ -31,10 +31,12 @@ type
     FRecent: TDictionary<string, string>;
     FClock: Int64;
     FChanged: Boolean;
-    class function KeyOf(const AItem: TAtlasCompletionItem): string; static;
-    class function TypeOf(const AItem: TAtlasCompletionItem): string; static;
     procedure Evict;
   public
+    /// <summary>Schlüssel "typ|member" in Kleinbuchstaben; auch für die Favoriten (#458).</summary>
+    class function KeyOf(const AItem: TAtlasCompletionItem): string; static;
+    /// <summary>Typ in Kleinbuchstaben: deklarierende Klasse, auf Unit-Ebene die Unit, sonst leer.</summary>
+    class function TypeOf(const AItem: TAtlasCompletionItem): string; static;
     constructor Create;
     destructor Destroy; override;
     /// <summary>Übernahme von AItem merken.</summary>

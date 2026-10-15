@@ -306,6 +306,10 @@ begin
   // Unit ⇄ Testunit (#189) und eigene Taste für „Units suchen“ (#777).
   Assert.AreEqual($C054, Integer(EntryOf(Entries, TAtlasKeyFunction.TestUnit).Key));
   Assert.AreEqual($C055, Integer(EntryOf(Entries, TAtlasKeyFunction.UnitSearch).Key));
+  // „Lesezeichen setzen…“ (#622): Strg+Alt+K als Editorbefehl.
+  Assert.AreEqual($C04B, Integer(EntryOf(Entries, TAtlasKeyFunction.Bookmark).Key));
+  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.Bookmark).Disabled);
+  Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.Bookmark)));
   Assert.AreEqual(Ord(TAtlasKeyContext.Editor), Ord(TAtlasKeyMap.ContextOf(TAtlasKeyFunction.MethodToggleDown)));
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
   Settings.EditorKeysPriority := True;
@@ -328,10 +332,12 @@ begin
   Settings.MethodToggle := False;
   Settings.UnitSearchEnabled := False;
   Settings.WelcomePageSearch := False;
+  Settings.BookmarksNamed := False;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
     if Entry.Func in [TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown,
-      TAtlasKeyFunction.UnitSearch, TAtlasKeyFunction.UnitSearchIde, TAtlasKeyFunction.WelcomeSearch] then
+      TAtlasKeyFunction.UnitSearch, TAtlasKeyFunction.UnitSearchIde, TAtlasKeyFunction.WelcomeSearch,
+      TAtlasKeyFunction.Bookmark] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),
@@ -630,6 +636,8 @@ begin
   Assert.AreEqual('Atlas.SwitchTestUnit', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.TestUnit));
   Assert.AreEqual('Atlas.UnitSearch', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.UnitSearch));
   Assert.AreEqual('Atlas.UnitSearch', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.UnitSearchIde));
+  // #622: „Lesezeichen setzen…“.
+  Assert.AreEqual('Atlas.BookmarkAdd', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.Bookmark));
 end;
 
 procedure TAtlasKeyMapTests.HtmlIsEscapedAndMarksConflicts;

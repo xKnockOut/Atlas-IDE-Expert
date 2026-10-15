@@ -21,6 +21,10 @@
 //   --diff <Ref>          nur Dateien, die sich gegenüber <Ref> geändert haben
 //   --include-uncommitted mit --changed/--diff auch Index und Arbeitsverzeichnis
 //   --changed-lines       nur Treffer in geänderten Zeilen
+//   --metrics             statt der Treffer die Code-Metriken (#66): Markdown-Bericht
+//                         (--format text) oder Metrikdaten (--format json)
+//   --todos               statt der Treffer die offenen TODO-Einträge (#68): Markdown-Übersicht
+//                         (--format text) oder TODO-Daten (--format json)
 //
 // MCP-Modus (#48):
 //   --mcp                 Symbolindex über das Model Context Protocol anbieten
@@ -63,6 +67,10 @@ type
     Profile: string;
     /// <summary>Statt der Treffer die Unterdrückungen je Regel ausgeben (#147).</summary>
     SuppressionStats: Boolean;
+    /// <summary>Statt der Treffer die Code-Metriken ausgeben (#66).</summary>
+    Metrics: Boolean;
+    /// <summary>Statt der Treffer die offenen TODO-Einträge ausgeben (#68).</summary>
+    Todos: Boolean;
     /// <summary>Baseline-Datei (#97); '' = atlas-baseline.json neben atlas.json, falls vorhanden.</summary>
     BaselineFile: string;
     /// <summary>Baseline aus den aktuellen Treffern neu schreiben statt zu prüfen.</summary>
@@ -306,6 +314,10 @@ begin
       Result.UpdateBaseline := True
     else if Name = '--suppression-stats' then
       Result.SuppressionStats := True
+    else if Name = '--metrics' then
+      Result.Metrics := True
+    else if Name = '--todos' then
+      Result.Todos := True
     else if Name = '--clientprocessid' then
     begin
       if TakeValue then

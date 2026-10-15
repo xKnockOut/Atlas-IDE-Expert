@@ -14,6 +14,9 @@ type
   [TestFixture]
   TAtlasShortcutTipWindowTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -66,6 +69,16 @@ begin
   Result := TAtlasShortcutTipWindow.Create(nil);
   Result.Colors := TAtlasColors.Light;
   Result.SetScaling(96, 1, 'Segoe UI', 9);
+end;
+
+procedure TAtlasShortcutTipWindowTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    ShowsBottomRightWithTimer;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TAtlasShortcutTipWindowTests.Setup;

@@ -15,6 +15,7 @@ uses
   Vcl.Forms,
   Atlas.Core.Results.Model,
   Atlas.Core.Undo.Contract,
+  Atlas.Core.Notes.Store,
   Atlas.UI.Results.Frame;
 
 type
@@ -28,6 +29,9 @@ type
     OnChangeUndo: TAtlasChangeSetAction;
     OnChangeRedo: TAtlasChangeSetAction;
     OnChangeDiff: TAtlasChangeDiff;
+    /// <summary>Liste der Notizen (#545): bearbeiten, löschen.</summary>
+    OnNoteEdit: TAtlasNoteAction;
+    OnNoteDelete: TAtlasNoteAction;
   public
     /// <summary>Fenster zeigen (bei Bedarf anlegen); nil, wenn die IDE keine andockbaren Fenster anbietet.</summary>
     class function Frame: TAtlasResultsFrame; static;
@@ -36,6 +40,9 @@ type
       const ARoots: TArray<TAtlasHierarchyItem>); static;
     /// <summary>Liste „Atlas-Änderungen“ (#721), neueste Sätze zuerst.</summary>
     class procedure ShowChanges(const ATitle: string; const ASets: TArray<TAtlasChangeSet>); static;
+    /// <summary>Notizen des Projekts (#545); ASelectId: diese Notiz wählen.</summary>
+    class procedure ShowNotes(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>;
+      const ASelectId: string); static;
     /// <summary>Frame, falls das Fenster schon existiert; legt nichts an und holt nichts nach vorn.</summary>
     class function ExistingFrame: TAtlasResultsFrame; static;
     /// <summary>Fenstersymbol (#751) zum aktiven IDE-Thema.</summary>
@@ -138,6 +145,18 @@ begin
     begin
       if Assigned(TAtlasIdeResultsWindow.OnChangeDiff) then
         TAtlasIdeResultsWindow.OnChangeDiff(ASetId, AFileName);
+    end;
+  ResultsFrame.OnNoteEdit :=
+    procedure(const ANoteId: string)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnNoteEdit) then
+        TAtlasIdeResultsWindow.OnNoteEdit(ANoteId);
+    end;
+  ResultsFrame.OnNoteDelete :=
+    procedure(const ANoteId: string)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnNoteDelete) then
+        TAtlasIdeResultsWindow.OnNoteDelete(ANoteId);
     end;
   ResultsFrame.OnExpand :=
     function(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>
@@ -268,6 +287,16 @@ begin
     Target.ShowChanges(ATitle, ASets, Now, False);
 end;
 
+class procedure TAtlasIdeResultsWindow.ShowNotes(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>;
+  const ASelectId: string);
+var
+  Target: TAtlasResultsFrame;
+begin
+  Target := Frame;
+  if Target <> nil then
+    Target.ShowNotes(ATitle, AGroups, ASelectId);
+end;
+
 class function TAtlasIdeResultsWindow.ExistingFrame: TAtlasResultsFrame;
 begin
   Result := nil;
@@ -297,6 +326,8 @@ begin
   OnChangeUndo := nil;
   OnChangeRedo := nil;
   OnChangeDiff := nil;
+  OnNoteEdit := nil;
+  OnNoteDelete := nil;
   ResultsFrame := nil;
   FreeAndNil(Form);
   Dock := nil;

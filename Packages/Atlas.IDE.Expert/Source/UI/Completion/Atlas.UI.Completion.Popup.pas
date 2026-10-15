@@ -30,6 +30,10 @@
 // Menge von TAnchorKind“, Fußzeile mit Leertaste und „n gewählt“.
 // Diagnosemodus (#479): Ist die Messung an, meldet Paint seine Dauer an
 // TAtlasQueryTimings (Schritt „Zeichnen“); aus kein Zeitstempel.
+// Favoriten (#458, FavoritesEnabled): Spalte vor dem Badge; angeheftete Einträge tragen dort einen gefüllten
+// Stern, beim Überfahren einer Zeile erscheint ein leerer. Klick auf den Stern meldet OnFavorite, ohne die
+// Auswahl zu ändern. ShowNotice zeigt einen Hinweis links in der Fußzeile („Schon 5 Favoriten bei TDataSet …“)
+// bis zum nächsten getippten Zeichen bzw. Schließen.
 
 interface
 
@@ -47,6 +51,7 @@ uses
   Atlas.Core.Completion.Controller,
   Atlas.Core.Completion.Presentation,
   Atlas.Core.Completion.Ranking,
+  Atlas.Core.Completion.Favorites,
   Atlas.UI.Popup.Window,
   Atlas.UI.Popup.Tip,
   Atlas.UI.Strings,
@@ -127,6 +132,10 @@ type
     // Zeile einer Aktion („Neue Methode …“, #444): Name in Akzentfarbe.
     FActionRow: Boolean;
     FOnPanelToggled: TAtlasPanelEvent;
+    // Favoriten (#458): Sternspalte, Klick auf den Stern, Hinweis in der Fußzeile.
+    FFavoritesEnabled: Boolean;
+    FOnFavorite: TAtlasPositionEvent;
+    FNotice: string;
     function Dim(AColor: TAtlasColor): TAtlasColor;
     function ChipsHeight: Integer;
     function ListTop: Integer;
@@ -170,6 +179,10 @@ type
     function TagWidth(const ATag: TAtlasTag): Integer;
     procedure DrawBadge(const ARow: TRect; const AItem: TAtlasCompletionItem; out ARight: Integer);
     procedure DrawCheck(const ARow: TRect; AChecked: Boolean);
+    /// <summary>Stern der Favoriten (#458) links in ARow: gefüllt = angeheftet, sonst nur der Umriss.</summary>
+    procedure DrawStar(const ARow: TRect; AFilled: Boolean);
+    /// <summary>Position (Anzeigereihenfolge) des Sterns unter (AX, AY); -1 ohne.</summary>
+    function StarAt(AX, AY: Integer): Integer;
     procedure DrawName(const AName: string; ALeft, ARight: Integer; const ARow: TRect; ATruncated: Boolean);
     procedure DrawTag(const ATag: TAtlasTag; ALeft: Integer; const ARow: TRect);
     procedure DrawRow(ARow, APosition: Integer);
@@ -198,6 +211,9 @@ type
     procedure SetOverload(AIndex, ACount: Integer);
     /// <summary>Im Panel markierter Doku-Text (#654); '' ohne Markierung.</summary>
     function SelectedDocText: string;
+    /// <summary>Hinweis links in der Fußzeile (#458), auch für die Sprachausgabe; gilt bis zum nächsten
+    /// getippten Zeichen bzw. Schließen.</summary>
+    procedure ShowNotice(const AText: string);
     { IAtlasCompletionView }
     procedure ShowList(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>; ASelected: Integer;
       const APattern: string);
@@ -228,6 +244,12 @@ type
     property Limited: Boolean read FLimited write FLimited;
     /// <summary>Aktives Ziel („Win32 · Debug“) für die Fußzeile (#476); '' = keins bekannt.</summary>
     property Target: string read FTarget write FTarget;
+    /// <summary>Sternspalte der Favoriten (#458) zeigen.</summary>
+    property FavoritesEnabled: Boolean read FFavoritesEnabled write FFavoritesEnabled;
+    /// <summary>Klick auf den Stern einer Zeile (#458); APosition in der Anzeigereihenfolge.</summary>
+    property OnFavorite: TAtlasPositionEvent read FOnFavorite write FOnFavorite;
+    /// <summary>Gezeigter Hinweis der Fußzeile; '' ohne.</summary>
+    property Notice: string read FNotice;
   end;
 
 implementation
@@ -243,6 +265,8 @@ const
   TextFlags = DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX;
   /// <summary>Platz für das Kontrollkästchen im Mengenmodus (#448): Rand 7, Kästchen 13, Abstand 6.</summary>
   CheckWidth = 19;
+  /// <summary>Sternspalte der Favoriten (#458): Rand 4, Stern 12; das Badge rückt um so viel nach rechts.</summary>
+  StarWidth = 14;
 
 /// <summary>Text einer Marke in der Sprache der IDE (#446).</summary>
 function TagText(const ATag: TAtlasTag): string;
@@ -471,6 +495,9 @@ function TAtlasCompletionPopup.FooterLeftText: string;
 var
   Index: Integer;
 begin
+  // Hinweis zu den Favoriten (#458) hat Vorrang.
+  if FNotice <> '' then
+    Exit(FNotice);
   Result := TAtlasStrings.Text(TAtlasTextId.FooterKeys);
   if FTarget = '' then
     Exit;
@@ -691,6 +718,8 @@ begin
   Inc(Widest, Scale(7 + 24 + 9 + 7) + 2 * Pad + ScrollReserve);
   if TAtlasCompletionSets.Active(FItems) then
     Inc(Widest, Scale(CheckWidth));
+  if FFavoritesEnabled then
+    Inc(Widest, Scale(StarWidth));
   Canvas.Font := UIFont;
   Widest := Max(Widest, Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.FooterKeys) + '    ' +
     TAtlasStrings.Fmt(TAtlasTextId.CountFits, [999, 9999])) + Scale(18));
@@ -747,6 +776,9 @@ begin
   // Nur die Auswahl bewegt (Pfeiltasten): dieselben Arrays, Breite nicht neu messen (#616).
   SameList := not FShowingEmpty and (Pointer(AItems) = Pointer(FItems)) and (Pointer(AOrder) = Pointer(FOrder)) and
     (APattern = FPattern) and IsShown;
+  // Weitertippen verwirft den Hinweis der Fußzeile (#458).
+  if APattern <> FPattern then
+    FNotice := '';
   FShowingEmpty := False;
   FItems := AItems;
   FOrder := AOrder;
@@ -794,17 +826,36 @@ begin
 end;
 
 procedure TAtlasCompletionPopup.AnnounceSelected;
+var
+  Kind: string;
 begin
-  if (FSelected < 0) or (FSelected > High(FOrder)) then
+  if (FSelected < 0) or (FSelected > High(FOrder)) or TAtlasRanking.IsHeader(FOrder[FSelected]) then
     Exit;
-  Announce(TAtlasItemPresentation.Announcement(FItems[FOrder[FSelected]], KindText(FItems[FOrder[FSelected]].Kind),
+  Kind := KindText(FItems[FOrder[FSelected]].Kind);
+  // Angeheftet (#458) mit ansagen.
+  if FItems[FOrder[FSelected]].Favorite then
+  begin
+    if Kind <> '' then
+      Kind := Kind + ', ';
+    Kind := Kind + TAtlasStrings.Text(TAtlasTextId.AccessFavorite);
+  end;
+  Announce(TAtlasItemPresentation.Announcement(FItems[FOrder[FSelected]], Kind,
     TAtlasStrings.Text(TAtlasTextId.AccessPosition), FSelected + 1, Length(FOrder)));
+end;
+
+procedure TAtlasCompletionPopup.ShowNotice(const AText: string);
+begin
+  FNotice := AText;
+  if AText <> '' then
+    Announce(AText);
+  Invalidate;
 end;
 
 procedure TAtlasCompletionPopup.HideList;
 begin
   HideTip;
   HidePopup;
+  FNotice := '';
   FItems := nil;
   FOrder := nil;
   FSelected := -1;
@@ -1012,6 +1063,58 @@ begin
   Canvas.Pen.Width := 1;
 end;
 
+procedure TAtlasCompletionPopup.DrawStar(const ARow: TRect; AFilled: Boolean);
+var
+  Points: array[0..9] of TPoint;
+  Index, Radius, Outer, Inner, CenterX, CenterY: Integer;
+  Angle: Double;
+begin
+  // Fünfzackiger Stern, Spitze oben: abwechselnd äußerer und innerer Radius.
+  Outer := Scale(6);
+  Inner := Max(1, Round(Outer * 0.45));
+  CenterX := ARow.Left + Scale(4) + Outer;
+  CenterY := ARow.Top + ARow.Height div 2;
+  for Index := 0 to 9 do
+  begin
+    if Odd(Index) then
+      Radius := Inner
+    else
+      Radius := Outer;
+    Angle := -Pi / 2 + Index * Pi / 5;
+    Points[Index] := Point(CenterX + Round(Radius * Cos(Angle)), CenterY + Round(Radius * Sin(Angle)));
+  end;
+  Canvas.Pen.Width := 1;
+  if AFilled then
+  begin
+    Canvas.Pen.Color := ToColor(Dim(Colors.Accent));
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := ToColor(Dim(Colors.Accent));
+  end
+  else
+  begin
+    Canvas.Pen.Color := ToColor(Colors.Muted);
+    Canvas.Brush.Style := bsClear;
+  end;
+  Canvas.Polygon(Points);
+  Canvas.Brush.Style := bsSolid;
+end;
+
+function TAtlasCompletionPopup.StarAt(AX, AY: Integer): Integer;
+var
+  Row: TRect;
+begin
+  Result := -1;
+  if not FFavoritesEnabled or FShowingEmpty then
+    Exit;
+  Result := RowAt(AX, AY);
+  if (Result < 0) or TAtlasRanking.IsHeader(FOrder[Result]) or
+    not TAtlasFavorites.CanPin(FItems[FOrder[Result]]) then
+    Exit(-1);
+  Row := RowRect(Result - FTop);
+  if (AX < Row.Left) or (AX >= Row.Left + Scale(StarWidth + 3)) then
+    Result := -1;
+end;
+
 procedure TAtlasCompletionPopup.DrawRow(ARow, APosition: Integer);
 var
   Item: TAtlasCompletionItem;
@@ -1029,6 +1132,15 @@ begin
   FDimRow := ((FDimInherited and (Item.Depth > 0)) or Item.Unavailable) and (APosition <> FSelected);
   if APosition = FSelected then
     FillRounded(Row, Colors.Selection, 4);
+  // Favoriten (#458): gefüllter Stern bei angehefteten Einträgen, leerer beim Überfahren.
+  if FFavoritesEnabled then
+  begin
+    if Item.Favorite then
+      DrawStar(Row, True)
+    else if (APosition = FHoverPosition) and TAtlasFavorites.CanPin(Item) then
+      DrawStar(Row, False);
+    Inc(Row.Left, Scale(StarWidth));
+  end;
   // Mengenmodus (#448): Kontrollkästchen vor dem Badge.
   if Item.SetOf <> '' then
   begin
@@ -1294,6 +1406,14 @@ begin
         FOnChip(FChipKinds[Index]);
       Exit;
     end;
+  // Stern einer Zeile (#458): anheften bzw. lösen, die Auswahl bleibt.
+  Position := StarAt(X, Y);
+  if Position >= 0 then
+  begin
+    if Assigned(FOnFavorite) then
+      FOnFavorite(Position);
+    Exit;
+  end;
   Position := RowAt(X, Y);
   if (Position >= 0) and Assigned(FOnSelect) then
     FOnSelect(Position);
@@ -1349,7 +1469,7 @@ begin
     TAtlasHitArea.Edge, TAtlasHitArea.Grip: Cursor := crSizeWE;
     TAtlasHitArea.PanelBar: Cursor := crHandPoint;
   else
-    if DocActive and (FDetailView.DocLinkAt(X, Y) >= 0) then
+    if (DocActive and (FDetailView.DocLinkAt(X, Y) >= 0)) or (StarAt(X, Y) >= 0) then
       Cursor := crHandPoint
     else if DocActive and FDetailView.InDoc(X, Y) then
       Cursor := crIBeam
@@ -1367,6 +1487,9 @@ begin
   HideTip;
   FHoverPosition := Position;
   FTipTimer.Enabled := Position >= 0;
+  // Der leere Stern (#458) folgt der Maus.
+  if FFavoritesEnabled then
+    Invalidate;
 end;
 
 procedure TAtlasCompletionPopup.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -1440,6 +1563,8 @@ procedure TAtlasCompletionPopup.CMMouseLeave(var Message: TMessage);
 begin
   inherited;
   HideTip;
+  if FFavoritesEnabled and (FHoverPosition >= 0) then
+    Invalidate;
   FHoverPosition := -1;
 end;
 

@@ -5,7 +5,8 @@
 // Ablage (je Benutzer, ohne Administratorrechte):
 //   <InstallDir>\AtlasServer.exe, AtlasSetup.exe, LICENSE, THIRD-PARTY-NOTICES.md,
 //     whatsnew.json (#756), tips.json (#757)
-//   <InstallDir>\Beispiele\… (#756, #757), <InstallDir>\Tipps\….png (#757)
+//   <InstallDir>\Beispiele\… (#756, #757), <InstallDir>\Tipps\….png (#757),
+//   <InstallDir>\Doku\….html (#766, lokale Doku für „Atlas-Doku“)
 //   <InstallDir>\Win32\Atlas.IDE.Expert<Suffix>.bpl, <InstallDir>\Win64\…
 // Die Quelle (SourceDir, der Ordner des Installers) hat denselben Aufbau.
 // Eine IDE wird nur angeboten, wenn ihre Version unterstützt ist und die
@@ -72,8 +73,11 @@ type
     /// <summary>Bilder der Karte „Atlas entdecken“ (#757); ersetzt bei jeder Installation den ganzen Ordner.
     /// </summary>
     TipsFolder = 'Tipps';
+    /// <summary>Lokale HTML-Doku für den Knopf „Atlas-Doku“ der Willkommensseite (#766, Tools/Build-Docs.ps1);
+    /// ersetzt bei jeder Installation den ganzen Ordner.</summary>
+    DocsFolder = 'Doku';
     /// <summary>Ordner, die bei jeder Installation vollständig ersetzt werden.</summary>
-    DataFolders: array[0..1] of string = (SamplesFolder, TipsFolder);
+    DataFolders: array[0..2] of string = (SamplesFolder, TipsFolder, DocsFolder);
   private
     FSystem: ISetupSystem;
     FPaths: TSetupPaths;

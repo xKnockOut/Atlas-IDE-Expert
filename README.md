@@ -143,6 +143,8 @@ Values also work with `=` (`--log=server.log`). `--stdio` and `--clientProcessId
 | `--include-uncommitted` | with `--changed`/`--diff` also index, working tree and new files |
 | `--changed-lines` | only findings in changed lines; together with the baseline only new findings in changed lines |
 | `--suppression-stats` | instead of findings: how often each rule is suppressed via `lsp-ignore` (most frequent first, including unused ones), as text or JSON; exit code 0 |
+| `--metrics` | instead of findings: code metrics per method (length, nesting depth, cyclomatic and cognitive complexity, parameters; #66) with the limits from `atlas.json` (`"max"` of the `metric-*` rules); `--format text` writes a Markdown report, `json` the metric data; exit code 0 |
+| `--todos` | instead of findings: open TODO entries (#68) from `// TODO`, `// FIXME` and the IDE to-do format `{ TODO 1 -oOwner -cCategory : Text }` with priority, owner and category; more markers via the option `"keywords"` of the rule `todo-comment`; `--format text` writes a Markdown overview, `json` the data; exit code 0 |
 
 Exit code: 1 if a finding reaches `--fail-on` (default: at least one error), otherwise 0; 3 for invocation or read errors. Findings hidden by the baseline never count.
 

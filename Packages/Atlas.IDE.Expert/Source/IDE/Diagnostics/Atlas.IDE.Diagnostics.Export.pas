@@ -4,7 +4,9 @@
 // Befehlspalette: sucht die Diagnoselogs des Servers der letzten Tage, zeigt
 // die Vorschau und schreibt nach Bestätigung die ZIP-Datei. Ergebnis und
 // „nichts gefunden“ gehen in die Meldungsansicht. Vorn steht atlas-info.txt
-// mit Atlas-Version, IDE-Version und Plattform (#495).
+// mit Atlas-Version, IDE-Version und Plattform (#495). Gibt es letzte Daten
+// des Diagnosemodus (#479, ohne Dateinamen geschrieben), kommen sie mit
+// (#766).
 
 interface
 
@@ -25,7 +27,8 @@ uses
   Atlas.Core.Updates.Check,
   Atlas.Core.Diagnostics.Export,
   Atlas.UI.Diagnostics.ExportDialog,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.IDE.Diagnostics.Timing;
 
 class procedure TAtlasIdeDiagnosticExport.Execute(const AMessage: TProc<string>);
 var
@@ -39,6 +42,8 @@ begin
   {$ENDIF}
   Info := TAtlasDiagnosticExport.Info(TAtlasPluginVersion.Version, TAtlasUpdates.IdeVersion, Platform);
   Files := TAtlasDiagnosticExport.Files(TAtlasDiagnosticExport.DefaultFolder, TAtlasDiagnosticExport.DefaultDays, Now);
+  if FileExists(TAtlasIdeDiagnosticMode.LastDataFile) then
+    Files := Files + [TAtlasIdeDiagnosticMode.LastDataFile];
   if Length(Files) = 0 then
   begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.DiagExportEmpty, [TAtlasDiagnosticExport.DefaultDays]));
