@@ -20,6 +20,11 @@
 // Regelprofile, Pfadregeln und das Ausnehmen von Test-Units (#146) wertet
 // TRuleProfiles aus; maßgeblich ist das Profil in ASettings.Profile, für
 // Test-Units und Testprojekte ASettings.TestProfile, falls gesetzt.
+//
+// Laufzeit (Diagnoselog 15.10.2026): Vor jeder Regel fragt die Engine
+// AContext.Cancelled und bricht mit ERuleCheckCancelled ab. Früher lief eine
+// abgebrochene oder überholte Prüfung bis zum Ende weiter (bis 240 s). Die
+// langsamste Regel ab SlowRuleMs geht als slowRule/slowRuleMs ins Diagnoselog.
 
 interface
 
@@ -34,6 +39,9 @@ const
 
 type
   TRuleEngine = class
+  public const
+    /// <summary>Ab dieser Dauer nennt das Diagnoselog die Regel.</summary>
+    SlowRuleMs = 100;
   public
     /// <summary>Wirksamer Schweregrad einer Regel; Off = nicht ausführen.</summary>
     class function EffectiveSeverity(const ARule: TRuleDescriptor;
@@ -55,7 +63,9 @@ implementation
 
 uses
   System.JSON,
+  System.Diagnostics,
   System.Generics.Defaults,
+  Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Profiles,
   Atlas.Common.Rules.Suppressions;
@@ -242,6 +252,8 @@ var
   Enabled: Boolean;
   Settings: TServerSettings;
   MinConfidence: TRuleConfidence;
+  Watch: TStopwatch;
+  Elapsed: Int64;
 begin
   if (AContext.RelativePath <> '') and ASettings.IsExcluded(AContext.RelativePath) then
     Exit(nil);
@@ -276,9 +288,15 @@ begin
         Continue;
       // Erst in einer Interface-Variablen halten: Check nimmt den Report als
       // const; ohne gezählte Referenz würde er nie freigegeben (Speicherleck).
+      if Assigned(AContext.Cancelled) and AContext.Cancelled() then
+        raise ERuleCheckCancelled.Create('Prüfung abgebrochen');
       Report := TRuleReport.Create(Descriptor.Id, Severity, Findings);
+      Watch := TStopwatch.StartNew;
       Rule.Check(Context, Report);
       Report := nil;
+      Elapsed := Watch.ElapsedMilliseconds;
+      if Elapsed >= SlowRuleMs then
+        TRequestDiagnostics.Slowest('slowRule', Descriptor.Id, Integer(Elapsed));
       RanIds.Add(LowerCase(Descriptor.Id));
     end;
 

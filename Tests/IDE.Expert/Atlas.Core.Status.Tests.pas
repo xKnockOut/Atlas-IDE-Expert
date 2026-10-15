@@ -86,6 +86,8 @@ type
     [Test]
     procedure ClientMeasuresRequests;
     [Test]
+    procedure LongPollingDoesNotCount;
+    [Test]
     procedure ClientReportsCloseOnce;
     [Test]
     procedure ProgressReportsChangesAndPercent;
@@ -704,6 +706,30 @@ begin
     Client.Request('test', nil, 1000).Free;
     Client.AverageMs(Samples);
     Assert.AreEqual(1, Samples);
+  finally
+    Client.Free;
+  end;
+end;
+
+procedure TAtlasStatusSourcesTests.LongPollingDoesNotCount;
+var
+  Client: TLspClient;
+  Samples: Integer;
+begin
+  // Rückmeldung 15.10.2026: workspace/diagnostic wartet absichtlich bis zu 10 s.
+  Assert.IsFalse(TLspClient.CountsResponseTime('workspace/diagnostic'));
+  Assert.IsTrue(TLspClient.CountsResponseTime('textDocument/diagnostic'));
+  Client := nil;
+  Client := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    begin
+      Client.Receive(TLspClient.Frame('{"jsonrpc":"2.0","id":1,"result":null}'), Length(TLspClient.Frame(
+        '{"jsonrpc":"2.0","id":1,"result":null}')));
+    end);
+  try
+    Client.Request('workspace/diagnostic', nil, 1000).Free;
+    Client.AverageMs(Samples);
+    Assert.AreEqual(0, Samples);
   finally
     Client.Free;
   end;

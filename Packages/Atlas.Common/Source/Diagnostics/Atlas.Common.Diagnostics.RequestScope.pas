@@ -43,6 +43,9 @@ type
     class procedure ResultCount(ACount: Integer); static;
     /// <summary>Zählt den Wert zu AKey hoch, z. B. Increment('missingUnits').</summary>
     class procedure Increment(const AKey: string); static;
+    /// <summary>Merkt ALabel unter AKey und AMs unter AKey + 'Ms', wenn AMs größer ist als die bisher
+    /// gemerkte Dauer, z. B. Slowest('slowRule', 'hides-virtual', 2700) für die langsamste Prüfregel.</summary>
+    class procedure Slowest(const AKey, ALabel: string; AMs: Integer); static;
   end;
 
 implementation
@@ -157,6 +160,23 @@ begin
       Exit;
     end;
   CurrentScope.Notes.Notes := CurrentScope.Notes.Notes + [AKey + '=1'];
+end;
+
+class procedure TRequestDiagnostics.Slowest(const AKey, ALabel: string; AMs: Integer);
+var
+  Entry: string;
+  Known: Integer;
+begin
+  if CurrentScope = nil then
+    Exit;
+  Known := -1;
+  for Entry in CurrentScope.Notes.Notes do
+    if Entry.StartsWith(AKey + 'Ms=') then
+      Known := StrToIntDef(Copy(Entry, Length(AKey) + 4, MaxInt), -1);
+  if AMs <= Known then
+    Exit;
+  Note(AKey, ALabel);
+  Note(AKey + 'Ms', AMs);
 end;
 
 end.

@@ -67,6 +67,16 @@ type
     procedure FindsDescendants;
     [Test]
     procedure FindSymbolsMatchesWholeNamesOnly;
+    [Test]
+    procedure LookupsStayCorrectAfterManyReplacements;
+    [Test]
+    procedure LookupsFollowCompaction;
+    [Test]
+    procedure DescendantsListSymbolOnce;
+    [Test]
+    procedure SymbolsNamedUsesTableOfStoredUnit;
+    [Test]
+    procedure SymbolsNamedFallsBackForChangedSymbols;
   end;
 
   [TestFixture]
@@ -118,6 +128,10 @@ type
     procedure CachedIncludeUnitReusedUntilIncludeChanges;
     [Test]
     procedure DecodesOnlyUsedCacheEntries;
+    [Test]
+    procedure CompactLibraryCacheReusedUnderBudget;
+    [Test]
+    procedure ReleaseCacheDropsEntries;
     [Test]
     // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
     [IgnoreMemoryLeaks]
@@ -676,6 +690,114 @@ begin
   Assert.IsTrue(SameText('TFoo', Found[0].Symbol.Name));
   Assert.IsTrue(SameText('TFoo', Found[1].Symbol.Name));
   Assert.AreEqual<NativeInt>(0, Length(Index.FindSymbols('TFooB')));
+end;
+
+procedure TSymbolIndexTests.LookupsStayCorrectAfterManyReplacements;
+var
+  Index: ISymbolIndex;
+  Found: TArray<TSymbolLocation>;
+  Round: Integer;
+begin
+  // Ersetzte Units lassen tote Verweise zurück; nach genug Runden werden die Tabellen neu gebaut
+  // (Diagnoselog 15.10.2026). Weder vorher noch danach darf ein alter Stand auftauchen.
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(MakeUnit('B', 'C:\B.pas', ['TFoo'], 'TBase'));
+  for Round := 1 to 3 * TSymbolIndex.RebuildDeadRefs do
+    if Odd(Round) then
+      Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['TFoo', 'TBar'], 'TBase'))
+    else
+      Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['TBar', 'TFoo', 'TBaz'], 'X.TBase'));
+  Found := Index.FindSymbols('TFoo');
+  Assert.AreEqual<NativeInt>(2, Length(Found));
+  Assert.AreEqual<NativeInt>(1, Length(Index.FindSymbols('TBaz')));
+  Assert.AreEqual<NativeInt>(4, Length(Index.Descendants('TBase')));
+  Index.RemoveFile('C:\A.pas');
+  Found := Index.FindSymbols('TFoo');
+  Assert.AreEqual<NativeInt>(1, Length(Found));
+  Assert.AreEqual('B', Found[0].UnitName);
+  Assert.AreEqual<NativeInt>(0, Length(Index.FindSymbols('TBar')));
+  Assert.AreEqual<NativeInt>(1, Length(Index.Descendants('TBase')));
+end;
+
+procedure TSymbolIndexTests.LookupsFollowCompaction;
+var
+  Index: ISymbolIndex;
+  U: TUnitIndex;
+  Found: TArray<TSymbolLocation>;
+begin
+  // Kompakt gehaltene Units verlieren Symbole; die Positionen verschieben sich.
+  U := MakeUnit('A', 'C:\A.pas', ['TIntern', 'TOeffentlich']);
+  U.Library_ := True;
+  U.Symbols[1].InInterface := True;
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(U);
+  Index.SetBudget(1);
+  Assert.AreEqual(1, Index.CompactCount);
+  Assert.AreEqual<NativeInt>(0, Length(Index.FindSymbols('TIntern')));
+  Found := Index.FindSymbols('TOeffentlich');
+  Assert.AreEqual<NativeInt>(1, Length(Found));
+  Assert.AreEqual('TOeffentlich', Found[0].Symbol.Name);
+  Assert.AreEqual('C:\A.pas', Found[0].FileName);
+end;
+
+procedure TSymbolIndexTests.DescendantsListSymbolOnce;
+var
+  Index: ISymbolIndex;
+  U: TUnitIndex;
+begin
+  U := MakeUnit('A', 'C:\A.pas', ['TKind']);
+  U.Symbols[0].Ancestors := ['A.TBase', 'TBase<Integer>', 'IBase'];
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(U);
+  Assert.AreEqual<NativeInt>(1, Length(Index.Descendants('TBase')));
+  Assert.AreEqual<NativeInt>(1, Length(Index.Descendants('Unit.IBase')));
+  Assert.AreEqual<NativeInt>(0, Length(Index.Descendants('')));
+end;
+
+procedure TSymbolIndexTests.SymbolsNamedUsesTableOfStoredUnit;
+var
+  Index: ISymbolIndex;
+  U, Found: TUnitIndex;
+  Positions: TArray<Integer>;
+begin
+  // Diagnoselog 15.10.2026: Die Namensauflösung sucht über die Tabelle der abgelegten Unit.
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['Foo', 'Bar', 'foo']));
+  Assert.IsTrue(Index.FindUnit('A', Found));
+  Assert.IsTrue(Found.NameTable <> nil);
+  Positions := Found.SymbolsNamed('FOO');
+  Assert.AreEqual<NativeInt>(2, Length(Positions));
+  Assert.AreEqual(0, Positions[0]);
+  Assert.AreEqual(2, Positions[1]);
+  Assert.AreEqual<NativeInt>(0, Length(Found.SymbolsNamed('Fehlt')));
+  // Ersetzte Fassung: neue Tabelle, alte Positionen gelten nicht mehr.
+  U := MakeUnit('A', 'C:\A.pas', ['Bar', 'Foo']);
+  Index.AddUnit(U);
+  Assert.IsTrue(Index.FindUnit('A', Found));
+  Positions := Found.SymbolsNamed('foo');
+  Assert.AreEqual<NativeInt>(1, Length(Positions));
+  Assert.AreEqual(1, Positions[0]);
+end;
+
+procedure TSymbolIndexTests.SymbolsNamedFallsBackForChangedSymbols;
+var
+  Index: ISymbolIndex;
+  Found: TUnitIndex;
+  Positions: TArray<Integer>;
+begin
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['Foo']));
+  Assert.IsTrue(Index.FindUnit('A', Found));
+  // Neues Array in der Kopie: die Tabelle passt nicht mehr, gesucht wird linear.
+  Found.Symbols := Copy(Found.Symbols) + MakeUnit('B', 'C:\B.pas', ['Neu', 'Foo']).Symbols;
+  Positions := Found.SymbolsNamed('Foo');
+  Assert.AreEqual<NativeInt>(2, Length(Positions));
+  Assert.AreEqual(2, Positions[1]);
+  Assert.AreEqual<NativeInt>(1, Length(Found.SymbolsNamed('neu')));
+  // Ohne Tabelle (Unit nie im Index) ebenso.
+  Found := MakeUnit('C', 'C:\C.pas', ['X', 'Y', 'x']);
+  Assert.IsTrue(Found.NameTable = nil);
+  Assert.AreEqual<NativeInt>(2, Length(Found.SymbolsNamed('X')));
 end;
 
 { TIndexCacheTests }
@@ -1253,6 +1375,80 @@ begin
   end;
   Assert.AreEqual(1, BuildResult.Parsed);
   Assert.AreEqual<NativeInt>(0, Length(FIndex.FindSymbols('TMitNeu')));
+end;
+
+procedure TIndexBuilderTests.CompactLibraryCacheReusedUnderBudget;
+const
+  UnitText = 'unit K;'#10'interface'#10'type TK = class end;'#10'implementation'#10 +
+    'procedure Versteckt; begin end;'#10'end.';
+var
+  Builder: TIndexBuilder;
+  Cache: TArray<TUnitIndex>;
+  BuildResult: TIndexBuildResult;
+begin
+  // Diagnoselog 15.10.2026: Bei knappem Budget stehen Bibliotheken kompakt im Cache. Sie werden
+  // wiederverwendet, solange ein Budget gilt; ohne Budget braucht es alle Symbole.
+  FFiles.Put('C:\Lib\K.pas', UnitText, 1);
+  FIndex.SetBudget(1);
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  try
+    Builder.Build(nil, nil, ['C:\Lib\K.pas'], nil, nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Assert.AreEqual(1, FIndex.CompactCount);
+  Cache := TIndexCache.Deserialize(TIndexCache.Serialize(FIndex.Units));
+  Assert.IsTrue(Cache[0].Compact);
+  FIndex := TSymbolIndex.Create;
+  FIndex.SetBudget(1);
+  FFiles.Reads := 0;
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  try
+    Builder.UseCache(Cache);
+    BuildResult := Builder.Build(nil, nil, ['C:\Lib\K.pas'], nil, nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Assert.AreEqual(0, BuildResult.Parsed);
+  Assert.AreEqual(1, BuildResult.FromCache);
+  Assert.AreEqual(0, FFiles.Reads);
+  FIndex := TSymbolIndex.Create;
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  try
+    Builder.UseCache(Cache);
+    BuildResult := Builder.Build(nil, nil, ['C:\Lib\K.pas'], nil, nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Assert.AreEqual(1, BuildResult.Parsed, 'ohne Budget neu einlesen');
+  Assert.AreEqual<NativeInt>(1, Length(FIndex.FindSymbols('Versteckt')));
+end;
+
+procedure TIndexBuilderTests.ReleaseCacheDropsEntries;
+var
+  Builder: TIndexBuilder;
+  Cache: TArray<TUnitIndex>;
+begin
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  try
+    Builder.Build(['C:\Lib\C.pas', 'C:\Lib\D.pas'], nil, nil);
+  finally
+    Builder.Free;
+  end;
+  Cache := FIndex.Units;
+  FIndex := TSymbolIndex.Create;
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  try
+    Builder.UseCache(Cache);
+    Assert.AreEqual(2, Builder.CachedCount);
+    Builder.Build(['C:\Lib\C.pas', 'C:\Lib\D.pas'], nil, nil);
+    Builder.ReleaseCache;
+    Assert.AreEqual(0, Builder.CachedCount);
+    // Später nachgeladene Units liest der Builder aus der Datei.
+    Assert.IsTrue(Builder.EnsureUnit('C'));
+  finally
+    Builder.Free;
+  end;
 end;
 
 procedure TIndexBuilderTests.DecodesOnlyUsedCacheEntries;
