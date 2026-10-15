@@ -25,6 +25,9 @@
 //   beim Schließen und beim Beenden (Stop) und meldet sich selbst an.
 // - Bereich „Projekte“ (#592, Projects): Zustand je zuletzt geöffnetem
 //   Projekt aus den Projekt-Zusammenfassungen; meldet sich selbst an.
+// - Bereich „Projektverlauf“ (#758, Trends): Linien je Reihe über die
+//   letzten Builds des in „Projekte“ gewählten Projekts; meldet sich selbst
+//   an.
 // - Bereich „Nicht gesichert“ (#762, Unsaved): nicht Committetes, nicht
 //   Gepushtes und Stashes je Projekt; meldet sich selbst an.
 // - Zustandskachel „Atlas“ (#754, State): Server, Version, Index,
@@ -53,6 +56,7 @@ uses
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.WhatsNew,
   Atlas.IDE.Welcome.Projects,
+  Atlas.IDE.Welcome.Trends,
   Atlas.IDE.Welcome.Unsaved,
   Atlas.IDE.Welcome.Continue,
   Atlas.IDE.Welcome.State,
@@ -81,6 +85,9 @@ type
     FProjects: TAtlasIdeProjects;
     // Hält die Quelle des Bereichs „Projekte“ am Leben; die Frames halten sie ebenfalls.
     FProjectsRef: IInterface;
+    FTrends: TAtlasIdeTrends;
+    // Hält die Quelle des Bereichs „Projektverlauf“ am Leben; die Frames halten sie ebenfalls.
+    FTrendsRef: IInterface;
     FUnsaved: TAtlasIdeUnsaved;
     // Hält die Quelle des Bereichs „Nicht gesichert“ am Leben; die Frames halten sie ebenfalls.
     FUnsavedRef: IInterface;
@@ -101,6 +108,7 @@ type
     procedure SetDiscover(AValue: TAtlasIdeDiscover);
     procedure SetHelp(AValue: TAtlasIdeHelp);
     procedure SetProjects(AValue: TAtlasIdeProjects);
+    procedure SetTrends(AValue: TAtlasIdeTrends);
     procedure SetUnsaved(AValue: TAtlasIdeUnsaved);
     procedure SetContinue(AValue: TAtlasIdeContinue);
     procedure AttachMenu(AFrame: TAtlasWelcomeFrame);
@@ -148,6 +156,9 @@ type
     property WhatsNew: TAtlasIdeWhatsNew read FWhatsNew write SetWhatsNew;
     /// <summary>Bereich „Projekte“ (#592); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
     property Projects: TAtlasIdeProjects read FProjects write SetProjects;
+    /// <summary>Bereich „Projektverlauf“ (#758); gehört danach der Steuerung (Start beim Setzen). nil = ohne.
+    /// </summary>
+    property Trends: TAtlasIdeTrends read FTrends write SetTrends;
     /// <summary>Bereich „Nicht gesichert“ (#762); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
     property Unsaved: TAtlasIdeUnsaved read FUnsaved write SetUnsaved;
     /// <summary>Bereich „Weiterarbeiten“ (#755); gehört danach der Steuerung (Start beim Setzen). nil = ohne.
@@ -258,6 +269,8 @@ begin
   TAtlasStatusRegistry.Default.RemoveListener(FStatusListener);
   if FWhatsNew <> nil then
     FWhatsNew.Stop;
+  if FTrends <> nil then
+    FTrends.Stop;
   if FProjects <> nil then
     FProjects.Stop;
   if FUnsaved <> nil then
@@ -279,6 +292,8 @@ begin
   FWhatsNewRef := nil;
   FProjects := nil;
   FProjectsRef := nil;
+  FTrends := nil;
+  FTrendsRef := nil;
   FUnsaved := nil;
   FUnsavedRef := nil;
   FContinue := nil;
@@ -361,6 +376,18 @@ begin
       procedure
       begin
         FProjects.Start;
+      end);
+end;
+
+procedure TAtlasIdeWelcome.SetTrends(AValue: TAtlasIdeTrends);
+begin
+  FTrends := AValue;
+  FTrendsRef := AValue;
+  if FTrends <> nil then
+    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        FTrends.Start;
       end);
 end;
 
@@ -500,6 +527,9 @@ begin
       // Bereich „Hilfe und Rückmeldung“: welcomePage.help und keys.overview (#766).
       if FHelp <> nil then
         FHelp.Refresh;
+      // Bereich „Projektverlauf“: welcomePage.trends, .series und .points (#758).
+      if FTrends <> nil then
+        FTrends.Refresh;
       if not Current.WelcomePage then
         Host := ''
       else if (Current.WelcomePageHost = 'dockWindow') or not TAtlasIdeWelcomePage.Available then
