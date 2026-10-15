@@ -383,6 +383,8 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 | SF9 | Optionen: „Kurztext neben „Atlas“ zeigen“ aus; „Ausgeblendete Zeilen“ = `atlas.file` | Feld zeigt nur „Atlas“; im Fenster fehlt die Zeile „Datei“ |
 | SF10 | Zweites Editorfenster öffnen (Ansicht › Neues Editorfenster) | Auch dort ein Atlas-Feld |
 | SF11 | Package entladen | Felder verschwinden, die Statusleisten verhalten sich wie ohne Atlas |
+| SF12 | Index neu aufbauen (Menü *Atlas*), während der Server langsam ist | Statusfeld zeigt „Atlas · Server langsam · Index NN %“, der Menütitel bleibt „Atlas“; nach dem Aufbau verschwindet der Fortschritt |
+| SF13 | „Fortschritt des Symbol-Index“ = Im Menütitel, dann Index neu aufbauen | Menütitel „Atlas – …“ mit Fortschritt, im Statusfeld nur noch als Kurztext, wenn der Index die wichtigste Zeile ist; „Nicht anzeigen“: nirgends |
 
 ## Schnellschalter (#604)
 
@@ -401,6 +403,9 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 | QS11 | Schalter erneut anklicken, dann wie QS9 mit „Im Projekt (atlas.json)“ | atlas.json enthält `"xmlDocFull": true`, Kommentare und Reihenfolge bleiben; Optionsseite unverändert |
 | QS12 | Befehlspalette: „Atlas: Klammerfarben ein/aus“, „Atlas: Alles aus für diese Sitzung“, „Atlas: Schnellschalter öffnen“ | Wie die Klicks im Fenster bzw. Fenster öffnet unten links im aktiven Fenster, wenn kein Statusfeld da ist |
 | QS13 | Menü Atlas › „Klammerfarben“ | Häkchen wie im Fenster; Umschalten wirkt wie dort |
+| QS14 | Doppelklick auf das Atlas-Feld in der Statusleiste | Fenster „Atlas · Schnellschalter“ über dem Feld; das Statusfenster des ersten Klicks schließt sich, beim Loslassen öffnet es nicht erneut |
+| QS15 | Tools › Optionen › Atlas › Allgemein: „Schnellschalter öffnen mit“ = Rechtsklick, dann Doppelklick auf das Feld | Kein Schnellschalter-Fenster; der Doppelklick wirkt wie zwei einfache Klicks (Statusfenster öffnet und schließt); Rechtsklick öffnet die Schnellschalter |
+| QS16 | „Schnellschalter öffnen mit“ = Doppelklick, dann Rechtsklick auf das Feld | Kein Schnellschalter-Fenster, der Rechtsklick geht an die IDE; Doppelklick öffnet die Schnellschalter |
 
 ## Abgesicherter Start (#722)
 
