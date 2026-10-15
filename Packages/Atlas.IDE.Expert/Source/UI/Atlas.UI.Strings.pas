@@ -215,7 +215,10 @@ type
     KeyMapReasonAtlasPriority, KeyMapReasonAtlasYields, KeyMapReasonEditorBinding, KeyMapReasonLastBinding,
     KeyMapReasonFirstAction, KeyMapReasonOwnWindow, KeyMapExport, KeyMapConflictsButton, KeyMapRefresh,
     KeyMapClose, KeyMapPrint, KeyMapCreated, KeyMapFilter, KeyMapEditorBinding, KeyMapStartConflict,
-    KeyMapNobody, KeyMapExportFailed, SettingsKeyOverview, SettingsKeyStartupCheck);
+    KeyMapNobody, KeyMapExportFailed, SettingsKeyOverview, SettingsKeyStartupCheck,
+    SettingsShortcutTips, SettingsShortcutTipsScope, SettingsShortcutTipsAtlas, SettingsShortcutTipsAll,
+    ShortcutTipLabel, ShortcutTipCommand, ShortcutTipNever, ShortcutTipAllKeys, ShortcutTipSpoken,
+    AccessShortcutTip, KeyMapColumnRarely, KeyMapRarely);
 
   TAtlasStrings = class
   private class var
@@ -702,7 +705,10 @@ const
        'Tastenkonflikte.',
      'keine der beiden', 'Atlas: Tastenkürzel-Übersicht konnte nicht exportiert werden (%s).',
      'Menüeintrag und Befehl „Tastenkürzel-Übersicht“',
-     'Beim Start die Atlas-Tasten prüfen und Konflikte in der Meldungsansicht melden'),
+     'Beim Start die Atlas-Tasten prüfen und Konflikte in der Meldungsansicht melden',
+     'Tastenkürzel-Tipps zeigen (nach Aufruf per Maus)', 'Tipps für:', 'Nur Atlas-Befehle', 'Atlas und IDE',
+     'Tipp:', 'für „%s“', 'Nicht mehr zeigen', 'Alle Kürzel', 'Tipp: %s für %s', 'Tastenkürzel-Tipp',
+     'Selten per Tastatur', '%d× Maus, %d× Tastatur'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1158,7 +1164,10 @@ const
        'Overview: Atlas > Keyboard shortcuts; decide under Tools > Options > Third Party > Atlas > Key conflicts.',
      'neither', 'Atlas: Could not export the keyboard shortcuts (%s).',
      'Menu item and command "Keyboard shortcuts"',
-     'Check the Atlas keys at startup and report conflicts in the Messages view'));
+     'Check the Atlas keys at startup and report conflicts in the Messages view',
+     'Show keyboard shortcut tips (after using the mouse)', 'Tips for:', 'Atlas commands only', 'Atlas and IDE',
+     'Tip:', 'for “%s”', 'Don''t show again', 'All shortcuts', 'Tip: %s for %s', 'Keyboard shortcut tip',
+     'Rarely by keyboard', '%d× mouse, %d× keyboard'));
 
 { TAtlasStrings }
 

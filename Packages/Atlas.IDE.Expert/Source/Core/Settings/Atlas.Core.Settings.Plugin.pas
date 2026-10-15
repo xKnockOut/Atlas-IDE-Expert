@@ -215,6 +215,12 @@ type
     /// <summary>Beim Start die Tasten von Atlas gegen alle Belegungen prüfen und jeden Konflikt einmal in der
     /// Meldungsansicht melden (#520).</summary>
     KeyStartupCheck: Boolean;
+    /// <summary>Tastenkürzel-Tipps (#600, shortcutTips.enabled): nach einem Aufruf per Maus kurz das Kürzel
+    /// zeigen; aus: Atlas beobachtet keine Aufrufe und zählt nichts.</summary>
+    ShortcutTips: Boolean;
+    /// <summary>atlas (nur Befehle von Atlas) oder all (auch die der IDE und anderer Erweiterungen,
+    /// shortcutTips.scope).</summary>
+    ShortcutTipsScope: string;
     /// <summary>Abgesicherter Start (#722): nach einem Absturz fragen (safeMode.askAfterCrash).</summary>
     SafeAskAfterCrash: Boolean;
     /// <summary>Nach zwei Abstürzen kurz hintereinander ohne Rückfrage abgesichert
@@ -404,6 +410,8 @@ begin
   Result.SetupChecklistSeen := False;
   Result.KeyOverview := True;
   Result.KeyStartupCheck := True;
+  Result.ShortcutTips := True;
+  Result.ShortcutTipsScope := 'all';
   Result.SafeAskAfterCrash := True;
   Result.SafeAutoAfterRepeatedCrash := True;
   Result.SafeStartupKey := 'shift';
@@ -509,6 +517,10 @@ begin
   else
     WelcomePageWhatsNew := 'afterUpdate';
   WhatsNewSeen := Trim(WhatsNewSeen);
+  if SameText(Trim(ShortcutTipsScope), 'atlas') then
+    ShortcutTipsScope := 'atlas'
+  else
+    ShortcutTipsScope := 'all';
 end;
 
 procedure TAtlasPluginSettings.Load(const AStore: IAtlasSettingsStore);
@@ -591,6 +603,8 @@ begin
   SetupChecklistSeen := AStore.ReadInteger('SetupChecklistSeen', BoolValue(Default.SetupChecklistSeen)) <> 0;
   KeyOverview := AStore.ReadInteger('KeyOverview', BoolValue(Default.KeyOverview)) <> 0;
   KeyStartupCheck := AStore.ReadInteger('KeyStartupCheck', BoolValue(Default.KeyStartupCheck)) <> 0;
+  ShortcutTips := AStore.ReadInteger('ShortcutTips', BoolValue(Default.ShortcutTips)) <> 0;
+  ShortcutTipsScope := AStore.ReadString('ShortcutTipsScope', Default.ShortcutTipsScope);
   SafeAskAfterCrash := AStore.ReadInteger('SafeAskAfterCrash', BoolValue(Default.SafeAskAfterCrash)) <> 0;
   SafeAutoAfterRepeatedCrash :=
     AStore.ReadInteger('SafeAutoAfterRepeatedCrash', BoolValue(Default.SafeAutoAfterRepeatedCrash)) <> 0;
@@ -712,6 +726,8 @@ begin
   AStore.WriteInteger('SetupChecklistSeen', BoolValue(SetupChecklistSeen));
   AStore.WriteInteger('KeyOverview', BoolValue(KeyOverview));
   AStore.WriteInteger('KeyStartupCheck', BoolValue(KeyStartupCheck));
+  AStore.WriteInteger('ShortcutTips', BoolValue(ShortcutTips));
+  AStore.WriteString('ShortcutTipsScope', ShortcutTipsScope);
   AStore.WriteInteger('SafeAskAfterCrash', BoolValue(SafeAskAfterCrash));
   AStore.WriteInteger('SafeAutoAfterRepeatedCrash', BoolValue(SafeAutoAfterRepeatedCrash));
   AStore.WriteString('SafeStartupKey', SafeStartupKey);

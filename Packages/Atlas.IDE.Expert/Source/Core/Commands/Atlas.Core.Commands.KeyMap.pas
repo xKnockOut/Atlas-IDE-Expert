@@ -74,11 +74,17 @@ type
     Winner: Integer;
     Wins: Boolean;
     Reason: TAtlasKeyReason;
+    /// <summary>Aufrufe des Befehls per Maus bzw. über das Kürzel (#600, Spalte „Selten per Tastatur“); 0 ohne
+    /// Zählung.</summary>
+    MouseUses: Integer;
+    KeyUses: Integer;
     class function Create(AShortCut: Word; const AKeyText, ACommand: string; AOrigin: TAtlasKeyOrigin;
       const AOriginName: string; AContext: TAtlasKeyContext; ASource: TAtlasKeySource; const AId: string;
       AOrder: Integer): TAtlasKeyItem; static;
     /// <summary>„Befehl (Herkunft)“ für Meldungen.</summary>
     function Holder: string;
+    /// <summary>Selten per Tastatur genutzt (TAtlasCommandUsage.IsRarelyByKeyboard).</summary>
+    function RarelyByKeyboard: Boolean;
   end;
 
   /// <summary>Suche in der Übersicht.</summary>
@@ -152,7 +158,8 @@ implementation
 
 uses
   System.Generics.Collections,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Core.Commands.Usage;
 
 { TAtlasKeyItem }
 
@@ -172,6 +179,11 @@ begin
   Result.Order := AOrder;
   Result.Active := True;
   Result.Winner := -1;
+end;
+
+function TAtlasKeyItem.RarelyByKeyboard: Boolean;
+begin
+  Result := TAtlasCommandUsage.IsRarelyByKeyboard(MouseUses, KeyUses);
 end;
 
 function TAtlasKeyItem.Holder: string;

@@ -73,6 +73,7 @@ uses
   Atlas.Core.Diagnostics.TimeLimit,
   Atlas.IDE.Commands.Keys,
   Atlas.IDE.Commands.KeyMap,
+  Atlas.IDE.Commands.ShortcutTips,
   Atlas.IDE.Undo.Changes,
   Atlas.Core.Updates.Check,
   Atlas.Core.Updates.Adapters.HttpSource,
@@ -128,6 +129,8 @@ var
   Setup: TAtlasIdeSetupChecklist;
   // Tastenkürzel-Übersicht mit Prüfung beim Start (#520).
   KeyMap: TAtlasIdeKeyMap;
+  // Tastenkürzel-Tipps und Zählung je Befehl (#600); nur im normalen Start.
+  ShortcutTips: TAtlasIdeShortcutTips;
   // Abgesicherter Start nach einem Absturz (#722).
   SafeMode: TAtlasIdeSafeMode;
   // Rückfrage und tägliche Update-Prüfung (#495).
@@ -895,6 +898,9 @@ begin
   // Tastenkürzel-Übersicht (#520): auch abgesichert, sie liest nur die Belegungen der IDE.
   if Basic and (KeyMap = nil) then
     KeyMap := TAtlasIdeKeyMap.Create;
+  // Tastenkürzel-Tipps (#600): Beobachtung an oder aus nach shortcutTips.enabled (ApplySettings).
+  if Full and (ShortcutTips = nil) then
+    ShortcutTips := TAtlasIdeShortcutTips.Create;
   if Basic and (Palette = nil) then
   begin
     RegisterPalette;
@@ -953,6 +959,9 @@ begin
         // Neue Belegungen anderer Erweiterungen gegen die Atlas-Tasten prüfen (#520).
         if KeyMap <> nil then
           KeyMap.CheckNow;
+        // Neue Aktionen und Tasten für die Tastenkürzel-Tipps (#600).
+        if ShortcutTips <> nil then
+          ShortcutTips.KeysChanged;
       end);
   end;
   // Willkommensseite (#753): auch abgesichert, sie startet keinen Server und liest nur lokale Daten.
@@ -1150,6 +1159,8 @@ begin
         Setup.ThemeChanged;
       if KeyMap <> nil then
         KeyMap.ThemeChanged;
+      if ShortcutTips <> nil then
+        ShortcutTips.ThemeChanged;
     end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
   if SafeMode = nil then
@@ -1184,6 +1195,9 @@ begin
       // diagnosticMode.enabled (#479).
       if DiagnosticMode <> nil then
         DiagnosticMode.ApplySettings;
+      // shortcutTips.* und neu belegte Tasten (#600).
+      if ShortcutTips <> nil then
+        ShortcutTips.ApplySettings;
       TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
       // Index-Optionen schreibt der Optionsdialog nach settings.json; der Server beobachtet die Datei (#652).
       // Statusfeld an, aus, Kurztext oder ausgeblendete Zeilen geändert (#591).
@@ -1252,6 +1266,8 @@ begin
   FreeAndNil(DiagnosticMode);
   // Vor dem Statusfeld: Die Einrichtung hat eine Zeile in dessen Registry und liest StatusLines (#625).
   FreeAndNil(Setup);
+  // Vor der Übersicht: Der Link „Alle Kürzel“ öffnet sie (#600); speichert die Zählung.
+  FreeAndNil(ShortcutTips);
   FreeAndNil(KeyMap);
   // Vor dem Statusfeld: Die Update-Prüfung hat die Zeile „Version“ in dessen Registry (#754).
   FreeAndNil(Updates);

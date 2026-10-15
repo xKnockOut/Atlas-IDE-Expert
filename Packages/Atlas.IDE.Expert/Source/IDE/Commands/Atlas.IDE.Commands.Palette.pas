@@ -12,6 +12,8 @@
 // Tastenkürzel-Übersicht (#520): Atlas-Befehle zeigen ihre Taste (ShortCutOf),
 // ein Befehl mit Sichtbarkeit (RegisterCommand mit AVisible) erscheint nur,
 // solange seine Einstellung an ist.
+// Tastenkürzel-Tipps (#600): Run meldet jeden Befehl als Aufruf ohne Kürzel
+// (TAtlasIdeShortcutTips.Invoked), auch Aktionen der IDE.
 
 interface
 
@@ -87,7 +89,8 @@ uses
   Atlas.UI.Strings,
   Atlas.IDE.Editor.Style,
   Atlas.IDE.Settings.Store,
-  Atlas.IDE.Commands.Keys;
+  Atlas.IDE.Commands.Keys,
+  Atlas.IDE.Commands.ShortcutTips;
 
 { TAtlasIdePalette.TBinding }
 
@@ -332,6 +335,8 @@ begin
     FHistory.SaveToFile(HistoryFile);
   except
   end;
+  // Vor dem Ausführen: Die Aktion der IDE zählt dann nicht noch einmal über OnActionExecute.
+  TAtlasIdeShortcutTips.Invoked(ACommand.Id);
   if ACommand.IsAtlas then
   begin
     for Pair in FAtlasCommands do

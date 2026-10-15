@@ -120,6 +120,8 @@ type
     FStatusField: TCheckBox;
     FDiagnosticMode: TCheckBox;
     FSetupChecklist: TCheckBox;
+    FShortcutTips: TCheckBox;
+    FShortcutTipsScope: TAtlasChoiceBox;
     FStatusSummary: TCheckBox;
     FStatusHidden: TEdit;
     FIndexGroup: TCheckBox;
@@ -252,6 +254,8 @@ type
     property StatusField: TCheckBox read FStatusField;
     property DiagnosticMode: TCheckBox read FDiagnosticMode;
     property SetupChecklist: TCheckBox read FSetupChecklist;
+    property ShortcutTips: TCheckBox read FShortcutTips;
+    property ShortcutTipsScope: TAtlasChoiceBox read FShortcutTipsScope;
     property StatusSummary: TCheckBox read FStatusSummary;
     property StatusHidden: TEdit read FStatusHidden;
     /// <summary>Zum Testen: abgesicherter Start (#722).</summary>
@@ -324,7 +328,8 @@ uses
   Atlas.Core.Product.Version,
   Atlas.Core.Updates.Check,
   Atlas.Core.Undo.Contract,
-  Atlas.Core.Welcome.WhatsNew;
+  Atlas.Core.Welcome.WhatsNew,
+  Atlas.Core.Commands.ShortcutTips;
 
 { TAtlasChoiceBox }
 
@@ -481,6 +486,10 @@ begin
   FDiagnosticMode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticMode));
   // Prüfliste der Einrichtung beim Start (#625); aus: nur auf Abruf.
   FSetupChecklist := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSetupChecklist));
+  // Tastenkürzel-Tipps (#600); Reihenfolge wie TAtlasTipScope: atlas, all.
+  FShortcutTips := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTips));
+  FShortcutTipsScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsScope),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsAtlas), TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsAll)]);
 
   // Liste der Vervollständigung.
   AddSheet(TAtlasTextId.SettingsTabCompletion);
@@ -1133,6 +1142,8 @@ begin
   FStatusField.Checked := ASettings.StatusField;
   FDiagnosticMode.Checked := ASettings.DiagnosticMode;
   FSetupChecklist.Checked := ASettings.SetupChecklist;
+  FShortcutTips.Checked := ASettings.ShortcutTips;
+  FShortcutTipsScope.Choice := Ord(TAtlasShortcutTips.ScopeOf(ASettings.ShortcutTipsScope));
   FStatusSummary.Checked := ASettings.StatusFieldSummary;
   FStatusHidden.Text := ASettings.StatusFieldHidden;
   FIndexGroup.Checked := ASettings.IndexProjectGroup;
@@ -1245,6 +1256,9 @@ begin
   ASettings.StatusField := FStatusField.Checked;
   ASettings.DiagnosticMode := FDiagnosticMode.Checked;
   ASettings.SetupChecklist := FSetupChecklist.Checked;
+  ASettings.ShortcutTips := FShortcutTips.Checked;
+  ASettings.ShortcutTipsScope := TAtlasShortcutTips.ScopeName(TAtlasTipScope(EnsureRange(FShortcutTipsScope.Choice,
+    Ord(Low(TAtlasTipScope)), Ord(High(TAtlasTipScope)))));
   ASettings.StatusFieldSummary := FStatusSummary.Checked;
   ASettings.StatusFieldHidden := Trim(FStatusHidden.Text);
   ASettings.IndexProjectGroup := FIndexGroup.Checked;

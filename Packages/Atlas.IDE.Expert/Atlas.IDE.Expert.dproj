@@ -177,6 +177,10 @@
         <DCCReference Include="Source\Core\Commands\Atlas.Core.Commands.KeyMap.pas"/>
         <DCCReference Include="Source\UI\Commands\Atlas.UI.Commands.KeyMap.pas"/>
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.KeyMap.pas"/>
+        <DCCReference Include="Source\Core\Commands\Atlas.Core.Commands.Usage.pas"/>
+        <DCCReference Include="Source\Core\Commands\Atlas.Core.Commands.ShortcutTips.pas"/>
+        <DCCReference Include="Source\UI\Commands\Atlas.UI.Commands.ShortcutTip.pas"/>
+        <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.ShortcutTips.pas"/>
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.MainMenu.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Ranking.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Sets.pas"/>
