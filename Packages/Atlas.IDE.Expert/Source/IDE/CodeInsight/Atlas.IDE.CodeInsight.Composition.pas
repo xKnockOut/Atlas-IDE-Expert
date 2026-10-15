@@ -603,7 +603,8 @@ begin
   MainMenu := TAtlasMainMenu.Create(
     function: string
     begin
-      if Manager <> nil then
+      // Fortschritt im Menütitel nur, wenn er nicht ins Statusfeld gehört (IndexProgressPlace).
+      if (Manager <> nil) and TAtlasIdeSettings.Current.IndexProgressInMenu then
         Result := Manager.ServerProgress
       else
         Result := '';
