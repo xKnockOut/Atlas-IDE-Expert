@@ -138,7 +138,6 @@ type
     ProjectSettingsFileFilter,
     GlobalSettingsInvalid,
     GlobalSettingsOpenFile,
-    MenuGlobalSettings,
     SymbolTitle,
     SymbolDescription,
     SettingsPairOwners, SettingsPairGuideWidth, MenuToggleOwners,
@@ -147,7 +146,8 @@ type
     SettingsTabRobustness, SettingsPairGuideOpacity,
     SettingsTabColors, SettingsPairColorsLight, SettingsPairColorsDark, SettingsPairColorsReset,
     SettingsPairColorsHint, TargetFooter, UnavailableHint,
-    SettingsTabInsert, SettingsTabCommands, SettingsTabStartup, SettingsTabUndo);
+    SettingsTabInsert, SettingsTabCommands, SettingsTabStartup, SettingsTabUndo,
+    SettingsAfterSaveNone, SettingsAfterSaveCheck, SettingsAfterSaveCompile);
 
   TAtlasStrings = class
   private class var
@@ -184,7 +184,7 @@ const
      'Außerhalb geänderte Dateien ohne Rückfrage neu laden (nur ohne ungespeicherte Änderungen)',
      'Atlas: %d Dateien neu geladen', 'Atlas: %s wurde außerhalb geändert und hat ungespeicherte Änderungen; die IDE fragt nach.',
      'Atlas: %s existiert nicht mehr.', 'Protokoll öffnen', 'Verlauf der Vervollständigung zurücksetzen',
-     'Klammern und Blockpaare (begin/end …) nach Tiefe färben', 'Compiler prüft nach dem Speichern (Syntaxprüfung)',
+     'Klammern und Blockpaare (begin/end …) nach Tiefe färben', 'Nach dem Speichern:',
      'Wartezeit nach dem Speichern (ms):', 'Höchstdauer der Prüfung (ms):',
      'Atlas: Compilerprüfung nach dem Speichern für %s abgeschaltet (%d ms > %d ms); Strg+Alt+F9 prüft von Hand.',
      'Compiler prüfen (Syntaxprüfung)',
@@ -473,8 +473,8 @@ const
      'Version: %s',
      'Version unbekannt',
      'Server',
-     'Einstellungen des Servers für alle Projekte (%APPDATA%\Atlas\settings.json)',
-     'Globale Einstellungen bearbeiten…',
+     'Weitere Einstellungen des Servers für alle Projekte (%APPDATA%\Atlas\settings.json)',
+     'Weitere globale Einstellungen…',
      'Einstellungen des Projekts bearbeiten…',
      'Baseline (atlas-baseline.json des aktiven Projekts)',
      '%d Treffer in %d Einträgen',
@@ -516,7 +516,6 @@ const
      'Protokolldateien (*.log;*.txt)|*.log;*.txt|Alle Dateien (*.*)|*.*',
      'settings.json ist kein gültiges JSON; bitte zuerst dort korrigieren.',
      'settings.json öffnen',
-     'Globale Einstellungen (settings.json)…',
      'Atlas IDE Expert %s',
      'Sprachserver, Prüfregeln, Vervollständigung und Refactoring für Delphi.',
      'Anweisung mitfärben (if, then, else, for, do, procedure …); Blocklinien ab der Anweisung',
@@ -528,7 +527,8 @@ const
      'Farbe anklicken zum Ändern; die Reihenfolge gilt von außen nach innen.',
      'Ziel: %s', 'Nicht verfügbar: Die Bedingung „%s“ ist für %s nicht erfüllt. Es gelten die Symbole der Plattform ' +
      'und des Compilers sowie die Bedingungen aus den Projektoptionen der aktiven Konfiguration (z. B. DEBUG).',
-     'Einfügen', 'Befehle', 'Start und Updates', 'Rückgängig'),
+     'Einfügen', 'Befehle', 'Start und Updates', 'Rückgängig',
+     'Nichts tun', 'Syntax prüfen (IDE)', 'Kompilieren (Server)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -544,7 +544,7 @@ const
      'Reload files changed outside the IDE without asking (only without unsaved changes)',
      'Atlas: %d files reloaded', 'Atlas: %s was changed outside and has unsaved changes; the IDE will ask.',
      'Atlas: %s no longer exists.', 'Open log', 'Reset completion history',
-     'Colour brackets and block pairs (begin/end …) by depth', 'Compiler checks after saving (syntax check)',
+     'Colour brackets and block pairs (begin/end …) by depth', 'After saving:',
      'Delay after saving (ms):', 'Maximum check duration (ms):',
      'Atlas: compiler check after saving switched off for %s (%d ms > %d ms); Ctrl+Alt+F9 checks manually.',
      'Check with compiler (syntax check)',
@@ -831,8 +831,8 @@ const
      'Version: %s',
      'Version unknown',
      'Server',
-     'Server settings for all projects (%APPDATA%\Atlas\settings.json)',
-     'Edit global settings…',
+     'More server settings for all projects (%APPDATA%\Atlas\settings.json)',
+     'More global settings…',
      'Edit project settings…',
      'Baseline (atlas-baseline.json of the active project)',
      '%d findings in %d entries',
@@ -874,7 +874,6 @@ const
      'Log files (*.log;*.txt)|*.log;*.txt|All files (*.*)|*.*',
      'settings.json is not valid JSON; please fix it there first.',
      'Open settings.json',
-     'Global settings (settings.json)…',
      'Atlas IDE Expert %s',
      'Language server, code checks, completion and refactoring for Delphi.',
      'Colour the statement too (if, then, else, for, do, procedure …); block guides start at the statement',
@@ -886,7 +885,8 @@ const
      'Click a colour to change it; the order runs from outermost to innermost.',
      'Target: %s', 'Not available: the condition “%s” is not met for %s. The symbols of the platform ' +
      'and compiler and the conditionals from the project options of the active configuration (e.g. DEBUG) apply.',
-     'Insertion', 'Commands', 'Startup and updates', 'Undo'));
+     'Insertion', 'Commands', 'Startup and updates', 'Undo',
+     'Do nothing', 'Check syntax (IDE)', 'Compile (server)'));
 
 { TAtlasStrings }
 

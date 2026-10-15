@@ -3,8 +3,11 @@
 // Befehle für den Einstellungsdialog des IDE-Plugins (#227). Das Plugin bindet
 // Atlas.Common nicht ein; damit es dieselbe Prüfung wie der Server nutzt,
 // fragt es ihn:
-//   atlas.server.checkSettings [Text]      Meldungen des Parsers zu einem
-//                                           Text im Format von atlas.json
+//   atlas.server.checkSettings [Text, Ort] Meldungen des Parsers zu einem
+//                                           Text im Format von atlas.json;
+//                                           Ort "global" (settings.json)
+//                                           oder "project" (Vorgabe) meldet
+//                                           Schlüssel am falschen Ort
 //   atlas.server.settingsCatalog [Sprache] Regeln des Katalogs mit Name,
 //                                           Kategorie und Vorgabe sowie Pfad
 //                                           der globalen Datei und Version
@@ -23,7 +26,8 @@ type
     CheckCommand = 'atlas.server.checkSettings';
     CatalogCommand = 'atlas.server.settingsCatalog';
   public
-    /// <summary>{"valid": Boolean, "issues": [{"line", "character", "message", "error"}]}; Zeilen ab 0.</summary>
+    /// <summary>{"valid": Boolean, "issues": [{"line", "character", "message", "error"}]}; Zeilen ab 0. AArguments[1]
+    /// = "global" prüft den Text als globale Datei, sonst als atlas.json.</summary>
     class function Check(const AArguments: TJSONArray): TJSONObject; static;
     /// <summary>{"rules": [{"id", "name", "category", "severity"}], "globalFile", "version"}.</summary>
     class function Catalog(const AEntries: TArray<TRuleCatalogEntry>; const AGlobalFile: string): TJSONObject; static;
@@ -36,6 +40,7 @@ implementation
 uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
+  Atlas.Common.Configuration.Scopes,
   Atlas.Common.Rules.Catalog.Data,
   Atlas.Common.Rules.Output,
   Atlas.Common.Product.Version;
@@ -49,13 +54,20 @@ end;
 
 class function TLspSettingsCommands.Check(const AArguments: TJSONArray): TJSONObject;
 var
-  Issues: TArray<TConfigurationIssue>;
+  Issues, Misplaced: TArray<TConfigurationIssue>;
+  Scope: TConfigurationScope;
   Issue: TConfigurationIssue;
   Items: TJSONArray;
   Item: TJSONObject;
   Valid: Boolean;
 begin
   TConfigurationParser.Parse(FirstString(AArguments), Issues);
+  Scope := TConfigurationScope.Project;
+  if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONString) and
+    SameText(AArguments.Items[1].Value, 'global') then
+    Scope := TConfigurationScope.Global;
+  TConfigurationScopes.Filter(FirstString(AArguments), Scope, Misplaced);
+  Issues := Issues + Misplaced;
   Items := TJSONArray.Create;
   Valid := True;
   for Issue in Issues do

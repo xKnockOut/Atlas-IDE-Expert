@@ -133,7 +133,7 @@ type
     FOnIndexRebuild: TFunc<string>;
     FOnIndexClear: TFunc<string>;
     FConfirmClear: TFunc<Boolean>;
-    FCheckOnSave: TCheckBox;
+    FAfterSave: TAtlasChoiceBox;
     FCheckDelay: TEdit;
     FCheckMax: TEdit;
     FActionsKey: TEdit;
@@ -489,7 +489,7 @@ begin
 
   AddSheet(TAtlasTextId.SettingsTabEditor);
   FHoverTooltip := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHover));
-  // XMLDoc in Tooltip und Detailpanel (#654); hints in atlas.json hat Vorrang.
+  // XMLDoc in Tooltip und Detailpanel (#654); gespeichert in settings.json (hints.*, #227).
   FXmlDocFull := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocFull));
   FXmlDocMaxLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocMaxLines));
   FPairColors := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairs));
@@ -522,18 +522,22 @@ begin
   Button.Width := 150;
   Button.OnClick := ResetColorsClick;
 
-  // Umfang des Index für alle Projekte; index in atlas.json hat Vorrang (#652).
+  // Umfang des Index für alle Projekte, gespeichert in settings.json (index.*, #652, #227).
   AddSheet(TAtlasTextId.SettingsTabIndex);
   FIndexGroup := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexGroup));
   FIndexSearch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexSearch));
   FIndexLibrary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIndexLibrary));
   AddIndexSection;
 
-  // Probleme im Editor und Compilerprüfung nach dem Speichern (#398, #548).
+  // Probleme im Editor und eine Aktion nach dem Speichern (#398, #548): Syntaxprüfung der IDE oder
+  // Kompilieren durch den Server (compiler.onSave in settings.json), nie beides.
   AddSheet(TAtlasTextId.SettingsTabCompiler);
   FProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblems));
   FProblemsList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsList));
-  FCheckOnSave := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCheckOnSave));
+  // Reihenfolge: nichts, Syntaxprüfung (CheckOnSave), Kompilieren (CompileOnSave).
+  FAfterSave := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsCheckOnSave),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsAfterSaveNone), TAtlasStrings.Text(TAtlasTextId.SettingsAfterSaveCheck),
+    TAtlasStrings.Text(TAtlasTextId.SettingsAfterSaveCompile)]);
   FCheckDelay := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckDelay));
   FCheckMax := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckMax));
 
@@ -1048,7 +1052,11 @@ begin
   FIndexLibrary.Checked := ASettings.IndexLibraryPaths;
   FIndexUsages.Checked := ASettings.IndexUsages;
   FMemoryBudget.Text := IntToStr(ASettings.MemoryBudgetMb);
-  FCheckOnSave.Checked := ASettings.CheckOnSave;
+  FAfterSave.Choice := 0;
+  if ASettings.CheckOnSave then
+    FAfterSave.Choice := 1
+  else if ASettings.CompileOnSave then
+    FAfterSave.Choice := 2;
   FCheckDelay.Text := IntToStr(ASettings.CheckOnSaveDelayMs);
   FCheckMax.Text := IntToStr(ASettings.CheckOnSaveMaxMs);
   FSafeAsk.Checked := ASettings.SafeAskAfterCrash;
@@ -1133,7 +1141,8 @@ begin
   ASettings.IndexLibraryPaths := FIndexLibrary.Checked;
   ASettings.IndexUsages := FIndexUsages.Checked;
   ASettings.MemoryBudgetMb := StrToIntDef(FMemoryBudget.Text, ASettings.MemoryBudgetMb);
-  ASettings.CheckOnSave := FCheckOnSave.Checked;
+  ASettings.CheckOnSave := FAfterSave.Choice = 1;
+  ASettings.CompileOnSave := FAfterSave.Choice = 2;
   ASettings.CheckOnSaveDelayMs := StrToIntDef(FCheckDelay.Text, ASettings.CheckOnSaveDelayMs);
   ASettings.CheckOnSaveMaxMs := StrToIntDef(FCheckMax.Text, ASettings.CheckOnSaveMaxMs);
   ASettings.SafeAskAfterCrash := FSafeAsk.Checked;

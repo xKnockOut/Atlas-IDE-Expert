@@ -2,8 +2,11 @@
 
 // Server-Einstellungen bearbeiten (#227): atlas.json neben der .dproj des
 // aktiven Projekts (Atlas > Projekt-Einstellungen) und die globale Datei
-// %APPDATA%\Atlas\settings.json (Tools › Optionen › Atlas › Server). Der Dialog
-// zeigt im Projekt, was global gilt. Geschrieben werden nur die geänderten
+// %APPDATA%\Atlas\settings.json (Tools › Optionen › Atlas › Server › „Weitere
+// globale Einstellungen“). Jede Einstellung hat genau einen Ort (x-scope): Der
+// Projektdialog zeigt nur Projekt-Schlüssel, der globale nur die globalen, die
+// nicht schon die Reiter der Optionsseite oder die IDE selbst setzen
+// (TAtlasSettingsScopes.IdeManagedPaths). Geschrieben werden nur die geänderten
 // Werte (TAtlasJsonText); Kommentare, unbekannte Schlüssel, Reihenfolge,
 // Kodierung und Zeilenenden bleiben (TAtlasTextFile, #121). Ohne Änderung
 // wird die Datei nicht angefasst. Der Server liest beide Dateien über seinen
@@ -74,6 +77,7 @@ uses
   Atlas.Core.Settings.Schema,
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Settings.Layers,
+  Atlas.Core.Settings.Scopes,
   Atlas.Core.Settings.Choices,
   Atlas.Core.Settings.Validation,
   Atlas.Core.Files.TextFile,
@@ -234,6 +238,8 @@ var
   Dialog: TAtlasProjectSettingsDialog;
   Catalog: TJSONValue;
   Target: TAtlasBuildTarget;
+  Fields: TArray<TAtlasSettingField>;
+  CheckScope: string;
   OpenFile, Accepted: Boolean;
   Actions: IOTAActionServices;
 begin
@@ -259,10 +265,19 @@ begin
   finally
     Root.Free;
   end;
-  // Im Projekt zeigt der Dialog, was global gilt.
+  // Eine Ebene je Datei: Im Projekt gibt es keine globale Vorgabe, die es überschreiben könnte.
   GlobalText := '';
-  if not AGlobal then
-    GlobalText := LoadContent(GlobalFile).Text;
+  if AGlobal then
+  begin
+    Fields := TAtlasSettingsSchema.ForScope(TAtlasSettingsSchema.Fields(AtlasSchemaJson), True,
+      TAtlasSettingsScopes.IdeManagedPaths);
+    CheckScope := ',"global"';
+  end
+  else
+  begin
+    Fields := TAtlasSettingsSchema.ForScope(TAtlasSettingsSchema.Fields(AtlasSchemaJson), False, nil);
+    CheckScope := '';
+  end;
   Project := ActiveProject;
   DprojText := '';
   if SameText(ExtractFileExt(Project), '.dproj') and TFile.Exists(Project) then
@@ -273,8 +288,7 @@ begin
     Catalog := RunCommand(CatalogCommand, '["en"]')
   else
     Catalog := RunCommand(CatalogCommand, '["de"]');
-  Model := TAtlasSettingsModel.Create(TAtlasSettingsSchema.Fields(AtlasSchemaJson), Content.Text, GlobalText,
-    AGlobal);
+  Model := TAtlasSettingsModel.Create(Fields, Content.Text, GlobalText, AGlobal);
   try
     Dialog := TAtlasProjectSettingsDialog.CreateDialog(nil, Model, AFileName);
     try
@@ -316,7 +330,8 @@ begin
           Answer: TJSONValue;
           Valid: Boolean;
         begin
-          Answer := RunCommand(CheckCommand, '[' + TAtlasJsonText.Quote(AText) + ']');
+          // Der Server meldet auch Schlüssel am falschen Ort (#227).
+          Answer := RunCommand(CheckCommand, '[' + TAtlasJsonText.Quote(AText) + CheckScope + ']');
           try
             AChecked := TAtlasSettingsValidation.FromAnswer(Answer, Result, Valid);
           finally

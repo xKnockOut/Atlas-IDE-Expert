@@ -369,11 +369,6 @@ begin
     begin
       TAtlasProjectSettings.Execute;
     end);
-  Palette.RegisterCommand('Atlas.GlobalSettings', TAtlasStrings.Text(TAtlasTextId.MenuGlobalSettings), '',
-    procedure
-    begin
-      TAtlasProjectSettings.ExecuteGlobal;
-    end);
   Palette.RegisterCommand('Atlas.HangTest', TAtlasStrings.Text(TAtlasTextId.SettingsHangTest), '',
     procedure
     var
@@ -879,10 +874,7 @@ begin
       if Updates <> nil then
         Updates.ApplySettings;
       TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
-      // Index-Optionen an den laufenden Server; er baut neu auf, wenn sich der Umfang ändert (#652).
-      if Manager <> nil then
-        Manager.NotifyServer('workspace/didChangeConfiguration',
-          TLspSession.SettingsParams(TAtlasIdeSettings.Current.ServerSettingsJson));
+      // Index-Optionen schreibt der Optionsdialog nach settings.json; der Server beobachtet die Datei (#652).
       // Statusfeld an, aus, Kurztext oder ausgeblendete Zeilen geändert (#591).
       if StatusField <> nil then
         StatusField.RequestRefresh;
