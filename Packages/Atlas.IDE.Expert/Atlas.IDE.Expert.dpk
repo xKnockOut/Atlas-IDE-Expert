@@ -153,6 +153,7 @@ contains
   Atlas.Core.Build.Events in 'Source\Core\Build\Atlas.Core.Build.Events.pas',
   Atlas.IDE.Build.Notifier in 'Source\IDE\Build\Atlas.IDE.Build.Notifier.pas',
   Atlas.Core.Diagnostics.Guard in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Guard.pas',
+  Atlas.Core.Diagnostics.MainThread in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.MainThread.pas',
   Atlas.Core.Diagnostics.Shutdown in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Shutdown.pas',
   Atlas.Core.Diagnostics.TimeLimit in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.TimeLimit.pas',
   Atlas.Core.Product.Version in 'Source\Core\Product\Atlas.Core.Product.Version.pas',
