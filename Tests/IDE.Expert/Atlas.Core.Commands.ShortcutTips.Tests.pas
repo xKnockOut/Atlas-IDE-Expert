@@ -336,13 +336,21 @@ var
   Entry: TAtlasKeyEntry;
   Key: Word;
 begin
-  // Jede Atlas-Taste hat einen eigenen Befehl, den die Zählung und die Tipps kennen.
+  // Jede Atlas-Taste hat einen Befehl, den die Zählung und die Tipps kennen. Mehrere Tasten können denselben
+  // Befehl haben (#775 zwei Tasten, #777 eigene Taste und Strg+F12); der Befehl führt dann zur ersten.
   for Func := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
   begin
     Assert.IsTrue(TAtlasShortcutTips.AtlasCommandId(Func).StartsWith('Atlas.'));
     Assert.IsTrue(TAtlasShortcutTips.AtlasFunctionOf(TAtlasShortcutTips.AtlasCommandId(Func), Entry.Func));
-    Assert.IsTrue(Entry.Func = Func);
+    Assert.AreEqual(TAtlasShortcutTips.AtlasCommandId(Func), TAtlasShortcutTips.AtlasCommandId(Entry.Func));
+    Assert.IsTrue(Ord(Entry.Func) <= Ord(Func));
   end;
+  Assert.IsTrue(TAtlasShortcutTips.AtlasFunctionOf('Atlas.ToggleMethod', Func));
+  Assert.IsTrue(Func = TAtlasKeyFunction.MethodToggleUp);
+  Assert.IsTrue(TAtlasShortcutTips.AtlasFunctionOf('Atlas.UnitSearch', Func));
+  Assert.IsTrue(Func = TAtlasKeyFunction.UnitSearch);
+  Assert.IsTrue(TAtlasShortcutTips.AtlasFunctionOf('Atlas.SwitchTestUnit', Func));
+  Assert.IsTrue(Func = TAtlasKeyFunction.TestUnit);
   Assert.AreEqual('Atlas.ExpandSelection', TAtlasShortcutTips.AtlasCommandId(TAtlasKeyFunction.ExpandSelection));
   Assert.AreEqual('Atlas.CommandPalette', TAtlasShortcutTips.AtlasCommandId(TAtlasKeyFunction.Palette));
   Assert.IsFalse(TAtlasShortcutTips.AtlasFunctionOf('ecClassCompletion', Func));

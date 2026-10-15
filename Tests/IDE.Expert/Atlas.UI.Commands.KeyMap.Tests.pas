@@ -248,7 +248,7 @@ end;
 
 procedure TAtlasKeyMapWindowTests.FunctionCaptionsWithoutPunctuation;
 var
-  Func: TAtlasKeyFunction;
+  Func, Other: TAtlasKeyFunction;
   Caption: string;
 begin
   for Func := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
@@ -256,7 +256,16 @@ begin
     Caption := TAtlasKeyMapWindow.FunctionCaption(Func);
     Assert.AreNotEqual('', Caption);
     Assert.IsFalse(Caption.EndsWith(':') or Caption.EndsWith('…'), Caption);
+    // Jede Funktion hat ihren eigenen Namen: Eine neue Funktion ohne eigenen Zweig fiele hier auf.
+    for Other := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
+      if Other <> Func then
+        Assert.AreNotEqual(Caption, TAtlasKeyMapWindow.FunctionCaption(Other), Caption);
   end;
+  Assert.AreEqual('Deklaration/Implementierung wechseln',
+    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.MethodToggleUp));
+  Assert.AreEqual('Zwischen Unit und Testunit wechseln',
+    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.TestUnit));
+  Assert.AreEqual('Units suchen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.UnitSearch));
   Assert.AreEqual('Code-Aktionen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.CodeActions));
   Assert.AreEqual('Suchfeld der Willkommensseite',
     TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.WelcomeSearch));

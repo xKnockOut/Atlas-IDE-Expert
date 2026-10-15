@@ -153,7 +153,6 @@ type
     EditorMethodToggle, EditorMethodToggleNone, SettingsMethodToggle, SettingsMethodToggleUp,
     SettingsMethodToggleDown,
     EditorTestUnit, SettingsCodeLensTestUnit, TestUnitLensTest, TestUnitLensUnit, TestUnitLensCreate, TestUnitNone,
-    EditorTestUnit, SettingsCodeLensTestUnit, TestUnitLensTest, TestUnitLensUnit, TestUnitLensCreate, TestUnitNone,
     UnitSearchTitle,
     UnitSearchMenu,
     UnitSearchIdeDialog,
@@ -307,7 +306,8 @@ type
     SettingsWelcomeHelpDesktop,
     FavoritePinned, FavoriteUnpinned, FavoritesFull, FavoriteNotAllowed, SettingsFavorites,
     SettingsFavoritesTitle, SettingsFavoritesRemove, SettingsFavoritesRemoveAll, SettingsFavoritesNone,
-    AccessFavorite);
+    AccessFavorite,
+    KeyMapUnitSearchIde);
 
   TAtlasStrings = class
   private class var
@@ -903,7 +903,8 @@ const
      '%s angeheftet · Strg+D löst', '%s gelöst', 'Schon %d Favoriten bei %s – erst einen lösen',
      'Dieser Eintrag lässt sich nicht anheften', 'Favoriten anheften (Strg+D oder Stern in der Liste)',
      'Angeheftete Favoriten (höchstens 5 je Typ)', 'Entfernen', 'Alle entfernen', 'Keine Favoriten angeheftet.',
-     'angeheftet'),
+     'angeheftet',
+     'Units suchen über Strg+F12 (statt IDE-Dialog)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1466,7 +1467,8 @@ const
      'Desktop',
      '%s pinned · Ctrl+D unpins', '%s unpinned', 'Already %d favorites for %s – unpin one first',
      'This entry cannot be pinned', 'Pin favorites (Ctrl+D or star in the list)',
-     'Pinned favorites (at most 5 per type)', 'Remove', 'Remove all', 'No pinned favorites.', 'pinned'));
+     'Pinned favorites (at most 5 per type)', 'Remove', 'Remove all', 'No pinned favorites.', 'pinned',
+     'Search units via Ctrl+F12 (instead of IDE dialog)'));
 
 { TAtlasStrings }
 

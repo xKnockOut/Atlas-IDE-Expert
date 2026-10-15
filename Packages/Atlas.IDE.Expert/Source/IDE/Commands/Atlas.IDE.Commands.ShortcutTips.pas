@@ -319,27 +319,41 @@ begin
     Result := AAction.Name;
 end;
 
-/// <summary>Taste der Atlas-Funktion als Text, wenn Atlas sie hält (frei oder mit Vorrang, #494); sonst ''.
+/// <summary>Taste der Atlas-Funktion als Text, wenn Atlas sie hält (frei oder mit Vorrang, #494); sonst '', auch
+/// wenn die Funktion abgeschaltet ist (Suchfeld der Willkommensseite aus, #775 aus, „Units suchen“ aus).
 /// Immer aus den aktuellen Einstellungen: nach einer Neubelegung sofort die neue.</summary>
 function AtlasKeyText(AFunc: TAtlasKeyFunction): string;
 var
   Entry: TAtlasKeyEntry;
-  Settings: TAtlasPluginSettings;
 begin
   Result := '';
-  Settings := TAtlasIdeSettings.Current;
-  for Entry in TAtlasKeyEntry.AllFromSettings(Settings) do
-    if (Entry.Func = AFunc) and (Entry.Key <> 0) then
+  for Entry in TAtlasIdeKeyMap.AtlasEntries do
+    if Entry.Func = AFunc then
     begin
-      if Entry.Func = TAtlasKeyFunction.WelcomeSearch then
-      begin
-        // Nur auf der Willkommensseite; dort gibt es keinen Aufruf per Maus.
-        if Settings.WelcomePage and Settings.WelcomePageSearch then
-          Result := ShortCutToText(TShortCut(Entry.Key));
-      end
-      else if TAtlasKeyConflicts.ShouldBind(Entry.Key, TAtlasIdeKeys.Owner(Entry.Key), Entry.Priority) then
+      // Das Suchfeld der Willkommensseite hat immer Vorrang; dort gibt es keinen Aufruf per Maus.
+      if (Entry.Key <> 0) and not Entry.Disabled and
+        TAtlasKeyConflicts.ShouldBind(Entry.Key, TAtlasIdeKeys.Owner(Entry.Key), Entry.Priority) then
         Result := ShortCutToText(TShortCut(Entry.Key));
       Exit;
+    end;
+end;
+
+/// <summary>Taste eines Atlas-Befehls: unter mehreren Tasten für denselben Befehl (#775 zwei Tasten, #777 eigene
+/// Taste und Strg+F12) die erste, die Atlas hält; AFunc bekommt deren Funktion.</summary>
+function AtlasCommandKeyText(const AId: string; var AFunc: TAtlasKeyFunction): string;
+var
+  Func: TAtlasKeyFunction;
+begin
+  Result := '';
+  for Func := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
+    if SameText(TAtlasShortcutTips.AtlasCommandId(Func), Trim(AId)) then
+    begin
+      Result := AtlasKeyText(Func);
+      if Result <> '' then
+      begin
+        AFunc := Func;
+        Exit;
+      end;
     end;
 end;
 
@@ -776,9 +790,13 @@ procedure TAtlasIdeShortcutTips.Consider(const AId: string);
 var
   Func: TAtlasKeyFunction;
   Action: TCustomAction;
+  KeyText: string;
 begin
   if TAtlasShortcutTips.AtlasFunctionOf(AId, Func) then
-    Consider(AId, AtlasKeyText(Func), TAtlasKeyMapWindow.FunctionCaption(Func), True)
+  begin
+    KeyText := AtlasCommandKeyText(AId, Func);
+    Consider(AId, KeyText, TAtlasKeyMapWindow.FunctionCaption(Func), True);
+  end
   else if AId.StartsWith('Atlas.', True) then
     // Befehl von Atlas ohne eigene Taste: kein Tipp, aber dieselbe Prüfung.
     Consider(AId, '', '', True)
