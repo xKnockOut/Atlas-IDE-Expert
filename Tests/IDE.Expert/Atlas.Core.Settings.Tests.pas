@@ -151,6 +151,9 @@ begin
   // Tastenkürzel-Übersicht (#520): Menüeintrag und Startprüfung an.
   Assert.IsTrue(Settings.KeyOverview);
   Assert.IsTrue(Settings.KeyStartupCheck);
+  // Tastenkürzel-Tipps (#600): an, für Atlas und IDE.
+  Assert.IsTrue(Settings.ShortcutTips);
+  Assert.AreEqual('all', Settings.ShortcutTipsScope);
   // Abgesicherter Start (#722).
   Assert.IsTrue(Settings.SafeAskAfterCrash);
   Assert.IsTrue(Settings.SafeAutoAfterRepeatedCrash);
@@ -216,6 +219,8 @@ begin
   Settings.SetupChecklistSeen := True;
   Settings.KeyOverview := False;
   Settings.KeyStartupCheck := False;
+  Settings.ShortcutTips := False;
+  Settings.ShortcutTipsScope := 'atlas';
   Settings.SafeAskAfterCrash := False;
   Settings.SafeAutoAfterRepeatedCrash := False;
   Settings.SafeStartupKey := 'none';
@@ -282,6 +287,8 @@ begin
   Assert.IsTrue(Loaded.SetupChecklistSeen);
   Assert.IsFalse(Loaded.KeyOverview);
   Assert.IsFalse(Loaded.KeyStartupCheck);
+  Assert.IsFalse(Loaded.ShortcutTips);
+  Assert.AreEqual('atlas', Loaded.ShortcutTipsScope);
   Assert.IsFalse(Loaded.SafeAskAfterCrash);
   Assert.IsFalse(Loaded.SafeAutoAfterRepeatedCrash);
   Assert.AreEqual('none', Loaded.SafeStartupKey);
@@ -418,6 +425,7 @@ begin
   Store.WriteInteger('UndoMultiFileMaxSizeMb', 100000);
   Store.WriteString('UndoMultiFileOnConflict', ' ABORT ');
   Store.WriteString('UndoMultiFileNewFiles', 'irgendwas');
+  Store.WriteString('ShortcutTipsScope', ' ATLAS ');
   Settings := Default(TAtlasPluginSettings);
   Settings.Load(Store);
   Assert.AreEqual(TAtlasPluginSettings.MinProviderTimeLimit, Settings.ProviderTimeLimitMs);
@@ -440,6 +448,11 @@ begin
   Assert.AreEqual(TAtlasPluginSettings.MaxUndoMaxSizeMb, Settings.UndoMultiFileMaxSizeMb);
   Assert.AreEqual('abort', Settings.UndoMultiFileOnConflict);
   Assert.AreEqual('recycleBin', Settings.UndoMultiFileNewFiles, 'unbekannt: Papierkorb');
+  // shortcutTips.scope (#600): nur atlas oder all.
+  Assert.AreEqual('atlas', Settings.ShortcutTipsScope);
+  Settings.ShortcutTipsScope := 'ide';
+  Settings.Normalize;
+  Assert.AreEqual('all', Settings.ShortcutTipsScope, 'unbekannt: all');
 end;
 
 procedure TAtlasPluginSettingsTests.OneActionAfterSaving;

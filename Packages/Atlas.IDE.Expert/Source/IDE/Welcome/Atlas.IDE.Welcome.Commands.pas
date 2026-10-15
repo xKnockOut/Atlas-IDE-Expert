@@ -27,6 +27,8 @@
 // - Zustandskachel „Atlas“ (#754, State): Server, Version, Index,
 //   Einrichtung und Diagnosemodus aus den Zeilen des Statusfelds (#591);
 //   meldet sich selbst an.
+// - Karte „Atlas entdecken“ (#757, Discover): ein Tipp je Start aus tips.json
+//   nach der gemeinsamen Zählung (#600); meldet sich selbst an.
 // Die Willkommensseite startet keinen Server und liest nur lokale Daten.
 
 interface
@@ -47,7 +49,8 @@ uses
   Atlas.IDE.Welcome.WhatsNew,
   Atlas.IDE.Welcome.Projects,
   Atlas.IDE.Welcome.Unsaved,
-  Atlas.IDE.Welcome.State;
+  Atlas.IDE.Welcome.State,
+  Atlas.IDE.Welcome.Discover;
 
 type
   TAtlasIdeWelcome = class
@@ -77,8 +80,12 @@ type
     FState: TAtlasIdeWelcomeState;
     // Hält die Quelle der Zustandskachel am Leben; die Frames halten sie ebenfalls.
     FStateRef: IInterface;
+    FDiscover: TAtlasIdeDiscover;
+    // Hält die Quelle der Karte „Atlas entdecken“ am Leben; die Frames halten sie ebenfalls.
+    FDiscoverRef: IInterface;
     procedure SetWhatsNew(AValue: TAtlasIdeWhatsNew);
     procedure SetState(AValue: TAtlasIdeWelcomeState);
+    procedure SetDiscover(AValue: TAtlasIdeDiscover);
     procedure SetProjects(AValue: TAtlasIdeProjects);
     procedure SetUnsaved(AValue: TAtlasIdeUnsaved);
     procedure AttachMenu(AFrame: TAtlasWelcomeFrame);
@@ -130,6 +137,9 @@ type
     property Unsaved: TAtlasIdeUnsaved read FUnsaved write SetUnsaved;
     /// <summary>Zustandskachel „Atlas“ (#754); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
     property State: TAtlasIdeWelcomeState read FState write SetState;
+    /// <summary>Karte „Atlas entdecken“ (#757); gehört danach der Steuerung (Start beim Setzen). nil = ohne.
+    /// </summary>
+    property Discover: TAtlasIdeDiscover read FDiscover write SetDiscover;
     class function HeaderInfo(const AServer: TAtlasServerInfo; AIndexing: Boolean; APercent, AUnits: Integer;
       AHour: Integer; const AFirstName: string; AGreeting: Boolean): TAtlasWelcomeHeaderInfo; static;
   end;
@@ -228,6 +238,8 @@ begin
     FUnsaved.Stop;
   if FState <> nil then
     FState.Stop;
+  if FDiscover <> nil then
+    FDiscover.Stop;
   // Beim Beenden der IDE: Hat die IDE ihr Layout aus dem Speicher zurückgeschrieben, gilt die Marke weiter.
   TAtlasIdeWelcomePage.RemoveAll;
   TAtlasIdeWelcomeWindow.Release;
@@ -240,6 +252,8 @@ begin
   FUnsavedRef := nil;
   FState := nil;
   FStateRef := nil;
+  FDiscover := nil;
+  FDiscoverRef := nil;
   inherited;
 end;
 
@@ -252,6 +266,18 @@ begin
       procedure
       begin
         FState.Start;
+      end);
+end;
+
+procedure TAtlasIdeWelcome.SetDiscover(AValue: TAtlasIdeDiscover);
+begin
+  FDiscover := AValue;
+  FDiscoverRef := AValue;
+  if FDiscover <> nil then
+    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        FDiscover.Start;
       end);
 end;
 
@@ -408,6 +434,9 @@ begin
       // Titel und Reihenfolge der Karte „Neu in Atlas“ nach den Einstellungen (welcomePage.whatsNew).
       if FWhatsNew <> nil then
         FWhatsNew.Refresh;
+      // Karte „Atlas entdecken“: eingeschaltete Funktionen und welcomePage.discover (#757).
+      if FDiscover <> nil then
+        FDiscover.Refresh;
       if not Current.WelcomePage then
         Host := ''
       else if (Current.WelcomePageHost = 'dockWindow') or not TAtlasIdeWelcomePage.Available then

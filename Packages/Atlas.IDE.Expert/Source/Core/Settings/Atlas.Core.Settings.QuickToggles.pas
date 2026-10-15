@@ -288,6 +288,9 @@ begin
     '"WelcomePage":{"type":"boolean","x-feature":"WelcomePage",' +
       '"default":true,"x-page":"Willkommensseite","x-quickToggle":true,' +
       '"x-caption":"Atlas auf der Willkommensseite","x-captionEn":"Atlas on the welcome page","x-issue":"#753"},' +
+    '"ShortcutTips":{"type":"boolean","x-feature":"ShortcutTips",' +
+      '"default":true,"x-page":"Allgemein","x-quickToggle":true,' +
+      '"x-caption":"Tastenkürzel-Tipps","x-captionEn":"Keyboard shortcut tips","x-issue":"#600"},' +
     '"StatusFieldSummary":{"type":"boolean","default":true,"x-page":"Allgemein",' +
       '"x-caption":"Kurztext im Statusfeld","x-captionEn":"Summary in the status field","x-issue":"#591"}' +
     '}}';

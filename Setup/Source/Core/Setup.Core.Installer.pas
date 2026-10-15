@@ -3,7 +3,9 @@
 // Installer (#495): IDEs finden, Atlas installieren, aktualisieren und
 // entfernen. Nur über ISetupSystem, ohne Windows und VCL.
 // Ablage (je Benutzer, ohne Administratorrechte):
-//   <InstallDir>\AtlasServer.exe, AtlasSetup.exe, LICENSE, THIRD-PARTY-NOTICES.md
+//   <InstallDir>\AtlasServer.exe, AtlasSetup.exe, LICENSE, THIRD-PARTY-NOTICES.md,
+//     whatsnew.json (#756), tips.json (#757)
+//   <InstallDir>\Beispiele\… (#756, #757), <InstallDir>\Tipps\….png (#757)
 //   <InstallDir>\Win32\Atlas.IDE.Expert<Suffix>.bpl, <InstallDir>\Win64\…
 // Die Quelle (SourceDir, der Ordner des Installers) hat denselben Aufbau.
 // Eine IDE wird nur angeboten, wenn ihre Version unterstützt ist und die
@@ -60,11 +62,18 @@ type
     SnippetsFolder = 'Snippets';
     DisplayName = 'Atlas IDE Expert';
     Publisher = 'Atlas';
-    /// <summary>Dateien neben den BPLs; whatsnew.json für die Karte „Neu in Atlas“ (#756).</summary>
-    CommonFiles: array[0..4] of string = (ServerExe, SetupExe, 'LICENSE', 'THIRD-PARTY-NOTICES.md', 'whatsnew.json');
-    /// <summary>Beispieldateien für „Ausprobieren“ der Karte „Neu in Atlas“ (#756); ersetzt bei jeder
-    /// Installation den ganzen Ordner.</summary>
+    /// <summary>Dateien neben den BPLs; whatsnew.json für die Karte „Neu in Atlas“ (#756), tips.json für die
+    /// Karte „Atlas entdecken“ und die Tastenkürzel-Tipps (#757).</summary>
+    CommonFiles: array[0..5] of string = (ServerExe, SetupExe, 'LICENSE', 'THIRD-PARTY-NOTICES.md', 'whatsnew.json',
+      'tips.json');
+    /// <summary>Beispieldateien für „Ausprobieren“ der Karten „Neu in Atlas“ (#756) und „Atlas entdecken“ (#757);
+    /// ersetzt bei jeder Installation den ganzen Ordner.</summary>
     SamplesFolder = 'Beispiele';
+    /// <summary>Bilder der Karte „Atlas entdecken“ (#757); ersetzt bei jeder Installation den ganzen Ordner.
+    /// </summary>
+    TipsFolder = 'Tipps';
+    /// <summary>Ordner, die bei jeder Installation vollständig ersetzt werden.</summary>
+    DataFolders: array[0..1] of string = (SamplesFolder, TipsFolder);
   private
     FSystem: ISetupSystem;
     FPaths: TSetupPaths;
@@ -79,7 +88,8 @@ type
     function HasAtlas(const AKey: string): Boolean;
     function RemoveAtlas(const AKey: string): Boolean;
     procedure CopyFiles(const AIdes: TArray<TSetupIde>);
-    procedure CopySamples;
+    /// <summary>Ordner AFolder aus dem Paket in den Installationsordner (Beispiele, Bilder der Tipps).</summary>
+    procedure CopyFolder(const AFolder: string);
     procedure Register(const AIde: TSetupIde);
     procedure WriteUninstallEntry;
     procedure RemoveRegistrations;
@@ -299,7 +309,8 @@ begin
     FSystem.CopyFile(Source, Target);
     Report(TSetupStepKind.FileCopied, Name);
   end;
-  CopySamples;
+  for Name in DataFolders do
+    CopyFolder(Name);
   for Ide in AIdes do
   begin
     if not Ide.Available then
@@ -313,24 +324,24 @@ begin
   end;
 end;
 
-procedure TSetupInstaller.CopySamples;
+procedure TSetupInstaller.CopyFolder(const AFolder: string);
 var
   Source, Target, Name: string;
   Names: TArray<string>;
 begin
-  Source := Join(FPaths.SourceDir, SamplesFolder);
-  Target := Join(FPaths.InstallDir, SamplesFolder);
+  Source := Join(FPaths.SourceDir, AFolder);
+  Target := Join(FPaths.InstallDir, AFolder);
   if SameText(Source, Target) then
     Exit;
   Names := FSystem.FilesIn(Source);
-  // Ohne Beispiele im Paket bleibt ein vorhandener Ordner, sonst gelten genau die neuen.
+  // Ohne den Ordner im Paket bleibt ein vorhandener, sonst gelten genau die neuen Dateien.
   if Length(Names) = 0 then
     Exit;
   FSystem.DeleteDirectory(Target);
   for Name in Names do
   begin
     FSystem.CopyFile(Join(Source, Name), Join(Target, Name));
-    Report(TSetupStepKind.FileCopied, Join(SamplesFolder, Name));
+    Report(TSetupStepKind.FileCopied, Join(AFolder, Name));
   end;
 end;
 
@@ -345,7 +356,7 @@ end;
 
 function TSetupInstaller.InstalledSize: Int64;
 var
-  Name: string;
+  Name, Folder: string;
   Path: string;
   Platform: TSetupPlatform;
   Info: TSetupVersionInfo;
@@ -358,8 +369,9 @@ begin
     if FSystem.FileExists(Path) then
       Inc(Result, FSystem.FileSize(Path));
   end;
-  for Name in FSystem.FilesIn(Join(FPaths.InstallDir, SamplesFolder)) do
-    Inc(Result, FSystem.FileSize(Join(Join(FPaths.InstallDir, SamplesFolder), Name)));
+  for Folder in DataFolders do
+    for Name in FSystem.FilesIn(Join(FPaths.InstallDir, Folder)) do
+      Inc(Result, FSystem.FileSize(Join(Join(FPaths.InstallDir, Folder), Name)));
   for Info in TSetupIdes.SupportedVersions do
     for Platform := Low(TSetupPlatform) to High(TSetupPlatform) do
     begin

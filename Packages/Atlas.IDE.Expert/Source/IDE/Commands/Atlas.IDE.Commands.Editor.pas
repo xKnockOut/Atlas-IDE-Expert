@@ -207,7 +207,7 @@ begin
   FAnchorFile := '';
   FNotifierIndex := -1;
   FContextMenu := TAtlasIdeContextMenu.Create;
-  FContextMenu.Add(TAtlasStrings.Text(TAtlasTextId.EditorActions),
+  FContextMenu.Add('Atlas.CodeActions', TAtlasStrings.Text(TAtlasTextId.EditorActions),
     function: Integer
     begin
       Result := TAtlasIdeSettings.Current.ActionsKey;
@@ -217,7 +217,7 @@ begin
       CodeActions;
     end);
   FContextMenu.Add('-', nil, nil);
-  FContextMenu.Add(TAtlasStrings.Text(TAtlasTextId.EditorExpand),
+  FContextMenu.Add('Atlas.ExpandSelection', TAtlasStrings.Text(TAtlasTextId.EditorExpand),
     function: Integer
     begin
       Result := TAtlasIdeSettings.Current.ExpandKey;
@@ -226,7 +226,7 @@ begin
     begin
       ExpandSelection;
     end);
-  FContextMenu.Add(TAtlasStrings.Text(TAtlasTextId.EditorShrink),
+  FContextMenu.Add('Atlas.ShrinkSelection', TAtlasStrings.Text(TAtlasTextId.EditorShrink),
     function: Integer
     begin
       Result := TAtlasIdeSettings.Current.ShrinkKey;
@@ -236,7 +236,7 @@ begin
       ShrinkSelection;
     end);
   FContextMenu.Add('-', nil, nil);
-  FContextMenu.Add(TAtlasStrings.Text(TAtlasTextId.MenuImplementations),
+  FContextMenu.Add('Atlas.Implementations', TAtlasStrings.Text(TAtlasTextId.MenuImplementations),
     function: Integer
     begin
       Result := TAtlasIdeSettings.Current.ImplementationKey;
@@ -246,7 +246,7 @@ begin
       // Über das Ergebnisfenster (#400): eine einzige Implementierung springt direkt.
       TAtlasIdeResults.FindImplementations;
     end);
-  FContextMenu.Add(TAtlasStrings.Text(TAtlasTextId.EditorTypeDefinition),
+  FContextMenu.Add('Atlas.TypeDefinition', TAtlasStrings.Text(TAtlasTextId.EditorTypeDefinition),
     function: Integer
     begin
       Result := TAtlasIdeSettings.Current.TypeDefinitionKey;
@@ -255,7 +255,7 @@ begin
     begin
       GoToTypeDefinition;
     end);
-  FContextMenu.Add(TAtlasStrings.Text(TAtlasTextId.EditorMethodToggle),
+  FContextMenu.Add('Atlas.ToggleMethod', TAtlasStrings.Text(TAtlasTextId.EditorMethodToggle),
     function: Integer
     begin
       Result := 0;
@@ -266,13 +266,13 @@ begin
     begin
       ToggleMethod;
     end);
-  FContextMenu.Add(TAtlasStrings.Text(TAtlasTextId.MenuReferences), nil,
+  FContextMenu.Add('Atlas.References', TAtlasStrings.Text(TAtlasTextId.MenuReferences), nil,
     procedure
     begin
       TAtlasIdeResults.FindReferences;
     end);
   FContextMenu.Add('-', nil, nil);
-  FContextMenu.Add(TAtlasStrings.Text(TAtlasTextId.EditorTestUnit),
+  FContextMenu.Add('Atlas.SwitchTestUnit', TAtlasStrings.Text(TAtlasTextId.EditorTestUnit),
     function: Integer
     begin
       Result := TAtlasIdeSettings.Current.TestUnitKey;
@@ -281,19 +281,19 @@ begin
     begin
       SwitchTestUnit;
     end);
-  FContextMenu.Add(TAtlasStrings.Text(TAtlasTextId.EditorCopyQualified), nil,
+  FContextMenu.Add('Atlas.CopyQualifiedName', TAtlasStrings.Text(TAtlasTextId.EditorCopyQualified), nil,
     procedure
     begin
       CopyQualifiedName(False);
     end);
-  FContextMenu.Add(TAtlasStrings.Text(TAtlasTextId.EditorCopyQualifiedParams), nil,
+  FContextMenu.Add('Atlas.CopyQualifiedNameParams', TAtlasStrings.Text(TAtlasTextId.EditorCopyQualifiedParams), nil,
     procedure
     begin
       CopyQualifiedName(True);
     end);
   // Atlas-Änderungen über mehrere Dateien (#721).
   FContextMenu.Add('-', nil, nil);
-  FContextMenu.Add(TAtlasStrings.Text(TAtlasTextId.UndoMenu),
+  FContextMenu.Add('Atlas.UndoChange', TAtlasStrings.Text(TAtlasTextId.UndoMenu),
     function: Integer
     begin
       Result := TAtlasIdeSettings.Current.UndoKey;
@@ -302,7 +302,7 @@ begin
     begin
       TAtlasIdeUndo.UndoLast;
     end);
-  FContextMenu.Add(TAtlasStrings.Text(TAtlasTextId.RedoMenu),
+  FContextMenu.Add('Atlas.RedoChange', TAtlasStrings.Text(TAtlasTextId.RedoMenu),
     function: Integer
     begin
       Result := TAtlasIdeSettings.Current.RedoKey;

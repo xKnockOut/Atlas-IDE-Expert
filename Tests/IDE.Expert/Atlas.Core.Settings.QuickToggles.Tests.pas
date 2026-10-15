@@ -115,6 +115,10 @@ begin
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'DiagnosticMode', Toggle));
   Assert.AreEqual('Allgemein', Toggle.Page);
   Assert.IsFalse(Toggle.Drawing);
+  // Tastenkürzel-Tipps (#600): Schalter auf der Seite Allgemein, keine Zeichnung.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'ShortcutTips', Toggle));
+  Assert.AreEqual('Allgemein', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
   // Jeder Schalter ist eine Einstellung des Plugins.
   for Toggle in Toggles do
   begin

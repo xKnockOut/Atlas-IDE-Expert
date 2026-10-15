@@ -121,6 +121,8 @@ type
     FStatusField: TCheckBox;
     FDiagnosticMode: TCheckBox;
     FSetupChecklist: TCheckBox;
+    FShortcutTips: TCheckBox;
+    FShortcutTipsScope: TAtlasChoiceBox;
     FStatusSummary: TCheckBox;
     FStatusToggles: TAtlasChoiceBox;
     FIndexProgress: TAtlasChoiceBox;
@@ -204,6 +206,12 @@ type
     FWelcomeUnsavedHideClean: TCheckBox;
     FWelcomeStatusTile: TCheckBox;
     FWelcomeStatusTileOnlyProblems: TCheckBox;
+    FWelcomeDiscover: TCheckBox;
+    FTipsUsageTracking: TCheckBox;
+    FResetUsage: TButton;
+    FUnblockTips: TButton;
+    FOnResetUsage: TProc;
+    FOnUnblockTips: TProc;
     FVersion: TLabel;
     FResetHistory: TButton;
     FResetWidths: TButton;
@@ -226,6 +234,8 @@ type
     /// Seite „Tastenkonflikte“ (#494).</summary>
     function AddKey(const ACaption: string): TEdit;
     procedure ResetHistoryClick(Sender: TObject);
+    procedure ResetUsageClick(Sender: TObject);
+    procedure UnblockTipsClick(Sender: TObject);
     procedure ResetWidthsClick(Sender: TObject);
     procedure HangTestClick(Sender: TObject);
     procedure PairColorsClick(Sender: TObject);
@@ -276,6 +286,8 @@ type
     property StatusField: TCheckBox read FStatusField;
     property DiagnosticMode: TCheckBox read FDiagnosticMode;
     property SetupChecklist: TCheckBox read FSetupChecklist;
+    property ShortcutTips: TCheckBox read FShortcutTips;
+    property ShortcutTipsScope: TAtlasChoiceBox read FShortcutTipsScope;
     property StatusSummary: TCheckBox read FStatusSummary;
     property StatusToggles: TAtlasChoiceBox read FStatusToggles;
     property IndexProgress: TAtlasChoiceBox read FIndexProgress;
@@ -321,6 +333,11 @@ type
     property WelcomeUnsavedHideClean: TCheckBox read FWelcomeUnsavedHideClean;
     property WelcomeStatusTile: TCheckBox read FWelcomeStatusTile;
     property WelcomeStatusTileOnlyProblems: TCheckBox read FWelcomeStatusTileOnlyProblems;
+    /// <summary>Zum Testen: Karte „Atlas entdecken“ und Zählung (#757).</summary>
+    property WelcomeDiscover: TCheckBox read FWelcomeDiscover;
+    property TipsUsageTracking: TCheckBox read FTipsUsageTracking;
+    property ResetUsageButton: TButton read FResetUsage;
+    property UnblockTipsButton: TButton read FUnblockTips;
     property VersionLabel: TLabel read FVersion;
     /// <summary>Kennzahlen als Text; nil = nicht verfügbar.</summary>
     property OnIndexMetrics: TFunc<string> read FOnIndexMetrics write FOnIndexMetrics;
@@ -331,6 +348,10 @@ type
     property ConfirmClear: TFunc<Boolean> read FConfirmClear write FConfirmClear;
     /// <summary>„Verlauf zurücksetzen“ der lernenden Gewichtung (#418).</summary>
     property OnResetHistory: TProc read FOnResetHistory write FOnResetHistory;
+    /// <summary>„Zählung zurücksetzen“ der Nutzung je Befehl (#757).</summary>
+    property OnResetUsage: TProc read FOnResetUsage write FOnResetUsage;
+    /// <summary>„Gesperrte Tipps wieder zeigen“ der Karte „Atlas entdecken“ (#757).</summary>
+    property OnUnblockTips: TProc read FOnUnblockTips write FOnUnblockTips;
     /// <summary>Server, der bei leerem Pfad gilt (für die Anzeige „Verwendet: …“).</summary>
     property DefaultServerPath: string read FDefaultServerPath write SetDefaultServerPath;
     /// <summary>Version des Servers unter dem Pfad als Text ('' = unbekannt); nil = keine Anzeige.</summary>
@@ -354,7 +375,8 @@ uses
   Atlas.Core.Product.Version,
   Atlas.Core.Updates.Check,
   Atlas.Core.Undo.Contract,
-  Atlas.Core.Welcome.WhatsNew;
+  Atlas.Core.Welcome.WhatsNew,
+  Atlas.Core.Commands.ShortcutTips;
 
 { TAtlasChoiceBox }
 
@@ -535,6 +557,10 @@ begin
   FDiagnosticMode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticMode));
   // Prüfliste der Einrichtung beim Start (#625); aus: nur auf Abruf.
   FSetupChecklist := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSetupChecklist));
+  // Tastenkürzel-Tipps (#600); Reihenfolge wie TAtlasTipScope: atlas, all.
+  FShortcutTips := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTips));
+  FShortcutTipsScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsScope),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsAtlas), TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsAll)]);
 
   // Liste der Vervollständigung.
   AddSheet(TAtlasTextId.SettingsTabCompletion);
@@ -695,6 +721,8 @@ begin
 end;
 
 procedure TAtlasSettingsPage.AddWelcomeSection;
+var
+  Panel: TWinControl;
 begin
   // Atlas-Bereiche auf der Willkommensseite (#753).
   FWelcomeEnabled := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeEnabled));
@@ -726,6 +754,24 @@ begin
   // Zustandskachel „Atlas“ (#754).
   FWelcomeStatusTile := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeStatusTile));
   FWelcomeStatusTileOnlyProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeStatusTileOnlyProblems));
+  // Karte „Atlas entdecken“ und Nutzungszählung (#757).
+  FWelcomeDiscover := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeDiscover));
+  FTipsUsageTracking := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTipsUsageTracking));
+  Panel := AddPanel(32);
+  FResetUsage := TButton.Create(Self);
+  FResetUsage.Parent := Panel;
+  FResetUsage.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsResetUsage);
+  FResetUsage.Left := 0;
+  FResetUsage.Top := 3;
+  FResetUsage.Width := 180;
+  FResetUsage.OnClick := ResetUsageClick;
+  FUnblockTips := TButton.Create(Self);
+  FUnblockTips.Parent := Panel;
+  FUnblockTips.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsUnblockTips);
+  FUnblockTips.Left := 190;
+  FUnblockTips.Top := 3;
+  FUnblockTips.Width := 200;
+  FUnblockTips.OnClick := UnblockTipsClick;
 end;
 
 procedure TAtlasSettingsPage.AddSheet(AId: TAtlasTextId);
@@ -1228,6 +1274,8 @@ begin
   FStatusField.Checked := ASettings.StatusField;
   FDiagnosticMode.Checked := ASettings.DiagnosticMode;
   FSetupChecklist.Checked := ASettings.SetupChecklist;
+  FShortcutTips.Checked := ASettings.ShortcutTips;
+  FShortcutTipsScope.Choice := Ord(TAtlasShortcutTips.ScopeOf(ASettings.ShortcutTipsScope));
   FStatusSummary.Checked := ASettings.StatusFieldSummary;
   if not ASettings.StatusTogglesOnDoubleClick then
     FStatusToggles.Choice := 1
@@ -1312,6 +1360,8 @@ begin
   FWelcomeUnsavedHideClean.Checked := ASettings.WelcomePageUnsavedHideWhenClean;
   FWelcomeStatusTile.Checked := ASettings.WelcomePageStatusTile;
   FWelcomeStatusTileOnlyProblems.Checked := ASettings.WelcomePageStatusTileOnlyProblems;
+  FWelcomeDiscover.Checked := ASettings.WelcomePageDiscover;
+  FTipsUsageTracking.Checked := ASettings.TipsUsageTracking;
   RefreshFuse;
   RefreshIndex;
 end;
@@ -1372,6 +1422,9 @@ begin
   ASettings.StatusField := FStatusField.Checked;
   ASettings.DiagnosticMode := FDiagnosticMode.Checked;
   ASettings.SetupChecklist := FSetupChecklist.Checked;
+  ASettings.ShortcutTips := FShortcutTips.Checked;
+  ASettings.ShortcutTipsScope := TAtlasShortcutTips.ScopeName(TAtlasTipScope(EnsureRange(FShortcutTipsScope.Choice,
+    Ord(Low(TAtlasTipScope)), Ord(High(TAtlasTipScope)))));
   ASettings.StatusFieldSummary := FStatusSummary.Checked;
   case FStatusToggles.Choice of
     1:
@@ -1460,6 +1513,8 @@ begin
   ASettings.WelcomePageUnsavedHideWhenClean := FWelcomeUnsavedHideClean.Checked;
   ASettings.WelcomePageStatusTile := FWelcomeStatusTile.Checked;
   ASettings.WelcomePageStatusTileOnlyProblems := FWelcomeStatusTileOnlyProblems.Checked;
+  ASettings.WelcomePageDiscover := FWelcomeDiscover.Checked;
+  ASettings.TipsUsageTracking := FTipsUsageTracking.Checked;
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;
@@ -1536,6 +1591,20 @@ begin
   if Assigned(FOnResetHistory) then
     FOnResetHistory();
   FResetHistory.Enabled := False;
+end;
+
+procedure TAtlasSettingsPage.ResetUsageClick(Sender: TObject);
+begin
+  if Assigned(FOnResetUsage) then
+    FOnResetUsage();
+  FResetUsage.Enabled := False;
+end;
+
+procedure TAtlasSettingsPage.UnblockTipsClick(Sender: TObject);
+begin
+  if Assigned(FOnUnblockTips) then
+    FOnUnblockTips();
+  FUnblockTips.Enabled := False;
 end;
 
 procedure TAtlasSettingsPage.HangTestClick(Sender: TObject);

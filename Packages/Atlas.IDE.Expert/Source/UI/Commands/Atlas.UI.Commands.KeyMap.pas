@@ -4,7 +4,8 @@
 // wie „Strg+Umschalt+P“ oder Text aus Befehl, Kategorie, Herkunft), „Nur
 // Konflikte“ und die Anzahl; darunter die Liste mit Taste, Befehl, Herkunft
 // (IDE, Atlas, Erweiterung), Kontext (global, Editor, Designer,
-// Willkommensseite) und Hinweis. Doppelt belegte Kürzel stehen rot, der
+// Willkommensseite), „Selten per Tastatur“ (Zählung der Tastenkürzel-Tipps,
+// #600: „5× Maus, 0× Tastatur“) und Hinweis. Doppelt belegte Kürzel stehen rot, der
 // Hinweis sagt, welche Belegung gewinnt und warum. Unten „Als HTML
 // exportieren“ (OnExport; die IDE-Schicht schreibt die Datei und öffnet sie im
 // Browser), „Tastenkonflikte…“ (OnSettings), „Aktualisieren“ (OnRefresh) und
@@ -73,6 +74,8 @@ type
     class function Headers: TArray<string>; static;
     /// <summary>Zellen der Belegung AItems[AIndex] in der Reihenfolge von Headers.</summary>
     class function Cells(const AItems: TArray<TAtlasKeyItem>; AIndex: Integer): TArray<string>; static;
+    /// <summary>Spalte „Selten per Tastatur“ (#600): „5× Maus, 0× Tastatur“, sonst leer.</summary>
+    class function RarelyText(const AItem: TAtlasKeyItem): string; static;
     /// <summary>„812 Kürzel, 3 Konflikte“ bzw. „12 von 812 Kürzeln, 3 Konflikte“.</summary>
     class function SummaryText(AShown, ATotal, AConflicts: Integer): string; static;
     /// <summary>Druckbare HTML-Seite der gezeigten Zeilen; ACreated ist der Zeitpunkt als Text.</summary>
@@ -196,7 +199,7 @@ begin
   FList.HideSelection := False;
   FList.OnData := ListData;
   FList.OnCustomDrawItem := ListCustomDrawItem;
-  Widths := [150, 260, 130, 110, 400];
+  Widths := [150, 260, 130, 110, 150, 400];
   Index := 0;
   for Header in Headers do
   begin
@@ -323,13 +326,22 @@ class function TAtlasKeyMapWindow.Headers: TArray<string>;
 begin
   Result := [TAtlasStrings.Text(TAtlasTextId.KeyMapColumnKey), TAtlasStrings.Text(TAtlasTextId.KeyMapColumnCommand),
     TAtlasStrings.Text(TAtlasTextId.KeyMapColumnOrigin), TAtlasStrings.Text(TAtlasTextId.KeyMapColumnContext),
-    TAtlasStrings.Text(TAtlasTextId.KeyMapColumnHint)];
+    TAtlasStrings.Text(TAtlasTextId.KeyMapColumnRarely), TAtlasStrings.Text(TAtlasTextId.KeyMapColumnHint)];
 end;
 
 class function TAtlasKeyMapWindow.Cells(const AItems: TArray<TAtlasKeyItem>; AIndex: Integer): TArray<string>;
 begin
   Result := [AItems[AIndex].KeyText, AItems[AIndex].Command, OriginText(AItems[AIndex]),
-    ContextText(AItems[AIndex].Context), HintText(AItems, AIndex)];
+    ContextText(AItems[AIndex].Context), RarelyText(AItems[AIndex]), HintText(AItems, AIndex)];
+end;
+
+class function TAtlasKeyMapWindow.RarelyText(const AItem: TAtlasKeyItem): string;
+begin
+  // Aus der Zählung der Tastenkürzel-Tipps (#600); leer, solange der Befehl selten genutzt oder nicht gezählt ist.
+  if AItem.RarelyByKeyboard then
+    Result := TAtlasStrings.Fmt(TAtlasTextId.KeyMapRarely, [AItem.MouseUses, AItem.KeyUses])
+  else
+    Result := '';
 end;
 
 class function TAtlasKeyMapWindow.SummaryText(AShown, ATotal, AConflicts: Integer): string;

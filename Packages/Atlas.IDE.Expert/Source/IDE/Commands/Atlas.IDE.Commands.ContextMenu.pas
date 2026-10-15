@@ -13,6 +13,8 @@
 // geänderte Caption erreichte dort schon freigegebene Menüeinträge
 // (Zugriffsverletzung beim Erzeugen). Geänderte Tasten zeigt das Menü nach
 // einem Neustart.
+// Einträge mit einer Kennung der Befehlspalette melden sich bei den
+// Tastenkürzel-Tipps (#600) als Aufruf per Kontextmenü.
 
 interface
 
@@ -25,6 +27,8 @@ type
   TAtlasIdeContextMenu = class
   private type
     TEntry = record
+      /// <summary>Befehl der Palette für die Tastenkürzel-Tipps (#600); '' = keiner.</summary>
+      Id: string;
       Caption: string;
       /// <summary>Tastenkürzel als TShortCut, 0 = keins; nil ohne Kürzel.</summary>
       Key: TFunc<Integer>;
@@ -45,7 +49,10 @@ type
     constructor Create;
     destructor Destroy; override;
     /// <summary>Eintrag anhängen; ACaption '-' ist ein Trennstrich. AKey darf nil sein.</summary>
-    procedure Add(const ACaption: string; const AKey: TFunc<Integer>; const AProc: TProc);
+    procedure Add(const ACaption: string; const AKey: TFunc<Integer>; const AProc: TProc); overload;
+    /// <summary>Wie oben, mit dem Befehl der Palette (AId), der sich beim Aufruf bei den Tastenkürzel-Tipps meldet.
+    /// </summary>
+    procedure Add(const AId, ACaption: string; const AKey: TFunc<Integer>; const AProc: TProc); overload;
     /// <summary>Registriert das Untermenü bei der IDE, einmal nach allen Add.</summary>
     procedure EnsureAll;
   end;
@@ -56,7 +63,8 @@ uses
   Vcl.Menus,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.IDE.Commands.ShortcutTips;
 
 constructor TAtlasIdeContextMenu.Create;
 begin
@@ -77,9 +85,15 @@ begin
 end;
 
 procedure TAtlasIdeContextMenu.Add(const ACaption: string; const AKey: TFunc<Integer>; const AProc: TProc);
+begin
+  Add('', ACaption, AKey, AProc);
+end;
+
+procedure TAtlasIdeContextMenu.Add(const AId, ACaption: string; const AKey: TFunc<Integer>; const AProc: TProc);
 var
   Entry: TEntry;
 begin
+  Entry.Id := AId;
   Entry.Caption := ACaption;
   Entry.Key := AKey;
   Entry.Proc := AProc;
@@ -151,6 +165,8 @@ begin
   Index := TAction(Sender).Tag;
   if (Index < 0) or (Index > High(FEntries)) or not Assigned(FEntries[Index].Proc) then
     Exit;
+  if FEntries[Index].Id <> '' then
+    TAtlasIdeShortcutTips.Invoked(FEntries[Index].Id);
   TAtlasGuard.Run(TAtlasFeature.EditorCommands, FEntries[Index].Proc);
 end;
 
