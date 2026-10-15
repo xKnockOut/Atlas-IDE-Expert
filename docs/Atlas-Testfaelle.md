@@ -355,6 +355,7 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 | SX5 | *Tools › Optionen › Drittanbieter › Atlas*, Abschnitt „Symbolindex“ | Units, Deklarationen, Speicher von Grenze, Größe auf der Platte, letzte Aktualisierung |
 | SX6 | „Index löschen“, Rückfrage mit Nein, dann mit Ja | Nein: nichts passiert; Ja: Meldung „Index gelöscht: n Caches, … frei“, danach SX1 |
 | SX7 | „Speichergrenze des Index“ auf 32 MB, großes Projekt öffnen | Kennzahlen: „Verwendungen von n Units ausgelagert“; Vervollständigung funktioniert weiter |
+| SX8 | Cache-Datei des Projekts von einem anderen Programm exklusiv geöffnet halten bzw. den Cache-Ordner schreibschützen, dann „Index neu aufbauen“ | Server-Log „Fehler beim Aufbau des Symbolindex …“; Fortschritt endet mit „Fehlgeschlagen“; die Problemansicht füllt sich danach, kein dauerhaftes „Index lädt“ |
 
 ## Rangfolge nach Gültigkeitsbereich (#488)
 
@@ -973,3 +974,18 @@ Vorbereitung: Git für Windows und TortoiseSVN mit Kommandozeilenwerkzeugen (`sv
 | VC6 | VC5 mit `"vcs": {"provider": "off"}` bzw. `"git"` in settings.json | Meldung „Versionsverwaltung abgeschaltet (vcs.provider = off)“ bzw. „… liegt in keiner Arbeitskopie für vcs.provider = git“, Exit-Code 3 |
 | VC7 | SVN-Arbeitskopie innerhalb eines Git-Repositorys (z. B. Fremdcode unter `lib`): `--changed` im SVN-Ordner | SVN wird verwendet (nächstliegende Arbeitskopie), nicht mehr Git |
 | VC8 | VC5 mit `svn.exe` aus PATH entfernt | Meldung „… liegt in einer SVN-Arbeitskopie, aber svn ist nicht installiert …“ statt eines Absturzes |
+
+## Robustheit des Servers (Code-Review)
+
+Vorbereitung: Plugin installiert, Projekt geöffnet, Server-Log über `--log` aktiv.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RS1 | Während der Index aufgebaut wird: in einer Unit `/config Release Win64` + Enter, sofort danach die `.dproj` in der IDE speichern | Kein Fehler und keine Zugriffsverletzung im Server-Log; Log „Konfiguration Release, Plattform Win64 gewählt“; Index baut neu auf |
+| RS2 | `/define TEST` dreimal schnell hintereinander | `.dproj` enthält TEST einmal; je Änderung ein Neuaufbau; kein Fehler im Log |
+| RS3 | IDE schließen, während der Index aufgebaut wird | Server-Log ohne „Fehler beim Aufbau des Symbolindex“; Diagnoselog mit Endzeile |
+| RS4 | Großes Projekt, „Atlas: Compiler prüfen“, sofort die IDE schließen | AtlasServer und dcc32 sind nach höchstens 2 s aus dem Task-Manager verschwunden |
+| RS5 | `"requestTimeoutMs": 1000` in `atlas.json`, Hover bzw. Strg+Klick auf ein Symbol einer großen, noch nicht indizierten Bibliotheks-Unit | Antwort nach höchstens etwa 1 s; Server-Log „… mit RequestCancelled beantwortet (Zeitlimit)“ genau einmal; der Mitschnitt (`--trace`) zeigt genau eine Antwort auf die id |
+| RS6 | Problemansicht aktiv, 2 min nichts ändern | Keine Zeitlimit-Warnung für `workspace/diagnostic`; Antworten im Mitschnitt im Abstand von etwa 8 s |
+| RS7 | Server mit `--trace` auf einen USB-Stick, Stick abziehen | Genau eine Warnung „Mitschnitt abgebrochen …“; die Editorfunktionen laufen weiter |
+| RS8 | Claude Code: eine in der IDE offene Datei per MCP-Werkzeug ändern | Die Änderung erscheint wie bisher im Editorpuffer |
