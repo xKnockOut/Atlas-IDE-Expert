@@ -153,7 +153,6 @@ type
     EditorMethodToggle, EditorMethodToggleNone, SettingsMethodToggle, SettingsMethodToggleUp,
     SettingsMethodToggleDown,
     EditorTestUnit, SettingsCodeLensTestUnit, TestUnitLensTest, TestUnitLensUnit, TestUnitLensCreate, TestUnitNone,
-    EditorTestUnit, SettingsCodeLensTestUnit, TestUnitLensTest, TestUnitLensUnit, TestUnitLensCreate, TestUnitNone,
     UnitSearchTitle,
     UnitSearchMenu,
     UnitSearchIdeDialog,
@@ -297,7 +296,8 @@ type
     WelcomeDiscoverNever, WelcomeDiscoverToday, WelcomeDiscoverYesterday, WelcomeDiscoverDays,
     WelcomeDiscoverWeek, WelcomeDiscoverWeeks, WelcomeDiscoverMonth, WelcomeDiscoverMonths, WelcomeDiscoverYear,
     WelcomeDiscoverYears, WelcomeDiscoverPosition, WelcomeDiscoverNoCommand, WelcomeDiscoverNoSample,
-    WelcomeDiscoverPressKey);
+    WelcomeDiscoverPressKey,
+    KeyMapUnitSearchIde);
 
   TAtlasStrings = class
   private class var
@@ -876,7 +876,8 @@ const
      'Zuletzt vor 1 Monat', 'Zuletzt vor %d Monaten', 'Zuletzt vor 1 Jahr', 'Zuletzt vor %d Jahren',
      'Tipp %d von %d', 'Atlas entdecken: Der Befehl %s ist gerade nicht verfügbar.',
      'Atlas entdecken: Die Beispieldatei %s fehlt in der Installation.',
-     'Atlas entdecken: Beispiel geöffnet – jetzt %s drücken.'),
+     'Atlas entdecken: Beispiel geöffnet – jetzt %s drücken.',
+     'Units suchen über Strg+F12 (statt IDE-Dialog)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1424,7 +1425,8 @@ const
      'Last used %d months ago', 'Last used 1 year ago', 'Last used %d years ago', 'Tip %d of %d',
      'Discover Atlas: the command %s is not available right now.',
      'Discover Atlas: the sample file %s is missing from the installation.',
-     'Discover Atlas: sample opened – now press %s.'));
+     'Discover Atlas: sample opened – now press %s.',
+     'Search units via Ctrl+F12 (instead of IDE dialog)'));
 
 { TAtlasStrings }
 

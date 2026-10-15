@@ -13,8 +13,12 @@
 //   Atlas“ (TAtlasKeyEntry).
 // - Alle Atlas-Tasten für die Tastenkürzel-Übersicht (#520) und die Einrichtung
 //   (#625): AllFromSettings ergänzt die Seite „Tastenkonflikte“ um die Tasten
-//   der Editorbefehle (#399), des Änderungsprotokolls (#721) und des Suchfelds
-//   der Willkommensseite (#760).
+//   der Editorbefehle (#399), des Änderungsprotokolls (#721), des Suchfelds
+//   der Willkommensseite (#760), des Wechsels Deklaration ⇄ Implementierung
+//   (#775), des Wechsels Unit ⇄ Testunit (#189) und des Fensters „Units
+//   suchen“ (#777, eigene Taste und Übernahme von Strg+F12). Ist eine Funktion
+//   abgeschaltet, steht ihr Eintrag mit Disabled in der Liste: Atlas belegt die
+//   Taste dann nicht, also ist sie auch kein Konflikt.
 // Kürzel sind TShortCut-Werte (Word) wie in Vcl.Menus.
 
 interface
@@ -26,10 +30,13 @@ uses
 type
   {$SCOPEDENUMS ON}
   /// <summary>Die ersten sechs stehen auf der Seite „Tastenkonflikte“ (FromSettings); die übrigen nur in der
-  /// Übersicht (#520, AllFromSettings): Editorbefehle mit gemeinsamem Vorrang EditorKeysPriority und das Suchfeld
-  /// der Willkommensseite.</summary>
+  /// Übersicht (#520, AllFromSettings): Editorbefehle mit gemeinsamem Vorrang EditorKeysPriority, das Suchfeld
+  /// der Willkommensseite, Deklaration ⇄ Implementierung mit zwei Tasten (#775), Unit ⇄ Testunit (#189), die
+  /// eigene Taste für „Units suchen“ und die Übernahme von Strg+F12 durch „Units suchen“ (#777). Neue Funktionen
+  /// nur hinten anhängen: Die Ordnungszahl steckt in Kennungen der Übersicht.</summary>
   TAtlasKeyFunction = (Palette, Check, Completion, Signature, QuickToggle, DiagnosticMode, CodeActions,
-    ExpandSelection, ShrinkSelection, GoToImplementation, TypeDefinition, UndoChange, RedoChange, WelcomeSearch);
+    ExpandSelection, ShrinkSelection, GoToImplementation, TypeDefinition, UndoChange, RedoChange, WelcomeSearch,
+    MethodToggleUp, MethodToggleDown, TestUnit, UnitSearch, UnitSearchIde);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -43,14 +50,21 @@ type
     /// <summary>0 = keine Taste; bei Vervollständigung und Parameter-Hint die Taste der IDE.</summary>
     Key: Word;
     Priority: Boolean;
-    class function Create(AFunc: TAtlasKeyFunction; AKey: Word; APriority: Boolean): TAtlasKeyEntry; static;
+    /// <summary>Funktion abgeschaltet (etwa Deklaration ⇄ Implementierung aus, „Units suchen“ aus): Atlas belegt
+    /// die Taste nicht, sie ist kein Konflikt (Status NoKey). Key behält den eingestellten Wert.</summary>
+    Disabled: Boolean;
+    class function Create(AFunc: TAtlasKeyFunction; AKey: Word; APriority: Boolean): TAtlasKeyEntry; overload; static;
+    class function Create(AFunc: TAtlasKeyFunction; AKey: Word; APriority, AEnabled: Boolean): TAtlasKeyEntry;
+      overload; static;
     /// <summary>Alle Atlas-Tasten aus den Einstellungen, in fester Reihenfolge.</summary>
     class function FromSettings(const ASettings: TAtlasPluginSettings): TArray<TAtlasKeyEntry>; static;
     /// <summary>Jede Taste von Atlas (#520): FromSettings, dann die Editorbefehle (Vorrang aus
-    /// EditorKeysPriority) und das Suchfeld der Willkommensseite (immer mit Vorrang: es nimmt die Taste nur dort,
-    /// solange die Seite aktiv ist).</summary>
+    /// EditorKeysPriority), das Suchfeld der Willkommensseite (immer mit Vorrang: es nimmt die Taste nur dort,
+    /// solange die Seite aktiv ist), Deklaration ⇄ Implementierung (#775), Unit ⇄ Testunit (#189) und „Units
+    /// suchen“ (#777, eigene Taste und Strg+F12). Abgeschaltete Funktionen kommen mit Disabled.</summary>
     class function AllFromSettings(const ASettings: TAtlasPluginSettings): TArray<TAtlasKeyEntry>; static;
-    /// <summary>Tasten und Vorrang zurück in die Einstellungen.</summary>
+    /// <summary>Tasten und Vorrang zurück in die Einstellungen; Disabled und die feste Taste Strg+F12 nicht (dafür
+    /// gibt es eigene Schalter).</summary>
     class procedure ToSettings(const AEntries: TArray<TAtlasKeyEntry>; var ASettings: TAtlasPluginSettings); static;
     /// <summary>Taste der IDE, über die Code Insight Atlas aufruft (Strg+Leer, Strg+Umschalt+Leer); sonst 0.</summary>
     function IdeKey: Word;
@@ -58,7 +72,7 @@ type
     /// <summary>Wahl übernehmen: Atlas verwenden = Vorrang; sonst ohne Vorrang. Atlas verwenden ohne eigene
     /// Taste bei Vervollständigung und Parameter-Hint: Atlas belegt die Taste der IDE selbst.</summary>
     procedure Choose(AChoice: TAtlasKeyChoice);
-    /// <summary>Zustand bei fremder Belegung AOwner ('' = frei).</summary>
+    /// <summary>Zustand bei fremder Belegung AOwner ('' = frei); abgeschaltet NoKey.</summary>
     function Status(const AOwner: string): TAtlasKeyStatus;
   end;
 
@@ -80,6 +94,9 @@ type
     QuickToggleDefault = scCtrl or scShift or scAlt or Ord('A');
     /// <summary>Diagnosemodus (#479): Strg+Alt+Umschalt+A gehört schon den Schnellschaltern (#604).</summary>
     DiagnosticModeDefault = scCtrl or scShift or scAlt or Ord('D');
+    /// <summary>Strg+F12 der IDE-Aktion „Units“; „Units suchen“ übernimmt sie (#777, unitSearch.replaceIdeDialog).
+    /// </summary>
+    IdeUnitsKey = scCtrl or $7B; // VK_F12
   public
     /// <summary>Editor-Belegungen der Standard-Tastaturbelegung, die keine Aktionen sind.</summary>
     class function KnownIdeKeys: TArray<TAtlasKeyOwner>; static;
@@ -97,9 +114,16 @@ implementation
 
 class function TAtlasKeyEntry.Create(AFunc: TAtlasKeyFunction; AKey: Word; APriority: Boolean): TAtlasKeyEntry;
 begin
+  Result := Create(AFunc, AKey, APriority, True);
+end;
+
+class function TAtlasKeyEntry.Create(AFunc: TAtlasKeyFunction; AKey: Word; APriority,
+  AEnabled: Boolean): TAtlasKeyEntry;
+begin
   Result.Func := AFunc;
   Result.Key := AKey;
   Result.Priority := APriority;
+  Result.Disabled := not AEnabled;
 end;
 
 class function TAtlasKeyEntry.FromSettings(const ASettings: TAtlasPluginSettings): TArray<TAtlasKeyEntry>;
@@ -114,9 +138,11 @@ end;
 
 class function TAtlasKeyEntry.AllFromSettings(const ASettings: TAtlasPluginSettings): TArray<TAtlasKeyEntry>;
 var
-  Shared: Boolean;
+  Shared, SecondToggle: Boolean;
 begin
   Shared := ASettings.EditorKeysPriority;
+  // Beide Tasten des Wechsels gleich: Atlas belegt die Taste nur einmal (AddAttemptKey), also auch nur ein Eintrag.
+  SecondToggle := ASettings.MethodToggle and (ASettings.MethodToggleDownKey <> ASettings.MethodToggleUpKey);
   Result := FromSettings(ASettings) + [Create(TAtlasKeyFunction.CodeActions, Word(ASettings.ActionsKey), Shared),
     Create(TAtlasKeyFunction.ExpandSelection, Word(ASettings.ExpandKey), Shared),
     Create(TAtlasKeyFunction.ShrinkSelection, Word(ASettings.ShrinkKey), Shared),
@@ -124,7 +150,17 @@ begin
     Create(TAtlasKeyFunction.TypeDefinition, Word(ASettings.TypeDefinitionKey), Shared),
     Create(TAtlasKeyFunction.UndoChange, Word(ASettings.UndoKey), Shared),
     Create(TAtlasKeyFunction.RedoChange, Word(ASettings.RedoKey), Shared),
-    Create(TAtlasKeyFunction.WelcomeSearch, Word(ASettings.WelcomePageSearchKey), True)];
+    Create(TAtlasKeyFunction.WelcomeSearch, Word(ASettings.WelcomePageSearchKey), True,
+      ASettings.WelcomePage and ASettings.WelcomePageSearch),
+    // Deklaration ⇄ Implementierung (#775): aus = die Klassennavigation der IDE behält die Tasten.
+    Create(TAtlasKeyFunction.MethodToggleUp, Word(ASettings.MethodToggleUpKey), Shared, ASettings.MethodToggle),
+    Create(TAtlasKeyFunction.MethodToggleDown, Word(ASettings.MethodToggleDownKey), Shared, SecondToggle),
+    Create(TAtlasKeyFunction.TestUnit, Word(ASettings.TestUnitKey), Shared),
+    // Units suchen (#777): eigene Taste als Editorbefehl; Strg+F12 bleibt die Aktion der IDE, Atlas hängt sich nur
+    // an ihre Ausführung (bewusst übernommen, daher mit Vorrang).
+    Create(TAtlasKeyFunction.UnitSearch, Word(ASettings.UnitSearchKey), Shared, ASettings.UnitSearchEnabled),
+    Create(TAtlasKeyFunction.UnitSearchIde, TAtlasKeyConflicts.IdeUnitsKey, True,
+      ASettings.UnitSearchEnabled and ASettings.UnitSearchReplaceIdeDialog)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -184,6 +220,17 @@ begin
         ASettings.RedoKey := Entry.Key;
       TAtlasKeyFunction.WelcomeSearch:
         ASettings.WelcomePageSearchKey := Entry.Key;
+      TAtlasKeyFunction.MethodToggleUp:
+        ASettings.MethodToggleUpKey := Entry.Key;
+      TAtlasKeyFunction.MethodToggleDown:
+        ASettings.MethodToggleDownKey := Entry.Key;
+      TAtlasKeyFunction.TestUnit:
+        ASettings.TestUnitKey := Entry.Key;
+      TAtlasKeyFunction.UnitSearch:
+        ASettings.UnitSearchKey := Entry.Key;
+      // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
+      TAtlasKeyFunction.UnitSearchIde:
+        ;
     end;
 end;
 
@@ -216,7 +263,9 @@ end;
 
 function TAtlasKeyEntry.Status(const AOwner: string): TAtlasKeyStatus;
 begin
-  if Key = 0 then
+  if Disabled then
+    Result := TAtlasKeyStatus.NoKey
+  else if Key = 0 then
   begin
     if IdeKey <> 0 then
       Result := TAtlasKeyStatus.IdeKey
