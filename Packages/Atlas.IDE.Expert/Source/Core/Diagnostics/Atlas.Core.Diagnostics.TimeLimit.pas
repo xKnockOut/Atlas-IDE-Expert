@@ -27,6 +27,8 @@ type
     DefaultMs = 200;
     MinMs = 50;
     MaxMs = 5000;
+    /// <summary>Nachwarten auf hängende Arbeiter beim Beenden (Code-Review A-13).</summary>
+    HangGraceMs = 2000;
   private type
     TWorker = class(TThread)
     private
@@ -48,6 +50,8 @@ type
     FIdle: TList<TWorker>;
     FAll: TList<TWorker>;
     FLimitMs: Integer;
+    /// <summary>Auto-Reset; gesetzt, sobald ein Arbeiter frei wird (WaitIdle).</summary>
+    FReleased: TEvent;
     class function Take: TWorker; static;
     class procedure Release(AWorker: TWorker); static;
     class procedure SetLimitMs(AValue: Integer); static;
@@ -60,6 +64,9 @@ type
     class function StopAll(AMs: Cardinal = 1000): Boolean; static;
     /// <summary>Arbeiter, die gerade einen Aufruf ausführen (auch aufgegebene).</summary>
     class function BusyCount: Integer; static;
+    /// <summary>Bis zu AMs warten, bis kein Arbeiter mehr einen Aufruf ausführt (auch aufgegebene); True, wenn
+    /// alle frei sind. Vor dem Freigeben einer Sitzung, die aufgegebene Aufrufe noch nutzen könnten (A-01).</summary>
+    class function WaitIdle(AMs: Cardinal): Boolean; static;
     /// <summary>Zeitlimit für Aufrufe aus dem Hauptthread, MinMs bis MaxMs.</summary>
     class property LimitMs: Integer read FLimitMs write SetLimitMs;
   end;
@@ -67,6 +74,8 @@ type
 implementation
 
 uses
+  System.Diagnostics,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown;
 
 { TAtlasTimeLimit.TWorker }
@@ -139,11 +148,13 @@ begin
   FIdle := TList<TWorker>.Create;
   FAll := TList<TWorker>.Create;
   FLimitMs := DefaultMs;
+  FReleased := TEvent.Create(nil, False, False, '');
 end;
 
 class destructor TAtlasTimeLimit.Destroy;
 begin
   StopAll;
+  FreeAndNil(FReleased);
   FreeAndNil(FAll);
   FreeAndNil(FIdle);
   FreeAndNil(FLock);
@@ -194,7 +205,10 @@ begin
   FLock.Enter;
   try
     if FAll.Contains(AWorker) and not FIdle.Contains(AWorker) then
+    begin
       FIdle.Add(AWorker);
+      FReleased.SetEvent;
+    end;
   finally
     FLock.Leave;
   end;
@@ -249,11 +263,32 @@ begin
   end;
 end;
 
+class function TAtlasTimeLimit.WaitIdle(AMs: Cardinal): Boolean;
+var
+  Watch: TStopwatch;
+  Left: Int64;
+begin
+  if (FLock = nil) or (FReleased = nil) then
+    Exit(True);
+  Watch := TStopwatch.StartNew;
+  Result := BusyCount = 0;
+  while not Result do
+  begin
+    Left := Int64(AMs) - Watch.ElapsedMilliseconds;
+    if Left <= 0 then
+      Exit;
+    // Auto-Reset: Ein Release zwischen Prüfung und Warten bleibt gesetzt und weckt sofort.
+    FReleased.WaitFor(Cardinal(Left));
+    Result := BusyCount = 0;
+  end;
+end;
+
 class function TAtlasTimeLimit.StopAll(AMs: Cardinal): Boolean;
 var
   Workers: TArray<TWorker>;
   Worker: TWorker;
   Threads: TArray<TThread>;
+  Hung: Integer;
 begin
   if FLock = nil then
     Exit(True);
@@ -273,12 +308,32 @@ begin
     Threads := Threads + [TThread(Worker)];
   end;
   Result := TAtlasShutdown.WaitForThreads(Threads, AMs);
+  if not Result then
+  begin
+    Hung := 0;
+    for Worker in Workers do
+      if not Worker.Finished then
+        Inc(Hung);
+    // Ein Aufruf steckt in nicht abbrechbarem Code (A-13). Kehrt er erst nach dem Entladen zurück, läuft er in
+    // nicht mehr geladenem Code: protokollieren und noch etwas warten.
+    TAtlasGuard.Log(Format('Zeitlimit: %d Arbeiter beim Beenden noch beschäftigt, warte bis %d ms nach',
+      [Hung, HangGraceMs]));
+    Result := TAtlasShutdown.WaitForThreads(Threads, HangGraceMs);
+  end;
   for Worker in Workers do
     if Worker.Finished then
       Worker.Free
     else
-      // Hängt im Aufruf einer Quelle: gibt sich selbst frei, sobald er zurückkehrt.
+    begin
+      TAtlasGuard.Log('Zeitlimit: Arbeiter hängt weiter; er gibt sich bei Rückkehr selbst frei');
+      // Letzter Ausweg: Ohne FreeOnTerminate bliebe das Objekt liegen, und der Thread kehrte trotzdem in diesen
+      // Code zurück. Liest der Thread FreeOnTerminate vor dem Setzen, bleibt im ungünstigsten Fall ein Leck,
+      // nie eine Doppelfreigabe.
       Worker.FreeOnTerminate := True;
+    end;
+  // WaitIdle nicht länger warten lassen: Die Arbeiter gehören nicht mehr zum Vorrat.
+  if FReleased <> nil then
+    FReleased.SetEvent;
 end;
 
 end.

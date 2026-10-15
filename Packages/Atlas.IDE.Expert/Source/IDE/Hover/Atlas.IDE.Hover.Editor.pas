@@ -150,6 +150,9 @@ type
       const AProblemsAt: TAtlasHoverProblemsFunc = nil; const AHandles: TAtlasHoverHandlesFunc = nil);
     destructor Destroy; override;
     procedure Hide;
+    /// <summary>Laufende Anfragen abwarten, bevor die Sitzung wegfällt (Neustart, Abschalten; Code-Review A-07).
+    /// Ihre Ergebnisse zeigt der Tooltip nicht mehr. Nur im Hauptthread.</summary>
+    procedure Shutdown;
     /// <summary>Öffnet AFileName im Editor und setzt den Cursor (0-basiert).</summary>
     class procedure GoToLocation(const AFileName: string; ALine, ACharacter: Integer); static;
   end;
@@ -158,6 +161,7 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Diagnostics.MainThread,
   Winapi.Windows,
   Winapi.ShellAPI,
   System.IOUtils,
@@ -197,7 +201,7 @@ begin
   // Ohne Tastatur-Ereignisse des Editors: andere Tasten schließen nach der Verarbeitung (wie EditorKeyDown).
   if not Result and (AKey <> VK_SHIFT) and (AKey <> VK_CONTROL) and (AKey <> VK_MENU) and
     not FOwner.FHistory.Pinned then
-    TThread.ForceQueue(nil,
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Hover,
       procedure
       begin
         FOwner.Hide;
@@ -369,6 +373,14 @@ begin
   FShownKey := '';
   FKey := '';
   FView := nil;
+end;
+
+procedure TAtlasEditorHover.Shutdown;
+begin
+  // Eingereihte Ergebnisse veralten (Show vergleicht FRequest); die Arbeiter halten die Sitzung als rohen Zeiger.
+  // Ohne Hide: Der Tooltip zeigt kopierte Daten, ein Neustart soll ihn nicht schließen.
+  Inc(FRequest);
+  ReapWorkers(True);
 end;
 
 function TAtlasEditorHover.CurrentEditView: IOTAEditView;
@@ -564,7 +576,8 @@ begin
                 Owner.ShowData(Data);
               end);
           end;
-        TThread.Queue(nil, Show);
+        // Atlas gehört der Eintrag: beim Entladen verworfen, übersteht aber ReapWorkers (Code-Review A-02).
+        TAtlasMainThread.Queue(TAtlasFeature.Hover, Show);
       end);
     Worker.FreeOnTerminate := False;
     FWorkers.Add(Worker);

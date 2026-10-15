@@ -1,12 +1,13 @@
 ﻿unit Atlas.Core.Signature.Providers.Server;
 
 // Signaturen für den Parameter-Hint (#436) vom Atlas-Server
-// (textDocument/signatureHelp, #32). Query gleicht im Hauptthread den
-// Editortext ab und fragt im Hintergrund; das Ergebnis kommt per TThread.Queue
-// im Hauptthread an, aber nur für die jüngste Anfrage. Vor dem Freigeben der
-// Sitzung Shutdown aufrufen (wartet auf laufende Anfragen).
-// Absturzsicherheit (#493): Der Abgleich im Hauptthread läuft mit Zeitlimit
-// (TAtlasTimeLimit); Überschreitung und Fehler zählt die Sicherung der Quelle
+// (textDocument/signatureHelp, #32). Query gleicht den Editortext in einem
+// Zeitlimit-Arbeiter ab (TAtlasTimeLimit, Sync ist threadsicher) und fragt im
+// Hintergrund; das Ergebnis kommt per TAtlasMainThread.Queue im Hauptthread an,
+// aber nur für die jüngste Anfrage. Vor dem Freigeben der Sitzung Shutdown
+// aufrufen (wartet auf laufende Anfragen). Die Sitzungsfunktion läuft im
+// Zeitlimit-Arbeiter und darf keinen Server starten (Code-Review A-01, K-03).
+// Absturzsicherheit (#493): Überschreitung und Fehler zählt die Sicherung der Quelle
 // ProviderTitle, die nach 3 Fehlern in 5 Minuten nur den Parameter-Hint
 // vom Server abschaltet. Server weg bzw. dessen Zeitlimit zählt nicht.
 
@@ -62,6 +63,7 @@ implementation
 uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.TimeLimit,
+  Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Lsp.Client;
 
 { TAtlasServerSignatureProvider }
@@ -271,7 +273,7 @@ begin
       if TInterlocked.CompareExchange(Provider.FGeneration, 0, 0) <> Generation then
         Exit;
       // Im Hauptthread erst prüfen, ob die Quelle noch lebt und dies die jüngste Anfrage ist.
-      TThread.Queue(nil,
+      TAtlasMainThread.Queue(TAtlasFeature.Signature,
         procedure
         begin
           if Flag.Alive and (FlagRef <> nil) and
