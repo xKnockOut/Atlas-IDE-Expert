@@ -141,6 +141,9 @@ type
     FShrinkKey: TEdit;
     FImplementationKey: TEdit;
     FTypeDefinitionKey: TEdit;
+    FMethodToggle: TCheckBox;
+    FMethodToggleUpKey: TEdit;
+    FMethodToggleDownKey: TEdit;
     FUndoKey: TEdit;
     FRedoKey: TEdit;
     FEditorKeysPriority: TCheckBox;
@@ -244,6 +247,10 @@ type
     property UndoOnConflict: TAtlasChoiceBox read FUndoOnConflict;
     property UndoNewFiles: TAtlasChoiceBox read FUndoNewFiles;
     property UndoKey: TEdit read FUndoKey;
+    /// <summary>Zum Testen: Deklaration/Implementierung wechseln (#775).</summary>
+    property MethodToggle: TCheckBox read FMethodToggle;
+    property MethodToggleUpKey: TEdit read FMethodToggleUpKey;
+    property MethodToggleDownKey: TEdit read FMethodToggleDownKey;
     property RedoKey: TEdit read FRedoKey;
     property UpdatesCheck: TCheckBox read FUpdatesCheck;
     property BugReportAnonymize: TCheckBox read FBugReportAnonymize;
@@ -544,6 +551,10 @@ begin
   FShrinkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorShrink));
   FImplementationKey := AddKey(TAtlasStrings.Text(TAtlasTextId.MenuImplementations));
   FTypeDefinitionKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTypeDefinition));
+  // Deklaration ⇄ Implementierung (#775); aus: Klassennavigation der IDE.
+  FMethodToggle := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggle));
+  FMethodToggleUpKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggleUp));
+  FMethodToggleDownKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggleDown));
   FUndoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.UndoMenu));
   FRedoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.RedoMenu));
   FEditorKeysPriority := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorKeysPriority));
@@ -1000,6 +1011,9 @@ begin
   FShrinkKey.Text := ShortCutToText(TShortCut(ASettings.ShrinkKey));
   FImplementationKey.Text := ShortCutToText(TShortCut(ASettings.ImplementationKey));
   FTypeDefinitionKey.Text := ShortCutToText(TShortCut(ASettings.TypeDefinitionKey));
+  FMethodToggle.Checked := ASettings.MethodToggle;
+  FMethodToggleUpKey.Text := ShortCutToText(TShortCut(ASettings.MethodToggleUpKey));
+  FMethodToggleDownKey.Text := ShortCutToText(TShortCut(ASettings.MethodToggleDownKey));
   FEditorKeysPriority.Checked := ASettings.EditorKeysPriority;
   FSlashCommands.Checked := ASettings.SlashCommands;
   ServerPathChange(nil);
@@ -1086,6 +1100,9 @@ begin
   ASettings.ShrinkKey := Integer(TextToShortCut(Trim(FShrinkKey.Text)));
   ASettings.ImplementationKey := Integer(TextToShortCut(Trim(FImplementationKey.Text)));
   ASettings.TypeDefinitionKey := Integer(TextToShortCut(Trim(FTypeDefinitionKey.Text)));
+  ASettings.MethodToggle := FMethodToggle.Checked;
+  ASettings.MethodToggleUpKey := Integer(TextToShortCut(Trim(FMethodToggleUpKey.Text)));
+  ASettings.MethodToggleDownKey := Integer(TextToShortCut(Trim(FMethodToggleDownKey.Text)));
   ASettings.UndoKey := Integer(TextToShortCut(Trim(FUndoKey.Text)));
   ASettings.RedoKey := Integer(TextToShortCut(Trim(FRedoKey.Text)));
   ASettings.UpdatesCheck := FUpdatesCheck.Checked;

@@ -12,6 +12,8 @@
 // - Auswahl erweitern und verkleinern (textDocument/selectionRange).
 // - Gehe zu Typdefinition (textDocument/typeDefinition); Gehe zu
 //   Implementierung liegt im Ergebnisfenster (#400).
+// - Zwischen Deklaration und Implementierung wechseln (#775): ohne Server,
+//   direkt aus dem Puffer (Atlas.Core.Editor.MethodToggle).
 // - Qualifizierten Namen kopieren (atlas.server.qualifiedName, #128).
 // - Schnellbefehle mit „/“ nach Enter (#293) und ///-Gerüste (#88): Nach jeder
 //   Änderung im Editor prüft TAtlasSlashTrigger die Cursorzeile; passt sie,
@@ -67,6 +69,11 @@ type
     class procedure ExpandSelection; static;
     class procedure ShrinkSelection; static;
     class procedure GoToTypeDefinition; static;
+    /// <summary>Cursor zum Gegenstück der Methode am Cursor (Deklaration ⇄ Implementierung, #775); False ohne
+    /// Gegenstück, dann ohne Meldung (die Taste geht an die IDE weiter).</summary>
+    class function TryToggleMethod: Boolean; static;
+    /// <summary>Wie TryToggleMethod, für Menü und Palette: ohne Gegenstück eine Zeile in der Meldungsansicht.</summary>
+    class procedure ToggleMethod; static;
     class procedure CopyQualifiedName(AWithParameters: Boolean); static;
     /// <summary>Nach jeder Änderung im Editor (Notifier): Schnellbefehle und ///-Gerüste auslösen.</summary>
     class procedure EditorModified(const AView: IOTAEditView); static;
@@ -88,6 +95,7 @@ uses
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Editor.Selection,
+  Atlas.Core.Editor.MethodToggle,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.IDE.Editor.Buffer,
@@ -237,6 +245,17 @@ begin
     procedure
     begin
       GoToTypeDefinition;
+    end);
+  FContextMenu.Add(TAtlasStrings.Text(TAtlasTextId.EditorMethodToggle),
+    function: Integer
+    begin
+      Result := 0;
+      if TAtlasIdeSettings.Current.MethodToggle then
+        Result := TAtlasIdeSettings.Current.MethodToggleUpKey;
+    end,
+    procedure
+    begin
+      ToggleMethod;
     end);
   FContextMenu.Add(TAtlasStrings.Text(TAtlasTextId.MenuReferences), nil,
     procedure
@@ -471,6 +490,45 @@ begin
   end;
   // Ein Typ hat eine Deklaration; bei mehreren (Forward-Deklaration) die erste.
   TAtlasEditorHover.GoToLocation(Found[0].FileName, Found[0].Line, Found[0].Character);
+end;
+
+class function TAtlasIdeEditorCommands.TryToggleMethod: Boolean;
+var
+  Editors: IOTAEditorServices;
+  View: IOTAEditView;
+  Text, LineText: string;
+  Lines: TArray<string>;
+  Cursor: TOTAEditPos;
+  TabWidth, Row: Integer;
+  Target: TAtlasMethodPlace;
+begin
+  Result := False;
+  if not Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+    Exit;
+  View := Editors.TopView;
+  if (View = nil) or (View.Buffer = nil) then
+    Exit;
+  Text := TAtlasEditorBuffer.Text(View.Buffer);
+  Lines := Text.Split([#13#10, #10]);
+  TabWidth := TAtlasEditorBuffer.TabWidth(View.Buffer);
+  Cursor := View.CursorPos;
+  Row := Cursor.Line - 1;
+  LineText := '';
+  if (Row >= 0) and (Row < Length(Lines)) then
+    LineText := Lines[Row];
+  if not TAtlasMethodToggle.Counterpart(Text, Row, TLspSession.ColumnToIndex(LineText, Cursor.Col, TabWidth),
+    Target) then
+    Exit;
+  View.CursorPos := EditPos(Lines, TLspTextPosition.Create(Target.Line, Target.Character), TabWidth);
+  View.MoveViewToCursor;
+  View.Paint;
+  Result := True;
+end;
+
+class procedure TAtlasIdeEditorCommands.ToggleMethod;
+begin
+  if not TryToggleMethod then
+    Say(TAtlasStrings.Text(TAtlasTextId.EditorMethodToggleNone));
 end;
 
 class procedure TAtlasIdeEditorCommands.CopyQualifiedName(AWithParameters: Boolean);

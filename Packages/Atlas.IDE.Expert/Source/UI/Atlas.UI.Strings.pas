@@ -147,7 +147,9 @@ type
     SettingsTabRobustness, SettingsPairGuideOpacity,
     SettingsTabColors, SettingsPairColorsLight, SettingsPairColorsDark, SettingsPairColorsReset,
     SettingsPairColorsHint, TargetFooter, UnavailableHint,
-    SettingsTabInsert, SettingsTabCommands, SettingsTabStartup, SettingsTabUndo);
+    SettingsTabInsert, SettingsTabCommands, SettingsTabStartup, SettingsTabUndo,
+    EditorMethodToggle, EditorMethodToggleNone, SettingsMethodToggle, SettingsMethodToggleUp,
+    SettingsMethodToggleDown);
 
   TAtlasStrings = class
   private class var
@@ -528,7 +530,11 @@ const
      'Farbe anklicken zum Ändern; die Reihenfolge gilt von außen nach innen.',
      'Ziel: %s', 'Nicht verfügbar: Die Bedingung „%s“ ist für %s nicht erfüllt. Es gelten die Symbole der Plattform ' +
      'und des Compilers sowie die Bedingungen aus den Projektoptionen der aktiven Konfiguration (z. B. DEBUG).',
-     'Einfügen', 'Befehle', 'Start und Updates', 'Rückgängig'),
+     'Einfügen', 'Befehle', 'Start und Updates', 'Rückgängig',
+     'Deklaration/Implementierung wechseln',
+     'Atlas: Am Cursor steht keine Methode mit Deklaration und Implementierung.',
+     'Zwischen Deklaration und Implementierung wechseln (statt der Klassennavigation der IDE)',
+     'Deklaration/Implementierung wechseln (Taste 1)', 'Deklaration/Implementierung wechseln (Taste 2)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -886,7 +892,11 @@ const
      'Click a colour to change it; the order runs from outermost to innermost.',
      'Target: %s', 'Not available: the condition “%s” is not met for %s. The symbols of the platform ' +
      'and compiler and the conditionals from the project options of the active configuration (e.g. DEBUG) apply.',
-     'Insertion', 'Commands', 'Startup and updates', 'Undo'));
+     'Insertion', 'Commands', 'Startup and updates', 'Undo',
+     'Switch between declaration and implementation',
+     'Atlas: There is no method with declaration and implementation at the cursor.',
+     'Switch between declaration and implementation (instead of the IDE''s class navigation)',
+     'Switch declaration/implementation (key 1)', 'Switch declaration/implementation (key 2)'));
 
 { TAtlasStrings }
 
