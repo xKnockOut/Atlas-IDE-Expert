@@ -106,6 +106,11 @@ type
     FHintsFor: TDocHintsProvider;
     FMarkdown: Boolean;
     function HandleHover(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+  private
+    /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie
+    /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
+    function GetNamespaces: TArray<string>;
+    procedure SetNamespaces(const AValue: TArray<string>);
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AReadText: THoverReadText;
       const AEnsureUnit: TEnsureUnitFunc = nil);
@@ -126,7 +131,7 @@ type
     class function AtlasJson(const AInfo: THoverInfo): TJSONObject; static;
     /// <summary>Antwort als Markdown (Vorgabe) oder als Klartext.</summary>
     property Markdown: Boolean read FMarkdown write FMarkdown;
-    property Namespaces: TArray<string> read FNamespaces write FNamespaces;
+    property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
     /// <summary>Für den Release-Namen der DocWiki-Links; ohne Provider gilt die neueste Version.</summary>
     property VersionProvider: THoverVersionProvider read FVersionProvider write FVersionProvider;
     /// <summary>Anzeige von XMLDoc (#654) als atlas.xmlDoc; ohne Provider fehlt das Feld.</summary>
@@ -136,6 +141,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Internals.Namespaces,
   System.StrUtils,
   System.RegularExpressions,
   Atlas.Common.Documents.Uris,
@@ -337,6 +343,16 @@ begin
 end;
 
 { TLspHover }
+
+function TLspHover.GetNamespaces: TArray<string>;
+begin
+  Result := TLspNamespaces.Read(FNamespaces);
+end;
+
+procedure TLspHover.SetNamespaces(const AValue: TArray<string>);
+begin
+  TLspNamespaces.Write(FNamespaces, AValue);
+end;
 
 constructor TLspHover.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: THoverReadText; const AEnsureUnit: TEnsureUnitFunc);
@@ -711,7 +727,7 @@ begin
     end;
     Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
     try
-      Resolver.Namespaces := FNamespaces;
+      Resolver.Namespaces := Namespaces;
       Info := InfoAt(Resolver, FIndex, Tree, Text, TDocumentUris.ToPath(Uri),
         TLspPositions.ReadPosition(PositionValue), FReadText, DelphiVersion);
     finally

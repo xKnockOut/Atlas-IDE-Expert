@@ -360,6 +360,8 @@ end;
 { TServerComposition }
 
 constructor TServerComposition.Create(const ATransport: IJsonRpcTransport; const ALogger: ILogger);
+var
+  SlashHost: TShellSlashHost;
 begin
   inherited Create;
   FTransport := ATransport;
@@ -464,7 +466,7 @@ begin
     end);
   FFormatting.SlashCommandsFor := SlashCommandsFor;
   FFormatting.DelphiVersionFor := DelphiVersionFor;
-  FFormatting.SlashHost := TShellSlashHost.Create(
+  SlashHost := TShellSlashHost.Create(
     function(const AUri: string): TShellWorkspace
     begin
       TMonitor.Enter(FWorkspacesLock);
@@ -506,6 +508,15 @@ begin
     begin
       Result := TLspApplyEdit.ClientSupports(FLifecycle.InitializeParams);
     end);
+  // Neu laden nur im Thread der Nachrichtenschleife (Code-Review A-03); FConnection liest die Closure
+  // erst beim Aufruf.
+  SlashHost.RunInLoop :=
+    procedure(const AWork: TProc)
+    begin
+      if (FConnection = nil) or not FConnection.Queue(AWork) then
+        FLogger.Warning('Schnellbefehl: Projekt nicht neu geladen, die Verbindung ist beendet');
+    end;
+  FFormatting.SlashHost := SlashHost;
   FFormatting.Attach(FDispatcher);
   FSelectionRanges := TLspSelectionRanges.Create(FDocuments);
   FSelectionRanges.Attach(FDispatcher);
@@ -1517,6 +1528,9 @@ begin
   Workspace.Deferred := ADeferred;
   Workspace.IdeProjects := FIdeProject;
   Workspace.Origin := AOrigin;
+  // Ordner entstehen in der Nachrichtenschleife (initialized, didChangeWorkspaceFolders, didOpen):
+  // Reload ist nur dort erlaubt (Code-Review A-03).
+  Workspace.LoopThreadId := TThread.Current.ThreadID;
   Workspace.OnProjectLoaded := ProjectLoaded;
   Workspace.OnIndexFinished := IndexFinished;
   Workspace.OnProjectReady := IndexFinished;

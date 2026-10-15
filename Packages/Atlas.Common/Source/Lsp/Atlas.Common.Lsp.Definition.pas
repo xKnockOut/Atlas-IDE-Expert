@@ -51,6 +51,11 @@ type
     function HandleDefinition(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleDeclaration(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleTypeDefinition(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+  private
+    /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie
+    /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
+    function GetNamespaces: TArray<string>;
+    procedure SetNamespaces(const AValue: TArray<string>);
   public
     constructor Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
       const AEnsureUnit: TEnsureUnitFunc = nil);
@@ -65,7 +70,7 @@ type
     /// <summary>LocationLink[] des LSP. Der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const ATargets: TArray<TDefinitionTarget>): TJSONArray; static;
     /// <summary>Unit-Namespaces des Projekts (DCC_Namespace).</summary>
-    property Namespaces: TArray<string> read FNamespaces write FNamespaces;
+    property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
     /// <summary>Liest die Unit neben einer Formulardatei (#44); ohne sie gibt es dort keine Sprünge.</summary>
     property ReadText: TDfmReadText read FReadText write FReadText;
   end;
@@ -73,6 +78,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Internals.Namespaces,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Pascal.Contract,
@@ -101,6 +107,16 @@ begin
 end;
 
 { TLspDefinition }
+
+function TLspDefinition.GetNamespaces: TArray<string>;
+begin
+  Result := TLspNamespaces.Read(FNamespaces);
+end;
+
+procedure TLspDefinition.SetNamespaces(const AValue: TArray<string>);
+begin
+  TLspNamespaces.Write(FNamespaces, AValue);
+end;
 
 constructor TLspDefinition.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AEnsureUnit: TEnsureUnitFunc);
@@ -246,7 +262,7 @@ begin
   // Je Anfrage ein eigener Resolver: er hält Zustand pro Aufruf.
   Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
-    Resolver.Namespaces := FNamespaces;
+    Resolver.Namespaces := Namespaces;
     if AKind = TDefinitionRequestKind.TypeDefinition then
       Result := ToJson(TypeTargets(Resolver, Tree, TDocumentUris.ToPath(Uri),
         TLspPositions.ReadPosition(PositionValue)))

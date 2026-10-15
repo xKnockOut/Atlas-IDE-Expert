@@ -68,6 +68,8 @@ type
     /// Projekts geöffnet wird (Activate).</summary>
     FDeferred: Boolean;
     FActivated: Boolean;
+    /// <summary>Thread der Nachrichtenschleife; Reload nur dort (Code-Review A-03). 0 = keine Prüfung.</summary>
+    FLoopThreadId: TThreadID;
     FOrigin: string;
     // Für den Compileraufruf (#40), unter FLock.
     FProject: TProjectInfo;
@@ -197,6 +199,9 @@ type
     property Priority: Integer read FPriority write FPriority;
     property Scheduler: TIndexScheduler read FScheduler write FScheduler;
     property Deferred: Boolean read FDeferred write FDeferred;
+    /// <summary>Thread der Nachrichtenschleife: Reload aus einem anderen Thread löst EInvalidOpException aus
+    /// (Code-Review A-03). 0 = keine Prüfung, z. B. MCP, Linter, Tests.</summary>
+    property LoopThreadId: TThreadID read FLoopThreadId write FLoopThreadId;
     /// <summary>Vor Load setzen (#396): Was die IDE für das Projekt meldet, hat Vorrang vor der .dproj.</summary>
     property IdeProjects: TLspIdeProject read FIdeProjects write FIdeProjects;
     /// <summary>Eintrag des Clients, aus dem der Arbeitsbereich stammt (TWorkspaceFolder.Key); zum Entfernen.</summary>
@@ -431,6 +436,10 @@ end;
 
 procedure TShellWorkspace.Reload;
 begin
+  // StartIndex ändert Zustand ohne Sperre: Andere Threads stellen Reload über TJsonRpcConnection.Queue
+  // in die Schleife (A-03).
+  if (FLoopThreadId <> 0) and (TThread.Current.ThreadID <> FLoopThreadId) then
+    raise EInvalidOpException.Create('Reload nur im Thread der Nachrichtenschleife');
   FSignature := '';
   StartIndex(FConfiguration.Settings);
 end;

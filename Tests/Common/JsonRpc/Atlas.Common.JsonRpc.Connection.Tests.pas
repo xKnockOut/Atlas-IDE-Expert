@@ -37,6 +37,13 @@ type
     procedure PostedMessageRunsBeforeRemainingInput;
     [Test]
     procedure PostWithoutLoopFreesMessage;
+    /// <summary>Code-Review A-03: Arbeit aus fremden Threads läuft im Thread von Run.</summary>
+    [Test]
+    procedure QueuedWorkRunsInLoopBeforeRemainingInput;
+    [Test]
+    procedure QueueWithoutLoopReturnsFalse;
+    [Test]
+    procedure QueuedWorkErrorIsReported;
   end;
 
 implementation
@@ -423,6 +430,122 @@ begin
       Assert.IsFalse(Connection.Post(TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"x"}') as TJSONObject));
     finally
       Connection.Free;
+    end;
+  finally
+    Dispatcher.Free;
+  end;
+end;
+
+procedure TJsonRpcConnectionTests.QueuedWorkRunsInLoopBeforeRemainingInput;
+var
+  Dispatcher: TJsonRpcDispatcher;
+  Responses: TObjectList<TJSONObject>;
+  Connection: TJsonRpcConnection;
+  Order: string;
+  LoopThread, WorkThread: TThreadID;
+begin
+  Order := '';
+  LoopThread := 0;
+  WorkThread := 0;
+  Dispatcher := CreateEchoDispatcher;
+  try
+    Connection := nil;
+    Dispatcher.RegisterNotification('first',
+      procedure(const AParams: TJSONValue)
+      begin
+        Order := Order + 'first ';
+        LoopThread := TThread.Current.ThreadID;
+        Assert.IsTrue(Connection.Queue(
+          procedure
+          begin
+            Order := Order + 'work ';
+            WorkThread := TThread.Current.ThreadID;
+          end));
+      end);
+    Dispatcher.RegisterNotification('last',
+      procedure(const AParams: TJSONValue)
+      begin
+        Order := Order + 'last';
+      end);
+    Responses := RunConnection([
+      '{"jsonrpc":"2.0","method":"first"}',
+      '{"jsonrpc":"2.0","method":"last"}'], Dispatcher,
+      procedure(AConnection: TJsonRpcConnection)
+      begin
+        Connection := AConnection;
+      end);
+    Responses.Free;
+  finally
+    Dispatcher.Free;
+  end;
+  Assert.AreEqual('first work last', Order);
+  Assert.IsTrue(LoopThread = WorkThread, 'Arbeit lief nicht im Thread der Schleife');
+end;
+
+procedure TJsonRpcConnectionTests.QueueWithoutLoopReturnsFalse;
+var
+  Dispatcher: TJsonRpcDispatcher;
+  Connection: TJsonRpcConnection;
+  Ran: Boolean;
+begin
+  Ran := False;
+  Dispatcher := TJsonRpcDispatcher.Create;
+  try
+    Connection := TJsonRpcConnection.Create(nil, Dispatcher);
+    try
+      Assert.IsFalse(Connection.Queue(
+        procedure
+        begin
+          Ran := True;
+        end));
+    finally
+      Connection.Free;
+    end;
+  finally
+    Dispatcher.Free;
+  end;
+  Assert.IsFalse(Ran);
+end;
+
+procedure TJsonRpcConnectionTests.QueuedWorkErrorIsReported;
+var
+  Dispatcher: TJsonRpcDispatcher;
+  Responses: TObjectList<TJSONObject>;
+  Connection: TJsonRpcConnection;
+  Reported: Integer;
+begin
+  Reported := 0;
+  Dispatcher := CreateEchoDispatcher;
+  try
+    Connection := nil;
+    Dispatcher.RegisterNotification('first',
+      procedure(const AParams: TJSONValue)
+      begin
+        Connection.Queue(
+          procedure
+          begin
+            raise ETestFailure.Create('kaputt');
+          end);
+      end);
+    Responses := RunConnection([
+      '{"jsonrpc":"2.0","method":"first"}',
+      '{"jsonrpc":"2.0","id":2,"method":"echo","params":"weiter"}'], Dispatcher,
+      procedure(AConnection: TJsonRpcConnection)
+      begin
+        Connection := AConnection;
+        AConnection.OnError :=
+          procedure(const AError: Exception)
+          begin
+            if AError.Message = 'kaputt' then
+              Inc(Reported);
+          end;
+      end);
+    try
+      Assert.AreEqual(1, Reported);
+      Assert.AreEqual<NativeInt>(1, Responses.Count);
+      Assert.AreEqual('weiter', Responses[0].GetValue<string>('result'));
+    finally
+      Responses.Free;
     end;
   finally
     Dispatcher.Free;
