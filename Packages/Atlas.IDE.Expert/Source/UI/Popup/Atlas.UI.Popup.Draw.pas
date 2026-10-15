@@ -17,9 +17,9 @@ type
   TAtlasDraw = class
   public const
     /// <summary>Innenabstand links und rechts zusammen (logische Pixel) für Chips und Tags.</summary>
-    ChipPad = 12;
+    ChipPad = AtlasChipPad;
     /// <summary>Eckenradius (logische Pixel) für Chips und Tags.</summary>
-    ChipRadius = 4;
+    ChipRadius = AtlasChipRadius;
   public
     /// <summary>Farbe des Scroll-Daumens.</summary>
     class function ThumbColor(const AColors: TAtlasColors): TAtlasColor; static;

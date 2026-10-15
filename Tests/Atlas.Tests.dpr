@@ -172,6 +172,8 @@ uses
   Atlas.Core.Signature.Contract in '..\Packages\Atlas.IDE.Expert\Source\Core\Signature\Atlas.Core.Signature.Contract.pas',
   Atlas.Core.Hover.Contract in '..\Packages\Atlas.IDE.Expert\Source\Core\Hover\Atlas.Core.Hover.Contract.pas',
   Atlas.Core.Hover.History in '..\Packages\Atlas.IDE.Expert\Source\Core\Hover\Atlas.Core.Hover.History.pas',
+  Atlas.Core.Hover.Layout in '..\Packages\Atlas.IDE.Expert\Source\Core\Hover\Atlas.Core.Hover.Layout.pas',
+  Atlas.Core.Hover.Layout.Tests in 'IDE.Expert\Atlas.Core.Hover.Layout.Tests.pas',
   Atlas.Core.Hover.Tests in 'IDE.Expert\Atlas.Core.Hover.Tests.pas',
   Atlas.Core.Documentation.Contract in '..\Packages\Atlas.IDE.Expert\Source\Core\Documentation\Atlas.Core.Documentation.Contract.pas',
   Atlas.Core.Documentation.Layout in '..\Packages\Atlas.IDE.Expert\Source\Core\Documentation\Atlas.Core.Documentation.Layout.pas',
