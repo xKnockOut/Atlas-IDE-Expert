@@ -381,10 +381,10 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 | SF7 | Zeile „Datei“ anklicken, „UTF-8 mit BOM, CRLF“ wählen, speichern | Datei ist als geändert markiert; nach dem Speichern hat sie BOM und CRLF (Hex-Editor), die IDE fragt nicht nach Neuladen, Meldung „… gespeichert als UTF-8 mit BOM, CRLF“ |
 | SF8 | Optionen: „Atlas-Feld in der Statusleiste“ aus, dann an | Feld verschwindet sofort und erscheint wieder |
 | SF9 | Optionen: „Kurztext neben „Atlas“ zeigen“ aus; „Ausgeblendete Zeilen“ = `atlas.file` | Feld zeigt nur „Atlas“; im Fenster fehlt die Zeile „Datei“ |
-| SF10 | Index neu aufbauen (Menü *Atlas*), während der Server langsam ist | Statusfeld zeigt „Atlas · Server langsam · Index NN %“, der Menütitel bleibt „Atlas“; nach dem Aufbau verschwindet der Fortschritt |
-| SF11 | „Fortschritt des Symbol-Index“ = Im Menütitel, dann Index neu aufbauen | Menütitel „Atlas – …“ mit Fortschritt, im Statusfeld nur noch als Kurztext, wenn der Index die wichtigste Zeile ist; „Nicht anzeigen“: nirgends |
 | SF10 | Zweites Editorfenster öffnen (Ansicht › Neues Editorfenster) | Auch dort ein Atlas-Feld |
 | SF11 | Package entladen | Felder verschwinden, die Statusleisten verhalten sich wie ohne Atlas |
+| SF12 | Index neu aufbauen (Menü *Atlas*), während der Server langsam ist | Statusfeld zeigt „Atlas · Server langsam · Index NN %“, der Menütitel bleibt „Atlas“; nach dem Aufbau verschwindet der Fortschritt |
+| SF13 | „Fortschritt des Symbol-Index“ = Im Menütitel, dann Index neu aufbauen | Menütitel „Atlas – …“ mit Fortschritt, im Statusfeld nur noch als Kurztext, wenn der Index die wichtigste Zeile ist; „Nicht anzeigen“: nirgends |
 
 ## Schnellschalter (#604)
 
