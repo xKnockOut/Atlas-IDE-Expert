@@ -19,6 +19,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Prüfregeln | `excludeTests` | `false` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Kontrollkästchen | #146 |
 | Prüfregeln | `testProfile` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl | #146 |
 | Compiler | `compiler`: `onSave` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen | #40 |
+| Allgemein | `vcs`: `provider` | – | settings.json (Tools › Optionen › Atlas) | nein | Auswahl | #571 |
 | Vervollständigung | `completion`: `matching`, `interfaceSection`, `senderCast`, `offerTryFinally`, `freeStyle`, `keywords`, `postfixTemplates` | – | settings.json (Tools › Optionen › Atlas); `interfaceSection`, `senderCast`, `freeStyle` in atlas.json | nein | Auswahl | #31, #188, #229, #466, #480, #489 |
 | Vervollständigung | `refactoring`: `inlineVar` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Kontrollkästchen | #50, #188 |
 | Eingabehilfen | `usesCommand` | `true` | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen | #254 |

@@ -5,8 +5,9 @@
 // extern geänderter Dateien (#536), die Befehlspalette (#502), die farbigen
 // Klammerpaare (#514), das Ergebnisfenster (#400), die Editorbefehle samt
 // Tastenkürzeln und Kontextmenü (#399), den Abgleich offener Formulare (#402),
-// das Atlas-Statusfeld (#591), die Schnellschalter (#604) und das
-// dateiübergreifende Zurücknehmen von Atlas-Änderungen (#721) beim Laden des
+// das Atlas-Statusfeld (#591), die Schnellschalter (#604), das
+// dateiübergreifende Zurücknehmen von Atlas-Änderungen (#721) und die
+// Versionsverwaltung (#571) beim Laden des
 // Packages an und beim Entladen in umgekehrter Reihenfolge wieder ab
 // (ADR 0006). Zuerst entscheidet der abgesicherte Start
 // (#722), was angemeldet wird; RegisterFeatures holt den Rest nach, sobald
@@ -79,7 +80,8 @@ uses
   Atlas.Core.Commands.Palette,
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.WhatsNew,
-  Atlas.IDE.Welcome.Commands;
+  Atlas.IDE.Welcome.Commands,
+  Atlas.IDE.Vcs.Service;
 
 var
   ManagerIndex: Integer = -1;
@@ -951,6 +953,8 @@ begin
   TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
   TAtlasGuard.OnWarning := GuardWarning;
   TAtlasStrings.Language := IdeLanguage;
+  // Versionsverwaltung (#571): Aufrufe im Hintergrund; fehlt git bzw. svn, einmal eine Zeile.
+  TAtlasIdeVcs.Start(MessageLine);
   // Atlas-Symbol (#751): Startbildschirm, Info-Dialog und Bildliste immer, auch abgesichert.
   TAtlasIdeSymbol.Register;
   TAtlasIdeSymbol.OnThemeChanged :=
@@ -1041,6 +1045,7 @@ begin
   // Zuerst das gemeinsame Abbruchsignal: Jeder Hintergrund-Thread hört auf zu warten (#493).
   StartedAt := TThread.GetTickCount64;
   TAtlasShutdown.Signal;
+  TAtlasIdeVcs.Stop;
   TAtlasGuard.OnWarning := nil;
   TAtlasGuard.OnFailure := nil;
   TAtlasIdeSettings.OnChanged := nil;

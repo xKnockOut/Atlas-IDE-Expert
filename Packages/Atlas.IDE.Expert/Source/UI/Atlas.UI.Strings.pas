@@ -162,7 +162,8 @@ type
     WelcomeNewsClose, WelcomeNewsSwitch, WelcomeNewsSwitchHint, WelcomeNewsShowCurrent, WelcomeNewsShowAll,
     WelcomeNewsShowAllCommand, WelcomeNewsMissing, WelcomeNewsNoSample, WelcomeNewsNoCommand,
     SettingsWelcomeWhatsNew, SettingsWelcomeWhatsNewOff, SettingsWelcomeWhatsNewAfterUpdate,
-    SettingsWelcomeWhatsNewAlways);
+    SettingsWelcomeWhatsNewAlways,
+    VcsToolMissing);
 
   TAtlasStrings = class
   private class var
@@ -561,7 +562,8 @@ const
      'Schaltet die Einstellung %s sofort um', 'Neuigkeiten dieser Version zeigen', 'Alle Versionen',
      'Neu in Atlas: alle Versionen', 'Neu in Atlas: keine Neuigkeiten gefunden (%s fehlt oder ist leer).',
      'Neu in Atlas: Beispieldatei nicht gefunden: %s', 'Neu in Atlas: Befehl nicht gefunden: %s',
-     'Karte „Neu in Atlas“ zeigen:', 'nie', 'einmalig nach einem Update', 'immer'),
+     'Karte „Neu in Atlas“ zeigen:', 'nie', 'einmalig nach einem Update', 'immer',
+     'Atlas: %s nicht gefunden (nicht installiert?); Atlas arbeitet ohne %s-Angaben weiter (vcs.provider).'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -936,7 +938,8 @@ const
      'Switches the setting %s right away', 'Show what''s new in this version', 'All versions',
      'New in Atlas: all versions', 'New in Atlas: nothing found (%s is missing or empty).',
      'New in Atlas: sample file not found: %s', 'New in Atlas: command not found: %s',
-     'Show the "New in Atlas" card:', 'never', 'once after an update', 'always'));
+     'Show the "New in Atlas" card:', 'never', 'once after an update', 'always',
+     'Atlas: %s not found (not installed?); Atlas continues without %s information (vcs.provider).'));
 
 { TAtlasStrings }
 

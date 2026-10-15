@@ -321,7 +321,8 @@ begin
       begin
         // Über eine Variable halten: Detect gibt einen Probelauf frei, bevor es den nächsten startet.
         Process := TProcessRunner.Create;
-        Git := TVcsChanges.Detect(Process, ConfigRoot);
+        // vcs.provider (#571): auto, git, svn oder off.
+        Git := TVcsChanges.Detect(Process, ConfigRoot, Settings.VcsProvider);
         Candidates := SelectChanged(AOptions, Candidates, Git);
       end;
       for FileName in Candidates do

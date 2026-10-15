@@ -23,6 +23,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `excludeTests` | Projekt (atlas.json) | boolean | `false` |  | Test-Units und Testprojekte (uses DUnitX.TestFramework, TestFramework oder TestInsight.*) nicht prüfen. |
 | `testProfile` | Projekt (atlas.json) | string | – | z. B. `"fast"` | Regelprofil für Test-Units und Testprojekte; leer: wie "profile". |
 | `compiler` | global (settings.json) | object | – |  | Compiler-Anbindung (dcc32/dcc64). |
+| `vcs` | global (settings.json) | object | – |  | Versionsverwaltung (Git, SVN) für geänderte Dateien, Branch und Revision. |
 | `completion` | gemischt, siehe unten | object | – |  | Code-Vervollständigung. |
 | `refactoring` | Projekt (atlas.json) | object | – |  | Code, den Atlas erzeugt. |
 | `usesCommand` | global (settings.json) | boolean | `true` |  | Eine Zeile "/uses Unit1, Unit2" wird nach Enter gelöscht und die Units kommen ins passende uses. |
@@ -52,6 +53,12 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
 | `compiler.onSave` | global (settings.json) | boolean | `false` |  | Nach dem Speichern einer Quelldatei das Projekt im Hintergrund kompilieren und die Meldungen anzeigen. |
+
+## vcs
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `vcs.provider` | global (settings.json) | string | `"auto"` | `"auto"`, `"git"`, `"svn"`, `"off"` | auto: nach gefundener Arbeitskopie (.git oder .svn, die nächstliegende gilt, bei Gleichstand Git). git bzw. svn: nur diese Art. off: ohne Versionsverwaltung. Git und SVN über die Kommandozeile (git bzw. svn, TortoiseSVN mit Kommandozeilenwerkzeugen genügt); fehlt das Programm, meldet Atlas das einmal und arbeitet ohne Versionsangaben weiter. |
 
 ## completion
 
