@@ -66,6 +66,7 @@ uses
   Atlas.Common.Lsp.References.Tests in 'Common\Lsp\Atlas.Common.Lsp.References.Tests.pas',
   Atlas.Common.Lsp.Rename.Tests in 'Common\Lsp\Atlas.Common.Lsp.Rename.Tests.pas',
   Atlas.Common.Lsp.Completion.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Tests.pas',
+  Atlas.Common.Lsp.Completion.Handle.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Handle.Tests.pas',
   Atlas.Common.Lsp.Completion.Contexts.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Contexts.Tests.pas',
   Atlas.Common.Lsp.CompletionEnums.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionEnums.Tests.pas',
   Atlas.Common.Lsp.SignatureHelp.Tests in 'Common\Lsp\Atlas.Common.Lsp.SignatureHelp.Tests.pas',

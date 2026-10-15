@@ -53,6 +53,12 @@ type
     procedure NothingInCommentsAndStrings;
     [Test]
     procedure WritesCompletionList;
+    /// <summary>Golden-Test (Code-Review S-01): alle Felder von data in der heutigen Reihenfolge.</summary>
+    [Test]
+    procedure ToJsonWritesAllDataFields;
+    /// <summary>Felder außerhalb des Gates (container, depth …) allein ergeben kein data.</summary>
+    [Test]
+    procedure ToJsonOmitsDataBelowGate;
     [Test]
     procedure FuzzyFindsSubsequencesAndAbbreviations;
     [Test]
@@ -334,6 +340,120 @@ begin
   try
     Assert.AreEqual('{"isIncomplete":false,"items":[{"label":"Wert","kind":6,"detail":"TFoo","sortText":"00000"}]}',
       Json.ToJSON);
+  finally
+    Json.Free;
+  end;
+end;
+
+procedure TLspCompletionTests.ToJsonWritesAllDataFields;
+var
+  Items: TCompletionItems;
+  Json: TJSONObject;
+begin
+  Items := Default(TCompletionItems);
+  SetLength(Items.Items, 1);
+  Items.Items[0] := Default(TCompletionItem);
+  Items.Items[0].Name := 'Wert';
+  Items.Items[0].Kind := 6;
+  Items.Items[0].Detail := 'TFoo';
+  Items.Items[0].FilterText := 'We';
+  Items.Items[0].InsertText := 'Wert()';
+  Items.Items[0].Snippet := True;
+  Items.Items[0].AdditionalEdits := [TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(2, 0),
+    TTextPosition.Create(2, 1)), 'uses X;')];
+  Items.Items[0].SourceFile := 'C:\P\U.pas';
+  Items.Items[0].SourcePosition := TTextPosition.Create(3, 4);
+  Items.Items[0].Expected := 'Integer';
+  Items.Items[0].Fits := True;
+  Items.Items[0].Action := 'declare';
+  Items.Items[0].Container := 'TFoo';
+  Items.Items[0].Depth := 2;
+  Items.Items[0].IsHelper := True;
+  Items.Items[0].HasParameters := True;
+  Items.Items[0].Condition := 'WIN64';
+  Items.Items[0].Unavailable := True;
+  Items.Items[0].Scope := 5;
+  Items.Items[0].Ordinal := 1;
+  Items.Items[0].SetOf := 'TKind';
+  Items.Items[0].SetChecked := True;
+  Items.Items[0].SetRange := TTextRange.Create(TTextPosition.Create(5, 1), TTextPosition.Create(5, 9));
+  Items.Items[0].Pinned := True;
+  Items.Items[0].Count := 3;
+  Items.Items[0].Unknown := 'Wert';
+  Items.Items[0].Batch := True;
+  Items.Items[0].Hint := True;
+  Items.Items[0].Form := 'frmMain';
+  Items.Items[0].ByType := True;
+  Items.Items[0].Sender := 'TButton';
+  Items.Items[0].SenderOf := 'btnSave';
+  Items.Items[0].DataSet := 'qry';
+  Items.Items[0].DataSource := 'select';
+  Items.Items[0].Guard := 'newLine';
+  Items.Items[0].UnitName := 'U';
+  Items.Items[0].Hides := ['Feld TKunde.Wert'];
+  Items.Items[0].Overloads := [TTextPosition.Create(7, 2)];
+  Items.Incomplete := True;
+  Json := TLspCompletion.ToJson(Items);
+  try
+    Assert.AreEqual(
+      '{"isIncomplete":true,"items":[{"label":"Wert","kind":6,"detail":"TFoo","filterText":"We",' +
+      '"insertText":"Wert()","insertTextFormat":2,"additionalTextEdits":[{"range":{"start":{"line":2,' +
+      '"character":0},"end":{"line":2,"character":1}},"newText":"uses X;"}],"sortText":"00000",' +
+      '"data":{"file":"C:\\P\\U.pas","line":3,"character":4,"expected":"Integer","fits":true,' +
+      '"action":"declare","container":"TFoo","depth":2,"helper":true,"parameters":true,"condition":"WIN64",' +
+      '"unavailable":true,"scope":5,"ordinal":1,"setOf":"TKind","checked":true,"setRange":{"start":' +
+      '{"line":5,"character":1},"end":{"line":5,"character":9}},"pinned":true,"count":3,"unknown":"Wert",' +
+      '"batch":true,"hint":true,"form":"frmMain","byType":true,"sender":"TButton","senderOf":"btnSave",' +
+      '"dataSet":"qry","dataSource":"select","guard":"newLine","unit":"U","hides":["Feld TKunde.Wert"],' +
+      '"overloads":[{"line":7,"character":2}]}}]}',
+      Json.ToJSON);
+  finally
+    Json.Free;
+  end;
+  // textEdit hat Vorrang vor insertText.
+  Items.Items[0] := Default(TCompletionItem);
+  Items.Items[0].Name := 'for';
+  Items.Items[0].Kind := 15;
+  Items.Items[0].InsertText := 'nie';
+  Items.Items[0].HasTextEdit := True;
+  Items.Items[0].TextEdit := TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(1, 2),
+    TTextPosition.Create(1, 6)), 'for X');
+  Json := TLspCompletion.ToJson(Items);
+  try
+    Assert.AreEqual('{"isIncomplete":true,"items":[{"label":"for","kind":15,"textEdit":{"range":{"start":' +
+      '{"line":1,"character":2},"end":{"line":1,"character":6}},"newText":"for X"},"sortText":"00000"}]}',
+      Json.ToJSON);
+  finally
+    Json.Free;
+  end;
+end;
+
+procedure TLspCompletionTests.ToJsonOmitsDataBelowGate;
+var
+  Items: TCompletionItems;
+  Json: TJSONObject;
+begin
+  Items := Default(TCompletionItems);
+  SetLength(Items.Items, 1);
+  Items.Items[0] := Default(TCompletionItem);
+  Items.Items[0].Name := 'Wert';
+  Items.Items[0].Kind := 5;
+  Items.Items[0].Container := 'TFoo';
+  Items.Items[0].Depth := 1;
+  Items.Items[0].IsHelper := True;
+  Items.Items[0].HasParameters := True;
+  Items.Items[0].UnitName := 'U';
+  Items.Items[0].Count := 2;
+  Items.Items[0].Unknown := 'X';
+  Items.Items[0].Batch := True;
+  Items.Items[0].ByType := True;
+  Items.Items[0].Unavailable := True;
+  Items.Items[0].SetOf := 'TKind';
+  Items.Items[0].Hides := ['Feld TKunde.Wert'];
+  Items.Items[0].Overloads := [TTextPosition.Create(7, 2)];
+  Json := TLspCompletion.ToJson(Items);
+  try
+    Assert.AreEqual('{"isIncomplete":false,"items":[{"label":"Wert","kind":5,"sortText":"00000"}]}', Json.ToJSON);
   finally
     Json.Free;
   end;
