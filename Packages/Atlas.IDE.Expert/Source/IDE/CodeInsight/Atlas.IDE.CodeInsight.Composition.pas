@@ -72,6 +72,7 @@ uses
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Diagnostics.TimeLimit,
   Atlas.IDE.Commands.Keys,
+  Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.Undo.Changes,
   Atlas.Core.Updates.Check,
   Atlas.Core.Updates.Adapters.HttpSource,
@@ -125,6 +126,8 @@ var
   DiagnosticMode: TAtlasIdeDiagnosticMode;
   // Einrichtung mit Prüfliste und Statuszeile (#625).
   Setup: TAtlasIdeSetupChecklist;
+  // Tastenkürzel-Übersicht mit Prüfung beim Start (#520).
+  KeyMap: TAtlasIdeKeyMap;
   // Abgesicherter Start nach einem Absturz (#722).
   SafeMode: TAtlasIdeSafeMode;
   // Rückfrage und tägliche Update-Prüfung (#495).
@@ -889,15 +892,26 @@ begin
   // Einrichtung (#625): auch abgesichert, sie fragt den Server nie selbst und startet ihn nur auf Knopfdruck.
   if Basic and (Setup = nil) and (StatusLines <> nil) then
     CreateSetup;
+  // Tastenkürzel-Übersicht (#520): auch abgesichert, sie liest nur die Belegungen der IDE.
+  if Basic and (KeyMap = nil) then
+    KeyMap := TAtlasIdeKeyMap.Create;
   if Basic and (Palette = nil) then
   begin
     RegisterPalette;
+    // Atlas-Befehle zeigen ihre Taste (#520).
+    Palette.ShortCutOf :=
+      function(AId: string): string
+      begin
+        Result := TAtlasIdeKeyMap.AtlasShortCut(AId);
+      end;
     if QuickToggles <> nil then
       QuickToggles.RegisterCommands(Palette);
     if DiagnosticMode <> nil then
       DiagnosticMode.RegisterCommands(Palette);
     if Setup <> nil then
       Setup.RegisterCommands(Palette);
+    if KeyMap <> nil then
+      KeyMap.RegisterCommands(Palette);
   end;
   // Editor-Zeichnungen.
   if (Pairs = nil) and (Full or Settings.PairColors or Settings.PairGuides or Settings.InactiveDim) then
@@ -936,6 +950,9 @@ begin
       begin
         RebindKeys;
         TAtlasIdeKeys.ReportForeignCompletion;
+        // Neue Belegungen anderer Erweiterungen gegen die Atlas-Tasten prüfen (#520).
+        if KeyMap <> nil then
+          KeyMap.CheckNow;
       end);
   end;
   // Willkommensseite (#753): auch abgesichert, sie startet keinen Server und liest nur lokale Daten.
@@ -1025,6 +1042,12 @@ begin
         if Setup <> nil then
           Setup.ShowWindow;
       end;
+    MainMenu.OnKeyMap :=
+      procedure
+      begin
+        if KeyMap <> nil then
+          KeyMap.ShowWindow;
+      end;
     MainMenu.OnWelcome :=
       procedure(ACommand: TAtlasWelcomeCommand)
       begin
@@ -1041,7 +1064,10 @@ begin
       end;
   end;
   if MainMenu <> nil then
+  begin
     MainMenu.UpdateWelcome;
+    MainMenu.UpdateKeyMap;
+  end;
   // Phase und Fortschritt des Servers melden sich aus jedem Thread; gezeichnet wird gesammelt.
   if (Manager <> nil) and (StatusField <> nil) then
     Manager.OnServerChanged :=
@@ -1122,6 +1148,8 @@ begin
         DiagnosticMode.ThemeChanged;
       if Setup <> nil then
         Setup.ThemeChanged;
+      if KeyMap <> nil then
+        KeyMap.ThemeChanged;
     end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
   if SafeMode = nil then
@@ -1194,6 +1222,9 @@ begin
       // Prüfliste beim ersten Start bzw. solange ein Punkt fest gelb oder rot ist (#625).
       if Setup <> nil then
         Setup.Start;
+      // Eigene Tasten prüfen, sobald die übrigen Packages ihre Tasten angemeldet haben (#520).
+      if KeyMap <> nil then
+        KeyMap.CheckAtStart;
     end);
 end;
 
@@ -1221,6 +1252,7 @@ begin
   FreeAndNil(DiagnosticMode);
   // Vor dem Statusfeld: Die Einrichtung hat eine Zeile in dessen Registry und liest StatusLines (#625).
   FreeAndNil(Setup);
+  FreeAndNil(KeyMap);
   // Vor dem Statusfeld: Die Update-Prüfung hat die Zeile „Version“ in dessen Registry (#754).
   FreeAndNil(Updates);
   FreeAndNil(QuickToggles);

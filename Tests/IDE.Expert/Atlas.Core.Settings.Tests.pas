@@ -141,6 +141,9 @@ begin
   // Einrichtung mit Prüfliste (#625): beim Start zeigen, solange nicht alles grün ist; noch nie gesehen.
   Assert.IsTrue(Settings.SetupChecklist);
   Assert.IsFalse(Settings.SetupChecklistSeen);
+  // Tastenkürzel-Übersicht (#520): Menüeintrag und Startprüfung an.
+  Assert.IsTrue(Settings.KeyOverview);
+  Assert.IsTrue(Settings.KeyStartupCheck);
   // Abgesicherter Start (#722).
   Assert.IsTrue(Settings.SafeAskAfterCrash);
   Assert.IsTrue(Settings.SafeAutoAfterRepeatedCrash);
@@ -199,6 +202,8 @@ begin
   Settings.DiagnosticModeKeyPriority := True;
   Settings.SetupChecklist := False;
   Settings.SetupChecklistSeen := True;
+  Settings.KeyOverview := False;
+  Settings.KeyStartupCheck := False;
   Settings.SafeAskAfterCrash := False;
   Settings.SafeAutoAfterRepeatedCrash := False;
   Settings.SafeStartupKey := 'none';
@@ -258,6 +263,8 @@ begin
   Assert.IsTrue(Loaded.DiagnosticModeKeyPriority);
   Assert.IsFalse(Loaded.SetupChecklist);
   Assert.IsTrue(Loaded.SetupChecklistSeen);
+  Assert.IsFalse(Loaded.KeyOverview);
+  Assert.IsFalse(Loaded.KeyStartupCheck);
   Assert.IsFalse(Loaded.SafeAskAfterCrash);
   Assert.IsFalse(Loaded.SafeAutoAfterRepeatedCrash);
   Assert.AreEqual('none', Loaded.SafeStartupKey);

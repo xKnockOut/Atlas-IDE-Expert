@@ -9,6 +9,9 @@
 // Optionen, Dateien und Komponenten, kennt aber keine Atlas-Befehle und
 // keinen Verlauf. Strg+Umschalt+P ist in der IDE „Tastenmakro abspielen“;
 // die Palette übernimmt das Kürzel.
+// Tastenkürzel-Übersicht (#520): Atlas-Befehle zeigen ihre Taste (ShortCutOf),
+// ein Befehl mit Sichtbarkeit (RegisterCommand mit AVisible) erscheint nur,
+// solange seine Einstellung an ist.
 
 interface
 
@@ -36,6 +39,9 @@ type
   private
     FHistory: TAtlasCommandHistory;
     FAtlasCommands: TList<TPair<TAtlasCommand, TProc>>;
+    // Befehle mit Sichtbarkeit nach einer Einstellung (#520); ohne Eintrag immer sichtbar.
+    FVisible: TDictionary<string, TFunc<Boolean>>;
+    FShortCutOf: TFunc<string, string>;
     FBinding: TBinding;
     // Hält das Binding am Leben: Abmelden gibt die Referenz der IDE frei, Rebind meldet es neu an.
     FBindingRef: IOTAKeyboardBinding;
@@ -45,11 +51,17 @@ type
     function Collect: TArray<TAtlasCommand>;
     procedure Run(const ACommand: TAtlasCommand);
     class function MenuPaths: TDictionary<TBasicAction, string>; static;
+    function IsVisible(const AId: string): Boolean;
+    /// <summary>Atlas-Befehl mit seiner Taste aus ShortCutOf.</summary>
+    function WithShortCut(const ACommand: TAtlasCommand): TAtlasCommand;
   public
     constructor Create;
     destructor Destroy; override;
     /// <summary>Atlas-Befehl für die Palette (Beschriftung mit „Atlas: “ davor).</summary>
-    procedure RegisterCommand(const AId, ACaption, ADescription: string; const AProc: TProc);
+    procedure RegisterCommand(const AId, ACaption, ADescription: string; const AProc: TProc); overload;
+    /// <summary>Wie oben; der Befehl erscheint nur, solange AVisible True liefert (#520).</summary>
+    procedure RegisterCommand(const AId, ACaption, ADescription: string; const AProc: TProc;
+      const AVisible: TFunc<Boolean>); overload;
     /// <summary>Nur die Atlas-Befehle (Suchfeld der Willkommensseite, #760).</summary>
     function AtlasCommands: TArray<TAtlasCommand>;
     /// <summary>Atlas-Befehl AId ausführen wie aus der Palette (mit Verlauf).</summary>
@@ -58,6 +70,8 @@ type
     procedure Show;
     /// <summary>Tastenkürzel nach den Einstellungen (neu) belegen; bei Konflikt ohne Vorrang keins (#494).</summary>
     procedure Rebind;
+    /// <summary>Taste eines Atlas-Befehls als Text ('' ohne), gesetzt von der Komposition (#520).</summary>
+    property ShortCutOf: TFunc<string, string> read FShortCutOf write FShortCutOf;
   end;
 
 implementation
@@ -126,6 +140,7 @@ begin
     // Verlauf kaputt: leer anfangen.
   end;
   FAtlasCommands := TList<TPair<TAtlasCommand, TProc>>.Create;
+  FVisible := TDictionary<string, TFunc<Boolean>>.Create;
   FBindingIndex := -1;
   if Supports(BorlandIDEServices, IOTAKeyboardServices, Keyboard) then
   begin
@@ -165,6 +180,7 @@ begin
   if (FBindingIndex >= 0) and Supports(BorlandIDEServices, IOTAKeyboardServices, Keyboard) then
     Keyboard.RemoveKeyboardBinding(FBindingIndex);
   FAtlasCommands.Free;
+  FVisible.Free;
   FHistory.Free;
   inherited;
 end;
@@ -184,6 +200,28 @@ begin
   Command.Description := ADescription;
   Command.IsAtlas := True;
   FAtlasCommands.Add(TPair<TAtlasCommand, TProc>.Create(Command, AProc));
+end;
+
+procedure TAtlasIdePalette.RegisterCommand(const AId, ACaption, ADescription: string; const AProc: TProc;
+  const AVisible: TFunc<Boolean>);
+begin
+  RegisterCommand(AId, ACaption, ADescription, AProc);
+  if Assigned(AVisible) then
+    FVisible.AddOrSetValue(AId, AVisible);
+end;
+
+function TAtlasIdePalette.IsVisible(const AId: string): Boolean;
+var
+  Visible: TFunc<Boolean>;
+begin
+  Result := not FVisible.TryGetValue(AId, Visible) or Visible();
+end;
+
+function TAtlasIdePalette.WithShortCut(const ACommand: TAtlasCommand): TAtlasCommand;
+begin
+  Result := ACommand;
+  if (Result.ShortCut = '') and Assigned(FShortCutOf) then
+    Result.ShortCut := FShortCutOf(Result.Id);
 end;
 
 class function TAtlasIdePalette.MenuPaths: TDictionary<TBasicAction, string>;
@@ -228,7 +266,8 @@ var
 begin
   Result := nil;
   for Pair in FAtlasCommands do
-    Result := Result + [Pair.Key];
+    if IsVisible(Pair.Key.Id) then
+      Result := Result + [WithShortCut(Pair.Key)];
   if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.ActionList = nil) then
     Exit;
   Paths := MenuPaths;
@@ -265,7 +304,8 @@ var
 begin
   Result := nil;
   for Pair in FAtlasCommands do
-    Result := Result + [Pair.Key];
+    if IsVisible(Pair.Key.Id) then
+      Result := Result + [WithShortCut(Pair.Key)];
 end;
 
 procedure TAtlasIdePalette.Execute(const AId: string);

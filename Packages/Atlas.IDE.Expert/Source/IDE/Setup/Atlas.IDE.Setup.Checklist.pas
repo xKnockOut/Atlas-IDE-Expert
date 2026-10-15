@@ -4,7 +4,9 @@
 // - Sammelt im Hauptthread, was die Prüfungen brauchen (TAtlasSetupInput):
 //   Pfad und Phase des Servers, Version der IDE aus ihrem Registry-Schlüssel,
 //   Plattform des aktiven Projekts, Projekte der Gruppe, Error Insight und
-//   Atlas-Probleme, Belegung der Atlas-Tasten. Index je Projekt und
+//   Atlas-Probleme, Belegung der Atlas-Tasten aus der Tastenkürzel-Übersicht
+//   (#520: alle Atlas-Tasten gegen Aktionen, Editor-Belegungen und andere
+//   Erweiterungen). Index je Projekt und
 //   Bibliotheks-Cache kommen aus der letzten Antwort von atlas.server.status,
 //   die das Statusfeld ohnehin alle 5 s im Hintergrund holt; die Prüfliste
 //   fragt den Server nie selbst und startet ihn nur auf Knopfdruck.
@@ -122,7 +124,7 @@ uses
   Atlas.Core.Updates.Check,
   Atlas.UI.Strings,
   Atlas.IDE.CodeInsight.Manager,
-  Atlas.IDE.Commands.Keys,
+  Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.Editor.Structure,
   Atlas.IDE.Editor.Style,
   Atlas.IDE.Settings.Store;
@@ -163,20 +165,12 @@ begin
 end;
 
 function TIdeEnvironment.Keys: TArray<TAtlasSetupKey>;
-var
-  Entry: TAtlasKeyEntry;
-  Text: string;
 begin
   if FKeysRead and (TThread.GetTickCount64 - FKeysAt < TAtlasIdeSetupChecklist.KeysMaxAgeMs) then
     Exit(FKeys);
-  FKeys := nil;
-  for Entry in TAtlasKeyEntry.FromSettings(TAtlasIdeSettings.Current) do
-  begin
-    Text := '';
-    if Entry.Key <> 0 then
-      Text := ShortCutToText(TShortCut(Entry.Key));
-    FKeys := FKeys + [TAtlasSetupKey.Create(Entry, Text, TAtlasIdeKeys.Owner(Entry.Key))];
-  end;
+  // Gemeinsame Quelle mit der Tastenkürzel-Übersicht (#520): auch Editorbefehle, Undo/Redo, das Suchfeld der
+  // Willkommensseite und Tastaturbelegungen anderer Erweiterungen.
+  FKeys := TAtlasIdeKeyMap.SetupKeys;
   FKeysAt := TThread.GetTickCount64;
   FKeysRead := True;
   Result := FKeys;

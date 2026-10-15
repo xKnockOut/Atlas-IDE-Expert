@@ -790,6 +790,26 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert. Für den „erste
 | EP16 | Dunkles und helles Thema, 150 % Skalierung, Thema wechseln bei offenem Fenster | Zeilen, Punkte und Knöpfe lesbar, nichts abgeschnitten; Farben folgen ohne Neustart |
 | EP17 | Abgesicherter Start (Umschalt beim Laden, Stufe minimal) | Keine Prüfliste, kein Menüeintrag; abgesichert (nicht minimal) wie normal, nur auf Abruf und beim Start |
 
+## Tastenkürzel-Übersicht (#520)
+
+Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; für TK5/TK6 eine Erweiterung mit eigener Tastaturbelegung (z. B. CnPack oder GExperts).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TK1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasKeyMapTests`, `TAtlasKeyMapWindowTests`, `TAtlasKeysPageTests` und `TAtlasSetupChecklistTests` grün |
+| TK2 | *Atlas › Tastenkürzel-Übersicht…* bzw. Befehlspalette „Tastenkürzel-Übersicht“ | Nicht modales Fenster „Atlas – Tastenkürzel“ mit Spalten Taste, Befehl, Herkunft, Kontext, Hinweis; Zeile „Strg+Umschalt+P · Befehlspalette · Atlas · global“ (**Abnahme**); Aktionen der IDE (z. B. Strg+S „Speichern“) mit Herkunft IDE; unten rechts „n Kürzel, m Konflikte“ |
+| TK3 | *Tastenkonflikte*: „Auswahl erweitern“ absichtlich auf Strg+Umschalt+P legen, OK, Übersicht „Aktualisieren“ | Beide Zeilen rot (**Abnahme**); Hinweis bei der einen „gewinnt …“, bei der anderen „unterliegt „…“ (Atlas): …“ mit Grund; beim nächsten IDE-Start einmal eine Meldung im Meldungsfenster „Atlas: Strg+Umschalt+P ist doppelt belegt – … (Atlas) und …; es gewinnt …“ mit Verweis auf die Übersicht und *Tools › Optionen › Atlas › Tastenkonflikte*; kein zweites Mal in derselben Sitzung |
+| TK4 | Suchfeld: „Strg+Umschalt+P“, „Ctrl+Shift+P“, „palette“, „IDE“; „Nur Konflikte“ an | Jeweils nur passende Zeilen; Zusammenfassung „x von n Kürzeln“; „Nur Konflikte“ zeigt nur rote Zeilen; „Aktualisieren“ behält Suche und Filter |
+| TK5 | Erweiterung mit eigener Editor-Belegung auf eine Atlas-Taste (z. B. Strg+Leer) | Zeile „Tastaturbelegung des Editors“ mit Herkunft „Erweiterung <Paket>“, Kontext Editor, rot; Hinweis nennt den Gewinner (**prüfen, ob die IDE das bestätigt**: Taste im Editor drücken) |
+| TK6 | Fremde Aktion mit Kürzel (z. B. GExperts-Menüeintrag) | Herkunft „Erweiterung <Paket>“ statt IDE (**Herkunft prüfen**; bei falscher Zuordnung Paket und Aktion melden) |
+| TK7 | „Als HTML exportieren“ | Browser öffnet `%LOCALAPPDATA%\Atlas\Tastenkuerzel.html` mit Titel, Stand, Filter (falls gesetzt) und nur den gezeigten Zeilen, Konflikte rot; „Drucken“ bzw. Strg+P: Druckvorschau ohne Knopf, Tabelle vollständig, Kopfzeile wiederholt sich (**Abnahme**) |
+| TK8 | „Tastenkonflikte…“ im Fenster | Öffnet *Tools › Optionen › Drittanbieter › Atlas › Tastenkonflikte* |
+| TK9 | *Tastenkonflikte*: „Menüeintrag und Befehl „Tastenkürzel-Übersicht““ aus | Menüeintrag und Befehl verschwinden sofort; offenes Fenster bleibt bedienbar |
+| TK10 | *Tastenkonflikte*: „Beim Start die Atlas-Tasten prüfen …“ aus, Konflikt aus TK3 lassen, IDE neu starten | Keine Meldung beim Start; Übersicht zeigt den Konflikt weiter rot |
+| TK11 | Einrichtung (#625) mit dem Konflikt aus TK3 bzw. TK5 | Zeile „Tastenkürzel“ gelb, nennt dieselbe Taste wie die Übersicht |
+| TK12 | Dunkles und helles Thema, 150 % Skalierung, Thema wechseln bei offenem Fenster; Esc | Liste, rote Zeilen und Knöpfe lesbar, Farben folgen ohne Neustart; Esc schließt das Fenster |
+| TK13 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs`) nach TK3 | Nur Anzahlen (Kürzel, Konflikte), keine Pfade oder Benutzernamen |
+
 ## Versionsverwaltung (#571)
 
 Vorbereitung: Git für Windows und TortoiseSVN mit Kommandozeilenwerkzeugen (`svn.exe`, `svnadmin.exe`) installiert. Die Schnittstelle hat noch keine sichtbaren Nutzer in der IDE (folgen mit #592, #762, #755, #764, #765); geprüft wird über die Tests, den Einstellungsdialog und die Kommandozeile.
