@@ -338,6 +338,11 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 | CI6 | Überladene Routine (`IntToStr(`) | Hint zeigt die Zahl der Überladungen; ↑/↓ blättert durch sie |
 | CI7 | `AtlasServer.exe` umbenennen, IDE neu starten, Strg+Leer | Meldungsfenster nennt den nicht gefundenen Server; Vervollständigung und Hinweise der eingebauten Code Insight funktionieren |
 | CI8 | Server im Task-Manager beenden, danach Strg+Leer | Atlas startet den Server neu, die Liste erscheint (ggf. „eingeschränkt“, solange er indiziert) |
+| CI9 | Server im Task-Manager beenden, sofort in einer Methode `Self.` tippen (automatische Liste), dann Strg+Leer | Kein Fehlerdialog, keine Zugriffsverletzung; die automatische Liste kommt ohne Server-Einträge, Strg+Leer startet den Server und zeigt sie; im Protokoll kein „Zeitlimit … überschritten“ für die Server-Quelle (Code-Review A-01) |
+| CI10 | CI9 dreimal innerhalb von fünf Minuten | Die Quelle „Server“ bleibt eingeschaltet (*Optionen › Atlas › Robustheit* ohne Eintrag) |
+| CI11 | Maus auf einem Bezeichner halten, bis der Tooltip lädt; währenddessen Statusfeld › Server neu starten | Kein Absturz, kein Tooltip aus der alten Sitzung; Neustart wie gewohnt (A-07) |
+| CI12 | Hover über einem Bezeichner auslösen und sofort *Komponenten › Packages installieren* › Atlas abwählen (Package entladen); danach weiterarbeiten | Kein Absturz beim Entladen und danach; Protokoll „Atlas entladen in … ms; Hintergrund-Threads beendet: True“ (A-02) |
+| CI13 | Server einen `workspace/applyEdit` schicken lassen (z. B. Code-Aktion „uses ergänzen“) und die Datei vorher schreibgeschützt setzen | Kein Fehlerdialog der IDE; der Server bekommt genau eine Antwort (`applied: false` mit Grund), mit `Diagnose` = 1 steht „workspace/applyEdit: …“ im Protokoll (S-05) |
 
 ## Symbolindex (#492)
 
@@ -517,12 +522,13 @@ Protokoll: `Atlas.IDE.Expert370.log` neben dem Plugin (Hänger stehen dort immer
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| W1 | Tools › Optionen › Atlas › „Wächter testen (1 s)“ | IDE steht 1 s; danach im Protokoll „Hänger ~1000 ms um …; Atlas: Wächter-Test, … ms; Fenster: Optionen“, darunter Zeilen `Modul+Offset` (u. a. `Atlas.IDE.Expert370.bpl`, `kernel*.dll`) und „Sitzung: 1 Hänger …“ |
+| W1 | Diagnosemodus an (*Optionen › Atlas › Allgemein*), dann Tools › Optionen › Atlas › Robustheit › „Wächter testen (1 s)“ | IDE steht 1 s; danach im Protokoll „Hänger ~1000 ms um …; Atlas: Wächter-Test, … ms; Fenster: Optionen“, darunter Zeilen `Modul+Offset` (u. a. `Atlas.IDE.Expert370.bpl`, `kernel*.dll`) und „Sitzung: 1 Hänger …“ |
 | W2 | Normal arbeiten ohne Hänger | Keine Hänger-Zeilen im Protokoll |
 | W3 | Schwelle auf 2000 setzen, W1 wiederholen | Kein Eintrag (1 s liegt unter der Schwelle) |
 | W4 | Schwelle 500, „Hinweis im Meldungsfenster …“ an; einen Hänger über 2 s erzeugen (z. B. großes Projekt öffnen) | Zeile „Atlas: Die IDE hat n ms nicht reagiert“ in der Gruppe „Atlas“ des Meldungsfensters, kein Dialog |
 | W5 | Mit `Diagnose` = 1 IDE starten | Zeile „Start: Laden des Packages bis zur freien Nachrichtenschleife n ms“ |
 | W6 | IDE schließen | Schließt ohne Verzögerung; bei Hängern in der Sitzung steht am Ende „Sitzung: n Hänger, längster …“ |
+| W7 | Diagnosemodus aus; Reiter *Robustheit* ansehen und in der Befehlspalette „Wächter“ suchen | Kein Knopf „Wächter testen“, kein Palettenbefehl; nach dem Einschalten des Diagnosemodus erscheint der Knopf sofort, der Befehl beim nächsten Öffnen der Palette (Code-Review S-07) |
 
 ## Include-Dateien (#500)
 
