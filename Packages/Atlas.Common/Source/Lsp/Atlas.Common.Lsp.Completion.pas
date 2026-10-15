@@ -467,6 +467,12 @@ const
   KindStruct = 22;
   KindKeyword = 14;
   KindSnippet = 15;
+  /// <summary>Abzüge vom Trefferwert, die die Gruppenreihenfolge festlegen (Code-Review S-07): eingebunden vor
+  /// Schlüsselwörtern vor Projekt-Import vor Bibliotheks-Import vor nicht verfügbaren Einträgen.</summary>
+  PenaltyKeyword = 50;
+  PenaltyProjectImport = 100;
+  PenaltyLibraryImport = 200;
+  PenaltyUnavailable = 500;
   /// <summary>Typen im Index (#31: Filter nach "class(", ":", "is", "as").</summary>
   IndexTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType, TIndexSymbolKind.EnumType,
@@ -1672,7 +1678,7 @@ var
           Scored.Item.Condition := Condition;
           Scored.Item.Unavailable := True;
           // Wie die übrigen nicht verfügbaren Einträge ans Ende.
-          Dec(Scored.Score, 500);
+          Dec(Scored.Score, PenaltyUnavailable);
         end
         else if Conditions.TryGetValue(UpperCase(Scored.Item.Name), Condition) then
           Scored.Item.Condition := Condition
@@ -1724,7 +1730,7 @@ var
           SourceFile := UnitInfo.FileName;
           SourcePosition := Symbol.SelectionRange.StartPos;
           Before := List.Count;
-          Add(Symbol.Name, UnitInfo.UnitName, KindOf(Symbol.Kind), 500);
+          Add(Symbol.Name, UnitInfo.UnitName, KindOf(Symbol.Kind), PenaltyUnavailable);
           if List.Count > Before then
           begin
             Scored := List[List.Count - 1];
@@ -1808,9 +1814,9 @@ var
         SourcePosition := Symbol.SelectionRange.StartPos;
         // Eingebundenes zuerst, dann Projekt-Units, dann RTL/VCL und andere Bibliotheken.
         if UnitInfo.Library_ then
-          Add(Symbol.Name, UnitInfo.UnitName + ' (uses ergänzen)', KindOf(Symbol.Kind), 200, [Edit])
+          Add(Symbol.Name, UnitInfo.UnitName + ' (uses ergänzen)', KindOf(Symbol.Kind), PenaltyLibraryImport, [Edit])
         else
-          Add(Symbol.Name, UnitInfo.UnitName + ' (uses ergänzen)', KindOf(Symbol.Kind), 100, [Edit]);
+          Add(Symbol.Name, UnitInfo.UnitName + ' (uses ergänzen)', KindOf(Symbol.Kind), PenaltyProjectImport, [Edit]);
         // Gleichnamige Symbole verschiedener Units bleiben alle wählbar.
         if List.Count > Before then
         begin
@@ -1987,7 +1993,7 @@ var
     SourceFile := '';
     SourcePosition := Default(TTextPosition);
     for Word in Words do
-      Add(Word, '', KindKeyword, 50);
+      Add(Word, '', KindKeyword, PenaltyKeyword);
   end;
 
   // Mitglieder aus nicht geltenden Zweigen der Typen, deren Mitglieder AMembers schon zeigt (#476):
@@ -2024,7 +2030,7 @@ var
           SourceFile := UnitInfo.FileName;
           SourcePosition := Symbol.SelectionRange.StartPos;
           Before := List.Count;
-          Add(Symbol.Name, Symbol.Container, KindOf(Symbol.Kind), 500);
+          Add(Symbol.Name, Symbol.Container, KindOf(Symbol.Kind), PenaltyUnavailable);
           if List.Count > Before then
           begin
             Scored := List[List.Count - 1];
