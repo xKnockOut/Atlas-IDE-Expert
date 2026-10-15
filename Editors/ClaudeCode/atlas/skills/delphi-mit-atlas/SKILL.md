@@ -26,6 +26,7 @@ sind schneller und genauer als Textsuche und das Lesen ganzer Dateien.
   (Syntax, Prüfregeln, nicht auflösbare Bezeichner).
 - `get_diagnostics` für den Stand einer Datei oder des Projekts.
 - `get_metrics` vor und nach einem Umbau: welche Methoden zu lang, zu tief verschachtelt oder zu komplex sind (Grenzwerte aus `atlas.json`).
+- `get_todos` vor einer Aufgabe oder einem Release: offene `TODO`/`FIXME` des Projekts, gefiltert nach Kategorie (`category`), Person (`owner`), Unit oder Marke; `includeDone` zeigt erledigte.
 - Befunde mit `explain_finding` erklären lassen (Regel, Ausschnitt, Vorher/Nachher).
 - `get_last_build` zeigt den letzten Build aus der IDE samt Compilermeldungen.
 

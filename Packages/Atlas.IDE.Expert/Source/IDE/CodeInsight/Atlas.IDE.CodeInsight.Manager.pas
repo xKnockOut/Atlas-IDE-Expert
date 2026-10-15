@@ -37,6 +37,8 @@
 // wartet auf eine laufende Abfrage, bevor es die Sitzung freigibt.
 // RunCommandAsync (#66) schickt einen Befehl mit Argumenten im Hintergrund,
 // etwa die Metriken des Projekts nach einem Build; ebenso abgesichert.
+// RunCommandsAsync (#68) schickt mehrere Befehle nacheinander in einem
+// Hintergrundlauf, etwa Metriken und TODOs nach einem Build.
 
 interface
 
@@ -185,6 +187,11 @@ type
     /// oder Zeitlimit) im Hintergrund-Thread. False = nicht gestartet.</summary>
     function RunCommandAsync(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal;
       const ADone: TProc<string>): Boolean;
+    /// <summary>Mehrere Befehle nacheinander in einem Hintergrundlauf (#68), sonst wie RunCommandAsync; ATimeoutMs
+    /// gilt je Befehl. ADone bekommt die Ergebnisse in derselben Reihenfolge ('' bei Fehler oder Zeitlimit).
+    /// False = nicht gestartet oder ungleich viele Befehle und Argumente.</summary>
+    function RunCommandsAsync(const ACommands, AArgumentsJson: TArray<string>; ATimeoutMs: Cardinal;
+      const ADone: TProc<TArray<string>>): Boolean;
     /// <summary>Phase, Version oder Fortschritt haben sich geändert; aus jedem Thread.</summary>
     property OnServerChanged: TProc read FOnServerChanged write FOnServerChanged;
     /// <summary>Bietet IOTACodeInsightManager90 (Help Insight) nur an, solange der Atlas-Tooltip an ist.</summary>
@@ -604,12 +611,29 @@ end;
 function TAtlasCodeInsightManager.RunCommandAsync(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal;
   const ADone: TProc<string>): Boolean;
 var
+  Done: TProc<string>;
+begin
+  Done := ADone;
+  Result := RunCommandsAsync([ACommand], [AArgumentsJson], ATimeoutMs,
+    procedure(AAnswers: TArray<string>)
+    begin
+      if Assigned(Done) then
+        Done(AAnswers[0]);
+    end);
+end;
+
+function TAtlasCodeInsightManager.RunCommandsAsync(const ACommands, AArgumentsJson: TArray<string>;
+  ATimeoutMs: Cardinal; const ADone: TProc<TArray<string>>): Boolean;
+var
   Session: TLspSession;
   Idle: TEvent;
-  Command, Arguments: string;
+  Commands, Arguments: TArray<string>;
   Timeout: Cardinal;
+  Done: TProc<TArray<string>>;
 begin
   Result := False;
+  if (Length(ACommands) = 0) or (Length(ACommands) <> Length(AArgumentsJson)) then
+    Exit;
   if FCommandRunning or (FServer = nil) or not FServer.Running or (FSession = nil) or
     not FSession.Initialized then
     Exit;
@@ -617,34 +641,40 @@ begin
   FCommandIdle.ResetEvent;
   Session := FSession;
   Idle := FCommandIdle;
-  Command := ACommand;
-  Arguments := AArgumentsJson;
+  Commands := Copy(ACommands);
+  Arguments := Copy(AArgumentsJson);
   Timeout := ATimeoutMs;
+  Done := ADone;
   TThread.CreateAnonymousThread(
     procedure
     var
       Answer: TJSONValue;
-      Json: string;
+      Answers: TArray<string>;
+      Index: Integer;
     begin
       try
-        Json := '';
-        Answer := nil;
         try
-          try
-            Answer := Session.RunCommand(Command, Arguments, Timeout);
-          except
-            // Fehler, Zeitlimit oder geschlossene Verbindung: '' an ADone.
-            on Exception do
-              Answer := nil;
+          SetLength(Answers, Length(Commands));
+          for Index := 0 to High(Commands) do
+          begin
+            Answers[Index] := '';
+            Answer := nil;
+            try
+              Answer := Session.RunCommand(Commands[Index], Arguments[Index], Timeout);
+            except
+              // Fehler, Zeitlimit oder geschlossene Verbindung: '' für diesen Befehl.
+              on Exception do
+                Answer := nil;
+            end;
+            try
+              if Answer <> nil then
+                Answers[Index] := Answer.ToJSON;
+            finally
+              Answer.Free;
+            end;
           end;
-          try
-            if Answer <> nil then
-              Json := Answer.ToJSON;
-          finally
-            Answer.Free;
-          end;
-          if Assigned(ADone) then
-            ADone(Json);
+          if Assigned(Done) then
+            Done(Answers);
         except
           // Hintergrund-Thread: nie eine Ausnahme nach außen.
           on Exception do

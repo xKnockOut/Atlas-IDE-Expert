@@ -230,6 +230,11 @@
         <DCCReference Include="Source\Metrics\Atlas.Common.Metrics.Collector.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Metrics.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Metrics.pas"/>
+        <DCCReference Include="Source\Todos\Atlas.Common.Todos.Contract.pas"/>
+        <DCCReference Include="Source\Todos\Atlas.Common.Todos.Scanner.pas"/>
+        <DCCReference Include="Source\Todos\Atlas.Common.Todos.Report.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Todos.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SemanticTokens.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Commands.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ApplyEdit.pas"/>
