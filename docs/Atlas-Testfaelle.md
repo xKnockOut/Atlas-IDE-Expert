@@ -376,6 +376,31 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 | FA10 | Auf „Neue Methode …“ bzw. „Alle Werte einfügen“ Strg+D | Fußzeile „Dieser Eintrag lässt sich nicht anheften“ |
 | FA11 | Popup bei 150 % und 200 % Skalierung, hell und dunkel | Stern scharf und mittig, Badge rückt um die Sternspalte nach rechts, nichts abgeschnitten |
 
+## Persönliche Notizen (#545)
+
+Ablage: `%LOCALAPPDATA%\Atlas\Notes\<Schlüssel>.json` je Projekt (Schlüssel wie die Projekt-Zusammenfassung aus #592), JSON mit `format` 1, `project` und `notes` (je Notiz `id`, `file`, `line` 1-basiert, `text`, `lineText`, `before`, `after`, `created`, `changed` in UTC, bei Bedarf `orphaned`). Nie im Projekt- oder Repository-Ordner.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NO1 | Projekt in einem Git-Repository öffnen, Cursor in eine Methode, *Atlas › Notiz an dieser Zeile…*, zwei Zeilen Text, Strg+Enter | Dialog „Notiz – Kunde.pas, Zeile 42“ mit Hinweis; nach Strg+Enter links in der Rinne ein kleines Notizblatt an der Zeile |
+| NO2 | `git status` im Repository | Keine Änderung, keine neue Datei; die Notiz steht in `%LOCALAPPDATA%\Atlas\Notes\` |
+| NO3 | Maus über das Notizblatt in der Rinne halten | Nach etwa 0,3 s Tooltip „Notiz vom 15.10.2026“ mit beiden Zeilen; Maus weg schließt ihn |
+| NO4 | Oberhalb der Zeile drei Zeilen einfügen, kurz warten | Das Symbol wandert mit seiner Codezeile nach unten (Akzeptanzkriterium) |
+| NO5 | Die Codezeile der Notiz leicht ändern (z. B. Parameter umbenennen) | Symbol verschwindet kurz und steht nach der Tipp-Pause wieder an derselben Zeile |
+| NO6 | Rechtsklick in die Rinne einer anderen Zeile, Kontextmenü › *Atlas › Notiz an dieser Zeile…* | Dialog nennt die angeklickte Zeile, nicht die Cursorzeile |
+| NO7 | *Atlas › Notizen des Projekts* | Ergebnisfenster „Notizen in Projekt.dproj: n, davon 0 verwaist“, je Datei eine Gruppe mit „Zeile: erste Textzeile“; alle Notizen des Projekts (Akzeptanzkriterium) |
+| NO8 | Doppelklick bzw. Enter auf einen Eintrag | Editor springt zur Zeile |
+| NO9 | Kontextmenü eines Eintrags › „Notiz bearbeiten…“, Text ändern, speichern | Liste zeigt den neuen Text, Eintrag bleibt gewählt |
+| NO10 | Die Codezeile samt Nachbarn löschen, Liste neu öffnen | Notiz unter „Verwaist (1)“ mit Datei und letzter Zeile; kein Symbol in der Rinne |
+| NO11 | Eintrag wählen, Entf, Rückfrage mit Ja | Notiz verschwindet aus Liste und Rinne |
+| NO12 | Datei mit Notizen außerhalb der IDE löschen oder umbenennen, Liste öffnen | Ihre Notizen stehen unter „Verwaist“ |
+| NO13 | Dialog einer vorhandenen Notiz, Text ganz löschen, Speichern | Notiz gelöscht; bei einer neuen Notiz ohne Text wird nichts angelegt |
+| NO14 | IDE neu starten, Datei öffnen | Symbole und Liste wie vorher |
+| NO15 | Einstellung „Persönliche Notizen…“ (Reiter Editor) aus bzw. Schnellschalter „Notizen“ | Keine Symbole; Einträge im Menü *Atlas* und in der Befehlspalette verschwinden; das Kontextmenü meldet „Persönliche Notizen sind ausgeschaltet …“ in der Meldungsansicht |
+| NO16 | Rinne bei 100 %, 150 % und 200 %, hell und dunkel, mit Haltepunkt und Lesezeichen an derselben Zeile | Symbol sichtbar und nicht abgeschnitten; prüfen, ob es Haltepunkt- oder Lesezeichen-Symbol überdeckt (Lage links in der Rinne ist ungeprüft) |
+| NO17 | Rinnen-API: Delphi 12 und 13, Symbol erscheint überhaupt (`cevPaintGutterEvents`, letzte Stufe von `TPaintGutterStage`) und Maus-Ereignisse kommen in der Rinne an (Tooltip, Rechtsklick) | Funktioniert in beiden Versionen; sonst Rückmeldung mit Version |
+| NO18 | Ohne geöffnetes Projekt eine einzelne Datei öffnen, Notiz anlegen | Meldung „Notizen gehören zu einem Projekt …“ |
+
 ## Tippfehler (#485)
 
 | Nr. | Schritte | Erwartet |

@@ -96,7 +96,9 @@ uses
   Atlas.IDE.Welcome.Discover,
   Atlas.IDE.Welcome.Help,
   Atlas.IDE.Welcome.Commands,
-  Atlas.IDE.Vcs.Service;
+  Atlas.IDE.Vcs.Service,
+  Atlas.IDE.Notes.Service,
+  Atlas.IDE.Notes.Gutter;
 
 var
   ManagerIndex: Integer = -1;
@@ -108,6 +110,8 @@ var
   Reloader: TAtlasFileReloader;
   Palette: TAtlasIdePalette;
   Pairs: TAtlasEditorPairs;
+  // Persönliche Notizen in der Rinne (#545).
+  NotesGutter: TAtlasIdeNotesGutter;
   // Ungespeicherte Dateien für schreibende MCP-Werkzeuge (#61).
   DirtyExport: TAtlasDirtyExport;
   // Schreibende MCP-Werkzeuge ändern offene Dateien über das Plugin (#397).
@@ -345,6 +349,46 @@ begin
     procedure
     begin
       TAtlasIdeUndo.ShowList;
+    end);
+  // Persönliche Notizen (#545); nur sichtbar, solange die Einstellung an ist.
+  Palette.RegisterCommand('Atlas.NoteAdd', TAtlasStrings.Text(TAtlasTextId.NotesMenuAdd), '',
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Notes,
+        procedure
+        begin
+          TAtlasIdeNotes.AddOrEdit;
+        end);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.Notes;
+    end);
+  Palette.RegisterCommand('Atlas.NoteDelete', TAtlasStrings.Text(TAtlasTextId.NotesMenuDelete), '',
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Notes,
+        procedure
+        begin
+          TAtlasIdeNotes.DeleteAtLine;
+        end);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.Notes;
+    end);
+  Palette.RegisterCommand('Atlas.NoteList', TAtlasStrings.Text(TAtlasTextId.NotesMenuList), '',
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Notes,
+        procedure
+        begin
+          TAtlasIdeNotes.ShowList;
+        end);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.Notes;
     end);
   // Editorbefehle (#399).
   Palette.RegisterCommand('Atlas.CodeActions', TAtlasStrings.Text(TAtlasTextId.EditorActions), '',
@@ -981,6 +1025,16 @@ begin
   // Editor-Zeichnungen.
   if (Pairs = nil) and (Full or Settings.PairColors or Settings.PairGuides or Settings.InactiveDim) then
     Pairs := TAtlasEditorPairs.Create;
+  // Persönliche Notizen (#545): Befehle auch abgesichert (nur lokale Dateien), die Rinne wie die übrigen
+  // Zeichnungen nur im normalen Start oder mit eingeschalteter Einstellung.
+  if Basic then
+    TAtlasIdeNotes.Start(
+      procedure(AText: string)
+      begin
+        MessageLine(AText);
+      end);
+  if (NotesGutter = nil) and Basic and (Full or Settings.Notes) then
+    NotesGutter := TAtlasIdeNotesGutter.Create;
   if (CompletionKey = nil) and Basic and (Full or Settings.Enabled) then
     CompletionKey := TAtlasIdeKeyBinding.Create('Atlas.Completion', 'Atlas-Vervollständigung',
       TAtlasFeature.Completion,
@@ -1390,6 +1444,9 @@ begin
   end;
   CommandsInstalled := False;
   FreeAndNil(Pairs);
+  // Vor dem Notizdienst: Die Rinne liest dessen Notizbücher (#545).
+  FreeAndNil(NotesGutter);
+  TAtlasIdeNotes.Release;
   FreeAndNil(CheckOnSave);
   FreeAndNil(Palette);
   FreeAndNil(Reloader);

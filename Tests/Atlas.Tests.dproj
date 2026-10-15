@@ -356,6 +356,12 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Context.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Projects\Atlas.Core.Projects.Summary.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Summary.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Notes\Atlas.Core.Notes.Anchor.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Notes\Atlas.Core.Notes.Store.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Notes.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Notes\Atlas.UI.Notes.Tip.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Notes\Atlas.UI.Notes.Dialog.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Notes.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.InlayHints.Store.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Results\Atlas.Core.Results.Model.pas"/>

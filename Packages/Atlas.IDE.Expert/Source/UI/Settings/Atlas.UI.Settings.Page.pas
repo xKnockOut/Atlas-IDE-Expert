@@ -112,6 +112,7 @@ type
     FInactiveDim: TCheckBox;
     FOpenForEdits: TCheckBox;
     FInlayHints: TCheckBox;
+    FNotes: TCheckBox;
     FCodeLensTestUnit: TCheckBox;
     FPairGuides: TCheckBox;
     FPairOwners: TCheckBox;
@@ -383,6 +384,7 @@ type
     property OnRemoveFavorites: TProc<TArray<string>> read FOnRemoveFavorites write FOnRemoveFavorites;
     /// <summary>Zum Testen: Favoriten (#458).</summary>
     property FavoritesCheck: TCheckBox read FFavorites;
+    property NotesCheck: TCheckBox read FNotes;
     property FavoritesList: TListBox read FFavoritesList;
     property FavoritesRemove: TButton read FFavoritesRemove;
     property FavoritesRemoveAll: TButton read FFavoritesRemoveAll;
@@ -670,6 +672,8 @@ begin
   FPairColors.OnClick := PairColorsClick;
   FInactiveDim := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim));
   FInlayHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayHints));
+  // Persönliche Notizen an Codezeilen (#545).
+  FNotes := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNotes));
   FCodeLensTestUnit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTestUnit));
 
   // Eigene Paarfarben und deren Reihenfolge je Thema.
@@ -1444,6 +1448,7 @@ begin
   FPairColors.Checked := ASettings.PairColors;
   FInactiveDim.Checked := ASettings.InactiveDim;
   FInlayHints.Checked := ASettings.InlayHints;
+  FNotes.Checked := ASettings.Notes;
   FCodeLensTestUnit.Checked := ASettings.CodeLensTestUnit;
   FPairGuides.Checked := ASettings.PairGuides;
   FPairOwners.Checked := ASettings.PairOwners;
@@ -1597,6 +1602,7 @@ begin
   ASettings.PairColors := FPairColors.Checked;
   ASettings.InactiveDim := FInactiveDim.Checked;
   ASettings.InlayHints := FInlayHints.Checked;
+  ASettings.Notes := FNotes.Checked;
   ASettings.CodeLensTestUnit := FCodeLensTestUnit.Checked;
   ASettings.PairGuides := FPairGuides.Checked;
   ASettings.PairOwners := FPairOwners.Checked;

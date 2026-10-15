@@ -22,6 +22,8 @@
 // qualifizierter Name (#399) gehen an TAtlasIdeEditorCommands.
 // Letzte Atlas-Änderung zurücknehmen bzw. wiederherstellen und die Liste
 // „Atlas-Änderungen“ (#721) gehen an TAtlasIdeUndo.
+// Persönliche Notizen (#545) gehen an TAtlasIdeNotes; sichtbar nur bei
+// eingeschalteter Einstellung „Notizen“.
 // Das Atlas-Symbol (#751) steht am Menü und an den Einträgen für Einstellungen
 // und Optionen; UpdateImage wählt nach einem Themenwechsel die passende Variante.
 // Willkommensseite (#753): „Atlas-Start“ (auch unter Ansicht), „Atlas-Layout
@@ -66,11 +68,13 @@ type
     FWelcome: array[TAtlasWelcomeCommand] of TMenuItem;
     FWelcomeLine: TMenuItem;
     FViewStart: TMenuItem;
+    FNoteItems: TArray<TMenuItem>;
     procedure WelcomeClick(Sender: TObject);
     procedure RenameClick(Sender: TObject);
     procedure ResultsClick(Sender: TObject);
     procedure EditorClick(Sender: TObject);
     procedure UndoClick(Sender: TObject);
+    procedure NotesClick(Sender: TObject);
     function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
     procedure EnableAllClick(Sender: TObject);
     procedure TimerTick(Sender: TObject);
@@ -119,6 +123,7 @@ uses
   Atlas.IDE.Diagnostics.Export,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Undo.Changes,
+  Atlas.IDE.Notes.Service,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Commands.KeyMap,
@@ -138,6 +143,7 @@ const
   ResultsIds: array[0..7] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
     'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow');
   UndoIds: array[0..2] of string = ('Atlas.UndoChange', 'Atlas.RedoChange', 'Atlas.ChangeList');
+  NoteIds: array[0..2] of string = ('Atlas.NoteAdd', 'Atlas.NoteDelete', 'Atlas.NoteList');
   WelcomeIds: array[TAtlasWelcomeCommand] of string = ('Atlas.WelcomeStart', 'Atlas.WelcomeApply',
     'Atlas.WelcomeReset');
   // Name des Menüs „Tools“ in der IDE; Atlas steht dahinter, sonst am Ende.
@@ -228,6 +234,12 @@ begin
   AddItem(TAtlasTextId.UndoMenu, 0, UndoClick);
   AddItem(TAtlasTextId.RedoMenu, 1, UndoClick);
   AddItem(TAtlasTextId.UndoListMenu, 2, UndoClick);
+  // Persönliche Notizen (#545); Tag wählt den Befehl in NotesClick.
+  FNoteItems := [NewLine];
+  FRoot.Add(FNoteItems[0]);
+  FNoteItems := FNoteItems + [AddItem(TAtlasTextId.NotesMenuAdd, 0, NotesClick)];
+  FNoteItems := FNoteItems + [AddItem(TAtlasTextId.NotesMenuDelete, 1, NotesClick)];
+  FNoteItems := FNoteItems + [AddItem(TAtlasTextId.NotesMenuList, 2, NotesClick)];
   FRoot.Add(NewLine);
   Item := TMenuItem.Create(FRoot);
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.MenuIndexStatus);
@@ -535,9 +547,14 @@ begin
 end;
 
 procedure TAtlasMainMenu.UpdateKeyMap;
+var
+  Item: TMenuItem;
 begin
   if FKeyMapItem <> nil then
     FKeyMapItem.Visible := TAtlasIdeSettings.Current.KeyOverview;
+  // Notizen (#545) nach ihrer Einstellung.
+  for Item in FNoteItems do
+    Item.Visible := TAtlasIdeSettings.Current.Notes;
 end;
 
 procedure TAtlasMainMenu.RenameClick(Sender: TObject);
@@ -625,6 +642,25 @@ begin
         1: TAtlasIdeUndo.RedoLast;
       else
         TAtlasIdeUndo.ShowList;
+      end;
+    end);
+end;
+
+procedure TAtlasMainMenu.NotesClick(Sender: TObject);
+var
+  Command: Integer;
+begin
+  Command := TMenuItem(Sender).Tag;
+  if (Command >= Low(NoteIds)) and (Command <= High(NoteIds)) then
+    TAtlasIdeShortcutTips.Invoked(NoteIds[Command]);
+  TAtlasGuard.Run(TAtlasFeature.Notes,
+    procedure
+    begin
+      case Command of
+        0: TAtlasIdeNotes.AddOrEdit;
+        1: TAtlasIdeNotes.DeleteAtLine;
+      else
+        TAtlasIdeNotes.ShowList;
       end;
     end);
 end;

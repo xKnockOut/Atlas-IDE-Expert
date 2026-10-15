@@ -11,6 +11,9 @@
 // ist leer, weil TCustomFrame.Create für abgeleitete Frames eine Ressource
 // verlangt; aufgebaut wird im Code. Die IDE-Schicht bettet den Frame in ein
 // andockbares Fenster ein. Vor dem Titel steht das Atlas-Symbol (#751).
+// Die Liste der persönlichen Notizen (#545) zeigt je Datei „Zeile: Titel“ und
+// verwaiste Notizen in einer Gruppe am Ende; Doppelklick oder Enter springt,
+// das Kontextmenü bearbeitet oder löscht die Notiz (Entf löscht ebenfalls).
 
 interface
 
@@ -28,7 +31,8 @@ uses
   Atlas.Core.Results.Model,
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol,
-  Atlas.Core.Undo.Contract;
+  Atlas.Core.Undo.Contract,
+  Atlas.Core.Notes.Store;
 
 type
   TAtlasResultsOpen = reference to procedure(const AFileName: string; ALine, ACharacter: Integer);
@@ -38,11 +42,13 @@ type
   TAtlasChangeSetAction = reference to procedure(ASetId: Integer);
   /// <summary>Unterschied eines Satzes zeigen; AFileName = '' für alle Dateien.</summary>
   TAtlasChangeDiff = reference to procedure(ASetId: Integer; const AFileName: string);
+  /// <summary>Notiz (#545) bearbeiten bzw. löschen.</summary>
+  TAtlasNoteAction = reference to procedure(const ANoteId: string);
 
   TAtlasResultsFrame = class(TFrame)
   private type
 {$SCOPEDENUMS ON}
-    TNodeKind = (Group, Entry, Hierarchy, Placeholder, ChangeSet, ChangeFile);
+    TNodeKind = (Group, Entry, Hierarchy, Placeholder, ChangeSet, ChangeFile, Note);
 {$SCOPEDENUMS OFF}
     TNodeData = record
       Kind: TNodeKind;
@@ -54,6 +60,8 @@ type
       /// <summary>Kennung des Satzes (#721) und sein Zustand.</summary>
       SetId: Integer;
       State: TAtlasChangeSetState;
+      /// <summary>Kennung der Notiz (#545).</summary>
+      NoteId: string;
     end;
   private
     FTitle: TLabel;
@@ -71,6 +79,11 @@ type
     FOnChangeUndo: TAtlasChangeSetAction;
     FOnChangeRedo: TAtlasChangeSetAction;
     FOnChangeDiff: TAtlasChangeDiff;
+    FNoteEditItem: TMenuItem;
+    FNoteDeleteItem: TMenuItem;
+    FShowsNotes: Boolean;
+    FOnNoteEdit: TAtlasNoteAction;
+    FOnNoteDelete: TAtlasNoteAction;
     function AddNode(AParent: TTreeNode; const AText: string; const AData: TNodeData): TTreeNode;
     function DataOf(ANode: TTreeNode): TNodeData;
     procedure AddHierarchy(AParent: TTreeNode; const AItems: TArray<TAtlasHierarchyItem>);
@@ -84,6 +97,8 @@ type
     procedure UndoClick(Sender: TObject);
     procedure RedoClick(Sender: TObject);
     procedure DiffClick(Sender: TObject);
+    procedure NoteEditClick(Sender: TObject);
+    procedure NoteDeleteClick(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -101,6 +116,19 @@ type
     procedure ShowSelectedDiff;
     procedure UndoSelected;
     procedure RedoSelected;
+    /// <summary>Notizen des Projekts (#545): je Datei eine Gruppe, verwaiste am Ende; alles aufgeklappt.</summary>
+    procedure ShowNotes(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>); overload;
+    /// <summary>Wie oben; ASelectId: diese Notiz wählen (nach Bearbeiten).</summary>
+    procedure ShowNotes(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>;
+      const ASelectId: string); overload;
+    /// <summary>Kennung der gewählten Notiz; '' ohne.</summary>
+    function SelectedNoteId: string;
+    procedure EditSelectedNote;
+    procedure DeleteSelectedNote;
+    /// <summary>Gruppe: "Kunde.pas (2)" bzw. "Verwaist (1)".</summary>
+    class function NoteGroupText(const AGroup: TAtlasNoteGroup): string; static;
+    /// <summary>Eintrag: "42: Titel" bzw. verwaist "Kunde.pas, Zeile 42: Titel".</summary>
+    class function NoteText(const ANote: TAtlasNote; AOrphaned: Boolean): string; static;
     /// <summary>Text einer Fundstelle: "12: Kunde.Laden;" bzw. mit Vorschau "alt  →  neu".</summary>
     class function EntryText(const AEntry: TAtlasResultEntry): string; static;
     /// <summary>Text eines Hierarchie-Eintrags: "Laden · TKunde  (Kunden.pas:12)".</summary>
@@ -115,6 +143,10 @@ type
     property OnChangeUndo: TAtlasChangeSetAction read FOnChangeUndo write FOnChangeUndo;
     property OnChangeRedo: TAtlasChangeSetAction read FOnChangeRedo write FOnChangeRedo;
     property OnChangeDiff: TAtlasChangeDiff read FOnChangeDiff write FOnChangeDiff;
+    /// <summary>Zeigt gerade die Liste der Notizen (#545).</summary>
+    property ShowsNotes: Boolean read FShowsNotes;
+    property OnNoteEdit: TAtlasNoteAction read FOnNoteEdit write FOnNoteEdit;
+    property OnNoteDelete: TAtlasNoteAction read FOnNoteDelete write FOnNoteDelete;
   end;
 
 implementation
@@ -179,6 +211,15 @@ begin
   FDiffItem.Caption := TAtlasStrings.Text(TAtlasTextId.UndoActionDiff);
   FDiffItem.OnClick := DiffClick;
   FMenu.Items.Add(FDiffItem);
+  // Notizen (#545).
+  FNoteEditItem := TMenuItem.Create(FMenu);
+  FNoteEditItem.Caption := TAtlasStrings.Text(TAtlasTextId.NotesEdit);
+  FNoteEditItem.OnClick := NoteEditClick;
+  FMenu.Items.Add(FNoteEditItem);
+  FNoteDeleteItem := TMenuItem.Create(FMenu);
+  FNoteDeleteItem.Caption := TAtlasStrings.Text(TAtlasTextId.NotesDelete);
+  FNoteDeleteItem.OnClick := NoteDeleteClick;
+  FMenu.Items.Add(FNoteDeleteItem);
   FTree.PopupMenu := FMenu;
 end;
 
@@ -227,6 +268,7 @@ end;
 procedure TAtlasResultsFrame.Clear(const ATitle: string);
 begin
   FShowsChanges := False;
+  FShowsNotes := False;
   FTitle.Caption := ATitle;
   FTree.Items.BeginUpdate;
   try
@@ -403,6 +445,106 @@ begin
   FUndoItem.Enabled := (Data.SetId > 0) and (Data.State <> TAtlasChangeSetState.Undone);
   FRedoItem.Enabled := (Data.SetId > 0) and (Data.State <> TAtlasChangeSetState.Applied);
   FDiffItem.Enabled := Data.SetId > 0;
+  FNoteEditItem.Visible := FShowsNotes;
+  FNoteDeleteItem.Visible := FShowsNotes;
+  FNoteEditItem.Enabled := SelectedNoteId <> '';
+  FNoteDeleteItem.Enabled := SelectedNoteId <> '';
+end;
+
+class function TAtlasResultsFrame.NoteGroupText(const AGroup: TAtlasNoteGroup): string;
+begin
+  if AGroup.Orphaned then
+    Result := Format(TAtlasStrings.Text(TAtlasTextId.NotesOrphanGroup), [Length(AGroup.Notes)])
+  else
+    Result := Format('%s (%d)', [ExtractFileName(AGroup.FileName), Length(AGroup.Notes)]);
+end;
+
+class function TAtlasResultsFrame.NoteText(const ANote: TAtlasNote; AOrphaned: Boolean): string;
+begin
+  if AOrphaned then
+    Result := Format(TAtlasStrings.Text(TAtlasTextId.NotesOrphanEntry), [ExtractFileName(ANote.FileName),
+      ANote.Line + 1, ANote.Title])
+  else
+    Result := Format('%d: %s', [ANote.Line + 1, ANote.Title]);
+end;
+
+procedure TAtlasResultsFrame.ShowNotes(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>);
+begin
+  ShowNotes(ATitle, AGroups, '');
+end;
+
+procedure TAtlasResultsFrame.ShowNotes(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>;
+  const ASelectId: string);
+var
+  Group: TAtlasNoteGroup;
+  Note: TAtlasNote;
+  Data: TNodeData;
+  GroupNode, Node, Selected: TTreeNode;
+begin
+  Clear(ATitle);
+  FShowsNotes := True;
+  Selected := nil;
+  FTree.Items.BeginUpdate;
+  try
+    for Group in AGroups do
+    begin
+      Data := Default(TNodeData);
+      Data.Kind := TNodeKind.Group;
+      Data.FileName := Group.FileName;
+      GroupNode := AddNode(nil, NoteGroupText(Group), Data);
+      for Note in Group.Notes do
+      begin
+        Data := Default(TNodeData);
+        Data.Kind := TNodeKind.Note;
+        Data.FileName := Note.FileName;
+        Data.Line := Note.Line;
+        Data.NoteId := Note.Id;
+        Node := AddNode(GroupNode, NoteText(Note, Group.Orphaned), Data);
+        if (ASelectId <> '') and (Note.Id = ASelectId) then
+          Selected := Node;
+      end;
+      GroupNode.Expand(False);
+    end;
+  finally
+    FTree.Items.EndUpdate;
+  end;
+  if Selected <> nil then
+    FTree.Selected := Selected
+  else if FTree.Items.Count > 0 then
+    FTree.Selected := FTree.Items[0];
+end;
+
+function TAtlasResultsFrame.SelectedNoteId: string;
+begin
+  Result := DataOf(FTree.Selected).NoteId;
+end;
+
+procedure TAtlasResultsFrame.EditSelectedNote;
+var
+  Id: string;
+begin
+  Id := SelectedNoteId;
+  if (Id <> '') and Assigned(FOnNoteEdit) then
+    FOnNoteEdit(Id);
+end;
+
+procedure TAtlasResultsFrame.DeleteSelectedNote;
+var
+  Id: string;
+begin
+  Id := SelectedNoteId;
+  if (Id <> '') and Assigned(FOnNoteDelete) then
+    FOnNoteDelete(Id);
+end;
+
+procedure TAtlasResultsFrame.NoteEditClick(Sender: TObject);
+begin
+  EditSelectedNote;
+end;
+
+procedure TAtlasResultsFrame.NoteDeleteClick(Sender: TObject);
+begin
+  DeleteSelectedNote;
 end;
 
 procedure TAtlasResultsFrame.ShowSelectedDiff;
@@ -458,7 +600,9 @@ begin
     ShowSelectedDiff;
     Exit;
   end;
-  if (Data.Kind in [TNodeKind.Entry, TNodeKind.Hierarchy]) and (Data.FileName <> '') and Assigned(FOnOpen) then
+  // Notizen (#545) springen zu ihrer Zeile, verwaiste zur zuletzt bekannten.
+  if (Data.Kind in [TNodeKind.Entry, TNodeKind.Hierarchy, TNodeKind.Note]) and (Data.FileName <> '') and
+    Assigned(FOnOpen) then
     FOnOpen(Data.FileName, Data.Line, Data.Character);
 end;
 
@@ -472,6 +616,11 @@ begin
   if Key = VK_RETURN then
   begin
     OpenSelected;
+    Key := 0;
+  end
+  else if (Key = VK_DELETE) and FShowsNotes then
+  begin
+    DeleteSelectedNote;
     Key := 0;
   end;
 end;

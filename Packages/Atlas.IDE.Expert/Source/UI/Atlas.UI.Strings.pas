@@ -307,7 +307,11 @@ type
     FavoritePinned, FavoriteUnpinned, FavoritesFull, FavoriteNotAllowed, SettingsFavorites,
     SettingsFavoritesTitle, SettingsFavoritesRemove, SettingsFavoritesRemoveAll, SettingsFavoritesNone,
     AccessFavorite,
-    KeyMapUnitSearchIde);
+    KeyMapUnitSearchIde,
+    NotesMenuAdd, NotesMenuDelete, NotesMenuList, NotesDialogTitle, NotesDialogHint, NotesDialogSave,
+    NotesDialogCancel, NotesDialogDelete, NotesListTitle, NotesOrphanGroup, NotesOrphanEntry, NotesEdit,
+    NotesDelete, NotesDeleteConfirm, NotesTipTitle, NotesTipMore, NotesDisabled, NotesNoEditor, NotesNoProject,
+    NotesNone, NotesSaveFailed, SettingsNotes);
 
   TAtlasStrings = class
   private class var
@@ -904,7 +908,16 @@ const
      'Dieser Eintrag lässt sich nicht anheften', 'Favoriten anheften (Strg+D oder Stern in der Liste)',
      'Angeheftete Favoriten (höchstens 5 je Typ)', 'Entfernen', 'Alle entfernen', 'Keine Favoriten angeheftet.',
      'angeheftet',
-     'Units suchen über Strg+F12 (statt IDE-Dialog)'),
+     'Units suchen über Strg+F12 (statt IDE-Dialog)',
+     'Notiz an dieser Zeile…', 'Notiz an dieser Zeile löschen', 'Notizen des Projekts', 'Notiz – %s, Zeile %d',
+     'Nur für Sie: Die Notiz steht nicht im Quelltext und in keinem Commit. Strg+Enter speichert.', 'Speichern',
+     'Abbrechen', 'Löschen', 'Notizen in %s: %d, davon %d verwaist', 'Verwaist (%d)', '%s, Zeile %d: %s',
+     'Notiz bearbeiten…', 'Notiz löschen', 'Notiz „%s“ löschen?', 'Notiz vom %s', '%d Notizen an dieser Zeile',
+     'Persönliche Notizen sind ausgeschaltet (Tools › Optionen › Atlas, Reiter Editor).',
+     'Für eine Notiz zuerst eine Datei im Editor öffnen.',
+     'Notizen gehören zu einem Projekt; bitte zuerst ein Projekt öffnen.', 'An dieser Zeile steht keine Notiz.',
+     'Notizen konnten nicht gespeichert werden.',
+     'Persönliche Notizen an Codezeilen (Symbol in der Rinne, nicht im Quelltext)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1468,7 +1481,15 @@ const
      '%s pinned · Ctrl+D unpins', '%s unpinned', 'Already %d favorites for %s – unpin one first',
      'This entry cannot be pinned', 'Pin favorites (Ctrl+D or star in the list)',
      'Pinned favorites (at most 5 per type)', 'Remove', 'Remove all', 'No pinned favorites.', 'pinned',
-     'Search units via Ctrl+F12 (instead of IDE dialog)'));
+     'Search units via Ctrl+F12 (instead of IDE dialog)',
+     'Note on this line…', 'Delete note on this line', 'Project notes', 'Note – %s, line %d',
+     'Only for you: the note is not part of the source and never committed. Ctrl+Enter saves.', 'Save', 'Cancel',
+     'Delete', 'Notes in %s: %d, %d of them orphaned', 'Orphaned (%d)', '%s, line %d: %s', 'Edit note…',
+     'Delete note', 'Delete note “%s”?', 'Note from %s', '%d notes on this line',
+     'Personal notes are switched off (Tools › Options › Atlas, Editor tab).',
+     'Open a file in the editor first to add a note.', 'Notes belong to a project; please open a project first.',
+     'There is no note on this line.', 'Notes could not be saved.',
+     'Personal notes on code lines (gutter icon, not in the source)'));
 
 { TAtlasStrings }
 
