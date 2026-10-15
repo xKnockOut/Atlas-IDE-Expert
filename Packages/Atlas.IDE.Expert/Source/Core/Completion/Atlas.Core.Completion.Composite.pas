@@ -9,6 +9,10 @@
 // Standard 200 ms) und über die Sicherung je Quelle. Wirft eine Quelle, hängt
 // sie oder ist sie abgeschaltet, gilt ihr Teil als fertig; die übrigen Quellen
 // liefern weiter. Nach 3 Fehlern in 5 Minuten fällt nur diese Quelle aus.
+// Diagnosemodus (#479): Ist die Messung an, meldet jede Teilsenke beim ersten
+// Complete Name, Dauer seit ihrem Query und Zahl ihrer Einträge an
+// TAtlasQueryTimings (auch bei Fehler oder Zeitlimit); aus nimmt sie keinen
+// Zeitstempel.
 
 interface
 
@@ -43,8 +47,13 @@ type
       FState: TQueryState;
       FStateRef: IInterface;
       FDone: Integer;
+      // Diagnosemodus (#479): Name der Quelle, Abfrage (0 = keine Messung), Beginn und Zahl der Einträge.
+      FName: string;
+      FTimingId: Integer;
+      FStarted: Int64;
+      FCount: Integer;
     public
-      constructor Create(AState: TQueryState);
+      constructor Create(AState: TQueryState; const AName: string; ATimingId: Integer);
       procedure AddItems(const AItems: TAtlasCompletionItems);
       procedure MarkIncomplete;
       procedure Complete;
@@ -75,6 +84,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Core.Diagnostics.Timing;
 
 function TimeLimitOf(ALimitMs: Integer): Integer;
 begin
@@ -151,17 +163,26 @@ end;
 
 { TAtlasCompletionProviders.TPartSink }
 
-constructor TAtlasCompletionProviders.TPartSink.Create(AState: TQueryState);
+constructor TAtlasCompletionProviders.TPartSink.Create(AState: TQueryState; const AName: string;
+  ATimingId: Integer);
 begin
   inherited Create;
   FState := AState;
   FStateRef := AState;
+  FName := AName;
+  FTimingId := ATimingId;
+  if FTimingId > 0 then
+    FStarted := TAtlasQueryTimings.Stamp;
 end;
 
 procedure TAtlasCompletionProviders.TPartSink.AddItems(const AItems: TAtlasCompletionItems);
 begin
   if TInterlocked.CompareExchange(FDone, 0, 0) = 0 then
+  begin
+    if FTimingId > 0 then
+      TInterlocked.Add(FCount, Length(AItems));
     FState.Add(AItems);
+  end;
 end;
 
 procedure TAtlasCompletionProviders.TPartSink.MarkIncomplete;
@@ -171,9 +192,17 @@ begin
 end;
 
 procedure TAtlasCompletionProviders.TPartSink.Complete;
+var
+  Timings: TAtlasQueryTimings;
 begin
-  if TInterlocked.Exchange(FDone, 1) = 0 then
-    FState.PartDone;
+  if TInterlocked.Exchange(FDone, 1) <> 0 then
+    Exit;
+  // Vor PartDone: Das Popup soll die Zeit der Quelle schon kennen, wenn die Liste fertig ist.
+  Timings := TAtlasQueryTimings.Shared;
+  if (FTimingId > 0) and TAtlasQueryTimings.Enabled and (Timings <> nil) then
+    Timings.ProviderDone(FTimingId, FName, TAtlasQueryTimings.MsSince(FStarted),
+      TInterlocked.CompareExchange(FCount, 0, 0));
+  FState.PartDone;
 end;
 
 { TAtlasCompletionProviders }
@@ -260,8 +289,13 @@ var
   StateRef: IInterface;
   Entry: TEntry;
   Part: IAtlasCompletionSink;
+  TimingId: Integer;
 begin
   Cancel;
+  // Diagnosemodus (#479): Zeiten gehören zur laufenden Abfrage; aus wird nichts gemessen.
+  TimingId := 0;
+  if TAtlasQueryTimings.Enabled and (TAtlasQueryTimings.Shared <> nil) then
+    TimingId := TAtlasQueryTimings.Shared.Current;
   FLock.Enter;
   try
     Providers := FProviders;
@@ -280,7 +314,7 @@ begin
   for Entry in Providers do
   begin
     // Nicht direkt an den const-Parameter übergeben, sonst zählt niemand die Referenz.
-    Part := TPartSink.Create(State);
+    Part := TPartSink.Create(State, Entry.Name, TimingId);
     QueryOne(Entry, AContext, Part);
   end;
 end;

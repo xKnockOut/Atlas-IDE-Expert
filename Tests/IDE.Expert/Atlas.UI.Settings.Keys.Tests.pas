@@ -53,6 +53,9 @@ begin
     Page.LoadFrom(Settings);
     Assert.AreEqual(ShortCutToText($6048), Page.KeyEdit(2).Text);
     Assert.AreEqual('', Page.KeyEdit(3).Text, 'Parameter-Hint: Taste der IDE');
+    // Diagnosemodus (#479) als sechste Zeile mit eigener Vorgabe.
+    Assert.AreEqual(ShortCutToText($E044), Page.KeyEdit(5).Text);
+    Page.KeyEdit(5).Text := ShortCutToText($6044);
     // Neue Taste für die Befehlspalette eintippen.
     Page.KeyEdit(0).Text := ShortCutToText($6050);
     Saved := TAtlasPluginSettings.Defaults;
@@ -65,6 +68,7 @@ begin
   Assert.IsTrue(Saved.CheckKeyPriority);
   Assert.AreEqual($6050, Saved.PaletteKey);
   Assert.AreEqual(0, Saved.SignatureKey);
+  Assert.AreEqual($6044, Saved.DiagnosticModeKey);
 end;
 
 procedure TAtlasKeysPageTests.ShowsOwnerAndChoice;

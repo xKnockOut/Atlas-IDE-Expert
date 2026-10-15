@@ -230,6 +230,14 @@
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.SafeMode.pas"/>
         <DCCReference Include="Source\UI\Diagnostics\Atlas.UI.Diagnostics.SafeModeNotice.pas"/>
         <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.SafeMode.pas"/>
+        <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Timing.pas"/>
+        <DCCReference Include="Source\UI\Diagnostics\Atlas.UI.Diagnostics.TimingFrame.pas">
+            <Form>AtlasTimingFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.TimingWindow.pas"/>
+        <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.Timing.pas"/>
         <DCCReference Include="Source\Core\Undo\Atlas.Core.Undo.LinePatch.pas"/>
         <DCCReference Include="Source\Core\Undo\Atlas.Core.Undo.Contract.pas"/>
         <DCCReference Include="Source\Core\Undo\Atlas.Core.Undo.Journal.pas"/>

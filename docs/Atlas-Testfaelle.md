@@ -715,6 +715,28 @@ Vorbereitung: Git-Projekt `GitDemo` mit Remote `origin` (z. B. ein lokales Bare-
 | SY6 | *Tools › Optionen › Benutzeroberfläche › IDE-Stil* zwischen hell und dunkel wechseln | Menü, Statusfeld, Optionsseite und Ergebnisfenster wechseln ohne Neustart die Variante |
 | SY7 | Explorer: `AtlasServer.exe` und `AtlasSetup.exe`; „Apps und Features“ nach der Installation | Symbol bei beiden Dateien und beim Eintrag „Atlas“ |
 
+## Diagnosemodus (#479)
+
+Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert, ein Projekt mit einigen Units geöffnet, Server läuft.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DM1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasTimingTests`, `TAtlasCompletionTimingTests` und `TAtlasTimingFrameTests` grün |
+| DM2 | Frisch installiert: *Tools › Optionen › Atlas*, Seite *Allgemein* | Kontrollkästchen „Diagnosemodus …“ aus; kein Fenster „Atlas-Diagnose“, keine Zeile „Diagnosemodus“ im Statusfeld |
+| DM3 | Kontrollkästchen setzen, OK | Andockbares Fenster „Atlas-Diagnose“ öffnet (klein, lässt sich wie das Ergebnisfenster andocken); Hinweis „Noch keine Abfrage gemessen …“; gelbe Zeile „Diagnosemodus: an“ im Atlas-Statusfeld, Klick darauf zeigt das Fenster |
+| DM4 | Im Editor Strg+Leer, dann weitertippen | Titel „Letzte Abfrage: Bezeichner, Strg+Leer, <Uhrzeit>“; Zeilen Kontext, „Quelle: Server“, „Quelle: XMLDoc“ bzw. „Quelle: Code-Vorlagen“ (je Quelle mit Namen), Filtern und Sortieren, Zeichnen, Bis zur Liste, Einträge; Spalten Letzte, Mittel (n), Maximum, Budget (8, 50, 12, 10, 50 ms) |
+| DM5 | Server mit künstlicher Verzögerung (Index neu aufbauen lassen und sofort Strg+Leer; oder `ProviderTimeLimitMs` hoch und den Server im Debugger anhalten) | Zeit der Quelle „Server“ fett in Warnfarbe auf abgesetzter Fläche; Popup trotzdem mit den übrigen Einträgen |
+| DM6 | 60 Mal die Vervollständigung öffnen | Spaltenkopf „Mittel (50)“; Mittelwert und Maximum über höchstens 50 Abfragen |
+| DM7 | „Bericht kopieren“, in einen Editor einfügen | Atlas-, IDE-Version und Plattform, Budgets, Tabelle, Abfragen (neueste zuerst), Einstellungen; kein Quelltext, keine Präfixe, kein Dateiname; Serverpfad als `<pfad>`, Benutzername als `<benutzer>`; Hinweis „Bericht in der Zwischenablage (ohne Quelltext).“ |
+| DM8 | „Dateinamen in den Bericht“ anhaken, erneut kopieren | Wie DM7, zusätzlich der Dateiname (ohne Ordner) je Abfrage |
+| DM9 | Strg+Alt+Umschalt+D | Diagnosemodus aus: Fenster zu, Statuszeile weg, Optionsseite zeigt aus; erneut: wieder an. Strg+Alt+Umschalt+A öffnet weiterhin die Schnellschalter, die dort auch „Diagnosemodus“ (Seite Allgemein) zeigen |
+| DM10 | Befehlspalette „Atlas: Diagnosemodus ein/aus“ und „Atlas: Diagnosefenster zeigen“ | Schalten bzw. zeigen das Fenster (bei ausgeschaltetem Modus schaltet „zeigen“ ihn ein) |
+| DM11 | Seite *Tastenkonflikte* | Zeile „Diagnosemodus ein/aus“ mit Strg+Umschalt+Alt+D; andere Taste eintragen wirkt nach OK sofort |
+| DM12 | Diagnosemodus aus, 30 Mal Vervollständigung | Verhalten wie ohne die Funktion; im Wächter- bzw. Profiler-Protokoll keine zusätzliche Zeit; `%LOCALAPPDATA%\Atlas\Logs\Diagnose\atlas-diagnosemodus.txt` unverändert |
+| DM13 | Diagnosemodus an, einige Abfragen, dann aus (oder IDE schließen) | `atlas-diagnosemodus.txt` enthält den Bericht ohne Dateinamen; während der Modus an ist, höchstens alle 30 s aktualisiert |
+| DM14 | Dunkles und helles Thema, 150 % Skalierung | Tabelle lesbar, Warnfarbe deutlich, nichts abgeschnitten; Themenwechsel ohne Neustart |
+| DM15 | Diagnosemodus an, IDE neu starten | Fenster öffnet nach dem Laden wieder, Statuszeile gelb |
+
 ## Versionsverwaltung (#571)
 
 Vorbereitung: Git für Windows und TortoiseSVN mit Kommandozeilenwerkzeugen (`svn.exe`, `svnadmin.exe`) installiert. Die Schnittstelle hat noch keine sichtbaren Nutzer in der IDE (folgen mit #592, #762, #755, #764, #765); geprüft wird über die Tests, den Einstellungsdialog und die Kommandozeile.

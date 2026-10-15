@@ -184,7 +184,12 @@ type
     WelcomeUnsavedQueryFailed, WelcomeUnsavedChangesTitle, WelcomeUnsavedStashTitle, WelcomeUnsavedKindModified,
     WelcomeUnsavedKindAdded, WelcomeUnsavedKindDeleted, WelcomeUnsavedKindRenamed, WelcomeUnsavedKindConflicted,
     WelcomeUnsavedKindUntracked, WelcomeUnsavedInStash, SettingsWelcomeUnsaved, SettingsWelcomeUnsavedMinAge,
-    SettingsWelcomeUnsavedWarn, SettingsWelcomeUnsavedAlert, SettingsWelcomeUnsavedHideClean);
+    SettingsWelcomeUnsavedWarn, SettingsWelcomeUnsavedAlert, SettingsWelcomeUnsavedHideClean,
+    SettingsDiagnosticMode, SettingsDiagnosticModeKey, DiagnosticCaption, DiagnosticColumnStep,
+    DiagnosticColumnLast, DiagnosticColumnMean, DiagnosticColumnMax, DiagnosticColumnBudget,
+    DiagnosticRowContext, DiagnosticRowProvider, DiagnosticRowFilter, DiagnosticRowDraw, DiagnosticRowFirst,
+    DiagnosticRowEntries, DiagnosticLastQuery, DiagnosticNoQuery, DiagnosticLegend, DiagnosticFileNames,
+    DiagnosticCopy, DiagnosticCopied, DiagnosticStatusLine, DiagnosticStatusSummary, DiagnosticPaletteShow);
 
   TAtlasStrings = class
   private class var
@@ -613,7 +618,14 @@ const
      'Stashes in %s (%d Dateien)', 'geändert', 'neu', 'gelöscht', 'umbenannt', 'Konflikt', 'neu, unversioniert',
      'Stash „%s“: %s', 'Bereich „Nicht gesichert“ (Änderungen, Commits und Stashes aller Projekte)',
      'Nicht Gesichertes erst ab Stunden zeigen (0–8760):', 'Gelb ab Stunden:', 'Rot ab Stunden:',
-     'Bereich ausblenden, wenn alles gesichert ist'),
+     'Bereich ausblenden, wenn alles gesichert ist',
+     'Diagnosemodus: Diagnosefenster mit Zeitmessung je Abfrage', 'Diagnosemodus ein/aus', 'Atlas-Diagnose',
+     'Schritt', 'Letzte', 'Mittel (%d)', 'Maximum', 'Budget', 'Kontext', 'Quelle: %s', 'Filtern und Sortieren',
+     'Zeichnen', 'Bis zur Liste', 'Einträge', 'Letzte Abfrage: %s, %s',
+     'Noch keine Abfrage gemessen. Öffnen Sie die Vervollständigung im Editor.',
+     'Werte in ms; Warnfarbe = über dem Zeitbudget', 'Dateinamen in den Bericht', 'Bericht kopieren',
+     'Bericht in der Zwischenablage (ohne Quelltext).', 'Diagnosemodus: an (Zeitmessung je Abfrage)', 'Diagnose',
+     'Atlas: Diagnosefenster zeigen'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1016,7 +1028,14 @@ const
      'modified', 'new', 'deleted', 'renamed', 'conflict', 'new, unversioned', 'Stash "%s": %s',
      '"Not saved" section (changes, commits and stashes of all projects)',
      'Show unsaved work only after hours (0–8760):', 'Yellow after hours:', 'Red after hours:',
-     'Hide the section when everything is saved'));
+     'Hide the section when everything is saved',
+     'Diagnostic mode: diagnostics window with timing per query', 'Diagnostic mode on/off', 'Atlas Diagnostics',
+     'Step', 'Last', 'Mean (%d)', 'Maximum', 'Budget', 'Context', 'Provider: %s', 'Filtering and sorting',
+     'Drawing', 'Until the list', 'Entries', 'Last query: %s, %s',
+     'No query measured yet. Open code completion in the editor.',
+     'Values in ms; warning colour = over the time budget', 'Include file names', 'Copy report',
+     'Report copied to the clipboard (no source code).', 'Diagnostic mode: on (timing per query)', 'Diagnostics',
+     'Atlas: Show diagnostics window'));
 
 { TAtlasStrings }
 

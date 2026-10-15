@@ -391,6 +391,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.SafeMode.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Diagnostics\Atlas.UI.Diagnostics.SafeModeNotice.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Diagnostics.SafeModeNotice.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Timing.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.Timing.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Diagnostics\Atlas.UI.Diagnostics.TimingFrame.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Diagnostics.TimingFrame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Undo\Atlas.Core.Undo.LinePatch.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Undo\Atlas.Core.Undo.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Undo\Atlas.Core.Undo.Journal.pas"/>

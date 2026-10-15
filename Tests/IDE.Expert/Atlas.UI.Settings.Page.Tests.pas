@@ -280,7 +280,7 @@ var
   Page: TAtlasSettingsPage;
   Settings, Saved: TAtlasPluginSettings;
 begin
-  // #591: Feld an/aus, Kurztext, ausgeblendete Zeilen.
+  // #591: Feld an/aus, Kurztext, ausgeblendete Zeilen; #479: Diagnosemodus auf derselben Seite.
   Settings := TAtlasPluginSettings.Defaults;
   Settings.StatusField := False;
   Settings.StatusFieldSummary := False;
@@ -291,11 +291,14 @@ begin
     Assert.IsFalse(Page.StatusField.Checked);
     Assert.IsFalse(Page.StatusSummary.Checked);
     Assert.AreEqual('atlas.file', Page.StatusHidden.Text);
+    Assert.IsFalse(Page.DiagnosticMode.Checked, 'Diagnosemodus standardmäßig aus');
+    Page.DiagnosticMode.Checked := True;
     Page.StatusField.Checked := True;
     Page.StatusHidden.Text := ' atlas.file, atlas.index ';
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsTrue(Saved.StatusField);
+    Assert.IsTrue(Saved.DiagnosticMode);
     Assert.IsFalse(Saved.StatusFieldSummary);
     Assert.AreEqual('atlas.file, atlas.index', Saved.StatusFieldHidden);
   finally
