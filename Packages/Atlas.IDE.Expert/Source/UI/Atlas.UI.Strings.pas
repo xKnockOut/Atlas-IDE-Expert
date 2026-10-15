@@ -344,7 +344,13 @@ type
     TodoListNoMatch,
     SettingsBaselineUpdate, BaselineUpdateCommand, BaselineUpdateNoProject, BaselineUpdateFailed,
     BaselineUpdateRunning, BaselineUpdateBusy, BaselineUpdateDone, BaselineUpdateCompleted,
-    BaselineUpdateOrphans, BaselineUpdateOrphanLine, BaselineUpdateOrphansMore, BaselineUpdateConfirm);
+    BaselineUpdateOrphans, BaselineUpdateOrphanLine, BaselineUpdateOrphansMore, BaselineUpdateConfirm,
+    WelcomeTrendsTitle, WelcomeTrendsHeading, WelcomeTrendsNoProject, WelcomeTrendsNoPoints,
+    WelcomeTrendsNoSeries, WelcomeTrendsWarnings, WelcomeTrendsRuleHits, WelcomeTrendsTodos,
+    WelcomeTrendsDuration, WelcomeTrendsMethodLength, WelcomeTrendsSeconds, WelcomeTrendsLines,
+    WelcomeTrendsPrevious, WelcomeTrendsNoValue, WelcomeTrendsClickHint, WelcomeTrendsBuild,
+    WelcomeTrendsTileHint, WelcomeProjectsHintSelect, WelcomeProjectsOpen, SettingsWelcomeTrends,
+    SettingsWelcomeTrendsPoints, SettingsWelcomeTrendsSeries, BaselineUpdateElsewhere);
 
   TAtlasStrings = class
   private class var
@@ -1013,7 +1019,21 @@ const
      'Baseline: %d Einträge ohne Datei entfernt (umbenannt, verschoben oder gelöscht):', '  %s (%d Treffer)',
      '  … und %d weitere',
      'Die Baseline enthält %d Einträge ohne Datei (umbenannt, verschoben oder gelöscht):%sBeim Aktualisieren ' +
-     'fallen sie heraus; die Treffer unter dem neuen Pfad nimmt die Baseline neu auf. Jetzt aktualisieren?'),
+     'fallen sie heraus; die Treffer unter dem neuen Pfad nimmt die Baseline neu auf. Jetzt aktualisieren?',
+     'Projektverlauf', '%s · letzte %d Builds',
+     'Noch kein Projekt. Nach dem ersten Build erscheint hier der Verlauf.',
+     '%s: noch keine Builds aufgezeichnet. Nach dem nächsten Build erscheint hier der Verlauf.',
+     'Keine Reihe gewählt (Tools › Optionen › Atlas › Willkommensseite).', 'Warnungen + Hinweise',
+     'Regeltreffer seit Baseline', 'Offene TODOs', 'Build-Dauer', 'Mittl. Methodenlänge', 's', 'Zeilen',
+     'vorher %s', 'kein Wert', 'Auf einen Punkt klicken, um den Build zu sehen.', 'Build %d',
+     '%s: Wert je Build, Lücke = beim Build nicht bekannt. Klick auf einen Punkt zeigt den Build.',
+     'Klick wählt das Projekt für den Projektverlauf, Doppelklick öffnet es; Klick auf eine rote Marke springt ' +
+     'zur ersten Meldung.',
+     'Öffnen', 'Bereich „Projektverlauf“ mit Linien über die letzten Builds',
+     'Gespeicherte Builds je Projekt (2–100):', 'Reihe im Projektverlauf: %s',
+     'Atlas: Der Server hat die Baseline in %0:s geschrieben, nicht im Projektordner %1:s (das Projekt ist dort ' +
+     'wohl noch nicht als Arbeitsbereich bekannt). Projektverlauf und Einrichtung lesen die Baseline im ' +
+     'Projektordner; bitte nach dem nächsten Build erneut aktualisieren.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1642,7 +1662,20 @@ const
      'Baseline: removed %d entries without a file (renamed, moved or deleted):', '  %s (%d findings)',
      '  … and %d more',
      'The baseline contains %d entries without a file (renamed, moved or deleted):%sUpdating removes them; ' +
-     'findings under the new path are added again. Update now?'));
+     'findings under the new path are added again. Update now?',
+     'Project history', '%s · last %d builds', 'No project yet. The history appears here after the first build.',
+     '%s: no builds recorded yet. The history appears here after the next build.',
+     'No series selected (Tools › Options › Atlas › Welcome page).', 'Warnings + hints',
+     'Rule hits since baseline', 'Open TODOs', 'Build time', 'Avg. method length', 's', 'lines', 'before %s',
+     'no value', 'Click a point to see its build.', 'Build %d',
+     '%s: value per build, gap = unknown at build time. Click a point to see the build.',
+     'Click selects the project for the project history, double-click opens it; click a red badge to jump to ' +
+     'the first message.',
+     'Open', '"Project history" section with lines over the last builds', 'Stored builds per project (2–100):',
+     'Series in project history: %s',
+     'Atlas: The server wrote the baseline to %0:s, not to the project folder %1:s (it probably does not know ' +
+     'the project as a workspace yet). Project history and setup read the baseline in the project folder; please ' +
+     'update again after the next build.'));
 
 { TAtlasStrings }
 

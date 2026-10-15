@@ -34,6 +34,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Projects.Summary,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Diagnostics.Guard,
@@ -220,6 +221,9 @@ type
     FWelcomeProjects: TCheckBox;
     FWelcomeMaxProjects: TEdit;
     FWelcomeRefreshVcs: TCheckBox;
+    FWelcomeTrends: TCheckBox;
+    FWelcomeTrendsPoints: TEdit;
+    FWelcomeTrendsSeries: array[TAtlasTrendSeries] of TCheckBox;
     FWelcomeUnsaved: TCheckBox;
     FWelcomeUnsavedMinAge: TEdit;
     FWelcomeUnsavedWarn: TEdit;
@@ -377,6 +381,10 @@ type
     property WelcomeProjects: TCheckBox read FWelcomeProjects;
     property WelcomeMaxProjects: TEdit read FWelcomeMaxProjects;
     property WelcomeRefreshVcs: TCheckBox read FWelcomeRefreshVcs;
+    /// <summary>Zum Testen: Bereich „Projektverlauf“ (#758).</summary>
+    property WelcomeTrends: TCheckBox read FWelcomeTrends;
+    property WelcomeTrendsPoints: TEdit read FWelcomeTrendsPoints;
+    function WelcomeTrendsSeries(ASeries: TAtlasTrendSeries): TCheckBox;
     property WelcomeUnsaved: TCheckBox read FWelcomeUnsaved;
     property WelcomeUnsavedMinAge: TEdit read FWelcomeUnsavedMinAge;
     property WelcomeUnsavedWarn: TEdit read FWelcomeUnsavedWarn;
@@ -445,7 +453,25 @@ uses
   Atlas.Core.Updates.Check,
   Atlas.Core.Undo.Contract,
   Atlas.Core.Welcome.WhatsNew,
+  Atlas.Core.Welcome.Trends,
   Atlas.Core.Commands.ShortcutTips;
+
+/// <summary>Bezeichnung einer Reihe des Projektverlaufs (#758) wie auf ihrer Kachel.</summary>
+function TrendSeriesTitle(ASeries: TAtlasTrendSeries): string;
+begin
+  case ASeries of
+    TAtlasTrendSeries.Warnings:
+      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsWarnings);
+    TAtlasTrendSeries.RuleHits:
+      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsRuleHits);
+    TAtlasTrendSeries.Todos:
+      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsTodos);
+    TAtlasTrendSeries.Duration:
+      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsDuration);
+  else
+    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsMethodLength);
+  end;
+end;
 
 { TAtlasChoiceBox }
 
@@ -534,6 +560,7 @@ var
   Panel: TWinControl;
   Title: TLabel;
   Button: TButton;
+  Series: TAtlasTrendSeries;
 begin
   inherited Create(AOwner);
   Name := 'AtlasSettingsPage';
@@ -837,6 +864,12 @@ begin
   FWelcomeProjects := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeProjects));
   FWelcomeMaxProjects := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeMaxProjects));
   FWelcomeRefreshVcs := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeRefreshVcs));
+  // Bereich „Projektverlauf“ (#758): Schalter, Anzahl der Builds und je Reihe ein Kontrollkästchen.
+  FWelcomeTrends := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTrends));
+  FWelcomeTrendsPoints := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTrendsPoints));
+  for Series := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
+    FWelcomeTrendsSeries[Series] := AddCheck(TAtlasStrings.Fmt(TAtlasTextId.SettingsWelcomeTrendsSeries,
+      [TrendSeriesTitle(Series)]));
   // Bereich „Nicht gesichert“ (#762).
   FWelcomeUnsaved := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsaved));
   FWelcomeUnsavedMinAge := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsavedMinAge));
@@ -1450,7 +1483,15 @@ begin
   Result.NumbersOnly := True;
 end;
 
+function TAtlasSettingsPage.WelcomeTrendsSeries(ASeries: TAtlasTrendSeries): TCheckBox;
+begin
+  Result := FWelcomeTrendsSeries[ASeries];
+end;
+
 procedure TAtlasSettingsPage.LoadFrom(const ASettings: TAtlasPluginSettings);
+var
+  Shown: TAtlasTrendSeriesList;
+  Series, Wanted: TAtlasTrendSeries;
 begin
   FWidths := ASettings;
   FEnabled.Checked := ASettings.Enabled;
@@ -1603,6 +1644,16 @@ begin
   FWelcomeProjects.Checked := ASettings.WelcomePageProjectStatus;
   FWelcomeMaxProjects.Text := IntToStr(ASettings.WelcomePageMaxProjects);
   FWelcomeRefreshVcs.Checked := ASettings.WelcomePageRefreshVcs;
+  FWelcomeTrends.Checked := ASettings.WelcomePageTrends;
+  FWelcomeTrendsPoints.Text := IntToStr(ASettings.WelcomePageTrendsPoints);
+  Shown := TAtlasWelcomeTrends.ParseSeries(ASettings.WelcomePageTrendsSeries);
+  for Series := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
+  begin
+    FWelcomeTrendsSeries[Series].Checked := False;
+    for Wanted in Shown do
+      if Wanted = Series then
+        FWelcomeTrendsSeries[Series].Checked := True;
+  end;
   FWelcomeUnsaved.Checked := ASettings.WelcomePageUnsaved;
   FWelcomeUnsavedMinAge.Text := IntToStr(ASettings.WelcomePageUnsavedMinAgeHours);
   FWelcomeUnsavedWarn.Text := IntToStr(ASettings.WelcomePageUnsavedWarnHours);
@@ -1620,6 +1671,9 @@ begin
 end;
 
 procedure TAtlasSettingsPage.SaveTo(var ASettings: TAtlasPluginSettings);
+var
+  Shown: TAtlasTrendSeriesList;
+  Series: TAtlasTrendSeries;
 begin
   ASettings.Enabled := FEnabled.Checked;
   ASettings.ServerPath := Trim(FServerPath.Text);
@@ -1771,6 +1825,14 @@ begin
   ASettings.WelcomePageProjectStatus := FWelcomeProjects.Checked;
   ASettings.WelcomePageMaxProjects := StrToIntDef(Trim(FWelcomeMaxProjects.Text), ASettings.WelcomePageMaxProjects);
   ASettings.WelcomePageRefreshVcs := FWelcomeRefreshVcs.Checked;
+  ASettings.WelcomePageTrends := FWelcomeTrends.Checked;
+  ASettings.WelcomePageTrendsPoints := StrToIntDef(Trim(FWelcomeTrendsPoints.Text),
+    ASettings.WelcomePageTrendsPoints);
+  Shown := nil;
+  for Series := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
+    if FWelcomeTrendsSeries[Series].Checked then
+      Shown := Shown + [Series];
+  ASettings.WelcomePageTrendsSeries := TAtlasWelcomeTrends.SeriesText(Shown);
   ASettings.WelcomePageUnsaved := FWelcomeUnsaved.Checked;
   ASettings.WelcomePageUnsavedMinAgeHours := StrToIntDef(Trim(FWelcomeUnsavedMinAge.Text),
     ASettings.WelcomePageUnsavedMinAgeHours);

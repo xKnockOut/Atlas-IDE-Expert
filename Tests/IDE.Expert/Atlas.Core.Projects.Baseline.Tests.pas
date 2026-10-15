@@ -35,6 +35,9 @@ type
     procedure SectionAfterBuildKeepsLastUpdate;
     [Test]
     procedure SectionAfterUpdate;
+    /// <summary>Baseline nicht im Projektordner geschrieben (#758): Das Plugin erkennt es an der Antwort.</summary>
+    [Test]
+    procedure WrittenElsewhereComparesFolders;
   end;
 
 implementation
@@ -252,6 +255,19 @@ begin
   Assert.AreEqual(2, Section.Added);
   Assert.AreEqual(9, Section.Removed);
   Assert.AreEqual(0, Section.Orphaned);
+end;
+
+procedure TAtlasProjectBaselinesTests.WrittenElsewhereComparesFolders;
+begin
+  Assert.IsFalse(TAtlasProjectBaselines.WrittenElsewhere(Folder + '\Kasse.dproj', Folder + '\atlas-baseline.json'));
+  Assert.IsFalse(TAtlasProjectBaselines.WrittenElsewhere('c:\projekte\kasse\Kasse.dproj',
+    'C:/Projekte/Kasse/delphi-lsp-baseline.json'), 'Schreibweise egal');
+  Assert.IsTrue(TAtlasProjectBaselines.WrittenElsewhere(Folder + '\Kasse.dproj', 'C:\Projekte\atlas-baseline.json'),
+    'übergeordneter Arbeitsbereich');
+  Assert.IsTrue(TAtlasProjectBaselines.WrittenElsewhere(Folder + '\Kasse.dproj',
+    Folder + '\Sub\atlas-baseline.json'), 'Unterordner');
+  Assert.IsFalse(TAtlasProjectBaselines.WrittenElsewhere(Folder + '\Kasse.dproj', ''), 'ohne Angabe');
+  Assert.IsFalse(TAtlasProjectBaselines.WrittenElsewhere('', 'C:\B\atlas-baseline.json'));
 end;
 
 initialization

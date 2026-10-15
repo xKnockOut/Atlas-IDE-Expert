@@ -74,6 +74,7 @@ uses
   System.SysUtils,
   System.Classes,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Projects.Summary,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Completion.Snippets,
@@ -482,6 +483,11 @@ begin
     Assert.IsTrue(Page.WelcomeProjects.Checked);
     Assert.AreEqual('8', Page.WelcomeMaxProjects.Text);
     Assert.IsTrue(Page.WelcomeRefreshVcs.Checked);
+    // #758: Projektverlauf mit 30 Builds und allen fünf Reihen.
+    Assert.IsTrue(Page.WelcomeTrends.Checked);
+    Assert.AreEqual('30', Page.WelcomeTrendsPoints.Text);
+    Assert.IsTrue(Page.WelcomeTrendsSeries(TAtlasTrendSeries.Warnings).Checked);
+    Assert.IsTrue(Page.WelcomeTrendsSeries(TAtlasTrendSeries.MethodLength).Checked);
     Assert.IsTrue(Page.WelcomeUnsaved.Checked);
     Assert.AreEqual('0', Page.WelcomeUnsavedMinAge.Text);
     Assert.AreEqual('24', Page.WelcomeUnsavedWarn.Text);
@@ -512,6 +518,10 @@ begin
     Page.WelcomeProjects.Checked := False;
     Page.WelcomeMaxProjects.Text := '99';
     Page.WelcomeRefreshVcs.Checked := False;
+    Page.WelcomeTrends.Checked := False;
+    Page.WelcomeTrendsPoints.Text := '500';
+    Page.WelcomeTrendsSeries(TAtlasTrendSeries.RuleHits).Checked := False;
+    Page.WelcomeTrendsSeries(TAtlasTrendSeries.Duration).Checked := False;
     Page.WelcomeUnsaved.Checked := False;
     Page.WelcomeUnsavedMinAge.Text := '2';
     Page.WelcomeUnsavedWarn.Text := '48';
@@ -546,6 +556,9 @@ begin
     Assert.IsFalse(Saved.WelcomePageProjectStatus);
     Assert.AreEqual(30, Saved.WelcomePageMaxProjects, 'auf 1–30 begrenzt');
     Assert.IsFalse(Saved.WelcomePageRefreshVcs);
+    Assert.IsFalse(Saved.WelcomePageTrends);
+    Assert.AreEqual(100, Saved.WelcomePageTrendsPoints, 'auf 2–100 begrenzt');
+    Assert.AreEqual('warnings,todos,methodLength', Saved.WelcomePageTrendsSeries);
     Assert.IsFalse(Saved.WelcomePageUnsaved);
     Assert.AreEqual(2, Saved.WelcomePageUnsavedMinAgeHours);
     Assert.AreEqual(48, Saved.WelcomePageUnsavedWarnHours);
@@ -556,6 +569,10 @@ begin
     Assert.IsFalse(Saved.WelcomePageDiscover);
     Assert.IsFalse(Saved.TipsUsageTracking);
     Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.WelcomeTrends.Checked);
+    Assert.AreEqual('100', Page.WelcomeTrendsPoints.Text);
+    Assert.IsFalse(Page.WelcomeTrendsSeries(TAtlasTrendSeries.RuleHits).Checked);
+    Assert.IsTrue(Page.WelcomeTrendsSeries(TAtlasTrendSeries.Todos).Checked);
     Assert.IsFalse(Page.WelcomeHelp.Checked);
     Assert.AreEqual('https://example.org/issues/new', Page.WelcomeHelpReportUrl.Text);
     Assert.AreEqual('D:\Diagnose', Page.WelcomeHelpReportFolder.Text);

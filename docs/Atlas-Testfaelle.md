@@ -737,7 +737,7 @@ Vorbereitung: zwei Projekte in Git (eins auf `main`, eins auf einem Feature-Bran
 | PZ1 | Willkommensseite (bzw. Fenster „Atlas-Start“) öffnen | Bereich „Projekte“ mit den zuletzt geschlossenen Projekten der IDE, höchstens 8; je Zeile Name, gekürzter Pfad, Branch bzw. SVN-Pfad und Marken |
 | PZ2 | Projekt auf `main` fehlerfrei bauen (Strg+F9), schließen | grüne Marke „Build 0/0/0“, Branch `main`, keine Marke „geändert“ |
 | PZ3 | Im Feature-Projekt zwei Fehler einbauen, bauen, schließen; auf der Willkommensseite die rote Marke „2 Fehler“ anklicken | Zeile zeigt rote Marke „2 Fehler“; Klick öffnet das Projekt und die Unit mit dem Cursor an der ersten Fehlerstelle |
-| PZ4 | Klick auf die Zeile (nicht auf eine Marke) | Projekt öffnet sich; solange es offen ist, steht es nicht in der Liste (die IDE führt es dann nicht unter „Closed Projects“) |
+| PZ4 | Projektverlauf aus (`welcomePage.trends`, #758); Klick auf die Zeile (nicht auf eine Marke) | Projekt öffnet sich; solange es offen ist, steht es nicht in der Liste (die IDE führt es dann nicht unter „Closed Projects“). Mit Projektverlauf an wählt der Klick die Zeile, siehe PV2 |
 | PZ5 | Feature-Projekt: Datei ändern und speichern (ohne Commit), Projekt schließen; Branch mit Upstream und einem lokalen Commit | gelbe Marke „n geändert“; neutrale Marke „↑1 ↓0“ |
 | PZ6 | Projekt ohne Versionsverwaltung | kein Branch, keine Marken „geändert“/„↑↓“, keine Fehlermeldung |
 | PZ7 | Prüfung beim Speichern an (#548), im geschlossenen Zustand zuletzt einen Syntaxfehler gespeichert | Marke „Prüfung: 1 Fehler“, nur wenn die Prüfung neuer als der letzte Build ist; Klick springt zur Stelle |
@@ -753,6 +753,30 @@ Vorbereitung: zwei Projekte in Git (eins auf `main`, eins auf einem Feature-Bran
 | PZ17 | Probleme an (#398), Baseline mit bekannten Treffern; im Projekt zwei neue `with`-Anweisungen einbauen, speichern, warten bis die Probleme da sind, Projekt schließen | gelbe Marke „2 neue Treffer“; Tooltip „2 neue Regeltreffer gegenüber der Baseline (geprüfte Dateien)“; Treffer aus der Baseline zählen nicht. Mit ausgeschalteten Problemen bleibt der alte Stand |
 | PZ18 | Eine Git-Arbeitskopie mit zwei Projekten in Unterordnern; nur im ersten eine Datei ändern, beide schließen | „1 geändert“ nur beim ersten Projekt, das zweite ohne Marke |
 | PZ19 | git so umbenennen, dass der Aufruf hängt bzw. fehlt; Willkommensseite öffnen, 10 s warten, Bereich neu zeichnen lassen (Fenster wechseln) | „wird abgefragt …“ verschwindet spätestens nach 5 s; danach gespeicherter Stand mit „Stand vom …“ |
+
+### Projektverlauf (#758)
+
+Abweichungen vom Issue: Ein Klick auf eine Zeile in „Projekte“ wählt sie bei eingeschaltetem Projektverlauf (wie im Mockup); geöffnet wird dann mit Doppelklick oder Kontextmenü „Öffnen“ (bei ausgeschaltetem Verlauf öffnet der Klick wie in #592). Die Auswahl gilt für die Sitzung. Messpunkte entstehen nur nach Builds des Benutzers, nicht nach der Hintergrundprüfung; bei einer Projektgruppe auch für die Gruppe (dort ohne Metriken und TODOs, die gibt es nur je Projekt). Branch und Commit des Punkts stammen aus der Abfrage nach dem Build (`welcomePage.refreshVcs`), sonst aus dem zuletzt bekannten Stand.
+
+Vorbereitung: Git-Projekt mit Baseline (#97), Probleme an (#398), Server läuft; zweites Projekt ohne Baseline. Die Zusammenfassungen stehen in `%LOCALAPPDATA%\Atlas\projects\*.json`, Abschnitt `trends`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PV1 | Willkommensseite bzw. „Atlas-Start“ öffnen, noch kein Build mit dieser Version | Bereich „Projektverlauf“ unter „Projekte“, Kopf „<Name> · letzte 30 Builds“ und „<Name>: noch keine Builds aufgezeichnet …“; ohne Projekt in der Liste „Noch kein Projekt …“ |
+| PV2 | Klick auf die zweite Zeile in „Projekte“; Doppelklick auf eine Zeile; Rechtsklick › „Öffnen“; Klick auf eine rote Marke | Erster Klick: Zeile links markiert, Kopf und Kacheln wechseln auf dieses Projekt, nichts öffnet sich. Doppelklick und „Öffnen“ öffnen das Projekt; die rote Marke springt wie in PZ3 |
+| PV3 | Im Projekt fünfmal bauen (Strg+F9) mit 12, 9, 6, 3 und 0 Hinweisen | Kachel „Warnungen + Hinweise“: „0“, daneben „vorher 3“, fallende Linie mit Fläche, letzter Punkt hervorgehoben, Nulllinie gestrichelt sichtbar |
+| PV4 | Auf einen Punkt der Linie klicken | Darunter „Build n · <Datum Uhrzeit> · <Branch> · <Commit, 7 Zeichen> · Warnungen + Hinweise: <Wert>“, der Punkt hat einen Ring; Klick auf einen Punkt einer anderen Kachel zeigt deren Wert |
+| PV5 | Kacheln „Offene TODOs“, „Build-Dauer“ und „Mittl. Methodenlänge“ nach PV3 ansehen | Werte erscheinen wenige Sekunden nach dem Build (Hintergrundlauf); Build-Dauer in s mit einer Nachkommastelle, Methodenlänge in Zeilen |
+| PV6 | Zweites Projekt ohne Baseline bauen und wählen | Kachel „Regeltreffer seit Baseline“: „kein Wert“, Linie mit Lücke statt 0; im JSON fehlt `ruleHits` in diesem Punkt |
+| PV7 | Mit Baseline: zwei neue Treffer einbauen, speichern, Probleme abwarten, bauen | Regeltreffer steigen um 2; nach dem Löschen der Baseline und einem Build: Lücke |
+| PV8 | 31 Mal bauen (z. B. Strg+F9 wiederholt) | Genau 30 Punkte im Abschnitt `trends.points`, `builds` 31, der älteste Punkt fiel weg |
+| PV9 | *Tools › Optionen › Atlas › Willkommensseite*: „Bereich ‚Projektverlauf‘ …“ aus; bauen | Bereich verschwindet ohne Neustart, kein neuer Punkt in der Datei; Klick in „Projekte“ öffnet wieder |
+| PV10 | Gespeicherte Builds auf 10 stellen; nur „Reihe … Warnungen + Hinweise“ und „Offene TODOs“ anhaken; 1 und 500 eingeben | Kopf „letzte 10 Builds“, nur zwei Kacheln; nach dem nächsten Build höchstens 10 Punkte in der Datei. 1 wird als 2 gespeichert, 500 als 100; keine Reihe angehakt: „Keine Reihe gewählt …“ |
+| PV11 | Breite der Spalte ändern (Fenster „Atlas-Start“ schmal ziehen) | Kacheln brechen um (mindestens etwa 150 px je Kachel), der Bereich wird höher, nichts ist abgeschnitten |
+| PV12 | Dunkles und helles IDE-Thema, 150 % Skalierung | Linien, Flächen, Texte und Ring gut lesbar |
+| PV13 | Projektgruppe bauen (Alle erzeugen), Gruppe in „Projekte“ wählen | Verlauf der Gruppe: Warnungen + Hinweise aller Projekte, Dauer des ganzen Laufs; TODOs und Methodenlänge als Lücke |
+| PV14 | Datei der Zusammenfassung von Hand um ein Feld `"x": 1` in einem Punkt und in `trends` ergänzen, bauen | Beide Felder bleiben erhalten, bis der Punkt aus dem Ringpuffer fällt |
+| PV15 | Baseline aktualisieren (BL1) bei einem Projekt, das der Server noch nicht als Arbeitsbereich kennt (etwa direkt nach dem Hinzufügen zur Gruppe) | Schreibt der Server in einen anderen Ordner, meldet das Meldungsfenster „Atlas: Der Server hat die Baseline in <Ordner> geschrieben, nicht im Projektordner …“; Verlauf und Abschnitt `baseline` lesen weiter den Projektordner |
 
 ### Nicht gesichert (#762)
 
