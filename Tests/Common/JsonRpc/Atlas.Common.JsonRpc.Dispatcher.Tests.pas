@@ -16,6 +16,9 @@ type
     procedure Setup;
     [TearDown]
     procedure TearDown;
+    /// <summary>Code-Review A-06: TJsonRpcCurrentRequest gilt für die Dauer jedes Handlers.</summary>
+    [Test]
+    procedure CurrentRequestIsSetDuringHandler;
     [Test]
     procedure RoutesRequestAndCopiesNumericId;
     [Test]
@@ -73,6 +76,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.PendingRequests,
   Atlas.Common.JsonRpc.Watchdog,
+  Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.JsonRpc.TestSupport;
 
 type
@@ -550,7 +554,7 @@ var
 begin
   TimedOut := '';
   FDispatcher.Watchdog := TJsonRpcWatchdog.Create(FDispatcher.PendingRequests, 50,
-    procedure(const AMethod: string; ATimeoutMs: Cardinal)
+    procedure(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean)
     begin
       TimedOut := AMethod;
     end);
@@ -578,6 +582,32 @@ begin
   finally
     FDispatcher.Watchdog := nil;
   end;
+end;
+
+procedure TJsonRpcDispatcherTests.CurrentRequestIsSetDuringHandler;
+var
+  SyncSeen, ConcurrentSeen: Boolean;
+begin
+  SyncSeen := False;
+  ConcurrentSeen := False;
+  FDispatcher.RegisterRequest('sync',
+    function(const AParams: TJSONValue): TJSONValue
+    begin
+      SyncSeen := TJsonRpcCurrentRequest.Token <> nil;
+      Result := TJSONNull.Create;
+    end);
+  // Ohne Scheduler läuft auch die nebenläufige Anfrage in DispatchMessage.
+  FDispatcher.RegisterConcurrentRequest('concurrent',
+    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
+    begin
+      ConcurrentSeen := (TJsonRpcCurrentRequest.Token as IInterface) = (ACancellation as IInterface);
+      Result := TJSONNull.Create;
+    end);
+  DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":1,"method":"sync"}').Free;
+  DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":2,"method":"concurrent"}').Free;
+  Assert.IsTrue(SyncSeen, 'synchroner Handler');
+  Assert.IsTrue(ConcurrentSeen, 'nebenläufiger Handler');
+  Assert.IsTrue(TJsonRpcCurrentRequest.Token = nil, 'nach dem Handler');
 end;
 
 initialization

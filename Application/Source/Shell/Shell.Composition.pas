@@ -302,6 +302,7 @@ uses
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Logging.Providers.StreamSink,
   Atlas.Common.JsonRpc.StreamTransport,
+  Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Common.Lsp.Adapters.LogMessageSink,
   Atlas.Common.Documents.Providers.DocumentStore,
@@ -370,9 +371,15 @@ begin
   FStatistics := TJsonRpcStatistics.Create;
   FDispatcher.Statistics := FStatistics;
   FDispatcher.Watchdog := TJsonRpcWatchdog.Create(FDispatcher.PendingRequests, RequestTimeoutMs,
-    procedure(const AMethod: string; ATimeoutMs: Cardinal)
+    procedure(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean)
     begin
-      FLogger.Warning(Format('Anfrage %s nach %d ms abgebrochen (Zeitlimit)', [AMethod, ATimeoutMs]));
+      // Code-Review A-06: Nebenläufige Anfragen beantwortet der Watchdog selbst, die übrigen brechen nur ab.
+      if AAnswered then
+        FLogger.Warning(Format('Anfrage %s nach %d ms mit RequestCancelled beantwortet (Zeitlimit)',
+          [AMethod, ATimeoutMs]))
+      else
+        FLogger.Warning(Format('Anfrage %s hat das Zeitlimit von %d ms überschritten; Abbruch angefordert',
+          [AMethod, ATimeoutMs]));
     end);
   FDispatcher.OnRequestFailed :=
     procedure(const AMethod: string; const AParams: TJSONValue; const AError: Exception)
@@ -1325,12 +1332,17 @@ begin
 end;
 
 destructor TServerComposition.Destroy;
+var
+  Unfinished: Boolean;
 begin
   // Zuerst: Eine laufende Übernahme greift auf die Ordner zu.
   FreeAndNil(FIndexRefresh);
   // Vor der Verbindung: Beide Wächter rufen FConnection.
   FreeAndNil(FFileWatcher);
   FreeAndNil(FParentWatcher);
+  // Code-Review A-06: Liefen beim Ende noch Handler, die ihr Abbruchsignal nicht prüfen, nutzen sie
+  // Features und Ordner weiter.
+  Unfinished := (FConnection <> nil) and FConnection.UnfinishedWork;
   FreeAndNil(FConnection);
   if FDispatcher <> nil then
     FDispatcher.Watchdog := nil;
@@ -1344,7 +1356,11 @@ begin
     FDispatcher.Observer := nil;
   FDiagnostics := nil;
   FDiagnosticsRef := nil;
-  FreeFeatures;
+  if Unfinished then
+    // Der Prozess endet gleich: Speicher stehen lassen, statt ihn unter einem laufenden Handler freizugeben.
+    FLogger.Warning('Beim Beenden liefen noch Anfragen; ihre Objekte werden nicht freigegeben')
+  else
+    FreeFeatures;
   if FTracing <> nil then
     FTracing.OnFailed := nil;
   FTransport := nil;
@@ -1728,8 +1744,12 @@ begin
   try
     Result := False;
     for Workspace in Targets do
+    begin
+      // Abgebrochene Anfrage (Watchdog, $/cancelRequest): keine weitere Unit parsen (Code-Review A-06).
+      TJsonRpcCurrentRequest.ThrowIfCancellationRequested;
       if Workspace.EnsureUnit(AUnitName) then
         Exit(True);
+    end;
   finally
     TMonitor.Enter(FWorkspacesLock);
     try

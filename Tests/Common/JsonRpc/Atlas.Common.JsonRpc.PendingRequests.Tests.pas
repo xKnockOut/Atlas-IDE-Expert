@@ -31,6 +31,11 @@ type
     procedure ChangeOfOtherDocumentKeepsRequest;
     [Test]
     procedure ChangeWithoutRegisteredMethodKeepsRequest;
+    /// <summary>Code-Review A-06: genau eine Antwort je Anfrage (Worker oder Watchdog).</summary>
+    [Test]
+    procedure ExpireClaimsAnswerOnce;
+    [Test]
+    procedure TryAnswerAcceptsForeignToken;
   end;
 
 implementation
@@ -89,6 +94,24 @@ begin
   finally
     Id.Free;
   end;
+end;
+
+type
+  /// <summary>Token einer fremden Implementierung ohne Antwortsperre.</summary>
+  TForeignToken = class(TInterfacedObject, IJsonRpcCancellationToken)
+  public
+    function IsCancellationRequested: Boolean;
+    procedure ThrowIfCancellationRequested;
+  end;
+
+function TForeignToken.IsCancellationRequested: Boolean;
+begin
+  Result := False;
+end;
+
+procedure TForeignToken.ThrowIfCancellationRequested;
+begin
+  // Nie abgebrochen.
 end;
 
 { TJsonRpcPendingRequestsTests }
@@ -248,6 +271,32 @@ begin
   Token := AcquireJson(Pending, '4');
   Observe(Pending, '{"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"uri":"file:///a.pas"}}}');
   Assert.IsFalse(Token.IsCancellationRequested);
+end;
+
+procedure TJsonRpcPendingRequestsTests.ExpireClaimsAnswerOnce;
+var
+  Pending: IJsonRpcPendingRequests;
+  Token: IJsonRpcCancellationToken;
+begin
+  Pending := TJsonRpcPendingRequests.Create;
+  Token := AcquireJson(Pending, '1');
+  Assert.IsTrue(Pending.Expire(Token));
+  Assert.IsTrue(Token.IsCancellationRequested);
+  Assert.IsFalse(Pending.TryAnswer(Token));
+  Assert.IsFalse(Pending.Expire(Token));
+  ReleaseJson(Pending, '1', Token);
+end;
+
+procedure TJsonRpcPendingRequestsTests.TryAnswerAcceptsForeignToken;
+var
+  Pending: IJsonRpcPendingRequests;
+  Token: IJsonRpcCancellationToken;
+begin
+  Pending := TJsonRpcPendingRequests.Create;
+  Token := TForeignToken.Create;
+  Assert.IsTrue(Pending.TryAnswer(Token));
+  Assert.IsTrue(Pending.TryAnswer(Token));
+  Assert.IsFalse(Pending.Expire(Token));
 end;
 
 initialization

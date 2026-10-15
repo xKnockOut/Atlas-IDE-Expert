@@ -4,6 +4,12 @@
 // das Limit laufen (über IJsonRpcPendingRequests.Cancel), und meldet sie.
 // Handler, die ihr Abbruchsignal prüfen, enden dann mit RequestCancelled; so
 // bleibt eine hängende Anfrage nicht für immer offen.
+//
+// Nebenläufige Anfragen (Watch mit Token und Responder) beantwortet der
+// Watchdog beim Ablauf sofort mit RequestCancelled, falls der Handler noch
+// nicht geantwortet hat; dessen spätere Antwort verwirft der Worker
+// (IJsonRpcPendingRequests.TryAnswer, Code-Review A-06). Anfragen im Thread
+// der Schleife erhalten nur den Abbruch.
 
 interface
 
@@ -12,16 +18,23 @@ uses
   System.Classes,
   System.JSON,
   System.Generics.Collections,
+  Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.PendingRequests;
 
 type
-  /// <summary>Meldet eine Anfrage, deren Zeitlimit abgelaufen ist.</summary>
-  TJsonRpcTimeoutEvent = reference to procedure(const AMethod: string; ATimeoutMs: Cardinal);
+  /// <summary>Meldet eine Anfrage, deren Zeitlimit abgelaufen ist. AAnswered: Der Watchdog hat sie mit
+  /// RequestCancelled beantwortet (nebenläufige Anfragen); sonst wurde nur der Abbruch angefordert.</summary>
+  TJsonRpcTimeoutEvent = reference to procedure(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean);
 
   IJsonRpcWatchdog = interface
     ['{7E3C5A91-2D4F-4B86-A0E7-1F9B6C3D8E52}']
-    /// <summary>Überwacht eine Anfrage; liefert eine Nummer für Unwatch.</summary>
-    function Watch(const AId: TJSONValue; const AMethod: string): Int64;
+    /// <summary>Überwacht eine Anfrage; liefert eine Nummer für Unwatch. Beim Ablauf wird nur abgebrochen
+    /// (Anfragen im Thread der Schleife).</summary>
+    function Watch(const AId: TJSONValue; const AMethod: string): Int64; overload;
+    /// <summary>Wie Watch; beim Ablauf antwortet der Watchdog sofort über AResponder mit RequestCancelled,
+    /// sofern der Handler noch nicht geantwortet hat (IJsonRpcPendingRequests.TryAnswer).</summary>
+    function Watch(const AId: TJSONValue; const AMethod: string; const AToken: IJsonRpcCancellationToken;
+      const AResponder: TJsonRpcResponder): Int64; overload;
     procedure Unwatch(ATicket: Int64);
     /// <summary>Neues Zeitlimit für künftige Anfragen (#283, Einstellung "requestTimeoutMs").
     /// Wirkt nur, wenn die Überwachung mit einem Limit &gt; 0 gestartet wurde.</summary>
@@ -34,6 +47,9 @@ type
       Id: TJSONValue;
       Method: string;
       Due: UInt64;
+      /// <summary>nil: beim Ablauf nur abbrechen.</summary>
+      Token: IJsonRpcCancellationToken;
+      Responder: TJsonRpcResponder;
     end;
   private
     FPending: IJsonRpcPendingRequests;
@@ -50,13 +66,18 @@ type
     constructor Create(const APending: IJsonRpcPendingRequests; ATimeoutMs: Cardinal;
       const AOnTimeout: TJsonRpcTimeoutEvent);
     destructor Destroy; override;
-    function Watch(const AId: TJSONValue; const AMethod: string): Int64;
+    function Watch(const AId: TJSONValue; const AMethod: string): Int64; overload;
+    function Watch(const AId: TJSONValue; const AMethod: string; const AToken: IJsonRpcCancellationToken;
+      const AResponder: TJsonRpcResponder): Int64; overload;
     procedure Unwatch(ATicket: Int64);
     procedure SetTimeout(ATimeoutMs: Cardinal);
     function Timeout: Cardinal;
   end;
 
 implementation
+
+uses
+  Atlas.Common.JsonRpc.Messages;
 
 const
   WaitForever = Cardinal($FFFFFFFF);
@@ -102,6 +123,12 @@ begin
 end;
 
 function TJsonRpcWatchdog.Watch(const AId: TJSONValue; const AMethod: string): Int64;
+begin
+  Result := Watch(AId, AMethod, nil, nil);
+end;
+
+function TJsonRpcWatchdog.Watch(const AId: TJSONValue; const AMethod: string;
+  const AToken: IJsonRpcCancellationToken; const AResponder: TJsonRpcResponder): Int64;
 var
   Entry: TEntry;
 begin
@@ -109,6 +136,8 @@ begin
     Exit(0);
   Entry.Id := TJSONValue(AId.Clone);
   Entry.Method := AMethod;
+  Entry.Token := AToken;
+  Entry.Responder := AResponder;
   TMonitor.Enter(FEntries);
   try
     Entry.Due := TThread.GetTickCount64 + FTimeout;
@@ -161,11 +190,25 @@ begin
 end;
 
 procedure TJsonRpcWatchdog.Expire(const AEntry: TEntry);
+var
+  Answered: Boolean;
+  Limit: Cardinal;
 begin
   try
-    FPending.Cancel(AEntry.Id);
+    Limit := Timeout;
+    Answered := False;
+    if (AEntry.Token <> nil) and Assigned(AEntry.Responder) then
+    begin
+      // Abbrechen und die Antwort beanspruchen: Wer zuerst kommt (Worker oder Watchdog), antwortet.
+      Answered := FPending.Expire(AEntry.Token);
+      if Answered then
+        AEntry.Responder(TJsonRpcMessages.Error(AEntry.Id, TJsonRpcErrorCode.RequestCancelled,
+          Format('Zeitlimit von %d ms überschritten', [Limit])));
+    end
+    else
+      FPending.Cancel(AEntry.Id);
     if Assigned(FOnTimeout) then
-      FOnTimeout(AEntry.Method, Timeout);
+      FOnTimeout(AEntry.Method, Limit, Answered);
   finally
     AEntry.Id.Free;
   end;

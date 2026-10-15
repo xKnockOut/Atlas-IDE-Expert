@@ -25,17 +25,23 @@ type
     procedure Cancel;
     /// <summary>Abbruch, weil das Dokument sich geändert hat.</summary>
     procedure CancelModified;
+    /// <summary>Beansprucht die einzige Antwort auf die Anfrage: True genau beim ersten Aufruf (Worker oder
+    /// Watchdog, Code-Review A-06). Threadsicher.</summary>
+    function TryAnswer: Boolean;
   end;
 
   TJsonRpcCancellation = class(TInterfacedObject, IJsonRpcCancellationToken, IJsonRpcCancellationSource)
   private
     /// <summary>0 = offen, 1 = abgebrochen, 2 = Dokument geändert.</summary>
     FCancelled: Integer;
+    /// <summary>1, sobald jemand die Antwort beansprucht hat.</summary>
+    FAnswered: Integer;
   public
     function IsCancellationRequested: Boolean;
     procedure ThrowIfCancellationRequested;
     procedure Cancel;
     procedure CancelModified;
+    function TryAnswer: Boolean;
   end;
 
   IJsonRpcPendingRequests = interface
@@ -55,6 +61,12 @@ type
     procedure Cancel(const AId: TJSONValue);
     /// <summary>Bricht alle offenen Anfragen ab, z. B. beim Beenden der Verbindung.</summary>
     procedure CancelAll;
+    /// <summary>Zeitlimit abgelaufen (A-06): bricht über AToken ab und beansprucht die Antwort. True: Der
+    /// Aufrufer sendet die Fehlerantwort; die spätere Antwort des Handlers wird verworfen. False, wenn der
+    /// Handler schon geantwortet hat oder AToken fremd ist.</summary>
+    function Expire(const AToken: IJsonRpcCancellationToken): Boolean;
+    /// <summary>True, wenn der Aufrufer antworten darf (noch niemand hat geantwortet); fremde Token: True.</summary>
+    function TryAnswer(const AToken: IJsonRpcCancellationToken): Boolean;
     /// <summary>Benachrichtigungen dieser Methode ändern das Dokument aus params.textDocument.uri.</summary>
     procedure AddContentChangeMethod(const AMethod: string);
     /// <summary>Bricht offene Anfragen zu AUri mit ContentModified ab.</summary>
@@ -85,6 +97,8 @@ type
     procedure Release(const AId: TJSONValue; const AToken: IJsonRpcCancellationToken);
     procedure Cancel(const AId: TJSONValue);
     procedure CancelAll;
+    function Expire(const AToken: IJsonRpcCancellationToken): Boolean;
+    function TryAnswer(const AToken: IJsonRpcCancellationToken): Boolean;
     procedure AddContentChangeMethod(const AMethod: string);
     procedure CancelForUri(const AUri: string);
     procedure BeginWork;
@@ -137,6 +151,11 @@ procedure TJsonRpcCancellation.CancelModified;
 begin
   // Ein ausdrücklicher Abbruch bleibt ein Abbruch.
   TInterlocked.CompareExchange(FCancelled, 2, 0);
+end;
+
+function TJsonRpcCancellation.TryAnswer: Boolean;
+begin
+  Result := TInterlocked.CompareExchange(FAnswered, 1, 0) = 0;
 end;
 
 { TJsonRpcPendingRequests }
@@ -291,6 +310,26 @@ begin
   finally
     FLock.Leave;
   end;
+end;
+
+function TJsonRpcPendingRequests.Expire(const AToken: IJsonRpcCancellationToken): Boolean;
+var
+  Source: IJsonRpcCancellationSource;
+begin
+  if not Supports(AToken, IJsonRpcCancellationSource, Source) then
+    Exit(False);
+  Source.Cancel;
+  Result := Source.TryAnswer;
+end;
+
+function TJsonRpcPendingRequests.TryAnswer(const AToken: IJsonRpcCancellationToken): Boolean;
+var
+  Source: IJsonRpcCancellationSource;
+begin
+  // Fremde Token (Tests, eigene Implementierungen) kennen keine Antwortsperre.
+  if not Supports(AToken, IJsonRpcCancellationSource, Source) then
+    Exit(True);
+  Result := Source.TryAnswer;
 end;
 
 procedure TJsonRpcPendingRequests.AddContentChangeMethod(const AMethod: string);
