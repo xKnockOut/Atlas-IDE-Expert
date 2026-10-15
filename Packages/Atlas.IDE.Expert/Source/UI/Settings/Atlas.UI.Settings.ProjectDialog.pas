@@ -3,9 +3,10 @@
 // Dialog der Server-Einstellungen (#227) für eine Ebene: atlas.json des
 // Projekts oder die globale Datei %APPDATA%\Atlas\settings.json. Seiten und
 // Bedienelemente entstehen aus dem JSON-Schema (TAtlasSettingsSchema), die
-// Werte aus TAtlasSettingsModel. Je Einstellung steht, woher der Wert kommt
-// (Projekt, global, Standard); „Auf global zurücksetzen“ bzw. „Auf Standard
-// zurücksetzen“ entfernt den Schlüssel.
+// Werte aus TAtlasSettingsModel. Jede Einstellung hat genau einen Ort (x-scope
+// im Schema): Der Aufrufer reicht nur die Felder dieser Datei herein, im
+// Projekt ohne globale Ebene. Je Einstellung steht, ob sie gesetzt ist oder der
+// Standard gilt; „Auf Standard zurücksetzen“ entfernt den Schlüssel.
 // Eigene Bedienelemente, wo Text, Zahl, Auswahl und Liste nicht reichen:
 //   - Auswahl aus Werten, die die IDE-Schicht liefert (OnChoices): installierte
 //     Delphi-Versionen, Konfigurationen und Plattformen der .dproj, Profile.
@@ -278,10 +279,8 @@ end;
 
 function TAtlasProjectSettingsDialog.ResetCaption: string;
 begin
-  if FModel.Global then
-    Result := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsResetDefault)
-  else
-    Result := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsResetGlobal);
+  // Eine Ebene je Datei: Ohne den Schlüssel gilt immer der Standard.
+  Result := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsResetDefault);
 end;
 
 function TAtlasProjectSettingsDialog.ChoicesOf(AIndex: Integer): TArray<TAtlasSettingChoice>;

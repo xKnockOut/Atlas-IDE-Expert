@@ -10,12 +10,15 @@
 //   Einstellungen sofort; nach dem Schließen gilt wieder der Stand auf der
 //   Platte. Änderungen außerhalb des Editors meldet FileChanged (Dateibeobachter
 //   des Servers bzw. didChangeWatchedFiles, #227).
+// - Jeder Schlüssel hat genau einen Ort (TConfigurationScopes): atlas.json
+//   gilt nur für Projekt-Schlüssel, die globale Benutzerdatei
+//   (%APPDATA%\Atlas\settings.json, #227, über SetGlobalSettings) nur für
+//   globale. Ein Schlüssel am falschen Ort wirkt nicht und wird in atlas.json
+//   als Warnung gemeldet.
 // - Einstellungen aus dem Editor kommen über workspace/didChangeConfiguration
-//   (Abschnitt "atlas"). atlas.json hat je Schlüssel Vorrang
-//   (TConfigurationParser.ParseLayered).
-// - Darunter liegt die globale Benutzerdatei (%APPDATA%\Atlas\settings.json,
-//   #227), die die Komposition über SetGlobalSettings übergibt: global <
-//   Editor < atlas.json.
+//   und initializationOptions (Abschnitt "atlas") und zählen wie global; das
+//   IDE-Plugin nutzt diesen Weg nicht mehr. Reihenfolge: global < Editor <
+//   atlas.json (TConfigurationScopes.Effective).
 
 interface
 
@@ -58,6 +61,8 @@ type
     procedure Apply(const ASettings: TServerSettings);
     procedure Publish(const AUri: string; AVersion: Integer; const AIssues: TArray<TConfigurationIssue>);
     procedure LoadFromDisk;
+    /// <summary>Meldungen zu atlas.json: Parser und Schlüssel, die nicht ins Projekt gehören.</summary>
+    class function FileIssues(const AText: string): TArray<TConfigurationIssue>; static;
     function IsWorkspaceFile(const AUri: string): Boolean;
     function GetSettings: TServerSettings;
   public
@@ -112,7 +117,8 @@ uses
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Configuration.Parser;
+  Atlas.Common.Configuration.Parser,
+  Atlas.Common.Configuration.Scopes;
 
 const
   DiagnosticSource = 'Atlas';
@@ -156,8 +162,16 @@ var
   Ignored: TArray<TConfigurationIssue>;
 begin
   // Die Meldungen zur Datei sind schon veröffentlicht.
-  Apply(TConfigurationParser.ParseLayered(TConfigurationParser.MergeText(FGlobalText, FEditorText), FFileText,
-    Ignored));
+  Apply(TConfigurationParser.Parse(TConfigurationScopes.Effective(FGlobalText, FEditorText, FFileText), Ignored));
+end;
+
+class function TLspConfiguration.FileIssues(const AText: string): TArray<TConfigurationIssue>;
+var
+  Misplaced: TArray<TConfigurationIssue>;
+begin
+  TConfigurationParser.Parse(AText, Result);
+  TConfigurationScopes.Filter(AText, TConfigurationScope.Project, Misplaced);
+  Result := Result + Misplaced;
 end;
 
 procedure TLspConfiguration.HandleDidChangeConfiguration(const AParams: TJSONValue);
@@ -293,7 +307,7 @@ begin
   end;
   if Found then
   begin
-    TConfigurationParser.Parse(Text, Issues);
+    Issues := FileIssues(Text);
     Publish(TDocumentUris.FromPath(FFileName), -1, Issues);
     FFileText := Text;
   end
@@ -337,7 +351,7 @@ begin
   case AKind of
     TDocumentEventKind.Opened, TDocumentEventKind.Changed:
       begin
-        TConfigurationParser.Parse(ADocument.Text, Issues);
+        Issues := FileIssues(ADocument.Text);
         Publish(ADocument.Uri, ADocument.Version, Issues);
         if IsWorkspaceFile(ADocument.Uri) then
         begin

@@ -157,6 +157,7 @@
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.Options.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.JsonText.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Schema.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Scopes.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.SchemaData.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.ProjectDialog.pas"/>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.Project.pas"/>

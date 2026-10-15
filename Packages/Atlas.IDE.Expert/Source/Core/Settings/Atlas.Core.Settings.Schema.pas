@@ -7,8 +7,10 @@
 // (Regeln, Profile, Listen von Objekten), ist Complex: Der Dialog bearbeitet es
 // als JSON-Text, die Regeln als Tabelle aus dem Regelkatalog.
 // So erscheint jede neue Einstellung im Schema ohne weiteren Code im Dialog.
-// x-control (Bedienelement laut Issue), examples (Vorschläge für Textfelder)
-// und x-restart (wirkt erst nach Neustart) werden mitgelesen.
+// x-control (Bedienelement laut Issue), examples (Vorschläge für Textfelder),
+// x-restart (wirkt erst nach Neustart) und x-scope (Ort: "global" =
+// settings.json, "project" = atlas.json; ein Glied erbt den Ort seines
+// Objekts) werden mitgelesen.
 
 interface
 
@@ -37,6 +39,8 @@ type
     Examples: TArray<string>;
     /// <summary>x-restart: Die Änderung wirkt erst nach einem Neustart des Servers.</summary>
     Restart: Boolean;
+    /// <summary>x-scope: True = gilt für alle Projekte (settings.json), False = atlas.json des Projekts.</summary>
+    Global: Boolean;
     /// <summary>x-control verlangt eine Dateiauswahl.</summary>
     function PicksFile: Boolean;
     /// <summary>Passt AJson (JSON-Text) zur Art des Felds? Sonst bleibt der Wert unangetastet.</summary>
@@ -47,6 +51,9 @@ type
   public
     /// <summary>Felder in der Reihenfolge des Schemas; leer bei ungültigem Schema.</summary>
     class function Fields(const ASchemaJson: string): TArray<TAtlasSettingField>; static;
+    /// <summary>Felder eines Orts: AGlobal = settings.json, sonst atlas.json; ohne die Pfade in AExclude.</summary>
+    class function ForScope(const AFields: TArray<TAtlasSettingField>; AGlobal: Boolean;
+      const AExclude: TArray<string>): TArray<TAtlasSettingField>; static;
     /// <summary>Seiten in der Reihenfolge ihres ersten Felds.</summary>
     class function Pages(const AFields: TArray<TAtlasSettingField>): TArray<string>; static;
     /// <summary>JSON-Text für die Anzeige: Strings ohne Anführungszeichen.</summary>
@@ -179,7 +186,7 @@ var
   Simple: Boolean;
   Choices: TArray<string>;
 
-  function Make(const APath, APage: string; ASchema: TJSONObject; const AFallback: string): TAtlasSettingField;
+  function Make(const APath, APage: string; ASchema: TJSONObject; const AFallback, AScope: string): TAtlasSettingField;
   var
     Default_, Examples, Example, Restart: TJSONValue;
   begin
@@ -200,6 +207,7 @@ var
         Result.Examples := Result.Examples + [Display(Example.ToJSON)];
     Restart := ASchema.GetValue('x-restart');
     Result.Restart := (Restart is TJSONBool) and TJSONBool(Restart).AsBoolean;
+    Result.Global := ASchema.GetValue<string>('x-scope', AScope) = 'global';
   end;
 
 begin
@@ -230,16 +238,37 @@ begin
           for Sub in TJSONObject(Children) do
             Result := Result + [Make(Pair.JsonString.Value + '.' + Sub.JsonString.Value,
               TJSONObject(Child).GetValue<string>('x-page', ''), TJSONObject(Sub.JsonValue),
-              DescriptionOf(TJSONObject(Child)))];
+              DescriptionOf(TJSONObject(Child)), TJSONObject(Child).GetValue<string>('x-scope', ''))];
           Continue;
         end;
       end;
       Field := Make(Pair.JsonString.Value, TJSONObject(Child).GetValue<string>('x-page', ''),
-        TJSONObject(Child), '');
+        TJSONObject(Child), '', '');
       Result := Result + [Field];
     end;
   finally
     Root.Free;
+  end;
+end;
+
+class function TAtlasSettingsSchema.ForScope(const AFields: TArray<TAtlasSettingField>; AGlobal: Boolean;
+  const AExclude: TArray<string>): TArray<TAtlasSettingField>;
+var
+  Field: TAtlasSettingField;
+  Path: string;
+  Excluded: Boolean;
+begin
+  Result := nil;
+  for Field in AFields do
+  begin
+    if Field.Global <> AGlobal then
+      Continue;
+    Excluded := False;
+    for Path in AExclude do
+      if SameText(Path, Field.Path) then
+        Excluded := True;
+    if not Excluded then
+      Result := Result + [Field];
   end;
 end;
 

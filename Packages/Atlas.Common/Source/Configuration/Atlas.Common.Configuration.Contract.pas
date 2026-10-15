@@ -174,7 +174,8 @@ type
 
   /// <summary>Compiler-Anbindung (#40).</summary>
   TCompilerSettings = record
-    /// <summary>Nach dem Speichern einer Quelldatei im Hintergrund kompilieren.</summary>
+    /// <summary>Nach dem Speichern einer Quelldatei im Hintergrund kompilieren; Vorgabe aus, weil das
+    /// IDE-Plugin selbst prüfen kann (eine Auswahl „Nach dem Speichern“ in den Delphi-Optionen).</summary>
     OnSave: Boolean;
     class function Default: TCompilerSettings; static;
   end;
@@ -540,7 +541,7 @@ end;
 
 class function TCompilerSettings.Default: TCompilerSettings;
 begin
-  Result.OnSave := True;
+  Result.OnSave := False;
 end;
 
 { TRefactoringSettings }

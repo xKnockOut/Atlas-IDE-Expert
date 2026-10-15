@@ -13,6 +13,10 @@
       Einstellung macht sie zum Schnellschalter im Plugin (#604).
     - Wächter: Die Schlüssel in Atlas.Common.Configuration.Parser müssen genau
       denen im Schema entsprechen (Validierung und Schichtung).
+    - Atlas.Common.Configuration.Internals.ScopeData: Ort jedes Schlüssels aus
+      x-scope ("global" = %APPDATA%\Atlas\settings.json, "project" = atlas.json).
+      Jeder Schlüssel der obersten Ebene braucht x-scope; ein Glied darf mit
+      eigenem x-scope abweichen (gemischtes Objekt wie index, completion).
 
     Mit -Check wird nichts geschrieben; Exit-Code 1, wenn eine Datei veraltet ist
     oder der Parser abweicht.
@@ -51,9 +55,18 @@ function Format-Value($Value) {
 
 function Escape([string] $Text) { $Text.Replace('|', '\|').Replace("`r", '').Replace("`n", ' ') }
 
-function Write-Table([System.Text.StringBuilder] $Out, [hashtable] $Properties, [string] $Prefix) {
-    [void]$Out.AppendLine('| Schlüssel | Typ | Standard | Werte | Bedeutung |')
-    [void]$Out.AppendLine('|---|---|---|---|---|')
+# Ort eines Schlüssels: eigenes x-scope, sonst das des Objekts.
+function Scope-Of([hashtable] $Node, [string] $Inherited) { if (Has $Node 'x-scope') { $Node['x-scope'] } else { $Inherited } }
+
+function Scope-Text([string] $Scope) {
+    if ($Scope -eq 'global') { return 'global (settings.json)' }
+    if ($Scope -eq 'project') { return 'Projekt (atlas.json)' }
+    return ''
+}
+
+function Write-Table([System.Text.StringBuilder] $Out, [hashtable] $Properties, [string] $Prefix, [string] $ParentScope) {
+    [void]$Out.AppendLine('| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |')
+    [void]$Out.AppendLine('|---|---|---|---|---|---|')
     foreach ($Name in $Properties.Keys) {
         if ($Name -eq '$schema') { continue }
         $P = $Properties[$Name]
@@ -65,7 +78,12 @@ function Write-Table([System.Text.StringBuilder] $Out, [hashtable] $Properties, 
                   elseif ((Has $P 'minimum') -or (Has $P 'maximum')) { "$(if (Has $P 'minimum') { $P['minimum'] } else { '' })…$(if (Has $P 'maximum') { $P['maximum'] } else { '' })" }
                   else { '' }
         $Description = if (Has $P 'description') { Escape $P['description'] } else { '' }
-        [void]$Out.AppendLine("| ``$Prefix$Name`` | $Type | $Default | $Values | $Description |")
+        $Place = Scope-Text (Scope-Of $P $ParentScope)
+        if (Has $P 'properties') {
+            $Inner = @($P['properties'].Values | ForEach-Object { Scope-Of $_ (Scope-Of $P $ParentScope) } | Sort-Object -Unique)
+            if ($Inner.Count -gt 1) { $Place = 'gemischt, siehe unten' }
+        }
+        [void]$Out.AppendLine("| ``$Prefix$Name`` | $Place | $Type | $Default | $Values | $Description |")
     }
 }
 
@@ -76,18 +94,18 @@ $Out = New-Object System.Text.StringBuilder
 [void]$Out.AppendLine()
 [void]$Out.AppendLine((Escape $Schema['description']))
 [void]$Out.AppendLine()
-[void]$Out.AppendLine('Die Datei liegt im Projektordner. Fehlende Schlüssel nehmen den Standardwert; Editor-Einstellungen gelten nur, wo die Datei nichts sagt. Die Prüfregeln stehen in [Regeln.md](Regeln.md).')
+[void]$Out.AppendLine('Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel stehen in `atlas.json` im Projektordner (im Plugin *Atlas › Projekt-Einstellungen*), globale in `%APPDATA%\Atlas\settings.json` für alle Projekte (im Plugin *Tools › Optionen › Atlas*). Ein Schlüssel am falschen Ort wird ignoriert und als Warnung gemeldet. Fehlende Schlüssel nehmen den Standardwert. In der IDE bestimmt die laufende IDE die Delphi-Version (`delphiVersion` gilt dort nicht). Die Prüfregeln stehen in [Regeln.md](Regeln.md).')
 [void]$Out.AppendLine()
 [void]$Out.AppendLine('## Schlüssel')
 [void]$Out.AppendLine()
-Write-Table $Out $Schema['properties'] ''
+Write-Table $Out $Schema['properties'] '' ''
 foreach ($Name in $Schema['properties'].Keys) {
     $P = $Schema['properties'][$Name]
     if ((Has $P 'properties')) {
         [void]$Out.AppendLine()
         [void]$Out.AppendLine("## $Name")
         [void]$Out.AppendLine()
-        Write-Table $Out $P['properties'] "$Name."
+        Write-Table $Out $P['properties'] "$Name." (Scope-Of $P '')
     }
 }
 [void]$Out.AppendLine()
@@ -121,7 +139,15 @@ foreach ($Name in $Schema['properties'].Keys) {
     $Setting = '`' + $Name + '`'
     if (Has $P 'properties') { $Setting += ': ' + (($P['properties'].Keys | ForEach-Object { '`' + $_ + '`' }) -join ', ') }
     $Default = if ($P.ContainsKey('default')) { Format-Value $P['default'] } else { '–' }
-    $Source = "atlas.json, Editor (``$Section.$Name``)"
+    $Scope = Scope-Of $P ''
+    $Source = if ($Scope -eq 'global') { 'settings.json (Tools › Optionen › Atlas)' } else { 'atlas.json (Atlas › Projekt-Einstellungen)' }
+    if (Has $P 'properties') {
+        $Other = @($P['properties'].Keys | Where-Object { (Scope-Of $P['properties'][$_] $Scope) -ne $Scope })
+        if ($Other.Count -gt 0) {
+            $OtherFile = if ($Scope -eq 'global') { 'atlas.json' } else { 'settings.json' }
+            $Source += '; ' + (($Other | ForEach-Object { '`' + $_ + '`' }) -join ', ') + " in $OtherFile"
+        }
+    }
     if (Has $P 'x-commandLine') { $Source += ', ``' + $P['x-commandLine'] + '``' }
     $Restart = if ((Has $P 'x-restart') -and $P['x-restart']) { 'ja' } else { 'nein' }
     $Page = if (Has $P 'x-page') { $P['x-page'] } else { '' }
@@ -163,8 +189,15 @@ foreach ($Name in $SchemaKeys) {
             if (-not $ParserText.Contains("'$Sub'")) { $Problems.Add("Parser: ""$Name.$Sub"" aus dem Schema wird nicht gelesen") }
         }
     }
-    foreach ($Meta in 'x-page', 'x-control', 'x-issue') {
+    foreach ($Meta in 'x-page', 'x-control', 'x-issue', 'x-scope') {
         if (-not (Has $P $Meta)) { $Problems.Add("Schema: ""$Name"" ohne $Meta") }
+    }
+    if ((Has $P 'x-scope') -and ('global', 'project' -cnotcontains $P['x-scope'])) { $Problems.Add("Schema: ""$Name"" mit x-scope ""$($P['x-scope'])""; erlaubt sind global und project") }
+    if (Has $P 'properties') {
+        foreach ($Sub in $P['properties'].Keys) {
+            $S = $P['properties'][$Sub]
+            if ((Has $S 'x-scope') -and ('global', 'project' -cnotcontains $S['x-scope'])) { $Problems.Add("Schema: ""$Name.$Sub"" mit x-scope ""$($S['x-scope'])""; erlaubt sind global und project") }
+        }
     }
 }
 
@@ -209,6 +242,54 @@ if ($CurrentUnit -ne $UnitText) {
     else {
         [IO.File]::WriteAllText($SchemaUnitPath, $UnitText, (New-Object System.Text.UTF8Encoding($true)))
         Write-Host "Geschrieben: $SchemaUnitPath"
+    }
+}
+
+# --- Ort der Schlüssel für den Server: UTF-8 mit BOM, CRLF ---
+$ScopeUnitPath = Join-Path $Root 'Packages/Atlas.Common/Source/Configuration/Internals/Atlas.Common.Configuration.Internals.ScopeData.pas'
+$GlobalPaths = New-Object System.Collections.Generic.List[string]
+$ProjectPaths = New-Object System.Collections.Generic.List[string]
+foreach ($Name in $Schema['properties'].Keys) {
+    if ($Name -eq '$schema') { continue }
+    $P = $Schema['properties'][$Name]
+    $Scope = Scope-Of $P ''
+    $Mixed = $false
+    if (Has $P 'properties') {
+        foreach ($Sub in $P['properties'].Keys) { if ((Scope-Of $P['properties'][$Sub] $Scope) -ne $Scope) { $Mixed = $true } }
+    }
+    if ($Mixed) {
+        foreach ($Sub in $P['properties'].Keys) {
+            if ((Scope-Of $P['properties'][$Sub] $Scope) -eq 'global') { $GlobalPaths.Add("$Name.$Sub") } else { $ProjectPaths.Add("$Name.$Sub") }
+        }
+    }
+    elseif ($Scope -eq 'global') { $GlobalPaths.Add($Name) }
+    else { $ProjectPaths.Add($Name) }
+}
+function Pascal-List([string] $Name, $Items) {
+    $Lines = @("  $Name`: array[0..$($Items.Count - 1)] of string = (")
+    for ($Index = 0; $Index -lt $Items.Count; $Index++) {
+        $End = if ($Index -eq $Items.Count - 1) { ');' } else { ',' }
+        $Lines += "    '$($Items[$Index])'$End"
+    }
+    return $Lines
+}
+$ScopeLines = @(
+    'unit Atlas.Common.Configuration.Internals.ScopeData;', '',
+    '// Erzeugt von Tools/Update-ConfigDoc.ps1 aus schemas/atlas.schema.json (x-scope);',
+    '// nicht von Hand ändern. Ort jedes Schlüssels: global = %APPDATA%\Atlas\settings.json,',
+    '// Projekt = atlas.json. Gemischte Objekte stehen je Glied als "objekt.glied" da.', '',
+    'interface', '', 'const', '  /// <summary>Schlüssel für alle Projekte (settings.json).</summary>') +
+    (Pascal-List 'GlobalSettingPaths' $GlobalPaths) +
+    @('  /// <summary>Schlüssel des Projekts (atlas.json).</summary>') +
+    (Pascal-List 'ProjectSettingPaths' $ProjectPaths) +
+    @('', 'implementation', '', 'end.')
+$ScopeText = ($ScopeLines -join "`r`n") + "`r`n"
+$CurrentScope = if (Test-Path $ScopeUnitPath) { [IO.File]::ReadAllText($ScopeUnitPath, $Utf8).TrimStart([char]0xFEFF) } else { '' }
+if ($CurrentScope -ne $ScopeText) {
+    if ($Check) { $Problems.Add('Atlas.Common.Configuration.Internals.ScopeData.pas ist veraltet: pwsh Tools/Update-ConfigDoc.ps1 ausführen') }
+    else {
+        [IO.File]::WriteAllText($ScopeUnitPath, $ScopeText, (New-Object System.Text.UTF8Encoding($true)))
+        Write-Host "Geschrieben: $ScopeUnitPath"
     }
 }
 

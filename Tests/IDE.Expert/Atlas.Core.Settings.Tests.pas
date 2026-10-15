@@ -18,11 +18,28 @@ type
     [Test]
     procedure ClampsOutOfRangeValues;
     [Test]
-    procedure IndexOptionsGoToServer;
+    procedure IndexOptionsGoToGlobalFile;
     [Test]
-    procedure XmlDocOptionsGoToServer;
+    procedure XmlDocOptionsGoToGlobalFile;
     [Test]
     procedure AcceptOptionsRoundTrip;
+    [Test]
+    procedure OneActionAfterSaving;
+  end;
+
+  [TestFixture]
+  TAtlasSettingsScopesTests = class
+  public
+    [Test]
+    procedure RoutesServerSettingsToGlobalFile;
+    [Test]
+    procedure KeepsCommentsAndOtherKeys;
+    [Test]
+    procedure MigratesRegistryValuesOnce;
+    [Test]
+    procedure LeavesBrokenFileAlone;
+    [Test]
+    procedure SplitsSchemaByScope;
   end;
 
 implementation
@@ -30,7 +47,10 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Settings.Plugin;
+  Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.Schema,
+  Atlas.Core.Settings.SchemaData,
+  Atlas.Core.Settings.Scopes;
 
 type
   TMemoryStore = class(TInterfacedObject, IAtlasSettingsStore)
@@ -239,21 +259,27 @@ begin
   Assert.AreEqual('', TAtlasPluginSettings.Defaults.ServerPath, 'Standard: leer');
 end;
 
-procedure TAtlasPluginSettingsTests.IndexOptionsGoToServer;
+procedure TAtlasPluginSettingsTests.IndexOptionsGoToGlobalFile;
 var
-  Store: IAtlasSettingsStore;
+  Registry: IAtlasSettingsStore;
+  Store: TAtlasRoutedSettingsStore;
+  Keep: IAtlasSettingsStore;
   Settings, Loaded: TAtlasPluginSettings;
 begin
-  // Vorgaben wie im Schema; atlas.json-Format für den Server (#652).
+  // Index und Speicher gelten für alle Projekte und stehen in settings.json (#652), nicht in der Registry.
+  Registry := TMemoryStore.Create;
+  Store := TAtlasRoutedSettingsStore.Create(Registry, '');
+  Keep := Store;
   Settings := TAtlasPluginSettings.Defaults;
-  Assert.AreEqual('{"index":{"projectGroup":true,"searchPaths":true,"libraryPaths":false,"usages":true},' +
-    '"memoryBudgetMb":256,"hints":{"xmlDocFull":true,"xmlDocMaxLines":0}}', Settings.ServerSettingsJson);
-  Store := TMemoryStore.Create;
   Settings.IndexSearchPaths := False;
   Settings.IndexLibraryPaths := True;
   Settings.IndexUsages := False;
   Settings.MemoryBudgetMb := 512;
   Settings.Save(Store);
+  Assert.AreEqual(-1, Registry.ReadInteger('IndexSearchPaths', -1), 'nicht in der Registry');
+  Assert.Contains(Store.Text, '"searchPaths": false');
+  Assert.Contains(Store.Text, '"libraryPaths": true');
+  Assert.Contains(Store.Text, '"memoryBudgetMb": 512');
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
   Assert.IsTrue(Loaded.IndexProjectGroup);
@@ -261,8 +287,6 @@ begin
   Assert.IsTrue(Loaded.IndexLibraryPaths);
   Assert.IsFalse(Loaded.IndexUsages);
   Assert.AreEqual(512, Loaded.MemoryBudgetMb);
-  Assert.AreEqual('{"index":{"projectGroup":true,"searchPaths":false,"libraryPaths":true,"usages":false},' +
-    '"memoryBudgetMb":512,"hints":{"xmlDocFull":true,"xmlDocMaxLines":0}}', Loaded.ServerSettingsJson);
   // Speichergrenze (#492): 0 = unbegrenzt, nicht negativ, höchstens 64 GB.
   Store.WriteInteger('MemoryBudgetMb', -5);
   Loaded.Load(Store);
@@ -272,26 +296,29 @@ begin
   Assert.AreEqual(TAtlasPluginSettings.MaxMemoryBudgetMb, Loaded.MemoryBudgetMb);
 end;
 
-procedure TAtlasPluginSettingsTests.XmlDocOptionsGoToServer;
+procedure TAtlasPluginSettingsTests.XmlDocOptionsGoToGlobalFile;
 var
   Store: IAtlasSettingsStore;
+  Routed: TAtlasRoutedSettingsStore;
   Settings, Loaded: TAtlasPluginSettings;
 begin
-  // #654: Registry XmlDocFull/XmlDocMaxLines, an den Server als hints.
+  // #654: XmlDocFull/XmlDocMaxLines als hints in settings.json.
   Settings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(Settings.XmlDocFull);
   Assert.AreEqual(0, Settings.XmlDocMaxLines);
-  Store := TMemoryStore.Create;
+  Routed := TAtlasRoutedSettingsStore.Create(TMemoryStore.Create, '');
+  Store := Routed;
   Settings.XmlDocFull := False;
   Settings.XmlDocMaxLines := 12;
   Settings.Save(Store);
   Assert.AreEqual(0, Store.ReadInteger('XmlDocFull', 1));
   Assert.AreEqual(12, Store.ReadInteger('XmlDocMaxLines', 0));
+  Assert.Contains(Routed.Text, '"xmlDocFull": false');
+  Assert.Contains(Routed.Text, '"xmlDocMaxLines": 12');
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.XmlDocFull);
   Assert.AreEqual(12, Loaded.XmlDocMaxLines);
-  Assert.IsTrue(Pos('"hints":{"xmlDocFull":false,"xmlDocMaxLines":12}', Loaded.ServerSettingsJson) > 0);
   // Grenzen 0..50.
   Store.WriteInteger('XmlDocMaxLines', 99);
   Loaded.Load(Store);
@@ -374,7 +401,147 @@ begin
   Assert.AreEqual('recycleBin', Settings.UndoMultiFileNewFiles, 'unbekannt: Papierkorb');
 end;
 
+procedure TAtlasPluginSettingsTests.OneActionAfterSaving;
+var
+  Settings: TAtlasPluginSettings;
+begin
+  // Eine Auswahl „Nach dem Speichern“: Syntaxprüfung der IDE oder Kompilieren im Server, nie beides.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsFalse(Settings.CheckOnSave);
+  Assert.IsFalse(Settings.CompileOnSave);
+  Settings.CompileOnSave := True;
+  Settings.Normalize;
+  Assert.IsTrue(Settings.CompileOnSave);
+  Settings.CheckOnSave := True;
+  Settings.Normalize;
+  Assert.IsTrue(Settings.CheckOnSave);
+  Assert.IsFalse(Settings.CompileOnSave);
+end;
+
+{ TAtlasSettingsScopesTests }
+
+procedure TAtlasSettingsScopesTests.RoutesServerSettingsToGlobalFile;
+var
+  Registry: IAtlasSettingsStore;
+  Routed: TAtlasRoutedSettingsStore;
+  Store: IAtlasSettingsStore;
+  Setting: TAtlasRoutedSetting;
+begin
+  Registry := TMemoryStore.Create;
+  Routed := TAtlasRoutedSettingsStore.Create(Registry, '');
+  Store := Routed;
+  Store.WriteInteger('SlashCommands', 0);
+  Store.WriteInteger('InlayHints', 1);
+  Store.WriteInteger('CompileOnSave', 1);
+  Store.WriteInteger('PairColors', 0);
+  Store.WriteString('ServerPath', 'C:\Atlas\AtlasServer.exe');
+  Assert.Contains(Routed.Text, '"slashCommands": {');
+  Assert.Contains(Routed.Text, '"enabled": false');
+  Assert.Contains(Routed.Text, '"parameterNames": true');
+  Assert.Contains(Routed.Text, '"onSave": true');
+  // Reine Plugin-Werte bleiben in der Registry.
+  Assert.DoesNotContain(Routed.Text, 'PairColors');
+  Assert.AreEqual(0, Registry.ReadInteger('PairColors', 1));
+  Assert.AreEqual('C:\Atlas\AtlasServer.exe', Registry.ReadString('ServerPath', ''));
+  Assert.AreEqual(-1, Registry.ReadInteger('SlashCommands', -1));
+  Assert.IsTrue(TAtlasSettingsScopes.TryRouted('indexusages', Setting));
+  Assert.AreEqual('index.usages', Setting.Path);
+  Assert.IsFalse(TAtlasSettingsScopes.TryRouted('PairColors', Setting));
+  Assert.AreEqual(Length(TAtlasSettingsScopes.Routed) + 1, Length(TAtlasSettingsScopes.IdeManagedPaths));
+  Assert.AreEqual('delphiVersion', TAtlasSettingsScopes.IdeManagedPaths[0]);
+end;
+
+procedure TAtlasSettingsScopesTests.KeepsCommentsAndOtherKeys;
+const
+  Original = '{'#13#10'  // eigene Notiz'#13#10'  "language": "en",'#13#10'  "index": {"usages": true}'#13#10'}'#13#10;
+var
+  Routed: TAtlasRoutedSettingsStore;
+  Store: IAtlasSettingsStore;
+begin
+  Routed := TAtlasRoutedSettingsStore.Create(TMemoryStore.Create, Original);
+  Store := Routed;
+  // Gleicher Wert: Der Text bleibt genau gleich.
+  Store.WriteInteger('IndexUsages', 1);
+  Assert.AreEqual(Original, Routed.Text);
+  Store.WriteInteger('IndexUsages', 0);
+  Assert.Contains(Routed.Text, '// eigene Notiz');
+  Assert.Contains(Routed.Text, '"language": "en"');
+  Assert.Contains(Routed.Text, '"usages": false');
+  Assert.AreEqual(0, Store.ReadInteger('IndexUsages', 1));
+end;
+
+procedure TAtlasSettingsScopesTests.MigratesRegistryValuesOnce;
+var
+  Registry: IAtlasSettingsStore;
+  Routed: TAtlasRoutedSettingsStore;
+  Store: IAtlasSettingsStore;
+begin
+  // Bis hierher lagen Index und XMLDoc in der Registry; settings.json übernimmt sie einmal.
+  Registry := TMemoryStore.Create;
+  Registry.WriteInteger('IndexLibraryPaths', 1);
+  Registry.WriteInteger('XmlDocMaxLines', 7);
+  Routed := TAtlasRoutedSettingsStore.Create(Registry, '{"index": {"libraryPaths": false}}');
+  Store := Routed;
+  // Ohne Wert in settings.json gilt bis zur Übernahme der alte Wert.
+  Assert.AreEqual(7, Store.ReadInteger('XmlDocMaxLines', 0));
+  Assert.AreEqual(0, Store.ReadInteger('IndexLibraryPaths', 1), 'settings.json gewinnt');
+  Assert.IsTrue(Routed.Migrate);
+  Assert.Contains(Routed.Text, '"xmlDocMaxLines": 7');
+  Assert.Contains(Routed.Text, '"libraryPaths": false');
+  Assert.IsFalse(Routed.Migrate, 'nur einmal');
+end;
+
+procedure TAtlasSettingsScopesTests.LeavesBrokenFileAlone;
+var
+  Registry: IAtlasSettingsStore;
+  Routed: TAtlasRoutedSettingsStore;
+  Store: IAtlasSettingsStore;
+begin
+  Registry := TMemoryStore.Create;
+  Registry.WriteInteger('IndexUsages', 0);
+  Routed := TAtlasRoutedSettingsStore.Create(Registry, '{"index": ');
+  Store := Routed;
+  Assert.IsFalse(Routed.Migrate);
+  Store.WriteInteger('IndexSearchPaths', 0);
+  Assert.AreEqual('{"index": ', Routed.Text);
+  Assert.AreEqual(0, Store.ReadInteger('IndexUsages', 1));
+end;
+
+procedure TAtlasSettingsScopesTests.SplitsSchemaByScope;
+var
+  Fields, Project, Global: TArray<TAtlasSettingField>;
+  Field: TAtlasSettingField;
+  Paths: string;
+begin
+  Fields := TAtlasSettingsSchema.Fields(AtlasSchemaJson);
+  Project := TAtlasSettingsSchema.ForScope(Fields, False, nil);
+  Global := TAtlasSettingsSchema.ForScope(Fields, True, TAtlasSettingsScopes.IdeManagedPaths);
+  Paths := '|';
+  for Field in Project do
+    Paths := Paths + Field.Path + '|';
+  Assert.Contains(Paths, '|rules|');
+  Assert.Contains(Paths, '|index.exclude|');
+  Assert.Contains(Paths, '|completion.senderCast|');
+  Assert.DoesNotContain(Paths, '|index.projectGroup|');
+  Assert.DoesNotContain(Paths, '|language|');
+  Paths := '|';
+  for Field in Global do
+    Paths := Paths + Field.Path + '|';
+  Assert.Contains(Paths, '|language|');
+  Assert.Contains(Paths, '|completion.matching|');
+  // Auf den Reitern der Optionsseite bzw. von der IDE gesetzt: nicht noch einmal im Dialog.
+  Assert.DoesNotContain(Paths, '|index.projectGroup|');
+  Assert.DoesNotContain(Paths, '|hints.xmlDocFull|');
+  Assert.DoesNotContain(Paths, '|delphiVersion|');
+  Assert.DoesNotContain(Paths, '|rules|');
+  // Jedes umgeleitete Feld ist im Schema global.
+  for Field in Fields do
+    if Pos('|' + Field.Path + '|', '|index.projectGroup|memoryBudgetMb|compiler.onSave|slashCommands.enabled|') > 0 then
+      Assert.IsTrue(Field.Global, Field.Path);
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasPluginSettingsTests);
+  TDUnitX.RegisterTestFixture(TAtlasSettingsScopesTests);
 
 end.
