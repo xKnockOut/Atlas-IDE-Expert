@@ -87,6 +87,18 @@ type
     Positions: TArray<TTextPosition>;
   end;
 
+  /// <summary>Nachschlagetabelle Name → Positionen in TUnitIndex.Symbols (Diagnoselog 15.10.2026): die
+  /// Namensauflösung suchte jeden Bezeichner linear in allen Units der uses-Liste, bei großen Units
+  /// (Winapi.Windows, Vcl.Controls) mehrere Sekunden je Datei. Gilt nur für das Symbol-Array, aus dem
+  /// sie entstand; wird beim ersten Zugriff aufgebaut und ist threadsicher.</summary>
+  IUnitNameTable = interface
+    ['{6C1F4E27-93A8-4B5D-8E02-D7A4C9B36F51}']
+    /// <summary>Positionen der Symbole mit diesem Namen (ohne Groß-/Kleinschreibung) aufsteigend;
+    /// False, wenn ASymbols nicht das Array der Tabelle ist.</summary>
+    function Positions(const ASymbols: TArray<TIndexSymbol>; const AName: string;
+      out APositions: TArray<Integer>): Boolean;
+  end;
+
   TUnitIndex = record
     UnitName: string;
     FileName: string;
@@ -121,8 +133,16 @@ type
     /// <summary>Verwendungen liegen nur im Cache auf der Platte, weil das Speicherbudget überschritten
     /// war (#492); TIndexService.UsagesOf lädt sie bei Bedarf.</summary>
     UsagesOffloaded: Boolean;
+    /// <summary>Nachschlagetabelle der Namen; nil, solange PrepareNames nicht lief.</summary>
+    NameTable: IUnitNameTable;
     /// <summary>Datei, in der ASymbol steht: seine Include-Datei (#500), sonst FileName.</summary>
     function SymbolFile(const ASymbol: TIndexSymbol): string;
+    /// <summary>Legt die Nachschlagetabelle für die aktuellen Symbols an (aufgebaut wird sie beim ersten
+    /// SymbolsNamed); nach jeder Änderung an Symbols erneut aufrufen.</summary>
+    procedure PrepareNames;
+    /// <summary>Positionen der Symbole mit dem Namen AName in Symbols, aufsteigend; ohne passende
+    /// Tabelle linear gesucht.</summary>
+    function SymbolsNamed(const AName: string): TArray<Integer>;
   end;
 
   TSymbolLocation = record
@@ -215,7 +235,75 @@ type
 implementation
 
 uses
-  System.StrUtils;
+  System.StrUtils,
+  System.Generics.Collections;
+
+type
+  TUnitNameTable = class(TInterfacedObject, IUnitNameTable)
+  private
+    FSymbols: TArray<TIndexSymbol>;
+    FNames: TDictionary<string, TArray<Integer>>;
+    procedure Build;
+  public
+    constructor Create(const ASymbols: TArray<TIndexSymbol>);
+    destructor Destroy; override;
+    function Positions(const ASymbols: TArray<TIndexSymbol>; const AName: string;
+      out APositions: TArray<Integer>): Boolean;
+  end;
+
+{ TUnitNameTable }
+
+constructor TUnitNameTable.Create(const ASymbols: TArray<TIndexSymbol>);
+begin
+  inherited Create;
+  FSymbols := ASymbols;
+end;
+
+destructor TUnitNameTable.Destroy;
+begin
+  FNames.Free;
+  inherited;
+end;
+
+procedure TUnitNameTable.Build;
+var
+  Names: TDictionary<string, TArray<Integer>>;
+  Position: Integer;
+  Key: string;
+  Found: TArray<Integer>;
+begin
+  Names := TDictionary<string, TArray<Integer>>.Create;
+  // Zugriff über den Index, damit die Symbol-Records nicht kopiert werden.
+  for Position := 0 to High(FSymbols) do
+  begin
+    Key := UpperCase(FSymbols[Position].Name);
+    if not Names.TryGetValue(Key, Found) then
+      Found := nil;
+    Names.AddOrSetValue(Key, Found + [Position]);
+  end;
+  FNames := Names;
+end;
+
+function TUnitNameTable.Positions(const ASymbols: TArray<TIndexSymbol>; const AName: string;
+  out APositions: TArray<Integer>): Boolean;
+begin
+  APositions := nil;
+  if Pointer(ASymbols) <> Pointer(FSymbols) then
+    Exit(False);
+  if FNames = nil then
+  begin
+    TMonitor.Enter(Self);
+    try
+      if FNames = nil then
+        Build;
+    finally
+      TMonitor.Exit(Self);
+    end;
+  end;
+  if not FNames.TryGetValue(UpperCase(AName), APositions) then
+    APositions := nil;
+  Result := True;
+end;
 
 { TIndexSymbol }
 
@@ -245,6 +333,23 @@ begin
     Result := ASymbol.FileName
   else
     Result := FileName;
+end;
+
+procedure TUnitIndex.PrepareNames;
+begin
+  NameTable := TUnitNameTable.Create(Symbols);
+end;
+
+function TUnitIndex.SymbolsNamed(const AName: string): TArray<Integer>;
+var
+  Position: Integer;
+begin
+  if (NameTable <> nil) and NameTable.Positions(Symbols, AName, Result) then
+    Exit;
+  Result := nil;
+  for Position := 0 to High(Symbols) do
+    if SameText(Symbols[Position].Name, AName) then
+      Result := Result + [Position];
 end;
 
 { TIndexFiles }
