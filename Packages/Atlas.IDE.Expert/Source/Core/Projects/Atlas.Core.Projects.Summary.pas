@@ -31,7 +31,10 @@
 //                             "cognitive": 2.4, "parameters": 1.3},
 //                 "maximum": {"length": 140, …}, "exceeded": {"length": 2, …}},
 //     "todos": {"at": "…", "files": 4, "open": 9, "done": 2,
-//               "keywords": {"FIXME": 2, "TODO": 7}}
+//               "keywords": {"FIXME": 2, "TODO": 7}},
+//     "baseline": {"at": "…", "exists": true, "valid": true, "entries": 40,
+//                  "hits": 52, "orphaned": 2, "updated": "…", "added": 3,
+//                  "removed": 5}
 //   }
 // "changed", "ahead", "behind" = -1: unbekannt. "first" ist die erste Fehler-
 // meldung (Zeile und Spalte ab 1). "build" ist der letzte Lauf des Benutzers,
@@ -44,6 +47,16 @@
 // "todos" ist die TODO-Übersicht (#68) beim letzten Build: Dateien mit
 // offenen Einträgen, offene und erledigte Einträge, offene je Marke; der
 // Projektverlauf liest daraus die Reihe „offene TODOs“ ("open").
+// "baseline" ist die Baseline des Projekts (#97), gelesen nach jedem Build
+// und nach „Baseline des Projekts aktualisieren“: "exists" = atlas-baseline.json
+// (oder der frühere Name) liegt im Projektordner, "valid" = lesbar, "entries"
+// Einträge, "hits" Treffer darin, "orphaned" Treffer in Einträgen, deren
+// Datei es nicht mehr gibt. "updated", "added" und "removed" stammen vom
+// letzten Aktualisieren über Atlas (fehlen = unbekannt; ein Build ändert sie
+// nicht). Der Projektverlauf (#758) zeigt „Regeltreffer seit Baseline“
+// ("rules.newHits") nur, wenn "exists" gilt, sonst eine Lücke; die Einrichtung
+// (#759) liest „Baseline vorhanden“ aus "exists" und bietet sonst
+// „Baseline erzeugen“ (Befehl atlas.updateBaseline) an.
 //
 // Erweitern: Neue Felder und Abschnitte dürfen jederzeit dazukommen, ohne
 // "format" zu erhöhen. Leser übergehen, was sie nicht kennen; Schreiber
@@ -166,6 +179,27 @@ type
     class function Empty: TAtlasProjectRules; static;
   end;
 
+  /// <summary>Baseline des Projekts (#97); Grundlage für Projektverlauf (#758) und Einrichtung (#759).</summary>
+  TAtlasProjectBaseline = record
+    Known: Boolean;
+    /// <summary>Zeitpunkt des Lesens (UTC): Build oder Aktualisieren.</summary>
+    At: TDateTime;
+    /// <summary>Die Datei liegt im Projektordner.</summary>
+    Exists: Boolean;
+    /// <summary>Die Datei ist eine lesbare Baseline; ohne Datei False.</summary>
+    Valid: Boolean;
+    Entries: Integer;
+    /// <summary>Treffer in der Baseline (Summe von "count").</summary>
+    Hits: Integer;
+    /// <summary>Treffer in Einträgen, deren Datei es nicht mehr gibt.</summary>
+    Orphaned: Integer;
+    /// <summary>Letztes Aktualisieren über Atlas (UTC); 0 = unbekannt, dann gelten Added und Removed nicht.</summary>
+    Updated: TDateTime;
+    Added: Integer;
+    Removed: Integer;
+    class function Empty: TAtlasProjectBaseline; static;
+  end;
+
   TAtlasProjectSummary = record
     /// <summary>Vollständiger Pfad der Projektdatei (.dproj, .groupproj …).</summary>
     Project: string;
@@ -180,6 +214,7 @@ type
     Rules: TAtlasProjectRules;
     Metrics: TAtlasProjectMetrics;
     Todos: TAtlasProjectTodos;
+    Baseline: TAtlasProjectBaseline;
     /// <summary>Gelesener Text der Datei; ToJson behält daraus alle unbekannten Felder.</summary>
     Raw: string;
     class function Create(const AProject: string): TAtlasProjectSummary; static;
@@ -238,8 +273,8 @@ uses
 
 const
   // Bekannte Felder; alles andere übernimmt ToJson unverändert aus Raw.
-  TopKeys: array[0..10] of string = ('format', 'project', 'lastOpened', 'lastClosed', 'hidden', 'vcs', 'build',
-    'check', 'rules', 'metrics', 'todos');
+  TopKeys: array[0..11] of string = ('format', 'project', 'lastOpened', 'lastClosed', 'hidden', 'vcs', 'build',
+    'check', 'rules', 'metrics', 'todos', 'baseline');
   VcsKeys: array[0..6] of string = ('at', 'kind', 'branch', 'revision', 'changed', 'ahead', 'behind');
   BuildKeys: array[0..8] of string = ('at', 'kind', 'configuration', 'platform', 'succeeded', 'errors', 'warnings',
     'hints', 'first');
@@ -247,6 +282,8 @@ const
   RulesKeys: array[0..1] of string = ('at', 'newHits');
   MetricsKeys: array[0..6] of string = ('at', 'files', 'methods', 'overLimits', 'average', 'maximum', 'exceeded');
   TodosKeys: array[0..4] of string = ('at', 'files', 'open', 'done', 'keywords');
+  BaselineKeys: array[0..8] of string = ('at', 'exists', 'valid', 'entries', 'hits', 'orphaned', 'updated', 'added',
+    'removed');
 
 { TAtlasProjectLocation }
 
@@ -291,6 +328,13 @@ begin
   Result := Default(TAtlasProjectRules);
 end;
 
+{ TAtlasProjectBaseline }
+
+class function TAtlasProjectBaseline.Empty: TAtlasProjectBaseline;
+begin
+  Result := Default(TAtlasProjectBaseline);
+end;
+
 { TAtlasProjectSummary }
 
 class function TAtlasProjectSummary.Create(const AProject: string): TAtlasProjectSummary;
@@ -303,6 +347,7 @@ begin
   Result.Rules := TAtlasProjectRules.Empty;
   Result.Metrics := TAtlasProjectMetrics.Empty;
   Result.Todos := TAtlasProjectTodos.Empty;
+  Result.Baseline := TAtlasProjectBaseline.Empty;
 end;
 
 function TAtlasProjectSummary.Name: string;
@@ -773,6 +818,20 @@ begin
     end;
     ASummary.Metrics := MetricsOf(ObjectOf(Root, 'metrics'));
     ASummary.Todos := TodosOf(ObjectOf(Root, 'todos'));
+    Section := ObjectOf(Root, 'baseline');
+    if Section <> nil then
+    begin
+      ASummary.Baseline.Known := True;
+      ASummary.Baseline.At := TimeOf(TextOf(Section, 'at'));
+      ASummary.Baseline.Exists := FlagOf(Section, 'exists');
+      ASummary.Baseline.Valid := FlagOf(Section, 'valid');
+      ASummary.Baseline.Entries := NumberOf(Section, 'entries', 0);
+      ASummary.Baseline.Hits := NumberOf(Section, 'hits', 0);
+      ASummary.Baseline.Orphaned := NumberOf(Section, 'orphaned', 0);
+      ASummary.Baseline.Updated := TimeOf(TextOf(Section, 'updated'));
+      ASummary.Baseline.Added := NumberOf(Section, 'added', 0);
+      ASummary.Baseline.Removed := NumberOf(Section, 'removed', 0);
+    end;
     Result := True;
   finally
     Value.Free;
@@ -879,6 +938,24 @@ begin
       for Index := 0 to High(ASummary.Todos.Keywords) do
         Keywords.AddPair(ASummary.Todos.Keywords[Index], TJSONNumber.Create(ASummary.Todos.KeywordCounts[Index]));
       KeepUnknown(Section, ObjectOf(Original, 'todos'), TodosKeys);
+    end;
+    if ASummary.Baseline.Known then
+    begin
+      Section := TJSONObject.Create;
+      Root.AddPair('baseline', Section);
+      AddTime(Section, 'at', ASummary.Baseline.At);
+      Section.AddPair('exists', TJSONBool.Create(ASummary.Baseline.Exists));
+      Section.AddPair('valid', TJSONBool.Create(ASummary.Baseline.Valid));
+      Section.AddPair('entries', TJSONNumber.Create(ASummary.Baseline.Entries));
+      Section.AddPair('hits', TJSONNumber.Create(ASummary.Baseline.Hits));
+      Section.AddPair('orphaned', TJSONNumber.Create(ASummary.Baseline.Orphaned));
+      if ASummary.Baseline.Updated <> 0 then
+      begin
+        AddTime(Section, 'updated', ASummary.Baseline.Updated);
+        Section.AddPair('added', TJSONNumber.Create(ASummary.Baseline.Added));
+        Section.AddPair('removed', TJSONNumber.Create(ASummary.Baseline.Removed));
+      end;
+      KeepUnknown(Section, ObjectOf(Original, 'baseline'), BaselineKeys);
     end;
     KeepUnknown(Root, Original, TopKeys);
     Result := Root.ToJSON;

@@ -279,6 +279,9 @@ begin
     '"TodoList":{"type":"boolean","x-feature":"Palette",' +
       '"default":true,"x-page":"Editor","x-quickToggle":true,' +
       '"x-caption":"TODO-Liste","x-captionEn":"TODO list","x-issue":"#68"},' +
+    '"BaselineUpdate":{"type":"boolean","x-feature":"Palette",' +
+      '"default":true,"x-page":"Editor","x-quickToggle":true,' +
+      '"x-caption":"Baseline aktualisieren","x-captionEn":"Update baseline","x-issue":"#97"},' +
     '"MetricsReport":{"type":"boolean","x-feature":"Palette",' +
       '"default":true,"x-page":"Editor","x-quickToggle":true,' +
       '"x-caption":"Metrikbericht","x-captionEn":"Metrics report","x-issue":"#66"},' +
