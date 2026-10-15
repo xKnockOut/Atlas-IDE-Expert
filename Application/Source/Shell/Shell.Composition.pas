@@ -284,7 +284,6 @@ type
     CompileCommand = 'atlas.server.compile';
     SelectBuildCommand = 'atlas.server.selectBuild';
     RebuildIndexCommand = 'atlas.server.rebuildIndex';
-    /// <summary>Globale Benutzerdatei unter %APPDATA% (#227).</summary>
     /// <summary>Anfragen, die länger laufen, werden abgebrochen und gemeldet.</summary>
     RequestTimeoutMs = 10000;
   public
@@ -345,7 +344,7 @@ uses
   Atlas.Windows.Documents.PathCanonicalizer,
   Atlas.Windows.Diagnostics.Adapters.DebugOutputSink,
   Atlas.Windows.Diagnostics.StackTrace,
-  Atlas.Common.Logging.Providers.RotatingFileStream,
+  Atlas.Common.Logging.RotatingFileStream,
   Atlas.Windows.Editing.SystemColors,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.GroupReader,

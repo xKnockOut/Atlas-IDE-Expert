@@ -393,6 +393,10 @@ begin
   Assert.AreEqual('A.pas', Relative);
   Assert.IsFalse(VcsRelativePath(Root, Root + 'X' + PathDelim + 'A.pas', Relative), 'Nachbarordner mit gleichem Anfang');
   Assert.IsFalse(VcsRelativePath(Root, Root, Relative), 'die Wurzel selbst ist keine Datei');
+  // Weiterleitung für den Host (Code-Review A-12)
+  Assert.IsTrue(TAtlasVcsDetection.RelativePath(Root, Under('src/Main.pas'), Relative));
+  Assert.AreEqual('src/Main.pas', Relative);
+  Assert.IsFalse(TAtlasVcsDetection.RelativePath(Root, Root, Relative));
   if PathDelim = '\' then
   begin
     Assert.IsTrue(VcsRelativePath('c:\projekte\kunde', Under('A.pas'), Relative), 'Windows: ohne Groß/klein');

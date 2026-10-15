@@ -1256,3 +1256,16 @@ Vorbereitung: Projektgruppe neu gebaut, Plugin installiert, Diagnosemodus an.
 | TX6 | Datei auf Laufwerk `C:` öffnen, Hover, Strg+Klick, Umbenennen über zwei Dateien | funktioniert wie vorher; das Protokoll im Diagnosemodus zeigt URIs mit `file:///c%3A/…` |
 | TX7 | `settings.json` mit `// Kommentar` und CR-only-Zeilenenden speichern, Optionen öffnen | Einstellungen werden gelesen, keine Fehlermeldung |
 | TX8 | Info-Dialog und Startbildschirm, `AtlasServer --version`, Titel des Installers | überall dieselbe Version |
+
+## Rollenmatrix (Code-Review A-10, A-12)
+
+Vorbereitung: Repository-Ordner als Projekt geöffnet (die `atlas.json` im Wurzelordner schaltet beide Regeln mit `prefixes` ein).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AR1 | In `Atlas.Common.Logging.Contract` `uses Atlas.Common.Logging.Providers.Logger` eintragen | Warnung `architecture-role-import` am uses-Eintrag: „… (eigene Providers aus Contract)“ |
+| AR2 | In `atlas.json` die Regel auf `"severity": "off"` setzen | Warnung verschwindet |
+| AR3 | In eine `*.Contract`-Unit `TFoo = class end;` im interface schreiben | Warnung `architecture-contract-content` am Typnamen; `EFoo = class(Exception);` bleibt ohne Meldung |
+| AR4 | Ein Projekt ohne `prefixes` in `atlas.json` öffnen, Profil `strict` | Keine Meldung der beiden Regeln |
+| AR5 | Undo-Einstellungen unter *Optionen › Atlas* ändern, speichern, wieder öffnen; Atlas-Änderung über zwei Dateien zurücknehmen | Werte bleiben erhalten; Zurücknehmen wie bisher |
+| AR6 | Server-Protokoll mit Mitschnitt (`--trace`), Parameter-Hint und Hover in einer Unit mit `{$I}`-Datei | Mitschnitt rotiert wie bisher; Hint und Hover funktionieren auch in der Include-Datei |

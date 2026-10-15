@@ -10,7 +10,7 @@ ADR 0003 legte den Cache als JSON-Datei fest, die immer ganz gelesen wird. Bei e
 
 ## Entscheidung
 
-- **Binärformat** `ATLASIDX` mit Formatversion (derzeit 12) und einer Prüfsumme (FNV-1a, 4 Byte) über alles hinter dem Kopf.
+- **Binärformat** `ATLASIDX` mit Formatversion (`TIndexCache.FormatVersion` in `Atlas.Common.Index.Cache`; steigt bei jeder Formatänderung) und einer Prüfsumme (FNV-1a, 4 Byte) über alles hinter dem Kopf.
 - **String-Tabelle:** Jeder Text steht einmal in der Datei; Units und Symbole verweisen per Nummer darauf. Nach dem Laden teilen sich gleiche Texte eine Instanz.
 - **Zahlen als Varint** (vorzeichenbehaftete per ZigZag).
 - **Blöcke je Unit mit Länge:** Beim Start liest der Server nur die Köpfe (Name, Datei, Zeitstempel, Hash, uses, Includes). Die Symbole einer Unit dekodiert er erst, wenn der Builder sie übernimmt; die Verwendungen stehen in einem eigenen Block und können bei knappem Speicher in der Datei bleiben.
@@ -30,5 +30,5 @@ Das Format beschreibt `docs/Architektur.md` (Abschnitt Cache-Format) und der Kop
 
 - Der Start großer Projekte hängt vor allem an den Köpfen; Units, die das Projekt nicht braucht, kosten fast nichts.
 - Mit einem Texteditor lässt sich der Cache nicht mehr prüfen. Untersucht wird über den Index selbst (`atlas.server.status`, MCP-Werkzeuge) und die Protokollzeile beim Verwerfen.
-- Ändert sich `TIndexSymbol` oder die Reihenfolge der Felder, muss `FormatVersion` steigen; Tests lesen und schreiben das Format im Kreis.
+- Ändert sich `TIndexSymbol` oder die Reihenfolge der Felder, muss `FormatVersion` steigen, und `TAtlasWelcomeIndexFiles.FormatVersion` im Plugin mit (der Test `FormatVersionMatchesServer` prüft das); Tests lesen und schreiben das Format im Kreis.
 - Alte Caches (`index-*.json`) räumt die Größenbegrenzung des Cache-Ordners zuerst weg.

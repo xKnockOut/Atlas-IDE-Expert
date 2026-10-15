@@ -64,7 +64,7 @@ More: [docs/Installation.md](docs/Installation.md).
 | `Packages/Atlas.Common` | Package, free of Windows and VCL |
 | `Packages/Atlas.Windows` | Package for Windows-specific functions, free of VCL |
 | `Application/AtlasServer` | The server (console program, speaks LSP over stdin/stdout) |
-| `Packages/Atlas.IDE.Expert` | The IDE plugin (design-time package, Win32), layers `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
+| `Packages/Atlas.IDE.Expert` | The IDE plugin (design-time package; Win32 for the classic IDE, Win64 for the 64-bit IDE from Delphi 12.3), layers `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
 | `Tests/Atlas.Tests` | DUnitX tests |
 
 Roles, naming and import rules: [docs/Architektur.md](docs/Architektur.md).
@@ -78,7 +78,7 @@ Roles, naming and import rules: [docs/Architektur.md](docs/Architektur.md).
 
 ## Building
 
-Open `Atlas.groupproj` in the IDE and **Build All**. The order Common → Windows → server → IDE plugin → tests is set in the project group. Common, Windows and the server must be built for the same platform, otherwise the server does not find the package units. The IDE plugin is set up for Win32 only (the IDE is 32-bit); a group build for Win64 still compiles it and thus checks the code.
+Open `Atlas.groupproj` in the IDE and **Build All**. The order Common → Windows → server → IDE plugin → tests is set in the project group. Common, Windows and the server must be built for the same platform, otherwise the server does not find the package units. The IDE plugin is set up for Win32 (classic IDE) and Win64 (64-bit IDE from Delphi 12.3); which BPL is loaded depends on the IDE ([ADR 0008](docs/adr/0008-plattformen.md)).
 
 On the command line (RAD Studio command prompt or after `rsvars.bat`):
 

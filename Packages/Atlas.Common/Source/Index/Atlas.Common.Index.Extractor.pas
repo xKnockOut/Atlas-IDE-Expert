@@ -88,9 +88,9 @@ type
     destructor Destroy; override;
     /// <summary>Index-Eintrag aus einem fertigen Syntaxbaum (ohne Stamp und Hash).</summary>
     class function Extract(ATree: TSyntaxTree; const AFileName: string): TUnitIndex; static;
-    /// <summary>Parst AText mit den aktiven Symbolen ADefines und liefert den Eintrag.</summary>
-    /// <summary>Mit AResolver werden $I-Dateien gelesen (#264): ihre $DEFINEs gelten, Includes listet sie auf.</summary>
-    /// <summary>Mit AUsages kommen die Verwendungen der Bezeichner dazu (#492).</summary>
+    /// <summary>Parst AText mit den aktiven Symbolen ADefines und liefert den Eintrag. Mit AResolver werden
+    /// $I-Dateien gelesen (#264): ihre $DEFINEs gelten, Includes listet sie auf. Mit AUsages kommen die
+    /// Verwendungen der Bezeichner dazu (#492).</summary>
     class function ExtractText(const AText, AFileName: string; const ADefines: TArray<string>;
       const AResolver: TIncludeResolver = nil; AUsages: Boolean = False): TUnitIndex; static;
     /// <summary>Verwendungen aller Bezeichner in ATokens außer an den Deklarationsstellen von ASymbols

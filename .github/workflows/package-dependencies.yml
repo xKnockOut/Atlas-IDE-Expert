@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: "Rollenmatrix: Selbsttest (Code-Review A-12)"
+        shell: pwsh
+        run: ./Tools/Check-PackageDependencies.ps1 -SelfTest
       - name: Package-Abhängigkeiten prüfen
         shell: pwsh
         run: ./Tools/Check-PackageDependencies.ps1
@@ -25,6 +28,9 @@ jobs:
       - name: Einreihen in den Hauptthread nur über TAtlasMainThread (Code-Review A-02)
         shell: pwsh
         run: ./Tools/Check-MainThreadQueue.ps1
+      - name: Keine doppelten XML-Doku-Kommentare (Code-Review K-04)
+        shell: pwsh
+        run: ./Tools/Check-DocComments.ps1
       - name: Regelkatalog aktuell und vollständig
         shell: pwsh
         run: ./Tools/Update-RuleCatalog.ps1 -Check

@@ -295,6 +295,11 @@ type
     property Initialized: Boolean read FInitialized;
   end;
 
+  /// <summary>Laufende Sitzung oder nil; startet nie einen Server (Code-Review A-01). Aus beliebigem Thread
+  /// aufgerufen, meist im Zeitlimit-Arbeiter. Steht hier, damit Anbieter verschiedener Features sie ohne
+  /// gegenseitigen Import teilen (Code-Review A-10).</summary>
+  TAtlasSessionFunc = reference to function: TLspSession;
+
 implementation
 
 uses

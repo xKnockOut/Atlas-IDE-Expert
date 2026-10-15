@@ -12,7 +12,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Files.TextFile;
+  Atlas.Core.Files.Contract;
 
 type
 {$SCOPEDENUMS ON}
@@ -119,14 +119,6 @@ type
     procedure Clear;
   end;
 
-  TAtlasUndoNames = class
-  public
-    class function ConflictModeName(AMode: TAtlasUndoConflictMode): string; static;
-    class function ParseConflictMode(const AText: string): TAtlasUndoConflictMode; static;
-    class function NewFilesName(AMode: TAtlasNewFilesMode): string; static;
-    class function ParseNewFiles(const AText: string): TAtlasNewFilesMode; static;
-  end;
-
 implementation
 
 { TAtlasFileChange }
@@ -205,46 +197,6 @@ end;
 function TAtlasUndoReport.Complete: Boolean;
 begin
   Result := (Length(Done) > 0) and (Length(Conflicts) = 0) and (Length(Errors) = 0) and not Aborted;
-end;
-
-{ TAtlasUndoNames }
-
-class function TAtlasUndoNames.ConflictModeName(AMode: TAtlasUndoConflictMode): string;
-begin
-  if AMode = TAtlasUndoConflictMode.Abort then
-    Result := 'abort'
-  else
-    Result := 'partial';
-end;
-
-class function TAtlasUndoNames.ParseConflictMode(const AText: string): TAtlasUndoConflictMode;
-begin
-  if SameText(Trim(AText), 'abort') then
-    Result := TAtlasUndoConflictMode.Abort
-  else
-    Result := TAtlasUndoConflictMode.Partial;
-end;
-
-class function TAtlasUndoNames.NewFilesName(AMode: TAtlasNewFilesMode): string;
-begin
-  case AMode of
-    TAtlasNewFilesMode.Delete:
-      Result := 'delete';
-    TAtlasNewFilesMode.Keep:
-      Result := 'keep';
-  else
-    Result := 'recycleBin';
-  end;
-end;
-
-class function TAtlasUndoNames.ParseNewFiles(const AText: string): TAtlasNewFilesMode;
-begin
-  if SameText(Trim(AText), 'delete') then
-    Result := TAtlasNewFilesMode.Delete
-  else if SameText(Trim(AText), 'keep') then
-    Result := TAtlasNewFilesMode.Keep
-  else
-    Result := TAtlasNewFilesMode.RecycleBin;
 end;
 
 end.
