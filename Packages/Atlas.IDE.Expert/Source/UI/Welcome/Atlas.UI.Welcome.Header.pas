@@ -4,8 +4,9 @@
 // Variante nach dem Hintergrund, bei jedem Zeichnen neu bestimmt, damit ein
 // Themenwechsel ohne Neustart wirkt), daneben die Grußzeile („Guten Abend,
 // Marco“) und darunter Version und Kurzstatus („Atlas 1.0.0 · Server läuft ·
-// 1.284 Units im Index“). Rechts ist Platz für das Suchfeld (#760,
-// SearchHost). Ohne Grußzeile (welcomePage.greeting aus) steht „Atlas“ dort.
+// 1.284 Units im Index“). Rechts steht das Suchfeld (#760, ShowSearch;
+// welcomePage.search). Ohne Grußzeile (welcomePage.greeting aus) steht
+// „Atlas“ dort.
 
 interface
 
@@ -19,7 +20,8 @@ uses
   Atlas.Core.Status.Lines,
   Atlas.Core.Welcome.Greeting,
   Atlas.UI.Style.Symbol,
-  Atlas.UI.Welcome.Frame;
+  Atlas.UI.Welcome.Frame,
+  Atlas.UI.Welcome.Search;
 
 type
   /// <summary>Was der Kopf zeigt; die IDE-Schicht füllt es.</summary>
@@ -39,15 +41,19 @@ type
   public const
     HeaderHeight = 64;
     SymbolSize = 40;
+    SearchWidth = 320;
   private
     FSymbol: TAtlasSymbolImage;
     FGreeting: TLabel;
     FInfo: TLabel;
     FSearchHost: TPanel;
+    FSearch: TAtlasWelcomeSearchBox;
     FData: TAtlasWelcomeHeaderInfo;
   public
     constructor Create(AOwner: TComponent); override;
     procedure ShowInfo(const AInfo: TAtlasWelcomeHeaderInfo);
+    /// <summary>Suchfeld zeigen (beim ersten Mal anlegen) bzw. ausblenden und leeren (#760).</summary>
+    procedure ShowSearch(AVisible: Boolean);
     /// <summary>„Guten Abend, Marco“; ohne Namen nur der Gruß.</summary>
     class function GreetingText(AHour: Integer; const AFirstName: string): string; static;
     /// <summary>„Server läuft · 1.284 Units im Index“ in der Sprache der IDE.</summary>
@@ -62,6 +68,8 @@ type
     property InfoLabel: TLabel read FInfo;
     /// <summary>Platz rechts im Kopf für das Suchfeld (#760).</summary>
     property SearchHost: TPanel read FSearchHost;
+    /// <summary>Suchfeld; nil, bis ShowSearch(True) es anlegt.</summary>
+    property Search: TAtlasWelcomeSearchBox read FSearch;
   end;
 
 implementation
@@ -95,7 +103,7 @@ begin
   FSearchHost.Parent := Self;
   FSearchHost.Align := alRight;
   FSearchHost.AlignWithMargins := True;
-  FSearchHost.Margins.SetBounds(8, 14, 8, 14);
+  FSearchHost.Margins.SetBounds(8, 19, 12, 19);
   FSearchHost.Width := 0;
   FSearchHost.BevelOuter := bvNone;
   FSearchHost.ParentBackground := True;
@@ -116,6 +124,26 @@ begin
   FInfo.Caption := InfoText(AInfo);
   // Symbol neu zeichnen: Die Variante folgt dem Hintergrund (Themenwechsel).
   FSymbol.Invalidate;
+end;
+
+procedure TAtlasWelcomeHeaderFrame.ShowSearch(AVisible: Boolean);
+begin
+  if AVisible and (FSearch = nil) then
+  begin
+    FSearch := TAtlasWelcomeSearchBox.Create(Self);
+    FSearch.Parent := FSearchHost;
+    FSearch.Align := alClient;
+  end;
+  if FSearch <> nil then
+  begin
+    if not AVisible then
+      FSearch.Clear;
+    FSearch.Visible := AVisible;
+  end;
+  if AVisible then
+    FSearchHost.Width := ScaleValue(SearchWidth)
+  else
+    FSearchHost.Width := 0;
 end;
 
 class function TAtlasWelcomeHeaderFrame.GreetingText(AHour: Integer; const AFirstName: string): string;

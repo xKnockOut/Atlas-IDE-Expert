@@ -617,6 +617,21 @@ Vorbereitung: Formular mit Button `btnSave` und den Methoden `FormCreate(Sender:
 | WP13 | IDE-Stil hell/dunkel wechseln | Atlas-Bereiche und „Atlas-Start“ folgen dem Thema, Symbol in passender Variante |
 | WP14 | IDE ohne Schnittstelle der Willkommensseite (`WelcomePagePluginService` = nil), z. B. Willkommensseite abgeschaltet | „Atlas-Start“ ersetzt die Willkommensseite |
 
+### Suchfeld (#760)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WS1 | Willkommensseite ohne geöffnetes Projekt, Strg+E, „wel“ tippen | Fokus im Suchfeld rechts im Kopf; Liste darunter mit Gruppen: Dateien mit `…WelcomePage.pas` (sofern ein Projekt mit dieser Unit schon einmal indiziert wurde), Symbole mit „Symbole nach dem Öffnen eines Projekts“, Befehle mit „Atlas-Layout anwenden“; je Gruppe höchstens 4, darunter „n weitere“ |
+| WS2 | „Wlecome“ tippen | dieselbe Datei wie WS1 (Tippfehler-Toleranz) |
+| WS3 | Pfeiltasten, Enter auf eine Datei eines nicht geöffneten Projekts | Projekt öffnet sich, danach die Datei; Suchfeld leer, Liste weg |
+| WS4 | Projekt öffnen, Server läuft, zurück zur Willkommensseite, Klassennamen suchen | Gruppe „Symbole“ zeigt Treffer; Enter springt an die Deklaration |
+| WS5 | Ohne laufenden Server suchen | Gruppe „Symbole“ nur mit Hinweis; im Statusfeld startet kein Server |
+| WS6 | Projekt aus *Datei › Wieder öffnen* suchen und mit Enter öffnen | Gruppe „Projekte“ zeigt es (Name, Ordner); Enter öffnet es. Wenn die Gruppe leer bleibt: Export von `HKCU\Software\Embarcadero\BDS\<Version>\Closed Projects` an Marco/Claude (Format angenommen) |
+| WS7 | Esc im Suchfeld; Klick in die IDE daneben | Esc leert das Feld und schließt die Liste; Klick daneben schließt die Liste |
+| WS8 | Editor aktiv, Strg+E | inkrementelle Suche der IDE wie bisher (Atlas greift nur auf der Willkommensseite) |
+| WS9 | Optionen: Taste des Suchfelds auf Strg+Umschalt+F; dann „Gruppe Symbole“ aus; dann „Suchfeld zeigen“ aus | neue Taste wirkt; Gruppe „Symbole“ fehlt ganz; Suchfeld verschwindet, die Taste tut auf der Willkommensseite nichts |
+| WS10 | Fenster „Atlas-Start“ (WP10) | Suchfeld oben im Kopf, verhält sich wie auf der Willkommensseite |
+
 ## Atlas-Symbol (#751)
 
 | Nr. | Schritte | Erwartet |

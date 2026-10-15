@@ -50,6 +50,10 @@ type
     destructor Destroy; override;
     /// <summary>Atlas-Befehl für die Palette (Beschriftung mit „Atlas: “ davor).</summary>
     procedure RegisterCommand(const AId, ACaption, ADescription: string; const AProc: TProc);
+    /// <summary>Nur die Atlas-Befehle (Suchfeld der Willkommensseite, #760).</summary>
+    function AtlasCommands: TArray<TAtlasCommand>;
+    /// <summary>Atlas-Befehl AId ausführen wie aus der Palette (mit Verlauf).</summary>
+    procedure Execute(const AId: string);
     /// <summary>Palette über dem aktiven Fenster öffnen.</summary>
     procedure Show;
     /// <summary>Tastenkürzel nach den Einstellungen (neu) belegen; bei Konflikt ohne Vorrang keins (#494).</summary>
@@ -253,6 +257,27 @@ begin
     Seen.Free;
     Paths.Free;
   end;
+end;
+
+function TAtlasIdePalette.AtlasCommands: TArray<TAtlasCommand>;
+var
+  Pair: TPair<TAtlasCommand, TProc>;
+begin
+  Result := nil;
+  for Pair in FAtlasCommands do
+    Result := Result + [Pair.Key];
+end;
+
+procedure TAtlasIdePalette.Execute(const AId: string);
+var
+  Pair: TPair<TAtlasCommand, TProc>;
+begin
+  for Pair in FAtlasCommands do
+    if Pair.Key.Id = AId then
+    begin
+      Run(Pair.Key);
+      Exit;
+    end;
 end;
 
 procedure TAtlasIdePalette.Run(const ACommand: TAtlasCommand);

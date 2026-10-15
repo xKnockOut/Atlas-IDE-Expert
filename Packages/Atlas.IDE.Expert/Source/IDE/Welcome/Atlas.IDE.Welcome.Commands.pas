@@ -15,6 +15,7 @@
 //   wiederholt der nächste Start die Platzierung (Marke …-pending).
 // - Kopf: Grußzeile nach Uhrzeit und Vorname des Windows-Kontos, Version,
 //   Kurzstatus aus Server und Index; neu bei jeder Änderung im Statusfeld.
+//   Rechts das Suchfeld (#760, welcomePage.search), angebunden an Search.
 // Die Willkommensseite startet keinen Server und liest nur lokale Daten.
 
 interface
@@ -29,7 +30,8 @@ uses
   Atlas.UI.Welcome.Header,
   Atlas.UI.Welcome.Board,
   Atlas.IDE.Status.Lines,
-  Atlas.IDE.Welcome.Page;
+  Atlas.IDE.Welcome.Page,
+  Atlas.IDE.Welcome.Search;
 
 type
   TAtlasIdeWelcome = class
@@ -46,6 +48,7 @@ type
     // Zuletzt gesehenes welcomePage.layout; '' vor dem ersten Sync.
     FLastLayout: string;
     FAccess: IAtlasRegistryAccess;
+    FSearch: TAtlasIdeWelcomeSearch;
     procedure SectionChanged(const AId: string);
     procedure Flush;
     function CaptionOf(const APluginId: string): string;
@@ -81,6 +84,8 @@ type
     procedure ThemeChanged;
     /// <summary>Wird für Tests ersetzt; Vorgabe: Registry der IDE.</summary>
     property Access: IAtlasRegistryAccess read FAccess write FAccess;
+    /// <summary>Suchfeld (#760); gehört danach der Steuerung. nil = ohne Suchfeld.</summary>
+    property Search: TAtlasIdeWelcomeSearch read FSearch write FSearch;
     class function HeaderInfo(const AServer: TAtlasServerInfo; AIndexing: Boolean; APercent, AUnits: Integer;
       AHour: Integer; const AFirstName: string; AGreeting: Boolean): TAtlasWelcomeHeaderInfo; static;
   end;
@@ -166,6 +171,8 @@ end;
 destructor TAtlasIdeWelcome.Destroy;
 begin
   Instance := nil;
+  // Vor den Frames: löst die Suchfelder, die noch leben.
+  FreeAndNil(FSearch);
   TAtlasWelcomeSections.Default.RemoveListener(FSectionsListener);
   TAtlasStatusRegistry.Default.RemoveListener(FStatusListener);
   // Beim Beenden der IDE: Hat die IDE ihr Layout aus dem Speicher zurückgeschrieben, gilt die Marke weiter.
@@ -225,6 +232,9 @@ begin
   DecodeTime(Now, Hour, Minute, Second, MSec);
   AHeader.ShowInfo(HeaderInfo(Server, Indexing, Percent, Units, Hour,
     TAtlasWelcomeGreeting.FirstName(DisplayName, GetEnvironmentVariable('USERNAME')), Settings.WelcomePageGreeting));
+  AHeader.ShowSearch(Settings.WelcomePageSearch and (FSearch <> nil));
+  if (FSearch <> nil) and (AHeader.Search <> nil) then
+    FSearch.Attach(AHeader.Search);
 end;
 
 procedure TAtlasIdeWelcome.FillBoard(ABoard: TAtlasWelcomeBoardFrame; AColumns: Integer);
@@ -660,6 +670,8 @@ begin
     begin
       TAtlasIdeWelcomePage.ApplyTheme;
       TAtlasIdeWelcomeWindow.ApplyTheme;
+      // Farben der Ergebnisliste des Suchfelds (#760).
+      UpdateHeaders;
     end);
 end;
 
