@@ -210,7 +210,8 @@ uses
   Atlas.Core.Completion.Ranking,
   Atlas.IDE.Editor.Buffer,
   Atlas.IDE.Editor.Style,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.Text.Lines;
 
 /// <summary>Plattform und Konfiguration des aktiven Projekts („Win32 · Debug“, #476); '' ohne Projekt.</summary>
 function ActiveTarget: string;
@@ -1380,10 +1381,7 @@ var
   WordStart, SnippetChar, CharShift: Integer;
 begin
   // Zeilenumbrüche wie im Puffer, Einrückung wie die aktuelle Zeile.
-  if Pos(#13#10, AText) > 0 then
-    LineBreak := #13#10
-  else
-    LineBreak := #10;
+  LineBreak := TTextLines.LineBreakOf(AText);
   Expansion := TAtlasSnippets.Expand(AItem.Snippet, TAtlasSnippets.IndentOf(ALineText), LineBreak);
   // Vorlage des Servers (#51): ab dem Anfang ihres Bereichs; sonst das getippte Wort.
   WordStart := FWordStart;

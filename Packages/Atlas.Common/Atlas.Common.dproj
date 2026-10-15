@@ -38,6 +38,7 @@
         <DCC_Description>Atlas Common (frei von Windows und VCL)</DCC_Description>
         <DCC_Namespace>System;$(DCC_Namespace)</DCC_Namespace>
         <DCC_OutputNeverBuildDcps>true</DCC_OutputNeverBuildDcps>
+        <DCC_UnitSearchPath>..\..\Output\$(Platform)\$(Config)\Dcp;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_DcuOutput>..\..\Output\$(Platform)\$(Config)\Dcu\Atlas.Common</DCC_DcuOutput>
         <DCC_DcpOutput>..\..\Output\$(Platform)\$(Config)\Dcp</DCC_DcpOutput>
         <DCC_BplOutput>..\..\Output\$(Platform)\$(Config)\Bpl</DCC_BplOutput>
@@ -70,6 +71,7 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="rtl.dcp"/>
+        <DCCReference Include="Atlas.Text.dcp"/>
         <DCCReference Include="Source\Product\Atlas.Common.Product.Version.pas"/>
         <DCCReference Include="Source\Logging\Atlas.Common.Logging.Contract.pas"/>
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.Logger.pas"/>

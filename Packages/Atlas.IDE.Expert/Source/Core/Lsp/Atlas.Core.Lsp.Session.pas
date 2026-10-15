@@ -298,10 +298,8 @@ type
 implementation
 
 uses
-  System.SyncObjs;
-
-const
-  Unreserved = ['A'..'Z', 'a'..'z', '0'..'9', '-', '.', '_', '~', '/'];
+  System.SyncObjs,
+  Atlas.Text.Uris;
 
 type
   TLspSignal = class(TInterfacedObject, ILspSignal)
@@ -382,75 +380,15 @@ begin
 end;
 
 class function TLspSession.PathToUri(const APath: string): string;
-var
-  Path: string;
-  Bytes: TBytes;
-  B: Byte;
-  Builder: TStringBuilder;
 begin
-  Path := StringReplace(APath, '\', '/', [rfReplaceAll]);
-  if Path.StartsWith('//') then
-    Path := Path.Substring(2)
-  else
-    Path := '/' + Path;
-  Bytes := TEncoding.UTF8.GetBytes(Path);
-  Builder := TStringBuilder.Create;
-  try
-    for B in Bytes do
-      if (B < $80) and CharInSet(Char(B), Unreserved) then
-        Builder.Append(Char(B))
-      else
-        Builder.Append('%').Append(IntToHex(B, 2));
-    // c:\x → file:///c%3A/x; \\server\share → file://server/share
-    Result := 'file://' + Builder.ToString;
-  finally
-    Builder.Free;
-  end;
+  // Wie der Server (ADR 0012): c:\x → file:///c%3A/x; \\server\share → file://server/share
+  Result := TTextUris.FromPath(APath);
 end;
 
 class function TLspSession.UriToPath(const AUri: string): string;
-var
-  Rest: string;
-  Bytes: TBytes;
-  Count, Index, Code: Integer;
-  Chunk: TBytes;
 begin
-  if not AUri.StartsWith('file://', True) then
-    Exit('');
-  Rest := AUri.Substring(Length('file://'));
-  SetLength(Bytes, Length(Rest) * 3);
-  Count := 0;
-  Index := 1;
-  while Index <= Length(Rest) do
-  begin
-    if (Rest[Index] = '%') and (Index + 2 <= Length(Rest)) then
-    begin
-      Code := StrToIntDef('$' + Copy(Rest, Index + 1, 2), -1);
-      if Code >= 0 then
-      begin
-        Bytes[Count] := Code;
-        Inc(Count);
-        Inc(Index, 3);
-        Continue;
-      end;
-    end;
-    Chunk := TEncoding.UTF8.GetBytes(Rest[Index]);
-    Move(Chunk[0], Bytes[Count], Length(Chunk));
-    Inc(Count, Length(Chunk));
-    Inc(Index);
-  end;
-  Result := TEncoding.UTF8.GetString(Bytes, 0, Count);
-  if Result.StartsWith('/') then
-  begin
-    // file:///c:/x → c:\x; file://server/share → \\server\share
-    if (Length(Result) >= 3) and (Result[3] = ':') then
-      Result := Result.Substring(1)
-    else
-      Result := '/' + Result;
-  end
-  else
-    Result := '//' + Result;
-  Result := StringReplace(Result, '/', '\', [rfReplaceAll]);
+  // file:///c:/x → c:\x; file://server/share → \\server\share; andere Schemata → ''
+  Result := StringReplace(TTextUris.ToPath(AUri), '/', '\', [rfReplaceAll]);
 end;
 
 class function TLspSession.HoverText(const AHover: TJSONValue): string;

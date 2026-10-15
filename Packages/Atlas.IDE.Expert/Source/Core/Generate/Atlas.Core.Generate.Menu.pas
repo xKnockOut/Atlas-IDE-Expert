@@ -152,6 +152,7 @@ implementation
 uses
   System.Math,
   System.StrUtils,
+  Atlas.Text.Lines,
   Atlas.Core.Completion.Matching;
 
 { TAtlasGenerateEntry }
@@ -380,7 +381,7 @@ var
   Line: string;
 begin
   FIds := nil;
-  for Line in AText.Replace(#13, '').Split([#10]) do
+  for Line in TTextLines.SplitLines(AText) do
     if (Trim(Line) <> '') and (IndexText(Trim(Line), FIds) < 0) and (Length(FIds) < MaxCount) then
       FIds := FIds + [Trim(Line)];
 end;

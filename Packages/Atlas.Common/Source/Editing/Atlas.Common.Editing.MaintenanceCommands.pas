@@ -29,18 +29,6 @@ uses
   Atlas.Common.Editing.ClassCommands,
   Atlas.Common.Editing.CommandSource;
 
-/// <summary>Ersetzt die Befehlszeile durch ALines mit ihrer Einrückung.</summary>
-function ReplaceCommand(ASource: TCommandSource; const ALines: array of string): TRuleEdit;
-var
-  Index: Integer;
-  Text: string;
-begin
-  Text := '';
-  for Index := 0 to High(ALines) do
-    Text := Text + ASource.Indent(ASource.Line) + ALines[Index] + ASource.LineBreak;
-  Result := TRuleEdit.Create(TTextRange.Create(ASource.Line, 0, ASource.Line + 1, 0), Text);
-end;
-
 { /sortuses }
 
 function ExecuteSortUses(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
@@ -95,7 +83,7 @@ begin
     Comment := '// lsp-ignore: ' + Id;
     if Reason <> '' then
       Comment := Comment + ' -- ' + Reason;
-    AEdits := [ReplaceCommand(Source, [Comment])];
+    AEdits := [Source.ReplaceWithIndentedLines([Comment])];
     Result := True;
   finally
     Source.Free;
@@ -113,7 +101,7 @@ begin
     Exit(Fail('Erwartet wird /todo Text', AReason));
   Source := TCommandSource.Create(AContext);
   try
-    AEdits := [ReplaceCommand(Source, ['// TODO : ' + AContext.Arguments])];
+    AEdits := [Source.ReplaceWithIndentedLines(['// TODO : ' + AContext.Arguments])];
     Result := True;
   finally
     Source.Free;
@@ -167,7 +155,7 @@ begin
         Lines := Lines + [Format('/// <param name="%s"></param>', [Name])];
     if StartsText('function ', Signature) or StartsText('class function ', Signature) then
       Lines := Lines + ['/// <returns></returns>'];
-    AEdits := [ReplaceCommand(Source, Lines)];
+    AEdits := [Source.ReplaceWithIndentedLines(Lines)];
     Result := True;
   finally
     Source.Free;
@@ -193,7 +181,7 @@ begin
       Name := Source.Tree.Root.Name + '.' + Name;
     if AContext.Arguments <> '' then
       Name := Name + ': ' + AContext.Arguments;
-    AEdits := [ReplaceCommand(Source, [Format('OutputDebugString(PChar(%s));',
+    AEdits := [Source.ReplaceWithIndentedLines([Format('OutputDebugString(PChar(%s));',
       [QuotedStr(Name)])])];
     Result := True;
   finally

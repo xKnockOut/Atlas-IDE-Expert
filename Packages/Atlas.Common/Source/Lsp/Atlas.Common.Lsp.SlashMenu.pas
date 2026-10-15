@@ -76,6 +76,7 @@ type
 implementation
 
 uses
+  Atlas.Text.Lines,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Uris,
@@ -166,7 +167,7 @@ begin
   if not TSlashMenu.Prepare(AText, TSlashSpot.Create(ASpot.Line, ASpot.Character, -1), '', Virtual, ACommandLine,
     WrapUntil) then
     Exit;
-  Line := Virtual.Split([#10])[ACommandLine];
+  Line := TTextLines.SplitLines(Virtual)[ACommandLine];
   Settings := TCompletionSettings.Default;
   if Assigned(FCompletion.SettingsFor) then
     Settings := FCompletion.SettingsFor(AUri);
@@ -176,7 +177,7 @@ begin
     try
       Resolver.Namespaces := FCompletion.Namespaces;
       Result := TLspCompletion.InterfaceItems(Resolver, Tree, Virtual, TDocumentUris.ToPath(AUri),
-        TTextPosition.Create(ACommandLine, Length(Line.TrimRight([#13]))), FCompletion.ReadText,
+        TTextPosition.Create(ACommandLine, Length(Line)), FCompletion.ReadText,
         Settings.InterfaceSection, AItems, Batch) and Batch;
     finally
       Resolver.Free;
@@ -215,10 +216,7 @@ begin
     AReason := 'Keine der gewählten Methoden fehlt: ' + AArguments;
     Exit(False);
   end;
-  if Pos(#13#10, AText) > 0 then
-    LineBreak := #13#10
-  else
-    LineBreak := #10;
+  LineBreak := TTextLines.LineBreakOf(AText);
   AEdits := TSlashMenu.MapEdits(TInterfaceStubs.Merge(Edits), CommandLine, '', LineBreak);
   Result := True;
 end;

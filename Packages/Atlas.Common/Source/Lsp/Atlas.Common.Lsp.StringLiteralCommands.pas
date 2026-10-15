@@ -32,7 +32,8 @@ implementation
 uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Editing.StringLiterals;
+  Atlas.Common.Editing.StringLiterals,
+  Atlas.Text.Lines;
 
 function DocumentOf(const AStore: IDocumentStore; const AArguments: TJSONArray; ACount: Integer;
   out APosition: TTextPosition): ITextDocument;
@@ -80,10 +81,7 @@ begin
   while (Index <= Length(Line)) and CharInSet(Line[Index], [' ', #9]) do
     Inc(Index);
   Indent := Copy(Line, 1, Index - 1);
-  if Pos(#13#10, Document.Text) > 0 then
-    LineEnd := #13#10
-  else
-    LineEnd := #10;
+  LineEnd := TTextLines.LineBreakOf(Document.Text);
   Result := TJSONString.Create(TStringLiterals.ToLiteral(AArguments.Items[2].Value, Indent, False, AMultiline,
     ASettings.LineBreak, ASettings.MaxLineLength, LineEnd));
 end;

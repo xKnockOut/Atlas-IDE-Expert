@@ -80,7 +80,9 @@ uses
   Atlas.Common.Rules.Checker,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Lsp.Rename,
-  Atlas.Common.Mcp.Server;
+  Atlas.Common.Mcp.Server,
+  Atlas.Text.Lines,
+  Atlas.Text.Diff;
 
 { TMcpFileEdit }
 
@@ -106,27 +108,12 @@ begin
   FEnsureUnit := AEnsureUnit;
 end;
 
-/// <summary>Zeichenindex (0-basiert) zu Zeile/Zeichen; Zeilen enden mit #10.</summary>
-function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
-var
-  Line, Index: Integer;
-begin
-  Line := 0;
-  Index := 1;
-  while (Line < APosition.Line) and (Index <= Length(AText)) do
-  begin
-    if AText[Index] = #10 then
-      Inc(Line);
-    Inc(Index);
-  end;
-  Result := Min(Index - 1 + APosition.Character, Length(AText));
-end;
-
 class function TMcpEditTools.ApplyToText(const AText: string; const AEdits: TArray<TMcpFileEdit>): string;
 var
   Sorted: TArray<TMcpFileEdit>;
   Edit: TMcpFileEdit;
   StartOffset, EndOffset: Integer;
+  Lines: TLineTable;
 begin
   Sorted := Copy(AEdits);
   TArray.Sort<TMcpFileEdit>(Sorted, TComparer<TMcpFileEdit>.Construct(
@@ -139,49 +126,25 @@ begin
   Result := AText;
   for Edit in Sorted do
   begin
-    StartOffset := OffsetOf(Result, Edit.Range.StartPos);
-    EndOffset := OffsetOf(Result, Edit.Range.EndPos);
+    // Zeilen wie LSP (CRLF, LF, CR); Zeichen hinter dem Zeilenende zählen als Zeilenende.
+    Lines := TLineTable.Build(Result);
+    StartOffset := Lines.OffsetAt(Edit.Range.StartPos);
+    EndOffset := Lines.OffsetAt(Edit.Range.EndPos);
     Result := Copy(Result, 1, StartOffset) + Edit.NewText + Copy(Result, EndOffset + 1, MaxInt);
   end;
 end;
 
 class function TMcpEditTools.Diff(const AFileName, AOld, ANew: string): string;
 var
-  OldLines, NewLines: TArray<string>;
-  Prefix, Suffix, Index: Integer;
+  Line: string;
   Builder: TStringBuilder;
 begin
-  OldLines := AOld.Replace(#13#10, #10).Split([#10]);
-  NewLines := ANew.Replace(#13#10, #10).Split([#10]);
-  Prefix := 0;
-  while (Prefix < Length(OldLines)) and (Prefix < Length(NewLines)) and (OldLines[Prefix] = NewLines[Prefix]) do
-    Inc(Prefix);
-  Suffix := 0;
-  while (Suffix < Length(OldLines) - Prefix) and (Suffix < Length(NewLines) - Prefix) and
-    (OldLines[High(OldLines) - Suffix] = NewLines[High(NewLines) - Suffix]) do
-    Inc(Suffix);
   Builder := TStringBuilder.Create;
   try
     Builder.AppendFormat('--- %s', [AFileName]).AppendLine;
-    if Length(OldLines) = Length(NewLines) then
-    begin
-      // Gleiche Zeilenzahl (z. B. Umbenennen): nur die geänderten Zeilen.
-      for Index := Prefix to High(OldLines) - Suffix do
-        if OldLines[Index] <> NewLines[Index] then
-        begin
-          Builder.AppendFormat('Zeile %d:', [Index + 1]).AppendLine;
-          Builder.Append('- ').AppendLine(OldLines[Index]);
-          Builder.Append('+ ').AppendLine(NewLines[Index]);
-        end;
-    end
-    else
-    begin
-      Builder.AppendFormat('ab Zeile %d:', [Prefix + 1]).AppendLine;
-      for Index := Prefix to High(OldLines) - Suffix do
-        Builder.Append('- ').AppendLine(OldLines[Index]);
-      for Index := Prefix to High(NewLines) - Suffix do
-        Builder.Append('+ ').AppendLine(NewLines[Index]);
-    end;
+    // Gleiche Zeilenzahl (z. B. Umbenennen): nur die geänderten Zeilen, sonst der geänderte Block.
+    for Line in TTextDiff.ChangedLines(TTextLines.SplitLines(AOld), TTextLines.SplitLines(ANew)) do
+      Builder.AppendLine(Line);
     Result := TrimRight(Builder.ToString);
   finally
     Builder.Free;

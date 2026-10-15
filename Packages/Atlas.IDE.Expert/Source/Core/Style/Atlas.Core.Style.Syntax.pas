@@ -36,6 +36,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Chars;
+
 const
   Keywords: array of string = [
     'absolute', 'abstract', 'and', 'array', 'as', 'begin', 'case', 'cdecl', 'class', 'const', 'constructor',
@@ -48,16 +51,6 @@ const
     'reference', 'reintroduce', 'repeat', 'resourcestring', 'safecall', 'sealed', 'set', 'shl', 'shr',
     'static', 'stdcall', 'stored', 'strict', 'string', 'then', 'threadvar', 'to',
     'try', 'type', 'unit', 'until', 'uses', 'var', 'virtual', 'while', 'with', 'write', 'xor'];
-
-function IsIdentStart(AChar: Char): Boolean;
-begin
-  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '_']) or (Ord(AChar) > 127);
-end;
-
-function IsIdentChar(AChar: Char): Boolean;
-begin
-  Result := IsIdentStart(AChar) or CharInSet(AChar, ['0'..'9']);
-end;
 
 { TAtlasSyntax }
 
@@ -122,9 +115,9 @@ begin
       Index := Length(AText) + 1;
       Kind := TAtlasTokenKind.Comment;
     end
-    else if IsIdentStart(AText[Index]) then
+    else if TTextChars.IsIdentStart(AText[Index]) then
     begin
-      while (Index <= Length(AText)) and IsIdentChar(AText[Index]) do
+      while (Index <= Length(AText)) and TTextChars.IsIdentChar(AText[Index]) do
         Inc(Index);
       // Nach einem Punkt ist es ein Name (TFoo.Create, Self.Read), kein Schlüsselwort.
       if ((Start = 1) or (AText[Start - 1] <> '.')) and IsKeyword(Copy(AText, Start, Index - Start)) then

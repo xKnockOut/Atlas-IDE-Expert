@@ -13,13 +13,18 @@ type
     procedure NameIsAtlas;
     [Test]
     procedure VersionHasMajorMinorPatch;
+    /// <summary>Server, Plugin und Installer lesen dieselbe Angabe (ADR 0012).</summary>
+    [Test]
+    procedure ServerAndPluginShareVersion;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Product.Version;
+  Atlas.Text.Product.Version,
+  Atlas.Common.Product.Version,
+  Atlas.Core.Product.Version;
 
 procedure TProductVersionTests.NameIsAtlas;
 begin
@@ -35,6 +40,12 @@ begin
   Assert.AreEqual<NativeInt>(3, Length(Version.Split(['.'])), 'Version muss aus Major.Minor.Patch bestehen');
   for Part in Version.Split(['.']) do
     Assert.IsTrue(StrToIntDef(Part, -1) >= 0, Format('"%s" ist keine Zahl', [Part]));
+end;
+
+procedure TProductVersionTests.ServerAndPluginShareVersion;
+begin
+  Assert.AreEqual(TAtlasVersion.Version, TProductVersion.Version);
+  Assert.AreEqual(TAtlasVersion.Version, TAtlasPluginVersion.Version);
 end;
 
 initialization

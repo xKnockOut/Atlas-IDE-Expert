@@ -28,7 +28,7 @@
         <DCC_MapFile>3</DCC_MapFile>
         <SanitizedProjectName>AtlasServer</SanitizedProjectName>
         <DCC_Namespace>System;Winapi;System.Win;$(DCC_Namespace)</DCC_Namespace>
-        <DCC_UnitSearchPath>..\Output\$(Platform)\$(Config)\Dcu\Atlas.Common;..\Output\$(Platform)\$(Config)\Dcu\Atlas.Windows;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>..\Output\$(Platform)\$(Config)\Dcu\Atlas.Text;..\Output\$(Platform)\$(Config)\Dcu\Atlas.Common;..\Output\$(Platform)\$(Config)\Dcu\Atlas.Windows;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_DcuOutput>..\Output\$(Platform)\$(Config)\Dcu\AtlasServer</DCC_DcuOutput>
         <DCC_ExeOutput>..\Output\$(Platform)\$(Config)\Bin</DCC_ExeOutput>
         <DCC_ConsoleTarget>true</DCC_ConsoleTarget>
