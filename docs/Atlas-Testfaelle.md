@@ -978,6 +978,7 @@ Voraussetzung: Server läuft, Beispielprojekt mit `Setup\Beispiele\Entdecken.pas
 | MX12 | Großes Projekt (mehrere hundert Units): erster Build, sofort danach tippen | Editor bleibt flüssig; Code Lens kann bis zum Ende der Zusammenfassung ausbleiben und erscheint danach |
 | MX13 | `AtlasServer --check <Projekt> --metrics` und `--metrics --format json` | Markdown bzw. JSON mit `"format": 1`, `limits`, `summary`, `files`; Exitcode 0; `--format sarif` mit `--metrics` endet mit Fehler |
 | MX14 | Claude Code: Werkzeug `get_metrics` ohne und mit `file` | Bericht des Projekts bzw. Werte der Datei, Grenzwerte aus atlas.json |
+| MX15 | Optionen › Atlas › Editor: „Befehl „Metrikbericht des Projekts“ in der Befehlspalette“ aus (oder Schnellschalter „Metrikbericht“) | Befehl verschwindet ohne Neustart aus der Befehlspalette, der Tipp „Metrikbericht des Projekts“ erscheint nicht mehr; nach einem Build steht der Abschnitt `metrics` weiter in der Projekt-Zusammenfassung; wieder an: Befehl ist zurück |
 
 ## Units suchen (#777)
 
