@@ -151,7 +151,8 @@ type
     SettingsTabInsert, SettingsTabCommands, SettingsTabStartup, SettingsTabUndo,
     SettingsAfterSaveNone, SettingsAfterSaveCheck, SettingsAfterSaveCompile,
     EditorMethodToggle, EditorMethodToggleNone, SettingsMethodToggle, SettingsMethodToggleUp,
-    SettingsMethodToggleDown);
+    SettingsMethodToggleDown,
+    EditorTestUnit, SettingsCodeLensTestUnit, TestUnitLensTest, TestUnitLensUnit, TestUnitLensCreate, TestUnitNone);
 
   TAtlasStrings = class
   private class var
@@ -544,7 +545,9 @@ const
      'Deklaration/Implementierung wechseln',
      'Atlas: Am Cursor steht keine Methode mit Deklaration und Implementierung.',
      'Zwischen Deklaration und Implementierung wechseln (statt der Klassennavigation der IDE)',
-     'Deklaration/Implementierung wechseln (Taste 1)', 'Deklaration/Implementierung wechseln (Taste 2)'),
+     'Deklaration/Implementierung wechseln (Taste 1)', 'Deklaration/Implementierung wechseln (Taste 2)',
+     'Zwischen Unit und Testunit wechseln', 'Code Lens „zur Testunit“ hinter der unit-Zeile', '→ Testunit %s',
+     '→ Unit %s', '+ Testunit %s anlegen', 'Keine Testunit: %s'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -914,7 +917,9 @@ const
      'Switch between declaration and implementation',
      'Atlas: There is no method with declaration and implementation at the cursor.',
      'Switch between declaration and implementation (instead of the IDE''s class navigation)',
-     'Switch declaration/implementation (key 1)', 'Switch declaration/implementation (key 2)'));
+     'Switch declaration/implementation (key 1)', 'Switch declaration/implementation (key 2)',
+     'Switch between unit and test unit', 'Code lens “to test unit” after the unit line', '→ Test unit %s',
+     '→ Unit %s', '+ Create test unit %s', 'No test unit: %s'));
 
 { TAtlasStrings }
 

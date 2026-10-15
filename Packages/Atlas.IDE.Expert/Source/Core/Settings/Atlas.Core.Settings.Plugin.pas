@@ -162,6 +162,11 @@ type
     /// <summary>Tasten für den Wechsel (#775, TShortCut, 0 = keine): Strg+Umschalt+↑ und Strg+Umschalt+↓.</summary>
     MethodToggleUpKey: Integer;
     MethodToggleDownKey: Integer;
+    /// <summary>Zwischen Unit und Testunit wechseln (#189, TShortCut, 0 = keins).</summary>
+    TestUnitKey: Integer;
+    /// <summary>Code Lens „Testunit“ bzw. „Unit“ hinter der Zeile unit … (#189, codeLens.testUnit);
+    /// der Befehl bleibt auch ohne sie verfügbar.</summary>
+    CodeLensTestUnit: Boolean;
     /// <summary>Die Editor-Kürzel auch belegen, wenn die IDE oder eine andere Erweiterung sie nutzt.</summary>
     EditorKeysPriority: Boolean;
     /// <summary>Schnellbefehle mit „/“ nach Enter und „///“-Gerüste beim Server auslösen (#399).</summary>
@@ -333,6 +338,8 @@ begin
   Result.MethodToggle := True;
   Result.MethodToggleUpKey := $6026; // Strg+Umschalt+↑
   Result.MethodToggleDownKey := $6028; // Strg+Umschalt+↓
+  Result.TestUnitKey := 0;
+  Result.CodeLensTestUnit := True;
   Result.EditorKeysPriority := False;
   Result.SlashCommands := True;
   Result.Snippets := True;
@@ -488,6 +495,8 @@ begin
   MethodToggle := AStore.ReadInteger('MethodToggle', BoolValue(Default.MethodToggle)) <> 0;
   MethodToggleUpKey := AStore.ReadInteger('MethodToggleUpKey', Default.MethodToggleUpKey);
   MethodToggleDownKey := AStore.ReadInteger('MethodToggleDownKey', Default.MethodToggleDownKey);
+  TestUnitKey := AStore.ReadInteger('TestUnitKey', Default.TestUnitKey);
+  CodeLensTestUnit := AStore.ReadInteger('CodeLensTestUnit', BoolValue(Default.CodeLensTestUnit)) <> 0;
   EditorKeysPriority := AStore.ReadInteger('EditorKeysPriority', BoolValue(Default.EditorKeysPriority)) <> 0;
   SlashCommands := AStore.ReadInteger('SlashCommands', BoolValue(Default.SlashCommands)) <> 0;
   Snippets := AStore.ReadInteger('Snippets', BoolValue(Default.Snippets)) <> 0;
@@ -582,6 +591,8 @@ begin
   AStore.WriteInteger('MethodToggle', BoolValue(MethodToggle));
   AStore.WriteInteger('MethodToggleUpKey', MethodToggleUpKey);
   AStore.WriteInteger('MethodToggleDownKey', MethodToggleDownKey);
+  AStore.WriteInteger('TestUnitKey', TestUnitKey);
+  AStore.WriteInteger('CodeLensTestUnit', BoolValue(CodeLensTestUnit));
   AStore.WriteInteger('EditorKeysPriority', BoolValue(EditorKeysPriority));
   AStore.WriteInteger('SlashCommands', BoolValue(SlashCommands));
   AStore.WriteInteger('Snippets', BoolValue(Snippets));

@@ -244,6 +244,11 @@ begin
         Result := TAtlasIdeEditorCommands.TryToggleMethod;
       end);
   end;
+  AddKey(Settings.TestUnitKey, TAtlasStrings.Text(TAtlasTextId.EditorTestUnit),
+    procedure
+    begin
+      TAtlasIdeEditorCommands.SwitchTestUnit;
+    end);
   AddKey(Settings.UndoKey, TAtlasStrings.Text(TAtlasTextId.UndoMenu),
     procedure
     begin
