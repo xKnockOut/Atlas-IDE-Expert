@@ -212,44 +212,11 @@ implementation
 uses
   System.JSON,
   System.Generics.Defaults,
+  Atlas.Text.Lines,
   Atlas.Common.Rules.Output;
 
 const
   FormatVersion = 1;
-
-function LineOf(const AText: string; ALine: Integer): string;
-var
-  I, Line, Start: Integer;
-begin
-  Line := 0;
-  Start := 1;
-  for I := 1 to Length(AText) + 1 do
-    if (I > Length(AText)) or (AText[I] = #10) then
-    begin
-      if Line = ALine then
-      begin
-        Result := Copy(AText, Start, I - Start);
-        Exit;
-      end;
-      Inc(Line);
-      Start := I + 1;
-    end;
-  Result := '';
-end;
-
-function SplitLines(const AText: string): TArray<string>;
-var
-  I, Start: Integer;
-begin
-  Result := nil;
-  Start := 1;
-  for I := 1 to Length(AText) + 1 do
-    if (I > Length(AText)) or (AText[I] = #10) then
-    begin
-      Result := Result + [Copy(AText, Start, I - Start)];
-      Start := I + 1;
-    end;
-end;
 
 function LineAt(const ALines: TArray<string>; ALine: Integer): string;
 begin
@@ -257,6 +224,12 @@ begin
     Result := ALines[ALine]
   else
     Result := '';
+end;
+
+/// Zeile ALine (0-basiert) von AText; Zeilen wie TTextLines.SplitLines.
+function LineOf(const AText: string; ALine: Integer): string;
+begin
+  Result := LineAt(TTextLines.SplitLines(AText), ALine);
 end;
 
 function CollapseWhitespace(const AText: string): string;
@@ -408,7 +381,7 @@ end;
 class function TRuleBaseline.ContextFingerprint(const AText: string; const AScopes: TFindingScopes;
   ALine: Integer): string;
 begin
-  Result := ContextOf(SplitLines(AText), ALine, AScopes.HeaderLine(ALine));
+  Result := ContextOf(TTextLines.SplitLines(AText), ALine, AScopes.HeaderLine(ALine));
 end;
 
 class function TRuleBaseline.SarifFingerprint(const AMark: TBaselineMark): string;
@@ -525,7 +498,7 @@ end;
 class function TRuleBaseline.Mark(const AText: string; const AScopes: TFindingScopes;
   const AFindings: TArray<TRuleFinding>): TArray<TBaselineMark>;
 begin
-  Result := MarksOf(SplitLines(AText), AScopes, AFindings);
+  Result := MarksOf(TTextLines.SplitLines(AText), AScopes, AFindings);
 end;
 
 function AbsentMark(const AEntryRule, ARoutine, AFingerprint, AContext: string): TBaselineMark;
@@ -572,7 +545,7 @@ var
   end;
 
 begin
-  Marks := MarksOf(SplitLines(AText), AScopes, AFindings);
+  Marks := MarksOf(TTextLines.SplitLines(AText), AScopes, AFindings);
   for Index := 0 to High(Marks) do
     Marks[Index].State := TBaselineState.New;
   if not FByPath.TryGetValue(PathKey(ARelativePath), PathEntries) then
