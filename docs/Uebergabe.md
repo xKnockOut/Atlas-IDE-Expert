@@ -418,3 +418,7 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Abweichung:** `var` statt `const [Ref]` in `TLspNamespaces` (FPC kennt `[Ref]` nicht).
 - **Geprüft in der Cloud:** `Check-PackageDependencies`, `Check-ConsoleOutput`, `Check-Delphi12`, `Check-MainThreadQueue`, `Update-ConfigDoc -Check` grün. FPC-Harness: keine neuen Fehlschläge; Connection-, Watchdog- und Pull-Diagnose-Tests dreimal stabil.
 - **Offen bei Marco:** Delphi-Build Win32/Win64 0/0/0; Windows-Tests (ProcessRunner, SlashHost, Workspace, LeakMonitor, IdeEdits, Shell.Mcp); Verhalten des Plugins bei -32800.
+## Zweiter Merge-Durchgang (15.10.2026, 22 Uhr, auf Marcos Wort ohne Build)
+- **Gemergt auf Marcos Stand bffd54f6:** `claude/code-review-fixes-awz1nk-server-robustheit` (Code-Review Blöcke A und B, darin `feature/520-tasten-nachziehen`) und der Willkommensseiten-Stapel bis `feature/68-todo-uebersicht` (#757 Bilder, #458, #766, #545, #622, #755, #66, #68).
+- **Angepasst:** Einreihungen in den Hauptthread aus Willkommensseite, Metrikbericht und TODO-Liste über `TAtlasMainThread` (Code-Review A-02; `Check-MainThreadQueue.ps1` grün). Notizen (#545) und Lesezeichen (#622) im gegliederten Atlas-Menü als eigenes Untermenü „Notizen und Lesezeichen“ (`MenuGroupNotes`), sichtbar, solange eins von beiden an ist.
+- **Geprüft:** alle Prüfskripte aus `Tools/` grün (pwsh in der Cloud). **Nicht gebaut:** Gruppenbau und Tests bei Marco.
