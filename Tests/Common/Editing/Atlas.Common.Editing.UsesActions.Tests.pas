@@ -33,6 +33,8 @@ type
     procedure MissingUnitSkipsUsedAndLocalNames;
     [Test]
     procedure ApplyingTwiceGivesSameResult;
+    [Test]
+    procedure AddsUnitsToMatchingSection;
   end;
 
 implementation
@@ -276,6 +278,30 @@ begin
   finally
     Tree.Free;
   end;
+end;
+
+procedure TUsesActionsTests.AddsUnitsToMatchingSection;
+var
+  Text: string;
+  Edits: TArray<TRuleEdit>;
+  Added: TArray<string>;
+begin
+  // Units suchen (#777): Foo steht im interface, also Units.A dorthin; Units.C ins implementation-uses;
+  // Units.B ist schon da, doppelte und die eigene Unit entfallen.
+  Text := Source('Units.B', 'procedure P(X: Foo);'#10, '', 'procedure P(X: Foo);'#10'begin'#10'end;'#10);
+  Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(Text), ['Units.A', 'Units.C', 'Units.B', 'units.c', 'U'],
+    Declaring, nil, #10, Edits, Added));
+  Assert.AreEqual('Units.A,Units.C', string.Join(',', Added));
+  // Die Einfügehilfe von TUsesClauses setzt je Unit eine Zeile und vor ein neues uses eine Leerzeile.
+  Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  Units.B,'#10'  Units.A;'#10'procedure P(X: Foo);'#10 +
+    'implementation'#10#10'uses'#10'  Units.C;'#10'procedure P(X: Foo);'#10'begin'#10'end;'#10'end.', Apply(Text, Edits));
+  // Nichts Neues: kein Edit.
+  Assert.IsFalse(TUsesActions.AddUnits(TPascalLexer.Tokenize(Text), ['Units.B'], Declaring, nil, #10, Edits, Added));
+  Assert.AreEqual(0, Integer(Length(Added)));
+  // Programm: das einzige uses.
+  Text := 'program P;'#10'uses'#10'  Units.B;'#10'begin'#10'end.';
+  Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(Text), ['Units.C'], Declaring, nil, #10, Edits, Added));
+  Assert.AreEqual('program P;'#10'uses'#10'  Units.B,'#10'  Units.C;'#10'begin'#10'end.', Apply(Text, Edits));
 end;
 
 initialization

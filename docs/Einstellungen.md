@@ -55,3 +55,18 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Allgemein | Nach Zustimmung beim ersten Start höchstens einmal täglich auf eine neue Atlas-Version prüfen (`updates.check`); übertragen werden nur Atlas- und IDE-Version, ein Hinweis erscheint in der Meldungsansicht | aus | Plugin (Registry `UpdatesCheck`); Zustand in `%LOCALAPPDATA%\Atlas\updates.json` | nein | Kontrollkästchen | #495 |
 | Allgemein | Fehlerbericht (*Atlas › Fehlerbericht erstellen…*) anonymisieren: Pfade unter dem Projekt zu `<ws>`, andere Pfade zu `<pfad>`, Benutzername und Bezeichner im Protokoll ersetzen (`diagnostics.bugReport.anonymize`) | an | Plugin (Registry `BugReportAnonymize`) | nein | Kontrollkästchen | #108 |
 | Editor | Zwischen Unit und Testunit wechseln: Code Lens über der Zeile `unit …;` (`codeLens.testUnit`) und Tastenkürzel (Befehl auch im Atlas-Menü, Kontextmenü und in der Befehlspalette) | an, keins | Plugin (Registry `CodeLensTestUnit`, `TestUnitKey`) | nein | Kontrollkästchen, Tastenkürzel | #189 |
+| Units suchen | Fenster „Units suchen“ von Atlas (`unitSearch.enabled`); aus: Strg+F12 bleibt beim IDE-Dialog | an | Plugin (Registry `UnitSearchEnabled`) | nein | Kontrollkästchen | #777 |
+| Units suchen | Strg+F12 und *Ansicht › Units* öffnen das Atlas-Fenster; mit Umschalt bzw. Befehl *IDE-Dialog Units suchen* der IDE-Dialog (`unitSearch.replaceIdeDialog`) | an | Plugin (Registry `UnitSearchReplaceIdeDialog`) | nein | Kontrollkästchen | #777 |
+| Units suchen | Eigenes Tastenkürzel für das Fenster (`unitSearch.key`) | keins | Plugin (Registry `UnitSearchKey`) | nein | Tastenkürzel | #777 |
+| Units suchen | Pfadanzeige: relativ zur Projektgruppe, in der Mitte gekürzt oder absolut (`unitSearch.pathStyle`) | relative | Plugin (Registry `UnitSearchPathStyle`) | nein | Auswahlliste | #777 |
+| Units suchen | Gruppierung: Projekt, Ordner oder flach (`unitSearch.groupBy`) | project | Plugin (Registry `UnitSearchGroupBy`) | nein | Auswahlliste | #777 |
+| Units suchen | Eingeklappte Gruppen je Projektgruppe merken (`unitSearch.rememberCollapsed`) | an | Plugin (Registry `UnitSearchRememberCollapsed`) | nein | Kontrollkästchen | #777 |
+| Units suchen | Chipzeile Herkunft und Art (`unitSearch.filters`) | an | Plugin (Registry `UnitSearchFilters`) | nein | Kontrollkästchen | #777 |
+| Units suchen | Vorgewählte Herkunft ohne gemerkte Wahl: Projektgruppe, aktives Projekt, Suchpfad, Bibliothek (`unitSearch.defaultScope`) | group | Plugin (Registry `UnitSearchDefaultScope`) | nein | Auswahlliste | #777 |
+| Units suchen | Tippsyntax `p:` und `t:` im Suchfeld (`unitSearch.filterSyntax`) | an | Plugin (Registry `UnitSearchFilterSyntax`) | nein | Kontrollkästchen | #777 |
+| Units suchen | Vorschau rechts, F4 schaltet um (`unitSearch.preview`) | an | Plugin (Registry `UnitSearchPreview`) | nein | Kontrollkästchen | #777 |
+| Units suchen | Formularskizze in der Vorschau (`unitSearch.preview.form`) | an | Plugin (Registry `UnitSearchPreviewForm`) | nein | Kontrollkästchen | #777 |
+| Units suchen | „Verwendet von“ in der Vorschau (`unitSearch.preview.usedBy`) | an | Plugin (Registry `UnitSearchPreviewUsedBy`) | nein | Kontrollkästchen | #777 |
+| Units suchen | Häkchen und Mehrfachauswahl (`unitSearch.multiSelect`) | an | Plugin (Registry `UnitSearchMultiSelect`) | nein | Kontrollkästchen | #777 |
+| Units suchen | Aktionsleiste (`unitSearch.actions`) | an | Plugin (Registry `UnitSearchActions`) | nein | Kontrollkästchen | #777 |
+| Units suchen | Aktion „In uses aufnehmen“ (`unitSearch.actions.addUses`) | an | Plugin (Registry `UnitSearchActionsAddUses`) | nein | Kontrollkästchen | #777 |
