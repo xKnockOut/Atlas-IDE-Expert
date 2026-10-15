@@ -33,6 +33,16 @@ type
     procedure HangingProviderBlocksAtMostLimit;
     [Test]
     procedure FetchErrorsCountPerProvider;
+    [Test]
+    procedure WaitIdleWaitsForAbandonedWorker;
+    [Test]
+    procedure StaleQueryAfterPrepareFetchesNothing;
+    [Test]
+    procedure PrepareRunsInWorkerThread;
+    [Test]
+    procedure ServerSessionFuncRunsInWorker;
+    [Test]
+    procedure SignatureSessionFuncRunsInWorker;
   end;
 
 implementation
@@ -51,7 +61,11 @@ uses
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Composite,
   Atlas.Core.Completion.Internals.Async,
-  Atlas.Core.Completion.Providers.Fixed;
+  Atlas.Core.Completion.Providers.Fixed,
+  Atlas.Core.Completion.Providers.Server,
+  Atlas.Core.Signature.Contract,
+  Atlas.Core.Signature.Providers.Server,
+  Atlas.Core.Lsp.Session;
 
 type
   TSink = class(TInterfacedObject, IAtlasCompletionSink)
@@ -88,6 +102,59 @@ type
     function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
       const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems; override;
   end;
+
+  /// <summary>Wie eine Zeitüberschreitung in Composite: Cancel kommt, während Prepare noch läuft (A-13).</summary>
+  TCancelInPrepareProvider = class(TAtlasAsyncCompletionProvider)
+  protected
+    function Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean; override;
+    function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
+      const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems; override;
+  public
+    Fetches: Integer;
+  end;
+
+  /// <summary>Merkt sich, in welchem Thread Prepare läuft (A-01, K-03).</summary>
+  TThreadRecordingProvider = class(TAtlasAsyncCompletionProvider)
+  protected
+    function Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean; override;
+    function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
+      const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems; override;
+  public
+    PrepareThread: TThreadID;
+  end;
+
+{ TCancelInPrepareProvider }
+
+function TCancelInPrepareProvider.Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean;
+begin
+  AData := nil;
+  Cancel;
+  Result := True;
+end;
+
+function TCancelInPrepareProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
+  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems;
+begin
+  AIncomplete := False;
+  TInterlocked.Increment(Fetches);
+  Result := nil;
+end;
+
+{ TThreadRecordingProvider }
+
+function TThreadRecordingProvider.Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean;
+begin
+  AData := nil;
+  PrepareThread := TThread.CurrentThread.ThreadID;
+  Result := False;
+end;
+
+function TThreadRecordingProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
+  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems;
+begin
+  AIncomplete := False;
+  Result := nil;
+end;
 
 { TSink }
 
@@ -429,6 +496,119 @@ begin
   Failing.Shutdown;
   Assert.IsTrue(TAtlasGuard.ProviderDisabled('Kaputt'));
   Assert.IsTrue(TAtlasGuard.ProviderDisabled('kaputt'), 'Name ohne Groß-/Kleinschreibung');
+end;
+
+procedure TAtlasTimeLimitTests.WaitIdleWaitsForAbandonedWorker;
+var
+  Error: string;
+  Release: TEvent;
+begin
+  Release := TEvent.Create(nil, True, False, '');
+  try
+    Assert.IsTrue(TAtlasTimeLimit.Run(
+      procedure
+      begin
+        Release.WaitFor(5000);
+      end, Error, 50) = TAtlasTimedOutcome.TimedOut);
+    Assert.IsFalse(TAtlasTimeLimit.WaitIdle(30), 'der aufgegebene Arbeiter läuft noch');
+    Release.SetEvent;
+    Assert.IsTrue(TAtlasTimeLimit.WaitIdle(2000), 'nach seiner Rückkehr frei');
+    Assert.AreEqual(0, TAtlasTimeLimit.BusyCount);
+  finally
+    Release.SetEvent;
+    TAtlasTimeLimit.WaitIdle(2000);
+    Release.Free;
+  end;
+end;
+
+procedure TAtlasTimeLimitTests.StaleQueryAfterPrepareFetchesNothing;
+var
+  Stale: TCancelInPrepareProvider;
+  Provider: IAtlasCompletionProvider;
+  Sink: TSink;
+  SinkRef: IAtlasCompletionSink;
+begin
+  Stale := TCancelInPrepareProvider.Create;
+  Provider := Stale;
+  Sink := TSink.Create;
+  SinkRef := Sink;
+  Provider.Query(Context, SinkRef);
+  Assert.IsTrue(Sink.WaitDone(1000), 'die Senke schließt trotzdem ab');
+  Stale.Shutdown;
+  Assert.AreEqual(0, Stale.Fetches, 'eine nach Prepare überholte Anfrage fragt nicht mehr an (A-13)');
+end;
+
+procedure TAtlasTimeLimitTests.PrepareRunsInWorkerThread;
+var
+  Providers: TAtlasCompletionProviders;
+  Provider: IAtlasCompletionProvider;
+  Recording: TThreadRecordingProvider;
+  Sink: TSink;
+  SinkRef: IAtlasCompletionSink;
+begin
+  Providers := TAtlasCompletionProviders.Create;
+  Provider := Providers;
+  Recording := TThreadRecordingProvider.Create;
+  Providers.Add(Recording);
+  Sink := TSink.Create;
+  SinkRef := Sink;
+  Provider.Query(Context, SinkRef);
+  Assert.IsTrue(Sink.WaitDone(3000));
+  Assert.IsTrue(Recording.PrepareThread <> 0, 'Prepare lief');
+  Assert.IsTrue(Recording.PrepareThread <> MainThreadID,
+    'Prepare läuft im Zeitlimit-Arbeiter: weder VCL noch Open Tools API, kein Serverstart (A-01, K-03)');
+end;
+
+procedure TAtlasTimeLimitTests.ServerSessionFuncRunsInWorker;
+var
+  Providers: TAtlasCompletionProviders;
+  Provider: IAtlasCompletionProvider;
+  Sink: TSink;
+  SinkRef: IAtlasCompletionSink;
+  SessionThread: TThreadID;
+begin
+  SessionThread := 0;
+  Providers := TAtlasCompletionProviders.Create;
+  Provider := Providers;
+  Providers.Add(TAtlasServerCompletionProvider.Create(
+    function: TLspSession
+    begin
+      SessionThread := TThread.CurrentThread.ThreadID;
+      Result := nil;
+    end));
+  Sink := TSink.Create;
+  SinkRef := Sink;
+  Provider.Query(Context, SinkRef);
+  Assert.IsTrue(Sink.WaitDone(3000));
+  Assert.IsTrue(SessionThread <> 0, 'Sitzungsfunktion gerufen');
+  Assert.IsTrue(SessionThread <> MainThreadID,
+    'Die Sitzungsfunktion läuft im Zeitlimit-Arbeiter und darf keinen Server starten (A-01)');
+end;
+
+procedure TAtlasTimeLimitTests.SignatureSessionFuncRunsInWorker;
+var
+  Signatures: TAtlasServerSignatureProvider;
+  SessionThread: TThreadID;
+begin
+  SessionThread := 0;
+  Signatures := TAtlasServerSignatureProvider.Create(
+    function: TLspSession
+    begin
+      SessionThread := TThread.CurrentThread.ThreadID;
+      Result := nil;
+    end);
+  try
+    Assert.IsFalse(Signatures.Query('C:\Projekt\Unit1.pas', 'unit Unit1;', 0, 0,
+      procedure(const AHelp: TAtlasSignatureHelp)
+      begin
+      end), 'ohne Sitzung keine Anfrage');
+    Assert.IsTrue(SessionThread <> 0, 'Sitzungsfunktion gerufen');
+    Assert.IsTrue(SessionThread <> MainThreadID,
+      'Die Sitzungsfunktion läuft im Zeitlimit-Arbeiter und darf keinen Server starten (A-01)');
+    Signatures.Shutdown;
+  finally
+    Signatures.Free;
+  end;
 end;
 
 initialization
