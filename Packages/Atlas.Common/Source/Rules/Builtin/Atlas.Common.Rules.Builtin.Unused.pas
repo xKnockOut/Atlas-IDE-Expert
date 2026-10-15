@@ -58,7 +58,6 @@ procedure RegisterUnusedRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
-  System.Math,
   System.StrUtils,
   System.JSON,
   System.Generics.Collections,
@@ -66,6 +65,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Flow;
 
 type
@@ -170,16 +170,6 @@ begin
   Result := False;
 end;
 
-/// <summary>Alle RoutineDecl mit Rumpf, auch lokale.</summary>
-procedure CollectRoutines(ANode: TSyntaxNode; var ARoutines: TArray<TSyntaxNode>);
-var
-  Index: Integer;
-begin
-  if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.FindChild(TSyntaxKind.Block) <> nil) then
-    ARoutines := ARoutines + [ANode];
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectRoutines(ANode[Index], ARoutines);
-end;
 
 /// <summary>Namen, die in ANode verwendet werden (klein geschrieben): Bezeichner und Schleifenvariablen.</summary>
 procedure CollectUses(ANode: TSyntaxNode; ASet: TNameSet);
@@ -192,26 +182,6 @@ begin
     CollectUses(ANode[Index], ASet);
 end;
 
-/// <summary>Zeile und Zeichen zu einem Offset ab 0.</summary>
-function PositionAt(const AText: string; AOffset: Integer): TTextPosition;
-var
-  Index, Line, LineStart: Integer;
-begin
-  Line := 0;
-  LineStart := 0;
-  for Index := 1 to Min(AOffset, Length(AText)) do
-    if AText[Index] = #10 then
-    begin
-      Inc(Line);
-      LineStart := Index;
-    end;
-  Result := TTextPosition.Create(Line, AOffset - LineStart);
-end;
-
-function OffsetRange(const AText: string; AStart, AEnd: Integer): TTextRange;
-begin
-  Result := TTextRange.Create(PositionAt(AText, AStart), PositionAt(AText, AEnd));
-end;
 
 /// <summary>Erweitert [AStart, AEnd) auf ganze Zeilen; False, wenn davor oder dahinter noch etwas steht.</summary>
 function WholeLines(const AText: string; AStart, AEnd: Integer; out ALineStart, ALineEnd: Integer): Boolean;
@@ -381,8 +351,8 @@ end;
 
 /// <summary>Korrektur, die AName aus ADecl entfernt (ASection = nil bei Inline-Variablen);
 /// False, wenn keine sichere Korrektur möglich ist.</summary>
-function RemoveVarFix(const AContext: TRuleContext; ASection, ADecl: TSyntaxNode; const AName: string;
-  out AFix: TRuleFix): Boolean;
+function RemoveVarFix(const ACache: IRuleDerivedCache; const AContext: TRuleContext; ASection, ADecl: TSyntaxNode;
+  const AName: string; out AFix: TRuleFix): Boolean;
 var
   Names: TArray<string>;
   Index, Position, LineStart, LineEnd, Start, Stop: Integer;
@@ -404,7 +374,8 @@ begin
       Inc(Stop);
     if not WholeLines(AContext.Text, ADecl.StartOffset, Stop, LineStart, LineEnd) then
       Exit;
-    AFix := TRuleFix.Create(Title, [TRuleEdit.Create(OffsetRange(AContext.Text, LineStart, LineEnd), '')]);
+    AFix := TRuleFix.Create(Title, [TRuleEdit.Create(TRuleDerived.OffsetRange(ACache, AContext, LineStart, LineEnd),
+      '')]);
     Exit(True);
   end;
   if Length(Names) > 1 then
@@ -431,7 +402,7 @@ begin
       Start := Neighbour.Offset + Length(Neighbour.Text);
       Stop := Token.Offset + Length(Token.Text);
     end;
-    AFix := TRuleFix.Create(Title, [TRuleEdit.Create(OffsetRange(AContext.Text, Start, Stop), '')]);
+    AFix := TRuleFix.Create(Title, [TRuleEdit.Create(TRuleDerived.OffsetRange(ACache, AContext, Start, Stop), '')]);
     Exit(True);
   end;
   // Letzte Deklaration: der leer gewordene var-Abschnitt entfällt mit.
@@ -441,7 +412,8 @@ begin
     Start := ADecl.StartOffset;
   if not WholeLines(AContext.Text, Start, ADecl.EndOffset, LineStart, LineEnd) then
     Exit;
-  AFix := TRuleFix.Create(Title, [TRuleEdit.Create(OffsetRange(AContext.Text, LineStart, LineEnd), '')]);
+  AFix := TRuleFix.Create(Title, [TRuleEdit.Create(TRuleDerived.OffsetRange(ACache, AContext, LineStart, LineEnd),
+    '')]);
   Result := True;
 end;
 
@@ -453,6 +425,7 @@ var
   Uses_: TNameSet;
   Patterns: TArray<string>;
   Index, Inner: Integer;
+  Cache: IRuleDerivedCache;
 
   procedure CheckDecl(ASection, ADecl: TSyntaxNode);
   var
@@ -465,7 +438,7 @@ var
       if IsIgnored(Name, Patterns) or not IsUnused(AContext, Info, Uses_, Name, ADecl.EndOffset, Confidence) then
         Continue;
       Message := Format('Variable "%s" wird nicht verwendet', [Name]);
-      if RemoveVarFix(AContext, ASection, ADecl, Name, Fix) then
+      if RemoveVarFix(Cache, AContext, ASection, ADecl, Name, Fix) then
         AReport.Add(NameRange(AContext, ADecl, Name), Message, Confidence, [Fix])
       else
         AReport.Add(NameRange(AContext, ADecl, Name), Message, Confidence);
@@ -476,8 +449,8 @@ begin
   if AContext.Tree = nil then
     Exit;
   Patterns := IgnorePatterns(AContext.Options);
-  Routines := nil;
-  CollectRoutines(AContext.Tree.Root, Routines);
+  Cache := TRuleDerived.Open(AContext);
+  Routines := TRuleDerived.Routines(Cache, AContext);
   Uses_ := TNameSet.Create;
   try
     for Routine in Routines do
@@ -627,12 +600,13 @@ var
   Name: string;
   Confidence: TRuleConfidence;
   Skip: Boolean;
+  Cache: IRuleDerivedCache;
 begin
   if AContext.Tree = nil then
     Exit;
   Patterns := IgnorePatterns(AContext.Options);
-  Routines := nil;
-  CollectRoutines(AContext.Tree.Root, Routines);
+  Cache := TRuleDerived.Open(AContext);
+  Routines := TRuleDerived.Routines(Cache, AContext);
   Uses_ := TNameSet.Create;
   try
     for Routine in Routines do
@@ -705,11 +679,11 @@ var
   Routine, Section, Decl: TSyntaxNode;
   Info: TRoutineInfo;
   Graph: TControlFlowGraph;
-  Lookup: TFlowSignatureLookup;
   Patterns, Names: TArray<string>;
   Index, Inner: Integer;
   Name: string;
   Writes, Reads: TList<TSyntaxNode>;
+  Cache: IRuleDerivedCache;
 
   procedure Collect(ANode: TSyntaxNode);
   var
@@ -774,7 +748,7 @@ var
     if Writes.Count = 0 then
       Exit;
     if Graph = nil then
-      Graph := TControlFlowGraph.Build(Routine, Lookup);
+      Graph := TRuleDerived.Graph(Cache, AContext, Routine);
     if not Graph.Complete then
       Exit;
     for Write in Writes do
@@ -802,10 +776,9 @@ begin
   if AContext.Tree = nil then
     Exit;
   Patterns := IgnorePatterns(AContext.Options);
-  Routines := nil;
-  CollectRoutines(AContext.Tree.Root, Routines);
-  // Signaturen der Datei einmal je Prüfung lesen, nicht je Routine (#143).
-  Lookup := TFlowSignatures.FromTree(AContext.Tree.Root);
+  // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln (Review P-03).
+  Cache := TRuleDerived.Open(AContext);
+  Routines := TRuleDerived.Routines(Cache, AContext);
   Writes := TList<TSyntaxNode>.Create;
   Reads := TList<TSyntaxNode>.Create;
   try
@@ -828,12 +801,8 @@ begin
       for Decl in Locals do
         Names := Names + SplitNames(Decl.Name);
       Graph := nil;
-      try
-        for Name in Names do
-          CheckName;
-      finally
-        Graph.Free;
-      end;
+      for Name in Names do
+        CheckName;
     end;
   finally
     Reads.Free;
