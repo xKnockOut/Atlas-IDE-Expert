@@ -27,6 +27,8 @@
 // Willkommensseite (#753): „Atlas-Start“ (auch unter Ansicht), „Atlas-Layout
 // anwenden“ und „Atlas-Layout zurücksetzen“ rufen OnWelcome; sichtbar nur bei
 // welcomePage.enabled, Anwenden nur ohne, Zurücksetzen nur mit Atlas-Layout.
+// Befehle mit einer Kennung der Befehlspalette melden sich bei den
+// Tastenkürzel-Tipps (#600) als Aufruf per Menü (TAtlasIdeShortcutTips.Invoked).
 
 interface
 
@@ -118,13 +120,24 @@ uses
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Commands.Editor,
+  Atlas.IDE.Commands.KeyMap,
+  Atlas.IDE.Commands.ShortcutTips,
   Atlas.IDE.Style.Symbol,
   Atlas.IDE.Settings.Store,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Results.Model,
+  Atlas.Core.Setup.Checklist,
   Atlas.Core.Lsp.Progress;
 
 const
+  // Kennungen der Befehlspalette für die Tastenkürzel-Tipps (#600), je Tag der Einträge.
+  EditorIds: array[0..5] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
+    'Atlas.TypeDefinition', 'Atlas.CopyQualifiedName', 'Atlas.CopyQualifiedNameParams');
+  ResultsIds: array[0..7] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
+    'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow');
+  UndoIds: array[0..2] of string = ('Atlas.UndoChange', 'Atlas.RedoChange', 'Atlas.ChangeList');
+  WelcomeIds: array[TAtlasWelcomeCommand] of string = ('Atlas.WelcomeStart', 'Atlas.WelcomeApply',
+    'Atlas.WelcomeReset');
   // Name des Menüs „Tools“ in der IDE; Atlas steht dahinter, sonst am Ende.
   ToolsMenu = 'ToolsMenu';
   // Menü „Ansicht“ der IDE; dort steht „Atlas-Start“ zusätzlich (#753).
@@ -350,6 +363,7 @@ begin
   if not Assigned(FOnWelcome) then
     Exit;
   Command := TAtlasWelcomeCommand(TMenuItem(Sender).Tag);
+  TAtlasIdeShortcutTips.Invoked(WelcomeIds[Command]);
   TAtlasGuard.Run(TAtlasFeature.Menu,
     procedure
     begin
@@ -482,6 +496,7 @@ end;
 
 procedure TAtlasMainMenu.BugReportClick(Sender: TObject);
 begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.BugReport');
   if Assigned(FOnBugReport) then
     TAtlasGuard.Run(TAtlasFeature.Menu,
       procedure
@@ -492,6 +507,7 @@ end;
 
 procedure TAtlasMainMenu.SetupClick(Sender: TObject);
 begin
+  TAtlasIdeShortcutTips.Invoked(TAtlasSetupChecklist.CommandId);
   if Assigned(FOnSetup) then
     TAtlasGuard.Run(TAtlasFeature.Menu,
       procedure
@@ -502,6 +518,7 @@ end;
 
 procedure TAtlasMainMenu.KeyMapClick(Sender: TObject);
 begin
+  TAtlasIdeShortcutTips.Invoked(TAtlasIdeKeyMap.CommandId);
   if Assigned(FOnKeyMap) then
     TAtlasGuard.Run(TAtlasFeature.Menu,
       procedure
@@ -518,6 +535,7 @@ end;
 
 procedure TAtlasMainMenu.RenameClick(Sender: TObject);
 begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.Rename');
   if Assigned(FOnRename) then
     TAtlasGuard.Run(TAtlasFeature.Menu,
       procedure
@@ -540,6 +558,8 @@ var
   Command: Integer;
 begin
   Command := TMenuItem(Sender).Tag;
+  if (Command >= Low(ResultsIds)) and (Command <= High(ResultsIds)) then
+    TAtlasIdeShortcutTips.Invoked(ResultsIds[Command]);
   TAtlasGuard.Run(TAtlasFeature.Results,
     procedure
     begin
@@ -562,6 +582,8 @@ var
   Command: Integer;
 begin
   Command := TMenuItem(Sender).Tag;
+  if (Command >= Low(EditorIds)) and (Command <= High(EditorIds)) then
+    TAtlasIdeShortcutTips.Invoked(EditorIds[Command]);
   TAtlasGuard.Run(TAtlasFeature.EditorCommands,
     procedure
     begin
@@ -582,6 +604,8 @@ var
   Command: Integer;
 begin
   Command := TMenuItem(Sender).Tag;
+  if (Command >= Low(UndoIds)) and (Command <= High(UndoIds)) then
+    TAtlasIdeShortcutTips.Invoked(UndoIds[Command]);
   TAtlasGuard.Run(TAtlasFeature.EditorCommands,
     procedure
     begin

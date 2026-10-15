@@ -26,6 +26,8 @@ type
     [Test]
     procedure StatusFieldRoundTrips;
     [Test]
+    procedure ShortcutTipsRoundTrip;
+    [Test]
     procedure SafeModeRoundTrips;
     [Test]
     procedure UndoSettingsRoundTrip;
@@ -304,6 +306,32 @@ begin
     Assert.IsFalse(Saved.SetupChecklist);
     Assert.IsFalse(Saved.StatusFieldSummary);
     Assert.AreEqual('atlas.file, atlas.index', Saved.StatusFieldHidden);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.ShortcutTipsRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  // #600: shortcutTips.enabled und shortcutTips.scope auf der Seite Allgemein.
+  Settings := TAtlasPluginSettings.Defaults;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.IsTrue(Page.ShortcutTips.Checked, 'Tipps standardmäßig an');
+    Assert.AreEqual(1, Page.ShortcutTipsScope.Choice, 'Vorgabe all');
+    Page.ShortcutTips.Checked := False;
+    Page.ShortcutTipsScope.Choice := 0;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.ShortcutTips);
+    Assert.AreEqual('atlas', Saved.ShortcutTipsScope);
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.ShortcutTips.Checked);
+    Assert.AreEqual(0, Page.ShortcutTipsScope.Choice);
   finally
     Page.Free;
   end;

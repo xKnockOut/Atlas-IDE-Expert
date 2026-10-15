@@ -810,6 +810,37 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; für TK5/TK6 eine
 | TK12 | Dunkles und helles Thema, 150 % Skalierung, Thema wechseln bei offenem Fenster; Esc | Liste, rote Zeilen und Knöpfe lesbar, Farben folgen ohne Neustart; Esc schließt das Fenster |
 | TK13 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs`) nach TK3 | Nur Anzahlen (Kürzel, Konflikte), keine Pfade oder Benutzernamen |
 
+## Tastenkürzel-Tipps (#600)
+
+Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; `shortcutTips.enabled` an, `shortcutTips.scope` = `all`; `%LOCALAPPDATA%\Atlas\shortcut-tips.json` gelöscht. Ein Projekt mit einer Klasse, deren Methoden noch nicht implementiert sind. Zwischen zwei Tipps 30 s warten (Mindestabstand), sofern ein Fall nichts anderes sagt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TT1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasShortcutTipsTests`, `TAtlasCommandUsageTests`, `TAtlasShortcutTipWindowTests`, `TAtlasKeyMapWindowTests` (Spalte „Selten per Tastatur“), `TAtlasSettingsPageTests.ShortcutTipsRoundTrip` und `TAtlasQuickTogglesTests` grün |
+| TT2 | Im Editor auf der Klasse Rechtsklick › „Klasse beim Cursor vervollständigen“ | Die Klasse wird vervollständigt; unten rechts im Editorfenster erscheint ohne Fokuswechsel „Tipp: [Strg]+[Umschalt]+[C] für „Klasse beim Cursor vervollständigen““ mit Tastenkappen, darunter „Nicht mehr zeigen · Alle Kürzel“ (**Abnahme**). Der Caret bleibt im Editor, Tippen geht weiter in den Quelltext |
+| TT3 | Nach TT2 nichts tun | Der Tipp verschwindet nach 4 s; steht die Maus über dem Tipp, bleibt er, bis sie ihn verlässt |
+| TT4 | TT2 wiederholen und sofort eine beliebige Taste drücken | Der Tipp verschwindet mit der Taste; die Taste wirkt normal im Editor |
+| TT5 | Nach TT2 am selben Tag (nach mehr als 30 s) erneut über das Kontextmenü „Klasse beim Cursor vervollständigen“ | Kein Tipp (höchstens einer je Aktion und Tag, **Abnahme**) |
+| TT6 | Am nächsten Tag (oder `lastTip` des Befehls in `shortcut-tips.json` auf gestern setzen, IDE neu starten) TT2 wiederholen, im Tipp „Nicht mehr zeigen“ klicken; IDE neu starten, an einem weiteren Tag erneut TT2 | Nach dem Klick verschwindet der Tipp; `shortcut-tips.json` enthält für den Befehl `"never": true`; auch nach dem Neustart und an späteren Tagen kein Tipp für diesen Befehl, Tipps für andere Befehle erscheinen weiter (**Abnahme**) |
+| TT7 | Strg+Umschalt+C dreimal im Editor drücken, dann (anderer Tag) über das Kontextmenü aufrufen | `keyboard` des Befehls in `shortcut-tips.json` steht auf 3 (nach höchstens 5 s gespeichert); kein Tipp mehr |
+| TT8 | Eine Aktion per Tastatur auslösen, z. B. Strg+Umschalt+C oder F9 | Kein Tipp (**Abnahme**); die Datei zählt `keyboard`, nicht `mouse` |
+| TT9 | Über das Hauptmenü eine Aktion ohne Kürzel aufrufen (z. B. *Projekt › Optionen…* ohne Belegung oder *Atlas › Fehlerbericht erstellen…*) | Kein Tipp (**Abnahme**); `mouse` wird trotzdem gezählt |
+| TT10 | Über die Werkzeugleiste „Speichern“ klicken, dann über das Hauptmenü *Atlas › Auswahl erweitern* | Je ein Tipp mit „[Strg]+[S]“ bzw. der Atlas-Taste für „Auswahl erweitern“ (mit 30 s Abstand) |
+| TT11 | Befehlspalette (Strg+Umschalt+P), dort „Speichern“ bzw. einen Atlas-Befehl mit Taste wählen | Tipp mit dem Kürzel des gewählten Befehls (die Palette zählt als Aufruf ohne Kürzel) |
+| TT12 | Unter *Tools › Optionen › Atlas › Tastenkonflikte* die Taste für „Auswahl erweitern“ ändern, speichern, dann *Atlas › Auswahl erweitern* über das Menü (anderer Befehl oder neuer Tag) | Der Tipp zeigt sofort die neue Taste, ohne IDE-Neustart (**Abnahme**) |
+| TT13 | Haltepunkt setzen, Programm starten, am Haltepunkt anhalten, dann über das Kontextmenü eine Aktion mit Kürzel aufrufen | Kein Tipp während der angehaltenen Debug-Sitzung |
+| TT14 | Eine Aktion mit Kürzel aufrufen, die einen modalen Dialog öffnet (z. B. *Suchen › Ersetzen…* über das Menü); bzw. bei offenem modalem Dialog eine Aktion auslösen | Kein Tipp, solange ein modaler Dialog offen ist |
+| TT15 | Zwei verschiedene Aktionen mit Kürzel kurz nacheinander (unter 30 s) per Maus | Nur für die erste ein Tipp |
+| TT16 | Eine Aktion mit einem Kürzel aus zwei Schritten per Menü aufrufen (z. B. in der IDE-Belegung ein Eintrag mit „Strg+K, Strg+D“ hinter dem Tab bzw. Strg+K-Belegungen der Klassischen Belegung) | Der Tipp zeigt beide Schritte: „[Strg]+[K] , [Strg]+[D]“; Sprachausgabe (Narrator) liest „Tipp: Strg+K, Strg+D für …“ |
+| TT17 | Im Tipp auf „Alle Kürzel“ klicken | Das Fenster „Atlas – Tastenkürzel“ (#520) öffnet mit leerer Suche; mit `keys.overview` aus fehlt der Link |
+| TT18 | Nach TT2–TT11 die Tastenkürzel-Übersicht öffnen | Spalte „Selten per Tastatur“ zwischen Kontext und Hinweis; bei Befehlen mit mindestens drei Aufrufen, davon weniger als ein Viertel per Kürzel, steht z. B. „3× Maus, 0× Tastatur“; der HTML-Export enthält die Spalte |
+| TT19 | `shortcutTips.scope` auf „Nur Atlas-Befehle“, dann TT10 | Kein Tipp für „Speichern“, aber für den Atlas-Befehl |
+| TT20 | `shortcutTips.enabled` aus (Seite *Allgemein* oder Schnellschalter), dann TT2 | Kein Tipp; Protokoll „Beobachtung False“; `shortcut-tips.json` ändert sich nicht mehr |
+| TT21 | IDE-Thema hell ↔ dunkel wechseln, während ein Tipp sichtbar ist; dann erneut einen Tipp auslösen | Tipp in den Farben des Themas, Tastenkappen abgesetzt, Links in Akzentfarbe; 100 %, 150 %, 200 % Skalierung scharf und nicht abgeschnitten |
+| TT22 | `%APPDATA%\Atlas\usage.json` (Vervollständigung) vor und nach TT2–TT11 vergleichen | Unverändert durch die Tipps; die Zählung steht nur in `%LOCALAPPDATA%\Atlas\shortcut-tips.json` |
+| TT23 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs`) nach TT2 | Nur „Tastenkürzel-Tipp gezeigt (#600)“ bzw. „Beobachtung True/False“, keine Befehlsnamen, Pfade oder Benutzernamen |
+| TT24 | Abgesicherter Start (#722) | Keine Tipps und keine Zählung; Menü und Palette funktionieren unverändert |
+
 ## Versionsverwaltung (#571)
 
 Vorbereitung: Git für Windows und TortoiseSVN mit Kommandozeilenwerkzeugen (`svn.exe`, `svnadmin.exe`) installiert. Die Schnittstelle hat noch keine sichtbaren Nutzer in der IDE (folgen mit #592, #762, #755, #764, #765); geprüft wird über die Tests, den Einstellungsdialog und die Kommandozeile.
