@@ -82,6 +82,8 @@ type
     procedure Saved(const AFileName: string);
     /// <summary>Format für AFileName wählen (wie im Menü); schreibt beim nächsten Speichern.</summary>
     procedure SetTarget(const AFileName: string; const ATarget: TAtlasFileFormat);
+    /// <summary>Units im Index aus der letzten Abfrage; -1 = unbekannt (Kopf der Willkommensseite, #753).</summary>
+    function Units: Integer;
   end;
 
 implementation
@@ -92,6 +94,11 @@ uses
   Atlas.Core.Diagnostics.Guard;
 
 { TAtlasIdeStatusLines }
+
+function TAtlasIdeStatusLines.Units: Integer;
+begin
+  Result := FUnits.Value;
+end;
 
 constructor TAtlasIdeStatusLines.Create(const ARegistry: IAtlasStatusRegistry;
   const AServerInfo: TFunc<TAtlasServerInfo>; const AIndexing: TAtlasIndexingFunc;

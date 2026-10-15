@@ -30,6 +30,8 @@ type
     [Test]
     procedure UndoSettingsRoundTrip;
     [Test]
+    procedure WelcomeSettingsRoundTrip;
+    [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
     procedure ServerPageRunsActions;
@@ -105,9 +107,10 @@ begin
     Page := TAtlasSettingsPage.Create(Host);
     Page.Parent := Host;
     Page.HandleNeeded;
-    Assert.AreEqual(11, Page.Pages.PageCount);
+    Assert.AreEqual(12, Page.Pages.PageCount);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabGeneral), Page.Pages.Pages[0].Caption);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUndo), Page.Pages.Pages[10].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabWelcome), Page.Pages.Pages[11].Caption);
     for Index := 0 to Page.Pages.PageCount - 1 do
     begin
       Sheet := Page.Pages.Pages[Index];
@@ -328,6 +331,41 @@ begin
     Assert.AreEqual(20000, Saved.SafeStartupTimeoutMs);
     // Begrenzt auf die Höchstzahl.
     Assert.AreEqual(TAtlasPluginSettings.MaxSafeSettingsHistory, Saved.SafeKeepSettingsHistory);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.WelcomeSettingsRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  // #753: Ein/Aus, Ort (Willkommensseite oder Fenster „Atlas-Start“), Atlas-Layout, Kopf und Grußzeile.
+  Settings := TAtlasPluginSettings.Defaults;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.IsTrue(Page.WelcomeEnabled.Checked);
+    Assert.AreEqual(0, Page.WelcomeHost.Choice);
+    Assert.IsFalse(Page.WelcomeLayout.Checked);
+    Assert.IsTrue(Page.WelcomeHeader.Checked);
+    Assert.IsTrue(Page.WelcomeGreeting.Checked);
+    Page.WelcomeEnabled.Checked := False;
+    Page.WelcomeHost.Choice := 1;
+    Page.WelcomeLayout.Checked := True;
+    Page.WelcomeHeader.Checked := False;
+    Page.WelcomeGreeting.Checked := False;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.WelcomePage);
+    Assert.AreEqual('dockWindow', Saved.WelcomePageHost);
+    Assert.AreEqual('atlas', Saved.WelcomePageLayout);
+    Assert.IsFalse(Saved.WelcomePageHeader);
+    Assert.IsFalse(Saved.WelcomePageGreeting);
+    Page.LoadFrom(Saved);
+    Assert.AreEqual(1, Page.WelcomeHost.Choice);
+    Assert.IsTrue(Page.WelcomeLayout.Checked);
   finally
     Page.Free;
   end;

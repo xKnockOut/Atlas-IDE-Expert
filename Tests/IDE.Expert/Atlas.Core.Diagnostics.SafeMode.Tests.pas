@@ -265,6 +265,8 @@ begin
   Assert.IsFalse(Effective.HoverTooltip);
   Assert.IsFalse(Effective.Enabled);
   Assert.IsFalse(Effective.CheckOnSave);
+  // Atlas auf der Willkommensseite (#753) ist ebenfalls ein Schnellschalter.
+  Assert.IsFalse(Effective.WelcomePage);
   // Grundfunktionen bleiben, gespeicherte Werte unverändert.
   Assert.IsTrue(Effective.StatusField);
   Assert.IsTrue(Stored.PairColors);
