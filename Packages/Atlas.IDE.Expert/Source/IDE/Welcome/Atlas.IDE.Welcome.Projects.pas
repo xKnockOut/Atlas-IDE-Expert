@@ -30,6 +30,11 @@
 // - TODO-Übersicht (#68): im selben Hintergrundlauf fragt die Composition
 //   atlas.server.todos (Modus summary) und übergibt die Antwort an
 //   RecordTodos; ebenso nur für das Projekt, Zeitpunkt der des Builds.
+// - Baseline (#97): im selben Hintergrundlauf liest die Composition die
+//   Baseline-Datei im Projektordner (Einträge, Treffer, Einträge ohne Datei)
+//   und übergibt sie an RecordBaseline; nach „Baseline des Projekts
+//   aktualisieren“ ebenso mit den Zählern des Servers. Abschnitt "baseline"
+//   für Projektverlauf (#758) und Einrichtung (#759).
 // - Die Willkommensseite startet keinen Server und liest nur lokale Dateien.
 
 interface
@@ -39,6 +44,7 @@ uses
   System.Generics.Collections,
   ToolsAPI,
   Atlas.Core.Projects.Summary,
+  Atlas.Core.Projects.Baseline,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
   Atlas.Core.Welcome.Sections,
@@ -100,6 +106,13 @@ type
     /// <summary>Antwort von atlas.server.todos (Modus summary) für AProject zum Zeitpunkt AAtUtc (#68);
     /// ungültige oder leere Antwort: Zusammenfassung bleibt unverändert. Hauptthread.</summary>
     procedure RecordTodos(const AProject, AJson: string; AAtUtc: TDateTime);
+    /// <summary>Baseline des Projekts (#97) nach einem Build: Stand der Datei, das letzte Aktualisieren bleibt.
+    /// </summary>
+    procedure RecordBaseline(const AProject: string; const AState: TAtlasBaselineState; AAtUtc: TDateTime);
+      overload;
+    /// <summary>Baseline des Projekts (#97) nach dem Aktualisieren: Stand der Datei und Zähler des Servers.</summary>
+    procedure RecordBaseline(const AProject: string; const AState: TAtlasBaselineState;
+      const AUpdate: TAtlasBaselineUpdate; AAtUtc: TDateTime); overload;
     /// <summary>Jetzt in UTC, Zeitpunkt der Einträge.</summary>
     class function StampUtc: TDateTime; static;
     /// <summary>%LOCALAPPDATA%\Atlas\projects.</summary>
@@ -553,6 +566,44 @@ begin
     procedure(var ASummary: TAtlasProjectSummary)
     begin
       ASummary.Todos := Todos;
+    end);
+  Changed;
+end;
+
+procedure TAtlasIdeProjects.RecordBaseline(const AProject: string; const AState: TAtlasBaselineState;
+  AAtUtc: TDateTime);
+var
+  State: TAtlasBaselineState;
+  Stamp: TDateTime;
+begin
+  if FStopped or (AProject = '') then
+    Exit;
+  State := AState;
+  Stamp := AAtUtc;
+  TAtlasProjectSummaries.Update(Folder, AProject,
+    procedure(var ASummary: TAtlasProjectSummary)
+    begin
+      TAtlasProjectBaselines.Measured(ASummary.Baseline, State, Stamp);
+    end);
+  Changed;
+end;
+
+procedure TAtlasIdeProjects.RecordBaseline(const AProject: string; const AState: TAtlasBaselineState;
+  const AUpdate: TAtlasBaselineUpdate; AAtUtc: TDateTime);
+var
+  State: TAtlasBaselineState;
+  Update: TAtlasBaselineUpdate;
+  Stamp: TDateTime;
+begin
+  if FStopped or (AProject = '') then
+    Exit;
+  State := AState;
+  Update := AUpdate;
+  Stamp := AAtUtc;
+  TAtlasProjectSummaries.Update(Folder, AProject,
+    procedure(var ASummary: TAtlasProjectSummary)
+    begin
+      TAtlasProjectBaselines.Updated(ASummary.Baseline, Update, State, Stamp);
     end);
   Changed;
 end;

@@ -125,6 +125,7 @@
         <DCCReference Include="Common\Todos\Atlas.Common.Todos.Report.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Todos.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Baseline.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SemanticTokens.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WorkspaceSymbols.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DocumentHighlights.Tests.pas"/>
@@ -167,6 +168,7 @@
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Confidence.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Output.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Baseline.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Scopes.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.SuppressionStats.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Catalog.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unicode.Tests.pas"/>
@@ -398,6 +400,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Metrics.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Projects\Atlas.Core.Projects.Todos.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Todos.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Projects\Atlas.Core.Projects.Baseline.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Baseline.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\UnitSearch\Atlas.Core.UnitSearch.Model.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\UnitSearch\Atlas.Core.UnitSearch.State.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.UnitSearch.Tests.pas"/>
