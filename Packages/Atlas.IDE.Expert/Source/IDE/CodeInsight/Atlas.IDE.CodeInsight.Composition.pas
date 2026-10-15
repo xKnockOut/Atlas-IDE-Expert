@@ -72,6 +72,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Diagnostics.TimeLimit,
+  Atlas.Core.Diagnostics.MainThread,
   Atlas.IDE.Commands.Keys,
   Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.Commands.Usage,
@@ -1209,6 +1210,8 @@ begin
   StartupDone := False;
   // Abbruchsignal eines früheren Entladens in derselben Sitzung zurücknehmen (#493).
   TAtlasShutdown.Reset;
+  // Einreihen in den Hauptthread wieder annehmen (nach einem früheren Unregister, Code-Review A-02).
+  TAtlasMainThread.Start;
   TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
   TAtlasGuard.OnWarning := GuardWarning;
   TAtlasStrings.Language := IdeLanguage;
@@ -1331,6 +1334,9 @@ begin
   // Zuerst das gemeinsame Abbruchsignal: Jeder Hintergrund-Thread hört auf zu warten (#493).
   StartedAt := TThread.GetTickCount64;
   TAtlasShutdown.Signal;
+  // Vor allem anderen: Was jetzt noch wartet oder während des Abbaus eingereiht wird, liefe nach dem Entladen
+  // in nicht mehr geladenem Code (Code-Review A-02). Queue im Hauptthread läuft weiter sofort.
+  TAtlasMainThread.Stop;
   TAtlasIdeVcs.Stop;
   TAtlasGuard.OnWarning := nil;
   TAtlasGuard.OnFailure := nil;
