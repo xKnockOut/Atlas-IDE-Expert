@@ -2,13 +2,16 @@
 
 // Schnellbefehle für Klassen (#295) im Rahmen aus #293:
 //   /impl            fehlende Methodenrümpfe der Klasse anlegen
-//   /ctor [owner]    Konstruktor mit den Feldern als Parametern; "owner" für Komponenten
+//   /ctor [owner]    Konstruktor mit den Feldern als Parametern; "owner" für Komponenten;
+//                    "/ctor FName, FAlter" nur mit diesen Feldern (Auswahl im Erzeugen-Menü, #719)
 //   /dtor            Destruktor, der im Konstruktor erzeugte Felder freigibt
 //   /override Name   virtuelle Methode eines Vorfahren überschreiben (auch aus dem Index)
 //   /msg WM_SIZE     Botschaftsmethode mit passendem Record
 //
 // Deklarationen kommen in einen eigenen Abschnitt vor "end" der Klasse, Rümpfe
-// hinter die letzte Methode der Klasse.
+// hinter die letzte Methode der Klasse. Für die Auswahl im Erzeugen-Menü (#719)
+// liefern CtorFields, OverrideCandidates und MessageNames die möglichen
+// Argumente.
 
 interface
 
@@ -30,6 +33,13 @@ function ParameterNames(const ASignature: string): string;
 /// <summary>Text in ARange aus ALines, Zeilen mit Leerzeichen verbunden.</summary>
 function RangeText(const ALines: TArray<string>; const ARange: TTextRange): string;
 function LoadText(const AFileName: string; out AText: string): Boolean;
+/// <summary>Felder der Klasse um die Befehlszeile, die /ctor als Parameter nimmt (#719); leer außerhalb.</summary>
+function CtorFields(const AContext: TSlashContext): TArray<string>;
+/// <summary>Virtuelle Methoden der Vorfahren (Datei, dann Index), die die Klasse um die Befehlszeile noch nicht
+/// selbst deklariert; Namen in der Reihenfolge der Vorfahren, ohne Doppelte (#719).</summary>
+function OverrideCandidates(const AContext: TSlashContext): TArray<string>;
+/// <summary>Botschaften der Tabelle, z. B. WM_SIZE (#719).</summary>
+function MessageNames: TArray<string>;
 
 implementation
 
@@ -236,7 +246,9 @@ function ExecuteCtor(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit
 var
   Source: TCommandSource;
   ClassSymbol, Symbol: TIndexSymbol;
-  Parameters, Assignments, Declaration, Body, Parameter: string;
+  Parameters, Assignments, Declaration, Body, Parameter, Name: string;
+  Chosen: TArray<string>;
+  Found: Boolean;
 begin
   AEdits := nil;
   Source := TCommandSource.Create(AContext);
@@ -249,15 +261,31 @@ begin
       Body := Lines(Source, [Format('constructor %s.Create(AOwner: TComponent);', [ClassSymbol.Name]), 'begin',
         '  inherited Create(AOwner);', 'end;']);
     end
-    else if AContext.Arguments <> '' then
-      Exit(Fail('Erwartet wird /ctor oder /ctor owner', AReason))
     else
     begin
+      // Ohne Argument alle Felder, sonst nur die genannten (mit oder ohne F).
+      Chosen := nil;
+      for Name in AContext.Arguments.Split([',', ' ', ';']) do
+      begin
+        if Name = '' then
+          Continue;
+        Found := False;
+        for Symbol in Source.UnitIndex.Symbols do
+          if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, ClassSymbol.Name) and
+            (Symbol.TypeName <> '') and (SameText(Symbol.Name, Name) or SameText(Symbol.Name, 'F' + Name)) then
+          begin
+            Chosen := Chosen + [Symbol.Name];
+            Found := True;
+          end;
+        if not Found then
+          Exit(Fail(Format('Erwartet wird /ctor, /ctor owner oder /ctor FeldA, FeldB; kein Feld %s in %s',
+            [Name, ClassSymbol.Name]), AReason));
+      end;
       Parameters := '';
       Assignments := '';
       for Symbol in Source.UnitIndex.Symbols do
         if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, ClassSymbol.Name) and
-          (Symbol.TypeName <> '') then
+          (Symbol.TypeName <> '') and ((Chosen = nil) or MatchText(Symbol.Name, Chosen)) then
         begin
           Parameter := 'A' + IfThen(StartsText('F', Symbol.Name) and (Length(Symbol.Name) > 1),
             Copy(Symbol.Name, 2, MaxInt), Symbol.Name);
@@ -486,6 +514,105 @@ begin
   finally
     Source.Free;
   end;
+end;
+
+function CtorFields(const AContext: TSlashContext): TArray<string>;
+var
+  Source: TCommandSource;
+  ClassSymbol, Symbol: TIndexSymbol;
+begin
+  Result := nil;
+  Source := TCommandSource.Create(AContext);
+  try
+    if not Source.ClassAt(ClassSymbol) then
+      Exit;
+    for Symbol in Source.UnitIndex.Symbols do
+      if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, ClassSymbol.Name) and
+        (Symbol.TypeName <> '') then
+        Result := Result + [Symbol.Name];
+  finally
+    Source.Free;
+  end;
+end;
+
+/// <summary>Hängt die virtuellen Methoden von AClassName aus AUnit an AResult an, die weder in AOwn noch schon in
+/// AResult stehen; AAncestor ist der erste Vorfahr von AClassName in AUnit ('' ohne).</summary>
+procedure CollectVirtuals(const AUnit: TUnitIndex; const AClassName: string; const AOwn: TArray<string>;
+  var AResult: TArray<string>; out AAncestor: string; out AFound: Boolean);
+var
+  Symbol: TIndexSymbol;
+begin
+  AAncestor := '';
+  AFound := False;
+  for Symbol in AUnit.Symbols do
+    if (Symbol.Kind = TIndexSymbolKind.ClassType) and SameText(Symbol.Name, AClassName) then
+    begin
+      AFound := True;
+      if Length(Symbol.Ancestors) > 0 then
+        AAncestor := Symbol.Ancestors[0];
+    end;
+  for Symbol in AUnit.Symbols do
+    if (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and Symbol.IsVirtual and
+      SameText(Symbol.Container, AClassName) and not MatchText(Symbol.Name, AOwn) and
+      not MatchText(Symbol.Name, AResult) then
+      AResult := AResult + [Symbol.Name];
+end;
+
+function OverrideCandidates(const AContext: TSlashContext): TArray<string>;
+var
+  Source: TCommandSource;
+  ClassSymbol, Symbol: TIndexSymbol;
+  Own: TArray<string>;
+  ClassName, Ancestor: string;
+  Location: TSymbolLocation;
+  UnitIndex: TUnitIndex;
+  Depth: Integer;
+  Found: Boolean;
+begin
+  Result := nil;
+  Source := TCommandSource.Create(AContext);
+  try
+    if not Source.ClassAt(ClassSymbol) or (Length(ClassSymbol.Ancestors) = 0) then
+      Exit;
+    // Was die Klasse schon deklariert, steht nicht zur Wahl.
+    Own := nil;
+    for Symbol in Source.UnitIndex.Symbols do
+      if (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and
+        SameText(Symbol.Container, ClassSymbol.Name) then
+        Own := Own + [Symbol.Name];
+    ClassName := ClassSymbol.Ancestors[0];
+    for Depth := 1 to 32 do
+    begin
+      CollectVirtuals(Source.UnitIndex, ClassName, Own, Result, Ancestor, Found);
+      if not Found then
+      begin
+        // Klasse aus einer anderen Unit über den Index, wie bei /override.
+        if AContext.Index = nil then
+          Exit;
+        for Location in AContext.Index.FindSymbols(ClassName) do
+          if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and
+            AContext.Index.FindFile(Location.FileName, UnitIndex) then
+          begin
+            CollectVirtuals(UnitIndex, ClassName, Own, Result, Ancestor, Found);
+            Break;
+          end;
+      end;
+      if Ancestor = '' then
+        Exit;
+      ClassName := Ancestor;
+    end;
+  finally
+    Source.Free;
+  end;
+end;
+
+function MessageNames: TArray<string>;
+var
+  Entry: TMessageEntry;
+begin
+  Result := nil;
+  for Entry in MessageTable do
+    Result := Result + [Entry.Name];
 end;
 
 function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
