@@ -393,12 +393,20 @@ end;
 
 class function TLspHierarchies.Subtypes(const AIndex: ISymbolIndex; const AItem: THierarchyItem): TArray<THierarchyItem>;
 var
-  Location: TSymbolLocation;
+  Locations: TArray<TSymbolLocation>;
+  Index, Count: Integer;
 begin
-  Result := nil;
-  for Location in AIndex.Descendants(AItem.Name) do
-    if Location.Symbol.Kind in HierarchyTypeKinds then
-      Result := Result + [FromIndex(Location.UnitName, Location.FileName, Location.Symbol)];
+  // Einmal anlegen statt je Nachfahr anhängen (Code-Review P-08): bei TObject bzw. TComponent viele Hundert.
+  Locations := AIndex.Descendants(AItem.Name);
+  SetLength(Result, Length(Locations));
+  Count := 0;
+  for Index := 0 to High(Locations) do
+    if Locations[Index].Symbol.Kind in HierarchyTypeKinds then
+    begin
+      Result[Count] := FromIndex(Locations[Index].UnitName, Locations[Index].FileName, Locations[Index].Symbol);
+      Inc(Count);
+    end;
+  SetLength(Result, Count);
 end;
 
 class function TLspHierarchies.CallItemAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;

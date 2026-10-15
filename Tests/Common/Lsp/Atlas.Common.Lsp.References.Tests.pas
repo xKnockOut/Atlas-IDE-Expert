@@ -33,6 +33,13 @@ type
     procedure ReadsDfmEventsAndObjects;
     [Test]
     procedure NothingOutsideIdentifiers;
+    /// <summary>Code-Review P-01/P-08: Viele Vorkommen in einer Datei, Ergebnis vollständig und in Reihenfolge.</summary>
+    [Test]
+    procedure FindManyOccurrencesSameResult;
+    /// <summary>Code-Review P-01: Find pinnt Fremdbäume über dem Baum des Aufrufers und löst nur diese; danach
+    /// ist der Baum des Aufrufers weiter gepinnt, ohne Aufrufer-Pin ist nichts mehr gepinnt.</summary>
+    [Test]
+    procedure FindResolverStaysPinnedAfterForeignTree;
   end;
 
 implementation
@@ -202,6 +209,83 @@ end;
 procedure TLspReferencesTests.NothingOutsideIdentifiers;
 begin
   Assert.AreEqual('', Describe(FindAt('begin', True)));
+end;
+
+procedure TLspReferencesTests.FindManyOccurrencesSameResult;
+const
+  Count = 200;
+var
+  Text: string;
+  Tree: TSyntaxTree;
+  Found: TArray<TReferenceLocation>;
+  Index: Integer;
+begin
+  Text := 'unit Haupt;'#10'interface'#10'uses Werkzeug;'#10'implementation'#10'procedure Lauf;'#10'var'#10 +
+    '  R: TRechner;'#10'begin'#10;
+  for Index := 1 to Count do
+    Text := Text + '  R.Summe(1, 2);'#10;
+  Text := Text + 'end;'#10'end.';
+  Tree := TPascalParser.Parse(Text);
+  try
+    Found := TLspReferences.Find(FResolver, FIndex, Tree, HauptFile, TTextPosition.Create(8, 4), False,
+      [WerkzeugFile, HauptFile, WerkzeugFile],
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        Result := SameText(AFileName, WerkzeugFile);
+        if Result then
+          AText := UnitWerkzeug;
+      end);
+  finally
+    Tree.Free;
+  end;
+  // 200 Aufrufe und der Rumpf in Werkzeug.pas; die Deklaration fehlt (ADeclaration = False), doppelt
+  // genannte Dateien zählen einmal.
+  Assert.AreEqual(Count + 1, Integer(Length(Found)));
+  for Index := 0 to Count - 1 do
+  begin
+    Assert.AreEqual(HauptFile, Found[Index].FileName);
+    Assert.AreEqual(8 + Index, Found[Index].Range.StartPos.Line);
+    Assert.AreEqual(4, Found[Index].Range.StartPos.Character);
+  end;
+  Assert.AreEqual(WerkzeugFile, Found[Count].FileName);
+  Assert.AreEqual(8, Found[Count].Range.StartPos.Line);
+end;
+
+procedure TLspReferencesTests.FindResolverStaysPinnedAfterForeignTree;
+var
+  Tree: TSyntaxTree;
+  Pinned, Again: TUnitIndex;
+  Found: TArray<TReferenceLocation>;
+begin
+  Tree := TPascalParser.Parse(UnitHaupt);
+  try
+    FResolver.PinTree(Tree, HauptFile);
+    try
+      Pinned := FResolver.ExtractedUnit(Tree, HauptFile);
+      Found := TLspReferences.Find(FResolver, FIndex, Tree, HauptFile, PositionOf(UnitHaupt, 'Summe(1'), False,
+        [WerkzeugFile, HauptFile],
+        function(const AFileName: string; out AText: string): Boolean
+        begin
+          Result := SameText(AFileName, WerkzeugFile);
+          if Result then
+            AText := UnitWerkzeug;
+        end);
+      Assert.AreEqual('Haupt.pas:8:4 Haupt.pas:9:4 Haupt.pas:9:12 Werkzeug.pas:8:18', Describe(Found));
+      Again := FResolver.ExtractedUnit(Tree, HauptFile);
+      Assert.IsTrue(Pointer(Pinned.Symbols) = Pointer(Again.Symbols));
+    finally
+      FResolver.UnpinTree;
+    end;
+    // Ohne Pin des Aufrufers bleibt nach Find nichts gepinnt.
+    Found := TLspReferences.Find(FResolver, FIndex, Tree, HauptFile, PositionOf(UnitHaupt, 'Summe(1'), True,
+      [HauptFile], nil);
+    Assert.AreEqual(3, Integer(Length(Found)));
+    Pinned := FResolver.ExtractedUnit(Tree, HauptFile);
+    Again := FResolver.ExtractedUnit(Tree, HauptFile);
+    Assert.IsFalse(Pointer(Pinned.Symbols) = Pointer(Again.Symbols));
+  finally
+    Tree.Free;
+  end;
 end;
 
 initialization

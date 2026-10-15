@@ -52,6 +52,27 @@ type
     procedure GivesUpOnExpressions;
     [Test]
     procedure FallsBackToSystem;
+    /// <summary>Code-Review P-01/P-02: PinTree desselben Baums verschachtelt; erst das letzte UnpinTree löst.</summary>
+    [Test]
+    procedure PinTreeNestedSameTreeKeepsPin;
+    /// <summary>Code-Review P-01: Ein Fremdbaum über dem eigenen; nach seinem UnpinTree gilt der eigene weiter.</summary>
+    [Test]
+    procedure PinTreeNestedOtherTreeRestoresOuter;
+    [Test]
+    procedure ExtractedUnitEqualsExtract;
+    [Test]
+    procedure UnpinTreeWithoutPinIsNoop;
+    /// <summary>Code-Review P-17: ResolveTypeFrom leert den Helfer-Cache nicht mehr.</summary>
+    [Test]
+    procedure ResolveTypeFromKeepsHelperCache;
+    /// <summary>Code-Review P-17: Helfer nur aus implementation-uses sind im interface-Teil nicht sichtbar,
+    /// auch wenn derselbe Resolver sie vorher im implementation-Teil gefunden hat.</summary>
+    [Test]
+    procedure HelperVisibilityDependsOnSection;
+    /// <summary>Code-Review P-05/P-17: DeclaredMember über die Namenstabelle, auch geerbt; Vorfahren-Cache
+    /// über ResolveTypeFrom hinweg.</summary>
+    [Test]
+    procedure DeclaredMemberFindsInherited;
   end;
 
 implementation
@@ -593,6 +614,263 @@ var
 begin
   R := ResolveAt('unit Haupt; interface implementation procedure P; begin WriteLn; end; end.', 'WriteLn');
   Assert.AreEqual('System', R.UnitName);
+end;
+
+const
+  PinSource =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'uses Basis;'#10 +
+    'type'#10 +
+    '  TKind = class(TBasis)'#10 +
+    '    procedure Tu;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TKind.Tu;'#10 +
+    'var'#10 +
+    '  Zahl: Integer;'#10 +
+    'begin'#10 +
+    '  Melde;'#10 +
+    '  Zahl := 1;'#10 +
+    'end;'#10 +
+    'end.';
+  PinOther =
+    'unit Andere;'#10 +
+    'interface'#10 +
+    'uses Zweit;'#10 +
+    'implementation'#10 +
+    'procedure P;'#10 +
+    'begin'#10 +
+    '  Wert;'#10 +
+    'end;'#10 +
+    'end.';
+
+procedure TNameResolverTests.PinTreeNestedSameTreeKeepsPin;
+var
+  Tree: TSyntaxTree;
+  First, Second: TUnitIndex;
+begin
+  Tree := TPascalParser.Parse(PinSource);
+  try
+    FResolver.PinTree(Tree, 'C:\P\Haupt.pas');
+    FResolver.PinTree(Tree, 'C:\P\Haupt.pas');
+    // Gepinnt: dieselbe Auswertung, kein neues Extrakt (gleiches Symbol-Array).
+    First := FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas');
+    Second := FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas');
+    Assert.IsTrue(Pointer(First.Symbols) = Pointer(Second.Symbols));
+    Assert.AreEqual('TBasis.Melde', FResolver.Resolve(Tree, 'C:\P\Haupt.pas',
+      PositionOf(PinSource, 'Melde;', 1)).QualifiedName);
+    FResolver.UnpinTree;
+    // Das innere UnpinTree löst den Baum noch nicht.
+    Second := FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas');
+    Assert.IsTrue(Pointer(First.Symbols) = Pointer(Second.Symbols));
+    Assert.AreEqual('TBasis.Melde', FResolver.Resolve(Tree, 'C:\P\Haupt.pas',
+      PositionOf(PinSource, 'Melde;', 1)).QualifiedName);
+    FResolver.UnpinTree;
+    // Ungepinnt wertet jeder Aufruf neu aus; das Ergebnis bleibt gleich.
+    Second := FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas');
+    Assert.IsFalse(Pointer(First.Symbols) = Pointer(Second.Symbols));
+    Assert.AreEqual(Integer(Length(First.Symbols)), Integer(Length(Second.Symbols)));
+    Assert.AreEqual('TBasis.Melde', FResolver.Resolve(Tree, 'C:\P\Haupt.pas',
+      PositionOf(PinSource, 'Melde;', 1)).QualifiedName);
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TNameResolverTests.PinTreeNestedOtherTreeRestoresOuter;
+var
+  Outer, Inner: TSyntaxTree;
+  Pinned: TUnitIndex;
+  R: TResolvedSymbol;
+begin
+  Outer := TPascalParser.Parse(PinSource);
+  try
+    FResolver.PinTree(Outer, 'C:\P\Haupt.pas');
+    try
+      Pinned := FResolver.ExtractedUnit(Outer, 'C:\P\Haupt.pas');
+      Inner := TPascalParser.Parse(PinOther);
+      try
+        FResolver.PinTree(Inner, 'C:\P\Andere.pas');
+        try
+          Assert.AreEqual('Zweit', FResolver.Resolve(Inner, 'C:\P\Andere.pas',
+            PositionOf(PinOther, 'Wert;', 1)).UnitName);
+          // Der äußere Baum bleibt gepinnt, auch während der innere es ist.
+          Assert.IsTrue(Pointer(Pinned.Symbols) = Pointer(FResolver.ExtractedUnit(Outer, 'C:\P\Haupt.pas').Symbols));
+        finally
+          FResolver.UnpinTree;
+        end;
+      finally
+        Inner.Free;
+      end;
+      Assert.IsTrue(Pointer(Pinned.Symbols) = Pointer(FResolver.ExtractedUnit(Outer, 'C:\P\Haupt.pas').Symbols));
+      R := FResolver.Resolve(Outer, 'C:\P\Haupt.pas', PositionOf(PinSource, 'Zahl :=', 1));
+      Assert.IsTrue(R.Found);
+      Assert.AreEqual('Zahl', R.Name);
+      Assert.IsTrue(R.Kind = TResolvedKind.Local);
+      Assert.AreEqual('TBasis.Melde', FResolver.Resolve(Outer, 'C:\P\Haupt.pas',
+        PositionOf(PinSource, 'Melde;', 1)).QualifiedName);
+    finally
+      FResolver.UnpinTree;
+    end;
+  finally
+    Outer.Free;
+  end;
+end;
+
+procedure TNameResolverTests.ExtractedUnitEqualsExtract;
+var
+  Tree: TSyntaxTree;
+  Expected, Actual: TUnitIndex;
+
+  procedure Check;
+  var
+    Index: Integer;
+  begin
+    Assert.AreEqual(Expected.UnitName, Actual.UnitName);
+    Assert.AreEqual(Integer(Length(Expected.Symbols)), Integer(Length(Actual.Symbols)));
+    for Index := 0 to High(Expected.Symbols) do
+    begin
+      Assert.AreEqual(Expected.Symbols[Index].QualifiedName, Actual.Symbols[Index].QualifiedName);
+      Assert.AreEqual(Expected.Symbols[Index].Range.StartPos.Line, Actual.Symbols[Index].Range.StartPos.Line);
+    end;
+  end;
+
+begin
+  Tree := TPascalParser.Parse(PinSource);
+  try
+    Expected := TIndexExtractor.Extract(Tree, 'C:\P\Haupt.pas');
+    Actual := FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas');
+    Check;
+    FResolver.PinTree(Tree, 'C:\P\Haupt.pas');
+    try
+      Actual := FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas');
+      Check;
+    finally
+      FResolver.UnpinTree;
+    end;
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TNameResolverTests.UnpinTreeWithoutPinIsNoop;
+begin
+  FResolver.UnpinTree;
+  FResolver.UnpinTree;
+  Assert.AreEqual('TBasis.Melde', ResolveAt(PinSource, 'Melde;').QualifiedName);
+end;
+
+const
+  UnitHelfer =
+    'unit Helfer;'#10 +
+    'interface'#10 +
+    'uses Basis;'#10 +
+    'type'#10 +
+    '  TBasisHelfer = class helper for TBasis'#10 +
+    '    function Anrede: string;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'function TBasisHelfer.Anrede: string; begin Result := ''''; end;'#10 +
+    'end.';
+  HelferSource =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'uses Basis;'#10 +
+    'var'#10 +
+    '  S: TBasis;'#10 +
+    'implementation'#10 +
+    'uses Helfer;'#10 +
+    'procedure P;'#10 +
+    'begin'#10 +
+    '  S.Anrede;'#10 +
+    'end;'#10 +
+    'end.';
+
+procedure TNameResolverTests.ResolveTypeFromKeepsHelperCache;
+var
+  Tree: TSyntaxTree;
+  BasisUnit: TUnitIndex;
+  Found: TResolvedSymbol;
+begin
+  AddUnit('C:\P\Helfer.pas', UnitHelfer);
+  Assert.IsTrue(FIndex.FindUnit('Basis', BasisUnit));
+  Tree := TPascalParser.Parse(HelferSource);
+  try
+    FResolver.PinTree(Tree, 'C:\P\Haupt.pas');
+    try
+      Assert.AreEqual('TBasisHelfer', FResolver.Resolve(Tree, 'C:\P\Haupt.pas',
+        PositionOf(HelferSource, 'Anrede', 1)).Container);
+      // Dazwischen aus einer anderen Unit auflösen (wie TypeAt und TypeChain der Vervollständigung).
+      Assert.IsTrue(FResolver.ResolveTypeFrom(BasisUnit, 'TBasis', Found));
+      Assert.AreEqual('TBasisHelfer', FResolver.Resolve(Tree, 'C:\P\Haupt.pas',
+        PositionOf(HelferSource, 'Anrede', 1)).Container);
+    finally
+      FResolver.UnpinTree;
+    end;
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TNameResolverTests.HelperVisibilityDependsOnSection;
+var
+  Tree: TSyntaxTree;
+  InImplementation, InInterface: Integer;
+begin
+  AddUnit('C:\P\Helfer.pas', UnitHelfer);
+  Tree := TPascalParser.Parse(HelferSource);
+  try
+    // Offsets ab 0.
+    InImplementation := Pos('S.Anrede', HelferSource) - 1;
+    InInterface := Pos('S: TBasis', HelferSource) - 1;
+    FResolver.PinTree(Tree, 'C:\P\Haupt.pas');
+    try
+      Assert.IsTrue(FResolver.ResolveChain(Tree, 'C:\P\Haupt.pas', ['S', 'Anrede'], InImplementation).Found);
+      Assert.IsFalse(FResolver.ResolveChain(Tree, 'C:\P\Haupt.pas', ['S', 'Anrede'], InInterface).Found);
+      Assert.IsTrue(FResolver.ResolveChain(Tree, 'C:\P\Haupt.pas', ['S', 'Anrede'], InImplementation).Found);
+    finally
+      FResolver.UnpinTree;
+    end;
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TNameResolverTests.DeclaredMemberFindsInherited;
+const
+  UnitKinder =
+    'unit Kinder;'#10 +
+    'interface'#10 +
+    'uses Basis;'#10 +
+    'type'#10 +
+    '  TKind = class(TBasis)'#10 +
+    '    procedure Eigen;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TKind.Eigen; begin end;'#10 +
+    'end.';
+var
+  KinderUnit, BasisUnit: TUnitIndex;
+  Kind, Member, Ancestor, Other: TResolvedSymbol;
+begin
+  AddUnit('C:\P\Kinder.pas', UnitKinder);
+  Assert.IsTrue(FIndex.FindUnit('Kinder', KinderUnit));
+  Assert.IsTrue(FIndex.FindUnit('Basis', BasisUnit));
+  Assert.IsTrue(FResolver.ResolveTypeFrom(KinderUnit, 'TKind', Kind));
+  Assert.IsTrue(FResolver.DeclaredMember(Kind, 'Eigen', Member));
+  Assert.AreEqual('TKind.Eigen', Member.QualifiedName);
+  Assert.IsTrue(FResolver.DeclaredMember(Kind, 'melde', Member));
+  Assert.AreEqual('TBasis.Melde', Member.QualifiedName);
+  Assert.IsFalse(FResolver.DeclaredMember(Kind, 'Fehlt', Member));
+  Assert.IsTrue(FResolver.AncestorOf(Kind, Ancestor));
+  Assert.AreEqual('TBasis', Ancestor.Name);
+  // Vorfahren-Cache über ResolveTypeFrom aus einer anderen Unit hinweg: gleiches Ergebnis.
+  Assert.IsTrue(FResolver.ResolveTypeFrom(BasisUnit, 'TBasis', Other));
+  Assert.IsTrue(FResolver.AncestorOf(Kind, Ancestor));
+  Assert.AreEqual('TBasis', Ancestor.Name);
+  Assert.IsTrue(FResolver.DeclaredMember(Kind, 'Melde', Member));
+  Assert.AreEqual('TBasis.Melde', Member.QualifiedName);
 end;
 
 initialization

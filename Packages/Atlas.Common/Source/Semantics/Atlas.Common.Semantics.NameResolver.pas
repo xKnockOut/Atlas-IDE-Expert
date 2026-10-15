@@ -113,6 +113,29 @@ type
   TCandidateNameFilter = reference to function(const AName: string): Boolean;
 
   TNameResolver = class
+  private type
+    /// <summary>Mit PinTree vorab ausgewerteter Baum (Code-Review P-01/P-02).</summary>
+    TPin = record
+      Tree: TSyntaxTree;
+      FileName: string;
+      /// <summary>Nur aus dem Baum, wie TIndexExtractor.Extract (ohne Include-Symbole).</summary>
+      Extracted: TUnitIndex;
+      /// <summary>Wie TreeUnit: mit den Symbolen der Include-Dateien und Namenstabelle.</summary>
+      Merged: TUnitIndex;
+      /// <summary>Zahl der noch offenen PinTree-Aufrufe für diesen Baum.</summary>
+      Depth: Integer;
+    end;
+    /// <summary>Ein offener PinTree-Aufruf; UnpinTree löst den zuletzt gesetzten.</summary>
+    TPinCall = record
+      Tree: TSyntaxTree;
+      FileName: string;
+    end;
+    /// <summary>Positionen der Helfer-Typen eines Symbol-Arrays (Code-Review P-17). Symbols hält das
+    /// Array fest, damit der Zeigervergleich nie auf ein neu angelegtes Array an derselben Adresse trifft.</summary>
+    TUnitHelpers = record
+      Symbols: TArray<TIndexSymbol>;
+      Positions: TArray<Integer>;
+    end;
   private
     FIndex: ISymbolIndex;
     FEnsureUnit: TEnsureUnitFunc;
@@ -128,10 +151,19 @@ type
     FCurrent: TUnitIndex;
     FOffset: Integer;
     FInImplementation: Boolean;
-    // Mit PinTree vorab ausgewertete Unit eines Baums, für viele Aufrufe auf demselben Baum.
-    FPinnedTree: TSyntaxTree;
-    FPinnedFile: string;
-    FPinnedUnit: TUnitIndex;
+    // Mit PinTree vorab ausgewertete Bäume als Stapel (verschachtelt, LIFO), für viele Aufrufe auf
+    // demselben Baum.
+    FPins: TList<TPin>;
+    FPinCalls: TList<TPinCall>;
+    // Helfer-Positionen je Unit (Schlüssel Dateiname bzw. Unit-Name), einmal je Resolver ermittelt.
+    FUnitHelpers: TDictionary<string, TUnitHelpers>;
+    // Letztes Ergebnis von ScopeUnits; gilt, solange die uses-Arrays dieselben sind (Code-Review P-17).
+    FScopeInterfaceUses: TArray<string>;
+    FScopeImplementationUses: TArray<string>;
+    FScopeUnitName: string;
+    FScopeWithImplementation: Boolean;
+    FScopeValid: Boolean;
+    FScopeResult: TArray<string>;
     // Je Baum: Helfer je Typname und die Klasse der umgebenden Methode.
     FHelperTree: TSyntaxTree;
     FHelpers: TDictionary<string, TResolvedSymbol>;
@@ -150,6 +182,12 @@ type
     function FindQualifierUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
     function UnitOf(const AResolved: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
     function ScopeUnits(const AUnit: TUnitIndex; AWithImplementation: Boolean): TArray<string>;
+    /// <summary>Positionen der Helfer-Typen (ohne Container) in AUnit.Symbols.</summary>
+    function HelperPositions(const AUnit: TUnitIndex): TArray<Integer>;
+    /// <summary>Position von (ATree, AFileName) in FPins; -1, wenn nicht gepinnt.</summary>
+    function PinnedIndex(ATree: TSyntaxTree; const AFileName: string): Integer;
+    /// <summary>AExtracted samt der Symbole ihrer $I-Dateien aus dem Index (#500), mit Namenstabelle.</summary>
+    function MergedUnit(const AExtracted: TUnitIndex; const AFileName: string): TUnitIndex;
     function FromSymbol(const AUnit: TUnitIndex; const ASymbol: TIndexSymbol): TResolvedSymbol;
     function FromNode(ANode: TSyntaxNode; const AName: string; AKind: TIndexSymbolKind;
       AIsParameter: Boolean): TResolvedSymbol;
@@ -248,9 +286,15 @@ type
     function ChainType(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
       AOffset: Integer; out AOwner, AType: TResolvedSymbol; out ATypeFound: Boolean): Boolean;
     /// <summary>Wertet ATree einmal aus und nutzt das für alle folgenden Aufrufe mit demselben Baum,
-    /// bis UnpinTree. Der Aufrufer gibt den Baum erst nach UnpinTree frei.</summary>
+    /// bis UnpinTree. Der Aufrufer gibt den Baum erst nach UnpinTree frei. Verschachtelt aufrufbar,
+    /// auch mit anderen Bäumen; jedes PinTree braucht genau ein UnpinTree (LIFO, try/finally). Ist der
+    /// Baum schon gepinnt, zählt PinTree nur hoch und wertet nicht erneut aus.</summary>
     procedure PinTree(ATree: TSyntaxTree; const AFileName: string);
+    /// <summary>Löst das zuletzt gesetzte PinTree; ohne gepinnten Baum wirkungslos.</summary>
     procedure UnpinTree;
+    /// <summary>Unit-Index nur aus ATree (ohne Include-Symbole), wie TIndexExtractor.Extract; bei gepinntem
+    /// Baum ohne neue Auswertung. Die Symbole tragen Positionen in ATree.</summary>
+    function ExtractedUnit(ATree: TSyntaxTree; const AFileName: string): TUnitIndex;
     /// <summary>Löst ATypeName so auf, wie er in AFromUnit stünde (z. B. Vorfahren aus dem Index).</summary>
     function ResolveTypeFrom(const AFromUnit: TUnitIndex; const ATypeName: string; out AResult: TResolvedSymbol): Boolean;
     /// <summary>Überschreibbare Methoden für ATypeName aus AFromUnit (#443): virtual, dynamic, abstract oder
@@ -596,12 +640,18 @@ begin
   FEnsureUnit := AEnsureUnit;
   FHelpers := TDictionary<string, TResolvedSymbol>.Create;
   FAncestors := TDictionary<string, TResolvedSymbol>.Create;
+  FPins := TList<TPin>.Create;
+  FPinCalls := TList<TPinCall>.Create;
+  FUnitHelpers := TDictionary<string, TUnitHelpers>.Create;
 end;
 
 destructor TNameResolver.Destroy;
 begin
   FScopeSeen.Free;
   FMissingUnits.Free;
+  FUnitHelpers.Free;
+  FPinCalls.Free;
+  FPins.Free;
   FAncestors.Free;
   FHelpers.Free;
   inherited;
@@ -699,23 +749,68 @@ end;
 
 function TNameResolver.ScopeUnits(const AUnit: TUnitIndex; AWithImplementation: Boolean): TArray<string>;
 var
-  Names: TList<string>;
-  Index: Integer;
+  Index, Count: Integer;
 begin
+  // Viele Aufrufe je Anfrage mit derselben Unit (Code-Review P-17): Das Ergebnis hängt nur an den
+  // uses-Arrays, dem Abschnitt und dem Unit-Namen. Die Felder halten die Arrays fest, daher trifft der
+  // Zeigervergleich nie ein neu angelegtes Array an derselben Adresse.
+  if FScopeValid and (Pointer(AUnit.InterfaceUses) = Pointer(FScopeInterfaceUses)) and
+    (Pointer(AUnit.ImplementationUses) = Pointer(FScopeImplementationUses)) and
+    (AWithImplementation = FScopeWithImplementation) and SameText(AUnit.UnitName, FScopeUnitName) then
+    Exit(FScopeResult);
   // Höchste Priorität zuerst: letzte uses-Einträge gewinnen.
-  Names := TList<string>.Create;
-  try
-    if AWithImplementation then
-      for Index := High(AUnit.ImplementationUses) downto 0 do
-        Names.Add(AUnit.ImplementationUses[Index]);
-    for Index := High(AUnit.InterfaceUses) downto 0 do
-      Names.Add(AUnit.InterfaceUses[Index]);
-    if not SameText(AUnit.UnitName, 'System') then
-      Names.Add('System');
-    Result := Names.ToArray;
-  finally
-    Names.Free;
+  SetLength(Result, Length(AUnit.ImplementationUses) + Length(AUnit.InterfaceUses) + 1);
+  Count := 0;
+  if AWithImplementation then
+    for Index := High(AUnit.ImplementationUses) downto 0 do
+    begin
+      Result[Count] := AUnit.ImplementationUses[Index];
+      Inc(Count);
+    end;
+  for Index := High(AUnit.InterfaceUses) downto 0 do
+  begin
+    Result[Count] := AUnit.InterfaceUses[Index];
+    Inc(Count);
   end;
+  if not SameText(AUnit.UnitName, 'System') then
+  begin
+    Result[Count] := 'System';
+    Inc(Count);
+  end;
+  SetLength(Result, Count);
+  FScopeInterfaceUses := AUnit.InterfaceUses;
+  FScopeImplementationUses := AUnit.ImplementationUses;
+  FScopeUnitName := AUnit.UnitName;
+  FScopeWithImplementation := AWithImplementation;
+  FScopeResult := Result;
+  FScopeValid := True;
+end;
+
+function TNameResolver.HelperPositions(const AUnit: TUnitIndex): TArray<Integer>;
+var
+  Key: string;
+  Entry: TUnitHelpers;
+  Positions: TList<Integer>;
+  Position: Integer;
+begin
+  Key := UpperCase(AUnit.FileName + '|' + AUnit.UnitName);
+  if FUnitHelpers.TryGetValue(Key, Entry) and (Pointer(Entry.Symbols) = Pointer(AUnit.Symbols)) then
+    Exit(Entry.Positions);
+  // Über den Index statt for-in: jede Kopie eines Symbol-Records kostet, und hier laufen alle
+  // Symbole aller Units der uses-Liste durch (Diagnoselog 15.10.2026).
+  Positions := TList<Integer>.Create;
+  try
+    for Position := 0 to High(AUnit.Symbols) do
+      if (AUnit.Symbols[Position].Kind = TIndexSymbolKind.HelperType) and (AUnit.Symbols[Position].Container = '') and
+        (Length(AUnit.Symbols[Position].Ancestors) > 0) then
+        Positions.Add(Position);
+    Result := Positions.ToArray;
+  finally
+    Positions.Free;
+  end;
+  Entry.Symbols := AUnit.Symbols;
+  Entry.Positions := Result;
+  FUnitHelpers.AddOrSetValue(Key, Entry);
 end;
 
 function TNameResolver.FromSymbol(const AUnit: TUnitIndex; const ASymbol: TIndexSymbol): TResolvedSymbol;
@@ -976,6 +1071,7 @@ function TNameResolver.AncestorOf(const AType: TResolvedSymbol; out AAncestor: T
 var
   FromUnit: TUnitIndex;
   Name, Key: string;
+  WithImplementation: Boolean;
 begin
   Result := False;
   if AType.Builtin or not UnitOf(AType, FromUnit) then
@@ -991,10 +1087,14 @@ begin
   // Helfer: der "Vorfahr" ist der erweiterte Typ, nicht der Elterntyp.
   if AType.SymbolKind = TIndexSymbolKind.HelperType then
     Exit;
-  Key := UpperCase(FromUnit.FileName + '|' + AType.QualifiedName + '|' + Name);
+  // Die Sichtbarkeit des implementation-Teils gehört zum Schlüssel: Der Cache überdauert ResolveTypeFrom
+  // (Code-Review P-17), dort ist FCurrent eine andere Unit.
+  WithImplementation := SameText(FromUnit.FileName, FCurrent.FileName);
+  Key := UpperCase(FromUnit.FileName + '|' + AType.QualifiedName + '|' + Name) + '|' +
+    BoolToStr(WithImplementation, True);
   if FAncestors.TryGetValue(Key, AAncestor) then
     Exit(AAncestor.Found);
-  Result := ResolveTypeText(Name, FromUnit, SameText(FromUnit.FileName, FCurrent.FileName), AAncestor) and
+  Result := ResolveTypeText(Name, FromUnit, WithImplementation, AAncestor) and
     not AAncestor.Builtin and not SameText(AAncestor.QualifiedName, AType.QualifiedName);
   if not Result then
     AAncestor := NoResult;
@@ -1098,7 +1198,10 @@ var
 
 begin
   Target := AType.Name;
-  Key := UpperCase(AType.UnitName + '.' + AType.QualifiedName);
+  // Welche Helfer sichtbar sind, hängt an der Unit und am Abschnitt (uses von interface bzw.
+  // implementation); der Cache überdauert ResolveTypeFrom und Abschnittswechsel (Code-Review P-17).
+  Key := UpperCase(AType.UnitName + '.' + AType.QualifiedName + '|' + FCurrent.FileName + '|' +
+    FCurrent.UnitName) + '|' + BoolToStr(FInImplementation, True);
   if FHelpers.TryGetValue(Key, AHelper) then
     Exit(AHelper.Found);
   AHelper := NoResult;
@@ -1112,12 +1215,9 @@ begin
     for Used in Units do
     begin
       Found := False;
-      // Über den Index statt for-in: jede Kopie eines Symbol-Records kostet, und hier laufen alle
-      // Symbole aller Units der uses-Liste durch (Diagnoselog 15.10.2026).
-      for Position := 0 to High(Used.Symbols) do
-        if (Used.Symbols[Position].Kind = TIndexSymbolKind.HelperType) and (Used.Symbols[Position].Container = '') and
-          (Length(Used.Symbols[Position].Ancestors) > 0) and
-          Matches(Used.Symbols[Position].Ancestors[High(Used.Symbols[Position].Ancestors)]) and
+      // Nur die vorab ermittelten Helfer-Typen der Unit prüfen statt aller Symbole (Code-Review P-17).
+      for Position in HelperPositions(Used) do
+        if Matches(Used.Symbols[Position].Ancestors[High(Used.Symbols[Position].Ancestors)]) and
           (Used.Symbols[Position].InInterface or SameText(Used.FileName, FCurrent.FileName)) then
         begin
           Candidate := FromSymbol(Used, Used.Symbols[Position]);
@@ -1994,13 +2094,15 @@ end;
 procedure TNameResolver.Prepare(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer);
 var
   Section: TSyntaxNode;
+  PinIndex: Integer;
 begin
   FTree := ATree;
   FOffset := AOffset;
   FClassState := 0;
   FInferDepth := 0;
-  if (ATree = FPinnedTree) and SameText(AFileName, FPinnedFile) then
-    FCurrent := FPinnedUnit
+  PinIndex := PinnedIndex(ATree, AFileName);
+  if PinIndex >= 0 then
+    FCurrent := FPins[PinIndex].Merged
   else
     FCurrent := TreeUnit(ATree, AFileName);
   // Helfer hängen an der Unit und ihren uses; je Baum neu bestimmen.
@@ -2117,32 +2219,32 @@ procedure TNameResolver.CollectMembers(const AType: TResolvedSymbol; AList: TLis
 var
   Current, Ancestor, Helper: TResolvedSymbol;
   OwnerUnit, HelperUnit: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Depth: Integer;
+  Position, Depth: Integer;
   TypeName: string;
 begin
   Current := AType;
   for Depth := 0 to MaxDepth do
   begin
-    // Mitglieder des Helfers zuerst (#263), auch für eingebaute Typen.
+    // Mitglieder des Helfers zuerst (#263), auch für eingebaute Typen. Über den Index statt for-in:
+    // keine Kopie des Symbol-Records je geprüftem Symbol (Code-Review P-05).
     if HelperFor(Current, Helper) and UnitOf(Helper, HelperUnit) then
-      for Symbol in HelperUnit.Symbols do
-        if SameText(Symbol.Container, Helper.QualifiedName) and IsVisible(Symbol, HelperUnit, Helper) and
-          NameWanted(Symbol.Name) then
-          AddCandidate(AList, ASeen, MemberOf(FromSymbol(HelperUnit, Symbol), Depth, True));
+      for Position := 0 to High(HelperUnit.Symbols) do
+        if SameText(HelperUnit.Symbols[Position].Container, Helper.QualifiedName) and
+          IsVisible(HelperUnit.Symbols[Position], HelperUnit, Helper) and NameWanted(HelperUnit.Symbols[Position].Name) then
+          AddCandidate(AList, ASeen, MemberOf(FromSymbol(HelperUnit, HelperUnit.Symbols[Position]), Depth, True));
     if Current.Builtin or not UnitOf(Current, OwnerUnit) then
       Exit;
     TypeName := Current.QualifiedName;
-    for Symbol in OwnerUnit.Symbols do
-      if SameText(Symbol.Container, TypeName) then
-        if IsVisible(Symbol, OwnerUnit, Current) then
+    for Position := 0 to High(OwnerUnit.Symbols) do
+      if SameText(OwnerUnit.Symbols[Position].Container, TypeName) then
+        if IsVisible(OwnerUnit.Symbols[Position], OwnerUnit, Current) then
         begin
-          if NameWanted(Symbol.Name) then
-            AddCandidate(AList, ASeen, MemberOf(FromSymbol(OwnerUnit, Symbol), Depth, False));
+          if NameWanted(OwnerUnit.Symbols[Position].Name) then
+            AddCandidate(AList, ASeen, MemberOf(FromSymbol(OwnerUnit, OwnerUnit.Symbols[Position]), Depth, False));
         end
         else
           // Unsichtbare Deklaration: auch ihren Rumpf aus implementation nicht anbieten.
-          ASeen.AddOrSetValue(UpperCase(Symbol.Name), True);
+          ASeen.AddOrSetValue(UpperCase(OwnerUnit.Symbols[Position].Name), True);
     if not AncestorOf(Current, Ancestor) then
       Exit;
     Current := Ancestor;
@@ -2152,17 +2254,18 @@ end;
 procedure TNameResolver.CollectUnit(const AUnit: TUnitIndex; AOnlyInterface: Boolean;
   AList: TList<TResolvedSymbol>; ASeen: TDictionary<string, Boolean>);
 var
-  Symbol: TIndexSymbol;
+  Position: Integer;
 begin
-  for Symbol in AUnit.Symbols do
+  // Über den Index statt for-in: keine Kopie des Symbol-Records je übersprungenem Symbol (Code-Review P-05).
+  for Position := 0 to High(AUnit.Symbols) do
   begin
-    if AOnlyInterface and not Symbol.InInterface then
+    if AOnlyInterface and not AUnit.Symbols[Position].InInterface then
       Continue;
-    if (Symbol.Container <> '') and (Symbol.Kind <> TIndexSymbolKind.EnumMember) then
+    if (AUnit.Symbols[Position].Container <> '') and (AUnit.Symbols[Position].Kind <> TIndexSymbolKind.EnumMember) then
       Continue;
-    if not NameWanted(Symbol.Name) then
+    if not NameWanted(AUnit.Symbols[Position].Name) then
       Continue;
-    AddCandidate(AList, ASeen, FromSymbol(AUnit, Symbol));
+    AddCandidate(AList, ASeen, FromSymbol(AUnit, AUnit.Symbols[Position]));
   end;
 end;
 
@@ -2369,20 +2472,55 @@ begin
 end;
 
 function TNameResolver.TreeUnit(ATree: TSyntaxTree; const AFileName: string): TUnitIndex;
+begin
+  Result := MergedUnit(TIndexExtractor.Extract(ATree, AFileName), AFileName);
+end;
+
+function TNameResolver.MergedUnit(const AExtracted: TUnitIndex; const AFileName: string): TUnitIndex;
 var
   Indexed: TUnitIndex;
-  Symbol: TIndexSymbol;
+  Count, Position: Integer;
 begin
-  Result := TIndexExtractor.Extract(ATree, AFileName);
+  Result := AExtracted;
   // Der Baum kennt nur die Datei selbst; Deklarationen aus Include-Dateien stehen im Index.
   if (FIndex <> nil) and (AFileName <> '') and FIndex.FindFile(AFileName, Indexed) then
   begin
-    for Symbol in Indexed.Symbols do
-      if Symbol.FileName <> '' then
-        Result.Symbols := Result.Symbols + [Symbol];
+    // Eigenes Array (Copy): Result.Symbols teilt es sonst mit AExtracted. Einmal vergrößern statt je
+    // Symbol anhängen (Code-Review P-08).
+    Count := Length(AExtracted.Symbols);
+    Result.Symbols := Copy(AExtracted.Symbols);
+    SetLength(Result.Symbols, Count + Length(Indexed.Symbols));
+    for Position := 0 to High(Indexed.Symbols) do
+      if Indexed.Symbols[Position].FileName <> '' then
+      begin
+        Result.Symbols[Count] := Indexed.Symbols[Position];
+        Inc(Count);
+      end;
+    SetLength(Result.Symbols, Count);
     Result.Includes := Indexed.Includes;
   end;
   Result.PrepareNames;
+end;
+
+function TNameResolver.PinnedIndex(ATree: TSyntaxTree; const AFileName: string): Integer;
+var
+  Index: Integer;
+begin
+  for Index := FPins.Count - 1 downto 0 do
+    if (FPins[Index].Tree = ATree) and SameText(FPins[Index].FileName, AFileName) then
+      Exit(Index);
+  Result := -1;
+end;
+
+function TNameResolver.ExtractedUnit(ATree: TSyntaxTree; const AFileName: string): TUnitIndex;
+var
+  PinIndex: Integer;
+begin
+  PinIndex := PinnedIndex(ATree, AFileName);
+  if PinIndex >= 0 then
+    Result := FPins[PinIndex].Extracted
+  else
+    Result := TIndexExtractor.Extract(ATree, AFileName);
 end;
 
 function TNameResolver.ChainType(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
@@ -2397,17 +2535,60 @@ begin
 end;
 
 procedure TNameResolver.PinTree(ATree: TSyntaxTree; const AFileName: string);
+var
+  Pin: TPin;
+  Call: TPinCall;
+  PinIndex: Integer;
 begin
-  FPinnedTree := ATree;
-  FPinnedFile := AFileName;
-  FPinnedUnit := TreeUnit(ATree, AFileName);
+  // Verschachtelt (Code-Review P-01/P-02): Handle pinnt, Collect pinnt denselben Baum erneut, Find pinnt
+  // Fremdbäume. Derselbe Baum zählt nur hoch und wird nicht erneut ausgewertet.
+  Call.Tree := ATree;
+  Call.FileName := AFileName;
+  FPinCalls.Add(Call);
+  PinIndex := PinnedIndex(ATree, AFileName);
+  if PinIndex >= 0 then
+  begin
+    Pin := FPins[PinIndex];
+    Inc(Pin.Depth);
+    FPins[PinIndex] := Pin;
+    Exit;
+  end;
+  Pin := Default(TPin);
+  Pin.Tree := ATree;
+  Pin.FileName := AFileName;
+  Pin.Extracted := TIndexExtractor.Extract(ATree, AFileName);
+  Pin.Merged := MergedUnit(Pin.Extracted, AFileName);
+  Pin.Depth := 1;
+  FPins.Add(Pin);
 end;
 
 procedure TNameResolver.UnpinTree;
+var
+  Pin: TPin;
+  Call: TPinCall;
+  PinIndex: Integer;
 begin
-  FPinnedTree := nil;
-  FPinnedFile := '';
-  FPinnedUnit := Default(TUnitIndex);
+  if FPinCalls.Count = 0 then
+    Exit;
+  Call := FPinCalls[FPinCalls.Count - 1];
+  FPinCalls.Delete(FPinCalls.Count - 1);
+  PinIndex := PinnedIndex(Call.Tree, Call.FileName);
+  if PinIndex < 0 then
+    Exit;
+  Pin := FPins[PinIndex];
+  Dec(Pin.Depth);
+  if Pin.Depth > 0 then
+  begin
+    FPins[PinIndex] := Pin;
+    Exit;
+  end;
+  FPins.Delete(PinIndex);
+  // Der Aufrufer gibt den Baum danach frei: keine Bezüge behalten, die eine wiederverwendete Adresse
+  // treffen könnten. Ohne FHelperTree leert das nächste Prepare die baumbezogenen Caches.
+  if FHelperTree = Pin.Tree then
+    FHelperTree := nil;
+  if FTree = Pin.Tree then
+    FTree := nil;
 end;
 
 function TNameResolver.ResolveTypeFrom(const AFromUnit: TUnitIndex; const ATypeName: string;
@@ -2418,9 +2599,7 @@ begin
   FCurrent := AFromUnit;
   FInImplementation := True;
   FClassState := 0;
-  FHelperTree := nil;
-  FHelpers.Clear;
-  FAncestors.Clear;
+  // Helfer- und Vorfahren-Cache bleiben (Code-Review P-17): Ihre Schlüssel enthalten Unit und Abschnitt.
   Result := ResolveTypeName(ATypeName, AFromUnit, True, AResult);
 end;
 
@@ -2432,9 +2611,7 @@ begin
   FCurrent := AFromUnit;
   FInImplementation := True;
   FClassState := 0;
-  FHelperTree := nil;
-  FHelpers.Clear;
-  FAncestors.Clear;
+  // Helfer- und Vorfahren-Cache bleiben (Code-Review P-17): Ihre Schlüssel enthalten Unit und Abschnitt.
   Result := LookupGlobal(AFromUnit, AName, True, False, AResult);
 end;
 
@@ -2443,18 +2620,18 @@ function TNameResolver.DeclaredMember(const AType: TResolvedSymbol; const AName:
 var
   Current, Ancestor: TResolvedSymbol;
   OwnerUnit: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Depth: Integer;
+  Position, Depth: Integer;
 begin
   Current := AType;
   for Depth := 0 to MaxDepth do
   begin
     if Current.Builtin or not UnitOf(Current, OwnerUnit) then
       Exit(False);
-    for Symbol in OwnerUnit.Symbols do
-      if SameText(Symbol.Container, Current.QualifiedName) and SameText(Symbol.Name, AName) then
+    // Über die Namenstabelle statt aller Symbole je Vorfahrstufe (Code-Review P-05).
+    for Position in OwnerUnit.SymbolsNamed(AName) do
+      if SameText(OwnerUnit.Symbols[Position].Container, Current.QualifiedName) then
       begin
-        AResult := FromSymbol(OwnerUnit, Symbol);
+        AResult := FromSymbol(OwnerUnit, OwnerUnit.Symbols[Position]);
         Exit(True);
       end;
     if not AncestorOf(Current, Ancestor) then
