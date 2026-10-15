@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Prüft, dass das IDE-Plugin nur über TAtlasMainThread in den Hauptthread einreiht (Code-Review A-02).
 
