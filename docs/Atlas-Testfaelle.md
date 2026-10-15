@@ -626,3 +626,18 @@ Voraussetzung: Projektgruppe mit einem DUnitX-Testprojekt (`.dpr` mit `uses DUni
 | TG8 | Projektgruppe ohne Testprojekt, TG1 | Kein Eintrag zum Anlegen |
 | TG9 | Testunit existiert schon, Code-Aktionen auf der Klasse | „Zur Testunit Kunden.Tests wechseln“ öffnet sie |
 
+## Zwischen Unit und Testunit wechseln (#189)
+
+Voraussetzung wie bei #274; Server läuft.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TU1 | `Kunden.pas` öffnen, Testunit fehlt | Hinter `unit Kunden;` steht die Marke „+ Testunit Kunden.Tests anlegen“ |
+| TU2 | Marke anklicken | Testunit wie TG2 angelegt, in `.dpr`/`.dproj` (bzw. im geladenen Testprojekt) eingetragen und geöffnet |
+| TU3 | Zurück zu `Kunden.pas` | Marke zeigt nach kurzer Zeit „→ Testunit Kunden.Tests“; Klick öffnet sie |
+| TU4 | In `Kunden.Tests.pas` | Marke „→ Unit Kunden“; Klick öffnet `Kunden.pas` |
+| TU5 | *Atlas › Zwischen Unit und Testunit wechseln*, Kontextmenü *Atlas*, Befehlspalette „Zwischen Unit und Testunit wechseln“ und eingestelltes Tastenkürzel | Gleicher Wechsel wie per Marke; ohne Testprojekt Meldung „Keine Testunit: …“ |
+| TU6 | Optionen › Atlas: „Code Lens „zur Testunit““ aus | Marke verschwindet ohne Neustart; Befehl, Menü und Taste wechseln weiter |
+| TU7 | Programmdatei (`.dpr`) oder Datei mit Kommentar vor `unit` | Keine Marke in der `.dpr`; bei Kommentarkopf steht sie hinter der Zeile `unit …;` |
+| TU8 | Kein Compiler, kein Build: TU2–TU4 direkt nach dem Öffnen des Projekts | Wechsel funktioniert in beide Richtungen |
+

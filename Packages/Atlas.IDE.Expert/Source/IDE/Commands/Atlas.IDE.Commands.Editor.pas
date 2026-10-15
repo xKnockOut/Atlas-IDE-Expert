@@ -14,6 +14,9 @@
 // - Gehe zu Typdefinition (textDocument/typeDefinition); Gehe zu
 //   Implementierung liegt im Ergebnisfenster (#400).
 // - Qualifizierten Namen kopieren (atlas.server.qualifiedName, #128).
+// - Zwischen Unit und Testunit wechseln (atlas.server.testUnit, #189): öffnet
+//   das Gegenstück; fehlt die Testunit, legt das Edit des Servers sie an und
+//   trägt sie ins Testprojekt ein (#274), danach wird sie geöffnet.
 // - Schnellbefehle mit „/“ nach Enter (#293) und ///-Gerüste (#88): Nach jeder
 //   Änderung im Editor prüft TAtlasSlashTrigger die Cursorzeile; passt sie,
 //   geht textDocument/onTypeFormatting an den Server, und zwar nach der
@@ -69,6 +72,8 @@ type
     class procedure ShrinkSelection; static;
     class procedure GoToTypeDefinition; static;
     class procedure CopyQualifiedName(AWithParameters: Boolean); static;
+    /// <summary>Zur Testunit bzw. getesteten Unit der oberen Datei; legt eine fehlende Testunit an (#189).</summary>
+    class procedure SwitchTestUnit; static;
     /// <summary>Nach jeder Änderung im Editor (Notifier): Schnellbefehle und ///-Gerüste auslösen.</summary>
     class procedure EditorModified(const AView: IOTAEditView); static;
     /// <summary>Untermenü Atlas in die Kontextmenüs der Editorfenster hängen.</summary>
@@ -89,6 +94,7 @@ uses
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Editor.Selection,
+  Atlas.Core.Editor.TestUnit,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.IDE.Editor.Buffer,
@@ -107,6 +113,7 @@ const
   CopyTextCommand = 'atlas.copyText';
   OpenFileCommand = 'atlas.openFile';
   QualifiedNameCommand = 'atlas.server.qualifiedName';
+  TestUnitCommand = 'atlas.server.testUnit';
 
 type
   TEditorNotifier = class(TNotifierObject, INTAEditServicesNotifier)
@@ -246,6 +253,15 @@ begin
       TAtlasIdeResults.FindReferences;
     end);
   FContextMenu.Add('-', nil, nil);
+  FContextMenu.Add(TAtlasStrings.Text(TAtlasTextId.EditorTestUnit),
+    function: Integer
+    begin
+      Result := TAtlasIdeSettings.Current.TestUnitKey;
+    end,
+    procedure
+    begin
+      SwitchTestUnit;
+    end);
   FContextMenu.Add(TAtlasStrings.Text(TAtlasTextId.EditorCopyQualified), nil,
     procedure
     begin
@@ -516,6 +532,73 @@ begin
   finally
     Answer.Free;
   end;
+end;
+
+class procedure TAtlasIdeEditorCommands.SwitchTestUnit;
+var
+  View: IOTAEditView;
+  FileName, Arguments: string;
+  Lines: TArray<string>;
+  Selection: TLspRange;
+  Values: TJSONArray;
+  Answer, EditValue: TJSONValue;
+  Info: TAtlasTestUnitInfo;
+  Edit: TLspWorkspaceEdit;
+  Outcome: TAtlasWorkspaceEditResult;
+begin
+  if not Current(View, FileName, Lines, Selection) then
+    Exit;
+  Values := TJSONArray.Create;
+  try
+    Values.Add(TLspSession.PathToUri(FileName));
+    Values.Add(Selection.StartPos.Line);
+    Arguments := Values.ToJSON;
+  finally
+    Values.Free;
+  end;
+  try
+    Answer := Session.RunCommand(TestUnitCommand, Arguments, CommandTimeoutMs);
+  except
+    on E: ELspClientError do
+    begin
+      Say(TAtlasStrings.Fmt(TAtlasTextId.EditorFailed, [E.Message]));
+      Exit;
+    end;
+  end;
+  try
+    Info := TAtlasTestUnitInfo.FromJson(Answer,
+      function(AUri: string): string
+      begin
+        Result := TLspSession.UriToPath(AUri);
+      end);
+    Edit := Default(TLspWorkspaceEdit);
+    if (Answer is TJSONObject) and Info.CanCreate then
+    begin
+      EditValue := TJSONObject(Answer).GetValue('edit');
+      Edit := TLspWorkspaceEdit.FromJson(EditValue);
+    end;
+  finally
+    Answer.Free;
+  end;
+  if Info.CounterpartFile <> '' then
+  begin
+    TAtlasEditorHover.GoToLocation(Info.CounterpartFile, 0, 0);
+    Exit;
+  end;
+  if not Info.CanCreate or Edit.IsEmpty then
+  begin
+    Say(TAtlasStrings.Fmt(TAtlasTextId.TestUnitNone, [Info.Reason]));
+    Exit;
+  end;
+  // Anlegen und ins Testprojekt eintragen (#274), dann öffnen.
+  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasIdeSettings.Current.OpenForEdits,
+    TAtlasStrings.Fmt(TAtlasTextId.TestUnitLensCreate, [Info.Counterpart]));
+  if Outcome.Error <> '' then
+  begin
+    Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
+    Exit;
+  end;
+  TAtlasEditorHover.GoToLocation(Info.NewFile, 0, 0);
 end;
 
 function KindCaption(const AKind: string): string;
