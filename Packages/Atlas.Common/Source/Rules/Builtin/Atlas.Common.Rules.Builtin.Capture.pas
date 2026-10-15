@@ -45,14 +45,14 @@ implementation
 
 uses
   System.StrUtils,
-  System.Math,
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Semantics.ControlFlow;
+  Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Rules.Derived;
 
 type
   /// <summary>Lokale Variable der Routine mit Typ ('' wenn unbekannt).</summary>
@@ -137,15 +137,6 @@ begin
   end;
 end;
 
-procedure CollectRoutines(ANode: TSyntaxNode; var ARoutines: TArray<TSyntaxNode>);
-var
-  Index: Integer;
-begin
-  if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.FindChild(TSyntaxKind.Block) <> nil) then
-    ARoutines := ARoutines + [ANode];
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectRoutines(ANode[Index], ARoutines);
-end;
 
 /// <summary>Anonyme Methoden im Rumpf, ohne lokale Routinen.</summary>
 procedure CollectAnonymous(ANode: TSyntaxNode; var AMethods: TArray<TSyntaxNode>);
@@ -343,21 +334,6 @@ begin
   end;
 end;
 
-/// <summary>Zeile und Zeichen zu einem Offset ab 0.</summary>
-function PositionAt(const AText: string; AOffset: Integer): TTextPosition;
-var
-  Index, Line, LineStart: Integer;
-begin
-  Line := 0;
-  LineStart := 0;
-  for Index := 1 to Min(AOffset, Length(AText)) do
-    if AText[Index] = #10 then
-    begin
-      Inc(Line);
-      LineStart := Index;
-    end;
-  Result := TTextPosition.Create(Line, AOffset - LineStart);
-end;
 
 function LineBreakOf(const AText: string): string;
 begin
@@ -368,8 +344,8 @@ begin
 end;
 
 /// <summary>Korrektur "Variable je Durchlauf kopieren"; False, wenn sie nicht sicher möglich ist.</summary>
-function CopyPerIterationFix(const AContext: TRuleContext; ARoutine, AMethod: TSyntaxNode; const ALocal: TLocal;
-  const ALocals: TArray<TLocal>; out AFix: TRuleFix): Boolean;
+function CopyPerIterationFix(const ACache: IRuleDerivedCache; const AContext: TRuleContext;
+  ARoutine, AMethod: TSyntaxNode; const ALocal: TLocal; const ALocals: TArray<TLocal>; out AFix: TRuleFix): Boolean;
 var
   Identifiers: TList<TSyntaxNode>;
   Identifier, Header, Block: TSyntaxNode;
@@ -415,7 +391,7 @@ begin
   if Trim(Indent) <> '' then
     Exit;
   FunctionName := 'Capture' + ALocal.Name;
-  Insert := PositionAt(Text, Block.StartOffset);
+  Insert := TRuleDerived.PositionAt(ACache, AContext, Block.StartOffset);
   if Insert.Character <> Length(Indent) then
     Exit;
   AFix := TRuleFix.Create(Format('Variable "%s" je Durchlauf kopieren', [ALocal.Name]), [
@@ -424,7 +400,7 @@ begin
       Indent + '  begin' + LB +
       Indent + '    Result := ' + Body + ';' + LB +
       Indent + '  end;' + LB + LB),
-    TRuleEdit.Create(TTextRange.Create(PositionAt(Text, AMethod.StartOffset), PositionAt(Text, AMethod.EndOffset)),
+    TRuleEdit.Create(TRuleDerived.OffsetRange(ACache, AContext, AMethod.StartOffset, AMethod.EndOffset),
       FunctionName + '(' + ALocal.Name + ')')]);
   Result := True;
 end;
@@ -447,20 +423,19 @@ var
   Identifiers: TList<TSyntaxNode>;
   Reported: TList<string>;
   Graph: TControlFlowGraph;
-  Lookup: TFlowSignatureLookup;
   Start: TFlowNode;
   Confidence: TRuleConfidence;
   Changes: Boolean;
   Fix: TRuleFix;
   Message: string;
+  Cache: IRuleDerivedCache;
 begin
   if AContext.Tree = nil then
     Exit;
   Apis := DeferredApis(AContext.Options);
-  Routines := nil;
-  CollectRoutines(AContext.Tree.Root, Routines);
-  // Signaturen der Datei einmal je Prüfung lesen, nicht je Routine (#143).
-  Lookup := TFlowSignatures.FromTree(AContext.Tree.Root);
+  // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln (Review P-03).
+  Cache := TRuleDerived.Open(AContext);
+  Routines := TRuleDerived.Routines(Cache, AContext);
   Identifiers := TList<TSyntaxNode>.Create;
   Reported := TList<string>.Create;
   try
@@ -473,46 +448,42 @@ begin
         Continue;
       Variables := Locals(Routine, Block);
       Graph := nil;
-      try
-        for Method in Methods do
+      for Method in Methods do
+      begin
+        if not IsDeferred(Method, Apis, Confidence) then
+          Continue;
+        Identifiers.Clear;
+        Reported.Clear;
+        CollectIdentifiers(Method, Identifiers);
+        for Identifier in Identifiers do
         begin
-          if not IsDeferred(Method, Apis, Confidence) then
+          if not FindLocal(Variables, Identifier.Name, Local) or Reported.Contains(LowerCase(Local.Name)) then
             Continue;
-          Identifiers.Clear;
-          Reported.Clear;
-          CollectIdentifiers(Method, Identifiers);
-          for Identifier in Identifiers do
+          Loop := EnclosingLoop(Method, Local.Name);
+          if Loop <> nil then
           begin
-            if not FindLocal(Variables, Identifier.Name, Local) or Reported.Contains(LowerCase(Local.Name)) then
+            // for I := … mit äußerer Variable lässt sich nicht erfassen (E2555).
+            if (Loop.Kind = TSyntaxKind.ForStatement) and not IsInlineLoop(AContext, Loop) then
               Continue;
-            Loop := EnclosingLoop(Method, Local.Name);
-            if Loop <> nil then
-            begin
-              // for I := … mit äußerer Variable lässt sich nicht erfassen (E2555).
-              if (Loop.Kind = TSyntaxKind.ForStatement) and not IsInlineLoop(AContext, Loop) then
-                Continue;
-              Changes := True;
-            end
-            else
-            begin
-              if Graph = nil then
-                Graph := TControlFlowGraph.Build(Routine, Lookup);
-              Start := FlowNodeOf(Graph, Method);
-              Changes := Graph.Complete and (Start <> nil) and WrittenAfter(Graph, Start, Local.Name);
-            end;
-            if not Changes then
-              Continue;
-            Reported.Add(LowerCase(Local.Name));
-            Message := Format('Die anonyme Methode erfasst "%s", nicht seinen Wert; bis sie läuft, hat "%s" ' +
-              'womöglich schon einen anderen Wert', [Local.Name, Local.Name]);
-            if CopyPerIterationFix(AContext, Routine, Method, Local, Variables, Fix) then
-              AReport.Add(TTextRange.Create(Identifier.StartPos, Identifier.EndPos), Message, Confidence, [Fix])
-            else
-              AReport.Add(TTextRange.Create(Identifier.StartPos, Identifier.EndPos), Message, Confidence);
+            Changes := True;
+          end
+          else
+          begin
+            if Graph = nil then
+              Graph := TRuleDerived.Graph(Cache, AContext, Routine);
+            Start := FlowNodeOf(Graph, Method);
+            Changes := Graph.Complete and (Start <> nil) and WrittenAfter(Graph, Start, Local.Name);
           end;
+          if not Changes then
+            Continue;
+          Reported.Add(LowerCase(Local.Name));
+          Message := Format('Die anonyme Methode erfasst "%s", nicht seinen Wert; bis sie läuft, hat "%s" ' +
+            'womöglich schon einen anderen Wert', [Local.Name, Local.Name]);
+          if CopyPerIterationFix(Cache, AContext, Routine, Method, Local, Variables, Fix) then
+            AReport.Add(TTextRange.Create(Identifier.StartPos, Identifier.EndPos), Message, Confidence, [Fix])
+          else
+            AReport.Add(TTextRange.Create(Identifier.StartPos, Identifier.EndPos), Message, Confidence);
         end;
-      finally
-        Graph.Free;
       end;
     end;
   finally

@@ -67,6 +67,7 @@ uses
   System.Generics.Defaults,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Profiles,
   Atlas.Common.Rules.Suppressions;
 
@@ -254,6 +255,8 @@ var
   MinConfidence: TRuleConfidence;
   Watch: TStopwatch;
   Elapsed: Int64;
+  Shared: TRuleContext;
+  OwnCache: IRuleDerivedCache;
 begin
   if (AContext.RelativePath <> '') and ASettings.IsExcluded(AContext.RelativePath) then
     Exit(nil);
@@ -266,6 +269,15 @@ begin
     Settings.Profile := ASettings.TestProfile;
   end;
   MinConfidence := TRuleProfiles.MinConfidence(Settings, Settings.Profile);
+  // Ein Ableitungscache für alle Regeln des Laufs (Review P-03); ein vom Aufrufer
+  // gesetzter Cache gehört dem Aufrufer und bleibt gefüllt.
+  Shared := AContext;
+  OwnCache := nil;
+  if Shared.Derived = nil then
+  begin
+    OwnCache := TRuleDerivedCache.Create;
+    Shared.Derived := OwnCache;
+  end;
   Findings := TList<TRuleFinding>.Create;
   Kept := TList<TRuleFinding>.Create;
   Suppressions := nil;
@@ -279,7 +291,7 @@ begin
         Continue;
       if Descriptor.Experimental and not Enabled then
         Continue;
-      Context := AContext;
+      Context := Shared;
       if Context.DelphiVersion = '' then
         Context.DelphiVersion := Settings.DelphiVersion;
       Context.Options := RuleOptions(Descriptor.Id, Settings);
@@ -335,6 +347,10 @@ begin
     Kept.Sort(TComparer<TRuleFinding>.Construct(CompareFindings));
     Result := Kept.ToArray;
   finally
+    // Gibt Graphen und Modelle frei, bevor der Aufrufer den Baum freigibt, und bricht
+    // Referenzzyklen über Kontextkopien in abgelegten Objekten.
+    if OwnCache <> nil then
+      OwnCache.Clear;
     RanIds.Free;
     Suppressions.Free;
     Kept.Free;

@@ -54,6 +54,13 @@ type
     procedure CancelledStopsBeforeNextRule;
     [Test]
     procedure SlowRuleNamedInDiagnostics;
+    /// <summary>Alle Regeln eines Laufs teilen einen Ableitungscache (Review P-03).</summary>
+    [Test]
+    procedure RunSharesDerivedCacheBetweenRules;
+    [Test]
+    procedure RunClearsOwnCache;
+    [Test]
+    procedure RunKeepsCallerCache;
   end;
 
 implementation
@@ -66,6 +73,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
   Atlas.Common.Rules.Engine,
+  Atlas.Common.Rules.Derived,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Diagnostics.RequestScope,
@@ -109,6 +117,64 @@ begin
       else
         AReport.Add(Range, 'Marker gefunden');
     end;
+end;
+
+var
+  // Zähler für TProbe: erzeugte und freigegebene Instanzen.
+  ProbeCreated: Integer;
+  ProbeFreed: Integer;
+
+type
+  /// <summary>Abgeleiteter Wert im Cache; zählt Erzeugung und Freigabe.</summary>
+  TProbe = class
+  public
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
+  /// <summary>Regel ohne Treffer, die den Wert "test.probe" aus dem Ableitungscache holt.</summary>
+  TProbeRule = class(TInterfacedObject, IRule)
+  private
+    FId: string;
+  public
+    constructor Create(const AId: string);
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+constructor TProbe.Create;
+begin
+  inherited Create;
+  Inc(ProbeCreated);
+end;
+
+destructor TProbe.Destroy;
+begin
+  Inc(ProbeFreed);
+  inherited Destroy;
+end;
+
+constructor TProbeRule.Create(const AId: string);
+begin
+  inherited Create;
+  FId := AId;
+end;
+
+function TProbeRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(FId, TRuleSeverity.Warning, 'Holt einen abgeleiteten Wert');
+end;
+
+procedure TProbeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Cache: IRuleDerivedCache;
+begin
+  Cache := TRuleDerived.Open(AContext);
+  TRuleDerived.Get<TProbe>(Cache, 'test.probe',
+    function: TProbe
+    begin
+      Result := TProbe.Create;
+    end);
 end;
 
 const
@@ -373,6 +439,75 @@ begin
   Assert.Contains(Joined, 'slowRule=langsam ');
   Assert.Contains(Joined, 'slowRuleMs=');
   Assert.DoesNotContain(Joined, 'schnell');
+end;
+
+procedure TRuleEngineTests.RunSharesDerivedCacheBetweenRules;
+var
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+begin
+  ProbeCreated := 0;
+  ProbeFreed := 0;
+  Tree := TPascalParser.Parse(Source);
+  try
+    Context := Default(TRuleContext);
+    Context.Text := Source;
+    Context.Tree := Tree;
+    TRuleEngine.Run([TProbeRule.Create('probe-a'), TProbeRule.Create('probe-b'), TProbeRule.Create('probe-c')],
+      TServerSettings.Default, Context);
+  finally
+    Tree.Free;
+  end;
+  Assert.AreEqual(1, ProbeCreated, 'einmal je Lauf erzeugt');
+end;
+
+procedure TRuleEngineTests.RunClearsOwnCache;
+var
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+begin
+  ProbeCreated := 0;
+  ProbeFreed := 0;
+  Tree := TPascalParser.Parse(Source);
+  try
+    Context := Default(TRuleContext);
+    Context.Text := Source;
+    Context.Tree := Tree;
+    TRuleEngine.Run([TProbeRule.Create('probe-a')], TServerSettings.Default, Context);
+    // Noch vor dem Baum freigegeben: abgeleitete Objekte zeigen in den Baum.
+    Assert.AreEqual(1, ProbeFreed, 'nach dem Lauf freigegeben');
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TRuleEngineTests.RunKeepsCallerCache;
+var
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+  Cache: IRuleDerivedCache;
+  Value: TObject;
+begin
+  ProbeCreated := 0;
+  ProbeFreed := 0;
+  Tree := TPascalParser.Parse(Source);
+  try
+    Cache := TRuleDerivedCache.Create;
+    Context := Default(TRuleContext);
+    Context.Text := Source;
+    Context.Tree := Tree;
+    Context.Derived := Cache;
+    TRuleEngine.Run([TProbeRule.Create('probe-a')], TServerSettings.Default, Context);
+    TRuleEngine.Run([TProbeRule.Create('probe-b')], TServerSettings.Default, Context);
+    Assert.AreEqual(1, ProbeCreated, 'Cache des Aufrufers über beide Läufe');
+    Assert.AreEqual(0, ProbeFreed, 'Cache des Aufrufers bleibt gefüllt');
+    Assert.IsTrue(Cache.TryGet('test.probe', Value));
+    Context.Derived := nil;
+    Cache := nil;
+    Assert.AreEqual(1, ProbeFreed, 'mit dem Cache freigegeben');
+  finally
+    Tree.Free;
+  end;
 end;
 
 initialization

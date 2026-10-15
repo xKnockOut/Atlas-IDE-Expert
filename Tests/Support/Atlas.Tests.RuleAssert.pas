@@ -26,6 +26,17 @@ type
     class procedure Reports(ARule: IRule; const ASource: string; ACount: Integer = 1); static;
     /// <summary>Negativer Testfall: kein Treffer.</summary>
     class procedure Silent(ARule: IRule; const ASource: string); static;
+    /// <summary>Treffer aller ARules in einem Lauf der Engine (gemeinsamer Ableitungscache, Review P-03).</summary>
+    class function FindingsOfAll(const ARules: TArray<IRule>; const ASource, AConfigJson: string):
+      TArray<TRuleFinding>; static;
+    /// <summary>
+    ///   Ein gemeinsamer Lauf aller ARules liefert dieselben Treffer (Regel, Bereich, Meldung, Korrekturen)
+    ///   wie je ein Lauf je Regel; Ergebnis ist die Trefferzahl. Prüft, dass der geteilte
+    ///   Ableitungscache das Verhalten nicht ändert.
+    /// </summary>
+    class function SameAsSeparateRuns(const ARules: TArray<IRule>; const ASource, AConfigJson: string): Integer; overload;
+      static;
+    class function SameAsSeparateRuns(const ARules: TArray<IRule>; const ASource: string): Integer; overload; static;
   end;
 
   /// <summary>Testregel ohne Treffer: ruft beim Prüfen AOnCheck auf (zählen, warten, abbrechen).</summary>
@@ -42,7 +53,9 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   DUnitX.TestFramework,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
@@ -100,6 +113,84 @@ end;
 class procedure TRuleAssert.Silent(ARule: IRule; const ASource: string);
 begin
   Reports(ARule, ASource, 0);
+end;
+
+class function TRuleAssert.FindingsOfAll(const ARules: TArray<IRule>; const ASource,
+  AConfigJson: string): TArray<TRuleFinding>;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+begin
+  if AConfigJson = '' then
+    Settings := TServerSettings.Default
+  else
+    Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+  Tree := TPascalParser.Parse(ASource);
+  try
+    Context := Default(TRuleContext);
+    Context.Text := ASource;
+    Context.Tree := Tree;
+    Result := TRuleEngine.Run(ARules, Settings, Context);
+  finally
+    Tree.Free;
+  end;
+end;
+
+/// <summary>Vergleichbarer Text eines Treffers mit Bereich, Meldung und Korrekturen.</summary>
+function FindingKey(const AFinding: TRuleFinding): string;
+
+  function RangeText(const ARange: TTextRange): string;
+  begin
+    Result := Format('%d:%d-%d:%d', [ARange.StartPos.Line, ARange.StartPos.Character, ARange.EndPos.Line,
+      ARange.EndPos.Character]);
+  end;
+
+var
+  Fix: TRuleFix;
+  Edit: TRuleEdit;
+begin
+  Result := AFinding.RuleId + '@' + RangeText(AFinding.Range) + ' ' + AFinding.Message;
+  for Fix in AFinding.Fixes do
+  begin
+    Result := Result + ' | ' + Fix.Title;
+    for Edit in Fix.Edits do
+      Result := Result + ' [' + RangeText(Edit.Range) + '=' + Edit.NewText + ']';
+  end;
+end;
+
+class function TRuleAssert.SameAsSeparateRuns(const ARules: TArray<IRule>; const ASource,
+  AConfigJson: string): Integer;
+var
+  Combined, Separate: TList<string>;
+  Finding: TRuleFinding;
+  Rule: IRule;
+  Index: Integer;
+begin
+  Combined := TList<string>.Create;
+  Separate := TList<string>.Create;
+  try
+    for Finding in FindingsOfAll(ARules, ASource, AConfigJson) do
+      Combined.Add(FindingKey(Finding));
+    for Rule in ARules do
+      for Finding in FindingsOfAll([Rule], ASource, AConfigJson) do
+        Separate.Add(FindingKey(Finding));
+    Combined.Sort;
+    Separate.Sort;
+    Assert.AreEqual(Separate.Count, Combined.Count, 'Trefferzahl gemeinsam/einzeln');
+    for Index := 0 to Combined.Count - 1 do
+      Assert.AreEqual(Separate[Index], Combined[Index]);
+    Result := Combined.Count;
+  finally
+    Separate.Free;
+    Combined.Free;
+  end;
+end;
+
+class function TRuleAssert.SameAsSeparateRuns(const ARules: TArray<IRule>; const ASource: string): Integer;
+begin
+  Result := SameAsSeparateRuns(ARules, ASource, '');
 end;
 
 { TCallbackRule }

@@ -1189,6 +1189,17 @@ Vorbereitung: Plugin installiert, Projekt geöffnet, Server-Log über `--log` ak
 | RS7 | Server mit `--trace` auf einen USB-Stick, Stick abziehen | Genau eine Warnung „Mitschnitt abgebrochen …“; die Editorfunktionen laufen weiter |
 | RS8 | Claude Code: eine in der IDE offene Datei per MCP-Werkzeug ändern | Die Änderung erscheint wie bisher im Editorpuffer |
 
+## Leistung der Prüfregeln (Code-Review P-03, P-08, P-11, D-04)
+
+Vorbereitung: Projekt mit Formularen und einer Unit mit Threads, Diagnosemodus an, Atlas-Problemliste vor der Änderung als Vergleich notiert.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PRL1 | Projekt öffnen, `workspace/diagnostic` abwarten, Diagnoselog öffnen | `slowRule` für `component-*`, `flow-*`, `security-*` nicht mehr unter den langsamsten Regeln |
+| PRL2 | Atlas-Problemliste mit dem Vergleich abgleichen (Stichprobe: drei Units mit Formular, eine mit Threads) | Anzahl und Text der Probleme unverändert |
+| PRL3 | In einer Datei mit CRLF-Zeilenenden die Korrektur „Variable … entfernen“ und „Variable … je Durchlauf kopieren“ anwenden | Ersetzt genau die erwarteten Zeilen; Code übersetzt danach |
+| PRL4 | Formular-Eigenschaftsregel (`dfmPropertyRules`) mit nicht gespeicherter Property auslösen | Meldung wie bisher, mit dem default-Wert aus der Klassendeklaration |
+
 ## Leistung des Plugins (Code-Review P-04, P-09, P-10, P-15, D-07)
 
 Vorbereitung: Plugin installiert, Probleme und Inlay-Hints an, Projekt geöffnet.

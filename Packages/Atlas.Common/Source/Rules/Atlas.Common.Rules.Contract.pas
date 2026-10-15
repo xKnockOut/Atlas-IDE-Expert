@@ -70,6 +70,18 @@ type
   /// <summary>Die Prüfung wurde über TRuleContext.Cancelled abgebrochen; es gibt kein Ergebnis.</summary>
   ERuleCheckCancelled = class(Exception);
 
+  /// <summary>Ableitungen einer Prüfung, die alle Regeln eines Laufs teilen (Review P-03).
+  /// Besitzt die abgelegten Objekte. Nicht threadsicher: ein Cache gehört genau einem Lauf.
+  /// Zugriff typisiert über TRuleDerived (Atlas.Common.Rules.Derived).</summary>
+  IRuleDerivedCache = interface
+    ['{5CCE4184-2A0F-49C4-9B27-84C08CAC8109}']
+    function TryGet(const AKey: string; out AValue: TObject): Boolean;
+    /// <summary>Legt AValue ab und übernimmt den Besitz; ein vorhandener Wert wird freigegeben.</summary>
+    procedure Put(const AKey: string; AValue: TObject);
+    /// <summary>Gibt alle Werte frei (bricht Referenzzyklen über kopierte Kontexte).</summary>
+    procedure Clear;
+  end;
+
   TRuleContext = record
     /// <summary>Pfad relativ zum Ordner der Konfiguration, '' wenn unbekannt.</summary>
     RelativePath: string;
@@ -97,6 +109,10 @@ type
     DfmPropertyRules: TArray<TDfmPropertyRule>;
     /// <summary>Abbruch zwischen den Regeln (Diagnoselog 15.10.2026); nil = nie abbrechen.</summary>
     Cancelled: TRuleCancelled;
+    /// <summary>Gemeinsame Ableitungen des Laufs (Review P-03); setzt TRuleEngine.Run. nil = jede Regel
+    /// rechnet selbst (direkter Aufruf von Check). Zugriff nur über TRuleDerived. Die Werte zeigen in
+    /// Tree: Wer einen eigenen Cache setzt, muss ihn vor dem Baum freigeben oder leeren.</summary>
+    Derived: IRuleDerivedCache;
   end;
 
   /// <summary>Sammelt die Treffer einer Regel.</summary>
