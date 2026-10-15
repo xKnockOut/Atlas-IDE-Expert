@@ -448,7 +448,7 @@ var
 begin
   // #753: Ein/Aus, Ort (Willkommensseite oder Fenster „Atlas-Start“), Atlas-Layout, Kopf und Grußzeile;
   // #760: Suchfeld, Gruppe „Symbole“ und Taste; #756: Karte „Neu in Atlas“; #592: Bereich „Projekte“;
-  // #762: Bereich „Nicht gesichert“; #754: Zustandskachel „Atlas“; #757: Karte „Atlas entdecken“, Zählung und
+  // #762: Bereich „Nicht gesichert“; #755: Bereich „Weiterarbeiten“; #754: Zustandskachel „Atlas“; #757: Karte „Atlas entdecken“, Zählung und
   // ihre Knöpfe.
   Settings := TAtlasPluginSettings.Defaults;
   Page := TAtlasSettingsPage.Create(nil);
@@ -463,6 +463,12 @@ begin
     Assert.IsTrue(Page.WelcomeSearchSymbols.Checked);
     Assert.AreEqual(ShortCutToText($4045), Page.WelcomeSearchKey.Text);
     Assert.AreEqual(1, Page.WelcomeWhatsNew.Choice, 'afterUpdate');
+    // #755: Bereich „Weiterarbeiten“ und Reiter „Gemerkt“.
+    Assert.IsTrue(Page.WelcomeContinue.Checked);
+    Assert.AreEqual('5', Page.WelcomeContinueCount.Text);
+    Assert.IsTrue(Page.WelcomeContinueIncoming.Checked);
+    Assert.IsFalse(Page.WelcomeContinueFetch.Checked);
+    Assert.IsTrue(Page.WelcomeSaved.Checked);
     Assert.IsTrue(Page.WelcomeProjects.Checked);
     Assert.AreEqual('8', Page.WelcomeMaxProjects.Text);
     Assert.IsTrue(Page.WelcomeRefreshVcs.Checked);
@@ -488,6 +494,11 @@ begin
     Page.WelcomeSearchSymbols.Checked := False;
     Page.WelcomeSearchKey.Text := ShortCutToText($6046);
     Page.WelcomeWhatsNew.Choice := 2;
+    Page.WelcomeContinue.Checked := False;
+    Page.WelcomeContinueCount.Text := '50';
+    Page.WelcomeContinueIncoming.Checked := False;
+    Page.WelcomeContinueFetch.Checked := True;
+    Page.WelcomeSaved.Checked := False;
     Page.WelcomeProjects.Checked := False;
     Page.WelcomeMaxProjects.Text := '99';
     Page.WelcomeRefreshVcs.Checked := False;
@@ -517,6 +528,11 @@ begin
     Assert.IsFalse(Saved.WelcomePageSearchSymbols);
     Assert.AreEqual($6046, Saved.WelcomePageSearchKey);
     Assert.AreEqual('always', Saved.WelcomePageWhatsNew);
+    Assert.IsFalse(Saved.WelcomePageContinue);
+    Assert.AreEqual(20, Saved.WelcomePageContinueCount, 'auf 1–20 begrenzt');
+    Assert.IsFalse(Saved.WelcomePageContinueIncoming);
+    Assert.IsTrue(Saved.WelcomePageContinueFetch);
+    Assert.IsFalse(Saved.WelcomePageSaved);
     Assert.IsFalse(Saved.WelcomePageProjectStatus);
     Assert.AreEqual(30, Saved.WelcomePageMaxProjects, 'auf 1–30 begrenzt');
     Assert.IsFalse(Saved.WelcomePageRefreshVcs);
