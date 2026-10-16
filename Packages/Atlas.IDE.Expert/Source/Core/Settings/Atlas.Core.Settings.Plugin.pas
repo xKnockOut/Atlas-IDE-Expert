@@ -414,6 +414,12 @@ type
     WelcomePageHelpReportUrl: string;
     /// <summary>Ordner für das Diagnosepaket (#766, welcomePage.help.reportFolder); '' = Desktop.</summary>
     WelcomePageHelpReportFolder: string;
+    /// <summary>Karte „Projekt für Atlas einrichten“ und Befehl Atlas.ProjectSetup (#759,
+    /// welcomePage.projectSetup); aus = kein Bereich, auch keine Knöpfe „Neu mit Atlas“.</summary>
+    WelcomePageProjectSetup: Boolean;
+    /// <summary>Knöpfe „Neu mit Atlas“ (Unit, Formular, Testklasse) unter der Karte (#759,
+    /// welcomePage.newFromTemplate).</summary>
+    WelcomePageNewFromTemplate: Boolean;
     /// <summary>Bereich „Weiterarbeiten“ (#755, welcomePage.continue): Arbeitsstände merken und fortsetzen.
     /// </summary>
     WelcomePageContinue: Boolean;
@@ -453,7 +459,7 @@ implementation
 uses
   System.Math,
   System.StrUtils,
-  Atlas.Core.Generate.Menu;
+  Atlas.Core.Generate.Contract;
 
 const
   /// <summary>Reihen des Projektverlaufs (#758) wie TAtlasProjectSummaries.TrendKeys (Test prüft Gleichheit).</summary>
@@ -688,6 +694,8 @@ begin
   Result.WelcomePageHelp := True;
   Result.WelcomePageHelpReportUrl := DefaultHelpReportUrl;
   Result.WelcomePageHelpReportFolder := '';
+  Result.WelcomePageProjectSetup := True;
+  Result.WelcomePageNewFromTemplate := True;
   Result.WelcomePageContinue := True;
   Result.WelcomePageContinueCount := 5;
   Result.WelcomePageTrends := True;
@@ -774,8 +782,8 @@ begin
   UnitSearchKey := EnsureRange(UnitSearchKey, 0, $FFFF);
   BookmarkKey := EnsureRange(BookmarkKey, 0, $FFFF);
   GenerateMenuKey := EnsureRange(GenerateMenuKey, 0, $FFFF);
-  GenerateMenuGroups := TAtlasGenerateOptions.NormalizeGroups(GenerateMenuGroups);
-  GenerateMenuHidden := TAtlasGenerateOptions.NormalizeHidden(GenerateMenuHidden);
+  GenerateMenuGroups := TAtlasGenerateLists.NormalizeGroups(GenerateMenuGroups);
+  GenerateMenuHidden := TAtlasGenerateLists.NormalizeHidden(GenerateMenuHidden);
   if SameText(Trim(WelcomePageHost), 'dockWindow') then
     WelcomePageHost := 'dockWindow'
   else
@@ -971,6 +979,10 @@ begin
   WelcomePageHelpReportUrl := AStore.ReadString('WelcomePageHelpReportUrl', Default.WelcomePageHelpReportUrl);
   WelcomePageHelpReportFolder := AStore.ReadString('WelcomePageHelpReportFolder',
     Default.WelcomePageHelpReportFolder);
+  WelcomePageProjectSetup := AStore.ReadInteger('WelcomePageProjectSetup',
+    BoolValue(Default.WelcomePageProjectSetup)) <> 0;
+  WelcomePageNewFromTemplate := AStore.ReadInteger('WelcomePageNewFromTemplate',
+    BoolValue(Default.WelcomePageNewFromTemplate)) <> 0;
   WelcomePageContinue := AStore.ReadInteger('WelcomePageContinue', BoolValue(Default.WelcomePageContinue)) <> 0;
   WelcomePageContinueCount := AStore.ReadInteger('WelcomePageContinueCount', Default.WelcomePageContinueCount);
   WelcomePageContinueIncoming := AStore.ReadInteger('WelcomePageContinueIncoming',
@@ -1139,6 +1151,8 @@ begin
   AStore.WriteInteger('WelcomePageHelp', BoolValue(WelcomePageHelp));
   AStore.WriteString('WelcomePageHelpReportUrl', WelcomePageHelpReportUrl);
   AStore.WriteString('WelcomePageHelpReportFolder', WelcomePageHelpReportFolder);
+  AStore.WriteInteger('WelcomePageProjectSetup', BoolValue(WelcomePageProjectSetup));
+  AStore.WriteInteger('WelcomePageNewFromTemplate', BoolValue(WelcomePageNewFromTemplate));
   AStore.WriteInteger('WelcomePageContinue', BoolValue(WelcomePageContinue));
   AStore.WriteInteger('WelcomePageContinueCount', WelcomePageContinueCount);
   AStore.WriteInteger('WelcomePageContinueIncoming', BoolValue(WelcomePageContinueIncoming));

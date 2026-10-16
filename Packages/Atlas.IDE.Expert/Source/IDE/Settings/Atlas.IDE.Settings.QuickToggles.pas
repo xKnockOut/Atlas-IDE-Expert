@@ -22,8 +22,8 @@ uses
   System.Types,
   Atlas.Core.Settings.QuickToggles,
   Atlas.UI.Settings.QuickToggles,
-  Atlas.IDE.Commands.Keys,
-  Atlas.IDE.Commands.Palette;
+  Atlas.IDE.Foundation.Keys,
+  Atlas.Core.Commands.Palette;
 
 type
   TAtlasIdeQuickToggles = class(TComponent)
@@ -56,8 +56,8 @@ type
     procedure Show(const AAnchor: TPoint); overload;
     /// <summary>Über dem Statusfeld (OnAnchor), sonst unten links im aktiven Fenster.</summary>
     procedure Show; overload;
-    /// <summary>Befehle in der Palette anmelden.</summary>
-    procedure RegisterCommands(APalette: TAtlasIdePalette);
+    /// <summary>Befehle in der Palette anmelden; ARegistry nicht speichern.</summary>
+    procedure RegisterCommands(const ARegistry: IAtlasCommandRegistry);
     /// <summary>Linke Oberkante des Statusfelds im obersten Editorfenster; (MaxInt, MaxInt) ohne Feld.</summary>
     property OnAnchor: TFunc<TPoint> read FOnAnchor write FOnAnchor;
   end;
@@ -75,10 +75,10 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.Project,
-  Atlas.IDE.Editor.Structure,
-  Atlas.IDE.Editor.Style;
+  Atlas.IDE.Foundation.StructureSwitch,
+  Atlas.IDE.Foundation.EditorStyle;
 
 const
   AnswerSession = 100;
@@ -335,16 +335,16 @@ begin
     end;
 end;
 
-procedure TAtlasIdeQuickToggles.RegisterCommands(APalette: TAtlasIdePalette);
+procedure TAtlasIdeQuickToggles.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
 var
   Toggle: TAtlasQuickToggle;
 begin
-  APalette.RegisterCommand('Atlas.QuickToggles', TAtlasStrings.Text(TAtlasTextId.QuickTogglePaletteOpen), '',
+  ARegistry.RegisterCommand('Atlas.QuickToggles', TAtlasStrings.Text(TAtlasTextId.QuickTogglePaletteOpen), '',
     procedure
     begin
       Show;
     end);
-  APalette.RegisterCommand('Atlas.QuickToggles.AllOff', TAtlasStrings.Text(TAtlasTextId.QuickTogglesAllOff),
+  ARegistry.RegisterCommand('Atlas.QuickToggles.AllOff', TAtlasStrings.Text(TAtlasTextId.QuickTogglesAllOff),
     TAtlasStrings.Text(TAtlasTextId.QuickTogglePaletteHint),
     procedure
     begin
@@ -355,7 +355,7 @@ begin
         end);
     end);
   for Toggle in TAtlasIdeSettings.QuickToggles do
-    APalette.RegisterCommand('Atlas.QuickToggles.' + Toggle.Key,
+    ARegistry.RegisterCommand('Atlas.QuickToggles.' + Toggle.Key,
       TAtlasStrings.Fmt(TAtlasTextId.QuickTogglePalette, [Toggle.Caption]),
       TAtlasStrings.Text(TAtlasTextId.QuickTogglePaletteHint), SwitchCommand(Toggle.Key));
 end;

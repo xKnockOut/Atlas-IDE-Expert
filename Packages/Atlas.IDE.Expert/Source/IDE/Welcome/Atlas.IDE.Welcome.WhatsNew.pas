@@ -89,7 +89,7 @@ uses
   Atlas.Core.Settings.QuickToggles,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Frame,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands;
 
 /// <summary>Textdatei als UTF-8 ohne Byte-Order-Mark; '' bei Fehler.</summary>

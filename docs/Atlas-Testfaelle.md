@@ -914,6 +914,43 @@ Vorbereitung: Paket aus dem Release bzw. `pwsh Tools/Build-Docs.ps1 -OutDir <Ins
 | HR20 | Installer: Paket aus dem Release installieren, dann aktualisieren | `Doku\index.html` und die übrigen Seiten im Installationsordner; Seiten, die es im neuen Paket nicht mehr gibt, sind weg |
 | HR21 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs\atlas.log`) nach HR7–HR15 | Nur „Problem melden (#766): Dialog geöffnet“; keine Pfade, Adressen oder Texte aus dem Dialog |
 
+### Projekt für Atlas einrichten (#759)
+
+Entscheidungen: Ziel ist das aktive Projekt, ohne offenes Projekt das oberste nicht ausgeblendete der Liste „Wieder öffnen“ (das auch eine Projektgruppe sein kann; atlas.json kommt dann neben die `.groupproj`). „Baseline erzeugen“ und „Suchpfade prüfen“ brauchen das geöffnete Projekt; ohne heißen beide Knöpfe „Projekt öffnen“. Die Prüfung gilt für die aktive Konfiguration und Plattform; Units in Zweigen, deren Bedingung sich nicht auswerten lässt (`CompilerVersion`, `Declared`, `$IFOPT`), zählen nicht. Defines aus `{$IFDEF}` in eingebundenen Dateien zählen nicht als Abfrage (Bibliotheken wie `jedi.inc`), ihre `{$DEFINE}` aber als Quelle. „Neu mit Atlas“ steht auch ohne Karte da (Titel „Neu mit Atlas“), solange ein Projekt offen ist.
+
+Vorbereitung: Projekt `XmlInspector` (VCL, Git egal) ohne `atlas.json` und ohne Baseline, mit `uses Xml.Helpers;` in `Main.pas` (Zeile 12) ohne passende Datei und `{$IFDEF USE_XML}` ohne Define; ein zweites Projekt `Fertig` mit atlas.json, Baseline und sauberen Pfaden.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PE1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasProjectSetupTests` (Vorlagen gegen das Schema, Erkennung offener Schritte), `TAtlasSchemaCheckTests`, `TAtlasPathCheckTests`, `TAtlasWelcomeSetupTests`, `TAtlasWelcomeSetupFrameTests`, `TAtlasFileTemplatesTests`, `TTextDefinesTests` und `TSetupInstallerTests` grün |
+| PE2 | `XmlInspector` öffnen, Willkommensseite bzw. *Atlas-Start* | Karte „XmlInspector für Atlas einrichten“: ✓ grün „Projekt gefunden, keine atlas.json“, darunter „atlas.json anlegen“ mit Auswahl „Bestehendes Projekt“ und „Anlegen …“, „Baseline erzeugen“ [Starten], „Suchpfade und Defines prüfen“ [Prüfen], Link „Für dieses Projekt nicht mehr fragen“, Reihe „Neu mit Atlas:“ [Unit] [Formular] [Testklasse] (Mockup #ws7) |
+| PE3 | Vorlage „Altprojekt mit Baseline“ wählen, „Anlegen …“ | Dialog „atlas.json anlegen“ mit Ziel, Vorlage und Inhalt (`"minConfidence": "high"`, `overrides` für `Generated/**`); Abbrechen bzw. Esc: keine Datei |
+| PE4 | „Anlegen …“, im Dialog „Anlegen“ | `atlas.json` liegt neben `XmlInspector.dproj` (UTF-8 ohne BOM, CRLF), Meldungsansicht „Projekt einrichten: … angelegt.“; Schritt 2 sofort grün mit ✓ „atlas.json vorhanden“, Auswahl und Knopf weg (**Abnahme**) |
+| PE5 | Datei im Explorer löschen und eine eigene `atlas.json` von Hand anlegen, dann (vor dem Aktualisieren der Karte) „Anlegen …“ | Meldung „… gibt es schon; Atlas überschreibt sie nicht.“, die Datei bleibt unverändert |
+| PE6 | Installationsordner: `Vorlagen\atlas-existing.json` mit ungültigem Wert (`"minConfidence": "sehr"`) speichern, „Anlegen …“ | Der Dialog zeigt die eingebaute Fassung (`"minConfidence": "medium"`); Protokoll „Vorlage existing passt nicht zum Schema, eingebaute Fassung“ |
+| PE7 | „Starten“ bei Baseline | Text „Baseline wird erzeugt … 3 s“ zählt hoch, Knopf ausgegraut; danach ✓ „Baseline vorhanden“ und „Baseline mit 412 Treffern in 87 Dateien; neue Treffer: 0“; Meldungsansicht wie *Baseline des Projekts aktualisieren*; im Bereich „Projekte“ „0 neu“ (**Abnahme**) |
+| PE8 | Server beenden (Atlas aus), „Starten“ | Unter dem Schritt der Grund („Der Atlas-Server hat keine Baseline geschrieben …“), Knopf wieder klickbar |
+| PE9 | „Prüfen“ | „Suchpfade und Defines werden geprüft … n s“, danach „1 Units nicht gefunden, 1 Defines ohne Quelle (n Dateien geprüft)“ und die Zeilen „Unit „Xml.Helpers“ nicht gefunden – Main.pas, Zeile 12“ und „Define „USE_XML“ ohne Quelle – …“ (**Abnahme**) |
+| PE10 | Auf eine Fundzeile klicken bzw. „Projektoptionen …“ | Dialog *Projektoptionen* der IDE öffnet sich |
+| PE11 | Suchpfad auf den Ordner von `Xml.Helpers.pas` ergänzen (auch mit `$(Platform)` bzw. `$(BDS)`), `USE_XML` unter Bedingungen eintragen, „Prüfen“ | Schritt 4 grün; alle vier Schritte erledigt: Die Karte verschwindet; „Neu mit Atlas“ bleibt mit Titel „Neu mit Atlas“ (**Abnahme**) |
+| PE12 | Projekt `Fertig` öffnen, dann mit `welcomePage.newFromTemplate` aus | Keine Karte; mit Schalter aus erscheint gar kein Bereich (**Abnahme**) |
+| PE13 | `XmlInspector` erneut ohne atlas.json, „Für dieses Projekt nicht mehr fragen“, IDE neu starten | Die Karte bleibt weg, auch nach dem Neustart; `setup.dismissed` in `%LOCALAPPDATA%\Atlas\projects\<Schlüssel>.json` (**Abnahme**) |
+| PE14 | Befehlspalette: *Projekt für Atlas einrichten* | Fenster *Atlas-Start* mit der Karte für das aktive Projekt; „nicht mehr fragen“ ist aufgehoben |
+| PE15 | Alle Projekte schließen | Karte für das oberste Projekt der Liste „Wieder öffnen“; „Starten“ und „Prüfen“ heißen „Projekt öffnen“ und öffnen es; keine Knöpfe „Neu mit Atlas“ |
+| PE16 | „Unit“, „Formular“, „Testklasse“ | Das Erzeugen-Menü über dem Hauptfenster zeigt nur „Vorlagen“: leere Unit und Unit mit Klasse bzw. VCL-Formular bzw. DUnitX-Testklasse; Enter legt eine neue, unbenannte Datei im Projekt an (Unit2 …; Formular mit Designer und `.dfm`, Klasse `TForm2`; Testklasse `TUnit3Tests` mit `RegisterTestFixture`) |
+| PE17 | Eigene Code-Vorlage `%APPDATA%\Atlas\Snippets\dm.atlas-snippet` mit `file: unit` und `%Unit%`/`%Name%` im Text | Erscheint unter „Unit“, nicht in der Vervollständigung und nicht im Erzeugen-Menü am Cursor; die neue Datei trägt den Unit-Namen der IDE |
+| PE18 | `welcomePage.projectSetup` aus (Optionen oder Schnellschalter) | Bereich weg, Befehl *Projekt für Atlas einrichten* und Tipp „Projekt für Atlas einrichten“ verschwinden; wieder an: ohne Neustart zurück (**Abnahme**) |
+| PE19 | `welcomePage.newFromTemplate` aus | Nur die Reihe „Neu mit Atlas“ verschwindet, die Karte bleibt (**Abnahme**) |
+| PE20 | Englische IDE; schmale Spalte; 100 %, 150 %, 200 % | „Set up XmlInspector for Atlas“, „Create …“, „Start“, „Check“, „Don’t ask again for this project“, „New with Atlas:“; Knöpfe brechen um, nichts abgeschnitten, Grün in hellem und dunklem Thema lesbar |
+| PE21 | Installer: Paket aus dem Release installieren | Ordner `Vorlagen` mit `atlas-existing.json`, `atlas-strict.json`, `atlas-legacy.json` im Installationsordner |
+| PE22 | Protokoll (`atlas.log`) nach PE3–PE16 | Nur Zahlen und Kennungen („atlas.json angelegt (Vorlage legacy)“, „1 Projekte, 12 Dateien geprüft, 1 Units fehlen …, 0 davon unsicher“); keine Pfade, keine Unit-, Define- oder Makronamen |
+| PE23 | Suchpfad `$(BDSLIB)\$(Platform)\release;$(ProjectDir)\Lib;$(MEINLIB)\src` mit `MEINLIB` unter *Tools › Optionen › Umgebungsvariablen* (Benutzer-Überschreibung), Unit nur in `<MEINLIB>\src` | „Prüfen“: kein Fund; die drei Makros sind aufgelöst (IDE-Variablen und Projektordner vor den Umgebungsvariablen des Prozesses) |
+| PE24 | Wie PE23, aber `MEINLIB` gelöscht (weder in der IDE noch im System) | Fund „Unit „…“ nicht gefunden (unsicher, Suchpfad mit unbekanntem Makro $(MEINLIB) übersprungen) – …“ und darunter „Davon unsicher: 1 (…$(MEINLIB)…)“; Schritt 4 grün, wenn es nur unsichere Funde gibt; eine Unit mit `in 'Pfad'` bleibt ein sicherer Fund |
+| PE25 | Umgebungsvariable `MEINLIB` nur im System (nicht in der IDE), IDE danach neu gestartet | Wie PE23: Makro über die Umgebung des Prozesses aufgelöst |
+| PE26 | Projektgruppe mit drei Projekten öffnen (eines mit fehlender Unit), „Prüfen“ | Alle drei Projekte werden nacheinander geprüft (laufende Sekunden); die Karte zeigt die Summe („1 Units nicht gefunden …, n Dateien geprüft“) und die Funde mit Projekt vorn („App: Unit „…“ nicht gefunden – App\Main.pas, Zeile 3“); jede Projekt-Zusammenfassung (`%LOCALAPPDATA%\Atlas\projects`) enthält nur ihre eigenen Funde |
+| PE27 | Wie PE26, danach ein weiteres Projekt zur Gruppe hinzufügen | Karte: „3 von 4 Projekten der Gruppe geprüft“, Schritt 4 offen, Funde der geprüften bleiben sichtbar; nach „Prüfen“ alle vier |
+| PE28 | Alle Projekte schließen, oberstes in „Wieder öffnen“ ist die `.groupproj` aus PE26 | Karte der Gruppe mit der Zusammenfassung aus PE26; „Prüfen“ öffnet die Gruppe |
+
 ### Weiterarbeiten (#755)
 
 Abweichungen vom Issue: „Gemerkt“ ist ein zweiter Reiter im Bereich „Weiterarbeiten“. Favoriten (#458) haben weder Projekt noch Datei: Sie stehen unter „alle Projekte“, der Ort ist die Unit, der Sprung sucht die Datei im Index-Cache (Projekte und Bibliothek). Ein Klick auf einen eingehenden Commit listet dessen Dateien im Fenster „Atlas-Ergebnisse“, weil #571 keine Commit-Ansicht hat. Bei SVN fehlt der Abschnitt „Neu seit …“ (kein lokaler Stand des Servers). Ohne offene Reiter beim Schließen bleibt der gespeicherte Arbeitsstand stehen; mit `welcomePage.continue` aus zeichnet Atlas nichts auf.
@@ -1327,3 +1364,17 @@ Vorbereitung: Repository-Ordner als Projekt geöffnet (die `atlas.json` im Wurze
 | AR4 | Ein Projekt ohne `prefixes` in `atlas.json` öffnen, Profil `strict` | Keine Meldung der beiden Regeln |
 | AR5 | Undo-Einstellungen unter *Optionen › Atlas* ändern, speichern, wieder öffnen; Atlas-Änderung über zwei Dateien zurücknehmen | Werte bleiben erhalten; Zurücknehmen wie bisher |
 | AR6 | Server-Protokoll mit Mitschnitt (`--trace`), Parameter-Hint und Hover in einer Unit mit `{$I}`-Datei | Mitschnitt rotiert wie bisher; Hint und Hover funktionieren auch in der Include-Datei |
+
+## Plugin-Struktur: Laden, Entladen, Workspace-Edits (Code-Review S-03, A-09)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PS1 | IDE mit Atlas starten, *Komponenten › Packages installieren* › Atlas abwählen, wieder anwählen | Keine Zugriffsverletzung; Protokoll „Atlas entladen in … ms; Hintergrund-Threads beendet: True“; nach dem Wiederladen Menü, Palette, Statusfeld, Vervollständigung, Parameter-Hint und Willkommensseite wie zuvor |
+| PS2 | Abgesichert starten (Stufe „abgesichert“, wie AS5) | Server, Statusfeld, Palette, Menü, Ergebnisfenster, Änderungsprotokoll, Notizen und Lesezeichen (Befehle), Willkommensseite da; keine Klammerfarben, keine Rinne, kein Designer-Notifier, kein Wächter, keine Tastenkürzel-Tipps |
+| PS3 | Mit Umschalt starten (Stufe „minimal“, wie AS11) | Nur Optionsseite, Statusfeld und Schnellschalter; Entladen danach ohne Fehler |
+| PS4 | Bei PS2 „Schnellschalter…“, „Klammerfarben“ und „Prüfung beim Speichern“ einschalten | Klammerfarben sofort; nach dem nächsten Speichern prüft Atlas (Compiler-Ereignisse werden nachgemeldet) |
+| PS5 | IDE mit offener Willkommensseite, sichtbaren Tastenkürzel-Tipps und offener Befehlspalette schließen | Kein Fehler beim Beenden; Zählung der Befehle gespeichert (beim nächsten Start „Atlas entdecken“ unverändert) |
+| PS6 | Umbenennen über drei Units, eine davon nicht geöffnet (Workspace-Edit mit Änderungen in offenen und geschlossenen Dateien) | Offene Puffer geändert (je ein Strg+Z-Schritt), die geschlossene Unit auf der Platte in ihrer Kodierung; ein Satz im Änderungsprotokoll |
+| PS7 | Code-Aktion, die eine Unit anlegt und eine bestehende ändert; danach Strg+Alt+Z | Neue Unit im Projekt und im Editor; Zurücknehmen trägt sie aus und legt sie in den Papierkorb |
+| PS8 | Workspace-Edit auf eine schreibgeschützte Datei | Meldung mit dem Dateinamen, keine der übrigen Dateien halb geändert |
+| PS9 | Versionsverwaltung: Willkommensseite mit Git-Projekt öffnen, dann git aus `PATH` nehmen und IDE neu starten | Erst Branch und Zustand; danach einmal „git nicht gefunden“ in der Meldungsansicht, Atlas arbeitet weiter |

@@ -26,7 +26,8 @@ uses
   Atlas.Core.Commands.Palette;
 
 type
-  TAtlasIdePalette = class
+  /// <summary>Ohne Referenzzählung (TNoRefCountObject): Die Composition gibt die Palette frei.</summary>
+  TAtlasIdePalette = class(TNoRefCountObject, IAtlasCommandRegistry)
   private type
     TBinding = class(TNotifierObject, IOTAKeyboardBinding)
     private
@@ -87,9 +88,9 @@ uses
   Vcl.Forms,
   Atlas.UI.Commands.Palette,
   Atlas.UI.Strings,
-  Atlas.IDE.Editor.Style,
-  Atlas.IDE.Settings.Store,
-  Atlas.IDE.Commands.Keys,
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.Keys,
   Atlas.IDE.Commands.ShortcutTips;
 
 { TAtlasIdePalette.TBinding }

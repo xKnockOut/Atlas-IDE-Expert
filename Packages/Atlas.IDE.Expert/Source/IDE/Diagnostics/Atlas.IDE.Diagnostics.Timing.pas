@@ -28,9 +28,9 @@ uses
   Atlas.Core.Status.Contract,
   Atlas.Core.Status.Registry,
   Atlas.Core.Status.Lines,
-  Atlas.IDE.Commands.Keys,
-  Atlas.IDE.Commands.Palette,
-  Atlas.UI.Diagnostics.TimingFrame;
+  Atlas.IDE.Foundation.Keys,
+  Atlas.UI.Diagnostics.TimingFrame,
+  Atlas.Core.Commands.Palette;
 
 type
   TAtlasIdeDiagnosticMode = class
@@ -71,7 +71,7 @@ type
     /// <summary>Fenster zeigen; der Modus bleibt, wie er ist.</summary>
     procedure ShowWindow;
     /// <summary>Befehl „Atlas: Diagnosefenster zeigen“ (schaltet bei Bedarf ein).</summary>
-    procedure RegisterCommands(APalette: TAtlasIdePalette);
+    procedure RegisterCommands(const ARegistry: IAtlasCommandRegistry);
     procedure ThemeChanged;
     /// <summary>Modus umschalten wie der Schnellschalter (Taste, Palette).</summary>
     class procedure Toggle; static;
@@ -97,8 +97,8 @@ uses
   Atlas.Core.Settings.History,
   Atlas.Core.Updates.Check,
   Atlas.UI.Strings,
-  Atlas.IDE.Editor.Style,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.QuickToggles,
   Atlas.IDE.Diagnostics.TimingWindow;
 
@@ -299,9 +299,9 @@ begin
     Frame.ShowNote(TAtlasStrings.Text(TAtlasTextId.DiagnosticCopied));
 end;
 
-procedure TAtlasIdeDiagnosticMode.RegisterCommands(APalette: TAtlasIdePalette);
+procedure TAtlasIdeDiagnosticMode.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
 begin
-  APalette.RegisterCommand('Atlas.DiagnosticWindow', TAtlasStrings.Text(TAtlasTextId.DiagnosticPaletteShow), '',
+  ARegistry.RegisterCommand('Atlas.DiagnosticWindow', TAtlasStrings.Text(TAtlasTextId.DiagnosticPaletteShow), '',
     procedure
     begin
       if FInstance = nil then

@@ -36,6 +36,19 @@ type
     function IsEmpty: Boolean;
   end;
 
+  TAtlasSignatureCallback = reference to procedure(const AHelp: TAtlasSignatureHelp);
+
+  /// <summary>Quelle des Parameter-Hints; die Kompositionswurzel setzt den Server-Anbieter ein (A-09).</summary>
+  IAtlasSignatureSource = interface
+    ['{9C248983-E271-4AC1-9F44-417B651EC5B4}']
+    /// <summary>Fragt im Hintergrund; ACallback im Hauptthread. False, wenn nichts gestartet wurde.</summary>
+    function Query(const AFileName, AText: string; ALine, ACharacter: Integer;
+      const ACallback: TAtlasSignatureCallback): Boolean;
+    procedure Cancel;
+    /// <summary>Bricht laufende Anfragen ab und wartet auf sie.</summary>
+    procedure Shutdown;
+  end;
+
 implementation
 
 { TAtlasSignatureParameter }

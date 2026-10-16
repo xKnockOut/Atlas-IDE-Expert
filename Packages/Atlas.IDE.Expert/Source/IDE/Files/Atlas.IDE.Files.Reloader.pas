@@ -54,9 +54,9 @@ uses
   Winapi.Windows,
   System.IOUtils,
   Atlas.UI.Strings,
-  Atlas.IDE.Settings.Store,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Snapshot,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Files.TextDiff;
 

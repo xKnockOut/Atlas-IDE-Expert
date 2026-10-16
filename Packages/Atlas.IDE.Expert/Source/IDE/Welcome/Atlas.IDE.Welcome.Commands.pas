@@ -37,6 +37,9 @@
 //   nach der gemeinsamen Zählung (#600); meldet sich selbst an.
 // - Bereich „Hilfe und Rückmeldung“ (#766, Help): Atlas-Doku, Tastenkürzel
 //   (#520) und „Problem melden …“ mit Diagnosepaket; meldet sich selbst an.
+// - Bereich „<Projekt> für Atlas einrichten“ (#759, Setup): atlas.json,
+//   Baseline, Suchpfade und Defines je Projekt sowie „Neu mit Atlas“; meldet
+//   sich selbst an.
 // Die Willkommensseite startet keinen Server und liest nur lokale Daten.
 
 interface
@@ -61,7 +64,8 @@ uses
   Atlas.IDE.Welcome.Continue,
   Atlas.IDE.Welcome.State,
   Atlas.IDE.Welcome.Discover,
-  Atlas.IDE.Welcome.Help;
+  Atlas.IDE.Welcome.Help,
+  Atlas.IDE.Welcome.Setup;
 
 type
   TAtlasIdeWelcome = class
@@ -103,10 +107,14 @@ type
     FHelp: TAtlasIdeHelp;
     // Hält die Quelle des Bereichs „Hilfe und Rückmeldung“ am Leben; die Frames halten sie ebenfalls.
     FHelpRef: IInterface;
+    FSetup: TAtlasIdeSetup;
+    // Hält die Quelle des Bereichs „Projekt für Atlas einrichten“ am Leben; die Frames halten sie ebenfalls.
+    FSetupRef: IInterface;
     procedure SetWhatsNew(AValue: TAtlasIdeWhatsNew);
     procedure SetState(AValue: TAtlasIdeWelcomeState);
     procedure SetDiscover(AValue: TAtlasIdeDiscover);
     procedure SetHelp(AValue: TAtlasIdeHelp);
+    procedure SetSetup(AValue: TAtlasIdeSetup);
     procedure SetProjects(AValue: TAtlasIdeProjects);
     procedure SetTrends(AValue: TAtlasIdeTrends);
     procedure SetUnsaved(AValue: TAtlasIdeUnsaved);
@@ -172,6 +180,9 @@ type
     /// <summary>Bereich „Hilfe und Rückmeldung“ (#766); gehört danach der Steuerung (Start beim Setzen). nil =
     /// ohne.</summary>
     property Help: TAtlasIdeHelp read FHelp write SetHelp;
+    /// <summary>Bereich „Projekt für Atlas einrichten“ (#759); gehört danach der Steuerung (Start beim Setzen).
+    /// nil = ohne.</summary>
+    property Setup: TAtlasIdeSetup read FSetup write SetSetup;
     class function HeaderInfo(const AServer: TAtlasServerInfo; AIndexing: Boolean; APercent, AUnits: Integer;
       AHour: Integer; const AFirstName: string; AGreeting: Boolean): TAtlasWelcomeHeaderInfo; static;
   end;
@@ -191,7 +202,7 @@ uses
   Atlas.Core.Welcome.HostLayout,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.WhatsNew,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Welcome.Registry,
   Atlas.IDE.Welcome.Window;
 
@@ -284,6 +295,8 @@ begin
     FDiscover.Stop;
   if FHelp <> nil then
     FHelp.Stop;
+  if FSetup <> nil then
+    FSetup.Stop;
   // Beim Beenden der IDE: Hat die IDE ihr Layout aus dem Speicher zurückgeschrieben, gilt die Marke weiter.
   TAtlasIdeWelcomePage.RemoveAll;
   TAtlasIdeWelcomeWindow.Release;
@@ -304,6 +317,8 @@ begin
   FDiscoverRef := nil;
   FHelp := nil;
   FHelpRef := nil;
+  FSetup := nil;
+  FSetupRef := nil;
   inherited;
 end;
 
@@ -328,6 +343,18 @@ begin
       procedure
       begin
         FDiscover.Start;
+      end);
+end;
+
+procedure TAtlasIdeWelcome.SetSetup(AValue: TAtlasIdeSetup);
+begin
+  FSetup := AValue;
+  FSetupRef := AValue;
+  if FSetup <> nil then
+    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        FSetup.Start;
       end);
 end;
 
@@ -527,6 +554,9 @@ begin
       // Bereich „Hilfe und Rückmeldung“: welcomePage.help und keys.overview (#766).
       if FHelp <> nil then
         FHelp.Refresh;
+      // Bereich „Projekt für Atlas einrichten“: welcomePage.projectSetup und .newFromTemplate (#759).
+      if FSetup <> nil then
+        FSetup.Refresh;
       // Bereich „Projektverlauf“: welcomePage.trends, .series und .points (#758).
       if FTrends <> nil then
         FTrends.Refresh;

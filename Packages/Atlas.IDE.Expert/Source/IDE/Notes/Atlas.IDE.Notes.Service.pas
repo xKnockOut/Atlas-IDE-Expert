@@ -88,9 +88,10 @@ uses
   Atlas.UI.Notes.Dialog,
   Atlas.UI.Results.Frame,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Editor.GutterMarks,
-  Atlas.IDE.Results.Window,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Foundation.GutterMarks,
+  Atlas.IDE.Foundation.ResultsWindow,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.Files;
 
 { TAtlasIdeNotes }
 
@@ -156,7 +157,7 @@ end;
 
 class function TAtlasIdeNotes.ResolveProject(const AFileName: string): string;
 begin
-  Result := TAtlasIdeWorkspaceEdit.ProjectOfFile(AFileName);
+  Result := TAtlasIdeFiles.ProjectOfFile(AFileName);
   if Result = '' then
     Result := ActiveProject;
   if (Result <> '') and (FProjectOf <> nil) then
