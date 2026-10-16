@@ -111,6 +111,7 @@
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.BugReport.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.QualifiedNames.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.TestUnits.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SlashMenu.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.UnitSearch.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WinApiDocs.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.KeywordReference.Tests.pas"/>
@@ -194,6 +195,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DeclarationCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.WrapCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.SlashMenu.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.MaintenanceCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TypeCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CollectionCommands.Tests.pas"/>
@@ -364,6 +366,12 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Placeholders.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.Snippets.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Snippets.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Generate\Atlas.Core.Generate.Menu.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Generate\Atlas.Core.Generate.Protocol.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Generate\Atlas.UI.Generate.Window.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Generate.Menu.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Generate.Protocol.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Generate.Window.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Parentheses.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Parentheses.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Preview.pas"/>

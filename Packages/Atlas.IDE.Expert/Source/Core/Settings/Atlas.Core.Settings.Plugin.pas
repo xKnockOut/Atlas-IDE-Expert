@@ -214,6 +214,22 @@ type
     EditorKeysPriority: Boolean;
     /// <summary>Schnellbefehle mit „/“ nach Enter und „///“-Gerüste beim Server auslösen (#399).</summary>
     SlashCommands: Boolean;
+    /// <summary>Erzeugen-Menü (#719, keys.generateMenu): Alt+Einfg, Kontextmenü und Befehlspalette; aus = die Funktion
+    /// ruht und das Kürzel bleibt frei.</summary>
+    GenerateMenu: Boolean;
+    /// <summary>Tastenkürzel des Erzeugen-Menüs (#719, keys.generateMenu.key; TShortCut, 0 = keins; Vorgabe Alt+Einfg).
+    /// </summary>
+    GenerateMenuKey: Integer;
+    /// <summary>Gruppen in ihrer Reihenfolge (#719, keys.generateMenu.groups): generate, surround, templates,
+    /// kommagetrennt; fehlt eine, fehlt sie im Menü.</summary>
+    GenerateMenuGroups: string;
+    /// <summary>Ausgeblendete Einträge (#719, keys.generateMenu.hidden): Kennungen wie slash:json oder Namen wie /json,
+    /// tryf; kommagetrennt.</summary>
+    GenerateMenuHidden: string;
+    /// <summary>Zuletzt gewählte Einträge oben (#719, keys.generateMenu.recentFirst).</summary>
+    GenerateMenuRecentFirst: Boolean;
+    /// <summary>Befehlsnamen (/name) rechts in der Zeile (#719, keys.generateMenu.showCommandNames).</summary>
+    GenerateMenuShowCommandNames: Boolean;
     /// <summary>Code-Vorlagen in der Vervollständigung (#51, completion.snippets).</summary>
     Snippets: Boolean;
     /// <summary>Live Templates der IDE als Code-Vorlagen einlesen (#51, completion.importIdeTemplates).</summary>
@@ -436,7 +452,8 @@ implementation
 
 uses
   System.Math,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Core.Generate.Menu;
 
 const
   /// <summary>Reihen des Projektverlaufs (#758) wie TAtlasProjectSummaries.TrendKeys (Test prüft Gleichheit).</summary>
@@ -584,6 +601,12 @@ begin
   Result.MetricsReport := True;
   Result.EditorKeysPriority := False;
   Result.SlashCommands := True;
+  Result.GenerateMenu := True;
+  Result.GenerateMenuKey := $802D; // Alt+Einfg
+  Result.GenerateMenuGroups := 'generate,surround,templates';
+  Result.GenerateMenuHidden := '';
+  Result.GenerateMenuRecentFirst := True;
+  Result.GenerateMenuShowCommandNames := True;
   Result.Snippets := True;
   Result.ImportIdeTemplates := True;
   // Wie die Vorgaben im Schema (atlas.schema.json, index).
@@ -750,6 +773,9 @@ begin
   UnitSearchDefaultScope := Choice(UnitSearchDefaultScope, ['group', 'project', 'searchPath', 'library']);
   UnitSearchKey := EnsureRange(UnitSearchKey, 0, $FFFF);
   BookmarkKey := EnsureRange(BookmarkKey, 0, $FFFF);
+  GenerateMenuKey := EnsureRange(GenerateMenuKey, 0, $FFFF);
+  GenerateMenuGroups := TAtlasGenerateOptions.NormalizeGroups(GenerateMenuGroups);
+  GenerateMenuHidden := TAtlasGenerateOptions.NormalizeHidden(GenerateMenuHidden);
   if SameText(Trim(WelcomePageHost), 'dockWindow') then
     WelcomePageHost := 'dockWindow'
   else
@@ -847,6 +873,14 @@ begin
   MetricsReport := AStore.ReadInteger('MetricsReport', BoolValue(Default.MetricsReport)) <> 0;
   EditorKeysPriority := AStore.ReadInteger('EditorKeysPriority', BoolValue(Default.EditorKeysPriority)) <> 0;
   SlashCommands := AStore.ReadInteger('SlashCommands', BoolValue(Default.SlashCommands)) <> 0;
+  GenerateMenu := AStore.ReadInteger('GenerateMenu', BoolValue(Default.GenerateMenu)) <> 0;
+  GenerateMenuKey := AStore.ReadInteger('GenerateMenuKey', Default.GenerateMenuKey);
+  GenerateMenuGroups := AStore.ReadString('GenerateMenuGroups', Default.GenerateMenuGroups);
+  GenerateMenuHidden := AStore.ReadString('GenerateMenuHidden', Default.GenerateMenuHidden);
+  GenerateMenuRecentFirst := AStore.ReadInteger('GenerateMenuRecentFirst',
+    BoolValue(Default.GenerateMenuRecentFirst)) <> 0;
+  GenerateMenuShowCommandNames := AStore.ReadInteger('GenerateMenuShowCommandNames',
+    BoolValue(Default.GenerateMenuShowCommandNames)) <> 0;
   Snippets := AStore.ReadInteger('Snippets', BoolValue(Default.Snippets)) <> 0;
   ImportIdeTemplates := AStore.ReadInteger('ImportIdeTemplates', BoolValue(Default.ImportIdeTemplates)) <> 0;
   IndexProjectGroup := AStore.ReadInteger('IndexProjectGroup', BoolValue(Default.IndexProjectGroup)) <> 0;
@@ -1019,6 +1053,12 @@ begin
   AStore.WriteInteger('MetricsReport', BoolValue(MetricsReport));
   AStore.WriteInteger('EditorKeysPriority', BoolValue(EditorKeysPriority));
   AStore.WriteInteger('SlashCommands', BoolValue(SlashCommands));
+  AStore.WriteInteger('GenerateMenu', BoolValue(GenerateMenu));
+  AStore.WriteInteger('GenerateMenuKey', GenerateMenuKey);
+  AStore.WriteString('GenerateMenuGroups', GenerateMenuGroups);
+  AStore.WriteString('GenerateMenuHidden', GenerateMenuHidden);
+  AStore.WriteInteger('GenerateMenuRecentFirst', BoolValue(GenerateMenuRecentFirst));
+  AStore.WriteInteger('GenerateMenuShowCommandNames', BoolValue(GenerateMenuShowCommandNames));
   AStore.WriteInteger('Snippets', BoolValue(Snippets));
   AStore.WriteInteger('ImportIdeTemplates', BoolValue(ImportIdeTemplates));
   AStore.WriteInteger('IndexProjectGroup', BoolValue(IndexProjectGroup));

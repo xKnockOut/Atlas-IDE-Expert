@@ -23,6 +23,19 @@
       "column": 27
     },
     {
+      "id": "generateMenu",
+      "command": "Atlas.GenerateMenu",
+      "setting": "GenerateMenu",
+      "title": "Erzeugen-Menü",
+      "titleEn": "Generate menu",
+      "text": "Alt+Einfg zeigt am Cursor, was sich dort erzeugen lässt: Konstruktor, Properties, überschriebene Methoden, Interface-Methoden, Vorlagen. Ziffer wählt, Tippen filtert.",
+      "textEn": "Alt+Ins shows at the cursor what can be generated there: constructor, properties, overridden methods, interface methods, templates. A digit chooses, typing filters.",
+      "image": "Tipps\\erzeugen.png",
+      "sample": "Beispiele\\Entdecken.pas",
+      "line": 42,
+      "column": 9
+    },
+    {
       "id": "expandSelection",
       "command": "Atlas.ExpandSelection",
       "usage": [

@@ -33,6 +33,9 @@ type
     /// <summary>Benannte Lesezeichen (#622): zwei Schalter auf dem Reiter Editor, Taste bei den Befehlen.</summary>
     [Test]
     procedure BookmarksRoundTrip;
+    /// <summary>Erzeugen-Menü (#719) auf dem Reiter Befehle.</summary>
+    [Test]
+    procedure GenerateMenuRoundTrip;
     [Test]
     procedure SafeModeRoundTrips;
     [Test]
@@ -386,6 +389,42 @@ begin
     Assert.IsFalse(Saved.Notes, 'Notizen abschaltbar');
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.NotesCheck.Checked);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.GenerateMenuRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.GenerateMenuCheck.Checked, 'standardmäßig an');
+    Assert.AreEqual(ShortCutToText($802D), Page.GenerateMenuKey.Text, 'Alt+Einfg');
+    Assert.AreEqual('generate,surround,templates', Page.GenerateMenuGroups.Text);
+    Assert.AreEqual('', Page.GenerateMenuHidden.Text);
+    Assert.IsTrue(Page.GenerateMenuRecentFirstCheck.Checked);
+    Assert.IsTrue(Page.GenerateMenuShowCommandNamesCheck.Checked);
+    Page.GenerateMenuCheck.Checked := False;
+    Page.GenerateMenuKey.Text := '';
+    Page.GenerateMenuGroups.Text := 'templates';
+    Page.GenerateMenuHidden.Text := '/json';
+    Page.GenerateMenuRecentFirstCheck.Checked := False;
+    Page.GenerateMenuShowCommandNamesCheck.Checked := False;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.GenerateMenu, 'abschaltbar');
+    Assert.AreEqual(0, Saved.GenerateMenuKey, 'leer = keine Taste');
+    Assert.AreEqual('templates', Saved.GenerateMenuGroups);
+    Assert.AreEqual('/json', Saved.GenerateMenuHidden);
+    Assert.IsFalse(Saved.GenerateMenuRecentFirst);
+    Assert.IsFalse(Saved.GenerateMenuShowCommandNames);
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.GenerateMenuCheck.Checked);
+    Assert.AreEqual('/json', Page.GenerateMenuHidden.Text);
   finally
     Page.Free;
   end;
