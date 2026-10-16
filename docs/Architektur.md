@@ -267,6 +267,14 @@ RTL
 
 Das Plugin nutzt `Atlas.Common` nicht; es spricht mit dem Server nur über LSP.
 
+### Struktur der IDE-Schicht (Code-Review A-09, S-03)
+
+- **Grundbausteine `Atlas.IDE.Foundation.*`** (`Source/IDE/Foundation/`): Einstellungen, Editorpuffer und -stand, Editorstil, Tastenhaken und Tastenbelegung, Atlas-Symbol, Ergebnisfenster, Rinne, Strukturhervorhebung, Dateien und Projekte der IDE, Navigation. Sie verwenden aus der IDE-Schicht nur andere Grundbausteine und sind die Basis aller IDE-Features; ein Feature verwendet sie wie einen Contract.
+- **Keine Zyklen zwischen Features:** Die Features von `Atlas.Core` und `Atlas.IDE` hängen nur in einer Richtung voneinander ab. Gezählt wird über die uses aller Units, ohne Grundbausteine, ohne die Kompositionswurzel und ohne Verweise auf `*.Contract` (Contracts verwenden nur Contracts und schließen darum keinen Zyklus). Wo ein Feature ein anderes aufrufen muss, das schon von ihm abhängt, setzt die Kompositionswurzel einen Haken (z. B. `TAtlasEditorTestUnitLens.OnSwitchTestUnit`, `TAtlasOptionsHooks`) oder reicht eine Schnittstelle (`IAtlasCommandRegistry`) durch.
+- **Kompositionswurzel `Atlas.IDE.CodeInsight.Composition`:** einzige Unit, die Providers, Adapters und Compositions der Core-Features erzeugt (genehmigte Ausnahme oben). Die Teile des Plugins stehen dort in Startreihenfolge in einer `TAtlasFeatureTable` (`Atlas.Core.Diagnostics.FeatureTable`): je Teil die Stufe des abgesicherten Starts bzw. die Einstellung, unter der es läuft, Start und Stop. `RegisterFeatures` startet beim Laden und nach jeder Einstellungsänderung, was gewünscht ist und noch fehlt; `Unregister` baut rückwärts ab.
+- **Workspace-Edits:** `Atlas.Core.Editor.WorkspacePlan` (ohne Open Tools API, getestet) plant aus einem LSP-Workspace-Edit die Schritte je Datei (Puffer, Formular, Platte, Anlegen, Umbenennen, Löschen); `Atlas.IDE.Editor.WorkspaceEdit` führt den Plan in der IDE aus und protokolliert ihn als einen Satz im Änderungsprotokoll.
+- `Tools/Check-PackageDependencies.ps1` prüft beides: Grundbausteine ohne andere `Atlas.IDE.*`-Units und Feature-Zyklen (Tarjan) in `Atlas.Core` und `Atlas.IDE`.
+
 ## Threading-Modell
 
 ### Server

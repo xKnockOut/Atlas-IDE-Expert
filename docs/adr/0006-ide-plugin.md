@@ -62,3 +62,10 @@ Bis Schritt 5 umgesetzt ist, liefert der eingebaute LSP-Weg die Diagnosen, sofer
 ## Fortschreibung: eigener Client, kein Atlas.Common (#406, ADR 0012)
 
 - Seit #406 bindet das Plugin `Atlas.Common` nicht ein: Es hat einen eigenen schlanken LSP-Client (`Atlas.Core.Lsp.*`) und bleibt ein einzelnes BPL. Code, den Server und Plugin gemeinsam brauchen und der nur die RTL braucht, liegt einmal im Package `Atlas.Text` und wird ins Plugin als Quelltext übersetzt; die Begründung steht in [ADR 0012](0012-gemeinsamer-text-code.md).
+
+## Fortschreibung: Grundbausteine, Kompositionswurzel, Feature-Tabelle (Code-Review A-09, S-03, 16.10.2026)
+
+- Die IDE-Schicht hat Grundbausteine `Atlas.IDE.Foundation.*` (Einstellungen, Editorpuffer, Tasten, Ergebnisfenster …), die nur voneinander abhängen. Die Features darüber sind zyklenfrei; `Tools/Check-PackageDependencies.ps1` prüft das. Alles bleibt in einem BPL (Option 1 des Plans); ein Aufteilen in Packages ist damit später möglich, aber nicht nötig.
+- `Atlas.IDE.CodeInsight.Composition` ist die Kompositionswurzel: Nur sie erzeugt Serverprozess, Ordnerbeobachter, Quellen von Vervollständigung und Parameter-Hint, Ziel und Sicherung des Änderungsprotokolls und den Prozessläufer der Versionsverwaltung und reicht sie über Schnittstellen (`IAtlasLspServer`, `IAtlasFolderWatcher`, `IAtlasSignatureSource`) und Fabriken an die Features.
+- Laden und Entladen laufen über `TAtlasFeatureTable`: Startreihenfolge einmal festgelegt, Abbau streng rückwärts. Gegenüber vorher ändert sich die Abbaureihenfolge leicht (Palette vor Tastenübersicht, Einrichtung und Diagnosemodus; Reloader und Auftragseingang früher); alle Bedingungen „vor dem Statusfeld“ bleiben erfüllt.
+
