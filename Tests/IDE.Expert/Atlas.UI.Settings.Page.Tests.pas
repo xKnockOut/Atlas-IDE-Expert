@@ -164,8 +164,14 @@ begin
     begin
       Sheet := Page.Pages.Pages[Index];
       Assert.IsTrue(Sheet.ControlCount > 0, Sheet.Caption);
+      // Bereiche als Liste links: keine Reiterzeilen, jeder Bereich ein Eintrag.
+      Assert.IsFalse(Sheet.TabVisible, Sheet.Caption);
+      Assert.AreEqual(Sheet.Caption, Page.Navigation.Items[Index]);
     end;
     Assert.AreEqual(0, Page.Pages.ActivePageIndex);
+    Page.Navigation.ItemIndex := 13;
+    Page.Navigation.OnClick(Page.Navigation);
+    Assert.AreEqual(13, Page.Pages.ActivePageIndex, 'Klick in der Liste schaltet den Bereich');
   finally
     Host.Free;
   end;
