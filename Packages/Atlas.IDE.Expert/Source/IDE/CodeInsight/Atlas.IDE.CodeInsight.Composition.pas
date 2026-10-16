@@ -147,8 +147,10 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tests.Run,
+  Atlas.Core.Tests.Debug,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Tests.Runner,
+  Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Lens;
 
 var
@@ -174,6 +176,8 @@ var
   BuildInbox: TAtlasIdeBuildInbox;
   // DUnitX-Tests ausführen samt Code Lens (#69), abschaltbar über TestRun bzw. CodeLensTests.
   Tests: TAtlasIdeTests;
+  // Einzelnen Test ausführen bzw. im Debugger starten (#585), lebt mit Tests; abschaltbar über TestDebug.
+  TestDebugger: TAtlasIdeTestDebugger;
   TestsLens: TAtlasIdeTestsLens;
   // Hauptmenü Atlas mit Schnellschaltern und Einstellungen (#227).
   MainMenu: TAtlasMainMenu;
@@ -859,6 +863,12 @@ begin
   Result := TAtlasIdeSettings.Current.TestRun and (Tests <> nil);
 end;
 
+/// <summary>Befehl „Test am Cursor debuggen“ (#585) sichtbar?</summary>
+function TestDebugVisible: Boolean;
+begin
+  Result := TAtlasTestDebug.DebugWanted(TAtlasIdeSettings.Current) and (TestDebugger <> nil);
+end;
+
 /// <summary>Befehl „Startprofil: …“ (#575) sichtbar?</summary>
 function StartProfilesVisible: Boolean;
 begin
@@ -1058,6 +1068,19 @@ begin
       if Tests <> nil then
         TAtlasGuard.Run(TAtlasFeature.Build, Tests.RunFailed);
     end, TestsVisible);
+  // Einzelner Test am Cursor (#585): ausführen (mit TestRun) und im Debugger (mit TestDebug).
+  Add('Atlas.RunTest', TAtlasTextId.TestsRunHereCommand,
+    procedure
+    begin
+      if TestDebugger <> nil then
+        TAtlasGuard.Run(TAtlasFeature.Build, TestDebugger.RunAtCursor);
+    end, TestsVisible);
+  Add('Atlas.DebugTest', TAtlasTextId.TestsDebugCommand,
+    procedure
+    begin
+      if TestDebugger <> nil then
+        TAtlasGuard.Run(TAtlasFeature.Build, TestDebugger.DebugAtCursor);
+    end, TestDebugVisible);
   // Startprofile (#575): Auswahl für das aktive Projekt; sichtbar, solange StartProfiles an ist.
   Add('Atlas.StartProfile', TAtlasTextId.StartProfilesCommand,
     Guarded(TAtlasFeature.Build, TAtlasIdeStartProfiles.ShowPicker), StartProfilesVisible);
@@ -1776,13 +1799,31 @@ begin
     begin
       Result := TAtlasIdeProjects.LastFailedTests(AProject);
     end;
-  TestsLens := TAtlasIdeTestsLens.Create(Tests);
+  // Einzelner Test ausführen bzw. debuggen (#585), auch aus dem Kontextmenü (A-09: Haken der Editorbefehle).
+  TestDebugger := TAtlasIdeTestDebugger.Create(Tests);
+  TAtlasIdeEditorCommands.OnRunTest :=
+    procedure
+    begin
+      if TestDebugger <> nil then
+        TAtlasGuard.Run(TAtlasFeature.Build, TestDebugger.RunAtCursor);
+    end;
+  TAtlasIdeEditorCommands.OnDebugTest :=
+    procedure
+    begin
+      if TestDebugger <> nil then
+        TAtlasGuard.Run(TAtlasFeature.Build, TestDebugger.DebugAtCursor);
+    end;
+  TestsLens := TAtlasIdeTestsLens.Create(Tests, TestDebugger);
 end;
 
 procedure StopTests;
 begin
-  // Erst die Lens (sie zeigt auf den Läufer), dann der Läufer; seine Probleme verschwinden mit ihm.
+  // Erst die Lens (sie zeigt auf Läufer und Debugger-Teil), dann der Debugger-Teil (stellt eine laufende Sitzung
+  // zurück), dann der Läufer; seine Probleme verschwinden mit ihm.
+  TAtlasIdeEditorCommands.OnRunTest := nil;
+  TAtlasIdeEditorCommands.OnDebugTest := nil;
   FreeAndNil(TestsLens);
+  FreeAndNil(TestDebugger);
   FreeAndNil(Tests);
   if TAtlasProblemsController.Current <> nil then
     TAtlasProblemsController.Current.ClearTests;

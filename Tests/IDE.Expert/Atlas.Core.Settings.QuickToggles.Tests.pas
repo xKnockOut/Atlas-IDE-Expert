@@ -168,6 +168,13 @@ begin
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'StartProfilesStatusField', Toggle));
   Assert.AreEqual('Compiler', Toggle.Page);
   Assert.IsFalse(Toggle.Drawing);
+  // Test debuggen (#585): eigener Schalter für Befehl, Kontextmenü und Marke auf der Seite Debuggen; der
+  // Haltepunkt am Anfang ist kein Schnellschalter.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'TestDebug', Toggle));
+  Assert.AreEqual('Debuggen', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  Assert.AreEqual('Build', Toggle.Feature);
+  Assert.IsFalse(TAtlasQuickToggles.Find(Toggles, 'TestBreakAtStart', Toggle), 'ohne x-quickToggle');
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'McpBuild', Toggle));
   Assert.AreEqual('Compiler', Toggle.Page);
   Assert.IsFalse(Toggle.Drawing);
@@ -241,6 +248,7 @@ begin
   Assert.IsTrue(Effective.MetricsReport, 'Befehl (#66) ist keine Zeichnung');
   Assert.IsTrue(Effective.TeamFile, 'Projektdatei (#486) ist keine Zeichnung');
   Assert.IsTrue(Effective.StartProfiles, 'Startprofile (#575) sind keine Zeichnung');
+  Assert.IsTrue(Effective.TestDebug, 'Test debuggen (#585) ist keine Zeichnung');
   Assert.IsTrue(Effective.BaselineUpdate, 'Befehl (#97) ist keine Zeichnung');
   Assert.IsTrue(Stored.PairColors);
   Assert.IsTrue(Stored.PairGuides);

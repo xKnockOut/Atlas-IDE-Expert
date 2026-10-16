@@ -15,10 +15,17 @@
 //   published-Methoden ohne Attribut (DUnitX behandelt sie wie DUnit als Test);
 //   [Test(False)] und die Methoden mit [Setup], [TearDown], [SetupFixture]
 //   oder [TearDownFixture] sind keine Tests,
-// - die Zeile des Methodenkopfs im implementation-Teil.
+// - die Zeile des Methodenkopfs im implementation-Teil, die der ersten
+//   Anweisung (Haltepunkt beim Test-Debuggen, #585) und die des
+//   abschließenden end (lokale Routinen, Typen mit end und asm-Blöcke
+//   werden übersprungen),
+// - die Zeile jedes [TestCase] (einzelne Fälle ausführen, #585).
 // Zeilen sind 0-basiert. Der volle Name eines Tests in DUnitX ist
-// Unit.Fixture.Methode (bei [TestCase] mit .Fall dahinter); so filtert auch
-// --run.
+// Unit.Fixture.Methode, bei [TestCase] Unit.Fixture.Methode.Fall (beginnt der
+// Fall mit „(“, ohne Punkt). --run (TNameFilter von DUnitX) trifft einen Test,
+// wenn ein Name ein Anfang des vollen Namens seiner Fixture oder genau sein
+// voller Name ist; Unit.Fixture.Methode trifft die Fälle eines [TestCase]
+// darum nicht. TDUnitXCommandLine.RunNames bildet die passenden Namen.
 
 interface
 
@@ -37,8 +44,14 @@ type
     AttributeLine: Integer;
     /// <summary>Zeile des Methodenkopfs im implementation-Teil; -1 unbekannt.</summary>
     BodyLine: Integer;
+    /// <summary>Zeile der ersten Anweisung im Rumpf (ohne Anweisung die von begin); -1 unbekannt.</summary>
+    BeginLine: Integer;
+    /// <summary>Zeile des end, das den Rumpf abschließt; -1 unbekannt.</summary>
+    EndLine: Integer;
     /// <summary>Namen der Testfälle aus [TestCase('Name', …)], in Reihenfolge.</summary>
     Cases: TArray<string>;
+    /// <summary>Zeile je Testfall (gleiche Reihenfolge wie Cases).</summary>
+    CaseLines: TArray<Integer>;
     /// <summary>[Ignore] steht am Test.</summary>
     Ignored: Boolean;
   end;
@@ -68,6 +81,17 @@ type
     /// implementation-Teil, sonst die Deklaration, sonst (unbekannte Methode oder AMethod leer) die Fixture.
     /// -1, wenn es die Fixture nicht gibt.</summary>
     function LineOf(const AFixture, AMethod: string): Integer;
+    /// <summary>Test an ALine für „Test ausführen/debuggen“ am Cursor (#585): Zeile eines [TestCase] (ACaseIndex
+    /// dieser Fall; stehen mehrere Fälle in der Zeile, -1 = alle), Attribut- oder Deklarationszeile von Fixture
+    /// bzw. Test, Zeilen dazwischen oder der Rumpf der Testmethode bis zu ihrem end. ATestIndex = -1: die
+    /// Fixture. False ohne Test an der Zeile.</summary>
+    function TestAt(ALine: Integer; out AFixtureIndex, ATestIndex, ACaseIndex: Integer): Boolean;
+    /// <summary>Zeile der Marke eines Tests (Code Lens): sein erstes Attribut; ist das ein [TestCase] mit eigener
+    /// Marke, die Deklaration.</summary>
+    function MarkLine(AFixtureIndex, ATestIndex: Integer): Integer;
+    /// <summary>Hat der Fall ACaseIndex eine Zeile für sich (kein weiterer [TestCase] und nicht die Deklaration der
+    /// Methode in derselben Zeile)?</summary>
+    function CaseHasOwnLine(AFixtureIndex, ATestIndex, ACaseIndex: Integer): Boolean;
   end;
 
   TDUnitXSource = class
@@ -90,6 +114,16 @@ type
   public
     /// <summary>Voller Name für --run: Unit.Fixture bzw. Unit.Fixture.Methode (AMethod = '').</summary>
     class function TestName(const AUnitName, AFixture, AMethod: string): string; static;
+    /// <summary>Voller Name eines Testfalls wie in DUnitX: Unit.Fixture.Methode.Fall; ein Fall in Klammern
+    /// ohne Punkt davor, ein leerer Fall ergibt Unit.Fixture.Methode.</summary>
+    class function CaseName(const AUnitName, AFixture, AMethod, ACase: string): string; static;
+    /// <summary>Namen für --run, die genau die Fixture AFixtureIndex (ATestIndex = -1), den Test ATestIndex mit
+    /// allen Fällen (ACaseIndex = -1) bzw. nur den Fall ACaseIndex treffen (#585). [TestCase]-Methoden: je Fall
+    /// ein Name (Unit.Fixture.Methode allein trifft sie nicht); mit [Ignore] führt DUnitX sie als einen Test
+    /// ohne Fall. Eine Fixture, deren Name der Anfang einer anderen Fixture der Unit ist, wird über ihre Tests
+    /// genannt, sonst liefe die andere mit (DUnitX vergleicht den Anfang). Leer bei ungültigem Index.</summary>
+    class function RunNames(const AUnit: TDUnitXUnit; AFixtureIndex, ATestIndex,
+      ACaseIndex: Integer): TArray<string>; static;
     /// <summary>Argumente eines Laufs: XML-Bericht nach AResultFile, ohne Warten am Ende, mit --run, wenn ATests
     /// Namen enthält (sonst alle Tests).</summary>
     class function Arguments(const AResultFile: string; const ATests: TArray<string>): TArray<string>; static;
@@ -341,6 +375,87 @@ begin
     Result := Fixtures[FixtureIndex].Tests[TestIndex].Line;
 end;
 
+function TDUnitXUnit.CaseHasOwnLine(AFixtureIndex, ATestIndex, ACaseIndex: Integer): Boolean;
+var
+  Index: Integer;
+  Lines: TArray<Integer>;
+begin
+  Result := False;
+  if (AFixtureIndex < 0) or (AFixtureIndex > High(Fixtures)) or (ATestIndex < 0) or
+    (ATestIndex > High(Fixtures[AFixtureIndex].Tests)) then
+    Exit;
+  Lines := Fixtures[AFixtureIndex].Tests[ATestIndex].CaseLines;
+  if (ACaseIndex < 0) or (ACaseIndex > High(Lines)) or
+    (Lines[ACaseIndex] = Fixtures[AFixtureIndex].Tests[ATestIndex].Line) then
+    Exit;
+  for Index := 0 to High(Lines) do
+    if (Index <> ACaseIndex) and (Lines[Index] = Lines[ACaseIndex]) then
+      Exit;
+  Result := True;
+end;
+
+function TDUnitXUnit.MarkLine(AFixtureIndex, ATestIndex: Integer): Integer;
+var
+  Test: TDUnitXTest;
+  Index: Integer;
+begin
+  Result := -1;
+  if (AFixtureIndex < 0) or (AFixtureIndex > High(Fixtures)) then
+    Exit;
+  if ATestIndex < 0 then
+    Exit(Fixtures[AFixtureIndex].AttributeLine);
+  if ATestIndex > High(Fixtures[AFixtureIndex].Tests) then
+    Exit;
+  Test := Fixtures[AFixtureIndex].Tests[ATestIndex];
+  Result := Test.AttributeLine;
+  // Steht dort ein Fall mit eigener Marke, rückt die Marke des Tests an die Deklaration.
+  for Index := 0 to High(Test.CaseLines) do
+    if (Test.CaseLines[Index] = Result) and CaseHasOwnLine(AFixtureIndex, ATestIndex, Index) then
+      Exit(Test.Line);
+end;
+
+function TDUnitXUnit.TestAt(ALine: Integer; out AFixtureIndex, ATestIndex, ACaseIndex: Integer): Boolean;
+var
+  FixtureIndex, TestIndex, CaseIndex: Integer;
+  Test: TDUnitXTest;
+begin
+  AFixtureIndex := -1;
+  ATestIndex := -1;
+  ACaseIndex := -1;
+  Result := True;
+  // Zeile eines [TestCase]: nur dieser Fall.
+  for FixtureIndex := 0 to High(Fixtures) do
+    for TestIndex := 0 to High(Fixtures[FixtureIndex].Tests) do
+      for CaseIndex := 0 to High(Fixtures[FixtureIndex].Tests[TestIndex].CaseLines) do
+        if Fixtures[FixtureIndex].Tests[TestIndex].CaseLines[CaseIndex] = ALine then
+        begin
+          AFixtureIndex := FixtureIndex;
+          ATestIndex := TestIndex;
+          if CaseHasOwnLine(FixtureIndex, TestIndex, CaseIndex) then
+            ACaseIndex := CaseIndex;
+          Exit;
+        end;
+  if AtLine(ALine, AFixtureIndex, ATestIndex) then
+    Exit;
+  for FixtureIndex := 0 to High(Fixtures) do
+    for TestIndex := 0 to High(Fixtures[FixtureIndex].Tests) do
+    begin
+      Test := Fixtures[FixtureIndex].Tests[TestIndex];
+      // Zwischen erstem Attribut und Deklaration ([Category] …) oder im Rumpf bis zum end.
+      if ((ALine >= Test.AttributeLine) and (ALine <= Test.Line)) or
+        ((Test.BodyLine >= 0) and (Test.EndLine >= Test.BodyLine) and (ALine >= Test.BodyLine) and
+        (ALine <= Test.EndLine)) then
+      begin
+        AFixtureIndex := FixtureIndex;
+        ATestIndex := TestIndex;
+        Exit;
+      end;
+    end;
+  AFixtureIndex := -1;
+  ATestIndex := -1;
+  Result := False;
+end;
+
 { TDUnitXSource }
 
 class function TDUnitXSource.AttributeOf(const AName: string): TDUnitXAttribute;
@@ -503,6 +618,8 @@ var
     Test.Line := Tokens[Index].Line;
     Test.AttributeLine := FirstPendingLine(Test.Line);
     Test.BodyLine := -1;
+    Test.BeginLine := -1;
+    Test.EndLine := -1;
     Inc(Index);
     if (Index >= Count) or (Tokens[Index].Kind <> TTokenKind.Ident) then
       Exit;
@@ -522,6 +639,7 @@ var
           begin
             IsTest := True;
             Test.Cases := Test.Cases + [Attribute.FirstArgument];
+            Test.CaseLines := Test.CaseLines + [Attribute.Line];
           end;
         TDUnitXAttribute.Ignore:
           Test.Ignored := True;
@@ -618,10 +736,133 @@ var
     Candidates := Candidates + [Candidate];
   end;
 
-  /// <summary>„procedure TFoo.Bar“ im implementation-Teil: Zeile merken.</summary>
+  /// <summary>Kopf einer Routine bis zum ersten „;“ außerhalb von Klammern; Index steht danach dahinter.</summary>
+  procedure SkipHeader;
+  var
+    Depth: Integer;
+  begin
+    Depth := 0;
+    while Index < Count do
+    begin
+      if IsSym(Tokens[Index], '(') then
+        Inc(Depth)
+      else if IsSym(Tokens[Index], ')') then
+        Dec(Depth)
+      else if IsSym(Tokens[Index], ';') and (Depth <= 0) then
+      begin
+        Inc(Index);
+        Exit;
+      end;
+      Inc(Index);
+    end;
+  end;
+
+  /// <summary>Anweisungsteil ab begin bzw. asm (Index darauf) bis zum passenden end; Zeile dieses end, -1 ohne.
+  /// Index steht danach dahinter.</summary>
+  function SkipStatements: Integer;
+  var
+    Depth: Integer;
+  begin
+    Result := -1;
+    Depth := 0;
+    while Index < Count do
+    begin
+      if IsWord(Tokens[Index], 'begin') or IsWord(Tokens[Index], 'try') or IsWord(Tokens[Index], 'case') or
+        IsWord(Tokens[Index], 'asm') then
+        Inc(Depth)
+      else if IsWord(Tokens[Index], 'end') then
+      begin
+        Dec(Depth);
+        if Depth <= 0 then
+        begin
+          Result := Tokens[Index].Line;
+          Inc(Index);
+          Exit;
+        end;
+      end;
+      Inc(Index);
+    end;
+  end;
+
+  /// <summary>Typ mit end im Deklarationsteil (record, class, object, interface; Index darauf): bis hinter das
+  /// passende end. Varianten (case) haben kein eigenes end.</summary>
+  procedure SkipTypeBody;
+  var
+    Depth: Integer;
+  begin
+    Depth := 0;
+    while Index < Count do
+    begin
+      if IsWord(Tokens[Index], 'record') or
+        ((IsWord(Tokens[Index], 'class') or IsWord(Tokens[Index], 'object') or IsWord(Tokens[Index], 'interface')) and
+        IsSym(Peek(-1), '=')) then
+        Inc(Depth)
+      else if IsWord(Tokens[Index], 'end') then
+      begin
+        Dec(Depth);
+        if Depth <= 0 then
+        begin
+          Inc(Index);
+          Exit;
+        end;
+      end;
+      Inc(Index);
+    end;
+  end;
+
+  /// <summary>Rumpf einer Routine ab dem Ende ihres Kopfs: Deklarationen samt lokalen Routinen, dann der
+  /// Anweisungsteil. ABeginLine: Zeile der ersten Anweisung, ohne Anweisung die von begin; AEndLine: Zeile des
+  /// abschließenden end. Beide -1, wenn kein Rumpf folgt (forward, external, Ende des Abschnitts).</summary>
+  procedure ReadRoutine(ADepth: Integer; out ABeginLine, AEndLine: Integer);
+  var
+    InnerBegin, InnerEnd: Integer;
+  begin
+    ABeginLine := -1;
+    AEndLine := -1;
+    while Index < Count do
+    begin
+      if IsWord(Tokens[Index], 'begin') or IsWord(Tokens[Index], 'asm') then
+      begin
+        ABeginLine := Tokens[Index].Line;
+        if (Index + 1 < Count) and not IsWord(Tokens[Index + 1], 'end') then
+          ABeginLine := Tokens[Index + 1].Line;
+        AEndLine := SkipStatements;
+        Exit;
+      end;
+      if IsWord(Tokens[Index], 'forward') or IsWord(Tokens[Index], 'external') then
+      begin
+        SkipHeader;
+        Exit;
+      end;
+      if IsWord(Tokens[Index], 'implementation') or IsWord(Tokens[Index], 'initialization') or
+        IsWord(Tokens[Index], 'finalization') then
+        Exit;
+      // Lokale Routine (nicht der Typ „procedure(…) of object“ hinter „=“, „:“ oder „to“).
+      if (ADepth < 16) and (IsWord(Tokens[Index], 'procedure') or IsWord(Tokens[Index], 'function')) and
+        (Peek(1).Kind = TTokenKind.Ident) and not IsSym(Peek(-1), '=') and not IsSym(Peek(-1), ':') and
+        not IsWord(Peek(-1), 'to') then
+      begin
+        Inc(Index);
+        SkipHeader;
+        ReadRoutine(ADepth + 1, InnerBegin, InnerEnd);
+        Continue;
+      end;
+      if IsWord(Tokens[Index], 'record') or
+        ((IsWord(Tokens[Index], 'class') or IsWord(Tokens[Index], 'object') or IsWord(Tokens[Index], 'interface')) and
+        IsSym(Peek(-1), '=') and not IsSym(Peek(1), ';') and not IsWord(Peek(1), 'of')) then
+      begin
+        SkipTypeBody;
+        Continue;
+      end;
+      Inc(Index);
+    end;
+  end;
+
+  /// <summary>„procedure TFoo.Bar“ im implementation-Teil: Zeilen von Kopf, erster Anweisung und end merken.
+  /// </summary>
   procedure ReadBody;
   var
-    Line, CandidateIndex, TestIndex: Integer;
+    Line, CandidateIndex, TestIndex, FoundCandidate, FoundTest, BeginLine, EndLine: Integer;
     ClassName, Method: string;
   begin
     Line := Tokens[Index].Line;
@@ -632,12 +873,25 @@ var
     ClassName := Tokens[Index].Text;
     Method := Tokens[Index + 2].Text;
     Inc(Index, 3);
+    FoundCandidate := -1;
+    FoundTest := -1;
     for CandidateIndex := 0 to High(Candidates) do
       if SameText(Candidates[CandidateIndex].Fixture.Name, ClassName) then
         for TestIndex := 0 to High(Candidates[CandidateIndex].Fixture.Tests) do
           if SameText(Candidates[CandidateIndex].Fixture.Tests[TestIndex].Method, Method) and
             (Candidates[CandidateIndex].Fixture.Tests[TestIndex].BodyLine < 0) then
+          begin
             Candidates[CandidateIndex].Fixture.Tests[TestIndex].BodyLine := Line;
+            FoundCandidate := CandidateIndex;
+            FoundTest := TestIndex;
+          end;
+    if FoundCandidate < 0 then
+      Exit;
+    // Rumpf des Tests: Haltepunkt und Bereich für „Test am Cursor“ (#585).
+    SkipHeader;
+    ReadRoutine(0, BeginLine, EndLine);
+    Candidates[FoundCandidate].Fixture.Tests[FoundTest].BeginLine := BeginLine;
+    Candidates[FoundCandidate].Fixture.Tests[FoundTest].EndLine := EndLine;
   end;
 
 var
@@ -725,6 +979,85 @@ begin
     Result := AUnitName + '.' + Result;
   if AMethod <> '' then
     Result := Result + '.' + AMethod;
+end;
+
+class function TDUnitXCommandLine.CaseName(const AUnitName, AFixture, AMethod, ACase: string): string;
+begin
+  Result := TestName(AUnitName, AFixture, AMethod);
+  // TDUnitXTestCase.GetName: „Methode(1,2)“ bei AutoNameTestCase, sonst „Methode.Fall“.
+  if ACase = '' then
+    Exit;
+  if ACase[1] = '(' then
+    Result := Result + ACase
+  else
+    Result := Result + '.' + ACase;
+end;
+
+class function TDUnitXCommandLine.RunNames(const AUnit: TDUnitXUnit; AFixtureIndex, ATestIndex,
+  ACaseIndex: Integer): TArray<string>;
+var
+  Fixture: TDUnitXFixture;
+  Test: TDUnitXTest;
+  Index: Integer;
+  Name: string;
+  Shadowed: Boolean;
+  Names: TArray<string>;
+
+  procedure Add(const AName: string);
+  var
+    Known: string;
+  begin
+    for Known in Names do
+      if SameText(Known, AName) then
+        Exit;
+    Names := Names + [AName];
+  end;
+
+  procedure AddTest(const ATest: TDUnitXTest; ACase: Integer);
+  var
+    CaseIndex: Integer;
+  begin
+    // Ohne Fälle oder mit [Ignore] (DUnitX führt sie dann als einen Test): der Name der Methode.
+    if (Length(ATest.Cases) = 0) or ATest.Ignored then
+      Add(TestName(AUnit.UnitName, Fixture.Name, ATest.Method))
+    else if (ACase >= 0) and (ACase <= High(ATest.Cases)) then
+      Add(CaseName(AUnit.UnitName, Fixture.Name, ATest.Method, ATest.Cases[ACase]))
+    else
+      for CaseIndex := 0 to High(ATest.Cases) do
+        Add(CaseName(AUnit.UnitName, Fixture.Name, ATest.Method, ATest.Cases[CaseIndex]));
+  end;
+
+begin
+  Result := nil;
+  Names := nil;
+  if (AFixtureIndex < 0) or (AFixtureIndex > High(AUnit.Fixtures)) then
+    Exit;
+  Fixture := AUnit.Fixtures[AFixtureIndex];
+  if ATestIndex >= 0 then
+  begin
+    if ATestIndex > High(Fixture.Tests) then
+      Exit;
+    Test := Fixture.Tests[ATestIndex];
+    AddTest(Test, ACaseIndex);
+    Exit(Names);
+  end;
+  // Die ganze Fixture: Unit.Fixture, außer eine andere Fixture der Unit beginnt mit demselben Namen.
+  Shadowed := False;
+  for Index := 0 to High(AUnit.Fixtures) do
+  begin
+    Name := AUnit.Fixtures[Index].Name;
+    if (Index <> AFixtureIndex) and (Length(Name) > Length(Fixture.Name)) and
+      SameText(Copy(Name, 1, Length(Fixture.Name)), Fixture.Name) then
+      Shadowed := True;
+  end;
+  if not Shadowed then
+  begin
+    Result := [TestName(AUnit.UnitName, Fixture.Name, '')];
+    Exit;
+  end;
+  for Test in Fixture.Tests do
+    AddTest(Test, -1);
+  Result := Names;
 end;
 
 class function TDUnitXCommandLine.Arguments(const AResultFile: string; const ATests: TArray<string>): TArray<string>;

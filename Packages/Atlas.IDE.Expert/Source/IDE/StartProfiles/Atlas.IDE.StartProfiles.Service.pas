@@ -21,6 +21,13 @@
 //   OnStatus (Text '' = kein Feld: keine Profile, kein aktives).
 // - Meldungen in der Meldungsansicht (Gruppe Atlas), nie als Dialog; das
 //   Protokoll bekommt keine Parameter oder Pfade.
+// - Vorübergehende Startparameter (Test debuggen, #585): RunTemporary merkt
+//   die Startoptionen in der lokalen Datei ("temporary"), schreibt die neuen
+//   Parameter, macht das Projekt aktiv und löst „Start“ aus; EndTemporary
+//   stellt sie zurück. Solange sie gelten, setzt der Zeitgeber das aktive
+//   Profil nicht wieder. Bleibt ein Eintrag nach einem Absturz stehen, stellt
+//   der Zeitgeber ihn beim nächsten Mal zurück (auch bei ausgeschalteten
+//   Startprofilen geht RunTemporary/EndTemporary).
 // Nur im Hauptthread verwenden.
 
 interface
@@ -43,6 +50,8 @@ type
   private class var
     FInstance: TAtlasIdeStartProfiles;
     FOnStatus: TAtlasStartProfileStatus;
+    /// <summary>Projekt mit vorübergehenden Startparametern (#585); '' ohne.</summary>
+    FTemporary: string;
   private
     FTimer: TTimer;
     FStamp: string;
@@ -64,6 +73,11 @@ type
     class procedure SaveCurrent(const AProject: IOTAProject); static;
     class procedure EditPersonal(const AProject: string); static;
     class function ActionCommand(const AId: string; ATextId: TAtlasTextId): TAtlasCommand; static;
+    /// <summary>„Start“ (ADebugger) bzw. „Ohne Debugger starten“ der IDE auslösen; False mit Grund.</summary>
+    class function ExecuteRun(ADebugger: Boolean; out AReason: string): Boolean; static;
+    /// <summary>Offenen Eintrag "temporary" von AProject zurückstellen (nach einem Absturz); True, wenn einer offen
+    /// war.</summary>
+    class function RecoverTemporary(const AProject: IOTAProject): Boolean; static;
   public
     constructor Create;
     destructor Destroy; override;
@@ -85,6 +99,15 @@ type
     /// <summary>Für #764: Profil setzen, AProject zum aktiven Projekt machen und „Start“ (ADebugger) bzw. „Ohne
     /// Debugger starten“ der IDE auslösen. Das Projekt muss geöffnet sein.</summary>
     class function Run(const AProject, AName: string; ADebugger: Boolean; out AReason: string): Boolean; static;
+    /// <summary>Für „Test debuggen“ (#585): Parameter vorübergehend auf AParameters(bisherige Parameter) setzen
+    /// (Arbeitsordner, Host und Umgebung bleiben), AProject aktiv machen und „Start“ bzw. „Ohne Debugger starten“
+    /// auslösen. Das Projekt muss geöffnet sein; der Debugger darf nicht laufen. Scheitert der Start, stellt es die
+    /// Parameter gleich zurück. False mit Grund.</summary>
+    class function RunTemporary(const AProject: string; const AParameters: TFunc<string, string>;
+      ADebugger: Boolean; out AReason: string): Boolean; static;
+    /// <summary>Vorübergehende Parameter von AProject zurückstellen. AChanged: Jemand hat sie während des Laufs
+    /// geändert, sie bleiben. False, wenn das Projekt nicht offen ist oder Schreiben scheitert.</summary>
+    class function EndTemporary(const AProject: string; out AChanged: Boolean): Boolean; static;
     /// <summary>Auswahl für das aktive Projekt öffnen (Befehl und Statusfeld).</summary>
     class procedure ShowPicker; static;
     /// <summary>Empfänger für Text und Tooltip des Statusfelds nach jeder Änderung; nil = keiner. Meldet sofort,
@@ -372,10 +395,6 @@ class function TAtlasIdeStartProfiles.Run(const AProject, AName: string; ADebugg
 var
   Services: IOTAModuleServices;
   Project: IOTAProject;
-  Actions: INTAServices;
-  Index: Integer;
-  Name: string;
-  Action: TContainedAction;
 begin
   Result := False;
   AReason := '';
@@ -396,6 +415,17 @@ begin
     Services.MainProjectGroup.ActiveProject := Project;
   if not Activate(Project.FileName, AName, AReason) then
     Exit;
+  Result := ExecuteRun(ADebugger, AReason);
+end;
+
+class function TAtlasIdeStartProfiles.ExecuteRun(ADebugger: Boolean; out AReason: string): Boolean;
+var
+  Actions: INTAServices;
+  Index: Integer;
+  Name: string;
+  Action: TContainedAction;
+begin
+  AReason := '';
   if ADebugger then
     Name := RunAction
   else
@@ -413,6 +443,113 @@ begin
       Exit(True);
     end;
   AReason := TAtlasStrings.Text(TAtlasTextId.StartProfilesNoRunAction);
+  Result := False;
+end;
+
+class function TAtlasIdeStartProfiles.RunTemporary(const AProject: string; const AParameters: TFunc<string, string>;
+  ADebugger: Boolean; out AReason: string): Boolean;
+var
+  Services: IOTAModuleServices;
+  Project: IOTAProject;
+  State: TAtlasStartProfileState;
+  Current, Options: TAtlasStartOptions;
+  Changed: Boolean;
+begin
+  Result := False;
+  AReason := '';
+  if Debugging then
+  begin
+    AReason := TAtlasStrings.Text(TAtlasTextId.StartProfilesDebuggerRunning);
+    Exit;
+  end;
+  Project := FindProject(AProject);
+  if Project = nil then
+  begin
+    AReason := TAtlasStrings.Fmt(TAtlasTextId.StartProfilesNotOpen, [ExtractFileName(AProject)]);
+    Exit;
+  end;
+  // „Start“ der IDE startet das aktive Projekt; die Startoptionen gelten für dessen Konfiguration und Plattform.
+  if Supports(BorlandIDEServices, IOTAModuleServices, Services) and (Services.MainProjectGroup <> nil) and
+    (Services.MainProjectGroup.ActiveProject <> Project) then
+    Services.MainProjectGroup.ActiveProject := Project;
+  // Ein Eintrag von einem abgebrochenen Lauf zuerst zurückstellen, sonst gälten danach dessen Parameter.
+  RecoverTemporary(Project);
+  if not ReadOptions(Project, Current) then
+  begin
+    AReason := TAtlasStrings.Fmt(TAtlasTextId.StartProfilesWriteFailed, [ExtractFileName(Project.FileName)]);
+    Exit;
+  end;
+  Options := TAtlasStartProfiles.TemporaryOptions(Current, AParameters(Current.Parameters));
+  // Erst merken (übersteht einen Absturz), dann schreiben.
+  State := TAtlasStartProfiles.Load(Folder, Project.FileName);
+  TAtlasStartProfiles.BeginTemporary(State, Current, Options.Parameters);
+  if not TAtlasStartProfiles.Save(Folder, State) then
+  begin
+    AReason := TAtlasStrings.Text(TAtlasTextId.StartProfilesSaveFailed);
+    Exit;
+  end;
+  FTemporary := Project.FileName;
+  if not WriteOptions(Project, Options, AReason) then
+  begin
+    AReason := TAtlasStrings.Fmt(TAtlasTextId.StartProfilesWriteFailed, [AReason]);
+    EndTemporary(Project.FileName, Changed);
+    Exit;
+  end;
+  if not ExecuteRun(ADebugger, AReason) then
+  begin
+    EndTemporary(Project.FileName, Changed);
+    Exit;
+  end;
+  Result := True;
+end;
+
+class function TAtlasIdeStartProfiles.EndTemporary(const AProject: string; out AChanged: Boolean): Boolean;
+var
+  Project: IOTAProject;
+  State: TAtlasStartProfileState;
+  Current, Before: TAtlasStartOptions;
+  Reason: string;
+begin
+  AChanged := False;
+  Result := False;
+  if SameText(FTemporary, AProject) then
+    FTemporary := '';
+  Project := FindProject(AProject);
+  if Project = nil then
+    Exit;
+  State := TAtlasStartProfiles.Load(Folder, Project.FileName);
+  if not State.HasTemporary then
+    Exit(True);
+  ReadOptions(Project, Current);
+  if TAtlasStartProfiles.EndTemporary(State, Current, Before) then
+  begin
+    if not WriteOptions(Project, Before, Reason) then
+    begin
+      Say(TAtlasStrings.Fmt(TAtlasTextId.StartProfilesWriteFailed, [Reason]));
+      Exit;
+    end;
+  end
+  else
+    AChanged := True;
+  Result := TAtlasStartProfiles.Save(Folder, State);
+  if FInstance <> nil then
+    FInstance.Check(True);
+end;
+
+class function TAtlasIdeStartProfiles.RecoverTemporary(const AProject: IOTAProject): Boolean;
+var
+  State: TAtlasStartProfileState;
+  Changed: Boolean;
+begin
+  Result := False;
+  if (AProject = nil) or SameText(FTemporary, AProject.FileName) or Debugging then
+    Exit;
+  State := TAtlasStartProfiles.Load(Folder, AProject.FileName);
+  if not State.HasTemporary then
+    Exit;
+  Result := True;
+  if EndTemporary(AProject.FileName, Changed) and not Changed then
+    Say(TAtlasStrings.Fmt(TAtlasTextId.StartProfilesTemporaryRestored, [ExtractFileName(AProject.FileName)]));
 end;
 
 class procedure TAtlasIdeStartProfiles.SaveCurrent(const AProject: IOTAProject);
@@ -630,9 +767,11 @@ begin
   if not AForce and (Stamp = FStamp) then
     Exit;
   FStamp := Stamp;
-  // Gemerktes Profil für Projekt, Konfiguration und Plattform (wieder) setzen, wenn die Startoptionen abweichen.
-  if Project <> nil then
+  // Gemerktes Profil für Projekt, Konfiguration und Plattform (wieder) setzen, wenn die Startoptionen abweichen;
+  // nicht, solange vorübergehende Parameter gelten (#585). Ein liegengebliebener Eintrag wird zurückgestellt.
+  if (Project <> nil) and not SameText(FTemporary, FileName) then
   begin
+    RecoverTemporary(Project);
     Active := ActiveName(FileName);
     if (Active <> '') and TAtlasStartProfiles.Find(Profiles(FileName), Active, Entry) and
       not WriteOptions(Project, TAtlasStartProfiles.OptionsOf(Entry), Reason) then

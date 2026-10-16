@@ -98,7 +98,10 @@ type
     /// <summary>Stand eines Tests (AMethod) bzw. einer Fixture (AMethod = '') in den Ergebnissen: Failed, wenn
     /// ein Fall fehlschlug, Passed, wenn mindestens einer bestand und keiner fehlschlug, sonst Unknown.</summary>
     class function StatusOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture,
-      AMethod: string): TAtlasTestStatus; static;
+      AMethod: string): TAtlasTestStatus; overload; static;
+    /// <summary>Wie oben, nur der Fall ACaseName eines [TestCase] (#585); ACaseName '' = alle Fälle.</summary>
+    class function StatusOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture, AMethod,
+      ACaseName: string): TAtlasTestStatus; overload; static;
   end;
 
 implementation
@@ -286,6 +289,12 @@ end;
 
 class function TAtlasTestRun.StatusOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture,
   AMethod: string): TAtlasTestStatus;
+begin
+  Result := StatusOf(ACases, AUnitName, AFixture, AMethod, '');
+end;
+
+class function TAtlasTestRun.StatusOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture, AMethod,
+  ACaseName: string): TAtlasTestStatus;
 var
   Item: TTestCaseResult;
 begin
@@ -296,6 +305,8 @@ begin
       not SameText(Item.UnitName, AUnitName)) then
       Continue;
     if (AMethod <> '') and not SameText(Item.Method, AMethod) then
+      Continue;
+    if (ACaseName <> '') and not SameText(Item.CaseName, ACaseName) then
       Continue;
     if Item.IsFailure then
       Exit(TAtlasTestStatus.Failed);

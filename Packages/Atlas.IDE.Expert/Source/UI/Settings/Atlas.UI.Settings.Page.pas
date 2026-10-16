@@ -172,6 +172,9 @@ type
     /// <summary>Startprofile (#575): Befehl, Statusfeld.</summary>
     FStartProfiles: TCheckBox;
     FStartProfilesStatusField: TCheckBox;
+    /// <summary>Einzelnen Test debuggen (#585): Befehle und Marke, Haltepunkt am Anfang der Methode.</summary>
+    FTestDebug: TCheckBox;
+    FTestBreakAtStart: TCheckBox;
     FActionsKey: TEdit;
     FExpandKey: TEdit;
     FShrinkKey: TEdit;
@@ -466,6 +469,9 @@ type
     /// <summary>Zum Testen: Startprofile (#575).</summary>
     property StartProfilesCheck: TCheckBox read FStartProfiles;
     property StartProfilesStatusFieldCheck: TCheckBox read FStartProfilesStatusField;
+    /// <summary>Zum Testen: Test debuggen (#585).</summary>
+    property TestDebugCheck: TCheckBox read FTestDebug;
+    property TestBreakAtStartCheck: TCheckBox read FTestBreakAtStart;
     /// <summary>Zum Testen: benannte Lesezeichen (#622).</summary>
     property BookmarksNamedCheck: TCheckBox read FBookmarksNamed;
     property BookmarksSharedCheck: TCheckBox read FBookmarksShared;
@@ -857,6 +863,11 @@ begin
   // Startprofile (#575).
   FStartProfiles := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStartProfiles));
   FStartProfilesStatusField := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStartProfilesStatusField));
+
+  // Einzelnen Test im Debugger starten (#585); die Code Lens dazu steht unter Editor (codeLens.tests).
+  AddSheet(TAtlasTextId.SettingsTabDebug);
+  FTestDebug := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestDebug));
+  FTestBreakAtStart := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestBreakAtStart));
 
   // Editorbefehle (#399): ein Vorrang für alle.
   AddSheet(TAtlasTextId.SettingsTabCommands);
@@ -1697,6 +1708,8 @@ begin
   FBuildZeroHints.Checked := ASettings.BuildZeroHints;
   FStartProfiles.Checked := ASettings.StartProfiles;
   FStartProfilesStatusField.Checked := ASettings.StartProfilesStatusField;
+  FTestDebug.Checked := ASettings.TestDebug;
+  FTestBreakAtStart.Checked := ASettings.TestBreakAtStart;
   FSafeAsk.Checked := ASettings.SafeAskAfterCrash;
   FSafeAuto.Checked := ASettings.SafeAutoAfterRepeatedCrash;
   case TAtlasSafeMode.KeyOf(ASettings.SafeStartupKey) of
@@ -1894,6 +1907,8 @@ begin
   ASettings.BuildZeroHints := FBuildZeroHints.Checked;
   ASettings.StartProfiles := FStartProfiles.Checked;
   ASettings.StartProfilesStatusField := FStartProfilesStatusField.Checked;
+  ASettings.TestDebug := FTestDebug.Checked;
+  ASettings.TestBreakAtStart := FTestBreakAtStart.Checked;
   ASettings.SafeAskAfterCrash := FSafeAsk.Checked;
   ASettings.SafeAutoAfterRepeatedCrash := FSafeAuto.Checked;
   case FSafeKey.Choice of

@@ -331,6 +331,8 @@
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Contract.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Summary.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Run.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Debug.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.ProjectChoice.pas"/>
         <DCCReference Include="Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas"/>
         <DCCReference Include="Source\Core\Results\Atlas.Core.Results.Model.pas"/>
         <DCCReference Include="Source\UI\Results\Atlas.UI.Results.Frame.pas">
@@ -447,6 +449,7 @@
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Service.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Gutter.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Runner.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Debug.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Lens.pas"/>
         <DCCReference Include="Source\Core\StartProfiles\Atlas.Core.StartProfiles.Store.pas"/>
         <DCCReference Include="Source\IDE\StartProfiles\Atlas.IDE.StartProfiles.Service.pas"/>
