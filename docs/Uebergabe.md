@@ -429,6 +429,7 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Nachtrag 16.10., 0 Uhr:** `feature/719-erzeugen-menue` (#719, Erzeugen-Menü) ohne Konflikte gemergt. Prüfskripte grün, nicht gebaut.
 - **Nachtrag 16.10., 0:20 Uhr:** Block H `claude/code-review-fixes-awz1nk-completion` (Umbau der Vervollständigung, S-01/S-07/D-09) ohne Konflikte gemergt. Prüfskripte grün, nicht gebaut.
 - **Nachtrag 16.10., 1 Uhr:** Block I `claude/code-review-fixes-awz1nk-plugin-struktur` (A-09, S-03: Grundbausteine nach `Source/IDE/Foundation`, `Atlas.IDE.Foundation.*`) ohne Konflikte gemergt. Prüfskripte grün, nicht gebaut. Neue Plugin-Branches müssen die umbenannten Units verwenden.
+- **Nachtrag 16.10., 1:10 Uhr:** `feature/759-projekt-einrichten` (#759, Projekt für Atlas einrichten) ohne Konflikte gemergt. Prüfskripte grün, nicht gebaut (Testfälle PE1–PE22 in RAD Studio).
 
 ## Code-Review Block C: Heißer Pfad des Servers (15.10.2026, Branch `claude/code-review-fixes-awz1nk-heisser-pfad` auf Block B, nicht gepusht)
 - **Umfang:** P-01, P-02, P-05 (Rest), P-06, P-07, P-08 (ohne `Semantics.ControlFlow`), P-11, P-12 (Rest), P-13, P-17 nach dem Plan `C-server-hotpath`.
