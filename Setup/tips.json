@@ -507,6 +507,26 @@
       "image": "Tipps\\tests-erneut.png"
     },
     {
+      "id": "debugTest",
+      "command": "Atlas.DebugTest",
+      "setting": "TestDebug",
+      "title": "Einzelnen Test debuggen",
+      "titleEn": "Debug a single test",
+      "text": "„Debuggen“ an [Test] oder „Test am Cursor debuggen“ baut das Testprojekt und startet nur diesen Test (bei [TestCase] auch einen Fall) im Debugger; Atlas hält in der ersten Zeile der Methode. Danach gelten aktives Projekt und Startparameter wie vorher.",
+      "textEn": "“Debug” at [Test] or “Debug test at cursor” builds the test project and starts just this test (for [TestCase] also a single case) in the debugger; Atlas stops in the method's first line. Afterwards the active project and run parameters are as before.",
+      "image": "Tipps\\test-debuggen.png"
+    },
+    {
+      "id": "runTestAtCursor",
+      "command": "Atlas.RunTest",
+      "setting": "TestRun",
+      "title": "Test am Cursor ausführen",
+      "titleEn": "Run test at cursor",
+      "text": "Führt den Test, den [TestCase]-Fall oder die Fixture aus, in der der Cursor steht – auch im Rumpf der Testmethode und über das Kontextmenü. Gehört die Testunit zu mehreren Testprojekten, fragt Atlas einmal und merkt sich die Wahl.",
+      "textEn": "Runs the test, [TestCase] case or fixture the cursor is in – also inside the test method's body and from the context menu. If the test unit belongs to several test projects, Atlas asks once and remembers the choice.",
+      "image": "Tipps\\test-am-cursor.png"
+    },
+    {
       "id": "startProfile",
       "command": "Atlas.StartProfile",
       "setting": "StartProfiles",

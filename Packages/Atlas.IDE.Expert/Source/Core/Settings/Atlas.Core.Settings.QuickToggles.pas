@@ -331,6 +331,12 @@ begin
     '"TestsAfterBuild":{"type":"boolean","x-feature":"Build",' +
       '"default":false,"x-page":"Compiler","x-quickToggle":true,' +
       '"x-caption":"Tests nach dem Build","x-captionEn":"Tests after the build","x-issue":"#69"},' +
+    '"TestDebug":{"type":"boolean","x-feature":"Build",' +
+      '"default":true,"x-page":"Debuggen","x-quickToggle":true,' +
+      '"x-caption":"Test debuggen","x-captionEn":"Debug test","x-issue":"#585"},' +
+    '"TestBreakAtStart":{"type":"boolean","default":true,"x-page":"Debuggen",' +
+      '"x-caption":"Beim Test-Debuggen am Anfang der Methode anhalten",' +
+      '"x-captionEn":"Stop at the start of the method when debugging a test","x-issue":"#585"},' +
     '"TestsBuildFirst":{"type":"boolean","default":true,"x-page":"Compiler",' +
       '"x-caption":"Vor den Tests bauen","x-captionEn":"Build before the tests","x-issue":"#69"},' +
     '"BuildZeroHints":{"type":"boolean","default":false,"x-page":"Compiler",' +

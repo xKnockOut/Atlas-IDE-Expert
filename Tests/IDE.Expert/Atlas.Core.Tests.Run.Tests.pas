@@ -244,6 +244,11 @@ begin
   Assert.IsTrue(TAtlasTestRun.StatusOf(Cases, 'Rechner.Tests', 'TRechnerTests', 'Neu') = TAtlasTestStatus.Unknown);
   Assert.IsTrue(TAtlasTestRun.StatusOf(Cases, 'Andere.Tests', 'TRechnerTests', 'Addiert') = TAtlasTestStatus.Unknown,
     'andere Unit');
+  // Einzelner Fall (#585, Marke je [TestCase]).
+  Assert.IsTrue(TAtlasTestRun.StatusOf(Cases, 'Rechner.Tests', 'TRechnerTests', 'Summe', 'Gross') =
+    TAtlasTestStatus.Failed);
+  Assert.IsTrue(TAtlasTestRun.StatusOf(Cases, 'Rechner.Tests', 'TRechnerTests', 'Summe', 'Mittel') =
+    TAtlasTestStatus.Unknown, 'Fall nicht im Bericht');
 end;
 
 initialization
