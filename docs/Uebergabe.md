@@ -440,6 +440,7 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Nachtrag 16.10., 5:30 Uhr:** Marcos Delphi-Korrekturen (f635abae) liegen in main. Danach `feature/601-benachrichtigungen` (#601, Benachrichtigungszentrale) ohne Konflikte gemergt. Prüfskripte grün, nicht gebaut.
 - **Nachtrag 16.10., 6:10 Uhr:** auf Marcos Stand 065990f2 (Tests grün) `feature/533-release-waechter` (#533, Release-Build-Wächter, Reiter „Release-Build“) ohne Konflikte gemergt. Prüfskripte grün, nicht gebaut.
 - **Nachtrag 16.10., 7 Uhr:** auf Marcos Stand 25776944 (Einstellungen als Bereichsliste) `feature/763-testergebnisse` (#763, Testergebnisse auf der Willkommensseite, auch aus Jenkins) ohne Konflikte gemergt. Prüfskripte grün, nicht gebaut.
+- **Nachtrag 16.10., 7:35 Uhr:** `claude/project-thread-gf0r3s` („Beim Öffnen eines Projekts einmal bauen“, `build.onOpen`) ohne Konflikte gemergt. Prüfskripte grün, nicht gebaut.
 
 ## Code-Review Block C: Heißer Pfad des Servers (15.10.2026, Branch `claude/code-review-fixes-awz1nk-heisser-pfad` auf Block B, nicht gepusht)
 - **Umfang:** P-01, P-02, P-05 (Rest), P-06, P-07, P-08 (ohne `Semantics.ControlFlow`), P-11, P-12 (Rest), P-13, P-17 nach dem Plan `C-server-hotpath`.
