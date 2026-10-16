@@ -1199,6 +1199,37 @@ Voraussetzung: Git-Projekt `C:\Repo\App\Kasse.dproj` (Repository-Wurzel `C:\Repo
 | PD11 | Dasselbe in `%APPDATA%\Atlas\settings.json` (global) mit einem absoluten `exclude` | Keine Warnung: die globale Datei ist persönlich |
 | PD12 | Abgesichert starten (wie AS5), dann Schnellschalter „Projektdatei .atlas“ an | Zuerst ist der Schalter wie alle aus (keine Meldungen zu `.atlas`, Befehl fehlt); danach gilt die Datei ohne Neustart, Befehl wieder in der Palette |
 
+## Startprofile (#575)
+
+Voraussetzung: Git-Projekt `C:\Repo\App\Zeige.dproj` (Konsolenprogramm, schreibt `ParamStr(1)`, `GetCurrentDir` und `GetEnvironmentVariable('MODUS')` in `C:\Temp\zeige.txt`), Projektdatei `.atlas` an, Startprofile und „Startprofil in der Statusleiste“ an. In `C:\Repo\App\.atlas`:
+
+```jsonc
+"startProfiles": [
+  {"name": "Demo", "parameters": "-demo", "workingDir": "Daten", "environment": {"MODUS": "demo"}},
+  {"name": "Kunde", "parameters": "-kunde 7"}
+]
+```
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SP1 | Befehlspalette „Startprofil: …“ | Auswahl mit „Demo“ und „Kunde“ (Pfad „Team (.atlas)“, Beschreibung mit Parametern, Arbeitsordner und Umgebung), darunter „Aktuelle Startoptionen als persönliches Profil speichern …“, „Persönliche Startprofile bearbeiten“, „Gemeinsame Startprofile in .atlas bearbeiten“; kein „Kein Startprofil“, solange keines aktiv ist |
+| SP2 | „Demo“ wählen, dann F9 | Meldungsansicht „Atlas: Startprofil „Demo“ gesetzt (…)“; *Start › Parameter* zeigt `-demo`, Arbeitsordner `C:\Repo\App\Daten` und die Variable `MODUS=demo`; `zeige.txt` enthält `-demo`, `C:\Repo\App\Daten` und `demo`; Statusleiste „Startprofil: Demo“ |
+| SP3 | Klick auf „Startprofil: Demo“ in der Statusleiste, „Kunde“ wählen, *Start › Ohne Debugger starten* | Feld zeigt „Startprofil: Kunde“; `zeige.txt` enthält `-kunde`; `MODUS` ist leer und der Arbeitsordner wieder der vorherige, weil „Kunde“ beides nicht setzt (Akzeptanz: zwei Profile, je eigene Parameter) |
+| SP4 | Tooltip über dem Feld | Parameter, Arbeitsordner, Host und Umgebung des aktiven Profils, darunter „Klick: Startprofil wählen“ |
+| SP5 | Vor SP2 eigene Parameter `-alt` in *Start › Parameter* eintragen; nach SP3 „Kein Startprofil (Startoptionen von vorher)“ | Meldung „Kein Startprofil; die Startoptionen von vorher gelten wieder.“; *Start › Parameter* zeigt wieder `-alt`; Feld „Startprofil: –“ |
+| SP6 | Repository auf einem zweiten Rechner (oder in einen anderen Ordner) klonen, `Zeige.dproj` öffnen | „Demo“ und „Kunde“ stehen in der Auswahl, ohne etwas einzurichten; noch kein Profil aktiv (Akzeptanz: gemeinsames Profil nach dem Klonen da) |
+| SP7 | „Kunde“ wählen, IDE schließen (Projekt speichern), neu starten, Projekt öffnen | Feld zeigt wieder „Startprofil: Kunde“; Parameter `-kunde 7` |
+| SP8 | „Aktuelle Startoptionen als persönliches Profil speichern …“, Name „Lokal“ | Meldung „Persönliches Startprofil „Lokal“ gespeichert.“; „Lokal“ ist aktiv, Pfad „Persönlich“; Datei `%LOCALAPPDATA%\Atlas\startprofiles\<Schlüssel>.json` enthält das Profil, `.atlas` ist unverändert |
+| SP9 | „Persönliche Startprofile bearbeiten“, in der Datei `"host": "C:\\Tools\\Host.exe"` bei „Lokal“ ergänzen, speichern | Nach höchstens 1 s setzt Atlas die Host-Anwendung neu (*Start › Parameter*); absolute Pfade sind in persönlichen Profilen erlaubt |
+| SP10 | In `.atlas` „Kunde“ löschen, während „Kunde“ aktiv ist | Feld „Startprofil: Kunde (fehlt)“, Tooltip „Das Profil „Kunde“ gibt es nicht mehr …“; die Startoptionen bleiben, wie sie sind |
+| SP11 | Konfiguration Debug → Release bzw. Plattform Win32 → Win64 wechseln | Das aktive Profil gilt auch dort (*Start › Parameter* der neuen Konfiguration zeigt es); das Projekt gilt nur als geändert, wenn sich ein Wert wirklich ändert |
+| SP12 | Projekt ohne `startProfiles` und ohne persönliche Datei aktiv | Kein Feld in der Statusleiste; der Befehl zeigt nur die Aktionen |
+| SP13 | Schalter „Startprofil in der Statusleiste“ aus (Optionen › Atlas › Compiler oder Schnellschalter) | Feld verschwindet ohne Neustart, der Befehl bleibt; wieder an: Feld da |
+| SP14 | Schalter „Startprofile“ aus | Ohne Neustart: Befehl, Feld und Tipp „Startprofile wechseln“ verschwinden; Startoptionen bleiben, wie sie zuletzt gesetzt waren; wieder an: alles zurück, das gemerkte Profil gilt |
+| SP15 | „Atlas-Feld in der Statusleiste“ aus, Startprofil-Feld an | Das Startprofil-Feld bleibt allein sichtbar und klickbar; kein leerer Platz für das Atlas-Feld |
+| SP16 | Projektdatei `.atlas` aus | Nur persönliche Profile; „Gemeinsame Startprofile in .atlas bearbeiten“ meldet, dass die Projektdatei aus ist |
+| SP17 | Während eine Debug-Sitzung läuft, ein Profil wählen | Startoptionen werden gesetzt, gelten ab dem nächsten Start; kein Absturz, kein Dialog |
+
 ## Units suchen (#777)
 
 Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testprojekt; Server läuft; Einstellungen auf Vorgabe.

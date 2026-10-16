@@ -458,6 +458,8 @@ uses
   Atlas.Core.Settings.History in '..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.History.pas',
   Atlas.Core.Settings.TeamFile in '..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.TeamFile.pas',
   Atlas.Core.Settings.TeamFile.Tests in 'IDE.Expert\Atlas.Core.Settings.TeamFile.Tests.pas',
+  Atlas.Core.StartProfiles.Store in '..\Packages\Atlas.IDE.Expert\Source\Core\StartProfiles\Atlas.Core.StartProfiles.Store.pas',
+  Atlas.Core.StartProfiles.Tests in 'IDE.Expert\Atlas.Core.StartProfiles.Tests.pas',
   Atlas.Core.Diagnostics.FeatureTable in '..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.FeatureTable.pas',
   Atlas.Core.Diagnostics.SafeMode in '..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.SafeMode.pas',
   Atlas.Core.Diagnostics.SafeMode.Tests in 'IDE.Expert\Atlas.Core.Diagnostics.SafeMode.Tests.pas',

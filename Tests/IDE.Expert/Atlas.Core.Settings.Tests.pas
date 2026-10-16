@@ -140,6 +140,8 @@ begin
   Assert.IsFalse(Settings.TestsAfterBuild, 'Tests nach dem Build standardmäßig aus (#69)');
   Assert.IsTrue(Settings.TestsBuildFirst, 'vor den Tests bauen standardmäßig an (#69)');
   Assert.IsFalse(Settings.BuildZeroHints, 'build.zeroHints standardmäßig aus (#530)');
+  Assert.IsTrue(Settings.StartProfiles, 'Startprofile standardmäßig an (#575)');
+  Assert.IsTrue(Settings.StartProfilesStatusField, 'Startprofil in der Statusleiste standardmäßig an (#575)');
   Assert.IsTrue(Settings.TodoList, 'Befehl standardmäßig da (#68)');
   Assert.IsTrue(Settings.MetricsReport, 'Befehl standardmäßig da (#66)');
   Assert.IsTrue(Settings.TeamFile, 'Projektdatei standardmäßig an (#486)');
@@ -231,6 +233,8 @@ begin
   Settings.TestsAfterBuild := True;
   Settings.TestsBuildFirst := False;
   Settings.BuildZeroHints := True;
+  Settings.StartProfiles := False;
+  Settings.StartProfilesStatusField := False;
   Settings.TodoList := False;
   Settings.MetricsReport := False;
   Settings.TeamFile := False;
@@ -308,6 +312,8 @@ begin
   Assert.IsTrue(Loaded.TestsAfterBuild);
   Assert.IsFalse(Loaded.TestsBuildFirst);
   Assert.IsTrue(Loaded.BuildZeroHints);
+  Assert.IsFalse(Loaded.StartProfiles);
+  Assert.IsFalse(Loaded.StartProfilesStatusField);
   Assert.IsFalse(Loaded.TodoList);
   Assert.IsFalse(Loaded.MetricsReport);
   Assert.IsFalse(Loaded.TeamFile);

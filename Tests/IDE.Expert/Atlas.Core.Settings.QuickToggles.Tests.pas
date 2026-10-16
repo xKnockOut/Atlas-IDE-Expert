@@ -160,6 +160,14 @@ begin
   Assert.IsFalse(Toggle.Drawing);
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'TestsAfterBuild', Toggle));
   Assert.IsFalse(TAtlasQuickToggles.Find(Toggles, 'BuildZeroHints', Toggle), 'ohne x-quickToggle');
+  // Startprofile (#575): Befehl und Statusfeld je ein Schalter auf der Seite Compiler, keine Zeichnung.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'StartProfiles', Toggle));
+  Assert.AreEqual('Compiler', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  Assert.AreEqual('Build', Toggle.Feature);
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'StartProfilesStatusField', Toggle));
+  Assert.AreEqual('Compiler', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'McpBuild', Toggle));
   Assert.AreEqual('Compiler', Toggle.Page);
   Assert.IsFalse(Toggle.Drawing);
@@ -232,6 +240,7 @@ begin
   Assert.IsTrue(Effective.TodoList, 'Befehl (#68) ist keine Zeichnung');
   Assert.IsTrue(Effective.MetricsReport, 'Befehl (#66) ist keine Zeichnung');
   Assert.IsTrue(Effective.TeamFile, 'Projektdatei (#486) ist keine Zeichnung');
+  Assert.IsTrue(Effective.StartProfiles, 'Startprofile (#575) sind keine Zeichnung');
   Assert.IsTrue(Effective.BaselineUpdate, 'Befehl (#97) ist keine Zeichnung');
   Assert.IsTrue(Stored.PairColors);
   Assert.IsTrue(Stored.PairGuides);

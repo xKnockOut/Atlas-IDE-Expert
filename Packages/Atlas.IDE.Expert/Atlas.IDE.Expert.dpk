@@ -375,6 +375,8 @@ contains
   Atlas.IDE.Bookmarks.Service in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Service.pas',
   Atlas.IDE.Bookmarks.Gutter in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Gutter.pas',
   Atlas.IDE.Tests.Runner in 'Source\IDE\Tests\Atlas.IDE.Tests.Runner.pas',
-  Atlas.IDE.Tests.Lens in 'Source\IDE\Tests\Atlas.IDE.Tests.Lens.pas';
+  Atlas.IDE.Tests.Lens in 'Source\IDE\Tests\Atlas.IDE.Tests.Lens.pas',
+  Atlas.Core.StartProfiles.Store in 'Source\Core\StartProfiles\Atlas.Core.StartProfiles.Store.pas',
+  Atlas.IDE.StartProfiles.Service in 'Source\IDE\StartProfiles\Atlas.IDE.StartProfiles.Service.pas';
 
 end.
