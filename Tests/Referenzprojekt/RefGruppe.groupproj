@@ -1,4 +1,4 @@
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{4A8819FB-680D-5974-93D3-C4D8C14EDC22}</ProjectGuid>
     </PropertyGroup>
@@ -16,4 +16,41 @@
             <Default.Personality/>
         </BorlandProject>
     </ProjectExtensions>
+    <Target Name="RefRuntime">
+        <MSBuild Projects="RefRuntime.dproj"/>
+    </Target>
+    <Target Name="RefRuntime:Clean">
+        <MSBuild Projects="RefRuntime.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="RefRuntime:Make">
+        <MSBuild Projects="RefRuntime.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="RefDesign">
+        <MSBuild Projects="RefDesign.dproj"/>
+    </Target>
+    <Target Name="RefDesign:Clean">
+        <MSBuild Projects="RefDesign.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="RefDesign:Make">
+        <MSBuild Projects="RefDesign.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="RefApp">
+        <MSBuild Projects="RefApp.dproj"/>
+    </Target>
+    <Target Name="RefApp:Clean">
+        <MSBuild Projects="RefApp.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="RefApp:Make">
+        <MSBuild Projects="RefApp.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="RefRuntime;RefDesign;RefApp"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="RefRuntime:Clean;RefDesign:Clean;RefApp:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="RefRuntime:Make;RefDesign:Make;RefApp:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>
