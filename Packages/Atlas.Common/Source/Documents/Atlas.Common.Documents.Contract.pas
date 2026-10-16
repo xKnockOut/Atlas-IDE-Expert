@@ -27,6 +27,13 @@ type
     constructor Create(AStartLine, AStartCharacter, AEndLine, AEndCharacter: Integer); overload;
   end;
 
+  /// <summary>Textänderung: Bereich Range ersetzen durch NewText (früher TRuleEdit in Rules.Contract).</summary>
+  TTextEdit = record
+    Range: TTextRange;
+    NewText: string;
+    constructor Create(const ARange: TTextRange; const ANewText: string);
+  end;
+
   /// <summary>Eine Änderung aus didChange: ersetzt einen Bereich oder den ganzen Text.</summary>
   TTextChange = record
     HasRange: Boolean;
@@ -117,6 +124,14 @@ constructor TTextRange.Create(AStartLine, AStartCharacter, AEndLine, AEndCharact
 begin
   StartPos := TTextPosition.Create(AStartLine, AStartCharacter);
   EndPos := TTextPosition.Create(AEndLine, AEndCharacter);
+end;
+
+{ TTextEdit }
+
+constructor TTextEdit.Create(const ARange: TTextRange; const ANewText: string);
+begin
+  Range := ARange;
+  NewText := ANewText;
 end;
 
 { TTextChange }

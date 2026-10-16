@@ -29,12 +29,11 @@ uses
   System.StrUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.LanguageFeatures,
-  Atlas.Common.Rules.DeclaredTypes,
+  Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Editing.StringLiterals,
   Atlas.Common.Editing.Modernizer,
   Atlas.Common.Editing.CommandSource;
@@ -94,9 +93,9 @@ end;
 
 /// <summary>Ersetzt Befehlszeile und Anweisung (Zeilen bis ALast) durch ANewText mit der Einrückung
 /// der Anweisung.</summary>
-function ReplaceStatement(ASource: TCommandSource; ALast: Integer; const ANewText: string): TRuleEdit;
+function ReplaceStatement(ASource: TCommandSource; ALast: Integer; const ANewText: string): TTextEdit;
 begin
-  Result := TRuleEdit.Create(TTextRange.Create(ASource.Line, 0, ALast, Length(ASource.Lines[ALast])),
+  Result := TTextEdit.Create(TTextRange.Create(ASource.Line, 0, ALast, Length(ASource.Lines[ALast])),
     ASource.Indent(ASource.Line + 1) + ANewText);
 end;
 
@@ -120,7 +119,7 @@ end;
 
 { /inc }
 
-function ExecuteInc(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteInc(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Text, Target, Amount: string;
@@ -180,7 +179,7 @@ end;
 
 { /iif }
 
-function ExecuteIif(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteIif(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 const
   Expected = 'Erwartet wird if B then X := A else X := C;';
 var
@@ -245,7 +244,7 @@ begin
   Result := TStringLiterals.LiteralAt(AContext.Text, TTextPosition.Create(ASource.Line + 1, Column - 1), ARange);
 end;
 
-function ExecuteMultiline(const AContext: TSlashContext; AToMultiline: Boolean; out AEdits: TArray<TRuleEdit>;
+function ExecuteMultiline(const AContext: TSlashContext; AToMultiline: Boolean; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
   Source: TCommandSource;
@@ -270,7 +269,7 @@ begin
       Exit(Fail('Das Literal enthält keinen Zeilenumbruch', AReason));
     Literal := TStringLiterals.ToLiteral(Plain, Source.Indent(Source.Line + 1), False, AToMultiline,
       TStringLiteralBreak.SLineBreak, 0, Source.LineBreak);
-    AEdits := [Source.RemoveCommand, TRuleEdit.Create(Range, Literal)];
+    AEdits := [Source.RemoveCommand, TTextEdit.Create(Range, Literal)];
     Result := True;
   finally
     Source.Free;
@@ -321,7 +320,7 @@ begin
   AKnown := False;
 end;
 
-function ExecuteFormat(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteFormat(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Types: TDeclaredTypes;
@@ -442,7 +441,7 @@ begin
       Arguments]) + Copy(Line, Tokens[Last].Offset + Length(Tokens[Last].Text) + 1, MaxInt);
     if Unknown <> '' then
       Line := Line + Format(' // /format: Typ von %s unbekannt, %%s angenommen', [Unknown]);
-    AEdits := [TRuleEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1,
+    AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1,
       Length(Source.Lines[Source.Line + 1])), Line)];
     AddUses(Source, AContext, Source.Line, ['System.SysUtils'], AEdits);
     Result := True;
@@ -462,7 +461,7 @@ end;
 
 { /modern }
 
-function ExecuteModern(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteModern(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Routine: TSyntaxNode;
@@ -500,7 +499,7 @@ begin
     Text := '';
     for Line := 0 to High(Lines) do
       Text := Text + Lines[Line] + Source.LineBreak;
-    AEdits := [TRuleEdit.Create(TTextRange.Create(Routine.StartPos.Line, 0, Routine.EndPos.Line + 1, 0), Text)];
+    AEdits := [TTextEdit.Create(TTextRange.Create(Routine.StartPos.Line, 0, Routine.EndPos.Line + 1, 0), Text)];
     if TModernization.FreeAndNilCall in Kinds then
       AddUses(Source, AContext, Routine.StartPos.Line, ['System.SysUtils'], AEdits);
     Result := True;
@@ -517,12 +516,12 @@ begin
     ExecuteFormat));
   ARegistry.Register(Command('multiline', 'Verkettetes Literal darunter als mehrzeiligen String schreiben',
     '/multiline',
-    function(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean
+    function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteMultiline(AContext, True, AEdits, AReason);
     end));
   ARegistry.Register(Command('multiline!', 'Mehrzeiligen String darunter als Verkettung schreiben', '/multiline!',
-    function(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean
+    function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteMultiline(AContext, False, AEdits, AReason);
     end));

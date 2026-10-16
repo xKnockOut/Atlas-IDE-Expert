@@ -20,7 +20,7 @@
 interface
 
 uses
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Editing.SlashCommands;
 
 type
@@ -33,7 +33,7 @@ type
     /// <summary>LSP-Snippet; Zeilen mit #10, ohne Einrückung der Cursorzeile.</summary>
     Text: string;
     /// <summary>Weitere Änderungen (Setter-Deklaration und -Rumpf); ohne Platzhalter.</summary>
-    AdditionalEdits: TArray<TRuleEdit>;
+    AdditionalEdits: TArray<TTextEdit>;
   end;
 
   TContextSnippets = class
@@ -53,7 +53,6 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.CommandSource,
@@ -102,7 +101,7 @@ begin
 end;
 
 function Snippet(const APrefix, AName, ADescription, AText: string;
-  const AEdits: TArray<TRuleEdit>): TContextSnippet;
+  const AEdits: TArray<TTextEdit>): TContextSnippet;
 begin
   Result.Prefix := APrefix;
   Result.Name := AName;
@@ -126,7 +125,7 @@ function PropertyItems(ASource: TCommandSource; const AContext: TSlashContext;
 var
   Field, Member: TIndexSymbol;
   Name, Setter, TypeText, Call, Indent, LB: string;
-  Edits: TArray<TRuleEdit>;
+  Edits: TArray<TTextEdit>;
   EndLine: Integer;
 begin
   Result := nil;

@@ -39,6 +39,10 @@
     Atlas.Common.Rules.Builtin.Architecture entsprechen; beide prüfen die
     Fallliste Tests/Data/Architecture/role-imports.json (-SelfTest).
 
+    Featurerichtung Rules/Editing (Code-Review A-11): Rules darf Editing
+    verwenden (Korrekturen nutzen Editing-Helfer), Editing aber nicht Rules.
+    Gemeinsame Wertetypen wie TTextEdit liegen in Documents.Contract.
+
     Ausgewertet werden alle uses-Klauseln der .pas-Dateien und die
     requires-Klausel der .dpk-Datei jedes Packages. Kommentare, Strings und
     Compiler-Direktiven werden vorher entfernt.
@@ -440,6 +444,20 @@ foreach ($dir in @('Packages', 'Application')) {
             if ($ContractContentAllow | Where-Object { "$ownUnit.$typeName" -like $_ }) { continue }
             $line = ($head.Substring(0, $match.Index + $match.Value.Length - $match.Value.TrimStart().Length) -split "`n").Count
             $violations += "${relative}:${line}: $typeName ist eine Klasse in einer Contract-Unit (Konzept 7.1)"
+        }
+    }
+}
+
+# Featurerichtung (A-11): keine Unit unter Source/Editing importiert Atlas.Common.Rules.*
+$editingDir = Join-Path $Root 'Packages/Atlas.Common/Source/Editing'
+if (Test-Path $editingDir) {
+    foreach ($file in Get-ChildItem -Path $editingDir -Recurse -File -Include '*.pas') {
+        $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
+        $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
+        foreach ($unit in Get-ClauseEntries $text 'uses') {
+            if ($unit.Name.StartsWith('Atlas.Common.Rules.', [StringComparison]::OrdinalIgnoreCase)) {
+                $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Editing darf Rules nicht verwenden (A-11); gemeinsame Typen nach Documents.Contract oder Pascal verschieben"
+            }
         }
     }
 }

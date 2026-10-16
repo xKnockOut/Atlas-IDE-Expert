@@ -149,6 +149,7 @@ uses
   Atlas.Common.Rules.Derived.Tests in 'Common\Rules\Atlas.Common.Rules.Derived.Tests.pas',
   Atlas.Common.Rules.GoldenCorpus.Tests in 'Common\Rules\Atlas.Common.Rules.GoldenCorpus.Tests.pas',
   Atlas.Common.Rules.Profiles.Tests in 'Common\Rules\Atlas.Common.Rules.Profiles.Tests.pas',
+  Atlas.Common.Rules.CodeActions.Tests in 'Common\Rules\Atlas.Common.Rules.CodeActions.Tests.pas',
   Atlas.Common.Rules.Confidence.Tests in 'Common\Rules\Atlas.Common.Rules.Confidence.Tests.pas',
   Atlas.Common.Rules.Output.Tests in 'Common\Rules\Atlas.Common.Rules.Output.Tests.pas',
   Atlas.Common.Rules.Baseline.Tests in 'Common\Rules\Atlas.Common.Rules.Baseline.Tests.pas',

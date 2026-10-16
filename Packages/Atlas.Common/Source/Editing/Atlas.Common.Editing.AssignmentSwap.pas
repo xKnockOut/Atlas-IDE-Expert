@@ -17,7 +17,6 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Index.Contract;
 
 type
@@ -50,7 +49,7 @@ type
     /// <summary>Edits für die Zeilen von ARange; False, wenn keine Zeile umgedreht wird.
     /// AReadOnly darf nil sein.</summary>
     class function Swap(const AText: string; const ARange: TTextRange; const AReadOnly: TReadOnlyCheck;
-      out AEdits: TArray<TRuleEdit>): Boolean; static;
+      out AEdits: TArray<TTextEdit>): Boolean; static;
     /// <summary>Prüfung über den Index (#17): True, wenn alle Properties mit dem letzten Namen
     /// aus AExpression ohne write deklariert sind. Die Datei AFileName liest sie aus AText,
     /// andere von der Platte.</summary>
@@ -196,7 +195,7 @@ begin
 end;
 
 class function TAssignmentSwap.Swap(const AText: string; const ARange: TTextRange; const AReadOnly: TReadOnlyCheck;
-  out AEdits: TArray<TRuleEdit>): Boolean;
+  out AEdits: TArray<TTextEdit>): Boolean;
 var
   Lines: TArray<string>;
   Parsed: TArray<TAssignmentLine>;
@@ -262,7 +261,7 @@ begin
     else
       NewText := Copy(Text, 1, Length(Text) - Length(Parsed[Index].Tail)) + MarkTail(Parsed[Index].Tail);
     if NewText <> Text then
-      AEdits := AEdits + [TRuleEdit.Create(TTextRange.Create(First + Index, 0, First + Index, Length(Text)),
+      AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(First + Index, 0, First + Index, Length(Text)),
         NewText)];
   end;
 end;
