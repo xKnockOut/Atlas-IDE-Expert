@@ -37,6 +37,8 @@ type
     procedure FirstInstallHasNothingUnread;
     [Test]
     procedure ModeNamesRoundTrip;
+    [Test]
+    procedure AnnouncedItemsJoinTheirVersion;
   end;
 
 implementation
@@ -208,6 +210,39 @@ begin
     Assert.IsTrue(TAtlasWhatsNew.ModeOf(TAtlasWhatsNew.ModeName(Mode)) = Mode);
   Assert.IsTrue(TAtlasWhatsNew.ModeOf('ALWAYS') = TAtlasWhatsNewMode.Always);
   Assert.IsTrue(TAtlasWhatsNew.ModeOf('irgendwas') = TAtlasWhatsNewMode.AfterUpdate);
+end;
+
+function Item(const ATitle: string): TAtlasWhatsNewItem;
+begin
+  Result := Default(TAtlasWhatsNewItem);
+  Result.Title := ATitle;
+  Result.Text := ATitle + ' – Text';
+end;
+
+procedure TAtlasWhatsNewTests.AnnouncedItemsJoinTheirVersion;
+var
+  Known, Joined: TAtlasWhatsNewVersions;
+begin
+  // Neue Bereiche nach einem Update (#767) kommen zur laufenden Version, ohne doppelte Titel.
+  SetLength(Known, 2);
+  Known[0].Version := '1.3.0';
+  Known[0].Items := [Item('A')];
+  Known[1].Version := '1.1.0';
+  Known[1].Items := [Item('B')];
+  Joined := TAtlasWhatsNew.WithItems(Known, '1.3.0', [Item('Neu'), Item('a'), Item('')]);
+  Assert.AreEqual(2, Integer(Length(Joined)));
+  Assert.AreEqual(2, Integer(Length(Joined[0].Items)), 'gleicher Titel und leerer Titel fallen weg');
+  Assert.AreEqual('Neu', Joined[0].Items[1].Title);
+  Assert.AreEqual(1, Integer(Length(Known[0].Items)), 'Eingabe unverändert');
+  // Unbekannte Version: neu angelegt, neueste zuerst.
+  Joined := TAtlasWhatsNew.WithItems(Known, '1.2.0', [Item('Neu')]);
+  Assert.AreEqual(3, Integer(Length(Joined)));
+  Assert.AreEqual('1.2.0', Joined[1].Version);
+  Joined := TAtlasWhatsNew.WithItems(Known, '2.0.0', [Item('Neu')]);
+  Assert.AreEqual('2.0.0', Joined[0].Version);
+  // Nichts Neues: keine leere Version.
+  Joined := TAtlasWhatsNew.WithItems(Known, '1.2.0', [Item('')]);
+  Assert.AreEqual(2, Integer(Length(Joined)));
 end;
 
 initialization

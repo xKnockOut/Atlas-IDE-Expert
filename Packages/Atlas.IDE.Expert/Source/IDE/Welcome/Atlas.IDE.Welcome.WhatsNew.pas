@@ -54,6 +54,9 @@ type
     procedure Stop;
     /// <summary>Titel und Reihenfolge des Bereichs nachführen (nach jeder Änderung der Einstellungen).</summary>
     procedure Refresh;
+    /// <summary>Einträge an die laufende Version anhängen (#767: neue Bereiche im eigenen Layout); doppelte
+    /// Titel fallen weg.</summary>
+    procedure Announce(const AItems: TArray<TAtlasWhatsNewItem>);
     /// <summary>Steht die Karte oben (Ungelesenes nach einem Update)?</summary>
     function OnTop: Boolean;
     /// <summary>Kontextmenü und Befehle: nur, wenn welcomePage.whatsNew nicht off ist.</summary>
@@ -246,6 +249,14 @@ begin
   FTitle := Next.Title;
   FOrderShown := Next.Order;
   TAtlasWelcomeSections.Default.Add(Next);
+end;
+
+procedure TAtlasIdeWhatsNew.Announce(const AItems: TArray<TAtlasWhatsNewItem>);
+begin
+  if Length(AItems) = 0 then
+    Exit;
+  FVersions := TAtlasWhatsNew.WithItems(FVersions, FCurrent, AItems);
+  Changed;
 end;
 
 procedure TAtlasIdeWhatsNew.Changed;

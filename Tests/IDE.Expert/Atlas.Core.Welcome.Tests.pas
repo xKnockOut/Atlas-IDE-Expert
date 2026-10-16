@@ -313,10 +313,11 @@ procedure TAtlasWelcomeLayoutTests.UnknownSectionGoesToItsColumn;
 var
   Columns: TArray<TArray<string>>;
 begin
-  Columns := TAtlasWelcomeLayout.Atlas.Arrange(MockupSections + [Section(TAtlasWelcomeIds.Tests, 80,
-    TAtlasWelcomeColumn.Right), Section(TAtlasWelcomeIds.Unsaved, 5, TAtlasWelcomeColumn.Left)], 2);
-  Assert.AreEqual('atlas.continue,atlas.projects,atlas.history,atlas.unsaved', Joined(Columns[0]));
-  Assert.AreEqual('atlas.state,atlas.news,atlas.discover,atlas.setup,atlas.tests', Joined(Columns[1]));
+  // Bereiche, die das Layout nicht kennt (fremde Plugins, spätere Versionen), nach ihrer Vorzugsspalte.
+  Columns := TAtlasWelcomeLayout.Atlas.Arrange(MockupSections + [Section('plugin.right', 80,
+    TAtlasWelcomeColumn.Right), Section('plugin.left', 5, TAtlasWelcomeColumn.Left)], 2);
+  Assert.AreEqual('atlas.continue,atlas.projects,atlas.history,plugin.left', Joined(Columns[0]));
+  Assert.AreEqual('atlas.state,atlas.news,atlas.discover,atlas.setup,plugin.right', Joined(Columns[1]));
 end;
 
 procedure TAtlasWelcomeLayoutTests.HiddenSectionsLeaveNoGap;
@@ -339,7 +340,7 @@ begin
   Layout := TAtlasWelcomeLayout.Atlas;
   Layout.Name := 'Eigenes';
   Layout.Columns := 3;
-  Layout.Slots := Layout.Slots + [TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.Tests, 2)];
+  Layout.Slots := Layout.Slots + [TAtlasWelcomeSlot.Create('plugin.extra', 2)];
   Assert.IsTrue(TAtlasWelcomeLayout.FromJson(Layout.ToJson, Loaded));
   Assert.IsTrue(TAtlasWelcomeLayout.Same(Layout, Loaded));
   Assert.AreEqual('Eigenes', Loaded.Name);
@@ -742,6 +743,11 @@ begin
   Assert.IsTrue(Settings.WelcomePageContinueIncoming);
   Assert.IsFalse(Settings.WelcomePageContinueFetch, 'kein Netzzugriff ohne Zustimmung');
   Assert.IsTrue(Settings.WelcomePageSaved);
+  // #767: frei anordnen an, zwei Spalten, Vorgabe-Layout „Standard“ (leer gespeichert).
+  Assert.IsTrue(Settings.WelcomePageCustomLayout);
+  Assert.AreEqual(2, Settings.WelcomePageColumns);
+  Assert.AreEqual('', Settings.WelcomePageLayouts);
+  Assert.AreEqual('Standard', Settings.WelcomePageActiveLayout);
 end;
 
 procedure TAtlasWelcomeSettingsTests.NormalizeMapsUnknownValues;
@@ -793,6 +799,17 @@ begin
   Settings.WelcomePageContinueCount := 99;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.MaxContinueCount, Settings.WelcomePageContinueCount);
+  // #767: Spalten 1–3, leeres aktives Layout = „Standard“.
+  Settings.WelcomePageColumns := 0;
+  Settings.WelcomePageActiveLayout := '  ';
+  Settings.Normalize;
+  Assert.AreEqual(1, Settings.WelcomePageColumns);
+  Assert.AreEqual('Standard', Settings.WelcomePageActiveLayout);
+  Settings.WelcomePageColumns := 9;
+  Settings.WelcomePageActiveLayout := ' Arbeit ';
+  Settings.Normalize;
+  Assert.AreEqual(3, Settings.WelcomePageColumns);
+  Assert.AreEqual('Arbeit', Settings.WelcomePageActiveLayout);
 end;
 
 procedure TAtlasWelcomeSettingsTests.SaveAndLoadRoundTrip;
@@ -831,7 +848,15 @@ begin
   Saved.WelcomePageHelpReportFolder := 'D:\Diagnose';
   Saved.WelcomePageProjectSetup := False;
   Saved.WelcomePageNewFromTemplate := False;
+  Saved.WelcomePageCustomLayout := False;
+  Saved.WelcomePageColumns := 3;
+  Saved.WelcomePageLayouts := '[{"name":"Arbeit","columns":3,"slots":[]}]';
+  Saved.WelcomePageActiveLayout := 'Arbeit';
   Saved.Save(Store);
+  Assert.AreEqual(0, Store.ReadInteger('WelcomePageCustomLayout', 1), 'Registry-Name (#767)');
+  Assert.AreEqual(3, Store.ReadInteger('WelcomePageColumns', 0));
+  Assert.AreEqual('[{"name":"Arbeit","columns":3,"slots":[]}]', Store.ReadString('WelcomePageLayouts', ''));
+  Assert.AreEqual('Arbeit', Store.ReadString('WelcomePageActiveLayout', ''));
   Assert.AreEqual(0, Store.ReadInteger('WelcomePageHelp', 1), 'Registry-Name (#766)');
   Assert.AreEqual('https://example.org/issues/new', Store.ReadString('WelcomePageHelpReportUrl', ''));
   Assert.AreEqual('D:\Diagnose', Store.ReadString('WelcomePageHelpReportFolder', ''));
@@ -872,6 +897,10 @@ begin
   Assert.IsFalse(Loaded.WelcomePageContinueIncoming);
   Assert.IsTrue(Loaded.WelcomePageContinueFetch);
   Assert.IsFalse(Loaded.WelcomePageSaved);
+  Assert.IsFalse(Loaded.WelcomePageCustomLayout);
+  Assert.AreEqual(3, Loaded.WelcomePageColumns);
+  Assert.AreEqual('[{"name":"Arbeit","columns":3,"slots":[]}]', Loaded.WelcomePageLayouts);
+  Assert.AreEqual('Arbeit', Loaded.WelcomePageActiveLayout);
   Assert.IsFalse(Loaded.WelcomePageProjectStatus);
   Assert.AreEqual(12, Loaded.WelcomePageMaxProjects);
   Assert.IsFalse(Loaded.WelcomePageRefreshVcs);

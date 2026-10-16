@@ -80,6 +80,7 @@ uses
   Atlas.IDE.Status.Field,
   Atlas.IDE.Status.Lines,
   Atlas.IDE.Settings.QuickToggles,
+  Atlas.IDE.Settings.Transfer,
   Atlas.Core.Status.Contract,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Center,
@@ -134,6 +135,7 @@ uses
   Atlas.IDE.Welcome.Help,
   Atlas.IDE.Welcome.Setup,
   Atlas.IDE.Welcome.Commands,
+  Atlas.IDE.Welcome.Layouts,
   Atlas.IDE.Vcs.Service,
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Notes.Gutter,
@@ -876,6 +878,12 @@ begin
   Result := TAtlasIdeSettings.Current.Notes;
 end;
 
+/// <summary>Export, Import und Zurücksetzen der Einstellungen (#723): settings.exportImport.</summary>
+function SettingsTransferVisible: Boolean;
+begin
+  Result := TAtlasIdeSettingsTransfer.Visible;
+end;
+
 function TodoListVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.TodoList;
@@ -1005,6 +1013,15 @@ begin
           TAtlasIdeGenerate.Show;
         end);
     end, GenerateMenuVisible);
+  // Einstellungen exportieren, importieren und zurücksetzen (#723); nur sichtbar mit settings.exportImport.
+  Add('Atlas.SettingsExport', TAtlasTextId.SettingsExportCommand,
+    Guarded(TAtlasFeature.Settings, TAtlasIdeSettingsTransfer.ExportCommand), SettingsTransferVisible);
+  Add('Atlas.SettingsImport', TAtlasTextId.SettingsImportCommand,
+    Guarded(TAtlasFeature.Settings, TAtlasIdeSettingsTransfer.ImportCommand), SettingsTransferVisible);
+  Add('Atlas.SettingsProfile', TAtlasTextId.SettingsProfileCommand,
+    Guarded(TAtlasFeature.Settings, TAtlasIdeSettingsTransfer.ProfileCommand), SettingsTransferVisible);
+  Add('Atlas.SettingsReset', TAtlasTextId.SettingsResetCommand,
+    Guarded(TAtlasFeature.Settings, TAtlasIdeSettingsTransfer.ResetCommand), SettingsTransferVisible);
   // Editorbefehle (#399).
   Add('Atlas.CodeActions', TAtlasTextId.EditorActions, TAtlasIdeEditorCommands.CodeActions);
   // Ausblenden am Element (#628).
@@ -1089,6 +1106,18 @@ begin
     begin
       if Welcome <> nil then
         Welcome.ResetLayout;
+    end);
+  // Seite anpassen (#767): Bearbeitungsmodus der Willkommensseite bzw. von „Atlas-Start“; sichtbar mit
+  // welcomePage.customLayout.
+  Add(TAtlasIdeWelcomeLayouts.CommandId, TAtlasTextId.CommandWelcomeCustomize,
+    procedure
+    begin
+      if Welcome <> nil then
+        Welcome.Customize;
+    end,
+    function: Boolean
+    begin
+      Result := (Welcome <> nil) and Welcome.Layouts.CanCustomize;
     end);
   // Karte „Neu in Atlas“ (#756): wie das Kontextmenü; zeigt die Willkommensseite bzw. „Atlas-Start“.
   Add('Atlas.WhatsNew', TAtlasTextId.WelcomeNewsShowCurrent,
@@ -2533,6 +2562,22 @@ begin
           MessageLine(AText);
         end);
     end);
+  // Seite anpassen (#767): Rechtsklick „Ausblenden“ über den Weg von #628 (mit „Rückgängig“), „Einstellungen
+  // dazu …“ auf der Optionsseite.
+  Welcome.Layouts.OnHideSetting :=
+    function(AKey: string; APoint: TPoint): Boolean
+    begin
+      Result := HideStarted and TAtlasIdeHide.HideSetting(AKey, APoint);
+    end;
+  Welcome.Layouts.OnShowSetting :=
+    procedure(AKey: string)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          TAtlasOptionsRegistration.ShowSetting(AKey);
+        end);
+    end;
 end;
 
 procedure StopWelcome;
@@ -3195,6 +3240,7 @@ begin
   if Features <> nil then
     Features.StopAll;
   FreeAndNil(QuickToggles);
+  TAtlasIdeSettingsTransfer.Release;
   // Nach den Quellen, vor dem Statusfeld: Die Einträge halten Aktionen mit Code des Plugins (#601).
   FreeAndNil(Notifications);
   TAtlasNotificationCenter.ReleaseDefault;

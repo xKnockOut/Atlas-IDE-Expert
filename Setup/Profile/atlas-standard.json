@@ -1,0 +1,11 @@
+{
+  "format": "atlas-settings",
+  "formatVersion": 1,
+  "schemaVersion": 1,
+  "name": "Atlas-Standard",
+  "nameEn": "Atlas default",
+  "description": "Alle Bereiche auf die Standardwerte von Atlas (Ersetzen). Projekt- und Teamwerte bleiben unberührt.",
+  "descriptionEn": "Resets all areas to the Atlas defaults (replace). Project and team values stay untouched.",
+  "mode": "replace",
+  "settings": {}
+}
