@@ -197,6 +197,10 @@ type
     /// <summary>Abnahme: Ein fehlender Suchpfad wird mit dem Unit-Namen gemeldet.</summary>
     [Test]
     procedure FindingNamesUnit;
+    /// <summary>Unsichere Funde nennen das Makro; bei einer Gruppe das Projekt und den Stand der Prüfung.
+    /// </summary>
+    [Test]
+    procedure UncertainAndGroupCaptions;
     /// <summary>Abnahme: Ohne Karte nur „Neu mit Atlas“; ohne beides nichts; ohne Projekt keine Knöpfe.</summary>
     [Test]
     procedure CardAndNewRowFollowCard;
@@ -2585,6 +2589,52 @@ begin
     Assert.IsFalse(Frame.Button(TAtlasSetupButton.Options).Visible);
   finally
     Host.Free;
+    TAtlasStrings.Language := Saved;
+  end;
+end;
+
+procedure TAtlasWelcomeSetupFrameTests.UncertainAndGroupCaptions;
+var
+  Saved: TAtlasLanguage;
+  Line: TAtlasSetupLine;
+  Card: TAtlasSetupCard;
+begin
+  Saved := TAtlasStrings.Language;
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Line := Default(TAtlasSetupLine);
+    Line.Kind := TAtlasSetupFindingKind.MissingUnit;
+    Line.Name := 'Lib.Core';
+    Line.FileName := 'App\App.dpr';
+    Line.Line := 3;
+    Line.Count := 1;
+    Line.Uncertain := True;
+    Line.Macros := '$(MYLIB)';
+    Assert.AreEqual('Unit „Lib.Core“ nicht gefunden (unsicher, Suchpfad mit unbekanntem Makro $(MYLIB) ' +
+      'übersprungen) – App\App.dpr, Zeile 3', TAtlasWelcomeSetupFrame.FindingCaption(Line));
+    Line.Project := 'App';
+    Line.Kind := TAtlasSetupFindingKind.UndefinedDefine;
+    Line.Name := 'USE_LIB';
+    Assert.AreEqual('App: Define „USE_LIB“ ohne Quelle (unsicher, Suchpfad mit unbekanntem Makro $(MYLIB) ' +
+      'übersprungen) – App\App.dpr, Zeile 3', TAtlasWelcomeSetupFrame.FindingCaption(Line));
+    Card := SetupCard;
+    Card.GroupProjects := 3;
+    Card.GroupChecked := 1;
+    Card.Facts.Setup.MissingUnitCount := 2;
+    Card.Facts.Setup.UncertainUnitCount := 1;
+    Card.Facts.Setup.Files := 5;
+    Card.Facts.Setup.SkippedMacros := ['MYLIB'];
+    Assert.AreEqual('1 von 3 Projekten der Gruppe geprüft' + sLineBreak +
+      '2 Units nicht gefunden, 0 Defines ohne Quelle (5 Dateien geprüft)' + sLineBreak +
+      'Davon unsicher: 1 (Suchpfad mit unbekanntem Makro $(MYLIB) übersprungen)',
+      TAtlasWelcomeSetupFrame.PathsCaption(Card));
+    // Fehler gehen vor.
+    Card.Paths := TAtlasSetupRun.Failed;
+    Card.PathsError := 'kaputt';
+    Assert.AreEqual('kaputt', TAtlasWelcomeSetupFrame.PathsCaption(Card));
+    // Einzelprojekt ohne Prüfung: nichts.
+    Assert.AreEqual('', TAtlasWelcomeSetupFrame.PathsCaption(SetupCard));
+  finally
     TAtlasStrings.Language := Saved;
   end;
 end;

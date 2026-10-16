@@ -381,7 +381,9 @@ type
     WelcomeSetupPreviewTitle, WelcomeSetupPreviewIntro, WelcomeSetupPreviewCreate, WelcomeSetupPreviewCancel,
     WelcomeSetupConfigExists, WelcomeSetupConfigInvalid, WelcomeSetupConfigWritten, WelcomeSetupConfigFailed,
     WelcomeSetupNoProject, WelcomeSetupPathsFailed, WelcomeSetupNewFailed, WelcomeSetupNewNoProject,
-    WelcomeSetupBaselineElsewhere);
+    WelcomeSetupBaselineElsewhere,
+    WelcomeSetupMissingUnitUncertain, WelcomeSetupUndefinedDefineUncertain, WelcomeSetupFindingInProject,
+    WelcomeSetupPathsGroup, WelcomeSetupPathsUncertain);
 
   TAtlasStrings = class
   private class var
@@ -1108,7 +1110,11 @@ const
      'Projekt einrichten: %s ließ sich nicht schreiben (%s).',
      'Projekt einrichten: kein Projekt geöffnet oder zuletzt verwendet.', 'Prüfung abgebrochen: %s',
      'Neu mit Atlas: Die Datei ließ sich nicht anlegen (%s).', 'Neu mit Atlas: Kein Projekt geöffnet.',
-     'Die Baseline liegt nicht im Projektordner (Details in der Meldungsansicht).'),
+     'Die Baseline liegt nicht im Projektordner (Details in der Meldungsansicht).',
+     'Unit „%s“ nicht gefunden (unsicher, Suchpfad mit unbekanntem Makro %s übersprungen) – %s, Zeile %d',
+     'Define „%s“ ohne Quelle (unsicher, Suchpfad mit unbekanntem Makro %s übersprungen) – %s, Zeile %d',
+     '%s: %s', '%d von %d Projekten der Gruppe geprüft',
+     'Davon unsicher: %d (Suchpfad mit unbekanntem Makro %s übersprungen)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1789,7 +1795,11 @@ const
      'Set up project: could not write %s (%s).', 'Set up project: no project open or recently used.',
      'Check aborted: %s', 'New with Atlas: the file could not be created (%s).',
      'New with Atlas: no project open.',
-     'The baseline is not in the project folder (details in the Messages view).'));
+     'The baseline is not in the project folder (details in the Messages view).',
+     'Unit “%s” not found (uncertain, search path with unknown macro %s skipped) – %s, line %d',
+     'Define “%s” without a source (uncertain, search path with unknown macro %s skipped) – %s, line %d',
+     '%s: %s', '%d of %d projects in the group checked',
+     'Uncertain: %d (search path with unknown macro %s skipped)'));
 
 { TAtlasStrings }
 

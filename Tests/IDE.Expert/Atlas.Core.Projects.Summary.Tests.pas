@@ -62,6 +62,9 @@ type
     procedure BaselineRoundTripAndUnknownFields;
     [Test]
     procedure SetupRoundTripAndLimits;
+    /// <summary>#759: unsichere Funde und übersprungene Makros (Suchpfad mit unbekanntem Makro).</summary>
+    [Test]
+    procedure SetupKeepsUncertainFindings;
   end;
 
 implementation
@@ -533,6 +536,7 @@ var
   Index: Integer;
 begin
   Stamp := EncodeDate(2026, 10, 15) + EncodeTime(9, 30, 0, 0);
+  Finding := Default(TAtlasSetupFinding);
   Summary := TAtlasProjectSummary.Create(Project);
   Assert.IsFalse(Summary.Setup.Known);
   Assert.IsFalse(Summary.Setup.PathsClean);
@@ -587,6 +591,44 @@ begin
     '{"file": "ohne Namen"}]}}}', Read));
   Assert.AreEqual(1, Read.Setup.MissingUnitCount);
   Assert.AreEqual(1, Read.Setup.MissingUnits[0].Count);
+end;
+
+procedure TAtlasProjectSummaryTests.SetupKeepsUncertainFindings;
+var
+  Summary, Read: TAtlasProjectSummary;
+  Finding: TAtlasSetupFinding;
+  Json: string;
+begin
+  Summary := TAtlasProjectSummary.Create(Project);
+  Summary.Setup.Known := True;
+  Summary.Setup.Checked := True;
+  Summary.Setup.MissingUnitCount := 2;
+  Summary.Setup.UncertainUnitCount := 1;
+  Summary.Setup.SkippedMacros := ['MYLIB', 'TOOLS'];
+  Finding := Default(TAtlasSetupFinding);
+  Finding.Name := 'Lib.Core';
+  Finding.Count := 1;
+  Finding.Uncertain := True;
+  // Der Projektname gilt nur in der Karte einer Gruppe und wird nicht gespeichert.
+  Finding.Project := 'App';
+  Summary.Setup.MissingUnits := [Finding];
+  Json := TAtlasProjectSummaries.ToJson(Summary);
+  Assert.Contains(Json, '"uncertainUnits":1');
+  Assert.IsTrue(Pos('"uncertainDefines"', Json) = 0, 'nur, wenn es unsichere gibt');
+  Assert.Contains(Json, '"skippedMacros":["MYLIB","TOOLS"]');
+  Assert.Contains(Json, '{"name":"Lib.Core","count":1,"uncertain":true}');
+  Assert.IsTrue(Pos('"App"', Json) = 0);
+  Assert.IsTrue(TAtlasProjectSummaries.Parse(Json, Read));
+  Assert.AreEqual(1, Read.Setup.UncertainUnitCount);
+  Assert.AreEqual('MYLIB|TOOLS', string.Join('|', Read.Setup.SkippedMacros));
+  Assert.IsTrue(Read.Setup.MissingUnits[0].Uncertain);
+  Assert.IsFalse(Read.Setup.PathsClean, 'ein sicherer Fund bleibt');
+  // Unsichere nie mehr als alle; nur unsichere: erledigt.
+  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"setup": {"paths": {"missingUnits": 1, "uncertainUnits": 5, ' +
+    '"skippedMacros": ["A", 3, ""]}}}', Read));
+  Assert.AreEqual(1, Read.Setup.UncertainUnitCount);
+  Assert.AreEqual('A', string.Join('|', Read.Setup.SkippedMacros));
+  Assert.IsTrue(Read.Setup.PathsClean);
 end;
 
 initialization
