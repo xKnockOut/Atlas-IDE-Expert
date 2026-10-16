@@ -196,6 +196,21 @@ type
     /// <summary>Claude Code darf über das MCP-Werkzeug build_project offene Projekte in dieser IDE bauen (#261),
     /// z. B. in der Starter Edition ohne Kommandozeilen-Compiler.</summary>
     McpBuild: Boolean;
+    /// <summary>Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen): sobald die IDE
+    /// ruhig ist, über den Compiler der IDE (mit eingeschalteter Hintergrundcompilierung der IDE ohne zu
+    /// blockieren). Aus = kein Bau beim Öffnen.</summary>
+    BuildOnOpen: Boolean;
+    /// <summary>Art des Baus beim Öffnen (build.onOpenKind): check (Syntaxprüfung), make (Compilieren) oder build
+    /// (Erzeugen).</summary>
+    BuildOnOpenKind: string;
+    /// <summary>Bei einer Projektgruppe alle Projekte (all) oder nur das aktive (active) (build.onOpenScope).
+    /// </summary>
+    BuildOnOpenScope: string;
+    /// <summary>Wartezeit nach dem Öffnen und nach der letzten Eingabe (build.onOpenDelayMs).</summary>
+    BuildOnOpenDelayMs: Integer;
+    /// <summary>Projekte, die beim Öffnen nicht gebaut werden (build.onOpenExclude), Namen ohne Endung, durch
+    /// Komma getrennt, z. B. ein in der IDE installiertes Package.</summary>
+    BuildOnOpenExclude: string;
     /// <summary>Tastenkürzel im Editor (#399, TShortCut, 0 = keins): Code-Aktionen, Auswahl erweitern und
     /// verkleinern, Gehe zu Implementierung und zu Typdefinition.</summary>
     ActionsKey: Integer;
@@ -552,7 +567,9 @@ uses
   System.Math,
   System.StrUtils,
   Atlas.Core.Generate.Contract,
+  Atlas.Core.Build.Events,
   Atlas.Core.Build.ReleaseGuard,
+  Atlas.Core.Build.OpenBuild,
   Atlas.Core.Notifications.Sources;
 
 const
@@ -701,6 +718,11 @@ begin
   Result.CheckOnSaveDelayMs := 2000;
   Result.CheckOnSaveMaxMs := 1500;
   Result.McpBuild := True;
+  Result.BuildOnOpen := False;
+  Result.BuildOnOpenKind := TAtlasOpenBuild.KindName(TAtlasCompileKind.Make);
+  Result.BuildOnOpenScope := TAtlasOpenBuild.ScopeNames[TAtlasOpenBuildScope.All];
+  Result.BuildOnOpenDelayMs := TAtlasOpenBuild.DefaultDelayMs;
+  Result.BuildOnOpenExclude := '';
   Result.ActionsKey := $800D; // Alt+Enter
   Result.ExpandKey := $4057; // Strg+W
   Result.ShrinkKey := $6057; // Strg+Umschalt+W
@@ -851,6 +873,10 @@ begin
   ProviderTimeLimitMs := EnsureRange(ProviderTimeLimitMs, MinProviderTimeLimit, MaxProviderTimeLimit);
   CheckOnSaveDelayMs := EnsureRange(CheckOnSaveDelayMs, MinCheckDelay, MaxCheckDelay);
   CheckOnSaveMaxMs := EnsureRange(CheckOnSaveMaxMs, MinCheckMax, MaxCheckMax);
+  BuildOnOpenKind := TAtlasOpenBuild.KindName(TAtlasOpenBuild.KindOf(BuildOnOpenKind));
+  BuildOnOpenScope := TAtlasOpenBuild.ScopeNames[TAtlasOpenBuild.ScopeOf(BuildOnOpenScope)];
+  BuildOnOpenDelayMs := EnsureRange(BuildOnOpenDelayMs, TAtlasOpenBuild.MinDelayMs, TAtlasOpenBuild.MaxDelayMs);
+  BuildOnOpenExclude := TAtlasOpenBuild.NormalizedExclude(BuildOnOpenExclude);
   // Nach dem Speichern genau eins von beiden: Die Syntaxprüfung der IDE gewinnt.
   if CheckOnSave then
     CompileOnSave := False;
@@ -1010,6 +1036,11 @@ begin
   CheckOnSaveDelayMs := AStore.ReadInteger('CheckOnSaveDelayMs', Default.CheckOnSaveDelayMs);
   CheckOnSaveMaxMs := AStore.ReadInteger('CheckOnSaveMaxMs', Default.CheckOnSaveMaxMs);
   McpBuild := AStore.ReadInteger('McpBuild', BoolValue(Default.McpBuild)) <> 0;
+  BuildOnOpen := AStore.ReadInteger('BuildOnOpen', BoolValue(Default.BuildOnOpen)) <> 0;
+  BuildOnOpenKind := AStore.ReadString('BuildOnOpenKind', Default.BuildOnOpenKind);
+  BuildOnOpenScope := AStore.ReadString('BuildOnOpenScope', Default.BuildOnOpenScope);
+  BuildOnOpenDelayMs := AStore.ReadInteger('BuildOnOpenDelayMs', Default.BuildOnOpenDelayMs);
+  BuildOnOpenExclude := AStore.ReadString('BuildOnOpenExclude', Default.BuildOnOpenExclude);
   CompileOnSave := AStore.ReadInteger('CompileOnSave', BoolValue(Default.CompileOnSave)) <> 0;
   ActionsKey := AStore.ReadInteger('ActionsKey', Default.ActionsKey);
   ExpandKey := AStore.ReadInteger('ExpandKey', Default.ExpandKey);
@@ -1224,6 +1255,11 @@ begin
   AStore.WriteInteger('CheckOnSaveDelayMs', CheckOnSaveDelayMs);
   AStore.WriteInteger('CheckOnSaveMaxMs', CheckOnSaveMaxMs);
   AStore.WriteInteger('McpBuild', BoolValue(McpBuild));
+  AStore.WriteInteger('BuildOnOpen', BoolValue(BuildOnOpen));
+  AStore.WriteString('BuildOnOpenKind', BuildOnOpenKind);
+  AStore.WriteString('BuildOnOpenScope', BuildOnOpenScope);
+  AStore.WriteInteger('BuildOnOpenDelayMs', BuildOnOpenDelayMs);
+  AStore.WriteString('BuildOnOpenExclude', BuildOnOpenExclude);
   AStore.WriteInteger('CompileOnSave', BoolValue(CompileOnSave));
   AStore.WriteInteger('ActionsKey', ActionsKey);
   AStore.WriteInteger('ExpandKey', ExpandKey);
