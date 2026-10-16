@@ -70,6 +70,7 @@ uses
   Atlas.Common.Lsp.Completion.Contexts.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Contexts.Tests.pas',
   Atlas.Common.Lsp.CompletionEnums.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionEnums.Tests.pas',
   Atlas.Common.Lsp.CompletionRequest.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionRequest.Tests.pas',
+  Atlas.Common.Lsp.CompletionCollector.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionCollector.Tests.pas',
   Atlas.Common.Lsp.Internals.CompletionSource.Tests in 'Common\Lsp\Atlas.Common.Lsp.Internals.CompletionSource.Tests.pas',
   Atlas.Common.Lsp.SignatureHelp.Tests in 'Common\Lsp\Atlas.Common.Lsp.SignatureHelp.Tests.pas',
   Atlas.Common.Lsp.Hierarchies.Tests in 'Common\Lsp\Atlas.Common.Lsp.Hierarchies.Tests.pas',
