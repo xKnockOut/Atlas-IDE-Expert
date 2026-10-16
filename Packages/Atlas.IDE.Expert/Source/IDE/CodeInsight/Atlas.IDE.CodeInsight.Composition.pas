@@ -1006,8 +1006,8 @@ begin
   // Projektdatei .atlas (#486) anlegen bzw. öffnen; nur sichtbar, solange die Einstellung TeamFile an ist.
   Add('Atlas.TeamFile', TAtlasTextId.TeamFileCommand, TAtlasIdeTeamFile.OpenInEditor, TeamFileVisible);
   // Liste der Benachrichtigungen (#601); nur sichtbar, solange die Zentrale an ist.
-  Add('Atlas.Notifications', TAtlasTextId.NotificationsCommand, TAtlasIdeNotifications.ShowList,
-    NotificationsVisible);
+  Add('Atlas.Notifications', TAtlasTextId.NotificationsCommand,
+    Guarded(TAtlasFeature.Notifications, TAtlasIdeNotifications.ShowList), NotificationsVisible);
   Add('Atlas.CheckNow', TAtlasTextId.PaletteCheckNow,
     procedure
     begin

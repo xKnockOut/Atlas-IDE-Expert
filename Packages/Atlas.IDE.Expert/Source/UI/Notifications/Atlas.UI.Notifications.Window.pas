@@ -338,7 +338,7 @@ begin
   FAllReadButton.SetBounds(ScaleValue(10), Index, ButtonWidth, ScaleValue(25));
   FClearButton.SetBounds(ScaleValue(20) + ButtonWidth, Index, ButtonWidth, ScaleValue(25));
   FAllReadButton.Enabled := (FCenter <> nil) and (FCenter.UnreadCount > 0);
-  FClearButton.Enabled := (FCenter <> nil) and (Length(FCenter.Items) > 0);
+  FClearButton.Enabled := (FCenter <> nil) and (Length(FCenter.Items()) > 0);
 end;
 
 procedure TAtlasNotificationsWindow.FillFilter;
