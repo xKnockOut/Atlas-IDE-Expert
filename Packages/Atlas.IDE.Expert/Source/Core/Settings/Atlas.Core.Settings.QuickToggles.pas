@@ -288,6 +288,9 @@ begin
     '"MetricsReport":{"type":"boolean","x-feature":"Palette",' +
       '"default":true,"x-page":"Editor","x-quickToggle":true,' +
       '"x-caption":"Metrikbericht","x-captionEn":"Metrics report","x-issue":"#66"},' +
+    '"TeamFile":{"type":"boolean","x-feature":"Settings",' +
+      '"default":true,"x-page":"Allgemein","x-quickToggle":true,' +
+      '"x-caption":"Projektdatei .atlas","x-captionEn":"Project file .atlas","x-issue":"#486"},' +
     '"HoverTooltip":{"type":"boolean","x-feature":"Hover",' +
       '"default":true,"x-page":"Hints","x-quickToggle":true,' +
       '"x-caption":"Hover-Tooltip","x-captionEn":"Hover tooltip","x-issue":"#442"},' +
