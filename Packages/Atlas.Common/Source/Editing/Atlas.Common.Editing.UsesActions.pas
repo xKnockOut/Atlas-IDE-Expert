@@ -19,8 +19,7 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Pascal.SyntaxTree;
 
 type
   /// <summary>Was der Index über eine Unit weiß.</summary>
@@ -55,10 +54,10 @@ type
     class function MovableUnits(const ATokens: TArray<TPascalToken>; const AInfo: TUsesUnitInfoFunc): TArray<string>; static;
     /// <summary>Edits, die AUnits aus allen schlichten Listen streichen.</summary>
     class function RemoveUnits(const ATokens: TArray<TPascalToken>; const AText: string;
-      const AUnits: TArray<string>; const ALineBreak: string; out AEdits: TArray<TRuleEdit>): Boolean; static;
+      const AUnits: TArray<string>; const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean; static;
     /// <summary>Edits, die AUnits aus dem interface- ins implementation-uses verschieben.</summary>
     class function MoveUnits(const ATokens: TArray<TPascalToken>; const AText: string;
-      const AUnits: TArray<string>; const ALineBreak: string; out AEdits: TArray<TRuleEdit>): Boolean; static;
+      const AUnits: TArray<string>; const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean; static;
     /// <summary>Units, die den Bezeichner an APosition deklarieren und noch nicht eingebunden sind.
     /// Leer, wenn dort kein Bezeichner steht, er im Dokument deklariert wird oder eine
     /// eingebundene Unit ihn schon liefert.</summary>
@@ -72,7 +71,7 @@ type
     /// die eigene Unit entfallen; AAdded nennt die eingetragenen. False ohne Edit.</summary>
     class function AddUnits(const ATokens: TArray<TPascalToken>; const AUnits: TArray<string>;
       const ADeclaring: TUnitsDeclaringFunc; const ANamespaces: TArray<string>; const ALineBreak: string;
-      out AEdits: TArray<TRuleEdit>; out AAdded: TArray<string>): Boolean; static;
+      out AEdits: TArray<TTextEdit>; out AAdded: TArray<string>): Boolean; static;
   end;
 
 implementation
@@ -227,7 +226,7 @@ begin
 end;
 
 class function TUsesActions.RemoveUnits(const ATokens: TArray<TPascalToken>; const AText: string;
-  const AUnits: TArray<string>; const ALineBreak: string; out AEdits: TArray<TRuleEdit>): Boolean;
+  const AUnits: TArray<string>; const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean;
 var
   Options: TUsesRewrite;
 begin
@@ -240,10 +239,10 @@ begin
 end;
 
 class function TUsesActions.MoveUnits(const ATokens: TArray<TPascalToken>; const AText: string;
-  const AUnits: TArray<string>; const ALineBreak: string; out AEdits: TArray<TRuleEdit>): Boolean;
+  const AUnits: TArray<string>; const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean;
 var
   Index, Implementation_: Integer;
-  Added: TRuleEdit;
+  Added: TTextEdit;
 begin
   AEdits := nil;
   if AUnits = nil then
@@ -335,14 +334,14 @@ end;
 
 class function TUsesActions.AddUnits(const ATokens: TArray<TPascalToken>; const AUnits: TArray<string>;
   const ADeclaring: TUnitsDeclaringFunc; const ANamespaces: TArray<string>; const ALineBreak: string;
-  out AEdits: TArray<TRuleEdit>; out AAdded: TArray<string>): Boolean;
+  out AEdits: TArray<TTextEdit>; out AAdded: TArray<string>): Boolean;
 var
   Used, ForInterface, ForImplementation, InterfaceNeeds: TArray<string>;
   Identifiers: TDictionary<string, Integer>;
   Pair: TPair<string, Integer>;
   Name, Own: string;
   Index, InterfaceOffset, ImplementationOffset: Integer;
-  Edit: TRuleEdit;
+  Edit: TTextEdit;
 begin
   AEdits := nil;
   AAdded := nil;

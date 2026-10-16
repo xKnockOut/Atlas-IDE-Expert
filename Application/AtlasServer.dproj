@@ -72,6 +72,9 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Adapters.ProcessRunner.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.pas"/>
         <DCCReference Include="Source\Shell\Shell.Diagnostics.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Bootstrap.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Commands.Build.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Commands.Index.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

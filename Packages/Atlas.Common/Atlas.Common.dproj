@@ -146,6 +146,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unicode.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CodeActions.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.CodeActions.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesClause.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesActions.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesCommand.pas"/>
@@ -198,7 +199,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.PaletteIcons.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Performance.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.ChangedFiles.pas"/>
-        <DCCReference Include="Source\Rules\Atlas.Common.Rules.DeclaredTypes.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.DeclaredTypes.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.ResourceNames.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.DataBinding.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.DfmProperties.pas"/>

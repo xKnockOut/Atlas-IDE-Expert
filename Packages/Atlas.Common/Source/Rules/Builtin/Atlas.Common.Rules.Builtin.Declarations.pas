@@ -119,6 +119,19 @@ begin
   Result.Alternative := AIsAlternative;
 end;
 
+/// <summary>TClassCompletion.SignatureFixes als alternative Korrekturen der Regel.</summary>
+function SignatureFixesOf(const AContext: TRuleContext; const AMethod: TUnmatchedMethod;
+  out AFixes: TArray<TRuleFix>): Boolean;
+var
+  Actions: TArray<TCodeAction>;
+  Action: TCodeAction;
+begin
+  AFixes := nil;
+  Result := TClassCompletion.SignatureFixes(AContext.Tree, AContext.Text, AMethod, Actions);
+  for Action in Actions do
+    AFixes := AFixes + [Alternative(TRuleFix.Create(Action.Title, Action.Edits), True)];
+end;
+
 function Confidence(const AContext: TRuleContext): TRuleConfidence;
 begin
   if HasIncludes(AContext) then
@@ -152,7 +165,7 @@ begin
   begin
     if not Method.Declared or IsConditional(Lines, Method) then
       Continue;
-    if TClassCompletion.SignatureFixes(AContext.Tree, AContext.Text, Method, Fixes) then
+    if SignatureFixesOf(AContext, Method, Fixes) then
       Message := Format('Die Implementierung von "%s.%s" hat eine andere Signatur als die Deklaration',
         [Method.TypeName, Method.Symbol.Name])
     else
@@ -188,7 +201,7 @@ begin
   begin
     if Method.Declared or IsConditional(Lines, Method) then
       Continue;
-    if TClassCompletion.SignatureFixes(AContext.Tree, AContext.Text, Method, Fixes) then
+    if SignatureFixesOf(AContext, Method, Fixes) then
       Message := Format('"%s.%s" hat eine andere Signatur als die Deklaration in %s',
         [Method.TypeName, Method.Symbol.Name, Method.TypeName])
     else

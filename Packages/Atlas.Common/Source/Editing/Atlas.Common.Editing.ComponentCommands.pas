@@ -23,7 +23,6 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.ClassCommands,
@@ -32,7 +31,7 @@ uses
 
 /// <summary>Abschnitte vor "end" der Klasse: Feld in private (vorhandener Abschnitt oder neuer), dann AMore.</summary>
 function AddToClass(ASource: TCommandSource; const AClass: TIndexSymbol; const AField: string;
-  const AMore: array of string): TArray<TRuleEdit>;
+  const AMore: array of string): TArray<TTextEdit>;
 var
   Line, EndLine, Index: Integer;
   Indent, Body: string;
@@ -97,7 +96,7 @@ begin
     AParameters := Trim(Copy(Text, Open + 1, Close - Open - 1));
 end;
 
-function ExecuteNotify(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteNotify(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   ClassSymbol, Existing: TIndexSymbol;
@@ -161,7 +160,7 @@ end;
 
 { /changed }
 
-function ExecuteChanged(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteChanged(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   ClassSymbol, Prop: TIndexSymbol;
@@ -205,7 +204,7 @@ begin
     if Routine <> nil then
     begin
       Block := Routine.FindChild(TSyntaxKind.Block);
-      AEdits := [TRuleEdit.Create(TTextRange.Create(Block.StartPos.Line, 0, Block.EndPos.Line + 1, 0), Body + LB),
+      AEdits := [TTextEdit.Create(TTextRange.Create(Block.StartPos.Line, 0, Block.EndPos.Line + 1, 0), Body + LB),
         Source.RemoveCommand];
       Exit(True);
     end;
@@ -221,7 +220,7 @@ begin
     if Prop.Range.StartPos.Line <> Prop.Range.EndPos.Line then
       Exit(Fail('Mehrzeilige Property-Deklaration: Setter bitte mit /prop anlegen', AReason));
     Indent := Source.Indent(ClassSymbol.Range.EndPos.Line);
-    AEdits := [TRuleEdit.Create(Prop.Range, NewDeclaration),
+    AEdits := [TTextEdit.Create(Prop.Range, NewDeclaration),
       Source.BeforeLine(ClassSymbol.Range.EndPos.Line, Indent + 'private' + LB + Indent + '  ' +
       Format('procedure %s(const Value: %s);', [Writer, Prop.TypeName])),
       Source.AddBody(ClassSymbol.Name, Format('procedure %s.%s(const Value: %s);', [ClassSymbol.Name, Writer,
@@ -234,7 +233,7 @@ end;
 
 { /loaded }
 
-function ExecuteLoaded(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteLoaded(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   ClassSymbol, Member: TIndexSymbol;
@@ -262,7 +261,7 @@ end;
 
 { /notification }
 
-function ExecuteNotification(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>;
+function ExecuteNotification(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
   Source: TCommandSource;

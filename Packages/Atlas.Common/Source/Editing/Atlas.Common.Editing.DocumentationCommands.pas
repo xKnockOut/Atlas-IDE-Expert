@@ -27,7 +27,6 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
@@ -102,7 +101,7 @@ begin
     end;
 end;
 
-function ExecuteHeader(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteHeader(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Tokens: TTokens;
@@ -142,7 +141,7 @@ begin
           else
             Updated := Copy(Tokens[Last].Text, 1, YearPos + 3) + '-' + IntToStr(CurrentYear) +
               Copy(Tokens[Last].Text, YearPos + 4, MaxInt);
-          AEdits := [TRuleEdit.Create(TTextRange.Create(Tokens[Last].StartPos, Tokens[Last].EndPos), Updated)];
+          AEdits := [TTextEdit.Create(TTextRange.Create(Tokens[Last].StartPos, Tokens[Last].EndPos), Updated)];
         end;
       end;
       AEdits := AEdits + [Source.RemoveCommand];
@@ -155,9 +154,9 @@ begin
       Template := DefaultHeaderTemplate;
     Header := ExpandHeader(Template, Source.Tree.Root.Name, Source.LineBreak) + Source.LineBreak;
     if Source.Line = 0 then
-      AEdits := [TRuleEdit.Create(TTextRange.Create(0, 0, 1, 0), Header)]
+      AEdits := [TTextEdit.Create(TTextRange.Create(0, 0, 1, 0), Header)]
     else
-      AEdits := [TRuleEdit.Create(TTextRange.Create(0, 0, 0, 0), Header), Source.RemoveCommand];
+      AEdits := [TTextEdit.Create(TTextRange.Create(0, 0, 0, 0), Header), Source.RemoveCommand];
     Result := True;
   finally
     Source.Free;
@@ -271,7 +270,7 @@ begin
   Result := nil;
 end;
 
-function ExecuteDeprecated(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>;
+function ExecuteDeprecated(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
   Source: TCommandSource;
@@ -280,7 +279,7 @@ var
   Present: Boolean;
   Hint, Remark, Name: string;
   TypeNode: TSyntaxNode;
-  Directive: TRuleEdit;
+  Directive: TTextEdit;
 begin
   AEdits := nil;
   Source := TCommandSource.Create(AContext);
@@ -317,7 +316,7 @@ begin
       Stop := RoutineEnd(Tokens, Target, Present);
       if Stop < 0 then
         Exit(Fail('Deklaration von ' + Name + ' ist unvollständig', AReason));
-      Directive := TRuleEdit.Create(TTextRange.Create(Tokens[Stop].EndPos, Tokens[Stop].EndPos), Hint + ';');
+      Directive := TTextEdit.Create(TTextRange.Create(Tokens[Stop].EndPos, Tokens[Stop].EndPos), Hint + ';');
     end
     else
     begin
@@ -338,7 +337,7 @@ begin
       if (Prev >= 0) and (Tokens[Prev].Kind = TPascalTokenKind.StringLiteral) then
         Prev := PrevCode(Tokens, Prev);
       Present := (Prev >= 0) and SameText(Tokens[Prev].Text, 'deprecated');
-      Directive := TRuleEdit.Create(TTextRange.Create(Tokens[Stop].StartPos, Tokens[Stop].StartPos), Hint);
+      Directive := TTextEdit.Create(TTextRange.Create(Tokens[Stop].StartPos, Tokens[Stop].StartPos), Hint);
     end;
     if Present then
       Exit(Fail('Die Deklaration ist schon als deprecated markiert', AReason));
@@ -348,9 +347,9 @@ begin
       Remark := Remark + ': ' + AContext.Arguments;
     Remark := Remark + '</remarks>' + Source.LineBreak;
     if DeclLine = Source.Line + 1 then
-      AEdits := [TRuleEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1, 0), Remark), Directive]
+      AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1, 0), Remark), Directive]
     else
-      AEdits := [TRuleEdit.Create(TTextRange.Create(DeclLine, 0, DeclLine, 0), Remark), Directive,
+      AEdits := [TTextEdit.Create(TTextRange.Create(DeclLine, 0, DeclLine, 0), Remark), Directive,
         Source.RemoveCommand];
     Result := True;
   finally
@@ -404,7 +403,7 @@ begin
   Result := 4;
 end;
 
-function ExecuteRegionAll(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>;
+function ExecuteRegionAll(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
   Source: TCommandSource;
@@ -477,9 +476,9 @@ begin
         (Stop <> Source.Line) then
         Inc(Stop);
       if Index = 0 then
-        AEdits := AEdits + [TRuleEdit.Create(TTextRange.Create(Bodies[0].FirstLine, 0, Stop, 0), Text)]
+        AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Bodies[0].FirstLine, 0, Stop, 0), Text)]
       else
-        AEdits := AEdits + [TRuleEdit.Create(TTextRange.Create(Bodies[Index].FirstLine, 0, Stop, 0), '')];
+        AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Bodies[Index].FirstLine, 0, Stop, 0), '')];
     end;
     AEdits := AEdits + [Source.RemoveCommand];
     Result := True;
@@ -490,7 +489,7 @@ end;
 
 { /bookmark }
 
-function ExecuteBookmark(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>;
+function ExecuteBookmark(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
   Source: TCommandSource;
@@ -500,7 +499,7 @@ begin
     Exit(Fail('Erwartet wird ein Name, z. B. /bookmark Abrechnung', AReason));
   Source := TCommandSource.Create(AContext);
   try
-    AEdits := [TRuleEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1, 0),
+    AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1, 0),
       Source.Indent(Source.Line) + '// @bookmark ' + AContext.Arguments + Source.LineBreak)];
     Result := True;
   finally

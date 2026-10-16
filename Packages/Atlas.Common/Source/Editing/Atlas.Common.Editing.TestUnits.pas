@@ -68,7 +68,7 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Rules.Profiles;
+  Atlas.Common.Editing.UsesClause;
 
 function PatternOrDefault(const APattern: string): string;
 begin
@@ -342,7 +342,7 @@ begin
   Result := False;
   for Index := 0 to High(Tokens) do
     if Tokens[Index].IsKeyword('program') then
-      Exit(TRuleProfiles.IsTestUnit(Tokens))
+      Exit(TUsesClauses.IsTestUnit(Tokens))
     else if Tokens[Index].IsKeyword('unit') or Tokens[Index].IsKeyword('library') or
       Tokens[Index].IsKeyword('package') then
       Exit(False);

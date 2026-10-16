@@ -12,8 +12,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Documents.Contract;
 
 type
   TUsesCommand = class
@@ -23,7 +22,7 @@ type
     /// <summary>Edits nach Enter in Zeile APosition.Line: Befehlszeile darüber löschen und
     /// Units eintragen. False, wenn die Zeile darüber kein /uses ist.</summary>
     class function AfterEnter(const AText: string; const APosition: TTextPosition;
-      const ANamespaces: TArray<string>; out AEdits: TArray<TRuleEdit>): Boolean; static;
+      const ANamespaces: TArray<string>; out AEdits: TArray<TTextEdit>): Boolean; static;
   end;
 
 implementation
@@ -66,13 +65,13 @@ begin
 end;
 
 class function TUsesCommand.AfterEnter(const AText: string; const APosition: TTextPosition;
-  const ANamespaces: TArray<string>; out AEdits: TArray<TRuleEdit>): Boolean;
+  const ANamespaces: TArray<string>; out AEdits: TArray<TTextEdit>): Boolean;
 var
   Lines, Units, Used, Missing: TArray<string>;
   Line, Offset, Index: Integer;
   LineBreak, Blanked, Name: string;
   Tokens: TArray<TPascalToken>;
-  Edit: TRuleEdit;
+  Edit: TTextEdit;
 begin
   AEdits := nil;
   Line := APosition.Line - 1;
@@ -92,7 +91,7 @@ begin
     if not TUsesClauses.IsUsed(Used + Missing, Name, ANamespaces) then
       Missing := Missing + [Name];
   // Die Befehlszeile samt Zeilenende verschwindet in jedem Fall.
-  AEdits := [TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(Line, 0), TTextPosition.Create(Line + 1, 0)), '')];
+  AEdits := [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(Line, 0), TTextPosition.Create(Line + 1, 0)), '')];
   if (Length(Missing) > 0) and
     TUsesClauses.AddUnit(Tokens, Offset, string.Join(', ', Missing), LineBreak, Edit) then
     AEdits := [Edit] + AEdits;

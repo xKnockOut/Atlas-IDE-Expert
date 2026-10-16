@@ -18,7 +18,6 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Contract;
 
 type
@@ -27,7 +26,7 @@ type
     /// <summary>Änderungen für die Zeilen AFirstLine bis ALastLine (-1 = bis zum Ende).
     /// Zeilenenden und die abschließende Leerzeile nur bei der ganzen Datei.</summary>
     class function Edits(const AText: string; const ATokens: TArray<TPascalToken>;
-      const ASettings: TFormatStyle; AFirstLine: Integer = 0; ALastLine: Integer = -1): TArray<TRuleEdit>; static;
+      const ASettings: TFormatStyle; AFirstLine: Integer = 0; ALastLine: Integer = -1): TArray<TTextEdit>; static;
     /// <summary>Text nach dem Formatieren, z. B. für Tests und den Linter.</summary>
     class function FormatText(const AText: string; const ATokens: TArray<TPascalToken>;
       const ASettings: TFormatStyle): string; static;
@@ -93,7 +92,7 @@ end;
 { TFormatter }
 
 class function TFormatter.Edits(const AText: string; const ATokens: TArray<TPascalToken>;
-  const ASettings: TFormatStyle; AFirstLine, ALastLine: Integer): TArray<TRuleEdit>;
+  const ASettings: TFormatStyle; AFirstLine, ALastLine: Integer): TArray<TTextEdit>;
 var
   Lines, Formatted: TArray<string>;
   Info: TArray<TLineInfo>;
@@ -103,7 +102,7 @@ var
   Settings: TFormatStyle;
   Text, LB, Wanted: string;
   Gap: TGapEdit;
-  Found: TList<TRuleEdit>;
+  Found: TList<TTextEdit>;
   WholeFile, Changed: Boolean;
   LastLine: Integer;
 begin
@@ -115,7 +114,7 @@ begin
   SetLength(Gaps, Length(Lines));
   for Line := 0 to High(Lines) do
     Gaps[Line] := TList<TGapEdit>.Create;
-  Found := TList<TRuleEdit>.Create;
+  Found := TList<TTextEdit>.Create;
   try
     // Mehrzeilige Tokens und asm-Blöcke einfrieren.
     AsmDepth := 0;
@@ -203,7 +202,7 @@ begin
         Text := TrimRight(Text);
       Formatted[Line] := Text;
       if Formatted[Line] <> Lines[Line] then
-        Found.Add(TRuleEdit.Create(TTextRange.Create(Line, 0, Line, Length(Lines[Line])), Formatted[Line]));
+        Found.Add(TTextEdit.Create(TTextRange.Create(Line, 0, Line, Length(Lines[Line])), Formatted[Line]));
     end;
     WholeFile := (AFirstLine <= 0) and (ALastLine < 0);
     if WholeFile then
@@ -217,10 +216,10 @@ begin
         Text := string.Join(Settings.EndOfLine, Formatted);
         if Settings.InsertFinalNewline and (Text <> '') and not Text.EndsWith(Settings.EndOfLine) then
           Text := Text + Settings.EndOfLine;
-        Found.Add(TRuleEdit.Create(TTextRange.Create(0, 0, High(Lines), Length(Lines[High(Lines)])), Text));
+        Found.Add(TTextEdit.Create(TTextRange.Create(0, 0, High(Lines), Length(Lines[High(Lines)])), Text));
       end
       else if Settings.InsertFinalNewline and (Formatted[High(Formatted)] <> '') then
-        Found.Add(TRuleEdit.Create(TTextRange.Create(High(Lines), Length(Lines[High(Lines)]), High(Lines),
+        Found.Add(TTextEdit.Create(TTextRange.Create(High(Lines), Length(Lines[High(Lines)]), High(Lines),
           Length(Lines[High(Lines)])), LB));
     end;
     Result := Found.ToArray;
@@ -235,8 +234,8 @@ class function TFormatter.FormatText(const AText: string; const ATokens: TArray<
   const ASettings: TFormatStyle): string;
 var
   Lines: TArray<string>;
-  Edit: TRuleEdit;
-  Edits: TArray<TRuleEdit>;
+  Edit: TTextEdit;
+  Edits: TArray<TTextEdit>;
   Index: Integer;
   LB: string;
 begin
