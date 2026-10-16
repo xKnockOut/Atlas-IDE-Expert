@@ -40,11 +40,10 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Progress,
   Atlas.Core.Hover.Contract,
-  Atlas.Core.Problems.Contract,
+  Atlas.Core.Lsp.Contract,
   Atlas.Core.Files.WatchedChanges,
-  Atlas.Core.Projects.Context,
+  Atlas.Core.Projects.Contract,
   Atlas.Core.InlayHints.Store,
-  Atlas.Core.Results.Model,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits;
 
@@ -1016,7 +1015,7 @@ var
 begin
   Result := nil;
   Method := 'textDocument/prepareTypeHierarchy';
-  if TAtlasResults.IsCallHierarchy(ADirection) then
+  if ADirection in [TAtlasHierarchyDirection.Incoming, TAtlasHierarchyDirection.Outgoing] then
     Method := 'textDocument/prepareCallHierarchy';
   Response := FClient.Request(Method, PositionParams(AFileName, ALine, ACharacter), FTimeoutMs * 10);
   try

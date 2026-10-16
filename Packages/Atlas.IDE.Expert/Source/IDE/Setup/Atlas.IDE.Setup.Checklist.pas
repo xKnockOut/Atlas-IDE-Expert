@@ -118,7 +118,7 @@ uses
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Product.Version,
-  Atlas.Core.Projects.Context,
+  Atlas.Core.Projects.Contract,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Updates.Check,

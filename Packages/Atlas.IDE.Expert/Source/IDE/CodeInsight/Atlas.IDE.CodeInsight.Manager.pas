@@ -249,7 +249,7 @@ uses
   Atlas.IDE.Editor.Buffer,
   Atlas.IDE.Editor.Snapshot,
   Atlas.Core.Completion.Word,
-  Atlas.Core.Projects.Context,
+  Atlas.Core.Projects.Contract,
   Atlas.IDE.Projects.Context,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.UI.Strings,

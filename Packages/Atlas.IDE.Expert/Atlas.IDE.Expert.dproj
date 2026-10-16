@@ -101,6 +101,7 @@
         <DCCReference Include="..\Atlas.Text\Source\Entities\Atlas.Text.Entities.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Progress.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Client.pas"/>
+        <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Contract.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Session.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.TextChanges.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.WorkspaceEdits.pas"/>
@@ -156,6 +157,7 @@
         <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.State.pas"/>
         <DCCReference Include="Source\UI\UnitSearch\Atlas.UI.UnitSearch.Window.pas"/>
         <DCCReference Include="Source\IDE\UnitSearch\Atlas.IDE.UnitSearch.Commands.pas"/>
+        <DCCReference Include="Source\Core\Generate\Atlas.Core.Generate.Contract.pas"/>
         <DCCReference Include="Source\Core\Generate\Atlas.Core.Generate.Menu.pas"/>
         <DCCReference Include="Source\Core\Generate\Atlas.Core.Generate.Protocol.pas"/>
         <DCCReference Include="Source\UI\Generate\Atlas.UI.Generate.Window.pas"/>
@@ -311,7 +313,7 @@
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.Contract.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.TextFile.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.EncodingDefault.pas"/>
-        <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Context.pas"/>
+        <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Contract.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Summary.pas"/>
         <DCCReference Include="Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas"/>
         <DCCReference Include="Source\Core\Results\Atlas.Core.Results.Model.pas"/>
