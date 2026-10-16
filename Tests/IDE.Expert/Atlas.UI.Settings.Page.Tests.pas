@@ -73,6 +73,10 @@ type
     procedure MethodToggleRoundTrip;
     [Test]
     procedure WelcomeSettingsRoundTrip;
+    /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
+    /// Layout eigene Sichtbarkeit; Reveal der neuen Einstellungen.</summary>
+    [Test]
+    procedure WelcomeLayoutsOnPage;
     [Test]
     procedure UsageButtonsCallBack;
     /// <summary>Favoriten (#458): Schalter, Liste, „Entfernen“ und „Alle entfernen“.</summary>
@@ -112,6 +116,7 @@ uses
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.QuickActions,
+  Atlas.Core.Welcome.Layouts,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Completion.Snippets,
@@ -844,6 +849,98 @@ begin
     Assert.AreEqual(20000, Saved.SafeStartupTimeoutMs);
     // Begrenzt auf die Höchstzahl.
     Assert.AreEqual(TAtlasPluginSettings.MaxSafeSettingsHistory, Saved.SafeKeepSettingsHistory);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.WelcomeLayoutsOnPage;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+  Layouts: TAtlasWelcomeLayouts;
+  Answer, Told: string;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.OnAskLayoutName :=
+      function(const APrompt: string; var AName: string): Boolean
+      begin
+        AName := Answer;
+        Result := Answer <> '';
+      end;
+    Page.OnConfirmLayout :=
+      function(const AText: string; AQuestion: Boolean): Boolean
+      begin
+        Told := AText;
+        Result := True;
+      end;
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.WelcomeCustomLayout.Checked);
+    Assert.AreEqual('2', Page.WelcomeColumns.Text);
+    Assert.AreEqual(0, Page.WelcomeActiveLayout.Choice);
+    Assert.AreEqual(1, Integer(Length(Page.PageLayouts.Items)));
+    Assert.IsFalse(Page.WelcomeLayoutDelete.Enabled, 'das letzte Layout bleibt');
+    // Neues Layout „Präsentation“: Kopie, danach aktiv; dort Testergebnisse aus, eine Spalte.
+    Answer := 'Präsentation';
+    Page.WelcomeLayoutNew.Click;
+    Assert.AreEqual(1, Page.WelcomeActiveLayout.Choice);
+    Assert.AreEqual('Präsentation', Page.PageLayouts.ActiveName);
+    Assert.IsTrue(Page.WelcomeLayoutDelete.Enabled);
+    Page.WelcomeTests.Checked := False;
+    Page.WelcomeWhatsNew.Choice := 0;
+    Page.WelcomeColumns.Text := '1';
+    // Zurück zu „Standard“: dessen Sichtbarkeit und Spalten.
+    Page.SelectWelcomeLayout(0);
+    Assert.IsTrue(Page.WelcomeTests.Checked);
+    Assert.AreEqual(1, Page.WelcomeWhatsNew.Choice, '„Neu in Atlas“ wieder nach einem Update');
+    Assert.AreEqual('2', Page.WelcomeColumns.Text);
+    Page.SelectWelcomeLayout(1);
+    Assert.IsFalse(Page.WelcomeTests.Checked);
+    Assert.AreEqual(0, Page.WelcomeWhatsNew.Choice);
+    Assert.AreEqual('1', Page.WelcomeColumns.Text);
+    // Vergebener Name: Hinweis, nichts geändert.
+    Answer := 'standard';
+    Page.WelcomeLayoutRename.Click;
+    Assert.IsTrue(Pos('standard', Told) > 0);
+    Assert.AreEqual('Präsentation', Page.PageLayouts.ActiveName);
+    Answer := 'Vortrag';
+    Page.WelcomeLayoutRename.Click;
+    Assert.AreEqual('Vortrag', Page.PageLayouts.ActiveName);
+    // Abbrechen ändert nichts.
+    Answer := '';
+    Page.WelcomeLayoutNew.Click;
+    Assert.AreEqual(2, Integer(Length(Page.PageLayouts.Items)));
+    Page.WelcomeCustomLayout.Checked := False;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.WelcomePageCustomLayout);
+    Assert.AreEqual('Vortrag', Saved.WelcomePageActiveLayout);
+    Assert.AreEqual(1, Saved.WelcomePageColumns);
+    Assert.IsFalse(Saved.WelcomePageTests);
+    Assert.AreEqual('off', Saved.WelcomePageWhatsNew);
+    Layouts := TAtlasWelcomeCustomizing.Load(Saved);
+    Assert.AreEqual(2, Integer(Length(Layouts.Items)));
+    Assert.AreEqual('Standard', Layouts.Items[0].Name);
+    Assert.AreEqual(2, Layouts.Items[0].Columns);
+    // Wieder laden und löschen: „Standard“ bleibt mit seiner Sichtbarkeit.
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.WelcomeCustomLayout.Checked);
+    Assert.AreEqual(1, Page.WelcomeActiveLayout.Choice);
+    Page.WelcomeLayoutDelete.Click;
+    Assert.IsTrue(Pos('Vortrag', Told) > 0, 'Rückfrage nennt das Layout');
+    Assert.AreEqual(0, Page.WelcomeActiveLayout.Choice);
+    Assert.IsTrue(Page.WelcomeTests.Checked);
+    Assert.AreEqual('2', Page.WelcomeColumns.Text);
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.AreEqual('', Saved.WelcomePageLayouts, 'nur noch die Vorgabe');
+    Assert.AreEqual('Standard', Saved.WelcomePageActiveLayout);
+    // „Einstellungen dazu …“ (#628) findet die neuen Einstellungen und Meine Issues.
+    Assert.IsTrue(Page.Reveal('WelcomePageCustomLayout'));
+    Assert.IsTrue(Page.Reveal('WelcomePageColumns'));
+    Assert.IsTrue(Page.Reveal('WelcomePageActiveLayout'));
+    Assert.IsTrue(Page.Reveal('WelcomePageIssues'));
   finally
     Page.Free;
   end;

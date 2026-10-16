@@ -387,6 +387,7 @@
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.OpenBuild.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Sections.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Layout.pas"/>
+        <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Layouts.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Greeting.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Backup.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.HostLayout.pas"/>
@@ -412,6 +413,7 @@
         </DCCReference>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Search.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Header.pas"/>
+        <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Arrange.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Board.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.WhatsNew.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Projects.pas"/>
@@ -443,6 +445,7 @@
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Discover.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Help.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Setup.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Layouts.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Commands.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Contract.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Internals.Text.pas"/>

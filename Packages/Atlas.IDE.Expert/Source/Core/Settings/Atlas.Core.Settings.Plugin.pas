@@ -59,6 +59,11 @@ type
     /// <summary>Grenzen für welcomePage.maxProjects (#592); wie TAtlasWelcomeProjects.MinMax/MaxMax.</summary>
     MinWelcomeProjects = 1;
     MaxWelcomeProjects = 30;
+    /// <summary>Spalten der Willkommensseite (#767, welcomePage.columns).</summary>
+    MinWelcomeColumns = 1;
+    MaxWelcomeColumns = 3;
+    /// <summary>Name des Layouts, das Atlas anlegt (#767, welcomePage.activeLayout).</summary>
+    DefaultWelcomeLayoutName = 'Standard';
     /// <summary>Grenzen der Stunden für welcomePage.unsaved.* (#762); wie TAtlasWelcomeUnsaved.MaxHours.</summary>
     MinUnsavedHours = 0;
     MaxUnsavedHours = 8760;
@@ -588,6 +593,16 @@ type
     /// <summary>Befehl „Zugang zum Issue-Tracker hinterlegen …“ (#765, Atlas.TrackerLogin) in der Befehlspalette
     /// und im Kontextmenü des Bereichs; aus = der Befehl und sein Tipp verschwinden.</summary>
     TrackerLogin: Boolean;
+    /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
+    /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
+    WelcomePageCustomLayout: Boolean;
+    /// <summary>Spalten des aktiven Layouts (#767, welcomePage.columns, 1–3).</summary>
+    WelcomePageColumns: Integer;
+    /// <summary>Gespeicherte Layouts als JSON-Liste (#767, welcomePage.layouts); '' = nur das Layout „Standard“
+    /// mit den Plätzen von Atlas.</summary>
+    WelcomePageLayouts: string;
+    /// <summary>Name des aktiven Layouts (#767, welcomePage.activeLayout); unbekannt = das erste Layout.</summary>
+    WelcomePageActiveLayout: string;
     /// <summary>Benachrichtigungszentrale (#601, notifications.enabled): Hinweise sammeln, Zähler im
     /// Atlas-Statusfeld, Liste und Befehl Atlas.Notifications; aus = jede Funktion zeigt ihre Einblendung wie
     /// vor #601, nichts wird gesammelt.</summary>
@@ -1007,6 +1022,10 @@ begin
   Result.WelcomePageIssuesBranchBase := '';
   Result.WelcomePageIssuesCommitPattern := DefaultIssuesCommitPattern;
   Result.TrackerLogin := True;
+  Result.WelcomePageCustomLayout := True;
+  Result.WelcomePageColumns := 2;
+  Result.WelcomePageLayouts := '';
+  Result.WelcomePageActiveLayout := DefaultWelcomeLayoutName;
   Result.WelcomePageContinueIncoming := True;
   Result.WelcomePageContinueFetch := False;
   Result.WelcomePageSaved := True;
@@ -1067,6 +1086,11 @@ begin
   WelcomePageIssuesBranchBase := NormalizedIssuesText(WelcomePageIssuesBranchBase, True);
   // Leerraum am Ende gehört zum Muster ("{kennung} ").
   WelcomePageIssuesCommitPattern := NormalizedIssuesText(WelcomePageIssuesCommitPattern, False);
+  WelcomePageColumns := EnsureRange(WelcomePageColumns, MinWelcomeColumns, MaxWelcomeColumns);
+  WelcomePageLayouts := Trim(WelcomePageLayouts);
+  WelcomePageActiveLayout := Trim(WelcomePageActiveLayout);
+  if WelcomePageActiveLayout = '' then
+    WelcomePageActiveLayout := DefaultWelcomeLayoutName;
   BuildGate := TAtlasReleaseGuard.GateNames[TAtlasReleaseGuard.GateOf(BuildGate)];
   ReleaseConfigs := TAtlasReleaseGuard.NormalizedConfigurations(ReleaseConfigs);
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
@@ -1389,6 +1413,11 @@ begin
   WelcomePageIssuesCommitPattern := AStore.ReadString('WelcomePageIssuesCommitPattern',
     Default.WelcomePageIssuesCommitPattern);
   TrackerLogin := AStore.ReadInteger('TrackerLogin', BoolValue(Default.TrackerLogin)) <> 0;
+  WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
+    BoolValue(Default.WelcomePageCustomLayout)) <> 0;
+  WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
+  WelcomePageLayouts := AStore.ReadString('WelcomePageLayouts', Default.WelcomePageLayouts);
+  WelcomePageActiveLayout := AStore.ReadString('WelcomePageActiveLayout', Default.WelcomePageActiveLayout);
   Notifications := AStore.ReadInteger('Notifications', BoolValue(Default.Notifications)) <> 0;
   NotificationsSources := AStore.ReadString('NotificationsSources', Default.NotificationsSources);
   NotificationsMaxEntries := AStore.ReadInteger('NotificationsMaxEntries', Default.NotificationsMaxEntries);
@@ -1609,6 +1638,10 @@ begin
   AStore.WriteString('WelcomePageIssuesBranchBase', WelcomePageIssuesBranchBase);
   AStore.WriteString('WelcomePageIssuesCommitPattern', WelcomePageIssuesCommitPattern);
   AStore.WriteInteger('TrackerLogin', BoolValue(TrackerLogin));
+  AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
+  AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
+  AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);
+  AStore.WriteString('WelcomePageActiveLayout', WelcomePageActiveLayout);
   AStore.WriteInteger('Notifications', BoolValue(Notifications));
   AStore.WriteString('NotificationsSources', NotificationsSources);
   AStore.WriteInteger('NotificationsMaxEntries', NotificationsMaxEntries);

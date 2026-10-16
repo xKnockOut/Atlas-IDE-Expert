@@ -135,6 +135,7 @@ uses
   Atlas.IDE.Welcome.Help,
   Atlas.IDE.Welcome.Setup,
   Atlas.IDE.Welcome.Commands,
+  Atlas.IDE.Welcome.Layouts,
   Atlas.IDE.Vcs.Service,
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Notes.Gutter,
@@ -1105,6 +1106,18 @@ begin
     begin
       if Welcome <> nil then
         Welcome.ResetLayout;
+    end);
+  // Seite anpassen (#767): Bearbeitungsmodus der Willkommensseite bzw. von „Atlas-Start“; sichtbar mit
+  // welcomePage.customLayout.
+  Add(TAtlasIdeWelcomeLayouts.CommandId, TAtlasTextId.CommandWelcomeCustomize,
+    procedure
+    begin
+      if Welcome <> nil then
+        Welcome.Customize;
+    end,
+    function: Boolean
+    begin
+      Result := (Welcome <> nil) and Welcome.Layouts.CanCustomize;
     end);
   // Karte „Neu in Atlas“ (#756): wie das Kontextmenü; zeigt die Willkommensseite bzw. „Atlas-Start“.
   Add('Atlas.WhatsNew', TAtlasTextId.WelcomeNewsShowCurrent,
@@ -2549,6 +2562,22 @@ begin
           MessageLine(AText);
         end);
     end);
+  // Seite anpassen (#767): Rechtsklick „Ausblenden“ über den Weg von #628 (mit „Rückgängig“), „Einstellungen
+  // dazu …“ auf der Optionsseite.
+  Welcome.Layouts.OnHideSetting :=
+    function(AKey: string; APoint: TPoint): Boolean
+    begin
+      Result := HideStarted and TAtlasIdeHide.HideSetting(AKey, APoint);
+    end;
+  Welcome.Layouts.OnShowSetting :=
+    procedure(AKey: string)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          TAtlasOptionsRegistration.ShowSetting(AKey);
+        end);
+    end;
 end;
 
 procedure StopWelcome;

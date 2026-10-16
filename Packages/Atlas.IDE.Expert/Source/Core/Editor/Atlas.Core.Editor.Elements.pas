@@ -96,12 +96,13 @@ uses
   Atlas.Core.Editor.LineAnchor;
 
 const
-  SectionIds: array[0..11] of string = ('atlas.header', 'atlas.state', 'atlas.continue', 'atlas.projects',
+  SectionIds: array[0..12] of string = ('atlas.header', 'atlas.state', 'atlas.continue', 'atlas.projects',
     'atlas.history', 'atlas.news', 'atlas.discover', 'atlas.setup', 'atlas.search', 'atlas.unsaved', 'atlas.tests',
-    'atlas.help');
-  SectionKeys: array[0..11] of string = ('WelcomePageHeader', 'WelcomePageStatusTile', 'WelcomePageContinue',
+    'atlas.help', 'atlas.issues');
+  SectionKeys: array[0..12] of string = ('WelcomePageHeader', 'WelcomePageStatusTile', 'WelcomePageContinue',
     'WelcomePageProjectStatus', 'WelcomePageTrends', 'WelcomePageWhatsNew', 'WelcomePageDiscover',
-    'WelcomePageProjectSetup', 'WelcomePageSearch', 'WelcomePageUnsaved', 'WelcomePageTests', 'WelcomePageHelp');
+    'WelcomePageProjectSetup', 'WelcomePageSearch', 'WelcomePageUnsaved', 'WelcomePageTests', 'WelcomePageHelp',
+    'WelcomePageIssues');
 
 function Make(AElement: TAtlasDrawnElement; const AKey: string; AScopes: TAtlasHideScopes;
   AOverlay, AGutter: Boolean): TAtlasDrawnElementInfo;
