@@ -61,6 +61,8 @@ contains
   Atlas.Text.Entities in '..\Atlas.Text\Source\Entities\Atlas.Text.Entities.pas',
   Atlas.Text.Defines in '..\Atlas.Text\Source\Defines\Atlas.Text.Defines.pas',
   Atlas.Text.Checkin in '..\Atlas.Text\Source\Checkin\Atlas.Text.Checkin.pas',
+  Atlas.Text.DUnitX in '..\Atlas.Text\Source\DUnitX\Atlas.Text.DUnitX.pas',
+  Atlas.Text.TestResults in '..\Atlas.Text\Source\TestResults\Atlas.Text.TestResults.pas',
   Atlas.Core.Lsp.Progress in 'Source\Core\Lsp\Atlas.Core.Lsp.Progress.pas',
   Atlas.Core.Lsp.Client in 'Source\Core\Lsp\Atlas.Core.Lsp.Client.pas',
   Atlas.Core.Lsp.Contract in 'Source\Core\Lsp\Atlas.Core.Lsp.Contract.pas',
@@ -268,6 +270,7 @@ contains
   Atlas.Core.Files.EncodingDefault in 'Source\Core\Files\Atlas.Core.Files.EncodingDefault.pas',
   Atlas.Core.Projects.Contract in 'Source\Core\Projects\Atlas.Core.Projects.Contract.pas',
   Atlas.Core.Projects.Summary in 'Source\Core\Projects\Atlas.Core.Projects.Summary.pas',
+  Atlas.Core.Tests.Run in 'Source\Core\Tests\Atlas.Core.Tests.Run.pas',
   Atlas.Core.InlayHints.Store in 'Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas',
   Atlas.Core.Results.Model in 'Source\Core\Results\Atlas.Core.Results.Model.pas',
   Atlas.UI.Results.Frame in 'Source\UI\Results\Atlas.UI.Results.Frame.pas' {AtlasResultsFrame: TFrame},
@@ -370,6 +373,8 @@ contains
   Atlas.UI.Bookmarks.Frame in 'Source\UI\Bookmarks\Atlas.UI.Bookmarks.Frame.pas' {AtlasBookmarksFrame: TFrame},
   Atlas.IDE.Bookmarks.Window in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Window.pas',
   Atlas.IDE.Bookmarks.Service in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Service.pas',
-  Atlas.IDE.Bookmarks.Gutter in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Gutter.pas';
+  Atlas.IDE.Bookmarks.Gutter in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Gutter.pas',
+  Atlas.IDE.Tests.Runner in 'Source\IDE\Tests\Atlas.IDE.Tests.Runner.pas',
+  Atlas.IDE.Tests.Lens in 'Source\IDE\Tests\Atlas.IDE.Tests.Lens.pas';
 
 end.

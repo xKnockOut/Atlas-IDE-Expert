@@ -101,6 +101,8 @@
         <DCCReference Include="..\Atlas.Text\Source\Entities\Atlas.Text.Entities.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Defines\Atlas.Text.Defines.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Checkin\Atlas.Text.Checkin.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\DUnitX\Atlas.Text.DUnitX.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\TestResults\Atlas.Text.TestResults.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Progress.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Client.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Contract.pas"/>
@@ -328,6 +330,7 @@
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.EncodingDefault.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Contract.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Summary.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Run.pas"/>
         <DCCReference Include="Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas"/>
         <DCCReference Include="Source\Core\Results\Atlas.Core.Results.Model.pas"/>
         <DCCReference Include="Source\UI\Results\Atlas.UI.Results.Frame.pas">
@@ -443,6 +446,8 @@
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Window.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Service.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Gutter.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Runner.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Lens.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

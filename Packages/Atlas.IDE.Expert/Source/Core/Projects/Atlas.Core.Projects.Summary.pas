@@ -46,7 +46,13 @@
 //                         "units": [{"name": "Foo", "file": "Src\\Main.pas",
 //                                    "line": 12, "count": 2,
 //                                    "uncertain": true}, …],
-//                         "defines": [{"name": "USE_LOG", …}, …]}}
+//                         "defines": [{"name": "USE_LOG", …}, …]}},
+//     "tests": {"at": "…", "project": "C:\\Projekte\\Demo.Tests.dproj",
+//               "configuration": "Debug", "platform": "Win64", "passed": 40,
+//               "failed": 1, "errors": 1, "skipped": 2, "durationMs": 1250,
+//               "failures": [{"test": "Demo.Tests.TRechner.Summe.Gross",
+//                             "message": "…", "file": "C:\\…\\Demo.Tests.pas",
+//                             "line": 35}, …]}
 //   }
 // "changed", "ahead", "behind" = -1: unbekannt. "first" ist die erste Fehler-
 // meldung (Zeile und Spalte ab 1). "build" ist der letzte Lauf des Benutzers,
@@ -91,6 +97,13 @@
 // "uncertain" sind deshalb nicht sicher ("uncertainUnits" und
 // "uncertainDefines" zählen sie, auch über die gespeicherten hinaus). Bei
 // einer Projektgruppe steht die Prüfung je Projekt in dessen Zusammenfassung.
+// "tests" ist der letzte DUnitX-Lauf aus der IDE (#69; Grundlage der Karte
+// Tests #763): Testprojekt, Konfiguration, Plattform, Zahlen, Dauer und die
+// fehlgeschlagenen Tests (höchstens TAtlasProjectTests.MaxFailures; "failed"
+// und "errors" zählen alle). "test" ist der volle Name aus dem Bericht von
+// DUnitX; „Fehlgeschlagene erneut ausführen“ übergibt genau diese Namen an
+// --run. "file" ist absolut, "line" ab 1 (Methodenkopf), beide fehlen ohne
+// Fundstelle. Läufe über das MCP-Werkzeug run_tests schreiben hier nicht.
 //
 // Erweitern: Neue Felder und Abschnitte dürfen jederzeit dazukommen, ohne
 // "format" zu erhöhen. Leser übergehen, was sie nicht kennen; Schreiber
@@ -317,6 +330,42 @@ type
     function PathsClean: Boolean;
   end;
 
+  /// <summary>Fehlgeschlagener Test des letzten Laufs (#69).</summary>
+  TAtlasProjectTestFailure = record
+    /// <summary>Voller Name aus dem Bericht von DUnitX (Unit.Fixture.Methode[.Fall]).</summary>
+    Test: string;
+    Message: string;
+    /// <summary>Datei des Tests (absolut); '' ohne Fundstelle.</summary>
+    FileName: string;
+    /// <summary>Zeile ab 1; 0 = ohne.</summary>
+    Line: Integer;
+  end;
+
+  /// <summary>Letzter DUnitX-Lauf aus der IDE (#69), Grundlage der Karte Tests (#763).</summary>
+  TAtlasProjectTests = record
+  public const
+    /// <summary>Höchstens so viele fehlgeschlagene Tests stehen in der Datei.</summary>
+    MaxFailures = 50;
+  public
+    Known: Boolean;
+    /// <summary>Ende des Laufs (UTC).</summary>
+    At: TDateTime;
+    /// <summary>Testprojekt (.dproj).</summary>
+    Project: string;
+    Configuration: string;
+    Platform: string;
+    Passed: Integer;
+    Failed: Integer;
+    Errors: Integer;
+    Skipped: Integer;
+    DurationMs: Integer;
+    Failures: TArray<TAtlasProjectTestFailure>;
+    class function Empty: TAtlasProjectTests; static;
+    /// <summary>Namen der gespeicherten fehlgeschlagenen Tests ohne Doppelte, für --run.</summary>
+    function FailedTests: TArray<string>;
+    function Total: Integer;
+  end;
+
   TAtlasProjectSummary = record
     /// <summary>Vollständiger Pfad der Projektdatei (.dproj, .groupproj …).</summary>
     Project: string;
@@ -334,6 +383,7 @@ type
     Baseline: TAtlasProjectBaseline;
     Trends: TAtlasProjectTrends;
     Setup: TAtlasProjectSetup;
+    Tests: TAtlasProjectTests;
     /// <summary>Gelesener Text der Datei; ToJson behält daraus alle unbekannten Felder.</summary>
     Raw: string;
     class function Create(const AProject: string): TAtlasProjectSummary; static;
@@ -396,8 +446,8 @@ uses
 
 const
   // Bekannte Felder; alles andere übernimmt ToJson unverändert aus Raw.
-  TopKeys: array[0..13] of string = ('format', 'project', 'lastOpened', 'lastClosed', 'hidden', 'vcs', 'build',
-    'check', 'rules', 'metrics', 'todos', 'baseline', 'trends', 'setup');
+  TopKeys: array[0..14] of string = ('format', 'project', 'lastOpened', 'lastClosed', 'hidden', 'vcs', 'build',
+    'check', 'rules', 'metrics', 'todos', 'baseline', 'trends', 'setup', 'tests');
   VcsKeys: array[0..6] of string = ('at', 'kind', 'branch', 'revision', 'changed', 'ahead', 'behind');
   BuildKeys: array[0..9] of string = ('at', 'kind', 'configuration', 'platform', 'succeeded', 'errors', 'warnings',
     'hints', 'durationMs', 'first');
@@ -411,6 +461,8 @@ const
   TrendPointKeys: array[0..8] of string = ('at', 'build', 'branch', 'commit', 'warnings', 'ruleHits', 'todos',
     'duration', 'methodLength');
   SetupKeys: array[0..2] of string = ('dismissed', 'dismissedAt', 'paths');
+  TestsKeys: array[0..9] of string = ('at', 'project', 'configuration', 'platform', 'passed', 'failed', 'errors',
+    'skipped', 'durationMs', 'failures');
   PathsKeys: array[0..9] of string = ('at', 'files', 'unreadable', 'missingUnits', 'undefinedDefines', 'units',
     'defines', 'uncertainUnits', 'uncertainDefines', 'skippedMacros');
 
@@ -522,6 +574,7 @@ begin
   Result.Baseline := TAtlasProjectBaseline.Empty;
   Result.Trends := TAtlasProjectTrends.Empty;
   Result.Setup := TAtlasProjectSetup.Empty;
+  Result.Tests := TAtlasProjectTests.Empty;
 end;
 
 function TAtlasProjectSummary.Name: string;
@@ -1065,6 +1118,112 @@ begin
   KeepUnknown(Result, AOriginal, SetupKeys);
 end;
 
+{ TAtlasProjectTests }
+
+class function TAtlasProjectTests.Empty: TAtlasProjectTests;
+begin
+  Result := Default(TAtlasProjectTests);
+  Result.Failures := nil;
+end;
+
+function TAtlasProjectTests.FailedTests: TArray<string>;
+var
+  Failure: TAtlasProjectTestFailure;
+  Name: string;
+  Seen: Boolean;
+begin
+  Result := nil;
+  for Failure in Failures do
+  begin
+    if Failure.Test = '' then
+      Continue;
+    Seen := False;
+    for Name in Result do
+      if SameText(Name, Failure.Test) then
+        Seen := True;
+    if not Seen then
+      Result := Result + [Failure.Test];
+  end;
+end;
+
+function TAtlasProjectTests.Total: Integer;
+begin
+  Result := Passed + Failed + Errors + Skipped;
+end;
+
+function TestsOf(ASection: TJSONObject): TAtlasProjectTests;
+var
+  Items: TJSONValue;
+  Item: TJSONValue;
+  Failure: TAtlasProjectTestFailure;
+begin
+  Result := TAtlasProjectTests.Empty;
+  if ASection = nil then
+    Exit;
+  Result.Known := True;
+  Result.At := TAtlasProjectSummaries.TimeOf(TextOf(ASection, 'at'));
+  Result.Project := TextOf(ASection, 'project');
+  Result.Configuration := TextOf(ASection, 'configuration');
+  Result.Platform := TextOf(ASection, 'platform');
+  Result.Passed := NumberOf(ASection, 'passed', 0);
+  Result.Failed := NumberOf(ASection, 'failed', 0);
+  Result.Errors := NumberOf(ASection, 'errors', 0);
+  Result.Skipped := NumberOf(ASection, 'skipped', 0);
+  Result.DurationMs := NumberOf(ASection, 'durationMs', 0);
+  Items := ASection.GetValue('failures');
+  if not (Items is TJSONArray) then
+    Exit;
+  for Item in TJSONArray(Items) do
+  begin
+    if not (Item is TJSONObject) or (Length(Result.Failures) >= TAtlasProjectTests.MaxFailures) then
+      Continue;
+    Failure := Default(TAtlasProjectTestFailure);
+    Failure.Test := TextOf(TJSONObject(Item), 'test');
+    Failure.Message := TextOf(TJSONObject(Item), 'message');
+    Failure.FileName := TextOf(TJSONObject(Item), 'file');
+    Failure.Line := NumberOf(TJSONObject(Item), 'line', 0);
+    if Failure.Test <> '' then
+      Result.Failures := Result.Failures + [Failure];
+  end;
+end;
+
+function TestsJson(const ATests: TAtlasProjectTests; AOriginal: TJSONObject): TJSONObject;
+var
+  Items: TJSONArray;
+  Item: TJSONObject;
+  Index: Integer;
+begin
+  Result := TJSONObject.Create;
+  AddTime(Result, 'at', ATests.At);
+  Result.AddPair('project', ATests.Project);
+  if ATests.Configuration <> '' then
+    Result.AddPair('configuration', ATests.Configuration);
+  if ATests.Platform <> '' then
+    Result.AddPair('platform', ATests.Platform);
+  Result.AddPair('passed', TJSONNumber.Create(ATests.Passed));
+  Result.AddPair('failed', TJSONNumber.Create(ATests.Failed));
+  Result.AddPair('errors', TJSONNumber.Create(ATests.Errors));
+  Result.AddPair('skipped', TJSONNumber.Create(ATests.Skipped));
+  Result.AddPair('durationMs', TJSONNumber.Create(ATests.DurationMs));
+  Items := TJSONArray.Create;
+  Result.AddPair('failures', Items);
+  for Index := 0 to High(ATests.Failures) do
+  begin
+    if Index >= TAtlasProjectTests.MaxFailures then
+      Break;
+    Item := TJSONObject.Create;
+    Items.AddElement(Item);
+    Item.AddPair('test', ATests.Failures[Index].Test);
+    if ATests.Failures[Index].Message <> '' then
+      Item.AddPair('message', ATests.Failures[Index].Message);
+    if ATests.Failures[Index].FileName <> '' then
+      Item.AddPair('file', ATests.Failures[Index].FileName);
+    if ATests.Failures[Index].Line > 0 then
+      Item.AddPair('line', TJSONNumber.Create(ATests.Failures[Index].Line));
+  end;
+  KeepUnknown(Result, AOriginal, TestsKeys);
+end;
+
 { TAtlasProjectSummaries }
 
 class function TAtlasProjectSummaries.NormalizedPath(const AProject: string): string;
@@ -1253,6 +1412,7 @@ begin
     end;
     ASummary.Trends := TrendsOf(ObjectOf(Root, 'trends'));
     ASummary.Setup := SetupOf(ObjectOf(Root, 'setup'));
+    ASummary.Tests := TestsOf(ObjectOf(Root, 'tests'));
     Result := True;
   finally
     Value.Free;
@@ -1384,6 +1544,8 @@ begin
       Root.AddPair('trends', TrendsJson(ASummary.Trends, ObjectOf(Original, 'trends')));
     if ASummary.Setup.Known then
       Root.AddPair('setup', SetupJson(ASummary.Setup, ObjectOf(Original, 'setup')));
+    if ASummary.Tests.Known then
+      Root.AddPair('tests', TestsJson(ASummary.Tests, ObjectOf(Original, 'tests')));
     KeepUnknown(Root, Original, TopKeys);
     Result := Root.ToJSON;
   finally
