@@ -4,9 +4,12 @@
 //   /impl            fehlende Methodenrümpfe der Klasse anlegen
 //   /ctor [owner]    Konstruktor mit den Feldern als Parametern; "owner" für Komponenten;
 //                    "/ctor FName, FAlter" nur mit diesen Feldern (Auswahl im Erzeugen-Menü, #719)
-//   /dtor            Destruktor, der im Konstruktor erzeugte Felder freigibt
+//   /dtor            Destruktor, der im Konstruktor erzeugte Felder freigibt; einen vorhandenen
+//                    ergänzt er um die noch nicht freigegebenen
 //   /override Name   virtuelle Methode eines Vorfahren überschreiben (auch aus dem Index)
 //   /msg WM_SIZE     Botschaftsmethode mit passendem Record
+//   /intf IFoo       IFoo an die Klasse hängen, Deklarationen und Rümpfe aller fehlenden
+//                    Interface-Methoden anlegen (derselbe Erzeuger wie die Vervollständigung, #466)
 //
 // Deklarationen kommen in einen eigenen Abschnitt vor "end" der Klasse, Rümpfe
 // hinter die letzte Methode der Klasse. Für die Auswahl im Erzeugen-Menü (#719)
@@ -50,6 +53,10 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Common.Editing.ClassMembers,
@@ -308,13 +315,89 @@ end;
 
 { /dtor }
 
+/// <summary>Freigabe von AField in der Zeile: FreeAndNil(F), F.Free oder F.DisposeOf.</summary>
+function FreesField(const ALine, AField: string): Boolean;
+var
+  Line: string;
+begin
+  Line := LowerCase(StringReplace(ALine, ' ', '', [rfReplaceAll]));
+  Result := (Pos('freeandnil(' + LowerCase(AField) + ')', Line) > 0) or
+    (Pos(LowerCase(AField) + '.free', Line) > 0) or (Pos(LowerCase(AField) + '.disposeof', Line) > 0);
+end;
+
+/// <summary>Vorhandener Destruktor Destroy der Klasse: Rumpf ABody (mehrzeilig) und ob die Klasse ihn deklariert.</summary>
+function FindDestructor(ASource: TCommandSource; const AClass: TIndexSymbol; out ABody: TIndexSymbol;
+  out ADeclared: Boolean): Boolean;
+var
+  Symbol: TIndexSymbol;
+begin
+  ABody := Default(TIndexSymbol);
+  ADeclared := False;
+  Result := False;
+  for Symbol in ASource.UnitIndex.Symbols do
+    if (Symbol.Kind = TIndexSymbolKind.Constructor_) and SameText(Symbol.Container, AClass.Name) and
+      SameText(Symbol.Name, 'Destroy') then
+    begin
+      if (Symbol.Range.StartPos.Line > AClass.Range.StartPos.Line) and
+        (Symbol.Range.EndPos.Line < AClass.Range.EndPos.Line) then
+        ADeclared := True
+      else if Symbol.Range.EndPos.Line > Symbol.Range.StartPos.Line then
+      begin
+        ABody := Symbol;
+        Result := True;
+      end;
+    end;
+end;
+
+/// <summary>Ergänzt den vorhandenen Rumpf ABody um die Freigabe von AFields vor "inherited" bzw. vor "end".</summary>
+function ExtendDestructor(ASource: TCommandSource; const AClass, ABody: TIndexSymbol; const AFields: TArray<string>;
+  out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+var
+  Missing: TArray<string>;
+  Field, Text, Indent: string;
+  Line, Target, Index: Integer;
+  Freed: Boolean;
+begin
+  Missing := nil;
+  for Field in AFields do
+  begin
+    Freed := False;
+    for Line := ABody.Range.StartPos.Line to ABody.Range.EndPos.Line do
+      if FreesField(ASource.Lines[Line], Field) then
+        Freed := True;
+    if not Freed then
+      Missing := Missing + [Field];
+  end;
+  if Length(Missing) = 0 then
+    Exit(Fail(Format('%s.Destroy gibt schon alle im Konstruktor erzeugten Felder frei', [AClass.Name]), AReason));
+  // Vor dem ersten "inherited" im Rumpf, sonst vor dem abschließenden "end".
+  Target := ABody.Range.EndPos.Line;
+  for Line := ABody.Range.EndPos.Line downto ABody.Range.StartPos.Line do
+    if StartsText('inherited', Trim(ASource.Lines[Line])) then
+      Target := Line;
+  Indent := ASource.Indent(Target);
+  if Target = ABody.Range.EndPos.Line then
+    Indent := Indent + '  ';
+  Text := '';
+  // In umgekehrter Reihenfolge der Erzeugung freigeben.
+  for Index := High(Missing) downto 0 do
+  begin
+    if Text <> '' then
+      Text := Text + ASource.LineBreak;
+    Text := Text + Indent + Format('FreeAndNil(%s);', [Missing[Index]]);
+  end;
+  AEdits := [ASource.BeforeLine(Target, Text), ASource.RemoveCommand];
+  Result := True;
+end;
+
 function ExecuteDtor(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
-  ClassSymbol: TIndexSymbol;
+  ClassSymbol, Existing: TIndexSymbol;
   Fields: TArray<string>;
   Body: string;
   Index: Integer;
+  Declared: Boolean;
 begin
   AEdits := nil;
   Source := TCommandSource.Create(AContext);
@@ -322,12 +405,18 @@ begin
     if not Source.ClassAt(ClassSymbol) then
       Exit(Fail('/dtor gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
     Fields := CreatedFields(Source, ClassSymbol.Name);
+    // Vorhandenen Destruktor ergänzen statt einen zweiten anzulegen.
+    if FindDestructor(Source, ClassSymbol, Existing, Declared) then
+      Exit(ExtendDestructor(Source, ClassSymbol, Existing, Fields, AEdits, AReason));
     Body := Format('destructor %s.Destroy;', [ClassSymbol.Name]) + Source.LineBreak + 'begin';
     // In umgekehrter Reihenfolge der Erzeugung freigeben.
     for Index := High(Fields) downto 0 do
       Body := Body + Source.LineBreak + Format('  FreeAndNil(%s);', [Fields[Index]]);
     Body := Body + Source.LineBreak + '  inherited;' + Source.LineBreak + 'end;';
-    AEdits := AddMethod(Source, ClassSymbol, 'public', 'destructor Destroy; override;', Body);
+    if Declared then
+      AEdits := [Source.AddBody(ClassSymbol.Name, Body), Source.RemoveCommand]
+    else
+      AEdits := AddMethod(Source, ClassSymbol, 'public', 'destructor Destroy; override;', Body);
     Result := True;
   finally
     Source.Free;
@@ -614,6 +703,169 @@ begin
     Result := Result + [Entry.Name];
 end;
 
+{ /intf }
+
+/// <summary>Schlüssel einer fehlenden Methode zum Vergleich zweier Listen.</summary>
+function MemberKey(const AMember: TResolvedSymbol): string;
+begin
+  Result := LowerCase(AMember.Container + '.' + AMember.Name + '(' + string.Join(',', AMember.ParamTypes) + ')');
+end;
+
+/// <summary>Name ohne Typargumente: IComparer&lt;TKunde&gt; wird IComparer.</summary>
+function PlainName(const AName: string): string;
+begin
+  Result := AName;
+  if Pos('<', Result) > 0 then
+    Result := Copy(Result, 1, Pos('<', Result) - 1);
+end;
+
+/// <summary>Änderung am Kopf der Klasse: ", AName" vor die schließende Klammer der Vorfahrenliste, ohne Liste
+/// "(TInterfacedObject, AName)" hinter "class".</summary>
+function HeaderEdit(ASource: TCommandSource; const AClass: TIndexSymbol; const AName: string;
+  out AEdit: TTextEdit): Boolean;
+var
+  Tokens: TArray<TPascalToken>;
+  Index, Depth: Integer;
+begin
+  Tokens := ASource.Tree.Tokens;
+  Index := 0;
+  while (Index <= High(Tokens)) and ((Tokens[Index].StartPos.Line < AClass.Range.StartPos.Line) or
+    not Tokens[Index].IsKeyword('class')) do
+    Inc(Index);
+  if (Index > High(Tokens)) or (Tokens[Index].StartPos.Line > AClass.Range.EndPos.Line) then
+    Exit(False);
+  // class sealed / class abstract
+  while (Index < High(Tokens)) and (Tokens[Index + 1].IsKeyword('sealed') or Tokens[Index + 1].IsKeyword('abstract') or
+    SameText(Tokens[Index + 1].Text, 'sealed') or SameText(Tokens[Index + 1].Text, 'abstract')) do
+    Inc(Index);
+  if (Index < High(Tokens)) and Tokens[Index + 1].IsSymbol('(') then
+  begin
+    Depth := 0;
+    for Index := Index + 1 to High(Tokens) do
+      if Tokens[Index].IsSymbol('(') then
+        Inc(Depth)
+      else if Tokens[Index].IsSymbol(')') then
+      begin
+        Dec(Depth);
+        if Depth = 0 then
+        begin
+          AEdit := TTextEdit.Create(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].StartPos), ', ' + AName);
+          Exit(True);
+        end;
+      end;
+    Exit(False);
+  end;
+  AEdit := TTextEdit.Create(TTextRange.Create(Tokens[Index].EndPos, Tokens[Index].EndPos),
+    '(TInterfacedObject, ' + AName + ')');
+  Result := True;
+end;
+
+function ExecuteIntf(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+var
+  Source: TCommandSource;
+  ClassSymbol: TIndexSymbol;
+  Own: TUnitIndex;
+  Name, TypeName, FileName, Section, Indent, Text: string;
+  Header, Ancestors, Before, SourceLines: TArray<string>;
+  Listed, NeedHeader: Boolean;
+  Resolver: TNameResolver;
+  Resolved: TResolvedSymbol;
+  Missing, Known: TArray<TResolvedSymbol>;
+  Member: TResolvedSymbol;
+  Stub: TInterfaceStub;
+  Edits: TArray<TTextEdit>;
+  Edit: TTextEdit;
+  EndLine, Index: Integer;
+begin
+  AEdits := nil;
+  Name := Trim(AContext.Arguments);
+  if not IsValidIdent(PlainName(Name), True) then
+    Exit(Fail('Erwartet wird /intf IName', AReason));
+  Source := TCommandSource.Create(AContext);
+  try
+    if not Source.ClassAt(ClassSymbol) or (ClassSymbol.Range.StartPos.Line >= Source.Line) or
+      (ClassSymbol.Range.EndPos.Line <= Source.Line) then
+      Exit(Fail('/intf gilt nur in der Deklaration einer Klasse', AReason));
+    TypeName := ClassSymbol.QualifiedName;
+    FileName := '';
+    if AContext.Uri <> '' then
+      FileName := TDocumentUris.ToPath(AContext.Uri);
+    Own := Source.UnitIndex;
+    Own.FileName := FileName;
+    Header := TInterfaceStubs.HeaderAncestors(Source.Lines, ClassSymbol.Range.StartPos.Line);
+    Listed := False;
+    Before := nil;
+    for Text in Header do
+      if SameText(PlainName(Text), PlainName(Name)) then
+        Listed := True
+      else
+        Before := Before + [Text];
+    if Header = nil then
+      Before := ['TInterfacedObject'];
+    Ancestors := Before + [Name];
+    Resolver := TNameResolver.Create(AContext.Index);
+    try
+      Resolver.Namespaces := AContext.Namespaces;
+      if not Resolver.ResolveNameFrom(Own, PlainName(Name), Resolved) or
+        (Resolved.SymbolKind <> TIndexSymbolKind.InterfaceType) then
+        Exit(Fail(Format('%s ist kein bekanntes Interface', [Name]), AReason));
+      // Nur die Methoden von AName samt Vorfahren: was schon ohne AName fehlt, bleibt außen vor.
+      Known := Resolver.MissingInterfaceMembers(Own, TypeName, Before);
+      Missing := nil;
+      for Member in Resolver.MissingInterfaceMembers(Own, TypeName, Ancestors) do
+      begin
+        Index := 0;
+        while (Index <= High(Known)) and (MemberKey(Known[Index]) <> MemberKey(Member)) do
+          Inc(Index);
+        if Index > High(Known) then
+          Missing := Missing + [Member];
+      end;
+    finally
+      Resolver.Free;
+    end;
+    if Listed and (Length(Missing) = 0) then
+      Exit(Fail(Format('%s hängt schon an %s und ist vollständig implementiert', [Name, ClassSymbol.Name]),
+        AReason));
+    Section := '';
+    if AContext.Host <> nil then
+      Section := LowerCase(Trim(AContext.Host.Setting(AContext.Uri, TSlashSettings.InterfaceSection)));
+    if (Section <> 'private') and (Section <> 'protected') then
+      Section := 'public';
+    EndLine := ClassSymbol.Range.EndPos.Line;
+    Indent := Source.Indent(EndLine);
+    NeedHeader := TInterfaceStubs.LastSection(Source.Tree.Tokens, ClassSymbol.Range.StartPos.Line, EndLine) <> Section;
+    Edits := nil;
+    for Member in Missing do
+    begin
+      if (Member.FileName = '') or SameText(Member.FileName, FileName) then
+        SourceLines := Source.Lines
+      else if LoadText(Member.FileName, Text) then
+        SourceLines := Text.Replace(#13, '').Split([#10])
+      else
+        Continue;
+      if not TInterfaceStubs.Make(TInterfaceStubs.GenericName(Member.Container, Member.Bindings), TypeName,
+        TInterfaceStubs.SubstituteWords(TInterfaceStubs.DeclarationOf(SourceLines, Member.Range), Member.Bindings),
+        Source.LineBreak, Stub) then
+        Continue;
+      Edits := Edits + TInterfaceStubs.ClassEdits(Stub, EndLine, Indent, Section, NeedHeader, Source.LineBreak);
+      if TClassCompletion.BodyEdit(Source.Tree, Source.Text, TypeName, Stub.Body, Edit) then
+        Edits := Edits + [Edit]
+      else
+        Edits := Edits + [Source.AddBody(TypeName, Stub.Body)];
+    end;
+    if not Listed then
+    begin
+      if not HeaderEdit(Source, ClassSymbol, Name, Edit) then
+        Exit(Fail(Format('Der Kopf von %s lässt sich nicht erweitern', [ClassSymbol.Name]), AReason));
+      Edits := [Edit] + Edits;
+    end;
+    AEdits := TInterfaceStubs.Merge(Edits) + [Source.RemoveCommand];
+    Result := True;
+  finally
+    Source.Free;
+  end;
+end;
+
 function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
 begin
   Result.Name := AName;
@@ -630,6 +882,8 @@ begin
   ARegistry.Register(Command('override', 'Virtuelle Methode eines Vorfahren überschreiben', '/override Paint',
     ExecuteOverride));
   ARegistry.Register(Command('msg', 'Botschaftsmethode anlegen', '/msg WM_SIZE', ExecuteMsg));
+  ARegistry.Register(Command('intf', 'Interface an die Klasse hängen und seine Methoden anlegen', '/intf IExporter',
+    ExecuteIntf));
 end;
 
 end.

@@ -180,6 +180,8 @@ begin
     Entry('assign', InClass, TSlashGroup.Generate, TSlashArgument.None),
     Entry('json', InClass, TSlashGroup.Generate, TSlashArgument.None),
     Entry('msg', InClass, TSlashGroup.Generate, TSlashArgument.Required, True, False, ''),
+    Entry('intf', InClass, TSlashGroup.Generate, TSlashArgument.Required),
+    Entry('event', [TSlashPlace.ClassBody, TSlashPlace.Routine], TSlashGroup.Generate, TSlashArgument.Required),
     Entry('notify', InClass, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('changed', InClass, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('loaded', InClass, TSlashGroup.Generate, TSlashArgument.None),

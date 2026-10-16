@@ -697,6 +697,15 @@ begin
         Result := Settings.SlashLogCall
       else if AName = TSlashSettings.ComponentPalette then
         Result := Settings.SlashComponentPalette
+      else if AName = TSlashSettings.InterfaceSection then
+        case Settings.Completion.InterfaceSection of
+          TCompletionInterfaceSection.Private:
+            Result := 'private';
+          TCompletionInterfaceSection.Protected:
+            Result := 'protected';
+        else
+          Result := 'public';
+        end
       else
         Result := '';
     end;

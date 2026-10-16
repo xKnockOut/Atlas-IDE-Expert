@@ -1,6 +1,7 @@
 ﻿unit Atlas.Common.Editing.ProjectCommands.Tests;
 
-// Tests für die Schnellbefehle /define, /searchpath, /config und /dfm (#301) sowie /unit und /open (#297)
+// Tests für die Schnellbefehle /define, /searchpath, /config und /dfm (#301), /unit und /open (#297),
+// /component (#299), /log und /except mit slashCommands.logCall (#304) und /event (#295)
 // mit einem Host, der Dateien im Speicher hält und Aufrufe mitschreibt.
 
 interface
@@ -44,6 +45,10 @@ type
     procedure ComponentAncestorFromIndex;
     [Test]
     procedure ComponentWrongPlaceFails;
+    [Test]
+    procedure EventForFormAndComponent;
+    [Test]
+    procedure EventWrongPlaceFails;
   end;
 
 implementation
@@ -598,6 +603,129 @@ begin
   Assert.AreEqual(0, Integer(Length(Host.WrittenFiles)));
   Problems := TSlashCommandRegistry.Shared.Problems(Format(FormUnit, ['/component TA : TUnbekannt']), nil);
   Assert.AreEqual(1, Integer(Length(Problems)));
+end;
+
+const
+  EventLib =
+    'unit Vcl.Lib;'#10'interface'#10'type'#10 +
+    '  TNotifyEvent = procedure(Sender: TObject) of object;'#10 +
+    '  TCloseQueryEvent = procedure(Sender: TObject; var CanClose: Boolean) of object;'#10 +
+    '  THelpEvent = function(Command: Word; Data: NativeInt; var CallHelp: Boolean): Boolean of object;'#10 +
+    '  TControl = class'#10'  published'#10'    property OnClick: TNotifyEvent read FOnClick write FOnClick;'#10 +
+    '  end;'#10'  TButton = class(TControl)'#10'  end;'#10'  TForm = class(TControl)'#10'  published'#10 +
+    '    property OnCreate: TNotifyEvent read FOnCreate write FOnCreate;'#10 +
+    '    property OnCloseQuery: TCloseQueryEvent read FOnCloseQuery write FOnCloseQuery;'#10 +
+    '    property OnHelp: THelpEvent read FOnHelp write FOnHelp;'#10'  end;'#10 +
+    'implementation'#10'end.';
+
+  EventUnit =
+    'unit Main;'#10 +                                       // 0
+    'interface'#10 +                                        // 1
+    'uses Vcl.Lib;'#10 +                                    // 2
+    'type'#10 +                                             // 3
+    '  TForm1 = class(TForm)'#10 +                          // 4
+    '    Button1: TButton;'#10 +                            // 5
+    '    procedure Button1Click(Sender: TObject);'#10 +     // 6
+    '  private'#10 +                                       // 7
+    '  end;'#10 +                                           // 8
+    'implementation'#10 +                                   // 9
+    'procedure TForm1.Button1Click(Sender: TObject);'#10 +  // 10
+    'begin'#10 +                                            // 11
+    '  %s'#10 +                                             // 12 Befehl
+    'end;'#10 +                                             // 13
+    'end.';
+
+  EventForm =
+    'object Form1: TForm1'#13#10 +
+    '  Caption = ''Haupt'''#13#10 +
+    '  object Button1: TButton'#13#10 +
+    '    Left = 8'#13#10 +
+    '  end'#13#10 +
+    'end'#13#10;
+
+function EventIndex: ISymbolIndex;
+begin
+  Result := TSymbolIndex.Create;
+  Result.AddUnit(TIndexExtractor.ExtractText(EventLib, 'C:\Lib\Vcl.Lib.pas', nil));
+end;
+
+function RunEvent(const ACommand: string; const AHost: ISlashHost; out AText: string): Boolean;
+var
+  Edits: TArray<TRuleEdit>;
+  Table: TLineTable;
+  Index, Next, Start, Stop: Integer;
+  Swap: TRuleEdit;
+begin
+  AText := Format(EventUnit, [ACommand]);
+  Result := TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(13, 0), nil, nil, Edits,
+    EventIndex, '', TDocumentUris.FromPath(TPath.Combine(GetCurrentDir, 'Main.pas')), AHost);
+  // Von hinten anwenden, damit frühere Positionen gültig bleiben.
+  Table := TLineTable.Build(AText);
+  for Index := 0 to High(Edits) do
+    for Next := Index + 1 to High(Edits) do
+      if Table.OffsetAt(Edits[Next].Range.StartPos) > Table.OffsetAt(Edits[Index].Range.StartPos) then
+      begin
+        Swap := Edits[Index];
+        Edits[Index] := Edits[Next];
+        Edits[Next] := Swap;
+      end;
+  for Index := 0 to High(Edits) do
+  begin
+    Start := Table.OffsetAt(Edits[Index].Range.StartPos);
+    Stop := Table.OffsetAt(Edits[Index].Range.EndPos);
+    AText := Copy(AText, 1, Start) + Edits[Index].NewText + Copy(AText, Stop + 1, MaxInt);
+  end;
+end;
+
+procedure TProjectCommandsTests.EventForFormAndComponent;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Text: string;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  Host.Files.Remove('Main.dfm');
+  Host.Files.Add('Main.dfm', EventForm);
+  // Ereignis des Formulars: FormCreate im ersten Abschnitt, Zuweisung hinter Caption.
+  Assert.IsTrue(RunEvent('/event OnCreate', Keep, Text), '/event OnCreate');
+  Assert.IsTrue(Pos('    procedure Button1Click(Sender: TObject);'#10'    procedure FormCreate(Sender: TObject);'#10 +
+    '  private', Text) > 0, Text);
+  Assert.IsTrue(Pos('procedure TForm1.FormCreate(Sender: TObject);'#10'begin'#10#10'end;', Text) > 0, Text);
+  Assert.IsTrue(Parses(Text), Text);
+  Assert.AreEqual(1, Integer(Length(Host.WrittenFiles)));
+  Assert.AreEqual('object Form1: TForm1'#13#10'  Caption = ''Haupt'''#13#10'  OnCreate = FormCreate'#13#10 +
+    '  object Button1: TButton'#13#10'    Left = 8'#13#10'  end'#13#10'end'#13#10, Host.WrittenFiles[0].Text);
+  // var-Parameter und Funktionen übernehmen die Signatur des Typs.
+  Assert.IsTrue(RunEvent('/event OnCloseQuery', Keep, Text), '/event OnCloseQuery');
+  Assert.IsTrue(Pos('procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);', Text) > 0, Text);
+  Assert.IsTrue(RunEvent('/event OnHelp', Keep, Text), '/event OnHelp');
+  Assert.IsTrue(Pos('function TForm1.FormHelp(Command: Word; Data: NativeInt; var CallHelp: Boolean): Boolean;',
+    Text) > 0, Text);
+  // Komponente: Button1Click gibt es schon als Methode, also Button1Click2; Zuweisung im Objekt Button1.
+  Assert.IsTrue(RunEvent('/event Button1.OnClick', Keep, Text), '/event Button1.OnClick');
+  Assert.IsTrue(Pos('    procedure Button1Click2(Sender: TObject);', Text) > 0, Text);
+  Assert.IsTrue(Pos('    Left = 8'#13#10'    OnClick = Button1Click2'#13#10'  end', Host.WrittenFiles[0].Text) > 0,
+    Host.WrittenFiles[0].Text);
+end;
+
+procedure TProjectCommandsTests.EventWrongPlaceFails;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Text: string;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  // Main.dfm weist Button1.OnClick schon zu.
+  Assert.IsFalse(RunEvent('/event Button1.OnClick', Keep, Text));
+  Assert.IsFalse(RunEvent('/event Button2.OnClick', Keep, Text));
+  Assert.IsFalse(RunEvent('/event Button1.OnGibtsNicht', Keep, Text));
+  Assert.IsFalse(RunEvent('/event Click', Keep, Text));
+  Assert.IsFalse(RunEvent('/event OnCreate', nil, Text));
+  Host.Files.Remove('Main.dfm');
+  Assert.IsFalse(RunEvent('/event OnCreate', Keep, Text));
+  Assert.AreEqual(0, Integer(Length(Host.WrittenFiles)));
 end;
 
 initialization
