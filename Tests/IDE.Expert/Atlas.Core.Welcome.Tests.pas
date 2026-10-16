@@ -733,6 +733,9 @@ begin
   Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, Settings.WelcomePageHelpReportUrl);
   Assert.AreEqual('https://github.com/xKnockOut/Atlas-IDE-Expert/issues/new', Settings.WelcomePageHelpReportUrl);
   Assert.AreEqual('', Settings.WelcomePageHelpReportFolder, 'leer = Desktop');
+  // #759: Einrichtungskarte und „Neu mit Atlas“ an.
+  Assert.IsTrue(Settings.WelcomePageProjectSetup);
+  Assert.IsTrue(Settings.WelcomePageNewFromTemplate);
   // #755: Weiterarbeiten an mit 5 Arbeitsständen, eingehende Commits an, fetch aus, „Gemerkt“ an.
   Assert.IsTrue(Settings.WelcomePageContinue);
   Assert.AreEqual(5, Settings.WelcomePageContinueCount);
@@ -826,10 +829,14 @@ begin
   Saved.WelcomePageHelp := False;
   Saved.WelcomePageHelpReportUrl := 'https://example.org/issues/new';
   Saved.WelcomePageHelpReportFolder := 'D:\Diagnose';
+  Saved.WelcomePageProjectSetup := False;
+  Saved.WelcomePageNewFromTemplate := False;
   Saved.Save(Store);
   Assert.AreEqual(0, Store.ReadInteger('WelcomePageHelp', 1), 'Registry-Name (#766)');
   Assert.AreEqual('https://example.org/issues/new', Store.ReadString('WelcomePageHelpReportUrl', ''));
   Assert.AreEqual('D:\Diagnose', Store.ReadString('WelcomePageHelpReportFolder', ''));
+  Assert.AreEqual(0, Store.ReadInteger('WelcomePageProjectSetup', 1), 'Registry-Name (#759)');
+  Assert.AreEqual(0, Store.ReadInteger('WelcomePageNewFromTemplate', 1), 'Registry-Name (#759)');
   Assert.AreEqual(0, Store.ReadInteger('WelcomePageDiscover', 1), 'Registry-Name (#757)');
   Assert.AreEqual(0, Store.ReadInteger('TipsUsageTracking', 1), 'Registry-Name (#757)');
   Assert.AreEqual(0, Store.ReadInteger('WelcomePageStatusTile', 1), 'Registry-Name (#754)');
@@ -880,6 +887,8 @@ begin
   Assert.IsFalse(Loaded.WelcomePageHelp);
   Assert.AreEqual('https://example.org/issues/new', Loaded.WelcomePageHelpReportUrl);
   Assert.AreEqual('D:\Diagnose', Loaded.WelcomePageHelpReportFolder);
+  Assert.IsFalse(Loaded.WelcomePageProjectSetup);
+  Assert.IsFalse(Loaded.WelcomePageNewFromTemplate);
 end;
 
 initialization

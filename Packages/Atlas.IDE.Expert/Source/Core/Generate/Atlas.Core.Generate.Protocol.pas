@@ -58,8 +58,8 @@ type
     /// <summary>True mit AEdits, sonst False mit AReason.</summary>
     class function ParseRun(const AValue: TJSONValue; out AEdits: TArray<TLspTextEdit>;
       out AReason: string): Boolean; static;
-    /// <summary>Vorlagen ohne Postfix-Vorlagen, deren Kontext zu APlaces passt; Source = Index in ASnippets.
-    /// </summary>
+    /// <summary>Vorlagen ohne Postfix- und Dateivorlagen (#759), deren Kontext zu APlaces passt; Source = Index
+    /// in ASnippets.</summary>
     class function FromSnippets(const ASnippets: TAtlasSnippetList; const APlaces: TArray<string>):
       TArray<TAtlasGenerateEntry>; static;
     /// <summary>Code-Aktionen der Art refactor, nicht gesperrt; Source = Index in AActions.</summary>
@@ -251,7 +251,9 @@ begin
     Exit;
   for Index := 0 to High(ASnippets) do
   begin
-    if ASnippets[Index].Postfix or not TAtlasSnippets.FitsContext(ASnippets[Index].Context, APlaces) then
+    // Dateivorlagen (#759) gehören zu „Neu mit Atlas“, nicht an den Cursor.
+    if ASnippets[Index].Postfix or (ASnippets[Index].FileKind <> '') or
+      not TAtlasSnippets.FitsContext(ASnippets[Index].Context, APlaces) then
       Continue;
     Entry := TAtlasGenerateEntry.Create(TAtlasGenerateKind.Snippet, TAtlasGenerateGroup.Templates,
       ASnippets[Index].Prefix, ASnippets[Index].Name);
