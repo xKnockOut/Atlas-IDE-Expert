@@ -30,6 +30,10 @@ type
     /// <summary>Erzeugen-Menü (#719): Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure GenerateMenuOptions;
+    /// <summary>Ausblenden am Element (#628): Blockende-Beschriftung und Taste, Vorgaben, Speichern und Laden.
+    /// </summary>
+    [Test]
+    procedure HideElementOptions;
     /// <summary>Benachrichtigungszentrale (#601): Vorgaben, Grenzen, Verhalten je Quelle, Speichern und Laden.
     /// </summary>
     [Test]
@@ -589,6 +593,27 @@ begin
   Assert.AreEqual('/json, tryf', Loaded.GenerateMenuHidden);
   Assert.IsFalse(Loaded.GenerateMenuRecentFirst);
   Assert.IsFalse(Loaded.GenerateMenuShowCommandNames);
+end;
+
+procedure TAtlasPluginSettingsTests.HideElementOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.BlockEndLabels, 'Blockende-Beschriftung standardmäßig an');
+  Assert.AreEqual($40BE, Settings.HideElementKey, 'Strg+.');
+  Settings.HideElementKey := -5;
+  Settings.Normalize;
+  Assert.AreEqual(0, Settings.HideElementKey, 'negativ = keine Taste');
+  Settings.BlockEndLabels := False;
+  Settings.HideElementKey := 0;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.BlockEndLabels, 'abschaltbar');
+  Assert.AreEqual(0, Loaded.HideElementKey, '0 = keine Taste');
 end;
 
 procedure TAtlasPluginSettingsTests.WelcomeQuickActionOptions;

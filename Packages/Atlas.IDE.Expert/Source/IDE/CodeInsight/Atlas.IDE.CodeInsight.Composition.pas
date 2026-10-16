@@ -137,6 +137,8 @@ uses
   Atlas.IDE.Bookmarks.Gutter,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.TeamFile,
+  Atlas.IDE.Foundation.Elements,
+  Atlas.IDE.Editor.Hide,
   Atlas.IDE.StartProfiles.Service,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Editor.TestUnitLens,
@@ -243,6 +245,7 @@ var
   // Dienste für Notizen (#545) und Lesezeichen (#622) gestartet.
   NotesStarted: Boolean;
   BookmarksStarted: Boolean;
+  HideStarted: Boolean;
   // Teile des Plugins in Startreihenfolge (Code-Review S-03); gefüllt beim ersten RegisterFeatures.
   Features: TAtlasFeatureTable;
 
@@ -1000,6 +1003,9 @@ begin
     end, GenerateMenuVisible);
   // Editorbefehle (#399).
   Add('Atlas.CodeActions', TAtlasTextId.EditorActions, TAtlasIdeEditorCommands.CodeActions);
+  // Ausblenden am Element (#628).
+  Add('Atlas.HideElement', TAtlasTextId.HideElementCommand,
+    Guarded(TAtlasFeature.EditorCommands, TAtlasIdeHide.ShowForCommand));
   Add('Atlas.ExpandSelection', TAtlasTextId.EditorExpand, TAtlasIdeEditorCommands.ExpandSelection);
   Add('Atlas.ShrinkSelection', TAtlasTextId.EditorShrink, TAtlasIdeEditorCommands.ShrinkSelection);
   Add('Atlas.TypeDefinition', TAtlasTextId.EditorTypeDefinition, TAtlasIdeEditorCommands.GoToTypeDefinition);
@@ -2044,6 +2050,32 @@ begin
   BookmarksStarted := False;
 end;
 
+/// <summary>Gezeichnete Elemente und Ausblenden am Element (#628); „Einstellungen dazu …“ öffnet die
+/// Optionsseite.</summary>
+procedure StartHide;
+begin
+  TAtlasIdeElements.Start;
+  TAtlasIdeHide.Start;
+  TAtlasIdeHide.OnShowSetting :=
+    procedure(AKey: string)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          TAtlasOptionsRegistration.ShowSetting(AKey);
+        end);
+    end;
+  HideStarted := True;
+end;
+
+procedure StopHide;
+begin
+  TAtlasIdeHide.OnShowSetting := nil;
+  TAtlasIdeHide.Stop;
+  TAtlasIdeElements.Stop;
+  HideStarted := False;
+end;
+
 procedure StartGutterMarks;
 begin
   GutterMarks := TAtlasIdeGutterMarks.Create;
@@ -2708,6 +2740,17 @@ begin
     begin
       FreeAndNil(Palette);
     end);
+  // Gezeichnete Elemente und Ausblenden am Element (#628): vor den Zeichnern, Abbau nach ihnen.
+  Features.AddWanted('Hide',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := ALevel <> TAtlasSafeLevel.Minimal;
+    end,
+    function: Boolean
+    begin
+      Result := HideStarted;
+    end,
+    StartHide, StopHide);
   // Editor-Zeichnungen.
   Features.AddWanted('Pairs',
     function(ALevel: TAtlasSafeLevel): Boolean

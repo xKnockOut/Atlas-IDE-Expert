@@ -26,6 +26,8 @@
 // - Test am Cursor ausführen bzw. debuggen (#585): nur Einträge im
 //   Kontextmenü; was sie tun, setzt die Composition über OnRunTest und
 //   OnDebugTest (A-09: die Befehle importieren die Tests nicht).
+// - „Element ausblenden …“ (#628): Menü zum gezeichneten Element an der Stelle
+//   des Rechtsklicks bzw. in der Zeile der Schreibmarke (TAtlasIdeHide).
 // Vor jeder Anfrage bekommt der Server den aktuellen Text der Datei.
 // Meldungen nur als Zeile in der Meldungsansicht, nie als Dialog.
 
@@ -131,6 +133,7 @@ uses
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Generate.Commands,
+  Atlas.IDE.Editor.Hide,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Foundation.Navigation;
 
@@ -418,6 +421,21 @@ begin
         procedure
         begin
           TAtlasIdeBookmarks.GoToBookmark;
+        end);
+    end);
+  // Ausblenden am Element (#628): nach einem Rechtsklick auf ein Element im Text oder in der Rinne für dieses.
+  FContextMenu.Add('-', nil, nil);
+  FContextMenu.Add('Atlas.HideElement', TAtlasStrings.Text(TAtlasTextId.HideElementCommand),
+    function: Integer
+    begin
+      Result := TAtlasIdeSettings.Current.HideElementKey;
+    end,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        procedure
+        begin
+          TAtlasIdeHide.ShowForCommand;
         end);
     end);
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then

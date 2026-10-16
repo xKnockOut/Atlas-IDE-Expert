@@ -267,6 +267,9 @@ begin
     '"InlayHints":{"type":"boolean","x-feature":"InlayHints",' +
       '"default":false,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
       '"x-caption":"Inlay-Hints","x-captionEn":"Inlay hints","x-issue":"#401"},' +
+    '"BlockEndLabels":{"type":"boolean","x-feature":"InlayHints",' +
+      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
+      '"x-caption":"Blockende-Beschriftungen","x-captionEn":"Block end labels","x-issue":"#620"},' +
     '"Notes":{"type":"boolean","x-feature":"Notes",' +
       '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
       '"x-caption":"Notizen","x-captionEn":"Notes","x-issue":"#545"},' +
@@ -279,6 +282,9 @@ begin
     '"CodeLensTests":{"type":"boolean","x-feature":"Build",' +
       '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
       '"x-caption":"Code Lens „Test ausführen“","x-captionEn":"Code lens “Run test”","x-issue":"#69"},' +
+    '"CodeLensTestUnit":{"type":"boolean","x-feature":"EditorCommands",' +
+      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
+      '"x-caption":"Code Lens „Testunit“","x-captionEn":"Code lens “Test unit”","x-issue":"#189"},' +
     '"GenerateMenu":{"type":"boolean","x-feature":"EditorCommands",' +
       '"default":true,"x-page":"Editor","x-quickToggle":true,' +
       '"x-caption":"Erzeugen-Menü","x-captionEn":"Generate menu","x-issue":"#719"},' +
@@ -301,7 +307,7 @@ begin
       '"default":true,"x-page":"Vervollständigung","x-quickToggle":true,' +
       '"x-caption":"Filter-Chips","x-captionEn":"Filter chips","x-issue":"#422"},' +
     '"Preview":{"type":"boolean","x-feature":"Completion",' +
-      '"default":false,"x-page":"Vervollständigung","x-quickToggle":true,' +
+      '"default":false,"x-page":"Vervollständigung","x-quickToggle":true,"x-drawing":true,' +
       '"x-caption":"Vorschau im Editor","x-captionEn":"Preview in the editor","x-issue":"#434"},' +
     '"GroupInherited":{"type":"boolean","x-feature":"Completion",' +
       '"default":true,"x-page":"Vervollständigung","x-quickToggle":true,' +

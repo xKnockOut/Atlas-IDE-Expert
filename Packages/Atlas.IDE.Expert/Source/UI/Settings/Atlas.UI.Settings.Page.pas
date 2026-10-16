@@ -16,6 +16,8 @@
 // Reiter Vervollständigung: angeheftete Favoriten (#458) an/aus, Liste („TDataSet.Open“) mit „Entfernen“
 // und „Alle entfernen“. Die Seite kennt die Ablage nicht; OnFavorites liefert die Liste, OnRemoveFavorites
 // löst die Schlüssel sofort (nicht erst mit OK).
+// Reveal (#628, „Einstellungen dazu …“ am gezeichneten Element): wählt den Reiter einer Einstellung über ihren
+// Schlüssel (Name der Plugin-Einstellung), rollt sie ins Bild, setzt den Fokus und hebt die Zeile fett hervor.
 
 interface
 
@@ -120,6 +122,8 @@ type
     FInactiveDim: TCheckBox;
     FOpenForEdits: TCheckBox;
     FInlayHints: TCheckBox;
+    /// <summary>Blockende-Beschriftungen (#620).</summary>
+    FBlockEndLabels: TCheckBox;
     FNotes: TCheckBox;
     FBookmarksNamed: TCheckBox;
     FBookmarksShared: TCheckBox;
@@ -212,6 +216,8 @@ type
     FMethodToggleDownKey: TEdit;
     FTestUnitKey: TEdit;
     FBookmarkKey: TEdit;
+    /// <summary>„Element ausblenden …“ (#628).</summary>
+    FHideElementKey: TEdit;
     FUndoKey: TEdit;
     FRedoKey: TEdit;
     FEditorKeysPriority: TCheckBox;
@@ -328,7 +334,14 @@ type
     FWidths: TAtlasPluginSettings;
     FNextTop: Integer;
     FOnResetHistory: TProc;
+    /// <summary>Schlüssel und Steuerelement für Reveal (#628).</summary>
+    FRevealKeys: TArray<string>;
+    FRevealControls: TArray<TControl>;
+    /// <summary>Reveal vor dem Fenster: folgt in CreateWnd.</summary>
+    FPendingReveal: string;
     procedure NavClick(Sender: TObject);
+    procedure Bind(const AKey: string; AControl: TControl);
+    procedure ApplyReveal(const AKey: string);
   protected
     procedure CreateWnd; override;
   private
@@ -408,6 +421,11 @@ type
     procedure RefreshIndex;
     /// <summary>Liste der angehefteten Favoriten neu lesen (#458).</summary>
     procedure RefreshFavorites;
+    /// <summary>Zeigt die Einstellung AKey (Name der Plugin-Einstellung, #628): Reiter, ins Bild rollen, Fokus,
+    /// Zeile fett. False, wenn die Seite den Schlüssel nicht kennt; ohne Fenster folgt es in CreateWnd.</summary>
+    function Reveal(const AKey: string): Boolean;
+    /// <summary>Steuerelement zu AKey; nil, wenn die Seite den Schlüssel nicht kennt.</summary>
+    function ControlOf(const AKey: string): TControl;
     /// <summary>Reiter der Seite, einer je Bereich (#227).</summary>
     property Pages: TPageControl read FPages;
     /// <summary>Liste der Bereiche links; schaltet Pages um.</summary>
@@ -562,6 +580,9 @@ type
     property BookmarksNamedCheck: TCheckBox read FBookmarksNamed;
     property BookmarksSharedCheck: TCheckBox read FBookmarksShared;
     property BookmarkKey: TEdit read FBookmarkKey;
+    /// <summary>Zum Testen: Blockende-Beschriftungen (#620) und Taste „Element ausblenden …“ (#628).</summary>
+    property BlockEndLabelsCheck: TCheckBox read FBlockEndLabels;
+    property HideElementKey: TEdit read FHideElementKey;
     /// <summary>Zum Testen: Erzeugen-Menü (#719).</summary>
     property GenerateMenuCheck: TCheckBox read FGenerateMenu;
     property GenerateMenuKey: TEdit read FGenerateMenuKey;
@@ -923,6 +944,8 @@ begin
   FPairColors.OnClick := PairColorsClick;
   FInactiveDim := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim));
   FInlayHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayHints));
+  // Beschriftung hinter dem end langer Blöcke (#620).
+  FBlockEndLabels := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabels));
   // Persönliche Notizen an Codezeilen (#545).
   FNotes := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNotes));
   // Benannte Lesezeichen (#622): Funktion und Ablage für das Team; die Taste steht bei den Editorbefehlen.
@@ -1009,6 +1032,8 @@ begin
   FTestUnitKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTestUnit));
   // „Lesezeichen setzen…“ (#622).
   FBookmarkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd));
+  // „Element ausblenden …“ am gezeichneten Element (#628).
+  FHideElementKey := AddKey(TAtlasStrings.Text(TAtlasTextId.HideElementCommand));
   FUndoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.UndoMenu));
   FRedoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.RedoMenu));
   FEditorKeysPriority := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorKeysPriority));
@@ -1060,6 +1085,102 @@ begin
 
   AddSheet(TAtlasTextId.SettingsTabTeamFile);
   AddTeamFileSection;
+
+  // „Einstellungen dazu …“ am gezeichneten Element (#628) und an Bereichen der Willkommensseite (#767).
+  Bind('CodeLensMetrics', FCodeLensMetrics);
+  Bind('CodeLensTests', FCodeLensTests);
+  Bind('CodeLensTestUnit', FCodeLensTestUnit);
+  Bind('BlockEndLabels', FBlockEndLabels);
+  Bind('InlayHints', FInlayHints);
+  Bind('Problems', FProblems);
+  Bind('Notes', FNotes);
+  Bind('BookmarksNamed', FBookmarksNamed);
+  Bind('PairColors', FPairColors);
+  Bind('PairGuides', FPairGuides);
+  Bind('PairOwners', FPairOwners);
+  Bind('InactiveDim', FInactiveDim);
+  Bind('Preview', FPreview);
+  Bind('HideElementKey', FHideElementKey);
+  Bind('WelcomePage', FWelcomeEnabled);
+  Bind('WelcomePageHeader', FWelcomeHeader);
+  Bind('WelcomePageSearch', FWelcomeSearch);
+  Bind('WelcomePageWhatsNew', FWelcomeWhatsNew);
+  Bind('WelcomePageContinue', FWelcomeContinue);
+  Bind('WelcomePageProjectStatus', FWelcomeProjects);
+  Bind('WelcomePageTrends', FWelcomeTrends);
+  Bind('WelcomePageTests', FWelcomeTests);
+  Bind('WelcomePageUnsaved', FWelcomeUnsaved);
+  Bind('WelcomePageStatusTile', FWelcomeStatusTile);
+  Bind('WelcomePageDiscover', FWelcomeDiscover);
+  Bind('WelcomePageHelp', FWelcomeHelp);
+  Bind('WelcomePageProjectSetup', FWelcomeProjectSetup);
+end;
+
+procedure TAtlasSettingsPage.Bind(const AKey: string; AControl: TControl);
+begin
+  if AControl = nil then
+    Exit;
+  FRevealKeys := FRevealKeys + [AKey];
+  FRevealControls := FRevealControls + [AControl];
+end;
+
+function TAtlasSettingsPage.ControlOf(const AKey: string): TControl;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(FRevealKeys) do
+    if SameText(FRevealKeys[Index], AKey) then
+      Exit(FRevealControls[Index]);
+  Result := nil;
+end;
+
+function TAtlasSettingsPage.Reveal(const AKey: string): Boolean;
+begin
+  Result := ControlOf(AKey) <> nil;
+  if not Result then
+    Exit;
+  if HandleAllocated then
+    ApplyReveal(AKey)
+  else
+    FPendingReveal := AKey;
+end;
+
+procedure TAtlasSettingsPage.ApplyReveal(const AKey: string);
+var
+  Control: TControl;
+  Parent: TWinControl;
+  Index, Child: Integer;
+begin
+  FPendingReveal := '';
+  Control := ControlOf(AKey);
+  if Control = nil then
+    Exit;
+  // Reiter des Elements wählen, wie ein Klick in der Liste links.
+  Parent := Control.Parent;
+  while (Parent <> nil) and not (Parent is TTabSheet) do
+    Parent := Parent.Parent;
+  if Parent is TTabSheet then
+    for Index := 0 to High(FSheets) do
+      if FSheets[Index] = Parent then
+      begin
+        FPages.ActivePage := FSheets[Index];
+        FNav.ItemIndex := Index;
+      end;
+  // Ins Bild rollen.
+  Parent := Control.Parent;
+  while (Parent <> nil) and not (Parent is TScrollBox) do
+    Parent := Parent.Parent;
+  if Parent is TScrollBox then
+    TScrollBox(Parent).ScrollInView(Control);
+  // Zeile hervorheben: Kontrollkästchen fett, sonst die Beschriftung der Zeile.
+  if Control is TCheckBox then
+    TCheckBox(Control).Font.Style := [fsBold]
+  else if Control.Parent <> nil then
+    for Child := 0 to Control.Parent.ControlCount - 1 do
+      if Control.Parent.Controls[Child] is TLabel then
+        TLabel(Control.Parent.Controls[Child]).Font.Style := [fsBold];
+  if (Control is TWinControl) and TWinControl(Control).CanFocus then
+    TWinControl(Control).SetFocus;
 end;
 
 procedure TAtlasSettingsPage.AddWelcomeSection;
@@ -1369,6 +1490,9 @@ begin
   // Die Liste der Sicherung braucht ein Fenster; vorher bleibt sie leer.
   RefreshFuse;
   RefreshFavorites;
+  // Gewünschte Einstellung (#628) erst mit Fenster zeigen.
+  if FPendingReveal <> '' then
+    ApplyReveal(FPendingReveal);
 end;
 
 procedure TAtlasSettingsPage.NavClick(Sender: TObject);
@@ -1977,6 +2101,7 @@ begin
   FMethodToggleDownKey.Text := ShortCutToText(TShortCut(ASettings.MethodToggleDownKey));
   FTestUnitKey.Text := ShortCutToText(TShortCut(ASettings.TestUnitKey));
   FBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.BookmarkKey));
+  FHideElementKey.Text := ShortCutToText(TShortCut(ASettings.HideElementKey));
   FEditorKeysPriority.Checked := ASettings.EditorKeysPriority;
   FSlashCommands.Checked := ASettings.SlashCommands;
   FGenerateMenu.Checked := ASettings.GenerateMenu;
@@ -2018,6 +2143,7 @@ begin
   FPairColors.Checked := ASettings.PairColors;
   FInactiveDim.Checked := ASettings.InactiveDim;
   FInlayHints.Checked := ASettings.InlayHints;
+  FBlockEndLabels.Checked := ASettings.BlockEndLabels;
   FNotes.Checked := ASettings.Notes;
   FBookmarksNamed.Checked := ASettings.BookmarksNamed;
   FBookmarksShared.Checked := ASettings.BookmarksShared;
@@ -2202,6 +2328,7 @@ begin
   ASettings.MethodToggleDownKey := Integer(TextToShortCut(Trim(FMethodToggleDownKey.Text)));
   ASettings.TestUnitKey := Integer(TextToShortCut(Trim(FTestUnitKey.Text)));
   ASettings.BookmarkKey := Integer(TextToShortCut(Trim(FBookmarkKey.Text)));
+  ASettings.HideElementKey := Integer(TextToShortCut(Trim(FHideElementKey.Text)));
   ASettings.UndoKey := Integer(TextToShortCut(Trim(FUndoKey.Text)));
   ASettings.RedoKey := Integer(TextToShortCut(Trim(FRedoKey.Text)));
   ASettings.UpdatesCheck := FUpdatesCheck.Checked;
@@ -2242,6 +2369,7 @@ begin
   ASettings.PairColors := FPairColors.Checked;
   ASettings.InactiveDim := FInactiveDim.Checked;
   ASettings.InlayHints := FInlayHints.Checked;
+  ASettings.BlockEndLabels := FBlockEndLabels.Checked;
   ASettings.Notes := FNotes.Checked;
   ASettings.BookmarksNamed := FBookmarksNamed.Checked;
   ASettings.BookmarksShared := FBookmarksShared.Checked;

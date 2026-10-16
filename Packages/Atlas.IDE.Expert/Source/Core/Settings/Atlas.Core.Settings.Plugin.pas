@@ -155,6 +155,10 @@ type
     OpenForEdits: Boolean;
     /// <summary>Parameternamen vor Literal-Argumenten als Inlay-Hints (#401); standardmäßig aus.</summary>
     InlayHints: Boolean;
+    /// <summary>Beschriftung hinter dem end langer Blöcke (#620, editor.blockEndLabels): „// TKunde.Speichern“ in
+    /// grauer Pille; Quelle sind die Endmarken des Servers (inlayHints.endMarkers, Mindestlänge
+    /// inlayHints.endMarkerMinLines in atlas.json); unabhängig von InlayHints.</summary>
+    BlockEndLabels: Boolean;
     /// <summary>Persönliche Notizen an Codezeilen (#545): Symbol in der Rinne, Befehle und Liste; gespeichert in
     /// %LOCALAPPDATA%\Atlas\Notes\, nie im Quelltext.</summary>
     Notes: Boolean;
@@ -166,6 +170,9 @@ type
     BookmarksShared: Boolean;
     /// <summary>„Lesezeichen setzen…“ (#622, TShortCut, 0 = keins; Vorgabe Strg+Alt+K).</summary>
     BookmarkKey: Integer;
+    /// <summary>„Element ausblenden …“ (#628, TShortCut, 0 = keins; Vorgabe Strg+.): Menü „Ausblenden“ für das von
+    /// Atlas gezeichnete Element in der Cursorzeile; ohne Element geht die Taste an die IDE (IDE Insight).</summary>
+    HideElementKey: Integer;
     /// <summary>Pfad zu AtlasServer.exe; leer: neben dem Plugin bzw. Output\Win64\Debug\Bin.</summary>
     ServerPath: string;
     /// <summary>Blocklinien in den Paarfarben statt der Strukturhervorhebung der IDE (#514).</summary>
@@ -750,10 +757,12 @@ begin
   Result.InactiveDim := True;
   Result.OpenForEdits := True;
   Result.InlayHints := False;
+  Result.BlockEndLabels := True;
   Result.Notes := True;
   Result.BookmarksNamed := True;
   Result.BookmarksShared := False;
   Result.BookmarkKey := $C04B; // Strg+Alt+K
+  Result.HideElementKey := $40BE; // Strg+.
   Result.ServerPath := '';
   Result.PairGuides := True;
   Result.PairOwners := True;
@@ -1009,6 +1018,7 @@ begin
   UnitSearchDefaultScope := Choice(UnitSearchDefaultScope, ['group', 'project', 'searchPath', 'library']);
   UnitSearchKey := EnsureRange(UnitSearchKey, 0, $FFFF);
   BookmarkKey := EnsureRange(BookmarkKey, 0, $FFFF);
+  HideElementKey := EnsureRange(HideElementKey, 0, $FFFF);
   GenerateMenuKey := EnsureRange(GenerateMenuKey, 0, $FFFF);
   GenerateMenuGroups := TAtlasGenerateLists.NormalizeGroups(GenerateMenuGroups);
   GenerateMenuHidden := TAtlasGenerateLists.NormalizeHidden(GenerateMenuHidden);
@@ -1079,10 +1089,12 @@ begin
   InactiveDim := AStore.ReadInteger('InactiveDim', BoolValue(Default.InactiveDim)) <> 0;
   OpenForEdits := AStore.ReadInteger('OpenForEdits', BoolValue(Default.OpenForEdits)) <> 0;
   InlayHints := AStore.ReadInteger('InlayHints', BoolValue(Default.InlayHints)) <> 0;
+  BlockEndLabels := AStore.ReadInteger('BlockEndLabels', BoolValue(Default.BlockEndLabels)) <> 0;
   Notes := AStore.ReadInteger('Notes', BoolValue(Default.Notes)) <> 0;
   BookmarksNamed := AStore.ReadInteger('BookmarksNamed', BoolValue(Default.BookmarksNamed)) <> 0;
   BookmarksShared := AStore.ReadInteger('BookmarksShared', BoolValue(Default.BookmarksShared)) <> 0;
   BookmarkKey := AStore.ReadInteger('BookmarkKey', Default.BookmarkKey);
+  HideElementKey := AStore.ReadInteger('HideElementKey', Default.HideElementKey);
   ServerPath := Trim(AStore.ReadString('ServerPath', Default.ServerPath));
   PairGuides := AStore.ReadInteger('PairGuides', BoolValue(Default.PairGuides)) <> 0;
   PairOwners := AStore.ReadInteger('PairOwners', BoolValue(Default.PairOwners)) <> 0;
@@ -1308,10 +1320,12 @@ begin
   AStore.WriteInteger('InactiveDim', BoolValue(InactiveDim));
   AStore.WriteInteger('OpenForEdits', BoolValue(OpenForEdits));
   AStore.WriteInteger('InlayHints', BoolValue(InlayHints));
+  AStore.WriteInteger('BlockEndLabels', BoolValue(BlockEndLabels));
   AStore.WriteInteger('Notes', BoolValue(Notes));
   AStore.WriteInteger('BookmarksNamed', BoolValue(BookmarksNamed));
   AStore.WriteInteger('BookmarksShared', BoolValue(BookmarksShared));
   AStore.WriteInteger('BookmarkKey', BookmarkKey);
+  AStore.WriteInteger('HideElementKey', HideElementKey);
   AStore.WriteString('ServerPath', Trim(ServerPath));
   AStore.WriteInteger('PairGuides', BoolValue(PairGuides));
   AStore.WriteInteger('PairOwners', BoolValue(PairOwners));

@@ -1663,3 +1663,31 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; unter *Tools › 
 | OB16 | IDE mit „Projekt beim Start laden“ starten | Das geladene Projekt bzw. die Gruppe wird nach dem Laden einmal gebaut |
 | OB17 | Schnellschalter „Beim Öffnen einmal bauen“ aus, Projekt öffnen; Quelle „Bauen beim Öffnen“ auf „Aus“ | Kein Bau; bei aus geschalteter Quelle keine Zusammenfassung, die Einträge „Build fertig“ bleiben |
 | OB18 | Abgesicherter Start (#722) | Kein Bau beim Öffnen |
+
+## Ausblenden am Element (#628)
+
+Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; Projekt mit `.dproj` offen, Projektdatei `.atlas` (`teamFile.enabled`) an; eine Unit mit einer Methode über 20 Zeilen (Blockende-Beschriftung „// TKunde.Speichern“ hinter dem `end`), einem Befund einer Regel (z. B. `naming-field-prefix`, Unterstreichung), einer Notiz (#545) und Code Lens (Metriken, „Test ausführen“ in einer Testunit, „→ Testunit“ über `unit …;`); Benachrichtigungszentrale an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AU1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasDrawnElementsTests` (jedes gezeichnete Element hat einen Schlüssel im Katalog), `TAtlasHideTests`, `TAtlasHideUiTests`, `TAtlasInlayHintStoreTests`, `TAtlasTeamFileTests`, `TAtlasPluginSettingsTests.HideElementOptions`, `TAtlasSettingsPageTests.HideElementRoundTrip`, `TAtlasKeyMapTests`, `TAtlasNotificationSourcesTests` grün |
+| AU2 | Rechtsklick auf die Blockende-Beschriftung „// TKunde.Speichern“ | Statt des Kontextmenüs der IDE ein Menü „Nur hier ausblenden“, „In dieser Datei ausblenden“, „Blockende-Beschriftungen überall ausblenden“, Trennlinie, „Einstellungen dazu …“ |
+| AU3 | In AU2 „Blockende-Beschriftungen überall ausblenden“ | Alle Beschriftungen in allen offenen Editoren verschwinden sofort; unter dem Element für 6 s der Hinweis „Ausgeblendet“ mit „Einstellung „Blockende-Beschriftungen“ ausgeschaltet.“ und „Rückgängig“ (bleibt, solange die Maus darüber ist); unter *Tools › Optionen › Atlas › Editor* ist „Blockende-Beschriftungen …“ aus, Registry `BlockEndLabels` = 0 (**Abnahme**) |
+| AU4 | In AU3 innerhalb von 6 s „Rückgängig“ | Beschriftungen sind wieder da, Einstellung wieder an; Hinweis „Wieder eingeblendet.“ |
+| AU5 | Rechtsklick auf eine Beschriftung, „Einstellungen dazu …“ | *Tools › Optionen* öffnet sich auf *Atlas*, Reiter *Editor*, die Zeile „Blockende-Beschriftungen …“ ist im Bild, fett und hat den Fokus (**Abnahme**) |
+| AU6 | Rechtsklick auf eine Beschriftung, „Nur hier ausblenden“ | Nur diese Beschriftung verschwindet; in `.atlas` steht unter `hidden` ein Eintrag `{"setting": "BlockEndLabels", "file": "Source/…pas", "anchor": "TKunde.Speichern"}`; „Rückgängig“ entfernt ihn wieder; andere Beschriftungen bleiben |
+| AU7 | Rechtsklick auf eine Beschriftung, „In dieser Datei ausblenden“ | Alle Beschriftungen dieser Unit verschwinden, die anderer Units bleiben; Eintrag ohne `anchor` in `.atlas` |
+| AU8 | Rechtsklick in die unterstrichene Stelle des Befunds, im Kontextmenü der IDE *Atlas › Element ausblenden …*, dann „Nur hier ausblenden“ | Über der Zeile steht `// lsp-ignore: naming-field-prefix` in derselben Einrückung; nach der nächsten Prüfung ist die Unterstreichung weg; Strg+Z nimmt den Kommentar in einem Schritt zurück (**Abnahme**) |
+| AU9 | Über der Zeile steht schon `// lsp-ignore: andere-regel -- Grund`; AU8 wiederholen | Der Kommentar wird zu `// lsp-ignore: andere-regel, naming-field-prefix -- Grund` ergänzt, keine zweite Zeile |
+| AU10 | Befund: „In dieser Datei ausblenden“ | `// lsp-ignore-file: naming-field-prefix` in der ersten Zeile der Datei (ein vorhandener Dateikommentar wird ergänzt); alle Befunde dieser Regel in der Datei verschwinden |
+| AU11 | Cursor in eine Zeile mit Code Lens bzw. Notiz, Strg+. | Menü an der Cursorzeile; bei mehreren Elementen je Element ein Untermenü („Metrik-Lens ▸“, „Notizsymbol ▸“) |
+| AU12 | Rechtsklick auf die Metrik-Lens bzw. Test-Lens | Menü wie AU2 mit „Metrik-Lenses überall ausblenden“ bzw. „Test-Lenses überall ausblenden“; „Nur hier“ blendet die Lens nur dieser Methode bzw. dieses Tests aus |
+| AU13 | Rechtsklick in eine Klammer bzw. Blocklinie, *Atlas › Element ausblenden …* | Nur „In dieser Datei ausblenden“, „Klammerfarben überall ausblenden“ bzw. „Blocklinien …“ und „Einstellungen dazu …“ |
+| AU14 | Rechtsklick auf normalen Text ohne Atlas-Element, *Atlas › Element ausblenden …*; Strg+. in einer leeren Zeile | Hinweis „An dieser Stelle zeichnet Atlas nichts, das sich ausblenden lässt.“; in einer Zeile ohne Element geht Strg+. an die IDE |
+| AU15 | `teamFile.enabled` aus; „Nur hier“ an einer Beschriftung | Hinweis „Die Projektdatei .atlas ist ausgeschaltet …“, nichts geändert; „überall“ geht weiter |
+| AU16 | `.atlas` von Hand bearbeiten: Eintrag unter `hidden` löschen, speichern | Nach höchstens 2 s und dem nächsten Neuzeichnen des Editors (z. B. Blättern) erscheint das Element wieder |
+| AU17 | *Tools › Optionen › Atlas › Befehle*: Taste „Element ausblenden …“ ändern bzw. leeren; Tastenkürzel-Übersicht öffnen | Neue Taste wirkt sofort, leer = keine; die Übersicht zeigt „Element ausblenden …“ mit Strg+.; der Befehl steht in der Befehlspalette (*Atlas.HideElement*) mit Tipp „Ausblenden am Element“ |
+| AU18 | Quelle „Ausblenden am Element“ in der Benachrichtigungszentrale auf „Nur sammeln“ | Kein Hinweis unter dem Element, ein Eintrag „Ausgeblendet“ mit „Rückgängig“ in der Liste |
+| AU19 | Inlay-Hints an, Rechtsklick auf einen Parameternamen | Menü wie AU2 für „Inlay-Hints“; „Nur hier“ blendet die Hints dieser Zeile aus |
+| AU20 | IDE-Thema hell ↔ dunkel, 100 %, 150 %, 200 % Skalierung | Menü und Hinweis lesbar, Hinweis unter dem Element und innerhalb des Bildschirms |
+| AU21 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs`) nach AU2–AU19 | Keine Pfade, Ankertexte oder Quelltext |
