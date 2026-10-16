@@ -40,7 +40,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Projekt | `testUnits`: `pattern`, `folder`, `project` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Textfeld, Dateiauswahl | #274 |
 | Prüfregeln | `minConfidence` | `"medium"` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl | #144 |
 | Projekt | `exclude` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Liste mit Hinzufügen/Entfernen | #24 |
-| MCP | `mcp`: `disabledTools` | – | settings.json (Tools › Optionen › Atlas) | nein | Liste mit Hinzufügen/Entfernen | #99 |
+| MCP | `mcp`: `disabledTools`, `globalSettings` | – | settings.json (Tools › Optionen › Atlas); `globalSettings` in atlas.json | nein | Liste mit Hinzufügen/Entfernen; globalSettings: Kontrollkästchen | #99 |
 | Formatierung | `format`: `indentSize`, `useTabs`, `keywordCase`, `trimTrailingWhitespace`, `insertFinalNewline`, `spaceAroundAssignment`, `spaceAfterComma`, `endOfLine` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Zahlenfeld, Kontrollkästchen, Auswahl | #43 |
 | Protokoll | `logLevel` | `"info"` | settings.json (Tools › Optionen › Atlas), ``--log-level`` | ja | Auswahl | #76, #96 |
 | Protokoll | `logFile` | `""` | settings.json (Tools › Optionen › Atlas), ``--log`` | ja | Datei wählen | #76, #96 |

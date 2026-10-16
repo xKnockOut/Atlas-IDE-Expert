@@ -474,6 +474,8 @@ begin
         Items.Free;
       end;
     end
+    else if ANode.Keys[Index] = 'globalSettings' then
+      ExpectBoolean(ANode[Index], 'globalSettings', FSettings.McpGlobalSettings)
     else
       ReportNode(ANode[Index], Format('Unbekannte Einstellung "mcp.%s"', [ANode.Keys[Index]]));
 end;
@@ -1621,7 +1623,10 @@ begin
     else if Key = 'exclude' then
       Result.Exclude := FileSettings.Exclude
     else if Key = 'mcp' then
-      Result.McpDisabledTools := FileSettings.McpDisabledTools
+    begin
+      Result.McpDisabledTools := FileSettings.McpDisabledTools;
+      Result.McpGlobalSettings := FileSettings.McpGlobalSettings;
+    end
     else if Key = 'minConfidence' then
     begin
       Result.MinConfidence := FileSettings.MinConfidence;

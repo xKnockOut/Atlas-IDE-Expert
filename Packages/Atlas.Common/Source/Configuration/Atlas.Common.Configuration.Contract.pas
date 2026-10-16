@@ -267,6 +267,8 @@ type
     Exclude: TArray<string>;
     /// <summary>MCP-Werkzeuge, die der Server nicht anbietet (mcp.disabledTools, #99).</summary>
     McpDisabledTools: TArray<string>;
+    /// <summary>MCP-Modus liest die globale settings.json (mcp.globalSettings, D-08); Vorgabe True.</summary>
+    McpGlobalSettings: Boolean;
     /// <summary>Formatierungsstil als JSON-Objekt (Text), sonst ''.</summary>
     Format: string;
     /// <summary>Ausgewerteter Block "format" (#43).</summary>
@@ -651,6 +653,7 @@ begin
   Result.DiagnosticsLogDays := 7;
   Result.DiagnosticsLogMapFile := False;
   Result.IndexProjectGroup := True;
+  Result.McpGlobalSettings := True;
   Result.IndexSearchPaths := True;
   // Bibliothekspfade ganz zu indizieren dauert bei großen Installationen Minuten; nur auf Wunsch.
   Result.IndexLibraryPaths := False;

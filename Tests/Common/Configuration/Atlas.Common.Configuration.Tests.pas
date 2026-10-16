@@ -38,6 +38,8 @@ type
     [Test]
     procedure ReadsMcpDisabledTools;
     [Test]
+    procedure ReadsMcpGlobalSettings;
+    [Test]
     procedure ReadsStringLiteral;
     [Test]
     procedure ReadsMemberOrder;
@@ -565,6 +567,24 @@ begin
   // Muster ohne {unit} und Projekt ohne .dproj/.dpr (Fehler), "x" unbekannt (Warnung).
   Assert.AreEqual(3, Integer(Length(Issues)));
   Assert.AreEqual('{unit}.Tests', Settings.TestUnits.Pattern, 'ungültiges Muster bleibt bei der Vorgabe');
+end;
+
+procedure TConfigurationParserTests.ReadsMcpGlobalSettings;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.McpGlobalSettings, 'Vorgabe: globale Datei lesen');
+  Settings := Parse('{"mcp": {"globalSettings": false}}', Issues);
+  Assert.IsFalse(Settings.McpGlobalSettings);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Settings := Parse('{"mcp": {"globalSettings": "nein"}}', Issues);
+  Assert.IsTrue(Settings.McpGlobalSettings, 'Ungültiger Wert lässt die Vorgabe');
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{"mcp": {"globalSettings": true}}',
+    '{"mcp": {"globalSettings": false}}', Issues);
+  Assert.IsFalse(Settings.McpGlobalSettings, 'Datei vor Editor');
 end;
 
 procedure TConfigurationParserTests.ReadsMcpDisabledTools;

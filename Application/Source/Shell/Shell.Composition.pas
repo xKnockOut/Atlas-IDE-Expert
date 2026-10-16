@@ -326,6 +326,7 @@ uses
   Atlas.Common.Documents.Uris,
   Shell.SlashHost,
   Shell.VcsChanges,
+  Shell.Bootstrap,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
@@ -1603,18 +1604,8 @@ begin
       on Exception do
         GroupFile := '';
     end;
-  if GroupFile = '' then
-    Exit;
-  try
-    Result := TGroupProjReader.Load(GroupFile);
-    FLogger.Info(Format('Projektgruppe %s: %d Projekte', [GroupFile, Length(Result)]));
-  except
-    on E: Exception do
-    begin
-      FLogger.Warning(Format('Projektgruppe %s nicht lesbar: %s', [GroupFile, E.Message]));
-      Result := nil;
-    end;
-  end;
+  if GroupFile <> '' then
+    Result := TShellBootstrap.LoadGroup(GroupFile, FLogger);
 end;
 
 procedure TServerComposition.AddWorkspace(const AFolder: TWorkspaceFolder);
@@ -1962,18 +1953,14 @@ end;
 function TServerComposition.ReadSourceText(const AFileName: string; out AText: string): Boolean;
 var
   Document: ITextDocument;
-  FileFormat: TFileFormat;
 begin
+  // Geöffnete Dokumente haben Vorrang vor der Datei auf der Platte.
   if FDocuments.TryGet(TDocumentUris.FromPath(AFileName), Document) then
   begin
     AText := Document.Text;
     Exit(True);
   end;
-  Result := FileExists(AFileName);
-  if Result then
-    AText := TFileEncoding.LoadFromFile(AFileName, FileFormat)
-  else
-    AText := '';
+  Result := TShellBootstrap.ReadSourceText(AFileName, AText);
 end;
 
 function TServerComposition.BaselineFiles: TLspBaselineFiles;
@@ -2969,26 +2956,18 @@ end;
 
 class function TServerComposition.GlobalSettingsPath: string;
 begin
-  Result := TConfigurationScopes.GlobalFile(GetEnvironmentVariable('APPDATA'));
+  Result := TShellBootstrap.GlobalSettingsFile;
 end;
 
 procedure TServerComposition.LoadGlobalSettings;
 var
   Text: string;
-  FileFormat: TFileFormat;
   Workspace: TShellWorkspace;
   Issues, Misplaced: TArray<TConfigurationIssue>;
   Issue: TConfigurationIssue;
 begin
-  Text := '';
-  if (FGlobalSettingsFile <> '') and FileExists(FGlobalSettingsFile) then
-    try
-      Text := TFileEncoding.LoadFromFile(FGlobalSettingsFile, FileFormat);
-    except
-      // Gerade geschrieben oder gesperrt: Der Beobachter meldet die Datei erneut.
-      on E: Exception do
-        FLogger.Warning('Globale Einstellungen nicht lesbar: ' + E.Message);
-    end;
+  // Nicht lesbar (gerade geschrieben oder gesperrt): Warnung im Log, der Beobachter meldet die Datei erneut.
+  Text := TShellBootstrap.LoadGlobalSettings(FGlobalSettingsFile, FLogger);
   if Text = FGlobalSettings then
     Exit;
   FGlobalSettings := Text;
@@ -3101,14 +3080,8 @@ begin
   RecentSink := TRecentLogSink.Create;
   RecentLog := RecentSink;
   LoggerImpl.AddSink(RecentSink, TLogLevel.Info);
-  if AOptions.LogFile <> '' then
-    try
-      LoggerImpl.AddSink(TShellDiagnostics.LogFileSink(AOptions.LogFile, IntToStr(TParentWatcher.CurrentProcessId),
-        AOptions.LogNames, Anonymizer), AOptions.LogLevel);
-    except
-      on E: Exception do
-        Logger.Error(Format('Logdatei "%s" kann nicht geöffnet werden: %s', [AOptions.LogFile, E.Message]));
-    end;
+  TShellDiagnostics.AddLogFile(LoggerImpl, AOptions.LogFile, IntToStr(TParentWatcher.CurrentProcessId),
+    AOptions.LogNames, AOptions.LogLevel, Anonymizer);
 
   // Ab hier erreichen versehentliche Ausgaben (Writeln, Bibliotheken) nur noch stderr.
   Transport := TJsonRpcStreamTransport.Create(TStdStreams.CreateInput, TStdStreams.ReserveOutputForProtocol, True);

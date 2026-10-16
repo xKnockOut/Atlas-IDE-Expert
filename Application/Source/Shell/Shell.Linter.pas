@@ -81,7 +81,8 @@ uses
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Windows.Console.StdStreams,
   Atlas.Windows.Compiler.Adapters.ProcessRunner,
-  Shell.VcsChanges;
+  Shell.VcsChanges,
+  Shell.Bootstrap;
 
 procedure WriteText(const AStream: TStream; const AText: string);
 var
@@ -115,19 +116,14 @@ end;
 // Wie im Server: globale Datei für globale Schlüssel, atlas.json für Projekt-Schlüssel (TConfigurationScopes).
 function LoadSettings(const ARoot: string): TServerSettings;
 var
-  FileName, GlobalFile, Text, GlobalText: string;
-  FileFormat: TFileFormat;
+  FileName, Text, GlobalText: string;
   Issues, Misplaced: TArray<TConfigurationIssue>;
   Issue: TConfigurationIssue;
 begin
-  GlobalText := '';
-  GlobalFile := TConfigurationScopes.GlobalFile(GetEnvironmentVariable('APPDATA'));
-  if (GlobalFile <> '') and TFile.Exists(GlobalFile) then
-    GlobalText := TFileEncoding.LoadFromFile(GlobalFile, FileFormat);
-  Text := '';
+  // Ohne Logger: Eine nicht lesbare globale Datei bricht den Lauf ab (Exit-Code 3) wie bisher.
+  GlobalText := TShellBootstrap.LoadGlobalSettings(nil);
   FileName := ExistingOrLegacyFile(ARoot, ConfigurationFileName, LegacyConfigurationFileName);
-  if TFile.Exists(FileName) then
-    Text := TFileEncoding.LoadFromFile(FileName, FileFormat);
+  TShellBootstrap.ReadSourceText(FileName, Text);
   Result := TConfigurationParser.Parse(TConfigurationScopes.Effective(GlobalText, '', Text), Misplaced);
   if Text = '' then
     Exit;

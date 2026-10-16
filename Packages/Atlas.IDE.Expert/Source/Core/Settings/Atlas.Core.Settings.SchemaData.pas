@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..988] of string = (
+  Lines: array[0..997] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -883,6 +883,12 @@ const
     '          },',
     '          "default": [],',
     '          "description": "Werkzeuge, die der MCP-Server nicht anbietet, z. B. rename_symbol oder apply_code_action. Im eingeschränkten Modus (--restricted) sind schreibende Werkzeuge immer aus."',
+    '        },',
+    '        "globalSettings": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Der MCP-Server liest wie der LSP-Server und der Linter die globale Datei %APPDATA%\\Atlas\\settings.json (z. B. mcp.disabledTools, Index, Hints). false: nur atlas.json, etwa ' + 'für reproduzierbare Ergebnisse im Team.",',
+    '          "x-scope": "project"',
     '        }',
     '      },',
     '      "examples": [',
@@ -891,11 +897,14 @@ const
     '            "rename_symbol",',
     '            "apply_code_action"',
     '          ]',
+    '        },',
+    '        {',
+    '          "globalSettings": false',
     '        }',
     '      ],',
     '      "x-scope": "global",',
     '      "x-page": "MCP",',
-    '      "x-control": "Liste mit Hinzufügen/Entfernen",',
+    '      "x-control": "Liste mit Hinzufügen/Entfernen; globalSettings: Kontrollkästchen",',
     '      "x-issue": "#99"',
     '    },',
     '    "format": {',
