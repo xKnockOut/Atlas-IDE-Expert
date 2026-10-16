@@ -204,7 +204,7 @@ uses
   Atlas.Core.Completion.Matching,
   Atlas.Core.Completion.Providers.XmlDoc,
   Atlas.Core.Completion.LiveTemplates,
-  Atlas.Core.Projects.Context,
+  Atlas.Core.Projects.Contract,
   Atlas.Core.Completion.Preview,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Settings.Store,

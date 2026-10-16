@@ -21,15 +21,17 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Generate.Contract;
 
 type
   {$SCOPEDENUMS ON}
   TAtlasGenerateKind = (Slash, Snippet, Action);
-  /// <summary>Recent ist keine eigene Herkunft, nur die Gruppe „Zuletzt gewählt“ oben.</summary>
-  TAtlasGenerateGroup = (Recent, Generate, Surround, Templates);
   TAtlasGenerateArgument = (None, Optional, Required);
   {$SCOPEDENUMS OFF}
+
+  /// <summary>Seit A-09 in Atlas.Core.Generate.Contract; Alias für bestehende Nutzer.</summary>
+  TAtlasGenerateGroup = Atlas.Core.Generate.Contract.TAtlasGenerateGroup;
 
   TAtlasGenerateEntry = record
     Kind: TAtlasGenerateKind;
@@ -71,7 +73,7 @@ type
     /// <summary>Aus den Einstellungen: AGroups und AHidden als kommagetrennte Listen.</summary>
     class function Create(const AGroups, AHidden: string; ARecentFirst,
       AShowCommandNames: Boolean): TAtlasGenerateOptions; static;
-    /// <summary>generate, surround, templates bzw. recent.</summary>
+    /// <summary>Weiterleitungen an TAtlasGenerateLists (Atlas.Core.Generate.Contract).</summary>
     class function GroupName(AGroup: TAtlasGenerateGroup): string; static;
     class function TryParseGroup(const AName: string; out AGroup: TAtlasGenerateGroup): Boolean; static;
     /// <summary>Bekannte Gruppen ohne Doppelte; leer bzw. ohne bekannte Gruppe: die Vorgabe.</summary>
@@ -199,20 +201,6 @@ end;
 
 { TAtlasGenerateOptions }
 
-const
-  DefaultGroups: array[0..2] of TAtlasGenerateGroup = (TAtlasGenerateGroup.Generate, TAtlasGenerateGroup.Surround,
-    TAtlasGenerateGroup.Templates);
-
-function SplitList(const AText: string): TArray<string>;
-var
-  Item: string;
-begin
-  Result := nil;
-  for Item in AText.Split([',', ';', #10]) do
-    if Trim(Item) <> '' then
-      Result := Result + [Trim(Item)];
-end;
-
 class function TAtlasGenerateOptions.Default: TAtlasGenerateOptions;
 begin
   Result := Create('', '', True, True);
@@ -222,86 +210,34 @@ class function TAtlasGenerateOptions.Create(const AGroups, AHidden: string; ARec
   AShowCommandNames: Boolean): TAtlasGenerateOptions;
 begin
   Result.Groups := ParseGroups(AGroups);
-  Result.Hidden := SplitList(AHidden);
+  Result.Hidden := TAtlasGenerateLists.Split(AHidden);
   Result.RecentFirst := ARecentFirst;
   Result.ShowCommandNames := AShowCommandNames;
 end;
 
 class function TAtlasGenerateOptions.GroupName(AGroup: TAtlasGenerateGroup): string;
 begin
-  case AGroup of
-    TAtlasGenerateGroup.Generate:
-      Result := 'generate';
-    TAtlasGenerateGroup.Surround:
-      Result := 'surround';
-    TAtlasGenerateGroup.Templates:
-      Result := 'templates';
-  else
-    Result := 'recent';
-  end;
+  Result := TAtlasGenerateLists.GroupName(AGroup);
 end;
 
 class function TAtlasGenerateOptions.TryParseGroup(const AName: string; out AGroup: TAtlasGenerateGroup): Boolean;
-var
-  Group: TAtlasGenerateGroup;
 begin
-  for Group := Low(TAtlasGenerateGroup) to High(TAtlasGenerateGroup) do
-    if SameText(Trim(AName), GroupName(Group)) then
-    begin
-      AGroup := Group;
-      Exit(True);
-    end;
-  AGroup := TAtlasGenerateGroup.Generate;
-  Result := False;
+  Result := TAtlasGenerateLists.TryParseGroup(AName, AGroup);
 end;
 
 class function TAtlasGenerateOptions.ParseGroups(const AText: string): TArray<TAtlasGenerateGroup>;
-var
-  Item: string;
-  Group, Known: TAtlasGenerateGroup;
-  Seen: Boolean;
 begin
-  Result := nil;
-  for Item in SplitList(AText) do
-  begin
-    // "recent" ist keine Gruppe der Liste; dafür gibt es recentFirst.
-    if not TryParseGroup(Item, Group) or (Group = TAtlasGenerateGroup.Recent) then
-      Continue;
-    Seen := False;
-    for Known in Result do
-      if Known = Group then
-        Seen := True;
-    if not Seen then
-      Result := Result + [Group];
-  end;
-  if Length(Result) = 0 then
-    for Group in DefaultGroups do
-      Result := Result + [Group];
+  Result := TAtlasGenerateLists.ParseGroups(AText);
 end;
 
 class function TAtlasGenerateOptions.NormalizeGroups(const AText: string): string;
-var
-  Group: TAtlasGenerateGroup;
 begin
-  Result := '';
-  for Group in ParseGroups(AText) do
-  begin
-    if Result <> '' then
-      Result := Result + ',';
-    Result := Result + GroupName(Group);
-  end;
+  Result := TAtlasGenerateLists.NormalizeGroups(AText);
 end;
 
 class function TAtlasGenerateOptions.NormalizeHidden(const AText: string): string;
-var
-  Item: string;
-  Items: TArray<string>;
 begin
-  Items := nil;
-  for Item in SplitList(AText) do
-    if IndexText(Item, Items) < 0 then
-      Items := Items + [Item];
-  Result := string.Join(', ', Items);
+  Result := TAtlasGenerateLists.NormalizeHidden(AText);
 end;
 
 class function TAtlasGenerateOptions.AddHidden(const AText, AId: string): string;

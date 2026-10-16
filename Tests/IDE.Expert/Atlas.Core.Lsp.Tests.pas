@@ -138,7 +138,7 @@ uses
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Files.WatchedChanges,
-  Atlas.Core.Projects.Context,
+  Atlas.Core.Projects.Contract,
   Atlas.Core.InlayHints.Store,
   Atlas.Core.Results.Model,
   Atlas.Core.Problems.Contract;
