@@ -50,3 +50,5 @@ benchmark/
 /Packages/Atlas.Text/atlas-baseline.json
 /Packages/Atlas.Windows/atlas.json
 /Packages/Atlas.Windows/atlas-baseline.json
+/Tests/Referenzprojekt/atlas.json
+/Tests/Referenzprojekt/atlas-baseline.json
