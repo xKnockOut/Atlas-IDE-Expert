@@ -27,6 +27,9 @@ type
     procedure OneActionAfterSaving;
     [Test]
     procedure UnitSearchOptions;
+    /// <summary>Erzeugen-Menü (#719): Vorgaben, Normalisieren, Speichern und Laden.</summary>
+    [Test]
+    procedure GenerateMenuOptions;
   end;
 
   [TestFixture]
@@ -497,6 +500,45 @@ begin
   Settings.Normalize;
   Assert.IsTrue(Settings.CheckOnSave);
   Assert.IsFalse(Settings.CompileOnSave);
+end;
+
+procedure TAtlasPluginSettingsTests.GenerateMenuOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.GenerateMenu, 'standardmäßig an');
+  Assert.AreEqual($802D, Settings.GenerateMenuKey, 'Alt+Einfg');
+  Assert.AreEqual('generate,surround,templates', Settings.GenerateMenuGroups);
+  Assert.AreEqual('', Settings.GenerateMenuHidden);
+  Assert.IsTrue(Settings.GenerateMenuRecentFirst);
+  Assert.IsTrue(Settings.GenerateMenuShowCommandNames);
+  // Unbekannte Gruppen entfallen, Reihenfolge bleibt; Ausgeblendete ohne Leere und Doppelte.
+  Settings.GenerateMenuGroups := ' Templates; quatsch, generate ';
+  Settings.GenerateMenuHidden := '/json, , /json,tryf';
+  Settings.Normalize;
+  Assert.AreEqual('templates,generate', Settings.GenerateMenuGroups);
+  Assert.AreEqual('/json, tryf', Settings.GenerateMenuHidden);
+  Settings.GenerateMenuGroups := 'nichts';
+  Settings.Normalize;
+  Assert.AreEqual('generate,surround,templates', Settings.GenerateMenuGroups, 'ohne bekannte Gruppe: Vorgabe');
+  // Speichern und Laden.
+  Settings.GenerateMenu := False;
+  Settings.GenerateMenuKey := 0;
+  Settings.GenerateMenuGroups := 'surround,generate';
+  Settings.GenerateMenuRecentFirst := False;
+  Settings.GenerateMenuShowCommandNames := False;
+  Store := TMemoryStore.Create;
+  Settings.SaveTo(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.LoadFrom(Store);
+  Assert.IsFalse(Loaded.GenerateMenu, 'abschaltbar');
+  Assert.AreEqual(0, Loaded.GenerateMenuKey, '0 = keine Taste');
+  Assert.AreEqual('surround,generate', Loaded.GenerateMenuGroups);
+  Assert.AreEqual('/json, tryf', Loaded.GenerateMenuHidden);
+  Assert.IsFalse(Loaded.GenerateMenuRecentFirst);
+  Assert.IsFalse(Loaded.GenerateMenuShowCommandNames);
 end;
 
 procedure TAtlasPluginSettingsTests.UnitSearchOptions;

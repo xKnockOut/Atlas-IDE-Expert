@@ -171,9 +171,10 @@ begin
     Entry('dtor', InClass, TSlashGroup.Generate, TSlashArgument.None),
     Entry('prop', InClass, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('override', InClass, TSlashGroup.Generate, TSlashArgument.Required, True, False, ''),
-    Entry('impl', InClass, TSlashGroup.Generate, TSlashArgument.None),
     Entry('equals', [TSlashPlace.ClassBody, TSlashPlace.RecordBody], TSlashGroup.Generate,
       TSlashArgument.Optional, True, True, ', '),
+    // impl erst nach equals: Reihenfolge wie im Entwurf (AC7); der Server setzt „implement“ hinter override.
+    Entry('impl', InClass, TSlashGroup.Generate, TSlashArgument.None),
     Entry('field', InClass, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('encapsulate', InClass, TSlashGroup.Generate, TSlashArgument.Required, True, False, ''),
     Entry('clone', InClass, TSlashGroup.Generate, TSlashArgument.None),
