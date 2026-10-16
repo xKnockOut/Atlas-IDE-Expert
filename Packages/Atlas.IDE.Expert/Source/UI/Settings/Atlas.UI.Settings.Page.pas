@@ -274,6 +274,13 @@ type
     FWelcomeTrends: TCheckBox;
     FWelcomeTrendsPoints: TEdit;
     FWelcomeTrendsSeries: array[TAtlasTrendSeries] of TCheckBox;
+    FWelcomeTests: TCheckBox;
+    FWelcomeTestsMaxFailures: TEdit;
+    FWelcomeTestsCi: TCheckBox;
+    FWelcomeTestsCiProvider: TAtlasChoiceBox;
+    FWelcomeTestsCiInterval: TEdit;
+    FWelcomeTestsCiNotify: TCheckBox;
+    FCiLogin: TCheckBox;
     FWelcomeUnsaved: TCheckBox;
     FWelcomeUnsavedMinAge: TEdit;
     FWelcomeUnsavedWarn: TEdit;
@@ -460,6 +467,14 @@ type
     property WelcomeTrends: TCheckBox read FWelcomeTrends;
     property WelcomeTrendsPoints: TEdit read FWelcomeTrendsPoints;
     function WelcomeTrendsSeries(ASeries: TAtlasTrendSeries): TCheckBox;
+    /// <summary>Zum Testen: Bereich „Testergebnisse“ (#763).</summary>
+    property WelcomeTests: TCheckBox read FWelcomeTests;
+    property WelcomeTestsMaxFailures: TEdit read FWelcomeTestsMaxFailures;
+    property WelcomeTestsCi: TCheckBox read FWelcomeTestsCi;
+    property WelcomeTestsCiProvider: TAtlasChoiceBox read FWelcomeTestsCiProvider;
+    property WelcomeTestsCiInterval: TEdit read FWelcomeTestsCiInterval;
+    property WelcomeTestsCiNotify: TCheckBox read FWelcomeTestsCiNotify;
+    property CiLogin: TCheckBox read FCiLogin;
     property WelcomeUnsaved: TCheckBox read FWelcomeUnsaved;
     property WelcomeUnsavedMinAge: TEdit read FWelcomeUnsavedMinAge;
     property WelcomeUnsavedWarn: TEdit read FWelcomeUnsavedWarn;
@@ -1036,6 +1051,16 @@ begin
   for Series := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
     FWelcomeTrendsSeries[Series] := AddCheck(TAtlasStrings.Fmt(TAtlasTextId.SettingsWelcomeTrendsSeries,
       [TrendSeriesTitle(Series)]));
+  // Bereich „Testergebnisse“ (#763): lokal und vom Build-Server; Anbieter in der Reihenfolge von
+  // TAtlasPluginSettings (bisher nur Jenkins).
+  FWelcomeTests := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTests));
+  FWelcomeTestsMaxFailures := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTestsMaxFailures));
+  FWelcomeTestsCi := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTestsCi));
+  FWelcomeTestsCiProvider := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTestsCiProvider),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTestsCiJenkins)]);
+  FWelcomeTestsCiInterval := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTestsCiInterval));
+  FWelcomeTestsCiNotify := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTestsCiNotify));
+  FCiLogin := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCiLogin));
   // Bereich „Nicht gesichert“ (#762).
   FWelcomeUnsaved := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsaved));
   FWelcomeUnsavedMinAge := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsavedMinAge));
@@ -2016,6 +2041,14 @@ begin
       if Wanted = Series then
         FWelcomeTrendsSeries[Series].Checked := True;
   end;
+  FWelcomeTests.Checked := ASettings.WelcomePageTests;
+  FWelcomeTestsMaxFailures.Text := IntToStr(ASettings.WelcomePageTestsMaxFailures);
+  FWelcomeTestsCi.Checked := ASettings.WelcomePageTestsCi;
+  // Einziger Anbieter bisher: jenkins.
+  FWelcomeTestsCiProvider.Choice := 0;
+  FWelcomeTestsCiInterval.Text := IntToStr(ASettings.WelcomePageTestsCiIntervalMinutes);
+  FWelcomeTestsCiNotify.Checked := ASettings.WelcomePageTestsCiNotify;
+  FCiLogin.Checked := ASettings.CiLogin;
   FWelcomeUnsaved.Checked := ASettings.WelcomePageUnsaved;
   FWelcomeUnsavedMinAge.Text := IntToStr(ASettings.WelcomePageUnsavedMinAgeHours);
   FWelcomeUnsavedWarn.Text := IntToStr(ASettings.WelcomePageUnsavedWarnHours);
@@ -2219,6 +2252,15 @@ begin
     if FWelcomeTrendsSeries[Series].Checked then
       Shown := Shown + [Series];
   ASettings.WelcomePageTrendsSeries := TAtlasWelcomeTrends.SeriesText(Shown);
+  ASettings.WelcomePageTests := FWelcomeTests.Checked;
+  ASettings.WelcomePageTestsMaxFailures := StrToIntDef(Trim(FWelcomeTestsMaxFailures.Text),
+    ASettings.WelcomePageTestsMaxFailures);
+  ASettings.WelcomePageTestsCi := FWelcomeTestsCi.Checked;
+  ASettings.WelcomePageTestsCiProvider := TAtlasPluginSettings.DefaultCiProvider;
+  ASettings.WelcomePageTestsCiIntervalMinutes := StrToIntDef(Trim(FWelcomeTestsCiInterval.Text),
+    ASettings.WelcomePageTestsCiIntervalMinutes);
+  ASettings.WelcomePageTestsCiNotify := FWelcomeTestsCiNotify.Checked;
+  ASettings.CiLogin := FCiLogin.Checked;
   ASettings.WelcomePageUnsaved := FWelcomeUnsaved.Checked;
   ASettings.WelcomePageUnsavedMinAgeHours := StrToIntDef(Trim(FWelcomeUnsavedMinAge.Text),
     ASettings.WelcomePageUnsavedMinAgeHours);

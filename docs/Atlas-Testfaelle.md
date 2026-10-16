@@ -831,6 +831,37 @@ Vorbereitung: Git-Projekt mit Baseline (#97), Probleme an (#398), Server läuft;
 | PV14 | Datei der Zusammenfassung von Hand um ein Feld `"x": 1` in einem Punkt und in `trends` ergänzen, bauen | Beide Felder bleiben erhalten, bis der Punkt aus dem Ringpuffer fällt |
 | PV15 | Baseline aktualisieren (BL1) bei einem Projekt, das der Server noch nicht als Arbeitsbereich kennt (etwa direkt nach dem Hinzufügen zur Gruppe) | Schreibt der Server in einen anderen Ordner, meldet das Meldungsfenster „Atlas: Der Server hat die Baseline in <Ordner> geschrieben, nicht im Projektordner …“; Verlauf und Abschnitt `baseline` lesen weiter den Projektordner |
 
+### Testergebnisse (#763)
+
+Abweichungen vom Issue: „Fehlgeschlagene erneut ausführen“ startet die lokalen Fehlschläge und die vom Server (sofern der Stand zum Job passt), jeden Test einmal. Ein Hinweis „rot geworden“ kommt nur beim Wechsel auf einen neuen roten Build, nicht beim ersten Abruf. Der Zugang wird über „Zugang zum Build-Server hinterlegen …“ (Befehlspalette, Kontextmenü des Bereichs) eingegeben; beide Felder leer entfernt ihn. Angemeldet wird nur über https; über http fragt Atlas ohne Anmeldung (offene Server). Der Bereich steht im Atlas-Layout nicht im Mockup-Raster, sondern als eigener Bereich in der linken Spalte nach „Projektverlauf“.
+
+Vorbereitung: Testprojekt `Atlas.Tests` mit zwei fehlschlagenden und drei übersprungenen Tests, zweites Testprojekt `Kasse.Tests` (alle grün); beide einmal mit „Tests ausführen“ (#69) laufen lassen und schließen. Für die Jenkins-Fälle: Jenkins mit Job `atlas` (oder Multibranch-Job mit Branch `main`), Benutzer mit API-Token; im Projektordner `.atlas` mit `"ci": { "url": "https://ci.firma.de", "job": "atlas", "multibranch": true }`. Die Zusammenfassungen stehen in `%LOCALAPPDATA%\Atlas\projects\*.json`, Abschnitte `tests` und `ci`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TE1 | Willkommensseite bzw. „Atlas-Start“ öffnen | Bereich „Testergebnisse“ in der linken Spalte nach „Projektverlauf“: je Projekt eine Zeile mit rotem bzw. grünem Punkt, fettem Namen, Marke „2 fehlgeschlagen“ bzw. „alle 57 ok“ und grauem Text in Festbreitenschrift „412 ok · 3 übersprungen · 18,4 s · 19:41“ (Mockup #ws11) (**Abnahme**) |
+| TE2 | Zeile `Atlas.Tests` wählen | Darunter höchstens 5 Fehlschläge mit roter Leiste links: voller Name, darunter Meldung und `Datei.pas:Zeile`; Knöpfe „Fehlgeschlagene erneut ausführen“ (blau) und „Im Debugger“ |
+| TE3 | Doppelklick auf einen Fehlschlag (Projekt geschlossen) | Projekt öffnet sich, der Editor steht auf der Testmethode (**Abnahme**) |
+| TE4 | „Fehlgeschlagene erneut ausführen“ | Genau die zwei Tests laufen (Meldungsansicht wie #69 mit `--run`), danach zeigt der Bereich den neuen Lauf ohne Neustart (**Abnahme**) |
+| TE5 | Einen Fehlschlag anklicken, „Im Debugger“ | Nur dieser Test startet im Debugger und hält in seiner ersten Zeile (#585) |
+| TE6 | `welcomePage.tests.maxFailures` auf 1, dann auf 99 | Nur ein Fehlschlag und „… 1 weitere“; 99 wird als 50 gespeichert |
+| TE7 | `welcomePage.tests` aus | Bereich verschwindet ohne Neustart, Befehle der Tests (#69) bleiben |
+| TE8 | `welcomePage.tests.ci` an, `.atlas` wie oben; Seite anzeigen | Unter `Atlas.Tests` die Zeile „Jenkins #482 · 2 fehlgeschlagen · vor 40 Min. · main“ mit eigener Ampel; Server-Fehlschläge in derselben Liste mit Marke „Server“; Knopf „Im Browser“ (**Abnahme**) |
+| TE9 | Lokal alles grün, auf dem Server ein Test rot | Hinweis „lokal grün, Server rot“ in Warnfarbe hinter der Server-Zeile (**Abnahme**) |
+| TE10 | Doppelklick auf einen Fehlschlag mit Marke „Server“; „Im Browser“ | Projekt öffnet sich, der Test wird in der Testunit gefunden und angesprungen (sonst Meldung „Test nicht gefunden“); „Im Browser“ öffnet die Seite des Builds im Standardbrowser |
+| TE11 | Netzwerk trennen (oder falsche `url`), Seite anzeigen | Kein Dialog, keine Fehlermeldung; die Server-Zeile zeigt den letzten Stand mit „Stand vom …“ bzw. ohne früheren Abruf „nicht erreichbar“; die Seite wartet nicht (Abfrage im Hintergrund, 5 s) (**Abnahme**) |
+| TE12 | Seite mehrmals öffnen und schließen, IDE neu starten | Der Server wird je Job höchstens alle 10 Minuten gefragt (`ci.attempt` in der Zusammenfassung), auch nach dem Neustart; Kontextmenü „Build-Server jetzt abfragen“ fragt sofort |
+| TE13 | Jenkins mit Anmeldung, noch kein Zugang hinterlegt | Server-Zeile „Anmeldung abgelehnt (Zugang hinterlegen)“ |
+| TE14 | Befehlspalette „Zugang zum Build-Server hinterlegen …“ (aktives Projekt mit `.atlas`); Benutzer und API-Token eingeben | Dialog „Build-Server https://ci.firma.de“, Token verdeckt; danach Meldung „Zugang … gespeichert“, die Seite fragt sofort neu; in der Windows-Anmeldeinformationsverwaltung steht `Atlas:ci:https://ci.firma.de` (**Abnahme**) |
+| TE15 | Denselben Befehl, beide Felder leer, OK | Eintrag in der Anmeldeinformationsverwaltung verschwindet, Meldung „Zugang … entfernt“ |
+| TE16 | `.atlas` ohne `ci` bzw. `ci.url` über http | Befehl meldet „… nennt in seiner .atlas keinen Server …“; über http fragt Atlas ohne Anmeldung, das Token geht nie über http |
+| TE17 | Neuer Build auf dem Server wird rot (vorher grün), Seite anzeigen | Eintrag in der Benachrichtigungszentrale „Jenkins #483 rot: Atlas.Tests“ mit „Im Browser“, Quelle „Build-Server“; mit `notifications.sources` `buildServer=off` kein Eintrag; mit `welcomePage.tests.ci.notify` aus kein Eintrag (**Abnahme**) |
+| TE18 | Multibranch: Branch in Git auf `develop` wechseln, Seite anzeigen | Abgefragt wird der Job von `develop`; der Stand von `main` wird nicht als `develop` gezeigt |
+| TE19 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs`) nach TE8–TE17; Zusammenfassung und Registry ansehen | Nur „Testergebnisse: jenkins-Build …“ bzw. „nicht abgefragt (network)“; weder Adresse, Job, Benutzer noch Token; kein Token in Dateien oder Registry |
+| TE20 | Schnellschalter „Zugang zum Build-Server“ aus | Befehl fehlt in der Palette, Kontextmenü ohne den Eintrag; die Abfrage mit schon hinterlegtem Zugang läuft weiter |
+| TE21 | IDE-Thema hell ↔ dunkel, 150 % Skalierung | Punkte, Marken, rote Leiste, Marke „Server“ und Knöpfe gut lesbar, nichts abgeschnitten |
+| TE22 | IDE während einer laufenden Abfrage schließen (Server antwortet langsam) | IDE schließt ohne Hänger (Abbruch spätestens nach der Wartezeit des Entladens) |
+
 ### Nicht gesichert (#762)
 
 Abweichungen vom Issue: Die Auswertung liegt in `Atlas.Core.Welcome.Unsaved` statt in `Atlas.Common`, weil das Plugin `Atlas.Common` nicht einbindet (ADR 0011). „Ansehen“ öffnet das Projekt und listet die Dateien im Fenster „Atlas-Ergebnisse“, weil #571 keine eigene Änderungsansicht hat. Gleichartiges wird je Projekt zu einer Zeile zusammengefasst (z. B. „2 Stashes, ältester …“); repository-weite Arten (Commits, Branches ohne Upstream, Stashes) erscheinen je Arbeitskopie nur einmal.
@@ -1455,7 +1486,7 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; Atlas-Statusfeld 
 | BZ15 | Unter *Tools › Optionen › Atlas › Tastenkonflikte* die Taste der Benachrichtigungen ändern bzw. leeren | Neue Taste wirkt sofort; leer = keine Taste, Befehl in der Palette bleibt |
 | BZ16 | `notifications.enabled` aus (Seite *Allgemein* oder Schnellschalter), dann BZ2, BZ6, BZ8 | Keine Plakette, keine Liste, Befehl fehlt in der Palette, Taste ohne Wirkung; Tipps, Meldungsfenster und Unterschiede erscheinen wie vor #601, unabhängig von `notifications.sources` (**Abnahme**) |
 | BZ17 | IDE-Thema hell ↔ dunkel, 100 %, 150 %, 200 % Skalierung | Liste und Plakette in den Farben des Themas, Symbole nach Schwere (Fehler rot, Warnung gelb, Info Akzent), Chips der Aktionen lesbar, nichts abgeschnitten |
-| BZ18 | Registry `NotificationsSources` auf `server=off,buildServer=collect` setzen, IDE starten, Einstellungen öffnen und speichern | `buildServer=collect` bleibt erhalten (Quelle der Willkommensseite #763); unbekannte Verhalten werden übergangen (Quelle wieder „Einblenden und sammeln“) |
+| BZ18 | Registry `NotificationsSources` auf `server=off,buildServer=collect,tracker=off` setzen, IDE starten, Einstellungen öffnen und speichern | Quelle „Build-Server“ (#763) steht in der Auswahl mit „Nur sammeln“; `tracker=off` (unbekannte Quelle) bleibt erhalten; unbekannte Verhalten werden übergangen (Quelle wieder „Einblenden und sammeln“) |
 | BZ19 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs`) nach BZ2–BZ8 | Keine Titel, Texte, Pfade oder Benutzernamen aus den Einträgen |
 | BZ20 | Abgesicherter Start (#722) | Die Zentrale ist wie alle Schnellschalter für die Sitzung aus: keine Plakette, Hinweise wie vor #601; im Schnellschalter-Fenster „Benachrichtigungszentrale“ einschalten, dann sammelt sie ohne Neustart |
 

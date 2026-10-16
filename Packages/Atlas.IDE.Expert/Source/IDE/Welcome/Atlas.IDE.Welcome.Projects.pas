@@ -347,6 +347,8 @@ begin
   TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.Projects);
   // Der Projektverlauf (#758) liest dieselben Zusammenfassungen und folgt der Auswahl.
   TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.History);
+  // Ebenso die Testergebnisse (#763, Abschnitt "tests" und Branch für den Multibranch-Job).
+  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.Tests);
 end;
 
 class function TAtlasIdeProjects.TrendsOn: Boolean;
