@@ -81,7 +81,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Editing.InterfaceStubs;
@@ -171,7 +171,8 @@ begin
   Settings := TCompletionSettings.Default;
   if Assigned(FCompletion.SettingsFor) then
     Settings := FCompletion.SettingsFor(AUri);
-  Tree := TPascalParser.Parse(Virtual);
+  // Über den Cache: TSyntaxTreeCacheTests.NoParserCallsOutsideCache.
+  Tree := TSyntaxTreeCache.Parse(Virtual);
   try
     Resolver := TNameResolver.Create(FIndex);
     try

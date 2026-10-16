@@ -94,6 +94,7 @@ type
 implementation
 
 uses
+  Atlas.IDE.Foundation.EditorBuffer,
   System.Types,
   System.DateUtils,
   System.UITypes,
@@ -191,13 +192,11 @@ end;
 
 class function TAtlasIdeBookmarks.CurrentProject: string;
 var
-  Editors: IOTAEditorServices;
   View: IOTAEditView;
 begin
   Result := '';
-  View := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
-    View := Editors.TopView;
+  // Auch aus Palette und Menü, wenn der Fokus nicht im Editor liegt.
+  View := TAtlasEditorBuffer.ActiveView;
   if (View <> nil) and (View.Buffer <> nil) and (View.Buffer.FileName <> '') then
     Result := ResolveProject(View.Buffer.FileName);
   if Result = '' then
@@ -316,7 +315,6 @@ end;
 
 class function TAtlasIdeBookmarks.Target(out AFileName: string; out ALine: Integer): Boolean;
 var
-  Editors: IOTAEditorServices;
   View: IOTAEditView;
 begin
   AFileName := '';
@@ -324,9 +322,8 @@ begin
   Result := False;
   if not Enabled(True) then
     Exit;
-  View := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
-    View := Editors.TopView;
+  // Auch aus Palette und Menü, wenn der Fokus nicht im Editor liegt.
+  View := TAtlasEditorBuffer.ActiveView;
   if (View = nil) or (View.Buffer = nil) or (View.Buffer.FileName = '') then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.BookmarksNoEditor));

@@ -40,6 +40,8 @@ type
   private
     FEntries: TArray<TEntry>;
     FActions: TActionList;
+    /// <summary>Aktion je Eintrag (gleicher Index wie FEntries); die IDE überschreibt Tag.</summary>
+    FItems: TArray<TBasicAction>;
     FRegistered: Boolean;
     function CaptionOf(AIndex: Integer): string;
     procedure ItemExecute(Sender: TObject);
@@ -133,7 +135,7 @@ begin
     Item.ActionList := FActions;
     Item.Category := SubCategory;
     Item.Caption := CaptionOf(Index);
-    Item.Tag := Index;
+    FItems := FItems + [Item];
     if FEntries[Index].Caption <> '-' then
     begin
       Item.OnExecute := ItemExecute;
@@ -161,10 +163,33 @@ end;
 procedure TAtlasIdeContextMenu.ItemExecute(Sender: TObject);
 var
   Index: Integer;
+  Action: TBasicAction;
 begin
-  Index := TAction(Sender).Tag;
-  if (Index < 0) or (Index > High(FEntries)) or not Assigned(FEntries[Index].Proc) then
+  // Die IDE kann statt unserer Aktion einen eigenen Menüeintrag melden; dessen Tag ist nicht unserer.
+  // Maßgeblich ist die eigene Aktion (aus FActions), sonst die verknüpfte des Menüeintrags.
+  Action := nil;
+  if (Sender is TBasicAction) and (TBasicAction(Sender).Owner = FActions) then
+    Action := TBasicAction(Sender)
+  else if (Sender is TMenuItem) and (TMenuItem(Sender).Action <> nil) and
+    (TMenuItem(Sender).Action.Owner = FActions) then
+    Action := TMenuItem(Sender).Action;
+  if Action = nil then
+  begin
+    if Sender = nil then
+      TAtlasGuard.Log('Kontextmenü: Aufruf ohne Absender')
+    else
+      TAtlasGuard.Log('Kontextmenü: unbekannter Absender ' + Sender.ClassName);
     Exit;
+  end;
+  // Nicht über Tag: Die IDE setzt ihn beim Einbinden ins Kontextmenü selbst (Protokoll: „Eintrag 30“).
+  Index := High(FItems);
+  while (Index >= 0) and (FItems[Index] <> Action) do
+    Dec(Index);
+  if (Index < 0) or (Index > High(FEntries)) or not Assigned(FEntries[Index].Proc) then
+  begin
+    TAtlasGuard.Log(Format('Kontextmenü: Eintrag %d ohne Befehl', [Index]));
+    Exit;
+  end;
   if FEntries[Index].Id <> '' then
     TAtlasIdeShortcutTips.Invoked(FEntries[Index].Id);
   TAtlasGuard.Run(TAtlasFeature.EditorCommands, FEntries[Index].Proc);

@@ -174,12 +174,12 @@ var
   Reads: Integer;
 begin
   Found := Failures(Reads);
-  Assert.AreEqual(2, Length(Found));
+  Assert.AreEqual(2, Integer(Length(Found)));
   Assert.AreEqual(1, Reads, 'jede Testunit einmal lesen');
   Assert.AreEqual(UnitFile, Found[0].FileName);
   Assert.AreEqual(18, Found[0].Line, 'Methodenkopf im implementation-Teil, nicht die Deklaration');
   Assert.AreEqual(2, Found[0].StartCharacter, 'ab dem ersten Zeichen');
-  Assert.AreEqual(Length('  procedure TRechnerTests.Summe(A, B, C: Integer);'), Found[0].EndCharacter);
+  Assert.AreEqual(Integer(Length('  procedure TRechnerTests.Summe(A, B, C: Integer);')), Found[0].EndCharacter);
   Assert.AreEqual(21, Found[1].Line);
 end;
 
@@ -191,7 +191,7 @@ var
 begin
   Found := Failures(Reads);
   Items := TAtlasTestRun.Problems(Found, 'Test %s fehlgeschlagen: %s', 'Test %s fehlgeschlagen: erwartet %s, erhalten %s');
-  Assert.AreEqual(2, Length(Items));
+  Assert.AreEqual(2, Integer(Length(Items)));
   Assert.AreEqual(UnitFile, Items[0].Key);
   Assert.AreEqual('Test TRechnerTests.Summe.Gross fehlgeschlagen: erwartet 30, erhalten 31', Items[0].Value.Message);
   Assert.AreEqual(18, Items[0].Value.StartLine);
@@ -202,7 +202,7 @@ begin
     'nur die erste Zeile');
   // Ohne Fundstelle kein Problem.
   Found[1].FileName := '';
-  Assert.AreEqual(1, Length(TAtlasTestRun.Problems(Found, '%s %s', '%s %s %s')));
+  Assert.AreEqual(1, Integer(Length(TAtlasTestRun.Problems(Found, '%s %s', '%s %s %s'))));
 end;
 
 procedure TAtlasTestRunTests.SummaryForWelcomePage;
@@ -224,11 +224,11 @@ begin
   Assert.AreEqual(1, Tests.Failed);
   Assert.AreEqual(1, Tests.Errors);
   Assert.AreEqual(500, Tests.DurationMs);
-  Assert.AreEqual(2, Length(Tests.Failures));
+  Assert.AreEqual(2, Integer(Length(Tests.Failures)));
   Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', Tests.Failures[0].Test, 'voller Name für --run');
   Assert.AreEqual(19, Tests.Failures[0].Line, '1-basiert');
   Assert.AreEqual(UnitFile, Tests.Failures[0].FileName);
-  Assert.AreEqual(2, Length(Tests.FailedTests));
+  Assert.AreEqual(2, Integer(Length(Tests.FailedTests)));
 end;
 
 procedure TAtlasTestRunTests.StatusForLens;

@@ -159,9 +159,9 @@ begin
     Cache.Store(Entry('C:\Delphi\37.0', '37.0', '200-b', TCompilerEdition.CommandLine));
     // Gleiche Installation ersetzt den Eintrag.
     Cache.Store(Entry('c:\delphi\37.0', '37.0', '200-b', TCompilerEdition.Missing));
-    Assert.AreEqual(2, Cache.Count);
+    Assert.AreEqual(2, Integer(Cache.Count));
     Loaded.Load(Cache.ToJson);
-    Assert.AreEqual(2, Loaded.Count);
+    Assert.AreEqual(2, Integer(Loaded.Count));
     Assert.AreEqual(Ord(TCompilerEdition.NoCommandLine), Ord(Loaded.Find('C:\Delphi\23.0', '23.0', '100-a')));
     Assert.AreEqual(Ord(TCompilerEdition.Missing), Ord(Loaded.Find('C:\Delphi\37.0', '37.0', '200-b')));
     Assert.AreEqual(Ord(TCompilerEdition.Unknown), Ord(Loaded.Find('C:\Delphi\12.0', '12.0', '1-x')));
@@ -192,11 +192,11 @@ begin
   Cache := TCompilerEditionCache.Create;
   try
     Cache.Load('kein JSON');
-    Assert.AreEqual(0, Cache.Count);
+    Assert.AreEqual(0, Integer(Cache.Count));
     // Ohne Wurzel, ohne bekannte Ausgabe oder kein Objekt: übergangen.
     Cache.Load('{"format": 1, "entries": [{"root": "", "edition": "missing"}, ' +
       '{"root": "C:\\D", "version": "23.0", "edition": "anders"}, 5]}');
-    Assert.AreEqual(0, Cache.Count);
+    Assert.AreEqual(0, Integer(Cache.Count));
   finally
     Cache.Free;
   end;

@@ -146,19 +146,19 @@ begin
     '}');
   Assert.IsTrue(Team.Valid);
   Assert.IsTrue(Team.Exists);
-  Assert.AreEqual(0, Length(Team.Issues), 'keine Meldung');
+  Assert.AreEqual(0, Integer(Length(Team.Issues)), 'keine Meldung');
   Assert.AreEqual('C:\Repo\App', Team.Folder);
   Assert.AreEqual('F', Team.Naming[TAtlasNamingKind.Field]);
   Assert.AreEqual('A', Team.Naming[TAtlasNamingKind.Parameter]);
   Assert.IsTrue(Team.HasNaming[TAtlasNamingKind.Local], 'leeres Präfix ist ein Wert');
   Assert.AreEqual('Vorlagen\Snippets', Team.Snippets);
-  Assert.AreEqual(2, Length(Team.FormatFunctions));
+  Assert.AreEqual(2, Integer(Length(Team.FormatFunctions)));
   Assert.AreEqual('Trace', Team.FormatFunctions[1].Name);
   Assert.AreEqual(1, Team.FormatFunctions[1].FormatIndex);
-  Assert.AreEqual(1, Length(Team.SqlTargets), 'doppelte Einträge einmal');
+  Assert.AreEqual(1, Integer(Length(Team.SqlTargets)), 'doppelte Einträge einmal');
   Assert.AreEqual('TDateien.Laden', Team.FileMethods[0]);
   Assert.AreEqual('TLogger.Write', Team.MainThreadExceptions[0]);
-  Assert.AreEqual(1, Length(Team.StartProfiles));
+  Assert.AreEqual(1, Integer(Length(Team.StartProfiles)));
   Assert.AreEqual('Demo', Team.StartProfiles[0].Name);
   Assert.AreEqual('-demo /silent', Team.StartProfiles[0].Parameters);
   Assert.AreEqual('..\Bin', Team.StartProfiles[0].WorkingDir);
@@ -195,7 +195,7 @@ begin
   Assert.IsTrue(Team.Exists);
   Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.Syntax, ''));
   Assert.AreEqual('f_', TAtlasTeamFile.Prefix(Team, TAtlasNamingKind.Field, 'f_'));
-  Assert.AreEqual(0, Length(TAtlasTeamFile.Values(Team)));
+  Assert.AreEqual(0, Integer(Length(TAtlasTeamFile.Values(Team))));
   Assert.IsFalse(Parsed('[1, 2]').Valid, 'kein Objekt');
   Assert.IsFalse(Parsed('').Valid, 'leer');
   Assert.IsFalse(Parsed('kein json').Valid);
@@ -224,7 +224,7 @@ begin
   Assert.AreEqual('', Team.Ci.Url, 'Adresse mit Zugangsdaten ignoriert');
   Assert.IsFalse(Team.Ci.Configured);
   Assert.IsTrue(Team.Tracker.Configured, 'der Rest des Trackers gilt');
-  Assert.AreEqual(1, Length(Team.StartProfiles), 'Profile mit Zugangsdaten entfallen ganz');
+  Assert.AreEqual(1, Integer(Length(Team.StartProfiles)), 'Profile mit Zugangsdaten entfallen ganz');
   Assert.AreEqual('Gut', Team.StartProfiles[0].Name);
 end;
 
@@ -244,7 +244,7 @@ begin
   Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.OutsidePath, 'startProfiles[Raus].workingDir'));
   Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.AbsolutePath, 'startProfiles[Param].parameters'));
   Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.AbsolutePath, 'startProfiles[Env].environment.DATEN'));
-  Assert.AreEqual(1, Length(Team.StartProfiles));
+  Assert.AreEqual(1, Integer(Length(Team.StartProfiles)));
   Assert.AreEqual('Innen', Team.StartProfiles[0].Name, '..\Bin bleibt im Repository');
   Team := Parsed('{"version": 1, "snippets": "..\\Vorlagen"}');
   Assert.AreEqual('..\Vorlagen', Team.Snippets);
@@ -269,7 +269,7 @@ begin
   Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.WrongType, 'sqlTargets'));
   Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.WrongType, 'fileMethods[1]'));
   Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.InvalidValue, 'fileMethods[2]'));
-  Assert.AreEqual(1, Length(Team.FileMethods));
+  Assert.AreEqual(1, Integer(Length(Team.FileMethods)));
   Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.InvalidValue, 'formatFunctions[0]'));
   Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.InvalidValue, 'ci.provider'));
   Assert.IsFalse(Team.Ci.Configured);
@@ -288,12 +288,12 @@ var
   Team, Personal, Merged: TArray<TAtlasStartProfile>;
 begin
   Names := TAtlasTeamFile.MergeNames(['TQuery.SQL', 'TTeam.Sql'], ['tquery.sql', 'TMein.Sql']);
-  Assert.AreEqual(3, Length(Names));
+  Assert.AreEqual(3, Integer(Length(Names)));
   Assert.AreEqual('TQuery.SQL', Names[0]);
   Assert.AreEqual('TMein.Sql', Names[2]);
   Functions := TAtlasTeamFile.MergeFormatFunctions([TAtlasFormatFunction.Create('Log', 1)],
     [TAtlasFormatFunction.Create('log', 0), TAtlasFormatFunction.Create('Trace', 2)]);
-  Assert.AreEqual(2, Length(Functions));
+  Assert.AreEqual(2, Integer(Length(Functions)));
   Assert.AreEqual(1, Functions[0].FormatIndex, 'Index aus der Projektdatei');
   SetLength(Team, 1);
   Team[0].Name := 'Demo';
@@ -303,7 +303,7 @@ begin
   Personal[0].Parameters := '-mein';
   Personal[1].Name := 'Lokal';
   Merged := TAtlasTeamFile.MergeStartProfiles(Team, Personal);
-  Assert.AreEqual(2, Length(Merged));
+  Assert.AreEqual(2, Integer(Length(Merged)));
   Assert.AreEqual('-team', Merged[0].Parameters);
   Assert.AreEqual('Lokal', Merged[1].Name);
 end;
@@ -314,7 +314,7 @@ var
 begin
   Team := Parsed(TAtlasTeamFile.Skeleton);
   Assert.IsTrue(Team.Valid);
-  Assert.AreEqual(0, Length(Team.Issues));
+  Assert.AreEqual(0, Integer(Length(Team.Issues)));
   Assert.IsFalse(Team.HasValues, 'Beispiele stehen nur als Kommentar');
   Assert.Contains(TAtlasTeamFile.Skeleton, '"version": 1');
 end;
@@ -332,7 +332,7 @@ var
 begin
   Values := TAtlasTeamFile.Values(Parsed('{"version": 1, "naming": {"field": "F"}, "sqlTargets": ["A", "B"],' +
     '"ci": {"url": "https://ci.example.com", "job": "kasse"}}'));
-  Assert.AreEqual(3, Length(Values));
+  Assert.AreEqual(3, Integer(Length(Values)));
   Assert.AreEqual('naming.field', Values[0].Key);
   Assert.AreEqual('"F"', Values[0].Value);
   Assert.AreEqual('A, B', Values[1].Value);

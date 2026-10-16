@@ -239,7 +239,7 @@ begin
   Assert.AreEqual(8, TAtlasGenerateMenu.StepRow(Rows, 6, 1));
   Assert.AreEqual(6, TAtlasGenerateMenu.StepRow(Rows, 8, -1));
   Assert.AreEqual(1, TAtlasGenerateMenu.StepRow(Rows, 1, -1), 'oben bleibt stehen');
-  Assert.AreEqual(High(Rows), TAtlasGenerateMenu.StepRow(Rows, High(Rows), 1), 'unten bleibt stehen');
+  Assert.AreEqual(Integer(High(Rows)), TAtlasGenerateMenu.StepRow(Rows, High(Rows), 1), 'unten bleibt stehen');
   Assert.AreEqual(-1, TAtlasGenerateMenu.StepRow(nil, 0, 1));
 end;
 
@@ -335,7 +335,7 @@ begin
   Assert.AreEqual('templates,generate', TAtlasGenerateLists.NormalizeGroups(' Templates; quatsch, generate '));
   Assert.AreEqual(TAtlasGenerateOptions.NormalizeGroups('surround'), TAtlasGenerateLists.NormalizeGroups('surround'));
   Assert.AreEqual('/json, tryf', TAtlasGenerateLists.NormalizeHidden('/json, , /json,tryf'));
-  Assert.AreEqual(2, Length(TAtlasGenerateLists.Split('a;; b,'#10)));
+  Assert.AreEqual(2, Integer(Length(TAtlasGenerateLists.Split('a;; b,'#10))));
   Assert.IsTrue(TAtlasGenerateLists.TryParseGroup(' Surround ', Group));
   Assert.IsTrue(Group = TAtlasGenerateGroup.Surround);
   Assert.AreEqual('recent', TAtlasGenerateLists.GroupName(TAtlasGenerateGroup.Recent));

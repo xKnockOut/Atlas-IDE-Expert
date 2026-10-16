@@ -255,12 +255,12 @@ begin
   try
     History := Root.GetValue('history');
     Assert.IsTrue(History is TJSONArray, 'unbekanntes Feld oben');
-    Assert.AreEqual(1, TJSONArray(History).Count);
+    Assert.AreEqual(1, Integer(TJSONArray(History).Count));
     Build := Root.GetValue('build');
     Assert.IsTrue(Build is TJSONObject);
     Assert.IsTrue(TJSONObject(Build).GetValue('metrics') is TJSONObject, 'unbekanntes Feld im Abschnitt');
     Assert.AreEqual('2', TJSONObject(Build).GetValue('errors').Value, 'bekanntes Feld neu geschrieben');
-    Assert.AreEqual(9, TJSONObject(Build).Count, 'acht bekannte Felder und metrics, errors nur einmal');
+    Assert.AreEqual(9, Integer(TJSONObject(Build).Count), 'acht bekannte Felder und metrics, errors nur einmal');
   finally
     Root.Free;
   end;
@@ -509,11 +509,11 @@ begin
   Assert.IsTrue(Read.Tests.Known);
   Assert.AreEqual('Win64', Read.Tests.Platform);
   Assert.AreEqual(1250, Read.Tests.DurationMs);
-  Assert.AreEqual(3, Length(Read.Tests.Failures));
+  Assert.AreEqual(3, Integer(Length(Read.Tests.Failures)));
   Assert.AreEqual(35, Read.Tests.Failures[0].Line);
   Assert.AreEqual('C:\Projekte\Demo.Tests.pas', Read.Tests.Failures[0].FileName);
   Names := Read.Tests.FailedTests;
-  Assert.AreEqual(2, Length(Names), 'erneut ausführen: jeder Test einmal');
+  Assert.AreEqual(2, Integer(Length(Names)), 'erneut ausführen: jeder Test einmal');
   Assert.AreEqual('Demo.Tests.TRechner.Summe.Gross', Names[0]);
   Assert.AreEqual('Demo.Tests.TRechner.Teilt', Names[1]);
   // Höchstens MaxFailures in der Datei; unbekannte Felder bleiben.
@@ -524,7 +524,7 @@ begin
     Summary.Tests.Failures := Summary.Tests.Failures + [Failure];
   end;
   Assert.IsTrue(TAtlasProjectSummaries.Parse(TAtlasProjectSummaries.ToJson(Summary), Read));
-  Assert.AreEqual(TAtlasProjectTests.MaxFailures, Length(Read.Tests.Failures));
+  Assert.AreEqual(TAtlasProjectTests.MaxFailures, Integer(Length(Read.Tests.Failures)));
   Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "tests": {"passed": 3, "jenkins": ' +
     '{"job": "x"}}}', Read));
   Assert.IsTrue(Read.Tests.Known);
@@ -644,7 +644,7 @@ begin
   Assert.AreEqual(60, Read.Setup.MissingUnitCount);
   Assert.AreEqual(TAtlasProjectSetup.MaxFindings, Integer(Length(Read.Setup.MissingUnits)));
   Assert.AreEqual('Src\Main.pas', Read.Setup.MissingUnits[0].FileName);
-  Assert.AreEqual(3, Read.Setup.UndefinedDefines[0].Count);
+  Assert.AreEqual(3, Integer(Read.Setup.UndefinedDefines[0].Count));
   Assert.IsFalse(Read.Setup.PathsClean);
   // Sauber; unbekannte Felder bleiben, Zähler nie kleiner als die Funde.
   Assert.IsTrue(TAtlasProjectSummaries.Parse('{"setup": {"dismissed": false, "x": 1, "paths": {"at": ' +
@@ -656,7 +656,7 @@ begin
   Assert.IsTrue(TAtlasProjectSummaries.Parse('{"setup": {"paths": {"missingUnits": 0, "units": [{"name": "A"}, ' +
     '{"file": "ohne Namen"}]}}}', Read));
   Assert.AreEqual(1, Read.Setup.MissingUnitCount);
-  Assert.AreEqual(1, Read.Setup.MissingUnits[0].Count);
+  Assert.AreEqual(1, Integer(Read.Setup.MissingUnits[0].Count));
 end;
 
 procedure TAtlasProjectSummaryTests.SetupKeepsUncertainFindings;

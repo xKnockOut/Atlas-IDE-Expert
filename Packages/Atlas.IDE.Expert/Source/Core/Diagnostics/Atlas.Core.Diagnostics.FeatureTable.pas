@@ -36,9 +36,11 @@ type
     destructor Destroy; override;
     /// <summary>Nur ab Stufe AMinLevel: Normal = nur normal, Safe = nicht minimal, Minimal = immer.</summary>
     procedure Add(const AName: string; AMinLevel: TAtlasSafeLevel; const AIsActive: TFunc<Boolean>;
-      const AStart, AStop: TProc); overload;
-    procedure Add(const AName: string; const AWanted: TAtlasFeatureWanted; const AIsActive: TFunc<Boolean>;
-      const AStart, AStop: TProc); overload;
+      const AStart, AStop: TProc);
+    /// <summary>Wie Add, gewünscht nach AWanted statt ab einer Stufe. Eigener Name statt Überladung:
+    /// Delphi wählt zwischen Überladungen mit anonymen Methoden als Argument nicht (E2250).</summary>
+    procedure AddWanted(const AName: string; const AWanted: TAtlasFeatureWanted; const AIsActive: TFunc<Boolean>;
+      const AStart, AStop: TProc);
     /// <summary>In Reihenfolge jedes nicht aktive, gewünschte Feature starten; mehrfach aufrufbar.</summary>
     procedure StartWanted(ALevel: TAtlasSafeLevel);
     /// <summary>Rückwärts jedes aktive Feature stoppen.</summary>
@@ -66,7 +68,7 @@ end;
 procedure TAtlasFeatureTable.Add(const AName: string; AMinLevel: TAtlasSafeLevel; const AIsActive: TFunc<Boolean>;
   const AStart, AStop: TProc);
 begin
-  Add(AName,
+  AddWanted(AName,
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
       Result := Ord(ALevel) <= Ord(AMinLevel);
@@ -74,7 +76,7 @@ begin
     AIsActive, AStart, AStop);
 end;
 
-procedure TAtlasFeatureTable.Add(const AName: string; const AWanted: TAtlasFeatureWanted;
+procedure TAtlasFeatureTable.AddWanted(const AName: string; const AWanted: TAtlasFeatureWanted;
   const AIsActive: TFunc<Boolean>; const AStart, AStop: TProc);
 var
   Slot: TSlot;

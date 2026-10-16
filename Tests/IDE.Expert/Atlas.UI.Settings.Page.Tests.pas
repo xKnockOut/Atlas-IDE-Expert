@@ -153,12 +153,13 @@ begin
     Page := TAtlasSettingsPage.Create(Host);
     Page.Parent := Host;
     Page.HandleNeeded;
-    Assert.AreEqual(14, Page.Pages.PageCount);
+    Assert.AreEqual(15, Page.Pages.PageCount);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabGeneral), Page.Pages.Pages[0].Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUndo), Page.Pages.Pages[10].Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUnitSearch), Page.Pages.Pages[11].Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabWelcome), Page.Pages.Pages[12].Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabTeamFile), Page.Pages.Pages[13].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabDebug), Page.Pages.Pages[7].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUndo), Page.Pages.Pages[11].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUnitSearch), Page.Pages.Pages[12].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabWelcome), Page.Pages.Pages[13].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabTeamFile), Page.Pages.Pages[14].Caption);
     for Index := 0 to Page.Pages.PageCount - 1 do
     begin
       Sheet := Page.Pages.Pages[Index];
@@ -305,7 +306,7 @@ begin
       Page.Parent := Host;
       Page.HandleNeeded;
       Page.LoadFrom(TAtlasPluginSettings.Defaults);
-      Assert.AreEqual(2, Page.FuseList.Items.Count);
+      Assert.AreEqual(2, Integer(Page.FuseList.Items.Count));
       Assert.AreEqual(TAtlasGuard.FeatureName(TAtlasFeature.Pairs), Page.FuseList.Items[0]);
       Assert.AreEqual('Testquelle', Page.FuseList.Items[1]);
       Assert.IsTrue(Page.FuseEnableAll.Enabled);
@@ -316,7 +317,7 @@ begin
       Assert.IsTrue(TAtlasGuard.Disabled(TAtlasFeature.Pairs));
       Page.FuseEnableAll.Click;
       Assert.IsFalse(TAtlasGuard.Disabled(TAtlasFeature.Pairs));
-      Assert.AreEqual(1, Page.FuseList.Items.Count, 'nur der Hinweis „keine“');
+      Assert.AreEqual(1, Integer(Page.FuseList.Items.Count), 'nur der Hinweis „keine“');
       Assert.IsFalse(Page.FuseEnableAll.Enabled);
     finally
       Host.Free;
@@ -932,15 +933,15 @@ begin
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.Favorites, 'abschaltbar');
-    Assert.AreEqual(3, Page.FavoritesList.Items.Count);
+    Assert.AreEqual(3, Integer(Page.FavoritesList.Items.Count));
     Assert.AreEqual('TDataSet.Open', Page.FavoritesList.Items[0]);
     Page.FavoritesList.Selected[1] := True;
     Page.FavoritesRemove.Click;
-    Assert.AreEqual(2, Favorites.Count, 'Close gelöst');
+    Assert.AreEqual(2, Integer(Favorites.Count), 'Close gelöst');
     Assert.AreEqual('TDataSet.ParamByName', Page.FavoritesList.Items[1]);
     Page.FavoritesRemoveAll.Click;
-    Assert.AreEqual(0, Favorites.Count);
-    Assert.AreEqual(1, Page.FavoritesList.Items.Count, 'nur der Hinweis „keine“');
+    Assert.AreEqual(0, Integer(Favorites.Count));
+    Assert.AreEqual(1, Integer(Page.FavoritesList.Items.Count), 'nur der Hinweis „keine“');
     Assert.IsFalse(Page.FavoritesRemoveAll.Enabled);
   finally
     Host.Free;
@@ -1141,7 +1142,7 @@ begin
     Assert.IsTrue(Deleted);
     Assert.AreEqual('gelöscht', Page.BaselineInfo.Caption);
     Page.SuppressionsRefresh.Click;
-    Assert.AreEqual(1, Page.Suppressions.Items.Count);
+    Assert.AreEqual(1, Integer(Page.Suppressions.Items.Count));
     Page.CacheClear.Click;
     Assert.AreEqual('Cache leer', Page.CacheInfo.Caption);
   finally
@@ -1189,7 +1190,7 @@ begin
     try
       Dialog.Catalog := Catalog;
       Assert.IsTrue(Dialog.SelectPage(Model.Fields[Model.IndexOf('rules')].Page));
-      Assert.AreEqual(2, Dialog.RuleList.Items.Count);
+      Assert.AreEqual(2, Integer(Dialog.RuleList.Items.Count));
       Assert.IsTrue(Dialog.SetRuleSeverity('no-with', 'off'));
       Assert.AreEqual(StringReplace(Text, '"error"', '"off"', []), Model.ResultText);
       Assert.IsFalse(Dialog.SetRuleSeverity('unbekannt', 'off'));
@@ -1266,7 +1267,7 @@ begin
   end;
   Collection := TAtlasSymbolImages.Collection(nil);
   try
-    Assert.AreEqual(2, Collection.Images.Count);
+    Assert.AreEqual(2, Integer(Collection.Images.Count));
     Assert.AreEqual(TAtlasSymbol.SizeCount, Collection.Images[1].SourceImages.Count);
   finally
     Collection.Free;

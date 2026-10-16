@@ -106,7 +106,7 @@ begin
   State.Profiles := [Profile('lokal', '-db C:\Daten\test.fdb'), Profile('demo', '-persoenlich')];
   Entries := TAtlasStartProfiles.Merge(Team('{"version": 1, "startProfiles": [{"name": "Demo", "parameters": "-demo"}]}'),
     State);
-  Assert.AreEqual(2, Length(Entries));
+  Assert.AreEqual(2, Integer(Length(Entries)));
   Assert.AreEqual('Demo', Entries[0].Profile.Name);
   Assert.AreEqual('-demo', Entries[0].Profile.Parameters, 'gleichnamig: das Profil aus .atlas gilt');
   Assert.IsTrue(Entries[0].Source = TAtlasStartProfileSource.Team);
@@ -124,10 +124,10 @@ begin
   State := TAtlasStartProfiles.Empty(Project);
   State.Profiles := [Profile('Lokal', '-x')];
   Entries := TAtlasStartProfiles.Merge(Team('{ kaputt'), State);
-  Assert.AreEqual(1, Length(Entries));
+  Assert.AreEqual(1, Integer(Length(Entries)));
   Assert.AreEqual('Lokal', Entries[0].Profile.Name);
   Entries := TAtlasStartProfiles.Merge(TAtlasTeamFile.Empty, TAtlasStartProfiles.Empty(Project));
-  Assert.AreEqual(0, Length(Entries));
+  Assert.AreEqual(0, Integer(Length(Entries)));
 end;
 
 procedure TAtlasStartProfilesTests.TwoProfilesGiveTheirOwnParameters;
@@ -192,13 +192,13 @@ begin
   // So steht es in .dproj-Dateien der IDE.
   Variables := TAtlasStartProfiles.DecodeEnvironment('DPMPACKAGECACHE=c:\temp\cache;"Path=C:\a;$(path)";' +
     '$(Debugger_EnvVars)');
-  Assert.AreEqual(2, Length(Variables));
+  Assert.AreEqual(2, Integer(Length(Variables)));
   Assert.AreEqual('DPMPACKAGECACHE', Variables[0].Name);
   Assert.AreEqual('c:\temp\cache', Variables[0].Value);
   Assert.AreEqual('Path', Variables[1].Name);
   Assert.AreEqual('C:\a;$(path)', Variables[1].Value);
-  Assert.AreEqual(0, Length(TAtlasStartProfiles.DecodeEnvironment('')));
-  Assert.AreEqual(0, Length(TAtlasStartProfiles.DecodeEnvironment('$(Debugger_EnvVars);=x;OHNE')));
+  Assert.AreEqual(0, Integer(Length(TAtlasStartProfiles.DecodeEnvironment(''))));
+  Assert.AreEqual(0, Integer(Length(TAtlasStartProfiles.DecodeEnvironment('$(Debugger_EnvVars);=x;OHNE'))));
   Assert.AreEqual('A=', TAtlasStartProfiles.EncodeEnvironment(TAtlasStartProfiles.DecodeEnvironment('A=')),
     'leerer Wert bleibt');
 end;
@@ -223,11 +223,11 @@ begin
   Assert.IsTrue(Valid);
   Assert.AreEqual(Project, Back.Project, 'Projekt aus der Datei');
   Assert.AreEqual('Prüfung', Back.Active);
-  Assert.AreEqual(2, Length(Back.Profiles));
+  Assert.AreEqual(2, Integer(Length(Back.Profiles)));
   Assert.AreEqual('-db "C:\Daten\test.fdb" /ä', Back.Profiles[0].Parameters);
   Assert.AreEqual('C:\Daten', Back.Profiles[0].WorkingDir);
   Assert.AreEqual('..\Host\host.exe', Back.Profiles[0].Host);
-  Assert.AreEqual(2, Length(Back.Profiles[0].Environment));
+  Assert.AreEqual(2, Integer(Length(Back.Profiles[0].Environment)));
   Assert.AreEqual('LEER', Back.Profiles[0].Environment[1].Name);
   Assert.AreEqual('', Back.Profiles[0].Environment[1].Value);
   Assert.AreEqual('Zweites', Back.Profiles[1].Name);
@@ -256,9 +256,9 @@ begin
     '}', Project, Valid);
   Assert.IsTrue(Valid);
   Assert.AreEqual('Demo', State.Active);
-  Assert.AreEqual(1, Length(State.Profiles), 'ohne Namen, kein Objekt und doppelt fallen weg');
+  Assert.AreEqual(1, Integer(Length(State.Profiles)), 'ohne Namen, kein Objekt und doppelt fallen weg');
   Assert.AreEqual('-a', State.Profiles[0].Parameters);
-  Assert.AreEqual(1, Length(State.Profiles[0].Environment), 'nur Texte mit Namen');
+  Assert.AreEqual(1, Integer(Length(State.Profiles[0].Environment)), 'nur Texte mit Namen');
   Assert.AreEqual(Project, State.Project, 'ohne "project" gilt das übergebene');
   Assert.IsFalse(State.HasOriginal);
 end;
@@ -270,7 +270,7 @@ var
 begin
   State := TAtlasStartProfiles.Parse('kein JSON', Project, Valid);
   Assert.IsFalse(Valid);
-  Assert.AreEqual(0, Length(State.Profiles));
+  Assert.AreEqual(0, Integer(Length(State.Profiles)));
   Assert.AreEqual(Project, State.Project);
   State := TAtlasStartProfiles.Parse('{"format": 2, "active": "X", "profiles": [{"name": "X"}]}', Project, Valid);
   Assert.IsFalse(Valid, 'neueres Format');
@@ -323,17 +323,17 @@ begin
   Assert.AreEqual('Von Hand', Item.Name);
   Assert.AreEqual('-db test', Item.Parameters);
   Assert.AreEqual('C:\Daten', Item.WorkingDir);
-  Assert.AreEqual(1, Length(Item.Environment));
+  Assert.AreEqual(1, Integer(Length(Item.Environment)));
   State := TAtlasStartProfiles.Empty(Project);
   Assert.IsTrue(TAtlasStartProfiles.PutPersonal(State, Item));
   Item.Parameters := '-neu';
   Item.Name := 'von hand';
   Assert.IsTrue(TAtlasStartProfiles.PutPersonal(State, Item), 'gleichnamig: ersetzt');
-  Assert.AreEqual(1, Length(State.Profiles));
+  Assert.AreEqual(1, Integer(Length(State.Profiles)));
   Assert.AreEqual('-neu', State.Profiles[0].Parameters);
   Item.Name := '  ';
   Assert.IsFalse(TAtlasStartProfiles.PutPersonal(State, Item), 'leerer Name');
-  Assert.AreEqual(1, Length(State.Profiles));
+  Assert.AreEqual(1, Integer(Length(State.Profiles)));
 end;
 
 procedure TAtlasStartProfilesTests.SaveAndLoadWithoutIde;
@@ -346,7 +346,7 @@ begin
   Folder := TempFolder;
   try
     Back := TAtlasStartProfiles.Load(Folder, Project);
-    Assert.AreEqual(0, Length(Back.Profiles), 'ohne Datei leer');
+    Assert.AreEqual(0, Integer(Length(Back.Profiles)), 'ohne Datei leer');
     Assert.AreEqual(Project, Back.Project);
     State := TAtlasStartProfiles.Empty(Project);
     State.Profiles := [Profile('Lokal', '-lokal')];
@@ -356,15 +356,15 @@ begin
     Assert.Contains(TAtlasStartProfiles.FileFor(Folder, Project), '.json');
     Back := TAtlasStartProfiles.Load(Folder, Project);
     Assert.AreEqual('Demo', Back.Active, 'das aktive Profil ist je Projekt gemerkt');
-    Assert.AreEqual(1, Length(Back.Profiles));
+    Assert.AreEqual(1, Integer(Length(Back.Profiles)));
     Assert.AreEqual('-lokal', Back.Profiles[0].Parameters);
     Assert.IsTrue(Back.HasOriginal);
-    Assert.AreEqual(0, Length(TAtlasStartProfiles.Load(Folder, 'C:\Anderes\Projekt.dproj').Profiles),
+    Assert.AreEqual(0, Integer(Length(TAtlasStartProfiles.Load(Folder, 'C:\Anderes\Projekt.dproj').Profiles)),
       'je Projekt eine Datei');
     // Willkommensseite (#764): gemeinsame und persönliche Profile ohne IDE.
     Entries := TAtlasStartProfiles.ForProject(Folder, Project,
       Team('{"version": 1, "startProfiles": [{"name": "Demo", "parameters": "-demo"}]}'));
-    Assert.AreEqual(2, Length(Entries));
+    Assert.AreEqual(2, Integer(Length(Entries)));
     Assert.AreEqual('Demo', Entries[0].Profile.Name);
     Assert.AreEqual('Lokal', Entries[1].Profile.Name);
     Assert.IsFalse(TAtlasStartProfiles.Save('', State), 'ohne Ordner');

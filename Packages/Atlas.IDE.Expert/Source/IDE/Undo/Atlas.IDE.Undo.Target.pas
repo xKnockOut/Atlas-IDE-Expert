@@ -86,7 +86,7 @@ begin
       Recycle(AFileName);
     end;
   if not Assigned(FDiskFactory) then
-    raise EInvalidOpError.Create('Atlas: Plattenziel des Änderungsprotokolls nicht eingesetzt.');
+    raise EInvalidOpException.Create('Atlas: Plattenziel des Änderungsprotokolls nicht eingesetzt.');
   FDisk := FDiskFactory(Hooks);
 end;
 

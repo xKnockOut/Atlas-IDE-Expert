@@ -187,14 +187,14 @@ var
 begin
   Arguments := TJSONObject.Create;
   try
-    Assert.AreEqual(0, Length(TMcpTestTools.TestsOf(Arguments)), 'ohne Angabe alle');
+    Assert.AreEqual(0, Integer(Length(TMcpTestTools.TestsOf(Arguments))), 'ohne Angabe alle');
     List := TJSONArray.Create;
     List.Add('U.TA.M');
     List.Add(' ');
     List.Add('U.TB');
     Arguments.AddPair('tests', List);
     Tests := TMcpTestTools.TestsOf(Arguments);
-    Assert.AreEqual(2, Length(Tests));
+    Assert.AreEqual(2, Integer(Length(Tests)));
     Assert.AreEqual('U.TB', Tests[1]);
   finally
     Arguments.Free;
@@ -203,13 +203,13 @@ begin
   try
     Arguments.AddPair('tests', 'U.TA.M, U.TB');
     Tests := TMcpTestTools.TestsOf(Arguments);
-    Assert.AreEqual(2, Length(Tests));
+    Assert.AreEqual(2, Integer(Length(Tests)));
     Assert.AreEqual('U.TA.M', Tests[0]);
     Assert.AreEqual('U.TB', Tests[1]);
   finally
     Arguments.Free;
   end;
-  Assert.AreEqual(0, Length(TMcpTestTools.TestsOf(nil)));
+  Assert.AreEqual(0, Integer(Length(TMcpTestTools.TestsOf(nil))));
 end;
 
 procedure TMcpTestToolsTests.LocatesMethodBody;
@@ -222,15 +222,15 @@ begin
   SetLength(Units, 1);
   Units[0].Name := 'Rechner.Tests';
   Units[0].FileName := 'C:\Projekt\Quellen\Rechner.Tests.pas';
-  Assert.IsTrue(TMcpTestTools.Locate(FailedCase, Units, 'C:\Projekt', Reader, FileName, Line));
+  Assert.IsTrue(TMcpTestTools.Locate(FailedCase, Units, 'C:\Projekt', Reader(), FileName, Line));
   Assert.AreEqual('C:\Projekt\Quellen\Rechner.Tests.pas', FileName);
   Assert.AreEqual(18, Line, 'Methodenkopf im implementation-Teil, 1-basiert');
-  Assert.IsTrue(TMcpTestTools.Locate(FailedCase, nil, 'C:\Projekt', Reader, FileName, Line),
+  Assert.IsTrue(TMcpTestTools.Locate(FailedCase, nil, 'C:\Projekt', Reader(), FileName, Line),
     'ohne Unit-Liste im Projektordner');
   Assert.AreEqual('C:\Projekt\Rechner.Tests.pas', FileName);
   Missing := FailedCase;
   Missing.UnitName := 'Andere.Tests';
-  Assert.IsFalse(TMcpTestTools.Locate(Missing, nil, 'C:\Projekt', Reader, FileName, Line));
+  Assert.IsFalse(TMcpTestTools.Locate(Missing, nil, 'C:\Projekt', Reader(), FileName, Line));
   Assert.AreEqual('', FileName);
 end;
 
@@ -249,7 +249,7 @@ begin
   Passed.Outcome := TTestOutcome.Passed;
   Run.Cases := [Passed, FailedCase];
   Json := TJSONObject.ParseJSONValue(TMcpTestTools.Report(Target, ['Rechner.Tests.TRechnerTests'], Run, 1, nil, nil,
-    Reader)) as TJSONObject;
+    Reader())) as TJSONObject;
   try
     Assert.AreEqual('failed', Json.GetValue('result').Value);
     Assert.AreEqual('Win64', Json.GetValue('platform').Value);
@@ -266,7 +266,7 @@ begin
     Json.Free;
   end;
   Run.Cases := [Passed];
-  Json := TJSONObject.ParseJSONValue(TMcpTestTools.Report(Target, nil, Run, 0, nil, nil, Reader)) as TJSONObject;
+  Json := TJSONObject.ParseJSONValue(TMcpTestTools.Report(Target, nil, Run, 0, nil, nil, Reader())) as TJSONObject;
   try
     Assert.AreEqual('passed', Json.GetValue('result').Value);
     Assert.IsNull(Json.GetValue('tests'), 'ohne Filter kein Feld tests');
@@ -281,7 +281,7 @@ var
   Json: TJSONObject;
 begin
   Run := TTestResults.Parse('');
-  Json := TJSONObject.ParseJSONValue(TMcpTestTools.Report(Target, nil, Run, 3, ['Zugriffsverletzung'], nil, Reader))
+  Json := TJSONObject.ParseJSONValue(TMcpTestTools.Report(Target, nil, Run, 3, ['Zugriffsverletzung'], nil, Reader()))
     as TJSONObject;
   try
     Assert.AreEqual('noReport', Json.GetValue('result').Value);

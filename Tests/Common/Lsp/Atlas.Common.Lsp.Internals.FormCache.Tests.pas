@@ -69,7 +69,7 @@ begin
     // Dateinamen ohne Groß-/Kleinschreibung.
     Assert.IsTrue(Cache.TryGet('c:\p\haupt.DFM', 't1', Found));
     Assert.AreEqual('frmMain', Found.RootName);
-    Assert.AreEqual(1, Cache.Count);
+    Assert.AreEqual(1, Integer(Cache.Count));
   finally
     Cache.Free;
   end;
@@ -90,7 +90,7 @@ begin
     Assert.IsTrue(Cache.TryGet('C:\P\Haupt.dfm', 't2', Found));
     Assert.AreEqual('frmNeu', Found.RootName);
     Assert.IsFalse(Cache.TryGet('C:\P\Haupt.dfm', 't1', Found));
-    Assert.AreEqual(1, Cache.Count);
+    Assert.AreEqual(1, Integer(Cache.Count));
   finally
     Cache.Free;
   end;

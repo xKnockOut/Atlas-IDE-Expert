@@ -84,7 +84,7 @@ begin
   Assert.AreEqual('Addiert', Selection.Method);
   Assert.AreEqual('', Selection.CaseName);
   Assert.AreEqual(18, Selection.BreakLine);
-  Assert.AreEqual(1, Length(Selection.Names));
+  Assert.AreEqual(1, Integer(Length(Selection.Names)));
   Assert.AreEqual('Rechner.Tests.TRechnerTests.Addiert', Selection.Names[0]);
   Assert.AreEqual('TRechnerTests.Addiert', Selection.Caption);
   // Zeile eines Falls: nur dieser Fall.
@@ -92,13 +92,13 @@ begin
   Assert.AreEqual('Summe', Selection.Method);
   Assert.AreEqual('Gross', Selection.CaseName);
   Assert.AreEqual(23, Selection.BreakLine);
-  Assert.AreEqual(1, Length(Selection.Names));
+  Assert.AreEqual(1, Integer(Length(Selection.Names)));
   Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', Selection.Names[0]);
   Assert.AreEqual('TRechnerTests.Summe.Gross', Selection.Caption);
   // Deklaration: alle Fälle.
   Assert.IsTrue(TAtlasTestDebug.SelectAt(Found, 11, Selection));
   Assert.AreEqual('', Selection.CaseName);
-  Assert.AreEqual(2, Length(Selection.Names));
+  Assert.AreEqual(2, Integer(Length(Selection.Names)));
   // Fixture: ohne Methode und ohne Haltepunkt.
   Assert.IsTrue(TAtlasTestDebug.SelectAt(Found, 4, Selection));
   Assert.AreEqual('', Selection.Method);
@@ -114,7 +114,7 @@ var
 begin
   Found := TDUnitXSource.Scan(Sample);
   Assert.IsFalse(TAtlasTestDebug.SelectAt(Found, 2, Selection));
-  Assert.AreEqual(0, Length(Selection.Names));
+  Assert.AreEqual(0, Integer(Length(Selection.Names)));
   Assert.AreEqual(-1, Selection.BreakLine);
   Assert.IsFalse(TAtlasTestDebug.SelectAt(Found, 13, Selection));
   Assert.IsFalse(TAtlasTestDebug.SelectAt(Default(TDUnitXUnit), 0, Selection), 'Unit ohne Tests');
@@ -134,7 +134,7 @@ begin
   Assert.AreEqual('Klein', Selection.CaseName);
   Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Klein', Selection.Names[0]);
   Assert.IsTrue(TAtlasTestDebug.SelectByName(Found, 'Rechner.Tests.TRechnerTests.Summe', Selection));
-  Assert.AreEqual(2, Length(Selection.Names), 'alle Fälle');
+  Assert.AreEqual(2, Integer(Length(Selection.Names)), 'alle Fälle');
   Assert.IsTrue(TAtlasTestDebug.SelectByName(Found, ' Rechner.Tests.TRechnerTests ', Selection));
   Assert.AreEqual('', Selection.Method);
   Assert.IsFalse(TAtlasTestDebug.SelectByName(Found, 'Rechner.Tests.TRechnerTests.Fehlt', Selection));
@@ -147,11 +147,11 @@ var
   Parts: TArray<string>;
 begin
   Parts := TAtlasTestDebug.SplitArguments('  -a  "--xmlfile:C:\Mit Leer\r.xml"'#9'b"c d"e ');
-  Assert.AreEqual(3, Length(Parts));
+  Assert.AreEqual(3, Integer(Length(Parts)));
   Assert.AreEqual('-a', Parts[0]);
   Assert.AreEqual('"--xmlfile:C:\Mit Leer\r.xml"', Parts[1]);
   Assert.AreEqual('b"c d"e', Parts[2]);
-  Assert.AreEqual(0, Length(TAtlasTestDebug.SplitArguments('   ')));
+  Assert.AreEqual(0, Integer(Length(TAtlasTestDebug.SplitArguments('   '))));
   Assert.AreEqual('"--xmlfile:C:\Mit Leer\r.xml"', TAtlasTestDebug.QuoteArgument('--xmlfile:C:\Mit Leer\r.xml'));
   Assert.AreEqual('--run:A.B', TAtlasTestDebug.QuoteArgument('--run:A.B'));
 end;

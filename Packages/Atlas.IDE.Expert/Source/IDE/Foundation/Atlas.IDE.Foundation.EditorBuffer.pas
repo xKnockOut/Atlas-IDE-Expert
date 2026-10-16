@@ -25,12 +25,45 @@ type
     class function ByteOffset(const AText: string; ALine, ACharacter: Integer): Integer; static;
     /// <summary>Zeichenindex (0-basiert) zu ALine/ACharacter in AText.</summary>
     class function CharOffset(const AText: string; ALine, ACharacter: Integer): Integer; static;
+    /// <summary>Editoransicht der aktuellen Datei, auch wenn der Fokus gerade in Palette, Menü oder einem
+    /// angedockten Fenster liegt; nil ohne offene Quelltextdatei.</summary>
+    class function ActiveView: IOTAEditView; static;
   end;
 
 implementation
 
 uses
   System.Math;
+
+class function TAtlasEditorBuffer.ActiveView: IOTAEditView;
+var
+  Modules: IOTAModuleServices;
+  Module: IOTAModule;
+  Source: IOTASourceEditor;
+  Editors: IOTAEditorServices;
+  Index: Integer;
+begin
+  Result := nil;
+  // Zuerst das aktuelle Modul: TopView ist leer, solange der Fokus nicht im Editor liegt
+  // (Befehl aus Palette, Hauptmenü oder einem angedockten Fenster).
+  if Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
+    Module := Modules.CurrentModule;
+    if Module <> nil then
+      for Index := 0 to Module.ModuleFileCount - 1 do
+        if Supports(Module.ModuleFileEditors[Index], IOTASourceEditor, Source) and (Source.EditViewCount > 0) then
+        begin
+          Result := Source.EditViews[0];
+          // Die zuletzt benutzte Ansicht, falls die Datei in mehreren Fenstern offen ist.
+          if Supports(BorlandIDEServices, IOTAEditorServices, Editors) and (Editors.TopView <> nil) and
+            (Editors.TopView.Buffer = Result.Buffer) then
+            Result := Editors.TopView;
+          Exit;
+        end;
+  end;
+  if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+    Result := Editors.TopView;
+end;
 
 class function TAtlasEditorBuffer.Text(const ABuffer: IOTAEditBuffer): string;
 const

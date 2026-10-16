@@ -655,7 +655,6 @@ var
   Panel: TWinControl;
   Title: TLabel;
   Button: TButton;
-  Series: TAtlasTrendSeries;
 begin
   inherited Create(AOwner);
   Name := 'AtlasSettingsPage';
@@ -964,6 +963,7 @@ end;
 
 procedure TAtlasSettingsPage.AddWelcomeSection;
 var
+  Series: TAtlasTrendSeries;
   Panel: TWinControl;
 begin
   // Atlas-Bereiche auf der Willkommensseite (#753).

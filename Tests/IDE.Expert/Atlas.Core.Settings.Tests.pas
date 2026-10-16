@@ -715,7 +715,7 @@ begin
   Assert.IsTrue(TAtlasSettingsScopes.TryRouted('indexusages', Setting));
   Assert.AreEqual('index.usages', Setting.Path);
   Assert.IsFalse(TAtlasSettingsScopes.TryRouted('PairColors', Setting));
-  Assert.AreEqual(Length(TAtlasSettingsScopes.Routed) + 1, Length(TAtlasSettingsScopes.IdeManagedPaths));
+  Assert.AreEqual(Integer(Length(TAtlasSettingsScopes.Routed) + 1), Integer(Length(TAtlasSettingsScopes.IdeManagedPaths)));
   Assert.AreEqual('delphiVersion', TAtlasSettingsScopes.IdeManagedPaths[0]);
 end;
 

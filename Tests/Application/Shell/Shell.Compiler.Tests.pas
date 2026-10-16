@@ -139,6 +139,8 @@ procedure TShellCompilerTests.TearDown;
 begin
   if TDirectory.Exists(FFolder) then
     TDirectory.Delete(FFolder, True);
+  // Der Leckmonitor misst den Saldo von Setup und TearDown.
+  FFolder := '';
 end;
 
 function StarterAnswer(const ARequest: TCompilerRequest; out AOutput: TArray<string>): Integer;
@@ -163,7 +165,7 @@ begin
   try
     Assert.AreEqual(Ord(TCompilerEdition.NoCommandLine), Ord(Editions.Resolve(FFolder, '37.0', Exe)));
     Assert.AreEqual(Ord(TCompilerEdition.NoCommandLine), Ord(Editions.Resolve(FFolder, '37.0', Exe)));
-    Assert.AreEqual(1, Process.Calls.Count, 'nur ein Probelauf');
+    Assert.AreEqual(1, Integer(Process.Calls.Count), 'nur ein Probelauf');
     Assert.AreEqual('dcc32.exe', Process.Calls[0], 'ohne Argumente');
   finally
     Editions.Free;
@@ -173,7 +175,7 @@ begin
   Again := TShellCompilerEditions.Create(Keep, Silent, CacheFile);
   try
     Assert.AreEqual(Ord(TCompilerEdition.NoCommandLine), Ord(Again.Resolve(FFolder, '37.0', Exe)));
-    Assert.AreEqual(1, Process.Calls.Count);
+    Assert.AreEqual(1, Integer(Process.Calls.Count));
   finally
     Again.Free;
   end;
@@ -191,7 +193,7 @@ begin
   try
     Assert.AreEqual(Ord(TCompilerEdition.Missing), Ord(Editions.Resolve(FFolder, '37.0',
       TPath.Combine(FFolder, TPath.Combine('bin', 'dcc64.exe')))));
-    Assert.AreEqual(0, Process.Calls.Count);
+    Assert.AreEqual(0, Integer(Process.Calls.Count));
   finally
     Editions.Free;
   end;
@@ -216,7 +218,7 @@ begin
   try
     Assert.AreEqual(Ord(TCompilerEdition.Unknown), Ord(Editions.Resolve(FFolder, '37.0', Exe)));
     Assert.AreEqual(Ord(TCompilerEdition.Unknown), Ord(Editions.Resolve(FFolder, '37.0', Exe)));
-    Assert.AreEqual(2, Process.Calls.Count, 'unklar: beim nächsten Mal erneut prüfen');
+    Assert.AreEqual(2, Integer(Process.Calls.Count), 'unklar: beim nächsten Mal erneut prüfen');
   finally
     Editions.Free;
   end;
@@ -242,7 +244,7 @@ begin
     Assert.AreEqual(Ord(TCompilerEdition.CommandLine), Ord(Editions.Resolve(FFolder, '37.0', Exe)));
     Editions.Remember(FFolder, '37.0', Exe, TCompilerEdition.NoCommandLine);
     Assert.AreEqual(Ord(TCompilerEdition.NoCommandLine), Ord(Editions.Resolve(FFolder, '37.0', Exe)));
-    Assert.AreEqual(1, Process.Calls.Count);
+    Assert.AreEqual(1, Integer(Process.Calls.Count));
   finally
     Editions.Free;
   end;
@@ -311,7 +313,7 @@ begin
     Assert.AreEqual('C:\P\Main.pas', Messages[0].FileName);
     Assert.AreEqual('E2003', Messages[0].Code);
     Assert.IsTrue(Ide.Build('C:\T\cc.ps1', 'C:\P\App.dproj', 'Win32', Messages, Succeeded, Error), Error);
-    Assert.AreEqual(3, Process.Calls.Count, 'einmal start, zweimal build');
+    Assert.AreEqual(3, Integer(Process.Calls.Count), 'einmal start, zweimal build');
     Assert.IsTrue(Process.Calls[0].EndsWith('cc.ps1 start -Project C:\P\App.dproj -TimeoutSec 180'), Process.Calls[0]);
     Assert.IsTrue(Process.Calls[2].EndsWith('build -Instance 900 -Project C:\P\App.dproj -Platform Win32 -Json'),
       Process.Calls[2]);
@@ -368,7 +370,7 @@ begin
     Assert.IsTrue(Ide.Build('C:\T\cc.ps1', 'C:\P\App.dproj', '', Messages, Succeeded, Error), Error);
     Process.Calls.Clear;
     Assert.IsTrue(Ide.Build('C:\T\cc.ps1', 'C:\P\App.dproj', '', Messages, Succeeded, Error), Error);
-    Assert.AreEqual(1, Process.Calls.Count, 'läuft noch: kein neuer Start');
+    Assert.AreEqual(1, Integer(Process.Calls.Count), 'läuft noch: kein neuer Start');
     // Die eigene IDE ist beendet: neue Instanz.
     Running.Clear;
     Process.Calls.Clear;
@@ -399,11 +401,11 @@ begin
     Assert.IsTrue(Ide.Build('C:\T\cc.ps1', 'C:\P\App.dproj', '', Messages, Succeeded, Error), Error);
     Process.Calls.Clear;
     Ide.Quit(Keep);
-    Assert.AreEqual(1, Process.Calls.Count);
+    Assert.AreEqual(1, Integer(Process.Calls.Count));
     Assert.IsTrue(Process.Calls[0].EndsWith('cc.ps1 quit -Instance 900'), Process.Calls[0]);
     Assert.AreEqual(Cardinal(0), Ide.Pid);
     Ide.Quit(Keep);
-    Assert.AreEqual(1, Process.Calls.Count, 'ohne eigene IDE nichts zu tun');
+    Assert.AreEqual(1, Integer(Process.Calls.Count), 'ohne eigene IDE nichts zu tun');
   finally
     Ide.Free;
     Running.Free;

@@ -123,7 +123,7 @@ const
   // Reihenfolge, in der die Komposition die Tasten anmeldet (RebindKeys); bei mehreren Atlas-Belegungen
   // derselben Taste gilt die zuletzt angemeldete. 3 = Editorbefehle (eine Bindung); Strg+F12 (#777) ist keine
   // Bindung, sondern eine Aktion und bekommt ihren Platz in der Aktionsliste.
-  BindOrder: array[TAtlasKeyFunction] of Integer = (1, 2, 4, 5, 6, 7, 3, 3, 3, 3, 3, 3, 3, 8, 3, 3, 3, 3, 0, 3);
+  BindOrder: array[TAtlasKeyFunction] of Integer = (1, 2, 4, 5, 6, 7, 3, 3, 3, 3, 3, 3, 3, 8, 3, 3, 3, 3, 0, 3, 3);
 
 type
   /// <summary>Herkunft je Modul, einmal ermittelt.</summary>
@@ -736,17 +736,23 @@ begin
 end;
 
 procedure TAtlasIdeKeyMap.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
+var
+  Run: TProc;
+  Visible: TFunc<Boolean>;
 begin
-  ARegistry.RegisterCommand(CommandId, TAtlasStrings.Text(TAtlasTextId.KeyMapMenu), '',
+  // Typisierte Variablen: Delphi wählt die Überladung mit anonymen Methoden sonst nicht (E2250).
+  Run :=
     procedure
     begin
       if FInstance <> nil then
         FInstance.ShowWindow;
-    end,
+    end;
+  Visible :=
     function: Boolean
     begin
       Result := TAtlasIdeSettings.Current.KeyOverview;
-    end);
+    end;
+  ARegistry.RegisterCommand(CommandId, TAtlasStrings.Text(TAtlasTextId.KeyMapMenu), '', Run, Visible);
 end;
 
 procedure TAtlasIdeKeyMap.CheckAtStart;
