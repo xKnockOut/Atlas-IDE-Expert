@@ -34,6 +34,8 @@ type
     Check = 'check';
     /// <summary>Build-Server (#763): Build auf dem Server ist rot geworden.</summary>
     BuildServer = 'buildServer';
+    /// <summary>Bauen beim Öffnen eines Projekts (build.onOpen): Ergebnis des Laufs.</summary>
+    OpenBuild = 'openBuild';
   public
     /// <summary>Bekannte Quellen in fester Reihenfolge (Optionsseite, Filter).</summary>
     class function Known: TArray<string>; static;
@@ -61,7 +63,7 @@ implementation
 
 class function TAtlasNotificationSources.Known: TArray<string>;
 begin
-  Result := [Build, Check, Reload, Server, ShortcutTips, BuildServer];
+  Result := [Build, Check, Reload, Server, ShortcutTips, BuildServer, OpenBuild];
 end;
 
 class function TAtlasNotificationSources.ModeName(AMode: TAtlasNotificationMode): string;
