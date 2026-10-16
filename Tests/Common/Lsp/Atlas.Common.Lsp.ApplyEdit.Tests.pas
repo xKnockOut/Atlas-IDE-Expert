@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Lsp.ApplyEdit.Tests;
 
-// Tests für workspace/applyEdit an den Client (#397).
+// Tests für workspace/applyEdit an den Client (#397) und Edits über mehrere Dateien (#297).
 
 interface
 
@@ -17,6 +17,8 @@ type
     procedure ReplacesWholeFile;
     [Test]
     procedure ReadsClientAnswer;
+    [Test]
+    procedure CreatesAndReplacesFiles;
   end;
 
 implementation
@@ -79,6 +81,34 @@ begin
     Assert.AreEqual(10, Edit.GetValue<Integer>('range.end.character'));
   finally
     Request.Free;
+  end;
+end;
+
+procedure TLspApplyEditTests.CreatesAndReplacesFiles;
+var
+  Edit, Item: TJSONObject;
+  Changes: TJSONArray;
+begin
+  Edit := TLspApplyEdit.Files([TLspFileChange.Create('C:\P\Neu.pas', '', 'unit Neu;', True),
+    TLspFileChange.Create('C:\P\App.dproj', '<A/>'#13#10'<B/>', '<C/>', False)]);
+  try
+    Changes := Edit.GetValue<TJSONArray>('documentChanges');
+    // Anlegen, Füllen der neuen Datei, Ersetzen der vorhandenen.
+    Assert.AreEqual(3, Changes.Count);
+    Item := Changes.Items[0] as TJSONObject;
+    Assert.AreEqual('create', Item.GetValue<string>('kind'));
+    Assert.Contains(Item.GetValue<string>('uri'), 'Neu.pas');
+    Item := Changes.Items[1] as TJSONObject;
+    Assert.Contains(Item.GetValue<string>('textDocument.uri'), 'Neu.pas');
+    Assert.AreEqual('unit Neu;', (Item.GetValue<TJSONArray>('edits').Items[0] as TJSONObject).GetValue<string>('newText'));
+    Assert.AreEqual(0, (Item.GetValue<TJSONArray>('edits').Items[0] as TJSONObject).GetValue<Integer>('range.end.line'));
+    Item := Changes.Items[2] as TJSONObject;
+    Assert.Contains(Item.GetValue<string>('textDocument.uri'), 'App.dproj');
+    Assert.AreEqual(1, (Item.GetValue<TJSONArray>('edits').Items[0] as TJSONObject).GetValue<Integer>('range.end.line'));
+    Assert.AreEqual(4, (Item.GetValue<TJSONArray>('edits').Items[0] as TJSONObject).GetValue<Integer>(
+      'range.end.character'));
+  finally
+    Edit.Free;
   end;
 end;
 

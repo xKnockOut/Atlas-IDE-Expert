@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Editing.WrapCommands.Tests;
 
-// Tests für die Schnellbefehle /try, /lock, /sync, /ifdef und /region (#296).
+// Tests für die Schnellbefehle /try, /lock, /sync, /ifdef, /region und /case (#296).
 
 interface
 
@@ -33,6 +33,19 @@ type
     procedure NothingToWrapFails;
     [Test]
     procedure ResultsParseWithoutErrors;
+    [Test]
+    procedure CaseAddsMissingValues;
+    [Test]
+    procedure CaseWithoutBranchesAndElse;
+    [Test]
+    procedure CaseKeepsScopedLabels;
+    /// <summary>Markierung im Erzeugen-Menü (#719): /case ergänzt auch dann den case darunter.</summary>
+    [Test]
+    procedure CaseWithSelection;
+    [Test]
+    procedure CaseAllPresentFails;
+    [Test]
+    procedure CaseWrongPlaceFails;
   end;
 
 implementation
@@ -45,9 +58,32 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.SlashCommands,
+  Atlas.Common.Editing.SlashMenu;
 
 const
+  CaseUnit =
+    'unit U;'#10 +                                  // 0
+    'interface'#10 +                                // 1
+    'type'#10 +                                     // 2
+    '  TArt = (aKreis, aLinie, aRechteck);'#10 +    // 3
+    '  TFoo = class'#10 +                           // 4
+    '  private'#10 +                                // 5
+    '    FArt: TArt;'#10 +                          // 6
+    '    procedure Run;'#10 +                       // 7
+    '  end;'#10 +                                   // 8
+    'implementation'#10 +                           // 9
+    #10 +                                           // 10
+    'procedure TFoo.Run;'#10 +                      // 11
+    'begin'#10 +                                    // 12
+    '  /case'#10 +                                  // 13 Befehl
+    '  case FArt of'#10 +                           // 14
+    '%s' +                                          // Zweige
+    '  end;'#10 +
+    'end;'#10 +
+    #10 +
+    'end.';
+
   RoutineUnit =
     'unit U;'#10 +                                  // 0
     'interface'#10 +                                // 1
@@ -252,6 +288,106 @@ begin
     Text := Expand(Command);
     Assert.IsTrue(Parses(Text), Command + ': ' + Text);
   end;
+end;
+
+function ExpandCase(const ABranches: string): string;
+var
+  Edits: TArray<TRuleEdit>;
+  Text: string;
+begin
+  Text := Format(CaseUnit, [ABranches]);
+  Assert.IsTrue(Run(Text, 13, Edits), Text);
+  Result := Apply(Text, Edits);
+end;
+
+procedure TWrapCommandsTests.CaseAddsMissingValues;
+var
+  Text: string;
+begin
+  Text := ExpandCase('    aKreis: Run;'#10);
+  Assert.IsTrue(Pos('begin'#10'  case FArt of'#10'    aKreis: Run;'#10'    aLinie: ;'#10'    aRechteck: ;'#10 +
+    '  end;'#10'end;', Text) > 0, Text);
+  Assert.AreEqual(0, Pos('/case', Text), Text);
+  Assert.IsTrue(Parses(Text), Text);
+  // Letzter Zweig ohne ";" vor end: das ";" kommt dazu.
+  Text := ExpandCase('    aKreis: Run'#10);
+  Assert.IsTrue(Pos('    aKreis: Run;'#10'    aLinie: ;'#10'    aRechteck: ;'#10'  end;', Text) > 0, Text);
+  Assert.IsTrue(Parses(Text), Text);
+end;
+
+procedure TWrapCommandsTests.CaseWithoutBranchesAndElse;
+var
+  Text: string;
+begin
+  Text := ExpandCase('');
+  Assert.IsTrue(Pos('  case FArt of'#10'    aKreis: ;'#10'    aLinie: ;'#10'    aRechteck: ;'#10'  end;', Text) > 0,
+    Text);
+  // Fehlende Werte kommen vor den else-Teil.
+  Text := ExpandCase('    aLinie: Run;'#10'  else'#10'    Run;'#10);
+  Assert.IsTrue(Pos('    aLinie: Run;'#10'    aKreis: ;'#10'    aRechteck: ;'#10'  else'#10'    Run;'#10'  end;',
+    Text) > 0, Text);
+  Assert.IsTrue(Parses(Text), Text);
+end;
+
+procedure TWrapCommandsTests.CaseKeepsScopedLabels;
+var
+  Edits: TArray<TRuleEdit>;
+  Reason: string;
+  Text: string;
+begin
+  Text := ExpandCase('    TArt.aKreis, TArt.aLinie: Run;'#10);
+  Assert.IsTrue(Pos('    TArt.aKreis, TArt.aLinie: Run;'#10'    TArt.aRechteck: ;'#10'  end;', Text) > 0, Text);
+  // {$SCOPEDENUMS ON} an der Deklaration: Werte nur mit Typpräfix.
+  Text := StringReplace(Format(CaseUnit, ['']), '  TArt = (', '  {$SCOPEDENUMS ON}'#10'  TArt = (', []);
+  Text := StringReplace(Text, '/case', '', []);
+  Assert.IsTrue(TSlashMenu.Run(TSlashCommandRegistry.Shared, Text, TSlashSpot.Create(14, 2, -1), 'case', '', nil,
+    nil, '', '', nil, Edits, Reason), Reason);
+  Text := Apply(Text, Edits);
+  Assert.IsTrue(Pos('    TArt.aKreis: ;'#10'    TArt.aLinie: ;'#10'    TArt.aRechteck: ;', Text) > 0, Text);
+end;
+
+procedure TWrapCommandsTests.CaseWithSelection;
+var
+  Edits: TArray<TRuleEdit>;
+  Reason: string;
+  Text: string;
+begin
+  // Markierung über dem case (Zeilen 13 bis 15): die gedachte Befehlszeile steht davor.
+  Text := StringReplace(Format(CaseUnit, ['    aKreis: Run;'#10]), '  /case'#10, '', []);
+  Assert.IsTrue(TSlashMenu.Run(TSlashCommandRegistry.Shared, Text, TSlashSpot.Create(13, 0, 15), 'case', '', nil,
+    nil, '', '', nil, Edits, Reason), Reason);
+  Text := Apply(Text, Edits);
+  Assert.IsTrue(Pos('    aKreis: Run;'#10'    aLinie: ;'#10'    aRechteck: ;'#10'  end;', Text) > 0, Text);
+end;
+
+procedure TWrapCommandsTests.CaseAllPresentFails;
+var
+  Problems: TArray<TSlashProblem>;
+begin
+  Problems := TSlashCommandRegistry.Shared.Problems(Format(CaseUnit, ['    aKreis..aRechteck: Run;'#10]), nil);
+  Assert.AreEqual(1, Integer(Length(Problems)));
+  Assert.AreEqual('Der case behandelt schon alle Werte von TArt', Problems[0].Message);
+end;
+
+procedure TWrapCommandsTests.CaseWrongPlaceFails;
+var
+  Problems: TArray<TSlashProblem>;
+  Text: string;
+begin
+  // Kein case darunter.
+  Text := StringReplace(Format(CaseUnit, ['    aKreis: Run;'#10]), '  case FArt of', '  if True then', []);
+  Problems := TSlashCommandRegistry.Shared.Problems(Text, nil);
+  Assert.AreEqual(1, Integer(Length(Problems)));
+  Assert.AreEqual('/case erwartet darunter eine case-Anweisung über einer Aufzählung', Problems[0].Message);
+  // Außerhalb einer Routine.
+  Problems := TSlashCommandRegistry.Shared.Problems('unit U;'#10'interface'#10'/case'#10'implementation'#10'end.', nil);
+  Assert.AreEqual(1, Integer(Length(Problems)));
+  Assert.AreEqual('/case gilt nur im Rumpf einer Routine', Problems[0].Message);
+  // Auswahl ist keine Aufzählung.
+  Text := StringReplace(Format(CaseUnit, ['    1: Run;'#10]), '    FArt: TArt;', '    FArt: Integer;', []);
+  Problems := TSlashCommandRegistry.Shared.Problems(Text, nil);
+  Assert.AreEqual(1, Integer(Length(Problems)));
+  Assert.AreEqual('Der Typ von FArt ist keine bekannte Aufzählung', Problems[0].Message);
 end;
 
 initialization

@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Editing.ProjectCommands.Tests;
 
-// Tests für die Schnellbefehle /define, /searchpath, /config und /dfm (#301)
+// Tests für die Schnellbefehle /define, /searchpath, /config und /dfm (#301) sowie /unit und /open (#297)
 // mit einem Host, der Dateien im Speicher hält und Aufrufe mitschreibt.
 
 interface
@@ -26,18 +26,29 @@ type
     procedure DfmJumpsToEvent;
     [Test]
     procedure WithoutHostNothingHappens;
+    [Test]
+    procedure UnitCreatesAndRegisters;
+    [Test]
+    procedure UnitWrongPlaceFails;
+    [Test]
+    procedure OpenFindsInSearchPath;
+    [Test]
+    procedure OpenUnknownFails;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   System.IOUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.SlashCommands;
 
 type
@@ -51,6 +62,8 @@ type
     Platform: string;
     Shown: string;
     Selection: TTextRange;
+    WrittenFiles: TArray<TSlashFile>;
+    ShowAfterWrite: string;
     constructor Create;
     destructor Destroy; override;
     function Project(const AUri: string; out AProject: TProjectInfo): Boolean;
@@ -60,6 +73,7 @@ type
     procedure SelectBuild(const AUri, AConfig, APlatform: string);
     procedure ShowDocument(const AFileName: string; const ASelection: TTextRange);
     function HeaderTemplate(const AUri: string): string;
+    procedure WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
   end;
 
 const
@@ -180,6 +194,12 @@ begin
   Result := '';
 end;
 
+procedure TFakeHost.WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
+begin
+  WrittenFiles := AFiles;
+  ShowAfterWrite := AShow;
+end;
+
 function Run(const ACommand: string; const AHost: ISlashHost; out AEdits: TArray<TRuleEdit>): Boolean;
 begin
   Result := TSlashCommandRegistry.Shared.AfterEnter(Format(FormUnit, [ACommand]), TTextPosition.Create(10, 0), nil,
@@ -284,6 +304,117 @@ var
 begin
   Assert.IsFalse(Run('/define TEST', nil, Edits));
   Problems := TSlashCommandRegistry.Shared.Problems(Format(FormUnit, ['/define TEST']), nil);
+  Assert.AreEqual(1, Integer(Length(Problems)));
+end;
+
+const
+  ProgramText =
+    'program App;'#13#10 +
+    'uses'#13#10 +
+    '  Vcl.Forms,'#13#10 +
+    '  Main in ''Main.pas'';'#13#10 +
+    'begin'#13#10 +
+    'end.'#13#10;
+
+function Parses(const AText: string): Boolean;
+var
+  Tree: TSyntaxTree;
+begin
+  Tree := TPascalParser.Parse(AText);
+  try
+    Result := Length(Tree.Diagnostics) = 0;
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TProjectCommandsTests.UnitCreatesAndRegisters;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  Host.Info.FileName := TPath.Combine(GetCurrentDir, 'App.dproj');
+  Host.Info.MainSource := TPath.Combine(GetCurrentDir, 'App.dpr');
+  Host.Files.Add('App.dpr', ProgramText);
+  Assert.IsTrue(Run('/unit Kunden.Daten', Keep, Edits));
+  Assert.AreEqual(1, Integer(Length(Edits)));
+  Assert.AreEqual(3, Integer(Length(Host.WrittenFiles)));
+  // Neue Unit neben Main.pas, parst und wird danach geöffnet.
+  Assert.IsTrue(Host.WrittenFiles[0].New);
+  Assert.IsTrue(SameFile('Kunden.Daten.pas', Host.WrittenFiles[0].FileName), Host.WrittenFiles[0].FileName);
+  Assert.IsTrue(Parses(Host.WrittenFiles[0].Text), Host.WrittenFiles[0].Text);
+  Assert.IsTrue(StartsText('unit Kunden.Daten;', Host.WrittenFiles[0].Text));
+  Assert.AreEqual(Host.WrittenFiles[0].FileName, Host.ShowAfterWrite);
+  // .dpr: Eintrag am Ende des uses.
+  Assert.IsFalse(Host.WrittenFiles[1].New);
+  Assert.IsTrue(Pos('  Main in ''Main.pas'','#13#10'  Kunden.Daten in ''Kunden.Daten.pas'';',
+    Host.WrittenFiles[1].Text) > 0, Host.WrittenFiles[1].Text);
+  Assert.IsTrue(Parses(Host.WrittenFiles[1].Text), Host.WrittenFiles[1].Text);
+  // .dproj: gültige DCCReference vor der ersten BuildConfiguration (das Projekt hat noch keine).
+  Assert.IsTrue(Pos('    <ItemGroup>'#13#10'        <DCCReference Include="Kunden.Daten.pas"/>'#13#10 +
+    '        <BuildConfiguration Include="Debug">', Host.WrittenFiles[2].Text) > 0, Host.WrittenFiles[2].Text);
+end;
+
+procedure TProjectCommandsTests.UnitWrongPlaceFails;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  Host.Info.FileName := TPath.Combine(GetCurrentDir, 'App.dproj');
+  // Kein gültiger Name, Datei schon vorhanden, Unit schon im Projekt, ohne Projekt.
+  Assert.IsFalse(Run('/unit 1Daten', Keep, Edits));
+  Host.Files.Add('Daten.pas', 'unit Daten;');
+  Assert.IsFalse(Run('/unit Daten', Keep, Edits));
+  Host.Info.Units := [Default(TProjectUnit)];
+  Host.Info.Units[0].Name := 'Werkzeug';
+  Assert.IsFalse(Run('/unit Werkzeug', Keep, Edits));
+  Assert.IsFalse(Run('/unit Neu', nil, Edits));
+  Assert.AreEqual(0, Integer(Length(Host.WrittenFiles)));
+end;
+
+procedure TProjectCommandsTests.OpenFindsInSearchPath;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  Host.Info.SearchPaths := [TPath.Combine(GetCurrentDir, 'Common')];
+  Host.Files.Add(TPath.Combine(TPath.Combine(GetCurrentDir, 'Common'), 'Werkzeug.pas'), 'unit Werkzeug;');
+  Assert.IsTrue(Run('/open Werkzeug', Keep, Edits));
+  Assert.AreEqual(1, Integer(Length(Edits)));
+  Assert.IsTrue(SameFile('Werkzeug.pas', Host.Shown), Host.Shown);
+  Assert.AreEqual(0, Host.Selection.StartPos.Line);
+  // Mit Namespace des Projekts: /open SysUtils findet System.SysUtils.
+  Host.Shown := '';
+  Host.Info.Namespaces := ['System'];
+  Host.Files.Add(TPath.Combine(GetCurrentDir, 'System.SysUtils.pas'), 'unit System.SysUtils;');
+  Assert.IsTrue(Run('/open SysUtils', Keep, Edits));
+  Assert.IsTrue(SameFile('System.SysUtils.pas', Host.Shown), Host.Shown);
+end;
+
+procedure TProjectCommandsTests.OpenUnknownFails;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+  Problems: TArray<TSlashProblem>;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  Assert.IsFalse(Run('/open Fehlt', Keep, Edits));
+  Assert.IsFalse(Run('/open', Keep, Edits));
+  Assert.IsFalse(Run('/open Werkzeug', nil, Edits));
+  Assert.AreEqual('', Host.Shown);
+  // Stehen gebliebene Zeile: Hinweis statt Löschen.
+  Problems := TSlashCommandRegistry.Shared.Problems(Format(FormUnit, ['/open Fehlt']), nil);
   Assert.AreEqual(1, Integer(Length(Problems)));
 end;
 

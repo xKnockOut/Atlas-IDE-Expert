@@ -28,6 +28,15 @@ uses
   Atlas.Common.Projects.Contract;
 
 type
+  /// <summary>Datei, die ein Befehl neu anlegt oder ganz ersetzt (/unit, #297).</summary>
+  TSlashFile = record
+    FileName: string;
+    Text: string;
+    /// <summary>Neu anlegen; sonst den ganzen Inhalt der vorhandenen Datei ersetzen.</summary>
+    New: Boolean;
+    class function Create(const AFileName, AText: string; ANew: Boolean): TSlashFile; static;
+  end;
+
   /// <summary>Zugriff auf Projekt und Editor für Befehle, die mehr als die Datei ändern (#301).</summary>
   ISlashHost = interface
     ['{8E4A2C61-3B7D-4F95-A0C8-5D1E9F27B364}']
@@ -44,6 +53,9 @@ type
     /// <summary>Vorlage für /header (#306): slashCommands.headerTemplate, sonst die der Regel file-header;
     /// '' ohne.</summary>
     function HeaderTemplate(const AUri: string): string;
+    /// <summary>Legt AFiles in einem Schritt an bzw. ersetzt sie (über den Editor, sonst auf der Platte),
+    /// lädt das Projekt zu AUri neu und öffnet danach AShow ('' = nichts).</summary>
+    procedure WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
   end;
 
   /// <summary>Aktionen, die erst nach erfolgreichem Befehl laufen; bei Hinweisen werden sie verworfen.</summary>
@@ -184,6 +196,15 @@ procedure TSlashContext.Defer(const AAction: TProc);
 begin
   if Actions <> nil then
     Actions.Add(AAction);
+end;
+
+{ TSlashFile }
+
+class function TSlashFile.Create(const AFileName, AText: string; ANew: Boolean): TSlashFile;
+begin
+  Result.FileName := AFileName;
+  Result.Text := AText;
+  Result.New := ANew;
 end;
 
 { TSlashActions }
