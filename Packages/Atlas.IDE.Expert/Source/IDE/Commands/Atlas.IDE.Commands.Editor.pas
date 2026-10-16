@@ -115,14 +115,14 @@ uses
   Atlas.IDE.Editor.Buffer,
   Atlas.IDE.Editor.Style,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Hover.Editor,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Settings.Store,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Generate.Commands,
-  Atlas.Core.Editor.WorkspacePlan;
+  Atlas.Core.Editor.WorkspacePlan,
+  Atlas.IDE.Foundation.Navigation;
 
 const
   // Code-Aktionen und Befehle des Servers; Befehle können projektweit arbeiten.
@@ -589,7 +589,7 @@ begin
     Exit;
   end;
   // Ein Typ hat eine Deklaration; bei mehreren (Forward-Deklaration) die erste.
-  TAtlasEditorHover.GoToLocation(Found[0].FileName, Found[0].Line, Found[0].Character);
+  TAtlasIdeNavigation.GoToLocation(Found[0].FileName, Found[0].Line, Found[0].Character);
 end;
 
 class function TAtlasIdeEditorCommands.TryToggleMethod: Boolean;
@@ -770,7 +770,7 @@ begin
   end;
   if Info.CounterpartFile <> '' then
   begin
-    TAtlasEditorHover.GoToLocation(Info.CounterpartFile, 0, 0);
+    TAtlasIdeNavigation.GoToLocation(Info.CounterpartFile, 0, 0);
     Exit;
   end;
   if not Info.CanCreate or Edit.IsEmpty then
@@ -787,7 +787,7 @@ begin
     Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
     Exit;
   end;
-  TAtlasEditorHover.GoToLocation(Info.NewFile, 0, 0);
+  TAtlasIdeNavigation.GoToLocation(Info.NewFile, 0, 0);
 end;
 
 function KindCaption(const AKind: string): string;
@@ -936,7 +936,7 @@ begin
     Arguments := TJSONObject.ParseJSONValue(AArgumentsJson);
     try
       if (Arguments is TJSONArray) and (TJSONArray(Arguments).Count > 0) then
-        TAtlasEditorHover.GoToLocation(TLspSession.UriToPath(TJSONArray(Arguments).Items[0].Value), 0, 0);
+        TAtlasIdeNavigation.GoToLocation(TLspSession.UriToPath(TJSONArray(Arguments).Items[0].Value), 0, 0);
     finally
       Arguments.Free;
     end;

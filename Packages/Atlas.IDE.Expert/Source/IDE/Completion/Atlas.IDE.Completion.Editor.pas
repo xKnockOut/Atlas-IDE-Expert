@@ -199,7 +199,6 @@ uses
   DockForm,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Documentation.Layout,
-  Atlas.IDE.Hover.Editor,
   Atlas.Core.Completion.Word,
   Atlas.Core.Completion.Matching,
   Atlas.Core.Completion.Providers.XmlDoc,
@@ -216,7 +215,8 @@ uses
   Atlas.IDE.Editor.Buffer,
   Atlas.IDE.Editor.Style,
   Atlas.UI.Strings,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.IDE.Foundation.Navigation;
 
 /// <summary>Plattform und Konfiguration des aktiven Projekts („Win32 · Debug“, #476); '' ohne Projekt.</summary>
 function ActiveTarget: string;
@@ -482,7 +482,7 @@ begin
       else if AControl and ALink.Target.HasLocation then
       begin
         Close;
-        TAtlasEditorHover.GoToLocation(ALink.Target.FileName, ALink.Target.Line, ALink.Target.Character);
+        TAtlasIdeNavigation.GoToLocation(ALink.Target.FileName, ALink.Target.Line, ALink.Target.Character);
       end;
     end;
   FPopup.OnChip :=

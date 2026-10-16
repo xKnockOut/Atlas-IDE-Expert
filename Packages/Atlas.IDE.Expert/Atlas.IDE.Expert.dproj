@@ -144,6 +144,7 @@
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Buffer.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Snapshot.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Files.pas"/>
+        <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Navigation.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.WorkspaceEdit.pas"/>
         <DCCReference Include="Source\IDE\Projects\Atlas.IDE.Projects.Context.pas"/>
         <DCCReference Include="Source\IDE\InlayHints\Atlas.IDE.InlayHints.Editor.pas"/>

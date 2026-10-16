@@ -78,9 +78,9 @@ uses
   Atlas.IDE.Editor.Buffer,
   Atlas.IDE.Editor.Style,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Hover.Editor,
   Atlas.IDE.Settings.Store,
-  Atlas.Core.Editor.WorkspacePlan;
+  Atlas.Core.Editor.WorkspacePlan,
+  Atlas.IDE.Foundation.Navigation;
 
 const
   UnitsCommand = 'atlas.server.units';
@@ -608,7 +608,7 @@ begin
   begin
     if Entry.Kind = TAtlasUnitKind.Test then
     begin
-      TAtlasEditorHover.GoToLocation(Entry.FileName, 0, 0);
+      TAtlasIdeNavigation.GoToLocation(Entry.FileName, 0, 0);
       Continue;
     end;
     Live := TAtlasIdeUnitSearch.Session;
@@ -637,7 +637,7 @@ begin
       Answer.Free;
     end;
     if Info.CounterpartFile <> '' then
-      TAtlasEditorHover.GoToLocation(Info.CounterpartFile, 0, 0)
+      TAtlasIdeNavigation.GoToLocation(Info.CounterpartFile, 0, 0)
     else
       TAtlasIdeUnitSearch.Say(TAtlasStrings.Fmt(TAtlasTextId.UnitSearchNoTests, [Entry.Name]));
   end;
@@ -742,7 +742,7 @@ begin
   case AAction of
     TAtlasUnitSearchAction.Open:
       for Entry in AEntries do
-        TAtlasEditorHover.GoToLocation(Entry.FileName, 0, 0);
+        TAtlasIdeNavigation.GoToLocation(Entry.FileName, 0, 0);
     TAtlasUnitSearchAction.OpenForm:
       for Entry in AEntries do
       begin
