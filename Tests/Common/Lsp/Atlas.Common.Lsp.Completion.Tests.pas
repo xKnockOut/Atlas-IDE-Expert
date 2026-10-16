@@ -19,6 +19,9 @@ type
       AMatching: TCompletionMatching = TCompletionMatching.Prefix): TCompletionItems;
     function Names(const AItems: TCompletionItems): string;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -217,6 +220,16 @@ begin
 end;
 
 { TLspCompletionTests }
+
+procedure TLspCompletionTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    ComponentItemsSecondRequestUsesCache;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TLspCompletionTests.Setup;
 begin
