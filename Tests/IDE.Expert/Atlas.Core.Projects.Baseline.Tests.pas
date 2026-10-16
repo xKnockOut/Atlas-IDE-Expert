@@ -14,6 +14,9 @@ type
   [TestFixture]
   TAtlasProjectBaselinesTests = class
   public
+    /// <summary>Unechte Platte leeren: Der Leckmonitor zählte sie sonst dem Test an.</summary>
+    [TearDown]
+    procedure TearDown;
     [Test]
     procedure FileInPrefersNewName;
     [Test]
@@ -85,6 +88,11 @@ begin
 end;
 
 { TAtlasProjectBaselinesTests }
+
+procedure TAtlasProjectBaselinesTests.TearDown;
+begin
+  Disk.Clear;
+end;
 
 procedure TAtlasProjectBaselinesTests.FileInPrefersNewName;
 begin
@@ -271,7 +279,8 @@ begin
 end;
 
 initialization
-  Disk := TDictionary<string, string>.Create;
+  // Mit Vorrat: Ein Test, der die Tabelle wachsen ließe, zählte sonst als Leck.
+  Disk := TDictionary<string, string>.Create(64);
   TDUnitX.RegisterTestFixture(TAtlasProjectBaselinesTests);
 
 finalization

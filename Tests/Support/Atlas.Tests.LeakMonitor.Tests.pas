@@ -43,6 +43,7 @@ type
 implementation
 
 uses
+  System.Math,
   System.SysUtils,
   System.Classes,
   System.IOUtils,
@@ -285,7 +286,7 @@ var
   Soak: TSoak;
   Responses: TObjectList<TJSONObject>;
   Before: Int64;
-  Round: Integer;
+  Round, Window: Integer;
 begin
   Soak := TSoak.Create(ALeak);
   try
@@ -295,20 +296,28 @@ begin
     Soak.WaitIdle;
     RunSoakRound(Soak.Dispatcher).Free;
     Soak.WaitIdle;
-    Before := AllocatedBytes;
-    for Round := 1 to SoakRounds do
+    // Bis zu zwei Messabschnitte: Liegt der erste über der Toleranz, zählt der kleinere. Einmaliger Speicher
+    // nach den Aufwärmrunden (gemessen bis 82 KB) fällt so heraus; ein echtes Leck wächst in beiden Abschnitten.
+    Result := High(Int64);
+    for Window := 1 to 2 do
     begin
-      Responses := RunSoakRound(Soak.Dispatcher);
-      try
-        // echo, parallel, slow, stuck und Parse-Fehler je Gruppe, dazu "await".
-        Assert.AreEqual<NativeInt>(5 * SoakGroups + 1, Responses.Count, Format('Runde %d', [Round]));
-      finally
-        Responses.Free;
+      Before := AllocatedBytes;
+      for Round := 1 to SoakRounds do
+      begin
+        Responses := RunSoakRound(Soak.Dispatcher);
+        try
+          // echo, parallel, slow, stuck und Parse-Fehler je Gruppe, dazu "await".
+          Assert.AreEqual<NativeInt>(5 * SoakGroups + 1, Responses.Count, Format('Runde %d', [Round]));
+        finally
+          Responses.Free;
+        end;
       end;
+      // Messung erst in Ruhe: Worker sind durch "await" beendet, der Debouncer muss leer sein.
+      Soak.WaitIdle;
+      Result := Min(Result, AllocatedBytes - Before);
+      if Result <= AllowedGrowth then
+        Break;
     end;
-    // Messung erst in Ruhe: Worker sind durch "await" beendet, der Debouncer muss leer sein.
-    Soak.WaitIdle;
-    Result := AllocatedBytes - Before;
     // Jede "stuck"-Anfrage lief ins Zeitlimit, jede Änderungsrunde lief durch den Debouncer.
     Assert.IsTrue(Soak.Timeouts >= (SoakRounds + 2) * SoakGroups, Format('nur %d Zeitlimits', [Soak.Timeouts]));
     Assert.IsTrue(Soak.Debounced > 0, 'Debouncer lief nicht');
@@ -465,7 +474,8 @@ var
   Growth: Int64;
 begin
   // Ein TStringBuilder je Worker-Anfrage: weit über der Toleranz.
-  Leak := TWorkerLeak.Create((SoakRounds + 2) * SoakGroups);
+  // Zwei Aufwärmrunden und bis zu zwei Messabschnitte.
+  Leak := TWorkerLeak.Create((2 * SoakRounds + 2) * SoakGroups);
   try
     Growth := SoakGrowth(Leak);
   finally

@@ -132,6 +132,8 @@ procedure TLspSlashMenuTests.TearDown;
 begin
   FMenu.Free;
   FStore := nil;
+  // Vom Test gesetzt; der Leckmonitor zählte das Feld sonst dem Test an.
+  FDisabled := nil;
 end;
 
 function TLspSlashMenuTests.Arguments(ALine, AEndLine: Integer): TJSONArray;

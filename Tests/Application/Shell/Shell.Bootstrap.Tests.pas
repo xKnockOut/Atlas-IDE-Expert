@@ -15,6 +15,9 @@ type
     FFolder: string;
     function Write(const AName, AText: string): string;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -117,6 +120,16 @@ const
     '</Project>';
 
 { TShellBootstrapTests }
+
+procedure TShellBootstrapTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    ReadSourceText_Utf8Bom_ReturnsText;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TShellBootstrapTests.Setup;
 begin

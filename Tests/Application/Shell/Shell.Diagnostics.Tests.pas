@@ -158,6 +158,12 @@ begin
   finally
     TearDown;
   end;
+  Setup;
+  try
+    AddLogFile_BadPath_LogsError;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TShellDiagnosticsTests.Setup;
