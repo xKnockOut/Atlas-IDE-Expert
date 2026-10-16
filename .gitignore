@@ -34,3 +34,19 @@ ModelSupport_*/
 # Testergebnisse
 dunitx-ergebnisse.xml
 benchmark/
+
+# Lokale Atlas-Einstellungen und Baselines (nicht eingecheckt)
+/.atlas
+/Tests/.atlas
+/Application/atlas.json
+/Application/atlas-baseline.json
+/Setup/atlas.json
+/Setup/atlas-baseline.json
+/Tests/atlas.json
+/Tests/atlas-baseline.json
+/Packages/Atlas.Common/atlas.json
+/Packages/Atlas.Common/atlas-baseline.json
+/Packages/Atlas.Text/atlas.json
+/Packages/Atlas.Text/atlas-baseline.json
+/Packages/Atlas.Windows/atlas.json
+/Packages/Atlas.Windows/atlas-baseline.json
