@@ -40,6 +40,7 @@ uses
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.QuickActions,
+  Atlas.Core.Welcome.Layouts,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Diagnostics.Guard,
@@ -82,6 +83,11 @@ type
   /// <summary>„Alles zurücksetzen“ (#723) mit Rückfrage; True, wenn AResult gilt.</summary>
   TAtlasSettingsResetEvent = reference to function(const ACurrent: TAtlasPluginSettings;
     out AResult: TAtlasPluginSettings): Boolean;
+
+  /// <summary>Name eines Layouts der Willkommensseite erfragen (#767); False = abgebrochen.</summary>
+  TAtlasSettingsAskName = reference to function(const APrompt: string; var AName: string): Boolean;
+  /// <summary>Meldung (AQuestion False) oder Rückfrage mit Ja/Nein; True = Ja bzw. gelesen.</summary>
+  TAtlasSettingsConfirm = reference to function(const AText: string; AQuestion: Boolean): Boolean;
 
   TAtlasSettingsPage = class(TFrame)
   private
@@ -281,6 +287,17 @@ type
     FWelcomeEnabled: TCheckBox;
     FWelcomeHost: TAtlasChoiceBox;
     FWelcomeLayout: TCheckBox;
+    // Freies Layout (#767): Schalter, Spalten, aktives Layout und dessen Verwaltung. FPageLayouts ist das
+    // Modell der Seite; erst OK schreibt es in die Einstellungen.
+    FWelcomeCustomLayout: TCheckBox;
+    FWelcomeColumns: TEdit;
+    FWelcomeActiveLayout: TAtlasChoiceBox;
+    FWelcomeLayoutNew: TButton;
+    FWelcomeLayoutRename: TButton;
+    FWelcomeLayoutDelete: TButton;
+    FPageLayouts: TAtlasWelcomeLayouts;
+    FOnAskLayoutName: TAtlasSettingsAskName;
+    FOnConfirmLayout: TAtlasSettingsConfirm;
     FWelcomeHeader: TCheckBox;
     FWelcomeGreeting: TCheckBox;
     FWelcomeSearch: TCheckBox;
@@ -405,6 +422,24 @@ type
     /// <summary>Beschriftung über die ganze Breite mit Zeilenumbruch.</summary>
     function AddWrappedLabel(AHeight: Integer; const ACaption: string): TLabel;
     procedure HelpFolderBrowseClick(Sender: TObject);
+    /// <summary>Knöpfe „Neu …“, „Umbenennen …“ und „Löschen“ rechts neben der Auswahl des Layouts (#767).
+    /// </summary>
+    procedure AddWelcomeLayoutButtons;
+    procedure WelcomeLayoutChange(Sender: TObject);
+    procedure WelcomeLayoutNewClick(Sender: TObject);
+    procedure WelcomeLayoutRenameClick(Sender: TObject);
+    procedure WelcomeLayoutDeleteClick(Sender: TObject);
+    /// <summary>Ob das Häkchen bzw. die Auswahl des Bereichs AId ihn zeigt („Neu in Atlas“: nicht „Aus“).
+    /// </summary>
+    function WelcomeSectionShown(const AId: string; out AShown: Boolean): Boolean;
+    procedure ShowWelcomeSection(const AId: string; AShown: Boolean);
+    /// <summary>Spalten und Sichtbarkeit der Steuerelemente ins aktive Layout von FPageLayouts.</summary>
+    procedure KeepWelcomeLayout;
+    /// <summary>FPageLayouts auf die Seite: Namen, Auswahl, Spalten; AVisibility auch die Häkchen der
+    /// Bereiche.</summary>
+    procedure ShowWelcomeLayouts(AVisibility: Boolean);
+    function AskLayoutName(var AName: string): Boolean;
+    function ConfirmLayout(const AText: string; AQuestion: Boolean): Boolean;
     /// <summary>Beschriftung in einer Zeile, darunter ein Textfeld über die ganze Breite (#766).</summary>
     function AddTextLine(const ACaption: string): TEdit;
     procedure ResetWidthsClick(Sender: TObject);
@@ -555,6 +590,20 @@ type
     property WelcomeEnabled: TCheckBox read FWelcomeEnabled;
     property WelcomeHost: TAtlasChoiceBox read FWelcomeHost;
     property WelcomeLayout: TCheckBox read FWelcomeLayout;
+    /// <summary>Zum Testen: freies Layout (#767).</summary>
+    property WelcomeCustomLayout: TCheckBox read FWelcomeCustomLayout;
+    property WelcomeColumns: TEdit read FWelcomeColumns;
+    property WelcomeActiveLayout: TAtlasChoiceBox read FWelcomeActiveLayout;
+    property WelcomeLayoutNew: TButton read FWelcomeLayoutNew;
+    property WelcomeLayoutRename: TButton read FWelcomeLayoutRename;
+    property WelcomeLayoutDelete: TButton read FWelcomeLayoutDelete;
+    property PageLayouts: TAtlasWelcomeLayouts read FPageLayouts;
+    /// <summary>Wählt das Layout AIndex wie die Auswahlliste (#767).</summary>
+    procedure SelectWelcomeLayout(AIndex: Integer);
+    /// <summary>Namensabfrage für „Neu …“ und „Umbenennen …“; Standard: InputQuery.</summary>
+    property OnAskLayoutName: TAtlasSettingsAskName read FOnAskLayoutName write FOnAskLayoutName;
+    /// <summary>Rückfrage vor „Löschen“ und Meldung bei doppeltem Namen; Standard: Dialog.</summary>
+    property OnConfirmLayout: TAtlasSettingsConfirm read FOnConfirmLayout write FOnConfirmLayout;
     property WelcomeHeader: TCheckBox read FWelcomeHeader;
     property WelcomeGreeting: TCheckBox read FWelcomeGreeting;
     property WelcomeSearch: TCheckBox read FWelcomeSearch;
@@ -715,6 +764,8 @@ uses
   Atlas.Core.Undo.Names,
   Atlas.Core.Welcome.WhatsNew,
   Atlas.Core.Welcome.Trends,
+  Atlas.Core.Welcome.Sections,
+  Atlas.Core.Welcome.Layout,
   Atlas.Core.Commands.ShortcutTips,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Sources,
@@ -1199,6 +1250,11 @@ begin
   Bind('WelcomePageDiscover', FWelcomeDiscover);
   Bind('WelcomePageHelp', FWelcomeHelp);
   Bind('WelcomePageProjectSetup', FWelcomeProjectSetup);
+  Bind('WelcomePageIssues', FWelcomeIssues);
+  Bind('WelcomePageCustomLayout', FWelcomeCustomLayout);
+  Bind('WelcomePageColumns', FWelcomeColumns);
+  Bind('WelcomePageActiveLayout', FWelcomeActiveLayout);
+  Bind('WelcomePageLayouts', FWelcomeActiveLayout);
   BindControls;
 end;
 
@@ -1282,6 +1338,14 @@ begin
     [TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHostPage),
     TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHostWindow)]);
   FWelcomeLayout := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeLayout));
+  // Freies Layout (#767): Bearbeitungsmodus „Seite anpassen“, Spalten, benannte Layouts.
+  FWelcomeCustomLayout := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeCustomLayout));
+  FWelcomeColumns := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeColumns));
+  FWelcomeActiveLayout := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeActiveLayout),
+    [TAtlasWelcomeLayout.DefaultName]);
+  FWelcomeActiveLayout.OnChange := WelcomeLayoutChange;
+  AddWelcomeLayoutButtons;
+  FPageLayouts := TAtlasWelcomeLayouts.Defaults;
   FWelcomeHeader := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHeader));
   FWelcomeGreeting := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeGreeting));
   FWelcomeSearch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeSearch));
@@ -1382,6 +1446,221 @@ begin
   // Karte „Projekt für Atlas einrichten“ und Knöpfe „Neu mit Atlas“ (#759).
   FWelcomeProjectSetup := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeProjectSetup));
   FWelcomeNewFromTemplate := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeNewFromTemplate));
+end;
+
+procedure TAtlasSettingsPage.AddWelcomeLayoutButtons;
+
+  function AddButton(ALeft: Integer; AId: TAtlasTextId; AClick: TNotifyEvent): TButton;
+  begin
+    Result := TButton.Create(Self);
+    Result.Parent := FWelcomeActiveLayout.Parent;
+    Result.Caption := TAtlasStrings.Text(AId);
+    Result.Left := ALeft;
+    Result.Top := 0;
+    Result.Width := 96;
+    Result.OnClick := AClick;
+  end;
+
+var
+  Left: Integer;
+begin
+  Left := FWelcomeActiveLayout.Left + FWelcomeActiveLayout.Width + 6;
+  FWelcomeLayoutNew := AddButton(Left, TAtlasTextId.SettingsWelcomeLayoutNew, WelcomeLayoutNewClick);
+  FWelcomeLayoutRename := AddButton(Left + 102, TAtlasTextId.SettingsWelcomeLayoutRename,
+    WelcomeLayoutRenameClick);
+  FWelcomeLayoutDelete := AddButton(Left + 204, TAtlasTextId.SettingsWelcomeLayoutDelete,
+    WelcomeLayoutDeleteClick);
+end;
+
+function TAtlasSettingsPage.WelcomeSectionShown(const AId: string; out AShown: Boolean): Boolean;
+var
+  Check: TCheckBox;
+begin
+  Result := True;
+  AShown := False;
+  if AId = TAtlasWelcomeIds.News then
+  begin
+    AShown := FWelcomeWhatsNew.Choice > 0;
+    Exit;
+  end;
+  Check := nil;
+  if AId = TAtlasWelcomeIds.Continue then
+    Check := FWelcomeContinue
+  else if AId = TAtlasWelcomeIds.Projects then
+    Check := FWelcomeProjects
+  else if AId = TAtlasWelcomeIds.History then
+    Check := FWelcomeTrends
+  else if AId = TAtlasWelcomeIds.Tests then
+    Check := FWelcomeTests
+  else if AId = TAtlasWelcomeIds.State then
+    Check := FWelcomeStatusTile
+  else if AId = TAtlasWelcomeIds.Unsaved then
+    Check := FWelcomeUnsaved
+  else if AId = TAtlasWelcomeIds.Discover then
+    Check := FWelcomeDiscover
+  else if AId = TAtlasWelcomeIds.Setup then
+    Check := FWelcomeProjectSetup
+  else if AId = TAtlasWelcomeIds.Issues then
+    Check := FWelcomeIssues
+  else if AId = TAtlasWelcomeIds.Help then
+    Check := FWelcomeHelp;
+  Result := Check <> nil;
+  if Result then
+    AShown := Check.Checked;
+end;
+
+procedure TAtlasSettingsPage.ShowWelcomeSection(const AId: string; AShown: Boolean);
+var
+  Shown: Boolean;
+begin
+  if not WelcomeSectionShown(AId, Shown) or (Shown = AShown) then
+    Exit;
+  if AId = TAtlasWelcomeIds.News then
+  begin
+    // Einschalten heißt „nach einem Update“, wie die Vorgabe.
+    FWelcomeWhatsNew.Choice := Ord(TAtlasWhatsNewMode.AfterUpdate);
+    if not AShown then
+      FWelcomeWhatsNew.Choice := Ord(TAtlasWhatsNewMode.Off);
+  end
+  else if AId = TAtlasWelcomeIds.Continue then
+    FWelcomeContinue.Checked := AShown
+  else if AId = TAtlasWelcomeIds.Projects then
+    FWelcomeProjects.Checked := AShown
+  else if AId = TAtlasWelcomeIds.History then
+    FWelcomeTrends.Checked := AShown
+  else if AId = TAtlasWelcomeIds.Tests then
+    FWelcomeTests.Checked := AShown
+  else if AId = TAtlasWelcomeIds.State then
+    FWelcomeStatusTile.Checked := AShown
+  else if AId = TAtlasWelcomeIds.Unsaved then
+    FWelcomeUnsaved.Checked := AShown
+  else if AId = TAtlasWelcomeIds.Discover then
+    FWelcomeDiscover.Checked := AShown
+  else if AId = TAtlasWelcomeIds.Setup then
+    FWelcomeProjectSetup.Checked := AShown
+  else if AId = TAtlasWelcomeIds.Issues then
+    FWelcomeIssues.Checked := AShown
+  else if AId = TAtlasWelcomeIds.Help then
+    FWelcomeHelp.Checked := AShown;
+end;
+
+procedure TAtlasSettingsPage.KeepWelcomeLayout;
+var
+  Layout: TAtlasWelcomeLayout;
+  Item: TAtlasWelcomeCatalogItem;
+  Shown: Boolean;
+begin
+  Layout := FPageLayouts.Current;
+  Layout := Layout.WithColumns(EnsureRange(StrToIntDef(Trim(FWelcomeColumns.Text), Layout.Columns),
+    TAtlasWelcomeLayout.MinColumns, TAtlasWelcomeLayout.MaxColumns));
+  for Item in TAtlasWelcomeCustomizing.Catalog do
+    if WelcomeSectionShown(Item.Id, Shown) and (Layout.IndexOf(Item.Id) >= 0) then
+      Layout := Layout.WithVisible(Item.Id, Shown);
+  FPageLayouts := FPageLayouts.WithCurrent(Layout);
+end;
+
+procedure TAtlasSettingsPage.ShowWelcomeLayouts(AVisibility: Boolean);
+var
+  Layout: TAtlasWelcomeLayout;
+  Slot: TAtlasWelcomeSlot;
+begin
+  Layout := FPageLayouts.Current;
+  FWelcomeActiveLayout.SetChoices(FPageLayouts.Names);
+  FWelcomeActiveLayout.Choice := FPageLayouts.Active;
+  FWelcomeColumns.Text := IntToStr(Layout.Columns);
+  FWelcomeLayoutDelete.Enabled := Length(FPageLayouts.Items) > 1;
+  if AVisibility then
+    for Slot in Layout.Slots do
+      ShowWelcomeSection(Slot.Id, Slot.Visible);
+end;
+
+procedure TAtlasSettingsPage.SelectWelcomeLayout(AIndex: Integer);
+var
+  Layouts: TAtlasWelcomeLayouts;
+begin
+  if (AIndex < 0) or (AIndex > High(FPageLayouts.Items)) or (AIndex = FPageLayouts.Active) then
+    Exit;
+  // Das bisherige Layout merkt sich Spalten und Sichtbarkeit, das neue setzt seine.
+  KeepWelcomeLayout;
+  if FPageLayouts.Activated(FPageLayouts.Items[AIndex].Name, Layouts) then
+    FPageLayouts := Layouts;
+  ShowWelcomeLayouts(True);
+end;
+
+procedure TAtlasSettingsPage.WelcomeLayoutChange(Sender: TObject);
+begin
+  SelectWelcomeLayout(FWelcomeActiveLayout.Choice);
+end;
+
+procedure TAtlasSettingsPage.WelcomeLayoutNewClick(Sender: TObject);
+var
+  Name: string;
+  Layouts: TAtlasWelcomeLayouts;
+begin
+  Name := '';
+  if not AskLayoutName(Name) or (Trim(Name) = '') then
+    Exit;
+  KeepWelcomeLayout;
+  if not FPageLayouts.Added(Trim(Name), Layouts) then
+  begin
+    ConfirmLayout(TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeLayoutTaken, [Trim(Name)]), False);
+    Exit;
+  end;
+  // Die Kopie übernimmt die Sichtbarkeit; die Häkchen bleiben.
+  FPageLayouts := Layouts;
+  ShowWelcomeLayouts(False);
+end;
+
+procedure TAtlasSettingsPage.WelcomeLayoutRenameClick(Sender: TObject);
+var
+  Name: string;
+  Layouts: TAtlasWelcomeLayouts;
+begin
+  Name := FPageLayouts.ActiveName;
+  if not AskLayoutName(Name) or (Trim(Name) = '') or (Trim(Name) = FPageLayouts.ActiveName) then
+    Exit;
+  if not FPageLayouts.Renamed(Trim(Name), Layouts) then
+  begin
+    ConfirmLayout(TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeLayoutTaken, [Trim(Name)]), False);
+    Exit;
+  end;
+  FPageLayouts := Layouts;
+  ShowWelcomeLayouts(False);
+end;
+
+procedure TAtlasSettingsPage.WelcomeLayoutDeleteClick(Sender: TObject);
+var
+  Layouts: TAtlasWelcomeLayouts;
+begin
+  if (Length(FPageLayouts.Items) < 2) or
+    not ConfirmLayout(TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeDeleteConfirm, [FPageLayouts.ActiveName]),
+    True) then
+    Exit;
+  if not FPageLayouts.Deleted(Layouts) then
+    Exit;
+  FPageLayouts := Layouts;
+  ShowWelcomeLayouts(True);
+end;
+
+function TAtlasSettingsPage.AskLayoutName(var AName: string): Boolean;
+begin
+  if Assigned(FOnAskLayoutName) then
+    Exit(FOnAskLayoutName(TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeLayoutName), AName));
+  Result := InputQuery(TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeCustomize),
+    TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeLayoutName), AName);
+end;
+
+function TAtlasSettingsPage.ConfirmLayout(const AText: string; AQuestion: Boolean): Boolean;
+begin
+  if Assigned(FOnConfirmLayout) then
+    Exit(FOnConfirmLayout(AText, AQuestion));
+  if AQuestion then
+    Result := MessageDlg(AText, mtConfirmation, [mbYes, mbNo], 0) = mrYes
+  else
+  begin
+    MessageDlg(AText, mtInformation, [mbOK], 0);
+    Result := True;
+  end;
 end;
 
 function TAtlasSettingsPage.AddTextLine(const ACaption: string): TEdit;
@@ -1732,6 +2011,9 @@ begin
   FMarks.Bind(FWelcomeEnabled, ['WelcomePage']);
   FMarks.Bind(FWelcomeHost, ['WelcomePageHost']);
   FMarks.Bind(FWelcomeLayout, ['WelcomePageLayout']);
+  FMarks.Bind(FWelcomeCustomLayout, ['WelcomePageCustomLayout']);
+  FMarks.Bind(FWelcomeColumns, ['WelcomePageColumns']);
+  FMarks.Bind(FWelcomeActiveLayout, ['WelcomePageActiveLayout', 'WelcomePageLayouts']);
   FMarks.Bind(FWelcomeHeader, ['WelcomePageHeader']);
   FMarks.Bind(FWelcomeGreeting, ['WelcomePageGreeting']);
   FMarks.Bind(FWelcomeSearch, ['WelcomePageSearch']);
@@ -2770,6 +3052,10 @@ begin
   FWelcomeHelpReportFolder.Text := ASettings.WelcomePageHelpReportFolder;
   FWelcomeProjectSetup.Checked := ASettings.WelcomePageProjectSetup;
   FWelcomeNewFromTemplate.Checked := ASettings.WelcomePageNewFromTemplate;
+  // Freies Layout (#767): die Häkchen der Bereiche stehen schon; das Modell liest sie aus ASettings.
+  FWelcomeCustomLayout.Checked := ASettings.WelcomePageCustomLayout;
+  FPageLayouts := TAtlasWelcomeCustomizing.Load(ASettings);
+  ShowWelcomeLayouts(False);
   FSettingsExportImport.Checked := ASettings.SettingsExportImport;
   FSettingsMarkModified.Checked := ASettings.SettingsMarkModified;
   FSettingsBackupBeforeImport.Checked := ASettings.SettingsBackupBeforeImport;
@@ -3024,6 +3310,10 @@ begin
   ASettings.WelcomePageHelpReportFolder := Trim(FWelcomeHelpReportFolder.Text);
   ASettings.WelcomePageProjectSetup := FWelcomeProjectSetup.Checked;
   ASettings.WelcomePageNewFromTemplate := FWelcomeNewFromTemplate.Checked;
+  // Freies Layout (#767): nach allen Häkchen, denn Stored liest die Sichtbarkeit aus ASettings.
+  ASettings.WelcomePageCustomLayout := FWelcomeCustomLayout.Checked;
+  KeepWelcomeLayout;
+  ASettings := TAtlasWelcomeCustomizing.Stored(ASettings, FPageLayouts);
   ASettings.SettingsExportImport := FSettingsExportImport.Checked;
   ASettings.SettingsMarkModified := FSettingsMarkModified.Checked;
   ASettings.SettingsBackupBeforeImport := FSettingsBackupBeforeImport.Checked;

@@ -87,6 +87,8 @@ type
     procedure BuiltInProfilesAreValid;
     [Test]
     procedure ProfilesSwitchFeatures;
+    [Test]
+    procedure WelcomeLayoutsTravel;
   end;
 
 implementation
@@ -543,16 +545,16 @@ var
   After: TAtlasSettingsState;
 begin
   Source := TAtlasSettingsTransfer.ParseFile('{"format":"atlas-settings","formatVersion":1,"schemaVersion":99,' +
-    '"settings":{"welcomePage.layouts": [1, 2], "highlight.pairColors": false}}');
+    '"settings":{"welcomePage.zukunft": [1, 2], "highlight.pairColors": false}}');
   Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''), Source, imMerge, nil,
     Macros, '', '');
   Assert.IsTrue(Preview.Newer, 'neuere Version');
-  Assert.IsTrue(ItemOf(Preview, 'welcomePage.layouts').Status = isUnknown);
-  Assert.IsFalse(ItemOf(Preview, 'welcomePage.layouts').Selected);
+  Assert.IsTrue(ItemOf(Preview, 'welcomePage.zukunft').Status = isUnknown);
+  Assert.IsFalse(ItemOf(Preview, 'welcomePage.zukunft').Selected);
   Assert.AreEqual(1, Preview.CountOf(isUnknown));
   After := TAtlasSettingsTransfer.Apply(FCatalog, State(TAtlasPluginSettings.Defaults, ''), Preview);
   Assert.IsFalse(After.Plugin.PairColors, 'der Rest gilt');
-  Assert.DoesNotContain(After.GlobalText, 'layouts');
+  Assert.DoesNotContain(After.GlobalText, 'zukunft');
 end;
 
 procedure TAtlasSettingsTransferTests.ImportMigratesOldKeys;
@@ -738,6 +740,49 @@ begin
   Assert.AreEqual('D:\Atlas\AtlasServer.exe', After.Plugin.ServerPath);
   Assert.Contains(After.GlobalText, 'delphiVersion');
   Assert.DoesNotContain(After.GlobalText, 'logLevel');
+end;
+
+procedure TAtlasSettingsTransferTests.WelcomeLayoutsTravel;
+const
+  LayoutsJson = '[{"name":"Arbeit","columns":3,"slots":[{"id":"atlas.state","column":0}]}]';
+var
+  S: TAtlasPluginSettings;
+  Exported: TAtlasExportResult;
+  Preview: TAtlasImportPreview;
+  After: TAtlasSettingsState;
+  Names: TArray<string>;
+begin
+  // #767: Layouts, aktives Layout, Spalten und der Schalter gehören zum Bereich „Willkommensseite“.
+  S := TAtlasPluginSettings.Defaults;
+  S.WelcomePageCustomLayout := False;
+  S.WelcomePageColumns := 3;
+  S.WelcomePageLayouts := LayoutsJson;
+  S.WelcomePageActiveLayout := 'Arbeit';
+  Exported := TAtlasSettingsTransfer.ExportSettings(FCatalog, State(S, ''),
+    TAtlasExportOptions.Create(['welcome'], smOmit), Macros);
+  Assert.AreEqual(4, Exported.Count);
+  Assert.Contains(Exported.Text, '"welcomePage.customLayout": false');
+  Assert.Contains(Exported.Text, '"welcomePage.columns": 3');
+  Assert.Contains(Exported.Text, '"welcomePage.layouts"');
+  Assert.Contains(Exported.Text, '"welcomePage.activeLayout": "Arbeit"');
+  // Import auf einem frischen Rechner.
+  Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''),
+    TAtlasSettingsTransfer.ParseFile(Exported.Text), imMerge, nil, Macros, '', '');
+  Assert.AreEqual(4, Preview.SelectedCount);
+  After := TAtlasSettingsTransfer.Apply(FCatalog, State(TAtlasPluginSettings.Defaults, ''), Preview);
+  Assert.IsFalse(After.Plugin.WelcomePageCustomLayout);
+  Assert.AreEqual(3, After.Plugin.WelcomePageColumns);
+  Assert.AreEqual(LayoutsJson, After.Plugin.WelcomePageLayouts);
+  Assert.AreEqual('Arbeit', After.Plugin.WelcomePageActiveLayout);
+  // Geändert-Markierung und Zurücksetzen.
+  Names := TAtlasSettingsTransfer.ModifiedNames(FCatalog, S);
+  Assert.AreEqual(4, Integer(Length(Names)));
+  After := TAtlasSettingsTransfer.ResetAreas(FCatalog, State(S, ''), ['welcome']);
+  Assert.IsTrue(After.Plugin.WelcomePageCustomLayout);
+  Assert.AreEqual(2, After.Plugin.WelcomePageColumns);
+  Assert.AreEqual('', After.Plugin.WelcomePageLayouts);
+  Assert.AreEqual('Standard', After.Plugin.WelcomePageActiveLayout);
+  Assert.AreEqual(0, Integer(Length(TAtlasSettingsTransfer.ModifiedKeys(FCatalog, After))));
 end;
 
 procedure TAtlasSettingsTransferTests.ResetNamesAndModifiedNamesForPage;
