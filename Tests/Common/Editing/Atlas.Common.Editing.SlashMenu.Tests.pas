@@ -28,6 +28,9 @@ type
     procedure FitsByPlaceAndSelection;
     [Test]
     procedure CatalogCommandsAreRegistered;
+    /// <summary>Reihenfolge in der Klasse wie im Entwurf (#719, AC7).</summary>
+    [Test]
+    procedure CatalogOrderInClass;
     [Test]
     procedure RunCtorWithoutTyping;
     [Test]
@@ -274,6 +277,18 @@ begin
     Names := Names + ',' + Item.Name + ',';
   end;
   Assert.AreEqual('ctor', TSlashMenu.Catalog[0].Name, 'Konstruktor zuerst wie im Mockup');
+end;
+
+procedure TSlashMenuTests.CatalogOrderInClass;
+var
+  Entry: TSlashMenuEntry;
+  Names: TArray<string>;
+begin
+  Names := nil;
+  for Entry in TSlashMenu.Catalog do
+    if TSlashMenu.Fits(Entry, [TSlashPlace.ClassBody], False) and (Length(Names) < 6) then
+      Names := Names + [Entry.Name];
+  Assert.AreEqual('ctor,dtor,prop,override,equals,impl', string.Join(',', Names));
 end;
 
 procedure TSlashMenuTests.RunCtorWithoutTyping;

@@ -365,6 +365,12 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Placeholders.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.Snippets.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Snippets.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Generate\Atlas.Core.Generate.Menu.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Generate\Atlas.Core.Generate.Protocol.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Generate\Atlas.UI.Generate.Window.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Generate.Menu.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Generate.Protocol.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Generate.Window.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Parentheses.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Parentheses.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Preview.pas"/>

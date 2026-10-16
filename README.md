@@ -15,7 +15,7 @@ An expert for RAD Studio (Delphi/Object Pascal): an IDE plugin with its own user
 - **Compiler check after saving** and the compiler messages of the "Build" tab
 - **Bracket and block pairs** coloured by depth, with matching block lines
 - **Results window** "Atlas Results" for references (including forms), implementations, callers, calls and inheritance; workspace symbol search; preview before renaming
-- **Code actions** (Alt+Enter), expand and shrink selection (Ctrl+W, Ctrl+Shift+W), go to implementation and type definition, copy qualified name; all also in the editor context menu under *Atlas*. Slash commands such as `/uses Unit` run after Enter, `///` above a declaration creates the documentation comment
+- **Code actions** (Alt+Enter), expand and shrink selection (Ctrl+W, Ctrl+Shift+W), go to implementation and type definition, copy qualified name; all also in the editor context menu under *Atlas*. Alt+Ins opens the **generate menu** at the cursor (constructor, properties, overridden methods, interface methods, surround, templates). Slash commands such as `/uses Unit` run after Enter, `///` above a declaration creates the documentation comment
 - **Form designer**: open forms are sent to the server as the designer has them, so references, renames and checks see unsaved changes; renaming an event handler also updates its assignment in the designer
 - **Command palette** (Ctrl+Shift+P), silent reload of files changed outside the IDE, hang watchdog with log
 

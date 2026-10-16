@@ -15,7 +15,7 @@ Experte für RAD Studio (Delphi/Object Pascal): ein IDE-Plugin mit eigener Oberf
 - **Compilerprüfung nach dem Speichern** und Übernahme der Compilermeldungen aus dem Reiter „Build“
 - **Klammer- und Blockpaare** farbig nach Tiefe, mit eigenen Blocklinien
 - **Ergebnisfenster** „Atlas-Ergebnisse“ für Referenzen (auch in Formularen), Implementierungen, Aufrufer, Aufrufe und Vererbung; projektweite Symbolsuche; Vorschau vor dem Umbenennen
-- **Code-Aktionen** (Alt+Enter), Auswahl erweitern und verkleinern (Strg+W, Strg+Umschalt+W), Gehe zu Implementierung und Typdefinition, Wechsel zwischen Deklaration und Implementierung (Strg+Umschalt+↑/↓), qualifizierten Namen kopieren; alles auch im Kontextmenü des Editors unter *Atlas*. Schnellbefehle wie `/uses Unit` laufen nach Enter, `///` über einer Deklaration erzeugt den Dokumentationskommentar
+- **Code-Aktionen** (Alt+Enter), Auswahl erweitern und verkleinern (Strg+W, Strg+Umschalt+W), Gehe zu Implementierung und Typdefinition, Wechsel zwischen Deklaration und Implementierung (Strg+Umschalt+↑/↓), qualifizierten Namen kopieren; alles auch im Kontextmenü des Editors unter *Atlas*. Schnellbefehle wie `/uses Unit` laufen nach Enter, `///` über einer Deklaration erzeugt den Dokumentationskommentar; Alt+Einfg zeigt im **Erzeugen-Menü**, was sich am Cursor erzeugen lässt (Konstruktor, Properties, überschriebene Methoden, Interface-Methoden, Umschließen, Vorlagen)
 - **Formular-Designer**: Offene Formulare gehen im Stand des Designers an den Server, Referenzen, Umbenennen und Prüfungen sehen also ungespeicherte Änderungen; das Umbenennen eines Ereignis-Handlers ändert auch seine Zuordnung im Designer
 - **Befehlspalette** (Strg+Umschalt+P), stilles Neuladen extern geänderter Dateien, Hänger-Wächter mit Protokoll
 

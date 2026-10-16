@@ -30,6 +30,8 @@ type
     constructor Create(const ASnippets: TAtlasSnippetList);
     destructor Destroy; override;
     procedure SetSnippets(const ASnippets: TAtlasSnippetList);
+    /// <summary>Alle Vorlagen der Quelle (Erzeugen-Menü, #719); threadsicher.</summary>
+    function Snippets: TAtlasSnippetList;
     /// <summary>Abgeschaltet (Einstellung Snippets) liefert die Quelle nichts. Im Hauptthread setzen.</summary>
     property Enabled: Boolean read FEnabled write FEnabled;
     /// <summary>Passt die Stelle? ALineBefore: Zeile bis zum Cursor, APrefix: getipptes Wort davor.</summary>
@@ -91,6 +93,16 @@ begin
   FSnippetLock.Enter;
   try
     FSnippets := ASnippets;
+  finally
+    FSnippetLock.Leave;
+  end;
+end;
+
+function TAtlasSnippetCompletionProvider.Snippets: TAtlasSnippetList;
+begin
+  FSnippetLock.Enter;
+  try
+    Result := FSnippets;
   finally
     FSnippetLock.Leave;
   end;
