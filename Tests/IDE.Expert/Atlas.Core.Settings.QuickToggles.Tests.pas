@@ -204,6 +204,13 @@ begin
   Assert.AreEqual('Willkommensseite', Toggle.Page);
   Assert.IsFalse(Toggle.Drawing);
   Assert.AreEqual('WelcomePage', Toggle.Feature);
+  // Befehl Atlas.CiLogin (#763): eigener Schalter auf der Seite Willkommensseite, Vorgabe an.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'CiLogin', Toggle));
+  Assert.AreEqual('Willkommensseite', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  Assert.AreEqual('WelcomePage', Toggle.Feature);
+  Assert.IsTrue(TAtlasQuickToggles.GetFlag(TAtlasPluginSettings.Defaults, 'CiLogin', Value));
+  Assert.IsTrue(Value);
   // Jeder Schalter ist eine Einstellung des Plugins.
   for Toggle in Toggles do
   begin

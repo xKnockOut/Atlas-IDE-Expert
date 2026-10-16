@@ -1,0 +1,42 @@
+{
+  "_class": "hudson.tasks.junit.TestResult",
+  "failCount": 2,
+  "passCount": 410,
+  "skipCount": 3,
+  "suites": [
+    {
+      "cases": [
+        {
+          "className": "Atlas.Core.Index.Tests.TIndexTests",
+          "errorDetails": "Erwartet 3 Deklarationen, gefunden 0\nExpected: 3\nActual: 0",
+          "name": "FindsDeclarations",
+          "status": "FAILED"
+        },
+        {
+          "className": "Atlas.Core.Index.Tests.TIndexTests",
+          "errorDetails": null,
+          "name": "ReadsCache",
+          "status": "PASSED"
+        },
+        {
+          "className": "Atlas.Core.Hover.Tests.THoverTests",
+          "errorDetails": "Zugriffsverletzung bei Adresse 0040A1B2",
+          "name": "ShowsDocumentation",
+          "status": "REGRESSION"
+        },
+        {
+          "className": "Atlas.Core.Hover.Tests.THoverTests",
+          "errorDetails": null,
+          "name": "Skipped",
+          "status": "SKIPPED"
+        },
+        {
+          "className": "Atlas.Core.Hover.Tests.THoverTests",
+          "errorDetails": null,
+          "name": "FixedAgain",
+          "status": "FIXED"
+        }
+      ]
+    }
+  ]
+}
