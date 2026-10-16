@@ -11,6 +11,11 @@
 // Meldungsfenster. Gelöschte Dateien meldet Atlas nur. Hat sich nur der Zeitstempel geändert
 // (z. B. eigenes Speichern), bleibt der Puffer unberührt.
 // Ergebnis im Meldungsfenster, Gruppe „Atlas“.
+// Benachrichtigungszentrale (#601, Quelle reload): Jedes Ergebnis ist auch ein
+// Eintrag („Dateien neu geladen: 3“, „Eigene Änderungen behalten: X“ mit
+// „Vergleichen“, „Datei gelöscht: X“). Die Zeilen im Meldungsfenster samt
+// Unterschied erscheinen nur bei „einblenden“; „Vergleichen“ schreibt den
+// Unterschied auf Abruf dorthin und zeigt das Fenster.
 
 interface
 
@@ -19,7 +24,8 @@ uses
   System.Classes,
   Vcl.ExtCtrls,
   ToolsAPI,
-  Atlas.Core.Files.ExternalChanges;
+  Atlas.Core.Files.ExternalChanges,
+  Atlas.Core.Notifications.Contract;
 
 type
   TAtlasFileReloader = class
@@ -33,7 +39,10 @@ type
     function OpenFiles: TArray<TAtlasObservedFile>;
     procedure Process(const ADecisions: TArray<TAtlasReloadDecision>);
     function Reload(const AFileName: string): Boolean;
-    procedure AskModified(const ADecisions: TArray<TAtlasReloadDecision>);
+    /// <summary>Unterschied Editor/Platte von AFileName ins Meldungsfenster; AShow zeigt das Fenster.</summary>
+    class procedure ShowDiff(const AFileName: string; AShow: Boolean); static;
+    /// <summary>Aktion „Vergleichen“ für AFileName (eigene Variable je Datei für die anonyme Methode).</summary>
+    class function CompareAction(const AFileName: string): TAtlasNotificationAction; static;
     class function SourceEditorOf(const AModule: IOTAModule): IOTASourceEditor; static;
     class function FindModule(const AFileName: string): IOTAModule; static;
     class function DiskStamp(const AFileName: string; out AStamp: Int64): Boolean; static;
@@ -58,7 +67,9 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.Core.Diagnostics.Hangs,
-  Atlas.Core.Files.TextDiff;
+  Atlas.Core.Files.TextDiff,
+  Atlas.Core.Notifications.Center,
+  Atlas.Core.Notifications.Sources;
 
 function NowMs: Int64;
 begin
@@ -255,46 +266,43 @@ begin
   Result := True;
 end;
 
-procedure TAtlasFileReloader.AskModified(const ADecisions: TArray<TAtlasReloadDecision>);
+class procedure TAtlasFileReloader.ShowDiff(const AFileName: string; AShow: Boolean);
 const
   MaxDiffLines = 40;
 var
-  Decision: TAtlasReloadDecision;
   Module: IOTAModule;
   Editor: IOTASourceEditor;
   Buffer: IOTAEditBuffer;
   Disk: string;
   Lines: TArray<string>;
   Index: Integer;
+  Messages: IOTAMessageServices;
 begin
   // Die Rückfrage der IDE lässt sich nicht unterdrücken (sie hat „Alle Ja/Alle Nein“); der
-  // Unterschied steht vorher im Meldungsfenster, damit man nachsehen kann.
-  for Decision in ADecisions do
-  begin
-    if Decision.Action <> TAtlasReloadAction.KeepModified then
-      Continue;
-    Module := FindModule(Decision.FileName);
-    Editor := nil;
-    if Module <> nil then
-      Editor := SourceEditorOf(Module);
-    if not Supports(Editor, IOTAEditBuffer, Buffer) then
-      Continue;
-    try
-      Disk := TFile.ReadAllText(Decision.FileName);
-    except
-      on Exception do
-        Continue;
-    end;
-    Lines := TAtlasTextDiff.Lines(TAtlasEditorBuffer.Text(Buffer), Disk);
-    if Length(Lines) = 0 then
-      Continue;
-    AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadDiffTitle, [ExtractFileName(Decision.FileName)]));
-    for Index := 0 to High(Lines) do
-      if Index < MaxDiffLines then
-        AddMessage('    ' + Lines[Index]);
-    if Length(Lines) > MaxDiffLines then
-      AddMessage('    …');
+  // Unterschied steht im Meldungsfenster, damit man nachsehen kann.
+  Module := FindModule(AFileName);
+  Editor := nil;
+  if Module <> nil then
+    Editor := SourceEditorOf(Module);
+  if not Supports(Editor, IOTAEditBuffer, Buffer) then
+    Exit;
+  try
+    Disk := TFile.ReadAllText(AFileName);
+  except
+    on Exception do
+      Exit;
   end;
+  Lines := TAtlasTextDiff.Lines(TAtlasEditorBuffer.Text(Buffer), Disk);
+  if Length(Lines) = 0 then
+    Exit;
+  AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadDiffTitle, [ExtractFileName(AFileName)]));
+  for Index := 0 to High(Lines) do
+    if Index < MaxDiffLines then
+      AddMessage('    ' + Lines[Index]);
+  if Length(Lines) > MaxDiffLines then
+    AddMessage('    …');
+  if AShow and Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+    Messages.ShowMessageView(Messages.GetGroup('Atlas'));
 end;
 
 class procedure TAtlasFileReloader.AddMessage(const AText: string);
@@ -310,14 +318,26 @@ begin
   Messages.AddTitleMessage(AText, Group);
 end;
 
+class function TAtlasFileReloader.CompareAction(const AFileName: string): TAtlasNotificationAction;
+begin
+  Result := TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.NotificationsCompare),
+    procedure
+    begin
+      ShowDiff(AFileName, True);
+    end);
+end;
+
 procedure TAtlasFileReloader.Process(const ADecisions: TArray<TAtlasReloadDecision>);
 var
   Decision: TAtlasReloadDecision;
   Reloaded: TArray<string>;
-  Name: string;
+  Name, FileName, Names: string;
   Activity: IInterface;
+  Center: IAtlasNotificationCenter;
+  Mode: TAtlasNotificationMode;
 begin
   Activity := TAtlasActivity.Scope('Dateien neu laden');
+  Center := TAtlasNotificationCenter.Default;
   Reloaded := nil;
   if Assigned(FReport) and TAtlasIdeSettings.Current.ReloadExternal then
     for Decision in ADecisions do
@@ -330,20 +350,47 @@ begin
           Reloaded := Reloaded + [Decision.FileName];
       TAtlasReloadAction.KeepModified:
         if TAtlasIdeSettings.Current.ReloadExternal then
-          AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadKeptModified, [ExtractFileName(Decision.FileName)]));
+        begin
+          FileName := Decision.FileName;
+          Name := ExtractFileName(FileName);
+          Mode := Center.Notify(TAtlasNotificationSources.Reload, TAtlasNotificationSeverity.Warning,
+            TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloadKept, [Name]),
+            TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloadKeptText, [Name]), [CompareAction(FileName)]);
+          // Unterschied bei Dateien mit eigenen Änderungen (#536), nur bei „einblenden“.
+          if Mode = TAtlasNotificationMode.Show then
+          begin
+            AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadKeptModified, [Name]));
+            ShowDiff(FileName, False);
+          end;
+        end;
       TAtlasReloadAction.Deleted:
         if TAtlasIdeSettings.Current.ReloadExternal then
-          AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadDeleted, [ExtractFileName(Decision.FileName)]));
+        begin
+          Name := ExtractFileName(Decision.FileName);
+          if Center.Notify(TAtlasNotificationSources.Reload, TAtlasNotificationSeverity.Warning,
+            TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloadDeleted, [Name]), Decision.FileName) =
+            TAtlasNotificationMode.Show then
+            AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadDeleted, [Name]));
+        end;
     end;
   if Length(Reloaded) > 0 then
   begin
-    AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadDone, [Length(Reloaded)]));
+    Names := '';
     for Name in Reloaded do
-      AddMessage('    ' + Name);
+    begin
+      if Names <> '' then
+        Names := Names + ', ';
+      Names := Names + ExtractFileName(Name);
+    end;
+    if Center.Notify(TAtlasNotificationSources.Reload, TAtlasNotificationSeverity.Info,
+      TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloaded, [Length(Reloaded)]), Names) =
+      TAtlasNotificationMode.Show then
+    begin
+      AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadDone, [Length(Reloaded)]));
+      for Name in Reloaded do
+        AddMessage('    ' + Name);
+    end;
   end;
-  // Unterschied bei Dateien mit eigenen Änderungen (#536).
-  if TAtlasIdeSettings.Current.ReloadExternal then
-    AskModified(ADecisions);
 end;
 
 end.

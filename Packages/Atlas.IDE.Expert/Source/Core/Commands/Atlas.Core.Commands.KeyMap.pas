@@ -291,6 +291,8 @@ begin
       Result := 'Atlas.BookmarkAdd';
     TAtlasKeyFunction.GenerateMenu:
       Result := 'Atlas.GenerateMenu';
+    TAtlasKeyFunction.Notifications:
+      Result := 'Atlas.Notifications';
   else
     Result := '';
   end;

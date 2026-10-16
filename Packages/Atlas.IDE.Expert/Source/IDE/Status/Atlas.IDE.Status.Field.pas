@@ -34,6 +34,10 @@
 //   rechts vom Atlas-Feld mit eigenem Tooltip; ein Linksklick ruft ihr
 //   OnClick mit der linken Oberkante des Panels. Sie erscheinen auch bei
 //   ausgeschaltetem Atlas-Feld (StatusField); das Atlas-Panel ist dann 0 breit.
+// - Plakette der Benachrichtigungszentrale (#601, SetBadge): rechts im
+//   Atlas-Feld die Zahl der ungelesenen Einträge in der Farbe des schwersten;
+//   ein Linksklick darauf ruft ihr OnClick (Liste) statt des Statusfensters.
+//   Der Tooltip des Felds nennt die Zahl. Nur mit eingeschaltetem Atlas-Feld.
 
 interface
 
@@ -104,6 +108,13 @@ type
     FOnRestart: TProc;
     FOnContext: TProc<TPoint>;
     FExtras: TArray<TExtra>;
+    FBadgeCount: Integer;
+    FBadgeState: TAtlasStatusState;
+    FBadgeHint: string;
+    FOnBadge: TProc<TPoint>;
+    function BadgeText: string;
+    /// <summary>Breite der Plakette samt Abstand in Gerätepixeln; 0 ohne.</summary>
+    function BadgeWidth(ABar: TStatusBar): Integer;
     procedure WndProc(var Message: TMessage);
     procedure TimerTick(Sender: TObject);
     procedure Refresh;
@@ -140,6 +151,11 @@ type
     /// <summary>Zusatzfeld AId setzen (Text, Tooltip, Linksklick mit der linken Oberkante des Panels); AText ''
     /// entfernt es. Nur im Hauptthread.</summary>
     procedure SetExtra(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
+    /// <summary>Plakette der Benachrichtigungen (#601): ACount ungelesene (0 = keine Plakette), Farbe nach
+    /// AState, AHint im Tooltip; Linksklick auf die Plakette ruft AOnClick mit der linken Oberkante des Felds.
+    /// Nur im Hauptthread.</summary>
+    procedure SetBadge(ACount: Integer; AState: TAtlasStatusState; const AHint: string;
+      const AOnClick: TProc<TPoint>);
   end;
 
 implementation
@@ -561,6 +577,38 @@ begin
   RequestRefresh;
 end;
 
+procedure TAtlasStatusField.SetBadge(ACount: Integer; AState: TAtlasStatusState; const AHint: string;
+  const AOnClick: TProc<TPoint>);
+begin
+  if ACount < 0 then
+    ACount := 0;
+  FOnBadge := AOnClick;
+  // Unverändert: nicht neu zeichnen (die Zentrale meldet auch Änderungen ohne Wirkung auf die Plakette).
+  if (ACount = FBadgeCount) and (AState = FBadgeState) and (AHint = FBadgeHint) then
+    Exit;
+  FBadgeCount := ACount;
+  FBadgeState := AState;
+  FBadgeHint := AHint;
+  RequestRefresh;
+end;
+
+function TAtlasStatusField.BadgeText: string;
+begin
+  if FBadgeCount > 99 then
+    Result := '99+'
+  else
+    Result := IntToStr(FBadgeCount);
+end;
+
+function TAtlasStatusField.BadgeWidth(ABar: TStatusBar): Integer;
+begin
+  Result := 0;
+  if (FBadgeCount <= 0) or (ABar = nil) then
+    Exit;
+  ABar.Canvas.Font := ABar.Font;
+  Result := ABar.Canvas.TextWidth(BadgeText) + MulDiv(18, ABar.CurrentPPI, 96);
+end;
+
 /// <summary>Platz für das Symbol samt Abstand in Gerätepixeln.</summary>
 function SymbolWidth(APPI: Integer): Integer;
 begin
@@ -587,6 +635,12 @@ begin
     ProgressId := TAtlasStatusLines.IndexId;
   FText := TAtlasStatusSummary.FieldText(FItems, Settings.StatusFieldSummary, ProgressId);
   FTooltip := TAtlasStatusSummary.Tooltip(FItems);
+  if (FBadgeCount > 0) and (FBadgeHint <> '') then
+  begin
+    if FTooltip <> '' then
+      FTooltip := FTooltip + sLineBreak;
+    FTooltip := FTooltip + FBadgeHint;
+  end;
   if FWindow <> nil then
     FWindow.SetItems(FItems);
   // Ohne Atlas-Feld bleiben die Leisten nur für Zusatzfelder eingehängt (#575).
@@ -618,7 +672,7 @@ begin
       Width_ := 0;
       if Settings.StatusField then
         Width_ := Hook.Bar.Canvas.TextWidth(FText) + MulDiv(30, Hook.Bar.CurrentPPI, 96) +
-          SymbolWidth(Hook.Bar.CurrentPPI);
+          SymbolWidth(Hook.Bar.CurrentPPI) + BadgeWidth(Hook.Bar);
       // Text nur zum Erkennen und für Screenreader; gezeichnet wird in DrawPanel.
       if Width_ > 0 then
         Hook.Panel.Text := FText
@@ -644,8 +698,9 @@ var
   Symbol: TWICImage;
   Target: TRect;
   Dot: TColor;
-  Part: TRect;
+  Part, Badge: TRect;
   Text: string;
+  Inset: Integer;
 begin
   Hook := HookOf(StatusBar);
   if (Hook = nil) or (Panel <> Hook.Panel) then
@@ -681,7 +736,32 @@ begin
     Canvas.Brush.Style := bsClear;
     Part := Rect;
     Part.Left := Left_ + 4 * Radius + 2;
+    // Plakette der Benachrichtigungen (#601) ganz rechts, der Text endet davor.
+    if FBadgeCount > 0 then
+    begin
+      Part.Right := Part.Right - BadgeWidth(StatusBar);
+      Inset := MulDiv(3, StatusBar.CurrentPPI, 96);
+      Badge.Left := Part.Right + Inset;
+      Badge.Top := Rect.Top + Inset;
+      Badge.Right := Rect.Right - Inset;
+      Badge.Bottom := Rect.Bottom - Inset;
+      Dot := TColor(TAtlasStatusWindow.StateColor(TAtlasIdeStyle.Colors, FBadgeState));
+      Canvas.Pen.Color := Dot;
+      Canvas.Brush.Color := Dot;
+      Canvas.Brush.Style := bsSolid;
+      Canvas.RoundRect(Badge.Left, Badge.Top, Badge.Right, Badge.Bottom, Badge.Height, Badge.Height);
+      Canvas.Brush.Style := bsClear;
+      // Auf Gelb dunkle Schrift, sonst weiße.
+      if FBadgeState = TAtlasStatusState.Yellow then
+        Canvas.Font.Color := clBlack
+      else
+        Canvas.Font.Color := clWhite;
+      Text := BadgeText;
+      DrawText(Canvas.Handle, PChar(Text), -1, Badge, DT_SINGLELINE or DT_CENTER or DT_VCENTER or DT_NOPREFIX);
+      Canvas.Font.Color := StyleServices.GetSystemColor(clBtnText);
+    end;
     Text := FText;
+    Canvas.Brush.Style := bsClear;
     DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
     Canvas.Brush.Style := bsSolid;
   except
@@ -710,6 +790,22 @@ begin
   Zone := -1;
   if Button = mbLeft then
     Zone := ZoneAt(Hook, X, Y);
+  // Klick auf die Plakette (#601): Liste der Benachrichtigungen statt Statusfenster.
+  if (Zone = 0) and (FBadgeCount > 0) and Assigned(FOnBadge) and
+    (X >= PanelRect(Hook).Right - BadgeWidth(Hook.Bar)) then
+  begin
+    OnClick := FOnBadge;
+    Area := PanelRect(Hook);
+    Corner := Hook.Bar.ClientToScreen(Point(Area.Left, Area.Top));
+    if FWindow <> nil then
+      FWindow.Dismiss;
+    TAtlasGuard.Run(TAtlasFeature.Status,
+      procedure
+      begin
+        OnClick(Corner);
+      end);
+    Exit;
+  end;
   if Zone = 0 then
   begin
     TAtlasGuard.Run(TAtlasFeature.Status,
