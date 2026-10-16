@@ -38,6 +38,12 @@ type
     procedure LogUsesConfiguredCall;
     [Test]
     procedure ExceptUsesConfiguredCall;
+    [Test]
+    procedure ComponentGoesIntoPackage;
+    [Test]
+    procedure ComponentAncestorFromIndex;
+    [Test]
+    procedure ComponentWrongPlaceFails;
   end;
 
 implementation
@@ -53,6 +59,9 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Text.Lines;
 
@@ -70,6 +79,7 @@ type
     WrittenFiles: TArray<TSlashFile>;
     ShowAfterWrite: string;
     LogCallValue: string;
+    PaletteValue: string;
     constructor Create;
     destructor Destroy; override;
     function Project(const AUri: string; out AProject: TProjectInfo): Boolean;
@@ -80,7 +90,7 @@ type
     procedure ShowDocument(const AFileName: string; const ASelection: TTextRange);
     function HeaderTemplate(const AUri: string): string;
     procedure WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
-    function LogCall(const AUri: string): string;
+    function Setting(const AUri, AName: string): string;
   end;
 
 const
@@ -207,9 +217,14 @@ begin
   ShowAfterWrite := AShow;
 end;
 
-function TFakeHost.LogCall(const AUri: string): string;
+function TFakeHost.Setting(const AUri, AName: string): string;
 begin
-  Result := LogCallValue;
+  if AName = TSlashSettings.LogCall then
+    Result := LogCallValue
+  else if AName = TSlashSettings.ComponentPalette then
+    Result := PaletteValue
+  else
+    Result := '';
 end;
 
 function Run(const ACommand: string; const AHost: ISlashHost; out AEdits: TArray<TRuleEdit>): Boolean;
@@ -490,6 +505,98 @@ begin
   // Falscher Ort: außerhalb einer Routine bleibt die Zeile mit Hinweis stehen.
   Problems := TSlashCommandRegistry.Shared.Problems('unit U;'#10'interface'#10'/except'#10'implementation'#10 +
     'end.', nil);
+  Assert.AreEqual(1, Integer(Length(Problems)));
+end;
+
+const
+  PackageText =
+    'package Paket;'#13#10 +
+    'requires'#13#10 +
+    '  rtl,'#13#10 +
+    '  vcl;'#13#10 +
+    'contains'#13#10 +
+    '  Main in ''Main.pas'';'#13#10 +
+    'end.'#13#10;
+
+function RunWithIndex(const ACommand: string; const AHost: ISlashHost; const AIndex: ISymbolIndex;
+  out AEdits: TArray<TRuleEdit>): Boolean;
+begin
+  Result := TSlashCommandRegistry.Shared.AfterEnter(Format(FormUnit, [ACommand]), TTextPosition.Create(10, 0), nil,
+    nil, AEdits, AIndex, '', TDocumentUris.FromPath(TPath.Combine(GetCurrentDir, 'Main.pas')), AHost);
+end;
+
+procedure TProjectCommandsTests.ComponentGoesIntoPackage;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+  Text: string;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  Host.Info.FileName := TPath.Combine(GetCurrentDir, 'Paket.dproj');
+  Host.Info.MainSource := TPath.Combine(GetCurrentDir, 'Paket.dpk');
+  Host.Files.Add('Paket.dproj', Dproj);
+  Host.Files.Add('Paket.dpk', PackageText);
+  Host.PaletteValue := 'Firma';
+  Assert.IsTrue(Run('/component TZaehler', Keep, Edits));
+  Assert.AreEqual(3, Integer(Length(Host.WrittenFiles)));
+  Text := Host.WrittenFiles[0].Text;
+  Assert.IsTrue(SameFile('Zaehler.pas', Host.WrittenFiles[0].FileName), Host.WrittenFiles[0].FileName);
+  Assert.IsTrue(Parses(Text), Text);
+  Assert.IsTrue(Pos('  TZaehler = class(TComponent)', Text) > 0, Text);
+  Assert.IsTrue(Pos('  published', Text) > 0, Text);
+  Assert.IsTrue(Pos('RegisterComponents(''Firma'', [TZaehler]);', Text) > 0, Text);
+  // In der .dpk unter contains, nicht unter requires.
+  Assert.IsTrue(Pos('contains'#13#10'  Main in ''Main.pas'','#13#10'  Zaehler in ''Zaehler.pas'';',
+    Host.WrittenFiles[1].Text) > 0, Host.WrittenFiles[1].Text);
+  Assert.IsTrue(Pos('<DCCReference Include="Zaehler.pas"/>', Host.WrittenFiles[2].Text) > 0);
+  Assert.AreEqual(Host.WrittenFiles[0].FileName, Host.ShowAfterWrite);
+  // Ohne Einstellung: Palettenseite "Eigene".
+  Host.PaletteValue := '';
+  Assert.IsTrue(Run('/component TZaehler2', Keep, Edits));
+  Assert.IsTrue(Pos('RegisterComponents(''Eigene'', [TZaehler2]);', Host.WrittenFiles[0].Text) > 0);
+end;
+
+procedure TProjectCommandsTests.ComponentAncestorFromIndex;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+  Index: ISymbolIndex;
+  Text: string;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  // Ohne Projekt: nur die Unit, Vorfahr samt Unit aus dem Index.
+  Host.Info.FileName := '';
+  Host.Files.Remove('App.dproj');
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText('unit Vcl.StdCtrls;'#10'interface'#10'type'#10 +
+    '  TButton = class(TObject)'#10'  end;'#10'implementation'#10'end.', 'C:\Lib\Vcl.StdCtrls.pas', nil));
+  Assert.IsTrue(RunWithIndex('/component TMyButton : TButton', Keep, Index, Edits));
+  Assert.AreEqual(1, Integer(Length(Host.WrittenFiles)));
+  Text := Host.WrittenFiles[0].Text;
+  Assert.IsTrue(Pos('  System.SysUtils, System.Classes, Vcl.StdCtrls;', Text) > 0, Text);
+  Assert.IsTrue(Pos('  TMyButton = class(TButton)', Text) > 0, Text);
+  Assert.IsTrue(SameFile('MyButton.pas', Host.WrittenFiles[0].FileName), Host.WrittenFiles[0].FileName);
+end;
+
+procedure TProjectCommandsTests.ComponentWrongPlaceFails;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+  Problems: TArray<TSlashProblem>;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  // Kein Name, unbekannter Vorfahr, ohne Editor.
+  Assert.IsFalse(Run('/component', Keep, Edits));
+  Assert.IsFalse(Run('/component TA : TUnbekannt', Keep, Edits));
+  Assert.IsFalse(Run('/component TA', nil, Edits));
+  Assert.AreEqual(0, Integer(Length(Host.WrittenFiles)));
+  Problems := TSlashCommandRegistry.Shared.Problems(Format(FormUnit, ['/component TA : TUnbekannt']), nil);
   Assert.AreEqual(1, Integer(Length(Problems)));
 end;
 

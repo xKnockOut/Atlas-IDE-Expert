@@ -359,7 +359,7 @@ var
 begin
   Call := '';
   if AContext.Host <> nil then
-    Call := Trim(AContext.Host.LogCall(AContext.Uri));
+    Call := Trim(AContext.Host.Setting(AContext.Uri, TSlashSettings.LogCall));
   if Call = '' then
     Exit(Format('OutputDebugString(PChar(%s));', [AExpression]));
   if Pos('{text}', Call) > 0 then

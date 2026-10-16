@@ -34,7 +34,8 @@ type
   TWorkspaceOfFunc = reference to function(const AUri: string): TShellWorkspace;
   TReadTextFunc = reference to function(const AFileName: string; out AText: string): Boolean;
   THeaderTemplateFunc = reference to function(const AUri: string): string;
-  TLogCallFunc = reference to function(const AUri: string): string;
+  /// <summary>Wert der Einstellung slashCommands.AName zur Datei AUri.</summary>
+  TSlashSettingFunc = reference to function(const AUri, AName: string): string;
 
   TShellSlashHost = class(TInterfacedObject, ISlashHost)
   private
@@ -47,7 +48,7 @@ type
     FDispatcher: TJsonRpcDispatcher;
     FClientAppliesEdits: TFunc<Boolean>;
     FRunInLoop: TJsonRpcScheduler;
-    FLogCallOf: TLogCallFunc;
+    FSettingOf: TSlashSettingFunc;
     function ClientWrites: Boolean;
     /// <summary>Schickt AEdit (wird übernommen) an den Client; nach Erfolg Reload und AAfter.</summary>
     procedure SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc);
@@ -67,9 +68,9 @@ type
     procedure ShowDocument(const AFileName: string; const ASelection: TTextRange);
     function HeaderTemplate(const AUri: string): string;
     procedure WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
-    function LogCall(const AUri: string): string;
-    /// <summary>slashCommands.logCall zur Datei (#304); ohne Zuweisung ''.</summary>
-    property LogCallOf: TLogCallFunc read FLogCallOf write FLogCallOf;
+    function Setting(const AUri, AName: string): string;
+    /// <summary>Einstellungen slashCommands.* zur Datei (#299, #304); ohne Zuweisung ''.</summary>
+    property SettingOf: TSlashSettingFunc read FSettingOf write FSettingOf;
     /// <summary>Stellt Arbeit in die Nachrichtenschleife (TJsonRpcConnection.Queue). Reload und SelectBuild
     /// laufen nur dort (Code-Review A-03); ohne Zuweisung (Tests) sofort.</summary>
     property RunInLoop: TJsonRpcScheduler read FRunInLoop write FRunInLoop;
@@ -300,11 +301,11 @@ begin
   Result := FHeaderTemplate(AUri);
 end;
 
-function TShellSlashHost.LogCall(const AUri: string): string;
+function TShellSlashHost.Setting(const AUri, AName: string): string;
 begin
   Result := '';
-  if Assigned(FLogCallOf) then
-    Result := FLogCallOf(AUri);
+  if Assigned(FSettingOf) then
+    Result := FSettingOf(AUri, AName);
 end;
 
 procedure TShellSlashHost.WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
