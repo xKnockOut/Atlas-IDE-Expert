@@ -29,6 +29,8 @@ sind schneller und genauer als Textsuche und das Lesen ganzer Dateien.
 - `get_todos` vor einer Aufgabe oder einem Release: offene `TODO`/`FIXME` des Projekts, gefiltert nach Kategorie (`category`), Person (`owner`), Unit oder Marke; `includeDone` zeigt erledigte.
 - Befunde mit `explain_finding` erklären lassen (Regel, Ausschnitt, Vorher/Nachher).
 - `get_last_build` zeigt den letzten Build aus der IDE samt Compilermeldungen.
+- `build_project` baut das Projekt in der laufenden IDE (auch in der Starter Edition ohne
+  Kommandozeilen-Compiler) und liefert die Compilermeldungen; das Projekt muss dort offen sein.
 
 ## Ändern
 

@@ -56,6 +56,7 @@ uses
   Atlas.Common.Mcp.Freshness,
   Atlas.Common.Mcp.EditTools,
   Atlas.Common.Mcp.IdeEdits,
+  Atlas.Common.Mcp.IdeBuilds,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Checker,
@@ -179,6 +180,29 @@ begin
   end;
 end;
 
+/// <summary>Laufende IDEs mit Atlas-Plugin samt offenen Projekten (editor-dirty-&lt;pid&gt;.json, #261).</summary>
+function RunningIdes: TArray<TMcpIdeEntry>;
+var
+  FileName, Text: string;
+  Entry: TMcpIdeEntry;
+begin
+  Result := nil;
+  if not TDirectory.Exists(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas')) then
+    Exit;
+  for FileName in TDirectory.GetFiles(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
+    'editor-dirty-*.json') do
+  begin
+    try
+      Text := TFile.ReadAllText(FileName, TEncoding.UTF8);
+    except
+      on Exception do
+        Continue;
+    end;
+    if TMcpIdeBuilds.ParseEntry(Text, Entry) and ProcessRunning(Entry.Pid) then
+      Result := Result + [Entry];
+  end;
+end;
+
 /// <summary>
 /// Schreibt AText mit Kodierung und Zeilenenden der vorhandenen Datei (#121). Ist die Datei in einer IDE
 /// mit Atlas-Plugin offen, ändert das Plugin den Puffer und speichert (#397); sonst die Platte.
@@ -297,6 +321,54 @@ begin
         Exit(TMcpBuildTools.NoBuild(ARoot));
       Result := TMcpBuildTools.Report(Build, ARoot, TMcpServer.OptionalString(AArguments, 'project'));
     end);
+  AServer.AddTool('build_project',
+    'Baut ein Projekt in der laufenden RAD-Studio-IDE über das Atlas-Plugin (#261), auch ohne ' +
+    'Kommandozeilen-Compiler (Starter Edition), und liefert Ergebnis und alle Compilermeldungen wie ' +
+    'get_last_build. Das Projekt muss in der IDE offen sein; ohne project baut es das aktive Projekt, wenn es ' +
+    'unter dem Arbeitsordner liegt. Wartet bis zum Ende des Builds.',
+    '{"type":"object","properties":{' +
+      '"project":{"type":"string","description":"Projekt (.dproj mit Pfad, Dateiname oder Name); ' +
+        'leer = aktives Projekt der IDE"},' +
+      '"mode":{"type":"string","enum":["make","build","check"],"default":"make",' +
+        '"description":"make: geänderte Units, build: alles neu, check: nur Syntax"},' +
+      '"configuration":{"type":"string","description":"z. B. Debug oder Release; leer = aktive Konfiguration"},' +
+      '"platform":{"type":"string","description":"z. B. Win32 oder Win64; leer = aktive Plattform"}}}',
+    function(const AArguments: TJSONObject): string
+    var
+      Request: TMcpIdeBuildRequest;
+      Pid: Cardinal;
+      Wanted, BuildText, Reason: string;
+      Build: TIdeBuild;
+    begin
+      Request := Default(TMcpIdeBuildRequest);
+      Request.Mode := TMcpServer.OptionalString(AArguments, 'mode');
+      if Request.Mode = '' then
+        Request.Mode := 'make';
+      if not TMcpIdeBuilds.ModeValid(Request.Mode) then
+        raise EMcpToolError.Create('Argument "mode": erlaubt sind "make", "build" und "check"');
+      Request.Configuration := TMcpServer.OptionalString(AArguments, 'configuration');
+      Request.Platform := TMcpServer.OptionalString(AArguments, 'platform');
+      // Relativer Pfad: relativ zum Arbeitsordner.
+      Wanted := TMcpServer.OptionalString(AArguments, 'project');
+      if (Wanted <> '') and ((Pos('\', Wanted) > 0) or (Pos('/', Wanted) > 0)) and not TPath.IsPathRooted(Wanted) then
+        Wanted := TPath.GetFullPath(TPath.Combine(ARoot, Wanted));
+      if not TMcpIdeBuilds.Pick(RunningIdes, ARoot, Wanted, Pid, Request.Project, Reason) then
+        raise EMcpToolError.Create(Reason);
+      if TMcpIdeBuilds.Send(TMcpIdeBuilds.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
+        Pid), Request,
+        procedure
+        begin
+          Sleep(TMcpIdeBuilds.PollMs);
+        end,
+        function: Int64
+        begin
+          Result := GetTickCount64;
+        end, BuildText, Reason) <> TMcpIdeBuildOutcome.Done then
+        raise EMcpToolError.Create(Reason);
+      if not TMcpBuildTools.FromFileText(BuildText, Build) then
+        raise EMcpToolError.Create('Ergebnis der IDE nicht lesbar.');
+      Result := TMcpBuildTools.Report(Build, ARoot, '');
+    end, TMcpToolKind.Process);
   AServer.AddTool('qualified_name',
     'Voll qualifizierter Name des Symbols an einer Stelle (Unit.TKlasse.Methode), z. B. für Dokumentation.',
     '{"type":"object","properties":{' +

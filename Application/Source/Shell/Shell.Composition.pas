@@ -77,8 +77,10 @@ uses
   Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Compiler.Results,
+  Atlas.Common.Compiler.Backend,
   Atlas.Common.Lsp.WorkDoneProgress,
   Shell.CommandLine,
+  Shell.Compiler,
   Atlas.Common.Diagnostics.Contract,
   Atlas.Common.Index.Scheduler,
   Atlas.Windows.Process.ParentWatcher,
@@ -194,10 +196,20 @@ type
     /// <summary>Beenden läuft: kein neuer Compilerlauf mehr (Code-Review A-05). Unter FCompileLock.</summary>
     FCompileStopping: Boolean;
     FHasPendingCompile: Boolean;
-    FPendingCompile: TCompilerRequest;
+    FPendingCompile: TShellCompileJob;
     /// <summary>Grund, warum der Compiler nicht nutzbar ist; '' = nutzbar. Unter FCompileLock.
     /// Dann kompiliert der Server nach dem Speichern nicht mehr, bis das Projekt neu geladen wird.</summary>
     FCompilerUnavailable: string;
+    /// <summary>Erkannte Ausgabe der Delphi-Installationen (#261): dcc da und nutzbar?</summary>
+    FCompilerEditions: TShellCompilerEditions;
+    /// <summary>Eigene IDE über cc.ps1 (#261); nur im Compile-Thread und beim Beenden.</summary>
+    FIdeCompiler: TShellIdeCompiler;
+    /// <summary>Zuletzt gewählter Weg zum Compiler für den Status (#28, #261). Unter FCompileLock.</summary>
+    FCompilerChoice: TCompilerBackendChoice;
+    FHasCompilerChoice: Boolean;
+    /// <summary>Gründe, die schon als window/showMessage gezeigt wurden (#261): jeder einmal je Sitzung.
+    /// Unter FCompileLock.</summary>
+    FCompilerShown: TArray<string>;
     /// <summary>Der Client hat keinen brauchbaren Ordner gemeldet (RAD Studio, #175):
     /// Ordner werden aus den geöffneten Dateien abgeleitet.</summary>
     FDeriveWorkspaces: Boolean;
@@ -271,6 +283,8 @@ type
     /// <summary>Inhalt des Status-Befehls (#28).</summary>
     function CollectBookmarks: TArray<TBookmarkHit>;
     function CollectStatus: TServerStatus;
+    /// <summary>Weg zum Compiler für den Status (#28, #261).</summary>
+    procedure CollectCompilerStatus(var AStatus: TServerStatus);
     /// <summary>Fehlerbericht (#108); AArguments optional [{"anonymize", "client", "target"}].</summary>
     function BugReport(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Wirksame Konfiguration je Arbeitsbereich als formatiertes JSON.</summary>
@@ -294,14 +308,31 @@ type
     procedure ProjectLoaded;
     procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
     /// <summary>Kompiliert das Projekt zu AFileName ('' = einziger Ordner) im Hintergrund.
-    /// AManual: über den Befehl, auch wenn der Compiler zuletzt nicht nutzbar war.</summary>
-    procedure StartCompile(const AFileName: string; AManual: Boolean);
-    /// <summary>Merkt sich, dass der Compiler nicht nutzbar ist, und meldet das einmal.</summary>
-    procedure CompilerUnavailable(const AReason: string);
-    /// <summary>Hintergrund-Thread: führt ARequest und vorgemerkte Läufe aus.</summary>
-    procedure CompileLoop(const ARequest: TCompilerRequest);
+    /// AManual: über den Befehl, auch wenn der Compiler zuletzt nicht nutzbar war. Wählt vorher den Weg
+    /// (#261: dcc, eigene IDE über cc.ps1 oder keiner). False, wenn kein Compiler nutzbar ist; Grund und
+    /// Ausweg dann in AChoice.</summary>
+    function StartCompile(const AFileName: string; AManual: Boolean; out AChoice: TCompilerBackendChoice): Boolean;
+    /// <summary>Merkt sich, dass der Compiler nicht nutzbar ist, schreibt es ins Log und zeigt es einmal je
+    /// Grund als window/showMessage (#261).</summary>
+    procedure CompilerUnavailable(const AChoice: TCompilerBackendChoice; AShow: Boolean);
+    /// <summary>Projekt, Installation und Weg zum Compiler für AFileName ('' = einziger Ordner); erkennt die
+    /// Ausgabe der Installation bei Bedarf (#261). False ohne Projekt oder Installation (Grund in AChoice).
+    /// </summary>
+    function ChooseCompiler(const AFileName: string; out AJob: TShellCompileJob;
+      out AChoice: TCompilerBackendChoice): Boolean;
+    /// <summary>Merkt sich den gewählten Weg für den Status (#261).</summary>
+    procedure RememberCompilerChoice(const AChoice: TCompilerBackendChoice);
+    /// <summary>Hintergrund-Thread: führt AJob und vorgemerkte Läufe aus.</summary>
+    procedure CompileLoop(const AJob: TShellCompileJob);
     /// <summary>Ein Compilerlauf mit Fortschritt und Meldungen; Fehler landen im Fortschritt und im Log.</summary>
-    procedure CompileOnce(const ARequest: TCompilerRequest);
+    procedure CompileOnce(const AJob: TShellCompileJob);
+    /// <summary>Lauf mit dcc32/dcc64; zeigt dcc den Lizenztext der Starter Edition, merkt sich das der
+    /// Server und baut bei einem Befehl gleich über die IDE, wenn cc.ps1 eingerichtet ist (#261).</summary>
+    procedure CompileWithDcc(const AJob: TShellCompileJob);
+    /// <summary>Lauf über die eigene IDE mit cc.ps1 (#261).</summary>
+    procedure CompileWithIde(const AJob: TShellCompileJob);
+    /// <summary>Meldungen eines Laufs an Diagnosen, Log und Fortschritt.</summary>
+    procedure PublishCompile(const AMessages: TArray<TCompilerMessage>; const AVia: string);
     /// <summary>Beenden: keine neuen Läufe, laufenden Compiler abbrechen, Thread abwarten (A-05).</summary>
     procedure StopCompiler;
     /// <summary>Beenden: Index-Threads aller Ordner anhalten; nil-sicher.</summary>
@@ -381,6 +412,8 @@ uses
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Compiler.OutputParser,
   Atlas.Windows.Compiler.Adapters.ProcessRunner,
+  Atlas.Windows.Process.Instances,
+  Atlas.Common.Compiler.Edition,
   Atlas.Windows.Console.StdStreams,
   Atlas.Windows.Documents.PathCanonicalizer,
   Atlas.Windows.Diagnostics.Adapters.DebugOutputSink,
@@ -390,6 +423,17 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.GroupReader,
   Atlas.Common.JsonRpc.Messages;
+
+// PowerShell für cc.ps1 (#261): pwsh aus PATH, sonst Windows PowerShell. Der Prozessläufer
+// durchsucht PATH nicht selbst.
+function PowerShellProgram: string;
+begin
+  Result := TVcsChanges.FindProgram('pwsh');
+  if SameText(Result, 'pwsh') then
+    Result := TVcsChanges.FindProgram('powershell');
+  if SameText(Result, 'powershell') then
+    Result := TPath.Combine(GetEnvironmentVariable('SystemRoot'), 'System32\WindowsPowerShell\v1.0\powershell.exe');
+end;
 
 // Mitschnitt anlegen. Rotiert bei Überlänge (#283). Hält ihn schon ein anderer
 // Server (jede RAD-Studio-IDE startet einen eigenen), weicht er auf einen Namen
@@ -507,6 +551,28 @@ begin
   FCompilerProcess := TProcessRunner.Create;
   FCompileProgress := TLspWorkDoneProgress.Create(FTransport, 'atlas-compile');
   FCompileLock := TObject.Create;
+  // Starter Edition ohne dcc (#261): Ausgabe je Installation erkennen und merken; eigene IDE über cc.ps1.
+  FCompilerEditions := TShellCompilerEditions.Create(FCompilerProcess, FLogger, TShellCompilerEditions.DefaultFile);
+  FIdeCompiler := TShellIdeCompiler.Create(FCompilerProcess, FLogger, PowerShellProgram,
+    function: TArray<Cardinal>
+    begin
+      Result := TProcessInstances.IdsOf('bds.exe');
+    end,
+    function(APid: Cardinal): Boolean
+    begin
+      Result := TProcessInstances.Running(APid);
+    end,
+    function(const AFileName: string): TArray<string>
+    begin
+      Result := nil;
+      try
+        if TFile.Exists(AFileName) then
+          Result := TFile.ReadAllLines(AFileName);
+      except
+        on E: Exception do
+          FLogger.Warning('Build-Log der IDE nicht lesbar: ' + E.ClassName);
+      end;
+    end);
   FSyntaxDiagnostics.CompilerMessagesProvider :=
     function(const AFileName: string): TArray<TCompilerMessage>
     begin
@@ -1141,16 +1207,25 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     var
       Uri: string;
+      Started: Boolean;
+      Choice: TCompilerBackendChoice;
+      Answer: TJSONObject;
     begin
       // Optional die URI einer Datei, deren Projekt kompiliert wird.
       Uri := '';
       if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
         Uri := AArguments.Items[0].Value;
-      if Uri <> '' then
-        StartCompile(TDocumentUris.ToPath(Uri), True)
+      if Uri = '' then
+        Started := StartCompile('', True, Choice)
       else
-        StartCompile('', True);
-      Result := TJSONNull.Create;
+        Started := StartCompile(TDocumentUris.ToPath(Uri), True, Choice);
+      // Ohne nutzbaren Compiler antwortet der Befehl immer mit Grund und Ausweg (#261).
+      if not Started then
+        raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, Choice.MessageText);
+      Answer := TJSONObject.Create;
+      Answer.AddPair('started', TJSONBool.Create(True));
+      Answer.AddPair('backend', TCompilerBackends.BackendText(Choice.Backend));
+      Result := Answer;
     end);
   FCommands.Register(RebuildIndexCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1449,6 +1524,9 @@ begin
     FCompileThread.WaitFor;
     FreeAndNil(FCompileThread);
   end;
+  // Eigene IDE (#261) mit dem Server beenden; der alte Läufer ist abgebrochen, deshalb ein neuer.
+  if (FIdeCompiler <> nil) and (FIdeCompiler.Pid <> 0) then
+    FIdeCompiler.Quit(TProcessRunner.Create);
 end;
 
 procedure TServerComposition.StopIndexThreads;
@@ -1506,6 +1584,8 @@ begin
   FColors.Free;
   FCommands.Free;
   FCompileProgress.Free;
+  FIdeCompiler.Free;
+  FCompilerEditions.Free;
   FCompileLock.Free;
   FCompilerResults.Free;
   FCompilerProcess := nil;
@@ -2348,6 +2428,48 @@ begin
     TMonitor.Exit(FWorkspacesLock);
   end;
   Result.Requests := FStatistics.Snapshot;
+  CollectCompilerStatus(Result);
+end;
+
+procedure TServerComposition.CollectCompilerStatus(var AStatus: TServerStatus);
+var
+  Choice: TCompilerBackendChoice;
+  Job: TShellCompileJob;
+  Known: Boolean;
+begin
+  // Weg zum Compiler (#261): zuletzt gewählt; sonst jetzt prüfen (die Ausgabe der Installation ist
+  // meist schon gemerkt). Eine Meldung zeigt erst ein Compilerlauf.
+  TMonitor.Enter(FCompileLock);
+  try
+    Known := FHasCompilerChoice;
+    Choice := FCompilerChoice;
+  finally
+    TMonitor.Exit(FCompileLock);
+  end;
+  if not Known and not FRestricted then
+    try
+      if ChooseCompiler('', Job, Choice) then
+      begin
+        RememberCompilerChoice(Choice);
+        Known := True;
+      end;
+    except
+      on E: Exception do
+        FLogger.Debug('Weg zum Compiler nicht geprüft: ' + E.ClassName);
+    end;
+  if FRestricted then
+  begin
+    Choice := TCompilerBackendChoice.Unavailable('Der Arbeitsbereich ist nicht vertrauenswürdig', '');
+    Known := True;
+  end;
+  if not Known then
+  begin
+    AStatus.Compiler := TCompilerBackends.UncheckedStatus;
+    Exit;
+  end;
+  AStatus.Compiler := Choice.StatusText;
+  AStatus.CompilerBackend := TCompilerBackends.BackendText(Choice.Backend);
+  AStatus.CompilerReason := Choice.MessageText;
 end;
 
 function TServerComposition.SlashCommandsFor(const AUri: string; out ADisabled: TArray<string>): Boolean;
@@ -2519,6 +2641,8 @@ begin
     TMonitor.Enter(FCompileLock);
     try
       FCompilerUnavailable := '';
+      // Andere Installation möglich: Der Status prüft den Weg zum Compiler neu (#261).
+      FHasCompilerChoice := False;
     finally
       TMonitor.Exit(FCompileLock);
     end;
@@ -2562,6 +2686,7 @@ procedure TServerComposition.HandleDocumentEvent(AKind: TDocumentEventKind; cons
 var
   Workspace: TShellWorkspace;
   OnSave: Boolean;
+  Choice: TCompilerBackendChoice;
 begin
   // Tipp-Pause (#492): ungespeicherten Stand in den Index; beim Schließen wieder den der Platte.
   if (FIndexRefresh <> nil) and StartsText('file:', ADocument.Uri) then
@@ -2606,7 +2731,7 @@ begin
       TMonitor.Exit(FWorkspacesLock);
     end;
     if OnSave then
-      StartCompile(TDocumentUris.ToPath(ADocument.Uri), False);
+      StartCompile(TDocumentUris.ToPath(ADocument.Uri), False, Choice);
     Exit;
   end;
   if not IsConfigurationFileName(ExtractFileName(TDocumentUris.ToPath(ADocument.Uri))) then
@@ -2624,45 +2749,66 @@ begin
     FLooseConfiguration.DocumentEvent(AKind, ADocument);
 end;
 
-procedure TServerComposition.CompilerUnavailable(const AReason: string);
-var
-  First: Boolean;
+procedure TServerComposition.RememberCompilerChoice(const AChoice: TCompilerBackendChoice);
 begin
   TMonitor.Enter(FCompileLock);
   try
-    First := FCompilerUnavailable <> AReason;
-    FCompilerUnavailable := AReason;
+    FCompilerChoice := AChoice;
+    FHasCompilerChoice := True;
+  finally
+    TMonitor.Exit(FCompileLock);
+  end;
+end;
+
+procedure TServerComposition.CompilerUnavailable(const AChoice: TCompilerBackendChoice; AShow: Boolean);
+var
+  First, Show: Boolean;
+  Shown: string;
+  Params, Notification: TJSONObject;
+begin
+  TMonitor.Enter(FCompileLock);
+  try
+    First := FCompilerUnavailable <> AChoice.Reason;
+    FCompilerUnavailable := AChoice.Reason;
+    FCompilerChoice := AChoice;
+    FHasCompilerChoice := True;
+    Show := AShow;
+    for Shown in FCompilerShown do
+      if Shown = AChoice.Reason then
+        Show := False;
+    if Show then
+      FCompilerShown := FCompilerShown + [AChoice.Reason];
   finally
     TMonitor.Exit(FCompileLock);
   end;
   if First then
-    FLogger.Warning('Kompilieren nicht möglich: ' + AReason +
+    FLogger.Warning('Kompilieren nicht möglich: ' + AChoice.Reason +
       '. Nach dem Speichern wird bis zum nächsten Laden des Projekts nicht mehr kompiliert; ' +
       'der Befehl "Projekt kompilieren" versucht es erneut.');
+  // Das Log sieht im Editor kaum jemand (#261): Grund und Ausweg einmal je Grund und Sitzung als Meldung;
+  // dauerhaft steht es im Status (#28).
+  if not Show or (FTransport = nil) then
+    Exit;
+  Params := TJSONObject.Create;
+  Params.AddPair('type', TJSONNumber.Create(2));
+  Params.AddPair('message', AChoice.MessageText);
+  Notification := TJsonRpcMessages.Notification('window/showMessage', Params);
+  try
+    FTransport.WriteMessage(Notification);
+  finally
+    Notification.Free;
+  end;
 end;
 
-procedure TServerComposition.StartCompile(const AFileName: string; AManual: Boolean);
+function TServerComposition.ChooseCompiler(const AFileName: string; out AJob: TShellCompileJob;
+  out AChoice: TCompilerBackendChoice): Boolean;
 var
   Workspace: TShellWorkspace;
-  Request: TCompilerRequest;
   Error: string;
-  Unavailable: Boolean;
+  Edition: TCompilerEdition;
 begin
-  // Workspace Trust (#186): Ein Compiler-Lauf kann Build-Events des Projekts ausführen.
-  if FRestricted then
-  begin
-    if AManual then
-      FLogger.Warning('Kompilieren ist in einem nicht vertrauenswürdigen Arbeitsbereich abgeschaltet');
-    Exit;
-  end;
-  TMonitor.Enter(FCompileLock);
-  try
-    Unavailable := FCompilerUnavailable <> '';
-  finally
-    TMonitor.Exit(FCompileLock);
-  end;
-  if Unavailable and not AManual then
-    Exit;
+  AJob := Default(TShellCompileJob);
+  AChoice := Default(TCompilerBackendChoice);
   TMonitor.Enter(FWorkspacesLock);
   try
     Workspace := nil;
@@ -2671,16 +2817,78 @@ begin
     Workspace := TShellWorkspace.Choose(Workspace, FWorkspaces);
     if Workspace = nil then
       Error := 'Kein Ordner mit Projekt geöffnet'
-    else if Workspace.CompilerRequest(Request, Error) then
+    else if Workspace.CompileJob(AJob, Error) then
       Error := '';
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
   if Error <> '' then
   begin
-    CompilerUnavailable(Error);
-    Exit;
+    AChoice := TCompilerBackendChoice.Unavailable(Error, '');
+    Exit(False);
   end;
+  // Die Ausgabe der Installation zählt nur für auto und dcc; erkannt wird einmal je Installation (#261).
+  Edition := TCompilerEdition.Unknown;
+  if (AJob.Settings.Backend = TCompilerBackendSetting.Auto) or (AJob.Settings.Backend = TCompilerBackendSetting.Dcc) then
+    Edition := FCompilerEditions.Resolve(AJob.BdsRoot, AJob.Version, AJob.Request.Executable);
+  AChoice := TCompilerBackends.Choose(AJob.Settings.Backend, Edition, AJob.Settings.IdeCommand,
+    (Trim(AJob.Settings.IdeCommand) <> '') and FileExists(AJob.Settings.IdeCommand));
+  Result := True;
+end;
+
+function TServerComposition.StartCompile(const AFileName: string; AManual: Boolean;
+  out AChoice: TCompilerBackendChoice): Boolean;
+var
+  Job: TShellCompileJob;
+  Unavailable: Boolean;
+begin
+  AChoice := Default(TCompilerBackendChoice);
+  // Workspace Trust (#186): Ein Compiler-Lauf kann Build-Events des Projekts ausführen.
+  if FRestricted then
+  begin
+    AChoice := TCompilerBackendChoice.Unavailable('Der Arbeitsbereich ist nicht vertrauenswürdig',
+      'Dem Ordner im Editor vertrauen; ein Compilerlauf kann Build-Ereignisse des Projekts ausführen.');
+    if AManual then
+      FLogger.Warning('Kompilieren ist in einem nicht vertrauenswürdigen Arbeitsbereich abgeschaltet');
+    Exit(False);
+  end;
+  TMonitor.Enter(FCompileLock);
+  try
+    Unavailable := FCompilerUnavailable <> '';
+    if Unavailable then
+      AChoice := FCompilerChoice;
+  finally
+    TMonitor.Exit(FCompileLock);
+  end;
+  if Unavailable and not AManual then
+    Exit(False);
+  try
+    if not ChooseCompiler(AFileName, Job, AChoice) then
+    begin
+      // Ohne Projekt oder Installation: nur ins Log, wie bisher (#40).
+      CompilerUnavailable(AChoice, False);
+      Exit(False);
+    end;
+  except
+    on ECompilerCancelled do
+      Exit(False); // Beenden läuft (A-05).
+  end;
+  if not AChoice.Usable then
+  begin
+    // Bewusst abgeschaltet: nur der Status sagt es; sonst Grund und Ausweg einmal als Meldung (#261).
+    if Job.Settings.Backend = TCompilerBackendSetting.Off then
+      RememberCompilerChoice(AChoice)
+    else
+      CompilerUnavailable(AChoice, True);
+    Exit(False);
+  end;
+  RememberCompilerChoice(AChoice);
+  Result := True;
+  // Die eigene IDE ist langsam: nur auf den Befehl, nie nach dem Speichern (#261).
+  if not AManual and not TCompilerBackends.RunsOnSave(AChoice.Backend) then
+    Exit;
+  Job.Backend := AChoice.Backend;
+  Job.Manual := AManual;
   TMonitor.Enter(FCompileLock);
   try
     // Beenden läuft schon (A-05): keinen neuen Thread mehr starten.
@@ -2688,8 +2896,10 @@ begin
       Exit;
     if FCompiling then
     begin
-      // Der laufende Lauf startet danach den neuesten Stand.
-      FPendingCompile := Request;
+      // Der laufende Lauf startet danach den neuesten Stand; ein vorgemerkter Befehl bleibt ein Befehl.
+      if FHasPendingCompile and FPendingCompile.Manual then
+        Job.Manual := True;
+      FPendingCompile := Job;
       FHasPendingCompile := True;
       Exit;
     end;
@@ -2706,23 +2916,23 @@ begin
     procedure
     begin
       TThread.NameThreadForDebugging('Atlas.Compile');
-      CompileLoop(Request);
+      CompileLoop(Job);
     end);
   FCompileThread.FreeOnTerminate := False;
   FCompileThread.Start;
 end;
 
-procedure TServerComposition.CompileLoop(const ARequest: TCompilerRequest);
+procedure TServerComposition.CompileLoop(const AJob: TShellCompileJob);
 var
-  Request: TCompilerRequest;
+  Job: TShellCompileJob;
   Done: Boolean;
 begin
-  Request := ARequest;
+  Job := AJob;
   Done := False;
   try
     try
       repeat
-        CompileOnce(Request);
+        CompileOnce(Job);
         TMonitor.Enter(FCompileLock);
         try
           if FCompileStopping or not FHasPendingCompile then
@@ -2732,7 +2942,7 @@ begin
           end
           else
           begin
-            Request := FPendingCompile;
+            Job := FPendingCompile;
             FHasPendingCompile := False;
           end;
         finally
@@ -2758,72 +2968,132 @@ begin
   end;
 end;
 
-procedure TServerComposition.CompileOnce(const ARequest: TCompilerRequest);
+procedure TServerComposition.CompileOnce(const AJob: TShellCompileJob);
+begin
+  try
+    // Im try (S-06): Wirft schon der Start des Fortschritts, endet der Lauf geordnet.
+    if AJob.Backend = TCompilerBackend.Ide then
+      CompileWithIde(AJob)
+    else
+      CompileWithDcc(AJob);
+  except
+    on ECompilerCancelled do
+      ; // Beenden (A-05): nichts mehr melden, der Transport ist schon zu.
+    on E: Exception do
+    begin
+      CompilerUnavailable(TCompilerBackendChoice.Unavailable(E.Message, ''), False);
+      FCompileProgress.Finish('Fehlgeschlagen');
+    end;
+  end;
+end;
+
+procedure TServerComposition.CompileWithDcc(const AJob: TShellCompileJob);
 var
   Lines: TList<string>;
   Messages: TArray<TCompilerMessage>;
-  Item: TCompilerMessage;
-  Counts: array[TCompilerSeverity] of Integer;
   Code, Index: Integer;
-  Summary, Output: string;
+  Output: string;
+  Choice: TCompilerBackendChoice;
+  IdeJob: TShellCompileJob;
 begin
   Lines := TList<string>.Create;
   try
-    try
-      // Im try (S-06): Wirft schon der Start des Fortschritts, endet der Lauf geordnet.
-      FCompileProgress.Start('Projekt kompilieren');
-      Code := FCompilerProcess.Run(ARequest,
-        procedure(const ALine: string)
-        begin
-          Lines.Add(ALine);
-        end);
-      Messages := TCompilerOutputParser.Parse(Lines.ToArray, ARequest.WorkingDir);
-      if (Code <> 0) and (Length(Messages) = 0) then
+    FCompileProgress.Start('Projekt kompilieren');
+    ForceDirectories(AJob.OutputDir);
+    Code := FCompilerProcess.Run(AJob.Request,
+      procedure(const ALine: string)
       begin
-        // Abbruch ohne eine einzige Meldung: Der Compiler selbst ist nicht nutzbar,
-        // z. B. ohne Lizenz für die Kommandozeile. Bisherige Meldungen bleiben stehen.
-        Output := '';
-        for Index := 0 to Min(Lines.Count, 3) - 1 do
-          if Trim(Lines[Index]) <> '' then
-            Output := Output + ' ' + Trim(Lines[Index]);
-        CompilerUnavailable(Format('%s endet mit Exit-Code %d ohne Meldungen:%s',
-          [ARequest.Executable, Code, Output]));
+        Lines.Add(ALine);
+      end);
+    Messages := TCompilerOutputParser.Parse(Lines.ToArray, AJob.Request.WorkingDir);
+    if (Code <> 0) and (Length(Messages) = 0) and TCompilerEditions.HasLicenseText(Lines.ToArray) then
+    begin
+      // Starter bzw. Community Edition (#261): dcc ist da, darf aber nicht von der Kommandozeile bauen.
+      // Merken, damit auto künftig gleich richtig wählt; bei einem Befehl gleich über die IDE bauen.
+      FCompilerEditions.Remember(AJob.BdsRoot, AJob.Version, AJob.Request.Executable,
+        TCompilerEdition.NoCommandLine);
+      Choice := TCompilerBackends.Choose(AJob.Settings.Backend, TCompilerEdition.NoCommandLine,
+        AJob.Settings.IdeCommand, (Trim(AJob.Settings.IdeCommand) <> '') and FileExists(AJob.Settings.IdeCommand));
+      if not Choice.Usable then
+      begin
+        CompilerUnavailable(Choice, True);
         FCompileProgress.Finish('Compiler nicht nutzbar');
-      end
-      else
-      begin
-        TMonitor.Enter(FCompileLock);
-        try
-          FCompilerUnavailable := '';
-        finally
-          TMonitor.Exit(FCompileLock);
-        end;
-        FillChar(Counts, SizeOf(Counts), 0);
-        for Item in Messages do
-        begin
-          Inc(Counts[Item.Severity]);
-          if Item.FileName = '' then
-            FLogger.Warning(Format('Compiler: %s %s', [Item.Code, Item.Text]));
-        end;
-        FSyntaxDiagnostics.RefreshFiles(FCompilerResults.Replace(Messages));
-        Summary := Format('%d Fehler, %d Warnungen, %d Hinweise',
-          [Counts[TCompilerSeverity.Error] + Counts[TCompilerSeverity.Fatal], Counts[TCompilerSeverity.Warning],
-          Counts[TCompilerSeverity.Hint]]);
-        FLogger.Info(Format('Kompiliert mit %s (Exit-Code %d): %s', [ARequest.Executable, Code, Summary]));
-        FCompileProgress.Finish(Summary);
+        Exit;
       end;
-    except
-      on ECompilerCancelled do
-        ; // Beenden (A-05): nichts mehr melden, der Transport ist schon zu.
-      on E: Exception do
+      RememberCompilerChoice(Choice);
+      FCompileProgress.Finish('Kommandozeilen-Compiler nicht lizenziert');
+      if AJob.Manual then
       begin
-        CompilerUnavailable(E.Message);
-        FCompileProgress.Finish('Fehlgeschlagen');
+        IdeJob := AJob;
+        IdeJob.Backend := Choice.Backend;
+        CompileWithIde(IdeJob);
       end;
+      Exit;
     end;
+    if (Code <> 0) and (Length(Messages) = 0) then
+    begin
+      // Abbruch ohne eine einzige Meldung: Der Compiler selbst ist nicht nutzbar.
+      // Bisherige Meldungen bleiben stehen.
+      Output := '';
+      for Index := 0 to Min(Lines.Count, 3) - 1 do
+        if Trim(Lines[Index]) <> '' then
+          Output := Output + ' ' + Trim(Lines[Index]);
+      CompilerUnavailable(TCompilerBackendChoice.Unavailable(Format('%s endet mit Exit-Code %d ohne Meldungen:%s',
+        [ExtractFileName(AJob.Request.Executable), Code, Output]), ''), False);
+      FCompileProgress.Finish('Compiler nicht nutzbar');
+      Exit;
+    end;
+    PublishCompile(Messages, Format('%s (Exit-Code %d)', [ExtractFileName(AJob.Request.Executable), Code]));
   finally
     Lines.Free;
   end;
+end;
+
+procedure TServerComposition.CompileWithIde(const AJob: TShellCompileJob);
+var
+  Messages: TArray<TCompilerMessage>;
+  Succeeded: Boolean;
+  Error: string;
+begin
+  FCompileProgress.Start('Projekt über eine eigene IDE kompilieren');
+  if not FIdeCompiler.Build(AJob.Settings.IdeCommand, AJob.Project, AJob.Platform, Messages, Succeeded, Error) then
+  begin
+    CompilerUnavailable(TCompilerBackendChoice.Unavailable(Error,
+      'cc.ps1 und die Delphi-Installation prüfen; Einzelheiten stehen im Server-Log.'), True);
+    FCompileProgress.Finish('Fehlgeschlagen');
+    Exit;
+  end;
+  if Succeeded then
+    PublishCompile(Messages, 'eigene IDE (erfolgreich)')
+  else
+    PublishCompile(Messages, 'eigene IDE (misslungen)');
+end;
+
+procedure TServerComposition.PublishCompile(const AMessages: TArray<TCompilerMessage>; const AVia: string);
+var
+  Item: TCompilerMessage;
+  Counts: array[TCompilerSeverity] of Integer;
+  Summary: string;
+begin
+  TMonitor.Enter(FCompileLock);
+  try
+    FCompilerUnavailable := '';
+  finally
+    TMonitor.Exit(FCompileLock);
+  end;
+  FillChar(Counts, SizeOf(Counts), 0);
+  for Item in AMessages do
+  begin
+    Inc(Counts[Item.Severity]);
+    if Item.FileName = '' then
+      FLogger.Warning(Format('Compiler: %s %s', [Item.Code, Item.Text]));
+  end;
+  FSyntaxDiagnostics.RefreshFiles(FCompilerResults.Replace(AMessages));
+  Summary := Format('%d Fehler, %d Warnungen, %d Hinweise',
+    [Counts[TCompilerSeverity.Error] + Counts[TCompilerSeverity.Fatal], Counts[TCompilerSeverity.Warning],
+    Counts[TCompilerSeverity.Hint]]);
+  FLogger.Info(Format('Kompiliert über %s: %s', [AVia, Summary]));
+  FCompileProgress.Finish(Summary);
 end;
 
 procedure TServerComposition.HandleDidChangeConfiguration(const AParams: TJSONValue);

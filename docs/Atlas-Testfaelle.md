@@ -282,6 +282,40 @@ Vorbereitung: Diagnoseprotokoll an (`HKCU\Software\Atlas\IdePlugin`, DWORD `Diag
 
 Abbruch mit Grund im Meldungsfenster („Atlas“) ist im Dienst vorhanden und getestet; einen Teilnehmer, der abbricht, bringen erst #529/#530.
 
+## Kompilieren ohne Kommandozeilen-Compiler (#261)
+
+Vorbereitung: RAD Studio in einer Ausgabe ohne `dcc32`/`dcc64` (Starter) oder eine, deren `dcc32` nur den Lizenztext ausgibt. Den Text vorher einmal aufzeichnen: `dcc32 > dcc32-starter.txt` im Ordner `bin` und mit `Tests/Data/Compiler/dcc32-starter.txt` vergleichen; weicht er ab, die Kennzeichen in `Atlas.Common.Compiler.Edition` anpassen. Gemerkte Ergebnisse stehen in `%LOCALAPPDATA%\Atlas\compiler-editions.json`; zum Wiederholen löschen. Für den Weg über die IDE in der globalen `settings.json` `"compiler": {"ideCommand": "C:\\…\\cc.ps1"}` setzen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SE1 | Starter, ohne `compiler.ideCommand`: in VS Code „Atlas: Projekt kompilieren“ (`atlas.server.compile`) | Genau eine Meldung „Atlas kann nicht kompilieren: kein Kommandozeilen-Compiler (Starter Edition: …). In RAD Studio mit dem Atlas-Plugin kompilieren … oder in settings.json "compiler.ideCommand" auf cc.ps1 setzen …“; der Befehl antwortet mit demselben Text als Fehler |
+| SE2 | Befehl zweimal wiederholen, Datei speichern | Keine weitere Meldung; der Befehl antwortet jedes Mal mit dem Fehlertext; beim Speichern kein Compileraufruf |
+| SE3 | `atlas.server.status` bzw. Statusanzeige des Servers | Zeile „Compiler: nicht verfügbar (Starter Edition)“ |
+| SE4 | `compiler-editions.json` ansehen | Eintrag mit BDS-Wurzel, Version und `"edition": "noCommandLine"` (Lizenztext) bzw. `"missing"` (keine dcc32/dcc64); nach einem Serverneustart kein neuer Probelauf |
+| SE5 | `compiler.ideCommand` auf `cc.ps1` setzen, Befehl erneut | Status „Compiler: IDE über cc.ps1 (nur auf den Befehl …)“; eine zweite, eigene IDE (Scratch-IDE) startet; Fortschritt „Projekt über eine eigene IDE kompilieren“; danach Fehler und Warnungen des Projekts als Diagnosen an den richtigen Zeilen (Abgleich mit `Tests/Data/Compiler/cc-build.log`) |
+| SE6 | Befehl noch einmal | Dieselbe Scratch-IDE wird wiederverwendet (keine zweite neue `bds.exe` im Task-Manager) |
+| SE7 | Während SE5 läuft eine IDE des Benutzers mit demselben Projekt | Die IDE des Benutzers baut nicht, ihr Meldungsfenster bleibt unverändert; der Server spricht nur die eigene pid an |
+| SE8 | VS Code schließen (Server endet) | Die Scratch-IDE schließt sich (`cc.ps1 quit`); die IDE des Benutzers bleibt offen |
+| SE9 | `"compiler": {"backend": "off"}` | Keine Meldung; Status „Compiler: nicht verfügbar (abgeschaltet)“; der Befehl antwortet mit dem Fehlertext |
+| SE10 | `"backend": "dcc"` auf der Starter | Wie SE1, aber kein Weg über die IDE, auch wenn `ideCommand` gesetzt ist |
+| SE11 | Ausgabe mit Kommandozeilen-Compiler, `"backend": "auto"` | Status „Compiler: dcc (Kommandozeile)“; Bauen wie bisher (#40), kein Start einer IDE |
+| SE12 | `compiler.ideCommand` zeigt auf eine fehlende Datei | Meldung nennt Starter Edition und „"compiler.ideCommand" zeigt auf keine vorhandene Datei“ |
+
+### Builds für Claude Code (`build_project`)
+
+Vorbereitung: RAD Studio mit Atlas-Plugin, Projekt offen; Claude Code mit dem Atlas-MCP-Server im Projektordner.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MB1 | Claude Code: „Baue das Projekt über build_project“ | Meldungsansicht „Claude Code baut App.dproj in der IDE …“, die IDE baut (Fortschrittsdialog schließt sich selbst), danach „Build für Claude Code beendet: App.dproj, n Fehler“; das Werkzeug liefert Erfolg, Dauer und die Meldungen mit Datei, Zeile und Spalte wie `get_last_build` |
+| MB2 | Mit `mode: "build"`, `configuration: "Release"`, `platform: "Win64"` | Gebaut wird Release/Win64; danach stehen Konfiguration und Plattform in der IDE wieder wie vorher |
+| MB3 | Unbekannte Konfiguration bzw. Plattform | Ablehnung mit Grund im Werkzeug und „Build für Claude Code abgelehnt: …“ in der Meldungsansicht |
+| MB4 | Während der Debugger läuft | Ablehnung „… Debugger …“; nichts wird gebaut |
+| MB5 | Während ein Build von Hand läuft (Strg+F9) | Ablehnung; der laufende Build wird nicht gestört |
+| MB6 | Optionen › Atlas › Compiler › „Builds für Claude Code“ aus (oder Schnellschalter) | Das Werkzeug meldet nach kurzer Frist „nicht angenommen“, die IDE baut nicht |
+| MB7 | Projekt in keiner IDE offen | Werkzeug antwortet sofort „Keine RAD-Studio-IDE mit …“ |
+| MB8 | `get_last_build` nach MB1 | Derselbe Build mit `requestedBy: "mcp"` |
+
 ## Probleme im Editor (#398, #528, #548)
 
 | Nr. | Schritte | Erwartet |

@@ -29,7 +29,8 @@ uses
   Atlas.Common.Index.Builder,
   Atlas.Common.Index.Scheduler,
   Atlas.Common.Rules.Baseline,
-  Atlas.Common.Lsp.Status;
+  Atlas.Common.Lsp.Status,
+  Shell.Compiler;
 
 type
   TShellWorkspace = class
@@ -151,9 +152,11 @@ type
     /// Datei ändert; nil ohne oder bei ungültiger Datei. Threadsicher.
     /// </summary>
     function Baseline: IRuleBaseline;
-    /// <summary>Aufruf des Compilers für das Projekt (#40); False mit Grund in AError
-    /// ohne Projekt, Installation oder unterstützte Plattform. Threadsicher.</summary>
-    function CompilerRequest(out ARequest: TCompilerRequest; out AError: string): Boolean;
+    /// <summary>Compilerlauf für das Projekt (#40, #261): Aufruf von dcc32/dcc64, Projekt, Plattform,
+    /// Installation und compiler-Einstellungen. Ob dcc da und nutzbar ist, prüft der Aufrufer
+    /// (TShellCompilerEditions). False mit Grund in AError ohne Projekt, Installation oder unterstützte
+    /// Plattform. Threadsicher.</summary>
+    function CompileJob(out AJob: TShellCompileJob; out AError: string): Boolean;
     /// <summary>Wechselt Konfiguration und/oder Plattform ('' = unverändert) und lädt das Projekt neu (#46).
     /// False mit Grund in AError ohne Projekt oder bei unbekannten Werten. Threadsicher.</summary>
     function SelectBuild(const AConfig, APlatform: string; out AError: string): Boolean; overload;
@@ -708,20 +711,22 @@ begin
   end;
 end;
 
-function TShellWorkspace.CompilerRequest(out ARequest: TCompilerRequest; out AError: string): Boolean;
+function TShellWorkspace.CompileJob(out AJob: TShellCompileJob; out AError: string): Boolean;
 var
   Project: TProjectInfo;
   HasProject: Boolean;
-  BdsRoot, OutputDir: string;
+  BdsRoot, Version, OutputDir: string;
   LibraryPaths: TArray<string>;
 begin
-  ARequest := Default(TCompilerRequest);
+  AJob := Default(TShellCompileJob);
+  AJob.Settings := FConfiguration.Settings.Compiler;
   AError := '';
   TMonitor.Enter(FLock);
   try
     Project := FProject;
     HasProject := FHasProject;
     BdsRoot := FBdsRoot;
+    Version := FDelphiVersion;
     LibraryPaths := FCompilerLibraryPaths;
   finally
     TMonitor.Exit(FLock);
@@ -740,14 +745,14 @@ begin
   OutputDir := TPath.Combine(TPath.GetTempPath, Format('Atlas\dcc-%.8x\%s-%s',
     [Cardinal(LowerCase(Project.FileName).GetHashCode), Project.Platform, Project.Config]));
   try
-    ARequest := TCompilerCommandLine.Build(Project, LibraryPaths, BdsRoot, OutputDir);
-    // Die Starter Edition liefert keinen Kommandozeilen-Compiler mit.
-    if not FileExists(ARequest.Executable) then
-    begin
-      AError := Format('Kein Kommandozeilen-Compiler gefunden (%s), z. B. in der Starter Edition', [ARequest.Executable]);
-      Exit(False);
-    end;
-    ForceDirectories(OutputDir);
+    AJob.Request := TCompilerCommandLine.Build(Project, LibraryPaths, BdsRoot, OutputDir);
+    AJob.Project := Project.FileName;
+    AJob.Platform := Project.Platform;
+    AJob.BdsRoot := BdsRoot;
+    AJob.Version := Version;
+    // Ob dcc32/dcc64 da ist (Starter Edition, #261), prüft TShellCompilerEditions; der Ausgabeordner
+    // entsteht erst, wenn dcc wirklich läuft.
+    AJob.OutputDir := OutputDir;
     Result := True;
   except
     on E: ECompilerError do

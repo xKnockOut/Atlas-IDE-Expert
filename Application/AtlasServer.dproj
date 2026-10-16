@@ -75,6 +75,7 @@
         <DCCReference Include="Source\Shell\Shell.Bootstrap.pas"/>
         <DCCReference Include="Source\Shell\Shell.Commands.Build.pas"/>
         <DCCReference Include="Source\Shell\Shell.Commands.Index.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Compiler.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

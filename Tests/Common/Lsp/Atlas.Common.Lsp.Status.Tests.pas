@@ -27,6 +27,9 @@ type
     procedure StatusAsMarkdownAndJson;
     [Test]
     procedure StatusShowsCacheAndOffloadMetrics;
+    /// <summary>#261: Weg zum Compiler mit Grund und Ausweg im Status.</summary>
+    [Test]
+    procedure StatusShowsCompiler;
   end;
 
 implementation
@@ -259,6 +262,28 @@ begin
     Assert.AreEqual<Int64>(1024 * 1024, Json.GetValue<Int64>('workspaces[0].libraryCacheBytes'));
     Assert.IsTrue(Json.GetValue<string>('workspaces[0].lastUpdate').StartsWith('2026-10-14T12:30:00'),
       Json.GetValue<string>('workspaces[0].lastUpdate'));
+  finally
+    Json.Free;
+  end;
+end;
+
+procedure TLspStatusTests.StatusShowsCompiler;
+var
+  Status: TServerStatus;
+  Json: TJSONObject;
+begin
+  Status := Default(TServerStatus);
+  Assert.IsTrue(Pos('Compiler', Status.ToMarkdown) = 0, 'ohne Angabe keine Zeile');
+  Status.Compiler := 'Compiler: nicht verfügbar (Starter Edition)';
+  Status.CompilerBackend := 'off';
+  Status.CompilerReason := 'Atlas kann nicht kompilieren: kein Kommandozeilen-Compiler.';
+  Assert.IsTrue(Pos('- Compiler: nicht verfügbar (Starter Edition)', Status.ToMarkdown) > 0, Status.ToMarkdown);
+  Assert.IsTrue(Pos('  Atlas kann nicht kompilieren', Status.ToMarkdown) > 0, Status.ToMarkdown);
+  Json := Status.ToJson;
+  try
+    Assert.AreEqual('off', Json.GetValue<string>('compiler.backend'));
+    Assert.AreEqual('Compiler: nicht verfügbar (Starter Edition)', Json.GetValue<string>('compiler.status'));
+    Assert.IsTrue(Json.GetValue<string>('compiler.reason').StartsWith('Atlas kann nicht'));
   finally
     Json.Free;
   end;
