@@ -51,6 +51,10 @@
 //   Projektgruppe (die Karte Tests #763 zeigt ihn beim Projekt, das der
 //   Benutzer öffnet). „Fehlgeschlagene Tests erneut ausführen“ liest daraus
 //   die Namen des letzten Laufs (LastFailedTests), auch nach einem Neustart.
+// - Schnellaktionen (#764): Die Quelle der Knopfleiste (QuickActions, aus der
+//   Composition) bekommt jeder Frame; VcsOf liefert ihr den Stand der
+//   Versionsverwaltung (frisch abgefragt, sonst gespeichert), Refresh fragt
+//   nach Pull neu ab.
 // - Die Willkommensseite startet keinen Server und liest nur lokale Dateien.
 
 interface
@@ -65,6 +69,7 @@ uses
   Atlas.Core.Build.Messages,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Projects,
+  Atlas.UI.Welcome.QuickActions,
   Atlas.UI.Welcome.Projects;
 
 type
@@ -93,6 +98,8 @@ type
     FQuerying: TDictionary<string, UInt64>;
     // Für den Projektverlauf gewähltes Projekt (#758); '' = keins.
     FSelected: string;
+    // Quelle der Schnellaktionen (#764); nil = keine Knöpfe.
+    FQuickActions: IAtlasQuickActionsSource;
     procedure Changed;
     procedure Report(const AText: string);
     procedure Opened(const AProject: string);
@@ -147,6 +154,12 @@ type
     class function LastFailedTests(const AProject: string): TArray<string>; static;
     /// <summary>Jetzt in UTC, Zeitpunkt der Einträge.</summary>
     class function StampUtc: TDateTime; static;
+    /// <summary>Stand der Versionsverwaltung von AProject: frisch abgefragt (diese Sitzung), sonst aus der
+    /// Zusammenfassung; Empty ohne (#764).</summary>
+    function VcsOf(const AProject: string): TAtlasProjectVcs;
+    /// <summary>Branch und Änderungen von AProject jetzt neu abfragen (nach Pull, #764), auch innerhalb der Minute.
+    /// </summary>
+    procedure Refresh(const AProject: string);
     /// <summary>%LOCALAPPDATA%\Atlas\projects.</summary>
     class function Folder: string; static;
     /// <summary>.dpr bzw. .dpk mit .dproj daneben → .dproj (so führt die IDE ihre Liste).</summary>
@@ -161,6 +174,8 @@ type
     function Selectable: Boolean;
     procedure Select(const AProject: string);
     function Selected: string;
+    /// <summary>Quelle der Schnellaktionen (#764) für neue Frames; vor Start setzen.</summary>
+    property QuickActions: IAtlasQuickActionsSource read FQuickActions write FQuickActions;
   end;
 
 implementation
@@ -299,6 +314,8 @@ begin
     begin
       Frame := TAtlasWelcomeProjectsFrame.Create(AOwner);
       Frame.Source := Keep;
+      // Schnellaktionen (#764): dieselbe Quelle für jeden Frame.
+      Frame.QuickActions := QuickActions;
       Result := Frame;
     end);
   TAtlasWelcomeSections.Default.Add(Section);
@@ -328,6 +345,7 @@ begin
   end;
   TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.Projects);
   TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.Projects);
+  FQuickActions := nil;
 end;
 
 function TAtlasIdeProjects.Section: TAtlasWelcomeSection;
@@ -449,6 +467,28 @@ end;
 procedure TAtlasIdeProjects.Query(const AProject: string);
 begin
   Query(AProject, 0);
+end;
+
+function TAtlasIdeProjects.VcsOf(const AProject: string): TAtlasProjectVcs;
+var
+  Summary: TAtlasProjectSummary;
+begin
+  Result := TAtlasProjectVcs.Empty;
+  if FStopped or (AProject = '') then
+    Exit;
+  if FLive.TryGetValue(TAtlasProjectSummaries.NormalizedPath(AProject), Result) then
+    Exit;
+  if TAtlasProjectSummaries.Load(Folder, AProject, Summary) then
+    Result := Summary.Vcs;
+end;
+
+procedure TAtlasIdeProjects.Refresh(const AProject: string);
+begin
+  if FStopped or (AProject = '') then
+    Exit;
+  // Auch ohne welcomePage.refreshVcs: Der Benutzer hat gerade geholt, der alte Stand wäre falsch.
+  FFresh.Remove(TAtlasProjectSummaries.NormalizedPath(AProject));
+  Query(AProject);
 end;
 
 procedure TAtlasIdeProjects.Query(const AProject: string; ABuildUtc: TDateTime);

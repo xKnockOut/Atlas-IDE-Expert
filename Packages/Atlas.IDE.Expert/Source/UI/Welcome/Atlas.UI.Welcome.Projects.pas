@@ -12,6 +12,14 @@
 // „Öffnen“, „Ordner öffnen“ und „Aus Liste entfernen“ (nur dieser Bereich).
 // Mit Projektverlauf (#758, Selectable) wählt ein Klick die Zeile für den
 // Verlauf (hinterlegt), Doppelklick öffnet; rote Marken springen weiter.
+// Schnellaktionen (#764, Atlas.UI.Welcome.QuickActions): In der Zeile unter
+// der Maus bzw. in der mit der Tastatur gewählten Zeile (hinterlegt) stehen
+// statt der Marken die Knöpfe „Öffnen und bauen“, „Tests“, „Startprofil ▾“,
+// „Pull“, „Ordner“, „Konsole“; ein laufender oder beendeter Lauf steht als
+// Marke links der übrigen („baut … 12 s“, „Tests: 57 ok“). Das Kontextmenü
+// bietet dieselben Aktionen samt „Bauen mit“ und „Starten mit“. Tastatur:
+// ↑/↓ Zeile (mit Projektverlauf zugleich die Auswahl), ←/→ Knopf, Enter
+// führt aus bzw. öffnet, Strg+B baut, Strg+T testet.
 // Daten und Aktionen kommen über IAtlasProjectsSource aus der IDE-Schicht;
 // Klicks gehen über die Nachrichtenschleife, weil die Quelle den Bereich
 // daraufhin neu füllt.
@@ -29,7 +37,8 @@ uses
   Vcl.Graphics,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.Projects,
-  Atlas.UI.Welcome.Frame;
+  Atlas.UI.Welcome.Frame,
+  Atlas.UI.Welcome.QuickActions;
 
 type
   IAtlasProjectsSource = interface
@@ -79,7 +88,9 @@ type
     FOpenFolderItem: TMenuItem;
     FRemoveItem: TMenuItem;
     FMenuRow: Integer;
-    FHintRow: Integer;
+    // Zeile und Knopf des gezeigten Tooltips.
+    FHintKey: string;
+    FQuick: TAtlasQuickActionsBar;
     // Lage des letzten Drückens für den Doppelklick (#758) und ob es der zweite Klick eines Doppelklicks war.
     FLastMouse: TPoint;
     FDoubleDown: Boolean;
@@ -89,12 +100,20 @@ type
     procedure BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure BoxMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure BoxDblClick(Sender: TObject);
+    procedure BoxMouseLeave(Sender: TObject);
     procedure MenuPopup(Sender: TObject);
     procedure OpenClick(Sender: TObject);
     procedure OpenFolderClick(Sender: TObject);
     procedure RemoveClick(Sender: TObject);
     procedure LayoutPills;
     function RowTop(ARow: Integer): Integer;
+    function GetQuickActions: IAtlasQuickActionsSource;
+    procedure SetQuickActions(const AValue: IAtlasQuickActionsSource);
+    procedure QuickOpenRow(ARow: Integer);
+    procedure QuickSelectRow(ARow: Integer);
+    procedure QuickRowMenu(ARow: Integer);
+    function ProjectNames: TArray<string>;
+    function IsUpdateRow(ARow: Integer): Boolean;
   protected
     function BodyHeight: Integer; override;
   public
@@ -120,6 +139,10 @@ type
     /// <summary>UTC-Zeit als lokale Kurzform; '' für 0.</summary>
     class function LocalText(AUtc: TDateTime): string; static;
     property Source: IAtlasProjectsSource read FSource write SetSource;
+    /// <summary>Schnellaktionen (#764); nil = keine Knöpfe.</summary>
+    property QuickActions: IAtlasQuickActionsSource read GetQuickActions write SetQuickActions;
+    /// <summary>Knopfleiste, Stand und Tastatur der Schnellaktionen (auch für Tests).</summary>
+    property Quick: TAtlasQuickActionsBar read FQuick;
     property Entries: TAtlasProjectEntries read FEntries;
     property PaintBox: TPaintBox read FBox;
     property Menu: TPopupMenu read FMenu;
@@ -134,6 +157,7 @@ implementation
 
 uses
   System.UITypes,
+  Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   System.DateUtils,
@@ -146,7 +170,6 @@ constructor TAtlasWelcomeProjectsFrame.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FMenuRow := -1;
-  FHintRow := -1;
   FBox := TPaintBox.Create(Self);
   FBox.Parent := Body;
   FBox.Align := alClient;
@@ -156,6 +179,7 @@ begin
   FBox.OnMouseUp := BoxMouseUp;
   FBox.OnMouseDown := BoxMouseDown;
   FBox.OnDblClick := BoxDblClick;
+  FBox.OnMouseLeave := BoxMouseLeave;
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
   FOpenItem := TMenuItem.Create(Self);
@@ -172,6 +196,82 @@ begin
   FRemoveItem.OnClick := RemoveClick;
   FMenu.Items.Add(FRemoveItem);
   FBox.PopupMenu := FMenu;
+  // Schnellaktionen (#764): Knopfleiste, Tastatur und Einträge im Kontextmenü.
+  FQuick := TAtlasQuickActionsBar.Create(Self, FBox, Body);
+  FQuick.OnScale :=
+    function(AValue: Integer): Integer
+    begin
+      Result := ScaleValue(AValue);
+    end;
+  FQuick.OnOpenRow := QuickOpenRow;
+  FQuick.OnSelectRow := QuickSelectRow;
+  FQuick.OnRowMenu := QuickRowMenu;
+  FQuick.AttachMenu(FMenu);
+end;
+
+function TAtlasWelcomeProjectsFrame.GetQuickActions: IAtlasQuickActionsSource;
+begin
+  Result := FQuick.Source;
+end;
+
+procedure TAtlasWelcomeProjectsFrame.SetQuickActions(const AValue: IAtlasQuickActionsSource);
+begin
+  FQuick.Source := AValue;
+  UpdateContent;
+end;
+
+function TAtlasWelcomeProjectsFrame.ProjectNames: TArray<string>;
+var
+  Index: Integer;
+begin
+  SetLength(Result, Length(FEntries));
+  for Index := 0 to High(FEntries) do
+    Result[Index] := FEntries[Index].Project;
+end;
+
+procedure TAtlasWelcomeProjectsFrame.QuickOpenRow(ARow: Integer);
+var
+  Source: IAtlasProjectsSource;
+  Project: string;
+begin
+  // Enter ohne Knopf öffnet (wie Doppelklick bzw. Klick ohne Projektverlauf).
+  if (FSource = nil) or (ARow < 0) or (ARow > High(FEntries)) then
+    Exit;
+  Source := FSource;
+  Project := FEntries[ARow].Project;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      Source.Open(Project);
+    end);
+end;
+
+procedure TAtlasWelcomeProjectsFrame.QuickSelectRow(ARow: Integer);
+var
+  Source: IAtlasProjectsSource;
+  Project: string;
+begin
+  // Mit Projektverlauf (#758) wählen die Pfeiltasten auch das Projekt des Verlaufs.
+  if (FSource = nil) or (ARow < 0) or (ARow > High(FEntries)) or not FSource.Selectable then
+    Exit;
+  Source := FSource;
+  Project := FEntries[ARow].Project;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      Source.Select(Project);
+    end);
+end;
+
+procedure TAtlasWelcomeProjectsFrame.QuickRowMenu(ARow: Integer);
+var
+  Position: TPoint;
+begin
+  if (ARow < 0) or (ARow > High(FEntries)) then
+    Exit;
+  Position := FBox.ClientToScreen(Point(ScaleValue(Indent), RowTop(ARow) + ScaleValue(RowHeight) div 2));
+  FMenu.PopupComponent := FBox;
+  FMenu.Popup(Position.X, Position.Y);
 end;
 
 procedure TAtlasWelcomeProjectsFrame.SetSource(const AValue: IAtlasProjectsSource);
@@ -195,7 +295,8 @@ begin
     FPills[Index] := TAtlasWelcomeProjects.Pills(FEntries[Index]);
   // Die Rechtecke der Marken entstehen beim Zeichnen: Erst dann gibt es eine Zeichenfläche.
   FPillRects := nil;
-  FHintRow := -1;
+  FHintKey := '';
+  FQuick.SetRows(ProjectNames);
   FBox.Invalidate;
   inherited;
   // Andere Anzahl Zeilen: Der Frame „Atlas“ ordnet die Spalten neu.
@@ -365,7 +466,9 @@ var
   PillRect: TRect;
   Text, Branch: string;
   TextColor, MutedColor: TColor;
-  Selected: Integer;
+  Selected, Active, Limit, Right: Integer;
+  State: TAtlasQuickActionState;
+  QuickRect: TRect;
 begin
   Canvas := FBox.Canvas;
   Canvas.Brush.Style := bsClear;
@@ -385,11 +488,23 @@ begin
   Dot := ScaleValue(DotSize);
   Radius := ScaleValue(PillHeight);
   Selected := SelectedRow;
+  Active := FQuick.ActiveRow;
   for Row := 0 to High(FEntries) do
   begin
     Entry := FEntries[Row];
     Top := RowTop(Row);
     Left := ScaleValue(Indent);
+    // Schnellaktionen (#764): aktive Zeile hinterlegt, Fokusrahmen der Tastatur.
+    FQuick.PaintBackground(Canvas, Row, Rect(0, Top, FBox.Width, Top + ScaleValue(RowHeight) - ScaleValue(2)));
+    // Rechte Grenze für Name, Branch und zweite Zeile: die Knopfleiste der aktiven Zeile bzw. die Marken.
+    Limit := FBox.Width - ScaleValue(Indent);
+    if Row = Active then
+    begin
+      Canvas.Font.Assign(Font);
+      Canvas.Font.Size := Font.Size - 1;
+      Limit := FQuick.LayoutRow(Canvas, Row, Rect(ScaleValue(Indent) + Dot + ScaleValue(80), Top,
+        FBox.Width - ScaleValue(Indent), Top + ScaleValue(RowHeight) - ScaleValue(2))) - ScaleValue(Indent);
+    end;
     // Für den Projektverlauf gewählte Zeile hinterlegen (#758), in der Markierungsfarbe des Themas.
     if Row = Selected then
     begin
@@ -409,17 +524,50 @@ begin
     Canvas.Font.Assign(Font);
     Canvas.Font.Color := TextColor;
     Canvas.Font.Style := [fsBold];
-    Canvas.TextOut(Left, Top + ScaleValue(3), Entry.Name);
+    Canvas.TextRect(Rect(Left, Top + ScaleValue(3), Limit, Top + ScaleValue(21)), Left, Top + ScaleValue(3),
+      Entry.Name);
     Inc(Left, Canvas.TextWidth(Entry.Name) + ScaleValue(8));
     Canvas.Font.Style := [];
     Branch := Entry.Branch;
-    if Branch <> '' then
+    if (Branch <> '') and (Left < Limit) then
     begin
       Canvas.Font.Color := MutedColor;
-      Canvas.TextOut(Left, Top + ScaleValue(3), Branch);
+      Canvas.TextRect(Rect(Left, Top + ScaleValue(3), Limit, Top + ScaleValue(21)), Left, Top + ScaleValue(3),
+        Branch);
+    end;
+    // Zweite Zeile.
+    Canvas.Font.Assign(Font);
+    Canvas.Font.Color := MutedColor;
+    Canvas.TextRect(Rect(ScaleValue(Indent) + Dot + ScaleValue(6), Top + ScaleValue(23), Limit,
+      Top + ScaleValue(41)), ScaleValue(Indent) + Dot + ScaleValue(6), Top + ScaleValue(23), DetailText(Entry));
+    // Aktive Zeile: Knöpfe statt Marken.
+    Canvas.Font.Size := Font.Size - 1;
+    if Row = Active then
+    begin
+      FQuick.PaintRow(Canvas, Row);
+      Continue;
+    end;
+    // Stand der letzten Schnellaktion links der Marken („baut … 12 s“, „Tests: 57 ok“).
+    State := FQuick.StateOf(Row);
+    Text := TAtlasQuickActionsBar.StateText(State, FQuick.NowMs, IsUpdateRow(Row));
+    if Text <> '' then
+    begin
+      Right := FBox.Width - ScaleValue(Indent);
+      if Length(FPillRects[Row]) > 0 then
+        Right := FPillRects[Row][0].Left - ScaleValue(PillGap);
+      QuickRect := Rect(Right - Canvas.TextWidth(Text) - 2 * ScaleValue(PillPadding), Top + ScaleValue(3), Right,
+        Top + ScaleValue(3) + ScaleValue(PillHeight));
+      Canvas.Brush.Style := bsSolid;
+      Canvas.Brush.Color := TAtlasQuickActionsBar.StateColor(State);
+      Canvas.Pen.Color := Canvas.Brush.Color;
+      Canvas.RoundRect(QuickRect.Left, QuickRect.Top, QuickRect.Right, QuickRect.Bottom, Radius, Radius);
+      Canvas.Brush.Style := bsClear;
+      Canvas.Font.Color := clWhite;
+      Canvas.Font.Style := [];
+      Canvas.TextOut(QuickRect.Left + ScaleValue(PillPadding),
+        QuickRect.Top + (QuickRect.Height - Canvas.TextHeight(Text)) div 2, Text);
     end;
     // Marken.
-    Canvas.Font.Size := Font.Size - 1;
     for Index := 0 to High(FPills[Row]) do
     begin
       Pill := FPills[Row][Index];
@@ -438,11 +586,18 @@ begin
       Canvas.TextOut(PillRect.Left + ScaleValue(PillPadding),
         PillRect.Top + (PillRect.Height - Canvas.TextHeight(Text)) div 2, Text);
     end;
-    // Zweite Zeile.
-    Canvas.Font.Assign(Font);
-    Canvas.Font.Color := MutedColor;
-    Canvas.TextOut(ScaleValue(Indent) + Dot + ScaleValue(6), Top + ScaleValue(23), DetailText(Entry));
   end;
+end;
+
+function TAtlasWelcomeProjectsFrame.IsUpdateRow(ARow: Integer): Boolean;
+var
+  Button: TAtlasQuickActionButton;
+begin
+  // SVN: „aktualisiert …“ statt „holt …“.
+  Result := False;
+  for Button in FQuick.ButtonsOf(ARow) do
+    if Button.Action = TAtlasQuickAction.Pull then
+      Result := Button.Update;
 end;
 
 function TAtlasWelcomeProjectsFrame.HitTest(X, Y: Integer): TAtlasProjectsHit;
@@ -532,27 +687,56 @@ end;
 procedure TAtlasWelcomeProjectsFrame.BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
 var
   Hit: TAtlasProjectsHit;
+  QuickRow, QuickButton: Integer;
+  OnMenu: Boolean;
+  Key, Hint, State: string;
 begin
   Hit := HitTest(X, Y);
+  FQuick.MouseMove(Hit.Row, X, Y);
   if Hit.Row >= 0 then
     FBox.Cursor := crHandPoint
   else
     FBox.Cursor := crDefault;
-  if Hit.Row = FHintRow then
+  if not FQuick.HitTest(X, Y, QuickRow, QuickButton, OnMenu) then
+    QuickButton := -1;
+  Key := Format('%d/%d', [Hit.Row, QuickButton]);
+  if Key = FHintKey then
     Exit;
-  FHintRow := Hit.Row;
-  if Hit.Row >= 0 then
-    FBox.Hint := HintFor(FEntries[Hit.Row], (FSource <> nil) and FSource.Selectable)
+  FHintKey := Key;
+  if (QuickButton >= 0) and FQuick.HintAt(X, Y, Hint) then
+    FBox.Hint := Hint
+  else if Hit.Row >= 0 then
+  begin
+    FBox.Hint := HintFor(FEntries[Hit.Row], (FSource <> nil) and FSource.Selectable);
+    // Stand der letzten Schnellaktion samt Grund (#764).
+    if FQuick.Source <> nil then
+    begin
+      State := TAtlasQuickActionsBar.StateText(FQuick.StateOf(Hit.Row), FQuick.NowMs, IsUpdateRow(Hit.Row));
+      if (State <> '') and (FQuick.StateOf(Hit.Row).Detail <> '') then
+        State := State + ': ' + FQuick.StateOf(Hit.Row).Detail;
+      if State <> '' then
+        FBox.Hint := FBox.Hint + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickHintState, [State]);
+      if FQuick.Active then
+        FBox.Hint := FBox.Hint + sLineBreak + TAtlasStrings.Text(TAtlasTextId.WelcomeQuickHintKeys);
+    end;
+  end
   else
     FBox.Hint := '';
   Application.CancelHint;
 end;
 
+procedure TAtlasWelcomeProjectsFrame.BoxMouseLeave(Sender: TObject);
+begin
+  FQuick.MouseLeave;
+  FHintKey := '';
+end;
+
 procedure TAtlasWelcomeProjectsFrame.BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X,
   Y: Integer);
 begin
-  // Der zweite Klick eines Doppelklicks wählt nicht noch einmal: BoxDblClick öffnet.
-  if (Button = mbLeft) and not FDoubleDown then
+  // Der zweite Klick eines Doppelklicks wählt nicht noch einmal: BoxDblClick öffnet. Knöpfe der Schnellaktionen
+  // (#764) handeln selbst.
+  if (Button = mbLeft) and not FDoubleDown and not FQuick.ClickAt(X, Y) then
     ClickAt(HitTest(X, Y));
   FDoubleDown := False;
 end;
@@ -562,10 +746,18 @@ procedure TAtlasWelcomeProjectsFrame.BoxMouseDown(Sender: TObject; Button: TMous
 begin
   FLastMouse := Point(X, Y);
   FDoubleDown := ssDouble in Shift;
+  // Die Tastatur der Schnellaktionen übernimmt Zeile und Fokus (#764).
+  FQuick.MouseDown(HitTest(X, Y).Row);
 end;
 
 procedure TAtlasWelcomeProjectsFrame.BoxDblClick(Sender: TObject);
+var
+  QuickRow, QuickButton: Integer;
+  OnMenu: Boolean;
 begin
+  // Doppelklick auf einen Knopf öffnet nicht zusätzlich das Projekt.
+  if FQuick.HitTest(FLastMouse.X, FLastMouse.Y, QuickRow, QuickButton, OnMenu) then
+    Exit;
   DoubleClickAt(HitTest(FLastMouse.X, FLastMouse.Y));
 end;
 
@@ -578,6 +770,8 @@ begin
   FOpenItem.Enabled := FMenuRow >= 0;
   FOpenFolderItem.Enabled := FMenuRow >= 0;
   FRemoveItem.Enabled := FMenuRow >= 0;
+  // Schnellaktionen der Zeile (#764): nur eingestellte Knöpfe, gesperrte grau.
+  FQuick.PrepareMenu(FMenuRow);
 end;
 
 procedure TAtlasWelcomeProjectsFrame.OpenClick(Sender: TObject);

@@ -350,6 +350,20 @@
       "image": "Tipps\\weiterarbeiten.png"
     },
     {
+      "id": "quickActions",
+      "command": "Atlas.WelcomeQuickBuild",
+      "usage": [
+        "Atlas.WelcomeQuickBuild",
+        "Atlas.WelcomeQuickTests"
+      ],
+      "setting": "WelcomePageQuickActions",
+      "title": "Schnellaktionen je Projekt",
+      "titleEn": "Quick actions per project",
+      "text": "In „Projekte“ und „Weiterarbeiten“ zeigt die Zeile unter der Maus oder der Tastatur Knöpfe: Öffnen und bauen (Strg+B), Tests (Strg+T), Startprofil, Pull, Ordner und Konsole. Der Fortschritt steht in der Zeile, das Ergebnis als Marke; Pull holt nur ohne lokale Änderungen.",
+      "textEn": "In “Projects” and “Continue” the row under the mouse or keyboard shows buttons: open and build (Ctrl+B), tests (Ctrl+T), start profile, pull, folder and console. Progress shows in the row, the result as a pill; pull only fetches without local changes.",
+      "image": "Tipps\\schnellaktionen.png"
+    },
+    {
       "id": "welcomeLayout",
       "command": "Atlas.WelcomeApply",
       "usage": [

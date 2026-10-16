@@ -34,6 +34,8 @@
 //   und springt hin; ein Favorit springt zur Deklaration in der Unit, deren
 //   Datei aus den Index-Caches auf der Platte kommt.
 // - welcomePage.continue aus: kein Bereich, kein Mitschreiben, keine Abfrage.
+// - Schnellaktionen (#764): Die Quelle der Knopfleiste (QuickActions, aus der
+//   Composition) bekommt jeder Frame.
 
 interface
 
@@ -48,6 +50,7 @@ uses
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Continue,
   Atlas.Core.Welcome.Saved,
+  Atlas.UI.Welcome.QuickActions,
   Atlas.UI.Welcome.Continue;
 
 type
@@ -110,6 +113,8 @@ type
     FIncomingFresh: UInt64;
     FIncomingStarted: UInt64;
     FNotice: string;
+    // Quelle der Schnellaktionen (#764); nil = keine Knöpfe.
+    FQuickActions: IAtlasQuickActionsSource;
     procedure Changed;
     procedure Report(const AText: string);
     function Enabled: Boolean;
@@ -164,6 +169,8 @@ type
     procedure ShowCommit(const AProject: string; const ACommit: TAtlasContinueCommit);
     procedure OpenSaved(const AItem: TAtlasSavedItem);
     procedure Shown;
+    /// <summary>Quelle der Schnellaktionen (#764) für neue Frames; vor Start setzen.</summary>
+    property QuickActions: IAtlasQuickActionsSource read FQuickActions write FQuickActions;
   end;
 
 implementation
@@ -347,6 +354,8 @@ begin
     begin
       Frame := TAtlasWelcomeContinueFrame.Create(AOwner);
       Frame.Source := Keep;
+      // Schnellaktionen (#764): dieselbe Quelle für jeden Frame.
+      Frame.QuickActions := QuickActions;
       Result := Frame;
     end);
   TAtlasWelcomeSections.Default.Add(Section);
@@ -407,6 +416,7 @@ begin
   end;
   TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.Continue);
   TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.Continue);
+  FQuickActions := nil;
 end;
 
 function TAtlasIdeContinue.Section: TAtlasWelcomeSection;

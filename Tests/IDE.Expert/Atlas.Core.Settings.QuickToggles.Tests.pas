@@ -216,6 +216,13 @@ begin
   Assert.AreEqual('WelcomePage', Toggle.Feature);
   Assert.IsTrue(TAtlasQuickToggles.GetFlag(TAtlasPluginSettings.Defaults, 'CiLogin', Value));
   Assert.IsTrue(Value);
+  // Schnellaktionen der Willkommensseite (#764): eigener Schalter, Vorgabe an.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'WelcomePageQuickActions', Toggle));
+  Assert.AreEqual('Willkommensseite', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  Assert.AreEqual('WelcomePage', Toggle.Feature);
+  Assert.IsTrue(TAtlasQuickToggles.GetFlag(TAtlasPluginSettings.Defaults, 'WelcomePageQuickActions', Value));
+  Assert.IsTrue(Value);
   // Jeder Schalter ist eine Einstellung des Plugins.
   for Toggle in Toggles do
   begin

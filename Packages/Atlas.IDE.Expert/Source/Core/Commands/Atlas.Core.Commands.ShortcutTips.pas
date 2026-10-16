@@ -342,6 +342,11 @@ begin
       Result := 'Atlas.DiagnosticMode';
     TAtlasKeyFunction.WelcomeSearch:
       Result := 'Atlas.WelcomeSearch';
+    // Schnellaktionen der Willkommensseite (#764): Knopf (Maus) und Taste zählen unter derselben Kennung.
+    TAtlasKeyFunction.WelcomeQuickBuild:
+      Result := 'Atlas.WelcomeQuickBuild';
+    TAtlasKeyFunction.WelcomeQuickTests:
+      Result := 'Atlas.WelcomeQuickTests';
   else
     Result := 'Atlas.Key' + IntToStr(Ord(AFunc));
   end;

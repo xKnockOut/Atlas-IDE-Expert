@@ -3,7 +3,8 @@
 // Leere Umsetzung (#571): ohne Arbeitskopie, mit vcs.provider = off oder wenn
 // git bzw. svn fehlt. Alle Aufrufe kehren sofort ohne Prozess zurück und
 // liefern keine Versionsangaben, nie einen Fehler; Outcome sagt, warum. Das
-// gilt auch für IAtlasVcsLocalWork (#762) und IAtlasVcsIncoming (#755).
+// gilt auch für IAtlasVcsLocalWork (#762), IAtlasVcsIncoming (#755) und
+// IAtlasVcsUpdate (#764).
 
 interface
 
@@ -12,7 +13,8 @@ uses
   Atlas.Core.Vcs.Contract;
 
 type
-  TAtlasNullVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming)
+  TAtlasNullVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming,
+    IAtlasVcsUpdate)
   private
     FOutcome: TAtlasVcsOutcome;
   public
@@ -39,6 +41,8 @@ type
     function Incoming(const AUpstream: string; const AExclude: TArray<string>; AMax: Integer;
       out ACommits: TArray<TAtlasVcsIncomingCommit>): TAtlasVcsOutcome;
     function Fetch(const ARemote: string): TAtlasVcsOutcome;
+    { IAtlasVcsUpdate }
+    function Pull: TAtlasVcsOutcome;
     property Outcome: TAtlasVcsOutcome read FOutcome;
   end;
 
@@ -151,6 +155,13 @@ begin
 end;
 
 function TAtlasNullVersionControl.Fetch(const ARemote: string): TAtlasVcsOutcome;
+begin
+  Result := FOutcome;
+end;
+
+{ IAtlasVcsUpdate (#764) }
+
+function TAtlasNullVersionControl.Pull: TAtlasVcsOutcome;
 begin
   Result := FOutcome;
 end;

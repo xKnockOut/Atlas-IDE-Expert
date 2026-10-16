@@ -531,6 +531,19 @@ type
     /// <summary>Hinweis in der Benachrichtigungszentrale, wenn der Build auf dem Server rot wird (#763,
     /// welcomePage.tests.ci.notify).</summary>
     WelcomePageTestsCiNotify: Boolean;
+    /// <summary>Schnellaktionen je Projekt in „Projekte“ und „Weiterarbeiten“ (#764, welcomePage.quickActions):
+    /// Knöpfe in der Zeile unter der Maus bzw. mit dem Fokus; aus = keine Knöpfe, keine Tasten.</summary>
+    WelcomePageQuickActions: Boolean;
+    /// <summary>Gezeigte Knöpfe (#764, welcomePage.quickActions.items): Namen durch Komma getrennt, in der
+    /// Reihenfolge build, tests, run, pull, folder, console; '' = keiner.</summary>
+    WelcomePageQuickActionsItems: string;
+    /// <summary>Programm für „Konsole“ (#764, welcomePage.quickActions.console): wt.exe (Vorgabe), cmd.exe,
+    /// powershell.exe, pwsh.exe oder ein anderes; ohne Windows-Terminal nimmt Atlas cmd.exe.</summary>
+    WelcomePageQuickActionsConsole: string;
+    /// <summary>Taste für „Öffnen und bauen“ bzw. „Tests“ in der Zeile mit dem Fokus (#764, TShortCut; 0 = keine).
+    /// </summary>
+    WelcomePageQuickActionsBuildKey: Integer;
+    WelcomePageQuickActionsTestKey: Integer;
     /// <summary>Befehl „Zugang zum Build-Server hinterlegen …“ (#763, Atlas.CiLogin) in der Befehlspalette und im
     /// Kontextmenü des Bereichs; aus = der Befehl und sein Tipp verschwinden.</summary>
     CiLogin: Boolean;
@@ -581,6 +594,44 @@ const
 const
   // Bekannte CI-Anbieter für welcomePage.tests.ci.provider (#763).
   CiProviders: array[0..0] of string = ('jenkins');
+
+const
+  /// <summary>Knöpfe der Schnellaktionen (#764) wie TAtlasWelcomeQuickActions.Names (Test prüft Gleichheit; die
+  /// Einstellungen kennen die Willkommensseite nicht, A-09).</summary>
+  QuickActionNames: array[0..5] of string = ('build', 'tests', 'run', 'pull', 'folder', 'console');
+  QuickActionsDefaultConsole = 'wt.exe';
+
+/// <summary>Bekannte Knöpfe aus AText (Komma, Semikolon, Leerzeichen; Groß-/Kleinschreibung egal) in fester
+/// Reihenfolge, jeder einmal; '' = keiner.</summary>
+function NormalizedQuickActionItems(const AText: string): string;
+var
+  Part: string;
+  Index: Integer;
+  Wanted: array[0..5] of Boolean;
+begin
+  for Index := Low(Wanted) to High(Wanted) do
+    Wanted[Index] := False;
+  for Part in AText.Split([',', ';', ' ']) do
+    for Index := Low(QuickActionNames) to High(QuickActionNames) do
+      if SameText(Trim(Part), QuickActionNames[Index]) then
+        Wanted[Index] := True;
+  Result := '';
+  for Index := Low(QuickActionNames) to High(QuickActionNames) do
+    if Wanted[Index] then
+    begin
+      if Result <> '' then
+        Result := Result + ',';
+      Result := Result + QuickActionNames[Index];
+    end;
+end;
+
+/// <summary>Programm für „Konsole“ getrimmt; leer = wt.exe.</summary>
+function NormalizedQuickActionConsole(const AText: string): string;
+begin
+  Result := Trim(AText);
+  if Result = '' then
+    Result := QuickActionsDefaultConsole;
+end;
 
 /// <summary>Bekannter CI-Anbieter in Kleinbuchstaben; sonst die Vorgabe.</summary>
 function NormalizedCiProvider(const AText: string): string;
@@ -854,6 +905,11 @@ begin
   Result.WelcomePageTestsCiIntervalMinutes := 10;
   Result.WelcomePageTestsCiNotify := True;
   Result.CiLogin := True;
+  Result.WelcomePageQuickActions := True;
+  Result.WelcomePageQuickActionsItems := string.Join(',', QuickActionNames);
+  Result.WelcomePageQuickActionsConsole := QuickActionsDefaultConsole;
+  Result.WelcomePageQuickActionsBuildKey := $4042; // Strg+B
+  Result.WelcomePageQuickActionsTestKey := $4054; // Strg+T
   Result.WelcomePageContinueIncoming := True;
   Result.WelcomePageContinueFetch := False;
   Result.WelcomePageSaved := True;
@@ -899,6 +955,10 @@ begin
   WelcomePageTestsCiIntervalMinutes := EnsureRange(WelcomePageTestsCiIntervalMinutes, MinCiIntervalMinutes,
     MaxCiIntervalMinutes);
   WelcomePageTestsCiProvider := NormalizedCiProvider(WelcomePageTestsCiProvider);
+  WelcomePageQuickActionsItems := NormalizedQuickActionItems(WelcomePageQuickActionsItems);
+  WelcomePageQuickActionsConsole := NormalizedQuickActionConsole(WelcomePageQuickActionsConsole);
+  WelcomePageQuickActionsBuildKey := EnsureRange(WelcomePageQuickActionsBuildKey, 0, $FFFF);
+  WelcomePageQuickActionsTestKey := EnsureRange(WelcomePageQuickActionsTestKey, 0, $FFFF);
   BuildGate := TAtlasReleaseGuard.GateNames[TAtlasReleaseGuard.GateOf(BuildGate)];
   ReleaseConfigs := TAtlasReleaseGuard.NormalizedConfigurations(ReleaseConfigs);
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
@@ -1195,6 +1255,16 @@ begin
   WelcomePageTestsCiNotify := AStore.ReadInteger('WelcomePageTestsCiNotify',
     BoolValue(Default.WelcomePageTestsCiNotify)) <> 0;
   CiLogin := AStore.ReadInteger('CiLogin', BoolValue(Default.CiLogin)) <> 0;
+  WelcomePageQuickActions := AStore.ReadInteger('WelcomePageQuickActions',
+    BoolValue(Default.WelcomePageQuickActions)) <> 0;
+  WelcomePageQuickActionsItems := AStore.ReadString('WelcomePageQuickActionsItems',
+    Default.WelcomePageQuickActionsItems);
+  WelcomePageQuickActionsConsole := AStore.ReadString('WelcomePageQuickActionsConsole',
+    Default.WelcomePageQuickActionsConsole);
+  WelcomePageQuickActionsBuildKey := AStore.ReadInteger('WelcomePageQuickActionsBuildKey',
+    Default.WelcomePageQuickActionsBuildKey);
+  WelcomePageQuickActionsTestKey := AStore.ReadInteger('WelcomePageQuickActionsTestKey',
+    Default.WelcomePageQuickActionsTestKey);
   Notifications := AStore.ReadInteger('Notifications', BoolValue(Default.Notifications)) <> 0;
   NotificationsSources := AStore.ReadString('NotificationsSources', Default.NotificationsSources);
   NotificationsMaxEntries := AStore.ReadInteger('NotificationsMaxEntries', Default.NotificationsMaxEntries);
@@ -1394,6 +1464,11 @@ begin
   AStore.WriteInteger('WelcomePageTestsCiIntervalMinutes', WelcomePageTestsCiIntervalMinutes);
   AStore.WriteInteger('WelcomePageTestsCiNotify', BoolValue(WelcomePageTestsCiNotify));
   AStore.WriteInteger('CiLogin', BoolValue(CiLogin));
+  AStore.WriteInteger('WelcomePageQuickActions', BoolValue(WelcomePageQuickActions));
+  AStore.WriteString('WelcomePageQuickActionsItems', WelcomePageQuickActionsItems);
+  AStore.WriteString('WelcomePageQuickActionsConsole', WelcomePageQuickActionsConsole);
+  AStore.WriteInteger('WelcomePageQuickActionsBuildKey', WelcomePageQuickActionsBuildKey);
+  AStore.WriteInteger('WelcomePageQuickActionsTestKey', WelcomePageQuickActionsTestKey);
   AStore.WriteInteger('Notifications', BoolValue(Notifications));
   AStore.WriteString('NotificationsSources', NotificationsSources);
   AStore.WriteInteger('NotificationsMaxEntries', NotificationsMaxEntries);

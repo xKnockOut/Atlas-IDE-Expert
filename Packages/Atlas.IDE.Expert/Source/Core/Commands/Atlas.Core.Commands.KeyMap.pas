@@ -239,7 +239,7 @@ end;
 class function TAtlasKeyMap.ContextOf(AFunc: TAtlasKeyFunction): TAtlasKeyContext;
 begin
   case AFunc of
-    TAtlasKeyFunction.WelcomeSearch:
+    TAtlasKeyFunction.WelcomeSearch, TAtlasKeyFunction.WelcomeQuickBuild, TAtlasKeyFunction.WelcomeQuickTests:
       Result := TAtlasKeyContext.WelcomePage;
     TAtlasKeyFunction.UnitSearchIde:
       Result := TAtlasKeyContext.Global;
@@ -251,7 +251,7 @@ end;
 class function TAtlasKeyMap.SourceOf(AFunc: TAtlasKeyFunction): TAtlasKeySource;
 begin
   case AFunc of
-    TAtlasKeyFunction.WelcomeSearch:
+    TAtlasKeyFunction.WelcomeSearch, TAtlasKeyFunction.WelcomeQuickBuild, TAtlasKeyFunction.WelcomeQuickTests:
       Result := TAtlasKeySource.Window;
     TAtlasKeyFunction.UnitSearchIde:
       Result := TAtlasKeySource.Action;

@@ -17,6 +17,7 @@
 // Eingehende Commits (IAtlasVcsIncoming, #755): SVN hält keinen lokalen
 // Stand des Servers; Resolve liefert '', Incoming eine leere Liste, Fetch tut
 // nichts (alle Ok ohne Prozess).
+// Holen (IAtlasVcsUpdate, #764): Pull = update . (spricht mit dem Server).
 // ChangeMarker: Zeitstempel und Größe von .svn/wc.db; svn update und
 // svn switch schreiben die Datenbank.
 
@@ -28,7 +29,8 @@ uses
   Atlas.Core.Vcs.Tools;
 
 type
-  TAtlasSvnVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming)
+  TAtlasSvnVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming,
+    IAtlasVcsUpdate)
   private
     FRoot: string;
     FCommand: TAtlasVcsCommand;
@@ -59,6 +61,8 @@ type
     function Incoming(const AUpstream: string; const AExclude: TArray<string>; AMax: Integer;
       out ACommits: TArray<TAtlasVcsIncomingCommit>): TAtlasVcsOutcome;
     function Fetch(const ARemote: string): TAtlasVcsOutcome;
+    { IAtlasVcsUpdate }
+    function Pull: TAtlasVcsOutcome;
   end;
 
 implementation
@@ -261,6 +265,15 @@ end;
 function TAtlasSvnVersionControl.Fetch(const ARemote: string): TAtlasVcsOutcome;
 begin
   Result := TAtlasVcsOutcome.Ok;
+end;
+
+{ IAtlasVcsUpdate (#764) }
+
+function TAtlasSvnVersionControl.Pull: TAtlasVcsOutcome;
+var
+  Output: TBytes;
+begin
+  Result := Svn(['update', '.'], Output);
 end;
 
 end.
