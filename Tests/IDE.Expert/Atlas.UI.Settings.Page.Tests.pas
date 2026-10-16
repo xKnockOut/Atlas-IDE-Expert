@@ -33,6 +33,10 @@ type
     /// <summary>#261: Schalter „Builds für Claude Code“ auf dem Reiter Compiler.</summary>
     [Test]
     procedure McpBuildRoundTrip;
+    /// <summary>#69: Code Lens auf dem Reiter Editor, Tests ausführen, vorher bauen, nach dem Build und
+    /// build.zeroHints (#530) auf dem Reiter Compiler.</summary>
+    [Test]
+    procedure TestRunRoundTrip;
     /// <summary>Benannte Lesezeichen (#622): zwei Schalter auf dem Reiter Editor, Taste bei den Befehlen.</summary>
     [Test]
     procedure BookmarksRoundTrip;
@@ -450,6 +454,39 @@ begin
     Assert.IsFalse(Saved.Notes, 'Notizen abschaltbar');
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.NotesCheck.Checked);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.TestRunRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.CodeLensTestsCheck.Checked, 'Code Lens standardmäßig an');
+    Assert.IsTrue(Page.TestRunCheck.Checked);
+    Assert.IsTrue(Page.TestsBuildFirstCheck.Checked);
+    Assert.IsFalse(Page.TestsAfterBuildCheck.Checked);
+    Assert.IsFalse(Page.BuildZeroHintsCheck.Checked);
+    Page.CodeLensTestsCheck.Checked := False;
+    Page.TestRunCheck.Checked := False;
+    Page.TestsBuildFirstCheck.Checked := False;
+    Page.TestsAfterBuildCheck.Checked := True;
+    Page.BuildZeroHintsCheck.Checked := True;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.CodeLensTests);
+    Assert.IsFalse(Saved.TestRun);
+    Assert.IsFalse(Saved.TestsBuildFirst);
+    Assert.IsTrue(Saved.TestsAfterBuild);
+    Assert.IsTrue(Saved.BuildZeroHints);
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.CodeLensTestsCheck.Checked);
+    Assert.IsTrue(Page.TestsAfterBuildCheck.Checked);
   finally
     Page.Free;
   end;

@@ -485,6 +485,26 @@
       "text": "Claude Code baut das offene Projekt über das Werkzeug build_project in dieser IDE und bekommt Fehler und Warnungen mit Datei, Zeile und Spalte zurück. Bei laufendem Debugger oder Build lehnt Atlas ab.",
       "textEn": "Claude Code builds the open project in this IDE through the build_project tool and gets errors and warnings back with file, line and column. While the debugger or a build is running, Atlas refuses.",
       "image": "Tipps\\claude-build.png"
+    },
+    {
+      "id": "runTests",
+      "command": "Atlas.RunTests",
+      "setting": "TestRun",
+      "title": "DUnitX-Tests ausführen",
+      "titleEn": "Run DUnitX tests",
+      "text": "Startet die Tests des Testprojekts mit dessen Plattform, auf Wunsch nach einem Build. Die Code Lens an [Test] startet einen einzelnen Test; Fehlschläge stehen mit erwartetem und erhaltenem Wert an der Testmethode.",
+      "textEn": "Runs the tests of the test project with its platform, optionally after a build. The code lens at [Test] runs a single test; failures appear at the test method with expected and actual value.",
+      "image": "Tipps\\tests-ausfuehren.png"
+    },
+    {
+      "id": "runFailedTests",
+      "command": "Atlas.RunFailedTests",
+      "setting": "TestRun",
+      "title": "Fehlgeschlagene Tests erneut ausführen",
+      "titleEn": "Re-run failed tests",
+      "text": "Startet genau die Tests, die im letzten Lauf fehlschlugen, auch nach einem Neustart der IDE. Mit „Tests nach dem Build“ laufen die Tests nach jedem erfolgreichen Build des Testprojekts von selbst.",
+      "textEn": "Runs exactly the tests that failed in the last run, even after restarting the IDE. With “Tests after build” the tests run by themselves after every successful build of the test project.",
+      "image": "Tipps\\tests-erneut.png"
     }
   ]
 }

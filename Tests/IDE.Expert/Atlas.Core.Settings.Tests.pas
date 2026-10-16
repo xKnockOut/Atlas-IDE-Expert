@@ -135,6 +135,11 @@ begin
   Assert.AreEqual(0, Settings.TestUnitKey, 'Testunit-Wechsel ohne Kürzel (#189)');
   Assert.IsTrue(Settings.CodeLensTestUnit, 'Code Lens Testunit standardmäßig an (#189)');
   Assert.IsTrue(Settings.CodeLensMetrics, 'Code Lens Metriken standardmäßig an (#66)');
+  Assert.IsTrue(Settings.CodeLensTests, 'Code Lens „Test ausführen“ standardmäßig an (#69)');
+  Assert.IsTrue(Settings.TestRun, 'Tests ausführen standardmäßig da (#69)');
+  Assert.IsFalse(Settings.TestsAfterBuild, 'Tests nach dem Build standardmäßig aus (#69)');
+  Assert.IsTrue(Settings.TestsBuildFirst, 'vor den Tests bauen standardmäßig an (#69)');
+  Assert.IsFalse(Settings.BuildZeroHints, 'build.zeroHints standardmäßig aus (#530)');
   Assert.IsTrue(Settings.TodoList, 'Befehl standardmäßig da (#68)');
   Assert.IsTrue(Settings.MetricsReport, 'Befehl standardmäßig da (#66)');
   Assert.IsTrue(Settings.TeamFile, 'Projektdatei standardmäßig an (#486)');
@@ -221,6 +226,11 @@ begin
   Settings.TestUnitKey := $6054;
   Settings.CodeLensTestUnit := False;
   Settings.CodeLensMetrics := False;
+  Settings.CodeLensTests := False;
+  Settings.TestRun := False;
+  Settings.TestsAfterBuild := True;
+  Settings.TestsBuildFirst := False;
+  Settings.BuildZeroHints := True;
   Settings.TodoList := False;
   Settings.MetricsReport := False;
   Settings.TeamFile := False;
@@ -293,6 +303,11 @@ begin
   Assert.AreEqual($6054, Loaded.TestUnitKey);
   Assert.IsFalse(Loaded.CodeLensTestUnit);
   Assert.IsFalse(Loaded.CodeLensMetrics);
+  Assert.IsFalse(Loaded.CodeLensTests);
+  Assert.IsFalse(Loaded.TestRun);
+  Assert.IsTrue(Loaded.TestsAfterBuild);
+  Assert.IsFalse(Loaded.TestsBuildFirst);
+  Assert.IsTrue(Loaded.BuildZeroHints);
   Assert.IsFalse(Loaded.TodoList);
   Assert.IsFalse(Loaded.MetricsReport);
   Assert.IsFalse(Loaded.TeamFile);
