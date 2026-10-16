@@ -103,7 +103,6 @@ var
   Size: Int64;
 begin
   AText := '';
-  Result := False;
   try
     Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
     try
@@ -131,7 +130,6 @@ var
   Stream: TFileStream;
   Bytes: TBytes;
 begin
-  Result := False;
   Bytes := TEncoding.UTF8.GetBytes(AText);
   try
     Stream := TFileStream.Create(AFileName, fmCreate);
