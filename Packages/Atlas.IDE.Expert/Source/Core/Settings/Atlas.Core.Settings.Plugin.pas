@@ -76,6 +76,14 @@ type
     MaxCiIntervalMinutes = 1440;
     /// <summary>Vorgabe für welcomePage.tests.ci.provider (#763).</summary>
     DefaultCiProvider = 'jenkins';
+    /// <summary>Werte von welcomePage.issues.start (#765); wie TAtlasWelcomeIssues.StartName.</summary>
+    IssuesStartBranch = 'branch';
+    IssuesStartRemember = 'remember';
+    /// <summary>Vorgabe für welcomePage.issues.commitPattern (#765); wie TAtlasTrackerNaming.CommitPattern.
+    /// </summary>
+    DefaultIssuesCommitPattern = '{kennung} ';
+    /// <summary>Höchstlänge der Texte unter welcomePage.issues.* (#765).</summary>
+    MaxIssuesText = 200;
     /// <summary>Grenzen für notifications.maxEntries (#601); wie TAtlasNotificationCenter.MinEntries/MaxMaxEntries
     /// (Test prüft Gleichheit).</summary>
     MinNotificationEntries = 10;
@@ -547,6 +555,29 @@ type
     /// <summary>Befehl „Zugang zum Build-Server hinterlegen …“ (#763, Atlas.CiLogin) in der Befehlspalette und im
     /// Kontextmenü des Bereichs; aus = der Befehl und sein Tipp verschwinden.</summary>
     CiLogin: Boolean;
+    /// <summary>Bereich „Meine Issues“ (#765, welcomePage.issues): offene Issues aus dem Tracker der .atlas
+    /// (Abschnitt tracker) mit „Beginnen“; aus = kein Bereich, keine Abfrage, kein Netzzugriff.</summary>
+    WelcomePageIssues: Boolean;
+    /// <summary>Tracker (#765, welcomePage.issues.tracker): '' = aus der .atlas, "github" oder "youtrack".</summary>
+    WelcomePageIssuesTracker: string;
+    /// <summary>Abfrage in der Sprache des Trackers (#765, welcomePage.issues.query); '' = Vorgabe des Trackers
+    /// (GitHub "assignee:@me state:open", YouTrack "for: me #Unresolved").</summary>
+    WelcomePageIssuesQuery: string;
+    /// <summary>„Beginnen“ (#765, welcomePage.issues.start): "branch" legt einen Branch an und checkt ihn aus,
+    /// "remember" merkt nur das Issue.</summary>
+    WelcomePageIssuesStart: string;
+    /// <summary>Muster für den Branch (#765, welcomePage.issues.branchPattern) mit {kennung}, {nummer},
+    /// {kurztitel}; '' = Git feature/{kennung}-{kurztitel}, SVN {kennung}-{kurztitel} unter ^/branches/.</summary>
+    WelcomePageIssuesBranchPattern: string;
+    /// <summary>Basis des Branchs (#765, welcomePage.issues.branchBase); '' = Git main (sonst master), SVN trunk.
+    /// </summary>
+    WelcomePageIssuesBranchBase: string;
+    /// <summary>Anfang der Commit-Nachricht, solange ein Issue aktiv ist (#765, welcomePage.issues.commitPattern);
+    /// '' = aus. Nicht gekürzt: das Leerzeichen der Vorgabe "{kennung} " bleibt.</summary>
+    WelcomePageIssuesCommitPattern: string;
+    /// <summary>Befehl „Zugang zum Issue-Tracker hinterlegen …“ (#765, Atlas.TrackerLogin) in der Befehlspalette
+    /// und im Kontextmenü des Bereichs; aus = der Befehl und sein Tipp verschwinden.</summary>
+    TrackerLogin: Boolean;
     /// <summary>Benachrichtigungszentrale (#601, notifications.enabled): Hinweise sammeln, Zähler im
     /// Atlas-Statusfeld, Liste und Befehl Atlas.Notifications; aus = jede Funktion zeigt ihre Einblendung wie
     /// vor #601, nichts wird gesammelt.</summary>
@@ -642,6 +673,38 @@ begin
     if SameText(Trim(AText), Name) then
       Exit(Name);
   Result := TAtlasPluginSettings.DefaultCiProvider;
+end;
+
+/// <summary>"github", "youtrack" oder '' (aus der .atlas).</summary>
+function NormalizedIssuesTracker(const AText: string): string;
+begin
+  Result := LowerCase(Trim(AText));
+  if (Result <> 'github') and (Result <> 'youtrack') then
+    Result := '';
+end;
+
+function NormalizedIssuesStart(const AText: string): string;
+begin
+  if SameText(Trim(AText), TAtlasPluginSettings.IssuesStartRemember) then
+    Result := TAtlasPluginSettings.IssuesStartRemember
+  else
+    Result := TAtlasPluginSettings.IssuesStartBranch;
+end;
+
+/// <summary>Ohne Zeilenumbrüche und Steuerzeichen, höchstens MaxIssuesText Zeichen; ATrim kürzt Leerraum am Rand.
+/// </summary>
+function NormalizedIssuesText(const AText: string; ATrim: Boolean): string;
+var
+  Index: Integer;
+begin
+  Result := AText;
+  for Index := 1 to Length(Result) do
+    if Ord(Result[Index]) < 32 then
+      Result[Index] := ' ';
+  if ATrim then
+    Result := Trim(Result);
+  if Length(Result) > TAtlasPluginSettings.MaxIssuesText then
+    Result := Copy(Result, 1, TAtlasPluginSettings.MaxIssuesText);
 end;
 
 function NormalizedTrendSeries(const AText: string): string;
@@ -910,6 +973,14 @@ begin
   Result.WelcomePageQuickActionsConsole := QuickActionsDefaultConsole;
   Result.WelcomePageQuickActionsBuildKey := $4042; // Strg+B
   Result.WelcomePageQuickActionsTestKey := $4054; // Strg+T
+  Result.WelcomePageIssues := False;
+  Result.WelcomePageIssuesTracker := '';
+  Result.WelcomePageIssuesQuery := '';
+  Result.WelcomePageIssuesStart := IssuesStartBranch;
+  Result.WelcomePageIssuesBranchPattern := '';
+  Result.WelcomePageIssuesBranchBase := '';
+  Result.WelcomePageIssuesCommitPattern := DefaultIssuesCommitPattern;
+  Result.TrackerLogin := True;
   Result.WelcomePageContinueIncoming := True;
   Result.WelcomePageContinueFetch := False;
   Result.WelcomePageSaved := True;
@@ -959,6 +1030,13 @@ begin
   WelcomePageQuickActionsConsole := NormalizedQuickActionConsole(WelcomePageQuickActionsConsole);
   WelcomePageQuickActionsBuildKey := EnsureRange(WelcomePageQuickActionsBuildKey, 0, $FFFF);
   WelcomePageQuickActionsTestKey := EnsureRange(WelcomePageQuickActionsTestKey, 0, $FFFF);
+  WelcomePageIssuesTracker := NormalizedIssuesTracker(WelcomePageIssuesTracker);
+  WelcomePageIssuesQuery := NormalizedIssuesText(WelcomePageIssuesQuery, True);
+  WelcomePageIssuesStart := NormalizedIssuesStart(WelcomePageIssuesStart);
+  WelcomePageIssuesBranchPattern := NormalizedIssuesText(WelcomePageIssuesBranchPattern, True);
+  WelcomePageIssuesBranchBase := NormalizedIssuesText(WelcomePageIssuesBranchBase, True);
+  // Leerraum am Ende gehört zum Muster ("{kennung} ").
+  WelcomePageIssuesCommitPattern := NormalizedIssuesText(WelcomePageIssuesCommitPattern, False);
   BuildGate := TAtlasReleaseGuard.GateNames[TAtlasReleaseGuard.GateOf(BuildGate)];
   ReleaseConfigs := TAtlasReleaseGuard.NormalizedConfigurations(ReleaseConfigs);
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
@@ -1265,6 +1343,17 @@ begin
     Default.WelcomePageQuickActionsBuildKey);
   WelcomePageQuickActionsTestKey := AStore.ReadInteger('WelcomePageQuickActionsTestKey',
     Default.WelcomePageQuickActionsTestKey);
+  WelcomePageIssues := AStore.ReadInteger('WelcomePageIssues', BoolValue(Default.WelcomePageIssues)) <> 0;
+  WelcomePageIssuesTracker := AStore.ReadString('WelcomePageIssuesTracker', Default.WelcomePageIssuesTracker);
+  WelcomePageIssuesQuery := AStore.ReadString('WelcomePageIssuesQuery', Default.WelcomePageIssuesQuery);
+  WelcomePageIssuesStart := AStore.ReadString('WelcomePageIssuesStart', Default.WelcomePageIssuesStart);
+  WelcomePageIssuesBranchPattern := AStore.ReadString('WelcomePageIssuesBranchPattern',
+    Default.WelcomePageIssuesBranchPattern);
+  WelcomePageIssuesBranchBase := AStore.ReadString('WelcomePageIssuesBranchBase',
+    Default.WelcomePageIssuesBranchBase);
+  WelcomePageIssuesCommitPattern := AStore.ReadString('WelcomePageIssuesCommitPattern',
+    Default.WelcomePageIssuesCommitPattern);
+  TrackerLogin := AStore.ReadInteger('TrackerLogin', BoolValue(Default.TrackerLogin)) <> 0;
   Notifications := AStore.ReadInteger('Notifications', BoolValue(Default.Notifications)) <> 0;
   NotificationsSources := AStore.ReadString('NotificationsSources', Default.NotificationsSources);
   NotificationsMaxEntries := AStore.ReadInteger('NotificationsMaxEntries', Default.NotificationsMaxEntries);
@@ -1469,6 +1558,14 @@ begin
   AStore.WriteString('WelcomePageQuickActionsConsole', WelcomePageQuickActionsConsole);
   AStore.WriteInteger('WelcomePageQuickActionsBuildKey', WelcomePageQuickActionsBuildKey);
   AStore.WriteInteger('WelcomePageQuickActionsTestKey', WelcomePageQuickActionsTestKey);
+  AStore.WriteInteger('WelcomePageIssues', BoolValue(WelcomePageIssues));
+  AStore.WriteString('WelcomePageIssuesTracker', WelcomePageIssuesTracker);
+  AStore.WriteString('WelcomePageIssuesQuery', WelcomePageIssuesQuery);
+  AStore.WriteString('WelcomePageIssuesStart', WelcomePageIssuesStart);
+  AStore.WriteString('WelcomePageIssuesBranchPattern', WelcomePageIssuesBranchPattern);
+  AStore.WriteString('WelcomePageIssuesBranchBase', WelcomePageIssuesBranchBase);
+  AStore.WriteString('WelcomePageIssuesCommitPattern', WelcomePageIssuesCommitPattern);
+  AStore.WriteInteger('TrackerLogin', BoolValue(TrackerLogin));
   AStore.WriteInteger('Notifications', BoolValue(Notifications));
   AStore.WriteString('NotificationsSources', NotificationsSources);
   AStore.WriteInteger('NotificationsMaxEntries', NotificationsMaxEntries);
