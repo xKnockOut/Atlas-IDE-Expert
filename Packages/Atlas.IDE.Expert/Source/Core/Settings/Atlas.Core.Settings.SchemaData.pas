@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1060] of string = (
+  Lines: array[0..1066] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -535,6 +535,12 @@ const
     '          "default": "",',
     '          "description": "Protokollaufruf für /log, /except und /measure: ein Routinenname wie \"Log.Debug\" bekommt den Text als Argument, {text} setzt ihn an diese Stelle, z. B. \"Logger.Send(TLogLe' + 'vel.Debug, {text})\". Leer: OutputDebugString(PChar(…)).",',
     '          "x-issue": "#304"',
+    '        },',
+    '        "componentPalette": {',
+    '          "type": "string",',
+    '          "default": "Eigene",',
+    '          "description": "Palettenseite, auf der /component die neue Komponente mit RegisterComponents einträgt.",',
+    '          "x-issue": "#299"',
     '        }',
     '      },',
     '      "x-scope": "global",',

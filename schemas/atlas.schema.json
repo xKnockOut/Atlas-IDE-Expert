@@ -521,6 +521,12 @@
           "default": "",
           "description": "Protokollaufruf für /log, /except und /measure: ein Routinenname wie \"Log.Debug\" bekommt den Text als Argument, {text} setzt ihn an diese Stelle, z. B. \"Logger.Send(TLogLevel.Debug, {text})\". Leer: OutputDebugString(PChar(…)).",
           "x-issue": "#304"
+        },
+        "componentPalette": {
+          "type": "string",
+          "default": "Eigene",
+          "description": "Palettenseite, auf der /component die neue Komponente mit RegisterComponents einträgt.",
+          "x-issue": "#299"
         }
       },
       "x-scope": "global",

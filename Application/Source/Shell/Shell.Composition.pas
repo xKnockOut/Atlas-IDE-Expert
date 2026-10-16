@@ -391,6 +391,7 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Documents.Uris,
+  Atlas.Common.Editing.SlashCommands,
   Shell.SlashHost,
   Shell.VcsChanges,
   Shell.Bootstrap,
@@ -675,21 +676,29 @@ begin
       if (FConnection = nil) or not FConnection.Queue(AWork) then
         FLogger.Warning('Schnellbefehl: Projekt nicht neu geladen, die Verbindung ist beendet');
     end;
-  // Protokollaufruf für /log, /except und /measure aus der atlas.json des Ordners (#304).
-  SlashHost.LogCallOf :=
-    function(const AUri: string): string
+  // Protokollaufruf (#304) und Palettenseite (#299) aus der atlas.json des Ordners.
+  SlashHost.SettingOf :=
+    function(const AUri, AName: string): string
     var
       Workspace: TShellWorkspace;
+      Settings: TServerSettings;
     begin
       TMonitor.Enter(FWorkspacesLock);
       try
         Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
         if Workspace = nil then
-          Exit(FLooseSettings.SlashLogCall);
-        Result := Workspace.Configuration.Settings.SlashLogCall;
+          Settings := FLooseSettings
+        else
+          Settings := Workspace.Configuration.Settings;
       finally
         TMonitor.Exit(FWorkspacesLock);
       end;
+      if AName = TSlashSettings.LogCall then
+        Result := Settings.SlashLogCall
+      else if AName = TSlashSettings.ComponentPalette then
+        Result := Settings.SlashComponentPalette
+      else
+        Result := '';
     end;
   FFormatting.SlashHost := SlashHost;
   FFormatting.Attach(FDispatcher);

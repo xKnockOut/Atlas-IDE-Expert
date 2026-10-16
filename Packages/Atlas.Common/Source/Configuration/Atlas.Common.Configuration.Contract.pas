@@ -306,6 +306,8 @@ type
     /// <summary>Protokollaufruf für /log, /except und /measure (#304): Routinenname oder Vorlage mit {text};
     /// '' = OutputDebugString.</summary>
     SlashLogCall: string;
+    /// <summary>Palettenseite für /component (#299).</summary>
+    SlashComponentPalette: string;
     /// <summary>"uses aufräumen" (source.organizeImports) sortiert alphabetisch; Vorgabe aus,
     /// weil die Reihenfolge die Initialisierung bestimmt (#182).</summary>
     SortUses: Boolean;
@@ -660,6 +662,7 @@ begin
   Result.SlashCommandsDisabled := nil;
   Result.SlashHeaderTemplate := '';
   Result.SlashLogCall := '';
+  Result.SlashComponentPalette := 'Eigene';
   Result.SortUses := False;
   Result.SortUsesByNamespace := False;
   Result.UsesKeep := nil;
