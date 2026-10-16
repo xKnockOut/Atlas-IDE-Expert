@@ -223,6 +223,19 @@ type
     /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530). Wirkt
     /// bisher auf „Tests nach dem Build“ (#69).</summary>
     BuildZeroHints: Boolean;
+    /// <summary>Release-Build-Wächter (#533, build.releaseGuard): vor make und build in einer Release-Konfiguration
+    /// die Projektoptionen prüfen, dazu der Befehl „Release-Build prüfen“ (Atlas.CheckRelease) mit Tipp. Aus = keine
+    /// Prüfung, Befehl und Tipp verschwinden.</summary>
+    ReleaseGuard: Boolean;
+    /// <summary>Verhalten bei Verstößen (build.gate, #529): off, warn (beide melden nur) oder block (bricht den
+    /// Build ab). Wirkt bisher nur auf den Release-Wächter.</summary>
+    BuildGate: string;
+    /// <summary>Konfigurationen, die außer „Release“ als Release gelten (build.releaseConfigs), durch Komma
+    /// getrennt.</summary>
+    ReleaseConfigs: string;
+    /// <summary>Prüfungen des Release-Wächters mit an/aus und Sollwert (build.releaseChecks), Textform wie
+    /// TAtlasReleaseChecks.ToText, z. B. "debugDefine,debugInfo=off,-assertions=off,…".</summary>
+    ReleaseChecks: string;
     /// <summary>Einzelnen Test im Debugger starten (#585, tests.debug): Befehl „Test am Cursor debuggen“
     /// (Atlas.DebugTest) mit Tipp, Eintrag im Kontextmenü und Marke „Debuggen“ der Code Lens; braucht TestRun. Aus
     /// = Befehl, Tipp und Marke verschwinden.</summary>
@@ -511,6 +524,7 @@ uses
   System.Math,
   System.StrUtils,
   Atlas.Core.Generate.Contract,
+  Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Notifications.Sources;
 
 const
@@ -660,6 +674,10 @@ begin
   Result.TestsAfterBuild := False;
   Result.TestsBuildFirst := True;
   Result.BuildZeroHints := False;
+  Result.ReleaseGuard := True;
+  Result.BuildGate := 'off';
+  Result.ReleaseConfigs := TAtlasReleaseGuard.ReleaseConfiguration;
+  Result.ReleaseChecks := TAtlasReleaseChecks.Defaults.ToText;
   Result.TestDebug := True;
   Result.TestBreakAtStart := True;
   Result.StartProfiles := True;
@@ -801,6 +819,9 @@ begin
   WelcomePageContinueCount := EnsureRange(WelcomePageContinueCount, MinContinueCount, MaxContinueCount);
   WelcomePageTrendsPoints := EnsureRange(WelcomePageTrendsPoints, MinTrendPoints, MaxTrendPoints);
   WelcomePageTrendsSeries := NormalizedTrendSeries(WelcomePageTrendsSeries);
+  BuildGate := TAtlasReleaseGuard.GateNames[TAtlasReleaseGuard.GateOf(BuildGate)];
+  ReleaseConfigs := TAtlasReleaseGuard.NormalizedConfigurations(ReleaseConfigs);
+  ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
   CheckKey := EnsureRange(CheckKey, 0, $FFFF);
   CompletionKey := EnsureRange(CompletionKey, 0, $FFFF);
   SignatureKey := EnsureRange(SignatureKey, 0, $FFFF);
@@ -952,6 +973,10 @@ begin
   TestsAfterBuild := AStore.ReadInteger('TestsAfterBuild', BoolValue(Default.TestsAfterBuild)) <> 0;
   TestsBuildFirst := AStore.ReadInteger('TestsBuildFirst', BoolValue(Default.TestsBuildFirst)) <> 0;
   BuildZeroHints := AStore.ReadInteger('BuildZeroHints', BoolValue(Default.BuildZeroHints)) <> 0;
+  ReleaseGuard := AStore.ReadInteger('ReleaseGuard', BoolValue(Default.ReleaseGuard)) <> 0;
+  BuildGate := AStore.ReadString('BuildGate', Default.BuildGate);
+  ReleaseConfigs := AStore.ReadString('ReleaseConfigs', Default.ReleaseConfigs);
+  ReleaseChecks := AStore.ReadString('ReleaseChecks', Default.ReleaseChecks);
   TestDebug := AStore.ReadInteger('TestDebug', BoolValue(Default.TestDebug)) <> 0;
   TestBreakAtStart := AStore.ReadInteger('TestBreakAtStart', BoolValue(Default.TestBreakAtStart)) <> 0;
   StartProfiles := AStore.ReadInteger('StartProfiles', BoolValue(Default.StartProfiles)) <> 0;
@@ -1152,6 +1177,10 @@ begin
   AStore.WriteInteger('TestsAfterBuild', BoolValue(TestsAfterBuild));
   AStore.WriteInteger('TestsBuildFirst', BoolValue(TestsBuildFirst));
   AStore.WriteInteger('BuildZeroHints', BoolValue(BuildZeroHints));
+  AStore.WriteInteger('ReleaseGuard', BoolValue(ReleaseGuard));
+  AStore.WriteString('BuildGate', BuildGate);
+  AStore.WriteString('ReleaseConfigs', ReleaseConfigs);
+  AStore.WriteString('ReleaseChecks', ReleaseChecks);
   AStore.WriteInteger('TestDebug', BoolValue(TestDebug));
   AStore.WriteInteger('TestBreakAtStart', BoolValue(TestBreakAtStart));
   AStore.WriteInteger('StartProfiles', BoolValue(StartProfiles));

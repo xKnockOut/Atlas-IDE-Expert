@@ -438,6 +438,7 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Nachtrag 16.10., 4:15 Uhr:** `feature/575-startprofile` (#575, Startprofile für das aktive Projekt) ohne Konflikte gemergt. Prüfskripte grün, nicht gebaut.
 - **Nachtrag 16.10., 4:50 Uhr:** `feature/585-test-debuggen` (#585, einzelnen Test im Debugger starten) ohne Konflikte gemergt. Prüfskripte grün, nicht gebaut.
 - **Nachtrag 16.10., 5:30 Uhr:** Marcos Delphi-Korrekturen (f635abae) liegen in main. Danach `feature/601-benachrichtigungen` (#601, Benachrichtigungszentrale) ohne Konflikte gemergt. Prüfskripte grün, nicht gebaut.
+- **Nachtrag 16.10., 6:10 Uhr:** auf Marcos Stand 065990f2 (Tests grün) `feature/533-release-waechter` (#533, Release-Build-Wächter, Reiter „Release-Build“) ohne Konflikte gemergt. Prüfskripte grün, nicht gebaut.
 
 ## Code-Review Block C: Heißer Pfad des Servers (15.10.2026, Branch `claude/code-review-fixes-awz1nk-heisser-pfad` auf Block B, nicht gepusht)
 - **Umfang:** P-01, P-02, P-05 (Rest), P-06, P-07, P-08 (ohne `Semantics.ControlFlow`), P-11, P-12 (Rest), P-13, P-17 nach dem Plan `C-server-hotpath`.
