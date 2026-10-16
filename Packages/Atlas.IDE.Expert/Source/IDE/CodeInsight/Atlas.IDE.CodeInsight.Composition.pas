@@ -114,7 +114,8 @@ uses
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Bookmarks.Gutter,
   Atlas.IDE.Editor.GutterMarks,
-  Atlas.Core.Editor.WorkspacePlan;
+  Atlas.Core.Editor.WorkspacePlan,
+  Atlas.IDE.Editor.TestUnitLens;
 
 var
   ManagerIndex: Integer = -1;
@@ -1412,6 +1413,12 @@ begin
       begin
         GuardWarning(AText);
       end);
+    // Klick auf die Testunit-Lens (#189); die Lens kennt die Editorbefehle nicht (A-09).
+    TAtlasEditorTestUnitLens.OnSwitchTestUnit :=
+      procedure
+      begin
+        TAtlasIdeEditorCommands.SwitchTestUnit;
+      end;
     // Erzeugen-Menü (#719): Vorlagen und ihr Einsetzen mit Platzhaltern kommen aus der Vervollständigung.
     TAtlasIdeGenerate.Install(
       function: TLspSession
@@ -1434,6 +1441,10 @@ begin
       begin
         if Manager <> nil then
           Manager.Completion.InsertSnippet(AView, ASnippet);
+      end,
+      procedure(AAction: TLspCodeAction)
+      begin
+        TAtlasIdeEditorCommands.ApplyAction(AAction);
       end);
     // Units suchen (#777): übernimmt Strg+F12, solange die Einstellungen es wollen.
     TAtlasIdeUnitSearch.Install(
@@ -1984,6 +1995,7 @@ begin
   begin
     TAtlasIdeUnitSearch.Uninstall;
     TAtlasIdeGenerate.Uninstall;
+    TAtlasEditorTestUnitLens.OnSwitchTestUnit := nil;
     TAtlasIdeEditorCommands.Uninstall;
     TAtlasIdeResults.Uninstall;
   end;
