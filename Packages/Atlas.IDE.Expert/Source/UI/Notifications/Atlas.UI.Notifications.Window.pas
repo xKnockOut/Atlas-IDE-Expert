@@ -201,6 +201,8 @@ begin
     Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceBuildServer)
   else if SameText(ASource, TAtlasNotificationSources.OpenBuild) then
     Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceOpenBuild)
+  else if SameText(ASource, TAtlasNotificationSources.Hidden) then
+    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceHidden)
   else
     Result := ASource;
 end;

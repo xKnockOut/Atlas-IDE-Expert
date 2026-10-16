@@ -16,6 +16,8 @@
 //   Dialog und nicht im Protokoll (sie nennen Einträge der Datei).
 // - ForProject: Stand für eine beliebige .dproj ohne Meldungen (etwa für die
 //   Willkommensseite: Build-Server #763, Tracker #765, Startprofile #764).
+// - Version zählt jeden neu gelesenen Stand (für Zwischenspeicher wie die
+//   ausgeblendeten Stellen, #628).
 // - OpenInEditor: legt die Datei mit Gerüst (TAtlasTeamFile.Skeleton, UTF-8
 //   ohne BOM) neben der .dproj an, wenn es noch keine gibt, und öffnet sie.
 // Nur im Hauptthread verwenden.
@@ -33,6 +35,7 @@ type
   private class var
     FInstance: TAtlasIdeTeamFile;
     FOnChanged: TProc;
+    FVersion: Integer;
   private
     FTimer: TTimer;
     FCurrent: TAtlasTeamSettings;
@@ -54,6 +57,8 @@ type
     class function Started: Boolean; static;
     /// <summary>Stand für das aktive Projekt (siehe Kopf).</summary>
     class function Current: TAtlasTeamSettings; static;
+    /// <summary>Zählt jeden neu gelesenen Stand von Current (auch Start und Stop).</summary>
+    class function Version: Integer; static;
     /// <summary>Stand für AProject (.dproj) ohne Meldungen; leer, wenn die Einstellung TeamFile aus ist.</summary>
     class function ForProject(const AProject: string): TAtlasTeamSettings; static;
     /// <summary>Wie ForProject, aber auch bei ausgeschalteter Einstellung (Anzeige auf der Optionsseite).</summary>
@@ -228,6 +233,7 @@ begin
   Team.Project := Project;
   FStamp := Stamp;
   FCurrent := Team;
+  Inc(FVersion);
   Report(Team);
   if Assigned(FOnChanged) then
     FOnChanged();
@@ -253,6 +259,12 @@ end;
 class procedure TAtlasIdeTeamFile.Stop;
 begin
   FreeAndNil(FInstance);
+  Inc(FVersion);
+end;
+
+class function TAtlasIdeTeamFile.Version: Integer;
+begin
+  Result := FVersion;
 end;
 
 class function TAtlasIdeTeamFile.Started: Boolean;

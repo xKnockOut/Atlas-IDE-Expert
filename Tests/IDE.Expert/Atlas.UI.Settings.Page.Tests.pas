@@ -61,6 +61,10 @@ type
     /// <summary>Erzeugen-Menü (#719) auf dem Reiter Befehle.</summary>
     [Test]
     procedure GenerateMenuRoundTrip;
+    /// <summary>Blockende-Beschriftung (#620) und Taste „Element ausblenden …“ (#628) laden und speichern.
+    /// </summary>
+    [Test]
+    procedure HideElementRoundTrip;
     [Test]
     procedure SafeModeRoundTrips;
     [Test]
@@ -719,6 +723,30 @@ begin
     Assert.AreEqual('check', Saved.BuildOnOpenKind);
     Page.LoadFrom(Saved);
     Assert.AreEqual(0, Page.OpenBuildChoice.Choice);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.HideElementRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.BlockEndLabelsCheck.Checked, 'standardmäßig an');
+    Assert.AreEqual(ShortCutToText($40BE), Page.HideElementKey.Text, 'Strg+.');
+    Page.BlockEndLabelsCheck.Checked := False;
+    Page.HideElementKey.Text := '';
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.BlockEndLabels, 'abschaltbar');
+    Assert.AreEqual(0, Saved.HideElementKey, 'leer = keine Taste');
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.BlockEndLabelsCheck.Checked);
+    Assert.AreEqual('', Page.HideElementKey.Text);
   finally
     Page.Free;
   end;
