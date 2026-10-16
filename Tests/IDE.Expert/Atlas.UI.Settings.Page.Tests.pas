@@ -37,6 +37,9 @@ type
     /// build.zeroHints (#530) auf dem Reiter Compiler.</summary>
     [Test]
     procedure TestRunRoundTrip;
+    /// <summary>#575: Startprofile und ihr Feld in der Statusleiste auf dem Reiter Compiler.</summary>
+    [Test]
+    procedure StartProfilesRoundTrip;
     /// <summary>Benannte Lesezeichen (#622): zwei Schalter auf dem Reiter Editor, Taste bei den Befehlen.</summary>
     [Test]
     procedure BookmarksRoundTrip;
@@ -239,6 +242,7 @@ begin
   Settings.TodoList := False;
   Settings.MetricsReport := False;
   Settings.TeamFile := False;
+  Settings.StartProfiles := False;
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
@@ -271,6 +275,7 @@ begin
   Assert.IsFalse(Saved.TodoList, 'Befehl (#68)');
   Assert.IsFalse(Saved.MetricsReport, 'Befehl (#66)');
   Assert.IsFalse(Saved.TeamFile, 'Projektdatei (#486)');
+  Assert.IsFalse(Saved.StartProfiles, 'Startprofile (#575)');
 end;
 
 procedure TAtlasSettingsPageTests.ShowsAndReenablesTrippedFeatures;
@@ -487,6 +492,31 @@ begin
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.CodeLensTestsCheck.Checked);
     Assert.IsTrue(Page.TestsAfterBuildCheck.Checked);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.StartProfilesRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.StartProfilesCheck.Checked, 'Startprofile standardmäßig an');
+    Assert.IsTrue(Page.StartProfilesStatusFieldCheck.Checked, 'Statusfeld standardmäßig an');
+    Page.StartProfilesCheck.Checked := False;
+    Page.StartProfilesStatusFieldCheck.Checked := False;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.StartProfiles);
+    Assert.IsFalse(Saved.StartProfilesStatusField);
+    Saved.StartProfilesStatusField := True;
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.StartProfilesCheck.Checked);
+    Assert.IsTrue(Page.StartProfilesStatusFieldCheck.Checked);
   finally
     Page.Free;
   end;

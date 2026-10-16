@@ -30,6 +30,10 @@
 //   Klick geöffnete Statusfenster; das Loslassen danach öffnet es nicht erneut.
 // - Links steht das Atlas-Symbol (#751) in der Variante zum IDE-Thema und in
 //   der Größe zur Pixeldichte der Leiste, dann Punkt und Text.
+// - Zusatzfelder (SetExtra, z. B. das Startprofil #575): einfache Textpanels
+//   rechts vom Atlas-Feld mit eigenem Tooltip; ein Linksklick ruft ihr
+//   OnClick mit der linken Oberkante des Panels. Sie erscheinen auch bei
+//   ausgeschaltetem Atlas-Feld (StatusField); das Atlas-Panel ist dann 0 breit.
 
 interface
 
@@ -52,20 +56,32 @@ type
   public const
     RedrawMs = 250;
   private type
+    TExtra = record
+      Id: string;
+      Text: string;
+      Hint: string;
+      OnClick: TProc<TPoint>;
+    end;
+
     THook = class
     public
       Field: TAtlasStatusField;
       Bar: TStatusBar;
       Panel: TStatusPanel;
+      /// <summary>Panels der Zusatzfelder in der Reihenfolge von FExtras; gehören der Leiste.</summary>
+      Extras: TList<TStatusPanel>;
       OldDraw: TDrawPanelEvent;
       OldMouseUp: TMouseEvent;
       OldMouseMove: TMouseMoveEvent;
       OldWndProc: TWndMethod;
       OldHint: string;
       OldShowHint: Boolean;
-      InPanel: Boolean;
+      /// <summary>Panel unter der Maus, dessen Tooltip gilt: -1 keins, 0 Atlas-Feld, ab 1 Zusatzfeld.</summary>
+      Zone: Integer;
       /// <summary>Das Loslassen nach einem Doppelklick auf das Feld nicht als Klick werten.</summary>
       SkipUp: Boolean;
+      constructor Create;
+      destructor Destroy; override;
       procedure WndProc(var Message: TMessage);
     end;
   private
@@ -87,6 +103,7 @@ type
     FOnOpenLog: TProc;
     FOnRestart: TProc;
     FOnContext: TProc<TPoint>;
+    FExtras: TArray<TExtra>;
     procedure WndProc(var Message: TMessage);
     procedure TimerTick(Sender: TObject);
     procedure Refresh;
@@ -94,7 +111,11 @@ type
     procedure HookBar(ABar: TStatusBar);
     procedure Unhook(AHook: THook; ARestore: Boolean);
     procedure UnhookAll;
-    function PanelRect(AHook: THook): TRect;
+    function PanelRect(AHook: THook): TRect; overload;
+    function PanelRect(AHook: THook; APanel: TStatusPanel): TRect; overload;
+    function ZoneAt(AHook: THook; X, Y: Integer): Integer;
+    function HintOf(AZone: Integer): string;
+    procedure SyncExtras(AHook: THook);
     procedure DrawPanel(StatusBar: TStatusBar; Panel: TStatusPanel; const Rect: TRect);
     procedure BarMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure BarMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -116,6 +137,9 @@ type
     property OnContext: TProc<TPoint> read FOnContext write FOnContext;
     /// <summary>Linke Oberkante des Felds im obersten Editorfenster (Bildschirm); False ohne Feld.</summary>
     function Anchor(out APoint: TPoint): Boolean;
+    /// <summary>Zusatzfeld AId setzen (Text, Tooltip, Linksklick mit der linken Oberkante des Panels); AText ''
+    /// entfernt es. Nur im Hauptthread.</summary>
+    procedure SetExtra(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
   end;
 
 implementation
@@ -362,6 +386,13 @@ begin
   Result := (ALeft.Code = ARight.Code) and (ALeft.Data = ARight.Data);
 end;
 
+/// <summary>APanel aus ABar entfernen, wenn es noch dort steht.</summary>
+procedure RemovePanel(ABar: TStatusBar; APanel: TStatusPanel);
+begin
+  if (APanel <> nil) and (APanel.Index < ABar.Panels.Count) and (ABar.Panels[APanel.Index] = APanel) then
+    ABar.Panels.Delete(APanel.Index);
+end;
+
 procedure TAtlasStatusField.Unhook(AHook: THook; ARestore: Boolean);
 var
   Bar: TStatusBar;
@@ -369,6 +400,7 @@ var
   MouseUp, CurrentUp: TMouseEvent;
   MouseMove, CurrentMove: TMouseMoveEvent;
   WndProc_, CurrentWndProc: TWndMethod;
+  Index: Integer;
 begin
   Bar := AHook.Bar;
   if not ARestore or (Bar = nil) then
@@ -394,14 +426,15 @@ begin
   CurrentMove := Bar.OnMouseMove;
   if SameMethod(TMethod(CurrentMove), TMethod(MouseMove)) then
     Bar.OnMouseMove := AHook.OldMouseMove;
-  if AHook.InPanel then
+  if AHook.Zone >= 0 then
   begin
     Bar.Hint := AHook.OldHint;
     Bar.ShowHint := AHook.OldShowHint;
   end;
-  if (AHook.Panel <> nil) and (AHook.Panel.Index < Bar.Panels.Count) and
-    (Bar.Panels[AHook.Panel.Index] = AHook.Panel) then
-    Bar.Panels.Delete(AHook.Panel.Index);
+  for Index := AHook.Extras.Count - 1 downto 0 do
+    RemovePanel(Bar, AHook.Extras[Index]);
+  AHook.Extras.Clear;
+  RemovePanel(Bar, AHook.Panel);
 end;
 
 procedure TAtlasStatusField.UnhookAll;
@@ -420,6 +453,19 @@ end;
 
 { TAtlasStatusField.THook }
 
+constructor TAtlasStatusField.THook.Create;
+begin
+  inherited Create;
+  Extras := TList<TStatusPanel>.Create;
+  Zone := -1;
+end;
+
+destructor TAtlasStatusField.THook.Destroy;
+begin
+  Extras.Free;
+  inherited Destroy;
+end;
+
 procedure TAtlasStatusField.THook.WndProc(var Message: TMessage);
 begin
   if Field <> nil then
@@ -428,12 +474,91 @@ begin
     OldWndProc(Message);
 end;
 
-function TAtlasStatusField.PanelRect(AHook: THook): TRect;
+function TAtlasStatusField.PanelRect(AHook: THook; APanel: TStatusPanel): TRect;
 begin
   Result := Rect(0, 0, 0, 0);
-  if (AHook.Panel = nil) or not AHook.Bar.HandleAllocated then
+  if (APanel = nil) or not AHook.Bar.HandleAllocated or (APanel.Width <= 0) then
     Exit;
-  SendMessage(AHook.Bar.Handle, SB_GETRECT, AHook.Panel.Index, LPARAM(@Result));
+  SendMessage(AHook.Bar.Handle, SB_GETRECT, APanel.Index, LPARAM(@Result));
+end;
+
+function TAtlasStatusField.PanelRect(AHook: THook): TRect;
+begin
+  Result := PanelRect(AHook, AHook.Panel);
+end;
+
+function TAtlasStatusField.ZoneAt(AHook: THook; X, Y: Integer): Integer;
+var
+  Index: Integer;
+begin
+  if PtInRect(PanelRect(AHook), Point(X, Y)) then
+    Exit(0);
+  for Index := 0 to AHook.Extras.Count - 1 do
+    if PtInRect(PanelRect(AHook, AHook.Extras[Index]), Point(X, Y)) then
+      Exit(Index + 1);
+  Result := -1;
+end;
+
+function TAtlasStatusField.HintOf(AZone: Integer): string;
+begin
+  Result := '';
+  if AZone = 0 then
+    Result := FTooltip
+  else if (AZone > 0) and (AZone <= Length(FExtras)) then
+    Result := FExtras[AZone - 1].Hint;
+end;
+
+procedure TAtlasStatusField.SyncExtras(AHook: THook);
+var
+  Index: Integer;
+  Panel: TStatusPanel;
+begin
+  while AHook.Extras.Count > Length(FExtras) do
+  begin
+    RemovePanel(AHook.Bar, AHook.Extras.Last);
+    AHook.Extras.Delete(AHook.Extras.Count - 1);
+  end;
+  while AHook.Extras.Count < Length(FExtras) do
+  begin
+    Panel := AHook.Bar.Panels.Add;
+    Panel.Style := psText;
+    Panel.Bevel := pbNone;
+    AHook.Extras.Add(Panel);
+  end;
+  for Index := 0 to AHook.Extras.Count - 1 do
+  begin
+    Panel := AHook.Extras[Index];
+    Panel.Text := FExtras[Index].Text;
+    Panel.Width := AHook.Bar.Canvas.TextWidth(FExtras[Index].Text) + MulDiv(16, AHook.Bar.CurrentPPI, 96);
+  end;
+end;
+
+procedure TAtlasStatusField.SetExtra(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
+var
+  Index, Found: Integer;
+  Extra: TExtra;
+begin
+  Found := -1;
+  for Index := 0 to High(FExtras) do
+    if FExtras[Index].Id = AId then
+      Found := Index;
+  if AText = '' then
+  begin
+    if Found >= 0 then
+      Delete(FExtras, Found, 1);
+  end
+  else
+  begin
+    Extra.Id := AId;
+    Extra.Text := AText;
+    Extra.Hint := AHint;
+    Extra.OnClick := AOnClick;
+    if Found >= 0 then
+      FExtras[Found] := Extra
+    else
+      FExtras := FExtras + [Extra];
+  end;
+  RequestRefresh;
 end;
 
 /// <summary>Platz für das Symbol samt Abstand in Gerätepixeln.</summary>
@@ -464,7 +589,8 @@ begin
   FTooltip := TAtlasStatusSummary.Tooltip(FItems);
   if FWindow <> nil then
     FWindow.SetItems(FItems);
-  if not Settings.StatusField then
+  // Ohne Atlas-Feld bleiben die Leisten nur für Zusatzfelder eingehängt (#575).
+  if not Settings.StatusField and (Length(FExtras) = 0) then
   begin
     UnhookAll;
     Exit;
@@ -489,13 +615,20 @@ begin
       if Hook = nil then
         Continue;
       Hook.Bar.Canvas.Font := Hook.Bar.Font;
-      Width_ := Hook.Bar.Canvas.TextWidth(FText) + MulDiv(30, Hook.Bar.CurrentPPI, 96) +
-        SymbolWidth(Hook.Bar.CurrentPPI);
+      Width_ := 0;
+      if Settings.StatusField then
+        Width_ := Hook.Bar.Canvas.TextWidth(FText) + MulDiv(30, Hook.Bar.CurrentPPI, 96) +
+          SymbolWidth(Hook.Bar.CurrentPPI);
       // Text nur zum Erkennen und für Screenreader; gezeichnet wird in DrawPanel.
-      Hook.Panel.Text := FText;
+      if Width_ > 0 then
+        Hook.Panel.Text := FText
+      else
+        Hook.Panel.Text := '';
       Hook.Panel.Width := Width_;
-      if Hook.InPanel then
-        Hook.Bar.Hint := FTooltip;
+      SyncExtras(Hook);
+      // Zusatzfeld verschwunden oder Feld aus: Tooltip des Panels unter der Maus neu bestimmen.
+      if Hook.Zone >= 0 then
+        Hook.Bar.Hint := HintOf(Hook.Zone);
       Hook.Bar.Invalidate;
     end;
   finally
@@ -560,6 +693,10 @@ end;
 procedure TAtlasStatusField.BarMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
   Hook: THook;
+  Zone: Integer;
+  OnClick: TProc<TPoint>;
+  Area: TRect;
+  Corner: TPoint;
 begin
   Hook := HookOf(Sender as TStatusBar);
   if Hook = nil then
@@ -570,13 +707,29 @@ begin
     Hook.SkipUp := False;
     Exit;
   end;
-  if (Button = mbLeft) and PtInRect(PanelRect(Hook), Point(X, Y)) then
+  Zone := -1;
+  if Button = mbLeft then
+    Zone := ZoneAt(Hook, X, Y);
+  if Zone = 0 then
   begin
     TAtlasGuard.Run(TAtlasFeature.Status,
       procedure
       begin
         OpenWindow(Hook);
       end);
+    Exit;
+  end;
+  if (Zone > 0) and (Zone <= Length(FExtras)) then
+  begin
+    OnClick := FExtras[Zone - 1].OnClick;
+    Area := PanelRect(Hook, Hook.Extras[Zone - 1]);
+    Corner := Hook.Bar.ClientToScreen(Point(Area.Left, Area.Top));
+    if Assigned(OnClick) then
+      TAtlasGuard.Run(TAtlasFeature.Status,
+        procedure
+        begin
+          OnClick(Corner);
+        end);
     Exit;
   end;
   if Assigned(Hook.OldMouseUp) then
@@ -586,28 +739,32 @@ end;
 procedure TAtlasStatusField.BarMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
 var
   Hook: THook;
-  Inside: Boolean;
+  Zone: Integer;
 begin
   Hook := HookOf(Sender as TStatusBar);
   if Hook = nil then
     Exit;
-  Inside := PtInRect(PanelRect(Hook), Point(X, Y));
-  if Inside <> Hook.InPanel then
+  Zone := ZoneAt(Hook, X, Y);
+  if Zone <> Hook.Zone then
   begin
-    if Inside then
+    if Zone >= 0 then
     begin
-      Hook.OldHint := Hook.Bar.Hint;
-      Hook.OldShowHint := Hook.Bar.ShowHint;
-      Hook.Bar.Hint := FTooltip;
+      // Erst beim Betreten eines unserer Panels den Tooltip der Leiste merken.
+      if Hook.Zone < 0 then
+      begin
+        Hook.OldHint := Hook.Bar.Hint;
+        Hook.OldShowHint := Hook.Bar.ShowHint;
+      end;
+      Hook.Bar.Hint := HintOf(Zone);
       Hook.Bar.ShowHint := True;
     end
     else
     begin
       Hook.Bar.Hint := Hook.OldHint;
       Hook.Bar.ShowHint := Hook.OldShowHint;
-      Application.CancelHint;
     end;
-    Hook.InPanel := Inside;
+    Application.CancelHint;
+    Hook.Zone := Zone;
   end;
   if Assigned(Hook.OldMouseMove) then
     Hook.OldMouseMove(Sender, Shift, X, Y);

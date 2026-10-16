@@ -318,6 +318,13 @@ begin
     '"McpBuild":{"type":"boolean","x-feature":"Build",' +
       '"default":true,"x-page":"Compiler","x-quickToggle":true,' +
       '"x-caption":"Builds für Claude Code","x-captionEn":"Builds for Claude Code","x-issue":"#261"},' +
+    '"StartProfiles":{"type":"boolean","x-feature":"Build",' +
+      '"default":true,"x-page":"Compiler","x-quickToggle":true,' +
+      '"x-caption":"Startprofile","x-captionEn":"Start profiles","x-issue":"#575"},' +
+    '"StartProfilesStatusField":{"type":"boolean","x-feature":"Build",' +
+      '"default":true,"x-page":"Compiler","x-quickToggle":true,' +
+      '"x-caption":"Startprofil in der Statusleiste","x-captionEn":"Start profile in the status bar",' +
+      '"x-issue":"#575"},' +
     '"TestRun":{"type":"boolean","x-feature":"Build",' +
       '"default":true,"x-page":"Compiler","x-quickToggle":true,' +
       '"x-caption":"Tests ausführen","x-captionEn":"Run tests","x-issue":"#69"},' +
