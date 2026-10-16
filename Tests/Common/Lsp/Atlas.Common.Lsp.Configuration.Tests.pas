@@ -28,6 +28,8 @@ type
     [Test]
     procedure UsesDefaultsWithoutFile;
     [Test]
+    procedure LoadWorkspaceWithGlobalTextChangesOnce;
+    [Test]
     procedure LoadsFileFromWorkspaceRoot;
     [Test]
     procedure LoadsLegacyFileWithoutNewOne;
@@ -101,6 +103,15 @@ begin
   // Sonst gibt erst das nächste Setup den Text frei (Leck-Monitor).
   FDiskText := '';
   FLegacyText := '';
+end;
+
+procedure TLspConfigurationTests.LoadWorkspaceWithGlobalTextChangesOnce;
+begin
+  FDiskText := '{"platform": "Win64"}';
+  FConfiguration.LoadWorkspace(Root, '{"language": "en", "platform": "Win32"}');
+  Assert.AreEqual(1, FChanges, 'Nur eine Neuberechnung');
+  Assert.AreEqual('en', FConfiguration.Settings.Language);
+  Assert.AreEqual('Win64', FConfiguration.Settings.Platform, 'Projekt-Schlüssel aus der globalen Datei wirkt nicht');
 end;
 
 procedure TLspConfigurationTests.UsesDefaultsWithoutFile;
