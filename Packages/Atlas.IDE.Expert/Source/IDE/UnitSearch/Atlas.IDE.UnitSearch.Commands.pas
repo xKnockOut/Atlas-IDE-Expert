@@ -79,7 +79,8 @@ uses
   Atlas.IDE.Editor.Style,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Hover.Editor,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Settings.Store,
+  Atlas.Core.Editor.WorkspacePlan;
 
 const
   UnitsCommand = 'atlas.server.units';
@@ -721,7 +722,8 @@ begin
     TAtlasIdeUnitSearch.Say(TAtlasStrings.Fmt(TAtlasTextId.UnitSearchUsesAdded, [0, ExtractFileName(ATarget)]));
     Exit;
   end;
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasIdeSettings.Current.OpenForEdits,
+  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit,
+    TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
     TAtlasStrings.Text(TAtlasTextId.UnitSearchAddUses) + ': ' + UnitList(AEntries));
   if Outcome.Error <> '' then
     TAtlasIdeUnitSearch.Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]))

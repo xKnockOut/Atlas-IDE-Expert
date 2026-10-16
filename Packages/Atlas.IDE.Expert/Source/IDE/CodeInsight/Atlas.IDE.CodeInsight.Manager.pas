@@ -256,7 +256,8 @@ uses
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.TimeLimit,
-  Atlas.Core.Diagnostics.Shutdown;
+  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Core.Editor.WorkspacePlan;
 
 var
   /// <summary>Lebender Manager; nach dem Freigeben nil, damit späte applyEdit-Aufrufe nichts mehr tun.</summary>
@@ -866,7 +867,8 @@ begin
             Reason := 'Dateioperationen (anlegen, umbenennen, löschen) werden nicht unterstützt.'
           else
             try
-              Outcome := TAtlasIdeWorkspaceEdit.Apply(AEdit, TAtlasIdeSettings.Current.OpenForEdits,
+              Outcome := TAtlasIdeWorkspaceEdit.Apply(AEdit,
+                TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
                 TAtlasStrings.Text(TAtlasTextId.UndoActionServer));
               Manager.Diagnose(Format('workspace/applyEdit: %d Änderungen in %d Dateien %s', [Outcome.Edits,
                 Outcome.Files, Outcome.Error]));

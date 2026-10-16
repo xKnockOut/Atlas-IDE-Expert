@@ -81,7 +81,8 @@ uses
   Atlas.IDE.Editor.Style,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Settings.Store,
-  Atlas.IDE.Commands.Editor;
+  Atlas.IDE.Commands.Editor,
+  Atlas.Core.Editor.WorkspacePlan;
 
 const
   // Wie die Code-Aktionen: Der Server darf etwas rechnen (Vorfahren, Index).
@@ -249,7 +250,8 @@ begin
   Edit.Files := [Default(TLspFileEdits)];
   Edit.Files[0].FileName := FileName;
   Edit.Files[0].Edits := Edits;
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, False, TAtlasGenerateWindow.EntryCaption(AEntry));
+  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasUnopenedPolicy.WriteToDisk,
+    TAtlasGenerateWindow.EntryCaption(AEntry));
   if Outcome.Error <> '' then
     ASay(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
 end;
