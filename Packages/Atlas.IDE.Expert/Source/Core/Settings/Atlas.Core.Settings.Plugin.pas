@@ -210,6 +210,10 @@ type
     /// <summary>Befehl „Metrikbericht des Projekts“ (#66, Atlas.MetricsReport) in der Befehlspalette; aus = der
     /// Befehl verschwindet. Die Zusammenfassung nach dem Build hängt an der Willkommensseite.</summary>
     MetricsReport: Boolean;
+    /// <summary>Projektdatei .atlas lesen (#486): Einstellungen für alle im Team aus dem Repository, Vorrang vor
+    /// den persönlichen; dazu der Befehl „Projektdatei .atlas öffnen“ (Atlas.TeamFile) mit Tipp. Aus = nur die
+    /// persönlichen Einstellungen gelten, Befehl und Tipp verschwinden.</summary>
+    TeamFile: Boolean;
     /// <summary>Die Editor-Kürzel auch belegen, wenn die IDE oder eine andere Erweiterung sie nutzt.</summary>
     EditorKeysPriority: Boolean;
     /// <summary>Schnellbefehle mit „/“ nach Enter und „///“-Gerüste beim Server auslösen (#399).</summary>
@@ -605,6 +609,7 @@ begin
   Result.TodoList := True;
   Result.BaselineUpdate := True;
   Result.MetricsReport := True;
+  Result.TeamFile := True;
   Result.EditorKeysPriority := False;
   Result.SlashCommands := True;
   Result.GenerateMenu := True;
@@ -879,6 +884,7 @@ begin
   TodoList := AStore.ReadInteger('TodoList', BoolValue(Default.TodoList)) <> 0;
   BaselineUpdate := AStore.ReadInteger('BaselineUpdate', BoolValue(Default.BaselineUpdate)) <> 0;
   MetricsReport := AStore.ReadInteger('MetricsReport', BoolValue(Default.MetricsReport)) <> 0;
+  TeamFile := AStore.ReadInteger('TeamFile', BoolValue(Default.TeamFile)) <> 0;
   EditorKeysPriority := AStore.ReadInteger('EditorKeysPriority', BoolValue(Default.EditorKeysPriority)) <> 0;
   SlashCommands := AStore.ReadInteger('SlashCommands', BoolValue(Default.SlashCommands)) <> 0;
   GenerateMenu := AStore.ReadInteger('GenerateMenu', BoolValue(Default.GenerateMenu)) <> 0;
@@ -1063,6 +1069,7 @@ begin
   AStore.WriteInteger('TodoList', BoolValue(TodoList));
   AStore.WriteInteger('BaselineUpdate', BoolValue(BaselineUpdate));
   AStore.WriteInteger('MetricsReport', BoolValue(MetricsReport));
+  AStore.WriteInteger('TeamFile', BoolValue(TeamFile));
   AStore.WriteInteger('EditorKeysPriority', BoolValue(EditorKeysPriority));
   AStore.WriteInteger('SlashCommands', BoolValue(SlashCommands));
   AStore.WriteInteger('GenerateMenu', BoolValue(GenerateMenu));

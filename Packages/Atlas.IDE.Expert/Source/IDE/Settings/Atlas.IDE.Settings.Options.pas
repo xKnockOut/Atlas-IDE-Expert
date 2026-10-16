@@ -81,7 +81,9 @@ uses
   Atlas.Core.Completion.Favorites,
   Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Foundation.StructureSwitch,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Settings.TeamFile,
+  Atlas.IDE.Foundation.TeamFile;
 
 type
   TAtlasAddInOptions = class(TInterfacedObject, INTAAddInOptions)
@@ -266,6 +268,21 @@ begin
       else
         Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer);
       Answer.Free;
+    end;
+  // Projektdatei .atlas (#486): Werte „aus .atlas“ auch bei noch ausgeschaltetem Schalter; Öffnen legt sie an.
+  FPage.OnTeamFile :=
+    function: TAtlasTeamSettings
+    begin
+      Result := TAtlasIdeTeamFile.Read(TAtlasIdeTeamFile.ActiveProject);
+    end;
+  FPage.OnOpenTeamFile :=
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          TAtlasIdeTeamFile.OpenInEditor;
+        end);
     end;
   FPage.LoadFrom(TAtlasIdeSettings.Stored);
 end;

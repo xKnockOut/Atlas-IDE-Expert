@@ -6,6 +6,8 @@ Einstellungen für Atlas. Jeder Schlüssel hat genau einen Ort (x-scope): "proje
 
 Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel stehen in `atlas.json` im Projektordner (im Plugin *Atlas › Projekt-Einstellungen*), globale in `%APPDATA%\Atlas\settings.json` für alle Projekte (im Plugin *Tools › Optionen › Atlas*). Ein Schlüssel am falschen Ort wird ignoriert und als Warnung gemeldet. Fehlende Schlüssel nehmen den Standardwert. In der IDE bestimmt die laufende IDE die Delphi-Version (`delphiVersion` gilt dort nicht). Die Prüfregeln stehen in [Regeln.md](Regeln.md).
 
+`atlas.json` liegt im Repository und gilt für alle im Team (#486). Zugangsdaten (Schlüssel wie `token`, `password`, `user` auf jeder Ebene, Adressen wie `https://user:pw@…` oder `?token=…`) und absolute Pfade (Laufwerk oder UNC) in den Pfad-Einstellungen (`project`, `testUnits.folder`, `testUnits.project`, `exclude`, `index.exclude`, `overrides[].files`) werden beim Lesen ignoriert und als Warnung gemeldet. Glob-Muster ab dem Projektordner (`/Generated/**`) und relative Pfade (`..\Tests`) bleiben erlaubt. Die globale `settings.json` ist persönlich und davon ausgenommen. Die Team-Einstellungen des Plugins stehen in der eigenen Projektdatei `.atlas` (siehe [Einstellungen.md](Einstellungen.md)).
+
 ## Schlüssel
 
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
