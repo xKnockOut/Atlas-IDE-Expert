@@ -91,7 +91,7 @@ type
     MonoFont = 'Consolas';
   private
     FSource: IAtlasTestResultsSource;
-    FBox: TPaintBox;
+    FBox: TAtlasWelcomeCanvas;
     FView: TAtlasTestResultsView;
     FFailure: Integer;
     FButtonRects: array[TAtlasTestResultsButton] of TRect;
@@ -168,7 +168,7 @@ type
     /// <summary>Gewählter Fehlschlag in der Liste; -1 = keiner (Im Debugger nimmt dann den ersten lokalen).
     /// </summary>
     property Failure: Integer read FFailure write FFailure;
-    property PaintBox: TPaintBox read FBox;
+    property PaintBox: TAtlasWelcomeCanvas read FBox;
     property Menu: TPopupMenu read FMenu;
     property QueryItem: TMenuItem read FQueryItem;
     property CredentialsItem: TMenuItem read FCredentialsItem;
@@ -216,7 +216,7 @@ begin
   inherited Create(AOwner);
   FFailure := -1;
   FMenuRow := -1;
-  FBox := TPaintBox.Create(Self);
+  FBox := TAtlasWelcomeCanvas.Create(Self);
   FBox.Parent := Body;
   FBox.Align := alClient;
   FBox.ShowHint := True;

@@ -16,6 +16,7 @@ uses
   Atlas.Core.Welcome.QuickActions,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.QuickActions,
+  Atlas.UI.Welcome.Frame,
   DUnitX.TestFramework;
 
 type
@@ -193,7 +194,7 @@ type
   TBarHost = class
   public
     Host: TForm;
-    Box: TPaintBox;
+    Box: TAtlasWelcomeCanvas;
     Bar: TAtlasQuickActionsBar;
     Opened: TArray<Integer>;
     Selected: TArray<Integer>;
@@ -208,7 +209,7 @@ begin
   inherited Create;
   Host := TForm.CreateNew(nil);
   Host.SetBounds(0, 0, 800, 200);
-  Box := TPaintBox.Create(Host);
+  Box := TAtlasWelcomeCanvas.Create(Host);
   Box.Parent := Host;
   Box.SetBounds(0, 0, 800, 200);
   Bar := TAtlasQuickActionsBar.Create(Host, Box, Host);

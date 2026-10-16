@@ -53,7 +53,7 @@ type
     ButtonPadding = 16;
   private
     FSource: IAtlasStateSource;
-    FBox: TPaintBox;
+    FBox: TAtlasWelcomeCanvas;
     FBar: TPanel;
     FButtons: array[TAtlasStateButton] of TButton;
     FRows: TAtlasStateRows;
@@ -90,7 +90,7 @@ type
     function Button(AButton: TAtlasStateButton): TButton;
     property Source: IAtlasStateSource read FSource write SetSource;
     property Rows: TAtlasStateRows read FRows;
-    property PaintBox: TPaintBox read FBox;
+    property PaintBox: TAtlasWelcomeCanvas read FBox;
   end;
 
 implementation
@@ -131,7 +131,7 @@ begin
   end;
   // Erst jetzt: Die Größenänderung ordnet die Knöpfe an.
   FBar.OnResize := BarResize;
-  FBox := TPaintBox.Create(Self);
+  FBox := TAtlasWelcomeCanvas.Create(Self);
   FBox.Parent := Body;
   FBox.Align := alClient;
   FBox.ShowHint := True;
