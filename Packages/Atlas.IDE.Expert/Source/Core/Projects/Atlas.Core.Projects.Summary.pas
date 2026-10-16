@@ -307,6 +307,8 @@ type
     Count: Integer;
     /// <summary>Kein sicherer Fund (Suchpfad mit unbekanntem Makro übersprungen).</summary>
     Uncertain: Boolean;
+    /// <summary>Define: ähnliches bekanntes Symbol; Hinweis: Unit im Suchpfad ('' = Package ohne Quelle).</summary>
+    Note: string;
     /// <summary>Nur in der Zusammenfassung einer Projektgruppe: Name des Projekts; nicht gespeichert.</summary>
     Project: string;
   end;
@@ -331,6 +333,8 @@ type
     UndefinedDefineCount: Integer;
     MissingUnits: TArray<TAtlasSetupFinding>;
     UndefinedDefines: TArray<TAtlasSetupFinding>;
+    /// <summary>Hinweise zu requires-Packages (#759); kein Fehler.</summary>
+    Hints: TArray<TAtlasSetupFinding>;
     /// <summary>Davon unsicher (in MissingUnitCount bzw. UndefinedDefineCount enthalten).</summary>
     UncertainUnitCount: Integer;
     UncertainDefineCount: Integer;
@@ -512,8 +516,8 @@ const
   ReleaseKeys: array[0..6] of string = ('checkedAt', 'configuration', 'platform', 'findings', 'blocked', 'rules',
     'builds');
   ReleaseBuildKeys: array[0..3] of string = ('configuration', 'platform', 'version', 'at');
-  PathsKeys: array[0..9] of string = ('at', 'files', 'unreadable', 'missingUnits', 'undefinedDefines', 'units',
-    'defines', 'uncertainUnits', 'uncertainDefines', 'skippedMacros');
+  PathsKeys: array[0..10] of string = ('at', 'files', 'unreadable', 'missingUnits', 'undefinedDefines', 'units',
+    'defines', 'uncertainUnits', 'uncertainDefines', 'skippedMacros', 'hints');
 
 { TAtlasProjectLocation }
 
@@ -1046,6 +1050,8 @@ begin
     Finding.Line := NumberOf(TJSONObject(Item), 'line', 0);
     Finding.Count := NumberOf(TJSONObject(Item), 'count', 1);
     Finding.Uncertain := FlagOf(TJSONObject(Item), 'uncertain');
+    Finding.Note := TextOf(TJSONObject(Item), 'note');
+    Finding.Project := '';
     if (Finding.Name <> '') and (Length(Result) < TAtlasProjectSetup.MaxFindings) then
       Result := Result + [Finding];
   end;
@@ -1071,6 +1077,8 @@ begin
     Item.AddPair('count', TJSONNumber.Create(AFindings[Index].Count));
     if AFindings[Index].Uncertain then
       Item.AddPair('uncertain', TJSONBool.Create(True));
+    if AFindings[Index].Note <> '' then
+      Item.AddPair('note', AFindings[Index].Note);
   end;
 end;
 
@@ -1112,6 +1120,7 @@ begin
   Result.Unreadable := NumberOf(Paths, 'unreadable', 0);
   Result.MissingUnits := SetupFindingsOf(Paths.GetValue('units'));
   Result.UndefinedDefines := SetupFindingsOf(Paths.GetValue('defines'));
+  Result.Hints := SetupFindingsOf(Paths.GetValue('hints'));
   // Die Zähler sind nie kleiner als die gespeicherten Funde.
   Result.MissingUnitCount := NumberOf(Paths, 'missingUnits', 0);
   if Result.MissingUnitCount < Length(Result.MissingUnits) then
@@ -1163,6 +1172,8 @@ begin
     end;
     Paths.AddPair('units', SetupFindingsJson(ASetup.MissingUnits));
     Paths.AddPair('defines', SetupFindingsJson(ASetup.UndefinedDefines));
+    if Length(ASetup.Hints) > 0 then
+      Paths.AddPair('hints', SetupFindingsJson(ASetup.Hints));
     KeepUnknown(Paths, ObjectOf(AOriginal, 'paths'), PathsKeys);
   end;
   KeepUnknown(Result, AOriginal, SetupKeys);

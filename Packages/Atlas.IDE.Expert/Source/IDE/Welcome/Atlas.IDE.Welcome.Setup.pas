@@ -39,6 +39,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
+  Vcl.ExtCtrls,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Projects.Setup,
@@ -78,6 +79,9 @@ type
     FShown: Boolean;
     FListener: Integer;
     FQueued: Boolean;
+    /// <summary>Wechsel des aktiven Projekts meldet die IDE nicht: einmal je Sekunde vergleichen.</summary>
+    FWatch: TTimer;
+    FWatched: string;
     FBaselineProject: string;
     FBaseline: TAtlasSetupRun;
     FBaselineStarted: UInt64;
@@ -89,6 +93,7 @@ type
     FPathsStarted: UInt64;
     FPathsError: string;
     FThread: TThread;
+    procedure WatchTick(Sender: TObject);
     procedure Report(const AText: string);
     procedure ProjectsChanged(const AId: string);
     procedure BaselineFinished(const AProject: string; ASucceeded: Boolean; ATotal, AFiles: Integer;
@@ -136,6 +141,7 @@ implementation
 
 uses
   System.IOUtils,
+  System.RegularExpressions,
   ToolsAPI,
   Atlas.Text.Defines,
   Atlas.Core.Diagnostics.Guard,
@@ -239,7 +245,31 @@ begin
         ProjectsChanged(AId);
       end);
   FTitle := '';
+  if FWatch = nil then
+  begin
+    FWatch := TTimer.Create(nil);
+    FWatch.Interval := 1000;
+    FWatch.OnTimer := WatchTick;
+  end;
+  FWatch.Enabled := True;
   Refresh;
+end;
+
+procedure TAtlasIdeSetup.WatchTick(Sender: TObject);
+var
+  Open: Boolean;
+  Project: string;
+begin
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      // Anderes aktives Projekt in der Projektverwaltung: Karte für dieses Projekt.
+      Project := Target(Open);
+      if SameText(Project, FWatched) then
+        Exit;
+      FWatched := Project;
+      Refresh;
+    end);
 end;
 
 procedure TAtlasIdeSetup.Stop;
@@ -247,6 +277,7 @@ begin
   if not FStarted then
     Exit;
   FStarted := False;
+  FreeAndNil(FWatch);
   if FListener >= 0 then
     TAtlasWelcomeSections.Default.RemoveListener(FListener);
   FListener := -1;
@@ -658,8 +689,10 @@ function PathJobOf(const AIde: IOTAProject): TAtlasSetupPathJob;
 var
   Context: TAtlasProjectContext;
   Index: Integer;
-  Main, Name: string;
+  Main, Name, GroupDir: string;
   Version: Double;
+  Modules: IOTAModuleServices;
+  Group: IOTAProjectGroup;
 begin
   Result := Default(TAtlasSetupPathJob);
   Result.Project := TAtlasIdeProjects.ProjectFileOf(AIde.FileName);
@@ -680,6 +713,24 @@ begin
       Result.Input.Sources := Result.Input.Sources + [Name];
   end;
   Result.Input.Namespaces := Context.Namespaces;
+  // Projekte der Gruppe: ihre Packages erfüllen requires (#759).
+  GroupDir := ExtractFileDir(Result.Project);
+  if Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
+    Group := Modules.MainProjectGroup;
+    if Group <> nil then
+    begin
+      if Group.FileName <> '' then
+        GroupDir := ExtractFileDir(Group.FileName);
+      for Index := 0 to Group.ProjectCount - 1 do
+        if Group.Projects[Index] <> nil then
+          Result.Input.GroupProjects := Result.Input.GroupProjects +
+            [TAtlasIdeProjects.ProjectFileOf(Group.Projects[Index].FileName)];
+    end;
+  end;
+  // Build-Skripte (-dX) neben dem Projekt, neben der Gruppe und in üblichen Unterordnern der Gruppe.
+  Result.Input.ScriptFolders := [ExtractFileDir(Result.Project), GroupDir, TPath.Combine(GroupDir, 'tools'),
+    TPath.Combine(GroupDir, 'scripts'), TPath.Combine(GroupDir, 'build')];
   Version := TTextDefines.CompilerVersionOfBds(StrToFloatDef(Context.BdsVersion, 0, TFormatSettings.Invariant));
   Result.Input.ActiveDefines := Context.Defines + TTextDefines.Predefined(Context.Platform, Version);
   Result.SearchPaths := Context.SearchPaths;
@@ -694,7 +745,8 @@ end;
 function RunPathJob(const AJob: TAtlasSetupPathJob): TAtlasSetupPathRun;
 var
   Input: TAtlasPathCheckInput;
-  Folder, Dproj: string;
+  Folder, Dproj, Member, Other, Output, Each: string;
+  Match: TMatch;
   Variable: TAtlasPathVariable;
   Skipped: TArray<string>;
 begin
@@ -712,6 +764,22 @@ begin
     Input.SkippedMacros := Skipped;
     if TAtlasIdeSetup.ReadText(AJob.Project, Dproj) then
       Input.ProjectDefines := TAtlasPathCheck.DprojDefines(Dproj);
+    // Projekte der Gruppe, die in einen Ordner des Suchpfads übersetzen (DCC_DcuOutput).
+    for Member in Input.GroupProjects do
+      if not SameText(Member, AJob.Project) and TAtlasIdeSetup.ReadText(Member, Other) then
+      begin
+        Match := TRegEx.Match(Other, '<DCC_DcuOutput>([^<]*)</DCC_DcuOutput>', [roIgnoreCase]);
+        if Match.Success then
+        begin
+          Output := TAtlasPathCheck.ExpandPath(Match.Groups[1].Value, ExtractFileDir(Member), Variable);
+          for Each in Input.SearchPaths do
+            if (Output <> '') and SameText(ExcludeTrailingPathDelimiter(Each), ExcludeTrailingPathDelimiter(Output)) then
+            begin
+              Input.ProducedBy := Input.ProducedBy + [Member];
+              Break;
+            end;
+        end;
+      end;
     Result.Check := TAtlasPathCheck.Run(Input,
       function(const AFileName: string; out AText: string): Boolean
       begin
