@@ -34,6 +34,10 @@ type
     procedure OpenFindsInSearchPath;
     [Test]
     procedure OpenUnknownFails;
+    [Test]
+    procedure LogUsesConfiguredCall;
+    [Test]
+    procedure ExceptUsesConfiguredCall;
   end;
 
 implementation
@@ -49,7 +53,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.SlashCommands,
+  Atlas.Text.Lines;
 
 type
   TFakeHost = class(TInterfacedObject, ISlashHost)
@@ -64,6 +69,7 @@ type
     Selection: TTextRange;
     WrittenFiles: TArray<TSlashFile>;
     ShowAfterWrite: string;
+    LogCallValue: string;
     constructor Create;
     destructor Destroy; override;
     function Project(const AUri: string; out AProject: TProjectInfo): Boolean;
@@ -74,6 +80,7 @@ type
     procedure ShowDocument(const AFileName: string; const ASelection: TTextRange);
     function HeaderTemplate(const AUri: string): string;
     procedure WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
+    function LogCall(const AUri: string): string;
   end;
 
 const
@@ -198,6 +205,11 @@ procedure TFakeHost.WriteFiles(const AUri: string; const AFiles: TArray<TSlashFi
 begin
   WrittenFiles := AFiles;
   ShowAfterWrite := AShow;
+end;
+
+function TFakeHost.LogCall(const AUri: string): string;
+begin
+  Result := LogCallValue;
 end;
 
 function Run(const ACommand: string; const AHost: ISlashHost; out AEdits: TArray<TRuleEdit>): Boolean;
@@ -415,6 +427,69 @@ begin
   Assert.AreEqual('', Host.Shown);
   // Stehen gebliebene Zeile: Hinweis statt Löschen.
   Problems := TSlashCommandRegistry.Shared.Problems(Format(FormUnit, ['/open Fehlt']), nil);
+  Assert.AreEqual(1, Integer(Length(Problems)));
+end;
+
+/// <summary>FormUnit mit ACommand und angewandten AEdits; von hinten, damit frühere Positionen gültig bleiben.</summary>
+function Expanded(const ACommand: string; const AEdits: TArray<TRuleEdit>): string;
+var
+  Table: TLineTable;
+  Index, Start, Stop: Integer;
+begin
+  Result := Format(FormUnit, [ACommand]);
+  for Index := High(AEdits) downto 0 do
+  begin
+    Table := TLineTable.Build(Result);
+    Start := Table.OffsetAt(AEdits[Index].Range.StartPos);
+    Stop := Table.OffsetAt(AEdits[Index].Range.EndPos);
+    Result := Copy(Result, 1, Start) + AEdits[Index].NewText + Copy(Result, Stop + 1, MaxInt);
+  end;
+end;
+
+procedure TProjectCommandsTests.LogUsesConfiguredCall;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+  Text: string;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  // Ohne Einstellung: OutputDebugString.
+  Assert.IsTrue(Run('/log', Keep, Edits));
+  Text := Expanded('/log', Edits);
+  Assert.IsTrue(Pos('  OutputDebugString(PChar(''Main.TForm1.Button1Click''));', Text) > 0, Text);
+  // Routinenname: bekommt den Text als Argument.
+  Host.LogCallValue := 'Log.Debug';
+  Assert.IsTrue(Run('/log', Keep, Edits));
+  Text := Expanded('/log', Edits);
+  Assert.IsTrue(Pos('  Log.Debug(''Main.TForm1.Button1Click'');', Text) > 0, Text);
+  // Vorlage mit {text}.
+  Host.LogCallValue := 'Logger.Send(TLogLevel.Debug, {text});';
+  Assert.IsTrue(Run('/log Start', Keep, Edits));
+  Text := Expanded('/log Start', Edits);
+  Assert.IsTrue(Pos('  Logger.Send(TLogLevel.Debug, ''Main.TForm1.Button1Click: Start'');', Text) > 0, Text);
+end;
+
+procedure TProjectCommandsTests.ExceptUsesConfiguredCall;
+const
+  Body = '/except'#10'  Close;';
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+  Text: string;
+  Problems: TArray<TSlashProblem>;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  Host.LogCallValue := 'Log.Error';
+  Assert.IsTrue(Run(Body, Keep, Edits));
+  Text := Expanded(Body, Edits);
+  Assert.IsTrue(Pos('      Log.Error(E.ClassName + '': '' + E.Message);'#10'      raise;', Text) > 0, Text);
+  // Falscher Ort: außerhalb einer Routine bleibt die Zeile mit Hinweis stehen.
+  Problems := TSlashCommandRegistry.Shared.Problems('unit U;'#10'interface'#10'/except'#10'implementation'#10 +
+    'end.', nil);
   Assert.AreEqual(1, Integer(Length(Problems)));
 end;
 

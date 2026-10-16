@@ -3,7 +3,8 @@
 // Schnellbefehle für Formatierung und Messung (#300) im Rahmen aus #293:
 //   /fmt       formatiert die umgebende Routine (Formatter aus #43, Standardstil)
 //   /measure   misst die folgenden Anweisungen mit TStopwatch und gibt die Zeit
-//              per OutputDebugString aus; trägt System.Diagnostics ein
+//              mit slashCommands.logCall (#304) aus, sonst per OutputDebugString;
+//              trägt System.Diagnostics ein
 // /extract, /inline, /fix und /explain aus #300 folgen mit #50, #103 und #54.
 
 interface
@@ -74,8 +75,8 @@ begin
       Name := Name + ' ' + AContext.Arguments;
     // Name als Format-Argument: Prozentzeichen im Namen stören so nicht.
     Result := Wrap(Source, 'measure', ['var SW := TStopwatch.StartNew;', 'try'],
-      ['finally', Format('  OutputDebugString(PChar(Format(''%%s: %%d ms'', [%s, SW.ElapsedMilliseconds])));',
-      [QuotedStr(Name)]), 'end;'], '  ', AEdits, AReason);
+      ['finally', '  ' + LogStatement(AContext, Format('Format(''%%s: %%d ms'', [%s, SW.ElapsedMilliseconds])',
+      [QuotedStr(Name)])), 'end;'], '  ', AEdits, AReason);
     if Result then
       AddUses(Source, AContext, Source.Line, ['System.Diagnostics'], AEdits);
   finally

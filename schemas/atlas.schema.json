@@ -515,6 +515,12 @@
           "type": "string",
           "default": "",
           "description": "Vorlage für /header mit den Platzhaltern {unit}, {jahr} und {autor}. Leer: die Vorlage der Regel file-header, sonst ein einfacher Kopf."
+        },
+        "logCall": {
+          "type": "string",
+          "default": "",
+          "description": "Protokollaufruf für /log, /except und /measure: ein Routinenname wie \"Log.Debug\" bekommt den Text als Argument, {text} setzt ihn an diese Stelle, z. B. \"Logger.Send(TLogLevel.Debug, {text})\". Leer: OutputDebugString(PChar(…)).",
+          "x-issue": "#304"
         }
       },
       "x-scope": "global",

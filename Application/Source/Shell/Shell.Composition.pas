@@ -675,6 +675,22 @@ begin
       if (FConnection = nil) or not FConnection.Queue(AWork) then
         FLogger.Warning('Schnellbefehl: Projekt nicht neu geladen, die Verbindung ist beendet');
     end;
+  // Protokollaufruf für /log, /except und /measure aus der atlas.json des Ordners (#304).
+  SlashHost.LogCallOf :=
+    function(const AUri: string): string
+    var
+      Workspace: TShellWorkspace;
+    begin
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
+        if Workspace = nil then
+          Exit(FLooseSettings.SlashLogCall);
+        Result := Workspace.Configuration.Settings.SlashLogCall;
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+    end;
   FFormatting.SlashHost := SlashHost;
   FFormatting.Attach(FDispatcher);
   // Erzeugen-Menü (#719): dieselben Schalter, Versionen und derselbe Host wie die Schnellbefehle nach Enter.

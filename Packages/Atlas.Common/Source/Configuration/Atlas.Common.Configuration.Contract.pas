@@ -303,6 +303,9 @@ type
     SlashCommandsDisabled: TArray<string>;
     /// <summary>Vorlage für /header mit {unit}, {jahr}, {autor} (#306); '' = Vorlage der Regel file-header.</summary>
     SlashHeaderTemplate: string;
+    /// <summary>Protokollaufruf für /log, /except und /measure (#304): Routinenname oder Vorlage mit {text};
+    /// '' = OutputDebugString.</summary>
+    SlashLogCall: string;
     /// <summary>"uses aufräumen" (source.organizeImports) sortiert alphabetisch; Vorgabe aus,
     /// weil die Reihenfolge die Initialisierung bestimmt (#182).</summary>
     SortUses: Boolean;
@@ -656,6 +659,7 @@ begin
   Result.SlashCommands := True;
   Result.SlashCommandsDisabled := nil;
   Result.SlashHeaderTemplate := '';
+  Result.SlashLogCall := '';
   Result.SortUses := False;
   Result.SortUsesByNamespace := False;
   Result.UsesKeep := nil;

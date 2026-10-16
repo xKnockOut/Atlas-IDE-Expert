@@ -56,6 +56,8 @@ type
     /// <summary>Legt AFiles in einem Schritt an bzw. ersetzt sie (über den Editor, sonst auf der Platte),
     /// lädt das Projekt zu AUri neu und öffnet danach AShow ('' = nichts).</summary>
     procedure WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
+    /// <summary>slashCommands.logCall (#304) zur Datei AUri; '' = OutputDebugString.</summary>
+    function LogCall(const AUri: string): string;
   end;
 
   /// <summary>Aktionen, die erst nach erfolgreichem Befehl laufen; bei Hinweisen werden sie verworfen.</summary>
