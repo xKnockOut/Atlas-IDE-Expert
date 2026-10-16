@@ -4,6 +4,27 @@
 
 Experte für RAD Studio (Delphi/Object Pascal): ein IDE-Plugin mit eigener Oberfläche und ein eigener Language Server (LSP), dazu eine MCP-Schnittstelle für Claude Code. Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues); die Epics #130 bis #139 bilden die Ausbaustufen ab.
 
+## Schnellstart
+
+Voraussetzung ist RAD Studio bzw. Delphi ab Version 12. Ein fertiges Paket zum Herunterladen gibt es noch nicht: Bisher ist kein [Release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) veröffentlicht.
+
+**Weg A – mit Installer (sobald ein Release existiert):**
+
+1. `atlas-ide-expert-<Version>.zip` aus dem Release laden und entpacken.
+2. `AtlasSetup.exe` starten. Er braucht keine Administratorrechte und findet die installierten Delphi-Versionen ab 12 selbst.
+3. „Installieren“ wählen, danach Delphi starten.
+
+Einzelheiten: [docs/Installation.md](docs/Installation.md).
+
+**Weg B – heute: selbst bauen und das Package in der IDE installieren:**
+
+1. Delphi ab 12 installieren und dieses Repository klonen.
+2. `Atlas.groupproj` in Delphi öffnen und alle Projekte für **Win64** erstellen (*Alle erstellen*). Für die klassische 32-Bit-IDE zusätzlich `Atlas.IDE.Expert` für **Win32** erstellen.
+3. In Delphi *Komponente › Packages installieren › Hinzufügen* und die BPL wählen: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert370.bpl` für die klassische IDE (Delphi 12: `…290.bpl`), `Output\Win64\Debug\Bpl\…` für die 64-Bit-IDE. Den Server `Output\Win64\Debug\Bin\AtlasServer.exe` findet das Plugin dort von selbst.
+4. Delphi einmal neu starten.
+
+`AtlasSetup.exe` aus dem eigenen Build (`Output\Win64\Debug\Bin`) hilft hier nicht: Er sucht die BPLs in Unterordnern `Win32` bzw. `Win64` neben sich (Aufbau des Release-Pakets), der Build legt sie aber unter `Output\<Plattform>\Debug\Bpl` ab. Ohne gefundene BPL bietet er keine IDE an. Ausführlich: [Installation](#installation).
+
 ## Das IDE-Plugin
 
 `Atlas.IDE.Expert` ersetzt in RAD Studio 13 (und 12) die eingebaute Code Insight durch eigene Fenster, die der Atlas-Server mit Daten füllt:
@@ -18,15 +39,28 @@ Experte für RAD Studio (Delphi/Object Pascal): ein IDE-Plugin mit eigener Oberf
 - **Code-Aktionen** (Alt+Enter), Auswahl erweitern und verkleinern (Strg+W, Strg+Umschalt+W), Gehe zu Implementierung und Typdefinition, Wechsel zwischen Deklaration und Implementierung (Strg+Umschalt+↑/↓), qualifizierten Namen kopieren; alles auch im Kontextmenü des Editors unter *Atlas*. Schnellbefehle wie `/uses Unit` laufen nach Enter, `///` über einer Deklaration erzeugt den Dokumentationskommentar; Alt+Einfg zeigt im **Erzeugen-Menü**, was sich am Cursor erzeugen lässt (Konstruktor, Properties, überschriebene Methoden, Interface-Methoden, Umschließen, Vorlagen)
 - **Formular-Designer**: Offene Formulare gehen im Stand des Designers an den Server, Referenzen, Umbenennen und Prüfungen sehen also ungespeicherte Änderungen; das Umbenennen eines Ereignis-Handlers ändert auch seine Zuordnung im Designer
 - **Befehlspalette** (Strg+Umschalt+P), stilles Neuladen extern geänderter Dateien, Hänger-Wächter mit Protokoll
+- **Markierung suchen**: F3 bzw. Umschalt+F3 sucht eine einzeilige Markierung vorwärts bzw. rückwärts, sonst gilt „Erneut suchen“ der IDE
+- **Units suchen** (#777): eigenes Fenster statt des IDE-Dialogs auf Strg+F12; der IDE-Dialog bleibt über das Menü erreichbar
+- **Notizen** (#545) an Codezeilen, nur für dich und nicht im Quelltext, und **benannte Lesezeichen** (#622, Strg+Alt+K)
+- **Favoriten** in der Vervollständigung (#458): Strg+D heftet einen Eintrag oben an
+- **Code-Metriken** als Code Lens hinter jedem Methodenkopf (#66) und **TODO-Übersicht** des Projekts (#68)
+- **Tests**: DUnitX-Tests aus dem Editor ausführen (#69) und einen einzelnen Test im Debugger starten (#585)
+- **Kompilieren über die IDE** (#261): Claude Code baut offene Projekte über das MCP-Werkzeug `build_project` mit dem Compiler der IDE
+- **Startprofile** (#575) für Parameter, Arbeitsordner, Umgebung und Host-Anwendung
+- **Baseline** (#97): bekannte Treffer ausblenden, nur neue melden
+- **Projektdatei `.atlas`** (#486) mit teamweiten Einstellungen zum Einchecken
+- **Benachrichtigungszentrale** (#601, Strg+Umschalt+Alt+N) sammelt Hinweise, Zähler im Atlas-Statusfeld
+- **Release-Build-Wächter** (#533) prüft vor einem Release-Build die Projektoptionen
+- **Willkommensseite** mit Bereichen: Weiterarbeiten, Projekte, Projektverlauf, Nicht gesichert, Projekt einrichten (u. a. „Suchpfade und Defines prüfen“), Testergebnisse (#763), Atlas entdecken, Hilfe und Rückmeldung
 
-Installation und Einstellungen: [docs/RAD-Studio.md](docs/RAD-Studio.md). Alle Einstellungen liegen unter *Tools › Optionen › Drittanbieter › Atlas*, auch der Pfad zum Server.
+Installation und Einstellungen: [docs/RAD-Studio.md](docs/RAD-Studio.md). Alle Einstellungen liegen unter *Tools › Optionen › Drittanbieter › Atlas*, auch der Pfad zum Server; die Bereiche der Seite stehen als Liste links. Daneben gibt es die Seiten *Snippets*, *Tastenkonflikte* und *Server*. Teamweite Werte stehen in der Projektdatei `.atlas`.
 
 ## Installation
 
 ### IDE-Plugin für RAD Studio 13 und 12
 
 1. Repository klonen und `Atlas.groupproj` in RAD Studio öffnen.
-2. `Atlas.Common`, `Atlas.Windows` und `AtlasServer` für **Win64** erzeugen (alle drei für dieselbe Plattform). Ergebnis: `Output\Win64\Debug\Bin\AtlasServer.exe`. Alternativ `AtlasServer.exe` aus einem [Release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) nehmen; der Server hängt nicht von der Delphi-Version ab.
+2. `Atlas.Text`, `Atlas.Common`, `Atlas.Windows` und `AtlasServer` für **Win64** erzeugen (alle vier für dieselbe Plattform). Ergebnis: `Output\Win64\Debug\Bin\AtlasServer.exe`. Alternativ `AtlasServer.exe` aus einem [Release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) nehmen; der Server hängt nicht von der Delphi-Version ab.
 3. `Atlas.IDE.Expert` mit der Delphi-Version erzeugen, in der das Plugin laufen soll: für die klassische IDE **Win32**, für die 64-Bit-IDE **Win64**. Ergebnis: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert370.bpl` (Delphi 13; Delphi 12: `…290.bpl`, 64-Bit-IDE: `Output\Win64\…`).
 4. *Komponente › Packages installieren › Hinzufügen* und die BPL auswählen.
 5. Liegt der Server nicht unter `Output\…\Bin` oder neben der BPL: *Tools › Optionen › Drittanbieter › Atlas*, Feld „Atlas-Server“. Die Seite zeigt an, ob der Server gefunden wird.
@@ -61,6 +95,7 @@ Ausführlich: [docs/Installation.md](docs/Installation.md).
 
 | Projekt | Inhalt |
 |---|---|
+| `Packages/Atlas.Text` | Package, nur RTL (frei von Windows und VCL); das IDE-Plugin bindet es als Quelltext ein |
 | `Packages/Atlas.Common` | Package, frei von Windows und VCL |
 | `Packages/Atlas.Windows` | Package für Windows-spezifische Funktionen, frei von VCL |
 | `Application/AtlasServer` | Der Server (Konsolenprogramm, spricht LSP über stdin/stdout) |
@@ -78,7 +113,7 @@ Details zu Rollen, Benennung und Importregeln: [docs/Architektur.md](docs/Archit
 
 ## Bauen
 
-In der IDE `Atlas.groupproj` öffnen und **Alle erstellen**. Die Reihenfolge Common → Windows → Server → IDE-Plugin → Tests ist in der Projektgruppe hinterlegt. Common, Windows und Server müssen für dieselbe Plattform gebaut werden, sonst findet der Server die Units der Packages nicht. Das IDE-Plugin ist für Win32 (klassische IDE) und Win64 (64-Bit-IDE ab Delphi 12.3) eingerichtet; welche BPL die IDE lädt, hängt von der IDE ab ([ADR 0008](docs/adr/0008-plattformen.md)).
+In der IDE `Atlas.groupproj` öffnen und **Alle erstellen**. Die Reihenfolge Text → Common → Windows → Server → IDE-Plugin → Setup → Tests ist in der Projektgruppe hinterlegt. Text, Common, Windows und Server müssen für dieselbe Plattform gebaut werden, sonst findet der Server die Units der Packages nicht. Das IDE-Plugin ist für Win32 (klassische IDE) und Win64 (64-Bit-IDE ab Delphi 12.3) eingerichtet; welche BPL die IDE lädt, hängt von der IDE ab ([ADR 0008](docs/adr/0008-plattformen.md)).
 
 Auf der Kommandozeile (RAD-Studio-Eingabeaufforderung bzw. nach `rsvars.bat`):
 

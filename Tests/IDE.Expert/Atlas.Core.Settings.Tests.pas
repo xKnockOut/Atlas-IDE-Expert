@@ -41,6 +41,10 @@ type
     /// build.releaseChecks mit Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure ReleaseGuardOptions;
+    /// <summary>Beim Öffnen bauen: build.onOpen, build.onOpenKind, build.onOpenScope, build.onOpenDelayMs und
+    /// build.onOpenExclude mit Vorgaben, Normalisieren, Speichern und Laden.</summary>
+    [Test]
+    procedure BuildOnOpenOptions;
   end;
 
   [TestFixture]
@@ -716,6 +720,51 @@ begin
   Assert.AreEqual('warn', Loaded.BuildGate);
   Assert.AreEqual('Release, Ship', Loaded.ReleaseConfigs);
   Assert.AreEqual(Settings.ReleaseChecks, Loaded.ReleaseChecks);
+end;
+
+procedure TAtlasPluginSettingsTests.BuildOnOpenOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsFalse(Settings.BuildOnOpen, 'standardmäßig aus');
+  Assert.AreEqual('make', Settings.BuildOnOpenKind);
+  Assert.AreEqual('all', Settings.BuildOnOpenScope);
+  Assert.AreEqual(3000, Settings.BuildOnOpenDelayMs);
+  Assert.AreEqual('', Settings.BuildOnOpenExclude);
+  // Normalisieren: unbekannte Art = make, unbekannter Umfang = all, Wartezeit in den Grenzen, Liste ohne Endung
+  // und Doppelte.
+  Settings.BuildOnOpenKind := 'BUILD';
+  Settings.BuildOnOpenScope := 'Active';
+  Settings.BuildOnOpenDelayMs := 10;
+  Settings.BuildOnOpenExclude := ' Atlas.IDE.Expert.dproj; atlas.ide.expert,, Demo ';
+  Settings.Normalize;
+  Assert.AreEqual('build', Settings.BuildOnOpenKind);
+  Assert.AreEqual('active', Settings.BuildOnOpenScope);
+  Assert.AreEqual(500, Settings.BuildOnOpenDelayMs);
+  Assert.AreEqual('Atlas.IDE.Expert, Demo', Settings.BuildOnOpenExclude);
+  Settings.BuildOnOpenKind := 'erzeugen';
+  Settings.BuildOnOpenScope := 'keins';
+  Settings.BuildOnOpenDelayMs := 999999;
+  Settings.Normalize;
+  Assert.AreEqual('make', Settings.BuildOnOpenKind);
+  Assert.AreEqual('all', Settings.BuildOnOpenScope);
+  Assert.AreEqual(60000, Settings.BuildOnOpenDelayMs);
+  // Speichern und Laden.
+  Settings.BuildOnOpen := True;
+  Settings.BuildOnOpenKind := 'check';
+  Settings.BuildOnOpenScope := 'active';
+  Settings.BuildOnOpenDelayMs := 5000;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsTrue(Loaded.BuildOnOpen);
+  Assert.AreEqual('check', Loaded.BuildOnOpenKind);
+  Assert.AreEqual('active', Loaded.BuildOnOpenScope);
+  Assert.AreEqual(5000, Loaded.BuildOnOpenDelayMs);
+  Assert.AreEqual('Atlas.IDE.Expert, Demo', Loaded.BuildOnOpenExclude);
 end;
 
 procedure TAtlasPluginSettingsTests.UnitSearchOptions;

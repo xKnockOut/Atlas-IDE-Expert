@@ -4,6 +4,27 @@
 
 An expert for RAD Studio (Delphi/Object Pascal): an IDE plugin with its own user interface and its own language server (LSP), plus an MCP interface for Claude Code. Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues); epics #130 to #139 describe the stages.
 
+## Quick start
+
+You need RAD Studio or Delphi 12 or later. There is no ready-made download yet: no [release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) has been published so far.
+
+**Option A – with the installer (once a release exists):**
+
+1. Download `atlas-ide-expert-<version>.zip` from the release and unpack it.
+2. Run `AtlasSetup.exe`. It needs no administrator rights and finds the installed Delphi versions from 12 on by itself.
+3. Choose "Installieren" (install), then start Delphi.
+
+Details (German): [docs/Installation.md](docs/Installation.md).
+
+**Option B – today: build it yourself and install the package in the IDE:**
+
+1. Install Delphi 12 or later and clone this repository.
+2. Open `Atlas.groupproj` in Delphi and build all projects for **Win64** (*Build All*). For the classic 32-bit IDE, also build `Atlas.IDE.Expert` for **Win32**.
+3. In Delphi, *Component › Install Packages › Add* and select the BPL: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert370.bpl` for the classic IDE (Delphi 12: `…290.bpl`), `Output\Win64\Debug\Bpl\…` for the 64-bit IDE. The plugin finds the server `Output\Win64\Debug\Bin\AtlasServer.exe` there on its own.
+4. Restart Delphi once.
+
+`AtlasSetup.exe` from your own build (`Output\Win64\Debug\Bin`) does not help here: it looks for the BPLs in `Win32` and `Win64` subfolders next to itself (the layout of the release package), while the build puts them in `Output\<platform>\Debug\Bpl`. Without a BPL it offers no IDE. More: [Installation](#installation).
+
 ## The IDE plugin
 
 `Atlas.IDE.Expert` replaces the built-in Code Insight of RAD Studio 13 (and 12) with its own windows, filled with data by the Atlas server:
@@ -15,18 +36,31 @@ An expert for RAD Studio (Delphi/Object Pascal): an IDE plugin with its own user
 - **Compiler check after saving** and the compiler messages of the "Build" tab
 - **Bracket and block pairs** coloured by depth, with matching block lines
 - **Results window** "Atlas Results" for references (including forms), implementations, callers, calls and inheritance; workspace symbol search; preview before renaming
-- **Code actions** (Alt+Enter), expand and shrink selection (Ctrl+W, Ctrl+Shift+W), go to implementation and type definition, copy qualified name; all also in the editor context menu under *Atlas*. Alt+Ins opens the **generate menu** at the cursor (constructor, properties, overridden methods, interface methods, surround, templates). Slash commands such as `/uses Unit` run after Enter, `///` above a declaration creates the documentation comment
+- **Code actions** (Alt+Enter), expand and shrink selection (Ctrl+W, Ctrl+Shift+W), go to implementation and type definition, switch between declaration and implementation (Ctrl+Shift+↑/↓), copy qualified name; all also in the editor context menu under *Atlas*. Alt+Ins opens the **generate menu** at the cursor (constructor, properties, overridden methods, interface methods, surround, templates). Slash commands such as `/uses Unit` run after Enter, `///` above a declaration creates the documentation comment
 - **Form designer**: open forms are sent to the server as the designer has them, so references, renames and checks see unsaved changes; renaming an event handler also updates its assignment in the designer
 - **Command palette** (Ctrl+Shift+P), silent reload of files changed outside the IDE, hang watchdog with log
+- **Find selection**: F3 or Shift+F3 searches a single-line selection forward or backward, otherwise the IDE's "Search Again" applies
+- **Unit search** (#777): its own window instead of the IDE dialog on Ctrl+F12; the IDE dialog stays available from the menu
+- **Notes** (#545) on code lines, only for you and not in the source, and **named bookmarks** (#622, Ctrl+Alt+K)
+- **Favourites** in code completion (#458): Ctrl+D pins an entry to the top
+- **Code metrics** as a code lens after each method header (#66) and a **TODO overview** of the project (#68)
+- **Tests**: run DUnitX tests from the editor (#69) and start a single test in the debugger (#585)
+- **Compiling through the IDE** (#261): Claude Code builds open projects with the IDE's compiler via the MCP tool `build_project`
+- **Launch profiles** (#575) for parameters, working folder, environment and host application
+- **Baseline** (#97): hide known findings, report only new ones
+- **Project file `.atlas`** (#486) with team-wide settings to check in
+- **Notification centre** (#601, Ctrl+Shift+Alt+N) collects messages, counter in the Atlas status field
+- **Release build guard** (#533) checks the project options before a release build
+- **Welcome page** with sections: continue working, projects, project history, unsaved, project setup (including "Suchpfade und Defines prüfen", check search paths and defines), test results (#763), discover Atlas, help and feedback
 
-All settings are under *Tools › Options › Third Party › Atlas*, including the path to the server.
+All settings are under *Tools › Options › Third Party › Atlas*, including the path to the server; the sections of that page are listed on the left. Next to it are the pages *Snippets*, *Tastenkonflikte* (key conflicts) and *Server*. Team-wide values live in the project file `.atlas`.
 
 ## Installation
 
 ### IDE plugin for RAD Studio 13 and 12
 
 1. Clone the repository and open `Atlas.groupproj` in RAD Studio.
-2. Build `Atlas.Common`, `Atlas.Windows` and `AtlasServer` for **Win64** (all three for the same platform). Result: `Output\Win64\Debug\Bin\AtlasServer.exe`. Alternatively take `AtlasServer.exe` from a [release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases); the server does not depend on the Delphi version.
+2. Build `Atlas.Text`, `Atlas.Common`, `Atlas.Windows` and `AtlasServer` for **Win64** (all four for the same platform). Result: `Output\Win64\Debug\Bin\AtlasServer.exe`. Alternatively take `AtlasServer.exe` from a [release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases); the server does not depend on the Delphi version.
 3. Build `Atlas.IDE.Expert` with the Delphi version the plugin is meant to run in: **Win32** for the classic IDE, **Win64** for the 64-bit IDE. Result: `Output\Win32\Debug\Bpl\Atlas.IDE.Expert370.bpl` (Delphi 13; Delphi 12: `…290.bpl`, 64-bit IDE: `Output\Win64\…`).
 4. *Component › Install Packages › Add* and select the BPL.
 5. If the server is neither in `Output\…\Bin` nor next to the BPL: *Tools › Options › Third Party › Atlas*, field "Atlas-Server". The page shows whether the server is found.
@@ -61,6 +95,7 @@ More: [docs/Installation.md](docs/Installation.md).
 
 | Project | Content |
 |---|---|
+| `Packages/Atlas.Text` | Package, RTL only (free of Windows and VCL); the IDE plugin includes it as source |
 | `Packages/Atlas.Common` | Package, free of Windows and VCL |
 | `Packages/Atlas.Windows` | Package for Windows-specific functions, free of VCL |
 | `Application/AtlasServer` | The server (console program, speaks LSP over stdin/stdout) |
@@ -78,7 +113,7 @@ Roles, naming and import rules: [docs/Architektur.md](docs/Architektur.md).
 
 ## Building
 
-Open `Atlas.groupproj` in the IDE and **Build All**. The order Common → Windows → server → IDE plugin → tests is set in the project group. Common, Windows and the server must be built for the same platform, otherwise the server does not find the package units. The IDE plugin is set up for Win32 (classic IDE) and Win64 (64-bit IDE from Delphi 12.3); which BPL is loaded depends on the IDE ([ADR 0008](docs/adr/0008-plattformen.md)).
+Open `Atlas.groupproj` in the IDE and **Build All**. The order Text → Common → Windows → server → IDE plugin → setup → tests is set in the project group. Text, Common, Windows and the server must be built for the same platform, otherwise the server does not find the package units. The IDE plugin is set up for Win32 (classic IDE) and Win64 (64-bit IDE from Delphi 12.3); which BPL is loaded depends on the IDE ([ADR 0008](docs/adr/0008-plattformen.md)).
 
 On the command line (RAD Studio command prompt or after `rsvars.bat`):
 

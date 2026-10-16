@@ -53,6 +53,30 @@ type
     procedure SkippedPathMakesUnitsUncertain;
     [Test]
     procedure SkippedPathAndMissingIncludeMakeDefinesUncertain;
+    /// <summary>1: Units eines requires-Packages der Projektgruppe gelten als gefunden.</summary>
+    [Test]
+    procedure RequiresPackageInGroupResolvesUnits;
+    /// <summary>2: Quellordner des requires-Packages zusätzlich im Suchpfad: Hinweis, kein Fehler.</summary>
+    [Test]
+    procedure RequiresPackageFolderInSearchPathIsHint;
+    /// <summary>3: requires auf ein Package nur als .dcp: Hinweis „ohne Quelle“; rtl in den Bibliothekspfaden nicht.</summary>
+    [Test]
+    procedure RequiresDcpOnlyIsHint;
+    /// <summary>4: {$IFDEF FPC} uses LCLIntf {$ENDIF} unter Delphi: weder Unit- noch Define-Befund.</summary>
+    [Test]
+    procedure FreePascalBranchIsQuiet;
+    /// <summary>5: DCC_Define mit Vererbung Base → Cfg_1 → Cfg_1_Win32.</summary>
+    [Test]
+    procedure DprojDefinesInherit;
+    /// <summary>6: -dX in Build-Skripten und ConditionalDefines in .lpk sind Quellen.</summary>
+    [Test]
+    procedure ScriptDefinesAreSources;
+    /// <summary>7: Tippfehler bekommt einen Vorschlag.</summary>
+    [Test]
+    procedure TypoGetsSuggestion;
+    /// <summary>Units aus einer .dcp ohne Quelle (ToolsAPI aus designide) gelten als gefunden.</summary>
+    [Test]
+    procedure UnitsInRequiredDcpAreFound;
   end;
 
 implementation
@@ -606,6 +630,210 @@ begin
     Disk.Add('C:\P\Lib.inc', '{$DEFINE OTHER}');
     Check := RunOn(Disk, Input);
     Assert.IsFalse(Check.UndefinedDefines[0].Uncertain);
+  finally
+    Disk.Free;
+  end;
+end;
+
+procedure TAtlasPathCheckTests.RequiresPackageInGroupResolvesUnits;
+var
+  Disk: TFakeDisk;
+  Input: TAtlasPathCheckInput;
+  Check: TAtlasPathCheckResult;
+begin
+  Disk := TFakeDisk.Create;
+  try
+    Disk.Add('C:\G\B\B.dpk', 'package B; contains B.Plan in ''Source\B.Plan.pas''; end.');
+    Disk.Add('C:\G\B\Source\B.Plan.pas', 'unit B.Plan; interface implementation end.');
+    Disk.Add('C:\G\A\A.dpk', 'package A; requires rtl, B; contains A.Main in ''A.Main.pas''; end.');
+    Disk.Add('C:\G\A\A.Main.pas', 'unit A.Main; interface uses B.Plan; implementation end.');
+    Input := Default(TAtlasPathCheckInput);
+    Input.Project := 'C:\G\A\A.dproj';
+    Input.Sources := ['C:\G\A\A.dpk', 'C:\G\A\A.Main.pas'];
+    Input.GroupProjects := ['C:\G\A\A.dproj', 'C:\G\B\B.dproj'];
+    Check := RunOn(Disk, Input);
+    Assert.AreEqual('', FindingNames(Check.MissingUnits), 'B.Plan kommt aus dem requires-Package B');
+    Assert.AreEqual('', FindingNames(Check.Hints));
+    // Ohne B in der Gruppe fehlt die Unit.
+    Input.GroupProjects := ['C:\G\A\A.dproj'];
+    Check := RunOn(Disk, Input);
+    Assert.AreEqual('B.Plan', FindingNames(Check.MissingUnits));
+  finally
+    Disk.Free;
+  end;
+end;
+
+procedure TAtlasPathCheckTests.RequiresPackageFolderInSearchPathIsHint;
+var
+  Disk: TFakeDisk;
+  Input: TAtlasPathCheckInput;
+  Check: TAtlasPathCheckResult;
+begin
+  Disk := TFakeDisk.Create;
+  try
+    Disk.Add('C:\G\B\B.dpk', 'package B; contains B.Plan in ''Source\B.Plan.pas''; end.');
+    Disk.Add('C:\G\B\Source\B.Plan.pas', 'unit B.Plan; interface implementation end.');
+    Disk.Add('C:\G\A\A.dpk', 'package A;' + sLineBreak + 'requires B;' + sLineBreak +
+      'contains A.Main in ''A.Main.pas''; end.');
+    Disk.Add('C:\G\A\A.Main.pas', 'unit A.Main; interface uses B.Plan; implementation end.');
+    Input := Default(TAtlasPathCheckInput);
+    Input.Project := 'C:\G\A\A.dproj';
+    Input.Sources := ['C:\G\A\A.dpk', 'C:\G\A\A.Main.pas'];
+    Input.GroupProjects := ['C:\G\B\B.dproj'];
+    Input.SearchPaths := ['C:\G\B\Source'];
+    Check := RunOn(Disk, Input);
+    Assert.AreEqual('', FindingNames(Check.MissingUnits));
+    Assert.AreEqual('B', FindingNames(Check.Hints));
+    Assert.AreEqual('B.Plan', Check.Hints[0].Note);
+    Assert.AreEqual('C:\G\A\A.dpk', Check.Hints[0].FileName);
+    Assert.AreEqual(2, Check.Hints[0].Line);
+    Assert.IsTrue(Check.Clean, 'ein Hinweis ist kein Fehler');
+  finally
+    Disk.Free;
+  end;
+end;
+
+procedure TAtlasPathCheckTests.RequiresDcpOnlyIsHint;
+var
+  Disk: TFakeDisk;
+  Input: TAtlasPathCheckInput;
+  Check: TAtlasPathCheckResult;
+begin
+  Disk := TFakeDisk.Create;
+  try
+    Disk.Add('C:\G\A\A.dpk', 'package A; requires rtl, Fremd; end.');
+    Disk.Add('C:\Lib\rtl.dcp', '');
+    Disk.Add('C:\G\Dcp\Fremd.dcp', '');
+    Input := Default(TAtlasPathCheckInput);
+    Input.Project := 'C:\G\A\A.dproj';
+    Input.Sources := ['C:\G\A\A.dpk'];
+    Input.SearchPaths := ['C:\G\Dcp'];
+    Input.LibraryPaths := ['C:\Lib'];
+    Check := RunOn(Disk, Input);
+    Assert.AreEqual('Fremd', FindingNames(Check.Hints), 'rtl in den Bibliothekspfaden ist normal');
+    Assert.AreEqual('', Check.Hints[0].Note, 'ohne Quelle');
+    Assert.AreEqual('', FindingNames(Check.MissingUnits));
+  finally
+    Disk.Free;
+  end;
+end;
+
+procedure TAtlasPathCheckTests.FreePascalBranchIsQuiet;
+var
+  Disk: TFakeDisk;
+  Input: TAtlasPathCheckInput;
+  Check: TAtlasPathCheckResult;
+begin
+  Disk := TFakeDisk.Create;
+  try
+    Disk.Add('C:\P\App.dpr', 'program App;' + sLineBreak + '{$IFDEF FPC} uses LCLIntf, Interfaces; {$ENDIF}' +
+      sLineBreak + '{$IFDEF UNIX}{$ENDIF}{$IFDEF CPUX86_64}{$ENDIF}{$IFDEF ENDIAN_BIG}{$ENDIF}' +
+      '{$IFDEF LCLgtk2}{$ENDIF}{$IFDEF FPC_FULLVERSION}{$ENDIF}{$IFDEF WINDOWS}{$ENDIF}{$IFDEF IMPLICITBUILDING}{$ENDIF}{$IFNDEF TESTINSIGHT}{$ENDIF}{$IFDEF CI}{$ENDIF}' + sLineBreak +
+      'begin end.');
+    Input := Default(TAtlasPathCheckInput);
+    Input.Project := 'C:\P\App.dproj';
+    Input.Sources := ['C:\P\App.dpr'];
+    Input.ActiveDefines := ['MSWINDOWS', 'WIN64'];
+    Check := RunOn(Disk, Input);
+    Assert.AreEqual('', FindingNames(Check.MissingUnits), 'Units im inaktiven FPC-Zweig');
+    Assert.AreEqual('', FindingNames(Check.UndefinedDefines), 'Symbole von Free Pascal und Lazarus');
+  finally
+    Disk.Free;
+  end;
+end;
+
+procedure TAtlasPathCheckTests.DprojDefinesInherit;
+const
+  Dproj =
+    '<Project>' + sLineBreak +
+    '  <ItemGroup><BuildConfiguration Include="Debug"><Key>Cfg_1</Key></BuildConfiguration>' +
+    '<BuildConfiguration Include="Release"><Key>Cfg_2</Key></BuildConfiguration></ItemGroup>' + sLineBreak +
+    '  <PropertyGroup Condition="''$(Base)''!=''''"><DCC_Define>FOO;$(DCC_Define)</DCC_Define></PropertyGroup>' +
+    sLineBreak +
+    '  <PropertyGroup Condition="''$(Cfg_1)''!=''''"><DCC_Define>DEBUG;$(DCC_Define)</DCC_Define></PropertyGroup>' +
+    sLineBreak +
+    '  <PropertyGroup Condition="''$(Cfg_1_Win32)''!=''''"><DCC_Define>W32;$(DCC_Define)</DCC_Define>' +
+    '</PropertyGroup>' + sLineBreak +
+    '  <PropertyGroup Condition="''$(Cfg_2)''!=''''"><DCC_Define>RELEASE</DCC_Define></PropertyGroup>' + sLineBreak +
+    '</Project>';
+begin
+  Assert.AreEqual('DEBUG|FOO', string.Join('|', TAtlasPathCheck.DprojConfigDefines(Dproj, 'Debug', 'Win64')));
+  Assert.AreEqual('W32|DEBUG|FOO', string.Join('|', TAtlasPathCheck.DprojConfigDefines(Dproj, 'Debug', 'Win32')));
+  // Ohne $(DCC_Define) ersetzt die Konfiguration den geerbten Wert.
+  Assert.AreEqual('RELEASE', string.Join('|', TAtlasPathCheck.DprojConfigDefines(Dproj, 'Release', 'Win64')));
+end;
+
+procedure TAtlasPathCheckTests.ScriptDefinesAreSources;
+var
+  Disk: TFakeDisk;
+  Input: TAtlasPathCheckInput;
+  Check: TAtlasPathCheckResult;
+begin
+  Assert.AreEqual('LCLnogui|MY_FEATURE', string.Join('|', TAtlasPathCheck.ScriptDefines('build-app.sh',
+    'fpc -dLCLnogui -Sa -dMY_FEATURE --dark -Fu"x" app.dpr')));
+  Assert.AreEqual('FROM_LPK|OTHER', string.Join('|', TAtlasPathCheck.ScriptDefines('Pkg.lpk',
+    '<ConditionalDefines Value="FROM_LPK;OTHER"/>')));
+  Disk := TFakeDisk.Create;
+  try
+    Disk.Add('C:\G\App\App.dpr', 'program App; {$IFDEF MY_FEATURE}{$ENDIF}{$IFDEF FROM_LPK}{$ENDIF}' +
+      '{$IFDEF NOWHERE}{$ENDIF} begin end.');
+    Disk.Add('C:\G\build-app.sh', 'fpc -dLCLnogui -dMY_FEATURE app/App.dpr');
+    Disk.Add('C:\G\tools\Pkg.lpk', '<ConditionalDefines Value="FROM_LPK"/>');
+    Input := Default(TAtlasPathCheckInput);
+    Input.Project := 'C:\G\App\App.dproj';
+    Input.Sources := ['C:\G\App\App.dpr'];
+    Input.ScriptFolders := ['C:\G\App', 'C:\G', 'C:\G\tools'];
+    Check := RunOn(Disk, Input);
+    Assert.AreEqual('NOWHERE', FindingNames(Check.UndefinedDefines));
+  finally
+    Disk.Free;
+  end;
+end;
+
+procedure TAtlasPathCheckTests.TypoGetsSuggestion;
+var
+  Disk: TFakeDisk;
+  Input: TAtlasPathCheckInput;
+  Check: TAtlasPathCheckResult;
+begin
+  Assert.AreEqual('XMLI_TEST_FEATURES', TAtlasPathCheck.Suggest('XMLI_TEST_FEATRUES', ['DEBUG',
+    'XMLI_TEST_FEATURES']));
+  Assert.AreEqual('', TAtlasPathCheck.Suggest('X', ['Y']), 'kurze Namen nicht');
+  Assert.AreEqual('', TAtlasPathCheck.Suggest('NOWHERE', ['DEBUG']));
+  Disk := TFakeDisk.Create;
+  try
+    Disk.Add('C:\P\App.dpr', 'program App; {$IFDEF XMLI_TEST_FEATRUES}{$ENDIF} begin end.');
+    Input := Default(TAtlasPathCheckInput);
+    Input.Project := 'C:\P\App.dproj';
+    Input.Sources := ['C:\P\App.dpr'];
+    Input.ProjectDefines := ['XMLI_TEST_FEATURES'];
+    Check := RunOn(Disk, Input);
+    Assert.AreEqual('XMLI_TEST_FEATRUES', FindingNames(Check.UndefinedDefines));
+    Assert.AreEqual('XMLI_TEST_FEATURES', Check.UndefinedDefines[0].Note);
+  finally
+    Disk.Free;
+  end;
+end;
+
+procedure TAtlasPathCheckTests.UnitsInRequiredDcpAreFound;
+var
+  Disk: TFakeDisk;
+  Input: TAtlasPathCheckInput;
+  Check: TAtlasPathCheckResult;
+begin
+  Disk := TFakeDisk.Create;
+  try
+    Disk.Add('C:\G\A\A.dpk', 'package A; requires designide; contains A.Main in ''A.Main.pas''; end.');
+    Disk.Add('C:\G\A\A.Main.pas', 'unit A.Main; interface uses ToolsAPI, ToolsAPI.Editor, Fehlt; implementation end.');
+    // Binärinhalt einer .dcp: Unit-Namen als kurze Zeichenketten.
+    Disk.Add('C:\Lib\designide.dcp', #8'ToolsAPI'#0#15'ToolsAPI.Editor'#0#1);
+    Input := Default(TAtlasPathCheckInput);
+    Input.Project := 'C:\G\A\A.dproj';
+    Input.Sources := ['C:\G\A\A.dpk', 'C:\G\A\A.Main.pas'];
+    Input.LibraryPaths := ['C:\Lib'];
+    Check := RunOn(Disk, Input);
+    Assert.AreEqual('Fehlt', FindingNames(Check.MissingUnits));
+    Assert.AreEqual('', FindingNames(Check.Hints), 'designide in den Bibliothekspfaden ist normal');
   finally
     Disk.Free;
   end;
