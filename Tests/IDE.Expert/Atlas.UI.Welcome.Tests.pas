@@ -120,6 +120,9 @@ type
   [TestFixture]
   TAtlasWelcomeContinueFrameTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure TextsFollowLanguageAndAge;
     [Test]
@@ -189,6 +192,9 @@ type
   [TestFixture]
   TAtlasWelcomeSetupFrameTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure TextsFollowLanguage;
     /// <summary>Mockup #ws7: erledigte Schritte grün mit ✓ und ohne Knöpfe, offene mit Knopf.</summary>
@@ -2403,6 +2409,11 @@ end;
 
 { TAtlasWelcomeSetupFrameTests }
 
+procedure TAtlasWelcomeSetupFrameTests.WarmUpFirstUse;
+begin
+  PreviewShowsContent;
+end;
+
 procedure TAtlasWelcomeSetupFrameTests.TextsFollowLanguage;
 var
   Saved: TAtlasLanguage;
@@ -2984,6 +2995,11 @@ begin
 end;
 
 { TAtlasWelcomeContinueFrameTests }
+
+procedure TAtlasWelcomeContinueFrameTests.WarmUpFirstUse;
+begin
+  ResumeAndCommitReachSource;
+end;
 
 procedure TAtlasWelcomeContinueFrameTests.TextsFollowLanguageAndAge;
 var
