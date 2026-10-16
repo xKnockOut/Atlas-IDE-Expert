@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1054] of string = (
+  Lines: array[0..1060] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -529,6 +529,12 @@ const
     '          "type": "string",',
     '          "default": "",',
     '          "description": "Vorlage für /header mit den Platzhaltern {unit}, {jahr} und {autor}. Leer: die Vorlage der Regel file-header, sonst ein einfacher Kopf."',
+    '        },',
+    '        "logCall": {',
+    '          "type": "string",',
+    '          "default": "",',
+    '          "description": "Protokollaufruf für /log, /except und /measure: ein Routinenname wie \"Log.Debug\" bekommt den Text als Argument, {text} setzt ihn an diese Stelle, z. B. \"Logger.Send(TLogLe' + 'vel.Debug, {text})\". Leer: OutputDebugString(PChar(…)).",',
+    '          "x-issue": "#304"',
     '        }',
     '      },',
     '      "x-scope": "global",',

@@ -1,6 +1,7 @@
 ﻿unit Shell.SlashHost.Tests;
 
-// Schnellbefehle laden nur in der Nachrichtenschleife neu (Code-Review A-03).
+// Schnellbefehle laden nur in der Nachrichtenschleife neu (Code-Review A-03); WriteFiles ohne Editor
+// schreibt auf die Platte (#297).
 
 interface
 
@@ -15,6 +16,8 @@ type
     procedure SelectBuildRunsThroughLoopRunner;
     [Test]
     procedure WithoutLoopRunnerRunsImmediately;
+    [Test]
+    procedure WriteFilesOnDisk;
   end;
 
 implementation
@@ -23,6 +26,8 @@ uses
   System.SysUtils,
   System.Classes,
   System.Generics.Collections,
+  System.IOUtils,
+  Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.JsonRpc.Contract,
@@ -97,6 +102,41 @@ begin
   Ref := Host;
   Host.SelectBuild('file:///C:/P/A.pas', 'Release', 'Win64');
   Assert.AreEqual(1, Calls);
+end;
+
+procedure TShellSlashHostTests.WriteFilesOnDisk;
+var
+  Host: TShellSlashHost;
+  Ref: ISlashHost;
+  Calls: Integer;
+  Folder, NewFile, OldFile, Text: string;
+  FileFormat: TFileFormat;
+begin
+  Folder := TPath.Combine(TPath.GetTempPath, 'AtlasSlashHost' + IntToStr(Random(1000000)));
+  NewFile := TPath.Combine(TPath.Combine(Folder, 'Sub'), 'Neu.pas');
+  OldFile := TPath.Combine(Folder, 'App.dpr');
+  ForceDirectories(Folder);
+  try
+    TFileEncoding.SaveToFile(OldFile, 'program App;'#10'end.'#10, TFileFormat.Create(TFileEncodingKind.Utf8,
+      TLineBreakStyle.LF));
+    Calls := 0;
+    Host := CreateHost(@Calls);
+    Ref := Host;
+    Host.WriteFiles('file:///x', [TSlashFile.Create(NewFile, 'unit Neu;'#13#10'end.'#13#10, True),
+      TSlashFile.Create(OldFile, 'program App;'#10'uses Neu;'#10'end.'#10, False)], '');
+    // Neue Datei: Ordner angelegt, UTF-8 mit BOM und CRLF; vorhandene behält ihr Format.
+    Text := TFileEncoding.LoadFromFile(NewFile, FileFormat);
+    Assert.AreEqual('unit Neu;'#13#10'end.'#13#10, Text);
+    Assert.IsTrue(FileFormat.Encoding = TFileEncodingKind.Utf8Bom);
+    Text := TFileEncoding.LoadFromFile(OldFile, FileFormat);
+    Assert.AreEqual('program App;'#10'uses Neu;'#10'end.'#10, Text);
+    Assert.IsTrue(FileFormat.Encoding = TFileEncodingKind.Utf8);
+    // Danach neu geladen (ohne Schleife sofort).
+    Assert.AreEqual(1, Calls);
+  finally
+    Ref := nil;
+    TDirectory.Delete(Folder, True);
+  end;
 end;
 
 initialization

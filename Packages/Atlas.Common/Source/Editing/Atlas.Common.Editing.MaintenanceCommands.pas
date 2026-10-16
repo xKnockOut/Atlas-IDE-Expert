@@ -5,7 +5,7 @@
 //   /ignore regel [Grund] // lsp-ignore: regel -- Grund für die Zeile darunter
 //   /todo Text            // TODO : Text im Format der IDE-TODO-Liste
 //   /doc                  XML-Doc-Gerüst für die Routine darunter
-//   /log                  OutputDebugString mit Unit- und Routinennamen
+//   /log                  Protokollzeile mit Unit- und Routinennamen (slashCommands.logCall, #304)
 
 interface
 
@@ -180,8 +180,7 @@ begin
       Name := Source.Tree.Root.Name + '.' + Name;
     if AContext.Arguments <> '' then
       Name := Name + ': ' + AContext.Arguments;
-    AEdits := [Source.ReplaceWithIndentedLines([Format('OutputDebugString(PChar(%s));',
-      [QuotedStr(Name)])])];
+    AEdits := [Source.ReplaceWithIndentedLines([LogStatement(AContext, QuotedStr(Name))])];
     Result := True;
   finally
     Source.Free;

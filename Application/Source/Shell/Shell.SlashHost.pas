@@ -34,6 +34,7 @@ type
   TWorkspaceOfFunc = reference to function(const AUri: string): TShellWorkspace;
   TReadTextFunc = reference to function(const AFileName: string; out AText: string): Boolean;
   THeaderTemplateFunc = reference to function(const AUri: string): string;
+  TLogCallFunc = reference to function(const AUri: string): string;
 
   TShellSlashHost = class(TInterfacedObject, ISlashHost)
   private
@@ -46,6 +47,7 @@ type
     FDispatcher: TJsonRpcDispatcher;
     FClientAppliesEdits: TFunc<Boolean>;
     FRunInLoop: TJsonRpcScheduler;
+    FLogCallOf: TLogCallFunc;
     function ClientWrites: Boolean;
     /// <summary>Schickt AEdit (wird übernommen) an den Client; nach Erfolg Reload und AAfter.</summary>
     procedure SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc);
@@ -65,6 +67,9 @@ type
     procedure ShowDocument(const AFileName: string; const ASelection: TTextRange);
     function HeaderTemplate(const AUri: string): string;
     procedure WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
+    function LogCall(const AUri: string): string;
+    /// <summary>slashCommands.logCall zur Datei (#304); ohne Zuweisung ''.</summary>
+    property LogCallOf: TLogCallFunc read FLogCallOf write FLogCallOf;
     /// <summary>Stellt Arbeit in die Nachrichtenschleife (TJsonRpcConnection.Queue). Reload und SelectBuild
     /// laufen nur dort (Code-Review A-03); ohne Zuweisung (Tests) sofort.</summary>
     property RunInLoop: TJsonRpcScheduler read FRunInLoop write FRunInLoop;
@@ -293,6 +298,85 @@ end;
 function TShellSlashHost.HeaderTemplate(const AUri: string): string;
 begin
   Result := FHeaderTemplate(AUri);
+end;
+
+function TShellSlashHost.LogCall(const AUri: string): string;
+begin
+  Result := '';
+  if Assigned(FLogCallOf) then
+    Result := FLogCallOf(AUri);
+end;
+
+procedure TShellSlashHost.WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
+var
+  Changes: TArray<TLspFileChange>;
+  Item: TSlashFile;
+  FileFormat: TFileFormat;
+  OldText, Show, Uri, Description: string;
+  Transport: IJsonRpcTransport;
+  WorkspaceOf: TWorkspaceOfFunc;
+  Names: TArray<string>;
+begin
+  // const-Parameter lassen sich nicht einfangen.
+  Transport := FTransport;
+  Show := AShow;
+  Names := nil;
+  for Item in AFiles do
+    Names := Names + [ExtractFileName(Item.FileName)];
+  Description := string.Join(', ', Names);
+  try
+    // In der IDE über das Plugin, damit neue und geänderte Dateien in ihren Puffern landen (#397).
+    if ClientWrites then
+    begin
+      Changes := nil;
+      for Item in AFiles do
+      begin
+        OldText := '';
+        if not Item.New then
+          OldText := TFileEncoding.LoadFromFile(Item.FileName, FileFormat);
+        Changes := Changes + [TLspFileChange.Create(Item.FileName, OldText, Item.Text, Item.New)];
+      end;
+      SendEdit(AUri, Description, TLspApplyEdit.Files(Changes),
+        procedure
+        begin
+          if Show <> '' then
+            SendShowDocument(Transport, Show, TTextRange.Create(0, 0, 0, 0));
+        end);
+      Exit;
+    end;
+    for Item in AFiles do
+    begin
+      if Item.New then
+      begin
+        ForceDirectories(ExtractFileDir(Item.FileName));
+        FileFormat := TFileFormat.Create(TFileEncodingKind.Utf8Bom, TLineBreakStyle.CRLF);
+      end
+      else
+        TFileEncoding.LoadFromFile(Item.FileName, FileFormat);
+      TFileEncoding.SaveToFile(Item.FileName, Item.Text, FileFormat);
+    end;
+    FLogger.Info(Format('%s geschrieben (Schnellbefehl)', [Description]));
+  except
+    on E: Exception do
+    begin
+      FLogger.Error(Format('%s ließ sich nicht schreiben: %s', [Description, E.Message]));
+      Exit;
+    end;
+  end;
+  WorkspaceOf := FWorkspaceOf;
+  Uri := AUri;
+  InLoop(
+    procedure
+    var
+      Target: TShellWorkspace;
+    begin
+      // In der Schleife neu suchen: Bis dahin kann der Ordner geschlossen worden sein.
+      Target := WorkspaceOf(Uri);
+      if Target <> nil then
+        Target.Reload;
+      if Show <> '' then
+        SendShowDocument(Transport, Show, TTextRange.Create(0, 0, 0, 0));
+    end);
 end;
 
 end.
