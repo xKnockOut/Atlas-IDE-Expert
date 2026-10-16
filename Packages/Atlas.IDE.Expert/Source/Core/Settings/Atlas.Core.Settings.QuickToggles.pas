@@ -351,6 +351,9 @@ begin
     '"WelcomePageProjectSetup":{"type":"boolean","x-feature":"WelcomePage",' +
       '"default":true,"x-page":"Willkommensseite","x-quickToggle":true,' +
       '"x-caption":"Projekt für Atlas einrichten","x-captionEn":"Set up project for Atlas","x-issue":"#759"},' +
+    '"CiLogin":{"type":"boolean","x-feature":"WelcomePage",' +
+      '"default":true,"x-page":"Willkommensseite","x-quickToggle":true,' +
+      '"x-caption":"Zugang zum Build-Server","x-captionEn":"Build server access","x-issue":"#763"},' +
     '"ShortcutTips":{"type":"boolean","x-feature":"ShortcutTips",' +
       '"default":true,"x-page":"Allgemein","x-quickToggle":true,' +
       '"x-caption":"Tastenkürzel-Tipps","x-captionEn":"Keyboard shortcut tips","x-issue":"#600"},' +

@@ -1,0 +1,37 @@
+{
+  "_class": "hudson.tasks.test.AggregatedTestResultAction$Result",
+  "failCount": 0,
+  "passCount": 0,
+  "skipCount": 0,
+  "childReports": [
+    {
+      "result": {
+        "_class": "hudson.tasks.junit.TestResult",
+        "failCount": 1,
+        "passCount": 20,
+        "skipCount": 0,
+        "suites": [
+          {
+            "cases": [
+              {
+                "className": "Win32.Atlas.Tests.TRechnerTests",
+                "errorDetails": "Summe falsch",
+                "name": "Summe",
+                "status": "FAILED"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "result": {
+        "_class": "hudson.tasks.junit.TestResult",
+        "failCount": 0,
+        "passCount": 22,
+        "skipCount": 1,
+        "suites": []
+      }
+    }
+  ]
+}

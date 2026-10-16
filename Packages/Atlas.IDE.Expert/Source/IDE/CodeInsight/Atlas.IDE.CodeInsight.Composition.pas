@@ -108,6 +108,13 @@ uses
   Atlas.IDE.Welcome.WhatsNew,
   Atlas.IDE.Welcome.Projects,
   Atlas.IDE.Welcome.Trends,
+  Atlas.IDE.Welcome.TestResults,
+  Atlas.Core.Ci.Contract,
+  Atlas.Core.Ci.Providers.Jenkins,
+  Atlas.Core.Ci.Adapters.Http,
+  Atlas.Core.Ci.Adapters.Credentials,
+  Atlas.UI.Welcome.TestResults,
+  Atlas.UI.Welcome.Projects,
   Atlas.Core.Editor.Metrics,
   Atlas.Core.Projects.Todos,
   Atlas.Core.Projects.Baseline,
@@ -1092,6 +1099,17 @@ begin
       if (Welcome <> nil) and (Welcome.WhatsNew <> nil) and TAtlasIdeSettings.Current.WelcomePage then
         Welcome.ShowWhatsNew(TAtlasWhatsNewView.All);
     end);
+  // Zugang zum Build-Server (#763): für die .atlas des aktiven Projekts; sichtbar mit CiLogin.
+  Add('Atlas.CiLogin', TAtlasTextId.CiLoginCommand,
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.TestResults <> nil) then
+        Welcome.TestResults.EnterCredentialsForActive;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.CiLogin and (Welcome <> nil) and (Welcome.TestResults <> nil);
+    end);
   // DUnitX-Tests (#69): sichtbar, solange TestRun an ist und der Läufer läuft (auch später gestartet).
   Add('Atlas.RunTests', TAtlasTextId.TestsRunCommand,
     procedure
@@ -2068,6 +2086,107 @@ begin
   KeysWatched := False;
 end;
 
+/// <summary>Zugang zum Build-Server für AJob abfragen und im Anmeldespeicher von Windows ablegen (#763); beide
+/// Felder leer entfernt ihn. True, wenn sich etwas geändert hat.</summary>
+function EnterCiCredentials(const AJob: TAtlasCiJob): Boolean;
+var
+  User, Token, Stored: string;
+  Ok: Boolean;
+begin
+  Result := False;
+  User := '';
+  Stored := '';
+  TAtlasCiCredentials.Read(AJob.CredentialTarget, User, Stored);
+  // Nur der Benutzer wird vorbelegt; das gespeicherte Token wird nie angezeigt.
+  if Stored <> '' then
+  begin
+    UniqueString(Stored);
+    FillChar(PChar(Stored)^, Length(Stored) * SizeOf(Char), 0);
+  end;
+  Stored := '';
+  Token := '';
+  if not TAtlasCiLoginPrompt.Ask(AJob.Server, User, Token) then
+    Exit;
+  if (User = '') and (Token = '') then
+  begin
+    Ok := TAtlasCiCredentials.Delete(AJob.CredentialTarget);
+    if Ok then
+      GuardWarning(TAtlasStrings.Text(TAtlasTextId.CiLoginRemoved))
+    else
+      GuardWarning(TAtlasStrings.Text(TAtlasTextId.CiLoginFailed));
+    Exit(Ok);
+  end;
+  if (User = '') or (Token = '') then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.CiLoginIncomplete));
+    Exit;
+  end;
+  Ok := TAtlasCiCredentials.Write(AJob.CredentialTarget, User, Token);
+  UniqueString(Token);
+  FillChar(PChar(Token)^, Length(Token) * SizeOf(Char), 0);
+  // Anonym: weder Server noch Benutzer.
+  if Ok then
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.CiLoginSaved))
+  else
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.CiLoginFailed));
+  Result := Ok;
+end;
+
+function CreateWelcomeTestResults(const AProjects: IAtlasProjectsSource): TAtlasIdeTestResults;
+begin
+  Result := TAtlasIdeTestResults.Create(AProjects,
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
+  // „Fehlgeschlagene erneut ausführen“: der Läufer aus #69 (sichtbar nur mit TestRun).
+  Result.OnRunTests :=
+    procedure(const AProject: string; const ATests: TArray<string>)
+    begin
+      if Tests <> nil then
+        Tests.RunTests(AProject, ATests);
+    end;
+  // „Im Debugger“: #585.
+  Result.OnDebugTest :=
+    function(const AProject, AFullName: string; out AReason: string): Boolean
+    begin
+      AReason := '';
+      Result := False;
+      if TestDebugger <> nil then
+        Result := TestDebugger.DebugByName(AProject, AFullName, AReason);
+    end;
+  Result.OnLocateTest :=
+    function(const AProject, AFullName: string; out AFileName: string; out ALine: Integer): Boolean
+    begin
+      Result := TAtlasIdeTestDebugger.LocateByName(AProject, AFullName, AFileName, ALine);
+    end;
+  // CI-Anbieter: Jenkins als erster Adapter.
+  Result.ProviderFactory :=
+    function(const AName: string): IAtlasCiProvider
+    begin
+      Result := nil;
+      if SameText(AName, TAtlasJenkinsProvider.ProviderName) then
+        Result := TAtlasJenkinsProvider.Create;
+    end;
+  // Im Hintergrund-Thread: Zugang aus dem Anmeldespeicher, ohne Dialog.
+  Result.TransportFactory :=
+    function(const AJob: TAtlasCiJob): IAtlasCiTransport
+    var
+      User, Token: string;
+    begin
+      User := '';
+      Token := '';
+      TAtlasCiCredentials.Read(AJob.CredentialTarget, User, Token);
+      Result := TAtlasCiHttpTransport.Create(AJob.Server, User, Token);
+      if Length(Token) > 0 then
+      begin
+        UniqueString(Token);
+        FillChar(PChar(Token)^, Length(Token) * SizeOf(Char), 0);
+      end;
+    end;
+  Result.OnCredentials := EnterCiCredentials;
+end;
+
 procedure StartWelcome;
 begin
   Welcome := TAtlasIdeWelcome.Create(
@@ -2135,6 +2254,8 @@ begin
     end);
   // Bereich „Projektverlauf“ (#758): Linien über die letzten Builds des in „Projekte“ gewählten Projekts.
   Welcome.Trends := TAtlasIdeTrends.Create(Welcome.Projects);
+  // Bereich „Testergebnisse“ (#763): letzter Testlauf (#69) und letzter Build des Build-Servers je Projekt.
+  Welcome.TestResults := CreateWelcomeTestResults(Welcome.Projects);
   // Bereich „Nicht gesichert“ (#762): nicht Gesichertes je Projekt über die VCS-Schnittstelle (#571).
   Welcome.Unsaved := TAtlasIdeUnsaved.Create(
     procedure(AText: string)

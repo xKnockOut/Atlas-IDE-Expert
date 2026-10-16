@@ -4,8 +4,8 @@
 // notifications.sources, ohne VCL: bekannte Kennungen in fester Reihenfolge
 // (für Optionsseite und Filter) und die Liste „Quelle=Verhalten“ als Text,
 // z. B. "shortcutTips=collect, server=off". Show ist die Vorgabe und steht nie
-// in der Liste; unbekannte Quellen bleiben erhalten (künftige Hinweise wie der
-// Build-Server #763), unbekannte Verhalten werden übergangen.
+// in der Liste; unbekannte Quellen bleiben erhalten (künftige Hinweise),
+// unbekannte Verhalten werden übergangen.
 
 interface
 
@@ -32,6 +32,8 @@ type
     ShortcutTips = 'shortcutTips';
     /// <summary>Compilerprüfung im Hintergrund (#548).</summary>
     Check = 'check';
+    /// <summary>Build-Server (#763): Build auf dem Server ist rot geworden.</summary>
+    BuildServer = 'buildServer';
   public
     /// <summary>Bekannte Quellen in fester Reihenfolge (Optionsseite, Filter).</summary>
     class function Known: TArray<string>; static;
@@ -59,7 +61,7 @@ implementation
 
 class function TAtlasNotificationSources.Known: TArray<string>;
 begin
-  Result := [Build, Check, Reload, Server, ShortcutTips];
+  Result := [Build, Check, Reload, Server, ShortcutTips, BuildServer];
 end;
 
 class function TAtlasNotificationSources.ModeName(AMode: TAtlasNotificationMode): string;
