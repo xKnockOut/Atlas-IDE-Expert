@@ -23,6 +23,9 @@
 //   Änderung im Editor prüft TAtlasSlashTrigger die Cursorzeile; passt sie,
 //   geht textDocument/onTypeFormatting an den Server, und zwar nach der
 //   Nachrichtenverarbeitung (ForceQueue), nie im Notifier selbst.
+// - Test am Cursor ausführen bzw. debuggen (#585): nur Einträge im
+//   Kontextmenü; was sie tun, setzt die Composition über OnRunTest und
+//   OnDebugTest (A-09: die Befehle importieren die Tests nicht).
 // Vor jeder Anfrage bekommt der Server den aktuellen Text der Datei.
 // Meldungen nur als Zeile in der Meldungsansicht, nie als Dialog.
 
@@ -50,6 +53,8 @@ type
     /// <summary>Cursor beim ersten Erweitern der Auswahl.</summary>
     FAnchorFile: string;
     FAnchor: TLspTextPosition;
+    FOnRunTest: TProc;
+    FOnDebugTest: TProc;
   private
     class function Session: TLspSession; static;
     class procedure Say(const AText: string); static;
@@ -91,6 +96,11 @@ type
     class procedure EditorModified(const AView: IOTAEditView); static;
     /// <summary>Untermenü Atlas in die Kontextmenüs der Editorfenster hängen.</summary>
     class procedure EnsureContextMenus; static;
+    /// <summary>Kontextmenü „Test am Cursor ausführen“ (#585); setzt die Composition, nil = ausgeschaltet (der
+    /// Eintrag meldet das).</summary>
+    class property OnRunTest: TProc read FOnRunTest write FOnRunTest;
+    /// <summary>Kontextmenü „Test am Cursor debuggen“ (#585); nil = ausgeschaltet.</summary>
+    class property OnDebugTest: TProc read FOnDebugTest write FOnDebugTest;
   end;
 
 implementation
@@ -307,6 +317,23 @@ begin
     procedure
     begin
       SwitchTestUnit;
+    end);
+  // Test am Cursor (#585): ohne Tests bzw. ohne „Test debuggen“ meldet der Eintrag, dass es aus ist.
+  FContextMenu.Add('Atlas.RunTest', TAtlasStrings.Text(TAtlasTextId.TestsRunHereCommand), nil,
+    procedure
+    begin
+      if Assigned(FOnRunTest) then
+        FOnRunTest()
+      else
+        Say(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
+    end);
+  FContextMenu.Add('Atlas.DebugTest', TAtlasStrings.Text(TAtlasTextId.TestsDebugCommand), nil,
+    procedure
+    begin
+      if Assigned(FOnDebugTest) then
+        FOnDebugTest()
+      else
+        Say(TAtlasStrings.Text(TAtlasTextId.TestsDebugOff));
     end);
   FContextMenu.Add('Atlas.CopyQualifiedName', TAtlasStrings.Text(TAtlasTextId.EditorCopyQualified), nil,
     procedure

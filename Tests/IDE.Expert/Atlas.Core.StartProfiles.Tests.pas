@@ -3,7 +3,7 @@
 // Tests der Startprofile (#575) ohne IDE: gemeinsame und persönliche Profile
 // zusammenführen, Startoptionen mit Pfaden und Umgebungsvariablen bilden,
 // lokale Datei lesen und schreiben, aktives Profil und Startoptionen von
-// vorher merken.
+// vorher merken; vorübergehende Startparameter für „Test debuggen“ (#585).
 
 interface
 
@@ -47,6 +47,10 @@ type
     procedure SaveAndLoadWithoutIde;
     [Test]
     procedure SaveKeepsNewerFormat;
+    [Test]
+    procedure TemporaryParametersAreRestored;
+    [Test]
+    procedure TemporaryEntrySurvivesInFile;
   end;
 
 implementation
@@ -392,6 +396,64 @@ begin
   finally
     RemoveFolder(Folder);
   end;
+end;
+
+procedure TAtlasStartProfilesTests.TemporaryParametersAreRestored;
+var
+  State: TAtlasStartProfileState;
+  Current, Temporary, Before: TAtlasStartOptions;
+begin
+  Current := Default(TAtlasStartOptions);
+  Current.Parameters := '-cfg a.ini';
+  Current.WorkingDir := 'C:\Arbeit';
+  Current.Environment := 'A=1';
+  Temporary := TAtlasStartProfiles.TemporaryOptions(Current, '--run:U.T.A --exitbehavior:Continue');
+  Assert.AreEqual('--run:U.T.A --exitbehavior:Continue', Temporary.Parameters);
+  Assert.AreEqual('C:\Arbeit', Temporary.WorkingDir, 'Arbeitsordner bleibt');
+  Assert.AreEqual('A=1', Temporary.Environment, 'Umgebung bleibt');
+  State := TAtlasStartProfiles.Empty(Project);
+  TAtlasStartProfiles.BeginTemporary(State, Current, Temporary.Parameters);
+  Assert.IsTrue(State.HasTemporary);
+  // Ein zweiter Lauf, bevor der erste aufgeräumt ist: die Optionen von ganz vorher bleiben.
+  TAtlasStartProfiles.BeginTemporary(State, Temporary, '--run:U.T.B');
+  Assert.AreEqual('-cfg a.ini', State.TemporaryBefore.Parameters);
+  Assert.AreEqual('--run:U.T.B', State.TemporaryWritten);
+  Temporary.Parameters := '--run:U.T.B';
+  Assert.IsTrue(TAtlasStartProfiles.EndTemporary(State, Temporary, Before), 'unverändert: zurückstellen');
+  Assert.AreEqual('-cfg a.ini', Before.Parameters);
+  Assert.IsTrue(Before.SameAs(Current));
+  Assert.IsFalse(State.HasTemporary, 'Eintrag entfernt');
+  // Hat jemand die Parameter währenddessen geändert, bleiben sie.
+  TAtlasStartProfiles.BeginTemporary(State, Current, '--run:U.T.A');
+  Temporary.Parameters := '-von-hand';
+  Assert.IsFalse(TAtlasStartProfiles.EndTemporary(State, Temporary, Before));
+  Assert.IsFalse(State.HasTemporary);
+  Assert.IsFalse(TAtlasStartProfiles.EndTemporary(State, Temporary, Before), 'ohne Eintrag nichts zu tun');
+end;
+
+procedure TAtlasStartProfilesTests.TemporaryEntrySurvivesInFile;
+var
+  State, Back: TAtlasStartProfileState;
+  Current, Before: TAtlasStartOptions;
+begin
+  // Absturz während des Laufs: die Datei kennt die Startoptionen von vorher.
+  Current := Default(TAtlasStartOptions);
+  Current.Parameters := '-"x y"';
+  Current.Host := 'C:\Host.exe';
+  State := TAtlasStartProfiles.Empty(Project);
+  State.Active := 'Demo';
+  TAtlasStartProfiles.BeginTemporary(State, Current, '--run:U.T.A');
+  Back := TAtlasStartProfiles.Parse(TAtlasStartProfiles.ToJson(State), Project);
+  Assert.IsTrue(Back.HasTemporary);
+  Assert.AreEqual('--run:U.T.A', Back.TemporaryWritten);
+  Assert.IsTrue(Back.TemporaryBefore.SameAs(Current));
+  Assert.AreEqual('Demo', Back.Active, 'das aktive Profil bleibt');
+  Current.Parameters := '--run:U.T.A';
+  Assert.IsTrue(TAtlasStartProfiles.EndTemporary(Back, Current, Before));
+  Assert.AreEqual('-"x y"', Before.Parameters);
+  Back := TAtlasStartProfiles.Parse(TAtlasStartProfiles.ToJson(Back), Project);
+  Assert.IsFalse(Back.HasTemporary, 'ohne Eintrag kein Abschnitt');
+  Assert.DoesNotContain(TAtlasStartProfiles.ToJson(Back), '"temporary"');
 end;
 
 initialization
