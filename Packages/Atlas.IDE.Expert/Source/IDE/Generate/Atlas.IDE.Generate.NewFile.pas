@@ -42,8 +42,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
   Atlas.UI.Generate.Window,
-  Atlas.IDE.Editor.Style,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Settings;
 
 type
   /// <summary>Text der neuen Datei für die IDE.</summary>

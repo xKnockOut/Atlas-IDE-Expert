@@ -44,7 +44,7 @@ uses
   ToolsAPI,
   Atlas.UI.Strings,
   Atlas.UI.Style.Symbol,
-  Atlas.IDE.Style.Symbol;
+  Atlas.IDE.Foundation.Symbol;
 
 type
   TBookmarksDock = class(TInterfacedObject, INTACustomDockableForm)

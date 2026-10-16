@@ -40,12 +40,15 @@ type
     procedure EntryIdsAndSteps;
     [Test]
     procedure SelectionEndLineSkipsLineStart;
+    [Test]
+    procedure ContractListsMatchOptions;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  Atlas.Core.Generate.Contract,
   Atlas.Core.Generate.Menu;
 
 function Slash(const AName, ACaption: string; AGroup: TAtlasGenerateGroup): TAtlasGenerateEntry; overload;
@@ -322,6 +325,20 @@ begin
   // Ganze Zeilen 3 und 4 markiert: Ende am Anfang von Zeile 5.
   Assert.AreEqual(4, TAtlasGenerateMenu.SelectionEndLine(3, 5, 0, True));
   Assert.AreEqual(3, TAtlasGenerateMenu.SelectionEndLine(3, 3, 0, True));
+end;
+
+procedure TAtlasGenerateMenuTests.ContractListsMatchOptions;
+var
+  Group: TAtlasGenerateGroup;
+begin
+  // Die Einstellungen normalisieren über den Contract (A-09), das Menü leitet nur weiter.
+  Assert.AreEqual('templates,generate', TAtlasGenerateLists.NormalizeGroups(' Templates; quatsch, generate '));
+  Assert.AreEqual(TAtlasGenerateOptions.NormalizeGroups('surround'), TAtlasGenerateLists.NormalizeGroups('surround'));
+  Assert.AreEqual('/json, tryf', TAtlasGenerateLists.NormalizeHidden('/json, , /json,tryf'));
+  Assert.AreEqual(2, Length(TAtlasGenerateLists.Split('a;; b,'#10)));
+  Assert.IsTrue(TAtlasGenerateLists.TryParseGroup(' Surround ', Group));
+  Assert.IsTrue(Group = TAtlasGenerateGroup.Surround);
+  Assert.AreEqual('recent', TAtlasGenerateLists.GroupName(TAtlasGenerateGroup.Recent));
 end;
 
 initialization

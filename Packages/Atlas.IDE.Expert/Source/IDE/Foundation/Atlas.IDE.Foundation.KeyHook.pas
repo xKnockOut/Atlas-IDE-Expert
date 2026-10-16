@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Editor.KeyHook;
+﻿unit Atlas.IDE.Foundation.KeyHook;
 
 // Tastatur-Hook des Hauptthreads für die Fenster von Atlas (#410, #436). Er ist
 // nur installiert, solange mindestens ein Fenster offen ist und Tasten braucht;

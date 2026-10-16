@@ -37,7 +37,7 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Completion.Placeholders,
-  Atlas.IDE.Editor.KeyHook;
+  Atlas.IDE.Foundation.KeyHook;
 
 type
   TAtlasEditorPlaceholders = class
@@ -106,8 +106,8 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Pairs,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Style,
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorStyle,
   Atlas.UI.Strings;
 
 /// <summary>Zeile ALine (0-basiert) aus AText ohne Zeilenende.</summary>

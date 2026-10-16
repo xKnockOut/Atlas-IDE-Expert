@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Projects.Context;
+﻿unit Atlas.Core.Projects.Contract;
 
 // Projektkontext für den Server (#396), ohne Open Tools API: was die IDE für
 // ein Projekt gerade verwendet (Konfiguration, Plattform, bedingte Symbole,
@@ -7,6 +7,8 @@
 // jeder Änderung als atlas/projectContext. Die Werte bleiben roh, wie sie in
 // den Projektoptionen stehen ($(Platform), $(BDS), relative Pfade): Der Server
 // löst sie mit den Variablen der Installation auf.
+// Contract des Features Projects (A-09, früher Atlas.Core.Projects.Context): Der LSP-Client
+// importiert nur ihn, nicht die übrigen Projects-Units.
 
 interface
 

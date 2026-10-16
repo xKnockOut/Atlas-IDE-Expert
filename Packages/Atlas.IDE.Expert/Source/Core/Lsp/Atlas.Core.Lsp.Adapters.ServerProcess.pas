@@ -20,7 +20,7 @@ uses
   Atlas.Core.Lsp.Client;
 
 type
-  TLspServerProcess = class
+  TLspServerProcess = class(TInterfacedObject, IAtlasLspServer)
   private
     FProcess: THandle;
     FInputWrite: THandle;
@@ -34,6 +34,7 @@ type
     constructor Create(const AExeName, AArguments: string);
     destructor Destroy; override;
     function Running: Boolean;
+    function GetClient: TLspClient;
     property Client: TLspClient read FClient;
   end;
 
@@ -285,6 +286,11 @@ end;
 procedure TLspServerProcess.Write(const ABytes: TBytes);
 begin
   TWriterThread(FWriter).Add(ABytes);
+end;
+
+function TLspServerProcess.GetClient: TLspClient;
+begin
+  Result := FClient;
 end;
 
 function TLspServerProcess.Running: Boolean;

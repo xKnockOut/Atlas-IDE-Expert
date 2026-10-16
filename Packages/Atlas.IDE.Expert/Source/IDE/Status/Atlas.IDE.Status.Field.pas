@@ -130,11 +130,11 @@ uses
   Atlas.Core.Status.Lines,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.IDE.Settings.Store,
-  Atlas.IDE.Editor.Style,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorStyle,
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol,
-  Atlas.IDE.Style.Symbol;
+  Atlas.IDE.Foundation.Symbol;
 
 const
   WM_ATLAS_STATUS = WM_USER + 591;
