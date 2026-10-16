@@ -25,6 +25,8 @@ type
     HasOptions: Boolean;
     /// <summary>Steht im Katalog des Servers.</summary>
     Known: Boolean;
+    /// <summary>Im Projekt: Schweregrad aus den globalen Einstellungen; '' = dort nicht gesetzt.</summary>
+    GlobalSeverity: string;
   end;
 
   TAtlasRuleTable = class
@@ -33,7 +35,11 @@ type
   public
     /// <summary>ACatalog: Antwort von atlas.server.settingsCatalog (darf nil sein). ARulesJson: Wert von
     /// "rules" ('' ohne).</summary>
-    class function Rows(ACatalog: TJSONValue; const ARulesJson: string): TArray<TAtlasRuleRow>; static;
+    class function Rows(ACatalog: TJSONValue; const ARulesJson: string): TArray<TAtlasRuleRow>; overload; static;
+    /// <summary>Wie oben, dazu je Regel der Schweregrad aus "rules" der globalen Datei (AGlobalRulesJson).
+    /// Das Projekt übersteuert ihn je Regel.</summary>
+    class function Rows(ACatalog: TJSONValue; const ARulesJson, AGlobalRulesJson: string): TArray<TAtlasRuleRow>;
+      overload; static;
     /// <summary>Pfad und JSON-Text für TAtlasJsonText, um ASeverity für AId zu setzen ('' = entfernen):
     /// "rules.<id>" oder bei einer Regel mit Optionen "rules.<id>.severity". So ändert sich in der Datei nur
     /// dieser Wert.</summary>
@@ -56,6 +62,22 @@ begin
 end;
 
 { TAtlasRuleTable }
+
+class function TAtlasRuleTable.Rows(ACatalog: TJSONValue; const ARulesJson,
+  AGlobalRulesJson: string): TArray<TAtlasRuleRow>;
+var
+  Global: TArray<TAtlasRuleRow>;
+  Index, Other: Integer;
+begin
+  Result := Rows(ACatalog, ARulesJson);
+  if AGlobalRulesJson = '' then
+    Exit;
+  Global := Rows(nil, AGlobalRulesJson);
+  for Other := 0 to High(Global) do
+    for Index := 0 to High(Result) do
+      if SameText(Result[Index].Id, Global[Other].Id) then
+        Result[Index].GlobalSeverity := Global[Other].Severity;
+end;
 
 class function TAtlasRuleTable.Rows(ACatalog: TJSONValue; const ARulesJson: string): TArray<TAtlasRuleRow>;
 var

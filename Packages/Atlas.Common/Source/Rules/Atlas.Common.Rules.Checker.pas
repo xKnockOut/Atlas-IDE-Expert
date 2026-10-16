@@ -47,6 +47,7 @@ implementation
 
 uses
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Engine;
@@ -72,6 +73,7 @@ var
   Diagnostic: TSyntaxDiagnostic;
   Finding: TRuleFinding;
   Syntax: TArray<TRuleFinding>;
+  Active: TArray<TSyntaxDiagnostic>;
 begin
   AScopes := TFindingScopes.FromTree(nil);
   if (ARelativePath <> '') and ASettings.IsExcluded(ARelativePath) then
@@ -80,8 +82,11 @@ begin
   try
     AScopes := TFindingScopes.FromTree(Tree);
     Syntax := nil;
+    // Inaktive Zweige der bedingten Kompilierung erzeugen keine Syntaxfehler.
+    if not TPascalParser.ActiveDiagnostics(AText, nil, Active) then
+      Active := Tree.Diagnostics;
     if ASettings.RuleSeverity(SyntaxRuleId, TRuleSeverity.Error) <> TRuleSeverity.Off then
-      for Diagnostic in Tree.Diagnostics do
+      for Diagnostic in Active do
       begin
         Finding := Default(TRuleFinding);
         Finding.RuleId := SyntaxRuleId;

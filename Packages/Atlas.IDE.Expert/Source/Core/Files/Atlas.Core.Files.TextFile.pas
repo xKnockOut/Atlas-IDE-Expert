@@ -61,8 +61,43 @@ type
 implementation
 
 uses
+  Winapi.Windows,
+  System.Classes,
   System.IOUtils,
   Atlas.Text.Encoding;
+
+const
+  /// <summary>Versuche, wenn ein anderer Prozess die Zieldatei gerade offen hält (Server, Virenscanner).</summary>
+  ReplaceAttempts = 10;
+  ReplaceWaitMs = 50;
+
+/// <summary>Ersetzt ATarget in einem Schritt durch ASource. Löschen und Verschieben getrennt scheitert, wenn
+/// ein anderer Prozess das Ziel offen hält: Das Löschen ist dann nur vorgemerkt und die Datei noch da
+/// („Datei bereits vorhanden“). Bleibt das Ziel gesperrt, wird ASource an Ort und Stelle hineingeschrieben
+/// (geht, solange der andere Prozess Schreiben teilt, etwa der Server, der settings.json beobachtet).</summary>
+procedure ReplaceWith(const ASource, ATarget: string; const ABytes: TBytes);
+var
+  Attempt: Integer;
+  Stream: TFileStream;
+begin
+  for Attempt := 1 to ReplaceAttempts do
+  begin
+    if MoveFileEx(PChar(ASource), PChar(ATarget), MOVEFILE_REPLACE_EXISTING or MOVEFILE_WRITE_THROUGH) then
+      Exit;
+    if Attempt < ReplaceAttempts then
+      Sleep(ReplaceWaitMs);
+  end;
+  // Ohne Ausschluss öffnen: Der andere Prozess liest weiter.
+  Stream := TFileStream.Create(ATarget, fmOpenWrite or fmShareDenyNone);
+  try
+    Stream.Size := 0;
+    if Length(ABytes) > 0 then
+      Stream.WriteBuffer(ABytes[0], Length(ABytes));
+  finally
+    Stream.Free;
+  end;
+  TFile.Delete(ASource);
+end;
 
 class function TAtlasTextFile.IsUtf8(const ABytes: TBytes; AStart: Integer): Boolean;
 begin
@@ -200,16 +235,16 @@ end;
 class procedure TAtlasTextFile.Save(const AFileName: string; const AContent: TAtlasTextFileContent);
 var
   Temporary: string;
+  Bytes: TBytes;
 begin
   if TFile.Exists(AFileName) and IsBinaryForm(TFile.ReadAllBytes(AFileName)) then
     raise EAtlasTextFileError.Create('binär gespeichertes Formular wird nicht überschrieben');
   // Erst vollständig daneben schreiben: Ein Abbruch hinterlässt nie eine halbe Datei.
   Temporary := AFileName + '.atlas-tmp';
-  TFile.WriteAllBytes(Temporary, Encode(AContent));
+  Bytes := Encode(AContent);
+  TFile.WriteAllBytes(Temporary, Bytes);
   try
-    if TFile.Exists(AFileName) then
-      TFile.Delete(AFileName);
-    TFile.Move(Temporary, AFileName);
+    ReplaceWith(Temporary, AFileName, Bytes);
   except
     if TFile.Exists(Temporary) then
       TFile.Delete(Temporary);

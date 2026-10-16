@@ -90,6 +90,7 @@ begin
     // Das Plugin zeigt nur Parameternamen; die übrigen Inlay-Hints betreffen es nicht.
     Setting('InlayHints', 'inlayHints.parameterNames', True),
     Setting('CodeLensMetrics', 'codeLens.metrics', True),
+    Setting('Metrics', 'metrics', True),
     Setting('CompileOnSave', 'compiler.onSave', True)];
 end;
 

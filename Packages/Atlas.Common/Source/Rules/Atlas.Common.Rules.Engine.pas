@@ -168,6 +168,13 @@ end;
 class function TRuleEngine.EffectiveSeverity(const ARule: TRuleDescriptor; const ASettings: TServerSettings;
   const ARelativePath: string; out AEnabled: Boolean): TRuleSeverity;
 begin
+  // Kennzahlen global aus ("metrics": false): metric-* schweigen, außer das Projekt setzt die Regel selbst.
+  if not ASettings.Metrics and SameText(Copy(ARule.Id, 1, 7), 'metric-') and
+    (ASettings.RuleSeverity(ARule.Id, TRuleSeverity.Default) = TRuleSeverity.Default) then
+  begin
+    AEnabled := False;
+    Exit(TRuleSeverity.Off);
+  end;
   Result := TRuleProfiles.Severity(ASettings, ASettings.Profile, ARule, TRuleProfiles.CategoryOf(ARule.Id),
     ARelativePath, AEnabled);
   if Result = TRuleSeverity.Default then

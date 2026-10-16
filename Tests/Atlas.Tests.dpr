@@ -142,6 +142,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree.Tests in 'Common\Pascal\Atlas.Common.Pascal.SyntaxTree.Tests.pas',
   Atlas.Common.Pascal.IncludeFiles.Tests in 'Common\Pascal\Atlas.Common.Pascal.IncludeFiles.Tests.pas',
   Atlas.Common.Pascal.Parser.Robustness.Tests in 'Common\Pascal\Atlas.Common.Pascal.Parser.Robustness.Tests.pas',
+  Atlas.Common.Pascal.ConditionalSyntax.Tests in 'Common\Pascal\Atlas.Common.Pascal.ConditionalSyntax.Tests.pas',
   Atlas.Common.Pascal.LanguageFeatures.Tests in 'Common\Pascal\Atlas.Common.Pascal.LanguageFeatures.Tests.pas',
   Atlas.Common.Pascal.Preprocessor.Tests in 'Common\Pascal\Atlas.Common.Pascal.Preprocessor.Tests.pas',
   Atlas.Common.Lsp.ProtocolReplay in 'Common\Lsp\Atlas.Common.Lsp.ProtocolReplay.pas',
